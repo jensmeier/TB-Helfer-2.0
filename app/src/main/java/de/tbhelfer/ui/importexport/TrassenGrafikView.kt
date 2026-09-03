@@ -65,6 +65,7 @@ class TrassenGrafikView @JvmOverloads constructor(
     private var onAchsenLongPressMitStationRequested: ((List<Pair<TrassenGrafikAchse, Double>>) -> Unit)? = null
     private var aktiveAchseId: Long? = null
     private var ankerProjektion: TrassenGrafikProjektion? = null
+    private var aktiverFestpunkt: TrassenGrafikFestpunkt? = null
 
     private val darkMode: Boolean
         get() = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
@@ -251,6 +252,12 @@ class TrassenGrafikView @JvmOverloads constructor(
     /** Zeigt die Projektion eines gewählten Vermessungspunktes auf die Ziel-TRA. */
     fun setAnkerProjektion(projektion: TrassenGrafikProjektion?) {
         ankerProjektion = projektion
+        invalidate()
+    }
+
+    /** Temporäre Auswahlmarkierung; Blau ist ausschließlich Auswahl/Markierung. */
+    fun setAktiverFestpunkt(punkt: TrassenGrafikFestpunkt?) {
+        aktiverFestpunkt = punkt
         invalidate()
     }
 
@@ -647,6 +654,12 @@ class TrassenGrafikView @JvmOverloads constructor(
                 zoom >= 6f -> dpF(6f)
                 zoom >= 3f -> dpF(5f)
                 else -> dpF(3.5f)
+            }
+            val basisPunktFarbe = punktPaint.color
+            if (punkt == aktiverFestpunkt) {
+                punktPaint.color = if (isDark) Color.rgb(100, 181, 246) else Color.rgb(25, 118, 210)
+                canvas.drawCircle(x, y, radius + dpF(4.5f), punktPaint)
+                punktPaint.color = basisPunktFarbe
             }
             canvas.drawCircle(x, y, radius, punktPaint)
             canvas.drawCircle(x, y, radius, punktRandPaint)

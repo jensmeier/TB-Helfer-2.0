@@ -54,6 +54,7 @@ import de.tbhelfer.vermessung.StandortLiveQuelle
 import de.tbhelfer.vermessung.TrassenNaheBerechner
 import de.tbhelfer.vermessung.TrassenKmStatusLogik
 import de.tbhelfer.vermessung.ManuelleAbschnittKmLogik
+import de.tbhelfer.vermessung.VermarkungsAchsenAuswahlLogik
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -2198,6 +2199,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             }
             p.achseId != null && p.station != null -> buildString {
                 append("Vermarkung ✓")
+                p.vermarkungName?.takeIf { it.isNotBlank() }?.let { append(" · $it") }
                 p.achseName?.let { append(" · TRA $it") }
                 append(" · Station ${format1(p.station)} m")
                 p.achsabstandM?.let { append(" · ${format1(it)} m") }
@@ -2248,70 +2250,191 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
 
         fun vermarkungWaehlen(rolle: String) {
             viewLifecycleOwner.lifecycleScope.launch {
-                val (festpunkte, achsen) = withContext(Dispatchers.IO) {
+                val (allePunkte, achsen) = withContext(Dispatchers.IO) {
                     ladeGrafikVermessungspunkte() to ladeRohGrafikAchsen()
                 }
-                val rollenRegex = Regex("(?i)^${Regex.escape(rolle)}(?:[_\\s-]|\\d|$)")
-                val direktPassend = festpunkte.filter { punkt ->
-                    rollenRegex.containsMatchIn(punkt.label.trim()) ||
-                        rollenRegex.containsMatchIn(punkt.punktId.orEmpty().trim())
+                val gvpPunkte = allePunkte.filter {
+                    it.art.equals("GVP", ignoreCase = true) ||
+                        it.art.equals("FESTPUNKT", ignoreCase = true)
                 }
-                val kandidaten = if (typ == StreckenObjektSpeicher.Typ.WEICHE) {
-                    direktPassend.ifEmpty {
-                        festpunkte.filter { it.art.equals("WEICHENPUNKT", ignoreCase = true) }
-                    }
-                } else {
-                    val gvp = festpunkte.filter {
-                        it.art.equals("GVP", ignoreCase = true) ||
-                            it.art.equals("FESTPUNKT", ignoreCase = true)
-                    }
-                    val passendeGvp = gvp.filter { punkt ->
-                        rollenRegex.containsMatchIn(punkt.label.trim()) ||
-                            rollenRegex.containsMatchIn(punkt.punktId.orEmpty().trim())
-                    }
-                    passendeGvp.ifEmpty { gvp }
-                }.sortedWith(compareBy<TrassenGrafikFestpunkt> { it.label }.thenBy { it.punktId.orEmpty() })
-
-                if (kandidaten.isEmpty()) {
-                    Toast.makeText(context, "Keine passenden WA/WE/WEZ-Vermarkungspunkte vorhanden.", Toast.LENGTH_LONG).show()
+                if (gvpPunkte.isEmpty()) {
+                    Toast.makeText(context, "Keine GVP/Festpunkte für die grafische Auswahl vorhanden.", Toast.LENGTH_LONG).show()
                     return@launch
                 }
 
-                fun uebernehmen(punkt: TrassenGrafikFestpunkt) {
-                    val beste = achsen.mapNotNull { achse ->
+                val statusAuswahl = TextView(context).apply {
+                    text = "$rolle: GVP/Festpunkt in der Grafik antippen. Zoomen und Verschieben ist möglich."
+                    textSize = 13f
+                    setPadding(0, 0, 0, dp(8))
+                }
+                val grafik = TrassenGrafikView(context).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        (resources.displayMetrics.heightPixels * 0.62f).toInt()
+                            .coerceIn(dp(320), dp(620))
+                    )
+                    setAchsen(achsen)
+                    setFestpunkte(gvpPunkte)
+                    setFestpunkteSichtbar(true)
+                    setSichtbarePunktArten(setOf("GVP", "FESTPUNKT"))
+                    setLegendeSichtbar(false)
+                }
+                val container = LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(12), dp(8), dp(12), dp(4))
+                    addView(statusAuswahl)
+                    addView(grafik)
+                }
+
+                var ausgewaehlterPunkt: TrassenGrafikFestpunkt? = null
+                var ausgewaehlteAchse: TrassenGrafikAchse? = null
+                var ausgewaehlteProjektion: VermarkungsProjektion? = null
+                var uebernehmenButton: Button? = null
+
+                fun punktName(punkt: TrassenGrafikFestpunkt): String =
+                    punkt.label.ifBlank { punkt.punktId ?: "GVP/Festpunkt" }
+
+                fun kmText(punkt: TrassenGrafikFestpunkt): String =
+                    punkt.kmMeter?.let { "km ${formatKmMeter(it)}" } ?: "ohne Datei-km"
+
+                fun achsenName(achse: TrassenGrafikAchse): String =
+                    achse.label.takeIf { it.isNotBlank() } ?: achse.name
+
+                fun auswahlSetzen(
+                    punkt: TrassenGrafikFestpunkt,
+                    achse: TrassenGrafikAchse,
+                    projektion: VermarkungsProjektion,
+                    automatisch: Boolean
+                ) {
+                    ausgewaehlterPunkt = punkt
+                    ausgewaehlteAchse = achse
+                    ausgewaehlteProjektion = projektion
+                    grafik.setAktiverFestpunkt(punkt)
+                    grafik.setAktiveAchseId(achse.achseId)
+                    grafik.setAnkerProjektion(
+                        TrassenGrafikProjektion(punkt.x, punkt.y, projektion.projX, projektion.projY)
+                    )
+                    statusAuswahl.text = buildString {
+                        appendLine("$rolle = ${punktName(punkt)} · ${kmText(punkt)}")
+                        append("TRA: ${achsenName(achse)} · Station ${format1(projektion.station)} m · Abstand ${format1(projektion.abstandM)} m")
+                        if (automatisch) append(" · eindeutig vorgeschlagen")
+                    }
+                    uebernehmenButton?.isEnabled = true
+                }
+
+                fun achseFuerPunktWaehlen(punkt: TrassenGrafikFestpunkt) {
+                    ausgewaehlterPunkt = punkt
+                    ausgewaehlteAchse = null
+                    ausgewaehlteProjektion = null
+                    uebernehmenButton?.isEnabled = false
+                    grafik.setAktiverFestpunkt(punkt)
+                    grafik.setAktiveAchseId(null)
+                    grafik.setAnkerProjektion(null)
+
+                    val alleTreffer = achsen.mapNotNull { achse ->
                         projiziereVermessungspunktAufAchse(punkt, achse)?.let { projektion -> achse to projektion }
-                    }.minByOrNull { it.second.abstandM }
-                    val achse = beste?.first
-                    val projektion = beste?.second
-                    if (projektion == null || achse == null) {
-                        Toast.makeText(context, "Vermarkungspunkt konnte keiner TRA sicher zugeordnet werden.", Toast.LENGTH_LONG).show()
+                    }.sortedBy { it.second.abstandM }
+
+                    // Konkrete Gleis-/Weichenachsen haben Vorrang vor einer allgemeinen
+                    // Streckenachse, solange sie innerhalb des fachlichen Suchbereichs liegen.
+                    val spezifischeTreffer = alleTreffer.filter { (achse, projektion) ->
+                        achse.achsTyp != TrassenAchseEntity.ACHSTYP_STRECKE && projektion.abstandM <= 50.0
+                    }
+                    val bewertungsTreffer = if (spezifischeTreffer.isNotEmpty()) spezifischeTreffer else alleTreffer
+                    val bewertung = VermarkungsAchsenAuswahlLogik.bewerte(
+                        bewertungsTreffer.map { (achse, projektion) ->
+                            VermarkungsAchsenAuswahlLogik.Kandidat(achse.achseId, projektion.abstandM)
+                        }
+                    )
+                    if (bewertung.relevanteKandidaten.isEmpty()) {
+                        statusAuswahl.text = "$rolle = ${punktName(punkt)} · ${kmText(punkt)}\nKeine TRA innerhalb 50 m gefunden. Bitte anderen GVP wählen."
                         return
                     }
-                    val objektPunkt = StreckenObjektSpeicher.Punkt(
-                        rolle = rolle,
-                        km = punkt.kmMeter,
-                        kmManuell = false,
-                        achseId = achse.achseId,
-                        achseName = achse.label.takeIf { it.isNotBlank() } ?: achse.name,
-                        station = projektion.station,
-                        achsabstandM = projektion.abstandM
-                    )
-                    val kmText = punkt.kmMeter?.let { "km ${formatKmMeter(it)} aus Datei" } ?: "kein Datei-km"
+
+                    val relevanteTreffer = bewertung.relevanteKandidaten.mapNotNull { kandidat ->
+                        bewertungsTreffer.firstOrNull { it.first.achseId == kandidat.achseId }
+                    }
+                    val autoId = bewertung.automatischeAchseId
+                    if (autoId != null) {
+                        val treffer = relevanteTreffer.firstOrNull { it.first.achseId == autoId }
+                        if (treffer != null) {
+                            auswahlSetzen(punkt, treffer.first, treffer.second, automatisch = true)
+                            return
+                        }
+                    }
+
+                    // Mehrdeutiger Knoten / parallele Gleise / weiter entfernter Punkt:
+                    // Benutzer entscheidet bewusst, keine heimliche Achszuordnung.
                     MaterialAlertDialogBuilder(context)
-                        .setTitle("$rolle aus Vermarkung übernehmen?")
-                        .setMessage("${punkt.label.ifBlank { punkt.punktId ?: rolle }}\n$kmText\nTRA: ${objektPunkt.achseName} · Station ${format1(projektion.station)} m · Abstand ${format1(projektion.abstandM)} m")
-                        .setNegativeButton("Abbrechen", null)
-                        .setPositiveButton("Übernehmen") { _, _ -> punktUebernehmen(rolle, objektPunkt) }
+                        .setTitle("TRA für $rolle · ${punktName(punkt)} wählen")
+                        .setItems(relevanteTreffer.map { (achse, projektion) ->
+                            "${achsenName(achse)} · Station ${format1(projektion.station)} m · Abstand ${format1(projektion.abstandM)} m"
+                        }.toTypedArray()) { _, which ->
+                            relevanteTreffer.getOrNull(which)?.let { treffer ->
+                                auswahlSetzen(punkt, treffer.first, treffer.second, automatisch = false)
+                            }
+                        }
+                        .setNegativeButton("Anderen GVP wählen", null)
                         .show()
                 }
 
-                MaterialAlertDialogBuilder(context)
-                    .setTitle("$rolle · Vermarkungspunkt wählen")
-                    .setItems(kandidaten.map { it.toGrafikPunktAuswahlText() }.toTypedArray()) { _, which ->
-                        uebernehmen(kandidaten[which])
+                fun punktTrefferVerarbeiten(kandidaten: List<TrassenGrafikFestpunkt>) {
+                    val eindeutig = kandidaten
+                        .filter { it.art.equals("GVP", true) || it.art.equals("FESTPUNKT", true) }
+                        .distinctBy { p ->
+                            val xCm = kotlin.math.round(p.x * 100f).toInt()
+                            val yCm = kotlin.math.round(p.y * 100f).toInt()
+                            "${punktName(p).uppercase(Locale.GERMANY)}|$xCm|$yCm"
+                        }
+                    when (eindeutig.size) {
+                        0 -> Unit
+                        1 -> achseFuerPunktWaehlen(eindeutig.first())
+                        else -> MaterialAlertDialogBuilder(context)
+                            .setTitle("Mehrere GVP an dieser Stelle")
+                            .setItems(eindeutig.map { "${punktName(it)} · ${kmText(it)}" }.toTypedArray()) { _, which ->
+                                eindeutig.getOrNull(which)?.let(::achseFuerPunktWaehlen)
+                            }
+                            .setNegativeButton("Abbrechen", null)
+                            .show()
                     }
+                }
+
+                grafik.setOnFestpunkteInfoRequested(::punktTrefferVerarbeiten)
+
+                val dialog = MaterialAlertDialogBuilder(context)
+                    .setTitle("$rolle · GVP in Grafik wählen")
+                    .setView(container)
                     .setNegativeButton("Abbrechen", null)
-                    .show()
+                    .setPositiveButton("Übernehmen", null)
+                    .create()
+                dialog.setOnShowListener {
+                    uebernehmenButton = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).apply {
+                        isEnabled = false
+                        setOnClickListener {
+                            val punkt = ausgewaehlterPunkt ?: return@setOnClickListener
+                            val achse = ausgewaehlteAchse ?: return@setOnClickListener
+                            val projektion = ausgewaehlteProjektion ?: return@setOnClickListener
+                            val objektPunkt = StreckenObjektSpeicher.Punkt(
+                                rolle = rolle,
+                                km = punkt.kmMeter,
+                                kmManuell = false,
+                                achseId = achse.achseId,
+                                achseName = achsenName(achse),
+                                station = projektion.station,
+                                achsabstandM = projektion.abstandM,
+                                vermarkungName = punktName(punkt),
+                                vermarkungArt = punkt.art,
+                                vermarkungQuelleDatei = punkt.quelleDatei,
+                                vermarkungX = punkt.x.toDouble(),
+                                vermarkungY = punkt.y.toDouble()
+                            )
+                            punktUebernehmen(rolle, objektPunkt)
+                            dialog.dismiss()
+                        }
+                    }
+                    grafik.post { grafik.fitToContent() }
+                }
+                dialog.show()
             }
         }
 
@@ -2461,6 +2584,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 buildString {
                     append(punkt.rolle)
                     if (punkt.lat != null && punkt.lon != null) append(" GPS✓")
+                    punkt.vermarkungName?.takeIf { it.isNotBlank() }?.let { append(" GVP:$it") }
                     if (punkt.km != null) append(" km✓")
                 }
             }

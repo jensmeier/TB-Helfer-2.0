@@ -32,7 +32,12 @@ object StreckenObjektSpeicher {
         val achseId: Long? = null,
         val achseName: String? = null,
         val station: Double? = null,
-        val achsabstandM: Double? = null
+        val achsabstandM: Double? = null,
+        val vermarkungName: String? = null,
+        val vermarkungArt: String? = null,
+        val vermarkungQuelleDatei: String? = null,
+        val vermarkungX: Double? = null,
+        val vermarkungY: Double? = null
     )
 
     data class Objekt(
@@ -165,6 +170,11 @@ object StreckenObjektSpeicher {
         put("achseName", achseName)
         put("station", station)
         put("achsabstandM", achsabstandM)
+        put("vermarkungName", vermarkungName)
+        put("vermarkungArt", vermarkungArt)
+        put("vermarkungQuelleDatei", vermarkungQuelleDatei)
+        put("vermarkungX", vermarkungX)
+        put("vermarkungY", vermarkungY)
     }
 
     private fun JSONObject.toObjektOrNull(): Objekt? = runCatching {
@@ -198,7 +208,12 @@ object StreckenObjektSpeicher {
             achseId = optNullableLong("achseId"),
             achseName = optNullableString("achseName"),
             station = optNullableDouble("station"),
-            achsabstandM = optNullableDouble("achsabstandM")
+            achsabstandM = optNullableDouble("achsabstandM"),
+            vermarkungName = optNullableString("vermarkungName"),
+            vermarkungArt = optNullableString("vermarkungArt"),
+            vermarkungQuelleDatei = optNullableString("vermarkungQuelleDatei"),
+            vermarkungX = optNullableDouble("vermarkungX"),
+            vermarkungY = optNullableDouble("vermarkungY")
         )
     }.getOrNull()
 
