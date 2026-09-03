@@ -4,20 +4,22 @@ import de.tbhelfer.datenbank.TrassenAchseEntity
 import de.tbhelfer.datenbank.TrassenSamplePointEntity
 
 /**
- * Adapter zwischen den importierten Room-/TRA-Daten und der UI-unabhaengigen Anschlusslogik.
+ * Adapter zwischen den importierten Room-/TRA-Daten und der UI-unabhaengigen Anschluss-/Pfadlogik.
  * Es werden keine Daten gespeichert oder veraendert.
  */
 object TrassenAnschlussDbAdapter {
 
-    fun findeAnschluesse(
+    /**
+     * Baut die gemeinsame Fachgeometrie aus den bestehenden Room-Entities auf.
+     * Dieselben Achsen koennen dadurch sowohl fuer Anschluss- als auch fuer Pfadwahl verwendet werden.
+     */
+    fun zuFachAchsen(
         achsen: List<TrassenAchseEntity>,
-        samplepunkte: List<TrassenSamplePointEntity>,
-        toleranzM: Double = 2.5
-    ): List<TrassenAnschlussLogik.Anschluss> {
-        if (achsen.isEmpty() || samplepunkte.isEmpty()) return emptyList()
-
+        samplepunkte: List<TrassenSamplePointEntity>
+    ): List<TrassenAnschlussLogik.Achse> {
+        if (achsen.isEmpty()) return emptyList()
         val punkteNachAchse = samplepunkte.groupBy { it.achseId }
-        val fachAchsen = achsen.map { achse ->
+        return achsen.map { achse ->
             TrassenAnschlussLogik.Achse(
                 id = achse.id,
                 name = achse.name,
@@ -31,7 +33,17 @@ object TrassenAnschlussDbAdapter {
                 }
             )
         }
+    }
 
-        return TrassenAnschlussLogik.findeAnschluesse(fachAchsen, toleranzM)
+    fun findeAnschluesse(
+        achsen: List<TrassenAchseEntity>,
+        samplepunkte: List<TrassenSamplePointEntity>,
+        toleranzM: Double = 2.5
+    ): List<TrassenAnschlussLogik.Anschluss> {
+        if (achsen.isEmpty() || samplepunkte.isEmpty()) return emptyList()
+        return TrassenAnschlussLogik.findeAnschluesse(
+            zuFachAchsen(achsen, samplepunkte),
+            toleranzM
+        )
     }
 }
