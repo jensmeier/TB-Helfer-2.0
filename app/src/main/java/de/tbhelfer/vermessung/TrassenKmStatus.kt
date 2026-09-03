@@ -3,19 +3,28 @@ package de.tbhelfer.vermessung
 import kotlin.math.abs
 
 /**
- * Einheitliche KM-Status- und 2-Punkt-Kalibrierlogik fuer alle importierten Achsen.
+ * Einheitliche KM-Statuslogik fuer importierte und manuell kilometrierte Achsen.
  *
- * Statusfarben in der grafischen Pruefung:
- * - GRUEN  = automatische KM vorhanden und plausibel
- * - ORANGE = manuell mit zwei GPS-/Achsankern kalibriert
- * - ROT    = Geometrie vorhanden, aber keine belastbare KM-Kalibrierung
- * - GRAU   = KM-Werte vorhanden, aber unplausibel/widerspruechlich
+ * Fachliche Statusfarben in TB-Helfer:
+ * - GRUEN  = belastbare automatische/originale KM vorhanden
+ * - ORANGE = vom Benutzer manuell hergestellte oder geaenderte KM
+ * - ROT    = TRA-Geometrie vorhanden, aber keine belastbare KM (auch unplausible KM)
+ * - GRAU   = Objekt ohne Vermessungsgeometrie; wird ausserhalb dieser TRA-Logik vergeben
+ *
+ * Die alte 2-Punkt-Kalibrierung bleibt als Kompatibilitaetsweg erhalten. Der aktuelle
+ * manuelle Standard ist jedoch: ein belastbarer KM-Anker + bekannte KM-Richtung auf
+ * einer vorhandenen TRA-Geometrie. Ein zweiter Anker ist nur Kontrolle/Fallback.
  */
 object TrassenKmStatusLogik {
 
     const val STATUS_AUTOMATISCH = "AUTOMATISCH"
     const val STATUS_MANUELL = "MANUELL"
     const val STATUS_FEHLT = "FEHLT"
+
+    /**
+     * Altstatus aus frueheren Patches. Neue Bewertungen liefern bei vorhandener TRA
+     * fuer unplausible KM STATUS_FEHLT, damit die Achse fachlich ROT dargestellt wird.
+     */
     const val STATUS_UNPLAUSIBEL = "UNPLAUSIBEL"
 
     data class Punkt(
@@ -55,6 +64,70 @@ object TrassenKmStatusLogik {
         val kalibrierung: Kalibrierung? = null
     )
 
+    /**
+     * Bewertung des aktuellen manuellen Standardfalls:
+     * ein KM-Anker auf der TRA plus Richtung gegen die TRA-Station (+1/-1).
+     * Start und Ende sind fuer die KM-Spanne optional; der Abschnitt darf im Entwurf offen sein.
+     */
+    fun bewerteManuellenAbschnitt(
+        kmAnkerStation: Double?,
+        kmAnkerMeter: Double?,
+        kmStationVorzeichen: Int?,
+        stationStart: Double? = null,
+        stationEnde: Double? = null
+    ): Bewertung {
+        val ankerGueltig = kmAnkerStation?.isFinite() == true && kmAnkerMeter?.isFinite() == true
+        if (!ankerGueltig) {
+            return Bewertung(
+                status = STATUS_FEHLT,
+                grund = "Kein belastbarer manueller KM-Anker",
+                ankerAnzahl = 0
+            )
+        }
+
+        if (kmStationVorzeichen == null) {
+            return Bewertung(
+                status = STATUS_FEHLT,
+                grund = "KM-Anker vorhanden, KM-Richtung noch offen",
+                ankerAnzahl = 1
+            )
+        }
+        if (kmStationVorzeichen !in setOf(-1, 1)) {
+            return Bewertung(
+                status = STATUS_FEHLT,
+                grund = "KM-Richtung ist unplausibel",
+                ankerAnzahl = 1
+            )
+        }
+
+        val ankerStation = requireNotNull(kmAnkerStation)
+        val ankerKm = requireNotNull(kmAnkerMeter)
+        fun kmFuer(station: Double?): Double? = station
+            ?.takeIf { it.isFinite() }
+            ?.let { ankerKm + kmStationVorzeichen * (it - ankerStation) }
+
+        val grenzenKm = listOfNotNull(kmFuer(stationStart), kmFuer(stationEnde))
+        val kmVon = when {
+            grenzenKm.isNotEmpty() -> (grenzenKm + ankerKm).minOrNull()
+            else -> ankerKm
+        }
+        val kmBis = when {
+            grenzenKm.isNotEmpty() -> (grenzenKm + ankerKm).maxOrNull()
+            else -> ankerKm
+        }
+
+        return Bewertung(
+            status = STATUS_MANUELL,
+            grund = "Manuell mit KM-Anker und Richtung kilometriert",
+            kmVonMeter = kmVon,
+            kmBisMeter = kmBis,
+            ankerAnzahl = 1
+        )
+    }
+
+    /**
+     * Kompatibilitaetsbewertung fuer automatische KM und alte manuelle 2-Punkt-Anker.
+     */
     fun bewerte(punkte: List<Punkt>, manuelleAnker: List<Anker>): Bewertung {
         val anker = manuelleAnker
             .filter { it.station.isFinite() && it.kmMeter.isFinite() }
@@ -66,7 +139,7 @@ object TrassenKmStatusLogik {
             return if (kal.plausibel) {
                 Bewertung(
                     status = STATUS_MANUELL,
-                    grund = "Manuell mit 2 Punkten kalibriert",
+                    grund = "Manuell mit 2 Punkten kalibriert (Kompatibilitaet)",
                     kmVonMeter = minOf(kal.km1Meter, kal.km2Meter),
                     kmBisMeter = maxOf(kal.km1Meter, kal.km2Meter),
                     ankerAnzahl = anker.size,
@@ -74,7 +147,7 @@ object TrassenKmStatusLogik {
                 )
             } else {
                 Bewertung(
-                    status = STATUS_UNPLAUSIBEL,
+                    status = STATUS_FEHLT,
                     grund = kal.hinweis ?: "Manuelle KM-Kalibrierung unplausibel",
                     kmVonMeter = minOf(kal.km1Meter, kal.km2Meter),
                     kmBisMeter = maxOf(kal.km1Meter, kal.km2Meter),
@@ -89,10 +162,10 @@ object TrassenKmStatusLogik {
             .sortedBy { it.station }
 
         if (valide.isEmpty()) {
-            val suffix = if (anker.size == 1) " · 1/2 manueller Punkt gespeichert" else ""
+            val suffix = if (anker.size == 1) " · 1 alter 2-Punkt-Anker gespeichert" else ""
             return Bewertung(
                 status = STATUS_FEHLT,
-                grund = "Keine KM-Kalibrierung$suffix",
+                grund = "Keine belastbare KM-Kalibrierung$suffix",
                 ankerAnzahl = anker.size
             )
         }
@@ -103,7 +176,7 @@ object TrassenKmStatusLogik {
 
         if (valide.size < 2 || kmMin == null || kmMax == null || abs(kmMax - kmMin) < 0.5) {
             return Bewertung(
-                status = STATUS_UNPLAUSIBEL,
+                status = STATUS_FEHLT,
                 grund = "KM-Werte vorhanden, aber keine nutzbare KM-Spanne",
                 kmVonMeter = kmMin,
                 kmBisMeter = kmMax,
@@ -115,7 +188,7 @@ object TrassenKmStatusLogik {
         val kmSpanne = abs((valide.last().kmMeter ?: 0.0) - (valide.first().kmMeter ?: 0.0))
         if (stationSpanne > 5.0 && kmSpanne / stationSpanne !in 0.2..5.0) {
             return Bewertung(
-                status = STATUS_UNPLAUSIBEL,
+                status = STATUS_FEHLT,
                 grund = "KM-Spanne passt nicht plausibel zur Achslaenge",
                 kmVonMeter = kmMin,
                 kmBisMeter = kmMax,
@@ -136,7 +209,7 @@ object TrassenKmStatusLogik {
             val grenze = maxOf(2, (differenzen.size * 0.10).toInt() + 1)
             if (gegensinn >= grenze) {
                 return Bewertung(
-                    status = STATUS_UNPLAUSIBEL,
+                    status = STATUS_FEHLT,
                     grund = "KM-Richtung wechselt innerhalb derselben Achse mehrfach",
                     kmVonMeter = kmMin,
                     kmBisMeter = kmMax,
@@ -147,7 +220,7 @@ object TrassenKmStatusLogik {
 
         return Bewertung(
             status = STATUS_AUTOMATISCH,
-            grund = "Automatische KM vorhanden und plausibel",
+            grund = "Automatische/originale KM vorhanden und plausibel",
             kmVonMeter = kmMin,
             kmBisMeter = kmMax,
             ankerAnzahl = anker.size
