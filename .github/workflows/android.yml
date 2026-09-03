@@ -24,6 +24,7 @@ jobs:
       - name: Apply TB-Helfer 2.0 (003) axis-first graphics patch
         if: github.event_name == 'pull_request'
         run: |
+          python3 .github/scripts/prepare_v2003_patch_runtime.py
           python3 .github/scripts/apply_v2003_axis_first_markers.py
           if ! git diff --quiet; then
             git config user.name "github-actions[bot]"
