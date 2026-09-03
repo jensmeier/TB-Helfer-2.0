@@ -10,6 +10,25 @@ Diese Datei dokumentiert die auf dem Handy testbaren Entwicklungsstände.
 - Der Android-`versionCode` ist monoton und verwendet für TB-Helfer 2.0 das Schema `200NNN`, damit Updates über ältere APKs ohne Downgrade möglich bleiben.
 - Git bleibt die technische Detailhistorie; diese Datei beschreibt die fachlichen Unterschiede zwischen den Testständen.
 
+## 2.0 (003)
+
+Android versionCode: `200003`
+
+Achse-zuerst-Auswahl und sichtbare Fachpunkte:
+
+- Für WA/WE/WEZ und DKW A/B/C/D wird zuerst ausdrücklich die Ziel-TRA gewählt.
+- Danach kann der Punkt über GVP/Festpunkt, echten geometrischen TRA-Anschluss oder GPS festgelegt werden.
+- Ein GVP besitzt keinen festen Achsbezug; er wird nur auf die vorher gewählte Ziel-TRA projiziert.
+- Wenn am gewünschten Weichen-/DKW-Punkt kein GVP vorhanden ist, kann ein erkannter echter TRA-Anschluss verwendet werden.
+- Mehrere mögliche TRA-Anschlüsse werden zur Auswahl angeboten; die App wählt keinen Ast heimlich.
+- Die Grafikauswahl besitzt wieder eine Anzeigeauswahl für Achsen und Punktarten.
+- Bereits gesetzte WA/WE/WEZ bzw. A/B/C/D bleiben beim Setzen des nächsten Punkts als größere beschriftete Marker sichtbar.
+- Grenze 1 und Grenze 2 werden als größere G1/G2-Marker angezeigt; beim Setzen der zweiten Grenze bleibt die erste sichtbar.
+- Auto-Zoom konzentriert sich auf die gewählte Achse, direkt angeschlossene Achsen und Punkte im örtlichen Umfeld statt auf alle GVP der Baustelle.
+- Keine Room-Migration.
+
+Status: in Entwicklung / CI-Prüfung vor Handytest.
+
 ## 2.0 (002)
 
 Android versionCode: `200002`
@@ -25,7 +44,7 @@ GVP-Auswahl für Weichen und DKW direkt in der grafischen Übersicht:
 - Bei eng benachbarten oder weiter entfernten TRA wird nicht geraten; die möglichen Achsen werden zur Auswahl angeboten.
 - Keine Room-Migration.
 
-Status: in Entwicklung / CI-Prüfung vor Handytest.
+Status: CI vollständig grün; Handytest zeigte, dass die Achse vor dem Punkt ausdrücklich wählbar sein muss.
 
 ## 2.0 (001)
 
