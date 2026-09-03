@@ -15,6 +15,7 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import de.tbhelfer.datenbank.TrassenAchseEntity
+import de.tbhelfer.vermessung.TrassenAnschlussLogik
 import de.tbhelfer.vermessung.TrassenKmStatusLogik
 import kotlin.math.abs
 import kotlin.math.max
@@ -563,26 +564,34 @@ class TrassenGrafikView @JvmOverloads constructor(
     private fun berechneAnschlussKnoten(achsen: List<TrassenGrafikAchse>): List<TrassenGrafikKnoten> {
         if (achsen.size < 2) return emptyList()
         val toleranzM = 2.5f
-        val roh = mutableListOf<TrassenGrafikKnoten>()
-
-        achsen.forEach { achse ->
-            if (achse.punkte.isEmpty()) return@forEach
-            val enden = if (achse.punkte.size == 1) listOf(achse.punkte.first()) else listOf(achse.punkte.first(), achse.punkte.last())
-            enden.forEach { ende ->
-                val partner = achsen.filter { it.achseId != achse.achseId }.filter { andere ->
-                    distanzZuAchse(ende.x, ende.y, andere) <= toleranzM
+        val fachAchsen = achsen.map { achse ->
+            TrassenAnschlussLogik.Achse(
+                id = achse.achseId,
+                name = achse.label.takeIf(String::isNotBlank) ?: achse.name,
+                achsTyp = achse.achsTyp,
+                punkte = achse.punkte.map { punkt ->
+                    TrassenAnschlussLogik.Punkt(
+                        station = punkt.station,
+                        x = punkt.x.toDouble(),
+                        y = punkt.y.toDouble()
+                    )
                 }
-                if (partner.isNotEmpty()) {
-                    val labels = (listOf(achse) + partner)
-                        .map { it.label.takeIf(String::isNotBlank) ?: it.name }
-                        .distinct()
-                    roh += TrassenGrafikKnoten(ende.x, ende.y, labels)
-                }
-            }
+            )
         }
 
-        // Mehrere Endpunkte koennen denselben Weichen-/Anschlussbereich beschreiben.
-        // Sie werden konservativ nur innerhalb von 2,5 m zu einem sichtbaren Knoten zusammengefasst.
+        val roh = TrassenAnschlussLogik.findeAnschluesse(
+            achsen = fachAchsen,
+            toleranzM = toleranzM.toDouble()
+        ).map { anschluss ->
+            TrassenGrafikKnoten(
+                x = anschluss.x.toFloat(),
+                y = anschluss.y.toFloat(),
+                labels = listOf(anschluss.a.achseName, anschluss.b.achseName).distinct()
+            )
+        }
+
+        // Mehrere paarweise Anschluesse koennen denselben realen Weichen-/DKW-Knoten
+        // beschreiben. Fuer die Anzeige bleiben sie zu einem gemeinsamen Diamanten gebuendelt.
         val zusammen = mutableListOf<TrassenGrafikKnoten>()
         roh.forEach { kandidat ->
             val index = zusammen.indexOfFirst { abstand(it.x, it.y, kandidat.x, kandidat.y) <= toleranzM }
@@ -598,19 +607,6 @@ class TrassenGrafikView @JvmOverloads constructor(
             }
         }
         return zusammen
-    }
-
-    private fun distanzZuAchse(px: Float, py: Float, achse: TrassenGrafikAchse): Float {
-        if (achse.punkte.isEmpty()) return Float.MAX_VALUE
-        if (achse.punkte.size == 1) return abstand(px, py, achse.punkte.first().x, achse.punkte.first().y)
-        var best = Float.MAX_VALUE
-        for (i in 0 until achse.punkte.lastIndex) {
-            val a = achse.punkte[i]
-            val z = achse.punkte[i + 1]
-            val d = distanzPunktZuSegment(px, py, a.x, a.y, z.x, z.y)
-            if (d < best) best = d
-        }
-        return best
     }
 
     private fun abstand(x1: Float, y1: Float, x2: Float, y2: Float): Float {
