@@ -115,7 +115,7 @@ replace_once(
 # Vermessungspunkt-Lader fuer Weiche/DKW/KM-Auswahl und die normale grafische Uebersicht.
 # Beide muessen dieselbe fachliche Klassifizierung verwenden.
 pattern = re.compile(
-    r'(?P<indent>\s*)TrassenGrafikFestpunkt\(\n'
+    r'(?P<indent>[ \t]*)TrassenGrafikFestpunkt\(\n'
     r'(?P=indent)    label = it\.punktName,\n'
     r'(?P=indent)    art = "GVP",\n'
 )
