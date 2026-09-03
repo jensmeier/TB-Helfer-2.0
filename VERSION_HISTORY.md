@@ -10,6 +10,23 @@ Diese Datei dokumentiert die auf dem Handy testbaren Entwicklungsstände.
 - Der Android-`versionCode` ist monoton und verwendet für TB-Helfer 2.0 das Schema `200NNN`, damit Updates über ältere APKs ohne Downgrade möglich bleiben.
 - Git bleibt die technische Detailhistorie; diese Datei beschreibt die fachlichen Unterschiede zwischen den Testständen.
 
+## 2.0 (006)
+
+Android versionCode: `200006`
+
+Direkter Roh-KF-Import und klare Minimal-/Optimalregel für Kilometrierung:
+
+- Mindestvoraussetzung bleibt eine TRA-Geometrie. Ohne belastbare importierte km kann der Benutzer KM-Anker/Grenzen per GPS festlegen; die Kilometrierung wird entlang der echten TRA-Geometrie berechnet und bleibt manuell/orange.
+- Optimale Quelle ist TRA + rohe KF mit plausibler Strecke und Station. Solche Originaldaten dürfen die vorhandene automatische KM-Kalibrierung speisen und damit grün werden.
+- Rohe KF Version 7.0 wird direkt als 102-Byte-Festformat gelesen; Little-Endian-Doubles und die im Prüfbestand bestätigten Text-/Statusfelder werden berücksichtigt.
+- `1e40` wird als fehlender Wert behandelt. Station `0.0` wird ohne zusätzliche Bestätigung nicht als km 0 übernommen.
+- PS4 und GVPV werden als GVP/Gleisvermarkung kategorisiert; PS0–PS3 und sonstige PArt bleiben als Festpunkte erhalten und filterbar.
+- Zweites 14-Byte-Erläuterungsfeld, VArt/Statusbytes, Metadaten, Strecke und RiKz werden ohne neue Room-Spalten im vorhandenen Rohfeld nachvollziehbar erhalten.
+- KF.TXT/KV bleiben als Text-Fallback kompatibel; rohe `.kf` wird nicht mehr nur erkannt und übersprungen.
+- Keine Room-Migration.
+
+Status: in Entwicklung / CI-Prüfung vor Handytest.
+
 ## 2.0 (005)
 
 Android versionCode: `200005`
@@ -24,7 +41,7 @@ Weichen-/DKW-Flächen folgen der gewählten TRA statt den Roh-GVP-Koordinaten:
 - Blau bleibt temporäre Auswahl; gespeicherte Weichen/DKW bleiben türkis.
 - Keine Room-Migration.
 
-Status: in Entwicklung / CI-Prüfung vor Handytest.
+Status: CI vollständig grün; Handytest bestätigte die TRA-basierte Weichen-/DKW-Darstellung.
 
 ## 2.0 (004)
 
@@ -40,7 +57,7 @@ Persistente Weichen-/DKW-Darstellung und Baustellen-Verknüpfung:
 - `Vermessungsdaten löschen` entfernt jetzt zusätzlich alle manuell gespeicherten Weichen/DKW und damit den kompletten Vermessungsstand.
 - Keine Room-Migration.
 
-Status: in Entwicklung / CI-Prüfung vor Handytest.
+Status: CI vollständig grün; Handytest zeigte, dass die Objektfläche noch Roh-GVP-Koordinaten statt TRA-Stationen verwendete.
 
 ## 2.0 (003)
 
