@@ -2006,7 +2006,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             hinweis = if (kmVorhanden) {
                 "Für diese Roh-TRA ist bereits eine widerspruchsfreie KM-Kalibrierung vorhanden. Der neue Abschnitt kann sie verwenden; ein weiterer Punkt dient nur der Kontrolle."
             } else {
-                "KM-Kalibrierung und betriebliche Grenzen sind getrennt. Ohne zwei Grenzen gilt der erste Abschnitt zunächst auf der gesamten gewählten TRA."
+                "KM-Kalibrierung und betriebliche Grenzen sind getrennt. Ohne zwei Grenzen bleibt der Abschnitt offen und ROT; er wird nicht auf die gesamte Roh-TRA angewendet."
             },
             optionen = optionen,
             negativText = "Schließen",
@@ -2142,7 +2142,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             setPadding(dp(20), dp(8), dp(20), dp(8))
         }
         inhalt.addView(TextView(context).apply {
-            text = "GPS und km sind optional. Eine TRA kann eine Geometrie besitzen, ohne kilometriert zu sein."
+            text = "WA/WE/WEZ können per Vermarkungspunkt oder GPS gesetzt werden. km bleibt optional; vorhandener Datei-km wird übernommen."
             textSize = 13f
             setPadding(0, 0, 0, dp(8))
         })
@@ -2171,7 +2171,14 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 p.achsabstandM?.let { append(" · ${format1(it)} m") }
                 if (p.km != null) append("\nkm ${formatKmEingabe(p.km)}${if (p.kmManuell) " manuell" else ""}")
             }
-            p.km != null -> "km ${formatKmEingabe(p.km)} eingetragen · GPS noch offen"
+            p.achseId != null && p.station != null -> buildString {
+                append("Vermarkung ✓")
+                p.achseName?.let { append(" · TRA $it") }
+                append(" · Station ${format1(p.station)} m")
+                p.achsabstandM?.let { append(" · ${format1(it)} m") }
+                if (p.km != null) append("\nkm ${formatKmEingabe(p.km)}${if (p.kmManuell) " manuell" else " aus Datei"}")
+            }
+            p.km != null -> "km ${formatKmEingabe(p.km)} eingetragen · GPS/Vermarkung noch offen"
             else -> "Noch nicht gesetzt"
         }
 
@@ -2214,6 +2221,63 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             }
         }
 
+        fun vermarkungWaehlen(rolle: String) {
+            viewLifecycleOwner.lifecycleScope.launch {
+                val (festpunkte, achsen) = withContext(Dispatchers.IO) {
+                    ladeGrafikVermessungspunkte() to ladeRohGrafikAchsen()
+                }
+                val rollenRegex = Regex("(?i)^${Regex.escape(rolle)}(?:[_\\s-]|\\d|$)")
+                val direktPassend = festpunkte.filter { punkt ->
+                    rollenRegex.containsMatchIn(punkt.label.trim()) ||
+                        rollenRegex.containsMatchIn(punkt.punktId.orEmpty().trim())
+                }
+                val kandidaten = direktPassend.ifEmpty {
+                    festpunkte.filter { it.art.equals("WEICHENPUNKT", ignoreCase = true) }
+                }.sortedWith(compareBy<TrassenGrafikFestpunkt> { it.label }.thenBy { it.punktId.orEmpty() })
+
+                if (kandidaten.isEmpty()) {
+                    Toast.makeText(context, "Keine passenden WA/WE/WEZ-Vermarkungspunkte vorhanden.", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+
+                fun uebernehmen(punkt: TrassenGrafikFestpunkt) {
+                    val beste = achsen.mapNotNull { achse ->
+                        projiziereVermessungspunktAufAchse(punkt, achse)?.let { projektion -> achse to projektion }
+                    }.minByOrNull { it.second.abstandM }
+                    val achse = beste?.first
+                    val projektion = beste?.second
+                    if (projektion == null || achse == null) {
+                        Toast.makeText(context, "Vermarkungspunkt konnte keiner TRA sicher zugeordnet werden.", Toast.LENGTH_LONG).show()
+                        return
+                    }
+                    val objektPunkt = StreckenObjektSpeicher.Punkt(
+                        rolle = rolle,
+                        km = punkt.kmMeter,
+                        kmManuell = false,
+                        achseId = achse.achseId,
+                        achseName = achse.label.takeIf { it.isNotBlank() } ?: achse.name,
+                        station = projektion.station,
+                        achsabstandM = projektion.abstandM
+                    )
+                    val kmText = punkt.kmMeter?.let { "km ${formatKmMeter(it)} aus Datei" } ?: "kein Datei-km"
+                    MaterialAlertDialogBuilder(context)
+                        .setTitle("$rolle aus Vermarkung übernehmen?")
+                        .setMessage("${punkt.label.ifBlank { punkt.punktId ?: rolle }}\n$kmText\nTRA: ${objektPunkt.achseName} · Station ${format1(projektion.station)} m · Abstand ${format1(projektion.abstandM)} m")
+                        .setNegativeButton("Abbrechen", null)
+                        .setPositiveButton("Übernehmen") { _, _ -> punktUebernehmen(rolle, objektPunkt) }
+                        .show()
+                }
+
+                MaterialAlertDialogBuilder(context)
+                    .setTitle("$rolle · Vermarkungspunkt wählen")
+                    .setItems(kandidaten.map { it.toGrafikPunktAuswahlText() }.toTypedArray()) { _, which ->
+                        uebernehmen(kandidaten[which])
+                    }
+                    .setNegativeButton("Abbrechen", null)
+                    .show()
+            }
+        }
+
         rollen.forEach { rolle ->
             val box = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
@@ -2226,6 +2290,13 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 isAllCaps = false
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             }
+            val vermarkung = if (typ == StreckenObjektSpeicher.Typ.WEICHE) MaterialButton(context).apply {
+                text = "Vermarkung wählen"
+                isAllCaps = false
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    topMargin = dp(4)
+                }
+            } else null
             val km = EditText(context).apply {
                 hint = "km optional"
                 inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED
@@ -2236,6 +2307,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             zeile.addView(gps)
             zeile.addView(km)
             box.addView(zeile)
+            vermarkung?.let { box.addView(it) }
             box.addView(status)
             inhalt.addView(box)
             val ui = StreckenObjektPunktUi(gps, km, status)
@@ -2272,6 +2344,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                     }
                 }
             }
+            vermarkung?.setOnClickListener { vermarkungWaehlen(rolle) }
             aktualisiereZeile(rolle)
         }
 
@@ -2304,7 +2377,9 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                     typ = typ,
                     punkte = rollen.mapNotNull { rolle ->
                         punkte[rolle]?.takeIf { punkt ->
-                            (punkt.lat != null && punkt.lon != null) || punkt.km != null
+                            (punkt.lat != null && punkt.lon != null) ||
+                                punkt.km != null ||
+                                (punkt.achseId != null && punkt.station != null)
                         }
                     }
                 )
@@ -2959,14 +3034,16 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             entwurf.stationStart != null && entwurf.stationEnde != null -> "✓ Bereich: Grenze 1 + Grenze 2 gesetzt"
             entwurf.stationStart != null -> "○ Grenze 1 gesetzt · Grenze 2 offen"
             entwurf.stationEnde != null -> "○ Grenze 2 gesetzt · Grenze 1 offen"
-            else -> "○ Bereich noch nicht begrenzt · gilt vorläufig auf der gesamten gewählten TRA"
+            else -> "○ Bereich noch nicht begrenzt · bleibt ROT, bis beide Grenzen gesetzt sind"
         }
         appendLine(grenzen)
         if (entwurf.kmAnkerStation != null && entwurf.kmAnkerMeter != null) {
             appendLine("✓ KM-Anker: km ${formatKmMeter(entwurf.kmAnkerMeter)}")
         } else appendLine("○ Noch kein KM-Anker")
         appendLine("KM-Richtung: ${when (entwurf.kmStationVorzeichen) { 1 -> "steigt mit TRA-Station"; -1 -> "fällt mit TRA-Station"; else -> "noch offen" }}")
-        append("Kontrollanker: ${kmPunkte.count { it.typ == TrassenAbschnittKmPunktEntity.TYP_KONTROLLANKER }} · KM-Sprünge: ${kmPunkte.count { it.typ == TrassenAbschnittKmPunktEntity.TYP_KM_SPRUNG }}")
+        val kontrollanker = kmPunkte.count { it.typ == TrassenAbschnittKmPunktEntity.TYP_KONTROLLANKER }
+        val hauptanker = if (entwurf.kmAnkerStation != null && entwurf.kmAnkerMeter != null) 1 else 0
+        append("KM-Anker gesamt: ${hauptanker + kontrollanker} · Hauptanker: $hauptanker · Kontrollanker: $kontrollanker · KM-Sprünge: ${kmPunkte.count { it.typ == TrassenAbschnittKmPunktEntity.TYP_KM_SPRUNG }}")
     }
 
     private fun setzeKmRichtung(entwurf: ManuellerAbschnittEntwurf, richtung: String) {
@@ -3015,7 +3092,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
         }
         zeigeAuswahlMitHinweis(
             titel = "${entwurf.bezeichnung} · Bereich / Grenzen",
-            hinweis = "Ohne zwei Grenzen gilt der Abschnitt vorläufig auf der gesamten gewählten TRA. Erst Grenze 1 + Grenze 2 schneiden den betrieblichen Bereich aus. Die technische TRA bleibt unverändert.",
+            hinweis = "Ohne zwei Grenzen bleibt der Entwurf offen und ROT. Er wird nicht als gültiger KM-Abschnitt auf die gesamte Roh-TRA gelegt. Erst Grenze 1 + Grenze 2 legen den gültigen Bereich fest.",
             optionen = optionen,
             negativText = "Zurück",
             onNegativ = { zeigeAbschnittBearbeitungsMenue(entwurf) }
@@ -3938,7 +4015,9 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 if (endeKm != null) appendLine("Berechneter KM an Grenze 2: ${formatKmMeter(endeKm)}")
                 if (aktuell.kmAnkerStation != null && aktuell.kmAnkerMeter != null) appendLine("KM-Anker: km ${formatKmMeter(aktuell.kmAnkerMeter)} bei Station ${format1(aktuell.kmAnkerStation)} m")
                 appendLine("KM-Richtung: ${when (aktuell.kmStationVorzeichen) { 1 -> "steigt mit TRA-Station"; -1 -> "fällt mit TRA-Station"; else -> "noch offen" }}")
-                appendLine("Kontrollanker: ${punkte.count { it.typ == TrassenAbschnittKmPunktEntity.TYP_KONTROLLANKER }}")
+                val kontrollanker = punkte.count { it.typ == TrassenAbschnittKmPunktEntity.TYP_KONTROLLANKER }
+                val hauptanker = if (aktuell.kmAnkerStation != null && aktuell.kmAnkerMeter != null) 1 else 0
+                appendLine("KM-Anker gesamt: ${hauptanker + kontrollanker} · Hauptanker: $hauptanker · Kontrollanker: $kontrollanker")
                 appendLine("KM-Sprünge: ${punkte.count { it.typ == TrassenAbschnittKmPunktEntity.TYP_KM_SPRUNG }}")
                 val kmStatus = when {
                     aktuell.kmAnkerStation != null && aktuell.kmAnkerMeter != null && aktuell.kmStationVorzeichen != null && aktuell.stationStart != null && aktuell.stationEnde != null -> "ORANGE · manuell kilometriert"
@@ -5842,8 +5921,8 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             val maxKm = kmWerte.maxOrNull()
             when {
                 minKm != null && maxKm != null && kotlin.math.abs(maxKm - minKm) >= 0.5 ->
-                    "${formatKmOderStationMitLabel(minKm)} bis ${formatKmOderStationMitLabel(maxKm)}"
-                minKm != null -> formatKmOderStationMitLabel(minKm)
+                    "km ${formatKmMeter(minKm)} bis km ${formatKmMeter(maxKm)}"
+                minKm != null -> "km ${formatKmMeter(minKm)}"
                 else -> "nicht verknuepft"
             }
         } else {
@@ -5886,7 +5965,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             appendLine("KM-Status Grund: $kmStatusGrund")
             appendLine("KM: $kmText")
             if (manuelleAnker.isNotEmpty()) {
-                appendLine("Manuelle KM-Anker: ${manuelleAnker.size}/2")
+                appendLine("Manuelle KM-Anker: ${manuelleAnker.size}")
                 manuelleAnker.sortedBy { it.punktNummer }.forEach { anker ->
                     appendLine("  P${anker.punktNummer}: km ${String.format(Locale.GERMANY, "%.3f", anker.kmMeter / 1000.0)} · Station ${format1(anker.station)} m")
                 }
