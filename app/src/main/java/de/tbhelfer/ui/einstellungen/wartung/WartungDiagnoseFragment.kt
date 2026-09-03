@@ -74,7 +74,8 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
             packageInfo.versionCode.toLong()
         }
         val versionName = packageInfo.versionName ?: "?"
+        val teststand = (versionCode % 1000L).toString().padStart(3, '0')
         view.findViewById<TextView>(R.id.txtWartungVersion).text =
-            "TB-Helfer · Version $versionName ($versionCode)"
+            "TB-Helfer · Version $versionName ($teststand)"
     }
 }
