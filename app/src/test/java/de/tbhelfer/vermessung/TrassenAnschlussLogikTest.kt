@@ -37,6 +37,43 @@ class TrassenAnschlussLogikTest {
     }
 
     @Test
+    fun mehrereWeichenaeste_werdenAlsAuswahlGeliefertNichtAutomatischEntschieden() {
+        val haupt = achse(
+            1,
+            "Hauptgleis",
+            0.0 to (0.0 to 0.0),
+            100.0 to (100.0 to 0.0)
+        )
+        val links = achse(
+            2,
+            "Ast links",
+            0.0 to (45.0 to 20.0),
+            20.0 to (50.0 to 0.4)
+        )
+        val rechts = achse(
+            3,
+            "Ast rechts",
+            0.0 to (55.0 to -20.0),
+            20.0 to (50.0 to -0.4)
+        )
+
+        val anschluesse = TrassenAnschlussLogik.findeAnschluesse(
+            listOf(haupt, links, rechts),
+            toleranzM = 1.0
+        )
+        val fortsetzungen = TrassenAnschlussLogik.fortsetzungenVon(
+            achseId = 1,
+            anschluesse = anschluesse,
+            naheStation = 50.0,
+            stationToleranzM = 1.0
+        )
+
+        assertEquals(2, fortsetzungen.size)
+        assertEquals(setOf(2L, 3L), fortsetzungen.map { it.nach.achseId }.toSet())
+        assertTrue(TrassenAnschlussLogik.fortsetzungenVon(1, anschluesse, naheStation = 10.0).isEmpty())
+    }
+
+    @Test
     fun gegenseitigErkannterAnschluss_wirdNurEinmalGeliefert() {
         val a = achse(
             10,
