@@ -5193,16 +5193,55 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             return ps.minByOrNull { kotlin.math.abs(it.station - station) }?.let { it.x to it.y }
         }
 
-        fun koordinaten(p: StreckenObjektSpeicher.Punkt): Pair<Float, Float>? {
-            val vx = p.vermarkungX
-            val vy = p.vermarkungY
-            if (vx != null && vy != null && vx.isFinite() && vy.isFinite()) {
-                return vx.toFloat() to vy.toFloat()
-            }
+        fun passendeAchse(p: StreckenObjektSpeicher.Punkt): TrassenGrafikAchse? {
             val achseId = p.achseId ?: return null
             val station = p.station ?: return null
             val kandidaten = achsenById[achseId].orEmpty()
-            return kandidaten.asSequence().mapNotNull { punktAufAchse(it, station) }.firstOrNull()
+            return kandidaten.firstOrNull { achse ->
+                val ps = achse.punkte
+                ps.size >= 2 && station >= ps.minOf { it.station } - 0.01 && station <= ps.maxOf { it.station } + 0.01
+            } ?: kandidaten.firstOrNull { it.punkte.isNotEmpty() }
+        }
+
+        fun eckpunktAufTra(p: StreckenObjektSpeicher.Punkt): TrassenGrafikObjektPunkt? {
+            val station = p.station ?: return null
+            val achse = passendeAchse(p) ?: return null
+            val xy = punktAufAchse(achse, station) ?: return null
+            return TrassenGrafikObjektPunkt(
+                rolle = p.rolle.uppercase(Locale.GERMANY),
+                x = xy.first,
+                y = xy.second
+            )
+        }
+
+        fun segmentZwischen(
+            von: StreckenObjektSpeicher.Punkt,
+            bis: StreckenObjektSpeicher.Punkt
+        ): List<TrassenGrafikObjektPunkt> {
+            val vonEcke = eckpunktAufTra(von) ?: return emptyList()
+            val bisEcke = eckpunktAufTra(bis) ?: return emptyList()
+            val achseId = von.achseId
+            val vonStation = von.station
+            val bisStation = bis.station
+            if (achseId == null || achseId != bis.achseId || vonStation == null || bisStation == null) {
+                return listOf(vonEcke, bisEcke)
+            }
+
+            val achse = passendeAchse(von) ?: return listOf(vonEcke, bisEcke)
+            val minStation = minOf(vonStation, bisStation)
+            val maxStation = maxOf(vonStation, bisStation)
+            val innen = achse.punkte
+                .filter { it.station > minStation + 1e-6 && it.station < maxStation - 1e-6 }
+                .sortedBy { it.station }
+                .let { if (bisStation >= vonStation) it else it.reversed() }
+
+            return buildList {
+                add(vonEcke)
+                innen.forEach { p ->
+                    add(TrassenGrafikObjektPunkt(rolle = "", x = p.x, y = p.y))
+                }
+                add(bisEcke)
+            }
         }
 
         return objekte.mapNotNull { objekt ->
@@ -5212,22 +5251,34 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 listOf("A", "B", "C", "D")
             }
             val byRole = objekt.punkte.associateBy { it.rolle.uppercase(Locale.GERMANY) }
-            val roh = rollen.mapNotNull { rolle ->
+            val ecken = rollen.mapNotNull { rolle ->
                 val p = byRole[rolle] ?: return@mapNotNull null
-                val xy = koordinaten(p) ?: return@mapNotNull null
-                TrassenGrafikObjektPunkt(rolle = rolle, x = xy.first, y = xy.second)
+                val ecke = eckpunktAufTra(p) ?: return@mapNotNull null
+                p to ecke
             }
-            if (roh.size != rollen.size) return@mapNotNull null
+            if (ecken.size != rollen.size) return@mapNotNull null
 
-            val cx = roh.map { it.x.toDouble() }.average()
-            val cy = roh.map { it.y.toDouble() }.average()
-            val geordnet = roh.sortedBy { p ->
+            val cx = ecken.map { it.second.x.toDouble() }.average()
+            val cy = ecken.map { it.second.y.toDouble() }.average()
+            val geordnet = ecken.sortedBy { (_, p) ->
                 kotlin.math.atan2(p.y.toDouble() - cy, p.x.toDouble() - cx)
             }
+
+            val kontur = mutableListOf<TrassenGrafikObjektPunkt>()
+            for (i in geordnet.indices) {
+                val von = geordnet[i].first
+                val bis = geordnet[(i + 1) % geordnet.size].first
+                val segment = segmentZwischen(von, bis)
+                if (segment.size < 2) return@mapNotNull null
+                // Das Segmentende ist zugleich der Start des nächsten Segments.
+                kontur += segment.dropLast(1)
+            }
+            if (kontur.size < rollen.size) return@mapNotNull null
+
             TrassenGrafikObjektFlaeche(
                 id = objekt.id,
                 label = objekt.bezeichnung,
-                punkte = geordnet
+                punkte = kontur
             )
         }
     }

@@ -517,7 +517,7 @@ class TrassenGrafikView @JvmOverloads constructor(
             canvas.drawPath(path, objektFlaechePaint)
             canvas.drawPath(path, objektFlaecheRandPaint)
 
-            flaeche.punkte.forEach { punkt ->
+            flaeche.punkte.filter { it.rolle.isNotBlank() }.forEach { punkt ->
                 val x = sx(punkt.x, b)
                 val y = sy(punkt.y, b)
                 canvas.drawCircle(x, y, dpF(5f), objektFlaechePunktPaint)

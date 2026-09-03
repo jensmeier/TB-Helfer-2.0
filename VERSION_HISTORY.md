@@ -10,6 +10,22 @@ Diese Datei dokumentiert die auf dem Handy testbaren Entwicklungsstände.
 - Der Android-`versionCode` ist monoton und verwendet für TB-Helfer 2.0 das Schema `200NNN`, damit Updates über ältere APKs ohne Downgrade möglich bleiben.
 - Git bleibt die technische Detailhistorie; diese Datei beschreibt die fachlichen Unterschiede zwischen den Testständen.
 
+## 2.0 (005)
+
+Android versionCode: `200005`
+
+Weichen-/DKW-Flächen folgen der gewählten TRA statt den Roh-GVP-Koordinaten:
+
+- GVP/Festpunkte bleiben reine Vermessungsreferenzen; ihre Originalkoordinaten werden nicht mehr als Eckpunkte der türkisfarbenen Objektfläche verwendet.
+- WA/WE/WEZ und A/B/C/D werden für die Darstellung ausschließlich aus gespeicherter Ziel-TRA + Station auf die TRA-Geometrie gesetzt.
+- Liegen zwei benachbarte Eckpunkte auf derselben TRA, folgt die türkisfarbene Kontur exakt den Zwischenpunkten dieser TRA und damit auch Bögen/Kurven.
+- Bei Punkten auf unterschiedlichen TRA werden die auf die jeweiligen TRA projizierten Eckpunkte verbunden; Roh-GVP-Koordinaten bleiben außen vor.
+- GPS-Punkte verwenden denselben Achse-zuerst-Weg: 20-s-GNSS-Messung, Prüfung gegen die gewählte TRA und Speicherung von GPS, Achse, Station und Abstand.
+- Blau bleibt temporäre Auswahl; gespeicherte Weichen/DKW bleiben türkis.
+- Keine Room-Migration.
+
+Status: in Entwicklung / CI-Prüfung vor Handytest.
+
 ## 2.0 (004)
 
 Android versionCode: `200004`

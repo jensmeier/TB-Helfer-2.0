@@ -18,9 +18,9 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // TB-Helfer 2.0: 200004 -> sichtbare Teststand-Nummer 004.
+        // TB-Helfer 2.0: 200005 -> sichtbare Teststand-Nummer 005.
         // Jeder neue auf dem Handy testbare Stand erhöht diesen Wert um 1.
-        versionCode = 200004
+        versionCode = 200005
         versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
