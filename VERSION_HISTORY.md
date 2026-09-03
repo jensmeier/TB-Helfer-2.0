@@ -10,6 +10,22 @@ Diese Datei dokumentiert die auf dem Handy testbaren Entwicklungsstände.
 - Der Android-`versionCode` ist monoton und verwendet für TB-Helfer 2.0 das Schema `200NNN`, damit Updates über ältere APKs ohne Downgrade möglich bleiben.
 - Git bleibt die technische Detailhistorie; diese Datei beschreibt die fachlichen Unterschiede zwischen den Testständen.
 
+## 2.0 (004)
+
+Android versionCode: `200004`
+
+Persistente Weichen-/DKW-Darstellung und Baustellen-Verknüpfung:
+
+- Vollständig gespeicherte Weichen werden in der grafischen Übersicht als türkis gefülltes Dreieck aus WA/WE/WEZ dargestellt.
+- Vollständig gespeicherte DKW/Kreuzungen werden als türkis gefülltes Viereck aus A/B/C/D dargestellt.
+- Die Eckpunkte werden mit ihrer Rolle beschriftet; Blau bleibt ausschließlich temporäre Auswahl/Markierung.
+- Manuell gespeicherte Weichen/DKW werden bei einer neuen Baustelle über Betriebsstelle + Bezeichnung als vorhandene Streckendaten erkannt und als Vorschlag angeboten.
+- Einzelnes Objekt-Löschen löscht weiterhin nur genau diese Weiche/DKW.
+- `Vermessungsdaten löschen` entfernt jetzt zusätzlich alle manuell gespeicherten Weichen/DKW und damit den kompletten Vermessungsstand.
+- Keine Room-Migration.
+
+Status: in Entwicklung / CI-Prüfung vor Handytest.
+
 ## 2.0 (003)
 
 Android versionCode: `200003`
@@ -27,7 +43,7 @@ Achse-zuerst-Auswahl und sichtbare Fachpunkte:
 - Auto-Zoom konzentriert sich auf die gewählte Achse, direkt angeschlossene Achsen und Punkte im örtlichen Umfeld statt auf alle GVP der Baustelle.
 - Keine Room-Migration.
 
-Status: in Entwicklung / CI-Prüfung vor Handytest.
+Status: CI vollständig grün; Handytest zeigte fehlende dauerhafte Weichen-/DKW-Flächen und fehlende Baustellen-Erkennung.
 
 ## 2.0 (002)
 

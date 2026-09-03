@@ -24,6 +24,7 @@ import de.tbhelfer.util.BahnhofSucheUtil
 import de.tbhelfer.datenbank.BaustellenKnotenTyp
 import de.tbhelfer.streckenobjekte.BaustellenObjektArt
 import de.tbhelfer.streckenobjekte.BaustellenObjektLogik
+import de.tbhelfer.streckenobjekte.StreckenObjektSpeicher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -238,12 +239,10 @@ class BaustelleNeuFragment : Fragment() {
         edtGleisWeicheNr.addTextChangedListener(einfacherWatcher { planeJsonStatusUpdate() })
         edtGleisWeicheNr.threshold = 0
         edtGleisWeicheNr.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus && rgGleisWeiche.checkedRadioButtonId == R.id.rbGleis) {
-                aktualisiereGleisVorschlaege(dropdownOeffnen = true)
-            }
+            if (hasFocus) aktualisiereGleisVorschlaege(dropdownOeffnen = true)
         }
         edtGleisWeicheNr.setOnClickListener {
-            if (rgGleisWeiche.checkedRadioButtonId == R.id.rbGleis) aktualisiereGleisVorschlaege(dropdownOeffnen = true)
+            aktualisiereGleisVorschlaege(dropdownOeffnen = true)
         }
         rgGleisWeiche.setOnCheckedChangeListener { _, _ ->
             aktualisiereStreckendatenButton()
@@ -328,17 +327,35 @@ class BaustelleNeuFragment : Fragment() {
      */
     private fun aktualisiereGleisVorschlaege(dropdownOeffnen: Boolean = false) {
         gleisVorschlagJob?.cancel()
-        if (!::edtGleisWeicheNr.isInitialized || rgGleisWeiche.checkedRadioButtonId != R.id.rbGleis) return
+        if (!::edtGleisWeicheNr.isInitialized) return
         val raw = edtBahnhof.text?.toString().orEmpty().trim()
         if (raw.isBlank()) return
         val code = extrahiereBahnhofCode(raw, findeBahnhofVorschlag(raw)).ifBlank { raw.uppercase(Locale.GERMANY) }
+        val modus = bahnhofObjektModus()
         gleisVorschlagJob = viewLifecycleOwner.lifecycleScope.launch {
-            val gleise = withContext(Dispatchers.IO) { ladeGleisVorschlaegeFuerBetriebsstelle(code) }
+            val vorschlaege = withContext(Dispatchers.IO) {
+                when (modus) {
+                    "GLEIS" -> ladeGleisVorschlaegeFuerBetriebsstelle(code)
+                    "WEICHE" -> StreckenObjektSpeicher
+                        .fuerBetriebsstelle(requireContext().applicationContext, code, StreckenObjektSpeicher.Typ.WEICHE)
+                        .map { it.bezeichnung.trim() }
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                        .sortedWith(compareBy({ BaustellenObjektLogik.normalisierteObjektKennung(it).toIntOrNull() ?: Int.MAX_VALUE }, { it }))
+                    "DKW_KREUZUNG" -> StreckenObjektSpeicher
+                        .fuerBetriebsstelle(requireContext().applicationContext, code, StreckenObjektSpeicher.Typ.DKW_KREUZUNG)
+                        .map { it.bezeichnung.trim() }
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                        .sorted()
+                    else -> emptyList()
+                }
+            }
             if (!isAdded || !::edtGleisWeicheNr.isInitialized) return@launch
             edtGleisWeicheNr.setAdapter(
-                ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, gleise)
+                ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, vorschlaege)
             )
-            if (dropdownOeffnen && edtGleisWeicheNr.hasFocus() && gleise.isNotEmpty()) {
+            if (dropdownOeffnen && edtGleisWeicheNr.hasFocus() && vorschlaege.isNotEmpty()) {
                 edtGleisWeicheNr.post { edtGleisWeicheNr.showDropDown() }
             }
         }
@@ -567,6 +584,38 @@ class BaustelleNeuFragment : Fragment() {
         }
 
         val objektModus = bahnhofObjektModus()
+        if (objektModus == "WEICHE" || objektModus == "DKW_KREUZUNG") {
+            val speicherTyp = if (objektModus == "DKW_KREUZUNG") {
+                StreckenObjektSpeicher.Typ.DKW_KREUZUNG
+            } else {
+                StreckenObjektSpeicher.Typ.WEICHE
+            }
+            val manuell = StreckenObjektSpeicher.findePassend(
+                requireContext(), zielCode, nrRaw, speicherTyp
+            )
+            if (manuell != null) {
+                val rollen = if (speicherTyp == StreckenObjektSpeicher.Typ.WEICHE) {
+                    listOf("WA", "WE", "WEZ")
+                } else {
+                    listOf("A", "B", "C", "D")
+                }
+                val byRole = manuell.punkte.associateBy { it.rolle.uppercase(Locale.GERMANY) }
+                val vollstaendig = rollen.all { rolle ->
+                    val p = byRole[rolle]
+                    p != null && p.achseId != null && p.station != null
+                }
+                val typText = if (speicherTyp == StreckenObjektSpeicher.Typ.WEICHE) "Weiche" else "DKW/Kreuzung"
+                val rollenText = rollen.filter { it in byRole.keys }.joinToString("/")
+                return DatenStatus(
+                    vollstaendig,
+                    if (vollstaendig) {
+                        "✓ $zielCode: $typText ${manuell.bezeichnung} manuell vorhanden · $rollenText"
+                    } else {
+                        "⚠ $zielCode: $typText ${manuell.bezeichnung} gespeichert, aber Punkte unvollständig · $rollenText"
+                    }
+                )
+            }
+        }
         if (objektModus == "DKW_KREUZUNG") {
             val vorhanden = uebersicht.achsen.isNotEmpty()
             return DatenStatus(

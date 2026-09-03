@@ -67,6 +67,7 @@ class TrassenGrafikView @JvmOverloads constructor(
     private var ankerProjektion: TrassenGrafikProjektion? = null
     private var aktiverFestpunkt: TrassenGrafikFestpunkt? = null
     private var objektMarker: List<TrassenGrafikMarker> = emptyList()
+    private var objektFlaechen: List<TrassenGrafikObjektFlaeche> = emptyList()
 
     private val darkMode: Boolean
         get() = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
@@ -86,6 +87,13 @@ class TrassenGrafikView @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
     private val labelBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val objektFlaechePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val objektFlaecheRandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeJoin = Paint.Join.ROUND
+        strokeCap = Paint.Cap.ROUND
+    }
+    private val objektFlaechePunktPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1f
@@ -268,6 +276,12 @@ class TrassenGrafikView @JvmOverloads constructor(
         invalidate()
     }
 
+    /** Dauerhaft gespeicherte Weichen/DKW. Türkis ist Objektgeometrie; Blau bleibt Auswahl. */
+    fun setObjektFlaechen(flaechen: List<TrassenGrafikObjektFlaeche>) {
+        objektFlaechen = flaechen
+        invalidate()
+    }
+
     fun fitToContent() {
         val b = bounds ?: return
         if (width <= 0 || height <= 0) return
@@ -338,6 +352,7 @@ class TrassenGrafikView @JvmOverloads constructor(
             zeichneAchse(canvas, achse, isDark)
         }
         zeichneAchsendenUndKnoten(canvas, b, isDark)
+        zeichneObjektFlaechen(canvas, b, isDark)
         zeichneFestpunkte(canvas, b, isDark)
         zeichneObjektMarker(canvas, b, isDark)
         zeichneAnkerProjektion(canvas, b, isDark)
@@ -480,6 +495,39 @@ class TrassenGrafikView @JvmOverloads constructor(
 
         zeichne(achse.abschnittStartStation, "G1")
         zeichne(achse.abschnittEndeStation, "G2")
+    }
+
+    private fun zeichneObjektFlaechen(canvas: Canvas, b: RectF, isDark: Boolean) {
+        if (objektFlaechen.isEmpty()) return
+        val tuerkis = Color.rgb(0, 188, 180)
+        objektFlaechePaint.color = Color.argb(if (isDark) 105 else 90, 0, 188, 180)
+        objektFlaecheRandPaint.color = tuerkis
+        objektFlaecheRandPaint.strokeWidth = dpF(3f)
+        objektFlaechePunktPaint.color = tuerkis
+
+        objektFlaechen.forEach { flaeche ->
+            if (flaeche.punkte.size < 3) return@forEach
+            val path = Path()
+            flaeche.punkte.forEachIndexed { index, punkt ->
+                val x = sx(punkt.x, b)
+                val y = sy(punkt.y, b)
+                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            path.close()
+            canvas.drawPath(path, objektFlaechePaint)
+            canvas.drawPath(path, objektFlaecheRandPaint)
+
+            flaeche.punkte.forEach { punkt ->
+                val x = sx(punkt.x, b)
+                val y = sy(punkt.y, b)
+                canvas.drawCircle(x, y, dpF(5f), objektFlaechePunktPaint)
+                textPaint.textAlign = Paint.Align.LEFT
+                textPaint.textSize = sp(11f)
+                textPaint.typeface = android.graphics.Typeface.DEFAULT_BOLD
+                textPaint.color = if (isDark) Color.WHITE else Color.rgb(20, 20, 20)
+                canvas.drawText(punkt.rolle, x + dpF(7f), y - dpF(7f), textPaint)
+            }
+        }
     }
 
     private fun zeichneObjektMarker(canvas: Canvas, b: RectF, isDark: Boolean) {
@@ -1082,6 +1130,18 @@ data class TrassenGrafikProjektion(
     val punktY: Float,
     val projX: Float,
     val projY: Float
+)
+
+data class TrassenGrafikObjektFlaeche(
+    val id: String,
+    val label: String,
+    val punkte: List<TrassenGrafikObjektPunkt>
+)
+
+data class TrassenGrafikObjektPunkt(
+    val rolle: String,
+    val x: Float,
+    val y: Float
 )
 
 data class TrassenGrafikMarker(

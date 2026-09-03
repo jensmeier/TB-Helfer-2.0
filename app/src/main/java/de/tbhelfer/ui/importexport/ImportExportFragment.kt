@@ -962,6 +962,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 viewLifecycleOwner.lifecycleScope.launch {
                     val geloescht = withContext(Dispatchers.IO) {
                         val dbErgebnis = ServiceLocator.trassenRepository.streckendatenKomplettZuruecksetzen()
+                        StreckenObjektSpeicher.leeren(appContext)
 
                         // Persistente Zuordnungen gehoeren zum importierten Streckendatenstand.
                         // Sie muessen beim Reset ebenfalls weg, sonst koennen alte manuelle
@@ -5168,6 +5169,69 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
         return ergebnis[0].toDouble()
     }
 
+    private fun streckenObjektFlaechen(
+        objekte: List<StreckenObjektSpeicher.Objekt>,
+        achsen: List<TrassenGrafikAchse>
+    ): List<TrassenGrafikObjektFlaeche> {
+        val achsenById = achsen.groupBy { it.achseId }
+
+        fun punktAufAchse(achse: TrassenGrafikAchse, station: Double): Pair<Float, Float>? {
+            val ps = achse.punkte.sortedBy { it.station }
+            if (ps.isEmpty()) return null
+            if (ps.size == 1) return ps.first().x to ps.first().y
+            if (station <= ps.first().station) return ps.first().x to ps.first().y
+            if (station >= ps.last().station) return ps.last().x to ps.last().y
+            for (i in 0 until ps.lastIndex) {
+                val a = ps[i]
+                val z = ps[i + 1]
+                if (station + 1e-9 < a.station || station - 1e-9 > z.station) continue
+                val ds = z.station - a.station
+                val t = if (kotlin.math.abs(ds) < 1e-9) 0.0 else ((station - a.station) / ds).coerceIn(0.0, 1.0)
+                return (a.x + (z.x - a.x) * t.toFloat()) to
+                    (a.y + (z.y - a.y) * t.toFloat())
+            }
+            return ps.minByOrNull { kotlin.math.abs(it.station - station) }?.let { it.x to it.y }
+        }
+
+        fun koordinaten(p: StreckenObjektSpeicher.Punkt): Pair<Float, Float>? {
+            val vx = p.vermarkungX
+            val vy = p.vermarkungY
+            if (vx != null && vy != null && vx.isFinite() && vy.isFinite()) {
+                return vx.toFloat() to vy.toFloat()
+            }
+            val achseId = p.achseId ?: return null
+            val station = p.station ?: return null
+            val kandidaten = achsenById[achseId].orEmpty()
+            return kandidaten.asSequence().mapNotNull { punktAufAchse(it, station) }.firstOrNull()
+        }
+
+        return objekte.mapNotNull { objekt ->
+            val rollen = if (objekt.typ == StreckenObjektSpeicher.Typ.WEICHE) {
+                listOf("WA", "WE", "WEZ")
+            } else {
+                listOf("A", "B", "C", "D")
+            }
+            val byRole = objekt.punkte.associateBy { it.rolle.uppercase(Locale.GERMANY) }
+            val roh = rollen.mapNotNull { rolle ->
+                val p = byRole[rolle] ?: return@mapNotNull null
+                val xy = koordinaten(p) ?: return@mapNotNull null
+                TrassenGrafikObjektPunkt(rolle = rolle, x = xy.first, y = xy.second)
+            }
+            if (roh.size != rollen.size) return@mapNotNull null
+
+            val cx = roh.map { it.x.toDouble() }.average()
+            val cy = roh.map { it.y.toDouble() }.average()
+            val geordnet = roh.sortedBy { p ->
+                kotlin.math.atan2(p.y.toDouble() - cy, p.x.toDouble() - cx)
+            }
+            TrassenGrafikObjektFlaeche(
+                id = objekt.id,
+                label = objekt.bezeichnung,
+                punkte = geordnet
+            )
+        }
+    }
+
     private fun TextView.textStyleBold() {
         setTypeface(typeface, android.graphics.Typeface.BOLD)
     }
@@ -5379,6 +5443,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
 
                 val context = requireContext()
                 val anzeigeAchsen = grafikAchsen.distinctBy { it.achseId }
+                val objektFlaechen = streckenObjektFlaechen(StreckenObjektSpeicher.alle(context), anzeigeAchsen)
                 val alleAchseIds = anzeigeAchsen.map { it.achseId }.toMutableSet()
                 val alleTypen = grafikAchsen.map { it.achsTyp }.toSet()
                 val punktArtenVorhanden = festpunkte.map { it.art }.distinct().toSet()
@@ -5439,6 +5504,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 val grafik = TrassenGrafikView(context).apply {
                     setAchsen(grafikAchsen)
                     setFestpunkte(festpunkte)
+                    setObjektFlaechen(objektFlaechen)
                     setFestpunkteSichtbar(true)
                     setSichtbareTypen(alleTypen)
                     setSichtbareAchseIds(sichtbareAchseIds.toSet())

@@ -99,6 +99,17 @@ object StreckenObjektSpeicher {
             .firstOrNull { BaustellenObjektLogik.normalisierteObjektKennung(it.bezeichnung) == o }
     }
 
+    fun fuerBetriebsstelle(
+        context: Context,
+        betriebsstelle: String?,
+        typ: Typ? = null
+    ): List<Objekt> {
+        val b = normalizeBetriebsstelle(betriebsstelle)
+        return alle(context)
+            .filter { typ == null || it.typ == typ }
+            .filter { b.isBlank() || normalizeBetriebsstelle(it.betriebsstelle) == b }
+    }
+
     fun hatVerwendbareKilometrierung(
         context: Context,
         betriebsstelle: String?,
@@ -116,6 +127,14 @@ object StreckenObjektSpeicher {
 
     fun loeschen(context: Context, id: String) = synchronized(lock) {
         schreibe(context, alle(context).filterNot { it.id == id })
+    }
+
+    /** Kompletter Vermessungsreset: alle manuell gespeicherten Weichen/DKW entfernen. */
+    fun leeren(context: Context) = synchronized(lock) {
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_JSON)
+            .apply()
     }
 
     fun findeNahePunkte(
