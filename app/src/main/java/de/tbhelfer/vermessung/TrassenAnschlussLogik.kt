@@ -69,7 +69,7 @@ object TrassenAnschlussLogik {
         require(toleranzM > 0.0 && toleranzM.isFinite()) { "Anschlusstoleranz muss positiv sein." }
 
         val gueltigeAchsen = achsen
-            .filter { it.id > 0L && it.punkte.isNotEmpty() }
+            .filter { it.punkte.isNotEmpty() }
             .map { it.copy(punkte = it.punkte.filter(::istGueltigerPunkt).sortedBy(Punkt::station)) }
             .filter { it.punkte.isNotEmpty() }
 
