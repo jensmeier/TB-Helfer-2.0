@@ -23,9 +23,10 @@ Direkter Roh-KF-Import und klare Minimal-/Optimalregel für Kilometrierung:
 - PS4 und GVPV werden als GVP/Gleisvermarkung kategorisiert; PS0–PS3 und sonstige PArt bleiben als Festpunkte erhalten und filterbar.
 - Zweites 14-Byte-Erläuterungsfeld, VArt/Statusbytes, Metadaten, Strecke und RiKz werden ohne neue Room-Spalten im vorhandenen Rohfeld nachvollziehbar erhalten.
 - KF.TXT/KV bleiben als Text-Fallback kompatibel; rohe `.kf` wird nicht mehr nur erkannt und übersprungen.
+- Der grosse Import-Fragment wird fuer 006 beim Build deterministisch als gepatchte Kotlin-Quelle erzeugt. Das Original im Git-Arbeitsbaum bleibt unveraendert; damit bleibt der lokale Git-Stand sauber.
 - Keine Room-Migration.
 
-Status: in Entwicklung / CI-Prüfung vor Handytest.
+Status: Code/Testfälle im Branch vollständig vorbereitet; GitHub Hosted Runner startet aktuell repositoryweit vor Schritt 1 nicht. Deshalb noch keine CI-Freigabe. Nächster Nachweis ist lokaler Android-Studio-Build + Handytest; danach wird CI nachgeholt, sobald GitHub wieder Runner zuteilt.
 
 ## 2.0 (005)
 
@@ -57,7 +58,7 @@ Persistente Weichen-/DKW-Darstellung und Baustellen-Verknüpfung:
 - `Vermessungsdaten löschen` entfernt jetzt zusätzlich alle manuell gespeicherten Weichen/DKW und damit den kompletten Vermessungsstand.
 - Keine Room-Migration.
 
-Status: CI vollständig grün; Handytest zeigte, dass die Objektfläche noch Roh-GVP-Koordinaten statt TRA-Stationen verwendete.
+Status: CI vollständig grün; Handytest zeigte, dass die Objektfläche noch Roh-GVP-Koordinaten statt TRA-Stationen verwendet.
 
 ## 2.0 (003)
 
