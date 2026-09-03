@@ -38,7 +38,7 @@ jobs:
               app/src/main/java/de/tbhelfer/ui/importexport/ImportExportFragment.kt \
               app/src/main/java/de/tbhelfer/ui/importexport/TrassenGrafikView.kt
             git commit -m "TB-Helfer 2.0 (004): Weichen und DKW dauerhaft darstellen"
-            git push
+            git push origin HEAD:kilometrierung-v1
           else
             echo "004 patch already applied"
           fi
