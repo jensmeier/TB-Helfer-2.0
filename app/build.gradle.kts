@@ -3,6 +3,9 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val kf006OriginalFragment = file("src/main/java/de/tbhelfer/ui/importexport/ImportExportFragment.kt")
+val kf006GeneratedDir = layout.buildDirectory.dir("generated/source/kf006")
+
 android {
     namespace = "de.tbhelfer"
     // AGP 9 unterstützt bis API 36 (Android 16). Einige AndroidX-Versionen
@@ -49,6 +52,17 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
+    // 006: Die grosse ImportExportFragment-Datei bleibt im Repository unveraendert.
+    // Fuer den Build wird eine deterministisch gepatchte Kopie erzeugt. Damit kann
+    // der direkte KF-Import trotz ausgefallenem GitHub Hosted Runner sauber getestet
+    // werden, ohne den lokalen Git-Arbeitsbaum beim Build zu veraendern.
+    sourceSets {
+        getByName("main") {
+            java.exclude("de/tbhelfer/ui/importexport/ImportExportFragment.kt")
+            java.srcDir(kf006GeneratedDir)
+        }
+    }
+
     // Verhindert gelegentliche META-INF Doppel-Einträge (klassischer Gradle/AndroidX Painpoint)
     packaging {
         resources {
@@ -66,6 +80,130 @@ android {
         checkDependencies = true
         lintConfig = file("$rootDir/lint.xml")
     }
+}
+
+val generateKf006ImportFragment by tasks.registering {
+    group = "build setup"
+    description = "Erzeugt ImportExportFragment fuer TB-Helfer 2.0 (006) mit direktem KF-Import."
+    inputs.file(kf006OriginalFragment)
+    outputs.file(kf006GeneratedDir.map { it.file("de/tbhelfer/ui/importexport/ImportExportFragment006.kt") })
+
+    doLast {
+        var text = kf006OriginalFragment.readText(Charsets.UTF_8)
+
+        fun replaceRequired(old: String, new: String, label: String, all: Boolean = false) {
+            if (text.contains(new)) return
+            check(text.contains(old)) { "006-Integration fehlgeschlagen: $label nicht gefunden" }
+            text = if (all) text.replace(old, new) else text.replaceFirst(old, new)
+        }
+
+        replaceRequired(
+            "import de.tbhelfer.vermessung.GvpDateiParser\n",
+            "import de.tbhelfer.vermessung.GvpDateiParser\nimport de.tbhelfer.vermessung.KfDateiParser\nimport de.tbhelfer.vermessung.VermessungspunktKategorie\n",
+            "KF-Parser-Import"
+        )
+
+        replaceRequired(
+            """            val ergebnisse = withContext(Dispatchers.IO) {
+                scan.dateien
+                    .filter { it.sollImportiertWerden(objektZuordnungen.keys) }
+                    .map { datei -> importiereZipDatei(datei, objektZuordnungen[datei.rawKey]) }
+            }
+""",
+            """            val ergebnisse = withContext(Dispatchers.IO) {
+                val kandidaten = scan.dateien
+                    .filter { it.sollImportiertWerden(objektZuordnungen.keys) }
+                // Roh-KF ist die Primaerquelle. Liegt dieselbe Datei zusaetzlich als
+                // .kf.txt vor, wird die Textableitung nicht ein zweites Mal importiert.
+                val roheKfBasen = kandidaten
+                    .filter { it.typ == ZipDateiTyp.KF_RAW }
+                    .map { it.dateiname.lowercase(Locale.GERMANY) }
+                    .toSet()
+                kandidaten
+                    .filterNot { datei ->
+                        datei.typ == ZipDateiTyp.KF_TXT &&
+                            datei.dateiname.lowercase(Locale.GERMANY).removeSuffix(".txt") in roheKfBasen
+                    }
+                    .map { datei -> importiereZipDatei(datei, objektZuordnungen[datei.rawKey]) }
+            }
+""",
+            "Roh-KF-Prioritaet"
+        )
+
+        replaceRequired(
+            "            ZipDateiTyp.KF_RAW -> ImportErgebnis(datei.dateiname, true, \"nicht direkt importiert: KF-Original erkannt; falls vorhanden wird KF.TXT verwendet\")",
+            "            ZipDateiTyp.KF_RAW -> importiereZipKfDatei(datei)",
+            "KF_RAW-Dispatch"
+        )
+
+        replaceRequired(
+            "    private fun speichereStreckendatenZuordnung(\n",
+            """    private suspend fun importiereZipKfDatei(datei: StreckendatenZipDatei): ImportErgebnis = runCatching {
+        val result = KfDateiParser.parse(datei.dateiname, datei.bytes)
+        ServiceLocator.trassenRepository.gvpImportSpeichern(datei.dateiname, result)
+        val mitKm = result.punkte.count { it.kmMeter != null && !it.strecke.isNullOrBlank() }
+        val gvp = result.punkte.count {
+            VermessungspunktKategorie.grafikArt(it.typ, datei.dateiname) == VermessungspunktKategorie.GVP
+        }
+        ImportErgebnis(
+            datei.dateiname,
+            true,
+            "KF 7.0 direkt: ${'$'}{result.punkte.size} Punkte · ${'$'}gvp GVP/Gleisvermarkung · ${'$'}mitKm mit Strecke+km"
+        )
+    }.getOrElse { throwable ->
+        ImportErgebnis(datei.dateiname, false, throwable.message ?: throwable.javaClass.simpleName)
+    }
+
+    private fun speichereStreckendatenZuordnung(
+""",
+            "KF-Importfunktion"
+        )
+
+        replaceRequired(
+            "            val result = GvpDateiParser.parse(dateiname, bytes)\n",
+            """            val result = if (dateiname.endsWith(".kf", ignoreCase = true) &&
+                !dateiname.endsWith(".kf.txt", ignoreCase = true)
+            ) {
+                KfDateiParser.parse(dateiname, bytes)
+            } else {
+                GvpDateiParser.parse(dateiname, bytes)
+            }
+""",
+            "Einzeldatei-KF-Import"
+        )
+
+        replaceRequired(
+            """                TrassenGrafikFestpunkt(
+                    label = it.punktName,
+                    art = "GVP",
+""",
+            """                TrassenGrafikFestpunkt(
+                    label = it.punktName,
+                    art = VermessungspunktKategorie.grafikArt(it.typ, it.quelleDatei),
+""",
+            "Grafik-Kategorisierung",
+            all = true
+        )
+
+        replaceRequired(
+            "                        \"GVP\" to \"Festpunkte / Masten\",\n",
+            """                        "GVP" to "GVP / Gleisvermarkung (PS4/GVPV)",
+                        "FESTPUNKT" to "Festpunkte / sonstige KF-Punkte",
+""",
+            "Grafik-Anzeigefilter",
+            all = true
+        )
+
+        val out = kf006GeneratedDir.get()
+            .file("de/tbhelfer/ui/importexport/ImportExportFragment006.kt")
+            .asFile
+        out.parentFile.mkdirs()
+        out.writeText(text, Charsets.UTF_8)
+    }
+}
+
+tasks.matching { it.name == "preBuild" }.configureEach {
+    dependsOn(generateKf006ImportFragment)
 }
 
 // Built-in Kotlin (AGP 9) übernimmt den JVM Target standardmäßig aus
