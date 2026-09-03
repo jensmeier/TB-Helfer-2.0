@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorBackground"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_einstellungen_text_4"
+            android:textStyle="bold"
+            android:textSize="22sp"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingBottom="12dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingVertical="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/ui_fragment_overlay_einstellungen_text_1"
+                android:textColor="?attr/colorOnBackground" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/swOverlayAktiv"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_overlay_einstellungen_text_2"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingTop="10dp" />
+
+        <RadioGroup
+            android:id="@+id/rgOverlayDarstellung"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="6dp">
+
+            <RadioButton
+                android:id="@+id/rbDarstellungNormal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_overlay_einstellungen_text_3"
+                android:textColor="?attr/colorOnBackground" 
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <RadioButton
+                android:id="@+id/rbDarstellungKompakt"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_overlay_einstellungen_text_4"
+                android:textColor="?attr/colorOnBackground" 
+                android:maxLines="1"
+                android:ellipsize="end" />
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_overlay_einstellungen_text_5"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingTop="14dp" />
+
+        <RadioGroup
+            android:id="@+id/rgOverlayPosition"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="6dp">
+
+            <RadioButton
+                android:id="@+id/rbPosAuto"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_overlay_einstellungen_text_6"
+                android:textColor="?attr/colorOnBackground" 
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <RadioButton
+                android:id="@+id/rbPosLo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_overlay_einstellungen_text_7"
+                android:textColor="?attr/colorOnBackground" 
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <RadioButton
+                android:id="@+id/rbPosRo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_overlay_einstellungen_text_8"
+                android:textColor="?attr/colorOnBackground" 
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <RadioButton
+                android:id="@+id/rbPosLu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_overlay_einstellungen_text_9"
+                android:textColor="?attr/colorOnBackground" 
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <RadioButton
+                android:id="@+id/rbPosRu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_overlay_einstellungen_text_10"
+                android:textColor="?attr/colorOnBackground" 
+                android:maxLines="1"
+                android:ellipsize="end" />
+        </RadioGroup>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="6dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/ui_fragment_overlay_einstellungen_text_11"
+                android:textColor="?attr/colorOnBackground" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/swAutoPositionSmart"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_overlay_einstellungen_text_12"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingTop="14dp" />
+
+        <SeekBar
+            android:id="@+id/sbOverlayAlpha"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_overlay_einstellungen_text_13"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingTop="14dp" />
+
+        <SeekBar
+            android:id="@+id/sbOverlayTextSize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="12dp"
+            android:paddingBottom="6dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/ui_fragment_overlay_einstellungen_text_14"
+                android:textColor="?attr/colorOnBackground" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/swAutoKontrast"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_overlay_einstellungen_text_15"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingTop="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/ui_fragment_overlay_einstellungen_text_16"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/swShowBaustelle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/ui_fragment_kamera_text_1"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/swShowUnter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/ui_fragment_overlay_einstellungen_text_17"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/swShowStrecke"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/ui_fragment_overlay_einstellungen_text_18"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/swShowGleis"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/ui_fragment_overlay_einstellungen_text_19"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/swShowKm"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/ui_fragment_overlay_einstellungen_text_20"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/swShowGps"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/ui_fragment_overlay_einstellungen_text_21"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/swShowDatumZeit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

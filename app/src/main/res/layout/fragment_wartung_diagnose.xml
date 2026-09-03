@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorBackground"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Wartung &amp; Diagnose"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="16dp"
+            android:text="Seltene Funktionen für Geräteprüfung und Speicherpflege."
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.8" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWartungGeraeteDiagnose"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Geräte-Diagnose"
+            android:gravity="center" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Kameras, Blitz, Zoom, Nachtmodus und GNSS-Fähigkeiten des Handys prüfen."
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.75" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWartungSpeicherBereinigen"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="20dp"
+            android:text="Speicher bereinigen"
+            android:gravity="center" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Entfernt fehlende DB-Einträge, verschiebt Bilder ohne Datenbank-Eintrag in den Orphans-Ordner und löscht Thumbnail-Leichen."
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.75" />
+
+
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,9 @@
+<resources>
+    <string name="streckenpunkte_compact_automatik">Automatik</string>
+    <string name="streckenpunkte_compact_automatik_running">Automatik läuft</string>
+    <string name="streckenpunkte_compact_automatik_weiche">Automatik bei Weiche aus</string>
+    <string name="streckenpunkte_compact_automatik_weiche_toast">Bei Weichen bitte WA / WE / WEZ manuell setzen. Automatik ist hier aus.</string>
+    <string name="streckenpunkte_compact_liste_anzeigen">Liste</string>
+    <string name="streckenpunkte_compact_liste_ausblenden">Liste ausblenden</string>
+    <string name="streckenpunkte_compact_more">Mehr</string>
+</resources>

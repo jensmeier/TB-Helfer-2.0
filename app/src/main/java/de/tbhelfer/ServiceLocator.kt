@@ -1,0 +1,97 @@
+package de.tbhelfer
+
+import android.content.Context
+import de.tbhelfer.datenbank.TBDatenbank
+import de.tbhelfer.einstellungen.AktuelleBaustelleSpeicher
+import de.tbhelfer.datenbank.StreckenpunkteRepository
+import de.tbhelfer.datenbank.BaustellenRepository
+import de.tbhelfer.datenbank.BaustellenBaumRepository
+import de.tbhelfer.datenbank.BaustelleDao
+import de.tbhelfer.datenbank.StreckenpunktDao
+import de.tbhelfer.datenbank.BaustellenKnotenDao
+import de.tbhelfer.datenbank.FotoDao
+import de.tbhelfer.datenbank.FotoRepository
+import de.tbhelfer.datenbank.TrassenDao
+import de.tbhelfer.datenbank.TrassenRepository
+import de.tbhelfer.ui.einstellungen.overlay.OverlayEinstellungenSpeicher
+import de.tbhelfer.einstellungen.AnsichtEinstellungenSpeicher
+import de.tbhelfer.einstellungen.KameraEinstellungenSpeicher
+import de.tbhelfer.einstellungen.BtbPdfEinstellungenSpeicher
+
+/**
+ * Sehr einfacher ServiceLocator, damit das Projekt ohne DI (Hilt/Koin) übersichtlich bleibt.
+ * Später können wir das problemlos austauschen.
+ */
+object ServiceLocator {
+
+    private lateinit var appContext: Context
+
+    val datenbank: TBDatenbank by lazy {
+        TBDatenbank.erstellen(appContext)
+    }
+
+    val baustelleDao: BaustelleDao by lazy {
+        datenbank.baustelleDao()
+    }
+
+    val baustellenKnotenDao: BaustellenKnotenDao by lazy {
+        datenbank.baustellenKnotenDao()
+    }
+
+    
+    val streckenpunktDao: StreckenpunktDao by lazy {
+        datenbank.streckenpunktDao()
+    }
+
+    val fotoDao: FotoDao by lazy {
+        datenbank.fotoDao()
+    }
+
+    val trassenDao: TrassenDao by lazy {
+        datenbank.trassenDao()
+    }
+
+    val baustellenRepository: BaustellenRepository by lazy {
+        BaustellenRepository(baustelleDao)
+    }
+
+    val baustellenBaumRepository: BaustellenBaumRepository by lazy {
+        BaustellenBaumRepository(baustellenKnotenDao, baustellenRepository)
+    }
+
+    val streckenpunkteRepository: StreckenpunkteRepository by lazy {
+        StreckenpunkteRepository(streckenpunktDao)
+    }
+
+    val fotoRepository: FotoRepository by lazy {
+        FotoRepository(fotoDao)
+    }
+
+    val trassenRepository: TrassenRepository by lazy {
+        TrassenRepository(trassenDao)
+    }
+
+    val aktuelleBaustelleSpeicher: AktuelleBaustelleSpeicher by lazy {
+        AktuelleBaustelleSpeicher(appContext)
+    }
+
+    val overlayEinstellungenSpeicher: OverlayEinstellungenSpeicher by lazy {
+        OverlayEinstellungenSpeicher(appContext)
+    }
+
+    val ansichtEinstellungenSpeicher: AnsichtEinstellungenSpeicher by lazy {
+        AnsichtEinstellungenSpeicher(appContext)
+    }
+
+    val kameraEinstellungenSpeicher: KameraEinstellungenSpeicher by lazy {
+        KameraEinstellungenSpeicher(appContext)
+    }
+
+    val btbPdfEinstellungenSpeicher: BtbPdfEinstellungenSpeicher by lazy {
+        BtbPdfEinstellungenSpeicher(appContext)
+    }
+
+    fun initialisieren(context: Context) {
+        appContext = context.applicationContext
+    }
+}

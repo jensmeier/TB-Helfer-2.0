@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="?attr/colorBackground"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/txtTitel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/ui_fragment_baustellen_knoten_text_1"
+        style="@style/TextAppearance.TBHelfer.Subtitle"
+        android:textColor="?attr/colorOnBackground" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:id="@+id/chipUnterHaupt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_pill"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:text="Unterbaustellen: 0"
+            style="@style/TextAppearance.TBHelfer.Caption"
+            android:textColor="?attr/colorOnSurface" />
+
+        <TextView
+            android:id="@+id/chipGesamtHaupt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_pill"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:text="Gesamt: 0"
+            style="@style/TextAppearance.TBHelfer.Caption"
+            android:textColor="?attr/colorOnSurface" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/txtAktuellerKnoten"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        style="@style/TextAppearance.TBHelfer.Body"
+        android:textColor="?attr/colorOnBackground"
+        android:alpha="0.75"
+        android:layout_marginTop="8dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNeuerUnterknoten"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_baustellen_knoten_text_3" />
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="12dp" />
+
+    <include layout="@layout/footer" />
+</LinearLayout>

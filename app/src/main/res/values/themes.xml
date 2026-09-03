@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <style name="TbButton" parent="Widget.MaterialComponents.Button">
+        <item name="android:textAllCaps">false</item>
+        <item name="cornerRadius">14dp</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="backgroundTint">@color/tb_blue</item>
+        <item name="android:textColor">@android:color/white</item>
+
+        <item name="android:textAppearance">@style/TextAppearance.TBHelfer.Button</item>
+    
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <!-- AppCompat AutoSize (funktioniert auch < API 26) -->
+        <item name="autoSizeTextType">uniform</item>
+        <item name="autoSizeMinTextSize">12sp</item>
+        <item name="autoSizeMaxTextSize">16sp</item>
+        <item name="autoSizeStepGranularity">1sp</item>
+    </style>
+
+    <!-- Kompakter Button für enge Toolbars (z.B. Personal/Maschinen) -->
+    <style name="TbButtonCompact" parent="TbButton">
+        <item name="android:minHeight">44dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingLeft">12dp</item>
+        <item name="android:paddingRight">12dp</item>
+        <item name="autoSizeMinTextSize">11sp</item>
+        <item name="autoSizeMaxTextSize">14sp</item>
+    </style>
+
+    <!-- Toolbar-Button: gleiche Schrift/Größe (kein AutoSize) -->
+    <style name="TbToolbarButton" parent="TbButtonCompact">
+        <item name="android:textAppearance">@style/TextAppearance.TBHelfer.ToolbarButton</item>
+        <item name="autoSizeTextType">none</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:maxLines">1</item>
+    </style>
+
+    <!-- Kompakter Icon-Button (z.B. Speichern als grüner Haken) -->
+    <style name="TbIconButtonCompact" parent="TbButtonCompact">
+        <item name="backgroundTint">@color/tb_green</item>
+        <item name="autoSizeTextType">none</item>
+        <item name="android:minWidth">44dp</item>
+        <item name="android:paddingLeft">10dp</item>
+        <item name="android:paddingRight">10dp</item>
+    </style>
+    <style name="Theme.TBHelfer" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="fontFamily">sans-serif</item>
+
+        <item name="android:windowBackground">@color/tb_bg</item>
+        <item name="colorBackground">@color/tb_bg</item>
+        <item name="colorSurface">@color/tb_surface</item>
+        <item name="colorOnBackground">@color/tb_on_bg</item>
+        <item name="colorOnSurface">@color/tb_on_surface</item>
+        <item name="colorPrimary">@color/tb_blue</item>
+        <item name="colorPrimaryVariant">@color/tb_blue</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="materialButtonStyle">@style/TbButton</item>
+
+        <!-- Einheitliche Textdarstellung -->
+        <!-- Framework-Attr nutzen, damit Resource-Linking stabil bleibt -->
+        <item name="android:textViewStyle">@style/Widget.TBHelfer.TextView</item>
+        <item name="textAppearanceHeadline6">@style/TextAppearance.TBHelfer.Title</item>
+        <item name="textAppearanceSubtitle1">@style/TextAppearance.TBHelfer.Subtitle</item>
+        <item name="textAppearanceBody1">@style/TextAppearance.TBHelfer.Body</item>
+        <item name="textAppearanceCaption">@style/TextAppearance.TBHelfer.Caption</item>
+        <item name="textAppearanceButton">@style/TextAppearance.TBHelfer.Button</item>
+    </style>
+</resources>

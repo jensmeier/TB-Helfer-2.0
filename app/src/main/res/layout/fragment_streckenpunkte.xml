@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorBackground"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/streckenpunkte_patch_title"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btnMehr"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="⋮"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/txtAktuelleBaustelle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="@string/streckenpunkte_patch_current_site_placeholder"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/txtGeladenerKontext"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/streckenpunkte_context_missing"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+
+    <LinearLayout
+        android:id="@+id/layoutKontextAktionen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAuswahlAendern"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Auswahl ändern" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNeuWaehlen"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="Neu wählen" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/txtStatistik"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/streckenpunkte_patch_stats_placeholder"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/txtAutomatikStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="@string/streckenpunkte_automatik_status_idle"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/txtHinweis"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/streckenpunkte_patch_hint_placeholder"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnBaustelleWaehlen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="@string/ui_fragment_baustellen_text_1"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/layoutHauptAktionen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPunktSetzen"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/streckenpunkte_patch_add" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAutomatik"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/streckenpunkte_compact_automatik" />
+
+        <LinearLayout
+            android:id="@+id/layoutAutomatikSteuerung"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAutomatikPause"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Pause" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAutomatikWeiter"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Weiter" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAutomatikStop"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Stop" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnListe"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/streckenpunkte_compact_liste_anzeigen" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layoutListenbereich"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/edtSuche"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/streckenpunkte_patch_search_hint"
+                android:imeOptions="actionSearch"
+                android:inputType="text" />
+
+            <Spinner
+                android:id="@+id/spinnerListenFilter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <de.tbhelfer.ui.streckenpunkte.StreckenpunkteSkizzeView
+            android:id="@+id/skizzeStreckenpunkte"
+            android:layout_width="match_parent"
+            android:layout_height="110dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/txtLetzterExport"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/streckenpunkte_patch4b_last_export_placeholder"
+            android:textSize="12sp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerStreckenpunkte"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/streckenpunkte_patch_footer"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+</LinearLayout>

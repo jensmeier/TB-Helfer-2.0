@@ -1,0 +1,10 @@
+<resources>
+    <string name="streckenpunkte_context_missing">Geladener Kontext: noch keiner</string>
+    <string name="streckenpunkte_context_loaded">Geladener Kontext: %1$s</string>
+    <string name="streckenpunkte_context_missing_toast">Bitte zuerst in der aktiven Baustelle freie Strecke oder Bahnhof laden.</string>
+    <string name="streckenpunkte_context_new_point_title">Neuer Streckenpunkt · %1$s</string>
+    <string name="streckenpunkte_automatik_start_hint_with_context">Track läuft mit und speichert alle 10 m einen GPS-Punkt. An sicheren Stellen setzt du einen KM-Anker.
+
+Geladener Kontext:
+%1$s</string>
+</resources>

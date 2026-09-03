@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tvAbnahmeListeTitel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Abnahmen"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvAbnahmeListeBaustelle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnNeueStrukturAbnahme"
+                style="@style/TbButtonCompact"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Neue Abnahme" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAbnahmeAlle"
+                style="@style/TbButtonCompact"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Alle" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFilterAbnahmeJa"
+                style="@style/TbButtonCompact"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Ja 0" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFilterAbnahmeNein"
+                style="@style/TbButtonCompact"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:layout_weight="1"
+                android:text="Nein 0" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFilterAbnahmePruefung"
+                style="@style/TbButtonCompact"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:layout_weight="1.35"
+                android:text="In Prüfung 0" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/containerAbnahmen"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical" />
+
+        <TextView
+            android:id="@+id/tvKeineAbnahmen"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:gravity="center"
+            android:text="Noch keine strukturierte Abnahme vorhanden."
+            android:textSize="14sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

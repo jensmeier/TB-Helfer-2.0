@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <AutoCompleteTextView
+            android:id="@+id/actBahnhof"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Bahnhof oder Stadt"
+            android:inputType="textCapWords" />
+
+        <LinearLayout
+            android:id="@+id/layoutBahnhofArt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnArtGleis"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Gleis" />
+
+            <Button
+                android:id="@+id/btnArtWeiche"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Weiche" />
+        </LinearLayout>
+
+        <EditText
+            android:id="@+id/edtBahnhofGleis"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Gleis"
+            android:inputType="textCapCharacters" />
+
+        <EditText
+            android:id="@+id/edtBahnhofWeiche"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Weiche"
+            android:inputType="textCapCharacters"
+            android:visibility="gone" />
+
+
+        <Button
+            android:id="@+id/btnNeuenBahnhofAnlegen"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Neuen Bahnhof anlegen" />
+
+        <TextView
+            android:id="@+id/txtBahnhofNeuHinweis"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Wenn der Bahnhof nicht gefunden wird, kannst du ihn über den Button neu anlegen."
+            android:textSize="12sp" />
+
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,83 @@
+--- /mnt/data/APP_orig/gradle.properties	2026-01-30 12:03:38.000000000 +0000
++++ /mnt/data/APP_work/gradle.properties	2026-01-30 12:19:56.641922647 +0000
+@@ -20,17 +20,15 @@
+ # Optional: kann noch mehr Speed bringen, bricht aber bei manchen Plugins
+ # org.gradle.configuration-cache=true
+ android.useAndroidX=true
+-android.enableJetifier=true
++## Jetifier ist in modernen AndroidX-Projekten meistens unnötig.
++## Flag entfernen -> keine Deprecation-Warnung mehr.
+ 
+ # -----------------------------------------------------------------------------
+-# AGP 9.x (Jan 2026): "built-in Kotlin" ist standardmäßig aktiv und kollidiert
+-# aktuell mit KSP (Room). Deshalb opt-out, bis KSP/Room (oder dein Projekt)
+-# vollständig auf built-in Kotlin migriert ist.
++# AGP 9.x: built-in Kotlin + new DSL sind standardmäßig aktiv.
+ #
+-# Wenn du später built-in Kotlin aktivieren willst:
+-#  - diese beiden Properties entfernen
+-#  - `org.jetbrains.kotlin.android` Plugin aus build.gradle(.kts) entfernen
+-#  - KSP/Room-Setup prüfen
++# Ziel: KEINE Deprecation-Warnings mehr in Android Studio.
++# Darum haben wir die Opt-out Flags entfernt:
++#   - android.builtInKotlin=false
++#   - android.newDsl=false
++# und außerdem Jetifier deaktiviert (weil das Projekt rein auf AndroidX basiert).
+ # -----------------------------------------------------------------------------
+-android.builtInKotlin=false
+-android.newDsl=false
+--- /mnt/data/APP_orig/build.gradle.kts	2026-01-30 12:03:38.000000000 +0000
++++ /mnt/data/APP_work/build.gradle.kts	2026-01-30 12:20:18.836232956 +0000
+@@ -3,10 +3,6 @@
+     // Siehe: Android Gradle plugin 9.0.0 Release Notes (Compatibility).
+     id("com.android.application") version "9.0.0" apply false
+ 
+-    // Wir bleiben (vorerst) beim externen Kotlin-Plugin, weil KSP/Room aktuell noch
+-    // nicht sauber mit AGP "built‑in Kotlin" zusammen spielt. (Opt‑Out in gradle.properties)
+-    id("org.jetbrains.kotlin.android") version "2.3.0" apply false
+-
+     // KSP2 ist Pflicht für Kotlin 2.3+ und AGP 9+.
+     id("com.google.devtools.ksp") version "2.3.5" apply false
+ }
+--- /mnt/data/APP_orig/app/build.gradle.kts	2026-01-30 12:03:38.000000000 +0000
++++ /mnt/data/APP_work/app/build.gradle.kts	2026-01-30 12:20:37.625691499 +0000
+@@ -1,6 +1,5 @@
+ plugins {
+     id("com.android.application")
+-    id("org.jetbrains.kotlin.android")
+     id("com.google.devtools.ksp")
+ }
+ 
+@@ -52,11 +51,8 @@
+     }
+ }
+ 
+-kotlin {
+-    compilerOptions {
+-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+-    }
+-}
++// Built-in Kotlin (AGP 9) übernimmt den JVM Target standardmäßig aus
++// android.compileOptions.targetCompatibility.
+ 
+ // HIGH-IMPACT: Room Schema-Export (hilft bei Migrationen & Tests; kostet im Build praktisch nichts)
+ // Ordner: app/schemas/
+--- /mnt/data/APP_orig/README.md	2026-01-30 12:03:38.000000000 +0000
++++ /mnt/data/APP_work/README.md	2026-01-30 12:22:19.507119700 +0000
+@@ -14,10 +14,10 @@
+ `app/src/main/res/layout/fragment_startmenue.xml` ist **1:1** dein hochgeladenes Layout (Farben/Style bleiben gleich).
+ 
+ ## Wichtig: Gradle/AGP Versionen
+-- Android Gradle Plugin: 8.13.2
+-- Kotlin: 2.2.21
+-- Gradle (Wrapper): 8.13
++- Android Gradle Plugin (AGP): 9.0.0
++- Gradle (Wrapper): 9.1.0
++- Kotlin: **built-in Kotlin** über AGP 9 (kein `org.jetbrains.kotlin.android` Plugin mehr nötig)
+ 
+-Wenn Android Studio beim ersten Öffnen wegen Gradle Wrapper meckert:
+-- **Empfehlung:** In Android Studio einmal ein neues "Empty Views Activity" Projekt erzeugen und dann diesen Inhalt drüberkopieren.
+-  Dadurch werden `gradlew`, `gradlew.bat` und `gradle-wrapper.jar` automatisch korrekt angelegt.
++Hinweis: Im Build-Output sollten keine Warnungen mehr auftauchen zu:
++`android.builtInKotlin`, `android.newDsl`, `android.enableJetifier` oder dem
++`org.jetbrains.kotlin.android` Plugin.

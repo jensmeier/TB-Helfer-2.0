@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_title"
+            android:textStyle="bold"
+            android:textSize="22sp"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingBottom="12dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_hint"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.85"
+            android:paddingBottom="12dp" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/ui_fragment_btb_pdf_einstellungen_raster"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                android:id="@+id/acRaster"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="none" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Maximale Fotos im BTB-PDF"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etMaxFotosPdf"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_meta"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingTop="16dp"
+            android:paddingBottom="8dp" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swDatum"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_datum" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swUhrzeit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_uhrzeit" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swKm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_km" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swGps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_gps" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swGpsLink"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_gps_link" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swBaustelle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_baustelle" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swKurztext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_kurztext" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swNotiz"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_notiz" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swFirma"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_firma" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swIndikator"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_indikator" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swDateiname"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_btb_pdf_einstellungen_dateiname" />
+
+    </LinearLayout>
+</ScrollView>

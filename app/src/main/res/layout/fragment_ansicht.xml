@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorBackground"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_ansicht_text_1"
+            android:textStyle="bold"
+            android:textSize="22sp"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingBottom="14dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_ansicht_text_2"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingTop="8dp" />
+
+        <RadioGroup
+            android:id="@+id/rgSucheGrid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingTop="8dp">
+
+            <RadioButton
+                android:id="@+id/rbGrid1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_ansicht_grid_1"
+                android:textColor="?attr/colorOnBackground" />
+
+            <RadioButton
+                android:id="@+id/rbGrid2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_ansicht_grid_2"
+                android:checked="true"
+                android:layout_marginStart="16dp"
+                android:textColor="?attr/colorOnBackground" />
+
+            <RadioButton
+                android:id="@+id/rbGrid3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_ansicht_grid_3"
+                android:layout_marginStart="16dp"
+                android:textColor="?attr/colorOnBackground" />
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_ansicht_text_3"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingTop="18dp" />
+
+        <RadioGroup
+            android:id="@+id/rgNightMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="8dp">
+
+            <RadioButton
+                android:id="@+id/rbNightSystem"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_ansicht_text_4"
+                android:textColor="?attr/colorOnBackground"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <RadioButton
+                android:id="@+id/rbNightLight"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_ansicht_text_5"
+                android:textColor="?attr/colorOnBackground"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <RadioButton
+                android:id="@+id/rbNightDark"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_ansicht_text_6"
+                android:textColor="?attr/colorOnBackground"
+                android:singleLine="true"
+                android:ellipsize="end" />
+        </RadioGroup>
+
+    </LinearLayout>
+</ScrollView>

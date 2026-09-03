@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="?attr/colorBackground"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/ui_fragment_baustellen_text_1"
+        style="@style/TextAppearance.TBHelfer.Title"
+        android:textColor="?attr/colorOnBackground"
+        android:paddingBottom="12dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNeueBaustelle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_baustellen_text_2"
+            android:textAllCaps="false"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAktuelleAnzeigen"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:text="@string/ui_fragment_baustellen_text_3"
+            android:textAllCaps="false"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/txtHinweis"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/ui_fragment_baustellen_text_4"
+        style="@style/TextAppearance.TBHelfer.Caption"
+        android:textColor="?attr/colorOnBackground"
+        android:alpha="0.75"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerBaustellen"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="12dp"/>
+
+</LinearLayout>

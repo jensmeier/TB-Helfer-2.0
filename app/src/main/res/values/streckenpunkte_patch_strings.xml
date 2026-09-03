@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="streckenpunkte_patch_title">Streckenpunkte</string>
+    <string name="streckenpunkte_patch_current_site_placeholder">Aktuelle Baustelle: -</string>
+    <string name="streckenpunkte_patch_current_site">Aktuelle Baustelle: %1$s</string>
+    <string name="streckenpunkte_patch_stats_placeholder">Noch keine Streckenpunkte vorhanden</string>
+    <string name="streckenpunkte_patch_hint_placeholder">Hinweis</string>
+    <string name="streckenpunkte_patch_search_hint">Suche nach km, Bezeichnung, Strecke, Bahnhof, Gleis oder Weiche</string>
+    <string name="streckenpunkte_patch_add">Neuer Punkt</string>
+    <string name="streckenpunkte_patch_export">JSON export</string>
+    <string name="streckenpunkte_patch_footer">Löschen per langem Druck. Die Skizze oben zeigt die ersten Treffer vereinfacht als Linie mit Markern.</string>
+
+    <string name="streckenpunkte_patch_delete_title">Streckenpunkt löschen?</string>
+    <string name="streckenpunkte_patch_delete_message">Möchtest du diesen Streckenpunkt wirklich löschen?</string>
+    <string name="streckenpunkte_patch_delete_confirm">Löschen</string>
+
+    <string name="streckenpunkte_patch_need_site">Bitte zuerst eine aktuelle Baustelle auswählen.</string>
+    <string name="streckenpunkte_patch_no_points_export">Keine Streckenpunkte zum Export vorhanden.</string>
+    <string name="streckenpunkte_patch_export_done">JSON exportiert nach: %1$s</string>
+    <string name="streckenpunkte_patch_error_with_reason">Fehler: %1$s</string>
+
+    <string name="streckenpunkte_patch_new_dialog_title">Neuer Streckenpunkt</string>
+    <string name="streckenpunkte_patch_save">Speichern</string>
+    <string name="streckenpunkte_patch_hint_bereich">Strecke oder Bahnhof</string>
+    <string name="streckenpunkte_patch_hint_objekt">Gleis / Weiche / Objekt</string>
+    <string name="streckenpunkte_patch_hint_gps_lat">GPS Breite optional</string>
+    <string name="streckenpunkte_patch_hint_gps_lon">GPS Länge optional</string>
+
+    <string name="streckenpunkte_patch_error_km">Bitte eine gültige km-Angabe eingeben.</string>
+    <string name="streckenpunkte_patch_error_bezeichnung">Bitte eine Bezeichnung eingeben.</string>
+    <string name="streckenpunkte_patch_error_gps">Bitte gültige GPS-Werte eingeben.</string>
+
+    <string-array name="streckenpunkte_patch_km_suffix_values">
+        <item>km ohne Suffix</item>
+        <item>km -1</item>
+        <item>km -2</item>
+    </string-array>
+
+    <string-array name="streckenpunkte_patch_typ_values">
+        <item>EXAKT</item>
+        <item>HILFS</item>
+        <item>WEICHE_WA</item>
+        <item>WEICHE_WS</item>
+        <item>WEICHE_WAZ</item>
+    </string-array>
+</resources>

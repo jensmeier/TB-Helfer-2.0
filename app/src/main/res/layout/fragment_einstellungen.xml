@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorBackground"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Einstellungen"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingBottom="6dp"
+            style="@style/TextAppearance.TBHelfer.Title" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Widget-Einstellungen sind direkt erreichbar; seltene Wartungs- und Diagnosefunktionen liegen zusammen."
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.8"
+            android:paddingBottom="16dp"
+            style="@style/TextAppearance.TBHelfer.Body" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNutzerFirma"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Nutzer / Firma"
+            android:gravity="center" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAnzeigeOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="Anzeige &amp; Overlay"
+            android:gravity="center" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnKameraFoto"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="Kamera / Foto"
+            android:gravity="center" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBtbPdf"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="BTB / PDF"
+            android:gravity="center" />
+
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWidget"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="Startbildschirm-Widget"
+            android:gravity="center" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWartungDiagnose"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="24dp"
+            android:text="Wartung &amp; Diagnose"
+            android:gravity="center" />
+
+    </LinearLayout>
+</ScrollView>

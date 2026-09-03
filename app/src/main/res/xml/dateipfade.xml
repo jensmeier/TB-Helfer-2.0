@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- App-spezifischer Bilder-Ordner: /Android/data/<paket>/files/Pictures/... -->
+    <external-files-path
+        name="bilder"
+        path="Pictures/" />
+
+    <!-- App-spezifischer Dokumente-Ordner: /Android/data/<paket>/files/Documents/... -->
+    <external-files-path
+        name="dokumente"
+        path="Documents/" />
+
+    <external-path
+        name="oeffentliche_dokumente"
+        path="Documents/" />
+</paths>

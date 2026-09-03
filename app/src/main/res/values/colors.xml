@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primärfarbe laut App-Icon -->
+    <color name="tb_blue">#2F7BFF</color>
+
+    <!-- Akzent: positives Speichern / OK -->
+    <color name="tb_green">#2E7D32</color>
+
+    <!-- Light -->
+    <color name="tb_bg">#FFFFFF</color>
+    <color name="tb_surface">@color/tb_bg</color>
+    <color name="tb_on_bg">#000000</color>
+    <color name="tb_on_surface">@color/tb_on_bg</color>
+    <color name="tb_text_secondary">#555555</color>
+
+    <!-- Widgets (RemoteViews): keine Theme-Attrs verwenden -->
+    <color name="widget_bg">#FFFFFF</color>
+    <color name="widget_text">#000000</color>
+    <color name="widget_text_secondary">#333333</color>
+</resources>

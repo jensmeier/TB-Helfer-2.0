@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/txtAnkerInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Automatik"
+            android:textSize="13sp" />
+
+        <EditText
+            android:id="@+id/edtAnkerKm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="km"
+            android:inputType="numberDecimal" />
+
+        <EditText
+            android:id="@+id/edtAnkerNotiz"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Notiz (optional)"
+            android:inputType="textMultiLine"
+            android:minLines="2" />
+    </LinearLayout>
+</ScrollView>

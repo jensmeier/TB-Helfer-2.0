@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="?attr/colorBackground">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="10dp"
+        android:text="Planausschnitt zuschneiden\nZoomen/verschieben oder Kreis/Pfeil wählen und im Plan aufziehen."
+        android:textStyle="bold"
+        android:textColor="?attr/colorOnBackground" />
+
+    <de.tbhelfer.ui.abnahme.PlanCropView
+        android:id="@+id/planCropView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fillViewport="true"
+        android:scrollbars="none">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingLeft="8dp"
+            android:paddingTop="6dp"
+            android:paddingRight="8dp">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPlanRotate"
+                style="@style/TbButtonCompact"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Drehen" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPlanCircle"
+                style="@style/TbButtonCompact"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:text="Kreis" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPlanArrow"
+                style="@style/TbButtonCompact"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:text="Pfeil" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPlanMarkClear"
+                style="@style/TbButtonCompact"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:text="Markierung löschen" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <EditText
+        android:id="@+id/etPlanMarkText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="8dp"
+        android:layout_marginTop="3dp"
+        android:layout_marginRight="8dp"
+        android:hint="Kurzer Text im Planausschnitt (optional)"
+        android:inputType="textCapSentences"
+        android:maxLines="1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPlanCancel"
+            style="@style/TbButtonCompact"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Abbrechen" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPlanSave"
+            style="@style/TbButtonCompact"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:text="Übernehmen" />
+    </LinearLayout>
+</LinearLayout>

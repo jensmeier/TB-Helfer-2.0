@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/scrollAbnahmeEditor"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <TextView
+            android:id="@+id/tvAbnahmeEditorTitel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Abnahme"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvAbnahmeEditorStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Entwurf"
+            android:textStyle="bold" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Unterbaustelle">
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                android:id="@+id/acAbnahmeUnterbaustelle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="none" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Bezeichnung der Abnahme">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etAbnahmeBezeichnung"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textCapSentences" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Objekt">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etAbnahmeObjekt"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textCapSentences" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="Objekt / Planbezug"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPlanAufnehmen"
+                style="@style/TbButtonCompact"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Plan fotografieren" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPlanBildWaehlen"
+                style="@style/TbButtonCompact"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:layout_weight="1"
+                android:text="Bild wählen" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPlanPdfWaehlen"
+                style="@style/TbButtonCompact"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:layout_weight="1"
+                android:text="PDF wählen" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/containerAbnahmeAnlagen"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="Firma">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etAbnahmeFirma"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Weitere beteiligte Firmen">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etAbnahmeWeitereFirmen"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Abnehmender">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etAbnahmeAbnehmender"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Anwesende">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etAbnahmeAnwesende"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textMultiLine"
+                android:minLines="2" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="KM von">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etAbnahmeKmVon"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="numberDecimal" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:hint="KM bis">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etAbnahmeKmBis"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="numberDecimal" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Ergebnis"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnErgebnisAbgenommen"
+                style="@style/TbButtonCompact"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="2"
+                android:minHeight="44dp"
+                android:text="Abgenommen"
+                android:textAllCaps="false"
+                android:textSize="10sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnErgebnisNichtAbgenommen"
+                style="@style/TbButtonCompact"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:maxLines="2"
+                android:minHeight="44dp"
+                android:text="Nicht abgenommen"
+                android:textAllCaps="false"
+                android:textSize="9sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnErgebnisRestpunkte"
+                style="@style/TbButtonCompact"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:maxLines="2"
+                android:minHeight="44dp"
+                android:text="Mit Restpunkten"
+                android:textAllCaps="false"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <!-- Unsichtbares Kompatibilitätsfeld für bestehende Speicher-/Exportlogik. -->
+        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+            android:id="@+id/acAbnahmeErgebnis"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:visibility="gone" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilAbnahmeRestpunkte"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Restpunkte">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etAbnahmeRestpunkte"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textMultiLine"
+                android:minLines="3" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Kommentar">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etAbnahmeKommentar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textMultiLine"
+                android:minLines="3" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Fotos der Abnahme"
+                android:textStyle="bold" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAbnahmeFotoHinzufuegen"
+                style="@style/TbButtonCompact"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Foto hinzufügen" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/containerAbnahmeFotos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAbnahmeEntwurfSpeichern"
+                style="@style/TbButtonCompact"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Entwurf speichern" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAbnahmePdfVorschau"
+                style="@style/TbButtonCompact"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:layout_weight="1"
+                android:text="PDF-Vorschau" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAbnahmeAbschliessen"
+            style="@style/TbButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Abnahme abschließen" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAbnahmeWiederOeffnen"
+            style="@style/TbButtonCompact"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Zur Korrektur wieder öffnen"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAbnahmeLoeschen"
+            style="@style/TbButtonCompact"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="28dp"
+            android:text="Abnahme löschen" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

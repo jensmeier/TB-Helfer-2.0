@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widgetUnifiedRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="10dp"
+    android:background="@color/widget_bg">
+
+    <!-- Nur RemoteViews-taugliche Standard-Views verwenden. -->
+    <LinearLayout
+        android:id="@+id/widgetCameraOnly"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/widgetCameraOnlyIcon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_camera_widget"
+            android:contentDescription="Kamera öffnen" />
+
+        <TextView
+            android:id="@+id/widgetCameraOnlyText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Kamera"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="@color/widget_text" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widgetContent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Der Informationsbereich nutzt den freien Platz. Die Aktionszeile bleibt
+             dadurch unabhängig von der Widget-Höhe immer am unteren Rand. -->
+        <LinearLayout
+            android:id="@+id/widgetInfoArea"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widgetHeaderTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Aktuelle Baustelle"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text_secondary"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/widgetSiteName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Keine Baustelle gewählt"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/widgetSubSiteName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Unterbaustelle"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetSubSubSiteName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Unter-Unterbaustelle"
+                android:textSize="12sp"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Kein aktueller BTB"
+                android:textSize="10sp"
+                android:textColor="@color/widget_text_secondary"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/widgetLatestTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Letzte Einträge"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text_secondary"
+                android:maxLines="1"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetLine1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:text="Widget wird aktualisiert …"
+                android:textSize="11sp"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/widgetLine2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetLine3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetLine4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetLine5"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetLine6"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetLine7"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetLine8"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetLine9"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetLine10"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="@color/widget_text"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+            <!-- IDs bleiben für bestehende Installationen vorhanden. -->
+            <TextView
+                android:id="@+id/widgetLocationLine1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetLocationLine2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:textColor="@color/widget_text_secondary"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Mängel- und Abnahmestatus liegen direkt über der Aktionszeile. -->
+        <LinearLayout
+            android:id="@+id/widgetStatusArea"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/widgetStatusLine1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/widgetStatusLine2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="@color/widget_text"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Keine Space- oder Button-Views. Die Reihe bleibt am unteren Rand. -->
+        <LinearLayout
+            android:id="@+id/widgetButtonRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/widgetAction1"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingLeft="4dp"
+                android:paddingRight="4dp"
+                android:text="+ Eintrag"
+                android:textSize="10sp"
+                android:textColor="#000000"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:background="@drawable/bg_widget_button" />
+
+            <TextView
+                android:id="@+id/widgetAction2"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:layout_marginLeft="4dp"
+                android:gravity="center"
+                android:paddingLeft="4dp"
+                android:paddingRight="4dp"
+                android:text="+ Abnahme"
+                android:textSize="10sp"
+                android:textColor="#000000"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:background="@drawable/bg_widget_button" />
+
+            <ImageView
+                android:id="@+id/widgetCameraAction"
+                android:layout_width="40dp"
+                android:layout_height="38dp"
+                android:layout_marginLeft="4dp"
+                android:padding="8dp"
+                android:src="@drawable/ic_camera_widget"
+                android:contentDescription="Kamera öffnen"
+                android:background="@drawable/bg_widget_button" />
+
+            <TextView
+                android:id="@+id/widgetRefreshPosition"
+                android:layout_width="40dp"
+                android:layout_height="38dp"
+                android:layout_marginLeft="4dp"
+                android:gravity="center"
+                android:text="↻"
+                android:textSize="18sp"
+                android:textColor="#000000"
+                android:background="@drawable/bg_widget_button"
+                android:visibility="gone" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

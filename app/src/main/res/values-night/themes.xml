@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Dark Mode: dunkler Hintergrund, Buttons bleiben TB-Blau -->
+    <style name="Theme.TBHelfer" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="fontFamily">sans-serif</item>
+
+        <item name="android:windowBackground">@color/tb_bg</item>
+        <item name="colorBackground">@color/tb_bg</item>
+        <item name="colorSurface">@color/tb_surface</item>
+        <item name="colorOnBackground">@color/tb_on_bg</item>
+        <item name="colorOnSurface">@color/tb_on_surface</item>
+
+        <item name="colorPrimary">@color/tb_blue</item>
+        <item name="colorPrimaryVariant">@color/tb_blue</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+
+        <item name="materialButtonStyle">@style/TbButton</item>
+
+        <!-- Einheitliche Textdarstellung (auch im Night-Theme) -->
+        <item name="android:textViewStyle">@style/Widget.TBHelfer.TextView</item>
+        <item name="textAppearanceHeadline6">@style/TextAppearance.TBHelfer.Title</item>
+        <item name="textAppearanceSubtitle1">@style/TextAppearance.TBHelfer.Subtitle</item>
+        <item name="textAppearanceBody1">@style/TextAppearance.TBHelfer.Body</item>
+        <item name="textAppearanceCaption">@style/TextAppearance.TBHelfer.Caption</item>
+        <item name="textAppearanceButton">@style/TextAppearance.TBHelfer.Button</item>
+    </style>
+
+</resources>

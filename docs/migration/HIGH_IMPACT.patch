@@ -1,0 +1,51 @@
+--- /mnt/data/app_full/build.gradle.kts	2026-01-24 16:22:38.000000000 +0000
++++ /mnt/data/APP_high_impact/app/build.gradle.kts	2026-01-30 08:17:31.719444575 +0000
+@@ -20,7 +20,10 @@
+ 
+     buildTypes {
+         release {
+-            isMinifyEnabled = false
++            // HIGH-IMPACT: Release kleiner + schneller, aber trotzdem safe (Room/DataStore/CameraX sind i.d.R. ok)
++            isMinifyEnabled = true
++            isShrinkResources = true
++
+             proguardFiles(
+                 getDefaultProguardFile("proguard-android-optimize.txt"),
+                 "proguard-rules.pro"
+@@ -32,6 +35,13 @@
+         sourceCompatibility = JavaVersion.VERSION_17
+         targetCompatibility = JavaVersion.VERSION_17
+     }
++
++    // Verhindert gelegentliche META-INF Doppel-Einträge (klassischer Gradle/AndroidX Painpoint)
++    packaging {
++        resources {
++            excludes += "/META-INF/{AL2.0,LGPL2.1}"
++        }
++    }
+ }
+ 
+ kotlin {
+@@ -40,6 +50,14 @@
+     }
+ }
+ 
++// HIGH-IMPACT: Room Schema-Export (hilft bei Migrationen & Tests; kostet im Build praktisch nichts)
++// Ordner: app/schemas/
++ksp {
++    arg("room.schemaLocation", "$projectDir/schemas")
++    arg("room.incremental", "true")
++    arg("room.expandProjection", "true")
++}
++
+ dependencies {
+     implementation("androidx.core:core-ktx:1.17.0")
+     implementation("androidx.appcompat:appcompat:1.7.0")
+@@ -55,7 +73,6 @@
+ 
+     implementation("androidx.exifinterface:exifinterface:1.3.7")
+ 
+-
+     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+ 
+     // Einstellungen / Key-Value

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="10dp"
+    android:layout_marginTop="8dp"
+    android:background="@drawable/bg_card">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilVon"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+            android:layout_width="62dp"
+            android:layout_height="56dp"
+            android:hint="von"
+            app:hintTextAppearance="@style/TextAppearance.TbTimeHint"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/acVon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:ems="5"
+                android:singleLine="true"
+                android:gravity="center"
+                android:hint="XX:XX"
+                android:imeOptions="actionNext"
+                android:paddingStart="3dp"
+                android:paddingEnd="3dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:id="@+id/tvTimeDash"
+            android:layout_width="8dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="1dp"
+            android:layout_marginEnd="1dp"
+            android:text="-"
+            android:textAlignment="center"
+            android:textStyle="bold"
+            app:layout_constraintStart_toEndOf="@id/tilVon"
+            app:layout_constraintTop_toTopOf="@id/tilVon"
+            app:layout_constraintBottom_toBottomOf="@id/tilVon" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilBis"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+            android:layout_width="62dp"
+            android:layout_height="56dp"
+            android:hint="bis"
+            app:hintTextAppearance="@style/TextAppearance.TbTimeHint"
+            app:layout_constraintStart_toEndOf="@id/tvTimeDash"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/acBis"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:ems="5"
+                android:singleLine="true"
+                android:gravity="center"
+                android:hint="XX:XX"
+                android:imeOptions="actionNext"
+                android:paddingStart="3dp"
+                android:paddingEnd="3dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilFirma"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="1dp"
+            android:hint="@string/ui_fragment_foto_erfassen_text_4"
+            app:layout_constraintStart_toEndOf="@id/tilBis"
+            app:layout_constraintEnd_toStartOf="@id/btnRemoveFirma"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                android:id="@+id/acFirma"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:singleLine="true"
+                android:includeFontPadding="false"
+                android:imeOptions="actionNext" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <ImageButton
+            android:id="@+id/btnRemoveFirma"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/ui_item_firma_block_contentdescription_1"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="@id/tilFirma" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <LinearLayout
+        android:id="@+id/rowsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="8dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAddRow"
+        style="@style/TbButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="@string/ui_item_firma_block_text_2"
+        android:textAllCaps="false" />
+
+</LinearLayout>

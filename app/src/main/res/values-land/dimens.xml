@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Querformat: Bedienleiste näher an den unteren Rand, aber weiterhin oberhalb des Footers. -->
+    <dimen name="camera_button_bottom_margin">32dp</dimen>
+</resources>

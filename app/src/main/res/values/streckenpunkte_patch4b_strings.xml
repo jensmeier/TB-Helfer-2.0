@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="streckenpunkte_patch4b_export_sessions">Exporte</string>
+    <string name="streckenpunkte_patch4b_last_export_placeholder">Noch kein Export vorhanden.</string>
+    <string name="streckenpunkte_patch4b_last_export">Letzter Export: %1$s · %2$s · %3$d Punkte · %4$d GPS · %5$s</string>
+    <string name="streckenpunkte_patch4b_missing_file_suffix">%1$s (Datei fehlt)</string>
+    <string name="streckenpunkte_patch4b_export_done_with_summary">JSON exportiert nach: %1$s
+Punkte: %2$d · mit GPS: %3$d</string>
+    <string name="streckenpunkte_patch4b_history_title">Export-Liste</string>
+    <string name="streckenpunkte_patch4b_history_empty">Noch keine Exporte gespeichert.</string>
+    <string name="streckenpunkte_patch4b_history_item">%1$s
+%2$s · %3$d Punkte · %4$d GPS · %5$s</string>
+    <string name="streckenpunkte_patch4b_history_actions_title">Export-Aktionen</string>
+    <string name="streckenpunkte_patch4b_history_detail">Baustelle: %1$s
+Zeit: %2$s
+Punkte: %3$d
+Mit GPS: %4$d
+Datei: %5$s
+Pfad: %6$s</string>
+    <string name="streckenpunkte_patch4b_history_action_repeat">Erneut exportieren</string>
+    <string name="streckenpunkte_patch4b_repeat_done">Export erneut gespeichert: %1$s</string>
+    <string name="streckenpunkte_patch4b_file_missing">Die ursprüngliche Exportdatei wurde nicht gefunden.</string>
+</resources>

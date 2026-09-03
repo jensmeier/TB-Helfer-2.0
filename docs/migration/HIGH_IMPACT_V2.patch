@@ -1,0 +1,262 @@
+diff -ruN /mnt/data/app_proj_orig/app/AGGRESSIVE_CLEANUP_REPORT.md /mnt/data/app_proj/app/AGGRESSIVE_CLEANUP_REPORT.md
+--- /mnt/data/app_proj_orig/app/AGGRESSIVE_CLEANUP_REPORT.md	2026-01-30 08:04:24.000000000 +0000
++++ /mnt/data/app_proj/app/AGGRESSIVE_CLEANUP_REPORT.md	1970-01-01 00:00:00.000000000 +0000
+@@ -1,85 +0,0 @@
+-# Aggressive Cleanup & Optimierung – Report (app.zip)
+-
+-- Datum: 2026-01-30
+-
+-## Überblick
+-
+-- Entfernte Pfade: **6**
+-
+-- Größter Gewinn: Entfernen des `build/` Ordners (Build-Artefakte gehören nicht ins Repo/ZIP)
+-
+-
+-## Gelöscht (mit Begründung)
+-
+-- `build` — Gradle/AGP Build-Output (wird automatisch neu erzeugt, extrem groß, niemals versionieren).
+-
+-- `src/main/AGGRESSIVE_CLEANUP_REPORT_APP2.md` — Alte Reports im `src/main` (nicht build-relevant; besser außerhalb ablegen).
+-
+-- `src/main/AGGRESSIVE_CLEANUP_REPORT_APP2_FIXED.md` — Alte Reports im `src/main` (nicht build-relevant; besser außerhalb ablegen).
+-
+-- `src/main/APP2_aggressive.zip` — Alte Export-ZIPs im `src/main` (gehören nicht in den Source-Tree, werden nicht vom Build genutzt).
+-
+-- `src/main/APP2_cleaned.zip` — Alte Export-ZIPs im `src/main` (gehören nicht in den Source-Tree, werden nicht vom Build genutzt).
+-
+-- `src/main/ic_launcher-playstore.png` — Play-Store Asset im `src/main` Root (vom Android Build nicht verwendet; besser in `art/` oder außerhalb).
+-
+-
+-## Querprüfung (was ich geprüft habe)
+-
+-- Ressourcen-Referenzen: `R.*` in Kotlin + `@type/name` in XML + Manifest/Navigation
+-
+-- Attribute-Referenzen: `?attr/*` (u.a. `colorBackground`)
+-
+-- Duplikate: SHA-256 über Bilder (PNG/WebP) und Kotlin-Dateien
+-
+-
+-## Was zusammenhängt
+-
+-- `res/values/attrs.xml` definiert `attr/colorBackground`, weil Layouts/Styles `?attr/colorBackground` verwenden.
+-
+-- `AndroidManifest.xml` referenziert `@xml/dateipfade` (FileProvider) und Widget-Provider XMLs.
+-
+-- Navigation (`res/navigation/nav_graph.xml`) referenziert die UI-Fragments.
+-
+-
+-## Optimierungs-Vorschläge (High impact)
+-
+-### 1) KSP1 → KSP2 Migration (damit AGP 9/Kotlin 2.3 nicht brechen)
+-
+-- Du bekommst bereits die Warnung, dass KSP1 deprecated ist.
+-
+-- **Ziel:** Kotlin-Plugin + KSP-Plugin auf kompatible Versionen bringen und KSP2 aktivieren.
+-
+-- Siehe unten im Abschnitt **„Konkrete Schritte“**.
+-
+-
+-### 2) Release-Shrinking aktivieren (APK/AAB deutlich kleiner)
+-
+-- In `build.gradle.kts` (Release): `isMinifyEnabled = true` + `isShrinkResources = true`.
+-
+-- Aktuell ist `proguard-rules.pro` leer; für viele AndroidX-Libs ok, aber bei Reflection evtl. Regeln ergänzen.
+-
+-
+-### 3) Git/ZIP Hygiene
+-
+-- `build/` nie einchecken/verschicken → `.gitignore` hinzugefügt (falls vorher nicht vorhanden).
+-
+-- Große Assets (PlayStore PNGs, Reports, Exports) außerhalb von `src/` halten (z.B. `art/` oder `docs/`).
+-
+-
+-## Konkrete Schritte: KSP2 (ohne Ratespiel)
+-
+-1. Root-Projekt: Kotlin- & KSP-Plugin-Versionen **aufeinander abstimmen** (KSP-Version muss zur Kotlin-Version passen).
+-
+-2. In `gradle.properties` (Root) je nach Setup KSP2 aktivieren (siehe KSP-Doku).
+-
+-3. Sync + Build; falls Room/Annotation-Prozessoren meckern: Versions-Matrix prüfen.
+-
+-
+-## Zusätzlich in dieser Variante: Dependency-Update
+-- `androidx.activity:activity-ktx` → **1.12.3**
+-- `androidx.recyclerview:recyclerview` → **1.4.0**
+-- `androidx.navigation:*` → **2.9.7**
+-- `androidx.camera:*` → **1.5.3**
+-- `androidx.exifinterface:exifinterface` → **1.4.2**
+-- `com.google.android.material:material` → **1.13.0**
+diff -ruN /mnt/data/app_proj_orig/app/build.gradle.kts /mnt/data/app_proj/app/build.gradle.kts
+--- /mnt/data/app_proj_orig/app/build.gradle.kts	2026-01-30 08:22:06.000000000 +0000
++++ /mnt/data/app_proj/app/build.gradle.kts	2026-01-30 09:07:07.543508471 +0000
+@@ -6,11 +6,14 @@
+ 
+ android {
+     namespace = "de.tbhelfer"
+-    compileSdk = 36
++    // Google Play verlangt für Updates mind. Target API 35 (Android 15).
++    // Compile SDK 35 bleibt stabiler als Preview-APIs.
++    compileSdk = 35
+ 
+     defaultConfig {
+         applicationId = "de.tbhelfer"
+-        minSdk = 35
++        // Code nutzt java.time ohne Desugaring -> minSdk >= 26.
++        minSdk = 26
+         targetSdk = 35
+         versionCode = 1
+         versionName = "0.1"
+Binary files /mnt/data/app_proj_orig/app/src/main/APP2_cleaned.zip and /mnt/data/app_proj/app/src/main/APP2_cleaned.zip differ
+diff -ruN /mnt/data/app_proj_orig/app/src/main/AndroidManifest.xml /mnt/data/app_proj/app/src/main/AndroidManifest.xml
+--- /mnt/data/app_proj_orig/app/src/main/AndroidManifest.xml	2026-01-30 08:04:23.000000000 +0000
++++ /mnt/data/app_proj/app/src/main/AndroidManifest.xml	2026-01-30 09:07:24.368549424 +0000
+@@ -6,6 +6,12 @@
+     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+     <uses-permission android:name="android.permission.INTERNET" />
+ 
++    <!-- Lint/Play-Store: Permission ohne Feature kann Geräte ohne Kamera filtern.
++         required="false" => App bleibt installierbar; Kamera-Features sind optional. -->
++    <uses-feature
++        android:name="android.hardware.camera"
++        android:required="false" />
++
+     <application
+         android:name=".TBHelferApp"
+         android:allowBackup="true"
+Binary files /mnt/data/app_proj_orig/app/src/main/ic_launcher-playstore.png and /mnt/data/app_proj/app/src/main/ic_launcher-playstore.png differ
+diff -ruN /mnt/data/app_proj_orig/build.gradle.kts /mnt/data/app_proj/build.gradle.kts
+--- /mnt/data/app_proj_orig/build.gradle.kts	2026-01-24 16:22:40.000000000 +0000
++++ /mnt/data/app_proj/build.gradle.kts	2026-01-30 09:06:45.284756611 +0000
+@@ -1,6 +1,10 @@
+ plugins {
+-    id("com.android.application") version "8.13.2" apply false
+-    id("org.jetbrains.kotlin.android") version "2.2.21" apply false
+-    // KSP-Version muss zur Kotlin-Version passen (vorderer Teil).
+-    id("com.google.devtools.ksp") version "2.2.21-2.0.4" apply false
++    // AGP 9.0.0 (Jan 2026) – kompatibel mit Gradle 9.1.0+.
++    id("com.android.application") version "9.0.0" apply false
++
++    // Kotlin 2.3.0 (Dec 2025)
++    id("org.jetbrains.kotlin.android") version "2.3.0" apply false
++
++    // KSP 2.3.x (KSP2-Standard). Empfehlung aus Kotlin/Android Doku.
++    id("com.google.devtools.ksp") version "2.3.4" apply false
+ }
+diff -ruN /mnt/data/app_proj_orig/docs/AGGRESSIVE_CLEANUP_REPORT.md /mnt/data/app_proj/docs/AGGRESSIVE_CLEANUP_REPORT.md
+--- /mnt/data/app_proj_orig/docs/AGGRESSIVE_CLEANUP_REPORT.md	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/app_proj/docs/AGGRESSIVE_CLEANUP_REPORT.md	2026-01-30 08:04:24.000000000 +0000
+@@ -0,0 +1,85 @@
++# Aggressive Cleanup & Optimierung – Report (app.zip)
++
++- Datum: 2026-01-30
++
++## Überblick
++
++- Entfernte Pfade: **6**
++
++- Größter Gewinn: Entfernen des `build/` Ordners (Build-Artefakte gehören nicht ins Repo/ZIP)
++
++
++## Gelöscht (mit Begründung)
++
++- `build` — Gradle/AGP Build-Output (wird automatisch neu erzeugt, extrem groß, niemals versionieren).
++
++- `src/main/AGGRESSIVE_CLEANUP_REPORT_APP2.md` — Alte Reports im `src/main` (nicht build-relevant; besser außerhalb ablegen).
++
++- `src/main/AGGRESSIVE_CLEANUP_REPORT_APP2_FIXED.md` — Alte Reports im `src/main` (nicht build-relevant; besser außerhalb ablegen).
++
++- `src/main/APP2_aggressive.zip` — Alte Export-ZIPs im `src/main` (gehören nicht in den Source-Tree, werden nicht vom Build genutzt).
++
++- `src/main/APP2_cleaned.zip` — Alte Export-ZIPs im `src/main` (gehören nicht in den Source-Tree, werden nicht vom Build genutzt).
++
++- `src/main/ic_launcher-playstore.png` — Play-Store Asset im `src/main` Root (vom Android Build nicht verwendet; besser in `art/` oder außerhalb).
++
++
++## Querprüfung (was ich geprüft habe)
++
++- Ressourcen-Referenzen: `R.*` in Kotlin + `@type/name` in XML + Manifest/Navigation
++
++- Attribute-Referenzen: `?attr/*` (u.a. `colorBackground`)
++
++- Duplikate: SHA-256 über Bilder (PNG/WebP) und Kotlin-Dateien
++
++
++## Was zusammenhängt
++
++- `res/values/attrs.xml` definiert `attr/colorBackground`, weil Layouts/Styles `?attr/colorBackground` verwenden.
++
++- `AndroidManifest.xml` referenziert `@xml/dateipfade` (FileProvider) und Widget-Provider XMLs.
++
++- Navigation (`res/navigation/nav_graph.xml`) referenziert die UI-Fragments.
++
++
++## Optimierungs-Vorschläge (High impact)
++
++### 1) KSP1 → KSP2 Migration (damit AGP 9/Kotlin 2.3 nicht brechen)
++
++- Du bekommst bereits die Warnung, dass KSP1 deprecated ist.
++
++- **Ziel:** Kotlin-Plugin + KSP-Plugin auf kompatible Versionen bringen und KSP2 aktivieren.
++
++- Siehe unten im Abschnitt **„Konkrete Schritte“**.
++
++
++### 2) Release-Shrinking aktivieren (APK/AAB deutlich kleiner)
++
++- In `build.gradle.kts` (Release): `isMinifyEnabled = true` + `isShrinkResources = true`.
++
++- Aktuell ist `proguard-rules.pro` leer; für viele AndroidX-Libs ok, aber bei Reflection evtl. Regeln ergänzen.
++
++
++### 3) Git/ZIP Hygiene
++
++- `build/` nie einchecken/verschicken → `.gitignore` hinzugefügt (falls vorher nicht vorhanden).
++
++- Große Assets (PlayStore PNGs, Reports, Exports) außerhalb von `src/` halten (z.B. `art/` oder `docs/`).
++
++
++## Konkrete Schritte: KSP2 (ohne Ratespiel)
++
++1. Root-Projekt: Kotlin- & KSP-Plugin-Versionen **aufeinander abstimmen** (KSP-Version muss zur Kotlin-Version passen).
++
++2. In `gradle.properties` (Root) je nach Setup KSP2 aktivieren (siehe KSP-Doku).
++
++3. Sync + Build; falls Room/Annotation-Prozessoren meckern: Versions-Matrix prüfen.
++
++
++## Zusätzlich in dieser Variante: Dependency-Update
++- `androidx.activity:activity-ktx` → **1.12.3**
++- `androidx.recyclerview:recyclerview` → **1.4.0**
++- `androidx.navigation:*` → **2.9.7**
++- `androidx.camera:*` → **1.5.3**
++- `androidx.exifinterface:exifinterface` → **1.4.2**
++- `com.google.android.material:material` → **1.13.0**
+Binary files /mnt/data/app_proj_orig/docs/APP2_cleaned.zip and /mnt/data/app_proj/docs/APP2_cleaned.zip differ
+Binary files /mnt/data/app_proj_orig/docs/ic_launcher-playstore.png and /mnt/data/app_proj/docs/ic_launcher-playstore.png differ
+diff -ruN /mnt/data/app_proj_orig/gradle/wrapper/gradle-wrapper.properties /mnt/data/app_proj/gradle/wrapper/gradle-wrapper.properties
+--- /mnt/data/app_proj_orig/gradle/wrapper/gradle-wrapper.properties	2026-01-24 16:22:40.000000000 +0000
++++ /mnt/data/app_proj/gradle/wrapper/gradle-wrapper.properties	2026-01-30 09:06:55.092045035 +0000
+@@ -1,5 +1,5 @@
+ distributionBase=GRADLE_USER_HOME
+ distributionPath=wrapper/dists
+-distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip
++distributionUrl=https\://services.gradle.org/distributions/gradle-9.1-bin.zip
+ zipStoreBase=GRADLE_USER_HOME
+ zipStorePath=wrapper/dists
+diff -ruN /mnt/data/app_proj_orig/gradle.properties /mnt/data/app_proj/gradle.properties
+--- /mnt/data/app_proj_orig/gradle.properties	2026-01-30 08:28:01.000000000 +0000
++++ /mnt/data/app_proj/gradle.properties	2026-01-30 09:06:27.336604200 +0000
+@@ -21,3 +21,12 @@
+ # org.gradle.configuration-cache=true
+ android.useAndroidX=true
+ android.enableJetifier=true
++
++# AGP 9.x: Die neue DSL ist standardmäßig aktiv. Solange du nicht alle Plugins/Build-Logik
++# angepasst hast, ist es deutlich stabiler, vorerst auf die alte DSL zu opt-outen.
++# (Kann später wieder entfernt werden, wenn alles kompatibel ist.)
++android.newDsl=false
++
++# AGP 9.x bringt "built-in Kotlin" (Runtime-Dependency auf Kotlin Gradle Plugin) mit.
++# Wenn du die Kotlin/KSP Versionen explizit steuerst, ist es oft stabiler, built-in Kotlin auszuschalten.
++android.builtInKotlin=false

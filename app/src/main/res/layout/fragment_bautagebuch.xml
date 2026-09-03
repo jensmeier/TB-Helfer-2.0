@@ -1,0 +1,1531 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/scrollRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:background="?attr/colorBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+
+            <!-- Baustellenname (aktuelle Baustelle) -->
+            <TextView
+                android:id="@+id/tvTitleBaustelle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text=""
+                android:textStyle="bold"
+                android:textSize="18sp"
+                android:textColor="?attr/colorOnBackground"
+                android:maxLines="2"
+                android:ellipsize="end" />
+
+            <!-- Bautagebuch Titel -->
+            <TextView
+                android:id="@+id/tvTitleBautagebuch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="@string/ui_fragment_bautagebuch_text_1"
+                android:textSize="14sp"
+                android:textColor="?attr/colorOnBackground"
+                android:paddingTop="2dp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:gravity="start|center_vertical"
+            android:text=""
+            android:textSize="12sp"
+            android:textColor="@color/tb_blue"
+            android:visibility="visible"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="4dp" />
+
+<LinearLayout
+    android:id="@+id/reportQuickBar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:layout_marginBottom="8dp">
+
+    <!-- Blaues Feld: aktueller Bericht -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardCurrentReport"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:layout_weight="1"
+        app:cardCornerRadius="10dp"
+        app:cardElevation="0dp"
+        app:cardBackgroundColor="@color/tb_blue">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:paddingLeft="12dp"
+            android:paddingRight="12dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/tvCurrentReportLine1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/tvCurrentReportLine2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="@android:color/white"
+                android:maxLines="1"
+                android:ellipsize="end" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <Space
+        android:layout_width="10dp"
+        android:layout_height="1dp" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/btnQuickNewBtb"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="0dp"
+        app:cardBackgroundColor="#43A047">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="+"
+                android:textColor="@android:color/white"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+        </FrameLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <Space
+        android:layout_width="10dp"
+        android:layout_height="1dp" />
+
+    <!-- Rotes Feld: Kamera -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/btnQuickCamera"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="0dp"
+        app:cardBackgroundColor="@android:color/holo_red_dark">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <ImageView
+                android:id="@+id/ivQuickCameraIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_camera_widget"
+                app:tint="@android:color/white" />
+
+        </FrameLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/topFieldsToggleRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvTopFieldsToggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_pill"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                android:gravity="center"
+                android:minHeight="36dp"
+                android:paddingStart="14dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="6dp"
+                android:text="Details anzeigen"
+                android:textColor="?attr/colorOnBackground"
+                android:textSize="12sp"
+                android:drawableEnd="@drawable/ic_arrow_drop_down_24"
+                android:drawablePadding="6dp" />
+        </LinearLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardNewBtbStartMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="#F4F7F4"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#C8E6C9"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Neuen BTB starten"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvNewBtbHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Vorschläge nur für den neuen BTB. Aktueller BTB bleibt unverändert."
+                    android:textColor="#616161"
+                    android:textSize="12sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvNewBtbDateTimeLabel"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Datum/Zeit"
+                            android:textColor="?attr/colorOnBackground"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvNewBtbDateTimeProposal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Kein Vorschlag"
+                            android:textColor="#616161"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNewBtbUseDateTime"
+                        style="@style/TbButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="0dp"
+                        android:text="Übernehmen"
+                        android:textAllCaps="false" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvNewBtbPersonalLabel"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Personal"
+                            android:textColor="?attr/colorOnBackground"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvNewBtbPersonalProposal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Kein Vorschlag"
+                            android:textColor="#616161"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNewBtbUsePersonal"
+                        style="@style/TbButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="0dp"
+                        android:text="Übernehmen"
+                        android:textAllCaps="false" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvNewBtbMaschinenLabel"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Geräte/Maschinen"
+                            android:textColor="?attr/colorOnBackground"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvNewBtbMaschinenProposal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Kein Vorschlag"
+                            android:textColor="#616161"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNewBtbUseMaschinen"
+                        style="@style/TbButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="0dp"
+                        android:text="Übernehmen"
+                        android:textAllCaps="false" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvNewBtbWeatherLabel"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Wetter"
+                            android:textColor="?attr/colorOnBackground"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvNewBtbWeatherProposal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Nur Zeiten · kein Vorschlag"
+                            android:textColor="#616161"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNewBtbUseWeather"
+                        style="@style/TbButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="0dp"
+                        android:text="Übernehmen"
+                        android:textAllCaps="false" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:gravity="end|center_vertical"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNewBtbCancel"
+                        style="@style/TbButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Abbrechen"
+                        android:textAllCaps="false" />
+
+                    <Space
+                        android:layout_width="10dp"
+                        android:layout_height="1dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNewBtbStart"
+                        style="@style/TbButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="✓ Neuer BTB"
+                        android:textAllCaps="false" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Start/Ende werden über Datum/Zeit (in der Wetterzeile) gesetzt -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:endIconMode="dropdown_menu"
+                android:hint="@string/ui_fragment_bautagebuch_hint_2">
+
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                    android:id="@+id/etStart"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <Space
+                android:layout_width="12dp"
+                android:layout_height="1dp" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:endIconMode="dropdown_menu"
+                android:hint="@string/ui_fragment_bautagebuch_hint_3">
+
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                    android:id="@+id/etEnde"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/weatherHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="6dp">
+
+            <!-- Linke Hälfte: Wetter -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tvWetterHeader"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ui_fragment_bautagebuch_text_4"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="12sp"
+                    android:paddingEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/tvWetterPreview"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:textAlignment="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:background="@drawable/bg_pill"
+                    android:text="@string/ui_fragment_bautagebuch_text_5"
+                    android:textColor="?attr/colorOnBackground"
+                    android:drawableEnd="@drawable/ic_arrow_drop_down_24"
+                    android:drawablePadding="6dp"
+                    android:maxLines="1"
+                    app:autoSizeTextType="uniform"
+                    app:autoSizeMinTextSize="10sp"
+                    app:autoSizeMaxTextSize="14sp"
+                    app:autoSizeStepGranularity="1sp" />
+            </LinearLayout>
+
+            <Space
+                android:layout_width="12dp"
+                android:layout_height="1dp" />
+
+            <!-- Rechte Hälfte: Datum/Zeit -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ui_fragment_bautagebuch_text_6"
+                    android:textSize="12sp"
+                    android:textColor="?attr/colorOnBackground"
+                    android:paddingEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/btnDateTime"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:background="@drawable/bg_pill"
+                    android:text="@string/ui_fragment_bautagebuch_text_5"
+                    android:textAllCaps="false"
+                    android:gravity="center"
+                    android:textAlignment="center"
+                    android:drawableEnd="@drawable/ic_arrow_drop_down_24"
+                    android:drawablePadding="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:textColor="?attr/colorOnBackground"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    app:autoSizeTextType="uniform"
+                    app:autoSizeMinTextSize="10sp"
+                    app:autoSizeMaxTextSize="14sp"
+                    app:autoSizeStepGranularity="1sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/wetterContainer"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical">
+
+            <!-- Reihe 1 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnWetterTime1"
+                    style="@style/TbButton"
+                    android:layout_width="88dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ui_fragment_bautagebuch_text_7"
+                    android:textAllCaps="false"/>
+
+                <Space android:layout_width="8dp" android:layout_height="1dp"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="72dp"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/ui_fragment_bautagebuch_hint_8">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etTemp1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberSigned"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <Space android:layout_width="8dp" android:layout_height="1dp"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:hintEnabled="false"
+                    app:endIconMode="dropdown_menu">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/acBew1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:singleLine="true"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        app:autoSizeTextType="uniform"
+                        app:autoSizeMinTextSize="10sp"
+                        app:autoSizeMaxTextSize="14sp"
+                        app:autoSizeStepGranularity="1sp"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <Space android:layout_width="8dp" android:layout_height="1dp"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:endIconMode="dropdown_menu"
+                    app:hintEnabled="false">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/etNied1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:singleLine="true"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        app:autoSizeTextType="uniform"
+                        app:autoSizeMinTextSize="10sp"
+                        app:autoSizeMaxTextSize="14sp"
+                        app:autoSizeStepGranularity="1sp"/>
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+
+            <Space android:layout_width="1dp" android:layout_height="8dp"/>
+
+            <!-- Reihe 2 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnWetterTime2"
+                    style="@style/TbButton"
+                    android:layout_width="88dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ui_fragment_bautagebuch_text_9"
+                    android:textAllCaps="false"/>
+
+                <Space android:layout_width="8dp" android:layout_height="1dp"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="72dp"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/ui_fragment_bautagebuch_hint_8">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etTemp2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberSigned"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <Space android:layout_width="8dp" android:layout_height="1dp"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:hintEnabled="false"
+                    app:endIconMode="dropdown_menu">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/acBew2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:singleLine="true"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        app:autoSizeTextType="uniform"
+                        app:autoSizeMinTextSize="10sp"
+                        app:autoSizeMaxTextSize="14sp"
+                        app:autoSizeStepGranularity="1sp"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <Space android:layout_width="8dp" android:layout_height="1dp"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:endIconMode="dropdown_menu"
+                    app:hintEnabled="false">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/etNied2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:singleLine="true"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        app:autoSizeTextType="uniform"
+                        app:autoSizeMinTextSize="10sp"
+                        app:autoSizeMaxTextSize="14sp"
+                        app:autoSizeStepGranularity="1sp"/>
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+
+            <Space android:layout_width="1dp" android:layout_height="8dp"/>
+
+            <!-- Reihe 3 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnWetterTime3"
+                    style="@style/TbButton"
+                    android:layout_width="88dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ui_fragment_bautagebuch_text_10"
+                    android:textAllCaps="false"/>
+
+                <Space android:layout_width="8dp" android:layout_height="1dp"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="72dp"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/ui_fragment_bautagebuch_hint_8">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etTemp3"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberSigned"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <Space android:layout_width="8dp" android:layout_height="1dp"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:hintEnabled="false"
+                    app:endIconMode="dropdown_menu">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/acBew3"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:singleLine="true"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        app:autoSizeTextType="uniform"
+                        app:autoSizeMinTextSize="10sp"
+                        app:autoSizeMaxTextSize="14sp"
+                        app:autoSizeStepGranularity="1sp"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <Space android:layout_width="8dp" android:layout_height="1dp"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:endIconMode="dropdown_menu"
+                    app:hintEnabled="false">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/etNied3"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:singleLine="true"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        app:autoSizeTextType="uniform"
+                        app:autoSizeMinTextSize="10sp"
+                        app:autoSizeMaxTextSize="14sp"
+                        app:autoSizeStepGranularity="1sp"/>
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnWetterAuto"
+                    style="@style/TbButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/ui_fragment_bautagebuch_text_12"
+                    android:textAllCaps="false"/>
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnWetterReset"
+                style="@style/TbButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/ui_fragment_bautagebuch_text_13"
+                android:textAllCaps="false"/>
+        </LinearLayout>
+
+        <!-- Legacy (unsichtbar): bleibt für alte Daten vorhanden -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/ui_fragment_bautagebuch_hint_14"
+            android:visibility="gone">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etWetter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textMultiLine"
+                android:minLines="2" />
+        </com.google.android.material.textfield.TextInputLayout>
+        <!-- Personal + Geräte/Maschinen (Dropdown-Style B) -->
+        <LinearLayout
+            android:id="@+id/pmHeaderRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Personal -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ui_fragment_bautagebuch_text_15"
+                    android:textSize="12sp"
+                    android:textColor="?attr/colorOnBackground"
+                    android:paddingEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/tvPersonalPreview"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:textAlignment="center"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:background="@drawable/bg_pill"
+                    android:text="@string/ui_fragment_bautagebuch_text_5"
+                    android:textColor="?attr/colorOnBackground"
+                    android:drawableEnd="@drawable/ic_arrow_drop_down_24"
+                    android:drawablePadding="6dp"
+                    android:maxLines="1"
+                    app:autoSizeTextType="uniform"
+                    app:autoSizeMinTextSize="10sp"
+                    app:autoSizeMaxTextSize="14sp"
+                    app:autoSizeStepGranularity="1sp" />
+            </LinearLayout>
+
+            <Space
+                android:layout_width="12dp"
+                android:layout_height="1dp" />
+
+            <!-- Geräte/Maschinen -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ui_fragment_bautagebuch_text_16"
+                    android:textSize="12sp"
+                    android:textColor="?attr/colorOnBackground"
+                    android:paddingEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/tvMaschinenPreview"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:textAlignment="center"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:background="@drawable/bg_pill"
+                    android:text="@string/ui_fragment_bautagebuch_text_5"
+                    android:textColor="?attr/colorOnBackground"
+                    android:drawableEnd="@drawable/ic_arrow_drop_down_24"
+                    android:drawablePadding="6dp"
+                    android:maxLines="1"
+                    app:autoSizeTextType="uniform"
+                    app:autoSizeMinTextSize="10sp"
+                    app:autoSizeMaxTextSize="14sp"
+                    app:autoSizeStepGranularity="1sp" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Personal Sektion -->
+        <LinearLayout
+            android:id="@+id/personalSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginTop="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAddPersonalFirma"
+                    style="@style/TbToolbarButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/ui_fragment_bautagebuch_text_17"
+                    android:textAllCaps="false" />
+
+                <Space
+                    android:layout_width="8dp"
+                    android:layout_height="1dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPersonalVortag"
+                    style="@style/TbToolbarButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/ui_fragment_bautagebuch_text_23"
+                    android:textAllCaps="false" />
+
+                <Space
+                    android:layout_width="8dp"
+                    android:layout_height="1dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPersonalSave"
+                    style="@style/TbIconButtonCompact"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="Speichern"
+                    android:text=""
+                    app:icon="@drawable/ic_check_24"
+                    app:iconTint="@android:color/white"
+                    app:iconPadding="0dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/personalBlocksContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="6dp" />
+        </LinearLayout>
+
+        <!-- Geräte/Maschinen Sektion -->
+        <LinearLayout
+            android:id="@+id/maschinenSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginTop="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAddMaschinenFirma"
+                    style="@style/TbToolbarButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/ui_fragment_bautagebuch_text_17"
+                    android:textAllCaps="false" />
+
+                <Space
+                    android:layout_width="8dp"
+                    android:layout_height="1dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnMaschinenVortag"
+                    style="@style/TbToolbarButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/ui_fragment_bautagebuch_text_23"
+                    android:textAllCaps="false" />
+
+                <Space
+                    android:layout_width="8dp"
+                    android:layout_height="1dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnMaschinenSave"
+                    style="@style/TbIconButtonCompact"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="Speichern"
+                    android:text=""
+                    app:icon="@drawable/ic_check_24"
+                    app:iconTint="@android:color/white"
+                    app:iconPadding="0dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/maschinenBlocksContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="6dp" />
+        </LinearLayout>
+
+        <!-- Standardabschnitte (Phase 3b: UI-Binding) -->
+
+        <!-- 4. Ausgeführte Arbeiten -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="4. Ausgeführte Arbeiten"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnBackground" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFotosArbeiten"
+                style="@style/TbButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="📷 0"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/ui_btb_hint_tap_to_enter">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etArbeiten"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:focusable="false"
+                android:focusableInTouchMode="false"
+                android:cursorVisible="false"
+                android:inputType="none"
+                android:minLines="1"
+                android:maxLines="3" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- 5. Abnahmen -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvHeaderAbnahmen"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="5. Abnahmen"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnBackground" />
+
+            <TextView
+                android:id="@+id/btnNeueAbnahmeBtb"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:layout_marginEnd="3dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:minWidth="40dp"
+                android:paddingLeft="6dp"
+                android:paddingRight="6dp"
+                android:text="+ Neu"
+                android:textColor="#111111"
+                android:textSize="8sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/chipBtbAbnahmeJa"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:layout_marginEnd="3dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:minWidth="28dp"
+                android:paddingLeft="5dp"
+                android:paddingRight="5dp"
+                android:text="Ja 0"
+                android:textColor="#111111"
+                android:textSize="8sp" />
+
+            <TextView
+                android:id="@+id/chipBtbAbnahmeNein"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:layout_marginEnd="3dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:minWidth="34dp"
+                android:paddingLeft="5dp"
+                android:paddingRight="5dp"
+                android:text="Nein 0"
+                android:textColor="#111111"
+                android:textSize="8sp" />
+
+            <TextView
+                android:id="@+id/chipBtbAbnahmePruefung"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:layout_marginEnd="3dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:minWidth="46dp"
+                android:paddingLeft="5dp"
+                android:paddingRight="5dp"
+                android:text="Prüf. 0"
+                android:textColor="#111111"
+                android:textSize="7.5sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFotosAbnahmen"
+                style="@style/TbButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingLeft="6dp"
+                android:paddingRight="6dp"
+                android:text="📷0"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/ui_btb_hint_tap_to_enter">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etAbnahmen"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:focusable="false"
+                android:focusableInTouchMode="false"
+                android:cursorVisible="false"
+                android:inputType="none"
+                android:minLines="1"
+                android:maxLines="3" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- 6. Einweisung/Unterweisung -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="6. Einweisung/Unterweisung"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnBackground" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFotosEinweisung"
+                style="@style/TbButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="📷 0"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/ui_btb_hint_tap_to_enter">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etEinweisung"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:focusable="false"
+                android:focusableInTouchMode="false"
+                android:cursorVisible="false"
+                android:inputType="none"
+                android:minLines="1"
+                android:maxLines="3" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- 7. Besonderheiten -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="7. Besonderheiten"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnBackground" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFotosBesonderheiten"
+                style="@style/TbButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="📷 0"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/ui_btb_hint_tap_to_enter">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etBesonderheiten"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:focusable="false"
+                android:focusableInTouchMode="false"
+                android:cursorVisible="false"
+                android:inputType="none"
+                android:minLines="1"
+                android:maxLines="3" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- 8. Mängel/Schäden -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvHeaderMaengel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="8. Mängel/Schäden"
+                android:textSize="11sp"
+                android:maxLines="1"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnBackground" />
+
+            <TextView
+                android:id="@+id/chipBtbMangelOffen"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:layout_marginEnd="2dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:paddingLeft="4dp"
+                android:paddingRight="4dp"
+                android:text="Offen 0"
+                android:textColor="#111111"
+                android:textSize="8sp" />
+
+            <TextView
+                android:id="@+id/chipBtbMangelArbeit"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:layout_marginEnd="2dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:paddingLeft="4dp"
+                android:paddingRight="4dp"
+                android:text="Arbeit 0"
+                android:textColor="#111111"
+                android:textSize="8sp" />
+
+            <TextView
+                android:id="@+id/chipBtbMangelErledigt"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:layout_marginEnd="2dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:paddingLeft="4dp"
+                android:paddingRight="4dp"
+                android:text="Erled. 0"
+                android:textColor="#111111"
+                android:textSize="8sp" />
+
+            <TextView
+                android:id="@+id/chipBtbMangelAbgelehnt"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:layout_marginEnd="2dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:paddingLeft="4dp"
+                android:paddingRight="4dp"
+                android:text="Abgel. 0"
+                android:textColor="#111111"
+                android:textSize="8sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFotosMaengel"
+                style="@style/TbButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingLeft="6dp"
+                android:paddingRight="6dp"
+                android:text="📷0"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/ui_btb_hint_tap_to_enter">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etMaengel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:focusable="false"
+                android:focusableInTouchMode="false"
+                android:cursorVisible="false"
+                android:inputType="none"
+                android:minLines="1"
+                android:maxLines="3" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Legacy (für Speicher/PDF): unsichtbar -->
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="@string/ui_fragment_bautagebuch_hint_18"
+            android:visibility="gone">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etPersonal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textMultiLine"
+                android:minLines="3" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="@string/ui_fragment_bautagebuch_hint_19"
+            android:visibility="gone">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etGeraete"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textMultiLine"
+                android:minLines="3" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="@string/ui_fragment_bautagebuch_hint_20"
+            android:visibility="gone">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etNotiz"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textMultiLine"
+                android:minLines="4" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cbIncludeFotos"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:checked="true"
+            android:text="@string/ui_fragment_bautagebuch_text_21"
+            android:visibility="gone" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cbIncludeBtbs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/ui_fragment_bautagebuch_text_22"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpeichern"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="0dp"
+            android:text="@string/ui_fragment_baustelle_neu_text_18"
+            android:textAllCaps="false"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/pdfButtonRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPdf"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="PDF Entwurf"
+                android:textAllCaps="false" />
+
+            <Space
+                android:layout_width="12dp"
+                android:layout_height="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPdfFinal"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="PDF Abschluss"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/ui_fragment_bautagebuch_text_25"
+            android:textColor="@android:color/darker_gray"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+</ScrollView>

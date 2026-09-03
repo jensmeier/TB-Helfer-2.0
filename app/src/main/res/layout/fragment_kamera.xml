@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorBackground">
+
+    <androidx.camera.view.PreviewView
+        android:id="@+id/previewView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/buttonRow"
+        android:layout_alignParentTop="true" />
+
+    <TextView
+        android:id="@+id/textStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="12dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:text=""
+        android:textColor="?attr/colorOnBackground"
+        android:textStyle="bold"
+        android:textSize="16sp" />
+
+
+    <TextView
+        android:id="@+id/textZoomAnzeige"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/cameraControlRow"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_camera_control_panel"
+        android:paddingStart="14dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="6dp"
+        android:text="1,0x"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/cameraControlRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/buttonRow"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_camera_control_panel"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:padding="6dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBlitzAusKamera"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:text="⚡ AUS"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            app:cornerRadius="18dp" />
+
+        <Space
+            android:layout_width="4dp"
+            android:layout_height="1dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBlitzAutoKamera"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:text="⚡ AUTO"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            app:cornerRadius="18dp" />
+
+        <Space
+            android:layout_width="4dp"
+            android:layout_height="1dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBlitzAnKamera"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:text="💡 AN"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            app:cornerRadius="18dp" />
+
+        <Space
+            android:layout_width="4dp"
+            android:layout_height="1dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNachtKamera"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:text="🌙 Nacht"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            android:visibility="gone"
+            app:cornerRadius="18dp" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/buttonRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="@dimen/camera_button_bottom_margin"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnUnterbaustelle"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="48dp"
+            android:text="@string/ui_fragment_kamera_text_1"
+            android:textColor="?attr/colorOnPrimary"
+            app:backgroundTint="?attr/colorPrimary" />
+
+        <Space
+            android:layout_width="8dp"
+            android:layout_height="1dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFoto"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="48dp"
+            android:text="@string/foto"
+            android:textColor="?attr/colorOnPrimary"
+            app:backgroundTint="?attr/colorPrimary" />
+
+        <Space
+            android:layout_width="8dp"
+            android:layout_height="1dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStreckenpunkt"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="48dp"
+            android:visibility="gone"
+            android:text="@string/ui_fragment_kamera_text_2"
+            android:textColor="?attr/colorOnPrimary"
+            app:backgroundTint="?attr/colorPrimary" />
+
+    </LinearLayout>
+
+    <!-- FOOTER -->
+    <include
+        android:id="@+id/footer"
+        layout="@layout/footer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true" />
+
+</RelativeLayout>

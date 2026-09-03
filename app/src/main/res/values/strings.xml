@@ -1,0 +1,502 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TB Helfer</string>
+    <string name="foto">Foto</string>
+    <string name="suche_auswahl_abbrechen">Abbrechen</string>
+    <string name="suche_auswahl_alle">Alle</string>
+    <string name="suche_auswahl_count">Auswahl: %1$d</string>
+    <string name="suche_auswahl_invert">Invertieren</string>
+    <string name="suche_auswahl_nur_datei">Löschen</string>
+    <string name="suche_auswahl_nur_db">Nur DB</string>
+
+    <!-- Atomare Löschung (Datei + Thumbnail + DB in einem Schritt) -->
+    <string name="suche_delete_atomic_title">Auswahl löschen?</string>
+    <string name="suche_delete_atomic_msg">Die ausgewählten Fotos werden zusammen mit ihren DB-Einträgen gelöscht. Thumbnails werden mit entfernt. Fortfahren?</string>
+    <string name="suche_deleted_atomic">Gelöscht: %1$d DB-Einträge · fehlende Dateien: %2$d · übersprungen: %3$d</string>
+    <string name="suche_delete_failed">Löschen fehlgeschlagen.</string>
+
+    <string name="action_undo">Rückgängig</string>
+    <string name="suche_auswahl_senden">Senden</string>
+    <string name="suche_auswahl_zip">ZIP</string>
+    <string name="suche_delete_db_msg">Der DB-Eintrag wird gelöscht. Fortfahren?</string>
+    <string name="suche_delete_db_title">DB-Eintrag löschen?</string>
+    <string name="suche_delete_file_msg">Die ausgewählten Datei(en) werden gelöscht. Fortfahren?</string>
+    <string name="suche_delete_file_title">Dateien löschen?</string>
+    <string name="suche_deleted">Gelöscht</string>
+    <string name="suche_deleted_db">Einträge gelöscht: %1$d</string>
+    <string name="suche_deleted_files">Dateien gelöscht: %1$d</string>
+    <string name="suche_keine_datei_fuer_share">Keine Datei zum Senden gefunden (Dateipfad fehlt oder Datei existiert nicht).</string>
+    <string name="suche_zip_done">ZIP erstellt: %1$d Datei(en) (fehlend: %2$d)</string>
+    <string name="suche_zip_nix">Keine Datei zum Export gefunden (Dateipfad fehlt oder Datei existiert nicht).</string>
+
+    <string name="ui_dialog_neuer_streckenpunkt_hint_1">km (z.B. 12,345)</string>
+    <string name="ui_dialog_neuer_streckenpunkt_hint_2">Bezeichnung</string>
+    <string name="ui_dialog_neuer_streckenpunkt_hint_3">Notiz (optional)</string>
+    <string name="ui_dialog_schicht_text_1">Datum</string>
+    <string name="ui_dialog_schicht_text_2">Ändern</string>
+    <string name="ui_fragment_aktuelle_baustelle_text_1">Aktuelle Baustelle</string>
+    <string name="ui_fragment_aktuelle_baustelle_text_2">Keine aktuelle Baustelle gewählt.</string>
+    <string name="ui_fragment_aktuelle_baustelle_text_3">Zur Baustellenliste</string>
+    <string name="ui_fragment_aktuelle_baustelle_text_4">Zurück</string>
+    <string name="ui_fragment_ansicht_text_1">Ansicht</string>
+    <string name="ui_fragment_ansicht_text_2">Suche: Bilder/BTB Anzeige</string>
+    <string name="ui_fragment_ansicht_text_3">Nachtmodus</string>
+    <string name="ui_fragment_ansicht_text_4">System (Auto)</string>
+    <string name="ui_fragment_ansicht_text_5">Hell</string>
+    <string name="ui_fragment_ansicht_text_6">Dunkel</string>
+    <string name="ui_fragment_ansicht_grid_1">1</string>
+    <string name="ui_fragment_ansicht_grid_2">2</string>
+    <string name="ui_fragment_ansicht_grid_3">3</string>
+    <string name="ui_fragment_baustelle_neu_hint_11">Km von (z.B. 1.233)</string>
+    <string name="ui_fragment_baustelle_neu_hint_12">Km bis (z.B. 4.791)</string>
+    <string name="ui_fragment_baustelle_neu_hint_13">Bahnhofname (Pflicht)</string>
+    <string name="ui_fragment_baustelle_neu_hint_14">Gleis-/Weichennummer (Pflicht)</string>
+    <string name="ui_fragment_baustelle_neu_hint_16">Km von</string>
+    <string name="ui_fragment_baustelle_neu_hint_17">Km bis</string>
+    <string name="ui_fragment_baustelle_neu_hint_2">Baustellenname (Pflicht)</string>
+    <string name="ui_fragment_baustelle_neu_hint_3">Bezeichnung (optional)</string>
+    <string name="ui_fragment_baustelle_neu_hint_9">XXXX</string>
+    <string name="ui_fragment_baustelle_neu_text_1">Hauptbaustelle</string>
+    <string name="ui_fragment_baustelle_neu_text_10">Km-Bereich</string>
+    <string name="ui_fragment_baustelle_neu_text_15">Km-Bereich (optional)</string>
+    <string name="ui_fragment_baustelle_neu_text_18">Speichern</string>
+    <string name="ui_fragment_baustelle_neu_text_4">Typ</string>
+    <string name="ui_fragment_baustelle_neu_text_5">Freie Strecke</string>
+    <string name="ui_fragment_baustelle_neu_text_6">Bahnhof</string>
+    <string name="ui_fragment_baustelle_neu_text_7">Allgemein / Objekt</string>
+    <string name="ui_fragment_baustelle_neu_text_8">Streckenkennung</string>
+    <string name="ui_fragment_baustellen_knoten_text_1">Baustelle</string>
+    <string name="ui_fragment_baustellen_knoten_text_3">Neue Unterbaustelle</string>
+    <string name="ui_fragment_baustellen_knoten_text_4">Als aktuell</string>
+    <string name="ui_fragment_baustellen_text_1">Baustellen</string>
+    <string name="ui_fragment_baustellen_text_2">Neue Baustelle</string>
+    <string name="ui_fragment_baustellen_text_3">Aktuelle anzeigen</string>
+    <string name="ui_fragment_baustellen_text_4">Tipp: Tippe eine Hauptbaustelle an, um Unterbaustellen aufzuklappen. Lange drücken öffnet Bearbeiten/Aktuell/Löschen.</string>
+
+    
+    <string name="ui_chip_unterbaustellen">Unterbaustellen: %1$d</string>
+    <string name="ui_chip_unterpunkte">Unterpunkte: %1$d</string>
+    <string name="ui_chip_gesamt">Gesamtpunkte: %1$d</string>
+    <string name="ui_chip_bilder">Bilder: %1$d</string>
+    <string name="ui_chip_btb">BTB: %1$d</string>
+
+    <string name="ui_cd_expand">Aufklappen</string>
+    <string name="ui_error_knoten_nicht_gefunden">Knoten nicht gefunden</string>
+
+    <string name="ui_aktuell_pfad">Aktuell: %1$s</string>
+    <string name="ui_aktuell_keine">Aktuell: —</string>
+    <string name="ui_aktuell_andere">Aktuell: (andere Baustelle)</string>
+
+    
+    <string name="dialog_merge_title">Baustelle existiert bereits</string>
+    <string name="dialog_merge_message">Die Baustelle „%1$s“ gibt es schon (%2$d Unterbaustellen, %3$d gesamt). Soll zusammengeführt werden?</string>
+    <string name="btn_merge">Zusammenführen</string>
+    <string name="btn_create_new">Neu anlegen</string>
+    <string name="btn_cancel">Abbrechen</string>
+    <string name="btn_delete">Löschen</string>
+
+    <string name="dialog_delete_project_title">Hauptbaustelle löschen?</string>
+    <string name="dialog_delete_project_full_title">Baustelle komplett löschen?</string>
+    <string name="dialog_delete_project_full_message">Willst du „%1$s“ wirklich komplett löschen?
+
+Dabei werden gelöscht:
+• Hauptbaustelle und Unterbaustellen
+• Foto-Zuordnungen und lokale Bilddateien dieser Baustelle
+• BTB-Daten dieser Baustelle
+
+Exportierte ZIP/PDF-Dateien außerhalb der App können weiterhin separat existieren.</string>
+    <string name="dialog_delete_project_final_title">Letzte Warnung</string>
+    <string name="dialog_delete_project_final_message">Diese Aktion kann nicht rückgängig gemacht werden. „%1$s“ wird jetzt endgültig gelöscht.</string>
+    <string name="dialog_delete_project_done">Baustelle gelöscht.</string>
+    <string name="dialog_delete_project_confirm">Willst du „%1$s“ inklusive aller Unterbaustellen wirklich löschen?</string>
+    <string name="dialog_delete_title">Löschen</string>
+    <string name="dialog_delete_message">„%1$s“ und alle darunterliegenden Unterpunkte wirklich löschen?</string>
+
+    
+    <string name="dialog_action_title">Aktion</string>
+    <string name="action_set_current">Als aktuell setzen</string>
+    <string name="action_select_subsite">Unterbaustelle auswählen</string>
+    <string name="action_set_as_current_haupt">Als aktuelle Baustelle setzen</string>
+    <string name="action_edit">Baustelle bearbeiten</string>
+    <string name="action_add_child">Neuer Unterpunkt</string>
+    <string name="action_delete">Löschen</string>
+
+    <string name="dialog_edit_title">Bearbeiten</string>
+    <string name="btn_save">Speichern</string>
+    <string name="hint_bezeichnung_optional">Bezeichnung (optional)</string>
+
+    
+    <string name="ui_baustelle_neu_info_merge">Hinweis:\nBei gleichem Namen wird gefragt, ob zusammengeführt werden soll.</string>
+    <string name="ui_fragment_bautagebuch_hint_14">Wetter (alt)</string>
+    <string name="ui_fragment_bautagebuch_hint_18">Personal (eine Zeile pro Person)</string>
+    <string name="ui_fragment_bautagebuch_hint_19">Geräte (eine Zeile pro Gerät)</string>
+    <string name="ui_fragment_bautagebuch_hint_2">Start (z.B. 07:00)</string>
+    <string name="ui_fragment_bautagebuch_hint_20">Notizen</string>
+    <string name="ui_fragment_bautagebuch_hint_21">Abnahmen (eine Zeile pro Eintrag)</string>
+    <string name="ui_fragment_bautagebuch_hint_22">Einweisung/Unterweisung (eine Zeile pro Eintrag)</string>
+    <string name="ui_fragment_bautagebuch_hint_23">Besonderheiten (eine Zeile pro Eintrag)</string>
+    <string name="ui_fragment_bautagebuch_hint_24">Mängel/Schäden (eine Zeile pro Eintrag)</string>
+
+    <!-- B2: kompakte Vorschau, wenn leer -->
+    <string name="ui_btb_hint_tap_to_enter">Tippen zum Eintragen</string>
+    <string name="ui_fragment_bautagebuch_hint_3">Ende (z.B. 15:30)</string>
+    <string name="ui_fragment_bautagebuch_hint_8">°C</string>
+    <string name="ui_fragment_bautagebuch_text_1">Bautagebuch</string>
+    <string name="ui_fragment_bautagebuch_text_10">16:00</string>
+    <string name="ui_fragment_bautagebuch_text_12">Manuelle Eingabe</string>
+    <string name="ui_fragment_bautagebuch_text_13">Reset</string>
+    <string name="ui_fragment_bautagebuch_text_15">Personal</string>
+    <string name="ui_fragment_bautagebuch_text_16">Geräte\nMaschinen</string>
+    <string name="ui_fragment_bautagebuch_text_17">+ Firma</string>
+    <string name="ui_fragment_bautagebuch_text_21">Fotos dieses Tages in PDF aufnehmen</string>
+    <string name="ui_fragment_bautagebuch_text_22">BTB-PDFs dieses Tages auflisten</string>
+    <string name="ui_fragment_bautagebuch_text_23">Vortag übernehmen</string>
+    <string name="ui_fragment_bautagebuch_text_24">PDF erstellen</string>
+    <string name="ui_fragment_bautagebuch_text_25">Hinweis: Baustelle muss ausgewählt sein (Startmenü/Baustelle).</string>
+    <string name="ui_fragment_bautagebuch_text_4">Wetter</string>
+    <string name="ui_fragment_bautagebuch_text_5">Keine Daten</string>
+    <string name="ui_fragment_bautagebuch_text_6">Datum\nZeit</string>
+    <string name="ui_fragment_bautagebuch_text_7">08:00</string>
+    <string name="ui_fragment_bautagebuch_text_9">12:00</string>
+    <string name="ui_fragment_einstellungen_text_1">Einstellungen</string>
+    <string name="ui_fragment_einstellungen_text_2">Nutzer</string>
+    <string name="ui_fragment_einstellungen_text_3">Kamera</string>
+    <string name="ui_fragment_einstellungen_text_4">Overlay</string>
+    <string name="ui_fragment_einstellungen_text_5">BTB / PDF</string>
+
+    <string name="ui_fragment_einstellungen_storage_cleanup">Speicher bereinigen</string>
+    <string name="ui_fragment_einstellungen_storage_cleanup_hint">Entfernt fehlende DB-Einträge, verschiebt Bilder ohne Datenbank-Eintrag in einen Orphans-Ordner und löscht Thumbnail-Leichen.</string>
+    <string name="ui_fragment_einstellungen_storage_cleanup_running">Bereinigung läuft…</string>
+    <string name="ui_fragment_einstellungen_storage_cleanup_done">Fertig: DB %1$d gelöscht, Orphans %2$d verschoben, Thumbs %3$d gelöscht.</string>
+
+    <string name="ui_fragment_btb_pdf_einstellungen_title">BTB / PDF</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_hint">Hier stellst du ein, wie Fotos im BTB-PDF angehängt werden (Raster) und welche Metadaten pro Bild im PDF gedruckt werden.</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_raster">Bilder pro PDF-Seite (Raster)</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_meta">Metadaten pro Bild</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_datum">Datum anzeigen</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_uhrzeit">Uhrzeit anzeigen</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_km">km anzeigen</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_gps">GPS anzeigen</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_gps_link">GPS als Google-Maps Link (anklickbar)</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_baustelle">Baustelle anzeigen</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_kurztext">Kurztext anzeigen</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_notiz">Notiz anzeigen</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_firma">Firma anzeigen</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_indikator">Indikator anzeigen</string>
+    <string name="ui_fragment_btb_pdf_einstellungen_dateiname">Dateiname anzeigen</string>
+    <string name="ui_fragment_foto_detail_text_1">Öffnen</string>
+    <string name="ui_fragment_foto_detail_text_2">Teilen</string>
+    <string name="ui_fragment_foto_detail_text_3">Maps</string>
+    <string name="ui_fragment_foto_detail_text_4">Kopieren</string>
+    <string name="ui_fragment_foto_erfassen_hint_10">Langbeschreibung\n(z.B. Einbau Grundschotter ca. 50 Tonnen)</string>
+    <string name="ui_fragment_foto_erfassen_hint_3">z.B. 20.274</string>
+    <string name="ui_fragment_foto_erfassen_hint_5">Firma auswählen/eingeben</string>
+    <string name="ui_fragment_foto_erfassen_hint_8">z.B. Einbau Schotter</string>
+    <string name="ui_fragment_foto_erfassen_text_1">Foto erfassen</string>
+    <string name="ui_fragment_foto_erfassen_text_2">km (änderbar)</string>
+    <string name="ui_fragment_foto_erfassen_text_4">Firma</string>
+    <string name="ui_fragment_foto_erfassen_text_6">Bildtyp (BTB)</string>
+    <string name="ui_fragment_foto_erfassen_text_7">Kurzbeschreibung</string>
+    <string name="ui_fragment_foto_erfassen_text_9">Optional ▼</string>
+    <string name="ui_fragment_foto_liste_text_1">Fotos</string>
+    <string name="ui_fragment_foto_liste_text_2">Noch keine Fotos vorhanden.</string>
+    <string name="ui_fragment_import_export_text_1">Streckendaten</string>
+    <string name="ui_fragment_import_export_text_2">Achsdaten, km-Linien und Festpunkte.</string>
+    <string name="ui_fragment_kamera_einstellungen_text_1">Bildqualität</string>
+    <string name="ui_fragment_kamera_einstellungen_text_2">Niedrig</string>
+    <string name="ui_fragment_kamera_einstellungen_text_3">Mittel</string>
+    <string name="ui_fragment_kamera_einstellungen_text_4">Blitz</string>
+    <string name="ui_fragment_kamera_einstellungen_text_5">Aus</string>
+    <string name="ui_fragment_kamera_einstellungen_text_6">Auto</string>
+    <string name="ui_fragment_kamera_einstellungen_text_7">An</string>
+    <string name="ui_fragment_kamera_einstellungen_text_8">Nachtsicht (nur wenn Kamera unterstützt)</string>
+    <string name="ui_fragment_kamera_einstellungen_text_9">Pinch-Zoom (2 Finger)</string>
+    <string name="ui_fragment_kamera_einstellungen_text_10">Hoch</string>
+    <string name="ui_fragment_kamera_text_1">Unterbaustelle</string>
+    <string name="ui_fragment_kamera_text_2">Streckenpunkt</string>
+    <string name="ui_fragment_nutzer_hint_1">Firmenname</string>
+    <string name="ui_fragment_nutzer_hint_2">Anschrift Zeile 1</string>
+    <string name="ui_fragment_nutzer_hint_3">Anschrift Zeile 2</string>
+    <string name="ui_fragment_nutzer_hint_4">Telefon</string>
+    <string name="ui_fragment_nutzer_hint_5">E-Mail</string>
+    <string name="ui_fragment_nutzer_hint_6">Max. Fotos im BTB-PDF</string>
+    <string name="ui_fragment_nutzer_text_7">Logo auswählen</string>
+    <string name="ui_fragment_overlay_einstellungen_text_1">Overlay aktiv</string>
+    <string name="ui_fragment_overlay_einstellungen_text_10">Rechts unten</string>
+    <string name="ui_fragment_overlay_einstellungen_text_11">Auto-Position (smart)</string>
+    <string name="ui_fragment_overlay_einstellungen_text_12">Hintergrund-Transparenz</string>
+    <string name="ui_fragment_overlay_einstellungen_text_13">Schriftgroesse</string>
+    <string name="ui_fragment_overlay_einstellungen_text_14">Auto-Kontrast</string>
+    <string name="ui_fragment_overlay_einstellungen_text_15">Inhalte</string>
+    <string name="ui_fragment_overlay_einstellungen_text_16">Baustelle</string>
+    <string name="ui_fragment_overlay_einstellungen_text_17">Strecke / Bahnhof</string>
+    <string name="ui_fragment_overlay_einstellungen_text_18">Gleis / Weiche / Objekt</string>
+    <string name="ui_fragment_overlay_einstellungen_text_19">km</string>
+    <string name="ui_fragment_overlay_einstellungen_text_2">Darstellung</string>
+    <string name="ui_fragment_overlay_einstellungen_text_20">GPS</string>
+    <string name="ui_fragment_overlay_einstellungen_text_21">Datum / Zeit</string>
+    <string name="ui_fragment_overlay_einstellungen_text_3">Normal</string>
+    <string name="ui_fragment_overlay_einstellungen_text_4">Kompakt (2-zeilig)</string>
+    <string name="ui_fragment_overlay_einstellungen_text_5">Position</string>
+    <string name="ui_fragment_overlay_einstellungen_text_6">Automatisch</string>
+    <string name="ui_fragment_overlay_einstellungen_text_7">Links oben</string>
+    <string name="ui_fragment_overlay_einstellungen_text_8">Rechts oben</string>
+    <string name="ui_fragment_overlay_einstellungen_text_9">Links unten</string>
+    <string name="ui_fragment_startmenue_text_1">TB-Helfer</string>
+    <string name="ui_fragment_startmenue_text_2">Developed by Jens Zinkel</string>
+    <string name="ui_fragment_streckenpunkte_text_1">Streckenpunkte</string>
+    <string name="ui_fragment_streckenpunkte_text_2">Aktuelle Baustelle: -</string>
+    <string name="ui_fragment_streckenpunkte_text_3">Hinweis</string>
+    <string name="ui_fragment_streckenpunkte_text_4">Neuer Streckenpunkt</string>
+    <string name="ui_fragment_streckenpunkte_text_5">Tipp: Antippen = bearbeiten · lange drücken = löschen</string>
+    <string name="ui_fragment_suche_liste_text_1">Neueste</string>
+    <string name="ui_fragment_suche_liste_text_2">→ Korb</string>
+    <string name="ui_fragment_suche_liste_text_3">Keine Treffer</string>
+    <string name="ui_fragment_suche_liste_text_4">Auswahl: 0</string>
+    <string name="ui_fragment_suche_text_1">Suche</string>
+    <string name="ui_fragment_suche_text_2">Sortieren</string>
+    <string name="ui_fragment_suche_text_3">Alle Baustellen</string>
+    <string name="ui_fragment_suche_text_4">Korb: 0 Fotos, 0 BTB</string>
+    <string name="ui_fragment_suche_text_5">Löschen</string>
+    <string name="ui_fragment_suche_text_6">Leeren</string>
+    <string name="ui_item_baustelle_text_2">AKTUELL</string>
+    <string name="ui_item_baustellen_knoten_text_1">Baustelle</string>
+    <string name="ui_item_baustellen_knoten_text_2">Info</string>
+    <string name="ui_item_btb_contentdescription_1">Ausgewählt</string>
+    <string name="ui_item_firma_block_contentdescription_1">Firma entfernen</string>
+    <string name="ui_item_firma_block_text_2">+ Zeile</string>
+    <string name="ui_item_firma_row_contentdescription_2">Zeile entfernen</string>
+    <string name="ui_item_firma_row_hint_1">Anzahl</string>
+    <string name="ui_item_foto_text_1">Dateiname</string>
+    <string name="ui_item_start_menu_text_1">Menü</string>
+    <string name="ui_item_streckenpunkt_text_1">0,000 km</string>
+    <string name="ui_item_streckenpunkt_text_2">Notiz</string>
+    <string name="ui_sheet_suche_filter_hint_5">Suche (Volltext)</string>
+    <string name="ui_sheet_suche_filter_hint_6">Streckennummer</string>
+    <string name="ui_sheet_suche_filter_hint_9">Streckenpunkt Text (optional)</string>
+    <string name="ui_sheet_suche_filter_text_1">Filter</string>
+    <string name="ui_sheet_suche_filter_text_10">Übernehmen</string>
+    <string name="ui_sheet_suche_filter_text_2">Tag wählen</string>
+    <string name="ui_sheet_suche_filter_text_3">von</string>
+    <string name="ui_sheet_suche_filter_text_4">bis</string>
+    <string name="ui_sheet_suche_filter_text_7">KM</string>
+    <string name="ui_sheet_suche_filter_text_8">Nur bei Streckenpunkten</string>
+    <string name="ui_sheet_suche_sort_text_1">Sortieren &amp;amp; Typ</string>
+    <string name="ui_sheet_suche_sort_text_2">Bildtypen (Fotos):</string>
+    <string name="ui_sheet_suche_sort_text_3">Reihenfolge:</string>
+    <string name="ui_sheet_suche_sort_text_4">Neueste zuerst</string>
+    <string name="ui_sheet_suche_sort_text_5">Älteste zuerst</string>
+    <string name="ui_widget_camera_1x1_contentdescription_1">Camera Widget Icon</string>
+    <string name="ui_widget_current_site_2x2_text_1">Aktuelle Baustelle:</string>
+    <string name="ui_widget_current_site_2x2_text_2">Keine Baustelle gewählt</string>
+
+<!-- BTB Validierung -->
+<string name="btb_validate_title">Eingaben prüfen</string>
+<string name="btb_validate_intro_a">Folgende Angaben fehlen noch:</string>
+
+<string name="btb_validate_section_datetime">Datum/Zeit</string>
+<string name="btb_validate_section_personal">Personal</string>
+<string name="btb_validate_section_machines">Geräte/Maschinen</string>
+
+<string name="btb_validate_missing_datetime">• Datum/Zeit ist noch nicht gewählt.</string>
+
+<string name="btb_validate_company_missing">• Firma fehlt.</string>
+<string name="btb_validate_company_time_missing">• %1$s: Zeit (von–bis) fehlt.</string>
+<string name="btb_validate_company_rows_missing">• %1$s: Mindestens 1 Eintrag fehlt (Anzahl + Bezeichnung).</string>
+<string name="btb_validate_company_row_incomplete">• %1$s: Eintrag %2$d unvollständig (Anzahl + Bezeichnung).</string>
+
+	<!-- Kompakt-Darstellung: eine Zeile pro Firma -->
+	<string name="btb_validate_company_compact">• %1$s: %2$s.</string>
+	<string name="btb_validate_company_unnamed">Firma #%1$d</string>
+	<string name="btb_validate_issue_name_missing">Firmenname fehlt</string>
+	<string name="btb_validate_issue_time_missing">Zeit fehlt</string>
+	<string name="btb_validate_issue_row_missing">Eintrag fehlt</string>
+	<string name="btb_validate_issue_row_incomplete">Eintrag unvollständig</string>
+
+	<!-- PDF darf erst nach "Fertig" erzeugt werden -->
+	<string name="btb_pdf_requires_finish_title">Noch nicht fertig</string>
+	<string name="btb_pdf_requires_finish_message">Bitte zuerst auf „Fertig“ drücken, damit das Bautagebuch geprüft ist. Danach kannst du das PDF erstellen.</string>
+
+<string name="btb_validate_ok">OK</string>
+
+
+
+    <!-- BTB Abschnitt 4: Firmen-/Pill-Editor + PDF Overrides -->
+    <string name="btb_company_general">Allgemein</string>
+
+    <string name="btb_add_entry_cd">Eintrag hinzufügen</string>
+    <string name="btb_remove_company_entries">Manuelle Einträge löschen</string>
+    <string name="btb_remove_company_entries_hint">Nur manuelle Einträge – Fotos bleiben.</string>
+
+    <string name="btb_entry_dialog_title">Eintrag für %1$s</string>
+    <string name="btb_entry_time_hint">Uhrzeit (optional)</string>
+    <string name="btb_entry_time_info">Format: HH:mm oder HH:mm–HH:mm</string>
+    <string name="btb_entry_time_error">Ungültiges Format. Beispiel: 07:00 oder 07:00–18:00</string>
+    <string name="btb_entry_text_hint">Eintrag</string>
+
+    <string name="btb_photo_override_title">BTB/PDF-Text</string>
+    <string name="btb_photo_override_info">Nur für Bericht/PDF. Original bleibt unverändert.</string>
+    <string name="btb_photo_override_text_hint">Text</string>
+    <string name="btb_photo_override_reset">Auf Standard zurücksetzen</string>
+
+    <string name="btb_confirm_remove_manual_title">Manuelle Einträge löschen?</string>
+    <string name="btb_confirm_remove_manual_msg">Manuelle Einträge bei „%1$s“ wirklich löschen? Fotos bleiben erhalten.</string>
+
+    <string name="btb_confirm_reset_override_title">Auf Standard zurücksetzen?</string>
+    <string name="btb_confirm_reset_override_msg">BTB/PDF-Text wieder auf den Standard zurücksetzen?</string>
+
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_add">Hinzufügen</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_reset">Zurücksetzen</string>
+
+    <string name="btb_open_title">Bericht öffnen</string>
+    <string name="btb_open_date">Datum: %1$s</string>
+    <string name="btb_shift_tag">Tag</string>
+    <string name="btb_shift_nacht">Nacht</string>
+    <!-- UI: kein "+1" anzeigen -->
+    <string name="btb_shift_suffix_nextday"></string>
+    <string name="btb_status_new_empty">Neu (leer)</string>
+    <string name="btb_status_draft">Entwurf</string>
+    <string name="btb_status_final">Final</string>
+    <string name="btb_status_changed">Änderung</string>
+    <string name="ui_fragment_baustelle_neu_text_gross">Großbaustelle (nur Container)</string>
+    <string name="ui_fragment_baustelle_neu_text_gleisweiche">Gleis / Weiche</string>
+    <string name="ui_fragment_baustelle_neu_text_gleisweiche_wv">Gleis / Weiche / WV</string>
+    <string name="ui_fragment_baustelle_neu_text_gleisweiche_dkw">Gleis / Weiche / DKW/Kreuzung</string>
+    <string name="ui_fragment_baustelle_neu_text_gleis">Gleis</string>
+    <string name="ui_fragment_baustelle_neu_text_weiche">Weiche</string>
+    <string name="ui_fragment_baustelle_neu_text_wv">WV</string>
+    <string name="ui_fragment_baustelle_neu_text_dkw_kreuzung">DKW/Kreuzung</string>
+    <string name="ui_fragment_baustelle_neu_hint_gleisweiche_nr">Bezeichnung, z. B. 28, W 1, DKW 15 oder Kreuzung 3</string>
+
+
+    <string name="ui_fragment_streckenpunkte_text_6">Aktuelle Baustelle: %1$s</string>
+    <string name="ui_streckenpunkt_dialog_new_title">Neuer Streckenpunkt</string>
+    <string name="ui_streckenpunkt_dialog_edit_title">Streckenpunkt bearbeiten</string>
+    <string name="ui_streckenpunkt_select_site_first">Bitte zuerst eine aktuelle Baustelle auswählen.</string>
+    <string name="ui_streckenpunkt_delete_title">Streckenpunkt löschen?</string>
+    <string name="ui_streckenpunkt_delete_message">Möchtest du diesen Streckenpunkt wirklich löschen?</string>
+    <string name="ui_streckenpunkt_delete_confirm">Löschen</string>
+    <string name="ui_streckenpunkt_error_km">Bitte eine gültige km-Angabe eingeben (z.B. 12,345).</string>
+    <string name="ui_streckenpunkt_error_name">Bezeichnung darf nicht leer sein.</string>
+    <string name="ui_streckenpunkt_label_km_suffix">km-Suffix</string>
+    <string name="ui_streckenpunkt_label_typ">Typ</string>
+    <string name="ui_streckenpunkt_hint_objektkennung">Objektkennung (z.B. W12 / Gl. 2)</string>
+    <string name="ui_streckenpunkt_btn_take_gps">GPS übernehmen</string>
+    <string name="ui_streckenpunkt_gps_none">Live-GPS: noch keine Position</string>
+    <string name="ui_streckenpunkt_gps_live">Live-GPS: %1$.6f, %2$.6f · Genauigkeit %3$s</string>
+    <string name="ui_streckenpunkt_gps_saved">Übernommen: %1$.6f, %2$.6f</string>
+    <string name="ui_streckenpunkt_gps_not_saved">Übernommen: noch kein GPS gespeichert</string>
+    <string name="ui_streckenpunkt_gps_wait">Bitte kurz auf ein GPS-Signal warten.</string>
+    <string name="ui_streckenpunkt_gps_taken">GPS wurde übernommen.</string>
+    <string name="ui_streckenpunkt_gps_permission_missing">Standortberechtigung fehlt. Bitte in Android die Standortfreigabe erlauben.</string>
+    <string name="ui_streckenpunkt_gps_error">GPS konnte nicht gestartet werden: %1$s</string>
+    <string name="ui_streckenpunkt_typ_exakt">Exakt</string>
+    <string name="ui_streckenpunkt_typ_hilfs">Hilfspunkt</string>
+    <string name="ui_streckenpunkt_typ_wa">Weiche WA</string>
+    <string name="ui_streckenpunkt_typ_ws">Weiche WS</string>
+    <string name="ui_streckenpunkt_typ_waz">Weiche WAZ</string>
+    <string name="ui_streckenpunkt_meta_default">Objekt · GPS</string>
+
+    <string name="ui_streckenpunkt_hint_streckennummer">Streckennummer (z.B. 5900)</string>
+    <string name="ui_streckenpunkt_hint_bahnhof">Bahnhof (optional)</string>
+    <string name="ui_streckenpunkt_hint_gleis">Gleis (optional)</string>
+    <string name="ui_streckenpunkt_hint_weiche">Weiche (optional)</string>
+    <string name="streckenpunkte_automatik_status_idle">Automatik: aus</string>
+    <string name="streckenpunkte_automatik_start_short">Automatik Start</string>
+    <string name="streckenpunkte_automatik_anchor_short">KM-Anker</string>
+    <string name="streckenpunkte_automatik_stop_short">Stop + Speichern</string>
+    <string name="streckenpunkte_automatik_start_title">Automatik starten</string>
+    <string name="streckenpunkte_automatik_start_hint">Track läuft mit und speichert alle 10 m einen GPS-Punkt. An sicheren Stellen setzt du einen KM-Anker.</string>
+    <string name="streckenpunkte_automatik_start_btn">Starten</string>
+    <string name="streckenpunkte_automatik_hint_titel">Session / Abschnitt (optional)</string>
+    <string name="streckenpunkte_automatik_started">Automatik läuft.</string>
+    <string name="streckenpunkte_automatik_already_running">Automatik läuft bereits.</string>
+    <string name="streckenpunkte_automatik_not_running">Automatik ist noch nicht gestartet.</string>
+    <string name="streckenpunkte_automatik_anchor_title">KM-Anker setzen</string>
+    <string name="streckenpunkte_automatik_anchor_btn">Anker speichern</string>
+    <string name="streckenpunkte_automatik_anchor_saved">KM-Anker gespeichert.</string>
+    <string name="streckenpunkte_automatik_anchor_failed">KM-Anker konnte nicht gespeichert werden. Warte kurz auf GPS.</string>
+    <string name="streckenpunkte_automatik_anchor_default_name">KM-Anker %1$d</string>
+    <string name="streckenpunkte_automatik_export_done">Automatik-JSON exportiert nach: %1$s</string>
+    <string name="action_btb_history">BTB-Verlauf öffnen</string>
+    <string name="action_maengel_list">Mängelliste öffnen</string>
+
+    <!-- TB-Helfer 1.9: Import/Export wird zur Vermessungsdaten-Zentrale -->
+    <string name="import_export_v19_subtitle">ZIP importieren · Strecke erkennen · Vorschau/Zuordnung · danach berechnen</string>
+    <string name="import_export_v19_section_import">Import</string>
+    <string name="import_export_v19_btn_tra_gra">Achsdaten importieren TRA-GRA</string>
+    <string name="import_export_v19_hint_tra_gra">TRA + GRA zusammen auswählen.</string>
+    <string name="import_export_v19_btn_gra">GRA / kmLinien importieren</string>
+    <string name="import_export_v19_hint_gra">Patch 7 liest .GRA-/kmLinie-Dateien mit km-/Stationswerten, Höhen und Gradientenparametern.</string>
+    <string name="import_export_v19_btn_gra_link">KM / Station mit Achsen verknüpfen</string>
+    <string name="import_export_v19_hint_gra_link">Patch 17 ordnet vorhandene GRA-/kmLinien den importierten TRA-Achspunkten zu. Danach zeigt der Live-Test km bzw. GRA-Station statt „km noch nicht verknüpft“.</string>
+    <string name="import_export_v19_btn_gvp">GVP / Festpunkte</string>
+    <string name="import_export_v19_hint_gvp">Festpunkte mit km und Höhe.</string>
+    <string name="import_export_v19_btn_kor">Absteckpunkte optional (.kor.txt)</string>
+    <string name="import_export_v19_hint_kor">Optional: Absteckpunkte aus ...kor.txt-Dateien.</string>
+    <string name="import_export_v19_section_status">Status</string>
+    <string name="import_export_v19_btn_status">Status aktualisieren</string>
+    <string name="import_export_v19_btn_details">Details öffnen</string>
+    <string name="import_export_v19_status_empty">Noch keine Daten importiert.</string>
+    
+    <string name="import_export_v19_status_loading">Status wird geladen …</string>
+    <string name="import_export_v19_status_refreshed">Status aktualisiert.</string>
+    <string name="import_export_v19_import_running">Import läuft: %1$d Datei(en) …</string>
+    <string name="import_export_v19_import_done">TRA-Import fertig: %1$d ok, %2$d Fehler.</string>
+    <string name="import_export_v19_import_done_tra_gra">Achsdaten-Import fertig: %1$d TRA, %2$d GRA, %3$d Fehler.</string>
+    <string name="import_export_v19_import_done_gra">GRA-Import fertig: %1$d ok, %2$d Fehler.</string>
+    <string name="import_export_v19_import_done_gvp">GVP-Import fertig: %1$d ok, %2$d Fehler.</string>
+    <string name="import_export_v19_import_done_kor">KOR-Import fertig: %1$d ok, %2$d Fehler.</string>
+    <string name="import_export_v19_status_error">Importstatus konnte nicht geladen werden: %1$s</string>
+    <string name="import_export_v19_status_axes">Achsen: %1$d</string>
+    <string name="import_export_v19_status_elements">Achselemente: %1$d</string>
+    <string name="import_export_v19_status_samples">Samplepunkte: %1$d</string>
+    <string name="import_export_v19_status_gvp">GVP/Festpunkte: %1$d</string>
+    <string name="import_export_v19_status_kor">Absteckpunkte: %1$d</string>
+    <string name="import_export_v19_status_gra">GRA/kmLinien: %1$d</string>
+    <string name="import_export_v19_status_km_link">KM/GRA verknüpft: Achspunkte %1$d/%2$d</string>
+    <string name="import_export_v19_status_gra_groups">GRA/kmLinien:</string>
+    <string name="import_export_v19_status_gvp_groups">GVP/Festpunkte:</string>
+    <string name="import_export_v19_status_kor_groups">Absteckpunkte/KOR:</string>
+    <string name="import_export_v19_status_axis_types">Achstypen:</string>
+    <string name="import_export_v19_status_axis_list">Importierte Achsen:</string>
+    <string name="import_export_v19_status_last_imports">Letzte Importe:</string>
+    <string name="import_export_v19_status_line_axes">%1$d Achse(n), %2$d Element(e)</string>
+    <string name="import_export_v19_status_line_gra">%1$d GRA/kmLinie-Punkt(e)</string>
+    <string name="import_export_v19_status_line_gvp">%1$d GVP-Punkt(e)</string>
+    <string name="import_export_v19_status_line_kor">%1$d Absteckpunkt(e)</string>
+
+    <string name="import_export_v19_btn_gps_recalc">Daten berechnen</string>
+    <string name="import_export_v19_hint_gps_recalc">GPS + KM in einem Schritt.</string>
+    <string name="import_export_v19_data_calc_running">Daten berechnen… 100 %</string>
+    <string name="import_export_v19_data_calc_done">Daten berechnet und geprueft.</string>
+    <string name="import_export_v19_gps_running">GPS-Koordinaten werden aus DB_REF berechnet …</string>
+    <string name="import_export_v19_gps_done">GPS berechnet: %1$d Achspunkte, %2$d GVP, %3$d KOR, %4$d Fehler.</string>
+    <string name="import_export_v19_gra_link_running">KM-/Stationswerte werden aus GRA mit den Achspunkten verknüpft …</string>
+    <string name="import_export_v19_gra_link_done">KM/GRA verknüpft: %1$d Achse(n), %2$d Achspunkt(e).</string>
+    <string name="import_export_v19_status_gps">GPS berechnet: Achspunkte %1$d/%2$d, GVP %3$d/%4$d, KOR %5$d/%6$d</string>
+    <string name="import_export_v19_status_line_gps">GPS: %1$d Achspunkte, %2$d GVP, %3$d KOR</string>
+    <string name="import_export_v19_btn_nahe_test">Live-GPS prüfen</string>
+    <string name="import_export_v19_btn_weiche_zuordnen">Gefundene Weiche zuordnen</string>
+    <string name="import_export_v19_btn_weichen_verwalten">Weichenzuordnungen verwalten</string>
+    <string name="import_export_v19_hint_nahe_test">20 s neutraler GPS-Test.</string>
+    <string name="import_export_v19_nahe_test_running">Live-GPS wird ca. 20 Sekunden gesammelt und neutral gegen Gleis-/Weichenachsen geprüft …</string>
+    <string name="import_export_v19_nahe_test_empty">Nähe-Test nicht möglich: erst TRA importieren und GPS-Koordinaten berechnen.</string>
+    <string name="import_export_v19_nahe_test_done">Live-Test: %1$s, Abstand %2$s m.</string>
+    <string name="import_export_v19_nahe_permission_missing">Standortberechtigung fehlt. Live-Näheberechnung ist nicht möglich.</string>
+    <string name="import_export_v19_nahe_live_no_fix">Kein Live-GPS-Fix innerhalb der Sammelzeit. Bitte draußen testen oder GPS einschalten.</string>
+    <string name="import_export_v19_nahe_live_no_axis">Keine importierte Achse im Umkreis von 500 m gefunden. Live-GPS: %1$s, %2$s</string>
+    <string name="import_export_v19_nahe_live_no_axis_short">Keine Achse im Umkreis von 500 m gefunden.</string>
+    <string name="import_export_v19_nahe_test_title">Live-Näheberechnung</string>
+    <string name="import_export_v19_nahe_test_hint_after">Neutraler Live-Test. Kamera und BTB uebernehmen die Werte noch nicht automatisch.</string>
+    <string name="import_export_v19_btn_clear">Vermessungsdaten löschen</string>
+    <string name="import_export_v19_hint_clear">BTB, Fotos und Baustellen bleiben erhalten.</string>
+    <string name="import_export_v19_clear_title">Vermessungsdaten löschen?</string>
+    <string name="import_export_v19_clear_message">Setzt den kompletten aktuellen Vermessungs-/Streckendatenstand zurück: importierte TRA/GRA/GVP/KOR-Daten, KM-Anker, manuelle Gleis-/Streckenabschnitte, Achskorrekturen, Importstatus und gespeicherte Streckendaten-Zuordnungen werden gelöscht. Danach das gewünschte Streckendaten-ZIP neu importieren. GPS-Streckenpunkte, Baustellen, BTB, Fotos, Mängel und Abnahmen bleiben erhalten.</string>
+    <string name="import_export_v19_clear_positive">Löschen</string>
+    <string name="import_export_v19_clear_running">Vermessungsdaten werden vollständig zurückgesetzt …</string>
+    <string name="import_export_v19_clear_done">Vermessungsdaten vollständig zurückgesetzt: %1$d Datensatz/Zuordnung(en) entfernt. Das Streckendaten-ZIP kann jetzt frisch importiert werden.</string>
+
+</resources>

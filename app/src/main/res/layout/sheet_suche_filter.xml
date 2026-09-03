@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_sheet_suche_filter_text_1"
+            android:textStyle="bold"
+            android:textSize="18sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/ui_fragment_overlay_einstellungen_text_16" />
+
+        <Spinner
+            android:id="@+id/spBaustelleSheet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/ui_dialog_schicht_text_1" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDatumEinzeln"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/ui_sheet_suche_filter_text_2" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDatumVonSheet"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="@string/ui_sheet_suche_filter_text_3" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDatumBisSheet"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="@string/ui_sheet_suche_filter_text_4" />
+        </LinearLayout>
+
+        <EditText
+            android:id="@+id/edtVolltextSheet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="@string/ui_sheet_suche_filter_hint_5" />
+
+        <EditText
+            android:id="@+id/edtStreckeSheet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/ui_sheet_suche_filter_hint_6" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/ui_sheet_suche_filter_text_7" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/edtKmVonSheet"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:inputType="numberDecimal"
+                android:hint="@string/ui_fragment_baustelle_neu_hint_16" />
+
+            <EditText
+                android:id="@+id/edtKmBisSheet"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:inputType="numberDecimal"
+                android:hint="@string/ui_fragment_baustelle_neu_hint_17" />
+        </LinearLayout>
+
+        <CheckBox
+            android:id="@+id/cbNurBeiStreckenpunktenSheet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/ui_sheet_suche_filter_text_8" />
+
+        <EditText
+            android:id="@+id/edtStreckenpunktTextSheet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/ui_sheet_suche_filter_hint_9" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnResetSheet"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/ui_fragment_bautagebuch_text_13" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnApplySheet"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="@string/ui_sheet_suche_filter_text_10" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:clipToPadding="false">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/txtHauptInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_fragment_baustelle_neu_text_1"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:paddingBottom="8dp" />
+
+        <EditText
+            android:id="@+id/edtHauptbaustellenName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/ui_fragment_baustelle_neu_hint_2"
+            android:inputType="textCapSentences"
+            android:maxLines="1" />
+
+        <!-- Optionaler Name für Unterpunkte/Bezeichnung (nur sichtbar beim Anlegen eines Unterpunkts) -->
+        <EditText
+            android:id="@+id/edtUnterpunktName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="@string/ui_fragment_baustelle_neu_hint_3"
+            android:inputType="textCapSentences"
+            android:maxLines="1"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/txtTypLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="@string/ui_fragment_baustelle_neu_text_4"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/rgTyp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="6dp">
+
+
+            <RadioButton
+                android:id="@+id/rbGrossbaustelle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_baustelle_neu_text_gross" />
+
+            <RadioButton
+                android:id="@+id/rbFreieStrecke"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_baustelle_neu_text_5" />
+
+            <RadioButton
+                android:id="@+id/rbBahnhof"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_baustelle_neu_text_6" />
+
+            <RadioButton
+                android:id="@+id/rbAllgemein"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_baustelle_neu_text_7" />
+        </RadioGroup>
+
+        <!-- Freie Strecke -->
+        <LinearLayout
+            android:id="@+id/gruppeFreieStrecke"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="14dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_baustelle_neu_text_8"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="6dp">
+
+                <EditText
+                    android:id="@+id/edtStreckennummer"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/ui_fragment_baustelle_neu_hint_9"
+                    android:inputType="number"
+                    android:maxLength="4" />
+
+                <Spinner
+                    android:id="@+id/spStreckenSuffix"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/txtStreckeJsonStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="✗"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/ui_fragment_baustelle_neu_text_10"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="6dp">
+
+                <EditText
+                    android:id="@+id/edtKmVon"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/ui_fragment_baustelle_neu_hint_11"
+                    android:inputType="numberDecimal" />
+
+                <EditText
+                    android:id="@+id/edtKmBis"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:hint="@string/ui_fragment_baustelle_neu_hint_12"
+                    android:inputType="numberDecimal" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Bahnhof -->
+        <LinearLayout
+            android:id="@+id/gruppeBahnhof"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="14dp"
+            android:visibility="gone">
+
+            <AutoCompleteTextView
+                android:id="@+id/edtBahnhofName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/ui_fragment_baustelle_neu_hint_13"
+                android:inputType="textCapWords" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/ui_fragment_baustelle_neu_text_gleisweiche_dkw"
+                android:textStyle="bold" />
+
+            <RadioGroup
+                android:id="@+id/rgGleisWeiche"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="6dp">
+
+                <RadioButton
+                    android:id="@+id/rbGleis"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ui_fragment_baustelle_neu_text_gleis" />
+
+                <RadioButton
+                    android:id="@+id/rbWeiche"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:text="@string/ui_fragment_baustelle_neu_text_weiche" />
+
+                <RadioButton
+                    android:id="@+id/rbDkwKreuzung"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:text="@string/ui_fragment_baustelle_neu_text_dkw_kreuzung" />
+
+                <!-- Altbestand: bleibt technisch erhalten, ist aber bei neuen Baustellen nicht auswählbar. -->
+                <RadioButton
+                    android:id="@+id/rbWeichenverbindung"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:text="@string/ui_fragment_baustelle_neu_text_wv" />
+            </RadioGroup>
+
+            <AutoCompleteTextView
+                android:id="@+id/edtGleisWeicheNr"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/ui_fragment_baustelle_neu_hint_gleisweiche_nr"
+                android:inputType="text" />
+
+
+            <TextView
+                android:id="@+id/txtAltWvHinweis"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Bestehende Weichenverbindung (Altbestand)"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnStreckendatenOptional"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Streckendaten optional"
+                android:textAllCaps="false"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/txtBahnhofJsonStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="✗"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/ui_fragment_baustelle_neu_text_15"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="6dp">
+
+                <EditText
+                    android:id="@+id/edtKmVonOptional"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/ui_fragment_baustelle_neu_hint_16"
+                    android:inputType="numberDecimal" />
+
+                <EditText
+                    android:id="@+id/edtKmBisOptional"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:hint="@string/ui_fragment_baustelle_neu_hint_17"
+                    android:inputType="numberDecimal" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Allgemein/Objekt -->
+        <LinearLayout
+            android:id="@+id/gruppeAllgemein"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="14dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ui_fragment_baustelle_neu_text_15"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="6dp">
+
+                <EditText
+                    android:id="@+id/edtKmVonAllgemein"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/ui_fragment_baustelle_neu_hint_16"
+                    android:inputType="numberDecimal" />
+
+                <EditText
+                    android:id="@+id/edtKmBisAllgemein"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:hint="@string/ui_fragment_baustelle_neu_hint_17"
+                    android:inputType="numberDecimal" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpeichern"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/ui_fragment_baustelle_neu_text_18" />
+
+        <include
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            layout="@layout/footer" />
+
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tvBtbVerlaufTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="BTB-Verlauf"
+            android:textColor="#111111"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvBtbVerlaufSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Baustelle"
+            android:textColor="#555555"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Grün = innerhalb 7 Tage bearbeitbar. Rot = älter als 7 Tage, nur PDF/ZIP."
+            android:textColor="#555555"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:id="@+id/containerBtbVerlauf"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical" />
+
+    </LinearLayout>
+</ScrollView>

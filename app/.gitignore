@@ -1,0 +1,16 @@
+# Build outputs
+/build/
+/.gradle/
+/local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Artifacts that shouldn't be inside src/
+*.zip
+
