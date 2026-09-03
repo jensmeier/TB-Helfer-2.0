@@ -25,7 +25,7 @@ import kotlin.math.round
  * Offline-Pruefansicht fuer importierte Streckendaten.
  *
  * Patch44:
- * - Achsfarbe zeigt den KM-Status: GRUEN automatisch, ORANGE manuell, ROT ohne KM, GRAU unplausibel.
+ * - Achsfarbe zeigt den KM-Status: GRUEN automatisch, ORANGE manuell, ROT ohne belastbare KM.
  * - GVP/Festpunkte und KM-Beschriftungen erscheinen zoomabhaengig.
  * - Achsanfang/-ende und echte Anschlussknoten werden sichtbar markiert.
  * - Die Ansicht passt sich nach jeder echten Groessenaenderung automatisch an das verfuegbare Display an.
@@ -790,7 +790,7 @@ class TrassenGrafikView @JvmOverloads constructor(
     private fun zeichneLegende(canvas: Canvas, isDark: Boolean) {
         val zeilen = listOf(
             "KM: Grün automatisch · Orange manuell",
-            "Rot fehlt · Grau unplausibel",
+            "Rot = keine belastbare KM · Grau = ohne Vermessungsgeometrie",
             "Weiche/WV blau · WV gestrichelt · ◇ Anschluss",
             "Festpunkte und KM beim Reinzoomen"
         )
@@ -926,8 +926,8 @@ class TrassenGrafikView @JvmOverloads constructor(
         TrassenKmStatusLogik.STATUS_AUTOMATISCH -> if (dark) Color.rgb(76, 217, 100) else Color.rgb(0, 145, 65)
         TrassenKmStatusLogik.STATUS_MANUELL -> if (dark) Color.rgb(255, 183, 77) else Color.rgb(230, 126, 0)
         TrassenKmStatusLogik.STATUS_FEHLT -> if (dark) Color.rgb(255, 82, 82) else Color.rgb(205, 35, 45)
-        TrassenKmStatusLogik.STATUS_UNPLAUSIBEL -> if (dark) Color.rgb(170, 170, 170) else Color.rgb(105, 105, 105)
-        else -> if (dark) Color.rgb(180, 180, 180) else Color.rgb(130, 130, 130)
+        TrassenKmStatusLogik.STATUS_UNPLAUSIBEL -> if (dark) Color.rgb(255, 82, 82) else Color.rgb(205, 35, 45)
+        else -> if (dark) Color.rgb(255, 82, 82) else Color.rgb(205, 35, 45)
     }
 
     private fun typReihenfolge(typ: String): Int = when (typ) {

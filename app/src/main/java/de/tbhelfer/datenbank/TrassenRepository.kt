@@ -143,7 +143,7 @@ class TrassenRepository(private val dao: TrassenDao) {
         if (!kal.plausibel) {
             return ManuelleKmKalibrierungErgebnis(
                 angewendet = false,
-                status = TrassenKmStatusLogik.STATUS_UNPLAUSIBEL,
+                status = TrassenKmStatusLogik.STATUS_FEHLT,
                 ankerAnzahl = anker.size,
                 stationAbstandM = kal.stationAbstandM,
                 kmAbstandM = kal.kmAbstandM,
@@ -156,7 +156,7 @@ class TrassenRepository(private val dao: TrassenDao) {
         if (samples.size < 2) {
             return ManuelleKmKalibrierungErgebnis(
                 angewendet = false,
-                status = TrassenKmStatusLogik.STATUS_UNPLAUSIBEL,
+                status = TrassenKmStatusLogik.STATUS_FEHLT,
                 ankerAnzahl = anker.size,
                 hinweis = "Achse hat zu wenige berechnete Punkte."
             )
@@ -775,9 +775,9 @@ class TrassenRepository(private val dao: TrassenDao) {
                 val grenze1 = a.stationStart
                 val grenze2 = a.stationEnde
                 if (grenze1 == null || grenze2 == null) {
-                    // Patch45ZW: Solange der betriebliche Abschnitt nicht mit zwei Grenzen
-                    // eingegrenzt ist, gilt er vorlaeufig auf der gesamten fest gewaehlten Roh-TRA.
-                    true
+                    // Offene Entwuerfe bleiben gespeichert, duerfen aber nicht die gesamte Roh-TRA
+                    // als fachlich gueltigen, manuell kilometrierten Abschnitt ueberlagern.
+                    false
                 } else {
                     kandidat.station >= minOf(grenze1, grenze2) - 0.01 &&
                         kandidat.station <= maxOf(grenze1, grenze2) + 0.01

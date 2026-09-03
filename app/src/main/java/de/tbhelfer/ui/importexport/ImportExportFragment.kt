@@ -2048,11 +2048,14 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
         return innen.distinctBy { kotlin.math.round(it.station * 1000.0).toLong() }.sortedBy { it.station }
     }
 
-    private fun abschnittKmStatus(abschnitt: TrassenManuellerAbschnittEntity): String = when {
-        abschnitt.kmAnkerStation != null && abschnitt.kmAnkerMeter != null && abschnitt.kmStationVorzeichen != null -> TrassenKmStatusLogik.STATUS_MANUELL
-        abschnitt.kmAnkerStation != null && abschnitt.kmAnkerMeter != null -> TrassenKmStatusLogik.STATUS_FEHLT
-        else -> TrassenKmStatusLogik.STATUS_FEHLT
-    }
+    private fun abschnittKmStatus(abschnitt: TrassenManuellerAbschnittEntity): String =
+        TrassenKmStatusLogik.bewerteManuellenAbschnitt(
+            kmAnkerStation = abschnitt.kmAnkerStation,
+            kmAnkerMeter = abschnitt.kmAnkerMeter,
+            kmStationVorzeichen = abschnitt.kmStationVorzeichen,
+            stationStart = abschnitt.stationStart,
+            stationEnde = abschnitt.stationEnde
+        ).status
 
     private fun mitStandortBerechtigung(aktion: () -> Unit) {
         if (StandortLiveQuelle.hatStandortBerechtigung(requireContext())) {
@@ -3938,7 +3941,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 appendLine("Kontrollanker: ${punkte.count { it.typ == TrassenAbschnittKmPunktEntity.TYP_KONTROLLANKER }}")
                 appendLine("KM-Sprünge: ${punkte.count { it.typ == TrassenAbschnittKmPunktEntity.TYP_KM_SPRUNG }}")
                 val kmStatus = when {
-                    aktuell.kmAnkerStation != null && aktuell.kmAnkerMeter != null && aktuell.kmStationVorzeichen != null -> "ORANGE · manuell kilometriert"
+                    aktuell.kmAnkerStation != null && aktuell.kmAnkerMeter != null && aktuell.kmStationVorzeichen != null && aktuell.stationStart != null && aktuell.stationEnde != null -> "ORANGE · manuell kilometriert"
                     aktuell.kmAnkerStation != null && aktuell.kmAnkerMeter != null -> "ROT · KM-Anker vorhanden, Richtung noch offen"
                     else -> "ROT · keine belastbare KM"
                 }
@@ -4568,14 +4571,14 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
 
     private fun TrassenManuellerAbschnittEntity.manuellerKmStatusKurz(): String {
         return when {
-            kmAnkerStation != null && kmAnkerMeter != null && kmStationVorzeichen != null -> "ORANGE · manuell kilometriert"
-            kmAnkerStation != null && kmAnkerMeter != null -> "ROT · Richtung offen"
+            kmAnkerStation != null && kmAnkerMeter != null && kmStationVorzeichen != null && stationStart != null && stationEnde != null -> "ORANGE · manuell kilometriert"
+            kmAnkerStation != null && kmAnkerMeter != null -> "ROT · manueller Abschnitt noch unvollstaendig"
             kmPunkt1Meter != null && kmPunkt2Station != null && kmPunkt2Meter != null && stationStart != null -> {
                 val kal = TrassenKmStatusLogik.kalibrierungAus(
                     TrassenKmStatusLogik.Anker(1, stationStart, kmPunkt1Meter),
                     TrassenKmStatusLogik.Anker(2, kmPunkt2Station, kmPunkt2Meter)
                 )
-                if (kal.plausibel) "ORANGE · manuell kalibriert" else "GRAU · unplausibel"
+                if (kal.plausibel) "ORANGE · manuell kalibriert" else "ROT · unplausibel"
             }
             else -> "ROT · keine belastbare KM"
         }
@@ -5586,7 +5589,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
         paketStatusZeile()?.let { sb.appendLine(it) }
         sb.appendLine(if (geometrieOk) "✓ Geometrie: $anzahlAchsen Achsen" else "! Geometrie: TRA/Achspunkte fehlen")
         if (kmStatusGesamt > 0) {
-            sb.appendLine("KM-Status: Grün $kmAutomatischAchsen · Orange $kmManuellAchsen · Rot $kmFehltAchsen · Grau $kmUnplausibelAchsen")
+            sb.appendLine("KM-Status: Grün $kmAutomatischAchsen · Orange $kmManuellAchsen · Rot ${kmFehltAchsen + kmUnplausibelAchsen}")
         } else {
             sb.appendLine("! KM-Status: keine Achsen bewertet")
         }
@@ -5619,7 +5622,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
         sb.appendLine("Details:")
         sb.appendLine("• Achsen: $anzahlAchsen · Achspunkte: $anzahlSamplepunkte")
         sb.appendLine("• GRA: $anzahlGraPunkte · GVP: $anzahlGvpPunkte")
-        sb.appendLine("• KM-Achsen: Grün $kmAutomatischAchsen · Orange $kmManuellAchsen · Rot $kmFehltAchsen · Grau $kmUnplausibelAchsen")
+        sb.appendLine("• KM-Achsen: Grün $kmAutomatischAchsen · Orange $kmManuellAchsen · Rot ${kmFehltAchsen + kmUnplausibelAchsen}")
         sb.appendLine("• Manuelle KM-Anker: $anzahlKmAnker")
 
         val weichen = achsen
@@ -5874,9 +5877,9 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             appendLine("Station: $stationText")
             val kmStatusText = when (kmStatus) {
                 TrassenKmStatusLogik.STATUS_AUTOMATISCH -> "GRÜN · automatisch und plausibel"
-                TrassenKmStatusLogik.STATUS_MANUELL -> "ORANGE · manuell mit 2 Punkten kalibriert"
-                TrassenKmStatusLogik.STATUS_FEHLT -> "ROT · keine KM-Kalibrierung"
-                TrassenKmStatusLogik.STATUS_UNPLAUSIBEL -> "GRAU · KM unplausibel"
+                TrassenKmStatusLogik.STATUS_MANUELL -> "ORANGE · manuell kilometriert"
+                TrassenKmStatusLogik.STATUS_FEHLT -> "ROT · keine belastbare KM"
+                TrassenKmStatusLogik.STATUS_UNPLAUSIBEL -> "ROT · KM unplausibel"
                 else -> kmStatus
             }
             appendLine("KM-Status: $kmStatusText")
