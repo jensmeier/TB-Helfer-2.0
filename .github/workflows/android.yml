@@ -9,11 +9,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -21,6 +24,38 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: gradle
+
+      # Einmalige Reparatur fuer den aus dem Altprojekt uebernommenen Minimal-Wrapper.
+      # Der Download wird gegen Gradles offiziellen SHA-256 fuer 9.3.1 geprueft.
+      # Nach erfolgreicher Reparatur wird dieser Block wieder entfernt.
+      - name: Repair official Gradle 9.3.1 Wrapper
+        if: ${{ github.event_name == 'pull_request' && github.head_ref == 'kilometrierung-v1' }}
+        env:
+          WRAPPER_SHA256: b3a875ddc1f044746e1b1a55f645584505f4a10438c1afea9f15e92a7c42ec13
+          DIST_SHA256: b266d5ff6b90eada6dc3b20cb090e3731302e553a27c5d3e4df1f0d76beaff06
+        run: |
+          set -euo pipefail
+          current="$(sha256sum gradle/wrapper/gradle-wrapper.jar | awk '{print $1}')"
+          if [ "$current" != "$WRAPPER_SHA256" ]; then
+            curl --fail --location --retry 3 \
+              https://services.gradle.org/distributions/gradle-9.3.1-wrapper.jar \
+              --output gradle/wrapper/gradle-wrapper.jar
+            echo "$WRAPPER_SHA256  gradle/wrapper/gradle-wrapper.jar" | sha256sum --check --strict
+
+            chmod +x gradlew
+            ./gradlew wrapper \
+              --gradle-version 9.3.1 \
+              --distribution-type bin \
+              --gradle-distribution-sha256-sum "$DIST_SHA256"
+
+            echo "$WRAPPER_SHA256  gradle/wrapper/gradle-wrapper.jar" | sha256sum --check --strict
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add gradlew gradlew.bat gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties
+            git commit -m "Build: offiziellen Gradle 9.3.1 Wrapper wiederherstellen"
+            git push origin "HEAD:${{ github.head_ref }}"
+          fi
 
       - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v6
