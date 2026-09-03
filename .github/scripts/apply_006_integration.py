@@ -18,8 +18,8 @@ def replace_once(old: str, new: str, label: str) -> None:
 
 replace_once(
     "import de.tbhelfer.vermessung.GvpDateiParser\n",
-    "import de.tbhelfer.vermessung.GvpDateiParser\nimport de.tbhelfer.vermessung.KfDateiParser\n",
-    "KfDateiParser import",
+    "import de.tbhelfer.vermessung.GvpDateiParser\nimport de.tbhelfer.vermessung.KfDateiParser\nimport de.tbhelfer.vermessung.VermessungspunktKategorie\n",
+    "KF/category imports",
 )
 
 replace_once(
@@ -80,7 +80,7 @@ replace_once(
         ServiceLocator.trassenRepository.gvpImportSpeichern(datei.dateiname, result)
         val mitKm = result.punkte.count { it.kmMeter != null && !it.strecke.isNullOrBlank() }
         val gvp = result.punkte.count {
-            it.typ.equals("PS4", true) || it.typ?.startsWith("GVP", true) == true
+            VermessungspunktKategorie.grafikArt(it.typ, datei.dateiname) == VermessungspunktKategorie.GVP
         }
         ImportErgebnis(
             datei.dateiname,
@@ -111,9 +111,7 @@ replace_once(
     "standalone KF importer",
 )
 
-# Es gibt zwei getrennte Datenpfade in der grossen Grafikdatei: den allgemeinen
-# Vermessungspunkt-Lader fuer Weiche/DKW/KM-Auswahl und die normale grafische Uebersicht.
-# Beide muessen dieselbe fachliche Klassifizierung verwenden.
+# Zwei getrennte GVP-Datenpfade: allgemeiner Vermessungspunkt-Lader und normale Grafik.
 pattern = re.compile(
     r'(?P<indent>[ \t]*)TrassenGrafikFestpunkt\(\n'
     r'(?P=indent)    label = it\.punktName,\n'
@@ -123,24 +121,15 @@ pattern = re.compile(
 def klassifizierung(match: re.Match) -> str:
     indent = match.group("indent")
     return (
-        f'{indent}val originalTyp = it.typ?.trim()?.uppercase(Locale.GERMANY)\n'
-        f'{indent}val istKfQuelle = it.quelleDatei.endsWith(".kf", true) || it.quelleDatei.endsWith(".kf.txt", true)\n'
-        f'{indent}val grafikArt = when {{\n'
-        f'{indent}    originalTyp == "PS4" || originalTyp?.startsWith("GVP") == true -> "GVP"\n'
-        f'{indent}    originalTyp in setOf("PS0", "PS1", "PS2", "PS3", "GPSC", "HBH", "PPB") -> "FESTPUNKT"\n'
-        f'{indent}    istKfQuelle -> "FESTPUNKT"\n'
-        f'{indent}    else -> "GVP" // bestehende GVP-/TXT-Quellen ohne PArt nicht regressieren\n'
-        f'{indent}}}\n'
         f'{indent}TrassenGrafikFestpunkt(\n'
         f'{indent}    label = it.punktName,\n'
-        f'{indent}    art = grafikArt,\n'
+        f'{indent}    art = VermessungspunktKategorie.grafikArt(it.typ, it.quelleDatei),\n'
     )
 
 text, klass_count = pattern.subn(klassifizierung, text)
 if klass_count < 2:
     raise RuntimeError(f"GVP/Festpunkt classification: expected at least two graphics mappings, found {klass_count}")
 
-# Alle Anzeigeauswahlen, die bisher nur GVP kannten, bekommen die getrennte Festpunkt-Kategorie.
 old_label = '"GVP" to "Festpunkte / Masten",'
 new_label = '"GVP" to "GVP / Gleisvermarkung (PS4/GVPV)",\n                        "FESTPUNKT" to "Festpunkte / sonstige KF-Punkte",'
 label_count = text.count(old_label)
