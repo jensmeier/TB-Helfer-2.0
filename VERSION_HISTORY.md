@@ -10,15 +10,33 @@ Diese Datei dokumentiert die auf dem Handy testbaren Entwicklungsstände.
 - Der Android-`versionCode` ist monoton und verwendet für TB-Helfer 2.0 das Schema `200NNN`, damit Updates über ältere APKs ohne Downgrade möglich bleiben.
 - Git bleibt die technische Detailhistorie; diese Datei beschreibt die fachlichen Unterschiede zwischen den Testständen.
 
+## 2.0 (002)
+
+Android versionCode: `200002`
+
+GVP-Auswahl für Weichen und DKW direkt in der grafischen Übersicht:
+
+- `Vermarkung wählen` öffnet die grafische TRA-/GVP-Ansicht statt einer langen Textliste.
+- WA/WE/WEZ und DKW A/B/C/D verwenden dieselben GVP/Festpunkte; die Rolle ergibt sich aus dem zuvor gedrückten Feld.
+- Gewählter GVP wird temporär blau markiert.
+- Vorhandener Datei-km des GVP wird übernommen.
+- Die GVP-Kennung und Quelldatei werden am Weichen-/DKW-Punkt mitgespeichert, damit später nachvollziehbar bleibt, welcher Vermarkungspunkt verwendet wurde.
+- Eine eindeutig nächste TRA darf automatisch vorgeschlagen werden.
+- Bei eng benachbarten oder weiter entfernten TRA wird nicht geraten; die möglichen Achsen werden zur Auswahl angeboten.
+- Keine Room-Migration.
+
+Status: in Entwicklung / CI-Prüfung vor Handytest.
+
 ## 2.0 (001)
 
 Android versionCode: `200001`
 
 Ausgangspunkt für die nachvollziehbaren 2.0-Teststände:
 
-- GVP/Festpunkte sollen nach einem neuen Streckendatenimport standardmäßig wieder in der grafischen Übersicht sichtbar sein.
+- GVP/Festpunkte werden nach einem neuen Streckendatenimport standardmäßig wieder in der grafischen Übersicht sichtbar.
 - Betriebsstellen-Suche im Weichen-/DKW-Editor mit Kürzel- und Namenssuche in beide Richtungen, inklusive Teiltreffern.
 - Die beim ZIP-Import gewählte Betriebsstelle wird als letzte Betriebsstelle übernommen und beim Anlegen einer neuen Weiche/DKW vorausgefüllt; sie bleibt editierbar.
+- Bereits früher gespeicherte ZIP-Zuordnungen werden über ihren Zeitstempel ebenfalls für die Vorbelegung verwendet.
 - Bestehende Kilometrierungs-, Weichen-/DKW- und Anschlusslogik aus `kilometrierung-v1` bleibt Grundlage.
 
-Status: in Entwicklung / CI-Prüfung vor Handytest.
+Status: CI vollständig grün; erster 2.0-Handytest durchgeführt.
