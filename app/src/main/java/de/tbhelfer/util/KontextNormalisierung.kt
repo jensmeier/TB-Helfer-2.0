@@ -4,6 +4,7 @@ import java.util.Locale
 
 object KontextNormalisierung {
     private val NON_ALNUM = Regex("[^\\p{L}\\p{Nd}]")
+    private val STRECKE_MIT_RICHTUNG = Regex("""^(\d{4})(?:\s*[-/]\s*[012])?$""")
 
     fun normalizeBasis(text: String?): String {
         return text
@@ -15,7 +16,22 @@ object KontextNormalisierung {
 
     fun normalizeBahnhof(text: String?): String = normalizeBasis(text)
 
-    fun normalizeStrecke(text: String?): String = normalizeBasis(text)
+    /**
+     * Eine DB-Streckennummer wird fachlich ueber ihre vierstellige Basis verglichen.
+     * Richtungs-/Kennziffern wie 5362-1 oder 5362/2 gehoeren zur selben Strecke 5362;
+     * die Richtungspruefung erfolgt dort, wo sie benoetigt wird, separat.
+     *
+     * Das ist fuer die Live-KM-Anzeige wichtig: Eine Baustelle kann mit "5362"
+     * angelegt sein, waehrend importierte Vermessungsdaten als "5362-1" vorliegen.
+     */
+    fun normalizeStrecke(text: String?): String {
+        val raw = text?.trim().orEmpty()
+        if (raw.isBlank()) return ""
+        STRECKE_MIT_RICHTUNG.matchEntire(raw)?.let { match ->
+            return match.groupValues[1]
+        }
+        return normalizeBasis(raw)
+    }
 
     fun normalizeGleis(text: String?): String {
         var value = normalizeBasis(text)
