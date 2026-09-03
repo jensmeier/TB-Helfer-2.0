@@ -2142,7 +2142,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             setPadding(dp(20), dp(8), dp(20), dp(8))
         }
         inhalt.addView(TextView(context).apply {
-            text = "WA/WE/WEZ können per Vermarkungspunkt oder GPS gesetzt werden. km bleibt optional; vorhandener Datei-km wird übernommen."
+            text = "Weichenpunkte WA/WE/WEZ und DKW-Punkte A/B/C/D können per Vermarkungspunkt oder GPS gesetzt werden. km bleibt optional; vorhandener Datei-km wird übernommen."
             textSize = 13f
             setPadding(0, 0, 0, dp(8))
         })
@@ -2231,8 +2231,20 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                     rollenRegex.containsMatchIn(punkt.label.trim()) ||
                         rollenRegex.containsMatchIn(punkt.punktId.orEmpty().trim())
                 }
-                val kandidaten = direktPassend.ifEmpty {
-                    festpunkte.filter { it.art.equals("WEICHENPUNKT", ignoreCase = true) }
+                val kandidaten = if (typ == StreckenObjektSpeicher.Typ.WEICHE) {
+                    direktPassend.ifEmpty {
+                        festpunkte.filter { it.art.equals("WEICHENPUNKT", ignoreCase = true) }
+                    }
+                } else {
+                    val gvp = festpunkte.filter {
+                        it.art.equals("GVP", ignoreCase = true) ||
+                            it.art.equals("FESTPUNKT", ignoreCase = true)
+                    }
+                    val passendeGvp = gvp.filter { punkt ->
+                        rollenRegex.containsMatchIn(punkt.label.trim()) ||
+                            rollenRegex.containsMatchIn(punkt.punktId.orEmpty().trim())
+                    }
+                    passendeGvp.ifEmpty { gvp }
                 }.sortedWith(compareBy<TrassenGrafikFestpunkt> { it.label }.thenBy { it.punktId.orEmpty() })
 
                 if (kandidaten.isEmpty()) {
@@ -2290,13 +2302,13 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 isAllCaps = false
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             }
-            val vermarkung = if (typ == StreckenObjektSpeicher.Typ.WEICHE) MaterialButton(context).apply {
+            val vermarkung = MaterialButton(context).apply {
                 text = "Vermarkung wählen"
                 isAllCaps = false
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                     topMargin = dp(4)
                 }
-            } else null
+            }
             val km = EditText(context).apply {
                 hint = "km optional"
                 inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED
