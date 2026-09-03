@@ -2277,6 +2277,15 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                     setFestpunkte(gvpPunkte)
                     setFestpunkteSichtbar(true)
                     setSichtbarePunktArten(setOf("GVP", "FESTPUNKT"))
+                    setSichtbareTypen(
+                        setOf(
+                            TrassenAchseEntity.ACHSTYP_GLEIS,
+                            TrassenAchseEntity.ACHSTYP_WEICHE,
+                            TrassenAchseEntity.ACHSTYP_WEICHENVERBINDUNG,
+                            TrassenAchseEntity.ACHSTYP_STRECKE,
+                            TrassenAchseEntity.ACHSTYP_UNBEKANNT
+                        )
+                    )
                     setLegendeSichtbar(false)
                 }
                 val container = LinearLayout(context).apply {
