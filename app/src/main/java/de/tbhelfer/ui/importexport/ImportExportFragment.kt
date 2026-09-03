@@ -548,6 +548,10 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             }.trimEnd()
             txtStatus?.text = details
             if (fachlichImportiert > 0) {
+                // Nach einem neuen Import alle Punktarten wieder standardmaessig zeigen.
+                // So erscheinen neu importierte GVP/Festpunkte sofort in der grafischen Uebersicht,
+                // auch wenn vorher eine Anzeigeauswahl aktiv war.
+                letzteGrafikSichtbarePunktArten = null
                 Toast.makeText(requireContext(), "ZIP importiert. Daten werden jetzt automatisch berechnet.", Toast.LENGTH_LONG).show()
                 datenBerechnenUndPruefen(warteDialog)
             } else {
@@ -2146,11 +2150,17 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             textSize = 13f
             setPadding(0, 0, 0, dp(8))
         })
-        val betriebsstelle = EditText(context).apply {
-            hint = "Betriebsstelle, z. B. MP · München-Pasing"
+        val betriebsstellenVorschlaege = ladeBetriebsstellenVorschlaegeAusAssets()
+        val betriebsstelleStart = vorhanden?.betriebsstelle
+            ?: prefillBetriebsstelle.takeIf { it.isNotBlank() }
+            ?: BahnhofSucheUtil.ladeLetzteEingabe(context)
+        val betriebsstelle = AutoCompleteTextView(context).apply {
+            hint = "Betriebsstelle, z. B. MPE oder Pasing"
             setSingleLine(true)
-            setText(vorhanden?.betriebsstelle ?: prefillBetriebsstelle)
+            threshold = 1
+            setText(betriebsstelleStart, false)
         }
+        bindeBetriebsstellenVorschlaege(betriebsstelle, betriebsstellenVorschlaege)
         val bezeichnung = EditText(context).apply {
             hint = if (typ == StreckenObjektSpeicher.Typ.WEICHE) "Bezeichnung, z. B. W 23" else "Bezeichnung, z. B. DKW 15 oder Kreuzung 3"
             setSingleLine(true)
@@ -2382,6 +2392,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                     Toast.makeText(context, "Betriebsstelle und Bezeichnung sind Pflicht.", Toast.LENGTH_LONG).show()
                     return@setOnClickListener
                 }
+                BahnhofSucheUtil.speichereLetzteEingabe(context, bs)
                 val basis = StreckenObjektSpeicher.Objekt(
                     id = vorhanden?.id ?: java.util.UUID.randomUUID().toString(),
                     betriebsstelle = bs,
@@ -5594,7 +5605,9 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
         input.setAdapter(adapter)
         input.setOnItemClickListener { parent, _, position, _ ->
             val display = parent.getItemAtPosition(position)?.toString().orEmpty()
-            input.tag = vorschlaege.firstOrNull { it.display == display }
+            val treffer = vorschlaege.firstOrNull { it.display == display }
+            input.tag = treffer
+            treffer?.let { BahnhofSucheUtil.speichereLetzteEingabe(requireContext(), it.display) }
         }
         input.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
