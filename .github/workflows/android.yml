@@ -23,7 +23,7 @@ jobs:
           cache: gradle
 
       - name: Validate Gradle Wrapper
-        uses: gradle/wrapper-validation-action@v2
+        uses: gradle/actions/wrapper-validation@v6
 
       - name: Build Debug + Release
         run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
