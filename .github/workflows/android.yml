@@ -5,6 +5,7 @@ on:
     branches: [ "main", "master" ]
   pull_request:
 
+# Internal 004 migration retry; removed again after the patch is committed.
 concurrency:
   group: android-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
