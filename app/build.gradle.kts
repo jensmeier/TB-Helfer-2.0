@@ -104,8 +104,10 @@ val generateKf006ImportFragment by tasks.registering {
         }
 
         replaceRequired(
-            "import de.tbhelfer.vermessung.GvpDateiParser\n",
-            "import de.tbhelfer.vermessung.GvpDateiParser\nimport de.tbhelfer.vermessung.KfDateiParser\nimport de.tbhelfer.vermessung.VermessungspunktKategorie\n",
+            "import de.tbhelfer.vermessung.GvpDateiParser",
+            """import de.tbhelfer.vermessung.GvpDateiParser
+import de.tbhelfer.vermessung.KfDateiParser
+import de.tbhelfer.vermessung.VermessungspunktKategorie""",
             "KF-Parser-Import"
         )
 
@@ -143,7 +145,7 @@ val generateKf006ImportFragment by tasks.registering {
         )
 
         replaceRequired(
-            "    private fun speichereStreckendatenZuordnung(\n",
+            "    private fun speichereStreckendatenZuordnung(",
             """    private suspend fun importiereZipKfDatei(datei: StreckendatenZipDatei): ImportErgebnis = runCatching {
         val result = KfDateiParser.parse(datei.dateiname, datei.bytes)
         ServiceLocator.trassenRepository.gvpImportSpeichern(datei.dateiname, result)
@@ -160,21 +162,19 @@ val generateKf006ImportFragment by tasks.registering {
         ImportErgebnis(datei.dateiname, false, throwable.message ?: throwable.javaClass.simpleName)
     }
 
-    private fun speichereStreckendatenZuordnung(
-""",
+    private fun speichereStreckendatenZuordnung(""",
             "KF-Importfunktion"
         )
 
         replaceRequired(
-            "            val result = GvpDateiParser.parse(dateiname, bytes)\n",
+            "            val result = GvpDateiParser.parse(dateiname, bytes)",
             """            val result = if (dateiname.endsWith(".kf", ignoreCase = true) &&
                 !dateiname.endsWith(".kf.txt", ignoreCase = true)
             ) {
                 KfDateiParser.parse(dateiname, bytes)
             } else {
                 GvpDateiParser.parse(dateiname, bytes)
-            }
-""",
+            }""",
             "Einzeldatei-KF-Import"
         )
 
@@ -192,10 +192,9 @@ val generateKf006ImportFragment by tasks.registering {
         )
 
         replaceRequired(
-            "                        \"GVP\" to \"Festpunkte / Masten\",\n",
+            "                        \"GVP\" to \"Festpunkte / Masten\",",
             """                        "GVP" to "GVP / Gleisvermarkung (PS4/GVPV)",
-                        "FESTPUNKT" to "Festpunkte / sonstige KF-Punkte",
-""",
+                        "FESTPUNKT" to "Festpunkte / sonstige KF-Punkte",""",
             "Grafik-Anzeigefilter",
             all = true
         )
