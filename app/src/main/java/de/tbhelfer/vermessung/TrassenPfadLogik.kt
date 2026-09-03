@@ -74,7 +74,7 @@ object TrassenPfadLogik {
         /** Weg auf der aktuellen TRA vom Zustand bis zum Entscheidungspunkt. */
         val entfernungM: Double,
         val optionen: List<Option>,
-        /** Alle Anschluesse desselben Knotens, damit er nach einer Auswahl nicht erneut angeboten wird. */
+        /** Alle Anschluesse desselben physischen Knotens, damit er nicht sofort erneut angeboten wird. */
         val anschluesseAmKnoten: Set<AnschlussSchluessel>
     )
 
@@ -83,7 +83,7 @@ object TrassenPfadLogik {
         val gesamtLaengeM: Double
     ) {
         val achsFolge: List<Long>
-            get() = segmente.fold(mutableListOf()) { acc, segment ->
+            get() = segmente.fold(mutableListOf<Long>()) { acc, segment ->
                 if (acc.lastOrNull() != segment.achseId) acc += segment.achseId
                 acc
             }
@@ -173,6 +173,19 @@ object TrassenPfadLogik {
                 ) <= knotenAbstandToleranzM
         }
 
+        // An einem realen Weichen-/DKW-Knoten koennen durch die paarweise Geometrieerkennung
+        // auch Anschluesse zwischen zwei Partnerachsen entstehen. Nach einer Nutzerentscheidung
+        // muss deshalb der komplette physische Knoten als passiert gelten, nicht nur die Paare,
+        // die die aktuell befahrene Achse enthalten.
+        val alleAnschluesseAmKnoten = anschluesse.filter { anschluss ->
+            distanz(
+                anschluss.x,
+                anschluss.y,
+                erster.anschluss.x,
+                erster.anschluss.y
+            ) <= knotenAbstandToleranzM
+        }
+
         val entscheidungsStation = erster.position.station
         val optionen = mutableListOf<Option>()
 
@@ -232,7 +245,7 @@ object TrassenPfadLogik {
             station = entscheidungsStation,
             entfernungM = abs(entscheidungsStation - zustand.station),
             optionen = sortierteOptionen,
-            anschluesseAmKnoten = knoten.map { it.schluessel }.toSet()
+            anschluesseAmKnoten = alleAnschluesseAmKnoten.map(::schluessel).toSet()
         )
     }
 
