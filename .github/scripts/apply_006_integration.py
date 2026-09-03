@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 path = Path("app/src/main/java/de/tbhelfer/ui/importexport/ImportExportFragment.kt")
 text = path.read_text(encoding="utf-8")
@@ -79,7 +80,7 @@ replace_once(
         ServiceLocator.trassenRepository.gvpImportSpeichern(datei.dateiname, result)
         val mitKm = result.punkte.count { it.kmMeter != null && !it.strecke.isNullOrBlank() }
         val gvp = result.punkte.count {
-            it.typ.equals("PS4", true) || it.typ.equals("GVPV", true)
+            it.typ.equals("PS4", true) || it.typ?.startsWith("GVP", true) == true
         }
         ImportErgebnis(
             datei.dateiname,
@@ -110,38 +111,42 @@ replace_once(
     "standalone KF importer",
 )
 
-replace_once(
-    '''                TrassenGrafikFestpunkt(
-                    label = it.punktName,
-                    art = "GVP",
-                    x = it.xDbRef.toFloat(),
-''',
-    '''                val originalTyp = it.typ?.trim()?.uppercase(Locale.GERMANY)
-                val grafikArt = if (originalTyp == "PS4" || originalTyp == "GVPV") "GVP" else "FESTPUNKT"
-                TrassenGrafikFestpunkt(
-                    label = it.punktName,
-                    art = grafikArt,
-                    x = it.xDbRef.toFloat(),
-''',
-    "GVP/Festpunkt classification",
+# Es gibt zwei getrennte Datenpfade in der grossen Grafikdatei: den allgemeinen
+# Vermessungspunkt-Lader fuer Weiche/DKW/KM-Auswahl und die normale grafische Uebersicht.
+# Beide muessen dieselbe fachliche Klassifizierung verwenden.
+pattern = re.compile(
+    r'(?P<indent>\s*)TrassenGrafikFestpunkt\(\n'
+    r'(?P=indent)    label = it\.punktName,\n'
+    r'(?P=indent)    art = "GVP",\n'
 )
 
-replace_once(
-    '''                    val punktKonfiguration = listOf(
-                        "GVP" to "Festpunkte / Masten",
-                        "AP" to "Absteckpunkte",
-                        "WEICHENPUNKT" to "Weichenpunkte"
-                    ).filter { (art, _) -> festpunkte.any { it.art == art } }
-''',
-    '''                    val punktKonfiguration = listOf(
-                        "GVP" to "GVP / Gleisvermarkung (PS4/GVPV)",
-                        "FESTPUNKT" to "Festpunkte / sonstige KF-Punkte",
-                        "AP" to "Absteckpunkte",
-                        "WEICHENPUNKT" to "Weichenpunkte"
-                    ).filter { (art, _) -> festpunkte.any { it.art == art } }
-''',
-    "graphics filter labels",
-)
+def klassifizierung(match: re.Match) -> str:
+    indent = match.group("indent")
+    return (
+        f'{indent}val originalTyp = it.typ?.trim()?.uppercase(Locale.GERMANY)\n'
+        f'{indent}val istKfQuelle = it.quelleDatei.endsWith(".kf", true) || it.quelleDatei.endsWith(".kf.txt", true)\n'
+        f'{indent}val grafikArt = when {{\n'
+        f'{indent}    originalTyp == "PS4" || originalTyp?.startsWith("GVP") == true -> "GVP"\n'
+        f'{indent}    originalTyp in setOf("PS0", "PS1", "PS2", "PS3", "GPSC", "HBH", "PPB") -> "FESTPUNKT"\n'
+        f'{indent}    istKfQuelle -> "FESTPUNKT"\n'
+        f'{indent}    else -> "GVP" // bestehende GVP-/TXT-Quellen ohne PArt nicht regressieren\n'
+        f'{indent}}}\n'
+        f'{indent}TrassenGrafikFestpunkt(\n'
+        f'{indent}    label = it.punktName,\n'
+        f'{indent}    art = grafikArt,\n'
+    )
+
+text, klass_count = pattern.subn(klassifizierung, text)
+if klass_count < 2:
+    raise RuntimeError(f"GVP/Festpunkt classification: expected at least two graphics mappings, found {klass_count}")
+
+# Alle Anzeigeauswahlen, die bisher nur GVP kannten, bekommen die getrennte Festpunkt-Kategorie.
+old_label = '"GVP" to "Festpunkte / Masten",'
+new_label = '"GVP" to "GVP / Gleisvermarkung (PS4/GVPV)",\n                        "FESTPUNKT" to "Festpunkte / sonstige KF-Punkte",'
+label_count = text.count(old_label)
+if label_count < 1:
+    raise RuntimeError("graphics filter labels: no legacy GVP label found")
+text = text.replace(old_label, new_label)
 
 path.write_text(text, encoding="utf-8")
-print("006 integration applied")
+print(f"006 integration applied; classified {klass_count} GVP mappings and updated {label_count} display filter(s)")
