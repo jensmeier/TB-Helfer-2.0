@@ -55,11 +55,12 @@ android {
 
     // 006: Die grosse ImportExportFragment-Datei bleibt im Repository unveraendert.
     // Fuer den Build wird eine deterministisch gepatchte Kopie erzeugt. AGP 9 mit
-    // Built-in Kotlin verlangt dafuer AndroidSourceSet.kotlin.
+    // Built-in Kotlin blendet PatternFilterable direkt auf AndroidSourceDirectorySet aus.
     sourceSets {
         getByName("main") {
-            kotlin.exclude("de/tbhelfer/ui/importexport/ImportExportFragment.kt")
-            kotlin.srcDir(kf006GeneratedDir)
+            (kotlin as org.gradle.api.tasks.util.PatternFilterable)
+                .exclude("de/tbhelfer/ui/importexport/ImportExportFragment.kt")
+            kotlin.directories.add(kf006GeneratedDir.path)
         }
     }
 
