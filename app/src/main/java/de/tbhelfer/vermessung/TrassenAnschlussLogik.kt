@@ -1,5 +1,6 @@
 package de.tbhelfer.vermessung
 
+import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
@@ -61,6 +62,16 @@ object TrassenAnschlussLogik {
             else -> null
         }
     }
+
+    /**
+     * Expliziter Uebergangskandidat. Bei einer Weiche mit mehreren Aesten werden mehrere
+     * Kandidaten geliefert; die Fachlogik waehlt nicht heimlich einen Ast aus.
+     */
+    data class Fortsetzung(
+        val von: Position,
+        val nach: Position,
+        val abstandM: Double
+    )
 
     fun findeAnschluesse(
         achsen: List<Achse>,
@@ -129,6 +140,25 @@ object TrassenAnschlussLogik {
         achseId: Long,
         anschluesse: List<Anschluss>
     ): List<Anschluss> = anschluesse.filter { it.enthaeltAchse(achseId) }
+
+    fun fortsetzungenVon(
+        achseId: Long,
+        anschluesse: List<Anschluss>,
+        naheStation: Double? = null,
+        stationToleranzM: Double = 5.0
+    ): List<Fortsetzung> {
+        require(stationToleranzM >= 0.0 && stationToleranzM.isFinite()) {
+            "Stationstoleranz darf nicht negativ sein."
+        }
+        return anschluesse.mapNotNull { anschluss ->
+            val von = anschluss.positionFuer(achseId) ?: return@mapNotNull null
+            if (naheStation != null && abs(von.station - naheStation) > stationToleranzM) {
+                return@mapNotNull null
+            }
+            val nach = anschluss.partnerFuer(achseId) ?: return@mapNotNull null
+            Fortsetzung(von = von, nach = nach, abstandM = anschluss.abstandM)
+        }.sortedWith(compareBy<Fortsetzung> { it.von.station }.thenBy { it.nach.achseName })
+    }
 
     private fun achsEnden(achse: Achse): List<Punkt> = when (achse.punkte.size) {
         0 -> emptyList()
