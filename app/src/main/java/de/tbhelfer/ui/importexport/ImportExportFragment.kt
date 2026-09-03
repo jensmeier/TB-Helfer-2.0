@@ -1303,7 +1303,8 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
         val typ: String,
         val kuerzel: String,
         val name: String,
-        val strecken: List<String>
+        val strecken: List<String>,
+        val geaendertAmEpochMs: Long
     ) {
         fun anzeigeName(): String {
             val k = kuerzel.trim()
@@ -1329,8 +1330,21 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 typ = teile[3].trim(),
                 kuerzel = teile[0].trim(),
                 name = teile[1].trim(),
-                strecken = teile[2].split(",").map { it.trim() }.filter { it.isNotBlank() }
+                strecken = teile[2].split(",").map { it.trim() }.filter { it.isNotBlank() },
+                geaendertAmEpochMs = teile.getOrNull(4)?.toLongOrNull() ?: 0L
             )
+        }
+    }
+
+    private fun letzteBetriebsstelleAusStreckendatenImport(): String {
+        val letzte = ladeStreckendatenZuordnungen()
+            .filter { it.kuerzel.isNotBlank() || it.name.isNotBlank() }
+            .maxByOrNull { it.geaendertAmEpochMs }
+            ?: return ""
+        return when {
+            letzte.kuerzel.isNotBlank() && letzte.name.isNotBlank() -> "${letzte.kuerzel} · ${letzte.name}"
+            letzte.kuerzel.isNotBlank() -> letzte.kuerzel
+            else -> letzte.name
         }
     }
 
@@ -2153,7 +2167,8 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
         val betriebsstellenVorschlaege = ladeBetriebsstellenVorschlaegeAusAssets()
         val betriebsstelleStart = vorhanden?.betriebsstelle
             ?: prefillBetriebsstelle.takeIf { it.isNotBlank() }
-            ?: BahnhofSucheUtil.ladeLetzteEingabe(context)
+            ?: BahnhofSucheUtil.ladeLetzteEingabe(context).takeIf { it.isNotBlank() }
+            ?: letzteBetriebsstelleAusStreckendatenImport()
         val betriebsstelle = AutoCompleteTextView(context).apply {
             hint = "Betriebsstelle, z. B. MPE oder Pasing"
             setSingleLine(true)
