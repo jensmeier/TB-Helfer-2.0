@@ -26,7 +26,8 @@ jobs:
           cache: gradle
 
       # Einmalige Reparatur fuer den aus dem Altprojekt uebernommenen Minimal-Wrapper.
-      # Der Download wird gegen Gradles offiziellen SHA-256 fuer 9.3.1 geprueft.
+      # Die Gradle-Distribution und der daraus erzeugte Wrapper werden gegen die
+      # offiziellen SHA-256-Werte fuer Gradle 9.3.1 geprueft.
       # Nach erfolgreicher Reparatur wird dieser Block wieder entfernt.
       - name: Repair official Gradle 9.3.1 Wrapper
         if: ${{ github.event_name == 'pull_request' && github.head_ref == 'kilometrierung-v1' }}
@@ -38,12 +39,12 @@ jobs:
           current="$(sha256sum gradle/wrapper/gradle-wrapper.jar | awk '{print $1}')"
           if [ "$current" != "$WRAPPER_SHA256" ]; then
             curl --fail --location --retry 3 \
-              https://services.gradle.org/distributions/gradle-9.3.1-wrapper.jar \
-              --output gradle/wrapper/gradle-wrapper.jar
-            echo "$WRAPPER_SHA256  gradle/wrapper/gradle-wrapper.jar" | sha256sum --check --strict
+              https://services.gradle.org/distributions/gradle-9.3.1-bin.zip \
+              --output /tmp/gradle-9.3.1-bin.zip
+            echo "$DIST_SHA256  /tmp/gradle-9.3.1-bin.zip" | sha256sum --check --strict
+            unzip -q /tmp/gradle-9.3.1-bin.zip -d /tmp/gradle-dist
 
-            chmod +x gradlew
-            ./gradlew wrapper \
+            /tmp/gradle-dist/gradle-9.3.1/bin/gradle wrapper \
               --gradle-version 9.3.1 \
               --distribution-type bin \
               --gradle-distribution-sha256-sum "$DIST_SHA256"
