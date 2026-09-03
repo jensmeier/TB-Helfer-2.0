@@ -32,4 +32,5 @@ jobs:
         run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
 
       - name: Lint Debug
-        run: ./gradlew :app:lintDebug --stacktrace
+        timeout-minutes: 10
+        run: ./gradlew :app:lintDebug --stacktrace --no-daemon
