@@ -13,11 +13,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -25,6 +27,21 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: gradle
+
+      - name: Apply TB-Helfer 2.0 (005) patch
+        run: |
+          if grep -q 'versionCode = 200004' app/build.gradle.kts; then
+            python .github/scripts/apply_005.py
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add app/build.gradle.kts VERSION_HISTORY.md \
+              app/src/main/java/de/tbhelfer/ui/importexport/ImportExportFragment.kt \
+              app/src/main/java/de/tbhelfer/ui/importexport/TrassenGrafikView.kt
+            git commit -m "TB-Helfer 2.0 (005): Weichengeometrie folgt TRA"
+            git push origin HEAD:kilometrierung-v1
+          else
+            echo "005 patch already applied"
+          fi
 
       - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v6
