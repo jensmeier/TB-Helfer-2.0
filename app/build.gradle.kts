@@ -90,7 +90,12 @@ val generateKf006ImportFragment by tasks.registering {
     outputs.file(kf006GeneratedFragment)
 
     doLast {
-        var text = kf006OriginalFragment.readText(Charsets.UTF_8)
+        // Nur Task-eigene Inputs/Outputs verwenden. Direkte Zugriffe auf Properties
+        // der kompilierten Kotlin-DSL-Scriptklasse koennen unter AGP/Gradle 9 beim
+        // Ausfuehren der Task-Action mit einem null this$0 enden.
+        val originalFragment = inputs.files.singleFile
+        val generatedFragment = outputs.files.singleFile
+        var text = originalFragment.readText(Charsets.UTF_8)
 
         fun replaceRequired(old: String, new: String, label: String, all: Boolean = false) {
             if (text.contains(new)) return
@@ -195,8 +200,8 @@ val generateKf006ImportFragment by tasks.registering {
             all = true
         )
 
-        kf006GeneratedFragment.parentFile.mkdirs()
-        kf006GeneratedFragment.writeText(text, Charsets.UTF_8)
+        generatedFragment.parentFile.mkdirs()
+        generatedFragment.writeText(text, Charsets.UTF_8)
     }
 }
 
