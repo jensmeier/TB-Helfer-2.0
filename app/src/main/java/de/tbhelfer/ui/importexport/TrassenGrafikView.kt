@@ -66,6 +66,7 @@ class TrassenGrafikView @JvmOverloads constructor(
     private var aktiveAchseId: Long? = null
     private var ankerProjektion: TrassenGrafikProjektion? = null
     private var aktiverFestpunkt: TrassenGrafikFestpunkt? = null
+    private var objektMarker: List<TrassenGrafikMarker> = emptyList()
 
     private val darkMode: Boolean
         get() = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
@@ -261,6 +262,12 @@ class TrassenGrafikView @JvmOverloads constructor(
         invalidate()
     }
 
+    /** Sichtbare Fachpunkte des aktuell bearbeiteten Objekts, z. B. WA/WE/WEZ oder A/B/C/D. */
+    fun setObjektMarker(marker: List<TrassenGrafikMarker>) {
+        objektMarker = marker
+        invalidate()
+    }
+
     fun fitToContent() {
         val b = bounds ?: return
         if (width <= 0 || height <= 0) return
@@ -332,6 +339,7 @@ class TrassenGrafikView @JvmOverloads constructor(
         }
         zeichneAchsendenUndKnoten(canvas, b, isDark)
         zeichneFestpunkte(canvas, b, isDark)
+        zeichneObjektMarker(canvas, b, isDark)
         zeichneAnkerProjektion(canvas, b, isDark)
         if (legendeSichtbar) zeichneLegende(canvas, isDark)
     }
@@ -455,7 +463,7 @@ class TrassenGrafikView @JvmOverloads constructor(
             val p = achse.punkte.minByOrNull { abs(it.station - s) } ?: return
             val x = sx(p.x, b)
             val y = sy(p.y, b)
-            val radius = dpF(8f)
+            val radius = dpF(12f)
             punktPaint.color = if (isDark) Color.WHITE else Color.rgb(35, 35, 35)
             canvas.drawCircle(x, y, radius, punktPaint)
             punktRandPaint.color = if (isDark) Color.BLACK else Color.WHITE
@@ -470,8 +478,46 @@ class TrassenGrafikView @JvmOverloads constructor(
             textPaint.textAlign = Paint.Align.LEFT
         }
 
-        zeichne(achse.abschnittStartStation, "1")
-        zeichne(achse.abschnittEndeStation, "2")
+        zeichne(achse.abschnittStartStation, "G1")
+        zeichne(achse.abschnittEndeStation, "G2")
+    }
+
+    private fun zeichneObjektMarker(canvas: Canvas, b: RectF, isDark: Boolean) {
+        val sichtbarIds = sichtbareAchseIds
+        objektMarker
+            .filter { marker -> sichtbarIds == null || marker.achseId == null || marker.achseId in sichtbarIds }
+            .forEach { marker ->
+                val x = sx(marker.x, b)
+                val y = sy(marker.y, b)
+                if (x < -40f || x > width + 40f || y < -40f || y > height + 40f) return@forEach
+                val radius = dpF(if (marker.aktiv) 11f else 9f)
+                punktPaint.color = if (marker.aktiv) {
+                    if (isDark) Color.rgb(100, 181, 246) else Color.rgb(25, 118, 210)
+                } else {
+                    if (isDark) Color.rgb(238, 238, 238) else Color.rgb(55, 55, 55)
+                }
+                punktRandPaint.color = if (isDark) Color.BLACK else Color.WHITE
+                punktRandPaint.strokeWidth = dpF(1.5f)
+                canvas.drawCircle(x, y, radius, punktPaint)
+                canvas.drawCircle(x, y, radius, punktRandPaint)
+                punktRandPaint.strokeWidth = 2f
+
+                textPaint.textAlign = Paint.Align.LEFT
+                textPaint.textSize = sp(12f)
+                textPaint.color = if (isDark) Color.WHITE else Color.rgb(20, 20, 20)
+                val label = marker.label
+                val fm = textPaint.fontMetrics
+                val padX = dpF(5f)
+                val padY = dpF(3f)
+                val w = textPaint.measureText(label) + padX * 2f
+                val h = fm.descent - fm.ascent + padY * 2f
+                val left = (x + radius + dpF(4f)).coerceAtMost((width - w - dpF(2f)).coerceAtLeast(dpF(2f)))
+                val top = (y - h / 2f).coerceIn(dpF(2f), (height - h - dpF(2f)).coerceAtLeast(dpF(2f)))
+                labelBgPaint.color = if (isDark) Color.argb(205, 0, 0, 0) else Color.argb(225, 255, 255, 255)
+                canvas.drawRoundRect(left, top, left + w, top + h, dpF(5f), dpF(5f), labelBgPaint)
+                canvas.drawText(label, left + padX, top + padY - fm.ascent, textPaint)
+            }
+        textPaint.textAlign = Paint.Align.LEFT
     }
 
     private fun zeichneKmBeschriftungen(canvas: Canvas, achse: TrassenGrafikAchse, b: RectF, isDark: Boolean) {
@@ -1036,6 +1082,14 @@ data class TrassenGrafikProjektion(
     val punktY: Float,
     val projX: Float,
     val projY: Float
+)
+
+data class TrassenGrafikMarker(
+    val label: String,
+    val x: Float,
+    val y: Float,
+    val achseId: Long? = null,
+    val aktiv: Boolean = false
 )
 
 data class TrassenGrafikFestpunkt(

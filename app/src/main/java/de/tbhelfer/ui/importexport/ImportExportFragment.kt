@@ -52,6 +52,7 @@ import de.tbhelfer.vermessung.KorDateiParser
 import de.tbhelfer.vermessung.TraDateiParser
 import de.tbhelfer.vermessung.StandortLiveQuelle
 import de.tbhelfer.vermessung.TrassenNaheBerechner
+import de.tbhelfer.vermessung.TrassenAnschlussLogik
 import de.tbhelfer.vermessung.TrassenKmStatusLogik
 import de.tbhelfer.vermessung.ManuelleAbschnittKmLogik
 import de.tbhelfer.vermessung.VermarkungsAchsenAuswahlLogik
@@ -2161,7 +2162,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             setPadding(dp(20), dp(8), dp(20), dp(8))
         }
         inhalt.addView(TextView(context).apply {
-            text = "Weichenpunkte WA/WE/WEZ und DKW-Punkte A/B/C/D können per Vermarkungspunkt oder GPS gesetzt werden. km bleibt optional; vorhandener Datei-km wird übernommen."
+            text = "Für WA/WE/WEZ und DKW A/B/C/D zuerst die Ziel-TRA wählen. Danach GVP/Festpunkt, echten TRA-Anschluss oder GPS verwenden. Ein GVP selbst gehört nicht fest zu einer Achse; vorhandener Datei-km wird übernommen."
             textSize = 13f
             setPadding(0, 0, 0, dp(8))
         })
@@ -2198,7 +2199,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 if (p.km != null) append("\nkm ${formatKmEingabe(p.km)}${if (p.kmManuell) " manuell" else ""}")
             }
             p.achseId != null && p.station != null -> buildString {
-                append("Vermarkung ✓")
+                if (p.vermarkungArt == "TRA_ANSCHLUSS") append("TRA-Anschluss ✓") else append("Vermarkung ✓")
                 p.vermarkungName?.takeIf { it.isNotBlank() }?.let { append(" · $it") }
                 p.achseName?.let { append(" · TRA $it") }
                 append(" · Station ${format1(p.station)} m")
@@ -2224,226 +2225,525 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
             aktualisiereZeile(rolle)
         }
 
-        fun gpsMessungUebernehmen(rolle: String, messung: AbschnittGpsMessung) {
-            viewLifecycleOwner.lifecycleScope.launch {
-                val kandidat = withContext(Dispatchers.IO) {
-                    ServiceLocator.trassenRepository.findeNaechsteTrassenKandidaten(
-                        messung.latitude, messung.longitude, 30.0, 6, false
-                    ).firstOrNull()
-                }
-                val alt = punkte[rolle]
-                val punkt = StreckenObjektSpeicher.Punkt(
-                    rolle = rolle,
-                    lat = messung.latitude,
-                    lon = messung.longitude,
-                    accuracyM = messung.accuracyM,
-                    km = alt?.km?.takeIf { alt.kmManuell } ?: kandidat?.kmMeter,
-                    kmManuell = alt?.kmManuell == true,
-                    achseId = kandidat?.achseId,
-                    achseName = kandidat?.achseName,
-                    station = kandidat?.station,
-                    achsabstandM = kandidat?.abstandM
+        fun achsenName(achse: TrassenGrafikAchse): String =
+            achse.label.takeIf { it.isNotBlank() } ?: achse.name
+
+        fun punktAufAchse(achse: TrassenGrafikAchse, station: Double): TrassenGrafikPunkt? {
+            val ps = achse.punkte.sortedBy { it.station }
+            if (ps.isEmpty()) return null
+            ps.minByOrNull { kotlin.math.abs(it.station - station) }
+                ?.takeIf { kotlin.math.abs(it.station - station) <= 0.01 }
+                ?.let { return it }
+            for (i in 0 until ps.lastIndex) {
+                val a = ps[i]
+                val b = ps[i + 1]
+                val von = minOf(a.station, b.station)
+                val bis = maxOf(a.station, b.station)
+                if (station < von || station > bis) continue
+                val ds = b.station - a.station
+                if (kotlin.math.abs(ds) < 1e-9) return a
+                val t = ((station - a.station) / ds).coerceIn(0.0, 1.0).toFloat()
+                val km = if (a.kmMeter != null && b.kmMeter != null) {
+                    a.kmMeter + (b.kmMeter - a.kmMeter) * t.toDouble()
+                } else a.kmMeter ?: b.kmMeter
+                return TrassenGrafikPunkt(
+                    station = station,
+                    x = a.x + (b.x - a.x) * t,
+                    y = a.y + (b.y - a.y) * t,
+                    kmMeter = km
                 )
-                punktUebernehmen(rolle, punkt)
+            }
+            return ps.minByOrNull { kotlin.math.abs(it.station - station) }
+        }
+
+        fun objektMarker(achsen: List<TrassenGrafikAchse>, aktiveRolle: String?): List<TrassenGrafikMarker> {
+            val byId = achsen.associateBy { it.achseId }
+            return punkte.mapNotNull { (rolle, punkt) ->
+                val id = punkt.achseId ?: return@mapNotNull null
+                val station = punkt.station ?: return@mapNotNull null
+                val achse = byId[id] ?: return@mapNotNull null
+                val p = punktAufAchse(achse, station) ?: return@mapNotNull null
+                TrassenGrafikMarker(
+                    label = rolle,
+                    x = p.x,
+                    y = p.y,
+                    achseId = id,
+                    aktiv = rolle == aktiveRolle
+                )
             }
         }
 
-        fun vermarkungWaehlen(rolle: String) {
+        fun anschluesseBerechnen(achsen: List<TrassenGrafikAchse>): List<TrassenAnschlussLogik.Anschluss> =
+            TrassenAnschlussLogik.findeAnschluesse(
+                achsen.filter { it.punkte.isNotEmpty() }.map { achse ->
+                    TrassenAnschlussLogik.Achse(
+                        id = achse.achseId,
+                        name = achsenName(achse),
+                        achsTyp = achse.achsTyp,
+                        punkte = achse.punkte.map { p ->
+                            TrassenAnschlussLogik.Punkt(p.station, p.x.toDouble(), p.y.toDouble())
+                        }
+                    )
+                },
+                toleranzM = 2.5
+            )
+
+        fun direkteAchsenIds(
+            zielId: Long,
+            anschluesse: List<TrassenAnschlussLogik.Anschluss>
+        ): Set<Long> = buildSet {
+            add(zielId)
+            TrassenAnschlussLogik.anschluesseFuerAchse(zielId, anschluesse).forEach { a ->
+                a.partnerFuer(zielId)?.achseId?.let(::add)
+            }
+        }
+
+        fun zeigeAnzeigeFuerObjektGrafik(
+            grafik: TrassenGrafikView,
+            alleAchsen: List<TrassenGrafikAchse>,
+            alleFestpunkte: List<TrassenGrafikFestpunkt>,
+            sichtbareIds: MutableSet<Long>,
+            sichtbareArten: MutableSet<String>,
+            festeAchseId: Long? = null
+        ) {
+            val liste = alleAchsen.sortedWith(compareBy<TrassenGrafikAchse> { it.label }.thenBy { it.name })
+            val labels = liste.map { achse ->
+                if (achse.achseId == festeAchseId) "✓ Ziel: ${achsenName(achse)}" else achse.toGrafikAuswahlText(liste)
+            }.toMutableList()
+            val punktKonfiguration = listOf(
+                "GVP" to "GVP/Festpunkte",
+                "FESTPUNKT" to "Festpunkte",
+                "AP" to "Absteckpunkte",
+                "WEICHENPUNKT" to "Weichenpunkte"
+            ).filter { (art, _) -> alleFestpunkte.any { it.art.equals(art, true) } }
+            val punktIndex = mutableMapOf<Int, String>()
+            punktKonfiguration.forEach { (art, label) ->
+                punktIndex[labels.size] = art
+                labels += "$label (${alleFestpunkte.count { it.art.equals(art, true) }})"
+            }
+            val tempIds = sichtbareIds.toMutableSet()
+            val tempArten = sichtbareArten.toMutableSet()
+            val checked = BooleanArray(labels.size) { idx ->
+                if (idx < liste.size) liste[idx].achseId in tempIds
+                else punktIndex[idx]?.let { art -> tempArten.any { it.equals(art, true) } } == true
+            }
+            MaterialAlertDialogBuilder(context)
+                .setTitle("Anzeige ändern")
+                .setMultiChoiceItems(labels.toTypedArray(), checked) { _, which, isChecked ->
+                    if (which < liste.size) {
+                        val id = liste[which].achseId
+                        if (id == festeAchseId) tempIds.add(id)
+                        else if (isChecked) tempIds.add(id) else tempIds.remove(id)
+                    } else {
+                        punktIndex[which]?.let { art ->
+                            if (isChecked) tempArten.add(art) else tempArten.removeAll { it.equals(art, true) }
+                        }
+                    }
+                }
+                .setNegativeButton("Abbrechen", null)
+                .setPositiveButton("Übernehmen") { _, _ ->
+                    festeAchseId?.let(tempIds::add)
+                    sichtbareIds.clear(); sichtbareIds.addAll(tempIds)
+                    sichtbareArten.clear(); sichtbareArten.addAll(tempArten)
+                    grafik.setSichtbareAchseIds(sichtbareIds.toSet())
+                    grafik.setSichtbarePunktArten(sichtbareArten.toSet())
+                    grafik.setFestpunkteSichtbar(sichtbareArten.isNotEmpty())
+                    grafik.setFestpunkte(grafikPunkteImUmfeld(alleFestpunkte, alleAchsen, sichtbareIds.toSet()))
+                }
+                .show()
+        }
+
+        fun gpsAufFesterAchseSetzen(rolle: String, zielAchse: TrassenGrafikAchse) {
+            mitStandortBerechtigung {
+                sammleAbschnittGpsMessung("$rolle per GPS auf ${achsenName(zielAchse)} setzen") { messung ->
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val kandidat = withContext(Dispatchers.IO) {
+                            ServiceLocator.trassenRepository.findeNaechsteTrassenKandidaten(
+                                messung.latitude, messung.longitude, 80.0, 20, false
+                            ).firstOrNull { it.achseId == zielAchse.achseId }
+                        }
+                        if (kandidat == null || kandidat.abstandM > 20.0) {
+                            Toast.makeText(
+                                context,
+                                "GPS-Punkt liegt nicht sicher auf der gewählten TRA ${achsenName(zielAchse)}.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@launch
+                        }
+                        val alt = punkte[rolle]
+                        punktUebernehmen(
+                            rolle,
+                            StreckenObjektSpeicher.Punkt(
+                                rolle = rolle,
+                                lat = messung.latitude,
+                                lon = messung.longitude,
+                                accuracyM = messung.accuracyM,
+                                km = alt?.km?.takeIf { alt.kmManuell } ?: kandidat.kmMeter,
+                                kmManuell = alt?.kmManuell == true,
+                                achseId = zielAchse.achseId,
+                                achseName = achsenName(zielAchse),
+                                station = kandidat.station,
+                                achsabstandM = kandidat.abstandM
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        fun traAnschlussAufFesterAchseSetzen(
+            rolle: String,
+            zielAchse: TrassenGrafikAchse,
+            anschluesse: List<TrassenAnschlussLogik.Anschluss>
+        ) {
+            val kandidaten = TrassenAnschlussLogik.anschluesseFuerAchse(zielAchse.achseId, anschluesse)
+            if (kandidaten.isEmpty()) {
+                MaterialAlertDialogBuilder(context)
+                    .setTitle("Kein TRA-Anschluss gefunden")
+                    .setMessage("Auf ${achsenName(zielAchse)} wurde innerhalb 2,5 m kein echter Achsende-/TRA-Anschluss erkannt. Bitte GVP oder GPS verwenden oder eine andere Achse wählen.")
+                    .setPositiveButton("OK", null)
+                    .show()
+                return
+            }
+
+            fun uebernehmen(anschluss: TrassenAnschlussLogik.Anschluss) {
+                val pos = anschluss.positionFuer(zielAchse.achseId) ?: return
+                val partner = anschluss.partnerFuer(zielAchse.achseId) ?: return
+                val km = punktAufAchse(zielAchse, pos.station)?.kmMeter
+                punktUebernehmen(
+                    rolle,
+                    StreckenObjektSpeicher.Punkt(
+                        rolle = rolle,
+                        km = km,
+                        kmManuell = false,
+                        achseId = zielAchse.achseId,
+                        achseName = achsenName(zielAchse),
+                        station = pos.station,
+                        achsabstandM = anschluss.abstandM,
+                        vermarkungName = "an ${partner.achseName}",
+                        vermarkungArt = "TRA_ANSCHLUSS"
+                    )
+                )
+                Toast.makeText(
+                    context,
+                    "$rolle = TRA-Anschluss ${achsenName(zielAchse)} ↔ ${partner.achseName}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+
+            if (kandidaten.size == 1) {
+                val a = kandidaten.first()
+                val partner = a.partnerFuer(zielAchse.achseId) ?: return
+                val pos = a.positionFuer(zielAchse.achseId) ?: return
+                MaterialAlertDialogBuilder(context)
+                    .setTitle("$rolle · TRA-Anschluss übernehmen?")
+                    .setMessage("${achsenName(zielAchse)} ↔ ${partner.achseName}\nStation ${format1(pos.station)} m · Anschlussabstand ${format1(a.abstandM)} m")
+                    .setNegativeButton("Abbrechen", null)
+                    .setPositiveButton("Übernehmen") { _, _ -> uebernehmen(a) }
+                    .show()
+            } else {
+                MaterialAlertDialogBuilder(context)
+                    .setTitle("$rolle · Welcher TRA-Anschluss?")
+                    .setItems(kandidaten.map { a ->
+                        val partner = a.partnerFuer(zielAchse.achseId)
+                        val pos = a.positionFuer(zielAchse.achseId)
+                        "${partner?.achseName ?: "Partner"} · Station ${pos?.station?.let(::format1) ?: "?"} m · ${format1(a.abstandM)} m"
+                    }.toTypedArray()) { _, which -> kandidaten.getOrNull(which)?.let(::uebernehmen) }
+                    .setNegativeButton("Abbrechen", null)
+                    .show()
+            }
+        }
+
+        fun gvpAufFesterAchseWaehlen(
+            rolle: String,
+            zielAchse: TrassenGrafikAchse,
+            alleAchsen: List<TrassenGrafikAchse>,
+            alleFestpunkte: List<TrassenGrafikFestpunkt>,
+            anschluesse: List<TrassenAnschlussLogik.Anschluss>
+        ) {
+            val gvpAlle = alleFestpunkte.filter {
+                it.art.equals("GVP", true) || it.art.equals("FESTPUNKT", true)
+            }
+            if (gvpAlle.isEmpty()) {
+                Toast.makeText(context, "Keine GVP/Festpunkte vorhanden.", Toast.LENGTH_LONG).show()
+                return
+            }
+            val sichtbareIds = direkteAchsenIds(zielAchse.achseId, anschluesse).toMutableSet()
+            val sichtbareArten = mutableSetOf("GVP", "FESTPUNKT")
+            val lokaleGvp = grafikPunkteImUmfeld(gvpAlle, alleAchsen, sichtbareIds.toSet())
+            val container = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+            val kopf = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(4), dp(2), dp(4), dp(2))
+            }
+            val zurueck = MaterialButton(context).apply { text = "Zurück"; minWidth = 0; minimumWidth = 0 }
+            val titel = TextView(context).apply {
+                text = "$rolle · GVP auf ${achsenName(zielAchse)}"
+                textSize = 16f; textStyleBold(); gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            val anzeige = MaterialButton(context).apply { text = "Anzeige"; minWidth = 0; minimumWidth = 0 }
+            kopf.addView(zurueck); kopf.addView(titel); kopf.addView(anzeige); container.addView(kopf)
+            val status = TextView(context).apply {
+                text = "GVP/Festpunkt antippen. Er wird ausschließlich auf die vorher gewählte TRA ${achsenName(zielAchse)} projiziert."
+                textSize = 12f; setPadding(dp(8), 0, dp(8), dp(4))
+            }
+            container.addView(status)
+            val grafik = TrassenGrafikView(context).apply {
+                setAchsen(alleAchsen)
+                setFestpunkte(lokaleGvp)
+                setFestpunkteSichtbar(true)
+                setSichtbareTypen(alleAchsen.map { it.achsTyp }.toSet())
+                setSichtbareAchseIds(sichtbareIds.toSet())
+                setSichtbarePunktArten(sichtbareArten.toSet())
+                setAktiveAchseId(zielAchse.achseId)
+                setObjektMarker(objektMarker(alleAchsen, rolle))
+                setLegendeSichtbar(false)
+            }
+            container.addView(grafik, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            lateinit var dialog: android.app.Dialog
+            var gewaehlt: TrassenGrafikFestpunkt? = null
+            var projektion: VermarkungsProjektion? = null
+            var uebernehmenButton: Button? = null
+
+            fun punktName(p: TrassenGrafikFestpunkt) = p.label.ifBlank { p.punktId ?: "GVP/Festpunkt" }
+
+            fun punktWaehlen(punkt: TrassenGrafikFestpunkt) {
+                val pr = projiziereVermessungspunktAufAchse(punkt, zielAchse)
+                if (pr == null) {
+                    Toast.makeText(context, "GVP konnte nicht auf ${achsenName(zielAchse)} projiziert werden.", Toast.LENGTH_LONG).show()
+                    return
+                }
+                gewaehlt = punkt
+                projektion = pr
+                grafik.setAktiverFestpunkt(punkt)
+                grafik.setAnkerProjektion(TrassenGrafikProjektion(punkt.x, punkt.y, pr.projX, pr.projY))
+                status.text = buildString {
+                    appendLine("$rolle = ${punktName(punkt)} · ${punkt.kmMeter?.let { "km ${formatKmMeter(it)}" } ?: "ohne Datei-km"}")
+                    append("Ziel-TRA: ${achsenName(zielAchse)} · Station ${format1(pr.station)} m · Abstand ${format1(pr.abstandM)} m")
+                }
+                uebernehmenButton?.isEnabled = true
+            }
+
+            grafik.setOnFestpunkteInfoRequested { kandidaten ->
+                val eindeutig = kandidaten
+                    .filter { it.art.equals("GVP", true) || it.art.equals("FESTPUNKT", true) }
+                    .distinctBy { p ->
+                        val xCm = kotlin.math.round(p.x * 100f).toInt()
+                        val yCm = kotlin.math.round(p.y * 100f).toInt()
+                        "${punktName(p).uppercase(Locale.GERMANY)}|$xCm|$yCm"
+                    }
+                when (eindeutig.size) {
+                    0 -> Unit
+                    1 -> punktWaehlen(eindeutig.first())
+                    else -> MaterialAlertDialogBuilder(context)
+                        .setTitle("Welchen GVP?")
+                        .setItems(eindeutig.map { "${punktName(it)} · ${it.kmMeter?.let(::formatKmMeter) ?: "kein km"}" }.toTypedArray()) { _, which ->
+                            eindeutig.getOrNull(which)?.let(::punktWaehlen)
+                        }
+                        .setNegativeButton("Abbrechen", null)
+                        .show()
+                }
+            }
+
+            dialog = android.app.Dialog(context).apply {
+                requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+                setContentView(container)
+                setCancelable(true)
+            }
+            zurueck.setOnClickListener { dialog.dismiss() }
+            anzeige.setOnClickListener {
+                zeigeAnzeigeFuerObjektGrafik(
+                    grafik, alleAchsen, gvpAlle, sichtbareIds, sichtbareArten, zielAchse.achseId
+                )
+            }
+            ViewCompat.setOnApplyWindowInsetsListener(container) { v, insets ->
+                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+                grafik.post { grafik.fitToContent() }
+                insets
+            }
+            dialog.setOnShowListener {
+                dialog.window?.let { w ->
+                    WindowCompat.setDecorFitsSystemWindows(w, false)
+                    w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                }
+                uebernehmenButton = MaterialButton(context).apply {
+                    text = "Übernehmen"
+                    isEnabled = false
+                    setOnClickListener {
+                        val p = gewaehlt ?: return@setOnClickListener
+                        val pr = projektion ?: return@setOnClickListener
+                        punktUebernehmen(
+                            rolle,
+                            StreckenObjektSpeicher.Punkt(
+                                rolle = rolle,
+                                km = p.kmMeter,
+                                kmManuell = false,
+                                achseId = zielAchse.achseId,
+                                achseName = achsenName(zielAchse),
+                                station = pr.station,
+                                achsabstandM = pr.abstandM,
+                                vermarkungName = punktName(p),
+                                vermarkungArt = p.art,
+                                vermarkungQuelleDatei = p.quelleDatei,
+                                vermarkungX = p.x.toDouble(),
+                                vermarkungY = p.y.toDouble()
+                            )
+                        )
+                        dialog.dismiss()
+                    }
+                }
+                container.addView(uebernehmenButton)
+                ViewCompat.requestApplyInsets(container)
+                grafik.post { grafik.fitToContent() }
+            }
+            dialog.show()
+            dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        }
+
+        fun quelleAufFesterAchseWaehlen(
+            rolle: String,
+            zielAchse: TrassenGrafikAchse,
+            alleAchsen: List<TrassenGrafikAchse>,
+            alleFestpunkte: List<TrassenGrafikFestpunkt>,
+            anschluesse: List<TrassenAnschlussLogik.Anschluss>,
+            nurGps: Boolean,
+            onAndereAchse: () -> Unit
+        ) {
+            if (nurGps) {
+                gpsAufFesterAchseSetzen(rolle, zielAchse)
+                return
+            }
+            MaterialAlertDialogBuilder(context)
+                .setTitle("$rolle · Punkt auf ${achsenName(zielAchse)} festlegen")
+                .setItems(arrayOf(
+                    "GVP / Festpunkt auswählen",
+                    "Echten TRA-Anschluss verwenden",
+                    "GPS auf dieser TRA setzen",
+                    "Andere Achse wählen"
+                )) { _, which ->
+                    when (which) {
+                        0 -> gvpAufFesterAchseWaehlen(rolle, zielAchse, alleAchsen, alleFestpunkte, anschluesse)
+                        1 -> traAnschlussAufFesterAchseSetzen(rolle, zielAchse, anschluesse)
+                        2 -> gpsAufFesterAchseSetzen(rolle, zielAchse)
+                        3 -> onAndereAchse()
+                    }
+                }
+                .setNegativeButton("Abbrechen", null)
+                .show()
+        }
+
+        fun achseUndPunktWaehlen(rolle: String, nurGps: Boolean = false) {
             viewLifecycleOwner.lifecycleScope.launch {
-                val (allePunkte, achsen) = withContext(Dispatchers.IO) {
-                    ladeGrafikVermessungspunkte() to ladeRohGrafikAchsen()
+                val (alleAchsen, alleFestpunkte) = withContext(Dispatchers.IO) {
+                    ladeRohGrafikAchsen() to ladeGrafikVermessungspunkte()
                 }
-                val gvpPunkte = allePunkte.filter {
-                    it.art.equals("GVP", ignoreCase = true) ||
-                        it.art.equals("FESTPUNKT", ignoreCase = true)
-                }
-                if (gvpPunkte.isEmpty()) {
-                    Toast.makeText(context, "Keine GVP/Festpunkte für die grafische Auswahl vorhanden.", Toast.LENGTH_LONG).show()
+                if (alleAchsen.isEmpty()) {
+                    Toast.makeText(context, "Keine TRA-Geometrie vorhanden.", Toast.LENGTH_LONG).show()
                     return@launch
                 }
-
-                val statusAuswahl = TextView(context).apply {
-                    text = "$rolle: GVP/Festpunkt in der Grafik antippen. Zoomen und Verschieben ist möglich."
-                    textSize = 13f
-                    setPadding(0, 0, 0, dp(8))
+                val anschluesse = withContext(Dispatchers.Default) { anschluesseBerechnen(alleAchsen) }
+                val bestehendeIds = punkte.values.mapNotNull { it.achseId }.toSet()
+                val rollenId = punkte[rolle]?.achseId
+                val sichtbareIds = when {
+                    rollenId != null -> direkteAchsenIds(rollenId, anschluesse).toMutableSet()
+                    bestehendeIds.isNotEmpty() -> bestehendeIds.flatMap { direkteAchsenIds(it, anschluesse) }.toMutableSet()
+                    else -> alleAchsen.filter { it.achsTyp != TrassenAchseEntity.ACHSTYP_STRECKE }
+                        .map { it.achseId }.toMutableSet()
+                }.ifEmpty { alleAchsen.map { it.achseId }.toMutableSet() }
+                val sichtbareArten = if (bestehendeIds.isNotEmpty()) mutableSetOf("GVP", "FESTPUNKT") else mutableSetOf()
+                val container = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+                val kopf = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(4), dp(2), dp(4), dp(2))
                 }
+                val zurueck = MaterialButton(context).apply { text = "Zurück"; minWidth = 0; minimumWidth = 0 }
+                val titel = TextView(context).apply {
+                    text = "$rolle · zuerst TRA wählen"
+                    textSize = 17f; textStyleBold(); gravity = Gravity.CENTER_VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                }
+                val anzeige = MaterialButton(context).apply { text = "Anzeige"; minWidth = 0; minimumWidth = 0 }
+                kopf.addView(zurueck); kopf.addView(titel); kopf.addView(anzeige); container.addView(kopf)
+                val status = TextView(context).apply {
+                    text = "TRA antippen. Bei übereinanderliegenden Achsen lange drücken. Bereits gesetzte Punkte dieses Objekts bleiben sichtbar."
+                    textSize = 12f; setPadding(dp(8), 0, dp(8), dp(4))
+                }
+                container.addView(status)
                 val grafik = TrassenGrafikView(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        (resources.displayMetrics.heightPixels * 0.62f).toInt()
-                            .coerceIn(dp(320), dp(620))
-                    )
-                    setAchsen(achsen)
-                    setFestpunkte(gvpPunkte)
-                    setFestpunkteSichtbar(true)
-                    setSichtbarePunktArten(setOf("GVP", "FESTPUNKT"))
-                    setSichtbareTypen(
-                        setOf(
-                            TrassenAchseEntity.ACHSTYP_GLEIS,
-                            TrassenAchseEntity.ACHSTYP_WEICHE,
-                            TrassenAchseEntity.ACHSTYP_WEICHENVERBINDUNG,
-                            TrassenAchseEntity.ACHSTYP_STRECKE,
-                            TrassenAchseEntity.ACHSTYP_UNBEKANNT
-                        )
-                    )
+                    setAchsen(alleAchsen)
+                    setFestpunkte(grafikPunkteImUmfeld(alleFestpunkte, alleAchsen, sichtbareIds.toSet()))
+                    setFestpunkteSichtbar(sichtbareArten.isNotEmpty())
+                    setSichtbareTypen(alleAchsen.map { it.achsTyp }.toSet())
+                    setSichtbareAchseIds(sichtbareIds.toSet())
+                    setSichtbarePunktArten(sichtbareArten.toSet())
+                    setObjektMarker(objektMarker(alleAchsen, rolle))
+                    setAktiveAchseId(rollenId)
                     setLegendeSichtbar(false)
                 }
-                val container = LinearLayout(context).apply {
-                    orientation = LinearLayout.VERTICAL
-                    setPadding(dp(12), dp(8), dp(12), dp(4))
-                    addView(statusAuswahl)
-                    addView(grafik)
-                }
+                container.addView(grafik, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+                lateinit var dialog: android.app.Dialog
 
-                var ausgewaehlterPunkt: TrassenGrafikFestpunkt? = null
-                var ausgewaehlteAchse: TrassenGrafikAchse? = null
-                var ausgewaehlteProjektion: VermarkungsProjektion? = null
-                var uebernehmenButton: Button? = null
-
-                fun punktName(punkt: TrassenGrafikFestpunkt): String =
-                    punkt.label.ifBlank { punkt.punktId ?: "GVP/Festpunkt" }
-
-                fun kmText(punkt: TrassenGrafikFestpunkt): String =
-                    punkt.kmMeter?.let { "km ${formatKmMeter(it)}" } ?: "ohne Datei-km"
-
-                fun achsenName(achse: TrassenGrafikAchse): String =
-                    achse.label.takeIf { it.isNotBlank() } ?: achse.name
-
-                fun auswahlSetzen(
-                    punkt: TrassenGrafikFestpunkt,
-                    achse: TrassenGrafikAchse,
-                    projektion: VermarkungsProjektion,
-                    automatisch: Boolean
-                ) {
-                    ausgewaehlterPunkt = punkt
-                    ausgewaehlteAchse = achse
-                    ausgewaehlteProjektion = projektion
-                    grafik.setAktiverFestpunkt(punkt)
+                fun achseBestaetigen(achse: TrassenGrafikAchse) {
                     grafik.setAktiveAchseId(achse.achseId)
-                    grafik.setAnkerProjektion(
-                        TrassenGrafikProjektion(punkt.x, punkt.y, projektion.projX, projektion.projY)
-                    )
-                    statusAuswahl.text = buildString {
-                        appendLine("$rolle = ${punktName(punkt)} · ${kmText(punkt)}")
-                        append("TRA: ${achsenName(achse)} · Station ${format1(projektion.station)} m · Abstand ${format1(projektion.abstandM)} m")
-                        if (automatisch) append(" · eindeutig vorgeschlagen")
-                    }
-                    uebernehmenButton?.isEnabled = true
-                }
-
-                fun achseFuerPunktWaehlen(punkt: TrassenGrafikFestpunkt) {
-                    ausgewaehlterPunkt = punkt
-                    ausgewaehlteAchse = null
-                    ausgewaehlteProjektion = null
-                    uebernehmenButton?.isEnabled = false
-                    grafik.setAktiverFestpunkt(punkt)
-                    grafik.setAktiveAchseId(null)
-                    grafik.setAnkerProjektion(null)
-
-                    val alleTreffer = achsen.mapNotNull { achse ->
-                        projiziereVermessungspunktAufAchse(punkt, achse)?.let { projektion -> achse to projektion }
-                    }.sortedBy { it.second.abstandM }
-
-                    // Konkrete Gleis-/Weichenachsen haben Vorrang vor einer allgemeinen
-                    // Streckenachse, solange sie innerhalb des fachlichen Suchbereichs liegen.
-                    val spezifischeTreffer = alleTreffer.filter { (achse, projektion) ->
-                        achse.achsTyp != TrassenAchseEntity.ACHSTYP_STRECKE && projektion.abstandM <= 50.0
-                    }
-                    val bewertungsTreffer = if (spezifischeTreffer.isNotEmpty()) spezifischeTreffer else alleTreffer
-                    val bewertung = VermarkungsAchsenAuswahlLogik.bewerte(
-                        bewertungsTreffer.map { (achse, projektion) ->
-                            VermarkungsAchsenAuswahlLogik.Kandidat(achse.achseId, projektion.abstandM)
-                        }
-                    )
-                    if (bewertung.relevanteKandidaten.isEmpty()) {
-                        statusAuswahl.text = "$rolle = ${punktName(punkt)} · ${kmText(punkt)}\nKeine TRA innerhalb 50 m gefunden. Bitte anderen GVP wählen."
-                        return
-                    }
-
-                    val relevanteTreffer = bewertung.relevanteKandidaten.mapNotNull { kandidat ->
-                        bewertungsTreffer.firstOrNull { it.first.achseId == kandidat.achseId }
-                    }
-                    val autoId = bewertung.automatischeAchseId
-                    if (autoId != null) {
-                        val treffer = relevanteTreffer.firstOrNull { it.first.achseId == autoId }
-                        if (treffer != null) {
-                            auswahlSetzen(punkt, treffer.first, treffer.second, automatisch = true)
-                            return
-                        }
-                    }
-
-                    // Mehrdeutiger Knoten / parallele Gleise / weiter entfernter Punkt:
-                    // Benutzer entscheidet bewusst, keine heimliche Achszuordnung.
+                    status.text = "$rolle · gewählte TRA: ${achsenName(achse)}"
                     MaterialAlertDialogBuilder(context)
-                        .setTitle("TRA für $rolle · ${punktName(punkt)} wählen")
-                        .setItems(relevanteTreffer.map { (achse, projektion) ->
-                            "${achsenName(achse)} · Station ${format1(projektion.station)} m · Abstand ${format1(projektion.abstandM)} m"
-                        }.toTypedArray()) { _, which ->
-                            relevanteTreffer.getOrNull(which)?.let { treffer ->
-                                auswahlSetzen(punkt, treffer.first, treffer.second, automatisch = false)
-                            }
+                        .setTitle("TRA für $rolle verwenden?")
+                        .setMessage("${achsenName(achse)}\n\nDanach wählst du GVP, echten TRA-Anschluss oder GPS.")
+                        .setNegativeButton("Andere Achse", null)
+                        .setPositiveButton("Weiter") { _, _ ->
+                            dialog.dismiss()
+                            quelleAufFesterAchseWaehlen(
+                                rolle, achse, alleAchsen, alleFestpunkte, anschluesse, nurGps
+                            ) { achseUndPunktWaehlen(rolle, nurGps) }
                         }
-                        .setNegativeButton("Anderen GVP wählen", null)
                         .show()
                 }
 
-                fun punktTrefferVerarbeiten(kandidaten: List<TrassenGrafikFestpunkt>) {
-                    val eindeutig = kandidaten
-                        .filter { it.art.equals("GVP", true) || it.art.equals("FESTPUNKT", true) }
-                        .distinctBy { p ->
-                            val xCm = kotlin.math.round(p.x * 100f).toInt()
-                            val yCm = kotlin.math.round(p.y * 100f).toInt()
-                            "${punktName(p).uppercase(Locale.GERMANY)}|$xCm|$yCm"
-                        }
-                    when (eindeutig.size) {
-                        0 -> Unit
-                        1 -> achseFuerPunktWaehlen(eindeutig.first())
-                        else -> MaterialAlertDialogBuilder(context)
-                            .setTitle("Mehrere GVP an dieser Stelle")
-                            .setItems(eindeutig.map { "${punktName(it)} · ${kmText(it)}" }.toTypedArray()) { _, which ->
-                                eindeutig.getOrNull(which)?.let(::achseFuerPunktWaehlen)
+                grafik.setOnAchseInfoRequested(::achseBestaetigen)
+                grafik.setOnAchsenLongPressRequested { kandidaten ->
+                    if (kandidaten.size == 1) achseBestaetigen(kandidaten.first())
+                    else if (kandidaten.isNotEmpty()) {
+                        MaterialAlertDialogBuilder(context)
+                            .setTitle("Welche TRA für $rolle?")
+                            .setItems(kandidaten.map(::achsenName).toTypedArray()) { _, which ->
+                                kandidaten.getOrNull(which)?.let(::achseBestaetigen)
                             }
                             .setNegativeButton("Abbrechen", null)
                             .show()
                     }
                 }
 
-                grafik.setOnFestpunkteInfoRequested(::punktTrefferVerarbeiten)
-
-                val dialog = MaterialAlertDialogBuilder(context)
-                    .setTitle("$rolle · GVP in Grafik wählen")
-                    .setView(container)
-                    .setNegativeButton("Abbrechen", null)
-                    .setPositiveButton("Übernehmen", null)
-                    .create()
+                dialog = android.app.Dialog(context).apply {
+                    requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+                    setContentView(container)
+                    setCancelable(true)
+                }
+                zurueck.setOnClickListener { dialog.dismiss() }
+                anzeige.setOnClickListener {
+                    zeigeAnzeigeFuerObjektGrafik(
+                        grafik, alleAchsen, alleFestpunkte, sichtbareIds, sichtbareArten, null
+                    )
+                }
+                ViewCompat.setOnApplyWindowInsetsListener(container) { v, insets ->
+                    val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                    v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+                    grafik.post { grafik.fitToContent() }
+                    insets
+                }
                 dialog.setOnShowListener {
-                    uebernehmenButton = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).apply {
-                        isEnabled = false
-                        setOnClickListener {
-                            val punkt = ausgewaehlterPunkt ?: return@setOnClickListener
-                            val achse = ausgewaehlteAchse ?: return@setOnClickListener
-                            val projektion = ausgewaehlteProjektion ?: return@setOnClickListener
-                            val objektPunkt = StreckenObjektSpeicher.Punkt(
-                                rolle = rolle,
-                                km = punkt.kmMeter,
-                                kmManuell = false,
-                                achseId = achse.achseId,
-                                achseName = achsenName(achse),
-                                station = projektion.station,
-                                achsabstandM = projektion.abstandM,
-                                vermarkungName = punktName(punkt),
-                                vermarkungArt = punkt.art,
-                                vermarkungQuelleDatei = punkt.quelleDatei,
-                                vermarkungX = punkt.x.toDouble(),
-                                vermarkungY = punkt.y.toDouble()
-                            )
-                            punktUebernehmen(rolle, objektPunkt)
-                            dialog.dismiss()
-                        }
+                    dialog.window?.let { w ->
+                        WindowCompat.setDecorFitsSystemWindows(w, false)
+                        w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                     }
+                    ViewCompat.requestApplyInsets(container)
                     grafik.post { grafik.fitToContent() }
                 }
                 dialog.show()
+                dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             }
         }
 
@@ -2460,7 +2760,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             }
             val vermarkung = MaterialButton(context).apply {
-                text = "Vermarkung wählen"
+                text = "Vermarkung / Anschluss"
                 isAllCaps = false
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                     topMargin = dp(4)
@@ -2496,24 +2796,8 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                     status.text = statusText(punkte[rolle])
                 }
             })
-            gps.setOnClickListener {
-                mitStandortBerechtigung {
-                    sammleAbschnittGpsMessung("$rolle per GPS setzen") { messung ->
-                        val nahe = StreckenObjektSpeicher.findeNahePunkte(context, messung.latitude, messung.longitude, 5.0, vorhanden?.id).firstOrNull()
-                        if (nahe != null) {
-                            MaterialAlertDialogBuilder(context)
-                                .setTitle("Vorhandenen Punkt übernehmen?")
-                                .setMessage("${nahe.punkt.rolle} von ${nahe.objekt.bezeichnung} liegt ${format1(nahe.abstandM)} m entfernt und kann als $rolle verwendet werden.")
-                                .setNegativeButton("Neuen Punkt") { _, _ -> gpsMessungUebernehmen(rolle, messung) }
-                                .setPositiveButton("Übernehmen") { _, _ -> punktUebernehmen(rolle, nahe.punkt.copy(rolle = rolle)) }
-                                .show()
-                        } else {
-                            gpsMessungUebernehmen(rolle, messung)
-                        }
-                    }
-                }
-            }
-            vermarkung?.setOnClickListener { vermarkungWaehlen(rolle) }
+            gps.setOnClickListener { achseUndPunktWaehlen(rolle, nurGps = true) }
+            vermarkung?.setOnClickListener { achseUndPunktWaehlen(rolle, nurGps = false) }
             aktualisiereZeile(rolle)
         }
 
@@ -2593,7 +2877,9 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 buildString {
                     append(punkt.rolle)
                     if (punkt.lat != null && punkt.lon != null) append(" GPS✓")
-                    punkt.vermarkungName?.takeIf { it.isNotBlank() }?.let { append(" GVP:$it") }
+                    punkt.vermarkungName?.takeIf { it.isNotBlank() }?.let {
+                        if (punkt.vermarkungArt == "TRA_ANSCHLUSS") append(" Anschluss:$it") else append(" GVP:$it")
+                    }
                     if (punkt.km != null) append(" km✓")
                 }
             }
@@ -3310,7 +3596,13 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 return@launch
             }
             val context = requireContext()
-            val darstellung = rawAlle.map { a -> if (a.achseId == zielId) a.copy(label = entwurf.bezeichnung) else a }
+            val darstellung = rawAlle.map { a ->
+                if (a.achseId == zielId) a.copy(
+                    label = entwurf.bezeichnung,
+                    abschnittStartStation = entwurf.stationStart,
+                    abschnittEndeStation = entwurf.stationEnde
+                ) else a
+            }
             val sichtbar = mutableSetOf(zielId)
             val sichtbarePunktArten = festpunkte.map { it.art }.toMutableSet()
             val container = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
@@ -3328,7 +3620,9 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 textSize = 12f; setPadding(dp(8), 0, dp(8), dp(4))
             })
             val grafik = TrassenGrafikView(context).apply {
-                setAchsen(darstellung); setFestpunkte(festpunkte); setFestpunkteSichtbar(true)
+                setAchsen(darstellung)
+                setFestpunkte(grafikPunkteImUmfeld(festpunkte, darstellung, sichtbar.toSet()))
+                setFestpunkteSichtbar(true)
                 setSichtbareTypen(darstellung.map { it.achsTyp }.toSet()); setSichtbareAchseIds(sichtbar.toSet())
                 setSichtbarePunktArten(sichtbarePunktArten.toSet()); setAktiveAchseId(zielId); setLegendeSichtbar(false)
             }
@@ -3350,6 +3644,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                     .setPositiveButton("Übernehmen") { _, _ ->
                         temp.add(zielId); sichtbar.clear(); sichtbar.addAll(temp)
                         grafik.setSichtbareAchseIds(sichtbar.toSet())
+                        grafik.setFestpunkte(grafikPunkteImUmfeld(festpunkte, darstellung, sichtbar.toSet()))
                     }
                     .show()
             }
@@ -4690,6 +4985,23 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
         TrassenNaheBerechner.Seite.RECHTS -> "rechts"
         TrassenNaheBerechner.Seite.AUF_ACHSE -> "auf Achse"
         TrassenNaheBerechner.Seite.UNBEKANNT -> "unbekannt"
+    }
+
+    private fun grafikPunkteImUmfeld(
+        punkte: List<TrassenGrafikFestpunkt>,
+        achsen: List<TrassenGrafikAchse>,
+        sichtbareIds: Set<Long>,
+        randM: Float = 120f
+    ): List<TrassenGrafikFestpunkt> {
+        val achsPunkte = achsen
+            .filter { it.achseId in sichtbareIds }
+            .flatMap { it.punkte }
+        if (achsPunkte.isEmpty()) return emptyList()
+        val minX = achsPunkte.minOf { it.x } - randM
+        val maxX = achsPunkte.maxOf { it.x } + randM
+        val minY = achsPunkte.minOf { it.y } - randM
+        val maxY = achsPunkte.maxOf { it.y } + randM
+        return punkte.filter { it.x in minX..maxX && it.y in minY..maxY }
     }
 
     private fun projiziereVermessungspunktAufAchse(
