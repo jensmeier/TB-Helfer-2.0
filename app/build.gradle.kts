@@ -95,7 +95,12 @@ val generateKf006ImportFragment by tasks.registering {
         // Ausfuehren der Task-Action mit einem null this$0 enden.
         val originalFragment = inputs.files.singleFile
         val generatedFragment = outputs.files.singleFile
+        // Windows-Checkouts koennen die Quelldatei als CRLF ausliefern. Die 006-Patches
+        // arbeiten absichtlich auf normalisierten LF-Zeilen, damit mehrzeilige Muster
+        // unter Windows und Linux identisch funktionieren.
         var text = originalFragment.readText(Charsets.UTF_8)
+            .replace("\r\n", "\n")
+            .replace('\r', '\n')
 
         fun replaceRequired(old: String, new: String, label: String, all: Boolean = false) {
             if (text.contains(new)) return
