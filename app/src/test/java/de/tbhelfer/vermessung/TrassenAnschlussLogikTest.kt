@@ -11,14 +11,14 @@ class TrassenAnschlussLogikTest {
     @Test
     fun weichenAst_trifftHauptachseMittenImSegment() {
         val haupt = achse(
-            id = 1,
-            name = "Hauptgleis",
+            1,
+            "Hauptgleis",
             0.0 to (0.0 to 0.0),
             100.0 to (100.0 to 0.0)
         )
         val ast = achse(
-            id = 2,
-            name = "Weichenast",
+            2,
+            "Weichenast",
             0.0 to (50.0 to 20.0),
             20.0 to (50.0 to 0.8)
         )
@@ -39,14 +39,14 @@ class TrassenAnschlussLogikTest {
     @Test
     fun gegenseitigErkannterAnschluss_wirdNurEinmalGeliefert() {
         val a = achse(
-            id = 10,
-            name = "A",
+            10,
+            "A",
             0.0 to (0.0 to 0.0),
             10.0 to (10.0 to 0.0)
         )
         val b = achse(
-            id = 20,
-            name = "B",
+            20,
+            "B",
             0.0 to (10.0 to 0.0),
             10.0 to (20.0 to 0.0)
         )
@@ -61,14 +61,14 @@ class TrassenAnschlussLogikTest {
     @Test
     fun zweiGetrennteAnschluesseDesselbenAchsenpaares_bleibenErhalten() {
         val a = achse(
-            id = 1,
-            name = "A",
+            1,
+            "A",
             0.0 to (0.0 to 0.0),
             100.0 to (100.0 to 0.0)
         )
         val b = achse(
-            id = 2,
-            name = "B",
+            2,
+            "B",
             0.0 to (0.0 to 0.5),
             100.0 to (100.0 to 0.5)
         )
@@ -83,14 +83,14 @@ class TrassenAnschlussLogikTest {
     @Test
     fun zuWeitEntfernteAchse_istKeinAnschluss() {
         val a = achse(
-            id = 1,
-            name = "A",
+            1,
+            "A",
             0.0 to (0.0 to 0.0),
             10.0 to (10.0 to 0.0)
         )
         val b = achse(
-            id = 2,
-            name = "B",
+            2,
+            "B",
             0.0 to (10.0 to 5.0),
             10.0 to (20.0 to 5.0)
         )
@@ -101,26 +101,26 @@ class TrassenAnschlussLogikTest {
     @Test
     fun dkwVierAeste_liefertAnschluesseMitStationAufBeidenAchsen() {
         val da = achse(
-            id = 100,
-            name = "D-A",
+            100,
+            "D-A",
             0.0 to (0.0 to 0.0),
             20.0 to (20.0 to 20.0)
         )
         val cb = achse(
-            id = 200,
-            name = "C-B",
+            200,
+            "C-B",
             0.0 to (0.0 to 20.0),
             20.0 to (20.0 to 0.0)
         )
         val zubringerD = achse(
-            id = 300,
-            name = "Zubringer D",
+            300,
+            "Zubringer D",
             0.0 to (-10.0 to -10.0),
             14.142 to (0.0 to 0.0)
         )
         val zubringerC = achse(
-            id = 400,
-            name = "Zubringer C",
+            400,
+            "Zubringer C",
             0.0 to (-10.0 to 30.0),
             14.142 to (0.0 to 20.0)
         )
