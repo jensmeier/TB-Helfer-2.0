@@ -25,6 +25,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           python3 .github/scripts/apply_v2002_graphical_gvp_patch.py
+          python3 .github/scripts/apply_v2002_graphic_typen_fix.py
           if ! git diff --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
