@@ -36,3 +36,14 @@ jobs:
         # assembleRelease fuehrt wegen checkReleaseBuilds=true bereits lintVitalRelease aus.
         # Ein zweiter kompletter lintDebug-Lauf ist im GitHub-Runner sehr langsam und redundant.
         run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
+
+      - name: Prepare installable Debug APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk TB-Helfer-debug.apk
+
+      - name: Upload installable Debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          path: TB-Helfer-debug.apk
+          archive: false
+          if-no-files-found: error
+          retention-days: 14
