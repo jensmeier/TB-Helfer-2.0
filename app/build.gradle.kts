@@ -61,7 +61,9 @@ android {
         //    So bleiben relevante Checks aktiv, aber die IDE/CI wird nicht zugemüllt.
         abortOnError = true
         checkReleaseBuilds = true
-        checkDependencies = true
+        // Nur den eigenen App-Code prüfen. Das Analysieren aller AndroidX-/Drittanbieter-
+        // Abhängigkeiten ist für unseren PR-Gate nicht erforderlich und kann CI-Lint stark verzögern.
+        checkDependencies = false
         lintConfig = file("$rootDir/lint.xml")
     }
 }
