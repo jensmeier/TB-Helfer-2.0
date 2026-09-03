@@ -67,7 +67,10 @@ object TrassenKmStatusLogik {
     /**
      * Bewertung des aktuellen manuellen Standardfalls:
      * ein KM-Anker auf der TRA plus Richtung gegen die TRA-Station (+1/-1).
-     * Start und Ende sind fuer die KM-Spanne optional; der Abschnitt darf im Entwurf offen sein.
+     *
+     * Fachlich gilt der Abschnitt erst dann als ORANGE/manuell kilometriert, wenn neben
+     * Anker und Richtung auch beide Grenzen des gueltigen Bereichs gesetzt sind. Ein
+     * offener Entwurf darf gespeichert und vorlaeufig berechnet werden, bleibt aber ROT.
      */
     fun bewerteManuellenAbschnitt(
         kmAnkerStation: Double?,
@@ -100,27 +103,42 @@ object TrassenKmStatusLogik {
             )
         }
 
+        val start = stationStart?.takeIf { it.isFinite() }
+        val ende = stationEnde?.takeIf { it.isFinite() }
+        if (start == null || ende == null) {
+            return Bewertung(
+                status = STATUS_FEHLT,
+                grund = "KM-Anker und Richtung vorhanden, gueltiger Bereich noch offen",
+                ankerAnzahl = 1
+            )
+        }
+        if (abs(ende - start) < 0.01) {
+            return Bewertung(
+                status = STATUS_FEHLT,
+                grund = "Gueltiger KM-Bereich ist zu kurz oder unplausibel",
+                ankerAnzahl = 1
+            )
+        }
+
         val ankerStation = requireNotNull(kmAnkerStation)
         val ankerKm = requireNotNull(kmAnkerMeter)
-        fun kmFuer(station: Double?): Double? = station
-            ?.takeIf { it.isFinite() }
-            ?.let { ankerKm + kmStationVorzeichen * (it - ankerStation) }
+        if (ankerStation < minOf(start, ende) - 0.01 || ankerStation > maxOf(start, ende) + 0.01) {
+            return Bewertung(
+                status = STATUS_FEHLT,
+                grund = "KM-Anker liegt ausserhalb des gueltigen Bereichs",
+                ankerAnzahl = 1
+            )
+        }
 
-        val grenzenKm = listOfNotNull(kmFuer(stationStart), kmFuer(stationEnde))
-        val kmVon = when {
-            grenzenKm.isNotEmpty() -> (grenzenKm + ankerKm).minOrNull()
-            else -> ankerKm
-        }
-        val kmBis = when {
-            grenzenKm.isNotEmpty() -> (grenzenKm + ankerKm).maxOrNull()
-            else -> ankerKm
-        }
+        fun kmFuer(station: Double): Double = ankerKm + kmStationVorzeichen * (station - ankerStation)
+        val kmStart = kmFuer(start)
+        val kmEnde = kmFuer(ende)
 
         return Bewertung(
             status = STATUS_MANUELL,
-            grund = "Manuell mit KM-Anker und Richtung kilometriert",
-            kmVonMeter = kmVon,
-            kmBisMeter = kmBis,
+            grund = "Manuell mit KM-Anker, Richtung und gueltigem Bereich kilometriert",
+            kmVonMeter = minOf(kmStart, kmEnde),
+            kmBisMeter = maxOf(kmStart, kmEnde),
             ankerAnzahl = 1
         )
     }
