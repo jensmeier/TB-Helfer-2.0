@@ -4,7 +4,8 @@ plugins {
 }
 
 val kf006OriginalFragment = file("src/main/java/de/tbhelfer/ui/importexport/ImportExportFragment.kt")
-val kf006GeneratedDir = layout.buildDirectory.dir("generated/source/kf006")
+val kf006GeneratedDir = layout.buildDirectory.dir("generated/source/kf006").get().asFile
+val kf006GeneratedFragment = file("${kf006GeneratedDir.path}/de/tbhelfer/ui/importexport/ImportExportFragment006.kt")
 
 android {
     namespace = "de.tbhelfer"
@@ -53,13 +54,12 @@ android {
     }
 
     // 006: Die grosse ImportExportFragment-Datei bleibt im Repository unveraendert.
-    // Fuer den Build wird eine deterministisch gepatchte Kopie erzeugt. Damit kann
-    // der direkte KF-Import trotz ausgefallenem GitHub Hosted Runner sauber getestet
-    // werden, ohne den lokalen Git-Arbeitsbaum beim Build zu veraendern.
+    // Fuer den Build wird eine deterministisch gepatchte Kopie erzeugt. AGP 9 mit
+    // Built-in Kotlin verlangt dafuer AndroidSourceSet.kotlin.
     sourceSets {
         getByName("main") {
-            java.exclude("de/tbhelfer/ui/importexport/ImportExportFragment.kt")
-            java.srcDir(kf006GeneratedDir)
+            kotlin.exclude("de/tbhelfer/ui/importexport/ImportExportFragment.kt")
+            kotlin.srcDir(kf006GeneratedDir)
         }
     }
 
@@ -86,7 +86,7 @@ val generateKf006ImportFragment by tasks.registering {
     group = "build setup"
     description = "Erzeugt ImportExportFragment fuer TB-Helfer 2.0 (006) mit direktem KF-Import."
     inputs.file(kf006OriginalFragment)
-    outputs.file(kf006GeneratedDir.map { it.file("de/tbhelfer/ui/importexport/ImportExportFragment006.kt") })
+    outputs.file(kf006GeneratedFragment)
 
     doLast {
         var text = kf006OriginalFragment.readText(Charsets.UTF_8)
@@ -194,16 +194,21 @@ val generateKf006ImportFragment by tasks.registering {
             all = true
         )
 
-        val out = kf006GeneratedDir.get()
-            .file("de/tbhelfer/ui/importexport/ImportExportFragment006.kt")
-            .asFile
-        out.parentFile.mkdirs()
-        out.writeText(text, Charsets.UTF_8)
+        kf006GeneratedFragment.parentFile.mkdirs()
+        kf006GeneratedFragment.writeText(text, Charsets.UTF_8)
     }
 }
 
-tasks.matching { it.name == "preBuild" }.configureEach {
-    dependsOn(generateKf006ImportFragment)
+// preBuild ist in den Android-Taskgraphen enthalten; die zusaetzlichen Abhaengigkeiten
+// decken direkte KSP-/Kotlin-Aufrufe aus Android Studio ebenfalls ab.
+tasks.configureEach {
+    if (
+        name == "preBuild" ||
+        name.startsWith("ksp") ||
+        (name.startsWith("compile") && name.endsWith("Kotlin"))
+    ) {
+        dependsOn(generateKf006ImportFragment)
+    }
 }
 
 // Built-in Kotlin (AGP 9) übernimmt den JVM Target standardmäßig aus
