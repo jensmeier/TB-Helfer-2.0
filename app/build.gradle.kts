@@ -7,31 +7,24 @@ val kf006OriginalFragment = file("src/main/java/de/tbhelfer/ui/importexport/Impo
 val kf006GeneratedDir = layout.buildDirectory.dir("generated/source/kf006").get().asFile
 val kf006GeneratedFragment = file("${kf006GeneratedDir.path}/de/tbhelfer/ui/importexport/ImportExportFragment006.kt")
 
-// 008: Die Kamera wird fuer den Handy-Test als deterministisch gepatchte Build-Kopie erzeugt.
-// Die grosse Originaldatei bleibt unveraendert; 007-Live-KM plus 008-GPS-Sicherheitsregeln
-// werden gemeinsam in eine generierte KameraFragment-Kopie geschrieben.
-val km008OriginalCamera = file("src/main/java/de/tbhelfer/ui/kamera/KameraFragment.kt")
-val km008GeneratedDir = layout.buildDirectory.dir("generated/source/km008").get().asFile
-val km008GeneratedCamera = file("${km008GeneratedDir.path}/de/tbhelfer/ui/kamera/KameraFragment008.kt")
+// 009: Die Kamera wird fuer den Handy-Test als deterministisch gepatchte Build-Kopie erzeugt.
+// Neben der Live-KM-Anzeige aus 008 wird beim Ausloesen jetzt ein dauerhafter
+// Vermessungs-Schnappschuss fuer das spaetere Foto/BTB/PDF vorbereitet.
+val km009OriginalCamera = file("src/main/java/de/tbhelfer/ui/kamera/KameraFragment.kt")
+val km009GeneratedDir = layout.buildDirectory.dir("generated/source/km009").get().asFile
+val km009GeneratedCamera = file("${km009GeneratedDir.path}/de/tbhelfer/ui/kamera/KameraFragment009.kt")
 
 android {
     namespace = "de.tbhelfer"
-    // AGP 9 unterstützt bis API 36 (Android 16). Einige AndroidX-Versionen
-    // (z.B. core-ktx 1.17.0) verlangen compileSdk 36.
     compileSdk = 36
 
     defaultConfig {
         applicationId = "de.tbhelfer"
-        // CameraX 1.5.x (insb. camera-video) fordert minSdk 23.
-        // Wenn du minSdk 21 behalten MUSST, siehe REPORT (Downgrade/Exclude-Option).
         minSdk = 23
-
-        // targetSdk kann separat von compileSdk entschieden werden.
-        // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // TB-Helfer 2.0: 200008 -> sichtbare Teststand-Nummer 008.
-        // Jeder neue auf dem Handy testbare Stand erhöht diesen Wert um 1.
-        versionCode = 200008
+
+        // TB-Helfer 2.0: sichtbarer Handy-Teststand 009.
+        versionCode = 200009
         versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -39,10 +32,8 @@ android {
 
     buildTypes {
         release {
-            // HIGH-IMPACT: Release kleiner + schneller, aber trotzdem safe (Room/DataStore/CameraX sind i.d.R. ok)
             isMinifyEnabled = true
             isShrinkResources = true
-
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -60,20 +51,18 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    // 006/008: Die grossen Original-Fragmente bleiben im Repository unveraendert.
-    // Fuer den Build werden deterministisch gepatchte Kopien erzeugt. AGP 9 mit
-    // Built-in Kotlin blendet PatternFilterable direkt auf AndroidSourceDirectorySet aus.
+    // Die grossen Original-Fragmente bleiben im Repository unveraendert.
+    // Fuer den Build werden die bestaetigten 006-/009-Kopien erzeugt.
     sourceSets {
         getByName("main") {
             (kotlin as org.gradle.api.tasks.util.PatternFilterable)
                 .exclude("de/tbhelfer/ui/importexport/ImportExportFragment.kt")
                 .exclude("de/tbhelfer/ui/kamera/KameraFragment.kt")
             kotlin.directories.add(kf006GeneratedDir.path)
-            kotlin.directories.add(km008GeneratedDir.path)
+            kotlin.directories.add(km009GeneratedDir.path)
         }
     }
 
-    // Verhindert gelegentliche META-INF Doppel-Einträge (klassischer Gradle/AndroidX Painpoint)
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -81,9 +70,6 @@ android {
     }
 
     lint {
-        // Runde 3: "UI/Lint auf 0 ohne Noise"
-        // -> wir nutzen eine Lint-Config (root/lint.xml), die reine Noise-Checks deaktiviert.
-        //    So bleiben relevante Checks aktiv, aber die IDE/CI wird nicht zugemüllt.
         abortOnError = true
         checkReleaseBuilds = true
         checkDependencies = true
@@ -93,19 +79,13 @@ android {
 
 val generateKf006ImportFragment by tasks.registering {
     group = "build setup"
-    description = "Erzeugt ImportExportFragment fuer TB-Helfer 2.0 (006) mit direktem KF-Import."
+    description = "Erzeugt ImportExportFragment fuer TB-Helfer 2.0 mit direktem KF-Import."
     inputs.file(kf006OriginalFragment)
     outputs.file(kf006GeneratedFragment)
 
     doLast {
-        // Nur Task-eigene Inputs/Outputs verwenden. Direkte Zugriffe auf Properties
-        // der kompilierten Kotlin-DSL-Scriptklasse koennen unter AGP/Gradle 9 beim
-        // Ausfuehren der Task-Action mit einem null this$0 enden.
         val originalFragment = inputs.files.singleFile
         val generatedFragment = outputs.files.singleFile
-        // Windows-Checkouts koennen die Quelldatei als CRLF ausliefern. Die 006-Patches
-        // arbeiten absichtlich auf normalisierten LF-Zeilen, damit mehrzeilige Muster
-        // unter Windows und Linux identisch funktionieren.
         var text = originalFragment.readText(Charsets.UTF_8)
             .replace("\r\n", "\n")
             .replace('\r', '\n')
@@ -217,11 +197,11 @@ import de.tbhelfer.vermessung.VermessungspunktKategorie""",
     }
 }
 
-val generateKm008KameraFragment by tasks.registering {
+val generateKm009KameraFragment by tasks.registering {
     group = "build setup"
-    description = "Erzeugt KameraFragment fuer Teststand 008 mit Live-KM und GPS-Sicherheitsgrenze."
-    inputs.file(km008OriginalCamera)
-    outputs.file(km008GeneratedCamera)
+    description = "Erzeugt KameraFragment fuer Teststand 009 mit Live-KM und Foto-Snapshot."
+    inputs.file(km009OriginalCamera)
+    outputs.file(km009GeneratedCamera)
 
     doLast {
         val originalCamera = inputs.files.singleFile
@@ -230,13 +210,13 @@ val generateKm008KameraFragment by tasks.registering {
             .replace("\r\n", "\n")
             .replace('\r', '\n')
 
-        fun replaceRequired008(old: String, new: String, label: String) {
+        fun replaceRequired009(old: String, new: String, label: String) {
             if (text.contains(new)) return
-            check(text.contains(old)) { "008-Kamera-Integration fehlgeschlagen: $label nicht gefunden" }
+            check(text.contains(old)) { "009-Kamera-Integration fehlgeschlagen: $label nicht gefunden" }
             text = text.replaceFirst(old, new)
         }
 
-        replaceRequired008(
+        replaceRequired009(
             "import android.graphics.Color",
             """import android.graphics.Color
 import android.graphics.Typeface
@@ -247,8 +227,15 @@ import android.text.style.StyleSpan""",
             "Live-KM-Text-Imports"
         )
 
+        replaceRequired009(
+            "import de.tbhelfer.datenbank.GvpPointEntity",
+            """import de.tbhelfer.datenbank.GvpPointEntity
+import de.tbhelfer.datenbank.FotoVermessungsSnapshotSpeicher""",
+            "Foto-Snapshot-Import"
+        )
+
         // Die sichtbare Fotoqualitaets-Einstellung steuert die CameraX-Aufnahme wirklich.
-        replaceRequired008(
+        replaceRequired009(
             """        imageCapture = ImageCapture.Builder()
             .setCaptureMode(captureMode)
             .setTargetRotation(displayRotation)
@@ -266,7 +253,7 @@ import android.text.style.StyleSpan""",
         // Ein Objekt-/Weichentreffer darf niemals nur deshalb einen KM liefern, weil
         // der Kontext fest gewaehlt ist. Ab einer realistisch nicht mehr sicheren
         // Entfernung gilt: kein Live-Treffer.
-        replaceRequired008(
+        replaceRequired009(
             """        val naechsteLinie = linien.minByOrNull { it.abstandM } ?: return null
         if (letztesStreckenObjektId != objekt.id) {
 """,
@@ -277,7 +264,7 @@ import android.text.style.StyleSpan""",
             "Weichen-Live-Distanzgrenze"
         )
 
-        replaceRequired008(
+        replaceRequired009(
             "    private fun berechneTrassenTreffer(loc: Location): TrassenNaheBerechner.Ergebnis? {",
             """    private fun gpsFuerLiveKmBrauchbar(loc: Location): Boolean {
         // Ein scheinbar millimetergenauer Bahn-km ist bei schlechtem Handy-GPS irrefuehrend.
@@ -297,14 +284,14 @@ import android.text.style.StyleSpan""",
             "Live-KM-GPS-Sicherheitsfunktion"
         )
 
-        replaceRequired008(
+        replaceRequired009(
             "            maxAbstandM = if (aktuellerKontext == null) 250.0 else 500.0,",
             "            maxAbstandM = liveKmMaxAbstandM(loc),",
             "TRA-Live-Distanzgrenze"
         )
 
         // Auch der alte Streckenpunkte-Fallback darf bei schlechtem GPS keinen KM liefern.
-        replaceRequired008(
+        replaceRequired009(
             "                val res = if (trassenTreffer == null && streckenpunkteCache.size >= 2) {",
             "                val res = if (gpsFuerLiveKmBrauchbar(loc) && trassenTreffer == null && streckenpunkteCache.size >= 2) {",
             "Legacy-KM-GPS-Sicherheitsgrenze"
@@ -317,7 +304,7 @@ import android.text.style.StyleSpan""",
         val overlayStart = text.indexOf(overlayStartMarker)
         val overlayEnd = text.indexOf(overlayEndMarker, overlayStart.coerceAtLeast(0))
         check(overlayStart >= 0 && overlayEnd > overlayStart) {
-            "008-Kamera-Integration fehlgeschlagen: Live-KM-Anzeigefunktion nicht gefunden"
+            "009-Kamera-Integration fehlgeschlagen: Live-KM-Anzeigefunktion nicht gefunden"
         }
 
         val neueOverlayFunktion = """    private fun aktualisiereOverlayText(baustelleId: Long, loc: Location, res: KmBerechner.Ergebnis) {
@@ -403,8 +390,6 @@ import android.text.style.StyleSpan""",
             return
         }
 
-        // Legacy-Fallback nur dann anzeigen, wenn auch dessen Achsabstand innerhalb
-        // derselben Sicherheitsgrenze liegt. Sonst bleibt der KM bewusst leer.
         val legacySicher = res.km != null &&
             res.achsabstandM != null &&
             res.achsabstandM <= liveKmMaxAbstandM(loc)
@@ -430,13 +415,58 @@ import android.text.style.StyleSpan""",
 """
         text = text.substring(0, overlayStart) + neueOverlayFunktion + text.substring(overlayEnd)
 
+        // Der Vermessungstreffer wird exakt zum Aufnahmezeitpunkt persistent zwischengespeichert.
+        // Die Foto-Maske darf den vorgeschlagenen KM danach aendern; beim finalen Speichern
+        // wird daraus automatisch ORIGINAL oder MANUELL abgeleitet.
+        replaceRequired009(
+            """                        val trassenTreffer = letzterTrassenTreffer
+                        if (trassenTreffer?.kmMeter != null) {
+""",
+            """                        val trassenTreffer = letzterTrassenTreffer
+                        val snapshotStrecke = aktuellerKontext?.streckennummer
+                            ?.trim()
+                            ?.takeIf { it.isNotBlank() }
+                            ?: trassenTreffer?.strecke?.trim()?.takeIf { it.isNotBlank() }?.let { nummer ->
+                                val ri = trassenTreffer.richtung?.trim().orEmpty()
+                                if (ri.isNotBlank() && !nummer.endsWith("-" + ri)) nummer + "-" + ri else nummer
+                            }
+                        val snapshotAchse = trassenTreffer?.let { treffer ->
+                            if (treffer.achsTyp == TrassenAchseEntity.ACHSTYP_STRECKE) {
+                                snapshotStrecke?.let { "Str " + it } ?: treffer.achseName
+                            } else {
+                                treffer.kameraObjektText()
+                            }
+                        }
+                        val snapshotKmVorschlag = trassenTreffer?.kmMeter?.div(1000.0)
+                            ?: kmRes?.km
+                                ?.takeIf { kmRes.indikator != KmBerechner.Indikator.ROT }
+                                ?.let(::rundeKmAuf10m)
+                        FotoVermessungsSnapshotSpeicher.speicherePending(
+                            requireContext().applicationContext,
+                            FotoVermessungsSnapshotSpeicher.Pending(
+                                baustelleId = baustelleId,
+                                gpsLat = standort.latitude,
+                                gpsLon = standort.longitude,
+                                gpsAccuracyM = if (standort.hasAccuracy()) standort.accuracy.toDouble() else null,
+                                kmVorschlag = snapshotKmVorschlag,
+                                kmQuelleRoh = trassenTreffer?.kmQuelle,
+                                strecke = snapshotStrecke,
+                                achseId = trassenTreffer?.achseId,
+                                achseName = snapshotAchse,
+                                achseTyp = trassenTreffer?.achsTyp,
+                                achsabstandM = trassenTreffer?.abstandM ?: kmRes?.achsabstandM
+                            )
+                        )
+                        if (trassenTreffer?.kmMeter != null) {
+""",
+            "Foto-Vermessungs-Snapshot"
+        )
+
         generatedCamera.parentFile.mkdirs()
         generatedCamera.writeText(text, Charsets.UTF_8)
     }
 }
 
-// preBuild ist in den Android-Taskgraphen enthalten; die zusaetzlichen Abhaengigkeiten
-// decken direkte KSP-/Kotlin-Aufrufe aus Android Studio ebenfalls ab.
 tasks.configureEach {
     if (
         name == "preBuild" ||
@@ -444,15 +474,10 @@ tasks.configureEach {
         (name.startsWith("compile") && name.endsWith("Kotlin"))
     ) {
         dependsOn(generateKf006ImportFragment)
-        dependsOn(generateKm008KameraFragment)
+        dependsOn(generateKm009KameraFragment)
     }
 }
 
-// Built-in Kotlin (AGP 9) übernimmt den JVM Target standardmäßig aus
-// android.compileOptions.targetCompatibility.
-
-// HIGH-IMPACT: Room Schema-Export (hilft bei Migrationen & Tests; kostet im Build praktisch nichts)
-// Ordner: app/schemas/
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
     arg("room.incremental", "true")
@@ -473,23 +498,15 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
     implementation(libs.androidx.recyclerview)
-
     implementation(libs.androidx.exifinterface)
-
     implementation(libs.kotlinx.coroutines.android)
-
-    // Einstellungen / Key-Value
     implementation(libs.androidx.datastore.preferences)
-
-    // Hintergrundaufgaben (Speicher-Cleanup / Orphan-Checks)
     implementation(libs.androidx.work.runtime.ktx)
 
-    // Room Datenbank (KSP)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Kamera (CameraX)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
@@ -500,15 +517,8 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
 }
 
-// -----------------------------------------------------------------------------
-// Compatibility task
-// -----------------------------------------------------------------------------
-// Some IDE/CI templates (especially from pure Java projects) call `:app:testClasses`.
-// The Android Gradle Plugin does not create that task, so we provide it as an alias
-// that forwards to the most common Android unit-test task.
 tasks.register("testClasses") {
     group = "verification"
     description = "Compatibility alias for Java 'testClasses' (runs Android unit tests)."
-    // Prefer unit tests; if none exist, this will simply have no dependencies.
     dependsOn(tasks.matching { it.name == "testDebugUnitTest" || it.name == "test" })
 }
