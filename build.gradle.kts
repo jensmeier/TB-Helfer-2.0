@@ -4,5 +4,7 @@ plugins {
 }
 
 project(":app") {
-    apply(from = rootProject.file("app/btb010_runner.gradle.kts"))
+    pluginManager.withPlugin("com.android.application") {
+        apply(from = rootProject.file("app/btb010_runner.gradle.kts"))
+    }
 }
