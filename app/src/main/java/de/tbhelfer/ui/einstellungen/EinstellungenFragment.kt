@@ -7,7 +7,7 @@ import androidx.navigation.fragment.findNavController
 import de.tbhelfer.R
 
 /**
- * Patch45m: Aufgeraeumte Einstellungen mit nur noch fuenf Hauptbereichen.
+ * Aufgeraeumte Einstellungen mit klar getrennten Hauptbereichen.
  */
 class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
 
