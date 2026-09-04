@@ -80,7 +80,6 @@ android {
         }
     }
 
-
     lint {
         // Runde 3: "UI/Lint auf 0 ohne Noise"
         // -> wir nutzen eine Lint-Config (root/lint.xml), die reine Noise-Checks deaktiviert.
@@ -231,10 +230,10 @@ val generateKm007KameraFragment by tasks.registering {
             .replace("\r\n", "\n")
             .replace('\r', '\n')
 
-        fun replaceRequired007(old: String, new: String, label: String, all: Boolean = false) {
+        fun replaceRequired007(old: String, new: String, label: String) {
             if (text.contains(new)) return
             check(text.contains(old)) { "007-Kamera-Integration fehlgeschlagen: $label nicht gefunden" }
-            text = if (all) text.replace(old, new) else text.replaceFirst(old, new)
+            text = text.replaceFirst(old, new)
         }
 
         replaceRequired007(
@@ -298,55 +297,17 @@ import android.text.style.StyleSpan""",
             "TRA-Live-Distanzgrenze"
         )
 
-        replaceRequired007(
-            """    private fun aktualisiereOverlayText(baustelleId: Long, loc: Location, res: KmBerechner.Ergebnis) {
-        val trassen = letzterTrassenTreffer
-        val gpsAccuracy = if (loc.hasAccuracy()) String.format(Locale.GERMANY, "%.1f m", loc.accuracy) else "-"
-        val gnssText = letzteGnssInfo?.alsText()
-
-        textStatus.text = buildString {
-            append(aktuelleBaustellenName ?: "Baustelle-ID: $baustelleId").append('\n')
-            aktuellerKontext?.labelKurz?.let { append("Kontext: ").append(it).append('\n') }
-            if (gnssText != null) append(gnssText).append('\n')
-
-            if (trassen != null) {
-                append(trassen.toKameraKurzzeile()).append('\n')
-                append("GPS: ")
-                    .append(String.format(Locale.GERMANY, "%.6f", loc.latitude))
-                    .append(", ")
-                    .append(String.format(Locale.GERMANY, "%.6f", loc.longitude))
-                    .append(" · ")
-                    .append(gpsAccuracy)
-                return@buildString
-            }
-
-            if (trassenAchsenCache.isNotEmpty() && trassenSamplepunkteCache.isNotEmpty()) {
-                append("Keine passende Achse für aktuellen Kontext.\n")
-                append("Auswahl: ").append(aktuellerKontext?.labelKurz ?: "neutral").append('\n')
-                append("GPS: ")
-                    .append(String.format(Locale.GERMANY, "%.6f", loc.latitude))
-                    .append(", ")
-                    .append(String.format(Locale.GERMANY, "%.6f", loc.longitude))
-                    .append(" · ")
-                    .append(gpsAccuracy)
-                return@buildString
-            }
-
-            // Fallback auf alte Streckenpunkte-Logik, falls keine Trassendaten importiert sind.
-            val indikator = when (res.indikator) {
-                KmBerechner.Indikator.GRUEN -> "🟢"
-                KmBerechner.Indikator.GELB -> "🟡"
-                KmBerechner.Indikator.ROT -> "🔴"
-            }
-            val kmText = res.km?.let { String.format(Locale.GERMANY, "%.3f", rundeKmAuf10m(it)) } ?: "-"
-            val abstandText = res.achsabstandM?.let { String.format(Locale.GERMANY, "%.1f m", it) } ?: "-"
-            append("Indikator: $indikator  (${res.indikator})\n")
-            append("Live-km: $kmText\n")
-            append("Abstand zur berechneten Achse: $abstandText")
+        val overlayStartMarker =
+            "    private fun aktualisiereOverlayText(baustelleId: Long, loc: Location, res: KmBerechner.Ergebnis) {"
+        val overlayEndMarker =
+            "    private fun TrassenNaheBerechner.Ergebnis.toKameraKurzzeile(): String {"
+        val overlayStart = text.indexOf(overlayStartMarker)
+        val overlayEnd = text.indexOf(overlayEndMarker, overlayStart.coerceAtLeast(0))
+        check(overlayStart >= 0 && overlayEnd > overlayStart) {
+            "007-Kamera-Integration fehlgeschlagen: Live-KM-Anzeigefunktion nicht gefunden"
         }
-    }
-""",
-            """    private fun aktualisiereOverlayText(baustelleId: Long, loc: Location, res: KmBerechner.Ergebnis) {
+
+        val neueOverlayFunktion = """    private fun aktualisiereOverlayText(baustelleId: Long, loc: Location, res: KmBerechner.Ergebnis) {
         val trassen = letzterTrassenTreffer
         val gpsText = if (loc.hasAccuracy()) {
             "GPS ±" + String.format(Locale.GERMANY, "%.1f m", loc.accuracy)
@@ -389,6 +350,12 @@ import android.text.style.StyleSpan""",
             }
             ausgabe.append('\n')
         }
+        fun anzeigen() {
+            if (ausgabe.isNotEmpty() && ausgabe[ausgabe.length - 1] == '\n') {
+                ausgabe.delete(ausgabe.length - 1, ausgabe.length)
+            }
+            textStatus.text = ausgabe
+        }
 
         if (trassen != null) {
             val kmText = trassen.kmMeter?.let {
@@ -400,7 +367,7 @@ import android.text.style.StyleSpan""",
                 "Achsabstand " + String.format(Locale.GERMANY, "%.1f m", trassen.abstandM) + " · " + gpsText,
                 faktor = 0.86f
             )
-            textStatus.text = ausgabe.trimEnd()
+            anzeigen()
             return
         }
 
@@ -408,7 +375,7 @@ import android.text.style.StyleSpan""",
             zeile("KM —", faktor = 2.05f, fett = true)
             zeile("Keine passende TRA in Reichweite", faktor = 1.02f, fett = true)
             zeile(gpsText, faktor = 0.86f)
-            textStatus.text = ausgabe.trimEnd()
+            anzeigen()
             return
         }
 
@@ -433,11 +400,11 @@ import android.text.style.StyleSpan""",
             zeile("Keine passende TRA in Reichweite", faktor = 1.02f, fett = true)
             zeile(gpsText, faktor = 0.86f)
         }
-        textStatus.text = ausgabe.trimEnd()
+        anzeigen()
     }
-""",
-            "grosse Live-KM-Anzeige"
-        )
+
+"""
+        text = text.substring(0, overlayStart) + neueOverlayFunktion + text.substring(overlayEnd)
 
         generatedCamera.parentFile.mkdirs()
         generatedCamera.writeText(text, Charsets.UTF_8)
