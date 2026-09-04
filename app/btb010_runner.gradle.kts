@@ -6,13 +6,15 @@
 val sourceScript = file("btb010.gradle.kts")
 check(sourceScript.exists()) { "BTB 010 Generator fehlt: ${sourceScript.path}" }
 
-val literalDollarExpression = "$" + "{'$'}"
+val sourceDateToken = "\$sourceDate"
+val sourceTypToken = "\$sourceTyp"
+val literalDollarExpression = "\$" + "{'\$'}"
 var fixedText = sourceScript.readText(Charsets.UTF_8)
     .replace("import com.android.build.api.dsl.ApplicationExtension\n", "")
     .replace("import com.android.build.api.variant.ApplicationAndroidComponentsExtension\n", "")
     .replace("import org.gradle.api.tasks.util.PatternFilterable\n", "")
-    .replace("$sourceDate", literalDollarExpression + "sourceDate")
-    .replace("$sourceTyp", literalDollarExpression + "sourceTyp")
+    .replace(sourceDateToken, literalDollarExpression + "sourceDate")
+    .replace(sourceTypToken, literalDollarExpression + "sourceTyp")
     .replace("android.app.AlertDialog.BUTTON_POSITIVE", "android.content.DialogInterface.BUTTON_POSITIVE")
     .replace("android.app.AlertDialog.BUTTON_NEUTRAL", "android.content.DialogInterface.BUTTON_NEUTRAL")
 
