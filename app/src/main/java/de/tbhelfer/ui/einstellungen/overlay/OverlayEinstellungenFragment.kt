@@ -14,6 +14,8 @@ import kotlinx.coroutines.launch
 
 class OverlayEinstellungenFragment : Fragment(R.layout.fragment_overlay_einstellungen) {
 
+    private var initialisiert: Boolean = false
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -34,39 +36,6 @@ class OverlayEinstellungenFragment : Fragment(R.layout.fragment_overlay_einstell
         val swGps = view.findViewById<SwitchMaterial>(R.id.swShowGps)
         val swDt = view.findViewById<SwitchMaterial>(R.id.swShowDatumZeit)
 
-        // Laden
-        viewLifecycleOwner.lifecycleScope.launch {
-            val cfg = ServiceLocator.overlayEinstellungenSpeicher.einstellungen.first()
-            swAktiv.isChecked = cfg.aktiv
-            swAutoKontrast.isChecked = cfg.autoKontrast
-
-            when (cfg.darstellung) {
-                OverlayEinstellungenSpeicher.Darstellung.NORMAL -> rgDarstellung.check(R.id.rbDarstellungNormal)
-                OverlayEinstellungenSpeicher.Darstellung.KOMPAKT_2ZEILIG -> rgDarstellung.check(R.id.rbDarstellungKompakt)
-            }
-
-            when (cfg.position) {
-                OverlayEinstellungenSpeicher.Position.AUTO -> rgPos.check(R.id.rbPosAuto)
-                OverlayEinstellungenSpeicher.Position.LINKS_OBEN -> rgPos.check(R.id.rbPosLo)
-                OverlayEinstellungenSpeicher.Position.RECHTS_OBEN -> rgPos.check(R.id.rbPosRo)
-                OverlayEinstellungenSpeicher.Position.LINKS_UNTEN -> rgPos.check(R.id.rbPosLu)
-                OverlayEinstellungenSpeicher.Position.RECHTS_UNTEN -> rgPos.check(R.id.rbPosRu)
-            }
-
-            swAutoPosSmart.isChecked = cfg.autoPositionSmart
-
-            sbAlpha.progress = (cfg.alpha * 100).toInt().coerceIn(10, 90)
-            sbText.progress = cfg.textSizeSp.coerceIn(10, 22)
-
-            swBaustelle.isChecked = cfg.zeigeBaustelle
-            swUnter.isChecked = cfg.zeigeUnterbaustelle
-            swStrecke.isChecked = cfg.zeigeStreckeBahnhof
-            swGleis.isChecked = cfg.zeigeGleisWeicheObjekt
-            swKm.isChecked = cfg.zeigeKm
-            swGps.isChecked = cfg.zeigeGps
-            swDt.isChecked = cfg.zeigeDatumZeit
-        }
-
         fun aktuellePosition(): OverlayEinstellungenSpeicher.Position {
             return when (rgPos.checkedRadioButtonId) {
                 R.id.rbPosLo -> OverlayEinstellungenSpeicher.Position.LINKS_OBEN
@@ -85,6 +54,7 @@ class OverlayEinstellungenFragment : Fragment(R.layout.fragment_overlay_einstell
         }
 
         suspend fun speichern() {
+            if (!initialisiert) return
             val neu = OverlayEinstellungenSpeicher.Einstellungen(
                 aktiv = swAktiv.isChecked,
                 position = aktuellePosition(),
@@ -142,5 +112,38 @@ class OverlayEinstellungenFragment : Fragment(R.layout.fragment_overlay_einstell
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
+
+        // Erst alle UI-Werte laden, danach Speichern durch Nutzerinteraktion erlauben.
+        // RadioGroup.check() kann sonst beim Öffnen der Seite bereits Listener auslösen.
+        viewLifecycleOwner.lifecycleScope.launch {
+            val cfg = ServiceLocator.overlayEinstellungenSpeicher.einstellungen.first()
+            swAktiv.isChecked = cfg.aktiv
+            swAutoKontrast.isChecked = cfg.autoKontrast
+
+            when (cfg.darstellung) {
+                OverlayEinstellungenSpeicher.Darstellung.NORMAL -> rgDarstellung.check(R.id.rbDarstellungNormal)
+                OverlayEinstellungenSpeicher.Darstellung.KOMPAKT_2ZEILIG -> rgDarstellung.check(R.id.rbDarstellungKompakt)
+            }
+
+            when (cfg.position) {
+                OverlayEinstellungenSpeicher.Position.AUTO -> rgPos.check(R.id.rbPosAuto)
+                OverlayEinstellungenSpeicher.Position.LINKS_OBEN -> rgPos.check(R.id.rbPosLo)
+                OverlayEinstellungenSpeicher.Position.RECHTS_OBEN -> rgPos.check(R.id.rbPosRo)
+                OverlayEinstellungenSpeicher.Position.LINKS_UNTEN -> rgPos.check(R.id.rbPosLu)
+                OverlayEinstellungenSpeicher.Position.RECHTS_UNTEN -> rgPos.check(R.id.rbPosRu)
+            }
+
+            swAutoPosSmart.isChecked = cfg.autoPositionSmart
+            sbAlpha.progress = (cfg.alpha * 100).toInt().coerceIn(10, 90)
+            sbText.progress = cfg.textSizeSp.coerceIn(10, 22)
+            swBaustelle.isChecked = cfg.zeigeBaustelle
+            swUnter.isChecked = cfg.zeigeUnterbaustelle
+            swStrecke.isChecked = cfg.zeigeStreckeBahnhof
+            swGleis.isChecked = cfg.zeigeGleisWeicheObjekt
+            swKm.isChecked = cfg.zeigeKm
+            swGps.isChecked = cfg.zeigeGps
+            swDt.isChecked = cfg.zeigeDatumZeit
+            initialisiert = true
+        }
     }
 }
