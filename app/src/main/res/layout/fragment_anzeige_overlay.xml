@@ -14,7 +14,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Anzeige &amp; Overlay"
+            android:text="Anzeige"
             android:textColor="?attr/colorOnBackground"
             android:textSize="24sp"
             android:textStyle="bold" />
@@ -24,7 +24,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:layout_marginBottom="16dp"
-            android:text="Darstellung der App und Informationen auf Kamerafotos."
+            android:text="Darstellung der App. Foto-Beschriftungen werden künftig beim PDF-Export erzeugt und nicht mehr dauerhaft ins Originalfoto geschrieben."
             android:textColor="?attr/colorOnBackground"
             android:alpha="0.8" />
 
@@ -39,24 +39,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="Hell/Dunkel/System und Anzahl der Suchspalten."
-            android:textColor="?attr/colorOnBackground"
-            android:alpha="0.75" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnAnzeigeOverlayDetails"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="18dp"
-            android:text="Kamera-Overlay"
-            android:gravity="center" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
             android:layout_marginBottom="24dp"
-            android:text="Inhalte, Position, Schriftgröße, Transparenz und automatische Lesbarkeit."
+            android:text="Hell/Dunkel/System und Anzahl der Suchspalten."
             android:textColor="?attr/colorOnBackground"
             android:alpha="0.75" />
 
