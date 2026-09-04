@@ -7,12 +7,12 @@ val kf006OriginalFragment = file("src/main/java/de/tbhelfer/ui/importexport/Impo
 val kf006GeneratedDir = layout.buildDirectory.dir("generated/source/kf006").get().asFile
 val kf006GeneratedFragment = file("${kf006GeneratedDir.path}/de/tbhelfer/ui/importexport/ImportExportFragment006.kt")
 
-// 007: Die Kamera bekommt fuer den Teststand eine kleine, deterministische Build-Kopie.
-// So bleibt die sehr grosse KameraFragment.kt im Repository unangetastet, waehrend wir
-// die neue Live-KM-Anzeige und die Sicherheitsgrenze auf dem Handy testen.
-val km007OriginalCamera = file("src/main/java/de/tbhelfer/ui/kamera/KameraFragment.kt")
-val km007GeneratedDir = layout.buildDirectory.dir("generated/source/km007").get().asFile
-val km007GeneratedCamera = file("${km007GeneratedDir.path}/de/tbhelfer/ui/kamera/KameraFragment007.kt")
+// 008: Die Kamera wird fuer den Handy-Test als deterministisch gepatchte Build-Kopie erzeugt.
+// Die grosse Originaldatei bleibt unveraendert; 007-Live-KM plus 008-GPS-Sicherheitsregeln
+// werden gemeinsam in eine generierte KameraFragment-Kopie geschrieben.
+val km008OriginalCamera = file("src/main/java/de/tbhelfer/ui/kamera/KameraFragment.kt")
+val km008GeneratedDir = layout.buildDirectory.dir("generated/source/km008").get().asFile
+val km008GeneratedCamera = file("${km008GeneratedDir.path}/de/tbhelfer/ui/kamera/KameraFragment008.kt")
 
 android {
     namespace = "de.tbhelfer"
@@ -29,9 +29,9 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // TB-Helfer 2.0: 200007 -> sichtbare Teststand-Nummer 007.
+        // TB-Helfer 2.0: 200008 -> sichtbare Teststand-Nummer 008.
         // Jeder neue auf dem Handy testbare Stand erhöht diesen Wert um 1.
-        versionCode = 200007
+        versionCode = 200008
         versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -60,7 +60,7 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    // 006/007: Die grossen Original-Fragmente bleiben im Repository unveraendert.
+    // 006/008: Die grossen Original-Fragmente bleiben im Repository unveraendert.
     // Fuer den Build werden deterministisch gepatchte Kopien erzeugt. AGP 9 mit
     // Built-in Kotlin blendet PatternFilterable direkt auf AndroidSourceDirectorySet aus.
     sourceSets {
@@ -69,7 +69,7 @@ android {
                 .exclude("de/tbhelfer/ui/importexport/ImportExportFragment.kt")
                 .exclude("de/tbhelfer/ui/kamera/KameraFragment.kt")
             kotlin.directories.add(kf006GeneratedDir.path)
-            kotlin.directories.add(km007GeneratedDir.path)
+            kotlin.directories.add(km008GeneratedDir.path)
         }
     }
 
@@ -217,11 +217,11 @@ import de.tbhelfer.vermessung.VermessungspunktKategorie""",
     }
 }
 
-val generateKm007KameraFragment by tasks.registering {
+val generateKm008KameraFragment by tasks.registering {
     group = "build setup"
-    description = "Erzeugt KameraFragment fuer Teststand 007 mit grosser Live-KM-Anzeige."
-    inputs.file(km007OriginalCamera)
-    outputs.file(km007GeneratedCamera)
+    description = "Erzeugt KameraFragment fuer Teststand 008 mit Live-KM und GPS-Sicherheitsgrenze."
+    inputs.file(km008OriginalCamera)
+    outputs.file(km008GeneratedCamera)
 
     doLast {
         val originalCamera = inputs.files.singleFile
@@ -230,13 +230,13 @@ val generateKm007KameraFragment by tasks.registering {
             .replace("\r\n", "\n")
             .replace('\r', '\n')
 
-        fun replaceRequired007(old: String, new: String, label: String) {
+        fun replaceRequired008(old: String, new: String, label: String) {
             if (text.contains(new)) return
-            check(text.contains(old)) { "007-Kamera-Integration fehlgeschlagen: $label nicht gefunden" }
+            check(text.contains(old)) { "008-Kamera-Integration fehlgeschlagen: $label nicht gefunden" }
             text = text.replaceFirst(old, new)
         }
 
-        replaceRequired007(
+        replaceRequired008(
             "import android.graphics.Color",
             """import android.graphics.Color
 import android.graphics.Typeface
@@ -247,8 +247,8 @@ import android.text.style.StyleSpan""",
             "Live-KM-Text-Imports"
         )
 
-        // Die sichtbare Fotoqualitaets-Einstellung muss die CameraX-Aufnahme wirklich steuern.
-        replaceRequired007(
+        // Die sichtbare Fotoqualitaets-Einstellung steuert die CameraX-Aufnahme wirklich.
+        replaceRequired008(
             """        imageCapture = ImageCapture.Builder()
             .setCaptureMode(captureMode)
             .setTargetRotation(displayRotation)
@@ -266,7 +266,7 @@ import android.text.style.StyleSpan""",
         // Ein Objekt-/Weichentreffer darf niemals nur deshalb einen KM liefern, weil
         // der Kontext fest gewaehlt ist. Ab einer realistisch nicht mehr sicheren
         // Entfernung gilt: kein Live-Treffer.
-        replaceRequired007(
+        replaceRequired008(
             """        val naechsteLinie = linien.minByOrNull { it.abstandM } ?: return null
         if (letztesStreckenObjektId != objekt.id) {
 """,
@@ -277,24 +277,37 @@ import android.text.style.StyleSpan""",
             "Weichen-Live-Distanzgrenze"
         )
 
-        replaceRequired007(
+        replaceRequired008(
             "    private fun berechneTrassenTreffer(loc: Location): TrassenNaheBerechner.Ergebnis? {",
-            """    private fun liveKmMaxAbstandM(loc: Location): Double {
-        // Sicherheitsregel fuer die Live-Anzeige: Standard 25 m. Bei schlechterem
-        // Handy-GPS etwas toleranter, aber niemals mehr als 40 m. Ein weiter entferntes
-        // Gleis darf keinen vermeintlich exakten Bahn-km liefern.
-        val gpsGenauigkeit = if (loc.hasAccuracy()) loc.accuracy.toDouble().coerceAtLeast(1.0) else 10.0
-        return maxOf(25.0, gpsGenauigkeit * 2.0).coerceAtMost(40.0)
+            """    private fun gpsFuerLiveKmBrauchbar(loc: Location): Boolean {
+        // Ein scheinbar millimetergenauer Bahn-km ist bei schlechtem Handy-GPS irrefuehrend.
+        // Bis einschliesslich 15 m darf ein Live-KM berechnet werden; darueber bleibt KM leer.
+        return loc.hasAccuracy() && loc.accuracy <= 15.0f
     }
 
-    private fun berechneTrassenTreffer(loc: Location): TrassenNaheBerechner.Ergebnis? {""",
-            "Live-KM-Distanzfunktion"
+    private fun liveKmMaxAbstandM(loc: Location): Double {
+        // Bei brauchbarem GPS maximal 25 m zur TRA akzeptieren. Die Toleranz waechst
+        // nur leicht mit der gemeldeten GPS-Genauigkeit und bleibt bewusst begrenzt.
+        val gpsGenauigkeit = if (loc.hasAccuracy()) loc.accuracy.toDouble().coerceAtLeast(1.0) else 15.0
+        return maxOf(20.0, gpsGenauigkeit * 1.5).coerceAtMost(25.0)
+    }
+
+    private fun berechneTrassenTreffer(loc: Location): TrassenNaheBerechner.Ergebnis? {
+        if (!gpsFuerLiveKmBrauchbar(loc)) return null""",
+            "Live-KM-GPS-Sicherheitsfunktion"
         )
 
-        replaceRequired007(
+        replaceRequired008(
             "            maxAbstandM = if (aktuellerKontext == null) 250.0 else 500.0,",
             "            maxAbstandM = liveKmMaxAbstandM(loc),",
             "TRA-Live-Distanzgrenze"
+        )
+
+        // Auch der alte Streckenpunkte-Fallback darf bei schlechtem GPS keinen KM liefern.
+        replaceRequired008(
+            "                val res = if (trassenTreffer == null && streckenpunkteCache.size >= 2) {",
+            "                val res = if (gpsFuerLiveKmBrauchbar(loc) && trassenTreffer == null && streckenpunkteCache.size >= 2) {",
+            "Legacy-KM-GPS-Sicherheitsgrenze"
         )
 
         val overlayStartMarker =
@@ -304,7 +317,7 @@ import android.text.style.StyleSpan""",
         val overlayStart = text.indexOf(overlayStartMarker)
         val overlayEnd = text.indexOf(overlayEndMarker, overlayStart.coerceAtLeast(0))
         check(overlayStart >= 0 && overlayEnd > overlayStart) {
-            "007-Kamera-Integration fehlgeschlagen: Live-KM-Anzeigefunktion nicht gefunden"
+            "008-Kamera-Integration fehlgeschlagen: Live-KM-Anzeigefunktion nicht gefunden"
         }
 
         val neueOverlayFunktion = """    private fun aktualisiereOverlayText(baustelleId: Long, loc: Location, res: KmBerechner.Ergebnis) {
@@ -312,7 +325,7 @@ import android.text.style.StyleSpan""",
         val gpsText = if (loc.hasAccuracy()) {
             "GPS ±" + String.format(Locale.GERMANY, "%.1f m", loc.accuracy)
         } else {
-            "GPS-Genauigkeit -"
+            "GPS-Genauigkeit unbekannt"
         }
 
         fun streckeObjektZeile(treffer: TrassenNaheBerechner.Ergebnis): String {
@@ -355,6 +368,17 @@ import android.text.style.StyleSpan""",
                 ausgabe.delete(ausgabe.length - 1, ausgabe.length)
             }
             textStatus.text = ausgabe
+        }
+
+        if (!gpsFuerLiveKmBrauchbar(loc)) {
+            zeile("KM —", faktor = 2.05f, fett = true)
+            if (loc.hasAccuracy()) {
+                zeile("GPS zu ungenau · " + gpsText, faktor = 1.02f, fett = true)
+            } else {
+                zeile("GPS-Genauigkeit unbekannt", faktor = 1.02f, fett = true)
+            }
+            anzeigen()
+            return
         }
 
         if (trassen != null) {
@@ -420,7 +444,7 @@ tasks.configureEach {
         (name.startsWith("compile") && name.endsWith("Kotlin"))
     ) {
         dependsOn(generateKf006ImportFragment)
-        dependsOn(generateKm007KameraFragment)
+        dependsOn(generateKm008KameraFragment)
     }
 }
 
