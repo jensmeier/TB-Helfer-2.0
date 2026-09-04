@@ -4,5 +4,5 @@ plugins {
 }
 
 project(":app") {
-    apply(from = rootProject.file("app/btb010.gradle.kts"))
+    apply(from = rootProject.file("app/btb010_runner.gradle.kts"))
 }
