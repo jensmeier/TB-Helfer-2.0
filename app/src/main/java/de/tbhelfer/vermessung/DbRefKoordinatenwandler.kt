@@ -9,13 +9,19 @@ import kotlin.math.sqrt
 import kotlin.math.tan
 
 /**
- * Koordinatenwandler fuer DB_REF2016 Zone 4 (EPSG:9934) nach WGS84/GPS.
+ * Koordinatenwandler fuer DB_REF2016 / 3-Grad-Gauss-Krueger nach WGS84/GPS.
  *
- * Eingabe: DB_REF Gauss-Krueger Zone 4, Achsenreihenfolge E/N.
- * Ausgabe: WGS84 Latitude/Longitude fuer Android/Google Maps/GPS.
+ * Die DB_REF-Dateien koennen je nach Lage in Zone 2, 3, 4 oder 5 liegen.
+ * Die Zone ist direkt am Millionenanteil des Rechtswerts erkennbar:
+ * 2xxxxxx -> Zone 2, 3xxxxxx -> Zone 3, 4xxxxxx -> Zone 4, 5xxxxxx -> Zone 5.
  *
- * Wichtig: Die gelieferten TRA/GVP/KOR-Dateien enthalten keine fertigen GPS-Koordinaten,
- * sondern DB_REF-X/Y. Diese Klasse macht daraus Lat/Lon fuer die spaetere Naeheberechnung.
+ * Wichtig fuer TB-Helfer: Die Allgaeu-Daten der Strecke 5362 liegen in Zone 3
+ * (z. B. X ~= 3.597.000). Eine feste Behandlung als Zone 4 verschiebt die
+ * berechneten GPS-Koordinaten um viele Kilometer und verhindert damit die
+ * automatische Bahn-km-Anzeige.
+ *
+ * Eingabe: DB_REF-Rechtswert/Hochwert (E/N).
+ * Ausgabe: WGS84 Latitude/Longitude fuer Android/GPS.
  */
 object DbRefKoordinatenwandler {
 
@@ -24,15 +30,19 @@ object DbRefKoordinatenwandler {
         val lon: Double
     )
 
+    private data class GkZone(
+        val nummer: Int,
+        val falseEasting: Double,
+        val lon0Rad: Double
+    )
+
     private const val A_BESSEL = 6_377_397.155
     private const val INV_F_BESSEL = 299.1528128
     private const val A_GRS80 = 6_378_137.0
     private const val INV_F_GRS80 = 298.257222101
 
-    private const val FALSE_EASTING = 4_500_000.0
     private const val FALSE_NORTHING = 0.0
     private const val SCALE = 1.0
-    private val LON0_RAD = Math.toRadians(12.0)
 
     // EPSG:5826 DB_REF -> ETRS89, Coordinate Frame Rotation.
     private const val TX = 584.9636
@@ -43,11 +53,20 @@ object DbRefKoordinatenwandler {
     private const val RZ_ARCSEC = 3.1384
     private const val SCALE_PPM = 7.9922
 
-    fun dbRef2016Zone4ZuWgs84OrNull(xDbRef: Double, yDbRef: Double): Wgs84Position? {
+    /**
+     * Automatische DB_REF2016-Zonenerkennung (EPSG 9932..9935).
+     */
+    fun dbRef2016ZuWgs84OrNull(xDbRef: Double, yDbRef: Double): Wgs84Position? {
         if (!xDbRef.isFinite() || !yDbRef.isFinite()) return null
-        if (xDbRef !in 3_000_000.0..6_000_000.0 || yDbRef !in 4_000_000.0..6_500_000.0) return null
+        if (yDbRef !in 4_000_000.0..6_500_000.0) return null
 
-        val dbRefGeod = inverseTransverseMercator(xDbRef, yDbRef)
+        val zone = zoneFuerRechtswert(xDbRef) ?: return null
+        val dbRefGeod = inverseTransverseMercator(
+            easting = xDbRef,
+            northing = yDbRef,
+            falseEasting = zone.falseEasting,
+            lon0Rad = zone.lon0Rad
+        )
         val dbRefXyz = geodeticToXyz(dbRefGeod.latRad, dbRefGeod.lonRad, 0.0, A_BESSEL, INV_F_BESSEL)
         val etrsXyz = helmertDbRefToEtrs89(dbRefXyz)
         val wgsGeod = xyzToGeodetic(etrsXyz.x, etrsXyz.y, etrsXyz.z, A_GRS80, INV_F_GRS80)
@@ -59,7 +78,39 @@ object DbRefKoordinatenwandler {
         return Wgs84Position(lat = lat, lon = lon)
     }
 
-    private fun inverseTransverseMercator(easting: Double, northing: Double): GeodRad {
+    /**
+     * Kompatibilitaetsname fuer vorhandene Aufrufer.
+     * Historisch war hier faelschlich Zone 4 fest verdrahtet; inzwischen wird
+     * die korrekte DB_REF-Zone automatisch aus dem Rechtswert bestimmt.
+     */
+    fun dbRef2016Zone4ZuWgs84OrNull(xDbRef: Double, yDbRef: Double): Wgs84Position? =
+        dbRef2016ZuWgs84OrNull(xDbRef, yDbRef)
+
+    private fun zoneFuerRechtswert(easting: Double): GkZone? {
+        val zone = (easting / 1_000_000.0).toInt()
+        if (zone !in 2..5) return null
+
+        val falseEasting = zone * 1_000_000.0 + 500_000.0
+        // 3-Grad-GK: Zone 2 -> 6 Grad, Zone 3 -> 9 Grad, usw.
+        val lon0Deg = zone * 3.0
+
+        // Plausibilitaet: Ein DB_REF-GK-Rechtswert liegt normalerweise in der
+        // jeweiligen Zone grob innerhalb +/- 500 km um den Mittelmeridian.
+        if (easting !in (falseEasting - 600_000.0)..(falseEasting + 600_000.0)) return null
+
+        return GkZone(
+            nummer = zone,
+            falseEasting = falseEasting,
+            lon0Rad = Math.toRadians(lon0Deg)
+        )
+    }
+
+    private fun inverseTransverseMercator(
+        easting: Double,
+        northing: Double,
+        falseEasting: Double,
+        lon0Rad: Double
+    ): GeodRad {
         val f = 1.0 / INV_F_BESSEL
         val e2 = 2.0 * f - f * f
         val e4 = e2 * e2
@@ -86,7 +137,7 @@ object DbRefKoordinatenwandler {
         val r1 = A_BESSEL * (1.0 - e2) / (1.0 - e2 * sinPhi1 * sinPhi1).pow(1.5)
         val t1 = tanPhi1 * tanPhi1
         val c1 = ep2 * cosPhi1 * cosPhi1
-        val d = (easting - FALSE_EASTING) / (n1 * SCALE)
+        val d = (easting - falseEasting) / (n1 * SCALE)
 
         val latRad = phi1 - (n1 * tanPhi1 / r1) * (
             d * d / 2.0 -
@@ -94,7 +145,7 @@ object DbRefKoordinatenwandler {
                 (61.0 + 90.0 * t1 + 298.0 * c1 + 45.0 * t1 * t1 - 252.0 * ep2 - 3.0 * c1 * c1) * d.pow(6.0) / 720.0
             )
 
-        val lonRad = LON0_RAD + (
+        val lonRad = lon0Rad + (
             d -
                 (1.0 + 2.0 * t1 + c1) * d.pow(3.0) / 6.0 +
                 (5.0 - 2.0 * c1 + 28.0 * t1 - 3.0 * c1 * c1 + 8.0 * ep2 + 24.0 * t1 * t1) * d.pow(5.0) / 120.0
