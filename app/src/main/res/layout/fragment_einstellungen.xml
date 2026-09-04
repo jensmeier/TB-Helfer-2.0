@@ -40,7 +40,7 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="12dp"
-            android:text="Anzeige &amp; Overlay"
+            android:text="Anzeige"
             android:gravity="center" />
 
         <com.google.android.material.button.MaterialButton
@@ -58,7 +58,6 @@
             android:layout_marginTop="12dp"
             android:text="BTB / PDF"
             android:gravity="center" />
-
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnWidget"
