@@ -30,6 +30,9 @@ private fun setNewBtbSetupIsolation(active: Boolean) {
     }
 }"""
 
+val visibleMarker = "cardNewBtbStartMode.visibility = View.VISIBLE"
+check(sourceText.contains(visibleMarker)) { "BTB 010 Preflight: Startkarten-Marker fehlt" }
+
 val fixedText = sourceText
     .replace("\$sourceDate", literalDollarExpression + "sourceDate")
     .replace("\$sourceTyp", literalDollarExpression + "sourceTyp")
@@ -37,8 +40,8 @@ val fixedText = sourceText
     .replace("android.app.AlertDialog.BUTTON_NEUTRAL", "android.content.DialogInterface.BUTTON_NEUTRAL")
     .replace("private var newBtbEditingCurrent: Boolean = false", setupIsolationCode)
     .replace(
-        "cardNewBtbStartMode.visibility = View.VISIBLE\n                renderNewBtbStartMode()",
-        "cardNewBtbStartMode.visibility = View.VISIBLE\n                setNewBtbSetupIsolation(true)\n                renderNewBtbStartMode()"
+        visibleMarker,
+        visibleMarker + "\n                setNewBtbSetupIsolation(true)"
     )
     .replace(
         "            cardNewBtbStartMode.visibility = View.GONE",
@@ -56,7 +59,9 @@ val fixedText = sourceText
 check(!fixedText.contains("\$sourceDate")) { "BTB 010 Preflight: sourceDate wurde nicht escaped" }
 check(!fixedText.contains("\$sourceTyp")) { "BTB 010 Preflight: sourceTyp wurde nicht escaped" }
 check(fixedText.contains("output.versionCode.set(200010)")) { "BTB 010 Preflight: Varianten-VersionCode 200010 fehlt" }
-check(fixedText.contains("setNewBtbSetupIsolation(true)")) { "BTB 010 Preflight: Setup-Isolation fehlt" }
+check(fixedText.contains("private fun setNewBtbSetupIsolation(active: Boolean)")) { "BTB 010 Preflight: Setup-Isolation-Funktion fehlt" }
+check(fixedText.contains("setNewBtbSetupIsolation(true)")) { "BTB 010 Preflight: Setup-Isolation-Aufruf fehlt" }
+check(fixedText.contains("setNewBtbSetupIsolation(false)")) { "BTB 010 Preflight: Setup-Isolation-Rueckstellung fehlt" }
 check(fixedText.contains("Daraus wird:")) { "BTB 010 Preflight: Zeitraum-Vorschau fehlt" }
 check(fixedText.contains("Aus letztem BTB übernehmen")) { "BTB 010 Preflight: Übernahme-Text fehlt" }
 
