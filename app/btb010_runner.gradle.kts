@@ -10,6 +10,8 @@ val sourceDateToken = "\$sourceDate"
 val sourceTypToken = "\$sourceTyp"
 val literalDollarExpression = "\$" + "{'\$'}"
 var fixedText = sourceScript.readText(Charsets.UTF_8)
+    .replace("\r\n", "\n")
+    .replace('\r', '\n')
     .replace("import com.android.build.api.dsl.ApplicationExtension\n", "")
     .replace("import com.android.build.api.variant.ApplicationAndroidComponentsExtension\n", "")
     .replace("import org.gradle.api.tasks.util.PatternFilterable\n", "")
