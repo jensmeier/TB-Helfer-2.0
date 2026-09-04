@@ -12,6 +12,9 @@ val literalDollarExpression = "\$" + "{'\$'}"
 var fixedText = sourceScript.readText(Charsets.UTF_8)
     .replace("\r\n", "\n")
     .replace('\r', '\n')
+    // Der 010-Generator hatte in einem Triple-Quoted-Marker fälschlich escaped Anführungszeichen.
+    // Im echten Bautagebuch-Quelltext steht: // "Zurück"-Button ...
+    .replace("\\\"Zurück\\\"", "\"Zurück\"")
     .replace("import com.android.build.api.dsl.ApplicationExtension\n", "")
     .replace("import com.android.build.api.variant.ApplicationAndroidComponentsExtension\n", "")
     .replace("import org.gradle.api.tasks.util.PatternFilterable\n", "")
