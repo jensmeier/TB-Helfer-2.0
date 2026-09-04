@@ -19,6 +19,7 @@ import androidx.navigation.fragment.findNavController
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.FotoEntity
+import de.tbhelfer.datenbank.FotoVermessungsSnapshotSpeicher
 import de.tbhelfer.streckenobjekte.BaustellenObjektLogik
 import de.tbhelfer.ui.kamera.FotoOptionalFelderSpeicher
 import de.tbhelfer.util.ThumbnailLoader
@@ -78,6 +79,7 @@ class FotoDetailFragment : Fragment() {
                 findNavController().popBackStack()
                 return@launch
             }
+            currentFoto = foto
 
             tvTitle.text = foto.kurztext.takeIf { it.isNotBlank() }
                 ?: SucheFotoFormatter.labelBildtyp(foto.bildtyp)
@@ -101,6 +103,9 @@ class FotoDetailFragment : Fragment() {
             val knoten = foto.baustellenKnotenId?.let { id ->
                 withContext(Dispatchers.IO) { baumRepo.knotenMitId(id) }
             }
+            val vermessung = withContext(Dispatchers.IO) {
+                FotoVermessungsSnapshotSpeicher.laden(requireContext().applicationContext, foto.id)
+            }
 
             val sb = StringBuilder()
             sb.append("Baustelle: ").append(baustelle?.baustellenname ?: "-")
@@ -114,13 +119,30 @@ class FotoDetailFragment : Fragment() {
 
             sb.append("\nZeit: ").append(SucheFotoFormatter.formatZeit(foto.erstelltAmEpochMs))
             sb.append("\nKM: ").append(foto.km?.let { String.format(Locale.GERMANY, "%.3f", it) } ?: "–")
+            vermessung?.kmQuelle?.takeIf { it.isNotBlank() }?.let {
+                sb.append("\nKM-Quelle: ").append(it)
+            }
+            vermessung?.strecke?.takeIf { it.isNotBlank() }?.let {
+                sb.append("\nStrecke: ").append(it)
+            }
+            vermessung?.achseName?.takeIf { it.isNotBlank() }?.let {
+                sb.append("\nAchse: ").append(it)
+            }
             sb.append("\nBildtyp: ").append(SucheFotoFormatter.labelBildtyp(foto.bildtyp))
 
-            foto.firma?.takeIf { it.isNotBlank() }?.let { sb.append("\nFirma: ").append(it) }
+            foto.firma.takeIf { it.isNotBlank() }?.let { sb.append("\nFirma: ").append(it) }
             foto.objektKennung?.takeIf { it.isNotBlank() }?.let { sb.append("\nObjekt: ").append(it) }
 
             sb.append("\nGPS: ")
                 .append(String.format(Locale.US, "%.6f, %.6f", foto.gpsLat, foto.gpsLon))
+            vermessung?.gpsAccuracyM?.let {
+                sb.append("\nGPS-Genauigkeit: ±")
+                    .append(String.format(Locale.GERMANY, "%.1f m", it))
+            }
+            (vermessung?.achsabstandM ?: foto.achsabstandM)?.let {
+                sb.append("\nAchsabstand: ")
+                    .append(String.format(Locale.GERMANY, "%.1f m", it))
+            }
 
             foto.notiz?.takeIf { it.isNotBlank() }?.let { sb.append("\nNotiz: ").append(it) }
             foto.indikator?.let { sb.append("\nIndikator: ").append(it.name) }
@@ -143,10 +165,12 @@ class FotoDetailFragment : Fragment() {
             )
             optionalValues.forEachIndexed { index, value ->
                 value?.takeIf { it.isNotBlank() }?.let {
-                    sb.append("\n").append(optionalNames.getOrNull(index).orEmpty().ifBlank { "Info${index + 1}" }).append(": ").append(it)
+                    sb.append("\n")
+                        .append(optionalNames.getOrNull(index).orEmpty().ifBlank { "Info${index + 1}" })
+                        .append(": ")
+                        .append(it)
                 }
             }
-
 
             sb.append("\nPfad: ").append(foto.dateipfad)
             if (!file.exists()) {
