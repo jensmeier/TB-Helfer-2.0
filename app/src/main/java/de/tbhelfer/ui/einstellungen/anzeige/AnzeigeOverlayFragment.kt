@@ -14,9 +14,5 @@ class AnzeigeOverlayFragment : Fragment(R.layout.fragment_anzeige_overlay) {
         view.findViewById<View>(R.id.btnAnzeigeApp).setOnClickListener {
             findNavController().navigate(R.id.action_anzeige_overlay_to_ansicht)
         }
-
-        view.findViewById<View>(R.id.btnAnzeigeOverlayDetails).setOnClickListener {
-            findNavController().navigate(R.id.action_anzeige_overlay_to_overlay)
-        }
     }
 }
