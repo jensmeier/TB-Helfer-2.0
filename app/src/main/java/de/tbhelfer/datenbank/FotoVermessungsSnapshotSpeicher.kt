@@ -77,8 +77,13 @@ object FotoVermessungsSnapshotSpeicher {
 
     fun kmIstManuell(foto: FotoEntity, pending: Pending?): Boolean {
         val km = foto.km ?: return false
-        if (foto.kmManuell) return true
-        if (pending == null) return true
+
+        // Ohne 009-Aufnahme-Snapshot bleibt das bisherige Verhalten fuer Alt-/Sonderflows
+        // erhalten. Bei einem echten 009-Snapshot entscheidet dagegen die Herkunft des
+        // Vorschlags und eine Nutzer-Aenderung - NICHT der Achsabstand. Ein originaler
+        // App-Vorschlag bleibt also ORIGINAL, auch wenn die Foto-Maske wegen groesserem
+        // Achsabstand zusaetzlich eine Pruefwarnung zeigt.
+        if (pending == null) return foto.kmManuell
 
         val roh = pending.kmQuelleRoh.orEmpty().uppercase(Locale.GERMANY)
         if (roh.contains("MANUELL")) return true
