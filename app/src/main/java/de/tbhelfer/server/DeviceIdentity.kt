@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Build
 import android.provider.Settings
 import java.security.MessageDigest
-import java.util.Locale
 
 object DeviceIdentity {
     fun stableUid(context: Context): String {
@@ -15,7 +14,9 @@ object DeviceIdentity {
         val source = "${context.packageName}:$androidId"
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(source.toByteArray(Charsets.UTF_8))
-        return digest.joinToString(separator = "") { byte -> "%02x".format(byte) }
+        return digest.joinToString(separator = "") { byte ->
+            "%02x".format(byte.toInt() and 0xff)
+        }
     }
 
     fun deviceName(): String {
