@@ -19,8 +19,8 @@ android {
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
         // Muss immer größer als die bereits verteilte App-Version sein.
-        // Das Testgerät hat aktuell versionCode 20009 installiert.
-        versionCode = 20010
+        // Das Testgerät hat aktuell versionCode 200009 installiert.
+        versionCode = 200010
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
