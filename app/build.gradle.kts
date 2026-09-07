@@ -113,6 +113,9 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.extensions)
 
+    // Geräteaktivierung per QR-Code ohne eigene Scanner-Kamera-UI.
+    implementation(libs.play.services.code.scanner)
+
     testImplementation(libs.junit4)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.espresso.core)
