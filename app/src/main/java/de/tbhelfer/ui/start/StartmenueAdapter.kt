@@ -26,6 +26,7 @@ enum class StartmenueZiel {
     SUCHE,
     MEIN_ORDNER,
     IMPORT_EXPORT,
+    SERVER_SYNC,
     EINSTELLUNGEN
 }
 
@@ -61,7 +62,6 @@ class StartmenueAdapter(
 
     fun setzeStyle(buttonColor: Int, textColor: Int, textSizeSp: Int) {
         this.buttonColor = buttonColor
-        // Verhalten beibehalten (bisher immer WHITE)
         this.textColor = Color.WHITE
         this.textSizeSp = textSizeSp
 
@@ -111,21 +111,17 @@ class StartmenueAdapter(
             val isAktuelleBaustelle = item.ziel == StartmenueZiel.KAMERA_AKTUELLE_BAUSTELLE
 
             btn.setTextColor(textColor)
-            // Runde Ecken behalten: nur tinten (NICHT setBackgroundColor)
             btn.backgroundTintList = ColorStateList.valueOf(buttonColor)
 
-            // erster Button etwas größer
             val targetHeightDp = if (isAktuelleBaustelle) 64 else 56
             btn.layoutParams = btn.layoutParams.apply {
                 height = dp(btn, targetHeightDp)
             }
 
-            // Mehr Zeilen für aktuelle Baustelle
             btn.isSingleLine = false
             btn.maxLines = if (isAktuelleBaustelle) 3 else 2
             btn.includeFontPadding = false
 
-            // AutoSize: Menü-Schriftgröße wirkt jetzt wirklich (Slider steuert max)
             val minSp = 10
             val maxSp = textSizeSp.coerceIn(12, 28)
             TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
