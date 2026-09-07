@@ -58,6 +58,9 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
                 StartmenueZiel.IMPORT_EXPORT ->
                     findNavController().navigate(R.id.action_start_to_importExport)
 
+                StartmenueZiel.SERVER_SYNC ->
+                    findNavController().navigate(R.id.action_start_to_serverSync)
+
                 StartmenueZiel.EINSTELLUNGEN ->
                     findNavController().navigate(R.id.action_start_to_einstellungen)
             }
@@ -80,7 +83,8 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
                     StartmenueItem("Baustellen", StartmenueZiel.BAUSTELLEN),
                     StartmenueItem("Suche Bilder/BTB", StartmenueZiel.SUCHE),
                     StartmenueItem("Mein Ordner", StartmenueZiel.MEIN_ORDNER),
-                    StartmenueItem("Streckendaten", StartmenueZiel.IMPORT_EXPORT)
+                    StartmenueItem("Streckendaten", StartmenueZiel.IMPORT_EXPORT),
+                    StartmenueItem("Daten vom NAS", StartmenueZiel.SERVER_SYNC)
                 )
             )
         }
@@ -91,7 +95,6 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
             findNavController().navigate(R.id.action_start_to_einstellungen)
         }
 
-        // Ansicht-Einstellungen anwenden (Buttonfarbe/Textfarbe/Schrift + Liste/Kachel)
         viewLifecycleOwner.lifecycleScope.launch {
             ServiceLocator.ansichtEinstellungenSpeicher.einstellungen.collectLatest { cfg ->
                 adapter.setzeStyle(
@@ -100,7 +103,6 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
                     textSizeSp = cfg.menuTextSizeSp
                 )
 
-                // Einstellungen-Button: gleiche Optik wie andere (runde Ecken bleiben!)
                 btnSettings.backgroundTintList =
                     android.content.res.ColorStateList.valueOf(cfg.menuButtonColor)
                 btnSettings.setTextColor(android.graphics.Color.WHITE)
@@ -133,7 +135,6 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
             }
         }
 
-        // Veraltete aktive Auswahl bereinigen, falls der Baustellenbaum schon gelöscht wurde.
         viewLifecycleOwner.lifecycleScope.launch {
             AktiveBaustelleValidator.bereinigeWennUngueltig(
                 speicher = ServiceLocator.aktuelleBaustelleSpeicher,
@@ -142,21 +143,17 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
             )
         }
 
-        // Aktuelle Baustelle für Anzeige ermitteln (Knoten bevorzugt, sonst Baustelle)
         viewLifecycleOwner.lifecycleScope.launch {
             val speicher = ServiceLocator.aktuelleBaustelleSpeicher
             val baumRepo = ServiceLocator.baustellenBaumRepository
             val bRepo = ServiceLocator.baustellenRepository
 
-            // 1) Knoten gesetzt -> Anzeige aus Knoten
             launch {
                 speicher.aktuellerKnotenId
                     .flatMapLatest { id ->
                         if (id == null) flowOf(null) else baumRepo.knotenMitIdFlow(id)
                     }
                     .collectLatest { knoten ->
-                        // WICHTIG: Wenn der Unterknoten wieder "leer" wird (z.B. beim Setzen nur Hauptbaustelle),
-                        // MUSS die Anzeige zurückgesetzt werden, sonst bleibt eine alte Baustelle im Startmenü stehen.
                         if (knoten == null) {
                             aktuelleAnzeige = null
                             applyMenuItems()
@@ -171,7 +168,6 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
                     }
             }
 
-            // 2) Fallback: normale Baustelle
             launch {
                 speicher.aktuelleBaustelleId
                     .flatMapLatest { id ->
