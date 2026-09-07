@@ -18,7 +18,9 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        versionCode = 13
+        // Muss immer größer als die bereits verteilte App-Version sein.
+        // Das Testgerät hat aktuell versionCode 200009 installiert.
+        versionCode = 200010
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -112,6 +114,9 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.extensions)
+
+    // Geräteaktivierung per QR-Code ohne eigene Scanner-Kamera-UI.
+    implementation(libs.play.services.code.scanner)
 
     testImplementation(libs.junit4)
     androidTestImplementation(libs.androidx.test.junit)

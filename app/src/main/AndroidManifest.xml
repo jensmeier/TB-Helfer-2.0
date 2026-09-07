@@ -14,18 +14,40 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:enableOnBackInvokedCallback="true" tools:targetApi="33"
+        android:enableOnBackInvokedCallback="true"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="33"
         android:theme="@style/Theme.TBHelfer">
 
+        <!--
+          Entwicklung über das verschlüsselte Tailscale-Netz: Der API-Endpunkt
+          nutzt aktuell noch HTTP. Sobald der TB-Helfer-Server per HTTPS erreichbar
+          ist, wird usesCleartextTraffic wieder entfernt.
+        -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="barcode_ui" />
+
         <activity
-            android:name=".ui.HauptActivity"
+            android:name=".ui.activation.AktivierungActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize|stateHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tbhelfer" android:host="activate" />
+            </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.HauptActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize|stateHidden" />
 
         <!-- Damit wir Fotos aus dem App-Ordner sicher öffnen/teilen können -->
         <provider

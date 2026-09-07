@@ -9,12 +9,19 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import de.tbhelfer.R
+import de.tbhelfer.server.ActivationApi
+import de.tbhelfer.server.SecureTokenStore
+import de.tbhelfer.ui.activation.AktivierungActivity
 import de.tbhelfer.ui.style.UiStyleApplier
 import de.tbhelfer.widget.CameraWidgetProvider
 import de.tbhelfer.widget.CurrentSiteWidgetProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class HauptActivity : AppCompatActivity() {
     companion object {
@@ -30,6 +37,13 @@ class HauptActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val tokenStore = SecureTokenStore(this)
+        val deviceToken = tokenStore.load()
+        if (deviceToken.isNullOrBlank()) {
+            openActivation()
+            return
+        }
+
         SafeAreaInsets.install(this)
         setContentView(R.layout.activity_haupt)
         UiStyleApplier.install(this)
@@ -43,6 +57,8 @@ class HauptActivity : AppCompatActivity() {
         if (!handleWidgetConfigurationIntent(intent)) {
             handleNavigationIntent(intent)
         }
+
+        validateDeviceSession(tokenStore, deviceToken)
     }
 
 
@@ -57,6 +73,30 @@ class HauptActivity : AppCompatActivity() {
         if (!handleWidgetConfigurationIntent(intent)) {
             handleNavigationIntent(intent)
         }
+    }
+
+    private fun validateDeviceSession(tokenStore: SecureTokenStore, token: String) {
+        lifecycleScope.launch {
+            val state = withContext(Dispatchers.IO) {
+                ActivationApi().checkSession(token)
+            }
+            if (state == ActivationApi.SessionState.REVOKED && !isFinishing) {
+                tokenStore.clear()
+                Toast.makeText(
+                    this@HauptActivity,
+                    R.string.activation_session_revoked,
+                    Toast.LENGTH_LONG
+                ).show()
+                openActivation()
+            }
+            // OFFLINE ist ausdrücklich erlaubt: Auf der Baustelle muss die App auch
+            // ohne Serververbindung mit den lokal vorhandenen Daten weiterarbeiten.
+        }
+    }
+
+    private fun openActivation() {
+        startActivity(Intent(this, AktivierungActivity::class.java))
+        finish()
     }
 
     /**
