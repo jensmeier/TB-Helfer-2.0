@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="activation_title">TB-Helfer aktivieren</string>
+    <string name="activation_intro">Scanne den QR-Code auf deiner Aktivierungskarte oder gib den Aktivierungs-Key ein.</string>
+    <string name="activation_scan_qr">QR-Code scannen</string>
+    <string name="activation_or">oder</string>
+    <string name="activation_key_hint">Aktivierungs-Key (TBH-…)</string>
+    <string name="activation_activate">Gerät aktivieren</string>
+    <string name="activation_scanner_starting">QR-Scanner wird geöffnet…</string>
+    <string name="activation_invalid_qr">Dieser QR-Code ist keine TB-Helfer-Aktivierungskarte.</string>
+    <string name="activation_scanner_error">QR-Code konnte nicht gelesen werden. Du kannst den Key auch manuell eingeben.</string>
+    <string name="activation_key_too_short">Bitte einen vollständigen TB-Helfer-Aktivierungs-Key eingeben.</string>
+    <string name="activation_connecting">Gerät wird mit dem TB-Helfer-Server verbunden…</string>
+    <string name="activation_token_save_error">Das Geräte-Token konnte auf diesem Handy nicht sicher gespeichert werden.</string>
+    <string name="activation_success">Gerät für %1$s aktiviert.</string>
+    <string name="activation_already_bound">Dieser Benutzer ist bereits mit einem anderen Gerät verbunden. Bitte im TB-Helfer-Admin das alte Gerät freigeben.</string>
+    <string name="activation_invalid_key">Der Aktivierungs-Key ist ungültig oder wurde durch einen neueren Key ersetzt.</string>
+    <string name="activation_user_disabled">Dieser Benutzer ist im TB-Helfer-Admin deaktiviert.</string>
+    <string name="activation_device_in_use">Dieses Handy ist bereits einem anderen Benutzer zugeordnet.</string>
+    <string name="activation_server_error">Server nicht erreichbar oder Fehler bei der Aktivierung: %1$s\n\nBitte Tailscale/VPN und die Internetverbindung prüfen.</string>
+    <string name="activation_footer">Der Aktivierungs-Key wird nach erfolgreicher Bindung nicht auf dem Handy gespeichert. TB-Helfer verwendet danach nur das verschlüsselt gespeicherte Geräte-Token.</string>
+    <string name="activation_session_revoked">Dieses Gerät wurde im TB-Helfer-Admin freigegeben oder der Benutzer wurde deaktiviert. Bitte erneut aktivieren.</string>
+</resources>
