@@ -18,9 +18,8 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Muss immer größer als die bereits verteilte App-Version sein.
-        // Das Testgerät hat aktuell versionCode 200009 installiert.
-        versionCode = 200010
+        // Höher als die zuletzt getestete Geräteaktivierungs-Version 200010.
+        versionCode = 200011
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -55,7 +54,6 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-
 
     lint {
         // Runde 3: "UI/Lint auf 0 ohne Noise"
