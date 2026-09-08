@@ -12,9 +12,13 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import de.tbhelfer.R
+import de.tbhelfer.ServiceLocator
+import de.tbhelfer.datenbank.OfflineSyncRepository
 import de.tbhelfer.server.SecureTokenStore
 import de.tbhelfer.server.SyncCatalogApi
 import de.tbhelfer.ui.activation.AktivierungActivity
+import java.text.DateFormat
+import java.util.Date
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -28,6 +32,9 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
     private lateinit var routesTitle: TextView
     private lateinit var stationsTitle: TextView
     private lateinit var refreshButton: Button
+
+    private val offlineRepository: OfflineSyncRepository
+        get() = ServiceLocator.offlineSyncRepository
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -61,21 +68,41 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
             }
 
             if (!isAdded) return@launch
-            setLoading(false)
 
             when (result) {
-                is SyncCatalogApi.Result.Success -> renderCatalog(result.catalog)
+                is SyncCatalogApi.Result.Success -> {
+                    val cacheSaved = withContext(Dispatchers.IO) {
+                        runCatching { offlineRepository.saveCatalog(result.catalog) }.isSuccess
+                    }
+                    if (!isAdded) return@launch
+                    setLoading(false)
+                    renderCatalog(result.catalog)
+                    if (!cacheSaved) {
+                        statusText.text = getString(
+                            R.string.sync_cache_warning,
+                            statusText.text.toString()
+                        )
+                    }
+                }
+
                 SyncCatalogApi.Result.SessionInvalid -> {
+                    setLoading(false)
                     tokenStore.clear()
                     Toast.makeText(requireContext(), R.string.activation_session_revoked, Toast.LENGTH_LONG).show()
                     openActivation()
                 }
+
                 is SyncCatalogApi.Result.Error -> {
-                    statusText.text = getString(R.string.sync_error, result.message)
-                    routesContainer.removeAllViews()
-                    stationsContainer.removeAllViews()
-                    routesTitle.text = getString(R.string.sync_routes_count, 0)
-                    stationsTitle.text = getString(R.string.sync_stations_count, 0)
+                    val cached = withContext(Dispatchers.IO) {
+                        runCatching { offlineRepository.loadCachedCatalog() }.getOrNull()
+                    }
+                    if (!isAdded) return@launch
+                    setLoading(false)
+                    if (cached != null) {
+                        renderCachedCatalog(cached)
+                    } else {
+                        renderError(result.message)
+                    }
                 }
             }
         }
@@ -84,7 +111,25 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
     private fun renderCatalog(catalog: SyncCatalogApi.Catalog) {
         val serverText = catalog.serverVersion?.let { "Server $it" } ?: "Server verbunden"
         statusText.text = getString(R.string.sync_connected, serverText)
+        renderCatalogItems(catalog)
+    }
 
+    private fun renderCachedCatalog(cached: OfflineSyncRepository.CachedCatalog) {
+        val dateText = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+            .format(Date(cached.savedAtEpochMs))
+        statusText.text = getString(R.string.sync_offline_cached, dateText)
+        renderCatalogItems(cached.catalog)
+    }
+
+    private fun renderError(message: String) {
+        statusText.text = getString(R.string.sync_error, message)
+        routesContainer.removeAllViews()
+        stationsContainer.removeAllViews()
+        routesTitle.text = getString(R.string.sync_routes_count, 0)
+        stationsTitle.text = getString(R.string.sync_stations_count, 0)
+    }
+
+    private fun renderCatalogItems(catalog: SyncCatalogApi.Catalog) {
         routesTitle.text = getString(R.string.sync_routes_count, catalog.routes.size)
         stationsTitle.text = getString(R.string.sync_stations_count, catalog.stations.size)
 
