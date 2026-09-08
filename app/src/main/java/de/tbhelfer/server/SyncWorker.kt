@@ -25,15 +25,47 @@ class SyncWorker(
         ServiceLocator.initialisieren(applicationContext)
         val tokenStore = SecureTokenStore(applicationContext)
         val token = tokenStore.load() ?: return Result.success()
+        val repository = ServiceLocator.offlineSyncRepository
 
-        return when (val result = ServiceLocator.offlineSyncRepository.synchronize(token)) {
-            OfflineSyncRepository.FullSyncResult.SessionInvalid -> {
+        return when (val catalogResult = SyncCatalogApi().loadCatalog(token)) {
+            SyncCatalogApi.Result.SessionInvalid -> {
                 tokenStore.clear()
                 Result.success()
             }
-            is OfflineSyncRepository.FullSyncResult.Error -> Result.retry()
-            is OfflineSyncRepository.FullSyncResult.Success -> Result.success()
+            is SyncCatalogApi.Result.Error -> Result.retry()
+            is SyncCatalogApi.Result.Success -> {
+                try {
+                    repository.saveCatalog(catalogResult.catalog)
+                } catch (_: Exception) {
+                    return Result.retry()
+                }
+
+                // Server 0.6.0 unterstützt den bewährten Lese-/Offline-Sync, aber noch nicht
+                // den inkrementellen Änderungsfeed. Dann sauber beenden statt 404 zu erzeugen.
+                if (!supportsIncrementalSync(catalogResult.catalog.serverVersion)) {
+                    return Result.success()
+                }
+
+                when (val result = repository.synchronize(token)) {
+                    OfflineSyncRepository.FullSyncResult.SessionInvalid -> {
+                        tokenStore.clear()
+                        Result.success()
+                    }
+                    is OfflineSyncRepository.FullSyncResult.Error -> Result.retry()
+                    is OfflineSyncRepository.FullSyncResult.Success -> Result.success()
+                }
+            }
         }
+    }
+
+    private fun supportsIncrementalSync(version: String?): Boolean {
+        val values = version?.trim()?.split('.')?.map { part ->
+            part.takeWhile { it.isDigit() }.toIntOrNull() ?: 0
+        } ?: return false
+        val major = values.getOrElse(0) { 0 }
+        val minor = values.getOrElse(1) { 0 }
+        val patch = values.getOrElse(2) { 0 }
+        return major > 0 || minor > 6 || (minor == 6 && patch >= 1)
     }
 
     companion object {
