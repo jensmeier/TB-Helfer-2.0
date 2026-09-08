@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="sync_title">Daten vom NAS</string>
-    <string name="sync_intro">Verfügbare Strecken und Bahnhöfe vom TB-Helfer-Server. Katalog sowie gezielt ausgewählte Abschnitte, Gleise und Weichen bleiben offline auf dem Gerät verfügbar.</string>
+    <string name="sync_intro">Verfügbare Strecken und Bahnhöfe vom TB-Helfer-Server. Katalog sowie gezielt ausgewählte Abschnitte, Gleise und Weichen bleiben offline auf dem Gerät verfügbar. Ab Server 0.6.1 werden Änderungen mit Versionsprüfung synchronisiert.</string>
     <string name="sync_loading">Serverdaten werden geladen …</string>
     <string name="sync_connected">%1$s · verbunden</string>
     <string name="sync_offline_cached">Offline · gespeicherter Stand vom %1$s</string>
     <string name="sync_cache_warning">%1$s · Offline-Speicherung fehlgeschlagen</string>
+    <string name="sync_incremental_ok">%1$s · synchronisiert · ↓ %2$d / ↑ %3$d · %4$d ausstehend · %5$d Konflikte</string>
+    <string name="sync_incremental_warning">%1$s · Zusatz-Sync: %2$s</string>
     <string name="sync_error">Fehler: %1$s</string>
     <string name="sync_refresh">Neu laden</string>
     <string name="sync_routes">Strecken</string>
