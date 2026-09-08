@@ -3,6 +3,7 @@ package de.tbhelfer
 import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import de.tbhelfer.einstellungen.AnsichtEinstellungenSpeicher
+import de.tbhelfer.server.SyncWorker
 import de.tbhelfer.util.StorageCleanupScheduler
 
 class TBHelferApp : Application() {
@@ -24,5 +25,9 @@ class TBHelferApp : Application() {
 
         // Periodische Speicher-Bereinigung (Orphans/Thumb-Leichen/DB-Leichen)
         StorageCleanupScheduler.scheduleWeekly(this)
+
+        // NAS-/Cloudflare-Sync nur mit Netzwerk und nicht bei niedrigem Akkustand.
+        // Der manuelle „Neu laden“-Button bleibt für sofortiges Synchronisieren zuständig.
+        SyncWorker.schedule(this)
     }
 }
