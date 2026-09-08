@@ -148,6 +148,7 @@ data class SyncStateEntity(
     companion object {
         const val KEY_LAST_CATALOG_SYNC = "last_catalog_sync"
         const val KEY_LAST_SUCCESSFUL_SYNC = "last_successful_sync"
+        const val KEY_LAST_CHANGE_SEQUENCE = "last_change_sequence"
         const val KEY_SERVER_VERSION = "server_version"
     }
 }
