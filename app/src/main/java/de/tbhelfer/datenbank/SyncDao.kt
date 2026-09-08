@@ -35,6 +35,18 @@ interface SyncDao {
     @Query("SELECT * FROM sync_station WHERE isDeleted = 0 ORDER BY name COLLATE NOCASE")
     suspend fun stations(): List<SyncStationEntity>
 
+    @Query("SELECT * FROM sync_route WHERE serverId = :serverId LIMIT 1")
+    suspend fun route(serverId: String): SyncRouteEntity?
+
+    @Query("SELECT * FROM sync_station WHERE serverId = :serverId LIMIT 1")
+    suspend fun station(serverId: String): SyncStationEntity?
+
+    @Query("SELECT * FROM sync_section WHERE serverId = :serverId LIMIT 1")
+    suspend fun section(serverId: String): SyncSectionEntity?
+
+    @Query("SELECT * FROM sync_object WHERE serverId = :serverId LIMIT 1")
+    suspend fun objectById(serverId: String): SyncObjectEntity?
+
     @Query("SELECT * FROM sync_section WHERE routeServerId = :routeServerId AND isDeleted = 0 ORDER BY kmMinM, kmMaxM, designation")
     suspend fun sectionsForRoute(routeServerId: String): List<SyncSectionEntity>
 
@@ -43,6 +55,18 @@ interface SyncDao {
 
     @Query("SELECT * FROM sync_object WHERE stationServerId = :stationServerId AND isDeleted = 0 ORDER BY objectType, designation")
     suspend fun objectsForStation(stationServerId: String): List<SyncObjectEntity>
+
+    @Query("UPDATE sync_route SET isDeleted = 1, entityVersion = :entityVersion, updatedAtEpochMs = :nowEpochMs WHERE serverId = :serverId")
+    suspend fun markRouteDeleted(serverId: String, entityVersion: Long, nowEpochMs: Long = System.currentTimeMillis())
+
+    @Query("UPDATE sync_station SET isDeleted = 1, entityVersion = :entityVersion, updatedAtEpochMs = :nowEpochMs WHERE serverId = :serverId")
+    suspend fun markStationDeleted(serverId: String, entityVersion: Long, nowEpochMs: Long = System.currentTimeMillis())
+
+    @Query("UPDATE sync_section SET isDeleted = 1, entityVersion = :entityVersion, updatedAtEpochMs = :nowEpochMs WHERE serverId = :serverId")
+    suspend fun markSectionDeleted(serverId: String, entityVersion: Long, nowEpochMs: Long = System.currentTimeMillis())
+
+    @Query("UPDATE sync_object SET isDeleted = 1, entityVersion = :entityVersion, updatedAtEpochMs = :nowEpochMs WHERE serverId = :serverId")
+    suspend fun markObjectDeleted(serverId: String, entityVersion: Long, nowEpochMs: Long = System.currentTimeMillis())
 
     @Query("DELETE FROM sync_section WHERE routeServerId = :routeServerId")
     suspend fun clearSectionsForRoute(routeServerId: String)
@@ -64,6 +88,9 @@ interface SyncDao {
 
     @Query("SELECT * FROM sync_pending_change WHERE state = 'CONFLICT' ORDER BY updatedAtEpochMs DESC")
     suspend fun conflicts(): List<SyncPendingChangeEntity>
+
+    @Query("SELECT COUNT(*) FROM sync_pending_change WHERE state = 'CONFLICT'")
+    suspend fun conflictCount(): Int
 
     @Query("UPDATE sync_pending_change SET state = :state, attempts = :attempts, lastError = :lastError, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
     suspend fun updateChangeState(
