@@ -18,8 +18,8 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Cloudflare-HTTPS-Testversion; höher als NAS-Sync-Katalog 200011.
-        versionCode = 200012
+        // Erste Offline-Sync-Testversion auf Basis des Cloudflare-HTTPS-Standes.
+        versionCode = 200013
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
