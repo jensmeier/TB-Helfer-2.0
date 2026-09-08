@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="sync_title">Daten vom NAS</string>
-    <string name="sync_intro">Verfügbare Strecken und Bahnhöfe vom TB-Helfer-Server. Erfolgreich geladene Katalogdaten bleiben jetzt auch offline auf dem Gerät verfügbar.</string>
+    <string name="sync_intro">Verfügbare Strecken und Bahnhöfe vom TB-Helfer-Server. Katalog sowie gezielt ausgewählte Abschnitte, Gleise und Weichen bleiben offline auf dem Gerät verfügbar.</string>
     <string name="sync_loading">Serverdaten werden geladen …</string>
     <string name="sync_connected">%1$s · verbunden</string>
     <string name="sync_offline_cached">Offline · gespeicherter Stand vom %1$s</string>
@@ -14,6 +14,13 @@
     <string name="sync_stations_count">Bahnhöfe (%1$d)</string>
     <string name="sync_no_routes">Auf dem Server sind noch keine Strecken vorhanden.</string>
     <string name="sync_no_stations">Auf dem Server sind noch keine Bahnhöfe vorhanden.</string>
-    <string name="sync_route_selected">Strecke %1$s ausgewählt. Abschnittsauswahl folgt im nächsten Schritt.</string>
-    <string name="sync_station_selected">%1$s ausgewählt. Gleis-/Weichenauswahl folgt im nächsten Schritt.</string>
+    <string name="sync_route_download_title">Strecke %1$s – Offline-Auswahl</string>
+    <string name="sync_station_download_title">%1$s – Offline-Auswahl</string>
+    <string name="sync_route_offline_title">Strecke %1$s – auf Gerät</string>
+    <string name="sync_station_offline_title">%1$s – auf Gerät</string>
+    <string name="sync_save_offline">Auf Gerät speichern</string>
+    <string name="sync_no_sections_for_route">Für diese Strecke sind auf dem Server noch keine Abschnitte vorhanden.</string>
+    <string name="sync_no_objects_for_station">Für diesen Bahnhof sind auf dem Server noch keine Gleise, Weichen oder anderen Objekte vorhanden.</string>
+    <string name="sync_sections_saved">%1$d Abschnitte offline gespeichert.</string>
+    <string name="sync_objects_saved">%1$d Bahnhofobjekte offline gespeichert.</string>
 </resources>
