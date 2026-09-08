@@ -83,7 +83,7 @@ interface SyncDao {
     @Query("SELECT * FROM sync_pending_change WHERE state IN ('PENDING', 'FAILED') ORDER BY createdAtEpochMs, id")
     suspend fun pendingChanges(): List<SyncPendingChangeEntity>
 
-    @Query("SELECT * FROM sync_pending_change WHERE objectKind = :objectKind AND serverId = :serverId AND state IN ('PENDING','FAILED') ORDER BY id DESC LIMIT 1")
+    @Query("SELECT * FROM sync_pending_change WHERE objectKind = :objectKind AND serverId = :serverId AND state IN ('PENDING','FAILED','CONFLICT') ORDER BY id DESC LIMIT 1")
     suspend fun pendingForEntity(objectKind: String, serverId: String): SyncPendingChangeEntity?
 
     @Query("SELECT COUNT(*) FROM sync_pending_change WHERE state IN ('PENDING', 'FAILED')")
