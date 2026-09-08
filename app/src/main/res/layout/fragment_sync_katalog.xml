@@ -62,6 +62,16 @@
             android:text="@string/sync_refresh"
             android:textAllCaps="false" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSyncConflicts"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/sync_conflict_title"
+            android:textAllCaps="false"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/txtRoutesTitle"
             android:layout_width="match_parent"
