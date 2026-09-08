@@ -9,6 +9,7 @@
         <action ns0:id="@+id/action_start_to_suche" ns1:destination="@id/sucheFragment" />
         <action ns0:id="@+id/action_start_to_importExport" ns1:destination="@id/importExportFragment" />
         <action ns0:id="@+id/action_start_to_meinOrdner" ns1:destination="@id/meinOrdnerFragment" />
+        <action ns0:id="@+id/action_start_to_serverSync" ns1:destination="@id/serverSyncFragment" />
         <action ns0:id="@+id/action_start_to_einstellungen" ns1:destination="@id/einstellungenFragment" />
     </fragment>
 
@@ -22,14 +23,11 @@
         <argument ns0:name="baustelleName" ns1:argType="string" ns0:defaultValue="" />
     </fragment>
 
-
     <fragment ns0:id="@+id/maengellisteFragment" ns0:name="de.tbhelfer.ui.baustelle.MaengellisteFragment" ns0:label="Mängelliste">
         <argument ns0:name="hauptKnotenId" ns1:argType="long" ns0:defaultValue="-1L" />
         <argument ns0:name="altBaustelleId" ns1:argType="long" ns0:defaultValue="-1L" />
         <argument ns0:name="baustelleName" ns1:argType="string" ns0:defaultValue="" />
     </fragment>
-
-
 
     <fragment ns0:id="@+id/abnahmelisteFragment" ns0:name="de.tbhelfer.ui.abnahme.AbnahmelisteFragment" ns0:label="Abnahmen">
         <argument ns0:name="baustelleId" ns1:argType="long" ns0:defaultValue="-1L" />
@@ -63,7 +61,7 @@
 
     <fragment ns0:id="@+id/kameraFragment" ns0:name="de.tbhelfer.ui.kamera.KameraFragment" ns0:label="Kamera">
         <action ns0:id="@+id/action_kamera_to_fotoListe" ns1:destination="@id/fotoListeFragment" />
-        </fragment>
+    </fragment>
 
     <fragment ns0:id="@+id/fotoErfassenFragment" ns0:name="de.tbhelfer.ui.kamera.FotoErfassenFragment" ns0:label="Foto erfassen" />
 
@@ -74,10 +72,7 @@
         <argument ns0:name="schichtTyp" ns1:argType="string" ns0:defaultValue="" />
     </fragment>
 
-
-<fragment ns0:id="@+id/btbPdfAuswahlFragment" ns0:name="de.tbhelfer.ui.bautagebuch.BtbPdfAuswahlFragment" ns0:label="BTB / PDF Auswahl" />
-
-
+    <fragment ns0:id="@+id/btbPdfAuswahlFragment" ns0:name="de.tbhelfer.ui.bautagebuch.BtbPdfAuswahlFragment" ns0:label="BTB / PDF Auswahl" />
 
     <fragment ns0:id="@+id/sucheFragment" ns0:name="de.tbhelfer.ui.suche.SucheFragment" ns0:label="Suche" />
 
@@ -95,13 +90,14 @@
 
     <fragment ns0:id="@+id/importExportFragment" ns0:name="de.tbhelfer.ui.importexport.ImportExportFragment" ns0:label="Import / Export" />
 
+    <fragment ns0:id="@+id/serverSyncFragment" ns0:name="de.tbhelfer.ui.sync.SyncKatalogFragment" ns0:label="Daten vom NAS" />
+
     <fragment ns0:id="@+id/einstellungenFragment" ns0:name="de.tbhelfer.ui.einstellungen.EinstellungenFragment" ns0:label="Einstellungen">
         <action ns0:id="@+id/action_einstellungen_to_ansicht" ns1:destination="@id/ansichtFragment" />
         <action ns0:id="@+id/action_einstellungen_to_overlay" ns1:destination="@id/overlayEinstellungenFragment" />
         <action ns0:id="@+id/action_einstellungen_to_kamera" ns1:destination="@id/kameraEinstellungenFragment" />
         <action ns0:id="@+id/action_einstellungen_to_geraeteDiagnose" ns1:destination="@id/geraeteDiagnoseFragment" />
         <action ns0:id="@+id/action_einstellungen_to_nutzer" ns1:destination="@id/nutzerFragment" />
-
         <action ns0:id="@+id/action_einstellungen_to_btb_pdf" ns1:destination="@id/btbPdfEinstellungenFragment" />
         <action ns0:id="@+id/action_einstellungen_to_anzeige_overlay" ns1:destination="@id/anzeigeOverlayFragment" />
         <action ns0:id="@+id/action_einstellungen_to_wartung_diagnose" ns1:destination="@id/wartungDiagnoseFragment" />
@@ -115,13 +111,11 @@
 
     <fragment ns0:id="@+id/ansichtFragment" ns0:name="de.tbhelfer.ui.einstellungen.ansicht.AnsichtFragment" ns0:label="Ansicht" />
 
-    
     <fragment ns0:id="@+id/kameraEinstellungenFragment" ns0:name="de.tbhelfer.ui.einstellungen.kamera.KameraEinstellungenFragment" ns0:label="Kamera" />
 
     <fragment ns0:id="@+id/geraeteDiagnoseFragment" ns0:name="de.tbhelfer.ui.einstellungen.diagnose.GeraeteDiagnoseFragment" ns0:label="Geräte-Diagnose" />
 
     <fragment ns0:id="@+id/overlayEinstellungenFragment" ns0:name="de.tbhelfer.ui.einstellungen.overlay.OverlayEinstellungenFragment" ns0:label="Overlay" />
-
 
     <fragment ns0:id="@+id/nutzerFragment" ns0:name="de.tbhelfer.ui.einstellungen.nutzer.NutzerFragment" ns0:label="Nutzer" />
 

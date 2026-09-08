@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sync_title">Daten vom NAS</string>
+    <string name="sync_intro">Verfügbare Strecken und Bahnhöfe vom TB-Helfer-Server. Die eigentliche Auswahl und der Offline-Download werden als nächster Schritt ergänzt.</string>
+    <string name="sync_loading">Serverdaten werden geladen …</string>
+    <string name="sync_connected">%1$s · verbunden</string>
+    <string name="sync_error">Fehler: %1$s</string>
+    <string name="sync_refresh">Neu laden</string>
+    <string name="sync_routes">Strecken</string>
+    <string name="sync_stations">Bahnhöfe</string>
+    <string name="sync_routes_count">Strecken (%1$d)</string>
+    <string name="sync_stations_count">Bahnhöfe (%1$d)</string>
+    <string name="sync_no_routes">Auf dem Server sind noch keine Strecken vorhanden.</string>
+    <string name="sync_no_stations">Auf dem Server sind noch keine Bahnhöfe vorhanden.</string>
+    <string name="sync_route_selected">Strecke %1$s ausgewählt. Abschnittsauswahl folgt im nächsten Schritt.</string>
+    <string name="sync_station_selected">%1$s ausgewählt. Gleis-/Weichenauswahl folgt im nächsten Schritt.</string>
+</resources>
