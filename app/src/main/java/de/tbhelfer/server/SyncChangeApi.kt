@@ -174,7 +174,15 @@ class SyncChangeApi(
                     serverEntityJson = root?.optJsonText("server_entity")
                 )
 
-                HttpURLConnection.HTTP_NOT_FOUND -> MutationResult.Unsupported
+                HttpURLConnection.HTTP_NOT_FOUND -> {
+                    val detail = root?.optNullableString("detail")
+                    if (detail.isNullOrBlank() || detail.equals("Not Found", ignoreCase = true)) {
+                        MutationResult.Unsupported
+                    } else {
+                        MutationResult.Error(detail)
+                    }
+                }
+
                 HttpURLConnection.HTTP_UNAUTHORIZED,
                 HttpURLConnection.HTTP_FORBIDDEN -> MutationResult.SessionInvalid
                 else -> MutationResult.Error(errorMessage(body, code))
