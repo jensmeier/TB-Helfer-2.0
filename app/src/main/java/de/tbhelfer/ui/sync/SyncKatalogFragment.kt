@@ -9,16 +9,21 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.OfflineSyncRepository
+import de.tbhelfer.datenbank.SyncObjectEntity
+import de.tbhelfer.datenbank.SyncSectionEntity
 import de.tbhelfer.server.SecureTokenStore
 import de.tbhelfer.server.SyncCatalogApi
+import de.tbhelfer.server.SyncDetailApi
 import de.tbhelfer.ui.activation.AktivierungActivity
 import java.text.DateFormat
 import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -85,12 +90,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                     }
                 }
 
-                SyncCatalogApi.Result.SessionInvalid -> {
-                    setLoading(false)
-                    tokenStore.clear()
-                    Toast.makeText(requireContext(), R.string.activation_session_revoked, Toast.LENGTH_LONG).show()
-                    openActivation()
-                }
+                SyncCatalogApi.Result.SessionInvalid -> handleInvalidSession(tokenStore)
 
                 is SyncCatalogApi.Result.Error -> {
                     val cached = withContext(Dispatchers.IO) {
@@ -144,11 +144,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                 }
                 val detail = "${route.sectionCount} Abschnitte · ${route.objectCount} Objekte"
                 routesContainer.addView(createCatalogItem(title, detail) {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.sync_route_selected, route.routeNumber),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    openRouteSelection(route)
                 })
             }
         }
@@ -167,14 +163,212 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                     append(station.objectCount).append(" Objekte")
                 }
                 stationsContainer.addView(createCatalogItem(title, detail) {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.sync_station_selected, station.name),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    openStationSelection(station)
                 })
             }
         }
+    }
+
+    private fun openRouteSelection(route: SyncCatalogApi.RouteItem) {
+        val tokenStore = SecureTokenStore(requireContext())
+        val token = tokenStore.load()
+        if (token.isNullOrBlank()) {
+            openActivation()
+            return
+        }
+
+        setLoading(true)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val cached = withContext(Dispatchers.IO) {
+                offlineRepository.loadSectionsForRoute(route.id)
+            }
+            val result = withContext(Dispatchers.IO) {
+                SyncDetailApi().loadRouteSections(token, route.id)
+            }
+            if (!isAdded) return@launch
+            setLoading(false)
+
+            when (result) {
+                is SyncDetailApi.Result.Success -> showRouteSelection(route, result.value, cached)
+                SyncDetailApi.Result.SessionInvalid -> handleInvalidSession(tokenStore)
+                is SyncDetailApi.Result.Error -> showCachedRouteOrError(route, cached, result.message)
+            }
+        }
+    }
+
+    private fun openStationSelection(station: SyncCatalogApi.StationItem) {
+        val tokenStore = SecureTokenStore(requireContext())
+        val token = tokenStore.load()
+        if (token.isNullOrBlank()) {
+            openActivation()
+            return
+        }
+
+        setLoading(true)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val cached = withContext(Dispatchers.IO) {
+                offlineRepository.loadObjectsForStation(station.id)
+            }
+            val result = withContext(Dispatchers.IO) {
+                SyncDetailApi().loadStationObjects(token, station.id)
+            }
+            if (!isAdded) return@launch
+            setLoading(false)
+
+            when (result) {
+                is SyncDetailApi.Result.Success -> showStationSelection(station, result.value, cached)
+                SyncDetailApi.Result.SessionInvalid -> handleInvalidSession(tokenStore)
+                is SyncDetailApi.Result.Error -> showCachedStationOrError(station, cached, result.message)
+            }
+        }
+    }
+
+    private fun showRouteSelection(
+        route: SyncCatalogApi.RouteItem,
+        available: List<SyncDetailApi.SectionItem>,
+        cached: List<SyncSectionEntity>
+    ) {
+        if (available.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.sync_no_sections_for_route, Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val cachedIds = cached.mapTo(hashSetOf()) { it.serverId }
+        val checked = BooleanArray(available.size) { index -> available[index].id in cachedIds }
+        val labels = available.map(::sectionLabel).toTypedArray()
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.sync_route_download_title, route.routeNumber))
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked -> checked[which] = isChecked }
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.sync_save_offline) { _, _ ->
+                val selected = available.filterIndexed { index, _ -> checked[index] }
+                viewLifecycleOwner.lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        offlineRepository.saveSelectedSections(route.id, selected)
+                    }
+                    if (isAdded) {
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.sync_sections_saved, selected.size),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun showStationSelection(
+        station: SyncCatalogApi.StationItem,
+        available: List<SyncDetailApi.ObjectItem>,
+        cached: List<SyncObjectEntity>
+    ) {
+        if (available.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.sync_no_objects_for_station, Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val cachedIds = cached.mapTo(hashSetOf()) { it.serverId }
+        val checked = BooleanArray(available.size) { index -> available[index].id in cachedIds }
+        val labels = available.map(::objectLabel).toTypedArray()
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.sync_station_download_title, station.name))
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked -> checked[which] = isChecked }
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.sync_save_offline) { _, _ ->
+                val selected = available.filterIndexed { index, _ -> checked[index] }
+                viewLifecycleOwner.lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        offlineRepository.saveSelectedStationObjects(station.id, selected)
+                    }
+                    if (isAdded) {
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.sync_objects_saved, selected.size),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun showCachedRouteOrError(
+        route: SyncCatalogApi.RouteItem,
+        cached: List<SyncSectionEntity>,
+        message: String
+    ) {
+        if (cached.isEmpty()) {
+            Toast.makeText(requireContext(), getString(R.string.sync_error, message), Toast.LENGTH_LONG).show()
+            return
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.sync_route_offline_title, route.routeNumber))
+            .setItems(cached.map(::cachedSectionLabel).toTypedArray(), null)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun showCachedStationOrError(
+        station: SyncCatalogApi.StationItem,
+        cached: List<SyncObjectEntity>,
+        message: String
+    ) {
+        if (cached.isEmpty()) {
+            Toast.makeText(requireContext(), getString(R.string.sync_error, message), Toast.LENGTH_LONG).show()
+            return
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.sync_station_offline_title, station.name))
+            .setItems(cached.map(::cachedObjectLabel).toTypedArray(), null)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun sectionLabel(item: SyncDetailApi.SectionItem): String = buildString {
+        append(item.designation?.takeIf { it.isNotBlank() } ?: "Abschnitt")
+        kmRange(item.kmMinM ?: item.kmFromM, item.kmMaxM ?: item.kmToM)?.let {
+            append(" · ").append(it)
+        }
+    }
+
+    private fun cachedSectionLabel(item: SyncSectionEntity): String = buildString {
+        append(item.designation?.takeIf { it.isNotBlank() } ?: "Abschnitt")
+        kmRange(item.kmMinM ?: item.kmFromM, item.kmMaxM ?: item.kmToM)?.let {
+            append(" · ").append(it)
+        }
+    }
+
+    private fun objectLabel(item: SyncDetailApi.ObjectItem): String = buildString {
+        append(item.designation?.takeIf { it.isNotBlank() } ?: item.objectType)
+        if (!item.designation.isNullOrBlank()) append(" · ").append(item.objectType)
+        item.kmM?.let { append(" · ").append(formatKm(it)) }
+    }
+
+    private fun cachedObjectLabel(item: SyncObjectEntity): String = buildString {
+        append(item.designation?.takeIf { it.isNotBlank() } ?: item.objectType)
+        if (!item.designation.isNullOrBlank()) append(" · ").append(item.objectType)
+        item.kmM?.let { append(" · ").append(formatKm(it)) }
+    }
+
+    private fun kmRange(fromM: Double?, toM: Double?): String? {
+        if (fromM == null && toM == null) return null
+        if (fromM != null && toM != null && kotlin.math.abs(fromM - toM) > 0.0001) {
+            return "${formatKm(fromM)}–${formatKm(toM)}"
+        }
+        return formatKm(fromM ?: toM!!)
+    }
+
+    private fun formatKm(meters: Double): String =
+        String.format(Locale.GERMANY, "km %.3f", meters / 1000.0)
+
+    private fun handleInvalidSession(tokenStore: SecureTokenStore) {
+        setLoading(false)
+        tokenStore.clear()
+        Toast.makeText(requireContext(), R.string.activation_session_revoked, Toast.LENGTH_LONG).show()
+        openActivation()
     }
 
     private fun createCatalogItem(title: String, detail: String, onClick: () -> Unit): View {
