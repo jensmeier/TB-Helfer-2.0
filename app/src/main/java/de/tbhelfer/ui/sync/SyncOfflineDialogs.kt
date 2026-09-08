@@ -8,7 +8,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import de.tbhelfer.R
-import de.tbhelfer.datenbank.OfflineSyncRepository
 import de.tbhelfer.datenbank.SyncOfflineEditor
 import de.tbhelfer.datenbank.SyncObjectEntity
 import de.tbhelfer.datenbank.SyncPendingChangeEntity
@@ -24,7 +23,6 @@ import kotlinx.coroutines.withContext
  */
 class SyncOfflineDialogs(
     private val fragment: Fragment,
-    private val repository: OfflineSyncRepository,
     private val editor: SyncOfflineEditor
 ) {
     fun showSections(items: List<SyncSectionEntity>, onChanged: () -> Unit) {
@@ -73,7 +71,9 @@ class SyncOfflineDialogs(
         val designation = editText(item.designation.orEmpty(), context.getString(R.string.sync_edit_designation))
         val kmFrom = editText(formatKmInput(item.kmFromM), context.getString(R.string.sync_edit_km_from), decimal = true)
         val kmTo = editText(formatKmInput(item.kmToM), context.getString(R.string.sync_edit_km_to), decimal = true)
-        box.addView(designation); box.addView(kmFrom); box.addView(kmTo)
+        box.addView(designation)
+        box.addView(kmFrom)
+        box.addView(kmTo)
 
         val dialog = AlertDialog.Builder(context)
             .setTitle(R.string.sync_edit_section_title)
@@ -117,7 +117,8 @@ class SyncOfflineDialogs(
         }
         val designation = editText(item.designation.orEmpty(), context.getString(R.string.sync_edit_designation))
         val km = editText(formatKmInput(item.kmM), context.getString(R.string.sync_edit_km), decimal = true)
-        box.addView(designation); box.addView(km)
+        box.addView(designation)
+        box.addView(km)
 
         val dialog = AlertDialog.Builder(context)
             .setTitle(R.string.sync_edit_object_title)
@@ -130,7 +131,11 @@ class SyncOfflineDialogs(
                 val name = designation.text?.toString()?.trim().orEmpty()
                 val parsedKm = parseKmInput(km.text?.toString())
                 if (name.isBlank() || parsedKm is KmParse.Invalid) {
-                    Toast.makeText(context, if (name.isBlank()) R.string.sync_edit_designation else R.string.sync_invalid_km, Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        context,
+                        if (name.isBlank()) R.string.sync_designation_required else R.string.sync_invalid_km,
+                        Toast.LENGTH_LONG
+                    ).show()
                     return@setOnClickListener
                 }
                 fragment.viewLifecycleOwner.lifecycleScope.launch {
