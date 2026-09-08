@@ -44,6 +44,18 @@ interface SyncDao {
     @Query("SELECT * FROM sync_object WHERE stationServerId = :stationServerId AND isDeleted = 0 ORDER BY objectType, designation")
     suspend fun objectsForStation(stationServerId: String): List<SyncObjectEntity>
 
+    @Query("DELETE FROM sync_section WHERE routeServerId = :routeServerId")
+    suspend fun clearSectionsForRoute(routeServerId: String)
+
+    @Query("DELETE FROM sync_object WHERE stationServerId = :stationServerId")
+    suspend fun clearObjectsForStation(stationServerId: String)
+
+    @Query("SELECT COUNT(*) FROM sync_section WHERE routeServerId = :routeServerId AND isDeleted = 0")
+    suspend fun sectionCountForRoute(routeServerId: String): Int
+
+    @Query("SELECT COUNT(*) FROM sync_object WHERE stationServerId = :stationServerId AND isDeleted = 0")
+    suspend fun objectCountForStation(stationServerId: String): Int
+
     @Query("SELECT * FROM sync_pending_change WHERE state IN ('PENDING', 'FAILED') ORDER BY createdAtEpochMs, id")
     suspend fun pendingChanges(): List<SyncPendingChangeEntity>
 
