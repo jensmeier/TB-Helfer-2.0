@@ -18,8 +18,8 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Selektiver Offline-Download für Streckenabschnitte und Bahnhofobjekte.
-        versionCode = 200014
+        // Inkrementeller NAS-Sync mit Upload-Queue und Versionskonflikten.
+        versionCode = 200015
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
