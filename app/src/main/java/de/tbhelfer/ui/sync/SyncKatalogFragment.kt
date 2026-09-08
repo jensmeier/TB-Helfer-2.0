@@ -80,13 +80,43 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                         runCatching { offlineRepository.saveCatalog(result.catalog) }.isSuccess
                     }
                     if (!isAdded) return@launch
+
+                    if (!cacheSaved) {
+                        setLoading(false)
+                        renderCatalog(result.catalog)
+                        statusText.text = getString(R.string.sync_cache_warning, statusText.text.toString())
+                        return@launch
+                    }
+
+                    val syncResult = withContext(Dispatchers.IO) {
+                        offlineRepository.synchronize(token)
+                    }
+                    if (!isAdded) return@launch
                     setLoading(false)
                     renderCatalog(result.catalog)
-                    if (!cacheSaved) {
-                        statusText.text = getString(
-                            R.string.sync_cache_warning,
-                            statusText.text.toString()
-                        )
+
+                    when (syncResult) {
+                        OfflineSyncRepository.FullSyncResult.SessionInvalid -> handleInvalidSession(tokenStore)
+                        is OfflineSyncRepository.FullSyncResult.Error -> {
+                            statusText.text = getString(
+                                R.string.sync_incremental_warning,
+                                statusText.text.toString(),
+                                syncResult.message
+                            )
+                        }
+                        is OfflineSyncRepository.FullSyncResult.Success -> {
+                            val summary = syncResult.summary
+                            if (summary.incrementalSupported) {
+                                statusText.text = getString(
+                                    R.string.sync_incremental_ok,
+                                    statusText.text.toString(),
+                                    summary.pulledChanges,
+                                    summary.uploadedChanges,
+                                    summary.pendingChanges,
+                                    summary.conflicts
+                                )
+                            }
+                        }
                     }
                 }
 
