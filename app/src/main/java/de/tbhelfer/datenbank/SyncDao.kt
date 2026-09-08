@@ -83,6 +83,9 @@ interface SyncDao {
     @Query("SELECT * FROM sync_pending_change WHERE state IN ('PENDING', 'FAILED') ORDER BY createdAtEpochMs, id")
     suspend fun pendingChanges(): List<SyncPendingChangeEntity>
 
+    @Query("SELECT * FROM sync_pending_change WHERE objectKind = :objectKind AND serverId = :serverId AND state IN ('PENDING','FAILED') ORDER BY id DESC LIMIT 1")
+    suspend fun pendingForEntity(objectKind: String, serverId: String): SyncPendingChangeEntity?
+
     @Query("SELECT COUNT(*) FROM sync_pending_change WHERE state IN ('PENDING', 'FAILED')")
     suspend fun pendingChangeCount(): Int
 
@@ -92,6 +95,9 @@ interface SyncDao {
     @Query("SELECT COUNT(*) FROM sync_pending_change WHERE state = 'CONFLICT'")
     suspend fun conflictCount(): Int
 
+    @Query("SELECT * FROM sync_pending_change WHERE id = :id LIMIT 1")
+    suspend fun pendingChange(id: Long): SyncPendingChangeEntity?
+
     @Query("UPDATE sync_pending_change SET state = :state, attempts = :attempts, lastError = :lastError, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
     suspend fun updateChangeState(
         id: Long,
@@ -100,6 +106,9 @@ interface SyncDao {
         lastError: String?,
         updatedAtEpochMs: Long = System.currentTimeMillis()
     )
+
+    @Query("UPDATE sync_pending_change SET baseVersion = :baseVersion, state = 'PENDING', attempts = 0, lastError = NULL, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
+    suspend fun rebaseConflict(id: Long, baseVersion: Long, updatedAtEpochMs: Long = System.currentTimeMillis())
 
     @Query("DELETE FROM sync_pending_change WHERE id = :id")
     suspend fun deletePendingChange(id: Long)
