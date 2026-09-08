@@ -2,6 +2,8 @@ package de.tbhelfer
 
 import android.content.Context
 import de.tbhelfer.datenbank.TBDatenbank
+import de.tbhelfer.datenbank.SyncDatenbank
+import de.tbhelfer.datenbank.OfflineSyncRepository
 import de.tbhelfer.einstellungen.AktuelleBaustelleSpeicher
 import de.tbhelfer.datenbank.StreckenpunkteRepository
 import de.tbhelfer.datenbank.BaustellenRepository
@@ -30,6 +32,22 @@ object ServiceLocator {
         TBDatenbank.erstellen(appContext)
     }
 
+    /**
+     * Eigene Datenbank für NAS-/Cloudflare-Cache und ausstehende Sync-Änderungen.
+     * Die bestehende Baustellen-/Vermessungsdatenbank bleibt dadurch unangetastet.
+     */
+    val syncDatenbank: SyncDatenbank by lazy {
+        SyncDatenbank.erstellen(appContext)
+    }
+
+    val syncDao by lazy {
+        syncDatenbank.syncDao()
+    }
+
+    val offlineSyncRepository: OfflineSyncRepository by lazy {
+        OfflineSyncRepository(syncDatenbank)
+    }
+
     val baustelleDao: BaustelleDao by lazy {
         datenbank.baustelleDao()
     }
@@ -38,7 +56,6 @@ object ServiceLocator {
         datenbank.baustellenKnotenDao()
     }
 
-    
     val streckenpunktDao: StreckenpunktDao by lazy {
         datenbank.streckenpunktDao()
     }
