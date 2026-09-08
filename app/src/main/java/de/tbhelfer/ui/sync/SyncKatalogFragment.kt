@@ -37,9 +37,14 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
     private lateinit var routesTitle: TextView
     private lateinit var stationsTitle: TextView
     private lateinit var refreshButton: Button
+    private lateinit var conflictButton: Button
 
     private val offlineRepository: OfflineSyncRepository
         get() = ServiceLocator.offlineSyncRepository
+
+    private val offlineDialogs: SyncOfflineDialogs by lazy(LazyThreadSafetyMode.NONE) {
+        SyncOfflineDialogs(this, ServiceLocator.syncOfflineEditor)
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -51,8 +56,12 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         routesTitle = view.findViewById(R.id.txtRoutesTitle)
         stationsTitle = view.findViewById(R.id.txtStationsTitle)
         refreshButton = view.findViewById(R.id.btnSyncRefresh)
+        conflictButton = view.findViewById(R.id.btnSyncConflicts)
 
         refreshButton.setOnClickListener { loadCatalog() }
+        conflictButton.setOnClickListener {
+            offlineDialogs.showConflicts { refreshConflictButton() }
+        }
         loadCatalog()
     }
 
@@ -68,73 +77,85 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         statusText.text = getString(R.string.sync_loading)
 
         viewLifecycleOwner.lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                SyncCatalogApi().loadCatalog(token)
-            }
-
+            val result = withContext(Dispatchers.IO) { SyncCatalogApi().loadCatalog(token) }
             if (!isAdded) return@launch
 
             when (result) {
-                is SyncCatalogApi.Result.Success -> {
-                    val cacheSaved = withContext(Dispatchers.IO) {
-                        runCatching { offlineRepository.saveCatalog(result.catalog) }.isSuccess
-                    }
-                    if (!isAdded) return@launch
-
-                    if (!cacheSaved) {
-                        setLoading(false)
-                        renderCatalog(result.catalog)
-                        statusText.text = getString(R.string.sync_cache_warning, statusText.text.toString())
-                        return@launch
-                    }
-
-                    val syncResult = withContext(Dispatchers.IO) {
-                        offlineRepository.synchronize(token)
-                    }
-                    if (!isAdded) return@launch
-                    setLoading(false)
-                    renderCatalog(result.catalog)
-
-                    when (syncResult) {
-                        OfflineSyncRepository.FullSyncResult.SessionInvalid -> handleInvalidSession(tokenStore)
-                        is OfflineSyncRepository.FullSyncResult.Error -> {
-                            statusText.text = getString(
-                                R.string.sync_incremental_warning,
-                                statusText.text.toString(),
-                                syncResult.message
-                            )
-                        }
-                        is OfflineSyncRepository.FullSyncResult.Success -> {
-                            val summary = syncResult.summary
-                            if (summary.incrementalSupported) {
-                                statusText.text = getString(
-                                    R.string.sync_incremental_ok,
-                                    statusText.text.toString(),
-                                    summary.pulledChanges,
-                                    summary.uploadedChanges,
-                                    summary.pendingChanges,
-                                    summary.conflicts
-                                )
-                            }
-                        }
-                    }
-                }
-
+                is SyncCatalogApi.Result.Success -> handleOnlineCatalog(result.catalog, token, tokenStore)
                 SyncCatalogApi.Result.SessionInvalid -> handleInvalidSession(tokenStore)
-
-                is SyncCatalogApi.Result.Error -> {
-                    val cached = withContext(Dispatchers.IO) {
-                        runCatching { offlineRepository.loadCachedCatalog() }.getOrNull()
-                    }
-                    if (!isAdded) return@launch
-                    setLoading(false)
-                    if (cached != null) {
-                        renderCachedCatalog(cached)
-                    } else {
-                        renderError(result.message)
-                    }
-                }
+                is SyncCatalogApi.Result.Error -> handleCatalogError(result.message)
             }
+        }
+    }
+
+    private suspend fun handleOnlineCatalog(
+        catalog: SyncCatalogApi.Catalog,
+        token: String,
+        tokenStore: SecureTokenStore
+    ) {
+        val cacheSaved = withContext(Dispatchers.IO) {
+            runCatching { offlineRepository.saveCatalog(catalog) }.isSuccess
+        }
+        if (!isAdded) return
+
+        setLoading(false)
+        renderCatalog(catalog)
+
+        if (!cacheSaved) {
+            statusText.text = getString(R.string.sync_cache_warning, statusText.text.toString())
+            refreshConflictButton()
+            return
+        }
+
+        // 0.6.0 kennt die neuen Change-/Mutation-Endpunkte noch nicht. Der bereits getestete
+        // Katalog-/Offline-Download bleibt dort bewusst aktiv, ohne unnötige 404-Aufrufe.
+        if (!supportsIncrementalSync(catalog.serverVersion)) {
+            refreshConflictButton()
+            return
+        }
+
+        setLoading(true)
+        val syncResult = withContext(Dispatchers.IO) { offlineRepository.synchronize(token) }
+        if (!isAdded) return
+        setLoading(false)
+
+        when (syncResult) {
+            OfflineSyncRepository.FullSyncResult.SessionInvalid -> handleInvalidSession(tokenStore)
+            is OfflineSyncRepository.FullSyncResult.Error -> {
+                statusText.text = getString(
+                    R.string.sync_incremental_warning,
+                    statusText.text.toString(),
+                    syncResult.message
+                )
+                refreshConflictButton()
+            }
+            is OfflineSyncRepository.FullSyncResult.Success -> {
+                val summary = syncResult.summary
+                statusText.text = getString(
+                    R.string.sync_incremental_ok,
+                    statusText.text.toString(),
+                    summary.pulledChanges,
+                    summary.uploadedChanges,
+                    summary.pendingChanges,
+                    summary.conflicts
+                )
+                setConflictCount(summary.conflicts)
+            }
+        }
+    }
+
+    private suspend fun handleCatalogError(message: String) {
+        val cached = withContext(Dispatchers.IO) {
+            runCatching { offlineRepository.loadCachedCatalog() }.getOrNull()
+        }
+        if (!isAdded) return
+        setLoading(false)
+        if (cached != null) {
+            renderCachedCatalog(cached)
+            refreshConflictButton()
+        } else {
+            renderError(message)
+            setConflictCount(0)
         }
     }
 
@@ -173,9 +194,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                     route.name?.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }
                 }
                 val detail = "${route.sectionCount} Abschnitte · ${route.objectCount} Objekte"
-                routesContainer.addView(createCatalogItem(title, detail) {
-                    openRouteSelection(route)
-                })
+                routesContainer.addView(createCatalogItem(title, detail) { openRouteSelection(route) })
             }
         }
 
@@ -192,9 +211,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                     station.stationCode?.takeIf { it.isNotBlank() }?.let { append(it).append(" · ") }
                     append(station.objectCount).append(" Objekte")
                 }
-                stationsContainer.addView(createCatalogItem(title, detail) {
-                    openStationSelection(station)
-                })
+                stationsContainer.addView(createCatalogItem(title, detail) { openStationSelection(station) })
             }
         }
     }
@@ -209,12 +226,8 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
 
         setLoading(true)
         viewLifecycleOwner.lifecycleScope.launch {
-            val cached = withContext(Dispatchers.IO) {
-                offlineRepository.loadSectionsForRoute(route.id)
-            }
-            val result = withContext(Dispatchers.IO) {
-                SyncDetailApi().loadRouteSections(token, route.id)
-            }
+            val cached = withContext(Dispatchers.IO) { offlineRepository.loadSectionsForRoute(route.id) }
+            val result = withContext(Dispatchers.IO) { SyncDetailApi().loadRouteSections(token, route.id) }
             if (!isAdded) return@launch
             setLoading(false)
 
@@ -236,12 +249,8 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
 
         setLoading(true)
         viewLifecycleOwner.lifecycleScope.launch {
-            val cached = withContext(Dispatchers.IO) {
-                offlineRepository.loadObjectsForStation(station.id)
-            }
-            val result = withContext(Dispatchers.IO) {
-                SyncDetailApi().loadStationObjects(token, station.id)
-            }
+            val cached = withContext(Dispatchers.IO) { offlineRepository.loadObjectsForStation(station.id) }
+            val result = withContext(Dispatchers.IO) { SyncDetailApi().loadStationObjects(token, station.id) }
             if (!isAdded) return@launch
             setLoading(false)
 
@@ -259,24 +268,25 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         cached: List<SyncSectionEntity>
     ) {
         if (available.isEmpty()) {
-            Toast.makeText(requireContext(), R.string.sync_no_sections_for_route, Toast.LENGTH_LONG).show()
+            if (cached.isNotEmpty()) {
+                offlineDialogs.showSections(cached) { refreshConflictButton() }
+            } else {
+                Toast.makeText(requireContext(), R.string.sync_no_sections_for_route, Toast.LENGTH_LONG).show()
+            }
             return
         }
 
         val cachedIds = cached.mapTo(hashSetOf()) { it.serverId }
         val checked = BooleanArray(available.size) { index -> available[index].id in cachedIds }
         val labels = available.map(::sectionLabel).toTypedArray()
-
-        AlertDialog.Builder(requireContext())
+        val builder = AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.sync_route_download_title, route.routeNumber))
             .setMultiChoiceItems(labels, checked) { _, which, isChecked -> checked[which] = isChecked }
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.sync_save_offline) { _, _ ->
                 val selected = available.filterIndexed { index, _ -> checked[index] }
                 viewLifecycleOwner.lifecycleScope.launch {
-                    withContext(Dispatchers.IO) {
-                        offlineRepository.saveSelectedSections(route.id, selected)
-                    }
+                    withContext(Dispatchers.IO) { offlineRepository.saveSelectedSections(route.id, selected) }
                     if (isAdded) {
                         Toast.makeText(
                             requireContext(),
@@ -286,7 +296,12 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                     }
                 }
             }
-            .show()
+        if (cached.isNotEmpty()) {
+            builder.setNeutralButton(R.string.sync_edit_offline) { _, _ ->
+                offlineDialogs.showSections(cached) { refreshConflictButton() }
+            }
+        }
+        builder.show()
     }
 
     private fun showStationSelection(
@@ -295,24 +310,25 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         cached: List<SyncObjectEntity>
     ) {
         if (available.isEmpty()) {
-            Toast.makeText(requireContext(), R.string.sync_no_objects_for_station, Toast.LENGTH_LONG).show()
+            if (cached.isNotEmpty()) {
+                offlineDialogs.showObjects(cached) { refreshConflictButton() }
+            } else {
+                Toast.makeText(requireContext(), R.string.sync_no_objects_for_station, Toast.LENGTH_LONG).show()
+            }
             return
         }
 
         val cachedIds = cached.mapTo(hashSetOf()) { it.serverId }
         val checked = BooleanArray(available.size) { index -> available[index].id in cachedIds }
         val labels = available.map(::objectLabel).toTypedArray()
-
-        AlertDialog.Builder(requireContext())
+        val builder = AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.sync_station_download_title, station.name))
             .setMultiChoiceItems(labels, checked) { _, which, isChecked -> checked[which] = isChecked }
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.sync_save_offline) { _, _ ->
                 val selected = available.filterIndexed { index, _ -> checked[index] }
                 viewLifecycleOwner.lifecycleScope.launch {
-                    withContext(Dispatchers.IO) {
-                        offlineRepository.saveSelectedStationObjects(station.id, selected)
-                    }
+                    withContext(Dispatchers.IO) { offlineRepository.saveSelectedStationObjects(station.id, selected) }
                     if (isAdded) {
                         Toast.makeText(
                             requireContext(),
@@ -322,7 +338,12 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                     }
                 }
             }
-            .show()
+        if (cached.isNotEmpty()) {
+            builder.setNeutralButton(R.string.sync_edit_offline) { _, _ ->
+                offlineDialogs.showObjects(cached) { refreshConflictButton() }
+            }
+        }
+        builder.show()
     }
 
     private fun showCachedRouteOrError(
@@ -336,8 +357,10 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         }
         AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.sync_route_offline_title, route.routeNumber))
-            .setItems(cached.map(::cachedSectionLabel).toTypedArray(), null)
-            .setPositiveButton(android.R.string.ok, null)
+            .setItems(cached.map(::cachedSectionLabel).toTypedArray()) { _, _ ->
+                offlineDialogs.showSections(cached) { refreshConflictButton() }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
@@ -352,23 +375,44 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         }
         AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.sync_station_offline_title, station.name))
-            .setItems(cached.map(::cachedObjectLabel).toTypedArray(), null)
-            .setPositiveButton(android.R.string.ok, null)
+            .setItems(cached.map(::cachedObjectLabel).toTypedArray()) { _, _ ->
+                offlineDialogs.showObjects(cached) { refreshConflictButton() }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    private fun refreshConflictButton() {
+        if (!isAdded) return
+        viewLifecycleOwner.lifecycleScope.launch {
+            val count = withContext(Dispatchers.IO) { offlineRepository.conflictCount() }
+            if (isAdded) setConflictCount(count)
+        }
+    }
+
+    private fun setConflictCount(count: Int) {
+        conflictButton.visibility = if (count > 0) View.VISIBLE else View.GONE
+        if (count > 0) conflictButton.text = getString(R.string.sync_conflicts_button, count)
+    }
+
+    private fun supportsIncrementalSync(version: String?): Boolean {
+        val values = version?.trim()?.split('.')?.map { part ->
+            part.takeWhile { it.isDigit() }.toIntOrNull() ?: 0
+        } ?: return false
+        val major = values.getOrElse(0) { 0 }
+        val minor = values.getOrElse(1) { 0 }
+        val patch = values.getOrElse(2) { 0 }
+        return major > 0 || minor > 6 || (minor == 6 && patch >= 1)
     }
 
     private fun sectionLabel(item: SyncDetailApi.SectionItem): String = buildString {
         append(item.designation?.takeIf { it.isNotBlank() } ?: "Abschnitt")
-        kmRange(item.kmMinM ?: item.kmFromM, item.kmMaxM ?: item.kmToM)?.let {
-            append(" · ").append(it)
-        }
+        kmRange(item.kmMinM ?: item.kmFromM, item.kmMaxM ?: item.kmToM)?.let { append(" · ").append(it) }
     }
 
     private fun cachedSectionLabel(item: SyncSectionEntity): String = buildString {
         append(item.designation?.takeIf { it.isNotBlank() } ?: "Abschnitt")
-        kmRange(item.kmMinM ?: item.kmFromM, item.kmMaxM ?: item.kmToM)?.let {
-            append(" · ").append(it)
-        }
+        kmRange(item.kmMinM ?: item.kmFromM, item.kmMaxM ?: item.kmToM)?.let { append(" · ").append(it) }
     }
 
     private fun objectLabel(item: SyncDetailApi.ObjectItem): String = buildString {
