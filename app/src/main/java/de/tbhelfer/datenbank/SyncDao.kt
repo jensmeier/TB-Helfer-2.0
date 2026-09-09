@@ -138,17 +138,23 @@ interface SyncDao {
     @Query("SELECT * FROM sync_worksite_context WHERE worksiteServerId = :worksiteServerId LIMIT 1")
     suspend fun worksiteContext(worksiteServerId: String): SyncWorksiteContextEntity?
 
-    @Query("SELECT * FROM sync_worksite_context WHERE localRootKnotenId = :localRootKnotenId LIMIT 1")
-    suspend fun worksiteContextForLocalRoot(localRootKnotenId: Long): SyncWorksiteContextEntity?
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertWorksiteBinding(item: SyncWorksiteBindingEntity)
 
-    @Query("UPDATE sync_worksite_context SET localRootKnotenId = NULL WHERE localRootKnotenId = :localRootKnotenId")
-    suspend fun clearWorksiteBindingForLocalRoot(localRootKnotenId: Long)
+    @Query("SELECT * FROM sync_worksite_binding WHERE localRootKnotenId = :localRootKnotenId LIMIT 1")
+    suspend fun worksiteBindingForLocalRoot(localRootKnotenId: Long): SyncWorksiteBindingEntity?
 
-    @Query("UPDATE sync_worksite_context SET localRootKnotenId = NULL WHERE worksiteServerId = :worksiteServerId")
-    suspend fun clearWorksiteBinding(worksiteServerId: String)
+    @Query("SELECT * FROM sync_worksite_binding WHERE worksiteServerId = :worksiteServerId LIMIT 1")
+    suspend fun worksiteBindingForServer(worksiteServerId: String): SyncWorksiteBindingEntity?
 
-    @Query("UPDATE sync_worksite_context SET localRootKnotenId = :localRootKnotenId WHERE worksiteServerId = :worksiteServerId")
-    suspend fun setWorksiteBinding(worksiteServerId: String, localRootKnotenId: Long)
+    @Query("SELECT * FROM sync_worksite_binding ORDER BY boundAtEpochMs DESC")
+    suspend fun worksiteBindings(): List<SyncWorksiteBindingEntity>
+
+    @Query("DELETE FROM sync_worksite_binding WHERE localRootKnotenId = :localRootKnotenId")
+    suspend fun deleteWorksiteBindingForLocalRoot(localRootKnotenId: Long)
+
+    @Query("DELETE FROM sync_worksite_binding WHERE worksiteServerId = :worksiteServerId")
+    suspend fun deleteWorksiteBindingForServer(worksiteServerId: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertCollabEntities(items: List<SyncCollabEntity>)
