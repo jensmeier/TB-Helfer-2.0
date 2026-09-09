@@ -21,22 +21,23 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 
 ## Produktiver Stand auf der Synology
 - NAS/Synology bleibt Source of Truth.
-- produktive API läuft weiterhin als **0.6.0**.
-- produktive PostgreSQL-Datenbank wurde am 2026-09-09 kontrolliert von Schema 7 auf **Schema 9** migriert.
-- Schema-Versionen 8 und 9 sind eingetragen:
-  - `008_incremental_sync_mutations`
-  - `009_worksite_collaboration`
-- Server/API 0.7.0 ist **noch nicht** produktiv gestartet.
-- `main` ist weiterhin unverändert/stabil.
+- produktive API läuft seit 2026-09-09 als **0.7.0**.
+- produktive PostgreSQL-Datenbank läuft auf **Schema 9** (`009_worksite_collaboration`).
+- Schema 8 und 9 wurden kontrolliert mit Backup, Preflight, `ON_ERROR_STOP` und read-only Nachkontrolle eingespielt.
+- produktiver Servercode wird aktuell aus `/volume1/docker/tb-helfer/server_0.7_stage` gebaut/eingebunden.
+- die bestehende produktive Secret-Datei bleibt unter `./server/.env`; sie wurde nicht in den Stage-Ordner und nicht nach GitHub kopiert.
+- der frühere produktive 0.6.0-Serverordner wurde vor Umschaltung zusätzlich nach `/volume1/docker/tb-helfer/backup/server_pre_0.7_20260909` kopiert.
+- die vorherige Compose-Konfiguration wurde ebenfalls im Backup-Ordner gesichert.
+- `main` bleibt unverändert/stabil.
 
-### Produktives Backup vor Migration 008/009
+### Produktives DB-Backup vor Migration 008/009
 Unmittelbar vor der Migration wurde ein PostgreSQL-Custom-Dump erzeugt und mit `pg_restore -l` erfolgreich geprüft:
 - Datei: `tb_helfer_pre_0.7_20260909_201605.dump`
 - ursprüngliche Kopie im persistenten PostgreSQL-Volume
 - zweite Kopie außerhalb des Datenbankordners unter `/volume1/docker/tb-helfer/backup/`
 - Prüfung: `BACKUP_PRUEFUNG=OK`
 
-### Preflight vor Migration
+### Schema-7-Preflight
 Der aktuelle read-only Preflight aus dem Feature-Branch wurde auf dem echten produktiven Schema 7 ausgeführt.
 Ergebnis vollständig grün:
 - Schema 7 vorhanden
@@ -54,7 +55,7 @@ Ergebnis:
 - `tb.sync_device_state`, `tb.route_section_versions`, `tb.sync_mutation_receipts` vorhanden
 - `routes.current_version` und `stations.current_version` vorhanden
 
-Die NAS-Datei unter `/volume1/docker/tb-helfer/scripts/008_incremental_sync_mutations.sql` wurde bytegenau gegen GitHub geprüft.
+NAS-Datei vor Ausführung bytegenau gegen GitHub geprüft.
 Git-Blob-SHA: `062d827ade9f5f9578b816ee5ae86bcdc627dc66`.
 
 ### Migration 009
@@ -65,35 +66,74 @@ Ergebnis:
 - `COMMIT`
 - Schema 9 eingetragen
 
-Die NAS-Datei wurde vor Ausführung bytegenau gegen GitHub geprüft.
+NAS-Datei vor Ausführung bytegenau gegen GitHub geprüft.
 Git-Blob-SHA: `1e33aa95af8e20f6368f351f3687c174c0e9fd46`.
 
 ### Read-only Nachkontrolle nach Schema 9
 `server/checks/01_verify_schema9.sql` wurde auf der produktiven DB ausgeführt.
 Ergebnis vollständig sauber:
 - Schema 8 und 9 vorhanden
-- alle **14 Pflichtobjekte**: `ok=t`
-- alle **12 Pflichtspalten**: `ok=t`
-- alle **12 Pflichttrigger**: `ok=t`
-- alle **13 Integritätsprüfungen**: `violations=0`
-- Attachment-Parent-Prüfung: `violations=0`
-- Abschluss: `COMMIT`
+- alle 14 Pflichtobjekte `ok=t`
+- alle 12 Pflichtspalten `ok=t`
+- alle 12 Pflichttrigger `ok=t`
+- alle 13 Integritätsprüfungen `violations=0`
+- Attachment-Parent-Prüfung `violations=0`
+- Abschluss `COMMIT`
 
-Damit ist die produktive Datenbank fachlich und strukturell auf **Schema 9** bereit für den Server 0.7.0.
+## Produktive API 0.7 – Rollout und Smoke-Tests
+Der API-Dienst wurde kontrolliert auf den vorbereiteten Stage-Ordner umgestellt.
 
-## Server-0.7-Quellstand
-Im Feature-Branch liegen:
-- echter FastAPI-/psycopg-Runtime auf Basis des produktiven 0.6.0-Servers
-- `server/app.py` als Loader
-- `server/app_parts/01_part.py` ff. als verlustfrei zerlegte Runtime im selben Modul-Namespace
-- Dockerfile und Python-Abhängigkeiten
-- 25 Admin-Jinja-Templates
-- vorhandene Bahnhofsdaten unter `server/data/`
-- Migrationen 008/009
-- read-only Preflight/Nachkontrolle
-- verbindlicher Android-200018/Server-0.7-API-Vertrag
+Aktuelle Compose-Logik für `api`:
+- Build-Kontext: `./server_0.7_stage`
+- produktive `.env`: weiterhin `./server/.env`
+- bestehende Daten-Mounts bleiben: `storage`, `logs`, `backup`
+- 0.7-Mounts: `app.py`, `templates`, `app_parts`, `data` aus `server_0.7_stage`
+- Port bleibt `8089:8080`
+- Cloudflare-Dienst und Netzwerkstruktur bleiben unverändert.
 
-Der Server wurde nicht als fremder Unterbau neu erfunden.
+Vor der Umschaltung wurde bestätigt, dass das vorhandene API-Image bereits exakt die benötigten Runtime-Abhängigkeiten besitzt:
+- FastAPI 0.116.1
+- Uvicorn 0.35.0
+- psycopg 3.2.9
+- Jinja2 3.1.6
+- ItsDangerous 2.2.0
+- qrcode 8.2
+- PostgreSQL-Client 17.11
+
+Projekt-Neuerstellung über Synology Container Manager endete mit `Exit Code: 0`; DB wurde healthy, Cloudflare und API starteten.
+
+Im produktiven `tb-helfer-api`-Container erfolgreich geprüft:
+- OpenAPI-Titel: `TB-Helfer API`
+- Version: **0.7.0**
+- OpenAPI enthält 63 Pfade
+- folgende 8 Kernendpunkte sind vorhanden:
+  - `/api/v1/sync/catalog`
+  - `/api/v1/sync/changes`
+  - `/api/v1/sync/ack`
+  - `/api/v1/sync/mutations`
+  - `/api/v1/collab/context`
+  - `/api/v1/collab/changes`
+  - `/api/v1/collab/ack`
+  - `/api/v1/collab/mutations`
+- `app_parts/01_part.py` ff. ist im Container vorhanden.
+- `server/data` ist im Container vorhanden mit den beiden verbindlichen Bahnhofsdaten:
+  - `TB-Helfer_DB_Bahnhoefe_aktiv_2026-03-14.json`
+  - `TB-Helfer_DB_Betriebsstellen_aktuell_2026-03-14.json`
+
+### Produktiver DB-Zugriff aus API 0.7
+Direkt aus dem laufenden API-Container erfolgreich geprüft:
+- Verbindung zu Datenbank `tb_helfer` funktioniert.
+- Schema-Versionen 8 und 9 werden korrekt gelesen.
+- Ausgabe endete mit `DB_TEST=OK`.
+
+### Admin-Smoke-Test
+Über die produktive Admin-Oberfläche erfolgreich geprüft:
+- Anzeige `API: OK · 0.7.0`
+- `PostgreSQL: OK`
+- `Schema: 9 · 009_worksite_collaboration`
+- vorhandene Datenbank wird gelesen.
+- Bahnhof-Autofill funktioniert mit der bestehenden TB-Helfer-Datenbasis, u. a. Suchtreffer für München-Pasing/MPB.
+- keine neue Bahnhofsliste wurde eingeführt.
 
 ## Server-0.7 – implementierte API
 ### Allgemeiner Offline-Sync
@@ -133,18 +173,7 @@ Der Server wurde nicht als fremder Unterbau neu erfunden.
 - TB-Gruppen und Hilfsnutzer-Bereichszuordnung ergänzt
 - Teams nur innerhalb derselben Firma
 - Server-Speicheroptionen pro Benutzer: Bilder, BTB, Mängel, Abnahmen; „Alles“ wird über alle Einzeloptionen abgebildet
-- Bahnhof-Autofill ausschließlich aus den zwei vorhandenen TB-Helfer-Datenbeständen, keine neue Bahnhofsliste
-
-## Technische Prüfung des Server-0.7-Stands
-Am 2026-09-09 erfolgreich geprüft:
-- Python `py_compile` für Loader und alle Runtime-Teile
-- FastAPI-App importiert als Version `0.7.0`
-- **79 Routen**, keine doppelten Method/Path-Kombinationen
-- alle erforderlichen allgemeinen Sync- und Collab-Endpunkte registriert
-- **25 Jinja-Templates** syntaktisch parsebar
-- Katalogtest bestätigt `current_version` für Bahnhöfe
-- Mutationstest bestätigt: Clientwert `VERIFIED_ORIGINAL` wird bei mobilem UPSERT auf `MANUAL` überschrieben
-- DELETE-Pfad bleibt davon unberührt
+- Bahnhof-Autofill ausschließlich aus den zwei vorhandenen TB-Helfer-Datenbeständen
 
 ## Android-Stand
 - Android `versionCode 200018` liegt im Draft-Branch.
@@ -159,7 +188,7 @@ Am 2026-09-09 erfolgreich geprüft:
 - manueller und Hintergrund-Sync übertragen Attachments.
 - Benachrichtigungen pro Gerät: `Text + Ton` / `nur Ton` / `aus`.
 
-Die nach dem letzten lokalen APK-Build hinzugekommenen Android-Härtungen müssen vor dem Zwei-Geräte-Ende-zu-Ende-Test erneut lokal gebaut/installiert werden. Dieser Test folgt erst nach erfolgreicher Bereitstellung des 0.7-Servers.
+Die nach dem letzten lokalen APK-Build hinzugekommenen Android-Härtungen müssen vor dem Zwei-Geräte-Ende-zu-Ende-Test erneut lokal gebaut/installiert werden.
 
 ## Verbindliches Team-/Rechtemodell
 - Baustellen-Teams ausschließlich innerhalb derselben Firma.
@@ -170,24 +199,22 @@ Die nach dem letzten lokalen APK-Build hinzugekommenen Android-Härtungen müsse
 - Bilder werden mitsynchronisiert.
 - endgültige Status bleiben endgültig.
 
-## Nächster sicherer Schritt – API 0.7 auf dem NAS
-Die DB-Migration ist abgeschlossen und geprüft. Als Nächstes wird **nicht geraten**, wie der Container neu gebaut wird.
-
-Zuerst read-only ermitteln:
-1. aktuell produktive Compose-/Container-Konfiguration des API-Containers
-2. tatsächliche Bind-Mounts/Volumes für Servercode, Daten und Storage
-3. aktuell verwendeter Build-Kontext/Dockerfile und Image-Name
-4. bestehende `.env`/Secrets nur als Pfade/Variablennamen prüfen, niemals Inhalte ausgeben oder nach GitHub kopieren
-5. produktiven 0.6.0-Serverordner unmittelbar vor Austausch zusätzlich sichern
-
-Danach:
-6. 0.7-Quellstand aus dem Feature-Branch/gesicherten Paket in den bestehenden NAS-Serverpfad übernehmen, ohne Secrets zu überschreiben
-7. API-Image kontrolliert neu bauen/starten
-8. Version/Login/Katalog/Admin smoke-testen
-9. Cloudflare/API-Erreichbarkeit prüfen
-10. Android 200018 mit letzten Härtungen neu bauen/installieren
-11. echter Zwei-Geräte-Test: BTB A/B-Trennung, Mängel/Abnahmen, Bilder, 409, Tombstones, Netzabbruch/Wiederaufnahme
-12. PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern
+## Nächste sichere Schritte
+Server 0.7 und Schema 9 laufen produktiv. Noch offen:
+1. Cloudflare/API-Erreichbarkeit von außerhalb des NAS/LAN smoke-testen.
+2. Admin-Login über die produktive Admin-Domain nochmals von außen prüfen.
+3. Android 200018 mit den letzten Härtungen erneut lokal bauen/installieren.
+4. echten Zwei-Geräte-Ende-zu-Ende-Test durchführen:
+   - Firmenbindung
+   - TB-Gruppen A/B-Trennung
+   - BTB nur innerhalb der eigenen TB-Gruppe
+   - Mängel/Abnahmen baustellenweit im berechtigten Bereich
+   - Bilder/Attachments
+   - 409-Konflikt
+   - Tombstones
+   - Netzabbruch/Wiederaufnahme
+   - Benachrichtigungen
+5. Draft-PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
 
 ## Bahnhofsdaten – nicht neu erfinden
 Vorhandene Datenbasis:
