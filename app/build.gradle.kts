@@ -18,8 +18,9 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Inkrementeller NAS-Sync mit Upload-Queue und Versionskonflikten.
-        versionCode = 200015
+        // Baustellen-Team-Sync: gruppenbezogener BTB, baustellenweite Mängel/Abnahmen,
+        // Bilder, Geräte-Benachrichtigungen und eigener Offline-Cache.
+        versionCode = 200016
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
