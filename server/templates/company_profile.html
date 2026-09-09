@@ -1,0 +1,84 @@
+{% extends "base.html" %}{% block content %}
+<div class="card" style="max-width:780px">
+  <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+    <div>
+      <h2>Firmenprofil · {{ company.name }}</h2>
+      <p class="muted">Diese Angaben und das Logo werden zentral an die aktivierten TB-Helfer-Geräte der Firma verteilt und für BTB/PDF lokal zwischengespeichert.</p>
+    </div>
+    <a class="btn" href="/admin/companies">Zurück zu Firmen</a>
+  </div>
+
+  {% if notice %}<div class="notice">{{ notice }}</div>{% endif %}
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+  <form id="companyProfileForm" method="post" action="/admin/companies/{{ company.company_id or company.id }}/profile">
+    <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+    <input type="hidden" id="logo_data" name="logo_data" value="">
+
+    <label for="address_line1"><b>Anschrift 1</b></label>
+    <input id="address_line1" name="address_line1" value="{{ company.address_line1 or '' }}" placeholder="Straße und Hausnummer">
+
+    <label for="address_line2"><b>Anschrift 2</b> <span class="muted">(optional)</span></label>
+    <input id="address_line2" name="address_line2" value="{{ company.address_line2 or '' }}" placeholder="Zusatz / Niederlassung">
+
+    <div style="display:grid;grid-template-columns:minmax(120px,1fr) minmax(220px,2fr);gap:12px">
+      <div>
+        <label for="postal_code"><b>PLZ</b></label>
+        <input id="postal_code" name="postal_code" value="{{ company.postal_code or '' }}">
+      </div>
+      <div>
+        <label for="city"><b>Ort</b></label>
+        <input id="city" name="city" value="{{ company.city or '' }}">
+      </div>
+    </div>
+
+    <label for="phone"><b>Telefon</b> <span class="muted">(optional)</span></label>
+    <input id="phone" name="phone" value="{{ company.phone or '' }}" autocomplete="tel">
+
+    <label for="email"><b>E-Mail</b> <span class="muted">(optional)</span></label>
+    <input id="email" name="email" type="email" value="{{ company.email or '' }}" autocomplete="email">
+
+    <label for="website"><b>Webseite</b> <span class="muted">(optional)</span></label>
+    <input id="website" name="website" value="{{ company.website or '' }}" autocomplete="url">
+
+    <h3>Firmenlogo</h3>
+    {% if company.logo_storage_path %}
+      <p class="muted">Aktuell ist ein zentrales Logo hinterlegt · Version {{ company.logo_version or 0 }}.</p>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <input type="checkbox" name="remove_logo" value="1"> vorhandenes Logo entfernen
+      </label>
+    {% else %}
+      <p class="muted">Noch kein zentrales Logo hinterlegt.</p>
+    {% endif %}
+    <input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp">
+    <p class="muted">PNG, JPG oder WEBP · maximal 5 MB. Das Bild wird erst beim Speichern übertragen.</p>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+      <button id="saveCompanyProfile" type="submit">Firmenprofil speichern</button>
+      <a class="btn" href="/admin/companies">Abbrechen</a>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  const form=document.getElementById('companyProfileForm');
+  const file=document.getElementById('logoFile');
+  const target=document.getElementById('logo_data');
+  const save=document.getElementById('saveCompanyProfile');
+  let submitting=false;
+  form.addEventListener('submit',function(ev){
+    if(submitting) return;
+    if(!file.files || !file.files.length) return;
+    ev.preventDefault();
+    const selected=file.files[0];
+    if(selected.size>5*1024*1024){alert('Logo darf höchstens 5 MB groß sein.');return;}
+    save.disabled=true;
+    const reader=new FileReader();
+    reader.onload=function(){target.value=String(reader.result||'');submitting=true;form.submit();};
+    reader.onerror=function(){save.disabled=false;alert('Logo konnte nicht gelesen werden.');};
+    reader.readAsDataURL(selected);
+  });
+})();
+</script>
+{% endblock %}
