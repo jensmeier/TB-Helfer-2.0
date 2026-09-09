@@ -99,6 +99,7 @@
         <action ns0:id="@+id/action_einstellungen_to_geraeteDiagnose" ns1:destination="@id/geraeteDiagnoseFragment" />
         <action ns0:id="@+id/action_einstellungen_to_nutzer" ns1:destination="@id/nutzerFragment" />
         <action ns0:id="@+id/action_einstellungen_to_benachrichtigungen" ns1:destination="@id/benachrichtigungenFragment" />
+        <action ns0:id="@+id/action_einstellungen_to_baustellen_sync" ns1:destination="@id/baustellenSyncFragment" />
         <action ns0:id="@+id/action_einstellungen_to_btb_pdf" ns1:destination="@id/btbPdfEinstellungenFragment" />
         <action ns0:id="@+id/action_einstellungen_to_anzeige_overlay" ns1:destination="@id/anzeigeOverlayFragment" />
         <action ns0:id="@+id/action_einstellungen_to_wartung_diagnose" ns1:destination="@id/wartungDiagnoseFragment" />
@@ -106,6 +107,8 @@
     </fragment>
 
     <fragment ns0:id="@+id/benachrichtigungenFragment" ns0:name="de.tbhelfer.ui.einstellungen.benachrichtigungen.BenachrichtigungenFragment" ns0:label="Benachrichtigungen" />
+
+    <fragment ns0:id="@+id/baustellenSyncFragment" ns0:name="de.tbhelfer.ui.sync.BaustellenSyncFragment" ns0:label="Baustellen-Synchronisation" />
 
     <fragment ns0:id="@+id/widgetEinstellungenFragment" ns0:name="de.tbhelfer.ui.einstellungen.WidgetEinstellungenFragment" ns0:label="Startbildschirm-Widget">
         <argument ns0:name="appWidgetId" ns1:argType="integer" ns0:defaultValue="-1" />
