@@ -1,0 +1,500 @@
+package de.tbhelfer.datenbank
+
+import android.content.Context
+import androidx.room.withTransaction
+import de.tbhelfer.server.CollabBenachrichtigungen
+import de.tbhelfer.server.CollabSyncApi
+import org.json.JSONObject
+import java.io.File
+import java.util.UUID
+
+/**
+ * Offline-Schicht für Baustellen-Zusammenarbeit.
+ *
+ * - BTB wird nur innerhalb der eigenen TB-Gruppe gespeichert/synchronisiert.
+ * - Mängel und Abnahmen kommen serverseitig bereits auf den berechtigten Bereich gefiltert.
+ * - Bilder werden nach einem sichtbaren ATTACHMENT-Change direkt nachgeladen.
+ * - Lokale Änderungen bleiben in einer Queue, bis sie bestätigt oder als 409-Konflikt markiert sind.
+ */
+class CollabSyncRepository(
+    context: Context,
+    private val database: SyncDatenbank
+) {
+    private val appContext = context.applicationContext
+    private val dao: SyncDao get() = database.syncDao()
+
+    data class Summary(
+        val supported: Boolean,
+        val worksiteCount: Int,
+        val pulledChanges: Int,
+        val uploadedChanges: Int,
+        val downloadedAttachments: Int,
+        val pendingChanges: Int,
+        val conflicts: Int,
+        val notifications: List<CollabBenachrichtigungen.Ereignis>
+    )
+
+    sealed interface FullSyncResult {
+        data class Success(val summary: Summary) : FullSyncResult
+        data object SessionInvalid : FullSyncResult
+        data class Error(val message: String) : FullSyncResult
+    }
+
+    private data class PullOutcome(
+        val supported: Boolean,
+        val pulled: Int,
+        val downloadedAttachments: Int,
+        val notifications: List<CollabBenachrichtigungen.Ereignis>
+    )
+
+    private sealed interface WorksiteOutcome {
+        data class Success(
+            val supported: Boolean,
+            val pulled: Int,
+            val uploaded: Int,
+            val downloadedAttachments: Int,
+            val notifications: List<CollabBenachrichtigungen.Ereignis>
+        ) : WorksiteOutcome
+        data object SessionInvalid : WorksiteOutcome
+        data class Error(val message: String) : WorksiteOutcome
+    }
+
+    suspend fun synchronizeAll(token: String, api: CollabSyncApi = CollabSyncApi()): FullSyncResult {
+        val contexts = when (val result = api.loadContext(token)) {
+            CollabSyncApi.ContextResult.Unsupported -> {
+                return FullSyncResult.Success(
+                    Summary(false, 0, 0, 0, 0, dao.collabPendingCount(), dao.collabConflictCount(), emptyList())
+                )
+            }
+            CollabSyncApi.ContextResult.SessionInvalid -> return FullSyncResult.SessionInvalid
+            is CollabSyncApi.ContextResult.Error -> return FullSyncResult.Error(result.message)
+            is CollabSyncApi.ContextResult.Success -> result.items
+        }
+
+        val now = System.currentTimeMillis()
+        database.withTransaction {
+            dao.clearWorksiteContexts()
+            if (contexts.isNotEmpty()) {
+                dao.upsertWorksiteContexts(
+                    contexts.map { item ->
+                        SyncWorksiteContextEntity(
+                            worksiteServerId = item.worksiteId,
+                            name = item.name,
+                            designation = item.designation,
+                            worksiteType = item.worksiteType,
+                            status = item.status,
+                            companyId = item.companyId,
+                            groupId = item.groupId,
+                            memberRole = item.memberRole,
+                            areaScopeJson = item.areaScopeJson,
+                            groupLabel = item.groupLabel,
+                            leadUserId = item.leadUserId,
+                            leadNameSnapshot = item.leadNameSnapshot,
+                            updatedAtEpochMs = now
+                        )
+                    }
+                )
+            }
+        }
+
+        var pulled = 0
+        var uploaded = 0
+        var downloaded = 0
+        var supported = true
+        val notifications = mutableListOf<CollabBenachrichtigungen.Ereignis>()
+
+        for (context in contexts) {
+            when (val result = synchronizeWorksite(token, context.worksiteId, api)) {
+                WorksiteOutcome.SessionInvalid -> return FullSyncResult.SessionInvalid
+                is WorksiteOutcome.Error -> return FullSyncResult.Error(result.message)
+                is WorksiteOutcome.Success -> {
+                    supported = supported && result.supported
+                    pulled += result.pulled
+                    uploaded += result.uploaded
+                    downloaded += result.downloadedAttachments
+                    notifications += result.notifications
+                }
+            }
+        }
+
+        return FullSyncResult.Success(
+            Summary(
+                supported = supported,
+                worksiteCount = contexts.size,
+                pulledChanges = pulled,
+                uploadedChanges = uploaded,
+                downloadedAttachments = downloaded,
+                pendingChanges = dao.collabPendingCount(),
+                conflicts = dao.collabConflictCount(),
+                notifications = notifications
+            )
+        )
+    }
+
+    suspend fun worksiteContexts(): List<SyncWorksiteContextEntity> = dao.worksiteContexts()
+
+    suspend fun entities(worksiteServerId: String, entityType: String): List<SyncCollabEntity> =
+        dao.collabEntities(worksiteServerId, entityType.uppercase())
+
+    suspend fun attachments(parentEntityId: String): List<SyncCollabAttachmentEntity> =
+        dao.collabAttachmentsForEntity(parentEntityId)
+
+    suspend fun enqueueMutation(
+        worksiteServerId: String,
+        entityType: String,
+        operation: String,
+        serverId: String? = null,
+        clientEntityKey: String? = null,
+        baseVersion: Long? = null,
+        groupId: String? = null,
+        status: String? = null,
+        areaScopeJson: String = "{}",
+        payloadJson: String = "{}"
+    ): Long {
+        return dao.enqueueCollabChange(
+            SyncCollabPendingChangeEntity(
+                clientChangeId = "android-${UUID.randomUUID()}",
+                worksiteServerId = worksiteServerId,
+                groupId = groupId,
+                entityType = entityType.uppercase(),
+                serverId = serverId,
+                clientEntityKey = clientEntityKey,
+                baseVersion = baseVersion,
+                operation = operation.uppercase(),
+                status = status,
+                areaScopeJson = areaScopeJson,
+                payloadJson = payloadJson
+            )
+        )
+    }
+
+    private suspend fun synchronizeWorksite(token: String, worksiteId: String, api: CollabSyncApi): WorksiteOutcome {
+        val firstPull = pullChanges(token, worksiteId, api)
+        when (firstPull) {
+            is WorksiteOutcome.Error -> return firstPull
+            WorksiteOutcome.SessionInvalid -> return firstPull
+            is WorksiteOutcome.Success -> Unit
+        }
+        firstPull as WorksiteOutcome.Success
+        if (!firstPull.supported) return firstPull
+
+        val upload = uploadPending(token, worksiteId, api)
+        when (upload) {
+            is WorksiteOutcome.Error -> return upload
+            WorksiteOutcome.SessionInvalid -> return upload
+            is WorksiteOutcome.Success -> Unit
+        }
+        upload as WorksiteOutcome.Success
+
+        var pulled = firstPull.pulled
+        var uploaded = upload.uploaded
+        var downloaded = firstPull.downloadedAttachments
+        val notifications = (firstPull.notifications + upload.notifications).toMutableList()
+        var supported = firstPull.supported && upload.supported
+
+        if (supported && uploaded > 0) {
+            when (val secondPull = pullChanges(token, worksiteId, api)) {
+                WorksiteOutcome.SessionInvalid -> return WorksiteOutcome.SessionInvalid
+                is WorksiteOutcome.Error -> return secondPull
+                is WorksiteOutcome.Success -> {
+                    supported = supported && secondPull.supported
+                    pulled += secondPull.pulled
+                    downloaded += secondPull.downloadedAttachments
+                    notifications += secondPull.notifications
+                }
+            }
+        }
+
+        return WorksiteOutcome.Success(supported, pulled, uploaded, downloaded, notifications)
+    }
+
+    private suspend fun pullChanges(token: String, worksiteId: String, api: CollabSyncApi): WorksiteOutcome {
+        var after = dao.state(sequenceKey(worksiteId))?.longValue ?: 0L
+        var total = 0
+        var downloaded = 0
+        val notifications = mutableListOf<CollabBenachrichtigungen.Ereignis>()
+
+        while (true) {
+            when (val result = api.loadChanges(token, worksiteId, after)) {
+                CollabSyncApi.PullResult.Unsupported -> {
+                    return WorksiteOutcome.Success(false, total, 0, downloaded, notifications)
+                }
+                CollabSyncApi.PullResult.SessionInvalid -> return WorksiteOutcome.SessionInvalid
+                is CollabSyncApi.PullResult.Error -> return WorksiteOutcome.Error(result.message)
+                is CollabSyncApi.PullResult.Success -> {
+                    val page = result.page
+                    database.withTransaction {
+                        for (change in page.changes) {
+                            applyServerChange(worksiteId, change)
+                            if (!change.fromThisDevice &&
+                                change.operation.equals("CREATE", ignoreCase = true) &&
+                                change.entityType.uppercase() in NOTIFY_TYPES
+                            ) {
+                                notifications += CollabBenachrichtigungen.Ereignis(
+                                    entityType = change.entityType.uppercase(),
+                                    changedByName = change.changedByName
+                                )
+                            }
+                        }
+                        after = page.nextSequenceNo
+                        dao.upsertState(SyncStateEntity(key = sequenceKey(worksiteId), longValue = after))
+                        dao.upsertState(SyncStateEntity(key = SyncStateEntity.KEY_LAST_SUCCESSFUL_SYNC, longValue = System.currentTimeMillis()))
+                    }
+                    total += page.changes.size
+
+                    when (val ack = api.acknowledge(token, worksiteId, after)) {
+                        CollabSyncApi.AckResult.SessionInvalid -> return WorksiteOutcome.SessionInvalid
+                        is CollabSyncApi.AckResult.Error -> return WorksiteOutcome.Error(ack.message)
+                        CollabSyncApi.AckResult.Unsupported -> return WorksiteOutcome.Success(false, total, 0, downloaded, notifications)
+                        CollabSyncApi.AckResult.Success -> Unit
+                    }
+
+                    when (val resultDownload = downloadPendingAttachments(token, worksiteId, api)) {
+                        DownloadOutcome.SessionInvalid -> return WorksiteOutcome.SessionInvalid
+                        is DownloadOutcome.Success -> downloaded += resultDownload.count
+                    }
+
+                    if (!page.hasMore) {
+                        return WorksiteOutcome.Success(true, total, 0, downloaded, notifications)
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun uploadPending(token: String, worksiteId: String, api: CollabSyncApi): WorksiteOutcome {
+        var uploaded = 0
+        val changes = dao.collabPendingChanges(worksiteId)
+        for (change in changes) {
+            dao.updateCollabChangeState(
+                id = change.id,
+                state = SyncCollabPendingChangeEntity.STATE_UPLOADING,
+                attempts = change.attempts + 1,
+                lastError = null
+            )
+            when (val result = api.uploadMutation(token, change)) {
+                CollabSyncApi.MutationResult.Unsupported -> {
+                    dao.updateCollabChangeState(
+                        change.id,
+                        SyncCollabPendingChangeEntity.STATE_PENDING,
+                        change.attempts,
+                        "Server unterstützt Baustellen-Sync noch nicht."
+                    )
+                    return WorksiteOutcome.Success(false, 0, uploaded, 0, emptyList())
+                }
+                CollabSyncApi.MutationResult.SessionInvalid -> return WorksiteOutcome.SessionInvalid
+                is CollabSyncApi.MutationResult.Error -> {
+                    dao.updateCollabChangeState(
+                        change.id,
+                        SyncCollabPendingChangeEntity.STATE_FAILED,
+                        change.attempts + 1,
+                        result.message
+                    )
+                }
+                is CollabSyncApi.MutationResult.Conflict -> {
+                    val detail = JSONObject()
+                        .put("detail", result.detail)
+                        .put("server_version", result.serverVersion)
+                    if (!result.serverEntityJson.isNullOrBlank()) {
+                        detail.put("server_entity", runCatching { JSONObject(result.serverEntityJson) }.getOrElse { result.serverEntityJson })
+                    }
+                    dao.updateCollabChangeState(
+                        change.id,
+                        SyncCollabPendingChangeEntity.STATE_CONFLICT,
+                        change.attempts + 1,
+                        detail.toString()
+                    )
+                }
+                is CollabSyncApi.MutationResult.Applied -> {
+                    if (!result.serverEntityJson.isNullOrBlank() && !result.entityId.isNullOrBlank()) {
+                        applyServerChange(
+                            worksiteId,
+                            CollabSyncApi.ChangeItem(
+                                sequenceNo = result.sequenceNo ?: 0,
+                                entityType = change.entityType,
+                                entityId = result.entityId,
+                                operation = "UPDATE",
+                                entityVersion = result.entityVersion,
+                                changedAt = null,
+                                changedByName = null,
+                                fromThisDevice = true,
+                                groupId = change.groupId,
+                                areaScopeJson = change.areaScopeJson,
+                                dataJson = result.serverEntityJson
+                            )
+                        )
+                    } else if (change.operation.equals(SyncCollabPendingChangeEntity.OP_DELETE, true) && !change.serverId.isNullOrBlank()) {
+                        dao.markCollabDeleted(change.serverId, result.entityVersion ?: change.baseVersion ?: 0)
+                    }
+                    dao.deleteCollabPendingChange(change.id)
+                    uploaded++
+                }
+            }
+        }
+        return WorksiteOutcome.Success(true, 0, uploaded, 0, emptyList())
+    }
+
+    private suspend fun applyServerChange(worksiteId: String, change: CollabSyncApi.ChangeItem) {
+        val type = change.entityType.uppercase()
+        if (type == "ATTACHMENT") {
+            applyAttachmentChange(worksiteId, change)
+            return
+        }
+        if (type !in ENTITY_TYPES) return
+
+        if (change.operation.equals("DELETE", ignoreCase = true)) {
+            val existing = dao.collabEntity(change.entityId)
+            if (existing != null) {
+                dao.upsertCollabEntities(
+                    listOf(
+                        existing.copy(
+                            entityVersion = change.entityVersion ?: existing.entityVersion,
+                            changedByName = change.changedByName ?: existing.changedByName,
+                            isDeleted = true,
+                            updatedAtEpochMs = System.currentTimeMillis()
+                        )
+                    )
+                )
+            } else {
+                dao.upsertCollabEntities(
+                    listOf(
+                        SyncCollabEntity(
+                            serverId = change.entityId,
+                            worksiteServerId = worksiteId,
+                            groupId = change.groupId,
+                            entityType = type,
+                            entityVersion = change.entityVersion ?: 0,
+                            changedByName = change.changedByName,
+                            isDeleted = true
+                        )
+                    )
+                )
+            }
+            return
+        }
+
+        val data = runCatching { JSONObject(change.dataJson) }.getOrElse { JSONObject() }
+        val existing = dao.collabEntity(change.entityId)
+        dao.upsertCollabEntities(
+            listOf(
+                SyncCollabEntity(
+                    serverId = change.entityId,
+                    worksiteServerId = data.optString("worksite_id").ifBlank { worksiteId },
+                    groupId = data.optNullableString("group_id") ?: change.groupId ?: existing?.groupId,
+                    entityType = type,
+                    clientEntityKey = data.optNullableString("client_entity_key") ?: existing?.clientEntityKey,
+                    status = data.optNullableString("status") ?: existing?.status,
+                    areaScopeJson = data.optJsonText("area_scope") ?: change.areaScopeJson.ifBlank { existing?.areaScopeJson ?: "{}" },
+                    payloadJson = data.optJsonText("payload") ?: existing?.payloadJson ?: "{}",
+                    entityVersion = change.entityVersion
+                        ?: data.optNullableLong("current_version")
+                        ?: existing?.entityVersion
+                        ?: 0,
+                    changedByName = change.changedByName ?: existing?.changedByName,
+                    createdAtText = data.optNullableString("created_at") ?: existing?.createdAtText,
+                    updatedAtText = data.optNullableString("updated_at") ?: change.changedAt ?: existing?.updatedAtText,
+                    isDeleted = false,
+                    updatedAtEpochMs = System.currentTimeMillis()
+                )
+            )
+        )
+    }
+
+    private suspend fun applyAttachmentChange(worksiteId: String, change: CollabSyncApi.ChangeItem) {
+        val existing = dao.collabAttachment(change.entityId)
+        if (change.operation.equals("DELETE", ignoreCase = true)) {
+            if (existing != null) {
+                dao.upsertCollabAttachments(listOf(existing.copy(isDeleted = true, updatedAtEpochMs = System.currentTimeMillis())))
+            }
+            return
+        }
+
+        val data = runCatching { JSONObject(change.dataJson) }.getOrElse { JSONObject() }
+        val parentType = data.optString("entity_type").ifBlank { existing?.parentEntityType ?: return }
+        val parentId = data.optString("entity_id").ifBlank { existing?.parentEntityId ?: return }
+        dao.upsertCollabAttachments(
+            listOf(
+                SyncCollabAttachmentEntity(
+                    serverId = change.entityId,
+                    worksiteServerId = worksiteId,
+                    parentEntityType = parentType,
+                    parentEntityId = parentId,
+                    filename = data.optNullableString("filename") ?: existing?.filename,
+                    mimeType = existing?.mimeType,
+                    sizeBytes = data.optLong("size_bytes", existing?.sizeBytes ?: 0),
+                    sha256 = existing?.sha256,
+                    localPath = existing?.localPath,
+                    isDownloaded = existing?.isDownloaded ?: false,
+                    isDeleted = false,
+                    updatedAtEpochMs = System.currentTimeMillis()
+                )
+            )
+        )
+    }
+
+    private sealed interface DownloadOutcome {
+        data class Success(val count: Int) : DownloadOutcome
+        data object SessionInvalid : DownloadOutcome
+    }
+
+    private suspend fun downloadPendingAttachments(token: String, worksiteId: String, api: CollabSyncApi): DownloadOutcome {
+        var count = 0
+        for (attachment in dao.collabAttachmentsNotDownloaded(worksiteId)) {
+            when (val result = api.downloadAttachment(token, attachment.serverId)) {
+                CollabSyncApi.AttachmentResult.SessionInvalid -> return DownloadOutcome.SessionInvalid
+                CollabSyncApi.AttachmentResult.Unsupported,
+                is CollabSyncApi.AttachmentResult.Error -> Unit
+                is CollabSyncApi.AttachmentResult.Success -> {
+                    val safeName = safeFilename(attachment.filename ?: result.attachment.filename ?: "bild")
+                    val dir = File(appContext.filesDir, "server_sync/collab/$worksiteId")
+                    if (!dir.exists()) dir.mkdirs()
+                    val target = File(dir, "${attachment.serverId}_$safeName")
+                    runCatching {
+                        val temp = File(target.absolutePath + ".tmp")
+                        temp.writeBytes(result.attachment.bytes)
+                        if (target.exists()) target.delete()
+                        if (!temp.renameTo(target)) {
+                            temp.copyTo(target, overwrite = true)
+                            temp.delete()
+                        }
+                        dao.markCollabAttachmentDownloaded(
+                            serverId = attachment.serverId,
+                            localPath = target.absolutePath,
+                            mimeType = result.attachment.mimeType
+                        )
+                        count++
+                    }
+                }
+            }
+        }
+        return DownloadOutcome.Success(count)
+    }
+
+    private fun safeFilename(value: String): String = value
+        .replace(Regex("[^A-Za-z0-9._() -]+"), "_")
+        .trim(' ', '.')
+        .take(160)
+        .ifBlank { "bild" }
+
+    private fun sequenceKey(worksiteId: String) = "collab_sequence:$worksiteId"
+
+    private fun JSONObject.optNullableString(name: String): String? {
+        if (!has(name) || isNull(name)) return null
+        return optString(name).takeIf { it.isNotBlank() }
+    }
+
+    private fun JSONObject.optNullableLong(name: String): Long? {
+        if (!has(name) || isNull(name)) return null
+        return runCatching { getLong(name) }.getOrNull()
+    }
+
+    private fun JSONObject.optJsonText(name: String): String? {
+        if (!has(name) || isNull(name)) return null
+        return opt(name)?.toString()?.takeIf { it.isNotBlank() }
+    }
+
+    companion object {
+        private val ENTITY_TYPES = setOf("BTB", "DEFECT", "ACCEPTANCE")
+        private val NOTIFY_TYPES = ENTITY_TYPES
+    }
+}
