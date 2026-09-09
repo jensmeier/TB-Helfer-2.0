@@ -95,10 +95,18 @@
             style="@style/TextAppearance.TBHelfer.Body" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnCollabRedeemInvitation"
+            android:id="@+id/btnCollabScanInvitation"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:text="@string/collab_scan_invitation"
+            android:textAllCaps="false" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCollabRedeemInvitation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
             android:text="@string/collab_redeem_invitation"
             android:textAllCaps="false" />
 
