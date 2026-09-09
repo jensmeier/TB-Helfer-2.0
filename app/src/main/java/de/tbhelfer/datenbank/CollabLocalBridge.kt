@@ -720,7 +720,7 @@ class CollabLocalBridge(
 
     private fun semanticToken(filename: String?, prefix: String): String {
         val raw = filename.orEmpty()
-        if (!raw.startsWith("$prefix__", ignoreCase = true)) return ""
+        if (!raw.startsWith("${prefix}__", ignoreCase = true)) return ""
         return raw.substringAfter("__", "").substringBefore("__", "").uppercase()
     }
 
