@@ -4,6 +4,7 @@ import android.content.Context
 import de.tbhelfer.datenbank.TBDatenbank
 import de.tbhelfer.datenbank.SyncDatenbank
 import de.tbhelfer.datenbank.OfflineSyncRepository
+import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.SyncOfflineEditor
 import de.tbhelfer.einstellungen.AktuelleBaustelleSpeicher
 import de.tbhelfer.datenbank.StreckenpunkteRepository
@@ -47,6 +48,10 @@ object ServiceLocator {
 
     val offlineSyncRepository: OfflineSyncRepository by lazy {
         OfflineSyncRepository(syncDatenbank)
+    }
+
+    val collabSyncRepository: CollabSyncRepository by lazy {
+        CollabSyncRepository(appContext, syncDatenbank)
     }
 
     val syncOfflineEditor: SyncOfflineEditor by lazy {
