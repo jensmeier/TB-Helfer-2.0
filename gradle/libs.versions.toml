@@ -15,6 +15,7 @@ room = "2.8.4"
 camerax = "1.5.3"
 work = "2.10.0"
 codeScanner = "16.1.0"
+zxing = "3.5.3"
 junit4 = "4.13.2"
 androidxTestJunit = "1.2.1"
 espresso = "3.6.1"
@@ -49,6 +50,7 @@ androidx-camera-extensions = { module = "androidx.camera:camera-extensions", ver
 
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 play-services-code-scanner = { module = "com.google.android.gms:play-services-code-scanner", version.ref = "codeScanner" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
 desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar" }
 
