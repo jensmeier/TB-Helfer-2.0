@@ -121,4 +121,79 @@ interface SyncDao {
 
     @Query("DELETE FROM sync_station")
     suspend fun clearStations()
+
+    // ---------------------------------------------------------------------
+    // Baustellen-Zusammenarbeit ab Server 0.7.0
+    // ---------------------------------------------------------------------
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertWorksiteContexts(items: List<SyncWorksiteContextEntity>)
+
+    @Query("DELETE FROM sync_worksite_context")
+    suspend fun clearWorksiteContexts()
+
+    @Query("SELECT * FROM sync_worksite_context ORDER BY COALESCE(name, designation, worksiteServerId) COLLATE NOCASE")
+    suspend fun worksiteContexts(): List<SyncWorksiteContextEntity>
+
+    @Query("SELECT * FROM sync_worksite_context WHERE worksiteServerId = :worksiteServerId LIMIT 1")
+    suspend fun worksiteContext(worksiteServerId: String): SyncWorksiteContextEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCollabEntities(items: List<SyncCollabEntity>)
+
+    @Query("SELECT * FROM sync_collab_entity WHERE serverId = :serverId LIMIT 1")
+    suspend fun collabEntity(serverId: String): SyncCollabEntity?
+
+    @Query("SELECT * FROM sync_collab_entity WHERE worksiteServerId = :worksiteServerId AND entityType = :entityType AND isDeleted = 0 ORDER BY updatedAtEpochMs DESC")
+    suspend fun collabEntities(worksiteServerId: String, entityType: String): List<SyncCollabEntity>
+
+    @Query("UPDATE sync_collab_entity SET isDeleted = 1, entityVersion = :entityVersion, updatedAtEpochMs = :nowEpochMs WHERE serverId = :serverId")
+    suspend fun markCollabDeleted(serverId: String, entityVersion: Long, nowEpochMs: Long = System.currentTimeMillis())
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCollabAttachments(items: List<SyncCollabAttachmentEntity>)
+
+    @Query("SELECT * FROM sync_collab_attachment WHERE serverId = :serverId LIMIT 1")
+    suspend fun collabAttachment(serverId: String): SyncCollabAttachmentEntity?
+
+    @Query("SELECT * FROM sync_collab_attachment WHERE parentEntityId = :parentEntityId AND isDeleted = 0 ORDER BY updatedAtEpochMs")
+    suspend fun collabAttachmentsForEntity(parentEntityId: String): List<SyncCollabAttachmentEntity>
+
+    @Query("SELECT * FROM sync_collab_attachment WHERE worksiteServerId = :worksiteServerId AND isDeleted = 0 AND isDownloaded = 0 ORDER BY updatedAtEpochMs")
+    suspend fun collabAttachmentsNotDownloaded(worksiteServerId: String): List<SyncCollabAttachmentEntity>
+
+    @Query("UPDATE sync_collab_attachment SET localPath = :localPath, mimeType = COALESCE(:mimeType, mimeType), isDownloaded = 1, updatedAtEpochMs = :nowEpochMs WHERE serverId = :serverId")
+    suspend fun markCollabAttachmentDownloaded(
+        serverId: String,
+        localPath: String,
+        mimeType: String?,
+        nowEpochMs: Long = System.currentTimeMillis()
+    )
+
+    @Insert
+    suspend fun enqueueCollabChange(item: SyncCollabPendingChangeEntity): Long
+
+    @Query("SELECT * FROM sync_collab_pending WHERE worksiteServerId = :worksiteServerId AND state IN ('PENDING','FAILED') ORDER BY createdAtEpochMs, id")
+    suspend fun collabPendingChanges(worksiteServerId: String): List<SyncCollabPendingChangeEntity>
+
+    @Query("SELECT COUNT(*) FROM sync_collab_pending WHERE state IN ('PENDING','FAILED')")
+    suspend fun collabPendingCount(): Int
+
+    @Query("SELECT COUNT(*) FROM sync_collab_pending WHERE state = 'CONFLICT'")
+    suspend fun collabConflictCount(): Int
+
+    @Query("SELECT * FROM sync_collab_pending WHERE state = 'CONFLICT' ORDER BY updatedAtEpochMs DESC")
+    suspend fun collabConflicts(): List<SyncCollabPendingChangeEntity>
+
+    @Query("UPDATE sync_collab_pending SET state = :state, attempts = :attempts, lastError = :lastError, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
+    suspend fun updateCollabChangeState(
+        id: Long,
+        state: String,
+        attempts: Int,
+        lastError: String?,
+        updatedAtEpochMs: Long = System.currentTimeMillis()
+    )
+
+    @Query("DELETE FROM sync_collab_pending WHERE id = :id")
+    suspend fun deleteCollabPendingChange(id: Long)
 }
