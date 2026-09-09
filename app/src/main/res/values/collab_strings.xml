@@ -29,7 +29,9 @@
     <string name="collab_redeem_invitation">Einladung einlösen</string>
     <string name="collab_redeem_title">Einladungscode eingeben</string>
     <string name="collab_redeem_hint">TBI-…</string>
+    <string name="collab_redeem_loading">Einladung wird eingelöst …</string>
     <string name="collab_redeem_success">Einladung wurde eingelöst. Die Baustellenzuordnung wird synchronisiert.</string>
+    <string name="collab_invite_activation_required">Einladung erkannt. Bitte dieses Gerät zuerst mit deinem persönlichen Aktivierungsschlüssel aktivieren; anschließend wird die Einladung automatisch eingelöst.</string>
     <string name="collab_invite_helper">Helfer einladen</string>
     <string name="collab_invite_lead">Weiteren TB einladen</string>
     <string name="collab_invite_creating">Einladung wird erstellt …</string>
