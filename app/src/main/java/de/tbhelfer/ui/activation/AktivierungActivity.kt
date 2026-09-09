@@ -18,6 +18,7 @@ import de.tbhelfer.R
 import de.tbhelfer.server.ActivationApi
 import de.tbhelfer.server.DeviceIdentity
 import de.tbhelfer.server.SecureTokenStore
+import de.tbhelfer.server.TeamManagementApi
 import de.tbhelfer.ui.HauptActivity
 import de.tbhelfer.ui.KeyboardAutoScroll
 import de.tbhelfer.ui.SafeAreaInsets
@@ -35,15 +36,14 @@ class AktivierungActivity : AppCompatActivity() {
 
     private lateinit var tokenStore: SecureTokenStore
     private val api = ActivationApi()
+    private val teamApi = TeamManagementApi()
+    private var pendingInvitationCode: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         tokenStore = SecureTokenStore(this)
-        if (!tokenStore.load().isNullOrBlank()) {
-            openMainApp()
-            return
-        }
+        pendingInvitationCode = extractInvitationCode(intent?.data?.toString().orEmpty())
 
         SafeAreaInsets.install(this)
         setContentView(R.layout.activity_aktivierung)
@@ -61,9 +61,25 @@ class AktivierungActivity : AppCompatActivity() {
             activateWithKey(keyInput.text?.toString().orEmpty())
         }
 
+        val existingToken = tokenStore.load()
+        if (!existingToken.isNullOrBlank()) {
+            val invitationCode = pendingInvitationCode
+            if (!invitationCode.isNullOrBlank()) {
+                redeemInvitation(existingToken, invitationCode)
+            } else {
+                openMainApp()
+            }
+            return
+        }
+
         extractActivationKey(intent?.data?.toString().orEmpty())?.let { deepLinkKey ->
             keyInput.setText(deepLinkKey)
             activateWithKey(deepLinkKey)
+            return
+        }
+
+        if (!pendingInvitationCode.isNullOrBlank()) {
+            setStatus(getString(R.string.collab_invite_activation_required))
         }
     }
 
@@ -127,7 +143,12 @@ class AktivierungActivity : AppCompatActivity() {
                         getString(R.string.activation_success, result.userName ?: ""),
                         Toast.LENGTH_LONG
                     ).show()
-                    openMainApp()
+                    val invitationCode = pendingInvitationCode
+                    if (!invitationCode.isNullOrBlank()) {
+                        redeemInvitation(result.token, invitationCode)
+                    } else {
+                        openMainApp()
+                    }
                 }
 
                 ActivationApi.LoginResult.AlreadyBound -> {
@@ -161,6 +182,48 @@ class AktivierungActivity : AppCompatActivity() {
         }
     }
 
+    private fun redeemInvitation(token: String, invitationCode: String) {
+        setBusy(true)
+        setStatus(getString(R.string.collab_redeem_loading))
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                teamApi.redeemInvitation(token, invitationCode)
+            }
+            when (result) {
+                is TeamManagementApi.RedeemResult.Success -> {
+                    pendingInvitationCode = null
+                    Toast.makeText(
+                        this@AktivierungActivity,
+                        R.string.collab_redeem_success,
+                        Toast.LENGTH_LONG
+                    ).show()
+                    openMainApp()
+                }
+                TeamManagementApi.RedeemResult.Unsupported -> {
+                    Toast.makeText(
+                        this@AktivierungActivity,
+                        R.string.collab_team_unavailable,
+                        Toast.LENGTH_LONG
+                    ).show()
+                    openMainApp()
+                }
+                TeamManagementApi.RedeemResult.SessionInvalid -> {
+                    tokenStore.clear()
+                    setBusy(false)
+                    setStatus(getString(R.string.collab_session_invalid), isError = true)
+                }
+                is TeamManagementApi.RedeemResult.Error -> {
+                    Toast.makeText(
+                        this@AktivierungActivity,
+                        getString(R.string.collab_invite_error, result.message),
+                        Toast.LENGTH_LONG
+                    ).show()
+                    openMainApp()
+                }
+            }
+        }
+    }
+
     private fun extractActivationKey(raw: String): String? {
         val text = raw.trim()
         if (text.startsWith("TBH-", ignoreCase = true)) return text.uppercase()
@@ -169,6 +232,16 @@ class AktivierungActivity : AppCompatActivity() {
         if (!uri.scheme.equals("tbhelfer", ignoreCase = true)) return null
         if (!uri.host.equals("activate", ignoreCase = true)) return null
         return uri.getQueryParameter("key")?.trim()?.takeIf { it.isNotBlank() }
+    }
+
+    private fun extractInvitationCode(raw: String): String? {
+        val text = raw.trim()
+        if (text.startsWith("TBI-", ignoreCase = true)) return text.uppercase()
+
+        val uri = runCatching { Uri.parse(text) }.getOrNull() ?: return null
+        if (!uri.scheme.equals("tbhelfer", ignoreCase = true)) return null
+        if (!uri.host.equals("invite", ignoreCase = true)) return null
+        return uri.getQueryParameter("code")?.trim()?.takeIf { it.isNotBlank() }?.uppercase()
     }
 
     private fun setBusy(busy: Boolean) {
