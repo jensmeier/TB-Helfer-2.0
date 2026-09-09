@@ -93,3 +93,15 @@ Wenn dauerhaftes Speichern deaktiviert ist, darf der Server Daten trotzdem tempo
 - `main` stabil halten; große Änderungen zunächst auf Feature-Branch/Draft-PR.
 - Keine Geheimnisse (`.env`, Tunnel-Token, Passwörter, Signing-Key) in GitHub oder Screenshots.
 - Vor neuen Grundsatzentscheidungen zuerst diese Projektregeln prüfen, damit bereits festgelegte Punkte nicht erneut abgefragt werden.
+
+## 12. GitHub als verbindliche Übergabe zwischen Chats
+- Repository: `jensmeier/TB-Helfer-2.0`.
+- Vor jeder Änderung muss zuerst der vorhandene GitHub-Stand geprüft werden.
+- Bei jedem neuen Chat zuerst lesen:
+  1. `docs/TB-HELFER_PROJEKTREGELN.md`
+  2. `docs/TB-HELFER_AKTUELLER_STAND.md`
+  3. den aktuell offenen Draft-PR inklusive neuestem Commit.
+- `docs/TB-HELFER_AKTUELLER_STAND.md` ist die laufende technische Übergabe und enthält aktuellen Branch, PR, produktiven NAS-Stand, letzte Änderungen, offene Punkte und den nächsten sicheren Schritt.
+- Nach jeder substanziellen Änderung oder neuen verbindlichen Entscheidung muss diese Statusdatei im aktiven Feature-Branch aktualisiert werden.
+- Bei Widersprüchen gilt: produktiver NAS-Stand für tatsächlich laufende Serverdaten/Quellstand; diese Projektregeln für fachliche Entscheidungen; GitHub-Branch/PR für noch nicht produktive Entwicklung.
+- Keine alten Chat-Zusammenfassungen als alleinige Source of Truth verwenden, wenn GitHub einen neueren Stand enthält.
