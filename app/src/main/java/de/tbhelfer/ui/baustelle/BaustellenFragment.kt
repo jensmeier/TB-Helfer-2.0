@@ -17,6 +17,7 @@ import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.BaustellenKnotenEntity
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbExportPaket
+import de.tbhelfer.ui.bautagebuch.MergeSafeBaustellenExport
 import de.tbhelfer.ui.abnahme.AbnahmeSpeicher
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
@@ -141,7 +142,6 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
             findNavController().navigate(R.id.aktuelleBaustelleFragment)
         }
 
-        // Liste + "aktuell" markieren
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 combine(
@@ -178,9 +178,7 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
                         }
                     }
                     val abnahmenByRoot = withContext(Dispatchers.IO) {
-                        hauptListe.associate { root ->
-                            root.id to AbnahmeSpeicher.zaehler(appContext, root.altBaustelleId)
-                        }
+                        hauptListe.associate { root -> root.id to AbnahmeSpeicher.zaehler(appContext, root.altBaustelleId) }
                     }
 
                     hauptListe.map { knoten ->
@@ -208,13 +206,10 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
                             istAufgeklappt = false
                         )
                     }
-                }.collect { uiListe ->
-                    adapter.submitList(uiListe)
-                }
+                }.collect { uiListe -> adapter.submitList(uiListe) }
             }
         }
     }
-
 
     private val exportDateFmtDe: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 
@@ -290,20 +285,27 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
             val (dlg, tv) = zeigeExportFortschritt()
             val countdown = starteCountdown(tv)
             try {
-                val result = withContext(Dispatchers.IO) {
-                    BtbExportPaket.erstellenBaustellenExport(
+                val (result, archiveZip) = withContext(Dispatchers.IO) {
+                    val raw = BtbExportPaket.erstellenBaustellenExport(
                         context = requireContext().applicationContext,
                         baustelleId = haupt.altBaustelleId,
                         baustelleName = haupt.hauptbaustellenName,
                         vonDatum = von,
                         bisDatum = bis
                     )
+                    val archive = MergeSafeBaustellenExport.normalisieren(
+                        context = requireContext().applicationContext,
+                        sourceZip = raw.zipFile,
+                        localRootKnotenId = haupt.id,
+                        baustelleName = haupt.hauptbaustellenName
+                    )
+                    raw to archive
                 }
                 countdown.cancel()
                 tv.text = "Rest: 0 %"
                 dlg.dismiss()
-                Toast.makeText(requireContext(), "ZIP erstellt: ${result.fotosExportiert} Bilder", Toast.LENGTH_SHORT).show()
-                BtbExportPaket.shareZip(requireContext(), result.zipFile)
+                Toast.makeText(requireContext(), "TB-Helfer-Archiv erstellt: ${result.fotosExportiert} Bilder", Toast.LENGTH_SHORT).show()
+                BtbExportPaket.shareZip(requireContext(), archiveZip)
             } catch (t: Throwable) {
                 countdown.cancel()
                 dlg.dismiss()
@@ -316,9 +318,7 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.dialog_delete_project_full_title))
             .setMessage(getString(R.string.dialog_delete_project_full_message, haupt.hauptbaustellenName))
-            .setPositiveButton(getString(R.string.btn_delete)) { _, _ ->
-                zeigeLetzteLoeschWarnung(haupt)
-            }
+            .setPositiveButton(getString(R.string.btn_delete)) { _, _ -> zeigeLetzteLoeschWarnung(haupt) }
             .setNegativeButton(getString(R.string.btn_cancel), null)
             .show()
     }
@@ -340,33 +340,18 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
     private suspend fun loescheBaustelleKomplett(haupt: BaustellenKnotenEntity) {
         val appContext = requireContext().applicationContext
         val altId = haupt.altBaustelleId
-
         withContext(Dispatchers.IO) {
             val fotos = fotoRepo.fotosFuerBaustelleOnce(altId)
-            fotos.forEach { foto ->
-                runCatching { File(foto.dateipfad).delete() }
-            }
-
-            BautagebuchSpeicher.loescheAlleBtbsFuerBaustelle(
-                appContext,
-                altId,
-                haupt.hauptbaustellenName
-            )
-
+            fotos.forEach { foto -> runCatching { File(foto.dateipfad).delete() } }
+            BautagebuchSpeicher.loescheAlleBtbsFuerBaustelle(appContext, altId, haupt.hauptbaustellenName)
             ServiceLocator.baustellenRepository.baustelleMitIdOnce(altId)?.let { altBaustelle ->
                 ServiceLocator.baustellenRepository.loeschen(altBaustelle)
             }
-
             repo.loescheTeilbaum(haupt.id)
         }
-
         val aktuelleHauptId = speicher.aktuelleHauptbaustelleKnotenId.first()
-        if (aktuelleHauptId == haupt.id) {
-            speicher.loeschen()
-        }
+        if (aktuelleHauptId == haupt.id) speicher.loeschen()
     }
 
-
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
-
 }
