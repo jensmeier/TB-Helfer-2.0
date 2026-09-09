@@ -138,6 +138,18 @@ interface SyncDao {
     @Query("SELECT * FROM sync_worksite_context WHERE worksiteServerId = :worksiteServerId LIMIT 1")
     suspend fun worksiteContext(worksiteServerId: String): SyncWorksiteContextEntity?
 
+    @Query("SELECT * FROM sync_worksite_context WHERE localRootKnotenId = :localRootKnotenId LIMIT 1")
+    suspend fun worksiteContextForLocalRoot(localRootKnotenId: Long): SyncWorksiteContextEntity?
+
+    @Query("UPDATE sync_worksite_context SET localRootKnotenId = NULL WHERE localRootKnotenId = :localRootKnotenId")
+    suspend fun clearWorksiteBindingForLocalRoot(localRootKnotenId: Long)
+
+    @Query("UPDATE sync_worksite_context SET localRootKnotenId = NULL WHERE worksiteServerId = :worksiteServerId")
+    suspend fun clearWorksiteBinding(worksiteServerId: String)
+
+    @Query("UPDATE sync_worksite_context SET localRootKnotenId = :localRootKnotenId WHERE worksiteServerId = :worksiteServerId")
+    suspend fun setWorksiteBinding(worksiteServerId: String, localRootKnotenId: Long)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertCollabEntities(items: List<SyncCollabEntity>)
 
@@ -176,6 +188,13 @@ interface SyncDao {
     @Query("SELECT * FROM sync_collab_pending WHERE worksiteServerId = :worksiteServerId AND state IN ('PENDING','FAILED') ORDER BY createdAtEpochMs, id")
     suspend fun collabPendingChanges(worksiteServerId: String): List<SyncCollabPendingChangeEntity>
 
+    @Query("SELECT * FROM sync_collab_pending WHERE worksiteServerId = :worksiteServerId AND entityType = :entityType AND clientEntityKey = :clientEntityKey AND state IN ('PENDING','FAILED','CONFLICT') ORDER BY id DESC LIMIT 1")
+    suspend fun collabPendingForClientKey(
+        worksiteServerId: String,
+        entityType: String,
+        clientEntityKey: String
+    ): SyncCollabPendingChangeEntity?
+
     @Query("SELECT COUNT(*) FROM sync_collab_pending WHERE state IN ('PENDING','FAILED')")
     suspend fun collabPendingCount(): Int
 
@@ -191,6 +210,18 @@ interface SyncDao {
         state: String,
         attempts: Int,
         lastError: String?,
+        updatedAtEpochMs: Long = System.currentTimeMillis()
+    )
+
+    @Query("UPDATE sync_collab_pending SET serverId = COALESCE(:serverId, serverId), baseVersion = COALESCE(:baseVersion, baseVersion), groupId = COALESCE(:groupId, groupId), status = :status, areaScopeJson = :areaScopeJson, payloadJson = :payloadJson, operation = 'UPSERT', state = 'PENDING', attempts = 0, lastError = NULL, updatedAtEpochMs = :updatedAtEpochMs WHERE id = :id")
+    suspend fun replaceCollabPendingUpsert(
+        id: Long,
+        serverId: String?,
+        baseVersion: Long?,
+        groupId: String?,
+        status: String?,
+        areaScopeJson: String,
+        payloadJson: String,
         updatedAtEpochMs: Long = System.currentTimeMillis()
     )
 
