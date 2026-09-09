@@ -207,15 +207,25 @@ Der aktuelle Android-Build ist auf beiden Testgeräten bereit. Vor dem echten Zw
 - Baustellen-Teams ausschließlich innerhalb derselben Firma.
 - Der Ersteller einer Baustelle ist ihr erster verantwortlicher TB.
 - Weitere verantwortliche TBs treten dieser konkreten Baustelle über QR-/Link-/Code-Einladung bei; der Admin ist dafür nicht erforderlich.
-- Sichtbare Namen sollen nicht `TB A/B/C/D` sein. In der App wird über den verantwortlichen TB benannt, z. B. `TB Jens Zinkel`, optional ergänzt um einen Bereichsnamen.
+- Sichtbar heißt der Bereich **`Verantwortliche TBs`** und zeigt echte Namen, z. B. `Jens Zinkel`, `Max Müller`; keine sichtbaren A/B/C/D-Bezeichnungen.
+- Bei jedem verantwortlichen TB gibt es **`Helfer einladen`**; zusätzlich gibt es **`Weiteren TB einladen`** für einen weiteren verantwortlichen TB mit eigenem BTB-Team.
 - Jeder verantwortliche TB kann eigene Hilfsnutzer per Team-Einladung aufnehmen und deren Arbeitsbereich begrenzen.
 - Benutzer derselben Firma ohne angenommene Einladung zu dieser Baustelle erhalten keine Baustellen-Zusammenarbeitsdaten.
 - BTB bleibt ausschließlich innerhalb des jeweiligen TB-Teams gemeinsam.
+- Sichtbarer/Export-BTB-Name enthält TB-Name + Datum, z. B. `BTB_Jens Zinkel_2026.06.05`; mehrere BTBs desselben Tages erhalten `-2`, `-3`, `-4` usw. Intern bleibt die stabile ID maßgeblich.
 - Mängel/Abnahmen werden nur zwischen berechtigten Mitgliedern **dieser einen Baustelle** synchronisiert; nicht an alle Benutzer einer Firma.
 - Hilfsnutzer sehen Mängel/Abnahmen nur in ihrem berechtigten Bereich.
 - Bilder werden entsprechend derselben Baustellen-/Bereichsberechtigung mitsynchronisiert.
 - endgültige Status bleiben endgültig.
 - Einladungen enthalten keine Benutzer-Keys/Passwörter, sondern widerrufbare/zeitlich begrenzte Tokens.
+
+## Benutzer-/Firmenprofil – neue verbindliche UX-Entscheidung
+- Nach erfolgreicher Geräteaktivierung werden Benutzer- und Firmenstammdaten aus dem Serverprofil automatisch in der App angezeigt; keine doppelte manuelle Pflege am Handy.
+- Benutzeranzeige mindestens: Name, E-Mail soweit vorhanden, Firma, Zugriffsstatus, Ablaufdatum bzw. Restlaufzeit.
+- Firmenanzeige aus zentralem Firmenprofil: Firmenname, Anschrift, Telefon, E-Mail und Firmenlogo.
+- Firmenlogo wird einmal serverseitig gepflegt und an alle Geräte derselben Firma verteilt/gecached.
+- Für Support zeigt die App eine nicht geheime Support-/Gerätekennung und höchstens einen **maskierten** Key-Hinweis (z. B. letzte 4 Zeichen); kein vollständiger Aktivierungsschlüssel offen in der Profilansicht.
+- Baustellen-QR und Aktivierungs-QR haben getrennte Aufgaben: Aktivierung lädt Benutzer/Firmenprofil; Baustellen-QR ändert keine Stammdaten, sondern fügt nur die Baustellen-/Team-Mitgliedschaft hinzu.
 
 ## Geplante Self-Service-Einladung – noch nicht produktiv
 Der vorhandene Schema-9-Stand enthält Teams und Mitglieder, aber noch kein Einladungssystem. Geplanter nächster Baustein:
@@ -223,19 +233,20 @@ Der vorhandene Schema-9-Stand enthält Teams und Mitglieder, aber noch kein Einl
 - Einladungstabelle mit gehashtem Token, `worksite_id`, Einladendem, Einladungsart, optionalem Ziel-Team/Bereich, Ablauf, Nutzungsgrenze und Widerruf
 - Einladungsarten mindestens:
   - `weiteren TB zur Baustelle einladen` → erzeugt beim Einlösen ein eigenes TB-Team für den neuen verantwortlichen TB
-  - `Hilfsnutzer zu meinem Team einladen` → ordnet den Benutzer dem bestehenden TB-Team und seinem freigegebenen Bereich zu
+  - `Helfer einladen` → ordnet den Benutzer dem bestehenden TB-Team und seinem freigegebenen Bereich zu
 - QR, teilbarer Link und kurzer Code sind nur verschiedene Darstellungen derselben sicheren Einladung
 - Server prüft beim Einlösen: Benutzer aktiv, Gerät gültig, gleiche Firma, Einladung gültig/nicht widerrufen/nicht abgelaufen
 - Worksite-Mängel/Abnahmen und Benachrichtigungen werden ausschließlich nach bestätigter Baustellenmitgliedschaft ausgeliefert
 
 ## Nächste sichere Schritte
 Server 0.7, Schema 9, Cloudflare und Android 200018 auf beiden Testgeräten sind bestätigt. Noch offen:
-1. Self-Service-Baustelleneinladungen auf dem Feature-Branch entwerfen und implementieren (Migration 010 + Server-API + Android-UI/QR/Link), ohne den produktiven Schema-9-Stand umzuschreiben.
-2. danach neuen Android-Build lokal bauen und auf beiden Testgeräten installieren.
-3. echten Zwei-Geräte-Ende-zu-Ende-Test ohne manuelle Admin-Zuordnung durchführen:
+1. Self-Service-Baustelleneinladungen auf dem Feature-Branch implementieren (Migration 010 + Server-API + Android-UI/QR/Link) und dabei die neuen sichtbaren Begriffe `Verantwortliche TBs`, `Helfer einladen`, `Weiteren TB einladen` verwenden.
+2. Benutzer-/Firmenprofil-Autofill inkl. zentralem Firmenlogo, Zugriffsstatus/Ablauf und Supportkennung in Android/Server ergänzen.
+3. danach neuen Android-Build lokal bauen und auf beiden Testgeräten installieren.
+4. echten Zwei-Geräte-Ende-zu-Ende-Test ohne manuelle Admin-Zuordnung durchführen:
    - Baustelle durch verantwortlichen TB anlegen
    - weiteren TB per Einladung aufnehmen
-   - Hilfsnutzer per Team-Einladung aufnehmen
+   - Helfer per Team-Einladung aufnehmen
    - Firmenbindung
    - BTB strikt zwischen den TB-Teams getrennt
    - Mängel/Abnahmen nur für Mitglieder dieser Baustelle und Hilfsnutzer nur im Bereich
@@ -244,7 +255,7 @@ Server 0.7, Schema 9, Cloudflare und Android 200018 auf beiden Testgeräten sind
    - Tombstones
    - Netzabbruch/Wiederaufnahme
    - Benachrichtigungen
-4. Draft-PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
+5. Draft-PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
 
 ## Bahnhofsdaten – nicht neu erfinden
 Vorhandene Datenbasis:
@@ -266,8 +277,9 @@ Vorhandene Datenbasis:
 - Cloudflare normale App-Synchronisation; Tailscale Wartung.
 - keine firmenübergreifenden Teams.
 - keine firmenweite Verteilung von Mängeln/Abnahmen; ausschließlich berechtigte Mitglieder der konkreten Baustelle.
-- BTB bleibt TB-Team-bezogen.
+- BTB bleibt TB-Team-bezogen und sichtbar personenbezogen benannt, technisch aber ID-basiert.
 - Baustellen-/Teambeitritt im Normalbetrieb per Self-Service-Einladung, nicht per täglicher Admin-Zuordnung.
+- Benutzer-/Firmenstammdaten kommen nach Aktivierung aus dem Serverprofil; Firmenlogo zentral serverseitig.
 - Server-Speicheroptionen bleiben vorgesehen, sind aber keine Arbeitsfreigabe.
 - temporäres Server-Spooling bleibt erlaubt.
 - `main` stabil halten; große Änderungen über Feature-Branch/Draft-PR.
