@@ -66,7 +66,7 @@ Vorhanden und geprüft:
 - separate Room-Datenbank `tbhelfer-sync.db`; bestehende Baustellen-/Vermessungsdatenbank bleibt unangetastet.
 - Upload-Queue, 409-Grundlage, Tombstones, Hintergrund-Sync und Benachrichtigungen sind vorbereitet.
 
-**Die neue Schema-10-Android-Erweiterung wurde nach der Implementierung noch nicht lokal in Android Studio gebaut/installiert.** GitHub Actions ist weiterhin kein Ersatz für den lokalen Android-Studio-Build; der aktuelle CI-Lauf zum neuen Head endete als Failure ohne verwertbaren lokalen Buildnachweis.
+**Die neue Schema-10-Android-Erweiterung wurde am 2026-09-10 lokal in Android Studio erfolgreich gebaut: `BUILD SUCCESSFUL in 42s`, 67 Tasks (19 ausgeführt, 48 up-to-date).** Sie wurde noch nicht auf den Test-Handys installiert. GitHub Actions ist weiterhin kein Ersatz für den lokalen Android-Studio-Build.
 
 ## Verbindliches Team-/Rechtemodell
 - Baustellen-Teams ausschließlich innerhalb derselben Firma.
@@ -156,7 +156,6 @@ Android:
 - zusätzlich versucht der manuelle Baustellen-Sync das Firmenprofil erneut zu aktualisieren.
 
 Noch zu prüfen:
-- neuer Android-Code muss lokal gebaut werden.
 - Firmenprofil-/Logo-Abruf muss auf echtem Gerät gegen Schema 10 getestet werden.
 
 ## Android – `Verantwortliche TBs / Helfer einladen` im Feature-Branch implementiert
@@ -263,14 +262,14 @@ Ziel: ZIPs von Jens, Max und weiteren Beteiligten können über Monate/Jahre in 
 
 ## Nächste sichere Schritte
 1. **Keine produktive Migration 010 ohne neues Backup.** Zuerst Schema-10-Migration/Prüfung auf einer sicheren Test-/Backup-Basis durchspielen.
-2. neuen Android-Code lokal in Android Studio bauen; Compilefehler vor jeder NAS-Änderung beheben.
-3. Link-/Code-Einladung mit zwei Testnutzern derselben Firma gegen eine Schema-10-Testinstanz prüfen.
-4. engeren Helfer-Arbeitsbereich in der Einladungs-UI komfortabel auswählbar machen.
-5. Baustellen-Einladungs-QR auf denselben TBI-Code/Deep-Link setzen.
-6. BTB-Anzeige sowie PDF- und DOCX-Erzeugung auf `Baustelle + TB-Team + Datum + Schicht` umstellen; Helfereinträge müssen in denselben BTB ihres verantwortlichen TB aggregieren.
-7. Gesamtexport/ZIP merge-sicher machen: stabiler `TB-Helfer/<Baustelle>/...`-Pfad und collision-sichere Namen für BTB, Bilder, Mängel und Abnahmen.
-8. nach erfolgreichem Test neues produktives DB-Backup erstellen, Migration 010 mit `ON_ERROR_STOP` ausführen, Schema-10-Check ausführen und erst danach Servercode aktivieren.
-9. neuen Android-Build auf beiden Testgeräten installieren.
+2. erfolgreichen neuen Android-Build zunächst auf einem Testgerät als Update installieren und prüfen, dass die App mit dem noch produktiven Schema 9 weiterhin sauber startet/synchronisiert.
+3. danach denselben Build auf dem zweiten Testgerät installieren.
+4. Link-/Code-Einladung mit zwei Testnutzern derselben Firma gegen eine Schema-10-Testinstanz prüfen.
+5. engeren Helfer-Arbeitsbereich in der Einladungs-UI komfortabel auswählbar machen.
+6. Baustellen-Einladungs-QR auf denselben TBI-Code/Deep-Link setzen.
+7. BTB-Anzeige sowie PDF- und DOCX-Erzeugung auf `Baustelle + TB-Team + Datum + Schicht` umstellen; Helfereinträge müssen in denselben BTB ihres verantwortlichen TB aggregieren.
+8. Gesamtexport/ZIP merge-sicher machen: stabiler `TB-Helfer/<Baustelle>/...`-Pfad und collision-sichere Namen für BTB, Bilder, Mängel und Abnahmen.
+9. nach erfolgreichem Test neues produktives DB-Backup erstellen, Migration 010 mit `ON_ERROR_STOP` ausführen, Schema-10-Check ausführen und erst danach Servercode aktivieren.
 10. echten Zwei-Geräte-/Mehrhelfer-Test durchführen: Firmenbindung, Einladungen, getrennte TB-BTBs, Helferaggregation, Tag/Nacht, gleichnamige TBs, Merge-Export, Mängel/Abnahmen/Bilder, 409, Tombstones, Netzabbruch/Wiederaufnahme, Benachrichtigungen.
 11. Draft-PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
 
