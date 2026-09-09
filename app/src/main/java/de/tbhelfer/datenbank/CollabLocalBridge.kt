@@ -4,6 +4,7 @@ import android.content.Context
 import de.tbhelfer.ui.abnahme.AbnahmeSpeicher
 import de.tbhelfer.ui.baustelle.MaengellisteExport
 import de.tbhelfer.ui.baustelle.MangelStatusSpeicher
+import de.tbhelfer.ui.baustelle.SyncMangelSpeicher
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.SchichtTyp
 import org.json.JSONArray
@@ -16,14 +17,13 @@ import java.time.LocalDate
  * Brücke zwischen den bestehenden lokalen Fachspeichern und dem neuen Server-Sync.
  *
  * Sie ersetzt die vorhandenen lokalen Datenmodelle NICHT. Stattdessen werden vorhandene BTB,
- * Mängel und Abnahmen in die Sync-Queue gespiegelt. Eingehende Serverstände werden dort, wo die
- * bestehende App bereits ein sicheres Importziel besitzt, wieder in den lokalen Fachspeicher
- * übernommen.
+ * Mängel und Abnahmen in die Sync-Queue gespiegelt. Eingehende Serverstände werden wieder in die
+ * vorhandenen Fachspeicher bzw. in einen kleinen lokalen Ergänzungsspeicher übernommen.
  *
- * Mängel von anderen Geräten bleiben zusätzlich im Collab-Cache. Für vollständig neue Mängel
- * fehlt im alten Mängelmodell noch ein eigener nicht-fotobasierter Persistenzspeicher; deshalb
- * wird hier nur der Status eines bereits lokal bekannten Mangel-Keys zurückgespiegelt. Die
- * vollständige Anzeige neuer Server-Mängel wird separat an die Mängelliste angebunden.
+ * BTB bleibt strikt gruppenbezogen. Mängel und Abnahmen werden baustellenweit innerhalb des vom
+ * Server freigegebenen Bereichs synchronisiert. Neue Mängel anderer Geräte landen im
+ * [SyncMangelSpeicher], damit sie auch ohne bereits vorhandenes lokales Foto/BTB-Element sichtbar
+ * gemacht und später wieder bearbeitet werden können.
  */
 class CollabLocalBridge(
     context: Context,
@@ -58,7 +58,7 @@ class CollabLocalBridge(
         var acceptanceCount = 0
 
         for (item in bound) {
-            val binding = item.binding ?: continue
+            item.binding ?: continue
             val local = item.localWorksite ?: continue
             val server = item.context
             val localBaustelleId = local.altBaustelleId
@@ -83,38 +83,36 @@ class CollabLocalBridge(
                 }
             }
 
-            val defects = MaengellisteExport.ladeItems(appContext, localBaustelleId, localName)
-            for (defect in defects) {
+            val localDefects = MaengellisteExport.ladeItems(appContext, localBaustelleId, localName)
+            val localDefectKeys = localDefects.mapTo(hashSetOf()) { it.key }
+            for (defect in localDefects) {
                 val status = MangelStatusSpeicher.laden(appContext, defect.key)
-                val payload = JSONObject()
-                    .put("key", defect.key)
-                    .put("datumIso", defect.datumIso)
-                    .put("zeit", defect.zeit)
-                    .put("baustelle", localName)
-                    .put("bereich", defect.bereich)
-                    .put("km", defect.km)
-                    .put("firma", defect.firma)
-                    .put("beschreibung", defect.beschreibung)
-                    .put("gps", defect.gps)
-                    .put("btbBildNr", defect.btbBildNr)
-                    .put("kommentar", status.kommentar)
-                    .putNullable("erledigtAmEpochMs", status.erledigtAmEpochMs)
-                    .put("fotos", JSONArray().apply {
-                        defect.fotos.forEach { mf ->
-                            put(JSONObject()
-                                .put("localFotoId", mf.foto.id)
-                                .put("fotoArt", mf.art.name)
-                                .put("filename", File(mf.foto.dateipfad).name)
-                                .put("erstelltAmEpochMs", mf.foto.erstelltAmEpochMs)
-                            )
-                        }
-                    })
-                    .toString()
+                val payload = localDefectPayload(defect, localName, status)
 
                 if (queueIfChanged(
                         worksiteServerId = server.worksiteServerId,
                         entityType = SyncCollabPendingChangeEntity.TYPE_DEFECT,
                         clientKey = defect.key,
+                        groupId = null,
+                        status = status.status.name,
+                        areaScopeJson = server.areaScopeJson,
+                        payloadJson = payload
+                    )
+                ) {
+                    total++
+                    defectCount++
+                }
+            }
+
+            // Ein Mangel, der nur von einem anderen Gerät stammt, besitzt auf diesem Handy noch
+            // keine lokale Foto-/BTB-Quelle. Änderungen an Status/Kommentar müssen trotzdem zurück.
+            for (defect in SyncMangelSpeicher.alle(appContext, localBaustelleId).filter { it.mangelKey !in localDefectKeys }) {
+                val status = MangelStatusSpeicher.laden(appContext, defect.mangelKey)
+                val payload = syncDefectPayload(defect.payloadJson, status)
+                if (queueIfChanged(
+                        worksiteServerId = server.worksiteServerId,
+                        entityType = SyncCollabPendingChangeEntity.TYPE_DEFECT,
+                        clientKey = defect.mangelKey,
                         groupId = null,
                         status = status.status.name,
                         areaScopeJson = server.areaScopeJson,
@@ -186,27 +184,56 @@ class CollabLocalBridge(
                 rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(entity.status, payload.toString()))
             }
 
-            val localDefectKeys = MaengellisteExport.ladeItems(appContext, localBaustelleId, localName)
-                .mapTo(hashSetOf()) { it.key }
             val defectItems = collabRepository.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_DEFECT)
+            val activeDefectServerIds = defectItems.mapTo(hashSetOf()) { it.serverId }
             for (entity in defectItems) {
                 val key = entity.clientEntityKey ?: continue
-                if (key !in localDefectKeys) continue
                 if (dao.collabPendingForClientKey(server.worksiteServerId, entity.entityType, key) != null) continue
                 val payload = runCatching { JSONObject(entity.payloadJson) }.getOrElse { JSONObject() }
                 val incomingStatus = runCatching {
                     MangelStatusSpeicher.Status.valueOf(entity.status ?: payload.optString("status", "OFFEN"))
                 }.getOrDefault(MangelStatusSpeicher.Status.OFFEN)
                 val old = MangelStatusSpeicher.laden(appContext, key)
-                val newValue = if (old.status == MangelStatusSpeicher.Status.ERLEDIGT) old else old.copy(
-                    status = incomingStatus,
-                    kommentar = payload.optString("kommentar", old.kommentar),
-                    erledigtAmEpochMs = payload.optNullableLong("erledigtAmEpochMs") ?: old.erledigtAmEpochMs
-                )
+                val newValue = if (old.status == MangelStatusSpeicher.Status.ERLEDIGT) {
+                    old
+                } else {
+                    old.copy(
+                        status = incomingStatus,
+                        kommentar = payload.optString("kommentar", old.kommentar),
+                        erledigtAmEpochMs = payload.optNullableLong("erledigtAmEpochMs") ?: old.erledigtAmEpochMs
+                    )
+                }
                 MangelStatusSpeicher.speichern(appContext, key, newValue)
+
+                SyncMangelSpeicher.speichern(
+                    appContext,
+                    SyncMangelSpeicher.Eintrag(
+                        localBaustelleId = localBaustelleId,
+                        worksiteServerId = server.worksiteServerId,
+                        serverEntityId = entity.serverId,
+                        mangelKey = key,
+                        datumIso = payload.optString("datumIso", ""),
+                        zeit = payload.optString("zeit", ""),
+                        bereich = payload.optString("bereich", "Hauptbaustelle").ifBlank { "Hauptbaustelle" },
+                        km = payload.optString("km", "-").ifBlank { "-" },
+                        firma = payload.optString("firma", "-").ifBlank { "-" },
+                        beschreibung = payload.optString("beschreibung", "-").ifBlank { "-" },
+                        gps = payload.optString("gps", "-").ifBlank { "-" },
+                        btbBildNr = payload.optString("btbBildNr", ""),
+                        payloadJson = entity.payloadJson,
+                        changedByName = entity.changedByName
+                    )
+                )
                 defectStatuses++
-                rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(entity.status, entity.payloadJson))
+                val canonical = syncDefectPayload(entity.payloadJson, newValue)
+                rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(newValue.status.name, canonical))
             }
+            SyncMangelSpeicher.bereinigeNichtMehrVorhandene(
+                appContext,
+                localBaustelleId,
+                server.worksiteServerId,
+                activeDefectServerIds
+            )
 
             val acceptanceItems = collabRepository.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE)
             for (entity in acceptanceItems) {
@@ -276,6 +303,42 @@ class CollabLocalBridge(
         }
         rememberHash(worksiteServerId, type, clientKey, hash)
         return true
+    }
+
+    private fun localDefectPayload(
+        defect: MaengellisteExport.MangelItem,
+        localName: String,
+        status: MangelStatusSpeicher.Wert
+    ): String = JSONObject()
+        .put("key", defect.key)
+        .put("datumIso", defect.datumIso)
+        .put("zeit", defect.zeit)
+        .put("baustelle", localName)
+        .put("bereich", defect.bereich)
+        .put("km", defect.km)
+        .put("firma", defect.firma)
+        .put("beschreibung", defect.beschreibung)
+        .put("gps", defect.gps)
+        .put("btbBildNr", defect.btbBildNr)
+        .put("kommentar", status.kommentar)
+        .putNullable("erledigtAmEpochMs", status.erledigtAmEpochMs)
+        .put("fotos", JSONArray().apply {
+            defect.fotos.forEach { mf ->
+                put(JSONObject()
+                    .put("localFotoId", mf.foto.id)
+                    .put("fotoArt", mf.art.name)
+                    .put("filename", File(mf.foto.dateipfad).name)
+                    .put("erstelltAmEpochMs", mf.foto.erstelltAmEpochMs)
+                )
+            }
+        })
+        .toString()
+
+    private fun syncDefectPayload(raw: String, status: MangelStatusSpeicher.Wert): String {
+        val payload = runCatching { JSONObject(raw) }.getOrElse { JSONObject() }
+        payload.put("kommentar", status.kommentar)
+        payload.putNullable("erledigtAmEpochMs", status.erledigtAmEpochMs)
+        return payload.toString()
     }
 
     private fun findBtbJson(
