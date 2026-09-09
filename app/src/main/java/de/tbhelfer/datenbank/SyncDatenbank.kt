@@ -24,6 +24,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SyncTombstoneEntity::class,
         SyncStateEntity::class,
         SyncWorksiteContextEntity::class,
+        SyncWorksiteBindingEntity::class,
         SyncCollabEntity::class,
         SyncCollabAttachmentEntity::class,
         SyncCollabPendingChangeEntity::class
@@ -134,8 +135,15 @@ abstract class SyncDatenbank : RoomDatabase() {
 
         private val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE `sync_worksite_context` ADD COLUMN `localRootKnotenId` INTEGER")
-                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_sync_worksite_context_localRootKnotenId` ON `sync_worksite_context` (`localRootKnotenId`)")
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `sync_worksite_binding` (
+                        `localRootKnotenId` INTEGER NOT NULL,
+                        `worksiteServerId` TEXT NOT NULL,
+                        `boundAtEpochMs` INTEGER NOT NULL,
+                        PRIMARY KEY(`localRootKnotenId`)
+                    )""".trimIndent()
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_sync_worksite_binding_worksiteServerId` ON `sync_worksite_binding` (`worksiteServerId`)")
             }
         }
 
