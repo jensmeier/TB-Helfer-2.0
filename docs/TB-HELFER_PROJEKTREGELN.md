@@ -21,12 +21,17 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Vorhandene Suchlogik beachten: `app/src/main/java/de/tbhelfer/util/BahnhofSucheUtil.kt`.
 - Server-Admin soll dieselbe fachliche Datenbasis für Autofill verwenden.
 
-## 3. Firmen und Benutzer
+## 3. Firmen, Benutzer und Profil-Autofill
 - Baustellen-Zusammenarbeit ist strikt auf die eigene Firma begrenzt.
 - Nutzer verschiedener Firmen dürfen nicht derselben Baustellen-Teamstruktur zugeordnet werden.
-- Normaler Nutzer: Name Pflicht; E-Mail und Firma optional soweit bestehende Serverlogik dies erlaubt.
 - Ein Benutzer hat standardmäßig genau ein aktives Gerät.
 - Admin kann Gerät freigeben; danach ist eine neue Aktivierungskarte/Einmal-Schlüssel nötig.
+- Nach erfolgreicher Benutzer-/Geräteaktivierung soll die App vorhandene Stammdaten **vom Server automatisch übernehmen**, statt den Benutzer dieselben Daten nochmals eingeben zu lassen.
+- Vom Server kommen mindestens: Benutzername, E-Mail soweit hinterlegt, Firma, Zugriffsstatus und ggf. Ablaufdatum/Zugriffsrestzeit.
+- Firmenstammdaten werden zentral am Server gepflegt und für alle Benutzer derselben Firma bereitgestellt: Firmenname, Anschrift, Telefon, E-Mail und Firmenlogo.
+- Das Firmenlogo wird einmal serverseitig hinterlegt und von den Geräten derselben Firma automatisch geladen/gecached; nicht jeder Benutzer wählt sein eigenes Firmenlogo.
+- Die App darf für Supportzwecke eine **nicht geheime Support-/Gerätekennung** und einen nur maskierten Schlüsselhinweis anzeigen (z. B. letzte 4 Zeichen). Der vollständige Aktivierungs-/Geräteschlüssel wird in der normalen Profiloberfläche nicht offen angezeigt.
+- Ein Baustellen-Einladungs-QR verändert die Benutzer-/Firmenstammdaten nicht; er fügt nur die berechtigte Baustellen-/Team-Mitgliedschaft hinzu.
 
 ## 4. Baustellen-Teammodell und Einladungen
 - Der Admin verwaltet Benutzer, Firmen, Geräte und Server-Speicheroptionen, aber **nicht** die laufende Zuordnung der Mitarbeiter zu einzelnen Baustellen.
@@ -36,17 +41,22 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Ein Benutzer derselben Firma, der **keine Einladung zu dieser Baustelle angenommen hat**, erhält keine Baustellen-Zusammenarbeitsdaten dieser Baustelle.
 - QR-/Link-Einladungen enthalten keine Benutzer-Keys oder Passwörter, sondern kurzlebige bzw. widerrufbare Einladungstokens.
 - Die bisherige Bezeichnung A/B/C/D ist nur ein technisches Denkmodell und soll **nicht als sichtbare Benutzerbezeichnung** verwendet werden.
-- In der Oberfläche wird das Team über den verantwortlichen TB dargestellt, z. B. `TB Jens Zinkel`, `TB Max Müller`; optional kann zusätzlich ein verständlicher Bereichsname wie `Gleis 1–4` oder `Bereich Ost` angezeigt werden.
-- Intern bleiben Teams durch stabile IDs getrennt; die sichtbare Bezeichnung darf geändert werden, ohne BTB- oder Sync-Zuordnungen zu verändern.
+- In der Oberfläche heißt der Abschnitt **`Verantwortliche TBs`** und listet die echten Namen, z. B. `Jens Zinkel`, `Max Müller`.
+- Bei jedem verantwortlichen TB gibt es die Aktion **`Helfer einladen`**. Zusätzlich kann ein bereits beteiligter verantwortlicher TB **`Weiteren TB einladen`** verwenden.
+- Optional kann zusätzlich ein verständlicher Bereichsname wie `Gleis 1–4` oder `Bereich Ost` angezeigt werden.
+- Intern bleiben Teams durch stabile IDs getrennt; sichtbare Namen/Bereichsbezeichnungen dürfen geändert werden, ohne BTB- oder Sync-Zuordnungen zu verändern.
 
-## 5. BTB-Regel
+## 5. BTB-Regel und sichtbare Bezeichnung
 - BTB ist NICHT baustellenweit gemeinsam.
 - Jeder verantwortliche TB besitzt mit seinen Hilfsnutzern einen eigenen gemeinsamen BTB-Bereich.
-- `TB Jens Zinkel` + seine Hilfsnutzer sehen und bearbeiten denselben BTB dieses TB-Teams.
-- `TB Max Müller` + seine Hilfsnutzer sehen und bearbeiten ihren eigenen BTB.
+- `Jens Zinkel` + seine Hilfsnutzer sehen und bearbeiten denselben BTB dieses TB-Teams.
+- `Max Müller` + seine Hilfsnutzer sehen und bearbeiten ihren eigenen BTB.
 - Einträge eines Hilfsnutzers werden zum BTB seines verantwortlichen TB synchronisiert.
 - Hilfsnutzer desselben TB-Teams sehen gegenseitig die BTB-Einträge dieses Teams.
 - BTB-Einträge werden nicht automatisch in die BTBs anderer verantwortlicher TBs derselben Baustelle übernommen.
+- Die sichtbare/Export-Bezeichnung soll den verantwortlichen TB und das Datum enthalten, z. B. `BTB_Jens Zinkel_2026.06.05`.
+- Gibt es für denselben verantwortlichen TB am selben Datum mehrere BTBs/Teile, wird eine laufende Endung verwendet, z. B. `BTB_Jens Zinkel_2026.06.05-2`, `...-3`, `...-4`.
+- Die fachliche Zuordnung erfolgt intern immer über stabile IDs; der menschenlesbare BTB-Name ist nur Anzeige/Exportname und nicht der technische Primärschlüssel.
 
 ## 6. Mängel und Abnahmen
 - Mängel und Abnahmen sind **nur innerhalb der konkreten Baustelle** gemeinsam.
