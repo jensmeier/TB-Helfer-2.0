@@ -188,7 +188,9 @@ Direkt aus dem laufenden API-Container erfolgreich geprüft:
 
 ## Android-Stand
 - Android `versionCode 200018` liegt im Draft-Branch.
-- 200018 wurde vor den letzten Härtungen lokal erfolgreich kompiliert, als Update installiert und gegen API 0.6.0 auf Grundfunktionen geprüft.
+- der aktuelle Branch-Stand `a641c3d` wurde am 2026-09-09 lokal in Android Studio als Debug-APK neu gebaut; Build endete mit `BUILD SUCCESSFUL`.
+- dieselbe aktuelle 200018-APK wurde anschließend auf **beiden Test-Handys als Update** installiert; vorhandene lokale Baustellen-/Vermessungsdaten blieben erhalten.
+- auf beiden Handys startet die App fehlerfrei und der Zugriff auf Server 0.7.0 funktioniert.
 - separate Room-Datenbank `tbhelfer-sync.db`; bestehende Baustellen-/Vermessungsdatenbank bleibt unangetastet.
 - Room-Migrationspfad 1 -> 2 -> 3 vorhanden.
 - Offline-Katalog, selektiver Download, Upload-Queue, Basisversion, 409, Tombstones und Hintergrund-Sync vorbereitet.
@@ -199,7 +201,7 @@ Direkt aus dem laufenden API-Container erfolgreich geprüft:
 - manueller und Hintergrund-Sync übertragen Attachments.
 - Benachrichtigungen pro Gerät: `Text + Ton` / `nur Ton` / `aus`.
 
-Die nach dem letzten lokalen APK-Build hinzugekommenen Android-Härtungen müssen vor dem Zwei-Geräte-Ende-zu-Ende-Test erneut lokal gebaut/installiert werden.
+Der aktuelle Android-Build ist damit auf beiden Testgeräten bereit; als Nächstes folgt die serverseitige Baustellen-/Gruppenfreigabe und der echte Zwei-Geräte-Ende-zu-Ende-Test.
 
 ## Verbindliches Team-/Rechtemodell
 - Baustellen-Teams ausschließlich innerhalb derselben Firma.
@@ -211,10 +213,9 @@ Die nach dem letzten lokalen APK-Build hinzugekommenen Android-Härtungen müsse
 - endgültige Status bleiben endgültig.
 
 ## Nächste sichere Schritte
-Server 0.7, Schema 9 und Cloudflare sind produktiv bestätigt. Noch offen:
-1. Android 200018 mit den letzten Härtungen erneut lokal bauen/installieren.
-2. echte Server-Baustelle und TB-Gruppen für die Testnutzer freigeben.
-3. echten Zwei-Geräte-Ende-zu-Ende-Test durchführen:
+Server 0.7, Schema 9, Cloudflare und der aktuelle Android-200018-Build auf beiden Testgeräten sind bestätigt. Noch offen:
+1. echte Server-Baustelle und TB-Gruppen für die beiden Testnutzer freigeben.
+2. echten Zwei-Geräte-Ende-zu-Ende-Test durchführen:
    - Firmenbindung
    - TB-Gruppen A/B-Trennung
    - BTB nur innerhalb der eigenen TB-Gruppe
@@ -224,7 +225,7 @@ Server 0.7, Schema 9 und Cloudflare sind produktiv bestätigt. Noch offen:
    - Tombstones
    - Netzabbruch/Wiederaufnahme
    - Benachrichtigungen
-4. Draft-PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
+3. Draft-PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
 
 ## Bahnhofsdaten – nicht neu erfinden
 Vorhandene Datenbasis:
