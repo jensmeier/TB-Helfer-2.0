@@ -47,6 +47,9 @@ import kotlin.math.roundToInt
  * - mehrere Fotos je Mangel möglich
  * - Fotoarten: Mangel / In Arbeit / Erledigt
  * - Button heißt "Foto hinzufügen" statt "Nachweisfoto"
+ *
+ * Baustellen-Sync: Server-Mängel ohne bereits vorhandenes lokales Foto/BTB-Element werden aus
+ * [SyncMangelSpeicher] in dieselbe Liste eingeblendet. Gleiche Keys werden niemals doppelt gezeigt.
  */
 class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
 
@@ -56,6 +59,7 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
     private var hauptKnotenId: Long = -1L
     private var baustelleName: String = ""
     private var aktuelleItems: List<MaengellisteExport.MangelItem> = emptyList()
+    private var syncUrheber: Map<String, String> = emptyMap()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -73,8 +77,36 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         val container = root.findViewById<LinearLayout>(R.id.containerMaengel)
         container.removeAllViews()
         lifecycleScope.launch {
-            val items = withContext(Dispatchers.IO) { MaengellisteExport.ladeItems(requireContext().applicationContext, altBaustelleId, baustelleName) }
+            val ctx = requireContext().applicationContext
+            val (items, urheber) = withContext(Dispatchers.IO) {
+                val lokal = MaengellisteExport.ladeItems(ctx, altBaustelleId, baustelleName)
+                val lokaleKeys = lokal.mapTo(hashSetOf()) { it.key }
+                val server = SyncMangelSpeicher.alle(ctx, altBaustelleId)
+                val serverNur = server
+                    .filter { it.mangelKey !in lokaleKeys }
+                    .map { s ->
+                        MaengellisteExport.MangelItem(
+                            key = s.mangelKey,
+                            datumIso = s.datumIso,
+                            zeit = s.zeit,
+                            baustelle = baustelleName,
+                            bereich = s.bereich,
+                            km = s.km,
+                            firma = s.firma,
+                            beschreibung = s.beschreibung,
+                            gps = s.gps,
+                            fotos = emptyList(),
+                            btbBildNr = s.btbBildNr
+                        )
+                    }
+                val kombiniert = (lokal + serverNur)
+                    .distinctBy { it.key }
+                    .sortedWith(compareBy<MaengellisteExport.MangelItem> { it.datumIso }.thenBy { it.zeit }.thenBy { it.beschreibung })
+                val by = server.mapNotNull { s -> s.changedByName?.takeIf { it.isNotBlank() }?.let { s.mangelKey to it } }.toMap()
+                kombiniert to by
+            }
             aktuelleItems = items
+            syncUrheber = urheber
             if (items.isEmpty()) {
                 container.addView(textView("Keine Mängel vorhanden.", 16f, secondaryTextColor(), false))
                 return@launch
@@ -103,6 +135,7 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         inner.addView(textView("Mangel ${nr.toString().padStart(3, '0')} · $label", 17f, Color.BLACK, true))
         inner.addView(textView("${datumDe(item.datumIso)} · ${item.zeit} · ${item.bereich}", 13f, Color.DKGRAY, false))
         inner.addView(textView("Firma: ${item.firma}   KM: ${item.km}", 13f, Color.DKGRAY, false))
+        syncUrheber[item.key]?.let { inner.addView(textView("Synchronisiert von: $it", 12f, Color.DKGRAY, false)) }
         inner.addView(textView(item.beschreibung, 15f, Color.BLACK, false))
         val countLine = "Fotos: Mangel ${MaengellisteExport.countArt(item, MangelStatusSpeicher.FotoArt.MANGEL)} · in Arbeit ${MaengellisteExport.countArt(item, MangelStatusSpeicher.FotoArt.IN_ARBEIT)} · erledigt ${MaengellisteExport.countArt(item, MangelStatusSpeicher.FotoArt.ERLEDIGT)}"
         inner.addView(textView(countLine, 13f, Color.DKGRAY, false))
