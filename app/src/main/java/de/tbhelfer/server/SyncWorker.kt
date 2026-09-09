@@ -9,6 +9,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.OfflineSyncRepository
 import java.util.concurrent.TimeUnit
@@ -67,8 +68,8 @@ class SyncWorker(
                 val localBridge = ServiceLocator.collabLocalBridge
                 val notifications = mutableListOf<CollabBenachrichtigungen.Ereignis>()
 
-                // 1) Zuerst Serverkontext + fremde Änderungen holen. Damit kennen wir auch die
-                //    gültige TB-Gruppe und Bereichsberechtigung für die lokale Queue.
+                // 1) Serverkontext + fremde Änderungen holen. Damit kennen wir die gültige
+                //    TB-Gruppe und Bereichsberechtigung und laden bereits vorhandene Attachments.
                 when (val first = collabRepository.synchronizeAll(token)) {
                     CollabSyncRepository.FullSyncResult.SessionInvalid -> {
                         tokenStore.clear()
@@ -78,17 +79,17 @@ class SyncWorker(
                     is CollabSyncRepository.FullSyncResult.Success -> notifications += first.summary.notifications
                 }
 
-                // 2) Eingehende BTB-/Abnahme-Stände in die bestehenden Fachspeicher spiegeln.
-                //    Ein final erledigter Mangel/Abnahme wird dabei nicht wieder geöffnet.
+                // 2) Eingehende BTB-/Mängel-/Abnahme-Stände und heruntergeladene Bilder in die
+                //    bestehenden Fachspeicher spiegeln. Erledigte/finale Vorgänge bleiben final.
                 runCatching { localBridge.applyServerStateToLocal() }
                     .getOrElse { return Result.retry() }
 
-                // 3) Lokale Änderungen in die idempotente Upload-Queue übernehmen.
+                // 3) Lokale Text-/Statusänderungen in die idempotente Upload-Queue übernehmen.
                 val exported = runCatching { localBridge.exportLocalChanges() }
                     .getOrElse { return Result.retry() }
 
-                // 4) Nur wenn wirklich neue/aktualisierte lokale Daten vorgemerkt wurden,
-                //    noch einmal hochladen und anschließend den bestätigten Serverstand holen.
+                // 4) Neue Entities müssen zuerst ihre feste Server-UUID erhalten, bevor Bilder
+                //    an DEFECT/ACCEPTANCE angehängt werden können.
                 if (exported.queuedOrUpdated > 0) {
                     when (val second = collabRepository.synchronizeAll(token)) {
                         CollabSyncRepository.FullSyncResult.SessionInvalid -> {
@@ -97,6 +98,35 @@ class SyncWorker(
                         }
                         is CollabSyncRepository.FullSyncResult.Error -> return Result.retry()
                         is CollabSyncRepository.FullSyncResult.Success -> notifications += second.summary.notifications
+                    }
+                    runCatching { localBridge.applyServerStateToLocal() }
+                        .getOrElse { return Result.retry() }
+                }
+
+                // 5) Bilder/Abnahme-Anlagen bei JEDEM Lauf versuchen. Das ist absichtlich nicht
+                //    an queuedOrUpdated gekoppelt: Ein nach Netzabbruch fehlgeschlagenes Bild muss
+                //    beim nächsten Hintergrundlauf erneut versucht werden können.
+                val attachmentUpload = when (val result = localBridge.uploadLocalAttachments(token)) {
+                    CollabLocalBridge.AttachmentUploadResult.SessionInvalid -> {
+                        tokenStore.clear()
+                        return Result.success()
+                    }
+                    CollabLocalBridge.AttachmentUploadResult.Unsupported -> null
+                    is CollabLocalBridge.AttachmentUploadResult.Error -> return Result.retry()
+                    is CollabLocalBridge.AttachmentUploadResult.Success -> result.summary
+                }
+
+                // 6) Nach neuen Uploads den ATTACHMENT-Change einmal bestätigen. Das eigene Gerät
+                //    lädt seine Datei nicht erneut, weil Repository + Bridge die Server-ID bereits
+                //    mit dem lokalen Bild verknüpft haben.
+                if ((attachmentUpload?.uploaded ?: 0) > 0) {
+                    when (val third = collabRepository.synchronizeAll(token)) {
+                        CollabSyncRepository.FullSyncResult.SessionInvalid -> {
+                            tokenStore.clear()
+                            return Result.success()
+                        }
+                        is CollabSyncRepository.FullSyncResult.Error -> return Result.retry()
+                        is CollabSyncRepository.FullSyncResult.Success -> notifications += third.summary.notifications
                     }
                     runCatching { localBridge.applyServerStateToLocal() }
                         .getOrElse { return Result.retry() }
