@@ -19,6 +19,18 @@ Thumbs.db
 # Kotlin cache
 .kotlin/
 
+# Server/local secrets – niemals ins Repository
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+cloudflared.env
+**/cloudflared.env
+*.pem
+*.p12
+*.pfx
+
 # Signing / private keys
 *.jks
 *.keystore
