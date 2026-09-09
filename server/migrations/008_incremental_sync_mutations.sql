@@ -1,10 +1,24 @@
 BEGIN;
 
--- TB-Helfer 0.6.1
--- Versionsnummern fuer Katalogobjekte, Abschnittshistorie und idempotente Android-Mutationen.
+-- TB-Helfer 0.7.0 / Schema 8
+-- Inkrementeller Katalog-Sync, Versionsnummern, ACK-Cursor und idempotente Android-Mutationen.
 
 ALTER TABLE tb.routes ADD COLUMN IF NOT EXISTS current_version integer NOT NULL DEFAULT 1;
 ALTER TABLE tb.stations ADD COLUMN IF NOT EXISTS current_version integer NOT NULL DEFAULT 1;
+
+-- Das produktive Schema 7 besitzt bereits `device_sync_state`, dessen vollständiger historischer
+-- Tabellenaufbau nicht Teil des gesicherten 0.6.0-Quellarchivs ist. Diese bestehende Tabelle wird
+-- absichtlich NICHT verändert. Der neue inkrementelle Cursor erhält eine eigene, eindeutig
+-- definierte Tabelle und kann dadurch ohne Annahmen über alte NOT-NULL-/PK-Spalten migriert werden.
+CREATE TABLE IF NOT EXISTS tb.sync_device_state (
+  device_id uuid PRIMARY KEY REFERENCES tb.devices(id) ON DELETE CASCADE,
+  last_sequence_no bigint NOT NULL DEFAULT 0 CHECK (last_sequence_no >= 0),
+  last_sync_at timestamptz
+);
+
+-- Gerätebezug für Änderungen/Versionen nachrüsten, ohne vorhandene Admin-Historie zu verändern.
+ALTER TABLE tb.change_log ADD COLUMN IF NOT EXISTS changed_by_device uuid REFERENCES tb.devices(id) ON DELETE SET NULL;
+ALTER TABLE tb.object_versions ADD COLUMN IF NOT EXISTS changed_by_device uuid REFERENCES tb.devices(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS tb.route_section_versions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -23,7 +37,7 @@ CREATE INDEX IF NOT EXISTS ix_tb_route_section_versions_section
 
 CREATE TABLE IF NOT EXISTS tb.sync_mutation_receipts (
   device_id uuid NOT NULL REFERENCES tb.devices(id) ON DELETE CASCADE,
-  client_change_id text NOT NULL,
+  client_change_id text NOT NULL CHECK (btrim(client_change_id)<>''),
   http_status integer NOT NULL CHECK (http_status BETWEEN 100 AND 599),
   response jsonb NOT NULL CHECK (jsonb_typeof(response)='object'),
   created_at timestamptz NOT NULL DEFAULT now(),
