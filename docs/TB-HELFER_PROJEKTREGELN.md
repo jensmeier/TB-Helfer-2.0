@@ -28,37 +28,43 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Ein Benutzer hat standardmäßig genau ein aktives Gerät.
 - Admin kann Gerät freigeben; danach ist eine neue Aktivierungskarte/Einmal-Schlüssel nötig.
 
-## 4. Baustellen-Teammodell
-Eine Baustelle kann mehrere verantwortliche TB-Gruppen haben: A, B, C, D, ... innerhalb derselben Firma.
-
-Beispiel:
-- TB A mit Hilfsnutzern 1 und 2
-- TB B mit Hilfsnutzern 4 und 5
-- TB C mit eigenen Hilfsnutzern usw.
-
-Hilfsnutzer sehen grundsätzlich nur ihren zugewiesenen Arbeitsbereich plus die für sie freigegebenen gemeinsamen Baustellendaten.
+## 4. Baustellen-Teammodell und Einladungen
+- Der Admin verwaltet Benutzer, Firmen, Geräte und Server-Speicheroptionen, aber **nicht** die laufende Zuordnung der Mitarbeiter zu einzelnen Baustellen.
+- Eine Baustelle wird in der App durch einen verantwortlichen TB angelegt bzw. mit dem Server verknüpft. Dieser Benutzer ist der erste verantwortliche TB dieser Baustelle.
+- Weitere verantwortliche TBs treten der konkreten Baustelle über eine vom bereits beteiligten TB erzeugte Einladung bei (QR-Code/Link/Code). Der Server prüft dabei automatisch aktive Benutzer/Geräte und dieselbe Firma.
+- Hilfsnutzer werden ebenfalls per Einladung aufgenommen, jedoch gezielt in das Team ihres verantwortlichen TB und mit ihrem freigegebenen Arbeitsbereich.
+- Ein Benutzer derselben Firma, der **keine Einladung zu dieser Baustelle angenommen hat**, erhält keine Baustellen-Zusammenarbeitsdaten dieser Baustelle.
+- QR-/Link-Einladungen enthalten keine Benutzer-Keys oder Passwörter, sondern kurzlebige bzw. widerrufbare Einladungstokens.
+- Die bisherige Bezeichnung A/B/C/D ist nur ein technisches Denkmodell und soll **nicht als sichtbare Benutzerbezeichnung** verwendet werden.
+- In der Oberfläche wird das Team über den verantwortlichen TB dargestellt, z. B. `TB Jens Zinkel`, `TB Max Müller`; optional kann zusätzlich ein verständlicher Bereichsname wie `Gleis 1–4` oder `Bereich Ost` angezeigt werden.
+- Intern bleiben Teams durch stabile IDs getrennt; die sichtbare Bezeichnung darf geändert werden, ohne BTB- oder Sync-Zuordnungen zu verändern.
 
 ## 5. BTB-Regel
 - BTB ist NICHT baustellenweit gemeinsam.
-- Jeder verantwortliche TB besitzt seinen eigenen BTB.
-- A + Nutzer 1 + Nutzer 2 sehen und bearbeiten denselben BTB von A.
-- B + seine Hilfsnutzer sehen und bearbeiten den BTB von B.
+- Jeder verantwortliche TB besitzt mit seinen Hilfsnutzern einen eigenen gemeinsamen BTB-Bereich.
+- `TB Jens Zinkel` + seine Hilfsnutzer sehen und bearbeiten denselben BTB dieses TB-Teams.
+- `TB Max Müller` + seine Hilfsnutzer sehen und bearbeiten ihren eigenen BTB.
 - Einträge eines Hilfsnutzers werden zum BTB seines verantwortlichen TB synchronisiert.
-- Hilfsnutzer derselben TB-Gruppe sehen gegenseitig die BTB-Einträge der Gruppe.
-- BTB von A wird nicht automatisch in den BTB von B/C/D übernommen.
+- Hilfsnutzer desselben TB-Teams sehen gegenseitig die BTB-Einträge dieses Teams.
+- BTB-Einträge werden nicht automatisch in die BTBs anderer verantwortlicher TBs derselben Baustelle übernommen.
 
 ## 6. Mängel und Abnahmen
-- Mängel und Abnahmen sind baustellenweit zwischen A <-> B <-> C <-> D synchronisiert.
-- Auch zugeordnete Hilfsnutzer dürfen die baustellenweiten Mängel/Abnahmen sehen und bearbeiten, jedoch nur innerhalb ihrer Berechtigung/ihres Arbeitsbereichs.
-- Bilder zu Mängeln/Abnahmen werden mit synchronisiert.
-- Status `abgestellt/erledigt` ist endgültig erledigt; keine zusätzliche verpflichtende Abnahme durch A/B/C/D.
-- Änderungen müssen möglichst schnell auf den anderen berechtigten Geräten erscheinen.
+- Mängel und Abnahmen sind **nur innerhalb der konkreten Baustelle** gemeinsam.
+- Sie werden ausschließlich an Benutzer synchronisiert, die dieser Baustelle über eine gültige Baustellen-/Team-Einladung beigetreten sind oder die Baustelle selbst angelegt haben.
+- Andere Benutzer derselben Firma und erst recht Benutzer anderer Firmen erhalten diese Mängel/Abnahmen nicht.
+- Verantwortliche TBs dieser Baustelle sehen die baustellenweiten Mängel/Abnahmen.
+- Zugeordnete Hilfsnutzer sehen und bearbeiten Mängel/Abnahmen nur innerhalb ihrer Berechtigung bzw. ihres freigegebenen Arbeitsbereichs.
+- Bilder zu Mängeln/Abnahmen werden mit synchronisiert, ebenfalls nur an berechtigte Mitglieder dieser Baustelle.
+- Status `abgestellt/erledigt` ist endgültig erledigt; keine zusätzliche verpflichtende Abnahme durch andere verantwortliche TBs.
+- Änderungen müssen möglichst schnell auf den anderen berechtigten Geräten derselben Baustelle erscheinen.
 
 ## 7. Benachrichtigungen in der App
 Für neue synchronisierte Mängel, Abnahmen und relevante BTB-Einträge gibt es pro Gerät eine Einstellung:
 - Text + Ton
 - nur Ton
 - aus
+
+Benachrichtigungen werden nur für Daten aus Baustellen erzeugt, denen der Benutzer tatsächlich beigetreten ist und für die er berechtigt ist.
 
 Beispiel Text: `Neuer Mangel von Nutzer X` bzw. `Neue Abnahme von Nutzer X`.
 
@@ -71,6 +77,8 @@ Beim Benutzer-Anlegen/-Bearbeiten erhält der Admin Speicher-Häkchen, mindesten
 - Alles dauerhaft speichern
 
 Wenn dauerhaftes Speichern deaktiviert ist, darf der Server Daten trotzdem temporär für die Synchronisation zwischenspeichern und nach erfolgreicher Verteilung/Frist bereinigen.
+
+Die Speicheroptionen sind **keine Baustellen-Arbeitsfreigabe**. Mitarbeiter dürfen für ihre berechtigten Baustellen arbeiten und synchronisieren, ohne dass der Admin jede Baustelle manuell freischalten muss.
 
 ## 9. Offline- und Mehrgeräte-Sync
 - Nur benötigte Strecken-/Bahnhofs-/Abschnittsdaten werden auf das Gerät geladen.
