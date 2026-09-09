@@ -318,13 +318,16 @@ class CollabLocalBridge(
                 payload.put("baustelleName", localName)
                 payload.put("fotos", JSONArray())
                 payload.put("pdfAuswahl", JSONObject())
+                val canonicalPayload = payload.toString()
 
+                val existingMediaSource = findBtbJson(localBaustelleId, localName, datum, schicht)
+                val localPayload = mergeLocalBtbMedia(existingMediaSource, payload)
                 val target = File(
                     BautagebuchSpeicher.ordner(appContext, localBaustelleId, localName, datum),
                     if (schicht == SchichtTyp.NACHT) "bautagebuch_nacht.json" else "bautagebuch_tag.json"
                 )
-                if (writeIfDifferent(target, payload.toString(2))) btbWritten++
-                rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(entity.status, payload.toString()))
+                if (writeIfDifferent(target, localPayload.toString(2))) btbWritten++
+                rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(entity.status, canonicalPayload))
             }
 
             val defectItems = collabRepository.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_DEFECT)
@@ -624,6 +627,28 @@ class CollabLocalBridge(
         return payload.toString()
     }
 
+    /**
+     * Gemeinsame BTB-Fachdaten kommen vom Server, Foto-IDs und PDF-Auswahl bleiben dagegen
+     * gerätelokal. Beim Import werden deshalb ausschließlich diese beiden lokalen Felder aus dem
+     * vorhandenen Tag-/Nacht-BTB (inkl. Legacy-Datei) zurückgemischt. Der Sync-Hash verwendet
+     * weiterhin den kanonischen Payload ohne lokale Medien und erzeugt dadurch keinen Sync-Echo.
+     */
+    private fun mergeLocalBtbMedia(source: File?, canonical: JSONObject): JSONObject {
+        val merged = JSONObject(canonical.toString())
+        val existing = source
+            ?.takeIf { it.exists() && it.isFile }
+            ?.let { file -> runCatching { JSONObject(file.readText(Charsets.UTF_8)) }.getOrNull() }
+            ?: return merged
+
+        existing.optJSONArray("fotos")?.let { localFotos ->
+            merged.put("fotos", JSONArray(localFotos.toString()))
+        }
+        existing.optJSONObject("pdfAuswahl")?.let { localSelection ->
+            merged.put("pdfAuswahl", JSONObject(localSelection.toString()))
+        }
+        return merged
+    }
+
     private fun acceptancePayload(a: AbnahmeSpeicher.Abnahme, localName: String): String = JSONObject()
         .put("id", a.id)
         .put("nummer", a.nummer)
@@ -737,14 +762,22 @@ class CollabLocalBridge(
         return 0.0 to 0.0
     }
 
-    private fun parseKmDisplay(raw: String): Double? = raw
-        .trim()
-        .removePrefix("KM")
-        .trim()
-        .substringBefore('–')
-        .substringBefore('-')
-        .replace(',', '.')
-        .toDoubleOrNull()
+    private fun parseKmDisplay(raw: String): Double? {
+        val text = raw
+            .trim()
+            .removePrefix("KM")
+            .trim()
+            .substringBefore('–')
+            .substringBefore('-')
+            .trim()
+        val plus = Regex("(\\d+)\\+(\\d+(?:[.,]\\d+)?)").find(text)
+        if (plus != null) {
+            val km = plus.groupValues[1].toDoubleOrNull()
+            val meter = plus.groupValues[2].replace(',', '.').toDoubleOrNull()
+            if (km != null && meter != null) return km + meter / 1000.0
+        }
+        return text.replace(',', '.').toDoubleOrNull()
+    }
 
     private fun defectEpoch(payload: JSONObject): Long {
         val datum = payload.optString("datumIso", "")
