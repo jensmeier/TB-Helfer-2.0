@@ -63,19 +63,49 @@ class SyncWorker(
                     return Result.success()
                 }
 
-                when (val collabResult = ServiceLocator.collabSyncRepository.synchronizeAll(token)) {
+                val collabRepository = ServiceLocator.collabSyncRepository
+                val localBridge = ServiceLocator.collabLocalBridge
+                val notifications = mutableListOf<CollabBenachrichtigungen.Ereignis>()
+
+                // 1) Zuerst Serverkontext + fremde Änderungen holen. Damit kennen wir auch die
+                //    gültige TB-Gruppe und Bereichsberechtigung für die lokale Queue.
+                when (val first = collabRepository.synchronizeAll(token)) {
                     CollabSyncRepository.FullSyncResult.SessionInvalid -> {
                         tokenStore.clear()
-                        Result.success()
+                        return Result.success()
                     }
-                    is CollabSyncRepository.FullSyncResult.Error -> Result.retry()
-                    is CollabSyncRepository.FullSyncResult.Success -> {
-                        collabResult.summary.notifications.forEach { event ->
-                            CollabBenachrichtigungen.anzeigen(applicationContext, event)
-                        }
-                        Result.success()
-                    }
+                    is CollabSyncRepository.FullSyncResult.Error -> return Result.retry()
+                    is CollabSyncRepository.FullSyncResult.Success -> notifications += first.summary.notifications
                 }
+
+                // 2) Eingehende BTB-/Abnahme-Stände in die bestehenden Fachspeicher spiegeln.
+                //    Ein final erledigter Mangel/Abnahme wird dabei nicht wieder geöffnet.
+                runCatching { localBridge.applyServerStateToLocal() }
+                    .getOrElse { return Result.retry() }
+
+                // 3) Lokale Änderungen in die idempotente Upload-Queue übernehmen.
+                val exported = runCatching { localBridge.exportLocalChanges() }
+                    .getOrElse { return Result.retry() }
+
+                // 4) Nur wenn wirklich neue/aktualisierte lokale Daten vorgemerkt wurden,
+                //    noch einmal hochladen und anschließend den bestätigten Serverstand holen.
+                if (exported.queuedOrUpdated > 0) {
+                    when (val second = collabRepository.synchronizeAll(token)) {
+                        CollabSyncRepository.FullSyncResult.SessionInvalid -> {
+                            tokenStore.clear()
+                            return Result.success()
+                        }
+                        is CollabSyncRepository.FullSyncResult.Error -> return Result.retry()
+                        is CollabSyncRepository.FullSyncResult.Success -> notifications += second.summary.notifications
+                    }
+                    runCatching { localBridge.applyServerStateToLocal() }
+                        .getOrElse { return Result.retry() }
+                }
+
+                notifications
+                    .distinctBy { "${it.entityType}|${it.changedByName.orEmpty()}" }
+                    .forEach { event -> CollabBenachrichtigungen.anzeigen(applicationContext, event) }
+                Result.success()
             }
         }
     }
