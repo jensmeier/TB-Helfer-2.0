@@ -21,4 +21,23 @@
     <string name="collab_binding_failed">Baustelle konnte nicht verknüpft werden.</string>
     <string name="collab_role_tb">verantwortlicher TB</string>
     <string name="collab_role_helper">Hilfsnutzer</string>
+
+    <string name="collab_team_title">Verantwortliche TBs / Helfer einladen</string>
+    <string name="collab_team_intro">Zeigt die TB-Gruppen dieser Baustelle. Helfer arbeiten im BTB ihres verantwortlichen TB. Verantwortliche TBs können Helfer für die eigene Gruppe oder einen weiteren verantwortlichen TB einladen.</string>
+    <string name="collab_team_loading">Teamdaten werden vom Server geladen …</string>
+    <string name="collab_team_unavailable">Teamverwaltung ist auf diesem Serverstand noch nicht verfügbar.</string>
+    <string name="collab_redeem_invitation">Einladung einlösen</string>
+    <string name="collab_redeem_title">Einladungscode eingeben</string>
+    <string name="collab_redeem_hint">TBI-…</string>
+    <string name="collab_redeem_success">Einladung wurde eingelöst. Die Baustellenzuordnung wird synchronisiert.</string>
+    <string name="collab_invite_helper">Helfer einladen</string>
+    <string name="collab_invite_lead">Weiteren TB einladen</string>
+    <string name="collab_invite_creating">Einladung wird erstellt …</string>
+    <string name="collab_invite_share_title">TB-Helfer Einladung</string>
+    <string name="collab_invite_share_text">TB-Helfer Einladung für %1$s\nCode: %2$s\n%3$s</string>
+    <string name="collab_invite_error">Einladung fehlgeschlagen: %1$s</string>
+    <string name="collab_team_helpers_none">Keine Helfer zugeordnet</string>
+    <string name="collab_team_tb_prefix">Verantwortlicher TB: %1$s</string>
+    <string name="collab_team_helpers_prefix">Helfer: %1$s</string>
+    <string name="collab_company_profile_error">Firmenprofil konnte nicht aktualisiert werden: %1$s</string>
 </resources>
