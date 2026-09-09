@@ -1,10 +1,14 @@
 package de.tbhelfer.ui.sync
 
 import android.content.Intent
+import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
+import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -12,9 +16,13 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.google.android.gms.mlkit.codescanner.GmsBarcodeScannerOptions
+import com.google.android.gms.mlkit.codescanner.GmsBarcodeScanning
 import com.google.android.material.button.MaterialButton
+import com.google.mlkit.vision.barcode.common.Barcode
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.datenbank.BtbTeamMediaSync
 import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.SyncWorksiteContextEntity
@@ -22,20 +30,21 @@ import de.tbhelfer.datenbank.WorksiteBindingRepository
 import de.tbhelfer.server.CollabBenachrichtigungen
 import de.tbhelfer.server.CompanyProfileSync
 import de.tbhelfer.server.SecureTokenStore
+import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.server.TeamManagementApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 /**
- * Gerätespezifische Zuordnung zwischen den bereits vorhandenen lokalen Hauptbaustellen und
- * den Server-Baustellen, denen der aktivierte Nutzer zugeordnet ist.
+ * Baustellen-Sync und Self-Service-Teamverwaltung.
  *
- * Es gibt bewusst KEIN automatisches Matching über den Baustellennamen. Die Verknüpfung wird
- * einmal eindeutig ausgewählt und bleibt danach in der separaten Sync-Datenbank erhalten.
- *
- * Ab Schema 10 zeigt dieselbe Seite zusätzlich die verantwortlichen TB-Gruppen. Nur ein LEAD
- * darf Helfer in seine eigene Gruppe oder einen weiteren verantwortlichen TB einladen.
+ * - lokale Hauptbaustelle wird einmal bewusst mit der Server-Baustelle verknüpft
+ * - verantwortliche TBs und Helfer werden ohne tägliche Admin-Zuweisung verwaltet
+ * - Einladung funktioniert als QR, Link oder manueller TBI-Code
+ * - BTB bleibt strikt im eigenen verantwortlichen TB-Team; Mängel/Abnahmen bleiben baustellenweit
+ *   innerhalb der individuellen Bereichsfreigabe
  */
 class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
 
@@ -45,6 +54,7 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
     private lateinit var refresh: View
     private lateinit var teamContainer: LinearLayout
     private lateinit var redeemInvitation: View
+    private lateinit var scanInvitation: View
 
     private val collab get() = ServiceLocator.collabSyncRepository
     private val bridge get() = ServiceLocator.collabLocalBridge
@@ -59,10 +69,12 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
         refresh = view.findViewById(R.id.btnBaustellenSyncRefresh)
         teamContainer = view.findViewById(R.id.containerCollabTeams)
         redeemInvitation = view.findViewById(R.id.btnCollabRedeemInvitation)
+        scanInvitation = view.findViewById(R.id.btnCollabScanInvitation)
+
         refresh.setOnClickListener { synchronize() }
         redeemInvitation.setOnClickListener { showRedeemInvitationDialog() }
+        scanInvitation.setOnClickListener { scanInvitationQr() }
 
-        // Erst den lokal bekannten Stand anzeigen; danach kontrolliert mit dem Server abgleichen.
         renderCached()
         teamContainer.removeAllViews()
         teamContainer.addView(muted(getString(R.string.collab_team_loading)))
@@ -71,7 +83,9 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
 
     private fun renderCached() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val items = withContext(Dispatchers.IO) { runCatching { bindings.contextsWithBindings() }.getOrDefault(emptyList()) }
+            val items = withContext(Dispatchers.IO) {
+                runCatching { bindings.contextsWithBindings() }.getOrDefault(emptyList())
+            }
             if (!isAdded) return@launch
             render(items)
         }
@@ -149,6 +163,7 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
         var uploaded = 0
         var pending = 0
         var conflicts = 0
+        val btbMedia = BtbTeamMediaSync(requireContext().applicationContext)
 
         val first = when (val result = collab.synchronizeAll(token)) {
             CollabSyncRepository.FullSyncResult.SessionInvalid -> return SyncUiResult.SessionInvalid
@@ -164,6 +179,14 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
 
         runCatching { bridge.applyServerStateToLocal() }
             .getOrElse { return SyncUiResult.Error(it.message ?: "Serverdaten konnten lokal nicht übernommen werden.") }
+
+        val firstMedia = when (val result = btbMedia.synchronize(token)) {
+            BtbTeamMediaSync.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
+            BtbTeamMediaSync.Result.Unsupported -> null
+            is BtbTeamMediaSync.Result.Error -> return SyncUiResult.Error(result.message)
+            is BtbTeamMediaSync.Result.Success -> result.summary
+        }
+        uploaded += firstMedia?.uploaded ?: 0
 
         val exported = runCatching { bridge.exportLocalChanges() }
             .getOrElse { return SyncUiResult.Error(it.message ?: "Lokale Baustellendaten konnten nicht vorbereitet werden.") }
@@ -183,9 +206,15 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                 .getOrElse { return SyncUiResult.Error(it.message ?: "Bestätigte Serverdaten konnten lokal nicht übernommen werden.") }
         }
 
-        // Genau wie der Hintergrund-Sync muss auch ein manueller Sync Bilder und Abnahme-Anlagen
-        // sofort versuchen. Der Upload läuft bei jedem Durchlauf, damit ein zuvor unterbrochenes
-        // Bild nicht bis zum nächsten periodischen Worker warten muss.
+        // Ein neu angelegter BTB hat erst nach dem Text-Upload eine feste Server-UUID.
+        val secondMedia = when (val result = btbMedia.synchronize(token)) {
+            BtbTeamMediaSync.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
+            BtbTeamMediaSync.Result.Unsupported -> null
+            is BtbTeamMediaSync.Result.Error -> return SyncUiResult.Error(result.message)
+            is BtbTeamMediaSync.Result.Success -> result.summary
+        }
+        uploaded += secondMedia?.uploaded ?: 0
+
         val attachmentUpload = when (val result = bridge.uploadLocalAttachments(token)) {
             CollabLocalBridge.AttachmentUploadResult.SessionInvalid -> return SyncUiResult.SessionInvalid
             CollabLocalBridge.AttachmentUploadResult.Unsupported -> null
@@ -194,9 +223,9 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
         }
         uploaded += attachmentUpload?.uploaded ?: 0
 
-        // Neue Attachment-Changes unmittelbar wieder einlesen/ACKen. Das eigene Gerät lädt die
-        // Datei nicht doppelt, weil Repository + Bridge die Server-ID schon lokal verknüpft haben.
-        if ((attachmentUpload?.uploaded ?: 0) > 0) {
+        val anyMediaUploaded = (firstMedia?.uploaded ?: 0) + (secondMedia?.uploaded ?: 0) +
+            (attachmentUpload?.uploaded ?: 0) > 0
+        if (anyMediaUploaded) {
             val third = when (val result = collab.synchronizeAll(token)) {
                 CollabSyncRepository.FullSyncResult.SessionInvalid -> return SyncUiResult.SessionInvalid
                 is CollabSyncRepository.FullSyncResult.Error -> return SyncUiResult.Error(result.message)
@@ -209,6 +238,11 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
             notifications += third.notifications
             runCatching { bridge.applyServerStateToLocal() }
                 .getOrElse { return SyncUiResult.Error(it.message ?: "Bild-/Anlagendaten konnten lokal nicht bestätigt werden.") }
+            when (val result = btbMedia.synchronize(token)) {
+                BtbTeamMediaSync.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
+                is BtbTeamMediaSync.Result.Error -> return SyncUiResult.Error(result.message)
+                else -> Unit
+            }
         }
 
         return SyncUiResult.Success(
@@ -249,7 +283,10 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                 worksites.forEach { worksite ->
                     if (sessionInvalid) return@forEach
                     when (val result = teamApi.loadTeam(token, worksite.context.worksiteServerId)) {
-                        is TeamManagementApi.TeamResult.Success -> teams += result.team
+                        is TeamManagementApi.TeamResult.Success -> {
+                            teams += result.team
+                            TeamDisplayCache.remember(appContext, result.team)
+                        }
                         TeamManagementApi.TeamResult.Unsupported -> unsupported = true
                         TeamManagementApi.TeamResult.SessionInvalid -> sessionInvalid = true
                         is TeamManagementApi.TeamResult.Error -> errors += result.message
@@ -286,11 +323,7 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                 }
             }
             summary.companyProfileError?.let {
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.collab_company_profile_error, it),
-                    Toast.LENGTH_LONG
-                ).show()
+                Toast.makeText(requireContext(), getString(R.string.collab_company_profile_error, it), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -308,11 +341,11 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
             val title = server.name?.takeIf { it.isNotBlank() }
                 ?: server.designation?.takeIf { it.isNotBlank() }
                 ?: getString(R.string.collab_worksite_fallback)
-            val group = server.groupLabel?.takeIf { it.isNotBlank() } ?: "TB-Gruppe"
+            val responsible = server.leadNameSnapshot?.takeIf { it.isNotBlank() } ?: "TB"
             val role = roleLabel(server)
             val localText = local?.hauptbaustellenName?.let { getString(R.string.collab_bound_to, it) }
                 ?: getString(R.string.collab_not_bound)
-            val detail = "$group · $role\n$localText"
+            val detail = "$responsible · $role\n$localText"
             container.addView(itemView(title, detail) { chooseLocalWorksite(item) })
         }
     }
@@ -320,16 +353,7 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
     private fun renderTeams(teams: List<TeamManagementApi.TeamOverview>) {
         teamContainer.removeAllViews()
         teams.forEachIndexed { worksiteIndex, team ->
-            if (worksiteIndex > 0) {
-                teamContainer.addView(View(requireContext()).apply {
-                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
-                        topMargin = dp(12)
-                        bottomMargin = dp(12)
-                    }
-                    alpha = 0.18f
-                    setBackgroundColor(android.graphics.Color.GRAY)
-                })
-            }
+            if (worksiteIndex > 0) teamContainer.addView(separator())
 
             val worksiteTitle = team.worksiteName?.takeIf { it.isNotBlank() }
                 ?: team.worksiteDesignation?.takeIf { it.isNotBlank() }
@@ -349,13 +373,8 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                 val helpers = group.members
                     .filterNot { it.memberRole.equals("LEAD", ignoreCase = true) }
                     .mapNotNull { it.name?.trim()?.takeIf(String::isNotBlank) }
-                val helperText = if (helpers.isEmpty()) {
-                    getString(R.string.collab_team_helpers_none)
-                } else {
-                    helpers.joinToString(", ")
-                }
-                val isOwnGroup = group.groupId == team.currentGroupId
-                val ownMarker = if (isOwnGroup) " · eigene Gruppe" else ""
+                val helperText = if (helpers.isEmpty()) getString(R.string.collab_team_helpers_none) else helpers.joinToString(", ")
+                val ownMarker = if (group.groupId == team.currentGroupId) " · ${getString(R.string.collab_team_own)}" else ""
                 teamContainer.addView(
                     teamGroupView(
                         title = getString(R.string.collab_team_tb_prefix, lead) + ownMarker,
@@ -366,16 +385,106 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
 
             if (team.currentMemberRole.equals("LEAD", ignoreCase = true)) {
                 teamContainer.addView(actionButton(getString(R.string.collab_invite_helper)) {
-                    createInvitation(team, "HELPER")
+                    showHelperScopeDialog(team)
                 })
                 teamContainer.addView(actionButton(getString(R.string.collab_invite_lead)) {
-                    createInvitation(team, "LEAD")
+                    createInvitation(team, "LEAD", "{\"all\":true}")
                 })
             }
         }
     }
 
-    private fun createInvitation(team: TeamManagementApi.TeamOverview, invitationType: String) {
+    /** Helferbereich wird direkt beim Erzeugen der Einladung festgelegt. */
+    private fun showHelperScopeDialog(team: TeamManagementApi.TeamOverview) {
+        val wrapper = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(4), dp(20), 0)
+        }
+        val all = CheckBox(requireContext()).apply {
+            text = getString(R.string.collab_scope_all)
+            isChecked = true
+        }
+        val labels = EditText(requireContext()).apply {
+            hint = getString(R.string.collab_scope_labels_hint)
+            isEnabled = false
+        }
+        val kmFrom = EditText(requireContext()).apply {
+            hint = getString(R.string.collab_scope_km_from)
+            isEnabled = false
+        }
+        val kmTo = EditText(requireContext()).apply {
+            hint = getString(R.string.collab_scope_km_to)
+            isEnabled = false
+        }
+        all.setOnCheckedChangeListener { _, checked ->
+            labels.isEnabled = !checked
+            kmFrom.isEnabled = !checked
+            kmTo.isEnabled = !checked
+        }
+        wrapper.addView(all)
+        wrapper.addView(labels)
+        wrapper.addView(kmFrom)
+        wrapper.addView(kmTo)
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setTitle(R.string.collab_scope_title)
+            .setView(wrapper)
+            .setPositiveButton(R.string.collab_invite_create, null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val scope = if (all.isChecked) {
+                    JSONObject().put("all", true)
+                } else {
+                    buildHelperScope(labels.text?.toString().orEmpty(), kmFrom.text?.toString().orEmpty(), kmTo.text?.toString().orEmpty())
+                }
+                if (scope == null) {
+                    Toast.makeText(requireContext(), R.string.collab_scope_required, Toast.LENGTH_LONG).show()
+                } else {
+                    dialog.dismiss()
+                    createInvitation(team, "HELPER", scope.toString())
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun buildHelperScope(labelsText: String, kmFromText: String, kmToText: String): JSONObject? {
+        val labels = labelsText.split(',', ';', '|')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+        val from = parseKmM(kmFromText)
+        val to = parseKmM(kmToText)
+        if (labels.isEmpty() && from == null && to == null) return null
+        return JSONObject().apply {
+            put("all", false)
+            if (labels.isNotEmpty()) {
+                put("labels", org.json.JSONArray(labels))
+                put("label", labels.joinToString(", "))
+            }
+            if (from != null || to != null) {
+                val a = from ?: to!!
+                val b = to ?: from!!
+                put("km_from_m", minOf(a, b))
+                put("km_to_m", maxOf(a, b))
+            }
+        }
+    }
+
+    private fun parseKmM(raw: String): Double? {
+        val text = raw.trim().replace(" ", "").replace(',', '.')
+        if (text.isBlank()) return null
+        return if ('+' in text) {
+            val p = text.split('+', limit = 2)
+            val km = p.getOrNull(0)?.toDoubleOrNull() ?: return null
+            val meter = p.getOrNull(1)?.toDoubleOrNull() ?: return null
+            km * 1000.0 + meter
+        } else text.toDoubleOrNull()
+    }
+
+    private fun createInvitation(team: TeamManagementApi.TeamOverview, invitationType: String, areaScopeJson: String) {
         val token = SecureTokenStore(requireContext()).load()
         if (token.isNullOrBlank()) {
             Toast.makeText(requireContext(), R.string.collab_not_activated, Toast.LENGTH_LONG).show()
@@ -384,40 +493,70 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
         Toast.makeText(requireContext(), R.string.collab_invite_creating, Toast.LENGTH_SHORT).show()
         viewLifecycleOwner.lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                teamApi.createInvitation(
-                    token = token,
-                    worksiteId = team.worksiteId,
-                    invitationType = invitationType,
-                    areaScopeJson = team.currentAreaScopeJson
-                )
+                teamApi.createInvitation(token, team.worksiteId, invitationType, areaScopeJson)
             }
             if (!isAdded) return@launch
             when (result) {
-                is TeamManagementApi.InvitationResult.Success -> shareInvitation(team, result.invitation)
-                TeamManagementApi.InvitationResult.Unsupported ->
-                    Toast.makeText(requireContext(), R.string.collab_team_unavailable, Toast.LENGTH_LONG).show()
+                is TeamManagementApi.InvitationResult.Success -> showInvitationQr(team, result.invitation)
+                TeamManagementApi.InvitationResult.Unsupported -> Toast.makeText(requireContext(), R.string.collab_team_unavailable, Toast.LENGTH_LONG).show()
                 TeamManagementApi.InvitationResult.SessionInvalid -> {
                     SecureTokenStore(requireContext()).clear()
                     Toast.makeText(requireContext(), R.string.collab_session_invalid, Toast.LENGTH_LONG).show()
                 }
-                is TeamManagementApi.InvitationResult.Error ->
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.collab_invite_error, result.message),
-                        Toast.LENGTH_LONG
-                    ).show()
+                is TeamManagementApi.InvitationResult.Error -> Toast.makeText(
+                    requireContext(), getString(R.string.collab_invite_error, result.message), Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
 
-    private fun shareInvitation(
-        team: TeamManagementApi.TeamOverview,
-        invitation: TeamManagementApi.Invitation
-    ) {
+    /** Zeigt sofort eine große scanbare Karte; Code und Teilen bleiben als Fallback verfügbar. */
+    private fun showInvitationQr(team: TeamManagementApi.TeamOverview, invitation: TeamManagementApi.Invitation) {
         val worksite = team.worksiteName?.takeIf { it.isNotBlank() }
             ?: team.worksiteDesignation?.takeIf { it.isNotBlank() }
             ?: getString(R.string.collab_worksite_fallback)
-        val link = invitation.deepLink.orEmpty()
+        val link = invitation.deepLink?.takeIf { it.isNotBlank() }
+            ?: "tbhelfer://invite?code=${Uri.encode(invitation.code)}"
+        val image = ImageView(requireContext()).apply {
+            adjustViewBounds = true
+            setBackgroundColor(Color.WHITE)
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            setImageBitmap(InvitationQr.bitmap(link, 720))
+        }
+        val code = TextView(requireContext()).apply {
+            text = invitation.code
+            textAlignment = View.TEXT_ALIGNMENT_CENTER
+            setTextIsSelectable(true)
+            setPadding(dp(8), dp(10), dp(8), dp(4))
+        }
+        val expiry = TextView(requireContext()).apply {
+            text = invitation.expiresAt?.let { getString(R.string.collab_invite_expires, it) }
+                ?: getString(R.string.collab_invite_single_use)
+            textAlignment = View.TEXT_ALIGNMENT_CENTER
+            alpha = 0.7f
+        }
+        val box = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(8), dp(18), dp(6))
+            addView(image, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(330)))
+            addView(code)
+            addView(expiry)
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle(if (invitation.invitationType == "HELPER") R.string.collab_invite_helper_qr_title else R.string.collab_invite_lead_qr_title)
+            .setMessage(worksite)
+            .setView(box)
+            .setPositiveButton(R.string.collab_invite_share) { _, _ -> shareInvitation(team, invitation) }
+            .setNegativeButton(android.R.string.close, null)
+            .show()
+    }
+
+    private fun shareInvitation(team: TeamManagementApi.TeamOverview, invitation: TeamManagementApi.Invitation) {
+        val worksite = team.worksiteName?.takeIf { it.isNotBlank() }
+            ?: team.worksiteDesignation?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.collab_worksite_fallback)
+        val link = invitation.deepLink?.takeIf { it.isNotBlank() }
+            ?: "tbhelfer://invite?code=${Uri.encode(invitation.code)}"
         val text = getString(R.string.collab_invite_share_text, worksite, invitation.code, link)
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
@@ -425,6 +564,29 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
             putExtra(Intent.EXTRA_TEXT, text)
         }
         startActivity(Intent.createChooser(intent, getString(R.string.collab_invite_share_title)))
+    }
+
+    private fun scanInvitationQr() {
+        val options = GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .build()
+        GmsBarcodeScanning.getClient(requireActivity(), options).startScan()
+            .addOnSuccessListener { barcode ->
+                val code = extractInvitationCode(barcode.rawValue.orEmpty())
+                if (code == null) Toast.makeText(requireContext(), R.string.collab_invite_invalid_qr, Toast.LENGTH_LONG).show()
+                else redeemInvitationCode(code)
+            }
+            .addOnFailureListener {
+                Toast.makeText(requireContext(), R.string.collab_invite_scan_error, Toast.LENGTH_LONG).show()
+            }
+    }
+
+    private fun extractInvitationCode(raw: String): String? {
+        val text = raw.trim()
+        if (text.startsWith("TBI-", ignoreCase = true)) return text.uppercase()
+        val uri = runCatching { Uri.parse(text) }.getOrNull() ?: return null
+        if (!uri.scheme.equals("tbhelfer", ignoreCase = true) || !uri.host.equals("invite", ignoreCase = true)) return null
+        return uri.getQueryParameter("code")?.trim()?.takeIf { it.isNotBlank() }?.uppercase()
     }
 
     private fun showRedeemInvitationDialog() {
@@ -437,8 +599,9 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
             .setTitle(R.string.collab_redeem_title)
             .setView(input)
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                val code = input.text?.toString()?.trim().orEmpty()
-                if (code.isNotBlank()) redeemInvitationCode(code)
+                val code = extractInvitationCode(input.text?.toString().orEmpty())
+                if (code != null) redeemInvitationCode(code)
+                else Toast.makeText(requireContext(), R.string.collab_invite_invalid_code, Toast.LENGTH_LONG).show()
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
@@ -458,18 +621,14 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                     Toast.makeText(requireContext(), R.string.collab_redeem_success, Toast.LENGTH_LONG).show()
                     synchronize()
                 }
-                TeamManagementApi.RedeemResult.Unsupported ->
-                    Toast.makeText(requireContext(), R.string.collab_team_unavailable, Toast.LENGTH_LONG).show()
+                TeamManagementApi.RedeemResult.Unsupported -> Toast.makeText(requireContext(), R.string.collab_team_unavailable, Toast.LENGTH_LONG).show()
                 TeamManagementApi.RedeemResult.SessionInvalid -> {
                     SecureTokenStore(requireContext()).clear()
                     Toast.makeText(requireContext(), R.string.collab_session_invalid, Toast.LENGTH_LONG).show()
                 }
-                is TeamManagementApi.RedeemResult.Error ->
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.collab_invite_error, result.message),
-                        Toast.LENGTH_LONG
-                    ).show()
+                is TeamManagementApi.RedeemResult.Error -> Toast.makeText(
+                    requireContext(), getString(R.string.collab_invite_error, result.message), Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -482,27 +641,19 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                 Toast.makeText(requireContext(), R.string.collab_no_local_worksites, Toast.LENGTH_LONG).show()
                 return@launch
             }
-
             val choices = buildList {
                 if (item.binding != null) add(getString(R.string.collab_unbind))
-                localItems.forEach { local ->
-                    add("${local.hauptbaustellenName} · lokal #${local.id}")
-                }
+                localItems.forEach { local -> add("${local.hauptbaustellenName} · lokal #${local.id}") }
             }.toTypedArray()
             val offset = if (item.binding != null) 1 else 0
-
             AlertDialog.Builder(requireContext())
                 .setTitle(getString(R.string.collab_choose_local_title, displayName(item.context)))
                 .setItems(choices) { _, which ->
                     viewLifecycleOwner.lifecycleScope.launch {
                         val action = withContext(Dispatchers.IO) {
                             runCatching {
-                                if (offset == 1 && which == 0) {
-                                    bindings.unbindServer(item.context.worksiteServerId)
-                                } else {
-                                    val selected = localItems[which - offset]
-                                    bindings.bind(selected.id, item.context.worksiteServerId)
-                                }
+                                if (offset == 1 && which == 0) bindings.unbindServer(item.context.worksiteServerId)
+                                else bindings.bind(localItems[which - offset].id, item.context.worksiteServerId)
                             }
                         }
                         if (!isAdded) return@launch
@@ -511,8 +662,6 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                         }
                         if (action.isSuccess) {
                             renderCached()
-                            // Nach einer neuen Bindung lokale BTB/Mängel/Abnahmen direkt für den nächsten
-                            // Upload erfassen, statt erst auf den periodischen Hintergrundlauf zu warten.
                             synchronize()
                         }
                     }
@@ -526,9 +675,7 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
         val raw = context.memberRole.uppercase()
         return if (raw.contains("LEAD") || raw == "TB" || raw.contains("VERANTWORT")) {
             getString(R.string.collab_role_tb)
-        } else {
-            getString(R.string.collab_role_helper)
-        }
+        } else getString(R.string.collab_role_helper)
     }
 
     private fun displayName(context: SyncWorksiteContextEntity): String =
@@ -561,37 +708,35 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
         }
     }
 
-    private fun teamGroupView(title: String, detail: String): View {
-        val context = requireContext()
-        return LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(9), dp(14), dp(9))
-            addView(TextView(context).apply {
-                text = title
-                setTextAppearance(R.style.TextAppearance_TBHelfer_Body)
-            })
-            addView(TextView(context).apply {
-                text = detail
-                alpha = 0.72f
-                setPadding(0, dp(2), 0, 0)
-                setTextAppearance(R.style.TextAppearance_TBHelfer_Caption)
-            })
-        }
+    private fun teamGroupView(title: String, detail: String): View = LinearLayout(requireContext()).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(14), dp(9), dp(14), dp(9))
+        addView(TextView(context).apply {
+            text = title
+            setTextAppearance(R.style.TextAppearance_TBHelfer_Body)
+        })
+        addView(TextView(context).apply {
+            text = detail
+            alpha = 0.72f
+            setPadding(0, dp(2), 0, 0)
+            setTextAppearance(R.style.TextAppearance_TBHelfer_Caption)
+        })
     }
 
-    private fun actionButton(label: String, onClick: () -> Unit): MaterialButton {
-        return MaterialButton(requireContext()).apply {
-            text = label
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                leftMargin = dp(10)
-                rightMargin = dp(10)
-                topMargin = dp(6)
-            }
-            setOnClickListener { onClick() }
+    private fun actionButton(label: String, onClick: () -> Unit): MaterialButton = MaterialButton(requireContext()).apply {
+        text = label
+        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            leftMargin = dp(10); rightMargin = dp(10); topMargin = dp(6)
         }
+        setOnClickListener { onClick() }
+    }
+
+    private fun separator(): View = View(requireContext()).apply {
+        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
+            topMargin = dp(12); bottomMargin = dp(12)
+        }
+        alpha = 0.18f
+        setBackgroundColor(Color.GRAY)
     }
 
     private fun muted(textValue: String): TextView = TextView(requireContext()).apply {
@@ -604,6 +749,7 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
         progress.visibility = if (loading) View.VISIBLE else View.GONE
         refresh.isEnabled = !loading
         redeemInvitation.isEnabled = !loading
+        scanInvitation.isEnabled = !loading
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
