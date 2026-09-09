@@ -6,10 +6,8 @@ import org.json.JSONObject
 /**
  * Status- und Zuordnungsspeicher fuer die Mängelliste.
  *
- * Patch 34:
- * - ein Mangel kann mehrere Fotos haben
- * - jedes Foto bekommt eine Fotoart (MANGEL / IN_ARBEIT / ERLEDIGT)
- * - bewusst weiterhin ohne Room-Migration, damit der Patch auf 1.9/patch33 passt.
+ * Fachregel ab Baustellen-Sync: ERLEDIGT ist endgültig. Ein erledigter Mangel darf weder über
+ * den Statusdialog noch durch ein später zugeordnetes Foto wieder auf OFFEN/IN_ARBEIT gesetzt werden.
  */
 object MangelStatusSpeicher {
     enum class Status { OFFEN, IN_ARBEIT, ERLEDIGT, ABGELEHNT }
@@ -46,11 +44,21 @@ object MangelStatusSpeicher {
     }
 
     fun speichern(context: Context, key: String, wert: Wert) {
+        val alt = laden(context, key)
+        val final = if (alt.status == Status.ERLEDIGT && wert.status != Status.ERLEDIGT) {
+            alt.copy(
+                kommentar = wert.kommentar.ifBlank { alt.kommentar },
+                nachweisFotoId = wert.nachweisFotoId ?: alt.nachweisFotoId
+            )
+        } else {
+            wert
+        }
+
         val o = JSONObject().apply {
-            put("status", wert.status.name)
-            put("kommentar", wert.kommentar)
-            if (wert.erledigtAmEpochMs != null) put("erledigtAmEpochMs", wert.erledigtAmEpochMs) else put("erledigtAmEpochMs", JSONObject.NULL)
-            if (wert.nachweisFotoId != null) put("nachweisFotoId", wert.nachweisFotoId) else put("nachweisFotoId", JSONObject.NULL)
+            put("status", final.status.name)
+            put("kommentar", final.kommentar)
+            if (final.erledigtAmEpochMs != null) put("erledigtAmEpochMs", final.erledigtAmEpochMs) else put("erledigtAmEpochMs", JSONObject.NULL)
+            if (final.nachweisFotoId != null) put("nachweisFotoId", final.nachweisFotoId) else put("nachweisFotoId", JSONObject.NULL)
         }
         context.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putString(key, o.toString()).apply()
         de.tbhelfer.widget.TBHelferWidgetUpdater.updateAll(context)
@@ -63,8 +71,9 @@ object MangelStatusSpeicher {
     }
 
     fun statusNachFotoArt(old: Wert, art: FotoArt): Wert {
+        if (old.status == Status.ERLEDIGT) return old
         return when (art) {
-            FotoArt.MANGEL -> old.copy(status = if (old.status == Status.ERLEDIGT || old.status == Status.ABGELEHNT) old.status else Status.OFFEN)
+            FotoArt.MANGEL -> old.copy(status = if (old.status == Status.ABGELEHNT) old.status else Status.OFFEN)
             FotoArt.IN_ARBEIT -> old.copy(status = Status.IN_ARBEIT, erledigtAmEpochMs = null)
             FotoArt.ERLEDIGT -> old.copy(status = Status.ERLEDIGT, erledigtAmEpochMs = old.erledigtAmEpochMs ?: System.currentTimeMillis())
         }
