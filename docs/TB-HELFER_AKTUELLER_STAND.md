@@ -168,12 +168,13 @@ Direkt aus dem laufenden API-Container erfolgreich geprüft:
 - `POST /api/v1/collab/mutations`
 - Attachment Upload/Download
 - Firmenbindung auf Server- und DB-Ebene
-- TB-Gruppen A/B/C/D/...
-- BTB strikt gruppenbezogen
-- Mängel/Abnahmen baustellenweit im berechtigten Bereich
+- getrennte TB-Teams mit stabiler interner `group_id`; A/B/C/D soll nicht mehr als sichtbare Benutzerbezeichnung verwendet werden
+- BTB strikt TB-Team-bezogen
+- Mängel/Abnahmen sind baustellenweit **nur für Mitglieder der konkreten Baustelle** sichtbar; keine firmenweite Verteilung
+- Hilfsnutzer erhalten Mängel/Abnahmen nur innerhalb ihres berechtigten Arbeitsbereichs
 - Bilder/Abnahme-Anlagen als Attachments
 - endgültige Status gegen Wiederöffnung geschützt
-- Cursor schreitet auch über unsichtbare Änderungen fort, damit TB A nicht an BTB B hängen bleibt
+- Cursor schreitet auch über unsichtbare Änderungen fort
 - idempotente Collab-Mutationen und Schutz gegen parallele Doppelanlagen
 - Attachment-SHA-Deduplizierung
 - Benutzer-Aufbewahrungsoptionen und temporäres Spooling
@@ -181,14 +182,13 @@ Direkt aus dem laufenden API-Container erfolgreich geprüft:
 ### Admin
 - bestehende 0.6-Admin-Funktionen erhalten
 - Firmen-/Benutzer-/Geräte-/Strecken-/Bahnhofs-/Baustellenverwaltung erhalten
-- TB-Gruppen und Hilfsnutzer-Bereichszuordnung ergänzt
-- Teams nur innerhalb derselben Firma
 - Server-Speicheroptionen pro Benutzer: Bilder, BTB, Mängel, Abnahmen; „Alles“ wird über alle Einzeloptionen abgebildet
 - Bahnhof-Autofill ausschließlich aus den zwei vorhandenen TB-Helfer-Datenbeständen
+- neue verbindliche Entscheidung: Der Admin soll **nicht** im täglichen Betrieb 50 Baustellen/100 Benutzer manuell miteinander verknüpfen müssen. Baustellen-Teambeitritt wird als Self-Service über sichere Einladungen/QR/Link umgesetzt.
 
 ## Android-Stand
 - Android `versionCode 200018` liegt im Draft-Branch.
-- der aktuelle Branch-Stand `a641c3d` wurde am 2026-09-09 lokal in Android Studio als Debug-APK neu gebaut; Build endete mit `BUILD SUCCESSFUL`.
+- der Branch-Stand `a641c3d` wurde am 2026-09-09 lokal in Android Studio als Debug-APK neu gebaut; Build endete mit `BUILD SUCCESSFUL`.
 - dieselbe aktuelle 200018-APK wurde anschließend auf **beiden Test-Handys als Update** installiert; vorhandene lokale Baustellen-/Vermessungsdaten blieben erhalten.
 - auf beiden Handys startet die App fehlerfrei und der Zugriff auf Server 0.7.0 funktioniert.
 - separate Room-Datenbank `tbhelfer-sync.db`; bestehende Baustellen-/Vermessungsdatenbank bleibt unangetastet.
@@ -201,31 +201,50 @@ Direkt aus dem laufenden API-Container erfolgreich geprüft:
 - manueller und Hintergrund-Sync übertragen Attachments.
 - Benachrichtigungen pro Gerät: `Text + Ton` / `nur Ton` / `aus`.
 
-Der aktuelle Android-Build ist damit auf beiden Testgeräten bereit; als Nächstes folgt die serverseitige Baustellen-/Gruppenfreigabe und der echte Zwei-Geräte-Ende-zu-Ende-Test.
+Der aktuelle Android-Build ist auf beiden Testgeräten bereit. Vor dem echten Zwei-Geräte-Ende-zu-Ende-Test muss nun die fehlende Self-Service-Einladung ergänzt werden; eine manuelle Admin-Zuordnung gilt nicht mehr als Zielmodell.
 
 ## Verbindliches Team-/Rechtemodell
 - Baustellen-Teams ausschließlich innerhalb derselben Firma.
-- Eine Baustelle kann TB A/B/C/D/... haben.
-- Jeder TB kann Hilfsnutzer haben.
-- BTB A bleibt bei A + seinen Hilfsnutzern; BTB B bei B + seinen Hilfsnutzern usw.
-- Mängel/Abnahmen werden baustellenweit zwischen A/B/C/D synchronisiert, Hilfsnutzer nur im berechtigten Bereich.
-- Bilder werden mitsynchronisiert.
+- Der Ersteller einer Baustelle ist ihr erster verantwortlicher TB.
+- Weitere verantwortliche TBs treten dieser konkreten Baustelle über QR-/Link-/Code-Einladung bei; der Admin ist dafür nicht erforderlich.
+- Sichtbare Namen sollen nicht `TB A/B/C/D` sein. In der App wird über den verantwortlichen TB benannt, z. B. `TB Jens Zinkel`, optional ergänzt um einen Bereichsnamen.
+- Jeder verantwortliche TB kann eigene Hilfsnutzer per Team-Einladung aufnehmen und deren Arbeitsbereich begrenzen.
+- Benutzer derselben Firma ohne angenommene Einladung zu dieser Baustelle erhalten keine Baustellen-Zusammenarbeitsdaten.
+- BTB bleibt ausschließlich innerhalb des jeweiligen TB-Teams gemeinsam.
+- Mängel/Abnahmen werden nur zwischen berechtigten Mitgliedern **dieser einen Baustelle** synchronisiert; nicht an alle Benutzer einer Firma.
+- Hilfsnutzer sehen Mängel/Abnahmen nur in ihrem berechtigten Bereich.
+- Bilder werden entsprechend derselben Baustellen-/Bereichsberechtigung mitsynchronisiert.
 - endgültige Status bleiben endgültig.
+- Einladungen enthalten keine Benutzer-Keys/Passwörter, sondern widerrufbare/zeitlich begrenzte Tokens.
+
+## Geplante Self-Service-Einladung – noch nicht produktiv
+Der vorhandene Schema-9-Stand enthält Teams und Mitglieder, aber noch kein Einladungssystem. Geplanter nächster Baustein:
+- neue Migration **010** statt Änderung der bereits produktiven Migration 009
+- Einladungstabelle mit gehashtem Token, `worksite_id`, Einladendem, Einladungsart, optionalem Ziel-Team/Bereich, Ablauf, Nutzungsgrenze und Widerruf
+- Einladungsarten mindestens:
+  - `weiteren TB zur Baustelle einladen` → erzeugt beim Einlösen ein eigenes TB-Team für den neuen verantwortlichen TB
+  - `Hilfsnutzer zu meinem Team einladen` → ordnet den Benutzer dem bestehenden TB-Team und seinem freigegebenen Bereich zu
+- QR, teilbarer Link und kurzer Code sind nur verschiedene Darstellungen derselben sicheren Einladung
+- Server prüft beim Einlösen: Benutzer aktiv, Gerät gültig, gleiche Firma, Einladung gültig/nicht widerrufen/nicht abgelaufen
+- Worksite-Mängel/Abnahmen und Benachrichtigungen werden ausschließlich nach bestätigter Baustellenmitgliedschaft ausgeliefert
 
 ## Nächste sichere Schritte
-Server 0.7, Schema 9, Cloudflare und der aktuelle Android-200018-Build auf beiden Testgeräten sind bestätigt. Noch offen:
-1. echte Server-Baustelle und TB-Gruppen für die beiden Testnutzer freigeben.
-2. echten Zwei-Geräte-Ende-zu-Ende-Test durchführen:
+Server 0.7, Schema 9, Cloudflare und Android 200018 auf beiden Testgeräten sind bestätigt. Noch offen:
+1. Self-Service-Baustelleneinladungen auf dem Feature-Branch entwerfen und implementieren (Migration 010 + Server-API + Android-UI/QR/Link), ohne den produktiven Schema-9-Stand umzuschreiben.
+2. danach neuen Android-Build lokal bauen und auf beiden Testgeräten installieren.
+3. echten Zwei-Geräte-Ende-zu-Ende-Test ohne manuelle Admin-Zuordnung durchführen:
+   - Baustelle durch verantwortlichen TB anlegen
+   - weiteren TB per Einladung aufnehmen
+   - Hilfsnutzer per Team-Einladung aufnehmen
    - Firmenbindung
-   - TB-Gruppen A/B-Trennung
-   - BTB nur innerhalb der eigenen TB-Gruppe
-   - Mängel/Abnahmen baustellenweit im berechtigten Bereich
+   - BTB strikt zwischen den TB-Teams getrennt
+   - Mängel/Abnahmen nur für Mitglieder dieser Baustelle und Hilfsnutzer nur im Bereich
    - Bilder/Attachments
    - 409-Konflikt
    - Tombstones
    - Netzabbruch/Wiederaufnahme
    - Benachrichtigungen
-3. Draft-PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
+4. Draft-PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
 
 ## Bahnhofsdaten – nicht neu erfinden
 Vorhandene Datenbasis:
@@ -246,9 +265,10 @@ Vorhandene Datenbasis:
 - nur benötigte Daten offline aufs Handy.
 - Cloudflare normale App-Synchronisation; Tailscale Wartung.
 - keine firmenübergreifenden Teams.
-- BTB bleibt TB-gruppenbezogen.
-- Mängel/Abnahmen baustellenweit im berechtigten Bereich.
-- Server-Speicheroptionen bleiben vorgesehen.
+- keine firmenweite Verteilung von Mängeln/Abnahmen; ausschließlich berechtigte Mitglieder der konkreten Baustelle.
+- BTB bleibt TB-Team-bezogen.
+- Baustellen-/Teambeitritt im Normalbetrieb per Self-Service-Einladung, nicht per täglicher Admin-Zuordnung.
+- Server-Speicheroptionen bleiben vorgesehen, sind aber keine Arbeitsfreigabe.
 - temporäres Server-Spooling bleibt erlaubt.
 - `main` stabil halten; große Änderungen über Feature-Branch/Draft-PR.
 
