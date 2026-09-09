@@ -25,6 +25,8 @@ object SyncMangelSpeicher {
         val beschreibung: String = "-",
         val gps: String = "-",
         val btbBildNr: String = "",
+        /** Originales Server-Payload, damit Foto-/Zusatzmetadaten beim Rückweg nicht verloren gehen. */
+        val payloadJson: String = "{}",
         val changedByName: String? = null,
         val updatedAtEpochMs: Long = System.currentTimeMillis()
     )
@@ -98,6 +100,7 @@ object SyncMangelSpeicher {
         put("beschreibung", e.beschreibung)
         put("gps", e.gps)
         put("btbBildNr", e.btbBildNr)
+        put("payloadJson", e.payloadJson)
         put("changedByName", e.changedByName ?: JSONObject.NULL)
         put("updatedAtEpochMs", e.updatedAtEpochMs)
     }
@@ -117,6 +120,7 @@ object SyncMangelSpeicher {
             beschreibung = o.optString("beschreibung", "-").ifBlank { "-" },
             gps = o.optString("gps", "-").ifBlank { "-" },
             btbBildNr = o.optString("btbBildNr", ""),
+            payloadJson = o.optString("payloadJson", "{}").ifBlank { "{}" },
             changedByName = if (!o.has("changedByName") || o.isNull("changedByName")) null else o.optString("changedByName").takeIf { it.isNotBlank() },
             updatedAtEpochMs = o.optLong("updatedAtEpochMs", System.currentTimeMillis())
         )
