@@ -16,7 +16,7 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 - stabiler Branch: `main`
 - aktiver Feature-Branch: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
-- letzter fachlicher Stand vor diesem Übergabe-Update: `ab98ef1c69539b771c918ff8da145ad68270758a`
+- letzter fachlicher Stand vor diesem Übergabe-Update: `a6d0a57d98fc60870ec9bcae6e10dc988ee4d2ac`
 - `main` wurde durch die aktuellen Arbeiten nicht verändert.
 
 ## Produktiver Stand auf der Synology
@@ -29,11 +29,13 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 
 ## Android-Stand
 - Android `versionCode 200018` ist im Draft-Branch vorbereitet.
-- 200018 wurde lokal erfolgreich kompiliert, als Update installiert und gegen produktive API 0.6.0 auf Grundfunktionen geprüft.
+- 200018 wurde lokal erfolgreich kompiliert, als Update installiert und gegen produktive API 0.6.0 auf Grundfunktionen geprüft; die danach hinzugekommenen Härtungen müssen vor dem Zwei-Geräte-Test erneut lokal gebaut werden.
 - separate Room-Datenbank `tbhelfer-sync.db`; bestehende Baustellen-/Vermessungsdatenbank bleibt unangetastet.
 - Room-Migrationspfad der Sync-Datenbank ist 1 -> 2 -> 3 vorhanden; Worksite-Bindings und Collab-Cache werden getrennt von der bestehenden Fachdatenbank geführt.
 - Offline-Katalog, selektiver Download, Upload-Queue, Version/Basisversion, 409-Grundlage, Tombstones und Hintergrund-Sync sind vorbereitet.
 - Unterbrochene Uploads im Zustand `UPLOADING` werden beim nächsten Sync erneut aufgenommen; Idempotenz über `client_change_id` verhindert serverseitige Doppelanwendung.
+- Gemeinsame BTB-Textänderungen erhalten jetzt die gerätelokalen `fotos`- und `pdfAuswahl`-Referenzen; diese lokalen Medien werden weiterhin nicht in den Server-Payload/Hash übernommen und erzeugen keinen Sync-Echo.
+- Mängelfoto-KM kann beim Sync zusätzlich im üblichen Format `70+698` ausgewertet werden.
 - Benachrichtigungseinstellungen pro Gerät: `Text + Ton` / `nur Ton` / `aus`.
 
 ## Verbindliches Team-/Rechtemodell
@@ -69,6 +71,10 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 - Commit `ab98ef1c69539b771c918ff8da145ad68270758a`: verbindlicher Android-200018/Server-0.7-API-Vertrag dokumentiert.
   - Kontext, Changes, ACK, Mutationen, 409, Attachments und Idempotenz sind festgelegt.
   - der Change-Log-Cursor muss auch über nicht sichtbare/fremde Änderungen fortschreiten, damit z. B. BTB A nicht an BTB B hängen bleibt.
+- Commit `a6d0a57d98fc60870ec9bcae6e10dc988ee4d2ac`: lokale BTB-Medien beim Import geschützt.
+  - eingehender gemeinsamer BTB-Inhalt überschreibt nicht mehr die gerätelokalen Foto-/PDF-Referenzen.
+  - der kanonische Sync-Hash bleibt medienfrei und verhindert Echo-Uploads.
+  - `km` im Format `70+698` wird für synchronisierte Mängelfotos korrekt in Dezimal-km überführt.
 
 ## Server-0.7-Vorbereitung
 - `server/migrations/008_incremental_sync_mutations.sql` ist im Draft-Branch vorhanden und gehärtet.
@@ -79,11 +85,6 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 - GitHub-Suche sowie Prüfung der vorhandenen Feature-Branches haben bestätigt: Der vollständige produktive API-Quellstand 0.6.0 war bisher nicht im Repository abgelegt.
 - Im GitHub-Ordner `server/` liegen deshalb weiterhin noch nicht die produktiven API-/Docker-/Runtime-Dateien aus `/volume1/docker/tb-helfer/server/`.
 - Server 0.7 darf weiterhin NICHT aus Annahmen oder als neuer fremder Server-Unterbau geschrieben werden.
-
-## Noch gefundener Android-Randfall vor Freigabe
-- Beim Import eines gemeinsamen BTB-Textstands setzt `CollabLocalBridge` derzeit die gerätelokalen Felder `fotos` und `pdfAuswahl` leer.
-- Diese lokalen Referenzen sollen auf dem jeweiligen Gerät erhalten bleiben und dürfen zugleich nicht in den Server-Hash/Upload einfließen.
-- Dieser Merge-Randfall muss noch behoben und lokal gebaut/geprüft werden, bevor Android 200018 als Zwei-Geräte-Teststand gilt.
 
 ## Nächster notwendiger Schritt
 Den tatsächlichen produktiven Quellstand aus
@@ -102,7 +103,7 @@ Danach:
 1. echten Server-0.6.0-Code gegen `server/API_0.7_VERTRAG.md` und Migration 008/009 abgleichen,
 2. vollständiges Server-0.7-API-Paket im vorhandenen Server-Framework implementieren,
 3. Preflight + Migrationen zunächst auf Backup/Testkopie prüfen,
-4. Android 200018 inklusive BTB-Medien-Merge lokal bauen,
+4. Android 200018 mit den neuen Queue-/BTB-Härtungen erneut lokal bauen,
 5. echten Zwei-Geräte-Test durchführen,
 6. BTB-Gruppentrennung, Mängel-/Abnahme-Bereich, Bilder, 409, Tombstones und unterbrochene Uploads Ende-zu-Ende testen,
 7. erst nach erfolgreichem Test und unmittelbar vorherigem Backup produktive NAS-Migration erwägen.
