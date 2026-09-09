@@ -1,6 +1,6 @@
 # TB-Helfer – verbindliche Projektregeln
 
-Stand: 2026-09-09
+Stand: 2026-09-10
 
 Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und später iOS fest. Bei Änderungen zuerst diese Datei aktualisieren.
 
@@ -43,20 +43,28 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Die bisherige Bezeichnung A/B/C/D ist nur ein technisches Denkmodell und soll **nicht als sichtbare Benutzerbezeichnung** verwendet werden.
 - In der Oberfläche heißt der Abschnitt **`Verantwortliche TBs`** und listet die echten Namen, z. B. `Jens Zinkel`, `Max Müller`.
 - Bei jedem verantwortlichen TB gibt es die Aktion **`Helfer einladen`**. Zusätzlich kann ein bereits beteiligter verantwortlicher TB **`Weiteren TB einladen`** verwenden.
-- Optional kann zusätzlich ein verständlicher Bereichsname wie `Gleis 1–4` oder `Bereich Ost` angezeigt werden.
+- Optional kann zusätzlich ein verständlicher Bereichsname wie `Gleis 1–4`, `km 20–45` oder `Bereich Ost` angezeigt werden.
 - Intern bleiben Teams durch stabile IDs getrennt; sichtbare Namen/Bereichsbezeichnungen dürfen geändert werden, ohne BTB- oder Sync-Zuordnungen zu verändern.
 
-## 5. BTB-Regel und sichtbare Bezeichnung
+## 5. BTB-Regel, Identität und Export
 - BTB ist NICHT baustellenweit gemeinsam.
-- Jeder verantwortliche TB besitzt mit seinen Hilfsnutzern einen eigenen gemeinsamen BTB-Bereich.
+- Jeder verantwortliche TB besitzt mit seinen Hilfsnutzern seinen eigenen gemeinsamen BTB-Bereich.
 - `Jens Zinkel` + seine Hilfsnutzer sehen und bearbeiten denselben BTB dieses TB-Teams.
 - `Max Müller` + seine Hilfsnutzer sehen und bearbeiten ihren eigenen BTB.
-- Einträge eines Hilfsnutzers werden zum BTB seines verantwortlichen TB synchronisiert.
+- Einträge und Fotos eines Hilfsnutzers werden in den BTB seines verantwortlichen TB synchronisiert; der Helfer erzeugt dadurch **keinen eigenen separaten BTB**.
 - Hilfsnutzer desselben TB-Teams sehen gegenseitig die BTB-Einträge dieses Teams.
 - BTB-Einträge werden nicht automatisch in die BTBs anderer verantwortlicher TBs derselben Baustelle übernommen.
-- Die sichtbare/Export-Bezeichnung soll den verantwortlichen TB und das Datum enthalten, z. B. `BTB_Jens Zinkel_2026.06.05`.
-- Gibt es für denselben verantwortlichen TB am selben Datum mehrere BTBs/Teile, wird eine laufende Endung verwendet, z. B. `BTB_Jens Zinkel_2026.06.05-2`, `...-3`, `...-4`.
-- Die fachliche Zuordnung erfolgt intern immer über stabile IDs; der menschenlesbare BTB-Name ist nur Anzeige/Exportname und nicht der technische Primärschlüssel.
+- Ein fachlicher BTB wird eindeutig bestimmt durch **verantwortlichen TB / internes TB-Team + Baustellenabschnitt bzw. Arbeitsbereich + Datum + Schicht**.
+- Für dieselbe Kombination aus TB-Team, Abschnitt, Datum und Schicht existiert genau **ein** gemeinsamer BTB. Neue Helfereinträge werden diesem vorhandenen BTB hinzugefügt und erzeugen keinen `-2/-3/-4`-Bericht.
+- Ein weiterer BTB am selben Datum entsteht nur, wenn sich mindestens der verantwortliche TB, der Baustellenabschnitt/Arbeitsbereich oder die Schicht unterscheidet.
+- Beispiel große Baustelle: `Jens Zinkel` mit 30 Helfern arbeitet tagsüber in Abschnitt West -> ein gemeinsamer TAG-BTB. `Max Müller` mit 30 Helfern arbeitet nachts -> ein eigener NACHT-BTB. Trotz 60 Helfern entstehen dadurch nur diese fachlich erforderlichen BTBs.
+- Bei einer 100-km-Baustelle können mehrere Abschnitte parallel jeweils ihren eigenen BTB haben; der Abschnitt gehört deshalb zur fachlichen BTB-Identität.
+- Sichtbare App-Bezeichnung z. B. `BTB Jens Zinkel · Abschnitt West · 05.06.2026 · Tag` oder `BTB Max Müller · km 50–100 · 05.06.2026 · Nacht`.
+- Export-Dateinamen verwenden einen dateisicheren Namen, z. B. `BTB_Jens_Zinkel_Abschnitt_West_2026-06-05_TAG.pdf` und entsprechend `.docx`. Ist kein eigener Abschnittsname nötig, kann der Abschnittsteil entfallen.
+- PDF **und DOCX** verwenden dieselbe Benennungs-/Zuordnungslogik und enthalten im Dokumentkopf mindestens Firma, Baustelle, verantwortlichen TB, Abschnitt/Arbeitsbereich soweit vorhanden, Datum und Schicht.
+- Das zentrale Firmenlogo kann ebenfalls automatisch in PDF/DOCX verwendet werden.
+- Die fachliche Zuordnung erfolgt intern immer über stabile IDs; der menschenlesbare BTB-/Dateiname ist nur Anzeige/Exportname und nicht der technische Primärschlüssel.
+- Bereits vorhandene historische BTBs müssen nicht nachträglich umbenannt werden; die neue Regel gilt für neu erzeugte Berichte.
 
 ## 6. Mängel und Abnahmen
 - Mängel und Abnahmen sind **nur innerhalb der konkreten Baustelle** gemeinsam.
