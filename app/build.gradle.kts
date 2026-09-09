@@ -18,8 +18,8 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Baustellen-Team-Sync inkl. serverweiter Mängel/Abnahmen und Attachment-Transfer.
-        versionCode = 200018
+        // QR-Teambeitritt, gemeinsamer Team-BTB inkl. Bilder und merge-sicherer Laptop-Export.
+        versionCode = 200019
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -113,8 +113,10 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.extensions)
 
-    // Geräteaktivierung per QR-Code ohne eigene Scanner-Kamera-UI.
+    // Geräteaktivierung / Baustelleneinladung per QR-Code.
     implementation(libs.play.services.code.scanner)
+    // QR-Erzeugung bleibt lokal auf dem Gerät; der Einladungscode verlässt die App nur beim Teilen.
+    implementation(libs.zxing.core)
 
     testImplementation(libs.junit4)
     androidTestImplementation(libs.androidx.test.junit)
