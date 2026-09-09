@@ -7,7 +7,7 @@ import androidx.navigation.fragment.findNavController
 import de.tbhelfer.R
 
 /**
- * Patch45m: Aufgeraeumte Einstellungen mit nur noch fuenf Hauptbereichen.
+ * Aufgeräumte Einstellungen mit den häufig benötigten Hauptbereichen.
  */
 class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
 
@@ -16,6 +16,10 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
 
         view.findViewById<View>(R.id.btnNutzerFirma).setOnClickListener {
             findNavController().navigate(R.id.action_einstellungen_to_nutzer)
+        }
+
+        view.findViewById<View>(R.id.btnBenachrichtigungen).setOnClickListener {
+            findNavController().navigate(R.id.action_einstellungen_to_benachrichtigungen)
         }
 
         view.findViewById<View>(R.id.btnAnzeigeOverlay).setOnClickListener {
