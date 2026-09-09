@@ -6,14 +6,17 @@ import de.tbhelfer.server.CollabBenachrichtigungen
 import de.tbhelfer.server.CollabSyncApi
 import org.json.JSONObject
 import java.io.File
+import java.io.FileInputStream
+import java.security.MessageDigest
 import java.util.UUID
 
 /**
- * Offline-Schicht für Baustellen-Zusammenarbeit.
+ * Offline-Schicht für die Baustellen-Zusammenarbeit.
  *
  * - BTB wird nur innerhalb der eigenen TB-Gruppe gespeichert/synchronisiert.
  * - Mängel und Abnahmen kommen serverseitig bereits auf den berechtigten Bereich gefiltert.
- * - Bilder werden nach einem sichtbaren ATTACHMENT-Change direkt nachgeladen.
+ * - Bilder/Anlagen werden als Attachments übertragen und nach einem sichtbaren ATTACHMENT-Change
+ *   direkt nachgeladen.
  * - Lokale Änderungen bleiben in einer Queue, bis sie bestätigt oder als 409-Konflikt markiert sind.
  */
 class CollabSyncRepository(
@@ -40,12 +43,15 @@ class CollabSyncRepository(
         data class Error(val message: String) : FullSyncResult
     }
 
-    private data class PullOutcome(
-        val supported: Boolean,
-        val pulled: Int,
-        val downloadedAttachments: Int,
-        val notifications: List<CollabBenachrichtigungen.Ereignis>
-    )
+    sealed interface LocalAttachmentUploadResult {
+        data class Success(
+            val uploaded: Boolean,
+            val serverId: String
+        ) : LocalAttachmentUploadResult
+        data object Unsupported : LocalAttachmentUploadResult
+        data object SessionInvalid : LocalAttachmentUploadResult
+        data class Error(val message: String) : LocalAttachmentUploadResult
+    }
 
     private sealed interface WorksiteOutcome {
         data class Success(
@@ -166,6 +172,83 @@ class CollabSyncRepository(
                 payloadJson = payloadJson
             )
         )
+    }
+
+    /**
+     * Lädt eine lokale Datei genau einmal je Server-Vorgang hoch.
+     *
+     * Die SHA-256-Prüfung erfolgt gegen den bereits synchronisierten Attachment-Cache. Dadurch
+     * wird dasselbe Bild bei jedem Hintergrundlauf nicht erneut hochgeladen. Nach erfolgreichem
+     * Upload wird das Attachment sofort lokal als vorhanden/downloaded eingetragen, damit das
+     * eigene Gerät die identische Datei nicht anschließend noch einmal vom Server lädt.
+     */
+    suspend fun uploadAttachment(
+        token: String,
+        worksiteServerId: String,
+        parentEntityType: String,
+        parentEntityId: String,
+        file: File,
+        uploadFilename: String = file.name,
+        mimeType: String = mimeTypeFor(file),
+        api: CollabSyncApi = CollabSyncApi()
+    ): LocalAttachmentUploadResult {
+        if (!file.exists() || !file.isFile) {
+            return LocalAttachmentUploadResult.Error("Datei existiert nicht mehr: ${file.name}")
+        }
+        if (worksiteServerId.isBlank() || parentEntityId.isBlank()) {
+            return LocalAttachmentUploadResult.Error("Server-Zuordnung für Bild fehlt.")
+        }
+        val type = parentEntityType.uppercase()
+        if (type !in ENTITY_TYPES) {
+            return LocalAttachmentUploadResult.Error("Unbekannter Attachment-Typ: $type")
+        }
+
+        val hash = runCatching { sha256(file) }
+            .getOrElse { return LocalAttachmentUploadResult.Error(it.message ?: "Bild konnte nicht gelesen werden.") }
+        val existing = dao.collabAttachmentsForEntity(parentEntityId)
+            .firstOrNull { !it.isDeleted && it.sha256.equals(hash, ignoreCase = true) }
+        if (existing != null) {
+            return LocalAttachmentUploadResult.Success(uploaded = false, serverId = existing.serverId)
+        }
+
+        val bytes = runCatching { file.readBytes() }
+            .getOrElse { return LocalAttachmentUploadResult.Error(it.message ?: "Bild konnte nicht gelesen werden.") }
+        return when (
+            val result = api.uploadAttachment(
+                token = token,
+                worksiteId = worksiteServerId,
+                entityType = type,
+                entityId = parentEntityId,
+                filename = safeFilename(uploadFilename),
+                mimeType = mimeType,
+                bytes = bytes
+            )
+        ) {
+            CollabSyncApi.AttachmentUploadResult.Unsupported -> LocalAttachmentUploadResult.Unsupported
+            CollabSyncApi.AttachmentUploadResult.SessionInvalid -> LocalAttachmentUploadResult.SessionInvalid
+            is CollabSyncApi.AttachmentUploadResult.Error -> LocalAttachmentUploadResult.Error(result.message)
+            is CollabSyncApi.AttachmentUploadResult.Success -> {
+                dao.upsertCollabAttachments(
+                    listOf(
+                        SyncCollabAttachmentEntity(
+                            serverId = result.attachmentId,
+                            worksiteServerId = worksiteServerId,
+                            parentEntityType = type,
+                            parentEntityId = parentEntityId,
+                            filename = safeFilename(uploadFilename),
+                            mimeType = mimeType,
+                            sizeBytes = result.sizeBytes,
+                            sha256 = result.sha256 ?: hash,
+                            localPath = file.absolutePath,
+                            isDownloaded = true,
+                            isDeleted = false,
+                            updatedAtEpochMs = System.currentTimeMillis()
+                        )
+                    )
+                )
+                LocalAttachmentUploadResult.Success(uploaded = true, serverId = result.attachmentId)
+            }
+        }
     }
 
     private suspend fun synchronizeWorksite(token: String, worksiteId: String, api: CollabSyncApi): WorksiteOutcome {
@@ -416,13 +499,15 @@ class CollabSyncRepository(
             listOf(
                 SyncCollabAttachmentEntity(
                     serverId = change.entityId,
-                    worksiteServerId = worksiteId,
-                    parentEntityType = parentType,
+                    worksiteServerId = data.optNullableString("worksite_id") ?: worksiteId,
+                    parentEntityType = parentType.uppercase(),
                     parentEntityId = parentId,
-                    filename = data.optNullableString("filename") ?: existing?.filename,
-                    mimeType = existing?.mimeType,
+                    filename = data.optNullableString("filename")
+                        ?: data.optNullableString("original_filename")
+                        ?: existing?.filename,
+                    mimeType = data.optNullableString("mime_type") ?: existing?.mimeType,
                     sizeBytes = data.optLong("size_bytes", existing?.sizeBytes ?: 0),
-                    sha256 = existing?.sha256,
+                    sha256 = data.optNullableString("sha256") ?: existing?.sha256,
                     localPath = existing?.localPath,
                     isDownloaded = existing?.isDownloaded ?: false,
                     isDeleted = false,
@@ -470,6 +555,19 @@ class CollabSyncRepository(
         return DownloadOutcome.Success(count)
     }
 
+    private fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        FileInputStream(file).use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
     private fun safeFilename(value: String): String = value
         .replace(Regex("[^A-Za-z0-9._() -]+"), "_")
         .trim(' ', '.')
@@ -496,5 +594,13 @@ class CollabSyncRepository(
     companion object {
         private val ENTITY_TYPES = setOf("BTB", "DEFECT", "ACCEPTANCE")
         private val NOTIFY_TYPES = ENTITY_TYPES
+
+        fun mimeTypeFor(file: File): String = when (file.extension.lowercase()) {
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "webp" -> "image/webp"
+            "pdf" -> "application/pdf"
+            else -> "application/octet-stream"
+        }
     }
 }
