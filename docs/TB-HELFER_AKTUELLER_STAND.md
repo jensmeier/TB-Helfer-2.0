@@ -21,27 +21,79 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 
 ## Produktiver Stand auf der Synology
 - NAS/Synology bleibt Source of Truth.
-- produktive API: **0.6.0**
-- produktives DB-Schema: **7** (`007_admin_crud_sync_delete`)
-- Migrationen `008` und `009` wurden produktiv **NICHT** ausgeführt.
-- Der 0.7-Quellstand ist noch **nicht** auf das NAS ausgerollt.
-- Keine produktive Migration ohne unmittelbar vorher erzeugtes und geprüftes Backup.
+- produktive API läuft weiterhin als **0.6.0**.
+- produktive PostgreSQL-Datenbank wurde am 2026-09-09 kontrolliert von Schema 7 auf **Schema 9** migriert.
+- Schema-Versionen 8 und 9 sind eingetragen:
+  - `008_incremental_sync_mutations`
+  - `009_worksite_collaboration`
+- Server/API 0.7.0 ist **noch nicht** produktiv gestartet.
+- `main` ist weiterhin unverändert/stabil.
 
-## Server-0.7-Quellstand – Import abgeschlossen
-Der frühere Blocker „produktiver Serverquellcode fehlt in GitHub“ ist erledigt.
+### Produktives Backup vor Migration 008/009
+Unmittelbar vor der Migration wurde ein PostgreSQL-Custom-Dump erzeugt und mit `pg_restore -l` erfolgreich geprüft:
+- Datei: `tb_helfer_pre_0.7_20260909_201605.dump`
+- ursprüngliche Kopie im persistenten PostgreSQL-Volume
+- zweite Kopie außerhalb des Datenbankordners unter `/volume1/docker/tb-helfer/backup/`
+- Prüfung: `BACKUP_PRUEFUNG=OK`
 
-Im Feature-Branch liegen jetzt:
+### Preflight vor Migration
+Der aktuelle read-only Preflight aus dem Feature-Branch wurde auf dem echten produktiven Schema 7 ausgeführt.
+Ergebnis vollständig grün:
+- Schema 7 vorhanden
+- alle 12 Pflichtobjekte vorhanden
+- beide Pflichtfunktionen vorhanden
+- alle 34 Pflichtspalten vorhanden
+- PostGIS-Geometrietyp vorhanden
+- kein `false`
+
+### Migration 008
+`008_incremental_sync_mutations.sql` wurde mit `psql -v ON_ERROR_STOP=1` produktiv ausgeführt.
+Ergebnis:
+- kein `ERROR`
+- Schema 8 eingetragen
+- `tb.sync_device_state`, `tb.route_section_versions`, `tb.sync_mutation_receipts` vorhanden
+- `routes.current_version` und `stations.current_version` vorhanden
+
+Die NAS-Datei unter `/volume1/docker/tb-helfer/scripts/008_incremental_sync_mutations.sql` wurde bytegenau gegen GitHub geprüft.
+Git-Blob-SHA: `062d827ade9f5f9578b816ee5ae86bcdc627dc66`.
+
+### Migration 009
+`009_worksite_collaboration.sql` wurde mit `psql -v ON_ERROR_STOP=1 -f /tb/scripts/009_worksite_collaboration.sql` produktiv ausgeführt.
+Ergebnis:
+- kein `ERROR`
+- `INSERT 0 1`
+- `COMMIT`
+- Schema 9 eingetragen
+
+Die NAS-Datei wurde vor Ausführung bytegenau gegen GitHub geprüft.
+Git-Blob-SHA: `1e33aa95af8e20f6368f351f3687c174c0e9fd46`.
+
+### Read-only Nachkontrolle nach Schema 9
+`server/checks/01_verify_schema9.sql` wurde auf der produktiven DB ausgeführt.
+Ergebnis vollständig sauber:
+- Schema 8 und 9 vorhanden
+- alle **14 Pflichtobjekte**: `ok=t`
+- alle **12 Pflichtspalten**: `ok=t`
+- alle **12 Pflichttrigger**: `ok=t`
+- alle **13 Integritätsprüfungen**: `violations=0`
+- Attachment-Parent-Prüfung: `violations=0`
+- Abschluss: `COMMIT`
+
+Damit ist die produktive Datenbank fachlich und strukturell auf **Schema 9** bereit für den Server 0.7.0.
+
+## Server-0.7-Quellstand
+Im Feature-Branch liegen:
 - echter FastAPI-/psycopg-Runtime auf Basis des produktiven 0.6.0-Servers
 - `server/app.py` als Loader
-- `server/app_parts/01_part.py` ff. als verlustfrei zerlegte Runtime
-- produktives Dockerfile und Python-Abhängigkeiten
+- `server/app_parts/01_part.py` ff. als verlustfrei zerlegte Runtime im selben Modul-Namespace
+- Dockerfile und Python-Abhängigkeiten
 - 25 Admin-Jinja-Templates
 - vorhandene Bahnhofsdaten unter `server/data/`
 - Migrationen 008/009
 - read-only Preflight/Nachkontrolle
 - verbindlicher Android-200018/Server-0.7-API-Vertrag
 
-Der Runtime wurde nur für die GitHub-Übernahme in nummerierte Teile zerlegt; alle Teile laufen in derselben Reihenfolge und im selben Modul-Namespace. Der Server wurde nicht als fremder Unterbau neu erfunden.
+Der Server wurde nicht als fremder Unterbau neu erfunden.
 
 ## Server-0.7 – implementierte API
 ### Allgemeiner Offline-Sync
@@ -54,7 +106,7 @@ Der Runtime wurde nur für die GitHub-Übernahme in nummerierte Teile zerlegt; a
 - idempotente Mutation-Receipts über `client_change_id`
 - Tombstones aus dem Change-Log
 - mobile Schreibrechte nur für SECTION/OBJECT
-- eigener neuer ACK-Cursor `tb.sync_device_state`; vorhandenes Schema-7-`tb.device_sync_state` wird nicht umgebaut
+- eigener ACK-Cursor `tb.sync_device_state`; vorhandenes `tb.device_sync_state` bleibt unangetastet
 - Strecken und Bahnhöfe liefern `current_version`
 - mobiler SECTION-/OBJECT-UPSERT erzwingt serverseitig `data_status=MANUAL`; manuelle Änderungen können nicht als `VERIFIED_ORIGINAL`/grün hochgeladen werden
 
@@ -72,7 +124,7 @@ Der Runtime wurde nur für die GitHub-Übernahme in nummerierte Teile zerlegt; a
 - endgültige Status gegen Wiederöffnung geschützt
 - Cursor schreitet auch über unsichtbare Änderungen fort, damit TB A nicht an BTB B hängen bleibt
 - idempotente Collab-Mutationen und Schutz gegen parallele Doppelanlagen
-- serverseitige Attachment-SHA-Deduplizierung
+- Attachment-SHA-Deduplizierung
 - Benutzer-Aufbewahrungsoptionen und temporäres Spooling
 
 ### Admin
@@ -83,18 +135,7 @@ Der Runtime wurde nur für die GitHub-Übernahme in nummerierte Teile zerlegt; a
 - Server-Speicheroptionen pro Benutzer: Bilder, BTB, Mängel, Abnahmen; „Alles“ wird über alle Einzeloptionen abgebildet
 - Bahnhof-Autofill ausschließlich aus den zwei vorhandenen TB-Helfer-Datenbeständen, keine neue Bahnhofsliste
 
-## Letzte wichtige Commits
-- `2cd5f933a9b06b5482fe7b53b7021e3b56d7f89a`: manueller Android-Baustellen-Sync lädt Mängelbilder und Abnahme-Anlagen sofort mit hoch.
-- Runtime-/Template-Import danach vollständig in PR #5 übernommen.
-- `ecf5d5ba096494006e52819d6f3dc0d3ce410bb0`: Bahnhofskatalog liefert `current_version` zuverlässig.
-- `c1092e483bce85b1c652209f9cf7790d5bbb78cc`: Migration 008 finalisiert, neuer separater `sync_device_state`-Cursor und `changed_by_device`.
-- `ff8006285ed798421f6a820c80baba9e58967361`: Schema-7-Preflight an echten 0.6.0-Quellstand angepasst.
-- `1091fdeaa2dc003b20cd54d79de2eaf338da950b`: Schema-9-Nachkontrolle erweitert.
-- `aea3eb92fc015693472f8e91c8f12c16a92c8cec`: mobile Fachänderungen werden serverseitig zwingend `MANUAL`/orange.
-- `52dbc8f1fc5065ebf66d1faac1966ed93b74dffb`: Python-`__pycache__`/`.pyc` zusätzlich aus Git ausgeschlossen.
-- `9bd966b48c83b634ac8316a33987c811ab2440c7`: Server-README auf den tatsächlichen 0.7-Stand aktualisiert.
-
-## Lokale technische Prüfung des Server-0.7-Stands
+## Technische Prüfung des Server-0.7-Stands
 Am 2026-09-09 erfolgreich geprüft:
 - Python `py_compile` für Loader und alle Runtime-Teile
 - FastAPI-App importiert als Version `0.7.0`
@@ -102,14 +143,12 @@ Am 2026-09-09 erfolgreich geprüft:
 - alle erforderlichen allgemeinen Sync- und Collab-Endpunkte registriert
 - **25 Jinja-Templates** syntaktisch parsebar
 - Katalogtest bestätigt `current_version` für Bahnhöfe
-- Mutationstest bestätigt: Clientwert `VERIFIED_ORIGINAL` wird bei mobilem UPSERT vor der Mutation auf `MANUAL` überschrieben
+- Mutationstest bestätigt: Clientwert `VERIFIED_ORIGINAL` wird bei mobilem UPSERT auf `MANUAL` überschrieben
 - DELETE-Pfad bleibt davon unberührt
-
-Hinweis: Im lokalen Testsystem fehlt nur der echte PostgreSQL-Treiber/Produktiv-DB-Zugriff; der Importtest wurde deshalb mit einem Stub für `psycopg` ausgeführt. Die eigentliche Schema-Kompatibilität wird vor Produktivmigration read-only über den Preflight auf dem NAS geprüft.
 
 ## Android-Stand
 - Android `versionCode 200018` liegt im Draft-Branch.
-- 200018 wurde vor den letzten Härtungen lokal erfolgreich kompiliert, als Update installiert und gegen produktive API 0.6.0 auf Grundfunktionen geprüft.
+- 200018 wurde vor den letzten Härtungen lokal erfolgreich kompiliert, als Update installiert und gegen API 0.6.0 auf Grundfunktionen geprüft.
 - separate Room-Datenbank `tbhelfer-sync.db`; bestehende Baustellen-/Vermessungsdatenbank bleibt unangetastet.
 - Room-Migrationspfad 1 -> 2 -> 3 vorhanden.
 - Offline-Katalog, selektiver Download, Upload-Queue, Basisversion, 409, Tombstones und Hintergrund-Sync vorbereitet.
@@ -117,10 +156,10 @@ Hinweis: Im lokalen Testsystem fehlt nur der echte PostgreSQL-Treiber/Produktiv-
 - BTB-Import erhält gerätelokale `fotos`-/`pdfAuswahl`-Referenzen und erzeugt keinen Medien-Sync-Echo.
 - Mängelfoto-KM versteht zusätzlich `70+698`.
 - Hilfsnutzer-Scope wird niemals erweitert; Haupt-TB-Scope wird für einzelne Mängel/Abnahmen soweit möglich aus Gleis/Weiche/KM eingegrenzt.
-- manueller und Hintergrund-Sync übertragen auch Attachments.
+- manueller und Hintergrund-Sync übertragen Attachments.
 - Benachrichtigungen pro Gerät: `Text + Ton` / `nur Ton` / `aus`.
 
-Die nach dem letzten lokalen APK-Build hinzugekommenen Android-Härtungen müssen vor dem abschließenden Zwei-Geräte-Ende-zu-Ende-Test erneut lokal gebaut/installiert werden. Dieser Test ist sinnvoll erst nach Bereitstellung des 0.7-Servers möglich.
+Die nach dem letzten lokalen APK-Build hinzugekommenen Android-Härtungen müssen vor dem Zwei-Geräte-Ende-zu-Ende-Test erneut lokal gebaut/installiert werden. Dieser Test folgt erst nach erfolgreicher Bereitstellung des 0.7-Servers.
 
 ## Verbindliches Team-/Rechtemodell
 - Baustellen-Teams ausschließlich innerhalb derselben Firma.
@@ -131,29 +170,24 @@ Die nach dem letzten lokalen APK-Build hinzugekommenen Android-Härtungen müsse
 - Bilder werden mitsynchronisiert.
 - endgültige Status bleiben endgültig.
 
-## Migrationen / Prüfskripte
-- `server/migrations/008_incremental_sync_mutations.sql`
-- `server/migrations/009_worksite_collaboration.sql`
-- `server/checks/00_preflight_schema7_for_008_009.sql` – read-only vor Migration
-- `server/checks/01_verify_schema9.sql` – read-only nach Migration
+## Nächster sicherer Schritt – API 0.7 auf dem NAS
+Die DB-Migration ist abgeschlossen und geprüft. Als Nächstes wird **nicht geraten**, wie der Container neu gebaut wird.
 
-Preflight prüft unter anderem die aus dem echten 0.6.0-Runtime erwarteten Tabellen/Spalten, PostGIS und Hilfsfunktionen. Bei irgendeinem Pflichtwert `ok=false` darf die Migration nicht gestartet werden.
+Zuerst read-only ermitteln:
+1. aktuell produktive Compose-/Container-Konfiguration des API-Containers
+2. tatsächliche Bind-Mounts/Volumes für Servercode, Daten und Storage
+3. aktuell verwendeter Build-Kontext/Dockerfile und Image-Name
+4. bestehende `.env`/Secrets nur als Pfade/Variablennamen prüfen, niemals Inhalte ausgeben oder nach GitHub kopieren
+5. produktiven 0.6.0-Serverordner unmittelbar vor Austausch zusätzlich sichern
 
-Nachkontrolle erwartet Schema 8/9, alle Pflichtobjekte/Trigger und `violations=0`.
-
-## Nächster sicherer Schritt – kontrolliertes NAS-Update
-Der Codeblocker ist erledigt. Der nächste Schritt ist nicht mehr Quellcode-Import, sondern die kontrollierte Serveraktualisierung:
-
-1. produktiven Zustand sichern und unmittelbar vorher DB-Backup erzeugen/prüfen,
-2. read-only Preflight auf Schema 7 ausführen,
-3. nur bei vollständig grünem Preflight Migration 008,
-4. Migration 009,
-5. read-only Nachkontrolle (`ok=true`, `violations=0`),
-6. 0.7-API-Image bauen/starten,
-7. Login/Katalog/Admin-Smoke-Test,
-8. Android 200018 erneut bauen/installieren,
-9. echter Zwei-Geräte-Test: BTB A/B-Trennung, Mängel/Abnahmen, Bilder, 409, Tombstones, Netzabbruch/Wiederaufnahme,
-10. PR #5 bis zum erfolgreichen Ende-zu-Ende-Test als Draft lassen; `main` nicht vorher ändern.
+Danach:
+6. 0.7-Quellstand aus dem Feature-Branch/gesicherten Paket in den bestehenden NAS-Serverpfad übernehmen, ohne Secrets zu überschreiben
+7. API-Image kontrolliert neu bauen/starten
+8. Version/Login/Katalog/Admin smoke-testen
+9. Cloudflare/API-Erreichbarkeit prüfen
+10. Android 200018 mit letzten Härtungen neu bauen/installieren
+11. echter Zwei-Geräte-Test: BTB A/B-Trennung, Mängel/Abnahmen, Bilder, 409, Tombstones, Netzabbruch/Wiederaufnahme
+12. PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern
 
 ## Bahnhofsdaten – nicht neu erfinden
 Vorhandene Datenbasis:
