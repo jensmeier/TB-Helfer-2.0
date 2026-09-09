@@ -16,7 +16,7 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 - stabiler Branch: `main`
 - aktiver Feature-Branch: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
-- letzter fachlicher Code-Commit vor den Übergabe-Dokumenten: `2ad7c9254fe000828f2b6b41b226f54ca2c7d38f`
+- letzter fachlicher Stand vor diesem Übergabe-Update: `ab98ef1c69539b771c918ff8da145ad68270758a`
 - `main` wurde durch die aktuellen Arbeiten nicht verändert.
 
 ## Produktiver Stand auf der Synology
@@ -31,7 +31,9 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 - Android `versionCode 200018` ist im Draft-Branch vorbereitet.
 - 200018 wurde lokal erfolgreich kompiliert, als Update installiert und gegen produktive API 0.6.0 auf Grundfunktionen geprüft.
 - separate Room-Datenbank `tbhelfer-sync.db`; bestehende Baustellen-/Vermessungsdatenbank bleibt unangetastet.
+- Room-Migrationspfad der Sync-Datenbank ist 1 -> 2 -> 3 vorhanden; Worksite-Bindings und Collab-Cache werden getrennt von der bestehenden Fachdatenbank geführt.
 - Offline-Katalog, selektiver Download, Upload-Queue, Version/Basisversion, 409-Grundlage, Tombstones und Hintergrund-Sync sind vorbereitet.
+- Unterbrochene Uploads im Zustand `UPLOADING` werden beim nächsten Sync erneut aufgenommen; Idempotenz über `client_change_id` verhindert serverseitige Doppelanwendung.
 - Benachrichtigungseinstellungen pro Gerät: `Text + Ton` / `nur Ton` / `aus`.
 
 ## Verbindliches Team-/Rechtemodell
@@ -52,12 +54,36 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
   - Ein Haupt-TB mit `{all:true}` erzeugt für einzelne Mängel/Abnahmen nach Möglichkeit einen engeren Bereich aus vorhandenen Fachinformationen (Bereich/Gleis/Weiche/KM).
   - Ein ausdrücklich eingeschränkter Hilfsnutzer-Bereich wird niemals erweitert.
   - Der lokale Sync-Cache unterstützt einen eigenen `areaScopeJson` je synchronisiertem Vorgang.
+- Commit `778f76b59419dbd3df29f8ca6537411971f89ed6`: Migration 009 auf Datenbankebene weiter gehärtet.
+  - BTB-Gruppe muss zur selben Baustelle gehören.
+  - Attachment-Parent muss existieren und zur selben Baustelle gehören.
+  - Change-Log-Gruppe darf nicht zu einer anderen Baustelle gehören.
+  - `ERLEDIGT`, `ABGENOMMEN` und `NICHT_ABGENOMMEN` werden zusätzlich per DB-Trigger gegen Wiederöffnung geschützt.
+  - Sperrung/Deaktivierung/Rollenwechsel eines Benutzers löst unzulässige aktive Teamzuordnungen.
+  - JSON-/Versions-/Größen-/Sequenzwerte werden stärker validiert.
+- Commit `caaa8de7c8390e831462f33462323c9ea7781dae`: unterbrochene Android-Uploads werden sicher wiederaufgenommen.
+  - gilt für allgemeinen inkrementellen Sync und den Baustellen-Collab-Sync.
+- Commit `6ad5c6b7d909fcda14b01c481c2cfbc995887969`: Migration 008 validiert Versions-, JSON- und HTTP-Metadaten strenger.
+- Commit `0651507416d034fe1383c8b1b9a5912eac2f5578`: read-only Preflight für Schema 7 vor Migration 008/009.
+- Commit `4943913462781af38ac9df4d21003236d1d85f8c`: read-only Nachkontrolle für Schema 9 und Integritätsverletzungen.
+- Commit `ab98ef1c69539b771c918ff8da145ad68270758a`: verbindlicher Android-200018/Server-0.7-API-Vertrag dokumentiert.
+  - Kontext, Changes, ACK, Mutationen, 409, Attachments und Idempotenz sind festgelegt.
+  - der Change-Log-Cursor muss auch über nicht sichtbare/fremde Änderungen fortschreiten, damit z. B. BTB A nicht an BTB B hängen bleibt.
 
 ## Server-0.7-Vorbereitung
-- `server/migrations/008_incremental_sync_mutations.sql` ist im Draft-Branch vorhanden.
+- `server/migrations/008_incremental_sync_mutations.sql` ist im Draft-Branch vorhanden und gehärtet.
 - `server/migrations/009_worksite_collaboration.sql` ist im Draft-Branch vorhanden und gehärtet.
-- Im GitHub-Ordner `server/` liegt derzeit noch NICHT der vollständige produktive API-Quellstand 0.6.0; vorhanden sind im Wesentlichen README, Bahnhofsdaten und Migrationen.
-- Deshalb darf Server 0.7 NICHT aus Annahmen neu geschrieben werden.
+- `server/checks/00_preflight_schema7_for_008_009.sql` prüft die Voraussetzungen vor einer Migration read-only.
+- `server/checks/01_verify_schema9.sql` prüft Schema 9 und Integrität nach einer Testmigration read-only.
+- `server/API_0.7_VERTRAG.md` beschreibt den verbindlichen Serververtrag, den Android 200018 bereits erwartet.
+- GitHub-Suche sowie Prüfung der vorhandenen Feature-Branches haben bestätigt: Der vollständige produktive API-Quellstand 0.6.0 war bisher nicht im Repository abgelegt.
+- Im GitHub-Ordner `server/` liegen deshalb weiterhin noch nicht die produktiven API-/Docker-/Runtime-Dateien aus `/volume1/docker/tb-helfer/server/`.
+- Server 0.7 darf weiterhin NICHT aus Annahmen oder als neuer fremder Server-Unterbau geschrieben werden.
+
+## Noch gefundener Android-Randfall vor Freigabe
+- Beim Import eines gemeinsamen BTB-Textstands setzt `CollabLocalBridge` derzeit die gerätelokalen Felder `fotos` und `pdfAuswahl` leer.
+- Diese lokalen Referenzen sollen auf dem jeweiligen Gerät erhalten bleiben und dürfen zugleich nicht in den Server-Hash/Upload einfließen.
+- Dieser Merge-Randfall muss noch behoben und lokal gebaut/geprüft werden, bevor Android 200018 als Zwei-Geräte-Teststand gilt.
 
 ## Nächster notwendiger Schritt
 Den tatsächlichen produktiven Quellstand aus
@@ -72,13 +98,14 @@ Vor Übernahme ausschließen/niemals committen:
 - Signing-Keys / private Schlüssel
 - sonstige Secrets
 
-Erst danach:
-1. echten Server-0.6.0-Code gegen Migration 008/009 abgleichen,
-2. vollständiges Server-0.7-API-Paket im Feature-Branch bauen,
-3. lokal/isoliert testen,
-4. echten Zwei-Geräte-Test durchführen,
-5. 409-Konflikte/Tombstones/Attachments Ende-zu-Ende testen,
-6. erst nach Backup produktive NAS-Migration erwägen.
+Danach:
+1. echten Server-0.6.0-Code gegen `server/API_0.7_VERTRAG.md` und Migration 008/009 abgleichen,
+2. vollständiges Server-0.7-API-Paket im vorhandenen Server-Framework implementieren,
+3. Preflight + Migrationen zunächst auf Backup/Testkopie prüfen,
+4. Android 200018 inklusive BTB-Medien-Merge lokal bauen,
+5. echten Zwei-Geräte-Test durchführen,
+6. BTB-Gruppentrennung, Mängel-/Abnahme-Bereich, Bilder, 409, Tombstones und unterbrochene Uploads Ende-zu-Ende testen,
+7. erst nach erfolgreichem Test und unmittelbar vorherigem Backup produktive NAS-Migration erwägen.
 
 ## Bahnhofsdaten – nicht neu erfinden
 Vorhandene Datenbasis verwenden:
@@ -91,7 +118,7 @@ Server-Admin soll daraus Bahnhofscode/Name automatisch vervollständigen.
 ## Vermessungs-/Kilometrierungsfarben
 - Grün = belastbare Originaldaten/KM
 - Orange = manuell geändert/hergestellt
-- Rot = TRA ohne belastbare KM
+- Rot = TRA vorhanden, aber keine belastbare KM
 - Grau = ohne Vermessungsgeometrie
 - Blau = Auswahl/temporäre Markierung
 
