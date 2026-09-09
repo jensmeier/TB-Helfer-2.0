@@ -1,0 +1,186 @@
+{% extends "base.html" %}{% block content %}
+<style>
+.user-cards{display:none}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.actions form{margin:0}
+.btn-secondary{background:#667085}
+.btn-danger{background:#b42318}
+.notice{background:#ecfdf3;color:#067647;border:1px solid #abefc6;padding:10px 12px;border-radius:8px;margin-bottom:14px}
+.status-disabled,.status-expired{color:#b42318;font-weight:700}
+.status-warning{color:#b54708;font-weight:700}
+.status-active{color:#067647;font-weight:700}
+.filters{display:grid;grid-template-columns:minmax(220px,2fr) minmax(150px,1fr) minmax(170px,1fr) minmax(140px,1fr) auto;gap:10px;align-items:end}
+.filters label{display:block;font-size:13px;color:#667085;margin-bottom:4px}
+.filters input,.filters select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccd4de;border-radius:8px;font-size:15px;background:#fff}
+.filters input{margin:0}
+th a{color:inherit;text-decoration:none}
+.company{font-weight:600}
+.validity small{display:block;color:#667085;margin-top:2px}
+@media(max-width:900px){.filters{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){
+  .user-table{display:none}
+  .user-cards{display:grid;gap:12px}
+  .user-card{background:#fff;border:1px solid #dfe4ea;border-radius:12px;padding:15px}
+  .user-card .name{font-size:18px;font-weight:700}
+  .user-card .company{margin-top:3px}
+  .user-card .meta{color:#667085;margin:4px 0 12px;overflow-wrap:anywhere}
+  .filters{grid-template-columns:1fr}
+}
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+  <h2>Benutzer</h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a class="btn btn-secondary" href="/admin/companies">Firmenansicht</a>
+    <a class="btn" href="/admin/users/new">Benutzer anlegen</a>
+  </div>
+</div>
+
+{% if notice %}<div class="notice">{{ notice }}</div>{% endif %}
+
+<div class="card">
+  <form method="get" action="/admin/users" class="filters">
+    <div>
+      <label for="q">Suchen</label>
+      <input id="q" name="q" value="{{ search or '' }}" placeholder="Name, Firma, E-Mail, Status, Rolle, Key …">
+    </div>
+    <div>
+      <label for="status">Zugriffsstatus</label>
+      <select id="status" name="status">
+        <option value="ALL" {% if status_filter == "ALL" %}selected{% endif %}>Alle</option>
+        <option value="ACTIVE" {% if status_filter == "ACTIVE" %}selected{% endif %}>Aktiv</option>
+        <option value="EXPIRING" {% if status_filter == "EXPIRING" %}selected{% endif %}>Läuft in 30 Tagen ab</option>
+        <option value="EXPIRED" {% if status_filter == "EXPIRED" %}selected{% endif %}>Abgelaufen</option>
+        <option value="DISABLED" {% if status_filter == "DISABLED" %}selected{% endif %}>Deaktiviert</option>
+      </select>
+    </div>
+    <div>
+      <label for="sort">Sortieren nach</label>
+      <select id="sort" name="sort">
+        <option value="company" {% if sort == "company" %}selected{% endif %}>Firma</option>
+        <option value="name" {% if sort == "name" %}selected{% endif %}>Name</option>
+        <option value="email" {% if sort == "email" %}selected{% endif %}>E-Mail</option>
+        <option value="valid_until" {% if sort == "valid_until" %}selected{% endif %}>Gültig bis</option>
+        <option value="status" {% if sort == "status" %}selected{% endif %}>Status</option>
+        <option value="role" {% if sort == "role" %}selected{% endif %}>Rolle</option>
+        <option value="created" {% if sort == "created" %}selected{% endif %}>Angelegt</option>
+        <option value="key" {% if sort == "key" %}selected{% endif %}>Key-Datum</option>
+      </select>
+    </div>
+    <div>
+      <label for="dir">Reihenfolge</label>
+      <select id="dir" name="dir">
+        <option value="asc" {% if direction == "asc" %}selected{% endif %}>Aufsteigend</option>
+        <option value="desc" {% if direction == "desc" %}selected{% endif %}>Absteigend</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button type="submit">Anwenden</button>
+      <a class="btn btn-secondary" href="/admin/users">Zurücksetzen</a>
+    </div>
+  </form>
+</div>
+
+<div class="card scroll user-table">
+{% if rows %}
+<table>
+  <thead>
+    <tr>
+      <th>Firma</th><th>Name</th><th>E-Mail</th><th>Zugriff</th><th>Status</th><th>Key</th><th>Aktionen</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+  <tr>
+    <td class="company">{{ r.company or "—" }}</td>
+    <td>{{ r.full_name }}</td>
+    <td>{{ r.email or "—" }}</td>
+    <td class="validity">
+      {% if not r.access_valid_until %}
+        <b>Unbegrenzt</b>
+      {% else %}
+        <b>{{ r.access_valid_until.strftime('%d.%m.%Y') }}</b>
+        {% if r.access_state == 'EXPIRED' %}<small>abgelaufen</small>
+        {% elif r.days_left is not none %}<small>noch {{ r.days_left }} Tage</small>{% endif %}
+      {% endif %}
+    </td>
+    <td>
+      {% if r.access_state == 'DISABLED' %}<span class="status-disabled">DEAKTIVIERT</span>
+      {% elif r.access_state == 'EXPIRED' %}<span class="status-expired">ABGELAUFEN</span>
+      {% elif r.access_state in ['EXPIRING_7','EXPIRING_30'] %}<span class="status-warning">LÄUFT BALD AB</span>
+      {% else %}<span class="status-active">AKTIV</span>{% endif %}
+    </td>
+    <td>{{ r.access_key_hint or "—" }}</td>
+    <td>
+      {% if r.role == "USER" %}
+      <div class="actions">
+        <form method="get" action="/admin/users/{{ r.id }}/edit">
+          <button type="submit" class="btn-secondary">Bearbeiten</button>
+        </form>
+
+        {% if r.status == "ACTIVE" and r.access_state != "EXPIRED" %}
+        <form method="post" action="/admin/users/{{ r.id }}/activation">
+          <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+          <button type="submit">Aktivierungskarte</button>
+        </form>
+        {% elif r.access_state == "EXPIRED" %}
+        <span class="muted">Erst verlängern</span>
+        {% endif %}
+
+        {% if r.status == "ACTIVE" %}
+        <form method="post" action="/admin/users/{{ r.id }}/delete"
+              onsubmit="return confirm('Benutzer wirklich löschen? Das Gerät wird freigegeben und der bisherige Aktivierungs-Key dauerhaft ungültig. Die Historie bleibt erhalten.');">
+          <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+          <button type="submit" class="btn-danger">Löschen</button>
+        </form>
+        {% else %}
+        <span class="muted">Zugang deaktiviert</span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="muted">Keine Benutzer für diese Suche gefunden.</p>{% endif %}
+</div>
+
+<div class="user-cards">
+{% for r in rows %}
+<div class="user-card">
+  <div class="name">{{ r.full_name }}</div>
+  <div class="company">{{ r.company or "keine Firma" }}</div>
+  <div class="meta">{{ r.email or "keine E-Mail" }} · {{ r.role }}</div>
+  <div class="meta">
+    Zugriff: {% if r.access_valid_until %}bis {{ r.access_valid_until.strftime('%d.%m.%Y') }}{% else %}unbegrenzt{% endif %}
+    {% if r.days_left is not none and r.access_state != 'EXPIRED' %} · noch {{ r.days_left }} Tage{% endif %}
+  </div>
+  <div class="meta">Status: {{ r.access_state }} · Key: {{ r.access_key_hint or "—" }}</div>
+
+  {% if r.role == "USER" %}
+  <div class="actions">
+    <form method="get" action="/admin/users/{{ r.id }}/edit">
+      <button type="submit" class="btn-secondary">Bearbeiten</button>
+    </form>
+
+    {% if r.status == "ACTIVE" and r.access_state != "EXPIRED" %}
+    <form method="post" action="/admin/users/{{ r.id }}/activation">
+      <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+      <button type="submit">Aktivierungskarte</button>
+    </form>
+    {% endif %}
+
+    {% if r.status == "ACTIVE" %}
+    <form method="post" action="/admin/users/{{ r.id }}/delete"
+          onsubmit="return confirm('Benutzer wirklich löschen? Das Gerät wird freigegeben und der bisherige Aktivierungs-Key dauerhaft ungültig. Die Historie bleibt erhalten.');">
+      <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+      <button type="submit" class="btn-danger">Löschen</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+</div>
+{% endblock %}
