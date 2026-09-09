@@ -31,6 +31,9 @@ interface CollabDao {
     @Insert
     suspend fun enqueue(item: CollabPendingMutationEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertPending(item: CollabPendingMutationEntity): Long
+
     @Query("SELECT * FROM collab_worksite ORDER BY name COLLATE NOCASE")
     suspend fun worksites(): List<CollabWorksiteEntity>
 
@@ -81,6 +84,9 @@ interface CollabDao {
 
     @Query("SELECT * FROM collab_pending_mutation WHERE worksiteServerId=:worksiteId AND entityType=:entityType AND clientEntityKey=:clientKey AND state IN ('PENDING','FAILED') ORDER BY id DESC LIMIT 1")
     suspend fun pendingForClientKey(worksiteId: String, entityType: String, clientKey: String): CollabPendingMutationEntity?
+
+    @Query("SELECT * FROM collab_pending_mutation WHERE worksiteServerId=:worksiteId AND entityType=:entityType AND clientEntityKey=:clientKey AND state='PENDING' AND attempts=0 ORDER BY id DESC LIMIT 1")
+    suspend fun unsentPendingForClientKey(worksiteId: String, entityType: String, clientKey: String): CollabPendingMutationEntity?
 
     @Query("SELECT COUNT(*) FROM collab_pending_mutation WHERE state IN ('PENDING','FAILED')")
     suspend fun pendingCount(): Int
