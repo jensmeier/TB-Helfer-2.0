@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.SyncWorksiteContextEntity
 import de.tbhelfer.datenbank.WorksiteBindingRepository
@@ -157,6 +158,34 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
             notifications += second.notifications
             runCatching { bridge.applyServerStateToLocal() }
                 .getOrElse { return SyncUiResult.Error(it.message ?: "Bestätigte Serverdaten konnten lokal nicht übernommen werden.") }
+        }
+
+        // Genau wie der Hintergrund-Sync muss auch ein manueller Sync Bilder und Abnahme-Anlagen
+        // sofort versuchen. Der Upload läuft bei jedem Durchlauf, damit ein zuvor unterbrochenes
+        // Bild nicht bis zum nächsten periodischen Worker warten muss.
+        val attachmentUpload = when (val result = bridge.uploadLocalAttachments(token)) {
+            CollabLocalBridge.AttachmentUploadResult.SessionInvalid -> return SyncUiResult.SessionInvalid
+            CollabLocalBridge.AttachmentUploadResult.Unsupported -> null
+            is CollabLocalBridge.AttachmentUploadResult.Error -> return SyncUiResult.Error(result.message)
+            is CollabLocalBridge.AttachmentUploadResult.Success -> result.summary
+        }
+        uploaded += attachmentUpload?.uploaded ?: 0
+
+        // Neue Attachment-Changes unmittelbar wieder einlesen/ACKen. Das eigene Gerät lädt die
+        // Datei nicht doppelt, weil Repository + Bridge die Server-ID schon lokal verknüpft haben.
+        if ((attachmentUpload?.uploaded ?: 0) > 0) {
+            val third = when (val result = collab.synchronizeAll(token)) {
+                CollabSyncRepository.FullSyncResult.SessionInvalid -> return SyncUiResult.SessionInvalid
+                is CollabSyncRepository.FullSyncResult.Error -> return SyncUiResult.Error(result.message)
+                is CollabSyncRepository.FullSyncResult.Success -> result.summary
+            }
+            pulled += third.pulledChanges
+            uploaded += third.uploadedChanges
+            pending = third.pendingChanges
+            conflicts = third.conflicts
+            notifications += third.notifications
+            runCatching { bridge.applyServerStateToLocal() }
+                .getOrElse { return SyncUiResult.Error(it.message ?: "Bild-/Anlagendaten konnten lokal nicht bestätigt werden.") }
         }
 
         return SyncUiResult.Success(
