@@ -1,15 +1,12 @@
 BEGIN;
 
 -- TB-Helfer Schema 10
--- Selbstverwaltete Baustellen-Einladungen, stabiles Namensmerkmal fuer gleichnamige TBs
+-- Selbstverwaltete Baustellen, Einladungen, gleichnamige verantwortliche TBs
 -- und zentrales Firmenprofil/Logo.
 
 -- ---------------------------------------------------------------------------
 -- 1. Gleichnamige verantwortliche TBs
 -- ---------------------------------------------------------------------------
--- Die fachliche Identitaet bleibt immer die UUID von Benutzer/Gruppe.
--- lead_name_ordinal dient nur dazu, gleichnamige verantwortliche TBs innerhalb
--- derselben Baustelle fuer Menschen eindeutig anzuzeigen (z. B. Max Mustermann 1/2).
 ALTER TABLE tb.worksite_groups
     ADD COLUMN IF NOT EXISTS lead_name_ordinal integer;
 
@@ -27,16 +24,13 @@ SET lead_name_ordinal=ranked.ordinal_no
 FROM ranked
 WHERE ranked.id=g.id AND g.lead_name_ordinal IS NULL;
 
-UPDATE tb.worksite_groups
-SET lead_name_ordinal=1
-WHERE lead_name_ordinal IS NULL;
+UPDATE tb.worksite_groups SET lead_name_ordinal=1 WHERE lead_name_ordinal IS NULL;
 
 ALTER TABLE tb.worksite_groups
     ALTER COLUMN lead_name_ordinal SET DEFAULT 1,
     ALTER COLUMN lead_name_ordinal SET NOT NULL;
 
-ALTER TABLE tb.worksite_groups
-    DROP CONSTRAINT IF EXISTS worksite_groups_lead_name_ordinal_ck;
+ALTER TABLE tb.worksite_groups DROP CONSTRAINT IF EXISTS worksite_groups_lead_name_ordinal_ck;
 ALTER TABLE tb.worksite_groups
     ADD CONSTRAINT worksite_groups_lead_name_ordinal_ck CHECK (lead_name_ordinal >= 1);
 
@@ -70,7 +64,6 @@ BEGIN
         END IF;
     END IF;
 
-    -- Parallel angelegte gleichnamige TB-Gruppen duerfen nicht dieselbe Nummer erhalten.
     PERFORM pg_advisory_xact_lock(
         hashtextextended(
             'tb-worksite-lead-name:' || NEW.worksite_id::text || ':' || lower(btrim(COALESCE(NEW.lead_name_snapshot,''))),
@@ -96,7 +89,23 @@ BEFORE INSERT OR UPDATE OF worksite_id,lead_user_id,lead_name_snapshot ON tb.wor
 FOR EACH ROW EXECUTE FUNCTION tb.assign_worksite_group_lead_ordinal();
 
 -- ---------------------------------------------------------------------------
--- 2. Einladungen fuer weiteren verantwortlichen TB oder Helfer
+-- 2. Idempotente Baustellen-Erstellung direkt aus der App
+-- ---------------------------------------------------------------------------
+-- Eine lokale Hauptbaustelle darf bei Netzabbruch/Retry nicht versehentlich doppelt auf dem
+-- Server entstehen. Der Client sendet deshalb einen stabilen, nicht geheimen lokalen Schlüssel.
+CREATE TABLE IF NOT EXISTS tb.worksite_mobile_origins (
+    user_id uuid NOT NULL REFERENCES tb.users(id) ON DELETE CASCADE,
+    client_worksite_key text NOT NULL CHECK (btrim(client_worksite_key)<>''),
+    worksite_id uuid NOT NULL REFERENCES tb.worksites(id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id,client_worksite_key),
+    UNIQUE (worksite_id)
+);
+CREATE INDEX IF NOT EXISTS worksite_mobile_origins_worksite_idx
+    ON tb.worksite_mobile_origins(worksite_id);
+
+-- ---------------------------------------------------------------------------
+-- 3. Einladungen fuer weiteren verantwortlichen TB oder Helfer
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tb.worksite_invitations (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -130,7 +139,6 @@ CREATE INDEX IF NOT EXISTS worksite_invitations_active_idx
 CREATE INDEX IF NOT EXISTS worksite_invitations_inviter_idx
     ON tb.worksite_invitations(invited_by,created_at DESC);
 
--- Eine Helfer-Einladung darf niemals auf eine Gruppe einer anderen Baustelle zeigen.
 CREATE OR REPLACE FUNCTION tb.validate_worksite_invitation_group()
 RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE
@@ -168,10 +176,8 @@ CREATE INDEX IF NOT EXISTS worksite_invitation_redemptions_user_idx
     ON tb.worksite_invitation_redemptions(user_id,redeemed_at DESC);
 
 -- ---------------------------------------------------------------------------
--- 3. Zentrales Firmenprofil
+-- 4. Zentrales Firmenprofil
 -- ---------------------------------------------------------------------------
--- Logo-Dateien liegen im serverseitigen Storage. In PostgreSQL werden nur
--- kontrollierter Pfad, MIME-Typ, SHA und Version gespeichert.
 CREATE TABLE IF NOT EXISTS tb.company_profiles (
     company_id bigint PRIMARY KEY REFERENCES tb.companies(id) ON DELETE CASCADE,
     address_line1 text,
