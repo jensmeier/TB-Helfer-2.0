@@ -5,6 +5,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM tb.schema_versions WHERE version=10) THEN
         RAISE EXCEPTION 'SCHEMA_10_NOT_REGISTERED';
     END IF;
+    IF to_regclass('tb.worksite_mobile_origins') IS NULL THEN
+        RAISE EXCEPTION 'WORKSITE_MOBILE_ORIGINS_MISSING';
+    END IF;
     IF to_regclass('tb.worksite_invitations') IS NULL THEN
         RAISE EXCEPTION 'WORKSITE_INVITATIONS_MISSING';
     END IF;
