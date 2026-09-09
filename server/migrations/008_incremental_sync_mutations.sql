@@ -9,12 +9,12 @@ ALTER TABLE tb.stations ADD COLUMN IF NOT EXISTS current_version integer NOT NUL
 CREATE TABLE IF NOT EXISTS tb.route_section_versions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   route_section_id uuid NOT NULL REFERENCES tb.route_sections(id) ON DELETE CASCADE,
-  version_no integer NOT NULL,
+  version_no integer NOT NULL CHECK (version_no >= 1),
   changed_by uuid REFERENCES tb.users(id) ON DELETE SET NULL,
   changed_by_device uuid REFERENCES tb.devices(id) ON DELETE SET NULL,
   changed_at timestamptz NOT NULL DEFAULT now(),
   change_reason text,
-  snapshot jsonb NOT NULL DEFAULT '{}'::jsonb,
+  snapshot jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(snapshot)='object'),
   geom geometry(LineString),
   UNIQUE(route_section_id, version_no)
 );
@@ -24,8 +24,8 @@ CREATE INDEX IF NOT EXISTS ix_tb_route_section_versions_section
 CREATE TABLE IF NOT EXISTS tb.sync_mutation_receipts (
   device_id uuid NOT NULL REFERENCES tb.devices(id) ON DELETE CASCADE,
   client_change_id text NOT NULL,
-  http_status integer NOT NULL,
-  response jsonb NOT NULL,
+  http_status integer NOT NULL CHECK (http_status BETWEEN 100 AND 599),
+  response jsonb NOT NULL CHECK (jsonb_typeof(response)='object'),
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY(device_id, client_change_id)
 );
