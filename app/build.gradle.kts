@@ -18,9 +18,9 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Baustellen-Team-Sync: gruppenbezogener BTB, baustellenweite Mängel/Abnahmen,
-        // Bilder, Geräte-Benachrichtigungen und eigener Offline-Cache.
-        versionCode = 200016
+        // Baustellen-Team-Sync mit expliziter lokaler Server-Baustellen-Zuordnung und
+        // Brücke zu den vorhandenen BTB-/Mängel-/Abnahme-Speichern.
+        versionCode = 200017
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
