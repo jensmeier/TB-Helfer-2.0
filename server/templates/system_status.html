@@ -1,0 +1,107 @@
+{% extends "base.html" %}{% block content %}
+<style>
+.status-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:14px 0}
+.kpi-card{background:#fff;border:1px solid #dfe4ea;border-radius:12px;padding:14px}.kpi-card .n{font-size:25px;font-weight:750}.kpi-card .l{font-size:13px;color:#667085;margin-top:3px}
+.okbox{background:#ecfdf3;color:#067647;border:1px solid #abefc6;border-radius:10px;padding:10px 12px}.warnbox{background:#fff4e5;color:#b54708;border:1px solid #fedf89;border-radius:10px;padding:10px 12px}.badbox{background:#fee4e2;color:#b42318;border:1px solid #fecdca;border-radius:10px;padding:10px 12px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}.mini{font-size:13px;color:#667085}.progress{height:12px;background:#eef2f6;border-radius:999px;overflow:hidden}.progress>div{height:100%;background:#1167d8}.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.form-grid label{font-weight:650;font-size:14px}.form-grid input,.form-grid select,.form-grid textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccd4de;border-radius:8px;background:#fff;font-size:15px}.form-grid textarea{min-height:80px}.inline{display:flex;align-items:center;gap:8px}.inline input[type=checkbox]{width:auto;margin:0}.btn-secondary{background:#667085}.btn-warn{background:#b54708}.pill{display:inline-block;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700;background:#f2f4f7}.pill.ok{background:#ecfdf3;color:#067647}.pill.warn{background:#fff4e5;color:#b54708}.pill.bad{background:#fee4e2;color:#b42318}
+</style>
+
+<div class="status-head">
+  <div><h2>Systemstatus</h2><p class="muted">Server, Datenbank, Nutzer, Firmen, Geräte, Speicher, Backups und E-Mail-Berichte an einer Stelle.</p></div>
+  <div><span class="pill ok">API {{ server_version }}</span> <span class="pill ok">DB Schema {{ snap.schema.version }}</span></div>
+</div>
+
+{% if notice %}<div class="okbox" style="margin-bottom:14px">{{ notice }}</div>{% endif %}
+{% if error %}<div class="badbox" style="margin-bottom:14px">{{ error }}</div>{% endif %}
+{% if snap.warnings %}<div class="warnbox" style="margin-bottom:14px"><b>Warnungen</b><ul>{% for w in snap.warnings %}<li>{{ w }}</li>{% endfor %}</ul></div>{% else %}<div class="okbox" style="margin-bottom:14px">✓ Aktuell keine Systemwarnungen.</div>{% endif %}
+
+<div class="kpis">
+  <div class="kpi-card"><div class="n">{{ snap.counts.companies }}</div><div class="l">Firmen</div></div>
+  <div class="kpi-card"><div class="n">{{ snap.counts.active_users }}</div><div class="l">aktive Nutzer / {{ snap.counts.users }} gesamt</div></div>
+  <div class="kpi-card"><div class="n">{{ snap.counts.active_devices }}</div><div class="l">aktive Geräte</div></div>
+  <div class="kpi-card"><div class="n">{{ snap.counts.worksites }}</div><div class="l">Baustellen</div></div>
+  <div class="kpi-card"><div class="n">{{ snap.counts.files }}</div><div class="l">Originaldateien · {{ human_bytes(snap.counts.tracked_file_bytes) }}</div></div>
+  <div class="kpi-card"><div class="n">{{ snap.counts.releases }}</div><div class="l">App-Versionen</div></div>
+</div>
+
+<div class="two">
+  <div class="card">
+    <h3>Server & Datenbank</h3>
+    <p><b>API:</b> <span class="pill ok">OK · {{ server_version }}</span></p>
+    <p><b>PostgreSQL:</b> <span class="pill ok">OK</span></p>
+    <p><b>Schema:</b> {{ snap.schema.version }} · {{ snap.schema.name }}</p>
+    <p><b>Datenbankgröße:</b> {{ human_bytes(snap.counts.db_bytes) }}</p>
+    <p><b>Letzter Gerätekontakt:</b> {% if snap.counts.last_device_seen %}{{ snap.counts.last_device_seen.strftime('%d.%m.%Y %H:%M') }}{% else %}noch keiner{% endif %}</p>
+    <p><b>Letzter Sync:</b> {% if snap.counts.last_sync %}{{ snap.counts.last_sync.strftime('%d.%m.%Y %H:%M') }}{% else %}noch keiner{% endif %}</p>
+  </div>
+  <div class="card">
+    <h3>Speicher</h3>
+    {% if snap.storage.available %}
+      <p><b>TB-Helfer/NAS:</b> {{ human_bytes(snap.storage.used) }} belegt · {{ human_bytes(snap.storage.free) }} frei · {{ snap.storage.percent }}%</p>
+      <div class="progress"><div style="width:{{ [snap.storage.percent,100]|min }}%"></div></div>
+      <p class="mini">Pfad: {{ snap.storage.path }}</p>
+    {% else %}<div class="warnbox">Speicherpfad {{ snap.storage.path }} ist nicht verfügbar.</div>{% endif %}
+    <p><b>Erfasste Originaldateien:</b> {{ human_bytes(snap.counts.tracked_file_bytes) }}</p>
+    {% if snap.backup_storage.available %}<p><b>Backup-Ziel:</b> {{ human_bytes(snap.backup_storage.free) }} frei</p>{% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h3>Firmenübersicht</h3>
+  <div class="scroll"><table><thead><tr><th>Firma</th><th>Nutzer</th><th>aktive Geräte</th><th>Baustellen</th><th>Dateien</th><th>Dateispeicher</th></tr></thead><tbody>
+  {% for c in snap.companies %}
+    {% if c.user_count or c.worksite_count or c.file_count %}<tr><td><b>{{ c.name }}</b></td><td>{{ c.user_count }} ({{ c.active_user_count }} aktiv)</td><td>{{ c.active_device_count }}</td><td>{{ c.worksite_count }}</td><td>{{ c.file_count }}</td><td>{{ human_bytes(c.file_bytes) }}</td></tr>{% endif %}
+  {% else %}<tr><td colspan="6" class="muted">Noch keine Firmen vorhanden.</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="mini">Neue Baustellen und Dateien werden künftig der Firma des erstellenden/importierenden Nutzers zugeordnet. Bestehende Daten wurden, soweit möglich, über ihren Ersteller/Importeur übernommen.</p>
+</div>
+
+<div class="two">
+  <div class="card">
+    <h3>Datenbank-Backup</h3>
+    {% if snap.last_backup %}
+      <p><b>Letzter Lauf:</b> {{ snap.last_backup.status }} · {{ snap.last_backup.started_at.strftime('%d.%m.%Y %H:%M') }}</p>
+      <p><b>Größe:</b> {{ human_bytes(snap.last_backup.file_size_bytes) }}</p>
+      {% if snap.last_backup.error_message %}<div class="badbox">{{ snap.last_backup.error_message }}</div>{% endif %}
+    {% else %}<p class="muted">Noch kein Datenbankbackup protokolliert.</p>{% endif %}
+    <form method="post" action="/admin/system/backup"><input type="hidden" name="csrf" value="{{ admin.csrf }}"><button class="btn-warn">Datenbank jetzt sichern</button></form>
+    <p class="mini">Das pg_dump sichert PostgreSQL/PostGIS. Originaldateien in <code>/tb/storage</code> sind davon getrennt und werden später zusätzlich über Synology Hyper Backup/zweites NAS gesichert.</p>
+  </div>
+  <div class="card">
+    <h3>E-Mail</h3>
+    {% if smtp.configured %}<p><span class="pill ok">SMTP vorbereitet</span></p>{% else %}<p><span class="pill warn">SMTP noch nicht eingerichtet</span></p>{% endif %}
+    <p class="mini">Host: {{ smtp.host or 'nicht gesetzt' }} · Absender: {{ smtp.from or 'nicht gesetzt' }} · Passwort: {% if smtp.password_set %}gesetzt{% else %}nicht gesetzt{% endif %}</p>
+    {% if snap.last_report %}<p><b>Letzter Bericht:</b> {{ snap.last_report.status }} · {{ snap.last_report.started_at.strftime('%d.%m.%Y %H:%M') }}</p>{% endif %}
+    <form method="post" action="/admin/system/test-email"><input type="hidden" name="csrf" value="{{ admin.csrf }}"><button>Testbericht senden</button></form>
+    <p class="mini">SMTP-Passwort bleibt ausschließlich in der <code>.env</code> und wird nie in der Datenbank oder Oberfläche angezeigt.</p>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Automatik einstellen</h3>
+  <form method="post" action="/admin/system/settings">
+    <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+    <div class="form-grid">
+      <div><label class="inline"><input type="checkbox" name="report_enabled" value="1" {% if settings.report_enabled %}checked{% endif %}> E-Mail-Berichte aktiv</label></div>
+      <div><label>Häufigkeit</label><select name="report_frequency"><option value="DAILY" {% if settings.report_frequency=='DAILY' %}selected{% endif %}>Täglich</option><option value="WEEKLY" {% if settings.report_frequency=='WEEKLY' %}selected{% endif %}>Wöchentlich</option><option value="MONTHLY" {% if settings.report_frequency=='MONTHLY' %}selected{% endif %}>Monatlich</option></select></div>
+      <div><label>Uhrzeit</label><input type="number" min="0" max="23" name="report_hour" value="{{ settings.report_hour }}"></div>
+      <div><label>Wochentag</label><select name="report_weekday">{% for n,name in [(0,'Montag'),(1,'Dienstag'),(2,'Mittwoch'),(3,'Donnerstag'),(4,'Freitag'),(5,'Samstag'),(6,'Sonntag')] %}<option value="{{ n }}" {% if settings.report_weekday==n %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+      <div><label>Monatstag (1–28)</label><input type="number" min="1" max="28" name="report_monthday" value="{{ settings.report_monthday }}"></div>
+      <div><label>Warnung Ablauf (Tage)</label><input type="number" min="1" max="365" name="expiry_warning_days" value="{{ settings.expiry_warning_days }}"></div>
+      <div><label>Speicherwarnung ab %</label><input type="number" min="50" max="99" name="storage_warning_percent" value="{{ settings.storage_warning_percent }}"></div>
+      <div><label>Zeitzone</label><input name="report_timezone" value="{{ settings.report_timezone }}"></div>
+      <div style="grid-column:1/-1"><label>E-Mail-Empfänger</label><textarea name="report_recipients" placeholder="admin@beispiel.de, zweite@beispiel.de">{{ settings.report_recipients or '' }}</textarea></div>
+      <div><label class="inline"><input type="checkbox" name="backup_enabled" value="1" {% if settings.backup_enabled %}checked{% endif %}> tägliches DB-Backup aktiv</label></div>
+      <div><label>Backup-Uhrzeit</label><input type="number" min="0" max="23" name="backup_hour" value="{{ settings.backup_hour }}"></div>
+      <div><label>DB-Backups behalten (Tage)</label><input type="number" min="1" max="3650" name="backup_retention_days" value="{{ settings.backup_retention_days }}"></div>
+    </div>
+    <p><button>Systemeinstellungen speichern</button></p>
+  </form>
+</div>
+
+<div class="two">
+  <div class="card"><h3>Bald ablaufende Nutzer</h3>{% if snap.expiring %}<table>{% for u in snap.expiring %}<tr><td><b>{{ u.full_name }}</b><div class="mini">{{ u.company or 'ohne Firma' }}</div></td><td>{{ u.days_left }} Tage</td><td>{{ u.access_valid_until.strftime('%d.%m.%Y') }}</td></tr>{% endfor %}</table>{% else %}<p class="muted">Keine innerhalb des Warnzeitraums.</p>{% endif %}</div>
+  <div class="card"><h3>Sicherheit / Audit</h3><p>{{ snap.audit_7d }} Ereignisse in 7 Tagen · {{ snap.failed_7d }} als Fehler markiert</p>{% if snap.recent_audit %}<table>{% for e in snap.recent_audit %}<tr><td>{{ e.created_at.strftime('%d.%m. %H:%M') }}</td><td>{{ e.action }}</td></tr>{% endfor %}</table>{% else %}<p class="muted">Noch keine Audit-Ereignisse.</p>{% endif %}</div>
+</div>
+{% endblock %}
