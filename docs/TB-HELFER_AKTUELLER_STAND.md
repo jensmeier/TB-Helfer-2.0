@@ -16,7 +16,7 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 - stabiler Branch: `main`
 - aktiver Feature-Branch: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
-- aktueller Head: `2ad7c9254fe000828f2b6b41b226f54ca2c7d38f`
+- letzter fachlicher Code-Commit vor den Übergabe-Dokumenten: `2ad7c9254fe000828f2b6b41b226f54ca2c7d38f`
 - `main` wurde durch die aktuellen Arbeiten nicht verändert.
 
 ## Produktiver Stand auf der Synology
