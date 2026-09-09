@@ -9,6 +9,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.datenbank.BtbTeamMediaSync
 import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.OfflineSyncRepository
@@ -66,6 +67,7 @@ class SyncWorker(
 
                 val collabRepository = ServiceLocator.collabSyncRepository
                 val localBridge = ServiceLocator.collabLocalBridge
+                val btbMedia = BtbTeamMediaSync(applicationContext)
                 val notifications = mutableListOf<CollabBenachrichtigungen.Ereignis>()
 
                 // 1) Serverkontext + fremde Änderungen holen. Damit kennen wir die gültige
@@ -79,17 +81,29 @@ class SyncWorker(
                     is CollabSyncRepository.FullSyncResult.Success -> notifications += first.summary.notifications
                 }
 
-                // 2) Eingehende BTB-/Mängel-/Abnahme-Stände und heruntergeladene Bilder in die
-                //    bestehenden Fachspeicher spiegeln. Erledigte/finale Vorgänge bleiben final.
+                // 2) Eingehende BTB-/Mängel-/Abnahme-Stände in die bestehenden Fachspeicher spiegeln.
                 runCatching { localBridge.applyServerStateToLocal() }
                     .getOrElse { return Result.retry() }
+
+                // BTB-Bilder der eigenen verantwortlichen TB-Gruppe ebenfalls übernehmen und bereits
+                // vorhandene lokale Bilder dieses BTB hochladen. Bilder anderer TB-Gruppen sind im
+                // Server-Feed nicht sichtbar und können daher hier nicht vermischt werden.
+                val firstBtbMedia = when (val media = btbMedia.synchronize(token)) {
+                    BtbTeamMediaSync.Result.SessionInvalid -> {
+                        tokenStore.clear()
+                        return Result.success()
+                    }
+                    BtbTeamMediaSync.Result.Unsupported -> null
+                    is BtbTeamMediaSync.Result.Error -> return Result.retry()
+                    is BtbTeamMediaSync.Result.Success -> media.summary
+                }
 
                 // 3) Lokale Text-/Statusänderungen in die idempotente Upload-Queue übernehmen.
                 val exported = runCatching { localBridge.exportLocalChanges() }
                     .getOrElse { return Result.retry() }
 
                 // 4) Neue Entities müssen zuerst ihre feste Server-UUID erhalten, bevor Bilder
-                //    an DEFECT/ACCEPTANCE angehängt werden können.
+                //    an BTB/DEFECT/ACCEPTANCE angehängt werden können.
                 if (exported.queuedOrUpdated > 0) {
                     when (val second = collabRepository.synchronizeAll(token)) {
                         CollabSyncRepository.FullSyncResult.SessionInvalid -> {
@@ -103,9 +117,20 @@ class SyncWorker(
                         .getOrElse { return Result.retry() }
                 }
 
-                // 5) Bilder/Abnahme-Anlagen bei JEDEM Lauf versuchen. Das ist absichtlich nicht
-                //    an queuedOrUpdated gekoppelt: Ein nach Netzabbruch fehlgeschlagenes Bild muss
-                //    beim nächsten Hintergrundlauf erneut versucht werden können.
+                // 5) Nach dem Text-Upload nochmals BTB-Medien versuchen. Das deckt insbesondere einen
+                //    ganz neuen Tages-BTB ab, dessen Server-UUID erst in Schritt 4 entstanden ist.
+                val secondBtbMedia = when (val media = btbMedia.synchronize(token)) {
+                    BtbTeamMediaSync.Result.SessionInvalid -> {
+                        tokenStore.clear()
+                        return Result.success()
+                    }
+                    BtbTeamMediaSync.Result.Unsupported -> null
+                    is BtbTeamMediaSync.Result.Error -> return Result.retry()
+                    is BtbTeamMediaSync.Result.Success -> media.summary
+                }
+
+                // 6) Mängel-/Abnahmebilder bei JEDEM Lauf versuchen. Das ist absichtlich nicht an
+                //    queuedOrUpdated gekoppelt: ein Netzabbruch darf ein Bild nicht dauerhaft verlieren.
                 val attachmentUpload = when (val result = localBridge.uploadLocalAttachments(token)) {
                     CollabLocalBridge.AttachmentUploadResult.SessionInvalid -> {
                         tokenStore.clear()
@@ -116,10 +141,9 @@ class SyncWorker(
                     is CollabLocalBridge.AttachmentUploadResult.Success -> result.summary
                 }
 
-                // 6) Nach neuen Uploads den ATTACHMENT-Change einmal bestätigen. Das eigene Gerät
-                //    lädt seine Datei nicht erneut, weil Repository + Bridge die Server-ID bereits
-                //    mit dem lokalen Bild verknüpft haben.
-                if ((attachmentUpload?.uploaded ?: 0) > 0) {
+                // 7) Neue ATTACHMENT-Changes einmal holen/ACKen und sofort lokal anwenden.
+                val btbUploaded = (firstBtbMedia?.uploaded ?: 0) + (secondBtbMedia?.uploaded ?: 0)
+                if (btbUploaded > 0 || (attachmentUpload?.uploaded ?: 0) > 0) {
                     when (val third = collabRepository.synchronizeAll(token)) {
                         CollabSyncRepository.FullSyncResult.SessionInvalid -> {
                             tokenStore.clear()
@@ -130,6 +154,14 @@ class SyncWorker(
                     }
                     runCatching { localBridge.applyServerStateToLocal() }
                         .getOrElse { return Result.retry() }
+                    when (val media = btbMedia.synchronize(token)) {
+                        BtbTeamMediaSync.Result.SessionInvalid -> {
+                            tokenStore.clear()
+                            return Result.success()
+                        }
+                        is BtbTeamMediaSync.Result.Error -> return Result.retry()
+                        else -> Unit
+                    }
                 }
 
                 notifications
