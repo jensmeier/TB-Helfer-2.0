@@ -251,13 +251,14 @@ class CollabSyncApi(
         val connection = openConnection("/api/v1/collab/mutations", "POST")
         return try {
             authorize(connection, token)
+            val payload = jsonObjectOrEmpty(change.payloadJson)
             val request = JSONObject()
                 .put("client_change_id", change.clientChangeId)
                 .put("worksite_id", change.worksiteServerId)
                 .put("entity_type", change.entityType)
                 .put("operation", change.operation)
-                .put("area_scope", jsonObjectOrEmpty(change.areaScopeJson))
-                .put("payload", jsonObjectOrEmpty(change.payloadJson))
+                .put("area_scope", effectiveAreaScope(change, payload))
+                .put("payload", payload)
             if (!change.groupId.isNullOrBlank()) request.put("group_id", change.groupId)
             if (!change.serverId.isNullOrBlank()) request.put("entity_id", change.serverId)
             if (!change.clientEntityKey.isNullOrBlank()) request.put("client_entity_key", change.clientEntityKey)
@@ -415,6 +416,104 @@ class CollabSyncApi(
 
     private fun jsonObjectOrEmpty(text: String): JSONObject = runCatching { JSONObject(text) }.getOrElse { JSONObject() }
 
+    /**
+     * Ein Haupt-TB besitzt typischerweise den Scope {all:true}. Für einen einzelnen Mangel oder
+     * eine Abnahme wäre das zu grob: sonst sähen alle Hilfsnutzer den Vorgang, obwohl er z. B. nur
+     * Gleis 28 betrifft. Deshalb wird bei einem baustellenweiten Ausgangsscope aus den bereits
+     * vorhandenen Fachdaten ein engerer Entity-Scope erzeugt. Ein explizit eingeschränkter Scope
+     * (Hilfsnutzer) wird niemals erweitert oder ersetzt; der Server prüft ihn zusätzlich.
+     */
+    private fun effectiveAreaScope(change: SyncCollabPendingChangeEntity, payload: JSONObject): JSONObject {
+        val requested = jsonObjectOrEmpty(change.areaScopeJson)
+        val type = change.entityType.uppercase()
+        if (type != SyncCollabPendingChangeEntity.TYPE_DEFECT &&
+            type != SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE
+        ) return requested
+
+        val explicitlyRestricted = requested.has("all") && !requested.optBoolean("all", false)
+        if (explicitlyRestricted) return requested
+
+        val labels = linkedSetOf<String>()
+        when (type) {
+            SyncCollabPendingChangeEntity.TYPE_DEFECT -> addScopeLabel(labels, payload.optString("bereich"))
+            SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE -> {
+                addScopeLabel(labels, payload.optString("unterKnotenName"))
+                addScopeLabel(labels, payload.optString("objekt"))
+            }
+        }
+
+        val kmRange = when (type) {
+            SyncCollabPendingChangeEntity.TYPE_DEFECT -> parseKmDisplayRange(payload.optString("km"))
+            SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE -> {
+                val from = payload.optNullableDouble("kmVon")?.let(::kmValueToMeters)
+                val to = payload.optNullableDouble("kmBis")?.let(::kmValueToMeters)
+                normalizeKmRange(from, to)
+            }
+            else -> null
+        }
+
+        if (labels.isEmpty() && kmRange == null) return requested
+
+        return JSONObject().apply {
+            put("all", false)
+            if (labels.isNotEmpty()) {
+                put("labels", JSONArray(labels.toList()))
+                put("label", labels.joinToString(", "))
+            }
+            if (kmRange != null) {
+                put("km_from_m", kmRange.first)
+                put("km_to_m", kmRange.second)
+            }
+        }
+    }
+
+    private fun addScopeLabel(target: MutableSet<String>, raw: String?) {
+        val value = raw.orEmpty().trim()
+        if (value.isBlank()) return
+        val normalized = value.lowercase()
+        if (normalized in GENERIC_SCOPE_LABELS) return
+
+        value.split(Regex("[,;|/]+"))
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .forEach(target::add)
+
+        TRACK_SCOPE_REGEX.findAll(value).forEach { match -> target.add(match.value.trim()) }
+        SWITCH_SCOPE_REGEX.findAll(value).forEach { match -> target.add(match.value.trim()) }
+    }
+
+    private fun parseKmDisplayRange(raw: String?): Pair<Double, Double>? {
+        val text = raw.orEmpty().trim()
+        if (text.isBlank() || text == "-") return null
+
+        val plusValues = KM_PLUS_REGEX.findAll(text).mapNotNull { match ->
+            val km = match.groupValues.getOrNull(1)?.toDoubleOrNull() ?: return@mapNotNull null
+            val rest = match.groupValues.getOrNull(2)?.replace(',', '.')?.toDoubleOrNull() ?: return@mapNotNull null
+            km * 1000.0 + rest
+        }.toList()
+        if (plusValues.isNotEmpty()) return normalizeKmRange(plusValues.first(), plusValues.getOrNull(1))
+
+        val decimalValues = KM_DECIMAL_REGEX.findAll(text).mapNotNull { match ->
+            match.value.replace(',', '.').toDoubleOrNull()?.let(::kmValueToMeters)
+        }.toList()
+        if (decimalValues.isEmpty()) return null
+        return normalizeKmRange(decimalValues.first(), decimalValues.getOrNull(1))
+    }
+
+    private fun kmValueToMeters(value: Double): Double =
+        if (kotlin.math.abs(value) < 1000.0) value * 1000.0 else value
+
+    private fun normalizeKmRange(from: Double?, to: Double?): Pair<Double, Double>? {
+        val first = from ?: to ?: return null
+        val second = to ?: first
+        return if (first <= second) first to second else second to first
+    }
+
+    private fun JSONObject.optNullableDouble(name: String): Double? {
+        if (!has(name) || isNull(name)) return null
+        return runCatching { getDouble(name) }.getOrNull()
+    }
+
     private fun contentDispositionFilename(value: String?): String? {
         if (value.isNullOrBlank()) return null
         return value.substringAfter("filename=", "").trim().trim('"').takeIf { it.isNotBlank() }
@@ -437,5 +536,18 @@ class CollabSyncApi(
             is String -> value.takeIf { it.isNotBlank() }
             else -> value?.toString()?.takeIf { it.isNotBlank() }
         }
+    }
+
+    private companion object {
+        val GENERIC_SCOPE_LABELS = setOf(
+            "-",
+            "hauptbaustelle",
+            "baustelle",
+            "btb abschnitt 8"
+        )
+        val TRACK_SCOPE_REGEX = Regex("(?i)\\b(?:Gleis|Gl\\.?)\\s*[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*\\b")
+        val SWITCH_SCOPE_REGEX = Regex("(?i)\\b(?:Weiche\\s*[A-Za-z0-9]+|W\\s*\\d+[A-Za-z0-9.-]*)\\b")
+        val KM_PLUS_REGEX = Regex("(\\d+)\\+(\\d+(?:[.,]\\d+)?)")
+        val KM_DECIMAL_REGEX = Regex("\\d+(?:[.,]\\d+)?")
     }
 }
