@@ -28,7 +28,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SyncCollabAttachmentEntity::class,
         SyncCollabPendingChangeEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class SyncDatenbank : RoomDatabase() {
@@ -132,12 +132,19 @@ abstract class SyncDatenbank : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `sync_worksite_context` ADD COLUMN `localRootKnotenId` INTEGER")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_sync_worksite_context_localRootKnotenId` ON `sync_worksite_context` (`localRootKnotenId`)")
+            }
+        }
+
         fun erstellen(context: Context): SyncDatenbank = Room.databaseBuilder(
             context.applicationContext,
             SyncDatenbank::class.java,
             "tbhelfer-sync.db"
         )
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
     }
 }
