@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="collab_title">Baustellen-Synchronisation</string>
-    <string name="collab_intro">Verknüpft die lokale Baustelle auf diesem Gerät eindeutig mit der Server-Baustelle. BTB bleibt in der eigenen TB-Gruppe; Mängel und Abnahmen werden baustellenweit innerhalb der Berechtigung synchronisiert.</string>
+    <string name="collab_intro">Verknüpft die lokale Baustelle eindeutig mit der Server-Baustelle. BTB bleibt beim eigenen verantwortlichen TB; Mängel und Abnahmen werden nur innerhalb dieser Baustelle und der Berechtigung synchronisiert.</string>
     <string name="collab_local_loading">Lokale Zuordnungen werden geladen …</string>
     <string name="collab_sync_loading">Baustellendaten werden synchronisiert …</string>
     <string name="collab_sync_now">Jetzt synchronisieren</string>
@@ -20,24 +20,45 @@
     <string name="collab_choose_local_title">Lokale Baustelle für „%1$s“</string>
     <string name="collab_binding_failed">Baustelle konnte nicht verknüpft werden.</string>
     <string name="collab_role_tb">verantwortlicher TB</string>
-    <string name="collab_role_helper">Hilfsnutzer</string>
+    <string name="collab_role_helper">Helfer</string>
 
-    <string name="collab_team_title">Verantwortliche TBs / Helfer einladen</string>
-    <string name="collab_team_intro">Zeigt die TB-Gruppen dieser Baustelle. Helfer arbeiten im BTB ihres verantwortlichen TB. Verantwortliche TBs können Helfer für die eigene Gruppe oder einen weiteren verantwortlichen TB einladen.</string>
+    <string name="collab_team_title">Verantwortliche TBs</string>
+    <string name="collab_team_intro">Nur Mitglieder dieser Baustelle erhalten deren gemeinsame Daten. Helfer schreiben in den BTB ihres verantwortlichen TB. Ein verantwortlicher TB kann Helfer oder einen weiteren verantwortlichen TB direkt per QR, Link oder Code einladen.</string>
     <string name="collab_team_loading">Teamdaten werden vom Server geladen …</string>
     <string name="collab_team_unavailable">Teamverwaltung ist auf diesem Serverstand noch nicht verfügbar.</string>
-    <string name="collab_redeem_invitation">Einladung einlösen</string>
-    <string name="collab_redeem_title">Einladungscode eingeben</string>
-    <string name="collab_redeem_hint">TBI-…</string>
+    <string name="collab_team_own">mein Team</string>
+
+    <string name="collab_scan_invitation">Baustellen-QR scannen</string>
+    <string name="collab_redeem_invitation">Einladungscode eingeben</string>
+    <string name="collab_redeem_title">Baustelleneinladung einlösen</string>
+    <string name="collab_redeem_hint">TBI-… oder Einladungslink</string>
     <string name="collab_redeem_loading">Einladung wird eingelöst …</string>
-    <string name="collab_redeem_success">Einladung wurde eingelöst. Die Baustellenzuordnung wird synchronisiert.</string>
-    <string name="collab_invite_activation_required">Einladung erkannt. Bitte dieses Gerät zuerst mit deinem persönlichen Aktivierungsschlüssel aktivieren; anschließend wird die Einladung automatisch eingelöst.</string>
+    <string name="collab_redeem_success">Einladung wurde eingelöst. Die Baustelle wird synchronisiert.</string>
+    <string name="collab_invite_activation_required">Einladung erkannt. Bitte dieses Gerät zuerst mit deinem persönlichen Aktivierungsschlüssel aktivieren; anschließend wird die Baustelleneinladung automatisch eingelöst.</string>
+
     <string name="collab_invite_helper">Helfer einladen</string>
     <string name="collab_invite_lead">Weiteren TB einladen</string>
     <string name="collab_invite_creating">Einladung wird erstellt …</string>
-    <string name="collab_invite_share_title">TB-Helfer Einladung</string>
+    <string name="collab_invite_create">Einladung erzeugen</string>
+    <string name="collab_invite_helper_qr_title">Helfer einladen</string>
+    <string name="collab_invite_lead_qr_title">Weiteren verantwortlichen TB einladen</string>
+    <string name="collab_invite_share">Teilen</string>
+    <string name="collab_invite_share_title">TB-Helfer Baustelleneinladung</string>
     <string name="collab_invite_share_text">TB-Helfer Einladung für %1$s\nCode: %2$s\n%3$s</string>
+    <string name="collab_invite_expires">Einmalig verwendbar · gültig bis %1$s</string>
+    <string name="collab_invite_single_use">Einmalig verwendbare Baustelleneinladung</string>
     <string name="collab_invite_error">Einladung fehlgeschlagen: %1$s</string>
+    <string name="collab_invite_invalid_qr">Dieser QR-Code ist keine TB-Helfer-Baustelleneinladung.</string>
+    <string name="collab_invite_invalid_code">Der Einladungscode oder Link ist ungültig.</string>
+    <string name="collab_invite_scan_error">QR-Code konnte nicht gelesen werden.</string>
+
+    <string name="collab_scope_title">Bereich für den Helfer</string>
+    <string name="collab_scope_all">Gesamte Baustelle freigeben</string>
+    <string name="collab_scope_labels_hint">Bereich / Gleis / Weiche, z. B. Gl. 28, W13</string>
+    <string name="collab_scope_km_from">KM von, z. B. 70+000</string>
+    <string name="collab_scope_km_to">KM bis, z. B. 81+500</string>
+    <string name="collab_scope_required">Bitte gesamte Baustelle wählen oder mindestens Bereich/Gleis/Weiche bzw. KM eingeben.</string>
+
     <string name="collab_team_helpers_none">Keine Helfer zugeordnet</string>
     <string name="collab_team_tb_prefix">Verantwortlicher TB: %1$s</string>
     <string name="collab_team_helpers_prefix">Helfer: %1$s</string>
