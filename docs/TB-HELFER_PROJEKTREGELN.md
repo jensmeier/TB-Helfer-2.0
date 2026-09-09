@@ -46,7 +46,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Optional kann zusätzlich ein verständlicher Bereichsname wie `Gleis 1–4`, `km 20–45` oder `Bereich Ost` angezeigt werden.
 - Intern bleiben Teams durch stabile IDs getrennt; sichtbare Namen/Bereichsbezeichnungen dürfen geändert werden, ohne BTB- oder Sync-Zuordnungen zu verändern.
 
-## 5. BTB-Regel, Identität und Export
+## 5. BTB-Regel, Identität und gemeinsamer Langzeit-Export
 - BTB ist NICHT baustellenweit gemeinsam.
 - Jeder verantwortliche TB besitzt mit seinen Hilfsnutzern seinen eigenen gemeinsamen BTB-Bereich.
 - `Jens Zinkel` + seine Hilfsnutzer sehen und bearbeiten denselben BTB dieses TB-Teams.
@@ -54,17 +54,29 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Einträge und Fotos eines Hilfsnutzers werden in den BTB seines verantwortlichen TB synchronisiert; der Helfer erzeugt dadurch **keinen eigenen separaten BTB**.
 - Hilfsnutzer desselben TB-Teams sehen gegenseitig die BTB-Einträge dieses Teams.
 - BTB-Einträge werden nicht automatisch in die BTBs anderer verantwortlicher TBs derselben Baustelle übernommen.
-- Ein fachlicher BTB wird eindeutig bestimmt durch **verantwortlichen TB / internes TB-Team + Baustellenabschnitt bzw. Arbeitsbereich + Datum + Schicht**.
-- Für dieselbe Kombination aus TB-Team, Abschnitt, Datum und Schicht existiert genau **ein** gemeinsamer BTB. Neue Helfereinträge werden diesem vorhandenen BTB hinzugefügt und erzeugen keinen `-2/-3/-4`-Bericht.
-- Ein weiterer BTB am selben Datum entsteht nur, wenn sich mindestens der verantwortliche TB, der Baustellenabschnitt/Arbeitsbereich oder die Schicht unterscheidet.
-- Beispiel große Baustelle: `Jens Zinkel` mit 30 Helfern arbeitet tagsüber in Abschnitt West -> ein gemeinsamer TAG-BTB. `Max Müller` mit 30 Helfern arbeitet nachts -> ein eigener NACHT-BTB. Trotz 60 Helfern entstehen dadurch nur diese fachlich erforderlichen BTBs.
-- Bei einer 100-km-Baustelle können mehrere Abschnitte parallel jeweils ihren eigenen BTB haben; der Abschnitt gehört deshalb zur fachlichen BTB-Identität.
-- Sichtbare App-Bezeichnung z. B. `BTB Jens Zinkel · Abschnitt West · 05.06.2026 · Tag` oder `BTB Max Müller · km 50–100 · 05.06.2026 · Nacht`.
-- Export-Dateinamen verwenden einen dateisicheren Namen, z. B. `BTB_Jens_Zinkel_Abschnitt_West_2026-06-05_TAG.pdf` und entsprechend `.docx`. Ist kein eigener Abschnittsname nötig, kann der Abschnittsteil entfallen.
-- PDF **und DOCX** verwenden dieselbe Benennungs-/Zuordnungslogik und enthalten im Dokumentkopf mindestens Firma, Baustelle, verantwortlichen TB, Abschnitt/Arbeitsbereich soweit vorhanden, Datum und Schicht.
-- Das zentrale Firmenlogo kann ebenfalls automatisch in PDF/DOCX verwendet werden.
+- Die fachliche BTB-Identität innerhalb einer Baustelle ist **verantwortlicher TB / internes TB-Team + Datum + Schicht**.
+- Der Baustellenabschnitt bzw. Arbeitsbereich gehört **nicht** zur BTB-Identität. Im BTB selbst wird dokumentiert, an welchen Gleisen, Weichen, Kilometern oder Abschnitten in dieser Schicht gearbeitet wurde.
+- Für dieselbe Kombination aus Baustelle, TB-Team, Datum und Schicht existiert genau **ein** gemeinsamer BTB. Neue Helfereinträge, Zeiten und Fotos werden diesem vorhandenen BTB hinzugefügt.
+- Es gibt keine künstlichen `-2/-3/-4`-BTBs für denselben verantwortlichen TB, denselben Tag und dieselbe Schicht.
+- Beispiel: Jens Zinkel arbeitet mit 30 Helfern tagsüber auf einer sehr großen Baustelle. Alle Arbeiten der 30 Helfer – auch wenn sie an mehreren Stellen der Baustelle erfolgen – landen im gemeinsamen TAG-BTB von Jens für diesen Tag. Max Müller arbeitet mit 30 Helfern nachts und hat für denselben Kalendertag seinen eigenen NACHT-BTB.
+- Bei 30 Arbeitstagen entstehen in diesem Beispiel 30 TAG-BTBs von Jens und 30 NACHT-BTBs von Max, nicht für jeden Helfer ein eigener Bericht.
+- Sichtbare App-Bezeichnung z. B. `BTB Jens Zinkel · 05.06.2026 · Tag` bzw. `BTB Max Müller · 05.06.2026 · Nacht`.
+- PDF **und DOCX** verwenden dieselbe BTB-Identität und denselben Basis-Dateinamen. Beispiel: `BTB_2026-06-05_TAG_Jens_Zinkel.pdf` und `BTB_2026-06-05_TAG_Jens_Zinkel.docx`; für Max entsprechend `BTB_2026-06-05_NACHT_Max_Mueller.*`.
+- Der Dokumentkopf enthält mindestens Firma, Baustelle, verantwortlichen TB, Datum und Schicht. Arbeitsbereiche/Abschnitte ergeben sich aus den fachlichen Einträgen im Bericht und können zusätzlich im Inhalt zusammengefasst werden.
+- Das zentrale Firmenlogo kann automatisch in PDF/DOCX verwendet werden.
 - Die fachliche Zuordnung erfolgt intern immer über stabile IDs; der menschenlesbare BTB-/Dateiname ist nur Anzeige/Exportname und nicht der technische Primärschlüssel.
 - Bereits vorhandene historische BTBs müssen nicht nachträglich umbenannt werden; die neue Regel gilt für neu erzeugte Berichte.
+
+### Merge-sichere ZIP-/Laptop-Struktur
+- Jeder Baustellen-Gesamtexport der App besitzt als oberste Struktur `TB-Helfer/<Baustelle>/...`.
+- Auf dem Laptop kann dauerhaft ein gemeinsamer Hauptordner `TB-Helfer` geführt werden. ZIP-Exporte verschiedener Benutzer und verschiedener Baustellen werden in diesen Hauptordner entpackt und ergänzen die vorhandene Struktur.
+- Beispiel: Ein Export für Pasing ergänzt `TB-Helfer/Pasing/...`; ein späterer Export für Gessertshausen ergänzt `TB-Helfer/Gessertshausen/...`.
+- Exporte verschiedener verantwortlicher TBs derselben Baustelle müssen **zusammenführbar** sein. Jens' TAG-Berichte und Max' NACHT-Berichte landen im selben Baustellenordner, ohne sich gegenseitig zu überschreiben.
+- Derselbe fachliche Datensatz muss bei wiederholtem Export immer denselben stabilen Zielpfad erhalten. Wird derselbe BTB später erneut exportiert, aktualisiert/ersetzt er denselben logischen Bericht statt eine zweite Kopie mit Zufallsnamen anzulegen.
+- Unterschiedliche fachliche Datensätze dürfen niemals denselben Zielpfad erhalten. Für BTB wird dies über Datum + Schicht + verantwortlichen TB bzw. die intern stabile Team-Zuordnung sichergestellt.
+- Nicht nur BTB, sondern auch Bilder, Mängel-, Abnahme- und sonstige Exportdateien müssen merge-sichere, stabile Dateinamen erhalten. Kamera-Standardnamen wie `IMG_1234.jpg` allein sind **nicht** ausreichend; Medien erhalten eine stabile eindeutige Kennung/ID im Exportpfad.
+- Wenn zwei verschiedene Benutzer/Firmenmitglieder zufällig denselben sichtbaren Namen haben, darf intern trotzdem kein Dateikonflikt entstehen. Dafür bleibt eine stabile nicht geheime interne Benutzer-/Teamkennung maßgeblich; eine kurze Kennung darf bei tatsächlicher Namenskollision in den Exportnamen aufgenommen werden.
+- Ziel ist: Viele Exporte über Monate/Jahre können in einen einzigen `TB-Helfer`-Archivordner zusammengeführt werden, ohne fachlich verschiedene Dateien zu verlieren oder versehentlich zu überschreiben.
 
 ## 6. Mängel und Abnahmen
 - Mängel und Abnahmen sind **nur innerhalb der konkreten Baustelle** gemeinsam.
