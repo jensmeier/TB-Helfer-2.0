@@ -1,10 +1,10 @@
 # Schema-10-Ergänzung: Ein gemeinsamer BTB pro TB-Team/Datum/Schicht.
 #
-# Mehrere Helfer dürfen gleichzeitig in denselben fachlichen BTB schreiben. Der bisherige
-# versionsgeschützte 0.7-Endpunkt schützt zwar vor Datenverlust, würde bei 20/30 Helfern aber
-# regelmäßig 409-Konflikte erzeugen. Für BTB-UPSERTs derselben Gruppe und desselben stabilen
-# Client-Keys werden deshalb ergänzende Listen/Abschnitte serverseitig zusammengeführt.
-# Mängel/Abnahmen behalten weiterhin die normale 409-Logik.
+# Mehrere Helfer dürfen gleichzeitig in denselben fachlichen BTB schreiben. Der normale
+# versionsgeschützte 0.7-Endpunkt bleibt für Mängel/Abnahmen unverändert. BTB-UPSERTs werden
+# dagegen immer gegen den aktuellsten Serverstand gemerged und bei einem Rennen kontrolliert
+# erneut versucht. Dadurch gehen parallele Helfereinträge nicht durch einen simplen Last-Write
+# verloren und 20/30 gleichzeitig arbeitende Helfer erzeugen nicht dauerhaft 409-Konflikte.
 
 
 def _btb_json_key(value):
@@ -27,8 +27,7 @@ def _btb_merge_lines(old, new):
     if a==b: return a
     result=[]; seen=set()
     for line in (a+"\n"+b).splitlines():
-        line=line.rstrip()
-        key=line.strip().lower()
+        line=line.rstrip(); key=line.strip().lower()
         if not key or key in seen: continue
         seen.add(key); result.append(line)
     return "\n".join(result)
@@ -44,7 +43,7 @@ def _btb_merge_firma(old, new):
     if not isinstance(old,dict): old={}
     if not isinstance(new,dict): new={}
     out=dict(old)
-    # Stammdaten/Zeitfenster: der zuletzt synchronisierte Stand ist maßgeblich.
+    # Stammdaten/Zeitfenster: der zuletzt synchronisierte Snapshot ist maßgeblich.
     for key,value in new.items():
         if key not in ("personal","geraete","leistungen"):
             out[key]=value
@@ -64,8 +63,7 @@ def _btb_merge_firmen(old, new):
         if not key:
             key="anon:"+_btb_json_key(item)
         if key in by_key:
-            merged=_btb_merge_firma(by_key[key],item)
-            by_key[key]=merged
+            merged=_btb_merge_firma(by_key[key],item); by_key[key]=merged
             idx=next((i for i,x in enumerate(result) if x[0]==key),None)
             if idx is not None: result[idx]=(key,merged)
         else:
@@ -78,7 +76,6 @@ def merge_team_btb_payload(old_payload, new_payload, device):
     new=new_payload if isinstance(new_payload,dict) else {}
     out=dict(old)
 
-    # Normale Einzelwerte: eingehender Snapshot gewinnt, wenn das Feld geliefert wird.
     for key,value in new.items():
         if key in (
             "firmen","personal","geraete","notizen","abnahmen","einweisungUnterweisung",
@@ -95,13 +92,10 @@ def merge_team_btb_payload(old_payload, new_payload, device):
         out[key]=_btb_merge_items(old.get(key),new.get(key))
 
     contributors=_btb_unique_list(old.get("_syncContributors",[]),new.get("_syncContributors",[]))
-    contributor={
-        "user_id":str(device.get("user_id") or ""),
-        "name":device.get("full_name"),
-    }
-    # Je Nutzer nur einen aktuellen Eintrag halten; die Information ist rein audit-/anzeigefähig
-    # und wird von älteren Android-Versionen einfach ignoriert.
-    contributors=[x for x in contributors if not (isinstance(x,dict) and str(x.get("user_id") or "")==contributor["user_id"])]
+    contributor={"user_id":str(device.get("user_id") or ""),"name":device.get("full_name")}
+    contributors=[x for x in contributors if not (
+        isinstance(x,dict) and str(x.get("user_id") or "")==contributor["user_id"]
+    )]
     contributors.append(contributor)
     out["_syncContributors"]=contributors
     return out
@@ -119,10 +113,32 @@ for _btb_route in _btb_mutation_routes:
     app.router.routes.remove(_btb_route)
 
 
+def _btb_is_version_conflict(response):
+    if getattr(response,"status_code",None)!=409:
+        return False
+    try:
+        body=getattr(response,"body",b"")
+        if isinstance(body,bytes): body=body.decode("utf-8","replace")
+        payload=json.loads(body or "{}")
+        return payload.get("detail")=="VERSION_CONFLICT"
+    except Exception:
+        return False
+
+
 @app.post("/api/v1/collab/mutations")
 def collab_mutations_team_btb_merge(req:CollabMutationRequest, authorization: str | None = Header(default=None)):
-    if req.operation.upper()=="UPSERT" and req.entity_type.upper()=="BTB":
-        d=require_device(authorization)
+    if req.operation.upper()!="UPSERT" or req.entity_type.upper()!="BTB":
+        return _btb_mutations_original(req,authorization)
+
+    d=require_device(authorization)
+    contribution=json.loads(json.dumps(req.payload or {},ensure_ascii=False,default=str))
+    last_response=None
+
+    # Der Originalendpunkt sperrt bereits den stabilen Client-Key/Datensatz in seiner eigenen
+    # DB-Transaktion. Zwischen unserem Vorlesen und dieser Sperre kann trotzdem noch ein anderer
+    # Helfer gewinnen. In diesem seltenen Rennen lesen/mergen wir bis zu fünfmal neu. Ein 409 aus
+    # Mängeln/Abnahmen oder ein anderer Fehler wird niemals verschluckt.
+    for _attempt in range(5):
         with db() as conn, conn.cursor() as cur:
             access=load_worksite_access(cur,d,req.worksite_id)
             group_id=access["group_id"]
@@ -132,26 +148,37 @@ def collab_mutations_team_btb_merge(req:CollabMutationRequest, authorization: st
             row=None
             if req.entity_id:
                 row=collab_entity_by_id(cur,"BTB",req.entity_id,lock=False)
-            elif req.client_entity_key:
+                if row and (row["worksite_id"]!=access["worksite_id"] or row.get("group_id")!=group_id):
+                    raise HTTPException(403,"ENTITY_NOT_VISIBLE")
+            if row is None and req.client_entity_key:
                 row=collab_lookup_by_client_key(
                     cur,"BTB",access["worksite_id"],group_id,req.client_entity_key,lock=False
                 )
+            if row and row.get("deleted_at") is not None:
+                raise HTTPException(409,"ENTITY_ALREADY_DELETED")
+
             if row:
-                if row["worksite_id"]!=access["worksite_id"] or row.get("group_id")!=group_id:
-                    raise HTTPException(403,"ENTITY_NOT_VISIBLE")
-                if row.get("deleted_at") is not None:
-                    raise HTTPException(409,"ENTITY_ALREADY_DELETED")
-                req.payload=merge_team_btb_payload(row.get("payload") or {},req.payload or {},d)
-                # BTB ist bewusst gemeinschaftlich. Wir haben direkt gegen den aktuellen Serverstand
-                # gemerged und können deshalb genau diese aktuelle Version als Basis verwenden.
                 req.entity_id=str(row["id"])
                 req.base_version=int(row["current_version"])
-                req.group_id=str(group_id)
+                req.payload=merge_team_btb_payload(row.get("payload") or {},contribution,d)
             else:
-                req.group_id=str(group_id)
-                req.payload=merge_team_btb_payload({},req.payload or {},d)
+                req.entity_id=None
+                req.base_version=None
+                req.payload=merge_team_btb_payload({},contribution,d)
+            req.group_id=str(group_id)
             conn.commit()
-    return _btb_mutations_original(req,authorization)
+
+        last_response=_btb_mutations_original(req,authorization)
+        if not _btb_is_version_conflict(last_response):
+            return last_response
+
+        # Nach einem CREATE-Rennen kann der nächste Versuch die inzwischen vorhandene Entity
+        # anhand des stabilen Client-Keys finden. Die Entity-ID aus der konfliktbehafteten Runde
+        # darf diese Suche nicht blockieren.
+        req.entity_id=None
+        req.base_version=None
+
+    return last_response
 
 
 del _btb_route, _btb_mutation_routes
