@@ -16,6 +16,7 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import de.tbhelfer.R
 import de.tbhelfer.server.ActivationApi
+import de.tbhelfer.server.CompanyProfileSync
 import de.tbhelfer.server.DeviceIdentity
 import de.tbhelfer.server.SecureTokenStore
 import de.tbhelfer.server.TeamManagementApi
@@ -138,6 +139,25 @@ class AktivierungActivity : AppCompatActivity() {
                         setStatus(getString(R.string.activation_token_save_error), isError = true)
                         return@launch
                     }
+
+                    // Firmenstammdaten/Logo sofort nach erfolgreicher Aktivierung lokal cachen.
+                    // Ein Profilfehler blockiert die Aktivierung nicht: Offline-Betrieb und der
+                    // persönliche Geräte-Token bleiben gültig, späterer Baustellen-Sync versucht erneut.
+                    val profileResult = withContext(Dispatchers.IO) {
+                        CompanyProfileSync.synchronize(
+                            applicationContext,
+                            result.token,
+                            teamApi
+                        )
+                    }
+                    if (profileResult is CompanyProfileSync.Result.Error) {
+                        Toast.makeText(
+                            this@AktivierungActivity,
+                            getString(R.string.collab_company_profile_error, profileResult.message),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+
                     Toast.makeText(
                         this@AktivierungActivity,
                         getString(R.string.activation_success, result.userName ?: ""),
