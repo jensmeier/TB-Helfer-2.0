@@ -76,41 +76,64 @@ Vorhanden und geprüft:
 - Mängel/Abnahmen/Bilder/Benachrichtigungen werden nur an berechtigte Mitglieder dieser einen Baustelle verteilt; keine firmenweite Verteilung.
 - Helfer sehen Mängel/Abnahmen nur innerhalb ihres freigegebenen Bereichs.
 
-## Verbindliche BTB-Logik – korrigiert am 2026-09-10
-Die frühere Idee, mehrere Berichte desselben TB am selben Tag nur über `-2/-3/-4` zu unterscheiden, ist verworfen.
+## Verbindliche BTB-Logik – final korrigiert am 2026-09-10
+Die vorherigen Ideen `-2/-3/-4` sowie eine eigene BTB-Identität pro Baustellenabschnitt sind verworfen.
 
-Fachliche Identität eines BTB:
-**verantwortlicher TB / internes TB-Team + Baustellenabschnitt bzw. Arbeitsbereich + Datum + Schicht**.
+Fachliche BTB-Identität innerhalb einer Baustelle:
+**verantwortlicher TB / internes TB-Team + Datum + Schicht**.
 
 Regeln:
-- Pro identischer Kombination gibt es genau **einen** gemeinsamen BTB.
+- Pro Baustelle, verantwortlichem TB, Datum und Schicht gibt es genau **einen** gemeinsamen BTB.
 - Ein Helfer erzeugt keinen eigenen BTB. Seine Texte, Zeiten, Fotos usw. werden in den BTB seines verantwortlichen TB synchronisiert.
-- 30 Helfer eines verantwortlichen TB können gemeinsam in genau einen TAG-BTB schreiben.
-- Ein anderer verantwortlicher TB hat seinen eigenen BTB, z. B. NACHT.
-- Ein weiterer BTB am selben Datum entsteht nur, wenn sich verantwortlicher TB, Abschnitt/Arbeitsbereich oder Schicht unterscheidet.
-- Bei sehr großen Baustellen (z. B. 100 km) können mehrere Abschnitte parallel jeweils ihren eigenen BTB haben.
+- Arbeitsbereiche, Gleise, Weichen, KM und Abschnitte sind **Inhalt des BTB** und nicht Teil seiner Identität.
+- Ein verantwortlicher TB kann mit vielen Helfern gleichzeitig an mehreren Stellen einer sehr großen Baustelle arbeiten; alle Einträge dieser Schicht gehören trotzdem in seinen einen BTB dieses Tages.
+- Beispiel: Jens Zinkel + 30 Helfer arbeiten TAG, Max Müller + 30 Helfer arbeiten NACHT. Für einen Kalendertag entstehen genau zwei fachliche BTBs: Jens TAG und Max NACHT.
+- Bei 30 Arbeitstagen entstehen entsprechend 30 TAG-BTBs von Jens und 30 NACHT-BTBs von Max.
+- Kein künstlicher `-2/-3/-4`-Bericht für denselben verantwortlichen TB, Tag und dieselbe Schicht.
 - BTB bleibt technisch über stabile IDs zugeordnet; menschenlesbare Bezeichnung ist nur Anzeige/Export.
 
 Beispiele Anzeige:
-- `BTB Jens Zinkel · Abschnitt West · 05.06.2026 · Tag`
-- `BTB Max Müller · km 50–100 · 05.06.2026 · Nacht`
+- `BTB Jens Zinkel · 05.06.2026 · Tag`
+- `BTB Max Müller · 05.06.2026 · Nacht`
 
 Beispiele Export:
-- `BTB_Jens_Zinkel_Abschnitt_West_2026-06-05_TAG.pdf`
-- `BTB_Jens_Zinkel_Abschnitt_West_2026-06-05_TAG.docx`
-- `BTB_Max_Mueller_km_50-100_2026-06-05_NACHT.pdf`
-- `BTB_Max_Mueller_km_50-100_2026-06-05_NACHT.docx`
+- `BTB_2026-06-05_TAG_Jens_Zinkel.pdf`
+- `BTB_2026-06-05_TAG_Jens_Zinkel.docx`
+- `BTB_2026-06-05_NACHT_Max_Mueller.pdf`
+- `BTB_2026-06-05_NACHT_Max_Mueller.docx`
 
-PDF **und DOCX** sollen dieselbe Benennungs- und Zuordnungslogik verwenden. Der Dokumentkopf soll mindestens enthalten:
+PDF **und DOCX** verwenden dieselbe Benennungs- und Zuordnungslogik. Der Dokumentkopf soll mindestens enthalten:
 - Firma
 - Baustelle
 - verantwortlicher TB
-- Abschnitt/Arbeitsbereich soweit vorhanden
 - Datum
 - Schicht
 - optional das zentral hinterlegte Firmenlogo
 
+Arbeitsbereiche/Abschnitte werden aus den fachlichen BTB-Einträgen dargestellt bzw. zusammengefasst, nicht zur Erzeugung eines zweiten BTB verwendet.
+
 Historische bestehende BTBs werden nicht rückwirkend umbenannt; neue BTBs verwenden die neue Logik.
+
+## Merge-sicheres Langzeitarchiv auf dem Laptop
+Das Ziel ist ein langfristig wachsender gemeinsamer Ordner **`TB-Helfer`** auf dem Laptop.
+
+Grundstruktur:
+- jeder App-Gesamtexport enthält `TB-Helfer/<Baustelle>/...`
+- Pasing-Export ergänzt `TB-Helfer/Pasing/...`
+- späterer Gessertshausen-Export ergänzt `TB-Helfer/Gessertshausen/...`
+- Exporte verschiedener Benutzer derselben Baustelle werden in denselben Baustellenordner entpackt und müssen sich ohne fachliche Dateikollision ergänzen
+
+Für BTB bedeutet das:
+- Jens' TAG-BTB und Max' NACHT-BTB haben wegen Datum + Schicht + verantwortlichem TB unterschiedliche stabile Dateinamen.
+- Wird derselbe logische BTB erneut exportiert, verwendet er denselben Zielpfad und aktualisiert denselben Bericht statt eine zweite Kopie mit Zufallsnamen anzulegen.
+- Unterschiedliche logische BTBs dürfen niemals denselben Zielpfad erhalten.
+
+Diese Merge-Sicherheit gilt **für alle Exportarten**, nicht nur BTB:
+- Bilder dürfen nicht nur Kamera-Namen wie `IMG_1234.jpg` verwenden; sie brauchen stabile eindeutige IDs/Exportnamen.
+- Mängel, Abnahmen und deren Anlagen benötigen ebenfalls stabile collision-sichere Pfade.
+- Bei tatsächlich gleichen sichtbaren Benutzernamen bleibt intern eine stabile nicht geheime Benutzer-/Team-ID maßgeblich; nur im Kollisionsfall kann eine kurze Kennung zusätzlich im Exportnamen erscheinen.
+
+Ziel: ZIPs von Jens, Max und weiteren Beteiligten können über Monate/Jahre in denselben `TB-Helfer`-Archivordner entpackt werden, ohne dass fachlich verschiedene Dateien verloren gehen oder versehentlich überschrieben werden.
 
 ## Benutzer-/Firmenprofil – verbindliche UX-Entscheidung
 - Nach Geräteaktivierung kommen vorhandene Benutzer-/Firmenstammdaten automatisch vom Server.
@@ -130,16 +153,17 @@ Geplant:
 - QR, Link und kurzer Code sind Darstellungen derselben sicheren Einladung
 - Server prüft: aktiver Benutzer, gültiges Gerät, gleiche Firma, Einladung gültig/nicht widerrufen/nicht abgelaufen
 
-Für die BTB-Identität muss bei der weiteren Umsetzung der **Baustellenabschnitt/Arbeitsbereich** neben `entry_date` und `shift` sauber mitgeführt werden. Schema 9 besitzt bereits `group_id`, `entry_date`, `shift` und `payload`; für die endgültige eindeutige BTB-Zuordnung ist im Rahmen des nächsten Bausteins zu prüfen, ob ein eigener stabiler Abschnittsschlüssel ergänzt werden soll.
+Für die weitere BTB-Umsetzung ist **kein eigener Abschnittsschlüssel für die BTB-Identität nötig**. Schema 9 besitzt bereits `group_id`, `entry_date` und `shift`; die nächste Implementierung muss diese Kombination mit `worksite_id` als fachliche BTB-Zuordnung behandeln.
 
 ## Nächste sichere Schritte
-1. Self-Service-Einladungen und BTB-Abschnittsidentität auf dem Feature-Branch implementieren (Migration 010 + Server-API).
+1. Self-Service-Einladungen auf dem Feature-Branch implementieren (Migration 010 + Server-API).
 2. Android-UI ergänzen: `Verantwortliche TBs`, `Helfer einladen`, `Weiteren TB einladen`, QR/Link/Code.
 3. Benutzer-/Firmenprofil-Autofill und Firmenlogo ergänzen.
-4. BTB-Anzeige sowie PDF- und DOCX-Erzeugung auf die neue Identität/Namenslogik umstellen; Helfereinträge müssen in denselben BTB ihres verantwortlichen TB aggregieren.
-5. neuen Android-Build lokal bauen und auf beiden Testgeräten installieren.
-6. echten Zwei-Geräte-/Mehrhelfer-Test durchführen: Firmenbindung, Einladungen, getrennte TB-BTBs, Helferaggregation, Tag/Nacht, mehrere Abschnitte, Mängel/Abnahmen/Bilder, 409, Tombstones, Netzabbruch/Wiederaufnahme, Benachrichtigungen.
-7. Draft-PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
+4. BTB-Anzeige sowie PDF- und DOCX-Erzeugung auf `Baustelle + TB-Team + Datum + Schicht` umstellen; Helfereinträge müssen in denselben BTB ihres verantwortlichen TB aggregieren.
+5. Gesamtexport/ZIP merge-sicher machen: stabiler `TB-Helfer/<Baustelle>/...`-Pfad und collision-sichere Namen für BTB, Bilder, Mängel und Abnahmen.
+6. neuen Android-Build lokal bauen und auf beiden Testgeräten installieren.
+7. echten Zwei-Geräte-/Mehrhelfer-Test durchführen: Firmenbindung, Einladungen, getrennte TB-BTBs, Helferaggregation, Tag/Nacht, Merge-Export, Mängel/Abnahmen/Bilder, 409, Tombstones, Netzabbruch/Wiederaufnahme, Benachrichtigungen.
+8. Draft-PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
 
 ## Bahnhofsdaten – nicht neu erfinden
 Vorhandene Datenbasis:
@@ -163,7 +187,8 @@ Vorhandene Datenbasis:
 - keine firmenweite Verteilung von Mängeln/Abnahmen.
 - BTB bleibt TB-Team-bezogen.
 - Helfer schreiben in den gemeinsamen BTB ihres verantwortlichen TB; kein eigener Helfer-BTB.
-- BTB-Identität = TB-Team + Abschnitt/Arbeitsbereich + Datum + Schicht.
+- BTB-Identität innerhalb einer Baustelle = TB-Team + Datum + Schicht; Abschnitt/Arbeitsbereich ist BTB-Inhalt, nicht BTB-Identität.
+- ZIP-/Laptop-Archiv muss merge-sicher sein und auf `TB-Helfer/<Baustelle>/...` zusammenführbar bleiben.
 - Baustellen-/Teambeitritt per Self-Service-Einladung, nicht per täglicher Admin-Zuordnung.
 - Benutzer-/Firmenstammdaten kommen nach Aktivierung aus dem Serverprofil; Firmenlogo zentral serverseitig.
 - Server-Speicheroptionen bleiben vorgesehen, sind aber keine Arbeitsfreigabe.
