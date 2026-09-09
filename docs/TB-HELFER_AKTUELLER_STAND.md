@@ -28,6 +28,7 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 - die bestehende produktive Secret-Datei bleibt unter `./server/.env`; sie wurde nicht in den Stage-Ordner und nicht nach GitHub kopiert.
 - der frühere produktive 0.6.0-Serverordner wurde vor Umschaltung zusätzlich nach `/volume1/docker/tb-helfer/backup/server_pre_0.7_20260909` kopiert.
 - die vorherige Compose-Konfiguration wurde ebenfalls im Backup-Ordner gesichert.
+- Cloudflare API und Cloudflare Admin Access wurden von außen über Mobilfunk erfolgreich geprüft.
 - `main` bleibt unverändert/stabil.
 
 ### Produktives DB-Backup vor Migration 008/009
@@ -135,6 +136,16 @@ Direkt aus dem laufenden API-Container erfolgreich geprüft:
 - Bahnhof-Autofill funktioniert mit der bestehenden TB-Helfer-Datenbasis, u. a. Suchtreffer für München-Pasing/MPB.
 - keine neue Bahnhofsliste wurde eingeführt.
 
+### Cloudflare extern geprüft
+Über Mobilfunk ohne lokalen NAS-/LAN-Zugriff erfolgreich geprüft:
+- `https://api.tb-helfer.de/api/v1/sync/catalog` antwortet ohne Geräte-Token mit `TOKEN_MISSING`; damit ist Cloudflare -> API 0.7 bestätigt.
+- `https://admin.tb-helfer.de/admin` führt über Cloudflare Access zur TB-Helfer-Admin-Anmeldung.
+- Cloudflare-Anmeldung wurde erfolgreich durchlaufen.
+- TB-Helfer-Admin-Anmeldung funktioniert.
+- produktives Admin-Dashboard wird angezeigt.
+- die Android-App zeigt bereits `Server 0.7.0 · verbunden`.
+- `/` und `/openapi.json` sind nicht die maßgeblichen Produktivpfade; die App-/Admin-Pfade funktionieren.
+
 ## Server-0.7 – implementierte API
 ### Allgemeiner Offline-Sync
 - `GET /api/v1/sync/catalog`
@@ -200,11 +211,10 @@ Die nach dem letzten lokalen APK-Build hinzugekommenen Android-Härtungen müsse
 - endgültige Status bleiben endgültig.
 
 ## Nächste sichere Schritte
-Server 0.7 und Schema 9 laufen produktiv. Noch offen:
-1. Cloudflare/API-Erreichbarkeit von außerhalb des NAS/LAN smoke-testen.
-2. Admin-Login über die produktive Admin-Domain nochmals von außen prüfen.
-3. Android 200018 mit den letzten Härtungen erneut lokal bauen/installieren.
-4. echten Zwei-Geräte-Ende-zu-Ende-Test durchführen:
+Server 0.7, Schema 9 und Cloudflare sind produktiv bestätigt. Noch offen:
+1. Android 200018 mit den letzten Härtungen erneut lokal bauen/installieren.
+2. echte Server-Baustelle und TB-Gruppen für die Testnutzer freigeben.
+3. echten Zwei-Geräte-Ende-zu-Ende-Test durchführen:
    - Firmenbindung
    - TB-Gruppen A/B-Trennung
    - BTB nur innerhalb der eigenen TB-Gruppe
@@ -214,7 +224,7 @@ Server 0.7 und Schema 9 laufen produktiv. Noch offen:
    - Tombstones
    - Netzabbruch/Wiederaufnahme
    - Benachrichtigungen
-5. Draft-PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
+4. Draft-PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
 
 ## Bahnhofsdaten – nicht neu erfinden
 Vorhandene Datenbasis:
