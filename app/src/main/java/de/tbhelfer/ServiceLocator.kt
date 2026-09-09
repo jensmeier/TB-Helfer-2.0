@@ -5,6 +5,7 @@ import de.tbhelfer.datenbank.TBDatenbank
 import de.tbhelfer.datenbank.SyncDatenbank
 import de.tbhelfer.datenbank.OfflineSyncRepository
 import de.tbhelfer.datenbank.CollabSyncRepository
+import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.WorksiteBindingRepository
 import de.tbhelfer.datenbank.SyncOfflineEditor
 import de.tbhelfer.einstellungen.AktuelleBaustelleSpeicher
@@ -97,6 +98,16 @@ object ServiceLocator {
 
     val fotoRepository: FotoRepository by lazy {
         FotoRepository(fotoDao)
+    }
+
+    val collabLocalBridge: CollabLocalBridge by lazy {
+        CollabLocalBridge(
+            context = appContext,
+            syncDatabase = syncDatenbank,
+            bindingRepository = worksiteBindingRepository,
+            collabRepository = collabSyncRepository,
+            fotoRepository = fotoRepository
+        )
     }
 
     val trassenRepository: TrassenRepository by lazy {
