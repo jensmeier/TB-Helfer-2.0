@@ -314,17 +314,10 @@ class AbnahmeEditorFragment : Fragment(R.layout.fragment_abnahme_editor) {
             }
         }
         btnFinish.setOnClickListener { finishAbnahme() }
-        btnReopen.setOnClickListener {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Abnahme wieder öffnen?")
-                .setMessage("Die Abnahme wird wieder bearbeitbar. Die PDF wird nach der nächsten Änderung neu erstellt.")
-                .setPositiveButton("Wieder öffnen") { _, _ ->
-                    current = AbnahmeSpeicher.wiederOeffnen(requireContext(), current)
-                    applyCurrent()
-                }
-                .setNegativeButton("Abbrechen", null)
-                .show()
-        }
+        // Fachregel: Abgenommen/Nicht abgenommen ist endgültig. Der alte Wiederöffnen-Button
+        // bleibt nur aus Layout-Kompatibilität gebunden, wird aber nie mehr angeboten.
+        btnReopen.visibility = View.GONE
+        btnReopen.setOnClickListener(null)
         btnDelete.setOnClickListener {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Abnahme löschen?")
@@ -431,7 +424,7 @@ class AbnahmeEditorFragment : Fragment(R.layout.fragment_abnahme_editor) {
         }
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Abnahme speichern")
-            .setMessage("Ergebnis: ${AbnahmeSpeicher.ergebnisLabel(selected)}\n\nAbgenommen und Nicht abgenommen werden abgeschlossen. Restpunkte und Noch zu prüfen bleiben bearbeitbar.")
+            .setMessage("Ergebnis: ${AbnahmeSpeicher.ergebnisLabel(selected)}\n\nAbgenommen und Nicht abgenommen werden endgültig abgeschlossen. Restpunkte und Noch zu prüfen bleiben bearbeitbar.")
             .setPositiveButton("Speichern") { _, _ ->
                 viewLifecycleOwner.lifecycleScope.launch {
                     current = AbnahmeSpeicher.abschliessen(requireContext(), current, selected)
@@ -573,7 +566,7 @@ class AbnahmeEditorFragment : Fragment(R.layout.fragment_abnahme_editor) {
 
     private fun showFotoEditDialog(ref: AbnahmeSpeicher.FotoRef, fallbackNote: String) {
         if (current.istEndgueltigAbgeschlossen) {
-            Toast.makeText(requireContext(), "Abnahme ist abgeschlossen. Für Änderungen zuerst wieder öffnen.", Toast.LENGTH_LONG).show()
+            Toast.makeText(requireContext(), "Abnahme ist endgültig abgeschlossen und kann nicht mehr geändert werden.", Toast.LENGTH_LONG).show()
             return
         }
         val box = LinearLayout(requireContext()).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(6), dp(18), 0) }
@@ -605,7 +598,7 @@ class AbnahmeEditorFragment : Fragment(R.layout.fragment_abnahme_editor) {
         }
         val locked = current.istEndgueltigAbgeschlossen
         setFormEnabled(!locked)
-        btnReopen.visibility = if (locked) View.VISIBLE else View.GONE
+        btnReopen.visibility = View.GONE
         btnFinish.visibility = if (locked) View.GONE else View.VISIBLE
         btnFinish.isEnabled = !locked && current.ergebnis != AbnahmeSpeicher.Ergebnis.ENTWURF && current.ergebnis != AbnahmeSpeicher.Ergebnis.NOCH_ZU_PRUEFEN
         btnDraft.visibility = if (locked) View.GONE else View.VISIBLE
