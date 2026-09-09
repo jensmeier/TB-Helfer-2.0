@@ -9,6 +9,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.OfflineSyncRepository
 import java.util.concurrent.TimeUnit
 
@@ -40,32 +41,64 @@ class SyncWorker(
                     return Result.retry()
                 }
 
+                val serverVersion = catalogResult.catalog.serverVersion
+
                 // Server 0.6.0 unterstützt den bewährten Lese-/Offline-Sync, aber noch nicht
                 // den inkrementellen Änderungsfeed. Dann sauber beenden statt 404 zu erzeugen.
-                if (!supportsIncrementalSync(catalogResult.catalog.serverVersion)) {
+                if (!supportsIncrementalSync(serverVersion)) {
                     return Result.success()
                 }
 
                 when (val result = repository.synchronize(token)) {
                     OfflineSyncRepository.FullSyncResult.SessionInvalid -> {
                         tokenStore.clear()
+                        return Result.success()
+                    }
+                    is OfflineSyncRepository.FullSyncResult.Error -> return Result.retry()
+                    is OfflineSyncRepository.FullSyncResult.Success -> Unit
+                }
+
+                // Ab 0.7.0 zusätzlich Baustellen-Team/BTB/Mängel/Abnahmen synchronisieren.
+                if (!supportsCollabSync(serverVersion)) {
+                    return Result.success()
+                }
+
+                when (val collabResult = ServiceLocator.collabSyncRepository.synchronizeAll(token)) {
+                    CollabSyncRepository.FullSyncResult.SessionInvalid -> {
+                        tokenStore.clear()
                         Result.success()
                     }
-                    is OfflineSyncRepository.FullSyncResult.Error -> Result.retry()
-                    is OfflineSyncRepository.FullSyncResult.Success -> Result.success()
+                    is CollabSyncRepository.FullSyncResult.Error -> Result.retry()
+                    is CollabSyncRepository.FullSyncResult.Success -> {
+                        collabResult.summary.notifications.forEach { event ->
+                            CollabBenachrichtigungen.anzeigen(applicationContext, event)
+                        }
+                        Result.success()
+                    }
                 }
             }
         }
     }
 
     private fun supportsIncrementalSync(version: String?): Boolean {
+        val (major, minor, patch) = parseVersion(version) ?: return false
+        return major > 0 || minor > 6 || (minor == 6 && patch >= 1)
+    }
+
+    private fun supportsCollabSync(version: String?): Boolean {
+        val (major, minor, _) = parseVersion(version) ?: return false
+        return major > 0 || minor >= 7
+    }
+
+    private fun parseVersion(version: String?): Triple<Int, Int, Int>? {
         val values = version?.trim()?.split('.')?.map { part ->
             part.takeWhile { it.isDigit() }.toIntOrNull() ?: 0
-        } ?: return false
-        val major = values.getOrElse(0) { 0 }
-        val minor = values.getOrElse(1) { 0 }
-        val patch = values.getOrElse(2) { 0 }
-        return major > 0 || minor > 6 || (minor == 6 && patch >= 1)
+        } ?: return null
+        return Triple(
+            values.getOrElse(0) { 0 },
+            values.getOrElse(1) { 0 },
+            values.getOrElse(2) { 0 }
+        )
     }
 
     companion object {
