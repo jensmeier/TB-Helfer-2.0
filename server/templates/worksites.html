@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block content %}
+<h2>Baustellen</h2>
+<p class="muted">TB-Gruppen und Hilfsnutzer werden strikt innerhalb derselben Firma verwaltet. BTB bleibt je TB-Gruppe getrennt; Mängel und Abnahmen sind baustellenweit innerhalb der Berechtigung gemeinsam.</p>
+{% if notice %}<div class="notice">{{ notice }}</div>{% endif %}{% if error %}<div class="error">{{ error }}</div>{% endif %}
+<div class="card scroll">
+{% if rows %}<table><thead><tr><th>Baustelle</th><th>Firma</th><th>Strecke / Bahnhof</th><th>Status</th><th>Teams</th><th></th></tr></thead><tbody>
+{% for w in rows %}<tr>
+<td><b>{{ w.name or w.designation or 'Baustelle' }}</b>{% if w.designation and w.designation != w.name %}<br><span class="muted">{{ w.designation }}</span>{% endif %}</td>
+<td>{{ w.company_name or 'noch keine Firma' }}</td>
+<td>{% if w.route_number %}Strecke {{ w.route_number }}{% endif %}{% if w.station_name %}<br>{{ w.station_name }}{% if w.station_code %} ({{ w.station_code }}){% endif %}{% endif %}</td>
+<td><span class="badge">{{ w.status or '-' }}</span></td>
+<td>{{ w.group_count }} TB-Gruppen · {{ w.member_count }} Nutzer</td>
+<td><a class="btn small" href="/admin/worksites/{{ w.id }}">Team verwalten</a></td>
+</tr>{% endfor %}</tbody></table>{% else %}<p class="muted">Noch keine Baustellen vorhanden.</p>{% endif %}
+</div>
+{% endblock %}

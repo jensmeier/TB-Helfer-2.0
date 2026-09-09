@@ -1,0 +1,79 @@
+{% extends "base.html" %}{% block content %}
+<style>
+.company-folder{border:1px solid #dfe4ea;border-radius:12px;background:#fff;margin-bottom:12px;overflow:hidden}
+.company-folder summary{cursor:pointer;padding:15px 18px;font-weight:700;display:flex;gap:12px;justify-content:space-between;align-items:center}
+.company-folder .inside{padding:0 18px 16px}
+.badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{background:#f2f4f7;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:600}
+.badge.warn{background:#fff4e5;color:#b54708}.badge.bad{background:#fee4e2;color:#b42318}.badge.ok{background:#ecfdf3;color:#067647}
+.small-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.small-company{border:1px solid #dfe4ea;border-radius:12px;padding:14px;background:#fff}
+.member{padding:8px 0;border-bottom:1px solid #edf0f3}.member:last-child{border-bottom:0}
+.member .meta{color:#667085;font-size:13px;margin-top:2px}
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+  <div>
+    <h2>Firmen</h2>
+    <p class="muted">Ab {{ threshold }} Benutzern wird eine Firma automatisch als eigener aufklappbarer Ordner dargestellt.</p>
+  </div>
+  <a class="btn" href="/admin/users">Zur Benutzerliste</a>
+</div>
+
+{% if folders %}
+<h3>Firmenordner</h3>
+{% for item in folders %}
+<details class="company-folder">
+  <summary>
+    <span>📁 {{ item.company.name }} · {{ item.company.user_count }} Nutzer</span>
+    <span class="badges">
+      <span class="badge ok">{{ item.company.active_count }} aktiv</span>
+      {% if item.company.expiring_count %}<span class="badge warn">{{ item.company.expiring_count }} bald fällig</span>{% endif %}
+      {% if item.company.expired_count %}<span class="badge bad">{{ item.company.expired_count }} abgelaufen</span>{% endif %}
+      <span class="badge">📱 {{ item.company.active_device_count }} Geräte</span>
+      <span class="badge">🏗 {{ item.company.worksite_count }} Baustellen</span>
+      <span class="badge">📄 {{ item.company.file_count }} Dateien · {{ human_bytes(item.company.file_bytes) }}</span>
+    </span>
+  </summary>
+  <div class="inside">
+    {% for u in item.users %}
+    <div class="member">
+      <b>{{ u.full_name }}</b>
+      <div class="meta">{{ u.email or 'keine E-Mail' }} · {{ u.access_state }} · {% if u.access_valid_until %}bis {{ u.access_valid_until.strftime('%d.%m.%Y') }}{% else %}unbegrenzt{% endif %}</div>
+    </div>
+    {% endfor %}
+  </div>
+</details>
+{% endfor %}
+{% endif %}
+
+{% if small %}
+<h3>Kleinere Firmen</h3>
+<div class="small-grid">
+{% for item in small %}
+  <div class="small-company">
+    <b>{{ item.company.name }}</b> <span class="muted">· {{ item.company.user_count }} Nutzer · {{ item.company.active_device_count }} Geräte · {{ item.company.worksite_count }} Baustellen · {{ item.company.file_count }} Dateien · {{ human_bytes(item.company.file_bytes) }}</span>
+    {% for u in item.users %}
+    <div class="member">
+      {{ u.full_name }}
+      <div class="meta">{{ u.access_state }} · {% if u.access_valid_until %}bis {{ u.access_valid_until.strftime('%d.%m.%Y') }}{% else %}unbegrenzt{% endif %}</div>
+    </div>
+    {% endfor %}
+  </div>
+{% endfor %}
+</div>
+{% endif %}
+
+{% if unassigned %}
+<h3>Ohne Firma</h3>
+<div class="card">
+{% for u in unassigned %}
+  <div class="member"><b>{{ u.full_name }}</b><div class="meta">{{ u.email or 'keine E-Mail' }} · {{ u.access_state }}</div></div>
+{% endfor %}
+</div>
+{% endif %}
+
+{% if not folders and not small and not unassigned %}
+<div class="card"><p class="muted">Noch keine normalen Benutzer vorhanden.</p></div>
+{% endif %}
+{% endblock %}
