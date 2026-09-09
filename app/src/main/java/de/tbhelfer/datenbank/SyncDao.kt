@@ -80,13 +80,16 @@ interface SyncDao {
     @Query("SELECT COUNT(*) FROM sync_object WHERE stationServerId = :stationServerId AND isDeleted = 0")
     suspend fun objectCountForStation(stationServerId: String): Int
 
-    @Query("SELECT * FROM sync_pending_change WHERE state IN ('PENDING', 'FAILED') ORDER BY createdAtEpochMs, id")
+    // UPLOADING wird absichtlich erneut gelesen. Wenn App/Netz/Sitzung nach dem Zustandswechsel
+    // abbricht, darf die Änderung nicht dauerhaft aus der Queue verschwinden. Der Server wendet
+    // Wiederholungen über client_change_id idempotent an.
+    @Query("SELECT * FROM sync_pending_change WHERE state IN ('PENDING', 'FAILED', 'UPLOADING') ORDER BY createdAtEpochMs, id")
     suspend fun pendingChanges(): List<SyncPendingChangeEntity>
 
     @Query("SELECT * FROM sync_pending_change WHERE objectKind = :objectKind AND serverId = :serverId AND state IN ('PENDING','FAILED','CONFLICT') ORDER BY id DESC LIMIT 1")
     suspend fun pendingForEntity(objectKind: String, serverId: String): SyncPendingChangeEntity?
 
-    @Query("SELECT COUNT(*) FROM sync_pending_change WHERE state IN ('PENDING', 'FAILED')")
+    @Query("SELECT COUNT(*) FROM sync_pending_change WHERE state IN ('PENDING', 'FAILED', 'UPLOADING')")
     suspend fun pendingChangeCount(): Int
 
     @Query("SELECT * FROM sync_pending_change WHERE state = 'CONFLICT' ORDER BY updatedAtEpochMs DESC")
@@ -191,7 +194,9 @@ interface SyncDao {
     @Insert
     suspend fun enqueueCollabChange(item: SyncCollabPendingChangeEntity): Long
 
-    @Query("SELECT * FROM sync_collab_pending WHERE worksiteServerId = :worksiteServerId AND state IN ('PENDING','FAILED') ORDER BY createdAtEpochMs, id")
+    // Wie beim allgemeinen Sync werden unterbrochene UPLOADING-Einträge beim nächsten Lauf
+    // erneut versucht. client_change_id schützt den Server vor einer Doppelanwendung.
+    @Query("SELECT * FROM sync_collab_pending WHERE worksiteServerId = :worksiteServerId AND state IN ('PENDING','FAILED','UPLOADING') ORDER BY createdAtEpochMs, id")
     suspend fun collabPendingChanges(worksiteServerId: String): List<SyncCollabPendingChangeEntity>
 
     @Query("SELECT * FROM sync_collab_pending WHERE worksiteServerId = :worksiteServerId AND entityType = :entityType AND clientEntityKey = :clientEntityKey AND state IN ('PENDING','FAILED','CONFLICT') ORDER BY id DESC LIMIT 1")
@@ -201,7 +206,7 @@ interface SyncDao {
         clientEntityKey: String
     ): SyncCollabPendingChangeEntity?
 
-    @Query("SELECT COUNT(*) FROM sync_collab_pending WHERE state IN ('PENDING','FAILED')")
+    @Query("SELECT COUNT(*) FROM sync_collab_pending WHERE state IN ('PENDING','FAILED','UPLOADING')")
     suspend fun collabPendingCount(): Int
 
     @Query("SELECT COUNT(*) FROM sync_collab_pending WHERE state = 'CONFLICT'")
