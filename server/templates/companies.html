@@ -10,12 +10,13 @@
 .small-company{border:1px solid #dfe4ea;border-radius:12px;padding:14px;background:#fff}
 .member{padding:8px 0;border-bottom:1px solid #edf0f3}.member:last-child{border-bottom:0}
 .member .meta{color:#667085;font-size:13px;margin-top:2px}
+.company-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px}
 </style>
 
 <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
   <div>
     <h2>Firmen</h2>
-    <p class="muted">Ab {{ threshold }} Benutzern wird eine Firma automatisch als eigener aufklappbarer Ordner dargestellt.</p>
+    <p class="muted">Ab {{ threshold }} Benutzern wird eine Firma automatisch als eigener aufklappbarer Ordner dargestellt. Anschrift und Logo werden im Firmenprofil zentral gepflegt.</p>
   </div>
   <a class="btn" href="/admin/users">Zur Benutzerliste</a>
 </div>
@@ -36,6 +37,9 @@
     </span>
   </summary>
   <div class="inside">
+    <div class="company-actions">
+      <a class="btn" href="/admin/companies/{{ item.company.id }}/profile">Firmenprofil / Logo</a>
+    </div>
     {% for u in item.users %}
     <div class="member">
       <b>{{ u.full_name }}</b>
@@ -53,6 +57,9 @@
 {% for item in small %}
   <div class="small-company">
     <b>{{ item.company.name }}</b> <span class="muted">· {{ item.company.user_count }} Nutzer · {{ item.company.active_device_count }} Geräte · {{ item.company.worksite_count }} Baustellen · {{ item.company.file_count }} Dateien · {{ human_bytes(item.company.file_bytes) }}</span>
+    <div class="company-actions">
+      <a class="btn" href="/admin/companies/{{ item.company.id }}/profile">Firmenprofil / Logo</a>
+    </div>
     {% for u in item.users %}
     <div class="member">
       {{ u.full_name }}
