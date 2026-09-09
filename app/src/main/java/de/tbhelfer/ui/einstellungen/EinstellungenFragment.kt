@@ -22,6 +22,10 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
             findNavController().navigate(R.id.action_einstellungen_to_benachrichtigungen)
         }
 
+        view.findViewById<View>(R.id.btnBaustellenSync).setOnClickListener {
+            findNavController().navigate(R.id.action_einstellungen_to_baustellen_sync)
+        }
+
         view.findViewById<View>(R.id.btnAnzeigeOverlay).setOnClickListener {
             findNavController().navigate(R.id.action_einstellungen_to_anzeige_overlay)
         }
