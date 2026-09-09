@@ -5,6 +5,7 @@ import de.tbhelfer.datenbank.TBDatenbank
 import de.tbhelfer.datenbank.SyncDatenbank
 import de.tbhelfer.datenbank.OfflineSyncRepository
 import de.tbhelfer.datenbank.CollabSyncRepository
+import de.tbhelfer.datenbank.WorksiteBindingRepository
 import de.tbhelfer.datenbank.SyncOfflineEditor
 import de.tbhelfer.einstellungen.AktuelleBaustelleSpeicher
 import de.tbhelfer.datenbank.StreckenpunkteRepository
@@ -64,6 +65,10 @@ object ServiceLocator {
 
     val baustellenKnotenDao: BaustellenKnotenDao by lazy {
         datenbank.baustellenKnotenDao()
+    }
+
+    val worksiteBindingRepository: WorksiteBindingRepository by lazy {
+        WorksiteBindingRepository(syncDatenbank, baustellenKnotenDao)
     }
 
     val streckenpunktDao: StreckenpunktDao by lazy {
