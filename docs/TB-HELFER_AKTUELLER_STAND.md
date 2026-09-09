@@ -100,7 +100,7 @@ Neue Schema-Prüfung:
 - `server/checks/02_verify_schema10.sql`
 
 Migration 010 ergänzt:
-- `worksite_groups.lead_name_ordinal` inklusive Backfill, Constraint und konkurenzsicherer Vergabe für gleichnamige verantwortliche TBs
+- `worksite_groups.lead_name_ordinal` inklusive Backfill, Constraint und konkurrenzsicherer Vergabe für gleichnamige verantwortliche TBs
 - `tb.worksite_invitations`
 - `tb.worksite_invitation_redemptions`
 - `tb.company_profiles`
@@ -152,11 +152,12 @@ Android:
 - bestehende BTB-/PDF-Funktionen können damit weiterhin dieselbe lokale Quelle offline verwenden.
 - `maxFotosInPdf` bleibt eine lokale Nutzer-Einstellung und wird durch das Firmenprofil nicht überschrieben.
 - serverseitig geladenes Logo wird lokal als `firma_server_logo.*` gecacht.
+- **direkt nach einer erfolgreichen Geräteaktivierung** wird das Firmenprofil/Logo best-effort geladen und lokal gespeichert; ein Profilfehler blockiert die Geräteaktivierung nicht.
+- zusätzlich versucht der manuelle Baustellen-Sync das Firmenprofil erneut zu aktualisieren.
 
-Noch zu prüfen/ergänzen:
+Noch zu prüfen:
 - neuer Android-Code muss lokal gebaut werden.
 - Firmenprofil-/Logo-Abruf muss auf echtem Gerät gegen Schema 10 getestet werden.
-- Profil-Synchronisation erfolgt derzeit beim Baustellen-Sync; zusätzlich soll der produktive E2E-Test prüfen, ob der gewünschte direkte Abruf unmittelbar nach Geräteaktivierung noch ergänzt werden muss.
 
 ## Android – `Verantwortliche TBs / Helfer einladen` im Feature-Branch implementiert
 Neue API-Klasse:
