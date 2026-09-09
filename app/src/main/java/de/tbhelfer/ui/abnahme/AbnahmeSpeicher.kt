@@ -196,7 +196,20 @@ object AbnahmeSpeicher {
     @Synchronized
     fun speichern(context: Context, abnahme: Abnahme): Abnahme {
         val now = System.currentTimeMillis()
-        val normalized = abnahme.copy(geaendertAmEpochMs = now)
+        val previous = laden(context, abnahme.id)
+        val protected = if (previous?.istEndgueltigAbgeschlossen == true) {
+            // Ein endgültiger Abschluss darf weder durch die UI noch durch einen späteren
+            // Sync wieder geöffnet oder in ein anderes Ergebnis zurückgesetzt werden.
+            // Zusätzliche synchronisierte Medien/Metadaten dürfen trotzdem ergänzt werden.
+            abnahme.copy(
+                ergebnis = previous.ergebnis,
+                abgeschlossenAmEpochMs = previous.abgeschlossenAmEpochMs,
+                wiederGeoeffnetAmEpochMs = previous.wiederGeoeffnetAmEpochMs
+            )
+        } else {
+            abnahme
+        }
+        val normalized = protected.copy(geaendertAmEpochMs = now)
         val json = toJson(normalized).toString(2)
         prefs(context).edit().putString(normalized.id, json).commit()
         runCatching {
@@ -226,17 +239,13 @@ object AbnahmeSpeicher {
         )
     }
 
+    /**
+     * Kompatibilitätsfunktion für ältere Aufrufer. Endgültige Abnahmen werden nicht mehr
+     * wieder geöffnet; der unveränderte gespeicherte Stand wird zurückgegeben.
+     */
+    @Deprecated("Endgültige Abnahmen dürfen nicht wieder geöffnet werden")
     @Synchronized
-    fun wiederOeffnen(context: Context, abnahme: Abnahme): Abnahme {
-        val now = System.currentTimeMillis()
-        return speichern(
-            context,
-            abnahme.copy(
-                abgeschlossenAmEpochMs = null,
-                wiederGeoeffnetAmEpochMs = now
-            )
-        )
-    }
+    fun wiederOeffnen(context: Context, abnahme: Abnahme): Abnahme = laden(context, abnahme.id) ?: abnahme
 
     @Synchronized
     fun fotoZuordnen(
