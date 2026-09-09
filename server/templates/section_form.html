@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block content %}
+<h2>{% if mode=="new" %}Abschnitt anlegen{% else %}Abschnitt bearbeiten{% endif %} · Strecke {{ route.route_number }}</h2>{% if error %}<div class="error">{{ error }}</div>{% endif %}
+<div class="card"><form method="post"><input type="hidden" name="csrf" value="{{ admin.csrf }}">
+<label>Bezeichnung</label><input name="designation" value="{{ section.designation or '' }}" placeholder="z. B. km 70–81">
+<label>km von</label><input name="km_from" value="{{ section.km_from or '' }}" placeholder="70+000,000">
+<label>km bis</label><input name="km_to" value="{{ section.km_to or '' }}" placeholder="81+500,000">
+<label>Datenstatus</label><select name="data_status">
+{% set st=section.data_status or 'WITHOUT_GEOMETRY' %}
+<option value="VERIFIED_ORIGINAL" {% if st=='VERIFIED_ORIGINAL' %}selected{% endif %}>Grün · Original/KM belastbar</option>
+<option value="MANUAL" {% if st=='MANUAL' %}selected{% endif %}>Orange · manuell</option>
+<option value="GEOMETRY_WITHOUT_KM" {% if st=='GEOMETRY_WITHOUT_KM' %}selected{% endif %}>Rot · Geometrie ohne belastbare KM</option>
+<option value="WITHOUT_GEOMETRY" {% if st=='WITHOUT_GEOMETRY' %}selected{% endif %}>Grau · ohne Geometrie</option></select>
+<div class="actions"><button>Speichern</button><a class="btn secondary" href="/admin/routes/{{ route.id }}">Abbrechen</a></div></form></div>{% endblock %}
