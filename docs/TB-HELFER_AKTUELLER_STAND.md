@@ -16,105 +16,150 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 - stabiler Branch: `main`
 - aktiver Feature-Branch: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
-- letzter fachlicher Stand vor diesem Übergabe-Update: `a6d0a57d98fc60870ec9bcae6e10dc988ee4d2ac`
-- `main` wurde durch die aktuellen Arbeiten nicht verändert.
+- tatsächlicher Server-0.6.0-Quellstand wurde am 2026-09-09 aus der vom NAS gesicherten `server.zip` übernommen und auf dieser Basis zu 0.7.0 erweitert.
+- `main` wurde durch diese Arbeiten nicht verändert.
 
 ## Produktiver Stand auf der Synology
 - NAS/Synology bleibt Source of Truth.
-- produktive API: `0.6.0`
-- produktives DB-Schema: `7` (`007_admin_crud_sync_delete`)
-- Migrationen `008` und `009` wurden produktiv NICHT ausgeführt.
-- Keine produktive Migration ohne unmittelbar vorher erzeugtes/geprüftes Backup.
-- Produktiven NAS-Stand nicht aus GitHub-Annahmen ersetzen.
+- produktive API: **0.6.0**
+- produktives DB-Schema: **7** (`007_admin_crud_sync_delete`)
+- Migrationen `008` und `009` wurden produktiv **NICHT** ausgeführt.
+- Der 0.7-Quellstand ist noch **nicht** auf das NAS ausgerollt.
+- Keine produktive Migration ohne unmittelbar vorher erzeugtes und geprüftes Backup.
+
+## Server-0.7-Quellstand – Import abgeschlossen
+Der frühere Blocker „produktiver Serverquellcode fehlt in GitHub“ ist erledigt.
+
+Im Feature-Branch liegen jetzt:
+- echter FastAPI-/psycopg-Runtime auf Basis des produktiven 0.6.0-Servers
+- `server/app.py` als Loader
+- `server/app_parts/01_part.py` ff. als verlustfrei zerlegte Runtime
+- produktives Dockerfile und Python-Abhängigkeiten
+- 25 Admin-Jinja-Templates
+- vorhandene Bahnhofsdaten unter `server/data/`
+- Migrationen 008/009
+- read-only Preflight/Nachkontrolle
+- verbindlicher Android-200018/Server-0.7-API-Vertrag
+
+Der Runtime wurde nur für die GitHub-Übernahme in nummerierte Teile zerlegt; alle Teile laufen in derselben Reihenfolge und im selben Modul-Namespace. Der Server wurde nicht als fremder Unterbau neu erfunden.
+
+## Server-0.7 – implementierte API
+### Allgemeiner Offline-Sync
+- `GET /api/v1/sync/catalog`
+- selektive Strecken-/Bahnhofsdetails
+- `GET /api/v1/sync/changes`
+- `POST /api/v1/sync/ack`
+- `POST /api/v1/sync/mutations`
+- Basisversion/HTTP 409
+- idempotente Mutation-Receipts über `client_change_id`
+- Tombstones aus dem Change-Log
+- mobile Schreibrechte nur für SECTION/OBJECT
+- eigener neuer ACK-Cursor `tb.sync_device_state`; vorhandenes Schema-7-`tb.device_sync_state` wird nicht umgebaut
+- Strecken und Bahnhöfe liefern `current_version`
+- mobiler SECTION-/OBJECT-UPSERT erzwingt serverseitig `data_status=MANUAL`; manuelle Änderungen können nicht als `VERIFIED_ORIGINAL`/grün hochgeladen werden
+
+### Baustellen-Zusammenarbeit
+- `GET /api/v1/collab/context`
+- `GET /api/v1/collab/changes`
+- `POST /api/v1/collab/ack`
+- `POST /api/v1/collab/mutations`
+- Attachment Upload/Download
+- Firmenbindung auf Server- und DB-Ebene
+- TB-Gruppen A/B/C/D/...
+- BTB strikt gruppenbezogen
+- Mängel/Abnahmen baustellenweit im berechtigten Bereich
+- Bilder/Abnahme-Anlagen als Attachments
+- endgültige Status gegen Wiederöffnung geschützt
+- Cursor schreitet auch über unsichtbare Änderungen fort, damit TB A nicht an BTB B hängen bleibt
+- idempotente Collab-Mutationen und Schutz gegen parallele Doppelanlagen
+- serverseitige Attachment-SHA-Deduplizierung
+- Benutzer-Aufbewahrungsoptionen und temporäres Spooling
+
+### Admin
+- bestehende 0.6-Admin-Funktionen erhalten
+- Firmen-/Benutzer-/Geräte-/Strecken-/Bahnhofs-/Baustellenverwaltung erhalten
+- TB-Gruppen und Hilfsnutzer-Bereichszuordnung ergänzt
+- Teams nur innerhalb derselben Firma
+- Server-Speicheroptionen pro Benutzer: Bilder, BTB, Mängel, Abnahmen; „Alles“ wird über alle Einzeloptionen abgebildet
+- Bahnhof-Autofill ausschließlich aus den zwei vorhandenen TB-Helfer-Datenbeständen, keine neue Bahnhofsliste
+
+## Letzte wichtige Commits
+- `2cd5f933a9b06b5482fe7b53b7021e3b56d7f89a`: manueller Android-Baustellen-Sync lädt Mängelbilder und Abnahme-Anlagen sofort mit hoch.
+- Runtime-/Template-Import danach vollständig in PR #5 übernommen.
+- `ecf5d5ba096494006e52819d6f3dc0d3ce410bb0`: Bahnhofskatalog liefert `current_version` zuverlässig.
+- `c1092e483bce85b1c652209f9cf7790d5bbb78cc`: Migration 008 finalisiert, neuer separater `sync_device_state`-Cursor und `changed_by_device`.
+- `ff8006285ed798421f6a820c80baba9e58967361`: Schema-7-Preflight an echten 0.6.0-Quellstand angepasst.
+- `1091fdeaa2dc003b20cd54d79de2eaf338da950b`: Schema-9-Nachkontrolle erweitert.
+- `aea3eb92fc015693472f8e91c8f12c16a92c8cec`: mobile Fachänderungen werden serverseitig zwingend `MANUAL`/orange.
+- `52dbc8f1fc5065ebf66d1faac1966ed93b74dffb`: Python-`__pycache__`/`.pyc` zusätzlich aus Git ausgeschlossen.
+- `9bd966b48c83b634ac8316a33987c811ab2440c7`: Server-README auf den tatsächlichen 0.7-Stand aktualisiert.
+
+## Lokale technische Prüfung des Server-0.7-Stands
+Am 2026-09-09 erfolgreich geprüft:
+- Python `py_compile` für Loader und alle Runtime-Teile
+- FastAPI-App importiert als Version `0.7.0`
+- **79 Routen**, keine doppelten Method/Path-Kombinationen
+- alle erforderlichen allgemeinen Sync- und Collab-Endpunkte registriert
+- **25 Jinja-Templates** syntaktisch parsebar
+- Katalogtest bestätigt `current_version` für Bahnhöfe
+- Mutationstest bestätigt: Clientwert `VERIFIED_ORIGINAL` wird bei mobilem UPSERT vor der Mutation auf `MANUAL` überschrieben
+- DELETE-Pfad bleibt davon unberührt
+
+Hinweis: Im lokalen Testsystem fehlt nur der echte PostgreSQL-Treiber/Produktiv-DB-Zugriff; der Importtest wurde deshalb mit einem Stub für `psycopg` ausgeführt. Die eigentliche Schema-Kompatibilität wird vor Produktivmigration read-only über den Preflight auf dem NAS geprüft.
 
 ## Android-Stand
-- Android `versionCode 200018` ist im Draft-Branch vorbereitet.
-- 200018 wurde lokal erfolgreich kompiliert, als Update installiert und gegen produktive API 0.6.0 auf Grundfunktionen geprüft; die danach hinzugekommenen Härtungen müssen vor dem Zwei-Geräte-Test erneut lokal gebaut werden.
+- Android `versionCode 200018` liegt im Draft-Branch.
+- 200018 wurde vor den letzten Härtungen lokal erfolgreich kompiliert, als Update installiert und gegen produktive API 0.6.0 auf Grundfunktionen geprüft.
 - separate Room-Datenbank `tbhelfer-sync.db`; bestehende Baustellen-/Vermessungsdatenbank bleibt unangetastet.
-- Room-Migrationspfad der Sync-Datenbank ist 1 -> 2 -> 3 vorhanden; Worksite-Bindings und Collab-Cache werden getrennt von der bestehenden Fachdatenbank geführt.
-- Offline-Katalog, selektiver Download, Upload-Queue, Version/Basisversion, 409-Grundlage, Tombstones und Hintergrund-Sync sind vorbereitet.
-- Unterbrochene Uploads im Zustand `UPLOADING` werden beim nächsten Sync erneut aufgenommen; Idempotenz über `client_change_id` verhindert serverseitige Doppelanwendung.
-- Gemeinsame BTB-Textänderungen erhalten jetzt die gerätelokalen `fotos`- und `pdfAuswahl`-Referenzen; diese lokalen Medien werden weiterhin nicht in den Server-Payload/Hash übernommen und erzeugen keinen Sync-Echo.
-- Mängelfoto-KM kann beim Sync zusätzlich im üblichen Format `70+698` ausgewertet werden.
-- Benachrichtigungseinstellungen pro Gerät: `Text + Ton` / `nur Ton` / `aus`.
+- Room-Migrationspfad 1 -> 2 -> 3 vorhanden.
+- Offline-Katalog, selektiver Download, Upload-Queue, Basisversion, 409, Tombstones und Hintergrund-Sync vorbereitet.
+- `UPLOADING`-Einträge werden nach App-/Netzabbruch erneut versucht; `client_change_id` schützt vor Doppelanwendung.
+- BTB-Import erhält gerätelokale `fotos`-/`pdfAuswahl`-Referenzen und erzeugt keinen Medien-Sync-Echo.
+- Mängelfoto-KM versteht zusätzlich `70+698`.
+- Hilfsnutzer-Scope wird niemals erweitert; Haupt-TB-Scope wird für einzelne Mängel/Abnahmen soweit möglich aus Gleis/Weiche/KM eingegrenzt.
+- manueller und Hintergrund-Sync übertragen auch Attachments.
+- Benachrichtigungen pro Gerät: `Text + Ton` / `nur Ton` / `aus`.
+
+Die nach dem letzten lokalen APK-Build hinzugekommenen Android-Härtungen müssen vor dem abschließenden Zwei-Geräte-Ende-zu-Ende-Test erneut lokal gebaut/installiert werden. Dieser Test ist sinnvoll erst nach Bereitstellung des 0.7-Servers möglich.
 
 ## Verbindliches Team-/Rechtemodell
 - Baustellen-Teams ausschließlich innerhalb derselben Firma.
-- Eine Baustelle kann TB-Gruppen A/B/C/D/... haben.
+- Eine Baustelle kann TB A/B/C/D/... haben.
 - Jeder TB kann Hilfsnutzer haben.
-- BTB bleibt strikt gruppenbezogen: A + seine Hilfsnutzer teilen BTB A; B + seine Hilfsnutzer BTB B usw. Kein Vermischen zwischen A/B/C/D.
-- Mängel und Abnahmen werden baustellenweit zwischen den TB-Gruppen synchronisiert, Hilfsnutzer jedoch nur innerhalb ihres berechtigten Bereichs.
-- Bilder/Anlagen werden mit synchronisiert.
-- endgültige Status werden nicht wieder geöffnet.
+- BTB A bleibt bei A + seinen Hilfsnutzern; BTB B bei B + seinen Hilfsnutzern usw.
+- Mängel/Abnahmen werden baustellenweit zwischen A/B/C/D synchronisiert, Hilfsnutzer nur im berechtigten Bereich.
+- Bilder werden mitsynchronisiert.
+- endgültige Status bleiben endgültig.
 
-## Letzte Rechte-/Sync-Härtungen
-- Commit `0f3f215b027bfcd06875c3c04c2a09d9d99116f0`: Firmenbindung/Teamzuordnung serverseitig gehärtet.
-  - Firmenwechsel darf keine alten firmenübergreifenden Teamzuordnungen zurücklassen.
-  - Nur aktive Benutzer derselben Firma dürfen Gruppenmitglieder/Leads sein.
-  - Statusfelder für BTB, Mängel und Abnahmen sind eingeschränkt.
-- Commit `2ad7c9254fe000828f2b6b41b226f54ca2c7d38f`: Mängel-/Abnahme-Bereich beim Android-Sync präzisiert.
-  - Ein Haupt-TB mit `{all:true}` erzeugt für einzelne Mängel/Abnahmen nach Möglichkeit einen engeren Bereich aus vorhandenen Fachinformationen (Bereich/Gleis/Weiche/KM).
-  - Ein ausdrücklich eingeschränkter Hilfsnutzer-Bereich wird niemals erweitert.
-  - Der lokale Sync-Cache unterstützt einen eigenen `areaScopeJson` je synchronisiertem Vorgang.
-- Commit `778f76b59419dbd3df29f8ca6537411971f89ed6`: Migration 009 auf Datenbankebene weiter gehärtet.
-  - BTB-Gruppe muss zur selben Baustelle gehören.
-  - Attachment-Parent muss existieren und zur selben Baustelle gehören.
-  - Change-Log-Gruppe darf nicht zu einer anderen Baustelle gehören.
-  - `ERLEDIGT`, `ABGENOMMEN` und `NICHT_ABGENOMMEN` werden zusätzlich per DB-Trigger gegen Wiederöffnung geschützt.
-  - Sperrung/Deaktivierung/Rollenwechsel eines Benutzers löst unzulässige aktive Teamzuordnungen.
-  - JSON-/Versions-/Größen-/Sequenzwerte werden stärker validiert.
-- Commit `caaa8de7c8390e831462f33462323c9ea7781dae`: unterbrochene Android-Uploads werden sicher wiederaufgenommen.
-  - gilt für allgemeinen inkrementellen Sync und den Baustellen-Collab-Sync.
-- Commit `6ad5c6b7d909fcda14b01c481c2cfbc995887969`: Migration 008 validiert Versions-, JSON- und HTTP-Metadaten strenger.
-- Commit `0651507416d034fe1383c8b1b9a5912eac2f5578`: read-only Preflight für Schema 7 vor Migration 008/009.
-- Commit `4943913462781af38ac9df4d21003236d1d85f8c`: read-only Nachkontrolle für Schema 9 und Integritätsverletzungen.
-- Commit `ab98ef1c69539b771c918ff8da145ad68270758a`: verbindlicher Android-200018/Server-0.7-API-Vertrag dokumentiert.
-  - Kontext, Changes, ACK, Mutationen, 409, Attachments und Idempotenz sind festgelegt.
-  - der Change-Log-Cursor muss auch über nicht sichtbare/fremde Änderungen fortschreiten, damit z. B. BTB A nicht an BTB B hängen bleibt.
-- Commit `a6d0a57d98fc60870ec9bcae6e10dc988ee4d2ac`: lokale BTB-Medien beim Import geschützt.
-  - eingehender gemeinsamer BTB-Inhalt überschreibt nicht mehr die gerätelokalen Foto-/PDF-Referenzen.
-  - der kanonische Sync-Hash bleibt medienfrei und verhindert Echo-Uploads.
-  - `km` im Format `70+698` wird für synchronisierte Mängelfotos korrekt in Dezimal-km überführt.
+## Migrationen / Prüfskripte
+- `server/migrations/008_incremental_sync_mutations.sql`
+- `server/migrations/009_worksite_collaboration.sql`
+- `server/checks/00_preflight_schema7_for_008_009.sql` – read-only vor Migration
+- `server/checks/01_verify_schema9.sql` – read-only nach Migration
 
-## Server-0.7-Vorbereitung
-- `server/migrations/008_incremental_sync_mutations.sql` ist im Draft-Branch vorhanden und gehärtet.
-- `server/migrations/009_worksite_collaboration.sql` ist im Draft-Branch vorhanden und gehärtet.
-- `server/checks/00_preflight_schema7_for_008_009.sql` prüft die Voraussetzungen vor einer Migration read-only.
-- `server/checks/01_verify_schema9.sql` prüft Schema 9 und Integrität nach einer Testmigration read-only.
-- `server/API_0.7_VERTRAG.md` beschreibt den verbindlichen Serververtrag, den Android 200018 bereits erwartet.
-- GitHub-Suche sowie Prüfung der vorhandenen Feature-Branches haben bestätigt: Der vollständige produktive API-Quellstand 0.6.0 war bisher nicht im Repository abgelegt.
-- Im GitHub-Ordner `server/` liegen deshalb weiterhin noch nicht die produktiven API-/Docker-/Runtime-Dateien aus `/volume1/docker/tb-helfer/server/`.
-- Server 0.7 darf weiterhin NICHT aus Annahmen oder als neuer fremder Server-Unterbau geschrieben werden.
+Preflight prüft unter anderem die aus dem echten 0.6.0-Runtime erwarteten Tabellen/Spalten, PostGIS und Hilfsfunktionen. Bei irgendeinem Pflichtwert `ok=false` darf die Migration nicht gestartet werden.
 
-## Nächster notwendiger Schritt
-Den tatsächlichen produktiven Quellstand aus
-`/volume1/docker/tb-helfer/server/`
-in den aktiven Feature-Branch übernehmen, ohne Secrets.
+Nachkontrolle erwartet Schema 8/9, alle Pflichtobjekte/Trigger und `violations=0`.
 
-Vor Übernahme ausschließen/niemals committen:
-- `.env` / `*.env`
-- Passwörter
-- Cloudflare-/Tunnel-Token
-- SMTP-Zugangsdaten
-- Signing-Keys / private Schlüssel
-- sonstige Secrets
+## Nächster sicherer Schritt – kontrolliertes NAS-Update
+Der Codeblocker ist erledigt. Der nächste Schritt ist nicht mehr Quellcode-Import, sondern die kontrollierte Serveraktualisierung:
 
-Danach:
-1. echten Server-0.6.0-Code gegen `server/API_0.7_VERTRAG.md` und Migration 008/009 abgleichen,
-2. vollständiges Server-0.7-API-Paket im vorhandenen Server-Framework implementieren,
-3. Preflight + Migrationen zunächst auf Backup/Testkopie prüfen,
-4. Android 200018 mit den neuen Queue-/BTB-Härtungen erneut lokal bauen,
-5. echten Zwei-Geräte-Test durchführen,
-6. BTB-Gruppentrennung, Mängel-/Abnahme-Bereich, Bilder, 409, Tombstones und unterbrochene Uploads Ende-zu-Ende testen,
-7. erst nach erfolgreichem Test und unmittelbar vorherigem Backup produktive NAS-Migration erwägen.
+1. produktiven Zustand sichern und unmittelbar vorher DB-Backup erzeugen/prüfen,
+2. read-only Preflight auf Schema 7 ausführen,
+3. nur bei vollständig grünem Preflight Migration 008,
+4. Migration 009,
+5. read-only Nachkontrolle (`ok=true`, `violations=0`),
+6. 0.7-API-Image bauen/starten,
+7. Login/Katalog/Admin-Smoke-Test,
+8. Android 200018 erneut bauen/installieren,
+9. echter Zwei-Geräte-Test: BTB A/B-Trennung, Mängel/Abnahmen, Bilder, 409, Tombstones, Netzabbruch/Wiederaufnahme,
+10. PR #5 bis zum erfolgreichen Ende-zu-Ende-Test als Draft lassen; `main` nicht vorher ändern.
 
 ## Bahnhofsdaten – nicht neu erfinden
-Vorhandene Datenbasis verwenden:
+Vorhandene Datenbasis:
 - `app/src/main/assets/TB-Helfer_DB_Bahnhoefe_aktiv_2026-03-14.json`
 - `app/src/main/assets/TB-Helfer_DB_Betriebsstellen_aktuell_2026-03-14.json`
 - `app/src/main/java/de/tbhelfer/util/BahnhofSucheUtil.kt`
-
-Server-Admin soll daraus Bahnhofscode/Name automatisch vervollständigen.
 
 ## Vermessungs-/Kilometrierungsfarben
 - Grün = belastbare Originaldaten/KM
@@ -131,9 +176,9 @@ Server-Admin soll daraus Bahnhofscode/Name automatisch vervollständigen.
 - keine firmenübergreifenden Teams.
 - BTB bleibt TB-gruppenbezogen.
 - Mängel/Abnahmen baustellenweit im berechtigten Bereich.
-- Server-Speicheroptionen pro Benutzer bleiben vorgesehen: Bilder, BTB, Mängel, Abnahmen, Alles.
-- temporäres Server-Spooling ist auch ohne dauerhafte Speicherung erlaubt.
+- Server-Speicheroptionen bleiben vorgesehen.
+- temporäres Server-Spooling bleibt erlaubt.
 - `main` stabil halten; große Änderungen über Feature-Branch/Draft-PR.
 
 ## Sitzungsregel für ChatGPT
-Bei einem neuen Chat nicht aus einer alten Chat-Zusammenfassung allein weiterarbeiten. Zuerst GitHub prüfen und mindestens Projektregeln, diese Statusdatei und den aktiven Draft-PR lesen. Bereits getroffene Entscheidungen nicht erneut erfinden oder abfragen. Nach substanziellen Änderungen diesen Projektstand im selben Feature-Branch aktualisieren.
+Bei einem neuen Chat nicht aus alten Chat-Zusammenfassungen allein weiterarbeiten. Zuerst Projektregeln, diese Datei, Draft-PR und neuesten Commit in GitHub prüfen. Bei Widersprüchen gilt der produktive NAS-Stand für tatsächlich laufenden Server/DB-Stand, die Projektregeln für fachliche Entscheidungen und der Feature-Branch für noch nicht produktive Entwicklung.
