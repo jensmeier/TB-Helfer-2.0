@@ -9,17 +9,10 @@ import androidx.room.PrimaryKey
  *
  * BTB bleibt gruppenbezogen. Mängel/Abnahmen sind baustellenweit, werden serverseitig aber
  * anhand des vom Admin freigegebenen Bereichs gefiltert.
- *
- * [localRootKnotenId] ist bewusst nur eine Geräte-Zuordnung. Sie wird nie zum Server hochgeladen
- * und verbindet die serverseitige Baustelle mit genau einer lokalen Hauptbaustelle auf diesem Gerät.
  */
 @Entity(
     tableName = "sync_worksite_context",
-    indices = [
-        Index(value = ["companyId"]),
-        Index(value = ["groupId"]),
-        Index(value = ["localRootKnotenId"], unique = true)
-    ]
+    indices = [Index(value = ["companyId"]), Index(value = ["groupId"])]
 )
 data class SyncWorksiteContextEntity(
     @PrimaryKey val worksiteServerId: String,
@@ -34,8 +27,24 @@ data class SyncWorksiteContextEntity(
     val groupLabel: String? = null,
     val leadUserId: String? = null,
     val leadNameSnapshot: String? = null,
-    val localRootKnotenId: Long? = null,
     val updatedAtEpochMs: Long = System.currentTimeMillis()
+)
+
+/**
+ * Rein lokale Zuordnung: welche lokale Hauptbaustelle entspricht welcher Server-Baustelle.
+ *
+ * Die Tabelle ist absichtlich vom Serverkontext getrennt, weil der Serverkontext bei jedem Sync
+ * neu geladen wird. Dadurch bleibt die Geräte-Zuordnung stabil und wird niemals versehentlich
+ * zum Server hochgeladen.
+ */
+@Entity(
+    tableName = "sync_worksite_binding",
+    indices = [Index(value = ["worksiteServerId"], unique = true)]
+)
+data class SyncWorksiteBindingEntity(
+    @PrimaryKey val localRootKnotenId: Long,
+    val worksiteServerId: String,
+    val boundAtEpochMs: Long = System.currentTimeMillis()
 )
 
 @Entity(
