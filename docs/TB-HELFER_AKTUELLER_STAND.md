@@ -237,7 +237,10 @@ Verbindliches Ziel:
 ## Android-Build-/Teststatus
 - ältere produktiv getestete Basis wurde auf Pixel und Poco installiert und verbindet sich mit API 0.7 / Schema 9.
 - eine frühere Schema-10-Feature-Fassung wurde am 2026-09-10 lokal in Android Studio erfolgreich gebaut: `BUILD SUCCESSFUL in 42s`, 67 Tasks (19 ausgeführt, 48 up-to-date).
-- **nach den neuesten BTB-Verlauf-/Einzel-Export-Änderungen wurde noch kein neuer lokaler Android-Studio-Build durchgeführt.** Daher diese neuesten Änderungen noch nicht als build-verifiziert bezeichnen.
+- der erste lokale Build der aktuellen Android-200019-Fassung am 2026-09-10 um ca. 12:31 schlug in `BaustellenSyncFragment.kt` mit 8 Compilerfehlern fehl.
+- Ursache war kein Architektur-/Sync-Fehler, sondern zwei konkrete QR-UI-Compilefehler: falscher Package-Pfad der bereits eingebundenen Google-Code-Scanner-Klassen (`com.google.android.gms.mlkit.codescanner` statt `com.google.mlkit.vision.codescanner`) sowie die nicht vorhandene Framework-Ressource `android.R.string.close`.
+- Fix im Feature-Branch: Scanner-Imports auf `com.google.mlkit.vision.codescanner.*` korrigiert und Dialog-Schließen auf die vorhandene `android.R.string.cancel`-Ressource umgestellt; Commit `60e42fe3ce732f7ffb5e638d562224e328f0fe03`.
+- **Nach diesem Fix wurde noch kein neuer lokaler Android-Studio-Build bestätigt.** Der nächste Build ist daher maßgeblich.
 - GitHub Actions ist weiterhin nicht maßgeblich für den Android-Build; aktuelle Läufe scheitern in der bekannten CI-Infrastruktur vor verwertbaren Build-Schritten.
 
 ## Testgeräte
@@ -248,18 +251,19 @@ Verbindliches Ziel:
 
 ## Nächste sichere Schritte
 1. **Kein produktives Schema 10 ohne neues, geprüftes Backup.**
-2. neueste Android-200019-Fassung lokal in Android Studio bauen; insbesondere die letzten Änderungen an `MergeSafeBaustellenExport.kt` und `BtbVerlaufFragment.kt` prüfen.
-3. danach direkte lokale PDF-Erzeugung auf Team-/Datum-/Schicht-Dateinamen und Dokumentkopf `Firma + Baustelle + verantwortlicher TB + Datum + Schicht` umstellen, ohne historische PDFs zu beschädigen.
-4. erneut lokal bauen.
-5. Build zunächst auf einem Testgerät als Update gegen noch produktives Schema 9 starten und Regressionen prüfen; danach zweites Gerät.
-6. Schema-10-Migration/Checks zuerst auf sicherer Test-/Backup-Basis durchspielen.
-7. Link-/Code-/QR-Einladung mit zwei Testnutzern derselben Firma gegen Schema-10-Testinstanz prüfen.
-8. Firmenprofil/Logo, Helfer-`area_scope`, weitere verantwortliche TBs und gleichnamige TBs prüfen.
-9. Team-BTB testen: zwei Geräte/Helfer schreiben in denselben Team-BTB; anderer verantwortlicher TB bleibt vollständig getrennt; TAG/NACHT bleiben getrennt.
-10. Merge-Export von mehreren Geräten auf denselben `TB-Helfer/<Baustelle>/...`-Ordner testen.
-11. Mängel/Abnahmen/Bilder, endgültige Status, 409, Tombstones, Netzabbruch/Wiederaufnahme und Benachrichtigungen testen.
-12. erst nach erfolgreichen Tests neues produktives DB-Backup erstellen, Migration 010 ausführen, Schema-10-Check ausführen und danach Servercode aktivieren.
-13. PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
+2. lokalen Feature-Branch auf den aktuellen GitHub-Head holen und Android 200019 erneut in Android Studio bauen; dabei zuerst prüfen, ob die 8 QR-Scanner-Compilerfehler vollständig verschwunden sind.
+3. falls der Build weitere echte Compilerfehler zeigt, diese einzeln am aktuellen Branchstand beheben und dokumentieren.
+4. danach direkte lokale PDF-Erzeugung auf Team-/Datum-/Schicht-Dateinamen und Dokumentkopf `Firma + Baustelle + verantwortlicher TB + Datum + Schicht` umstellen, ohne historische PDFs zu beschädigen.
+5. erneut lokal bauen.
+6. Build zunächst auf einem Testgerät als Update gegen noch produktives Schema 9 starten und Regressionen prüfen; danach zweites Gerät.
+7. Schema-10-Migration/Checks zuerst auf sicherer Test-/Backup-Basis durchspielen.
+8. Link-/Code-/QR-Einladung mit zwei Testnutzern derselben Firma gegen Schema-10-Testinstanz prüfen.
+9. Firmenprofil/Logo, Helfer-`area_scope`, weitere verantwortliche TBs und gleichnamige TBs prüfen.
+10. Team-BTB testen: zwei Geräte/Helfer schreiben in denselben Team-BTB; anderer verantwortlicher TB bleibt vollständig getrennt; TAG/NACHT bleiben getrennt.
+11. Merge-Export von mehreren Geräten auf denselben `TB-Helfer/<Baustelle>/...`-Ordner testen.
+12. Mängel/Abnahmen/Bilder, endgültige Status, 409, Tombstones, Netzabbruch/Wiederaufnahme und Benachrichtigungen testen.
+13. erst nach erfolgreichen Tests neues produktives DB-Backup erstellen, Migration 010 ausführen, Schema-10-Check ausführen und danach Servercode aktivieren.
+14. PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
 
 ## Vermessungs-/Kilometrierungsfarben
 - Grün = belastbare Originaldaten/KM
