@@ -3,6 +3,7 @@ package de.tbhelfer.ui.bautagebuch
 import android.content.Context
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.server.TeamDisplayCache
+import de.tbhelfer.server.UserDisplayCache
 import de.tbhelfer.ui.einstellungen.nutzer.NutzerSpeicher
 
 /**
@@ -48,10 +49,13 @@ object BtbDokumentIdentitaet {
         }
 
         // Namen sind ausschließlich Anzeige. Die UUIDs darunter bleiben die technische Identität.
+        // Solange eine ältere/lokale Baustelle noch nicht servergebunden ist, ist der bei der
+        // Geräteaktivierung gelieferte Benutzername der beste menschenlesbare Fallback.
         val responsible = ownTeam?.leadDisplayName
             ?: ownTeam?.leadNameSnapshot
             ?: syncContext?.leadNameSnapshot
             ?: syncContext?.groupLabel
+            ?: UserDisplayCache.userName(appContext)
             ?: "TB"
 
         val shiftDisplay = when (entry.schicht) {
