@@ -20,6 +20,7 @@ import de.tbhelfer.server.CompanyProfileSync
 import de.tbhelfer.server.DeviceIdentity
 import de.tbhelfer.server.SecureTokenStore
 import de.tbhelfer.server.TeamManagementApi
+import de.tbhelfer.server.UserDisplayCache
 import de.tbhelfer.ui.HauptActivity
 import de.tbhelfer.ui.KeyboardAutoScroll
 import de.tbhelfer.ui.SafeAreaInsets
@@ -139,6 +140,10 @@ class AktivierungActivity : AppCompatActivity() {
                         setStatus(getString(R.string.activation_token_save_error), isError = true)
                         return@launch
                     }
+
+                    // Nur nicht geheime Anzeigedaten cachen. Technische Identität und Rechte bleiben
+                    // weiterhin ausschließlich beim Server-Token und den Server-UUIDs.
+                    UserDisplayCache.rememberName(applicationContext, result.userName)
 
                     // Firmenstammdaten/Logo sofort nach erfolgreicher Aktivierung lokal cachen.
                     // Ein Profilfehler blockiert die Aktivierung nicht: Offline-Betrieb und der
