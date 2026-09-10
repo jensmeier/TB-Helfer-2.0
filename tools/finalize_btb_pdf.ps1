@@ -15,9 +15,9 @@ function Replace-Once([string]$text, [string]$old, [string]$new, [string]$label)
     $old = $old.Replace("`r`n", "`n")
     $new = $new.Replace("`r`n", "`n")
     $first = $text.IndexOf($old, [StringComparison]::Ordinal)
-    if ($first -lt 0) { throw "$label: Quellblock nicht gefunden." }
+    if ($first -lt 0) { throw "${label}: Quellblock nicht gefunden." }
     $second = $text.IndexOf($old, $first + $old.Length, [StringComparison]::Ordinal)
-    if ($second -ge 0) { throw "$label: Quellblock ist nicht eindeutig." }
+    if ($second -ge 0) { throw "${label}: Quellblock ist nicht eindeutig." }
     return $text.Substring(0, $first) + $new + $text.Substring($first + $old.Length)
 }
 
