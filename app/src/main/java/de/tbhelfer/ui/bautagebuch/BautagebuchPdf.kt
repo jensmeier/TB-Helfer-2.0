@@ -165,7 +165,9 @@ class BautagebuchPdf(
         val datum = LocalDate.parse(entry.datumIso, isoFmt)
         val skey = schichtKey(entry)
         val safeBaustellenName = safeFolderName(entry.baustelleName)
-        val pdfNameOriginal = "${safeBaustellenName}_${skey}.pdf"
+        val dokumentIdentitaet = BtbDokumentIdentitaet.aufloesen(context, entry)
+        val pdfNameKanonisch = dokumentIdentitaet.pdfDateiname()
+        val pdfNameOriginalLegacy = "${safeBaustellenName}_${skey}.pdf"
         val pdfNameEntwurf = "${safeBaustellenName}_entwurf_${skey}.pdf"
         val excludeGeaendertRegex = Regex(
             """^${Regex.escape(safeBaustellenName)}_geaendert\d*_${Regex.escape(skey)}\.pdf$""",
@@ -205,7 +207,12 @@ class BautagebuchPdf(
             dir.listFiles()
                 ?.filter { it.isFile && it.extension.equals("pdf", ignoreCase = true) }
                 // Nicht das/die aktuelle(n) BTB-PDF(s) erneut in die Liste aufnehmen
-                ?.filter { it.name != pdfNameOriginal && it.name != pdfNameEntwurf && !excludeGeaendertRegex.matches(it.name) }
+                ?.filter {
+                    it.name != pdfNameKanonisch &&
+                        it.name != pdfNameOriginalLegacy &&
+                        it.name != pdfNameEntwurf &&
+                        !excludeGeaendertRegex.matches(it.name)
+                }
                 ?.sortedBy { it.name.lowercase() }
                 ?: emptyList()
         } else emptyList()
@@ -1094,8 +1101,12 @@ class BautagebuchPdf(
             ?.takeIf { it.isNotBlank() && !it.equals("Hauptbaustelle", ignoreCase = true) }
 
         val datumAnzeige = dateRangeText(datum, entry.startUhrzeit, entry.endeUhrzeit)
-        w.textWrapped(entry.baustelleName, pBaustelleHeader)
+        val firmaAnzeige = dokumentIdentitaet.firmenname ?: "-"
+        w.textWrapped("Baustelle: ${entry.baustelleName}", pBaustelleHeader)
+        w.textWrapped("Firma: $firmaAnzeige", pT)
+        w.textWrapped("Verantwortlicher TB: ${dokumentIdentitaet.verantwortlicherTb}", pT)
         w.textWrapped("Datum: $datumAnzeige", pT)
+        w.textWrapped("Schicht: ${dokumentIdentitaet.schichtAnzeige}", pT)
         w.textWrapped("Zeit: ${entry.startUhrzeit ?: "-"} – ${entry.endeUhrzeit ?: "-"}", pT)
 
         // etwas Luft vor Wetter/Boxen
@@ -2958,7 +2969,7 @@ w.finish()
         val file = if (asDraft) {
             File(outDir, safeBaustellenName + "_entwurf_" + skey + ".pdf")
         } else {
-            File(outDir, pdfDateiname(entry.baustelleName, skey, geaendert, geaendertIndex))
+            File(outDir, dokumentIdentitaet.pdfDateiname())
         }
         FileOutputStream(file).use { pdf.writeTo(it) }
         pdf.close()
