@@ -29,7 +29,8 @@ object MergeSafeBaustellenExport {
         context: Context,
         sourceZip: File,
         localRootKnotenId: Long,
-        baustelleName: String
+        baustelleName: String,
+        schicht: SchichtTyp? = null
     ): File {
         if (!sourceZip.exists()) return sourceZip
         val appContext = context.applicationContext
@@ -65,7 +66,8 @@ object MergeSafeBaustellenExport {
                     worksiteToken = worksiteToken,
                     responsibleToken = responsibleToken,
                     acceptanceFolders = acceptanceFolders,
-                    mediaTargets = mediaTargets
+                    mediaTargets = mediaTargets,
+                    forcedShift = schicht
                 )
             }
 
@@ -151,7 +153,8 @@ object MergeSafeBaustellenExport {
         worksiteToken: String,
         responsibleToken: String,
         acceptanceFolders: Map<String, String>,
-        mediaTargets: Map<String, String>
+        mediaTargets: Map<String, String>,
+        forcedShift: SchichtTyp?
     ): String {
         var inner = rawPath
         if (inner.startsWith("TB-Helfer/", true)) inner = inner.substringAfter('/')
@@ -176,21 +179,39 @@ object MergeSafeBaustellenExport {
         }
 
         if ("/BTB/" in path) {
-            path = renameBtb(path, responsibleToken)
+            path = renameBtb(path, responsibleToken, forcedShift)
         }
         return path.replace("//", "/")
     }
 
-    private fun renameBtb(path: String, responsibleToken: String): String {
+    /**
+     * Der Gesamtexport enthält die Schicht bereits im Dateinamen. Der einzelne
+     * Verlaufsexport nutzt aus Kompatibilitätsgründen noch BTB_<Datum>.pdf/docx;
+     * dort wird die fachlich bekannte Schicht explizit mitgegeben.
+     */
+    private fun renameBtb(path: String, responsibleToken: String, forcedShift: SchichtTyp?): String {
         val name = path.substringAfterLast('/')
         val ext = name.substringAfterLast('.', "").lowercase()
         if (ext !in setOf("pdf", "docx")) return path
-        val match = Regex("(?i)^BTB_(\\d{4}-\\d{2}-\\d{2})_(TAG|NACHT|Tag|Nacht)(?:_[^.]*)?\\.(pdf|docx)$").matchEntire(name)
-            ?: return path
-        val date = match.groupValues[1]
-        val shift = match.groupValues[2].uppercase(Locale.ROOT)
-        val newName = "BTB_${date}_${shift}_${responsibleToken}.${ext}"
-        return path.substringBeforeLast('/') + "/" + newName
+
+        val withShift = Regex("(?i)^BTB_(\\d{4}-\\d{2}-\\d{2})_(TAG|NACHT|Tag|Nacht)(?:_[^.]*)?\\.(pdf|docx)$")
+            .matchEntire(name)
+        if (withShift != null) {
+            val date = withShift.groupValues[1]
+            val shift = withShift.groupValues[2].uppercase(Locale.ROOT)
+            val newName = "BTB_${date}_${shift}_${responsibleToken}.${ext}"
+            return path.substringBeforeLast('/') + "/" + newName
+        }
+
+        val withoutShift = Regex("(?i)^BTB_(\\d{4}-\\d{2}-\\d{2})\\.(pdf|docx)$")
+            .matchEntire(name)
+        if (withoutShift != null && forcedShift != null) {
+            val date = withoutShift.groupValues[1]
+            val newName = "BTB_${date}_${forcedShift.name}_${responsibleToken}.${ext}"
+            return path.substringBeforeLast('/') + "/" + newName
+        }
+
+        return path
     }
 
     private fun rewriteTextReferences(text: String, csvPath: String, mediaTargets: Map<String, String>): String {
