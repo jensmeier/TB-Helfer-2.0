@@ -81,7 +81,21 @@ def main() -> int:
     )
     require_text(
         ANDROID / "ui" / "bautagebuch" / "MergeSafeBaustellenExport.kt",
-        ["BTB_", "TB-Helfer", "TeamDisplayCache"],
+        [
+            "BTB_",
+            "TB-Helfer",
+            "TeamDisplayCache",
+            "forcedShift",
+            "BTB_(\\\\d{4}-\\\\d{2}-\\\\d{2})\\\\.(pdf|docx)",
+        ],
+    )
+    require_text(
+        ANDROID / "ui" / "baustelle" / "BtbVerlaufFragment.kt",
+        [
+            "BTB $verantwortlicherTb",
+            "MergeSafeBaustellenExport.normalisieren",
+            "schicht = item.schicht",
+        ],
     )
 
     print(f"SCHEMA10_SOURCE_OK parts={len(parts)}")
