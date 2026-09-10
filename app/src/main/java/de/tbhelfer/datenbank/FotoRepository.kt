@@ -1,11 +1,16 @@
 package de.tbhelfer.datenbank
 
+import android.content.Context
+import de.tbhelfer.server.SofortSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 
-class FotoRepository(private val dao: FotoDao) {
+class FotoRepository(
+    private val dao: FotoDao,
+    private val appContext: Context? = null
+) {
     fun alleFotos(): Flow<List<FotoEntity>> = dao.alleFotos().flowOn(Dispatchers.IO)
 
     suspend fun fotoMitId(id: Long): FotoEntity? = withContext(Dispatchers.IO) { dao.fotoMitId(id) }
@@ -28,7 +33,16 @@ class FotoRepository(private val dao: FotoDao) {
         dao.fotosFuerUnterknotenOnce(baustelleId, knotenId)
     }
 
-    suspend fun einfuegen(entity: FotoEntity): Long = withContext(Dispatchers.IO) { dao.einfuegen(entity) }
+    /**
+     * Ein neu gespeichertes Bild stößt best-effort sofort den vorhandenen Offline-/Server-Sync an.
+     * Die eigentliche Datei bleibt zuerst lokal und sicher; WorkManager übernimmt Upload/Retry,
+     * sobald Netz verfügbar ist. Der periodische Sync bleibt zusätzlich bestehen.
+     */
+    suspend fun einfuegen(entity: FotoEntity): Long {
+        val id = withContext(Dispatchers.IO) { dao.einfuegen(entity) }
+        appContext?.let { runCatching { SofortSync.anstossen(it) } }
+        return id
+    }
 
     /** Notiz für mehrere Fotos setzen (null/leer = zurück auf Kurztext). */
     suspend fun updateNotizMitIds(ids: List<Long>, notiz: String?): Int = withContext(Dispatchers.IO) {
