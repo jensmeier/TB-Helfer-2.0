@@ -15,6 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify Schema-10 source contracts
+        run: python3 server/checks/03_verify_schema10_source.py
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
