@@ -19,16 +19,28 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 - PR bleibt Draft bis der echte Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test erfolgreich ist.
 - `main` bleibt unverändert/stabil.
 - Android im Feature-Branch: `versionCode 200019`, `versionName 1.3`.
-- Schema 10 ist auf der produktiven PostgreSQL-Datenbank migriert und geprüft; der neue Schema-10-Servercode liegt weiterhin nur im Feature-Branch und ist noch nicht produktiv aktiviert.
+- Schema 10 ist auf der produktiven PostgreSQL-Datenbank migriert und geprüft; der dazugehörige Schema-10-Servercode aus dem Feature-Branch ist inzwischen ebenfalls produktiv aktiviert.
 
 ## Produktiver Stand auf der Synology
 - NAS/Synology ist Source of Truth.
 - produktive API: **0.7.0**.
 - produktive PostgreSQL-Datenbank: **Schema 10** (`010_worksite_invitations_company_profile`).
-- produktiver Servercode: `/volume1/docker/tb-helfer/server_0.7_stage`.
-- produktive Secret-Datei bleibt `./server/.env`; keine Secrets wurden in Stage/GitHub kopiert.
-- Cloudflare API und Admin Access wurden vor Schema 10 extern über Mobilfunk erfolgreich geprüft.
-- API, PostgreSQL, Bahnhof-Autofill und Admin-Dashboard waren mit Schema 9 produktiv erfolgreich getestet; nach Aktivierung des neuen Servercodes muss die externe Prüfung für Schema 10 erneut erfolgen.
+- produktiver Servercode: `/volume1/docker/tb-helfer/server_schema10_stage`.
+- `compose.yaml` baut die API aus `./server_schema10_stage` und bindet `app.py`, `templates`, `app_parts` und `data` ebenfalls aus diesem Ordner ein.
+- produktive Secret-Datei bleibt unverändert `./server/.env`; keine Secrets wurden in den neuen Stage-Ordner oder nach GitHub kopiert.
+- Projekt wurde im Synology Container Manager neu erstellt; Abschluss **`Exit Code: 0`**.
+- PostgreSQL wurde dabei healthy, API und cloudflared wurden erfolgreich gestartet.
+- laufende API aus dem neuen Stage-Ordner liefert **72 OpenAPI-Pfade**.
+- folgende Schema-10-Kernpfade wurden im laufenden API-Container ausdrücklich als vorhanden geprüft:
+  - `/api/v1/collab/worksites`
+  - `/api/v1/collab/invitations/redeem`
+  - `/api/v1/company/profile`
+  - `/api/v1/collab/worksites/{worksite_id}/media`
+- direkter DB-Test aus dem laufenden API-Container: **`DB_TEST=OK`**.
+- derselbe Test liest produktiv **`SCHEMA=10 010_worksite_invitations_company_profile`**.
+- Admin-Systemstatus zeigt produktiv `API: OK · 0.7.0`, `PostgreSQL: OK` und `Schema: 10 · 010_worksite_invitations_company_profile`.
+- die Admin-Firmenübersicht zeigt die neue Aktion `Firmenprofil / Logo`; die bestehende Firma `Gtu` hat dort 2 Nutzer und 2 aktive Geräte.
+- Cloudflare API und Admin Access waren vor Schema 10 extern über Mobilfunk erfolgreich geprüft; die erneute explizite externe Prüfung nach diesem Server-Rollout steht noch aus.
 
 ### Produktives Backup direkt vor Schema 10
 Vor Migration 010 wurde ein aktueller PostgreSQL-Custom-Dump erstellt:
@@ -55,7 +67,7 @@ Anschließend wurde `server/checks/02_verify_schema10.sql` mit `ON_ERROR_STOP` a
 - die verpflichtenden Schema-10-Objekte/Felder wurden geprüft.
 - Abschluss: **`SCHEMA_10_OK`**.
 
-Damit ist die Datenbankseite von Schema 10 produktiv abgeschlossen. Der nächste produktive Schritt ist ausschließlich die Aktivierung/Rebuild des dazugehörigen Servercodes; keine weitere DB-Migration ist dafür vorgesehen.
+Damit sind Datenbankseite und zugehöriger Servercode von Schema 10 produktiv aktiviert und lokal auf dem NAS geprüft. Keine weitere DB-Migration für diesen Rollout starten.
 
 ### Letztes produktives Backup / Migration 008+009
 Vor Migration 008/009 wurde ein PostgreSQL-Custom-Dump erstellt und mit `pg_restore -l` geprüft:
@@ -105,7 +117,7 @@ Server/Admin müssen aus diesen Beständen Bahnhofscode/Name vervollständigen. 
 - endgültiger Status `abgestellt/erledigt` bleibt endgültig.
 - Benachrichtigungsmodi pro Gerät: Text + Ton / nur Ton / aus.
 
-## Schema 10 – Datenbank produktiv, Servercode noch nicht aktiviert
+## Schema 10 – Datenbank und Servercode produktiv
 Migration:
 - `server/migrations/010_worksite_invitations_company_profile.sql`
 
@@ -129,7 +141,7 @@ Einladungsregeln:
 - Lead-Einladung erzeugt beim Einlösen eine neue eigene TB-Gruppe.
 - bestehende Mitgliedschaft wird nicht still in eine andere Gruppe verschoben.
 
-## Schema-10-Server-API – Feature-Branch
+## Schema-10-Server-API – produktiv aktiviert
 Relevante Erweiterungen in `server/app_parts/14_part.py`, `15_part.py`, `16_part.py`, `17_part.py`:
 - Collaboration-Context mit sichtbarer Lead-Bezeichnung/-Nummer
 - Teamübersicht je Baustelle
@@ -139,20 +151,21 @@ Relevante Erweiterungen in `server/app_parts/14_part.py`, `15_part.py`, `16_part
 - Team-BTB-Merge für mehrere Geräte/Helfer
 - zentraler Baustellen-Medienbestand für Gesamtexporte
 
-Verbindliche Produktiv-Reihenfolge – Stand nach erfolgreicher DB-Migration:
+Produktiv-Reihenfolge – Stand nach Server-Rollout:
 1. aktuelles PostgreSQL-Backup erstellen → **erledigt**
 2. `pg_restore -l` erfolgreich prüfen → **erledigt (`BACKUP_PRUEFUNG=OK`)**
 3. Migration 010 mit `psql -v ON_ERROR_STOP=1` → **erledigt (`COMMIT`)**
 4. `server/checks/02_verify_schema10.sql` → **erledigt (`SCHEMA_10_OK`)**
-5. neuen Schema-10-Servercode aktivieren/rebuilden → **nächster Schritt**
-6. API/Admin/Cloudflare extern prüfen
+5. neuen Schema-10-Servercode aktivieren/rebuilden → **erledigt (`Exit Code: 0`)**
+6. laufende API/DB lokal prüfen → **erledigt (72 Pfade, Kernpfade OK, `DB_TEST=OK`, Schema 10)**
+7. API/Admin/Cloudflare erneut explizit extern prüfen → **nächster Schritt**
 
-## Zentrales Firmenprofil / Logo – Feature-Branch
+## Zentrales Firmenprofil / Logo – produktive Serverbasis vorhanden
 Server:
 - Firmenname/Anschrift/PLZ/Ort/Telefon/E-Mail/Webseite zentral pro Firma
 - Logo PNG/JPG/WEBP, maximal 5 MB
 - Logo-Datei im kontrollierten Server-Storage; DB speichert Metadaten/Pfad/Hash/Version
-- Admin-Firmenansicht verlinkt auf `Firmenprofil / Logo`
+- Admin-Firmenansicht verlinkt produktiv auf `Firmenprofil / Logo`.
 
 Android:
 - Profil/Logo werden nach erfolgreicher Geräteaktivierung best-effort geladen.
@@ -162,7 +175,7 @@ Android:
 - Nutzerseite ist für zentrale Firmendaten auf Lesen/Aktualisieren umgestellt; kein freies lokales Überschreiben des zentralen Firmenprofils.
 - auch bereits aktivierte Geräte ziehen den nicht geheimen Benutzernamen über `/device/me` als Anzeige-/BTB-Fallback nach.
 
-Noch real zu testen: Firmenprofil-/Logo-Abruf auf echtem Gerät gegen produktives Schema 10 und den neuen Servercode.
+Noch real zu testen: Firmenprofil/Logo im Admin pflegen und Abruf auf Pixel/Poco gegen den jetzt produktiven Schema-10-Server prüfen.
 
 ## Android – Baustelle / Einladung / QR / Arbeitsbereich
 Im Feature-Branch vorhanden:
@@ -178,7 +191,7 @@ Im Feature-Branch vorhanden:
 - Aktivierungs- und Baustelleneinladung bleiben getrennt
 - normaler Einstieg im Baustellen-Menü heißt verbindlich **`Nutzer hinzufügen`**.
 - beim ersten `Nutzer hinzufügen` wird die lokale Hauptbaustelle automatisch und idempotent auf dem Server angelegt/verbunden; anschließend öffnet sich die Teamverwaltung.
-- der Unsupported-Fall wurde auf dem Handy noch gegen die bisherige produktive 0.7-API vor Schema-10-Serveraktivierung praktisch geprüft; der echte Schema-10-Ablauf folgt nach Servercode-Umschaltung.
+- der Unsupported-Fall wurde zuvor gegen die alte Serverbasis praktisch geprüft; der echte Schema-10-Ablauf kann jetzt gegen den produktiven Server getestet werden.
 
 ## Verbindliche BTB-Logik
 Fachliche BTB-Identität innerhalb einer Baustelle:
@@ -213,7 +226,7 @@ Export:
 - erneutes Erzeugen desselben fachlichen BTB aktualisiert denselben kanonischen Zielpfad statt neue `geaendert2/geaendert3`-Dateien anzulegen.
 - sichtbarer PDF-Kopf enthält Baustelle, Firma, verantwortlichen TB, Datum, Schicht und Zeit; das bestehende lokale Firmenlogo bleibt nutzbar.
 - Test-PDF am 2026-09-10: `BTB_2026-09-10_NACHT_jens_poco.pdf`; Kopf/2 Seiten praktisch geprüft, Layout ohne erkennbare Überlagerung/Abschneidung.
-- im Test stand `Firma: -`, erwartungsgemäß weil das zentrale Firmenprofil erst nach Schema-10-Serverrollout produktiv abrufbar ist.
+- im Test stand `Firma: -`, erwartungsgemäß weil das zentrale Firmenprofil zu diesem Zeitpunkt noch nicht produktiv abrufbar war; nach dem Schema-10-Serverrollout muss dies erneut getestet werden.
 - Commit des getesteten PDF-Abschlusses: `4cca0b9697d3b75c31f538898abe318706753a1d` (`android: finalize canonical BTB PDF`).
 - historische bestehende PDFs werden nicht zwangsumbenannt.
 
@@ -269,18 +282,17 @@ Noch vollständig fertigzustellen und Ende-zu-Ende zu prüfen:
 - Langzeittest: vorhandene Bereiche nach Monaten/Jahren wieder abrufen und mit neuen Bereichen ergänzen.
 
 ## Nächste sichere Schritte
-1. **Schema 10 DB ist migriert und mit `SCHEMA_10_OK` geprüft. Keine weitere DB-Migration starten.**
-2. den neuen Schema-10-Servercode aus dem geprüften Feature-Branch auf der Synology bereitstellen/aktivieren und den API-Container rebuilden.
-3. nach dem Rebuild zuerst Container-/API-Status prüfen; erwartete API-Version und Schema-10-Endpunkte bestätigen.
-4. API/Admin/Cloudflare extern prüfen; Firmenprofil/Logo pflegen und auf Pixel/Poco abrufen.
-5. `Nutzer hinzufügen` real testen: erste lokale Baustelle automatisch serverseitig anlegen/verbinden, keine Dublette bei Wiederholung.
-6. QR-/Link-/Code-Einladung mit zwei Testnutzern derselben Firma testen; Helfer-`area_scope`, weiterer verantwortlicher TB und gleichnamige TBs prüfen.
-7. Team-BTB mit zwei Geräten/Helfern testen; anderer verantwortlicher TB bleibt getrennt, TAG/NACHT getrennt.
-8. Mängel/Abnahmen/Bilder/Gesamtlisten/Benachrichtigungen mit mehreren Benutzern testen.
-9. Offline/Upload-Queue/409/Tombstones/Netzabbruch/Wiederaufnahme testen.
-10. Merge-Export von mehreren Geräten in denselben `TB-Helfer/<Baustelle>/...`-Laptopordner testen.
-11. danach den separaten Streckendaten-/Vermessungsblock vollständig fertigstellen und mit mehreren Geräten testen.
-12. anschließend 15 Android-Warnungen/sonstiges Aufräumen abarbeiten, vollständigen Endbuild durchführen und PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
+1. **Schema 10 DB und Servercode sind produktiv. Keine weitere DB-Migration und keinen weiteren Server-Rebuild für diesen Rollout starten.**
+2. API/Admin/Cloudflare nach dem Schema-10-Serverrollout erneut explizit extern prüfen.
+3. Firmenprofil/Logo für die Testfirma pflegen und auf Pixel/Poco abrufen.
+4. `Nutzer hinzufügen` real testen: erste lokale Baustelle automatisch serverseitig anlegen/verbinden, keine Dublette bei Wiederholung.
+5. QR-/Link-/Code-Einladung mit zwei Testnutzern derselben Firma testen; Helfer-`area_scope`, weiterer verantwortlicher TB und gleichnamige TBs prüfen.
+6. Team-BTB mit zwei Geräten/Helfern testen; anderer verantwortlicher TB bleibt getrennt, TAG/NACHT getrennt.
+7. Mängel/Abnahmen/Bilder/Gesamtlisten/Benachrichtigungen mit mehreren Benutzern testen.
+8. Offline/Upload-Queue/409/Tombstones/Netzabbruch/Wiederaufnahme testen.
+9. Merge-Export von mehreren Geräten in denselben `TB-Helfer/<Baustelle>/...`-Laptopordner testen.
+10. danach den separaten Streckendaten-/Vermessungsblock vollständig fertigstellen und mit mehreren Geräten testen.
+11. anschließend 15 Android-Warnungen/sonstiges Aufräumen abarbeiten, vollständigen Endbuild durchführen und PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
 
 ## Vermessungs-/Kilometrierungsfarben
 - Grün = belastbare Originaldaten/KM
