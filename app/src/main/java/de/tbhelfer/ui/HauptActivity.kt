@@ -15,6 +15,7 @@ import androidx.navigation.fragment.NavHostFragment
 import de.tbhelfer.R
 import de.tbhelfer.server.ActivationApi
 import de.tbhelfer.server.SecureTokenStore
+import de.tbhelfer.server.UserDisplayCache
 import de.tbhelfer.ui.activation.AktivierungActivity
 import de.tbhelfer.ui.style.UiStyleApplier
 import de.tbhelfer.widget.CameraWidgetProvider
@@ -77,10 +78,15 @@ class HauptActivity : AppCompatActivity() {
 
     private fun validateDeviceSession(tokenStore: SecureTokenStore, token: String) {
         lifecycleScope.launch {
-            val state = withContext(Dispatchers.IO) {
-                ActivationApi().checkSession(token)
+            val session = withContext(Dispatchers.IO) {
+                ActivationApi().checkSessionInfo(token)
             }
-            if (state == ActivationApi.SessionState.REVOKED && !isFinishing) {
+            if (session.state == ActivationApi.SessionState.VALID) {
+                // /device/me liefert nur nicht geheime Profildaten. Damit bekommen auch bereits
+                // vor diesem App-Stand aktivierte Geräte den korrekten sichtbaren Namen-Fallback.
+                UserDisplayCache.rememberName(applicationContext, session.userName)
+            }
+            if (session.state == ActivationApi.SessionState.REVOKED && !isFinishing) {
                 tokenStore.clear()
                 Toast.makeText(
                     this@HauptActivity,
