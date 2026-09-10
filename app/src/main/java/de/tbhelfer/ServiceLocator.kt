@@ -68,10 +68,6 @@ object ServiceLocator {
         datenbank.baustellenKnotenDao()
     }
 
-    val worksiteBindingRepository: WorksiteBindingRepository by lazy {
-        WorksiteBindingRepository(syncDatenbank, baustellenKnotenDao)
-    }
-
     val streckenpunktDao: StreckenpunktDao by lazy {
         datenbank.streckenpunktDao()
     }
@@ -90,6 +86,14 @@ object ServiceLocator {
 
     val baustellenBaumRepository: BaustellenBaumRepository by lazy {
         BaustellenBaumRepository(baustellenKnotenDao, baustellenRepository)
+    }
+
+    val worksiteBindingRepository: WorksiteBindingRepository by lazy {
+        WorksiteBindingRepository(
+            syncDatabase = syncDatenbank,
+            localWorksiteDao = baustellenKnotenDao,
+            localWorksiteTree = baustellenBaumRepository
+        )
     }
 
     val streckenpunkteRepository: StreckenpunkteRepository by lazy {
