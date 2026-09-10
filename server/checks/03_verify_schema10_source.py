@@ -72,6 +72,17 @@ def main() -> int:
         ],
     )
     require_text(
+        APP_PARTS / "17_part.py",
+        [
+            "/api/v1/collab/worksites/{worksite_id}/media",
+            "_media_row_visible",
+            "member_role",
+            "LEAD",
+            "collab_attachment_download_media_lead",
+            "parent_payload",
+        ],
+    )
+    require_text(
         ANDROID / "datenbank" / "BtbTeamMediaSync.kt",
         ["BTBP1__", "MAX_ATTACHMENT_FILENAME_LENGTH = 160", "TYPE_BTB"],
     )
@@ -97,7 +108,47 @@ def main() -> int:
             "TeamDisplayCache",
             "forcedShift",
             "BTB_(\\\\d{4}-\\\\d{2}-\\\\d{2})\\\\.(pdf|docx)",
+            "GesamtMedienArchiv.ergaenzen",
         ],
+    )
+    require_text(
+        ANDROID / "ui" / "bautagebuch" / "GesamtMedienArchiv.kt",
+        [
+            "Bilderliste_gesamt.xlsx",
+            "Mängel/",
+            "Maengelliste_Gesamt.csv",
+            "Abnahmeliste_Gesamt.csv",
+            "SyncMangelSpeicher",
+            "WorksiteMediaApi",
+            "synchronizeBeforeExport",
+        ],
+    )
+    require_text(
+        ANDROID / "ui" / "bautagebuch" / "GesamtBilderlisteXlsx.kt",
+        [
+            "autoFilter",
+            "state=\"frozen\"",
+            "hyperlink",
+            "Verantwortlicher TB",
+            "Bilddatei",
+        ],
+    )
+    require_text(
+        ANDROID / "server" / "WorksiteMediaApi.kt",
+        [
+            "/api/v1/collab/worksites/",
+            "/media",
+            "responsibleTb",
+            "download",
+        ],
+    )
+    require_text(
+        ANDROID / "server" / "SofortSync.kt",
+        ["OneTimeWorkRequestBuilder<SyncWorker>", "ExistingWorkPolicy.KEEP"],
+    )
+    require_text(
+        ANDROID / "datenbank" / "FotoRepository.kt",
+        ["SofortSync.anstossen"],
     )
     require_text(
         ANDROID / "ui" / "baustelle" / "BtbVerlaufFragment.kt",
