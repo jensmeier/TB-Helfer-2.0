@@ -2,7 +2,7 @@
 
 Stand: 2026-09-10
 
-Diese Datei ist die verbindliche technische Übergabe zwischen Chats/Sitzungen. Sie ergänzt `docs/TB-HELFER_PROJEKTREGELN.md`.
+Diese Datei ist die verbindliche technische Übergabe zwischen Chats/Sitzungen. Sie ergänzt `docs/TB-HELFER_PROJEKTREGELN.md`. Fachliche Grundsatzentscheidungen stehen in den Projektregeln; diese Datei hält den tatsächlich erreichten technischen Stand und den nächsten sicheren Schritt fest.
 
 Vor jeder Änderung zuerst lesen:
 1. `docs/TB-HELFER_PROJEKTREGELN.md`
@@ -29,8 +29,9 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 - produktive Secret-Datei bleibt `./server/.env`; keine Secrets wurden in Stage/GitHub kopiert.
 - Cloudflare API und Admin Access wurden extern über Mobilfunk erfolgreich geprüft.
 - API, PostgreSQL, Schema 9, Bahnhof-Autofill und Admin-Dashboard wurden produktiv erfolgreich getestet.
+- **Migration 010 ist noch NICHT produktiv ausgeführt.**
 
-### Produktive Backups / Migrationen
+### Letztes produktives Backup / Migration 008+009
 Vor Migration 008/009 wurde ein PostgreSQL-Custom-Dump erstellt und mit `pg_restore -l` geprüft:
 - `tb_helfer_pre_0.7_20260909_201605.dump`
 - zweite Kopie unter `/volume1/docker/tb-helfer/backup/`
@@ -45,7 +46,7 @@ Read-only Schema-9-Nachkontrolle:
 - Integritätschecks `violations=0`
 - Attachment-Parent-Prüfung `violations=0`
 
-**Migration 010 ist NICHT produktiv ausgeführt.** Vor jeder produktiven Schema-10-Migration muss erneut ein aktuelles PostgreSQL-Backup erstellt und mit `pg_restore -l` geprüft werden.
+Vor Schema 10 muss erneut ein **aktuelles** PostgreSQL-Backup erstellt und mit `pg_restore -l` geprüft werden.
 
 ## Verbindliche Server-/Datenregeln
 - NAS ist Source of Truth.
@@ -66,35 +67,23 @@ Vorhandene Datenbasis:
 Server/Admin müssen aus diesen Beständen Bahnhofscode/Name vervollständigen. Keine neue Bahnhofsliste einführen.
 
 ## Verbindliches Team-/Rechtemodell
-- Der Admin verwaltet Benutzer, Firmen, Geräte, Firmenprofil/Logo und Speicheroptionen, aber **nicht** die tägliche Baustellen-Zuordnung.
-- Der Ersteller einer Baustelle ist ihr erster verantwortlicher TB.
-- Weitere verantwortliche TBs treten per sicherer Baustelleneinladung bei.
-- Helfer werden durch einen verantwortlichen TB in genau dessen Team eingeladen.
-- sichtbare Überschrift: **`Verantwortliche TBs`**.
-- sichtbare Aktionen: **`Helfer einladen`** und **`Weiteren TB einladen`**.
+- Admin verwaltet Benutzer, Firmen, Geräte, Firmenprofil/Logo und Speicheroptionen, aber nicht die tägliche Baustellen-Zuordnung.
+- Ersteller einer Server-Baustelle ist erster verantwortlicher TB.
+- weitere verantwortliche TBs treten per sicherer Baustelleneinladung bei.
+- Helfer werden in genau das Team ihres verantwortlichen TB eingeladen und können einen `area_scope` erhalten.
+- sichtbare Überschrift: `Verantwortliche TBs`.
+- sichtbare Aktionen: `Helfer einladen` und `Weiteren TB einladen`.
 - keine sichtbaren A/B/C/D-Teambezeichnungen.
-- Baustellenbeitritt ist Self-Service über Einladung, nicht über manuelles Admin-Zuweisen.
-- Aktivierungs-QR und Baustellen-Einladungs-QR bleiben getrennte Sicherheitsvorgänge.
-- Einladung enthält keinen Benutzer-/Geräteschlüssel, sondern einen kurzlebigen/widerrufbaren Einladungstoken.
-- Einlösen erfordert aktiven Benutzer, gültiges aktiviertes Gerät und dieselbe Firma wie die Baustelle.
-- Benutzer derselben Firma ohne Mitgliedschaft dieser konkreten Baustelle erhalten keine Collaboration-Daten dieser Baustelle.
-
-## Gleichnamige Benutzer / stabile Identität
-- Benutzeridentität = Server-UUID.
-- TB-Teamidentität = `worksite_groups.id` / Gruppen-UUID.
-- sichtbare Namen sind niemals technische Schlüssel.
-- zwei Benutzer dürfen denselben echten Namen haben.
-- gleichnamige verantwortliche TBs derselben Baustelle werden sichtbar stabil z. B. als `Max Mustermann 1` und `Max Mustermann 2` unterschieden.
-- Schema 10 speichert dafür `lead_name_ordinal`.
-- BTB, Einladungen, Sync und Berechtigungen dürfen nie über den Namen zusammengeführt werden.
+- Aktivierungs-QR und Baustellen-Einladungs-QR sind getrennte Sicherheitsvorgänge.
+- Einlösen erfordert aktiven Benutzer, aktiviertes Gerät und dieselbe Firma wie die Baustelle.
+- gleichnamige Benutzer bleiben intern über UUIDs/Team-IDs getrennt; Schema 10 speichert dafür zusätzlich `lead_name_ordinal` für stabile sichtbare Zusätze.
 
 ## Mängel / Abnahmen / Bilder / Benachrichtigungen
-- Mängel und Abnahmen sind baustellenweit zwischen berechtigten verantwortlichen TBs dieser konkreten Baustelle synchronisiert.
+- Mängel und Abnahmen sind baustellenweit zwischen berechtigten verantwortlichen TBs derselben konkreten Baustelle synchronisiert.
 - Helfer sehen/bearbeiten sie nur in ihrem freigegebenen Bereich.
 - Bilder/Attachments folgen derselben Mitgliedschafts-/Bereichsregel.
-- Benachrichtigungen gehen nur an berechtigte Mitglieder dieser Baustelle bzw. ihres Bereichs.
 - endgültiger Status `abgestellt/erledigt` bleibt endgültig.
-- keine firmenweite Verteilung an Benutzer, die der Baustelle nicht beigetreten sind.
+- Benachrichtigungsmodi pro Gerät: Text + Ton / nur Ton / aus.
 
 ## Schema 10 – im Feature-Branch implementiert, noch nicht produktiv
 Migration:
@@ -113,22 +102,24 @@ Schema 10 ergänzt unter anderem:
 - mobile Baustellen-Ursprünge / Self-Service-Erstellung
 
 Einladungsregeln:
-- sichtbare Code-ID + Geheimteil; serverseitig nur sicherer Hash des Geheimteils.
+- TBI-Code/Deep-Link/QR enthalten keine Benutzer-/Geräteschlüssel.
+- serverseitig wird nur der sichere Hash des Geheimteils gespeichert.
 - Standard einmalig verwendbar und 7 Tage gültig; serverseitig maximal 30 Tage.
-- `Helfer einladen` bindet an die eigene TB-Gruppe des Einladenden und optional an `area_scope`.
-- `Weiteren TB einladen` erzeugt beim Einlösen eine neue eigene TB-Gruppe des eingeladenen verantwortlichen TB.
+- Helfer-Einladung bindet an die eigene TB-Gruppe des Einladenden und optional an `area_scope`.
+- Lead-Einladung erzeugt beim Einlösen eine neue eigene TB-Gruppe.
 - bestehende Mitgliedschaft wird nicht still in eine andere Gruppe verschoben.
 
 ## Schema-10-Server-API – Feature-Branch
-Relevante Erweiterungen in `server/app_parts/14_part.py`, `15_part.py`, `16_part.py`:
+Relevante Erweiterungen in `server/app_parts/14_part.py`, `15_part.py`, `16_part.py`, `17_part.py`:
 - Collaboration-Context mit sichtbarer Lead-Bezeichnung/-Nummer
 - Teamübersicht je Baustelle
 - Einladung erstellen/einlösen/widerrufen
 - Firmenprofil/Logo
 - mobile Baustellenerstellung / Self-Service-Ursprung
 - Team-BTB-Merge für mehrere Geräte/Helfer
+- zentraler Baustellen-Medienbestand für Gesamtexporte
 
-Verbindliche spätere Produktiv-Reihenfolge:
+Verbindliche Produktiv-Reihenfolge:
 1. aktuelles PostgreSQL-Backup erstellen
 2. `pg_restore -l` erfolgreich prüfen
 3. Migration 010 mit `psql -v ON_ERROR_STOP=1`
@@ -146,19 +137,18 @@ Server:
 - Admin-Firmenansicht verlinkt auf `Firmenprofil / Logo`
 
 Android:
-- Profil/Logo werden nach erfolgreicher Geräteaktivierung best-effort vom Server geladen.
-- `CompanyProfileSync.kt` spiegelt die zentralen Daten in die bestehende lokale `NutzerSpeicher`-/`NutzerProfil`-Quelle.
-- dadurch bleiben vorhandene PDF-/BTB-Funktionen offline nutzbar.
+- Profil/Logo werden nach erfolgreicher Geräteaktivierung best-effort geladen.
+- `CompanyProfileSync.kt` spiegelt zentrale Daten in die bestehende lokale `NutzerSpeicher`-/`NutzerProfil`-Quelle.
 - `maxFotosInPdf` bleibt lokale Einstellung.
 - serverseitiges Firmenlogo wird lokal gecacht.
-- Baustellen-Einladung überschreibt das Benutzer-/Firmenprofil nicht.
-- volle Aktivierungs-/Geräteschlüssel werden nicht offen im normalen Nutzerprofil angezeigt; vorgesehen sind Support-/Geräte-ID und höchstens maskierter Key-Hinweis.
+- Nutzerseite ist für zentrale Firmendaten auf Lesen/Aktualisieren umgestellt; kein freies lokales Überschreiben des zentralen Firmenprofils.
+- auch bereits aktivierte Geräte ziehen den nicht geheimen Benutzernamen über `/device/me` als Anzeige-/BTB-Fallback nach.
 
-Noch real zu testen: Firmenprofil-/Logo-Abruf auf echtem Gerät gegen Schema 10.
+Noch real zu testen: Firmenprofil-/Logo-Abruf auf echtem Gerät gegen produktives Schema 10.
 
-## Android – Einladung / QR / Arbeitsbereich
+## Android – Baustelle / Einladung / QR / Arbeitsbereich
 Im Feature-Branch vorhanden:
-- Teamübersicht mit `Verantwortliche TBs`
+- Teamübersicht `Verantwortliche TBs`
 - `Helfer einladen`
 - `Weiteren TB einladen`
 - sicherer TBI-Code
@@ -168,9 +158,9 @@ Im Feature-Branch vorhanden:
 - Helfer-Arbeitsbereich-Auswahl (`area_scope`)
 - nach Einlösen erneute Baustellen-Synchronisation
 - Aktivierungs- und Baustelleneinladung bleiben getrennt
-- der normale Einstieg im Baustellen-Menü heißt verbindlich **`Nutzer hinzufügen`**; der frühere sichtbare Menüpunkt `Baustelle auf Server anlegen / verbinden` entfällt.
-- beim ersten `Nutzer hinzufügen` wird die lokale Hauptbaustelle automatisch und idempotent auf dem Server angelegt/verbunden; der Benutzer wird dabei erster verantwortlicher TB.
-- anschließend öffnet die bestehende Baustellen-/Teamverwaltung, in der zwischen `Helfer einladen` und `Weiteren TB einladen` gewählt wird. Bei bereits verbundener Baustelle wird keine zweite Server-Baustelle erzeugt.
+- normaler Einstieg im Baustellen-Menü heißt verbindlich **`Nutzer hinzufügen`**.
+- beim ersten `Nutzer hinzufügen` wird die lokale Hauptbaustelle automatisch und idempotent auf dem Server angelegt/verbunden; anschließend öffnet sich die Teamverwaltung.
+- gegen den noch produktiven Schema-9-Server wird dieser Ablauf sauber als noch nicht unterstützt abgefangen; das wurde auf dem Handy bereits praktisch bestätigt.
 
 ## Verbindliche BTB-Logik
 Fachliche BTB-Identität innerhalb einer Baustelle:
@@ -193,39 +183,31 @@ Export:
 - `BTB_2026-06-05_NACHT_Max_Mueller.pdf`
 - `BTB_2026-06-05_NACHT_Max_Mueller.docx`
 
-Bei gleichnamigen TBs darf der stabile sichtbare Zusatz verwendet werden, z. B. `Max_Mustermann_1` / `Max_Mustermann_2`.
-
-Dokumentkopf soll mindestens enthalten:
-- Firma
-- Baustelle
-- verantwortlicher TB
-- Datum
-- Schicht
-
-## Team-BTB / Medien-Sync – Feature-Branch
-- Server-Merge führt Beiträge mehrerer Geräte/Helfer desselben TB-Teams in denselben Team-BTB zusammen.
-- Retries dürfen fachliche Einträge nicht duplizieren.
-- autoritativer Snapshot darf bewusst gelöschte alte Einträge nicht wiederherstellen.
-- BTB-Medien werden teambezogen übertragen; lokale Medien werden bei eingehendem Text-Sync nicht unnötig gelöscht.
-- `server/checks/04_test_team_btb_merge.py` prüft die reinen Server-Merge-Helfer deterministisch.
-
-## BTB-Verlauf / Export – neuester Entwicklungsstand
-Aktuell im Feature-Branch:
-- `BtbVerlaufFragment.kt` zeigt den verantwortlichen TB im Verlauf menschenlesbar an.
-- Anzeige bleibt fachlich `BTB <verantwortlicher TB> · <Datum> · <Schicht>`; technische Zuordnung bleibt UUID-/Gruppen-basiert.
-- einzelnes `ZIP teilen` aus dem BTB-Verlauf wird jetzt ebenfalls durch `MergeSafeBaustellenExport` normalisiert.
-- dabei wird die bekannte `SchichtTyp` explizit übergeben, weil das ältere Einzel-Exportpaket intern noch `BTB_<Datum>.pdf/.docx` erzeugt.
-- `MergeSafeBaustellenExport` erkennt deshalb sowohl `BTB_<Datum>_<TAG|NACHT>.*` als auch das ältere `BTB_<Datum>.*` und erzeugt den stabilen Team-/Schichtnamen.
-- DOCX wird beim merge-sicheren Export um Firma, verantwortlichen TB und Schicht im Dokumentkopf ergänzt.
+## BTB-PDF / Verlauf / Export – aktuell getestet
+- `BtbVerlaufFragment.kt` zeigt den verantwortlichen TB menschenlesbar an.
+- `MergeSafeBaustellenExport` normalisiert Einzel- und Gesamtexporte auf stabile Team-/Schichtnamen.
+- DOCX-Archivkopf enthält Firma, verantwortlichen TB und Schicht.
 - Mediennamen im langfristigen Archiv erhalten inhaltsbasierte stabile Hash-Suffixe.
 - strukturierte Abnahmeordner erhalten zur Kollisionssicherheit eine stabile ID-Komponente.
 - Zielstruktur des langfristigen Laptop-Archivs: `TB-Helfer/<Baustelle>/...`.
-- `server/checks/03_verify_schema10_source.py` schützt jetzt zusätzlich den Einzel-BTB-Normalisierungspfad und die Verwendung im BTB-Verlauf als statischen Source-Contract.
-
-Noch offen in diesem BTB-Block:
-- die **direkt lokal erzeugte/angezeigte PDF-Datei selbst** verwendet intern in `BautagebuchPdf.kt` noch die ältere lokale Dateinamenslogik; der merge-sichere ZIP-/Laptop-Export ist bereits team-/schichtbezogen.
-- der sichtbare PDF-Hauptkopf in `BautagebuchPdf.kt` muss noch direkt um Firma/verantwortlichen TB/Schicht erweitert werden; DOCX-Archivkopf ist bereits normalisiert.
+- **Direkte lokale BTB-PDF-Erzeugung ist jetzt ebenfalls umgestellt und praktisch getestet.**
+- `BautagebuchPdf.kt` löst `BtbDokumentIdentitaet` auf und erzeugt den kanonischen Namen `BTB_<Datum>_<TAG|NACHT>_<VerantwortlicherTB>.pdf`.
+- erneutes Erzeugen desselben fachlichen BTB aktualisiert denselben kanonischen Zielpfad statt neue `geaendert2/geaendert3`-Dateien anzulegen.
+- sichtbarer PDF-Kopf enthält Baustelle, Firma, verantwortlichen TB, Datum, Schicht und Zeit; das bestehende lokale Firmenlogo bleibt nutzbar.
+- Test-PDF am 2026-09-10: `BTB_2026-09-10_NACHT_jens_poco.pdf`; Kopf/2 Seiten praktisch geprüft, Layout ohne erkennbare Überlagerung/Abschneidung.
+- im Test stand `Firma: -`, erwartungsgemäß weil das zentrale Firmenprofil erst nach Schema-10-Rollout produktiv abrufbar ist.
+- Commit des getesteten PDF-Abschlusses: `4cca0b9697d3b75c31f538898abe318706753a1d` (`android: finalize canonical BTB PDF`).
 - historische bestehende PDFs werden nicht zwangsumbenannt.
+
+## Gesamtbilderliste / Mängel- / Abnahme-Archiv
+Im Feature-Branch vorhanden:
+- `Bilderliste_gesamt.xlsx` als Excel-Hauptliste mit Tabellenformat, Filter/Sortierung, eingefrorener Kopfzeile und anklickbaren relativen Bildpfaden.
+- zusätzlich `Bilderliste_gesamt.csv`.
+- Ziel ist eine baustellenweite Liste aller berechtigten Bilder: Baudokumentation, BTB-/Mängel-/Erledigt-/Abnahmebilder usw. mit Art/Status/Ersteller/verantwortlichem TB.
+- neuer strukturierter Ordner `Mängel` analog `Abnahmen`.
+- `Maengelliste_Gesamt.csv/.pdf` und `Abnahmeliste_Gesamt.csv/.pdf` werden aus dem aktuellen Baustellenbestand erzeugt.
+- serverseitiger Baustellen-Medienbestand synchronisiert fachliche Medien-Metadaten; XLSX/CSV werden nicht als konkurrierende Dateien zwischen Handys hin- und hergeschoben.
+- praktischer Einzelgeräte-ZIP-Test: 27 exportierte Bilder, 27 Excel-Zeilen und 27 gültige interne Bildlinks; 9 eindeutige strukturierte Mängel. Echte Mehrbenutzer-Gesamtlisten müssen nach Schema 10 noch mit Pixel/Poco getestet werden.
 
 ## Merge-sicheres Laptop-Archiv
 Verbindliches Ziel:
@@ -233,21 +215,19 @@ Verbindliches Ziel:
 - mehrere ZIPs unterschiedlicher Geräte/Personen müssen ohne Datenverlust in denselben Zielordner entpackbar sein.
 - derselbe fachliche Datensatz soll denselben stabilen Zielpfad erhalten.
 - unterschiedliche Datensätze dürfen nicht kollidieren.
-- Bilder/Anlagen verwenden inhaltsbasierte stabile Namen.
-- Abnahmen verwenden stabile interne ID-Komponenten.
+- Bilder/Anlagen verwenden stabile/inhaltsbasierte Kennungen.
 - BTBs verwenden Datum + Schicht + verantwortlichen TB; gleichnamige TBs werden durch stabile sichtbare Ordinale unterschieden.
 
+Noch real zu testen: Zwei Geräte derselben Baustelle exportieren über längeren Zeitraum in denselben Laptop-Hauptordner, ohne Datenverlust oder falsches Überschreiben.
+
 ## Android-Build-/Teststatus
-- ältere produktiv getestete Basis wurde auf Pixel und Poco installiert und verbindet sich mit API 0.7 / Schema 9.
-- eine frühere Schema-10-Feature-Fassung wurde am 2026-09-10 lokal in Android Studio erfolgreich gebaut: `BUILD SUCCESSFUL in 42s`, 67 Tasks (19 ausgeführt, 48 up-to-date).
-- der erste lokale Build der Android-200019-Fassung am 2026-09-10 um ca. 12:31 schlug in `BaustellenSyncFragment.kt` mit 8 Compilerfehlern fehl.
-- Ursache war kein Architektur-/Sync-Fehler, sondern zwei konkrete QR-UI-Compilefehler: falscher Package-Pfad der bereits eingebundenen Google-Code-Scanner-Klassen (`com.google.android.gms.mlkit.codescanner` statt `com.google.mlkit.vision.codescanner`) sowie die nicht vorhandene Framework-Ressource `android.R.string.close`.
-- Fix im Feature-Branch: Scanner-Imports auf `com.google.mlkit.vision.codescanner.*` korrigiert und Dialog-Schließen auf die vorhandene `android.R.string.cancel`-Ressource umgestellt; Commit `60e42fe3ce732f7ffb5e638d562224e328f0fe03`.
-- der anschließende lokale Android-200019-Build wurde am 2026-09-10 erfolgreich bestätigt: `BUILD SUCCESSFUL in 1m 24s`, 69 Tasks (18 ausgeführt, 51 up-to-date).
-- dieser erfolgreiche Build zeigte 15 Warnungen, aber keine Compilerfehler; die Warnungen sind separat in `docs/ANDROID_WARNINGS_BACKLOG_2026-09-10.md` dokumentiert und werden später systematisch bereinigt.
-- Android 200019 wurde danach vom Benutzer als Update auf dem Testhandy installiert und startete; der praktische Baustellen-ZIP-Test wurde optisch/strukturell positiv bewertet.
-- nach der danach eingebauten UX-Änderung `Nutzer hinzufügen` ist ein neuer lokaler Build noch erforderlich.
-- GitHub Actions ist weiterhin nicht maßgeblich für den Android-Build; aktuelle Läufe scheitern in der bekannten CI-Infrastruktur vor verwertbaren Build-Schritten.
+- Android 200019 wurde am 2026-09-10 mehrfach lokal erfolgreich gebaut und als Update auf dem Testhandy installiert.
+- erster erfolgreicher 200019-Build nach QR-Compilefix: `BUILD SUCCESSFUL in 1m 24s`, 69 Tasks.
+- `Nutzer hinzufügen`-UX wurde danach gebaut und auf dem Handy gegen Schema 9 praktisch geprüft; Unsupported-Fall wurde korrekt abgefangen.
+- nach dem direkten BTB-PDF-Abschluss wurde der richtige Arbeitsbranch `feature/admin-offline-sync` nochmals gebaut: **`BUILD SUCCESSFUL in 14s`, 69 Tasks (1 ausgeführt, 68 up-to-date)**.
+- das zugehörige kanonische PDF wurde auf echtem Handy erzeugt und geprüft.
+- 15 nicht blockierende Compilerwarnungen sind separat in `docs/ANDROID_WARNINGS_BACKLOG_2026-09-10.md` dokumentiert und werden später systematisch bereinigt.
+- GitHub Actions ist weiterhin nicht maßgeblich für den Android-Build; lokale Android-Studio-Builds sind für diesen Entwicklungsstand die Autorität.
 
 ## Testgeräte
 - Poco: Xiaomi `23013PC75G`, Android 15 / SDK 35
@@ -255,21 +235,37 @@ Verbindliches Ziel:
 - beide vorgesehenen Testnutzer gehören zur Firma `Gtu`.
 - `susi zinkel` / Firma `privat` gehört nicht zum beabsichtigten Same-Company-Test.
 
+## Streckendaten / Vermessung – eigener noch offener Hauptblock
+Bereits vorhanden sind umfangreiche lokale Android-Funktionen für TRA-/GRA-/KOR-/KF-/Absteckdaten, Trassenachsen, KM-Punkte, KM-Anker, Korrekturen, GPS-Näheberechnung und Trassengrafik sowie der allgemeine serverseitige Strecken-/Bahnhofs-/Abschnitt-Sync.
+
+Noch vollständig fertigzustellen und Ende-zu-Ende zu prüfen:
+- exakter Bestand: welche Vermessungsdaten liegen nur lokal, welche bereits serverseitig.
+- unveränderte Originaldateien dauerhaft auf NAS halten; berechnete/bearbeitete Ebene strikt getrennt versionieren.
+- selektiver Download nach fachlicher Auswahl, z. B. Bahnhof + Gleise + Weichen/DKW oder KM-Bereich, statt komplette Strecke.
+- TRA, GRA, rohe KF, KOR und tatsächlich benötigte weitere Vermessungsformate serverseitig katalogisieren/zuordnen.
+- echte TRA-Geometrie-Kilometrierung, GPS-KM-Anker, Zwischenpunkte, angrenzende Gleise, Weichen/DKW/Kreuzungen vollständig testen.
+- Farbregeln: Grün belastbare Original-KM, Orange manuell geändert, Rot TRA ohne belastbare KM, Grau ohne Vermessungsgeometrie, Blau Auswahl.
+- nur geänderte/berechnete Abschnitte hochladen, nicht komplette Originalpakete.
+- Versionierung/409-Konflikte für konkurrierende Abschnittsbearbeitung.
+- Mehrgeräte-Test: Pixel/Poco laden unterschiedliche Teilbereiche, synchronisieren Änderungen und erweitern Bereiche später ohne Neuimport.
+- Langzeittest: vorhandene Bereiche nach Monaten/Jahren wieder abrufen und mit neuen Bereichen ergänzen.
+
 ## Nächste sichere Schritte
 1. **Kein produktives Schema 10 ohne neues, geprüftes Backup.**
-2. aktuellen Feature-Branch lokal holen und Android 200019 nach der neuen `Nutzer hinzufügen`-UX erneut bauen.
-3. danach direkte lokale PDF-Erzeugung auf Team-/Datum-/Schicht-Dateinamen und Dokumentkopf `Firma + Baustelle + verantwortlicher TB + Datum + Schicht` umstellen, ohne historische PDFs zu beschädigen.
-4. erneut lokal bauen und auf Testgerät als Update prüfen.
-5. Schema-10-Migration/Checks zuerst auf sicherer Test-/Backup-Basis durchspielen.
-6. erst danach produktives Backup erstellen, Migration 010 mit `ON_ERROR_STOP` ausführen, Schema-10-Check ausführen und neuen Servercode aktivieren.
-7. `Nutzer hinzufügen` praktisch prüfen: bei erster Nutzung automatische Serveranlage/Verknüpfung, danach Auswahl `Helfer einladen` bzw. `Weiteren TB einladen`; bei Wiederholung keine zweite Baustelle.
-8. Link-/Code-/QR-Einladung mit zwei Testnutzern derselben Firma prüfen.
-9. Firmenprofil/Logo, Helfer-`area_scope`, weitere verantwortliche TBs und gleichnamige TBs prüfen.
-10. Team-BTB testen: zwei Geräte/Helfer schreiben in denselben Team-BTB; anderer verantwortlicher TB bleibt vollständig getrennt; TAG/NACHT bleiben getrennt.
-11. Merge-Export von mehreren Geräten auf denselben `TB-Helfer/<Baustelle>/...`-Ordner testen.
-12. Mängel/Abnahmen/Bilder, endgültige Status, 409, Tombstones, Netzabbruch/Wiederaufnahme und Benachrichtigungen testen.
-13. danach den separaten Streckendaten-/Vermessungsblock vollständig gegen NAS-Source-of-Truth, selektiven Download, Versionierung und KM-Farbregeln fertigstellen und mit mehreren Geräten testen.
-14. PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
+2. Auf der Synology ein aktuelles PostgreSQL-Custom-Backup direkt vor Schema 10 erstellen.
+3. dieses Backup mit `pg_restore -l` prüfen und erst bei erfolgreicher Prüfung weitermachen.
+4. Migration 010 mit `psql -v ON_ERROR_STOP=1` ausführen.
+5. `server/checks/02_verify_schema10.sql` erfolgreich ausführen.
+6. erst danach den neuen Schema-10-Servercode aktivieren/rebuilden.
+7. API/Admin/Cloudflare extern prüfen; Firmenprofil/Logo pflegen und auf Pixel/Poco abrufen.
+8. `Nutzer hinzufügen` real testen: erste lokale Baustelle automatisch serverseitig anlegen/verbinden, keine Dublette bei Wiederholung.
+9. QR-/Link-/Code-Einladung mit zwei Testnutzern derselben Firma testen; Helfer-`area_scope`, weiterer verantwortlicher TB und gleichnamige TBs prüfen.
+10. Team-BTB mit zwei Geräten/Helfern testen; anderer verantwortlicher TB bleibt getrennt, TAG/NACHT getrennt.
+11. Mängel/Abnahmen/Bilder/Gesamtlisten/Benachrichtigungen mit mehreren Benutzern testen.
+12. Offline/Upload-Queue/409/Tombstones/Netzabbruch/Wiederaufnahme testen.
+13. Merge-Export von mehreren Geräten in denselben `TB-Helfer/<Baustelle>/...`-Laptopordner testen.
+14. danach den separaten Streckendaten-/Vermessungsblock vollständig fertigstellen und mit mehreren Geräten testen.
+15. anschließend 15 Android-Warnungen/sonstiges Aufräumen abarbeiten, vollständigen Endbuild durchführen und PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
 
 ## Vermessungs-/Kilometrierungsfarben
 - Grün = belastbare Originaldaten/KM
