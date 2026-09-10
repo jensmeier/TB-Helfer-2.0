@@ -5,7 +5,6 @@ import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.view.setPadding
@@ -16,19 +15,22 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.ui.bautagebuch.BautagebuchPdf
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbExportPaket
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /**
  * BTB-Verlauf je Baustelle.
  * Grün: abgeschlossener BTB innerhalb 7 Tage, noch über App bearbeitbar.
  * Rot: älter als 7 Tage, nur PDF/Export anzeigen/teilen.
+ *
+ * Menschenlesbar wird zusätzlich der verantwortliche TB des eigenen Server-Teams angezeigt.
+ * Die fachliche Zuordnung bleibt weiterhin ausschließlich über Baustellen-/Gruppen-UUIDs.
  */
 class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
 
@@ -37,6 +39,7 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
     private var hauptKnotenId: Long = -1L
     private var altBaustelleId: Long = -1L
     private var baustelleName: String = ""
+    private var verantwortlicherTb: String = "TB"
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -53,18 +56,31 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         val container = root.findViewById<LinearLayout>(R.id.containerBtbVerlauf)
         container.removeAllViews()
         lifecycleScope.launch {
-            val items = withContext(Dispatchers.IO) {
-                BautagebuchSpeicher.verlaufFuerBaustelle(
+            val data = withContext(Dispatchers.IO) {
+                val context = if (hauptKnotenId > 0L) {
+                    runCatching { ServiceLocator.worksiteBindingRepository.contextForLocalRoot(hauptKnotenId) }.getOrNull()
+                } else null
+                val cached = context?.worksiteServerId?.let {
+                    TeamDisplayCache.ownTeam(requireContext().applicationContext, it)
+                }
+                val lead = cached?.leadDisplayName
+                    ?: cached?.leadNameSnapshot
+                    ?: context?.leadNameSnapshot
+                    ?: context?.groupLabel
+                    ?: "TB"
+                val items = BautagebuchSpeicher.verlaufFuerBaustelle(
                     requireContext().applicationContext,
                     altBaustelleId.takeIf { it > 0L },
                     baustelleName
                 )
+                lead to items
             }
-            if (items.isEmpty()) {
+            verantwortlicherTb = data.first
+            if (data.second.isEmpty()) {
                 container.addView(textView("Noch keine BTB-Daten vorhanden.", 16f, Color.DKGRAY, false))
                 return@launch
             }
-            items.forEach { item -> container.addView(cardFor(item)) }
+            data.second.forEach { item -> container.addView(cardFor(item)) }
         }
     }
 
@@ -96,7 +112,8 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
         }
-        inner.addView(textView("${item.datum.format(deDateFmt)} · $schicht · $zeit", 17f, Color.BLACK, true))
+        inner.addView(textView("BTB $verantwortlicherTb · ${item.datum.format(deDateFmt)} · $schicht", 17f, Color.BLACK, true))
+        inner.addView(textView("Zeit: $zeit", 13f, Color.DKGRAY, false))
         inner.addView(textView(status, 13f, stroke, true))
         inner.addView(textView(if (item.pdfVorhanden) "PDF vorhanden" else "Kein Abschluss-PDF gefunden", 13f, Color.DKGRAY, false))
 
