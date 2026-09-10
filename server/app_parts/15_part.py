@@ -2,9 +2,10 @@
 #
 # Mehrere Helfer dürfen gleichzeitig in denselben fachlichen BTB schreiben. Der normale
 # versionsgeschützte 0.7-Endpunkt bleibt für Mängel/Abnahmen unverändert. BTB-UPSERTs werden
-# dagegen immer gegen den aktuellsten Serverstand gemerged und bei einem Rennen kontrolliert
-# erneut versucht. Dadurch gehen parallele Helfereinträge nicht durch einen simplen Last-Write
-# verloren und 20/30 gleichzeitig arbeitende Helfer erzeugen nicht dauerhaft 409-Konflikte.
+# bei tatsächlich veraltetem Stand gegen den aktuellsten Serverstand gemerged und bei einem
+# Rennen kontrolliert erneut versucht. Ein normaler Edit auf exakt der gelesenen Version bleibt
+# dagegen ein autoritativer Snapshot, damit bewusst gelöschte/korrigierte Einträge nicht durch
+# eine pauschale Listen-Union wieder auftauchen.
 
 
 def _btb_json_key(value):
@@ -132,12 +133,13 @@ def collab_mutations_team_btb_merge(req:CollabMutationRequest, authorization: st
 
     d=require_device(authorization)
     contribution=json.loads(json.dumps(req.payload or {},ensure_ascii=False,default=str))
+    client_base_version=req.base_version
+    force_merge=False
     last_response=None
 
-    # Der Originalendpunkt sperrt bereits den stabilen Client-Key/Datensatz in seiner eigenen
-    # DB-Transaktion. Zwischen unserem Vorlesen und dieser Sperre kann trotzdem noch ein anderer
-    # Helfer gewinnen. In diesem seltenen Rennen lesen/mergen wir bis zu fünfmal neu. Ein 409 aus
-    # Mängeln/Abnahmen oder ein anderer Fehler wird niemals verschluckt.
+    # Der Originalendpunkt sperrt den stabilen Client-Key/Datensatz in seiner eigenen DB-
+    # Transaktion. Zwischen unserem Vorlesen und dieser Sperre kann trotzdem ein anderer Helfer
+    # gewinnen. In diesem seltenen Rennen lesen/mergen wir bis zu fünfmal neu.
     for _attempt in range(5):
         with db() as conn, conn.cursor() as cur:
             access=load_worksite_access(cur,d,req.worksite_id)
@@ -158,9 +160,23 @@ def collab_mutations_team_btb_merge(req:CollabMutationRequest, authorization: st
                 raise HTTPException(409,"ENTITY_ALREADY_DELETED")
 
             if row:
+                current_version=int(row["current_version"])
                 req.entity_id=str(row["id"])
-                req.base_version=int(row["current_version"])
-                req.payload=merge_team_btb_payload(row.get("payload") or {},contribution,d)
+                req.base_version=current_version
+
+                # Exakt die Version bearbeitet, die der Client gelesen hatte: sein Snapshot darf
+                # auch Einträge entfernen/korrigieren. Nur ein wirklich veralteter/paralleler
+                # Snapshot wird additiv mit dem inzwischen neueren Team-BTB zusammengeführt.
+                exact_base=(
+                    not force_merge
+                    and client_base_version is not None
+                    and int(client_base_version)==current_version
+                )
+                req.payload=merge_team_btb_payload(
+                    {} if exact_base else (row.get("payload") or {}),
+                    contribution,
+                    d,
+                )
             else:
                 req.entity_id=None
                 req.base_version=None
@@ -172,9 +188,10 @@ def collab_mutations_team_btb_merge(req:CollabMutationRequest, authorization: st
         if not _btb_is_version_conflict(last_response):
             return last_response
 
-        # Nach einem CREATE-Rennen kann der nächste Versuch die inzwischen vorhandene Entity
-        # anhand des stabilen Client-Keys finden. Die Entity-ID aus der konfliktbehafteten Runde
-        # darf diese Suche nicht blockieren.
+        # Nach einem CREATE-/UPDATE-Rennen erneut gegen den jetzt aktuellen Serverstand mergen.
+        # Die konfliktbehaftete Entity-ID/Basis darf die Suche über den stabilen Client-Key nicht
+        # blockieren. Ab hier ist additive Merge-Strategie zwingend, weil Paralleländerung vorliegt.
+        force_merge=True
         req.entity_id=None
         req.base_version=None
 
