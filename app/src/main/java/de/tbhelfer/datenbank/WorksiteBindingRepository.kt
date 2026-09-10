@@ -5,12 +5,19 @@ import androidx.room.withTransaction
 /**
  * Verknüpft eine lokale Hauptbaustelle eindeutig mit einer Server-Baustelle.
  *
- * Wichtig: Es wird absichtlich NICHT nach Namen automatisch zusammengeführt. Zwei Baustellen
- * können gleich heißen; deshalb muss die Verknüpfung einmal bewusst gewählt werden.
+ * Wichtig: Bereits vorhandene lokale Baustellen werden absichtlich NICHT allein anhand ihres
+ * Namens automatisch mit einer Server-Baustelle zusammengeführt. Zwei Baustellen können gleich
+ * heißen; in diesem Fall bleibt die bewusste manuelle Auswahl erhalten.
+ *
+ * Neu beigetretene Server-Baustellen erhalten aber automatisch einen lokalen HAUPT-Knoten, wenn
+ * auf dem Gerät noch keine gleichnamige Hauptbaustelle existiert. Damit können bereits geladene
+ * BTB/Mängel/Abnahmen sofort in den normalen lokalen Fachspeicher übernommen werden, ohne dass
+ * der Helfer zuerst eine fachlich fremde vorhandene Baustelle auswählen muss.
  */
 class WorksiteBindingRepository(
     private val syncDatabase: SyncDatenbank,
-    private val localWorksiteDao: BaustellenKnotenDao
+    private val localWorksiteDao: BaustellenKnotenDao,
+    private val localWorksiteTree: BaustellenBaumRepository
 ) {
     private val dao: SyncDao get() = syncDatabase.syncDao()
 
@@ -22,6 +29,7 @@ class WorksiteBindingRepository(
 
     suspend fun contextsWithBindings(): List<BoundContext> {
         val contexts = dao.worksiteContexts()
+        bootstrapMissingLocalRoots(contexts)
         val bindingsByServer = dao.worksiteBindings().associateBy { it.worksiteServerId }
         return contexts.map { context ->
             val binding = bindingsByServer[context.worksiteServerId]
@@ -30,6 +38,43 @@ class WorksiteBindingRepository(
                 binding = binding,
                 localWorksite = binding?.localRootKnotenId?.let { localWorksiteDao.laden(it) }
             )
+        }
+    }
+
+    /**
+     * Legt für eine frisch beigetretene Server-Baustelle einen lokalen Container an.
+     *
+     * Sicherheitsregel: Sobald bereits eine gleichnamige lokale Hauptbaustelle existiert, wird
+     * weder automatisch gebunden noch eine Dublette erzeugt. Dann entscheidet der Benutzer im
+     * bestehenden Zuordnungsdialog bewusst, welche lokale Baustelle gemeint ist.
+     */
+    private suspend fun bootstrapMissingLocalRoots(contexts: List<SyncWorksiteContextEntity>) {
+        if (contexts.isEmpty()) return
+
+        var bindings = dao.worksiteBindings()
+        val boundServerIds = bindings.mapTo(hashSetOf()) { it.worksiteServerId }
+        var localRoots = localWorksiteDao.alleHauptbaustellenSofort()
+
+        for (context in contexts) {
+            if (context.worksiteServerId in boundServerIds) continue
+
+            val serverName = context.name?.trim().orEmpty()
+            if (serverName.isBlank()) continue
+
+            val canonical = serverName.canonicalWorksiteName()
+            val sameNameExists = localRoots.any {
+                it.hauptbaustellenName.canonicalWorksiteName() == canonical
+            }
+            if (sameNameExists) continue
+
+            val created = localWorksiteTree.hauptErstellenOderZusammenfuehren(serverName)
+            val alreadyBound = dao.worksiteBindingForLocalRoot(created.id)
+            if (alreadyBound == null) {
+                bind(created.id, context.worksiteServerId)
+                boundServerIds += context.worksiteServerId
+                bindings = dao.worksiteBindings()
+            }
+            localRoots = localWorksiteDao.alleHauptbaustellenSofort()
         }
     }
 
@@ -73,4 +118,7 @@ class WorksiteBindingRepository(
     suspend fun unbindLocal(localRootKnotenId: Long) {
         dao.deleteWorksiteBindingForLocalRoot(localRootKnotenId)
     }
+
+    private fun String.canonicalWorksiteName(): String =
+        trim().replace(Regex("\\s+"), " ").lowercase()
 }
