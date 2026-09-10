@@ -4,9 +4,15 @@ import android.content.Context
 import android.util.Base64
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.Bildtyp
+import de.tbhelfer.datenbank.BtbTeamMediaSync
+import de.tbhelfer.datenbank.CollabLocalBridge
+import de.tbhelfer.datenbank.CollabSyncRepository
+import de.tbhelfer.datenbank.FotoEntity
 import de.tbhelfer.server.SecureTokenStore
 import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.server.WorksiteMediaApi
+import de.tbhelfer.ui.abnahme.AbnahmeExport
+import de.tbhelfer.ui.abnahme.AbnahmeSpeicher
 import de.tbhelfer.ui.baustelle.MaengellisteExport
 import de.tbhelfer.ui.baustelle.MangelStatusSpeicher
 import de.tbhelfer.ui.baustelle.SyncMangelSpeicher
@@ -30,25 +36,26 @@ import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 
 /**
- * Zweite Stufe nach [MergeSafeBaustellenExport].
+ * Fachliche Schlussstufe des merge-sicheren Baustellenexports.
  *
- * - erzeugt Bilderliste_gesamt.xlsx + CSV aus dem serverseitigen Baustellen-Medienkatalog,
- * - nimmt fuer einen verantwortlichen TB Bilder ALLER TB-Teams derselben Baustelle auf,
- * - behaelt fuer Helfer die serverseitige Bereichsbegrenzung,
- * - erzeugt den strukturierten Ordner Mängel analog zu Abnahmen,
- * - ersetzt die Mängelliste_Gesamt durch eine Liste inklusive serverseitig synchronisierter
- *   Mängel ohne lokales Foto.
+ * Der Server hält Bild + Metadaten als Baustellenbestand; CSV/XLSX werden NICHT als konkurrierende
+ * Dateien zwischen Handys synchronisiert. Vor einem Online-Gesamtexport wird zuerst der aktuelle
+ * Collaboration-Stand abgeglichen. Danach werden aus dem gemeinsamen Bestand erzeugt:
  *
- * Wenn der Server gerade nicht erreichbar ist, bleibt der Export offline moeglich und wird aus
- * den lokal vorhandenen Bildern/Fachdaten erzeugt. Ein Online-Gesamtexport ist jedoch die
- * autoritative Variante fuer den fertigen Laptop-Baustellenordner.
+ * - Bilderliste_gesamt.xlsx + CSV,
+ * - Mängel/<Datum>/Mangel_<stabile-ID>/{JSON,PDF,Fotos},
+ * - Maengelliste/Maengelliste_Gesamt.{csv,pdf},
+ * - Abnahmen/<Datum>/Abnahme_<Nr>_<stabile-ID>/{JSON,PDF,Fotos,Anlagen},
+ * - Abnahmeliste/Abnahmeliste_Gesamt.{csv,pdf}.
+ *
+ * Verantwortliche TBs erhalten über den Server-Medienkatalog Bilder aller TB-Teams derselben
+ * Baustelle. Helfer bleiben auf die serverseitig erlaubte Gruppe bzw. ihren Bereich begrenzt.
  */
 object GesamtMedienArchiv {
 
     private data class BinaryPlan(
         val path: String,
         val localFile: File? = null,
-        val sourceZipPath: String? = null,
         val serverItem: WorksiteMediaApi.MediaItem? = null,
         val bytes: ByteArray? = null
     )
@@ -63,6 +70,12 @@ object GesamtMedienArchiv {
         val gps: String
     )
 
+    private data class TimedRow(
+        val epochMs: Long,
+        val hash: String,
+        val row: GesamtBilderlisteXlsx.Row
+    )
+
     private val isoDate = DateTimeFormatter.ISO_LOCAL_DATE
     private val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
 
@@ -75,7 +88,7 @@ object GesamtMedienArchiv {
         if (!normalizedZip.exists() || !normalizedZip.isFile) return@withContext normalizedZip
 
         val appContext = context.applicationContext
-        val rootNode = runCatching { ServiceLocator.baustellenKnotenDao.laden(localRootKnotenId) }.getOrNull()
+        val rootNode = ServiceLocator.baustellenKnotenDao.laden(localRootKnotenId)
             ?: return@withContext normalizedZip
         val localBaustelleId = rootNode.altBaustelleId
         val syncContext = runCatching {
@@ -87,123 +100,93 @@ object GesamtMedienArchiv {
             ?: syncContext?.leadNameSnapshot.orEmpty()
 
         val token = SecureTokenStore(appContext).load()
+
+        // Ein fertiger Laptop-Export soll nicht von einem alten Handy-Snapshot abhängen. Wenn
+        // Internet/Schema vorhanden sind, zuerst fremde Änderungen holen, lokale Änderungen
+        // hochladen und Medien nachziehen. Bei Netzfehler bleibt der Offline-Export möglich.
+        if (!token.isNullOrBlank() && syncContext != null) {
+            runCatching { synchronizeBeforeExport(appContext, token) }
+        }
+
         val mediaApi = WorksiteMediaApi()
         val catalogResult = if (!token.isNullOrBlank() && syncContext != null) {
             mediaApi.loadCatalog(token, syncContext.worksiteServerId)
         } else null
         val catalogItems = (catalogResult as? WorksiteMediaApi.CatalogResult.Success)?.items.orEmpty()
-        val catalogAuthoritative = catalogResult is WorksiteMediaApi.CatalogResult.Success
+
+        val localFotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(localBaustelleId)
+            .filter { it.baustelleId == localBaustelleId && File(it.dateipfad).isFile }
+        val localFileByHash = linkedMapOf<String, File>()
+        localFotos.forEach { foto ->
+            val file = File(foto.dateipfad)
+            val digest = runCatching { sha256(file.readBytes()) }.getOrNull() ?: return@forEach
+            localFileByHash.putIfAbsent(digest, file)
+        }
+
+        val localMaengel = MaengellisteExport.ladeItems(appContext, localBaustelleId, baustelleName)
+        val syncMaengel = SyncMangelSpeicher.alle(appContext, localBaustelleId)
+        val maengel = mergeMaengel(localMaengel, syncMaengel, baustelleName)
+        val abnahmen = AbnahmeSpeicher.alle(appContext, localBaustelleId)
 
         val outTemp = File(normalizedZip.absolutePath + ".media.tmp")
         ZipFile(normalizedZip).use { source ->
             val entries = source.entries().asSequence().filterNot { it.isDirectory }.toList()
             val archiveRoot = archiveRoot(entries.map { cleanPath(it.name) }, baustelleName)
 
-            val sourceImagePathsByHash = linkedMapOf<String, MutableList<String>>()
-            entries.forEach { entry ->
-                val path = cleanPath(entry.name)
-                if (!isImagePath(path)) return@forEach
-                val digest = runCatching { source.getInputStream(entry).use { sha256(it.readBytes()) } }.getOrNull()
-                    ?: return@forEach
-                sourceImagePathsByHash.getOrPut(digest) { mutableListOf() }.add(path)
-            }
-
-            val localFotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(localBaustelleId)
-                .filter { it.baustelleId == localBaustelleId && File(it.dateipfad).isFile }
-            val localFileByHash = linkedMapOf<String, File>()
-            localFotos.forEach { foto ->
-                val file = File(foto.dateipfad)
-                val digest = runCatching { sha256(file.readBytes()) }.getOrNull() ?: return@forEach
-                localFileByHash.putIfAbsent(digest, file)
-            }
-
-            val localMaengel = MaengellisteExport.ladeItems(appContext, localBaustelleId, baustelleName)
-            val syncMaengel = SyncMangelSpeicher.alle(appContext, localBaustelleId)
-            val maengel = mergeMaengel(localMaengel, syncMaengel, baustelleName)
-            val syncMangelByKey = syncMaengel.associateBy { it.mangelKey }
-
-            val binaryPlans = mutableListOf<BinaryPlan>()
-            val mangelPhotoPathByHash = linkedMapOf<String, String>()
+            val plans = mutableListOf<BinaryPlan>()
+            val mangelPathByHash = linkedMapOf<String, String>()
             val mangelFolderByServerId = linkedMapOf<String, String>()
-
-            maengel.forEach { item ->
-                val sync = syncMangelByKey[item.key]
-                val stableId = sync?.serverEntityId?.takeIf { it.isNotBlank() }
-                    ?: sha256(item.key.toByteArray(Charsets.UTF_8)).take(16)
-                val datum = item.datumIso.takeIf { runCatching { LocalDate.parse(it) }.isSuccess } ?: "Ohne_Datum"
-                val folder = "$archiveRoot/Mängel/$datum/Mangel_${safeToken(stableId).take(12)}"
-                sync?.serverEntityId?.let { mangelFolderByServerId[it] = folder }
-
-                val fotoTargets = mutableListOf<String>()
-                item.fotos.forEach { mf ->
-                    val file = File(mf.foto.dateipfad)
-                    if (!file.isFile) return@forEach
-                    val bytes = runCatching { file.readBytes() }.getOrNull() ?: return@forEach
-                    val digest = sha256(bytes)
-                    val ext = extension(file.name, null)
-                    val target = "$folder/Fotos/${safeToken(mf.art.name)}_${digest.take(12)}.$ext"
-                    mangelPhotoPathByHash[digest] = target
-                    fotoTargets += target.removePrefix("$archiveRoot/")
-                    binaryPlans += BinaryPlan(path = target, localFile = file)
-                }
-
-                val status = MangelStatusSpeicher.laden(appContext, item.key)
-                val json = JSONObject()
-                    .put("mangelKey", item.key)
-                    .put("serverEntityId", sync?.serverEntityId ?: JSONObject.NULL)
-                    .put("datumIso", item.datumIso)
-                    .put("zeit", item.zeit)
-                    .put("baustelle", item.baustelle)
-                    .put("bereich", item.bereich)
-                    .put("km", item.km)
-                    .put("firma", item.firma)
-                    .put("beschreibung", item.beschreibung)
-                    .put("gps", item.gps)
-                    .put("status", status.status.name)
-                    .put("kommentar", status.kommentar)
-                    .put("erledigtAmEpochMs", status.erledigtAmEpochMs ?: JSONObject.NULL)
-                    .put("ersteller", sync?.changedByName ?: JSONObject.NULL)
-                    .put("fotos", JSONArray(fotoTargets))
-                    .toString(2)
-                    .toByteArray(Charsets.UTF_8)
-                binaryPlans += BinaryPlan(path = "$folder/Mangel_${safeToken(stableId).take(12)}.json", bytes = json)
-                binaryPlans += BinaryPlan(
-                    path = "$folder/Mangel_${safeToken(stableId).take(12)}.pdf",
-                    bytes = MaengellisteExport.pdfBytes(appContext, baustelleName, listOf(item), "Einzel")
-                )
-            }
-
-            val mediaRows = if (catalogAuthoritative) {
-                rowsFromServerCatalog(
-                    items = catalogItems,
-                    archiveRoot = archiveRoot,
-                    baustelleName = baustelleName,
-                    sourceImagePathsByHash = sourceImagePathsByHash,
-                    localFileByHash = localFileByHash,
-                    mangelPhotoPathByHash = mangelPhotoPathByHash,
-                    mangelFolderByServerId = mangelFolderByServerId,
-                    plans = binaryPlans
-                )
-            } else {
-                rowsFromLocal(
-                    localFotos = localFotos,
-                    archiveRoot = archiveRoot,
-                    baustelleName = baustelleName,
-                    responsible = ownResponsible,
-                    sourceImagePathsByHash = sourceImagePathsByHash,
-                    mangelPhotoPathByHash = mangelPhotoPathByHash
-                )
-            }
-
-            val skipExact = setOf(
-                "$archiveRoot/Bilderliste_gesamt.csv".lowercase(Locale.ROOT),
-                "$archiveRoot/Bilderliste_gesamt.xlsx".lowercase(Locale.ROOT),
-                "$archiveRoot/Maengelliste/Maengelliste_Gesamt.csv".lowercase(Locale.ROOT),
-                "$archiveRoot/Maengelliste/Maengelliste_Gesamt.pdf".lowercase(Locale.ROOT)
+            buildMangelPlans(
+                context = appContext,
+                archiveRoot = archiveRoot,
+                baustelleName = baustelleName,
+                maengel = maengel,
+                syncMaengel = syncMaengel,
+                plans = plans,
+                pathByHash = mangelPathByHash,
+                folderByServerId = mangelFolderByServerId
             )
+
+            val acceptancePathByHash = linkedMapOf<String, String>()
+            buildAcceptancePlans(
+                context = appContext,
+                archiveRoot = archiveRoot,
+                abnahmen = abnahmen,
+                plans = plans,
+                pathByHash = acceptancePathByHash
+            )
+
+            val serverRows = rowsFromServerCatalog(
+                items = catalogItems,
+                archiveRoot = archiveRoot,
+                baustelleName = baustelleName,
+                localFileByHash = localFileByHash,
+                mangelPathByHash = mangelPathByHash,
+                mangelFolderByServerId = mangelFolderByServerId,
+                acceptancePathByHash = acceptancePathByHash,
+                plans = plans
+            )
+            val serverHashes = serverRows.mapTo(hashSetOf()) { it.hash }
+            val localRows = rowsFromLocal(
+                localFotos = localFotos,
+                archiveRoot = archiveRoot,
+                baustelleName = baustelleName,
+                responsible = ownResponsible,
+                mangelPathByHash = mangelPathByHash,
+                acceptancePathByHash = acceptancePathByHash,
+                excludedHashes = serverHashes,
+                plans = plans
+            )
+            val mediaRows = (serverRows + localRows)
+                .sortedWith(compareBy<TimedRow> { it.epochMs }.thenBy { it.hash })
+                .mapIndexed { index, item -> item.row.copy(nr = index + 1) }
+
+            val abnahmeCsv = AbnahmeExport.csvText(abnahmen)
+            val abnahmePdf = AbnahmeExport.listenPdfBytes(appContext, baustelleName, abnahmen, "Gesamt")
 
             ZipOutputStream(outTemp.outputStream().buffered(64 * 1024)).use { out ->
                 val written = linkedSetOf<String>()
+
                 fun writeBytes(path: String, bytes: ByteArray) {
                     val key = path.lowercase(Locale.ROOT)
                     if (!written.add(key)) return
@@ -211,6 +194,7 @@ object GesamtMedienArchiv {
                     out.write(bytes)
                     out.closeEntry()
                 }
+
                 fun writeDirectory(path: String) {
                     val normalized = if (path.endsWith('/')) path else "$path/"
                     val key = normalized.lowercase(Locale.ROOT)
@@ -219,10 +203,11 @@ object GesamtMedienArchiv {
                     out.closeEntry()
                 }
 
+                // Bilder, Mängel und Abnahmen werden unten aus dem aktuellen Fachbestand neu
+                // aufgebaut. So bleiben keine alten, inzwischen gelöschten Bilder im Endarchiv.
                 entries.forEach { entry ->
                     val path = cleanPath(entry.name)
-                    if (path.lowercase(Locale.ROOT) in skipExact) return@forEach
-                    if (path.startsWith("$archiveRoot/Mängel/", ignoreCase = true)) return@forEach
+                    if (isRegeneratedPath(path, archiveRoot)) return@forEach
                     val key = path.lowercase(Locale.ROOT)
                     if (!written.add(key)) return@forEach
                     out.putNextEntry(ZipEntry(path).apply { time = entry.time })
@@ -230,22 +215,21 @@ object GesamtMedienArchiv {
                     out.closeEntry()
                 }
 
+                writeDirectory("$archiveRoot/Bilder/")
                 writeDirectory("$archiveRoot/Mängel/")
+                writeDirectory("$archiveRoot/Abnahmen/")
 
-                binaryPlans.distinctBy { it.path.lowercase(Locale.ROOT) }.forEach { plan ->
-                    if (written.contains(plan.path.lowercase(Locale.ROOT))) return@forEach
+                plans.distinctBy { it.path.lowercase(Locale.ROOT) }.forEach planLoop@ { plan ->
+                    if (written.contains(plan.path.lowercase(Locale.ROOT))) return@planLoop
                     val bytes = when {
                         plan.bytes != null -> plan.bytes
                         plan.localFile?.isFile == true -> runCatching { plan.localFile.readBytes() }.getOrNull()
-                        !plan.sourceZipPath.isNullOrBlank() -> source.getEntry(plan.sourceZipPath)?.let { e ->
-                            runCatching { source.getInputStream(e).use { it.readBytes() } }.getOrNull()
-                        }
                         plan.serverItem != null && !token.isNullOrBlank() -> when (val dl = mediaApi.download(token, plan.serverItem.attachmentId)) {
                             is WorksiteMediaApi.DownloadResult.Success -> dl.media.bytes
                             else -> null
                         }
                         else -> null
-                    } ?: return@forEach
+                    } ?: return@planLoop
                     writeBytes(plan.path, bytes)
                 }
 
@@ -266,6 +250,14 @@ object GesamtMedienArchiv {
                     "$archiveRoot/Maengelliste/Maengelliste_Gesamt.pdf",
                     MaengellisteExport.pdfBytes(appContext, baustelleName, maengel, "Gesamt")
                 )
+                writeBytes(
+                    "$archiveRoot/Abnahmeliste/Abnahmeliste_Gesamt.csv",
+                    csvBom + abnahmeCsv.toByteArray(Charsets.UTF_8)
+                )
+                writeBytes(
+                    "$archiveRoot/Abnahmeliste/Abnahmeliste_Gesamt.pdf",
+                    abnahmePdf
+                )
             }
         }
 
@@ -276,6 +268,198 @@ object GesamtMedienArchiv {
         }
         normalizedZip
     }
+
+    /** Best-effort Sofortabgleich speziell vor einem fertigen Baustellen-Gesamtexport. */
+    private suspend fun synchronizeBeforeExport(context: Context, token: String) {
+        val collab = ServiceLocator.collabSyncRepository
+        val bridge = ServiceLocator.collabLocalBridge
+        val btbMedia = BtbTeamMediaSync(context)
+
+        when (collab.synchronizeAll(token)) {
+            CollabSyncRepository.FullSyncResult.SessionInvalid -> return
+            is CollabSyncRepository.FullSyncResult.Error -> return
+            is CollabSyncRepository.FullSyncResult.Success -> Unit
+        }
+        bridge.applyServerStateToLocal()
+
+        when (btbMedia.synchronize(token)) {
+            BtbTeamMediaSync.Result.SessionInvalid -> return
+            is BtbTeamMediaSync.Result.Error -> return
+            else -> Unit
+        }
+
+        val exported = bridge.exportLocalChanges()
+        if (exported.queuedOrUpdated > 0) {
+            when (collab.synchronizeAll(token)) {
+                CollabSyncRepository.FullSyncResult.SessionInvalid -> return
+                is CollabSyncRepository.FullSyncResult.Error -> return
+                is CollabSyncRepository.FullSyncResult.Success -> Unit
+            }
+            bridge.applyServerStateToLocal()
+        }
+
+        when (btbMedia.synchronize(token)) {
+            BtbTeamMediaSync.Result.SessionInvalid -> return
+            is BtbTeamMediaSync.Result.Error -> return
+            else -> Unit
+        }
+
+        when (bridge.uploadLocalAttachments(token)) {
+            CollabLocalBridge.AttachmentUploadResult.SessionInvalid -> return
+            is CollabLocalBridge.AttachmentUploadResult.Error -> return
+            else -> Unit
+        }
+
+        when (collab.synchronizeAll(token)) {
+            CollabSyncRepository.FullSyncResult.SessionInvalid -> return
+            is CollabSyncRepository.FullSyncResult.Error -> return
+            is CollabSyncRepository.FullSyncResult.Success -> Unit
+        }
+        bridge.applyServerStateToLocal()
+        btbMedia.synchronize(token)
+    }
+
+    private fun buildMangelPlans(
+        context: Context,
+        archiveRoot: String,
+        baustelleName: String,
+        maengel: List<MaengellisteExport.MangelItem>,
+        syncMaengel: List<SyncMangelSpeicher.Eintrag>,
+        plans: MutableList<BinaryPlan>,
+        pathByHash: MutableMap<String, String>,
+        folderByServerId: MutableMap<String, String>
+    ) {
+        val syncByKey = syncMaengel.associateBy { it.mangelKey }
+        maengel.forEach { item ->
+            val sync = syncByKey[item.key]
+            val stableId = sync?.serverEntityId?.takeIf { it.isNotBlank() }
+                ?: sha256(item.key.toByteArray(Charsets.UTF_8)).take(16)
+            val datum = item.datumIso.takeIf { runCatching { LocalDate.parse(it) }.isSuccess } ?: "Ohne_Datum"
+            val token = safeToken(stableId).take(12)
+            val folder = "$archiveRoot/Mängel/$datum/Mangel_$token"
+            sync?.serverEntityId?.let { folderByServerId[it] = folder }
+
+            val fotoTargets = mutableListOf<String>()
+            item.fotos.forEach fotoLoop@ { mf ->
+                val file = File(mf.foto.dateipfad)
+                if (!file.isFile) return@fotoLoop
+                val digest = runCatching { sha256(file.readBytes()) }.getOrNull() ?: return@fotoLoop
+                val target = "$folder/Fotos/${safeToken(mf.art.name)}_${digest.take(12)}.${extension(file.name, null)}"
+                pathByHash[digest] = target
+                fotoTargets += target.removePrefix("$archiveRoot/")
+                plans += BinaryPlan(path = target, localFile = file)
+            }
+
+            val status = MangelStatusSpeicher.laden(context, item.key)
+            val json = JSONObject()
+                .put("mangelKey", item.key)
+                .put("serverEntityId", sync?.serverEntityId ?: JSONObject.NULL)
+                .put("datumIso", item.datumIso)
+                .put("zeit", item.zeit)
+                .put("baustelle", item.baustelle)
+                .put("bereich", item.bereich)
+                .put("km", item.km)
+                .put("firma", item.firma)
+                .put("beschreibung", item.beschreibung)
+                .put("gps", item.gps)
+                .put("status", status.status.name)
+                .put("kommentar", status.kommentar)
+                .put("erledigtAmEpochMs", status.erledigtAmEpochMs ?: JSONObject.NULL)
+                .put("ersteller", sync?.changedByName ?: JSONObject.NULL)
+                .put("fotos", JSONArray(fotoTargets))
+                .toString(2)
+                .toByteArray(Charsets.UTF_8)
+            plans += BinaryPlan(path = "$folder/Mangel_$token.json", bytes = json)
+            plans += BinaryPlan(
+                path = "$folder/Mangel_$token.pdf",
+                bytes = MaengellisteExport.pdfBytes(context, baustelleName, listOf(item), "Einzel")
+            )
+        }
+    }
+
+    private suspend fun buildAcceptancePlans(
+        context: Context,
+        archiveRoot: String,
+        abnahmen: List<AbnahmeSpeicher.Abnahme>,
+        plans: MutableList<BinaryPlan>,
+        pathByHash: MutableMap<String, String>
+    ) {
+        for (a in abnahmen) {
+            val token = safeToken(a.id).take(8)
+            val number = a.nummer.toString().padStart(3, '0')
+            val folder = "$archiveRoot/Abnahmen/${a.startDatumIso}/Abnahme_${number}_$token"
+            val fotos = ServiceLocator.fotoRepository.fotosMitIds(a.fotos.map { it.fotoId }).associateBy { it.id }
+            val photoJson = JSONArray()
+
+            a.fotos.forEach refLoop@ { ref ->
+                val foto = fotos[ref.fotoId] ?: return@refLoop
+                val file = File(foto.dateipfad)
+                if (!file.isFile) return@refLoop
+                val digest = runCatching { sha256(file.readBytes()) }.getOrNull() ?: return@refLoop
+                val target = "$folder/Fotos/${safeToken(ref.bildArt.name)}_${digest.take(12)}.${extension(file.name, null)}"
+                pathByHash[digest] = target
+                plans += BinaryPlan(path = target, localFile = file)
+                photoJson.put(
+                    JSONObject()
+                        .put("art", ref.bildArt.name)
+                        .put("bemerkung", ref.bemerkung)
+                        .put("datei", target.removePrefix("$archiveRoot/"))
+                )
+            }
+
+            val attachmentJson = JSONArray()
+            a.anlagen.forEach attachmentLoop@ { anlage ->
+                val file = when {
+                    anlage.typ == AbnahmeSpeicher.AnlageTyp.BILD &&
+                        !anlage.ausschnittPfad.isNullOrBlank() && File(anlage.ausschnittPfad).isFile -> File(anlage.ausschnittPfad)
+                    else -> File(anlage.originalPfad)
+                }
+                if (!file.isFile) return@attachmentLoop
+                val digest = runCatching { sha256(file.readBytes()) }.getOrNull() ?: return@attachmentLoop
+                val target = "$folder/Anlagen/${safeToken(anlage.id).take(12)}_${digest.take(12)}.${extensionAny(file.name)}"
+                plans += BinaryPlan(path = target, localFile = file)
+                if (anlage.typ == AbnahmeSpeicher.AnlageTyp.BILD && isImageFile(file)) {
+                    pathByHash[digest] = target
+                }
+                attachmentJson.put(
+                    JSONObject()
+                        .put("typ", anlage.typ.name)
+                        .put("bezeichnung", anlage.bezeichnung)
+                        .put("bemerkung", anlage.bemerkung)
+                        .put("datei", target.removePrefix("$archiveRoot/"))
+                )
+            }
+
+            val json = acceptanceJson(a, photoJson, attachmentJson).toString(2).toByteArray(Charsets.UTF_8)
+            plans += BinaryPlan(path = "$folder/Abnahme_${number}_$token.json", bytes = json)
+            val pdf = runCatching { AbnahmeExport.erzeugeEinzelPdf(context, a) }.getOrNull()
+            if (pdf?.isFile == true) {
+                plans += BinaryPlan(path = "$folder/Abnahme_${number}_$token.pdf", localFile = pdf)
+            }
+        }
+    }
+
+    private fun acceptanceJson(a: AbnahmeSpeicher.Abnahme, photos: JSONArray, attachments: JSONArray): JSONObject =
+        JSONObject()
+            .put("id", a.id)
+            .put("nummer", a.nummer)
+            .put("baustelleName", a.baustelleName)
+            .put("unterKnotenName", a.unterKnotenName)
+            .put("bezeichnung", a.bezeichnung)
+            .put("objekt", a.objekt)
+            .put("firma", a.firma)
+            .put("weitereFirmen", a.weitereFirmen)
+            .put("abnehmender", a.abnehmender)
+            .put("anwesende", a.anwesende)
+            .putNullable("kmVon", a.kmVon)
+            .putNullable("kmBis", a.kmBis)
+            .put("kommentar", a.kommentar)
+            .put("restpunkte", a.restpunkte)
+            .put("ergebnis", a.ergebnis.name)
+            .put("startEpochMs", a.startEpochMs)
+            .putNullable("abgeschlossenAmEpochMs", a.abgeschlossenAmEpochMs)
+            .put("fotos", photos)
+            .put("anlagen", attachments)
 
     private fun mergeMaengel(
         local: List<MaengellisteExport.MangelItem>,
@@ -313,22 +497,28 @@ object GesamtMedienArchiv {
                 )
             }
         }
-        return result.values.sortedWith(compareBy<MaengellisteExport.MangelItem> { it.datumIso }.thenBy { it.zeit }.thenBy { it.beschreibung })
+        return result.values.sortedWith(
+            compareBy<MaengellisteExport.MangelItem> { it.datumIso }
+                .thenBy { it.zeit }
+                .thenBy { it.beschreibung }
+        )
     }
 
     private fun rowsFromServerCatalog(
         items: List<WorksiteMediaApi.MediaItem>,
         archiveRoot: String,
         baustelleName: String,
-        sourceImagePathsByHash: Map<String, List<String>>,
         localFileByHash: Map<String, File>,
-        mangelPhotoPathByHash: Map<String, String>,
+        mangelPathByHash: Map<String, String>,
         mangelFolderByServerId: Map<String, String>,
+        acceptancePathByHash: Map<String, String>,
         plans: MutableList<BinaryPlan>
-    ): List<GesamtBilderlisteXlsx.Row> {
+    ): List<TimedRow> {
         val unique = items
             .filter { it.mimeType?.startsWith("image/") == true }
-            .groupBy { it.sha256?.lowercase(Locale.ROOT)?.takeIf(String::isNotBlank) ?: "id:${it.attachmentId}" }
+            .groupBy { item ->
+                item.sha256?.lowercase(Locale.ROOT)?.takeIf { it.isNotBlank() } ?: "id:${item.attachmentId}"
+            }
             .values
             .map { candidates ->
                 candidates.sortedWith(
@@ -337,48 +527,38 @@ object GesamtMedienArchiv {
                 ).first()
             }
 
-        data class WithTime(val epoch: Long, val row: GesamtBilderlisteXlsx.Row)
-        val result = mutableListOf<WithTime>()
-
-        unique.forEach { item ->
+        return unique.map { item ->
             val hash = item.sha256?.lowercase(Locale.ROOT)?.takeIf { it.isNotBlank() }
                 ?: sha256(item.attachmentId.toByteArray(Charsets.UTF_8))
             val meta = mediaMeta(item)
-            val date = Instant.ofEpochMilli(meta.epochMs).atZone(ZoneId.systemDefault()).toLocalDate().format(isoDate)
+            val dateTime = Instant.ofEpochMilli(meta.epochMs).atZone(ZoneId.systemDefault())
+            val date = dateTime.toLocalDate().format(isoDate)
             val target = when (item.entityType.uppercase(Locale.ROOT)) {
-                "DEFECT" -> {
-                    mangelPhotoPathByHash[hash]
-                        ?: mangelFolderByServerId[item.parentEntityId]?.let { folder ->
-                            "$folder/Fotos/${safeToken(defectArt(item.filename))}_${hash.take(12)}.${extension(item.filename, item.mimeType)}"
-                        }
-                        ?: "$archiveRoot/Mängel/$date/Mangel_${safeToken(item.parentEntityId).take(12)}/Fotos/${safeToken(defectArt(item.filename))}_${hash.take(12)}.${extension(item.filename, item.mimeType)}"
-                }
-                "ACCEPTANCE" -> sourceImagePathsByHash[hash]
-                    ?.firstOrNull { "/Abnahmen/" in it }
-                    ?: "$archiveRoot/Abnahmen/$date/Abnahme_${safeToken(item.parentEntityId).take(12)}/Fotos/Abnahme_${hash.take(12)}.${extension(item.filename, item.mimeType)}"
-                else -> sourceImagePathsByHash[hash]
-                    ?.firstOrNull { "/Bilder/" in it }
-                    ?: "$archiveRoot/Bilder/$date/${safeToken(meta.art)}_${safeToken(meta.beschreibung).take(32)}_${hash.take(12)}.${extension(item.filename, item.mimeType)}"
+                "DEFECT" -> mangelPathByHash[hash]
+                    ?: mangelFolderByServerId[item.parentEntityId]?.let { folder ->
+                        "$folder/Fotos/${safeToken(defectArt(item.filename))}_${hash.take(12)}.${extension(item.filename, item.mimeType)}"
+                    }
+                    ?: "$archiveRoot/Mängel/$date/Mangel_${safeToken(item.parentEntityId).take(12)}/Fotos/${safeToken(defectArt(item.filename))}_${hash.take(12)}.${extension(item.filename, item.mimeType)}"
+                "ACCEPTANCE" -> acceptancePathByHash[hash]
+                    ?: "$archiveRoot/Abnahmen/$date/Abnahme_${safeToken(item.parentEntityId).take(8)}/${acceptanceMediaFolder(item.filename)}/Abnahme_${hash.take(12)}.${extension(item.filename, item.mimeType)}"
+                else -> "$archiveRoot/Bilder/$date/${safeToken(meta.art)}_${safeToken(meta.beschreibung).take(32)}_${hash.take(12)}.${extension(item.filename, item.mimeType)}"
             }
 
-            val sourceAlreadyHasTarget = sourceImagePathsByHash[hash]?.any { it.equals(target, ignoreCase = true) } == true
-            val mangelPlanAlready = plans.any { it.path.equals(target, ignoreCase = true) }
-            if (!sourceAlreadyHasTarget && !mangelPlanAlready) {
-                val sourceZipPath = sourceImagePathsByHash[hash]?.firstOrNull()
+            if (plans.none { it.path.equals(target, ignoreCase = true) }) {
                 plans += BinaryPlan(
                     path = target,
                     localFile = localFileByHash[hash],
-                    sourceZipPath = sourceZipPath,
-                    serverItem = if (localFileByHash[hash] == null && sourceZipPath == null) item else null
+                    serverItem = if (localFileByHash[hash] == null) item else null
                 )
             }
 
-            result += WithTime(
-                meta.epochMs,
-                GesamtBilderlisteXlsx.Row(
+            TimedRow(
+                epochMs = meta.epochMs,
+                hash = hash,
+                row = GesamtBilderlisteXlsx.Row(
                     nr = 0,
                     datum = date,
-                    uhrzeit = Instant.ofEpochMilli(meta.epochMs).atZone(ZoneId.systemDefault()).toLocalTime().format(timeFmt),
+                    uhrzeit = dateTime.toLocalTime().format(timeFmt),
                     ersteller = item.uploadedByName.orEmpty(),
                     verantwortlicherTb = item.responsibleTb.orEmpty(),
                     art = meta.art,
@@ -394,44 +574,60 @@ object GesamtMedienArchiv {
                 )
             )
         }
-
-        return result.sortedBy { it.epoch }.mapIndexed { index, item -> item.row.copy(nr = index + 1) }
     }
 
     private fun rowsFromLocal(
-        localFotos: List<de.tbhelfer.datenbank.FotoEntity>,
+        localFotos: List<FotoEntity>,
         archiveRoot: String,
         baustelleName: String,
         responsible: String,
-        sourceImagePathsByHash: Map<String, List<String>>,
-        mangelPhotoPathByHash: Map<String, String>
-    ): List<GesamtBilderlisteXlsx.Row> {
-        return localFotos.sortedBy { it.erstelltAmEpochMs }.mapNotNull { foto ->
+        mangelPathByHash: Map<String, String>,
+        acceptancePathByHash: Map<String, String>,
+        excludedHashes: Set<String>,
+        plans: MutableList<BinaryPlan>
+    ): List<TimedRow> {
+        val result = mutableListOf<TimedRow>()
+        localFotos.sortedBy { it.erstelltAmEpochMs }.forEach { foto ->
             val file = File(foto.dateipfad)
-            if (!file.isFile) return@mapNotNull null
-            val hash = runCatching { sha256(file.readBytes()) }.getOrNull() ?: return@mapNotNull null
-            val path = mangelPhotoPathByHash[hash]
-                ?: sourceImagePathsByHash[hash]?.firstOrNull()
-                ?: return@mapNotNull null
-            val z = Instant.ofEpochMilli(foto.erstelltAmEpochMs).atZone(ZoneId.systemDefault())
-            GesamtBilderlisteXlsx.Row(
-                nr = 0,
-                datum = z.toLocalDate().format(isoDate),
-                uhrzeit = z.toLocalTime().format(timeFmt),
-                ersteller = "",
-                verantwortlicherTb = responsible,
-                art = bildtypLabel(foto.bildtyp),
-                baustelle = baustelleName,
-                bereich = foto.objektBereich.orEmpty(),
-                km = foto.km?.let { "KM ${de.tbhelfer.util.KmAnzeige.wert(it)}" }.orEmpty(),
-                firma = foto.firma,
-                beschreibung = foto.notiz?.takeIf { it.isNotBlank() } ?: foto.kurztext,
-                status = "",
-                bilddatei = path.substringAfterLast('/'),
-                gps = "%.6f, %.6f".format(Locale.US, foto.gpsLat, foto.gpsLon),
-                relativePath = path.removePrefix("$archiveRoot/")
+            if (!file.isFile) return@forEach
+            val hash = runCatching { sha256(file.readBytes()) }.getOrNull() ?: return@forEach
+            if (hash in excludedHashes) return@forEach
+            val dateTime = Instant.ofEpochMilli(foto.erstelltAmEpochMs).atZone(ZoneId.systemDefault())
+            val date = dateTime.toLocalDate().format(isoDate)
+            val target = mangelPathByHash[hash]
+                ?: acceptancePathByHash[hash]
+                ?: "$archiveRoot/Bilder/$date/${safeToken(bildtypLabel(foto.bildtyp))}_${safeToken(foto.notiz?.takeIf { it.isNotBlank() } ?: foto.kurztext).take(32)}_${hash.take(12)}.${extension(file.name, null)}"
+
+            if (plans.none { it.path.equals(target, ignoreCase = true) }) {
+                plans += BinaryPlan(path = target, localFile = file)
+            }
+            result += TimedRow(
+                epochMs = foto.erstelltAmEpochMs,
+                hash = hash,
+                row = GesamtBilderlisteXlsx.Row(
+                    nr = 0,
+                    datum = date,
+                    uhrzeit = dateTime.toLocalTime().format(timeFmt),
+                    ersteller = "",
+                    verantwortlicherTb = responsible,
+                    art = when {
+                        hash in mangelPathByHash -> "Mangel"
+                        hash in acceptancePathByHash -> "Abnahme"
+                        else -> bildtypLabel(foto.bildtyp)
+                    },
+                    baustelle = baustelleName,
+                    bereich = foto.objektBereich.orEmpty(),
+                    km = foto.km?.let { "KM ${de.tbhelfer.util.KmAnzeige.wert(it)}" }.orEmpty(),
+                    firma = foto.firma,
+                    beschreibung = foto.notiz?.takeIf { it.isNotBlank() } ?: foto.kurztext,
+                    status = "",
+                    bilddatei = target.substringAfterLast('/'),
+                    gps = if (foto.gpsLat == 0.0 && foto.gpsLon == 0.0) "" else "%.6f, %.6f".format(Locale.US, foto.gpsLat, foto.gpsLon),
+                    relativePath = target.removePrefix("$archiveRoot/")
+                )
             )
-        }.mapIndexed { index, row -> row.copy(nr = index + 1) }
+        }
+        return result
     }
 
     private fun semanticPriority(item: WorksiteMediaApi.MediaItem): Int = when (item.entityType.uppercase(Locale.ROOT)) {
@@ -443,7 +639,8 @@ object GesamtMedienArchiv {
     private fun mediaMeta(item: WorksiteMediaApi.MediaItem): PhotoMeta = when (item.entityType.uppercase(Locale.ROOT)) {
         "DEFECT" -> {
             val p = json(item.parentPayloadJson)
-            val epoch = epochFromDateTime(p.optString("datumIso"), p.optString("zeit")) ?: parseServerTime(item.createdAt)
+            val epoch = epochFromDateTime(p.optString("datumIso"), p.optString("zeit"))
+                ?: parseServerTime(item.createdAt)
             PhotoMeta(
                 epochMs = epoch,
                 art = when (defectArt(item.filename)) {
@@ -461,13 +658,17 @@ object GesamtMedienArchiv {
         "ACCEPTANCE" -> {
             val p = json(item.parentPayloadJson)
             val epoch = p.optLong("startEpochMs", 0L).takeIf { it > 0 } ?: parseServerTime(item.createdAt)
-            val km = p.optNullableDouble("kmVon")?.let { "KM ${de.tbhelfer.util.KmAnzeige.wert(it)}" }.orEmpty()
             val token = semanticToken(item.filename, "ACCEPTANCE_FOTO")
+            val isAnlage = item.filename.orEmpty().startsWith("ACCEPTANCE_ANLAGE__", ignoreCase = true)
             PhotoMeta(
                 epochMs = epoch,
-                art = if (token.isBlank()) "Abnahme" else "Abnahme – ${token.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }}",
+                art = when {
+                    isAnlage -> "Abnahme – Anlage"
+                    token.isBlank() -> "Abnahme"
+                    else -> "Abnahme – ${humanToken(token)}"
+                },
                 bereich = p.optString("unterKnotenName", ""),
-                km = km,
+                km = p.optNullableDouble("kmVon")?.let { "KM ${de.tbhelfer.util.KmAnzeige.wert(it)}" }.orEmpty(),
                 firma = p.optString("firma", ""),
                 beschreibung = p.optString("bezeichnung").ifBlank { p.optString("objekt", "Abnahme") },
                 gps = ""
@@ -504,7 +705,7 @@ object GesamtMedienArchiv {
                 input.readUnsignedByte() // indikator
                 val firma = readTinyUtf(input)
                 val kurztext = readTinyUtf(input)
-                input.skipBytes(readTinySize(input)) // objektKennung
+                skipTinyUtf(input) // objektKennung
                 val objektBereich = readTinyUtf(input)
                 val typ = Bildtyp.values().getOrNull(bildtypIndex) ?: Bildtyp.FOTODOKUMENTATION
                 PhotoMeta(
@@ -527,9 +728,9 @@ object GesamtMedienArchiv {
         return String(bytes, Charsets.UTF_8)
     }
 
-    private fun readTinySize(input: DataInputStream): Int {
+    private fun skipTinyUtf(input: DataInputStream) {
         val size = input.readUnsignedByte()
-        return size.also { if (it > 0) Unit }
+        if (size > 0) input.skipBytes(size)
     }
 
     private fun displayStatus(item: WorksiteMediaApi.MediaItem): String = when (item.entityType.uppercase(Locale.ROOT)) {
@@ -539,7 +740,7 @@ object GesamtMedienArchiv {
             "ABGELEHNT" -> "Abgelehnt"
             else -> "Offen"
         }
-        "ACCEPTANCE" -> item.parentStatus.orEmpty().replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }
+        "ACCEPTANCE" -> humanToken(item.parentStatus.orEmpty())
         else -> ""
     }
 
@@ -550,6 +751,14 @@ object GesamtMedienArchiv {
         if (!raw.startsWith("${prefix}__", ignoreCase = true)) return ""
         return raw.substringAfter("__", "").substringBefore("__", "").uppercase(Locale.ROOT)
     }
+
+    private fun acceptanceMediaFolder(filename: String?): String =
+        if (filename.orEmpty().startsWith("ACCEPTANCE_ANLAGE__", ignoreCase = true)) "Anlagen" else "Fotos"
+
+    private fun humanToken(value: String): String = value
+        .replace('_', ' ')
+        .lowercase(Locale.GERMANY)
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.GERMANY) else it.toString() }
 
     private fun bildtypLabel(typ: Bildtyp): String = when (typ) {
         Bildtyp.FOTODOKUMENTATION -> "Baudokumentation"
@@ -570,9 +779,23 @@ object GesamtMedienArchiv {
 
     private fun parseServerTime(raw: String?): Long {
         if (raw.isNullOrBlank()) return System.currentTimeMillis()
-        return runCatching { Instant.parse(raw).toEpochMilli() }
-            .recoverCatching { OffsetDateTime.parse(raw).toInstant().toEpochMilli() }
-            .getOrDefault(System.currentTimeMillis())
+        return runCatching { Instant.parse(raw).toEpochMilli() }.getOrElse {
+            runCatching { OffsetDateTime.parse(raw).toInstant().toEpochMilli() }
+                .getOrDefault(System.currentTimeMillis())
+        }
+    }
+
+    private fun isRegeneratedPath(path: String, archiveRoot: String): Boolean {
+        if (path.equals("$archiveRoot/Bilderliste_gesamt.csv", ignoreCase = true)) return true
+        if (path.equals("$archiveRoot/Bilderliste_gesamt.xlsx", ignoreCase = true)) return true
+        if (path.startsWith("$archiveRoot/Bilder/", ignoreCase = true)) return true
+        if (path.startsWith("$archiveRoot/Mängel/", ignoreCase = true)) return true
+        if (path.startsWith("$archiveRoot/Abnahmen/", ignoreCase = true)) return true
+        if (path.equals("$archiveRoot/Maengelliste/Maengelliste_Gesamt.csv", ignoreCase = true)) return true
+        if (path.equals("$archiveRoot/Maengelliste/Maengelliste_Gesamt.pdf", ignoreCase = true)) return true
+        if (path.equals("$archiveRoot/Abnahmeliste/Abnahmeliste_Gesamt.csv", ignoreCase = true)) return true
+        if (path.equals("$archiveRoot/Abnahmeliste/Abnahmeliste_Gesamt.pdf", ignoreCase = true)) return true
+        return false
     }
 
     private fun archiveRoot(paths: List<String>, baustelleName: String): String {
@@ -585,10 +808,7 @@ object GesamtMedienArchiv {
 
     private fun cleanPath(path: String): String = path.replace('\\', '/').trimStart('/')
 
-    private fun isImagePath(path: String): Boolean {
-        val lower = path.lowercase(Locale.ROOT)
-        return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || lower.endsWith(".webp")
-    }
+    private fun isImageFile(file: File): Boolean = file.extension.lowercase(Locale.ROOT) in setOf("jpg", "jpeg", "png", "webp")
 
     private fun extension(filename: String?, mimeType: String?): String {
         val ext = filename.orEmpty().substringAfterLast('.', "").lowercase(Locale.ROOT)
@@ -599,6 +819,13 @@ object GesamtMedienArchiv {
             else -> "jpg"
         }
     }
+
+    private fun extensionAny(filename: String): String = filename
+        .substringAfterLast('.', "bin")
+        .lowercase(Locale.ROOT)
+        .replace(Regex("[^a-z0-9]+"), "")
+        .ifBlank { "bin" }
+        .take(8)
 
     private fun safeToken(value: String): String = value
         .trim()
@@ -617,5 +844,10 @@ object GesamtMedienArchiv {
     private fun JSONObject.optNullableDouble(key: String): Double? {
         if (!has(key) || isNull(key)) return null
         return runCatching { getDouble(key) }.getOrNull()
+    }
+
+    private fun JSONObject.putNullable(key: String, value: Any?): JSONObject {
+        if (value == null) put(key, JSONObject.NULL) else put(key, value)
+        return this
     }
 }
