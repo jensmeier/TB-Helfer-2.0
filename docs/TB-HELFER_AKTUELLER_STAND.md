@@ -168,6 +168,9 @@ Im Feature-Branch vorhanden:
 - Helfer-Arbeitsbereich-Auswahl (`area_scope`)
 - nach Einlösen erneute Baustellen-Synchronisation
 - Aktivierungs- und Baustelleneinladung bleiben getrennt
+- der normale Einstieg im Baustellen-Menü heißt verbindlich **`Nutzer hinzufügen`**; der frühere sichtbare Menüpunkt `Baustelle auf Server anlegen / verbinden` entfällt.
+- beim ersten `Nutzer hinzufügen` wird die lokale Hauptbaustelle automatisch und idempotent auf dem Server angelegt/verbunden; der Benutzer wird dabei erster verantwortlicher TB.
+- anschließend öffnet die bestehende Baustellen-/Teamverwaltung, in der zwischen `Helfer einladen` und `Weiteren TB einladen` gewählt wird. Bei bereits verbundener Baustelle wird keine zweite Server-Baustelle erzeugt.
 
 ## Verbindliche BTB-Logik
 Fachliche BTB-Identität innerhalb einer Baustelle:
@@ -237,10 +240,13 @@ Verbindliches Ziel:
 ## Android-Build-/Teststatus
 - ältere produktiv getestete Basis wurde auf Pixel und Poco installiert und verbindet sich mit API 0.7 / Schema 9.
 - eine frühere Schema-10-Feature-Fassung wurde am 2026-09-10 lokal in Android Studio erfolgreich gebaut: `BUILD SUCCESSFUL in 42s`, 67 Tasks (19 ausgeführt, 48 up-to-date).
-- der erste lokale Build der aktuellen Android-200019-Fassung am 2026-09-10 um ca. 12:31 schlug in `BaustellenSyncFragment.kt` mit 8 Compilerfehlern fehl.
+- der erste lokale Build der Android-200019-Fassung am 2026-09-10 um ca. 12:31 schlug in `BaustellenSyncFragment.kt` mit 8 Compilerfehlern fehl.
 - Ursache war kein Architektur-/Sync-Fehler, sondern zwei konkrete QR-UI-Compilefehler: falscher Package-Pfad der bereits eingebundenen Google-Code-Scanner-Klassen (`com.google.android.gms.mlkit.codescanner` statt `com.google.mlkit.vision.codescanner`) sowie die nicht vorhandene Framework-Ressource `android.R.string.close`.
 - Fix im Feature-Branch: Scanner-Imports auf `com.google.mlkit.vision.codescanner.*` korrigiert und Dialog-Schließen auf die vorhandene `android.R.string.cancel`-Ressource umgestellt; Commit `60e42fe3ce732f7ffb5e638d562224e328f0fe03`.
-- **Nach diesem Fix wurde noch kein neuer lokaler Android-Studio-Build bestätigt.** Der nächste Build ist daher maßgeblich.
+- der anschließende lokale Android-200019-Build wurde am 2026-09-10 erfolgreich bestätigt: `BUILD SUCCESSFUL in 1m 24s`, 69 Tasks (18 ausgeführt, 51 up-to-date).
+- dieser erfolgreiche Build zeigte 15 Warnungen, aber keine Compilerfehler; die Warnungen sind separat in `docs/ANDROID_WARNINGS_BACKLOG_2026-09-10.md` dokumentiert und werden später systematisch bereinigt.
+- Android 200019 wurde danach vom Benutzer als Update auf dem Testhandy installiert und startete; der praktische Baustellen-ZIP-Test wurde optisch/strukturell positiv bewertet.
+- nach der danach eingebauten UX-Änderung `Nutzer hinzufügen` ist ein neuer lokaler Build noch erforderlich.
 - GitHub Actions ist weiterhin nicht maßgeblich für den Android-Build; aktuelle Läufe scheitern in der bekannten CI-Infrastruktur vor verwertbaren Build-Schritten.
 
 ## Testgeräte
@@ -251,18 +257,18 @@ Verbindliches Ziel:
 
 ## Nächste sichere Schritte
 1. **Kein produktives Schema 10 ohne neues, geprüftes Backup.**
-2. lokalen Feature-Branch auf den aktuellen GitHub-Head holen und Android 200019 erneut in Android Studio bauen; dabei zuerst prüfen, ob die 8 QR-Scanner-Compilerfehler vollständig verschwunden sind.
-3. falls der Build weitere echte Compilerfehler zeigt, diese einzeln am aktuellen Branchstand beheben und dokumentieren.
-4. danach direkte lokale PDF-Erzeugung auf Team-/Datum-/Schicht-Dateinamen und Dokumentkopf `Firma + Baustelle + verantwortlicher TB + Datum + Schicht` umstellen, ohne historische PDFs zu beschädigen.
-5. erneut lokal bauen.
-6. Build zunächst auf einem Testgerät als Update gegen noch produktives Schema 9 starten und Regressionen prüfen; danach zweites Gerät.
-7. Schema-10-Migration/Checks zuerst auf sicherer Test-/Backup-Basis durchspielen.
-8. Link-/Code-/QR-Einladung mit zwei Testnutzern derselben Firma gegen Schema-10-Testinstanz prüfen.
+2. aktuellen Feature-Branch lokal holen und Android 200019 nach der neuen `Nutzer hinzufügen`-UX erneut bauen.
+3. danach direkte lokale PDF-Erzeugung auf Team-/Datum-/Schicht-Dateinamen und Dokumentkopf `Firma + Baustelle + verantwortlicher TB + Datum + Schicht` umstellen, ohne historische PDFs zu beschädigen.
+4. erneut lokal bauen und auf Testgerät als Update prüfen.
+5. Schema-10-Migration/Checks zuerst auf sicherer Test-/Backup-Basis durchspielen.
+6. erst danach produktives Backup erstellen, Migration 010 mit `ON_ERROR_STOP` ausführen, Schema-10-Check ausführen und neuen Servercode aktivieren.
+7. `Nutzer hinzufügen` praktisch prüfen: bei erster Nutzung automatische Serveranlage/Verknüpfung, danach Auswahl `Helfer einladen` bzw. `Weiteren TB einladen`; bei Wiederholung keine zweite Baustelle.
+8. Link-/Code-/QR-Einladung mit zwei Testnutzern derselben Firma prüfen.
 9. Firmenprofil/Logo, Helfer-`area_scope`, weitere verantwortliche TBs und gleichnamige TBs prüfen.
 10. Team-BTB testen: zwei Geräte/Helfer schreiben in denselben Team-BTB; anderer verantwortlicher TB bleibt vollständig getrennt; TAG/NACHT bleiben getrennt.
 11. Merge-Export von mehreren Geräten auf denselben `TB-Helfer/<Baustelle>/...`-Ordner testen.
 12. Mängel/Abnahmen/Bilder, endgültige Status, 409, Tombstones, Netzabbruch/Wiederaufnahme und Benachrichtigungen testen.
-13. erst nach erfolgreichen Tests neues produktives DB-Backup erstellen, Migration 010 ausführen, Schema-10-Check ausführen und danach Servercode aktivieren.
+13. danach den separaten Streckendaten-/Vermessungsblock vollständig gegen NAS-Source-of-Truth, selektiven Download, Versionierung und KM-Farbregeln fertigstellen und mit mehreren Geräten testen.
 14. PR #5 bis zum erfolgreichen Ende-zu-Ende-Test Draft lassen; `main` vorher nicht ändern.
 
 ## Vermessungs-/Kilometrierungsfarben
