@@ -97,7 +97,7 @@ object ServiceLocator {
     }
 
     val fotoRepository: FotoRepository by lazy {
-        FotoRepository(fotoDao)
+        FotoRepository(fotoDao, appContext)
     }
 
     val collabLocalBridge: CollabLocalBridge by lazy {
