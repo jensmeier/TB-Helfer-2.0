@@ -15,9 +15,9 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
-import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.ui.bautagebuch.BautagebuchPdf
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
+import de.tbhelfer.ui.bautagebuch.BtbDokumentIdentitaet
 import de.tbhelfer.ui.bautagebuch.BtbExportPaket
 import de.tbhelfer.ui.bautagebuch.MergeSafeBaustellenExport
 import kotlinx.coroutines.Dispatchers
@@ -58,22 +58,15 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         container.removeAllViews()
         lifecycleScope.launch {
             val data = withContext(Dispatchers.IO) {
-                val context = if (hauptKnotenId > 0L) {
-                    runCatching { ServiceLocator.worksiteBindingRepository.contextForLocalRoot(hauptKnotenId) }.getOrNull()
-                } else null
-                val cached = context?.worksiteServerId?.let {
-                    TeamDisplayCache.ownTeam(requireContext().applicationContext, it)
-                }
-                val lead = cached?.leadDisplayName
-                    ?: cached?.leadNameSnapshot
-                    ?: context?.leadNameSnapshot
-                    ?: context?.groupLabel
-                    ?: "TB"
+                val appContext = requireContext().applicationContext
                 val items = BautagebuchSpeicher.verlaufFuerBaustelle(
-                    requireContext().applicationContext,
+                    appContext,
                     altBaustelleId.takeIf { it > 0L },
                     baustelleName
                 )
+                val lead = items.firstOrNull()?.entry?.let { entry ->
+                    runCatching { BtbDokumentIdentitaet.aufloesen(appContext, entry).verantwortlicherTb }.getOrNull()
+                } ?: "TB"
                 lead to items
             }
             verantwortlicherTb = data.first
