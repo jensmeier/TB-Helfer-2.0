@@ -2,8 +2,17 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:background="?attr/colorBackground">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="@string/ui_fragment_einstellungen_text_2" android:textStyle="bold" android:textSize="20sp" android:textColor="?attr/colorOnBackground" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="Nutzer / Firma" android:textStyle="bold" android:textSize="20sp" android:textColor="?attr/colorOnBackground" />
         </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Firmenstammdaten und Firmenlogo werden zentral am Server gepflegt und auf diesem Gerät nur offline zwischengespeichert."
+            android:textSize="13sp"
+            android:textColor="?attr/colorOnBackground" />
+
         <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:hint="@string/ui_fragment_nutzer_hint_1">
             <com.google.android.material.textfield.TextInputEditText android:id="@+id/etFirma" android:layout_width="match_parent" android:layout_height="wrap_content" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -19,7 +28,8 @@
         <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="@string/ui_fragment_nutzer_hint_5">
             <com.google.android.material.textfield.TextInputEditText android:id="@+id/etEmail" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textEmailAddress" />
         </com.google.android.material.textfield.TextInputLayout>
-        <com.google.android.material.button.MaterialButton android:id="@+id/btnLogo" style="@style/TbButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/ui_fragment_nutzer_text_7" android:textAllCaps="false" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/btnSpeichern" style="@style/TbButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/ui_fragment_baustelle_neu_text_18" android:textAllCaps="false" />
+
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnLogo" style="@style/TbButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="Firmenlogo: nicht hinterlegt" android:textAllCaps="false" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnSpeichern" style="@style/TbButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="Vom Server aktualisieren" android:textAllCaps="false" />
     </LinearLayout>
 </ScrollView>
