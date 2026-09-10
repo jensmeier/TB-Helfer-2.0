@@ -19,17 +19,43 @@ Nach jeder wesentlichen Änderung/Entscheidung ist diese Datei im aktiven Featur
 - PR bleibt Draft bis der echte Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test erfolgreich ist.
 - `main` bleibt unverändert/stabil.
 - Android im Feature-Branch: `versionCode 200019`, `versionName 1.3`.
-- Schema-10-/Einladungs-/Firmenprofil-/Team-BTB-Code liegt nur im Feature-Branch und ist noch nicht produktiv migriert.
+- Schema 10 ist auf der produktiven PostgreSQL-Datenbank migriert und geprüft; der neue Schema-10-Servercode liegt weiterhin nur im Feature-Branch und ist noch nicht produktiv aktiviert.
 
 ## Produktiver Stand auf der Synology
 - NAS/Synology ist Source of Truth.
 - produktive API: **0.7.0**.
-- produktive PostgreSQL-Datenbank: **Schema 9** (`009_worksite_collaboration`).
+- produktive PostgreSQL-Datenbank: **Schema 10** (`010_worksite_invitations_company_profile`).
 - produktiver Servercode: `/volume1/docker/tb-helfer/server_0.7_stage`.
 - produktive Secret-Datei bleibt `./server/.env`; keine Secrets wurden in Stage/GitHub kopiert.
-- Cloudflare API und Admin Access wurden extern über Mobilfunk erfolgreich geprüft.
-- API, PostgreSQL, Schema 9, Bahnhof-Autofill und Admin-Dashboard wurden produktiv erfolgreich getestet.
-- **Migration 010 ist noch NICHT produktiv ausgeführt.**
+- Cloudflare API und Admin Access wurden vor Schema 10 extern über Mobilfunk erfolgreich geprüft.
+- API, PostgreSQL, Bahnhof-Autofill und Admin-Dashboard waren mit Schema 9 produktiv erfolgreich getestet; nach Aktivierung des neuen Servercodes muss die externe Prüfung für Schema 10 erneut erfolgen.
+
+### Produktives Backup direkt vor Schema 10
+Vor Migration 010 wurde ein aktueller PostgreSQL-Custom-Dump erstellt:
+- `/volume1/docker/tb-helfer/backup/tb_helfer_pre_schema10_20260910_173351.dump`
+- Größe in File Station: ca. 132,4 kB
+- der Dump wurde über `pg_restore -l` erfolgreich geprüft: `BACKUP_PRUEFUNG=OK`
+- die nur zur Prüfung nach `scripts` kopierte Dump-Datei kann dort wieder entfernt werden; das Original im Backup-Ordner bleibt erhalten.
+
+Vor der Migration wurden die beiden auf den NAS übertragenen SQL-Dateien nach CRLF-Normalisierung gegen die GitHub-Blob-SHAs des Feature-Branches geprüft:
+- `010_worksite_invitations_company_profile.sql` → `d3b78c723de0c5ee0b2a0121957d81513e240a86`
+- `02_verify_schema10.sql` → `100b1214a81990ed84a187b243f94b745ee742ab`
+- beide Werte stimmten exakt mit GitHub überein.
+
+### Migrationen 008–010
+Produktiv erfolgreich:
+- 008 `008_incremental_sync_mutations`
+- 009 `009_worksite_collaboration`
+- 010 `010_worksite_invitations_company_profile`
+
+Migration 010 wurde am 2026-09-10 mit `psql -v ON_ERROR_STOP=1` aus Schema 9 gestartet und endete ohne Fehler mit `INSERT 0 1` und `COMMIT`.
+
+Anschließend wurde `server/checks/02_verify_schema10.sql` mit `ON_ERROR_STOP` ausgeführt:
+- Schema-Version 10 ist registriert.
+- die verpflichtenden Schema-10-Objekte/Felder wurden geprüft.
+- Abschluss: **`SCHEMA_10_OK`**.
+
+Damit ist die Datenbankseite von Schema 10 produktiv abgeschlossen. Der nächste produktive Schritt ist ausschließlich die Aktivierung/Rebuild des dazugehörigen Servercodes; keine weitere DB-Migration ist dafür vorgesehen.
 
 ### Letztes produktives Backup / Migration 008+009
 Vor Migration 008/009 wurde ein PostgreSQL-Custom-Dump erstellt und mit `pg_restore -l` geprüft:
@@ -37,16 +63,10 @@ Vor Migration 008/009 wurde ein PostgreSQL-Custom-Dump erstellt und mit `pg_rest
 - zweite Kopie unter `/volume1/docker/tb-helfer/backup/`
 - Prüfung: `BACKUP_PRUEFUNG=OK`
 
-Produktiv erfolgreich:
-- 008 `008_incremental_sync_mutations`
-- 009 `009_worksite_collaboration`
-
-Read-only Schema-9-Nachkontrolle:
+Read-only Schema-9-Nachkontrolle war erfolgreich:
 - Pflichtobjekte/-spalten/-trigger vorhanden
 - Integritätschecks `violations=0`
 - Attachment-Parent-Prüfung `violations=0`
-
-Vor Schema 10 muss erneut ein **aktuelles** PostgreSQL-Backup erstellt und mit `pg_restore -l` geprüft werden.
 
 ## Verbindliche Server-/Datenregeln
 - NAS ist Source of Truth.
@@ -85,12 +105,12 @@ Server/Admin müssen aus diesen Beständen Bahnhofscode/Name vervollständigen. 
 - endgültiger Status `abgestellt/erledigt` bleibt endgültig.
 - Benachrichtigungsmodi pro Gerät: Text + Ton / nur Ton / aus.
 
-## Schema 10 – im Feature-Branch implementiert, noch nicht produktiv
+## Schema 10 – Datenbank produktiv, Servercode noch nicht aktiviert
 Migration:
 - `server/migrations/010_worksite_invitations_company_profile.sql`
 
 Prüfungen:
-- `server/checks/02_verify_schema10.sql`
+- `server/checks/02_verify_schema10.sql` → produktiv erfolgreich, `SCHEMA_10_OK`
 - `server/checks/03_verify_schema10_source.py`
 - `server/checks/04_test_team_btb_merge.py`
 
@@ -119,15 +139,13 @@ Relevante Erweiterungen in `server/app_parts/14_part.py`, `15_part.py`, `16_part
 - Team-BTB-Merge für mehrere Geräte/Helfer
 - zentraler Baustellen-Medienbestand für Gesamtexporte
 
-Verbindliche Produktiv-Reihenfolge:
-1. aktuelles PostgreSQL-Backup erstellen
-2. `pg_restore -l` erfolgreich prüfen
-3. Migration 010 mit `psql -v ON_ERROR_STOP=1`
-4. `server/checks/02_verify_schema10.sql`
-5. erst danach neuen Servercode aktivieren/rebuilden
-6. API/Admin extern prüfen
-
-Neuer Servercode darf nicht vor Migration 010 produktiv aktiviert werden, weil er Schema-10-Felder/-Tabellen voraussetzt.
+Verbindliche Produktiv-Reihenfolge – Stand nach erfolgreicher DB-Migration:
+1. aktuelles PostgreSQL-Backup erstellen → **erledigt**
+2. `pg_restore -l` erfolgreich prüfen → **erledigt (`BACKUP_PRUEFUNG=OK`)**
+3. Migration 010 mit `psql -v ON_ERROR_STOP=1` → **erledigt (`COMMIT`)**
+4. `server/checks/02_verify_schema10.sql` → **erledigt (`SCHEMA_10_OK`)**
+5. neuen Schema-10-Servercode aktivieren/rebuilden → **nächster Schritt**
+6. API/Admin/Cloudflare extern prüfen
 
 ## Zentrales Firmenprofil / Logo – Feature-Branch
 Server:
@@ -144,7 +162,7 @@ Android:
 - Nutzerseite ist für zentrale Firmendaten auf Lesen/Aktualisieren umgestellt; kein freies lokales Überschreiben des zentralen Firmenprofils.
 - auch bereits aktivierte Geräte ziehen den nicht geheimen Benutzernamen über `/device/me` als Anzeige-/BTB-Fallback nach.
 
-Noch real zu testen: Firmenprofil-/Logo-Abruf auf echtem Gerät gegen produktives Schema 10.
+Noch real zu testen: Firmenprofil-/Logo-Abruf auf echtem Gerät gegen produktives Schema 10 und den neuen Servercode.
 
 ## Android – Baustelle / Einladung / QR / Arbeitsbereich
 Im Feature-Branch vorhanden:
@@ -160,7 +178,7 @@ Im Feature-Branch vorhanden:
 - Aktivierungs- und Baustelleneinladung bleiben getrennt
 - normaler Einstieg im Baustellen-Menü heißt verbindlich **`Nutzer hinzufügen`**.
 - beim ersten `Nutzer hinzufügen` wird die lokale Hauptbaustelle automatisch und idempotent auf dem Server angelegt/verbunden; anschließend öffnet sich die Teamverwaltung.
-- gegen den noch produktiven Schema-9-Server wird dieser Ablauf sauber als noch nicht unterstützt abgefangen; das wurde auf dem Handy bereits praktisch bestätigt.
+- der Unsupported-Fall wurde auf dem Handy noch gegen die bisherige produktive 0.7-API vor Schema-10-Serveraktivierung praktisch geprüft; der echte Schema-10-Ablauf folgt nach Servercode-Umschaltung.
 
 ## Verbindliche BTB-Logik
 Fachliche BTB-Identität innerhalb einer Baustelle:
@@ -195,7 +213,7 @@ Export:
 - erneutes Erzeugen desselben fachlichen BTB aktualisiert denselben kanonischen Zielpfad statt neue `geaendert2/geaendert3`-Dateien anzulegen.
 - sichtbarer PDF-Kopf enthält Baustelle, Firma, verantwortlichen TB, Datum, Schicht und Zeit; das bestehende lokale Firmenlogo bleibt nutzbar.
 - Test-PDF am 2026-09-10: `BTB_2026-09-10_NACHT_jens_poco.pdf`; Kopf/2 Seiten praktisch geprüft, Layout ohne erkennbare Überlagerung/Abschneidung.
-- im Test stand `Firma: -`, erwartungsgemäß weil das zentrale Firmenprofil erst nach Schema-10-Rollout produktiv abrufbar ist.
+- im Test stand `Firma: -`, erwartungsgemäß weil das zentrale Firmenprofil erst nach Schema-10-Serverrollout produktiv abrufbar ist.
 - Commit des getesteten PDF-Abschlusses: `4cca0b9697d3b75c31f538898abe318706753a1d` (`android: finalize canonical BTB PDF`).
 - historische bestehende PDFs werden nicht zwangsumbenannt.
 
@@ -223,7 +241,7 @@ Noch real zu testen: Zwei Geräte derselben Baustelle exportieren über längere
 ## Android-Build-/Teststatus
 - Android 200019 wurde am 2026-09-10 mehrfach lokal erfolgreich gebaut und als Update auf dem Testhandy installiert.
 - erster erfolgreicher 200019-Build nach QR-Compilefix: `BUILD SUCCESSFUL in 1m 24s`, 69 Tasks.
-- `Nutzer hinzufügen`-UX wurde danach gebaut und auf dem Handy gegen Schema 9 praktisch geprüft; Unsupported-Fall wurde korrekt abgefangen.
+- `Nutzer hinzufügen`-UX wurde danach gebaut und auf dem Handy gegen die bisherige 0.7-API praktisch geprüft; Unsupported-Fall wurde korrekt abgefangen.
 - nach dem direkten BTB-PDF-Abschluss wurde der richtige Arbeitsbranch `feature/admin-offline-sync` nochmals gebaut: **`BUILD SUCCESSFUL in 14s`, 69 Tasks (1 ausgeführt, 68 up-to-date)**.
 - das zugehörige kanonische PDF wurde auf echtem Handy erzeugt und geprüft.
 - 15 nicht blockierende Compilerwarnungen sind separat in `docs/ANDROID_WARNINGS_BACKLOG_2026-09-10.md` dokumentiert und werden später systematisch bereinigt.
@@ -251,21 +269,18 @@ Noch vollständig fertigzustellen und Ende-zu-Ende zu prüfen:
 - Langzeittest: vorhandene Bereiche nach Monaten/Jahren wieder abrufen und mit neuen Bereichen ergänzen.
 
 ## Nächste sichere Schritte
-1. **Kein produktives Schema 10 ohne neues, geprüftes Backup.**
-2. Auf der Synology ein aktuelles PostgreSQL-Custom-Backup direkt vor Schema 10 erstellen.
-3. dieses Backup mit `pg_restore -l` prüfen und erst bei erfolgreicher Prüfung weitermachen.
-4. Migration 010 mit `psql -v ON_ERROR_STOP=1` ausführen.
-5. `server/checks/02_verify_schema10.sql` erfolgreich ausführen.
-6. erst danach den neuen Schema-10-Servercode aktivieren/rebuilden.
-7. API/Admin/Cloudflare extern prüfen; Firmenprofil/Logo pflegen und auf Pixel/Poco abrufen.
-8. `Nutzer hinzufügen` real testen: erste lokale Baustelle automatisch serverseitig anlegen/verbinden, keine Dublette bei Wiederholung.
-9. QR-/Link-/Code-Einladung mit zwei Testnutzern derselben Firma testen; Helfer-`area_scope`, weiterer verantwortlicher TB und gleichnamige TBs prüfen.
-10. Team-BTB mit zwei Geräten/Helfern testen; anderer verantwortlicher TB bleibt getrennt, TAG/NACHT getrennt.
-11. Mängel/Abnahmen/Bilder/Gesamtlisten/Benachrichtigungen mit mehreren Benutzern testen.
-12. Offline/Upload-Queue/409/Tombstones/Netzabbruch/Wiederaufnahme testen.
-13. Merge-Export von mehreren Geräten in denselben `TB-Helfer/<Baustelle>/...`-Laptopordner testen.
-14. danach den separaten Streckendaten-/Vermessungsblock vollständig fertigstellen und mit mehreren Geräten testen.
-15. anschließend 15 Android-Warnungen/sonstiges Aufräumen abarbeiten, vollständigen Endbuild durchführen und PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
+1. **Schema 10 DB ist migriert und mit `SCHEMA_10_OK` geprüft. Keine weitere DB-Migration starten.**
+2. den neuen Schema-10-Servercode aus dem geprüften Feature-Branch auf der Synology bereitstellen/aktivieren und den API-Container rebuilden.
+3. nach dem Rebuild zuerst Container-/API-Status prüfen; erwartete API-Version und Schema-10-Endpunkte bestätigen.
+4. API/Admin/Cloudflare extern prüfen; Firmenprofil/Logo pflegen und auf Pixel/Poco abrufen.
+5. `Nutzer hinzufügen` real testen: erste lokale Baustelle automatisch serverseitig anlegen/verbinden, keine Dublette bei Wiederholung.
+6. QR-/Link-/Code-Einladung mit zwei Testnutzern derselben Firma testen; Helfer-`area_scope`, weiterer verantwortlicher TB und gleichnamige TBs prüfen.
+7. Team-BTB mit zwei Geräten/Helfern testen; anderer verantwortlicher TB bleibt getrennt, TAG/NACHT getrennt.
+8. Mängel/Abnahmen/Bilder/Gesamtlisten/Benachrichtigungen mit mehreren Benutzern testen.
+9. Offline/Upload-Queue/409/Tombstones/Netzabbruch/Wiederaufnahme testen.
+10. Merge-Export von mehreren Geräten in denselben `TB-Helfer/<Baustelle>/...`-Laptopordner testen.
+11. danach den separaten Streckendaten-/Vermessungsblock vollständig fertigstellen und mit mehreren Geräten testen.
+12. anschließend 15 Android-Warnungen/sonstiges Aufräumen abarbeiten, vollständigen Endbuild durchführen und PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
 
 ## Vermessungs-/Kilometrierungsfarben
 - Grün = belastbare Originaldaten/KM
