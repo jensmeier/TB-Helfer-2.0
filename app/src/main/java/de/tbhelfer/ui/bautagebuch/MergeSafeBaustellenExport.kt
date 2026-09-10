@@ -101,7 +101,15 @@ object MergeSafeBaustellenExport {
             temp.copyTo(out, overwrite = true)
             temp.delete()
         }
-        return out
+
+        // Zweite, fachliche Archivstufe: serverweiter Medienbestand, XLSX-Gesamtliste und
+        // strukturierter Mängel-Ordner. Offline bleibt ein lokaler Fallback erhalten.
+        return GesamtMedienArchiv.ergaenzen(
+            context = appContext,
+            normalizedZip = out,
+            localRootKnotenId = localRootKnotenId,
+            baustelleName = baustelleName
+        )
     }
 
     private fun acceptanceFolderMap(zip: ZipFile, entries: List<ZipEntry>): Map<String, String> {
