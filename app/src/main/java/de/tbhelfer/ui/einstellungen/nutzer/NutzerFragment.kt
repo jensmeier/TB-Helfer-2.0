@@ -1,17 +1,28 @@
 package de.tbhelfer.ui.einstellungen.nutzer
 
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import de.tbhelfer.R
+import de.tbhelfer.server.CompanyProfileSync
+import de.tbhelfer.server.SecureTokenStore
 import de.tbhelfer.util.requireViewByIdCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
+/**
+ * Anzeige des zentralen Firmenprofils.
+ *
+ * Firmenstammdaten und Firmenlogo werden serverseitig gepflegt und auf dem Gerät nur
+ * gespiegelt/gecached. Dadurch können PDF/BTB auch offline weiterarbeiten, ohne dass einzelne
+ * Geräte voneinander abweichende Firmenprofile erzeugen.
+ */
 class NutzerFragment : Fragment(R.layout.fragment_nutzer) {
 
     private lateinit var etFirma: TextInputEditText
@@ -22,22 +33,7 @@ class NutzerFragment : Fragment(R.layout.fragment_nutzer) {
 
     private lateinit var btnLogo: MaterialButton
     private lateinit var btnSpeichern: MaterialButton
-    // optional: user may remove the back button from the layout
     private var btnZurueck: MaterialButton? = null
-
-    private var logoDateiname: String? = null
-
-    private val pickLogo = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri == null) return@registerForActivityResult
-        val name = NutzerSpeicher.importiereLogo(requireContext(), uri)
-        if (name != null) {
-            logoDateiname = name
-            btnLogo.text = "Logo: $name"
-            Snackbar.make(requireView(), "Logo gespeichert", Snackbar.LENGTH_SHORT).show()
-        } else {
-            Snackbar.make(requireView(), "Logo konnte nicht gespeichert werden", Snackbar.LENGTH_LONG).show()
-        }
-    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -47,48 +43,78 @@ class NutzerFragment : Fragment(R.layout.fragment_nutzer) {
         etA2 = view.requireViewByIdCompat(R.id.etAnschrift2)
         etTel = view.requireViewByIdCompat(R.id.etTelefon)
         etMail = view.requireViewByIdCompat(R.id.etEmail)
-
         btnLogo = view.requireViewByIdCompat(R.id.btnLogo)
         btnSpeichern = view.requireViewByIdCompat(R.id.btnSpeichern)
 
-        // If the button exists, wire it up. If not, do nothing (prevents crash).
         btnZurueck = view.findViewById(R.id.btnZurueck)
         btnZurueck?.setOnClickListener { findNavController().navigateUp() }
 
-        btnLogo.setOnClickListener { pickLogo.launch("image/*") }
-        btnSpeichern.setOnClickListener { speichern() }
+        listOf(etFirma, etA1, etA2, etTel, etMail).forEach { field ->
+            field.isFocusable = false
+            field.isFocusableInTouchMode = false
+            field.isCursorVisible = false
+            field.isLongClickable = true
+        }
+
+        btnLogo.isEnabled = false
+        btnSpeichern.text = "Vom Server aktualisieren"
+        btnSpeichern.setOnClickListener { aktualisieren() }
 
         laden()
     }
 
     private fun laden() {
         val p = NutzerSpeicher.laden(requireContext())
-        if (p != null) {
-            etFirma.setText(p.firmenname.orEmpty())
-            etA1.setText(p.anschrift1.orEmpty())
-            etA2.setText(p.anschrift2.orEmpty())
-            etTel.setText(p.telefon.orEmpty())
-            etMail.setText(p.email.orEmpty())
-            logoDateiname = p.logoDateiname
-            if (!p.logoDateiname.isNullOrBlank()) {
-                btnLogo.text = "Logo: ${p.logoDateiname}"
-            }
+        etFirma.setText(p?.firmenname.orEmpty())
+        etA1.setText(p?.anschrift1.orEmpty())
+        etA2.setText(p?.anschrift2.orEmpty())
+        etTel.setText(p?.telefon.orEmpty())
+        etMail.setText(p?.email.orEmpty())
+        btnLogo.text = when {
+            p?.logoDateiname?.startsWith("firma_server_logo.") == true -> "Firmenlogo: vom Server geladen"
+            !p?.logoDateiname.isNullOrBlank() -> "Firmenlogo: lokaler Altbestand"
+            else -> "Firmenlogo: nicht hinterlegt"
         }
     }
 
-    private fun speichern() {
-        val vorher = NutzerSpeicher.laden(requireContext())
-        val profil = NutzerProfil(
-            firmenname = etFirma.text?.toString()?.trim().takeUnless { it.isNullOrBlank() },
-            anschrift1 = etA1.text?.toString()?.trim().takeUnless { it.isNullOrBlank() },
-            anschrift2 = etA2.text?.toString()?.trim().takeUnless { it.isNullOrBlank() },
-            telefon = etTel.text?.toString()?.trim().takeUnless { it.isNullOrBlank() },
-            email = etMail.text?.toString()?.trim().takeUnless { it.isNullOrBlank() },
-            logoDateiname = logoDateiname,
-            // Patch45m: Das PDF-Fotolimit wird jetzt unter BTB / PDF bearbeitet.
-            maxFotosInPdf = vorher?.maxFotosInPdf ?: 60
-        )
-        NutzerSpeicher.speichern(requireContext(), profil)
-        Snackbar.make(requireView(), "Nutzer gespeichert", Snackbar.LENGTH_SHORT).show()
+    private fun aktualisieren() {
+        val token = SecureTokenStore(requireContext()).load()
+        if (token.isNullOrBlank()) {
+            Snackbar.make(requireView(), "Gerät ist noch nicht für den Server aktiviert.", Snackbar.LENGTH_LONG).show()
+            return
+        }
+
+        btnSpeichern.isEnabled = false
+        btnSpeichern.text = "Wird aktualisiert …"
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                CompanyProfileSync.synchronize(appContext, token)
+            }
+            if (!isAdded) return@launch
+            btnSpeichern.isEnabled = true
+            btnSpeichern.text = "Vom Server aktualisieren"
+            when (result) {
+                CompanyProfileSync.Result.Success -> {
+                    laden()
+                    Snackbar.make(requireView(), "Firmenprofil wurde vom Server aktualisiert.", Snackbar.LENGTH_SHORT).show()
+                }
+                CompanyProfileSync.Result.Unsupported -> Snackbar.make(
+                    requireView(),
+                    "Dieser Serverstand stellt das zentrale Firmenprofil noch nicht bereit.",
+                    Snackbar.LENGTH_LONG
+                ).show()
+                CompanyProfileSync.Result.SessionInvalid -> Snackbar.make(
+                    requireView(),
+                    "Gerätefreigabe ist nicht mehr gültig.",
+                    Snackbar.LENGTH_LONG
+                ).show()
+                is CompanyProfileSync.Result.Error -> Snackbar.make(
+                    requireView(),
+                    "Firmenprofil konnte nicht aktualisiert werden: ${result.message}",
+                    Snackbar.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 }
