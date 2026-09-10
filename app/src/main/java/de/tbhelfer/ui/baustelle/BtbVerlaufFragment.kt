@@ -19,6 +19,7 @@ import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.ui.bautagebuch.BautagebuchPdf
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbExportPaket
+import de.tbhelfer.ui.bautagebuch.MergeSafeBaustellenExport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -158,11 +159,23 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         }
         lifecycleScope.launch {
             try {
-                val result = withContext(Dispatchers.IO) {
+                val exportZip = withContext(Dispatchers.IO) {
+                    val appContext = requireContext().applicationContext
                     val fotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(item.entry.baustelleId)
-                    BtbExportPaket.erstellen(requireContext().applicationContext, item.entry, pdf, fotos)
+                    val result = BtbExportPaket.erstellen(appContext, item.entry, pdf, fotos)
+                    if (hauptKnotenId > 0L) {
+                        MergeSafeBaustellenExport.normalisieren(
+                            context = appContext,
+                            sourceZip = result.zipFile,
+                            localRootKnotenId = hauptKnotenId,
+                            baustelleName = baustelleName.ifBlank { item.entry.baustelleName },
+                            schicht = item.schicht
+                        )
+                    } else {
+                        result.zipFile
+                    }
                 }
-                BtbExportPaket.shareZip(requireContext(), result.zipFile)
+                BtbExportPaket.shareZip(requireContext(), exportZip)
             } catch (_: Throwable) {
                 Toast.makeText(requireContext(), "ZIP konnte nicht erstellt werden", Toast.LENGTH_LONG).show()
             }
