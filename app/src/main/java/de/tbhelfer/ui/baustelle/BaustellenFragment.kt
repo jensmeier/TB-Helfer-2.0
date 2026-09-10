@@ -61,7 +61,7 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
                     getString(R.string.action_btb_history),
                     getString(R.string.action_maengel_list),
                     "Abnahmeliste öffnen",
-                    "Baustelle auf Server anlegen / verbinden",
+                    "Nutzer hinzufügen",
                     "ZIP von-bis Datum teilen",
                     "ZIP komplette Baustelle teilen",
                     getString(R.string.btn_delete)
@@ -83,7 +83,7 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
                             4 -> findNavController().navigate(R.id.abnahmelisteFragment, Bundle().apply {
                                 putLong("baustelleId", haupt.altBaustelleId); putString("baustelleName", haupt.hauptbaustellenName); putLong("hauptKnotenId", haupt.id); putString("filter", "ALLE")
                             })
-                            5 -> provisionWorksite(haupt)
+                            5 -> provisionWorksiteAndOpenUserManagement(haupt)
                             6 -> zeigeZipVonBisDialog(haupt)
                             7 -> exportiereBaustellenZip(haupt, null, null)
                             8 -> zeigeKomplettLoeschenDialog(haupt)
@@ -156,17 +156,19 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
     }
 
     /**
-     * Der erste verantwortliche TB veröffentlicht seine lokale Baustelle selbst.
-     * Der Server bindet sie automatisch an seine Firma und legt ihn als ersten LEAD an.
+     * Normaler Baustellen-Einstieg für die Teamverwaltung.
+     * Beim ersten Aufruf wird die lokale Baustelle idempotent auf dem Server angelegt/verbunden
+     * und der ausführende Benutzer zum ersten verantwortlichen TB. Anschließend öffnet die
+     * bestehende Teamverwaltung für Helfer bzw. weitere verantwortliche TBs.
      */
-    private fun provisionWorksite(haupt: BaustellenKnotenEntity) {
+    private fun provisionWorksiteAndOpenUserManagement(haupt: BaustellenKnotenEntity) {
         val token = SecureTokenStore(requireContext()).load()
         if (token.isNullOrBlank()) {
             Toast.makeText(requireContext(), "Gerät ist noch nicht für den Server aktiviert.", Toast.LENGTH_LONG).show()
             return
         }
         viewLifecycleOwner.lifecycleScope.launch {
-            Toast.makeText(requireContext(), "Baustelle wird auf dem Server angelegt …", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "Nutzerverwaltung wird vorbereitet …", Toast.LENGTH_SHORT).show()
             val outcome = withContext(Dispatchers.IO) {
                 when (val created = WorksiteProvisioningApi().create(token, haupt)) {
                     WorksiteProvisioningApi.Result.SessionInvalid -> ProvisionOutcome.SessionInvalid
@@ -199,12 +201,15 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
                     SecureTokenStore(requireContext()).clear()
                     Toast.makeText(requireContext(), "Gerätefreigabe ist nicht mehr gültig.", Toast.LENGTH_LONG).show()
                 }
-                is ProvisionOutcome.Error -> Toast.makeText(requireContext(), "Baustelle konnte nicht verbunden werden: ${outcome.message}", Toast.LENGTH_LONG).show()
-                is ProvisionOutcome.Success -> Toast.makeText(
-                    requireContext(),
-                    if (outcome.created) "Baustelle ist jetzt mit dem Server verbunden." else "Bestehende Server-Baustelle wurde wieder verbunden.",
-                    Toast.LENGTH_LONG
-                ).show()
+                is ProvisionOutcome.Error -> Toast.makeText(requireContext(), "Nutzerverwaltung konnte nicht geöffnet werden: ${outcome.message}", Toast.LENGTH_LONG).show()
+                is ProvisionOutcome.Success -> {
+                    Toast.makeText(
+                        requireContext(),
+                        if (outcome.created) "Baustelle wurde automatisch mit dem Server verbunden." else "Baustelle ist mit dem Server verbunden.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    findNavController().navigate(R.id.baustellenSyncFragment)
+                }
             }
         }
     }
