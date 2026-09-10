@@ -16,8 +16,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import com.google.android.gms.mlkit.codescanner.GmsBarcodeScannerOptions
-import com.google.android.gms.mlkit.codescanner.GmsBarcodeScanning
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.google.android.material.button.MaterialButton
 import com.google.mlkit.vision.barcode.common.Barcode
 import de.tbhelfer.R
@@ -206,7 +206,6 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                 .getOrElse { return SyncUiResult.Error(it.message ?: "Bestätigte Serverdaten konnten lokal nicht übernommen werden.") }
         }
 
-        // Ein neu angelegter BTB hat erst nach dem Text-Upload eine feste Server-UUID.
         val secondMedia = when (val result = btbMedia.synchronize(token)) {
             BtbTeamMediaSync.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
             BtbTeamMediaSync.Result.Unsupported -> null
@@ -394,7 +393,6 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
         }
     }
 
-    /** Helferbereich wird direkt beim Erzeugen der Einladung festgelegt. */
     private fun showHelperScopeDialog(team: TeamManagementApi.TeamOverview) {
         val wrapper = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
@@ -510,7 +508,6 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
         }
     }
 
-    /** Zeigt sofort eine große scanbare Karte; Code und Teilen bleiben als Fallback verfügbar. */
     private fun showInvitationQr(team: TeamManagementApi.TeamOverview, invitation: TeamManagementApi.Invitation) {
         val worksite = team.worksiteName?.takeIf { it.isNotBlank() }
             ?: team.worksiteDesignation?.takeIf { it.isNotBlank() }
@@ -547,7 +544,7 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
             .setMessage(worksite)
             .setView(box)
             .setPositiveButton(R.string.collab_invite_share) { _, _ -> shareInvitation(team, invitation) }
-            .setNegativeButton(android.R.string.close, null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
