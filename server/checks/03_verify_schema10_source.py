@@ -80,6 +80,16 @@ def main() -> int:
         ["scanInvitationQr", "showHelperScopeDialog", "showInvitationQr"],
     )
     require_text(
+        ANDROID / "ui" / "bautagebuch" / "BtbDokumentIdentitaet.kt",
+        [
+            "internes TB-Team + Datum + Schicht",
+            "TeamDisplayCache.ownTeam",
+            "BTB_${datumIso}_${schichtToken}_${verantwortlicherToken}",
+            "worksiteServerId",
+            "groupId",
+        ],
+    )
+    require_text(
         ANDROID / "ui" / "bautagebuch" / "MergeSafeBaustellenExport.kt",
         [
             "BTB_",
