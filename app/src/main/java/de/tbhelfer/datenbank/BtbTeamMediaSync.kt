@@ -8,6 +8,10 @@ import de.tbhelfer.ui.bautagebuch.BautagebuchEintrag
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.SchichtTyp
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.DataInputStream
+import java.io.DataOutputStream
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalTime
@@ -154,45 +158,110 @@ class BtbTeamMediaSync(context: Context) {
         return from to until
     }
 
+    /**
+     * Der Attachment-Dateiname wird auf Android UND Server auf 160 Zeichen begrenzt.
+     * Das frühere Base64-JSON konnte dadurch mitten im Metadatenblock abgeschnitten werden.
+     *
+     * BTBP1 verwendet deshalb ein kompaktes Binärformat mit bewusst kurzen Textfeldern. Der
+     * komplette Name bleibt auch mit Umlauten sicher unter der Servergrenze; fachlich wichtige
+     * Aufnahmeparameter (Zeit, GPS, KM, Typ, Indikator, Firma/Kurztext/Objekt) reisen mit.
+     */
     private fun encodedPhotoFilename(foto: FotoEntity, original: String): String {
-        val meta = JSONObject()
-            .put("epoch", foto.erstelltAmEpochMs)
-            .put("typ", foto.bildtyp.name)
-            .put("firma", foto.firma)
-            .put("kurztext", foto.kurztext)
-            .put("notiz", foto.notiz ?: "")
-            .put("lat", foto.gpsLat)
-            .put("lon", foto.gpsLon)
-            .putNullable("alt", foto.gpsAltM)
-            .putNullable("km", foto.km)
-            .put("kmSuffix", foto.kmSuffix)
-            .put("kmManuell", foto.kmManuell)
-            .putNullable("achsabstand", foto.achsabstandM)
-            .put("indikator", foto.indikator?.name ?: "")
-            .put("objektKennung", foto.objektKennung ?: "")
-            .put("objektBereich", foto.objektBereich ?: "")
-            .put("info1", foto.info1Wert ?: "")
-            .put("info2", foto.info2Wert ?: "")
-            .put("info3", foto.info3Wert ?: "")
-            .put("info4", foto.info4Wert ?: "")
-            .put("info5", foto.info5Wert ?: "")
+        val buffer = ByteArrayOutputStream(96)
+        DataOutputStream(buffer).use { out ->
+            out.writeLong(foto.erstelltAmEpochMs)
+            out.writeFloat(foto.gpsLat.toFloat())
+            out.writeFloat(foto.gpsLon.toFloat())
+            out.writeFloat(foto.gpsAltM?.toFloat() ?: Float.NaN)
+            out.writeFloat(foto.km?.toFloat() ?: Float.NaN)
+            out.writeFloat(foto.achsabstandM?.toFloat() ?: Float.NaN)
+            out.writeShort(foto.kmSuffix.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()))
+            out.writeByte(if (foto.kmManuell) 1 else 0)
+            out.writeByte(foto.bildtyp.ordinal.coerceIn(0, 254))
+            out.writeByte(foto.indikator?.ordinal?.coerceIn(0, 254) ?: 255)
+            writeTinyUtf(out, foto.firma, 12)
+            writeTinyUtf(out, foto.kurztext, 20)
+            writeTinyUtf(out, foto.objektKennung.orEmpty(), 10)
+            writeTinyUtf(out, foto.objektBereich.orEmpty(), 8)
+        }
         val encoded = Base64.encodeToString(
-            meta.toString().toByteArray(Charsets.UTF_8),
+            buffer.toByteArray(),
             Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
         )
-        val cleanOriginal = original.replace(Regex("[^A-Za-z0-9._()-]+"), "_").take(70).ifBlank { "bild.jpg" }
-        return "BTBPHOTO__${encoded}__${cleanOriginal}"
+        val cleanOriginal = original
+            .replace(Regex("[^A-Za-z0-9._()-]+"), "_")
+            .take(22)
+            .ifBlank { "bild.jpg" }
+        return "${PHOTO_PREFIX_V1}${encoded}__${cleanOriginal}".take(MAX_ATTACHMENT_FILENAME_LENGTH)
     }
 
     private fun decodePhotoMetadata(filename: String?): JSONObject? {
         val raw = filename.orEmpty()
-        if (!raw.startsWith("BTBPHOTO__")) return null
-        val encoded = raw.removePrefix("BTBPHOTO__").substringBefore("__")
+        if (raw.startsWith(PHOTO_PREFIX_V1)) {
+            val encoded = raw.removePrefix(PHOTO_PREFIX_V1).substringBefore("__")
+            if (encoded.isBlank()) return null
+            return runCatching {
+                val bytes = Base64.decode(encoded, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+                DataInputStream(ByteArrayInputStream(bytes)).use { input ->
+                    val epoch = input.readLong()
+                    val lat = input.readFloat().toDouble()
+                    val lon = input.readFloat().toDouble()
+                    val alt = input.readFloat()
+                    val km = input.readFloat()
+                    val achs = input.readFloat()
+                    val kmSuffix = input.readShort().toInt()
+                    val flags = input.readUnsignedByte()
+                    val bildtypIndex = input.readUnsignedByte()
+                    val indikatorIndex = input.readUnsignedByte()
+                    val firma = readTinyUtf(input)
+                    val kurztext = readTinyUtf(input)
+                    val objektKennung = readTinyUtf(input)
+                    val objektBereich = readTinyUtf(input)
+
+                    JSONObject()
+                        .put("epoch", epoch)
+                        .put("lat", lat)
+                        .put("lon", lon)
+                        .putNullable("alt", alt.takeUnless(Float::isNaN)?.toDouble())
+                        .putNullable("km", km.takeUnless(Float::isNaN)?.toDouble())
+                        .putNullable("achsabstand", achs.takeUnless(Float::isNaN)?.toDouble())
+                        .put("kmSuffix", kmSuffix)
+                        .put("kmManuell", flags and 1 != 0)
+                        .put("typ", Bildtyp.values().getOrNull(bildtypIndex)?.name ?: Bildtyp.FOTODOKUMENTATION.name)
+                        .put("indikator", Indikator.values().getOrNull(indikatorIndex)?.name ?: "")
+                        .put("firma", firma)
+                        .put("kurztext", kurztext.ifBlank { "Synchronisiertes BTB-Foto" })
+                        .put("objektKennung", objektKennung)
+                        .put("objektBereich", objektBereich)
+                }
+            }.getOrNull()
+        }
+
+        // Rückwärtskompatibilität für bereits hochgeladene frühe Entwicklungsstände.
+        if (!raw.startsWith(PHOTO_PREFIX_LEGACY)) return null
+        val encoded = raw.removePrefix(PHOTO_PREFIX_LEGACY).substringBefore("__")
         if (encoded.isBlank()) return null
         return runCatching {
             val bytes = Base64.decode(encoded, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
             JSONObject(String(bytes, Charsets.UTF_8))
         }.getOrNull()
+    }
+
+    private fun writeTinyUtf(out: DataOutputStream, value: String, maxBytes: Int) {
+        var text = value.trim()
+        while (text.isNotEmpty() && text.toByteArray(Charsets.UTF_8).size > maxBytes) {
+            text = text.dropLast(1)
+        }
+        val bytes = text.toByteArray(Charsets.UTF_8)
+        out.writeByte(bytes.size)
+        out.write(bytes)
+    }
+
+    private fun readTinyUtf(input: DataInputStream): String {
+        val size = input.readUnsignedByte()
+        val bytes = ByteArray(size)
+        input.readFully(bytes)
+        return String(bytes, Charsets.UTF_8)
     }
 
     private fun wasImported(serverAttachmentId: String): Boolean = importedPrefs.getBoolean(serverAttachmentId, false)
@@ -212,5 +281,8 @@ class BtbTeamMediaSync(context: Context) {
 
     companion object {
         private const val PREF_IMPORTED = "tb_helfer_btb_media_import_v1"
+        private const val PHOTO_PREFIX_V1 = "BTBP1__"
+        private const val PHOTO_PREFIX_LEGACY = "BTBPHOTO__"
+        private const val MAX_ATTACHMENT_FILENAME_LENGTH = 160
     }
 }
