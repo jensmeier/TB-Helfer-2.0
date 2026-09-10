@@ -82,9 +82,9 @@ def main() -> int:
     require_text(
         ANDROID / "ui" / "bautagebuch" / "BtbDokumentIdentitaet.kt",
         [
-            "internes TB-Team + Datum + Schicht",
             "TeamDisplayCache.ownTeam",
             "BTB_${datumIso}_${schichtToken}_${verantwortlicherToken}",
+            "verantwortlicherTb",
             "worksiteServerId",
             "groupId",
         ],
@@ -103,6 +103,7 @@ def main() -> int:
         ANDROID / "ui" / "baustelle" / "BtbVerlaufFragment.kt",
         [
             "BTB $verantwortlicherTb",
+            "BtbDokumentIdentitaet.aufloesen",
             "MergeSafeBaustellenExport.normalisieren",
             "schicht = item.schicht",
         ],
