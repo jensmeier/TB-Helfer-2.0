@@ -1,11 +1,15 @@
-# Schema-10-Ergänzung: Ein gemeinsamer BTB pro TB-Team/Datum/Schicht.
+# Schema-10-Ergänzung: gemeinsamer BTB innerhalb eines TB-Teams über eine stabile BTB-ID.
 #
-# Mehrere Helfer dürfen gleichzeitig in denselben fachlichen BTB schreiben. Der normale
-# versionsgeschützte 0.7-Endpunkt bleibt für Mängel/Abnahmen unverändert. BTB-UPSERTs werden
-# bei tatsächlich veraltetem Stand gegen den aktuellsten Serverstand gemerged und bei einem
+# Datum, Arbeitszeit und TAG/NACHT sind Attribute und keine technische Identität mehr. Mehrere
+# Berichte desselben Teams am selben Kalendertag sind erlaubt. Mehrere Helfer dürfen gleichzeitig
+# in denselben fachlichen BTB schreiben, sofern sie dieselbe stabile client_entity_key/BTB-ID
+# verwenden. Altbestände mit historischen Datum:Schicht-Keys bleiben kompatibel.
+#
+# Der normale versionsgeschützte 0.7-Endpunkt bleibt für Mängel/Abnahmen unverändert. BTB-UPSERTs
+# werden bei tatsächlich veraltetem Stand gegen den aktuellsten Serverstand gemerged und bei einem
 # Rennen kontrolliert erneut versucht. Ein normaler Edit auf exakt der gelesenen Version bleibt
-# dagegen ein autoritativer Snapshot, damit bewusst gelöschte/korrigierte Einträge nicht durch
-# eine pauschale Listen-Union wieder auftauchen.
+# dagegen ein autoritativer Snapshot, damit bewusst gelöschte/korrigierte Einträge nicht durch eine
+# pauschale Listen-Union wieder auftauchen.
 
 
 def _btb_json_key(value):
@@ -44,7 +48,6 @@ def _btb_merge_firma(old, new):
     if not isinstance(old,dict): old={}
     if not isinstance(new,dict): new={}
     out=dict(old)
-    # Stammdaten/Zeitfenster: der zuletzt synchronisierte Snapshot ist maßgeblich.
     for key,value in new.items():
         if key not in ("personal","geraete","leistungen"):
             out[key]=value
@@ -131,15 +134,23 @@ def collab_mutations_team_btb_merge(req:CollabMutationRequest, authorization: st
     if req.operation.upper()!="UPSERT" or req.entity_type.upper()!="BTB":
         return _btb_mutations_original(req,authorization)
 
+    if not req.client_entity_key or not str(req.client_entity_key).strip():
+        raise HTTPException(400,"BTB_ID_REQUIRED")
+
+    # Der Client-Key ist die technische BTB-ID. Der Payload spiegelt sie nur zur lokalen
+    # Wiederherstellung; ein abweichender Wert darf niemals zwei fachliche Berichte vermischen.
+    payload_btb_id=str((req.payload or {}).get("btbId") or "").strip()
+    if payload_btb_id and payload_btb_id!=str(req.client_entity_key).strip():
+        raise HTTPException(409,"BTB_ID_MISMATCH")
+    req.payload=dict(req.payload or {})
+    req.payload["btbId"]=str(req.client_entity_key).strip()
+
     d=require_device(authorization)
     contribution=json.loads(json.dumps(req.payload or {},ensure_ascii=False,default=str))
     client_base_version=req.base_version
     force_merge=False
     last_response=None
 
-    # Der Originalendpunkt sperrt den stabilen Client-Key/Datensatz in seiner eigenen DB-
-    # Transaktion. Zwischen unserem Vorlesen und dieser Sperre kann trotzdem ein anderer Helfer
-    # gewinnen. In diesem seltenen Rennen lesen/mergen wir bis zu fünfmal neu.
     for _attempt in range(5):
         with db() as conn, conn.cursor() as cur:
             access=load_worksite_access(cur,d,req.worksite_id)
@@ -163,10 +174,6 @@ def collab_mutations_team_btb_merge(req:CollabMutationRequest, authorization: st
                 current_version=int(row["current_version"])
                 req.entity_id=str(row["id"])
                 req.base_version=current_version
-
-                # Exakt die Version bearbeitet, die der Client gelesen hatte: sein Snapshot darf
-                # auch Einträge entfernen/korrigieren. Nur ein wirklich veralteter/paralleler
-                # Snapshot wird additiv mit dem inzwischen neueren Team-BTB zusammengeführt.
                 exact_base=(
                     not force_merge
                     and client_base_version is not None
@@ -188,9 +195,6 @@ def collab_mutations_team_btb_merge(req:CollabMutationRequest, authorization: st
         if not _btb_is_version_conflict(last_response):
             return last_response
 
-        # Nach einem CREATE-/UPDATE-Rennen erneut gegen den jetzt aktuellen Serverstand mergen.
-        # Die konfliktbehaftete Entity-ID/Basis darf die Suche über den stabilen Client-Key nicht
-        # blockieren. Ab hier ist additive Merge-Strategie zwingend, weil Paralleländerung vorliegt.
         force_merge=True
         req.entity_id=None
         req.base_version=None
