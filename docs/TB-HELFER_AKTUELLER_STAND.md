@@ -162,6 +162,7 @@ Neu vorbereitete Prüfungen:
   - erwarteter Marker: `MULTI_BTB_SCHEMA10_OK`
 - `server/checks/08_verify_multi_btb_source.py`
   - prüft DB-/Server-/Android-Quellvertrag für stabile `btbId`
+  - kontrolliert zusätzlich, dass Android die für die WLAN-/Mobilfunkprüfung nötige `ACCESS_NETWORK_STATE`-Berechtigung besitzt
   - erwarteter Marker: `MULTI_BTB_SOURCE_OK`.
 
 Diese beiden neuen Prüfungen sind **vorbereitet, aber noch nicht auf dem NAS bzw. in einem lokalen Checkout ausgeführt**.
@@ -187,6 +188,7 @@ Altbestände ohne passende stabile `btbId` verwenden weiterhin das historische D
 
 Statischer Prüfer vorbereitet:
 - `server/checks/09_verify_android_multi_btb_photo_state_source.py`
+- kontrolliert zusätzlich, dass der aktive Pointer nur für das passende Datum + die passende Schicht verwendet wird
 - erwarteter Marker: `ANDROID_MULTI_BTB_PHOTO_STATE_OK`.
 - auch dieser Check wurde noch nicht tatsächlich ausgeführt.
 
