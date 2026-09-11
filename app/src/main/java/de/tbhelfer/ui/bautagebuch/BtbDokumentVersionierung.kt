@@ -169,6 +169,21 @@ object BtbDokumentVersionierung {
     }
 
     /**
+     * True, wenn nach der letzten bestaetigten Abschlussversion wieder fachliche Daten geaendert
+     * wurden. Metafelder wie Abschlusszeit oder Dokumentversion zaehlen dabei nicht als Aenderung.
+     */
+    fun istSeitLetztemAbschlussGeaendert(context: Context, entry: BautagebuchEintrag): Boolean {
+        synchronisiereBestaetigtenAbschluss(context, entry)
+        val current = currentFile(context, entry)?.takeIf { it.exists() } ?: return false
+        val baseline = baselineFile(context, entry)?.takeIf { it.exists() } ?: return false
+        return runCatching {
+            val currentJson = JSONObject(current.readText(Charsets.UTF_8))
+            val baselineJson = JSONObject(baseline.readText(Charsets.UTF_8))
+            vergleichsInhalt(currentJson) != vergleichsInhalt(baselineJson)
+        }.getOrDefault(false)
+    }
+
+    /**
      * Bereitet den naechsten moeglichen Abschluss vor. Dasselbe Verfahren wird auch bei einem
      * Entwurf aufgerufen; weil dort die erwartete Vn-PDF nicht entsteht, wird der Snapshot spaeter
      * automatisch verworfen und kann keinen Abschluss vortaeuschen.
@@ -230,7 +245,7 @@ object BtbDokumentVersionierung {
             "letzterAbschlussEpochMs",
             "letzterAbschlussBenutzer",
             "geaendertAmEpochMs"
-        ).forEach(copy::remove)
+        ).forEach { copy.remove(it) }
         return copy.toString()
     }
 }
