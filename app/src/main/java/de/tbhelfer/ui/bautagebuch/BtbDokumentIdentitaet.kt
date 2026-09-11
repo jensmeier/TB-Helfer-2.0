@@ -26,6 +26,8 @@ object BtbDokumentIdentitaet {
         val startUhrzeit: String?,
         val endeUhrzeit: String?,
         val dokumentVersion: Int,
+        val abschlussEpochMs: Long? = null,
+        val abschlussBenutzer: String? = null,
         // Legacy-/Anzeigeinformationen bleiben für Altbestände erhalten.
         val schicht: SchichtTyp,
         val schichtAnzeige: String,
@@ -67,6 +69,11 @@ object BtbDokumentIdentitaet {
         }
     }
 
+    /**
+     * Löst die sichtbare Dokumentidentität auf und bereitet gleichzeitig die nächste belastbare
+     * Dokumentversion vor. Die eigentliche Bestätigung geschieht erst, wenn die erwartete Vn-PDF
+     * auf dem Datenträger gefunden wird; Entwürfe oder abgebrochene PDF-Läufe zählen daher nicht.
+     */
     suspend fun aufloesen(context: Context, entry: BautagebuchEintrag): Identitaet {
         val appContext = context.applicationContext
         val root = runCatching {
@@ -91,13 +98,9 @@ object BtbDokumentIdentitaet {
             SchichtTyp.NACHT -> "Nacht"
         }
         val shiftToken = entry.schicht.name
-        val stableBtbToken = entry.btbId
-            ?.let(::safeToken)
-            ?.take(18)
-            ?.takeIf { it.isNotBlank() }
-            ?: "ALT_${entry.datumIso}_${shiftToken}"
+        val stableBtbToken = BtbDokumentVersionierung.dokumentToken(entry)
 
-        return Identitaet(
+        val base = Identitaet(
             firmenname = NutzerSpeicher.laden(appContext)?.firmenname?.trim()?.takeIf { it.isNotBlank() },
             baustelleName = entry.baustelleName,
             verantwortlicherTb = responsible.trim().ifBlank { "TB" },
@@ -108,12 +111,26 @@ object BtbDokumentIdentitaet {
             endeDatumIso = entry.endeDatumIso,
             startUhrzeit = entry.startUhrzeit,
             endeUhrzeit = entry.endeUhrzeit,
-            dokumentVersion = entry.dokumentVersion,
+            dokumentVersion = entry.dokumentVersion.coerceAtLeast(0),
+            abschlussEpochMs = entry.letzterAbschlussEpochMs,
+            abschlussBenutzer = entry.letzterAbschlussBenutzer,
             schicht = entry.schicht,
             schichtAnzeige = shiftDisplay,
             schichtToken = shiftToken,
             worksiteServerId = syncContext?.worksiteServerId,
             groupId = ownTeam?.groupId ?: syncContext?.groupId
+        )
+
+        val prepared = BtbDokumentVersionierung.vorbereiten(
+            context = appContext,
+            entry = entry,
+            expectedPdfName = { version -> base.pdfDateiname(version) },
+            benutzer = base.verantwortlicherTb
+        )
+        return base.copy(
+            dokumentVersion = prepared.naechsteVersion,
+            abschlussEpochMs = prepared.abschlussEpochMs,
+            abschlussBenutzer = prepared.benutzer
         )
     }
 
