@@ -22,7 +22,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Gerätespezifische Einstellungen für Nutzer, Baustellen-Synchronisation, Benachrichtigungen, Anzeige, Kamera, BTB und Wartung."
+            android:text="Gerätespezifische Einstellungen für Nutzer, Benachrichtigungen, Anzeige, Kamera, BTB und Wartung. Baustellen-Team und QR werden direkt in der Baustellenliste verwaltet."
             android:textColor="?attr/colorOnBackground"
             android:alpha="0.8"
             android:paddingBottom="16dp"
@@ -33,14 +33,6 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:text="Nutzer / Firma"
-            android:gravity="center" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnBaustellenSync"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="12dp"
-            android:text="Baustellen-Synchronisation"
             android:gravity="center" />
 
         <com.google.android.material.button.MaterialButton
