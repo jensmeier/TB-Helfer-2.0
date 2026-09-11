@@ -16,6 +16,11 @@ import com.google.android.material.color.MaterialColors
 import de.tbhelfer.R
 import de.tbhelfer.datenbank.BaustellenKnotenEntity
 import de.tbhelfer.datenbank.BaustellenKnotenTyp
+import de.tbhelfer.server.TeamDisplayCache
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 enum class BaustellenKnotenAdapterMode {
     HAUPTLISTE,
@@ -125,7 +130,7 @@ class BaustellenKnotenAdapter(
         holder.indentIcon.visibility = if (item.ebene > 0) View.VISIBLE else View.GONE
         holder.titel.text = titelBasis
 
-        holder.details.text = when (k.typ) {
+        val detailBasis = when (k.typ) {
             BaustellenKnotenTyp.HAUPT -> "Tippen: aufklappen / öffnen"
             BaustellenKnotenTyp.FREIE_STRECKE -> {
                 listOf("Freie Strecke", kmBereich).filter { !it.isNullOrBlank() }.joinToString(" · ")
@@ -145,6 +150,11 @@ class BaustellenKnotenAdapter(
                 .filter { !it.isNullOrBlank() }
                 .joinToString(" · ")
         }
+        val serverStatus = if (mode == BaustellenKnotenAdapterMode.HAUPTLISTE && k.typ == BaustellenKnotenTyp.HAUPT) {
+            formatServerStatus(holder.itemView, k.id)
+        } else null
+        holder.details.text = listOfNotNull(detailBasis.takeIf { it.isNotBlank() }, serverStatus)
+            .joinToString("\n")
 
         holder.aktuell.visibility = if (item.istAktuell) View.VISIBLE else View.GONE
 
@@ -233,6 +243,30 @@ class BaustellenKnotenAdapter(
         }
     }
 
+    private fun formatServerStatus(view: View, localRootId: Long): String {
+        val status = TeamDisplayCache.worksiteCardStatus(view.context, localRootId)
+            ?: return "Noch nicht mit Server synchronisiert"
+        val team = if (status.responsibleTbCount > 0 || status.helperCount > 0) {
+            "${status.responsibleTbCount} TB · ${status.helperCount} Helfer"
+        } else {
+            "Teamdaten noch nicht geladen"
+        }
+        val sync = status.lastSuccessfulSyncEpochMs?.let(::formatSyncTime)
+            ?: "noch nicht"
+        return "$team · Zuletzt synchronisiert: $sync"
+    }
+
+    private fun formatSyncTime(epochMs: Long): String {
+        val zone = ZoneId.systemDefault()
+        val value = Instant.ofEpochMilli(epochMs).atZone(zone)
+        val today = LocalDate.now(zone)
+        val dateLabel = when (value.toLocalDate()) {
+            today -> "heute"
+            today.minusDays(1) -> "gestern"
+            else -> value.toLocalDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+        }
+        return "$dateLabel ${value.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"))}"
+    }
 
     private fun bindStatusChip(
         chip: TextView,
