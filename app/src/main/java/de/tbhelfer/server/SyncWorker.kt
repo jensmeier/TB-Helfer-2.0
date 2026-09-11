@@ -1,6 +1,8 @@
 package de.tbhelfer.server
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -13,11 +15,15 @@ import de.tbhelfer.datenbank.BtbTeamMediaSync
 import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.OfflineSyncRepository
+import de.tbhelfer.einstellungen.SyncEinstellungenSpeicher
 import java.util.concurrent.TimeUnit
 
 /**
- * Schonender Hintergrund-Sync. Der manuelle Button bleibt der sofortige Sync;
- * dieser Worker sorgt nur dafür, dass ein Gerät mit Internet später selbständig nachzieht.
+ * Schonender Hintergrund-Sync.
+ *
+ * Zeitplan und Netzart sind gerätelokal einstellbar. Bewusst manuelle Sync-Aktionen werden in der
+ * UI behandelt; dieser Worker ist ausschließlich der automatische/entprellte Hintergrundpfad und
+ * hält sich deshalb strikt an die gewählte Netzregel.
  */
 class SyncWorker(
     appContext: Context,
@@ -26,6 +32,10 @@ class SyncWorker(
 
     override suspend fun doWork(): Result {
         ServiceLocator.initialisieren(applicationContext)
+        val settings = SyncEinstellungenSpeicher.laden(applicationContext)
+        if (settings.zeitplan == SyncEinstellungenSpeicher.Zeitplan.MANUELL) return Result.success()
+        if (!networkAllowed(settings.netz)) return Result.success()
+
         val tokenStore = SecureTokenStore(applicationContext)
         val token = tokenStore.load() ?: return Result.success()
         val repository = ServiceLocator.offlineSyncRepository
@@ -48,6 +58,7 @@ class SyncWorker(
                 // Server 0.6.0 unterstützt den bewährten Lese-/Offline-Sync, aber noch nicht
                 // den inkrementellen Änderungsfeed. Dann sauber beenden statt 404 zu erzeugen.
                 if (!supportsIncrementalSync(serverVersion)) {
+                    SyncStatusSpeicher.erfolgMerken(applicationContext)
                     return Result.success()
                 }
 
@@ -62,6 +73,7 @@ class SyncWorker(
 
                 // Ab 0.7.0 zusätzlich Baustellen-Team/BTB/Mängel/Abnahmen synchronisieren.
                 if (!supportsCollabSync(serverVersion)) {
+                    SyncStatusSpeicher.erfolgMerken(applicationContext)
                     return Result.success()
                 }
 
@@ -118,7 +130,7 @@ class SyncWorker(
                 }
 
                 // 5) Nach dem Text-Upload nochmals BTB-Medien versuchen. Das deckt insbesondere einen
-                //    ganz neuen Tages-BTB ab, dessen Server-UUID erst in Schritt 4 entstanden ist.
+                //    ganz neuen BTB ab, dessen Server-UUID erst in Schritt 4 entstanden ist.
                 val secondBtbMedia = when (val media = btbMedia.synchronize(token)) {
                     BtbTeamMediaSync.Result.SessionInvalid -> {
                         tokenStore.clear()
@@ -167,8 +179,50 @@ class SyncWorker(
                 notifications
                     .distinctBy { "${it.entityType}|${it.changedByName.orEmpty()}" }
                     .forEach { event -> CollabBenachrichtigungen.anzeigen(applicationContext, event) }
+
+                // Offline-Status für die Baustellenkarten auffrischen. Fehler beim reinen
+                // Anzeigenamen/Teamzähler dürfen einen ansonsten erfolgreichen Daten-Sync nicht kippen.
+                runCatching { refreshWorksiteDisplayState(token) }
+                SyncStatusSpeicher.erfolgMerken(applicationContext)
                 Result.success()
             }
+        }
+    }
+
+    private suspend fun refreshWorksiteDisplayState(token: String) {
+        val contexts = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
+        val teamApi = TeamManagementApi()
+        contexts.forEach { item ->
+            val worksiteId = item.context.worksiteServerId
+            val localRootId = item.localWorksite?.id
+            if (localRootId != null) {
+                TeamDisplayCache.bindLocalRoot(applicationContext, localRootId, worksiteId)
+            }
+            when (val result = teamApi.loadTeam(token, worksiteId)) {
+                is TeamManagementApi.TeamResult.Success ->
+                    TeamDisplayCache.remember(applicationContext, result.team, localRootId)
+                else -> {
+                    if (localRootId != null) {
+                        TeamDisplayCache.markSuccessfulSync(applicationContext, localRootId, worksiteId)
+                    } else {
+                        TeamDisplayCache.markSuccessfulSync(applicationContext, worksiteId)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun networkAllowed(net: SyncEinstellungenSpeicher.Netz): Boolean {
+        val cm = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return false
+        val active = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(active) ?: return false
+        val wifi = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+        val cellular = caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+        return when (net) {
+            SyncEinstellungenSpeicher.Netz.NUR_WLAN -> wifi
+            SyncEinstellungenSpeicher.Netz.NUR_MOBILFUNK -> cellular
+            SyncEinstellungenSpeicher.Netz.WLAN_UND_MOBILFUNK -> wifi || cellular
         }
     }
 
@@ -197,16 +251,28 @@ class SyncWorker(
         private const val UNIQUE_NAME = "tbhelfer-server-sync"
 
         fun schedule(context: Context) {
+            val appContext = context.applicationContext
+            val settings = SyncEinstellungenSpeicher.laden(appContext)
+            val workManager = WorkManager.getInstance(appContext)
+            if (settings.zeitplan == SyncEinstellungenSpeicher.Zeitplan.MANUELL) {
+                workManager.cancelUniqueWork(UNIQUE_NAME)
+                return
+            }
+
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .setRequiresBatteryNotLow(true)
                 .build()
-
-            val request = PeriodicWorkRequestBuilder<SyncWorker>(6, TimeUnit.HOURS)
+            val repeatHours = when (settings.zeitplan) {
+                SyncEinstellungenSpeicher.Zeitplan.MANUELL -> return
+                SyncEinstellungenSpeicher.Zeitplan.STUENDLICH -> 1L
+                SyncEinstellungenSpeicher.Zeitplan.TAEGLICH -> 24L
+            }
+            val request = PeriodicWorkRequestBuilder<SyncWorker>(repeatHours, TimeUnit.HOURS)
                 .setConstraints(constraints)
                 .build()
 
-            WorkManager.getInstance(context.applicationContext).enqueueUniquePeriodicWork(
+            workManager.enqueueUniquePeriodicWork(
                 UNIQUE_NAME,
                 ExistingPeriodicWorkPolicy.UPDATE,
                 request
