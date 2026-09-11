@@ -1,6 +1,6 @@
 # TB-Helfer – aktueller Projektstand
 
-Stand: 2026-09-10
+Stand: 2026-09-11
 
 Diese Datei ist die verbindliche technische Übergabe zwischen Chats/Sitzungen. Fachliche Grundsatzentscheidungen stehen zusätzlich in `docs/TB-HELFER_PROJEKTREGELN.md`.
 
@@ -17,7 +17,7 @@ Vor jeder Änderung zuerst lesen:
 - aktiv: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
 - PR bleibt Draft bis zum erfolgreichen Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test.
-- Android im Feature-Branch: `versionCode 200020`, `versionName 1.3`.
+- Android im Feature-Branch: `versionCode 200021`, `versionName 1.3`.
 
 ## Produktiver Synology-Stand
 - NAS/Synology ist Source of Truth.
@@ -58,7 +58,6 @@ Migration 010 lief mit `ON_ERROR_STOP`, endete mit `INSERT 0 1` und `COMMIT`. An
 - Ersteller der Server-Baustelle ist erster verantwortlicher TB.
 - weitere verantwortliche TBs treten per sicherer Baustelleneinladung bei.
 - Helfer werden in die Gruppe ihres verantwortlichen TB eingeladen und können `area_scope` erhalten.
-- sichtbare UI: `Verantwortliche TBs`, `Helfer einladen`, `Weiteren TB einladen`.
 - keine sichtbaren A/B/C/D-Gruppenbezeichnungen.
 - Aktivierungs-QR und Baustellen-Einladungs-QR bleiben getrennt.
 - Namen sind nie technische Schlüssel; UUIDs/Team-IDs bleiben maßgeblich.
@@ -79,7 +78,7 @@ Beispielanzeige:
 - `BTB Jens Zinkel · 05.06.2026 · Tag`
 - `BTB Max Müller · 05.06.2026 · Nacht`
 
-## Praktischer BTB-Zwei-Geräte-Befund 2026-09-10
+## Praktischer BTB-Zwei-Geräte-Befund
 Produktive DB-Prüfung für `Immenstadt`:
 - vier BTB-Einträge liegen in `tb.collab_btb_entries`.
 - darunter `2026-09-10:NACHT` mit der auf dem Poco geschriebenen Testnotiz.
@@ -88,22 +87,62 @@ Produktive DB-Prüfung für `Immenstadt`:
 - `tb.collab_device_state`: Pixel und Poco jeweils `handy_cursor=6`, `server_cursor=6`.
 - damit hat auch das Pixel den vollständigen Collaboration-Feed abgeholt.
 
-Gefundener Fehler:
-- Pixel hatte trotz Server-Mitgliedschaft keine lokale Hauptbaustelle `Immenstadt`.
-- der Server-BTB war im Sync-Cache vorhanden, konnte aber ohne lokale Baustellenbindung nicht in den normalen Pixel-BTB-Speicher geschrieben werden.
+Befund Android 200020:
+- Pixel hatte zunächst trotz Server-Mitgliedschaft keine lokale Hauptbaustelle `Immenstadt`.
+- der 200020-Root-Bootstrap hat danach `Immenstadt` auf dem Pixel automatisch lokal angelegt und gebunden: **praktisch bestätigt**.
+- die neue lokale Hauptbaustelle wurde jedoch nicht automatisch als aktuelle Baustelle gesetzt.
+- deshalb arbeitete der normale BTB-Bildschirm weiter mit der zuvor ausgewählten Baustelle; der Nutzer konnte in der neuen `Immenstadt` nicht unmittelbar arbeiten und vorhandene Poco-BTBs wirkten unsichtbar.
 
-## Android 200020 – lokaler Baustellen-Bootstrap
-Fix im Feature-Branch:
-- `WorksiteBindingRepository.contextsWithBindings()` erzeugt für eine ungebundene Server-Baustelle automatisch einen lokalen HAUPT-Knoten mit dem Server-Baustellennamen und bindet ihn sofort.
-- Automatik greift nur, wenn auf dem Gerät noch **keine gleichnamige lokale Hauptbaustelle** existiert.
-- existiert bereits eine gleichnamige lokale Hauptbaustelle, wird weiterhin **nicht automatisch nach Namen zusammengeführt**; die bewusste manuelle Auswahl bleibt erhalten.
-- dadurch kann `CollabLocalBridge.applyServerStateToLocal()` bereits heruntergeladene BTB/Mängel/Abnahmen in den normalen lokalen Fachspeicher übernehmen.
-- `ServiceLocator` verwendet dafür `BaustellenBaumRepository` im `WorksiteBindingRepository`.
-- Version wurde auf **200020** angehoben.
-- Build/Installation/Praxis-Re-Test von 200020 stehen noch aus.
+## Android 200021 – vereinfachter Baustellen-/QR-Ablauf
+Aktueller Feature-Branch enthält jetzt zusätzlich:
+- `Baustellen-Synchronisation` ist aus dem normalen **Einstellungen**-Menü entfernt.
+- Synchronisation bleibt technisch/Hintergrundfunktion; der Nutzer muss dafür nicht mehr in ein separates Einstellungsmenü.
+- in der normalen **Baustellenliste** gibt es direkt den Button **`QR scannen`**.
+- der gescannte Baustellen-QR entscheidet serverseitig selbst, ob der Beitritt als `HELPER` oder `LEAD`/verantwortlicher TB erfolgt; keine zusätzliche Rollenauswahl beim Empfänger.
+- nach erfolgreichem QR-Beitritt werden Collaboration-Daten synchronisiert, die lokale Hauptbaustelle aufgebaut/gebunden und direkt **als aktuelle Baustelle gesetzt**.
+- bei einer bereits vorhandenen gleichnamigen lokalen Hauptbaustelle wird aus Sicherheitsgründen nicht blind nach Namen zusammengeführt; stattdessen erscheint unmittelbar ein lokaler Auswahl-Dialog.
+- der Langdruck-Menüpunkt **`Nutzer hinzufügen`** bleibt auf der Baustellenseite. Er öffnet keinen separaten Sync-Bildschirm mehr.
+- dort gibt es direkt die Auswahl:
+  - `Nutzer (verantwortlichen TB) hinzufügen`
+  - `Helfer hinzufügen`
+- für Helfer bleibt die Bereichsfreigabe (`Gesamte Baustelle` oder Bereich/km) erhalten.
+- der erzeugte QR wird direkt angezeigt und kann über **`Teilen / senden`** weitergegeben werden.
+- neue zentrale Implementierung: `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenTeamDirekt.kt`.
+- Android-Version dafür: **200021**.
+- 200021 ist noch nicht lokal gebaut/installiert/getestet.
+
+Die alte `BaustellenSyncFragment`-Implementierung bleibt vorerst technisch im Quellstand als Diagnose-/Rückfallpfad, ist aber kein normaler Benutzereinstieg mehr.
+
+## Sync-Matrix aus dem Praxismodell
+Verbindliche Interpretation der aktuell besprochenen Matrix:
+
+### Verantwortlicher TB A ↔ verantwortlicher TB B derselben Baustelle
+- Baustelle inkl. freigegebener Unterbaustellen: gemeinsamer Baustellenstand.
+- benötigte Strecken-/Arbeitsdaten: über NAS/Server synchronisiert, Originaldaten bleiben unverändert; keine blind kopierten Originalpakete.
+- Mängel/Schäden und Abnahmen: baustellenweit innerhalb der Berechtigung gemeinsam.
+- dazugehörige Bilder: gemeinsam innerhalb derselben Berechtigung.
+- **BTB nicht zwischen TB A und TB B vermischen.** Jeder verantwortliche TB hat seinen eigenen Team-BTB.
+
+### Verantwortlicher TB ↔ Helfer desselben TB-Teams
+- Baustelle inkl. freigegebener Unterbaustellen: Helfer erhält den benötigten/berechtigten Stand.
+- benötigte Streckendaten: selektiv nach Berechtigung/Arbeitsbereich.
+- BTB: **gemeinsam in beide Richtungen innerhalb desselben TB-Teams**.
+- Mängel/Schäden und Abnahmen: innerhalb der Helfer-Berechtigung synchronisiert.
+- Helferbilder müssen zum verantwortlichen TB/Server hochgehen; Download anderer Bilder zum Helfer nur soweit für seinen Bereich/Arbeitsablauf nötig.
+
+## Nutzer/Helfer aus Baustelle entfernen – noch offen
+Der gewünschte Bedienpunkt `Nutzer/Helfer entfernen` soll ebenfalls direkt bei der Baustelle liegen, nicht in einem separaten Sync-Menü.
+
+Aktueller Serverstand bietet Einladen, Einlösen und Einladung widerrufen, aber noch **keinen fertigen mobilen Endpunkt zum Entfernen einer bestehenden Baustellen-Mitgliedschaft**. Deshalb wurde kein gefährliches rein lokales Löschen eingebaut.
+
+Nächster Serverpunkt:
+- Mitgliedschaft serverseitig entfernen/widerrufen.
+- Helfer: verantwortlicher TB darf Helfer seiner TB-Gruppe entfernen.
+- Verhalten für das Entfernen eines anderen verantwortlichen TBs muss mit den bestehenden Gruppen-/Datenregeln sicher umgesetzt werden; vorhandene BTB-/Mängel-/Abnahmedaten dürfen dadurch nicht versehentlich gelöscht werden.
+- danach direkte Auswahl `Nutzer/Helfer entfernen` im selben Baustellen-Menü.
 
 ## Noch fehlender Baustellenstruktur-Sync
-Wichtig: Der Root-Bootstrap löst den aktuellen BTB-Blocker, aber noch nicht den kompletten lokalen Baustellenbaum.
+Wichtig: Der Root-Bootstrap löst nur die Hauptbaustelle, noch nicht den kompletten lokalen Baustellenbaum.
 
 Aktueller Befund:
 - Poco hat lokal Hauptbaustelle `Immenstadt` mit Unterbaustelle `5362-1`.
@@ -165,8 +204,8 @@ Server/Admin müssen daraus Bahnhofscode/Name vervollständigen. Keine neue Bahn
 
 ## Android-Buildstatus
 - Android 200019 wurde mehrfach lokal erfolgreich gebaut und installiert.
-- letzter dokumentierter 200019-Build nach BTB-PDF-Abschluss: `BUILD SUCCESSFUL in 14s`, 69 Tasks.
-- Android **200020** enthält den neuen lokalen Hauptbaustellen-Bootstrap und ist **noch nicht praktisch gebaut/getestet**.
+- Android 200020 wurde auf dem Pixel praktisch getestet: Root-Bootstrap `Immenstadt` funktioniert; fehlendes automatisches `aktuell` wurde erkannt.
+- Android **200021** enthält den direkten Baustellen-/QR-Ablauf und ist noch nicht praktisch gebaut/getestet.
 - GitHub Actions ist für diesen Stand nicht maßgeblich; lokale Android-Studio-Builds sind die Autorität.
 - Compilerwarnungen bleiben im separaten Backlog.
 
@@ -197,16 +236,18 @@ Farben:
 - Blau = Auswahl
 
 ## Nächste sichere Schritte
-1. **Keine neue produktive DB-Migration und keinen Server-Rebuild starten.** Schema 10/API 0.7 laufen produktiv.
-2. Android **200020** lokal bauen.
-3. zunächst als Update auf dem Pixel installieren.
-4. Baustellen-Synchronisation öffnen und prüfen, dass `Immenstadt` automatisch lokal angelegt und an die Server-Baustelle gebunden wird.
-5. prüfen, ob der bereits gecachte `2026-09-10:NACHT`-BTB einschließlich Poco-Testnotiz auf dem Pixel erscheint.
-6. auf Pixel einen BTB-Eintrag ergänzen, synchronisieren und auf Poco prüfen.
-7. danach den Unterbaustellen-/Baustellenstruktur-Sync für `5362-1` bauen.
-8. anschließend Mängel/Abnahmen/Bilder/Benachrichtigungen, Offline/409/Tombstones/Netzabbruch und Merge-Export mit beiden Geräten testen.
-9. danach den separaten Vermessungsblock fertigstellen.
-10. PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
+1. **Keine neue produktive DB-Migration und keinen Server-Rebuild für 200021 starten.** Die aktuelle UI-Änderung ist Android-seitig.
+2. Android **200021** lokal bauen.
+3. als Update auf Pixel und Poco installieren; App-Daten nicht löschen.
+4. Pixel: normale Baustellenliste prüfen – `QR scannen` muss direkt sichtbar sein; Einstellungen dürfen keinen `Baustellen-Synchronisation`-Button mehr zeigen.
+5. Poco: `Immenstadt` lange drücken → `Nutzer hinzufügen` → Auswahl Nutzer/Helfer muss direkt auf derselben Seite erscheinen; QR erzeugen und Teilen/Senden testen.
+6. Pixel: QR direkt über `QR scannen` einlesen; Rolle muss ohne weitere Rollenabfrage aus dem QR übernommen werden, Baustelle danach automatisch aktuell sein.
+7. BTB Poco → Pixel und Pixel → Poco erneut testen.
+8. danach Unterbaustellen-/Baustellenstruktur-Sync für `5362-1` bauen.
+9. danach serverseitige Mitgliedschafts-Entfernung und direkte `Nutzer/Helfer entfernen`-Aktion ergänzen.
+10. anschließend Mängel/Abnahmen/Bilder/Benachrichtigungen, Offline/409/Tombstones/Netzabbruch und Merge-Export mit beiden Geräten testen.
+11. danach den separaten Vermessungsblock fertigstellen.
+12. PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
 
 ## Nicht erneut entscheiden / nicht zurückbauen
 - NAS Source of Truth.
@@ -216,6 +257,7 @@ Farben:
 - keine firmenübergreifenden Teams.
 - keine firmenweite Mängel-/Abnahmeverteilung.
 - Self-Service-Baustellenbeitritt statt täglicher Admin-Zuordnung.
+- Baustellen-Team/QR gehört in die Baustellenansicht, nicht als eigener normaler Einstellungs-Menüpunkt.
 - `Verantwortliche TBs` mit echten Namen; keine sichtbaren A/B/C/D-Gruppen.
 - Helfer schreiben in den BTB ihres verantwortlichen TB.
 - BTB-Identität = Team + Datum + Schicht.
