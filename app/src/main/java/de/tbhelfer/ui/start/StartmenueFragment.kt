@@ -17,6 +17,7 @@ import de.tbhelfer.ServiceLocator
 import de.tbhelfer.einstellungen.AktiveBaustelleValidator
 import de.tbhelfer.datenbank.istStandaloneStreckenpunkteBaustelle
 import de.tbhelfer.einstellungen.AnsichtEinstellungenSpeicher
+import de.tbhelfer.server.SyncStatusSpeicher
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -25,6 +26,7 @@ import kotlinx.coroutines.launch
 class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
 
     private var aktuelleAnzeige: String? = null
+    private var refreshMenu: (() -> Unit)? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -75,6 +77,7 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
             } else {
                 "Aktuelle Baustelle\n(${aktuelleAnzeige})"
             }
+            val syncStatus = SyncStatusSpeicher.anzeige(requireContext())
 
             adapter.setzeItems(
                 listOf(
@@ -84,11 +87,12 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
                     StartmenueItem("Suche Bilder/BTB", StartmenueZiel.SUCHE),
                     StartmenueItem("Mein Ordner", StartmenueZiel.MEIN_ORDNER),
                     StartmenueItem("Streckendaten", StartmenueZiel.IMPORT_EXPORT),
-                    StartmenueItem("Daten vom NAS", StartmenueZiel.SERVER_SYNC)
+                    StartmenueItem("Mit NAS synchronisieren\n($syncStatus)", StartmenueZiel.SERVER_SYNC)
                 )
             )
         }
 
+        refreshMenu = ::applyMenuItems
         applyMenuItems()
 
         btnSettings.setOnClickListener {
@@ -181,5 +185,15 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
                     }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshMenu?.invoke()
+    }
+
+    override fun onDestroyView() {
+        refreshMenu = null
+        super.onDestroyView()
     }
 }
