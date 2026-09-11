@@ -64,7 +64,8 @@ object BtbSchnellwechselInstaller {
         if (fragment is BautagebuchFragment) {
             fragment.view?.let { bind(fragment, it) }
         }
-        fragment.childFragmentManager.fragments.forEach(::bindRecursively)
+        val children = runCatching { fragment.childFragmentManager.fragments }.getOrDefault(emptyList())
+        children.forEach(::bindRecursively)
     }
 
     private fun bind(fragment: BautagebuchFragment, root: View) {
@@ -122,7 +123,7 @@ object BtbSchnellwechselInstaller {
                         Snackbar.make(anchor, "Dieser BTB ist bereits geöffnet", Snackbar.LENGTH_SHORT).show()
                         return@setItems
                     }
-                    switchTo(fragment, anchor, altBaustelleId, baustelleName, selected.item)
+                    switchTo(fragment, anchor, appContext, altBaustelleId, baustelleName, selected.item)
                 }
                 .setNegativeButton("Abbrechen", null)
                 .show()
@@ -170,6 +171,7 @@ object BtbSchnellwechselInstaller {
     private fun switchTo(
         fragment: BautagebuchFragment,
         anchor: View,
+        appContext: android.content.Context,
         altBaustelleId: Long,
         baustelleName: String,
         item: BautagebuchSpeicher.VerlaufEintrag
@@ -182,12 +184,14 @@ object BtbSchnellwechselInstaller {
             Snackbar.make(anchor, "Aktuellen BTB speichern…", Snackbar.LENGTH_SHORT).show()
             delay(1_700L)
 
+            if (!fragment.isAdded || fragment.view == null) return@launch
+
             withContext(Dispatchers.IO) {
                 item.btbId
                     ?.takeIf { it.isNotBlank() && !it.startsWith("legacy:") }
                     ?.let { id ->
                         BautagebuchSpeicher.aktivierenBtb(
-                            fragment.requireContext().applicationContext,
+                            appContext,
                             altBaustelleId,
                             baustelleName,
                             id,
@@ -197,7 +201,7 @@ object BtbSchnellwechselInstaller {
                     }
             }
 
-            if (!fragment.isAdded) return@launch
+            if (!fragment.isAdded || fragment.view == null) return@launch
             val args = Bundle().apply {
                 putString("datumIso", item.datum.toString())
                 putString("schichtTyp", item.schicht.name)
