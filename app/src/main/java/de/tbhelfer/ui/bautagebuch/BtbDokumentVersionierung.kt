@@ -76,6 +76,22 @@ object BtbDokumentVersionierung {
         return if (veryOld.exists()) veryOld else modern
     }
 
+    /**
+     * Übergangsbrücke für den vorhandenen PDF-Renderer: dessen Diff-Lader benutzt historisch noch
+     * den Baustellennamen statt der rename-sicheren Baustellen-ID. Nur die letzte Abschlussbaseline
+     * wird gespiegelt; der eigentliche BTB und seine Versionen bleiben ausschließlich ID-basiert.
+     */
+    private fun rendererBaselineMirrorFile(context: Context, entry: BautagebuchEintrag): File? {
+        val d = datum(entry) ?: return null
+        val dir = BautagebuchSpeicher.ordner(context, entry.baustelleName, d)
+        val name = if (entry.schicht == SchichtTyp.NACHT) {
+            "bautagebuch_nacht_original.json"
+        } else {
+            "bautagebuch_tag_original.json"
+        }
+        return File(dir, name)
+    }
+
     private fun pendingMetaFile(context: Context, entry: BautagebuchEintrag): File? =
         dateDir(context, entry)?.let { File(it, ".btb_${storageToken(entry)}$META_SUFFIX") }
 
@@ -149,8 +165,12 @@ object BtbDokumentVersionierung {
             val snapshot = runCatching { JSONObject(snapshotFile.readText(Charsets.UTF_8)) }.getOrNull()
             if (snapshot != null) {
                 applyAbschlussMeta(snapshot, version, closedAt, user, istFertig = true)
+                val baselineText = snapshot.toString(2)
                 baselineFile(context, entry)?.let { baseline ->
-                    runCatching { baseline.writeText(snapshot.toString(2), Charsets.UTF_8) }
+                    runCatching { baseline.writeText(baselineText, Charsets.UTF_8) }
+                }
+                rendererBaselineMirrorFile(context, entry)?.let { mirror ->
+                    runCatching { mirror.writeText(baselineText, Charsets.UTF_8) }
                 }
 
                 currentFile(context, entry)?.takeIf { it.exists() }?.let { current ->
