@@ -18,8 +18,8 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Persoenliche Nutzerkontakte getrennt vom zentralen Firmenprofil.
-        versionCode = 200022
+        // Sichtbare Sync-Einstellungen, NAS-Sync-Status und Baustellen-Teamstatus.
+        versionCode = 200023
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
