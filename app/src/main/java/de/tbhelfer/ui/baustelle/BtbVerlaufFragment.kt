@@ -18,6 +18,7 @@ import de.tbhelfer.ServiceLocator
 import de.tbhelfer.ui.bautagebuch.BautagebuchPdf
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbDokumentIdentitaet
+import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.BtbExportPaket
 import de.tbhelfer.ui.bautagebuch.MergeSafeBaustellenExport
 import kotlinx.coroutines.Dispatchers
@@ -60,7 +61,16 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         lifecycleScope.launch {
             val data = withContext(Dispatchers.IO) {
                 val appContext = requireContext().applicationContext
-                val items = BautagebuchSpeicher.verlaufFuerBaustelle(
+                var items = BautagebuchSpeicher.verlaufFuerBaustelle(
+                    appContext,
+                    altBaustelleId.takeIf { it > 0L },
+                    baustelleName
+                )
+                // Ein erfolgreich geschriebenes Vn wird erst dann als Abschlussbasis übernommen,
+                // wenn die erwartete PDF wirklich vorhanden ist. Beim Öffnen des Verlaufs können
+                // wir diese Bestätigung ohne Risiko nachziehen und danach frisch einlesen.
+                items.forEach { BtbDokumentVersionierung.synchronisiereBestaetigtenAbschluss(appContext, it.entry) }
+                items = BautagebuchSpeicher.verlaufFuerBaustelle(
                     appContext,
                     altBaustelleId.takeIf { it > 0L },
                     baustelleName
@@ -81,14 +91,28 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
 
     private fun cardFor(item: BautagebuchSpeicher.VerlaufEintrag): View {
         val ctx = requireContext()
-        val finished = item.entry.dokumentVersion > 0 || item.baselineExists || item.entry.istFertig
-        val bg = if (finished) Color.parseColor("#E8F5E9") else Color.parseColor("#F5F5F5")
-        val stroke = if (finished) Color.parseColor("#2E7D32") else Color.parseColor("#616161")
-        val version = item.entry.dokumentVersion.coerceAtLeast(if (item.baselineExists) 1 else 0)
-        val status = if (finished) {
-            "Abgeschlossen · V${version.coerceAtLeast(1)} · erneut bearbeitbar"
-        } else {
-            "Entwurf"
+        val confirmedVersion = BtbDokumentVersionierung.finalisierteVersion(ctx, item.entry)
+        val version = maxOf(
+            confirmedVersion,
+            item.entry.dokumentVersion,
+            if (item.baselineExists) 1 else 0
+        )
+        val changed = version > 0 && BtbDokumentVersionierung.istSeitLetztemAbschlussGeaendert(ctx, item.entry)
+        val finished = version > 0 || item.entry.istFertig
+        val bg = when {
+            changed -> Color.parseColor("#FFF3E0")
+            finished -> Color.parseColor("#E8F5E9")
+            else -> Color.parseColor("#F5F5F5")
+        }
+        val stroke = when {
+            changed -> Color.parseColor("#EF6C00")
+            finished -> Color.parseColor("#2E7D32")
+            else -> Color.parseColor("#616161")
+        }
+        val status = when {
+            changed -> "Geändert seit V${version.coerceAtLeast(1)} · nächster Abschluss V${version.coerceAtLeast(1) + 1}"
+            finished -> "Abgeschlossen · V${version.coerceAtLeast(1)} · erneut bearbeitbar"
+            else -> "Entwurf"
         }
         val startDate = runCatching { LocalDate.parse(item.entry.datumIso) }.getOrDefault(item.datum)
         val endDate = item.entry.endeDatumIso?.let { raw -> runCatching { LocalDate.parse(raw) }.getOrNull() }
