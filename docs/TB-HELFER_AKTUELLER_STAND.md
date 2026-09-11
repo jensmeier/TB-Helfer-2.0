@@ -187,16 +187,27 @@ Neu sichtbar und gerätelokal einstellbar:
 Implementierung:
 - `SyncEinstellungenSpeicher.kt` persistiert Zeitplan + Netzregel.
 - `SyncWorker.schedule()` erstellt/entfernt den periodischen WorkManager-Job entsprechend dem Zeitplan.
-- der Hintergrund-Worker prüft zusätzlich die tatsächlich aktive Transportart.
+- der automatische Hintergrund-Worker prüft zusätzlich die tatsächlich aktive Transportart.
 - `SyncStatusSpeicher.kt` hält den letzten erfolgreichen allgemeinen Server-Sync gerätelokal.
-- Einstellungen enthalten jetzt den Button **`Synchronisation`** mit aktuellem Zeitplan, Netzregel und letztem Sync-Stand.
+- Einstellungen enthalten den Button **`Synchronisation`** mit aktuellem Zeitplan, Netzregel und letztem Sync-Stand.
 - Startmenüeintrag **`Daten vom NAS`** wurde in **`Mit NAS synchronisieren`** umbenannt und zeigt den letzten bekannten Sync-Stand.
 - der Menüstatus wird beim Wiederaufrufen des Startmenüs aktualisiert.
 
-Wichtig/offen:
-- `SyncKatalogFragment` führt beim bewussten manuellen Aufruf weiterhin primär Katalog-/Offline-Inkrementalsync aus; dort ist der komplette Collaboration-Ablauf aus `SyncWorker` noch nicht zu einer gemeinsamen manuellen Gesamt-Sync-Routine refaktoriert.
-- deshalb darf erst nach diesem Umbau behauptet werden, dass **ein einzelner manueller Button** immer Katalog + Baustellenstruktur + BTB + Mängel + Abnahmen + alle Attachments in genau einem gemeinsamen Lauf synchronisiert.
-- die neue Netzregel blockiert den bewusst geöffneten manuellen Sync nicht still; sie steuert derzeit den automatischen Hintergrundpfad.
+Manueller vollständiger NAS-Sync:
+- `SyncWorker` besitzt jetzt zusätzlich einen bewusst manuellen One-Time-Modus (`enqueueManual`).
+- dieser manuelle Modus verwendet **dieselbe vollständige Sync-Pipeline** wie der Hintergrundworker:
+  1. Katalog/Offline-Stand,
+  2. inkrementelle Änderungen/Queue,
+  3. Baustellen-/Team-/Collaboration-Feed,
+  4. BTB-Textstände,
+  5. BTB-Bilder,
+  6. Mängel und Abnahmen,
+  7. Mängel-/Abnahme-Attachments,
+  8. abschließendes Pull/ACK und Team-/Sync-Status.
+- `SyncKatalogFragment` startet nach seinem sichtbaren Katalog-/Konflikt-Vorlauf diesen vollständigen manuellen Worker und zeigt `wartet`, `läuft`, `vollständig` oder eine konkrete Fehlermeldung.
+- der bewusst manuelle Lauf ignoriert **Zeitplan und WLAN/Mobilfunk-Präferenz**, weil der Benutzer ihn ausdrücklich ausgelöst hat; er benötigt aber weiterhin irgendeine echte Internetverbindung.
+- damit führt der normale Einstieg **`Mit NAS synchronisieren`** nicht mehr nur den Strecken-/Katalogteil aus, sondern zieht den Collaboration-Bereich im selben bewussten Bedienablauf mit nach.
+- der vorhandene Katalog-Vorlauf und der Worker führen den allgemeinen Inkrementalsync derzeit einmal redundant aus; die Operationen sind idempotent. Das kann später zur Laufzeitoptimierung zusammengezogen werden, ist aber fachlich kein zweiter Datenbestand und keine parallele Ersatzlösung.
 
 ## Sync-Matrix aus dem Praxismodell
 ### Verantwortlicher TB A ↔ verantwortlicher TB B derselben Baustelle
@@ -313,6 +324,7 @@ Wesentlich geändert/neu:
 - `app/src/main/java/de/tbhelfer/ui/einstellungen/EinstellungenFragment.kt`
 - `app/src/main/res/layout/fragment_einstellungen.xml`
 - `app/src/main/java/de/tbhelfer/ui/start/StartmenueFragment.kt`
+- `app/src/main/java/de/tbhelfer/ui/sync/SyncKatalogFragment.kt`
 - `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenTeamDirekt.kt`
 - `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenFragment.kt`
 - `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenKnotenAdapter.kt`
@@ -361,15 +373,15 @@ Farben:
    - Einstellungen `Manuell / Stündlich / Täglich`,
    - Netzregel,
    - Startmenü `Mit NAS synchronisieren`,
+   - vollständiger manueller Lauf inkl. Collaboration/Attachments,
    - Baustellenkarte Teamzahl + letzter Sync.
-7. manuellen NAS-Sync auf eine gemeinsame komplette Routine mit dem Collaboration-Ablauf des `SyncWorker` vereinheitlichen.
-8. danach Multi-BTB-Syncservermodell auf stabile `btbId` anpassen, ohne Altbestände zu zerstören.
-9. danach Unterbaustellen-/Baustellenstruktur-Sync für `5362-1` bauen.
-10. danach serverseitige Mitgliedschafts-Entfernung und direkte `Nutzer/Helfer entfernen`-Aktion ergänzen.
-11. anschließend Mängel/Abnahmen/Bilder/Benachrichtigungen, Offline/409/Tombstones/Netzabbruch und Merge-Export mit beiden Geräten testen.
-12. Schema 11 erst nach eigenem Backup/Hashprüfung/Verifikation produktiv migrieren, wenn der Nutzerprofilblock praktisch dran ist.
-13. danach den separaten Vermessungsblock fertigstellen.
-14. PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
+7. danach Multi-BTB-Syncservermodell auf stabile `btbId` anpassen, ohne Altbestände zu zerstören.
+8. danach Unterbaustellen-/Baustellenstruktur-Sync für `5362-1` bauen.
+9. danach serverseitige Mitgliedschafts-Entfernung und direkte `Nutzer/Helfer entfernen`-Aktion ergänzen.
+10. anschließend Mängel/Abnahmen/Bilder/Benachrichtigungen, Offline/409/Tombstones/Netzabbruch und Merge-Export mit beiden Geräten testen.
+11. Schema 11 erst nach eigenem Backup/Hashprüfung/Verifikation produktiv migrieren, wenn der Nutzerprofilblock praktisch dran ist.
+12. danach den separaten Vermessungsblock fertigstellen.
+13. PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
 
 ## Nicht erneut entscheiden / nicht zurückbauen
 - NAS Source of Truth.
