@@ -1,5 +1,6 @@
 package de.tbhelfer.ui.baustelle
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -120,7 +121,7 @@ object BaustellenTeamDirekt {
                                     TeamManagementApi.TeamResult.Unsupported -> ProvisionOutcome.Error("Teamverwaltung wird vom Server nicht unterstützt.")
                                     is TeamManagementApi.TeamResult.Error -> ProvisionOutcome.Error(team.message)
                                     is TeamManagementApi.TeamResult.Success -> {
-                                        TeamDisplayCache.remember(fragment.requireContext().applicationContext, team.team)
+                                        TeamDisplayCache.remember(fragment.requireContext().applicationContext, team.team, haupt.id)
                                         ProvisionOutcome.Success(created.value.wasCreated, team.team)
                                     }
                                 }
@@ -371,7 +372,9 @@ object BaustellenTeamDirekt {
                 TeamManagementApi.RedeemResult.Unsupported -> Toast.makeText(fragment.requireContext(), "Baustellen-Einladungen werden vom Server nicht unterstützt.", Toast.LENGTH_LONG).show()
                 is TeamManagementApi.RedeemResult.Error -> Toast.makeText(fragment.requireContext(), redeem.message, Toast.LENGTH_LONG).show()
                 is TeamManagementApi.RedeemResult.Success -> {
-                    val sync = withContext(Dispatchers.IO) { syncJoinedWorksite(token, redeem.result) }
+                    val sync = withContext(Dispatchers.IO) {
+                        syncJoinedWorksite(fragment.requireContext().applicationContext, token, redeem.result)
+                    }
                     if (!fragment.isAdded) return@launch
                     when (sync) {
                         JoinOutcome.SessionInvalid -> {
@@ -426,6 +429,7 @@ object BaustellenTeamDirekt {
     }
 
     private suspend fun syncJoinedWorksite(
+        context: Context,
         token: String,
         redeemed: TeamManagementApi.RedeemedInvitation
     ): JoinOutcome {
@@ -437,7 +441,18 @@ object BaustellenTeamDirekt {
                     val contexts = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
                     ServiceLocator.collabLocalBridge.applyServerStateToLocal()
                     val item = contexts.firstOrNull { it.context.worksiteServerId == redeemed.worksiteId }
-                    JoinOutcome.Success(item?.localWorksite)
+                    val local = item?.localWorksite
+                    if (local != null) {
+                        TeamDisplayCache.bindLocalRoot(context, local.id, redeemed.worksiteId)
+                    }
+                    when (val team = teamApi.loadTeam(token, redeemed.worksiteId)) {
+                        is TeamManagementApi.TeamResult.Success ->
+                            TeamDisplayCache.remember(context, team.team, local?.id)
+                        else -> if (local != null) {
+                            TeamDisplayCache.markSuccessfulSync(context, local.id, redeemed.worksiteId)
+                        }
+                    }
+                    JoinOutcome.Success(local)
                 }.getOrElse { JoinOutcome.Error(it.message ?: "Lokale Baustelle konnte nicht aufgebaut werden.") }
             }
         }
@@ -461,7 +476,20 @@ object BaustellenTeamDirekt {
                         val error = withContext(Dispatchers.IO) {
                             runCatching {
                                 ServiceLocator.worksiteBindingRepository.bind(selected.id, redeemed.worksiteId)
+                                TeamDisplayCache.bindLocalRoot(fragment.requireContext().applicationContext, selected.id, redeemed.worksiteId)
                                 ServiceLocator.collabLocalBridge.applyServerStateToLocal()
+                                when (val team = teamApi.loadTeam(token = SecureTokenStore(fragment.requireContext()).load().orEmpty(), worksiteId = redeemed.worksiteId)) {
+                                    is TeamManagementApi.TeamResult.Success -> TeamDisplayCache.remember(
+                                        fragment.requireContext().applicationContext,
+                                        team.team,
+                                        selected.id
+                                    )
+                                    else -> TeamDisplayCache.markSuccessfulSync(
+                                        fragment.requireContext().applicationContext,
+                                        selected.id,
+                                        redeemed.worksiteId
+                                    )
+                                }
                             }.exceptionOrNull()?.message
                         }
                         if (!fragment.isAdded) return@launch
