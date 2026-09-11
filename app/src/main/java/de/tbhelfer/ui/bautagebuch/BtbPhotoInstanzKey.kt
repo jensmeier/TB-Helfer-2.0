@@ -6,44 +6,69 @@ import org.json.JSONObject
 import java.io.File
 
 /**
- * Liefert für die lokalen Foto-Hilfsspeicher den aktuell aktiven stabilen BTB-Schlüssel.
+ * Liefert für die lokalen Foto-Hilfsspeicher den stabilen BTB-Schlüssel des aktuell
+ * bearbeiteten Berichtskontexts.
  *
  * Neue Multi-BTB-Berichte dürfen Auswahl/Text/Start/KM-Overrides nicht mehr nur über
- * Datum+Schicht+Zeit teilen. Altbestände ohne stabile BTB-ID bleiben bewusst im Legacy-Schema.
+ * Datum+Schicht+Zeit teilen. Ein Pointer wird deshalb nur akzeptiert, wenn auch Datum und Schicht
+ * zum angefragten BTB passen. Altbestände ohne passende stabile BTB-ID bleiben im Legacy-Schema.
  */
 object BtbPhotoInstanzKey {
 
-    fun activeBtbId(context: Context, baustelleId: Long): String? {
-        if (baustelleId <= 0L) return null
+    private data class Pointer(
+        val btbId: String,
+        val datumIso: String,
+        val schicht: SchichtTyp
+    )
+
+    fun activeBtbId(
+        context: Context,
+        baustelleId: Long,
+        datumIso: String,
+        schicht: SchichtTyp
+    ): String? {
+        if (baustelleId <= 0L || datumIso.isBlank()) return null
         val pictures = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: return null
         val root = File(pictures, "TB-Helfer")
         if (!root.exists()) return null
 
-        val canonicalBtbDir = File(root, "baustelle_${baustelleId}/Bautagebuch")
-        readPointer(File(canonicalBtbDir, ".active_btb.json"))?.let { return it }
+        fun matchingPointer(btbDir: File): String? {
+            val pointer = readPointer(File(btbDir, ".active_btb.json")) ?: return null
+            if (pointer.datumIso != datumIso || pointer.schicht != schicht) return null
+            return pointer.btbId
+        }
 
-        // Rückfall für einen sehr alten Ordner, der auf dem Gerät nicht nach baustelle_<id>
+        val canonicalBtbDir = File(root, "baustelle_${baustelleId}/Bautagebuch")
+        matchingPointer(canonicalBtbDir)?.let { return it }
+
+        // Rückfall für einen alten Ordner, der auf dem Gerät nicht nach baustelle_<id>
         // umbenannt werden konnte. Nur Ordner akzeptieren, in denen ein BTB-JSON dieselbe
         // baustelleId trägt; sichtbare Namen sind niemals technische Schlüssel.
         root.listFiles()?.asSequence()
             ?.filter { it.isDirectory && it != canonicalBtbDir.parentFile }
             ?.forEach { top ->
                 val btbDir = File(top, "Bautagebuch")
-                val pointer = readPointer(File(btbDir, ".active_btb.json")) ?: return@forEach
-                if (containsBaustelleId(btbDir, baustelleId)) return pointer
+                val pointerId = matchingPointer(btbDir) ?: return@forEach
+                if (containsBaustelleId(btbDir, baustelleId)) return pointerId
             }
         return null
     }
 
-    fun activeToken(context: Context, baustelleId: Long): String? =
-        activeBtbId(context, baustelleId)?.let(::safeToken)
+    fun activeToken(
+        context: Context,
+        baustelleId: Long,
+        datumIso: String,
+        schicht: SchichtTyp
+    ): String? = activeBtbId(context, baustelleId, datumIso, schicht)?.let(::safeToken)
 
-    private fun readPointer(file: File): String? = runCatching {
+    private fun readPointer(file: File): Pointer? = runCatching {
         if (!file.exists() || !file.isFile) return@runCatching null
-        JSONObject(file.readText(Charsets.UTF_8))
-            .optString("btbId")
-            .trim()
-            .takeIf { it.isNotBlank() }
+        val json = JSONObject(file.readText(Charsets.UTF_8))
+        val id = json.optString("btbId").trim().takeIf { it.isNotBlank() } ?: return@runCatching null
+        val datum = json.optString("datumIso").trim().takeIf { it.isNotBlank() } ?: return@runCatching null
+        val schicht = runCatching { SchichtTyp.valueOf(json.optString("schicht")) }.getOrNull()
+            ?: return@runCatching null
+        Pointer(id, datum, schicht)
     }.getOrNull()
 
     private fun containsBaustelleId(btbDir: File, baustelleId: Long): Boolean {
