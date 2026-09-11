@@ -17,7 +17,7 @@ Vor jeder Änderung zuerst lesen:
 - aktiv: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
 - PR bleibt Draft bis zum erfolgreichen Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test.
-- Android im Feature-Branch: `versionCode 200021`, `versionName 1.3`.
+- Android im Feature-Branch: `versionCode 200022`, `versionName 1.3`.
 
 ## Produktiver Synology-Stand
 - NAS/Synology ist Source of Truth.
@@ -47,7 +47,39 @@ Vor Migration wurden NAS-SQL-Dateien nach CRLF-Normalisierung gegen GitHub gepr�
 - `010_worksite_invitations_company_profile.sql` → `d3b78c723de0c5ee0b2a0121957d81513e240a86`
 - `02_verify_schema10.sql` → `100b1214a81990ed84a187b243f94b745ee742ab`
 
-Migration 010 lief mit `ON_ERROR_STOP`, endete mit `INSERT 0 1` und `COMMIT`. Anschließende Prüfung endete mit **`SCHEMA_10_OK`**. Für den aktuellen Rollout keine weitere DB-Migration starten.
+Migration 010 lief mit `ON_ERROR_STOP`, endete mit `INSERT 0 1` und `COMMIT`. Anschließende Prüfung endete mit **`SCHEMA_10_OK`**.
+
+## Persönliches Nutzerprofil / Firma – vorbereitet für Schema 11
+Verbindliche Trennung:
+- **Firma** ist zentral für alle Nutzer derselben Firma: Firmenname, Anschrift, Firmentelefon, Firmen-E-Mail, Firmenlogo.
+- **Persönliches Profil** gehört zum einzelnen Server-Benutzer: Name, persönliche Telefonnummer, persönliche E-Mail-Adresse.
+- persönliche Kontaktdaten dürfen nicht als gerätespezifische Doppelpflege auseinanderlaufen; Server-Benutzer ist Source of Truth, Android hält nur einen Offline-Cache.
+
+Aktueller Datenstand:
+- `tb.users.email` ist bereits die persönliche Benutzer-E-Mail.
+- ein persönliches Telefonfeld existiert produktiv in Schema 10 noch nicht.
+- Firmen-Telefon und Firmen-E-Mail liegen bereits korrekt in `tb.company_profiles`.
+
+Im Feature-Branch vorbereitet:
+- Migration `server/migrations/011_user_contact_profile.sql`:
+  - `tb.users.phone`
+  - `tb.users.profile_version`
+  - Schema-Version `11 · 011_user_contact_profile`
+- read-only Prüfschema: `server/checks/05_verify_schema11.sql` → erwartet `SCHEMA_11_OK`.
+- statischer Quellencheck: `server/checks/06_verify_schema11_source.py`.
+- neuer API-Teil `server/app_parts/18_part.py`:
+  - `GET /api/v1/user/profile`
+  - `PUT /api/v1/user/profile`
+  - bei noch nicht migriertem Server kontrolliert `USER_PROFILE_SCHEMA_REQUIRED` statt blindem DB-Zugriff.
+- Android `UserProfileApi.kt` für persönliches Profil.
+- separater Offline-Cache `PersoenlichesNutzerProfilSpeicher`; bestehender Firmenprofil-Cache bleibt unverändert.
+- `Nutzer / Firma` ist im Android-UI jetzt sichtbar in **Mein Profil** und **Firma** getrennt.
+- Name im persönlichen Profil bleibt serverseitige Identität/Anzeige und wird in dieser Maske nur angezeigt.
+- persönliche Telefonnummer und persönliche E-Mail sind editierbar.
+- Firmenfelder und Firmenlogo bleiben serverseitiger zentraler Read-only-Stand in Android.
+- Android-Version dafür: **200022**.
+
+Wichtig: **Schema 11 ist nur im Feature-Branch vorbereitet und wurde auf dem NAS noch nicht ausgeführt. Produktiv bleibt Schema 10.** Vor Schema-11-Migration wieder Backup, Hash-Prüfung der SQL-Dateien und anschließende read-only Verifikation durchführen.
 
 ## Firmen / Teams / Einladungen – praktisch bestätigt
 - Testfirma `Gtu`: 2 Nutzer, 2 aktive Geräte.
@@ -93,8 +125,8 @@ Befund Android 200020:
 - die neue lokale Hauptbaustelle wurde jedoch nicht automatisch als aktuelle Baustelle gesetzt.
 - deshalb arbeitete der normale BTB-Bildschirm weiter mit der zuvor ausgewählten Baustelle; der Nutzer konnte in der neuen `Immenstadt` nicht unmittelbar arbeiten und vorhandene Poco-BTBs wirkten unsichtbar.
 
-## Android 200021 – vereinfachter Baustellen-/QR-Ablauf
-Aktueller Feature-Branch enthält jetzt zusätzlich:
+## Android 200021/200022 – vereinfachter Baustellen-/QR-Ablauf
+Der direkte Baustellen-/QR-Ablauf aus 200021 bleibt in 200022 enthalten:
 - `Baustellen-Synchronisation` ist aus dem normalen **Einstellungen**-Menü entfernt.
 - Synchronisation bleibt technisch/Hintergrundfunktion; der Nutzer muss dafür nicht mehr in ein separates Einstellungsmenü.
 - in der normalen **Baustellenliste** gibt es direkt den Button **`QR scannen`**.
@@ -107,9 +139,8 @@ Aktueller Feature-Branch enthält jetzt zusätzlich:
   - `Helfer hinzufügen`
 - für Helfer bleibt die Bereichsfreigabe (`Gesamte Baustelle` oder Bereich/km) erhalten.
 - der erzeugte QR wird direkt angezeigt und kann über **`Teilen / senden`** weitergegeben werden.
-- neue zentrale Implementierung: `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenTeamDirekt.kt`.
-- Android-Version dafür: **200021**.
-- 200021 ist noch nicht lokal gebaut/installiert/getestet.
+- zentrale Implementierung: `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenTeamDirekt.kt`.
+- 200021/200022 sind noch nicht lokal vollständig gebaut/installiert/getestet.
 
 Die alte `BaustellenSyncFragment`-Implementierung bleibt vorerst technisch im Quellstand als Diagnose-/Rückfallpfad, ist aber kein normaler Benutzereinstieg mehr.
 
@@ -205,7 +236,7 @@ Server/Admin müssen daraus Bahnhofscode/Name vervollständigen. Keine neue Bahn
 ## Android-Buildstatus
 - Android 200019 wurde mehrfach lokal erfolgreich gebaut und installiert.
 - Android 200020 wurde auf dem Pixel praktisch getestet: Root-Bootstrap `Immenstadt` funktioniert; fehlendes automatisches `aktuell` wurde erkannt.
-- Android **200021** enthält den direkten Baustellen-/QR-Ablauf und ist noch nicht praktisch gebaut/getestet.
+- Android **200022** enthält direkten Baustellen-/QR-Ablauf plus getrenntes persönliches Nutzerprofil und ist noch nicht lokal gebaut/getestet.
 - GitHub Actions ist für diesen Stand nicht maßgeblich; lokale Android-Studio-Builds sind die Autorität.
 - Compilerwarnungen bleiben im separaten Backlog.
 
@@ -236,18 +267,20 @@ Farben:
 - Blau = Auswahl
 
 ## Nächste sichere Schritte
-1. **Keine neue produktive DB-Migration und keinen Server-Rebuild für 200021 starten.** Die aktuelle UI-Änderung ist Android-seitig.
-2. Android **200021** lokal bauen.
-3. als Update auf Pixel und Poco installieren; App-Daten nicht löschen.
-4. Pixel: normale Baustellenliste prüfen – `QR scannen` muss direkt sichtbar sein; Einstellungen dürfen keinen `Baustellen-Synchronisation`-Button mehr zeigen.
-5. Poco: `Immenstadt` lange drücken → `Nutzer hinzufügen` → Auswahl Nutzer/Helfer muss direkt auf derselben Seite erscheinen; QR erzeugen und Teilen/Senden testen.
-6. Pixel: QR direkt über `QR scannen` einlesen; Rolle muss ohne weitere Rollenabfrage aus dem QR übernommen werden, Baustelle danach automatisch aktuell sein.
-7. BTB Poco → Pixel und Pixel → Poco erneut testen.
-8. danach Unterbaustellen-/Baustellenstruktur-Sync für `5362-1` bauen.
-9. danach serverseitige Mitgliedschafts-Entfernung und direkte `Nutzer/Helfer entfernen`-Aktion ergänzen.
-10. anschließend Mängel/Abnahmen/Bilder/Benachrichtigungen, Offline/409/Tombstones/Netzabbruch und Merge-Export mit beiden Geräten testen.
-11. danach den separaten Vermessungsblock fertigstellen.
-12. PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
+1. **Produktiven NAS-Stand vorerst auf Schema 10/API 0.7 lassen.** Schema 11 ist nur vorbereitet.
+2. Android **200022** lokal kompilieren; noch keine App-Daten löschen.
+3. statischen Schema-11-Quellencheck ausführen.
+4. vor produktiver Schema-11-Migration ein neues DB-Backup erzeugen und mit `pg_restore -l` prüfen.
+5. Migration `011_user_contact_profile.sql` und `05_verify_schema11.sql` nach CRLF-Normalisierung gegen die GitHub-Blob-Hashes prüfen.
+6. erst danach Migration 011 mit `ON_ERROR_STOP` ausführen und `SCHEMA_11_OK` bestätigen.
+7. neuen Serverstand mit `18_part.py` in einen separaten Stage-Ordner übernehmen und kontrolliert neu bauen/starten; `server/.env` unangetastet lassen.
+8. danach Android 200022 als Update auf Pixel/Poco installieren und unter `Nutzer / Firma` die Trennung **Mein Profil / Firma** testen.
+9. anschließend QR-/Baustellen-Ablauf und BTB Poco ↔ Pixel erneut testen.
+10. danach Unterbaustellen-/Baustellenstruktur-Sync für `5362-1` bauen.
+11. danach serverseitige Mitgliedschafts-Entfernung und direkte `Nutzer/Helfer entfernen`-Aktion ergänzen.
+12. anschließend Mängel/Abnahmen/Bilder/Benachrichtigungen, Offline/409/Tombstones/Netzabbruch und Merge-Export mit beiden Geräten testen.
+13. danach den separaten Vermessungsblock fertigstellen.
+14. PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
 
 ## Nicht erneut entscheiden / nicht zurückbauen
 - NAS Source of Truth.
@@ -262,5 +295,6 @@ Farben:
 - Helfer schreiben in den BTB ihres verantwortlichen TB.
 - BTB-Identität = Team + Datum + Schicht.
 - zentraler Firmenprofil-/Logo-Stand vom Server.
+- persönliche E-Mail/Telefon gehören zum einzelnen Server-Benutzer und nicht zum Firmenprofil.
 - merge-sicheres Archiv `TB-Helfer/<Baustelle>/...`.
 - `main` stabil; große Änderungen im Feature-Branch/Draft-PR.
