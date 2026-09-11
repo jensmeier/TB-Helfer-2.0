@@ -91,7 +91,7 @@ object BtbPhotoSelectionStore {
         root.put("version", VERSION)
         root.put("updatedEpochMs", System.currentTimeMillis())
         root.put("baustelleId", baustelleId)
-        root.put("btbId", BtbPhotoInstanzKey.activeBtbId(context, baustelleId) ?: JSONObject.NULL)
+        root.put("btbId", BtbPhotoInstanzKey.activeBtbId(context, baustelleId, datumIso, schicht) ?: JSONObject.NULL)
         root.put("datumIso", datumIso)
         root.put("schicht", schicht.name)
         root.put("shiftStart", shiftStart ?: JSONObject.NULL)
@@ -149,7 +149,7 @@ object BtbPhotoSelectionStore {
         val s = safeTimeKey(shiftStart)
         val e = safeTimeKey(shiftEnd)
         val st = schicht.name.lowercase()
-        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId)
+        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
         val name = if (token != null) {
             "sel_${baustelleId}_btb_${token}_${datumIso}_${st}_${s}_${e}.json"
         } else {
@@ -171,7 +171,7 @@ object BtbPhotoSelectionStore {
         schicht: SchichtTyp
     ): File {
         val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
-        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId)
+        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
         val newF = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht)
         if (token != null || newF.exists()) return newF
         val s = safeTimeKey(shiftStart)
@@ -189,7 +189,7 @@ object BtbPhotoSelectionStore {
     fun deleteAllFor(context: Context, baustelleId: Long, datumIso: String, schicht: SchichtTyp) {
         val dir = File(context.filesDir, DIR_NAME)
         if (!dir.exists()) return
-        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId)
+        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
         if (token != null) {
             val prefix = "sel_${baustelleId}_btb_${token}_"
             dir.listFiles()?.forEach { f ->
