@@ -19,7 +19,14 @@ object TeamDisplayCache {
         val lastSuccessfulSyncEpochMs: Long?
     )
 
-    fun remember(context: Context, team: TeamManagementApi.TeamOverview) {
+    data class WorksiteCardStatus(
+        val worksiteId: String,
+        val responsibleTbCount: Int,
+        val helperCount: Int,
+        val lastSuccessfulSyncEpochMs: Long?
+    )
+
+    fun remember(context: Context, team: TeamManagementApi.TeamOverview, localRootKnotenId: Long? = null) {
         val own = team.groups.firstOrNull { it.groupId == team.currentGroupId }
         val responsibleTbCount = team.groups
             .mapNotNull { it.leadUserId?.takeIf(String::isNotBlank) }
@@ -33,8 +40,7 @@ object TeamDisplayCache {
             .map { it.userId }
             .distinct()
             .size
-
-        context.applicationContext.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+        val edit = context.applicationContext.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .edit()
             .putString("group:${team.worksiteId}", team.currentGroupId)
             .putString("display:${team.worksiteId}", own?.leadDisplayName)
@@ -42,6 +48,17 @@ object TeamDisplayCache {
             .putInt("tb_count:${team.worksiteId}", responsibleTbCount)
             .putInt("helper_count:${team.worksiteId}", helperCount)
             .putLong("last_sync:${team.worksiteId}", System.currentTimeMillis())
+        localRootKnotenId?.takeIf { it > 0L }?.let { rootId ->
+            edit.putString("root_worksite:$rootId", team.worksiteId)
+        }
+        edit.apply()
+    }
+
+    fun bindLocalRoot(context: Context, localRootKnotenId: Long, worksiteId: String) {
+        if (localRootKnotenId <= 0L || worksiteId.isBlank()) return
+        context.applicationContext.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit()
+            .putString("root_worksite:$localRootKnotenId", worksiteId)
             .apply()
     }
 
@@ -51,6 +68,32 @@ object TeamDisplayCache {
             .edit()
             .putLong("last_sync:$worksiteId", epochMs)
             .apply()
+    }
+
+    fun markSuccessfulSync(
+        context: Context,
+        localRootKnotenId: Long,
+        worksiteId: String,
+        epochMs: Long = System.currentTimeMillis()
+    ) {
+        if (localRootKnotenId <= 0L || worksiteId.isBlank()) return
+        context.applicationContext.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+            .edit()
+            .putString("root_worksite:$localRootKnotenId", worksiteId)
+            .putLong("last_sync:$worksiteId", epochMs)
+            .apply()
+    }
+
+    fun worksiteCardStatus(context: Context, localRootKnotenId: Long): WorksiteCardStatus? {
+        if (localRootKnotenId <= 0L) return null
+        val p = context.applicationContext.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+        val worksiteId = p.getString("root_worksite:$localRootKnotenId", null)?.takeIf { it.isNotBlank() } ?: return null
+        return WorksiteCardStatus(
+            worksiteId = worksiteId,
+            responsibleTbCount = p.getInt("tb_count:$worksiteId", 0).coerceAtLeast(0),
+            helperCount = p.getInt("helper_count:$worksiteId", 0).coerceAtLeast(0),
+            lastSuccessfulSyncEpochMs = p.getLong("last_sync:$worksiteId", 0L).takeIf { it > 0L }
+        )
     }
 
     fun ownTeam(context: Context, worksiteId: String): OwnTeam? {
