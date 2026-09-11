@@ -38,6 +38,7 @@ Vor jeder Änderung zuerst lesen:
 - API liest **`SCHEMA=10 010_worksite_invitations_company_profile`**.
 - Admin-Systemstatus: API OK 0.7.0, PostgreSQL OK, Schema 10.
 - **Seit dem letzten produktiven Test wurden keine weiteren NAS-/DB-Änderungen durchgeführt.**
+- Wichtig: Der Feature-Branch enthält seit 11.09.2026 neueren Servercode für stabile Multi-BTB-IDs (`server/app_parts/15_part.py`). Dieser Code entstand **nach** dem letzten produktiven Schema-10-Rollout und ist deshalb noch nicht als produktiv bestätigt. Dafür ist später ein kontrolliertes Server-Code-Update nötig, aber **keine neue DB-Migration**.
 
 ## Backup / Migration 010
 Produktives Pre-Schema-10-Backup:
@@ -131,10 +132,17 @@ Aktueller Branchstand:
 - der Verlauf zeigt `Abgeschlossen · Vn` bzw. einen geänderten Zustand und bleibt erneut bearbeitbar.
 - Unit-Tests für stabile BTB-Dateinamen und Versionsfolge wurden ergänzt.
 
+BTB-Sync im aktuellen Feature-Branch:
+- `CollabLocalBridge` verwendet für BTB-Mutationen die stabile `btbId` als `client_entity_key`; Altbestände erhalten einen stabilen synthetischen `legacy:*`-Key.
+- `BtbTeamMediaSync` verwendet seit dem aktuellen 200023-Block **denselben Schlüssel** für BTB-Attachments. Der frühere Bildsync über `Datum:TAG/NACHT` ist entfernt; dadurch werden mehrere BTBs desselben Tages nicht mehr beim Medien-Parent verwechselt.
+- `server/app_parts/15_part.py` erzwingt im Feature-Branch bei BTB-UPSERTs einen nichtleeren `client_entity_key`, spiegelt ihn als `btbId` in den Payload und weist abweichende IDs mit `BTB_ID_MISMATCH` zurück.
+- der Servermerge für parallele Helfer bleibt versionsgeschützt: exakter gelesener Stand ist ein autoritativer Snapshot; nur wirklich parallele/veraltete Beiträge werden additiv gegen den neuesten Team-BTB gemerged.
+- die stabile Server-BTB-ID wurde im Branch mit Commit `dffe862f0920c56ac156329f1343f7f926946de4` am 11.09.2026 ergänzt, also **nach** dem letzten produktiven Server-Rollout. Produktiv muss dieser Serverquellstand vor dem echten Multi-BTB-Zwei-Geräte-Test noch kontrolliert ausgerollt werden. Eine Schemaänderung ist dafür nicht erforderlich.
+
 Noch offen bei BTB:
 - vollständiger lokaler Android-Build des aktuellen Stands.
 - PDF/DOCX-Versionierung auf einem echten Gerät praktisch prüfen: V1 erzeugen → ändern → V2 erzeugen → rote Markierung und beide Dateien prüfen.
-- Collaboration-Servermodell später vollständig von den historischen Tages-/Schichtschlüsseln auf die stabile `btbId` ausrichten; produktiver Server bleibt derzeit unverändert.
+- aktualisierten Serverquellstand mit stabiler BTB-ID später kontrolliert auf den bestehenden Schema-10-Server ausrollen und anschließend Multi-BTB zwischen Pixel/Poco testen.
 
 ## Praktischer BTB-Zwei-Geräte-Befund vor dem Multi-BTB-Umbau
 Produktive DB-Prüfung für `Immenstadt`:
@@ -194,7 +202,7 @@ Implementierung:
 - der Menüstatus wird beim Wiederaufrufen des Startmenüs aktualisiert.
 
 Manueller vollständiger NAS-Sync:
-- `SyncWorker` besitzt jetzt zusätzlich einen bewusst manuellen One-Time-Modus (`enqueueManual`).
+- `SyncWorker` besitzt zusätzlich einen bewusst manuellen One-Time-Modus (`enqueueManual`).
 - dieser manuelle Modus verwendet **dieselbe vollständige Sync-Pipeline** wie der Hintergrundworker:
   1. Katalog/Offline-Stand,
   2. inkrementelle Änderungen/Queue,
@@ -317,6 +325,8 @@ Wesentlich geändert/neu:
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDokumentIdentitaet.kt`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDokumentVersionierung.kt`
 - `app/src/main/java/de/tbhelfer/ui/baustelle/BtbVerlaufFragment.kt`
+- `app/src/main/java/de/tbhelfer/datenbank/CollabLocalBridge.kt`
+- `app/src/main/java/de/tbhelfer/datenbank/BtbTeamMediaSync.kt`
 - `app/src/main/java/de/tbhelfer/server/TeamDisplayCache.kt`
 - `app/src/main/java/de/tbhelfer/server/SyncStatusSpeicher.kt`
 - `app/src/main/java/de/tbhelfer/server/SyncWorker.kt`
@@ -328,6 +338,8 @@ Wesentlich geändert/neu:
 - `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenTeamDirekt.kt`
 - `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenFragment.kt`
 - `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenKnotenAdapter.kt`
+- `server/app_parts/15_part.py`
+- `server/checks/04_test_team_btb_merge.py`
 - `app/src/test/java/de/tbhelfer/ui/bautagebuch/BtbDokumentIdentitaetTest.kt`
 - `app/src/test/java/de/tbhelfer/ui/bautagebuch/BtbDokumentVersionierungTest.kt`
 - `app/build.gradle.kts`
@@ -363,25 +375,26 @@ Farben:
 2. Android **200023 lokal kompilieren** (`assembleDebug` + Unit-Tests; anschließend nach Möglichkeit Release/Lint).
 3. Compiler-/Ressourcenfehler aus dem 200023-Build unmittelbar im Feature-Branch beheben und diese Datei aktualisieren.
 4. auf Pixel/Poco als Update installieren, **keine App-Daten löschen**.
-5. BTB praktisch testen:
+5. lokalen BTB prüfen:
    - zwei echte BTBs am selben Tag anlegen,
    - V1 abschließen,
    - einen Bericht ändern,
    - V2 abschließen,
    - prüfen: V1 bleibt, V2 neu, Änderungen rot, Verlauf korrekt.
-6. Sync-UX praktisch prüfen:
+6. Sync-UX lokal/praktisch prüfen:
    - Einstellungen `Manuell / Stündlich / Täglich`,
    - Netzregel,
    - Startmenü `Mit NAS synchronisieren`,
    - vollständiger manueller Lauf inkl. Collaboration/Attachments,
    - Baustellenkarte Teamzahl + letzter Sync.
-7. danach Multi-BTB-Syncservermodell auf stabile `btbId` anpassen, ohne Altbestände zu zerstören.
-8. danach Unterbaustellen-/Baustellenstruktur-Sync für `5362-1` bauen.
-9. danach serverseitige Mitgliedschafts-Entfernung und direkte `Nutzer/Helfer entfernen`-Aktion ergänzen.
-10. anschließend Mängel/Abnahmen/Bilder/Benachrichtigungen, Offline/409/Tombstones/Netzabbruch und Merge-Export mit beiden Geräten testen.
-11. Schema 11 erst nach eigenem Backup/Hashprüfung/Verifikation produktiv migrieren, wenn der Nutzerprofilblock praktisch dran ist.
-12. danach den separaten Vermessungsblock fertigstellen.
-13. PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
+7. **Vor dem echten Multi-BTB-Zwei-Geräte-Test** den neueren Feature-Branch-Servercode mit stabiler BTB-ID kontrolliert auf den bestehenden produktiven Schema-10-Server ausrollen; keine DB-Migration dafür durchführen.
+8. anschließend zwei Multi-BTBs zwischen Pixel/Poco synchronisieren und ausdrücklich BTB-Texte **und Bilder** je `btbId` prüfen.
+9. danach Unterbaustellen-/Baustellenstruktur-Sync für `5362-1` bauen.
+10. danach serverseitige Mitgliedschafts-Entfernung und direkte `Nutzer/Helfer entfernen`-Aktion ergänzen.
+11. anschließend Mängel/Abnahmen/Bilder/Benachrichtigungen, Offline/409/Tombstones/Netzabbruch und Merge-Export mit beiden Geräten testen.
+12. Schema 11 erst nach eigenem Backup/Hashprüfung/Verifikation produktiv migrieren, wenn der Nutzerprofilblock praktisch dran ist.
+13. danach den separaten Vermessungsblock fertigstellen.
+14. PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
 
 ## Nicht erneut entscheiden / nicht zurückbauen
 - NAS Source of Truth.
