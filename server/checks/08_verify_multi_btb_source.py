@@ -11,6 +11,7 @@ SERVER = ROOT / "server" / "app_parts" / "15_part.py"
 BRIDGE = ROOT / "app" / "src" / "main" / "java" / "de" / "tbhelfer" / "datenbank" / "CollabLocalBridge.kt"
 MEDIA = ROOT / "app" / "src" / "main" / "java" / "de" / "tbhelfer" / "datenbank" / "BtbTeamMediaSync.kt"
 MODEL = ROOT / "app" / "src" / "main" / "java" / "de" / "tbhelfer" / "ui" / "bautagebuch" / "BautagebuchModels.kt"
+MANIFEST = ROOT / "app" / "src" / "main" / "AndroidManifest.xml"
 
 
 def require(text: str, needle: str, code: str) -> None:
@@ -29,6 +30,7 @@ def main() -> None:
     bridge = BRIDGE.read_text(encoding="utf-8")
     media = MEDIA.read_text(encoding="utf-8")
     model = MODEL.read_text(encoding="utf-8")
+    manifest = MANIFEST.read_text(encoding="utf-8")
 
     # Syntax of the Python wrapper must be valid before rollout.
     compile(server, str(SERVER), "exec")
@@ -53,6 +55,9 @@ def main() -> None:
     # New local reports have an explicit stable ID field; TAG/NACHT remains display/legacy only.
     require(model, "val btbId: String? = null", "BTB_ANDROID_MODEL_ID_MISSING")
     require(model, "nicht mehr Teil der BTB-Identität", "BTB_ANDROID_MODEL_ID_RULE_MISSING")
+
+    # Network transport inspection in SyncWorker requires this normal manifest permission.
+    require(manifest, "android.permission.ACCESS_NETWORK_STATE", "SYNC_NETWORK_STATE_PERMISSION_MISSING")
 
     print("MULTI_BTB_SOURCE_OK")
 
