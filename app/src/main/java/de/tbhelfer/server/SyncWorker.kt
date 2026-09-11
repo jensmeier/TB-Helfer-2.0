@@ -6,24 +6,28 @@ import android.net.NetworkCapabilities
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.BtbTeamMediaSync
 import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.OfflineSyncRepository
 import de.tbhelfer.einstellungen.SyncEinstellungenSpeicher
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /**
- * Schonender Hintergrund-Sync.
+ * Gemeinsamer vollständiger Server-Sync für Hintergrund und bewusst manuelle Läufe.
  *
- * Zeitplan und Netzart sind gerätelokal einstellbar. Bewusst manuelle Sync-Aktionen werden in der
- * UI behandelt; dieser Worker ist ausschließlich der automatische/entprellte Hintergrundpfad und
- * hält sich deshalb strikt an die gewählte Netzregel.
+ * Automatische Läufe halten sich strikt an Zeitplan + Netzregel. Ein bewusst über die UI
+ * ausgelöster manueller Lauf umgeht diese beiden Präferenzen, benötigt aber weiterhin eine
+ * tatsächlich vorhandene Internetverbindung (WorkManager-Constraint).
  */
 class SyncWorker(
     appContext: Context,
@@ -32,42 +36,47 @@ class SyncWorker(
 
     override suspend fun doWork(): Result {
         ServiceLocator.initialisieren(applicationContext)
+        val manualRun = inputData.getBoolean(INPUT_MANUAL, false)
         val settings = SyncEinstellungenSpeicher.laden(applicationContext)
-        if (settings.zeitplan == SyncEinstellungenSpeicher.Zeitplan.MANUELL) return Result.success()
-        if (!networkAllowed(settings.netz)) return Result.success()
+        if (!manualRun) {
+            if (settings.zeitplan == SyncEinstellungenSpeicher.Zeitplan.MANUELL) return Result.success()
+            if (!networkAllowed(settings.netz)) return Result.success()
+        }
 
         val tokenStore = SecureTokenStore(applicationContext)
-        val token = tokenStore.load() ?: return Result.success()
+        val token = tokenStore.load()
+            ?: return if (manualRun) manualFailure("Gerät ist noch nicht für den Server aktiviert.") else Result.success()
         val repository = ServiceLocator.offlineSyncRepository
 
+        fun sessionInvalid(): Result {
+            tokenStore.clear()
+            return if (manualRun) manualFailure("Gerätefreigabe ist nicht mehr gültig.") else Result.success()
+        }
+
+        fun retryOrManualFailure(message: String = "Synchronisation fehlgeschlagen."): Result =
+            if (manualRun) manualFailure(message) else Result.retry()
+
         return when (val catalogResult = SyncCatalogApi().loadCatalog(token)) {
-            SyncCatalogApi.Result.SessionInvalid -> {
-                tokenStore.clear()
-                Result.success()
-            }
-            is SyncCatalogApi.Result.Error -> Result.retry()
+            SyncCatalogApi.Result.SessionInvalid -> sessionInvalid()
+            is SyncCatalogApi.Result.Error -> retryOrManualFailure(catalogResult.message)
             is SyncCatalogApi.Result.Success -> {
                 try {
                     repository.saveCatalog(catalogResult.catalog)
-                } catch (_: Exception) {
-                    return Result.retry()
+                } catch (error: Exception) {
+                    return retryOrManualFailure(error.message ?: "Katalog konnte nicht lokal gespeichert werden.")
                 }
 
                 val serverVersion = catalogResult.catalog.serverVersion
 
-                // Server 0.6.0 unterstützt den bewährten Lese-/Offline-Sync, aber noch nicht
-                // den inkrementellen Änderungsfeed. Dann sauber beenden statt 404 zu erzeugen.
+                // Alte Serverstände können wenigstens Katalog/Offline-Basis liefern.
                 if (!supportsIncrementalSync(serverVersion)) {
                     SyncStatusSpeicher.erfolgMerken(applicationContext)
                     return Result.success()
                 }
 
                 when (val result = repository.synchronize(token)) {
-                    OfflineSyncRepository.FullSyncResult.SessionInvalid -> {
-                        tokenStore.clear()
-                        return Result.success()
-                    }
-                    is OfflineSyncRepository.FullSyncResult.Error -> return Result.retry()
+                    OfflineSyncRepository.FullSyncResult.SessionInvalid -> return sessionInvalid()
+                    is OfflineSyncRepository.FullSyncResult.Error -> return retryOrManualFailure(result.message)
                     is OfflineSyncRepository.FullSyncResult.Success -> Unit
                 }
 
@@ -85,71 +94,56 @@ class SyncWorker(
                 // 1) Serverkontext + fremde Änderungen holen. Damit kennen wir die gültige
                 //    TB-Gruppe und Bereichsberechtigung und laden bereits vorhandene Attachments.
                 when (val first = collabRepository.synchronizeAll(token)) {
-                    CollabSyncRepository.FullSyncResult.SessionInvalid -> {
-                        tokenStore.clear()
-                        return Result.success()
-                    }
-                    is CollabSyncRepository.FullSyncResult.Error -> return Result.retry()
+                    CollabSyncRepository.FullSyncResult.SessionInvalid -> return sessionInvalid()
+                    is CollabSyncRepository.FullSyncResult.Error -> return retryOrManualFailure(first.message)
                     is CollabSyncRepository.FullSyncResult.Success -> notifications += first.summary.notifications
                 }
 
                 // 2) Eingehende BTB-/Mängel-/Abnahme-Stände in die bestehenden Fachspeicher spiegeln.
                 runCatching { localBridge.applyServerStateToLocal() }
-                    .getOrElse { return Result.retry() }
+                    .getOrElse { return retryOrManualFailure(it.message ?: "Serverdaten konnten lokal nicht angewendet werden.") }
 
                 // BTB-Bilder der eigenen verantwortlichen TB-Gruppe ebenfalls übernehmen und bereits
                 // vorhandene lokale Bilder dieses BTB hochladen. Bilder anderer TB-Gruppen sind im
                 // Server-Feed nicht sichtbar und können daher hier nicht vermischt werden.
                 val firstBtbMedia = when (val media = btbMedia.synchronize(token)) {
-                    BtbTeamMediaSync.Result.SessionInvalid -> {
-                        tokenStore.clear()
-                        return Result.success()
-                    }
+                    BtbTeamMediaSync.Result.SessionInvalid -> return sessionInvalid()
                     BtbTeamMediaSync.Result.Unsupported -> null
-                    is BtbTeamMediaSync.Result.Error -> return Result.retry()
+                    is BtbTeamMediaSync.Result.Error -> return retryOrManualFailure("BTB-Bilder konnten nicht synchronisiert werden.")
                     is BtbTeamMediaSync.Result.Success -> media.summary
                 }
 
                 // 3) Lokale Text-/Statusänderungen in die idempotente Upload-Queue übernehmen.
                 val exported = runCatching { localBridge.exportLocalChanges() }
-                    .getOrElse { return Result.retry() }
+                    .getOrElse { return retryOrManualFailure(it.message ?: "Lokale Änderungen konnten nicht vorbereitet werden.") }
 
                 // 4) Neue Entities müssen zuerst ihre feste Server-UUID erhalten, bevor Bilder
                 //    an BTB/DEFECT/ACCEPTANCE angehängt werden können.
                 if (exported.queuedOrUpdated > 0) {
                     when (val second = collabRepository.synchronizeAll(token)) {
-                        CollabSyncRepository.FullSyncResult.SessionInvalid -> {
-                            tokenStore.clear()
-                            return Result.success()
-                        }
-                        is CollabSyncRepository.FullSyncResult.Error -> return Result.retry()
+                        CollabSyncRepository.FullSyncResult.SessionInvalid -> return sessionInvalid()
+                        is CollabSyncRepository.FullSyncResult.Error -> return retryOrManualFailure(second.message)
                         is CollabSyncRepository.FullSyncResult.Success -> notifications += second.summary.notifications
                     }
                     runCatching { localBridge.applyServerStateToLocal() }
-                        .getOrElse { return Result.retry() }
+                        .getOrElse { return retryOrManualFailure(it.message ?: "Hochgeladene Änderungen konnten lokal nicht bestätigt werden.") }
                 }
 
                 // 5) Nach dem Text-Upload nochmals BTB-Medien versuchen. Das deckt insbesondere einen
                 //    ganz neuen BTB ab, dessen Server-UUID erst in Schritt 4 entstanden ist.
                 val secondBtbMedia = when (val media = btbMedia.synchronize(token)) {
-                    BtbTeamMediaSync.Result.SessionInvalid -> {
-                        tokenStore.clear()
-                        return Result.success()
-                    }
+                    BtbTeamMediaSync.Result.SessionInvalid -> return sessionInvalid()
                     BtbTeamMediaSync.Result.Unsupported -> null
-                    is BtbTeamMediaSync.Result.Error -> return Result.retry()
+                    is BtbTeamMediaSync.Result.Error -> return retryOrManualFailure("BTB-Bilder konnten nicht vollständig synchronisiert werden.")
                     is BtbTeamMediaSync.Result.Success -> media.summary
                 }
 
                 // 6) Mängel-/Abnahmebilder bei JEDEM Lauf versuchen. Das ist absichtlich nicht an
                 //    queuedOrUpdated gekoppelt: ein Netzabbruch darf ein Bild nicht dauerhaft verlieren.
                 val attachmentUpload = when (val result = localBridge.uploadLocalAttachments(token)) {
-                    CollabLocalBridge.AttachmentUploadResult.SessionInvalid -> {
-                        tokenStore.clear()
-                        return Result.success()
-                    }
+                    CollabLocalBridge.AttachmentUploadResult.SessionInvalid -> return sessionInvalid()
                     CollabLocalBridge.AttachmentUploadResult.Unsupported -> null
-                    is CollabLocalBridge.AttachmentUploadResult.Error -> return Result.retry()
+                    is CollabLocalBridge.AttachmentUploadResult.Error -> return retryOrManualFailure("Mängel-/Abnahmebilder konnten nicht synchronisiert werden.")
                     is CollabLocalBridge.AttachmentUploadResult.Success -> result.summary
                 }
 
@@ -157,21 +151,15 @@ class SyncWorker(
                 val btbUploaded = (firstBtbMedia?.uploaded ?: 0) + (secondBtbMedia?.uploaded ?: 0)
                 if (btbUploaded > 0 || (attachmentUpload?.uploaded ?: 0) > 0) {
                     when (val third = collabRepository.synchronizeAll(token)) {
-                        CollabSyncRepository.FullSyncResult.SessionInvalid -> {
-                            tokenStore.clear()
-                            return Result.success()
-                        }
-                        is CollabSyncRepository.FullSyncResult.Error -> return Result.retry()
+                        CollabSyncRepository.FullSyncResult.SessionInvalid -> return sessionInvalid()
+                        is CollabSyncRepository.FullSyncResult.Error -> return retryOrManualFailure(third.message)
                         is CollabSyncRepository.FullSyncResult.Success -> notifications += third.summary.notifications
                     }
                     runCatching { localBridge.applyServerStateToLocal() }
-                        .getOrElse { return Result.retry() }
+                        .getOrElse { return retryOrManualFailure(it.message ?: "Neue Server-Anlagen konnten lokal nicht angewendet werden.") }
                     when (val media = btbMedia.synchronize(token)) {
-                        BtbTeamMediaSync.Result.SessionInvalid -> {
-                            tokenStore.clear()
-                            return Result.success()
-                        }
-                        is BtbTeamMediaSync.Result.Error -> return Result.retry()
+                        BtbTeamMediaSync.Result.SessionInvalid -> return sessionInvalid()
+                        is BtbTeamMediaSync.Result.Error -> return retryOrManualFailure("BTB-Bilder konnten nicht abschließend synchronisiert werden.")
                         else -> Unit
                     }
                 }
@@ -188,6 +176,9 @@ class SyncWorker(
             }
         }
     }
+
+    private fun manualFailure(message: String): Result =
+        Result.failure(workDataOf(OUTPUT_MESSAGE to message))
 
     private suspend fun refreshWorksiteDisplayState(token: String) {
         val contexts = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
@@ -249,6 +240,9 @@ class SyncWorker(
 
     companion object {
         private const val UNIQUE_NAME = "tbhelfer-server-sync"
+        private const val MANUAL_UNIQUE_NAME = "tbhelfer-server-sync-manual"
+        const val INPUT_MANUAL = "manual_sync"
+        const val OUTPUT_MESSAGE = "sync_message"
 
         fun schedule(context: Context) {
             val appContext = context.applicationContext
@@ -277,6 +271,28 @@ class SyncWorker(
                 ExistingPeriodicWorkPolicy.UPDATE,
                 request
             )
+        }
+
+        /**
+         * Vollständiger bewusster Sync unabhängig von automatischem Zeitplan/Netzpräferenz.
+         * WorkManager wartet trotzdem auf irgendeine Internetverbindung.
+         */
+        fun enqueueManual(context: Context): UUID {
+            val appContext = context.applicationContext
+            val request = OneTimeWorkRequestBuilder<SyncWorker>()
+                .setInputData(workDataOf(INPUT_MANUAL to true))
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                )
+                .build()
+            WorkManager.getInstance(appContext).enqueueUniqueWork(
+                MANUAL_UNIQUE_NAME,
+                ExistingWorkPolicy.REPLACE,
+                request
+            )
+            return request.id
         }
     }
 }
