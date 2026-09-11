@@ -23,15 +23,16 @@ import de.tbhelfer.ui.bautagebuch.MergeSafeBaustellenExport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /**
  * BTB-Verlauf je Baustelle.
- * Grün: abgeschlossener BTB innerhalb 7 Tage, noch über App bearbeitbar.
- * Rot: älter als 7 Tage, nur PDF/Export anzeigen/teilen.
  *
- * Menschenlesbar wird zusätzlich der verantwortliche TB des eigenen Server-Teams angezeigt.
- * Die fachliche Zuordnung bleibt weiterhin ausschließlich über Baustellen-/Gruppen-UUIDs.
+ * Seit dem Multi-BTB-Modell werden ausschließlich tatsächlich angelegte BTBs angezeigt. Datum
+ * und eine optionale Tag-/Nacht-Klassifikation sind nur noch Attribute; die stabile BTB-ID ist
+ * maßgeblich. Abgeschlossene BTBs dürfen später erneut bearbeitet und als neue Dokumentversion
+ * abgeschlossen werden.
  */
 class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
 
@@ -80,17 +81,26 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
 
     private fun cardFor(item: BautagebuchSpeicher.VerlaufEintrag): View {
         val ctx = requireContext()
-        val green = item.bearbeitbar
-        val bg = if (green) Color.parseColor("#E8F5E9") else Color.parseColor("#FFEBEE")
-        val stroke = if (green) Color.parseColor("#2E7D32") else Color.parseColor("#C62828")
-        val status = if (green) {
-            if (item.baselineExists) "Abgeschlossen · bearbeitbar · ${item.alterTage} Tage" else "Entwurf · bearbeitbar · ${item.alterTage} Tage"
-        } else "Gesperrt · nur PDF/Export"
-        val schicht = if (item.schicht.name == "NACHT") "Nacht" else "Tag"
-        val zeit = listOf(item.entry.startUhrzeit, item.entry.endeUhrzeit)
+        val finished = item.entry.dokumentVersion > 0 || item.baselineExists || item.entry.istFertig
+        val bg = if (finished) Color.parseColor("#E8F5E9") else Color.parseColor("#F5F5F5")
+        val stroke = if (finished) Color.parseColor("#2E7D32") else Color.parseColor("#616161")
+        val version = item.entry.dokumentVersion.coerceAtLeast(if (item.baselineExists) 1 else 0)
+        val status = if (finished) {
+            "Abgeschlossen · V${version.coerceAtLeast(1)} · erneut bearbeitbar"
+        } else {
+            "Entwurf"
+        }
+        val startDate = runCatching { LocalDate.parse(item.entry.datumIso) }.getOrDefault(item.datum)
+        val endDate = item.entry.endeDatumIso?.let { raw -> runCatching { LocalDate.parse(raw) }.getOrNull() }
+        val time = listOf(item.entry.startUhrzeit, item.entry.endeUhrzeit)
             .filter { !it.isNullOrBlank() }
             .joinToString("–")
             .ifBlank { "ohne Zeit" }
+        val dateLabel = if (endDate != null && endDate != startDate) {
+            "${startDate.format(deDateFmt)} – ${endDate.format(deDateFmt)}"
+        } else {
+            startDate.format(deDateFmt)
+        }
 
         val card = MaterialCardView(ctx).apply {
             radius = dp(14).toFloat()
@@ -106,15 +116,13 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
         }
-        inner.addView(textView("BTB $verantwortlicherTb · ${item.datum.format(deDateFmt)} · $schicht", 17f, Color.BLACK, true))
-        inner.addView(textView("Zeit: $zeit", 13f, Color.DKGRAY, false))
+        inner.addView(textView("BTB $verantwortlicherTb · $dateLabel", 17f, Color.BLACK, true))
+        inner.addView(textView("Arbeitszeit: $time", 13f, Color.DKGRAY, false))
         inner.addView(textView(status, 13f, stroke, true))
-        inner.addView(textView(if (item.pdfVorhanden) "PDF vorhanden" else "Kein Abschluss-PDF gefunden", 13f, Color.DKGRAY, false))
+        inner.addView(textView(if (item.pdfVorhanden) "PDF vorhanden" else "Noch kein Abschluss-PDF", 13f, Color.DKGRAY, false))
 
         val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        if (green) {
-            row.addView(button("BTB bearbeiten") { bearbeite(item) })
-        }
+        row.addView(button("BTB bearbeiten") { bearbeite(item) })
         row.addView(button("PDF öffnen") { oeffnePdf(item) })
         row.addView(button("ZIP teilen") { teileZip(item) })
         inner.addView(row)
@@ -127,9 +135,21 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
             if (hauptKnotenId > 0L && altBaustelleId > 0L) {
                 ServiceLocator.aktuelleBaustelleSpeicher.setzenNurHaupt(hauptKnotenId, altBaustelleId)
             }
+            val appContext = requireContext().applicationContext
+            item.btbId?.takeIf { !it.startsWith("legacy:") }?.let { id ->
+                BautagebuchSpeicher.aktivierenBtb(
+                    appContext,
+                    altBaustelleId.takeIf { it > 0L },
+                    baustelleName,
+                    id,
+                    item.datum,
+                    item.schicht
+                )
+            }
             val b = Bundle().apply {
                 putString("datumIso", item.datum.toString())
                 putString("schichtTyp", item.schicht.name)
+                putString("btbId", item.btbId)
             }
             findNavController().navigate(R.id.bautagebuchFragment, b)
         }
@@ -175,31 +195,27 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         }
     }
 
-    private fun button(text: String, onClick: () -> Unit): MaterialButton {
-        return MaterialButton(requireContext()).apply {
-            this.text = text
-            isAllCaps = false
-            textSize = 12f
-            setPadding(dp(8), 0, dp(8), 0)
-            minHeight = dp(36)
-            backgroundTintList = ColorStateList.valueOf(Color.parseColor("#1E66FF"))
-            setTextColor(Color.WHITE)
-            setOnClickListener { onClick() }
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                rightMargin = dp(6)
-                topMargin = dp(10)
-            }
+    private fun button(text: String, onClick: () -> Unit): MaterialButton = MaterialButton(requireContext()).apply {
+        this.text = text
+        isAllCaps = false
+        textSize = 12f
+        setPadding(dp(8), 0, dp(8), 0)
+        minHeight = dp(36)
+        backgroundTintList = ColorStateList.valueOf(Color.parseColor("#1E66FF"))
+        setTextColor(Color.WHITE)
+        setOnClickListener { onClick() }
+        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            rightMargin = dp(6)
+            topMargin = dp(10)
         }
     }
 
-    private fun textView(text: String, size: Float, color: Int, bold: Boolean): TextView {
-        return TextView(requireContext()).apply {
-            this.text = text
-            textSize = size
-            setTextColor(color)
-            if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(0, dp(2), 0, dp(2))
-        }
+    private fun textView(text: String, size: Float, color: Int, bold: Boolean): TextView = TextView(requireContext()).apply {
+        this.text = text
+        textSize = size
+        setTextColor(color)
+        if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
+        setPadding(0, dp(2), 0, dp(2))
     }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
