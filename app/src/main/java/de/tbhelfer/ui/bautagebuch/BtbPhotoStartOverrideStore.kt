@@ -81,7 +81,7 @@ object BtbPhotoStartOverrideStore {
             put("version", VERSION)
             put("updatedEpochMs", System.currentTimeMillis())
             put("baustelleId", baustelleId)
-            put("btbId", BtbPhotoInstanzKey.activeBtbId(context, baustelleId) ?: JSONObject.NULL)
+            put("btbId", BtbPhotoInstanzKey.activeBtbId(context, baustelleId, datumIso, schicht) ?: JSONObject.NULL)
             put("datumIso", datumIso)
             put("schicht", schicht.name)
             put("shiftStart", shiftStart ?: JSONObject.NULL)
@@ -148,7 +148,7 @@ object BtbPhotoStartOverrideStore {
     fun deleteAllFor(context: Context, baustelleId: Long, datumIso: String, schicht: SchichtTyp) {
         val dir = File(context.filesDir, DIR_NAME)
         if (!dir.exists()) return
-        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId)
+        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
         if (token != null) {
             val prefix = "ovr_${baustelleId}_btb_${token}_"
             dir.listFiles()?.forEach { f ->
@@ -184,7 +184,7 @@ object BtbPhotoStartOverrideStore {
         val s = BtbPhotoSelectionStore.safeTimeKey(shiftStart)
         val e = BtbPhotoSelectionStore.safeTimeKey(shiftEnd)
         val st = schicht.name.lowercase()
-        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId)
+        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
         val name = if (token != null) {
             "ovr_${baustelleId}_btb_${token}_${datumIso}_${st}_${s}_${e}.json"
         } else {
@@ -202,7 +202,7 @@ object BtbPhotoStartOverrideStore {
         schicht: SchichtTyp
     ): File {
         val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
-        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId)
+        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
         val newF = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht)
         if (token != null || newF.exists()) return newF
         val s = BtbPhotoSelectionStore.safeTimeKey(shiftStart)
