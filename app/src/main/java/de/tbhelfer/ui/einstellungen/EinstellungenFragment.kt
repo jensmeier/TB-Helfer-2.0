@@ -66,14 +66,18 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
 
     private fun aktualisiereSyncButton() {
         val cfg = SyncEinstellungenSpeicher.laden(requireContext())
-        val letzte = SyncStatusSpeicher.anzeige(requireContext())
+        val syncStand = if (SyncStatusSpeicher.letzterErfolgEpochMs(requireContext()) == null) {
+            "Noch nicht synchronisiert"
+        } else {
+            "zuletzt ${SyncStatusSpeicher.anzeige(requireContext())}"
+        }
         btnSynchronisation.text = buildString {
             append("Synchronisation\n")
             append(SyncEinstellungenSpeicher.zeitplanLabel(cfg.zeitplan))
             append(" · ")
             append(SyncEinstellungenSpeicher.netzLabel(cfg.netz))
-            append(" · zuletzt ")
-            append(letzte)
+            append(" · ")
+            append(syncStand)
         }
     }
 
