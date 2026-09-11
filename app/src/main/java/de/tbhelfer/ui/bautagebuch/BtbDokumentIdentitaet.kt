@@ -9,8 +9,8 @@ import de.tbhelfer.ui.einstellungen.nutzer.NutzerSpeicher
 /**
  * Eine gemeinsame Quelle für die menschenlesbare BTB-Dokumentidentität.
  *
- * Technische Beziehungen bleiben immer bei Server-/Gruppen-UUIDs. Diese Klasse erzeugt nur
- * Anzeige- und Exportwerte, damit Verlauf, PDF, DOCX und ZIP dieselben Namen verwenden.
+ * Technische Beziehungen bleiben immer bei Server-/Gruppen-/BTB-UUIDs. Datum, Uhrzeit und eine
+ * abgeleitete Tag-/Nacht-Anzeige sind nur menschenlesbare Attribute und keine technischen Schlüssel.
  */
 object BtbDokumentIdentitaet {
 
@@ -19,21 +19,52 @@ object BtbDokumentIdentitaet {
         val baustelleName: String,
         val verantwortlicherTb: String,
         val verantwortlicherToken: String,
+        val btbId: String?,
+        val btbToken: String,
         val datumIso: String,
+        val endeDatumIso: String?,
+        val startUhrzeit: String?,
+        val endeUhrzeit: String?,
+        val dokumentVersion: Int,
+        // Legacy-/Anzeigeinformationen bleiben für Altbestände erhalten.
         val schicht: SchichtTyp,
         val schichtAnzeige: String,
         val schichtToken: String,
         val worksiteServerId: String?,
         val groupId: String?
     ) {
+        val zeitraumAnzeige: String
+            get() {
+                val date = if (!endeDatumIso.isNullOrBlank() && endeDatumIso != datumIso) "$datumIso – $endeDatumIso" else datumIso
+                val time = listOf(startUhrzeit, endeUhrzeit).filter { !it.isNullOrBlank() }.joinToString("–")
+                return if (time.isBlank()) date else "$date · $time"
+            }
+
         val anzeigeTitel: String
-            get() = "BTB $verantwortlicherTb · $datumIso · $schichtAnzeige"
+            get() = "BTB $verantwortlicherTb · $zeitraumAnzeige"
 
+        /**
+         * Merge-sichere Basis. Zwei verschiedene BTBs desselben Tages dürfen nie kollidieren.
+         * Für Altbestände ohne UUID bleibt der historische Schichttoken Bestandteil der Basis.
+         */
         val dateiBasis: String
-            get() = "BTB_${datumIso}_${schichtToken}_${verantwortlicherToken}"
+            get() {
+                val timeToken = listOf(startUhrzeit, endeUhrzeit)
+                    .filter { !it.isNullOrBlank() }
+                    .joinToString("-") { safeToken(it.orEmpty()).ifBlank { "Zeit" } }
+                    .ifBlank { schichtToken }
+                return "BTB_${datumIso}_${timeToken}_${verantwortlicherToken}_${btbToken}"
+            }
 
-        fun pdfDateiname(): String = "$dateiBasis.pdf"
-        fun docxDateiname(): String = "$dateiBasis.docx"
+        fun pdfDateiname(version: Int? = null): String {
+            val v = version ?: dokumentVersion.takeIf { it > 0 }
+            return if (v != null) "${dateiBasis}_V$v.pdf" else "$dateiBasis.pdf"
+        }
+
+        fun docxDateiname(version: Int? = null): String {
+            val v = version ?: dokumentVersion.takeIf { it > 0 }
+            return if (v != null) "${dateiBasis}_V$v.docx" else "$dateiBasis.docx"
+        }
     }
 
     suspend fun aufloesen(context: Context, entry: BautagebuchEintrag): Identitaet {
@@ -48,9 +79,6 @@ object BtbDokumentIdentitaet {
             TeamDisplayCache.ownTeam(appContext, worksiteId)
         }
 
-        // Namen sind ausschließlich Anzeige. Die UUIDs darunter bleiben die technische Identität.
-        // Solange eine ältere/lokale Baustelle noch nicht servergebunden ist, ist der bei der
-        // Geräteaktivierung gelieferte Benutzername der beste menschenlesbare Fallback.
         val responsible = ownTeam?.leadDisplayName
             ?: ownTeam?.leadNameSnapshot
             ?: syncContext?.leadNameSnapshot
@@ -63,13 +91,24 @@ object BtbDokumentIdentitaet {
             SchichtTyp.NACHT -> "Nacht"
         }
         val shiftToken = entry.schicht.name
+        val stableBtbToken = entry.btbId
+            ?.let(::safeToken)
+            ?.take(18)
+            ?.takeIf { it.isNotBlank() }
+            ?: "ALT_${entry.datumIso}_${shiftToken}"
 
         return Identitaet(
             firmenname = NutzerSpeicher.laden(appContext)?.firmenname?.trim()?.takeIf { it.isNotBlank() },
             baustelleName = entry.baustelleName,
             verantwortlicherTb = responsible.trim().ifBlank { "TB" },
             verantwortlicherToken = safeToken(responsible).ifBlank { "TB" },
+            btbId = entry.btbId,
+            btbToken = stableBtbToken,
             datumIso = entry.datumIso,
+            endeDatumIso = entry.endeDatumIso,
+            startUhrzeit = entry.startUhrzeit,
+            endeUhrzeit = entry.endeUhrzeit,
+            dokumentVersion = entry.dokumentVersion,
             schicht = entry.schicht,
             schichtAnzeige = shiftDisplay,
             schichtToken = shiftToken,
