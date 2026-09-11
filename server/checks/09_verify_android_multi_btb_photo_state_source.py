@@ -26,16 +26,27 @@ def main() -> None:
 
     require(src["key"], '".active_btb.json"', "PHOTO_KEY_ACTIVE_POINTER_MISSING")
     require(src["key"], 'optString("btbId")', "PHOTO_KEY_BTB_ID_MISSING")
+    require(src["key"], 'optString("datumIso")', "PHOTO_KEY_DATE_MISSING")
+    require(src["key"], 'optString("schicht")', "PHOTO_KEY_SHIFT_MISSING")
+    require(src["key"], "pointer.datumIso != datumIso || pointer.schicht != schicht", "PHOTO_KEY_CONTEXT_GUARD_MISSING")
     require(src["key"], '"baustelle_${baustelleId}/Bautagebuch"', "PHOTO_KEY_CANONICAL_WORKSITE_PATH_MISSING")
 
     for name in ("selection", "text", "start", "km"):
         text = src[name]
         require(text, "private const val VERSION = 2", f"PHOTO_{name.upper()}_VERSION2_MISSING")
-        require(text, "BtbPhotoInstanzKey.activeToken", f"PHOTO_{name.upper()}_ACTIVE_TOKEN_MISSING")
+        require(
+            text,
+            "BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)",
+            f"PHOTO_{name.upper()}_CONTEXT_TOKEN_MISSING",
+        )
         require(text, "_btb_${token}_", f"PHOTO_{name.upper()}_BTB_FILENAME_SCOPE_MISSING")
-        require(text, "BtbPhotoInstanzKey.activeBtbId", f"PHOTO_{name.upper()}_BTB_METADATA_MISSING")
+        require(
+            text,
+            "BtbPhotoInstanzKey.activeBtbId(context, baustelleId, datumIso, schicht)",
+            f"PHOTO_{name.upper()}_BTB_METADATA_MISSING",
+        )
 
-    # deleteAllFor must switch to the active btbId so starting BTB B cannot delete BTB A state.
+    # deleteAllFor must switch to the matching active btbId so starting BTB B cannot delete BTB A state.
     for name in ("selection", "text", "start", "km"):
         require(src[name], "fun deleteAllFor", f"PHOTO_{name.upper()}_DELETE_ALL_MISSING")
         require(src[name], "if (token != null)", f"PHOTO_{name.upper()}_DELETE_NOT_BTB_SCOPED")
