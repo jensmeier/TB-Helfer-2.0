@@ -19,14 +19,9 @@ import java.time.ZoneId
 /**
  * Brücke zwischen den bestehenden lokalen Fachspeichern und dem Server-Sync.
  *
- * Sie ersetzt die vorhandenen lokalen Datenmodelle NICHT. Stattdessen werden vorhandene BTB,
- * Mängel und Abnahmen in die Sync-Queue gespiegelt. Eingehende Serverstände werden wieder in die
- * vorhandenen Fachspeicher bzw. in einen kleinen lokalen Ergänzungsspeicher übernommen.
- *
- * BTB bleibt strikt gruppenbezogen. Mängel und Abnahmen werden baustellenweit innerhalb des vom
- * Server freigegebenen Bereichs synchronisiert. Bilder und Abnahme-Anlagen werden separat als
- * Attachments übertragen; lokale Foto-IDs werden deshalb nie als geräteübergreifende Identität
- * verwendet.
+ * BTB bleibt strikt gruppenbezogen. Neue BTBs werden über ihre stabile BTB-ID synchronisiert;
+ * Datum und TAG/NACHT sind nur noch Attribute. Dadurch können mehrere Berichte am selben Tag
+ * innerhalb desselben TB-Teams unabhängig voneinander existieren.
  */
 class CollabLocalBridge(
     context: Context,
@@ -82,15 +77,18 @@ class CollabLocalBridge(
             val localName = local.hauptbaustellenName
 
             for (verlauf in BautagebuchSpeicher.verlaufFuerBaustelle(appContext, localBaustelleId, localName)) {
-                val source = findBtbJson(localBaustelleId, localName, verlauf.datum, verlauf.schicht) ?: continue
-                val payload = sanitizeBtbPayload(source.readText(Charsets.UTF_8), localBaustelleId, localName)
-                val clientKey = "${verlauf.datum}:${verlauf.schicht.name}"
+                val clientKey = verlauf.btbId?.takeIf { it.isNotBlank() }
+                    ?: "legacy:${verlauf.datum}:${verlauf.schicht.name}"
+                val source = findBtbJson(localBaustelleId, localName, verlauf.datum, verlauf.schicht, clientKey) ?: continue
+                val payloadObject = runCatching { JSONObject(source.readText(Charsets.UTF_8)) }.getOrElse { JSONObject() }
+                if (payloadObject.optString("btbId").isBlank()) payloadObject.put("btbId", clientKey)
+                val payload = sanitizeBtbPayload(payloadObject.toString(), localBaustelleId, localName)
                 if (queueIfChanged(
                         worksiteServerId = server.worksiteServerId,
                         entityType = SyncCollabPendingChangeEntity.TYPE_BTB,
                         clientKey = clientKey,
                         groupId = server.groupId,
-                        status = if (verlauf.entry.istFertig) "FERTIG" else "ENTWURF",
+                        status = if (verlauf.entry.istFertig || verlauf.entry.dokumentVersion > 0) "FERTIG" else "ENTWURF",
                         areaScopeJson = server.areaScopeJson,
                         payloadJson = payload
                     )
@@ -106,11 +104,8 @@ class CollabLocalBridge(
             for (defect in localDefects) {
                 val status = MangelStatusSpeicher.laden(appContext, defect.key)
                 val cached = syncDefects[defect.key]
-                val payload = if (cached != null) {
-                    syncDefectPayload(cached.payloadJson, status)
-                } else {
-                    localDefectPayload(defect, localName, status)
-                }
+                val payload = if (cached != null) syncDefectPayload(cached.payloadJson, status)
+                else localDefectPayload(defect, localName, status)
 
                 if (queueIfChanged(
                         worksiteServerId = server.worksiteServerId,
@@ -127,8 +122,6 @@ class CollabLocalBridge(
                 }
             }
 
-            // Ein Mangel, der nur von einem anderen Gerät stammt, besitzt auf diesem Handy noch
-            // keine lokale Foto-/BTB-Quelle. Änderungen an Status/Kommentar müssen trotzdem zurück.
             for (defect in syncDefects.values.filter { it.mangelKey !in localDefectKeys }) {
                 val status = MangelStatusSpeicher.laden(appContext, defect.mangelKey)
                 val payload = syncDefectPayload(defect.payloadJson, status)
@@ -165,15 +158,9 @@ class CollabLocalBridge(
                 }
             }
         }
-
         return ExportSummary(bound.size, total, btbCount, defectCount, acceptanceCount)
     }
 
-    /**
-     * Überträgt lokale Mängel-/Abnahmebilder erst nachdem die zugehörigen Server-Entities eine
-     * feste UUID besitzen. Der Repository-Layer dedupliziert pro Entity über SHA-256, sodass ein
-     * abgebrochener Hintergrundlauf beim nächsten Versuch keine Bilder doppelt erzeugt.
-     */
     suspend fun uploadLocalAttachments(
         token: String,
         api: CollabSyncApi = CollabSyncApi()
@@ -189,26 +176,17 @@ class CollabLocalBridge(
             val localName = local.hauptbaustellenName
 
             val serverDefects = collabRepository.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_DEFECT)
-                .mapNotNull { entity -> entity.clientEntityKey?.let { it to entity } }
-                .toMap()
+                .mapNotNull { entity -> entity.clientEntityKey?.let { it to entity } }.toMap()
             for (defect in MaengellisteExport.ladeItems(appContext, localBaustelleId, localName)) {
                 val serverEntity = serverDefects[defect.key] ?: continue
                 for (mf in defect.fotos) {
                     val file = File(mf.foto.dateipfad)
                     if (!file.exists() || !file.isFile) continue
                     val uploadName = semanticFilename("DEFECT", mf.art.name, file.name)
-                    when (
-                        val result = collabRepository.uploadAttachment(
-                            token = token,
-                            worksiteServerId = server.worksiteServerId,
-                            parentEntityType = SyncCollabPendingChangeEntity.TYPE_DEFECT,
-                            parentEntityId = serverEntity.serverId,
-                            file = file,
-                            uploadFilename = uploadName,
-                            mimeType = CollabSyncRepository.mimeTypeFor(file),
-                            api = api
-                        )
-                    ) {
+                    when (val result = collabRepository.uploadAttachment(
+                        token, server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_DEFECT,
+                        serverEntity.serverId, file, uploadName, CollabSyncRepository.mimeTypeFor(file), api
+                    )) {
                         CollabSyncRepository.LocalAttachmentUploadResult.SessionInvalid -> return AttachmentUploadResult.SessionInvalid
                         CollabSyncRepository.LocalAttachmentUploadResult.Unsupported -> return AttachmentUploadResult.Unsupported
                         is CollabSyncRepository.LocalAttachmentUploadResult.Error -> return AttachmentUploadResult.Error(result.message)
@@ -221,29 +199,19 @@ class CollabLocalBridge(
             }
 
             val serverAcceptances = collabRepository.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE)
-                .mapNotNull { entity -> entity.clientEntityKey?.let { it to entity } }
-                .toMap()
+                .mapNotNull { entity -> entity.clientEntityKey?.let { it to entity } }.toMap()
             for (acceptance in AbnahmeSpeicher.alle(appContext, localBaustelleId)) {
                 val serverEntity = serverAcceptances[acceptance.id] ?: continue
                 val fotoEntities = fotoRepository.fotosMitIds(acceptance.fotos.map { it.fotoId }).associateBy { it.id }
-
                 for (ref in acceptance.fotos) {
                     val foto = fotoEntities[ref.fotoId] ?: continue
                     val file = File(foto.dateipfad)
                     if (!file.exists() || !file.isFile) continue
                     val uploadName = semanticFilename("ACCEPTANCE_FOTO", ref.bildArt.name, file.name)
-                    when (
-                        val result = collabRepository.uploadAttachment(
-                            token = token,
-                            worksiteServerId = server.worksiteServerId,
-                            parentEntityType = SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
-                            parentEntityId = serverEntity.serverId,
-                            file = file,
-                            uploadFilename = uploadName,
-                            mimeType = CollabSyncRepository.mimeTypeFor(file),
-                            api = api
-                        )
-                    ) {
+                    when (val result = collabRepository.uploadAttachment(
+                        token, server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
+                        serverEntity.serverId, file, uploadName, CollabSyncRepository.mimeTypeFor(file), api
+                    )) {
                         CollabSyncRepository.LocalAttachmentUploadResult.SessionInvalid -> return AttachmentUploadResult.SessionInvalid
                         CollabSyncRepository.LocalAttachmentUploadResult.Unsupported -> return AttachmentUploadResult.Unsupported
                         is CollabSyncRepository.LocalAttachmentUploadResult.Error -> return AttachmentUploadResult.Error(result.message)
@@ -253,7 +221,6 @@ class CollabLocalBridge(
                         }
                     }
                 }
-
                 for (anlage in acceptance.anlagen) {
                     val file = when {
                         anlage.typ == AbnahmeSpeicher.AnlageTyp.BILD && !anlage.ausschnittPfad.isNullOrBlank() && File(anlage.ausschnittPfad).exists() -> File(anlage.ausschnittPfad)
@@ -261,18 +228,10 @@ class CollabLocalBridge(
                     }
                     if (!file.exists() || !file.isFile) continue
                     val uploadName = semanticFilename("ACCEPTANCE_ANLAGE", anlage.typ.name, file.name)
-                    when (
-                        val result = collabRepository.uploadAttachment(
-                            token = token,
-                            worksiteServerId = server.worksiteServerId,
-                            parentEntityType = SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
-                            parentEntityId = serverEntity.serverId,
-                            file = file,
-                            uploadFilename = uploadName,
-                            mimeType = CollabSyncRepository.mimeTypeFor(file),
-                            api = api
-                        )
-                    ) {
+                    when (val result = collabRepository.uploadAttachment(
+                        token, server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
+                        serverEntity.serverId, file, uploadName, CollabSyncRepository.mimeTypeFor(file), api
+                    )) {
                         CollabSyncRepository.LocalAttachmentUploadResult.SessionInvalid -> return AttachmentUploadResult.SessionInvalid
                         CollabSyncRepository.LocalAttachmentUploadResult.Unsupported -> return AttachmentUploadResult.Unsupported
                         is CollabSyncRepository.LocalAttachmentUploadResult.Error -> return AttachmentUploadResult.Error(result.message)
@@ -284,7 +243,6 @@ class CollabLocalBridge(
                 }
             }
         }
-
         return AttachmentUploadResult.Success(AttachmentUploadSummary(bound.size, uploaded, present))
     }
 
@@ -307,24 +265,23 @@ class CollabLocalBridge(
                 val key = entity.clientEntityKey ?: continue
                 if (dao.collabPendingForClientKey(server.worksiteServerId, entity.entityType, key) != null) continue
                 val payload = runCatching { JSONObject(entity.payloadJson) }.getOrNull() ?: continue
-                val datum = payload.optString("datumIso").takeIf { it.isNotBlank() }?.let {
-                    runCatching { LocalDate.parse(it) }.getOrNull()
-                } ?: continue
-                val schicht = runCatching {
-                    SchichtTyp.valueOf(payload.optString("schicht", SchichtTyp.TAG.name))
-                }.getOrDefault(SchichtTyp.TAG)
+                val datum = payload.optString("datumIso").takeIf { it.isNotBlank() }
+                    ?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: continue
+                val schicht = runCatching { SchichtTyp.valueOf(payload.optString("schicht", SchichtTyp.TAG.name)) }
+                    .getOrDefault(SchichtTyp.TAG)
 
                 payload.put("baustelleId", localBaustelleId)
                 payload.put("baustelleName", localName)
+                payload.put("btbId", payload.optString("btbId").takeIf { it.isNotBlank() } ?: key)
                 payload.put("fotos", JSONArray())
                 payload.put("pdfAuswahl", JSONObject())
                 val canonicalPayload = payload.toString()
 
-                val existingMediaSource = findBtbJson(localBaustelleId, localName, datum, schicht)
+                val existingMediaSource = findBtbJson(localBaustelleId, localName, datum, schicht, key)
                 val localPayload = mergeLocalBtbMedia(existingMediaSource, payload)
                 val target = File(
                     BautagebuchSpeicher.ordner(appContext, localBaustelleId, localName, datum),
-                    if (schicht == SchichtTyp.NACHT) "bautagebuch_nacht.json" else "bautagebuch_tag.json"
+                    "btb_${safeBtbFileToken(payload.optString("btbId", key))}.json"
                 )
                 if (writeIfDifferent(target, localPayload.toString(2))) btbWritten++
                 rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(entity.status, canonicalPayload))
@@ -340,17 +297,12 @@ class CollabLocalBridge(
                     MangelStatusSpeicher.Status.valueOf(entity.status ?: payload.optString("status", "OFFEN"))
                 }.getOrDefault(MangelStatusSpeicher.Status.OFFEN)
                 val old = MangelStatusSpeicher.laden(appContext, key)
-                val newValue = if (old.status == MangelStatusSpeicher.Status.ERLEDIGT) {
-                    old
-                } else {
-                    old.copy(
-                        status = incomingStatus,
-                        kommentar = payload.optString("kommentar", old.kommentar),
-                        erledigtAmEpochMs = payload.optNullableLong("erledigtAmEpochMs") ?: old.erledigtAmEpochMs
-                    )
-                }
+                val newValue = if (old.status == MangelStatusSpeicher.Status.ERLEDIGT) old else old.copy(
+                    status = incomingStatus,
+                    kommentar = payload.optString("kommentar", old.kommentar),
+                    erledigtAmEpochMs = payload.optNullableLong("erledigtAmEpochMs") ?: old.erledigtAmEpochMs
+                )
                 MangelStatusSpeicher.speichern(appContext, key, newValue)
-
                 SyncMangelSpeicher.speichern(
                     appContext,
                     SyncMangelSpeicher.Eintrag(
@@ -371,35 +323,19 @@ class CollabLocalBridge(
                     )
                 )
                 defectStatuses++
-                attachmentsImported += importDefectAttachments(
-                    entity = entity,
-                    mangelKey = key,
-                    payload = payload,
-                    localBaustelleId = localBaustelleId
-                )
+                attachmentsImported += importDefectAttachments(entity, key, payload, localBaustelleId)
                 val canonical = syncDefectPayload(entity.payloadJson, MangelStatusSpeicher.laden(appContext, key))
                 rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(MangelStatusSpeicher.laden(appContext, key).status.name, canonical))
             }
-            SyncMangelSpeicher.bereinigeNichtMehrVorhandene(
-                appContext,
-                localBaustelleId,
-                server.worksiteServerId,
-                activeDefectServerIds
-            )
+            SyncMangelSpeicher.bereinigeNichtMehrVorhandene(appContext, localBaustelleId, server.worksiteServerId, activeDefectServerIds)
 
             val acceptanceItems = collabRepository.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE)
             for (entity in acceptanceItems) {
                 val key = entity.clientEntityKey ?: continue
                 if (dao.collabPendingForClientKey(server.worksiteServerId, entity.entityType, key) != null) continue
                 val parsed = acceptanceFromPayload(
-                    payloadJson = entity.payloadJson,
-                    clientKey = key,
-                    localBaustelleId = localBaustelleId,
-                    localName = localName,
-                    localRootKnotenId = local.id,
-                    status = entity.status
+                    entity.payloadJson, key, localBaustelleId, localName, local.id, entity.status
                 ) ?: continue
-
                 val old = AbnahmeSpeicher.laden(appContext, parsed.id)
                 if (old?.istEndgueltigAbgeschlossen == true && !parsed.istEndgueltigAbgeschlossen) continue
                 val saved = AbnahmeSpeicher.speichern(appContext, mergeAcceptanceMedia(old, parsed))
@@ -409,7 +345,6 @@ class CollabLocalBridge(
                 rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(finalSaved.ergebnis.name, acceptancePayload(finalSaved, localName)))
             }
         }
-
         return ImportSummary(bound.size, btbWritten, defectStatuses, acceptanceWritten, attachmentsImported)
     }
 
@@ -425,12 +360,10 @@ class CollabLocalBridge(
         val firma = payload.optString("firma", "").takeUnless { it == "-" }.orEmpty()
         val description = payload.optString("beschreibung", "").takeUnless { it == "-" }.orEmpty().ifBlank { "Mangel" }
         val km = parseKmDisplay(payload.optString("km", ""))
-
         for (attachment in collabRepository.attachments(entity.serverId)) {
             val path = attachment.localPath?.takeIf { attachment.isDownloaded && File(it).exists() } ?: continue
             if (dao.state(attachmentImportKey(attachment.serverId)) != null) continue
             if (!(attachment.mimeType?.startsWith("image/") == true || isImageFile(path))) continue
-
             val art = parseDefectFotoArt(attachment.filename)
             val before = MangelStatusSpeicher.laden(appContext, mangelKey)
             val fotoId = fotoRepository.einfuegen(
@@ -454,7 +387,6 @@ class CollabLocalBridge(
                 )
             )
             MangelStatusSpeicher.fotoZuordnen(appContext, mangelKey, fotoId, art)
-            // Das Foto darf einen bereits vom Server gesetzten Status nicht rückwärts verändern.
             MangelStatusSpeicher.speichern(appContext, mangelKey, before)
             rememberAttachmentPhoto(attachment.serverId, fotoId)
             imported++
@@ -462,17 +394,13 @@ class CollabLocalBridge(
         return imported
     }
 
-    private suspend fun importAcceptanceAttachments(
-        entity: SyncCollabEntity,
-        acceptance: AbnahmeSpeicher.Abnahme
-    ): Int {
+    private suspend fun importAcceptanceAttachments(entity: SyncCollabEntity, acceptance: AbnahmeSpeicher.Abnahme): Int {
         var imported = 0
         var current = acceptance
         for (attachment in collabRepository.attachments(entity.serverId)) {
             val path = attachment.localPath?.takeIf { attachment.isDownloaded && File(it).exists() } ?: continue
             if (dao.state(attachmentImportKey(attachment.serverId)) != null) continue
             val filename = attachment.filename.orEmpty()
-
             if (filename.startsWith("ACCEPTANCE_ANLAGE__", ignoreCase = true) || attachment.mimeType == "application/pdf") {
                 val typ = parseAcceptanceAnlageTyp(filename, attachment.mimeType)
                 val anlageId = "server:${attachment.serverId}"
@@ -494,7 +422,6 @@ class CollabLocalBridge(
                 imported++
                 continue
             }
-
             if (attachment.mimeType?.startsWith("image/") == true || isImageFile(path)) {
                 val art = parseAcceptanceBildArt(filename)
                 val fotoId = fotoRepository.einfuegen(
@@ -538,11 +465,8 @@ class CollabLocalBridge(
         val hash = stableHash(status, payloadJson)
         val markerKey = markerKey(worksiteServerId, type, clientKey)
         if (dao.state(markerKey)?.textValue == hash) return false
-
-        val serverEntity = dao.collabEntities(worksiteServerId, type)
-            .firstOrNull { it.clientEntityKey == clientKey }
+        val serverEntity = dao.collabEntities(worksiteServerId, type).firstOrNull { it.clientEntityKey == clientKey }
         val pending = dao.collabPendingForClientKey(worksiteServerId, type, clientKey)
-
         if (pending != null) {
             dao.replaceCollabPendingUpsert(
                 id = pending.id,
@@ -571,26 +495,12 @@ class CollabLocalBridge(
         return true
     }
 
-    private fun localDefectPayload(
-        defect: MaengellisteExport.MangelItem,
-        localName: String,
-        status: MangelStatusSpeicher.Wert
-    ): String = JSONObject()
-        .put("key", defect.key)
-        .put("datumIso", defect.datumIso)
-        .put("zeit", defect.zeit)
-        .put("baustelle", localName)
-        .put("bereich", defect.bereich)
-        .put("km", defect.km)
-        .put("firma", defect.firma)
-        .put("beschreibung", defect.beschreibung)
-        .put("gps", defect.gps)
-        .put("btbBildNr", defect.btbBildNr)
-        .put("kommentar", status.kommentar)
-        .putNullable("erledigtAmEpochMs", status.erledigtAmEpochMs)
-        // Fotos laufen separat als Attachments. Lokale IDs dürfen nie geräteübergreifend werden.
-        .put("fotos", JSONArray())
-        .toString()
+    private fun localDefectPayload(defect: MaengellisteExport.MangelItem, localName: String, status: MangelStatusSpeicher.Wert): String = JSONObject()
+        .put("key", defect.key).put("datumIso", defect.datumIso).put("zeit", defect.zeit)
+        .put("baustelle", localName).put("bereich", defect.bereich).put("km", defect.km)
+        .put("firma", defect.firma).put("beschreibung", defect.beschreibung).put("gps", defect.gps)
+        .put("btbBildNr", defect.btbBildNr).put("kommentar", status.kommentar)
+        .putNullable("erledigtAmEpochMs", status.erledigtAmEpochMs).put("fotos", JSONArray()).toString()
 
     private fun syncDefectPayload(raw: String, status: MangelStatusSpeicher.Wert): String {
         val payload = runCatching { JSONObject(raw) }.getOrElse { JSONObject() }
@@ -604,9 +514,14 @@ class CollabLocalBridge(
         baustelleId: Long,
         baustelleName: String,
         datum: LocalDate,
-        schicht: SchichtTyp
+        schicht: SchichtTyp,
+        btbId: String? = null
     ): File? {
         val dir = BautagebuchSpeicher.ordner(appContext, baustelleId, baustelleName, datum)
+        if (!btbId.isNullOrBlank() && !btbId.startsWith("legacy:")) {
+            val instance = File(dir, "btb_${safeBtbFileToken(btbId)}.json")
+            if (instance.exists()) return instance
+        }
         val preferred = File(dir, if (schicht == SchichtTyp.NACHT) "bautagebuch_nacht.json" else "bautagebuch_tag.json")
         if (preferred.exists()) return preferred
         if (schicht == SchichtTyp.TAG) {
@@ -616,62 +531,37 @@ class CollabLocalBridge(
         return null
     }
 
+    private fun safeBtbFileToken(value: String): String = value.lowercase()
+        .replace(Regex("[^a-z0-9_-]"), "_")
+        .take(80)
+        .ifBlank { sha256(value).take(24) }
+
     private fun sanitizeBtbPayload(raw: String, baustelleId: Long, baustelleName: String): String {
         val payload = runCatching { JSONObject(raw) }.getOrElse { JSONObject() }
         payload.put("baustelleId", baustelleId)
         payload.put("baustelleName", baustelleName)
-        // Lokale Foto-IDs sind auf anderen Geräten bedeutungslos. BTB-Fotos werden nicht mit
-        // Mängel-/Abnahme-Anhängen vermischt.
         payload.put("fotos", JSONArray())
         payload.put("pdfAuswahl", JSONObject())
         return payload.toString()
     }
 
-    /**
-     * Gemeinsame BTB-Fachdaten kommen vom Server, Foto-IDs und PDF-Auswahl bleiben dagegen
-     * gerätelokal. Beim Import werden deshalb ausschließlich diese beiden lokalen Felder aus dem
-     * vorhandenen Tag-/Nacht-BTB (inkl. Legacy-Datei) zurückgemischt. Der Sync-Hash verwendet
-     * weiterhin den kanonischen Payload ohne lokale Medien und erzeugt dadurch keinen Sync-Echo.
-     */
     private fun mergeLocalBtbMedia(source: File?, canonical: JSONObject): JSONObject {
         val merged = JSONObject(canonical.toString())
-        val existing = source
-            ?.takeIf { it.exists() && it.isFile }
-            ?.let { file -> runCatching { JSONObject(file.readText(Charsets.UTF_8)) }.getOrNull() }
-            ?: return merged
-
-        existing.optJSONArray("fotos")?.let { localFotos ->
-            merged.put("fotos", JSONArray(localFotos.toString()))
-        }
-        existing.optJSONObject("pdfAuswahl")?.let { localSelection ->
-            merged.put("pdfAuswahl", JSONObject(localSelection.toString()))
-        }
+        val existing = source?.takeIf { it.exists() && it.isFile }
+            ?.let { runCatching { JSONObject(it.readText(Charsets.UTF_8)) }.getOrNull() } ?: return merged
+        existing.optJSONArray("fotos")?.let { merged.put("fotos", JSONArray(it.toString())) }
+        existing.optJSONObject("pdfAuswahl")?.let { merged.put("pdfAuswahl", JSONObject(it.toString())) }
         return merged
     }
 
     private fun acceptancePayload(a: AbnahmeSpeicher.Abnahme, localName: String): String = JSONObject()
-        .put("id", a.id)
-        .put("nummer", a.nummer)
-        .put("baustelleName", localName)
-        .put("unterKnotenName", a.unterKnotenName)
-        .put("bezeichnung", a.bezeichnung)
-        .put("objekt", a.objekt)
-        .put("firma", a.firma)
-        .put("weitereFirmen", a.weitereFirmen)
-        .put("abnehmender", a.abnehmender)
-        .put("anwesende", a.anwesende)
-        .putNullable("kmVon", a.kmVon)
-        .putNullable("kmBis", a.kmBis)
-        .put("kommentar", a.kommentar)
-        .put("restpunkte", a.restpunkte)
-        .put("ergebnis", a.ergebnis.name)
-        .put("startEpochMs", a.startEpochMs)
-        .putNullable("abgeschlossenAmEpochMs", a.abgeschlossenAmEpochMs)
-        // Medien werden separat über die Attachment-API übertragen. So bleiben lokale Foto-IDs
-        // vollständig gerätelokal und erzeugen nach einem Download keinen Sync-Echo.
-        .put("fotoRefs", JSONArray())
-        .put("anlagen", JSONArray())
-        .toString()
+        .put("id", a.id).put("nummer", a.nummer).put("baustelleName", localName)
+        .put("unterKnotenName", a.unterKnotenName).put("bezeichnung", a.bezeichnung).put("objekt", a.objekt)
+        .put("firma", a.firma).put("weitereFirmen", a.weitereFirmen).put("abnehmender", a.abnehmender)
+        .put("anwesende", a.anwesende).putNullable("kmVon", a.kmVon).putNullable("kmBis", a.kmBis)
+        .put("kommentar", a.kommentar).put("restpunkte", a.restpunkte).put("ergebnis", a.ergebnis.name)
+        .put("startEpochMs", a.startEpochMs).putNullable("abgeschlossenAmEpochMs", a.abgeschlossenAmEpochMs)
+        .put("fotoRefs", JSONArray()).put("anlagen", JSONArray()).toString()
 
     private fun acceptanceFromPayload(
         payloadJson: String,
@@ -686,62 +576,36 @@ class CollabLocalBridge(
             AbnahmeSpeicher.Ergebnis.valueOf(status ?: o.optString("ergebnis", AbnahmeSpeicher.Ergebnis.ENTWURF.name))
         }.getOrDefault(AbnahmeSpeicher.Ergebnis.ENTWURF)
         val completed = o.optNullableLong("abgeschlossenAmEpochMs")
-        val isFinal = ergebnis == AbnahmeSpeicher.Ergebnis.ABGENOMMEN ||
-            ergebnis == AbnahmeSpeicher.Ergebnis.NICHT_ABGENOMMEN
-
+        val isFinal = ergebnis == AbnahmeSpeicher.Ergebnis.ABGENOMMEN || ergebnis == AbnahmeSpeicher.Ergebnis.NICHT_ABGENOMMEN
         return AbnahmeSpeicher.Abnahme(
-            id = o.optString("id").ifBlank { clientKey },
-            nummer = o.optInt("nummer", 1),
-            baustelleId = localBaustelleId,
-            baustelleName = localName,
-            hauptKnotenId = localRootKnotenId,
-            unterKnotenId = null,
-            unterKnotenName = o.optString("unterKnotenName", ""),
-            bezeichnung = o.optString("bezeichnung", ""),
-            objekt = o.optString("objekt", ""),
-            firma = o.optString("firma", ""),
-            weitereFirmen = o.optString("weitereFirmen", ""),
-            abnehmender = o.optString("abnehmender", ""),
-            anwesende = o.optString("anwesende", ""),
-            kmVon = o.optNullableDouble("kmVon"),
-            kmBis = o.optNullableDouble("kmBis"),
-            kommentar = o.optString("kommentar", ""),
-            restpunkte = o.optString("restpunkte", ""),
-            ergebnis = ergebnis,
-            startEpochMs = o.optLong("startEpochMs", System.currentTimeMillis()),
+            id = o.optString("id").ifBlank { clientKey }, nummer = o.optInt("nummer", 1),
+            baustelleId = localBaustelleId, baustelleName = localName, hauptKnotenId = localRootKnotenId,
+            unterKnotenId = null, unterKnotenName = o.optString("unterKnotenName", ""),
+            bezeichnung = o.optString("bezeichnung", ""), objekt = o.optString("objekt", ""),
+            firma = o.optString("firma", ""), weitereFirmen = o.optString("weitereFirmen", ""),
+            abnehmender = o.optString("abnehmender", ""), anwesende = o.optString("anwesende", ""),
+            kmVon = o.optNullableDouble("kmVon"), kmBis = o.optNullableDouble("kmBis"),
+            kommentar = o.optString("kommentar", ""), restpunkte = o.optString("restpunkte", ""),
+            ergebnis = ergebnis, startEpochMs = o.optLong("startEpochMs", System.currentTimeMillis()),
             abgeschlossenAmEpochMs = if (isFinal) completed ?: System.currentTimeMillis() else null,
-            wiederGeoeffnetAmEpochMs = null,
-            fotos = emptyList(),
-            anlagen = emptyList()
+            wiederGeoeffnetAmEpochMs = null, fotos = emptyList(), anlagen = emptyList()
         )
     }
 
-    private fun mergeAcceptanceMedia(
-        old: AbnahmeSpeicher.Abnahme?,
-        incoming: AbnahmeSpeicher.Abnahme
-    ): AbnahmeSpeicher.Abnahme = if (old == null) incoming else incoming.copy(
-        unterKnotenId = old.unterKnotenId,
-        fotos = old.fotos,
-        anlagen = old.anlagen
-    )
+    private fun mergeAcceptanceMedia(old: AbnahmeSpeicher.Abnahme?, incoming: AbnahmeSpeicher.Abnahme): AbnahmeSpeicher.Abnahme =
+        if (old == null) incoming else incoming.copy(unterKnotenId = old.unterKnotenId, fotos = old.fotos, anlagen = old.anlagen)
 
-    private fun parseDefectFotoArt(filename: String?): MangelStatusSpeicher.FotoArt {
-        val token = semanticToken(filename, "DEFECT")
-        return runCatching { MangelStatusSpeicher.FotoArt.valueOf(token) }
+    private fun parseDefectFotoArt(filename: String?): MangelStatusSpeicher.FotoArt =
+        runCatching { MangelStatusSpeicher.FotoArt.valueOf(semanticToken(filename, "DEFECT")) }
             .getOrDefault(MangelStatusSpeicher.FotoArt.MANGEL)
-    }
 
-    private fun parseAcceptanceBildArt(filename: String?): AbnahmeSpeicher.BildArt {
-        val token = semanticToken(filename, "ACCEPTANCE_FOTO")
-        return runCatching { AbnahmeSpeicher.BildArt.valueOf(token) }
+    private fun parseAcceptanceBildArt(filename: String?): AbnahmeSpeicher.BildArt =
+        runCatching { AbnahmeSpeicher.BildArt.valueOf(semanticToken(filename, "ACCEPTANCE_FOTO")) }
             .getOrDefault(AbnahmeSpeicher.BildArt.SONSTIGES)
-    }
 
-    private fun parseAcceptanceAnlageTyp(filename: String?, mimeType: String?): AbnahmeSpeicher.AnlageTyp {
-        val token = semanticToken(filename, "ACCEPTANCE_ANLAGE")
-        return runCatching { AbnahmeSpeicher.AnlageTyp.valueOf(token) }
+    private fun parseAcceptanceAnlageTyp(filename: String?, mimeType: String?): AbnahmeSpeicher.AnlageTyp =
+        runCatching { AbnahmeSpeicher.AnlageTyp.valueOf(semanticToken(filename, "ACCEPTANCE_ANLAGE")) }
             .getOrDefault(if (mimeType == "application/pdf") AbnahmeSpeicher.AnlageTyp.PDF else AbnahmeSpeicher.AnlageTyp.BILD)
-    }
 
     private fun semanticToken(filename: String?, prefix: String): String {
         val raw = filename.orEmpty()
@@ -763,13 +627,7 @@ class CollabLocalBridge(
     }
 
     private fun parseKmDisplay(raw: String): Double? {
-        val text = raw
-            .trim()
-            .removePrefix("KM")
-            .trim()
-            .substringBefore('–')
-            .substringBefore('-')
-            .trim()
+        val text = raw.trim().removePrefix("KM").trim().substringBefore('–').substringBefore('-').trim()
         val plus = Regex("(\\d+)\\+(\\d+(?:[.,]\\d+)?)").find(text)
         if (plus != null) {
             val km = plus.groupValues[1].toDoubleOrNull()
@@ -802,8 +660,7 @@ class CollabLocalBridge(
         dao.upsertState(SyncStateEntity(key = attachmentImportKey(serverAttachmentId), textValue = "linked"))
     }
 
-    private fun attachmentImportKey(serverAttachmentId: String): String =
-        "collab_attachment_import:$serverAttachmentId"
+    private fun attachmentImportKey(serverAttachmentId: String): String = "collab_attachment_import:$serverAttachmentId"
 
     private fun writeIfDifferent(target: File, content: String): Boolean {
         target.parentFile?.mkdirs()
@@ -828,17 +685,13 @@ class CollabLocalBridge(
     private fun stableHash(status: String?, payload: String): String = sha256((status ?: "") + "\n" + payload)
 
     private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
-        .digest(value.toByteArray(Charsets.UTF_8))
-        .joinToString("") { "%02x".format(it) }
+        .digest(value.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 
     private fun JSONObject.putNullable(key: String, value: Any?): JSONObject {
         if (value == null) put(key, JSONObject.NULL) else put(key, value)
         return this
     }
 
-    private fun JSONObject.optNullableLong(key: String): Long? =
-        if (!has(key) || isNull(key)) null else optLong(key)
-
-    private fun JSONObject.optNullableDouble(key: String): Double? =
-        if (!has(key) || isNull(key)) null else optDouble(key)
+    private fun JSONObject.optNullableLong(key: String): Long? = if (!has(key) || isNull(key)) null else optLong(key)
+    private fun JSONObject.optNullableDouble(key: String): Double? = if (!has(key) || isNull(key)) null else optDouble(key)
 }
