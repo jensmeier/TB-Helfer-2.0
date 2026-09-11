@@ -12,6 +12,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.OfflineSyncRepository
@@ -20,6 +22,8 @@ import de.tbhelfer.datenbank.SyncSectionEntity
 import de.tbhelfer.server.SecureTokenStore
 import de.tbhelfer.server.SyncCatalogApi
 import de.tbhelfer.server.SyncDetailApi
+import de.tbhelfer.server.SyncStatusSpeicher
+import de.tbhelfer.server.SyncWorker
 import de.tbhelfer.ui.activation.AktivierungActivity
 import java.text.DateFormat
 import java.util.Date
@@ -38,6 +42,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
     private lateinit var stationsTitle: TextView
     private lateinit var refreshButton: Button
     private lateinit var conflictButton: Button
+    private var fullManualSyncRunning: Boolean = false
 
     private val offlineRepository: OfflineSyncRepository
         get() = ServiceLocator.offlineSyncRepository
@@ -66,6 +71,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
     }
 
     private fun loadCatalog() {
+        if (fullManualSyncRunning) return
         val tokenStore = SecureTokenStore(requireContext())
         val token = tokenStore.load()
         if (token.isNullOrBlank()) {
@@ -140,6 +146,64 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                     summary.conflicts
                 )
                 setConflictCount(summary.conflicts)
+                startFullManualSync()
+            }
+        }
+    }
+
+    /**
+     * Bewusster NAS-Sync: Nach dem sichtbaren Katalog-/Konfliktlauf wird derselbe vollständige
+     * Worker wie im Hintergrund gestartet. Im manuellen Modus ignoriert er den automatischen
+     * Zeitplan und die WLAN/Mobilfunk-Präferenz; eine echte Internetverbindung bleibt erforderlich.
+     */
+    private fun startFullManualSync() {
+        if (!isAdded || fullManualSyncRunning) return
+        fullManualSyncRunning = true
+        progress.visibility = View.VISIBLE
+        refreshButton.isEnabled = false
+        statusText.text = buildString {
+            append(statusText.text.toString())
+            append("\nBaustelle, BTB, Mängel, Abnahmen und Bilder werden synchronisiert …")
+        }
+
+        val workId = SyncWorker.enqueueManual(requireContext())
+        val workInfo = WorkManager.getInstance(requireContext().applicationContext)
+            .getWorkInfoByIdLiveData(workId)
+
+        workInfo.observe(viewLifecycleOwner) { info ->
+            if (info == null || !isAdded) return@observe
+            when (info.state) {
+                WorkInfo.State.ENQUEUED,
+                WorkInfo.State.BLOCKED -> {
+                    progress.visibility = View.VISIBLE
+                    refreshButton.isEnabled = false
+                    statusText.text = "Synchronisation wartet auf eine Internetverbindung …"
+                }
+                WorkInfo.State.RUNNING -> {
+                    progress.visibility = View.VISIBLE
+                    refreshButton.isEnabled = false
+                    statusText.text = "Synchronisation läuft: Baustelle, BTB, Mängel, Abnahmen und Bilder …"
+                }
+                WorkInfo.State.SUCCEEDED -> {
+                    fullManualSyncRunning = false
+                    setLoading(false)
+                    statusText.text = "Synchronisation vollständig · ${SyncStatusSpeicher.anzeige(requireContext())}"
+                    refreshConflictButton()
+                }
+                WorkInfo.State.FAILED -> {
+                    fullManualSyncRunning = false
+                    setLoading(false)
+                    val message = info.outputData.getString(SyncWorker.OUTPUT_MESSAGE)
+                        ?.takeIf { it.isNotBlank() }
+                        ?: "Synchronisation fehlgeschlagen."
+                    statusText.text = "Synchronisation unvollständig: $message"
+                    refreshConflictButton()
+                }
+                WorkInfo.State.CANCELLED -> {
+                    fullManualSyncRunning = false
+                    setLoading(false)
+                    statusText.text = "Synchronisation wurde beendet."
+                }
             }
         }
     }
