@@ -52,6 +52,7 @@ class HauptActivity : AppCompatActivity() {
 
         val navHost = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         navController = navHost.navController
+        de.tbhelfer.ui.bautagebuch.BtbSchnellwechselInstaller.install(this)
         widgetRootDestination = savedInstanceState?.getInt(STATE_WIDGET_ROOT_DESTINATION, -1)?.takeIf { it != -1 }
         installWidgetBackHandling()
 
