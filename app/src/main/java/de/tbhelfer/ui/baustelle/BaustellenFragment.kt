@@ -83,7 +83,7 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
                             4 -> findNavController().navigate(R.id.abnahmelisteFragment, Bundle().apply {
                                 putLong("baustelleId", haupt.altBaustelleId); putString("baustelleName", haupt.hauptbaustellenName); putLong("hauptKnotenId", haupt.id); putString("filter", "ALLE")
                             })
-                            5 -> provisionWorksiteAndOpenUserManagement(haupt)
+                            5 -> BaustellenTeamDirekt.oeffneEinladen(this, haupt)
                             6 -> zeigeZipVonBisDialog(haupt)
                             7 -> exportiereBaustellenZip(haupt, null, null)
                             8 -> zeigeKomplettLoeschenDialog(haupt)
@@ -107,6 +107,7 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
 
         view.findViewById<View>(R.id.btnNeueBaustelle).setOnClickListener { findNavController().navigate(R.id.baustelleNeuFragment) }
         view.findViewById<View>(R.id.btnAktuelleAnzeigen).setOnClickListener { findNavController().navigate(R.id.aktuelleBaustelleFragment) }
+        view.findViewById<View>(R.id.btnBaustellenQrScan).setOnClickListener { BaustellenTeamDirekt.qrScannen(this) }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -156,11 +157,11 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
     }
 
     /**
-     * Normaler Baustellen-Einstieg für die Teamverwaltung.
-     * Beim ersten Aufruf wird die lokale Baustelle idempotent auf dem Server angelegt/verbunden
-     * und der ausführende Benutzer zum ersten verantwortlichen TB. Anschließend öffnet die
-     * bestehende Teamverwaltung für Helfer bzw. weitere verantwortliche TBs.
+     * Alter interner Einstieg bleibt vorerst als Rückfallpfad im Quellstand erhalten.
+     * Der normale Nutzerablauf verwendet BaustellenTeamDirekt und öffnet keine zusätzliche
+     * Baustellen-Synchronisationsseite mehr.
      */
+    @Suppress("unused")
     private fun provisionWorksiteAndOpenUserManagement(haupt: BaustellenKnotenEntity) {
         val token = SecureTokenStore(requireContext()).load()
         if (token.isNullOrBlank()) {
