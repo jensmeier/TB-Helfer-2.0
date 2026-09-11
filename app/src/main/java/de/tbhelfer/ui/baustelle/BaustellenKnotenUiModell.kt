@@ -29,11 +29,6 @@ data class BaustellenKnotenUiModell(
     val abnahmeJaCount: Int = 0,
     val abnahmeNeinCount: Int = 0,
     val abnahmePruefungCount: Int = 0,
-    /** Null = lokal noch mit keiner Server-Baustelle verknüpft bzw. noch kein Serverstand bekannt. */
-    val teamServerVerbunden: Boolean = false,
-    val verantwortlicheTbCount: Int = 0,
-    val helferCount: Int = 0,
-    val letzterBaustellenSyncEpochMs: Long? = null,
     val unterLabel: UnterLabel = UnterLabel.UNTERPUNKTE,
     val istAufklappbar: Boolean = false,
     val istAufgeklappt: Boolean = false
