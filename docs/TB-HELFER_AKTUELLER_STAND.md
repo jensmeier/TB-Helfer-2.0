@@ -17,7 +17,7 @@ Vor jeder Änderung zuerst lesen:
 - aktiv: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
 - PR bleibt Draft bis zum erfolgreichen Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test.
-- Android im Feature-Branch: `versionCode 200022`, `versionName 1.3`.
+- Android im Feature-Branch: **`versionCode 200023`**, `versionName 1.3`.
 
 ## Produktiver Synology-Stand
 - NAS/Synology ist Source of Truth.
@@ -37,6 +37,7 @@ Vor jeder Änderung zuerst lesen:
 - direkter API-Container-DB-Test: **`DB_TEST=OK`**.
 - API liest **`SCHEMA=10 010_worksite_invitations_company_profile`**.
 - Admin-Systemstatus: API OK 0.7.0, PostgreSQL OK, Schema 10.
+- **Seit dem letzten produktiven Test wurden keine weiteren NAS-/DB-Änderungen durchgeführt.**
 
 ## Backup / Migration 010
 Produktives Pre-Schema-10-Backup:
@@ -73,11 +74,10 @@ Im Feature-Branch vorbereitet:
   - bei noch nicht migriertem Server kontrolliert `USER_PROFILE_SCHEMA_REQUIRED` statt blindem DB-Zugriff.
 - Android `UserProfileApi.kt` für persönliches Profil.
 - separater Offline-Cache `PersoenlichesNutzerProfilSpeicher`; bestehender Firmenprofil-Cache bleibt unverändert.
-- `Nutzer / Firma` ist im Android-UI jetzt sichtbar in **Mein Profil** und **Firma** getrennt.
+- `Nutzer / Firma` ist im Android-UI sichtbar in **Mein Profil** und **Firma** getrennt.
 - Name im persönlichen Profil bleibt serverseitige Identität/Anzeige und wird in dieser Maske nur angezeigt.
 - persönliche Telefonnummer und persönliche E-Mail sind editierbar.
 - Firmenfelder und Firmenlogo bleiben serverseitiger zentraler Read-only-Stand in Android.
-- Android-Version dafür: **200022**.
 
 Wichtig: **Schema 11 ist nur im Feature-Branch vorbereitet und wurde auf dem NAS noch nicht ausgeführt. Produktiv bleibt Schema 10.** Vor Schema-11-Migration wieder Backup, Hash-Prüfung der SQL-Dateien und anschließende read-only Verifikation durchführen.
 
@@ -85,7 +85,7 @@ Wichtig: **Schema 11 ist nur im Feature-Branch vorbereitet und wurde auf dem NAS
 - Testfirma `Gtu`: 2 Nutzer, 2 aktive Geräte.
 - Firmenprofil/Logo funktioniert produktiv.
 - Helfer-/TB-Einladung funktioniert praktisch.
-- Testbaustelle `Immenstadt`: 1 TB-Gruppe, 2 Nutzer.
+- Testbaustelle `Immenstadt`: mindestens eine praktisch getestete TB-Gruppe mit mehreren Nutzern.
 - Teams ausschließlich innerhalb derselben Firma.
 - Ersteller der Server-Baustelle ist erster verantwortlicher TB.
 - weitere verantwortliche TBs treten per sicherer Baustelleneinladung bei.
@@ -94,92 +94,144 @@ Wichtig: **Schema 11 ist nur im Feature-Branch vorbereitet und wurde auf dem NAS
 - Aktivierungs-QR und Baustellen-Einladungs-QR bleiben getrennt.
 - Namen sind nie technische Schlüssel; UUIDs/Team-IDs bleiben maßgeblich.
 
-## BTB – verbindliche Logik
-Fachliche BTB-Identität:
-**internes TB-Team + Datum + Schicht**.
+## BTB – aktuelle verbindliche Identität
+Die frühere technische Identität `Team + Datum + TAG/NACHT` ist **abgelöst**.
 
-- pro Baustelle/TB-Team/Datum/Schicht genau ein gemeinsamer BTB.
-- Helfer schreiben in den BTB ihres verantwortlichen TB.
-- mehrere Helfer/Geräte desselben Teams dürfen denselben BTB ergänzen.
-- andere verantwortliche TB-Teams bleiben getrennt.
-- TAG/NACHT bleiben getrennt.
-- Arbeitsbereiche, Gleise, Weichen, KM und Abschnitte sind Inhalt, nicht BTB-Identität.
-- keine künstlichen `-2/-3/-4`-Berichte derselben Team-/Tag-/Schicht-Kombination.
+Für neue BTBs gilt:
+- ein BTB wird nur bewusst über **`Neuer BTB`** angelegt.
+- das bloße Öffnen erzeugt keinen leeren Entwurf.
+- jeder bewusst angelegte BTB erhält eine **stabile eigene `btbId` (UUID)**.
+- `datumIso`, Arbeitsbeginn, Arbeitsende und `TAG/NACHT` sind Attribute/Anzeige und **kein technischer Schlüssel** mehr.
+- mehrere echte BTBs desselben TB-Teams am selben Kalendertag sind erlaubt, z. B. `07:00–12:00` und `18:00–22:00`.
+- ein BTB kann sauber über Mitternacht laufen; dafür gibt es zusätzlich `endeDatumIso`.
+- Helfer und verantwortlicher TB desselben Teams bearbeiten dieselbe stabile BTB-ID.
+- andere verantwortliche TB-Teams derselben Baustelle bleiben strikt getrennt.
+- historische `bautagebuch_tag.json`, `bautagebuch_nacht.json` und sehr alte `bautagebuch.json` bleiben lesbar und bearbeitbar.
 
-Beispielanzeige:
-- `BTB Jens Zinkel · 05.06.2026 · Tag`
-- `BTB Max Müller · 05.06.2026 · Nacht`
+Wesentliche Dateien:
+- `BautagebuchModels.kt`
+- `BautagebuchSpeicher.kt`
+- `BtbVerlaufFragment.kt`
+- `BtbDokumentIdentitaet.kt`
+- `BtbDokumentVersionierung.kt`
 
-## Praktischer BTB-Zwei-Geräte-Befund
+## BTB Abschluss / Dokumentversionen
+Aktueller Branchstand:
+- erster erfolgreicher Abschluss = **V1**.
+- nach späterer Änderung und erneutem Abschluss entstehen **V2, V3, ...**.
+- frühere Abschlussdateien werden nicht überschrieben.
+- Dateinamen enthalten bei neuen BTBs einen stabilen BTB-ID-Token und die Dokumentversion; mehrere BTBs desselben Tages können dadurch nicht kollidieren.
+- der Vergleich für die rote Änderungsmarkierung läuft gegen die **vorherige bestätigte Abschlussversion**, nicht dauerhaft gegen eine einmalige alte Tagesbaseline.
+- dafür existiert `BtbDokumentVersionierung.kt` mit einem persistenten Pending-Snapshot:
+  1. vor PDF-Erzeugung Snapshot + erwarteter Vn-Dateiname merken,
+  2. nur wenn diese Abschluss-PDF tatsächlich existiert, Abschluss bestätigen,
+  3. Snapshot wird dann neue Vergleichsbasis,
+  4. Entwurf/Fehler/Abbruch kann die Abschlussbasis nicht verschieben.
+- Metafelder (`istFertig`, `dokumentVersion`, Abschlusszeit/-benutzer, Änderungszeit) lösen selbst keine fachliche Änderungsmarkierung aus.
+- der Verlauf zeigt `Abgeschlossen · Vn` bzw. einen geänderten Zustand und bleibt erneut bearbeitbar.
+- Unit-Tests für stabile BTB-Dateinamen und Versionsfolge wurden ergänzt.
+
+Noch offen bei BTB:
+- vollständiger lokaler Android-Build des aktuellen Stands.
+- PDF/DOCX-Versionierung auf einem echten Gerät praktisch prüfen: V1 erzeugen → ändern → V2 erzeugen → rote Markierung und beide Dateien prüfen.
+- Collaboration-Servermodell später vollständig von den historischen Tages-/Schichtschlüsseln auf die stabile `btbId` ausrichten; produktiver Server bleibt derzeit unverändert.
+
+## Praktischer BTB-Zwei-Geräte-Befund vor dem Multi-BTB-Umbau
 Produktive DB-Prüfung für `Immenstadt`:
-- vier BTB-Einträge liegen in `tb.collab_btb_entries`.
+- mehrere BTB-Einträge lagen in `tb.collab_btb_entries`.
 - darunter `2026-09-10:NACHT` mit der auf dem Poco geschriebenen Testnotiz.
-- alle geprüften BTBs gehören zur TB-Gruppe von `jens poco`.
-- damit ist **Poco → API → PostgreSQL** für BTB bestätigt.
+- geprüfte BTBs gehörten zur TB-Gruppe von `jens poco`.
+- damit war **Poco → API → PostgreSQL** für BTB bestätigt.
 - `tb.collab_device_state`: Pixel und Poco jeweils `handy_cursor=6`, `server_cursor=6`.
-- damit hat auch das Pixel den vollständigen Collaboration-Feed abgeholt.
+- damit hatte auch das Pixel den Collaboration-Feed abgeholt.
 
-Befund Android 200020:
-- Pixel hatte zunächst trotz Server-Mitgliedschaft keine lokale Hauptbaustelle `Immenstadt`.
-- der 200020-Root-Bootstrap hat danach `Immenstadt` auf dem Pixel automatisch lokal angelegt und gebunden: **praktisch bestätigt**.
-- die neue lokale Hauptbaustelle wurde jedoch nicht automatisch als aktuelle Baustelle gesetzt.
-- deshalb arbeitete der normale BTB-Bildschirm weiter mit der zuvor ausgewählten Baustelle; der Nutzer konnte in der neuen `Immenstadt` nicht unmittelbar arbeiten und vorhandene Poco-BTBs wirkten unsichtbar.
+Dieser Befund bleibt historisch wichtig, beschreibt aber noch das alte Tages-/Schicht-Servermodell und ist **nicht** die neue Android-BTB-Identität.
 
-## Android 200021/200022 – vereinfachter Baustellen-/QR-Ablauf
-Der direkte Baustellen-/QR-Ablauf aus 200021 bleibt in 200022 enthalten:
-- `Baustellen-Synchronisation` ist aus dem normalen **Einstellungen**-Menü entfernt.
-- Synchronisation bleibt technisch/Hintergrundfunktion; der Nutzer muss dafür nicht mehr in ein separates Einstellungsmenü.
-- in der normalen **Baustellenliste** gibt es direkt den Button **`QR scannen`**.
-- der gescannte Baustellen-QR entscheidet serverseitig selbst, ob der Beitritt als `HELPER` oder `LEAD`/verantwortlicher TB erfolgt; keine zusätzliche Rollenauswahl beim Empfänger.
-- nach erfolgreichem QR-Beitritt werden Collaboration-Daten synchronisiert, die lokale Hauptbaustelle aufgebaut/gebunden und direkt **als aktuelle Baustelle gesetzt**.
-- bei einer bereits vorhandenen gleichnamigen lokalen Hauptbaustelle wird aus Sicherheitsgründen nicht blind nach Namen zusammengeführt; stattdessen erscheint unmittelbar ein lokaler Auswahl-Dialog.
-- der Langdruck-Menüpunkt **`Nutzer hinzufügen`** bleibt auf der Baustellenseite. Er öffnet keinen separaten Sync-Bildschirm mehr.
-- dort gibt es direkt die Auswahl:
+## Android 200021–200023 – Baustellen-/QR-/Sync-UX
+Direkter Baustellen-/QR-Ablauf:
+- eine normale Einstellungsseite `Baustellen-Synchronisation` ist weiterhin **nicht** vorgesehen.
+- in der normalen Baustellenliste gibt es direkt **`QR scannen`**.
+- der QR enthält die serverseitig festgelegte Rolle (`HELPER` oder `LEAD`); der Empfänger wählt sie nicht erneut.
+- `Nutzer hinzufügen` bleibt im Langdruck-Menü der Baustelle und bietet direkt:
   - `Nutzer (verantwortlichen TB) hinzufügen`
   - `Helfer hinzufügen`
 - für Helfer bleibt die Bereichsfreigabe (`Gesamte Baustelle` oder Bereich/km) erhalten.
-- der erzeugte QR wird direkt angezeigt und kann über **`Teilen / senden`** weitergegeben werden.
-- zentrale Implementierung: `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenTeamDirekt.kt`.
-- 200021/200022 sind noch nicht lokal vollständig gebaut/installiert/getestet.
+- QR kann direkt angezeigt und über **`Teilen / senden`** weitergegeben werden.
+- nach Beitritt werden Collaboration-Daten synchronisiert und der lokale Root aufgebaut/gebunden.
+- eine bereits aktive andere Baustelle wird nicht ungefragt ersetzt; **Öffnen / Später** bleibt die Bedienregel.
+- bei gleichnamiger lokaler Hauptbaustelle wird nicht blind per Name zusammengeführt; es erscheint eine bewusste lokale Auswahl.
 
-Die alte `BaustellenSyncFragment`-Implementierung bleibt vorerst technisch im Quellstand als Diagnose-/Rückfallpfad, ist aber kein normaler Benutzereinstieg mehr.
+Team-/Sync-Anzeige auf Baustellenkarten:
+- `TeamDisplayCache` speichert je Server-Baustelle:
+  - Anzahl verantwortliche TBs,
+  - Anzahl Helfer,
+  - letzten erfolgreichen Baustellen-Sync,
+  - Zuordnung lokaler Root ↔ Server-Worksite.
+- `BaustellenKnotenAdapter` zeigt in der Hauptliste z. B.:
+  - `2 TB · 4 Helfer · Zuletzt synchronisiert: heute 14:32`
+  - ohne bekannten Serverstand: `Noch nicht mit Server synchronisiert`.
+- `SyncWorker` frischt Teamdaten nach erfolgreichem Hintergrundsync nach.
+- direkter Provision-/QR-Beitritt schreibt die lokale Root-Zuordnung und Teamdaten ebenfalls in den Cache.
+
+## Android 200023 – allgemeine Synchronisation
+Neu sichtbar und gerätelokal einstellbar:
+- **Automatischer Sync:**
+  - `Manuell`
+  - `Stündlich`
+  - `Täglich`
+- **Erlaubtes Netz:**
+  - `Nur WLAN`
+  - `Nur Mobilfunk`
+  - `WLAN + Mobilfunk`
+
+Implementierung:
+- `SyncEinstellungenSpeicher.kt` persistiert Zeitplan + Netzregel.
+- `SyncWorker.schedule()` erstellt/entfernt den periodischen WorkManager-Job entsprechend dem Zeitplan.
+- der Hintergrund-Worker prüft zusätzlich die tatsächlich aktive Transportart.
+- `SyncStatusSpeicher.kt` hält den letzten erfolgreichen allgemeinen Server-Sync gerätelokal.
+- Einstellungen enthalten jetzt den Button **`Synchronisation`** mit aktuellem Zeitplan, Netzregel und letztem Sync-Stand.
+- Startmenüeintrag **`Daten vom NAS`** wurde in **`Mit NAS synchronisieren`** umbenannt und zeigt den letzten bekannten Sync-Stand.
+- der Menüstatus wird beim Wiederaufrufen des Startmenüs aktualisiert.
+
+Wichtig/offen:
+- `SyncKatalogFragment` führt beim bewussten manuellen Aufruf weiterhin primär Katalog-/Offline-Inkrementalsync aus; dort ist der komplette Collaboration-Ablauf aus `SyncWorker` noch nicht zu einer gemeinsamen manuellen Gesamt-Sync-Routine refaktoriert.
+- deshalb darf erst nach diesem Umbau behauptet werden, dass **ein einzelner manueller Button** immer Katalog + Baustellenstruktur + BTB + Mängel + Abnahmen + alle Attachments in genau einem gemeinsamen Lauf synchronisiert.
+- die neue Netzregel blockiert den bewusst geöffneten manuellen Sync nicht still; sie steuert derzeit den automatischen Hintergrundpfad.
 
 ## Sync-Matrix aus dem Praxismodell
-Verbindliche Interpretation der aktuell besprochenen Matrix:
-
 ### Verantwortlicher TB A ↔ verantwortlicher TB B derselben Baustelle
 - Baustelle inkl. freigegebener Unterbaustellen: gemeinsamer Baustellenstand.
-- benötigte Strecken-/Arbeitsdaten: über NAS/Server synchronisiert, Originaldaten bleiben unverändert; keine blind kopierten Originalpakete.
+- benötigte Strecken-/Arbeitsdaten: über NAS/Server synchronisiert, Originaldaten bleiben unverändert.
 - Mängel/Schäden und Abnahmen: baustellenweit innerhalb der Berechtigung gemeinsam.
 - dazugehörige Bilder: gemeinsam innerhalb derselben Berechtigung.
-- **BTB nicht zwischen TB A und TB B vermischen.** Jeder verantwortliche TB hat seinen eigenen Team-BTB.
+- **BTBs verschiedener verantwortlicher TB-Teams werden niemals vermischt.**
 
 ### Verantwortlicher TB ↔ Helfer desselben TB-Teams
 - Baustelle inkl. freigegebener Unterbaustellen: Helfer erhält den benötigten/berechtigten Stand.
 - benötigte Streckendaten: selektiv nach Berechtigung/Arbeitsbereich.
-- BTB: **gemeinsam in beide Richtungen innerhalb desselben TB-Teams**.
+- BTB: **gemeinsam in beide Richtungen innerhalb desselben TB-Teams und derselben `btbId`**.
 - Mängel/Schäden und Abnahmen: innerhalb der Helfer-Berechtigung synchronisiert.
-- Helferbilder müssen zum verantwortlichen TB/Server hochgehen; Download anderer Bilder zum Helfer nur soweit für seinen Bereich/Arbeitsablauf nötig.
+- Helferbilder gehen zum verantwortlichen TB/Server; Download anderer Bilder zum Helfer nur soweit für Bereich/Arbeitsablauf nötig.
 
 ## Nutzer/Helfer aus Baustelle entfernen – noch offen
-Der gewünschte Bedienpunkt `Nutzer/Helfer entfernen` soll ebenfalls direkt bei der Baustelle liegen, nicht in einem separaten Sync-Menü.
+Der gewünschte Bedienpunkt `Nutzer/Helfer entfernen` soll direkt bei der Baustelle liegen, nicht in einem separaten Sync-Menü.
 
 Aktueller Serverstand bietet Einladen, Einlösen und Einladung widerrufen, aber noch **keinen fertigen mobilen Endpunkt zum Entfernen einer bestehenden Baustellen-Mitgliedschaft**. Deshalb wurde kein gefährliches rein lokales Löschen eingebaut.
 
 Nächster Serverpunkt:
 - Mitgliedschaft serverseitig entfernen/widerrufen.
 - Helfer: verantwortlicher TB darf Helfer seiner TB-Gruppe entfernen.
-- Verhalten für das Entfernen eines anderen verantwortlichen TBs muss mit den bestehenden Gruppen-/Datenregeln sicher umgesetzt werden; vorhandene BTB-/Mängel-/Abnahmedaten dürfen dadurch nicht versehentlich gelöscht werden.
+- Verhalten für das Entfernen eines anderen verantwortlichen TBs sicher umsetzen; vorhandene historische BTB-/Mängel-/Abnahmedaten dürfen nicht gelöscht werden.
 - danach direkte Auswahl `Nutzer/Helfer entfernen` im selben Baustellen-Menü.
 
 ## Noch fehlender Baustellenstruktur-Sync
-Wichtig: Der Root-Bootstrap löst nur die Hauptbaustelle, noch nicht den kompletten lokalen Baustellenbaum.
+Der Root-Bootstrap löst weiterhin nur die Hauptbaustelle, noch nicht den kompletten lokalen Baustellenbaum.
 
 Aktueller Befund:
 - Poco hat lokal Hauptbaustelle `Immenstadt` mit Unterbaustelle `5362-1`.
 - `5362-1` enthält Strecke/KM.
 - bisheriger Self-Service-Endpunkt speichert nur die Hauptbaustelle; Unterknoten werden nicht serverseitig gespeichert.
-- deshalb kann das Pixel `5362-1` noch nicht automatisch nachbauen.
+- deshalb kann ein anderes Gerät `5362-1` noch nicht automatisch nachbauen.
 
 Nächster Implementierungsschritt:
 - eigener serverseitiger Baustellenstruktur-Sync für benötigte Unterknoten.
@@ -223,22 +275,50 @@ Verbindliche Bestände:
 Server/Admin müssen daraus Bahnhofscode/Name vervollständigen. Keine neue Bahnhofsliste einführen.
 
 ## BTB-PDF / Export
-- direkter lokaler BTB-PDF-Name kanonisch: `BTB_<Datum>_<TAG|NACHT>_<VerantwortlicherTB>.pdf`.
-- erneutes Erzeugen desselben fachlichen BTB aktualisiert denselben Zielpfad.
-- sichtbarer Kopf: Baustelle, Firma, verantwortlicher TB, Datum, Schicht, Zeit.
-- Test-PDF `BTB_2026-09-10_NACHT_jens_poco.pdf` praktisch geprüft.
-- historische PDFs werden nicht zwangsumbenannt.
-- langfristiges Laptop-Archiv: `TB-Helfer/<Baustelle>/...`.
+Für neue Multi-BTB-Berichte gilt:
+- PDF/DOCX-Namen verwenden stabile BTB-Identität + Dokumentversion und dürfen bei mehreren BTBs desselben Tages nicht kollidieren.
+- frühere V1/V2/... bleiben erhalten.
+- historische alte PDFs werden nicht zwangsumbenannt.
+- langfristiges Laptop-Archiv bleibt `TB-Helfer/<Baustelle>/...`.
 - mehrere Geräte-ZIPs müssen merge-sicher in denselben Zielordner entpackbar sein.
 - Bilder/Anlagen erhalten stabile/inhaltsbasierte Kennungen.
 - `Bilderliste_gesamt.xlsx` + CSV sowie Mängel-/Abnahme-Gesamtlisten sind im Feature-Branch vorhanden; echter Mehrgeräte-Test steht aus.
 
-## Android-Buildstatus
+Noch zu prüfen/vereinheitlichen:
+- einzelne ältere Exportpfade in `BtbExportPaket` verwenden noch Tag-/Nacht-orientierte Anzeigenamen; sie dürfen bei neuen Multi-BTB-Exporten keine unterschiedlichen `btbId`-Dokumente auf denselben ZIP-Pfad reduzieren.
+
+## Android-Buildstatus / Tests
+Praktisch bestätigt:
 - Android 200019 wurde mehrfach lokal erfolgreich gebaut und installiert.
-- Android 200020 wurde auf dem Pixel praktisch getestet: Root-Bootstrap `Immenstadt` funktioniert; fehlendes automatisches `aktuell` wurde erkannt.
-- Android **200022** enthält direkten Baustellen-/QR-Ablauf plus getrenntes persönliches Nutzerprofil und ist noch nicht lokal gebaut/getestet.
-- GitHub Actions ist für diesen Stand nicht maßgeblich; lokale Android-Studio-Builds sind die Autorität.
+- Android 200020: Root-Bootstrap `Immenstadt` auf Pixel praktisch bestätigt.
+
+Aktueller Branch:
+- Android **200023** ist noch **nicht lokal vollständig kompiliert/installiert/getestet**.
+- neue Unit-Testquellen decken stabile BTB-Dateinamen und V1/V2/V3-Auswahlregeln ab; sie konnten in dieser Sitzung nicht durch einen echten Android-Gradle-Lauf bestätigt werden.
+- GitHub Actions für aktuelle Heads schlagen weiterhin bereits vor dem ersten Workflow-Schritt fehl (`steps=[]`, kein nutzbarer Runnerlauf). Das ist kein fachlicher Buildfehler, aber auch **kein bestandener Build**.
+- lokale Android-Studio-/Gradle-Builds bleiben für diesen Stand erforderlich.
 - Compilerwarnungen bleiben im separaten Backlog.
+
+## Betroffene Dateien des aktuellen Android-Blocks
+Wesentlich geändert/neu:
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchModels.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchSpeicher.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDokumentIdentitaet.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDokumentVersionierung.kt`
+- `app/src/main/java/de/tbhelfer/ui/baustelle/BtbVerlaufFragment.kt`
+- `app/src/main/java/de/tbhelfer/server/TeamDisplayCache.kt`
+- `app/src/main/java/de/tbhelfer/server/SyncStatusSpeicher.kt`
+- `app/src/main/java/de/tbhelfer/server/SyncWorker.kt`
+- `app/src/main/java/de/tbhelfer/einstellungen/SyncEinstellungenSpeicher.kt`
+- `app/src/main/java/de/tbhelfer/ui/einstellungen/EinstellungenFragment.kt`
+- `app/src/main/res/layout/fragment_einstellungen.xml`
+- `app/src/main/java/de/tbhelfer/ui/start/StartmenueFragment.kt`
+- `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenTeamDirekt.kt`
+- `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenFragment.kt`
+- `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenKnotenAdapter.kt`
+- `app/src/test/java/de/tbhelfer/ui/bautagebuch/BtbDokumentIdentitaetTest.kt`
+- `app/src/test/java/de/tbhelfer/ui/bautagebuch/BtbDokumentVersionierungTest.kt`
+- `app/build.gradle.kts`
 
 ## Testgeräte
 - Poco: Xiaomi `23013PC75G`, Android 15 / SDK 35
@@ -267,18 +347,27 @@ Farben:
 - Blau = Auswahl
 
 ## Nächste sichere Schritte
-1. **Produktiven NAS-Stand vorerst auf Schema 10/API 0.7 lassen.** Schema 11 ist nur vorbereitet.
-2. Android **200022** lokal kompilieren; noch keine App-Daten löschen.
-3. statischen Schema-11-Quellencheck ausführen.
-4. vor produktiver Schema-11-Migration ein neues DB-Backup erzeugen und mit `pg_restore -l` prüfen.
-5. Migration `011_user_contact_profile.sql` und `05_verify_schema11.sql` nach CRLF-Normalisierung gegen die GitHub-Blob-Hashes prüfen.
-6. erst danach Migration 011 mit `ON_ERROR_STOP` ausführen und `SCHEMA_11_OK` bestätigen.
-7. neuen Serverstand mit `18_part.py` in einen separaten Stage-Ordner übernehmen und kontrolliert neu bauen/starten; `server/.env` unangetastet lassen.
-8. danach Android 200022 als Update auf Pixel/Poco installieren und unter `Nutzer / Firma` die Trennung **Mein Profil / Firma** testen.
-9. anschließend QR-/Baustellen-Ablauf und BTB Poco ↔ Pixel erneut testen.
-10. danach Unterbaustellen-/Baustellenstruktur-Sync für `5362-1` bauen.
-11. danach serverseitige Mitgliedschafts-Entfernung und direkte `Nutzer/Helfer entfernen`-Aktion ergänzen.
-12. anschließend Mängel/Abnahmen/Bilder/Benachrichtigungen, Offline/409/Tombstones/Netzabbruch und Merge-Export mit beiden Geräten testen.
+1. **Produktiven NAS-Stand auf Schema 10/API 0.7 lassen.** Keine produktive Migration nur für den Android-Build.
+2. Android **200023 lokal kompilieren** (`assembleDebug` + Unit-Tests; anschließend nach Möglichkeit Release/Lint).
+3. Compiler-/Ressourcenfehler aus dem 200023-Build unmittelbar im Feature-Branch beheben und diese Datei aktualisieren.
+4. auf Pixel/Poco als Update installieren, **keine App-Daten löschen**.
+5. BTB praktisch testen:
+   - zwei echte BTBs am selben Tag anlegen,
+   - V1 abschließen,
+   - einen Bericht ändern,
+   - V2 abschließen,
+   - prüfen: V1 bleibt, V2 neu, Änderungen rot, Verlauf korrekt.
+6. Sync-UX praktisch prüfen:
+   - Einstellungen `Manuell / Stündlich / Täglich`,
+   - Netzregel,
+   - Startmenü `Mit NAS synchronisieren`,
+   - Baustellenkarte Teamzahl + letzter Sync.
+7. manuellen NAS-Sync auf eine gemeinsame komplette Routine mit dem Collaboration-Ablauf des `SyncWorker` vereinheitlichen.
+8. danach Multi-BTB-Syncservermodell auf stabile `btbId` anpassen, ohne Altbestände zu zerstören.
+9. danach Unterbaustellen-/Baustellenstruktur-Sync für `5362-1` bauen.
+10. danach serverseitige Mitgliedschafts-Entfernung und direkte `Nutzer/Helfer entfernen`-Aktion ergänzen.
+11. anschließend Mängel/Abnahmen/Bilder/Benachrichtigungen, Offline/409/Tombstones/Netzabbruch und Merge-Export mit beiden Geräten testen.
+12. Schema 11 erst nach eigenem Backup/Hashprüfung/Verifikation produktiv migrieren, wenn der Nutzerprofilblock praktisch dran ist.
 13. danach den separaten Vermessungsblock fertigstellen.
 14. PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
 
@@ -290,10 +379,12 @@ Farben:
 - keine firmenübergreifenden Teams.
 - keine firmenweite Mängel-/Abnahmeverteilung.
 - Self-Service-Baustellenbeitritt statt täglicher Admin-Zuordnung.
-- Baustellen-Team/QR gehört in die Baustellenansicht, nicht als eigener normaler Einstellungs-Menüpunkt.
+- Baustellen-Team/QR gehört in die Baustellenansicht, nicht als eigener normaler `Baustellen-Synchronisation`-Menüpunkt.
+- allgemeine gerätelokale Sync-Einstellungen dürfen unter `Einstellungen → Synchronisation` liegen.
 - `Verantwortliche TBs` mit echten Namen; keine sichtbaren A/B/C/D-Gruppen.
 - Helfer schreiben in den BTB ihres verantwortlichen TB.
-- BTB-Identität = Team + Datum + Schicht.
+- neue BTB-Identität = **stabile `btbId`**, nicht `Datum + TAG/NACHT`.
+- mehrere BTBs desselben Tages sind erlaubt.
 - zentraler Firmenprofil-/Logo-Stand vom Server.
 - persönliche E-Mail/Telefon gehören zum einzelnen Server-Benutzer und nicht zum Firmenprofil.
 - merge-sicheres Archiv `TB-Helfer/<Baustelle>/...`.
