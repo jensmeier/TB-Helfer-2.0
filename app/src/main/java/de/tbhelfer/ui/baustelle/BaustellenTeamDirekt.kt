@@ -97,7 +97,7 @@ object BaustellenTeamDirekt {
             }
     }
 
-    private fun provisionAndLoadTeam(
+    private suspend fun provisionAndLoadTeam(
         fragment: Fragment,
         token: String,
         haupt: BaustellenKnotenEntity
@@ -404,7 +404,7 @@ object BaustellenTeamDirekt {
         }
     }
 
-    private fun syncJoinedWorksite(
+    private suspend fun syncJoinedWorksite(
         token: String,
         redeemed: TeamManagementApi.RedeemedInvitation
     ): JoinOutcome {
