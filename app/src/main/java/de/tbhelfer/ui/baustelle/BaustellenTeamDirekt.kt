@@ -12,10 +12,12 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.BaustellenKnotenEntity
 import de.tbhelfer.datenbank.CollabSyncRepository
@@ -35,11 +37,8 @@ import org.json.JSONObject
  *
  * - "Nutzer hinzufügen" bleibt in der Baustellenliste und erzeugt dort den QR.
  * - "QR scannen" tritt direkt einer Baustelle bei; der QR entscheidet LEAD/HELPER.
- * - Nach erfolgreichem Beitritt wird synchronisiert und die Baustelle direkt als aktuell gesetzt.
- *
- * Die separate BaustellenSyncFragment-Ansicht bleibt vorerst technisch erhalten, ist aber kein
- * normaler Benutzereinstieg mehr. So können Diagnose-/Altpfade weiter funktionieren, ohne den
- * Arbeitsablauf mit zusätzlichen Menüs zu belasten.
+ * - Nach erfolgreichem Beitritt wird synchronisiert und die lokale Baustelle aufgebaut.
+ * - Eine andere aktuelle Baustelle wird niemals ungefragt überschrieben: Öffnen/Später wird gefragt.
  */
 object BaustellenTeamDirekt {
     private val teamApi = TeamManagementApi()
@@ -387,13 +386,7 @@ object BaustellenTeamDirekt {
                         is JoinOutcome.Success -> {
                             val local = sync.localWorksite
                             if (local != null) {
-                                ServiceLocator.aktuelleBaustelleSpeicher.setzenNurHaupt(local.id, local.altBaustelleId)
-                                val role = if (redeem.result.memberRole.equals("HELPER", true)) "Helfer" else "verantwortlicher TB"
-                                Toast.makeText(
-                                    fragment.requireContext(),
-                                    "${redeem.result.worksiteName ?: local.hauptbaustellenName} übernommen · $role",
-                                    Toast.LENGTH_LONG
-                                ).show()
+                                showOpenJoinedWorksiteChoice(fragment, local, redeem.result.memberRole, redeem.result.worksiteName)
                             } else {
                                 showBindingChoice(fragment, redeem.result)
                             }
@@ -402,6 +395,34 @@ object BaustellenTeamDirekt {
                 }
             }
         }
+    }
+
+    private fun showOpenJoinedWorksiteChoice(
+        fragment: Fragment,
+        local: BaustellenKnotenEntity,
+        memberRole: String?,
+        serverName: String?
+    ) {
+        val name = serverName?.takeIf { it.isNotBlank() } ?: local.hauptbaustellenName
+        val role = if (memberRole.equals("HELPER", true)) "Helfer" else "verantwortlicher TB"
+        MaterialAlertDialogBuilder(fragment.requireContext())
+            .setTitle("Baustelle hinzugefügt")
+            .setMessage("$name wurde hinzugefügt · $role\n\nJetzt öffnen?")
+            .setNegativeButton("Später") { _, _ ->
+                Toast.makeText(fragment.requireContext(), "$name wurde gespeichert. Die bisherige aktuelle Baustelle bleibt aktiv.", Toast.LENGTH_LONG).show()
+            }
+            .setPositiveButton("Öffnen") { _, _ ->
+                fragment.viewLifecycleOwner.lifecycleScope.launch {
+                    ServiceLocator.aktuelleBaustelleSpeicher.setzenNurHaupt(local.id, local.altBaustelleId)
+                    if (fragment.isAdded) {
+                        runCatching { fragment.findNavController().navigate(R.id.aktuelleBaustelleFragment) }
+                            .onFailure {
+                                Toast.makeText(fragment.requireContext(), "$name ist jetzt die aktuelle Baustelle.", Toast.LENGTH_LONG).show()
+                            }
+                    }
+                }
+            }
+            .show()
     }
 
     private suspend fun syncJoinedWorksite(
@@ -445,8 +466,7 @@ object BaustellenTeamDirekt {
                         }
                         if (!fragment.isAdded) return@launch
                         if (error == null) {
-                            ServiceLocator.aktuelleBaustelleSpeicher.setzenNurHaupt(selected.id, selected.altBaustelleId)
-                            Toast.makeText(fragment.requireContext(), "Baustelle verbunden und als aktuell gesetzt.", Toast.LENGTH_LONG).show()
+                            showOpenJoinedWorksiteChoice(fragment, selected, redeemed.memberRole, redeemed.worksiteName)
                         } else {
                             Toast.makeText(fragment.requireContext(), "Verknüpfung fehlgeschlagen: $error", Toast.LENGTH_LONG).show()
                         }
