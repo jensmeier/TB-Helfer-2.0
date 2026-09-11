@@ -8,7 +8,13 @@ package de.tbhelfer.ui.bautagebuch
  * - UI schreibt Änderungen in dieses Modell, PDF/Export lesen ausschließlich daraus.
  */
 
-/** Schicht im Bautagebuch. */
+/**
+ * Historische/anzeigende Schichtklassifikation.
+ *
+ * Seit dem neuen BTB-Modell ist TAG/NACHT kein technischer Schlüssel mehr. Die Klassifikation
+ * bleibt für Altbestände und eine optionale Anzeige erhalten und kann aus der Arbeitszeit
+ * abgeleitet werden.
+ */
 enum class SchichtTyp {
     TAG,
     NACHT
@@ -121,8 +127,24 @@ data class FotoRef(
 data class BautagebuchEintrag(
     val baustelleName: String,
     val baustelleId: Long,
-    /** ISO Datum: yyyy-MM-dd */
+
+    /**
+     * Stabile fachliche BTB-ID. Neue BTBs erhalten beim bewussten Anlegen eine UUID.
+     * Altbestände können null sein und werden beim Einlesen/Sync über einen stabilen Legacy-Key
+     * identifiziert, ohne ihre historischen Dateien umzubenennen.
+     */
+    val btbId: String? = null,
+
+    /** ISO-Arbeitsbeginn-Datum: yyyy-MM-dd. */
     val datumIso: String,
+
+    /**
+     * Optionales ISO-Enddatum. Bei null gilt für Altbestände/Tageseinsätze [datumIso].
+     * Damit kann ein BTB sauber über Mitternacht laufen.
+     */
+    val endeDatumIso: String? = null,
+
+    /** Nur Anzeige-/Legacy-Klassifikation, nicht mehr Teil der BTB-Identität. */
     val schicht: SchichtTyp = SchichtTyp.TAG,
 
     // Kopf: optional, damit ein BTB historisch konsistent bleibt
@@ -179,10 +201,16 @@ data class BautagebuchEintrag(
     val fotos: List<FotoRef> = emptyList(),
 
     /**
-     * Wenn true, wurde der Eintrag per "Fertig" geprüft/abgeschlossen.
-     * Änderungen in der UI setzen diesen Status wieder auf false.
+     * Wenn true, wurde der Eintrag fachlich geprüft/abgeschlossen.
+     * Änderungen nach dem Abschluss dürfen den historischen Abschluss nicht zerstören; beim
+     * nächsten Dokumentabschluss wird eine neue Dokumentversion erzeugt.
      */
     val istFertig: Boolean = false,
+
+    /** Letzte abgeschlossene PDF/DOCX-Version; 0 = noch nie abgeschlossen. */
+    val dokumentVersion: Int = 0,
+    val letzterAbschlussEpochMs: Long? = null,
+    val letzterAbschlussBenutzer: String? = null,
 
     val erstelltAmEpochMs: Long = System.currentTimeMillis(),
     val geaendertAmEpochMs: Long = System.currentTimeMillis()
