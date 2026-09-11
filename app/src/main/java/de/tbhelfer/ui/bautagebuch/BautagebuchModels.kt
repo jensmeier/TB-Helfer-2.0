@@ -1,5 +1,9 @@
 package de.tbhelfer.ui.bautagebuch
 
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+
 /**
  * Datenmodell für einen Bautagebuch-Eintrag.
  *
@@ -139,10 +143,11 @@ data class BautagebuchEintrag(
     val datumIso: String,
 
     /**
-     * Optionales ISO-Enddatum. Bei null gilt für Altbestände/Tageseinsätze [datumIso].
-     * Damit kann ein BTB sauber über Mitternacht laufen.
+     * Optionales ISO-Enddatum. Für über Mitternacht laufende Berichte wird bei fehlendem Wert
+     * automatisch der Folgetag abgeleitet. Damit bleibt der Zeitraum auch dann eindeutig, wenn
+     * ein älterer UI-Pfad nur Start-/Endzeit liefert.
      */
-    val endeDatumIso: String? = null,
+    var endeDatumIso: String? = null,
 
     /** Nur Anzeige-/Legacy-Klassifikation, nicht mehr Teil der BTB-Identität. */
     val schicht: SchichtTyp = SchichtTyp.TAG,
@@ -214,4 +219,26 @@ data class BautagebuchEintrag(
 
     val erstelltAmEpochMs: Long = System.currentTimeMillis(),
     val geaendertAmEpochMs: Long = System.currentTimeMillis()
-)
+) {
+    init {
+        if (endeDatumIso.isNullOrBlank()) {
+            endeDatumIso = abgeleitetesEnddatum(datumIso, startUhrzeit, endeUhrzeit)
+        }
+    }
+
+    companion object {
+        private val flexibleTimeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("H:mm")
+
+        /** Nur echte Mitternachtswechsel bekommen automatisch ein separates Enddatum. */
+        private fun abgeleitetesEnddatum(datumIso: String, start: String?, ende: String?): String? {
+            val datum = runCatching { LocalDate.parse(datumIso) }.getOrNull() ?: return null
+            val von = start?.trim()?.takeIf { it.isNotBlank() }
+                ?.let { runCatching { LocalTime.parse(it, flexibleTimeFmt) }.getOrNull() }
+                ?: return null
+            val bis = ende?.trim()?.takeIf { it.isNotBlank() }
+                ?.let { runCatching { LocalTime.parse(it, flexibleTimeFmt) }.getOrNull() }
+                ?: return null
+            return if (!bis.isAfter(von)) datum.plusDays(1).toString() else null
+        }
+    }
+}
