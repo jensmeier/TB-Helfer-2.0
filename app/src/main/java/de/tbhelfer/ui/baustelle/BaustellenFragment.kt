@@ -127,14 +127,10 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
                     val abnahmenByRoot = withContext(Dispatchers.IO) {
                         hauptListe.associate { root -> root.id to AbnahmeSpeicher.zaehler(appContext, root.altBaustelleId) }
                     }
-                    val teamStatusByRoot = hauptListe.associate { root ->
-                        root.id to TeamDisplayCache.worksiteCardStatus(appContext, root.id)
-                    }
                     hauptListe.map { knoten ->
                         val (unter, gesamt) = countByRoot[knoten.id] ?: (0 to 0)
                         val mz = maengelByRoot[knoten.id] ?: MangelFachlogik.Zaehler()
                         val az = abnahmenByRoot[knoten.id] ?: AbnahmeSpeicher.Zaehler()
-                        val ts = teamStatusByRoot[knoten.id]
                         BaustellenKnotenUiModell(
                             knoten = knoten,
                             istAktuell = (aktuelleHauptId == knoten.id),
@@ -150,10 +146,6 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
                             abnahmeJaCount = az.ja,
                             abnahmeNeinCount = az.nein,
                             abnahmePruefungCount = az.inPruefung,
-                            teamServerVerbunden = ts != null,
-                            verantwortlicheTbCount = ts?.responsibleTbCount ?: 0,
-                            helferCount = ts?.helperCount ?: 0,
-                            letzterBaustellenSyncEpochMs = ts?.lastSuccessfulSyncEpochMs,
                             unterLabel = UnterLabel.UNTERBAUSTELLEN,
                             istAufklappbar = false,
                             istAufgeklappt = false
