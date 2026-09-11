@@ -18,8 +18,8 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Automatischer lokaler Baustellen-Bootstrap nach Teambeitritt; BTB bleibt gruppenbezogen.
-        versionCode = 200020
+        // Baustellenteam/QR direkt in der Baustellenliste; kein separater Sync-Menüweg.
+        versionCode = 200021
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
