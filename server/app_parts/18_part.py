@@ -76,7 +76,7 @@ def user_contact_profile_put(req:UserContactProfileUpdate,
                 raise HTTPException(409,"USER_PROFILE_SCHEMA_REQUIRED")
             cur.execute(
                 """UPDATE tb.users
-                   SET email=%s,
+                   SET email=COALESCE(%s,email),
                        phone=%s,
                        profile_version=profile_version+1,
                        updated_at=now()
@@ -97,6 +97,6 @@ def user_contact_profile_put(req:UserContactProfileUpdate,
         d["device_id"],
         "USER",
         d["user_id"],
-        {"email_changed":True,"phone_changed":True},
+        {"email_changed":email is not None,"phone_changed":True},
     )
     return {"profile":_user_profile_payload(row)}
