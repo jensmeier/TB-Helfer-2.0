@@ -8,6 +8,7 @@ import de.tbhelfer.R
 
 /**
  * Aufgeräumte Einstellungen mit den häufig benötigten Hauptbereichen.
+ * Baustellen-Team/QR gehört direkt in die Baustellenliste, nicht in die Einstellungen.
  */
 class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
 
@@ -20,10 +21,6 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
 
         view.findViewById<View>(R.id.btnBenachrichtigungen).setOnClickListener {
             findNavController().navigate(R.id.action_einstellungen_to_benachrichtigungen)
-        }
-
-        view.findViewById<View>(R.id.btnBaustellenSync).setOnClickListener {
-            findNavController().navigate(R.id.action_einstellungen_to_baustellen_sync)
         }
 
         view.findViewById<View>(R.id.btnAnzeigeOverlay).setOnClickListener {
