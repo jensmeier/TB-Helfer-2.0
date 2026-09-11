@@ -27,32 +27,27 @@ Vor jeder Änderung zuerst lesen:
 - `compose.yaml` baut/mountet den produktiven Server aus diesem Stage-Ordner.
 - produktive Secrets bleiben ausschließlich in `./server/.env`.
 - letzter bestätigter Stand: PostgreSQL healthy, API/cloudflared gestartet, **72 OpenAPI-Pfade**, `DB_TEST=OK`, Schema 10.
-- seit diesem bestätigten Stand wurden in der aktuellen Entwicklungsrunde **keine NAS-/DB-Änderungen** durchgeführt.
+- in der aktuellen Entwicklungsrunde wurden **keine NAS-/DB-Änderungen** durchgeführt.
 
-Wichtig: Der Feature-Branch enthält inzwischen neueren Servercode, unter anderem die stabile Multi-BTB-ID in `server/app_parts/15_part.py`. Dieser Code entstand **nach** dem letzten produktiven Server-Rollout und ist deshalb noch nicht produktiv bestätigt.
+Wichtig: Der Feature-Branch enthält neueren Servercode als der produktive Stage-Ordner, insbesondere stabile Multi-BTB-IDs in `server/app_parts/15_part.py`. Dieser Branch-Code ist noch nicht produktiv ausgerollt.
 
-## Backup / Migration 010
-Produktives Pre-Schema-10-Backup:
-- `/volume1/docker/tb-helfer/backup/tb_helfer_pre_schema10_20260910_173351.dump`
-- mit `pg_restore -l` geprüft: **`BACKUP_PRUEFUNG=OK`**.
-
-Verifizierte Git-Blob-SHAs für den damaligen Schema-10-Rollout:
-- `010_worksite_invitations_company_profile.sql` → `d3b78c723de0c5ee0b2a0121957d81513e240a86`
-- `02_verify_schema10.sql` → `100b1214a81990ed84a187b243f94b745ee742ab`
-
-Migration 010 lief mit `ON_ERROR_STOP`, endete mit `INSERT 0 1` und `COMMIT`; Verifikation endete mit **`SCHEMA_10_OK`**.
+### Letztes produktives Backup / Schema 10
+- Backup: `/volume1/docker/tb-helfer/backup/tb_helfer_pre_schema10_20260910_173351.dump`
+- geprüft mit `pg_restore -l`: **`BACKUP_PRUEFUNG=OK`**.
+- Schema-10-Migration lief mit `ON_ERROR_STOP`, `INSERT 0 1`, `COMMIT`.
+- Verifikation: **`SCHEMA_10_OK`**.
+- damalige Git-Blob-SHAs:
+  - `010_worksite_invitations_company_profile.sql` → `d3b78c723de0c5ee0b2a0121957d81513e240a86`
+  - `02_verify_schema10.sql` → `100b1214a81990ed84a187b243f94b745ee742ab`
 
 ## Persönliches Nutzerprofil / Firma – Schema 11 vorbereitet, nicht produktiv
 Verbindliche Trennung:
 - **Firma** zentral: Firmenname, Anschrift, Firmentelefon, Firmen-E-Mail, Firmenlogo.
 - **Mein Profil** pro Server-Benutzer: Name, persönliche Telefonnummer, persönliche E-Mail-Adresse.
-- persönliche Kontaktdaten dürfen für Benutzer derselben Firma sichtbar sein, aber Firmen- und persönliche Kontaktdaten bleiben getrennt.
+- persönliche Kontaktdaten dürfen für Benutzer derselben Firma sichtbar sein; andere Firmen erhalten sie nicht.
 
 Branch-Vorbereitung:
 - `server/migrations/011_user_contact_profile.sql`
-  - `tb.users.phone`
-  - `tb.users.profile_version`
-  - Schema 11 `011_user_contact_profile`
 - `server/checks/05_verify_schema11.sql` → erwartet `SCHEMA_11_OK`
 - `server/checks/06_verify_schema11_source.py`
 - `server/app_parts/18_part.py`
@@ -60,54 +55,47 @@ Branch-Vorbereitung:
   - `PUT /api/v1/user/profile`
 - Android `UserProfileApi.kt`
 - separater Offline-Cache `PersoenlichesNutzerProfilSpeicher`
-- Android-UI `Nutzer / Firma` getrennt in **Mein Profil** / **Firma**.
+- Android-UI trennt **Mein Profil** / **Firma**.
 
 **Schema 11 wurde noch nicht auf dem NAS ausgeführt. Produktiv bleibt Schema 10.**
 
-## Firmen / Teams / Einladungen
+# Firmen / Teams / Einladungen
 Praktisch bereits bestätigt:
 - Testfirma `Gtu`: zwei Nutzer / zwei aktive Testgeräte.
 - Firmenprofil/Logo funktioniert produktiv.
 - Helfer-/TB-Einladung funktioniert praktisch.
-- Teams ausschließlich innerhalb derselben Firma.
+- Zusammenarbeit ausschließlich innerhalb derselben Firma.
 - Ersteller einer Server-Baustelle ist erster verantwortlicher TB.
 - weitere verantwortliche TBs und Helfer treten per sicherer Baustelleneinladung bei.
 - Helfer können `area_scope` erhalten.
 - Aktivierungs-QR und Baustellen-Einladungs-QR sind getrennte Abläufe.
-- technische Beziehungen verwenden UUIDs/Team-IDs, nie sichtbare Namen.
+- technische Beziehungen verwenden UUIDs/Team-IDs, nicht sichtbare Namen.
 
 Android:
-- `QR scannen` liegt direkt in der Baustellenliste.
-- `Nutzer hinzufügen` liegt direkt im Baustellen-Langdruckmenü.
-- Auswahl: verantwortlicher TB oder Helfer; Helfer-Bereich kann eingeschränkt werden.
-- Rolle kommt aus der serverseitigen Einladung; Empfänger wählt sie nicht erneut.
+- `QR scannen` direkt in der Baustellenliste.
+- `Nutzer hinzufügen` direkt im Baustellen-Langdruckmenü.
+- Rolle kommt aus der serverseitigen Einladung.
 - gleichnamige lokale Baustellen werden nicht blind zusammengeführt.
 
 ## Baustellenkarte / Team- und Sync-Status
 Im Branch umgesetzt:
-- `TeamDisplayCache` hält je Server-Baustelle:
-  - lokalen Root ↔ Server-Worksite,
-  - Anzahl verantwortliche TBs,
-  - Anzahl Helfer,
-  - letzten erfolgreichen Baustellen-Sync.
-- Hauptbaustellenkarte kann z. B. anzeigen:
-  - `2 TB · 4 Helfer · Zuletzt synchronisiert: heute 14:32`
-  - oder `Noch nicht mit Server synchronisiert`.
-- Provisionierung, QR-Beitritt und Hintergrundsync aktualisieren diesen Cache.
+- `TeamDisplayCache` hält lokalen Root ↔ Server-Worksite, TB-/Helferanzahl und letzten erfolgreichen Baustellen-Sync.
+- Hauptbaustellenkarte kann z. B. `2 TB · 4 Helfer · Zuletzt synchronisiert: heute 14:32` anzeigen.
+- Provisionierung, QR-Beitritt und Hintergrundsync aktualisieren den Cache.
 
-Noch nicht lokal mit Android 200023 praktisch geprüft.
+Noch nicht praktisch mit Android 200023 geprüft.
 
 # BTB
 
-## Neue verbindliche BTB-Identität
+## Verbindliche BTB-Identität
 Die frühere technische Identität `Team + Datum + TAG/NACHT` ist abgelöst.
 
 Für neue Berichte gilt:
-- ein BTB entsteht **nur bewusst über `Neuer BTB`**.
-- bloßes Öffnen des Bautagebuchs erzeugt keinen leeren Entwurf.
+- BTB entsteht **nur bewusst über `Neuer BTB`**.
+- bloßes Öffnen erzeugt keinen Entwurf.
 - jeder neue BTB erhält eine stabile **`btbId` (UUID)**.
-- Datum, Arbeitsbeginn/-ende und TAG/NACHT sind Attribute/Anzeige, kein technischer Schlüssel.
-- mehrere BTBs desselben TB-Teams am selben Kalendertag sind ausdrücklich erlaubt.
+- Datum, Arbeitsbeginn/-ende und TAG/NACHT sind Attribute/Anzeige, nicht technischer Schlüssel.
+- mehrere BTBs desselben TB-Teams am selben Kalendertag sind erlaubt.
 - Helfer und verantwortlicher TB desselben Teams bearbeiten dieselbe `btbId`.
 - andere verantwortliche TB-Teams derselben Baustelle bleiben getrennt.
 - historische `bautagebuch_tag.json`, `bautagebuch_nacht.json` und `bautagebuch.json` bleiben lesbar.
@@ -115,16 +103,73 @@ Für neue Berichte gilt:
 Lokaler Speicher:
 - neue Datei: `btb_<btbId>.json`
 - `.active_btb.json` hält den aktiv geöffneten Bericht.
-- `neueBtbIdVorbereiten()` erzeugt nur Identität/Pointer; erst ein Speichervorgang legt den fachlichen Bericht an.
+- `neueBtbIdVorbereiten()` erzeugt Identität/Pointer; erst Speichern legt den fachlichen Bericht an.
 - `verlaufFuerBaustelle()` listet tatsächlich vorhandene moderne + historische BTBs.
+
+## BTB über Mitternacht – jetzt zentral abgesichert
+`BautagebuchEintrag` leitet bei fehlendem `endeDatumIso` automatisch den Folgetag ab, wenn die Arbeitszeit über Mitternacht läuft.
+
+Beispiel:
+- Beginn `2026-09-10 22:00`
+- Ende `06:00`
+- abgeleitetes `endeDatumIso = 2026-09-11`.
+
+Normale Tageszeiten behalten `endeDatumIso = null`, sofern kein separates Enddatum nötig ist. Ein ausdrücklich gesetztes Enddatum wird nicht überschrieben.
+
+Neu vorhanden:
+- `app/src/test/java/de/tbhelfer/ui/bautagebuch/BautagebuchEintragEnddatumTest.kt`
+  - Nacht über Mitternacht → Folgetag
+  - normaler Tag → kein separates Enddatum
+  - explizites Enddatum bleibt erhalten.
+
+**Der Unit-Test ist angelegt, aber Android 200023 wurde noch nicht lokal per Gradle ausgeführt.**
+
+## Blauer aktueller-BTB-Schnellwechsel – sichtbarer Altpfad korrigiert
+Der große historische `BautagebuchFragment.kt` enthält intern weiterhin den alten 7-Tage-TAG/NACHT-Dialog. Um die sehr große Datei nicht unsicher komplett zu ersetzen, wird dessen Click-Listener jetzt nach Aufbau der Fragment-View kontrolliert durch die neue Multi-BTB-Bindung ersetzt.
+
+Neue Datei:
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbSchnellwechselInstaller.kt`
+
+Verdrahtung:
+- `HauptActivity` installiert den Listener über rekursive `FragmentLifecycleCallbacks`.
+- Activity-Restore wird zusätzlich berücksichtigt, falls das BTB-Fragment schon aufgebaut wurde.
+
+Verhalten des blauen Balkens:
+- Quelle ausschließlich `BautagebuchSpeicher.verlaufFuerBaustelle()`.
+- nur tatsächlich vorhandene BTBs werden angezeigt.
+- keine künstlichen Tag-/Nacht-Leerzeilen.
+- mehrere BTBs am selben Tag bleiben jeweils eigene Auswahlzeilen.
+- Anzeige enthält Datum/Zeitraum, Arbeitszeit und Entwurf/Abschluss-/Versionsstatus.
+- aktive `btbId` wird als `aktuell` markiert.
+- moderner Bericht wird vor Öffnen über seine konkrete `btbId` aktiviert.
+- neuer BTB entsteht weiterhin ausschließlich über den grünen `+`-Ablauf.
+- vor dem Wechsel wird Fokus beendet und 1,7 s auf den vorhandenen 1,5-s-Autosave gewartet, damit unmittelbar vorher geänderte Eingaben nicht durch Navigation verloren gehen.
+
+### Historischer Datum/Schicht-Dialog
+`showSchichtTypDialog()` existiert im großen Fragment aus Kompatibilitätsgründen weiterhin. Nicht vorhandene Tag-/Nacht-Berichte sind dort aber nicht mehr anklickbar/sichtbar:
+- neue View `ExistingBtbShiftButton.kt`
+- `dialog_btb_open_shift.xml` verwendet diese View.
+- sobald der Altcode den Status `btb_status_new_empty` setzt, wird die betreffende Schaltfläche `GONE` und deaktiviert.
+
+Damit kann dieser Altpfad keinen künstlichen `Neu (leer)`-Bericht mehr als auswählbares Ziel anbieten. Neue Berichte bleiben beim grünen `+`.
+
+Technische Restschuld:
+- die alten privaten Methoden/Enums in `BautagebuchFragment.kt` (`ReportState.NEW_EMPTY`, alter 7-Tage-Dialog) sind noch im Quelltext, aber der blaue Balken nutzt sie zur Laufzeit nicht mehr.
+- bei einer späteren Zerlegung des sehr großen Fragments sollen diese toten Altpfade endgültig entfernt und die neue Bindung direkt ins Fragment verschoben werden.
+
+Statischer Quellprüfer vorbereitet:
+- `server/checks/10_verify_android_btb_quick_switch_source.py`
+- erwartet `ANDROID_BTB_QUICK_SWITCH_OK`.
+- prüft u. a. `verlaufFuerBaustelle`, `aktiveBtbId`, `aktivierenBtb`, Weitergabe von `btbId`, Activity-Installation sowie das Ausblenden von `btb_status_new_empty`.
+- **noch nicht in einem lokalen Checkout ausgeführt**.
 
 ## BTB-Abschluss / PDF-Versionierung
 Im Branch umgesetzt:
 - erster erfolgreicher Abschluss = **V1**.
 - spätere Änderung + erneuter Abschluss = **V2, V3, ...**.
 - frühere Abschlussdateien bleiben erhalten.
-- neue Dateinamen enthalten stabile BTB-Identität + Dokumentversion und dürfen bei mehreren BTBs desselben Tages nicht kollidieren.
-- neue Version vergleicht gegen die vorherige **bestätigte** Abschlussversion.
+- neue Dateinamen enthalten stabile BTB-Identität + Dokumentversion.
+- neue Version vergleicht gegen die vorherige bestätigte Abschlussversion.
 - Entwurf/abgebrochener PDF-Lauf verschiebt die Vergleichsbasis nicht.
 - Änderungen gegenüber der vorherigen Abschlussversion können rot markiert werden.
 - Verlauf zeigt `Abgeschlossen · Vn` bzw. `Geändert seit Vn · nächster Abschluss Vn+1`.
@@ -137,14 +182,31 @@ Wesentliche Dateien:
 - `BtbVerlaufFragment.kt`
 - Unit-Testquellen `BtbDokumentIdentitaetTest.kt` / `BtbDokumentVersionierungTest.kt`.
 
-Diese Tests sind im Quellstand vorhanden, wurden für Android 200023 in dieser Sitzung aber **nicht durch einen echten lokalen Gradle-Lauf bestätigt**.
+## BTB-Bilder / lokale Foto-Hilfsdaten
+Server-Medienzuordnung:
+- `CollabLocalBridge` verwendet `btbId` als `client_entity_key`.
+- `BtbTeamMediaSync` verwendet denselben stabilen Key für BTB-Attachments.
 
-## Multi-BTB auf dem Server
+Lokale Foto-Hilfsspeicher sind ebenfalls pro BTB isoliert:
+- `BtbPhotoInstanzKey.kt`
+- `BtbPhotoSelectionStore.kt`
+- `BtbPhotoTextOverrideStore.kt`
+- `BtbPhotoStartOverrideStore.kt`
+- `BtbPhotoKmOverrideStore.kt`.
+
+`BtbPhotoInstanzKey` akzeptiert `.active_btb.json` nur, wenn Datum und Schicht zum angefragten Bericht passen. Neue Hilfsdateien enthalten einen `_btb_<btbId-token>_`-Teil; Altbestände ohne passende ID verwenden weiter das historische Dateischema.
+
+Statischer Prüfer vorbereitet:
+- `server/checks/09_verify_android_multi_btb_photo_state_source.py`
+- erwartet `ANDROID_MULTI_BTB_PHOTO_STATE_OK`
+- noch nicht tatsächlich ausgeführt.
+
+# Multi-BTB auf dem Server
 Datenbankschema 9/10 ist bereits grundsätzlich Multi-BTB-tauglich:
 - `tb.collab_btb_entries.client_entry_id` ist der Client-Schlüssel.
 - eindeutige DB-Regel: **`UNIQUE (group_id, client_entry_id)`**.
-- es existiert keine gewollte Eindeutigkeit auf Datum + Schicht.
-- deshalb ist für stabile `btbId` **keine eigene DB-Migration erforderlich**.
+- keine gewollte Eindeutigkeit auf Datum + Schicht.
+- für stabile `btbId` ist deshalb **keine eigene DB-Migration erforderlich**.
 
 Feature-Branch-Server:
 - `server/app_parts/15_part.py` verwendet `client_entity_key` als technische BTB-ID.
@@ -154,98 +216,28 @@ Feature-Branch-Server:
 - parallele Helferänderungen werden versionsgeschützt zusammengeführt.
 - Altbestände mit historischen Keys bleiben kompatibel.
 
-Neu vorbereitete Prüfungen:
-- `server/checks/07_verify_multi_btb_schema10.sql`
-  - **read-only**
-  - kontrolliert vorhandenes Schema 10 und `UNIQUE (group_id, client_entry_id)`
-  - lehnt eine Datum-/Schicht-Unique-Regel ab
-  - erwarteter Marker: `MULTI_BTB_SCHEMA10_OK`
-- `server/checks/08_verify_multi_btb_source.py`
-  - prüft DB-/Server-/Android-Quellvertrag für stabile `btbId`
-  - kontrolliert zusätzlich, dass Android die für die WLAN-/Mobilfunkprüfung nötige `ACCESS_NETWORK_STATE`-Berechtigung besitzt
-  - erwarteter Marker: `MULTI_BTB_SOURCE_OK`.
+Vorbereitete Prüfungen:
+- `server/checks/07_verify_multi_btb_schema10.sql` → erwartet `MULTI_BTB_SCHEMA10_OK`
+- `server/checks/08_verify_multi_btb_source.py` → erwartet `MULTI_BTB_SOURCE_OK`
+- beide noch nicht auf NAS/lokal ausgeführt.
 
-Diese beiden neuen Prüfungen sind **vorbereitet, aber noch nicht auf dem NAS bzw. in einem lokalen Checkout ausgeführt**.
-
-Der stabile Multi-BTB-Servercode wurde im Branch am 11.09.2026 nach dem letzten produktiven Rollout ergänzt. Vor dem echten Pixel/Poco-Multi-BTB-Test braucht der produktive Schema-10-Server daher später ein kontrolliertes **Server-Code-Update**, aber keine Multi-BTB-DB-Migration.
-
-## BTB-Bilder / lokale Foto-Hilfsdaten
-Server-Medienzuordnung:
-- `CollabLocalBridge` verwendet `btbId` als `client_entity_key`.
-- `BtbTeamMediaSync` verwendet denselben stabilen Key für BTB-Attachments.
-- der frühere Medien-Key `Datum:TAG/NACHT` ist im Branch entfernt.
-
-Lokale Foto-Hilfsspeicher sind jetzt ebenfalls pro BTB isoliert:
-- `BtbPhotoInstanzKey.kt` liest `.active_btb.json` und akzeptiert den Pointer nur, wenn **Baustelle, Datum und Schicht** zum angefragten Bericht passen.
-- `BtbPhotoSelectionStore.kt`
-- `BtbPhotoTextOverrideStore.kt`
-- `BtbPhotoStartOverrideStore.kt`
-- `BtbPhotoKmOverrideStore.kt`
-
-Für neue Berichte enthalten deren Dateinamen einen `_btb_<btbId-token>_`-Teil. Dadurch können Auswahl/Text/Start/KM eines zweiten BTBs am gleichen Tag den ersten Bericht nicht mehr über denselben Datum-/Schicht-/Zeit-Key überschreiben oder beim `Neuer BTB`-Start löschen.
-
-Altbestände ohne passende stabile `btbId` verwenden weiterhin das historische Dateischema.
-
-Statischer Prüfer vorbereitet:
-- `server/checks/09_verify_android_multi_btb_photo_state_source.py`
-- kontrolliert zusätzlich, dass der aktive Pointer nur für das passende Datum + die passende Schicht verwendet wird
-- erwarteter Marker: `ANDROID_MULTI_BTB_PHOTO_STATE_OK`.
-- auch dieser Check wurde noch nicht tatsächlich ausgeführt.
-
-## Bekannte noch offene BTB-UI-Punkte
-### Blauer aktueller-BTB-Schnellwechsel
-`BautagebuchFragment.kt` enthält noch einen **alten 7-Tage-Dialog**:
-- erzeugt künstlich TAG/NACHT-Zeilen für jeden Tag,
-- verwendet Zustand `NEW_EMPTY`,
-- kann `Neu (leer)` anzeigen,
-- wechselt primär über Datum + Schicht statt über den ausgewählten stabilen `btbId`.
-
-Das widerspricht der neuen Regel **nur tatsächlich angelegte BTBs anzeigen** und ist bei mehreren BTBs desselben Tages mehrdeutig.
-
-Vor dem Multi-BTB-Gerätetest muss dieser Schnellwechsel auf `verlaufFuerBaustelle()` umgestellt werden:
-- nur existierende BTBs,
-- jeder Bericht einzeln mit Datum + Arbeitszeit + Status,
-- bei modernen Berichten konkrete `btbId` aktivieren,
-- keine künstlichen Tag-/Nacht-Platzhalter.
-
-Die getrennte Seite `BtbVerlaufFragment` arbeitet bereits nach diesem Prinzip und kann als Vorlage dienen.
-
-### Datums-/Schichtdialog
-Auch `showSchichtTypDialog()` enthält noch alte `Neu (leer)`-Annahmen. Neuer Bericht soll ausschließlich über den grünen `+` / `Neuer BTB` entstehen. Dieser Pfad muss beim Schnellwechsel-Umbau mit geprüft werden.
-
-### BTB über Mitternacht
-Die Zeitlogik erkennt z. B. `22:00–06:00` als Nacht/über Mitternacht. Beim Start eines neuen BTB wird `endeDatumIso` derzeit jedoch nicht an jeder Stelle ausdrücklich gesetzt. Vor dem finalen Geräte-/Exporttest muss geprüft werden, dass PDF, Verlauf und Export den Endtag überall korrekt erhalten.
+Vor Pixel/Poco-Multi-BTB-Sync braucht der produktive Schema-10-Server ein kontrolliertes **Server-Code-Update**, aber keine Multi-BTB-DB-Migration.
 
 # Synchronisation Android 200023
-
-## Allgemeine Einstellungen
 Gerätelokal im Branch:
-- Zeitplan:
-  - `Manuell`
-  - `Stündlich`
-  - `Täglich`
-- Netz:
-  - `Nur WLAN`
-  - `Nur Mobilfunk`
-  - `WLAN + Mobilfunk`.
+- Zeitplan: `Manuell` / `Stündlich` / `Täglich`.
+- Netz: `Nur WLAN` / `Nur Mobilfunk` / `WLAN + Mobilfunk`.
+- `SyncEinstellungenSpeicher.kt` persistiert die Auswahl.
+- `SyncWorker.schedule()` verwaltet den periodischen WorkManager-Job.
+- automatischer Worker prüft die aktive Transportart.
+- `AndroidManifest.xml` enthält `android.permission.ACCESS_NETWORK_STATE`.
 
-`SyncEinstellungenSpeicher.kt` persistiert die Auswahl.
-`SyncWorker.schedule()` erstellt/entfernt den periodischen WorkManager-Job.
-Der automatische Worker prüft die aktive Transportart.
-
-Beim statischen Review wurde ein echter Laufzeitfehler behoben:
-- `AndroidManifest.xml` besitzt jetzt `android.permission.ACCESS_NETWORK_STATE`.
-- notwendig für `ConnectivityManager.activeNetwork/getNetworkCapabilities` bei der WLAN-/Mobilfunk-Prüfung.
-
-## Letzter Sync / Startmenü
+Startmenü / Status:
+- Eintrag `Mit NAS synchronisieren`.
 - `SyncStatusSpeicher.kt` hält den letzten erfolgreichen allgemeinen Server-Sync.
-- Einstellungen zeigen Zeitplan, Netzregel und letzten Sync-Stand.
-- Startmenüeintrag heißt **`Mit NAS synchronisieren`** statt `Daten vom NAS`.
-- letzter bekannter Sync-Stand wird dort angezeigt und beim Wiederaufrufen aktualisiert.
+- Einstellungen und Startmenü können den letzten Sync-Stand anzeigen.
 
-## Manueller vollständiger NAS-Sync
-`SyncWorker` besitzt einen manuellen One-Time-Modus.
-Der bewusste manuelle Lauf nutzt dieselbe vollständige Pipeline wie der Hintergrundsync:
+Manueller vollständiger NAS-Sync:
 1. Katalog/Offline-Stand
 2. inkrementelle Queue
 3. Baustellen-/Team-/Collaboration-Feed
@@ -255,66 +247,52 @@ Der bewusste manuelle Lauf nutzt dieselbe vollständige Pipeline wie der Hinterg
 7. Attachments
 8. abschließender Pull/ACK + Team-/Sync-Status.
 
-`SyncKatalogFragment` startet nach seinem sichtbaren Katalog-/Konflikt-Vorlauf diesen manuellen Worker und zeigt dessen Status.
+Der bewusste manuelle Lauf ignoriert Zeitplan und WLAN/Mobilfunk-Präferenz; eine Internetverbindung bleibt erforderlich.
 
-Der manuelle Lauf ignoriert bewusst den automatischen Zeitplan und die WLAN/Mobilfunk-Präferenz, weil der Nutzer ihn ausdrücklich gestartet hat; irgendeine Internetverbindung bleibt erforderlich.
-
-Der sichtbare Katalog-Vorlauf und der Worker führen den allgemeinen Inkrementalsync derzeit einmal redundant aus. Die Operationen sind idempotent; später kann das nur zur Laufzeitoptimierung zusammengezogen werden.
-
-## WorkManager / Android-Grundlage
-- WorkManager: `2.10.0`.
-- Android 200023 verwendet dafür passende One-Time-/Periodic-Work-APIs.
-- Android 200023 wurde **noch nicht lokal vollständig gebaut/installiert/getestet**.
+WorkManager: `2.10.0`.
 
 # Collaboration-Matrix
-
 ## Verantwortlicher TB ↔ verantwortlicher TB derselben Baustelle
 Gemeinsam innerhalb derselben Baustelle/Berechtigung:
-- Baustellenstand / freigegebene Struktur,
-- benötigte Strecken-/Arbeitsdaten,
-- Mängel/Schäden,
-- Abnahmen,
+- Baustellenstand / freigegebene Struktur
+- benötigte Strecken-/Arbeitsdaten
+- Mängel/Schäden
+- Abnahmen
 - dazugehörige Bilder.
 
 Nicht gemeinsam:
 - BTBs verschiedener verantwortlicher TB-Teams werden niemals vermischt.
 
 ## Verantwortlicher TB ↔ Helfer desselben TB-Teams
-- Baustelle/Unterbaustellen nur im berechtigten Bereich.
+- Baustelle/Unterbaustellen im berechtigten Bereich.
 - Streckendaten selektiv nach Bereich.
 - BTB gemeinsam in beide Richtungen innerhalb derselben `btbId`.
 - Mängel/Abnahmen innerhalb der Helfer-Berechtigung.
 - Helferbilder gehen zum Server/verantwortlichen TB; Download anderer Bilder nur soweit benötigt/berechtigt.
 
-# Noch fehlende größere Server-/Sync-Blöcke
-
+# Noch fehlende größere Blöcke
 ## Baustellenstruktur-Sync
-Root-Bootstrap existiert, aber der vollständige lokale Baustellenbaum fehlt noch serverseitig.
+Root-Bootstrap existiert, vollständiger lokaler Baustellenbaum fehlt serverseitig.
 Praktischer Befund:
 - Poco: Hauptbaustelle `Immenstadt` + Unterbaustelle `5362-1` mit Strecke/KM.
 - Server-Self-Service speichert bislang nur den Root.
-- anderes Gerät kann `5362-1` deshalb noch nicht automatisch nachbauen.
+- anderes Gerät kann `5362-1` noch nicht automatisch nachbauen.
 
-Ziel:
-- eigener serverseitiger Struktur-Sync,
-- stabile IDs statt Namens-Tricks,
-- selektiv nach Berechtigung/Bereich,
-- Original-Vermessungsdaten getrennt und unverändert.
+Ziel: stabiler Struktur-Sync mit IDs, Berechtigungs-/Bereichsfilter und getrennten unveränderten Original-Vermessungsdaten.
 
 ## Nutzer/Helfer entfernen / Baustelle verlassen
-Noch kein fertiger mobiler serverautoritärer Endpunkt.
-Deshalb bewusst **kein** rein lokales Entfernen gebaut.
+Noch kein fertiger mobiler serverautoritärer Endpunkt. Deshalb bewusst kein rein lokales Entfernen.
 Ziel:
-- Mitgliedschaft serverseitig widerrufen/verlassen,
-- historische Beiträge erhalten,
-- heruntergeladene Daten danach lokal nur noch lesbar,
+- Mitgliedschaft serverseitig widerrufen/verlassen
+- historische Beiträge erhalten
+- lokale Daten danach nur lesbar
 - keine weitere Bearbeitung/Synchronisation.
 
-# Mängel / Abnahmen / Benachrichtigungen
-- Mängel/Abnahmen baustellenweit zwischen berechtigten verantwortlichen TBs derselben Baustelle.
+## Mängel / Abnahmen / Benachrichtigungen
+- baustellenweit zwischen berechtigten verantwortlichen TBs.
 - Helfer nur im freigegebenen Bereich.
 - Bilder/Attachments folgen derselben Berechtigung.
-- endgültige Status bleiben endgültig und werden durch älteren Sync nicht wieder geöffnet.
+- endgültige Status bleiben endgültig.
 - Benachrichtigungsmodi pro Gerät: Text + Ton / nur Ton / aus.
 
 # Server-Speicheroptionen
@@ -325,10 +303,10 @@ Pro Benutzer vorgesehen/vorhanden:
 - Abnahmen speichern
 - Alles speichern.
 
-Nicht dauerhaft gespeicherte Daten dürfen temporär für die Synchronisation auf dem Server liegen.
+Nicht dauerhaft gespeicherte Daten dürfen temporär für Synchronisation auf dem Server liegen.
 
 # Bahnhofsdaten – nicht neu erfinden
-Verbindliche vorhandene Bestände:
+Vorhandene Bestände:
 - `app/src/main/assets/TB-Helfer_DB_Bahnhoefe_aktiv_2026-03-14.json`
 - `app/src/main/assets/TB-Helfer_DB_Betriebsstellen_aktuell_2026-03-14.json`
 - `app/src/main/java/de/tbhelfer/util/BahnhofSucheUtil.kt`.
@@ -340,13 +318,13 @@ Für neue Multi-BTB-Berichte:
 - historischer Altbestand wird nicht zwangsumbenannt.
 - Laptop-Archiv bleibt `TB-Helfer/<Baustelle>/...`.
 - mehrere Geräte-ZIPs müssen merge-sicher zusammenführbar sein.
-- Bilder/Anlagen benötigen stabile eindeutige Kennungen.
+- Bilder/Anlagen brauchen stabile eindeutige Kennungen.
 
 Noch zu prüfen:
-- einzelne ältere Pfade in `BtbExportPaket` sind noch Tag-/Nacht-orientiert und dürfen zwei unterschiedliche `btbId` nicht auf denselben ZIP-Zielpfad reduzieren.
+- ältere Pfade in `BtbExportPaket`/Gesamtexport auf Tag-/Nacht-Kollisionen; zwei unterschiedliche `btbId` dürfen nie denselben ZIP-Zielpfad erhalten.
 
 # Vermessung / Streckendaten – eigener offener Hauptblock
-Vorhanden sind u. a. lokale TRA/GRA/KOR/KF/Absteckdaten, Trassenachsen, KM-Punkte, KM-Anker, Korrekturen, GPS-Näheberechnung, Trassengrafik und allgemeiner Strecken-/Bahnhofs-/Abschnitt-Sync.
+Vorhanden sind lokale TRA/GRA/KOR/KF-/Absteckdaten, Trassenachsen, KM-Punkte, KM-Anker, Korrekturen, GPS-Näheberechnung, Trassengrafik und allgemeiner Strecken-/Bahnhofs-/Abschnitt-Sync.
 
 Noch offen:
 - Original vs. bearbeitete Ebene strikt trennen.
@@ -368,25 +346,30 @@ Farben:
 # Build-/Teststatus
 Praktisch bestätigt aus älteren Builds:
 - Android 200019 mehrfach lokal erfolgreich gebaut/installiert.
-- Android 200020: Root-Bootstrap `Immenstadt` auf Pixel bestätigt.
+- Android 200020 Root-Bootstrap `Immenstadt` auf Pixel bestätigt.
 
 Aktueller Stand:
-- Android **200023** noch nicht lokal vollständig kompiliert/installiert/getestet.
-- GitHub Actions liefert aktuell keinen verwertbaren Android-Build; die Runs scheitern vor dem ersten Workflow-Step (`steps=[]`).
-- deshalb darf daraus weder `Build erfolgreich` noch ein Android-Quellfehler abgeleitet werden.
+- Android **200023 noch nicht lokal vollständig kompiliert/installiert/getestet**.
+- GitHub Actions liefert aktuell keinen verwertbaren Android-Build; Runs scheitern vor dem ersten Workflow-Step (`steps=[]`).
+- daraus darf weder `Build erfolgreich` noch ein Android-Quellfehler abgeleitet werden.
 - lokale Android-Studio-/Gradle-Builds bleiben maßgeblich.
 
 Vorbereitete, noch nicht ausgeführte neue Prüfungen:
 - `07_verify_multi_btb_schema10.sql` → `MULTI_BTB_SCHEMA10_OK`
 - `08_verify_multi_btb_source.py` → `MULTI_BTB_SOURCE_OK`
-- `09_verify_android_multi_btb_photo_state_source.py` → `ANDROID_MULTI_BTB_PHOTO_STATE_OK`.
+- `09_verify_android_multi_btb_photo_state_source.py` → `ANDROID_MULTI_BTB_PHOTO_STATE_OK`
+- `10_verify_android_btb_quick_switch_source.py` → `ANDROID_BTB_QUICK_SWITCH_OK`
+- Unit-Test `BautagebuchEintragEnddatumTest.kt`.
 
 # Betroffene Dateien der letzten Entwicklungsrunde
 Unter anderem:
 - `app/src/main/AndroidManifest.xml`
 - `app/build.gradle.kts`
+- `app/src/main/java/de/tbhelfer/ui/HauptActivity.kt`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchModels.kt`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchSpeicher.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbSchnellwechselInstaller.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/ExistingBtbShiftButton.kt`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDokumentIdentitaet.kt`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDokumentVersionierung.kt`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPhotoInstanzKey.kt`
@@ -394,6 +377,7 @@ Unter anderem:
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPhotoTextOverrideStore.kt`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPhotoStartOverrideStore.kt`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPhotoKmOverrideStore.kt`
+- `app/src/main/res/layout/dialog_btb_open_shift.xml`
 - `app/src/main/java/de/tbhelfer/ui/baustelle/BtbVerlaufFragment.kt`
 - `app/src/main/java/de/tbhelfer/datenbank/CollabLocalBridge.kt`
 - `app/src/main/java/de/tbhelfer/datenbank/BtbTeamMediaSync.kt`
@@ -401,16 +385,12 @@ Unter anderem:
 - `app/src/main/java/de/tbhelfer/server/SyncStatusSpeicher.kt`
 - `app/src/main/java/de/tbhelfer/server/SyncWorker.kt`
 - `app/src/main/java/de/tbhelfer/einstellungen/SyncEinstellungenSpeicher.kt`
-- `app/src/main/java/de/tbhelfer/ui/einstellungen/EinstellungenFragment.kt`
-- `app/src/main/java/de/tbhelfer/ui/start/StartmenueFragment.kt`
-- `app/src/main/java/de/tbhelfer/ui/sync/SyncKatalogFragment.kt`
-- `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenTeamDirekt.kt`
-- `app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenKnotenAdapter.kt`
 - `server/app_parts/15_part.py`
-- `server/checks/04_test_team_btb_merge.py`
 - `server/checks/07_verify_multi_btb_schema10.sql`
 - `server/checks/08_verify_multi_btb_source.py`
-- `server/checks/09_verify_android_multi_btb_photo_state_source.py`.
+- `server/checks/09_verify_android_multi_btb_photo_state_source.py`
+- `server/checks/10_verify_android_btb_quick_switch_source.py`
+- `app/src/test/java/de/tbhelfer/ui/bautagebuch/BautagebuchEintragEnddatumTest.kt`.
 
 # Testgeräte
 - Poco: Xiaomi `23013PC75G`, Android 15 / SDK 35
@@ -420,22 +400,23 @@ Unter anderem:
 
 # Nächste sichere Schritte
 1. **Produktiven NAS-Stand vorerst auf API 0.7 / Schema 10 lassen.**
-2. Den alten blauen BTB-Schnellwechsel und `showSchichtTypDialog()` auf echte `btbId`-Berichte ohne `Neu (leer)` umstellen.
-3. Beim `Neuer BTB`-Ablauf `endeDatumIso` für Mitternachtsberichte ausdrücklich absichern.
-4. Danach Android **200023 lokal bauen**: mindestens `assembleDebug` + Unit-Tests; Compiler-/Ressourcenfehler im Feature-Branch beheben.
-5. Pixel/Poco als Update installieren, **keine App-Daten löschen**.
-6. lokal zwei BTBs am selben Tag testen, einschließlich gleicher/überlappender Zeiten und getrennten Foto-Auswahlen/Overrides.
+2. Android **200023 lokal bauen**: mindestens `assembleDebug` + Unit-Tests; Compiler-/Ressourcenfehler im Feature-Branch beheben.
+3. Dabei insbesondere `BtbSchnellwechselInstaller`, `ExistingBtbShiftButton` und `BautagebuchEintragEnddatumTest` validieren.
+4. Pixel/Poco als Update installieren, **keine App-Daten löschen**.
+5. lokal zwei BTBs am selben Tag testen, einschließlich gleicher/überlappender Zeiten, blauer Schnellwechsel und getrennten Foto-Auswahlen/Overrides.
+6. Mitternachts-BTB `22:00–06:00` prüfen: Verlauf/PDF/Export zeigen den Folgetag korrekt.
 7. V1 erzeugen → ändern → V2 erzeugen; prüfen: V1 bleibt, V2 neu, Änderungen rot, Verlauf korrekt.
-8. Sync-UX prüfen: Manuell/Stündlich/Täglich, Netzregel, Startmenü, vollständiger manueller Sync, Baustellenkarte Teamzahl/letzter Sync.
-9. Vor dem produktiven Multi-BTB-Servercode-Rollout **ein neues verifiziertes DB-Backup** anlegen, dann read-only `07_verify_multi_btb_schema10.sql` ausführen und `MULTI_BTB_SCHEMA10_OK` verlangen.
-10. Danach neueren Servercode in separatem Stage-Ordner auf bestehendem Schema 10 ausrollen; dafür keine Multi-BTB-DB-Migration durchführen.
-11. anschließend Pixel ↔ Poco Multi-BTB-Text **und BTB-Bilder** je `btbId` testen.
-12. danach Baustellenstruktur-Sync (`5362-1`) bauen.
-13. danach serverseitiges Entfernen/Verlassen von Baustellenmitgliedschaften ergänzen.
-14. anschließend Mängel/Abnahmen/Attachments/409/Tombstones/Netzabbruch/Benachrichtigungen Ende-zu-Ende testen.
-15. Schema 11 erst dann mit eigenem Backup/Hashprüfung/Verifikation produktiv migrieren, wenn der Nutzerprofilblock praktisch dran ist.
-16. danach Vermessungs-/Kilometrierungsblock fertigstellen.
-17. PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
+8. ältere `BtbExportPaket`-/Gesamtexportpfade auf Multi-BTB-Dateikollisionen prüfen und ggf. korrigieren.
+9. Sync-UX prüfen: Manuell/Stündlich/Täglich, Netzregel, Startmenü, vollständiger manueller Sync, Baustellenkarte Teamzahl/letzter Sync.
+10. Vor produktivem Multi-BTB-Servercode-Rollout **ein neues verifiziertes DB-Backup** anlegen; dann read-only `07_verify_multi_btb_schema10.sql` ausführen und `MULTI_BTB_SCHEMA10_OK` verlangen.
+11. Danach neueren Servercode in separatem Stage-Ordner auf bestehendem Schema 10 ausrollen; keine Multi-BTB-DB-Migration.
+12. anschließend Pixel ↔ Poco Multi-BTB-Text **und BTB-Bilder** je `btbId` testen.
+13. danach Baustellenstruktur-Sync (`5362-1`) bauen.
+14. danach serverseitiges Entfernen/Verlassen von Baustellenmitgliedschaften ergänzen.
+15. anschließend Mängel/Abnahmen/Attachments/409/Tombstones/Netzabbruch/Benachrichtigungen Ende-zu-Ende testen.
+16. Schema 11 erst mit eigenem Backup/Hashprüfung/Verifikation produktiv migrieren, wenn der Nutzerprofilblock praktisch dran ist.
+17. danach Vermessungs-/Kilometrierungsblock fertigstellen.
+18. PR #5 erst nach erfolgreichem Ende-zu-Ende-Test aus Draft nehmen.
 
 # Nicht erneut entscheiden / nicht zurückbauen
 - NAS ist Source of Truth.
@@ -450,7 +431,7 @@ Unter anderem:
 - Helfer schreiben in den BTB ihres verantwortlichen TB.
 - neue BTB-Identität = **stabile `btbId`**, nicht Datum + TAG/NACHT.
 - mehrere BTBs desselben Tages sind erlaubt.
-- neuer BTB nur bewusst über `Neuer BTB`; keine künstlichen `Neu (leer)`-Berichte.
+- neuer BTB nur bewusst über `Neuer BTB`; keine auswählbaren künstlichen `Neu (leer)`-Berichte.
 - Firmenprofil zentral; persönliche E-Mail/Telefon gehören zum einzelnen Server-Benutzer.
 - merge-sicheres Archiv `TB-Helfer/<Baustelle>/...`.
 - `main` stabil; große Änderungen im Feature-Branch/Draft-PR.
