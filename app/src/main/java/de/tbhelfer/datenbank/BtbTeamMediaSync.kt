@@ -21,9 +21,10 @@ import java.time.format.DateTimeFormatter
 /**
  * Medienbrücke für den gemeinsamen BTB eines verantwortlichen TB-Teams.
  *
- * Text/Fachdaten laufen weiterhin über [CollabLocalBridge]. Diese Klasse überträgt zusätzlich
- * die Fotos der jeweiligen Schicht als BTB-Attachments. Dadurch erhält der verantwortliche TB
- * auch Bilder seiner Helfer und umgekehrt, ohne BTB anderer verantwortlicher TBs zu vermischen.
+ * Text/Fachdaten laufen über [CollabLocalBridge]. Diese Klasse überträgt zusätzlich die Fotos des
+ * konkreten BTB-Zeitfensters als Attachments. Die Zuordnung zum Server-Entity verwendet exakt
+ * denselben stabilen clientEntityKey/btbId wie der Textsync. Datum und TAG/NACHT sind nur noch
+ * Legacy-/Anzeigeattribute und dürfen mehrere BTBs desselben Tages nicht mehr vermischen.
  */
 class BtbTeamMediaSync(context: Context) {
     private val appContext = context.applicationContext
@@ -57,14 +58,16 @@ class BtbTeamMediaSync(context: Context) {
                 .mapNotNull { entity -> entity.clientEntityKey?.let { it to entity } }
                 .toMap()
 
-            // Upload: genau die Fotos, deren Aufnahmezeit in die konkrete Tag-/Nachtschicht fällt.
+            // Upload: exakt dasselbe stabile BTB-Schlüsselmodell wie CollabLocalBridge verwenden.
+            // Altbestände besitzen im Verlauf bereits einen stabilen synthetischen legacy:* Key.
             val verlauf = BautagebuchSpeicher.verlaufFuerBaustelle(appContext, local.altBaustelleId, local.hauptbaustellenName)
             for (v in verlauf) {
-                val key = "${v.datum}:${v.schicht.name}"
+                val key = v.btbId?.takeIf { it.isNotBlank() }
+                    ?: "legacy:${v.datum}:${v.schicht.name}"
                 val parent = serverBtbs[key] ?: continue
                 val (fromMs, untilMs) = shiftWindow(v.entry)
-                val shiftFotos = localFotos.filter { it.erstelltAmEpochMs in fromMs until untilMs }
-                for (foto in shiftFotos) {
+                val btbFotos = localFotos.filter { it.erstelltAmEpochMs in fromMs until untilMs }
+                for (foto in btbFotos) {
                     val file = File(foto.dateipfad)
                     if (!file.exists() || !file.isFile) continue
                     val uploadName = encodedPhotoFilename(foto, file.name)
