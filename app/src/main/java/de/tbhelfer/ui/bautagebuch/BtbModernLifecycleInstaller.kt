@@ -238,6 +238,7 @@ object BtbModernLifecycleInstaller {
             fragment.viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 var lastSeenId: String? = null
                 var lastSeenChange: Long = Long.MIN_VALUE
+                var photoRefreshTick = 0
                 while (isActive) {
                     val current = runCatching { BtbUiSaveBridge.aktuell(fragment) }.getOrNull()
                     if (current == null) {
@@ -267,7 +268,20 @@ object BtbModernLifecycleInstaller {
                             BtbAbschlussStatus.ABGESCHLOSSEN -> "Abgeschlossen"
                             BtbAbschlussStatus.NACHBEARBEITUNG -> "Nachbearbeitung · Abschluss-PDF ungültig"
                         }
+
+                        // Der historische Fragment-Zaehler verwendet noch das reine Zeitfenster.
+                        // Etwa alle 1,2 s uebersteuern wir ihn mit der stabilen btbId-Menge. Dadurch
+                        // bleiben auch Fotoaufnahme und Rueckkehr aus der Auswahl zeitnah sichtbar,
+                        // ohne die DB in jedem 600-ms-Zyklus erneut zu lesen.
+                        if (photoRefreshTick % 2 == 0) {
+                            try {
+                                BtbPhotoCounterFix.refresh(fragment.requireContext(), root, current.entry)
+                            } catch (_: Exception) {
+                                // UI-Helfer darf den BTB-Lebenszyklus nie abbrechen.
+                            }
+                        }
                     }
+                    photoRefreshTick += 1
                     delay(600L)
                 }
             }
