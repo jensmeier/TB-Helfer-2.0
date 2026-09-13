@@ -189,6 +189,9 @@ object BtbModernLifecycleInstaller {
                     val pdfEngine = BautagebuchPdf(appContext, ServiceLocator.fotoRepository)
                     // Noch ohne Render-Overrides laden, damit wir die fachliche Foto-Menge bestimmen.
                     val alleFotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(saved.entry.baustelleId)
+                    // BTBs aus 200026 bekommen ihre Foto-Basis einmalig aus dem Zeitpunkt des bereits
+                    // vorhandenen unveraenderlichen Text-Originals rekonstruiert.
+                    BtbOriginalFotoSpeicher.migriereAusBestehendemOriginalWennFehlt(appContext, saved.entry, alleFotos)
                     val aktuelleFotoIds = BtbOriginalFotoSpeicher.aktuelleFotoIds(appContext, saved.entry, alleFotos)
                     val roteFotoIds = BtbOriginalFotoSpeicher.neueFotoIds(appContext, saved.entry.btbId, aktuelleFotoIds)
                     BtbFotoRenderMarkierung.vorbereiten(appContext, alleFotos, roteFotoIds)
