@@ -53,6 +53,7 @@ class HauptActivity : AppCompatActivity() {
         val navHost = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         navController = navHost.navController
         de.tbhelfer.ui.bautagebuch.BtbSchnellwechselInstaller.install(this)
+        de.tbhelfer.ui.bautagebuch.BtbModernLifecycleInstaller.install(this)
         widgetRootDestination = savedInstanceState?.getInt(STATE_WIDGET_ROOT_DESTINATION, -1)?.takeIf { it != -1 }
         installWidgetBackHandling()
 
@@ -62,7 +63,6 @@ class HauptActivity : AppCompatActivity() {
 
         validateDeviceSession(tokenStore, deviceToken)
     }
-
 
     override fun onSaveInstanceState(outState: Bundle) {
         widgetRootDestination?.let { outState.putInt(STATE_WIDGET_ROOT_DESTINATION, it) }
@@ -83,8 +83,6 @@ class HauptActivity : AppCompatActivity() {
                 ActivationApi().checkSessionInfo(token)
             }
             if (session.state == ActivationApi.SessionState.VALID) {
-                // /device/me liefert nur nicht geheime Profildaten. Damit bekommen auch bereits
-                // vor diesem App-Stand aktivierte Geräte den korrekten sichtbaren Namen-Fallback.
                 UserDisplayCache.rememberName(applicationContext, session.userName)
             }
             if (session.state == ActivationApi.SessionState.REVOKED && !isFinishing) {
@@ -96,8 +94,6 @@ class HauptActivity : AppCompatActivity() {
                 ).show()
                 openActivation()
             }
-            // OFFLINE ist ausdrücklich erlaubt: Auf der Baustelle muss die App auch
-            // ohne Serververbindung mit den lokal vorhandenen Daten weiterarbeiten.
         }
     }
 
@@ -106,10 +102,6 @@ class HauptActivity : AppCompatActivity() {
         finish()
     }
 
-    /**
-     * Der Launcher konfiguriert beide Widgets über die ohnehin registrierte HauptActivity.
-     * So kann keine zusätzliche, im Manifest fehlende Widget-Activity mehr abstürzen.
-     */
     private fun handleWidgetConfigurationIntent(intent: Intent?): Boolean {
         val appWidgetId = intent?.getIntExtra(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
@@ -181,11 +173,6 @@ class HauptActivity : AppCompatActivity() {
         val fromWidget = navIntent.getBooleanExtra(EXTRA_WIDGET_LAUNCH, false)
 
         if (fromWidget) {
-            // Widget-Aufruf: Ziel normal öffnen. Der vorherige Versuch, den Nav-Stack
-            // vor dem Öffnen bis einschließlich Startziel zu leeren, konnte den
-            // NavController ohne gültiges Ziel zurücklassen. Dadurch öffneten weder
-            // BTB noch Kamera. Das direkte Zurück-zum-Startbildschirm-Verhalten wird
-            // ausschließlich über widgetRootDestination + Back-Callback gesteuert.
             widgetRootDestination = destId
             if (navController.currentDestination?.id != destId || navArgs != null) {
                 navController.navigate(destId, navArgs)
