@@ -21,6 +21,7 @@ import de.tbhelfer.ServiceLocator
 import de.tbhelfer.server.UserDisplayCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -200,13 +201,13 @@ object BtbPatch200033Installer {
 
     private fun openBtbHistory(fragment: BautagebuchFragment) {
         fragment.viewLifecycleOwner.lifecycleScope.launch {
-            val siteId = ServiceLocator.aktuelleBaustelleSpeicher.aktuelleBaustelleId.firstOrNullCompat()
+            val siteId = ServiceLocator.aktuelleBaustelleSpeicher.aktuelleBaustelleId.first()
             if (siteId == null) {
                 Snackbar.make(fragment.requireView(), "Keine aktuelle Baustelle", Snackbar.LENGTH_SHORT).show()
                 return@launch
             }
             val site = withContext(Dispatchers.IO) { ServiceLocator.baustellenRepository.baustelleMitIdOnce(siteId) }
-            val hauptId = ServiceLocator.aktuelleBaustelleSpeicher.aktuelleHauptbaustelleKnotenId.firstOrNullCompat()
+            val hauptId = ServiceLocator.aktuelleBaustelleSpeicher.aktuelleHauptbaustelleKnotenId.first()
                 ?: withContext(Dispatchers.IO) { ServiceLocator.baustellenBaumRepository.hauptNachAltBaustelleId(siteId)?.id }
                 ?: -1L
             fragment.findNavController().navigate(
@@ -219,9 +220,6 @@ object BtbPatch200033Installer {
             )
         }
     }
-
-    private suspend fun <T> kotlinx.coroutines.flow.Flow<T>.firstOrNullCompat(): T? =
-        runCatching { kotlinx.coroutines.flow.first(this) }.getOrNull()
 
     private fun bindFinalButton(fragment: BautagebuchFragment, root: View) {
         val button = root.findViewById<MaterialButton>(R.id.btnPdfFinal) ?: return
@@ -303,7 +301,7 @@ object BtbPatch200033Installer {
             fragment.viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 var lastActive: String? = null
                 while (isActive) {
-                    val siteId = ServiceLocator.aktuelleBaustelleSpeicher.aktuelleBaustelleId.firstOrNullCompat()
+                    val siteId = ServiceLocator.aktuelleBaustelleSpeicher.aktuelleBaustelleId.first()
                     if (siteId != null) {
                         val site = withContext(Dispatchers.IO) { ServiceLocator.baustellenRepository.baustelleMitIdOnce(siteId) }
                         val name = site?.baustellenname.orEmpty()
