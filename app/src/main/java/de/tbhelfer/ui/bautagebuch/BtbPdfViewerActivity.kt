@@ -11,10 +11,12 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.button.MaterialButton
 import java.io.File
 
-/** Einfacher App-interner PDF-Viewer für BTB-Abschlussdokumente. */
+/** Einfacher App-interner PDF-Viewer fuer BTB-Abschlussdokumente. */
 class BtbPdfViewerActivity : AppCompatActivity() {
 
     companion object {
@@ -58,12 +60,19 @@ class BtbPdfViewerActivity : AppCompatActivity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.rgb(245, 245, 245))
-            setPadding(dp(8), dp(8), dp(8), dp(8))
+            setPadding(dp(8), dp(8), dp(8), dp(10))
+        }
+        // Kamera/Statusleiste oben und Android-Navigationsleiste unten niemals ueberdecken.
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(dp(8), sys.top + dp(10), dp(8), sys.bottom + dp(14))
+            insets
         }
 
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(2), 0, dp(6))
         }
         val back = MaterialButton(this).apply {
             text = "Zurück"
@@ -77,13 +86,8 @@ class BtbPdfViewerActivity : AppCompatActivity() {
             setPadding(dp(12), 0, dp(8), 0)
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        pageLabel = TextView(this).apply {
-            textSize = 14f
-            setTextColor(Color.DKGRAY)
-        }
         header.addView(back)
         header.addView(titleView)
-        header.addView(pageLabel)
         root.addView(header)
 
         image = ImageView(this).apply {
@@ -95,19 +99,21 @@ class BtbPdfViewerActivity : AppCompatActivity() {
                 0,
                 1f
             ).apply {
-                topMargin = dp(8)
-                bottomMargin = dp(8)
+                topMargin = dp(4)
+                bottomMargin = dp(10)
             }
         }
         root.addView(image)
 
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(4), 0, dp(2))
         }
         prev = MaterialButton(this).apply {
             text = "◀ Vorherige"
             isAllCaps = false
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             setOnClickListener {
                 if (pageIndex > 0) {
                     pageIndex--
@@ -115,9 +121,17 @@ class BtbPdfViewerActivity : AppCompatActivity() {
                 }
             }
         }
+        pageLabel = TextView(this).apply {
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setTextColor(Color.DKGRAY)
+            setPadding(dp(8), 0, dp(8), 0)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
         next = MaterialButton(this).apply {
             text = "Nächste ▶"
             isAllCaps = false
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             setOnClickListener {
                 val count = renderer?.pageCount ?: 0
                 if (pageIndex + 1 < count) {
@@ -127,10 +141,12 @@ class BtbPdfViewerActivity : AppCompatActivity() {
             }
         }
         controls.addView(prev)
+        controls.addView(pageLabel)
         controls.addView(next)
         root.addView(controls)
 
         setContentView(root)
+        ViewCompat.requestApplyInsets(root)
         pageIndex = savedInstanceState?.getInt("pageIndex", 0)?.coerceAtLeast(0) ?: 0
         pageIndex = pageIndex.coerceAtMost((renderer?.pageCount ?: 1) - 1)
         renderPage()
