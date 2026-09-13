@@ -181,6 +181,10 @@ object BtbModernLifecycleInstaller {
                     BtbDokumentVersionierung.pflegeNachAutosave(appContext, saved.entry)
                     BtbRendererBaselineBridge.prepare(appContext, saved.entry)
 
+                    // Nur die PDF-Darstellung ergaenzen: geloeschte Originalzeilen erscheinen als
+                    // rote "(entfernt) ..."-Eintraege. Der gespeicherte BTB bleibt wirklich geloescht.
+                    val renderEntry = BtbRenderOriginalDiff.aufbereiten(appContext, saved.entry)
+
                     BtbFotoRenderMarkierung.clear()
                     val pdfEngine = BautagebuchPdf(appContext, ServiceLocator.fotoRepository)
                     // Noch ohne Render-Overrides laden, damit wir die fachliche Foto-Menge bestimmen.
@@ -191,7 +195,7 @@ object BtbModernLifecycleInstaller {
 
                     val file = try {
                         BtbFotoBtbFilter.mitFilter(appContext, saved.entry, alleFotos) {
-                            pdfEngine.erstellenPdf(saved.entry, asDraft = false)
+                            pdfEngine.erstellenPdf(renderEntry, asDraft = false)
                         }
                     } finally {
                         BtbFotoRenderMarkierung.clear()
