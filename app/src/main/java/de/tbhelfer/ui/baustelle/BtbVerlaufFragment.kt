@@ -20,9 +20,9 @@ import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
 import de.tbhelfer.ui.bautagebuch.BtbDokumentIdentitaet
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
+import de.tbhelfer.ui.bautagebuch.BtbEinzelZip
 import de.tbhelfer.ui.bautagebuch.BtbExportPaket
 import de.tbhelfer.ui.bautagebuch.BtbPdfViewerActivity
-import de.tbhelfer.ui.bautagebuch.MergeSafeBaustellenExport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -33,7 +33,6 @@ import java.time.format.DateTimeFormatter
 class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
 
     private val deDateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy")
-
     private var hauptKnotenId: Long = -1L
     private var altBaustelleId: Long = -1L
     private var baustelleName: String = ""
@@ -44,7 +43,6 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         hauptKnotenId = arguments?.getLong("hauptKnotenId", -1L) ?: -1L
         altBaustelleId = arguments?.getLong("altBaustelleId", -1L) ?: -1L
         baustelleName = arguments?.getString("baustelleName").orEmpty()
-
         view.findViewById<TextView>(R.id.tvBtbVerlaufTitle).text = "BTB-Verlauf"
         view.findViewById<TextView>(R.id.tvBtbVerlaufSubtitle).text = baustelleName.ifBlank { "Baustelle" }
         ladeVerlauf(view)
@@ -85,7 +83,6 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         val ctx = requireContext()
         val status = BtbDokumentVersionierung.status(ctx, item.entry)
         val pdf = BtbDokumentVersionierung.aktuellesAbschlussPdf(ctx, item.entry)
-
         val bg = when (status) {
             BtbAbschlussStatus.ABGESCHLOSSEN -> Color.parseColor("#E8F5E9")
             BtbAbschlussStatus.NACHBEARBEITUNG -> Color.parseColor("#FFF3E0")
@@ -101,7 +98,6 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
             BtbAbschlussStatus.NACHBEARBEITUNG -> "Nachbearbeitung · Abschluss-PDF ungültig"
             BtbAbschlussStatus.ENTWURF -> "Entwurf"
         }
-
         val startDate = runCatching { LocalDate.parse(item.entry.datumIso) }.getOrDefault(item.datum)
         val endDate = item.entry.endeDatumIso?.let { raw -> runCatching { LocalDate.parse(raw) }.getOrNull() }
         val time = listOf(item.entry.startUhrzeit, item.entry.endeUhrzeit)
@@ -187,23 +183,14 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         }
         lifecycleScope.launch {
             try {
-                val exportZip = withContext(Dispatchers.IO) {
+                val zip = withContext(Dispatchers.IO) {
                     val appContext = requireContext().applicationContext
                     val fotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(item.entry.baustelleId)
-                    val result = BtbExportPaket.erstellen(appContext, item.entry, pdf, fotos)
-                    if (hauptKnotenId > 0L) {
-                        MergeSafeBaustellenExport.normalisieren(
-                            context = appContext,
-                            sourceZip = result.zipFile,
-                            localRootKnotenId = hauptKnotenId,
-                            baustelleName = baustelleName.ifBlank { item.entry.baustelleName },
-                            schicht = item.schicht
-                        )
-                    } else result.zipFile
+                    BtbEinzelZip.erstellen(appContext, item.entry, pdf, fotos)
                 }
-                BtbExportPaket.shareZip(requireContext(), exportZip)
-            } catch (_: Throwable) {
-                Toast.makeText(requireContext(), "ZIP konnte nicht erstellt werden", Toast.LENGTH_LONG).show()
+                BtbExportPaket.shareZip(requireContext(), zip)
+            } catch (error: Throwable) {
+                Toast.makeText(requireContext(), "ZIP konnte nicht erstellt werden: ${error.message ?: "Fehler"}", Toast.LENGTH_LONG).show()
             }
         }
     }
