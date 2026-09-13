@@ -45,6 +45,9 @@ import java.util.WeakHashMap
  */
 object BtbModernLifecycleInstaller {
 
+    private const val EDIT_BUTTON_TAG = "tb_modern_edit_button"
+    private const val EDIT_SPACER_TAG = "tb_modern_edit_spacer"
+
     private val boundViews = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
 
     fun install(activity: FragmentActivity) {
@@ -102,6 +105,7 @@ object BtbModernLifecycleInstaller {
         fun dp(v: Int) = (v * density).toInt()
 
         val card = MaterialCardView(fragment.requireContext()).apply {
+            tag = EDIT_BUTTON_TAG
             layoutParams = LinearLayout.LayoutParams(dp(56), dp(56))
             radius = dp(12).toFloat()
             cardElevation = 0f
@@ -121,11 +125,13 @@ object BtbModernLifecycleInstaller {
         card.addView(frame)
         card.setOnClickListener { showEditDialog(fragment, root, card) }
 
+        val spacer = Space(fragment.requireContext()).apply {
+            tag = EDIT_SPACER_TAG
+            layoutParams = LinearLayout.LayoutParams(dp(10), 1)
+        }
         val plusIndex = bar.indexOfChild(plus).coerceAtLeast(0)
         bar.addView(card, plusIndex)
-        bar.addView(Space(fragment.requireContext()).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(10), 1)
-        }, plusIndex + 1)
+        bar.addView(spacer, plusIndex + 1)
     }
 
     private fun showEditDialog(fragment: BautagebuchFragment, root: View, anchor: View) {
@@ -236,18 +242,43 @@ object BtbModernLifecycleInstaller {
         }
     }
 
+    /**
+     * Öffnet nach dem neuen Stift-Dialog direkt den gewünschten Alt-Editor.
+     * Die alte Vierer-Auswahl (Wetter / Datum-Zeit / Personal / Geräte) wird dabei nicht erneut
+     * als Zwischenschritt stehen gelassen.
+     */
     private fun openExistingEditor(root: View, which: Int) {
         val toggle = root.findViewById<TextView>(R.id.tvTopFieldsToggle)
+
+        if (which == 0) {
+            // Datum/Zeit hängt historisch an einem PopupMenu mit btnDateTime als Anchor. Damit der
+            // Anchor eine echte Position hat, wird nur die Wetter-Kopfzeile unsichtbar gelayoutet;
+            // die alte Vierer-Auswahl wird dabei nicht sichtbar eingeblendet.
+            val weatherHeader = root.findViewById<View>(R.id.weatherHeader)
+            val oldVisibility = weatherHeader?.visibility ?: View.GONE
+            weatherHeader?.visibility = View.INVISIBLE
+            root.post {
+                root.findViewById<View>(R.id.btnDateTime)?.performClick()
+                root.postDelayed({ weatherHeader?.visibility = oldVisibility }, 120L)
+            }
+            return
+        }
+
+        // Personal/Maschinen/Wetter benötigen ihre vorhandenen Edit-Container. Intern wird der
+        // Details-Bereich geöffnet, danach verschwinden die alten Auswahl-Pills sofort wieder.
         if (toggle?.text?.toString()?.contains("anzeigen", ignoreCase = true) == true) {
             toggle.performClick()
         }
         val targetId = when (which) {
-            0 -> R.id.btnDateTime
             1 -> R.id.tvPersonalPreview
             2 -> R.id.tvMaschinenPreview
             else -> R.id.tvWetterPreview
         }
-        root.post { root.findViewById<View>(targetId)?.performClick() }
+        root.post {
+            root.findViewById<View>(targetId)?.performClick()
+            root.findViewById<View>(R.id.weatherHeader)?.visibility = View.GONE
+            root.findViewById<View>(R.id.pmHeaderRow)?.visibility = View.GONE
+        }
     }
 
     private fun bindFinalButton(fragment: BautagebuchFragment, root: View) {
@@ -319,6 +350,27 @@ object BtbModernLifecycleInstaller {
         }
     }
 
+    /**
+     * Fotos gehören zum unveränderlichen ersten Abschluss. Sobald sich die aktuell ausgewählte
+     * Foto-Menge gegenüber diesem Original ändert, ist das bisherige Abschluss-PDF fachlich
+     * ungültig. Das gilt auch dann, wenn am normalen BTB-JSON sonst nichts geändert wurde.
+     */
+    private suspend fun invalidateClosureForPhotoDiff(fragment: BautagebuchFragment, entry: BautagebuchEintrag) {
+        val appContext = fragment.requireContext().applicationContext
+        withContext(Dispatchers.IO) {
+            val alleFotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(entry.baustelleId)
+            BtbOriginalFotoSpeicher.migriereAusBestehendemOriginalWennFehlt(appContext, entry, alleFotos)
+            if (!BtbOriginalFotoSpeicher.hatOriginal(appContext, entry.btbId)) return@withContext
+
+            val aktuelleIds = BtbOriginalFotoSpeicher.aktuelleFotoIds(appContext, entry, alleFotos)
+            val fotoGeaendert = BtbOriginalFotoSpeicher.neueFotoIds(appContext, entry.btbId, aktuelleIds).isNotEmpty() ||
+                BtbOriginalFotoSpeicher.entfernteFotoIds(appContext, entry.btbId, aktuelleIds).isNotEmpty()
+            if (fotoGeaendert) {
+                BtbAbschlussPdfFinder.neueste(appContext, entry)?.delete()
+            }
+        }
+    }
+
     private fun startLifecycleWatcher(fragment: BautagebuchFragment, root: View) {
         fragment.viewLifecycleOwner.lifecycleScope.launch {
             fragment.viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -330,15 +382,23 @@ object BtbModernLifecycleInstaller {
                     if (current == null) {
                         root.findViewById<TextView>(R.id.tvCurrentReportLine1)?.text = "Noch kein BTB"
                         root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = ""
-                        // Kein BTB = keine Detailfelder. Wichtig: GONE statt INVISIBLE, damit kein
-                        // leerer 36-dp-Bereich zwischen Kopfzeile und Punkt 4 stehen bleibt.
+                        // Kein BTB = keine Detailfelder und keine Bearbeiten-/PDF-Aktionen.
                         root.findViewById<View>(R.id.topFieldsToggleRow)?.visibility = View.GONE
                         root.findViewById<View>(R.id.weatherHeader)?.visibility = View.GONE
                         root.findViewById<View>(R.id.pmHeaderRow)?.visibility = View.GONE
+                        root.findViewWithTag<View>(EDIT_BUTTON_TAG)?.visibility = View.GONE
+                        root.findViewWithTag<View>(EDIT_SPACER_TAG)?.visibility = View.GONE
+                        root.findViewById<View>(R.id.btnPdf)?.visibility = View.GONE
+                        root.findViewById<View>(R.id.btnPdfFinal)?.visibility = View.GONE
                         lastSeenId = null
                         lastSeenChange = Long.MIN_VALUE
                     } else {
                         root.findViewById<View>(R.id.topFieldsToggleRow)?.visibility = View.VISIBLE
+                        root.findViewWithTag<View>(EDIT_BUTTON_TAG)?.visibility = View.VISIBLE
+                        root.findViewWithTag<View>(EDIT_SPACER_TAG)?.visibility = View.VISIBLE
+                        root.findViewById<View>(R.id.btnPdf)?.visibility = View.VISIBLE
+                        root.findViewById<View>(R.id.btnPdfFinal)?.visibility = View.VISIBLE
+
                         val changedStamp = current.entry.geaendertAmEpochMs
                         if (current.btbId != lastSeenId || changedStamp != lastSeenChange) {
                             withContext(Dispatchers.IO) {
@@ -350,6 +410,18 @@ object BtbModernLifecycleInstaller {
                             lastSeenId = current.btbId
                             lastSeenChange = changedStamp
                         }
+
+                        if (photoRefreshTick % 2 == 0) {
+                            try {
+                                invalidateClosureForPhotoDiff(fragment, current.entry)
+                                BtbPhotoCounterFix.refresh(fragment.requireContext(), root, current.entry)
+                            } catch (_: Exception) {
+                                // UI-Helfer darf den BTB-Lebenszyklus nie abbrechen.
+                            }
+                        }
+
+                        // Status bewusst NACH der Foto-Prüfung lesen: ein nachträglich hinzugefügtes
+                        // Foto macht den abgeschlossenen BTB sofort zur Nachbearbeitung.
                         val status = withContext(Dispatchers.IO) {
                             BtbDokumentVersionierung.status(fragment.requireContext().applicationContext, current.entry)
                         }
@@ -357,14 +429,6 @@ object BtbModernLifecycleInstaller {
                             BtbAbschlussStatus.ENTWURF -> "Entwurf"
                             BtbAbschlussStatus.ABGESCHLOSSEN -> "Abgeschlossen"
                             BtbAbschlussStatus.NACHBEARBEITUNG -> "Nachbearbeitung · Abschluss-PDF ungültig"
-                        }
-
-                        if (photoRefreshTick % 2 == 0) {
-                            try {
-                                BtbPhotoCounterFix.refresh(fragment.requireContext(), root, current.entry)
-                            } catch (_: Exception) {
-                                // UI-Helfer darf den BTB-Lebenszyklus nie abbrechen.
-                            }
                         }
                     }
                     photoRefreshTick += 1
