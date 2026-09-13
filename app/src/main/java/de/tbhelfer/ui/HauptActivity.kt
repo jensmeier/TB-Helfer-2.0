@@ -54,6 +54,7 @@ class HauptActivity : AppCompatActivity() {
         navController = navHost.navController
         de.tbhelfer.ui.bautagebuch.BtbSchnellwechselInstaller.install(this)
         de.tbhelfer.ui.bautagebuch.BtbModernLifecycleInstaller.install(this)
+        de.tbhelfer.ui.bautagebuch.BtbPatch200031Installer.install(this)
         widgetRootDestination = savedInstanceState?.getInt(STATE_WIDGET_ROOT_DESTINATION, -1)?.takeIf { it != -1 }
         installWidgetBackHandling()
 
