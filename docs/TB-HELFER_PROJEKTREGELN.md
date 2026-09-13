@@ -74,6 +74,8 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Der blaue aktuelle-BTB-Balken und `BTB bearbeiten` im Verlauf öffnen immer exakt die gewählte `btbId`.
 - Beim Wechsel BTB 1 ↔ BTB 2 muss der aktuelle BTB zuerst tatsächlich gespeichert sein; keine feste Zeitwarte-Lösung als Datenintegrität.
 - Verlauf zeigt nur tatsächlich vorhandene BTBs.
+- `PDF Entwurf` erzeugt nur eine Vorschau und öffnet sie direkt im App-eigenen PDF-Viewer; der BTB wird dadurch nicht abgeschlossen.
+- Ein moderner BTB darf im Verlauf nach ausdrücklicher Sicherheitsabfrage vollständig gelöscht werden. Dabei werden BTB-Datensatz, Original-/Abschlussmetadaten und BTB-Dokumente gelöscht. **Echte Baustellenfotos bleiben erhalten** und werden nur von der gelöschten `btbId` gelöst.
 
 ### BTB-Abschluss – verbindliches Ein-PDF-/Original-Modell
 - Die frühere sichtbare V1/V2/V3-Versionierung ist verworfen.
@@ -84,33 +86,37 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Der Original-Snapshot gehört fachlich zum selben BTB-Datensatz. Eine interne Spiegeldatei ist für Rückwärtskompatibilität zulässig, aber keine sichtbaren V1/V2/V3.
 - Nur das Öffnen/Bearbeiten eines abgeschlossenen BTB macht noch nichts ungültig.
 - Sobald nach einem Abschluss tatsächlich eine Änderung gespeichert wird, wechselt der BTB zu `Nachbearbeitung`; das bisherige Abschluss-PDF ist ungültig und wird gelöscht.
-- Neue oder geänderte Inhalte werden **immer gegenüber dem ersten Original** verglichen und rot dargestellt.
+- Fachliche neue oder geänderte Inhalte in den BTB-Abschnitten werden **immer gegenüber dem ersten Original** verglichen und rot dargestellt.
 - Inhalte, die bereits bei einer früheren Nachbearbeitung rot waren, bleiben auch nach weiteren Abschlüssen rot, solange sie vom ersten Original abweichen.
-- Wird ein Wert später exakt auf den Originalwert zurückgesetzt, ist er wieder normal/schwarz.
+- Wird ein fachlicher Wert später exakt auf den Originalwert zurückgesetzt, ist er wieder normal/schwarz.
 - Gelöschte Originalinhalte werden im nächsten PDF rot als `(entfernt) ...` dargestellt.
 - Unveränderte Originalinhalte bleiben normal.
+- **Arbeitszeit/Datum, Personal/Firmen, Geräte/Maschinen und Wetter sind Kopfdaten und werden im PDF nicht rot markiert.** Sie dürfen geändert werden und können den aktuellen Abschluss technisch ungültig machen, bleiben in der Darstellung aber schwarz.
+- Nach dem ersten BTB-Abschluss darf sich das Wetter **nicht mehr automatisch aktualisieren**. Spätere Wetteränderungen erfolgen nur bewusst/manuell über `Aktuellen BTB bearbeiten`.
 - Beim nächsten `BTB Abschluss` wird wieder genau ein aktuelles PDF derselben `btbId` erzeugt. Das aktuelle PDF ersetzt das vorherige PDF, **nicht** das unveränderliche Original.
 - Ein interner Abschluss-Hash darf speichern, aus welchem aktuellen BTB-Inhalt das gültige PDF erzeugt wurde. Dieser Hash ist keine sichtbare Version und darf das Original nicht ersetzen.
 - PDF-Dateiname bleibt für dieselbe fachliche `btbId` stabil/merge-sicher; keine `_V1`, `_V2`, `_V100` und keine `(2)`-Ausweichnamen für fachlich verschiedene BTBs.
 - Historische Alt-BTBs mit Tag/Nacht-/Version-Dateien bleiben lesbar; beim nächsten modernen Abschluss werden sie in das neue Ein-PDF-Verhalten überführt.
 - `PDF öffnen` im BTB-Verlauf öffnet den App-eigenen PDF-Viewer.
-- `ZIP teilen` arbeitet immer mit exakt der ausgewählten `btbId` und ihrem aktuell gültigen PDF/DOCX/Bildbestand.
+- `ZIP teilen` im BTB-Verlauf ist als **Tagesabschluss-ZIP** zu verstehen: für den Kalendertag des gewählten BTB werden die vorhandenen Baustellen-Daten gemeinsam exportiert (BTBs, Bilder, Mängel, Abnahmen und Gesamtlisten). Es ist nicht mehr nur ein Einzel-BTB-ZIP.
 
 ### BTB-Fotos
 - Neue normale BTB-Fotos werden zusätzlich eindeutig der beim Speichern aktiven `btbId` zugeordnet.
-- Zwei BTBs mit überlappenden Arbeitszeiten dürfen dadurch nicht dieselben modernen Fotos nur wegen der Uhrzeit übernehmen. Fotozähler, Fotoauswahl, PDF und Einzel-BTB-ZIP müssen dieselbe `btbId`-Zuordnung beachten.
+- Zwei BTBs mit überlappenden Arbeitszeiten dürfen dadurch nicht dieselben modernen Fotos nur wegen der Uhrzeit übernehmen. Fotozähler, Fotoauswahl, PDF und Export müssen dieselbe `btbId`-Zuordnung beachten.
+- **Bei modernen, explizit zugeordneten Fotos ist die `btbId` stärker als das Arbeitszeitfenster.** Ein Foto bleibt Teil seines BTB, auch wenn es nach der ursprünglich eingetragenen Endzeit aufgenommen wurde oder die Arbeitszeit später geändert wird.
+- Nur historische Fotos ohne `btbId` dürfen weiterhin über Datum/Uhrzeit als Legacy-Fallback angeboten werden.
 - Der beim **ersten erfolgreichen BTB-Abschluss tatsächlich enthaltene Foto-Bestand gehört ebenfalls zum unveränderlichen Original** dieses BTB.
 - Ein Foto, das erst nach diesem ersten Abschluss zum selben BTB hinzukommt, ist eine Änderung gegenüber dem Original und muss im späteren Abschluss-PDF **sichtbar rot als Änderung markiert** werden; das Original-JPG selbst bleibt unverändert.
 - Jede tatsächliche Änderung der ausgewählten Foto-Menge nach einem Abschluss – neues Foto, entferntes Foto oder nachträglich ab-/wieder ausgewählte Abweichung – macht das bisherige Abschluss-PDF genauso ungültig wie eine Textänderung und setzt den BTB auf `Nachbearbeitung`, auch wenn der übrige BTB-Text unverändert ist.
 - Bildreferenzen im Haupttext müssen dieselbe Original-Diff-Regel verwenden: Referenzen auf nachträglich hinzugefügte Bilder werden rot, Original-Bildreferenzen bleiben schwarz; gemischte Bereiche werden soweit technisch möglich differenziert dargestellt.
 - Für bestehende BTBs aus einem älteren App-Stand darf die erste Foto-Basis einmalig aus dem bereits vorhandenen ersten BTB-Original/Abschlusszeitpunkt rekonstruiert werden; danach ist auch diese Foto-Basis unveränderlich.
 - Datum/Uhrzeit bleiben Anzeige/Sortierung, nicht technische Foto-BTB-Zuordnung.
-- Historische noch nicht zugeordnete Fotos dürfen als Legacy-Fallback weiterhin über das Zeitfenster angeboten werden.
 - Mängel-/Abnahme-Zuordnungen bleiben als eigene Fachbeziehungen bestehen.
 - Allgemeine BTB-Bilder eines Helfers werden nicht automatisch auf alle Helfergeräte verteilt; Server + verantwortlicher TB + Erstellergerät wie beschlossen.
 
 ### Merge-sichere ZIP-/Laptop-Struktur
-- Baustellen-Gesamtexport besitzt als oberste Struktur `TB-Helfer/<Baustelle>/...`.
+- Baustellen-Gesamtexport/Tagesabschluss besitzt als oberste Struktur `TB-Helfer/<Baustelle>/...` bzw. die bestehende exportierte Baustellenstruktur.
+- Ein Tagesabschluss-ZIP umfasst mindestens BTB, Bilder, Mängel, Abnahmen sowie die vorhandenen Gesamtlisten wie `Bilderliste_gesamt.csv/.xlsx`, Mängel- und Abnahmelisten.
 - Viele Exporte dürfen in einen gemeinsamen Laptop-Hauptordner `TB-Helfer` zusammengeführt werden.
 - Unterschiedliche `btbId` dürfen niemals denselben Zielpfad erhalten.
 - Derselbe fachliche BTB erhält bei wiederholtem Export denselben stabilen Dokumentnamen; das aktuelle Dokument ersetzt dort den älteren Stand desselben BTB.
