@@ -18,8 +18,8 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Android 200030: direkter BTB-Bearbeitenfluss + Fotoänderung invalidiert Abschluss.
-        versionCode = 200030
+        // Android 200031: interner Entwurf-Viewer, stabile Zeitbearbeitung, BTB-Loeschen, Tages-ZIP.
+        versionCode = 200031
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -95,26 +95,20 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
 
-    // Einstellungen / Key-Value
     implementation(libs.androidx.datastore.preferences)
 
-    // Hintergrundaufgaben (Speicher-Cleanup / Orphan-Checks)
     implementation(libs.androidx.work.runtime.ktx)
 
-    // Room Datenbank (KSP)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Kamera (CameraX)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.extensions)
 
-    // Geräteaktivierung / Baustelleneinladung per QR-Code.
     implementation(libs.play.services.code.scanner)
-    // QR-Erzeugung bleibt lokal auf dem Gerät; der Einladungscode verlässt die App nur beim Teilen.
     implementation(libs.zxing.core)
 
     testImplementation(libs.junit4)
@@ -122,15 +116,8 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
 }
 
-// -----------------------------------------------------------------------------
-// Compatibility task
-// -----------------------------------------------------------------------------
-// Some IDE/CI templates (especially from pure Java projects) call `:app:testClasses`.
-// The Android Gradle Plugin does not create that task, so we provide it as an alias
-// that forwards to the most common Android unit-test task.
 tasks.register("testClasses") {
     group = "verification"
     description = "Compatibility alias for Java 'testClasses' (runs Android unit tests)."
-    // Prefer unit tests; if none exist, this will simply have no dependencies.
     dependsOn(tasks.matching { it.name == "testDebugUnitTest" || it.name == "test" })
 }
