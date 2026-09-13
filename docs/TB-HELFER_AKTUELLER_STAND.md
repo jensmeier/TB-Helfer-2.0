@@ -102,6 +102,7 @@ Vor jeder Änderung zuerst lesen:
 - `FotoRepository.einfuegen(...)` liest die aktive `btbId` nun ebenfalls über `BtbActiveContext` und weist das neue Foto exakt diesem BTB zu.
 - die Foto-Eingabemaske bekommt zusätzlich einen 200032-Lese-Override: Firmenliste kommt aus `BtbActiveContext.entry.firmen` der aktiven `btbId`, nicht aus einem zeitlich passenden Tag-/Nacht-Kandidaten.
 - bei genau einer Firma im aktiven BTB wird sie in der Foto-Maske automatisch vorausgewählt.
+- Firmenvergleich im Override ist mit `Locale.ROOT` stabilisiert.
 - dadurch sollen Foto-Zuordnung und angezeigte Firma erstmals dieselbe btbId-Quelle verwenden.
 
 ### Tests 200032
