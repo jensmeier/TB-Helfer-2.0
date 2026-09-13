@@ -30,6 +30,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Collections
+import java.util.Locale
 import java.util.WeakHashMap
 
 /**
@@ -274,8 +275,6 @@ object BtbPatch200032Installer {
                         dialog.dismiss()
                         if (!fragment.isAdded) return@launch
 
-                        // Sofort sichtbare Rueckmeldung, danach echter View-Neuaufbau. Detach+Attach
-                        // in EINER Transaktion kann sich gegenseitig aufheben; daher zwei commitNow.
                         root.findViewById<TextView>(R.id.tvCurrentReportLine1)?.text = buildString {
                             append(if (entry.schicht == SchichtTyp.NACHT) "Nacht" else "Tag")
                             append(" · ")
@@ -315,7 +314,7 @@ object BtbPatch200032Installer {
                         .filter { !it.isDeleted }
                         .map { it.name.trim() }
                         .filter { it.isNotBlank() }
-                        .distinctBy { it.lowercase() }
+                        .distinctBy { it.lowercase(Locale.ROOT) }
                         .sortedWith(String.CASE_INSENSITIVE_ORDER)
                     val signature = "${active?.btbId.orEmpty()}|${names.joinToString("|")}"
                     if (signature != lastSignature) {
