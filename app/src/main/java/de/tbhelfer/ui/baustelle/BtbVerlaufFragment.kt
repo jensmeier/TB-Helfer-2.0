@@ -1,5 +1,6 @@
 package de.tbhelfer.ui.baustelle
 
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
@@ -15,28 +16,20 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
-import de.tbhelfer.ui.bautagebuch.BautagebuchPdf
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
-import de.tbhelfer.ui.bautagebuch.BtbAbschlussPdfFinder
+import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
 import de.tbhelfer.ui.bautagebuch.BtbDokumentIdentitaet
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.BtbExportPaket
+import de.tbhelfer.ui.bautagebuch.BtbPdfViewerActivity
 import de.tbhelfer.ui.bautagebuch.MergeSafeBaustellenExport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/**
- * BTB-Verlauf je Baustelle.
- *
- * Seit dem Multi-BTB-Modell werden ausschließlich tatsächlich angelegte BTBs angezeigt. Datum
- * und eine optionale Tag-/Nacht-Klassifikation sind nur noch Attribute; die stabile BTB-ID ist
- * maßgeblich. Abgeschlossene BTBs dürfen später erneut bearbeitet und als neue Dokumentversion
- * abgeschlossen werden.
- */
+/** Verlauf tatsächlich vorhandener BTBs; technische Auswahl immer über btbId. */
 class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
 
     private val deDateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy")
@@ -63,24 +56,21 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         lifecycleScope.launch {
             val data = withContext(Dispatchers.IO) {
                 val appContext = requireContext().applicationContext
-                var items = BautagebuchSpeicher.verlaufFuerBaustelle(
+                val items = BautagebuchSpeicher.verlaufFuerBaustelle(
                     appContext,
                     altBaustelleId.takeIf { it > 0L },
                     baustelleName
                 )
-                // Ein erfolgreich geschriebenes Vn wird erst dann als Abschlussbasis übernommen,
-                // wenn die erwartete PDF wirklich vorhanden ist. Beim Öffnen des Verlaufs können
-                // wir diese Bestätigung ohne Risiko nachziehen und danach frisch einlesen.
-                items.forEach { BtbDokumentVersionierung.synchronisiereBestaetigtenAbschluss(appContext, it.entry) }
-                items = BautagebuchSpeicher.verlaufFuerBaustelle(
+                items.forEach { BtbDokumentVersionierung.pflegeNachAutosave(appContext, it.entry) }
+                val refreshed = BautagebuchSpeicher.verlaufFuerBaustelle(
                     appContext,
                     altBaustelleId.takeIf { it > 0L },
                     baustelleName
                 )
-                val lead = items.firstOrNull()?.entry?.let { entry ->
+                val lead = refreshed.firstOrNull()?.entry?.let { entry ->
                     runCatching { BtbDokumentIdentitaet.aufloesen(appContext, entry).verantwortlicherTb }.getOrNull()
                 } ?: "TB"
-                lead to items
+                lead to refreshed
             }
             verantwortlicherTb = data.first
             if (data.second.isEmpty()) {
@@ -91,36 +81,27 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         }
     }
 
-    private fun pdfFuer(item: BautagebuchSpeicher.VerlaufEintrag): File? =
-        BtbAbschlussPdfFinder.neueste(requireContext(), item.entry)
-            ?: item.pdfDatei?.takeIf { it.exists() }
-
     private fun cardFor(item: BautagebuchSpeicher.VerlaufEintrag): View {
         val ctx = requireContext()
-        val confirmedVersion = BtbDokumentVersionierung.finalisierteVersion(ctx, item.entry)
-        val version = maxOf(
-            confirmedVersion,
-            item.entry.dokumentVersion,
-            if (item.baselineExists) 1 else 0
-        )
-        val changed = version > 0 && BtbDokumentVersionierung.istSeitLetztemAbschlussGeaendert(ctx, item.entry)
-        val finished = version > 0 || item.entry.istFertig
-        val pdf = pdfFuer(item)
-        val bg = when {
-            changed -> Color.parseColor("#FFF3E0")
-            finished -> Color.parseColor("#E8F5E9")
-            else -> Color.parseColor("#F5F5F5")
+        val status = BtbDokumentVersionierung.status(ctx, item.entry)
+        val pdf = BtbDokumentVersionierung.aktuellesAbschlussPdf(ctx, item.entry)
+
+        val bg = when (status) {
+            BtbAbschlussStatus.ABGESCHLOSSEN -> Color.parseColor("#E8F5E9")
+            BtbAbschlussStatus.NACHBEARBEITUNG -> Color.parseColor("#FFF3E0")
+            BtbAbschlussStatus.ENTWURF -> Color.parseColor("#F5F5F5")
         }
-        val stroke = when {
-            changed -> Color.parseColor("#EF6C00")
-            finished -> Color.parseColor("#2E7D32")
-            else -> Color.parseColor("#616161")
+        val stroke = when (status) {
+            BtbAbschlussStatus.ABGESCHLOSSEN -> Color.parseColor("#2E7D32")
+            BtbAbschlussStatus.NACHBEARBEITUNG -> Color.parseColor("#EF6C00")
+            BtbAbschlussStatus.ENTWURF -> Color.parseColor("#616161")
         }
-        val status = when {
-            changed -> "Geändert seit V${version.coerceAtLeast(1)} · nächster Abschluss V${version.coerceAtLeast(1) + 1}"
-            finished -> "Abgeschlossen · V${version.coerceAtLeast(1)} · erneut bearbeitbar"
-            else -> "Entwurf"
+        val statusText = when (status) {
+            BtbAbschlussStatus.ABGESCHLOSSEN -> "Abgeschlossen · erneut bearbeitbar"
+            BtbAbschlussStatus.NACHBEARBEITUNG -> "Nachbearbeitung · Abschluss-PDF ungültig"
+            BtbAbschlussStatus.ENTWURF -> "Entwurf"
         }
+
         val startDate = runCatching { LocalDate.parse(item.entry.datumIso) }.getOrDefault(item.datum)
         val endDate = item.entry.endeDatumIso?.let { raw -> runCatching { LocalDate.parse(raw) }.getOrNull() }
         val time = listOf(item.entry.startUhrzeit, item.entry.endeUhrzeit)
@@ -129,9 +110,7 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
             .ifBlank { "ohne Zeit" }
         val dateLabel = if (endDate != null && endDate != startDate) {
             "${startDate.format(deDateFmt)} – ${endDate.format(deDateFmt)}"
-        } else {
-            startDate.format(deDateFmt)
-        }
+        } else startDate.format(deDateFmt)
 
         val card = MaterialCardView(ctx).apply {
             radius = dp(14).toFloat()
@@ -149,8 +128,8 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         }
         inner.addView(textView("BTB $verantwortlicherTb · $dateLabel", 17f, Color.BLACK, true))
         inner.addView(textView("Arbeitszeit: $time", 13f, Color.DKGRAY, false))
-        inner.addView(textView(status, 13f, stroke, true))
-        inner.addView(textView(if (pdf != null) "PDF vorhanden" else "Noch kein Abschluss-PDF", 13f, Color.DKGRAY, false))
+        inner.addView(textView(statusText, 13f, stroke, true))
+        inner.addView(textView(if (pdf != null) "PDF vorhanden" else "Kein gültiges Abschluss-PDF", 13f, Color.DKGRAY, false))
 
         val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
         row.addView(button("BTB bearbeiten") { bearbeite(item) })
@@ -177,28 +156,33 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
                     item.schicht
                 )
             }
-            val b = Bundle().apply {
-                putString("datumIso", item.datum.toString())
-                putString("schichtTyp", item.schicht.name)
-                putString("btbId", item.btbId)
-            }
-            findNavController().navigate(R.id.bautagebuchFragment, b)
+            findNavController().navigate(
+                R.id.bautagebuchFragment,
+                Bundle().apply {
+                    putString("datumIso", item.datum.toString())
+                    putString("schichtTyp", item.schicht.name)
+                    putString("btbId", item.btbId)
+                }
+            )
         }
     }
 
     private fun oeffnePdf(item: BautagebuchSpeicher.VerlaufEintrag) {
-        val pdf = pdfFuer(item)
+        val pdf = BtbDokumentVersionierung.aktuellesAbschlussPdf(requireContext(), item.entry)
         if (pdf == null || !pdf.exists()) {
-            Toast.makeText(requireContext(), "Kein PDF gefunden", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "Kein gültiges Abschluss-PDF gefunden", Toast.LENGTH_SHORT).show()
             return
         }
-        BautagebuchPdf(requireContext(), ServiceLocator.fotoRepository).openPdf(pdf)
+        startActivity(Intent(requireContext(), BtbPdfViewerActivity::class.java).apply {
+            putExtra(BtbPdfViewerActivity.EXTRA_FILE_PATH, pdf.absolutePath)
+            putExtra(BtbPdfViewerActivity.EXTRA_TITLE, "BTB $verantwortlicherTb")
+        })
     }
 
     private fun teileZip(item: BautagebuchSpeicher.VerlaufEintrag) {
-        val pdf = pdfFuer(item)
+        val pdf = BtbDokumentVersionierung.aktuellesAbschlussPdf(requireContext(), item.entry)
         if (pdf == null || !pdf.exists()) {
-            Toast.makeText(requireContext(), "Kein PDF für Export gefunden", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "Kein gültiges Abschluss-PDF für Export vorhanden", Toast.LENGTH_SHORT).show()
             return
         }
         lifecycleScope.launch {
@@ -215,9 +199,7 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
                             baustelleName = baustelleName.ifBlank { item.entry.baustelleName },
                             schicht = item.schicht
                         )
-                    } else {
-                        result.zipFile
-                    }
+                    } else result.zipFile
                 }
                 BtbExportPaket.shareZip(requireContext(), exportZip)
             } catch (_: Throwable) {
