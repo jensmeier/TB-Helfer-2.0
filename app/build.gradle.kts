@@ -5,42 +5,27 @@ plugins {
 
 android {
     namespace = "de.tbhelfer"
-    // AGP 9 unterstützt bis API 36 (Android 16). Einige AndroidX-Versionen
-    // (z.B. core-ktx 1.17.0) verlangen compileSdk 36.
     compileSdk = 36
 
     defaultConfig {
         applicationId = "de.tbhelfer"
-        // CameraX 1.5.x (insb. camera-video) fordert minSdk 23.
-        // Wenn du minSdk 21 behalten MUSST, siehe REPORT (Downgrade/Exclude-Option).
         minSdk = 23
-
-        // targetSdk kann separat von compileSdk entschieden werden.
-        // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
         // Android 200032: kanonischer btbId-Lesekontext, read-only Details, sofortige Zeitansicht.
         versionCode = 200032
         versionName = "1.3"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            // HIGH-IMPACT: Release kleiner + schneller, aber trotzdem safe (Room/DataStore/CameraX sind i.d.R. ok)
             isMinifyEnabled = true
             isShrinkResources = true
-
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 
-    buildFeatures {
-        buildConfig = false
-    }
+    buildFeatures { buildConfig = false }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -48,17 +33,11 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    // Verhindert gelegentliche META-INF Doppel-Einträge (klassischer Gradle/AndroidX Painpoint)
     packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
+        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     }
 
     lint {
-        // Runde 3: "UI/Lint auf 0 ohne Noise"
-        // -> wir nutzen eine Lint-Config (root/lint.xml), die reine Noise-Checks deaktiviert.
-        //    So bleiben relevante Checks aktiv, aber die IDE/CI wird nicht zugemüllt.
         abortOnError = true
         checkReleaseBuilds = true
         checkDependencies = true
@@ -66,10 +45,6 @@ android {
     }
 }
 
-// Built-in Kotlin (AGP 9) übernimmt den JVM Target standardmäßig aus
-// android.compileOptions.targetCompatibility.
-
-// HIGH-IMPACT: Room Schema-Export (hilft bei Migrationen & Tests; kostet im Build praktisch nichts)
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
     arg("room.incremental", "true")
@@ -78,39 +53,27 @@ ksp {
 
 dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs)
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
-
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-
     implementation(libs.androidx.recyclerview)
-
     implementation(libs.androidx.exifinterface)
-
     implementation(libs.kotlinx.coroutines.android)
-
     implementation(libs.androidx.datastore.preferences)
-
     implementation(libs.androidx.work.runtime.ktx)
-
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
-
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.extensions)
-
     implementation(libs.play.services.code.scanner)
     implementation(libs.zxing.core)
-
     testImplementation(libs.junit4)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.espresso.core)
