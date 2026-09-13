@@ -5,6 +5,7 @@ import de.tbhelfer.datenbank.FotoEntity
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.time.LocalDate
 
 /**
  * Unveränderliche Foto-Basis des ERSTEN BTB-Abschlusses.
@@ -59,6 +60,38 @@ object BtbOriginalFotoSpeicher {
             put("fotoIds", JSONArray().apply { fotoIds.sorted().forEach { fotoId -> put(fotoId) } })
         }
         runCatching { f.writeText(root.toString(2), Charsets.UTF_8) }
+    }
+
+    /**
+     * Migration für BTBs, die bereits unter 200026 zuerst abgeschlossen wurden. Damals gab es die
+     * separate Foto-Originaldatei noch nicht. Der Zeitstempel der unveränderlichen BTB-Originaldatei
+     * grenzt die damaligen von später aufgenommenen Fotos belastbar genug ab: nur explizit derselben
+     * btbId zugeordnete Fotos bis zu diesem ersten Abschlusszeitpunkt werden übernommen.
+     */
+    fun migriereAusBestehendemOriginalWennFehlt(
+        context: Context,
+        entry: BautagebuchEintrag,
+        alleFotos: List<FotoEntity>
+    ) {
+        val btbId = entry.btbId?.trim().orEmpty()
+        if (btbId.isBlank() || hatOriginal(context, btbId)) return
+        val date = runCatching { LocalDate.parse(entry.datumIso) }.getOrNull() ?: return
+        val info = BautagebuchSpeicher.baselineInfo(
+            context,
+            entry.baustelleId,
+            entry.baustelleName,
+            date,
+            entry.schicht
+        )
+        val firstClosureEpoch = info.baselineLastModifiedEpochMs ?: return
+        if (!info.exists || firstClosureEpoch <= 0L) return
+
+        val ids = alleFotos.asSequence()
+            .filter { foto -> BtbFotoZuordnungSpeicher.btbId(context, foto.id) == btbId }
+            .filter { foto -> foto.erstelltAmEpochMs <= firstClosureEpoch }
+            .map { it.id }
+            .toSet()
+        sichernWennFehlt(context, btbId, ids)
     }
 
     /**
