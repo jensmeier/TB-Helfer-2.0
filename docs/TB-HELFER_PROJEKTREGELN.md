@@ -75,21 +75,21 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 ### BTB-Abschluss – verbindliches Ein-PDF-/Original-Modell
 - Die frühere sichtbare V1/V2/V3-Versionierung ist verworfen.
 - **Ein BTB (`btbId`) besitzt höchstens ein aktuell gültiges Abschluss-PDF.**
-- Die sichtbare Aktion heißt **`BTB Abschluss`**; technisch wird dabei das Abschluss-PDF erzeugt.
-- Beim **ersten erfolgreichen BTB-Abschluss** wird der damalige fachliche BTB-Inhalt einmalig als **unveränderliches Original** derselben `btbId` festgeschrieben.
-- Dieses erste Original wird bei späteren Bearbeitungen und späteren Abschlüssen **niemals ersetzt oder überschrieben**.
-- Das Original gehört fachlich zum selben BTB-Datensatz. Eine interne technische Spiegeldatei ist für Rückwärtskompatibilität/Renderer erlaubt, darf aber keine sichtbare V1/V2/V3 erzeugen.
+- Beim ersten `BTB Abschluss` wird aus dem aktuellen Datensatz das PDF erzeugt. Erst wenn die Datei erfolgreich geschrieben wurde, gilt der BTB als `Abgeschlossen`.
+- **Der Stand dieses ersten erfolgreichen Abschlusses ist das unveränderliche Original dieses BTB.**
+- Dieses Original wird nach dem ersten Abschluss nie wieder überschrieben – auch nicht nach späteren Nachbearbeitungen oder weiteren Abschlüssen.
+- Der Original-Snapshot gehört fachlich zum selben BTB-Datensatz. Eine interne Spiegeldatei ist für Rückwärtskompatibilität zulässig, aber keine sichtbaren V1/V2/V3.
 - Nur das Öffnen/Bearbeiten eines abgeschlossenen BTB macht noch nichts ungültig.
 - Sobald nach einem Abschluss tatsächlich eine Änderung gespeichert wird, wechselt der BTB zu `Nachbearbeitung`; das bisherige Abschluss-PDF ist ungültig und wird gelöscht.
-- Für die rote Änderungsdarstellung wird **immer der aktuelle BTB-Inhalt gegen das unveränderliche erste Original** verglichen – nicht gegen den letzten Abschluss.
-- Neue oder gegenüber dem Original geänderte Inhalte werden **rot** dargestellt und bleiben auch nach weiteren Abschlüssen rot, solange sie vom Original abweichen.
-- Wird ein geänderter Wert später exakt auf den Originalwert zurückgesetzt, ist er wieder unverändert/schwarz.
+- Neue oder geänderte Inhalte werden **immer gegenüber dem ersten Original** verglichen und rot dargestellt.
+- Inhalte, die bereits bei einer früheren Nachbearbeitung rot waren, bleiben auch nach weiteren Abschlüssen rot, solange sie vom ersten Original abweichen.
+- Wird ein Wert später exakt auf den Originalwert zurückgesetzt, ist er wieder normal/schwarz.
 - Gelöschte Originalinhalte werden im nächsten PDF rot als `(entfernt) ...` dargestellt.
-- Unveränderte Originalinhalte bleiben normal/schwarz.
-- Nach jedem erfolgreichen späteren `BTB Abschluss` wird nur das eine aktuelle Abschluss-PDF ersetzt. Das unveränderliche Original bleibt bestehen.
-- Damit die App nach einem späteren Abschluss neue Bearbeitungen sicher erkennt, darf sie zusätzlich einen internen Hash/Prüfstand des Inhalts speichern, aus dem das aktuell gültige PDF erzeugt wurde. Dieser Prüfstand ist keine sichtbare Dokumentversion und verändert das Original nicht.
+- Unveränderte Originalinhalte bleiben normal.
+- Beim nächsten `BTB Abschluss` wird wieder genau ein aktuelles PDF derselben `btbId` erzeugt. Das aktuelle PDF ersetzt das vorherige PDF, **nicht** das unveränderliche Original.
+- Ein interner Abschluss-Hash darf speichern, aus welchem aktuellen BTB-Inhalt das gültige PDF erzeugt wurde. Dieser Hash ist keine sichtbare Version und darf das Original nicht ersetzen.
 - PDF-Dateiname bleibt für dieselbe fachliche `btbId` stabil/merge-sicher; keine `_V1`, `_V2`, `_V100` und keine `(2)`-Ausweichnamen für fachlich verschiedene BTBs.
-- Historische Alt-BTBs mit Tag/Nacht-/Version-Dateien bleiben lesbar; beim nächsten modernen Abschluss werden sie in das neue Ein-PDF-Verhalten überführt. Ein bereits durch frühere Teststände überschriebenes historisches Original kann nicht künstlich rekonstruiert werden.
+- Historische Alt-BTBs mit Tag/Nacht-/Version-Dateien bleiben lesbar; beim nächsten modernen Abschluss werden sie in das neue Ein-PDF-Verhalten überführt.
 - `PDF öffnen` im BTB-Verlauf öffnet den App-eigenen PDF-Viewer.
 - `ZIP teilen` arbeitet immer mit exakt der ausgewählten `btbId` und ihrem aktuell gültigen PDF/DOCX/Bildbestand.
 
