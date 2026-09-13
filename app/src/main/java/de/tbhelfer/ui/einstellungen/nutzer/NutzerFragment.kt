@@ -11,6 +11,7 @@ import com.google.android.material.textfield.TextInputEditText
 import de.tbhelfer.R
 import de.tbhelfer.server.CompanyProfileSync
 import de.tbhelfer.server.SecureTokenStore
+import de.tbhelfer.server.UserDisplayCache
 import de.tbhelfer.server.UserProfileApi
 import de.tbhelfer.util.requireViewByIdCompat
 import kotlinx.coroutines.Dispatchers
@@ -18,10 +19,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Getrennte Anzeige von persoenlichem Benutzerprofil und zentralem Firmenprofil.
+ * Getrennte Anzeige von persönlichem Benutzerprofil und zentralem Firmenprofil.
  *
- * - persoenliche E-Mail/Telefon: pro Server-Benutzer editierbar
- * - Firmenstammdaten/Logo: zentraler Serverstand, auf dem Geraet nur Offline-Cache
+ * Persönliche Telefonnummer/E-Mail werden immer gerätelokal gespeichert. Sobald der Server
+ * Schema 11 / user/profile unterstützt, wird derselbe lokale Stand zusätzlich serverseitig
+ * synchronisiert. Firmenstammdaten bleiben dagegen ausschließlich zentraler Serverstand.
  */
 class NutzerFragment : Fragment(R.layout.fragment_nutzer) {
 
@@ -93,14 +95,22 @@ class NutzerFragment : Fragment(R.layout.fragment_nutzer) {
         }
     }
 
+    private fun lokalesProfilMitNamensFallback(): PersoenlichesNutzerProfil {
+        val local = PersoenlichesNutzerProfilSpeicher.laden(requireContext())
+        val fallbackName = UserDisplayCache.userName(requireContext())
+        return (local ?: PersoenlichesNutzerProfil()).copy(
+            name = local?.name?.takeIf { it.isNotBlank() } ?: fallbackName
+        )
+    }
+
     private fun ladePersoenlich() {
-        PersoenlichesNutzerProfilSpeicher.laden(requireContext())?.let(::zeigePersoenlichesProfil)
+        val local = lokalesProfilMitNamensFallback()
+        PersoenlichesNutzerProfilSpeicher.speichern(requireContext(), local)
+        zeigePersoenlichesProfil(local)
+        btnPersoenlichSpeichern.isEnabled = true
 
         val token = SecureTokenStore(requireContext()).load()
-        if (token.isNullOrBlank()) {
-            btnPersoenlichSpeichern.isEnabled = false
-            return
-        }
+        if (token.isNullOrBlank()) return
 
         val appContext = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
@@ -108,86 +118,106 @@ class NutzerFragment : Fragment(R.layout.fragment_nutzer) {
             if (!isAdded) return@launch
             when (result) {
                 is UserProfileApi.Result.Success -> {
-                    val local = result.profile.toLocal()
-                    withContext(Dispatchers.IO) { PersoenlichesNutzerProfilSpeicher.speichern(appContext, local) }
-                    zeigePersoenlichesProfil(local)
-                    btnPersoenlichSpeichern.isEnabled = true
+                    // Leere Serverfelder dürfen einen bereits lokal eingegebenen Kontakt nicht löschen.
+                    val server = result.profile.toLocal()
+                    val merged = server.copy(
+                        name = server.name?.takeIf { it.isNotBlank() }
+                            ?: UserDisplayCache.userName(appContext)
+                            ?: local.name,
+                        telefon = server.telefon?.takeIf { it.isNotBlank() } ?: local.telefon,
+                        email = server.email?.takeIf { it.isNotBlank() } ?: local.email
+                    )
+                    withContext(Dispatchers.IO) { PersoenlichesNutzerProfilSpeicher.speichern(appContext, merged) }
+                    zeigePersoenlichesProfil(merged)
                 }
-                UserProfileApi.Result.SchemaRequired -> {
-                    btnPersoenlichSpeichern.isEnabled = false
-                    Snackbar.make(requireView(), "Persönliche Telefonnummer wird mit dem nächsten Server-Schema freigeschaltet.", Snackbar.LENGTH_LONG).show()
-                }
+                UserProfileApi.Result.SchemaRequired,
                 UserProfileApi.Result.Unsupported -> {
-                    btnPersoenlichSpeichern.isEnabled = false
-                    Snackbar.make(requireView(), "Dieser Serverstand unterstützt das persönliche Profil noch nicht.", Snackbar.LENGTH_LONG).show()
+                    // Schema 10: lokale Eingabe bleibt voll nutzbar; Server-Sync kommt später.
+                    btnPersoenlichSpeichern.isEnabled = true
                 }
                 UserProfileApi.Result.SessionInvalid -> {
                     SecureTokenStore(requireContext()).clear()
-                    btnPersoenlichSpeichern.isEnabled = false
-                    Snackbar.make(requireView(), "Gerätefreigabe ist nicht mehr gültig.", Snackbar.LENGTH_LONG).show()
+                    btnPersoenlichSpeichern.isEnabled = true
+                    Snackbar.make(requireView(), "Gerätefreigabe ist nicht mehr gültig. Persönliche Daten bleiben lokal gespeichert.", Snackbar.LENGTH_LONG).show()
                 }
-                is UserProfileApi.Result.Error -> Snackbar.make(
-                    requireView(),
-                    "Persönliches Profil konnte nicht geladen werden: ${result.message}",
-                    Snackbar.LENGTH_LONG
-                ).show()
+                is UserProfileApi.Result.Error -> {
+                    btnPersoenlichSpeichern.isEnabled = true
+                    // Offline/Serverfehler darf die lokale Profilpflege nicht blockieren.
+                }
             }
         }
     }
 
     private fun zeigePersoenlichesProfil(profile: PersoenlichesNutzerProfil) {
-        etPersName.setText(profile.name.orEmpty())
+        etPersName.setText(
+            profile.name?.takeIf { it.isNotBlank() }
+                ?: UserDisplayCache.userName(requireContext()).orEmpty()
+        )
         etPersTel.setText(profile.telefon.orEmpty())
         etPersMail.setText(profile.email.orEmpty())
     }
 
     private fun speicherePersoenlich() {
-        val token = SecureTokenStore(requireContext()).load()
-        if (token.isNullOrBlank()) {
-            Snackbar.make(requireView(), "Gerät ist noch nicht für den Server aktiviert.", Snackbar.LENGTH_LONG).show()
+        val email = etPersMail.text?.toString()?.trim().orEmpty().takeIf { it.isNotBlank() }
+        val phone = etPersTel.text?.toString()?.trim().orEmpty().takeIf { it.isNotBlank() }
+        if (email != null && ('@' !in email || email.any { it.isWhitespace() })) {
+            Snackbar.make(requireView(), "Bitte eine gültige persönliche E-Mail-Adresse eingeben.", Snackbar.LENGTH_LONG).show()
             return
         }
 
-        val email = etPersMail.text?.toString()?.trim().orEmpty().takeIf { it.isNotBlank() }
-        val phone = etPersTel.text?.toString()?.trim().orEmpty().takeIf { it.isNotBlank() }
-        if (email != null && ('@' !in email || email.any(Char::isWhitespace))) {
-            Snackbar.make(requireView(), "Bitte eine gültige persönliche E-Mail-Adresse eingeben.", Snackbar.LENGTH_LONG).show()
+        val appContext = requireContext().applicationContext
+        val previous = PersoenlichesNutzerProfilSpeicher.laden(appContext)
+        val local = (previous ?: PersoenlichesNutzerProfil()).copy(
+            name = previous?.name?.takeIf { it.isNotBlank() }
+                ?: UserDisplayCache.userName(appContext),
+            telefon = phone,
+            email = email
+        )
+        PersoenlichesNutzerProfilSpeicher.speichern(appContext, local)
+        zeigePersoenlichesProfil(local)
+
+        val token = SecureTokenStore(requireContext()).load()
+        if (token.isNullOrBlank()) {
+            Snackbar.make(requireView(), "Persönliche Kontaktdaten wurden auf diesem Handy gespeichert.", Snackbar.LENGTH_SHORT).show()
             return
         }
 
         btnPersoenlichSpeichern.isEnabled = false
         btnPersoenlichSpeichern.text = "Wird gespeichert …"
-        val appContext = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) { userProfileApi.save(token, email, phone) }
             if (!isAdded) return@launch
             btnPersoenlichSpeichern.text = "Persönliche Daten speichern"
+            btnPersoenlichSpeichern.isEnabled = true
             when (result) {
                 is UserProfileApi.Result.Success -> {
-                    val local = result.profile.toLocal()
-                    withContext(Dispatchers.IO) { PersoenlichesNutzerProfilSpeicher.speichern(appContext, local) }
-                    zeigePersoenlichesProfil(local)
-                    btnPersoenlichSpeichern.isEnabled = true
-                    Snackbar.make(requireView(), "Persönliche Kontaktdaten wurden gespeichert.", Snackbar.LENGTH_SHORT).show()
+                    val server = result.profile.toLocal()
+                    val merged = server.copy(
+                        name = server.name?.takeIf { it.isNotBlank() }
+                            ?: UserDisplayCache.userName(appContext)
+                            ?: local.name,
+                        telefon = server.telefon?.takeIf { it.isNotBlank() } ?: local.telefon,
+                        email = server.email?.takeIf { it.isNotBlank() } ?: local.email
+                    )
+                    withContext(Dispatchers.IO) { PersoenlichesNutzerProfilSpeicher.speichern(appContext, merged) }
+                    zeigePersoenlichesProfil(merged)
+                    Snackbar.make(requireView(), "Persönliche Kontaktdaten wurden lokal und auf dem Server gespeichert.", Snackbar.LENGTH_SHORT).show()
                 }
-                UserProfileApi.Result.SchemaRequired -> Snackbar.make(
-                    requireView(),
-                    "Persönliches Profil ist auf dem Server noch nicht freigeschaltet.",
-                    Snackbar.LENGTH_LONG
-                ).show()
+                UserProfileApi.Result.SchemaRequired,
                 UserProfileApi.Result.Unsupported -> Snackbar.make(
                     requireView(),
-                    "Dieser Serverstand unterstützt das persönliche Profil noch nicht.",
+                    "Persönliche Kontaktdaten wurden auf diesem Handy gespeichert. Server-Sync folgt mit dem neuen Serverstand.",
                     Snackbar.LENGTH_LONG
                 ).show()
                 UserProfileApi.Result.SessionInvalid -> {
                     SecureTokenStore(requireContext()).clear()
-                    Snackbar.make(requireView(), "Gerätefreigabe ist nicht mehr gültig.", Snackbar.LENGTH_LONG).show()
+                    Snackbar.make(requireView(), "Lokal gespeichert. Gerätefreigabe für Server-Sync ist nicht mehr gültig.", Snackbar.LENGTH_LONG).show()
                 }
-                is UserProfileApi.Result.Error -> {
-                    btnPersoenlichSpeichern.isEnabled = true
-                    Snackbar.make(requireView(), "Speichern fehlgeschlagen: ${result.message}", Snackbar.LENGTH_LONG).show()
-                }
+                is UserProfileApi.Result.Error -> Snackbar.make(
+                    requireView(),
+                    "Lokal gespeichert. Server-Sync derzeit nicht möglich: ${result.message}",
+                    Snackbar.LENGTH_LONG
+                ).show()
             }
         }
     }
