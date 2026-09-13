@@ -69,7 +69,8 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Grünes `+`: aktueller BTB wird zuerst gespeichert, aber nicht abgeschlossen; danach Dialog/Karte `Neuen BTB starten` mit Datum/Zeit, Personal, Geräte/Maschinen und Wetter. Erst `Neuer BTB` erzeugt eine neue `btbId`.
 - Neben dem grünen `+` gibt es eine **Bearbeiten-Aktion (Stift)** für den aktuell geladenen BTB. Sie ändert immer denselben BTB/dieselbe `btbId`.
 - Der Stift öffnet direkt ein kompaktes schwebendes Fenster `Aktuellen BTB bearbeiten` mit Datum/Zeit, Personal, Geräte/Maschinen und Wetter; kein zusätzliches vorgeschaltetes Listenmenü.
-- Wenn noch kein BTB existiert, dürfen ausgeblendete Detailfelder keinen vertikalen Leerraum reservieren; die Standardabschnitte sollen möglichst weit oben beginnen.
+- Nach `Bearbeiten` in diesem Fenster wird direkt der gewählte Datum/Zeit-, Personal-, Geräte/Maschinen- oder Wetter-Editor geöffnet. Die alte Vierer-Auswahl mit Status-Pills darf nicht nochmals als Zwischenschritt eingeblendet werden.
+- Wenn noch kein BTB existiert, dürfen ausgeblendete Detailfelder keinen vertikalen Leerraum reservieren; die Standardabschnitte sollen möglichst weit oben beginnen. Bearbeiten- und PDF-Aktionen sind ohne realen BTB nicht sichtbar.
 - Der blaue aktuelle-BTB-Balken und `BTB bearbeiten` im Verlauf öffnen immer exakt die gewählte `btbId`.
 - Beim Wechsel BTB 1 ↔ BTB 2 muss der aktuelle BTB zuerst tatsächlich gespeichert sein; keine feste Zeitwarte-Lösung als Datenintegrität.
 - Verlauf zeigt nur tatsächlich vorhandene BTBs.
@@ -100,6 +101,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Zwei BTBs mit überlappenden Arbeitszeiten dürfen dadurch nicht dieselben modernen Fotos nur wegen der Uhrzeit übernehmen. Fotozähler, Fotoauswahl, PDF und Einzel-BTB-ZIP müssen dieselbe `btbId`-Zuordnung beachten.
 - Der beim **ersten erfolgreichen BTB-Abschluss tatsächlich enthaltene Foto-Bestand gehört ebenfalls zum unveränderlichen Original** dieses BTB.
 - Ein Foto, das erst nach diesem ersten Abschluss zum selben BTB hinzukommt, ist eine Änderung gegenüber dem Original und muss im späteren Abschluss-PDF **sichtbar rot als Änderung markiert** werden; das Original-JPG selbst bleibt unverändert.
+- Jede tatsächliche Änderung der ausgewählten Foto-Menge nach einem Abschluss – neues Foto, entferntes Foto oder nachträglich ab-/wieder ausgewählte Abweichung – macht das bisherige Abschluss-PDF genauso ungültig wie eine Textänderung und setzt den BTB auf `Nachbearbeitung`, auch wenn der übrige BTB-Text unverändert ist.
 - Bildreferenzen im Haupttext müssen dieselbe Original-Diff-Regel verwenden: Referenzen auf nachträglich hinzugefügte Bilder werden rot, Original-Bildreferenzen bleiben schwarz; gemischte Bereiche werden soweit technisch möglich differenziert dargestellt.
 - Für bestehende BTBs aus einem älteren App-Stand darf die erste Foto-Basis einmalig aus dem bereits vorhandenen ersten BTB-Original/Abschlusszeitpunkt rekonstruiert werden; danach ist auch diese Foto-Basis unveränderlich.
 - Datum/Uhrzeit bleiben Anzeige/Sortierung, nicht technische Foto-BTB-Zuordnung.
