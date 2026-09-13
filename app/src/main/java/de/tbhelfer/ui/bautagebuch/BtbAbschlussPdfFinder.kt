@@ -25,15 +25,16 @@ object BtbAbschlussPdfFinder {
             .asSequence()
             .filter { it.isFile && it.extension.equals("pdf", ignoreCase = true) }
             .filterNot { it.name.contains("_entwurf_", ignoreCase = true) }
-            .filter { file ->
-                file.name.contains("_${token}_", ignoreCase = true) ||
-                    file.name.contains("_${token}.", ignoreCase = true)
-            }
+            .filter { passtZuToken(it.name, token) }
             .maxWithOrNull(
                 compareBy<File> { versionAusDateiname(it.name) }
                     .thenBy { it.lastModified() }
             )
     }
+
+    internal fun passtZuToken(name: String, token: String): Boolean =
+        name.contains("_${token}_", ignoreCase = true) ||
+            name.contains("_${token}.", ignoreCase = true)
 
     internal fun versionAusDateiname(name: String): Int =
         versionRegex.find(name)
