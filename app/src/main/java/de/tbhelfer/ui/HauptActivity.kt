@@ -101,7 +101,7 @@ class HauptActivity : AppCompatActivity() {
     }
 
     private fun openActivation() {
-        startActivity(Intent(this, AktivierungActivity::class.java)
+        startActivity(Intent(this, AktivierungActivity::class.java))
         finish()
     }
 
