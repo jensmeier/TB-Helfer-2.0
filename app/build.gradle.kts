@@ -18,8 +18,8 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Android 200031: interner Entwurf-Viewer, stabile Zeitbearbeitung, BTB-Loeschen, Tages-ZIP.
-        versionCode = 200031
+        // Android 200032: kanonischer btbId-Lesekontext, read-only Details, sofortige Zeitansicht.
+        versionCode = 200032
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
