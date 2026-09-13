@@ -17,8 +17,8 @@ Vor jeder Änderung zuerst lesen:
 - aktiv: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
 - PR bleibt Draft bis zum erfolgreichen Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test.
-- aktueller Android-Entwicklungsstand: **versionCode 200029**, `versionName 1.3`.
-- Android 200029 ist vorbereitet, aber noch **nicht lokal kompiliert/installiert/getestet**.
+- aktueller Android-Entwicklungsstand: **versionCode 200030**, `versionName 1.3`.
+- Android 200030 ist vorbereitet, aber noch **nicht lokal kompiliert/installiert/getestet**.
 
 ## Produktiver Synology-Stand – unverändert
 - NAS/Synology ist Source of Truth.
@@ -27,7 +27,7 @@ Vor jeder Änderung zuerst lesen:
 - produktiver Servercode: `/volume1/docker/tb-helfer/server_schema10_stage`.
 - produktive Secrets bleiben ausschließlich in `./server/.env`.
 - letzter bestätigter Produktivstand: PostgreSQL healthy, API/cloudflared gestartet, 72 OpenAPI-Pfade, `DB_TEST=OK`, Schema 10.
-- in der gesamten Android-200025 bis 200029-Runde wurden **keine NAS-/DB-Änderungen** durchgeführt.
+- in der gesamten Android-200025 bis 200030-Runde wurden **keine NAS-/DB-Änderungen** durchgeführt.
 - letzter produktiver Backup-Stand: `/volume1/docker/tb-helfer/backup/tb_helfer_pre_schema10_20260910_173351.dump`, damals mit `pg_restore -l` als `BACKUP_PRUEFUNG=OK` bestätigt.
 - vor dem nächsten produktiven Server-/Schema-Schritt genau ein frisches verifiziertes DB-Backup erstellen; keine redundanten Backups ohne Anlass.
 
@@ -67,26 +67,36 @@ Noch offen aus dem 200028-Test:
 2. Bildverweise im Haupttext müssen dieselbe Original-Diff-Regel verwenden: wenn z. B. Bild 3 und 4 erst nach dem ersten Abschluss entstanden sind, muss auch `[Bild 3–4]` unter `4. Ausgeführte Arbeiten` rot sein. Bei gemischten Referenzen bleibt der Originalteil schwarz und nur der neue Bildanteil rot.
 3. Strukturüberschriften wie `Wetter`, `4. Ausgeführte Arbeiten`, `Allgemein`, `Hauptbaustelle`/Ortsüberschriften bleiben schwarz; nur echte Inhaltsabweichungen rot.
 
-## Android 200029 – aktueller vorbereiteter UI-Patch
+### Android 200029 – praktisch per Screenshot weiter bestätigt
+- kompakter Kopf funktioniert; `Details anzeigen` liegt direkt unter der Quickbar.
+- orange Stift öffnet das Fenster `Aktuellen BTB bearbeiten` korrekt.
+- es war **derselbe BTB**, kein BTB-Wechsel und kein Datenverlust.
+- nach zwei weiteren Fotos zeigte derselbe BTB korrekt `3/3`; die stabile Fotozuordnung zur `btbId` bleibt damit im gezeigten Fall erhalten.
+- gefundenes UI-Problem: nach `Bearbeiten` im Stift-Fenster wurde die alte Vierer-Auswahl `Wetter / Datum Zeit / Personal / Geräte Maschinen` wieder als Zwischenschritt eingeblendet.
+- gefundenes Abschlussproblem: derselbe bereits abgeschlossene BTB blieb trotz nachträglich hinzugefügter Fotos optisch `Abgeschlossen`. Laut verbindlicher Foto-Originalregel muss eine geänderte Foto-Menge den bestehenden Abschluss genauso invalidieren wie eine Textänderung.
+
+## Android 200030 – aktueller vorbereiteter Patch
 Betroffene Dateien:
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbModernLifecycleInstaller.kt`
 - `app/build.gradle.kts`
 - `docs/TB-HELFER_PROJEKTREGELN.md`
-
-Ziel laut Benutzer-Skizze: mehr nutzbare Höhe auf dem Handy und direkter Bearbeitungsdialog.
+- `docs/TB-HELFER_AKTUELLER_STAND.md`
 
 Änderungen:
-- wenn **noch kein BTB** existiert, wird `topFieldsToggleRow` jetzt ausdrücklich `GONE` gesetzt; damit reserviert der unsichtbare `Details anzeigen`-Bereich keine Höhe mehr.
-- Wetter-/Personal-Kopfbereiche bleiben ohne BTB ebenfalls `GONE`.
-- Kopfabstände werden kompakter gesetzt: Quickbar unten kleiner, Details-Abstand kleiner, Punkt `4. Ausgeführte Arbeiten` rückt weiter nach oben.
-- sobald ein echter BTB vorhanden ist, wird `Details anzeigen` wieder eingeblendet.
-- orange Bearbeiten-Stift öffnet jetzt direkt ein kompaktes schwebendes Fenster **`Aktuellen BTB bearbeiten`** statt eines vorgeschalteten Listenmenüs.
-- das Fenster zeigt Datum/Zeit, Personal, Geräte/Maschinen und Wetter mit jeweils direkter Aktion `Bearbeiten`.
-- die Bearbeitung bleibt immer beim selben BTB/derselben `btbId`.
+- Stift-Fenster bleibt der zentrale Einstieg `Aktuellen BTB bearbeiten`.
+- bei `Personal`, `Geräte/Maschinen` und `Wetter` wird nach `Bearbeiten` der vorhandene Editor direkt geöffnet; die alte Vierer-Auswahl wird sofort wieder ausgeblendet und nicht mehr als sichtbarer Zwischenschritt stehen gelassen.
+- `Datum/Zeit` öffnet seinen vorhandenen Datum-/Schicht-Popup direkt über einen unsichtbar gelayouteten Anchor, ohne die alte Vierer-Auswahl sichtbar einzublenden.
+- wenn **noch kein BTB** existiert, werden zusätzlich der orange Bearbeiten-Stift, sein Abstand sowie `PDF Entwurf` und `BTB Abschluss` ausgeblendet.
+- wenn wieder ein realer BTB vorhanden ist, werden diese Aktionen wieder eingeblendet.
+- Foto-Originalmenge wird im Lifecycle-Watcher regelmäßig mit der aktuell ausgewählten Foto-Menge desselben `btbId` verglichen.
+- neue, entfernte oder nachträglich abgewählte Fotos gegenüber dem ersten Original machen das aktuelle Abschluss-PDF ungültig; das PDF wird entfernt und der vorhandene Status-Finder liefert anschließend `Nachbearbeitung`.
+- Status wird bewusst erst **nach** der Foto-Prüfung aktualisiert, damit ein neues Foto am bereits abgeschlossenen BTB nicht weiter als `Abgeschlossen` angezeigt wird.
+- Fotozähler bleibt weiterhin über `BtbPhotoCounterFix` auf der konkreten `btbId`.
 
 Tests:
-- statisch gegen den aktuellen Branch geprüft.
-- **noch kein lokaler Gradle-Build** für 200029; nicht als kompiliert bestätigen.
+- GitHub-Stand und betroffene Laufzeitpfade statisch geprüft.
+- **noch kein lokaler Gradle-Build/ADB-Gerätetest für 200030**; nicht als kompiliert bestätigen.
+- NAS/DB nicht verändert.
 
 ## BTB – verbindliches Modell
 ### Identität
@@ -110,8 +120,9 @@ Tests:
 ### Fotos als Teil des Originalstands
 - neue normale BTB-Fotos erhalten eine eindeutige `btbId`.
 - Foto-ID-Menge des ersten erfolgreichen Abschlusses bleibt unveränderlich.
-- ein später neu hinzugefügtes Foto gilt als Abweichung vom Original.
-- PDF-Aufbereitung erzeugt dafür nur eine temporäre rot markierte Bildkopie; Original-JPG/Room-Datensatz bleiben unverändert.
+- ein später neu hinzugefügtes Foto gilt als Abweichung vom Original und invalidiert das aktuelle Abschluss-PDF.
+- auch Entfernen/Abwählen eines Originalfotos gilt als Foto-Abweichung und invalidiert den Abschluss.
+- PDF-Aufbereitung erzeugt für neue Fotos nur eine temporäre rot markierte Bildkopie; Original-JPG/Room-Datensatz bleiben unverändert.
 - Bildreferenzen im Haupttext müssen künftig ebenfalls zwischen Original- und nachträglich hinzugefügten Bildern unterscheiden.
 
 ## Nutzerprofil / Name
@@ -142,9 +153,10 @@ Im Branch vorhanden/beschlossen:
 Produktiver Server unterstützt den neueren Branch-Multi-BTB-Code noch nicht vollständig; deshalb noch kein verbindlicher Pixel↔Poco-Ende-zu-Ende-Test des neuen Multi-BTB-Flows.
 
 ## Weitere offene Hauptblöcke
-- Android 200029 lokal bauen/installieren/testen.
+- Android 200030 lokal bauen/installieren/testen.
 - PDF-Strukturüberschriften schwarz halten; nur echte Inhaltsabweichungen rot.
 - Bildnummern/-bereiche im Haupttext differenziert rot markieren, wenn die referenzierten Fotos nach dem Originalabschluss hinzugekommen sind.
+- Einzel-BTB-DOCX muss dieselbe Original-/Rotlogik wie das PDF erhalten; der aktuell einfache DOCX-Export schreibt noch ausschließlich schwarzen Text.
 - BTB 1 ↔ BTB 2 und Baustelle A ↔ Baustelle B praktisch weiter testen.
 - 7 bekannte Compilerwarnungen später in eigenem Aufräumpatch beseitigen.
 - großer `BautagebuchFragment.kt` enthält historische Tag/Nacht-/Altpfade; moderne Installer übersteuern sie derzeit zur Laufzeit.
@@ -158,10 +170,11 @@ Produktiver Server unterstützt den neueren Branch-Multi-BTB-Code noch nicht vol
 ## Nächster sicherer Test
 1. lokal `git pull`.
 2. `gradlew.bat :app:assembleDebug :app:testDebugUnitTest`.
-3. **Nur wenn der Build erfolgreich ist:** Android 200029 per ADB als Update installieren, App-Daten nicht löschen.
-4. ohne BTB prüfen: `Noch kein BTB` und Punkt 4 sollen deutlich dichter zusammenrücken; kein unsichtbarer Details-Leerraum.
-5. neuen BTB über `+` anlegen.
-6. orange Stift drücken: direktes Fenster `Aktuellen BTB bearbeiten` mit Datum/Zeit, Personal, Geräte/Maschinen, Wetter prüfen.
-7. bestehenden BTB-Inhalt/Abschluss/PDF darf der UI-Patch nicht verändern.
-8. Fotozähler und rote Foto-Markierung dürfen nicht regressieren.
-9. produktiven NAS weiterhin nicht anfassen.
+3. **Nur wenn der Build erfolgreich ist:** Android 200030 per ADB als Update installieren, App-Daten nicht löschen.
+4. ohne BTB prüfen: `Noch kein BTB`; orange Stift sowie `PDF Entwurf`/`BTB Abschluss` sollen nicht sichtbar sein.
+5. bestehenden BTB öffnen und orange Stift drücken.
+6. bei `Personal`, `Geräte/Maschinen` und `Wetter` jeweils `Bearbeiten` drücken: der gewählte Editor soll direkt erscheinen; die alte Vierer-Auswahl darf nicht als Zwischenschritt stehen bleiben.
+7. `Datum/Zeit → Bearbeiten`: vorhandener Datum-/Zeit-Popup soll direkt erscheinen.
+8. bei einem bereits abgeschlossenen BTB ein neues Foto aufnehmen: Fotozähler z. B. `1/1 → 2/2` bzw. `3/3`, Status muss danach automatisch `Nachbearbeitung · Abschluss-PDF ungültig` werden.
+9. BTB erneut abschließen und PDF prüfen: neue Fotos bleiben gegenüber dem ersten Original rot markiert.
+10. produktiven NAS weiterhin nicht anfassen.
