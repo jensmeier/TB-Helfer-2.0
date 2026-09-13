@@ -12,16 +12,22 @@ import java.time.format.DateTimeFormatter
  * - UI schreibt Änderungen in dieses Modell, PDF/Export lesen ausschließlich daraus.
  */
 
-/**
- * Historische/anzeigende Schichtklassifikation.
- *
- * Seit dem neuen BTB-Modell ist TAG/NACHT kein technischer Schlüssel mehr. Die Klassifikation
- * bleibt für Altbestände und eine optionale Anzeige erhalten und kann aus der Arbeitszeit
- * abgeleitet werden.
- */
 enum class SchichtTyp {
     TAG,
     NACHT
+}
+
+/**
+ * Fachlicher Lebenszyklus eines modernen BTB.
+ *
+ * ENTWURF: noch nie erfolgreich abgeschlossen.
+ * ABGESCHLOSSEN: aktueller Datensatz entspricht dem letzten Abschluss; genau ein Abschluss-PDF ist gültig.
+ * NACHBEARBEITUNG: nach einem Abschluss wurden Daten tatsächlich geändert; das alte PDF ist ungültig/gelöscht.
+ */
+enum class BtbAbschlussStatus {
+    ENTWURF,
+    ABGESCHLOSSEN,
+    NACHBEARBEITUNG
 }
 
 /** Quelle der Wetterdaten (für UI/Statusanzeige). */
@@ -31,39 +37,27 @@ enum class WeatherSource {
     CACHE
 }
 
-/** Strukturierter Wetter-Eintrag (für PDF-Tabellen-Ausgabe). */
 data class WetterSlot(
-    /** Uhrzeit im Format HH:mm */
     val uhrzeit: String,
-    /** Temperatur in °C (optional) */
     val tempC: Int? = null,
-    /** Bewölkung / Zustand (Dropdown) */
     val bewoelkung: String? = null,
-    /** Niederschlag (Dropdown/Text) */
     val niederschlag: String? = null,
-    /** Niederschlagsmenge in mm (entspricht l/m²) */
     val niederschlagMm: Double? = null
 )
 
-/** Wetterblock als Bestandteil des BTB (3 Slots + Metadaten). */
 data class WeatherBlock(
     val standEpochMs: Long? = null,
     val source: WeatherSource = WeatherSource.AUTO,
-    /** Optional: Ortsname (Priorität 1 im PDF). */
     val locationName: String? = null,
-    /** Optional: Stationsname (Priorität 2 im PDF). */
     val stationName: String? = null,
-    /** Optional: Koordinaten (Priorität 3 im PDF). */
     val lat: Double? = null,
     val lon: Double? = null,
     val slots: List<WetterSlot> = emptyList()
 )
 
-/** Einheitlicher Eintrag für Tabellen/Abschnitte (optional mit Uhrzeit). */
 data class SectionItem(
     val uhrzeit: String? = null,
     val text: String,
-    /** Optionaler KM-Wert nur fuer den manuellen BTB-Eintrag. */
     val kmVon: Double? = null,
     val kmBis: Double? = null
 )
@@ -72,26 +66,13 @@ data class SectionBlock(
     val items: List<SectionItem> = emptyList()
 )
 
-/**
- * Firma-Block (gemeinsame Quelle für Personal + Geräte).
- *
- * Die UI kann Personal/Geräte getrennt darstellen, aber die Firma ist identisch.
- */
 data class FirmaBlock(
-    /** Stabiler Key (UUID als String empfohlen). */
     val firmaId: String,
     val name: String,
-    /** Zeitfenster (optional, HH:mm). */
     val personalVon: String? = null,
     val personalBis: String? = null,
     val maschinenVon: String? = null,
     val maschinenBis: String? = null,
-    /**
-     * Sichtbarkeit der Firma in den beiden PM-Sektionen.
-     *
-     * UX-Vorgabe: Das Löschen einer Firma soll nur in der jeweiligen Sektion entfernen,
-     * nicht automatisch in beiden.
-     */
     val visibleInPersonal: Boolean = true,
     val visibleInMaschinen: Boolean = true,
     val isDeleted: Boolean = false,
@@ -115,7 +96,6 @@ data class LeistungZeile(
     val text: String
 )
 
-/** Referenz auf ein Foto (für PDF-Anhang). */
 data class FotoRef(
     val fotoId: Long,
     val lat: Double? = null,
@@ -132,90 +112,60 @@ data class BautagebuchEintrag(
     val baustelleName: String,
     val baustelleId: Long,
 
-    /**
-     * Stabile fachliche BTB-ID. Neue BTBs erhalten beim bewussten Anlegen eine UUID.
-     * Altbestände können null sein und werden beim Einlesen/Sync über einen stabilen Legacy-Key
-     * identifiziert, ohne ihre historischen Dateien umzubenennen.
-     */
+    /** Dauerhafte fachliche Identität. Sie bleibt bei Bearbeitung/Abschluss immer gleich. */
     val btbId: String? = null,
 
     /** ISO-Arbeitsbeginn-Datum: yyyy-MM-dd. */
     val datumIso: String,
 
-    /**
-     * Optionales ISO-Enddatum. Für über Mitternacht laufende Berichte wird bei fehlendem Wert
-     * automatisch der Folgetag abgeleitet. Damit bleibt der Zeitraum auch dann eindeutig, wenn
-     * ein älterer UI-Pfad nur Start-/Endzeit liefert.
-     */
+    /** Optionales Enddatum; wird bei Mitternachtswechsel automatisch abgeleitet. */
     var endeDatumIso: String? = null,
 
-    /** Nur Anzeige-/Legacy-Klassifikation, nicht mehr Teil der BTB-Identität. */
+    /** Nur Anzeige-/Legacy-Klassifikation, nie technische Identität. */
     val schicht: SchichtTyp = SchichtTyp.TAG,
 
-    // Kopf: optional, damit ein BTB historisch konsistent bleibt
     val projektNameSnapshot: String? = null,
-
-    // Legacy / bestehende UI-Felder
     val strecke: String? = null,
     val startUhrzeit: String? = null,
     val endeUhrzeit: String? = null,
 
-    /** Legacy-Feld (freier Text). */
     val wetter: String? = null,
-
-    /**
-     * Neue Wetterstruktur.
-     * Hinweis: weatherSlots bleibt zusätzlich erhalten, weil bestehende UI/PDF Teile es bereits nutzen.
-     */
     val weather: WeatherBlock? = null,
-
-    /**
-     * Abwärtskompatibel: bestehender Code nutzt dieses Feld in UI/PDF.
-     * Langfristig kann alles über [weather] laufen.
-     */
     val weatherSlots: List<WetterSlot> = emptyList(),
 
-    /** Firmenblöcke (Personal/Geräte/Leistungen). */
     val firmen: List<FirmaBlock> = emptyList(),
-
-    /**
-     * Legacy-Felder (wurden früher als einfache Textlisten geführt).
-     * Bleiben für Abwärtskompatibilität bestehen, bis die UI vollständig auf [firmen] umgestellt ist.
-     */
     val personal: List<String> = emptyList(),
     val geraete: List<String> = emptyList(),
     val notizen: String? = null,
 
-    /** Standardabschnitte */
     val abnahmen: SectionBlock = SectionBlock(),
     val einweisungUnterweisung: SectionBlock = SectionBlock(),
     val besonderheiten: SectionBlock = SectionBlock(),
     val maengelSchaeden: SectionBlock = SectionBlock(),
 
-    /** PDF-Anhang */
     val includeFotos: Boolean = true,
     val includeBtbs: Boolean = true,
-
-    /** Max. Anzahl Fotos im PDF (Default 60, kann über Nutzer-Einstellungen vorbelegt werden). */
     val maxFotosInPdf: Int = 60,
-
-    /** Auswahl: welche Fotos ins PDF sollen (BlockKey -> Foto-Ids). */
     val pdfAuswahl: Map<String, List<Long>> = emptyMap(),
-
-    /** Foto-Referenzen (optional – wird vom PDF-Generator genutzt). */
     val fotos: List<FotoRef> = emptyList(),
 
     /**
-     * Wenn true, wurde der Eintrag fachlich geprüft/abgeschlossen.
-     * Änderungen nach dem Abschluss dürfen den historischen Abschluss nicht zerstören; beim
-     * nächsten Dokumentabschluss wird eine neue Dokumentversion erzeugt.
+     * Neues Ein-PDF-Modell. Der letzte Abschluss-Snapshot liegt als JSON im selben BTB-Datensatz.
+     * Er ist ausschließlich Vergleichsbasis für rote Änderungen und wird erst nach erfolgreichem
+     * Abschluss auf den aktuellen Stand gesetzt.
      */
-    val istFertig: Boolean = false,
-
-    /** Letzte abgeschlossene PDF/DOCX-Version; 0 = noch nie abgeschlossen. */
-    val dokumentVersion: Int = 0,
+    val abschlussStatus: BtbAbschlussStatus = BtbAbschlussStatus.ENTWURF,
+    val letzterAbschlussSnapshotJson: String? = null,
+    val abschlussPdfDateiname: String? = null,
     val letzterAbschlussEpochMs: Long? = null,
     val letzterAbschlussBenutzer: String? = null,
+
+    /**
+     * Legacy-Felder bleiben lesbar, damit vorhandene 200023/200024-BTBs nicht verloren gehen.
+     * Für neue BTBs ist [abschlussStatus] maßgeblich; sichtbare V1/V2/V3 werden nicht mehr geführt.
+     */
+    val istFertig: Boolean = false,
+    val dokumentVersion: Int = 0,
 
     val erstelltAmEpochMs: Long = System.currentTimeMillis(),
     val geaendertAmEpochMs: Long = System.currentTimeMillis()
@@ -229,7 +179,6 @@ data class BautagebuchEintrag(
     companion object {
         private val flexibleTimeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("H:mm")
 
-        /** Nur echte Mitternachtswechsel bekommen automatisch ein separates Enddatum. */
         private fun abgeleitetesEnddatum(datumIso: String, start: String?, ende: String?): String? {
             val datum = runCatching { LocalDate.parse(datumIso) }.getOrNull() ?: return null
             val von = start?.trim()?.takeIf { it.isNotBlank() }
