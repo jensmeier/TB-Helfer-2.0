@@ -63,6 +63,24 @@ object BtbFotoZuordnungSpeicher {
     }
 
     /**
+     * Loest beim bewussten Loeschen eines BTB nur die Zusatzbeziehung. Die echten Foto-Dateien und
+     * Room-Eintraege bleiben absichtlich in der Baustelle erhalten und werden nicht mitgeloescht.
+     */
+    fun btbLoesen(context: Context, btbId: String?): Int {
+        val target = btbId?.trim().orEmpty()
+        if (target.isBlank()) return 0
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val keys = prefs.all.entries.mapNotNull { (key, value) ->
+            key.takeIf { (value as? String) == target }
+        }
+        if (keys.isEmpty()) return 0
+        val edit = prefs.edit()
+        keys.forEach(edit::remove)
+        edit.apply()
+        return keys.size
+    }
+
+    /**
      * Unzugeordnete Altbilder bleiben erlaubt. Sobald ein Bild modern zugeordnet ist, darf es nur
      * noch im exakt passenden BTB verwendet werden.
      */
