@@ -17,8 +17,8 @@ Vor jeder Änderung zuerst lesen:
 - aktiv: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
 - PR bleibt Draft bis zum erfolgreichen Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test.
-- aktueller Android-Entwicklungsstand: **versionCode 200027**, `versionName 1.3`.
-- Android 200027 ist vorbereitet, aber **noch nicht lokal kompiliert/installiert/getestet**.
+- aktueller Android-Entwicklungsstand: **versionCode 200028**, `versionName 1.3`.
+- Android 200028 ist vorbereitet, aber noch **nicht lokal kompiliert/installiert/getestet**.
 
 ## Produktiver Synology-Stand – unverändert
 - NAS/Synology ist Source of Truth.
@@ -27,7 +27,7 @@ Vor jeder Änderung zuerst lesen:
 - produktiver Servercode: `/volume1/docker/tb-helfer/server_schema10_stage`.
 - produktive Secrets bleiben ausschließlich in `./server/.env`.
 - letzter bestätigter Produktivstand: PostgreSQL healthy, API/cloudflared gestartet, 72 OpenAPI-Pfade, `DB_TEST=OK`, Schema 10.
-- in der gesamten Android-200025/200026/200027-Runde wurden **keine NAS-/DB-Änderungen** durchgeführt.
+- in der gesamten Android-200025 bis 200028-Runde wurden **keine NAS-/DB-Änderungen** durchgeführt.
 - letzter produktiver Backup-Stand: `/volume1/docker/tb-helfer/backup/tb_helfer_pre_schema10_20260910_173351.dump`, damals mit `pg_restore -l` als `BACKUP_PRUEFUNG=OK` bestätigt.
 - vor dem nächsten produktiven Server-/Schema-Schritt genau ein frisches verifiziertes DB-Backup erstellen; keine redundanten Backups ohne Anlass.
 
@@ -40,7 +40,7 @@ Wichtig: Der Feature-Branch enthält neueren Multi-BTB-Servercode als der produk
 - direkte Installation per ADB erfolgreich.
 
 ### Android 200026 – praktisch bestätigt
-Auf dem Testgerät am 13.09.2026 bestätigt:
+Auf dem Testgerät bestätigt:
 - ohne realen Bericht steht `Noch kein BTB`; bloßes Öffnen erzeugt keinen fachlichen Entwurf.
 - grünes `+` öffnet `Neuen BTB starten`; erst `Neuer BTB` erzeugt den Bericht.
 - orange Bearbeiten-Stift ist vorhanden.
@@ -51,11 +51,53 @@ Auf dem Testgerät am 13.09.2026 bestätigt:
 - Einzel-BTB-ZIP ist btbId-basiert.
 - persönliches Nutzerprofil lokal funktioniert: Name-Fallback sichtbar; persönliche Telefonnummer und E-Mail bleiben nach Speichern/Neustart erhalten.
 
-Beim 200026-Gerätetest zusätzlich gefunden:
-1. ein gelöschter Original-Text wird fachlich gelöscht, aber die erwartete deutlich rote `(entfernt) ...`-Darstellung war nicht zuverlässig sichtbar.
-2. bei zwei BTBs mit je einem Foto zeigte der alte Fotozähler im BTB trotzdem `2/2`; Ursache: alter UI-Pfad verwendete weiterhin nur das überlappende Zeitfenster. Das Abschluss-PDF selbst war bereits auf die btbId gefiltert.
-3. ein Foto, das erst nach dem ersten Abschluss zu einem BTB kommt, muss als Änderung zum unveränderlichen Original im späteren PDF rot markiert werden.
-4. der bestehende PDF-Renderer färbt bei Abschnittsänderungen teilweise zusätzlich Abschnitts-/Gruppenüberschriften rot. Gewünschtes Endverhalten: nur echte Inhaltsabweichungen rot; dieser optische Restpunkt bleibt noch offen.
+### Android 200027 – Gerätetest 13.09.2026
+Die vom Benutzer gelieferten Screenshots bestätigen folgende Punkte:
+- gelöschter Originaltext wird jetzt im Abschluss-PDF sichtbar als **rote `(entfernt) ...`-Änderung** dargestellt.
+- persönliches Nutzerprofil bleibt weiterhin in Ordnung.
+- Foto-Isolation greift **teilweise korrekt**: bei zwei BTBs derselben Baustelle zeigt der Zähler `3/4` bzw. `1/4`. Der Zähler links vom Schrägstrich folgt damit bereits der jeweiligen BTB-Auswahl; der Nenner `4` stammt aber noch aus allen Fotos im überlappenden Zeitfenster.
+- daraus folgt als Soll für genau diese Testdaten: **`3/3` und `1/1`**, nicht `3/4` und `1/4`.
+- die Fotoauswahl selbst muss dieselbe stabile `btbId`-Menge verwenden; Fotos eines anderen modernen BTB dürfen dort nicht einmal als abgewählte Fremdfotos erscheinen.
+- PDF-Diff ist optisch weiterhin zu breit: Strukturüberschriften wie `Wetter`, `4. Ausgeführte Arbeiten`, `Allgemein` und Orts-/Gruppenüberschriften können rot werden, sobald darunter eine Änderung liegt. Gewünscht bleiben ausschließlich tatsächliche geänderte Inhaltswerte/-zeilen rot.
+- die rote Markierung eines **nach dem ersten Abschluss neu hinzugefügten Fotos** ist durch die gezeigten Seiten noch nicht abschließend bestätigt; dieser Test bleibt offen.
+
+## Android 200028 – vorbereiteter Patch
+Ziel dieser Runde ist ausschließlich die noch falsche Foto-Menge in Zähler und Fotoauswahl zu korrigieren, ohne den großen historischen `BautagebuchFragment.kt` zu duplizieren oder den ca. 130-KB-PDF-Renderer riskant als Ganzes zu ersetzen.
+
+### 1. BTB-spezifischer Fotozähler
+Neue Datei:
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPhotoCounterFix.kt`
+
+Verdrahtung:
+- `BtbModernLifecycleInstaller.kt`
+
+Verhalten:
+- der moderne Lifecycle übersteuert den historischen Fotozähler regelmäßig mit derselben fachlichen Menge, die auch PDF/BTB verwenden sollen.
+- explizit einem anderen `btbId` zugeordnete moderne Fotos werden aus Zähler **und Nenner** entfernt.
+- historische unzugeordnete Fotos bleiben als Zeitfenster-Legacy-Fallback erlaubt.
+- manuell abgewählte Fotos bleiben im Nenner, aber nicht im Zähler.
+- für den aktuellen Screenshot-Test ist die Erwartung daher `3/3` für den einen BTB und `1/1` für den anderen.
+
+### 2. Fotoauswahl exakt auf aktuellen BTB filtern
+Geändert:
+- `BtbPdfAuswahlFragment.kt`
+
+Verhalten:
+- die Auswahl löst die aktive stabile `btbId` über `BtbPhotoInstanzKey` auf.
+- ein modernes Foto mit anderer `btbId` wird nicht mehr angezeigt und nicht mitgezählt.
+- Persistenz bearbeitet nur die tatsächlich zu diesem BTB gehörenden IDs.
+- Legacy-Fotos ohne Zuordnung bleiben weiterhin auswählbar, solange sie im Zeitfenster liegen.
+
+### 3. PDF-Strukturfarben – noch offen, bewusst nicht riskant überarbeitet
+`BautagebuchPdf.kt` enthält die strukturelle Rotfärbung direkt in der großen historischen Rendererdatei. Der Fehler ist lokalisiert:
+- tatsächliche Inhaltszeilen verwenden eigene rote Paints und sollen rot bleiben.
+- Struktur-Paints für Abschnitts-, Firmen-/Allgemein- und Ortsüberschriften werden derzeit ebenfalls rot geschaltet.
+
+Soll:
+- `Wetter`, `4. Ausgeführte Arbeiten`, `Allgemein`, `Hauptbaustelle` usw. bleiben schwarz.
+- nur geänderte Wetterwerte, geänderte Textanteile, neue Zeilen, `(entfernt) ...` und neue Fotos sind rot.
+
+Dieser reine Renderer-Farbpatch ist **noch nicht in 200028 enthalten**. Über den aktuellen Connector soll die sehr große Datei nicht für vier Farbstellen blind komplett ersetzt werden. Erst nach lokal sicherem Zugriff/Build oder einer sicheren gezielten Bearbeitungsmöglichkeit ändern.
 
 ## BTB – verbindliches Modell
 ### Identität
@@ -76,58 +118,21 @@ Beim 200026-Gerätetest zusätzlich gefunden:
 - späterer Abschluss ersetzt nur das aktuelle PDF.
 - technischer `btb_<btbId>_abschluss_meta.json`-Datensatz hält Hash/Dateiname/Gültigkeit des aktuellen PDFs; keine sichtbare Versionierung.
 
-## Android 200027 – vorbereiteter Patch
-Ziel: die drei im 200026-Test gefundenen funktionalen Punkte korrigieren, ohne den großen historischen `BautagebuchFragment.kt` bzw. den ca. 130-KB-PDF-Renderer riskant komplett zu ersetzen.
-
-### 1. Foto-Isolation BTB 1 / BTB 2
-Betroffene Dateien:
-- `BtbFotoZuordnungSpeicher.kt`
-- `BtbPhotoSelectionStore.kt`
-- `FotoRepository.kt`
-
-Änderung:
-- `BtbFotoZuordnungSpeicher` kann IDs von Fotos liefern, die explizit einem anderen `btbId` gehören.
-- `BtbPhotoSelectionStore.loadExcluded()` ergänzt solche Fremd-BTB-Fotos automatisch als Ausschluss für den aktuellen BTB.
-- dadurch verwenden auch historische UI-Pfade für Fotozähler/Auswahl die btbId-Isolation, ohne dass der Groß-Fragmentcode dupliziert wird.
-- automatische Fremd-BTB-Ausschlüsse werden nicht als manuelle Benutzer-Abwahl dauerhaft gespeichert.
-- Erwartung für Test: zwei BTBs mit je einem modernen Foto zeigen jeweils `1/1`, nicht `2/2`.
-
-### 2. Foto-Bestand gehört zum unveränderlichen Original
-Neue Dateien:
+### Fotos als Teil des Originalstands
+Vorhanden seit 200027:
 - `BtbOriginalFotoSpeicher.kt`
 - `BtbFotoRenderMarkierung.kt`
-
-Verdrahtung:
-- `BtbModernLifecycleInstaller.kt`
-- `FotoRepository.kt`
-
-Verhalten:
-- beim allerersten erfolgreichen Abschluss wird zusätzlich die tatsächlich zum BTB gehörende Foto-ID-Menge einmalig als Foto-Original gespeichert.
-- diese Foto-Basis wird bei späteren Abschlüssen niemals überschrieben.
-- für bereits unter 200026 abgeschlossene BTBs wird eine fehlende Foto-Basis einmalig aus dem Zeitpunkt der vorhandenen unveränderlichen BTB-Originaldatei rekonstruiert; moderne Fotos derselben btbId bis zu diesem Zeitpunkt gelten als damaliges Original.
-- ein später hinzugekommenes Foto wird beim neuen PDF-Abschluss über eine **temporäre PDF-Kopie** sichtbar rot markiert: roter Rahmen + roter Banner `ÄNDERUNG ZUM ORIGINAL`.
-- Original-JPG, Room-Datensatz und Serverbild werden dabei nicht verändert.
-- neue oder gelöschte Fotos eines bereits abgeschlossenen modernen BTB invalidieren das bisherige Abschlussdokument.
-
-### 3. Gelöschte Originaltexte sichtbar machen
-Neue Datei:
 - `BtbRenderOriginalDiff.kt`
 
-Verdrahtung:
-- `BtbModernLifecycleInstaller.kt`
-
-Verhalten:
-- nur für den PDF-Lauf wird eine temporäre Darstellungsfassung des aktuellen BTB gebaut.
-- echte Löschungen werden aus dem unveränderlichen Original als `(entfernt) ...` ergänzt.
-- diese Zusatzzeilen werden **nicht** in den aktuellen BTB zurückgespeichert; fachlich bleibt der Inhalt gelöscht.
-- normale Textänderungen werden möglichst als Änderung statt zusätzlich als Löschung erkannt.
-- die vorhandene Diff-Logik soll den temporären `(entfernt)`-Eintrag rot darstellen.
-
-### Bekannter Renderer-Restpunkt
-Der bestehende `BautagebuchPdf.kt` färbt Abschnitts-/Orts-/teilweise Gruppenüberschriften noch rot, sobald darunter eine Änderung liegt. Das ist optisch nicht das gewünschte Endverhalten. Wegen der Größe und Historie dieser Datei wurde sie in 200027 nicht blind komplett ersetzt. Nach Bestätigung der funktionalen 200027-Korrekturen folgt dafür ein kleiner eigener Renderer-Aufräumpatch.
+Regeln:
+- Foto-ID-Menge des ersten erfolgreichen Abschlusses bleibt unveränderlich.
+- für ältere 200026-BTBs darf sie einmalig aus dem Zeitpunkt des vorhandenen ersten Originalabschlusses rekonstruiert werden.
+- ein später neu hinzugefügtes Foto gilt als Abweichung vom Original.
+- PDF-Aufbereitung erzeugt dafür nur eine temporäre markierte Bildkopie; Original-JPG/Room-Datensatz bleiben unverändert.
+- neue/gelöschte Fotos eines bereits abgeschlossenen modernen BTB invalidieren das alte Abschlussdokument.
 
 ## Nutzerprofil / Name
-Praktisch mit 200026 bestätigt:
+Praktisch bestätigt:
 - Benutzername `jens poco` wird angezeigt.
 - persönliche Telefonnummer und persönliche E-Mail können auf Schema 10 lokal gespeichert werden und bleiben nach Neustart erhalten.
 - Firmenprofil bleibt getrennt und serverseitig zentral.
@@ -154,8 +159,9 @@ Im Branch vorhanden:
 Produktiver Server unterstützt den neueren Branch-Multi-BTB-Code noch nicht vollständig; deshalb noch kein verbindlicher Pixel↔Poco-Ende-zu-Ende-Test des neuen Multi-BTB-Flows.
 
 ## Weitere offene Hauptblöcke
-- Android 200027 lokal bauen/installieren/testen.
-- nach funktionalem 200027-Test: Renderer-Überschriften nur schwarz/Strukturfarbe, echte Inhaltsabweichungen rot.
+- Android 200028 lokal bauen/installieren/testen.
+- PDF-Strukturüberschriften schwarz halten; nur echte Inhaltsabweichungen rot.
+- roten Rahmen/Banner eines nach Originalabschluss neu aufgenommenen Fotos praktisch bestätigen.
 - 7 bekannte Compilerwarnungen später in eigenem Aufräumpatch beseitigen.
 - großer `BautagebuchFragment.kt` enthält noch historische Tag/Nacht-/Altpfade; moderne Installer übersteuern sie derzeit zur Laufzeit.
 - großer Baustellen-Gesamtexport noch nicht vollständig auf btbId/Ein-PDF umgestellt.
@@ -168,9 +174,11 @@ Produktiver Server unterstützt den neueren Branch-Multi-BTB-Code noch nicht vol
 ## Nächster sicherer Test
 1. lokal `git pull`.
 2. `gradlew.bat :app:assembleDebug :app:testDebugUnitTest`.
-3. **Nur wenn der Build erfolgreich ist:** Android 200027 per ADB als Update installieren, App-Daten nicht löschen.
-4. BTB 1 und BTB 2 mit je genau einem modernen Foto öffnen: jeder Fotozähler soll nur sein eigenes Bild zeigen (`1/1`).
-5. bei einem bereits abgeschlossenen BTB ein neues Foto aufnehmen, danach erneut `BTB Abschluss`: neues Foto muss im PDF sichtbar rot als Änderung zum Original markiert sein.
-6. Original-Textzeile löschen, erneut abschließen: PDF muss eine rote `(entfernt) ...`-Darstellung enthalten; gelöschter Text darf nicht in den gespeicherten aktuellen BTB zurückkehren.
-7. Nutzerprofil muss unverändert erhalten bleiben.
-8. Fehler/Screenshots zuerst lokal auswerten; produktiven NAS weiterhin nicht anfassen.
+3. **Nur wenn der Build erfolgreich ist:** Android 200028 per ADB als Update installieren, App-Daten nicht löschen.
+4. denselben BTB mit bisher `3/4` öffnen → erwartet **`3/3`**.
+5. den anderen BTB mit bisher `1/4` öffnen → erwartet **`1/1`**.
+6. jeweils auf den Foto-Chip tippen: in der Auswahl dürfen nur die Fotos dieses BTB plus echte unzugeordnete Legacy-Fotos auftauchen; moderne Fotos des anderen BTB dürfen fehlen.
+7. bereits funktionierende rote `(entfernt) ...`-Darstellung darf nicht regressieren.
+8. bei einem bereits abgeschlossenen BTB neues Foto aufnehmen und erneut abschließen: roter Änderungsrahmen/Banner im Foto-Anhang prüfen.
+9. PDF-Strukturüberschriften bleiben bis zum separaten sicheren Renderer-Farbpatch als bekannter optischer Restpunkt dokumentiert.
+10. produktiven NAS weiterhin nicht anfassen.
