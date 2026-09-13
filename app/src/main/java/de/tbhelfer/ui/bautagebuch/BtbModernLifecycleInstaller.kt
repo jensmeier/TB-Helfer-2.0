@@ -17,6 +17,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
@@ -32,12 +33,13 @@ import java.util.Collections
 import java.util.WeakHashMap
 
 /**
- * Verdrahtet das neue BTB-Zielmodell ohne den historischen Groß-Fragmentcode zu duplizieren:
- * - Stift neben + für den aktuell geladenen BTB,
+ * Verdrahtet das moderne BTB-Zielmodell ohne den historischen Gross-Fragmentcode zu duplizieren:
+ * - Stift neben + fuer den aktuell geladenen BTB,
  * - Abschluss erst nach erfolgreichem PDF-Schreiben,
  * - genau ein aktuelles PDF pro btbId,
- * - Nachbearbeitung löscht das alte Abschlussdokument,
- * - Abschlussstatus wird aus dem btbId-spezifischen Snapshot abgeleitet.
+ * - erster Abschluss bleibt unveraenderliches Original fuer die rote Differenz,
+ * - Nachbearbeitung loescht das alte Abschlussdokument,
+ * - kein sichtbarer Schein-Entwurf, solange noch gar kein BTB existiert.
  */
 object BtbModernLifecycleInstaller {
 
@@ -116,7 +118,7 @@ object BtbModernLifecycleInstaller {
                 BtbDokumentVersionierung.status(fragment.requireContext().applicationContext, current.entry)
             }
             val message = if (status == BtbAbschlussStatus.ABGESCHLOSSEN) {
-                "Dieser BTB ist abgeschlossen. Nur das Öffnen ändert noch nichts. Erst eine tatsächlich gespeicherte Änderung macht das Abschluss-PDF ungültig."
+                "Dieser BTB ist abgeschlossen. Nur das Öffnen ändert noch nichts. Erst eine tatsächlich gespeicherte Änderung macht das Abschluss-PDF ungültig. Das erste Original bleibt für die Rot-Markierung erhalten."
             } else {
                 "Es wird immer derselbe BTB mit derselben btbId bearbeitet."
             }
@@ -153,7 +155,8 @@ object BtbModernLifecycleInstaller {
     }
 
     private fun bindFinalButton(fragment: BautagebuchFragment, root: View) {
-        val finalButton = root.findViewById<View>(R.id.btnPdfFinal) ?: return
+        val finalButton = root.findViewById<MaterialButton>(R.id.btnPdfFinal) ?: return
+        finalButton.text = "BTB Abschluss"
         finalButton.setOnClickListener { anchor -> closeCurrentBtb(fragment, root, anchor) }
         finalButton.setOnLongClickListener { anchor ->
             Snackbar.make(anchor, "ZIP bitte beim gewünschten BTB im BTB-Verlauf teilen.", Snackbar.LENGTH_LONG).show()
@@ -173,6 +176,8 @@ object BtbModernLifecycleInstaller {
             val appContext = fragment.requireContext().applicationContext
             val result = withContext(Dispatchers.IO) {
                 runCatching {
+                    // Bei echter Nachbearbeitung ist das vorige PDF ungueltig. Das erste Original
+                    // bleibt dagegen dauerhaft erhalten und wird fuer den Renderer gespiegelt.
                     BtbDokumentVersionierung.pflegeNachAutosave(appContext, saved.entry)
                     BtbRendererBaselineBridge.prepare(appContext, saved.entry)
 
@@ -199,7 +204,7 @@ object BtbModernLifecycleInstaller {
                     putExtra(BtbPdfViewerActivity.EXTRA_TITLE, "BTB-PDF")
                 })
             }.onFailure { error ->
-                Snackbar.make(anchor, "PDF-Abschluss fehlgeschlagen: ${error.message ?: "unbekannter Fehler"}", Snackbar.LENGTH_LONG).show()
+                Snackbar.make(anchor, "BTB-Abschluss fehlgeschlagen: ${error.message ?: "unbekannter Fehler"}", Snackbar.LENGTH_LONG).show()
             }
         }
     }
@@ -211,7 +216,14 @@ object BtbModernLifecycleInstaller {
                 var lastSeenChange: Long = Long.MIN_VALUE
                 while (isActive) {
                     val current = runCatching { BtbUiSaveBridge.aktuell(fragment) }.getOrNull()
-                    if (current != null) {
+                    if (current == null) {
+                        // Der historische Fragment-Banner zeigt sonst auch ohne Datei "Entwurf".
+                        // Fachlich existiert aber erst nach dem grünen + ein BTB.
+                        root.findViewById<TextView>(R.id.tvCurrentReportLine1)?.text = "Noch kein BTB"
+                        root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = ""
+                        lastSeenId = null
+                        lastSeenChange = Long.MIN_VALUE
+                    } else {
                         val changedStamp = current.entry.geaendertAmEpochMs
                         if (current.btbId != lastSeenId || changedStamp != lastSeenChange) {
                             withContext(Dispatchers.IO) {
