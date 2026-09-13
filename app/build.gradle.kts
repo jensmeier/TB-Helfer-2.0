@@ -18,8 +18,8 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Android 200026: erster Abschluss bleibt unveränderliches BTB-Original; PDF-Viewer Safe-Areas.
-        versionCode = 200026
+        // Android 200027: BTB-Foto-Isolation, rote Original-Abweichungen und sichtbare Löschungen.
+        versionCode = 200027
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
