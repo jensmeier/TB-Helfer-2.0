@@ -17,8 +17,8 @@ Vor jeder Änderung zuerst lesen:
 - aktiv: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
 - PR bleibt Draft bis zum erfolgreichen Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test.
-- aktueller Android-Entwicklungsstand: **versionCode 200030**, `versionName 1.3`.
-- Android 200030 ist vorbereitet, aber noch **nicht lokal kompiliert/installiert/getestet**.
+- aktueller Android-Entwicklungsstand: **versionCode 200031**, `versionName 1.3`.
+- Android 200031 ist vorbereitet, aber noch **nicht lokal kompiliert/installiert/getestet**.
 
 ## Produktiver Synology-Stand – unverändert
 - NAS/Synology ist Source of Truth.
@@ -26,121 +26,119 @@ Vor jeder Änderung zuerst lesen:
 - PostgreSQL produktiv: **Schema 10** `010_worksite_invitations_company_profile`.
 - produktiver Servercode: `/volume1/docker/tb-helfer/server_schema10_stage`.
 - produktive Secrets bleiben ausschließlich in `./server/.env`.
-- letzter bestätigter Produktivstand: PostgreSQL healthy, API/cloudflared gestartet, 72 OpenAPI-Pfade, `DB_TEST=OK`, Schema 10.
-- in der gesamten Android-200025 bis 200030-Runde wurden **keine NAS-/DB-Änderungen** durchgeführt.
+- letzter bestätigter Produktivstand: PostgreSQL healthy, API/cloudflared gestartet, 72 OpenAPI-Pfade, Schema 10.
+- in der gesamten Android-200025 bis 200031-Runde wurden **keine NAS-/DB-Änderungen** durchgeführt.
 - letzter produktiver Backup-Stand: `/volume1/docker/tb-helfer/backup/tb_helfer_pre_schema10_20260910_173351.dump`, damals mit `pg_restore -l` als `BACKUP_PRUEFUNG=OK` bestätigt.
-- vor dem nächsten produktiven Server-/Schema-Schritt genau ein frisches verifiziertes DB-Backup erstellen; keine redundanten Backups ohne Anlass.
+- Schema 11 für persönliche Nutzerkontakte ist im Branch vorbereitet, aber **nicht produktiv migriert**.
+- vor dem nächsten produktiven Server-/Schema-Schritt genau ein frisches verifiziertes DB-Backup erstellen.
 
-Wichtig: Der Feature-Branch enthält neueren Multi-BTB-Servercode als der produktive Stage-Ordner. Schema 11 für persönliche Nutzerkontakte ist vorbereitet, aber **nicht produktiv migriert**.
+## Praktisch bestätigter Android-Stand bis 200030
+- Debug-APK wurde zuvor erfolgreich lokal gebaut/signiert und per ADB installiert; bekannte 7 Kotlin/Java-Warnungen bleiben späterer Aufräumpunkt.
+- bloßes Öffnen erzeugt keinen fachlichen BTB; `Noch kein BTB` funktioniert.
+- grünes `+` legt erst nach ausdrücklichem `Neuer BTB` eine neue stabile `btbId` an.
+- mehrere BTBs am selben Tag funktionieren grundsätzlich.
+- erster erfolgreicher `BTB Abschluss` bleibt unveränderliches Original.
+- spätere Textänderungen bleiben gegenüber diesem ersten Original rot.
+- gelöschter Originaltext erscheint rot als `(entfernt) ...`.
+- App-interner PDF-Viewer funktioniert inkl. Safe-Areas/Seitennavigation.
+- lokales Nutzerprofil funktioniert: Name, persönliche Telefonnummer und E-Mail bleiben erhalten.
+- Foto-Isolation über `btbId` funktioniert im getesteten Verlauf; Zähler zeigten u. a. `3/3` und später `5/5` am selben BTB.
+- nach dem ersten Abschluss neue Fotos werden im Fotoanhang rot mit `ÄNDERUNG ZUM ORIGINAL` markiert.
+- Fotoänderung invalidiert das aktuelle Abschluss-PDF; aktuelle Screenshots zeigen korrekt `Nachbearbeitung · Abschluss-PDF ungültig` auch im BTB-Verlauf.
+- kompakter BTB-Kopf und Fenster `Aktuellen BTB bearbeiten` funktionieren.
 
-## Praktischer Android-Teststand
-### Android 200025
-- lokal erfolgreich gebaut; 7 bekannte Kotlin/Java-Deprecation-/Redundanz-Warnungen, keine Buildfehler.
-- Debug-APK mit `apksigner`: `Verifies`, v1=true, v2=true.
-- direkte Installation per ADB erfolgreich.
-
-### Android 200026 – praktisch bestätigt
-- ohne realen Bericht steht `Noch kein BTB`; bloßes Öffnen erzeugt keinen fachlichen Entwurf.
-- grünes `+` erzeugt erst nach `Neuer BTB` einen Bericht.
-- orange Bearbeiten-Stift vorhanden.
-- `BTB Abschluss` funktioniert.
-- App-interner PDF-Viewer inkl. Safe-Areas funktioniert.
-- erster erfolgreicher Abschluss bleibt unveränderliches Original.
-- spätere Änderungen bleiben gegen dieses erste Original rot.
-- persönliches Nutzerprofil lokal funktioniert: Name, persönliche Telefonnummer und E-Mail bleiben erhalten.
-
-### Android 200027 – praktisch bestätigt
-- gelöschter Originaltext erscheint sichtbar rot als `(entfernt) ...`.
-- Foto-Isolation war zunächst nur teilweise korrekt (`3/4` bzw. `1/4` statt `3/3` / `1/1`).
-- PDF-Strukturüberschriften werden teilweise zu breit rot gefärbt.
-
-### Android 200028 – Gerätetest/Screenshots
-Umgesetzt:
-- Fotozähler und Fotoauswahl sind auf die stabile `btbId` ausgerichtet.
-- moderne Fotos anderer BTBs sollen aus Zähler/Nenner/Auswahl verschwinden; Legacy-Fotos ohne Zuordnung bleiben Zeitfenster-Fallback.
-- Screenshot eines BTB zeigt einen konsistenten Zähler `4/4`.
-- ein nach dem ersten Abschluss hinzugefügtes Foto wird im Fotoanhang sichtbar mit rotem Rahmen/Banner `ÄNDERUNG ZUM ORIGINAL` markiert; diese Funktion ist praktisch bestätigt.
-- rote `(entfernt) ...`-Darstellung funktioniert weiterhin.
-
-Noch offen aus dem 200028-Test:
-1. Cross-BTB-Test mit getrennten Mengen (`3/3` und `1/1`) noch einmal gezielt bestätigen.
-2. Bildverweise im Haupttext müssen dieselbe Original-Diff-Regel verwenden: wenn z. B. Bild 3 und 4 erst nach dem ersten Abschluss entstanden sind, muss auch `[Bild 3–4]` unter `4. Ausgeführte Arbeiten` rot sein. Bei gemischten Referenzen bleibt der Originalteil schwarz und nur der neue Bildanteil rot.
-3. Strukturüberschriften wie `Wetter`, `4. Ausgeführte Arbeiten`, `Allgemein`, `Hauptbaustelle`/Ortsüberschriften bleiben schwarz; nur echte Inhaltsabweichungen rot.
-
-### Android 200029 – praktisch per Screenshot weiter bestätigt
-- kompakter Kopf funktioniert; `Details anzeigen` liegt direkt unter der Quickbar.
-- orange Stift öffnet das Fenster `Aktuellen BTB bearbeiten` korrekt.
-- es war **derselbe BTB**, kein BTB-Wechsel und kein Datenverlust.
-- nach zwei weiteren Fotos zeigte derselbe BTB korrekt `3/3`; die stabile Fotozuordnung zur `btbId` bleibt damit im gezeigten Fall erhalten.
-- gefundenes UI-Problem: nach `Bearbeiten` im Stift-Fenster wurde die alte Vierer-Auswahl `Wetter / Datum Zeit / Personal / Geräte Maschinen` wieder als Zwischenschritt eingeblendet.
-- gefundenes Abschlussproblem: derselbe bereits abgeschlossene BTB blieb trotz nachträglich hinzugefügter Fotos optisch `Abgeschlossen`. Laut verbindlicher Foto-Originalregel muss eine geänderte Foto-Menge den bestehenden Abschluss genauso invalidieren wie eine Textänderung.
-
-## Android 200030 – aktueller vorbereiteter Patch
-Betroffene Dateien:
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbModernLifecycleInstaller.kt`
+## Android 200031 – aktuell vorbereiteter Patch
+### Betroffene Dateien
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPatch200031Installer.kt` – neu
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDeleteService.kt` – neu
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPhotoCounterFix.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbFotoZuordnungSpeicher.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbRendererBaselineBridge.kt`
+- `app/src/main/java/de/tbhelfer/ui/baustelle/BtbVerlaufFragment.kt`
+- `app/src/main/java/de/tbhelfer/ui/HauptActivity.kt`
 - `app/build.gradle.kts`
-- `docs/TB-HELFER_PROJEKTREGELN.md`
-- `docs/TB-HELFER_AKTUELLER_STAND.md`
 
-Änderungen:
-- Stift-Fenster bleibt der zentrale Einstieg `Aktuellen BTB bearbeiten`.
-- bei `Personal`, `Geräte/Maschinen` und `Wetter` wird nach `Bearbeiten` der vorhandene Editor direkt geöffnet; die alte Vierer-Auswahl wird sofort wieder ausgeblendet und nicht mehr als sichtbarer Zwischenschritt stehen gelassen.
-- `Datum/Zeit` öffnet seinen vorhandenen Datum-/Schicht-Popup direkt über einen unsichtbar gelayouteten Anchor, ohne die alte Vierer-Auswahl sichtbar einzublenden.
-- wenn **noch kein BTB** existiert, werden zusätzlich der orange Bearbeiten-Stift, sein Abstand sowie `PDF Entwurf` und `BTB Abschluss` ausgeblendet.
-- wenn wieder ein realer BTB vorhanden ist, werden diese Aktionen wieder eingeblendet.
-- Foto-Originalmenge wird im Lifecycle-Watcher regelmäßig mit der aktuell ausgewählten Foto-Menge desselben `btbId` verglichen.
-- neue, entfernte oder nachträglich abgewählte Fotos gegenüber dem ersten Original machen das aktuelle Abschluss-PDF ungültig; das PDF wird entfernt und der vorhandene Status-Finder liefert anschließend `Nachbearbeitung`.
-- Status wird bewusst erst **nach** der Foto-Prüfung aktualisiert, damit ein neues Foto am bereits abgeschlossenen BTB nicht weiter als `Abgeschlossen` angezeigt wird.
-- Fotozähler bleibt weiterhin über `BtbPhotoCounterFix` auf der konkreten `btbId`.
+### 1. PDF Entwurf
+- `PDF Entwurf` wird im neuen Installer übernommen.
+- aktueller BTB wird zuerst sauber gespeichert.
+- Entwurfs-PDF nutzt dieselbe btbId-/Original-/Foto-Aufbereitung wie der moderne Abschluss, ohne den BTB abzuschließen.
+- nach erfolgreichem Erzeugen öffnet **sofort der App-interne `BtbPdfViewerActivity`**; kein externer Viewer und kein zusätzlicher `Öffnen`-Snackbar-Schritt.
 
-Tests:
-- GitHub-Stand und betroffene Laufzeitpfade statisch geprüft.
-- **noch kein lokaler Gradle-Build/ADB-Gerätetest für 200030**; nicht als kompiliert bestätigen.
+### 2. BTB vollständig löschen
+- im `BTB-Verlauf` gibt es pro modernem BTB zusätzlich `BTB löschen` mit Sicherheitsabfrage.
+- gelöscht werden der BTB-Datensatz, unveränderliches Original, Abschluss-Metadaten sowie app-eigene PDF/DOCX-Dateien dieser `btbId`.
+- **echte Baustellenfotos werden nicht physisch gelöscht**; ihre Foto→btbId-Zuordnung wird nur gelöst. Das verhindert versehentlichen Verlust von Beweis-/Baustellenfotos.
+- wenn der gelöschte BTB aktuell war, wird der aktive Pointer entfernt und – falls vorhanden – der nächste verbliebene BTB aktiviert.
+- Legacy-BTBs (`legacy:*`) werden durch diese neue Löschfunktion noch nicht destruktiv gelöscht.
+
+### 3. Fotozuordnung schlägt Zeitfenster
+- moderne Fotos, die explizit der aktuellen `btbId` zugeordnet sind, zählen künftig **auch außerhalb der ursprünglich eingetragenen Arbeitszeit** zu diesem BTB.
+- die Arbeitszeit ist Dokumentinhalt, nicht Foto-Identität.
+- ein Foto mit fremder `btbId` bleibt ausgeschlossen.
+- nur historische Fotos ohne btbId benutzen weiterhin das Arbeitszeitfenster als Legacy-Fallback.
+
+### 4. Arbeitszeit / Kopfdaten / Wetter
+- Klick auf das vorhandene Datum-/Zeit-Feld wird durch 200031 auf einen direkten Arbeitszeit-Dialog umgebogen; das alte Popup mit `+ Neuer BTB / Entfernen` ist für diese Bearbeitung nicht mehr der Zielweg.
+- Beginn/Ende werden direkt am **selben BTB / derselben `btbId`** gespeichert.
+- anschließend wird die BTB-View neu gebunden, damit private Altwerte im historischen Fragment die gespeicherte Uhrzeit nicht beim nächsten Autosave wieder überschreiben.
+- bei Schicht über Mitternacht wird `endeDatumIso` automatisch auf den Folgetag gesetzt.
+- Arbeitszeit, Personal/Firmen, Geräte/Maschinen und Wetter werden für die **rote PDF-Darstellung neutralisiert**: diese Kopfdaten sollen schwarz bleiben. Die echte Originaldatei wird dafür nicht verändert; nur die temporäre Renderer-Baseline wird angepasst.
+- Abschnitte 4–8 bleiben echter Vergleich gegen das erste Original.
+- nach dem ersten Abschluss ist die normale Wetter-Vorschau nicht mehr klickbar und kann keinen automatischen Wetter-Refresh auslösen. Manuelle Wetter-Nachbearbeitung bleibt über den orangefarbenen Stift möglich.
+
+### 5. ZIP im BTB-Verlauf = Tagesabschluss
+- `ZIP teilen` im BTB-Verlauf erzeugt nicht mehr nur `BtbEinzelZip`.
+- stattdessen wird für den Kalendertag des gewählten BTB der vorhandene `BtbExportPaket.erstellenBaustellenExport(...)` verwendet.
+- Ziel ist die bekannte Laptop-/Tagesabschluss-Struktur mit BTB, Bildern, Mängeln, Abnahmen sowie Gesamtlisten (`Bilderliste_gesamt.*`, Mängel-/Abnahmelisten usw.).
+- dadurch wird keine zweite parallele Exportlogik erfunden.
+
+### Tests 200031
+- GitHub-Codepfade statisch gegen den aktuellen Feature-Branch geprüft.
+- **noch kein lokaler Gradle-Build/ADB-Gerätetest**; nicht als kompiliert bestätigen.
 - NAS/DB nicht verändert.
 
-## BTB – verbindliches Modell
+## BTB – verbindliches Kernmodell
 ### Identität
 - ein fachlicher BTB = eine dauerhafte stabile `btbId`.
-- Datum, Uhrzeit und Tag/Nacht sind Attribute/Anzeige, nie technische Identität.
+- Datum/Uhrzeit/Tag/Nacht sind Attribute, nie technische Identität.
 - mehrere BTBs desselben Teams am selben Tag sind erlaubt.
 - BTB 1 ↔ BTB 2 wird über konkrete `btbId` gewechselt; aktueller BTB wird vorher tatsächlich gespeichert.
-- mehrere Baustellen dürfen lokal vorhanden sein; genau eine ist jeweils aktuell. Daten/BTBs verschiedener Baustellen dürfen sich nie vermischen.
+- mehrere Baustellen dürfen lokal vorhanden sein; genau eine ist jeweils aktuell. Daten verschiedener Baustellen dürfen sich nie vermischen.
 
 ### Abschluss / Original
 - keine sichtbaren V1/V2/V3.
 - pro `btbId` höchstens ein aktuell gültiges Abschluss-PDF.
 - erster erfolgreicher `BTB Abschluss` = unveränderliches Original.
-- Originaldatei intern: `btb_<btbId>_original.json`; spätere Abschlüsse überschreiben sie nicht.
-- Rotvergleich bleibt dauerhaft gegen dieses erste Original.
+- Originaldatei intern `btb_<btbId>_original.json`; spätere Abschlüsse überschreiben sie nicht.
+- fachliche Rotmarkierung bleibt dauerhaft gegen dieses erste Original.
 - zurück auf Originalwert = wieder schwarz.
 - tatsächliche Änderung nach Abschluss invalidiert/löscht das bisherige PDF; Status `Nachbearbeitung`.
 - späterer Abschluss ersetzt nur das aktuelle PDF.
-- technischer `btb_<btbId>_abschluss_meta.json`-Datensatz hält Hash/Dateiname/Gültigkeit des aktuellen PDFs; keine sichtbare Versionierung.
+- technischer Abschluss-Metadatensatz hält Hash/Dateiname/Gültigkeit des aktuellen PDFs; keine sichtbare Versionierung.
 
-### Fotos als Teil des Originalstands
-- neue normale BTB-Fotos erhalten eine eindeutige `btbId`.
+### Fotos
+- moderne Fotos erhalten eine eindeutige `btbId`.
+- explizite Foto-btbId ist stärker als das Arbeitszeitfenster.
 - Foto-ID-Menge des ersten erfolgreichen Abschlusses bleibt unveränderlich.
-- ein später neu hinzugefügtes Foto gilt als Abweichung vom Original und invalidiert das aktuelle Abschluss-PDF.
-- auch Entfernen/Abwählen eines Originalfotos gilt als Foto-Abweichung und invalidiert den Abschluss.
-- PDF-Aufbereitung erzeugt für neue Fotos nur eine temporäre rot markierte Bildkopie; Original-JPG/Room-Datensatz bleiben unverändert.
-- Bildreferenzen im Haupttext müssen künftig ebenfalls zwischen Original- und nachträglich hinzugefügten Bildern unterscheiden.
+- neues/entferntes/abgewähltes Foto gegenüber diesem Original invalidiert das Abschluss-PDF.
+- neue Fotos werden im PDF-Anhang rot markiert; Original-JPG bleibt unverändert.
+- Bildreferenzen im Haupttext sollen ebenfalls zwischen Original- und nachträglich hinzugefügten Bildern unterscheiden.
 
 ## Nutzerprofil / Name
 Praktisch bestätigt:
-- Benutzername `jens poco` wird angezeigt.
+- Benutzername wird angezeigt.
 - persönliche Telefonnummer und persönliche E-Mail können auf Schema 10 lokal gespeichert werden und bleiben nach Neustart erhalten.
 - Firmenprofil bleibt getrennt und serverseitig zentral.
 
 Schema 11 vorbereitet, noch nicht produktiv:
 - `server/migrations/011_user_contact_profile.sql`
-- `server/checks/05_verify_schema11.sql` → erwartet `SCHEMA_11_OK`
+- `server/checks/05_verify_schema11.sql`
 - `server/checks/06_verify_schema11_source.py`
 - `server/app_parts/18_part.py`
 - `GET /api/v1/user/profile`
 - `PUT /api/v1/user/profile`
 
 ## Teams / Baustellen / Sync
-Im Branch vorhanden/beschlossen:
 - Zusammenarbeit strikt innerhalb derselben Firma.
 - mehrere verantwortliche TBs möglich; jeder verantwortliche TB hat mit seinen Helfern seinen eigenen gemeinsamen BTB-Bereich.
 - Helfer nur im freigegebenen Bereich; verantwortliche TBs baustellenweit gemäß Regeln.
@@ -150,17 +148,15 @@ Im Branch vorhanden/beschlossen:
 - QR-Beitritt fragt `Jetzt öffnen?` / `Später`.
 - entfernte/ausgetretene Mitglieder behalten historische lokale Daten nur lesbar; serverseitige Membership-Removal-API bleibt offen.
 
-Produktiver Server unterstützt den neueren Branch-Multi-BTB-Code noch nicht vollständig; deshalb noch kein verbindlicher Pixel↔Poco-Ende-zu-Ende-Test des neuen Multi-BTB-Flows.
-
-## Weitere offene Hauptblöcke
-- Android 200030 lokal bauen/installieren/testen.
-- PDF-Strukturüberschriften schwarz halten; nur echte Inhaltsabweichungen rot.
-- Bildnummern/-bereiche im Haupttext differenziert rot markieren, wenn die referenzierten Fotos nach dem Originalabschluss hinzugekommen sind.
-- Einzel-BTB-DOCX muss dieselbe Original-/Rotlogik wie das PDF erhalten; der aktuell einfache DOCX-Export schreibt noch ausschließlich schwarzen Text.
+## Bekannte offene Punkte
+- Android 200031 lokal bauen/installieren/testen.
+- große historische `BautagebuchPdf.kt` färbt einzelne Strukturüberschriften noch zu breit rot; Überschriften sollen später schwarz bleiben.
+- Bildnummern/-bereiche im Haupttext müssen noch differenziert rot werden, wenn die referenzierten Fotos nach dem Originalabschluss hinzukamen.
+- Einzel-BTB-DOCX besitzt noch nicht dieselbe Rotformatierung wie das PDF; der Verlauf verwendet ab 200031 allerdings den bestehenden Tagesabschluss-ZIP statt des Einzel-BTB-ZIP.
+- der große PDF-Renderer hat intern weiterhin einen alten Zeitfenster-Vorfilter; moderne btbId-Fotos werden in Zähler/BTB-Zuordnung bereits unabhängig von der Zeit behandelt, die vollständige Renderer-Bereinigung bleibt noch zu prüfen.
 - BTB 1 ↔ BTB 2 und Baustelle A ↔ Baustelle B praktisch weiter testen.
 - 7 bekannte Compilerwarnungen später in eigenem Aufräumpatch beseitigen.
-- großer `BautagebuchFragment.kt` enthält historische Tag/Nacht-/Altpfade; moderne Installer übersteuern sie derzeit zur Laufzeit.
-- großer Baustellen-Gesamtexport noch nicht vollständig auf btbId/Ein-PDF umgestellt.
+- Baustellen-Gesamtexport noch nicht vollständig in allen Altpfaden auf btbId/Ein-PDF modernisiert.
 - vollständiger Unterbaustellen-/Baustellenstruktur-Sync (`Immenstadt` / `5362-1`) bleibt offen.
 - serverseitiges Entfernen/Verlassen mit lokal nur-lesbar bleibt offen.
 - Zwei-Geräte-Tests für BTB, Bilder, Mängel, Abnahmen, 409-Konflikte, Tombstones, Netzabbruch und Benachrichtigungen bleiben offen.
@@ -168,13 +164,14 @@ Produktiver Server unterstützt den neueren Branch-Multi-BTB-Code noch nicht vol
 - danach Vermessungs-/Kilometrierungsblock weiterführen.
 
 ## Nächster sicherer Test
-1. lokal `git pull`.
-2. `gradlew.bat :app:assembleDebug :app:testDebugUnitTest`.
-3. **Nur wenn der Build erfolgreich ist:** Android 200030 per ADB als Update installieren, App-Daten nicht löschen.
-4. ohne BTB prüfen: `Noch kein BTB`; orange Stift sowie `PDF Entwurf`/`BTB Abschluss` sollen nicht sichtbar sein.
-5. bestehenden BTB öffnen und orange Stift drücken.
-6. bei `Personal`, `Geräte/Maschinen` und `Wetter` jeweils `Bearbeiten` drücken: der gewählte Editor soll direkt erscheinen; die alte Vierer-Auswahl darf nicht als Zwischenschritt stehen bleiben.
-7. `Datum/Zeit → Bearbeiten`: vorhandener Datum-/Zeit-Popup soll direkt erscheinen.
-8. bei einem bereits abgeschlossenen BTB ein neues Foto aufnehmen: Fotozähler z. B. `1/1 → 2/2` bzw. `3/3`, Status muss danach automatisch `Nachbearbeitung · Abschluss-PDF ungültig` werden.
-9. BTB erneut abschließen und PDF prüfen: neue Fotos bleiben gegenüber dem ersten Original rot markiert.
-10. produktiven NAS weiterhin nicht anfassen.
+1. `git pull`
+2. `gradlew.bat :app:assembleDebug :app:testDebugUnitTest`
+3. nur bei erfolgreichem Build Android 200031 per ADB als Update installieren; App-Daten nicht löschen.
+4. `PDF Entwurf` drücken → interner Viewer muss sofort öffnen.
+5. beim bestehenden BTB `Datum/Zeit → Bearbeiten`: Beginn/Ende ändern, speichern, danach anderen Abschnitt bearbeiten/neu öffnen; neue Zeit muss erhalten bleiben.
+6. bereits abgeschlossenen BTB bearbeiten: Wetter darf sich nicht automatisch aktualisieren; manuell über Stift muss es weiterhin bearbeitbar sein.
+7. Foto nach alter Endzeit aufnehmen, solange derselbe BTB aktiv ist → Fotozähler muss es wegen derselben `btbId` mitzählen.
+8. PDF prüfen: Arbeitszeit/Personal/Geräte/Wetter bleiben schwarz; fachliche Änderungen in Abschnitt 4–8 bleiben rot.
+9. im Verlauf `ZIP teilen` → ZIP-Inhalt als Tagesabschluss mit BTB/Bildern/Mängeln/Abnahmen/Gesamtlisten prüfen.
+10. einen entbehrlichen Test-BTB über `BTB löschen` entfernen → BTB/Dokumente weg, echte Fotos weiterhin in der Baustelle vorhanden.
+11. produktiven NAS weiterhin nicht anfassen.
