@@ -14,29 +14,31 @@ import java.time.ZoneId
 /**
  * Korrigiert die noch historische Fotozaehler-Anzeige im grossen BautagebuchFragment.
  *
- * Der alte UI-Pfad kennt nur Datum/Schicht/Zeitfenster. Moderne Fotos besitzen zusaetzlich eine
- * eindeutige btbId. Deshalb muessen Zaehler UND Nenner dieselbe fachliche Menge verwenden:
- * - explizit dem aktuellen BTB zugeordnete Fotos,
- * - historische unzugeordnete Fotos weiterhin als Legacy-Fallback,
- * - explizit anderen BTBs zugeordnete Fotos niemals.
+ * Moderne Fotos besitzen eine eindeutige btbId. Diese Zuordnung ist fachlich staerker als das
+ * eingetragene Arbeitszeitfenster: ein Foto, das explizit dem aktuellen BTB zugeordnet wurde,
+ * bleibt auch dann Teil dieses BTB, wenn die Arbeitszeit spaeter geaendert wurde oder das Foto
+ * erst nach der zuvor eingetragenen Endzeit aufgenommen wurde.
+ *
+ * Nur historische Fotos ohne btbId verwenden weiterhin Datum/Arbeitszeit als Legacy-Fallback.
  */
 object BtbPhotoCounterFix {
 
     suspend fun refresh(context: Context, root: View, entry: BautagebuchEintrag) {
         val datum = runCatching { LocalDate.parse(entry.datumIso) }.getOrNull() ?: return
         val appContext = context.applicationContext
+        val targetBtbId = entry.btbId?.trim().orEmpty()
 
         val labels = withContext(Dispatchers.IO) {
             val all = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(entry.baustelleId)
             val (from, to) = shiftWindowEpochMs(datum, entry.startUhrzeit, entry.endeUhrzeit)
             val eligible = all.asSequence()
-                .filter { it.erstelltAmEpochMs in from until to }
-                .filter {
-                    BtbFotoZuordnungSpeicher.darfImBtbVerwendetWerden(
-                        appContext,
-                        it.id,
-                        entry.btbId
-                    )
+                .filter { foto ->
+                    val assigned = BtbFotoZuordnungSpeicher.btbId(appContext, foto.id)
+                    when {
+                        targetBtbId.isNotBlank() && assigned == targetBtbId -> true
+                        !assigned.isNullOrBlank() -> false
+                        else -> foto.erstelltAmEpochMs in from until to
+                    }
                 }
                 .toList()
 
