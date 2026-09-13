@@ -46,6 +46,10 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize|stateHidden" />
 
+        <activity
+            android:name=".ui.bautagebuch.BtbPdfViewerActivity"
+            android:exported="false" />
+
         <!-- Damit wir Fotos aus dem App-Ordner sicher öffnen/teilen können -->
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -76,7 +80,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Normale Einstellungsseite innerhalb der App. -->
         <activity
             android:name=".widget.TBHelferWidgetSettingsActivity"
             android:exported="false"
