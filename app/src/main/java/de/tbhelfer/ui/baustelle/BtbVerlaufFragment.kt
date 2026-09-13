@@ -14,13 +14,14 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
+import de.tbhelfer.ui.bautagebuch.BtbDeleteService
 import de.tbhelfer.ui.bautagebuch.BtbDokumentIdentitaet
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
-import de.tbhelfer.ui.bautagebuch.BtbEinzelZip
 import de.tbhelfer.ui.bautagebuch.BtbExportPaket
 import de.tbhelfer.ui.bautagebuch.BtbPdfViewerActivity
 import kotlinx.coroutines.Dispatchers
@@ -130,8 +131,13 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
         row.addView(button("BTB bearbeiten") { bearbeite(item) })
         row.addView(button("PDF öffnen") { oeffnePdf(item) })
-        row.addView(button("ZIP teilen") { teileZip(item) })
+        row.addView(button("ZIP teilen") { teileTagesabschlussZip(item) })
         inner.addView(row)
+
+        val deleteRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        deleteRow.addView(button("BTB löschen", Color.parseColor("#C62828")) { bestaetigeLoeschen(item) })
+        inner.addView(deleteRow)
+
         card.addView(inner)
         return card
     }
@@ -175,19 +181,22 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         })
     }
 
-    private fun teileZip(item: BautagebuchSpeicher.VerlaufEintrag) {
-        val pdf = BtbDokumentVersionierung.aktuellesAbschlussPdf(requireContext(), item.entry)
-        if (pdf == null || !pdf.exists()) {
-            Toast.makeText(requireContext(), "Kein gültiges Abschluss-PDF für Export vorhanden", Toast.LENGTH_SHORT).show()
-            return
-        }
+    /**
+     * ZIP im Verlauf ist bewusst kein Einzel-BTB-ZIP mehr. Es erzeugt den vorhandenen
+     * Baustellen-/Tagesabschluss fuer den Kalendertag dieses BTB: BTB, Bilder, Maengel, Abnahmen
+     * sowie die Gesamtlisten liegen gemeinsam in der bekannten Laptop-Struktur.
+     */
+    private fun teileTagesabschlussZip(item: BautagebuchSpeicher.VerlaufEintrag) {
         lifecycleScope.launch {
+            Toast.makeText(requireContext(), "Tagesabschluss-ZIP wird erstellt …", Toast.LENGTH_SHORT).show()
             try {
-                val zip = withContext(Dispatchers.IO) {
-                    val appContext = requireContext().applicationContext
-                    val fotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(item.entry.baustelleId)
-                    BtbEinzelZip.erstellen(appContext, item.entry, pdf, fotos)
-                }
+                val zip = BtbExportPaket.erstellenBaustellenExport(
+                    requireContext().applicationContext,
+                    item.entry.baustelleId,
+                    item.entry.baustelleName,
+                    item.datum,
+                    item.datum
+                )
                 BtbExportPaket.shareZip(requireContext(), zip)
             } catch (error: Throwable) {
                 Toast.makeText(requireContext(), "ZIP konnte nicht erstellt werden: ${error.message ?: "Fehler"}", Toast.LENGTH_LONG).show()
@@ -195,20 +204,57 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         }
     }
 
-    private fun button(text: String, onClick: () -> Unit): MaterialButton = MaterialButton(requireContext()).apply {
-        this.text = text
-        isAllCaps = false
-        textSize = 12f
-        setPadding(dp(8), 0, dp(8), 0)
-        minHeight = dp(36)
-        backgroundTintList = ColorStateList.valueOf(Color.parseColor("#1E66FF"))
-        setTextColor(Color.WHITE)
-        setOnClickListener { onClick() }
-        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-            rightMargin = dp(6)
-            topMargin = dp(10)
+    private fun bestaetigeLoeschen(item: BautagebuchSpeicher.VerlaufEintrag) {
+        val id = item.entry.btbId?.trim().orEmpty()
+        if (id.isBlank() || id.startsWith("legacy:")) {
+            Toast.makeText(requireContext(), "Dieser Alt-BTB kann hier noch nicht vollständig gelöscht werden.", Toast.LENGTH_LONG).show()
+            return
+        }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("BTB vollständig löschen?")
+            .setMessage(
+                "Der BTB sowie sein Original-/Abschlussstand und seine BTB-PDFs werden gelöscht. " +
+                    "Die echten Baustellenfotos bleiben erhalten und werden nur von diesem BTB gelöst.\n\n" +
+                    "Dieser Vorgang kann lokal nicht rückgängig gemacht werden."
+            )
+            .setNegativeButton("Abbrechen", null)
+            .setPositiveButton("BTB löschen") { _, _ -> loesche(item) }
+            .show()
+    }
+
+    private fun loesche(item: BautagebuchSpeicher.VerlaufEintrag) {
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { BtbDeleteService.loeschen(requireContext().applicationContext, item.entry) }
+            }
+            result.onSuccess { info ->
+                Toast.makeText(
+                    requireContext(),
+                    "BTB gelöscht · ${info.geloesteFotos} Foto(s) bleiben in der Baustelle erhalten",
+                    Toast.LENGTH_LONG
+                ).show()
+                view?.let(::ladeVerlauf)
+            }.onFailure { error ->
+                Toast.makeText(requireContext(), "BTB konnte nicht gelöscht werden: ${error.message ?: "Fehler"}", Toast.LENGTH_LONG).show()
+            }
         }
     }
+
+    private fun button(text: String, color: Int = Color.parseColor("#1E66FF"), onClick: () -> Unit): MaterialButton =
+        MaterialButton(requireContext()).apply {
+            this.text = text
+            isAllCaps = false
+            textSize = 12f
+            setPadding(dp(8), 0, dp(8), 0)
+            minHeight = dp(36)
+            backgroundTintList = ColorStateList.valueOf(color)
+            setTextColor(Color.WHITE)
+            setOnClickListener { onClick() }
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                rightMargin = dp(6)
+                topMargin = dp(10)
+            }
+        }
 
     private fun textView(text: String, size: Float, color: Int, bold: Boolean): TextView = TextView(requireContext()).apply {
         this.text = text
