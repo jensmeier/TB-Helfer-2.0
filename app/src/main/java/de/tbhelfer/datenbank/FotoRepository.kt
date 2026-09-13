@@ -2,6 +2,8 @@ package de.tbhelfer.datenbank
 
 import android.content.Context
 import de.tbhelfer.server.SofortSync
+import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
+import de.tbhelfer.ui.bautagebuch.BtbFotoZuordnungSpeicher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -18,7 +20,11 @@ class FotoRepository(
     suspend fun fotosMitIds(ids: List<Long>): List<FotoEntity> = withContext(Dispatchers.IO) { dao.fotosMitIds(ids) }
 
     /** Nur DB löschen (Dateien bleiben bestehen). */
-    suspend fun loeschenMitIds(ids: List<Long>): Int = withContext(Dispatchers.IO) { dao.loeschenMitIds(ids) }
+    suspend fun loeschenMitIds(ids: List<Long>): Int = withContext(Dispatchers.IO) {
+        val result = dao.loeschenMitIds(ids)
+        appContext?.let { ctx -> ids.forEach { BtbFotoZuordnungSpeicher.entfernen(ctx, it) } }
+        result
+    }
 
     fun fotosFuerBaustelle(baustelleId: Long): Flow<List<FotoEntity>> = dao.fotosFuerBaustelle(baustelleId).flowOn(Dispatchers.IO)
 
@@ -34,22 +40,37 @@ class FotoRepository(
     }
 
     /**
-     * Ein neu gespeichertes Bild stößt best-effort sofort den vorhandenen Offline-/Server-Sync an.
-     * Die eigentliche Datei bleibt zuerst lokal und sicher; WorkManager übernimmt Upload/Retry,
-     * sobald Netz verfügbar ist. Der periodische Sync bleibt zusätzlich bestehen.
+     * Ein neu gespeichertes Bild wird – sofern die Baustelle gerade einen modernen BTB geöffnet
+     * hat – genau dieser btbId zugeordnet. Die Zuordnung liegt separat vom bestehenden Room-Schema,
+     * deshalb ist hierfür keine Foto-DB-Migration nötig.
      */
     suspend fun einfuegen(entity: FotoEntity): Long {
         val id = withContext(Dispatchers.IO) { dao.einfuegen(entity) }
-        appContext?.let { runCatching { SofortSync.anstossen(it) } }
+        appContext?.let { ctx ->
+            runCatching {
+                val activeBtbId = BautagebuchSpeicher.aktiveBtbId(
+                    ctx,
+                    entity.baustelleId,
+                    ""
+                )
+                if (!activeBtbId.isNullOrBlank()) {
+                    BtbFotoZuordnungSpeicher.zuordnen(ctx, id, activeBtbId)
+                }
+            }
+            runCatching { SofortSync.anstossen(ctx) }
+        }
         return id
     }
 
-    /** Notiz für mehrere Fotos setzen (null/leer = zurück auf Kurztext). */
     suspend fun updateNotizMitIds(ids: List<Long>, notiz: String?): Int = withContext(Dispatchers.IO) {
         dao.updateNotizMitIds(ids, notiz)
     }
 
-    suspend fun loeschen(entity: FotoEntity): Int = withContext(Dispatchers.IO) { dao.loeschen(entity) }
+    suspend fun loeschen(entity: FotoEntity): Int = withContext(Dispatchers.IO) {
+        val result = dao.loeschen(entity)
+        appContext?.let { BtbFotoZuordnungSpeicher.entfernen(it, entity.id) }
+        result
+    }
 
     suspend fun alleFirmen(): List<String> = withContext(Dispatchers.IO) { dao.alleFirmen() }
 
