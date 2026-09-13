@@ -10,6 +10,7 @@ import de.tbhelfer.datenbank.FotoEntity
 import de.tbhelfer.util.ImageExifUtil
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -20,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
 object BtbFotoRenderMarkierung {
 
     private val overridePaths = ConcurrentHashMap<Long, String>()
-    private val tempFiles = ConcurrentHashMap.newKeySet<File>()
+    private val tempFiles = Collections.newSetFromMap(ConcurrentHashMap<File, Boolean>())
 
     fun overridePath(fotoId: Long): String? = overridePaths[fotoId]
 
