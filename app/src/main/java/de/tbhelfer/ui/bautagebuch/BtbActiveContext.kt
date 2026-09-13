@@ -2,6 +2,7 @@ package de.tbhelfer.ui.bautagebuch
 
 import android.content.Context
 import de.tbhelfer.ServiceLocator
+import kotlinx.coroutines.flow.first
 
 /**
  * Eine gemeinsame Quelle fuer den aktuell aktiven modernen BTB einer Baustelle.
@@ -17,6 +18,12 @@ object BtbActiveContext {
         val btbId: String,
         val entry: BautagebuchEintrag
     )
+
+    /** Liest den aktiven BTB der aktuell gesetzten Baustelle. */
+    suspend fun laden(context: Context): Result? {
+        val baustelleId = ServiceLocator.aktuelleBaustelleSpeicher.aktuelleBaustelleId.first() ?: return null
+        return laden(context, baustelleId)
+    }
 
     suspend fun laden(context: Context, baustelleId: Long): Result? {
         if (baustelleId <= 0L) return null
