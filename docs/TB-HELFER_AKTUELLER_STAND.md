@@ -19,6 +19,7 @@ Vor jeder Änderung zuerst lesen:
 - PR bleibt Draft bis zum erfolgreichen Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test.
 - aktueller Android-Entwicklungsstand: **versionCode 200031**, `versionName 1.3`.
 - Android 200031 ist vorbereitet, aber noch **nicht lokal kompiliert/installiert/getestet**.
+- `docs/TB-HELFER_PROJEKTREGELN.md` ist auf die neuen 200031-Regeln (Tages-ZIP, BTB-Löschen, btbId-Foto-Priorität, schwarze Kopfdaten, Wetter-Freeze) abgeglichen.
 
 ## Produktiver Synology-Stand – unverändert
 - NAS/Synology ist Source of Truth.
@@ -57,6 +58,7 @@ Vor jeder Änderung zuerst lesen:
 - `app/src/main/java/de/tbhelfer/ui/baustelle/BtbVerlaufFragment.kt`
 - `app/src/main/java/de/tbhelfer/ui/HauptActivity.kt`
 - `app/build.gradle.kts`
+- `docs/TB-HELFER_PROJEKTREGELN.md`
 
 ### 1. PDF Entwurf
 - `PDF Entwurf` wird im neuen Installer übernommen.
@@ -90,10 +92,12 @@ Vor jeder Änderung zuerst lesen:
 - `ZIP teilen` im BTB-Verlauf erzeugt nicht mehr nur `BtbEinzelZip`.
 - stattdessen wird für den Kalendertag des gewählten BTB der vorhandene `BtbExportPaket.erstellenBaustellenExport(...)` verwendet.
 - Ziel ist die bekannte Laptop-/Tagesabschluss-Struktur mit BTB, Bildern, Mängeln, Abnahmen sowie Gesamtlisten (`Bilderliste_gesamt.*`, Mängel-/Abnahmelisten usw.).
+- der Exporter liefert ein `Ergebnis`; geteilt wird korrekt dessen `zipFile`.
 - dadurch wird keine zweite parallele Exportlogik erfunden.
 
 ### Tests 200031
 - GitHub-Codepfade statisch gegen den aktuellen Feature-Branch geprüft.
+- beim statischen Check wurde der Rückgabetyp des Tagesabschluss-Exporters (`Ergebnis.zipFile`) korrigiert.
 - **noch kein lokaler Gradle-Build/ADB-Gerätetest**; nicht als kompiliert bestätigen.
 - NAS/DB nicht verändert.
 
@@ -111,6 +115,7 @@ Vor jeder Änderung zuerst lesen:
 - erster erfolgreicher `BTB Abschluss` = unveränderliches Original.
 - Originaldatei intern `btb_<btbId>_original.json`; spätere Abschlüsse überschreiben sie nicht.
 - fachliche Rotmarkierung bleibt dauerhaft gegen dieses erste Original.
+- Arbeitszeit/Datum, Personal/Firmen, Geräte/Maschinen und Wetter bleiben bei Änderungen in der PDF-Darstellung schwarz.
 - zurück auf Originalwert = wieder schwarz.
 - tatsächliche Änderung nach Abschluss invalidiert/löscht das bisherige PDF; Status `Nachbearbeitung`.
 - späterer Abschluss ersetzt nur das aktuelle PDF.
