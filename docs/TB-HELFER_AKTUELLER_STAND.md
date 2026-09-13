@@ -17,135 +17,141 @@ Vor jeder Änderung zuerst lesen:
 - aktiv: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
 - PR bleibt Draft bis zum erfolgreichen Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test.
-- aktueller Android-Entwicklungsstand: **versionCode 200032**, `versionName 1.3`.
-- Android 200032 ist vorbereitet, aber noch **nicht lokal kompiliert/installiert/getestet**.
+- aktueller Android-Entwicklungsstand: **versionCode 200033**, `versionName 1.3`.
+- Android 200033 ist vorbereitet, aber noch **nicht lokal kompiliert/installiert/getestet**.
 
 ## Produktiver Synology-Stand – unverändert
 - NAS/Synology ist Source of Truth.
 - API produktiv: **0.7.0**.
 - PostgreSQL produktiv: **Schema 10** `010_worksite_invitations_company_profile`.
 - produktiver Servercode: `/volume1/docker/tb-helfer/server_schema10_stage`.
-- produktive Secrets bleiben ausschließlich in `./server/.env`.
+- produktive Secrets ausschließlich in `./server/.env`.
 - letzter bestätigter Produktivstand: PostgreSQL healthy, API/cloudflared gestartet, 72 OpenAPI-Pfade, Schema 10.
-- in der gesamten Android-200025 bis 200032-Runde wurden **keine NAS-/DB-Änderungen** durchgeführt.
-- letzter produktiver Backup-Stand: `/volume1/docker/tb-helfer/backup/tb_helfer_pre_schema10_20260910_173351.dump`, damals mit `pg_restore -l` als `BACKUP_PRUEFUNG=OK` bestätigt.
+- in der Android-200025-bis-200033-Runde wurden **keine NAS-/DB-Änderungen** durchgeführt.
+- letzter bestätigter Produktiv-Backupstand: `/volume1/docker/tb-helfer/backup/tb_helfer_pre_schema10_20260910_173351.dump`, damals mit `pg_restore -l` als `BACKUP_PRUEFUNG=OK` bestätigt.
 - Schema 11 für persönliche Nutzerkontakte ist im Branch vorbereitet, aber **nicht produktiv migriert**.
 - vor dem nächsten produktiven Server-/Schema-Schritt genau ein frisches verifiziertes DB-Backup erstellen.
 
-## Praktisch bestätigter Android-Stand bis 200030
-- Debug-APK wurde erfolgreich lokal gebaut/signiert und per ADB installiert; bekannte 7 Kotlin/Java-Warnungen bleiben späterer Aufräumpunkt.
+## Praktisch bestätigter Android-Stand bis 200032
+- Debug-APK wurde lokal gebaut/signiert und per ADB installiert; bekannte 7 Kotlin/Java-Warnungen bleiben eigener Aufräumpunkt.
 - bloßes Öffnen erzeugt keinen fachlichen BTB; `Noch kein BTB` funktioniert.
 - grünes `+` legt erst nach ausdrücklichem `Neuer BTB` eine neue stabile `btbId` an.
-- mehrere BTBs am selben Tag funktionieren grundsätzlich.
+- mehrere BTBs am selben Kalendertag funktionieren grundsätzlich.
 - erster erfolgreicher `BTB Abschluss` bleibt unveränderliches Original.
-- spätere Textänderungen bleiben gegenüber diesem ersten Original rot.
+- spätere fachliche Textänderungen bleiben gegenüber diesem ersten Original rot.
 - gelöschter Originaltext erscheint rot als `(entfernt) ...`.
 - App-interner PDF-Viewer funktioniert inkl. Safe-Areas/Seitennavigation.
+- `PDF Entwurf` öffnet den internen PDF-Viewer.
 - lokales Nutzerprofil funktioniert: Name, persönliche Telefonnummer und E-Mail bleiben erhalten.
-- Foto-Isolation über `btbId` funktioniert im getesteten Verlauf; Zähler zeigten u. a. `3/3`, `5/5` und später weitere korrekte Mengen am selben BTB.
-- nach dem ersten Abschluss neue Fotos werden im Fotoanhang rot mit `ÄNDERUNG ZUM ORIGINAL` markiert.
-- Fotoänderung invalidiert das aktuelle Abschluss-PDF; Status wird korrekt `Nachbearbeitung · Abschluss-PDF ungültig`.
-- kompakter BTB-Kopf und Fenster `Aktuellen BTB bearbeiten` funktionieren.
+- Foto-Zuordnung über `btbId` funktioniert grundsätzlich; getestete Zähler zeigten u. a. `3/3`, `4/4`, `5/5`, `7/7`.
+- neue Fotos nach erstem Abschluss werden im Fotoanhang rot mit `ÄNDERUNG ZUM ORIGINAL` markiert.
+- Fotoänderung invalidiert das aktuelle Abschluss-PDF; Status wird `Nachbearbeitung · Abschluss-PDF ungültig`.
+- `BTB löschen` im Verlauf ist vorgesehen/umgesetzt; echte Baustellenfotos bleiben erhalten und werden nur von der BTB-Zuordnung gelöst.
+- `ZIP teilen` im Verlauf verwendet den bestehenden Tages-/Baustellenexport mit BTB, Bildern, Mängeln, Abnahmen und Gesamtlisten.
+- kompakter BTB-Kopf sowie `Aktuellen BTB bearbeiten` funktionieren grundsätzlich.
+- `Details anzeigen` ist in 200032 funktional schreibgeschützt.
+- Arbeitszeitänderung bleibt an derselben `btbId`; Anzeige-/Reloadpfad wurde modernisiert.
+- Foto-Eingabemaske und Foto-Speicherung nutzen für moderne BTBs den kanonischen aktiven `btbId`-Kontext; der frühere unabhängige Zeit-/Schicht-Leseweg war Ursache für fehlende Firma trotz korrekter Foto-Zuordnung.
 
-## Android 200031 – umgesetzt und auf Gerät weiter geprüft
-### Umgesetzt
-- `PDF Entwurf` öffnet nach Erzeugung sofort den App-internen PDF-Viewer.
-- `BTB löschen` im Verlauf mit Sicherheitsabfrage; BTB-/Original-/Abschluss-/Dokumentdaten werden gelöscht, echte Baustellenfotos bleiben erhalten und werden nur von der `btbId` gelöst.
-- moderne Fotos mit expliziter `btbId` zählen auch außerhalb der ursprünglich eingetragenen Arbeitszeit zum BTB; nur Legacy-Fotos ohne Zuordnung verwenden das Zeitfenster.
-- Arbeitszeit, Personal/Firmen, Geräte/Maschinen und Wetter werden in der PDF-Diff-Darstellung als Kopfdaten schwarz gehalten; Abschnitte 4–8 bleiben fachlicher Originalvergleich.
-- nach erstem Abschluss ist automatischer Wetter-Refresh gesperrt; manuelle Bearbeitung über Stift bleibt vorgesehen.
-- `ZIP teilen` im BTB-Verlauf verwendet den vorhandenen Baustellen-/Tagesabschluss-Export für den gewählten Kalendertag.
+## Gerätetest 200032 – neu bestätigte Fehler/Entscheidungen
+### Nachtmodus
+- `BTB-Details` war im Nachtmodus teilweise kaum lesbar, weil Teile noch feste Schwarz/Dunkelgrau-Farben verwendeten.
+- im Editor `4. Ausgeführte Arbeiten` waren insbesondere Foto-Pills sowie einzelne Unterbaustellen-/Ortslabels zu kontrastarm.
+- PDF selbst bleibt bewusst weiß; nur die App-Oberfläche muss Day/Night-lesbar sein.
 
-### Gerätetest / neu gefundene Probleme
-- neuer Test-BTB auf Baustelle `Heideck` startete korrekt mit `Noch kein BTB` und anschließend bewusster Neuanlage.
-- Fotozähler zeigte im frischen BTB korrekt z. B. `3/3` und später `4/4`; Foto→BTB-Zuordnung funktioniert damit grundsätzlich.
-- Arbeitszeitänderung wird gespeichert, ist aber in 200031 erst nach Verlassen/Wiederöffnen der Seite zuverlässig sichtbar. Ursache: `detach` + `attach` wurden in derselben Fragment-Transaktion ausgeführt und können sich praktisch aufheben.
-- `Details anzeigen` öffnet noch die historische editierbare Kopfdatenansicht. Gewünscht ist nur eine kurze **schreibgeschützte** Zusammenfassung; Bearbeitung ausschließlich über den orangefarbenen Stift.
-- beim `BTB Abschluss` konnte die alte versteckte UI-Validierung fälschlich `Datum/Zeit` und `Personal` als fehlend melden, obwohl der kanonische btbId-Datensatz diese Daten bereits enthält. Ursache: `BtbUiSaveBridge` drückte bisher den historischen `btnSpeichern`, der private/stale Fragmentfelder validiert.
-- in der Foto-Eingabemaske fehlte bei diesem frischen Test die Firma, obwohl das Foto anschließend korrekt zum BTB gezählt wurde. Ursache bestätigt: **Schreiben der Foto-btbId funktioniert**, aber die Foto-Maske liest Firmen noch aus einem alten Datum-/Uhrzeit-Kandidaten statt aus exakt der aktiven `btbId`.
+### Abschluss-Lebenszyklus – neue verbindliche Entscheidung
+- Nach einem **erfolgreichen `BTB Abschluss` darf kein BTB mehr aktiv sein**.
+- der abgeschlossene BTB wird nicht gelöscht: `btbId`, aktueller Datensatz, unveränderliches Original, Abschlussmetadaten und PDF bleiben im Verlauf gespeichert.
+- der aktive Pointer wird nach erfolgreichem Abschluss gelöst; die BTB-Seite zeigt danach `Noch kein BTB`.
+- spätere Nachbearbeitung erfolgt bewusst über `BTB-Verlauf -> BTB bearbeiten`; dort wird exakt diese `btbId` wieder aktiviert.
+- nach dem nächsten erfolgreichen Abschluss wird der aktive Pointer erneut gelöst.
+- damit können spätere Texte/Fotos nicht versehentlich in einen bereits abgeschlossenen BTB laufen.
 
-## Android 200032 – aktueller vorbereiteter Patch
+### Kamera ohne aktiven BTB – neue verbindliche Entscheidung
+Wenn `Noch kein BTB` aktiv ist und die Kamera aufgerufen wird, erscheint eine Auswahl:
+1. `Nur Baustellenfoto` – Foto wird ohne BTB-Zuordnung gespeichert.
+2. `BTB starten/öffnen` – danach Auswahl `Neuen BTB starten` oder `Vorhandenen BTB öffnen`.
+
+### Fotos / PDF / BTB-Ansicht
+- nachträglich hinzugefügte Bilder sind im PDF-Anhang vorhanden und dort bereits rot markiert.
+- im Hauptteil von Punkt 4 werden Bildreferenzen wie `[Bild 3]`, `[Bild 4]` noch **nicht zuverlässig rot** dargestellt; fachlich müssen nach dem Originalabschluss hinzugefügte Bildreferenzen rot sein.
+- im Abschnitt-4-Editor fehlten in einem Gerätetest zwei nachträglich hinzugefügte Bilder, obwohl PDF-Anhang und Fotozähler sie kannten. Der historische Abschnittseditor besitzt noch eigene Foto-/Zeitfensterlogik und muss vollständig auf `btbId` umgestellt werden.
+- mindestens ein vermeintlicher Datenverlust war nur ein Darstellungsproblem: Einträge waren im PDF vorhanden, im Nachtmodus aber praktisch unsichtbar.
+
+## Android 200033 – aktueller vorbereiteter Patch
 ### Neue/angepasste Dateien
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbActiveContext.kt` – neu
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPatch200032Installer.kt` – neu
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbUiSaveBridge.kt`
-- `app/src/main/java/de/tbhelfer/datenbank/FotoRepository.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbActivePointerControl.kt` – neu
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPatch200033Installer.kt` – neu
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbActiveContext.kt`
 - `app/src/main/java/de/tbhelfer/ui/HauptActivity.kt`
+- `app/src/main/res/values/colors.xml`
+- `app/src/main/res/values-night/colors.xml`
+- `app/src/main/res/drawable/bg_pill.xml`
+- `app/src/main/res/drawable-night/bg_section_editor_card.xml` – neu
 - `app/build.gradle.kts`
-- `docs/TB-HELFER_PROJEKTREGELN.md`
 - diese Projektstand-MD
 
-### Kanonischer aktiver BTB
-- `BtbActiveContext` ist die gemeinsame Lesequelle für den aktuell aktiven modernen BTB einer Baustelle.
-- Quelle ist immer: aktuelle Baustelle → aktiver Pointer → **`btbId` → `BautagebuchSpeicher.ladenById(...)`**.
-- Datum/Uhrzeit/Schicht werden dafür nicht als Identität benutzt.
-- `BtbUiSaveBridge.aktuell(...)` verwendet nun diesen kanonischen Kontext.
+### 1. Abschluss löst aktiven BTB
+- 200033 übernimmt den Abschluss-Button nach den älteren Installern.
+- PDF/Original-/Foto-Abschlusslogik bleibt gleich.
+- erst nach erfolgreichem PDF-Schreiben und erfolgreicher `abschlussBestaetigen(...)`-Bestätigung wird `.active_btb.json` gelöst.
+- zusätzlich wird die zuletzt abgeschlossene `btbId` lokal als inaktiv markiert, damit historische Datum/Schicht-Ladewege denselben Abschluss nicht beim nächsten Öffnen ungefragt wieder aktivieren.
+- wenn derselbe BTB ausdrücklich aus dem Verlauf mit `BTB bearbeiten` geöffnet wird, ist die Reaktivierung erlaubt und der Inaktiv-Marker wird aufgehoben.
+- nach Abschluss werden BTB-Kopf/Details/PDF-Aktionen auf `Noch kein BTB` gestellt; Abschnittsvorschauen sind ohne aktiven BTB nicht bearbeitbar.
 
-### Abschluss/Vorschau ohne falsche Altvalidierung
-- `BtbUiSaveBridge.speichernUndNeuLaden(...)` drückt nicht mehr den historischen versteckten `btnSpeichern`.
-- ohne offenes Eingabefeld wird derselbe aktive BTB direkt per `btbId` neu gelesen.
-- wenn beim Klick noch ein echtes Text-Eingabefeld Fokus hatte, wird der Focus beendet und gezielt bis zu 4,5 Sekunden auf einen **neuen `geaendertAmEpochMs` desselben `btbId`** gewartet; es gibt keinen festen 1,7-s-Schlaf als Datenintegritätslogik.
-- dadurch soll weder die letzte gerade getippte Zeile verloren gehen noch ein korrekt gespeicherter BTB wegen veralteter privater UI-Felder fälschlich `Datum/Zeit fehlt` / `Personal fehlt` melden.
+### 2. Kamera-Guard ohne aktiven BTB
+- roter Kamera-Schnellbutton prüft zuerst `BtbActiveContext`.
+- mit aktivem BTB: normale Kamera.
+- ohne aktiven BTB: Dialog `Nur Baustellenfoto` / `BTB starten/öffnen`.
+- `Nur Baustellenfoto` navigiert zur Kamera ohne aktiven BTB; `FotoRepository` weist deshalb keine `btbId` zu.
+- `BTB starten/öffnen` erlaubt bewusste Neuanlage oder Öffnen des BTB-Verlaufs.
 
-### Details anzeigen = read-only
-- Klick auf `Details anzeigen` öffnet in 200032 eine kompakte schreibgeschützte `BTB-Details`-Ansicht.
-- angezeigt werden Datum/Zeit, Personal, Geräte/Maschinen und Wetter.
-- keine dieser Angaben kann dort geändert werden.
-- Bearbeitung dieser Kopfdaten erfolgt ausschließlich über den orangefarbenen Stift `Aktuellen BTB bearbeiten`.
+### 3. Nachtmodus lesbarer
+- `BTB-Details` verwendet in 200033 Theme-Farben `tb_on_surface` / `tb_text_secondary` statt festem Schwarz/Dunkelgrau.
+- `tb_text_secondary` ist im Nachtmodus hell definiert.
+- Foto-Pills verwenden `tb_pill_bg` mit eigener Day/Night-Farbe.
+- der Abschnittseditor erhält im Nachtmodus einen kontrastreicheren Kartenhintergrund, damit sowohl historische dunkelgraue Labels als auch Theme-helle Texte lesbar bleiben.
+- kein Redesign; nur gezielte Lesbarkeitskorrektur.
 
-### Arbeitszeit sofort sichtbar
-- der 200032-Zeitdialog speichert weiterhin denselben BTB/dieselbe `btbId`.
-- nach dem Speichern wird die neue Zeit sofort im Kopf angezeigt.
-- anschließend wird das Fragment bewusst in **zwei synchronen Transaktionen** detach/attach neu aufgebaut, damit private Altwerte aus dem historischen Fragment den gespeicherten Wert nicht wieder überschreiben.
-
-### Foto-Maske / Firma / btbId
-- `FotoRepository.einfuegen(...)` liest die aktive `btbId` nun ebenfalls über `BtbActiveContext` und weist das neue Foto exakt diesem BTB zu.
-- die Foto-Eingabemaske bekommt zusätzlich einen 200032-Lese-Override: Firmenliste kommt aus `BtbActiveContext.entry.firmen` der aktiven `btbId`, nicht aus einem zeitlich passenden Tag-/Nacht-Kandidaten.
-- bei genau einer Firma im aktiven BTB wird sie in der Foto-Maske automatisch vorausgewählt.
-- Firmenvergleich im Override ist mit `Locale.ROOT` stabilisiert.
-- dadurch sollen Foto-Zuordnung und angezeigte Firma erstmals dieselbe btbId-Quelle verwenden.
-
-### Tests 200032
-- GitHub-Stand, Projektregeln, aktueller Projektstand, Draft-PR #5 und letzter Commit vor Änderung geprüft.
-- neue Codepfade statisch auf offensichtliche Typ-/API-Probleme geprüft.
-- **noch kein lokaler Gradle-Build/ADB-Gerätetest für 200032**; nicht als kompiliert bestätigen.
+### Statischer Prüfstand 200033
+- Branch/Projekt-MDs/Draft-PR/letzter Commit vor Änderung geprüft.
+- beim Schreiben wurde ein Syntaxfehler in `HauptActivity.openActivation()` sofort gefunden und korrigiert.
+- `BtbActiveContext` um sicheren Aufruf für die aktuell gesetzte Baustelle ergänzt.
+- Flow-Lesewege im 200033-Installer auf vorhandenes `.first()` vereinfacht.
+- **noch kein lokaler Gradle-Build/ADB-Test**; 200033 nicht als kompiliert bestätigen.
 - NAS/DB nicht verändert.
 
 ## BTB – verbindliches Kernmodell
 ### Identität
 - ein fachlicher BTB = eine dauerhafte stabile `btbId`.
 - Datum/Uhrzeit/Tag/Nacht sind Attribute, nie technische Identität.
-- mehrere BTBs desselben Teams am selben Tag sind erlaubt.
-- BTB 1 ↔ BTB 2 wird über konkrete `btbId` gewechselt; aktueller BTB wird vorher tatsächlich gespeichert.
-- mehrere Baustellen dürfen lokal vorhanden sein; genau eine ist jeweils aktuell. Daten verschiedener Baustellen dürfen sich nie vermischen.
-- Kamera/Foto, BTB-Kopf, Abschluss und Verlauf sollen denselben kanonischen aktiven btbId-Kontext verwenden.
+- mehrere BTBs desselben Teams am selben Kalendertag sind erlaubt.
+- Kamera/Foto, BTB-Kopf, Abschluss und Verlauf müssen denselben kanonischen aktiven `btbId`-Kontext verwenden.
+- mehrere Baustellen können lokal vorhanden sein; genau eine Baustelle ist jeweils aktuell, BTB-Daten verschiedener Baustellen dürfen sich nie vermischen.
 
 ### Abschluss / Original
 - keine sichtbaren V1/V2/V3.
 - pro `btbId` höchstens ein aktuell gültiges Abschluss-PDF.
 - erster erfolgreicher `BTB Abschluss` = unveränderliches Original.
-- Originaldatei intern `btb_<btbId>_original.json`; spätere Abschlüsse überschreiben sie nicht.
-- fachliche Rotmarkierung bleibt dauerhaft gegen dieses erste Original.
-- Arbeitszeit/Datum, Personal/Firmen, Geräte/Maschinen und Wetter bleiben bei Änderungen in der PDF-Darstellung schwarz.
-- zurück auf Originalwert = wieder schwarz.
-- tatsächliche Änderung nach Abschluss invalidiert/löscht das bisherige PDF; Status `Nachbearbeitung`.
-- späterer Abschluss ersetzt nur das aktuelle PDF.
-- technischer Abschluss-Metadatensatz hält Hash/Dateiname/Gültigkeit des aktuellen PDFs; keine sichtbare Versionierung.
+- spätere fachliche Änderungen werden immer gegen dieses erste Original verglichen.
+- Arbeitszeit/Datum, Personal/Firmen, Geräte/Maschinen und Wetter bleiben im PDF schwarz.
+- fachliche neue/geänderte Inhalte rot; entfernte Originalinhalte rot als `(entfernt) ...`.
+- neues PDF ersetzt das vorige PDF derselben `btbId`, nicht das Original.
+- nach erfolgreichem Abschluss wird die aktive `btbId` gelöst.
 
 ### Fotos
-- moderne Fotos erhalten eine eindeutige `btbId`.
-- explizite Foto-btbId ist stärker als das Arbeitszeitfenster.
-- Foto-ID-Menge des ersten erfolgreichen Abschlusses bleibt unveränderlich.
-- neues/entferntes/abgewähltes Foto gegenüber diesem Original invalidiert das Abschluss-PDF.
-- neue Fotos werden im PDF-Anhang rot markiert; Original-JPG bleibt unverändert.
-- Bildreferenzen im Haupttext sollen ebenfalls zwischen Original- und nachträglich hinzugefügten Bildern unterscheiden.
-- Foto-Firma/BTB-Kontext muss aus derselben aktiven `btbId` gelesen werden; keine unabhängige Zeitfensterwahl für moderne BTBs.
+- moderne normale BTB-Fotos erhalten die beim Speichern aktive `btbId`.
+- explizite Foto-`btbId` ist stärker als Arbeitszeitfenster.
+- Foto-ID-Menge des ersten Abschlusses ist Teil des unveränderlichen Originals.
+- nachträglich hinzugefügte Fotos invalidieren den Abschluss und werden im späteren Anhang rot markiert.
+- Bildreferenzen im Haupttext müssen ebenfalls Original vs. nachträglich unterscheiden; Renderer-Feinschliff noch offen.
 
-## Nutzerprofil / Name
+## Nutzerprofil / Firma
 Praktisch bestätigt:
 - Benutzername wird angezeigt.
 - persönliche Telefonnummer und persönliche E-Mail können auf Schema 10 lokal gespeichert werden und bleiben nach Neustart erhalten.
 - Firmenprofil bleibt getrennt und serverseitig zentral.
+- Firmenlogo kommt zentral vom Server und wird für Geräte derselben Firma gecached.
 
 Schema 11 vorbereitet, noch nicht produktiv:
 - `server/migrations/011_user_contact_profile.sql`
@@ -155,41 +161,53 @@ Schema 11 vorbereitet, noch nicht produktiv:
 - `GET /api/v1/user/profile`
 - `PUT /api/v1/user/profile`
 
-## Teams / Baustellen / Sync
+## Teams / Baustellen / Sync – offen/teilweise vorbereitet
 - Zusammenarbeit strikt innerhalb derselben Firma.
 - mehrere verantwortliche TBs möglich; jeder verantwortliche TB hat mit seinen Helfern seinen eigenen gemeinsamen BTB-Bereich.
 - Helfer nur im freigegebenen Bereich; verantwortliche TBs baustellenweit gemäß Regeln.
-- Baustellenkarte soll Teamumfang und letzten Sync anzeigen, z. B. `2 TB · 4 Helfer`.
-- Sync-Einstellungen: Manuell / stündlich / täglich; nur WLAN / nur Mobilfunk / WLAN + Mobilfunk.
+- Baustellenkarte soll Teamumfang und letzten Sync zeigen, z. B. `2 TB · 4 Helfer` und `Zuletzt synchronisiert ...`.
 - Hauptmenü `Mit NAS synchronisieren` + letzter Sync.
+- Auto-Sync: manuell / stündlich / täglich plus Netzart nur WLAN / nur Mobilfunk / beides.
 - QR-Beitritt fragt `Jetzt öffnen?` / `Später`.
-- entfernte/ausgetretene Mitglieder behalten historische lokale Daten nur lesbar; serverseitige Membership-Removal-API bleibt offen.
+- vollständiger Unterbaustellen-/Baustellenstruktur-Sync bleibt offen.
+- serverseitiges Entfernen/Verlassen und Zwei-Geräte-Konflikttests bleiben offen.
 
-## Bekannte offene Punkte
-- Android 200032 lokal bauen/installieren/testen.
-- große historische `BautagebuchPdf.kt` färbt einzelne Strukturüberschriften noch zu breit rot; Überschriften sollen schwarz bleiben.
-- Bildnummern/-bereiche im Haupttext müssen noch differenziert rot werden, wenn die referenzierten Fotos nach dem Originalabschluss hinzukamen.
-- Einzel-BTB-DOCX besitzt noch nicht dieselbe Rotformatierung wie das PDF; der Verlauf verwendet ab 200031 allerdings den bestehenden Tagesabschluss-ZIP statt des Einzel-BTB-ZIP.
-- der große PDF-Renderer hat intern weiterhin einen alten Zeitfenster-Vorfilter; moderne btbId-Fotos werden in Zähler/BTB-Zuordnung bereits unabhängig von der Zeit behandelt, die vollständige Renderer-Bereinigung bleibt noch zu prüfen.
-- Foto-Maske besitzt intern weiterhin historische Zeitfensterlogik; 200032 übersteuert die sichtbare Firmenliste mit dem kanonischen aktiven btbId-Kontext. Langfristig Altcode dort vollständig entfernen.
-- BTB 1 ↔ BTB 2 und Baustelle A ↔ Baustelle B praktisch weiter testen.
-- 7 bekannte Compilerwarnungen später in eigenem Aufräumpatch beseitigen.
-- Baustellen-Gesamtexport noch nicht vollständig in allen Altpfaden auf btbId/Ein-PDF modernisiert.
-- vollständiger Unterbaustellen-/Baustellenstruktur-Sync (`Immenstadt` / `5362-1`) bleibt offen.
-- serverseitiges Entfernen/Verlassen mit lokal nur-lesbar bleibt offen.
-- Zwei-Geräte-Tests für BTB, Bilder, Mängel, Abnahmen, 409-Konflikte, Tombstones, Netzabbruch und Benachrichtigungen bleiben offen.
-- Schema 11 erst nach frischem Backup/Hashprüfung/read-only Verifikation produktiv migrieren.
-- danach Vermessungs-/Kilometrierungsblock weiterführen.
+## Nicht vergessen – spätere Fachfunktionen aus Benutzerplanung
+Diese Punkte sind bewusst noch nicht der aktuelle BTB-Fix, dürfen aber nicht verloren gehen:
+- SKV-Abnahme inkl. GPS.
+- BTB auch unter Windows/Laptop bearbeiten; dort ebenfalls Abnahmen und Mängel bearbeiten.
+- Spracheingabe.
+- vereinfachte Mangelaufnahme: `Was? -> Wo? (aktueller km / km ansagen) -> Was ist los?`.
+- `Mein Ordner`: selbst angelegte Ordner mit anderen Nutzern synchronisieren; pro Freigabe `nur lesen` oder `lesen & bearbeiten`.
+- externe Fotos importieren/einfügen.
+- Wetterdarstellung um Niederschlagsmenge `l/m²`/mm sinnvoll ergänzen.
+- Aktivierung/QR soll vorhandene Benutzer-/Firmenstammdaten automatisch vom Server übernehmen.
+- Ablauf-/Lizenzhinweis wie `LÄUFT BALD AB – noch 2 Tage` anzeigen.
+- Support-/Gerätekennung und nur **maskierten** Schlüsselhinweis für Supportfälle anzeigen; keine geheimen Keys im Klartext.
+- zentrales Firmenlogo für alle Nutzer derselben Firma.
+- Streckendaten/Kilometrierung und berechnete Abschnitte weiterführen; Originalvermessungsdaten unverändert lassen.
 
-## Nächster sicherer Test
-1. lokal `git pull`.
-2. `gradlew.bat :app:assembleDebug :app:testDebugUnitTest`.
-3. nur bei erfolgreichem Build Android 200032 per ADB als Update installieren; App-Daten nicht löschen.
-4. frischen BTB öffnen → `Details anzeigen`: nur schreibgeschützte Kurzansicht, keine Bearbeitung.
-5. Stift → Datum/Zeit ändern → nach Speichern muss die neue Zeit **sofort** oben sichtbar sein und auch nach weiterer Texteingabe erhalten bleiben.
-6. Kamera aus demselben BTB öffnen → Foto-Maske muss Firma/Firmen aus exakt diesem aktiven BTB anzeigen; bei genau einer Firma automatisch vorauswählen.
-7. Foto speichern → Fotozähler muss sofort zur selben `btbId` passen, unabhängig davon, ob die Fotozeit außerhalb der alten Arbeitszeit liegt.
-8. Text/Foto ergänzen → `BTB Abschluss`: kein falscher Dialog `Datum/Zeit fehlt` / `Personal fehlt`, sofern die Daten im aktiven btbId-Datensatz vorhanden sind; direkt vor dem Abschluss getippter Text darf nicht verloren gehen.
-9. Abschluss-PDF und Fotoanhang prüfen; neue fachliche Inhalte/Fotos bleiben nach Originalregel markiert.
-10. `ZIP teilen` und `BTB löschen` anschließend separat prüfen.
-11. produktiven NAS weiterhin nicht anfassen.
+## Bekannte offene Fehler / nächste technische Blöcke
+- Android 200033 lokal bauen/installieren/testen.
+- Abschnitt-4-Fotoeditor vollständig von historischem Zeitfenster auf moderne `btbId`-Fotoauswahl umstellen; in einem Test fehlten dort zwei nachträgliche Bilder trotz korrektem PDF-Anhang.
+- `BautagebuchPdf.kt`: nachträgliche Bildreferenzen im Haupttext rot darstellen; Fotoanhang ist bereits rot markiert.
+- `BautagebuchPdf.kt`: Strukturüberschriften werden teilweise noch zu breit rot; Überschriften sollen schwarz bleiben.
+- großer PDF-Renderer besitzt weiterhin historischen Zeitfenster-Vorfilter; vollständige btbId-Bereinigung prüfen.
+- Einzel-BTB-DOCX besitzt noch nicht dieselbe Rotformatierung wie PDF.
+- BTB 1 ↔ BTB 2 und Baustelle A ↔ Baustelle B weiter praktisch testen.
+- 7 bekannte Compilerwarnungen separat beseitigen.
+- Schema 11 erst nach frischem verifiziertem Backup produktiv migrieren.
+
+## Nächster Test für Android 200033
+1. `git pull`
+2. `gradlew.bat :app:assembleDebug :app:testDebugUnitTest`
+3. nur bei erfolgreichem Build per ADB als Update installieren; App-Daten nicht löschen.
+4. Nachtmodus: `Details anzeigen` sowie Abschnitt-4-Editor/Pills müssen lesbar sein.
+5. frischen BTB anlegen, Text + Fotos erfassen, `BTB Abschluss`.
+6. nach erfolgreichem Abschluss muss PDF öffnen; danach BTB-Seite = `Noch kein BTB`, alter BTB darf nicht automatisch wieder aktiv werden.
+7. Kamera bei `Noch kein BTB`: Dialog `Nur Baustellenfoto` / `BTB starten/öffnen` prüfen.
+8. `Nur Baustellenfoto` aufnehmen -> darf keine `btbId` des abgeschlossenen BTB bekommen.
+9. im BTB-Verlauf den abgeschlossenen BTB bewusst `BTB bearbeiten` -> exakt dieselbe `btbId` wird wieder aktiv.
+10. Nachbearbeitung + neuer Abschluss -> danach wieder `Noch kein BTB`.
+11. prüfen, ob nachträgliche Bilder im Abschnitt-4-Editor noch fehlen; wenn ja, nächster Patch gezielt auf historischen Fotoeditor/Renderer.
+12. produktiven NAS weiterhin nicht anfassen.
