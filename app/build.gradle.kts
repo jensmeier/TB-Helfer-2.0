@@ -18,8 +18,8 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Android 200023: Multi-BTB-ID, Dokumentversionierung und neuer Sync-/Teamstatus.
-        versionCode = 200023
+        // Android 200024: Hotfix für versionierte BTB-PDF-Erkennung im Verlauf.
+        versionCode = 200024
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
