@@ -1,6 +1,7 @@
 package de.tbhelfer.ui.bautagebuch
 
 import android.app.TimePickerDialog
+import android.content.DialogInterface
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -195,7 +196,7 @@ object BtbPatch200031Installer {
                 .setPositiveButton("Speichern", null)
                 .create()
             dialog.setOnShowListener {
-                dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener {
                     start = parseTime(startButton.text?.toString()) ?: start
                     end = parseTime(endButton.text?.toString()) ?: end
                     fragment.viewLifecycleOwner.lifecycleScope.launch {
