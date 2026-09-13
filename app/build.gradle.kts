@@ -18,8 +18,8 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Android 200026: erster BTB-Abschluss bleibt unveränderliches Original; PDF-Viewer Safe-Area und Abschluss-UX nachgezogen.
-        versionCode = 200026
+        // Android 200027: 200026-Gerätetest bestätigt; nächster Patch für Diff/UI-Feinschliff.
+        versionCode = 200027
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -70,7 +70,6 @@ android {
 // android.compileOptions.targetCompatibility.
 
 // HIGH-IMPACT: Room Schema-Export (hilft bei Migrationen & Tests; kostet im Build praktisch nichts)
-// Ordner: app/schemas/
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
     arg("room.incremental", "true")
