@@ -17,6 +17,7 @@ import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.ui.bautagebuch.BautagebuchPdf
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
+import de.tbhelfer.ui.bautagebuch.BtbAbschlussPdfFinder
 import de.tbhelfer.ui.bautagebuch.BtbDokumentIdentitaet
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.BtbExportPaket
@@ -24,6 +25,7 @@ import de.tbhelfer.ui.bautagebuch.MergeSafeBaustellenExport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -89,6 +91,10 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         }
     }
 
+    private fun pdfFuer(item: BautagebuchSpeicher.VerlaufEintrag): File? =
+        BtbAbschlussPdfFinder.neueste(requireContext(), item.entry)
+            ?: item.pdfDatei?.takeIf { it.exists() }
+
     private fun cardFor(item: BautagebuchSpeicher.VerlaufEintrag): View {
         val ctx = requireContext()
         val confirmedVersion = BtbDokumentVersionierung.finalisierteVersion(ctx, item.entry)
@@ -99,6 +105,7 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         )
         val changed = version > 0 && BtbDokumentVersionierung.istSeitLetztemAbschlussGeaendert(ctx, item.entry)
         val finished = version > 0 || item.entry.istFertig
+        val pdf = pdfFuer(item)
         val bg = when {
             changed -> Color.parseColor("#FFF3E0")
             finished -> Color.parseColor("#E8F5E9")
@@ -143,7 +150,7 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         inner.addView(textView("BTB $verantwortlicherTb · $dateLabel", 17f, Color.BLACK, true))
         inner.addView(textView("Arbeitszeit: $time", 13f, Color.DKGRAY, false))
         inner.addView(textView(status, 13f, stroke, true))
-        inner.addView(textView(if (item.pdfVorhanden) "PDF vorhanden" else "Noch kein Abschluss-PDF", 13f, Color.DKGRAY, false))
+        inner.addView(textView(if (pdf != null) "PDF vorhanden" else "Noch kein Abschluss-PDF", 13f, Color.DKGRAY, false))
 
         val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
         row.addView(button("BTB bearbeiten") { bearbeite(item) })
@@ -180,7 +187,7 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
     }
 
     private fun oeffnePdf(item: BautagebuchSpeicher.VerlaufEintrag) {
-        val pdf = item.pdfDatei
+        val pdf = pdfFuer(item)
         if (pdf == null || !pdf.exists()) {
             Toast.makeText(requireContext(), "Kein PDF gefunden", Toast.LENGTH_SHORT).show()
             return
@@ -189,7 +196,7 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
     }
 
     private fun teileZip(item: BautagebuchSpeicher.VerlaufEintrag) {
-        val pdf = item.pdfDatei
+        val pdf = pdfFuer(item)
         if (pdf == null || !pdf.exists()) {
             Toast.makeText(requireContext(), "Kein PDF für Export gefunden", Toast.LENGTH_SHORT).show()
             return
