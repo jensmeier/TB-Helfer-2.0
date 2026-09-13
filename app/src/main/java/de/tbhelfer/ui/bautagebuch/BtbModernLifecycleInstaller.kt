@@ -37,7 +37,7 @@ import java.util.WeakHashMap
  * - Stift neben + fuer den aktuell geladenen BTB,
  * - Abschluss erst nach erfolgreichem PDF-Schreiben,
  * - genau ein aktuelles PDF pro btbId,
- * - erster Abschluss bleibt unveraenderliches Original fuer die rote Differenz,
+ * - erster Abschluss bleibt unveraenderliches Original fuer Text UND Foto-Bestand,
  * - Nachbearbeitung loescht das alte Abschlussdokument,
  * - kein sichtbarer Schein-Entwurf, solange noch gar kein BTB existiert.
  */
@@ -181,17 +181,34 @@ object BtbModernLifecycleInstaller {
                     BtbDokumentVersionierung.pflegeNachAutosave(appContext, saved.entry)
                     BtbRendererBaselineBridge.prepare(appContext, saved.entry)
 
+                    BtbFotoRenderMarkierung.clear()
                     val pdfEngine = BautagebuchPdf(appContext, ServiceLocator.fotoRepository)
+                    // Noch ohne Render-Overrides laden, damit wir die fachliche Foto-Menge bestimmen.
                     val alleFotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(saved.entry.baustelleId)
-                    val file = BtbFotoBtbFilter.mitFilter(appContext, saved.entry, alleFotos) {
-                        pdfEngine.erstellenPdf(saved.entry, asDraft = false)
+                    val aktuelleFotoIds = BtbOriginalFotoSpeicher.aktuelleFotoIds(appContext, saved.entry, alleFotos)
+                    val roteFotoIds = BtbOriginalFotoSpeicher.neueFotoIds(appContext, saved.entry.btbId, aktuelleFotoIds)
+                    BtbFotoRenderMarkierung.vorbereiten(appContext, alleFotos, roteFotoIds)
+
+                    val file = try {
+                        BtbFotoBtbFilter.mitFilter(appContext, saved.entry, alleFotos) {
+                            pdfEngine.erstellenPdf(saved.entry, asDraft = false)
+                        }
+                    } finally {
+                        BtbFotoRenderMarkierung.clear()
                     }
+
                     val user = UserDisplayCache.userName(appContext)?.trim().orEmpty().ifBlank { "TB" }
                     if (!BtbDokumentVersionierung.abschlussBestaetigen(appContext, saved.entry, file, user)) {
                         throw IllegalStateException("Abschluss konnte nicht bestätigt werden")
                     }
+                    // Erst nach erfolgreichem allerersten Abschluss die Foto-Basis festschreiben.
+                    // Spaetere Abschluesse duerfen diese Menge nie ersetzen.
+                    BtbOriginalFotoSpeicher.sichernWennFehlt(appContext, saved.entry.btbId, aktuelleFotoIds)
                     pdfEngine.deleteEntwurfPdf(saved.entry)
                     file
+                }.also {
+                    // Auch bei unerwartetem Fehler nie temporaere Bildkopien liegen lassen.
+                    BtbFotoRenderMarkierung.clear()
                 }
             }
 
