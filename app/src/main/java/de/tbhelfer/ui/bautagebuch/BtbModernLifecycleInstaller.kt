@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -35,6 +36,7 @@ import java.util.WeakHashMap
 /**
  * Verdrahtet das moderne BTB-Zielmodell ohne den historischen Gross-Fragmentcode zu duplizieren:
  * - Stift neben + fuer den aktuell geladenen BTB,
+ * - kompakter Kopfbereich ohne reservierten Leerraum,
  * - Abschluss erst nach erfolgreichem PDF-Schreiben,
  * - genau ein aktuelles PDF pro btbId,
  * - erster Abschluss bleibt unveraenderliches Original fuer Text UND Foto-Bestand,
@@ -70,8 +72,27 @@ object BtbModernLifecycleInstaller {
     private fun bind(fragment: BautagebuchFragment, root: View) {
         if (!boundViews.add(root)) return
         addEditButton(fragment, root)
+        compactHeaderSpacing(root)
         bindFinalButton(fragment, root)
         startLifecycleWatcher(fragment, root)
+    }
+
+    private fun compactHeaderSpacing(root: View) {
+        val density = root.resources.displayMetrics.density
+        fun dp(v: Int) = (v * density).toInt()
+        fun setMargins(view: View?, top: Int? = null, bottom: Int? = null) {
+            val target = view ?: return
+            val lp = target.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+            top?.let { lp.topMargin = dp(it) }
+            bottom?.let { lp.bottomMargin = dp(it) }
+            target.layoutParams = lp
+        }
+
+        // Kopf kompakter: Buttons -> Details -> Punkt 4 sollen ohne grossen Leerlauf folgen.
+        setMargins(root.findViewById(R.id.reportQuickBar), bottom = 3)
+        setMargins(root.findViewById(R.id.topFieldsToggleRow), bottom = 4)
+        val section4Header = root.findViewById<View>(R.id.btnFotosArbeiten)?.parent as? View
+        setMargins(section4Header, top = 4)
     }
 
     private fun addEditButton(fragment: BautagebuchFragment, root: View) {
@@ -98,7 +119,7 @@ object BtbModernLifecycleInstaller {
         }
         frame.addView(icon)
         card.addView(frame)
-        card.setOnClickListener { showEditMenu(fragment, root, card) }
+        card.setOnClickListener { showEditDialog(fragment, root, card) }
 
         val plusIndex = bar.indexOfChild(plus).coerceAtLeast(0)
         bar.addView(card, plusIndex)
@@ -107,7 +128,7 @@ object BtbModernLifecycleInstaller {
         }, plusIndex + 1)
     }
 
-    private fun showEditMenu(fragment: BautagebuchFragment, root: View, anchor: View) {
+    private fun showEditDialog(fragment: BautagebuchFragment, root: View, anchor: View) {
         fragment.viewLifecycleOwner.lifecycleScope.launch {
             val current = BtbUiSaveBridge.aktuell(fragment)
             if (current == null) {
@@ -117,26 +138,101 @@ object BtbModernLifecycleInstaller {
             val status = withContext(Dispatchers.IO) {
                 BtbDokumentVersionierung.status(fragment.requireContext().applicationContext, current.entry)
             }
-            val message = if (status == BtbAbschlussStatus.ABGESCHLOSSEN) {
-                "Dieser BTB ist abgeschlossen. Nur das Öffnen ändert noch nichts. Erst eine tatsächlich gespeicherte Änderung macht das Abschluss-PDF ungültig. Das erste Original bleibt für die Rot-Markierung erhalten."
-            } else {
-                "Es wird immer derselbe BTB mit derselben btbId bearbeitet."
+            val entry = current.entry
+            val ctx = fragment.requireContext()
+            val density = root.resources.displayMetrics.density
+            fun dp(v: Int) = (v * density).toInt()
+
+            val content = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(20), dp(6), dp(20), dp(4))
             }
-            val options = arrayOf(
-                "Datum / Zeit bearbeiten",
-                "Personal bearbeiten",
-                "Geräte / Maschinen bearbeiten",
-                "Wetter bearbeiten"
-            )
-            MaterialAlertDialogBuilder(fragment.requireContext())
-                .setTitle("Aktuellen BTB bearbeiten")
-                .setMessage(message)
-                .setItems(options) { dialog, which ->
-                    dialog.dismiss()
-                    openExistingEditor(root, which)
+
+            TextView(ctx).apply {
+                text = if (status == BtbAbschlussStatus.ABGESCHLOSSEN) {
+                    "Abgeschlossener BTB. Nur eine tatsächlich gespeicherte Änderung macht das aktuelle Abschluss-PDF ungültig."
+                } else {
+                    "Es wird derselbe BTB mit derselben btbId bearbeitet."
                 }
+                textSize = 12f
+                setTextColor(Color.DKGRAY)
+                setPadding(0, 0, 0, dp(8))
+                content.addView(this)
+            }
+
+            var dialog: androidx.appcompat.app.AlertDialog? = null
+
+            fun addRow(title: String, value: String, which: Int) {
+                val row = LinearLayout(ctx).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(0, dp(4), 0, dp(4))
+                }
+                val texts = LinearLayout(ctx).apply {
+                    orientation = LinearLayout.VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                }
+                texts.addView(TextView(ctx).apply {
+                    text = title
+                    textSize = 14f
+                    setTextColor(Color.BLACK)
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                })
+                texts.addView(TextView(ctx).apply {
+                    text = value.ifBlank { "Keine Angaben" }
+                    textSize = 11.5f
+                    setTextColor(Color.DKGRAY)
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                })
+                row.addView(texts)
+                row.addView(MaterialButton(ctx).apply {
+                    text = "Bearbeiten"
+                    isAllCaps = false
+                    minWidth = 0
+                    setOnClickListener {
+                        dialog?.dismiss()
+                        openExistingEditor(root, which)
+                    }
+                })
+                content.addView(row)
+            }
+
+            val dateTime = buildString {
+                append(entry.startUhrzeit ?: "--:--")
+                append("–")
+                append(entry.endeUhrzeit ?: "--:--")
+                append(" · ")
+                append(entry.datumIso)
+            }
+            val personal = entry.firmen
+                .filter { it.visibleInPersonal && !it.isDeleted }
+                .flatMap { f -> f.personal.map { p -> listOfNotNull(p.anzahl?.toString(), p.rolle.takeIf { it.isNotBlank() }).joinToString(" ") } }
+                .filter { it.isNotBlank() }
+                .joinToString(", ")
+                .ifBlank { entry.personal.filter { it.isNotBlank() }.joinToString(", ") }
+            val geraete = entry.firmen
+                .filter { it.visibleInMaschinen && !it.isDeleted }
+                .flatMap { f -> f.geraete.map { g -> listOfNotNull(g.anzahl?.toString(), g.bezeichnung.takeIf { it.isNotBlank() }).joinToString(" ") } }
+                .filter { it.isNotBlank() }
+                .joinToString(", ")
+                .ifBlank { entry.geraete.filter { it.isNotBlank() }.joinToString(", ") }
+            val weatherTimes = (entry.weather?.slots?.takeIf { it.isNotEmpty() } ?: entry.weatherSlots)
+                .map { it.uhrzeit }
+                .filter { it.isNotBlank() }
+                .joinToString(" · ")
+
+            addRow("Datum/Zeit", dateTime, 0)
+            addRow("Personal", personal, 1)
+            addRow("Geräte/Maschinen", geraete, 2)
+            addRow("Wetter", weatherTimes, 3)
+
+            dialog = MaterialAlertDialogBuilder(ctx)
+                .setTitle("Aktuellen BTB bearbeiten")
+                .setView(content)
                 .setNegativeButton("Abbrechen", null)
-                .show()
+                .create()
+            dialog?.show()
         }
     }
 
@@ -176,21 +272,14 @@ object BtbModernLifecycleInstaller {
             val appContext = fragment.requireContext().applicationContext
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    // Bei echter Nachbearbeitung ist das vorige PDF ungueltig. Das erste Original
-                    // bleibt dagegen dauerhaft erhalten und wird fuer den Renderer gespiegelt.
                     BtbDokumentVersionierung.pflegeNachAutosave(appContext, saved.entry)
                     BtbRendererBaselineBridge.prepare(appContext, saved.entry)
 
-                    // Nur die PDF-Darstellung ergaenzen: geloeschte Originalzeilen erscheinen als
-                    // rote "(entfernt) ..."-Eintraege. Der gespeicherte BTB bleibt wirklich geloescht.
                     val renderEntry = BtbRenderOriginalDiff.aufbereiten(appContext, saved.entry)
 
                     BtbFotoRenderMarkierung.clear()
                     val pdfEngine = BautagebuchPdf(appContext, ServiceLocator.fotoRepository)
-                    // Noch ohne Render-Overrides laden, damit wir die fachliche Foto-Menge bestimmen.
                     val alleFotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(saved.entry.baustelleId)
-                    // BTBs aus 200026 bekommen ihre Foto-Basis einmalig aus dem Zeitpunkt des bereits
-                    // vorhandenen unveraenderlichen Text-Originals rekonstruiert.
                     BtbOriginalFotoSpeicher.migriereAusBestehendemOriginalWennFehlt(appContext, saved.entry, alleFotos)
                     val aktuelleFotoIds = BtbOriginalFotoSpeicher.aktuelleFotoIds(appContext, saved.entry, alleFotos)
                     val roteFotoIds = BtbOriginalFotoSpeicher.neueFotoIds(appContext, saved.entry.btbId, aktuelleFotoIds)
@@ -208,13 +297,10 @@ object BtbModernLifecycleInstaller {
                     if (!BtbDokumentVersionierung.abschlussBestaetigen(appContext, saved.entry, file, user)) {
                         throw IllegalStateException("Abschluss konnte nicht bestätigt werden")
                     }
-                    // Erst nach erfolgreichem allerersten Abschluss die Foto-Basis festschreiben.
-                    // Spaetere Abschluesse duerfen diese Menge nie ersetzen.
                     BtbOriginalFotoSpeicher.sichernWennFehlt(appContext, saved.entry.btbId, aktuelleFotoIds)
                     pdfEngine.deleteEntwurfPdf(saved.entry)
                     file
                 }.also {
-                    // Auch bei unerwartetem Fehler nie temporaere Bildkopien liegen lassen.
                     BtbFotoRenderMarkierung.clear()
                 }
             }
@@ -242,13 +328,17 @@ object BtbModernLifecycleInstaller {
                 while (isActive) {
                     val current = runCatching { BtbUiSaveBridge.aktuell(fragment) }.getOrNull()
                     if (current == null) {
-                        // Der historische Fragment-Banner zeigt sonst auch ohne Datei "Entwurf".
-                        // Fachlich existiert aber erst nach dem grünen + ein BTB.
                         root.findViewById<TextView>(R.id.tvCurrentReportLine1)?.text = "Noch kein BTB"
                         root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = ""
+                        // Kein BTB = keine Detailfelder. Wichtig: GONE statt INVISIBLE, damit kein
+                        // leerer 36-dp-Bereich zwischen Kopfzeile und Punkt 4 stehen bleibt.
+                        root.findViewById<View>(R.id.topFieldsToggleRow)?.visibility = View.GONE
+                        root.findViewById<View>(R.id.weatherHeader)?.visibility = View.GONE
+                        root.findViewById<View>(R.id.pmHeaderRow)?.visibility = View.GONE
                         lastSeenId = null
                         lastSeenChange = Long.MIN_VALUE
                     } else {
+                        root.findViewById<View>(R.id.topFieldsToggleRow)?.visibility = View.VISIBLE
                         val changedStamp = current.entry.geaendertAmEpochMs
                         if (current.btbId != lastSeenId || changedStamp != lastSeenChange) {
                             withContext(Dispatchers.IO) {
@@ -269,10 +359,6 @@ object BtbModernLifecycleInstaller {
                             BtbAbschlussStatus.NACHBEARBEITUNG -> "Nachbearbeitung · Abschluss-PDF ungültig"
                         }
 
-                        // Der historische Fragment-Zaehler verwendet noch das reine Zeitfenster.
-                        // Etwa alle 1,2 s uebersteuern wir ihn mit der stabilen btbId-Menge. Dadurch
-                        // bleiben auch Fotoaufnahme und Rueckkehr aus der Auswahl zeitnah sichtbar,
-                        // ohne die DB in jedem 600-ms-Zyklus erneut zu lesen.
                         if (photoRefreshTick % 2 == 0) {
                             try {
                                 BtbPhotoCounterFix.refresh(fragment.requireContext(), root, current.entry)
