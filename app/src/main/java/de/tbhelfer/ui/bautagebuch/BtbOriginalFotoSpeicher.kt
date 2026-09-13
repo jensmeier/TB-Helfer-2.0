@@ -56,7 +56,7 @@ object BtbOriginalFotoSpeicher {
             put("version", 1)
             put("btbId", id)
             put("erstelltEpochMs", System.currentTimeMillis())
-            put("fotoIds", JSONArray().apply { fotoIds.sorted().forEach(::put) })
+            put("fotoIds", JSONArray().apply { fotoIds.sorted().forEach { fotoId -> put(fotoId) } })
         }
         runCatching { f.writeText(root.toString(2), Charsets.UTF_8) }
     }
