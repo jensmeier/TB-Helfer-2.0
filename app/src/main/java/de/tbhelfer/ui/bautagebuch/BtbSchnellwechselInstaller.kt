@@ -13,29 +13,13 @@ import com.google.android.material.snackbar.Snackbar
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/**
- * Bindet den blauen "aktueller BTB"-Balken an das neue Multi-BTB-Modell.
- *
- * Der große historische [BautagebuchFragment]-Quelltext enthält noch den alten 7-Tage-
- * TAG/NACHT-Dialog. Dieser Installer ersetzt ausschließlich dessen Click-Listener, nachdem die
- * Fragment-View aufgebaut wurde. Dadurch wird produktiv nur noch die vorhandene
- * [BautagebuchSpeicher.verlaufFuerBaustelle]-Liste verwendet:
- *
- * - keine künstlichen "Neu (leer)"-Einträge,
- * - mehrere BTBs desselben Tages bleiben einzeln sichtbar,
- * - moderne BTBs werden über ihre stabile btbId aktiviert,
- * - neue BTBs entstehen weiterhin ausschließlich über den grünen Plus-Ablauf.
- *
- * Sobald BautagebuchFragment in kleinere Komponenten zerlegt wird, kann diese Bindung direkt
- * dorthin verschoben und der alte Dialog endgültig entfernt werden.
- */
+/** Blauer Schnellwechsel: ausschließlich echte BTBs, Auswahl/Öffnen immer über stabile btbId. */
 object BtbSchnellwechselInstaller {
 
     private val deDateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy")
@@ -54,34 +38,27 @@ object BtbSchnellwechselInstaller {
             },
             true
         )
-
-        // Bei Activity-Restore kann der aktuelle NavHost-Inhalt bereits vor der Registrierung
-        // aufgebaut worden sein. Deshalb vorhandene Fragmente einmal rekursiv nachziehen.
         activity.supportFragmentManager.fragments.forEach(::bindRecursively)
     }
 
     private fun bindRecursively(fragment: Fragment) {
-        if (fragment is BautagebuchFragment) {
-            fragment.view?.let { bind(fragment, it) }
-        }
-        val children = runCatching { fragment.childFragmentManager.fragments }.getOrDefault(emptyList())
-        children.forEach(::bindRecursively)
+        if (fragment is BautagebuchFragment) fragment.view?.let { bind(fragment, it) }
+        runCatching { fragment.childFragmentManager.fragments }.getOrDefault(emptyList()).forEach(::bindRecursively)
     }
 
     private fun bind(fragment: BautagebuchFragment, root: View) {
         root.findViewById<View>(R.id.cardCurrentReport)?.setOnClickListener { anchor ->
-            showExistingReports(fragment, anchor)
+            showExistingReports(fragment, root, anchor)
         }
     }
 
-    private fun showExistingReports(fragment: BautagebuchFragment, anchor: View) {
+    private fun showExistingReports(fragment: BautagebuchFragment, root: View, anchor: View) {
         fragment.viewLifecycleOwner.lifecycleScope.launch {
             val altBaustelleId = ServiceLocator.aktuelleBaustelleSpeicher.aktuelleBaustelleId.first()
             if (altBaustelleId == null) {
                 Snackbar.make(anchor, "Bitte zuerst eine Baustelle auswählen", Snackbar.LENGTH_LONG).show()
                 return@launch
             }
-
             val baustelle = ServiceLocator.baustellenRepository.baustelleMitIdOnce(altBaustelleId)
             val baustelleName = baustelle?.baustellenname.orEmpty()
             if (baustelleName.isBlank()) {
@@ -92,25 +69,12 @@ object BtbSchnellwechselInstaller {
             val appContext = fragment.requireContext().applicationContext
             val data = withContext(Dispatchers.IO) {
                 val activeId = BautagebuchSpeicher.aktiveBtbId(appContext, altBaustelleId, baustelleName)
-                val items = BautagebuchSpeicher.verlaufFuerBaustelle(
-                    appContext,
-                    altBaustelleId,
-                    baustelleName
-                )
-                activeId to items.map { item ->
-                    QuickItem(
-                        item = item,
-                        label = labelFor(appContext, item, activeId)
-                    )
-                }
+                val items = BautagebuchSpeicher.verlaufFuerBaustelle(appContext, altBaustelleId, baustelleName)
+                activeId to items.map { item -> QuickItem(item, labelFor(appContext, item, activeId)) }
             }
 
             if (data.second.isEmpty()) {
-                Snackbar.make(
-                    anchor,
-                    "Noch kein BTB vorhanden. Neuen BTB über + starten.",
-                    Snackbar.LENGTH_LONG
-                ).show()
+                Snackbar.make(anchor, "Noch kein BTB vorhanden. Neuen BTB über + starten.", Snackbar.LENGTH_LONG).show()
                 return@launch
             }
 
@@ -123,7 +87,7 @@ object BtbSchnellwechselInstaller {
                         Snackbar.make(anchor, "Dieser BTB ist bereits geöffnet", Snackbar.LENGTH_SHORT).show()
                         return@setItems
                     }
-                    switchTo(fragment, anchor, appContext, altBaustelleId, baustelleName, selected.item)
+                    switchTo(fragment, root, anchor, appContext, altBaustelleId, baustelleName, selected.item)
                 }
                 .setNegativeButton("Abbrechen", null)
                 .show()
@@ -136,13 +100,11 @@ object BtbSchnellwechselInstaller {
         activeId: String?
     ): String {
         val startDate = runCatching { LocalDate.parse(item.entry.datumIso) }.getOrDefault(item.datum)
-        val endDate = item.entry.endeDatumIso
-            ?.let { raw -> runCatching { LocalDate.parse(raw) }.getOrNull() }
+        val endDate = item.entry.endeDatumIso?.let { raw -> runCatching { LocalDate.parse(raw) }.getOrNull() }
         val date = if (endDate != null && endDate != startDate) {
             "${startDate.format(deDateFmt)}–${endDate.format(deDateFmt)}"
-        } else {
-            startDate.format(deDateFmt)
-        }
+        } else startDate.format(deDateFmt)
+
         val time = when {
             !item.entry.startUhrzeit.isNullOrBlank() && !item.entry.endeUhrzeit.isNullOrBlank() ->
                 "${item.entry.startUhrzeit}–${item.entry.endeUhrzeit}"
@@ -151,18 +113,10 @@ object BtbSchnellwechselInstaller {
             else -> "ohne Zeit"
         }
 
-        val confirmed = BtbDokumentVersionierung.finalisierteVersion(context, item.entry)
-        val version = maxOf(
-            confirmed,
-            item.entry.dokumentVersion,
-            if (item.baselineExists) 1 else 0
-        )
-        val changed = version > 0 &&
-            BtbDokumentVersionierung.istSeitLetztemAbschlussGeaendert(context, item.entry)
-        val status = when {
-            changed -> "Geändert · nächster Abschluss V${version + 1}"
-            version > 0 || item.entry.istFertig -> "Abgeschlossen · V${version.coerceAtLeast(1)}"
-            else -> "Entwurf"
+        val status = when (BtbDokumentVersionierung.status(context, item.entry)) {
+            BtbAbschlussStatus.ENTWURF -> "Entwurf"
+            BtbAbschlussStatus.ABGESCHLOSSEN -> "Abgeschlossen"
+            BtbAbschlussStatus.NACHBEARBEITUNG -> "Nachbearbeitung"
         }
         val current = if (!item.btbId.isNullOrBlank() && item.btbId == activeId) " · aktuell" else ""
         return "$date · $time · $status$current"
@@ -170,6 +124,7 @@ object BtbSchnellwechselInstaller {
 
     private fun switchTo(
         fragment: BautagebuchFragment,
+        root: View,
         anchor: View,
         appContext: android.content.Context,
         altBaustelleId: Long,
@@ -177,14 +132,20 @@ object BtbSchnellwechselInstaller {
         item: BautagebuchSpeicher.VerlaufEintrag
     ) {
         fragment.viewLifecycleOwner.lifecycleScope.launch {
-            // Textfelder verlieren zuerst den Fokus. Die vorhandenen BTB-Autosaves arbeiten mit
-            // 1,5 s Idle-Delay; wir lassen ihnen vor dem Fragmentwechsel bewusst Zeit, damit ein
-            // unmittelbar zuvor geänderter Wert nicht durch Navigation verworfen wird.
-            fragment.requireActivity().currentFocus?.clearFocus()
-            Snackbar.make(anchor, "Aktuellen BTB speichern…", Snackbar.LENGTH_SHORT).show()
-            delay(1_700L)
-
-            if (!fragment.isAdded || fragment.view == null) return@launch
+            // Wenn bereits ein moderner BTB aktiv ist, wird er zuerst wirklich geschrieben.
+            // Keine feste Wartezeit mehr: der Save-Bridge bestätigt den neuen Änderungszeitpunkt.
+            val current = BtbUiSaveBridge.aktuell(fragment)
+            if (current != null) {
+                Snackbar.make(anchor, "Aktuellen BTB speichern …", Snackbar.LENGTH_SHORT).show()
+                val saved = BtbUiSaveBridge.speichernUndNeuLaden(fragment, root)
+                if (saved == null) {
+                    Snackbar.make(anchor, "Aktueller BTB konnte nicht gespeichert werden. Wechsel abgebrochen.", Snackbar.LENGTH_LONG).show()
+                    return@launch
+                }
+                withContext(Dispatchers.IO) {
+                    BtbDokumentVersionierung.pflegeNachAutosave(appContext, saved.entry)
+                }
+            }
 
             withContext(Dispatchers.IO) {
                 item.btbId
