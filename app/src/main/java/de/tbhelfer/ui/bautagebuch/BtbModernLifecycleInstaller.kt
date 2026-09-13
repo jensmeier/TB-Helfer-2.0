@@ -173,12 +173,14 @@ object BtbModernLifecycleInstaller {
             val appContext = fragment.requireContext().applicationContext
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    // Bei echter Nachbearbeitung ist das vorige PDF ab jetzt ungültig.
                     BtbDokumentVersionierung.pflegeNachAutosave(appContext, saved.entry)
                     BtbRendererBaselineBridge.prepare(appContext, saved.entry)
 
                     val pdfEngine = BautagebuchPdf(appContext, ServiceLocator.fotoRepository)
-                    val file = pdfEngine.erstellenPdf(saved.entry, asDraft = false)
+                    val alleFotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(saved.entry.baustelleId)
+                    val file = BtbFotoBtbFilter.mitFilter(appContext, saved.entry, alleFotos) {
+                        pdfEngine.erstellenPdf(saved.entry, asDraft = false)
+                    }
                     val user = UserDisplayCache.userName(appContext)?.trim().orEmpty().ifBlank { "TB" }
                     if (!BtbDokumentVersionierung.abschlussBestaetigen(appContext, saved.entry, file, user)) {
                         throw IllegalStateException("Abschluss konnte nicht bestätigt werden")
