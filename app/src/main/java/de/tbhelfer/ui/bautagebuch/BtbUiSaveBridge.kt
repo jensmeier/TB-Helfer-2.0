@@ -44,13 +44,9 @@ object BtbUiSaveBridge {
         val focused = fragment.requireActivity().currentFocus
         val pendingUserInput = focused is EditText
 
-        // Focus-Verlust beendet die konkrete Eingabe. Die vorhandenen TextWatcher-/Autosave-Wege
-        // duerfen danach ihren normalen persistierenden Lauf abschliessen.
         focused?.clearFocus()
 
         if (!pendingUserInput) {
-            // Kein offenes Textfeld: es ist nichts Neues abzuwarten. Direkt aus derselben btbId
-            // neu lesen, damit externe Kopfdaten-Aenderungen ebenfalls sicher enthalten sind.
             delay(80L)
             return aktuell(fragment) ?: before
         }
@@ -66,8 +62,6 @@ object BtbUiSaveBridge {
             if (now.entry.geaendertAmEpochMs > beforeChanged) return now
         }
 
-        // Kein versteckter Alt-Save als Fallback: lieber den zuletzt kanonisch gespeicherten Stand
-        // zurueckgeben als stale UI-Felder in denselben BTB zurueckzuschreiben.
         return latest
     }
 }
