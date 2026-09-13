@@ -101,7 +101,7 @@ object BtbDokumentVersionierung {
             "abschlussPdfDateiname",
             "abschlussInhaltHash",
             "originalAbschlussSnapshot",
-            "letzterAbschlussSnapshot", // Legacy-Feld: enthaelt ab jetzt ebenfalls das Original
+            "letzterAbschlussSnapshot",
             "istFertig",
             "dokumentVersion",
             "ersterAbschlussEpochMs",
@@ -256,25 +256,27 @@ object BtbDokumentVersionierung {
             // behandeln wir den aktuell gespeicherten Inhalt einmalig als dessen Abschlussstand.
             if (meta == null) {
                 val existingPdf = BtbAbschlussPdfFinder.neueste(context, entry)
-                meta = JSONObject().apply {
+                val created = JSONObject().apply {
                     put("btbId", entry.btbId)
                     put("abschlussInhaltHash", inhaltHash(currentJson))
                     put("abschlussPdfDateiname", existingPdf?.name ?: JSONObject.NULL)
                     put("pdfGueltig", existingPdf != null && existingPdf.exists())
                 }
-                writeMeta(context, entry, meta)
+                writeMeta(context, entry, created)
+                meta = created
             }
 
-            val wasValid = meta.optBoolean("pdfGueltig", false)
-            val closureHash = meta.optString("abschlussInhaltHash")
+            val closureMeta = meta ?: return@runCatching
+            val wasValid = closureMeta.optBoolean("pdfGueltig", false)
+            val closureHash = closureMeta.optString("abschlussInhaltHash")
             val changedSincePdf = closureHash.isBlank() || closureHash != inhaltHash(currentJson)
             val nowInvalid = !wasValid || changedSincePdf
 
             if (wasValid && changedSincePdf) {
                 loescheAktuellesAbschlussDokument(context, entry)
-                meta.put("pdfGueltig", false)
-                meta.put("abschlussPdfDateiname", JSONObject.NULL)
-                writeMeta(context, entry, meta)
+                closureMeta.put("pdfGueltig", false)
+                closureMeta.put("abschlussPdfDateiname", JSONObject.NULL)
+                writeMeta(context, entry, closureMeta)
             }
 
             val firstEpoch = original.optLong("ersterAbschlussEpochMs", 0L).takeIf { it > 0L }
@@ -283,12 +285,12 @@ object BtbDokumentVersionierung {
             currentJson.put("letzterAbschlussSnapshot", JSONObject(original.toString()))
             currentJson.put("ersterAbschlussEpochMs", firstEpoch ?: JSONObject.NULL)
             currentJson.put("ersterAbschlussBenutzer", firstUser ?: JSONObject.NULL)
-            currentJson.put("abschlussInhaltHash", meta.optString("abschlussInhaltHash").takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+            currentJson.put("abschlussInhaltHash", closureMeta.optString("abschlussInhaltHash").takeIf { it.isNotBlank() } ?: JSONObject.NULL)
             currentJson.put("abschlussStatus", if (nowInvalid) BtbAbschlussStatus.NACHBEARBEITUNG.name else BtbAbschlussStatus.ABGESCHLOSSEN.name)
             currentJson.put("istFertig", !nowInvalid)
-            currentJson.put("abschlussPdfDateiname", if (nowInvalid) JSONObject.NULL else meta.optString("abschlussPdfDateiname").takeIf { it.isNotBlank() } ?: JSONObject.NULL)
-            currentJson.put("letzterAbschlussEpochMs", meta.optLong("letzterAbschlussEpochMs", 0L).takeIf { it > 0L } ?: JSONObject.NULL)
-            currentJson.put("letzterAbschlussBenutzer", meta.optString("letzterAbschlussBenutzer").takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+            currentJson.put("abschlussPdfDateiname", if (nowInvalid) JSONObject.NULL else closureMeta.optString("abschlussPdfDateiname").takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+            currentJson.put("letzterAbschlussEpochMs", closureMeta.optLong("letzterAbschlussEpochMs", 0L).takeIf { it > 0L } ?: JSONObject.NULL)
+            currentJson.put("letzterAbschlussBenutzer", closureMeta.optString("letzterAbschlussBenutzer").takeIf { it.isNotBlank() } ?: JSONObject.NULL)
             currentJson.put("dokumentVersion", 0)
             current.writeText(currentJson.toString(2), Charsets.UTF_8)
         }
