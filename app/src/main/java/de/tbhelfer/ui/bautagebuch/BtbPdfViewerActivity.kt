@@ -24,6 +24,7 @@ class BtbPdfViewerActivity : AppCompatActivity() {
 
     private var descriptor: ParcelFileDescriptor? = null
     private var renderer: PdfRenderer? = null
+    private var currentBitmap: Bitmap? = null
     private var pageIndex = 0
     private lateinit var image: ImageView
     private lateinit var pageLabel: TextView
@@ -41,8 +42,10 @@ class BtbPdfViewerActivity : AppCompatActivity() {
             return
         }
 
-        descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-        renderer = descriptor?.let(::PdfRenderer)
+        descriptor = runCatching {
+            ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+        }.getOrNull()
+        renderer = descriptor?.let { fd -> runCatching { PdfRenderer(fd) }.getOrNull() }
         if ((renderer?.pageCount ?: 0) <= 0) {
             closePdf()
             finish()
@@ -140,7 +143,7 @@ class BtbPdfViewerActivity : AppCompatActivity() {
 
     private fun renderPage() {
         val r = renderer ?: return
-        if (pageIndex !in 0 until r.pageCount) return
+        if (!::image.isInitialized || pageIndex !in 0 until r.pageCount) return
         r.openPage(pageIndex).use { page ->
             val maxWidth = resources.displayMetrics.widthPixels.coerceAtLeast(800)
             val scale = maxWidth.toFloat() / page.width.toFloat()
@@ -149,6 +152,9 @@ class BtbPdfViewerActivity : AppCompatActivity() {
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             bitmap.eraseColor(Color.WHITE)
             page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+            image.setImageDrawable(null)
+            currentBitmap?.takeIf { !it.isRecycled }?.recycle()
+            currentBitmap = bitmap
             image.setImageBitmap(bitmap)
         }
         pageLabel.text = "${pageIndex + 1} / ${r.pageCount}"
@@ -157,9 +163,9 @@ class BtbPdfViewerActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        image.drawable?.let { drawable ->
-            if (drawable is android.graphics.drawable.BitmapDrawable) drawable.bitmap?.recycle()
-        }
+        if (::image.isInitialized) image.setImageDrawable(null)
+        currentBitmap?.takeIf { !it.isRecycled }?.recycle()
+        currentBitmap = null
         closePdf()
         super.onDestroy()
     }
