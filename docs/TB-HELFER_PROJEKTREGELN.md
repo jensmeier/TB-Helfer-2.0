@@ -66,10 +66,12 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Datum, Beginn, Ende und ggf. abgeleitete Tag/Nacht-Anzeige sind Attribute, nicht Identität.
 - Mehrere BTBs desselben Teams am selben Kalendertag sind erlaubt.
 - Ein BTB darf über Mitternacht laufen; ein zusätzliches leeres Tag-/Nacht-BTB entsteht nicht.
+- Für moderne BTBs gilt als kanonischer lokaler Lesekontext: **aktuelle Baustelle → aktiver BTB-Pointer → `btbId` → Datensatz dieser `btbId`**. Datum/Uhrzeit/Tag/Nacht dürfen diesen aktiven BTB nicht durch eine unabhängige Kandidatensuche ersetzen.
 - Grünes `+`: aktueller BTB wird zuerst gespeichert, aber nicht abgeschlossen; danach Dialog/Karte `Neuen BTB starten` mit Datum/Zeit, Personal, Geräte/Maschinen und Wetter. Erst `Neuer BTB` erzeugt eine neue `btbId`.
 - Neben dem grünen `+` gibt es eine **Bearbeiten-Aktion (Stift)** für den aktuell geladenen BTB. Sie ändert immer denselben BTB/dieselbe `btbId`.
 - Der Stift öffnet direkt ein kompaktes schwebendes Fenster `Aktuellen BTB bearbeiten` mit Datum/Zeit, Personal, Geräte/Maschinen und Wetter; kein zusätzliches vorgeschaltetes Listenmenü.
 - Nach `Bearbeiten` in diesem Fenster wird direkt der gewählte Datum/Zeit-, Personal-, Geräte/Maschinen- oder Wetter-Editor geöffnet. Die alte Vierer-Auswahl mit Status-Pills darf nicht nochmals als Zwischenschritt eingeblendet werden.
+- `Details anzeigen` ist ausschließlich eine **kurze schreibgeschützte Zusammenfassung** von Datum/Zeit, Personal, Geräte/Maschinen und Wetter. Änderungen dieser Kopfdaten erfolgen ausschließlich über den orangefarbenen Bearbeiten-Stift.
 - Wenn noch kein BTB existiert, dürfen ausgeblendete Detailfelder keinen vertikalen Leerraum reservieren; die Standardabschnitte sollen möglichst weit oben beginnen. Bearbeiten- und PDF-Aktionen sind ohne realen BTB nicht sichtbar.
 - Der blaue aktuelle-BTB-Balken und `BTB bearbeiten` im Verlauf öffnen immer exakt die gewählte `btbId`.
 - Beim Wechsel BTB 1 ↔ BTB 2 muss der aktuelle BTB zuerst tatsächlich gespeichert sein; keine feste Zeitwarte-Lösung als Datenintegrität.
@@ -104,6 +106,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Neue normale BTB-Fotos werden zusätzlich eindeutig der beim Speichern aktiven `btbId` zugeordnet.
 - Zwei BTBs mit überlappenden Arbeitszeiten dürfen dadurch nicht dieselben modernen Fotos nur wegen der Uhrzeit übernehmen. Fotozähler, Fotoauswahl, PDF und Export müssen dieselbe `btbId`-Zuordnung beachten.
 - **Bei modernen, explizit zugeordneten Fotos ist die `btbId` stärker als das Arbeitszeitfenster.** Ein Foto bleibt Teil seines BTB, auch wenn es nach der ursprünglich eingetragenen Endzeit aufgenommen wurde oder die Arbeitszeit später geändert wird.
+- Die Foto-Eingabemaske liest bei einem modernen aktiven BTB die Firmen ebenfalls aus **genau diesem aktiven `btbId`-Datensatz**. Eine separate Suche nach einem zeitlich passenden Tag-/Nacht-BTB darf die Firmenliste nicht bestimmen.
 - Nur historische Fotos ohne `btbId` dürfen weiterhin über Datum/Uhrzeit als Legacy-Fallback angeboten werden.
 - Der beim **ersten erfolgreichen BTB-Abschluss tatsächlich enthaltene Foto-Bestand gehört ebenfalls zum unveränderlichen Original** dieses BTB.
 - Ein Foto, das erst nach diesem ersten Abschluss zum selben BTB hinzukommt, ist eine Änderung gegenüber dem Original und muss im späteren Abschluss-PDF **sichtbar rot als Änderung markiert** werden; das Original-JPG selbst bleibt unverändert.
