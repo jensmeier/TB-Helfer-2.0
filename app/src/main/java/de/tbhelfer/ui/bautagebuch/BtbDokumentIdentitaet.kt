@@ -9,8 +9,8 @@ import de.tbhelfer.ui.einstellungen.nutzer.NutzerSpeicher
 /**
  * Eine gemeinsame Quelle für die menschenlesbare BTB-Dokumentidentität.
  *
- * Technische Beziehungen bleiben immer bei Server-/Gruppen-/BTB-UUIDs. Datum, Uhrzeit und eine
- * abgeleitete Tag-/Nacht-Anzeige sind nur menschenlesbare Attribute und keine technischen Schlüssel.
+ * Ein moderner BTB besitzt genau eine dauerhafte btbId und genau einen stabilen aktuellen
+ * Abschluss-Dateinamen. Datum, Uhrzeit und Tag/Nacht sind nur lesbare Attribute.
  */
 object BtbDokumentIdentitaet {
 
@@ -25,10 +25,10 @@ object BtbDokumentIdentitaet {
         val endeDatumIso: String?,
         val startUhrzeit: String?,
         val endeUhrzeit: String?,
-        val dokumentVersion: Int,
+        /** Legacy-Feld für alten Aufrufer-Code; neue Dokumente verwenden keine sichtbaren Versionen. */
+        val dokumentVersion: Int = 0,
         val abschlussEpochMs: Long? = null,
         val abschlussBenutzer: String? = null,
-        // Legacy-/Anzeigeinformationen bleiben für Altbestände erhalten.
         val schicht: SchichtTyp,
         val schichtAnzeige: String,
         val schichtToken: String,
@@ -45,10 +45,7 @@ object BtbDokumentIdentitaet {
         val anzeigeTitel: String
             get() = "BTB $verantwortlicherTb · $zeitraumAnzeige"
 
-        /**
-         * Merge-sichere Basis. Zwei verschiedene BTBs desselben Tages dürfen nie kollidieren.
-         * Für Altbestände ohne UUID bleibt der historische Schichttoken Bestandteil der Basis.
-         */
+        /** Merge-sicher: die stabile BTB-ID bleibt immer Teil des Namens. */
         val dateiBasis: String
             get() {
                 val timeToken = listOf(startUhrzeit, endeUhrzeit)
@@ -58,22 +55,13 @@ object BtbDokumentIdentitaet {
                 return "BTB_${datumIso}_${timeToken}_${verantwortlicherToken}_${btbToken}"
             }
 
-        fun pdfDateiname(version: Int? = null): String {
-            val v = version ?: dokumentVersion.takeIf { it > 0 }
-            return if (v != null) "${dateiBasis}_V$v.pdf" else "$dateiBasis.pdf"
-        }
+        /** version wird nur für Quellkompatibilität akzeptiert und absichtlich ignoriert. */
+        fun pdfDateiname(version: Int? = null): String = "${dateiBasis}.pdf"
 
-        fun docxDateiname(version: Int? = null): String {
-            val v = version ?: dokumentVersion.takeIf { it > 0 }
-            return if (v != null) "${dateiBasis}_V$v.docx" else "$dateiBasis.docx"
-        }
+        /** version wird nur für Quellkompatibilität akzeptiert und absichtlich ignoriert. */
+        fun docxDateiname(version: Int? = null): String = "${dateiBasis}.docx"
     }
 
-    /**
-     * Löst die sichtbare Dokumentidentität auf und bereitet gleichzeitig die nächste belastbare
-     * Dokumentversion vor. Die eigentliche Bestätigung geschieht erst, wenn die erwartete Vn-PDF
-     * auf dem Datenträger gefunden wird; Entwürfe oder abgebrochene PDF-Läufe zählen daher nicht.
-     */
     suspend fun aufloesen(context: Context, entry: BautagebuchEintrag): Identitaet {
         val appContext = context.applicationContext
         val root = runCatching {
@@ -98,9 +86,13 @@ object BtbDokumentIdentitaet {
             SchichtTyp.NACHT -> "Nacht"
         }
         val shiftToken = entry.schicht.name
-        val stableBtbToken = BtbDokumentVersionierung.dokumentToken(entry)
+        val stableBtbToken = entry.btbId
+            ?.let(::safeToken)
+            ?.take(18)
+            ?.takeIf { it.isNotBlank() }
+            ?: "ALT_${entry.datumIso}_${entry.schicht.name}"
 
-        val base = Identitaet(
+        return Identitaet(
             firmenname = NutzerSpeicher.laden(appContext)?.firmenname?.trim()?.takeIf { it.isNotBlank() },
             baustelleName = entry.baustelleName,
             verantwortlicherTb = responsible.trim().ifBlank { "TB" },
@@ -111,7 +103,7 @@ object BtbDokumentIdentitaet {
             endeDatumIso = entry.endeDatumIso,
             startUhrzeit = entry.startUhrzeit,
             endeUhrzeit = entry.endeUhrzeit,
-            dokumentVersion = entry.dokumentVersion.coerceAtLeast(0),
+            dokumentVersion = 0,
             abschlussEpochMs = entry.letzterAbschlussEpochMs,
             abschlussBenutzer = entry.letzterAbschlussBenutzer,
             schicht = entry.schicht,
@@ -119,18 +111,6 @@ object BtbDokumentIdentitaet {
             schichtToken = shiftToken,
             worksiteServerId = syncContext?.worksiteServerId,
             groupId = ownTeam?.groupId ?: syncContext?.groupId
-        )
-
-        val prepared = BtbDokumentVersionierung.vorbereiten(
-            context = appContext,
-            entry = entry,
-            expectedPdfName = { version -> base.pdfDateiname(version) },
-            benutzer = base.verantwortlicherTb
-        )
-        return base.copy(
-            dokumentVersion = prepared.naechsteVersion,
-            abschlussEpochMs = prepared.abschlussEpochMs,
-            abschlussBenutzer = prepared.benutzer
         )
     }
 
