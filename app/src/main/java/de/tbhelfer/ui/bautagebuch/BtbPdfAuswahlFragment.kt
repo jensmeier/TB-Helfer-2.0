@@ -27,7 +27,9 @@ import java.time.format.DateTimeFormatter
 /**
  * Auswahl der Fotos fürs PDF (Checkbox).
  *
- * Default: alle Fotos in der Schicht sind ausgewählt.
+ * Default: alle Fotos des konkreten BTB sind ausgewählt. Moderne, eindeutig einem anderen BTB
+ * zugeordnete Fotos werden weder angezeigt noch mitgezählt. Historische Fotos ohne btbId bleiben
+ * über den bisherigen Zeitfenster-Fallback auswählbar.
  * Persistiert werden nur abgewählte IDs pro Bildtyp (JSON via BtbPhotoSelectionStore).
  */
 class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
@@ -63,7 +65,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
     private var filterBildtyp: String? = null
     private var schichtTypArg: SchichtTyp = SchichtTyp.TAG
 
-    // Für Persistenz: komplette Liste pro Typ (nur innerhalb der Schicht)
+    // Für Persistenz: komplette Liste pro Typ (nur innerhalb der Schicht UND dieses BTB)
     private val allIdsByTypeInShift = linkedMapOf<String, List<Long>>()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -97,25 +99,47 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 return@launch
             }
 
+            val appContext = requireContext().applicationContext
+
             // maxFotos kommt aus BTB-Eintrag (Settings) – fallback 60
             val entry = withContext(Dispatchers.IO) {
                 BautagebuchSpeicher.laden(requireContext(), baustelleNameArg, datum, schichtTypArg)
             }
             maxFotos = entry?.maxFotosInPdf ?: 60
 
+            // Technische Identität kommt aus dem aktiven stabilen BTB-Pointer. Der sichtbare Name,
+            // Datum und TAG/NACHT allein dürfen bei mehreren BTBs am selben Tag nicht entscheiden.
+            val activeBtbId = withContext(Dispatchers.IO) {
+                BtbPhotoInstanzKey.activeBtbId(
+                    appContext,
+                    baustelleIdArg,
+                    datumIsoArg,
+                    schichtTypArg
+                ) ?: entry?.btbId
+            }
+
             tvSub.text = "$baustelleNameArg • $datumIsoArg • Schicht: ${shiftStartArg ?: "-"}–${shiftEndArg ?: "-"}"
 
             val fotosInShift = withContext(Dispatchers.IO) {
                 val all = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(baustelleIdArg)
                 val (from, to) = shiftWindowEpochMs(datum, shiftStartArg, shiftEndArg)
-                all.filter { it.erstelltAmEpochMs in from until to }
+                all.asSequence()
+                    .filter { it.erstelltAmEpochMs in from until to }
+                    .filter {
+                        BtbFotoZuordnungSpeicher.darfImBtbVerwendetWerden(
+                            appContext,
+                            it.id,
+                            activeBtbId
+                        )
+                    }
                     .sortedBy { it.erstelltAmEpochMs }
+                    .toList()
             }
 
             // Build blocks by section
             val blocks = buildBlocks(fotosInShift, filterBildtyp)
 
-            // Für Persistenz: pro Typ alle IDs
+            // Für Persistenz: pro Typ nur die fachlich zu diesem BTB gehörenden IDs.
             allIdsByTypeInShift.clear()
             blocks.forEach { b ->
                 allIdsByTypeInShift[b.blockKey] = b.fotos.map { it.id }
@@ -180,6 +204,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             )
 
             // Update nur die Typen, die in diesem Screen vorhanden sind (allIdsByTypeInShift).
+            // Fremd-BTB-Fotos sind hier absichtlich gar nicht enthalten.
             for ((typeKey, allIds) in allIdsByTypeInShift) {
                 val sel = selection[typeKey] ?: linkedSetOf()
                 val ex = allIds.filterNot { sel.contains(it) }.toSet()
