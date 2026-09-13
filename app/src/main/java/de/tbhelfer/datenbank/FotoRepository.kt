@@ -39,14 +39,12 @@ class FotoRepository(
             }
         } ?: return
         val fotos = alleFotos ?: dao.fotosFuerBaustelleOnce(baustelleId)
-        // Wichtig für bestehende 200026-BTBs: alte Foto-Basis zuerst rekonstruieren.
         BtbOriginalFotoSpeicher.migriereAusBestehendemOriginalWennFehlt(context, entry, fotos)
         if (BtbOriginalFotoSpeicher.hatOriginal(context, btbId)) {
             BtbDokumentVersionierung.loescheAktuellesAbschlussDokument(context, entry)
         }
     }
 
-    /** Nur DB löschen (Dateien bleiben bestehen). */
     suspend fun loeschenMitIds(ids: List<Long>): Int = withContext(Dispatchers.IO) {
         val ctx = appContext
         val beforeDelete = dao.fotosMitIds(ids)
@@ -56,7 +54,6 @@ class FotoRepository(
             }.distinct()
         } else emptyList()
 
-        // Vor dem Löschen invalidieren, solange die damalige Foto-Menge noch vollständig lesbar ist.
         if (ctx != null) {
             affected.forEach { (baustelleId, btbId) ->
                 invalidiereFotoAbschlussWennNoetig(ctx, baustelleId, btbId)
@@ -71,8 +68,6 @@ class FotoRepository(
     fun fotosFuerBaustelle(baustelleId: Long): Flow<List<FotoEntity>> = dao.fotosFuerBaustelle(baustelleId).flowOn(Dispatchers.IO)
 
     suspend fun fotosFuerBaustelleOnce(baustelleId: Long): List<FotoEntity> = withContext(Dispatchers.IO) {
-        // Nur während eines PDF-Abschlusslaufs können einzelne Foto-Pfade auf temporäre Kopien
-        // mit roter Änderungsmarkierung zeigen. Room-Daten und Original-JPG bleiben unverändert.
         BtbFotoRenderMarkierung.anwenden(dao.fotosFuerBaustelleOnce(baustelleId))
     }
 
@@ -83,11 +78,6 @@ class FotoRepository(
         dao.fotosFuerUnterknotenOnce(baustelleId, knotenId)
     }
 
-    /**
-     * Ein neu gespeichertes Bild wird – sofern die Baustelle gerade einen modernen BTB geöffnet
-     * hat – genau dieser btbId zugeordnet. Die Zuordnung wird aus demselben kanonischen aktiven
-     * BTB-Kontext gelesen wie die Foto-Maske; Uhrzeit/Schicht sind dafuer nicht entscheidend.
-     */
     suspend fun einfuegen(entity: FotoEntity): Long {
         val id = withContext(Dispatchers.IO) { dao.einfuegen(entity) }
         appContext?.let { ctx ->
