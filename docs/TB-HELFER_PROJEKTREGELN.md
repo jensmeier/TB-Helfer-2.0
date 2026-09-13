@@ -77,7 +77,10 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Beim Wechsel BTB 1 ↔ BTB 2 muss der aktuelle BTB zuerst tatsächlich gespeichert sein; keine feste Zeitwarte-Lösung als Datenintegrität.
 - Verlauf zeigt nur tatsächlich vorhandene BTBs.
 - `PDF Entwurf` erzeugt nur eine Vorschau und öffnet sie direkt im App-eigenen PDF-Viewer; der BTB wird dadurch nicht abgeschlossen.
+- Nach einem **erfolgreichen `BTB Abschluss` wird die aktive `btbId` gelöst**. Der abgeschlossene BTB bleibt vollständig im Verlauf gespeichert, aber die BTB-Seite zeigt danach `Noch kein BTB`.
+- Ein abgeschlossener BTB wird nur durch eine bewusste Aktion `BTB-Verlauf -> BTB bearbeiten` wieder aktiv. Dabei wird exakt dieselbe `btbId` reaktiviert. Nach dem nächsten erfolgreichen Abschluss wird die aktive `btbId` erneut gelöst.
 - Ein moderner BTB darf im Verlauf nach ausdrücklicher Sicherheitsabfrage vollständig gelöscht werden. Dabei werden BTB-Datensatz, Original-/Abschlussmetadaten und BTB-Dokumente gelöscht. **Echte Baustellenfotos bleiben erhalten** und werden nur von der gelöschten `btbId` gelöst.
+- Wenn **kein BTB aktiv** ist und die Kamera aus dem Bautagebuch geöffnet wird, fragt die App: `Nur Baustellenfoto` oder `BTB starten/öffnen`. `Nur Baustellenfoto` erhält keine BTB-Zuordnung; `BTB starten/öffnen` führt bewusst zur Neuanlage oder zum BTB-Verlauf.
 
 ### BTB-Abschluss – verbindliches Ein-PDF-/Original-Modell
 - Die frühere sichtbare V1/V2/V3-Versionierung ist verworfen.
