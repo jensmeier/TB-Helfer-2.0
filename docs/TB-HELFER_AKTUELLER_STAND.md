@@ -72,6 +72,7 @@ Vor jeder Änderung zuerst lesen:
 - `app/src/main/java/de/tbhelfer/datenbank/FotoRepository.kt`
 - `app/src/main/java/de/tbhelfer/ui/HauptActivity.kt`
 - `app/build.gradle.kts`
+- `docs/TB-HELFER_PROJEKTREGELN.md`
 - diese Projektstand-MD
 
 ### Kanonischer aktiver BTB
@@ -82,8 +83,9 @@ Vor jeder Änderung zuerst lesen:
 
 ### Abschluss/Vorschau ohne falsche Altvalidierung
 - `BtbUiSaveBridge.speichernUndNeuLaden(...)` drückt nicht mehr den historischen versteckten `btnSpeichern`.
-- Focus-Verlust lässt vorhandene Autosaves auslaufen; anschließend wird derselbe aktive BTB direkt per `btbId` neu gelesen.
-- dadurch darf ein bereits korrekt gespeicherter BTB nicht mehr wegen veralteter privater UI-Felder fälschlich `Datum/Zeit fehlt` / `Personal fehlt` melden.
+- ohne offenes Eingabefeld wird derselbe aktive BTB direkt per `btbId` neu gelesen.
+- wenn beim Klick noch ein echtes Text-Eingabefeld Fokus hatte, wird der Focus beendet und gezielt bis zu 4,5 Sekunden auf einen **neuen `geaendertAmEpochMs` desselben `btbId`** gewartet; es gibt keinen festen 1,7-s-Schlaf als Datenintegritätslogik.
+- dadurch soll weder die letzte gerade getippte Zeile verloren gehen noch ein korrekt gespeicherter BTB wegen veralteter privater UI-Felder fälschlich `Datum/Zeit fehlt` / `Personal fehlt` melden.
 
 ### Details anzeigen = read-only
 - Klick auf `Details anzeigen` öffnet in 200032 eine kompakte schreibgeschützte `BTB-Details`-Ansicht.
@@ -186,7 +188,7 @@ Schema 11 vorbereitet, noch nicht produktiv:
 5. Stift → Datum/Zeit ändern → nach Speichern muss die neue Zeit **sofort** oben sichtbar sein und auch nach weiterer Texteingabe erhalten bleiben.
 6. Kamera aus demselben BTB öffnen → Foto-Maske muss Firma/Firmen aus exakt diesem aktiven BTB anzeigen; bei genau einer Firma automatisch vorauswählen.
 7. Foto speichern → Fotozähler muss sofort zur selben `btbId` passen, unabhängig davon, ob die Fotozeit außerhalb der alten Arbeitszeit liegt.
-8. Text/Foto ergänzen → `BTB Abschluss`: kein falscher Dialog `Datum/Zeit fehlt` / `Personal fehlt`, sofern die Daten im aktiven btbId-Datensatz vorhanden sind.
+8. Text/Foto ergänzen → `BTB Abschluss`: kein falscher Dialog `Datum/Zeit fehlt` / `Personal fehlt`, sofern die Daten im aktiven btbId-Datensatz vorhanden sind; direkt vor dem Abschluss getippter Text darf nicht verloren gehen.
 9. Abschluss-PDF und Fotoanhang prüfen; neue fachliche Inhalte/Fotos bleiben nach Originalregel markiert.
 10. `ZIP teilen` und `BTB löschen` anschließend separat prüfen.
 11. produktiven NAS weiterhin nicht anfassen.
