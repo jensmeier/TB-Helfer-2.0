@@ -3,6 +3,7 @@ package de.tbhelfer.datenbank
 import android.content.Context
 import de.tbhelfer.server.SofortSync
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
+import de.tbhelfer.ui.bautagebuch.BtbActiveContext
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.BtbFotoRenderMarkierung
 import de.tbhelfer.ui.bautagebuch.BtbFotoZuordnungSpeicher
@@ -28,7 +29,15 @@ class FotoRepository(
         btbId: String,
         alleFotos: List<FotoEntity>? = null
     ) {
-        val entry = BautagebuchSpeicher.ladenById(context, baustelleId, "", btbId) ?: return
+        val active = BtbActiveContext.laden(context, baustelleId)
+        val entry = when {
+            active?.btbId == btbId -> active.entry
+            else -> {
+                val baustelle = de.tbhelfer.ServiceLocator.baustellenRepository.baustelleMitIdOnce(baustelleId)
+                val name = baustelle?.baustellenname.orEmpty()
+                BautagebuchSpeicher.ladenById(context, baustelleId, name, btbId)
+            }
+        } ?: return
         val fotos = alleFotos ?: dao.fotosFuerBaustelleOnce(baustelleId)
         // Wichtig für bestehende 200026-BTBs: alte Foto-Basis zuerst rekonstruieren.
         BtbOriginalFotoSpeicher.migriereAusBestehendemOriginalWennFehlt(context, entry, fotos)
@@ -76,18 +85,15 @@ class FotoRepository(
 
     /**
      * Ein neu gespeichertes Bild wird – sofern die Baustelle gerade einen modernen BTB geöffnet
-     * hat – genau dieser btbId zugeordnet. Ist dieser BTB bereits einmal abgeschlossen worden,
-     * ist das bisherige Abschluss-PDF ab diesem neuen Foto nicht mehr gültig.
+     * hat – genau dieser btbId zugeordnet. Die Zuordnung wird aus demselben kanonischen aktiven
+     * BTB-Kontext gelesen wie die Foto-Maske; Uhrzeit/Schicht sind dafuer nicht entscheidend.
      */
     suspend fun einfuegen(entity: FotoEntity): Long {
         val id = withContext(Dispatchers.IO) { dao.einfuegen(entity) }
         appContext?.let { ctx ->
             runCatching {
-                val activeBtbId = BautagebuchSpeicher.aktiveBtbId(
-                    ctx,
-                    entity.baustelleId,
-                    ""
-                )
+                val active = BtbActiveContext.laden(ctx, entity.baustelleId)
+                val activeBtbId = active?.btbId
                 if (!activeBtbId.isNullOrBlank()) {
                     BtbFotoZuordnungSpeicher.zuordnen(ctx, id, activeBtbId)
                     val alleFotos = dao.fotosFuerBaustelleOnce(entity.baustelleId)
