@@ -95,7 +95,10 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 
 ### BTB-Fotos
 - Neue normale BTB-Fotos werden zusätzlich eindeutig der beim Speichern aktiven `btbId` zugeordnet.
-- Zwei BTBs mit überlappenden Arbeitszeiten dürfen dadurch nicht dieselben modernen Fotos nur wegen der Uhrzeit übernehmen.
+- Zwei BTBs mit überlappenden Arbeitszeiten dürfen dadurch nicht dieselben modernen Fotos nur wegen der Uhrzeit übernehmen. Fotozähler, Fotoauswahl, PDF und Einzel-BTB-ZIP müssen dieselbe `btbId`-Zuordnung beachten.
+- Der beim **ersten erfolgreichen BTB-Abschluss tatsächlich enthaltene Foto-Bestand gehört ebenfalls zum unveränderlichen Original** dieses BTB.
+- Ein Foto, das erst nach diesem ersten Abschluss zum selben BTB hinzukommt, ist eine Änderung gegenüber dem Original und muss im späteren Abschluss-PDF **sichtbar rot als Änderung markiert** werden; das Original-JPG selbst bleibt unverändert.
+- Für bestehende BTBs aus einem älteren App-Stand darf die erste Foto-Basis einmalig aus dem bereits vorhandenen ersten BTB-Original/Abschlusszeitpunkt rekonstruiert werden; danach ist auch diese Foto-Basis unveränderlich.
 - Datum/Uhrzeit bleiben Anzeige/Sortierung, nicht technische Foto-BTB-Zuordnung.
 - Historische noch nicht zugeordnete Fotos dürfen als Legacy-Fallback weiterhin über das Zeitfenster angeboten werden.
 - Mängel-/Abnahme-Zuordnungen bleiben als eigene Fachbeziehungen bestehen.
