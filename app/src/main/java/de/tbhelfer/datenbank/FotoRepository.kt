@@ -22,23 +22,40 @@ class FotoRepository(
 
     suspend fun fotosMitIds(ids: List<Long>): List<FotoEntity> = withContext(Dispatchers.IO) { dao.fotosMitIds(ids) }
 
+    private suspend fun invalidiereFotoAbschlussWennNoetig(
+        context: Context,
+        baustelleId: Long,
+        btbId: String,
+        alleFotos: List<FotoEntity>? = null
+    ) {
+        val entry = BautagebuchSpeicher.ladenById(context, baustelleId, "", btbId) ?: return
+        val fotos = alleFotos ?: dao.fotosFuerBaustelleOnce(baustelleId)
+        // Wichtig für bestehende 200026-BTBs: alte Foto-Basis zuerst rekonstruieren.
+        BtbOriginalFotoSpeicher.migriereAusBestehendemOriginalWennFehlt(context, entry, fotos)
+        if (BtbOriginalFotoSpeicher.hatOriginal(context, btbId)) {
+            BtbDokumentVersionierung.loescheAktuellesAbschlussDokument(context, entry)
+        }
+    }
+
     /** Nur DB löschen (Dateien bleiben bestehen). */
     suspend fun loeschenMitIds(ids: List<Long>): Int = withContext(Dispatchers.IO) {
         val ctx = appContext
+        val beforeDelete = dao.fotosMitIds(ids)
         val affected = if (ctx != null) {
-            ids.mapNotNull { fotoId -> BtbFotoZuordnungSpeicher.btbId(ctx, fotoId) }.distinct()
+            beforeDelete.mapNotNull { foto ->
+                BtbFotoZuordnungSpeicher.btbId(ctx, foto.id)?.let { btbId -> foto.baustelleId to btbId }
+            }.distinct()
         } else emptyList()
-        val result = dao.loeschenMitIds(ids)
-        ctx?.let { app ->
-            affected.forEach { btbId ->
-                if (BtbOriginalFotoSpeicher.hatOriginal(app, btbId)) {
-                    BautagebuchSpeicher.ladenById(app, null, "", btbId)?.let { entry ->
-                        BtbDokumentVersionierung.loescheAktuellesAbschlussDokument(app, entry)
-                    }
-                }
+
+        // Vor dem Löschen invalidieren, solange die damalige Foto-Menge noch vollständig lesbar ist.
+        if (ctx != null) {
+            affected.forEach { (baustelleId, btbId) ->
+                invalidiereFotoAbschlussWennNoetig(ctx, baustelleId, btbId)
             }
-            ids.forEach { BtbFotoZuordnungSpeicher.entfernen(app, it) }
         }
+
+        val result = dao.loeschenMitIds(ids)
+        ctx?.let { app -> ids.forEach { BtbFotoZuordnungSpeicher.entfernen(app, it) } }
         result
     }
 
@@ -73,11 +90,8 @@ class FotoRepository(
                 )
                 if (!activeBtbId.isNullOrBlank()) {
                     BtbFotoZuordnungSpeicher.zuordnen(ctx, id, activeBtbId)
-                    if (BtbOriginalFotoSpeicher.hatOriginal(ctx, activeBtbId)) {
-                        BautagebuchSpeicher.ladenById(ctx, entity.baustelleId, "", activeBtbId)?.let { entry ->
-                            BtbDokumentVersionierung.loescheAktuellesAbschlussDokument(ctx, entry)
-                        }
-                    }
+                    val alleFotos = dao.fotosFuerBaustelleOnce(entity.baustelleId)
+                    invalidiereFotoAbschlussWennNoetig(ctx, entity.baustelleId, activeBtbId, alleFotos)
                 }
             }
             runCatching { SofortSync.anstossen(ctx) }
@@ -92,15 +106,11 @@ class FotoRepository(
     suspend fun loeschen(entity: FotoEntity): Int = withContext(Dispatchers.IO) {
         val ctx = appContext
         val btbId = ctx?.let { BtbFotoZuordnungSpeicher.btbId(it, entity.id) }
-        val result = dao.loeschen(entity)
-        ctx?.let { app ->
-            if (!btbId.isNullOrBlank() && BtbOriginalFotoSpeicher.hatOriginal(app, btbId)) {
-                BautagebuchSpeicher.ladenById(app, entity.baustelleId, "", btbId)?.let { entry ->
-                    BtbDokumentVersionierung.loescheAktuellesAbschlussDokument(app, entry)
-                }
-            }
-            BtbFotoZuordnungSpeicher.entfernen(app, entity.id)
+        if (ctx != null && !btbId.isNullOrBlank()) {
+            invalidiereFotoAbschlussWennNoetig(ctx, entity.baustelleId, btbId)
         }
+        val result = dao.loeschen(entity)
+        ctx?.let { app -> BtbFotoZuordnungSpeicher.entfernen(app, entity.id) }
         result
     }
 
