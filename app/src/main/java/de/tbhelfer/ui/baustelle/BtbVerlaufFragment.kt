@@ -190,14 +190,14 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         lifecycleScope.launch {
             Toast.makeText(requireContext(), "Tagesabschluss-ZIP wird erstellt …", Toast.LENGTH_SHORT).show()
             try {
-                val zip = BtbExportPaket.erstellenBaustellenExport(
+                val export = BtbExportPaket.erstellenBaustellenExport(
                     requireContext().applicationContext,
                     item.entry.baustelleId,
                     item.entry.baustelleName,
                     item.datum,
                     item.datum
                 )
-                BtbExportPaket.shareZip(requireContext(), zip)
+                BtbExportPaket.shareZip(requireContext(), export.zipFile)
             } catch (error: Throwable) {
                 Toast.makeText(requireContext(), "ZIP konnte nicht erstellt werden: ${error.message ?: "Fehler"}", Toast.LENGTH_LONG).show()
             }
