@@ -68,9 +68,10 @@ Noch offen aus dem 200028-Test:
 3. Strukturüberschriften wie `Wetter`, `4. Ausgeführte Arbeiten`, `Allgemein`, `Hauptbaustelle`/Ortsüberschriften bleiben schwarz; nur echte Inhaltsabweichungen rot.
 
 ## Android 200029 – aktueller vorbereiteter UI-Patch
-Betroffene Datei:
+Betroffene Dateien:
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbModernLifecycleInstaller.kt`
 - `app/build.gradle.kts`
+- `docs/TB-HELFER_PROJEKTREGELN.md`
 
 Ziel laut Benutzer-Skizze: mehr nutzbare Höhe auf dem Handy und direkter Bearbeitungsdialog.
 
@@ -111,7 +112,7 @@ Tests:
 - Foto-ID-Menge des ersten erfolgreichen Abschlusses bleibt unveränderlich.
 - ein später neu hinzugefügtes Foto gilt als Abweichung vom Original.
 - PDF-Aufbereitung erzeugt dafür nur eine temporäre rot markierte Bildkopie; Original-JPG/Room-Datensatz bleiben unverändert.
-- Bildreferenzen im Text müssen künftig ebenfalls zwischen Original- und nachträglich hinzugefügten Bildern unterscheiden.
+- Bildreferenzen im Haupttext müssen künftig ebenfalls zwischen Original- und nachträglich hinzugefügten Bildern unterscheiden.
 
 ## Nutzerprofil / Name
 Praktisch bestätigt:
