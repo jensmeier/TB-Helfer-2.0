@@ -18,8 +18,8 @@ android {
         // targetSdk kann separat von compileSdk entschieden werden.
         // Für die "AGP9-Migration - alles aktuell" Variante setzen wir hier 36.
         targetSdk = 36
-        // Android 200028: BTB-Fotozaehler/-auswahl konsequent auf stabile btbId begrenzen.
-        versionCode = 200028
+        // Android 200029: kompakter BTB-Kopf + direktes Bearbeitungsfenster.
+        versionCode = 200029
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
