@@ -42,8 +42,7 @@ interface FotoDao {
     suspend fun fotosFuerBaustelleOnce(baustelleId: Long): List<FotoEntity>
 
     @Query("SELECT * FROM foto WHERE baustelleId = :baustelleId AND baustellenKnotenId = :knotenId ORDER BY erstelltAmEpochMs DESC")
-    fun fotosFuerUnterknoten(baustelleId: Long, knotenId: Long): Flow<List<FotoEntity>> =
-        dao.fotosFuerUnterknoten(baustelleId, knotenId).flowOn(Dispatchers.IO)
+    fun fotosFuerUnterknoten(baustelleId: Long, knotenId: Long): Flow<List<FotoEntity>>
 
     @Query("SELECT * FROM foto WHERE baustelleId = :baustelleId AND baustellenKnotenId = :knotenId ORDER BY erstelltAmEpochMs DESC")
     suspend fun fotosFuerUnterknotenOnce(baustelleId: Long, knotenId: Long): List<FotoEntity>
