@@ -1,6 +1,6 @@
 # TB-Helfer – verbindliche Projektregeln
 
-Stand: 2026-09-13
+Stand: 2026-09-14
 
 Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und später iOS fest. Bei Änderungen zuerst diese Datei aktualisieren.
 
@@ -80,7 +80,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Nach einem **erfolgreichen `BTB Abschluss` wird die aktive `btbId` gelöst**. Der abgeschlossene BTB bleibt vollständig im Verlauf gespeichert, aber die BTB-Seite zeigt danach `Noch kein BTB`.
 - Ein abgeschlossener BTB wird nur durch eine bewusste Aktion `BTB-Verlauf -> BTB bearbeiten` wieder aktiv. Dabei wird exakt dieselbe `btbId` reaktiviert. Nach dem nächsten erfolgreichen Abschluss wird die aktive `btbId` erneut gelöst.
 - Ein moderner BTB darf im Verlauf nach ausdrücklicher Sicherheitsabfrage vollständig gelöscht werden. Dabei werden BTB-Datensatz, Original-/Abschlussmetadaten und BTB-Dokumente gelöscht. **Echte Baustellenfotos bleiben erhalten** und werden nur von der gelöschten `btbId` gelöst.
-- Wenn **kein BTB aktiv** ist und die Kamera aus dem Bautagebuch geöffnet wird, fragt die App: `Nur Baustellenfoto` oder `BTB starten/öffnen`. `Nur Baustellenfoto` erhält keine BTB-Zuordnung; `BTB starten/öffnen` führt bewusst zur Neuanlage oder zum BTB-Verlauf.
+- Wenn **kein BTB aktiv** ist und ein normaler Kamera-Einstieg der App verwendet wird – insbesondere BTB-Kamera und Startmenü `Aktuelle Baustelle` – fragt die App: `Nur Baustellenfoto` oder `BTB starten/öffnen`. `Nur Baustellenfoto` erhält keine BTB-Zuordnung; `BTB starten/öffnen` führt bewusst zur Neuanlage oder zum BTB-Verlauf. Fachlich spezielle Kamera-Flows wie Mangel-/Abnahmenachweis behalten ihre eigene Zuordnung.
 
 ### BTB-Abschluss – verbindliches Ein-PDF-/Original-Modell
 - Die frühere sichtbare V1/V2/V3-Versionierung ist verworfen.
@@ -109,8 +109,9 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Neue normale BTB-Fotos werden zusätzlich eindeutig der beim Speichern aktiven `btbId` zugeordnet.
 - Zwei BTBs mit überlappenden Arbeitszeiten dürfen dadurch nicht dieselben modernen Fotos nur wegen der Uhrzeit übernehmen. Fotozähler, Fotoauswahl, PDF und Export müssen dieselbe `btbId`-Zuordnung beachten.
 - **Bei modernen, explizit zugeordneten Fotos ist die `btbId` stärker als das Arbeitszeitfenster.** Ein Foto bleibt Teil seines BTB, auch wenn es nach der ursprünglich eingetragenen Endzeit aufgenommen wurde oder die Arbeitszeit später geändert wird.
+- **Für einen modernen BTB mit `btbId` gilt strikt: Nur Fotos mit exakt derselben `btbId` gehören in Fotozähler, Abschnittseditor, PDF und BTB-Export.** Ein allgemeines Baustellenfoto ohne `btbId` darf nicht später über Datum/Uhrzeit in diesen BTB hineinrutschen.
 - Die Foto-Eingabemaske liest bei einem modernen aktiven BTB die Firmen ebenfalls aus **genau diesem aktiven `btbId`-Datensatz**. Eine separate Suche nach einem zeitlich passenden Tag-/Nacht-BTB darf die Firmenliste nicht bestimmen.
-- Nur historische Fotos ohne `btbId` dürfen weiterhin über Datum/Uhrzeit als Legacy-Fallback angeboten werden.
+- Nur historische Fotos **und historische BTBs ohne `btbId`** dürfen weiterhin über Datum/Uhrzeit als Legacy-Fallback zusammengeführt werden.
 - Der beim **ersten erfolgreichen BTB-Abschluss tatsächlich enthaltene Foto-Bestand gehört ebenfalls zum unveränderlichen Original** dieses BTB.
 - Ein Foto, das erst nach diesem ersten Abschluss zum selben BTB hinzukommt, ist eine Änderung gegenüber dem Original und muss im späteren Abschluss-PDF **sichtbar rot als Änderung markiert** werden; das Original-JPG selbst bleibt unverändert.
 - Jede tatsächliche Änderung der ausgewählten Foto-Menge nach einem Abschluss – neues Foto, entferntes Foto oder nachträglich ab-/wieder ausgewählte Abweichung – macht das bisherige Abschluss-PDF genauso ungültig wie eine Textänderung und setzt den BTB auf `Nachbearbeitung`, auch wenn der übrige BTB-Text unverändert ist.
