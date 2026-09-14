@@ -16,7 +16,7 @@ Vor jeder Änderung zuerst lesen:
 - stabil: `main`
 - aktiv: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft/mergeable.
-- letzter Branch-Commit vor dieser Doku-Aktualisierung: `7322114825db0844c4b7425316d1a760c92549a6` (`fix: repair 200036 XML patch continuation`).
+- letzter relevanter Branch-Commit vor dieser Doku-Aktualisierung: `521e571c2ba32a7a90edeec50134a34b1750bb56` (`fix: group same-name BTB photos in 200037 PDF patch`).
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`.
 - PR bleibt Draft bis zum erfolgreichen Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test.
 
@@ -32,7 +32,7 @@ Auf dem Windows-PC wurden die lokalen 200035-Änderungen beibehalten und anschli
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchPdf.kt` (200035-Grundlage)
 - `app/build.gradle.kts` (`versionCode = 200036`, `versionName = 1.3`)
 
-Diese lokalen Änderungen **noch nicht verwerfen/resetten und noch nicht committen/pushen**, bis der Gerätetest 200036 abgeschlossen ist.
+Diese lokalen Änderungen **noch nicht verwerfen/resetten und noch nicht committen/pushen**, bis der Gerätetest der nächsten Testversion abgeschlossen ist.
 
 ## Android 200036 – Patch und Build bestätigt
 Verwendete Skripte:
@@ -84,32 +84,52 @@ Anlass waren zwei echte Exportfehler aus dem Test vom 14.09.2026:
 
 Die 200035-PDF-Original-Diff-Logik bleibt Grundlage:
 - neue Fotozeilen rot;
-- Original-/Nachtragsgruppen getrennt;
 - entfernte Originalinhalte rot `(entfernt)`;
 - allgemeines Baustellenfoto ohne `btbId` bleibt außerhalb moderner BTBs.
 
-## Nächster verbindlicher Schritt: Gerätetest Android 200036
-APK als **Update** installieren; **App-Daten nicht löschen**.
+## Gerätetest 200036 – bisher bestätigt / Auffälligkeiten
+Aus dem Gerätetest und den beiden neuen Zeitraum-ZIPs vom 14.09.2026:
+- Abschluss-PDF ist im Export jetzt vorhanden.
+- DOCX enthält wieder Firma, verantwortlichen TB, Schicht und BTB-ID.
+- rote fachliche Änderungen und Foto-Nachträge sind im PDF sichtbar.
+- neuer UX-Wunsch: Personal und Geräte/Maschinen sollen für `von`/`bis` ebenfalls die grafische Uhr wie Datum/Zeit verwenden.
+- neuer PDF-Wunsch: Fotos mit demselben Foto-Text im selben Firmen-/Ortskontext sollen auch nach einer Nachbearbeitung in **einer gemeinsamen PDF-Zeile** erscheinen, z. B. `18:37–18:41 (KM 5,852) Test1.0 [Bild 3+5]`.
 
-Prüfen:
-1. Neuer BTB: Start-/Endzeit öffnet grafische Uhr; 15-Minuten-Rundung bleibt erhalten.
-2. Dunkelmodus: Karte/Dialog `Neuen BTB starten` ist lesbar.
-3. Erster `BTB Abschluss`: Hinweis auf unveränderliches Original erscheint.
-4. Nach Erstabschluss denselben BTB aus Verlauf öffnen und ändern:
-   - neues BTB-Foto im Anhang rot;
-   - zugehörige Fotozeile im Hauptteil rot;
-   - Originaleinträge schwarz;
-   - entfernte Originalinhalte rot `(entfernt) ...`.
-5. Allgemeines Baustellenfoto ohne `btbId` bleibt außerhalb des modernen BTB.
-6. Zeitraum-ZIP exportieren:
-   - Abschluss-PDF unter `BTB/<Datum>/` vorhanden;
-   - DOCX enthält Firma, verantwortlichen TB, Schicht und BTB-ID.
-7. Gesamt-Archiv exportieren:
-   - Abschluss-PDF bleibt enthalten;
-   - keine BTB-Datei verschwindet durch Normalisierung.
-8. Wenn möglich zwei BTBs am selben Tag/gleicher Schicht testen: Dateinamen durch stabilen BTB-Token unterscheidbar; kein fachliches `(2)` als Identität.
+## Android 200037 – vorbereitet, noch zu bauen/testen
+Versionierter Patch:
+- `.github/scripts/patch_200037.ps1`
 
-Erst wenn dieser Gerätetest passt, lokale Sourceänderungen committen/pushen und diesen Stand auf `200036 getestet` aktualisieren.
+200037 baut auf dem lokal erfolgreich gebauten 200036-Stand auf und ändert:
+- `BautagebuchFragment.kt`: Personal `von/bis` über grafische 24h-Uhr;
+- `BautagebuchFragment.kt`: Geräte/Maschinen `von/bis` über grafische 24h-Uhr;
+- Auswahl bleibt auf dem 15-Minuten-Raster;
+- gilt sowohl im Dialog beim Start eines neuen BTB als auch in den aufgeklappten Personal-/Maschinen-Sektionen eines laufenden BTB;
+- `BautagebuchPdf.kt`: Fotos mit gleichem Text/Firma/Ort werden wieder gemeinsam gruppiert, unabhängig davon, ob eines erst nach dem ersten Abschluss hinzugekommen ist;
+- gemeinsame Bildnummern werden kompakt als Bereich/Liste ausgegeben, z. B. `[Bild 3+5]` oder `[Bild 1–3]`;
+- enthält eine solche Gruppe ein nachträglich hinzugefügtes Foto, wird die gemeinsame geänderte Fotozeile rot dargestellt;
+- `app/build.gradle.kts`: lokal auf `versionCode = 200037`.
+
+Der Patch ist idempotent und kann auch erneut ausgeführt werden, falls eine frühere Fassung von 200037 bereits lokal angewendet wurde.
+
+## Nächster verbindlicher Schritt: Android 200037
+1. Branch in GitHub Desktop aktualisieren, lokale Sourceänderungen behalten.
+2. Ausführen:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\.github\scripts\patch_200037.ps1
+```
+3. `PATCH_200037_FERTIG` prüfen.
+4. Bauen:
+```powershell
+$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"; $env:PATH="$env:JAVA_HOME\bin;$env:PATH"; .\gradlew.bat :app:assembleDebug --rerun-tasks
+```
+5. APK als Update installieren; App-Daten nicht löschen.
+6. Prüfen:
+   - Personal `von/bis` öffnet grafische Uhr;
+   - Geräte/Maschinen `von/bis` öffnet grafische Uhr;
+   - gleichnamige Fotos werden im PDF wie im Editor gemeinsam dargestellt (`Bild 3+5` usw.);
+   - neue/geänderte gemeinsame Fotozeile bleibt rot;
+   - Export-PDF und DOCX-Kopfdaten aus 200036 bleiben korrekt.
+7. Erst bei erfolgreichem Test lokale Sourceänderungen committen/pushen.
 
 ## Produktiver Synology-Stand – unverändert
 - NAS/Synology ist Source of Truth.
@@ -160,6 +180,7 @@ Erst wenn dieser Gerätetest passt, lokale Sourceänderungen committen/pushen un
 - Zeitfenster-Fallback nur für echte Legacy-BTBs ohne `btbId`.
 - Foto-ID-Menge des ersten erfolgreichen Abschlusses gehört zum unveränderlichen Original.
 - nachträglich hinzugefügte BTB-Fotos werden im Anhang und in den fachlichen Fotozeilen als Nachtrag markiert.
+- gleiche Foto-Texte im selben Firmen-/Ortskontext dürfen im PDF gemeinsam gruppiert werden; Zeit/KM werden als Bereich und Bildnummern als gemeinsame Liste dargestellt.
 
 ## Teams / Baustellen / Sync – offen/teilweise vorbereitet
 - Zusammenarbeit strikt innerhalb derselben Firma.
@@ -202,8 +223,10 @@ Schema 11 vorbereitet, noch nicht produktiv:
 - Streckendaten/Kilometrierung weiterführen; Originalvermessungsdaten unverändert lassen.
 
 ## Nächster sinnvoller Arbeitsschritt
-1. APK 200036 als Update installieren, App-Daten nicht löschen.
-2. obige Gerätetestliste vollständig durchführen.
-3. Zeitraum-ZIP und Gesamt-Archiv erneut erzeugen und prüfen.
-4. Bei Erfolg lokale Sourceänderungen committen/pushen und Projektstand auf `200036 getestet` aktualisieren.
-5. Danach offene UI-/Sync-Punkte weiterführen; produktiven NAS weiterhin nicht anfassen.
+1. Android 200037-Patch anwenden.
+2. Build durchführen.
+3. APK als Update installieren, App-Daten nicht löschen.
+4. PM-Uhren und PDF-Gruppierung gleichnamiger Fotos testen.
+5. Zeitraum-ZIP und Gesamt-Archiv erneut erzeugen und prüfen.
+6. Bei Erfolg lokale Sourceänderungen committen/pushen und Projektstand auf `200037 getestet` aktualisieren.
+7. Danach offene UI-/Sync-Punkte weiterführen; produktiven NAS weiterhin nicht anfassen.
