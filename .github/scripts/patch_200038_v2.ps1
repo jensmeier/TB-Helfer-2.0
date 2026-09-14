@@ -69,17 +69,10 @@ $new = @'
 '@
 $pdfSelect = Replace-Once $pdfSelect $old $new 'Photo picker current entry state'
 
-$old = @'
-            maxFotos = entry?.maxFotosInPdf ?: 60
-
-            // Technische Identität kommt aus dem aktiven stabilen BTB-Pointer.
-'@
-$new = @'
-            maxFotos = entry?.maxFotosInPdf ?: 60
-            currentEntry = entry
-
-            // Technische Identität kommt aus dem aktiven stabilen BTB-Pointer.
-'@
+# Match only the stable assignment line. The following comment differs between the checked-in
+# 200034 source and the locally patched 200037 source, so it must not be part of the literal match.
+$old = '            maxFotos = entry?.maxFotosInPdf ?: 60'
+$new = "            maxFotos = entry?.maxFotosInPdf ?: 60`n            currentEntry = entry"
 $pdfSelect = Replace-Once $pdfSelect $old $new 'Photo picker current entry assignment'
 
 # Any include/exclude change after the first successful closure makes the old closure document invalid.
