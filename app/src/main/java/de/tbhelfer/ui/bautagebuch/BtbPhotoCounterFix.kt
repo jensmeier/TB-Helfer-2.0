@@ -19,7 +19,8 @@ import java.time.ZoneId
  * bleibt auch dann Teil dieses BTB, wenn die Arbeitszeit spaeter geaendert wurde oder das Foto
  * erst nach der zuvor eingetragenen Endzeit aufgenommen wurde.
  *
- * Nur historische Fotos ohne btbId verwenden weiterhin Datum/Arbeitszeit als Legacy-Fallback.
+ * Fuer einen modernen BTB werden ausschliesslich Fotos exakt dieser btbId gezaehlt. Nur echte
+ * Legacy-BTBs ohne btbId verwenden weiterhin Datum/Arbeitszeit als Fallback.
  */
 object BtbPhotoCounterFix {
 
@@ -34,10 +35,10 @@ object BtbPhotoCounterFix {
             val eligible = all.asSequence()
                 .filter { foto ->
                     val assigned = BtbFotoZuordnungSpeicher.btbId(appContext, foto.id)
-                    when {
-                        targetBtbId.isNotBlank() && assigned == targetBtbId -> true
-                        !assigned.isNullOrBlank() -> false
-                        else -> foto.erstelltAmEpochMs in from until to
+                    if (targetBtbId.isNotBlank()) {
+                        assigned == targetBtbId
+                    } else {
+                        assigned.isNullOrBlank() && foto.erstelltAmEpochMs in from until to
                     }
                 }
                 .toList()
