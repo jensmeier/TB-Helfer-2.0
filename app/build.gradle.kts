@@ -11,8 +11,8 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200033: Abschluss loest aktiven BTB, Kamera-Guard und besserer Nachtmodus.
-        versionCode = 200033
+        // Android 200034: zentraler Kamera-Guard, strikte btbId-Fotos, NightMode-Persistenz.
+        versionCode = 200034
         versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
