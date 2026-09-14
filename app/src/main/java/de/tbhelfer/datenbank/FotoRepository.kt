@@ -5,6 +5,7 @@ import de.tbhelfer.server.SofortSync
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbActiveContext
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
+import de.tbhelfer.ui.bautagebuch.BtbFotoQueryScope
 import de.tbhelfer.ui.bautagebuch.BtbFotoRenderMarkierung
 import de.tbhelfer.ui.bautagebuch.BtbFotoZuordnungSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbOriginalFotoSpeicher
@@ -68,7 +69,9 @@ class FotoRepository(
     fun fotosFuerBaustelle(baustelleId: Long): Flow<List<FotoEntity>> = dao.fotosFuerBaustelle(baustelleId).flowOn(Dispatchers.IO)
 
     suspend fun fotosFuerBaustelleOnce(baustelleId: Long): List<FotoEntity> = withContext(Dispatchers.IO) {
-        BtbFotoRenderMarkierung.anwenden(dao.fotosFuerBaustelleOnce(baustelleId))
+        val raw = dao.fotosFuerBaustelleOnce(baustelleId)
+        val scoped = appContext?.let { ctx -> BtbFotoQueryScope.filter(ctx, baustelleId, raw) } ?: raw
+        BtbFotoRenderMarkierung.anwenden(scoped)
     }
 
     fun fotosFuerUnterknoten(baustelleId: Long, knotenId: Long): Flow<List<FotoEntity>> =
