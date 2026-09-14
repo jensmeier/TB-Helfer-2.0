@@ -35,10 +35,13 @@ if ($source.Contains('forceRed: Boolean = false') -and $source.Contains('renderR
         return $text.Substring(0, $idx) + $new + $text.Substring($idx + $old.Length)
     }
 
-    # Liest die bereits versionierte Python-Patchbeschreibung nur als Text und führt die dort
+    # Liest die versionierte Python-Patchbeschreibung nur als Text und fuehrt die dort
     # definierten once()/exact()-Ersetzungen in derselben Reihenfolge mit PowerShell aus.
     # Dadurch braucht Windows selbst keine Python-Installation.
-    $rx = [regex]::new("(?s)(once|exact)\(\s*'''(.*?)''',\s*'''(.*?)''',\s*(?:(\d+)\s*,\s*)?\"([^\"]+)\"\s*\)")
+    $pattern = @'
+(?s)(once|exact)\(\s*'''(.*?)''',\s*'''(.*?)''',\s*(?:(\d+)\s*,\s*)?"([^"]+)"\s*\)
+'@
+    $rx = [regex]::new($pattern)
     $matches = $rx.Matches($patchText)
     if ($matches.Count -eq 0) { throw 'Keine Patch-Ersetzungen in patch_200035.py gefunden.' }
 
