@@ -18,7 +18,6 @@ Vor jeder Änderung zuerst lesen:
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
 - PR bleibt Draft bis zum erfolgreichen Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test.
 - aktueller Android-Entwicklungsstand: **versionCode 200034**, `versionName 1.3`.
-- Branch-Head vor dieser Dokumentationsaktualisierung: `13aabc154e8ac80364b1895c4881cebe1c840f23` (`android: bump debug build to 200034`).
 - Android 200034 ist **vorbereitet, aber noch nicht lokal kompiliert/installiert/getestet**.
 
 ## Produktiver Synology-Stand – unverändert
