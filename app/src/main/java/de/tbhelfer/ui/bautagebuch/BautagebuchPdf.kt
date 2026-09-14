@@ -807,7 +807,10 @@ class BautagebuchPdf(
             private var activeFrameTop: Float? = null
 
             private fun footer() {
-                val footerLeft = "${entry.baustelleName}  •  ${dateRangeText(datum, entry.startUhrzeit, entry.endeUhrzeit)}"
+                val footerLeft = BtbPdfHeaderRenderer.creatorFooter(
+                    context,
+                    dateRangeText(datum, entry.startUhrzeit, entry.endeUhrzeit)
+                )
                 canvas.drawText(footerLeft.take(70), marginL, (pageH - 22).toFloat(), pSmall)
                 val footerRight = "Seite $pageNo"
                 val w = pSmall.measureText(footerRight)
@@ -924,14 +927,12 @@ class BautagebuchPdf(
 
             fun bulletWrapped(line: String, indent: Float, paint: Paint = pT) {
                 if (line.isBlank()) return
-                // Bullet auf der ersten Zeile, Text eingerückt und umbrochen
                 ensure((paint.textSize * 1.22f) + 6f)
                 canvas.drawText("•", marginL + indent, y, paint)
                 textWrapped(line, paint, indent = indent + 14f)
             }
 
             fun bulletSub(line: String) {
-                // Dateiname/Details: kleiner & eingerückt
                 if (line.isBlank()) return
                 ensure(16f)
                 canvas.drawText("↳", marginL + 14f, y, pSmall)
@@ -947,7 +948,6 @@ class BautagebuchPdf(
         val w = Writer()
 
         fun keepWithNextRows(minHeight: Float) {
-            // Überschrift/Firma/Unterbaustelle nicht allein am Seitenende stehen lassen.
             w.ensure(minHeight)
         }
 
@@ -979,27 +979,19 @@ class BautagebuchPdf(
             w.textWrapped("ENTWURF (ohne Tagesabschluss)", pDraftLabel)
         }
 
-        var logoBottom = w.y
-        var logoW = 0f
+        val logoMetrics = BtbPdfHeaderRenderer.drawCompanyBlock(
+            context = context,
+            canvas = w.canvas,
+            pageWidth = pageW,
+            marginRight = marginR,
+            marginTop = marginTop,
+            company = profil,
+            logoFile = logoFile,
+            baseTextPaint = pT
+        )
+        var logoBottom = logoMetrics.bottom
+        var logoW = logoMetrics.blockWidth
         val logoGap = 12f
-
-        // Logo rechts oben (wenn vorhanden) – groß wie im Mock
-        if (logoFile != null) {
-            val bmp = BitmapFactory.decodeFile(logoFile.absolutePath)
-            if (bmp != null) {
-                val targetW = 180
-                val scale = targetW.toFloat() / bmp.width.toFloat()
-                val targetH = (bmp.height * scale).toInt().coerceAtLeast(1).coerceAtMost(120)
-                val scaled = Bitmap.createScaledBitmap(bmp, targetW, targetH, true)
-
-                val x = (pageW - marginR - targetW).toFloat()
-                val yLogo = (marginTop - 6f).coerceAtLeast(10f)
-                w.canvas.drawBitmap(scaled, x, yLogo, null)
-
-                logoBottom = yLogo + targetH
-                logoW = targetW.toFloat()
-            }
-        }
 
         // --- Baustellenbaum / Unterbaustellen für PDF ---
         val baumRepo = ServiceLocator.baustellenBaumRepository
@@ -1115,10 +1107,13 @@ class BautagebuchPdf(
             ?.takeIf { it.isNotBlank() && !it.equals("Hauptbaustelle", ignoreCase = true) }
 
         val datumAnzeige = dateRangeText(datum, entry.startUhrzeit, entry.endeUhrzeit)
-        val firmaAnzeige = dokumentIdentitaet.firmenname ?: "-"
         w.textWrapped("Baustelle: ${entry.baustelleName}", pBaustelleHeader)
-        w.textWrapped("Firma: $firmaAnzeige", pT)
-        w.textWrapped("Verantwortlicher TB: ${dokumentIdentitaet.verantwortlicherTb}", pT)
+        BtbPdfHeaderRenderer.personalHeaderLines(
+            context,
+            dokumentIdentitaet.verantwortlicherTb
+        ).forEach { line ->
+            w.textWrapped(line, pT)
+        }
         w.textWrapped("Datum: $datumAnzeige", pT)
         w.textWrapped("Schicht: ${dokumentIdentitaet.schichtAnzeige}", pT)
         w.textWrapped("Zeit: ${entry.startUhrzeit ?: "-"} – ${entry.endeUhrzeit ?: "-"}", pT)
@@ -1240,7 +1235,6 @@ fun renderWeather() {
         val ell = "…"
         var hi = s.length
         var lo = 0
-        // Binary search for max length that fits
         while (lo < hi) {
             val mid = (lo + hi) / 2
             val cand = s.take(mid).trimEnd() + ell
@@ -1253,11 +1247,9 @@ fun renderWeather() {
     fun normalizeNiedForPdf(raw: String): String {
         var t = raw.trim()
         if (t.equals("trocken (kein Niederschlag)", ignoreCase = true)) t = "trocken"
-        // Klammern kürzen (passt besser in die Tabelle)
         t = t.replace("(leicht)", "leicht")
             .replace("(mäßig)", "mäßig")
             .replace("(stark)", "stark")
-        // Mehrfach-Spaces raus
         t = t.replace(Regex("\\s+"), " ").trim()
         return t
     }
@@ -1272,16 +1264,13 @@ fun renderWeather() {
             w.canvas.drawText(t, x, y, basePaint)
             return
         }
-        // Text passt? dann normal zeichnen
         if (basePaint.measureText(t) <= maxW) {
             w.canvas.drawText(t, x, y, basePaint)
             return
         }
-        // Sonst: nur diese Zelle kleiner machen (Auto-Fit)
         val p = Paint(basePaint)
         val orig = p.textSize
         var wTxt = p.measureText(t)
-        // proportional skalieren
         var newSize = (orig * (maxW / wTxt)).coerceAtLeast(minSize)
         p.textSize = newSize
         var guard = 0
@@ -1292,7 +1281,6 @@ fun renderWeather() {
         w.canvas.drawText(t, x, y, p)
     }
 
-    // Wetterdaten vorbereiten (für Auto-Breite bei sehr langem Niederschlag)
     val wb = entry.weather
     val slots = if (wb != null && wb.slots.isNotEmpty()) {
         wb.slots.map { s ->
@@ -1312,7 +1300,6 @@ fun renderWeather() {
         }
     } else emptyList()
 
-    // Wenn Niederschlag inkl. mm/m² extrem lang ist: Wetter-Rahmen nach rechts erweitern (nur wenn nötig)
     if (slots.isNotEmpty()) {
         val padTmp = pad
         val innerW0 = boxW - 2 * padTmp
@@ -1339,7 +1326,6 @@ fun renderWeather() {
         }
     }
 
-    // Header
     w.ensure(26f)
     val top = w.y - 15f
     val headerRect = RectF(x0, top, x0 + boxW, w.y + 8f)
@@ -1347,7 +1333,6 @@ fun renderWeather() {
     w.canvas.drawText("Wetter", x0 + pad, w.y, if (weatherChange.changed) pHRed else pH)
     w.y += 16f
 
-    // Stand/Quelle (kompakt, in Boxbreite umbrechen)
     val origin: String? = wb?.locationName?.takeIf { it.isNotBlank() }
         ?: wb?.stationName?.takeIf { it.isNotBlank() }
         ?: (wb?.lat?.let { lat -> wb.lon?.let { lon -> String.format(java.util.Locale.ROOT, "%.5f, %.5f", lat, lon) } })
@@ -1375,7 +1360,6 @@ fun renderWeather() {
         w.y += 2f
     }
     if (slots.isNotEmpty()) {
-        // Tabelle in Boxbreite (sehr kompakt, gleichmäßige Spaltenabstände)
         w.ensure(16f)
         val innerW = boxW - 2 * pad
         val gapX = 4f
@@ -1384,7 +1368,6 @@ fun renderWeather() {
         val labelTemp = "Temp"
         val labelBew = "Bewölkung"
         val labelNied = "Niederschlag"
-        // Spalten kompakt + optisch gleichmäßiger: feste Grundbreiten, Rest für Niederschlag
         val colZeitW = 34f
         val colTempW = 32f
         var colBewW = 66f
@@ -1410,7 +1393,6 @@ fun renderWeather() {
         drawCell(labelBew, colBewX, headerY, pSmall, colBewW)
         drawCell(labelNied, colNiedX, headerY, pSmall, colNiedW)
 
-        // Kein grauer Trennstrich: nur etwas Luft zwischen Header und Daten
         w.y += 9f
 
         val rowH = 11.0f
@@ -1430,7 +1412,6 @@ fun renderWeather() {
         w.y += 18f
     }
 
-    // Removed rows are not visible in main table, so show them as small changes block
     val removedRows = weatherChange.removedKeys
         .mapNotNull { key ->
             val parts = key.split("|")
@@ -1451,8 +1432,6 @@ fun renderWeather() {
 
     val bottom = w.y + 6f
     w.canvas.drawRect(x0, top, x0 + boxW, bottom, pBorder)
-    // Einheitlicher Abstand zwischen Rahmen: der nächste Rahmen startet i.d.R. bei (y - 15f)
-    // => wir addieren hier +15f, damit der sichtbare Abstand exakt boxGap ist.
     val afterFrame = bottom + boxGap + 15f
     val afterLogo = if (logoBottom > 0f) (logoBottom + 6f) else afterFrame
     w.y = max(afterFrame, afterLogo)
@@ -1509,8 +1488,6 @@ fun renderFirmaGrouped(
 fun renderArbeiten() {
     w.boxTitle("4. Ausgeführte Arbeiten", if (arbeitenChange.changed) pHRed else pH)
 
-// Firmen: case-insensitive "kanonischer" Name aus entry.firmen, ansonsten so wie getippt.
-// Für das Parsing gilt: jeder Prefix vor ':' zählt als Firma (z.B. "abc:", "Leonard:"), auch nach Bullet-Zeichen.
 val firmCanonicalByLower: Map<String, String> = entry.firmen
     .map { it.name.trim() }
     .filter { it.isNotBlank() }
@@ -1522,8 +1499,6 @@ fun canonFirm(name: String?): String? {
     return firmCanonicalByLower[t.lowercase(Locale.ROOT)] ?: t
 }
 
-
-
     data class PdfEvent(
         val sortTime: LocalTime,
         val kind: Int,
@@ -1534,7 +1509,6 @@ fun canonFirm(name: String?): String? {
         val forceRed: Boolean = false
     )
 
-
     fun parseTimeOrNull(s: String?): LocalTime? {
         val t = s?.trim().orEmpty()
         if (t.isBlank()) return null
@@ -1542,7 +1516,6 @@ fun canonFirm(name: String?): String? {
     }
 
     fun manualEventsFromMultiline(raw: String?, kind: Int, seqBase: Int): List<PdfEvent> {
-        // Single time: "HH:mm Text" | Span: "HH:mm–HH:mm Text" (oder mit '-')
         val reTime = Regex("""^([0-9]{1,2}:[0-9]{2})(?:\s*[-–]\s*\(?\s*([0-9]{1,2}:[0-9]{2})\s*\)?\s*)?\s+(.+)$""")
         var lastTime: LocalTime = LocalTime.MIN
         var seq = seqBase
@@ -1563,7 +1536,6 @@ fun canonFirm(name: String?): String? {
             val canon = firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: prefix
             return canon to tail
         }
-
 
         raw.orEmpty()
             .lines()
@@ -1603,7 +1575,6 @@ fun canonFirm(name: String?): String? {
                     val (firma, txt2) = splitFirma(line, forceGeneral = forcedGeneral)
                     if (txt2.isBlank()) return@forEach
                     val finalOrtId = if (firma == null) 0L else effectiveOrtId
-                    // Notiz ohne Uhrzeit -> hängt am letzten Zeit-Event
                     val display = listOfNotNull(kmLabel, txt2).joinToString(" ")
                     out.add(PdfEvent(sortTime = lastTime, kind = kind, seq = seq++, ortId = finalOrtId, firma = firma, line = display))
                 }
@@ -1636,13 +1607,11 @@ fun canonFirm(name: String?): String? {
                 val raw = it2.text.trim()
                 if (raw.isBlank()) return@mapNotNull null
 
-                // Ort kann als Marker im Text kommen: "@ORT=123" (0 = Nur Hauptbaustelle)
                 val (newOrt, rest0) = applyOrtMarker(raw, ortId)
                 ortId = newOrt
                 val (forcedGeneral, rest1) = applyGeneralMarker(rest0)
                 val effectiveOrtId = if (forcedGeneral) 0L else ortId
 
-                // applyOrtMarker()/applyGeneralMarker() können null zurückgeben (wenn eine Zeile nur Marker enthält)
                 val txt = rest1?.trim().orEmpty()
                 if (txt.isBlank()) return@mapNotNull null
 
@@ -1735,9 +1704,6 @@ fun canonFirm(name: String?): String? {
         var seq = seqBase
         val out = ArrayList<PdfEvent>()
 
-        // Original und Nachtrag mit gleichem Text nicht vermischen: der Originalanteil bleibt
-        // schwarz, nur der nach dem ersten Abschluss hinzugekommene Anteil wird rot.
-        // Same photo text in the same company/location context stays one PDF row.
         val grouped = rows.groupBy { Triple(it.firma, it.ortId, it.text) }
 grouped.entries.forEach { (k, list) ->
     val (firma, ortId, txt) = k
@@ -1774,7 +1740,6 @@ grouped.entries.forEach { (k, list) ->
         )
     )
 }
-
 
         return out.sortedWith(compareBy<PdfEvent> { it.sortTime }.thenBy { it.seq })
     }
@@ -1859,7 +1824,7 @@ grouped.entries.forEach { (k, list) ->
         val hasFirmHeaders = firmKeys.isNotEmpty() || groups[null].orEmpty().isNotEmpty()
 
         val orderedKeys = buildList<String?> {
-            add(null) // Allgemein zuerst
+            add(null)
             addAll(firmKeys.sortedBy { k -> groups[k]!!.minOf { it.sortTime } })
         }
 
@@ -1937,14 +1902,8 @@ grouped.entries.forEach { (k, list) ->
     }
 
     val events = ArrayList<PdfEvent>()
-
-    // 1) Firmen-Leistungen (falls genutzt)
     events += leistungEvents(kind = 0, seqBase = 0)
-
-    // 2) Manuelle Einträge aus Feld "4. Ausgeführte Arbeiten" (entry.notizen)
     events += manualEventsFromMultiline(entry.notizen, kind = 1, seqBase = 10_000)
-
-    // 3) Fotos: FOTODOKUMENTATION
     events += fotoEventsForType(Bildtyp.FOTODOKUMENTATION, kind = 2, seqBase = 20_000)
 
     drawFirmaGrouped(events, emptyText = "Keine Arbeiten eingetragen.")
@@ -2106,9 +2065,6 @@ fun splitFirma(txtIn: String, forceGeneral: Boolean = false): Pair<String?, Stri
         var seq = seqBase
         val out = ArrayList<PdfEvent>()
 
-        // Original und Nachtrag mit gleichem Text nicht vermischen: der Originalanteil bleibt
-        // schwarz, nur der nach dem ersten Abschluss hinzugekommene Anteil wird rot.
-        // Same photo text in the same company/location context stays one PDF row.
         val grouped = rows.groupBy { Triple(it.firma, it.ortId, it.text) }
 grouped.entries.forEach { (k, list) ->
     val (firma, ortId, txt) = k
@@ -2145,7 +2101,6 @@ grouped.entries.forEach { (k, list) ->
         )
     )
 }
-
 
         return out.sortedWith(compareBy<PdfEvent> { it.sortTime }.thenBy { it.seq })
     }
@@ -2231,7 +2186,7 @@ grouped.entries.forEach { (k, list) ->
             val hasFirmHeaders = firmKeys.isNotEmpty() || groups[null].orEmpty().isNotEmpty()
 
             val orderedKeys = buildList<String?> {
-                add(null) // Allgemein zuerst
+                add(null)
                 addAll(firmKeys.sortedBy { k -> groups[k]!!.minOf { it.sortTime } })
             }
 
@@ -2342,14 +2297,12 @@ grouped.entries.forEach { (k, list) ->
         val pad = 6f
         val headerH = 22f
 
-        // kompakter für Box-Inhalte (Personal/Maschinen)
         val pSubBox = Paint(pSub).apply { textSize = 9.6f; typeface = Typeface.DEFAULT_BOLD }
         val pTBox = Paint(pTCompact).apply { textSize = 9.4f }
         val pSubBoxRed = Paint(pSubBox).apply { color = Color.RED }
         val pTBoxRed = Paint(pTBox).apply { color = Color.RED }
         val pTBoxGrey = Paint(pTBox).apply { color = Color.DKGRAY }
 
-        // grobe Platzreserve; bei Bedarf auf neue Seite springen
         w.ensure(220f)
         val topY = w.y
 
@@ -2404,7 +2357,6 @@ grouped.entries.forEach { (k, list) ->
             linesProvider: () -> List<Pair<String, List<String>>>
         ): Float {
             val top = topY - 15f
-            // Header-Fill
             val headerRect = RectF(x, topY - 15f, x + colW, topY + 6f)
             w.canvas.drawRect(headerRect, pBox)
             w.canvas.drawText(title, x + pad, topY, if (change.changed) pHRed else pH)
@@ -2432,7 +2384,6 @@ grouped.entries.forEach { (k, list) ->
                     lns.forEach { ln ->
                         val bulletKey = "B||$hdr||$ln"
                         val lp = if (change.redKeys.contains(bulletKey)) pTBoxRed else pTBox
-                        // Bullet
                         w.canvas.drawText("•", x + pad, yLocal, lp)
                         yLocal = wrapAt(ln, lp, x + pad + 8f, colW - (2 * pad + 8f), yLocal)
                         yLocal += 0f
@@ -2441,7 +2392,6 @@ grouped.entries.forEach { (k, list) ->
                 }
             }
 
-            // Removed items (not visible in main list)
             val removedLines = change.removedKeys
                 .mapNotNull { key ->
                     when {
@@ -2508,17 +2458,10 @@ grouped.entries.forEach { (k, list) ->
         w.y = max(bottomL, bottomR) + boxGap + 15f
     }
 
-    // 1 Wetter
     renderWeather()
-
-    // 2–3 Personal + Maschinen immer 2-spaltig
     renderPersonalMaschinenColumns()
 
     fun renderFramedFull(title: String, minKeepWithTitle: Float = 90f, block: () -> Unit) {
-        // V9a: V9-Druckmodell behalten, aber V8-Rahmenlogik für Abschnitt 4–8 wieder aktivieren.
-        // Writer schließt den laufenden Rahmen bei Seitenwechsel sauber und beginnt auf
-        // der Folgeseite mit "<Abschnitt> (Fortsetzung)".
-        // Wetter/Personal/Maschinen bleiben unverändert.
         w.ensure(minKeepWithTitle)
         w.beginSectionFrame(title)
         block()
@@ -2526,10 +2469,7 @@ grouped.entries.forEach { (k, list) ->
         w.y += boxGap + 8f
     }
 
-    // 4 Leistungen (aus firmen)
     renderFramedFull("4. Ausgeführte Arbeiten", minKeepWithTitle = 110f) { renderArbeiten() }
-
-    // 5–8 Standardabschnitte (zusätzlich: Foto-Texte je Bildtyp gruppiert)
     renderFramedFull("5. Abnahmen") { renderStandardSection("5. Abnahmen", abnahmenChange, entry.abnahmen, "Keine Abnahmen durchgeführt.", Bildtyp.ABNAHMEN) }
     renderFramedFull("6. Einweisung/Unterweisung") { renderStandardSection("6. Einweisung/Unterweisung", einweisungChange, entry.einweisungUnterweisung, "Keine Einweisung/Unterweisung durchgeführt.", Bildtyp.EINWEISUNG_UNTERWEISUNG) }
     renderFramedFull("7. Besonderheiten") { renderStandardSection("7. Besonderheiten", besonderheitenChange, entry.besonderheiten, "Keine Besonderheiten.", Bildtyp.BESONDERHEITEN) }
@@ -2592,7 +2532,6 @@ if (selectedFotosOrdered.isNotEmpty()) {
     fun metaLines(f: de.tbhelfer.datenbank.FotoEntity, optionalLabels: List<String>): List<String> {
         val out = ArrayList<String>(8)
 
-        // Reihenfolge: KM – Zeit – Ort – Firma – Text – GPS – Dateiname – Datum
         if (cfg.zeigeKm) {
             val v = f.km?.let { de.tbhelfer.util.KmAnzeige.wert(it) } ?: "–"
             out.add("KM: $v")
@@ -2635,9 +2574,6 @@ if (selectedFotosOrdered.isNotEmpty()) {
                 else "GPS: ${String.format(Locale.US, "%.6f", f.gpsLat)}, ${String.format(Locale.US, "%.6f", f.gpsLon)}"
             )
         }
-        // V6: Dateiname im PDF-Anhang nicht mehr ausgeben.
-        // Die Datei steht in Bilderliste_Schicht/Gesamt; im PDF macht sie die Karten unnötig hoch
-        // und kann Überschriften zu dicht an die vorherige Bildreihe schieben.
         if (cfg.zeigeDatum) {
             val dt = runCatching {
                 java.time.Instant.ofEpochMilli(f.erstelltAmEpochMs)
@@ -2661,9 +2597,6 @@ if (selectedFotosOrdered.isNotEmpty()) {
     val fixedCellW = (contentW - gap * (gridCols - 1)) / gridCols
     val fixedCellH = (((pageH - marginBottom) - appendixTopAfterTitle) - gap * (gridRows - 1)) / gridRows
 
-    // RASTER_2x6 wird ab Patch45ZK als automatische Bildformat-Anordnung verwendet:
-    // 2 Querformatbilder nebeneinander, 3 Hochformatbilder nebeneinander,
-    // gemischte Reihe mit breiter Querformat- und schmalerer Hochformatkarte.
     val autoFotoLayout = cfg.raster == BtbPdfEinstellungenSpeicher.FotoRaster.RASTER_2x6
     val autoRowH = 315f
 
@@ -2732,7 +2665,6 @@ if (selectedFotosOrdered.isNotEmpty()) {
         cellW: Float,
         cellH: Float
     ) {
-        // Cell background
         val rect = RectF(x, y, x + cellW, y + cellH)
         w.canvas.drawRoundRect(rect, 6f, 6f, pBox)
 
@@ -2744,8 +2676,6 @@ if (selectedFotosOrdered.isNotEmpty()) {
         val wrappedMeta = metaLines(f, optionalLabels)
             .flatMap { line -> wrapLine(line, maxW) }
 
-        // Für die Metadaten unten ausreichend Platz reservieren. Das Foto selbst wird
-        // anschließend proportional in den verbleibenden Bereich eingepasst.
         val maxMetaLines = ((cellH * 0.40f) / lineH).toInt().coerceAtLeast(3)
         val visibleMeta = wrappedMeta.take(maxMetaLines)
         val metaH = visibleMeta.size * lineH + textYPad + 6f
@@ -2760,7 +2690,6 @@ if (selectedFotosOrdered.isNotEmpty()) {
             imgSlot.height().toInt().coerceAtLeast(1)
         )
         if (bmp != null) {
-            // Seitenverhältnis immer beibehalten: kein Breitziehen und kein Abschneiden.
             val scale = minOf(
                 imgSlot.width() / bmp.width.toFloat(),
                 imgSlot.height() / bmp.height.toFloat()
@@ -2776,7 +2705,6 @@ if (selectedFotosOrdered.isNotEmpty()) {
             w.canvas.drawText("(Bild fehlt)", x + 10f, imgTop + 30f, pSmall)
         }
 
-        // Metadata
         var ty = imgSlot.bottom + textYPad
         visibleMeta.forEach { part ->
             if (ty > (y + cellH - 6f)) return@forEach
@@ -2862,7 +2790,7 @@ if (selectedFotosOrdered.isNotEmpty()) {
                 val x = marginL + (contentW - cw) / 2f
                 drawPhotoCell(row.fotos[0], x, rowY, cw, row.hoehe)
             }
-            else -> { // EINZEL_QUER
+            else -> {
                 val cw = contentW * 0.68f
                 val x = marginL + (contentW - cw) / 2f
                 drawPhotoCell(row.fotos[0], x, rowY, cw, row.hoehe)
@@ -2896,10 +2824,6 @@ if (selectedFotosOrdered.isNotEmpty()) {
         val parentTitle = parentTitleRaw?.let { appendixOrtLabel(it) }
             ?.takeIf { it.isNotBlank() && !it.equals("Hauptbaustelle", ignoreCase = true) }
 
-        // V6 Layout-Regel:
-        // - neue Unterüberschrift niemals an die vorherige Bildkarte kleben lassen
-        // - Überschrift + mindestens eine Bildreihe zusammenhalten
-        // - große Anhang-Überschrift nur am Typ-Start/neuer Seite wiederholen
         val preGroupGap = if (appendixStarted && !forceNewPage) 18f else 0f
         val typeTitleNeeded = if (lastAppendixTypeTitle != typeTitle) 26f else 0f
         val parentTitleNeeded = if (depth > 0 && parentTitle != null && parentTitle != lastAppendixParentTitle) 26f else 0f
@@ -2922,8 +2846,6 @@ if (selectedFotosOrdered.isNotEmpty()) {
             drewTypeTitle = true
         }
 
-        // Wenn die Unterbaustellen-Überschrift mit der ersten Bildreihe nicht mehr passt,
-        // sauber auf neue Seite gehen. So bleibt die Überschrift nie allein unten stehen.
         if (w.y + parentTitleNeeded + 26f + 10f + firstRowHeight > pageH - marginBottom) {
             w.newPage()
             w.boxTitle("Anhang – $typeTitle")
@@ -2933,7 +2855,6 @@ if (selectedFotosOrdered.isNotEmpty()) {
         }
 
         if (drewTypeTitle) {
-            // Abstand zwischen großer Anhang-Überschrift und Unterbaustelle.
             w.y += 8f
         }
 
@@ -2945,7 +2866,6 @@ if (selectedFotosOrdered.isNotEmpty()) {
         val childIndent = if (depth > 0) 26f else 0f
         w.subBoxTitle(ortTitle, if (depth > 0) pSubChild else pSub, indent = childIndent)
         if (depth == 0) lastAppendixParentTitle = ortTitle
-        // Sichtbarer Abstand zwischen Unterüberschrift und erster Bildreihe.
         w.y += 10f
     }
 
@@ -3002,9 +2922,6 @@ if (selectedFotosOrdered.isNotEmpty()) {
         }
     }
 
-    // Fotos nach Bildtyp als eigene Anhänge (Reihenfolge wie BTB/PDF-Bildnummern).
-    // Jede neue Bildtyp-Gruppe startet auf einem neuen Blatt. Innerhalb der Fotodokumentation
-    // dürfen mehrere Unterbaustellen hintereinander auf derselben Seite stehen – getrennt durch Überschrift.
     fun anhangTitel(typ: Bildtyp): String = when (typ) {
         Bildtyp.ABNAHMEN -> "Abnahmen"
         Bildtyp.EINWEISUNG_UNTERWEISUNG -> "Einweisung / Unterweisung"
@@ -3047,12 +2964,8 @@ if (selectedFotosOrdered.isNotEmpty()) {
 
 w.finish()
 
-        // --- Baseline + "geaendert"-Flag ---
-        // Hinweis: Die Baseline (bautagebuch_original.json) wird NICHT automatisch beim PDF-Erstellen gesetzt,
-        // sondern bewusst per "Tagesabschluss + PDF" im UI.
         val geaendert = baselineInfo.exists && baselineInfo.changedSinceBaseline
 
-        // --- Ziel: App-Pictures/TB-Helfer/<Baustelle>/BTB/<datumIso>/ ---
         val outDir = BtbSpeicher.btbsFuerBaustelle(context, entry.baustelleId, entry.datumIso)
         val geaendertIndex = if (geaendert) nextGeaendertIndex(outDir, safeBaustellenName, skey) else null
         val file = if (asDraft) {
@@ -3074,9 +2987,6 @@ w.finish()
             .ifBlank { "Unbekannt" }
     }
 
-    /**
-     * Löscht ein eventuell vorhandenes Entwurf-PDF für genau diese Schicht (Datum+Zeitfenster).
-     */
     fun deleteEntwurfPdf(entry: BautagebuchEintrag): Boolean {
         val safe = safeFolderName(entry.baustelleName)
         val skey = schichtKey(entry)
@@ -3099,7 +3009,6 @@ fun openPdf(file: File) {
 
 fun sharePdf(file: File) {
 
-        // Manifest nutzt ${applicationId}.dateianbieter
         val uri: Uri = FileProvider.getUriForFile(context, context.packageName + ".dateianbieter", file)
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "application/pdf"

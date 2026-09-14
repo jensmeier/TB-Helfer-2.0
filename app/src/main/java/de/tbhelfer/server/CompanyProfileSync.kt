@@ -1,6 +1,7 @@
 package de.tbhelfer.server
 
 import android.content.Context
+import de.tbhelfer.einstellungen.BtbPdfLogoLayoutSpeicher
 import de.tbhelfer.ui.einstellungen.nutzer.NutzerProfil
 import de.tbhelfer.ui.einstellungen.nutzer.NutzerSpeicher
 import java.io.File
@@ -62,7 +63,7 @@ object CompanyProfileSync {
             postalCity
         ).joinToString(", ").takeIf { it.isNotBlank() }
 
-        return runCatching {
+        val saved = runCatching {
             NutzerSpeicher.speichern(
                 context,
                 NutzerProfil(
@@ -79,6 +80,17 @@ object CompanyProfileSync {
             onSuccess = { Result.Success },
             onFailure = { Result.Error(it.message ?: "Firmenprofil konnte lokal nicht gespeichert werden.") }
         )
+        if (saved !is Result.Success) return saved
+
+        // Schema 12 ist optional. Solange der produktive Server noch Schema 10/11 nutzt,
+        // bleibt der lokale PDF-Logo-Stand unangetastet und der restliche Firmen-Sync erfolgreich.
+        when (val layout = CompanyPdfLogoApi().load(token)) {
+            is CompanyPdfLogoApi.Result.Success -> BtbPdfLogoLayoutSpeicher.speichern(context, layout.layout)
+            CompanyPdfLogoApi.Result.SessionInvalid -> return Result.SessionInvalid
+            CompanyPdfLogoApi.Result.SchemaRequired,
+            is CompanyPdfLogoApi.Result.Error -> Unit
+        }
+        return Result.Success
     }
 
     private fun clearServerLogoIfPresent(context: Context, currentName: String?): String? {
