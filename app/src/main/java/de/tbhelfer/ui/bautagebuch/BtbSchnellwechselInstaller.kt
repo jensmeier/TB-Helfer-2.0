@@ -132,8 +132,6 @@ object BtbSchnellwechselInstaller {
         item: BautagebuchSpeicher.VerlaufEintrag
     ) {
         fragment.viewLifecycleOwner.lifecycleScope.launch {
-            // Wenn bereits ein moderner BTB aktiv ist, wird er zuerst wirklich geschrieben.
-            // Keine feste Wartezeit mehr: der Save-Bridge bestätigt den neuen Änderungszeitpunkt.
             val current = BtbUiSaveBridge.aktuell(fragment)
             if (current != null) {
                 Snackbar.make(anchor, "Aktuellen BTB speichern …", Snackbar.LENGTH_SHORT).show()
@@ -159,6 +157,12 @@ object BtbSchnellwechselInstaller {
                             item.datum,
                             item.schicht
                         )
+                        // Bewusstes Oeffnen muss den Abschluss-Inaktivmarker sofort aufheben.
+                        BtbActivePointerControl.inaktivMarkerLoeschen(
+                            appContext,
+                            altBaustelleId,
+                            baustelleName
+                        )
                     }
             }
 
@@ -167,6 +171,7 @@ object BtbSchnellwechselInstaller {
                 putString("datumIso", item.datum.toString())
                 putString("schichtTyp", item.schicht.name)
                 putString("btbId", item.btbId)
+                putLong("baustelleId", altBaustelleId)
             }
             val nav = fragment.findNavController()
             val options = NavOptions.Builder()
