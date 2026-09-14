@@ -126,7 +126,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
 
             val appContext = requireContext().applicationContext
             val fallbackEntry = withContext(Dispatchers.IO) {
-                BautagebuchSpeicher.laden(appContext, baustelleNameArg, datum, schichtTypArg)
+                BautagebuchSpeicher.laden(appContext, baustelleIdArg, baustelleNameArg, datum, schichtTypArg)
             }
             val activeBtbId = withContext(Dispatchers.IO) {
                 BtbPhotoInstanzKey.activeBtbId(
@@ -744,6 +744,6 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         val from = dayStart + sMin * 60L * 1000L
         val to = if (eMin >= sMin) dayStart + eMin * 60L * 1000L
         else nextDayStart + eMin * 60L * 1000L
-        return from to to
+        return Pair(from, to)
     }
 }
