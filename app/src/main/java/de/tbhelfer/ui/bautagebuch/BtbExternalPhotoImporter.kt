@@ -10,7 +10,6 @@ import de.tbhelfer.datenbank.Bildtyp
 import de.tbhelfer.datenbank.FotoEntity
 import de.tbhelfer.datenbank.FotoRepository
 import de.tbhelfer.ui.kamera.FotoSpeicher
-import java.io.File
 import java.io.FileOutputStream
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -72,7 +71,14 @@ object BtbExternalPhotoImporter {
         val originalBase = displayName.substringBeforeLast('.', displayName)
             .trim().takeIf { it.isNotBlank() } ?: "Externes Foto"
         val rawExt = displayName.substringAfterLast('.', "").lowercase(Locale.ROOT)
-        val directExt = rawExt.takeIf { it in setOf("jpg", "jpeg", "png", "webp") }
+        val mime = context.contentResolver.getType(uri)?.substringBefore(';')?.lowercase(Locale.ROOT)
+        val directExt = when {
+            rawExt in setOf("jpg", "jpeg", "png", "webp") -> rawExt
+            mime == "image/jpeg" -> "jpg"
+            mime == "image/png" -> "png"
+            mime == "image/webp" -> "webp"
+            else -> null
+        }
         val targetExt = directExt ?: "jpg"
         val safeBase = originalBase
             .replace(Regex("[^\\p{L}\\p{N}._ -]+"), "_")
