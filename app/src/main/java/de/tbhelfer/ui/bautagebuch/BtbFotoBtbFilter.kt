@@ -25,7 +25,9 @@ object BtbFotoBtbFilter {
         val augmented = original.mapValues { (_, ids) -> ids.toMutableSet() }.toMutableMap()
         alleFotos.forEach { foto ->
             val assigned = BtbFotoZuordnungSpeicher.btbId(context, foto.id)
-            if (!assigned.isNullOrBlank() && assigned != btbId) {
+            // Moderner BTB = strikt genau diese btbId. Auch unzugeordnete allgemeine Baustellenfotos
+            // duerfen nicht ueber das alte Zeitfenster in den BTB hineinrutschen.
+            if (assigned != btbId) {
                 augmented.getOrPut(foto.bildtyp.name) { linkedSetOf() }.add(foto.id)
             }
         }
@@ -64,10 +66,14 @@ object BtbFotoBtbFilter {
         val id = entry.btbId?.takeIf { it.isNotBlank() }
         return alleFotos.filter { foto ->
             val assigned = BtbFotoZuordnungSpeicher.btbId(context, foto.id)
-            when {
-                !assigned.isNullOrBlank() -> assigned == id
-                legacyFromEpochMs != null && legacyToEpochMs != null -> foto.erstelltAmEpochMs in legacyFromEpochMs until legacyToEpochMs
-                else -> true
+            if (id != null) {
+                assigned == id
+            } else {
+                when {
+                    !assigned.isNullOrBlank() -> false
+                    legacyFromEpochMs != null && legacyToEpochMs != null -> foto.erstelltAmEpochMs in legacyFromEpochMs until legacyToEpochMs
+                    else -> true
+                }
             }
         }
     }
