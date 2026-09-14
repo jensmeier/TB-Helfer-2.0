@@ -7,49 +7,41 @@ $gradlePath = Join-Path $repoRoot 'app/build.gradle.kts'
 if (-not (Test-Path $patchPath)) { throw "Fehlt: $patchPath" }
 if (-not (Test-Path $gradlePath)) { throw "Fehlt: $gradlePath" }
 
+# Local 200036 is the verified base. Do not depend on comments in Kotlin files,
+# because earlier PowerShell runs could change comment encoding without changing code.
 $gradle = [System.IO.File]::ReadAllText($gradlePath).Replace("`r`n", "`n")
 if (-not ($gradle.Contains('versionCode = 200036') -or $gradle.Contains('versionCode = 200037'))) {
-    throw 'Lokale Basis ist weder Android 200036 noch 200037.'
+    throw 'Local base is neither Android 200036 nor 200037.'
 }
 
+# Read the canonical patch as UTF-8 text. Windows PowerShell 5 can misread UTF-8
+# scripts without BOM, so the temporary runnable copy is written WITH BOM below.
 $patch = [System.IO.File]::ReadAllText($patchPath).Replace("`r`n", "`n")
-$old = @'
-# Android 200037 baut bewusst auf dem lokal erfolgreich gebauten 200036-Stand auf.
-if (-not $fragment.Contains('Android 200036: Start/Ende werden wie die Wetterzeiten über die grafische Uhr gewählt.')) {
-    throw 'BautagebuchFragment.kt: lokale 200036-Basis fehlt; zuerst 200036 vollständig anwenden/builden'
-}
-'@
-$new = @'
-# Android 200037 baut auf dem lokal erfolgreich gebauten 200036-Stand auf.
-# Die lokale 200036-Basis wird über versionCode geprüft; ältere 200036-Patchstände
-# besitzen nicht zwingend denselben Kommentar in BautagebuchFragment.kt.
-if (-not ($gradle.Contains('versionCode = 200036') -or $gradle.Contains('versionCode = 200037'))) {
-    throw 'BautagebuchFragment.kt: lokale 200036/200037-Basis fehlt'
-}
-'@
 
-# Der kanonische Patch liest $gradle erst später. Für die temporäre Ausführung
-# ziehen wir dessen Lesevorgang direkt vor die Basisprüfung.
-$needle = '$fragment = Read-Normalized $fragmentPath' + "`n" + '$pdf = Read-Normalized $pdfPath'
-$replacement = $needle + "`n" + '$gradle = Read-Normalized $gradlePath'
-if (-not $patch.Contains($replacement)) {
-    if (-not $patch.Contains($needle)) { throw '200037 Wrapper: Einfügepunkt für Gradle-Basis nicht gefunden' }
-    $patch = $patch.Replace($needle, $replacement)
-}
-
-if ($patch.Contains($old)) {
-    $patch = $patch.Replace($old, $new)
-} elseif (-not $patch.Contains('Die lokale 200036-Basis wird über versionCode geprüft')) {
-    throw '200037 Wrapper: erwartete alte Basisprüfung nicht gefunden'
+# Remove only the obsolete comment-based 200036 guard from the runnable copy.
+# Match uses ASCII-only anchors so this wrapper is safe under Windows PowerShell 5.
+$pattern = '(?ms)^# Android 200037[^\n]*\nif \(-not \$fragment\.Contains\([^\n]*\)\) \{\n\s*throw [^\n]*\n\}\n'
+$rx = [regex]::new($pattern)
+$matches = $rx.Matches($patch)
+if ($matches.Count -eq 1) {
+    $patch = $rx.Replace(
+        $patch,
+        "# Android 200037: local 200036/200037 base already verified by wrapper.`n",
+        1
+    )
+} elseif ($matches.Count -eq 0 -and $patch.Contains('local 200036/200037 base already verified by wrapper')) {
+    Write-Host '200037 wrapper: basis guard already bypassed'
+} else {
+    throw "200037 wrapper: expected basis guard count 1, found $($matches.Count)"
 }
 
 $temp = Join-Path ([System.IO.Path]::GetTempPath()) ('tb_helfer_patch_200037_' + [guid]::NewGuid().ToString('N') + '.ps1')
-$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+$utf8WithBom = New-Object System.Text.UTF8Encoding($true)
 try {
-    [System.IO.File]::WriteAllText($temp, $patch, $utf8NoBom)
-    Write-Host '200037 Wrapper: lokale 200036-Basis ueber versionCode bestaetigt'
+    [System.IO.File]::WriteAllText($temp, $patch, $utf8WithBom)
+    Write-Host '200037 wrapper: local 200036/200037 base confirmed'
     & powershell -ExecutionPolicy Bypass -File $temp
-    if ($LASTEXITCODE -ne 0) { throw "200037 Hauptpatch fehlgeschlagen (ExitCode $LASTEXITCODE)" }
+    if ($LASTEXITCODE -ne 0) { throw "200037 main patch failed (ExitCode $LASTEXITCODE)" }
 } finally {
     Remove-Item $temp -Force -ErrorAction SilentlyContinue
 }
