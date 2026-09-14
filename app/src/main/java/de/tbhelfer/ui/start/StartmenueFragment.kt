@@ -12,12 +12,15 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
-import de.tbhelfer.einstellungen.AktiveBaustelleValidator
 import de.tbhelfer.datenbank.istStandaloneStreckenpunkteBaustelle
+import de.tbhelfer.einstellungen.AktiveBaustelleValidator
 import de.tbhelfer.einstellungen.AnsichtEinstellungenSpeicher
 import de.tbhelfer.server.SyncStatusSpeicher
+import de.tbhelfer.ui.bautagebuch.BtbActiveContext
+import de.tbhelfer.ui.bautagebuch.BtbPatch200034Installer
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -37,10 +40,47 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
         val recycler = view.findViewById<RecyclerView>(R.id.recyclerMenu)
         val btnSettings = view.findViewById<Button>(R.id.btnSettingsShortcut)
 
+        fun openBtbWithAction(action: String) {
+            findNavController().navigate(
+                R.id.action_start_to_bautagebuch,
+                Bundle().apply { putString(BtbPatch200034Installer.ARG_AUTO_ACTION, action) }
+            )
+        }
+
+        fun openCameraFromOverview() {
+            viewLifecycleOwner.lifecycleScope.launch {
+                val active = BtbActiveContext.laden(requireContext().applicationContext)
+                if (active != null) {
+                    findNavController().navigate(R.id.action_start_to_kamera)
+                    return@launch
+                }
+
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Kein BTB aktiv")
+                    .setMessage("Wie soll das Foto gespeichert werden?")
+                    .setNegativeButton("Abbrechen", null)
+                    .setNeutralButton("Nur Baustellenfoto") { _, _ ->
+                        findNavController().navigate(R.id.action_start_to_kamera)
+                    }
+                    .setPositiveButton("BTB starten/öffnen") { _, _ ->
+                        MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("BTB auswählen")
+                            .setItems(arrayOf("Neuen BTB starten", "Vorhandenen BTB öffnen")) { _, which ->
+                                when (which) {
+                                    0 -> openBtbWithAction(BtbPatch200034Installer.AUTO_NEW)
+                                    else -> openBtbWithAction(BtbPatch200034Installer.AUTO_OPEN)
+                                }
+                            }
+                            .setNegativeButton("Abbrechen", null)
+                            .show()
+                    }
+                    .show()
+            }
+        }
+
         val adapter = StartmenueAdapter { ziel ->
             when (ziel) {
-                StartmenueZiel.KAMERA_AKTUELLE_BAUSTELLE ->
-                    findNavController().navigate(R.id.action_start_to_kamera)
+                StartmenueZiel.KAMERA_AKTUELLE_BAUSTELLE -> openCameraFromOverview()
 
                 StartmenueZiel.BAUSTELLEN ->
                     findNavController().navigate(R.id.action_start_to_baustellen)
