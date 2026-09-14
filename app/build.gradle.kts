@@ -11,8 +11,8 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200039: BTB/PDF Firmenlogo-Layout, Kontaktdaten und echte PDF-Vorschau.
-        versionCode = 200039
+        // Android 200040: externe BTB-Fotos, grosse Vorschau, Metadatenkorrektur und sichere Voll-Loeschung.
+        versionCode = 200040
         versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
