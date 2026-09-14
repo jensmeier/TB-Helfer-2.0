@@ -18,10 +18,10 @@ Vor jeder Änderung zuerst lesen:
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft.
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`.
 - aktueller bestätigter Android-Gerätestand: **200039**.
-- aktueller Entwicklungsstand im Branch: **Android 200040 – externer Fotoimport + Fotoverwaltung**, noch nicht lokal gebaut/auf Gerät bestätigt.
+- aktueller Entwicklungsstand im Branch: **Android 200040 – externer Fotoimport + Fotoverwaltung**, Source zuletzt `eda1b2ce4a0eb31da7fd747ba4b4a933b2b27efe` plus diese Doku, noch nicht lokal gebaut/auf Gerät bestätigt.
 
 ## Normaler Entwicklungsablauf
-Der Source of Truth liegt wieder vollständig in GitHub. Neue Änderungen werden direkt im Feature-Branch versioniert.
+Der Source of Truth liegt vollständig in GitHub. Neue Änderungen werden direkt im Feature-Branch versioniert.
 
 Windows-PC:
 1. GitHub Desktop `Fetch origin`
@@ -55,7 +55,7 @@ Schema 12 ist im Branch vorbereitet für ein firmenweit gespeichertes PDF-Logo-P
 **Nicht produktiv migriert.** Produktiver NAS/DB-Stand bleibt Schema 10.
 
 ## Android 200040 – externer Fotoimport und Fotoverwaltung
-`app/build.gradle.kts` steht im Feature-Branch jetzt auf `versionCode = 200040`, `versionName = 1.3`.
+`app/build.gradle.kts` steht im Feature-Branch auf `versionCode = 200040`, `versionName = 1.3`.
 
 ### Umgesetzt
 - In der BTB-Fotoauswahl gibt es `Fotos aus Galerie / Dateien hinzufügen`.
@@ -64,7 +64,7 @@ Schema 12 ist im Branch vorbereitet für ein firmenweit gespeichertes PDF-Logo-P
 - das Original in Galerie/Dateien wird niemals durch den Import verändert oder gelöscht.
 - Import wird ausdrücklich der aktuell geöffneten stabilen `btbId` zugeordnet; Datum/Uhrzeit bestimmen bei modernen BTBs nicht die Zugehörigkeit.
 - vorhandene EXIF-GPS-Daten und Aufnahmezeit werden soweit vorhanden übernommen.
-- fehlt GPS im externen Bild, wird intern der bereits im Projekt verwendete `0/0 = unbekannt`-Sentinel benutzt und in der Fotoansicht als `GPS: nicht im Bild vorhanden` angezeigt.
+- fehlt GPS im externen Bild, wird intern der im Projekt bereits verwendete `0/0 = unbekannt`-Sentinel benutzt und in der Fotoansicht als `GPS: nicht im Bild vorhanden` angezeigt.
 - importierte Bilder werden wie andere BTB-Fotos in Auswahl/PDF/Export geführt.
 - bei bestehendem erstem Abschluss ist ein importiertes Foto automatisch ein Nachtrag und die aktuelle Abschlussfassung wird ungültig/Nachbearbeitung.
 - PDF-Fotolimit bleibt wirksam; zusätzliche importierte Bilder bleiben erhalten, werden über dem Limit aber nicht automatisch ausgewählt.
@@ -97,6 +97,8 @@ Text/KM verwenden weiterhin die vorhandenen BTB-spezifischen Override-Stores. F�
 ### Zusätzlich korrigiert
 Die BTB-Fotoauswahl hielt bisher trotz vorhandener `btbId` zunächst am Schicht-Zeitfenster fest. 200040 verwendet bei modernen BTBs nun direkt die exakte `btbId`; Zeitfenster-Fallback bleibt ausschließlich für echte Legacy-BTBs ohne `btbId`.
 
+Beim Laden des BTB-Kontexts verwendet die Fotoauswahl nun auch die kanonische `baustelleId` zusammen mit Name/BTB-ID, damit mehrere BTBs derselben Baustelle stabiler aufgelöst werden.
+
 ### Betroffene Dateien 200040
 - `app/build.gradle.kts`
 - `app/src/main/java/de/tbhelfer/datenbank/FotoDao.kt`
@@ -109,7 +111,7 @@ Die BTB-Fotoauswahl hielt bisher trotz vorhandener `btbId` zunächst am Schicht-
 ### 200040 Teststatus
 Noch **nicht** als Build-/Gerätestand bestätigt.
 
-GitHub Actions ist weiterhin kein belastbarer Buildindikator: die aktuellen Jobs enden vor dem ersten Workflow-Schritt (`runner_id=0`, `steps=[]`). Checkout, Source-Checks und Gradle starten dort aktuell nicht.
+GitHub Actions ist weiterhin kein belastbarer Buildindikator: auch der Lauf zum aktuellen 200040-Source endet vor dem ersten Workflow-Schritt (`steps=[]`). Checkout, Source-Checks und Gradle starten dort aktuell nicht.
 
 Nächster Test auf Windows/Handy:
 1. `Fetch origin` → `Pull origin`.
