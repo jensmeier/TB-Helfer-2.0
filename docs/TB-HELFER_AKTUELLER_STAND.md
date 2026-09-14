@@ -16,12 +16,15 @@ Vor jeder Änderung zuerst lesen:
 - stabil: `main`
 - aktiv: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft/mergeable.
-- letzter relevanter Branch-Commit vor dieser Doku-Aktualisierung: `521e571c2ba32a7a90edeec50134a34b1750bb56` (`fix: group same-name BTB photos in 200037 PDF patch`).
+- letzter relevanter Branch-Commit vor dieser Doku-Aktualisierung: `289c4b61c93e88efcf97a780e0ad6c78faa50439` (`fix: invalidate BTB closure on photo selection changes`).
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`.
 - PR bleibt Draft bis zum erfolgreichen Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test.
 
-## WICHTIG – lokaler PC-Stand Android 200036 erfolgreich gebaut, noch nicht gepusht
-Auf dem Windows-PC wurden die lokalen 200035-Änderungen beibehalten und anschließend 200036 angewendet. Der lokale Source-Stand enthält jetzt zusätzlich die 200036-Anpassungen in:
+## WICHTIG – lokaler Windows-PC-Stand
+Auf dem Windows-PC liegen weiterhin bewusst **nicht gepushte Sourceänderungen** aus 200035 → 200036 → 200037. Nicht verwerfen/resetten und noch nicht committen/pushen, bis der aktuelle Gerätetest abgeschlossen ist.
+
+Bekannte lokal geänderte Kern-Dateien umfassen mindestens:
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchPdf.kt`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchSpeicher.kt`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbExportPaket.kt`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbEinzelZip.kt`
@@ -29,106 +32,165 @@ Auf dem Windows-PC wurden die lokalen 200035-Änderungen beibehalten und anschli
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchFragment.kt`
 - `app/src/main/res/layout/dialog_schicht.xml`
 - `app/src/main/res/layout/fragment_bautagebuch.xml`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchPdf.kt` (200035-Grundlage)
-- `app/build.gradle.kts` (`versionCode = 200036`, `versionName = 1.3`)
+- `app/build.gradle.kts`
 
-Diese lokalen Änderungen **noch nicht verwerfen/resetten und noch nicht committen/pushen**, bis der Gerätetest der nächsten Testversion abgeschlossen ist.
+Lokale Git-Einstellung wurde auf LF vereinheitlicht:
+```powershell
+git config --local core.autocrlf false
+git config --local core.eol lf
+```
+Zusätzlich liegt `.gitattributes` im Branch. Die frühere LF/CRLF-Warnung in GitHub Desktop ist damit beseitigt.
 
-## Android 200036 – Patch und Build bestätigt
+## Android 200036 – gebaut und wesentliche Exportkorrekturen bestätigt
 Verwendete Skripte:
 - `.github/scripts/patch_200036.ps1`
 - `.github/scripts/patch_200036_fix.ps1`
 - `.github/scripts/patch_200036_continue.ps1`
 
-Der erste Patchlauf scheiterte an zu strengem Textvergleich im PDF-Finder. Danach wurde `BautagebuchSpeicher.neuestePdfFuerVerlauf()` gezielt repariert. Ein weiterer Fehler im XML-Patch setzte einen Kommentar innerhalb des geöffneten `MaterialCardView`-Tags in `fragment_bautagebuch.xml`; dieser XML-Fehler wurde im Fortsetzungspatch behoben.
-
-Letzter erfolgreicher Patchlauf meldete:
-```text
-BautagebuchSpeicher PDF-Finder: bereits vorbereitet
-BautagebuchPdf.kt: 200035-Basis erkannt
-Starte 200036 ab Schritt 2 ...
-...
-build.gradle.kts: 200036 bereits gesetzt
-PATCH_200036_FERTIG
-fragment_bautagebuch.xml: XML-Kommentar aus Starttag entfernt
-PATCH_200036_XML_FIX_FERTIG
-```
-
-Danach direkter Gradle-Build:
-```powershell
-$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"; $env:PATH="$env:JAVA_HOME\bin;$env:PATH"; .\gradlew.bat :app:assembleDebug --rerun-tasks
-```
-Ergebnis:
+Erfolgreicher Build:
 - `BUILD SUCCESSFUL in 2m 13s`
 - 38 Tasks ausgeführt.
 - Debug-APK: `app\build\outputs\apk\debug\app-debug.apk`
-- bekannte Compiler-/Deprecated-Warnungen bleiben separater Aufräumpunkt; keine davon verhinderte den Build.
+- bekannte Compiler-/Deprecated-Warnungen verhindern den Build nicht.
 
-## Zweck und Inhalt Android 200036
-Anlass waren zwei echte Exportfehler aus dem Test vom 14.09.2026:
-- Zeitraum-ZIP und Gesamt-Archiv enthielten keinen BTB-Abschluss-PDF.
-- Zeitraum-DOCX enthielt nicht dieselben Kopfdaten wie der Gesamt-Export; Firma, verantwortlicher TB und Schicht fehlten.
-
-200036 ändert:
-- moderner Abschluss-PDF-Finder über `BtbAbschlussPdfFinder` statt Suche nach kompletter UUID im Dateinamen;
-- Zeitraum-/Gesamtexport mit PDF-Fallback über den kanonischen Finder;
-- DOCX-Kopf mit Firma, verantwortlichem TB, Schicht und `BTB-ID`;
+200036 korrigiert/ergänzt:
+- moderner Abschluss-PDF-Finder über `BtbAbschlussPdfFinder`;
+- Zeitraum-/Gesamtexport enthält Abschluss-PDF;
+- DOCX-Kopf enthält Firma, verantwortlichen TB, Schicht und `BTB-ID`;
 - moderne BTB-Fotos im Export strikt nach gleicher `btbId`;
-- stabile BTB-Token in PDF-/DOCX-Dateinamen, damit mehrere BTBs derselben Schicht am selben Tag nicht als fachliches `(2)` kollidieren;
+- stabile BTB-Token in PDF-/DOCX-Dateinamen für mehrere BTBs am selben Tag;
 - Einzel-BTB-ZIP mit vollständigerem Dokumentkopf;
-- MergeSafe-Export behält stabilen BTB-Suffix;
-- Start/Ende beim neuen BTB über grafischen `TimePickerDialog` statt Listen-Dropdown;
-- Abschlussdialog erklärt erstes unveränderliches Original und rote Nachbearbeitung;
-- Karte `Neuen BTB starten` nutzt Theme-Farben für bessere Dunkelmodus-Lesbarkeit;
-- Version lokal auf `200036`.
+- MergeSafe-Export mit stabilem BTB-Suffix;
+- Start/Ende beim neuen BTB über grafischen `TimePickerDialog`;
+- Abschlussdialog erklärt unveränderliches Original und rote Nachbearbeitung;
+- bessere Dunkelmodus-Lesbarkeit der Karte `Neuen BTB starten`.
 
-Die 200035-PDF-Original-Diff-Logik bleibt Grundlage:
-- neue Fotozeilen rot;
-- entfernte Originalinhalte rot `(entfernt)`;
-- allgemeines Baustellenfoto ohne `btbId` bleibt außerhalb moderner BTBs.
-
-## Gerätetest 200036 – bisher bestätigt / Auffälligkeiten
-Aus dem Gerätetest und den beiden neuen Zeitraum-ZIPs vom 14.09.2026:
-- Abschluss-PDF ist im Export jetzt vorhanden.
-- DOCX enthält wieder Firma, verantwortlichen TB, Schicht und BTB-ID.
+Gerätetest/Export bestätigt:
+- Abschluss-PDF ist im Export vorhanden.
+- DOCX enthält Firma, verantwortlichen TB, Schicht und BTB-ID.
 - rote fachliche Änderungen und Foto-Nachträge sind im PDF sichtbar.
-- neuer UX-Wunsch: Personal und Geräte/Maschinen sollen für `von`/`bis` ebenfalls die grafische Uhr wie Datum/Zeit verwenden.
-- neuer PDF-Wunsch: Fotos mit demselben Foto-Text im selben Firmen-/Ortskontext sollen auch nach einer Nachbearbeitung in **einer gemeinsamen PDF-Zeile** erscheinen, z. B. `18:37–18:41 (KM 5,852) Test1.0 [Bild 3+5]`.
 
-## Android 200037 – vorbereitet, noch zu bauen/testen
-Versionierter Patch:
-- `.github/scripts/patch_200037.ps1`
+## Android 200037 – Patch erfolgreich angewendet, Build/Installation praktisch erreicht, Gerätetest noch nicht komplett
+Der robuste lokale Patch ist:
+- `.github/scripts/patch_200037_v2.ps1`
 
-200037 baut auf dem lokal erfolgreich gebauten 200036-Stand auf und ändert:
-- `BautagebuchFragment.kt`: Personal `von/bis` über grafische 24h-Uhr;
-- `BautagebuchFragment.kt`: Geräte/Maschinen `von/bis` über grafische 24h-Uhr;
-- Auswahl bleibt auf dem 15-Minuten-Raster;
-- gilt sowohl im Dialog beim Start eines neuen BTB als auch in den aufgeklappten Personal-/Maschinen-Sektionen eines laufenden BTB;
-- `BautagebuchPdf.kt`: Fotos mit gleichem Text/Firma/Ort werden wieder gemeinsam gruppiert, unabhängig davon, ob eines erst nach dem ersten Abschluss hinzugekommen ist;
-- gemeinsame Bildnummern werden kompakt als Bereich/Liste ausgegeben, z. B. `[Bild 3+5]` oder `[Bild 1–3]`;
-- enthält eine solche Gruppe ein nachträglich hinzugefügtes Foto, wird die gemeinsame geänderte Fotozeile rot dargestellt;
-- `app/build.gradle.kts`: lokal auf `versionCode = 200037`.
-
-Der Patch ist idempotent und kann auch erneut ausgeführt werden, falls eine frühere Fassung von 200037 bereits lokal angewendet wurde.
-
-## Nächster verbindlicher Schritt: Android 200037
-1. Branch in GitHub Desktop aktualisieren, lokale Sourceänderungen behalten.
-2. Ausführen:
-```powershell
-powershell -ExecutionPolicy Bypass -File .\.github\scripts\patch_200037.ps1
+Erfolgreicher Patchlauf auf dem Windows-PC:
+```text
+200037 v2: local 200036/200037 base confirmed
+PATCH_200037_V2_FERTIG
+Changed: BautagebuchFragment.kt, BautagebuchPdf.kt, build.gradle.kts
 ```
-3. `PATCH_200037_FERTIG` prüfen.
+
+200037 ändert:
+- Personal `von/bis` über grafische 24h-Uhr;
+- Geräte/Maschinen `von/bis` über grafische 24h-Uhr;
+- Auswahl bleibt auf 15-Minuten-Raster;
+- gilt beim Start eines neuen BTB und in den Personal-/Maschinen-Sektionen des laufenden BTB;
+- Fotos mit gleichem Text/Firma/Ort werden im PDF gemeinsam gruppiert, auch wenn eines erst nach dem ersten Abschluss hinzukommt;
+- gemeinsame Bildnummern als Bereich/Liste, z. B. `[Bild 3+5]` oder `[Bild 1–3]`;
+- enthält eine Gruppe einen Nachtrag, wird die gemeinsame geänderte Fotozeile rot;
+- lokale Version `versionCode = 200037`.
+
+Praktisch auf Gerät sichtbar:
+- die BTB-Arbeitenansicht gruppiert gleichnamige Fotos bereits kompakt, z. B. `Test1.0 Bild 1+5–6`;
+- der 200037-Stand ist auf dem Gerät lauffähig genug für weitere Gerätetests.
+
+Noch offen für 200037:
+- grafische Uhr bei Personal und Geräte/Maschinen explizit abhaken;
+- neues PDF nach 200037 erzeugen und die gemeinsame Bildreferenz kontrollieren;
+- Export-PDF/DOCX nochmals gegen 200036-Regeln prüfen.
+
+## Neue Befunde aus Gerätetest 14.09.2026
+### Fotoauswahl ist zu informationsarm
+Die bisherige `BtbPdfAuswahlFragment`-Zeile zeigt nur:
+- Vorschaubild,
+- Uhrzeit,
+- Checkbox.
+
+Für reale Baustellen ist das zu wenig. Beim aktuellen Test gibt es z. B. mehrere Fotos mit `Test1.0`; im Export ist ein konkretes Foto über Uhrzeit, KM, Firma und Text eindeutig zuordenbar. Deshalb muss die Fotoauswahl mindestens anzeigen:
+- laufende Foto-Nummer innerhalb der Auswahl,
+- BTB/PDF-Text bzw. Foto-Kurztext,
+- Uhrzeit,
+- KM bzw. KM-Bereich,
+- Firma,
+- soweit vorhanden Objekt/Bereich,
+- nach erstem Abschluss Kennzeichnung `Originalfoto` oder `Nachtrag`.
+
+### Foto entfernen/löschen – sichere Semantik
+Die vorhandene Checkbox bleibt **nicht-destruktiv**: sie bestimmt nur, ob ein Foto im aktuellen BTB/PDF verwendet wird.
+
+Für eine Lösch-Aktion gilt:
+- Sicherheitsdialog ist Pflicht.
+- Foto aus dem unveränderlichen ersten Abschluss: **kein permanentes Löschen über die BTB-Fotoauswahl**; nur `Aus BTB entfernen`. So bleibt das erste Original nachvollziehbar.
+- Foto/Nachtrag außerhalb des ersten Originals: `Nur aus BTB/PDF` oder bewusst `Foto löschen`.
+- Änderung der ausgewählten Foto-Menge nach einem Abschluss macht das aktuelle Abschlussdokument ungültig und setzt den BTB auf Nachbearbeitung; das erste Original bleibt unverändert.
+
+### Alten BTB aus `BTB starten/öffnen` öffnen – Fehlerursache gefunden
+Reproduzierter Fehler:
+- Hauptbildschirm/`Aktuelle Baustelle` → `BTB starten/öffnen` → alten BTB wählen;
+- obwohl BTB-Seite `Noch kein BTB` zeigt, erscheint `Dieser BTB ist bereits geöffnet`.
+
+Ursache im Bestand:
+- `BtbSchnellwechselInstaller` vergleicht den gewählten BTB mit dem rohen `.active_btb.json`-Pointer;
+- nach erfolgreichem Abschluss existiert zusätzlich der fachlich maßgebliche `inactive_after_completion`-Marker;
+- ein alter/staler aktiver Pointer kann deshalb fälschlich als wirklich aktiver BTB gelten.
+
+Lösung:
+- `inactive_after_completion` schlägt einen stale active pointer;
+- `BtbSchnellwechselInstaller` behandelt diesen BTB dann nicht als aktuell;
+- `BtbActiveContext` wendet dieselbe Regel zentral an;
+- bewusstes Öffnen aktiviert danach exakt die gewählte `btbId` und löscht den Inaktivmarker wie bisher vorgesehen.
+
+## Android 200038 – vorbereitet, noch lokal anzuwenden/builden/testen
+Versionierte Skripte:
+- `.github/scripts/patch_200038.ps1` – Basisfunktion;
+- `.github/scripts/patch_200038_v2.ps1` – **zu verwendender finaler Einstieg**, führt die Basis aus und ergänzt sichere Abschluss-Invalidierung bei Fotoauswahländerungen.
+
+200038 soll ändern:
+- `BtbPdfAuswahlFragment.kt`: reichhaltige Fotozeile mit Foto-Nr., Text, Zeit, KM, Firma, Objekt/Bereich, Original/Nachtrag;
+- Fotoauswahl im Dunkelmodus ohne hart erzwungene schwarze Abschnittsüberschrift;
+- Checkbox bleibt `im BTB/PDF verwenden`;
+- Papierkorb öffnet Sicherheitsdialog;
+- Originalfoto kann nur aus dem aktuellen BTB/PDF entfernt werden;
+- Nicht-Original/Nachtrag kann wahlweise nur aus BTB/PDF entfernt oder über den bestehenden `FotoRepository`-Löschweg gelöscht werden;
+- Text-/Zeit-/KM-Overrides werden nach echter Nicht-Original-Fotolöschung bereinigt;
+- `BtbDokumentVersionierung`: neue externe Invalidierungsfunktion für Fotoauswahländerungen, weil diese Auswahl außerhalb der BTB-JSON gespeichert wird;
+- eine Fotoauswahländerung nach erstem Abschluss löscht das aktuelle Abschlussdokument, setzt Abschlussmetadaten auf ungültig/Nachbearbeitung, **ohne das erste Original anzutasten**;
+- `BtbSchnellwechselInstaller`: stale active pointer nach Abschluss nicht mehr als `bereits geöffnet` behandeln;
+- `BtbActiveContext`: `inactive_after_completion` schlägt stale pointer zentral;
+- `item_btb_pdf_photo_row.xml`: neue Metadatenzeilen + Papierkorb;
+- `app/build.gradle.kts`: lokal auf `versionCode = 200038`.
+
+Schutz im Patch:
+- 200038 setzt `versionCode 200037/200038` voraus;
+- Ziel-Dateien, die nicht zu den bisherigen lokalen Patch-Dateien gehören, werden bei unerwarteten lokalen Änderungen nicht blind überschrieben;
+- PowerShell-Textvergleiche sind literal-sicher; kein `.Split`-Fehler wie beim frühen 200037-Versuch.
+
+## Nächster verbindlicher Schritt: Android 200038
+1. GitHub Desktop: `Fetch origin`, danach falls angeboten `Pull origin`; lokale Sourceänderungen behalten.
+2. **Nur den finalen 200038-v2-Patch ausführen:**
+```powershell
+powershell -ExecutionPolicy Bypass -File .\.github\scripts\patch_200038_v2.ps1
+```
+3. Erwartet:
+```text
+PATCH_200038_FERTIG
+...
+PATCH_200038_V2_FERTIG
+```
 4. Bauen:
 ```powershell
 $env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"; $env:PATH="$env:JAVA_HOME\bin;$env:PATH"; .\gradlew.bat :app:assembleDebug --rerun-tasks
 ```
-5. APK als Update installieren; App-Daten nicht löschen.
-6. Prüfen:
-   - Personal `von/bis` öffnet grafische Uhr;
-   - Geräte/Maschinen `von/bis` öffnet grafische Uhr;
-   - gleichnamige Fotos werden im PDF wie im Editor gemeinsam dargestellt (`Bild 3+5` usw.);
-   - neue/geänderte gemeinsame Fotozeile bleibt rot;
-   - Export-PDF und DOCX-Kopfdaten aus 200036 bleiben korrekt.
+5. APK als **Update** installieren; App-Daten nicht löschen.
+6. Gerätetest:
+   - Fotoauswahl zeigt Foto-Nummer, Text, Uhrzeit, KM, Firma und Zusatzinfos;
+   - Checkbox entfernt Foto nur aus aktuellem BTB/PDF;
+   - Originalfoto-Papierkorb bietet nur sichere Entfernung aus aktuellem BTB/PDF;
+   - Nachtrag/Nicht-Original bietet zusätzlich echte Löschung;
+   - Fotoauswahländerung nach Abschluss macht alten Abschluss ungültig/Nachbearbeitung;
+   - `Aktuelle Baustelle` → `BTB starten/öffnen` → alter BTB lässt sich wirklich öffnen, ohne falsches `bereits geöffnet`;
+   - danach PDF-Gruppierung/Rot-Markierung und Tages-ZIP erneut prüfen.
 7. Erst bei erfolgreichem Test lokale Sourceänderungen committen/pushen.
 
 ## Produktiver Synology-Stand – unverändert
@@ -145,11 +207,11 @@ $env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"; $env:PATH="$env:JA
 
 ## Praktisch bestätigte Grundlage Android 200034
 - Kamera-Guard ohne aktiven BTB funktioniert.
-- `Nur Baustellenfoto` / `BTB starten/öffnen` funktioniert.
+- `Nur Baustellenfoto` / `BTB starten/öffnen` funktioniert grundsätzlich.
 - allgemeines Baustellenfoto ohne `btbId` läuft nicht in einen modernen BTB hinein.
-- abgeschlossenen BTB über Verlauf erneut bearbeiten funktioniert.
+- abgeschlossenen BTB über Verlauf erneut bearbeiten funktioniert grundsätzlich; 200038 korrigiert zusätzlich den stale-Pointer-Fehler im Startmenü-Schnellweg.
 - Nachtmodus `Dunkel/Hell/System` bleibt gespeichert.
-- nach erfolgreichem `BTB Abschluss` wird die aktive `btbId` gelöst.
+- nach erfolgreichem `BTB Abschluss` wird die aktive `btbId` fachlich gelöst.
 - bewusstes `BTB bearbeiten` reaktiviert exakt dieselbe `btbId`.
 - moderne BTB-Fotos werden strikt über dieselbe `btbId` zugeordnet.
 - Nutzerprofil lokal mit persönlicher Telefonnummer/E-Mail funktioniert.
@@ -170,7 +232,7 @@ $env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"; $env:PATH="$env:JA
 - Arbeitszeit/Datum, Personal/Firmen, Geräte/Maschinen und Wetter sind Kopfdaten und bleiben im PDF schwarz.
 - fachliche neue/geänderte Inhalte rot; entfernte Originalinhalte rot als `(entfernt) ...`.
 - neues PDF ersetzt das vorige PDF derselben `btbId`, nicht das Original.
-- nach erfolgreichem Abschluss aktive `btbId` lösen; abgeschlossenen BTB nur bewusst über Verlauf wieder aktivieren.
+- nach erfolgreichem Abschluss aktive `btbId` lösen; abgeschlossenen BTB nur bewusst über Verlauf/Schnellwechsel reaktivieren.
 - nach erstem Abschluss Wetter nicht mehr automatisch aktualisieren; spätere Änderung nur bewusst/manuell.
 
 ### Fotos
@@ -179,8 +241,9 @@ $env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"; $env:PATH="$env:JA
 - allgemeine Baustellenfotos ohne `btbId` gehören nie später durch Datum/Uhrzeit zu einem modernen BTB.
 - Zeitfenster-Fallback nur für echte Legacy-BTBs ohne `btbId`.
 - Foto-ID-Menge des ersten erfolgreichen Abschlusses gehört zum unveränderlichen Original.
-- nachträglich hinzugefügte BTB-Fotos werden im Anhang und in den fachlichen Fotozeilen als Nachtrag markiert.
-- gleiche Foto-Texte im selben Firmen-/Ortskontext dürfen im PDF gemeinsam gruppiert werden; Zeit/KM werden als Bereich und Bildnummern als gemeinsame Liste dargestellt.
+- nachträglich hinzugefügte BTB-Fotos werden im Anhang und in fachlichen Fotozeilen als Nachtrag markiert.
+- jede tatsächliche Änderung der ausgewählten Foto-Menge nach Abschluss macht das aktuelle Abschluss-PDF ungültig/Nachbearbeitung.
+- gleiche Foto-Texte im selben Firmen-/Ortskontext dürfen im PDF gemeinsam gruppiert werden; Zeit/KM als Bereich und Bildnummern als gemeinsame Liste.
 
 ## Teams / Baustellen / Sync – offen/teilweise vorbereitet
 - Zusammenarbeit strikt innerhalb derselben Firma.
@@ -223,10 +286,4 @@ Schema 11 vorbereitet, noch nicht produktiv:
 - Streckendaten/Kilometrierung weiterführen; Originalvermessungsdaten unverändert lassen.
 
 ## Nächster sinnvoller Arbeitsschritt
-1. Android 200037-Patch anwenden.
-2. Build durchführen.
-3. APK als Update installieren, App-Daten nicht löschen.
-4. PM-Uhren und PDF-Gruppierung gleichnamiger Fotos testen.
-5. Zeitraum-ZIP und Gesamt-Archiv erneut erzeugen und prüfen.
-6. Bei Erfolg lokale Sourceänderungen committen/pushen und Projektstand auf `200037 getestet` aktualisieren.
-7. Danach offene UI-/Sync-Punkte weiterführen; produktiven NAS weiterhin nicht anfassen.
+Android 200038-v2 lokal anwenden, bauen und als Update installieren. Danach Fotoauswahl/Löschschutz, Abschluss-Invalidierung, altes-BTB-Öffnen sowie PDF-/ZIP-Regeln testen. Erst nach erfolgreichem Gerätetest lokale Sourceänderungen committen/pushen; produktiven NAS weiterhin nicht anfassen.
