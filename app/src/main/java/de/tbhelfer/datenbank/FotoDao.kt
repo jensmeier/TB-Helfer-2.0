@@ -18,6 +18,10 @@ interface FotoDao {
     @Query("SELECT id, dateipfad FROM foto")
     suspend fun alleFotoPfade(): List<FotoPfad>
 
+    /** Verhindert, dass eine gemeinsam referenzierte App-Datei zu früh gelöscht wird. */
+    @Query("SELECT COUNT(*) FROM foto WHERE dateipfad = :dateipfad")
+    suspend fun anzahlMitDateipfad(dateipfad: String): Int
+
     /** Detailansicht. */
     @Query("SELECT * FROM foto WHERE id = :id LIMIT 1")
     suspend fun fotoMitId(id: Long): FotoEntity?
@@ -26,7 +30,7 @@ interface FotoDao {
     @Query("SELECT * FROM foto WHERE id IN (:ids)")
     suspend fun fotosMitIds(ids: List<Long>): List<FotoEntity>
 
-    /** Nur DB löschen (Dateien bleiben bestehen). */
+    /** Nur DB löschen; der Repository-Layer räumt anschließend sichere App-Dateien auf. */
     @Query("DELETE FROM foto WHERE id IN (:ids)")
     suspend fun loeschenMitIds(ids: List<Long>): Int
 
@@ -38,7 +42,8 @@ interface FotoDao {
     suspend fun fotosFuerBaustelleOnce(baustelleId: Long): List<FotoEntity>
 
     @Query("SELECT * FROM foto WHERE baustelleId = :baustelleId AND baustellenKnotenId = :knotenId ORDER BY erstelltAmEpochMs DESC")
-    fun fotosFuerUnterknoten(baustelleId: Long, knotenId: Long): Flow<List<FotoEntity>>
+    fun fotosFuerUnterknoten(baustelleId: Long, knotenId: Long): Flow<List<FotoEntity>> =
+        dao.fotosFuerUnterknoten(baustelleId, knotenId).flowOn(Dispatchers.IO)
 
     @Query("SELECT * FROM foto WHERE baustelleId = :baustelleId AND baustellenKnotenId = :knotenId ORDER BY erstelltAmEpochMs DESC")
     suspend fun fotosFuerUnterknotenOnce(baustelleId: Long, knotenId: Long): List<FotoEntity>
