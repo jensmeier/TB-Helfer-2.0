@@ -1,30 +1,28 @@
 from pathlib import Path
-import traceback
 
 SOURCE = Path("app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchPdf.kt")
-RESULT = Path(".github/patch_200035_result.txt")
+GRADLE = Path("app/build.gradle.kts")
 
 
-def patch() -> None:
+def patch_source() -> None:
     s = SOURCE.read_text(encoding="utf-8")
 
-    # Idempotent: a successful rerun is harmless.
     if "forceRed: Boolean = false" in s and "renderRemovedPhotoBlock" in s:
-        RESULT.write_text("PATCH_200035_ALREADY_APPLIED\n", encoding="utf-8")
+        print("BautagebuchPdf.kt: 200035 bereits angewendet")
         return
 
     def once(old: str, new: str, label: str) -> None:
         nonlocal s
         count = s.count(old)
         if count != 1:
-            raise RuntimeError(f"{label}: expected 1 occurrence, found {count}")
+            raise RuntimeError(f"{label}: erwartet 1 Treffer, gefunden {count}")
         s = s.replace(old, new, 1)
 
     def exact(old: str, new: str, expected: int, label: str) -> None:
         nonlocal s
         count = s.count(old)
         if count != expected:
-            raise RuntimeError(f"{label}: expected {expected} occurrences, found {count}")
+            raise RuntimeError(f"{label}: erwartet {expected} Treffer, gefunden {count}")
         s = s.replace(old, new)
 
     once(
@@ -72,7 +70,6 @@ def patch() -> None:
         }
 
         // Foto-Bestand des ersten erfolgreichen Abschlusses ist Teil des unveränderlichen Originals.
-        // Die IDs reichen für die Diff-Entscheidung; Original-JPGs werden nicht verändert.
         val hatFotoOriginalForDiff = BtbOriginalFotoSpeicher.hatOriginal(context, entry.btbId)
         val originalFotoIdsForDiff = if (hatFotoOriginalForDiff) {
             BtbOriginalFotoSpeicher.originalIds(context, entry.btbId)
@@ -154,7 +151,7 @@ grouped.entries.forEach { (k, list) ->
     val (firma, ortId, txt) = k
 ''',
 '''        // Original und Nachtrag mit gleichem Text nicht vermischen: der Originalanteil bleibt
-        // schwarz, der nach dem ersten Abschluss hinzugekommene Anteil wird rot.
+        // schwarz, nur der nach dem ersten Abschluss hinzugekommene Anteil wird rot.
         val grouped = rows.groupBy { Pair(Triple(it.firma, it.ortId, it.text), it.isNew) }
 grouped.entries.forEach { (k, list) ->
     val (baseKey, isNewGroup) = k
@@ -292,12 +289,22 @@ grouped.entries.forEach { (k, list) ->
     )
 
     SOURCE.write_text(s, encoding="utf-8")
-    RESULT.write_text("PATCH_200035_OK\n", encoding="utf-8")
+    print("BautagebuchPdf.kt: PATCH_200035_OK")
 
 
-try:
-    patch()
-except Exception:
-    RESULT.write_text("PATCH_200035_FAILED\n" + traceback.format_exc(), encoding="utf-8")
-    # Intentionally do not fail the shell here: the workflow commits the diagnostic file so the
-    # exact failed assertion remains inspectable even when Actions logs are unavailable.
+def patch_version() -> None:
+    s = GRADLE.read_text(encoding="utf-8")
+    if "versionCode = 200035" in s:
+        print("build.gradle.kts: 200035 bereits gesetzt")
+        return
+    old = '''        // Android 200034: zentraler Kamera-Guard, strikte btbId-Fotos, NightMode-Persistenz.\n        versionCode = 200034\n'''
+    new = '''        // Android 200035: Fotozeilen im Original-Diff + rote entfernte BTB-Inhalte.\n        versionCode = 200035\n'''
+    if s.count(old) != 1:
+        raise RuntimeError("build.gradle.kts: 200034-Block nicht eindeutig gefunden")
+    GRADLE.write_text(s.replace(old, new, 1), encoding="utf-8")
+    print("build.gradle.kts: versionCode 200035 gesetzt")
+
+
+patch_source()
+patch_version()
+print("PATCH_200035_FERTIG")
