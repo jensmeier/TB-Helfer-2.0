@@ -16,7 +16,8 @@ Vor jeder Änderung zuerst lesen:
 - stabil: `main`
 - aktiv: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft/mergeable.
-- aktueller bestätigter Android-Source-Commit: `8238d509c7914ed3cf192ce30f252d086a00e71c` – `Android 200038: BTB-Fotoauswahl und Wiederöffnung`.
+- aktueller bestätigter Android-Gerätestand: **200038**, Source-Commit `8238d509c7914ed3cf192ce30f252d086a00e71c`.
+- aktueller Entwicklungsstand im Branch: **Android 200039 – BTB/PDF Logo-/Vorschau-Block**, noch nicht als Gerätetest bestätigt.
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`.
 - PR bleibt Draft bis zum erfolgreichen Zwei-Geräte-/Mehrhelfer-Ende-zu-Ende-Test.
 
@@ -38,9 +39,55 @@ git config --local core.eol lf
 ```
 Zusätzlich liegt `.gitattributes` im Branch; die frühere LF/CRLF-Warnung in GitHub Desktop ist beseitigt.
 
-## Android 200038 – gebaut, installiert und praktisch bestätigt
-`app/build.gradle.kts` steht auf `versionCode = 200038`, `versionName = 1.3`.
+## Android 200039 – BTB/PDF Logo, Kontaktdaten und echte Vorschau
+`app/build.gradle.kts` steht im Entwicklungsbranch auf `versionCode = 200039`, `versionName = 1.3`.
 
+Umgesetzt/ vorbereitet:
+- Firmenlogo im realen BTB-PDF standardmäßig deutlich kleiner und proportional; Seitenverhältnis bleibt erhalten.
+- gemeinsamer Renderer für reales BTB-PDF und Vorschau, damit Logo-Größe/Position und Kontaktdaten dieselben Regeln verwenden.
+- Firmenname, Firmen-E-Mail und Firmentelefon können unter dem Logo ausgegeben werden.
+- Schalter `Kontaktdaten bereits im Logo` unterdrückt die separaten Firmen-E-Mail-/Telefonzeilen.
+- oben im PDF: verantwortlicher TB plus persönliche E-Mail und Mobilnummer aus dem persönlichen Nutzerprofil, soweit vorhanden.
+- Fußzeile: `Erstellt von: <Nutzer> · <Datum>`.
+- unter `Einstellungen → BTB & PDF`: Logo links/rechts/hoch/runter, kleiner/größer, auf Standard zurücksetzen.
+- echte A4-PDF-Vorschau wird als PDF erzeugt und im bestehenden App-internen `BtbPdfViewerActivity` geöffnet.
+- die Vorschau zeigt zusätzlich das aktuell konfigurierte Foto-Raster; das reale PDF nutzt weiterhin dieselben vorhandenen Rastereinstellungen.
+- lokaler Offline-Cache `BtbPdfLogoLayoutSpeicher` sorgt dafür, dass PDF-Erstellung auch ohne Server funktioniert.
+- Server-Schema 12 ist vorbereitet für ein firmenweit gespeichertes PDF-Logo-Profil mit Größe, X/Y-Position und den Kontakt-Schaltern.
+- `CompanyProfileSync` lädt Schema-12-Einstellungen nur optional; produktive Server ohne Schema 12 behalten den lokalen PDF-Logo-Stand und der übrige Firmenprofil-Sync bleibt nutzbar.
+
+Betroffene/neue Kern-Dateien 200039:
+- `app/build.gradle.kts`
+- `app/src/main/java/de/tbhelfer/einstellungen/BtbPdfLogoLayoutSpeicher.kt`
+- `app/src/main/java/de/tbhelfer/server/CompanyPdfLogoApi.kt`
+- `app/src/main/java/de/tbhelfer/server/CompanyProfileSync.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchPdf.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPdfHeaderRenderer.kt`
+- `app/src/main/java/de/tbhelfer/ui/einstellungen/btbpdf/BtbPdfEinstellungenFragment.kt`
+- `app/src/main/java/de/tbhelfer/ui/einstellungen/btbpdf/BtbPdfLayoutVorschau.kt`
+- `app/src/main/res/layout/fragment_btb_pdf_einstellungen.xml`
+- `server/app_parts/19_part.py`
+- `server/migrations/012_company_pdf_logo_layout.sql`
+- `server/checks/11_verify_schema12.sql`
+- `server/checks/12_verify_schema12_source.py`
+
+### 200039 Build-/CI-Status
+Der erste 200039-CI-Lauf scheiterte bereits im statischen Schema-10-Source-Check, bevor ein belastbarer Gradle-Buildstatus vorlag. Ursache: `server/checks/03_verify_schema10_source.py` erwartete noch den vor 200038 verwendeten BTB-Dateinamens-Literal und passte nicht mehr zur aktuellen stabilen `btbId`-/`timeToken`-Identität.
+
+Korrektur vorbereitet:
+- Schema-10-Source-Check auf `timeToken` + `btbToken` + aktuellen kanonischen BTB-Dateinamen aktualisiert.
+- Android-CI führt zusätzlich `server/checks/12_verify_schema12_source.py` aus.
+
+Noch erforderlich, bevor 200039 als fertig gilt:
+- neuen CI-Lauf vollständig bis Build + Lint grün bekommen;
+- danach Android 200039 auf Gerät als Update installieren;
+- echte PDF-Vorschau und reales BTB-PDF visuell vergleichen;
+- Logo kleiner/größer/verschieben, Kontakt-Schalter und `Kontaktdaten bereits im Logo` prüfen;
+- persönliche TB-E-Mail/Mobilnummer und Fußzeile prüfen;
+- Foto-Raster in Vorschau und realem PDF gegen dieselbe Einstellung prüfen;
+- bestehende Original-/Nachtrag-/Rot-Markierungslogik darf sich nicht ändern.
+
+## Android 200038 – gebaut, installiert und praktisch bestätigt
 ### Build
 Der 200038-Stand wurde lokal erfolgreich gebaut. Die bekannten Deprecated-/Compiler-Warnungen verhindern den Build nicht.
 
@@ -102,32 +149,17 @@ Folgende Punkte wurden auf dem Gerät erfolgreich getestet:
 - `BtbActiveContext` und `BtbSchnellwechselInstaller` wenden dieselbe Regel an.
 - bewusstes Öffnen reaktiviert exakt die gewählte stabile `btbId` und löscht den Inaktivmarker.
 
-## Betroffene Kern-Dateien 200035–200038
-Mindestens:
-- `app/build.gradle.kts`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchFragment.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchPdf.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchSpeicher.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbExportPaket.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbEinzelZip.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/MergeSafeBaustellenExport.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPdfAuswahlFragment.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbSchnellwechselInstaller.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbActiveContext.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDokumentVersionierung.kt`
-- `app/src/main/res/layout/item_btb_pdf_photo_row.xml`
-- `app/src/main/res/layout/dialog_schicht.xml`
-- `app/src/main/res/layout/fragment_bautagebuch.xml`
-
 ## Bekannte Fehler / offene Prüfungen
-Aktuell keine bekannte Build-Blockade in Android 200038.
+Aktueller bestätigter Gerätstand 200038 hat keine bekannte Build-Blockade.
 
-Noch gezielt erneut zu prüfen, bevor die BTB-Runde als vollständig abgeschlossen gilt:
-- neues Abschluss-PDF mit gruppierten gleichnamigen Fotos kontrollieren;
-- Rot-Markierung bei gemischter Original/Nachtrag-Fotogruppe kontrollieren;
-- Zeitraum-ZIP und Gesamt-Archiv nach 200038 nochmals erzeugen und auf PDF/DOCX/Bilder prüfen;
-- Zwei-Geräte-/Mehrhelfer-Synchronisation bleibt offen;
-- produktive NAS-/Schema-11-Migration bleibt offen.
+200039 ist noch Entwicklungs-/Prüfstand. Offene Punkte:
+- CI vollständig grün bekommen und tatsächlichen Gradle-/Lint-Status verifizieren.
+- Gerätetest des neuen PDF-/Logo-Blocks.
+- neues Abschluss-PDF mit gruppierten gleichnamigen Fotos kontrollieren.
+- Rot-Markierung bei gemischter Original/Nachtrag-Fotogruppe kontrollieren.
+- Zeitraum-ZIP und Gesamt-Archiv nach 200038/200039 nochmals erzeugen und auf PDF/DOCX/Bilder prüfen.
+- Zwei-Geräte-/Mehrhelfer-Synchronisation bleibt offen.
+- produktive NAS-/Schema-11-/Schema-12-Migration bleibt offen.
 
 ## Produktiver Synology-Stand – unverändert
 - NAS/Synology ist Source of Truth.
@@ -136,10 +168,11 @@ Noch gezielt erneut zu prüfen, bevor die BTB-Runde als vollständig abgeschloss
 - produktiver Servercode: `/volume1/docker/tb-helfer/server_schema10_stage`.
 - produktive Secrets ausschließlich in `./server/.env`.
 - PostgreSQL/API/cloudflared zuletzt bestätigt gesund; 72 OpenAPI-Pfade, Schema 10.
-- in der aktuellen Android-BTB-Runde wurden **keine NAS-/DB-Änderungen** durchgeführt.
+- in der aktuellen Android-BTB/PDF-Runde wurden **keine NAS-/DB-Änderungen** durchgeführt.
 - letzter bestätigter Produktiv-Backupstand: `/volume1/docker/tb-helfer/backup/tb_helfer_pre_schema10_20260910_173351.dump`, damals `BACKUP_PRUEFUNG=OK`.
 - Schema 11 für persönliche Nutzerkontakte ist im Branch vorbereitet, aber **nicht produktiv migriert**.
-- vor produktivem Schema-11-Schritt frisches verifiziertes DB-Backup erstellen.
+- Schema 12 für firmenweites PDF-Logo-Layout ist im Branch vorbereitet, aber **nicht produktiv migriert**.
+- vor produktiven Schema-11-/Schema-12-Schritten frisches verifiziertes DB-Backup erstellen.
 
 ## Verbindliches BTB-Kernmodell
 ### Identität
@@ -180,7 +213,7 @@ Noch gezielt erneut zu prüfen, bevor die BTB-Runde als vollständig abgeschloss
 - serverseitiges Entfernen/Verlassen und Zwei-Geräte-Konflikttests bleiben offen.
 
 ## Nutzerprofil / Firma
-Praktisch bestätigt:
+Praktisch bestätigt (200038):
 - Benutzername wird angezeigt.
 - persönliche Telefonnummer und persönliche E-Mail bleiben lokal erhalten.
 - Firmenprofil bleibt getrennt und serverseitig zentral.
@@ -193,6 +226,14 @@ Schema 11 vorbereitet, noch nicht produktiv:
 - `server/app_parts/18_part.py`
 - `GET /api/v1/user/profile`
 - `PUT /api/v1/user/profile`
+
+Schema 12 vorbereitet, noch nicht produktiv:
+- `server/migrations/012_company_pdf_logo_layout.sql`
+- `server/checks/11_verify_schema12.sql`
+- `server/checks/12_verify_schema12_source.py`
+- `server/app_parts/19_part.py`
+- `GET /api/v1/company/profile/pdf-logo-layout`
+- `PUT /api/v1/company/profile/pdf-logo-layout`
 
 ## Spätere Fachfunktionen aus Benutzerplanung
 - SKV-Abnahme inkl. GPS.
@@ -209,7 +250,8 @@ Schema 11 vorbereitet, noch nicht produktiv:
 - Streckendaten/Kilometrierung weiterführen; Originalvermessungsdaten unverändert lassen.
 
 ## Nächster sinnvoller Arbeitsschritt
-1. 200038 bleibt aktueller bestätigter Android-Stand.
-2. Noch PDF-Gruppierung/Rot-Markierung und Zeitraum-/Gesamt-ZIP abschließend prüfen.
-3. Danach nächste gewünschte App-Funktion direkt im Source des Feature-Branches umsetzen – ohne normale Patch-Skript-Kette.
-4. Bei größeren Sync-/Serveränderungen weiterhin zuerst Bestand/Projektregeln prüfen; produktiven NAS ohne Backup/Freigabe nicht anfassen.
+1. 200039-CI bis Build + Lint grün bekommen.
+2. Danach auf dem Windows-PC nur `Fetch origin` → `Pull origin` und Android 200039 bauen/installieren.
+3. PDF-Vorschau und reales BTB-PDF auf Logo/Kontaktdaten/Fußzeile/Foto-Raster vergleichen.
+4. Erst nach erfolgreichem Gerätetest 200039 als bestätigten Android-Stand markieren.
+5. Produktive Schema-11-/Schema-12-Migration weiterhin getrennt und nur nach frischem verifiziertem Backup.

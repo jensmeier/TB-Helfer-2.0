@@ -94,7 +94,9 @@ def main() -> int:
         ANDROID / "ui" / "bautagebuch" / "BtbDokumentIdentitaet.kt",
         [
             "TeamDisplayCache.ownTeam",
-            "BTB_${datumIso}_${schichtToken}_${verantwortlicherToken}",
+            "timeToken",
+            "btbToken",
+            "BTB_${datumIso}_${timeToken}_${verantwortlicherToken}_${btbToken}",
             "verantwortlicherTb",
             "worksiteServerId",
             "groupId",
