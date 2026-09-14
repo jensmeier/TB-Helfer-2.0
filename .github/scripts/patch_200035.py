@@ -1,26 +1,33 @@
 from pathlib import Path
+import traceback
 
-path = Path("app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchPdf.kt")
-s = path.read_text(encoding="utf-8")
-
-
-def replace_once(old: str, new: str, label: str) -> None:
-    global s
-    count = s.count(old)
-    if count != 1:
-        raise SystemExit(f"{label}: expected 1 occurrence, found {count}")
-    s = s.replace(old, new, 1)
+SOURCE = Path("app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchPdf.kt")
+RESULT = Path(".github/patch_200035_result.txt")
 
 
-def replace_count(old: str, new: str, expected: int, label: str) -> None:
-    global s
-    count = s.count(old)
-    if count != expected:
-        raise SystemExit(f"{label}: expected {expected} occurrences, found {count}")
-    s = s.replace(old, new)
+def patch() -> None:
+    s = SOURCE.read_text(encoding="utf-8")
 
+    # Idempotent: a successful rerun is harmless.
+    if "forceRed: Boolean = false" in s and "renderRemovedPhotoBlock" in s:
+        RESULT.write_text("PATCH_200035_ALREADY_APPLIED\n", encoding="utf-8")
+        return
 
-replace_once(
+    def once(old: str, new: str, label: str) -> None:
+        nonlocal s
+        count = s.count(old)
+        if count != 1:
+            raise RuntimeError(f"{label}: expected 1 occurrence, found {count}")
+        s = s.replace(old, new, 1)
+
+    def exact(old: str, new: str, expected: int, label: str) -> None:
+        nonlocal s
+        count = s.count(old)
+        if count != expected:
+            raise RuntimeError(f"{label}: expected {expected} occurrences, found {count}")
+        s = s.replace(old, new)
+
+    once(
 '''        // Fotos in der Schicht (inkl. über Mitternacht)
         val fotosAll = if (entry.includeFotos) {
             val all = fotoRepository.fotosFuerBaustelleOnce(entry.baustelleId)
@@ -34,9 +41,8 @@ replace_once(
                 .sortedBy { it.erstelltAmEpochMs }
         } else emptyList()
 ''',
-'''        // Moderne BTBs werden ausschließlich über ihre stabile btbId gefiltert. Das Arbeitszeitfenster
-        // ist dafür nur Anzeige und darf ein explizit zugeordnetes Foto niemals wieder verlieren.
-        // Nur echte Legacy-BTBs ohne btbId behalten den historischen Zeitfenster-Fallback.
+'''        // Moderne BTBs: die stabile btbId ist stärker als Datum/Uhrzeit.
+        // Nur echte Legacy-BTBs ohne btbId verwenden weiterhin das historische Zeitfenster.
         val modernBtbId = entry.btbId?.trim().orEmpty()
         val fotosAll = if (entry.includeFotos) {
             val all = fotoRepository.fotosFuerBaustelleOnce(entry.baustelleId)
@@ -49,10 +55,10 @@ replace_once(
             scoped.sortedBy { it.erstelltAmEpochMs }
         } else emptyList()
 ''',
-"modern photo scope"
-)
+        "modern photo scope"
+    )
 
-replace_once(
+    once(
 '''        val fotos = fotosAll.filter { f ->
             val ex = excludedByType[f.bildtyp.name]
             ex == null || !ex.contains(f.id)
@@ -65,8 +71,8 @@ replace_once(
             ex == null || !ex.contains(f.id)
         }
 
-        // Foto-Diff gehört fachlich zum unveränderlichen ersten BTB-Abschluss.
-        // IDs reichen für neu/entfernt; die sichtbare Zeile wird weiter aus dem Foto selbst aufgebaut.
+        // Foto-Bestand des ersten erfolgreichen Abschlusses ist Teil des unveränderlichen Originals.
+        // Die IDs reichen für die Diff-Entscheidung; Original-JPGs werden nicht verändert.
         val hatFotoOriginalForDiff = BtbOriginalFotoSpeicher.hatOriginal(context, entry.btbId)
         val originalFotoIdsForDiff = if (hatFotoOriginalForDiff) {
             BtbOriginalFotoSpeicher.originalIds(context, entry.btbId)
@@ -81,10 +87,10 @@ replace_once(
 
         // BTB PDFs (optional)
 ''',
-"photo diff sets"
-)
+        "photo diff sets"
+    )
 
-replace_count(
+    exact(
 '''    data class PdfEvent(
         val sortTime: LocalTime,
         val kind: Int,
@@ -101,15 +107,14 @@ replace_count(
         val ortId: Long,
         var firma: String?,
         val line: String,
-        val fotoIds: Set<Long> = emptySet(),
         val forceRed: Boolean = false
     )
 ''',
-2,
-"PdfEvent photo diff fields"
-)
+        2,
+        "PdfEvent forceRed"
+    )
 
-replace_count(
+    exact(
 '''            val id: Long,
             val epochMs: Long
         )
@@ -119,11 +124,11 @@ replace_count(
             val isNew: Boolean
         )
 ''',
-2,
-"photo row isNew"
-)
+        2,
+        "photo Row isNew"
+    )
 
-replace_once(
+    exact(
 '''                id = f.id,
                 epochMs = f.erstelltAmEpochMs
             )
@@ -139,50 +144,30 @@ replace_once(
 
         fun bildSuffix(numsIn: List<Int>): String {
 ''',
-"arbeiten row construction"
-)
+        2,
+        "photo Row construction"
+    )
 
-# The standard-section photo row has the same tail after its own Row constructor.
-replace_once(
-'''                id = f.id,
-                epochMs = f.erstelltAmEpochMs
-            )
-        }
-
-        fun bildSuffix(numsIn: List<Int>): String {
-''',
-'''                id = f.id,
-                epochMs = f.erstelltAmEpochMs,
-                isNew = hatFotoOriginalForDiff && f.id in neueFotoIdsForDiff
-            )
-        }
-
-        fun bildSuffix(numsIn: List<Int>): String {
-''',
-"standard row construction"
-)
-
-replace_count(
+    exact(
 '''        val grouped = rows.groupBy { Triple(it.firma, it.ortId, it.text) }
 grouped.entries.forEach { (k, list) ->
     val (firma, ortId, txt) = k
 ''',
-'''        // Original- und nachträgliche Fotos mit gleichem Text bewusst nicht zu einer Zeile
-        // verschmelzen: so kann der Originalanteil schwarz und nur der neue Anteil rot bleiben.
+'''        // Original und Nachtrag mit gleichem Text nicht vermischen: der Originalanteil bleibt
+        // schwarz, der nach dem ersten Abschluss hinzugekommene Anteil wird rot.
         val grouped = rows.groupBy { Pair(Triple(it.firma, it.ortId, it.text), it.isNew) }
 grouped.entries.forEach { (k, list) ->
     val (baseKey, isNewGroup) = k
     val (firma, ortId, txt) = baseKey
 ''',
-2,
-"split original/new photo groups"
-)
+        2,
+        "split original/new photo groups"
+    )
 
-replace_count(
+    exact(
 '''    out.add(PdfEvent(sortT, kind, seq++, ortId, firma, line))
 ''',
-'''    val eventFotoIds = sorted.map { it.id }.toSet()
-    out.add(
+'''    out.add(
         PdfEvent(
             sortTime = sortT,
             kind = kind,
@@ -190,50 +175,34 @@ replace_count(
             ortId = ortId,
             firma = firma,
             line = line,
-            fotoIds = eventFotoIds,
             forceRed = isNewGroup
         )
     )
 ''',
-2,
-"photo PdfEvent creation"
-)
+        2,
+        "photo PdfEvent forceRed"
+    )
 
-replace_count(
-'''                arbeitenChange.redKeys.contains(k)
-''',
-'''                e.forceRed || arbeitenChange.redKeys.contains(k)
-''',
-2,
-"arbeiten red group headers"
-)
-replace_once(
+    once(
 '''                            arbeitenChange.redKeys.contains(key) -> w.bulletWrapped(e.line, indent = bulletIndent, paint = pTRed)
 ''',
 '''                            e.forceRed -> w.bulletWrapped(e.line, indent = bulletIndent, paint = pTRed)
                             arbeitenChange.redKeys.contains(key) -> w.bulletWrapped(e.line, indent = bulletIndent, paint = pTRed)
 ''',
-"arbeiten force-red row"
-)
+        "point4 force-red row"
+    )
 
-replace_count(
-'''                    change.redKeys.contains(k)
-''',
-'''                    e.forceRed || change.redKeys.contains(k)
-''',
-2,
-"standard red group headers"
-)
-replace_once(
+    once(
 '''                                change.redKeys.contains(key) -> w.bulletWrapped(e.line, indent = bulletIndent, paint = pTRed)
 ''',
 '''                                e.forceRed -> w.bulletWrapped(e.line, indent = bulletIndent, paint = pTRed)
                                 change.redKeys.contains(key) -> w.bulletWrapped(e.line, indent = bulletIndent, paint = pTRed)
 ''',
-"standard force-red row"
-)
+        "section force-red row"
+    )
 
-replace_once(
+    # Fachliche Löschungen sind Änderungen gegenüber dem ersten Original und deshalb rot.
+    once(
 '''            removed.forEach { ln ->
                 w.bulletWrapped("(entfernt) $ln", indent = 8f, paint = pTGrey)
             }
@@ -242,10 +211,10 @@ replace_once(
                 w.bulletWrapped("(entfernt) $ln", indent = 8f, paint = pTRed)
             }
 ''',
-"fachliche removals red"
-)
+        "removed fachliche rows red"
+    )
 
-replace_once(
+    once(
 '''        // ortLabelById / ortOrderById sind oben aus dem Baustellenbaum gebaut.
 
 
@@ -254,10 +223,9 @@ replace_once(
 '''        // ortLabelById / ortOrderById sind oben aus dem Baustellenbaum gebaut.
 
         /**
-         * Fotos, die beim ersten Abschluss zum BTB gehörten und später aus der Auswahl entfernt
-         * wurden, dürfen im Folge-PDF nicht lautlos verschwinden. Solange das echte Baustellenfoto
-         * noch vorhanden ist, kann die frühere fachliche Zeile vollständig lesbar rekonstruiert
-         * werden. Das Original-JPG selbst wird dabei nicht verändert oder gelöscht.
+         * War ein Foto beim ersten Abschluss im BTB und wird später aus der BTB-Auswahl entfernt,
+         * darf seine fachliche Zeile im Folge-PDF nicht lautlos verschwinden. Das echte Foto bleibt
+         * unverändert gespeichert; hier wird ausschließlich die frühere Referenz rot dokumentiert.
          */
         fun renderRemovedPhotoBlock(typ: Bildtyp) {
             val removed = entfernteFotoIdsForDiff
@@ -266,8 +234,7 @@ replace_once(
                 .sortedBy { it.erstelltAmEpochMs }
                 .map { f ->
                     val time = timeOfFoto(f)
-                    val km = f.km?.let { de.tbhelfer.util.KmAnzeige.wert(it) }
-                        ?.let { "KM $it" }
+                    val km = f.km?.let { de.tbhelfer.util.KmAnzeige.wert(it) }?.let { "KM $it" }
                     val text = btbTextOfFoto(f).trim().ifBlank { "Foto" }
                     val firma = f.firma.trim()
                     val ort = ortLabelById[f.baustellenKnotenId ?: 0L].orEmpty()
@@ -280,6 +247,7 @@ replace_once(
                     val body = listOfNotNull(time, km, text).joinToString(" ")
                     if (head.isBlank()) body else "$head $body".trim()
                 }
+                .filter { it.isNotBlank() }
                 .distinct()
 
             if (removed.isEmpty()) return
@@ -294,10 +262,10 @@ replace_once(
 
 // --- BTB Inhalte (1:1) ---
 ''',
-"removed photo renderer"
-)
+        "removed photo renderer"
+    )
 
-replace_once(
+    once(
 '''    drawFirmaGrouped(events, emptyText = "Keine Arbeiten eingetragen.")
 
     renderRemovedBlock(arbeitenChange) { key ->
@@ -307,10 +275,10 @@ replace_once(
 
     renderRemovedBlock(arbeitenChange) { key ->
 ''',
-"point4 removed photos"
-)
+        "point4 removed photo rows"
+    )
 
-replace_once(
+    once(
 '''    drawFirmaGrouped(events, emptyText)
 
     renderRemovedBlock(change) { key ->
@@ -320,8 +288,16 @@ replace_once(
 
     renderRemovedBlock(change) { key ->
 ''',
-"standard removed photos"
-)
+        "section removed photo rows"
+    )
 
-path.write_text(s, encoding="utf-8")
-print("PATCH_200035_OK")
+    SOURCE.write_text(s, encoding="utf-8")
+    RESULT.write_text("PATCH_200035_OK\n", encoding="utf-8")
+
+
+try:
+    patch()
+except Exception:
+    RESULT.write_text("PATCH_200035_FAILED\n" + traceback.format_exc(), encoding="utf-8")
+    # Intentionally do not fail the shell here: the workflow commits the diagnostic file so the
+    # exact failed assertion remains inspectable even when Actions logs are unavailable.
