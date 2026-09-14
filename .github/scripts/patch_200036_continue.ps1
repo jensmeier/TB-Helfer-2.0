@@ -43,7 +43,7 @@ if (-not ($pdfSource.Contains('forceRed: Boolean = false') -and $pdfSource.Conta
 }
 Write-Host 'BautagebuchPdf.kt: 200035-Basis erkannt'
 
-# Den Hauptpatch nicht über Kommentar-Überschriften schneiden. Diese können durch Encoding/
+# Den Hauptpatch nicht ueber Kommentar-Ueberschriften schneiden. Diese koennen durch Encoding/
 # Zeilenenden variieren. Stattdessen an der eindeutigen ersten Codezeile von Schritt 2 ansetzen.
 $source = Read-Normalized $mainPatch
 $marker = '$exportPath = Join-Path $repoRoot ''app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbExportPaket.kt'''
@@ -56,3 +56,26 @@ $remainder = $source.Substring($start)
 Write-Host 'Starte 200036 ab Schritt 2 ...'
 $block = [scriptblock]::Create($remainder)
 & $block
+
+# Hotfix fuer den ersten 200036-Patch: Ein XML-Kommentar wurde innerhalb des offenen
+# MaterialCardView-Starttags eingefuegt. XML erlaubt dort keine Kommentare.
+$layoutPath = Join-Path $repoRoot 'app/src/main/res/layout/fragment_bautagebuch.xml'
+$layout = Read-Normalized $layoutPath
+$badCommentPattern = '(?m)^[ \t]*<!-- Android 200036: New-BTB-Karte folgt dem Theme statt festem hellem Hintergrund\. -->\n?'
+$layoutFixed = [regex]::Replace($layout, $badCommentPattern, '')
+if (-not $layoutFixed.Contains('app:cardBackgroundColor="?attr/colorSurface"')) {
+    throw 'fragment_bautagebuch.xml: erwartete 200036-NightMode-Aenderung fehlt'
+}
+try {
+    [void]([xml]$layoutFixed)
+} catch {
+    throw ('fragment_bautagebuch.xml bleibt ungueltig: ' + $_.Exception.Message)
+}
+if ($layoutFixed -ne $layout) {
+    Write-Normalized $layoutPath $layoutFixed
+    Write-Host 'fragment_bautagebuch.xml: XML-Kommentar aus Starttag entfernt'
+} else {
+    Write-Host 'fragment_bautagebuch.xml: XML bereits repariert'
+}
+
+Write-Host 'PATCH_200036_XML_FIX_FERTIG'
