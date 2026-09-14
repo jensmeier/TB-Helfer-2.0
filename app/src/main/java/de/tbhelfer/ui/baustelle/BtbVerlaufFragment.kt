@@ -19,6 +19,7 @@ import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
+import de.tbhelfer.ui.bautagebuch.BtbActivePointerControl
 import de.tbhelfer.ui.bautagebuch.BtbDeleteService
 import de.tbhelfer.ui.bautagebuch.BtbDokumentIdentitaet
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
@@ -149,14 +150,23 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
             }
             val appContext = requireContext().applicationContext
             item.btbId?.takeIf { !it.startsWith("legacy:") }?.let { id ->
-                BautagebuchSpeicher.aktivierenBtb(
-                    appContext,
-                    altBaustelleId.takeIf { it > 0L },
-                    baustelleName,
-                    id,
-                    item.datum,
-                    item.schicht
-                )
+                withContext(Dispatchers.IO) {
+                    BautagebuchSpeicher.aktivierenBtb(
+                        appContext,
+                        altBaustelleId.takeIf { it > 0L },
+                        baustelleName,
+                        id,
+                        item.datum,
+                        item.schicht
+                    )
+                    // Der Nutzer hat diesen abgeschlossenen BTB bewusst zur Nachbearbeitung gewählt.
+                    // Deshalb den Abschluss-Inaktivmarker vor der Navigation sofort entfernen.
+                    BtbActivePointerControl.inaktivMarkerLoeschen(
+                        appContext,
+                        altBaustelleId.takeIf { it > 0L },
+                        baustelleName
+                    )
+                }
             }
             findNavController().navigate(
                 R.id.bautagebuchFragment,
@@ -164,6 +174,7 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
                     putString("datumIso", item.datum.toString())
                     putString("schichtTyp", item.schicht.name)
                     putString("btbId", item.btbId)
+                    putLong("baustelleId", altBaustelleId)
                 }
             )
         }
@@ -181,11 +192,6 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         })
     }
 
-    /**
-     * ZIP im Verlauf ist bewusst kein Einzel-BTB-ZIP mehr. Es erzeugt den vorhandenen
-     * Baustellen-/Tagesabschluss fuer den Kalendertag dieses BTB: BTB, Bilder, Maengel, Abnahmen
-     * sowie die Gesamtlisten liegen gemeinsam in der bekannten Laptop-Struktur.
-     */
     private fun teileTagesabschlussZip(item: BautagebuchSpeicher.VerlaufEintrag) {
         lifecycleScope.launch {
             Toast.makeText(requireContext(), "Tagesabschluss-ZIP wird erstellt …", Toast.LENGTH_SHORT).show()
