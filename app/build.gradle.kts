@@ -11,8 +11,8 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200034: zentraler Kamera-Guard, strikte btbId-Fotos, NightMode-Persistenz.
-        versionCode = 200034
+        // Android 200038: richer photo picker + safe photo removal + reliable old-BTB reopen.
+        versionCode = 200038
         versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

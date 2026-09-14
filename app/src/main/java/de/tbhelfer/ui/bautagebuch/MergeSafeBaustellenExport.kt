@@ -202,12 +202,19 @@ object MergeSafeBaustellenExport {
         val ext = name.substringAfterLast('.', "").lowercase()
         if (ext !in setOf("pdf", "docx")) return path
 
-        val withShift = Regex("(?i)^BTB_(\\d{4}-\\d{2}-\\d{2})_(TAG|NACHT|Tag|Nacht)(?:_[^.]*)?\\.(pdf|docx)$")
+        val withShift = Regex("(?i)^BTB_(\\d{4}-\\d{2}-\\d{2})_(TAG|NACHT|Tag|Nacht)(?:_([^.]+))?\\.(pdf|docx)$")
             .matchEntire(name)
         if (withShift != null) {
             val date = withShift.groupValues[1]
             val shift = withShift.groupValues[2].uppercase(Locale.ROOT)
-            val newName = "BTB_${date}_${shift}_${responsibleToken}.${ext}"
+            // Android 200036: vorhandenen stabilen BTB-Suffix beibehalten. Sonst würden
+            // mehrere BTBs derselben Schicht beim Gesamtexport auf denselben Namen fallen.
+            val stableSuffix = withShift.groupValues.getOrNull(3)
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?.let(::safeToken)
+            val newName = listOfNotNull("BTB", date, shift, responsibleToken, stableSuffix)
+                .joinToString("_") + ".${ext}"
             return path.substringBeforeLast('/') + "/" + newName
         }
 

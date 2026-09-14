@@ -11,6 +11,7 @@ import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.Bildtyp
@@ -56,6 +57,15 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
     private val selection = linkedMapOf<String, LinkedHashSet<Long>>()
 
     private var autosaveJob: Job? = null
+
+    // Android 200038: richer photo selection plus protected original-photo handling.
+    private var currentBlocks: List<Block> = emptyList()
+    private var currentEntry: BautagebuchEintrag? = null
+    private var activeBtbIdArg: String? = null
+    private var hasOriginalFotoBasis: Boolean = false
+    private var originalFotoIds: Set<Long> = emptySet()
+    private var textOverrides: Map<Long, String> = emptyMap()
+    private var kmOverrides: Map<Long, BtbPhotoKmOverrideStore.KmOverride> = emptyMap()
 
     private var baustelleIdArg: Long = 0L
     private var baustelleNameArg: String = ""
@@ -106,6 +116,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 BautagebuchSpeicher.laden(requireContext(), baustelleNameArg, datum, schichtTypArg)
             }
             maxFotos = entry?.maxFotosInPdf ?: 60
+            currentEntry = entry
 
             // Technische Identität kommt aus dem aktiven stabilen BTB-Pointer. Der sichtbare Name,
             // Datum und TAG/NACHT allein dürfen bei mehreren BTBs am selben Tag nicht entscheiden.
@@ -117,6 +128,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                     schichtTypArg
                 ) ?: entry?.btbId
             }
+            activeBtbIdArg = activeBtbId
 
             tvSub.text = "$baustelleNameArg • $datumIsoArg • Schicht: ${shiftStartArg ?: "-"}–${shiftEndArg ?: "-"}"
 
@@ -157,6 +169,23 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 )
             }
 
+            hasOriginalFotoBasis = withContext(Dispatchers.IO) {
+                BtbOriginalFotoSpeicher.hatOriginal(appContext, activeBtbId)
+            }
+            originalFotoIds = withContext(Dispatchers.IO) {
+                BtbOriginalFotoSpeicher.originalIds(appContext, activeBtbId)
+            }
+            textOverrides = withContext(Dispatchers.IO) {
+                BtbPhotoTextOverrideStore.loadOverrides(
+                    appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg, schichtTypArg
+                )
+            }
+            kmOverrides = withContext(Dispatchers.IO) {
+                BtbPhotoKmOverrideStore.loadOverrides(
+                    appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg, schichtTypArg
+                )
+            }
+
             // Selection = all - excluded (Default = all selected)
             selection.clear()
             blocks.forEach { b ->
@@ -167,7 +196,8 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 selection[b.blockKey] = sel
             }
 
-            render(blocks)
+            currentBlocks = blocks
+            render(currentBlocks)
         }
     }
 
@@ -258,6 +288,12 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
 
     private fun render(blocks: List<Block>) {
         llSections.removeAllViews()
+        val fotoNumberById = blocks
+            .flatMap { it.fotos }
+            .distinctBy { it.id }
+            .sortedBy { it.erstelltAmEpochMs }
+            .mapIndexed { index, foto -> foto.id to (index + 1) }
+            .toMap()
 
         blocks.forEach { b ->
             // Section header
@@ -265,7 +301,6 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 text = b.sectionTitle
                 textSize = 16f
                 setPadding(0, 18, 0, 8)
-                setTextColor(resources.getColor(android.R.color.black, null))
             }
             llSections.addView(tv)
 
@@ -287,12 +322,20 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 llFotos.addView(empty)
             } else {
                 b.fotos.forEach { f ->
+                    val displayNumber = fotoNumberById[f.id] ?: 0
                     val row = layoutInflater.inflate(R.layout.item_btb_pdf_photo_row, llFotos, false)
                     val img = row.findViewById<android.widget.ImageView>(R.id.imgThumb)
-                    val tvTime = row.findViewById<TextView>(R.id.tvTime)
+                    val tvPrimary = row.findViewById<TextView>(R.id.tvPhotoPrimary)
+                    val tvMeta = row.findViewById<TextView>(R.id.tvPhotoMeta)
+                    val tvDetail = row.findViewById<TextView>(R.id.tvPhotoDetail)
                     val cb = row.findViewById<MaterialCheckBox>(R.id.cb)
+                    val btnDelete = row.findViewById<android.widget.ImageButton>(R.id.btnDelete)
 
-                    tvTime.text = timeOfFoto(f)
+                    tvPrimary.text = "Foto $displayNumber | ${photoDisplayText(f)}"
+                    tvMeta.text = photoMetaText(f)
+                    val detail = photoDetailText(f)
+                    tvDetail.text = detail
+                    tvDetail.visibility = if (detail.isBlank()) View.GONE else View.VISIBLE
                     ThumbnailLoader.loadInto(
                         imageView = img,
                         filePath = f.dateipfad,
@@ -321,7 +364,12 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
 
                         updateCounts(tvCounts, b)
                         updateSelectedTotal()
+                        invalidateClosureForPhotoChange()
                         scheduleAutosave()
+                    }
+
+                    btnDelete.setOnClickListener {
+                        confirmPhotoAction(f, displayNumber)
                     }
 
                     llFotos.addView(row)
@@ -336,6 +384,145 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         }
 
         updateSelectedTotal()
+    }
+
+    private fun photoDisplayText(f: FotoEntity): String {
+        return textOverrides[f.id]?.trim()?.takeIf { it.isNotBlank() }
+            ?: f.kurztext.trim().takeIf { it.isNotBlank() }
+            ?: f.notiz?.trim()?.takeIf { it.isNotBlank() }
+            ?: "ohne Text"
+    }
+
+    private fun photoKmText(f: FotoEntity): String {
+        val override = kmOverrides[f.id]
+        val von = override?.kmVon ?: f.km ?: return "KM -"
+        val bis = override?.kmBis
+        fun fmt(v: Double): String = String.format(java.util.Locale.GERMANY, "%.3f", v)
+        return if (bis != null && kotlin.math.abs(bis - von) > 0.0000001) {
+            "KM ${fmt(von)}-${fmt(bis)}"
+        } else {
+            "KM ${fmt(von)}"
+        }
+    }
+
+    private fun photoMetaText(f: FotoEntity): String {
+        val firma = f.firma.trim().takeIf { it.isNotBlank() } ?: "ohne Firma"
+        return listOf(timeOfFoto(f), photoKmText(f), firma).joinToString(" | ")
+    }
+
+    private fun photoDetailText(f: FotoEntity): String {
+        val out = mutableListOf<String>()
+        f.objektKennung?.trim()?.takeIf { it.isNotBlank() }?.let(out::add)
+        f.objektBereich?.trim()?.takeIf { it.isNotBlank() }?.let { out.add("Bereich $it") }
+        val note = f.notiz?.trim().orEmpty()
+        if (note.isNotBlank() && !note.equals(photoDisplayText(f), ignoreCase = true)) out.add(note)
+        if (hasOriginalFotoBasis) {
+            out.add(if (f.id in originalFotoIds) "Originalfoto" else "Nachtrag")
+        }
+        return out.joinToString(" | ")
+    }
+
+    private fun invalidateClosureForPhotoChange() {
+        if (!hasOriginalFotoBasis) return
+        val entry = currentEntry ?: return
+        val appContext = context?.applicationContext ?: return
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            BtbDokumentVersionierung.invalidiereAbschlussWegenExternerAenderung(appContext, entry)
+        }
+    }
+
+    private fun removePhotoFromCurrentBtb(f: FotoEntity, displayNumber: Int) {
+        selection.getOrPut(f.bildtyp.name) { LinkedHashSet() }.remove(f.id)
+        render(currentBlocks)
+        invalidateClosureForPhotoChange()
+        scheduleAutosave()
+        Snackbar.make(
+            requireView(),
+            "Foto $displayNumber aus BTB/PDF entfernt",
+            Snackbar.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun confirmPhotoAction(f: FotoEntity, displayNumber: Int) {
+        val isProtectedOriginal = hasOriginalFotoBasis && f.id in originalFotoIds
+        val title = "Foto $displayNumber l\u00F6schen?"
+        val base = "${photoDisplayText(f)}\n${photoMetaText(f)}"
+        val builder = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(title)
+            .setNegativeButton("Abbrechen", null)
+
+        if (isProtectedOriginal) {
+            builder
+                .setMessage(
+                    base +
+                        "\n\nDieses Foto geh\u00F6rt zum unver\u00E4nderlichen ersten Abschluss. " +
+                        "Es wird deshalb nicht dauerhaft gel\u00F6scht. Du kannst es aus dem aktuellen " +
+                        "BTB/PDF entfernen; beim n\u00E4chsten Abschluss bleibt das Original nachvollziehbar."
+                )
+                .setPositiveButton("Aus BTB entfernen") { _, _ ->
+                    removePhotoFromCurrentBtb(f, displayNumber)
+                }
+        } else {
+            builder
+                .setMessage(
+                    base +
+                        "\n\nNur aus BTB/PDF entfernen: Foto bleibt in der Baustellen-Fotoliste. " +
+                        "Foto l\u00F6schen: Foto-Datensatz wird aus der App entfernt."
+                )
+                .setNeutralButton("Nur aus BTB/PDF") { _, _ ->
+                    removePhotoFromCurrentBtb(f, displayNumber)
+                }
+                .setPositiveButton("Foto l\u00F6schen") { _, _ ->
+                    deletePhotoPermanently(f, displayNumber)
+                }
+        }
+        builder.show()
+    }
+
+    private fun deletePhotoPermanently(f: FotoEntity, displayNumber: Int) {
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val deleted = withContext(Dispatchers.IO) {
+                val result = ServiceLocator.fotoRepository.loeschen(f)
+                if (result > 0) {
+                    currentEntry?.takeIf { hasOriginalFotoBasis }?.let { entry ->
+                        BtbDokumentVersionierung.invalidiereAbschlussWegenExternerAenderung(appContext, entry)
+                    }
+                    BtbPhotoTextOverrideStore.setOverrideForIds(
+                        appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
+                        schichtTypArg, listOf(f.id), null
+                    )
+                    BtbPhotoStartOverrideStore.setOverrideForIds(
+                        appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
+                        schichtTypArg, listOf(f.id), null
+                    )
+                    BtbPhotoKmOverrideStore.setOverrideForIds(
+                        appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
+                        schichtTypArg, listOf(f.id), null
+                    )
+                }
+                result
+            }
+
+            if (!isAdded || view == null) return@launch
+            if (deleted <= 0) {
+                Snackbar.make(requireView(), "Foto konnte nicht gel\u00F6scht werden", Snackbar.LENGTH_LONG).show()
+                return@launch
+            }
+
+            selection[f.bildtyp.name]?.remove(f.id)
+            allIdsByTypeInShift[f.bildtyp.name] = allIdsByTypeInShift[f.bildtyp.name].orEmpty()
+                .filterNot { it == f.id }
+            textOverrides = textOverrides - f.id
+            kmOverrides = kmOverrides - f.id
+            currentBlocks = currentBlocks.mapNotNull { block ->
+                val remaining = block.fotos.filterNot { it.id == f.id }
+                if (remaining.isEmpty() && filterBildtyp.isNullOrBlank()) null else block.copy(fotos = remaining)
+            }
+            persistNow()
+            render(currentBlocks)
+            Snackbar.make(requireView(), "Foto $displayNumber gel\u00F6scht", Snackbar.LENGTH_SHORT).show()
+        }
     }
 
     private fun updateCounts(tvCounts: TextView, b: Block) {

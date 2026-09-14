@@ -1718,23 +1718,14 @@ cardCurrentReport.setOnClickListener {
                 etBis.setText(initialBis ?: (plusHours(etVon.text?.toString().orEmpty(), 10L) ?: ""))
 
                 etVon.setOnClickListener {
-                    showTimePopup(
-                        anchor = etVon,
-                        setValue = { etVon.setText(it) },
-                        currentValue = etVon.text?.toString().orEmpty(),
-                        items = times,
-                        suggestedWhenBlank = suggestedVon
-                    )
+                    showPmClockPicker(etVon, suggestedVon) {
+                        autoFillBisIfBlank(etVon, etBis, 10L)
+                    }
                 }
                 etBis.setOnClickListener {
+                    autoFillBisIfBlank(etVon, etBis, 10L)
                     val suggestedBis = plusHours(etVon.text?.toString().orEmpty(), 10L) ?: suggestedVon
-                    showTimePopup(
-                        anchor = etBis,
-                        setValue = { etBis.setText(it) },
-                        currentValue = etBis.text?.toString().orEmpty(),
-                        items = times,
-                        suggestedWhenBlank = suggestedBis
-                    )
+                    showPmClockPicker(etBis, suggestedBis)
                 }
 
                 val rows = if (section == PmSection.PERSONAL) {
@@ -1950,8 +1941,21 @@ cardCurrentReport.setOnClickListener {
                 val suggestion = plusHours(start, 10L) ?: return
                 acEnde.setText(suggestion, false)
             }
-            acStart.setOnClickListener { showTimePopup(acStart, times) }
-            acEnde.setOnClickListener { maybeAutoFillEndFromStart(); showTimePopup(acEnde, times) }
+            // Android 200036: Start/Ende werden wie die Wetterzeiten über die grafische Uhr gewählt.
+            fun showClockPicker(field: MaterialAutoCompleteTextView, autoFillEndBeforeOpen: Boolean = false) {
+                if (autoFillEndBeforeOpen) maybeAutoFillEndFromStart()
+                val raw = field.text?.toString().orEmpty().trim()
+                val initial = runCatching { LocalTime.parse(raw, timeFmt) }.getOrNull()
+                    ?: runCatching { LocalTime.parse(suggestedNowQuarter(), timeFmt) }.getOrNull()
+                    ?: LocalTime.now()
+                TimePickerDialog(requireContext(), { _, h, m ->
+                    val rounded = roundUpToQuarter(LocalTime.of(h, m))
+                    field.setText(rounded.format(timeFmt), false)
+                    if (field === acStart) maybeAutoFillEndFromStart()
+                }, initial.hour, initial.minute, true).show()
+            }
+            acStart.setOnClickListener { showClockPicker(acStart) }
+            acEnde.setOnClickListener { showClockPicker(acEnde, autoFillEndBeforeOpen = true) }
             acStart.setText(newBtbPreparedStart ?: newBtbProposal?.startUhrzeit ?: shiftStart.orEmpty(), false)
             acEnde.setText(newBtbPreparedEnd ?: newBtbProposal?.endeUhrzeit ?: shiftEnd.orEmpty(), false)
             maybeAutoFillEndFromStart()
@@ -3144,7 +3148,7 @@ cardCurrentReport.setOnClickListener {
                 if (bi.exists) {
                     com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                         .setTitle("PDF Abschluss")
-                        .setMessage("Tagesabschluss ist bereits aktiv. Abschluss-PDF jetzt erstellen?")
+                        .setMessage("Dieser BTB besitzt bereits ein unveränderliches Original. Der neue Abschluss ersetzt nur das aktuelle PDF; fachliche Abweichungen zum ersten Original bleiben rot. Abschluss-PDF jetzt erstellen?")
                         .setNegativeButton("Nein", null)
                         .setPositiveButton("Ja") { _, _ ->
                             pdfErstellen(setBaseline = false, closeAfterSuccess = true, asDraft = false, deleteDraftOnFinal = false)
@@ -3155,7 +3159,7 @@ cardCurrentReport.setOnClickListener {
 
                 com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                     .setTitle("PDF Abschluss")
-                    .setMessage("PDF-Abschluss erstellen? Spätere Änderungen werden danach markiert und gezählt.")
+                    .setMessage("Erster Abschluss: Dieser Stand wird als unveränderliches Original festgeschrieben. Spätere fachliche Änderungen werden im Folge-PDF rot dargestellt. PDF-Abschluss jetzt erstellen?")
                     .setNegativeButton("Nein", null)
                     .setPositiveButton("Ja") { _, _ ->
                         val msg = buildFinishValidationMessage()
@@ -3879,25 +3883,15 @@ cardCurrentReport.setOnClickListener {
             if (initBis.isNotBlank()) etBis.setText(initBis)
 
             etVon.setOnClickListener {
-                showTimePopup(
-                    anchor = etVon,
-                    setValue = { etVon.setText(it) },
-                    currentValue = etVon.text?.toString().orEmpty(),
-                    items = times,
-                    suggestedWhenBlank = suggestedVon
-                )
+                showPmClockPicker(etVon, suggestedVon) {
+                    autoFillBisIfBlank(etVon, etBis, 10L)
+                }
             }
 
             etBis.setOnClickListener {
                 autoFillBisIfBlank(etVon, etBis, 10L)
                 val suggestedBis = plusHours(etVon.text?.toString().orEmpty(), 10L) ?: suggestedVon
-                showTimePopup(
-                    anchor = etBis,
-                    setValue = { etBis.setText(it) },
-                    currentValue = etBis.text?.toString().orEmpty(),
-                    items = times,
-                    suggestedWhenBlank = suggestedBis
-                )
+                showPmClockPicker(etBis, suggestedBis)
             }
 
             prefillFirma?.let { acFirma.setText(it, false) }
@@ -4063,6 +4057,23 @@ cardCurrentReport.setOnClickListener {
 
         private fun suggestedNowQuarter(): String {
             return roundUpToQuarter(java.time.LocalTime.now()).format(timeFmt)
+        }
+
+        // Android 200037: Personal and machine times use the same 24h clock picker.
+        private fun showPmClockPicker(
+            field: com.google.android.material.textfield.TextInputEditText,
+            suggestedWhenBlank: String,
+            onChosen: (() -> Unit)? = null
+        ) {
+            val raw = field.text?.toString().orEmpty().trim()
+            val initial = runCatching { LocalTime.parse(raw, timeFmt) }.getOrNull()
+                ?: runCatching { LocalTime.parse(suggestedWhenBlank, timeFmt) }.getOrNull()
+                ?: LocalTime.now()
+            TimePickerDialog(requireContext(), { _, hour, minute ->
+                val rounded = roundUpToQuarter(LocalTime.of(hour, minute))
+                field.setText(rounded.format(timeFmt))
+                onChosen?.invoke()
+            }, initial.hour, initial.minute, true).show()
         }
 
         private fun showTimePopup(ac: MaterialAutoCompleteTextView, items: List<String>) {

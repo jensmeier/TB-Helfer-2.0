@@ -10,24 +10,74 @@
 
     <ImageView
         android:id="@+id/imgThumb"
-        android:layout_width="108dp"
-        android:layout_height="108dp"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
         android:scaleType="centerCrop"
         android:contentDescription="Foto" />
 
-    <TextView
-        android:id="@+id/tvTime"
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:layout_marginStart="12dp"
-        android:text="09:38"
-        android:textColor="?attr/colorOnBackground"
-        android:textStyle="bold" />
+        android:orientation="vertical">
 
-    <com.google.android.material.checkbox.MaterialCheckBox
-        android:id="@+id/cb"
+        <TextView
+            android:id="@+id/tvPhotoPrimary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:text="Foto 6 | Test1.0"
+            android:textColor="?attr/colorOnBackground"
+            android:textStyle="bold"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/tvPhotoMeta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:text="19:59 | KM 3,805 | bbg"
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.82"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tvPhotoDetail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:text="Gleisquerung | Originalfoto"
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.68"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="Im BTB/PDF verwenden" />
+
+        <ImageButton
+            android:id="@+id/btnDelete"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_delete"
+            android:contentDescription="Foto loeschen"
+            app:tint="?attr/colorError" />
+    </LinearLayout>
 
 </LinearLayout>

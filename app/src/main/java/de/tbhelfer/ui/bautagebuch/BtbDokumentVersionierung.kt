@@ -296,6 +296,33 @@ object BtbDokumentVersionierung {
         }
     }
 
+    /**
+     * Android 200038: external BTB content such as photo selection lives outside the main BTB JSON.
+     * Changing it after the first successful closure must invalidate the current closure document
+     * even when the BTB JSON hash itself did not change. The immutable first original is untouched.
+     */
+    fun invalidiereAbschlussWegenExternerAenderung(context: Context, entry: BautagebuchEintrag) {
+        val baseline = baselineFile(context, entry)?.takeIf { it.exists() } ?: return
+        val current = currentFile(context, entry)?.takeIf { it.exists() } ?: return
+        runCatching {
+            loescheAktuellesAbschlussDokument(context, entry)
+
+            val meta = readMeta(context, entry) ?: JSONObject().apply {
+                put("btbId", entry.btbId)
+            }
+            meta.put("pdfGueltig", false)
+            meta.put("abschlussPdfDateiname", JSONObject.NULL)
+            writeMeta(context, entry, meta)
+
+            val currentJson = JSONObject(current.readText(Charsets.UTF_8))
+            currentJson.put("abschlussStatus", BtbAbschlussStatus.NACHBEARBEITUNG.name)
+            currentJson.put("istFertig", false)
+            currentJson.put("abschlussPdfDateiname", JSONObject.NULL)
+            currentJson.put("dokumentVersion", 0)
+            current.writeText(currentJson.toString(2), Charsets.UTF_8)
+        }
+    }
+
     fun spiegeleBaselineFuerRenderer(context: Context, entry: BautagebuchEintrag) {
         val baseline = baselineFile(context, entry)?.takeIf { it.exists() } ?: return
         val mirror = rendererBaselineMirrorFile(context, entry) ?: return

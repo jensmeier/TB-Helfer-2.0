@@ -645,6 +645,13 @@ object BautagebuchSpeicher {
         baustelleName: String,
         entry: BautagebuchEintrag
     ): File? {
+        // Android 200036: Moderne Abschluss-PDFs immer Ã¼ber denselben kanonischen Finder
+        // auflÃ¶sen. Dessen Token entspricht dem tatsÃ¤chlich verwendeten Dateinamen.
+        if (!entry.btbId.isNullOrBlank()) {
+            BtbAbschlussPdfFinder.neueste(context, entry)
+                ?.takeIf { it.exists() }
+                ?.let { return it }
+        }
         val base = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: return null
         val top = if ((baustelleId ?: 0L) > 0L) "baustelle_${baustelleId}" else safeFolderName(baustelleName)
         val date = runCatching { LocalDate.parse(entry.datumIso, isoFmt) }.getOrNull() ?: return null
@@ -658,7 +665,6 @@ object BautagebuchSpeicher {
         val dateKey = date.format(DateTimeFormatter.ofPattern("yyyy_MM_dd"))
         return all.filter { it.name.contains(dateKey) }.maxByOrNull { it.lastModified() }
     }
-
     fun sichererName(input: String): String = safeFolderName(input)
 
     private fun safeFolderName(input: String): String = input.trim()

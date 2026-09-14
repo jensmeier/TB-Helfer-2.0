@@ -174,17 +174,18 @@ class BautagebuchPdf(
             RegexOption.IGNORE_CASE
         )
 
-        // Fotos in der Schicht (inkl. über Mitternacht)
+        // Moderne BTBs: die stabile btbId ist stärker als Datum/Uhrzeit.
+        // Nur echte Legacy-BTBs ohne btbId verwenden weiterhin das historische Zeitfenster.
+        val modernBtbId = entry.btbId?.trim().orEmpty()
         val fotosAll = if (entry.includeFotos) {
             val all = fotoRepository.fotosFuerBaustelleOnce(entry.baustelleId)
-            all.let { list ->
+            val scoped = if (modernBtbId.isNotBlank()) {
+                all.filter { BtbFotoZuordnungSpeicher.btbId(context, it.id) == modernBtbId }
+            } else {
                 val (from, to) = shiftWindowEpochMs(datum, entry.startUhrzeit, entry.endeUhrzeit)
-                // BTB-Regel: maßgeblich ist das Schicht-Zeitfenster.
-                // Fotos können vor dem Anlegen/Öffnen des BTB aufgenommen worden sein;
-                // sie müssen trotzdem auswählbar und im PDF nutzbar sein.
-                list.filter { it.erstelltAmEpochMs in from until to }
+                all.filter { it.erstelltAmEpochMs in from until to }
             }
-                .sortedBy { it.erstelltAmEpochMs }
+            scoped.sortedBy { it.erstelltAmEpochMs }
         } else emptyList()
 
         // Foto-Auswahl: Default = alle Fotos in der Schicht. Persistiert werden nur abgewählte IDs (JSON).
@@ -200,6 +201,19 @@ class BautagebuchPdf(
             val ex = excludedByType[f.bildtyp.name]
             ex == null || !ex.contains(f.id)
         }
+
+        // Foto-Bestand des ersten erfolgreichen Abschlusses ist Teil des unveränderlichen Originals.
+        val hatFotoOriginalForDiff = BtbOriginalFotoSpeicher.hatOriginal(context, entry.btbId)
+        val originalFotoIdsForDiff = if (hatFotoOriginalForDiff) {
+            BtbOriginalFotoSpeicher.originalIds(context, entry.btbId)
+        } else emptySet()
+        val aktuelleFotoIdsForDiff = fotos.map { it.id }.toSet()
+        val neueFotoIdsForDiff = if (hatFotoOriginalForDiff) {
+            aktuelleFotoIdsForDiff - originalFotoIdsForDiff
+        } else emptySet()
+        val entfernteFotoIdsForDiff = if (hatFotoOriginalForDiff) {
+            originalFotoIdsForDiff - aktuelleFotoIdsForDiff
+        } else emptySet()
 
         // BTB PDFs (optional)
         val btbs: List<File> = if (entry.includeBtbs) {
@@ -948,7 +962,7 @@ class BautagebuchPdf(
             w.y += 2f
             w.textWrapped("Änderungen (entfernt):", pSmall, indent = 8f)
             removed.forEach { ln ->
-                w.bulletWrapped("(entfernt) $ln", indent = 8f, paint = pTGrey)
+                w.bulletWrapped("(entfernt) $ln", indent = 8f, paint = pTRed)
             }
             w.y += 4f
         }
@@ -1145,6 +1159,43 @@ class BautagebuchPdf(
         val byType = selectedFotosOrdered.groupBy { it.bildtyp }
 
         // ortLabelById / ortOrderById sind oben aus dem Baustellenbaum gebaut.
+
+        /**
+         * War ein Foto beim ersten Abschluss im BTB und wird später aus der BTB-Auswahl entfernt,
+         * darf seine fachliche Zeile im Folge-PDF nicht lautlos verschwinden. Das echte Foto bleibt
+         * unverändert gespeichert; hier wird ausschließlich die frühere Referenz rot dokumentiert.
+         */
+        fun renderRemovedPhotoBlock(typ: Bildtyp) {
+            val removed = entfernteFotoIdsForDiff
+                .mapNotNull { id -> fotosAll.firstOrNull { it.id == id } }
+                .filter { it.bildtyp == typ }
+                .sortedBy { it.erstelltAmEpochMs }
+                .map { f ->
+                    val time = timeOfFoto(f)
+                    val km = f.km?.let { de.tbhelfer.util.KmAnzeige.wert(it) }?.let { "KM $it" }
+                    val text = btbTextOfFoto(f).trim().ifBlank { "Foto" }
+                    val firma = f.firma.trim()
+                    val ort = ortLabelById[f.baustellenKnotenId ?: 0L].orEmpty()
+                    val head = when {
+                        firma.isNotBlank() && ort.isNotBlank() -> "$firma: $ort"
+                        firma.isNotBlank() -> "$firma:"
+                        ort.isNotBlank() -> ort
+                        else -> ""
+                    }
+                    val body = listOfNotNull(time, km, text).joinToString(" ")
+                    if (head.isBlank()) body else "$head $body".trim()
+                }
+                .filter { it.isNotBlank() }
+                .distinct()
+
+            if (removed.isEmpty()) return
+            w.y += 2f
+            w.textWrapped("Änderungen (entfernt):", pSmall, indent = 8f)
+            removed.forEach { line ->
+                w.bulletWrapped("(entfernt) $line", indent = 8f, paint = pTRed)
+            }
+            w.y += 4f
+        }
 
 
 // --- BTB Inhalte (1:1) ---
@@ -1479,7 +1530,8 @@ fun canonFirm(name: String?): String? {
         val seq: Int,
         val ortId: Long,
         var firma: String?,
-        val line: String
+        val line: String,
+        val forceRed: Boolean = false
     )
 
 
@@ -1642,7 +1694,8 @@ fun canonFirm(name: String?): String? {
             val text: String,
             val km: Double?,
             val id: Long,
-            val epochMs: Long
+            val epochMs: Long,
+            val isNew: Boolean
         )
 
         val rows = byType[bt].orEmpty().mapNotNull { f ->
@@ -1656,7 +1709,8 @@ fun canonFirm(name: String?): String? {
                 text = txt,
                 km = f.km,
                 id = f.id,
-                epochMs = f.erstelltAmEpochMs
+                epochMs = f.erstelltAmEpochMs,
+                isNew = hatFotoOriginalForDiff && f.id in neueFotoIdsForDiff
             )
         }
 
@@ -1681,11 +1735,15 @@ fun canonFirm(name: String?): String? {
         var seq = seqBase
         val out = ArrayList<PdfEvent>()
 
+        // Original und Nachtrag mit gleichem Text nicht vermischen: der Originalanteil bleibt
+        // schwarz, nur der nach dem ersten Abschluss hinzugekommene Anteil wird rot.
+        // Same photo text in the same company/location context stays one PDF row.
         val grouped = rows.groupBy { Triple(it.firma, it.ortId, it.text) }
 grouped.entries.forEach { (k, list) ->
     val (firma, ortId, txt) = k
     val sorted = list.sortedBy { it.epochMs }
     if (sorted.isEmpty()) return@forEach
+    val forceRedGroup = sorted.any { it.isNew }
     val first = sorted.first()
     val last = sorted.last()
     val (minT, maxT) = effectiveRangeFor(sorted.map { it.id }, first.epochMs, last.epochMs)
@@ -1704,7 +1762,17 @@ grouped.entries.forEach { (k, list) ->
     val timePart = if (minT == maxT) minT else "$minT–$maxT"
     val line = "$timePart$kmPart $txt" + bildSuffix(nums)
     val sortT = runCatching { LocalTime.parse(minT, timeFmt) }.getOrNull() ?: LocalTime.MIN
-    out.add(PdfEvent(sortT, kind, seq++, ortId, firma, line))
+    out.add(
+        PdfEvent(
+            sortTime = sortT,
+            kind = kind,
+            seq = seq++,
+            ortId = ortId,
+            firma = firma,
+            line = line,
+            forceRed = forceRedGroup
+        )
+    )
 }
 
 
@@ -1855,6 +1923,7 @@ grouped.entries.forEach { (k, list) ->
                                 val oldLine = editedFrom.substringAfterLast("||", "")
                                 drawBulletWrappedPartial(e.line, oldLine, indent = bulletIndent)
                             }
+                            e.forceRed -> w.bulletWrapped(e.line, indent = bulletIndent, paint = pTRed)
                             arbeitenChange.redKeys.contains(key) -> w.bulletWrapped(e.line, indent = bulletIndent, paint = pTRed)
                             else -> w.bulletWrapped(e.line, indent = bulletIndent, paint = pT)
                         }
@@ -1879,6 +1948,7 @@ grouped.entries.forEach { (k, list) ->
     events += fotoEventsForType(Bildtyp.FOTODOKUMENTATION, kind = 2, seqBase = 20_000)
 
     drawFirmaGrouped(events, emptyText = "Keine Arbeiten eingetragen.")
+    renderRemovedPhotoBlock(Bildtyp.FOTODOKUMENTATION)
 
     renderRemovedBlock(arbeitenChange) { key ->
         val i1 = key.indexOf("||")
@@ -1914,7 +1984,8 @@ fun renderStandardSection(
         val seq: Int,
         val ortId: Long,
         var firma: String?,
-        val line: String
+        val line: String,
+        val forceRed: Boolean = false
     )
     val timeIn = java.time.format.DateTimeFormatter.ofPattern("H:mm")
     fun normHHmm(s: String): String? = runCatching { LocalTime.parse(s.trim(), timeIn).format(timeFmt) }.getOrNull()
@@ -1994,7 +2065,8 @@ fun splitFirma(txtIn: String, forceGeneral: Boolean = false): Pair<String?, Stri
             val text: String,
             val km: Double?,
             val id: Long,
-            val epochMs: Long
+            val epochMs: Long,
+            val isNew: Boolean
         )
 
         val rows = byType[bt].orEmpty().mapNotNull { f ->
@@ -2008,7 +2080,8 @@ fun splitFirma(txtIn: String, forceGeneral: Boolean = false): Pair<String?, Stri
                 text = txt,
                 km = f.km,
                 id = f.id,
-                epochMs = f.erstelltAmEpochMs
+                epochMs = f.erstelltAmEpochMs,
+                isNew = hatFotoOriginalForDiff && f.id in neueFotoIdsForDiff
             )
         }
 
@@ -2033,11 +2106,15 @@ fun splitFirma(txtIn: String, forceGeneral: Boolean = false): Pair<String?, Stri
         var seq = seqBase
         val out = ArrayList<PdfEvent>()
 
+        // Original und Nachtrag mit gleichem Text nicht vermischen: der Originalanteil bleibt
+        // schwarz, nur der nach dem ersten Abschluss hinzugekommene Anteil wird rot.
+        // Same photo text in the same company/location context stays one PDF row.
         val grouped = rows.groupBy { Triple(it.firma, it.ortId, it.text) }
 grouped.entries.forEach { (k, list) ->
     val (firma, ortId, txt) = k
     val sorted = list.sortedBy { it.epochMs }
     if (sorted.isEmpty()) return@forEach
+    val forceRedGroup = sorted.any { it.isNew }
     val first = sorted.first()
     val last = sorted.last()
     val (minT, maxT) = effectiveRangeFor(sorted.map { it.id }, first.epochMs, last.epochMs)
@@ -2056,7 +2133,17 @@ grouped.entries.forEach { (k, list) ->
     val timePart = if (minT == maxT) minT else "$minT–$maxT"
     val line = "$timePart$kmPart $txt" + bildSuffix(nums)
     val sortT = runCatching { LocalTime.parse(minT, timeFmt) }.getOrNull() ?: LocalTime.MIN
-    out.add(PdfEvent(sortT, kind, seq++, ortId, firma, line))
+    out.add(
+        PdfEvent(
+            sortTime = sortT,
+            kind = kind,
+            seq = seq++,
+            ortId = ortId,
+            firma = firma,
+            line = line,
+            forceRed = forceRedGroup
+        )
+    )
 }
 
 
@@ -2208,6 +2295,7 @@ grouped.entries.forEach { (k, list) ->
                                     val oldLine = editedFrom.substringAfterLast("||", "")
                                     drawBulletWrappedPartial(e.line, oldLine, indent = bulletIndent)
                                 }
+                                e.forceRed -> w.bulletWrapped(e.line, indent = bulletIndent, paint = pTRed)
                                 change.redKeys.contains(key) -> w.bulletWrapped(e.line, indent = bulletIndent, paint = pTRed)
                                 else -> w.bulletWrapped(e.line, indent = bulletIndent, paint = pT)
                             }
@@ -2225,6 +2313,7 @@ grouped.entries.forEach { (k, list) ->
     events += fotoEvents(fotoType, kind = 1, seqBase = 10_000)
 
     drawFirmaGrouped(events, emptyText)
+    renderRemovedPhotoBlock(fotoType)
 
     renderRemovedBlock(change) { key ->
         val i1 = key.indexOf("||")

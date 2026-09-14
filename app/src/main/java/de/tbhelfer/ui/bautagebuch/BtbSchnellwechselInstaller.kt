@@ -68,7 +68,12 @@ object BtbSchnellwechselInstaller {
 
             val appContext = fragment.requireContext().applicationContext
             val data = withContext(Dispatchers.IO) {
-                val activeId = BautagebuchSpeicher.aktiveBtbId(appContext, altBaustelleId, baustelleName)
+                // Android 200038: inactive-after-completion beats any stale active pointer.
+                val rawActiveId = BautagebuchSpeicher.aktiveBtbId(appContext, altBaustelleId, baustelleName)
+                val inactiveId = BtbActivePointerControl.nachAbschlussInaktiveBtbId(
+                    appContext, altBaustelleId, baustelleName
+                )
+                val activeId = rawActiveId?.takeUnless { it == inactiveId }
                 val items = BautagebuchSpeicher.verlaufFuerBaustelle(appContext, altBaustelleId, baustelleName)
                 activeId to items.map { item -> QuickItem(item, labelFor(appContext, item, activeId)) }
             }

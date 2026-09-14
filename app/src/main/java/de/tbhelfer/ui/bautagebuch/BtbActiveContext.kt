@@ -36,6 +36,11 @@ object BtbActiveContext {
             ?.trim()
             ?.takeIf { it.isNotBlank() }
             ?: return null
+        // Android 200038: inactive marker wins over a stale pointer after a completed BTB.
+        val inactiveId = BtbActivePointerControl.nachAbschlussInaktiveBtbId(
+            appContext, baustelleId, name
+        )
+        if (inactiveId == btbId) return null
         val entry = BautagebuchSpeicher.ladenById(appContext, baustelleId, name, btbId) ?: return null
         return Result(baustelleId, name, btbId, entry)
     }

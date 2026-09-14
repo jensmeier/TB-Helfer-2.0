@@ -94,7 +94,9 @@ object BtbEinzelZip {
         val lines = buildList {
             add("BAUTAGEBUCH")
             add("Baustelle: ${entry.baustelleName}")
+            identity.firmenname?.takeIf { it.isNotBlank() }?.let { add("Firma: $it") }
             add("Verantwortlicher TB: ${identity.verantwortlicherTb}")
+            add("Schicht: ${identity.schichtAnzeige}")
             add("BTB-ID: ${entry.btbId}")
             add("Zeitraum: ${identity.zeitraumAnzeige}")
             add("")

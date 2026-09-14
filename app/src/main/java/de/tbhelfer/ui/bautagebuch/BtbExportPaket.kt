@@ -251,10 +251,17 @@ object BtbExportPaket {
 
 
 
-    private fun btbTextFromModell(model: BtbDruckModell): String {
+    private fun btbTextFromModell(
+        model: BtbDruckModell,
+        identity: BtbDokumentIdentitaet.Identitaet
+    ): String {
         return buildString {
             appendLine("BAUTAGEBUCH")
             appendLine("Baustelle: ${model.baustelle}")
+            identity.firmenname?.takeIf { it.isNotBlank() }?.let { appendLine("Firma: $it") }
+            appendLine("Verantwortlicher TB: ${identity.verantwortlicherTb}")
+            appendLine("Schicht: ${identity.schichtAnzeige}")
+            identity.btbId?.takeIf { it.isNotBlank() }?.let { appendLine("BTB-ID: $it") }
             appendLine("Datum: ${model.datumAnzeige}")
             appendLine("Zeit: ${model.zeitAnzeige}")
             appendLine()
@@ -1191,7 +1198,14 @@ object BtbExportPaket {
         // PDF/BTB-Liste ist separat vom Export:
         // - ExportFotos = alle Bilder im BTB-Zeitfenster
         // - btbPlan = nur gewählte PDF-/BTB-Bilder mit PDF-Bildnummern
-        val btbPlan = buildBtbFotoPlan(context, entry, fotos)
+        val btbFotos = BtbFotoBtbFilter.fotosFuerBtb(
+            context = context,
+            entry = entry,
+            alleFotos = alleFotosDerBaustelle,
+            legacyFromEpochMs = from,
+            legacyToEpochMs = to
+        ).sortedBy { it.erstelltAmEpochMs }
+        val btbPlan = buildBtbFotoPlan(context, entry, btbFotos)
         val textOverrides = BtbPhotoTextOverrideStore.loadOverrides(
             context,
             entry.baustelleId,
@@ -1246,7 +1260,8 @@ object BtbExportPaket {
                 startOverrides = startOverrides,
                 kmOverrides = kmOverrides
             )
-            val btbTxtContent = btbTextFromModell(druckModell)
+            val dokumentIdentitaet = BtbDokumentIdentitaet.aufloesen(context, entry)
+            val btbTxtContent = btbTextFromModell(druckModell, dokumentIdentitaet)
 
             // Patch37-Mängelbasis: ein Mangel kann mehrere Fotos und Fotoarten besitzen.
             // Schichtliste liegt im BTB-Ordner, die vollständige Liste im eigenen Ordner.
@@ -1430,14 +1445,24 @@ object BtbExportPaket {
         ZipOutputStream(zipFile.outputStream().buffered(64 * 1024)).use { zos ->
             verlauf.forEach { v ->
                 val datum = v.datum.format(isoFmt)
-                v.pdfDatei?.takeIf { it.exists() }?.let { pdf ->
-                    val name = if (v.schicht == SchichtTyp.NACHT) "BTB_${datum}_Nacht.pdf" else "BTB_${datum}_Tag.pdf"
+                // Android 200036: Verlauf kann bei modernen BTBs aus Altcode eine null-pdfDatei
+                // liefern. Deshalb zusätzlich den kanonischen Abschluss-PDF-Finder verwenden.
+                val btbToken = BtbDokumentVersionierung.dokumentToken(v.entry)
+                val pdfForExport = v.pdfDatei?.takeIf { it.exists() }
+                    ?: BtbAbschlussPdfFinder.neueste(context, v.entry)?.takeIf { it.exists() }
+                pdfForExport?.let { pdf ->
+                    val name = "BTB_${datum}_${v.schicht.name}_${btbToken}.pdf"
                     addFile(zos, pdf, uniquePath("$root/BTB/$datum/$name", used))
                 }
-                val btbPlan = buildBtbFotoPlan(context, v.entry, alleFotosDerBaustelle.filter { f ->
-                    val d = Instant.ofEpochMilli(f.erstelltAmEpochMs).atZone(ZoneId.systemDefault()).toLocalDate()
-                    d == v.datum
-                })
+                val (legacyFrom, legacyTo) = shiftWindowEpochMs(v.entry)
+                val btbFotos = BtbFotoBtbFilter.fotosFuerBtb(
+                    context = context,
+                    entry = v.entry,
+                    alleFotos = alleFotosDerBaustelle,
+                    legacyFromEpochMs = legacyFrom,
+                    legacyToEpochMs = legacyTo
+                ).sortedBy { it.erstelltAmEpochMs }
+                val btbPlan = buildBtbFotoPlan(context, v.entry, btbFotos)
                 val textOverrides = BtbPhotoTextOverrideStore.loadOverrides(context, v.entry.baustelleId, v.entry.datumIso, v.entry.startUhrzeit, v.entry.endeUhrzeit, v.entry.schicht)
                 val startOverrides = BtbPhotoStartOverrideStore.loadOverrides(context, v.entry.baustelleId, v.entry.datumIso, v.entry.startUhrzeit, v.entry.endeUhrzeit, v.entry.schicht)
                 val kmOverrides = BtbPhotoKmOverrideStore.loadOverrides(context, v.entry.baustelleId, v.entry.datumIso, v.entry.startUhrzeit, v.entry.endeUhrzeit, v.entry.schicht)
@@ -1450,7 +1475,13 @@ object BtbExportPaket {
                     startOverrides = startOverrides,
                     kmOverrides = kmOverrides
                 )
-                addBinary(zos, uniquePath("$root/BTB/$datum/BTB_${datum}_${v.schicht.name}.docx", used), btbDocxBytes(btbTextFromModell(druckModell)))
+                val dokumentIdentitaet = BtbDokumentIdentitaet.aufloesen(context, v.entry)
+                val docxName = "BTB_${datum}_${v.schicht.name}_${btbToken}.docx"
+                addBinary(
+                    zos,
+                    uniquePath("$root/BTB/$datum/$docxName", used),
+                    btbDocxBytes(btbTextFromModell(druckModell, dokumentIdentitaet))
+                )
             }
 
             val maengelGesamt = MaengellisteExport.ladeItems(context, baustelleId, baustelleName)
