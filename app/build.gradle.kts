@@ -120,6 +120,40 @@ abstract class GenerateBtb200043Sources : DefaultTask() {
         check(patched != source) { "Android 200043: BTB-Quelldatei wurde nicht erweitert." }
         target.writeText(patched)
 
+        // Android 200046: Der ZIP-Scanner erkannte rohe .kf bereits, hat sie bisher aber
+        // bewusst nicht importiert. Der vorhandene GVP/Festpunktpfad verarbeitet jetzt auch
+        // KF_RAW; GvpDateiParser liest das 102-Byte-KF-7.0-Format direkt. Die kanonische
+        // ImportExportFragment-Datei bleibt bis zum Rueckbau der 200043-Source-Bruecke
+        // unveraendert, deshalb wird die gleiche kleine Routing-Aenderung hier in die
+        // generierte Build-Kopie eingesetzt.
+        val importExportTarget = outputRoot.resolve(
+            "de/tbhelfer/ui/importexport/ImportExportFragment.kt"
+        )
+        check(importExportTarget.isFile) {
+            "Android 200046: ImportExportFragment.kt wurde im Build-Quellbaum nicht gefunden."
+        }
+        val importSource = importExportTarget.readText()
+        val rawKfIgnored = """
+            ZipDateiTyp.GVP_TXT,
+            ZipDateiTyp.KF_TXT,
+            ZipDateiTyp.KV -> importiereZipGvpDatei(datei)
+            ZipDateiTyp.KF_RAW -> ImportErgebnis(datei.dateiname, true, "nicht direkt importiert: KF-Original erkannt; falls vorhanden wird KF.TXT verwendet")
+""".trim('\n')
+        val rawKfImported = """
+            ZipDateiTyp.GVP_TXT,
+            ZipDateiTyp.KF_TXT,
+            ZipDateiTyp.KF_RAW,
+            ZipDateiTyp.KV -> importiereZipGvpDatei(datei)
+""".trim('\n')
+        check(importSource.contains(rawKfIgnored)) {
+            "Android 200046: KF_RAW-Importanker wurde nicht gefunden. ImportExportFragment.kt hat sich geändert."
+        }
+        val importPatched = importSource.replace(rawKfIgnored, rawKfImported)
+        check(importPatched != importSource) {
+            "Android 200046: KF_RAW wurde nicht in den bestehenden GVP-Importpfad aufgenommen."
+        }
+        importExportTarget.writeText(importPatched)
+
         // Android 200044: Room/KSP muss die kanonischen Datenbankquellen als normalen
         // Android-Kotlin-Source-Set sehen. Die Build-Kopie darf diese Klassen deshalb nicht
         // ein zweites Mal enthalten; sonst gäbe es doppelte Klassen. Der Datenbank-Ordner
@@ -144,8 +178,8 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200045: kompakte, theme-faehige Bildauswahl im BTB-Eintrag.
-        versionCode = 200045
+        // Android 200046: direkter Roh-KF-7.0-Import fuer Festpunkte/KM-Quellen.
+        versionCode = 200046
         versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
