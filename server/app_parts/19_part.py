@@ -92,7 +92,7 @@ async def mobile_company_pdf_logo_layout_update(request:Request,
         offset_y=int(payload.get("offset_y_pt",0))
     except (TypeError,ValueError):
         raise HTTPException(400,"COMPANY_PDF_LAYOUT_INVALID")
-    if width < 40 or width > 180 or offset_x < -120 or offset_x > 120 or offset_y < -60 or offset_y > 180:
+    if width < 40 or width > 250 or offset_x < -120 or offset_x > 120 or offset_y < -60 or offset_y > 180:
         raise HTTPException(400,"COMPANY_PDF_LAYOUT_INVALID")
 
     show_name=company_pdf_layout_bool(payload,"show_company_name",True)
