@@ -1,18 +1,38 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.TaskAction
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.ksp)
 }
 
-val generatedBtb200043Dir = layout.buildDirectory.dir("generated/source/btb200043")
-val generateBtb200043Source = tasks.register("generateBtb200043Source") {
-    val sourceFile = layout.projectDirectory.file(
-        "src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchFragment.kt"
-    )
-    inputs.file(sourceFile)
-    outputs.dir(generatedBtb200043Dir)
+abstract class GenerateBtb200043Sources : DefaultTask() {
+    @get:InputDirectory
+    abstract val inputDirectory: DirectoryProperty
 
-    doLast {
-        val source = sourceFile.asFile.readText()
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val inputRoot = inputDirectory.get().asFile
+        val outputRoot = outputDirectory.get().asFile
+        outputRoot.deleteRecursively()
+        check(inputRoot.copyRecursively(outputRoot, overwrite = true)) {
+            "Android 200043: Android-Quellbaum konnte nicht in das Build-Verzeichnis kopiert werden."
+        }
+
+        val target = outputRoot.resolve(
+            "de/tbhelfer/ui/bautagebuch/BautagebuchFragment.kt"
+        )
+        check(target.isFile) {
+            "Android 200043: BautagebuchFragment.kt wurde im Build-Quellbaum nicht gefunden."
+        }
+
+        val source = target.readText()
         val anchor = """
                         val firmTitle = firm ?: getString(R.string.btb_company_general)
 
@@ -98,13 +118,13 @@ val generateBtb200043Source = tasks.register("generateBtb200043Source") {
 
         val patched = source.replace(anchor, anchor + "\n\n" + photoActions)
         check(patched != source) { "Android 200043: BTB-Quelldatei wurde nicht erweitert." }
-
-        val outputFile = generatedBtb200043Dir.get()
-            .file("de/tbhelfer/ui/bautagebuch/BtbFragmentGenerated.kt")
-            .asFile
-        outputFile.parentFile.mkdirs()
-        outputFile.writeText(patched)
+        target.writeText(patched)
     }
+}
+
+val generateBtb200043Sources = tasks.register<GenerateBtb200043Sources>("generateBtb200043Sources") {
+    inputDirectory.set(layout.projectDirectory.dir("src/main/java"))
+    outputDirectory.set(layout.buildDirectory.dir("generated/source/btb200043"))
 }
 
 android {
@@ -123,12 +143,11 @@ android {
 
     sourceSets {
         getByName("main") {
-            // Der sehr große Legacy-Fragmentquelltext bleibt unverändert im Repository. Für 200043
-            // wird beim Build eine identische Kopie mit genau dem Fotoaktions-Hook erzeugt.
-            // Dateiname der generierten Kopie ist absichtlich anders, damit nur das Original
-            // ausgeschlossen wird und GitHub Desktop nach dem Build sauber bleibt.
-            java.exclude("**/BautagebuchFragment.kt")
-            java.srcDir(generateBtb200043Source)
+            // AGP 9 Built-in Kotlin: der reguläre Quellbaum wird für den Build durch eine
+            // identische generierte Kopie ersetzt, in die nur der 200043-Dialog-Hook eingesetzt wird.
+            // Das Repository und GitHub Desktop bleiben dadurch nach dem Build unverändert.
+            java.directories.clear()
+            kotlin.directories.clear()
         }
     }
 
@@ -158,6 +177,17 @@ android {
         checkDependencies = true
         lintConfig = file("$rootDir/lint.xml")
     }
+}
+
+androidComponents.onVariants { variant ->
+    variant.sources.kotlin?.addGeneratedSourceDirectory(
+        generateBtb200043Sources,
+        GenerateBtb200043Sources::outputDirectory
+    )
+    variant.sources.java?.addGeneratedSourceDirectory(
+        generateBtb200043Sources,
+        GenerateBtb200043Sources::outputDirectory
+    )
 }
 
 ksp {
