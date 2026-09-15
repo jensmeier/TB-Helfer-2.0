@@ -74,7 +74,7 @@ Die eigentliche Schichtzeitrechnung kann einen normalen Nachtbereich wie `18:00�
 - ein Nacht-BTB vom 15.09. bleibt nach 00:00 am 16.09. derselbe BTB;
 - beim Laden wird `selectedDate` wieder aus `entry.datumIso` des aktiven BTB gesetzt, bevor weitere Speicherung/Autosave erfolgt;
 - damit kann derselbe `btbId` nicht nur wegen Mitternacht versehentlich im Folgetagskontext weitergebaut werden;
-- nach bewusstem Abschluss und gelöstem Aktiv-Pointer darf das normale Öffnen nicht automatisch irgendeinen heutigen modernen BTB als aktiven Bericht auswählen.
+- nach bewusstem Abschluss liefert `BtbActiveContext` wegen des gelösten Aktiv-Pointers keinen aktiven BTB mehr. Ein abgeschlossener BTB soll nur über die bewusste Verlaufsaktion `BTB bearbeiten` wieder aktiviert werden.
 
 ### Betroffene Datei 200047
 - `app/build.gradle.kts`
