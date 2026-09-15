@@ -1,15 +1,18 @@
 package de.tbhelfer.ui.einstellungen.btbpdf
 
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import com.google.android.material.textfield.TextInputEditText
@@ -26,6 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /** Einstellungen fuer BTB/PDF inklusive echter PDF-Logo-Vorschau. */
 class BtbPdfEinstellungenFragment : Fragment(R.layout.fragment_btb_pdf_einstellungen) {
@@ -54,6 +58,9 @@ class BtbPdfEinstellungenFragment : Fragment(R.layout.fragment_btb_pdf_einstellu
         val swLogoShowEmail = view.findViewById<SwitchMaterial>(R.id.swLogoShowEmail)
         val swLogoShowPhone = view.findViewById<SwitchMaterial>(R.id.swLogoShowPhone)
         val swLogoContactsInImage = view.findViewById<SwitchMaterial>(R.id.swLogoContactsInImage)
+        val cardLogoPreview = view.findViewById<MaterialCardView>(R.id.cardLogoPreview)
+        val imgLogoPreview = view.findViewById<ImageView>(R.id.imgLogoPreview)
+        val tvLogoPreviewHint = view.findViewById<TextView>(R.id.tvLogoPreviewHint)
 
         val rasterLabels = listOf(
             "Automatisch (Quer 2 / Hoch 3)",
@@ -132,6 +139,23 @@ class BtbPdfEinstellungenFragment : Fragment(R.layout.fragment_btb_pdf_einstellu
             viewLifecycleOwner.lifecycleScope.launch { speichernPdfOptionen() }
         }
 
+        fun refreshLogoPreview() {
+            val profil = NutzerSpeicher.laden(requireContext())
+            val logoFile = profil?.logoDateiname
+                ?.let { File(NutzerSpeicher.ordner(requireContext()), it) }
+                ?.takeIf { it.exists() && it.isFile }
+            val bmp = logoFile?.let { runCatching { BitmapFactory.decodeFile(it.absolutePath) }.getOrNull() }
+            if (bmp != null) {
+                imgLogoPreview.visibility = View.VISIBLE
+                imgLogoPreview.setImageBitmap(bmp)
+                tvLogoPreviewHint.text = "Logo antippen → echte PDF-Vorschau"
+            } else {
+                imgLogoPreview.setImageDrawable(null)
+                imgLogoPreview.visibility = View.GONE
+                tvLogoPreviewHint.text = "Kein Firmenlogo hinterlegt · antippen für PDF-Vorschau mit weißem Logobereich"
+            }
+        }
+
         fun applyLogoUi(cfg: BtbPdfLogoLayoutSpeicher.Einstellungen) {
             tvLogoStatus.text = "Logo: ${cfg.logoWidthPt} pt · X ${cfg.offsetXPt.withSign()} · Y ${cfg.offsetYPt.withSign()}"
             swLogoShowName.isChecked = cfg.showCompanyName
@@ -150,7 +174,26 @@ class BtbPdfEinstellungenFragment : Fragment(R.layout.fragment_btb_pdf_einstellu
             tvLogoServerStatus.text = "Lokal geändert · für andere Geräte noch firmenweit speichern"
         }
 
+        fun openPdfPreview() {
+            val appContext = requireContext().applicationContext
+            viewLifecycleOwner.lifecycleScope.launch {
+                runCatching {
+                    withContext(Dispatchers.IO) { BtbPdfLayoutVorschau.erstellen(appContext) }
+                }.onSuccess { file ->
+                    startActivity(
+                        Intent(requireContext(), BtbPdfViewerActivity::class.java)
+                            .putExtra(BtbPdfViewerActivity.EXTRA_FILE_PATH, file.absolutePath)
+                            .putExtra(BtbPdfViewerActivity.EXTRA_TITLE, "BTB/PDF Vorschau")
+                    )
+                }.onFailure {
+                    tvLogoServerStatus.text = "PDF-Vorschau konnte nicht erstellt werden: ${it.message.orEmpty()}"
+                }
+            }
+        }
+
+        refreshLogoPreview()
         applyLogoUi(BtbPdfLogoLayoutSpeicher.laden(requireContext()))
+        cardLogoPreview.setOnClickListener { openPdfPreview() }
         view.findViewById<MaterialButton>(R.id.btnLogoLeft).setOnClickListener { mutateLogo { it.copy(offsetXPt = it.offsetXPt - 5) } }
         view.findViewById<MaterialButton>(R.id.btnLogoRight).setOnClickListener { mutateLogo { it.copy(offsetXPt = it.offsetXPt + 5) } }
         view.findViewById<MaterialButton>(R.id.btnLogoUp).setOnClickListener { mutateLogo { it.copy(offsetYPt = it.offsetYPt - 5) } }
@@ -195,22 +238,7 @@ class BtbPdfEinstellungenFragment : Fragment(R.layout.fragment_btb_pdf_einstellu
             }
         }
 
-        view.findViewById<MaterialButton>(R.id.btnPdfVorschau).setOnClickListener {
-            val appContext = requireContext().applicationContext
-            viewLifecycleOwner.lifecycleScope.launch {
-                runCatching {
-                    withContext(Dispatchers.IO) { BtbPdfLayoutVorschau.erstellen(appContext) }
-                }.onSuccess { file ->
-                    startActivity(
-                        Intent(requireContext(), BtbPdfViewerActivity::class.java)
-                            .putExtra(BtbPdfViewerActivity.EXTRA_FILE_PATH, file.absolutePath)
-                            .putExtra(BtbPdfViewerActivity.EXTRA_TITLE, "BTB/PDF Vorschau")
-                    )
-                }.onFailure {
-                    tvLogoServerStatus.text = "PDF-Vorschau konnte nicht erstellt werden: ${it.message.orEmpty()}"
-                }
-            }
-        }
+        view.findViewById<MaterialButton>(R.id.btnPdfVorschau).setOnClickListener { openPdfPreview() }
 
         // Beim Oeffnen vorhandenes firmenweites Layout nachziehen. Ein Server ohne Schema 12
         // ist kein Fehler; dann bleibt die lokale Offline-Einstellung aktiv.
