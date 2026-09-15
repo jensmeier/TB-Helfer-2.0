@@ -184,10 +184,6 @@ androidComponents.onVariants { variant ->
         generateBtb200043Sources,
         GenerateBtb200043Sources::outputDirectory
     )
-    variant.sources.java?.addGeneratedSourceDirectory(
-        generateBtb200043Sources,
-        GenerateBtb200043Sources::outputDirectory
-    )
 }
 
 ksp {
