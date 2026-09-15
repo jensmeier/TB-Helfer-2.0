@@ -22,7 +22,7 @@ val generateBtb200043Source = tasks.register("generateBtb200043Source") {
                             .setNegativeButton(R.string.action_cancel, null)
                             .setPositiveButton(R.string.action_add, null)
                             .create()
-""".trimIndent()
+""".trim('\n')
 
         check(source.contains(anchor)) {
             "Android 200043: BTB-Eintrag-Dialog-Anker wurde nicht gefunden. BautagebuchFragment.kt hat sich geändert."
@@ -95,7 +95,7 @@ val generateBtb200043Source = tasks.register("generateBtb200043Source") {
                                 }
                             )
                         }
-""".trimIndent()
+""".trim('\n')
 
         val patched = source.replace(anchor, anchor + photoActions)
         check(patched != source) { "Android 200043: BTB-Quelldatei wurde nicht erweitert." }
