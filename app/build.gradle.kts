@@ -119,6 +119,15 @@ abstract class GenerateBtb200043Sources : DefaultTask() {
         val patched = source.replace(anchor, anchor + "\n\n" + photoActions)
         check(patched != source) { "Android 200043: BTB-Quelldatei wurde nicht erweitert." }
         target.writeText(patched)
+
+        // Android 200044: Room/KSP muss die kanonischen Datenbankquellen als normalen
+        // Android-Kotlin-Source-Set sehen. Die Build-Kopie darf diese Klassen deshalb nicht
+        // ein zweites Mal enthalten; sonst gäbe es doppelte Klassen. Der Datenbank-Ordner
+        // wird unten separat aus src/main/java eingebunden und von KSP verarbeitet.
+        val generatedDatabaseDir = outputRoot.resolve("de/tbhelfer/datenbank")
+        check(generatedDatabaseDir.deleteRecursively()) {
+            "Android 200044: generierte Datenbank-Kopie konnte nicht entfernt werden."
+        }
     }
 }
 
@@ -135,19 +144,21 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200043: Fotoaktionen direkt im manuellen Arbeitseintrag-Dialog.
-        versionCode = 200043
+        // Android 200044: Room/KSP-Regressionsfix fuer die 200043-Build-Source-Bruecke.
+        versionCode = 200044
         versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     sourceSets {
         getByName("main") {
-            // AGP 9 Built-in Kotlin: der reguläre Quellbaum wird für den Build durch eine
-            // identische generierte Kopie ersetzt, in die nur der 200043-Dialog-Hook eingesetzt wird.
-            // Das Repository und GitHub Desktop bleiben dadurch nach dem Build unverändert.
+            // 200043: der normale Quellbaum wird fuer den BTB-Hook weiterhin durch die
+            // generierte Build-Kopie ersetzt. 200044: die Room-Datenbankquellen bleiben
+            // bewusst als kanonischer statischer Kotlin-Source-Ordner sichtbar, damit KSP
+            // TBDatenbank_Impl und die DAO-Implementierungen wieder erzeugt.
             java.directories.clear()
             kotlin.directories.clear()
+            kotlin.directories += "src/main/java/de/tbhelfer/datenbank"
         }
     }
 
@@ -190,6 +201,26 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
     arg("room.incremental", "true")
     arg("room.expandProjection", "true")
+}
+
+val verifyRoomGeneratedImplementation = tasks.register("verifyRoomGeneratedImplementation") {
+    group = "verification"
+    description = "Fails the Android build when Room did not generate TBDatenbank_Impl."
+    doLast {
+        val kspRoot = layout.buildDirectory.dir("generated/ksp").get().asFile
+        val roomImplExists = kspRoot.isDirectory && kspRoot.walkTopDown().any { file ->
+            file.isFile && file.nameWithoutExtension == "TBDatenbank_Impl"
+        }
+        check(roomImplExists) {
+            "Android 200044: Room hat TBDatenbank_Impl nicht erzeugt. APK darf nicht installiert werden."
+        }
+    }
+}
+
+tasks.matching {
+    it.name == "compileDebugKotlin" || it.name == "compileReleaseKotlin"
+}.configureEach {
+    finalizedBy(verifyRoomGeneratedImplementation)
 }
 
 dependencies {
