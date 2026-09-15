@@ -86,12 +86,12 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
     private var importTargets: List<ImportTarget> = emptyList()
     private var ortLabels: Map<Long, String> = mapOf(0L to "Hauptbaustelle")
     private var pendingImportTarget: ImportTarget? = null
+    private var autoPhotoSourceConsumed: Boolean = false
 
-    // Android 200042: Ein kompaktes Kamera-Symbol pro Arbeitseintrag startet entweder
-    // die bestehende App-Kamera oder Galerie/Dateien. Beim Kameraweg merken wir uns den
-    // Zielkontext und korrigieren die danach neu entstandenen Fotos noch einmal explizit
-    // auf Firma/Ort/Text/KM des Arbeitseintrags. Damit bleibt auch bei Serienfotos die
-    // stabile btbId die Identitaet und die Kamera selbst muss nicht dupliziert werden.
+    // Android 200042/200043: Die bestehende Kamera-/Galerie-Logik bleibt zentral hier.
+    // 200043 kann diesen Pfad direkt aus dem Arbeitseintrag-Dialog mit einem konkreten
+    // Zielkontext starten. Beim Kameraweg merken wir uns die bereits vorhandenen Fotos
+    // und korrigieren nur neu entstandene Bilder derselben stabilen btbId.
     private var cameraTarget: ImportTarget? = null
     private var cameraKnownPhotoIds: Set<Long> = emptySet()
     private var cameraLaunchPending: Boolean = false
@@ -151,7 +151,8 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             val fallbackEntry = withContext(Dispatchers.IO) {
                 BautagebuchSpeicher.laden(appContext, baustelleIdArg, baustelleNameArg, datum, schichtTypArg)
             }
-            val activeBtbId = withContext(Dispatchers.IO) {
+            val requestedBtbId = args.getString("btbId")?.trim()?.takeIf { it.isNotBlank() }
+            val activeBtbId = requestedBtbId ?: withContext(Dispatchers.IO) {
                 BtbPhotoInstanzKey.activeBtbId(
                     appContext,
                     baustelleIdArg,
@@ -236,6 +237,37 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             }
             currentBlocks = blocks
             render(currentBlocks)
+
+            if (!autoPhotoSourceConsumed) {
+                val source = args.getString("autoPhotoSource")?.trim()?.lowercase()
+                    ?.takeIf { it == "camera" || it == "gallery" }
+                if (source != null) {
+                    autoPhotoSourceConsumed = true
+                    args.remove("autoPhotoSource")
+                    val ortId = args.getLong("autoPhotoOrtId", 0L)
+                    val target = ImportTarget(
+                        bildtyp = args.getString("filterBildtyp")
+                            ?.let { runCatching { Bildtyp.valueOf(it) }.getOrNull() }
+                            ?: Bildtyp.FOTODOKUMENTATION,
+                        firma = args.getString("autoPhotoFirma")?.trim()?.takeIf { it.isNotBlank() },
+                        ortId = ortId,
+                        ortLabel = args.getString("autoPhotoOrtLabel")?.trim()?.takeIf { it.isNotBlank() }
+                            ?: ortLabels[ortId]
+                            ?: if (ortId == 0L) "Hauptbaustelle" else "Ort $ortId",
+                        text = args.getString("autoPhotoText").orEmpty().trim(),
+                        time = args.getString("autoPhotoTime")?.trim()?.takeIf { it.isNotBlank() },
+                        kmVon = if (args.containsKey("autoPhotoKmVon")) args.getDouble("autoPhotoKmVon") else null,
+                        kmBis = if (args.containsKey("autoPhotoKmBis")) args.getDouble("autoPhotoKmBis") else null
+                    )
+                    if (target.text.isBlank()) {
+                        Snackbar.make(requireView(), "Arbeitseintrag fuer Foto fehlt", Snackbar.LENGTH_LONG).show()
+                    } else if (source == "camera") {
+                        launchCameraForTarget(target)
+                    } else {
+                        launchPhotoImport(target)
+                    }
+                }
+            }
         }
     }
 
@@ -367,6 +399,12 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                     appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
                     schichtTypArg, ids, target.text
                 )
+                target.time?.takeIf { it.isNotBlank() }?.let { time ->
+                    BtbPhotoStartOverrideStore.setOverrideForIds(
+                        appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
+                        schichtTypArg, ids, time
+                    )
+                }
                 target.kmVon?.let { kmVon ->
                     BtbPhotoKmOverrideStore.setOverrideForIds(
                         appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
