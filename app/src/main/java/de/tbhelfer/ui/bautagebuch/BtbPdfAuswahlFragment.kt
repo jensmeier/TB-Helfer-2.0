@@ -19,6 +19,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.datenbank.BaustellenKnotenEntity
+import de.tbhelfer.datenbank.BaustellenKnotenTyp
 import de.tbhelfer.datenbank.Bildtyp
 import de.tbhelfer.datenbank.FotoEntity
 import de.tbhelfer.util.ThumbnailLoader
@@ -50,6 +52,17 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         val blockKey: String = bildtyp.name
     }
 
+    private data class ImportTarget(
+        val bildtyp: Bildtyp,
+        val firma: String?,
+        val ortId: Long,
+        val ortLabel: String,
+        val text: String,
+        val time: String?,
+        val kmVon: Double?,
+        val kmBis: Double?
+    )
+
     private lateinit var tvSub: TextView
     private lateinit var llSections: LinearLayout
     private lateinit var tvSelected: TextView
@@ -67,6 +80,9 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
     private var originalFotoIds: Set<Long> = emptySet()
     private var textOverrides: Map<Long, String> = emptyMap()
     private var kmOverrides: Map<Long, BtbPhotoKmOverrideStore.KmOverride> = emptyMap()
+    private var importTargets: List<ImportTarget> = emptyList()
+    private var ortLabels: Map<Long, String> = mapOf(0L to "Hauptbaustelle")
+    private var pendingImportTarget: ImportTarget? = null
 
     private var baustelleIdArg: Long = 0L
     private var baustelleNameArg: String = ""
@@ -81,7 +97,9 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
     private val importPhotosLauncher = registerForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
-        if (uris.isNotEmpty()) importExternalPhotos(uris)
+        val target = pendingImportTarget
+        pendingImportTarget = null
+        if (uris.isNotEmpty()) importExternalPhotos(uris, target)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -98,14 +116,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 findNavController().popBackStack()
             }
         }
-        btnImportPhotos.setOnClickListener {
-            val btbId = activeBtbIdArg?.trim().orEmpty()
-            if (btbId.isBlank()) {
-                Snackbar.make(requireView(), "Kein aktiver BTB fuer den Fotoimport", Snackbar.LENGTH_LONG).show()
-            } else {
-                importPhotosLauncher.launch(arrayOf("image/*"))
-            }
-        }
+        btnImportPhotos.setOnClickListener { launchPhotoImport(null) }
 
         lifecycleScope.launch {
             val args = requireArguments()
@@ -144,6 +155,11 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             }
             currentEntry = effectiveEntry
             maxFotos = effectiveEntry?.maxFotosInPdf ?: 60
+            importTargets = withContext(Dispatchers.IO) { buildImportTargets(effectiveEntry) }
+            ortLabels = buildMap {
+                put(0L, "Hauptbaustelle")
+                importTargets.forEach { put(it.ortId, it.ortLabel) }
+            }
 
             tvSub.text = "$baustelleNameArg • $datumIsoArg • Schicht: ${shiftStartArg ?: "-"}–${shiftEndArg ?: "-"}"
 
@@ -216,6 +232,16 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         lifecycleScope.launch { persistNow() }
     }
 
+    private fun launchPhotoImport(target: ImportTarget?) {
+        val btbId = activeBtbIdArg?.trim().orEmpty()
+        if (btbId.isBlank()) {
+            Snackbar.make(requireView(), "Kein aktiver BTB fuer den Fotoimport", Snackbar.LENGTH_LONG).show()
+            return
+        }
+        pendingImportTarget = target
+        importPhotosLauncher.launch(arrayOf("image/*"))
+    }
+
     private fun scheduleAutosave() {
         autosaveJob?.cancel()
         autosaveJob = lifecycleScope.launch {
@@ -254,6 +280,64 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         }
     }
 
+    private suspend fun buildImportTargets(entry: BautagebuchEintrag?): List<ImportTarget> {
+        if (entry == null) return emptyList()
+        val knownFirms = entry.firmen
+            .asSequence()
+            .filter { !it.isDeleted }
+            .map { it.name.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .toList()
+        val parsed = BtbManualEntryPhotoTargetParser.parse(entry.notizen, knownFirms)
+        if (parsed.isEmpty()) return emptyList()
+
+        val nodeCache = hashMapOf<Long, BaustellenKnotenEntity?>()
+        suspend fun node(id: Long): BaustellenKnotenEntity? {
+            if (id <= 0L) return null
+            if (nodeCache.containsKey(id)) return nodeCache[id]
+            val value = ServiceLocator.baustellenBaumRepository.knotenMitId(id)
+            nodeCache[id] = value
+            return value
+        }
+
+        return parsed.map { target ->
+            val knoten = node(target.ortId)
+            val useNodeKm = target.kmVon == null
+            ImportTarget(
+                bildtyp = Bildtyp.FOTODOKUMENTATION,
+                firma = target.firma,
+                ortId = target.ortId,
+                ortLabel = if (target.ortId == 0L) "Hauptbaustelle" else knoten?.let(::displayOrt) ?: "Ort ${target.ortId}",
+                text = target.text,
+                time = target.time,
+                kmVon = target.kmVon ?: knoten?.kmVon,
+                kmBis = if (useNodeKm) knoten?.kmBis else target.kmBis
+            )
+        }
+    }
+
+    private fun displayOrt(k: BaustellenKnotenEntity): String {
+        val base = k.knotenName?.trim()?.takeIf { it.isNotBlank() } ?: when (k.typ) {
+            BaustellenKnotenTyp.FREIE_STRECKE -> k.streckenkennung?.trim()?.takeIf { it.isNotBlank() }
+                ?.let { "Freie Strecke $it" } ?: "Freie Strecke"
+            BaustellenKnotenTyp.BAHNHOF -> {
+                val bhf = k.bahnhofName?.trim().orEmpty()
+                val glw = k.gleisOderWeiche?.trim().orEmpty()
+                when {
+                    bhf.isNotBlank() && glw.isNotBlank() -> "Bahnhof $bhf – $glw"
+                    bhf.isNotBlank() -> "Bahnhof $bhf"
+                    else -> "Bahnhof"
+                }
+            }
+            BaustellenKnotenTyp.ALLGEMEIN_OBJEKT -> "Allgemein / Objekt"
+            BaustellenKnotenTyp.HAUPT -> k.hauptbaustellenName
+        }
+        val km = de.tbhelfer.util.KmAnzeige.bereich(k.kmVon, k.kmBis, inKlammern = true)
+            ?.let { " $it" }.orEmpty()
+        return base + km
+    }
+
     private fun buildBlocks(fotos: List<FotoEntity>, filterBildtyp: String?): List<Block> {
         val sectionsAll = listOf(
             "4. Ausgefuehrte Arbeiten" to Bildtyp.FOTODOKUMENTATION,
@@ -269,6 +353,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             when {
                 list.isNotEmpty() -> Block(title, typ, list)
                 !filterBildtyp.isNullOrBlank() -> Block(title, typ, emptyList())
+                typ == Bildtyp.FOTODOKUMENTATION && importTargets.isNotEmpty() -> Block(title, typ, emptyList())
                 else -> null
             }
         }
@@ -301,14 +386,19 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             val llFotos = blockView.findViewById<LinearLayout>(R.id.llFotos)
             val header = blockView.findViewById<View>(R.id.llHeader)
 
-            tvTitle.text = timeRangeText(block.fotos)
+            tvTitle.text = if (block.fotos.isEmpty()) "Noch keine Fotos" else timeRangeText(block.fotos)
             updateCounts(tvCounts, block)
             llFotos.removeAllViews()
 
+            if (block.bildtyp == Bildtyp.FOTODOKUMENTATION && importTargets.isNotEmpty()) {
+                addImportTargetRows(llFotos)
+            }
+
             if (block.fotos.isEmpty()) {
                 llFotos.addView(TextView(requireContext()).apply {
-                    text = "Keine Fotos"
-                    setPadding(0, 8, 0, 8)
+                    text = "Noch keine Fotos zugeordnet"
+                    setPadding(8, 10, 8, 10)
+                    alpha = 0.70f
                 })
             } else {
                 block.fotos.forEach { foto ->
@@ -375,17 +465,94 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         updateSelectedTotal()
     }
 
-    private fun importExternalPhotos(uris: List<Uri>) {
+    private fun addImportTargetRows(parent: LinearLayout) {
+        val ctx = requireContext()
+        fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+        parent.addView(TextView(ctx).apply {
+            text = "Fotos direkt zu Arbeitseintrag"
+            textSize = 13.5f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(dp(8), dp(10), dp(8), dp(4))
+        })
+        parent.addView(TextView(ctx).apply {
+            text = "Mit „Foto +“ werden Firma, Ort/Unterbaustelle, Text und KM dieses Eintrags uebernommen."
+            textSize = 11.5f
+            alpha = 0.70f
+            setPadding(dp(8), 0, dp(8), dp(8))
+        })
+
+        importTargets.forEach { target ->
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(dp(8), dp(6), dp(8), dp(6))
+            }
+            val texts = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            texts.addView(TextView(ctx).apply {
+                text = "${target.firma ?: "Allgemein"} · ${target.ortLabel}"
+                textSize = 12.5f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            })
+            texts.addView(TextView(ctx).apply {
+                text = targetMeta(target)
+                textSize = 12f
+                alpha = 0.78f
+                maxLines = 2
+            })
+            row.addView(texts)
+            row.addView(MaterialButton(ctx).apply {
+                text = "Foto +"
+                isAllCaps = false
+                setIconResource(android.R.drawable.ic_menu_gallery)
+                iconPadding = dp(4)
+                contentDescription = "Fotos zu ${target.text} hinzufuegen"
+                setOnClickListener { launchPhotoImport(target) }
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = dp(8)
+            })
+            parent.addView(row)
+        }
+
+        parent.addView(TextView(ctx).apply {
+            text = "Zugeordnete Fotos"
+            textSize = 12f
+            alpha = 0.65f
+            setPadding(dp(8), dp(8), dp(8), dp(2))
+        })
+    }
+
+    private fun targetMeta(target: ImportTarget): String {
+        val parts = mutableListOf<String>()
+        target.time?.takeIf { it.isNotBlank() }?.let(parts::add)
+        targetKmText(target)?.let(parts::add)
+        parts.add(target.text)
+        return parts.joinToString(" · ")
+    }
+
+    private fun targetKmText(target: ImportTarget): String? {
+        val von = target.kmVon ?: return null
+        val bis = target.kmBis
+        val a = String.format(Locale.GERMANY, "%.3f", von)
+        return if (bis != null && kotlin.math.abs(bis - von) > 0.0000001) {
+            "KM $a-${String.format(Locale.GERMANY, "%.3f", bis)}"
+        } else "KM $a"
+    }
+
+    private fun importExternalPhotos(uris: List<Uri>, target: ImportTarget?) {
         val btbId = activeBtbIdArg?.trim().orEmpty()
         if (btbId.isBlank() || uris.isEmpty()) return
-        val targetType = filterBildtyp
+        val targetType = target?.bildtyp ?: filterBildtyp
             ?.let { runCatching { Bildtyp.valueOf(it) }.getOrNull() }
             ?: Bildtyp.FOTODOKUMENTATION
         val appContext = requireContext().applicationContext
         btnImportPhotos.isEnabled = false
         viewLifecycleOwner.lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                BtbExternalPhotoImporter.importieren(
+                val imported = BtbExternalPhotoImporter.importieren(
                     context = appContext,
                     uris = uris,
                     baustelleId = baustelleIdArg,
@@ -393,14 +560,45 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                     datumIso = datumIsoArg,
                     bildtyp = targetType,
                     btbId = btbId,
-                    repository = ServiceLocator.fotoRepository
+                    repository = ServiceLocator.fotoRepository,
+                    importContext = target?.let {
+                        BtbExternalPhotoImporter.ImportContextData(
+                            firma = it.firma,
+                            baustellenKnotenId = it.ortId.takeIf { id -> id > 0L },
+                            kurztext = it.text,
+                            km = it.kmVon
+                        )
+                    }
                 )
+                if (target != null && imported.imported.isNotEmpty()) {
+                    val ids = imported.imported.map(FotoEntity::id)
+                    target.time?.takeIf { it.isNotBlank() }?.let { time ->
+                        BtbPhotoStartOverrideStore.setOverrideForIds(
+                            appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
+                            schichtTypArg, ids, time
+                        )
+                    }
+                    target.kmVon?.let { kmVon ->
+                        BtbPhotoKmOverrideStore.setOverrideForIds(
+                            appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
+                            schichtTypArg, ids, BtbPhotoKmOverrideStore.KmOverride(kmVon, target.kmBis)
+                        )
+                    }
+                }
+                imported
             }
             if (!isAdded || view == null) return@launch
             btnImportPhotos.isEnabled = true
             if (result.imported.isEmpty()) {
                 Snackbar.make(requireView(), "Keine Fotos importiert", Snackbar.LENGTH_LONG).show()
                 return@launch
+            }
+
+            target?.kmVon?.let { kmVon ->
+                val override = BtbPhotoKmOverrideStore.KmOverride(kmVon, target.kmBis)
+                kmOverrides = kmOverrides.toMutableMap().apply {
+                    result.imported.forEach { put(it.id, override) }
+                }
             }
 
             val existing = currentBlocks.flatMap { it.fotos }
@@ -418,6 +616,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 append("${result.imported.size} Foto")
                 if (result.imported.size != 1) append("s")
                 append(" importiert")
+                target?.let { append(" zu „${it.text.take(45)}“") }
                 if (result.failed > 0) append(" • ${result.failed} fehlgeschlagen")
                 if (notSelectedByLimit > 0) append(" • $notSelectedByLimit wegen PDF-Limit nicht ausgewaehlt")
             }
@@ -505,6 +704,49 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         val objekt = field("Objekt / Gleis / Weiche", foto.objektKennung.orEmpty())
         val bereich = field("Bereich", foto.objektBereich.orEmpty())
 
+        var selectedOrtId = foto.baustellenKnotenId ?: 0L
+        if (importTargets.isNotEmpty()) {
+            root.addView(TextView(ctx).apply {
+                text = "Arbeitseintrag / Ort"
+                textSize = 12.5f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setPadding(0, dp(10), 0, dp(3))
+            })
+            val currentTarget = findMatchingTarget(foto)
+            val btnTarget = MaterialButton(ctx).apply {
+                isAllCaps = false
+                setIconResource(android.R.drawable.ic_menu_gallery)
+                text = currentTarget?.let(::targetButtonText)
+                    ?: "Arbeitseintrag zuordnen"
+            }
+            btnTarget.setOnClickListener {
+                val labels = importTargets.map(::targetButtonText).toTypedArray()
+                MaterialAlertDialogBuilder(ctx)
+                    .setTitle("Foto einem Arbeitseintrag zuordnen")
+                    .setItems(labels) { _, which ->
+                        val target = importTargets[which]
+                        selectedOrtId = target.ortId
+                        text.setText(target.text)
+                        firma.setText(target.firma.orEmpty())
+                        kmVon.setText(target.kmVon?.let(::formatKmInput).orEmpty())
+                        kmBis.setText(target.kmBis?.let(::formatKmInput).orEmpty())
+                        btnTarget.text = targetButtonText(target)
+                    }
+                    .setNegativeButton("Abbrechen", null)
+                    .show()
+            }
+            root.addView(btnTarget, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
+            root.addView(TextView(ctx).apply {
+                text = "Damit kann ein bereits unter Allgemein gelandetes Foto nachtraeglich dem richtigen Eintrag zugeordnet werden."
+                textSize = 11.5f
+                alpha = 0.68f
+                setPadding(0, dp(2), 0, 0)
+            })
+        }
+
         val dialog = MaterialAlertDialogBuilder(ctx)
             .setTitle("Foto $displayNumber bearbeiten")
             .setView(root)
@@ -533,7 +775,8 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 val contextOverride = BtbPhotoContextOverrideStore.ContextOverride(
                     firma = firma.text?.toString().orEmpty().trim(),
                     objektKennung = objekt.text?.toString().orEmpty().trim().takeIf { it.isNotBlank() },
-                    objektBereich = bereich.text?.toString().orEmpty().trim().takeIf { it.isNotBlank() }
+                    objektBereich = bereich.text?.toString().orEmpty().trim().takeIf { it.isNotBlank() },
+                    ortId = selectedOrtId
                 )
                 val appContext = ctx.applicationContext
                 viewLifecycleOwner.lifecycleScope.launch {
@@ -557,6 +800,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                         if (kmOverride == null) remove(foto.id) else put(foto.id, kmOverride)
                     }
                     val updated = foto.copy(
+                        baustellenKnotenId = selectedOrtId.takeIf { it > 0L },
                         firma = contextOverride.firma,
                         objektKennung = contextOverride.objektKennung,
                         objektBereich = contextOverride.objektBereich
@@ -572,6 +816,26 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             }
         }
         dialog.show()
+    }
+
+    private fun findMatchingTarget(foto: FotoEntity): ImportTarget? {
+        val ortId = foto.baustellenKnotenId ?: 0L
+        val displayText = photoDisplayText(foto).trim()
+        return importTargets.firstOrNull {
+            it.ortId == ortId &&
+                it.firma.orEmpty().equals(foto.firma.trim(), ignoreCase = true) &&
+                it.text.equals(displayText, ignoreCase = true)
+        } ?: importTargets.firstOrNull {
+            it.ortId == ortId && it.firma.orEmpty().equals(foto.firma.trim(), ignoreCase = true)
+        }
+    }
+
+    private fun targetButtonText(target: ImportTarget): String = buildString {
+        append(target.firma ?: "Allgemein")
+        append(" · ")
+        append(target.ortLabel)
+        append(" · ")
+        append(target.text.take(55))
     }
 
     private fun photoDisplayText(f: FotoEntity): String =
@@ -599,6 +863,9 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
 
     private fun photoDetailText(f: FotoEntity): String {
         val out = mutableListOf<String>()
+        val ortId = f.baustellenKnotenId ?: 0L
+        val ort = ortLabels[ortId] ?: if (ortId == 0L) "Hauptbaustelle" else "Ort $ortId"
+        out.add("Ort: $ort")
         f.objektKennung?.trim()?.takeIf { it.isNotBlank() }?.let(out::add)
         f.objektBereich?.trim()?.takeIf { it.isNotBlank() }?.let { out.add("Bereich $it") }
         val note = f.notiz?.trim().orEmpty()
@@ -695,7 +962,8 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             kmOverrides = kmOverrides - f.id
             currentBlocks = currentBlocks.mapNotNull { block ->
                 val remaining = block.fotos.filterNot { it.id == f.id }
-                if (remaining.isEmpty() && filterBildtyp.isNullOrBlank()) null else block.copy(fotos = remaining)
+                if (remaining.isEmpty() && filterBildtyp.isNullOrBlank() && block.bildtyp != Bildtyp.FOTODOKUMENTATION) null
+                else block.copy(fotos = remaining)
             }
             persistNow()
             render(currentBlocks)
