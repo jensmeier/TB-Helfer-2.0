@@ -355,6 +355,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             val newlyCreated = withContext(Dispatchers.IO) {
                 ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(baustelleIdArg)
                     .filter { BtbFotoZuordnungSpeicher.btbId(appContext, it.id) == btbId }
+                    .filter { it.bildtyp == target.bildtyp }
                     .filter { it.id !in cameraKnownPhotoIds }
                     .sortedBy { it.erstelltAmEpochMs }
             }
