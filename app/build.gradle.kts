@@ -207,7 +207,7 @@ val verifyRoomGeneratedImplementation = tasks.register("verifyRoomGeneratedImple
     group = "verification"
     description = "Fails the Android build when Room did not generate TBDatenbank_Impl."
     doLast {
-        val kspRoot = layout.buildDirectory.dir("generated/ksp").get().asFile
+        val kspRoot = project.layout.buildDirectory.dir("generated/ksp").get().asFile
         val roomImplExists = kspRoot.isDirectory && kspRoot.walkTopDown().any { file ->
             file.isFile && file.nameWithoutExtension == "TBDatenbank_Impl"
         }
