@@ -19,8 +19,9 @@ Vor jeder Änderung zuerst lesen:
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`.
 - letzter vollständig bestätigter BTB-Kernstand: Android **200039**.
 - Android **200044** startet nach dem Room/KSP-Fix wieder auf dem Poco.
-- Android **200045**: kompakter Bildwähler im BTB-Arbeitseintrag funktioniert praktisch; eine kurz beobachtete durcheinander wirkende BTB-Anzeige war anschließend nicht mehr reproduzierbar, vorhandene Einträge waren wieder sichtbar. Deshalb keine weitere BTB-Änderung ohne reproduzierbaren Fehler.
-- aktueller Buildkandidat: Android **200046 – direkter Roh-KF-7.0-Import für Festpunkte/KM-Quellen**.
+- Android **200045**: kompakter Bildwähler im BTB-Arbeitseintrag funktioniert praktisch.
+- Android **200046** konnte auf Windows nicht gebaut werden, weil der Build-Source-Patch für `KF_RAW` durch CRLF/LF-Zeilenumbrüche seinen mehrzeiligen Anker nicht fand.
+- aktueller Buildkandidat: Android **200047**.
 
 ## Normaler Entwicklungsablauf
 Source of Truth ist GitHub.
@@ -32,118 +33,137 @@ Windows-PC:
 
 Die alten `.github/scripts/patch_200035...200038*.ps1` sind nur historische Hilfsmittel und nicht mehr der normale Entwicklungsweg.
 
-## Android 200046 – KM/Festpunkte: Roh-KF direkt importieren
-### Gemeldetes Fehlerbild
-- Vermessungs-/Absteckungsdaten lassen sich einlesen.
-- Festpunkte mit vorhandener Kilometrierung fehlen danach bzw. sind nicht mehr sichtbar.
-- KM-Berechnung funktioniert dadurch nicht wie früher.
+## Android 200047 – Buildfix + BTB Hauptbaustelle + Mitternacht
+### Gemeldete Fehler
+Beim Gerätetest wurden drei konkrete Probleme sichtbar:
+1. Build 200046 brach in `:app:generateBtb200043Sources` ab mit `Android 200046: KF_RAW-Importanker wurde nicht gefunden`.
+2. Ein manueller Arbeitseintrag für Firma `bbg` in `Hauptbaustelle` erschien anschließend nicht zuverlässig am richtigen Ort; Unterbaustellen-/Fotoeinträge funktionierten dagegen.
+3. Bei Nacht-BTBs besteht ein echter Kontextfehler über Mitternacht: Beim normalen Öffnen suchte die BTB-Seite erneut nur am aktuellen Kalendertag nach `TAG/NACHT`, statt den bereits aktiven BTB über den Pointer/`btbId` zu laden.
 
-### Gefundene Ursache
-Der ZIP-Scanner erkennt rohe `.kf`-Dateien bereits als `KF_RAW`, der eigentliche Importpfad hat sie aber bisher ausdrücklich **nicht importiert** und nur gemeldet:
+### Ursache Build 200046
+Die Build-Source-Brücke arbeitet mit exakten mehrzeiligen Stringankern. Unter Windows konnte `ImportExportFragment.kt` mit CRLF ausgecheckt sein, während der Gradle-Anker LF enthielt. Fachlich identischer Quelltext wurde dadurch als „Anker nicht gefunden“ bewertet.
 
-`nicht direkt importiert: KF-Original erkannt; falls vorhanden wird KF.TXT verwendet`
+### Fix Build 200047
+- generierte Quellpatches normalisieren gelesene Dateien intern von CRLF auf LF;
+- dadurch ist der vorhandene `KF_RAW -> importiereZipGvpDatei(...)`-Patch nicht mehr vom Windows-Zeilenumbruch abhängig;
+- `versionCode = 200047`, `versionName = 1.3`;
+- Room/KSP-Guard aus 200044 bleibt erhalten.
 
-Damit fehlen gerade in Beständen, bei denen die belastbare Strecke/Station nur oder besser im binären KF-Original steckt, die Festpunkte als KM-Quelle. Das passt zum gemeldeten Fehlerbild.
+### Ursache `bbg / Hauptbaustelle`
+Im Abschnittseditor werden technische Ortsmarker intern als `@ORT=<id>` gespeichert. Für eine Unterbaustelle wurde ein Inline-Marker geschrieben; für `Hauptbaustelle` mit Orts-ID `0` wurde bisher **kein** Marker geschrieben.
 
-Die frühere vollständige Vermessungsdatenprüfung im Projekt bestätigt:
-- rohe KF-Dateien sind KF Version 7.0 / 7.0 R mit festen 102-Byte-Datensätzen;
-- numerische Werte sind Little-Endian-Doubles;
-- echte Station/KM, Strecke und PArt sind direkt im Rohdatensatz enthalten;
-- `1e40` ist ein Fehlwert/Sentinel;
-- Station `0.0` darf nicht blind als echte km 0 verwendet werden;
-- rohe KF sollen direkt importiert und gegenüber `.kf.txt` bevorzugt werden, wenn die Originaldaten vorhanden sind.
+Der Parser hielt gleichzeitig die zuletzt gelesene Orts-ID fest. Damit konnte z. B. ein vorheriges `@ORT=<Schacht1>` auf die nachfolgende unmarkierte `bbg`-Hauptbaustellenzeile weiterwirken. Das erklärt, warum der Text scheinbar verschwand oder unter einer anderen Ortsgruppe/PDF-Struktur landete.
 
-### Umsetzung 200046
-`GvpDateiParser` kann jetzt rohe KF 7.0 direkt lesen:
-- Headerprüfung: Dateigröße Vielfaches von 102 Byte und `VERSION 7.0` / `VERSION 7.0  R` im Header;
-- pro Punkt werden KF-Punktnummer, Rechtswert, Hochwert, Höhe, Station, Lagebezeichnung, Zusatzfeld, PArt, VArt, Statusbytes, Metadaten, Strecke und RiKz gelesen;
-- `abs(Wert) >= 1e30` wird als fehlend behandelt;
-- Strecke `0000` wird nicht als reale Strecke übernommen;
-- Station `0.0` wird nicht als belastbare KM-Quelle übernommen;
-- PArt wird unverändert erhalten, also u. a. `PS0`, `PS1`, `PS2`, `PS3`, `PS4`, `GVPV`, `GPSC`, `HBH`, `PPB`;
-- der vollständige 102-Byte-Punktdatensatz wird zusätzlich als Hex im `rawLine` erhalten, damit Status-/Zusatzinformationen nicht verloren gehen;
-- DB_REF/GK-Streifen 4 nutzt den vorhandenen Zone-4-WGS84-Wandler;
-- DB_REF/GK-Streifen 3 (z. B. Strecke 5362) bleibt mit den Original-Rechts-/Hochwerten erhalten und wird für die bestehende TRA/GVP-KM-Zuordnung verwendet; dafür wird noch keine falsche GPS-Umrechnung über den Zone-4-Wandler erzwungen.
+### Fix Hauptbaustelle 200047
+- Firmenzeilen erhalten künftig auch für die Hauptbaustelle explizit `@ORT=0`;
+- moderner Inline-`@ORT` gilt beim Parsen nur noch für **diese eine Zeile**;
+- historische eigene Markerzeilen `@ORT=<id>` bleiben weiterhin als Legacy-Gruppenmarker unterstützt;
+- dadurch können auch bereits gespeicherte moderne Hauptbaustellenzeilen ohne Marker wieder korrekt als Hauptbaustelle interpretiert werden, wenn davor nur ein moderner Inline-Unterbaustellenmarker stand;
+- `@ALLGEMEIN` bleibt separat und unverändert.
 
-Der vorhandene Importpfad wird wiederverwendet:
-- `KF_RAW` läuft jetzt wie `KF_TXT`, `KV` und GVP-TXT in `importiereZipGvpDatei(...)`;
-- Speicherung bleibt über `TrassenRepository.gvpImportSpeichern(...)`;
-- die bestehende GVP-KM-Kalibrierung bleibt unverändert: Festpunkte mit Strecke + KM werden räumlich der TRA-Achse zugeordnet und können `kmQuelle = GVP` erzeugen;
-- Originaldateien werden nicht verändert.
+### Ursache 23:59 / 00:00
+Die eigentliche Schichtzeitrechnung kann einen normalen Nachtbereich wie `18:00–02:30` bzw. `23:59–00:00` bereits über den Folgetag abbilden. Der Fehler lag stattdessen beim **Laden des aktiven BTB**:
+- beim Öffnen der BTB-Seite wurde standardmäßig `selectedDate = LocalDate.now()` verwendet;
+- anschließend wurden für „heute“ TAG und NACHT gesucht und der zuletzt geänderte Eintrag gewählt;
+- ein aktiver Nacht-BTB, der am Vortag begonnen hatte und nach 00:00 noch lief, konnte dadurch aus dem sichtbaren Kontext fallen;
+- das widersprach der Projektregel `aktuelle Baustelle -> aktiver BTB-Pointer -> btbId`.
 
-### Betroffene Dateien 200046
-- `app/src/main/java/de/tbhelfer/vermessung/GvpDateiParser.kt`
+### Fix Mitternacht 200047
+- beim normalen Öffnen wird jetzt zuerst `BtbActiveContext` verwendet;
+- damit entscheidet die aktive `btbId`, nicht der neue Kalendertag;
+- ein Nacht-BTB vom 15.09. bleibt nach 00:00 am 16.09. derselbe BTB;
+- beim Laden wird `selectedDate` wieder aus `entry.datumIso` des aktiven BTB gesetzt, bevor weitere Speicherung/Autosave erfolgt;
+- damit kann derselbe `btbId` nicht nur wegen Mitternacht versehentlich im Folgetagskontext weitergebaut werden;
+- nach bewusstem Abschluss und gelöstem Aktiv-Pointer darf das normale Öffnen nicht automatisch irgendeinen heutigen modernen BTB als aktiven Bericht auswählen.
+
+### Betroffene Datei 200047
 - `app/build.gradle.kts`
-- `app/src/test/java/de/tbhelfer/vermessung/GvpDateiParserRawKfTest.kt`
-- `docs/TB-HELFER_AKTUELLER_STAND.md`
+- diese Statusdatei
 
-Hinweis zur bestehenden Build-Source-Brücke:
-- Seit 200043 wird ein generierter App-Quellbaum verwendet, um den BTB-Foto-Hook einzusetzen.
-- Deshalb wird die kleine `KF_RAW -> importiereZipGvpDatei`-Routingänderung aktuell ebenfalls beim Build in die generierte `ImportExportFragment.kt` eingesetzt.
-- Das ist bewusst keine zweite Importlösung; der eigentliche Parser/Repository-Pfad bleibt der bestehende GVP/Festpunktpfad.
-- Die Source-Brücke ist technische Schuld und soll später wieder entfernt werden, aber nicht parallel zu diesem Fehlerblock.
+Hinweis: Wegen der seit 200043 vorhandenen Build-Source-Brücke werden die kleinen Änderungen am sehr großen `BautagebuchFragment.kt` weiterhin beim Build in die generierte Quellkopie eingesetzt. Diese Brücke ist technische Schuld und soll später sauber zurückgebaut werden; sie wird nicht parallel zu diesem Fehlerblock groß umgebaut.
+
+### Teststatus 200047
+- Projektregeln, aktueller Stand, Feature-Branch, Draft-PR #5 und Branch-Head vor Änderung geprüft.
+- Screenshots des Gerätetests ausgewertet; Hauptbaustellen-/Unterbaustellen-Gruppierung und Abschluss-/Nachbearbeitungs-PDF verglichen.
+- Quellcode geprüft: `buildManualLine()` schrieb für Firmen-Hauptbaustelle bisher keinen `@ORT=0`-Marker; `parseManualItems()` ließ Inline-Ortszustand über Zeilen weiterlaufen.
+- Quellcode geprüft: `ladeEintragFallsVorhanden(autoPickSchichtForToday = true)` suchte bisher am aktuellen Kalendertag TAG/NACHT statt zuerst den aktiven `btbId`-Kontext zu verwenden.
+- Quellcode geprüft: das Foto-/Schicht-Zeitfenster behandelt Ende < Start bereits als Folgetag; `23:59 -> 00:00` ist dort grundsätzlich ein Mitternachtsfenster.
+- Build-Patches besitzen jetzt zusätzliche `check(...)`-Guards für Hauptbaustellenmarker, Ortsparser, Aktiv-BTB-Ladeweg und BTB-Datum.
+- GitHub Actions Run zum Code-Commit lief erneut als `failure`, liefert aber weiterhin keine verwertbaren Job-Logs (`BlobNotFound`); deshalb bleibt der lokale Android-Studio-Build der maßgebliche nächste Test.
+- lokaler Windows-/Android-Studio-Build 200047 und Gerätetest stehen noch aus.
+
+### Nächster Handtest 200047
+1. GitHub Desktop `Fetch origin` -> `Pull origin`.
+2. Android Studio `Build -> Clean Project`, danach Build/Run.
+3. Prüfen, dass **200047** gebaut/installiert wird.
+4. BTB-Arbeiten: Firma `bbg` -> `Hauptbaustelle` -> eindeutigen Text eingeben; danach zusätzlich einen anderen Text in `Schacht1`/Unterbaustelle eingeben. Beide müssen gleichzeitig in der richtigen Ortsgruppe bleiben.
+5. PDF-Entwurf prüfen: Hauptbaustellen- und Unterbaustellentext dürfen nicht gegenseitig verschwinden/verschoben werden.
+6. Nacht-BTB mit Start am Vortag und Ende nach 00:00 öffnen bzw. App/BTB-Seite nach Mitternacht erneut öffnen: es muss dieselbe `btbId`/derselbe Bericht mit vollständigen Daten bleiben.
+7. Nach `BTB Abschluss` prüfen: ohne bewusstes `BTB bearbeiten` aus dem Verlauf darf kein abgeschlossener BTB automatisch als aktiver Entwurf wieder auftauchen.
+8. Danach denselben Vermessungs-ZIP/KF-Bestand importieren und den 200046-Roh-KF-Test fortsetzen.
+
+## Android 200046 – KM/Festpunkte: Roh-KF direkt importieren
+### Gefundene Ursache
+Der ZIP-Scanner erkannte rohe `.kf` bereits als `KF_RAW`, der eigentliche Importpfad importierte sie aber nicht und meldete nur `nicht direkt importiert: KF-Original erkannt; falls vorhanden wird KF.TXT verwendet`.
+
+Damit fehlten bei Beständen, deren belastbare Strecke/Station im binären KF-Original steckt, wichtige Festpunkte als KM-Quelle.
+
+### Umsetzung
+`GvpDateiParser` kann rohe KF 7.0 / 7.0 R direkt lesen:
+- 102-Byte-Datensätze, Little-Endian-Doubles;
+- KF-Punktnummer, Rechtswert, Hochwert, Höhe, Station, Lagebezeichnung, Zusatzfeld, PArt, VArt, Statusbytes, Metadaten, Strecke und RiKz;
+- `abs(Wert) >= 1e30` als fehlend;
+- Strecke `0000` nicht als reale Strecke;
+- Station `0.0` nicht als belastbare KM-Quelle;
+- Original-PArt bleibt erhalten (`PS0` bis `PS4`, `GVPV`, `GPSC`, `HBH`, `PPB`, ...);
+- vollständiger Rohdatensatz zusätzlich verlustarm im `rawLine` erhalten;
+- Zone-4-Bestand nutzt vorhandenen DB_REF-WGS84-Wandler;
+- 5362/GK-Streifen 3 wird nicht fälschlich als Zone 4 umgerechnet; Rohkoordinaten bleiben für TRA/GVP-KM-Zuordnung erhalten;
+- `KF_RAW` nutzt den bestehenden GVP/Festpunkt-Speicherpfad und die vorhandene GVP-KM-Kalibrierung.
 
 ### Tests 200046
-Neue Unit-Tests erzeugen synthetische echte 102-Byte-KF-7.0-Datensätze und prüfen:
-1. Strecke 5362 / PS1: Station 70+698,179, Strecke 5362 und Rohkoordinaten werden korrekt gelesen; Zone-3-Punkt erhält bewusst keine falsche Zone-4-GPS-Umrechnung.
-2. `VERSION 7.0  R` / GVPV 5300: echte Station und Höhe werden übernommen.
-3. Harburg-Sonderfall: Station `0.0` wird zu `kmMeter = null`.
-4. Pasing-Sonderfall: `1e40` und Strecke `0000` bleiben fehlend statt eine falsche Kilometrierung zu erzeugen.
+`GvpDateiParserRawKfTest.kt` enthält synthetische 102-Byte-KF-Datensätze für:
+1. 5362 / PS1 mit echter Station/Strecke;
+2. `VERSION 7.0 R` / GVPV 5300;
+3. Harburg Station `0.0` -> keine KM-Quelle;
+4. Pasing `1e40` + Strecke `0000` -> fehlend statt falscher KM.
 
-Lokaler Android-Studio-Build und Unit-Testlauf stehen noch aus. GitHub Actions ist weiterhin kein belastbarer Buildindikator, solange die PR-Runs ohne verwertbare Runner-Schritte enden.
+Der praktische Test war durch den oben beschriebenen Windows-Buildankerfehler blockiert und wird mit 200047 fortgesetzt.
 
-### Nächster Handtest 200046
-1. GitHub Desktop `Fetch origin` → `Pull origin`.
-2. Android Studio: Clean/Build und Unit-Tests; App als Update installieren, App-Daten nicht löschen.
-3. In Vermessungs-/Streckendaten denselben Testbestand bzw. ZIP mit rohen KF-Dateien importieren.
-4. Importstatus prüfen: rohe KF darf nicht mehr als „nicht direkt importiert“ erscheinen, sondern muss echte `GVP/Festpunkte` melden.
-5. Für 5362 müssen die PS0/PS1/PS2/PS3- bzw. PS4-Punkte mit ihren vorhandenen Stationen wieder als Festpunktbestand vorhanden sein.
-6. `Daten berechnen`/KM-Verknüpfung ausführen und prüfen, ob GVP-KM-Kalibrierung wieder Achsen/Punkte verknüpft.
-7. Erst danach die Live-KM-Anzeige testen.
+## Android 200045 – kompakter Bildwähler
+- zwei große Foto-Schaltflächen im Arbeitseintragsdialog entfernt;
+- ein kompaktes Bild-/Galerie-Symbol öffnet den vorhandenen Android-Bildauswahlpfad;
+- bestehende Zuordnung über stabile `btbId`, Firma, Unterbaustelle/Ort, Arbeitstext und KM bleibt erhalten;
+- praktische Bildauswahl auf dem Gerät bestätigt.
 
-## Android 200045 – kompakte Bildauswahl im BTB-Arbeitseintrag
-Umgesetzt:
-- zwei große blaue Foto-Schaltflächen entfernt;
-- ein kompaktes Bild-/Galerie-Symbol im Arbeitseintragsdialog;
-- Tippen öffnet direkt den vorhandenen Android-Bildauswahlpfad für `image/*`;
-- keine separate Kameraaktion in diesem Dialog;
-- bestehende Zuordnung über stabile `btbId`, Firma, Unterbaustelle/Ort, Arbeitstext und KM/KM-Bereich bleibt erhalten;
-- Symbolfarbe/Ripple folgen dem Material-/Android-Theme für Tag/Nacht.
+## Android 200043/200044 – Room/KSP
+200043 führte die generierte BTB-Quellkopie ein und verursachte dadurch zunächst fehlendes `TBDatenbank_Impl`.
 
-Praktischer Test:
-- Bildsymbol wurde auf dem Gerät angezeigt und öffnete die Bildauswahl.
-- Der BTB wirkte nach einem Wechsel kurz unvollständig/durcheinander, vorhandene `bbg`-/Unterbaustellen-/KM-Einträge waren anschließend wieder sichtbar und der Nutzer meldete „es funktioniert plötzlich“.
-- Solange dieser Zustand nicht reproduzierbar ist, wird am BTB-Lade-/Speicherpfad nichts weiter verändert.
+200044 korrigierte:
+- `src/main/java/de/tbhelfer/datenbank` bleibt kanonischer Kotlin-Source-Ordner für KSP;
+- Datenbankordner wird aus der generierten Kopie entfernt, damit keine Doppelklassen entstehen;
+- `verifyRoomGeneratedImplementation` prüft nach Kotlin-Compile, dass `TBDatenbank_Impl` erzeugt wurde.
 
-## Android 200043/200044 – Room/KSP-Regressionsfix
-200043 führte den Foto-Hook direkt im Dialog `Eintrag für <Firma>` ein, ersetzte dafür aber den normalen Android-Kotlin-Source-Set durch eine generierte Build-Kopie. Dadurch kompilierte Kotlin, Room/KSP erzeugte jedoch `TBDatenbank_Impl` nicht; die App stürzte erst beim Start ab.
+Praktisch bestätigt: 200044 startete wieder auf dem Poco.
 
-200044 korrigierte das:
-- `src/main/java/de/tbhelfer/datenbank` bleibt als kanonischer Kotlin-Source-Ordner für KSP sichtbar;
-- der Datenbankordner wird aus der generierten BTB-Quellkopie entfernt, damit keine doppelten Klassen entstehen;
-- Guard `verifyRoomGeneratedImplementation` prüft, ob `TBDatenbank_Impl.*` unter `build/generated/ksp` erzeugt wurde;
-- der anfängliche Guardfehler `$$implicitReceiver_Project ... this is null` wurde über `project.layout` behoben.
-
-Praktischer Stand: 200044 startete danach auf dem Poco wieder. Dieser Room/KSP-Schutz bleibt erhalten.
-
-## Bestätigter BTB-Kernstand 200035–200039
+## Bestätigte BTB-Kernregeln
 - stabile fachliche `btbId`; Datum/Uhrzeit sind Attribute, nicht Identität;
 - mehrere BTBs desselben Teams am selben Kalendertag möglich;
-- erster erfolgreicher Abschluss = unveränderliches Original;
-- spätere fachliche Änderungen gegen dieses Original; neue/geänderte Inhalte rot, entfernte Originalinhalte rot `(entfernt)`;
-- Kopfdaten bleiben im PDF schwarz;
+- ein BTB darf über Mitternacht laufen, ohne dass automatisch ein neuer BTB entsteht;
+- kanonischer aktueller Lesekontext: aktuelle Baustelle -> aktiver BTB-Pointer -> `btbId`;
+- nach erfolgreichem Abschluss wird aktive `btbId` gelöst; Reaktivierung nur bewusst über Verlauf `BTB bearbeiten`;
+- erster erfolgreicher Abschluss ist unveränderliches Original;
+- spätere fachliche Änderungen werden gegen dieses Original rot dargestellt; Rückkehr zum Original wieder schwarz;
+- Kopfdaten werden im PDF nicht rot markiert;
 - pro `btbId` höchstens ein aktuell gültiges Abschluss-PDF;
-- moderne BTB-Fotos strikt nach derselben `btbId`; Legacy-Zeitfenster nur ohne `btbId`;
+- moderne BTB-Fotos strikt nach derselben `btbId`; Legacy-Zeitfenster nur für Altbestand ohne `btbId`;
 - Foto-ID-Menge des ersten Abschlusses gehört zum unveränderlichen Original;
-- gleiche Foto-Texte im selben Firmen-/Ortskontext können gruppiert werden;
-- 24h-TimePicker für BTB-Zeit, Personal und Geräte/Maschinen;
-- abgeschlossene BTBs lassen sich bewusst wieder öffnen und danach erneut abschließen;
-- Firmenlogo/Kontaktdaten/PDF-Vorschau wurden in 200039 praktisch bestätigt.
+- gleiche Foto-Texte im selben Firmen-/Ortskontext können gruppiert werden.
 
 ## Foto-Overlay
-Der vorhandene `OverlayRenderer` brennt bei Kamera-Fotos Informationen dauerhaft in die App-JPG-Datei ein, u. a. Baustelle/Unterbaustelle, Strecke/Bahnhof, Gleis/Weiche/Objekt, KM, GPS, Bereich und Datum/Uhrzeit.
+Der vorhandene `OverlayRenderer` brennt bei Kamera-Fotos Informationen dauerhaft in die App-JPG-Datei ein: Baustelle/Unterbaustelle, Strecke/Bahnhof, Gleis/Weiche/Objekt, KM, GPS, Bereich und Datum/Uhrzeit. Keine parallele zweite Overlay-Lösung bauen.
 
-Noch offen: praktisch auf Pixel/Poco prüfen und nur bei echtem Bedarf optisch nachschärfen. Keine parallele zweite Overlay-Lösung bauen.
+Noch offen: praktisch auf Pixel/Poco prüfen und nur bei echtem Bedarf optisch nachschärfen.
 
 ## Produktiver Synology-Stand – unverändert
 - NAS/Synology ist Source of Truth.
@@ -166,13 +186,13 @@ Noch offen: praktisch auf Pixel/Poco prüfen und nur bei echtem Bedarf optisch n
 - serverseitiges Entfernen/Verlassen bleibt offen.
 
 ## Danach geplante Arbeiten
-Nach erfolgreichem 200046-KM/Festpunkt-Test:
+Nach erfolgreichem 200047-/KM-Test:
 1. Foto-Overlay praktisch prüfen und ggf. optisch verbessern.
 2. Einstellungen systematisch auf Funktion, Doppelungen und sinnvolle Reihenfolge prüfen/aufräumen.
 3. Wetter um Niederschlagsmenge in mm bzw. l/m² ergänzen; nach erstem Abschluss keine automatische Wetteränderung.
-4. Mängelaufnahme vereinfachen: `Was? → Wo/KM? → Beschreibung`, aktueller KM als Vorschlag.
+4. Mängelaufnahme vereinfachen: `Was? -> Wo/KM? -> Beschreibung`, aktueller KM als Vorschlag.
 
-## Noch offene ältere Abschlussprüfungen
+## Noch offene Abschlussprüfungen
 - neues Abschluss-PDF mit gruppierten gleichnamigen Fotos nochmals kontrollieren;
 - Rot-Markierung bei gemischter Original/Nachtrag-Fotogruppe kontrollieren;
 - Zeitraum-ZIP und Gesamt-Archiv nach aktuellem Stand nochmals auf PDF/DOCX/Bilder prüfen.
