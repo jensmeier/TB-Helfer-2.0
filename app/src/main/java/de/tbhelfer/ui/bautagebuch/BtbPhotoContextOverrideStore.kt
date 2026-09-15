@@ -8,22 +8,24 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
 /**
- * BTB-lokale Korrekturen für Foto-Kontextdaten, ohne den ursprünglichen Foto-Datensatz
- * oder das eingebrannte Bild zu verändern.
+ * BTB-lokale Korrekturen fuer Foto-Kontextdaten, ohne den urspruenglichen Foto-Datensatz
+ * oder das eingebrannte Bild zu veraendern.
  *
- * Der stabile btbId-Key ist absichtlich die Identität. Damit bleiben Korrekturen auch bei
- * geänderter Schichtzeit oder geändertem Datum beim selben fachlichen BTB.
+ * Der stabile btbId-Key ist absichtlich die Identitaet. Damit bleiben Korrekturen auch bei
+ * geaenderter Schichtzeit oder geaendertem Datum beim selben fachlichen BTB.
  */
 object BtbPhotoContextOverrideStore {
 
     data class ContextOverride(
         val firma: String = "",
         val objektKennung: String? = null,
-        val objektBereich: String? = null
+        val objektBereich: String? = null,
+        /** null = Ort nicht ueberschreiben; 0 = Hauptbaustelle; >0 = BaustellenKnotenId. */
+        val ortId: Long? = null
     )
 
     private const val DIR_NAME = "btb_photo_context_overrides"
-    private const val VERSION = 1
+    private const val VERSION = 2
 
     fun load(context: Context, btbId: String?): MutableMap<Long, ContextOverride> {
         val id = btbId?.trim().orEmpty()
@@ -39,12 +41,16 @@ object BtbPhotoContextOverrideStore {
                 val key = keys.next()
                 val fotoId = key.toLongOrNull() ?: continue
                 val value = obj.optJSONObject(key) ?: continue
+                val ortId = if (value.has("ortId") && !value.isNull("ortId")) {
+                    value.optLong("ortId", Long.MIN_VALUE).takeIf { it != Long.MIN_VALUE }
+                } else null
                 out[fotoId] = ContextOverride(
                     firma = value.optString("firma", "").trim(),
                     objektKennung = value.optString("objektKennung", "")
                         .trim().takeIf { it.isNotBlank() },
                     objektBereich = value.optString("objektBereich", "")
-                        .trim().takeIf { it.isNotBlank() }
+                        .trim().takeIf { it.isNotBlank() },
+                    ortId = ortId
                 )
             }
             out
@@ -83,11 +89,15 @@ object BtbPhotoContextOverrideStore {
         }
     }
 
-    private fun applyValue(foto: FotoEntity, value: ContextOverride): FotoEntity = foto.copy(
-        firma = value.firma.trim(),
-        objektKennung = value.objektKennung?.trim()?.takeIf { it.isNotBlank() },
-        objektBereich = value.objektBereich?.trim()?.takeIf { it.isNotBlank() }
-    )
+    private fun applyValue(foto: FotoEntity, value: ContextOverride): FotoEntity {
+        val nodeId = if (value.ortId != null) value.ortId.takeIf { it > 0L } else foto.baustellenKnotenId
+        return foto.copy(
+            baustellenKnotenId = nodeId,
+            firma = value.firma.trim(),
+            objektKennung = value.objektKennung?.trim()?.takeIf { it.isNotBlank() },
+            objektBereich = value.objektBereich?.trim()?.takeIf { it.isNotBlank() }
+        )
+    }
 
     private fun save(context: Context, btbId: String, map: Map<Long, ContextOverride>) {
         val file = fileFor(context, btbId)
@@ -106,6 +116,7 @@ object BtbPhotoContextOverrideStore {
                 put("firma", value.firma.trim())
                 put("objektKennung", value.objektKennung?.trim().orEmpty())
                 put("objektBereich", value.objektBereich?.trim().orEmpty())
+                value.ortId?.let { put("ortId", it) }
             })
         }
         root.put("overrides", obj)
