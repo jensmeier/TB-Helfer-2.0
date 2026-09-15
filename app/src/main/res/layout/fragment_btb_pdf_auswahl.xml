@@ -35,15 +35,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="Fotos aus Galerie / Dateien hinzufügen"
+            android:text="Allgemeine Fotos aus Galerie / Dateien"
             android:textAllCaps="false"
-            app:icon="@android:drawable/ic_menu_add" />
+            app:icon="@android:drawable/ic_menu_gallery" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Ausgewählte Bilder werden als eigene App-Kopie dem aktuell geöffneten BTB zugeordnet. Das Original in Galerie/Dateien bleibt unverändert."
+            android:text="Für einen konkreten Arbeitseintrag unten „Foto +“ verwenden. Allgemeine Fotos bleiben unter Hauptbaustelle/Allgemein. Das Original in Galerie/Dateien bleibt unverändert."
             android:textSize="12sp"
             android:alpha="0.72"
             android:textColor="?attr/colorOnBackground" />
