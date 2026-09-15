@@ -7,7 +7,7 @@ Diese Datei ist die verbindliche technische Übergabe zwischen Chats/Sitzungen. 
 Vor jeder Änderung zuerst lesen:
 1. `docs/TB-HELFER_PROJEKTREGELN.md`
 2. diese Datei
-3. offenen Draft-PR und neuesten Commit
+3. aktiven Feature-Branch, offenen Draft-PR und neuesten relevanten Commit
 
 `main` bleibt stabil. Wesentliche Änderungen zuerst im Feature-Branch/Draft-PR.
 
@@ -18,8 +18,8 @@ Vor jeder Änderung zuerst lesen:
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft.
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`.
 - letzter vollständig bestätigter Android-Gerätestand: **200039**.
-- aktueller Entwicklungsstand im Branch: **Android 200042 – kompakte Fotoaktion pro Arbeitseintrag + größere/antippbare Logo-Vorschau**.
-- 200040/200041 bilden die technische Grundlage für externen Fotoimport und fachliche Zuordnung zu einem Arbeitseintrag; 200042 räumt die Bedienung entsprechend dem Gerätefeedback auf.
+- **Android 200042:** Android-Studio-Build am 15.09.2026 erfolgreich; 15 Warnungen, keine Buildfehler. Gerätefeedback zeigte jedoch, dass die neuen Fotoquellen nicht im eigentlichen Dialog `Eintrag für <Firma>` sichtbar waren.
+- aktueller Branch-Kandidat: **Android 200043 – Fotoaktionen direkt im manuellen Arbeitseintrag-Dialog**.
 
 ## Normaler Entwicklungsablauf
 Der Source of Truth liegt vollständig in GitHub. Neue Änderungen werden direkt im Feature-Branch versioniert.
@@ -31,126 +31,140 @@ Windows-PC:
 
 Die alten `.github/scripts/patch_200035...200038*.ps1` sind nur historische Hilfsmittel und nicht mehr der normale Entwicklungsweg.
 
-## Android 200042 – aktueller Entwicklungsstand
-`app/build.gradle.kts` steht auf `versionCode = 200042`, `versionName = 1.3`.
+## Android 200043 – aktueller Entwicklungsstand
+`app/build.gradle.kts` steht auf `versionCode = 200043`, `versionName = 1.3`.
 
-### Kompakte Fotoaktion pro Arbeitseintrag
-Das Gerätefeedback zu 200041 war eindeutig: nicht noch einen großen Importbereich aufbauen, sondern Platz sparen und direkt am vorhandenen Arbeitseintrag arbeiten.
+### Behobener Bedienfehler
+200042 hatte den Ziel-/Empfangspfad für direkte Fotoaktionen bereits in `BtbPdfAuswahlFragment` vorbereitet, die beiden Quellen aber nicht in den tatsächlich vom Nutzer verwendeten Dialog `Eintrag für <Firma>` eingebunden. Dadurch waren auf dem Gerät nur `Abbrechen` und `Hinzufügen` sichtbar.
 
-Umgesetzt:
-- der große globale Button `Allgemeine Fotos aus Galerie / Dateien` samt Erklärung wurde aus der BTB-Fotoauswahl entfernt;
-- die vorhandene Foto-Liste mit Thumbnail, Metadaten, Häkchen, Bearbeiten sowie Entfernen/Löschen bleibt unverändert erhalten;
-- bei den erkannten Arbeitseinträgen steht nur noch eine kompakte **`📷`-Aktion**;
-- Tap auf `📷` öffnet genau zwei Quellen:
-  - `Kamera`
-  - `Galerie & Dateien`.
+200043 ergänzt direkt unter dem Arbeitstext zwei kompakte Aktionen:
+- `📷 → Kamera`
+- `📷 → Galerie & Dateien`
 
-`Galerie & Dateien` verwendet weiterhin den bereits vorhandenen Importpfad aus 200041:
-- eigene App-Kopie;
-- externe Originaldatei bleibt unverändert;
-- stabile `btbId`;
+Die Aktionen erscheinen nur bei Abschnitt 4 / Bildtyp `FOTODOKUMENTATION`; der normale Button `Hinzufügen` bleibt unverändert erhalten.
+
+### Fachliche Zuordnung beim Foto-Start
+Vor dem Wechsel zur Fotoquelle wird der eingegebene Arbeitseintrag validiert und in den BTB übernommen. Weitergegeben werden:
+- stabile `btbId` bzw. nach dem Speichern aufgelöster aktiver BTB-Pointer;
+- Baustelle;
 - Firma;
-- Ort/Unterbaustelle;
+- Unterbaustelle/Ort-ID und Ortsbezeichnung;
 - Arbeitstext;
-- KM/KM-Bereich;
-- Eintragszeit als BTB-Zeit-Override;
-- EXIF-GPS/Aufnahmezeit soweit vorhanden.
+- optionale Eintragszeit bzw. Zeitspanne;
+- optionaler KM bzw. KM-Bereich.
 
-### Kamera direkt aus dem Arbeitseintrag
-Für `📷 → Kamera` wird **keine zweite Kamera-Lösung** gebaut. Die bestehende TB-Helfer-Kamera wird wiederverwendet.
+Danach wird der bereits vorhandene 200042-Zielpfad in `BtbPdfAuswahlFragment` geöffnet:
+- `Kamera` verwendet weiterhin die bestehende TB-Helfer-Kamera;
+- `Galerie & Dateien` verwendet weiterhin `OpenMultipleDocuments` und den vorhandenen Importpfad;
+- keine zweite Kamera-, Foto-, EXIF- oder Overlay-Lösung wurde angelegt;
+- vorhandene `BtbPhoto*OverrideStore`-Speicher bleiben für Text/Zeit/KM/Kontext maßgeblich.
 
-Vor dem Wechsel zur Kamera:
-- aktuelle Fotoauswahl wird gespeichert;
-- der Arbeitseintrag ist bereits über den gespeicherten BTB/Markerbestand definiert;
-- Firma und Kurztext werden in den vorhandenen Kamera-/Foto-Vorschlagswerten vorbelegt;
-- die zugehörige Unterbaustelle wird vorübergehend als aktueller Kamerakontext gesetzt;
-- die bereits vorhandenen Foto-IDs des BTB werden gemerkt.
+### Technische Integration 200043
+Neue Datei:
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbEntryPhotoActionBinder.kt`
 
-Nach Rückkehr aus der Kamera:
-- nur neu entstandene Fotos derselben stabilen `btbId` **und des Arbeitseintrag-Bildtyps `FOTODOKUMENTATION`** werden betrachtet; vorhandene Fotos anderer BTB-Abschnitte werden ausdrücklich nicht angefasst;
-- diese neuen Fotos werden nochmals eindeutig auf den ausgewählten Arbeitseintrag korrigiert:
-  - Firma;
-  - Ort/Unterbaustelle;
-  - Arbeitstext;
-  - KM bzw. KM-Bereich;
-- die vorherige globale Unterbaustellen-Auswahl wird wiederhergestellt;
-- neu entstandene Fotos werden bis zum PDF-Fotolimit automatisch ausgewählt.
+Der Binder enthält nur die Dialogaktionen, Eingabeprüfung, Speicherung des aktuellen BTB-Snapshots und Navigation zum vorhandenen Fotoauswahl-/Kameraweg.
 
-Wichtig: Die eigentliche Kameraaufnahme behält ihre echte GPS-/Aufnahmezeit und den vorhandenen eingebrannten Kamera-Overlay-Pfad. Für die fachliche BTB/PDF-Zuordnung werden vorhandene Override-Speicher wiederverwendet; die Original-JPG-Datei wird dafür nicht nachträglich umgeschrieben.
+`BautagebuchFragment.kt` ist inzwischen ein sehr großer Legacy-Quelltext. Um für den kleinen 200043-Hook keine riskante Komplett-Ersetzung dieses Quellfiles vorzunehmen, wird beim Build über einen AGP-9-Generated-Source-Task eine identische Kopie von `app/src/main/java` unter `build/generated/source/btb200043` erzeugt. Ausschließlich in dieser Build-Kopie wird der Aufruf von `BtbEntryPhotoActionBinder.bind(...)` direkt hinter der Erzeugung des Dialogs `Eintrag für <Firma>` eingesetzt.
 
-### Logo / PDF 200042
-Das Firmenlogo darf jetzt deutlich größer eingestellt werden:
-- lokaler Bereich in `BtbPdfLogoLayoutSpeicher`: **40–250 pt** statt bisher maximal 180 pt;
-- rechter PDF-Kopfbereich wurde vergrößert und das Logo wird proportional und standardmäßig mittig eingepasst;
-- ohne Logo bleibt der reservierte Bereich im fertigen PDF weiß, es wird kein Platzhalter gedruckt;
-- Schema-12-Migration und vorbereitete Server-API akzeptieren ebenfalls bis 250 pt, damit lokal/serverseitig dieselbe Grenze gilt;
-- **Schema 12 ist weiterhin nicht produktiv migriert**.
+Wichtig:
+- der Git-Arbeitsbaum wird beim Build nicht verändert;
+- GitHub Desktop bleibt nach dem Build sauber;
+- AGP 9 Built-in Kotlin wird über `variant.sources.kotlin.addGeneratedSourceDirectory(...)` verwendet;
+- der Generator bricht bewusst ab, falls der eindeutige Dialog-Anker in `BautagebuchFragment.kt` nicht mehr vorhanden ist;
+- dies ist eine gezielte Integrationsbrücke für den großen Legacy-Fragmentquelltext, keine zweite BTB-Implementierung. Bei einer späteren strukturellen Aufteilung von `BautagebuchFragment.kt` soll der Hook direkt in den aufgeteilten Quellcode übernommen und der Build-Overlay wieder entfernt werden.
 
-Unter `Einstellungen → BTB & PDF` gibt es jetzt zusätzlich eine antippbare Logo-Karte:
-- vorhandenes Firmenlogo wird direkt angezeigt;
-- Tap auf die Logo-Fläche öffnet dieselbe echte PDF-Vorschau wie der bisherige Vorschau-Button;
-- ohne hinterlegtes Logo wird erklärt, dass die PDF-Vorschau einen weißen Logobereich zeigt.
-
-### Betroffene Dateien 200042
+### Betroffene Dateien 200043
 - `app/build.gradle.kts`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPdfAuswahlFragment.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/MaterialButtonHorizontalInsetCompat.kt`
-- `app/src/main/res/layout/fragment_btb_pdf_auswahl.xml`
-- `app/src/main/java/de/tbhelfer/ui/einstellungen/btbpdf/BtbPdfEinstellungenFragment.kt`
-- `app/src/main/res/layout/fragment_btb_pdf_einstellungen.xml`
-- `app/src/main/java/de/tbhelfer/einstellungen/BtbPdfLogoLayoutSpeicher.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPdfHeaderRenderer.kt`
-- `server/migrations/012_company_pdf_logo_layout.sql`
-- `server/app_parts/19_part.py`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbEntryPhotoActionBinder.kt`
+- bereits aus 200042 vorhanden und weiterverwendet: `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPdfAuswahlFragment.kt`
 - diese Datei.
 
-### Tests / Prüfung 200042
-- GitHub-Stand, Projektregeln, aktueller Stand, Draft-PR #5 und letzter relevanter Commit wurden vor der Änderung geprüft.
-- Quellcodepfade für `btbId`, Fotoimport, Foto-Overrides, bestehende Kamera/Foto-Maske sowie Logo/PDF-Vorschau wurden vor der Änderung nachvollzogen.
-- statisch geprüft: der alte Layout-Verweis auf `btnImportPhotos` wurde zusammen mit dem Button entfernt; der Importpfad wird jetzt nur noch vom konkreten Arbeitseintrag aus gestartet.
-- statisch geprüft: Kameraweg nutzt den vorhandenen `FotoRepository.einfuegen(...)`-Pfad, der bei aktivem modernen BTB bereits die stabile aktive `btbId` zuordnet; nach Rückkehr wird zusätzlich nur innerhalb derselben `btbId` und des Bildtyps `FOTODOKUMENTATION` auf den Arbeitseintrag korrigiert.
-- **erster Android-Studio-Build 200042 am 15.09.2026:** `:app:compileDebugKotlin` scheiterte mit genau zwei Fehlern in `BtbPdfAuswahlFragment.kt`: `Unresolved reference 'insetLeft'` und `Unresolved reference 'insetRight'`.
-- Ursache: die aktuell verwendete Material-Components-Version stellt diese beiden horizontalen `MaterialButton`-Properties nicht als Kotlin-Properties bereit.
-- Fix im Branch: `MaterialButtonHorizontalInsetCompat.kt` bildet die beiden Zuweisungen auf normales horizontales View-Padding ab; die kompakte feste Buttonbreite von 52 dp und die bestehende Fotoaktion bleiben unverändert.
-- **erneuter Android-Studio-Build nach diesem Fix steht aus**.
-- GitHub Actions wurde für den 200042-Dokumentationsstand erneut geprüft: Workflow `Android CI` endete weiterhin als `failure` ohne ausführbare Job-Schritte/Runner und ist daher kein Buildindikator.
+### Prüfung 200043
+Vor der Änderung wurden Projektregeln, aktueller Stand, Branch, Draft-PR #5 und neueste relevante Commits geprüft.
 
-### Nächster Gerätetest 200042
+Statisch geprüft:
+- der Dialog-Anker in `BautagebuchFragment.kt` ist im aktuellen Branch exakt vorhanden;
+- der 200043-Hook wird unmittelbar nach `.create()` des Dialogs `Eintrag für <Firma>` eingesetzt;
+- `BtbPdfAuswahlFragment` wertet `autoPhotoSource = camera|gallery` sowie Firma, Ort, Text, Zeit und KM bereits aus;
+- Kameraweg korrigiert nach Rückkehr nur neue Fotos derselben stabilen `btbId` und des Bildtyps `FOTODOKUMENTATION` auf den gewählten Arbeitseintrag;
+- der vorhandene Kamera-/Overlay-Pfad bleibt unverändert.
+
+Noch nicht bestätigt:
+- vollständiger Android-Studio-Build **200043** auf dem Windows-PC;
+- Anzeige beider Buttons auf Pixel/Poco;
+- Kamera- und Galerie-Rückweg aus genau diesem neuen Dialog.
+
+GitHub Actions ist derzeit kein verlässlicher Buildindikator: die aktuellen `Android CI`-Runs enden weiterhin innerhalb weniger Sekunden als `failure`, die Jobs liefern keine ausführbaren Schritte/Runner-Logs (`steps = null`). Deshalb muss 200043 lokal in Android Studio gebaut werden.
+
+### Nächster Gerätetest 200043
 1. GitHub Desktop `Fetch origin` → `Pull origin`.
-2. Android Studio Debug-Build 200042 erneut starten und als Update installieren; App-Daten nicht löschen.
-3. BTB → Abschnitt 4 → Fotoauswahl öffnen.
-4. prüfen: kein großer allgemeiner Importblock mehr; Arbeitseinträge zeigen kompakt `📷`.
-5. `📷` drücken → Dialog muss `Kamera` / `Galerie & Dateien` zeigen.
-6. `Galerie & Dateien`: Bild auswählen und Firma, Unterbaustelle, KM, Text sowie Zuordnung zum richtigen BTB prüfen.
-7. `Kamera`: Foto aufnehmen/speichern, zur BTB-Fotoauswahl zurückgehen und prüfen, dass dasselbe Foto dem gewählten Arbeitseintrag zugeordnet ist.
-8. PDF-Entwurf erzeugen und Gruppierung/Firma/Ort/KM prüfen.
-9. `Einstellungen → BTB & PDF`: Logo bis über die bisherige Grenze vergrößern; Logo-Karte antippen und echte PDF-Vorschau prüfen.
-10. ohne Logo bzw. testweise fehlendem Logo: rechter PDF-Bereich muss weiß bleiben.
-11. Originalfoto-/Nachtrag-/Löschschutz kurz gegenprüfen.
+2. Android Studio Debug-Build 200043 starten und als Update installieren; App-Daten nicht löschen.
+3. BTB → `4. Ausgeführte Arbeiten` → Firma (`bbg` o. ä.) → `+`.
+4. Im Dialog `Eintrag für <Firma>` müssen unter dem Arbeitstext sichtbar sein:
+   - `📷 → Kamera`
+   - `📷 → Galerie & Dateien`.
+5. Text sowie optional Uhrzeit/KM eintragen und `📷 → Kamera` testen.
+6. Neues Foto speichern; nach Rückkehr Zuordnung zu demselben BTB, Firma, Ort, Text und KM prüfen.
+7. Zweiter Durchgang mit `📷 → Galerie & Dateien`; externes Original darf nicht verändert werden.
+8. Normalen Button `Hinzufügen` ohne Foto kurz gegenprüfen.
+
+## Nächstes Problem nach Abschluss von 200043 – KM/Festpunkte
+Vom Nutzer am 15.09.2026 gemeldet:
+- Vermessungs-/Absteckungsdaten lassen sich weiterhin einlesen;
+- KM-Berechnung funktioniert danach nicht mehr wie zuvor;
+- die Festpunkte bzw. importierten Punkte mit vorhandener Kilometrierung sind in der App nicht mehr vorhanden/sichtbar.
+
+Dieses Problem wird **bewusst erst nach Abschluss des 200043-Foto-Dialogtests** analysiert, damit nicht zwei Fehlerblöcke gleichzeitig verändert werden.
+
+Für die anschließende Bestandsprüfung zuerst untersuchen:
+- `app/src/main/java/de/tbhelfer/ui/streckenpunkte/StreckenpunkteFragment.kt`
+- `app/src/main/java/de/tbhelfer/ui/streckenpunkte/StreckenpunkteViewModel.kt`
+- `app/src/main/java/de/tbhelfer/ui/streckenpunkte/AktiverTrassenKontext.kt`
+- `app/src/main/java/de/tbhelfer/datenbank/TrassenRepository.kt`
+- `TrassenKmAnkerEntity`, `TrassenSamplePointEntity`, `GraKmPunktEntity`, `GvpPointEntity`, `AbsteckpunktEntity`
+- `app/src/main/java/de/tbhelfer/ui/importexport/ImportExportFragment.kt`
+- KM-/Festpunkt-Import und mögliche Reset-/Bereinigungslogik.
+
+Keine Vermessungsdaten oder originale Importdateien verändern. Zuerst prüfen, ob Daten beim Import nicht gespeichert, nach dem Import gelöscht/resetet oder nur nicht mehr angezeigt/verknüpft werden.
+
+## Android 200042 – letzter lokal gebauter Entwicklungsstand
+200042 räumte die 200040/200041-Fotoimportbedienung auf:
+- großer globaler Importblock entfernt;
+- Foto-Liste mit Thumbnail, Metadaten, Häkchen, Bearbeiten sowie Entfernen/Löschen beibehalten;
+- erkannte Arbeitseinträge bekamen eine kompakte `📷`-Aktion in der Fotoauswahl;
+- `📷` öffnet dort `Kamera` oder `Galerie & Dateien`;
+- bestehende Kamera wird wiederverwendet;
+- nach Kamera-Rückkehr werden nur neue Fotos derselben `btbId` und desselben Bildtyps fachlich auf den Arbeitseintrag korrigiert;
+- vorherige globale Unterbaustellen-Auswahl wird wiederhergestellt;
+- neu entstandene Fotos werden bis zum PDF-Fotolimit automatisch ausgewählt.
+
+Logo/PDF 200042:
+- PDF-Logo lokal 40–250 pt;
+- rechter Kopfbereich entsprechend vergrößert;
+- ohne Logo bleibt der Bereich weiß;
+- antippbare Logo-Karte unter `Einstellungen → BTB & PDF` öffnet echte PDF-Vorschau;
+- Schema 12 bleibt nur vorbereitet und ist nicht produktiv migriert.
+
+Buildhistorie 200042:
+- erster Build fand zwei Compilerfehler `insetLeft` / `insetRight`;
+- `MaterialButtonHorizontalInsetCompat.kt` korrigierte diese horizontalen Button-Inset-Zuweisungen;
+- erneuter Android-Studio-Build am 15.09.2026 **erfolgreich**;
+- Android Studio zeigte 15 Warnungen, unter anderem bestehende Deprecation-/Experimental-Warnungen, aber keine Fehler.
 
 ## Android 200039 – gebaut, installiert, Gerätetest bestätigt
-`versionCode = 200039`, `versionName = 1.3` war der letzte vollständig praktisch bestätigte Gerätestand.
+`versionCode = 200039`, `versionName = 1.3` ist weiterhin der letzte vollständig praktisch bestätigte Gerätestand.
 
 Bestätigt:
-- Firmenlogo im realen BTB-PDF proportional.
-- Firmenname, Firmen-E-Mail und Firmentelefon unter dem Logo konfigurierbar.
-- `Kontaktdaten sind bereits im Logo enthalten` unterdrückt doppelte E-Mail-/Telefonzeilen.
-- verantwortlicher TB mit persönlicher E-Mail und Mobilnummer im PDF-Kopf.
-- Fußzeile `Erstellt von: <Nutzer> · <Datum>` plus Seitenzahl.
-- Logo unter `Einstellungen → BTB & PDF` links/rechts/hoch/runter sowie kleiner/größer und zurücksetzen.
-- echte A4-PDF-Vorschau im internen PDF-Viewer.
-- Foto-Raster wird in der Vorschau angezeigt.
-- Vorschau und reales BTB-PDF wurden auf dem Handy geprüft; Benutzer meldete `passt alles`.
-
-### Server-Vorbereitung Logo
-Schema 12 ist im Branch vorbereitet für ein firmenweit gespeichertes PDF-Logo-Profil:
-- `server/migrations/012_company_pdf_logo_layout.sql`
-- `server/app_parts/19_part.py`
-- `server/checks/11_verify_schema12.sql`
-- `server/checks/12_verify_schema12_source.py`
-- `GET/PUT /api/v1/company/profile/pdf-logo-layout`
-
-**Nicht produktiv migriert.** Produktiver NAS/DB-Stand bleibt Schema 10.
+- Firmenlogo im realen BTB-PDF proportional;
+- Firmenname, Firmen-E-Mail und Firmentelefon unter dem Logo konfigurierbar;
+- `Kontaktdaten sind bereits im Logo enthalten` unterdrückt doppelte Kontaktzeilen;
+- verantwortlicher TB mit persönlicher E-Mail und Mobilnummer im PDF-Kopf;
+- Fußzeile `Erstellt von: <Nutzer> · <Datum>` plus Seitenzahl;
+- Logo unter `Einstellungen → BTB & PDF` verschieb-/skalierbar und rücksetzbar;
+- echte A4-PDF-Vorschau im internen PDF-Viewer;
+- Foto-Raster wird in der Vorschau angezeigt;
+- Vorschau und reales BTB-PDF auf dem Handy geprüft; Nutzer meldete `passt alles`.
 
 ## Android 200040/200041 – Fotoimport-Grundlage
 200040 führte externen Import und Fotoverwaltung ein:
@@ -170,8 +184,6 @@ Schema 12 ist im Branch vorbereitet für ein firmenweit gespeichertes PDF-Logo-P
 - bereits falsch unter Allgemein gelandete Fotos können über `Bearbeiten → Arbeitseintrag / Ort` korrigiert werden;
 - `BtbPhotoContextOverrideStore` Version 2 kann einen BTB-lokalen `ortId` speichern und liest ältere Version-1-Dateien weiter.
 
-Der erste 200041-Build fand 7 Kotlin-Compilerfehler durch die lokale Variable `text` in `BtbPdfAuswahlFragment.kt`; dieser Shadowing-Fehler wurde im Branch durch `etText` behoben. Ein erneuter vollständiger Android-Studio-Build war vor Beginn von 200042 noch offen.
-
 ## Foto-Overlay
 Der vorhandene `OverlayRenderer` brennt bei Kamera-Fotos bereits Informationen dauerhaft in die App-JPG-Datei ein. Vorhandene Felder umfassen u. a.:
 - Baustelle/Unterbaustelle;
@@ -188,16 +200,16 @@ Noch offen:
 - nur bei echtem Bedarf Renderer optisch nachschärfen; keine parallele zweite Overlay-Lösung bauen.
 
 ## Bestätigter BTB-Kernstand 200035–200039
-- stabile fachliche `btbId`; Datum/Uhrzeit sind Attribute, nicht Identität.
-- mehrere BTBs desselben Teams am selben Kalendertag möglich.
-- erster erfolgreicher Abschluss = unveränderliches Original.
-- spätere fachliche Änderungen gegen dieses Original; neue/geänderte Inhalte rot, entfernte Originalinhalte rot `(entfernt)`.
-- Arbeitszeit/Datum, Personal/Firmen, Geräte/Maschinen und Wetter bleiben PDF-Kopfdaten und werden nicht rot markiert.
-- pro `btbId` höchstens ein aktuell gültiges Abschluss-PDF.
-- moderne BTB-Fotos strikt nach derselben `btbId`; Legacy-Zeitfenster nur ohne `btbId`.
-- Foto-ID-Menge des ersten Abschlusses gehört zum unveränderlichen Original.
-- gleiche Foto-Texte im selben Firmen-/Ortskontext können gruppiert werden.
-- 24h-TimePicker für BTB-Zeit, Personal und Geräte/Maschinen.
+- stabile fachliche `btbId`; Datum/Uhrzeit sind Attribute, nicht Identität;
+- mehrere BTBs desselben Teams am selben Kalendertag möglich;
+- erster erfolgreicher Abschluss = unveränderliches Original;
+- spätere fachliche Änderungen gegen dieses Original; neue/geänderte Inhalte rot, entfernte Originalinhalte rot `(entfernt)`;
+- Arbeitszeit/Datum, Personal/Firmen, Geräte/Maschinen und Wetter bleiben PDF-Kopfdaten und werden nicht rot markiert;
+- pro `btbId` höchstens ein aktuell gültiges Abschluss-PDF;
+- moderne BTB-Fotos strikt nach derselben `btbId`; Legacy-Zeitfenster nur ohne `btbId`;
+- Foto-ID-Menge des ersten Abschlusses gehört zum unveränderlichen Original;
+- gleiche Foto-Texte im selben Firmen-/Ortskontext können gruppiert werden;
+- 24h-TimePicker für BTB-Zeit, Personal und Geräte/Maschinen;
 - alte abgeschlossene BTBs lassen sich bewusst wieder öffnen und danach erneut abschließen.
 
 ## Produktiver Synology-Stand – unverändert
@@ -221,7 +233,7 @@ Noch offen:
 - serverseitiges Entfernen/Verlassen bleibt offen.
 
 ## Danach geplante Handy-Arbeiten
-Nach erfolgreichem 200042-Test:
+Nach erfolgreichem 200043-Test und Behebung des gemeldeten KM/Festpunkt-Problems:
 1. Foto-Overlay auf echten Kamera-Fotos praktisch prüfen und ggf. optisch verbessern.
 2. Einstellungen systematisch auf Funktion, Doppelungen und sinnvolle Reihenfolge prüfen/aufräumen.
 3. Wetter um Niederschlagsmenge in mm bzw. l/m² ergänzen; nach erstem Abschluss weiterhin keine automatische Wetteränderung.
