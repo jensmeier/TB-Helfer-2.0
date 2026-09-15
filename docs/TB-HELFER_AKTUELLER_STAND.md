@@ -94,6 +94,7 @@ Unter `Einstellungen → BTB & PDF` gibt es jetzt zusätzlich eine antippbare Lo
 ### Betroffene Dateien 200042
 - `app/build.gradle.kts`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPdfAuswahlFragment.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/MaterialButtonHorizontalInsetCompat.kt`
 - `app/src/main/res/layout/fragment_btb_pdf_auswahl.xml`
 - `app/src/main/java/de/tbhelfer/ui/einstellungen/btbpdf/BtbPdfEinstellungenFragment.kt`
 - `app/src/main/res/layout/fragment_btb_pdf_einstellungen.xml`
@@ -108,12 +109,15 @@ Unter `Einstellungen → BTB & PDF` gibt es jetzt zusätzlich eine antippbare Lo
 - Quellcodepfade für `btbId`, Fotoimport, Foto-Overrides, bestehende Kamera/Foto-Maske sowie Logo/PDF-Vorschau wurden vor der Änderung nachvollzogen.
 - statisch geprüft: der alte Layout-Verweis auf `btnImportPhotos` wurde zusammen mit dem Button entfernt; der Importpfad wird jetzt nur noch vom konkreten Arbeitseintrag aus gestartet.
 - statisch geprüft: Kameraweg nutzt den vorhandenen `FotoRepository.einfuegen(...)`-Pfad, der bei aktivem modernen BTB bereits die stabile aktive `btbId` zuordnet; nach Rückkehr wird zusätzlich nur innerhalb derselben `btbId` und des Bildtyps `FOTODOKUMENTATION` auf den Arbeitseintrag korrigiert.
-- ein vollständiger Android-Gradle-Build konnte in dieser Sitzung nicht ausgeführt werden; **Android-Studio-Build und Gerätetest 200042 stehen aus**.
+- **erster Android-Studio-Build 200042 am 15.09.2026:** `:app:compileDebugKotlin` scheiterte mit genau zwei Fehlern in `BtbPdfAuswahlFragment.kt`: `Unresolved reference 'insetLeft'` und `Unresolved reference 'insetRight'`.
+- Ursache: die aktuell verwendete Material-Components-Version stellt diese beiden horizontalen `MaterialButton`-Properties nicht als Kotlin-Properties bereit.
+- Fix im Branch: `MaterialButtonHorizontalInsetCompat.kt` bildet die beiden Zuweisungen auf normales horizontales View-Padding ab; die kompakte feste Buttonbreite von 52 dp und die bestehende Fotoaktion bleiben unverändert.
+- **erneuter Android-Studio-Build nach diesem Fix steht aus**.
 - GitHub Actions wurde für den 200042-Dokumentationsstand erneut geprüft: Workflow `Android CI` endete weiterhin als `failure` ohne ausführbare Job-Schritte/Runner und ist daher kein Buildindikator.
 
 ### Nächster Gerätetest 200042
 1. GitHub Desktop `Fetch origin` → `Pull origin`.
-2. Android Studio Debug-Build 200042 starten und als Update installieren; App-Daten nicht löschen.
+2. Android Studio Debug-Build 200042 erneut starten und als Update installieren; App-Daten nicht löschen.
 3. BTB → Abschnitt 4 → Fotoauswahl öffnen.
 4. prüfen: kein großer allgemeiner Importblock mehr; Arbeitseinträge zeigen kompakt `📷`.
 5. `📷` drücken → Dialog muss `Kamera` / `Galerie & Dateien` zeigen.
