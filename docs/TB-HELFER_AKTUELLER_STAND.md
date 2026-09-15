@@ -114,6 +114,8 @@ Hinweistext erklärt:
 
 Die Fotozeilen/Eintragsaktionen sind im Auswahlblock standardmäßig sichtbar; der Benutzer muss den Block für die `Foto +`-Aktionen nicht erst aufklappen.
 
+Die Abschnittskarte zeigt bei externen Fotos nicht mehr einen potenziell irreführenden Roh-Zeitbereich aus EXIF-Zeiten verschiedener Aufnahmetage, sondern stabil `N Arbeitseinträge · M Fotos` bzw. die Fotoanzahl. Einzelne Fotozeiten bleiben in den Fotozeilen sichtbar.
+
 ### Bereits falsch unter Allgemein gelandete Fotos korrigieren
 Die Foto-Bearbeitung enthält zusätzlich `Arbeitseintrag / Ort`:
 - vorhandenen Arbeitseintrag auswählen;
