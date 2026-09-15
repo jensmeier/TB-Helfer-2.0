@@ -80,7 +80,7 @@ Die eigentliche Schichtzeitrechnung kann einen normalen Nachtbereich wie `18:00�
 - `app/build.gradle.kts`
 - diese Statusdatei
 
-Hinweis: Wegen der seit 200043 vorhandenen Build-Source-Brücke werden die kleinen Änderungen am sehr großen `BautagebuchFragment.kt` weiterhin beim Build in die generierte Quellkopie eingesetzt. Diese Brücke ist technische Schuld und soll später sauber zurückgebaut werden; sie wird nicht parallel zu diesem Fehlerblock groß umgebaut.
+Hinweis zur Umsetzung: Wegen der seit 200043 vorhandenen Build-Source-Brücke werden die kleinen Änderungen am sehr großen `BautagebuchFragment.kt` **noch nicht in die kanonische Datei geschrieben**, sondern beim Build in die generierte Quellkopie eingesetzt. Das betrifft 200047 konkret die `@ORT=0`-/Parserkorrektur und den Aktiv-BTB-Ladeweg. Die fachliche Logik ist damit im APK aktiv, die Source-Brücke bleibt aber technische Schuld und soll später sauber zurückgebaut werden.
 
 ### Teststatus 200047
 - Projektregeln, aktueller Stand, Feature-Branch, Draft-PR #5 und Branch-Head vor Änderung geprüft.
