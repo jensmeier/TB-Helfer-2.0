@@ -10,6 +10,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.datastore.preferences.core.edit
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -23,10 +24,13 @@ import de.tbhelfer.datenbank.BaustellenKnotenEntity
 import de.tbhelfer.datenbank.BaustellenKnotenTyp
 import de.tbhelfer.datenbank.Bildtyp
 import de.tbhelfer.datenbank.FotoEntity
+import de.tbhelfer.einstellungen.dataStore
+import de.tbhelfer.ui.kamera.FotoErfassenFragment
 import de.tbhelfer.util.ThumbnailLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -67,7 +71,6 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
     private lateinit var llSections: LinearLayout
     private lateinit var tvSelected: TextView
     private lateinit var btnBack: MaterialButton
-    private lateinit var btnImportPhotos: MaterialButton
 
     private var maxFotos: Int = 60
     private val selection = linkedMapOf<String, LinkedHashSet<Long>>()
@@ -83,6 +86,17 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
     private var importTargets: List<ImportTarget> = emptyList()
     private var ortLabels: Map<Long, String> = mapOf(0L to "Hauptbaustelle")
     private var pendingImportTarget: ImportTarget? = null
+
+    // Android 200042: Ein kompaktes Kamera-Symbol pro Arbeitseintrag startet entweder
+    // die bestehende App-Kamera oder Galerie/Dateien. Beim Kameraweg merken wir uns den
+    // Zielkontext und korrigieren die danach neu entstandenen Fotos noch einmal explizit
+    // auf Firma/Ort/Text/KM des Arbeitseintrags. Damit bleibt auch bei Serienfotos die
+    // stabile btbId die Identitaet und die Kamera selbst muss nicht dupliziert werden.
+    private var cameraTarget: ImportTarget? = null
+    private var cameraKnownPhotoIds: Set<Long> = emptySet()
+    private var cameraLaunchPending: Boolean = false
+    private var cameraPreviousKnotenId: Long? = null
+    private var cameraPreviousHauptId: Long? = null
 
     private var baustelleIdArg: Long = 0L
     private var baustelleNameArg: String = ""
@@ -108,7 +122,6 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         llSections = view.findViewById(R.id.llSections)
         tvSelected = view.findViewById(R.id.tvSelectedCount)
         btnBack = view.findViewById(R.id.btnBack)
-        btnImportPhotos = view.findViewById(R.id.btnImportPhotos)
 
         btnBack.setOnClickListener {
             lifecycleScope.launch {
@@ -116,7 +129,6 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 findNavController().popBackStack()
             }
         }
-        btnImportPhotos.setOnClickListener { launchPhotoImport(null) }
 
         lifecycleScope.launch {
             val args = requireArguments()
@@ -227,6 +239,14 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (cameraLaunchPending) {
+            cameraLaunchPending = false
+            lifecycleScope.launch { applyCameraTargetAfterReturn() }
+        }
+    }
+
     override fun onStop() {
         super.onStop()
         lifecycleScope.launch { persistNow() }
@@ -240,6 +260,165 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         }
         pendingImportTarget = target
         importPhotosLauncher.launch(arrayOf("image/*"))
+    }
+
+    private fun showPhotoSourceDialog(target: ImportTarget) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Foto zu Arbeitseintrag")
+            .setItems(arrayOf("Kamera", "Galerie & Dateien")) { _, which ->
+                when (which) {
+                    0 -> launchCameraForTarget(target)
+                    1 -> launchPhotoImport(target)
+                }
+            }
+            .setNegativeButton("Abbrechen", null)
+            .show()
+    }
+
+    private fun launchCameraForTarget(target: ImportTarget) {
+        val btbId = activeBtbIdArg?.trim().orEmpty()
+        if (btbId.isBlank()) {
+            Snackbar.make(requireView(), "Kein aktiver BTB fuer die Kamera", Snackbar.LENGTH_LONG).show()
+            return
+        }
+        lifecycleScope.launch {
+            persistNow()
+            cameraTarget = target
+            cameraKnownPhotoIds = currentBlocks.flatMap { it.fotos }.map { it.id }.toSet()
+
+            val appContext = requireContext().applicationContext
+            // Bestehende Foto-Maske wiederverwenden: deren letzte Firma/Kurzbeschreibung
+            // werden gezielt auf den Arbeitseintrag gesetzt. Die finalen BTB-Overrides
+            // werden nach Rueckkehr nochmals eindeutig auf alle neu entstandenen Fotos gesetzt.
+            appContext.dataStore.edit { prefs ->
+                prefs[FotoErfassenFragment.KEY_LETZTE_KURZBESCHREIBUNG] = target.text
+                val firma = target.firma?.trim().orEmpty()
+                if (firma.isBlank()) prefs.remove(FotoErfassenFragment.KEY_LETZTE_FIRMA)
+                else prefs[FotoErfassenFragment.KEY_LETZTE_FIRMA] = firma
+            }
+
+            cameraPreviousKnotenId = ServiceLocator.aktuelleBaustelleSpeicher.aktuellerKnotenId.first()
+            cameraPreviousHauptId = ServiceLocator.aktuelleBaustelleSpeicher.aktuelleHauptbaustelleKnotenId.first()
+            val hauptId = cameraPreviousHauptId
+            if (hauptId != null) {
+                if (target.ortId > 0L) {
+                    ServiceLocator.aktuelleBaustelleSpeicher.setzenKnoten(
+                        aktuellerKnotenId = target.ortId,
+                        hauptKnotenId = hauptId,
+                        altBaustelleId = baustelleIdArg
+                    )
+                } else {
+                    ServiceLocator.aktuelleBaustelleSpeicher.setzenNurHaupt(
+                        hauptKnotenId = hauptId,
+                        altBaustelleId = baustelleIdArg
+                    )
+                }
+            }
+
+            cameraLaunchPending = true
+            findNavController().navigate(R.id.kameraFragment)
+        }
+    }
+
+    private suspend fun restoreCameraContext() {
+        val hauptId = cameraPreviousHauptId
+        if (hauptId != null) {
+            val previous = cameraPreviousKnotenId
+            if (previous != null && previous != hauptId) {
+                ServiceLocator.aktuelleBaustelleSpeicher.setzenKnoten(
+                    aktuellerKnotenId = previous,
+                    hauptKnotenId = hauptId,
+                    altBaustelleId = baustelleIdArg
+                )
+            } else {
+                ServiceLocator.aktuelleBaustelleSpeicher.setzenNurHaupt(
+                    hauptKnotenId = hauptId,
+                    altBaustelleId = baustelleIdArg
+                )
+            }
+        }
+        cameraPreviousKnotenId = null
+        cameraPreviousHauptId = null
+    }
+
+    private suspend fun applyCameraTargetAfterReturn() {
+        val target = cameraTarget
+        val btbId = activeBtbIdArg?.trim().orEmpty()
+        if (target == null || btbId.isBlank()) {
+            restoreCameraContext()
+            cameraTarget = null
+            cameraKnownPhotoIds = emptySet()
+            return
+        }
+        val appContext = requireContext().applicationContext
+        try {
+            val newlyCreated = withContext(Dispatchers.IO) {
+                ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(baustelleIdArg)
+                    .filter { BtbFotoZuordnungSpeicher.btbId(appContext, it.id) == btbId }
+                    .filter { it.id !in cameraKnownPhotoIds }
+                    .sortedBy { it.erstelltAmEpochMs }
+            }
+            if (newlyCreated.isEmpty()) return
+
+            val ids = newlyCreated.map { it.id }
+            withContext(Dispatchers.IO) {
+                BtbPhotoTextOverrideStore.setOverrideForIds(
+                    appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
+                    schichtTypArg, ids, target.text
+                )
+                target.kmVon?.let { kmVon ->
+                    BtbPhotoKmOverrideStore.setOverrideForIds(
+                        appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
+                        schichtTypArg, ids, BtbPhotoKmOverrideStore.KmOverride(kmVon, target.kmBis)
+                    )
+                }
+                newlyCreated.forEach { foto ->
+                    BtbPhotoContextOverrideStore.setOverride(
+                        appContext,
+                        btbId,
+                        foto.id,
+                        BtbPhotoContextOverrideStore.ContextOverride(
+                            firma = target.firma.orEmpty(),
+                            objektKennung = foto.objektKennung,
+                            objektBereich = foto.objektBereich,
+                            ortId = target.ortId
+                        )
+                    )
+                }
+            }
+
+            textOverrides = textOverrides.toMutableMap().apply {
+                ids.forEach { put(it, target.text) }
+            }
+            target.kmVon?.let { kmVon ->
+                val override = BtbPhotoKmOverrideStore.KmOverride(kmVon, target.kmBis)
+                kmOverrides = kmOverrides.toMutableMap().apply { ids.forEach { put(it, override) } }
+            }
+
+            val refreshed = withContext(Dispatchers.IO) {
+                ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(baustelleIdArg)
+                    .filter { BtbFotoZuordnungSpeicher.btbId(appContext, it.id) == btbId }
+                    .sortedBy { it.erstelltAmEpochMs }
+            }
+            currentBlocks = buildBlocks(refreshed, filterBildtyp)
+            rebuildAllIds(currentBlocks)
+
+            val targetSelection = selection.getOrPut(target.bildtyp.name) { LinkedHashSet() }
+            ids.forEach { id ->
+                if (selection.values.sumOf { it.size } < maxFotos) targetSelection.add(id)
+            }
+            persistNow()
+            render(currentBlocks)
+            Snackbar.make(
+                requireView(),
+                if (ids.size == 1) "Foto dem Arbeitseintrag zugeordnet" else "${ids.size} Fotos dem Arbeitseintrag zugeordnet",
+                Snackbar.LENGTH_SHORT
+            ).show()
+        } finally {
+            restoreCameraContext()
+            cameraTarget = null
+            cameraKnownPhotoIds = emptySet()
+        }
     }
 
     private fun scheduleAutosave() {
@@ -475,24 +654,11 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         val ctx = requireContext()
         fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-        parent.addView(TextView(ctx).apply {
-            text = "Fotos direkt zu Arbeitseintrag"
-            textSize = 13.5f
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(dp(8), dp(10), dp(8), dp(4))
-        })
-        parent.addView(TextView(ctx).apply {
-            text = "Mit „Foto +“ werden Firma, Ort/Unterbaustelle, Text und KM dieses Eintrags uebernommen."
-            textSize = 11.5f
-            alpha = 0.70f
-            setPadding(dp(8), 0, dp(8), dp(8))
-        })
-
         importTargets.forEach { target ->
             val row = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = android.view.Gravity.CENTER_VERTICAL
-                setPadding(dp(8), dp(6), dp(8), dp(6))
+                setPadding(dp(8), dp(4), dp(8), dp(4))
             }
             val texts = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
@@ -502,33 +668,32 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 text = "${target.firma ?: "Allgemein"} · ${target.ortLabel}"
                 textSize = 12.5f
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
             })
             texts.addView(TextView(ctx).apply {
                 text = targetMeta(target)
                 textSize = 12f
                 alpha = 0.78f
                 maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
             })
             row.addView(texts)
             row.addView(MaterialButton(ctx).apply {
-                text = "Foto +"
+                text = "📷"
+                textSize = 20f
                 isAllCaps = false
-                setIconResource(android.R.drawable.ic_menu_gallery)
-                iconPadding = dp(4)
-                contentDescription = "Fotos zu ${target.text} hinzufuegen"
-                setOnClickListener { launchPhotoImport(target) }
-            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                marginStart = dp(8)
+                minWidth = dp(48)
+                minimumWidth = dp(48)
+                insetLeft = 0
+                insetRight = 0
+                contentDescription = "Foto zu ${target.text} hinzufuegen"
+                setOnClickListener { showPhotoSourceDialog(target) }
+            }, LinearLayout.LayoutParams(dp(52), LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = dp(6)
             })
             parent.addView(row)
         }
-
-        parent.addView(TextView(ctx).apply {
-            text = "Zugeordnete Fotos"
-            textSize = 12f
-            alpha = 0.65f
-            setPadding(dp(8), dp(8), dp(8), dp(2))
-        })
     }
 
     private fun targetMeta(target: ImportTarget): String {
@@ -555,7 +720,6 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             ?.let { runCatching { Bildtyp.valueOf(it) }.getOrNull() }
             ?: Bildtyp.FOTODOKUMENTATION
         val appContext = requireContext().applicationContext
-        btnImportPhotos.isEnabled = false
         viewLifecycleOwner.lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 val imported = BtbExternalPhotoImporter.importieren(
@@ -594,7 +758,6 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 imported
             }
             if (!isAdded || view == null) return@launch
-            btnImportPhotos.isEnabled = true
             if (result.imported.isEmpty()) {
                 Snackbar.make(requireView(), "Keine Fotos importiert", Snackbar.LENGTH_LONG).show()
                 return@launch
