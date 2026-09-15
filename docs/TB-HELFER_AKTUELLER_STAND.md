@@ -19,7 +19,7 @@ Vor jeder Änderung zuerst lesen:
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`.
 - letzter vollständig bestätigter Android-Gerätestand: **200039**.
 - **Android 200040** wurde auf dem Handy praktisch begonnen zu testen: externer Fotoimport funktioniert grundsätzlich, dabei wurde aber die fachliche Zuordnungs-Lücke sichtbar (generisch importierte Bilder hatten keine Firma/Unterbaustelle/Arbeitseintrag-Zuordnung und landeten unter Allgemein/Hauptbaustelle).
-- aktueller Entwicklungsstand im Branch: **Android 200041 – externer Fotoimport gezielt pro Arbeitseintrag**, Source umgesetzt, noch nicht lokal gebaut/auf Gerät bestätigt.
+- aktueller Entwicklungsstand im Branch: **Android 200041 – externer Fotoimport gezielt pro Arbeitseintrag**. Beim ersten lokalen Build wurden 7 Kotlin-Compilerfehler in `BtbPdfAuswahlFragment.kt` gefunden; die Ursache war eine lokale Variable `text`, die die `text`-Property nachfolgender Views überschattete. Fix ist im Branch, erneuter lokaler Build steht aus.
 
 ## Normaler Entwicklungsablauf
 Der Source of Truth liegt vollständig in GitHub. Neue Änderungen werden direkt im Feature-Branch versioniert.
@@ -148,12 +148,13 @@ Damit kann ein bereits unter Allgemein gelandetes Foto nachträglich z. B. `bbg 
   - `@ALLGEMEIN` → Hauptbaustelle;
   - Groß/Kleinschreibung der Firma + Zeitspanne + KM-Bereich.
 - derselbe Parser ist zusätzlich als JUnit-Test im Repository dokumentiert.
-- vollständiger Android-Gradle-Build und Gerätetest stehen noch aus.
-- GitHub Actions war zuletzt kein belastbarer Buildindikator, weil Jobs vor dem ersten Workflow-Schritt ohne Runner (`steps=[]`) beendet wurden.
+- **erster Android-Studio-Build am 15.09.2026:** `:app:compileDebugKotlin` scheiterte mit 7 Fehlern in `BtbPdfAuswahlFragment.kt` (`val cannot be reassigned` / `String` statt `EditText`). Ursache war ausschließlich die lokale Variable `val text`, die in nachfolgenden `TextView/MaterialButton.apply { text = ... }`-Blöcken deren `text`-Property überschattete.
+- **Fix:** Eingabefeld in `etText` umbenannt und alle zugehörigen Zugriffe angepasst. Die betroffenen 7 Compilerstellen sind damit aufgelöst; erneuter vollständiger Android-Studio-Build steht noch aus.
+- GitHub Actions ist weiterhin kein belastbarer Buildindikator, weil Jobs vor dem ersten Workflow-Schritt ohne Runner (`steps=[]`) beendet wurden.
 
 ### Nächster Gerätetest 200041
 1. GitHub Desktop `Fetch origin` → `Pull origin`.
-2. Android Studio Debug-Build 200041; als Update installieren, App-Daten nicht löschen.
+2. Android Studio Debug-Build 200041 erneut starten; als Update installieren, App-Daten nicht löschen.
 3. selben BTB/Abschnitt 4 öffnen.
 4. bei `bbg · Querformat (KM 5,963) · Test1.0` **`Foto +`** verwenden und externes Bild auswählen.
 5. prüfen: Foto zeigt Firma `bbg`, Ort `Querformat`, KM `5,963`, Text `Test1.0` und landet nicht unter Allgemein.
