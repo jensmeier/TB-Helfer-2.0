@@ -62,8 +62,18 @@ object BtbPdfHeaderRenderer {
             }
         }
 
-        var logoLeft = pageWidth - marginRight
-        var logoTop = marginTop
+        // 200042: Der rechte Kopfbereich ist eine feste Logo-Zone. Das Logo wird dort
+        // standardmaessig mittig und proportional eingepasst. Ohne Logo bleibt die Zone im
+        // fertigen PDF einfach weiss; es wird kein Platzhalter gezeichnet.
+        val boxRight = pageWidth - marginRight
+        val boxLeft = maxOf(300f, pageWidth * 0.51f)
+        val boxWidth = (boxRight - boxLeft).coerceAtLeast(80f)
+        val logoAreaTop = (marginTop - 10f).coerceAtLeast(18f)
+        val logoAreaBottom = 174f
+        val logoAreaHeight = (logoAreaBottom - logoAreaTop).coerceAtLeast(70f)
+
+        var logoLeft = boxLeft
+        var logoTop = logoAreaTop
         var logoWidth = 0f
         var logoHeight = 0f
         var contentBottom = marginTop
@@ -71,18 +81,20 @@ object BtbPdfHeaderRenderer {
             runCatching { BitmapFactory.decodeFile(it.absolutePath) }.getOrNull()
         }
         if (bmp != null && bmp.width > 0 && bmp.height > 0) {
-            var drawW = cfg.logoWidthPt.toFloat()
+            var drawW = cfg.logoWidthPt.toFloat().coerceAtMost(boxWidth)
             var drawH = drawW * bmp.height.toFloat() / bmp.width.toFloat()
-            val maxLogoH = 82f
-            if (drawH > maxLogoH) {
-                val factor = maxLogoH / drawH
+            if (drawH > logoAreaHeight) {
+                val factor = logoAreaHeight / drawH
                 drawW *= factor
                 drawH *= factor
             }
-            val desiredLeft = pageWidth - marginRight - drawW + cfg.offsetXPt
-            val desiredTop = marginTop - 8f + cfg.offsetYPt
-            logoLeft = desiredLeft.coerceIn(8f, pageWidth - 8f - drawW)
-            logoTop = desiredTop.coerceIn(8f, 220f)
+
+            val centeredLeft = boxLeft + (boxWidth - drawW) / 2f
+            val centeredTop = logoAreaTop + (logoAreaHeight - drawH) / 2f
+            val desiredLeft = centeredLeft + cfg.offsetXPt
+            val desiredTop = centeredTop + cfg.offsetYPt
+            logoLeft = desiredLeft.coerceIn(boxLeft, boxRight - drawW)
+            logoTop = desiredTop.coerceIn(8f, logoAreaBottom - drawH)
             logoWidth = drawW
             logoHeight = drawH
             canvas.drawBitmap(
@@ -95,9 +107,9 @@ object BtbPdfHeaderRenderer {
             bmp.recycle()
         }
 
-        val maxTextWidth = 180f
+        val maxTextWidth = boxWidth.coerceAtMost(230f)
         var y = if (logoHeight > 0f) {
-            contentBottom + 11f
+            maxOf(contentBottom + 9f, logoAreaBottom + 4f)
         } else {
             (marginTop + cfg.offsetYPt).coerceAtLeast(12f)
         }
@@ -106,17 +118,13 @@ object BtbPdfHeaderRenderer {
             val line = ellipsize(raw, textPaint, maxTextWidth)
             val width = textPaint.measureText(line)
             widest = maxOf(widest, width)
-            val centerX = if (logoWidth > 0f) {
-                logoLeft + logoWidth / 2f
-            } else {
-                pageWidth - marginRight - maxTextWidth / 2f + cfg.offsetXPt
-            }
+            val centerX = boxLeft + boxWidth / 2f + cfg.offsetXPt
             val x = (centerX - width / 2f).coerceIn(8f, pageWidth - 8f - width)
             canvas.drawText(line, x, y, textPaint)
             y += textPaint.textSize * 1.24f
         }
         if (lines.isNotEmpty()) contentBottom = maxOf(contentBottom, y)
-        val effectiveWidth = widest.coerceAtMost(maxTextWidth)
+        val effectiveWidth = widest.coerceAtMost(boxWidth)
         return Metrics(
             bottom = contentBottom,
             blockWidth = if (effectiveWidth > 0f || lines.isNotEmpty()) effectiveWidth else 0f
