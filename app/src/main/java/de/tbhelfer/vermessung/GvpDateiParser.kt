@@ -2,6 +2,8 @@ package de.tbhelfer.vermessung
 
 import de.tbhelfer.datenbank.GvpPointEntity
 import de.tbhelfer.datenbank.TrassenAchseEntity
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.charset.Charset
 import java.util.Locale
 import kotlin.math.abs
@@ -9,23 +11,38 @@ import kotlin.math.abs
 /**
  * Parser fuer Festpunkt-/GVP-Dateien mit DB_REF-Koordinaten.
  *
- * Unterstuetzte gelieferte Varianten:
- * - GVP-/Streifen-TXT, z. B. Gessertshausen
- * - KF.TXT-Koordinatenverzeichnisse, z. B. Pasing/Harburg
- * - KV-Festpunktdateien mit Station, z. B. 8771
+ * Unterstuetzte Varianten:
+ * - rohe KF 7.0 / 7.0 R (102-Byte-Datensaetze)
+ * - GVP-/Streifen-TXT
+ * - KF.TXT-Koordinatenverzeichnisse
+ * - KV-Festpunktdateien mit Station
  *
  * Entscheidend fuer eine automatische KM-Kalibrierung ist nicht die Dateiendung,
- * sondern ob pro Punkt eine echte Station/KM vorhanden ist. Eine KF.TXT, deren
- * KM-Spalte komplett 0.00000 ist, liefert deshalb Punkte, aber keine KM-Quelle.
+ * sondern ob pro Punkt eine echte Strecke und eine plausible Station vorhanden sind.
  */
 object GvpDateiParser {
 
-    fun parse(dateiname: String, bytes: ByteArray): GvpParseResult {
-        val text = dekodiereText(bytes)
-        val warnungen = mutableListOf<String>()
+    private const val KF_RECORD_SIZE = 102
+    private val kfCharset: Charset = Charset.forName("windows-1252")
 
-        val istKv = dateiname.lowercase(Locale.GERMANY).endsWith(".kv")
-        val istKfText = dateiname.lowercase(Locale.GERMANY).endsWith(".kf.txt") ||
+    fun parse(dateiname: String, bytes: ByteArray): GvpParseResult {
+        val warnungen = mutableListOf<String>()
+        val lower = dateiname.lowercase(Locale.GERMANY)
+
+        if (lower.endsWith(".kf") && istRohKf7(bytes)) {
+            val punkte = parseRohKf(dateiname, bytes, warnungen)
+            require(punkte.isNotEmpty()) {
+                "Rohe KF-Datei erkannt, aber keine plausiblen Festpunkte gefunden."
+            }
+            return GvpParseResult(
+                punkte = punkte,
+                warnungen = warnungen.distinct()
+            )
+        }
+
+        val text = dekodiereText(bytes)
+        val istKv = lower.endsWith(".kv")
+        val istKfText = lower.endsWith(".kf.txt") ||
             text.contains("Koordinatenverzeichnis", ignoreCase = true)
         val kv = if (istKv) parseKv(dateiname, text, warnungen) else emptyList()
         val standard = when {
@@ -36,12 +53,11 @@ object GvpDateiParser {
         var punkte = if (kv.isNotEmpty()) kv else standard
 
         require(punkte.isNotEmpty()) {
-            "Keine GVP/Festpunkte gefunden. Erwartet wird GVP-/KF.TXT oder eine KV-Datei mit DB_REF-Koordinaten."
+            "Keine GVP/Festpunkte gefunden. Erwartet wird rohe KF 7.0, GVP-/KF.TXT oder eine KV-Datei mit DB_REF-Koordinaten."
         }
 
-        // Harburg zeigt den wichtigen Sonderfall: KM-Spalte ist vorhanden, aber in
-        // der gesamten KF.TXT 0.00000. Dann darf daraus keine gruen markierte,
-        // automatische KM-Kalibrierung entstehen.
+        // Harburg-Sonderfall: Eine KM-/Stationsspalte, die komplett 0.00000 ist,
+        // ist keine belastbare KM-Quelle.
         val kmWerte = punkte.mapNotNull { it.kmMeter }
         if (kmWerte.isNotEmpty() && kmWerte.all { abs(it) <= 0.001 }) {
             punkte = punkte.map { it.copy(kmMeter = null) }
@@ -54,12 +70,123 @@ object GvpDateiParser {
         )
     }
 
+    private fun istRohKf7(bytes: ByteArray): Boolean {
+        if (bytes.size < KF_RECORD_SIZE * 2 || bytes.size % KF_RECORD_SIZE != 0) return false
+        val version = textFeld(bytes, 40, 34).uppercase(Locale.GERMANY)
+        return version.contains("VERSION 7.0")
+    }
+
+    /**
+     * Direkter Import der gelieferten KF-Version 7.0.
+     *
+     * Datensatzaufbau (Little Endian):
+     * 0..7 KF-Punktnummer, 8..15 Rechtswert, 16..23 Hochwert,
+     * 24..31 Hoehe, 32..39 Station, 40..55 Lagebezeichnung,
+     * 56..69 Zusatztext, 70..73 PArt, 74 VArt, 75..82 Status,
+     * 83..96 Metadaten, 97..100 Strecke, 101 RiKz.
+     */
+    private fun parseRohKf(
+        dateiname: String,
+        bytes: ByteArray,
+        warnungen: MutableList<String>
+    ): List<GvpPointEntity> {
+        val punkte = mutableListOf<GvpPointEntity>()
+        var ohneStrecke = 0
+        var ohneStation = 0
+        var ohneHoehe = 0
+        var zone3 = 0
+
+        val recordCount = bytes.size / KF_RECORD_SIZE
+        for (recordIndex in 1 until recordCount) {
+            val base = recordIndex * KF_RECORD_SIZE
+            val kfNummer = plausibleWert(doubleLe(bytes, base)) ?: continue
+            val rechtswert = plausibleWert(doubleLe(bytes, base + 8)) ?: continue
+            val hochwert = plausibleWert(doubleLe(bytes, base + 16)) ?: continue
+            if (!istDbRefPlausibel(rechtswert, hochwert)) continue
+
+            val hoehe = plausibleWert(doubleLe(bytes, base + 24))
+            val stationRoh = plausibleWert(doubleLe(bytes, base + 32))
+            // Eine blanke/Platzhalter-Station 0 darf nicht als km 0.000 erfunden werden.
+            val station = stationRoh?.takeIf { abs(it) > 0.001 }
+
+            val lage = textFeld(bytes, base + 40, 16).takeIf { it.isNotBlank() }
+            val zusatz = textFeld(bytes, base + 56, 14)
+            val part = textFeld(bytes, base + 70, 4).takeIf { it.isNotBlank() }
+            val vart = textFeld(bytes, base + 74, 1)
+            val meta = textFeld(bytes, base + 83, 14)
+            val strecke = textFeld(bytes, base + 97, 4)
+                .takeIf { it.matches(Regex("[1-9]\\d{3}")) }
+            val rikz = textFeld(bytes, base + 101, 1)
+
+            if (strecke == null) ohneStrecke++
+            if (station == null) ohneStation++
+            if (hoehe == null) ohneHoehe++
+
+            val koordinatensystem: String
+            val gps = when {
+                rechtswert in 4_000_000.0..<5_000_000.0 -> {
+                    koordinatensystem = TrassenAchseEntity.KOORD_DB_REF2016_4
+                    DbRefKoordinatenwandler.dbRef2016Zone4ZuWgs84OrNull(rechtswert, hochwert)
+                }
+                rechtswert in 3_000_000.0..<4_000_000.0 -> {
+                    // Gelieferte 5362-KF liegt im GK-/DB_REF-Streifen 3. Fuer diesen
+                    // Streifen gibt es aktuell bewusst noch keinen GPS-Wandler. Die
+                    // Rohkoordinaten bleiben dennoch voll fuer TRA/GVP-KM-Zuordnung nutzbar.
+                    koordinatensystem = "DB_REF_GK_3"
+                    zone3++
+                    null
+                }
+                else -> {
+                    koordinatensystem = "DB_REF_UNBEKANNT"
+                    null
+                }
+            }
+
+            val statusHex = (75..82).joinToString("") { offset ->
+                "%02X".format(Locale.ROOT, bytes[base + offset].toInt() and 0xFF)
+            }
+            val recordHex = bytes.copyOfRange(base, base + KF_RECORD_SIZE).joinToString("") { b ->
+                "%02X".format(Locale.ROOT, b.toInt() and 0xFF)
+            }
+            val kfNummerText = formatKfNummer(kfNummer)
+
+            punkte += GvpPointEntity(
+                strecke = strecke,
+                punktName = lage ?: kfNummerText.ifBlank { "KF-$recordIndex" },
+                kmMeter = station,
+                xDbRef = rechtswert,
+                yDbRef = hochwert,
+                lat = gps?.lat,
+                lon = gps?.lon,
+                hoeheM = hoehe,
+                typ = part,
+                klasse = kfNummerText.takeIf { it.isNotBlank() },
+                koordinatensystem = koordinatensystem,
+                quelleDatei = dateiname,
+                rawLine = buildString {
+                    append("KF7")
+                    if (zusatz.isNotBlank()) append("|zusatz=").append(zusatz)
+                    if (vart.isNotBlank()) append("|vart=").append(vart)
+                    append("|status=").append(statusHex)
+                    if (meta.isNotBlank()) append("|meta=").append(meta)
+                    if (rikz.isNotBlank()) append("|rikz=").append(rikz)
+                    append("|raw=").append(recordHex)
+                }
+            )
+        }
+
+        warnungen += "Roh-KF 7.0 direkt importiert: ${punkte.size} Punkt(e)."
+        if (ohneStrecke > 0) warnungen += "$ohneStrecke Roh-KF-Punkt(e) ohne plausible Strecke wurden als Koordinatenpunkte erhalten."
+        if (ohneStation > 0) warnungen += "$ohneStation Roh-KF-Punkt(e) ohne plausible Station liefern keine direkte Kilometrierung."
+        if (ohneHoehe > 0) warnungen += "$ohneHoehe Roh-KF-Punkt(e) ohne plausible Hoehe wurden erhalten."
+        if (zone3 > 0) warnungen += "$zone3 Roh-KF-Punkt(e) im DB_REF/GK-Streifen 3 bleiben fuer Achs-/KM-Zuordnung nutzbar; GPS-Umrechnung folgt separat."
+        return punkte
+    }
 
     /**
      * iGeo-KF.TXT ist ein Festbreitenformat. Gerade wenn KM und Strecke leer sind,
      * darf es nicht ueber whitespace-Tokens gelesen werden: sonst rutschen Punktname,
-     * Strecke und KM nach links. Patch45ZN behaelt deshalb jeden plausiblen
-     * Koordinatenpunkt; Strecke und KM duerfen null sein.
+     * Strecke und KM nach links.
      */
     private fun parseKfText(
         dateiname: String,
@@ -145,7 +272,7 @@ object GvpDateiParser {
 
             val typ = tokens.firstOrNull { token ->
                 val upper = token.uppercase(Locale.GERMANY)
-                upper.startsWith("GVP") || upper in setOf("PPB", "GPSC", "HBH", "PS0", "PS2")
+                upper.startsWith("GVP") || upper in setOf("PPB", "GPSC", "HBH", "PS0", "PS1", "PS2", "PS3", "PS4")
             }
             val gps = DbRefKoordinatenwandler.dbRef2016Zone4ZuWgs84OrNull(x, y)
 
@@ -175,9 +302,6 @@ object GvpDateiParser {
     /**
      * KV-Beispiel 8771:
      * 545600  4403285.27551 5407255.31497 415.4400 54319.7580 54/56 54/56 GVPV 5300 ...
-     *
-     * Die Hoehe kann leer sein. Darum werden Station, Punktart und Strecke nicht
-     * ueber starre Token-Indizes, sondern ueber ihre Form erkannt.
      */
     private fun parseKv(
         dateiname: String,
@@ -241,6 +365,23 @@ object GvpDateiParser {
         return punkte
     }
 
+    private fun doubleLe(bytes: ByteArray, offset: Int): Double =
+        ByteBuffer.wrap(bytes, offset, 8).order(ByteOrder.LITTLE_ENDIAN).double
+
+    private fun plausibleWert(value: Double): Double? =
+        value.takeIf { it.isFinite() && abs(it) < 1e30 }
+
+    private fun textFeld(bytes: ByteArray, start: Int, length: Int): String {
+        if (start < 0 || start >= bytes.size || length <= 0) return ""
+        val ende = (start + length).coerceAtMost(bytes.size)
+        return String(bytes, start, ende - start, kfCharset)
+            .replace("\u0000", "")
+            .trim()
+    }
+
+    private fun formatKfNummer(value: Double): String =
+        String.format(Locale.ROOT, "%.5f", value).trimEnd('0').trimEnd('.')
+
     private fun istDbRefPlausibel(x: Double, y: Double): Boolean =
         x in 3_000_000.0..6_000_000.0 && y in 4_000_000.0..6_500_000.0
 
@@ -259,7 +400,7 @@ object GvpDateiParser {
     }
 
     private fun String.toDoubleDeOrNull(): Double? =
-        replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() }
+        replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && abs(it) < 1e30 }
 }
 
 data class GvpParseResult(
