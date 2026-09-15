@@ -698,7 +698,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             ))
         }
 
-        val text = field("BTB/PDF-Text", photoDisplayText(foto))
+        val etText = field("BTB/PDF-Text", photoDisplayText(foto))
         val currentKm = kmOverrides[foto.id]
         val kmVon = field(
             "KM von",
@@ -732,7 +732,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                     .setItems(labels) { _, which ->
                         val target = importTargets[which]
                         selectedOrtId = target.ortId
-                        text.setText(target.text)
+                        etText.setText(target.text)
                         firma.setText(target.firma.orEmpty())
                         kmVon.setText(target.kmVon?.let(::formatKmInput).orEmpty())
                         kmBis.setText(target.kmBis?.let(::formatKmInput).orEmpty())
@@ -775,7 +775,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                     return@setOnClickListener
                 }
 
-                val cleanedText = text.text?.toString().orEmpty().trim()
+                val cleanedText = etText.text?.toString().orEmpty().trim()
                 val textOverride = cleanedText.takeIf { it.isNotBlank() && it != foto.kurztext.trim() }
                 val kmOverride = von?.let { BtbPhotoKmOverrideStore.KmOverride(it, bis) }
                 val contextOverride = BtbPhotoContextOverrideStore.ContextOverride(
