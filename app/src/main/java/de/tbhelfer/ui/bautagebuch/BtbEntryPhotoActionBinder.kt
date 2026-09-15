@@ -1,9 +1,7 @@
 package de.tbhelfer.ui.bautagebuch
 
 import android.app.Dialog
-import android.content.DialogInterface
 import android.os.Bundle
-import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -208,9 +206,5 @@ object BtbEntryPhotoActionBinder {
 
         btnCamera.setOnClickListener { launch("camera") }
         btnGallery.setOnClickListener { launch("gallery") }
-
-        // Bei normalem Abbrechen darf kein Foto-Pfad ausgelöst werden. Die Buttons besitzen
-        // ausschließlich ihre eigenen Click-Listener; die AlertDialog-Buttons bleiben unverändert.
-        entryDialog.setOnCancelListener { _: DialogInterface -> Unit }
     }
 }
