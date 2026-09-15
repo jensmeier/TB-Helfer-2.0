@@ -69,7 +69,9 @@ object BtbPdfLogoLayoutSpeicher {
     }
 
     fun normalize(cfg: Einstellungen): Einstellungen = cfg.copy(
-        logoWidthPt = cfg.logoWidthPt.coerceIn(40, 180),
+        // 200042: Der rechte PDF-Kopf bietet deutlich mehr Platz als die fruehere 180-pt-Grenze.
+        // Der Renderer begrenzt das Logo zusaetzlich auf den tatsaechlich verfuegbaren Kopfbereich.
+        logoWidthPt = cfg.logoWidthPt.coerceIn(40, 250),
         offsetXPt = cfg.offsetXPt.coerceIn(-120, 120),
         offsetYPt = cfg.offsetYPt.coerceIn(-60, 180),
         serverVersion = cfg.serverVersion.coerceAtLeast(0L)
