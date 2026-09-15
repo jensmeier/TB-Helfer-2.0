@@ -1,19 +1,16 @@
 package de.tbhelfer.ui.bautagebuch
 
 import android.app.Dialog
-import android.content.res.ColorStateList
 import android.os.Bundle
-import android.util.TypedValue
 import android.view.Gravity
+import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
-import androidx.appcompat.widget.AppCompatImageButton
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import com.google.android.material.color.MaterialColors
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputLayout
 import de.tbhelfer.R
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +21,7 @@ import java.util.Locale
 /**
  * Fotoimport direkt aus dem Dialog "Eintrag für <Firma>".
  *
- * Android 200045: Der Dialog zeigt nur noch ein kompaktes Bildsymbol. Ein Tipp darauf
+ * Android 200048: kompakter, beschrifteter Material-Button "Bilder". Ein Tipp darauf
  * öffnet direkt den vorhandenen Android-Bildwähler. Der bestehende BTB-/Fotoimportpfad
  * bleibt erhalten, damit Firma, Ort, Arbeitstext, KM und stabile btbId übernommen werden.
  */
@@ -61,36 +58,36 @@ object BtbEntryPhotoActionBinder {
         val density = fragment.resources.displayMetrics.density
         fun dp(value: Int): Int = (value * density).toInt()
 
-        val iconRow = LinearLayout(context).apply {
+        val imageRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.START or Gravity.CENTER_VERTICAL
             setPadding(0, dp(6), 0, 0)
         }
 
-        val btnImage = AppCompatImageButton(context).apply {
-            setImageResource(R.drawable.ic_image_picker_24)
-            imageTintList = ColorStateList.valueOf(
-                MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface)
-            )
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-            contentDescription = "Bild auswählen"
-            setPadding(dp(8), dp(8), dp(8), dp(8))
+        // Material-Outlined statt nacktem Icon: kompakt, aber ohne Rätselraten erkennbar.
+        // Farben, Kontur und Ripple kommen vollständig aus dem aktiven Material-Theme
+        // und funktionieren damit in Tag- und Nachtansicht ohne feste Farbwerte.
+        val btnImages = MaterialButton(
+            context,
+            null,
+            com.google.android.material.R.attr.materialButtonOutlinedStyle
+        ).apply {
+            isAllCaps = false
+            text = "Bilder"
+            setIconResource(R.drawable.ic_image_picker_24)
+            iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+            iconPadding = dp(6)
+            iconSize = dp(18)
+            contentDescription = "Bilder auswählen"
             minimumWidth = 0
             minimumHeight = 0
-
-            val selectableBackground = TypedValue()
-            if (
-                context.theme.resolveAttribute(
-                    android.R.attr.selectableItemBackgroundBorderless,
-                    selectableBackground,
-                    true
-                ) && selectableBackground.resourceId != 0
-            ) {
-                setBackgroundResource(selectableBackground.resourceId)
-            }
+            setPadding(dp(10), 0, dp(12), 0)
         }
-        iconRow.addView(btnImage, LinearLayout.LayoutParams(dp(44), dp(44)))
-        container.addView(iconRow)
+        imageRow.addView(
+            btnImages,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(40))
+        )
+        container.addView(imageRow)
 
         fun normalizeHm(raw: String): String? {
             val match = Regex("^(\\d{1,2}):(\\d{2})$").matchEntire(raw.trim()) ?: return null
@@ -210,6 +207,6 @@ object BtbEntryPhotoActionBinder {
             }
         }
 
-        btnImage.setOnClickListener { launchImagePicker() }
+        btnImages.setOnClickListener { launchImagePicker() }
     }
 }
