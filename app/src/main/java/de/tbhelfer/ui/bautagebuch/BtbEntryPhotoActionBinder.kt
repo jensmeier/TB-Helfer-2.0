@@ -1,15 +1,19 @@
 package de.tbhelfer.ui.bautagebuch
 
 import android.app.Dialog
+import android.content.res.ColorStateList
 import android.os.Bundle
-import android.view.ViewGroup
+import android.util.TypedValue
+import android.view.Gravity
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.appcompat.widget.AppCompatImageButton
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import com.google.android.material.button.MaterialButton
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.textfield.TextInputLayout
 import de.tbhelfer.R
 import kotlinx.coroutines.Dispatchers
@@ -18,10 +22,11 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 
 /**
- * Android 200043: Fotoquelle direkt aus dem Dialog "Eintrag für <Firma>".
+ * Fotoimport direkt aus dem Dialog "Eintrag für <Firma>".
  *
- * Der Binder verwendet bewusst den bestehenden Kamera-/Galeriepfad im
- * [BtbPdfAuswahlFragment]. Damit entstehen keine parallelen Foto- oder Overlay-Lösungen.
+ * Android 200045: Der Dialog zeigt nur noch ein kompaktes Bildsymbol. Ein Tipp darauf
+ * öffnet direkt den vorhandenen Android-Bildwähler. Der bestehende BTB-/Fotoimportpfad
+ * bleibt erhalten, damit Firma, Ort, Arbeitstext, KM und stabile btbId übernommen werden.
  */
 object BtbEntryPhotoActionBinder {
 
@@ -52,39 +57,40 @@ object BtbEntryPhotoActionBinder {
         onCommitManualEntry: (Draft) -> Unit,
         snapshotProvider: suspend () -> BautagebuchEintrag?
     ) {
+        val context = fragment.requireContext()
         val density = fragment.resources.displayMetrics.density
         fun dp(value: Int): Int = (value * density).toInt()
 
-        val row = LinearLayout(fragment.requireContext()).apply {
+        val iconRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            weightSum = 2f
-            setPadding(0, dp(10), 0, 0)
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            setPadding(0, dp(6), 0, 0)
         }
 
-        fun photoButton(label: String): MaterialButton = MaterialButton(fragment.requireContext()).apply {
-            text = label
-            isAllCaps = false
-            textSize = 12f
-            minHeight = dp(44)
-            insetTop = 0
-            insetBottom = 0
-        }
+        val btnImage = AppCompatImageButton(context).apply {
+            setImageResource(R.drawable.ic_image_picker_24)
+            imageTintList = ColorStateList.valueOf(
+                MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface)
+            )
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            contentDescription = "Bild auswählen"
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            minimumWidth = 0
+            minimumHeight = 0
 
-        val btnCamera = photoButton("📷 → Kamera")
-        val btnGallery = photoButton("📷 → Galerie & Dateien")
-        row.addView(
-            btnCamera,
-            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginEnd = dp(4)
+            val selectableBackground = TypedValue()
+            if (
+                context.theme.resolveAttribute(
+                    android.R.attr.selectableItemBackgroundBorderless,
+                    selectableBackground,
+                    true
+                ) && selectableBackground.resourceId != 0
+            ) {
+                setBackgroundResource(selectableBackground.resourceId)
             }
-        )
-        row.addView(
-            btnGallery,
-            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = dp(4)
-            }
-        )
-        container.addView(row)
+        }
+        iconRow.addView(btnImage, LinearLayout.LayoutParams(dp(44), dp(44)))
+        container.addView(iconRow)
 
         fun normalizeHm(raw: String): String? {
             val match = Regex("^(\\d{1,2}):(\\d{2})$").matchEntire(raw.trim()) ?: return null
@@ -154,7 +160,7 @@ object BtbEntryPhotoActionBinder {
             )
         }
 
-        fun launch(source: String) {
+        fun launchImagePicker() {
             val draft = readDraft() ?: return
             onCommitManualEntry(draft)
             entryDialog.dismiss()
@@ -163,11 +169,11 @@ object BtbEntryPhotoActionBinder {
             fragment.lifecycleScope.launch {
                 val snapshot = snapshotProvider()
                 if (snapshot == null) {
-                    Toast.makeText(fragment.requireContext(), "BTB konnte nicht gespeichert werden.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "BTB konnte nicht gespeichert werden.", Toast.LENGTH_LONG).show()
                     return@launch
                 }
 
-                val appContext = fragment.requireContext().applicationContext
+                val appContext = context.applicationContext
                 withContext(Dispatchers.IO) {
                     BautagebuchSpeicher.speichern(appContext, snapshot)
                 }
@@ -186,7 +192,7 @@ object BtbEntryPhotoActionBinder {
                     putString("schichtTyp", snapshot.schicht.name)
                     putString("filterBildtyp", de.tbhelfer.datenbank.Bildtyp.FOTODOKUMENTATION.name)
                     canonicalBtbId?.let { putString("btbId", it) }
-                    putString("autoPhotoSource", source)
+                    putString("autoPhotoSource", "gallery")
                     putString("autoPhotoFirma", firma?.trim().orEmpty())
                     putLong("autoPhotoOrtId", draft.ortId)
                     putString("autoPhotoOrtLabel", draft.ortLabel)
@@ -199,12 +205,11 @@ object BtbEntryPhotoActionBinder {
                 runCatching {
                     fragment.findNavController().navigate(R.id.btbPdfAuswahlFragment, args)
                 }.onFailure {
-                    Toast.makeText(fragment.requireContext(), "Fotoquelle konnte nicht geöffnet werden.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Bildauswahl konnte nicht geöffnet werden.", Toast.LENGTH_LONG).show()
                 }
             }
         }
 
-        btnCamera.setOnClickListener { launch("camera") }
-        btnGallery.setOnClickListener { launch("gallery") }
+        btnImage.setOnClickListener { launchImagePicker() }
     }
 }

@@ -144,8 +144,8 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200044: Room/KSP-Regressionsfix fuer die 200043-Build-Source-Bruecke.
-        versionCode = 200044
+        // Android 200045: kompakte, theme-faehige Bildauswahl im BTB-Eintrag.
+        versionCode = 200045
         versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
