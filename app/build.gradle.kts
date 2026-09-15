@@ -274,6 +274,12 @@ abstract class GenerateBtb200043Sources : DefaultTask() {
         // ein zweites Mal enthalten; sonst gäbe es doppelte Klassen. Der Datenbank-Ordner
         // wird unten separat aus src/main/java eingebunden und von KSP verarbeitet.
         val generatedDatabaseDir = outputRoot.resolve("de/tbhelfer/datenbank")
+        val generatedTrassenRepository = generatedDatabaseDir.resolve("TrassenRepository.kt")
+        check(generatedTrassenRepository.isFile && generatedTrassenRepository.readText().contains(
+            "if (achsen.isEmpty() || samplesNachAchse.isEmpty())"
+        )) {
+            "Android 200048: GVP-KM-Kalibrierung ohne GRA ist im TrassenRepository nicht aktiv."
+        }
         check(generatedDatabaseDir.deleteRecursively()) {
             "Android 200044: generierte Datenbank-Kopie konnte nicht entfernt werden."
         }
@@ -293,8 +299,8 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200047: stabiler Roh-KF-Build + Hauptbaustellen-/Mitternachtsfix im BTB.
-        versionCode = 200047
+        // Android 200048: beschrifteter Bilder-Button + Roh-KF/GVP-KM auch ohne GRA.
+        versionCode = 200048
         versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
