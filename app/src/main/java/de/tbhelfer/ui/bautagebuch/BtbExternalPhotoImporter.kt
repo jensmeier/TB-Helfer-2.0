@@ -19,6 +19,17 @@ import java.util.Locale
 /** Importiert Galerie-/Datei-Fotos als eigene App-Kopie in exakt einen modernen BTB. */
 object BtbExternalPhotoImporter {
 
+    /**
+     * Optionaler fachlicher Zielkontext eines bereits vorhandenen BTB-Arbeitseintrags.
+     * EXIF-Aufnahmezeit/GPS des externen Originals bleiben davon unberuehrt.
+     */
+    data class ImportContextData(
+        val firma: String? = null,
+        val baustellenKnotenId: Long? = null,
+        val kurztext: String? = null,
+        val km: Double? = null
+    )
+
     data class Result(
         val imported: List<FotoEntity>,
         val failed: Int
@@ -32,7 +43,8 @@ object BtbExternalPhotoImporter {
         datumIso: String,
         bildtyp: Bildtyp,
         btbId: String,
-        repository: FotoRepository
+        repository: FotoRepository,
+        importContext: ImportContextData? = null
     ): Result {
         if (uris.isEmpty() || btbId.isBlank()) return Result(emptyList(), uris.size)
         val imported = mutableListOf<FotoEntity>()
@@ -48,6 +60,7 @@ object BtbExternalPhotoImporter {
                     bildtyp = bildtyp,
                     btbId = btbId,
                     repository = repository,
+                    importContext = importContext,
                     index = index
                 )
             }.getOrNull()
@@ -65,6 +78,7 @@ object BtbExternalPhotoImporter {
         bildtyp: Bildtyp,
         btbId: String,
         repository: FotoRepository,
+        importContext: ImportContextData?,
         index: Int
     ): FotoEntity {
         val displayName = queryDisplayName(context, uri)
@@ -121,21 +135,23 @@ object BtbExternalPhotoImporter {
             val created = exifDateEpochMs(exif) ?: System.currentTimeMillis()
 
             FotoSpeicher.erstelleThumbnailWennMoeglich(target)
+            val contextText = importContext?.kurztext?.trim()?.takeIf { it.isNotBlank() }
+            val contextKm = importContext?.km?.takeIf { it.isFinite() }
             val entity = FotoEntity(
                 baustelleId = baustelleId,
-                baustellenKnotenId = null,
+                baustellenKnotenId = importContext?.baustellenKnotenId?.takeIf { it > 0L },
                 dateipfad = target.absolutePath,
                 gpsLat = latLon?.getOrNull(0) ?: 0.0,
                 gpsLon = latLon?.getOrNull(1) ?: 0.0,
                 gpsAltM = altitude,
-                km = null,
+                km = contextKm,
                 kmSuffix = 0,
-                kmManuell = false,
+                kmManuell = contextKm != null,
                 achsabstandM = null,
                 indikator = null,
-                firma = "",
+                firma = importContext?.firma?.trim().orEmpty(),
                 bildtyp = bildtyp,
-                kurztext = originalBase.take(120),
+                kurztext = (contextText ?: originalBase).take(120),
                 notiz = null,
                 objektKennung = null,
                 objektBereich = null,
