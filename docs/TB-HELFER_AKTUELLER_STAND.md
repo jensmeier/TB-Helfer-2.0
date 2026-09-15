@@ -17,9 +17,10 @@ Vor jeder Änderung zuerst lesen:
 - aktiv: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft/mergeable.
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`.
-- letzter vollständig bestätigter Kernstand: Android **200039**.
-- Android **200044** wurde nach dem Room/KSP-Fix auf dem Poco wieder gestartet; der BTB-Eintragsdialog und seine Fotoaktionen waren wieder sichtbar/funktionsfähig.
-- aktueller Buildkandidat: Android **200045**.
+- letzter vollständig bestätigter BTB-Kernstand: Android **200039**.
+- Android **200044** startet nach dem Room/KSP-Fix wieder auf dem Poco.
+- Android **200045**: kompakter Bildwähler im BTB-Arbeitseintrag funktioniert praktisch; eine kurz beobachtete durcheinander wirkende BTB-Anzeige war anschließend nicht mehr reproduzierbar, vorhandene Einträge waren wieder sichtbar. Deshalb keine weitere BTB-Änderung ohne reproduzierbaren Fehler.
+- aktueller Buildkandidat: Android **200046 – direkter Roh-KF-7.0-Import für Festpunkte/KM-Quellen**.
 
 ## Normaler Entwicklungsablauf
 Source of Truth ist GitHub.
@@ -31,36 +32,88 @@ Windows-PC:
 
 Die alten `.github/scripts/patch_200035...200038*.ps1` sind nur historische Hilfsmittel und nicht mehr der normale Entwicklungsweg.
 
-## Android 200045 – kompakte Bildauswahl im BTB-Arbeitseintrag
-Ziel nach praktischem 200044-Test: Die zwei großen blauen Foto-Schaltflächen im Dialog `Eintrag für <Firma>` waren fachlich funktionsfähig, aber optisch zu groß und unübersichtlich.
+## Android 200046 – KM/Festpunkte: Roh-KF direkt importieren
+### Gemeldetes Fehlerbild
+- Vermessungs-/Absteckungsdaten lassen sich einlesen.
+- Festpunkte mit vorhandener Kilometrierung fehlen danach bzw. sind nicht mehr sichtbar.
+- KM-Berechnung funktioniert dadurch nicht wie früher.
 
-Umgesetzt:
-- `versionCode = 200045`, `versionName = 1.3`;
-- die zwei großen Buttons `📷 → Kamera` und `📷 → Galerie & Dateien` wurden aus diesem Arbeitseintragsdialog entfernt;
-- stattdessen gibt es nur noch ein kompaktes Bild-/Galerie-Symbol links im unteren Dialogbereich;
-- Tippen auf dieses Symbol startet direkt den vorhandenen Android-Bildauswahlpfad (`image/*`), ohne vorgeschaltetes Kamera/Galerie-Menü;
-- der Dialog bietet über dieses Symbol bewusst keine Kamera mehr an;
-- externe Bilder werden weiterhin über den vorhandenen BTB-Importweg als App-Kopie übernommen; das externe Original bleibt unverändert;
-- die fachliche Zuordnung bleibt erhalten: stabile `btbId`, Firma, Unterbaustelle/Ort, Arbeitstext, optionale Zeit, KM/KM-Bereich;
-- normales `Abbrechen` und `Hinzufügen` bleiben unverändert;
-- neues Vektor-Icon `ic_image_picker_24.xml`;
-- Icon-Farbe wird aus Material `colorOnSurface` abgeleitet, der Tipp-Hintergrund aus dem aktuellen Android-Theme. Keine fest verdrahtete Hell-/Dunkel-Farbe; Tag- und Nachtansicht sollen damit automatisch passen.
+### Gefundene Ursache
+Der ZIP-Scanner erkennt rohe `.kf`-Dateien bereits als `KF_RAW`, der eigentliche Importpfad hat sie aber bisher ausdrücklich **nicht importiert** und nur gemeldet:
 
-Betroffene Dateien:
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbEntryPhotoActionBinder.kt`
-- `app/src/main/res/drawable/ic_image_picker_24.xml`
+`nicht direkt importiert: KF-Original erkannt; falls vorhanden wird KF.TXT verwendet`
+
+Damit fehlen gerade in Beständen, bei denen die belastbare Strecke/Station nur oder besser im binären KF-Original steckt, die Festpunkte als KM-Quelle. Das passt zum gemeldeten Fehlerbild.
+
+Die frühere vollständige Vermessungsdatenprüfung im Projekt bestätigt:
+- rohe KF-Dateien sind KF Version 7.0 / 7.0 R mit festen 102-Byte-Datensätzen;
+- numerische Werte sind Little-Endian-Doubles;
+- echte Station/KM, Strecke und PArt sind direkt im Rohdatensatz enthalten;
+- `1e40` ist ein Fehlwert/Sentinel;
+- Station `0.0` darf nicht blind als echte km 0 verwendet werden;
+- rohe KF sollen direkt importiert und gegenüber `.kf.txt` bevorzugt werden, wenn die Originaldaten vorhanden sind.
+
+### Umsetzung 200046
+`GvpDateiParser` kann jetzt rohe KF 7.0 direkt lesen:
+- Headerprüfung: Dateigröße Vielfaches von 102 Byte und `VERSION 7.0` / `VERSION 7.0  R` im Header;
+- pro Punkt werden KF-Punktnummer, Rechtswert, Hochwert, Höhe, Station, Lagebezeichnung, Zusatzfeld, PArt, VArt, Statusbytes, Metadaten, Strecke und RiKz gelesen;
+- `abs(Wert) >= 1e30` wird als fehlend behandelt;
+- Strecke `0000` wird nicht als reale Strecke übernommen;
+- Station `0.0` wird nicht als belastbare KM-Quelle übernommen;
+- PArt wird unverändert erhalten, also u. a. `PS0`, `PS1`, `PS2`, `PS3`, `PS4`, `GVPV`, `GPSC`, `HBH`, `PPB`;
+- der vollständige 102-Byte-Punktdatensatz wird zusätzlich als Hex im `rawLine` erhalten, damit Status-/Zusatzinformationen nicht verloren gehen;
+- DB_REF/GK-Streifen 4 nutzt den vorhandenen Zone-4-WGS84-Wandler;
+- DB_REF/GK-Streifen 3 (z. B. Strecke 5362) bleibt mit den Original-Rechts-/Hochwerten erhalten und wird für die bestehende TRA/GVP-KM-Zuordnung verwendet; dafür wird noch keine falsche GPS-Umrechnung über den Zone-4-Wandler erzwungen.
+
+Der vorhandene Importpfad wird wiederverwendet:
+- `KF_RAW` läuft jetzt wie `KF_TXT`, `KV` und GVP-TXT in `importiereZipGvpDatei(...)`;
+- Speicherung bleibt über `TrassenRepository.gvpImportSpeichern(...)`;
+- die bestehende GVP-KM-Kalibrierung bleibt unverändert: Festpunkte mit Strecke + KM werden räumlich der TRA-Achse zugeordnet und können `kmQuelle = GVP` erzeugen;
+- Originaldateien werden nicht verändert.
+
+### Betroffene Dateien 200046
+- `app/src/main/java/de/tbhelfer/vermessung/GvpDateiParser.kt`
 - `app/build.gradle.kts`
-- diese Statusdatei
+- `app/src/test/java/de/tbhelfer/vermessung/GvpDateiParserRawKfTest.kt`
+- `docs/TB-HELFER_AKTUELLER_STAND.md`
 
-Code-Commit vor dieser Doku:
-- `1e24943f1ea3dfd16fa378b0811f6c0126633b06` – `feat: simplify BTB image picker action`
+Hinweis zur bestehenden Build-Source-Brücke:
+- Seit 200043 wird ein generierter App-Quellbaum verwendet, um den BTB-Foto-Hook einzusetzen.
+- Deshalb wird die kleine `KF_RAW -> importiereZipGvpDatei`-Routingänderung aktuell ebenfalls beim Build in die generierte `ImportExportFragment.kt` eingesetzt.
+- Das ist bewusst keine zweite Importlösung; der eigentliche Parser/Repository-Pfad bleibt der bestehende GVP/Festpunktpfad.
+- Die Source-Brücke ist technische Schuld und soll später wieder entfernt werden, aber nicht parallel zu diesem Fehlerblock.
 
-### Teststatus 200045
-- Projektregeln, aktueller Stand, aktiver Branch, Draft-PR #5 und Branch-Head vor Änderung geprüft.
-- vorhandener Galerie-/Dateiimport wurde wiederverwendet; keine zweite Foto-/EXIF-/Overlay-Lösung gebaut.
-- statisch geprüft: Bildsymbol verwendet Theme-Farbe `colorOnSurface` und `selectableItemBackgroundBorderless`, daher Tag/Nacht ohne feste Symbolfarbe.
-- lokaler Android-Studio-Build und Gerätetest 200045 stehen noch aus.
-- beim Handtest besonders prüfen: Symbolposition/Größe, Tagansicht, Nachtansicht, Mehrfachauswahl sowie korrekte Zuordnung der ausgewählten Bilder zum Arbeitseintrag.
+### Tests 200046
+Neue Unit-Tests erzeugen synthetische echte 102-Byte-KF-7.0-Datensätze und prüfen:
+1. Strecke 5362 / PS1: Station 70+698,179, Strecke 5362 und Rohkoordinaten werden korrekt gelesen; Zone-3-Punkt erhält bewusst keine falsche Zone-4-GPS-Umrechnung.
+2. `VERSION 7.0  R` / GVPV 5300: echte Station und Höhe werden übernommen.
+3. Harburg-Sonderfall: Station `0.0` wird zu `kmMeter = null`.
+4. Pasing-Sonderfall: `1e40` und Strecke `0000` bleiben fehlend statt eine falsche Kilometrierung zu erzeugen.
+
+Lokaler Android-Studio-Build und Unit-Testlauf stehen noch aus. GitHub Actions ist weiterhin kein belastbarer Buildindikator, solange die PR-Runs ohne verwertbare Runner-Schritte enden.
+
+### Nächster Handtest 200046
+1. GitHub Desktop `Fetch origin` → `Pull origin`.
+2. Android Studio: Clean/Build und Unit-Tests; App als Update installieren, App-Daten nicht löschen.
+3. In Vermessungs-/Streckendaten denselben Testbestand bzw. ZIP mit rohen KF-Dateien importieren.
+4. Importstatus prüfen: rohe KF darf nicht mehr als „nicht direkt importiert“ erscheinen, sondern muss echte `GVP/Festpunkte` melden.
+5. Für 5362 müssen die PS0/PS1/PS2/PS3- bzw. PS4-Punkte mit ihren vorhandenen Stationen wieder als Festpunktbestand vorhanden sein.
+6. `Daten berechnen`/KM-Verknüpfung ausführen und prüfen, ob GVP-KM-Kalibrierung wieder Achsen/Punkte verknüpft.
+7. Erst danach die Live-KM-Anzeige testen.
+
+## Android 200045 – kompakte Bildauswahl im BTB-Arbeitseintrag
+Umgesetzt:
+- zwei große blaue Foto-Schaltflächen entfernt;
+- ein kompaktes Bild-/Galerie-Symbol im Arbeitseintragsdialog;
+- Tippen öffnet direkt den vorhandenen Android-Bildauswahlpfad für `image/*`;
+- keine separate Kameraaktion in diesem Dialog;
+- bestehende Zuordnung über stabile `btbId`, Firma, Unterbaustelle/Ort, Arbeitstext und KM/KM-Bereich bleibt erhalten;
+- Symbolfarbe/Ripple folgen dem Material-/Android-Theme für Tag/Nacht.
+
+Praktischer Test:
+- Bildsymbol wurde auf dem Gerät angezeigt und öffnete die Bildauswahl.
+- Der BTB wirkte nach einem Wechsel kurz unvollständig/durcheinander, vorhandene `bbg`-/Unterbaustellen-/KM-Einträge waren anschließend wieder sichtbar und der Nutzer meldete „es funktioniert plötzlich“.
+- Solange dieser Zustand nicht reproduzierbar ist, wird am BTB-Lade-/Speicherpfad nichts weiter verändert.
 
 ## Android 200043/200044 – Room/KSP-Regressionsfix
 200043 führte den Foto-Hook direkt im Dialog `Eintrag für <Firma>` ein, ersetzte dafür aber den normalen Android-Kotlin-Source-Set durch eine generierte Build-Kopie. Dadurch kompilierte Kotlin, Room/KSP erzeugte jedoch `TBDatenbank_Impl` nicht; die App stürzte erst beim Start ab.
@@ -69,50 +122,16 @@ Code-Commit vor dieser Doku:
 - `src/main/java/de/tbhelfer/datenbank` bleibt als kanonischer Kotlin-Source-Ordner für KSP sichtbar;
 - der Datenbankordner wird aus der generierten BTB-Quellkopie entfernt, damit keine doppelten Klassen entstehen;
 - Guard `verifyRoomGeneratedImplementation` prüft, ob `TBDatenbank_Impl.*` unter `build/generated/ksp` erzeugt wurde;
-- der anfängliche Guardfehler `$$implicitReceiver_Project ... this is null` wurde durch Zugriff über `project.layout` behoben.
+- der anfängliche Guardfehler `$$implicitReceiver_Project ... this is null` wurde über `project.layout` behoben.
 
-Praktischer Stand: 200044 startete danach auf dem Poco wieder; der BTB-Eintragsdialog war nutzbar. Dieser Room/KSP-Schutz bleibt in 200045 erhalten.
-
-## Fotoimport / BTB-Zuordnung – Stand 200040–200045
-- externe Bilder als eigene App-Kopie; Galerie-/Datei-Original unverändert;
-- moderne Fotos strikt über stabile `btbId`;
-- EXIF-GPS/Aufnahmezeit soweit vorhanden;
-- Fotoverwaltung mit Thumbnail, Auswahl, Bearbeiten und Löschschutz;
-- Bearbeitung/Korrektur von Text, KM, Firma, Objekt/Bereich und Unterbaustelle/Ort;
-- Originalfotos des ersten BTB-Abschlusses bleiben geschützt;
-- `BtbPhotoContextOverrideStore` kann BTB-lokale `ortId` speichern;
-- Arbeitseintrags-Import übernimmt Firma, Ort, Text und KM/KM-Bereich;
-- 200045 vereinfacht nur die Bedienung des Bildimports; die funktionierende Zuordnungslogik bleibt erhalten.
-
-## Nächstes Problem nach 200045 – KM/Festpunkte
-Vom Nutzer gemeldet:
-- Vermessungs-/Absteckungsdaten lassen sich einlesen;
-- KM-Berechnung funktioniert danach nicht mehr wie zuvor;
-- Festpunkte bzw. importierte Punkte mit vorhandener Kilometrierung sind nicht mehr vorhanden/sichtbar.
-
-Dieses Problem wird als nächster eigener Block bearbeitet, sobald 200045 gebaut und der vereinfachte Bildwähler kurz bestätigt ist.
-
-Zuerst prüfen:
-- `app/src/main/java/de/tbhelfer/ui/streckenpunkte/StreckenpunkteFragment.kt`
-- `app/src/main/java/de/tbhelfer/ui/streckenpunkte/StreckenpunkteViewModel.kt`
-- `app/src/main/java/de/tbhelfer/ui/streckenpunkte/AktiverTrassenKontext.kt`
-- `app/src/main/java/de/tbhelfer/datenbank/TrassenRepository.kt`
-- `TrassenKmAnkerEntity`
-- `TrassenSamplePointEntity`
-- `GraKmPunktEntity`
-- `GvpPointEntity`
-- `AbsteckpunktEntity`
-- `app/src/main/java/de/tbhelfer/ui/importexport/ImportExportFragment.kt`
-- KM-/Festpunkt-Import sowie mögliche Reset-/Bereinigungslogik.
-
-Originale Vermessungsdaten bleiben unverändert. Zuerst feststellen, ob Festpunkte beim Import nicht gespeichert, später gelöscht/resetet oder nur nicht mehr angezeigt/verknüpft werden.
+Praktischer Stand: 200044 startete danach auf dem Poco wieder. Dieser Room/KSP-Schutz bleibt erhalten.
 
 ## Bestätigter BTB-Kernstand 200035–200039
 - stabile fachliche `btbId`; Datum/Uhrzeit sind Attribute, nicht Identität;
 - mehrere BTBs desselben Teams am selben Kalendertag möglich;
 - erster erfolgreicher Abschluss = unveränderliches Original;
 - spätere fachliche Änderungen gegen dieses Original; neue/geänderte Inhalte rot, entfernte Originalinhalte rot `(entfernt)`;
-- Arbeitszeit/Datum, Personal/Firmen, Geräte/Maschinen und Wetter bleiben PDF-Kopfdaten und werden nicht rot markiert;
+- Kopfdaten bleiben im PDF schwarz;
 - pro `btbId` höchstens ein aktuell gültiges Abschluss-PDF;
 - moderne BTB-Fotos strikt nach derselben `btbId`; Legacy-Zeitfenster nur ohne `btbId`;
 - Foto-ID-Menge des ersten Abschlusses gehört zum unveränderlichen Original;
@@ -122,16 +141,9 @@ Originale Vermessungsdaten bleiben unverändert. Zuerst feststellen, ob Festpunk
 - Firmenlogo/Kontaktdaten/PDF-Vorschau wurden in 200039 praktisch bestätigt.
 
 ## Foto-Overlay
-Der vorhandene `OverlayRenderer` brennt bei Kamera-Fotos Informationen dauerhaft in die App-JPG-Datei ein, u. a.:
-- Baustelle/Unterbaustelle;
-- Strecke/Bahnhof;
-- Gleis/Weiche/Objekt;
-- KM;
-- GPS;
-- Bereich;
-- Datum/Uhrzeit.
+Der vorhandene `OverlayRenderer` brennt bei Kamera-Fotos Informationen dauerhaft in die App-JPG-Datei ein, u. a. Baustelle/Unterbaustelle, Strecke/Bahnhof, Gleis/Weiche/Objekt, KM, GPS, Bereich und Datum/Uhrzeit.
 
-Noch offen: auf Pixel/Poco praktisch prüfen und nur bei echtem Bedarf optisch nachschärfen. Keine parallele zweite Overlay-Lösung bauen.
+Noch offen: praktisch auf Pixel/Poco prüfen und nur bei echtem Bedarf optisch nachschärfen. Keine parallele zweite Overlay-Lösung bauen.
 
 ## Produktiver Synology-Stand – unverändert
 - NAS/Synology ist Source of Truth.
@@ -154,7 +166,7 @@ Noch offen: auf Pixel/Poco praktisch prüfen und nur bei echtem Bedarf optisch n
 - serverseitiges Entfernen/Verlassen bleibt offen.
 
 ## Danach geplante Arbeiten
-Nach Behebung des KM/Festpunkt-Problems:
+Nach erfolgreichem 200046-KM/Festpunkt-Test:
 1. Foto-Overlay praktisch prüfen und ggf. optisch verbessern.
 2. Einstellungen systematisch auf Funktion, Doppelungen und sinnvolle Reihenfolge prüfen/aufräumen.
 3. Wetter um Niederschlagsmenge in mm bzw. l/m² ergänzen; nach erstem Abschluss keine automatische Wetteränderung.
