@@ -22,6 +22,7 @@ Vor jeder Änderung zuerst lesen:
 - Android **200045**: direkter Android-Bildwähler im Arbeitseintrag praktisch bestätigt.
 - Android **200047**: lokaler Build erfolgreich; Mitternacht `23:59 -> 00:30` praktisch bestätigt; Haupt-/Unterbaustellenanzeige wurde danach vom Nutzer als wieder passend gemeldet.
 - aktueller Buildkandidat: Android **200048**.
+- 200048-Code-Stand vor dieser Doku: `74d56fc600f5f6eb7ca40fc36168cbb2c9598996`.
 
 ## Normaler Entwicklungsablauf
 Source of Truth ist GitHub.
