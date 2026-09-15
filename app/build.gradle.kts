@@ -3,6 +3,111 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val generatedBtb200043Dir = layout.buildDirectory.dir("generated/source/btb200043")
+val generateBtb200043Source = tasks.register("generateBtb200043Source") {
+    val sourceFile = layout.projectDirectory.file(
+        "src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchFragment.kt"
+    )
+    inputs.file(sourceFile)
+    outputs.dir(generatedBtb200043Dir)
+
+    doLast {
+        val source = sourceFile.asFile.readText()
+        val anchor = """
+                        val firmTitle = firm ?: getString(R.string.btb_company_general)
+
+                        val dlg = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                            .setTitle(getString(R.string.btb_entry_dialog_title, firmTitle))
+                            .setView(root)
+                            .setNegativeButton(R.string.action_cancel, null)
+                            .setPositiveButton(R.string.action_add, null)
+                            .create()
+""".trimIndent()
+
+        check(source.contains(anchor)) {
+            "Android 200043: BTB-Eintrag-Dialog-Anker wurde nicht gefunden. BautagebuchFragment.kt hat sich geändert."
+        }
+
+        val photoActions = """
+
+                        // Android 200043: Fotoquelle direkt im Dialog „Eintrag für <Firma>“.
+                        // Der bestehende Kamera-/Galeriepfad wird wiederverwendet; kein zweiter Foto- oder Overlaypfad.
+                        if (fotoType == de.tbhelfer.datenbank.Bildtyp.FOTODOKUMENTATION) {
+                            BtbEntryPhotoActionBinder.bind(
+                                fragment = this@BautagebuchFragment,
+                                container = root,
+                                entryDialog = dlg,
+                                sectionDialog = dialog,
+                                firma = firm,
+                                textField = etText,
+                                textLayout = tilText,
+                                timeField = etTime,
+                                timeLayout = tilTime,
+                                kmVonField = etKmVon,
+                                kmVonLayout = tilKmVon,
+                                kmBisField = etKmBis,
+                                kmBisLayout = tilKmBis,
+                                ortProvider = {
+                                    selectedOrtMarkerId to labelForOrtCached(selectedOrtMarkerId)
+                                },
+                                onCommitManualEntry = { draft ->
+                                    val line = buildManualLine(
+                                        draft.ortId,
+                                        firm,
+                                        draft.time,
+                                        draft.text,
+                                        draft.kmVon,
+                                        draft.kmBis
+                                    )
+                                    val curLines = etFull.text?.toString().orEmpty().lines().toMutableList()
+                                    val base = if (curLines.size == 1 && curLines.first().isBlank()) {
+                                        mutableListOf<String>()
+                                    } else {
+                                        curLines
+                                    }
+                                    setRawLines((base + line).filter { it.isNotBlank() })
+                                    renderMerged?.invoke(lastGroups)
+                                    onSave(etFull.text?.toString().orEmpty())
+                                },
+                                snapshotProvider = {
+                                    val ctx = resolveAktuelleBaustelle()
+                                    if (ctx == null) {
+                                        null
+                                    } else {
+                                        val existing = withContext(Dispatchers.IO) {
+                                            BautagebuchSpeicher.laden(
+                                                requireContext(),
+                                                ctx.id,
+                                                ctx.name,
+                                                selectedDate,
+                                                selectedSchichtTyp
+                                            )
+                                        }
+                                        val built = buildEntry(ctx)
+                                        built.copy(
+                                            btbId = existing?.btbId ?: built.btbId,
+                                            maxFotosInPdf = existing?.maxFotosInPdf ?: built.maxFotosInPdf,
+                                            pdfAuswahl = existing?.pdfAuswahl ?: built.pdfAuswahl,
+                                            erstelltAmEpochMs = existing?.erstelltAmEpochMs ?: built.erstelltAmEpochMs,
+                                            geaendertAmEpochMs = System.currentTimeMillis()
+                                        )
+                                    }
+                                }
+                            )
+                        }
+""".trimIndent()
+
+        val patched = source.replace(anchor, anchor + photoActions)
+        check(patched != source) { "Android 200043: BTB-Quelldatei wurde nicht erweitert." }
+
+        val outputFile = generatedBtb200043Dir.get()
+            .file("de/tbhelfer/ui/bautagebuch/BtbFragmentGenerated.kt")
+            .asFile
+        outputFile.parentFile.mkdirs()
+        outputFile.writeText(patched)
+    }
+}
+
 android {
     namespace = "de.tbhelfer"
     compileSdk = 36
@@ -11,10 +116,21 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200042: kompakte Arbeitseintrag-Fotoaktion mit Kamera oder Galerie/Dateien.
-        versionCode = 200042
+        // Android 200043: Fotoaktionen direkt im manuellen Arbeitseintrag-Dialog.
+        versionCode = 200043
         versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    sourceSets {
+        getByName("main") {
+            // Der sehr große Legacy-Fragmentquelltext bleibt unverändert im Repository. Für 200043
+            // wird beim Build eine identische Kopie mit genau dem Fotoaktions-Hook erzeugt.
+            // Dateiname der generierten Kopie ist absichtlich anders, damit nur das Original
+            // ausgeschlossen wird und GitHub Desktop nach dem Build sauber bleibt.
+            java.exclude("**/BautagebuchFragment.kt")
+            java.srcDir(generateBtb200043Source)
+        }
     }
 
     buildTypes {
