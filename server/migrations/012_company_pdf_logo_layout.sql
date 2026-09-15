@@ -43,7 +43,7 @@ ALTER TABLE tb.company_profiles
 
 ALTER TABLE tb.company_profiles DROP CONSTRAINT IF EXISTS company_profiles_pdf_logo_width_ck;
 ALTER TABLE tb.company_profiles ADD CONSTRAINT company_profiles_pdf_logo_width_ck
-    CHECK (pdf_logo_width_pt BETWEEN 40 AND 180);
+    CHECK (pdf_logo_width_pt BETWEEN 40 AND 250);
 ALTER TABLE tb.company_profiles DROP CONSTRAINT IF EXISTS company_profiles_pdf_logo_offset_x_ck;
 ALTER TABLE tb.company_profiles ADD CONSTRAINT company_profiles_pdf_logo_offset_x_ck
     CHECK (pdf_logo_offset_x_pt BETWEEN -120 AND 120);
