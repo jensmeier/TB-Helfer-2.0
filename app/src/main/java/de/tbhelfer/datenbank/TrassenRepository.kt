@@ -615,7 +615,7 @@ class TrassenRepository(private val dao: TrassenDao) {
         val links = mitHoehe[rechtsIndex - 1]
         val rechts = mitHoehe[rechtsIndex]
         val linksHoehe = links.hoeheM ?: return rechts.hoeheM
-        val rechtsHoehe = rechts.hoeheM ?: return linksHoehe
+        val rechtsHoehe = rechts.hoeheM ?: return links.hoeheM
         val spanne = rechts.kmMeter - links.kmMeter
         if (kotlin.math.abs(spanne) <= 0.001) return linksHoehe
         val t = ((graWert - links.kmMeter) / spanne).coerceIn(0.0, 1.0)
@@ -749,7 +749,7 @@ class TrassenRepository(private val dao: TrassenDao) {
             lon = lon,
             achsen = achsen,
             punkte = samplepunkte,
-            maxAbstandM = 250.0
+            maxAbstandM = maxAbstandM
         )
         kandidat?.let {
             val mitGvp = kandidatenMitGvpKmVerbessern(listOf(it))
