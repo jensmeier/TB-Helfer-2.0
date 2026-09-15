@@ -29,7 +29,6 @@ val generateBtb200043Source = tasks.register("generateBtb200043Source") {
         }
 
         val photoActions = """
-
                         // Android 200043: Fotoquelle direkt im Dialog „Eintrag für <Firma>“.
                         // Der bestehende Kamera-/Galeriepfad wird wiederverwendet; kein zweiter Foto- oder Overlaypfad.
                         if (fotoType == de.tbhelfer.datenbank.Bildtyp.FOTODOKUMENTATION) {
@@ -97,7 +96,7 @@ val generateBtb200043Source = tasks.register("generateBtb200043Source") {
                         }
 """.trim('\n')
 
-        val patched = source.replace(anchor, anchor + photoActions)
+        val patched = source.replace(anchor, anchor + "\n\n" + photoActions)
         check(patched != source) { "Android 200043: BTB-Quelldatei wurde nicht erweitert." }
 
         val outputFile = generatedBtb200043Dir.get()
