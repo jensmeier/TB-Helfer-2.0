@@ -21,7 +21,7 @@ Vor jeder Änderung zuerst lesen:
 - Android **200044** startet nach dem Room/KSP-Fix wieder auf dem Poco.
 - Android **200045**: kompakter Bildwähler im BTB-Arbeitseintrag funktioniert praktisch.
 - Android **200046** konnte auf Windows nicht gebaut werden, weil der Build-Source-Patch für `KF_RAW` durch CRLF/LF-Zeilenumbrüche seinen mehrzeiligen Anker nicht fand.
-- aktueller Buildkandidat: Android **200047**.
+- Android **200047** baut lokal erfolgreich; Mitternachtsfall `23:59 -> 00:30` wurde auf dem Gerät erfolgreich bestätigt. Hauptbaustelle/Unterbaustelle und Abschluss-Reaktivierung sind noch gezielt zu prüfen.
 
 ## Normaler Entwicklungsablauf
 Source of Truth ist GitHub.
@@ -38,7 +38,7 @@ Die alten `.github/scripts/patch_200035...200038*.ps1` sind nur historische Hilf
 Beim Gerätetest wurden drei konkrete Probleme sichtbar:
 1. Build 200046 brach in `:app:generateBtb200043Sources` ab mit `Android 200046: KF_RAW-Importanker wurde nicht gefunden`.
 2. Ein manueller Arbeitseintrag für Firma `bbg` in `Hauptbaustelle` erschien anschließend nicht zuverlässig am richtigen Ort; Unterbaustellen-/Fotoeinträge funktionierten dagegen.
-3. Bei Nacht-BTBs besteht ein echter Kontextfehler über Mitternacht: Beim normalen Öffnen suchte die BTB-Seite erneut nur am aktuellen Kalendertag nach `TAG/NACHT`, statt den bereits aktiven BTB über den Pointer/`btbId` zu laden.
+3. Bei Nacht-BTBs bestand ein Kontextfehler über Mitternacht: Beim normalen Öffnen suchte die BTB-Seite erneut nur am aktuellen Kalendertag nach `TAG/NACHT`, statt den bereits aktiven BTB über den Pointer/`btbId` zu laden.
 
 ### Ursache Build 200046
 Die Build-Source-Brücke arbeitet mit exakten mehrzeiligen Stringankern. Unter Windows konnte `ImportExportFragment.kt` mit CRLF ausgecheckt sein, während der Gradle-Anker LF enthielt. Fachlich identischer Quelltext wurde dadurch als „Anker nicht gefunden“ bewertet.
@@ -87,20 +87,18 @@ Hinweis zur Umsetzung: Wegen der seit 200043 vorhandenen Build-Source-Brücke we
 - Screenshots des Gerätetests ausgewertet; Hauptbaustellen-/Unterbaustellen-Gruppierung und Abschluss-/Nachbearbeitungs-PDF verglichen.
 - Quellcode geprüft: `buildManualLine()` schrieb für Firmen-Hauptbaustelle bisher keinen `@ORT=0`-Marker; `parseManualItems()` ließ Inline-Ortszustand über Zeilen weiterlaufen.
 - Quellcode geprüft: `ladeEintragFallsVorhanden(autoPickSchichtForToday = true)` suchte bisher am aktuellen Kalendertag TAG/NACHT statt zuerst den aktiven `btbId`-Kontext zu verwenden.
-- Quellcode geprüft: das Foto-/Schicht-Zeitfenster behandelt Ende < Start bereits als Folgetag; `23:59 -> 00:00` ist dort grundsätzlich ein Mitternachtsfenster.
-- Build-Patches besitzen jetzt zusätzliche `check(...)`-Guards für Hauptbaustellenmarker, Ortsparser, Aktiv-BTB-Ladeweg und BTB-Datum.
-- GitHub Actions Run zum Code-Commit lief erneut als `failure`, liefert aber weiterhin keine verwertbaren Job-Logs (`BlobNotFound`); deshalb bleibt der lokale Android-Studio-Build der maßgebliche nächste Test.
-- lokaler Windows-/Android-Studio-Build 200047 und Gerätetest stehen noch aus.
+- Quellcode geprüft: das Foto-/Schicht-Zeitfenster behandelt Ende < Start bereits als Folgetag.
+- Build-Patches besitzen zusätzliche `check(...)`-Guards für Hauptbaustellenmarker, Ortsparser, Aktiv-BTB-Ladeweg und BTB-Datum.
+- GitHub Actions liefert weiterhin keine verwertbaren Job-Logs; lokaler Android-Studio-Build bleibt maßgeblich.
+- **Lokaler Android-Studio-Build 200047 erfolgreich**; nur bekannte Warnungen.
+- **Gerätetest Mitternacht erfolgreich:** Nacht-BTB mit `23:59 -> 00:30` blieb vollständig und im richtigen BTB-Kontext.
+- Noch offen: `bbg` Hauptbaustelle + Unterbaustelle gleichzeitig sowie Abschluss -> normales Öffnen -> bewusste Reaktivierung über Verlauf.
 
 ### Nächster Handtest 200047
-1. GitHub Desktop `Fetch origin` -> `Pull origin`.
-2. Android Studio `Build -> Clean Project`, danach Build/Run.
-3. Prüfen, dass **200047** gebaut/installiert wird.
-4. BTB-Arbeiten: Firma `bbg` -> `Hauptbaustelle` -> eindeutigen Text eingeben; danach zusätzlich einen anderen Text in `Schacht1`/Unterbaustelle eingeben. Beide müssen gleichzeitig in der richtigen Ortsgruppe bleiben.
-5. PDF-Entwurf prüfen: Hauptbaustellen- und Unterbaustellentext dürfen nicht gegenseitig verschwinden/verschoben werden.
-6. Nacht-BTB mit Start am Vortag und Ende nach 00:00 öffnen bzw. App/BTB-Seite nach Mitternacht erneut öffnen: es muss dieselbe `btbId`/derselbe Bericht mit vollständigen Daten bleiben.
-7. Nach `BTB Abschluss` prüfen: ohne bewusstes `BTB bearbeiten` aus dem Verlauf darf kein abgeschlossener BTB automatisch als aktiver Entwurf wieder auftauchen.
-8. Danach denselben Vermessungs-ZIP/KF-Bestand importieren und den 200046-Roh-KF-Test fortsetzen.
+1. BTB-Arbeiten: Firma `bbg` -> `Hauptbaustelle` -> eindeutigen Text eingeben; danach zusätzlich einen anderen Text in `Schacht1`/Unterbaustelle eingeben. Beide müssen gleichzeitig in der richtigen Ortsgruppe bleiben.
+2. PDF-Entwurf prüfen: Hauptbaustellen- und Unterbaustellentext dürfen nicht gegenseitig verschwinden/verschoben werden.
+3. `BTB Abschluss` durchführen; danach darf ohne bewusstes `BTB bearbeiten` aus dem Verlauf kein abgeschlossener BTB automatisch als aktiver Entwurf wieder auftauchen.
+4. Danach denselben Vermessungs-ZIP/KF-Bestand importieren und den Roh-KF-/KM-Test fortsetzen.
 
 ## Android 200046 – KM/Festpunkte: Roh-KF direkt importieren
 ### Gefundene Ursache
