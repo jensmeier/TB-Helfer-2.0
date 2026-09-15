@@ -32,7 +32,10 @@ abstract class GenerateBtb200043Sources : DefaultTask() {
             "Android 200043: BautagebuchFragment.kt wurde im Build-Quellbaum nicht gefunden."
         }
 
-        val source = target.readText()
+        // Windows/Git kann einzelne Quelldateien als CRLF auschecken. Alle Build-Source-
+        // Patches arbeiten deshalb intern mit LF, damit ein reiner Zeilenumbruchwechsel
+        // keinen fachlich unveränderten Build mehr blockiert.
+        val source = target.readText().replace("\r\n", "\n")
         val anchor = """
                         val firmTitle = firm ?: getString(R.string.btb_company_general)
 
@@ -116,8 +119,120 @@ abstract class GenerateBtb200043Sources : DefaultTask() {
                         }
 """.trim('\n')
 
-        val patched = source.replace(anchor, anchor + "\n\n" + photoActions)
+        var patched = source.replace(anchor, anchor + "\n\n" + photoActions)
         check(patched != source) { "Android 200043: BTB-Quelldatei wurde nicht erweitert." }
+
+        // Android 200047: Firmen-Eintraege in der Hauptbaustelle brauchen ebenfalls einen
+        // expliziten Ortsmarker. Ohne @ORT=0 konnte ein vorheriger Unterbaustellenmarker
+        // (z. B. Schacht 1) auf die folgende Hauptbaustellen-Zeile durchrutschen.
+        val mainSiteMarkerOld = "if (effectiveOrtId != 0L) append(\"@ORT=\").append(effectiveOrtId).append(\" \")"
+        val mainSiteMarkerNew = "if (f != null) append(\"@ORT=\").append(effectiveOrtId).append(\" \")"
+        check(patched.contains(mainSiteMarkerOld)) {
+            "Android 200047: Hauptbaustellen-Ortsmarker-Anker wurde nicht gefunden."
+        }
+        patched = patched.replace(mainSiteMarkerOld, mainSiteMarkerNew)
+
+        // Bestehende Daten reparieren, ohne alte Standalone-@ORT-Gruppen zu zerstoeren:
+        // ein moderner Inline-@ORT gilt nur fuer diese eine Zeile; nur ein eigener
+        // @ORT=<id>-Datensatz bleibt als historischer Gruppenmarker kleben.
+        val ortStateOld = "var currentOrtId: Long = 0L"
+        val ortStateNew = "var currentOrtId: Long = 0L\n                    var currentOrtIstStandaloneMarker: Boolean = false"
+        check(patched.contains(ortStateOld)) {
+            "Android 200047: Ortsparser-Statusanker wurde nicht gefunden."
+        }
+        patched = patched.replace(ortStateOld, ortStateNew, ignoreCase = false)
+
+        val ortLineOld = """
+                        var line = line0.trim()
+                        if (line.isBlank()) return@forEachIndexed
+
+                        // Ort-Marker: entweder eigene Zeile oder Inline-Prefix
+                        val mo = reOrt.matchEntire(line)
+                        if (mo != null) {
+                            currentOrtId = mo.groupValues[1].toLongOrNull() ?: 0L
+                            line = mo.groupValues.getOrNull(2).orEmpty().trim()
+                            if (line.isBlank()) return@forEachIndexed
+                        }
+""".trim('\n')
+        val ortLineNew = """
+                        var line = line0.trim()
+                        if (line.isBlank()) return@forEachIndexed
+                        var lineOrtId: Long? = null
+
+                        // Ort-Marker: entweder eigene Legacy-Gruppenzeile oder moderner Inline-Prefix.
+                        // Inline darf nicht auf die naechste Zeile weiterwirken.
+                        val mo = reOrt.matchEntire(line)
+                        if (mo != null) {
+                            val markerOrtId = mo.groupValues[1].toLongOrNull() ?: 0L
+                            line = mo.groupValues.getOrNull(2).orEmpty().trim()
+                            if (line.isBlank()) {
+                                currentOrtId = markerOrtId
+                                currentOrtIstStandaloneMarker = true
+                                return@forEachIndexed
+                            }
+                            lineOrtId = markerOrtId
+                            currentOrtIstStandaloneMarker = false
+                        }
+""".trim('\n')
+        check(patched.contains(ortLineOld)) {
+            "Android 200047: Ortsparser-Inlineanker wurde nicht gefunden."
+        }
+        patched = patched.replace(ortLineOld, ortLineNew)
+
+        val effectiveOrtOld = "val effectiveOrtId = if (forcedGeneral || firma == null) 0L else currentOrtId"
+        val effectiveOrtNew = "val effectiveOrtId = if (forcedGeneral || firma == null) 0L else lineOrtId ?: if (currentOrtIstStandaloneMarker) currentOrtId else 0L"
+        check(patched.contains(effectiveOrtOld)) {
+            "Android 200047: effektiver Ortsparser-Anker wurde nicht gefunden."
+        }
+        patched = patched.replace(effectiveOrtOld, effectiveOrtNew)
+
+        // Android 200047: Beim normalen Oeffnen ist die aktive btbId die Identitaet.
+        // Nicht erneut nur 'heute TAG/NACHT' durchsuchen: das verlor einen Nacht-BTB,
+        // der vor Mitternacht begonnen hat, nach 00:00 aus dem sichtbaren Kontext.
+        val activeLoadOld = """
+            val entry = withContext(Dispatchers.IO) {
+                if (!autoPickSchichtForToday) {
+                    BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, selectedSchichtTyp)
+                } else {
+                    // Heute: beide Schichten prüfen und den zuletzt geänderten Entwurf öffnen
+                    val tag = BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, SchichtTyp.TAG)
+                    val nacht = BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, SchichtTyp.NACHT)
+                    listOfNotNull(tag, nacht).maxByOrNull { it.geaendertAmEpochMs }
+                }
+            }
+""".trim('\n')
+        val activeLoadNew = """
+            val entry = withContext(Dispatchers.IO) {
+                if (autoPickSchichtForToday) {
+                    // Aktiver Pointer -> btbId ist kanonisch, auch ueber 23:59/00:00 hinweg.
+                    BtbActiveContext.laden(requireContext(), ctx.id)?.entry
+                } else {
+                    BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, selectedSchichtTyp)
+                }
+            }
+""".trim('\n')
+        check(patched.contains(activeLoadOld)) {
+            "Android 200047: aktiver-BTB-Ladeanker wurde nicht gefunden."
+        }
+        patched = patched.replace(activeLoadOld, activeLoadNew)
+
+        // Wenn ein aktiver Nacht-BTB nach Mitternacht geladen wird, muss auch das UI-Datum
+        // wieder das Start-/BTB-Datum dieses Datensatzes tragen; sonst koennte der naechste
+        // Autosave denselben btbId-Datensatz faelschlich unter dem Folgetag aufbauen.
+        val activeDateOld = """
+                currentBtbStartEpochMs = entry.erstelltAmEpochMs
+                selectedSchichtTyp = entry.schicht
+""".trim('\n')
+        val activeDateNew = """
+                currentBtbStartEpochMs = entry.erstelltAmEpochMs
+                runCatching { LocalDate.parse(entry.datumIso, isoFmt) }.getOrNull()?.let { selectedDate = it }
+                selectedSchichtTyp = entry.schicht
+""".trim('\n')
+        check(patched.contains(activeDateOld)) {
+            "Android 200047: BTB-Datumsanker wurde nicht gefunden."
+        }
+        patched = patched.replace(activeDateOld, activeDateNew)
+
         target.writeText(patched)
 
         // Android 200046: Der ZIP-Scanner erkannte rohe .kf bereits, hat sie bisher aber
@@ -132,7 +247,7 @@ abstract class GenerateBtb200043Sources : DefaultTask() {
         check(importExportTarget.isFile) {
             "Android 200046: ImportExportFragment.kt wurde im Build-Quellbaum nicht gefunden."
         }
-        val importSource = importExportTarget.readText()
+        val importSource = importExportTarget.readText().replace("\r\n", "\n")
         val rawKfIgnored = """
             ZipDateiTyp.GVP_TXT,
             ZipDateiTyp.KF_TXT,
@@ -178,8 +293,8 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200046: direkter Roh-KF-7.0-Import fuer Festpunkte/KM-Quellen.
-        versionCode = 200046
+        // Android 200047: stabiler Roh-KF-Build + Hauptbaustellen-/Mitternachtsfix im BTB.
+        versionCode = 200047
         versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
