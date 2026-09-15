@@ -1,6 +1,6 @@
 # TB-Helfer – aktueller Projektstand
 
-Stand: 2026-09-14
+Stand: 2026-09-15
 
 Diese Datei ist die verbindliche technische Übergabe zwischen Chats/Sitzungen. Fachliche Grundsatzentscheidungen stehen in `docs/TB-HELFER_PROJEKTREGELN.md`.
 
@@ -17,8 +17,9 @@ Vor jeder Änderung zuerst lesen:
 - aktiv: `feature/admin-offline-sync`
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft.
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`.
-- aktueller bestätigter Android-Gerätestand: **200039**.
-- aktueller Entwicklungsstand im Branch: **Android 200040 – externer Fotoimport + Fotoverwaltung**, Source zuletzt `eda1b2ce4a0eb31da7fd747ba4b4a933b2b27efe` plus diese Doku, noch nicht lokal gebaut/auf Gerät bestätigt.
+- letzter vollständig bestätigter Android-Gerätestand: **200039**.
+- **Android 200040** wurde auf dem Handy praktisch begonnen zu testen: externer Fotoimport funktioniert grundsätzlich, dabei wurde aber die fachliche Zuordnungs-Lücke sichtbar (generisch importierte Bilder hatten keine Firma/Unterbaustelle/Arbeitseintrag-Zuordnung und landeten unter Allgemein/Hauptbaustelle).
+- aktueller Entwicklungsstand im Branch: **Android 200041 – externer Fotoimport gezielt pro Arbeitseintrag**, Source umgesetzt, noch nicht lokal gebaut/auf Gerät bestätigt.
 
 ## Normaler Entwicklungsablauf
 Der Source of Truth liegt vollständig in GitHub. Neue Änderungen werden direkt im Feature-Branch versioniert.
@@ -31,7 +32,7 @@ Windows-PC:
 Die alten `.github/scripts/patch_200035...200038*.ps1` sind nur historische Hilfsmittel und nicht mehr der normale Entwicklungsweg.
 
 ## Android 200039 – gebaut, installiert, Gerätetest bestätigt
-`versionCode = 200039`, `versionName = 1.3` war der letzte praktisch bestätigte Gerätestand.
+`versionCode = 200039`, `versionName = 1.3` war der letzte vollständig praktisch bestätigte Gerätestand.
 
 Bestätigt:
 - Firmenlogo im realen BTB-PDF deutlich kleiner und proportional.
@@ -54,81 +55,115 @@ Schema 12 ist im Branch vorbereitet für ein firmenweit gespeichertes PDF-Logo-P
 
 **Nicht produktiv migriert.** Produktiver NAS/DB-Stand bleibt Schema 10.
 
-## Android 200040 – externer Fotoimport und Fotoverwaltung
-`app/build.gradle.kts` steht im Feature-Branch auf `versionCode = 200040`, `versionName = 1.3`.
+## Android 200040 – externer Fotoimport / Fotoverwaltung
+200040 führte den ersten externen Import- und Verwaltungsblock ein:
+- Android-Systemauswahl `OpenMultipleDocuments`.
+- externe Bilder werden als eigene App-Kopie übernommen; Original in Galerie/Dateien bleibt unverändert.
+- Zuordnung zur stabilen `btbId` statt über Datum/Uhrzeit.
+- EXIF-GPS/Aufnahmezeit soweit vorhanden übernommen.
+- große Fotoansicht und BTB/PDF-Korrekturen für Text, KM, Firma, Objekt/Bereich.
+- Originalfoto des ersten Abschlusses geschützt.
+- Nicht-Original: `Nur aus BTB/PDF` oder sichere vollständige App-Löschung.
+- Kontextkorrekturen über `BtbPhotoContextOverrideStore`.
 
-### Umgesetzt
-- In der BTB-Fotoauswahl gibt es `Fotos aus Galerie / Dateien hinzufügen`.
-- Android-System-Dateiauswahl (`OpenMultipleDocuments`) wird verwendet; keine breite Speicherberechtigung nötig.
-- ausgewählte Bilder werden zuerst als **eigene App-Kopie** in den vorhandenen TB-Helfer-Fotoordner übernommen.
-- das Original in Galerie/Dateien wird niemals durch den Import verändert oder gelöscht.
-- Import wird ausdrücklich der aktuell geöffneten stabilen `btbId` zugeordnet; Datum/Uhrzeit bestimmen bei modernen BTBs nicht die Zugehörigkeit.
-- vorhandene EXIF-GPS-Daten und Aufnahmezeit werden soweit vorhanden übernommen.
-- fehlt GPS im externen Bild, wird intern der im Projekt bereits verwendete `0/0 = unbekannt`-Sentinel benutzt und in der Fotoansicht als `GPS: nicht im Bild vorhanden` angezeigt.
-- importierte Bilder werden wie andere BTB-Fotos in Auswahl/PDF/Export geführt.
-- bei bestehendem erstem Abschluss ist ein importiertes Foto automatisch ein Nachtrag und die aktuelle Abschlussfassung wird ungültig/Nachbearbeitung.
-- PDF-Fotolimit bleibt wirksam; zusätzliche importierte Bilder bleiben erhalten, werden über dem Limit aber nicht automatisch ausgewählt.
+### Gerätefeedback 200040 / gefundener Fehler
+Der Benutzer testete den neuen Import auf dem Handy und lieferte Screenshots. Ergebnis:
+- Import selbst funktioniert.
+- der generische Import hatte aber keine fachliche Information, **zu welchem konkreten Arbeitseintrag** das Bild gehört.
+- importierte `FotoEntity` hatte bisher `baustellenKnotenId = null`, `firma = ""`, `km = null` und als Text nur den Dateinamen.
+- deshalb landeten solche Bilder im Abschnitt 4 fachlich unter **Allgemein / Hauptbaustelle**, obwohl z. B. ein Eintrag `bbg → Querformat (KM 5,963) → Test1.0` gemeint war.
+- außerdem zeigte die Bedienung, dass ein eindeutiger Foto-Plus-Ablauf **pro Arbeitseintrag** sinnvoller ist als nur ein globaler Importknopf.
 
-### Foto-Vorschau
-- Thumbnail/Text/Metadaten in der BTB-Fotoauswahl sind antippbar.
-- große Bildansicht im Dialog.
-- dort sichtbar: BTB/PDF-Text, Uhrzeit, KM/KM-Bereich, Firma, Objekt/Bereich, Originalfoto/Nachtrag und GPS-Status.
+Das ist kein Datenbankfehler und keine Serverfrage, sondern eine fehlende fachliche Zielzuordnung im Android-Import.
 
-### Foto bearbeiten
-Direkt aus der großen Ansicht:
-- BTB/PDF-Text ändern.
-- KM von und optional KM bis ändern.
-- Firma korrigieren.
-- Objekt/Gleis/Weiche korrigieren.
-- Bereich korrigieren.
+## Android 200041 – Fotoimport pro Arbeitseintrag
+`app/build.gradle.kts` steht auf `versionCode = 200041`, `versionName = 1.3`.
 
-Text/KM verwenden weiterhin die vorhandenen BTB-spezifischen Override-Stores. Für Firma/Objekt/Bereich wurde `BtbPhotoContextOverrideStore` ergänzt. Die Korrekturen werden BTB-lokal über die stabile `btbId` gespeichert und auf Foto-Kopien angewendet; der ursprüngliche Foto-Datensatz bzw. das bereits eingebrannte Bild wird dadurch nicht überschrieben.
+### Fachliche Lösung
+Für Abschnitt 4 werden die bereits vorhandenen manuellen BTB-Arbeitseinträge aus der bestehenden Marker-Syntax gelesen:
+- `@ORT=<BaustellenKnotenId>`
+- `@ALLGEMEIN`
+- `@KM=<von>[-<bis>]`
+- Firma
+- optionale Uhrzeit / Zeitspanne
+- Eintragstext.
 
-`FotoRepository` wendet die Kontext-Korrekturen bei den relevanten Fotoabfragen an, sodass BTB/PDF und Fotoansichten dieselben korrigierten Werte erhalten.
+Daraus werden konkrete Foto-Ziele gebildet. Beispiel:
+`bbg · Querformat (KM 5,963) · Test1.0`.
 
-### Entfernen / vollständig löschen
-- Originalfoto des ersten Abschlusses bleibt geschützt: nur `Aus BTB entfernen`.
-- andere Fotos: `Nur aus BTB/PDF` oder `Foto vollständig löschen`.
-- vollständiges Löschen entfernt den Room-Fotodatensatz, BTB-Zuordnung und Foto-Overrides.
-- die zugehörige Bilddatei + Thumbnail werden nur gelöscht, wenn sie im App-eigenen Pictures-Verzeichnis liegen und kein anderer Foto-Datensatz denselben Pfad referenziert.
-- ein ursprünglich aus Galerie/Dateien importiertes Original außerhalb des App-Verzeichnisses bleibt immer unverändert.
-- Löschen/Import/Fotoauswahländerung invalidiert einen bestehenden Abschluss gemäß Original-/Nachbearbeitungsregel.
+Zu jedem solchen Eintrag zeigt die Fotoauswahl eine sichtbare **`Foto +`-Aktion mit Bildsymbol**. Mehrere Bilder können direkt diesem Eintrag zugeordnet werden.
 
-### Zusätzlich korrigiert
-Die BTB-Fotoauswahl hielt bisher trotz vorhandener `btbId` zunächst am Schicht-Zeitfenster fest. 200040 verwendet bei modernen BTBs nun direkt die exakte `btbId`; Zeitfenster-Fallback bleibt ausschließlich für echte Legacy-BTBs ohne `btbId`.
+Beim gezielten Import werden übernommen:
+- stabile aktuelle `btbId`;
+- Firma des Arbeitseintrags;
+- Ort/Unterbaustelle (`baustellenKnotenId`);
+- Eintragstext als BTB-Fototext;
+- KM bzw. KM-Bereich des Eintrags/Unterbaustellenknotens;
+- vorhandene Eintragszeit als BTB-Zeit-Override.
 
-Beim Laden des BTB-Kontexts verwendet die Fotoauswahl nun auch die kanonische `baustelleId` zusammen mit Name/BTB-ID, damit mehrere BTBs derselben Baustelle stabiler aufgelöst werden.
+Die externe Quelldatei selbst bleibt unverändert. GPS/EXIF der App-Kopie werden weiterhin soweit vorhanden beibehalten.
 
-### Betroffene Dateien 200040
+### Allgemeiner Import bleibt bewusst möglich
+Der obere globale Button ist jetzt eindeutig beschriftet:
+`Allgemeine Fotos aus Galerie / Dateien`.
+
+Hinweistext erklärt:
+- für einen konkreten Arbeitseintrag `Foto +` verwenden;
+- allgemeine Fotos bleiben bewusst unter Hauptbaustelle/Allgemein;
+- Galerie-/Datei-Original bleibt unverändert.
+
+Die Fotozeilen/Eintragsaktionen sind im Auswahlblock standardmäßig sichtbar; der Benutzer muss den Block für die `Foto +`-Aktionen nicht erst aufklappen.
+
+### Bereits falsch unter Allgemein gelandete Fotos korrigieren
+Die Foto-Bearbeitung enthält zusätzlich `Arbeitseintrag / Ort`:
+- vorhandenen Arbeitseintrag auswählen;
+- dadurch werden Firma, Ort/Unterbaustelle, Text und KM passend vorbelegt/zugeordnet;
+- `BtbPhotoContextOverrideStore` kann dafür jetzt zusätzlich einen BTB-lokalen `ortId` speichern.
+
+Damit kann ein bereits unter Allgemein gelandetes Foto nachträglich z. B. `bbg → Querformat (KM 5,963)` zugeordnet werden, ohne die ursprüngliche Bilddatei oder einen unveränderlichen Originalabschluss zu überschreiben.
+
+### Technische Entscheidungen 200041
+- **keine Datenbankmigration**: bestehende BTB-Marker und bestehende Foto-Override-Dateien werden erweitert/verwendet.
+- `BtbPhotoContextOverrideStore` Version 2 liest ältere Version-1-Dateien weiterhin; fehlender `ortId` bedeutet keine Ortsüberschreibung.
+- `ortId = 0` bedeutet Hauptbaustelle; `ortId > 0` ist eine `BaustellenKnotenId`.
+- moderne Fotozugehörigkeit bleibt strikt `btbId`-basiert.
+- Originalfoto-Schutz und Nachbearbeitungs-/Abschluss-Invalidierung bleiben unverändert wirksam.
+- kein NAS-/Server-/Schema-Schritt für 200041.
+
+### Betroffene Dateien 200041
 - `app/build.gradle.kts`
-- `app/src/main/java/de/tbhelfer/datenbank/FotoDao.kt`
-- `app/src/main/java/de/tbhelfer/datenbank/FotoRepository.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbManualEntryPhotoTargetParser.kt` (neu)
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbExternalPhotoImporter.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPhotoContextOverrideStore.kt`
 - `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPdfAuswahlFragment.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbExternalPhotoImporter.kt` (neu)
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPhotoContextOverrideStore.kt` (neu)
 - `app/src/main/res/layout/fragment_btb_pdf_auswahl.xml`
+- `app/src/main/res/layout/item_btb_pdf_block.xml`
+- `app/src/test/java/de/tbhelfer/ui/bautagebuch/BtbManualEntryPhotoTargetParserTest.kt` (neu)
 
-### 200040 Teststatus
-Noch **nicht** als Build-/Gerätestand bestätigt.
+### Tests / Prüfung 200041
+- Parser-Helfer wurde separat mit lokalem Kotlin-Compiler gegen die wesentlichen Markerfälle geprüft:
+  - Firma + `@ORT` + Uhrzeit + einzelne KM;
+  - `@ALLGEMEIN` → Hauptbaustelle;
+  - Groß/Kleinschreibung der Firma + Zeitspanne + KM-Bereich.
+- derselbe Parser ist zusätzlich als JUnit-Test im Repository dokumentiert.
+- vollständiger Android-Gradle-Build und Gerätetest stehen noch aus.
+- GitHub Actions war zuletzt kein belastbarer Buildindikator, weil Jobs vor dem ersten Workflow-Schritt ohne Runner (`steps=[]`) beendet wurden.
 
-GitHub Actions ist weiterhin kein belastbarer Buildindikator: auch der Lauf zum aktuellen 200040-Source endet vor dem ersten Workflow-Schritt (`steps=[]`). Checkout, Source-Checks und Gradle starten dort aktuell nicht.
-
-Nächster Test auf Windows/Handy:
-1. `Fetch origin` → `Pull origin`.
-2. Android Studio Debug-Build 200040.
-3. als Update installieren, App-Daten nicht löschen.
-4. offenen BTB → Fotoauswahl → 1–2 externe Fotos importieren.
-5. prüfen, dass sie sofort im exakt geöffneten BTB erscheinen, auch wenn ihre EXIF-Aufnahmezeit außerhalb der BTB-Schicht liegt.
-6. Foto antippen → große Ansicht prüfen.
-7. Text, KM/KM-Bereich, Firma, Objekt und Bereich ändern; PDF-Entwurf erzeugen und Korrekturen prüfen.
-8. nach erstem Abschluss ein Foto importieren → `Nachtrag` und Abschluss-Invalidierung prüfen.
-9. Nachtrag `Nur aus BTB/PDF` und separat `Foto vollständig löschen` prüfen.
-10. geschütztes Originalfoto darf weiterhin nicht endgültig gelöscht werden.
+### Nächster Gerätetest 200041
+1. GitHub Desktop `Fetch origin` → `Pull origin`.
+2. Android Studio Debug-Build 200041; als Update installieren, App-Daten nicht löschen.
+3. selben BTB/Abschnitt 4 öffnen.
+4. bei `bbg · Querformat (KM 5,963) · Test1.0` **`Foto +`** verwenden und externes Bild auswählen.
+5. prüfen: Foto zeigt Firma `bbg`, Ort `Querformat`, KM `5,963`, Text `Test1.0` und landet nicht unter Allgemein.
+6. PDF-Entwurf erzeugen und fachliche Gruppierung unter `bbg / Querformat` prüfen.
+7. ein bereits unter Allgemein vorhandenes Importfoto öffnen → `Bearbeiten` → `Arbeitseintrag / Ort` → `bbg / Querformat / Test1.0` wählen → speichern → PDF erneut prüfen.
+8. oberen Button `Allgemeine Fotos ...` separat testen; nur dieser Import darf bewusst unter Allgemein/Hauptbaustelle bleiben.
+9. Originalfoto-/Nachtrag-/Löschschutz nochmals kurz gegenprüfen.
 
 ## Foto-Overlay – nächster Teil desselben Foto-Blocks
 Der vorhandene `OverlayRenderer` brennt bei Kamera-Fotos bereits Informationen dauerhaft in die App-JPG-Datei ein. Vorhandene Felder umfassen u. a. Baustelle/Unterbaustelle, Strecke/Bahnhof, Gleis/Weiche/Objekt, KM, GPS, Bereich und Datum/Uhrzeit.
 
-Noch offen nach dem 200040-Grundtest:
+Noch offen nach dem 200041-Grundtest:
 - auf Pixel/Poco praktisch prüfen, ob Overlay bei normalen BTB-Kamera-Fotos tatsächlich sichtbar und lesbar eingebrannt wird;
 - Größe/Position/Kontrast auf echten Baustellenfotos beurteilen;
 - nur bei echtem Bedarf Renderer optisch nachschärfen; keine parallele zweite Overlay-Lösung bauen.
@@ -167,7 +202,7 @@ Noch offen nach dem 200040-Grundtest:
 - serverseitiges Entfernen/Verlassen bleibt offen.
 
 ## Danach geplante Handy-Arbeiten
-Nach erfolgreichem 200040-Test:
+Nach erfolgreichem 200041-Test:
 1. Foto-Overlay auf echten Kamera-Fotos praktisch prüfen und ggf. optisch verbessern.
 2. Einstellungen systematisch auf Funktion, Doppelungen und sinnvolle Reihenfolge prüfen/aufräumen.
 3. Wetter um Niederschlagsmenge in mm bzw. l/m² ergänzen; nach erstem Abschluss weiterhin keine automatische Wetteränderung.
