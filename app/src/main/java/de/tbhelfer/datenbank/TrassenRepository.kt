@@ -351,14 +351,17 @@ class TrassenRepository(private val dao: TrassenDao) {
         val achsen = dao.alleAchsen()
         val samplesNachAchse = dao.alleSamplepunkte().groupBy { it.achseId }
 
-        if (graPunkte.isEmpty() || achsen.isEmpty() || samplesNachAchse.isEmpty()) {
+        // GVP/Festpunkte sind eine eigenständige KM-Quelle. Eine fehlende GRA-Datei darf
+        // die GVP-Kalibrierung deshalb nicht mehr vorzeitig abbrechen. Nur ohne Achse bzw.
+        // ohne Achssamplepunkte kann weder GRA noch GVP auf die TRA-Geometrie angewendet werden.
+        if (achsen.isEmpty() || samplesNachAchse.isEmpty()) {
             val ergebnis = GraVerknuepfungErgebnis(achsenVerknuepft = 0, samplepunkteVerknuepft = 0, graGruppenVerwendet = 0)
             dao.importStatusEinfuegen(
                 TrassenImportStatusEntity(
-                    quelleDatei = "GRA/kmLinien",
+                    quelleDatei = "GRA/kmLinien + GVP",
                     datenTyp = "KM",
                     status = TrassenAchseEntity.STATUS_FEHLER,
-                    meldung = "Keine passenden GRA-/Achsdaten zum Verknuepfen gefunden"
+                    meldung = "Keine passenden Achsdaten zum Verknuepfen gefunden"
                 )
             )
             return@withContext ergebnis
@@ -612,7 +615,7 @@ class TrassenRepository(private val dao: TrassenDao) {
         val links = mitHoehe[rechtsIndex - 1]
         val rechts = mitHoehe[rechtsIndex]
         val linksHoehe = links.hoeheM ?: return rechts.hoeheM
-        val rechtsHoehe = rechts.hoeheM ?: return links.hoeheM
+        val rechtsHoehe = rechts.hoeheM ?: return linksHoehe
         val spanne = rechts.kmMeter - links.kmMeter
         if (kotlin.math.abs(spanne) <= 0.001) return linksHoehe
         val t = ((graWert - links.kmMeter) / spanne).coerceIn(0.0, 1.0)
@@ -746,7 +749,7 @@ class TrassenRepository(private val dao: TrassenDao) {
             lon = lon,
             achsen = achsen,
             punkte = samplepunkte,
-            maxAbstandM = maxAbstandM
+            maxAbstandM = 250.0
         )
         kandidat?.let {
             val mitGvp = kandidatenMitGvpKmVerbessern(listOf(it))
