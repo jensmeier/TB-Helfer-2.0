@@ -54,13 +54,15 @@ Die 200043-BTBFoto-Integration bleibt fachlich erhalten, die Datenbankquellen we
 - Room/KSP kann damit `TBDatenbank`, Entities und DAOs wieder aus dem echten Quellbaum verarbeiten;
 - zusätzlich gibt es den Gradle-Check `verifyRoomGeneratedImplementation`;
 - nach `compileDebugKotlin`/`compileReleaseKotlin` wird geprüft, ob unter `build/generated/ksp` tatsächlich eine Datei `TBDatenbank_Impl.*` erzeugt wurde;
-- wenn nicht, schlägt der Build jetzt bewusst fehl mit `Room hat TBDatenbank_Impl nicht erzeugt. APK darf nicht installiert werden.` statt erst auf dem Handy abzustürzen.
+- wenn nicht, schlägt der Build bewusst fehl mit `Room hat TBDatenbank_Impl nicht erzeugt. APK darf nicht installiert werden.` statt erst auf dem Handy abzustürzen.
+
+Der erste Lauf dieses Guards scheiterte nicht an Room, sondern an einem Gradle-Kotlin-DSL-Fehler im Guard selbst:
+`Cannot read field "$$implicitReceiver_Project" because "$this" is null`.
+Ursache war der Zugriff auf den Script-Receiver `layout` innerhalb von `doLast`. Der Guard greift jetzt über den Task-Receiver `project.layout` auf das Build-Verzeichnis zu. Fix-Commit: `81d6640db7802587c6c21e7f33ff6ec536b37c6e`.
 
 ### Betroffene Dateien 200044
 - `app/build.gradle.kts`
 - `docs/TB-HELFER_AKTUELLER_STAND.md`
-
-Code-Fix-Commit vor dieser Doku: `fb05c443f422442f11628ccb4ec76c4846198e9e`.
 
 ### Prüfung / Teststatus 200044
 - Projektregeln, aktueller Stand, Branch, Draft-PR #5 und letzter Commit vor Änderung geprüft.
@@ -69,15 +71,16 @@ Code-Fix-Commit vor dieser Doku: `fb05c443f422442f11628ccb4ec76c4846198e9e`.
 - statisch geprüft: die 200043-generierte Quellkopie hatte den gesamten normalen Source-Set ersetzt; dies erklärt, warum Kotlin kompilieren konnte, KSP aber keine Room-Implementierung lieferte.
 - statisch geprüft: 200044 bindet den kanonischen Datenbankordner wieder als Android-Kotlin-Source ein und entfernt denselben Ordner aus der generierten Kopie, daher keine absichtlichen Doppelklassen.
 - zusätzlicher Build-Guard gegen erneut fehlendes `TBDatenbank_Impl` eingebaut.
-- vollständiger lokaler Android-Studio-Clean-Build 200044 und Gerätetest stehen noch aus.
+- erster Clean-Build 200044: Kotlin-Compile lief bis zum Guard; Guard selbst scheiterte durch den Gradle-DSL-Receiverfehler. Dieser Guardfehler ist korrigiert.
+- erneuter lokaler Android-Studio-Clean-Build 200044 und Gerätetest stehen noch aus.
 - GitHub Actions bleibt derzeit kein belastbarer Buildindikator; die PR-Runs enden weiterhin ohne verwertbare Runner-Schritte/Logs.
 
 ### Nächster Test 200044
 1. GitHub Desktop `Fetch origin` → `Pull origin`.
 2. Android Studio öffnen.
-3. **Einmal `Build → Clean Project`**, damit kein altes 200043-KSP-/Generated-Source-Artefakt übrig bleibt.
+3. **Einmal `Build → Clean Project`**, damit kein altes 200043-/200044-KSP-/Generated-Source-Artefakt übrig bleibt.
 4. danach Debug-Build/Run 200044.
-5. Wenn der Build grün endet, muss der neue Room-Guard `TBDatenbank_Impl` gefunden haben.
+5. Wenn der Build grün endet, muss der Room-Guard `TBDatenbank_Impl` gefunden haben.
 6. als Update installieren; App-Daten nicht löschen.
 7. zuerst nur prüfen: Poco startet normal und Startmenü/Baustellenzugriff funktionieren.
 8. danach den ursprünglichen 200043-Test fortsetzen: BTB → Abschnitt 4 → Firma → `+`; im Dialog müssen `📷 → Kamera` und `📷 → Galerie & Dateien` sichtbar sein.
