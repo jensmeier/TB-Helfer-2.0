@@ -386,7 +386,13 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             val llFotos = blockView.findViewById<LinearLayout>(R.id.llFotos)
             val header = blockView.findViewById<View>(R.id.llHeader)
 
-            tvTitle.text = if (block.fotos.isEmpty()) "Noch keine Fotos" else timeRangeText(block.fotos)
+            tvTitle.text = when {
+                block.bildtyp == Bildtyp.FOTODOKUMENTATION && importTargets.isNotEmpty() ->
+                    "${importTargets.size} Arbeitseinträge · ${block.fotos.size} Fotos"
+                block.fotos.isEmpty() -> "Noch keine Fotos"
+                block.fotos.size == 1 -> "1 Foto"
+                else -> "${block.fotos.size} Fotos"
+            }
             updateCounts(tvCounts, block)
             llFotos.removeAllViews()
 
@@ -988,13 +994,6 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             .toLocalDateTime()
             .format(timeFmt)
     }.getOrDefault("--:--")
-
-    private fun timeRangeText(fotos: List<FotoEntity>): String {
-        if (fotos.isEmpty()) return "--:--"
-        val first = timeOfFoto(fotos.first())
-        val last = timeOfFoto(fotos.last())
-        return if (first == last) first else "$first–$last"
-    }
 
     private fun shiftWindowEpochMs(datum: LocalDate, start: String?, ende: String?): Pair<Long, Long> {
         fun parseMinutes(s: String?): Int? {
