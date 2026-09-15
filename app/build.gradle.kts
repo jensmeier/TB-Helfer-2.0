@@ -11,8 +11,8 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200041: externe Fotos gezielt Arbeitseintraegen/Firma/Ort/KM zuordnen.
-        versionCode = 200041
+        // Android 200042: kompakte Arbeitseintrag-Fotoaktion mit Kamera oder Galerie/Dateien.
+        versionCode = 200042
         versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
