@@ -67,7 +67,7 @@ Vor dem Wechsel zur Kamera:
 - die bereits vorhandenen Foto-IDs des BTB werden gemerkt.
 
 Nach Rückkehr aus der Kamera:
-- nur neu entstandene Fotos derselben stabilen `btbId` werden betrachtet;
+- nur neu entstandene Fotos derselben stabilen `btbId` **und des Arbeitseintrag-Bildtyps `FOTODOKUMENTATION`** werden betrachtet; vorhandene Fotos anderer BTB-Abschnitte werden ausdrücklich nicht angefasst;
 - diese neuen Fotos werden nochmals eindeutig auf den ausgewählten Arbeitseintrag korrigiert:
   - Firma;
   - Ort/Unterbaustelle;
@@ -107,9 +107,9 @@ Unter `Einstellungen → BTB & PDF` gibt es jetzt zusätzlich eine antippbare Lo
 - GitHub-Stand, Projektregeln, aktueller Stand, Draft-PR #5 und letzter relevanter Commit wurden vor der Änderung geprüft.
 - Quellcodepfade für `btbId`, Fotoimport, Foto-Overrides, bestehende Kamera/Foto-Maske sowie Logo/PDF-Vorschau wurden vor der Änderung nachvollzogen.
 - statisch geprüft: der alte Layout-Verweis auf `btnImportPhotos` wurde zusammen mit dem Button entfernt; der Importpfad wird jetzt nur noch vom konkreten Arbeitseintrag aus gestartet.
-- statisch geprüft: Kameraweg nutzt den vorhandenen `FotoRepository.einfuegen(...)`-Pfad, der bei aktivem modernen BTB bereits die stabile aktive `btbId` zuordnet; nach Rückkehr wird zusätzlich nur innerhalb derselben `btbId` auf den Arbeitseintrag korrigiert.
+- statisch geprüft: Kameraweg nutzt den vorhandenen `FotoRepository.einfuegen(...)`-Pfad, der bei aktivem modernen BTB bereits die stabile aktive `btbId` zuordnet; nach Rückkehr wird zusätzlich nur innerhalb derselben `btbId` und des Bildtyps `FOTODOKUMENTATION` auf den Arbeitseintrag korrigiert.
 - ein vollständiger Android-Gradle-Build konnte in dieser Sitzung nicht ausgeführt werden; **Android-Studio-Build und Gerätetest 200042 stehen aus**.
-- GitHub Actions war zuletzt kein belastbarer Buildindikator, weil Jobs ohne Runner vor dem ersten Workflow-Schritt endeten.
+- GitHub Actions wurde für den 200042-Dokumentationsstand erneut geprüft: Workflow `Android CI` endete weiterhin als `failure` ohne ausführbare Job-Schritte/Runner und ist daher kein Buildindikator.
 
 ### Nächster Gerätetest 200042
 1. GitHub Desktop `Fetch origin` → `Pull origin`.
