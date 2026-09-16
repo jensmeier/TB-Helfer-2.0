@@ -6,6 +6,7 @@ import de.tbhelfer.ServiceLocator
 import de.tbhelfer.server.CollabSyncApi
 import de.tbhelfer.ui.bautagebuch.BautagebuchEintrag
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
+import de.tbhelfer.ui.bautagebuch.BtbFotoZuordnungSpeicher
 import de.tbhelfer.ui.bautagebuch.SchichtTyp
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
@@ -22,9 +23,8 @@ import java.time.format.DateTimeFormatter
  * Medienbrücke für den gemeinsamen BTB eines verantwortlichen TB-Teams.
  *
  * Text/Fachdaten laufen über [CollabLocalBridge]. Diese Klasse überträgt zusätzlich die Fotos des
- * konkreten BTB-Zeitfensters als Attachments. Die Zuordnung zum Server-Entity verwendet exakt
- * denselben stabilen clientEntityKey/btbId wie der Textsync. Datum und TAG/NACHT sind nur noch
- * Legacy-/Anzeigeattribute und dürfen mehrere BTBs desselben Tages nicht mehr vermischen.
+ * konkreten BTB. Moderne BTBs verwenden ausschließlich die stabile btbId-Zuordnung; nur echte
+ * Altbestände ohne btbId dürfen noch über Datum/Schicht/Zeitfenster zusammengeführt werden.
  */
 class BtbTeamMediaSync(context: Context) {
     private val appContext = context.applicationContext
@@ -58,15 +58,24 @@ class BtbTeamMediaSync(context: Context) {
                 .mapNotNull { entity -> entity.clientEntityKey?.let { it to entity } }
                 .toMap()
 
-            // Upload: exakt dasselbe stabile BTB-Schlüsselmodell wie CollabLocalBridge verwenden.
-            // Altbestände besitzen im Verlauf bereits einen stabilen synthetischen legacy:* Key.
+            // Upload: bei modernen BTBs ist die explizite Foto->btbId-Zuordnung verbindlich.
+            // Nur historische BTBs ohne btbId verwenden weiterhin den Zeitfenster-Fallback;
+            // bereits modern zugeordnete Fotos duerfen dabei nicht in einen Legacy-BTB rutschen.
             val verlauf = BautagebuchSpeicher.verlaufFuerBaustelle(appContext, local.altBaustelleId, local.hauptbaustellenName)
             for (v in verlauf) {
-                val key = v.btbId?.takeIf { it.isNotBlank() }
-                    ?: "legacy:${v.datum}:${v.schicht.name}"
+                val stableBtbId = v.btbId?.takeIf { it.isNotBlank() }
+                val key = stableBtbId ?: "legacy:${v.datum}:${v.schicht.name}"
                 val parent = serverBtbs[key] ?: continue
-                val (fromMs, untilMs) = shiftWindow(v.entry)
-                val btbFotos = localFotos.filter { it.erstelltAmEpochMs in fromMs until untilMs }
+                val btbFotos = if (stableBtbId != null) {
+                    val fotoIds = BtbFotoZuordnungSpeicher.fotoIdsFuerBtb(appContext, stableBtbId)
+                    localFotos.filter { it.id in fotoIds }
+                } else {
+                    val (fromMs, untilMs) = shiftWindow(v.entry)
+                    localFotos.filter { foto ->
+                        foto.erstelltAmEpochMs in fromMs until untilMs &&
+                            BtbFotoZuordnungSpeicher.btbId(appContext, foto.id) == null
+                    }
+                }
                 for (foto in btbFotos) {
                     val file = File(foto.dateipfad)
                     if (!file.exists() || !file.isFile) continue
@@ -95,7 +104,8 @@ class BtbTeamMediaSync(context: Context) {
 
             // Import: heruntergeladene BTB-Fotos als normale lokale Fotos verfügbar machen.
             // Eigene Uploads zeigen bereits auf eine vorhandene lokale Datei und werden nicht dupliziert.
-            for (parent in serverBtbs.values) {
+            // Moderne Server-BTBs ordnen importierte Fotos wieder exakt derselben clientEntityKey/btbId zu.
+            for ((parentKey, parent) in serverBtbs) {
                 for (attachment in collab.attachments(parent.serverId)) {
                     if (attachment.isDeleted || !attachment.isDownloaded) continue
                     val path = attachment.localPath?.takeIf { it.isNotBlank() } ?: continue
@@ -136,7 +146,11 @@ class BtbTeamMediaSync(context: Context) {
                         info5Wert = meta.optString("info5").takeIf { it.isNotBlank() },
                         erstelltAmEpochMs = meta.optLong("epoch", System.currentTimeMillis())
                     )
-                    fotos.einfuegen(entity)
+                    if (parentKey.startsWith("legacy:")) {
+                        fotos.einfuegen(entity)
+                    } else {
+                        fotos.einfuegenFuerBtb(entity, parentKey)
+                    }
                     rememberImported(attachment.serverId, true)
                     localPaths += canonical
                     imported++
