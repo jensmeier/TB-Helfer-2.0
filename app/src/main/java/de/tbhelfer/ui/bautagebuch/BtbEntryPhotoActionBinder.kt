@@ -1,16 +1,15 @@
 package de.tbhelfer.ui.bautagebuch
 
 import android.app.Dialog
+import android.content.DialogInterface
 import android.os.Bundle
-import android.view.Gravity
-import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputLayout
 import de.tbhelfer.R
 import kotlinx.coroutines.Dispatchers
@@ -21,9 +20,10 @@ import java.util.Locale
 /**
  * Fotoimport direkt aus dem Dialog "Eintrag für <Firma>".
  *
- * Android 200048: kompakter, beschrifteter Material-Button "Bilder". Ein Tipp darauf
- * öffnet direkt den vorhandenen Android-Bildwähler. Der bestehende BTB-/Fotoimportpfad
- * bleibt erhalten, damit Firma, Ort, Arbeitstext, KM und stabile btbId übernommen werden.
+ * Der Button sitzt als neutraler Dialog-Button auf derselben Höhe wie "Abbrechen" und
+ * "Hinzufügen". Ein Tipp öffnet direkt den vorhandenen Android-Bildwähler. Der bestehende
+ * BTB-/Fotoimportpfad bleibt erhalten, damit Firma, Ort, Arbeitstext, KM und stabile btbId
+ * übernommen werden.
  */
 object BtbEntryPhotoActionBinder {
 
@@ -55,39 +55,8 @@ object BtbEntryPhotoActionBinder {
         snapshotProvider: suspend () -> BautagebuchEintrag?
     ) {
         val context = fragment.requireContext()
-        val density = fragment.resources.displayMetrics.density
-        fun dp(value: Int): Int = (value * density).toInt()
-
-        val imageRow = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.START or Gravity.CENTER_VERTICAL
-            setPadding(0, dp(6), 0, 0)
-        }
-
-        // Material-Outlined statt nacktem Icon: kompakt, aber ohne Rätselraten erkennbar.
-        // Farben, Kontur und Ripple kommen vollständig aus dem aktiven Material-Theme
-        // und funktionieren damit in Tag- und Nachtansicht ohne feste Farbwerte.
-        val btnImages = MaterialButton(
-            context,
-            null,
-            com.google.android.material.R.attr.materialButtonOutlinedStyle
-        ).apply {
-            isAllCaps = false
-            text = "Bilder"
-            setIconResource(R.drawable.ic_image_picker_24)
-            iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
-            iconPadding = dp(6)
-            iconSize = dp(18)
-            contentDescription = "Bilder auswählen"
-            minimumWidth = 0
-            minimumHeight = 0
-            setPadding(dp(10), 0, dp(12), 0)
-        }
-        imageRow.addView(
-            btnImages,
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(40))
-        )
-        container.addView(imageRow)
+        @Suppress("UNUSED_VARIABLE")
+        val keepContainerReference = container
 
         fun normalizeHm(raw: String): String? {
             val match = Regex("^(\\d{1,2}):(\\d{2})$").matchEntire(raw.trim()) ?: return null
@@ -207,6 +176,23 @@ object BtbEntryPhotoActionBinder {
             }
         }
 
-        btnImages.setOnClickListener { launchImagePicker() }
+        // MaterialAlertDialogBuilder erzeugt einen AppCompat-AlertDialog. Der neutrale Button
+        // landet automatisch in derselben Button-Leiste wie Abbrechen/Hinzufügen. Danach wird
+        // sein Standard-Klick ersetzt, damit ein Validierungsfehler den Dialog NICHT schließt.
+        val alert = entryDialog as? AlertDialog ?: return
+        alert.setButton(
+            DialogInterface.BUTTON_NEUTRAL,
+            "Bilder",
+            null as DialogInterface.OnClickListener?
+        )
+        alert.window?.decorView?.post {
+            alert.getButton(DialogInterface.BUTTON_NEUTRAL)?.apply {
+                isAllCaps = false
+                contentDescription = "Bilder auswählen"
+                setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_image_picker_24, 0, 0, 0)
+                compoundDrawablePadding = (6 * resources.displayMetrics.density).toInt()
+                setOnClickListener { launchImagePicker() }
+            }
+        }
     }
 }
