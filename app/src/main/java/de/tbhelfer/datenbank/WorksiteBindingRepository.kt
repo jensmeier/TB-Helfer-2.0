@@ -11,13 +11,14 @@ import androidx.room.withTransaction
  *
  * Neu beigetretene Server-Baustellen erhalten aber automatisch einen lokalen HAUPT-Knoten, wenn
  * auf dem Gerät noch keine gleichnamige Hauptbaustelle existiert. Damit können bereits geladene
- * BTB/Mängel/Abnahmen sofort in den normalen lokalen Fachspeicher übernommen werden, ohne dass
- * der Helfer zuerst eine fachlich fremde vorhandene Baustelle auswählen muss.
+ * BTB/Mängel/Abnahmen und die gemeinsame Unterbaustellen-Struktur sofort in den normalen lokalen
+ * Fachspeicher übernommen werden, ohne dass der Helfer zuerst eine fremde Baustelle nachbauen muss.
  */
 class WorksiteBindingRepository(
     private val syncDatabase: SyncDatenbank,
     private val localWorksiteDao: BaustellenKnotenDao,
-    private val localWorksiteTree: BaustellenBaumRepository
+    private val localWorksiteTree: BaustellenBaumRepository,
+    private val onBindingChanged: (() -> Unit)? = null
 ) {
     private val dao: SyncDao get() = syncDatabase.syncDao()
 
@@ -109,14 +110,19 @@ class WorksiteBindingRepository(
                 )
             )
         }
+        // Nach einer neuen Zuordnung darf die Hauptbaustelle nicht minutenlang nur als leere Hülle
+        // auf dem zweiten Gerät stehen. Der normale WorkManager-Sync übernimmt den Baum.
+        onBindingChanged?.invoke()
     }
 
     suspend fun unbindServer(worksiteServerId: String) {
         dao.deleteWorksiteBindingForServer(worksiteServerId)
+        onBindingChanged?.invoke()
     }
 
     suspend fun unbindLocal(localRootKnotenId: Long) {
         dao.deleteWorksiteBindingForLocalRoot(localRootKnotenId)
+        onBindingChanged?.invoke()
     }
 
     private fun String.canonicalWorksiteName(): String =
