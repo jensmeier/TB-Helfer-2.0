@@ -4,7 +4,6 @@ import android.app.Dialog
 import android.content.DialogInterface
 import android.os.Bundle
 import android.view.Gravity
-import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
@@ -14,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.textfield.TextInputLayout
 import de.tbhelfer.R
+import de.tbhelfer.datenbank.Bildtyp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -24,8 +24,8 @@ import java.util.Locale
  *
  * Der Button sitzt als neutraler Dialog-Button auf derselben Höhe wie "Abbrechen" und
  * "Hinzufügen". Ein Tipp öffnet direkt den vorhandenen Android-Bildwähler. Der bestehende
- * BTB-/Fotoimportpfad bleibt erhalten, damit Firma, Ort, Arbeitstext, KM und stabile btbId
- * übernommen werden.
+ * BTB-/Fotoimportpfad bleibt erhalten, damit Firma, Ort, Eintrag, KM, Bildtyp und stabile btbId
+ * übernommen werden. Derselbe Binder wird für die BTB-Punkte 4 bis 8 verwendet.
  */
 object BtbEntryPhotoActionBinder {
 
@@ -44,6 +44,7 @@ object BtbEntryPhotoActionBinder {
         entryDialog: Dialog,
         sectionDialog: Dialog,
         firma: String?,
+        bildtyp: Bildtyp,
         textField: EditText,
         textLayout: TextInputLayout,
         timeField: EditText,
@@ -158,7 +159,7 @@ object BtbEntryPhotoActionBinder {
                     putString("shiftStart", snapshot.startUhrzeit)
                     putString("shiftEnd", snapshot.endeUhrzeit)
                     putString("schichtTyp", snapshot.schicht.name)
-                    putString("filterBildtyp", de.tbhelfer.datenbank.Bildtyp.FOTODOKUMENTATION.name)
+                    putString("filterBildtyp", bildtyp.name)
                     canonicalBtbId?.let { putString("btbId", it) }
                     putString("autoPhotoSource", "gallery")
                     putString("autoPhotoFirma", firma?.trim().orEmpty())
@@ -180,8 +181,8 @@ object BtbEntryPhotoActionBinder {
 
         // MaterialAlertDialogBuilder erzeugt einen AppCompat-AlertDialog. Der neutrale Button
         // wird in dieselbe Button-Leiste wie Abbrechen/Hinzufügen eingesetzt. Auf schmalen
-        // Geräten stapelt AppCompat diese Leiste sonst automatisch vertikal; 200049 erzwingt
-        // deshalb nach dem Anzeigen eine horizontale Dreierzeile.
+        // Geräten stapelt AppCompat diese Leiste sonst automatisch vertikal. 200050 hält die
+        // drei Aktionen horizontal, gleich groß und mit kompaktem Text/Padding lesbar.
         val alert = entryDialog as? AlertDialog ?: return
         alert.setButton(
             DialogInterface.BUTTON_NEUTRAL,
@@ -194,10 +195,9 @@ object BtbEntryPhotoActionBinder {
             val hinzufuegen = alert.getButton(DialogInterface.BUTTON_POSITIVE)
 
             bilder?.apply {
-                isAllCaps = false
                 contentDescription = "Bilder auswählen"
                 setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_image_picker_24, 0, 0, 0)
-                compoundDrawablePadding = (4 * resources.displayMetrics.density).toInt()
+                compoundDrawablePadding = (2 * resources.displayMetrics.density).toInt()
                 setOnClickListener { launchImagePicker() }
             }
 
@@ -214,14 +214,23 @@ object BtbEntryPhotoActionBinder {
                 buttonRow.orientation = LinearLayout.HORIZONTAL
                 buttonRow.gravity = Gravity.CENTER_VERTICAL
 
+                val density = context.resources.displayMetrics.density
+                val buttonHeight = (48 * density).toInt()
+                val horizontalPadding = (3 * density).toInt()
                 listOf(bilder, abbrechen, hinzufuegen).forEach { button ->
                     button ?: return@forEach
                     button.minWidth = 0
                     button.minimumWidth = 0
+                    button.minHeight = buttonHeight
+                    button.minimumHeight = buttonHeight
+                    button.isAllCaps = false
                     button.isSingleLine = true
+                    button.textSize = 10.5f
+                    button.gravity = Gravity.CENTER
+                    button.setPadding(horizontalPadding, 0, horizontalPadding, 0)
                     button.layoutParams = LinearLayout.LayoutParams(
                         0,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        buttonHeight,
                         1f
                     ).apply {
                         gravity = Gravity.CENTER_VERTICAL
