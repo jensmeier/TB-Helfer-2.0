@@ -52,15 +52,16 @@ abstract class GenerateBtb200043Sources : DefaultTask() {
         }
 
         val photoActions = """
-                        // Android 200043: Fotoquelle direkt im Dialog „Eintrag für <Firma>“.
+                        // Android 200050: derselbe direkte Bildpfad fuer BTB-Punkte 4 bis 8.
                         // Der bestehende Kamera-/Galeriepfad wird wiederverwendet; kein zweiter Foto- oder Overlaypfad.
-                        if (fotoType == de.tbhelfer.datenbank.Bildtyp.FOTODOKUMENTATION) {
+                        if (fotoType != null) {
                             BtbEntryPhotoActionBinder.bind(
                                 fragment = this@BautagebuchFragment,
                                 container = root,
                                 entryDialog = dlg,
                                 sectionDialog = dialog,
                                 firma = firm,
+                                bildtyp = fotoType,
                                 textField = etText,
                                 textLayout = tilText,
                                 timeField = etTime,
@@ -525,8 +526,8 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200049: Kamera-KM/Foto-Metadaten + BTB-Bilder-Button in einer Aktionszeile.
-        versionCode = 200049
+        // Android 200050: BTB-Punkte 4-8 gleicher Bilder-Pfad + gleich grosse Aktionsbuttons.
+        versionCode = 200050
         versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
