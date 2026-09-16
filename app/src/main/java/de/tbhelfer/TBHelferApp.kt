@@ -3,6 +3,7 @@ package de.tbhelfer
 import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import de.tbhelfer.einstellungen.AnsichtEinstellungenSpeicher
+import de.tbhelfer.server.Schema13Worker
 import de.tbhelfer.server.SyncWorker
 import de.tbhelfer.util.StorageCleanupScheduler
 
@@ -29,5 +30,8 @@ class TBHelferApp : Application() {
         // NAS-/Cloudflare-Sync nur mit Netzwerk und nicht bei niedrigem Akkustand.
         // Der manuelle „Neu laden“-Button bleibt für sofortiges Synchronisieren zuständig.
         SyncWorker.schedule(this)
+        // Schema 13 bleibt vorerst technisch getrennt, nutzt aber denselben Zeitplan/Netzregeln:
+        // Unterbaustellen, mobile Streckendaten und globale Baustellen-Loeschtombstones.
+        Schema13Worker.schedule(this)
     }
 }
