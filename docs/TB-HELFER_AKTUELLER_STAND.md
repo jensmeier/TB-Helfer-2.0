@@ -25,7 +25,7 @@ GitHub-Code und aktive Branches sind Source of Truth. `main` stabil halten.
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`
 - aktueller Android-Buildkandidat: **200050**
-- letzter fachlicher Code-/Check-Stand vor den Doku-Updates: `c576dd4151f1ff9eb39c167c468ed3000cc589bb`
+- letzter fachlicher Code-/Check-Stand der 200050-Änderungen: `c576dd4151f1ff9eb39c167c468ed3000cc589bb`; danach nur Doku-Aktualisierungen
 - Produktivserver/NAS unverändert auf API **0.7.0**, PostgreSQL **Schema 10**
 
 ## Verbindliche Entwicklungsstrategie
