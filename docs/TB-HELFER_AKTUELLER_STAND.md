@@ -18,7 +18,7 @@ Vor jeder Änderung zuerst lesen:
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft.
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`.
 - aktueller Android-Buildkandidat: **200049**.
-- letzter fachlicher Code-/Teststand vor diesem Doku-Commit: `29da9860a3c47013f7c8294ff9e176e69cfeb6a8`.
+- letzter fachlicher Code-/Buildfix-Stand vor diesem Doku-Commit: `89230b953221fa5591ccef3e8a81b04ac6e75101`.
 - Produktivserver/NAS unverändert auf Schema 10.
 
 ## Normaler Entwicklungsablauf
@@ -116,10 +116,14 @@ KM, GPS, Baustelle, Strecke/Gleis und Firma müssen in allen Stufen zueinander p
 - `TrassenNaheBerechner.Ergebnis` unterstützt `copy(qualitaet = ...)` und die verwendeten Qualitätswerte.
 - neue 10/30-m-Grenztests sind versioniert.
 
-### Noch nicht lokal ausführbar in dieser Chat-Sitzung
-Ein echter Gradle-/Android-Build konnte in dieser Sitzung nicht gestartet werden, weil der private Repository-Arbeitsbaum hier nicht als lokales Git-Checkout mit Buildumgebung vorliegt.
+### Lokale Buildversuche vom 16.09.2026
+1. Erster Windows-/Android-Studio-Build von 200049 erreichte `:app:compileDebugKotlin` und scheiterte mit genau einem Fehler im generierten `FotoErfassenFragment`: `Unresolved reference 'colorError'`.
+2. Ein zunächst versuchter Kompatibilitätsalias unter `app/src/main/java/com/google/android/material/R/attr/` war technisch falsch: der neue Kotlin-Packagepfad überschattete den echten Material-`R.attr`-Namensraum. Dadurch erschienen beim nächsten Build 12 Folgefehler für zuvor gültige Attribute wie `colorSurface`, `colorOnSurface` und `materialButtonStyle`.
+3. Dieser Alias wurde vollständig wieder entfernt (`89230b953221fa5591ccef3e8a81b04ac6e75101`).
+4. Der 200049-Generator in `app/build.gradle.kts` verwendet für die rote Warnfarbe jetzt direkt `android.R.attr.colorError`. Das Android-Attribut ist ab API 23 verfügbar und passt damit zum `minSdk = 23`; der echte Material-`R.attr`-Namensraum bleibt unangetastet.
+5. Nach diesem Fix ist ein erneuter lokaler `Clean Project -> Build Project` erforderlich. Das Ergebnis steht noch aus.
 
-GitHub Actions ist derzeit weiterhin kein verlässlicher Compilerindikator: aktuelle und bereits vorherige PR-Runs enden mit `failure`, aber der Build-Job besitzt **keine ausgeführten Steps und keine verwertbaren Logs**. Dieses Verhalten trat bereits vor den 200049-Änderungen auf. Der maßgebliche nächste Buildtest bleibt deshalb Android Studio auf dem Windows-PC.
+GitHub Actions ist derzeit weiterhin kein verlässlicher Compilerindikator: aktuelle und bereits vorherige PR-Runs enden mit `failure`, aber der Build-Job besitzt **keine ausgeführten Steps und keine verwertbaren Logs**. Dieses Verhalten trat bereits vor den 200049-Änderungen auf. Der maßgebliche Buildtest bleibt deshalb Android Studio auf dem Windows-PC.
 
 ### Nächster lokaler Build-/Gerätetest
 1. GitHub Desktop `Fetch origin -> Pull origin`.
