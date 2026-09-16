@@ -168,6 +168,9 @@ interface SyncDao {
     @Query("SELECT * FROM sync_collab_entity WHERE worksiteServerId = :worksiteServerId AND entityType = :entityType AND isDeleted = 0 ORDER BY updatedAtEpochMs DESC")
     suspend fun collabEntities(worksiteServerId: String, entityType: String): List<SyncCollabEntity>
 
+    @Query("SELECT * FROM sync_collab_entity WHERE worksiteServerId = :worksiteServerId AND entityType = :entityType AND isDeleted = 1 ORDER BY updatedAtEpochMs DESC")
+    suspend fun deletedCollabEntities(worksiteServerId: String, entityType: String): List<SyncCollabEntity>
+
     @Query("UPDATE sync_collab_entity SET isDeleted = 1, entityVersion = :entityVersion, updatedAtEpochMs = :nowEpochMs WHERE serverId = :serverId")
     suspend fun markCollabDeleted(serverId: String, entityVersion: Long, nowEpochMs: Long = System.currentTimeMillis())
 
@@ -201,6 +204,13 @@ interface SyncDao {
 
     @Query("SELECT * FROM sync_collab_pending WHERE worksiteServerId = :worksiteServerId AND entityType = :entityType AND clientEntityKey = :clientEntityKey AND state IN ('PENDING','FAILED','CONFLICT') ORDER BY id DESC LIMIT 1")
     suspend fun collabPendingForClientKey(
+        worksiteServerId: String,
+        entityType: String,
+        clientEntityKey: String
+    ): SyncCollabPendingChangeEntity?
+
+    @Query("SELECT * FROM sync_collab_pending WHERE worksiteServerId = :worksiteServerId AND entityType = :entityType AND clientEntityKey = :clientEntityKey AND state IN ('PENDING','FAILED','CONFLICT','UPLOADING') ORDER BY id DESC LIMIT 1")
+    suspend fun collabPendingAnyForClientKey(
         worksiteServerId: String,
         entityType: String,
         clientEntityKey: String
