@@ -23,16 +23,15 @@ import de.tbhelfer.ui.abnahme.AbnahmeSpeicher
 import de.tbhelfer.server.SecureTokenStore
 import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.server.TeamManagementApi
+import de.tbhelfer.server.WorksiteDeletionApi
 import de.tbhelfer.server.WorksiteProvisioningApi
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
-import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -304,22 +303,67 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
             .setMessage(getString(R.string.dialog_delete_project_final_message, haupt.hauptbaustellenName))
             .setPositiveButton(getString(R.string.btn_delete)) { _, _ ->
                 viewLifecycleOwner.lifecycleScope.launch {
-                    loescheBaustelleKomplett(haupt)
-                    Toast.makeText(requireContext(), getString(R.string.dialog_delete_project_done), Toast.LENGTH_SHORT).show()
+                    when (val outcome = loescheBaustelleKomplett(haupt)) {
+                        WorksiteDeleteOutcome.Success -> Toast.makeText(
+                            requireContext(), getString(R.string.dialog_delete_project_done), Toast.LENGTH_SHORT
+                        ).show()
+                        WorksiteDeleteOutcome.SessionInvalid -> {
+                            SecureTokenStore(requireContext()).clear()
+                            Toast.makeText(requireContext(), "Gerätefreigabe ist nicht mehr gültig. Baustelle wurde nicht gelöscht.", Toast.LENGTH_LONG).show()
+                        }
+                        is WorksiteDeleteOutcome.Error -> Toast.makeText(
+                            requireContext(), outcome.message, Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
             }
             .setNegativeButton(getString(R.string.btn_cancel), null).show()
     }
 
-    private suspend fun loescheBaustelleKomplett(haupt: BaustellenKnotenEntity) {
-        val appContext = requireContext().applicationContext; val altId = haupt.altBaustelleId
-        withContext(Dispatchers.IO) {
-            fotoRepo.fotosFuerBaustelleOnce(altId).forEach { runCatching { File(it.dateipfad).delete() } }
-            BautagebuchSpeicher.loescheAlleBtbsFuerBaustelle(appContext, altId, haupt.hauptbaustellenName)
-            ServiceLocator.baustellenRepository.baustelleMitIdOnce(altId)?.let { ServiceLocator.baustellenRepository.loeschen(it) }
-            repo.loescheTeilbaum(haupt.id)
+    private sealed interface WorksiteDeleteOutcome {
+        data object Success : WorksiteDeleteOutcome
+        data object SessionInvalid : WorksiteDeleteOutcome
+        data class Error(val message: String) : WorksiteDeleteOutcome
+    }
+
+    private suspend fun loescheBaustelleKomplett(haupt: BaustellenKnotenEntity): WorksiteDeleteOutcome {
+        val appContext = requireContext().applicationContext
+        val binding = withContext(Dispatchers.IO) {
+            ServiceLocator.worksiteBindingRepository.bindingForLocalRoot(haupt.id)
         }
-        if (speicher.aktuelleHauptbaustelleKnotenId.first() == haupt.id) speicher.loeschen()
+
+        // Rein lokale, nie mit dem Server verbundene Baustellen duerfen weiterhin lokal geloescht werden.
+        if (binding == null) {
+            return runCatching {
+                WorksiteLocalDeleteService.delete(appContext, haupt.id)
+            }.fold(
+                onSuccess = { WorksiteDeleteOutcome.Success },
+                onFailure = { WorksiteDeleteOutcome.Error(it.message ?: "Baustelle konnte lokal nicht gelöscht werden.") }
+            )
+        }
+
+        // Bei einer gebundenen Baustelle gewinnt immer zuerst der Server-Tombstone. So kann ein
+        // Netz-/Serverfehler keine nur lokal geloeschte Baustelle erzeugen, die spaeter wiederkommt.
+        val token = SecureTokenStore(appContext).load()
+            ?: return WorksiteDeleteOutcome.Error("Gerät ist nicht für den Server aktiviert. Baustelle wurde nicht gelöscht.")
+
+        return when (val result = withContext(Dispatchers.IO) {
+            WorksiteDeletionApi().delete(token, binding.worksiteServerId)
+        }) {
+            WorksiteDeletionApi.DeleteResult.Success -> runCatching {
+                WorksiteLocalDeleteService.delete(appContext, haupt.id)
+            }.fold(
+                onSuccess = { WorksiteDeleteOutcome.Success },
+                onFailure = { WorksiteDeleteOutcome.Error(it.message ?: "Server hat gelöscht, lokale Bereinigung ist fehlgeschlagen.") }
+            )
+            WorksiteDeletionApi.DeleteResult.Unsupported -> WorksiteDeleteOutcome.Error(
+                "Der Server unterstützt gemeinsames Baustellen-Löschen noch nicht. Lokal wurde nichts gelöscht."
+            )
+            WorksiteDeletionApi.DeleteResult.SessionInvalid -> WorksiteDeleteOutcome.SessionInvalid
+            is WorksiteDeletionApi.DeleteResult.Error -> WorksiteDeleteOutcome.Error(
+                "Baustelle wurde nicht gelöscht: ${result.message}"
+            )
+        }
     }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
