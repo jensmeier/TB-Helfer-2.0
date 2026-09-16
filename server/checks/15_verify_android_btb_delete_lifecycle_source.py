@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static contract checks for group-wide BTB delete lifecycle on Android."""
+"""Static contract checks for group-wide BTB completion/delete lifecycle on Android."""
 
 from pathlib import Path
 
@@ -7,6 +7,8 @@ ROOT = Path(__file__).resolve().parents[2]
 DAO = ROOT / "app/src/main/java/de/tbhelfer/datenbank/SyncDao.kt"
 COORD = ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDeleteSyncCoordinator.kt"
 LOCAL_DELETE = ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDeleteService.kt"
+ACTIVE_CONTEXT = ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbActiveContext.kt"
+POINTER = ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbActivePointerControl.kt"
 WORKER = ROOT / "app/src/main/java/de/tbhelfer/server/SyncWorker.kt"
 VERLAUF = ROOT / "app/src/main/java/de/tbhelfer/ui/baustelle/BtbVerlaufFragment.kt"
 
@@ -18,6 +20,8 @@ def read(path: Path) -> str:
 dao = read(DAO)
 coord = read(COORD)
 local_delete = read(LOCAL_DELETE)
+active = read(ACTIVE_CONTEXT)
+pointer = read(POINTER)
 worker = read(WORKER)
 verlauf = read(VERLAUF)
 errors: list[str] = []
@@ -51,6 +55,22 @@ if "BtbFotoZuordnungSpeicher.btbLoesen" not in local_delete:
 if "return Ergebnis(deleted, detached, null)" not in local_delete:
     errors.append("Nach BTB-Loeschen wird weiterhin ein anderer Verlauf-BTB automatisch aktiviert.")
 
+# Abschluss: fertiger BTB wird aus dem aktiven Kontext geloest und sein Status sofort synchronisiert.
+if "val abgeschlossen = entry.istFertig || entry.dokumentVersion > 0" not in active:
+    errors.append("BtbActiveContext erkennt einen lokal/remote abgeschlossenen BTB nicht.")
+if "BtbActivePointerControl.nachAbschlussInaktivMerken" not in active:
+    errors.append("Abgeschlossener BTB wird nicht aus dem aktiven Pointer geloest.")
+if "SofortSync.anstossen(appContext)" not in active:
+    errors.append("Abschlussstatus stoesst keinen Team-SofortSync an.")
+
+# Nur die bewusste Verlauf-Aktion darf einen abgeschlossenen BTB mit derselben btbId reaktivieren.
+if "CONSCIOUS_REOPEN_FILE" not in pointer or "fun bewusstReaktivieren" not in pointer:
+    errors.append("Bewusstes Reaktivieren eines Abschluss-BTB ist nicht vom stale Remote-Pointer getrennt.")
+if "fun istBewusstReaktiviert" not in pointer:
+    errors.append("Aktiver Kontext kann bewusste Nachbearbeitung nicht erkennen.")
+if "BtbActivePointerControl.bewusstReaktivieren" not in verlauf:
+    errors.append("BTB-Verlauf markiert 'BTB bearbeiten' nicht als bewusste Reaktivierung derselben btbId.")
+
 # Tombstones gewinnen im Worker VOR normalem Server-BTB-Import und werden noch im selben Lauf geflusht.
 first_reconcile = worker.find("reconcileDeletesAfterPull()?.let { return it }")
 first_import = worker.find("localBridge.applyServerStateToLocal()")
@@ -70,4 +90,4 @@ if errors:
         print(f"ERROR: {error}")
     raise SystemExit(1)
 
-print("OK: BTB aktiv/Abschluss-Loeschlebenszyklus und Team-Tombstones sind statisch abgesichert.")
+print("OK: BTB aktiv/Abschluss/Reaktivieren/Loeschen und Team-Tombstones sind statisch abgesichert.")
