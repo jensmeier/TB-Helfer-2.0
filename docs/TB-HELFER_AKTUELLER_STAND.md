@@ -1,6 +1,6 @@
 # TB-Helfer – aktueller Projektstand
 
-Stand: 2026-09-16
+Stand: 2026-09-17
 
 Diese Datei ist die verbindliche technische Übergabe zwischen Chats/Sitzungen. Fachliche Grundsatzentscheidungen stehen in `docs/TB-HELFER_PROJEKTREGELN.md`, die Arbeitsweise in `docs/TB-HELFER_PROJEKTANWEISUNG.md`, die geplante Reihenfolge in `docs/TB-HELFER_ROADMAP.md`.
 
@@ -22,195 +22,149 @@ GitHub-Code und aktiver Branch sind Source of Truth. `main` stabil halten.
 - Repository: `jensmeier/TB-Helfer-2.0`
 - stabil: `main`
 - aktiver Feature-Branch: `feature/admin-offline-sync`
-- Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft/mergeable
+- Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft
 - `main`: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`
-- Branch-Head vor dieser Dokumentationsaktualisierung: `e0eb27409d506e5b7eaa5f5709024a86d28ba1cb`
+- Branch-Head vor dieser Dokumentationsaktualisierung: `c92b83ec9fd514c1c865d321999e18ce32af11e8`
 - aktueller Android-Buildkandidat im Gradle-Stand: **200050**
-- Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
+- Produktivserver/NAS weiterhin unverändert: API **0.7.0**, PostgreSQL **Schema 10**
+- vorbereiteter nächster Serverstand im Feature-Branch: API **0.7.2 / Schema 13**
 
-## Entwicklungsstrategie
+## Aktuelle Entwicklungsentscheidung
 
-**Android zuerst stabil und vollständig machen, danach produktiven Server/NAS ausbauen.**
+Der Benutzer hat Schema 13 jetzt ausdrücklich für den nächsten produktiven Serverstand freigegeben, mit zwei zusätzlichen verbindlichen Anforderungen:
 
-Keine produktive Servermigration für einen Android-Zwischenstand. Server/NAS-Migrationen nur nach frischem verifiziertem Backup.
+1. benötigte **mobile/abgeleitete Streckendaten vom Handy** sollen über den Server auf andere Baustellengeräte gelangen;
+2. wenn eine **servergebundene Baustelle komplett gelöscht** wird, muss sie auch serverseitig verschwinden und auf anderen Geräten über einen Tombstone lokal entfernt werden.
 
----
-
-# Aktueller Android-Stand – BTB-Lebenszyklus
-
-## Letzter lokaler Build
-
-Der Benutzer hat am 16.09.2026 um ca. 20:23 einen 200050-Zwischenstand in Android Studio erfolgreich gebaut:
-- Build erfolgreich;
-- nur 4 Warnungen;
-- keine Compilerfehler.
-
-**Wichtig:** Danach wurden weitere Branch-Änderungen für die feste Buttonzeile sowie BTB-Abschluss-/Lösch-Lebenszyklus eingespielt. Der aktuelle Branch-Head `e0eb274...` ist deshalb noch nicht lokal kompiliert/auf Poco und Pixel bestätigt.
-
-GitHub Actions bleibt kein verlässlicher Compilernachweis: der aktuelle Workflow-Lauf scheitert weiterhin in der bekannten Infrastrukturform, bevor ein aussagekräftiger Android-Build entsteht. Maßgeblicher Test bleibt Android Studio auf dem Windows-PC.
-
-## BTB-Teammodell
-
-Verbindlich:
-- BTB ist **nicht** baustellenweit gemeinsam;
-- jeder verantwortliche TB besitzt mit seinen Helfern einen eigenen gemeinsamen BTB-Bereich;
-- Helfer desselben TB-Teams bearbeiten exakt denselben BTB / dieselbe stabile `btbId`;
-- ein anderer verantwortlicher TB besitzt seinen eigenen BTB / seine eigene `btbId`;
-- Datum, Zeit und Tag/Nacht sind Attribute, nicht Identität;
-- mehrere BTBs am selben Tag und über Mitternacht sind erlaubt;
-- ein real angelegter noch nicht abgeschlossener BTB heißt im Benutzer-UI **`BTB aktiv`**, nicht `Entwurf`.
-
-Neue fachliche Klarstellung vom 16.09.2026:
-- **Baustellenstruktur, Unterbaustellen, benötigte Streckendaten, Abnahmen, Mängel, Bilderliste gesamt und Mängelliste gesamt sind Baustellendaten und sollen innerhalb der Baustellenmitgliedschaft gemeinsam synchronisiert werden.**
-- Die frühere Formulierung, diese normalen Baustellendaten unnötig auf einen einzelnen Helfer-Bereich zu beschränken, gilt für dieses Zielmodell nicht mehr.
-- Die eigentliche Teamtrennung bleibt beim **BTB**: verantwortlicher TB + seine Helfer gemeinsam; andere TB-Teams getrennt.
-- Berechtigungen bleiben weiterhin für Mitgliedschaft, Rollen und besonders schützenswerte Bearbeitungsaktionen relevant, sollen aber nicht verhindern, dass normale gemeinsame Baustellendaten auf den Baustellengeräten verfügbar sind.
-
-Diese Klarstellung muss bei der nächsten Konsolidierung auch in `TB-HELFER_PROJEKTREGELN.md` eingearbeitet werden; bis dahin ist sie hier als neuere Benutzerentscheidung dokumentiert.
+Produktive Migration trotzdem **nur nach frischem verifiziertem Backup**. Bis dahin bleibt der NAS auf Schema 10.
 
 ---
 
-# BTB Speichern / Auto-Sync
+# Fachliches Sync-Modell
 
-Bereits vorhanden:
-- lokal immer zuerst sicher speichern;
-- danach vorhandenen `SofortSync` anstoßen;
-- bestehende WorkManager-/`SyncWorker`-/Collaboration-Queue wiederverwenden;
-- kein zweiter Netzwerkpfad;
-- ohne Internet bleiben lokale Daten erhalten und werden später übertragen;
-- Import vom Server erzeugt keinen simplen Import→Upload-Kreis;
-- komplette BTB-Fachdaten einschließlich Punkte 4–8 laufen im selben Snapshot.
+## Baustellenweit gemeinsam
 
-Praktisch noch mit zwei Geräten zu bestätigen:
-- Poco → Pixel ohne manuellen Sync;
-- Pixel → Poco;
-- Offline speichern → Netz wieder da;
-- mehrere schnelle Änderungen;
-- mehrere Helfer / mehrere verantwortliche TB-Teams ohne Vermischung.
+Innerhalb derselben Baustellenmitgliedschaft sollen gemeinsam verfügbar sein:
+- Hauptbaustelle;
+- Unterbaustellen / kompletter `BaustellenKnoten`-Baum;
+- benötigte mobile Streckendaten;
+- Abnahmen;
+- Mängel;
+- baustellenweite Bilder-/Mängellisten.
 
----
+## BTB getrennt pro verantwortlichem TB-Team
 
-# BTB Abschluss / Nachbearbeitung
+- Jeder verantwortliche TB besitzt mit seinen Helfern seinen eigenen gemeinsamen BTB-Bereich.
+- Helfer desselben TB-Teams bearbeiten dieselbe stabile `btbId`.
+- Andere verantwortliche TB-Teams besitzen eigene BTBs.
+- Datum/Uhrzeit/Tag/Nacht sind Attribute, nicht Identität.
+- sichtbarer Status eines laufenden Berichtes: `BTB aktiv`, nicht `Entwurf`.
 
-Aktueller Branch besitzt jetzt eine ausdrückliche Lebenszyklussteuerung:
-
-- erfolgreicher `BTB Abschluss` schreibt den fertigen Zustand derselben `btbId`;
-- ein abgeschlossener BTB wird aus dem aktiven Kontext gelöst;
-- der fertige BTB bleibt vollständig im Verlauf;
-- ein auf einem anderen Teamgerät empfangener fertiger BTB darf dort nicht durch einen stale `.active_btb`-Pointer weiter als aktiv erscheinen;
-- `BtbActiveContext` erkennt `istFertig || dokumentVersion > 0`, markiert den BTB nach Abschluss inaktiv und löst den aktiven Pointer;
-- Abschlusszustand stößt `SofortSync` an, weil der Abschluss nicht in jedem Pfad noch einmal durch den normalen `BautagebuchSpeicher.speichern()`-Hook läuft;
-- nur die bewusste Aktion `BTB-Verlauf → BTB bearbeiten` darf exakt dieselbe abgeschlossene `btbId` wieder aktivieren;
-- dafür gibt es getrennte Marker für `nach Abschluss inaktiv` und `bewusst reaktiviert`;
-- wird danach wirklich geändert, gilt der bestehende Status `Nachbearbeitung` und das aktuelle Abschluss-PDF wird gemäß bestehender Original-/Rotlogik ungültig;
-- beim nächsten erfolgreichen Abschluss wird dieselbe `btbId` wieder inaktiv.
-
-Relevante Dateien:
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbActiveContext.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbActivePointerControl.kt`
-- `app/src/main/java/de/tbhelfer/ui/baustelle/BtbVerlaufFragment.kt`
-
-Letzte relevante Commits:
-- `77addce9...` – remote abgeschlossenen BTB aus aktivem Kontext lösen
-- `ad5703fa...` – bewusstes Wiederöffnen markieren
-- `c6c239fa...` – Abschluss beim Lösen sofort synchronisieren
-- `e0eb2740...` – Source-Check für Abschluss/Wiederöffnen
+Der praktische Poco↔Pixel-BTB-Sync ist weiterhin **nicht als stabil bestätigt**. Vor weiteren BTB-Hotfixes zuerst Baustellenstruktur/Serverbasis stabilisieren.
 
 ---
 
-# BTB Löschen – Team-Tombstone statt Wiederauferstehen
+# Schema 13 – Baustellenstruktur
 
-Das vom Benutzer beobachtete Problem war:
-- Poco löscht lokal einen BTB;
-- Pixel bzw. Server besitzt dieselbe `btbId` noch;
-- nächster Sync schreibt den scheinbar gelöschten BTB wieder zurück.
+Bereits im Branch gebaut:
+- `tb.collab_worksite_nodes` mit stabiler geräteübergreifender `client_node_key`;
+- Parent/Child-Zuordnung ohne lokale Room-IDs;
+- LEAD lädt lokale Unterbaustellen hoch;
+- Helfer übernimmt den autoritativen Serverbaum;
+- gelöschte Unterbaustellen werden als Tombstones erhalten;
+- `WorksiteStructureSync` ist in den normalen Android-Sync integriert;
+- Server-Basisendpunkt: `/api/v1/collab/worksites/{worksite_id}/nodes`.
 
-Der aktuelle Branch besitzt dafür jetzt `BtbDeleteSyncCoordinator`.
-
-Verbindlicher Ablauf bei bewusstem `BTB löschen`:
-1. stabile `btbId` und Server-Baustelle/TB-Gruppe bestimmen;
-2. Löschvorhaben **vor** dem lokalen Löschen persistent merken;
-3. wenn Server-Entity bereits bekannt ist, vorhandene Collaboration-Queue mit `OP_DELETE` verwenden;
-4. BTB lokal sofort löschen;
-5. `SofortSync` anstoßen;
-6. offline bleibt das Löschvorhaben bestehen und wird nach Netzrückkehr übertragen;
-7. Server-Tombstone derselben `btbId` wird auf anderen Geräten desselben BTB-Teams lokal angewendet;
-8. ein DELETE-Konflikt nach zwischenzeitlicher Änderung eines anderen Teamgeräts wird gegen die aktuelle Serverversion neu eingereiht;
-9. echte Baustellenfoto-Dateien bleiben bestehen; nur die Zuordnung zur gelöschten `btbId` wird gelöst;
-10. nach dem Löschen wird **kein anderer historischer BTB automatisch aktiviert**.
-
-Wichtige Dateien:
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDeleteSyncCoordinator.kt`
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDeleteService.kt`
-- `app/src/main/java/de/tbhelfer/server/SyncWorker.kt`
-- `app/src/main/java/de/tbhelfer/datenbank/SyncDao.kt`
-- `app/src/main/java/de/tbhelfer/ui/baustelle/BtbVerlaufFragment.kt`
-
-Der Worker behandelt DELETE/Tombstones **vor** dem normalen Server-BTB-Import. Neu eingereihte oder gegen eine aktuelle Serverversion rebased Deletes können im selben Worker-Lauf erneut synchronisiert werden. Dadurch soll ein gelöschter BTB nicht mehr zwischen Poco/Pixel wieder auferstehen.
-
-Static Contract:
-- `server/checks/15_verify_android_btb_delete_lifecycle_source.py`
-- in `.github/workflows/android.yml` eingebunden.
-
-Noch praktisch zu bestätigen:
-- online Poco löscht → Pixel löscht denselben BTB;
-- online Pixel löscht → Poco löscht denselben BTB;
-- danach App-Neustart + erneuter Sync: BTB bleibt weg;
-- offline löschen → lokal sofort weg → Netz wieder an → anderes Gerät löscht später;
-- Löschen nach paralleler Änderung auf dem anderen Teamgerät;
-- echte Fotos bleiben in der Baustelle erhalten.
+Der frühere Test „Poco hat Unterbaustellen, Pixel nur Hauptbaustelle“ ist damit fachlich erklärt: produktiv läuft noch Schema 10 und kennt den Schema-13-Endpunkt nicht.
 
 ---
 
-# BTB Punkte 4–8 / Bilder / Buttons
+# Schema 13 – mobile Streckendaten
 
-Punkte 4–8 verwenden denselben direkten Bilderpfad mit dem jeweiligen Bildtyp:
-- 4 Ausgeführte Arbeiten → `FOTODOKUMENTATION`
-- 5 Abnahmen → `ABNAHMEN`
-- 6 Einweisung/Unterweisung → `EINWEISUNG_UNTERWEISUNG`
-- 7 Besonderheiten → `BESONDERHEITEN`
-- 8 Mängel/Schäden → `MAENGEL_SCHAEDEN`
+Neue Umsetzung vom 17.09.2026:
 
-Modern synchronisierte BTB-Fotos werden strikt derselben `btbId` zugeordnet; Zeitfenster ist nur noch Legacy-Fallback für echte Altbestände ohne `btbId`.
+## Sicherheits-/Datenregel
 
-## Neue feste Aktionszeile
+**Originale Vermessungsdateien auf dem NAS bleiben unverändert.**
+Der neue Pfad lädt keine TRA/GRA/KF/KOR-Rohdateien hoch und überschreibt keine Originale.
 
-Der vorherige Versuch, Androids interne AlertDialog-Buttonbar zu zwingen, war auf dem Poco weiterhin abgeschnitten (`Bil… / Abbre… / Hinzu…`).
+Synchronisiert wird ein separater, baustellenbezogener mobiler Arbeitsstand:
+- `TrassenAchseEntity`-Metadaten;
+- bereits berechnete `TrassenSamplePointEntity`-Punkte inkl. GPS/KM/KM-Quelle;
+- lokale `StreckenpunktEntity`-Punkte;
+- Zuordnung über Server-Baustelle und stabile Dataset-Keys.
 
-Aktueller Branch ersetzt die sichtbare Systemleiste durch eine eigene Zeile direkt im Dialoginhalt:
-- `Bilder | Abbrechen | Hinzufügen`
-- drei `MaterialButton`s;
-- je exakt 1/3 Breite;
-- 48 dp Höhe;
-- einzeilig / zentriert;
-- gleiche Darstellung in Punkten 4–8;
-- `Hinzufügen` delegiert weiter an die bereits vorhandene positive Dialog-Validierungs-/Commitlogik;
-- alte AlertDialog-Systembuttonzeile bleibt nur unsichtbarer technischer Träger und wird optisch ausgeblendet.
+Damit kann ein Helfer die auf dem TB-Handy bereits berechnete/aufbereitete Achse verwenden, ohne die ursprünglichen Rohdateien erneut importieren zu müssen.
 
-Relevante Datei:
-- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbEntryPhotoActionBinder.kt`
+Noch nicht enthalten:
+- vollständige Roh-GRA/GVP/KOR/KF-Dateiinhalte;
+- separate Historie aller manuellen KM-Anker/Korrekturen. Der aktuelle berechnete KM-Stand liegt bereits in den synchronisierten Samplepunkten. Falls Helfer später selbst diese Kalibrierung weiterbearbeiten sollen, muss diese Bearbeitungshistorie zusätzlich synchronisiert werden.
 
-Commit:
-- `07c7fcd0...` – stabile eigene BTB-Aktionszeile.
+## Server
 
-**Noch nicht auf Gerät bestätigt**, weil dieser Commit nach dem letzten erfolgreichen lokalen Build kam.
+`server/migrations/013_worksite_structure_sync.sql` enthält jetzt zusätzlich `tb.mobile_track_data` mit:
+- `source_worksite_id`;
+- `dataset_key`;
+- `dataset_kind = AXIS | STRECKENPUNKTE`;
+- optionalem `route_key`;
+- JSON-Payload und Versionsnummer;
+- Soft-Delete.
+
+`server/app_parts/21_part.py` setzt den vorbereiteten Serverstand auf **0.7.2** und bietet:
+- `GET /api/v1/collab/worksites/{worksite_id}/track-data`
+- `PUT /api/v1/collab/worksites/{worksite_id}/track-data`
+
+Schreiben darf nur `LEAD`; Mitglieder dürfen den Snapshot lesen.
+
+## Android
+
+Neu:
+- `WorksiteTrackDataApi.kt`
+- `WorksiteTrackDataSync.kt`
+- Service in `ServiceLocator`
+- `Schema13Worker.kt`
+- `SofortSync` stößt zusätzlich den Schema-13-Worker an.
+
+LEAD: lokaler mobiler Streckendatenstand → Server.
+Helfer: Server-Snapshot → lokale Fachdatenbank der gebundenen Baustelle.
+Andere lokale Baustellen bleiben unangetastet.
 
 ---
 
-# Baustelle / Unterbaustellen / Streckendaten
+# Schema 13 – Baustelle komplett löschen
 
-Noch offen:
-- Poco besitzt z. B. `5362-1`, `Durchlass` und weitere Unterbaustellen;
-- Pixel/Helfer besitzt teilweise nur die Hauptbaustelle;
-- `WorksiteBindingRepository` kann aktuell eine Server-Hauptbaustelle lokal anlegen/binden, synchronisiert aber noch nicht den vollständigen `BaustellenKnoten`-Baum.
+Neue verbindliche Semantik:
 
-Ziel:
-- gemeinsame Baustelle → Unterbaustellen → Strecke/Gleis → Objekte über stabile IDs verteilen;
-- Helfer muss gemeinsame Unterbaustellen nicht manuell neu anlegen;
-- gemeinsame Baustellendaten stehen den Baustellenmitgliedern zur Verfügung;
-- Vermessungs-/Streckendateien weiterhin nur bedarfsgerecht auf Geräte übertragen; Originale auf NAS unverändert.
+- Eine **rein lokale, nie servergebundene Baustelle** kann weiterhin nur lokal gelöscht werden.
+- Eine **servergebundene Baustelle** wird nicht mehr zuerst lokal gelöscht.
+- Ablauf:
+  1. Server-Binding bestimmen;
+  2. Server-DELETE ausführen;
+  3. Server erzeugt `worksite_delete_tombstones` und setzt `worksites.deleted_at`;
+  4. erst nach Server-Erfolg lokale Dateien/BTBs/Legacy-Baustelle/Teilbaum löschen und Binding lösen;
+  5. andere Geräte laden den Tombstone firmenbezogen und löschen ihre lokale Kopie ebenfalls.
+- Bei Server-/Netz-/Sessionfehler bleibt die lokale Baustelle bestehen. Damit kann sie nicht später aus dem Server wiederauferstehen.
+- Die Serverzeile bleibt als Soft-Delete-/Auditanker erhalten, taucht aber im normalen Collaboration-Kontext nicht mehr auf.
 
-Keine produktive Serveränderung wurde dafür in diesem Android-Schritt vorgenommen.
+Neue Dateien/Pfade:
+- `server/app_parts/21_part.py`
+- `app/src/main/java/de/tbhelfer/server/WorksiteDeletionApi.kt`
+- `app/src/main/java/de/tbhelfer/ui/baustelle/WorksiteLocalDeleteService.kt`
+- `BaustellenFragment.kt` verwendet bei gebundenen Baustellen Server-first Delete.
+- `Schema13Worker.kt` verarbeitet Remote-Tombstones.
+- Tombstone-Auflösung benutzt die persistente Server↔Root-Bindung und hängt nicht davon ab, dass die gelöschte Baustelle noch in `/collab/context` sichtbar ist.
+
+---
+
+# BTB / Punkte 4–8 / Buttons
+
+Weiterhin im Branch:
+- Punkte 4–8 verwenden denselben direkten Bilderpfad mit passendem Bildtyp;
+- moderne Bilder werden strikt derselben `btbId` zugeordnet;
+- eigene feste Dreierzeile `Bilder | Abbrechen | Hinzufügen`, je 1/3 Breite;
+- Abschluss/Nachbearbeitung/Löschen-Tombstone für BTB ist implementiert, aber der gesamte Zwei-Geräte-Lebenszyklus ist praktisch noch nicht zuverlässig bestätigt.
+
+Beim letzten Nutzer-Test funktionierte der Gesamt-Sync nicht zuverlässig. Die Analyse zeigte zusätzlich zur fehlenden Schema-13-Baustellenstruktur Probleme in der BTB-Sync-Orchestrierung (lokaler Outbox-Schutz/Pull-Reihenfolge/aktiver Team-BTB). Diese Punkte erst nach stabiler Baustellen-/Schema-13-Basis erneut systematisch angehen.
 
 ---
 
@@ -220,7 +174,7 @@ Praktisch bestätigt aus 200049/200050-Grundlage:
 - Live-KM funktioniert;
 - Live-KM größer/fett;
 - Foto-Erfassen zeigt passenden KM/GPS/Strecke-Gleis-Kontext;
-- Qualitätsampel: `<=10 m grün`, `>10–30 m gelb`, `>30 m rot`;
+- Qualitätsampel `<=10 m grün`, `>10–30 m gelb`, `>30 m rot`;
 - GPS-Ungenauigkeit darf nur verschlechtern, nie verbessern;
 - automatischer KM bleibt im gelben Bereich erhalten.
 
@@ -230,79 +184,51 @@ Nicht erneut verändern, solange kein reproduzierbarer Fehler vorliegt:
 - vorhandene KM-Projektion.
 
 Offen:
-- Foto-Aufdruck/Overlay-Einstellungen bleiben nach `Zurück` teilweise nicht gespeichert;
-- deshalb tatsächlichen eingebrannten JPG-Aufdruck noch nicht abschließend bestätigt.
+- Foto-Aufdruck/Overlay-Einstellungen bleiben teilweise nicht persistent.
 
 ---
 
 # Firmenlogo / PDF
 
-Bereits gebaut:
-- PDF zeichnet hinter Firmenlogo ausdrücklich weißen Untergrund;
-- empfohlenes Serverformat: PNG;
-- JPEG/WebP im vorhandenen Android-Downloadpfad ebenfalls möglich;
+Bereits gebaut/vorgesehen:
+- Firmenlogo zentral serverseitig und auf Geräten gecacht;
+- bevorzugtes Format PNG;
+- PDF zeichnet hinter dem Logo weißen Untergrund;
+- JPEG/WebP ebenfalls im vorhandenen Downloadpfad möglich;
 - SVG derzeit nicht für den Bitmap-PDF-Pfad vorgesehen;
-- Schema 10 besitzt bereits Firmenprofil-/Logo-Metadaten.
-
-Produktiver Server bleibt unverändert.
-
----
-
-# Einstellungen – späterer Android-Block A1
-
-Bestätigter Fehler:
-- Foto-Aufdruck-Schalter bleiben nicht zuverlässig persistent.
-
-Geplante Hauptstruktur:
-1. Profil & Firma
-2. Anzeige
-3. Kamera & Fotos
-4. BTB & PDF
-5. Synchronisation
-6. Benachrichtigungen
-7. Wartung & Diagnose
-
-Vor dem Redesign jede Einstellung auf Laden, Speichern, Zurück, App-Neustart und tatsächliche Wirkung prüfen. Widget unter Anzeige; `Overlay` benutzerverständlich als `Foto-Aufdruck`.
+- Schema 10 besitzt Firmenprofil-/Logo-Metadaten;
+- Schema 12 für firmenweites PDF-Logo-Layout ist vorbereitet, aber noch nicht produktiv.
 
 ---
 
-# Produktiver Synology-/Serverstand
+# Tests / Checks
 
-Unverändert:
-- NAS/Synology = Source of Truth;
-- API **0.7.0**;
-- PostgreSQL **Schema 10**;
-- Schema 11 Nutzerkontakte vorbereitet, nicht produktiv;
-- Schema 12 PDF-Logo-Layout vorbereitet, nicht produktiv;
-- Secrets nicht in GitHub/Chat/Dokumentation;
-- vor produktiver Migration frisches verifiziertes Backup.
+Source-Checks im Workflow:
+- bestehende Schema-/BTB-Checks;
+- `17_verify_schema13_source.py` – Schema-13-Basis Unterbaustellen;
+- `18_verify_android_worksite_structure_source.py` – Android-Strukturvertrag;
+- neu `19_verify_schema13_track_delete_source.py` – mobile Streckendaten + Server-first Baustellenlöschung.
 
----
+**Noch nicht bestätigt:**
+- aktueller Head lokal in Android Studio kompiliert;
+- Poco/Pixel mit Schema-13-Server getestet;
+- produktive Migration ausgeführt.
 
-# Technische Schuld
-
-- Generated-Source-Brücke seit 200043 später sauber zurückbauen;
-- GitHub Actions derzeit teilweise ohne echte Build-Steps und daher kein verlässlicher Compilerindikator;
-- maßgeblicher Buildtest vorerst Android Studio auf Windows;
-- technische Bereinigung erst nach funktionaler Android-Stabilisierung.
+GitHub Actions war zuletzt als Compilernachweis unzuverlässig; lokaler Android-Studio-Build bleibt maßgeblich.
 
 ---
 
-# Nächster verbindlicher Test
+# Nächste Schritte – verbindliche Reihenfolge
 
-Aktuellen Branch **neu** lokal bauen und auf **Poco und Pixel** installieren, App-Daten nicht löschen.
+1. aktuellen Branch auf Windows/Poco lokal bauen; Compilerfehler zuerst beheben;
+2. vor produktiver Serveränderung frisches PostgreSQL/NAS-Backup erstellen und verifizieren;
+3. Migrationsfolge 10 → 13 technisch prüfen; insbesondere entscheiden, ob 11/12 gleichzeitig produktiv aktiviert oder weiterhin nur vorbereitet bleiben;
+4. Schema-13-Migration einspielen;
+5. Servercode mit `21_part.py` aktivieren, API-Version **0.7.2** prüfen;
+6. frische Testbaustelle auf Poco anlegen, mit Unterbaustellen und mobilen Streckendaten;
+7. Pixel beitreten lassen: Hauptbaustelle + Unterbaustellen + Streckendaten müssen automatisch erscheinen;
+8. Unterbaustelle auf Poco ändern/löschen und Pixel prüfen;
+9. komplette servergebundene Baustelle auf Poco löschen: Server-Kontext muss sie verlieren, Pixel muss sie über Tombstone ebenfalls lokal löschen;
+10. danach BTB-Sync-Grundlogik erneut sauber prüfen: Outbox vor Pull, gemeinsamer aktiver BTB pro TB-Team, Abschluss/Löschen/Poco↔Pixel.
 
-Test mit genau einem neuen Team-BTB:
-1. Poco erstellt BTB → Pixel soll denselben BTB/dieselbe `btbId` als **`BTB aktiv`** erhalten, ohne manuellen Sync.
-2. Punkt 4 sowie beispielhaft Punkte 5 und 8 mit Text/Bildern ändern → Gegenstelle prüfen.
-3. In Punkten 4–8 muss die neue Zeile `Bilder | Abbrechen | Hinzufügen` gleich groß und vollständig lesbar sein.
-4. Pixel ändert denselben BTB → Poco erhält Änderung.
-5. Poco führt `BTB Abschluss` aus → Pixel darf diesen BTB nicht weiter aktiv haben; Verlauf zeigt `Abgeschlossen`.
-6. Auf Pixel `BTB bearbeiten` → exakt dieselbe `btbId` bewusst reaktivieren; nach echter Änderung Status `Nachbearbeitung`.
-7. erneut Abschluss → auf beiden Geräten wieder nicht aktiv.
-8. auf einem Gerät `BTB löschen` → auf dem anderen muss exakt derselbe BTB nach Sync verschwinden.
-9. beide Apps neu starten und erneut synchronisieren → gelöschter BTB darf **nicht** wieder erscheinen.
-10. Wiederholung einmal offline: löschen ohne Netz → lokal sofort weg → Netz an → anderes Gerät muss Löschung nachziehen.
-11. kontrollieren, dass echte Foto-Dateien in der Baustelle erhalten bleiben.
-
-Erst wenn dieser Lebenszyklus praktisch sauber ist, den nächsten großen Android-Block beginnen. Danach vorrangig Baustellen-/Unterbaustellen-Verteilung und anschließend Einstellungen/Fotos gemäß Roadmap.
+Keine produktive NAS-Migration ohne vorher bestätigtes Backup.
