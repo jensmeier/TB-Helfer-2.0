@@ -9,6 +9,7 @@ BINDER = ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbEntryPhotoActio
 PDF_HEADER = ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPdfHeaderRenderer.kt"
 BTB_STORE = ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchSpeicher.kt"
 MEDIA_SYNC = ROOT / "app/src/main/java/de/tbhelfer/datenbank/BtbTeamMediaSync.kt"
+FOTO_REPO = ROOT / "app/src/main/java/de/tbhelfer/datenbank/FotoRepository.kt"
 
 
 def read(path: Path) -> str:
@@ -20,6 +21,7 @@ binder = read(BINDER)
 header = read(PDF_HEADER)
 store = read(BTB_STORE)
 media = read(MEDIA_SYNC)
+foto_repo = read(FOTO_REPO)
 errors: list[str] = []
 
 # Punkte 4-8 laufen alle ueber denselben Section-Editor mit einem nicht-null Bildtyp.
@@ -55,6 +57,12 @@ if "out.writeByte(foto.bildtyp.ordinal" not in media:
     errors.append("BTB-Fotometadaten transportieren den Bildtyp 4-8 nicht.")
 if '.put("typ", Bildtyp.values().getOrNull(bildtypIndex)?.name' not in media:
     errors.append("Import stellt den uebertragenen BTB-Bildtyp nicht wieder her.")
+
+# Hintergrund-Sync darf nicht vom aktuell im Fragment gesetzten Foto-Query-Scope abhaengen.
+if "suspend fun fotosFuerBaustelleSyncOnce" not in foto_repo:
+    errors.append("FotoRepository besitzt keinen ungescopten Hintergrund-Sync-Leseweg.")
+if "val localFotos = fotos.fotosFuerBaustelleSyncOnce(local.altBaustelleId)" not in media:
+    errors.append("BtbTeamMediaSync verwendet weiterhin den UI-gescopten Foto-Leseweg.")
 
 # Transparente Logos duerfen im PDF nicht von Viewer-/Seitenhintergruenden abhaengen.
 if "import android.graphics.Color" not in header:
