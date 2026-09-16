@@ -35,12 +35,16 @@ FOR EACH ROW EXECUTE FUNCTION tb.set_updated_at();
 -- Mobile/bearbeitete Streckendaten
 -- -------------------------------------------------------------------------
 -- Originale Vermessungsdateien (TRA/GRA/KF/KOR usw.) bleiben unveraendert auf dem NAS.
--- Vom Handy wird ausschliesslich die fachliche Korrektur-/Berechnungsebene synchronisiert.
--- Ein Datensatz entspricht einer Quellachse (quelle_datei + achse_name) innerhalb einer Firma.
+-- Vom Handy wird ausschliesslich eine abgeleitete, fuer den mobilen Betrieb benoetigte Ebene
+-- synchronisiert: Achs-Metadaten, berechnete Samplepunkte/KM und lokale Streckenpunkte.
+-- Rohdateien werden hier niemals gespeichert oder ueberschrieben.
 CREATE TABLE IF NOT EXISTS tb.mobile_track_data (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id bigint NOT NULL REFERENCES tb.companies(id) ON DELETE CASCADE,
+    source_worksite_id uuid REFERENCES tb.worksites(id) ON DELETE SET NULL,
     dataset_key text NOT NULL,
+    dataset_kind text NOT NULL DEFAULT 'AXIS' CHECK (dataset_kind IN ('AXIS','STRECKENPUNKTE')),
+    route_key text,
     quelle_datei text NOT NULL,
     achse_name text NOT NULL,
     payload jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(payload)='object'),
@@ -54,6 +58,10 @@ CREATE TABLE IF NOT EXISTS tb.mobile_track_data (
 );
 CREATE INDEX IF NOT EXISTS mobile_track_data_company_idx
     ON tb.mobile_track_data(company_id,deleted_at,updated_at);
+CREATE INDEX IF NOT EXISTS mobile_track_data_worksite_idx
+    ON tb.mobile_track_data(source_worksite_id,deleted_at,updated_at);
+CREATE INDEX IF NOT EXISTS mobile_track_data_route_idx
+    ON tb.mobile_track_data(company_id,route_key,deleted_at);
 CREATE INDEX IF NOT EXISTS mobile_track_data_source_idx
     ON tb.mobile_track_data(company_id,quelle_datei,achse_name);
 
@@ -65,9 +73,9 @@ FOR EACH ROW EXECUTE FUNCTION tb.set_updated_at();
 -- -------------------------------------------------------------------------
 -- Baustelle global loeschen
 -- -------------------------------------------------------------------------
--- Die Worksite-Zeile bleibt als Soft-Delete/Audit-Anker erhalten. Der Tombstone ist absichtlich
--- firmenbezogen abrufbar, damit andere Geraete die lokale Baustelle entfernen koennen, nachdem
--- ihre Mitgliedschaft serverseitig bereits geloescht wurde.
+-- Die Worksite-Zeile bleibt als Soft-Delete/Audit-Anker erhalten. In normalen API-Listen ist sie
+-- danach unsichtbar. Der Tombstone ist absichtlich firmenbezogen abrufbar, damit andere Geraete
+-- ihre lokale Baustelle beim naechsten Sync ebenfalls entfernen koennen.
 ALTER TABLE tb.worksites
     ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 
@@ -83,7 +91,8 @@ CREATE INDEX IF NOT EXISTS worksite_delete_tombstones_company_idx
 
 -- Der vorhandene Collaboration-Transport darf den neuen Knotentyp mitfuehren. Attachments bleiben
 -- weiterhin ausschliesslich an BTB/Mangel/Abnahme erlaubt; Baustellenknoten selbst haben keine
--- Dateianhaenge. Mobile Streckendaten laufen bewusst ueber einen firmenweiten Snapshot-Endpunkt.
+-- Dateianhaenge. Mobile Streckendaten laufen bewusst ueber einen baustellenbezogenen Snapshot-
+-- Endpunkt und nicht ueber den Rohdatei-/Attachmentpfad.
 ALTER TABLE tb.collab_change_log
     DROP CONSTRAINT IF EXISTS collab_change_log_entity_type_check;
 ALTER TABLE tb.collab_change_log
