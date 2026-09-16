@@ -91,10 +91,25 @@ class FotoRepository(
         .map { fotos -> appContext?.let { BtbPhotoContextOverrideStore.applyToFotos(it, fotos) } ?: fotos }
         .flowOn(Dispatchers.IO)
 
+    /**
+     * UI-Leseweg: solange ein moderner BTB geoeffnet ist, begrenzt BtbFotoQueryScope die
+     * sichtbaren Fotos strikt auf dessen btbId. Das schuetzt Vorschau, Editor und PDF.
+     */
     suspend fun fotosFuerBaustelleOnce(baustelleId: Long): List<FotoEntity> = withContext(Dispatchers.IO) {
         val raw = dao.fotosFuerBaustelleOnce(baustelleId)
         val scoped = appContext?.let { ctx -> BtbFotoQueryScope.filter(ctx, baustelleId, raw) } ?: raw
         val corrected = appContext?.let { ctx -> BtbPhotoContextOverrideStore.applyToFotos(ctx, scoped) } ?: scoped
+        BtbFotoRenderMarkierung.anwenden(corrected)
+    }
+
+    /**
+     * Hintergrund-Sync-Leseweg: bewusst ohne BtbFotoQueryScope. Der Team-Sync iteriert ueber
+     * mehrere BTBs einer Baustelle und muss deshalb alle lokalen Fotos sehen koennen; die
+     * eigentliche moderne Auswahl erfolgt dort anschliessend strikt ueber Foto -> btbId.
+     */
+    suspend fun fotosFuerBaustelleSyncOnce(baustelleId: Long): List<FotoEntity> = withContext(Dispatchers.IO) {
+        val raw = dao.fotosFuerBaustelleOnce(baustelleId)
+        val corrected = appContext?.let { ctx -> BtbPhotoContextOverrideStore.applyToFotos(ctx, raw) } ?: raw
         BtbFotoRenderMarkierung.anwenden(corrected)
     }
 
