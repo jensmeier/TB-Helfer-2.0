@@ -51,7 +51,7 @@ class BtbTeamMediaSync(context: Context) {
         for (item in bound) {
             val local = item.localWorksite ?: continue
             val server = item.context
-            val localFotos = fotos.fotosFuerBaustelleOnce(local.altBaustelleId)
+            val localFotos = fotos.fotosFuerBaustelleSyncOnce(local.altBaustelleId)
             val localPaths = localFotos.mapTo(hashSetOf()) { runCatching { File(it.dateipfad).canonicalPath }.getOrDefault(it.dateipfad) }
             val serverBtbs = collab.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB)
                 .filter { !it.isDeleted && it.groupId == server.groupId }
