@@ -7,6 +7,7 @@ import de.tbhelfer.datenbank.OfflineSyncRepository
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.WorksiteBindingRepository
+import de.tbhelfer.datenbank.WorksiteStructureSync
 import de.tbhelfer.datenbank.SyncOfflineEditor
 import de.tbhelfer.einstellungen.AktuelleBaustelleSpeicher
 import de.tbhelfer.datenbank.StreckenpunkteRepository
@@ -93,6 +94,15 @@ object ServiceLocator {
             syncDatabase = syncDatenbank,
             localWorksiteDao = baustellenKnotenDao,
             localWorksiteTree = baustellenBaumRepository
+        )
+    }
+
+    val worksiteStructureSync: WorksiteStructureSync by lazy {
+        WorksiteStructureSync(
+            syncDatabase = syncDatenbank,
+            localWorksiteDao = baustellenKnotenDao,
+            bindingRepository = worksiteBindingRepository,
+            collabRepository = collabSyncRepository
         )
     }
 
