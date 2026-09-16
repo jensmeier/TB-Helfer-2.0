@@ -36,12 +36,32 @@ object BtbActiveContext {
             ?.trim()
             ?.takeIf { it.isNotBlank() }
             ?: return null
-        // Android 200038: inactive marker wins over a stale pointer after a completed BTB.
+
+        // Ein lokal oder von einem Teamgeraet abgeschlossener BTB darf nicht ueber einen stale
+        // Pointer weiter als "aktiv" erscheinen. Nur die ausdrueckliche Verlauf-Aktion
+        // "BTB bearbeiten" setzt bewusstReaktivieren(...) und erlaubt denselben Abschluss wieder.
         val inactiveId = BtbActivePointerControl.nachAbschlussInaktiveBtbId(
             appContext, baustelleId, name
         )
         if (inactiveId == btbId) return null
+
         val entry = BautagebuchSpeicher.ladenById(appContext, baustelleId, name, btbId) ?: return null
+        val abgeschlossen = entry.istFertig || entry.dokumentVersion > 0
+        if (abgeschlossen && !BtbActivePointerControl.istBewusstReaktiviert(
+                appContext,
+                baustelleId,
+                name,
+                btbId
+            )
+        ) {
+            BtbActivePointerControl.nachAbschlussInaktivMerken(
+                appContext,
+                baustelleId,
+                name,
+                btbId
+            )
+            return null
+        }
         return Result(baustelleId, name, btbId, entry)
     }
 }
