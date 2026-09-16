@@ -5,10 +5,11 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * Lokaler Cache für die neue Baustellen-Zusammenarbeit.
+ * Lokaler Cache für die Baustellen-Zusammenarbeit.
  *
- * BTB bleibt gruppenbezogen. Mängel/Abnahmen sind baustellenweit, werden serverseitig aber
- * anhand des vom Admin freigegebenen Bereichs gefiltert.
+ * BTB bleibt gruppenbezogen. Die Baustellenstruktur ist dagegen gemeinsame Baustellendaten:
+ * Unterbaustellen und deren fachlicher Baum werden für alle Baustellenmitglieder gespiegelt.
+ * Mängel/Abnahmen verwenden weiterhin ihre bestehenden Bereichs-/Rechteregeln.
  */
 @Entity(
     tableName = "sync_worksite_context",
@@ -44,6 +45,29 @@ data class SyncWorksiteContextEntity(
 data class SyncWorksiteBindingEntity(
     @PrimaryKey val localRootKnotenId: Long,
     val worksiteServerId: String,
+    val boundAtEpochMs: Long = System.currentTimeMillis()
+)
+
+/**
+ * Stabile geräteübergreifende Identität eines lokalen Unterbaustellen-Knotens.
+ *
+ * Lokale Room-IDs dürfen zwischen Poco/Pixel verschieden sein. Der clientNodeKey bleibt dagegen
+ * gleich und ist damit die einzige technische Identität für Parent/Child-Zuordnung und Updates.
+ * Die Hauptbaustelle selbst wird bereits über SyncWorksiteBindingEntity gebunden und braucht hier
+ * keinen zusätzlichen Knoten.
+ */
+@Entity(
+    tableName = "sync_worksite_node_binding",
+    indices = [
+        Index(value = ["localRootKnotenId"]),
+        Index(value = ["worksiteServerId", "clientNodeKey"], unique = true)
+    ]
+)
+data class SyncWorksiteNodeBindingEntity(
+    @PrimaryKey val localKnotenId: Long,
+    val localRootKnotenId: Long,
+    val worksiteServerId: String,
+    val clientNodeKey: String,
     val boundAtEpochMs: Long = System.currentTimeMillis()
 )
 
@@ -136,5 +160,6 @@ data class SyncCollabPendingChangeEntity(
         const val TYPE_BTB = "BTB"
         const val TYPE_DEFECT = "DEFECT"
         const val TYPE_ACCEPTANCE = "ACCEPTANCE"
+        const val TYPE_WORKSITE_NODE = "WORKSITE_NODE"
     }
 }
