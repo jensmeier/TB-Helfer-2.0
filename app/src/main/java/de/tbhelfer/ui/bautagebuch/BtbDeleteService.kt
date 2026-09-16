@@ -7,12 +7,17 @@ import java.io.File
 import java.time.LocalDate
 
 /**
- * Bewusstes vollstaendiges Loeschen eines fachlichen BTB.
+ * Lokales fachliches Loeschen eines modernen BTB.
  *
  * Geloescht werden BTB-Datensatz, unveraenderliches Original, Abschluss-Metadaten und alle
  * app-eigenen PDF/DOCX-Dateien dieses BTB. Echte Baustellenfotos bleiben dagegen erhalten; ihre
  * Foto->btbId-Zuordnung wird nur geloest. Damit kann ein BTB entfernt werden, ohne versehentlich
  * Beweis-/Baustellenfotos physisch zu vernichten.
+ *
+ * Diese Klasse loescht bewusst NUR lokal. Benutzerinitiierte Team-Loeschungen laufen ueber
+ * [BtbDeleteSyncCoordinator], damit dieselbe btbId zusaetzlich ueber die vorhandene Offline-Queue
+ * auf Server und andere Teamgeraete geloescht wird. Serverseitig empfangene Tombstones duerfen
+ * diese lokale Funktion direkt benutzen, ohne einen Delete-Kreis zu erzeugen.
  */
 object BtbDeleteService {
 
@@ -68,7 +73,9 @@ object BtbDeleteService {
         delete(File(File(appContext.filesDir, "btb_original_fotos"), "${token}.json"))
         val detached = BtbFotoZuordnungSpeicher.btbLoesen(appContext, btbId)
 
-        // Wenn genau dieser BTB aktiv war, Pointer entfernen und danach den neuesten Rest-BTB aktivieren.
+        // War genau dieser BTB aktiv, wird der Pointer entfernt. Danach bleibt bewusst KEIN anderer
+        // Verlauf-BTB automatisch aktiv. Abgeschlossene/alte BTBs duerfen nur ueber
+        // "BTB bearbeiten" bewusst reaktiviert werden.
         val btbRoot = dateDir.parentFile
         val pointer = btbRoot?.let { File(it, ".active_btb.json") }
         if (pointer?.exists() == true) {
@@ -78,24 +85,15 @@ object BtbDeleteService {
             if (pointsToDeleted) delete(pointer)
         }
 
-        val remaining = BautagebuchSpeicher.verlaufFuerBaustelle(
+        // Ein eventuell vorhandener Abschluss-Inaktivmarker des geloeschten BTB ist ebenfalls
+        // bedeutungslos. Er darf insbesondere keinen spaeteren BTB blockieren.
+        BtbActivePointerControl.inaktivMarkerLoeschen(
             appContext,
             entry.baustelleId,
             entry.baustelleName
-        ).firstOrNull()
-        val nextId = remaining?.btbId?.takeIf { !it.startsWith("legacy:") }
-        if (remaining != null && !nextId.isNullOrBlank()) {
-            BautagebuchSpeicher.aktivierenBtb(
-                appContext,
-                entry.baustelleId,
-                entry.baustelleName,
-                nextId,
-                remaining.datum,
-                remaining.schicht
-            )
-        }
+        )
 
-        return Ergebnis(deleted, detached, nextId)
+        return Ergebnis(deleted, detached, null)
     }
 
     private fun safeToken(raw: String): String = raw.lowercase()
