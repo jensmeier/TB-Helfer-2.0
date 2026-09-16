@@ -92,6 +92,34 @@ class SyncWorker(
                 val btbMedia = BtbTeamMediaSync(applicationContext)
                 val notifications = mutableListOf<CollabBenachrichtigungen.Ereignis>()
 
+                /**
+                 * Ein erfolgreicher Pull kann zwei Dinge sichtbar machen:
+                 * - einen Tombstone eines anderen Teamgeraets -> lokal sofort loeschen;
+                 * - die aktuelle Serverversion zu einem lokal/offline vorgemerkten Delete ->
+                 *   DELETE jetzt in die vorhandene Queue einreihen.
+                 *
+                 * Neu eingereihte Deletes werden noch in demselben Worker-Lauf gesendet. Bei einem
+                 * Versionskonflikt kann der Coordinator den ausdruecklichen Benutzer-Delete gegen
+                 * die frisch gepullte Version neu einreihen; maximal drei Runden vermeiden Endlosschleifen.
+                 */
+                suspend fun reconcileDeletesAfterPull(): Result? {
+                    repeat(3) {
+                        val reconcile = runCatching {
+                            BtbDeleteSyncCoordinator.reconcileAfterSuccessfulPull(applicationContext)
+                        }.getOrElse {
+                            return retryOrManualFailure(it.message ?: "BTB-Löschungen konnten nicht abgeglichen werden.")
+                        }
+                        if (reconcile.serverDeletesEingereiht <= 0) return null
+
+                        when (val deleteSync = collabRepository.synchronizeAll(token)) {
+                            CollabSyncRepository.FullSyncResult.SessionInvalid -> return sessionInvalid()
+                            is CollabSyncRepository.FullSyncResult.Error -> return retryOrManualFailure(deleteSync.message)
+                            is CollabSyncRepository.FullSyncResult.Success -> notifications += deleteSync.summary.notifications
+                        }
+                    }
+                    return retryOrManualFailure("BTB-Löschung konnte nach mehreren Serveränderungen noch nicht bestätigt werden.")
+                }
+
                 // 1) Serverkontext + fremde Änderungen holen. Damit kennen wir die gültige
                 //    TB-Gruppe und Bereichsberechtigung und laden bereits vorhandene Attachments.
                 when (val first = collabRepository.synchronizeAll(token)) {
@@ -100,31 +128,11 @@ class SyncWorker(
                     is CollabSyncRepository.FullSyncResult.Success -> notifications += first.summary.notifications
                 }
 
-                // BTB-DELETE hat Vorrang vor normalem Import. Dadurch kann ein auf Poco geloeschter
-                // BTB nicht vom Pixel/Server wieder als normale Server-Entity lokal auferstehen.
-                val firstDeleteReconcile = runCatching {
-                    BtbDeleteSyncCoordinator.reconcileAfterSuccessfulPull(applicationContext)
-                }.getOrElse {
-                    return retryOrManualFailure(it.message ?: "BTB-Löschungen konnten nicht abgeglichen werden.")
-                }
-
-                // Ein Offline-Loeschvorhaben kennt seine aktuelle Server-UUID/-Version ggf. erst
-                // nach dem Pull oben. Neu eingereihte DELETEs werden deshalb noch in demselben
-                // Worker-Lauf gesendet und danach nochmals lokal abgeglichen.
-                if (firstDeleteReconcile.serverDeletesEingereiht > 0) {
-                    when (val deleteSync = collabRepository.synchronizeAll(token)) {
-                        CollabSyncRepository.FullSyncResult.SessionInvalid -> return sessionInvalid()
-                        is CollabSyncRepository.FullSyncResult.Error -> return retryOrManualFailure(deleteSync.message)
-                        is CollabSyncRepository.FullSyncResult.Success -> notifications += deleteSync.summary.notifications
-                    }
-                    runCatching { BtbDeleteSyncCoordinator.reconcileAfterSuccessfulPull(applicationContext) }
-                        .getOrElse {
-                            return retryOrManualFailure(it.message ?: "Bestätigte BTB-Löschungen konnten lokal nicht angewendet werden.")
-                        }
-                }
+                // DELETE/Tombstones muessen VOR dem normalen BTB-Import gewinnen. Sonst koennte ein
+                // auf Poco geloeschter BTB vom Pixel/Server wieder als normale Entity auferstehen.
+                reconcileDeletesAfterPull()?.let { return it }
 
                 // 2) Eingehende BTB-/Mängel-/Abnahme-Stände in die bestehenden Fachspeicher spiegeln.
-                //    Erst NACH dem Delete-Reconcile, damit Tombstones immer gewinnen.
                 runCatching { localBridge.applyServerStateToLocal() }
                     .getOrElse { return retryOrManualFailure(it.message ?: "Serverdaten konnten lokal nicht angewendet werden.") }
 
@@ -150,11 +158,7 @@ class SyncWorker(
                         is CollabSyncRepository.FullSyncResult.Error -> return retryOrManualFailure(second.message)
                         is CollabSyncRepository.FullSyncResult.Success -> notifications += second.summary.notifications
                     }
-                    // Auch ein waehrend dieses zweiten Pulls eingetroffener Team-DELETE wird sofort
-                    // lokal umgesetzt. Neue lokale Delete-Intents werden spaetestens im naechsten
-                    // SofortSync versendet; der normale Serverimport darf sie nicht wiederbeleben.
-                    runCatching { BtbDeleteSyncCoordinator.reconcileAfterSuccessfulPull(applicationContext) }
-                        .getOrElse { return retryOrManualFailure(it.message ?: "BTB-Löschungen konnten nicht angewendet werden.") }
+                    reconcileDeletesAfterPull()?.let { return it }
                     runCatching { localBridge.applyServerStateToLocal() }
                         .getOrElse { return retryOrManualFailure(it.message ?: "Hochgeladene Änderungen konnten lokal nicht bestätigt werden.") }
                 }
@@ -185,8 +189,7 @@ class SyncWorker(
                         is CollabSyncRepository.FullSyncResult.Error -> return retryOrManualFailure(third.message)
                         is CollabSyncRepository.FullSyncResult.Success -> notifications += third.summary.notifications
                     }
-                    runCatching { BtbDeleteSyncCoordinator.reconcileAfterSuccessfulPull(applicationContext) }
-                        .getOrElse { return retryOrManualFailure(it.message ?: "BTB-Löschungen konnten nicht abschließend angewendet werden.") }
+                    reconcileDeletesAfterPull()?.let { return it }
                     runCatching { localBridge.applyServerStateToLocal() }
                         .getOrElse { return retryOrManualFailure(it.message ?: "Neue Server-Anlagen konnten lokal nicht angewendet werden.") }
                     when (val media = btbMedia.synchronize(token)) {
