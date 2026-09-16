@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static contract checks for Android 200050 BTB section images and PDF logo rendering."""
+"""Static contract checks for Android 200050 BTB section images, media sync and PDF logo rendering."""
 
 from pathlib import Path
 
@@ -8,6 +8,7 @@ GRADLE = ROOT / "app/build.gradle.kts"
 BINDER = ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbEntryPhotoActionBinder.kt"
 PDF_HEADER = ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbPdfHeaderRenderer.kt"
 BTB_STORE = ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchSpeicher.kt"
+MEDIA_SYNC = ROOT / "app/src/main/java/de/tbhelfer/datenbank/BtbTeamMediaSync.kt"
 
 
 def read(path: Path) -> str:
@@ -18,6 +19,7 @@ gradle = read(GRADLE)
 binder = read(BINDER)
 header = read(PDF_HEADER)
 store = read(BTB_STORE)
+media = read(MEDIA_SYNC)
 errors: list[str] = []
 
 # Punkte 4-8 laufen alle ueber denselben Section-Editor mit einem nicht-null Bildtyp.
@@ -42,6 +44,18 @@ for field in ("abnahmen", "einweisungUnterweisung", "besonderheiten", "maengelSc
     if f'put("{field}"' not in store:
         errors.append(f"BTB-Speicher serialisiert Punkt 5-8 Feld {field!r} nicht.")
 
+# Moderne BTB-Fotos duerfen nie wieder ueber ein blosses Zeitfenster zwischen BTBs verrutschen.
+if "BtbFotoZuordnungSpeicher.fotoIdsFuerBtb(appContext, stableBtbId)" not in media:
+    errors.append("Moderner BTB-Medienupload ist nicht strikt nach btbId gefiltert.")
+if "BtbFotoZuordnungSpeicher.btbId(appContext, foto.id) == null" not in media:
+    errors.append("Legacy-Zeitfenster schliesst modern zugeordnete Fotos nicht aus.")
+if "fotos.einfuegenFuerBtb(entity, parentKey)" not in media:
+    errors.append("Importierte moderne BTB-Fotos erhalten ihre Server-btbId nicht wieder lokal.")
+if "out.writeByte(foto.bildtyp.ordinal" not in media:
+    errors.append("BTB-Fotometadaten transportieren den Bildtyp 4-8 nicht.")
+if '.put("typ", Bildtyp.values().getOrNull(bildtypIndex)?.name' not in media:
+    errors.append("Import stellt den uebertragenen BTB-Bildtyp nicht wieder her.")
+
 # Transparente Logos duerfen im PDF nicht von Viewer-/Seitenhintergruenden abhaengen.
 if "import android.graphics.Color" not in header:
     errors.append("PDF-Header importiert Color fuer den weissen Logohintergrund nicht.")
@@ -57,4 +71,4 @@ if errors:
         print(f"ERROR: {error}")
     raise SystemExit(1)
 
-print("OK: Android 200050 BTB-Punkte 4-8 und weisser PDF-Logohintergrund sind statisch abgesichert.")
+print("OK: Android 200050 BTB-Punkte 4-8, btbId-Medien-Sync und weisser PDF-Logohintergrund sind statisch abgesichert.")
