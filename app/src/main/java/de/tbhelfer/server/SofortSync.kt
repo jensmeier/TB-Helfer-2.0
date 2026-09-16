@@ -18,6 +18,7 @@ object SofortSync {
     private const val UNIQUE_NAME = "tbhelfer-server-sync-now"
 
     fun anstossen(context: Context) {
+        val appContext = context.applicationContext
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(
                 Constraints.Builder()
@@ -25,10 +26,14 @@ object SofortSync {
                     .build()
             )
             .build()
-        WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
+        WorkManager.getInstance(appContext).enqueueUniqueWork(
             UNIQUE_NAME,
             ExistingWorkPolicy.KEEP,
             request
         )
+        // Schema-13-Daten laufen bis zur spaeteren Worker-Konsolidierung in einem kleinen eigenen
+        // Worker. Damit derselbe Sofort-Trigger auch Unterbaustellen/Streckendaten/Tombstones zeitnah
+        // verarbeitet, wird er hier gemeinsam angestossen.
+        Schema13Worker.enqueueNow(appContext)
     }
 }
