@@ -20,6 +20,7 @@ import de.tbhelfer.datenbank.FotoDao
 import de.tbhelfer.datenbank.FotoRepository
 import de.tbhelfer.datenbank.TrassenDao
 import de.tbhelfer.datenbank.TrassenRepository
+import de.tbhelfer.server.SofortSync
 import de.tbhelfer.ui.einstellungen.overlay.OverlayEinstellungenSpeicher
 import de.tbhelfer.einstellungen.AnsichtEinstellungenSpeicher
 import de.tbhelfer.einstellungen.KameraEinstellungenSpeicher
@@ -93,7 +94,12 @@ object ServiceLocator {
         WorksiteBindingRepository(
             syncDatabase = syncDatenbank,
             localWorksiteDao = baustellenKnotenDao,
-            localWorksiteTree = baustellenBaumRepository
+            localWorksiteTree = baustellenBaumRepository,
+            onBindingChanged = {
+                // Entprellter bestehender WorkManager-Pfad: nach Provisioning/QR-Beitritt nicht nur
+                // die Server-Hülle, sondern auch die Unterbaustellen zeitnah synchronisieren.
+                SofortSync.anstossen(appContext)
+            }
         )
     }
 
