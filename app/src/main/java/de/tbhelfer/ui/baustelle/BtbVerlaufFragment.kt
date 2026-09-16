@@ -161,12 +161,14 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
                         item.datum,
                         item.schicht
                     )
-                    // Der Nutzer hat diesen abgeschlossenen BTB bewusst zur Nachbearbeitung gewählt.
-                    // Deshalb den Abschluss-Inaktivmarker vor der Navigation sofort entfernen.
-                    BtbActivePointerControl.inaktivMarkerLoeschen(
+                    // Nur diese ausdrueckliche Verlauf-Aktion darf einen abgeschlossenen BTB mit
+                    // derselben btbId wieder aktiv machen. Ein remote empfangener Abschluss auf
+                    // einem anderen Handy besitzt diesen Marker bewusst nicht.
+                    BtbActivePointerControl.bewusstReaktivieren(
                         appContext,
                         altBaustelleId.takeIf { it > 0L },
-                        baustelleName
+                        baustelleName,
+                        id
                     )
                 }
             }
