@@ -20,7 +20,7 @@ import de.tbhelfer.ServiceLocator
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
 import de.tbhelfer.ui.bautagebuch.BtbActivePointerControl
-import de.tbhelfer.ui.bautagebuch.BtbDeleteService
+import de.tbhelfer.ui.bautagebuch.BtbDeleteSyncCoordinator
 import de.tbhelfer.ui.bautagebuch.BtbDokumentIdentitaet
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.BtbExportPaket
@@ -93,12 +93,14 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         val stroke = when (status) {
             BtbAbschlussStatus.ABGESCHLOSSEN -> Color.parseColor("#2E7D32")
             BtbAbschlussStatus.NACHBEARBEITUNG -> Color.parseColor("#EF6C00")
-            BtbAbschlussStatus.ENTWURF -> Color.parseColor("#616161")
+            BtbAbschlussStatus.ENTWURF -> Color.parseColor("#1565C0")
         }
+        // "ENTWURF" bleibt nur eine interne technische Zustandsbezeichnung. Fuer den Benutzer
+        // existiert ein real angelegter gemeinsamer BTB bereits und wird deshalb als aktiv gezeigt.
         val statusText = when (status) {
             BtbAbschlussStatus.ABGESCHLOSSEN -> "Abgeschlossen · erneut bearbeitbar"
             BtbAbschlussStatus.NACHBEARBEITUNG -> "Nachbearbeitung · Abschluss-PDF ungültig"
-            BtbAbschlussStatus.ENTWURF -> "Entwurf"
+            BtbAbschlussStatus.ENTWURF -> "BTB aktiv"
         }
         val startDate = runCatching { LocalDate.parse(item.entry.datumIso) }.getOrDefault(item.datum)
         val endDate = item.entry.endeDatumIso?.let { raw -> runCatching { LocalDate.parse(raw) }.getOrNull() }
@@ -217,11 +219,11 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
             return
         }
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("BTB vollständig löschen?")
+            .setTitle("BTB im Team löschen?")
             .setMessage(
-                "Der BTB sowie sein Original-/Abschlussstand und seine BTB-PDFs werden gelöscht. " +
-                    "Die echten Baustellenfotos bleiben erhalten und werden nur von diesem BTB gelöst.\n\n" +
-                    "Dieser Vorgang kann lokal nicht rückgängig gemacht werden."
+                "Dieser BTB wird mit derselben BTB-ID auf diesem Gerät und über die Synchronisation auch auf den anderen Geräten deines BTB-Teams gelöscht. " +
+                    "Ohne Internet wird die Löschung vorgemerkt und später übertragen.\n\n" +
+                    "Original-/Abschlussstand und BTB-PDFs werden entfernt. Die echten Baustellenfotos bleiben erhalten und werden nur von diesem BTB gelöst."
             )
             .setNegativeButton("Abbrechen", null)
             .setPositiveButton("BTB löschen") { _, _ -> loesche(item) }
@@ -231,12 +233,22 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
     private fun loesche(item: BautagebuchSpeicher.VerlaufEintrag) {
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                runCatching { BtbDeleteService.loeschen(requireContext().applicationContext, item.entry) }
+                runCatching {
+                    BtbDeleteSyncCoordinator.deleteUserRequested(
+                        requireContext().applicationContext,
+                        item.entry
+                    )
+                }
             }
             result.onSuccess { info ->
+                val syncText = if (info.serverSyncVorgemerkt) {
+                    " · Löschung für das BTB-Team synchronisiert/vorgemerkt"
+                } else {
+                    " · nur lokale Baustelle (keine Server-Zuordnung)"
+                }
                 Toast.makeText(
                     requireContext(),
-                    "BTB gelöscht · ${info.geloesteFotos} Foto(s) bleiben in der Baustelle erhalten",
+                    "BTB gelöscht · ${info.local.geloesteFotos} Foto(s) bleiben in der Baustelle erhalten$syncText",
                     Toast.LENGTH_LONG
                 ).show()
                 view?.let(::ladeVerlauf)
