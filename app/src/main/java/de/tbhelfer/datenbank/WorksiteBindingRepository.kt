@@ -85,6 +85,19 @@ class WorksiteBindingRepository(
     suspend fun bindingForLocalRoot(localRootKnotenId: Long): SyncWorksiteBindingEntity? =
         dao.worksiteBindingForLocalRoot(localRootKnotenId)
 
+    /**
+     * Persistente Zuordnung direkt nach Server-ID. Diese darf beim Verarbeiten eines
+     * Worksite-Loeschtombstones NICHT vom noch sichtbaren /collab/context abhaengen: eine
+     * geloeschte Baustelle ist im Server-Kontext absichtlich bereits verschwunden.
+     */
+    suspend fun bindingForServer(worksiteServerId: String): SyncWorksiteBindingEntity? =
+        dao.worksiteBindingForServer(worksiteServerId)
+
+    suspend fun localRootForServer(worksiteServerId: String): BaustellenKnotenEntity? {
+        val binding = dao.worksiteBindingForServer(worksiteServerId) ?: return null
+        return localWorksiteDao.laden(binding.localRootKnotenId)
+    }
+
     suspend fun contextForLocalRoot(localRootKnotenId: Long): SyncWorksiteContextEntity? {
         val binding = dao.worksiteBindingForLocalRoot(localRootKnotenId) ?: return null
         return dao.worksiteContext(binding.worksiteServerId)
