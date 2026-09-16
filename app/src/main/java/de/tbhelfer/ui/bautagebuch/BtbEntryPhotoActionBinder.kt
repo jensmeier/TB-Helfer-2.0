@@ -3,6 +3,8 @@ package de.tbhelfer.ui.bautagebuch
 import android.app.Dialog
 import android.content.DialogInterface
 import android.os.Bundle
+import android.view.Gravity
+import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
@@ -177,8 +179,9 @@ object BtbEntryPhotoActionBinder {
         }
 
         // MaterialAlertDialogBuilder erzeugt einen AppCompat-AlertDialog. Der neutrale Button
-        // landet automatisch in derselben Button-Leiste wie Abbrechen/Hinzufügen. Danach wird
-        // sein Standard-Klick ersetzt, damit ein Validierungsfehler den Dialog NICHT schließt.
+        // wird in dieselbe Button-Leiste wie Abbrechen/Hinzufügen eingesetzt. Auf schmalen
+        // Geräten stapelt AppCompat diese Leiste sonst automatisch vertikal; 200049 erzwingt
+        // deshalb nach dem Anzeigen eine horizontale Dreierzeile.
         val alert = entryDialog as? AlertDialog ?: return
         alert.setButton(
             DialogInterface.BUTTON_NEUTRAL,
@@ -186,12 +189,45 @@ object BtbEntryPhotoActionBinder {
             null as DialogInterface.OnClickListener?
         )
         alert.window?.decorView?.post {
-            alert.getButton(DialogInterface.BUTTON_NEUTRAL)?.apply {
+            val bilder = alert.getButton(DialogInterface.BUTTON_NEUTRAL)
+            val abbrechen = alert.getButton(DialogInterface.BUTTON_NEGATIVE)
+            val hinzufuegen = alert.getButton(DialogInterface.BUTTON_POSITIVE)
+
+            bilder?.apply {
                 isAllCaps = false
                 contentDescription = "Bilder auswählen"
                 setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_image_picker_24, 0, 0, 0)
-                compoundDrawablePadding = (6 * resources.displayMetrics.density).toInt()
+                compoundDrawablePadding = (4 * resources.displayMetrics.density).toInt()
                 setOnClickListener { launchImagePicker() }
+            }
+
+            val buttonRow = bilder?.parent as? LinearLayout
+            if (buttonRow != null) {
+                // ButtonBarLayout besitzt setAllowStacking(false), ist aber eine interne
+                // AppCompat-Implementierungsdetailklasse. Reflection hält diesen kleinen
+                // Layout-Fix unabhängig von der konkreten AppCompat-Version.
+                runCatching {
+                    buttonRow.javaClass.methods
+                        .firstOrNull { it.name == "setAllowStacking" && it.parameterTypes.contentEquals(arrayOf(Boolean::class.javaPrimitiveType)) }
+                        ?.invoke(buttonRow, false)
+                }
+                buttonRow.orientation = LinearLayout.HORIZONTAL
+                buttonRow.gravity = Gravity.CENTER_VERTICAL
+
+                listOf(bilder, abbrechen, hinzufuegen).forEach { button ->
+                    button ?: return@forEach
+                    button.minWidth = 0
+                    button.minimumWidth = 0
+                    button.isSingleLine = true
+                    button.layoutParams = LinearLayout.LayoutParams(
+                        0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        1f
+                    ).apply {
+                        gravity = Gravity.CENTER_VERTICAL
+                    }
+                }
+                buttonRow.requestLayout()
             }
         }
     }
