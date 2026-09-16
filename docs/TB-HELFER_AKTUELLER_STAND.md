@@ -25,7 +25,7 @@ GitHub-Code und aktive Branches sind Source of Truth. `main` stabil halten.
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`
 - aktueller Android-Buildkandidat: **200050**
-- letzter fachlicher Code-/Check-Stand der 200050-Änderungen: `c576dd4151f1ff9eb39c167c468ed3000cc589bb`; danach nur Doku-Aktualisierungen
+- letzter fachlicher Code-/Check-Stand der 200050-Änderungen: `c576dd4151f1ff9eb39c167c468ed3000cc589bb`; danach Doku-Aktualisierungen
 - Produktivserver/NAS unverändert auf API **0.7.0**, PostgreSQL **Schema 10**
 
 ## Verbindliche Entwicklungsstrategie
@@ -352,7 +352,3 @@ Android **200050** lokal prüfen:
 9. Ergebnis dokumentieren.
 
 Danach gemäß Roadmap A1 Einstellungen reparieren/neu strukturieren; Baustellen-/Unterbaustellen-Sync bleibt A4 und produktive Servererweiterung danach S2.
-
-## Doku-Hinweis
-
-Die fachlichen Grundregeln selbst wurden durch 200050 nicht geändert: Punkte 4–8, stabile `btbId`, Helfer-/TB-Teammodell, zentrale Firmenstammdaten und berechtigungsabhängige Baustellenstruktur waren bereits in `docs/TB-HELFER_PROJEKTREGELN.md` festgelegt. 200050 setzt diese vorhandenen Regeln weiter technisch um.
