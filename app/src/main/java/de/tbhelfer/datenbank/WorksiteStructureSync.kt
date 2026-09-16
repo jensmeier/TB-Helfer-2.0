@@ -135,14 +135,27 @@ class WorksiteStructureSync(
 
         val activeServer = serverNodes.filterNot { it.isDeleted }.associateBy { it.clientNodeKey }
         val deletedServer = serverNodes.filter { it.isDeleted }.associateBy { it.clientNodeKey }
-        val ordered = localNodes.sortedWith(compareBy<BaustellenKnotenEntity> { depth(it, localById, localRoot.id) }.thenBy { it.erstelltAmEpochMs }.thenBy { it.id })
+        val ordered = localNodes.sortedWith(
+            compareBy<BaustellenKnotenEntity> { depth(it, localById, localRoot.id) }
+                .thenBy { it.erstelltAmEpochMs }
+                .thenBy { it.id }
+        )
         var queued = 0
 
         for (node in ordered) {
             val binding = bindingsByLocal[node.id] ?: continue
+            val pending = syncDao.collabPendingAnyForClientKey(
+                worksiteServerId,
+                SyncCollabPendingChangeEntity.TYPE_WORKSITE_NODE,
+                binding.clientNodeKey
+            )
+
             // Ein Server-Tombstone gewinnt gegen eine noch vorhandene lokale Kopie. So kann ein
             // auf einem anderen TB-Gerät gelöschter Unterpunkt nicht unbemerkt wieder auferstehen.
-            if (deletedServer.containsKey(binding.clientNodeKey)) continue
+            if (deletedServer.containsKey(binding.clientNodeKey)) {
+                if (pending != null) syncDao.deleteCollabPendingChange(pending.id)
+                continue
+            }
 
             val parentKey = node.parentId
                 ?.takeUnless { it == localRoot.id }
@@ -150,14 +163,12 @@ class WorksiteStructureSync(
             val payload = payloadFor(node, parentKey)
             val server = activeServer[binding.clientNodeKey]
             if (server != null && server.status.equals(STATUS_ACTIVE, true) && payloadEquivalent(payload, server.payloadJson)) {
+                // Ein früherer Versionskonflikt ist damit fachlich erledigt: Server und lokaler
+                // Knoten sind gleich. Die alte Queue-Zeile darf den Konflikt nicht dauerhaft halten.
+                if (pending != null) syncDao.deleteCollabPendingChange(pending.id)
                 continue
             }
 
-            val pending = syncDao.collabPendingAnyForClientKey(
-                worksiteServerId,
-                SyncCollabPendingChangeEntity.TYPE_WORKSITE_NODE,
-                binding.clientNodeKey
-            )
             if (pending != null) {
                 syncDao.replaceCollabPendingUpsert(
                     id = pending.id,
@@ -239,6 +250,25 @@ class WorksiteStructureSync(
             val iterator = active.iterator()
             while (iterator.hasNext()) {
                 val server = iterator.next()
+                val binding = nodeBindingDao.forClientKey(worksiteServerId, server.clientNodeKey)
+                val existing = binding?.let { localWorksiteDao.laden(it.localKnotenId) }
+
+                // Ein lokaler DELETE darf bei einem reinen Versionskonflikt nicht durch den noch
+                // aktiven Serverstand sofort wieder lokal angelegt werden. Die nächste Prepare-Runde
+                // rebased den DELETE gegen die aktuelle Serverversion.
+                if (binding != null && existing == null) {
+                    val pending = syncDao.collabPendingAnyForClientKey(
+                        worksiteServerId,
+                        SyncCollabPendingChangeEntity.TYPE_WORKSITE_NODE,
+                        server.clientNodeKey
+                    )
+                    if (pending?.operation.equals(SyncCollabPendingChangeEntity.OP_DELETE, ignoreCase = true)) {
+                        iterator.remove()
+                        progress = true
+                        continue
+                    }
+                }
+
                 val payload = runCatching { JSONObject(server.payloadJson) }.getOrNull()
                     ?: return ApplyResult.Error("Ungültiger Baustellenknoten vom Server: ${server.clientNodeKey}")
                 val parentKey = payload.optNullableString("parent_client_node_key")
@@ -257,9 +287,9 @@ class WorksiteStructureSync(
                     return ApplyResult.Error("Server darf keinen zweiten Hauptbaustellen-Knoten liefern.")
                 }
 
-                val binding = nodeBindingDao.forClientKey(worksiteServerId, server.clientNodeKey)
-                val existing = binding?.let { localWorksiteDao.laden(it.localKnotenId) }
-                val createdAt = payload.optNullableLong("created_at_epoch_ms") ?: existing?.erstelltAmEpochMs ?: System.currentTimeMillis()
+                val createdAt = payload.optNullableLong("created_at_epoch_ms")
+                    ?: existing?.erstelltAmEpochMs
+                    ?: System.currentTimeMillis()
                 val target = BaustellenKnotenEntity(
                     id = existing?.id ?: 0,
                     rootId = localRoot.id,
@@ -305,6 +335,12 @@ class WorksiteStructureSync(
         // anschließend werden alle dadurch verwaisten ID-Bindings bereinigt.
         for (server in serverNodes.filter { it.isDeleted }) {
             val binding = nodeBindingDao.forClientKey(worksiteServerId, server.clientNodeKey) ?: continue
+            val pending = syncDao.collabPendingAnyForClientKey(
+                worksiteServerId,
+                SyncCollabPendingChangeEntity.TYPE_WORKSITE_NODE,
+                server.clientNodeKey
+            )
+            if (pending != null) syncDao.deleteCollabPendingChange(pending.id)
             val existing = localWorksiteDao.laden(binding.localKnotenId)
             if (existing != null && existing.id != localRoot.id) {
                 localWorksiteDao.loescheTeilbaum(existing.id)
