@@ -21,6 +21,7 @@ jobs:
           python3 server/checks/04_test_team_btb_merge.py
           python3 server/checks/12_verify_schema12_source.py
           python3 server/checks/13_verify_android_btb_auto_sync_source.py
+          python3 server/checks/14_verify_android_btb_sections_logo_source.py
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
