@@ -85,13 +85,20 @@ object BtbDeleteService {
             if (pointsToDeleted) delete(pointer)
         }
 
-        // Ein eventuell vorhandener Abschluss-Inaktivmarker des geloeschten BTB ist ebenfalls
-        // bedeutungslos. Er darf insbesondere keinen spaeteren BTB blockieren.
-        BtbActivePointerControl.inaktivMarkerLoeschen(
-            appContext,
-            entry.baustelleId,
-            entry.baustelleName
-        )
+        // Der Abschlussmarker ist baustellenweit bewusst nur ein einzelner Schutzmarker. Deshalb
+        // darf er nur entfernt werden, wenn er tatsaechlich auf den geloeschten BTB zeigt.
+        if (BtbActivePointerControl.nachAbschlussInaktiveBtbId(
+                appContext,
+                entry.baustelleId,
+                entry.baustelleName
+            ) == btbId
+        ) {
+            BtbActivePointerControl.inaktivMarkerLoeschen(
+                appContext,
+                entry.baustelleId,
+                entry.baustelleName
+            )
+        }
 
         return Ergebnis(deleted, detached, null)
     }
