@@ -2,6 +2,7 @@ package de.tbhelfer.ui.bautagebuch
 
 import android.content.Context
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.server.SofortSync
 import kotlinx.coroutines.flow.first
 
 /**
@@ -60,6 +61,11 @@ object BtbActiveContext {
                 name,
                 btbId
             )
+            // Lokaler Abschluss wurde gerade direkt in die BTB-Datei geschrieben und laeuft nicht
+            // noch einmal durch BautagebuchSpeicher.speichern(). Deshalb hier denselben bestehenden
+            // SofortSync anstossen. Bei einem remote empfangenen Abschluss ist der Aufruf harmlos:
+            // die Hash-/Queue-Logik erkennt, dass keine neue lokale Fachaenderung hochzuladen ist.
+            runCatching { SofortSync.anstossen(appContext) }
             return null
         }
         return Result(baustelleId, name, btbId, entry)
