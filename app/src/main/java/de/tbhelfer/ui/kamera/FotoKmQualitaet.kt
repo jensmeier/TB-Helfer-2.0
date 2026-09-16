@@ -2,19 +2,21 @@ package de.tbhelfer.ui.kamera
 
 import de.tbhelfer.datenbank.Indikator
 import de.tbhelfer.vermessung.TrassenNaheBerechner
-import kotlin.math.max
 
 /**
  * Einheitliche KM-/Achsabstandsampel fuer Kamera und Fotoerfassung.
  *
  * Fachregel 200049:
- * - bis 10 m: gruen
- * - ueber 10 bis 30 m: gelb
- * - ueber 30 m: rot
+ * - bis 10 m Achsabstand: gruen
+ * - ueber 10 bis 30 m Achsabstand: gelb
+ * - ueber 30 m Achsabstand: rot
  *
- * Die gemeldete GPS-Genauigkeit wird vorsichtig beruecksichtigt: maximal 10 m der
- * horizontalen Genauigkeit werden vom seitlichen Achsabstand abgezogen. Damit macht
- * ein schlechter GPS-Fix niemals einen weit entfernten Treffer unbegrenzt "gut".
+ * Die GPS-Genauigkeit wird zusaetzlich bewertet, darf einen Treffer aber niemals
+ * besser machen. Bei mehr als 10 m gemeldeter horizontaler Ungenauigkeit wird ein
+ * ansonsten gruener Treffer deshalb auf gelb herabgestuft. Der harte 30-m-Grenzwert
+ * bleibt allein vom tatsaechlich berechneten Achsabstand abhaengig, damit >30 m immer
+ * rot bleibt und bis einschliesslich 30 m der automatische km grundsaetzlich erhalten
+ * werden kann.
  */
 object FotoKmQualitaet {
 
@@ -32,17 +34,19 @@ object FotoKmQualitaet {
     ): Bewertung {
         val abstand = achsabstandM?.takeIf { it.isFinite() && it >= 0.0 }
             ?: return Bewertung(fallback, achsabstandM, gpsAccuracyM, null)
-        val accuracy = gpsAccuracyM
-            ?.takeIf { it.isFinite() && it >= 0.0 }
-            ?.coerceAtMost(10.0)
-            ?: 0.0
-        val effektiv = max(0.0, abstand - accuracy)
-        val indikator = when {
-            effektiv <= 10.0 -> Indikator.GRUEN
-            effektiv <= 30.0 -> Indikator.GELB
+        val accuracy = gpsAccuracyM?.takeIf { it.isFinite() && it >= 0.0 }
+
+        val abstandsIndikator = when {
+            abstand <= 10.0 -> Indikator.GRUEN
+            abstand <= 30.0 -> Indikator.GELB
             else -> Indikator.ROT
         }
-        return Bewertung(indikator, abstand, gpsAccuracyM, effektiv)
+        val indikator = when {
+            abstandsIndikator == Indikator.ROT -> Indikator.ROT
+            abstandsIndikator == Indikator.GRUEN && accuracy != null && accuracy > 10.0 -> Indikator.GELB
+            else -> abstandsIndikator
+        }
+        return Bewertung(indikator, abstand, accuracy, abstand)
     }
 
     fun trassenQualitaet(achsabstandM: Double, gpsAccuracyM: Double?): TrassenNaheBerechner.Qualitaet =
