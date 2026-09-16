@@ -8,7 +8,7 @@ required_migration = [
     "CREATE TABLE IF NOT EXISTS tb.collab_worksite_nodes",
     "UNIQUE(worksite_id,client_node_key)",
     "'WORKSITE_NODE'",
-    "013_worksite_structure_sync",
+    "013_worksite_structure_track_sync",
 ]
 for token in required_migration:
     assert token in migration, f"Schema-13-Vertrag fehlt: {token}"
@@ -27,4 +27,4 @@ for token in required_source:
 
 assert "member_role" in part and '=="LEAD"' in part, "Nur LEAD darf Struktur schreiben"
 assert "collab_change_visible" in part, "Baustellenweite Sichtbarkeit fehlt"
-print("OK: Schema-13-/API-0.7.1-Quellvertrag für Baustellenstruktur ist vorhanden.")
+print("OK: Schema-13-/API-0.7.1-Basisvertrag für Baustellenstruktur ist vorhanden.")
