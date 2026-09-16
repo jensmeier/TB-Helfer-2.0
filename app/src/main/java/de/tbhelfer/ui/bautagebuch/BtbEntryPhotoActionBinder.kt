@@ -4,6 +4,7 @@ import android.app.Dialog
 import android.content.DialogInterface
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
@@ -11,6 +12,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputLayout
 import de.tbhelfer.R
 import de.tbhelfer.datenbank.Bildtyp
@@ -22,10 +24,13 @@ import java.util.Locale
 /**
  * Fotoimport direkt aus dem Dialog "Eintrag für <Firma>".
  *
- * Der Button sitzt als neutraler Dialog-Button auf derselben Höhe wie "Abbrechen" und
- * "Hinzufügen". Ein Tipp öffnet direkt den vorhandenen Android-Bildwähler. Der bestehende
- * BTB-/Fotoimportpfad bleibt erhalten, damit Firma, Ort, Eintrag, KM, Bildtyp und stabile btbId
- * übernommen werden. Derselbe Binder wird für die BTB-Punkte 4 bis 8 verwendet.
+ * Androids interne AlertDialog-Buttonleiste kuerzt auf schmalen Handys selbst bei gleicher
+ * Gewichtung weiterhin Texte. Deshalb sitzen Bilder/Abbrechen/Hinzufuegen ab 200050 als eigene
+ * feste Dreierzeile direkt im Dialoginhalt. Jeder Button erhaelt exakt ein Drittel der Breite und
+ * 48 dp Hoehe. "Hinzufuegen" delegiert bewusst an den bereits vorhandenen positiven Dialogbutton,
+ * damit dessen bestehende Validierungs-/Commitlogik unveraendert bleibt.
+ *
+ * Derselbe Binder wird fuer die BTB-Punkte 4 bis 8 verwendet.
  */
 object BtbEntryPhotoActionBinder {
 
@@ -58,8 +63,6 @@ object BtbEntryPhotoActionBinder {
         snapshotProvider: suspend () -> BautagebuchEintrag?
     ) {
         val context = fragment.requireContext()
-        @Suppress("UNUSED_VARIABLE")
-        val keepContainerReference = container
 
         fun normalizeHm(raw: String): String? {
             val match = Regex("^(\\d{1,2}):(\\d{2})$").matchEntire(raw.trim()) ?: return null
@@ -179,65 +182,75 @@ object BtbEntryPhotoActionBinder {
             }
         }
 
-        // MaterialAlertDialogBuilder erzeugt einen AppCompat-AlertDialog. Der neutrale Button
-        // wird in dieselbe Button-Leiste wie Abbrechen/Hinzufügen eingesetzt. Auf schmalen
-        // Geräten stapelt AppCompat diese Leiste sonst automatisch vertikal. 200050 hält die
-        // drei Aktionen horizontal, gleich groß und mit kompaktem Text/Padding lesbar.
         val alert = entryDialog as? AlertDialog ?: return
-        alert.setButton(
-            DialogInterface.BUTTON_NEUTRAL,
-            "Bilder",
-            null as DialogInterface.OnClickListener?
+        val density = context.resources.displayMetrics.density
+        val buttonHeight = (48 * density).toInt()
+        val gap = (4 * density).toInt()
+
+        fun actionButton(text: String): MaterialButton = MaterialButton(context).apply {
+            this.text = text
+            isAllCaps = false
+            isSingleLine = true
+            textSize = 11.5f
+            gravity = Gravity.CENTER
+            minWidth = 0
+            minimumWidth = 0
+            minHeight = buttonHeight
+            minimumHeight = buttonHeight
+            insetTop = 0
+            insetBottom = 0
+            setPadding((3 * density).toInt(), 0, (3 * density).toInt(), 0)
+            layoutParams = LinearLayout.LayoutParams(0, buttonHeight, 1f)
+        }
+
+        val bilder = actionButton("Bilder").apply {
+            contentDescription = "Bilder auswählen"
+            setIconResource(R.drawable.ic_image_picker_24)
+            iconPadding = (2 * density).toInt()
+            setOnClickListener { launchImagePicker() }
+        }
+        val abbrechen = actionButton("Abbrechen").apply {
+            setOnClickListener { entryDialog.dismiss() }
+        }
+        val hinzufuegen = actionButton("Hinzufügen").apply {
+            setOnClickListener {
+                // Die eigentliche Fachlogik bleibt an dem positiven AlertDialog-Button haengen.
+                // performClick() ruft dessen vorhandenen Listener auf, auch wenn die Systemleiste
+                // optisch ausgeblendet ist.
+                alert.getButton(DialogInterface.BUTTON_POSITIVE)?.performClick()
+            }
+        }
+
+        val actionRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, (8 * density).toInt(), 0, 0)
+            addView(bilder)
+            addView(abbrechen, LinearLayout.LayoutParams(0, buttonHeight, 1f).apply {
+                leftMargin = gap
+                rightMargin = gap
+            })
+            addView(hinzufuegen)
+        }
+        container.addView(
+            actionRow,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
         )
+
+        // Die System-Buttonbar bleibt nur als unsichtbarer Traeger der bereits vorhandenen
+        // Positiv-Listener bestehen. Dadurch gibt es optisch nur unsere stabile Dreierzeile.
         alert.window?.decorView?.post {
-            val bilder = alert.getButton(DialogInterface.BUTTON_NEUTRAL)
-            val abbrechen = alert.getButton(DialogInterface.BUTTON_NEGATIVE)
-            val hinzufuegen = alert.getButton(DialogInterface.BUTTON_POSITIVE)
-
-            bilder?.apply {
-                contentDescription = "Bilder auswählen"
-                setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_image_picker_24, 0, 0, 0)
-                compoundDrawablePadding = (2 * resources.displayMetrics.density).toInt()
-                setOnClickListener { launchImagePicker() }
-            }
-
-            val buttonRow = bilder?.parent as? LinearLayout
-            if (buttonRow != null) {
-                // ButtonBarLayout besitzt setAllowStacking(false), ist aber eine interne
-                // AppCompat-Implementierungsdetailklasse. Reflection hält diesen kleinen
-                // Layout-Fix unabhängig von der konkreten AppCompat-Version.
-                runCatching {
-                    buttonRow.javaClass.methods
-                        .firstOrNull { it.name == "setAllowStacking" && it.parameterTypes.contentEquals(arrayOf(Boolean::class.javaPrimitiveType)) }
-                        ?.invoke(buttonRow, false)
-                }
-                buttonRow.orientation = LinearLayout.HORIZONTAL
-                buttonRow.gravity = Gravity.CENTER_VERTICAL
-
-                val density = context.resources.displayMetrics.density
-                val buttonHeight = (48 * density).toInt()
-                val horizontalPadding = (3 * density).toInt()
-                listOf(bilder, abbrechen, hinzufuegen).forEach { button ->
-                    button ?: return@forEach
-                    button.minWidth = 0
-                    button.minimumWidth = 0
-                    button.minHeight = buttonHeight
-                    button.minimumHeight = buttonHeight
-                    button.isAllCaps = false
-                    button.isSingleLine = true
-                    button.textSize = 10.5f
-                    button.gravity = Gravity.CENTER
-                    button.setPadding(horizontalPadding, 0, horizontalPadding, 0)
-                    button.layoutParams = LinearLayout.LayoutParams(
-                        0,
-                        buttonHeight,
-                        1f
-                    ).apply {
-                        gravity = Gravity.CENTER_VERTICAL
-                    }
-                }
-                buttonRow.requestLayout()
-            }
+            val positive = alert.getButton(DialogInterface.BUTTON_POSITIVE)
+            val negative = alert.getButton(DialogInterface.BUTTON_NEGATIVE)
+            val neutral = alert.getButton(DialogInterface.BUTTON_NEUTRAL)
+            val systemRow = positive?.parent as? View
+            systemRow?.visibility = View.GONE
+            negative?.visibility = View.GONE
+            neutral?.visibility = View.GONE
+            positive?.visibility = View.GONE
         }
     }
 }
