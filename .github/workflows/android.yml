@@ -25,6 +25,7 @@ jobs:
           python3 server/checks/15_verify_android_btb_delete_lifecycle_source.py
           python3 server/checks/17_verify_schema13_source.py
           python3 server/checks/18_verify_android_worksite_structure_source.py
+          python3 server/checks/19_verify_schema13_track_delete_source.py
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
