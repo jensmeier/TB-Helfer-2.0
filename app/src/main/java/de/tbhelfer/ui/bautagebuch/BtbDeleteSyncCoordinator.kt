@@ -10,7 +10,7 @@ import java.security.MessageDigest
 /**
  * Verbindet das fachliche BTB-Loeschen mit der vorhandenen Collaboration-Queue.
  *
- * Ein moderner BTB wird lokal sofort entfernt, seine echte Foto-Dateien bleiben erhalten.
+ * Ein moderner BTB wird lokal sofort entfernt, seine echten Foto-Dateien bleiben erhalten.
  * Wenn die Baustelle mit dem Server verbunden ist, wird fuer exakt dieselbe btbId zusaetzlich
  * ein dauerhaftes Loeschvorhaben gemerkt. Das verhindert, dass ein noch auf dem Server
  * vorhandener BTB zwischen Poco/Pixel wieder "aufersteht".
@@ -151,13 +151,29 @@ object BtbDeleteSyncCoordinator {
         if (intent.worksiteServerId.isBlank() || groupId.isBlank()) return PrepareResult.WAIT_FOR_CONTEXT
 
         val dao = ServiceLocator.syncDao
-        val pending = dao.collabPendingAnyForClientKey(intent.worksiteServerId, TYPE, intent.btbId)
-        if (pending?.operation.equals(SyncCollabPendingChangeEntity.OP_DELETE, ignoreCase = true)) {
-            return PrepareResult.ALREADY_PENDING
-        }
-
+        var pending = dao.collabPendingAnyForClientKey(intent.worksiteServerId, TYPE, intent.btbId)
         val serverEntity = dao.collabEntities(intent.worksiteServerId, TYPE)
             .firstOrNull { it.clientEntityKey == intent.btbId && it.groupId == groupId }
+
+        if (pending?.operation.equals(SyncCollabPendingChangeEntity.OP_DELETE, ignoreCase = true)) {
+            if (serverEntity == null) {
+                // DELETE ist bereits unterwegs/fehlgeschlagen. Solange der Servercache noch keinen
+                // bestaetigten Tombstone zeigt, bleibt das Intent bestehen und der Queue-Eintrag
+                // wird vom normalen Retry erneut versucht.
+                return PrepareResult.ALREADY_PENDING
+            }
+
+            val needsRebase = pending?.state == SyncCollabPendingChangeEntity.STATE_CONFLICT ||
+                pending?.serverId != serverEntity.serverId ||
+                pending?.baseVersion != serverEntity.entityVersion
+            if (!needsRebase) return PrepareResult.ALREADY_PENDING
+
+            // Der Benutzer hat bewusst "BTB loeschen" bestaetigt. Wurde derselbe BTB auf einem
+            // anderen Teamgeraet danach noch gespeichert, bekommt DELETE die aktuelle
+            // Serverversion und wird erneut eingereiht, statt dauerhaft als 409 haengen zu bleiben.
+            pending?.let { dao.deleteCollabPendingChange(it.id) }
+            pending = null
+        }
 
         if (serverEntity == null) {
             // Ein noch nicht hochgeladener UPSERT darf nach bewusstem Loeschen nicht spaeter doch
