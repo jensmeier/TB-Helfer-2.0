@@ -368,7 +368,7 @@ abstract class GenerateBtb200043Sources : DefaultTask() {
         }
 """.trim('\n')
         val warnNew = """
-        // 200049: Ampel 10/30 m. GPS-Genauigkeit wird bis maximal 10 m vorsichtig angerechnet.
+        // 200049: feste 10/30-m-Ampel; GPS-Genauigkeit darf nur abwerten, niemals verbessern.
         val gpsHinweis = gpsAccuracyM?.let { " · GPS ±%.1f m".format(Locale.GERMANY, it) }.orEmpty()
         when (indikator) {
             Indikator.GRUEN -> txtWarnKm.visibility = View.GONE
@@ -381,7 +381,7 @@ abstract class GenerateBtb200043Sources : DefaultTask() {
             }
             Indikator.ROT -> {
                 txtWarnKm.visibility = View.VISIBLE
-                txtWarnKm.setTextColor(themeColor(com.google.android.material.R.attr.colorError, Color.RED))
+                txtWarnKm.setTextColor(themeColor(android.R.attr.colorError, Color.RED))
                 txtWarnKm.text = "Achtung: Achsabstand %.1f m%s. km bitte prüfen/ggf. manuell eintragen.".format(
                     Locale.GERMANY, achsabstand ?: 0.0, gpsHinweis
                 )
