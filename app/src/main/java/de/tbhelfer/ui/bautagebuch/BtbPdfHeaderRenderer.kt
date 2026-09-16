@@ -3,6 +3,7 @@ package de.tbhelfer.ui.bautagebuch
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import de.tbhelfer.einstellungen.BtbPdfLogoLayoutSpeicher
@@ -62,9 +63,9 @@ object BtbPdfHeaderRenderer {
             }
         }
 
-        // 200042: Der rechte Kopfbereich ist eine feste Logo-Zone. Das Logo wird dort
-        // standardmaessig mittig und proportional eingepasst. Ohne Logo bleibt die Zone im
-        // fertigen PDF einfach weiss; es wird kein Platzhalter gezeichnet.
+        // Der rechte Kopfbereich ist eine feste Logo-Zone. Das Logo wird dort mittig und
+        // proportional eingepasst. Transparente PNG/WebP-Logos bekommen im PDF ausdrücklich
+        // einen weissen Untergrund, damit der Firmenkopf in jedem PDF-Viewer gleich aussieht.
         val boxRight = pageWidth - marginRight
         val boxLeft = maxOf(300f, pageWidth * 0.51f)
         val boxWidth = (boxRight - boxLeft).coerceAtLeast(80f)
@@ -97,10 +98,15 @@ object BtbPdfHeaderRenderer {
             logoTop = desiredTop.coerceIn(8f, logoAreaBottom - drawH)
             logoWidth = drawW
             logoHeight = drawH
+            val logoRect = RectF(logoLeft, logoTop, logoLeft + drawW, logoTop + drawH)
+            canvas.drawRect(logoRect, Paint().apply {
+                style = Paint.Style.FILL
+                color = Color.WHITE
+            })
             canvas.drawBitmap(
                 bmp,
                 null,
-                RectF(logoLeft, logoTop, logoLeft + drawW, logoTop + drawH),
+                logoRect,
                 null
             )
             contentBottom = logoTop + drawH
