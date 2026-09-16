@@ -36,10 +36,20 @@ if "bildtyp: Bildtyp" not in binder:
     errors.append("BtbEntryPhotoActionBinder akzeptiert keinen konkreten Bildtyp.")
 if 'putString("filterBildtyp", bildtyp.name)' not in binder:
     errors.append("Bildauswahl filtert nicht nach dem Bildtyp des BTB-Abschnitts.")
-if "LinearLayout.LayoutParams(\n                        0,\n                        buttonHeight,\n                        1f" not in binder:
-    errors.append("Bilder/Abbrechen/Hinzufuegen haben keine gleich breite Dreieraufteilung.")
-if "button.textSize = 10.5f" not in binder:
-    errors.append("Kompakte lesbare Button-Schrift fuer die schmale Dreierzeile fehlt.")
+
+# Die AlertDialog-Systemleiste war auf dem Poco trotz gleicher Gewichte abgeschnitten. Die
+# sichtbaren Aktionen muessen deshalb als eigene feste Dreierzeile im Dialoginhalt sitzen.
+if "fun actionButton(text: String): MaterialButton" not in binder:
+    errors.append("Eigene stabile MaterialButton-Aktionszeile fehlt.")
+if "LinearLayout.LayoutParams(0, buttonHeight, 1f)" not in binder:
+    errors.append("Bilder/Abbrechen/Hinzufuegen haben keine gleich breite 1/3-Aufteilung.")
+for label in ('actionButton("Bilder")', 'actionButton("Abbrechen")', 'actionButton("Hinzufügen")'):
+    if label not in binder:
+        errors.append(f"BTB-Aktionsbutton fehlt: {label}")
+if "alert.getButton(DialogInterface.BUTTON_POSITIVE)?.performClick()" not in binder:
+    errors.append("Eigener Hinzufuegen-Button delegiert nicht an die bestehende Validierungslogik.")
+if "systemRow?.visibility = View.GONE" not in binder:
+    errors.append("Alte AlertDialog-Systembuttonzeile wird nicht optisch ausgeblendet.")
 
 # Die vier weiteren BTB-Bloecke muessen weiterhin Bestandteil desselben BTB-JSON sein.
 for field in ("abnahmen", "einweisungUnterweisung", "besonderheiten", "maengelSchaeden"):
@@ -79,4 +89,4 @@ if errors:
         print(f"ERROR: {error}")
     raise SystemExit(1)
 
-print("OK: Android 200050 BTB-Punkte 4-8, btbId-Medien-Sync und weisser PDF-Logohintergrund sind statisch abgesichert.")
+print("OK: Android 200050 BTB-Punkte 4-8, stabile Dreierzeile, btbId-Medien-Sync und PDF-Logo sind statisch abgesichert.")
