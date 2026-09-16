@@ -2,6 +2,7 @@ package de.tbhelfer.ui.bautagebuch
 
 import android.content.Context
 import android.os.Environment
+import de.tbhelfer.server.SofortSync
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -20,6 +21,15 @@ object BautagebuchSpeicher {
 
     private val isoFmt: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
     private val folderCacheById = java.util.concurrent.ConcurrentHashMap<Long, String>()
+
+    /**
+     * Lokales Speichern bleibt immer der erste und verbindliche Schritt. Der anschließende
+     * Server-Sync ist nur ein entprellter WorkManager-Trigger und darf einen erfolgreichen
+     * lokalen BTB-Speichervorgang niemals nachträglich scheitern lassen.
+     */
+    private fun syncNachLokalemSpeichernAnstossen(context: Context) {
+        runCatching { SofortSync.anstossen(context.applicationContext) }
+    }
 
     private fun tbRoot(context: Context): File {
         val base = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
@@ -378,6 +388,7 @@ object BautagebuchSpeicher {
             f.writeText(toJson(normalized).toString(2), Charsets.UTF_8)
             writeActivePointer(context, entry.baustelleId, entry.baustelleName, id, datum, normalized.schicht)
             de.tbhelfer.widget.TBHelferWidgetUpdater.updateAll(context)
+            syncNachLokalemSpeichernAnstossen(context)
             return
         }
 
@@ -390,6 +401,7 @@ object BautagebuchSpeicher {
         if (!legacy.exists()) return
         legacy.writeText(toJson(entry).toString(2), Charsets.UTF_8)
         de.tbhelfer.widget.TBHelferWidgetUpdater.updateAll(context)
+        syncNachLokalemSpeichernAnstossen(context)
     }
 
     private fun toJson(e: BautagebuchEintrag): JSONObject = JSONObject().apply {

@@ -18,7 +18,7 @@ Vor jeder Änderung zuerst lesen:
 - Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft.
 - `main` letzter bekannter stabiler Stand: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`.
 - aktueller Android-Buildkandidat: **200049**.
-- letzter fachlicher Code-/Buildfix-Stand vor diesem Doku-Commit: `89230b953221fa5591ccef3e8a81b04ac6e75101`.
+- letzter geprüfter Branch-Head vor dem BTB-Auto-Sync-Änderungscommit: `188230491dc6ec8a3250500491aa61ca02a95b56` (`fix: keep BTB dialog actions horizontal`).
 - Produktivserver/NAS unverändert auf Schema 10.
 
 ## Normaler Entwicklungsablauf
@@ -173,6 +173,34 @@ Der Live-KM wurde nach diesem Hotfix im Gerätetest wieder als funktionsfähig g
 - Foto-ID-Menge des ersten Abschlusses gehört zum unveränderlichen Original;
 - Firmenlogo/Kontaktdaten/PDF-Vorschau aus dem bisherigen Stand praktisch bestätigt.
 
+## BTB-Auto-Sync nach lokalem Speichern – umgesetzt 16.09.2026
+Betroffene Dateien:
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchSpeicher.kt`
+- `server/checks/13_verify_android_btb_auto_sync_source.py`
+- `.github/workflows/android.yml`
+
+Umgesetzt:
+- Nach jedem **erfolgreichen lokalen BTB-Schreibvorgang** wird der vorhandene `SofortSync` angestoßen; moderner `btbId`-Pfad und Legacy-BTB-Pfad sind abgedeckt.
+- Die lokale JSON-Datei und beim modernen BTB auch der aktive Pointer werden zuerst geschrieben. Erst danach wird der Sync eingeplant.
+- Der Sync-Trigger läuft über die bereits vorhandene WorkManager-/`SyncWorker`-Pipeline. Es gibt keinen zweiten BTB-Netzwerkpfad.
+- `SofortSync` verwendet weiterhin Unique Work mit `ExistingWorkPolicy.KEEP` und `NetworkType.CONNECTED`: mehrere nahe Speicheraktionen werden zusammengeführt; ohne Netz bleibt der WorkManager-Auftrag bis zu einer passenden Verbindung stehen.
+- Das Einplanen ist mit `runCatching` vom lokalen Speichern entkoppelt. Ein WorkManager-/Sync-Fehler darf einen bereits erfolgreich lokal gespeicherten BTB nicht nachträglich als fehlgeschlagen behandeln.
+- `SyncWorker` respektiert weiterhin die Geräteeinstellungen. Bei explizit gewähltem Zeitplan `MANUELL` wird kein automatischer Upload erzwungen; WLAN/Mobilfunk-Regeln bleiben erhalten.
+- Der bestehende vollständige Sync umfasst Team-BTB und `BtbTeamMediaSync`; der neue Hook startet deshalb auch den vorhandenen BTB-Bilder-Sync, ohne eine parallele Medienlösung zu bauen.
+- Eingehende Server-Snapshots werden in `CollabLocalBridge` weiterhin direkt in die lokalen Zieldateien gespiegelt und rufen **nicht** `BautagebuchSpeicher.speichern(...)` auf. Damit entsteht kein Serverimport -> Auto-Sync -> Reupload-Kreis.
+
+Tests/Absicherung:
+- neuer statischer Source-Contract `13_verify_android_btb_auto_sync_source.py` prüft Import/Hook, Reihenfolge „lokal schreiben -> Sync“, modernen und Legacy-Pfad, WorkManager-KEEP/Netz-Constraint sowie die Loop-Sperre im Serverimport;
+- der Check ist in `.github/workflows/android.yml` aufgenommen;
+- Android-Compile und echter Zwei-Geräte-Test bleiben erforderlich, weil GitHub Actions im aktuellen Projektzustand bereits vor dieser Änderung unzuverlässig ohne verwertbare Build-Steps/Logs ausfiel.
+
+Nächster Praxistest:
+1. Poco und Pixel in derselben Baustelle/demselben TB-Team und mit aktivem Gerätesync verwenden.
+2. Auf Poco einen offenen BTB mit stabiler `btbId` ändern und den automatischen lokalen Speicherstatus abwarten.
+3. Ohne manuellen Sync prüfen, ob Pixel denselben BTB/`btbId` beim nächsten Serverlauf erhält; anschließend Gegenrichtung Pixel -> Poco prüfen.
+4. Zusätzlich einmal offline speichern, danach Netz wiederherstellen und prüfen, dass der wartende WorkManager-Sync den Stand nachliefert.
+5. Einen abgeschlossenen BTB prüfen: er bleibt im Verlauf; nur bewusstes `BTB bearbeiten` reaktiviert dieselbe `btbId`.
+
 ## Gradle-Hinweis / technische Schuld
 - `verifyRoomGeneratedImplementation` schützt weiterhin davor, eine APK ohne `TBDatenbank_Impl` zu installieren.
 - Der Task erzeugt lokal eine Configuration-Cache-Warnung wegen `Task.project` zur Ausführungszeit. Das ist getrennte technische Schuld und kein belegter Kamera-/KM-Fehler.
@@ -189,14 +217,13 @@ Der Live-KM wurde nach diesem Hotfix im Gerätetest wieder als funktionsfähig g
 - Schema 12 PDF-Logo-Layout: vorbereitet, nicht produktiv migriert.
 - vor produktiven Schema-11-/Schema-12-Schritten frisches verifiziertes DB-Backup erstellen.
 
-## Teams / Baustellen / Sync – als nächster Funktionsblock
-Nach erfolgreichem 200049-Gerätetest:
-1. **BTB Speichern -> automatisch Server-Sync anstoßen.** Lokal zuerst sicher speichern; bei Internet synchronisieren, ohne Internet bestehende Offline-Queue nutzen. Nicht bei jedem Tastendruck synchronisieren, sondern bei echten Speicheraktionen.
-2. Dasselbe Prinzip für gespeicherte Fotos bzw. relevante BTB-Speicheraktionen.
-3. Poco/Pixel im selben TB-Team testen: offener BTB muss mit derselben `btbId` in beide Richtungen aktualisiert werden.
-4. Abgeschlossener BTB bleibt abgeschlossen und erscheint beim anderen Gerät im Verlauf; nur `BTB bearbeiten` reaktiviert exakt dieselbe `btbId`.
-5. **Unterbaustellen-/Streckenstruktur synchronisieren.** Verantwortliche TBs erhalten die gemeinsame Baustellenstruktur, Helfer nur den freigegebenen Bereich. Beispiel: `5362-1` / `Durchlass` müssen auf dem Helfergerät entsprechend der Berechtigung verfügbar sein.
-6. Danach Einstellungen systematisch auf Funktion, Doppelungen und Reihenfolge prüfen.
+## Teams / Baustellen / Sync – nächste Schritte
+1. ✅ **BTB lokal speichern -> vorhandenen Sofort-Sync anstoßen** ist umgesetzt; lokale Speicherung bleibt zuerst und Fehler im Sync blockieren sie nicht.
+2. Poco/Pixel im selben TB-Team praktisch testen: offener BTB muss mit derselben `btbId` in beide Richtungen aktualisiert werden; zusätzlich Offline -> Netz wieder da testen.
+3. Abgeschlossener BTB bleibt abgeschlossen und erscheint beim anderen Gerät im Verlauf; nur `BTB bearbeiten` reaktiviert exakt dieselbe `btbId`.
+4. **Unterbaustellen-/Streckenstruktur synchronisieren.** Verantwortliche TBs erhalten die gemeinsame Baustellenstruktur, Helfer nur den freigegebenen Bereich. Beispiel: `5362-1` / `Durchlass` müssen auf dem Helfergerät entsprechend der Berechtigung verfügbar sein.
+5. Danach Einstellungen systematisch auf Funktion, Doppelungen und Reihenfolge prüfen.
+6. Danach weitere NAS-Sync-Blöcke für Mängel, Abnahmen, Streckendaten und Bilderlisten vervollständigen.
 
 ## Noch offene ältere Abschlussprüfungen
 - neues Abschluss-PDF mit gruppierten gleichnamigen Fotos nochmals kontrollieren;
