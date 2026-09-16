@@ -56,10 +56,12 @@ class Schema13Worker(
             }
             is WorksiteDeletionApi.ListResult.Error -> return Result.retry()
             is WorksiteDeletionApi.ListResult.Success -> {
-                val bindings = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
-                    .associateBy { it.context.worksiteServerId }
                 deletions.tombstones.forEach { tombstone ->
-                    val localRoot = bindings[tombstone.worksiteId]?.localWorksite?.id ?: return@forEach
+                    // Der normale Server-Kontext blendet eine geloeschte Baustelle schon aus.
+                    // Deshalb muss der Tombstone direkt ueber die persistente lokale Binding-Tabelle
+                    // aufgeloest werden und darf nicht von contextsWithBindings() abhaengen.
+                    val localRoot = ServiceLocator.worksiteBindingRepository
+                        .localRootForServer(tombstone.worksiteId)?.id ?: return@forEach
                     runCatching {
                         WorksiteLocalDeleteService.delete(applicationContext, localRoot)
                     }.getOrElse { return Result.retry() }
