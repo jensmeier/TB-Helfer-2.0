@@ -18,6 +18,7 @@ import de.tbhelfer.datenbank.BtbTeamMediaSync
 import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.OfflineSyncRepository
+import de.tbhelfer.datenbank.WorksiteStructureSync
 import de.tbhelfer.einstellungen.SyncEinstellungenSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbDeleteSyncCoordinator
 import java.util.UUID
@@ -89,6 +90,7 @@ class SyncWorker(
 
                 val collabRepository = ServiceLocator.collabSyncRepository
                 val localBridge = ServiceLocator.collabLocalBridge
+                val structureSync = ServiceLocator.worksiteStructureSync
                 val btbMedia = BtbTeamMediaSync(applicationContext)
                 val notifications = mutableListOf<CollabBenachrichtigungen.Ereignis>()
 
@@ -136,6 +138,17 @@ class SyncWorker(
                 runCatching { localBridge.applyServerStateToLocal() }
                     .getOrElse { return retryOrManualFailure(it.message ?: "Serverdaten konnten lokal nicht angewendet werden.") }
 
+                // 2b) Vollständigen Baustellenbaum vorbereiten. Verantwortliche TBs stellen lokale
+                // Unterbaustellen in dieselbe vorhandene Collaboration-Queue; Helfer übernehmen den
+                // gemeinsamen Serverbaum. Ein alter 0.7.0-Server ohne neuen Snapshot-Endpunkt bleibt
+                // kompatibel und liefert einfach Unsupported.
+                val structureQueued = when (val structure = structureSync.prepareLocalChanges(token)) {
+                    WorksiteStructureSync.Result.SessionInvalid -> return sessionInvalid()
+                    WorksiteStructureSync.Result.Unsupported -> 0
+                    is WorksiteStructureSync.Result.Error -> return retryOrManualFailure(structure.message)
+                    is WorksiteStructureSync.Result.Success -> structure.summary.queuedOrUpdated
+                }
+
                 // BTB-Bilder der eigenen verantwortlichen TB-Gruppe ebenfalls übernehmen und bereits
                 // vorhandene lokale Bilder dieses BTB hochladen. Bilder anderer TB-Gruppen sind im
                 // Server-Feed nicht sichtbar und können daher hier nicht vermischt werden.
@@ -151,8 +164,9 @@ class SyncWorker(
                     .getOrElse { return retryOrManualFailure(it.message ?: "Lokale Änderungen konnten nicht vorbereitet werden.") }
 
                 // 4) Neue Entities müssen zuerst ihre feste Server-UUID erhalten, bevor Bilder
-                //    an BTB/DEFECT/ACCEPTANCE angehängt werden können.
-                if (exported.queuedOrUpdated > 0) {
+                //    an BTB/DEFECT/ACCEPTANCE angehängt werden können. Die Baustellenstruktur nutzt
+                //    dieselbe Queue und wird deshalb im selben zweiten Collaboration-Lauf gesendet.
+                if (exported.queuedOrUpdated + structureQueued > 0) {
                     when (val second = collabRepository.synchronizeAll(token)) {
                         CollabSyncRepository.FullSyncResult.SessionInvalid -> return sessionInvalid()
                         is CollabSyncRepository.FullSyncResult.Error -> return retryOrManualFailure(second.message)
@@ -161,6 +175,16 @@ class SyncWorker(
                     reconcileDeletesAfterPull()?.let { return it }
                     runCatching { localBridge.applyServerStateToLocal() }
                         .getOrElse { return retryOrManualFailure(it.message ?: "Hochgeladene Änderungen konnten lokal nicht bestätigt werden.") }
+                }
+
+                // Nach einem möglichen Struktur-Upload immer den autoritativen Server-Snapshot
+                // übernehmen. Dadurch erhält z. B. das Pixel exakt dieselben Unterbaustellen wie
+                // das Poco, obwohl beide Geräte unterschiedliche lokale Room-IDs verwenden.
+                when (val structure = structureSync.applyServerStateToLocal(token)) {
+                    WorksiteStructureSync.Result.SessionInvalid -> return sessionInvalid()
+                    WorksiteStructureSync.Result.Unsupported -> Unit
+                    is WorksiteStructureSync.Result.Error -> return retryOrManualFailure(structure.message)
+                    is WorksiteStructureSync.Result.Success -> Unit
                 }
 
                 // 5) Nach dem Text-Upload nochmals BTB-Medien versuchen. Das deckt insbesondere einen
