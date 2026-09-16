@@ -25,16 +25,18 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SyncStateEntity::class,
         SyncWorksiteContextEntity::class,
         SyncWorksiteBindingEntity::class,
+        SyncWorksiteNodeBindingEntity::class,
         SyncCollabEntity::class,
         SyncCollabAttachmentEntity::class,
         SyncCollabPendingChangeEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class SyncDatenbank : RoomDatabase() {
 
     abstract fun syncDao(): SyncDao
+    abstract fun worksiteNodeSyncDao(): WorksiteNodeSyncDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -147,12 +149,29 @@ abstract class SyncDatenbank : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `sync_worksite_node_binding` (
+                        `localKnotenId` INTEGER NOT NULL,
+                        `localRootKnotenId` INTEGER NOT NULL,
+                        `worksiteServerId` TEXT NOT NULL,
+                        `clientNodeKey` TEXT NOT NULL,
+                        `boundAtEpochMs` INTEGER NOT NULL,
+                        PRIMARY KEY(`localKnotenId`)
+                    )""".trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_sync_worksite_node_binding_localRootKnotenId` ON `sync_worksite_node_binding` (`localRootKnotenId`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_sync_worksite_node_binding_worksiteServerId_clientNodeKey` ON `sync_worksite_node_binding` (`worksiteServerId`, `clientNodeKey`)")
+            }
+        }
+
         fun erstellen(context: Context): SyncDatenbank = Room.databaseBuilder(
             context.applicationContext,
             SyncDatenbank::class.java,
             "tbhelfer-sync.db"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
 }
