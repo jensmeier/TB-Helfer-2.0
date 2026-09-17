@@ -67,6 +67,7 @@ jobs:
           python server/checks/30_verify_tb_server_1_survey_parser_source.py
           python server/checks/31_verify_tb_server_1_survey_sections_source.py
           python server/checks/32_verify_tb_server_1_survey_projection_source.py
+          python server/checks/33_verify_tb_server_1_releases_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -165,6 +166,8 @@ jobs:
               "device_activation_v1",
               "device_bearer_auth_v1",
               "device_fach_api_v1",
+              "release_catalog_v1",
+              "client_compatibility_v1",
               "worksite_tree_v1",
               "worksite_permissions_v1",
               "worksite_teams_v1",

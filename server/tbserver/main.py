@@ -18,6 +18,7 @@ from .devices import router as devices_router
 from .files import router as files_router
 from .migrations import status as migration_status
 from .portal import router as portal_router
+from .releases import router as releases_router
 from .survey_gra_jumps import router as survey_gra_jumps_router
 from .survey_originals import router as survey_originals_router
 from .survey_parser import router as survey_parser_router
@@ -44,6 +45,7 @@ app.include_router(portal_router)
 app.include_router(admin_router)
 app.include_router(admin_devices_router)
 app.include_router(devices_router)
+app.include_router(releases_router)
 app.include_router(worksites_router)
 app.include_router(btb_router)
 app.include_router(sync_router)

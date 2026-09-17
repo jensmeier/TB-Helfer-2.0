@@ -13,6 +13,8 @@ CAPABILITIES: dict[str, bool] = {
     "device_activation_v1": True,
     "device_bearer_auth_v1": True,
     "device_fach_api_v1": True,
+    "release_catalog_v1": True,
+    "client_compatibility_v1": True,
     "worksite_tree_v1": True,
     "worksite_permissions_v1": True,
     "worksite_teams_v1": True,

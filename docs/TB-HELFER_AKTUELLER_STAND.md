@@ -45,6 +45,7 @@ Wichtige Server-1.0-Meilensteine:
 - Regression positive/negative TRA-Stationsdiskontinuitäten: `69effc49acf55b4b9abc6d4136b089a784853540`
 - Detaildokumentation Chainage/Projektion: `e2701359efca8ff50220c452633b44ba7dba7c0d`
 - reale Typ-6-/Nullweg-Verifikation dokumentiert: `21c192ed4ad717e3d1f85fca31f85c6b398d2e49`
+- Release-Katalog / Client-Kompatibilitätsvertrag: in diesem Stand umgesetzt; öffentliche Statusabfrage + ADMIN-Verwaltung, noch ohne serverseitigen Binär-Upload
 
 ## Verbindliche Strategie
 
@@ -207,6 +208,36 @@ Harburg 5300:
 
 Historische Sprungstationszahlen aus der vorherigen Projektionsbasis sind in der Real-Fixture-Dokumentation als solche gekennzeichnet. Nach v3 werden Sprungstationen neu gegen kontinuierliche Chainage berechnet; alte Auto-GRA-Punkte werden invalidiert.
 
+### Releases / Client-Kompatibilität
+
+Der bereits in Migration `001_server_1_0_base.sql` vorhandene Release-Katalog wird jetzt als stabiler API-Vertrag genutzt; bestehende Migrationen bleiben unverändert.
+
+Öffentliche Endpunkte:
+
+- `GET /api/v1/client-compatibility`;
+- `GET /api/v1/releases/{platform}/latest`.
+
+Administrative Release-Verwaltung:
+
+- `GET /api/v1/admin/releases`;
+- `POST /api/v1/admin/releases`;
+- `PATCH /api/v1/admin/releases/{release_id}`;
+- `POST /api/v1/admin/releases/{release_id}/publish`;
+- `POST /api/v1/admin/releases/{release_id}/retire`.
+
+Unterstützt werden `ANDROID`, `IOS` und `WINDOWS`. Der Kompatibilitätsvertrag unterscheidet `NO_PUBLISHED_RELEASE`, `UNKNOWN_BUILD`, `SUPPORTED_CURRENT`, `SUPPORTED_UPDATE_AVAILABLE`, `UPDATE_REQUIRED` und `UNSUPPORTED_BUILD`. Damit muss ein Client nicht mehr aus Serverversionsstrings oder PostgreSQL-Schemanummern raten.
+
+Veröffentlichte Release-Metadaten sind unveränderlich; Änderungen erfolgen über einen neuen Draft/Release. Für Android ist beim Veröffentlichen eine Buildnummer Pflicht. `minimum_supported_build` darf nicht größer als die Release-Buildnummer sein. Öffentliche Antworten geben keine internen `storage_key`-/SHA-/Serverpfade aus.
+
+Capabilities:
+
+- `release_catalog_v1=true`;
+- `client_compatibility_v1=true`.
+
+Der aktuelle Baustein verwaltet Metadaten und externe Downloadziele. Serverseitiger APK-/Binär-Upload und -Download bleiben ein eigener späterer Capability-Schritt.
+
+Details: `docs/TB-SERVER_1_0_RELEASES.md`.
+
 ## Tests / Checks
 
 Workflow-Zielstand:
@@ -214,9 +245,9 @@ Workflow-Zielstand:
 - Migrationen 001 + 002 + 003 + 004;
 - `latest_known=4`, `latest_applied=4`;
 - Kerntabellen u. a. `survey_parse_catalog`, `track_data_sources`, `track_data_km_points`;
-- Source-/Vertragschecks 20–32;
+- Source-/Vertragschecks 20–33;
 - Health/Capabilities/Auth-Checks;
-- erwartete Capabilities enthalten `survey_station_merge_v1` und `survey_gra_jump_detection_v1`.
+- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1` und `client_compatibility_v1`.
 
 Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
@@ -235,6 +266,8 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - negative Typ-6-Diskontinuität `-6,09559 m` wird korrekt normalisiert;
 - kompletter realer TRA-Bestand lokal erneut gescannt: 57 physische TRA-Dateien, 55 unterschiedliche SHA-256; 9 physische Typ-6-Fundstellen / 8 nach Deduplizierung; keine TRA-Parsefehler in dieser Gegenprüfung.
 
+- Source-Check 33 inkl. reiner Statuslogik für aktuellen, optional veralteten, verpflichtend veralteten und nicht mehr unterstützten Client-Build.
+
 **Noch nicht ausgeführt:** vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
@@ -251,16 +284,17 @@ Der aktuelle TB-Server-Lauf für Commit `69effc49acf55b4b9abc6d4136b089a78485354
 - Android-Fachclient auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen;
 - echtes BTB-Abschluss-PDF + Nachbearbeitungsmodell;
 - Firmenlogo/PDF-Layout, vollständige Portal-Fachoberfläche, Admin-Dashboard/Systemstatus/Speicher;
-- Releases/Client-Kompatibilität, Background Jobs, Backup/Restore/Reset;
+- serverseitiger Release-Binärupload/-download, Background Jobs, Backup/Restore/Reset;
 - vollständige Integrations-/E2E-Tests und produktiver NAS-Cutover.
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Die kontinuierliche Chainage gegen weitere reale Mehr-TRA-Richtungsfälle prüfen; insbesondere `reverse_geometry`, rückläufige Stationierung und nicht überlappende Anschlussstücke nur mit belegbarer Evidenz erweitern.
-2. Sobald eine PostgreSQL-Testinstanz verfügbar ist, die gesamte Vermessungskette end-to-end gegen `/api/v1` ausführen.
-3. Danach Android-Fachvertrag praktisch gegen TB-Server 1.0 testen und die App systematisch auf `/api/v1` umstellen.
-4. Portal/PDF/Admin/Releases schließen.
-5. Backup/Restore/Reset + E2E testen.
-6. Erst danach NAS-Cutover und produktive Android-Umstellung.
+1. BTB-Abschluss-PDF und Nachbearbeitungsmodell serverseitig schließen; das bestehende unveränderliche Original-Snapshot-Modell bleibt die Basis.
+2. Firmenlogo/PDF-Layout und die noch fehlenden Portal-/Admin-Fachoberflächen gegen denselben Server-1.0-Vertrag vervollständigen.
+3. Serverseitigen Release-Binärupload/-download, Background Jobs sowie Backup/Restore/Reset schließen.
+4. Sobald eine PostgreSQL-Testinstanz verfügbar ist, die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
+5. Danach den Android-Fachclient capability-gesteuert auf die fertigen `/api/v1`-Verträge umstellen; die bisherigen 0.6-/0.7-Versionsschwellen dürfen nicht die Server-1.0-Fähigkeiten bestimmen.
+6. Vollständige Integrations-/Akzeptanztests inklusive Backup/Restore ausführen.
+7. Erst danach NAS-Cutover und produktive Android-Umstellung.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
