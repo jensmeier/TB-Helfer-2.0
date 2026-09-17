@@ -21,6 +21,7 @@ from .survey_station_merge import MERGE_VERSION, build_geometry_station_maps, me
 router = APIRouter(prefix="/api/v1", tags=["survey-projection"])
 PROJECTION_VERSION = "survey-projection-v2"
 PROJECTION_GENERATOR_PREFIX = "survey-projection-v"
+GRA_JUMP_GENERATOR_PREFIX = "survey-gra-jump-v"
 
 
 class ProjectionRebuildRequest(BaseModel):
@@ -294,10 +295,23 @@ def build_projection_points(
     }
 
 
-def _is_projection_generated(point: dict[str, Any]) -> bool:
+def _generated_by(point: dict[str, Any]) -> str | None:
     metadata = point.get("payload")
-    generated_by = metadata.get("generated_by") if isinstance(metadata, dict) else None
-    return isinstance(generated_by, str) and generated_by.startswith(PROJECTION_GENERATOR_PREFIX)
+    value = metadata.get("generated_by") if isinstance(metadata, dict) else None
+    return value if isinstance(value, str) else None
+
+
+def _is_projection_generated(point: dict[str, Any]) -> bool:
+    generated_by = _generated_by(point)
+    return generated_by is not None and generated_by.startswith(PROJECTION_GENERATOR_PREFIX)
+
+
+def _is_station_dependent_generated(point: dict[str, Any]) -> bool:
+    generated_by = _generated_by(point)
+    return generated_by is not None and (
+        generated_by.startswith(PROJECTION_GENERATOR_PREFIX)
+        or generated_by.startswith(GRA_JUMP_GENERATOR_PREFIX)
+    )
 
 
 @router.post("/survey-sections/{dataset_id}/rebuild-auto-anchors")
@@ -325,7 +339,13 @@ def rebuild_auto_anchors(
             reliable_distance_m=payload.reliable_distance_m,
         )
         existing = _load_existing_points(cur, dataset_id)
-        preserved = [point for point in existing if not _is_projection_generated(point)]
+        invalidated_gra_jumps = sum(
+            1
+            for point in existing
+            if (_generated_by(point) or "").startswith(GRA_JUMP_GENERATOR_PREFIX)
+        )
+        summary["invalidated_generated_gra_jump_count"] = invalidated_gra_jumps
+        preserved = [point for point in existing if not _is_station_dependent_generated(point)]
         all_points = preserved + generated
         current_payload = dataset.get("payload") or {}
         rebuilt_payload = _build_payload(
@@ -359,9 +379,10 @@ def rebuild_auto_anchors(
         cur.execute(
             """
             DELETE FROM tb.track_data_km_points
-            WHERE dataset_id = %s AND payload->>'generated_by' LIKE %s
+            WHERE dataset_id = %s
+              AND (payload->>'generated_by' LIKE %s OR payload->>'generated_by' LIKE %s)
             """,
-            (dataset_id, PROJECTION_GENERATOR_PREFIX + "%"),
+            (dataset_id, PROJECTION_GENERATOR_PREFIX + "%", GRA_JUMP_GENERATOR_PREFIX + "%"),
         )
         _insert_points(cur, dataset_id, generated, user["user_id"])
         emit_change(
@@ -389,6 +410,7 @@ def rebuild_auto_anchors(
                 "generated_control_anchors": summary["generated_control_anchors"],
                 "mapped_geometry_source_count": summary["mapped_geometry_source_count"],
                 "reliable_mapped_geometry_source_count": summary["reliable_mapped_geometry_source_count"],
+                "invalidated_generated_gra_jump_count": summary["invalidated_generated_gra_jump_count"],
                 "dense_sample_count": summary["dense_sample_count"],
             },
         )
