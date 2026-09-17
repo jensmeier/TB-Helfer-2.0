@@ -59,9 +59,46 @@ def verify_geometry_runtime() -> None:
     assert 45.0 < zone3[0] < 56.0 and 4.0 < zone3[1] < 17.0, zone3
 
 
+def verify_gra_jump_runtime() -> None:
+    from tbserver.survey_gra_jumps import GraJumpRebuildRequest, estimate_jump_station, gra_jump_candidates
+
+    # Distilled from the real Gessertshausen 5302 GRA/KF combination.
+    payload = {
+        "points": [
+            {"km_meter": 17626.340, "height_m": 480.83693038, "parameter_m": 1000.0},
+            {"km_meter": 17700.000, "height_m": 480.83693038, "parameter_m": 0.0},
+        ]
+    }
+    candidates = gra_jump_candidates(payload)
+    assert len(candidates) == 1, candidates
+    jump = candidates[0]
+    assert abs(jump["jump_delta_m"] - 73.66) < 0.001, jump
+
+    anchors = [
+        (12353.70325874, 16993.222),
+        (12944.37757154, 17583.805),
+        (13006.49940416, 17719.587),
+        (13222.19666568, 17935.284),
+    ]
+    placement = estimate_jump_station(
+        anchors,
+        km_before_meter=17626.340,
+        km_after_meter=17700.000,
+        station_min_m=7518.07,
+        station_max_m=14433.718,
+        allow_one_sided=False,
+    )
+    assert placement is not None, placement
+    assert placement["placement_method"] == "BOTH_SIDES", placement
+    assert abs(placement["station_m"] - 12986.913) < 0.01, placement
+    assert placement["two_side_agreement_m"] < 0.01, placement
+    assert GraJumpRebuildRequest(base_version=1).allow_one_sided is False
+
+
 def main() -> None:
     geometry = read("server/tbserver/survey_geometry.py")
     projection = read("server/tbserver/survey_projection.py")
+    jumps = read("server/tbserver/survey_gra_jumps.py")
     main_source = read("server/tbserver/main.py")
     caps = read("server/tbserver/capabilities.py")
     workflow = read(".github/workflows/tb-server-v1.yml")
@@ -70,6 +107,7 @@ def main() -> None:
 
     ast.parse(geometry, filename="server/tbserver/survey_geometry.py")
     ast.parse(projection, filename="server/tbserver/survey_projection.py")
+    ast.parse(jumps, filename="server/tbserver/survey_gra_jumps.py")
 
     assertions = [
         ("SAMPLE_DISTANCE_M = 2.0", geometry),
@@ -88,8 +126,18 @@ def main() -> None:
         ('point_type = "ORIGINAL_ANCHOR" if reliable else "CONTROL_ANCHOR"', projection),
         ("payload->>'generated_by' = %s", projection),
         ("skipped_no_xy", projection),
+        ('GRA_JUMP_VERSION = "survey-gra-jump-v1"', jumps),
+        ("GRA_JUMP_PARAMETER_MARKER = 1000.0", jumps),
+        ("GRA_JUMP_TWO_SIDE_AGREEMENT_M = 2.0", jumps),
+        ("allow_one_sided: bool = False", jumps),
+        ("AXIS_IDENTITY_UNCONFIRMED", jumps),
+        ('/survey-sections/{dataset_id}/rebuild-gra-jumps', jumps),
+        ("SURVEY_SECTION_REBUILD_GRA_JUMPS", jumps),
+        ("GRA_JUMP_REVERSED_PRIMARY_GEOMETRY_NOT_SUPPORTED", jumps),
         ("survey_projection_router", main_source),
+        ("survey_gra_jumps_router", main_source),
         ('"survey_projection_v1": True', caps),
+        ('"survey_gra_jump_detection_v1": True', caps),
         ("32_verify_tb_server_1_survey_projection_source.py", workflow),
         ("private const val SAMPLE_ABSTAND_M = 2.0", android_tra),
         ("private const val UEBERGANG_NUMERIK_SCHRITT_M = 0.5", android_tra),
@@ -98,10 +146,11 @@ def main() -> None:
     ]
     missing = [needle for needle, source in assertions if needle not in source]
     if missing:
-        raise SystemExit("Fehlende Survey-Projektionsmarker: " + ", ".join(missing))
+        raise SystemExit("Fehlende Survey-Projektions-/GRA-Sprung-Marker: " + ", ".join(missing))
 
     verify_geometry_runtime()
-    print("OK: TB-Server 1.0 Android-parity TRA densification + DB_REF projection")
+    verify_gra_jump_runtime()
+    print("OK: TB-Server 1.0 TRA projection + conservative GRA KM-jump placement")
 
 
 if __name__ == "__main__":
