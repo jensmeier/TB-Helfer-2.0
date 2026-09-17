@@ -57,6 +57,7 @@ jobs:
         run: |
           python server/checks/20_verify_tb_server_1_foundation.py
           python server/checks/21_verify_tb_server_1_auth_source.py
+          python server/checks/23_verify_tb_server_1_files_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -83,8 +84,9 @@ jobs:
           required = {
               "companies", "users", "devices", "worksites", "worksite_nodes",
               "worksite_memberships", "teams", "btbs", "btb_entries", "files",
-              "defects", "acceptances", "survey_originals", "track_data",
-              "change_feed", "audit_log", "releases", "backup_runs",
+              "file_links", "upload_sessions", "defects", "acceptances",
+              "survey_originals", "track_data", "change_feed", "audit_log",
+              "releases", "backup_runs",
           }
           with connect() as conn, conn.cursor() as cur:
               cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='tb'")
@@ -139,11 +141,23 @@ jobs:
 
           status, caps = get("/api/v1/capabilities")
           assert status == 200, caps
-          assert caps["capabilities"]["server_1_0_foundation_v1"] is True, caps
-          assert caps["capabilities"]["portal_v1"] is True, caps
-          assert caps["capabilities"]["company_user_admin_v1"] is True, caps
-          assert caps["capabilities"]["worksite_tree_v1"] is False, caps
-          print("OK: API foundation")
+          expected_true = {
+              "server_1_0_foundation_v1",
+              "portal_v1",
+              "company_user_admin_v1",
+              "worksite_tree_v1",
+              "worksite_permissions_v1",
+              "worksite_teams_v1",
+              "btb_entries_v1",
+              "btb_live_sync_v1",
+              "files_v1",
+              "chunk_upload_v1",
+          }
+          missing = sorted(key for key in expected_true if caps["capabilities"].get(key) is not True)
+          assert not missing, {"missing_capabilities": missing, "caps": caps}
+          assert caps["capabilities"]["btb_finalize_with_pdf_v1"] is False, caps
+          assert caps["capabilities"]["track_data_v1"] is False, caps
+          print("OK: API foundation/capabilities")
           PY
           cd ..
           python server/checks/22_verify_tb_server_1_auth_runtime.py

@@ -21,13 +21,11 @@ GitHub-Code und aktiver Branch sind Source of Truth.
 
 - Repository: `jensmeier/TB-Helfer-2.0`
 - stabil: `main`
-- Vorgänger-Branch: `feature/admin-offline-sync`
 - aktiver Branch: **`feature/tb-server-1.0`**
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
-- Ausgangspunkt: `d7fbc677b33ad9e3b3780f44223c28913bf0a4a3`
-- letzter Stand vor Foundation-Code: `64bb798e37f6a220fbd1715859a813a359a32eee`
+- Cutover-Regel-Commit: `64bb798e37f6a220fbd1715859a813a359a32eee`
+- zuletzt vor diesem Datei-/Upload-Block geprüfter Branch-Head: `7680d68e3593f685a72ccfc9a11e2f3fbedf1044`
 - Android bleibt vorerst Testclient: Buildkandidat **200050**
-- letzter Benutzer-Test: Android-Studio-Build grün, nur Warnungen
 - Produktivserver/NAS weiterhin unverändert: API **0.7.0**, PostgreSQL **Schema 10**
 
 ## Verbindliche Strategie
@@ -50,136 +48,157 @@ Der aktuelle Server-Fachdatenbestand ist Testbestand und darf beim kontrollierte
 
 Nach Benutzerklärung vom 17.09.2026 existieren serverseitig noch **keine produktiven Vermessungs-/Streckendatensätze**, die übernommen werden müssen. Deshalb dürfen beim Reset auch serverseitige Test-/Leerbereiche für TRA/KF/GRA/KOR/KV/GVP und Testkataloge entfernt werden.
 
-Die Unveränderlichkeitsregel gilt ab dem ersten echten produktiven Vermessungsimport:
-- Originaldateien werden dann niemals durch mobile/Portal-Bearbeitung überschrieben;
+Nicht gelöscht werden GitHub-Code, Konfiguration/Secrets und Backups. Statische Grunddaten werden aus der definierten Quelle neu aufgebaut.
+
+Ab dem ersten echten produktiven Vermessungsimport gilt dauerhaft:
+- Originaldateien bleiben unverändert;
 - spätere Serverupdates erhalten produktive Originale;
 - berechnete/manuelle Daten liegen getrennt als Arbeitsdaten.
 
 Details: `docs/TB-SERVER_1_0_CUTOVER.md`.
 
-## TB-Server 1.0 – Zielentscheidungen
+## TB-Server 1.0 – bisher umgesetzt
 
-- modularer Monolith, keine unnötigen Microservices;
-- PostgreSQL/PostGIS + NAS-Dateispeicher;
-- stabile `/api/v1`;
-- Capabilities statt Schema-Abfragen im Client;
-- unveränderliche nummerierte Migrationen mit SHA-256-Prüfsummen;
-- Firma/Benutzer/CHEF/Portal-Login/Geräte getrennt modelliert;
-- Baustellenbaum mit UUIDs;
-- Rechte serverseitig kanonisch, aber auf Android und Portal bedienbar;
-- Rechtevorlagen plus individuelle Abweichungen;
-- mehrere TB-Teams je Baustelle;
-- `active_btb_id` je TB-Team;
-- BTB granular je Eintrag statt ein überschreibbares Gesamt-JSON;
-- Client-Outbox + `client_change_id` + Change Feed + Live-Signal;
-- große Dateien als Storage-Objekte/Chunks;
-- Portal ist vollwertiger Fachclient, inklusive BTB-Abschluss und PC-Bildupload;
-- CHEF sieht alle Baustellen der eigenen Firma;
-- Admin und Benutzerportal bleiben getrennt;
-- Backup umfasst DB + Dateispeicher und Restore-Test.
-
-## Neu umgesetzt – TB-Server-1.0-Foundation
-
-Erster technischer 1.0-Block im Branch:
-
-### Neues Serverpaket
-
-- `server/tbserver/__init__.py`
-- `server/tbserver/config.py`
-- `server/tbserver/database.py`
-- `server/tbserver/migrations.py`
-- `server/tbserver/capabilities.py`
-- `server/tbserver/main.py`
-
-Der alte 0.7.x-Server wird dabei **noch nicht ersetzt**. `server/Dockerfile.v1` ist ein separater Startpfad für die neue 1.0-Anwendung. Der produktive Docker-/NAS-Stand bleibt unangetastet.
-
-### Migration Runner
-
-Der neue Runner:
-- entdeckt nur `server/v1_migrations/*.sql`;
-- verlangt eindeutig nummerierte Dateinamen;
-- speichert Name + SHA-256 in `tb.schema_migrations`;
-- verweigert veränderte bereits ausgeführte Migrationen;
-- verwendet einen PostgreSQL-Advisory-Lock gegen parallele Migrationen;
-- besitzt `up` und `status`.
-
-### Frische 1.0-Baseline
-
-`server/v1_migrations/001_server_1_0_base.sql` bildet die frische Zielbasis ab und enthält bereits Tabellen für:
-- Firmen;
-- Benutzer + Portal-Credentials/Sessions;
-- Geräte + Aktivierungstokens;
-- Rechtevorlagen;
-- Baustellen + Baum;
-- Baustellenmitgliedschaften/Einladungen/Rechte;
-- Teams + `active_btb_id`;
-- BTBs + granulare BTB-Einträge + Original-Snapshot;
-- Dateien + fachliche Links + Chunk-Upload-Sessions;
-- Mängel;
-- Abnahmen;
-- Vermessungsoriginal-Metadaten;
-- versionierte Strecken-Arbeitsdaten;
-- Idempotenz-Receipts;
-- Change Feed + Sync-Cursor;
-- Lösch-Tombstones;
-- Audit;
-- Releases;
-- Hintergrundjobs;
-- Backup-Läufe;
-- Stundenmetriken für Admin-Traffic/Fehler;
-- Servereinstellungen.
-
-### API-Foundation
+### 1. Foundation / Migrationen
 
 Vorhanden:
-- `GET /health/live`
-- `GET /health/ready`
-- `GET /api/v1/capabilities`
+- neues Paket `server/tbserver/`;
+- separater Startpfad `server/Dockerfile.v1`;
+- frische Baseline `server/v1_migrations/001_server_1_0_base.sql`;
+- Migration Runner mit nummerierten Migrationen, SHA-256-Prüfung und PostgreSQL-Advisory-Lock;
+- `/health/live`, `/health/ready`, `/api/v1/capabilities`;
+- GitHub-Workflow `.github/workflows/tb-server-v1.yml` mit PostGIS-Service.
 
-Capabilities werden zunächst nur für tatsächlich gebaute Features auf `true` gesetzt. Noch nicht implementierte Fachmodule bleiben `false`; Android soll später nach Fähigkeiten statt nach DB-Schemanummern entscheiden.
+### 2. Auth / Firmen / Benutzer / Portal-Grundlage
 
-### Source-Check
+Vorhanden sind Servermodule für:
+- Security/Passworthash;
+- Portal-Aktivierung;
+- Portal-Login/Sessions;
+- CSRF-Prüfung;
+- Admin-Grundfunktionen;
+- Bootstrap des ersten Administrators;
+- Firmen-/Benutzer-Grundverwaltung.
 
-`server/checks/20_verify_tb_server_1_foundation.py` prüft:
-- Vorhandensein der Foundation-Dateien;
-- Python-Syntax über AST;
-- zentrale Baseline-Tabellen;
-- Prüfsummen-/Lock-Regeln des Migration Runners;
-- Health-/Capability-Pfade.
+Relevante Dateien:
+- `server/tbserver/security.py`
+- `server/tbserver/portal.py`
+- `server/tbserver/admin.py`
+- `server/tbserver/bootstrap.py`
 
-## Tests / aktueller Nachweis
+### 3. Baustellen / Rechte / Teams
 
-- Android 200050: letzter Nutzer-Build grün, nur Warnungen.
-- Foundation-Pythonmodule wurden vor Commit syntaktisch geprüft.
-- Baseline-SQL wurde strukturell auf zentrale Tabellen/Beziehungen geprüft.
-- `20_verify_tb_server_1_foundation.py` wurde lokal gegen den vorbereiteten Foundation-Dateisatz ausgeführt: **OK**.
-- **Noch nicht erfolgt:** echte PostgreSQL-Initialisierung der 1.0-Baseline.
-- **Noch nicht erfolgt:** Start von `Dockerfile.v1`.
-- **Noch nicht erfolgt:** Integrationstests gegen eine reale frische PostGIS-DB.
-- Produktivserver wurde nicht verändert.
+Vorhanden:
+- Baustellen mit stabilen UUIDs;
+- Unterbaustellen-/Baumstruktur;
+- Mitgliedschaften;
+- Rechteprofile + individuelle Abweichungen;
+- Teams mit `active_btb_id`;
+- serverseitige Rechteprüfung;
+- Change-/Audit-Ereignisse für zentrale Mutationen.
+
+Relevante Dateien:
+- `server/tbserver/worksites.py`
+- `server/tbserver/permissions.py`
+- `server/tbserver/events.py`
+
+Capabilities dafür stehen auf `true`:
+- `worksite_tree_v1`
+- `worksite_permissions_v1`
+- `worksite_teams_v1`
+
+### 4. Granularer BTB / Live-Sync
+
+Vorhanden:
+- BTB-Kopf mit stabiler `btbId`;
+- einzelne `btb_entries` mit eigener UUID/Version;
+- Versionskonfliktprüfung statt stillem Last-Write-Wins;
+- aktiver BTB je Team;
+- erster unveränderlicher Original-Snapshot beim Abschluss;
+- Abschlussstatus, Reopen/Nachbearbeitung, Tombstone-Löschen;
+- Change Feed;
+- `/api/v1/sync/changes`;
+- SSE-Live-Signal `/api/v1/sync/events`.
+
+Relevante Dateien:
+- `server/tbserver/btb.py`
+- `server/tbserver/sync.py`
+
+Capabilities:
+- `btb_entries_v1=true`
+- `btb_live_sync_v1=true`
+- `btb_finalize_with_pdf_v1=false` – PDF-Erzeugung ist bewusst noch nicht fertig.
+
+### 5. Dateien / Bilder / Chunkupload – aktueller Block
+
+Neu ergänzt:
+- `server/tbserver/files.py`;
+- resumierbare, sequenzielle Upload-Sessions;
+- Standard-Chunkgröße 8 MiB, maximal 16 MiB;
+- Offset-Prüfung gegen `received_bytes`;
+- Größenprüfung und optionale erwartete SHA-256-Prüfung;
+- fsync beim Chunk-Schreiben;
+- Abschluss verschiebt die Datei atomar aus dem temporären Bereich in UUID-basierte Storage-Pfade;
+- Dateimetadaten in `tb.files`;
+- fachliche Verknüpfungen über `tb.file_links` zu Baustelle/BTB/Mangel/Abnahme;
+- Datei-Metadatenliste und geschützter Dateiabruf;
+- Abbruch offener Upload-Sessions;
+- Change-Feed- und Audit-Eintrag bei erfolgreichem Abschluss;
+- neuer Source-Check `server/checks/23_verify_tb_server_1_files_source.py`.
+
+Capabilities:
+- `files_v1=true`
+- `chunk_upload_v1=true`
+- `company_logo_v1=false` – Firmenlogo-Workflow folgt separat.
+
+## CI / Tests
+
+### Bisherige Nachweise
+
+- Foundation-Pythonmodule syntaktisch geprüft.
+- Baseline-SQL strukturell geprüft.
+- Migration Runner wurde im Server-Workflow gegen PostGIS vorgesehen und bereits in vorherigen Läufen ausgeführt.
+- Auth-Source-Check vorhanden: `21_verify_tb_server_1_auth_source.py`.
+- Auth-Runtime-Check vorhanden: `22_verify_tb_server_1_auth_runtime.py`.
+
+### Gefundener CI-Fehler am Branch-Head `7680d68...`
+
+Der TB-Server-Workflow war rot, weil der Capability-Test noch den alten Zustand `worksite_tree_v1 == false` verlangte, obwohl Baustellenbaum/Rechte/Teams inzwischen implementiert und aktiviert waren.
+
+Im aktuellen Block wird dieser veraltete CI-Vertrag korrigiert. Der Workflow prüft jetzt die tatsächlich aktivierten Capabilities und zusätzlich Tabellen/Source-Vertrag für Dateien und Chunkupload.
+
+Der neue GitHub-Actions-Lauf muss nach dem Commit erneut geprüft werden.
+
+### Android CI
+
+Android ist für diesen Serverblock nicht der Freigabenachweis. Der produktive Android-Stand wird erst nach festem Serververtrag systematisch angepasst. Ein roter Android-Workflow auf reinen Server-Commits ist separat zu bewerten und darf nicht mit bestandenem Server-1.0-Test verwechselt werden.
 
 ## Bekannte/offene Punkte
 
-Foundation ist noch kein fertiger Server. Als nächste Module fehlen insbesondere:
-- Auth/Portal-Aktivierung/Passwort/Sessions;
-- Firmen-/Benutzer-/CHEF-API;
-- Geräteaktivierung v1;
-- Baustellen-/Rechte-/Team-API;
-- granularer BTB-Service;
-- Change-Feed-Mutationsendpunkte und Live-Events;
-- Datei-/Chunkupload;
-- Mängel/Abnahmen;
-- Strecken-/Vermessungsimport;
-- Portal-UI;
-- Admin 1.0;
-- Backup/Restore und Releases.
+Noch nicht fertig:
+- echtes BTB-Abschluss-PDF inklusive unveränderlichem Original-/Nachbearbeitungsmodell auf Dateiebene;
+- Mängel-/Abnahme-API;
+- mobile Streckendaten;
+- Vermessungsoriginal-Import/-Katalog;
+- Firmenlogo/PDF-Layout;
+- vollständige Portal-Fachoberfläche;
+- Admin-Dashboard/Systemstatus/Speicher;
+- Releases/Client-Kompatibilität;
+- Background Jobs;
+- Backup/Restore-Werkzeuge;
+- Testdaten-Reset-Werkzeug;
+- vollständige Integrations-/End-to-End-Tests;
+- produktiver NAS-Cutover.
+
+Datei-/Upload-Modul ist zunächst auf baustellenbezogene Uploads mit Portal-Session-Authentifizierung begrenzt. Geräteauthentifizierung für Android und systemweite Dateien wie Firmenlogo/Releases werden in den dafür vorgesehenen Modulen ergänzt.
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. 1.0-Baseline gegen eine frische PostgreSQL/PostGIS-Testdatenbank ausführen;
-2. Migration Runner `up/status` und `/health/ready` praktisch testen;
-3. danach Auth + Firmen + Benutzer + CHEF + Portal-Login als ersten Fachblock bauen;
-4. anschließend Baustellen/Rechte/Teams;
-5. danach granularen BTB + Sync-Kern.
+1. aktuellen TB-Server-GitHub-Workflow grün bekommen und Ergebnis prüfen;
+2. danach **Mängel + Abnahmen** als nächsten Fachblock auf dieselbe UUID/Version/Change-Feed-Struktur setzen;
+3. anschließend mobile Streckendaten + unveränderliche Vermessungsoriginale;
+4. danach Portal-Fachoberfläche und BTB-PDF-Abschluss vollständig schließen;
+5. Backup/Restore/Reset und vollständige E2E-Tests;
+6. erst danach NAS-Cutover und Android-Anpassung.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**

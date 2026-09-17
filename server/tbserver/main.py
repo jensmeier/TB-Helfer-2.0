@@ -11,6 +11,7 @@ from .btb import router as btb_router
 from .capabilities import router as capabilities_router
 from .config import settings
 from .database import ping
+from .files import router as files_router
 from .migrations import status as migration_status
 from .portal import router as portal_router
 from .sync import router as sync_router
@@ -34,6 +35,7 @@ app.include_router(admin_router)
 app.include_router(worksites_router)
 app.include_router(btb_router)
 app.include_router(sync_router)
+app.include_router(files_router)
 
 
 @app.get("/health/live", tags=["system"])
