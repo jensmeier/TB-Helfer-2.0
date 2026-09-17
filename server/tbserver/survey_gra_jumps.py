@@ -14,11 +14,11 @@ from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
 from .permissions import require_permission, worksite_context
 from .portal import require_csrf
-from .survey_projection import _load_existing_points, _load_sources
+from .survey_projection import PROJECTION_VERSION, _load_existing_points, _load_sources
 from .survey_sections import _build_payload, _insert_points, _load_dataset, _section_response
 
 router = APIRouter(prefix="/api/v1", tags=["survey-gra-jumps"])
-GRA_JUMP_VERSION = "survey-gra-jump-v1"
+GRA_JUMP_VERSION = "survey-gra-jump-v2"
 GRA_JUMP_PARAMETER_MARKER = 1000.0
 GRA_JUMP_MIN_ABS_M = 0.5
 GRA_JUMP_MAX_ABS_M = 500.0
@@ -212,6 +212,30 @@ def _manual_equivalent(points: list[dict[str, Any]], station: float, before: flo
     return False
 
 
+def _current_station_context(dataset: dict[str, Any], primary_id: Any) -> tuple[dict[str, Any], float, float, int]:
+    current = dataset.get("payload") or {}
+    projection = current.get("projection_summary") if isinstance(current, dict) else None
+    if not isinstance(projection, dict):
+        raise HTTPException(409, "GRA_JUMP_REQUIRES_CURRENT_PROJECTION")
+    if projection.get("projection_version") != PROJECTION_VERSION:
+        raise HTTPException(409, "GRA_JUMP_REQUIRES_CURRENT_PROJECTION")
+    if projection.get("station_basis") != "CONTINUOUS_GEOMETRY_CHAINAGE":
+        raise HTTPException(409, "GRA_JUMP_REQUIRES_CONTINUOUS_CHAINAGE")
+    station_merge = projection.get("station_merge")
+    if not isinstance(station_merge, dict):
+        raise HTTPException(409, "GRA_JUMP_REQUIRES_CURRENT_PROJECTION")
+    station_min = _number(station_merge.get("merged_station_min_m"))
+    station_max = _number(station_merge.get("merged_station_max_m"))
+    maps = station_merge.get("maps")
+    primary_map = maps.get(str(primary_id)) if isinstance(maps, dict) else None
+    if station_min is None or station_max is None or not isinstance(primary_map, dict):
+        raise HTTPException(409, "GRA_JUMP_REQUIRES_CURRENT_PROJECTION")
+    travel_start = _number(primary_map.get("merged_travel_start_m"))
+    travel_end = _number(primary_map.get("merged_travel_end_m"))
+    run_sign = -1 if travel_start is not None and travel_end is not None and travel_end < travel_start else 1
+    return projection, station_min, station_max, run_sign
+
+
 def build_gra_jump_points(
     *, dataset: dict[str, Any], sources: list[dict[str, Any]],
     existing_points: list[dict[str, Any]], allow_one_sided: bool,
@@ -222,17 +246,9 @@ def build_gra_jump_points(
     primary = geometry[0]
     if bool(primary.get("reverse_geometry")):
         raise HTTPException(409, "GRA_JUMP_REVERSED_PRIMARY_GEOMETRY_NOT_SUPPORTED")
-    nodes = (primary.get("parse_payload") or {}).get("nodes")
-    if not isinstance(nodes, list) or len(nodes) < 2:
-        raise HTTPException(409, "SURVEY_SECTION_GEOMETRY_NOT_PROJECTABLE")
-    stations = [_number(n.get("station_m")) for n in nodes if isinstance(n, dict)]
-    stations = [v for v in stations if v is not None]
-    if len(stations) < 2:
-        raise HTTPException(409, "SURVEY_SECTION_GEOMETRY_NOT_PROJECTABLE")
+
+    projection, station_min, station_max, run_sign = _current_station_context(dataset, primary["original_id"])
     anchors = _anchor_rows(existing_points)
-    current = dataset.get("payload") or {}
-    start, end = _number(current.get("station_start_m")), _number(current.get("station_end_m"))
-    run_sign = -1 if start is not None and end is not None and end < start else 1
 
     generated: list[dict[str, Any]] = []
     source_summaries = []
@@ -253,7 +269,7 @@ def build_gra_jump_points(
         for candidate in candidates:
             placement = estimate_jump_station(
                 anchors, km_before_meter=float(candidate["km_before_meter"]), km_after_meter=float(candidate["km_after_meter"]),
-                station_min_m=float(min(stations)), station_max_m=float(max(stations)), allow_one_sided=allow_one_sided,
+                station_min_m=station_min, station_max_m=station_max, allow_one_sided=allow_one_sided,
             )
             if placement is None:
                 summary["unplaced_candidate_count"] += 1
@@ -279,6 +295,9 @@ def build_gra_jump_points(
                     "baseline_factor": placement["baseline_factor"], "station_from_before_m": placement["station_from_before_m"],
                     "station_from_after_m": placement["station_from_after_m"], "two_side_agreement_m": placement["two_side_agreement_m"],
                     "one_side_extrapolation_m": placement["one_side_extrapolation_m"],
+                    "station_basis": "CONTINUOUS_GEOMETRY_CHAINAGE",
+                    "projection_version": projection.get("projection_version"),
+                    "station_merge_version": (projection.get("station_merge") or {}).get("merge_version"),
                     "primary_geometry_original_id": str(primary["original_id"]), "axis": axis,
                 },
             })
@@ -286,7 +305,11 @@ def build_gra_jump_points(
         source_summaries.append(summary)
     generated.sort(key=lambda point: (point["station_m"], str(point["id"])))
     return generated, {
-        "jump_version": GRA_JUMP_VERSION, "primary_geometry_original_id": str(primary["original_id"]),
+        "jump_version": GRA_JUMP_VERSION,
+        "station_basis": "CONTINUOUS_GEOMETRY_CHAINAGE",
+        "projection_version": projection.get("projection_version"),
+        "station_merge_version": (projection.get("station_merge") or {}).get("merge_version"),
+        "primary_geometry_original_id": str(primary["original_id"]),
         "original_anchor_count": len(anchors), "generated_jump_count": len(generated),
         "allow_one_sided": allow_one_sided, "sources": source_summaries,
     }
@@ -341,7 +364,10 @@ def rebuild_gra_jumps(
                     entity_id=dataset_id, operation="UPDATE", entity_version=dataset["version"], actor_user_id=user["user_id"])
         audit(cur, action="SURVEY_SECTION_REBUILD_GRA_JUMPS", actor_user_id=user["user_id"], company_id=context["company_id"],
               worksite_id=dataset["worksite_id"], entity_type="TRACK_DATA", entity_id=dataset_id,
-              details={"jump_version": GRA_JUMP_VERSION, "generated_jump_count": summary["generated_jump_count"],
+              details={"jump_version": GRA_JUMP_VERSION, "station_basis": summary["station_basis"],
+                       "projection_version": summary["projection_version"],
+                       "station_merge_version": summary["station_merge_version"],
+                       "generated_jump_count": summary["generated_jump_count"],
                        "original_anchor_count": summary["original_anchor_count"], "allow_one_sided": summary["allow_one_sided"]})
         response = {"section": _section_response(cur, dataset), "gra_jump_summary": summary}
         finish_mutation(cur, user=user, context=mutation, receipt_type="SURVEY_SECTION_REBUILD_GRA_JUMPS",
