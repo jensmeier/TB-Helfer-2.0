@@ -6,10 +6,12 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from . import SERVER_VERSION
+from .admin import router as admin_router
 from .capabilities import router as capabilities_router
 from .config import settings
 from .database import ping
 from .migrations import status as migration_status
+from .portal import router as portal_router
 
 
 @asynccontextmanager
@@ -24,6 +26,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(capabilities_router)
+app.include_router(portal_router)
+app.include_router(admin_router)
 
 
 @app.get("/health/live", tags=["system"])
