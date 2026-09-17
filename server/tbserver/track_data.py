@@ -9,6 +9,7 @@ from psycopg.types.json import Jsonb
 
 from .database import transaction
 from .events import audit, emit_change
+from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
 from .permissions import require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 
@@ -55,10 +56,7 @@ def _validate_node(cur, worksite_id: UUID, node_id: UUID | None) -> None:
 def _validate_source_original(cur, company_id: UUID, original_id: UUID | None) -> None:
     if original_id is None:
         return
-    cur.execute(
-        "SELECT id, company_id FROM tb.survey_originals WHERE id = %s",
-        (original_id,),
-    )
+    cur.execute("SELECT id, company_id FROM tb.survey_originals WHERE id = %s", (original_id,))
     row = cur.fetchone()
     if not row:
         raise HTTPException(404, "SURVEY_ORIGINAL_NOT_FOUND")
@@ -83,10 +81,7 @@ def _conflict_or_missing(cur, dataset_id: UUID) -> None:
 
 
 @router.get("/worksites/{worksite_id}/track-data")
-def list_track_data(
-    worksite_id: UUID,
-    user: dict[str, Any] = Depends(current_portal_user),
-) -> dict:
+def list_track_data(worksite_id: UUID, user: dict[str, Any] = Depends(current_portal_user)) -> dict:
     with transaction() as conn, conn.cursor() as cur:
         worksite_context(cur, user, worksite_id)
         cur.execute(
@@ -109,6 +104,7 @@ def create_track_data(
     worksite_id: UUID,
     payload: TrackDataCreate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     dataset_key = payload.dataset_key.strip()
     dataset_kind = payload.dataset_kind.strip().upper()
@@ -116,6 +112,9 @@ def create_track_data(
         raise HTTPException(400, "INVALID_TRACK_DATA_KEY")
 
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="TRACK_DATA_CREATE")
+        if receipt:
+            return replay_payload(receipt)
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "track.edit")
         _validate_node(cur, worksite_id, payload.worksite_node_id)
@@ -185,14 +184,20 @@ def create_track_data(
             entity_id=row["id"],
             details={"dataset_key": dataset_key, "dataset_kind": dataset_kind, "source_original_id": str(payload.source_original_id) if payload.source_original_id else None},
         )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="TRACK_DATA_CREATE",
+            entity_id=row["id"],
+            result_version=row["version"],
+            response_payload=row,
+        )
     return row
 
 
 @router.get("/track-data/{dataset_id}")
-def get_track_data(
-    dataset_id: UUID,
-    user: dict[str, Any] = Depends(current_portal_user),
-) -> dict:
+def get_track_data(dataset_id: UUID, user: dict[str, Any] = Depends(current_portal_user)) -> dict:
     with transaction() as conn, conn.cursor() as cur:
         row = _load_dataset(cur, dataset_id)
         worksite_context(cur, user, row["worksite_id"])
@@ -204,12 +209,16 @@ def update_track_data(
     dataset_id: UUID,
     payload: TrackDataUpdate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     updates = payload.model_dump(exclude={"base_version"}, exclude_unset=True)
     if not updates:
         raise HTTPException(400, "NO_CHANGES")
 
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="TRACK_DATA_UPDATE")
+        if receipt:
+            return replay_payload(receipt)
         dataset = _load_dataset(cur, dataset_id)
         context = worksite_context(cur, user, dataset["worksite_id"])
         require_permission(context, "track.edit")
@@ -248,6 +257,15 @@ def update_track_data(
             entity_version=row["version"],
             actor_user_id=user["user_id"],
         )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="TRACK_DATA_UPDATE",
+            entity_id=dataset_id,
+            result_version=row["version"],
+            response_payload=row,
+        )
     return row
 
 
@@ -256,8 +274,12 @@ def delete_track_data(
     dataset_id: UUID,
     payload: VersionAction,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ):
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="TRACK_DATA_DELETE")
+        if receipt:
+            return None
         dataset = _load_dataset(cur, dataset_id)
         context = worksite_context(cur, user, dataset["worksite_id"])
         require_permission(context, "track.edit")
@@ -301,5 +323,14 @@ def delete_track_data(
             entity_type="TRACK_DATA",
             entity_id=dataset_id,
             details={"dataset_key": dataset["dataset_key"]},
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="TRACK_DATA_DELETE",
+            entity_id=dataset_id,
+            result_version=version,
+            response_payload={"deleted": True},
         )
     return None
