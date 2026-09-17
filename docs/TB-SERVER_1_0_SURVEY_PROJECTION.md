@@ -67,15 +67,13 @@ Damit werden insbesondere folgende Fälle **nicht** ungeprüft grün:
 
 Ein Punkt mit ausdrücklich abweichender Strecke wird vollständig verworfen und im Projektionsbericht als `skipped_route_mismatch` gezählt.
 
-## 5. GRA bleibt bewusst getrennt
+## 5. GRA bleibt als Koordinatenquelle getrennt
 
-Die derzeit geparsten GRA-Datensätze enthalten KM-/Höhenwerte, aber keine X/Y-Koordinate. Deshalb erzeugt die geometrische Projektion aus GRA allein **keinen** automatischen Anker.
+Die derzeit geparsten GRA-Datensätze enthalten KM-/Höhenwerte, aber keine X/Y-Koordinate. Deshalb erzeugt die geometrische Punktprojektion aus GRA allein **keinen** automatischen Originalanker.
 
-Das ist beabsichtigt: Eine GRA->TRA-Zuordnung wird nicht aus Dateinamen, ähnlichen Zahlenfolgen oder bloßer Reihenfolge geraten. Dafür ist weiterhin ein eigener belastbarer Zuordnungsnachweis erforderlich.
+Das bleibt absichtlich so: Eine GRA->TRA-Punktzuordnung wird nicht aus Dateinamen, ähnlichen Zahlenfolgen oder bloßer Reihenfolge geraten. GRA wird nur für den separat belegten KM-Sprung-Rebuild verwendet, wenn Achsidentität und geometrisch projizierte KF/GVP-Anker den Sprung zusätzlich bestätigen.
 
-## 6. Rebuild-Endpunkt
-
-Neu:
+## 6. Rebuild automatische Originalanker
 
 `POST /api/v1/survey-sections/{dataset_id}/rebuild-auto-anchors`
 
@@ -97,7 +95,7 @@ Der Vorgang:
 8. erhöht die `track_data.version` optimistisch;
 9. schreibt Change Feed, Audit und optional das vorhandene `X-Client-Change-Id`-Receipt.
 
-Die automatisch erzeugten UUIDs sind deterministisch aus Abschnitt, Quelloriginal, Geometriequelle, Quellpunkt und KM-Wert abgeleitet. Ein Rebuild erzeugt deshalb keine zufälligen fachlichen Doppelidentitäten.
+Die automatisch erzeugten UUIDs sind deterministisch aus Abschnitt, Quelloriginal, Geometriequelle, Quellpunkt und KM-Wert abgeleitet.
 
 ## 7. Mehrere TRA-Quellen
 
@@ -105,10 +103,33 @@ Mehrere TRA-Quellen werden für die Suche bereits berücksichtigt. Wegen der noc
 
 Treffer auf sekundären Geometrien bleiben `CONTROL_ANCHOR`. Erst wenn die Stationsräume mehrerer TRA-Quellen belastbar zusammengeführt sind, darf diese Schranke erweitert werden.
 
-## 8. Noch offen
+## 8. GRA-KM-Sprünge
 
-- GRA fachlich belastbar einer TRA-Station zuordnen, sofern das reale Format/der Datenzusammenhang dies belegt;
+Reale Projektbestände zeigen wiederholt eine GRA-Markierung an KM-Sprüngen: zwei aufeinanderfolgende KM-Werte bei praktisch gleicher Höhe, der erste mit Parameter ungefähr `1000`, der folgende mit Parameter `0`. Das wurde u. a. bei 5302, 5300 und 5504 gefunden. Dieses Projektmuster wird **nicht** als allgemeine GRA-Formatspezifikation vorausgesetzt.
+
+Dafür existiert der getrennte Rebuild:
+
+`POST /api/v1/survey-sections/{dataset_id}/rebuild-gra-jumps`
+
+Payload:
+
+- `base_version`;
+- optional `allow_one_sided`, Standard **`false`**.
+
+Automatisch erzeugt wird ein `KM_JUMP` nur, wenn Strecke bestätigt ist, zusätzlich Gleis oder Richtung zur primären TRA passt und genügend projizierte `ORIGINAL_ANCHOR` den Sprung geometrisch stützen. Standardmäßig sind Anker **auf beiden Seiten** erforderlich; die daraus unabhängig berechneten Sprungstationen dürfen höchstens 2 m auseinanderliegen.
+
+Einseitige Extrapolation ist nur eine explizite Option und standardmäßig aus. Bei `reverse_geometry=true` der primären Geometrie bricht dieser Rebuild derzeit konservativ ab, statt die Vorher-/Nachher-Semantik zu raten.
+
+Der Rebuild ersetzt ausschließlich frühere von `survey-gra-jump-v*` erzeugte Punkte. Manuelle `KM_JUMP` bleiben unverändert. Ein gleichwertiger manueller Sprung verhindert einen automatisch erzeugten Doppelpunkt.
+
+Die nachfolgende Kalibrierung prüft zusätzlich **alle** beteiligten Anker. Liegt die maximale Ankerabweichung über 5 m, wird nicht grün/orange kalibriert, sondern `ROT/UNPLAUSIBEL` gemeldet. Damit kann ein fehlender KM-Sprung nicht mehr durch einen zufällig plausiblen äußeren 2-Punkt-Fit verdeckt werden.
+
+Reale Verifikation: `docs/TB-SERVER_1_0_SURVEY_REAL_FIXTURE_VERIFICATION.md`.
+
+## 9. Noch offen
+
+- komplette Import->Parse->Abschnitt->Projektion->GRA-Sprung->Kalibrierung-Kette gegen PostgreSQL/API ausführen;
 - robuste Stationsraum- und Überlappungsverschmelzung mehrerer TRA-Quellen;
-- reale Projektdateien end-to-end über Import -> Parse -> Abschnitt -> Projektion -> Kalibrierung testen;
+- einseitig belegte GRA-Sprünge nur bei zusätzlicher realer Evidenz weiter automatisieren;
 - Projektion/verdichtete Samples bei Bedarf performant cachen, ohne die Originale zu verändern;
 - Android-Fachclient auf die neuen Server-1.0-Endpunkte umstellen.
