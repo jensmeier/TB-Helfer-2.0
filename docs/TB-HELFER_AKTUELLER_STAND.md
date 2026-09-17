@@ -15,7 +15,8 @@ Maßgeblich sind der aktuelle GitHub-Code im aktiven Branch, `docs/TB-HELFER_PRO
 - Mängel/Abnahmen: `40249785879b82714b7d2df822e9e52fb7fb750c`
 - Vermessungsoriginale/Track: `a84c3607512a61145eba85309aa80bc2d6f015f0`
 - Idempotenz-Grundlage: `d46650a938ab370c6f3b65d97852b2168ea08287`
-- Mängel/Abnahmen replay-sicher: `755efa80840fad5b2208f8b42e174b9df4eb6ae4`
+- Replay-sicherer Fachkern: `e9f16e335badbd9f036405024f89aa47fcb598fe`
+- Geräteaktivierung/Bearer-Grundlage: `2bede07a590521210dc7c351582363565451c4a0`
 - Android bleibt vorerst Testclient: Buildkandidat **200050**
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
 
@@ -29,12 +30,13 @@ Der derzeitige Server-Fachdatenbestand ist Testbestand. Beim 1.0-Cutover dürfen
 
 ## TB-Server 1.0 – umgesetzt
 
-### Foundation / Auth / Portal-Grundlage
+### Foundation / Migrationen
 
 Vorhanden sind:
 - neues Paket `server/tbserver/` und separater `server/Dockerfile.v1`;
-- frische Baseline `server/v1_migrations/001_server_1_0_base.sql`;
-- Migration Runner mit nummerierten Migrationen, SHA-256-Prüfung und Advisory-Lock;
+- Baseline `server/v1_migrations/001_server_1_0_base.sql`;
+- Migration Runner mit Nummerierung, SHA-256-Prüfung und PostgreSQL-Advisory-Lock;
+- `002_device_credentials.sql` als **neue** Migration; die Baseline 001 wurde nicht nachträglich verändert;
 - Health/Ready/Capabilities;
 - Firmen, Benutzer, Portal-Aktivierung, Login/Sessions, CSRF, Bootstrap/Admin-Grundlage.
 
@@ -42,26 +44,20 @@ Vorhanden sind:
 
 Vorhanden sind Baustellen und Unterbaustellen mit UUIDs, Mitgliedschaften, Rechteprofile/Overrides, Teams mit `active_btb_id` und serverseitige Rechteprüfung.
 
-Neu im aktuellen Block:
-- Worksite-, Knoten- und Mitgliedschaftsmutationen verwenden den zentralen Receipt-/Replay-Vertrag;
-- `WORKSITE_CREATE`, `WORKSITE_NODE_CREATE`, `WORKSITE_NODE_UPDATE`, `WORKSITE_NODE_DELETE`, `WORKSITE_MEMBER_ADD`, `WORKSITE_MEMBER_PERMISSIONS_UPDATE` sind bei gleicher `X-Client-Change-Id` wiederholbar;
-- Knotenänderungen erzeugen Change-Feed- und Audit-Ereignisse;
-- Mitgliedschafts-/Rechteänderungen erzeugen Change-Feed- und Audit-Ereignisse;
-- gelöschte Worksite-Knoten erhalten Tombstones.
+Replay-sicher über `X-Client-Change-Id` sind:
+- `WORKSITE_CREATE`;
+- `WORKSITE_NODE_CREATE`, `WORKSITE_NODE_UPDATE`, `WORKSITE_NODE_DELETE`;
+- `WORKSITE_MEMBER_ADD`, `WORKSITE_MEMBER_PERMISSIONS_UPDATE`.
+
+Knoten- und Mitgliedschaftsänderungen erzeugen Change-Feed/Audit; Knotenlöschungen erhalten Tombstones.
 
 Capabilities: `worksite_tree_v1`, `worksite_permissions_v1`, `worksite_teams_v1` = `true`.
 
 ### Granularer BTB / Live-Sync
 
-Vorhanden sind BTB-Kopf, einzelne versionierte `btb_entries`, Versionskonflikte, aktiver BTB je Team, erster unveränderlicher Original-Snapshot beim Abschluss, Rework, Tombstone-Löschen, Change Feed und SSE-Live-Signal.
+Vorhanden sind stabiler BTB-Kopf, einzelne versionierte `btb_entries`, Versionskonflikte, aktiver BTB je Team, erster unveränderlicher Original-Snapshot beim Abschluss, Rework, Tombstone-Löschen, Change Feed und SSE-Live-Signal.
 
-Neu im aktuellen Block sind replay-sichere Mutationen für:
-- BTB anlegen;
-- BTB-Kopf ändern;
-- Eintrag anlegen/ändern/löschen;
-- BTB abschließen;
-- BTB zur Nachbearbeitung öffnen;
-- BTB löschen.
+Replay-sicher sind BTB anlegen, Kopf ändern, Einträge anlegen/ändern/löschen, abschließen, zur Nachbearbeitung öffnen und löschen.
 
 Capabilities: `btb_entries_v1=true`, `btb_live_sync_v1=true`, `btb_finalize_with_pdf_v1=false`.
 
@@ -69,19 +65,15 @@ Capabilities: `btb_entries_v1=true`, `btb_live_sync_v1=true`, `btb_finalize_with
 
 `server/tbserver/files.py` enthält resumierbare sequenzielle Upload-Sessions mit 8 MiB Standard-/16 MiB Maximal-Chunk, Offset-/Größen-/SHA-256-Prüfung, fsync, atomarem Abschluss in UUID-basierte Storage-Pfade, `tb.files`, `tb.file_links`, geschütztem Abruf, Upload-Abbruch sowie Change/Audit.
 
-Neu im aktuellen Block:
-- Upload-Session-Erstellung replay-sicher;
-- Dateiabschluss replay-sicher, sodass ein Netzabbruch nach erfolgreichem Abschluss keine zweite Datei erzeugt;
-- Upload-Abbruch replay-sicher;
-- Chunk-Schreiben bleibt absichtlich offset-basiert; der Server lehnt falsche/alte Offsets ab und der Client kann den Sessionstand abfragen.
+Replay-sicher sind Session-Erstellung, Dateiabschluss und Upload-Abbruch. Chunk-Schreiben bleibt bewusst upload-ID-/offset-basiert.
 
 Capabilities: `files_v1=true`, `chunk_upload_v1=true`, `company_logo_v1=false`.
 
 ### Mängel / Abnahmen
 
-`server/tbserver/defects.py` und `acceptances.py` unterstützen Anlegen, Lesen, Bearbeiten und Schließen/Finalisieren mit optionaler Client-UUID, Knotenzuordnung, Rechten, `base_version`, `409 VERSION_CONFLICT`, Change Feed und Audit.
+Versionierte UUID-Objekte mit Knotenzuordnung, Rechten, `base_version`, `409 VERSION_CONFLICT`, Change Feed und Audit.
 
-Replay-sicher sind:
+Replay-sicher:
 - `DEFECT_CREATE`, `DEFECT_UPDATE`, `DEFECT_CLOSE`;
 - `ACCEPTANCE_CREATE`, `ACCEPTANCE_UPDATE`, `ACCEPTANCE_FINALIZE`.
 
@@ -90,31 +82,58 @@ Capabilities: `defects_v1=true`, `acceptances_v1=true`.
 ### Unveränderliche Vermessungsoriginale / Track-Arbeitsdaten
 
 `server/tbserver/survey_originals.py` und `track_data.py` trennen Original und Arbeitsstand:
-- Import prüft Originaldatei gegen gespeicherte Größe + SHA-256;
-- Bytes werden nur atomar nach `reference/survey-originals/<uuid>/...` verschoben;
-- Originalmetadaten liegen in `tb.survey_originals`;
-- **keine PATCH-/PUT-/DELETE-Endpunkte und kein SQL-Update/Delete für Originale**;
-- identische Originalbytes derselben Firma/Datenart werden als Duplikat erkannt;
-- `tb.track_data` enthält die veränderbaren/versionierten Arbeitsdaten mit optionalem `source_original_id`;
-- Track-Daten nutzen Optimistic Locking und Tombstones.
+- Originalimport prüft Größe + SHA-256;
+- atomare Ablage unter `reference/survey-originals/<uuid>/...`;
+- Originalmetadaten in `tb.survey_originals`;
+- keine PATCH-/PUT-/DELETE-Endpunkte und kein SQL-Update/Delete für Originale;
+- identische Originalbytes werden als Duplikat erkannt;
+- veränderbare/versionierte Arbeitsdaten liegen in `tb.track_data` mit optionalem `source_original_id`;
+- Optimistic Locking + Tombstones.
 
 Capabilities: `survey_originals_v1=true`, `track_data_v1=true`.
 
-### Idempotenz / Offline-Replay – Kernvertrag vollständig
+### Idempotenz / Offline-Replay
 
 `server/tbserver/idempotency.py` nutzt `tb.mutation_receipts` und `X-Client-Change-Id`.
 
-Technische Regel:
 - Schlüssel = Benutzer + `client_change_id`;
-- vor Mutation PostgreSQL-Transaktions-Advisory-Lock auf diesen Schlüssel;
-- parallele Wiederholungen werden serialisiert;
-- erfolgreiche Antwort wird JSON-sicher als Receipt gespeichert;
-- erneuter identischer Request bekommt die gespeicherte Antwort;
-- Wiederverwendung der Change-ID für einen anderen Mutationstyp ergibt `409 CLIENT_CHANGE_ID_REUSED`.
+- PostgreSQL-Transaktions-Advisory-Lock serialisiert parallele Wiederholungen;
+- erfolgreiche Antwort wird JSON-sicher gespeichert;
+- identischer Replay bekommt dieselbe Antwort;
+- Wiederverwendung für anderen Mutationstyp -> `409 CLIENT_CHANGE_ID_REUSED`.
 
-Der fachliche Kern ist jetzt abgedeckt für Track-Daten, Mängel, Abnahmen, BTB, Baustellenstruktur/Mitglieder und Upload-Lebenszyklus. Capability: **`idempotent_mutations_v1=true`**.
+Der fachliche Kern ist abgedeckt für Track, Mängel, Abnahmen, BTB, Baustellenstruktur/Mitglieder und Upload-Lebenszyklus. Capability: `idempotent_mutations_v1=true`.
 
-Portal-/Admin-Stammdatenmutationen sind kein Offline-Outbox-Fachpfad und werden separat betrachtet. Binäre Upload-Chunks sind absichtlich über Upload-ID + Offset geschützt statt über Mutation-Receipts.
+### Geräteaktivierung / Android-Bearer-Auth – aktueller Block
+
+Der bereits praktisch getestete Android-Vertrag wird beibehalten:
+- `POST /api/v1/device/login` mit `key`, `device_uid`, `device_name`, `os_version`, `app_version`;
+- Antwort enthält einmalig `token` und Benutzerstammdaten;
+- `GET /api/v1/device/me` prüft `Authorization: Bearer <token>`;
+- Fehlercodes bleiben kompatibel, u. a. `DEVICE_ALREADY_BOUND` und `DEVICE_IN_USE`.
+
+Server-1.0-Erweiterungen:
+- Aktivierungs-Key nur gehasht in `tb.device_activation_tokens`;
+- Geräte-Bearer-Token nur gehasht (`auth_token_hash`) in `tb.devices`;
+- nur maskierter `auth_token_hint` für Administration;
+- `002_device_credentials.sql` erzwingt über partiellen Unique-Index maximal ein aktives Gerät pro Benutzer;
+- Admin kann einen Einmal-Aktivierungs-Key ausgeben;
+- Admin kann ein Gerät `release`n: Token sofort ungültig, Status `REVOKED`, danach neue Aktivierung nötig;
+- Admin kann verlorenes Gerät `block`en: Token sofort ungültig, Geräte-ID bleibt gesperrt;
+- Aktivierung und Freigabe werden ohne Geheimwerte auditiert;
+- Audit unterstützt jetzt optional `actor_device_id`.
+
+Auth-Trennung:
+- `/api/v1/admin/*` bleibt strikt Portal-Session + CSRF;
+- `/api/v1/portal/*` bleibt strikt Portal-Session + CSRF;
+- Fach-API außerhalb dieser beiden Bereiche akzeptiert zusätzlich ein gültiges Geräte-Bearer-Token;
+- bei Geräteauthentifizierung ist kein Browser-CSRF nötig, da kein Cookie-Credential verwendet wird;
+- derselbe serverseitige Firmen-/Baustellen-/Rechtecheck gilt danach unverändert.
+
+Capabilities:
+- `device_activation_v1=true`;
+- `device_bearer_auth_v1=true`;
+- `device_fach_api_v1=true`.
 
 ## Tests / Checks
 
@@ -127,20 +146,25 @@ Server-Checks:
 - `25_verify_tb_server_1_track_survey_source.py`
 - `26_verify_tb_server_1_idempotency_source.py`
 - `27_verify_tb_server_1_replay_coverage_source.py`
+- `28_verify_tb_server_1_device_auth_source.py`
+- `29_verify_tb_server_1_device_fach_auth_source.py`
 
-`27` parst BTB-, Worksite- und Datei-Module per AST und prüft die erwarteten Receipt-Typen, Change-/Audit-Marker und die Capability `idempotent_mutations_v1`.
-
-Der Workflow prüft außerdem frische Baseline, Kerntabellen einschließlich `mutation_receipts`, Bootstrap, Health und aktivierte Capabilities.
+Workflow-Zielstand:
+- Migrationen 001 + 002;
+- `latest_known=2`, `latest_applied=2`;
+- Prüfung der neuen Device-Credential-Spalten und Unique-Indizes;
+- Bootstrap/Health/Capabilities/Auth-Checks.
 
 ### Bekanntes GitHub-Actions-Problem
 
-Die zuletzt geprüften TB-Server-Workflow-Läufe wurden bereits vor dem ersten Step beendet: `runner_id=0`, keine Steps, keine Job-Logs. Diese roten Läufe sind daher keine ausgeführten Python-/PostgreSQL-Tests. Das Runner-/Actions-Problem muss separat geklärt werden.
+Die zuletzt geprüften TB-Server-Workflow-Läufe wurden bereits vor dem ersten Step beendet: `runner_id=0`, keine Steps, keine Job-Logs. Diese roten Läufe sind **keine ausgeführten Python-/PostgreSQL-Tests**. Das Runner-/Actions-Problem muss separat geklärt werden.
 
-Android-CI ist auf Android-/Gradle-relevante Pfade begrenzt; reine Änderungen unter `server/tbserver/**` sollen keinen vollständigen Android-Build auslösen.
+Android-CI ist auf Android-/Gradle-relevante Pfade begrenzt; reine Serveränderungen sollen keinen vollständigen Android-Build auslösen.
 
 ## Bekannte/offene Punkte
 
-- Android-Geräteaktivierung/-authentifizierung v1 für `/api/v1`;
+- Android-Fachclient selbst ist noch nicht auf alle neuen Server-1.0-Fachendpunkte umgestellt; der Serververtrag ist dafür jetzt vorbereitet.
+- Datei-Metadaten `source` werden beim gemeinsamen Uploadpfad derzeit noch als `PORTAL` angelegt; vor Android-Dateiupload muss dies auf `APP`/`PORTAL` nach Auth-Art differenziert werden.
 - Parser/Katalogisierung für TRA/KF/GRA/KOR/KV/GVP und Abschnittszusammenführung;
 - echtes BTB-Abschluss-PDF + Nachbearbeitungsmodell;
 - Firmenlogo/PDF-Layout;
@@ -154,8 +178,8 @@ Android-CI ist auf Android-/Gradle-relevante Pfade begrenzt; reine Änderungen u
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Geräteaktivierung/-authentifizierung v1 für Android gegen die vorhandenen `devices`/`device_activation_tokens`-Tabellen bauen; Standardregel: ein aktives Gerät pro Benutzer.
-2. Vermessungsparser/Katalogisierung auf der unveränderlichen Originalablage ergänzen.
+1. Vermessungsparser/Katalogisierung für TRA/KF/GRA/KOR/KV/GVP auf der unveränderlichen Originalablage bauen.
+2. Danach den Datei-Upload-Source-Marker für Geräte/Portal trennen und den vollständigen Android-Fachvertrag bei der späteren Client-Anbindung praktisch testen.
 3. Portal/PDF/Admin/Releases schließen.
 4. Backup/Restore/Reset + E2E testen.
 5. Erst danach NAS-Cutover und Android-Umstellung.

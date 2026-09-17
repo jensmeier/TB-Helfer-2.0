@@ -90,14 +90,34 @@ def _load_session(request: Request) -> dict[str, Any]:
             "UPDATE tb.portal_sessions SET last_seen_at = now() WHERE id = %s",
             (row["session_id"],),
         )
-        return dict(row)
+        result = dict(row)
+        result["auth_kind"] = "PORTAL"
+        return result
+
+
+def _device_auth_allowed_for_path(request: Request) -> bool:
+    path = request.url.path
+    return not (
+        path.startswith("/api/v1/portal")
+        or path.startswith("/api/v1/admin")
+    )
 
 
 def current_portal_user(request: Request) -> dict[str, Any]:
+    authorization = (request.headers.get("Authorization") or "").strip()
+    if authorization and _device_auth_allowed_for_path(request):
+        # Local import avoids an import cycle: devices imports the admin portal guards.
+        from .devices import current_device_user
+
+        return current_device_user(request)
     return _load_session(request)
 
 
 def require_csrf(request: Request, user: dict[str, Any] = Depends(current_portal_user)) -> dict[str, Any]:
+    if user.get("auth_kind") == "DEVICE":
+        # Bearer device tokens are not cookie credentials and therefore are not
+        # exposed to browser CSRF. Device authorization is already validated.
+        return user
     cookie = request.cookies.get(CSRF_COOKIE)
     header = request.headers.get("X-CSRF-Token")
     if not cookie or not header or cookie != header:
