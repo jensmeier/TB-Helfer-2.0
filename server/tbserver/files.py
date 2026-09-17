@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from .btb_documents import prepare_btb_photo_change, remove_storage_keys
 from .config import settings
 from .database import transaction
 from .events import audit, emit_change
@@ -300,6 +301,7 @@ def complete_upload(
     final_path: Path | None = None
     temp_path: Path | None = None
     moved = False
+    invalidated_pdf_keys: list[str] = []
     try:
         with transaction() as conn, conn.cursor() as cur:
             receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="UPLOAD_COMPLETE")
@@ -373,6 +375,14 @@ def complete_upload(
             link_payload = None
             if link:
                 purpose = payload.purpose.strip().upper()
+                if link[0] == "BTB" and upload["mime_type"].lower().startswith("image/"):
+                    invalidated_pdf_keys.extend(
+                        prepare_btb_photo_change(
+                            cur,
+                            btb_id=link[1],
+                            worksite_id=upload["worksite_id"],
+                        )
+                    )
                 cur.execute(
                     "INSERT INTO tb.file_links(file_id, entity_type, entity_id, purpose) VALUES (%s,%s,%s,%s)",
                     (file_id, link[0], link[1], purpose),
@@ -410,6 +420,7 @@ def complete_upload(
                 result_version=None,
                 response_payload=response,
             )
+        remove_storage_keys(invalidated_pdf_keys)
         return response
     except Exception:
         if moved and final_path is not None and final_path.exists() and temp_path is not None:

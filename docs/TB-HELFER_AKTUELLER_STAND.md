@@ -46,6 +46,7 @@ Wichtige Server-1.0-Meilensteine:
 - Detaildokumentation Chainage/Projektion: `e2701359efca8ff50220c452633b44ba7dba7c0d`
 - reale Typ-6-/Nullweg-Verifikation dokumentiert: `21c192ed4ad717e3d1f85fca31f85c6b398d2e49`
 - Release-Katalog / Client-Kompatibilitätsvertrag: in diesem Stand umgesetzt; öffentliche Statusabfrage + ADMIN-Verwaltung, noch ohne serverseitigen Binär-Upload
+- BTB-Abschluss-PDF / Ein-PDF-/Original-/Nachbearbeitungsmodell: in diesem Stand serverseitig umgesetzt; stabiler PDF-Pfad pro `btbId`, unveränderlicher erster Original-Snapshot inkl. Foto-Basis, Reaktivierung ohne automatische Ungültigkeit
 
 ## Verbindliche Strategie
 
@@ -208,6 +209,32 @@ Harburg 5300:
 
 Historische Sprungstationszahlen aus der vorherigen Projektionsbasis sind in der Real-Fixture-Dokumentation als solche gekennzeichnet. Nach v3 werden Sprungstationen neu gegen kontinuierliche Chainage berechnet; alte Auto-GRA-Punkte werden invalidiert.
 
+### BTB-Abschluss-PDF / Ein-PDF-/Originalmodell
+
+Der Server setzt jetzt die verbindliche BTB-Regel um, dass eine `btbId` höchstens ein aktuell gültiges Abschluss-PDF besitzt.
+
+- erster erfolgreicher Abschluss speichert den unveränderlichen Original-Snapshot;
+- der Original-Snapshot enthält auch den beim ersten Abschluss tatsächlich zugeordneten Foto-Bestand;
+- Reaktivieren eines abgeschlossenen BTB setzt nur den Team-Zeiger wieder auf dieselbe `btbId`; Status und PDF bleiben zunächst gültig;
+- erst eine tatsächlich gespeicherte Kopf-/Fach-/Fotoänderung setzt den BTB auf `REWORK` und invalidiert das bisherige Abschluss-PDF;
+- erneuter Abschluss ersetzt dasselbe stabile PDF derselben `btbId`, niemals das Original;
+- fachlich neue/geänderte Einträge und neue/geänderte Fotos werden gegenüber dem ersten Original rot dargestellt; entfernte Originaleinträge/-fotos erscheinen rot als `(entfernt)`;
+- Datum/Arbeitszeit und die übrigen Kopfdaten bleiben im PDF schwarz;
+- wenn ein reaktivierter abgeschlossener BTB ohne Änderung wieder abgeschlossen wird, wird nur `active_btb_id` gelöst; das bestehende gültige PDF wird nicht neu erzeugt;
+- beim vollständigen BTB-Löschen werden Original-Snapshot und BTB-PDF entfernt, echte Baustellenfotos bleiben erhalten und werden lediglich von der `btbId` gelöst;
+- neue BTB-Fotos über den bestehenden Uploadpfad invalidieren ein gültiges Abschluss-PDF ebenfalls erst bei der tatsächlichen neuen Bildzuordnung.
+
+Servermodule:
+
+- `server/tbserver/btb_documents.py` – stabiler Storage-Key, Snapshot-/Foto-Helfer, atomarer PDF-Tausch und Rollback;
+- `server/tbserver/btb_pdf.py` – ReportLab-Renderer mit Original-Diff;
+- `server/tbserver/btb.py` – Abschluss, Reaktivierung, Download und Foto-Lösen;
+- `server/tbserver/files.py` – BTB-Fotoänderungen an denselben Rework-Vertrag angebunden.
+
+Capability: `btb_finalize_with_pdf_v1=true`.
+
+Details: `docs/TB-SERVER_1_0_BTB_PDF.md`.
+
 ### Releases / Client-Kompatibilität
 
 Der bereits in Migration `001_server_1_0_base.sql` vorhandene Release-Katalog wird jetzt als stabiler API-Vertrag genutzt; bestehende Migrationen bleiben unverändert.
@@ -245,9 +272,9 @@ Workflow-Zielstand:
 - Migrationen 001 + 002 + 003 + 004;
 - `latest_known=4`, `latest_applied=4`;
 - Kerntabellen u. a. `survey_parse_catalog`, `track_data_sources`, `track_data_km_points`;
-- Source-/Vertragschecks 20–33;
+- Source-/Vertragschecks 20–34;
 - Health/Capabilities/Auth-Checks;
-- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1` und `client_compatibility_v1`.
+- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `client_compatibility_v1` und `btb_finalize_with_pdf_v1`.
 
 Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
@@ -267,8 +294,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - kompletter realer TRA-Bestand lokal erneut gescannt: 57 physische TRA-Dateien, 55 unterschiedliche SHA-256; 9 physische Typ-6-Fundstellen / 8 nach Deduplizierung; keine TRA-Parsefehler in dieser Gegenprüfung.
 
 - Source-Check 33 inkl. reiner Statuslogik für aktuellen, optional veralteten, verpflichtend veralteten und nicht mehr unterstützten Client-Build.
+- BTB-PDF-Renderer lokal mit ReportLab erzeugt, als PNG gerendert und visuell geprüft: schwarzer Kopf, rote geänderte Fachinhalte und rote `(entfernt)`-Originalinhalte.
 
-**Noch nicht ausgeführt:** vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Check 34 gegen den vollständigen Branchstand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -282,18 +310,18 @@ Der aktuelle TB-Server-Lauf für Commit `69effc49acf55b4b9abc6d4136b089a78485354
 - Projektion/verdichtete Samples bei Bedarf performant cachen, ohne Originale zu verändern;
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
 - Android-Fachclient auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen;
-- echtes BTB-Abschluss-PDF + Nachbearbeitungsmodell;
+- BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
 - Firmenlogo/PDF-Layout, vollständige Portal-Fachoberfläche, Admin-Dashboard/Systemstatus/Speicher;
 - serverseitiger Release-Binärupload/-download, Background Jobs, Backup/Restore/Reset;
 - vollständige Integrations-/E2E-Tests und produktiver NAS-Cutover.
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. BTB-Abschluss-PDF und Nachbearbeitungsmodell serverseitig schließen; das bestehende unveränderliche Original-Snapshot-Modell bleibt die Basis.
-2. Firmenlogo/PDF-Layout und die noch fehlenden Portal-/Admin-Fachoberflächen gegen denselben Server-1.0-Vertrag vervollständigen.
-3. Serverseitigen Release-Binärupload/-download, Background Jobs sowie Backup/Restore/Reset schließen.
-4. Sobald eine PostgreSQL-Testinstanz verfügbar ist, die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
-5. Danach den Android-Fachclient capability-gesteuert auf die fertigen `/api/v1`-Verträge umstellen; die bisherigen 0.6-/0.7-Versionsschwellen dürfen nicht die Server-1.0-Fähigkeiten bestimmen.
+1. Firmenlogo/PDF-Layout und die noch fehlenden Portal-/Admin-Fachoberflächen gegen denselben Server-1.0-Vertrag vervollständigen.
+2. Serverseitigen Release-Binärupload/-download, Background Jobs sowie Backup/Restore/Reset schließen.
+3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
+4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
+5. Anschließend den Android-Fachclient capability-gesteuert auf die fertigen `/api/v1`-Verträge umstellen; die bisherigen 0.6-/0.7-Versionsschwellen dürfen nicht die Server-1.0-Fähigkeiten bestimmen.
 6. Vollständige Integrations-/Akzeptanztests inklusive Backup/Restore ausführen.
 7. Erst danach NAS-Cutover und produktive Android-Umstellung.
 

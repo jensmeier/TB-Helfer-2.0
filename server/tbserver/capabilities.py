@@ -20,7 +20,7 @@ CAPABILITIES: dict[str, bool] = {
     "worksite_teams_v1": True,
     "btb_entries_v1": True,
     "btb_live_sync_v1": True,
-    "btb_finalize_with_pdf_v1": False,
+    "btb_finalize_with_pdf_v1": True,
     "files_v1": True,
     "chunk_upload_v1": True,
     "defects_v1": True,
