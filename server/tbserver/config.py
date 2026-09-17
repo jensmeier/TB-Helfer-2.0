@@ -28,6 +28,7 @@ class Settings:
     migrations_root: Path
     environment: str
     log_level: str
+    portal_session_hours: int
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -45,6 +46,7 @@ class Settings:
             ),
             environment=_env("TB_ENVIRONMENT", "development").lower(),
             log_level=_env("LOG_LEVEL", "INFO").upper(),
+            portal_session_hours=max(1, _env_int("TB_PORTAL_SESSION_HOURS", 12)),
         )
 
 
