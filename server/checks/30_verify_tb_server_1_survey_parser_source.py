@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import ast
+import struct
+import sys
 from pathlib import Path
 
 
@@ -9,6 +11,137 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
+
+
+def _write_text(data: bytearray, offset: int, length: int, value: str) -> None:
+    encoded = value.encode("cp1252")[:length]
+    data[offset : offset + len(encoded)] = encoded
+
+
+def _raw_kf(
+    *,
+    version: str = "VERSION 7.0",
+    kf_number: float,
+    x: float,
+    y: float,
+    height: float,
+    station: float,
+    location: str,
+    part: str,
+    route: str,
+    rikz: str,
+) -> bytes:
+    data = bytearray(204)
+    _write_text(data, 40, 34, version)
+    _write_text(data, 97, 5, "00000")
+    base = 102
+    struct.pack_into("<d", data, base, kf_number)
+    struct.pack_into("<d", data, base + 8, x)
+    struct.pack_into("<d", data, base + 16, y)
+    struct.pack_into("<d", data, base + 24, height)
+    struct.pack_into("<d", data, base + 32, station)
+    _write_text(data, base + 40, 16, location)
+    _write_text(data, base + 70, 4, part)
+    _write_text(data, base + 74, 1, "0")
+    _write_text(data, base + 83, 14, "TEST")
+    _write_text(data, base + 97, 4, route)
+    _write_text(data, base + 101, 1, rikz)
+    return bytes(data)
+
+
+def verify_raw_kf_parity() -> None:
+    sys.path.insert(0, str(ROOT / "server"))
+    from tbserver.survey_parser import parse_survey_original
+
+    def parse(name: str, data: bytes):
+        family, detected, payload, warnings = parse_survey_original("KF", name, data, "a" * 64)
+        assert family == "GVP_FESTPUNKT", family
+        assert detected == "KF_7_BINARY", detected
+        assert len(payload["points"]) == 1, payload
+        return payload["points"][0], warnings
+
+    point, warnings = parse(
+        "5362_km70,6-81,5_PS1-PS3_20260619_V2.kf",
+        _raw_kf(
+            kf_number=40.00300,
+            x=3_597_538.6261,
+            y=5_280_599.5563,
+            height=721.8565,
+            station=70_698.1786,
+            location="1070698",
+            part="PS1",
+            route="5362",
+            rikz="5",
+        ),
+    )
+    assert point["point_name"] == "1070698", point
+    assert point["type"] == "PS1", point
+    assert point["route"] == "5362", point
+    assert abs(point["km_meter"] - 70_698.1786) < 0.00001, point
+    assert abs(point["x_dbref"] - 3_597_538.6261) < 0.00001, point
+    assert abs(point["y_dbref"] - 5_280_599.5563) < 0.00001, point
+    assert abs(point["height_m"] - 721.8565) < 0.00001, point
+    assert point["coordinate_system"] == "DB_REF_GK_3", point
+    assert any("Roh-KF 7.0 direkt importiert" in warning for warning in warnings), warnings
+
+    point, _ = parse(
+        "Festpkt_5300_054-059_DHDN.kf",
+        _raw_kf(
+            version="VERSION 7.0  R",
+            kf_number=5.40600,
+            x=4_403_282.57605,
+            y=5_407_261.69976,
+            height=416.4690,
+            station=54_319.9350,
+            location="54/6",
+            part="GVPV",
+            route="5300",
+            rikz="5",
+        ),
+    )
+    assert point["point_name"] == "54/6", point
+    assert point["type"] == "GVPV", point
+    assert point["route"] == "5300", point
+    assert abs(point["km_meter"] - 54_319.9350) < 0.00001, point
+    assert abs(point["height_m"] - 416.4690) < 0.00001, point
+    assert point["coordinate_system"] == "DB_REF2016_4", point
+
+    point, warnings = parse(
+        "5300 km 51-53 GE+WE Harburg_DBREF2016.kf",
+        _raw_kf(
+            kf_number=77.00051,
+            x=4_405_010.5870,
+            y=5_403_770.3040,
+            height=412.5310,
+            station=0.0,
+            location="50/51",
+            part="GVPV",
+            route="5300",
+            rikz="1",
+        ),
+    )
+    assert point["route"] == "5300", point
+    assert point["km_meter"] is None, point
+    assert any("ohne plausible Station" in warning for warning in warnings), warnings
+
+    point, warnings = parse(
+        "Bbf_Pasing_FPF_Gesamt_mit_Gl30-40_neu_DBREF.kf",
+        _raw_kf(
+            kf_number=7.00011,
+            x=4_459_039.0800,
+            y=5_335_216.9630,
+            height=1e40,
+            station=1e40,
+            location="30005",
+            part="",
+            route="0000",
+            rikz="0",
+        ),
+    )
+    assert point["route"] is None, point
+    assert point["km_meter"] is None, point
+    assert point["height_m"] is None, point
+    assert any("ohne plausible Strecke" in warning for warning in warnings), warnings
 
 
 def main() -> None:
@@ -53,7 +186,8 @@ def main() -> None:
     if 'kind in {"GVP", "KF", "KV", "KF.TXT", "FESTPUNKT"}' not in parser:
         raise SystemExit("KF/KV muessen Teil der gemeinsamen GVP/Festpunkt-Parserfamilie bleiben")
 
-    print("OK: TB-Server 1.0 immutable survey parser catalog")
+    verify_raw_kf_parity()
+    print("OK: TB-Server 1.0 immutable survey parser catalog + Android Raw-KF parity")
 
 
 if __name__ == "__main__":
