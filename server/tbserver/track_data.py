@@ -15,6 +15,7 @@ from .portal import current_portal_user, require_csrf
 
 
 router = APIRouter(prefix="/api/v1", tags=["track-data"])
+_RESERVED_DEDICATED_KINDS = {"SURVEY_SECTION"}
 
 
 class TrackDataCreate(BaseModel):
@@ -40,6 +41,11 @@ class TrackDataUpdate(BaseModel):
 
 class VersionAction(BaseModel):
     base_version: int = Field(ge=1)
+
+
+def _reject_dedicated_kind(dataset_kind: str) -> None:
+    if dataset_kind in _RESERVED_DEDICATED_KINDS:
+        raise HTTPException(400, "SURVEY_SECTION_USE_DEDICATED_ENDPOINT")
 
 
 def _validate_node(cur, worksite_id: UUID, node_id: UUID | None) -> None:
@@ -110,6 +116,7 @@ def create_track_data(
     dataset_kind = payload.dataset_kind.strip().upper()
     if not dataset_key or not dataset_kind:
         raise HTTPException(400, "INVALID_TRACK_DATA_KEY")
+    _reject_dedicated_kind(dataset_kind)
 
     with transaction() as conn, conn.cursor() as cur:
         receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="TRACK_DATA_CREATE")
@@ -220,6 +227,7 @@ def update_track_data(
         if receipt:
             return replay_payload(receipt)
         dataset = _load_dataset(cur, dataset_id)
+        _reject_dedicated_kind(dataset["dataset_kind"])
         context = worksite_context(cur, user, dataset["worksite_id"])
         require_permission(context, "track.edit")
         if "worksite_node_id" in updates:
@@ -230,6 +238,7 @@ def update_track_data(
             updates["dataset_kind"] = updates["dataset_kind"].strip().upper()
             if not updates["dataset_kind"]:
                 raise HTTPException(400, "INVALID_TRACK_DATA_KIND")
+            _reject_dedicated_kind(updates["dataset_kind"])
 
         columns = []
         values = []
