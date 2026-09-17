@@ -13,6 +13,8 @@ from .capabilities import router as capabilities_router
 from .config import settings
 from .database import ping
 from .defects import router as defects_router
+from .devices import admin_router as admin_devices_router
+from .devices import router as devices_router
 from .files import router as files_router
 from .migrations import status as migration_status
 from .portal import router as portal_router
@@ -36,6 +38,8 @@ app = FastAPI(
 app.include_router(capabilities_router)
 app.include_router(portal_router)
 app.include_router(admin_router)
+app.include_router(admin_devices_router)
+app.include_router(devices_router)
 app.include_router(worksites_router)
 app.include_router(btb_router)
 app.include_router(sync_router)

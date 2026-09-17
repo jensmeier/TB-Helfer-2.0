@@ -62,6 +62,7 @@ jobs:
           python server/checks/25_verify_tb_server_1_track_survey_source.py
           python server/checks/26_verify_tb_server_1_idempotency_source.py
           python server/checks/27_verify_tb_server_1_replay_coverage_source.py
+          python server/checks/28_verify_tb_server_1_device_auth_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -74,13 +75,13 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 1, current
-          assert current["latest_applied"] == 1, current
+          assert current["latest_known"] == 2, current
+          assert current["latest_applied"] == 2, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
 
-      - name: Verify core tables
+      - name: Verify core tables and device auth migration
         working-directory: server
         run: |
           python - <<'PY'
@@ -95,9 +96,16 @@ jobs:
           with connect() as conn, conn.cursor() as cur:
               cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='tb'")
               tables = {row["tablename"] for row in cur.fetchall()}
+              cur.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='tb' AND table_name='devices'")
+              device_columns = {row["column_name"] for row in cur.fetchall()}
+              cur.execute("SELECT indexname FROM pg_indexes WHERE schemaname='tb' AND tablename='devices'")
+              device_indexes = {row["indexname"] for row in cur.fetchall()}
           missing = sorted(required - tables)
           assert not missing, missing
-          print("OK: core tables", len(tables))
+          assert {"auth_token_hash", "auth_token_hint"} <= device_columns, device_columns
+          assert "devices_one_active_per_user_uq" in device_indexes, device_indexes
+          assert "devices_auth_token_hash_uq" in device_indexes, device_indexes
+          print("OK: core tables/device auth migration", len(tables))
           PY
 
       - name: Generate ephemeral bootstrap credentials
@@ -149,6 +157,8 @@ jobs:
               "server_1_0_foundation_v1",
               "portal_v1",
               "company_user_admin_v1",
+              "device_activation_v1",
+              "device_bearer_auth_v1",
               "worksite_tree_v1",
               "worksite_permissions_v1",
               "worksite_teams_v1",
@@ -164,6 +174,7 @@ jobs:
           }
           missing = sorted(key for key in expected_true if caps["capabilities"].get(key) is not True)
           assert not missing, {"missing_capabilities": missing, "caps": caps}
+          assert caps["capabilities"]["device_fach_api_v1"] is False, caps
           assert caps["capabilities"]["btb_finalize_with_pdf_v1"] is False, caps
           assert caps["capabilities"]["company_logo_v1"] is False, caps
           print("OK: API foundation/capabilities")

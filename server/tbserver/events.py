@@ -43,6 +43,7 @@ def audit(
     *,
     action: str,
     actor_user_id: UUID | str | None,
+    actor_device_id: UUID | str | None = None,
     company_id: UUID | str | None = None,
     worksite_id: UUID | str | None = None,
     entity_type: str | None = None,
@@ -52,13 +53,15 @@ def audit(
     cur.execute(
         """
         INSERT INTO tb.audit_log(
-            company_id, worksite_id, actor_user_id, action, entity_type, entity_id, details
-        ) VALUES (%s,%s,%s,%s,%s,%s,%s)
+            company_id, worksite_id, actor_user_id, actor_device_id,
+            action, entity_type, entity_id, details
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
         """,
         (
             company_id,
             worksite_id,
             actor_user_id,
+            actor_device_id,
             action,
             entity_type,
             entity_id,
