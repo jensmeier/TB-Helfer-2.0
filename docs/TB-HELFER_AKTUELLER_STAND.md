@@ -2,20 +2,7 @@
 
 Stand: 2026-09-17
 
-Diese Datei ist die technische Übergabe. Fachregeln stehen in `docs/TB-HELFER_PROJEKTREGELN.md`, die Arbeitsweise in `docs/TB-HELFER_PROJEKTANWEISUNG.md`, das Serverziel in `docs/TB-SERVER_1_0_ZIELMODELL.md` und die Reset-/Cutover-Regeln in `docs/TB-SERVER_1_0_CUTOVER.md`.
-
-## Start jedes Chats / jeder Änderung
-
-Zuerst lesen/prüfen:
-1. `docs/TB-HELFER_PROJEKTANWEISUNG.md`
-2. `docs/TB-HELFER_PROJEKTREGELN.md`
-3. diese Datei
-4. `docs/TB-SERVER_1_0_ZIELMODELL.md`
-5. aktiven Branch
-6. offenen Draft-PR
-7. neuesten relevanten Commit
-
-GitHub-Code und aktiver Branch sind Source of Truth.
+Maßgeblich sind der aktuelle GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEKTREGELN.md`, diese Datei, `docs/TB-SERVER_1_0_ZIELMODELL.md` und `docs/TB-SERVER_1_0_CUTOVER.md`.
 
 ## Repository / aktive Entwicklung
 
@@ -23,192 +10,92 @@ GitHub-Code und aktiver Branch sind Source of Truth.
 - stabil: `main`
 - aktiver Branch: **`feature/tb-server-1.0`**
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
-- Cutover-Regel-Commit: `64bb798e37f6a220fbd1715859a813a359a32eee`
-- Datei-/Chunkupload-Commit: `959a53459455062def10608df4ca4c4cd1b0a179`
-- Mängel-/Abnahmen-Commit: `40249785879b82714b7d2df822e9e52fb7fb750c`
-- Vermessungs-/Track-Commit: `a84c3607512a61145eba85309aa80bc2d6f015f0`
+- Cutover-Regel: `64bb798e37f6a220fbd1715859a813a359a32eee`
+- Dateien/Chunkupload: `959a53459455062def10608df4ca4c4cd1b0a179`
+- Mängel/Abnahmen: `40249785879b82714b7d2df822e9e52fb7fb750c`
+- Vermessungsoriginale/Track: `a84c3607512a61145eba85309aa80bc2d6f015f0`
+- Idempotenz-Grundlage: `d46650a938ab370c6f3b65d97852b2168ea08287`
 - Android bleibt vorerst Testclient: Buildkandidat **200050**
-- Produktivserver/NAS weiterhin unverändert: API **0.7.0**, PostgreSQL **Schema 10**
+- Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
 
 ## Verbindliche Strategie
 
-**Serverbasis zuerst, Android danach systematisch anbinden.**
+Serverbasis vollständig bauen und testen, danach kontrollierter NAS-Cutover mit vorher geprüftem Backup, anschließend Android systematisch auf den festen `/api/v1`-Vertrag umstellen.
 
-Reihenfolge:
-1. TB-Server 1.0 vollständig bauen;
-2. Server/Portal/Sync-End-to-End testen;
-3. vor NAS-Cutover vollständiges Backup erstellen und prüfen;
-4. frischen TB-Server-1.0-Datenbestand produktiv aktivieren;
-5. danach Android gegen den festen Vertrag anbinden;
-6. Poco ↔ Pixel ↔ Portal praktisch testen.
+Der derzeitige Server-Fachdatenbestand ist Testbestand. Beim 1.0-Cutover dürfen Testnutzer, Testbaustellen und Test-/Leerdaten für TRA/KF/GRA/KOR/KV/GVP sowie Strecken-/Bahnhofs-/Vermessungskataloge entfernt werden. GitHub-Code, Konfiguration/Secrets und Backups bleiben erhalten. Statische Grunddaten werden aus definierter Quelle neu aufgebaut.
 
-Keine produktive NAS-Migration während der Entwicklungsblöcke.
-
-## Testdaten / Reset
-
-Der aktuelle Server-Fachdatenbestand ist Testbestand und darf beim kontrollierten 1.0-Cutover verworfen werden.
-
-Nach Benutzerklärung vom 17.09.2026 existieren serverseitig noch **keine produktiven Vermessungs-/Streckendatensätze**, die übernommen werden müssen. Deshalb dürfen beim Reset auch serverseitige Test-/Leerbereiche für TRA/KF/GRA/KOR/KV/GVP und Testkataloge entfernt werden.
-
-Nicht gelöscht werden GitHub-Code, Konfiguration/Secrets und Backups. Statische Grunddaten werden aus der definierten Quelle neu aufgebaut.
-
-Ab dem ersten echten produktiven Vermessungsimport gilt dauerhaft:
-- Originaldateien bleiben unverändert;
-- spätere Serverupdates erhalten produktive Originale;
-- berechnete/manuelle Daten liegen getrennt als Arbeitsdaten.
-
-Details: `docs/TB-SERVER_1_0_CUTOVER.md`.
+**Ab dem ersten echten produktiven Vermessungsimport sind Originaldateien unveränderlich und dürfen durch spätere Updates/Resets nicht gelöscht oder überschrieben werden.** Bearbeitete/berechnete Daten liegen getrennt.
 
 ## TB-Server 1.0 – umgesetzt
 
-### 1. Foundation / Migrationen
+### Foundation / Auth / Portal-Grundlage
 
-Vorhanden:
-- `server/tbserver/` als neue 1.0-Anwendung;
-- `server/Dockerfile.v1` als separater Startpfad;
-- `server/v1_migrations/001_server_1_0_base.sql` als frische Baseline;
-- Migration Runner mit Nummerierung, SHA-256-Prüfung und PostgreSQL-Advisory-Lock;
-- `/health/live`, `/health/ready`, `/api/v1/capabilities`;
-- `.github/workflows/tb-server-v1.yml` mit PostGIS-Testservice.
+Vorhanden sind:
+- neues Paket `server/tbserver/` und separater `server/Dockerfile.v1`;
+- frische Baseline `server/v1_migrations/001_server_1_0_base.sql`;
+- Migration Runner mit nummerierten Migrationen, SHA-256-Prüfung und Advisory-Lock;
+- Health/Ready/Capabilities;
+- Firmen, Benutzer, Portal-Aktivierung, Login/Sessions, CSRF, Bootstrap/Admin-Grundlage.
 
-### 2. Auth / Firmen / Benutzer / Portal-Grundlage
+### Baustellen / Rechte / Teams
 
-Vorhanden:
-- Security/Passworthash;
-- Portal-Aktivierung;
-- Portal-Login/Sessions;
-- CSRF-Prüfung;
-- Admin-Grundfunktionen;
-- Bootstrap des ersten Administrators;
-- Firmen-/Benutzer-Grundverwaltung.
+Vorhanden sind Baustellen und Unterbaustellen mit UUIDs, Mitgliedschaften, Rechteprofile/Overrides, Teams mit `active_btb_id`, serverseitige Rechteprüfung sowie Change-/Audit-Ereignisse.
 
-Relevante Dateien:
-- `server/tbserver/security.py`
-- `server/tbserver/portal.py`
-- `server/tbserver/admin.py`
-- `server/tbserver/bootstrap.py`
+Capabilities: `worksite_tree_v1`, `worksite_permissions_v1`, `worksite_teams_v1` = `true`.
 
-### 3. Baustellen / Rechte / Teams
+### Granularer BTB / Live-Sync
 
-Vorhanden:
-- Baustellen und Unterbaustellen mit stabilen UUIDs;
-- Mitgliedschaften;
-- Rechteprofile + individuelle Abweichungen;
-- Teams mit `active_btb_id`;
-- serverseitige Rechteprüfung;
-- Change-/Audit-Ereignisse.
+Vorhanden sind BTB-Kopf, einzelne versionierte `btb_entries`, Versionskonflikte, aktiver BTB je Team, erster unveränderlicher Original-Snapshot beim Abschluss, Rework, Tombstone-Löschen, Change Feed und SSE-Live-Signal.
 
-Capabilities:
-- `worksite_tree_v1=true`
-- `worksite_permissions_v1=true`
-- `worksite_teams_v1=true`
+Capabilities: `btb_entries_v1=true`, `btb_live_sync_v1=true`, `btb_finalize_with_pdf_v1=false`.
 
-### 4. Granularer BTB / Live-Sync
+### Dateien / Bilder / Chunkupload
 
-Vorhanden:
-- stabiler BTB-Kopf und einzelne `btb_entries`;
-- UUID + Version je Eintrag;
-- Versionskonfliktprüfung statt stillem Last-Write-Wins;
-- aktiver BTB je Team;
-- erster unveränderlicher Original-Snapshot beim Abschluss;
-- Abschlussstatus, Reopen/Nachbearbeitung, Tombstone-Löschen;
-- Change Feed `/api/v1/sync/changes`;
-- SSE-Live-Signal `/api/v1/sync/events`.
+`server/tbserver/files.py` enthält resumierbare sequenzielle Upload-Sessions mit 8 MiB Standard-/16 MiB Maximal-Chunk, Offset-/Größen-/SHA-256-Prüfung, fsync, atomarem Abschluss in UUID-basierte Storage-Pfade, `tb.files`, `tb.file_links`, geschütztem Abruf, Upload-Abbruch sowie Change/Audit.
 
-Capabilities:
-- `btb_entries_v1=true`
-- `btb_live_sync_v1=true`
-- `btb_finalize_with_pdf_v1=false` – Abschluss-PDF noch offen.
+Capabilities: `files_v1=true`, `chunk_upload_v1=true`, `company_logo_v1=false`.
 
-### 5. Dateien / Bilder / Chunkupload
+### Mängel / Abnahmen
 
-Commit: `959a53459455062def10608df4ca4c4cd1b0a179`
+`server/tbserver/defects.py` und `acceptances.py` unterstützen Anlegen, Lesen, Bearbeiten und Schließen/Finalisieren mit optionaler Client-UUID, Knotenzuordnung, Rechten, `base_version`, `409 VERSION_CONFLICT`, Change Feed und Audit.
 
-Vorhanden:
-- `server/tbserver/files.py`;
-- resumierbare sequenzielle Upload-Sessions;
-- Standard-Chunkgröße 8 MiB, Maximum 16 MiB;
-- Offset-, Größen- und SHA-256-Prüfung;
-- fsync beim Chunk-Schreiben;
-- atomarer Abschluss aus Tempbereich in UUID-basierte Storage-Pfade;
-- `tb.files` + `tb.file_links`;
-- Links zu Baustelle/BTB/Mangel/Abnahme;
-- Datei-Metadatenliste und geschützter Dateiabruf;
-- Upload-Abbruch;
-- Change-Feed + Audit beim erfolgreichen Abschluss.
+Capabilities: `defects_v1=true`, `acceptances_v1=true`.
 
-Capabilities:
-- `files_v1=true`
-- `chunk_upload_v1=true`
-- `company_logo_v1=false`.
+### Unveränderliche Vermessungsoriginale / Track-Arbeitsdaten
 
-### 6. Mängel / Abnahmen
-
-Commit: `40249785879b82714b7d2df822e9e52fb7fb750c`
-
-Vorhanden:
-- `server/tbserver/defects.py`;
-- `server/tbserver/acceptances.py`;
-- Mangel anlegen/listen/lesen/bearbeiten/schließen;
-- Abnahme anlegen/listen/lesen/bearbeiten/finalisieren;
-- optionale clientseitige UUID beim Anlegen;
-- Zuordnung zu Baustellenknoten wird serverseitig validiert;
-- Schreibrechte über `defect.*` bzw. `acceptance.*`;
-- Optimistic Locking über `base_version`;
-- `409 VERSION_CONFLICT` statt stillem Überschreiben;
-- Change-Feed und Audit bei Lebenszyklusaktionen.
-
-Capabilities:
-- `defects_v1=true`
-- `acceptances_v1=true`.
-
-### 7. Vermessungsoriginale / mobile Strecken-Arbeitsdaten
-
-Commit: `a84c3607512a61145eba85309aa80bc2d6f015f0`
-
-Vorhanden:
-- `server/tbserver/survey_originals.py`;
-- `server/tbserver/track_data.py`;
-- Import eines bereits hochgeladenen baustellenbezogenen Files als Vermessungsoriginal;
-- vor Import Prüfung von Dateigröße und SHA-256 gegen den gespeicherten File-Datensatz;
-- Originalbytes werden nur atomar in `reference/survey-originals/<uuid>/...` verschoben, nicht verändert;
+`server/tbserver/survey_originals.py` und `track_data.py` trennen Original und Arbeitsstand:
+- Import prüft Originaldatei gegen gespeicherte Größe + SHA-256;
+- Bytes werden nur atomar nach `reference/survey-originals/<uuid>/...` verschoben;
 - Originalmetadaten liegen in `tb.survey_originals`;
-- für Vermessungsoriginale existieren bewusst **keine** PATCH-/PUT-/DELETE-Endpunkte;
-- doppelter Import identischer Originalbytes derselben Firma/Datenart wird erkannt;
-- Download des unveränderten Originals bleibt möglich;
-- mobile/bearbeitete Daten liegen ausschließlich in `tb.track_data`;
-- Track-Datensätze haben stabile UUID, `dataset_key`, Typ, Payload, Version und optionalen `source_original_id`;
-- Arbeitsdaten können geändert und soft-gelöscht werden, Originale nicht;
-- Optimistic Locking über `base_version` mit `409 VERSION_CONFLICT`;
-- Löschungen erzeugen `TRACK_DATA`-Tombstones.
+- **keine PATCH-/PUT-/DELETE-Endpunkte und kein SQL-Update/Delete für Originale**;
+- identische Originalbytes derselben Firma/Datenart werden als Duplikat erkannt;
+- `tb.track_data` enthält die veränderbaren/versionierten Arbeitsdaten mit optionalem `source_original_id`;
+- Track-Daten nutzen Optimistic Locking und Tombstones.
 
-Capabilities:
-- `survey_originals_v1=true`
-- `track_data_v1=true`.
+Capabilities: `survey_originals_v1=true`, `track_data_v1=true`.
 
-Damit ist die ab Produktivimport verbindliche Trennung technisch vorbereitet: **Originaldatei unveränderlich, daraus abgeleitete/manuelle Streckendaten separat versioniert.**
+### Idempotenz / Offline-Replay
 
-### 8. Idempotenz / Offline-Replay – aktueller Block
+`server/tbserver/idempotency.py` nutzt `tb.mutation_receipts` und `X-Client-Change-Id`.
 
-Neu vorbereitet:
-- `server/tbserver/idempotency.py` nutzt die bereits vorhandene Tabelle `tb.mutation_receipts`;
-- Client kann `X-Client-Change-Id` mitsenden;
-- Receipt-Schlüssel ist Benutzer + `client_change_id`;
-- vor der Fachmutation wird ein PostgreSQL-Transaktions-Advisory-Lock auf Benutzer + Change-ID gesetzt;
-- dadurch können zwei gleichzeitig wiederholte Requests nicht beide dieselbe Mutation ausführen;
-- bereits erfolgreich ausgeführte Mutation liefert die gespeicherte Antwort zurück;
-- Wiederverwendung derselben Change-ID für einen anderen Mutationstyp ergibt `409 CLIENT_CHANGE_ID_REUSED`;
-- Response wird JSON-sicher als Receipt gespeichert;
-- `track_data` nutzt den Mechanismus bereits für Create/Update/Delete;
-- Source-Check `26_verify_tb_server_1_idempotency_source.py` prüft Lock, Receipt-Tabelle und Track-Replay-Vertrag.
+Technische Regel:
+- Schlüssel = Benutzer + `client_change_id`;
+- vor Mutation PostgreSQL-Transaktions-Advisory-Lock auf diesen Schlüssel;
+- parallele Wiederholungen werden serialisiert;
+- erfolgreiche Antwort wird JSON-sicher als Receipt gespeichert;
+- erneuter identischer Request bekommt die gespeicherte Antwort;
+- Wiederverwendung der Change-ID für einen anderen Mutationstyp ergibt `409 CLIENT_CHANGE_ID_REUSED`.
 
-Wichtig: Die Receipt-Infrastruktur ist damit belastbar angelegt, aber noch **nicht auf alle bestehenden Schreibendpunkte ausgerollt**. BTB, Baustellen, Mängel/Abnahmen und Dateiabschluss werden als nächster Schritt auf denselben Mechanismus umgestellt. Bis dahin darf noch keine Capability „vollständig serverweit idempotent“ gesetzt werden.
+Bereits umgestellt:
+- `TRACK_DATA_CREATE`, `TRACK_DATA_UPDATE`, `TRACK_DATA_DELETE`;
+- `DEFECT_CREATE`, `DEFECT_UPDATE`, `DEFECT_CLOSE`;
+- `ACCEPTANCE_CREATE`, `ACCEPTANCE_UPDATE`, `ACCEPTANCE_FINALIZE`.
 
-## CI / Tests
+Noch nicht serverweit abgeschlossen: BTB, Baustellen-/Teamänderungen und Dateiabschluss müssen denselben Receipt-Vertrag noch erhalten. Deshalb gibt es bewusst noch keine Capability „vollständig idempotent“.
 
-### Source-/Runtime-Verträge
+## Tests / Checks
 
-Vorhanden:
+Server-Checks:
 - `20_verify_tb_server_1_foundation.py`
 - `21_verify_tb_server_1_auth_source.py`
 - `22_verify_tb_server_1_auth_runtime.py`
@@ -217,52 +104,36 @@ Vorhanden:
 - `25_verify_tb_server_1_track_survey_source.py`
 - `26_verify_tb_server_1_idempotency_source.py`
 
-Der Server-Workflow prüft außerdem Baseline-Migration, Kerntabellen einschließlich `mutation_receipts`, Bootstrap, Health und aktivierte Capabilities.
+Der Workflow prüft außerdem die frische Baseline, Kerntabellen einschließlich `mutation_receipts`, Bootstrap, Health und Capabilities.
 
-### Aktuelles GitHub-Actions-Problem
+### Bekanntes GitHub-Actions-Problem
 
-Beim geprüften Lauf zum Branch-Stand `959a534...` wurde der Server-Workflow bereits vor dem ersten Step beendet:
-- Jobstatus `failure`;
-- `runner_id=0`;
-- keine Steps vorhanden;
-- keine Job-Logs erzeugt.
+Ein geprüfter TB-Server-Workflow wurde bereits vor dem ersten Step beendet: `runner_id=0`, keine Steps, keine Job-Logs. Dieser rote Lauf ist daher kein ausgeführter Python-/PostgreSQL-Test. Das Runner-/Actions-Problem muss separat geklärt werden. Der zuvor veraltete Capability-Test wurde korrigiert.
 
-Damit ist dieser konkrete rote Lauf **kein ausgeführter Python-/PostgreSQL-Test**. Die Ursache liegt auf GitHub-Actions-/Runner-Ebene und muss separat geklärt werden. Der zuvor veraltete Capability-Test (`worksite_tree_v1 == false`) wurde bereits korrigiert.
+Android-CI ist inzwischen auf Android-/Gradle-relevante Pfade begrenzt; reine Änderungen unter `server/tbserver/**` sollen keinen vollständigen Android-Build auslösen.
 
-### Android CI
+## Offen
 
-Android ist für den Server-1.0-Block vorerst Testclient und nicht dessen Freigabenachweis. Die Android-Workflow-Trigger sind auf Android-/Gradle-Dateien und die alten Android/Schema-Sourcechecks begrenzt. Reine Änderungen unter `server/tbserver/**` sollen keinen vollständigen Android-Build mehr auslösen.
-
-## Bekannte/offene Punkte
-
-Noch nicht fertig:
-- Idempotenz/`client_change_id` auf BTB, Baustellen, Mängel/Abnahmen und Dateiabschluss ausrollen;
-- Android-Geräteauthentifizierung für die neue `/api/v1`-Serverbasis;
-- konkrete Parser/Katalogisierung für TRA/KF/GRA/KOR/KV/GVP und fachliche Abschnittszusammenführung;
-- echtes BTB-Abschluss-PDF inklusive Dateispeicherung und Nachbearbeitungsmodell;
+- Idempotenz auf BTB, Baustellen/Teams und Dateiabschluss ausrollen;
+- Android-Geräteauthentifizierung für `/api/v1`;
+- Parser/Katalogisierung für TRA/KF/GRA/KOR/KV/GVP und Abschnittszusammenführung;
+- echtes BTB-Abschluss-PDF + Nachbearbeitungsmodell;
 - Firmenlogo/PDF-Layout;
 - vollständige Portal-Fachoberfläche;
 - Admin-Dashboard/Systemstatus/Speicher;
 - Releases/Client-Kompatibilität;
 - Background Jobs;
-- Backup/Restore-Werkzeuge;
-- Testdaten-Reset-Werkzeug;
-- vollständige Integrations-/End-to-End-Tests;
+- Backup/Restore/Reset-Werkzeuge;
+- vollständige Integrations-/E2E-Tests;
 - produktiver NAS-Cutover.
-
-Der Vermessungsimport ist aktuell ein serverseitiger Grundvertrag auf Basis bereits hochgeladener Dateien. Parser/Katalogisierung für konkrete Formate folgen auf dieser unveränderlichen Originalbasis.
-
-Datei-/Upload-Modul ist zunächst auf baustellenbezogene Uploads mit Portal-Session-Authentifizierung begrenzt. Geräteauthentifizierung für Android und systemweite Dateien wie Firmenlogo/Releases werden in den dafür vorgesehenen Modulen ergänzt.
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Idempotenz/`client_change_id` auf die übrigen offline-relevanten Schreibendpunkte ausrollen**;
-2. danach Geräteauthentifizierung v1 so anbinden, dass Android denselben Vertrag nutzen kann;
-3. konkrete Vermessungsparser/Katalogisierung und Abschnittszuordnung ergänzen;
-4. Portal-Fachoberfläche und BTB-PDF-Abschluss schließen;
-5. Admin/Systemstatus/Releases;
-6. Backup/Restore/Reset und vollständige E2E-Tests;
-7. GitHub-Actions-Runnerproblem klären bzw. Tests auf verfügbarer Laufumgebung ausführen;
-8. erst danach NAS-Cutover und Android-Anpassung.
+1. Receipt-Idempotenz auf BTB, Baustellen/Teams und Dateiabschluss ausrollen.
+2. Geräteauthentifizierung v1 für Android ergänzen.
+3. Vermessungsparser/Katalogisierung auf der unveränderlichen Originalablage ergänzen.
+4. Portal/PDF/Admin/Releases schließen.
+5. Backup/Restore/Reset + E2E testen.
+6. Erst danach NAS-Cutover und Android-Umstellung.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**

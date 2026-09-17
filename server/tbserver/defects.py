@@ -9,6 +9,7 @@ from psycopg.types.json import Jsonb
 
 from .database import transaction
 from .events import audit, emit_change
+from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
 from .permissions import require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 
@@ -63,10 +64,7 @@ def _conflict_or_missing(cur, defect_id: UUID) -> None:
 
 
 @router.get("/worksites/{worksite_id}/defects")
-def list_defects(
-    worksite_id: UUID,
-    user: dict[str, Any] = Depends(current_portal_user),
-) -> dict:
+def list_defects(worksite_id: UUID, user: dict[str, Any] = Depends(current_portal_user)) -> dict:
     with transaction() as conn, conn.cursor() as cur:
         worksite_context(cur, user, worksite_id)
         cur.execute(
@@ -89,8 +87,12 @@ def create_defect(
     worksite_id: UUID,
     payload: DefectCreate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="DEFECT_CREATE")
+        if receipt:
+            return replay_payload(receipt)
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "defect.create")
         _validate_node(cur, worksite_id, payload.worksite_node_id)
@@ -116,33 +118,14 @@ def create_defect(
                 (payload.id, worksite_id, payload.worksite_node_id, payload.title, Jsonb(payload.payload), user["user_id"]),
             )
         row = dict(cur.fetchone())
-        emit_change(
-            cur,
-            company_id=context["company_id"],
-            worksite_id=worksite_id,
-            entity_type="DEFECT",
-            entity_id=row["id"],
-            operation="CREATE",
-            entity_version=row["version"],
-            actor_user_id=user["user_id"],
-        )
-        audit(
-            cur,
-            action="DEFECT_CREATE",
-            actor_user_id=user["user_id"],
-            company_id=context["company_id"],
-            worksite_id=worksite_id,
-            entity_type="DEFECT",
-            entity_id=row["id"],
-        )
+        emit_change(cur, company_id=context["company_id"], worksite_id=worksite_id, entity_type="DEFECT", entity_id=row["id"], operation="CREATE", entity_version=row["version"], actor_user_id=user["user_id"])
+        audit(cur, action="DEFECT_CREATE", actor_user_id=user["user_id"], company_id=context["company_id"], worksite_id=worksite_id, entity_type="DEFECT", entity_id=row["id"])
+        finish_mutation(cur, user=user, context=mutation, receipt_type="DEFECT_CREATE", entity_id=row["id"], result_version=row["version"], response_payload=row)
     return row
 
 
 @router.get("/defects/{defect_id}")
-def get_defect(
-    defect_id: UUID,
-    user: dict[str, Any] = Depends(current_portal_user),
-) -> dict:
+def get_defect(defect_id: UUID, user: dict[str, Any] = Depends(current_portal_user)) -> dict:
     with transaction() as conn, conn.cursor() as cur:
         row = _load_defect(cur, defect_id)
         worksite_context(cur, user, row["worksite_id"])
@@ -154,11 +137,15 @@ def update_defect(
     defect_id: UUID,
     payload: DefectUpdate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     updates = payload.model_dump(exclude={"base_version"}, exclude_unset=True)
     if not updates:
         raise HTTPException(400, "NO_CHANGES")
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="DEFECT_UPDATE")
+        if receipt:
+            return replay_payload(receipt)
         defect = _load_defect(cur, defect_id)
         context = worksite_context(cur, user, defect["worksite_id"])
         require_permission(context, "defect.edit")
@@ -175,24 +162,13 @@ def update_defect(
                 values.append(Jsonb(updates[key]) if key == "payload" else updates[key])
         columns.extend(["version = version + 1", "updated_at = now()"])
         values.extend([defect_id, payload.base_version])
-        cur.execute(
-            f"UPDATE tb.defects SET {', '.join(columns)} WHERE id = %s AND version = %s AND deleted_at IS NULL RETURNING *",
-            tuple(values),
-        )
+        cur.execute(f"UPDATE tb.defects SET {', '.join(columns)} WHERE id = %s AND version = %s AND deleted_at IS NULL RETURNING *", tuple(values))
         row = cur.fetchone()
         if not row:
             _conflict_or_missing(cur, defect_id)
         row = dict(row)
-        emit_change(
-            cur,
-            company_id=context["company_id"],
-            worksite_id=defect["worksite_id"],
-            entity_type="DEFECT",
-            entity_id=defect_id,
-            operation="UPDATE",
-            entity_version=row["version"],
-            actor_user_id=user["user_id"],
-        )
+        emit_change(cur, company_id=context["company_id"], worksite_id=defect["worksite_id"], entity_type="DEFECT", entity_id=defect_id, operation="UPDATE", entity_version=row["version"], actor_user_id=user["user_id"])
+        finish_mutation(cur, user=user, context=mutation, receipt_type="DEFECT_UPDATE", entity_id=defect_id, result_version=row["version"], response_payload=row)
     return row
 
 
@@ -201,44 +177,33 @@ def close_defect(
     defect_id: UUID,
     payload: VersionAction,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="DEFECT_CLOSE")
+        if receipt:
+            return replay_payload(receipt)
         defect = _load_defect(cur, defect_id)
         context = worksite_context(cur, user, defect["worksite_id"])
         require_permission(context, "defect.close")
         if defect["status"] == "CLOSED":
-            return defect
-        cur.execute(
-            """
-            UPDATE tb.defects
-            SET status = 'CLOSED', closed_by = %s, closed_at = now(),
-                version = version + 1, updated_at = now()
-            WHERE id = %s AND version = %s AND deleted_at IS NULL
-            RETURNING *
-            """,
-            (user["user_id"], defect_id, payload.base_version),
-        )
-        row = cur.fetchone()
-        if not row:
-            _conflict_or_missing(cur, defect_id)
-        row = dict(row)
-        emit_change(
-            cur,
-            company_id=context["company_id"],
-            worksite_id=defect["worksite_id"],
-            entity_type="DEFECT",
-            entity_id=defect_id,
-            operation="CLOSE",
-            entity_version=row["version"],
-            actor_user_id=user["user_id"],
-        )
-        audit(
-            cur,
-            action="DEFECT_CLOSE",
-            actor_user_id=user["user_id"],
-            company_id=context["company_id"],
-            worksite_id=defect["worksite_id"],
-            entity_type="DEFECT",
-            entity_id=defect_id,
-        )
+            row = defect
+        else:
+            cur.execute(
+                """
+                UPDATE tb.defects
+                SET status = 'CLOSED', closed_by = %s, closed_at = now(),
+                    version = version + 1, updated_at = now()
+                WHERE id = %s AND version = %s AND deleted_at IS NULL
+                RETURNING *
+                """,
+                (user["user_id"], defect_id, payload.base_version),
+            )
+            updated = cur.fetchone()
+            if not updated:
+                _conflict_or_missing(cur, defect_id)
+            row = dict(updated)
+            emit_change(cur, company_id=context["company_id"], worksite_id=defect["worksite_id"], entity_type="DEFECT", entity_id=defect_id, operation="CLOSE", entity_version=row["version"], actor_user_id=user["user_id"])
+            audit(cur, action="DEFECT_CLOSE", actor_user_id=user["user_id"], company_id=context["company_id"], worksite_id=defect["worksite_id"], entity_type="DEFECT", entity_id=defect_id)
+        finish_mutation(cur, user=user, context=mutation, receipt_type="DEFECT_CLOSE", entity_id=defect_id, result_version=row["version"], response_payload=row)
     return row
