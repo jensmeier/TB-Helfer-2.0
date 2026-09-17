@@ -53,8 +53,10 @@ jobs:
         working-directory: server
         run: pip install -r requirements.txt
 
-      - name: Foundation source check
-        run: python server/checks/20_verify_tb_server_1_foundation.py
+      - name: Foundation source checks
+        run: |
+          python server/checks/20_verify_tb_server_1_foundation.py
+          python server/checks/21_verify_tb_server_1_auth_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -92,7 +94,22 @@ jobs:
           print("OK: core tables", len(tables))
           PY
 
-      - name: Start API and verify health/capabilities
+      - name: Generate ephemeral bootstrap credentials
+        run: |
+          python - <<'PY'
+          import os
+          import secrets
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as out:
+              out.write("TB_BOOTSTRAP_ADMIN_LOGIN=ci-admin\n")
+              out.write("TB_BOOTSTRAP_ADMIN_PASSWORD=" + secrets.token_urlsafe(24) + "Aa1\n")
+              out.write("TB_BOOTSTRAP_ADMIN_NAME=CI Administrator\n")
+          PY
+
+      - name: Bootstrap initial admin
+        working-directory: server
+        run: python -m tbserver.bootstrap create-admin
+
+      - name: Start API and verify health/capabilities/auth
         working-directory: server
         run: |
           uvicorn tbserver.main:app --host 127.0.0.1 --port 8080 >/tmp/tbserver-v1.log 2>&1 &
@@ -123,9 +140,13 @@ jobs:
           status, caps = get("/api/v1/capabilities")
           assert status == 200, caps
           assert caps["capabilities"]["server_1_0_foundation_v1"] is True, caps
+          assert caps["capabilities"]["portal_v1"] is True, caps
+          assert caps["capabilities"]["company_user_admin_v1"] is True, caps
           assert caps["capabilities"]["worksite_tree_v1"] is False, caps
           print("OK: API foundation")
           PY
+          cd ..
+          python server/checks/22_verify_tb_server_1_auth_runtime.py
 
       - name: API log on failure
         if: failure()
