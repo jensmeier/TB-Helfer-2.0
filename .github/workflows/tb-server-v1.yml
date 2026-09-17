@@ -66,6 +66,7 @@ jobs:
           python server/checks/29_verify_tb_server_1_device_fach_auth_source.py
           python server/checks/30_verify_tb_server_1_survey_parser_source.py
           python server/checks/31_verify_tb_server_1_survey_sections_source.py
+          python server/checks/32_verify_tb_server_1_survey_projection_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -177,6 +178,7 @@ jobs:
               "survey_originals_v1",
               "survey_parser_catalog_v1",
               "survey_section_calibration_v1",
+              "survey_projection_v1",
               "idempotent_mutations_v1",
           }
           missing = sorted(key for key in expected_true if caps["capabilities"].get(key) is not True)
