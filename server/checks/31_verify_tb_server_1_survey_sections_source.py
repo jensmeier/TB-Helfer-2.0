@@ -28,6 +28,7 @@ def verify_calibration_logic() -> None:
     )
     assert result["status"] == "AUTOMATISCH", result
     assert result["color"] == "GRUEN", result
+    assert result["max_anchor_residual_m"] == 0.0, result
     assert abs((km_at_station(result, original, 1500.0) or 0.0) - 70_500.0) < 0.00001, result
 
     manual = [
@@ -73,6 +74,44 @@ def verify_calibration_logic() -> None:
     assert abs(result["factor_km_per_station_m"] - 1.0) < 0.00001, result
     assert abs((km_at_station(result, with_jump, 1100.0) or 0.0) - 70_200.0) < 0.00001, result
 
+    # Distilled regression from the real Gessertshausen 5302L fixture. Without
+    # the observed 73.660-m kilometre jump the outer pair still looks plausible,
+    # but intermediate projected GVP anchors deviate by > 60 m. This must never
+    # become an automatic green calibration.
+    real_anchors = [
+        {"point_type": "ORIGINAL_ANCHOR", "station_m": 10366.10646077, "km_meter": 15007.651},
+        {"point_type": "ORIGINAL_ANCHOR", "station_m": 12353.70325874, "km_meter": 16993.222},
+        {"point_type": "ORIGINAL_ANCHOR", "station_m": 12944.37757154, "km_meter": 17583.805},
+        {"point_type": "ORIGINAL_ANCHOR", "station_m": 13006.49940416, "km_meter": 17719.587},
+        {"point_type": "ORIGINAL_ANCHOR", "station_m": 13222.19666568, "km_meter": 17935.284},
+    ]
+    result = evaluate_calibration(
+        real_anchors,
+        station_start_m=7518.07,
+        station_end_m=14433.718,
+        km_direction=None,
+    )
+    assert result["status"] == "UNPLAUSIBEL" and result["color"] == "ROT", result
+    assert result["max_anchor_residual_m"] > 60.0, result
+
+    real_with_jump = real_anchors + [
+        {
+            "point_type": "KM_JUMP",
+            "station_m": 12986.91291,
+            "km_meter": 17626.34,
+            "km_after_jump_meter": 17700.0,
+        }
+    ]
+    result = evaluate_calibration(
+        real_with_jump,
+        station_start_m=7518.07,
+        station_end_m=14433.718,
+        km_direction=None,
+    )
+    assert result["status"] == "AUTOMATISCH" and result["color"] == "GRUEN", result
+    assert result["max_anchor_residual_m"] < 1.0, result
+    assert abs(result["jump_delta_m"] - 73.66) < 0.001, result
+
     missing = evaluate_calibration(
         [],
         station_start_m=0.0,
@@ -115,6 +154,8 @@ def main() -> None:
         ("COLOR_ORANGE", calibration),
         ("COLOR_ROT", calibration),
         ("COLOR_GRAU", calibration),
+        ("ANCHOR_RESIDUAL_TOLERANCE_M = 5.0", calibration),
+        ("max_anchor_residual_m", calibration),
         ('SECTION_KIND = "SURVEY_SECTION"', sections),
         ("SURVEY_SECTION_REQUIRES_GEOMETRY_SOURCE", sections),
         ("SURVEY_GEOMETRY_REQUIRES_TRA", sections),
