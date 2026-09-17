@@ -95,12 +95,14 @@ def main() -> None:
     migration = read("server/v1_migrations/004_survey_sections.sql")
     calibration = read("server/tbserver/survey_calibration.py")
     sections = read("server/tbserver/survey_sections.py")
+    track = read("server/tbserver/track_data.py")
     main_source = read("server/tbserver/main.py")
     caps = read("server/tbserver/capabilities.py")
     workflow = read(".github/workflows/tb-server-v1.yml")
 
     ast.parse(calibration, filename="server/tbserver/survey_calibration.py")
     ast.parse(sections, filename="server/tbserver/survey_sections.py")
+    ast.parse(track, filename="server/tbserver/track_data.py")
 
     assertions = [
         ("CREATE TABLE tb.track_data_sources", migration),
@@ -122,6 +124,10 @@ def main() -> None:
         ("SURVEY_SECTION_UPDATE", sections),
         ("begin_mutation", sections),
         ("finish_mutation", sections),
+        ('_RESERVED_DEDICATED_KINDS = {"SURVEY_SECTION"}', track),
+        ("SURVEY_SECTION_USE_DEDICATED_ENDPOINT", track),
+        ("_reject_dedicated_kind(dataset_kind)", track),
+        ('_reject_dedicated_kind(dataset["dataset_kind"])', track),
         ("survey_sections_router", main_source),
         ('"survey_section_calibration_v1": True', caps),
         ("latest_known\"] == 4", workflow),
