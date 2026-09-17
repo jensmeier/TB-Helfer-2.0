@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .database import transaction
-from .portal import require_csrf
+from .portal import current_portal_user, require_csrf
 from .security import hash_token, random_token
 
 
@@ -36,10 +36,18 @@ class UserCreate(BaseModel):
     company_role: str = Field(default="USER")
 
 
-def require_admin(user: dict[str, Any] = Depends(require_csrf)) -> dict[str, Any]:
+def _assert_admin(user: dict[str, Any]) -> dict[str, Any]:
     if user["company_role"] != "ADMIN":
         raise HTTPException(403, "ADMIN_REQUIRED")
     return user
+
+
+def require_admin(user: dict[str, Any] = Depends(current_portal_user)) -> dict[str, Any]:
+    return _assert_admin(user)
+
+
+def require_admin_csrf(user: dict[str, Any] = Depends(require_csrf)) -> dict[str, Any]:
+    return _assert_admin(user)
 
 
 @router.get("/companies")
@@ -64,7 +72,7 @@ def list_companies(_: dict[str, Any] = Depends(require_admin)) -> dict:
 @router.post("/companies", status_code=201)
 def create_company(
     payload: CompanyCreate,
-    _: dict[str, Any] = Depends(require_admin),
+    _: dict[str, Any] = Depends(require_admin_csrf),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
         try:
@@ -115,7 +123,7 @@ def list_users(_: dict[str, Any] = Depends(require_admin)) -> dict:
 @router.post("/users", status_code=201)
 def create_user(
     payload: UserCreate,
-    _: dict[str, Any] = Depends(require_admin),
+    _: dict[str, Any] = Depends(require_admin_csrf),
 ) -> dict:
     role = payload.company_role.upper()
     if role not in {"CHEF", "USER"}:
@@ -163,7 +171,7 @@ def create_user(
 @router.post("/users/{user_id}/portal-activation")
 def issue_portal_activation(
     user_id: UUID,
-    _: dict[str, Any] = Depends(require_admin),
+    _: dict[str, Any] = Depends(require_admin_csrf),
 ) -> dict:
     raw_token = random_token(32)
     expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
