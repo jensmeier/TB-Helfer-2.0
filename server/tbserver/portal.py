@@ -81,7 +81,6 @@ def _load_session(request: Request) -> dict[str, Any]:
             raise HTTPException(401, "PORTAL_SESSION_INVALID")
         now = _now()
         if row["expires_at"] <= now:
-            cur.execute("UPDATE tb.portal_sessions SET revoked_at = now() WHERE id = %s", (row["session_id"],))
             raise HTTPException(401, "PORTAL_SESSION_EXPIRED")
         if row["deleted_at"] is not None or row["status"] != "ACTIVE":
             raise HTTPException(403, "USER_DISABLED")
@@ -191,6 +190,12 @@ def _find_login(cur, login: str):
 
 @router.post("/login")
 def login(payload: LoginRequest, request: Request, response: Response) -> dict:
+    login_error: HTTPException | None = None
+    session_token: str | None = None
+    csrf_token: str | None = None
+    expires_at: datetime | None = None
+    user = None
+
     with transaction() as conn, conn.cursor() as cur:
         user = _find_login(cur, payload.login)
         if not user:
@@ -202,6 +207,7 @@ def login(payload: LoginRequest, request: Request, response: Response) -> dict:
             raise HTTPException(403, "USER_EXPIRED")
         if user["locked_until"] is not None and user["locked_until"] > now:
             raise HTTPException(429, "LOGIN_LOCKED")
+
         if not verify_password(payload.password, user["password_hash"]):
             failed = int(user["failed_login_count"] or 0) + 1
             locked_until = now + timedelta(minutes=15) if failed >= 5 else None
@@ -213,34 +219,38 @@ def login(payload: LoginRequest, request: Request, response: Response) -> dict:
                 """,
                 (failed, locked_until, user["id"]),
             )
-            raise HTTPException(401, "LOGIN_INVALID")
+            login_error = HTTPException(401, "LOGIN_INVALID")
+        else:
+            session_token = random_token(32)
+            csrf_token = random_token(24)
+            expires_at = now + timedelta(hours=settings.portal_session_hours)
+            cur.execute(
+                """
+                UPDATE tb.portal_credentials
+                SET failed_login_count = 0, locked_until = NULL, last_login_at = now(), updated_at = now()
+                WHERE user_id = %s
+                """,
+                (user["id"],),
+            )
+            cur.execute(
+                """
+                INSERT INTO tb.portal_sessions(
+                    user_id, session_token_hash, csrf_secret_hash, expires_at, ip_hint, user_agent
+                ) VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    user["id"],
+                    hash_token(session_token),
+                    hash_token(csrf_token),
+                    expires_at,
+                    request.client.host if request.client else None,
+                    (request.headers.get("user-agent") or "")[:500],
+                ),
+            )
 
-        session_token = random_token(32)
-        csrf_token = random_token(24)
-        expires_at = now + timedelta(hours=settings.portal_session_hours)
-        cur.execute(
-            """
-            UPDATE tb.portal_credentials
-            SET failed_login_count = 0, locked_until = NULL, last_login_at = now(), updated_at = now()
-            WHERE user_id = %s
-            """,
-            (user["id"],),
-        )
-        cur.execute(
-            """
-            INSERT INTO tb.portal_sessions(
-                user_id, session_token_hash, csrf_secret_hash, expires_at, ip_hint, user_agent
-            ) VALUES (%s, %s, %s, %s, %s, %s)
-            """,
-            (
-                user["id"],
-                hash_token(session_token),
-                hash_token(csrf_token),
-                expires_at,
-                request.client.host if request.client else None,
-                (request.headers.get("user-agent") or "")[:500],
-            ),
-        )
+    if login_error is not None:
+        raise login_error
+    assert user is not None and session_token is not None and csrf_token is not None and expires_at is not None
     _set_session_cookies(response, session_token, csrf_token)
     return {
         "user": {
