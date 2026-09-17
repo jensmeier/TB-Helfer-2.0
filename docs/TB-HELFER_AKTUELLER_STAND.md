@@ -63,7 +63,15 @@ Serverseitiger Parservertrag basiert auf den vorhandenen Android-Parsern:
 
 Migration `003_survey_parse_catalog.sql` enthält `tb.survey_parse_catalog` als neu aufbaubaren Parse-Stand mit Parserfamilie/-version, Quell-SHA-256, `PARSED|UNSUPPORTED|ERROR`, Format, normalisiertem JSON, Warnungen und Fehlerdiagnose. Vor jedem Parse werden Dateigröße und SHA-256 des unveränderlichen Originals erneut geprüft.
 
-`30_verify_tb_server_1_survey_parser_source.py` enthält zusätzlich die vier bestehenden Android-Raw-KF-Testfälle: Zone-3/5362 PS1, `VERSION 7.0 R`, Station `0.0 -> null` und Sentinel `1e40`/Strecke `0000 -> fehlend`.
+`30_verify_tb_server_1_survey_parser_source.py` enthält die vier bestehenden Android-Raw-KF-Testfälle: Zone-3/5362 PS1, `VERSION 7.0 R`, Station `0.0 -> null` und Sentinel `1e40`/Strecke `0000 -> fehlend`.
+
+#### Parser v2 / reale Projektdateien
+
+Der Serverparser wurde zusätzlich gegen den vorhandenen realen Absteckungs-/Vermessungsbestand geprüft. Nach SHA-256-Deduplizierung wurden 55 TRA, 45 GRA, 4 rohe KF, 1 KV, 2 KF.TXT, 1 GVP-Text und 2 KOR.TXT ohne Parserfehler gelesen. Zwei rohe/unbekannte KOR bleiben wie vorgesehen `UNSUPPORTED`. Zusätzlich wurde die rohe KF Strecke 5362 mit 75 Festpunkten erfolgreich gelesen; ihre Zone-3-Koordinaten bleiben `DB_REF_GK_3`.
+
+Dabei wurde eine reale Dateinamenabweichung gefunden: vorangestellte Datumsbestandteile wie `2025-04-25_...` bzw. `2026-03-25_...` konnten bisher fälschlich als Streckennummer 2025/2026 interpretiert werden. In 18 eindeutigen GRA-Dateinamen war die bisherige Metadatenzuordnung dadurch falsch.
+
+Parser v2 maskiert ISO-artige Datumsbestandteile vor der Streckensuche und übernimmt für TRA/GRA additiv die vorhandenen Android-Dateinamenregeln für Strecke, Gleis, Quellrichtung und Achstyp. `30_verify_tb_server_1_survey_parser_source.py` enthält dafür zusätzliche date-safe Metadatentests. Details und Testumfang stehen in `docs/TB-SERVER_1_0_SURVEY_FIXTURE_VERIFICATION.md`.
 
 Capabilities u. a.: `survey_originals_v1=true`, `track_data_v1=true`, `survey_parser_catalog_v1=true`, `device_fach_api_v1=true`.
 
@@ -73,17 +81,24 @@ Workflow-Zielstand:
 - Migrationen 001 + 002 + 003;
 - `latest_known=3`, `latest_applied=3`;
 - `survey_parse_catalog` als Kerntabelle;
-- Source-/Vertragschecks 20–30, einschließlich Raw-KF-Parität;
+- Source-/Vertragschecks 20–30, einschließlich Raw-KF-Parität und date-safe Dateinamenmetadaten;
 - Health/Capabilities/Auth-Checks.
+
+Lokal für Parser v2 erfolgreich ausgeführt:
+- Python-Syntax-/AST-Prüfung;
+- vier Raw-KF-Paritätsfälle;
+- date-safe TRA/GRA-Dateinamen-Metadatentests;
+- Parse-Lauf über die oben genannten eindeutigen realen Projektdateien.
 
 ### Bekanntes GitHub-Actions-Problem
 
-Die zuletzt geprüften TB-Server-Läufe werden weiterhin bereits vor dem ersten Step beendet (`steps=null`, keine Job-Logs). Das sind **keine ausgeführten Python-/PostgreSQL-Tests**. Das Runner-/Actions-Problem muss separat geklärt werden; Source-Checks dürfen bis dahin nicht als im Runner bestanden bezeichnet werden.
+Die zuletzt geprüften TB-Server-Läufe werden weiterhin bereits vor dem ersten Step beendet (`steps=null`/`steps=[]`, keine Job-Logs). Das sind **keine ausgeführten Python-/PostgreSQL-Tests**. Das Runner-/Actions-Problem muss separat geklärt werden; die lokalen Source-/Fixture-Checks dürfen bis dahin nicht als im Runner bestanden bezeichnet werden.
 
 ## Bekannte/offene Punkte
 
-- Parser mit echten repräsentativen TRA/GRA/KF/KF.TXT/KV/GVP/KOR.TXT-Projektdateien gegen Android-Ergebnisse verifizieren;
-- TRA-2-m-Verdichtung, DB_REF->WGS84 sowie Abschnittszusammenführung/KM-Kalibrierung als abgeleitete Rechenschritte;
+- Abschnittszusammenführung / KM-Kalibrierung auf Basis der nun verifizierten Parserdaten;
+- TRA-2-m-Verdichtung und DB_REF->WGS84 als abgeleitete serverseitige Rechenschritte;
+- rohe/unbekannte KOR fachlich nur dann ergänzen, wenn das Format belastbar belegt ist; bis dahin `UNSUPPORTED`;
 - Android-Fachclient auf alle Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen;
 - echtes BTB-Abschluss-PDF + Nachbearbeitungsmodell;
 - Firmenlogo/PDF-Layout, vollständige Portal-Fachoberfläche, Admin-Dashboard/Systemstatus/Speicher;
@@ -92,10 +107,11 @@ Die zuletzt geprüften TB-Server-Läufe werden weiterhin bereits vor dem ersten 
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Parser mit echten Projektdateien verifizieren; danach Abschnittszusammenführung/KM-Kalibrierung bauen.
-2. Android-Fachvertrag praktisch gegen TB-Server 1.0 testen.
-3. Portal/PDF/Admin/Releases schließen.
-4. Backup/Restore/Reset + E2E testen.
-5. Erst danach NAS-Cutover und Android-Umstellung.
+1. Abschnittszusammenführung/KM-Kalibrierung als getrennte, neu erzeugbare Ableitung aus Parserdaten modellieren und implementieren.
+2. Danach TRA-2-m-Verdichtung und DB_REF->WGS84 serverseitig als weitere Ableitungen schließen.
+3. Android-Fachvertrag praktisch gegen TB-Server 1.0 testen.
+4. Portal/PDF/Admin/Releases schließen.
+5. Backup/Restore/Reset + E2E testen.
+6. Erst danach NAS-Cutover und Android-Umstellung.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
