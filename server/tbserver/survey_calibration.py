@@ -22,6 +22,12 @@ POINT_JUMP = "KM_JUMP"
 DIRECTION_UP = "STEIGEND"
 DIRECTION_DOWN = "FALLEND"
 
+# Real project fixtures show that a missing kilometre jump can make the widest
+# anchor pair look superficially plausible while intermediate anchors are wrong
+# by many metres. A green/orange calibration therefore has to explain every
+# participating anchor, not only the two outer anchors.
+ANCHOR_RESIDUAL_TOLERANCE_M = 5.0
+
 
 def _number(value: Any) -> float | None:
     if isinstance(value, bool):
@@ -116,98 +122,7 @@ def _widest_pair(points: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str
     return ordered[0], ordered[-1]
 
 
-def evaluate_calibration(
-    points: list[dict[str, Any]],
-    *,
-    station_start_m: float | None,
-    station_end_m: float | None,
-    km_direction: str | None,
-    has_geometry: bool = True,
-) -> dict[str, Any]:
-    if not has_geometry:
-        return {
-            "status": STATUS_KEINE_GEOMETRIE,
-            "color": COLOR_GRAU,
-            "mode": None,
-            "hint": "Keine TRA-Geometrie verknuepft.",
-        }
-
-    run_sign = _run_sign(station_start_m, station_end_m)
-    jumps = _jumps(points)
-    original = [point for point in points if _valid_anchor(point, {POINT_ORIGINAL})]
-    manual = [point for point in points if _valid_anchor(point, {POINT_MANUAL})]
-    original_problem: str | None = None
-    manual_problem: str | None = None
-
-    pair = _widest_pair(original)
-    if pair is not None:
-        calibration, problem = _pair_calibration(pair[0], pair[1], jumps, run_sign)
-        if calibration is not None:
-            return {
-                "status": STATUS_AUTOMATISCH,
-                "color": COLOR_GRUEN,
-                "mode": "ORIGINAL_2PUNKT",
-                "hint": None,
-                "run_station_sign": run_sign,
-                **calibration,
-            }
-        original_problem = problem
-
-    pair = _widest_pair(manual)
-    if pair is not None:
-        calibration, problem = _pair_calibration(pair[0], pair[1], jumps, run_sign)
-        if calibration is not None:
-            return {
-                "status": STATUS_MANUELL,
-                "color": COLOR_ORANGE,
-                "mode": "MANUELL_2PUNKT",
-                "hint": None,
-                "run_station_sign": run_sign,
-                **calibration,
-            }
-        manual_problem = problem
-
-    direction = str(km_direction or "").upper() or None
-    direction_anchor = manual[0] if manual else (original[0] if original else None)
-    if direction_anchor is not None and direction in {DIRECTION_UP, DIRECTION_DOWN}:
-        if run_sign is None:
-            manual_problem = "Ein KM-Anker plus Richtung benoetigt Abschnittsanfang und -ende."
-        else:
-            station_sign = run_sign if direction == DIRECTION_UP else -run_sign
-            return {
-                "status": STATUS_MANUELL,
-                "color": COLOR_ORANGE,
-                "mode": "MANUELL_ANKER_RICHTUNG",
-                "hint": None,
-                "anchor_station_m": _number(direction_anchor.get("station_m")),
-                "anchor_km_meter": _number(direction_anchor.get("km_meter")),
-                "factor_km_per_station_m": float(station_sign),
-                "station_span_m": None,
-                "continuous_km_span_m": None,
-                "jump_delta_m": None,
-                "anchor_count": 1,
-                "run_station_sign": run_sign,
-            }
-
-    if original_problem or manual_problem:
-        return {
-            "status": STATUS_UNPLAUSIBEL,
-            "color": COLOR_ROT,
-            "mode": None,
-            "hint": manual_problem or original_problem,
-            "run_station_sign": run_sign,
-        }
-
-    return {
-        "status": STATUS_FEHLT,
-        "color": COLOR_ROT,
-        "mode": None,
-        "hint": "Geometrie vorhanden, aber noch keine belastbare KM-Kalibrierung.",
-        "run_station_sign": run_sign,
-    }
-
-
-def km_at_station(
+def _km_from_calibration(
     calibration: dict[str, Any],
     points: list[dict[str, Any]],
     station_m: float,
@@ -234,3 +149,159 @@ def km_at_station(
             elif station < jump["station_m"] <= anchor_station:
                 km -= delta
     return km
+
+
+def _anchor_consistency(
+    calibration: dict[str, Any],
+    all_points: list[dict[str, Any]],
+    anchors: list[dict[str, Any]],
+) -> tuple[dict[str, Any] | None, str | None]:
+    residuals: list[dict[str, float]] = []
+    for anchor in anchors:
+        station = _number(anchor.get("station_m"))
+        actual = _number(anchor.get("km_meter"))
+        if station is None or actual is None:
+            continue
+        predicted = _km_from_calibration(calibration, all_points, station)
+        if predicted is None:
+            return None, "KM-Anker konnten fuer die Konsistenzpruefung nicht ausgewertet werden."
+        residuals.append(
+            {
+                "station_m": station,
+                "actual_km_meter": actual,
+                "predicted_km_meter": predicted,
+                "residual_m": actual - predicted,
+            }
+        )
+    if not residuals:
+        return {"validation_anchor_count": 0, "max_anchor_residual_m": None}, None
+
+    worst = max(residuals, key=lambda item: abs(item["residual_m"]))
+    max_abs = abs(worst["residual_m"])
+    diagnostics = {
+        "validation_anchor_count": len(residuals),
+        "max_anchor_residual_m": max_abs,
+        "worst_anchor_station_m": worst["station_m"],
+        "worst_anchor_residual_m": worst["residual_m"],
+    }
+    if max_abs > ANCHOR_RESIDUAL_TOLERANCE_M:
+        return diagnostics, (
+            "KM-Anker sind untereinander nicht konsistent; moeglicher nicht modellierter "
+            f"KM-Sprung oder falsche Achszuordnung (max. Abweichung {max_abs:.3f} m)."
+        )
+    return diagnostics, None
+
+
+def evaluate_calibration(
+    points: list[dict[str, Any]],
+    *,
+    station_start_m: float | None,
+    station_end_m: float | None,
+    km_direction: str | None,
+    has_geometry: bool = True,
+) -> dict[str, Any]:
+    if not has_geometry:
+        return {
+            "status": STATUS_KEINE_GEOMETRIE,
+            "color": COLOR_GRAU,
+            "mode": None,
+            "hint": "Keine TRA-Geometrie verknuepft.",
+        }
+
+    run_sign = _run_sign(station_start_m, station_end_m)
+    jumps = _jumps(points)
+    original = [point for point in points if _valid_anchor(point, {POINT_ORIGINAL})]
+    manual = [point for point in points if _valid_anchor(point, {POINT_MANUAL})]
+    original_problem: str | None = None
+    manual_problem: str | None = None
+    original_diagnostics: dict[str, Any] | None = None
+    manual_diagnostics: dict[str, Any] | None = None
+
+    pair = _widest_pair(original)
+    if pair is not None:
+        calibration, problem = _pair_calibration(pair[0], pair[1], jumps, run_sign)
+        if calibration is not None:
+            candidate = {"run_station_sign": run_sign, **calibration}
+            diagnostics, consistency_problem = _anchor_consistency(candidate, points, original)
+            if consistency_problem is None:
+                return {
+                    "status": STATUS_AUTOMATISCH,
+                    "color": COLOR_GRUEN,
+                    "mode": "ORIGINAL_2PUNKT",
+                    "hint": None,
+                    **candidate,
+                    **(diagnostics or {}),
+                }
+            original_problem = consistency_problem
+            original_diagnostics = diagnostics
+        else:
+            original_problem = problem
+
+    pair = _widest_pair(manual)
+    if pair is not None:
+        calibration, problem = _pair_calibration(pair[0], pair[1], jumps, run_sign)
+        if calibration is not None:
+            candidate = {"run_station_sign": run_sign, **calibration}
+            diagnostics, consistency_problem = _anchor_consistency(candidate, points, manual)
+            if consistency_problem is None:
+                return {
+                    "status": STATUS_MANUELL,
+                    "color": COLOR_ORANGE,
+                    "mode": "MANUELL_2PUNKT",
+                    "hint": None,
+                    **candidate,
+                    **(diagnostics or {}),
+                }
+            manual_problem = consistency_problem
+            manual_diagnostics = diagnostics
+        else:
+            manual_problem = problem
+
+    direction = str(km_direction or "").upper() or None
+    direction_anchor = manual[0] if manual else (original[0] if original else None)
+    if direction_anchor is not None and direction in {DIRECTION_UP, DIRECTION_DOWN}:
+        if run_sign is None:
+            manual_problem = "Ein KM-Anker plus Richtung benoetigt Abschnittsanfang und -ende."
+        else:
+            station_sign = run_sign if direction == DIRECTION_UP else -run_sign
+            return {
+                "status": STATUS_MANUELL,
+                "color": COLOR_ORANGE,
+                "mode": "MANUELL_ANKER_RICHTUNG",
+                "hint": None,
+                "anchor_station_m": _number(direction_anchor.get("station_m")),
+                "anchor_km_meter": _number(direction_anchor.get("km_meter")),
+                "factor_km_per_station_m": float(station_sign),
+                "station_span_m": None,
+                "continuous_km_span_m": None,
+                "jump_delta_m": None,
+                "anchor_count": 1,
+                "run_station_sign": run_sign,
+            }
+
+    if original_problem or manual_problem:
+        diagnostics = manual_diagnostics or original_diagnostics or {}
+        return {
+            "status": STATUS_UNPLAUSIBEL,
+            "color": COLOR_ROT,
+            "mode": None,
+            "hint": manual_problem or original_problem,
+            "run_station_sign": run_sign,
+            **diagnostics,
+        }
+
+    return {
+        "status": STATUS_FEHLT,
+        "color": COLOR_ROT,
+        "mode": None,
+        "hint": "Geometrie vorhanden, aber noch keine belastbare KM-Kalibrierung.",
+        "run_station_sign": run_sign,
+    }
+
+
+def km_at_station(
+    calibration: dict[str, Any],
+    points: list[dict[str, Any]],
+    station_m: float,
+) -> float | None:
+    return _km_from_calibration(calibration, points, station_m)
