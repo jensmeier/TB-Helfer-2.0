@@ -144,6 +144,35 @@ def verify_raw_kf_parity() -> None:
     assert any("ohne plausible Strecke" in warning for warning in warnings), warnings
 
 
+def verify_filename_metadata() -> None:
+    sys.path.insert(0, str(ROOT / "server"))
+    from tbserver.survey_parser import _axis_meta_from_name, _route_from_name
+
+    assert _route_from_name("2025-04-25_MHRG_Gleis_10_O00.GRA") is None
+    assert _route_from_name("2026-03-25_5300_050-053_R_O00.GRA") == "5300"
+    assert _route_from_name("2025-04-25_MHRG_Gleis_10_O00_km5300.GRA") == "5300"
+
+    meta = _axis_meta_from_name("2025-04-25_MHRG_Gleis_10_O00.GRA")
+    assert meta["route_from_name"] is None, meta
+    assert meta["track_from_name"] == "10", meta
+    assert meta["axis_type_from_name"] == "GLEIS", meta
+
+    meta = _axis_meta_from_name("2026-03-25_5300_050-053_R_O00.GRA")
+    assert meta["route_from_name"] == "5300", meta
+    assert meta["direction_from_name"] == "2", meta
+    assert meta["source_direction_from_name"] == "R", meta
+    assert meta["axis_type_from_name"] == "STRECKE", meta
+
+    meta = _axis_meta_from_name("250919_Gl1_MGHN_O00.GRA")
+    assert meta["route_from_name"] is None, meta
+    assert meta["track_from_name"] == "1", meta
+
+    meta = _axis_meta_from_name("250919_5302R_ER0.TRA")
+    assert meta["route_from_name"] == "5302", meta
+    assert meta["track_from_name"] == "303", meta
+    assert meta["direction_from_name"] == "2", meta
+
+
 def main() -> None:
     parser = read("server/tbserver/survey_parser.py")
     main_source = read("server/tbserver/main.py")
@@ -155,7 +184,7 @@ def main() -> None:
     assertions = [
         ("CREATE TABLE tb.survey_parse_catalog", migration),
         ("REFERENCES tb.survey_originals(id) ON DELETE RESTRICT", migration),
-        ("PARSER_VERSION = \"tb-survey-parser-1\"", parser),
+        ("PARSER_VERSION = \"tb-survey-parser-2\"", parser),
         ("TRA_ER0_BINARY", parser),
         ("GRA_BINARY", parser),
         ("KF_7_BINARY", parser),
@@ -166,6 +195,9 @@ def main() -> None:
         ("SURVEY_ORIGINAL_INTEGRITY_MISMATCH", parser),
         ("_hash_file(path)", parser),
         ("ON CONFLICT (original_id) DO UPDATE", parser),
+        ("_DATE_TOKEN_RE", parser),
+        ("track_from_name", parser),
+        ("direction_from_name", parser),
         ("survey_parser_router", main_source),
         ('"survey_parser_catalog_v1": True', caps),
     ]
@@ -187,7 +219,8 @@ def main() -> None:
         raise SystemExit("KF/KV muessen Teil der gemeinsamen GVP/Festpunkt-Parserfamilie bleiben")
 
     verify_raw_kf_parity()
-    print("OK: TB-Server 1.0 immutable survey parser catalog + Android Raw-KF parity")
+    verify_filename_metadata()
+    print("OK: TB-Server 1.0 survey parser v2 + Raw-KF parity + date-safe filename metadata")
 
 
 if __name__ == "__main__":
