@@ -20,6 +20,7 @@ from .migrations import status as migration_status
 from .portal import router as portal_router
 from .survey_originals import router as survey_originals_router
 from .survey_parser import router as survey_parser_router
+from .survey_sections import router as survey_sections_router
 from .sync import router as sync_router
 from .track_data import router as track_data_router
 from .worksites import router as worksites_router
@@ -49,6 +50,7 @@ app.include_router(defects_router)
 app.include_router(acceptances_router)
 app.include_router(survey_originals_router)
 app.include_router(survey_parser_router)
+app.include_router(survey_sections_router)
 app.include_router(track_data_router)
 
 

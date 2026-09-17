@@ -65,6 +65,7 @@ jobs:
           python server/checks/28_verify_tb_server_1_device_auth_source.py
           python server/checks/29_verify_tb_server_1_device_fach_auth_source.py
           python server/checks/30_verify_tb_server_1_survey_parser_source.py
+          python server/checks/31_verify_tb_server_1_survey_sections_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -77,8 +78,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 3, current
-          assert current["latest_applied"] == 3, current
+          assert current["latest_known"] == 4, current
+          assert current["latest_applied"] == 4, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
@@ -92,7 +93,8 @@ jobs:
               "companies", "users", "devices", "worksites", "worksite_nodes",
               "worksite_memberships", "teams", "btbs", "btb_entries", "files",
               "file_links", "upload_sessions", "defects", "acceptances",
-              "survey_originals", "survey_parse_catalog", "track_data", "mutation_receipts",
+              "survey_originals", "survey_parse_catalog", "track_data",
+              "track_data_sources", "track_data_km_points", "mutation_receipts",
               "change_feed", "audit_log", "releases", "backup_runs",
           }
           with connect() as conn, conn.cursor() as cur:
@@ -174,6 +176,7 @@ jobs:
               "track_data_v1",
               "survey_originals_v1",
               "survey_parser_catalog_v1",
+              "survey_section_calibration_v1",
               "idempotent_mutations_v1",
           }
           missing = sorted(key for key in expected_true if caps["capabilities"].get(key) is not True)

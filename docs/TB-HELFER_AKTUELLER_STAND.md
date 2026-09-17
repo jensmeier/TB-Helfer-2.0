@@ -18,6 +18,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - Geräteaktivierung/Bearer: `2bede07a590521210dc7c351582363565451c4a0`, `19da0daee77ce1f121ba5994fe91a5bd84d0d626`
 - Vermessungsparser/Katalog: `3e974e7bd61c0241b69951e763d8eca9e2660e15`
 - Raw-KF-Paritätstest: `9378069be8c70fc89696c8c7fbf1b9b051474204`
+- Parser-v2-/Fixture-Stand: `31cbd83b02523522f113c97dac412b3de3c829bf`
 - Android bleibt vorerst Testclient: Buildkandidat **200050**
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
 
@@ -73,31 +74,52 @@ Dabei wurde eine reale Dateinamenabweichung gefunden: vorangestellte Datumsbesta
 
 Parser v2 maskiert ISO-artige Datumsbestandteile vor der Streckensuche und übernimmt für TRA/GRA additiv die vorhandenen Android-Dateinamenregeln für Strecke, Gleis, Quellrichtung und Achstyp. `30_verify_tb_server_1_survey_parser_source.py` enthält dafür zusätzliche date-safe Metadatentests. Details und Testumfang stehen in `docs/TB-SERVER_1_0_SURVEY_FIXTURE_VERIFICATION.md`.
 
-Capabilities u. a.: `survey_originals_v1=true`, `track_data_v1=true`, `survey_parser_catalog_v1=true`, `device_fach_api_v1=true`.
+### Vermessungsabschnitte / KM-Kalibrierung
+
+Migration `004_survey_sections.sql` ergänzt die bestehenden `track_data`-Arbeitsdaten, ohne eine parallele Vermessungsdatenhaltung zu erzeugen:
+
+- `tb.track_data_sources`: mehrere unveränderliche Originalquellen je `SURVEY_SECTION`, mit Rolle, Reihenfolge und optional umgekehrter Geometrielaufrichtung;
+- `tb.track_data_km_points`: `ORIGINAL_ANCHOR`, `MANUAL_ANCHOR`, `CONTROL_ANCHOR` und `KM_JUMP`.
+
+Die neue Fach-API kann Vermessungsabschnitte anlegen, lesen, auflisten und versioniert aktualisieren. Sie nutzt `track.edit`, `X-Client-Change-Id`, Change Feed und Audit. Mehrere TRA-Quellen werden anhand ihrer DB_REF-Endpunkte diagnostisch als `CONNECTED`, `WARNING`, `OPEN` oder `UNVERIFIED` bewertet; Originaldateien bleiben unverändert.
+
+Die KM-Logik übernimmt die bestehende fachliche Richtung aus Android: zwei belastbare Originalanker -> `AUTOMATISCH/GRUEN`; manuelle 2-Punkt-Kalibrierung oder ein Anker plus bekannte Richtung -> `MANUELL/ORANGE`; Geometrie ohne belastbare KM -> `ROT`; fehlende Geometrie -> `GRAU`. KM-Sprünge werden diskret berücksichtigt und verzerren den kontinuierlichen Kalibrierfaktor nicht.
+
+Wichtig: Es wird weiterhin **keine** GRA/KF/GVP→TRA-Zuordnung aus ähnlichen Zahlen oder Dateinamen geraten. `ORIGINAL_ANCHOR` setzt bereits eine belastbare Projektion auf eine TRA-Station voraus. Die echte geometrische Projektion ist der nächste Rechenschritt. Details: `docs/TB-SERVER_1_0_SURVEY_SECTIONS.md`.
+
+Capabilities u. a.: `survey_originals_v1=true`, `track_data_v1=true`, `survey_parser_catalog_v1=true`, `survey_section_calibration_v1=true`, `device_fach_api_v1=true`.
 
 ## Tests / Checks
 
 Workflow-Zielstand:
-- Migrationen 001 + 002 + 003;
-- `latest_known=3`, `latest_applied=3`;
-- `survey_parse_catalog` als Kerntabelle;
-- Source-/Vertragschecks 20–30, einschließlich Raw-KF-Parität und date-safe Dateinamenmetadaten;
+- Migrationen 001 + 002 + 003 + 004;
+- `latest_known=4`, `latest_applied=4`;
+- `survey_parse_catalog`, `track_data_sources` und `track_data_km_points` als Kerntabellen;
+- Source-/Vertragschecks 20–31, einschließlich Raw-KF-Parität, date-safe Dateinamenmetadaten sowie Survey-Section-/KM-Kalibrierlogik;
 - Health/Capabilities/Auth-Checks.
 
-Lokal für Parser v2 erfolgreich ausgeführt:
-- Python-Syntax-/AST-Prüfung;
+Lokal erfolgreich geprüft:
+- Python-Syntax-/AST-Prüfung der neuen Survey-Section-/Kalibrierdateien;
+- automatische 2-Punkt-Kalibrierung (`GRUEN`);
+- manuelle 2-Punkt-Kalibrierung (`ORANGE`);
+- ein Anker + steigende/fallende Richtung;
+- diskreter KM-Sprung ohne Verfälschung des kontinuierlichen Faktors;
+- fehlende KM (`ROT`) und fehlende Geometrie (`GRAU`).
+
+Für Parser v2 wurden zusätzlich erfolgreich ausgeführt:
 - vier Raw-KF-Paritätsfälle;
 - date-safe TRA/GRA-Dateinamen-Metadatentests;
-- Parse-Lauf über die oben genannten eindeutigen realen Projektdateien.
+- Parse-Lauf über die dokumentierten eindeutigen realen Projektdateien.
 
 ### Bekanntes GitHub-Actions-Problem
 
-Die zuletzt geprüften TB-Server-Läufe werden weiterhin bereits vor dem ersten Step beendet (`steps=null`/`steps=[]`, keine Job-Logs). Das sind **keine ausgeführten Python-/PostgreSQL-Tests**. Das Runner-/Actions-Problem muss separat geklärt werden; die lokalen Source-/Fixture-Checks dürfen bis dahin nicht als im Runner bestanden bezeichnet werden.
+Die zuletzt geprüften TB-Server-Läufe werden weiterhin bereits vor dem ersten Step beendet (`steps=null`/`steps=[]`, keine Job-Logs). Das sind **keine ausgeführten Python-/PostgreSQL-Tests**. Das Runner-/Actions-Problem muss separat geklärt werden; lokale Source-/Fixture-Checks dürfen bis dahin nicht als im Runner bestanden bezeichnet werden.
 
 ## Bekannte/offene Punkte
 
-- Abschnittszusammenführung / KM-Kalibrierung auf Basis der nun verifizierten Parserdaten;
+- echte geometrische Projektion von GRA/KF/KV/GVP/Festpunkten auf TRA und daraus belastbare `ORIGINAL_ANCHOR` erzeugen;
 - TRA-2-m-Verdichtung und DB_REF->WGS84 als abgeleitete serverseitige Rechenschritte;
+- robuste Überlappungs-/Abschnittsverschmelzung über die aktuelle Endpunktdiagnose hinaus;
 - rohe/unbekannte KOR fachlich nur dann ergänzen, wenn das Format belastbar belegt ist; bis dahin `UNSUPPORTED`;
 - Android-Fachclient auf alle Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen;
 - echtes BTB-Abschluss-PDF + Nachbearbeitungsmodell;
@@ -107,8 +129,8 @@ Die zuletzt geprüften TB-Server-Läufe werden weiterhin bereits vor dem ersten 
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Abschnittszusammenführung/KM-Kalibrierung als getrennte, neu erzeugbare Ableitung aus Parserdaten modellieren und implementieren.
-2. Danach TRA-2-m-Verdichtung und DB_REF->WGS84 serverseitig als weitere Ableitungen schließen.
+1. GRA/KF/KV/GVP-/Festpunkte geometrisch auf TRA projizieren und nur daraus belastbare automatische KM-Anker erzeugen.
+2. Danach TRA-2-m-Verdichtung und DB_REF->WGS84 serverseitig schließen und Überlappungen robuster verschmelzen.
 3. Android-Fachvertrag praktisch gegen TB-Server 1.0 testen.
 4. Portal/PDF/Admin/Releases schließen.
 5. Backup/Restore/Reset + E2E testen.
