@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from psycopg.types.json import Jsonb
+
 
 def emit_change(
     cur,
@@ -60,6 +62,6 @@ def audit(
             action,
             entity_type,
             entity_id,
-            details or {},
+            Jsonb(details or {}),
         ),
     )
