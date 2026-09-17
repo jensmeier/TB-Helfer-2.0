@@ -10,6 +10,12 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - stabil: `main`
 - aktiver Branch: **`feature/tb-server-1.0`**
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
+- PR-Basis: `feature/admin-offline-sync`
+- Android bleibt vorerst Testclient: Buildkandidat **200050**
+- Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
+
+Wichtige Server-1.0-Meilensteine:
+
 - Cutover-Regel: `64bb798e37f6a220fbd1715859a813a359a32eee`
 - Dateien/Chunkupload: `959a53459455062def10608df4ca4c4cd1b0a179`
 - Mängel/Abnahmen: `40249785879b82714b7d2df822e9e52fb7fb750c`
@@ -32,9 +38,13 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - CI-Vertrag Stationsmerge/GRA: `a33669b3f342f0c0d179ee6eb5a22c79cbf0cf31`
 - Source-/Regressionstest Multi-TRA: `5be63d57fa854f6d89fc14648d689acc10cb7862`, erweitert `8cb5dd522fe2b65c74995606b127ecb4201f1621`
 - Projektion invalidiert abhängige Auto-GRA-Sprünge: `a662c821414885700d7c2e67155175cb22de4914`
-- Projektdokumentation Multi-TRA/Abhängigkeiten: `4830d90acdfe8b9f8e132f335fec6f7939fcf8fb`, `aaa17a3b244cb2c844bf9731b710c228b163bd4c`
-- Android bleibt vorerst Testclient: Buildkandidat **200050**
-- Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
+- kontinuierliche TRA-Chainage: `6441b408a5953e603b7078e4d5adb3daf43bae41`
+- Stationsraum-Merge v2 auf kontinuierlicher Chainage: `37f4c87f43cbc10e133e4cbc3870ac04a614027d`
+- Punktprojektion v3 auf kontinuierlicher Chainage: `a030054e6c0db7c26039270b2030b68de8c31161`
+- GRA-Sprung v2 auf aktuellem Chainage-/Projektionsstand: `2f11d2d14276cc91f02bb1bf5ab30cc8f3cb6714`
+- Regression positive/negative TRA-Stationsdiskontinuitäten: `69effc49acf55b4b9abc6d4136b089a784853540`
+- Detaildokumentation Chainage/Projektion: `e2701359efca8ff50220c452633b44ba7dba7c0d`
+- reale Typ-6-/Nullweg-Verifikation dokumentiert: `21c192ed4ad717e3d1f85fca31f85c6b398d2e49`
 
 ## Verbindliche Strategie
 
@@ -95,138 +105,107 @@ Farbregel:
 - Geometrie ohne belastbare oder mit widersprüchlicher KM-Kalibrierung -> `ROT`;
 - keine Geometrie -> `GRAU`.
 
-KM-Sprünge werden diskret berücksichtigt und nicht in den kontinuierlichen Faktor eingerechnet.
+KM-Sprünge werden diskret berücksichtigt und nicht in den kontinuierlichen Faktor eingerechnet. Alle beteiligten Anker werden gegen die resultierende KM-Funktion geprüft; maximale zulässige Ankerabweichung ist 5 m. Darüber -> `UNPLAUSIBEL/ROT`.
 
-#### Konsistenzsperre aus realen Daten
+### TRA-Rohgeometrie / kontinuierliche geometrische Chainage
 
-Ein äußerer 2-Punkt-Fit allein reicht nicht. Reale 5302-Daten zeigen, dass bei einem nicht modellierten +73,660-m-Sprung der äußere Faktor noch grob plausibel wirken kann, während Zwischenanker um mehr als 60 m falsch liegen.
+Die Rohgeometrie bleibt Android-parallel: 2,0-m-Samples, Gerade/Kreisbogen analytisch, Übergangsbogen mit 0,5-m-Integration.
 
-Darum werden alle beteiligten Anker gegen die resultierende KM-Funktion geprüft. Maximale zulässige Ankerabweichung: **5 m**. Darüber -> `UNPLAUSIBEL/ROT` mit Diagnose. Mit korrekt modelliertem KM-Sprung bleibt der kontinuierliche Faktor korrekt.
+Neu ist eine getrennte **abgeleitete** Chainage-Schicht `survey_tra_chainage.py`. Reale TRA-Dateien enthalten Nullweg-Elemente mit `raw_type=6`, praktisch identischer Start-/Endkoordinate und diskretem Stationssprung. Diese Werte dürfen nicht als zusätzliche geometrische Gleislänge verdichtet werden.
 
-### TRA-Verdichtung / DB_REF / Punktprojektion v2
+Eine Diskontinuität wird nur erkannt, wenn gleichzeitig gilt:
 
-Die serverseitige TRA-Geometrie übernimmt die Android-Logik: 2,0-m-Samples, Gerade/Kreisbogen analytisch, Übergangsbogen mit 0,5-m-Integration, echte TRA-Knoten bleiben exakte Segmentenden.
+- `raw_type=6`;
+- Sprungbetrag >= 0,001 m;
+- geometrische Sehne <= 0,01 m;
+- Stationssprung und gespeicherte Elementlänge stimmen bis 0,01 m überein.
+
+Der Parserpayload bleibt unverändert. Nur für Berechnungen wird der kumulierte Sprung aus allen folgenden Stationen entfernt und das Nullwegelement auf abgeleitete Länge 0 gesetzt. Diese Stationsbasis heißt `CONTINUOUS_GEOMETRY_CHAINAGE`.
+
+Reale Gegenprüfung des deduplizierten Bestands:
+
+- 55 unterschiedliche TRA-Dateien;
+- 8 belegte Typ-6-/Nullweg-Sprünge in 4 unterschiedlichen Dateien;
+- Beispiele: 5302 `+2,120`, `+73,660`, `+19,3963`, `-2,0221 m`; 5300/8771 `-6,09559 m`; 5504 `+6,351` und `-28,948 m`; 5524 `-12,562482 m`;
+- mehrere Werte stimmen unabhängig mit realen GRA-Sprungpaaren überein.
+
+Details: `docs/TB-SERVER_1_0_SURVEY_REAL_FIXTURE_VERIFICATION.md` und `docs/TB-SERVER_1_0_SURVEY_PROJECTION.md`.
+
+### DB_REF / Punktprojektion v3
 
 Die vorhandene Android-Transformation DB_REF/GK -> ETRS89/WGS84 wurde mit denselben Helmertparametern portiert und erkennt GK-Streifen 3, 4 und 5.
 
-`POST /api/v1/survey-sections/{dataset_id}/rebuild-auto-anchors` projiziert koordinatenhaltige `KM`-/`CONTROL`-Quellen auf die verdichteten TRA-Geometrien. Die Projektionslogik läuft jetzt als `survey-projection-v2`.
+`POST /api/v1/survey-sections/{dataset_id}/rebuild-auto-anchors` projiziert koordinatenhaltige `KM`-/`CONTROL`-Quellen auf die verdichteten TRA-Geometrien. Die Projektionslogik läuft jetzt als **`survey-projection-v3`** und verwendet ausschließlich `CONTINUOUS_GEOMETRY_CHAINAGE`.
 
 Automatischer `ORIGINAL_ANCHOR` erfordert:
 
 - Quelle `KM`;
 - bestätigte Strecke;
 - Achsabstand <= 5 m;
-- und einen **belastbaren gemeinsamen Stationsraum** der getroffenen TRA.
+- und einen belastbaren gemeinsamen Stationsraum der getroffenen TRA.
 
-Die primäre TRA ist belastbar. Eine sekundäre TRA kann ebenfalls belastbar werden, wenn ihr Stationsraum über geometrisch bestätigte Überlappung mit zuverlässiger Vorgeschichte abgebildet wurde. Eine nur am Endpunkt fortgeschriebene TRA bleibt Kontrollquelle. Eine unmapped sekundäre TRA liefert gar keine Punktstation in den gemeinsamen Abschnittsstationsraum.
+Alte `survey-projection-v*`-Punkte und automatisch erzeugte `survey-gra-jump-v*`-Punkte werden beim Projektions-Rebuild entfernt. Manuelle Anker und manuelle KM-Sprünge bleiben erhalten.
 
-### Mehrere TRA-Quellen / Stationsraum-Merge
+### Mehrere TRA-Quellen / Stationsraum-Merge v2
 
-Neu ist `survey_station_merge.py` mit Capability `survey_station_merge_v1=true`.
+`survey_station_merge.py` läuft jetzt als **`survey-station-merge-v2`** und verwendet kontinuierliche geometrische Chainage.
 
-Die lokale Station einer TRA wird ausschließlich als abgeleitete lineare Abbildung in einen gemeinsamen Stationsraum überführt:
+Die lokale geometrische Chainage einer TRA wird als abgeleitete lineare Abbildung in einen gemeinsamen Stationsraum überführt:
 
-`merged_station = station_sign * local_station + station_offset`.
+`merged_station = station_sign * local_chainage + station_offset`.
 
 Vor einer Zusammenführung müssen Strecke und zusätzlich Gleis oder Richtung zusammenpassen.
 
-#### `OVERLAP_CONFIRMED`
+`OVERLAP_CONFIRMED` ist belastbar bei:
 
-Belastbare automatische Zusammenführung anhand vieler Geometriepunkte:
-
-- 2-m-TRA-Geometrie, Fit-Raster ca. 10 m;
 - Fit-Treffer max. 1,0 m geometrischer Abstand;
 - mindestens 5 Treffer;
 - mindestens 50 m Überlappung;
 - maximal 0,5 m Stations-Fit-Restfehler;
-- Vorwärts- und Rückwärtsstationierung werden geprüft.
+- geprüfter Vorwärts-/Rückwärtsabbildung;
+- belastbarer Mapping-Vorgeschichte.
 
-Die Vertrauenskette wird mitgeführt. Ein Overlap, der nur auf einem zuvor unsicheren Endpunkt-Mapping aufbaut, wird nicht automatisch vertrauenswürdig. Wenn mehrere bereits gemappte Vorgänger passen, wird eine belastbare Überlappung bevorzugt.
+`ENDPOINT_CONFIRMED` bis 5 m Endpunktabstand ist nur diagnostisch und besitzt `reliable_for_auto_anchor=false`.
 
-#### `ENDPOINT_CONFIRMED`
+Reale Harburg -> 8771 Verifikation / Strecke 5300 bleibt stabil:
 
-Bei gleicher Achsidentität darf ein TRA-Anschluss bis 5 m Endpunktabstand diagnostisch in den gemeinsamen Stationsraum fortgeschrieben werden. Dieses Mapping besitzt aber `reliable_for_auto_anchor=false`, weil ein unbekannter Stationssprung am Übergang ohne Überlappung nicht ausgeschlossen werden kann. Treffer darauf werden höchstens Kontrollanker.
+- R: 107 Fit-Treffer, ca. 1058,226 m Überlappung, Offset ca. `+1188,999027 m`, max. Restfehler ca. `0,000240 m`;
+- S: 163 Fit-Treffer, ca. 1615,748 m Überlappung, Offset ca. `-0,035731 m`, max. Restfehler ca. `0,000244 m`.
 
-#### Reale Harburg -> 8771 Verifikation / Strecke 5300
+Der reale `-6,09559-m`-Typ-6-Sprung im 8771-S-Bestand liegt außerhalb der Harburg-Überlappung. Die Überlappung bleibt numerisch stabil, während die weitere Stationierung nach dem Sprung jetzt korrekt kontinuierlich bleibt.
 
-Die hochgeladenen realen Projektdateien belegen, dass aufeinanderfolgende Bestände geometrisch dieselbe Achse überlappen können, aber unterschiedliche lokale Stationsnullpunkte verwenden.
+### Konservativer GRA-KM-Sprung-Rebuild v2
 
-**R-Achse**
+`POST /api/v1/survey-sections/{dataset_id}/rebuild-gra-jumps`
 
-- `2026-03-25_5300_050-053_R_ER0.TRA` -> `5300_054-059_DHDN_R.Tra`;
-- 107 Fit-Treffer;
-- Überlappung ca. 1058,226 m;
-- `station_sign=+1`;
-- Offset ca. **+1188,999027 m**;
-- maximaler Stations-Restfehler ca. **0,000240 m**.
+Das reale GRA-Muster `Parameter 1000 -> 0` bei praktisch gleicher Höhe bleibt nur Kandidat; automatische Übernahme erfordert weiterhin bestätigte Achsidentität und geometrisch projizierte Originalanker auf beiden Seiten. Beide unabhängig ermittelten Sprungstationen dürfen höchstens 2 m auseinanderliegen. `allow_one_sided=false` bleibt Default.
 
-**S-Achse**
+Seit **`survey-gra-jump-v2`** muss die Section zusätzlich eine aktuelle `survey-projection-v3` mit `station_basis=CONTINUOUS_GEOMETRY_CHAINAGE` besitzen. Dadurch wird verhindert, dass ein Sprung gegen eine alte diskontinuierliche TRA-Quellstation oder eine veraltete Projektion berechnet wird.
 
-- `2025-04-25_5300_050-053_S_ER0.TRA` -> `5300_054-059_DHDN_S.Tra`;
-- 163 Fit-Treffer;
-- Überlappung ca. 1615,748 m;
-- `station_sign=+1`;
-- Offset ca. **-0,035731 m**;
-- maximaler Stations-Restfehler ca. **0,000244 m**.
-
-Das Mapping wird damit aus Geometrie bestimmt und nicht aus Dateinamen oder KM-Bereichen geraten.
-
-Details: `docs/TB-SERVER_1_0_SURVEY_PROJECTION.md`.
+`reverse_geometry=true` der primären Geometrie wird weiterhin konservativ nicht automatisch behandelt.
 
 ### Reale Punktprojektions-/KM-Verifikation
 
-**Gessertshausen 5302**
+Gessertshausen 5302:
 
 - rohe KF: 124 verwertbare Punkte mit Strecke/KM;
 - 5302L: 46 Punkte <=5 m zur TRA, Median ca. 3,566 m, Maximum ca. 4,372 m;
 - 5302R: 45 Punkte <=5 m, Median ca. 3,489 m, Maximum ca. 3,963 m;
 - DB_REF-Direktprojektion vs. WGS84-Projektion: maximale Stationsdifferenz ca. 0,029 m;
-- GRA-Sprung `17626,340 -> 17700,000` = +73,660 m;
-- bestätigte Sprungstation L ca. 12986,913 m, R ca. 13025,898 m;
-- mit Sprung: maximale Ankerabweichung L ca. 0,549 m, R ca. 0,396 m.
+- GRA-Sprung `17626,340 -> 17700,000` = +73,660 m.
 
-**8771 / Strecke 5300 R**
+8771 / Strecke 5300 R:
 
 - rohe KF: 120 KM-Punkte;
 - 119/120 liegen innerhalb 5 m einer der R/S-TRA;
-- GRA-Sprung `55606,095653 -> 55600,000063` = ca. -6,095590 m;
-- bestätigte Sprungstation R ca. 4305,411 m;
-- mit Sprung maximale Ankerabweichung ca. 0,517 m.
+- GRA-Sprung `55606,095653 -> 55600,000063` = ca. -6,095590 m.
 
-**Harburg 5300**
+Harburg 5300:
 
 - rohe KF: 86 plausible Punkte, KM-/Stationsspalte vollständig 0.00000;
 - diese Datei bleibt zu Recht keine automatische KM-Quelle.
 
-Details: `docs/TB-SERVER_1_0_SURVEY_REAL_FIXTURE_VERIFICATION.md`.
-
-### Konservativer GRA-KM-Sprung-Rebuild
-
-`POST /api/v1/survey-sections/{dataset_id}/rebuild-gra-jumps`
-
-Ein automatisch erzeugter `KM_JUMP` erfordert u. a. die reale GRA-Markierung `1000 -> 0` bei praktisch gleicher Höhe, bestätigte Achsidentität und projizierte Originalanker auf beiden Seiten; beide unabhängig ermittelten Sprungstationen dürfen höchstens 2 m auseinanderliegen. `allow_one_sided=false` bleibt der konservative Default. `reverse_geometry=true` der primären Geometrie wird derzeit nicht automatisch behandelt.
-
-Lokal gegen reale Fixtures geprüft:
-
-- 5302L: +73,660 m bei ca. 12986,913 m;
-- 5302R: +73,660 m bei ca. 13025,898 m;
-- 8771/5300R: -6,095590 m bei ca. 4305,411 m.
-
-Capability: `survey_gra_jump_detection_v1=true`.
-
-### Abhängige Ableitungen werden korrekt invalidiert
-
-Ein automatisch erzeugter GRA-Sprung besitzt eine aus den aktuellen Ankern berechnete Station. Wenn `rebuild-auto-anchors` die TRA-Zuordnung oder den gemeinsamen Stationsraum ändert, ist diese Sprungstation potenziell veraltet.
-
-Darum gilt jetzt:
-
-- Projektions-Rebuild entfernt alte `survey-projection-v*`-Punkte;
-- zusätzlich werden automatisch erzeugte `survey-gra-jump-v*`-Punkte entfernt;
-- manuelle Anker und manuelle `KM_JUMP` bleiben erhalten;
-- anschließend wird der Section-Payload neu kalibriert;
-- danach muss `rebuild-gra-jumps` erneut laufen, bevor ein benötigter automatischer Sprung wieder wirksam wird.
-
-Der sichere Rebuild-Ablauf ist damit: **Punktprojektion -> GRA-Sprung-Rebuild -> resultierenden Kalibrierstatus verwenden**. Ein zwischenzeitliches `ROT/UNPLAUSIBEL` nach der Projektion ist gewollt, wenn der Abschnitt einen noch nicht neu berechneten Sprung benötigt.
+Historische Sprungstationszahlen aus der vorherigen Projektionsbasis sind in der Real-Fixture-Dokumentation als solche gekennzeichnet. Nach v3 werden Sprungstationen neu gegen kontinuierliche Chainage berechnet; alte Auto-GRA-Punkte werden invalidiert.
 
 ## Tests / Checks
 
@@ -237,13 +216,13 @@ Workflow-Zielstand:
 - Kerntabellen u. a. `survey_parse_catalog`, `track_data_sources`, `track_data_km_points`;
 - Source-/Vertragschecks 20–32;
 - Health/Capabilities/Auth-Checks;
-- erwartete Capabilities enthalten jetzt auch `survey_station_merge_v1` und `survey_gra_jump_detection_v1`.
+- erwartete Capabilities enthalten `survey_station_merge_v1` und `survey_gra_jump_detection_v1`.
 
-Lokal erfolgreich geprüft:
+Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
-- Python-Syntax/AST der neuen/angepassten Vermessungsmodule;
+- Python-Syntax/AST der neuen/angepassten Vermessungsmodule im aufgebauten Source-Check;
 - Raw-KF-Parität und Parser-v2-Realbestand;
-- TRA-2-m-Verdichtung und DB_REF/GK->WGS84;
+- TRA-2-m-Rohverdichtung und DB_REF/GK->WGS84;
 - automatische/manuelle KM-Kalibrierung inkl. KM-Sprung;
 - All-Anchor-Konsistenzprüfung;
 - GRA-Kandidatenfindung und beidseitige Sprungstationsschätzung;
@@ -251,17 +230,20 @@ Lokal erfolgreich geprüft:
 - synthetischer Multi-TRA-Regressionsfall: primäre TRA + zuverlässig überlappende sekundäre TRA + nur per Endpunkt anschließende TRA;
 - sekundäre Overlap-TRA kann einen automatischen `ORIGINAL_ANCHOR` im gemeinsamen Stationsraum liefern;
 - Endpunkt-Mapping bleibt Kontrollanker;
-- alte Projektionsversionen und automatisch erzeugte GRA-Sprünge werden als stationsabhängige Ableitungen erkannt.
+- alte Projektionsversionen und automatisch erzeugte GRA-Sprünge werden als stationsabhängige Ableitungen erkannt;
+- positive Typ-6-Diskontinuität `+73,660 m` wird ohne künstliche stationäre 2-m-Samples normalisiert;
+- negative Typ-6-Diskontinuität `-6,09559 m` wird korrekt normalisiert;
+- kompletter realer TRA-Bestand lokal erneut gescannt: 57 physische TRA-Dateien, 55 unterschiedliche SHA-256; 9 physische Typ-6-Fundstellen / 8 nach Deduplizierung; keine TRA-Parsefehler in dieser Gegenprüfung.
 
-**Noch nicht ausgeführt:** vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v2 -> GRA-Sprung -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung. Der GitHub-Runner fällt weiterhin vor dem ersten Step aus.
+**Noch nicht ausgeführt:** vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
-Die bisherigen TB-Server-Läufe enden weiterhin vor dem ersten Step mit `steps=[]` und `runner_id=0`. Das bedeutet: keine Source-Checks, keine Python-Läufe, keine PostgreSQL-Migrationen und keine API-Tests wurden dort tatsächlich ausgeführt. Ein solcher Lauf ist kein fachlicher Server-Testfehler.
+Der aktuelle TB-Server-Lauf für Commit `69effc49acf55b4b9abc6d4136b089a784853540` ist Run **#129 / ID 35278287240** und endet weiterhin mit `foundation` = failure, ohne ausgeführte Steps. Damit wurden dort keine Source-Checks, keine Python-Läufe, keine PostgreSQL-Migrationen und keine API-Tests tatsächlich ausgeführt. Das ist weiterhin das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-Testfehler.
 
 ## Bekannte/offene Punkte
 
-- vollständige Import -> Parse -> Survey-Section -> Punktprojektion v2 -> GRA-Sprung-Rebuild -> Kalibrierung gegen eine echte PostgreSQL-/FastAPI-Testinstanz ausführen;
+- vollständige Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung gegen eine echte PostgreSQL-/FastAPI-Testinstanz ausführen;
 - weitere reale Mehr-TRA-Fälle prüfen, besonders `reverse_geometry`, echte rückläufige Stationierung und nicht überlappende Anschlussstücke;
 - einseitig belegte GRA-Sprünge nur bei zusätzlicher realer Evidenz automatisieren; Default bleibt `false`;
 - Projektion/verdichtete Samples bei Bedarf performant cachen, ohne Originale zu verändern;
@@ -274,8 +256,8 @@ Die bisherigen TB-Server-Läufe enden weiterhin vor dem ersten Step mit `steps=[
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Wenn eine PostgreSQL-Testinstanz verfügbar ist: gesamte Vermessungskette end-to-end gegen `/api/v1` ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
-2. Weitere reale Mehr-TRA-Richtungsfälle prüfen und `reverse_geometry`/rückläufige Stationierung nur bei belastbarer Evidenz erweitern.
+1. Die kontinuierliche Chainage gegen weitere reale Mehr-TRA-Richtungsfälle prüfen; insbesondere `reverse_geometry`, rückläufige Stationierung und nicht überlappende Anschlussstücke nur mit belegbarer Evidenz erweitern.
+2. Sobald eine PostgreSQL-Testinstanz verfügbar ist, die gesamte Vermessungskette end-to-end gegen `/api/v1` ausführen.
 3. Danach Android-Fachvertrag praktisch gegen TB-Server 1.0 testen und die App systematisch auf `/api/v1` umstellen.
 4. Portal/PDF/Admin/Releases schließen.
 5. Backup/Restore/Reset + E2E testen.
