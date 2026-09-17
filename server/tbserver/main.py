@@ -12,6 +12,7 @@ from .config import settings
 from .database import ping
 from .migrations import status as migration_status
 from .portal import router as portal_router
+from .worksites import router as worksites_router
 
 
 @asynccontextmanager
@@ -28,6 +29,7 @@ app = FastAPI(
 app.include_router(capabilities_router)
 app.include_router(portal_router)
 app.include_router(admin_router)
+app.include_router(worksites_router)
 
 
 @app.get("/health/live", tags=["system"])
