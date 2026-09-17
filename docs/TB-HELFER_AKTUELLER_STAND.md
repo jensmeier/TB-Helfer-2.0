@@ -25,6 +25,7 @@ GitHub-Code und aktiver Branch sind Source of Truth.
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - Cutover-Regel-Commit: `64bb798e37f6a220fbd1715859a813a359a32eee`
 - Datei-/Chunkupload-Commit: `959a53459455062def10608df4ca4c4cd1b0a179`
+- Mängel-/Abnahmen-Commit: `40249785879b82714b7d2df822e9e52fb7fb750c`
 - Android bleibt vorerst Testclient: Buildkandidat **200050**
 - Produktivserver/NAS weiterhin unverändert: API **0.7.0**, PostgreSQL **Schema 10**
 
@@ -150,24 +151,53 @@ Capabilities:
 - `chunk_upload_v1=true`
 - `company_logo_v1=false`.
 
-### 6. Mängel / Abnahmen – aktueller Block
+### 6. Mängel / Abnahmen
 
-Neu ergänzt:
+Commit: `40249785879b82714b7d2df822e9e52fb7fb750c`
+
+Vorhanden:
 - `server/tbserver/defects.py`;
 - `server/tbserver/acceptances.py`;
 - Mangel anlegen/listen/lesen/bearbeiten/schließen;
 - Abnahme anlegen/listen/lesen/bearbeiten/finalisieren;
 - optionale clientseitige UUID beim Anlegen;
 - Zuordnung zu Baustellenknoten wird serverseitig validiert;
-- Schreibrechte werden über `defect.*` bzw. `acceptance.*` geprüft;
+- Schreibrechte über `defect.*` bzw. `acceptance.*`;
 - Optimistic Locking über `base_version`;
 - `409 VERSION_CONFLICT` statt stillem Überschreiben;
-- Change-Feed und Audit bei fachlichen Lebenszyklusaktionen;
+- Change-Feed und Audit bei Lebenszyklusaktionen;
 - Source-Check `24_verify_tb_server_1_defects_acceptances_source.py`.
 
 Capabilities:
 - `defects_v1=true`
 - `acceptances_v1=true`.
+
+### 7. Vermessungsoriginale / mobile Strecken-Arbeitsdaten – aktueller Block
+
+Neu ergänzt:
+- `server/tbserver/survey_originals.py`;
+- `server/tbserver/track_data.py`;
+- Import eines bereits hochgeladenen baustellenbezogenen Files als Vermessungsoriginal;
+- vor Import Prüfung von Dateigröße und SHA-256 gegen den gespeicherten File-Datensatz;
+- Originalbytes werden nur atomar in `reference/survey-originals/<uuid>/...` verschoben, nicht verändert;
+- Originalmetadaten landen in `tb.survey_originals`;
+- für Vermessungsoriginale existieren bewusst **keine** PATCH-/PUT-/DELETE-Endpunkte;
+- doppelter Import identischer Originalbytes derselben Firma/Datenart wird erkannt;
+- Download des unveränderten Originals bleibt möglich;
+- mobile/bearbeitete Daten liegen ausschließlich in `tb.track_data`;
+- Track-Datensätze haben stabile UUID, `dataset_key`, Typ, Payload, Version und optionalen `source_original_id`;
+- `source_original_id` wird auf gleiche Firma bzw. globale Referenz geprüft;
+- Arbeitsdaten können geändert und soft-gelöscht werden, Originale nicht;
+- Optimistic Locking über `base_version` mit `409 VERSION_CONFLICT`;
+- Löschungen erzeugen `TRACK_DATA`-Tombstones für die Synchronisation;
+- Change-Feed/Audit für Import, Track-Anlage und Track-Löschung;
+- Source-Check `25_verify_tb_server_1_track_survey_source.py` prüft zusätzlich, dass im Originalmodul keine Mutationsroute/SQL-Update/SQL-Delete für `tb.survey_originals` auftaucht.
+
+Capabilities:
+- `survey_originals_v1=true`
+- `track_data_v1=true`.
+
+Damit ist die ab Produktivimport verbindliche Trennung technisch vorbereitet: **Originaldatei unveränderlich, daraus abgeleitete/manuelle Streckendaten separat versioniert.**
 
 ## CI / Tests
 
@@ -179,12 +209,13 @@ Vorhanden:
 - `22_verify_tb_server_1_auth_runtime.py`
 - `23_verify_tb_server_1_files_source.py`
 - `24_verify_tb_server_1_defects_acceptances_source.py`
+- `25_verify_tb_server_1_track_survey_source.py`
 
 Der Server-Workflow prüft außerdem Baseline-Migration, Kerntabellen, Bootstrap, Health und aktivierte Capabilities.
 
 ### Aktuelles GitHub-Actions-Problem
 
-Beim Branch-Head `959a534...` wurde der Server-Workflow bereits vor dem ersten Step beendet:
+Beim geprüften Lauf zum Branch-Stand `959a534...` wurde der Server-Workflow bereits vor dem ersten Step beendet:
 - Jobstatus `failure`;
 - `runner_id=0`;
 - keine Steps vorhanden;
@@ -194,35 +225,37 @@ Damit ist dieser konkrete rote Lauf **kein ausgeführter Python-/PostgreSQL-Test
 
 ### Android CI
 
-Android ist für den Server-1.0-Block vorerst Testclient und nicht dessen Freigabenachweis. Die Android-Workflow-Trigger werden deshalb auf Android-/Gradle-Dateien und die alten Android/Schema-Sourcechecks begrenzt. Reine Änderungen unter `server/tbserver/**` sollen keinen vollständigen Android-Build mehr auslösen.
+Android ist für den Server-1.0-Block vorerst Testclient und nicht dessen Freigabenachweis. Die Android-Workflow-Trigger sind auf Android-/Gradle-Dateien und die alten Android/Schema-Sourcechecks begrenzt. Reine Änderungen unter `server/tbserver/**` sollen keinen vollständigen Android-Build mehr auslösen.
 
 ## Bekannte/offene Punkte
 
 Noch nicht fertig:
+- Idempotenz-/`client_change_id`-Vertrag noch nicht flächendeckend in allen Mutationen umgesetzt;
+- Android-Geräteauthentifizierung für die neue `/api/v1`-Serverbasis;
 - echtes BTB-Abschluss-PDF inklusive Dateispeicherung und Nachbearbeitungsmodell;
-- mobile Streckendaten;
-- Vermessungsoriginal-Import/-Katalog;
 - Firmenlogo/PDF-Layout;
 - vollständige Portal-Fachoberfläche;
 - Admin-Dashboard/Systemstatus/Speicher;
 - Releases/Client-Kompatibilität;
-- Idempotenz-/`client_change_id`-Vertrag noch nicht flächendeckend in allen Mutationen umgesetzt;
 - Background Jobs;
 - Backup/Restore-Werkzeuge;
 - Testdaten-Reset-Werkzeug;
 - vollständige Integrations-/End-to-End-Tests;
 - produktiver NAS-Cutover.
 
+Der Vermessungsimport ist aktuell ein serverseitiger Grundvertrag auf Basis bereits hochgeladener Dateien. Parser/Katalogisierung für konkrete Formate wie TRA/KF/GRA/KOR/KV/GVP und die fachliche Abschnittszusammenführung folgen auf dieser unveränderlichen Originalbasis.
+
 Datei-/Upload-Modul ist zunächst auf baustellenbezogene Uploads mit Portal-Session-Authentifizierung begrenzt. Geräteauthentifizierung für Android und systemweite Dateien wie Firmenlogo/Releases werden in den dafür vorgesehenen Modulen ergänzt.
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **mobile Streckendaten + unveränderliche Vermessungsoriginale** gegen die bereits vorhandenen Baseline-Tabellen bauen;
-2. danach Idempotenz/`client_change_id` für Offline-Outbox serverweit konsolidieren;
-3. Portal-Fachoberfläche und BTB-PDF-Abschluss schließen;
-4. Admin/Systemstatus/Releases;
-5. Backup/Restore/Reset und vollständige E2E-Tests;
-6. GitHub-Actions-Runnerproblem klären bzw. Tests auf verfügbarer Laufumgebung ausführen;
-7. erst danach NAS-Cutover und Android-Anpassung.
+1. **Idempotenz/`client_change_id` für die Offline-Outbox serverweit konsolidieren**, damit Wiederholungen nach Netzabbrüchen niemals doppelte Fachobjekte erzeugen;
+2. danach Geräteauthentifizierung v1 so anbinden, dass Android denselben Vertrag nutzen kann;
+3. konkrete Vermessungsparser/Katalogisierung und Abschnittszuordnung auf der unveränderlichen Originalablage ergänzen;
+4. Portal-Fachoberfläche und BTB-PDF-Abschluss schließen;
+5. Admin/Systemstatus/Releases;
+6. Backup/Restore/Reset und vollständige E2E-Tests;
+7. GitHub-Actions-Runnerproblem klären bzw. Tests auf verfügbarer Laufumgebung ausführen;
+8. erst danach NAS-Cutover und Android-Anpassung.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**

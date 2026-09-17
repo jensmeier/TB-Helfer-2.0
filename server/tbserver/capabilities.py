@@ -20,8 +20,8 @@ CAPABILITIES: dict[str, bool] = {
     "chunk_upload_v1": True,
     "defects_v1": True,
     "acceptances_v1": True,
-    "track_data_v1": False,
-    "survey_originals_v1": False,
+    "track_data_v1": True,
+    "survey_originals_v1": True,
     "company_logo_v1": False,
 }
 
