@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from .config import settings
 from .database import transaction
 from .events import audit, emit_change
+from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
 from .permissions import require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 
@@ -167,6 +168,7 @@ def create_upload(
     worksite_id: UUID,
     payload: UploadCreate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     expected_sha256 = payload.expected_sha256.lower() if payload.expected_sha256 else None
     if expected_sha256 and any(ch not in "0123456789abcdef" for ch in expected_sha256):
@@ -175,10 +177,13 @@ def create_upload(
     if not target_kind:
         raise HTTPException(400, "INVALID_TARGET_KIND")
 
-    upload_id = uuid4()
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="UPLOAD_CREATE")
+        if receipt:
+            return replay_payload(receipt)
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "files.add")
+        upload_id = uuid4()
         temp_key = f"companies/{context['company_id']}/worksites/{worksite_id}/.uploads/{upload_id}.part"
         cur.execute(
             """
@@ -204,7 +209,17 @@ def create_upload(
             ),
         )
         row = dict(cur.fetchone())
-    return _serialize_upload(row)
+        response = _serialize_upload(row)
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="UPLOAD_CREATE",
+            entity_id=upload_id,
+            result_version=None,
+            response_payload=response,
+        )
+    return response
 
 
 @router.get("/uploads/{upload_id}")
@@ -280,12 +295,16 @@ def complete_upload(
     upload_id: UUID,
     payload: UploadComplete,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     final_path: Path | None = None
     temp_path: Path | None = None
     moved = False
     try:
         with transaction() as conn, conn.cursor() as cur:
+            receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="UPLOAD_COMPLETE")
+            if receipt:
+                return replay_payload(receipt)
             upload = _load_upload(cur, upload_id, for_update=True)
             context = _authorize_upload(cur, user, upload, write=True)
             if upload["status"] != "OPEN":
@@ -349,11 +368,14 @@ def complete_upload(
                 ),
             )
             file_row = dict(cur.fetchone())
+            link_payload = None
             if link:
+                purpose = payload.purpose.strip().upper()
                 cur.execute(
                     "INSERT INTO tb.file_links(file_id, entity_type, entity_id, purpose) VALUES (%s,%s,%s,%s)",
-                    (file_id, link[0], link[1], payload.purpose.strip().upper()),
+                    (file_id, link[0], link[1], purpose),
                 )
+                link_payload = {"entity_type": link[0], "entity_id": link[1], "purpose": purpose}
             cur.execute("UPDATE tb.upload_sessions SET status = 'COMPLETED', updated_at = now() WHERE id = %s", (upload_id,))
             emit_change(
                 cur,
@@ -375,7 +397,17 @@ def complete_upload(
                 entity_id=file_id,
                 details={"byte_size": actual_size, "sha256": actual_sha256, "target_kind": upload["target_kind"]},
             )
-        return {"file": file_row, "link": {"entity_type": link[0], "entity_id": link[1], "purpose": payload.purpose.strip().upper()} if link else None}
+            response = {"file": file_row, "link": link_payload}
+            finish_mutation(
+                cur,
+                user=user,
+                context=mutation,
+                receipt_type="UPLOAD_COMPLETE",
+                entity_id=file_id,
+                result_version=None,
+                response_payload=response,
+            )
+        return response
     except Exception:
         if moved and final_path is not None and final_path.exists() and temp_path is not None:
             temp_path.parent.mkdir(parents=True, exist_ok=True)
@@ -387,15 +419,28 @@ def complete_upload(
 def abort_upload(
     upload_id: UUID,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ):
     temp_path: Path | None = None
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="UPLOAD_ABORT")
+        if receipt:
+            return None
         upload = _load_upload(cur, upload_id, for_update=True)
         _authorize_upload(cur, user, upload, write=True)
         if upload["status"] == "COMPLETED":
             raise HTTPException(409, "UPLOAD_ALREADY_COMPLETED")
         cur.execute("UPDATE tb.upload_sessions SET status = 'ABORTED', updated_at = now() WHERE id = %s", (upload_id,))
         temp_path = _absolute_storage_path(upload["temp_storage_key"])
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="UPLOAD_ABORT",
+            entity_id=upload_id,
+            result_version=None,
+            response_payload={"aborted": True},
+        )
     if temp_path.exists():
         temp_path.unlink()
     return None

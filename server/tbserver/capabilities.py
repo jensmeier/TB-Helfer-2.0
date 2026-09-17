@@ -22,6 +22,7 @@ CAPABILITIES: dict[str, bool] = {
     "acceptances_v1": True,
     "track_data_v1": True,
     "survey_originals_v1": True,
+    "idempotent_mutations_v1": True,
     "company_logo_v1": False,
 }
 

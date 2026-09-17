@@ -12,6 +12,7 @@ from psycopg.types.json import Jsonb
 
 from .database import transaction
 from .events import audit, emit_change
+from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
 from .permissions import require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 
@@ -151,8 +152,12 @@ def create_btb(
     worksite_id: UUID,
     payload: BtbCreate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_CREATE")
+        if receipt:
+            return replay_payload(receipt)
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "btb.create")
         team = _team(cur, worksite_id, payload.team_id)
@@ -175,7 +180,7 @@ def create_btb(
                 user["user_id"],
             ),
         )
-        row = cur.fetchone()
+        row = dict(cur.fetchone())
         cur.execute("UPDATE tb.teams SET active_btb_id = %s, updated_at = now() WHERE id = %s", (row["id"], payload.team_id))
         emit_change(
             cur,
@@ -195,6 +200,15 @@ def create_btb(
             worksite_id=worksite_id,
             entity_type="BTB",
             entity_id=row["id"],
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BTB_CREATE",
+            entity_id=row["id"],
+            result_version=row["version"],
+            response_payload=row,
         )
     return row
 
@@ -227,11 +241,15 @@ def update_btb_header(
     btb_id: UUID,
     payload: BtbHeaderUpdate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     updates = payload.model_dump(exclude={"base_version"}, exclude_unset=True)
     if not updates:
         raise HTTPException(400, "NO_CHANGES")
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_HEADER_UPDATE")
+        if receipt:
+            return replay_payload(receipt)
         btb = _load_btb(cur, btb_id)
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.edit")
@@ -253,6 +271,7 @@ def update_btb_header(
         row = cur.fetchone()
         if not row:
             raise HTTPException(409, {"code": "VERSION_CONFLICT", "current_version": btb["version"]})
+        row = dict(row)
         emit_change(
             cur,
             company_id=context["company_id"],
@@ -263,6 +282,15 @@ def update_btb_header(
             entity_version=row["version"],
             actor_user_id=user["user_id"],
         )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BTB_HEADER_UPDATE",
+            entity_id=btb_id,
+            result_version=row["version"],
+            response_payload=row,
+        )
     return row
 
 
@@ -271,8 +299,12 @@ def create_entry(
     btb_id: UUID,
     payload: BtbEntryCreate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_ENTRY_CREATE")
+        if receipt:
+            return replay_payload(receipt)
         btb = _load_btb(cur, btb_id)
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.edit")
@@ -297,7 +329,7 @@ def create_entry(
                 """,
                 (payload.id, btb_id, payload.section, payload.sort_order, Jsonb(payload.payload), user["user_id"], user["user_id"]),
             )
-        row = cur.fetchone()
+        row = dict(cur.fetchone())
         cur.execute("UPDATE tb.btbs SET version = version + 1, updated_at = now() WHERE id = %s RETURNING version", (btb_id,))
         parent_version = cur.fetchone()["version"]
         emit_change(
@@ -320,6 +352,15 @@ def create_entry(
             entity_version=parent_version,
             actor_user_id=user["user_id"],
         )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BTB_ENTRY_CREATE",
+            entity_id=row["id"],
+            result_version=row["version"],
+            response_payload=row,
+        )
     return row
 
 
@@ -329,11 +370,15 @@ def update_entry(
     entry_id: UUID,
     payload: BtbEntryUpdate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     updates = payload.model_dump(exclude={"base_version"}, exclude_unset=True)
     if not updates:
         raise HTTPException(400, "NO_CHANGES")
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_ENTRY_UPDATE")
+        if receipt:
+            return replay_payload(receipt)
         btb = _load_btb(cur, btb_id)
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.edit")
@@ -357,6 +402,7 @@ def update_entry(
             cur.execute("SELECT version FROM tb.btb_entries WHERE id = %s AND btb_id = %s", (entry_id, btb_id))
             current = cur.fetchone()
             raise HTTPException(409 if current else 404, {"code": "VERSION_CONFLICT" if current else "ENTRY_NOT_FOUND", "current_version": current["version"] if current else None})
+        row = dict(row)
         cur.execute("UPDATE tb.btbs SET version = version + 1, updated_at = now() WHERE id = %s RETURNING version", (btb_id,))
         parent_version = cur.fetchone()["version"]
         emit_change(
@@ -379,6 +425,15 @@ def update_entry(
             entity_version=parent_version,
             actor_user_id=user["user_id"],
         )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BTB_ENTRY_UPDATE",
+            entity_id=entry_id,
+            result_version=row["version"],
+            response_payload=row,
+        )
     return row
 
 
@@ -387,8 +442,12 @@ def delete_entry(
     btb_id: UUID,
     entry_id: UUID,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ):
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_ENTRY_DELETE")
+        if receipt:
+            return None
         btb = _load_btb(cur, btb_id)
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.edit")
@@ -424,6 +483,15 @@ def delete_entry(
             entity_version=parent_version,
             actor_user_id=user["user_id"],
         )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BTB_ENTRY_DELETE",
+            entity_id=entry_id,
+            result_version=row["version"],
+            response_payload={"deleted": True},
+        )
     return None
 
 
@@ -431,8 +499,12 @@ def delete_entry(
 def finalize_btb(
     btb_id: UUID,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_FINALIZE")
+        if receipt:
+            return replay_payload(receipt)
         btb = _load_btb(cur, btb_id)
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.finalize")
@@ -459,7 +531,7 @@ def finalize_btb(
             """,
             (btb_id,),
         )
-        row = cur.fetchone()
+        row = dict(cur.fetchone())
         cur.execute("UPDATE tb.teams SET active_btb_id = NULL, updated_at = now() WHERE id = %s AND active_btb_id = %s", (btb["team_id"], btb_id))
         emit_change(
             cur,
@@ -481,6 +553,15 @@ def finalize_btb(
             entity_id=btb_id,
             details={"snapshot_sha256": digest},
         )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BTB_FINALIZE",
+            entity_id=btb_id,
+            result_version=row["version"],
+            response_payload=row,
+        )
     return row
 
 
@@ -488,8 +569,12 @@ def finalize_btb(
 def reopen_btb(
     btb_id: UUID,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_REOPEN")
+        if receipt:
+            return replay_payload(receipt)
         btb = _load_btb(cur, btb_id)
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.edit")
@@ -500,7 +585,7 @@ def reopen_btb(
         if team["active_btb_id"] is not None and team["active_btb_id"] != btb_id:
             raise HTTPException(409, "TEAM_ALREADY_HAS_ACTIVE_BTB")
         cur.execute("UPDATE tb.btbs SET status = 'REWORK', version = version + 1, updated_at = now() WHERE id = %s RETURNING *", (btb_id,))
-        row = cur.fetchone()
+        row = dict(cur.fetchone())
         cur.execute("UPDATE tb.teams SET active_btb_id = %s, updated_at = now() WHERE id = %s", (btb_id, btb["team_id"]))
         emit_change(
             cur,
@@ -521,6 +606,15 @@ def reopen_btb(
             entity_type="BTB",
             entity_id=btb_id,
         )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BTB_REOPEN",
+            entity_id=btb_id,
+            result_version=row["version"],
+            response_payload=row,
+        )
     return row
 
 
@@ -528,8 +622,12 @@ def reopen_btb(
 def delete_btb(
     btb_id: UUID,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ):
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_DELETE")
+        if receipt:
+            return None
         btb = _load_btb(cur, btb_id)
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.delete")
@@ -563,5 +661,14 @@ def delete_btb(
             worksite_id=btb["worksite_id"],
             entity_type="BTB",
             entity_id=btb_id,
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BTB_DELETE",
+            entity_id=btb_id,
+            result_version=version,
+            response_payload={"deleted": True},
         )
     return None

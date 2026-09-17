@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .database import transaction
+from .events import audit, emit_change
+from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
 from .permissions import require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 
@@ -123,8 +125,12 @@ def list_worksites(user: dict[str, Any] = Depends(current_portal_user)) -> dict:
 def create_worksite(
     payload: WorksiteCreate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="WORKSITE_CREATE")
+        if receipt:
+            return replay_payload(receipt)
         company_id = _company_for_create(cur, user, payload.company_id)
         cur.execute(
             """
@@ -144,7 +150,7 @@ def create_worksite(
                 user["user_id"],
             ),
         )
-        worksite = cur.fetchone()
+        worksite = dict(cur.fetchone())
         if user["company_role"] != "ADMIN":
             cur.execute(
                 """
@@ -167,6 +173,34 @@ def create_worksite(
                 "INSERT INTO tb.team_members(team_id, user_id, role) VALUES (%s,%s,'LEAD')",
                 (team["id"], user["user_id"]),
             )
+        emit_change(
+            cur,
+            company_id=company_id,
+            worksite_id=worksite["id"],
+            entity_type="WORKSITE",
+            entity_id=worksite["id"],
+            operation="CREATE",
+            entity_version=worksite["version"],
+            actor_user_id=user["user_id"],
+        )
+        audit(
+            cur,
+            action="WORKSITE_CREATE",
+            actor_user_id=user["user_id"],
+            company_id=company_id,
+            worksite_id=worksite["id"],
+            entity_type="WORKSITE",
+            entity_id=worksite["id"],
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_CREATE",
+            entity_id=worksite["id"],
+            result_version=worksite["version"],
+            response_payload=worksite,
+        )
     return worksite
 
 
@@ -217,8 +251,12 @@ def create_node(
     worksite_id: UUID,
     payload: NodeCreate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="WORKSITE_NODE_CREATE")
+        if receipt:
+            return replay_payload(receipt)
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "worksite.structure.edit")
         if payload.parent_id is not None:
@@ -250,8 +288,36 @@ def create_node(
                 user["user_id"],
             ),
         )
-        row = cur.fetchone()
+        row = dict(cur.fetchone())
         cur.execute("UPDATE tb.worksites SET version = version + 1, updated_at = now() WHERE id = %s", (worksite_id,))
+        emit_change(
+            cur,
+            company_id=context["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE_NODE",
+            entity_id=row["id"],
+            operation="CREATE",
+            entity_version=row["version"],
+            actor_user_id=user["user_id"],
+        )
+        audit(
+            cur,
+            action="WORKSITE_NODE_CREATE",
+            actor_user_id=user["user_id"],
+            company_id=context["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE_NODE",
+            entity_id=row["id"],
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_NODE_CREATE",
+            entity_id=row["id"],
+            result_version=row["version"],
+            response_payload=row,
+        )
     return row
 
 
@@ -261,11 +327,15 @@ def update_node(
     node_id: UUID,
     payload: NodeUpdate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     updates = payload.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(400, "NO_CHANGES")
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="WORKSITE_NODE_UPDATE")
+        if receipt:
+            return replay_payload(receipt)
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "worksite.structure.edit")
         if "parent_id" in updates and updates["parent_id"] is not None:
@@ -292,7 +362,36 @@ def update_node(
         row = cur.fetchone()
         if not row:
             raise HTTPException(404, "NODE_NOT_FOUND")
+        row = dict(row)
         cur.execute("UPDATE tb.worksites SET version = version + 1, updated_at = now() WHERE id = %s", (worksite_id,))
+        emit_change(
+            cur,
+            company_id=context["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE_NODE",
+            entity_id=node_id,
+            operation="UPDATE",
+            entity_version=row["version"],
+            actor_user_id=user["user_id"],
+        )
+        audit(
+            cur,
+            action="WORKSITE_NODE_UPDATE",
+            actor_user_id=user["user_id"],
+            company_id=context["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE_NODE",
+            entity_id=node_id,
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_NODE_UPDATE",
+            entity_id=node_id,
+            result_version=row["version"],
+            response_payload=row,
+        )
     return row
 
 
@@ -301,17 +400,59 @@ def delete_node(
     worksite_id: UUID,
     node_id: UUID,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ):
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="WORKSITE_NODE_DELETE")
+        if receipt:
+            return None
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "worksite.structure.edit")
         cur.execute(
-            "UPDATE tb.worksite_nodes SET deleted_at = now(), version = version + 1, updated_at = now() WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL RETURNING id",
+            "UPDATE tb.worksite_nodes SET deleted_at = now(), version = version + 1, updated_at = now() WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL RETURNING version",
             (node_id, worksite_id),
         )
-        if not cur.fetchone():
+        row = cur.fetchone()
+        if not row:
             raise HTTPException(404, "NODE_NOT_FOUND")
+        version = row["version"]
         cur.execute("UPDATE tb.worksites SET version = version + 1, updated_at = now() WHERE id = %s", (worksite_id,))
+        cur.execute(
+            """
+            INSERT INTO tb.deletion_tombstones(company_id, worksite_id, entity_type, entity_id, deleted_by)
+            VALUES (%s,%s,'WORKSITE_NODE',%s,%s)
+            ON CONFLICT (entity_type, entity_id) DO NOTHING
+            """,
+            (context["company_id"], worksite_id, node_id, user["user_id"]),
+        )
+        emit_change(
+            cur,
+            company_id=context["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE_NODE",
+            entity_id=node_id,
+            operation="DELETE",
+            entity_version=version,
+            actor_user_id=user["user_id"],
+        )
+        audit(
+            cur,
+            action="WORKSITE_NODE_DELETE",
+            actor_user_id=user["user_id"],
+            company_id=context["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE_NODE",
+            entity_id=node_id,
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_NODE_DELETE",
+            entity_id=node_id,
+            result_version=version,
+            response_payload={"deleted": True},
+        )
     return None
 
 
@@ -343,11 +484,15 @@ def add_member(
     worksite_id: UUID,
     payload: MemberAdd,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     role = payload.worksite_role.upper()
     if role not in {"RESPONSIBLE_TB", "TB", "HELPER", "READ_ONLY"}:
         raise HTTPException(400, "INVALID_WORKSITE_ROLE")
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="WORKSITE_MEMBER_ADD")
+        if receipt:
+            return replay_payload(receipt)
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "members.manage")
         cur.execute("SELECT company_id FROM tb.worksites WHERE id = %s", (worksite_id,))
@@ -387,7 +532,7 @@ def add_member(
                 user["user_id"],
             ),
         )
-        membership = cur.fetchone()
+        membership = dict(cur.fetchone())
 
         if role in {"RESPONSIBLE_TB", "TB"}:
             cur.execute(
@@ -436,6 +581,35 @@ def add_member(
                 """,
                 (payload.team_id, payload.user_id),
             )
+        emit_change(
+            cur,
+            company_id=context["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE_MEMBERSHIP",
+            entity_id=membership["id"],
+            operation="UPSERT",
+            entity_version=membership["permissions_version"],
+            actor_user_id=user["user_id"],
+        )
+        audit(
+            cur,
+            action="WORKSITE_MEMBER_UPSERT",
+            actor_user_id=user["user_id"],
+            company_id=context["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE_MEMBERSHIP",
+            entity_id=membership["id"],
+            details={"member_user_id": str(payload.user_id), "role": role},
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_MEMBER_ADD",
+            entity_id=membership["id"],
+            result_version=membership["permissions_version"],
+            response_payload=membership,
+        )
     return membership
 
 
@@ -445,8 +619,12 @@ def update_member_permissions(
     member_user_id: UUID,
     payload: MemberPermissionsUpdate,
     user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="WORKSITE_MEMBER_PERMISSIONS_UPDATE")
+        if receipt:
+            return replay_payload(receipt)
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "members.manage")
         cur.execute("SELECT profile_key FROM tb.permission_profiles WHERE profile_key = %s", (payload.permission_profile,))
@@ -477,6 +655,36 @@ def update_member_permissions(
         row = cur.fetchone()
         if not row:
             raise HTTPException(404, "MEMBERSHIP_NOT_FOUND")
+        row = dict(row)
+        emit_change(
+            cur,
+            company_id=context["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE_MEMBERSHIP",
+            entity_id=row["id"],
+            operation="UPDATE",
+            entity_version=row["permissions_version"],
+            actor_user_id=user["user_id"],
+        )
+        audit(
+            cur,
+            action="WORKSITE_MEMBER_PERMISSIONS_UPDATE",
+            actor_user_id=user["user_id"],
+            company_id=context["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE_MEMBERSHIP",
+            entity_id=row["id"],
+            details={"member_user_id": str(member_user_id)},
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_MEMBER_PERMISSIONS_UPDATE",
+            entity_id=row["id"],
+            result_version=row["permissions_version"],
+            response_payload=row,
+        )
     return row
 
 

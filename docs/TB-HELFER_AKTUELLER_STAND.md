@@ -15,6 +15,7 @@ Maßgeblich sind der aktuelle GitHub-Code im aktiven Branch, `docs/TB-HELFER_PRO
 - Mängel/Abnahmen: `40249785879b82714b7d2df822e9e52fb7fb750c`
 - Vermessungsoriginale/Track: `a84c3607512a61145eba85309aa80bc2d6f015f0`
 - Idempotenz-Grundlage: `d46650a938ab370c6f3b65d97852b2168ea08287`
+- Mängel/Abnahmen replay-sicher: `755efa80840fad5b2208f8b42e174b9df4eb6ae4`
 - Android bleibt vorerst Testclient: Buildkandidat **200050**
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
 
@@ -39,7 +40,14 @@ Vorhanden sind:
 
 ### Baustellen / Rechte / Teams
 
-Vorhanden sind Baustellen und Unterbaustellen mit UUIDs, Mitgliedschaften, Rechteprofile/Overrides, Teams mit `active_btb_id`, serverseitige Rechteprüfung sowie Change-/Audit-Ereignisse.
+Vorhanden sind Baustellen und Unterbaustellen mit UUIDs, Mitgliedschaften, Rechteprofile/Overrides, Teams mit `active_btb_id` und serverseitige Rechteprüfung.
+
+Neu im aktuellen Block:
+- Worksite-, Knoten- und Mitgliedschaftsmutationen verwenden den zentralen Receipt-/Replay-Vertrag;
+- `WORKSITE_CREATE`, `WORKSITE_NODE_CREATE`, `WORKSITE_NODE_UPDATE`, `WORKSITE_NODE_DELETE`, `WORKSITE_MEMBER_ADD`, `WORKSITE_MEMBER_PERMISSIONS_UPDATE` sind bei gleicher `X-Client-Change-Id` wiederholbar;
+- Knotenänderungen erzeugen Change-Feed- und Audit-Ereignisse;
+- Mitgliedschafts-/Rechteänderungen erzeugen Change-Feed- und Audit-Ereignisse;
+- gelöschte Worksite-Knoten erhalten Tombstones.
 
 Capabilities: `worksite_tree_v1`, `worksite_permissions_v1`, `worksite_teams_v1` = `true`.
 
@@ -47,17 +55,35 @@ Capabilities: `worksite_tree_v1`, `worksite_permissions_v1`, `worksite_teams_v1`
 
 Vorhanden sind BTB-Kopf, einzelne versionierte `btb_entries`, Versionskonflikte, aktiver BTB je Team, erster unveränderlicher Original-Snapshot beim Abschluss, Rework, Tombstone-Löschen, Change Feed und SSE-Live-Signal.
 
+Neu im aktuellen Block sind replay-sichere Mutationen für:
+- BTB anlegen;
+- BTB-Kopf ändern;
+- Eintrag anlegen/ändern/löschen;
+- BTB abschließen;
+- BTB zur Nachbearbeitung öffnen;
+- BTB löschen.
+
 Capabilities: `btb_entries_v1=true`, `btb_live_sync_v1=true`, `btb_finalize_with_pdf_v1=false`.
 
 ### Dateien / Bilder / Chunkupload
 
 `server/tbserver/files.py` enthält resumierbare sequenzielle Upload-Sessions mit 8 MiB Standard-/16 MiB Maximal-Chunk, Offset-/Größen-/SHA-256-Prüfung, fsync, atomarem Abschluss in UUID-basierte Storage-Pfade, `tb.files`, `tb.file_links`, geschütztem Abruf, Upload-Abbruch sowie Change/Audit.
 
+Neu im aktuellen Block:
+- Upload-Session-Erstellung replay-sicher;
+- Dateiabschluss replay-sicher, sodass ein Netzabbruch nach erfolgreichem Abschluss keine zweite Datei erzeugt;
+- Upload-Abbruch replay-sicher;
+- Chunk-Schreiben bleibt absichtlich offset-basiert; der Server lehnt falsche/alte Offsets ab und der Client kann den Sessionstand abfragen.
+
 Capabilities: `files_v1=true`, `chunk_upload_v1=true`, `company_logo_v1=false`.
 
 ### Mängel / Abnahmen
 
 `server/tbserver/defects.py` und `acceptances.py` unterstützen Anlegen, Lesen, Bearbeiten und Schließen/Finalisieren mit optionaler Client-UUID, Knotenzuordnung, Rechten, `base_version`, `409 VERSION_CONFLICT`, Change Feed und Audit.
+
+Replay-sicher sind:
+- `DEFECT_CREATE`, `DEFECT_UPDATE`, `DEFECT_CLOSE`;
+- `ACCEPTANCE_CREATE`, `ACCEPTANCE_UPDATE`, `ACCEPTANCE_FINALIZE`.
 
 Capabilities: `defects_v1=true`, `acceptances_v1=true`.
 
@@ -74,7 +100,7 @@ Capabilities: `defects_v1=true`, `acceptances_v1=true`.
 
 Capabilities: `survey_originals_v1=true`, `track_data_v1=true`.
 
-### Idempotenz / Offline-Replay
+### Idempotenz / Offline-Replay – Kernvertrag vollständig
 
 `server/tbserver/idempotency.py` nutzt `tb.mutation_receipts` und `X-Client-Change-Id`.
 
@@ -86,12 +112,9 @@ Technische Regel:
 - erneuter identischer Request bekommt die gespeicherte Antwort;
 - Wiederverwendung der Change-ID für einen anderen Mutationstyp ergibt `409 CLIENT_CHANGE_ID_REUSED`.
 
-Bereits umgestellt:
-- `TRACK_DATA_CREATE`, `TRACK_DATA_UPDATE`, `TRACK_DATA_DELETE`;
-- `DEFECT_CREATE`, `DEFECT_UPDATE`, `DEFECT_CLOSE`;
-- `ACCEPTANCE_CREATE`, `ACCEPTANCE_UPDATE`, `ACCEPTANCE_FINALIZE`.
+Der fachliche Kern ist jetzt abgedeckt für Track-Daten, Mängel, Abnahmen, BTB, Baustellenstruktur/Mitglieder und Upload-Lebenszyklus. Capability: **`idempotent_mutations_v1=true`**.
 
-Noch nicht serverweit abgeschlossen: BTB, Baustellen-/Teamänderungen und Dateiabschluss müssen denselben Receipt-Vertrag noch erhalten. Deshalb gibt es bewusst noch keine Capability „vollständig idempotent“.
+Portal-/Admin-Stammdatenmutationen sind kein Offline-Outbox-Fachpfad und werden separat betrachtet. Binäre Upload-Chunks sind absichtlich über Upload-ID + Offset geschützt statt über Mutation-Receipts.
 
 ## Tests / Checks
 
@@ -103,19 +126,21 @@ Server-Checks:
 - `24_verify_tb_server_1_defects_acceptances_source.py`
 - `25_verify_tb_server_1_track_survey_source.py`
 - `26_verify_tb_server_1_idempotency_source.py`
+- `27_verify_tb_server_1_replay_coverage_source.py`
 
-Der Workflow prüft außerdem die frische Baseline, Kerntabellen einschließlich `mutation_receipts`, Bootstrap, Health und Capabilities.
+`27` parst BTB-, Worksite- und Datei-Module per AST und prüft die erwarteten Receipt-Typen, Change-/Audit-Marker und die Capability `idempotent_mutations_v1`.
+
+Der Workflow prüft außerdem frische Baseline, Kerntabellen einschließlich `mutation_receipts`, Bootstrap, Health und aktivierte Capabilities.
 
 ### Bekanntes GitHub-Actions-Problem
 
-Ein geprüfter TB-Server-Workflow wurde bereits vor dem ersten Step beendet: `runner_id=0`, keine Steps, keine Job-Logs. Dieser rote Lauf ist daher kein ausgeführter Python-/PostgreSQL-Test. Das Runner-/Actions-Problem muss separat geklärt werden. Der zuvor veraltete Capability-Test wurde korrigiert.
+Die zuletzt geprüften TB-Server-Workflow-Läufe wurden bereits vor dem ersten Step beendet: `runner_id=0`, keine Steps, keine Job-Logs. Diese roten Läufe sind daher keine ausgeführten Python-/PostgreSQL-Tests. Das Runner-/Actions-Problem muss separat geklärt werden.
 
-Android-CI ist inzwischen auf Android-/Gradle-relevante Pfade begrenzt; reine Änderungen unter `server/tbserver/**` sollen keinen vollständigen Android-Build auslösen.
+Android-CI ist auf Android-/Gradle-relevante Pfade begrenzt; reine Änderungen unter `server/tbserver/**` sollen keinen vollständigen Android-Build auslösen.
 
-## Offen
+## Bekannte/offene Punkte
 
-- Idempotenz auf BTB, Baustellen/Teams und Dateiabschluss ausrollen;
-- Android-Geräteauthentifizierung für `/api/v1`;
+- Android-Geräteaktivierung/-authentifizierung v1 für `/api/v1`;
 - Parser/Katalogisierung für TRA/KF/GRA/KOR/KV/GVP und Abschnittszusammenführung;
 - echtes BTB-Abschluss-PDF + Nachbearbeitungsmodell;
 - Firmenlogo/PDF-Layout;
@@ -129,11 +154,10 @@ Android-CI ist inzwischen auf Android-/Gradle-relevante Pfade begrenzt; reine Ä
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Receipt-Idempotenz auf BTB, Baustellen/Teams und Dateiabschluss ausrollen.
-2. Geräteauthentifizierung v1 für Android ergänzen.
-3. Vermessungsparser/Katalogisierung auf der unveränderlichen Originalablage ergänzen.
-4. Portal/PDF/Admin/Releases schließen.
-5. Backup/Restore/Reset + E2E testen.
-6. Erst danach NAS-Cutover und Android-Umstellung.
+1. Geräteaktivierung/-authentifizierung v1 für Android gegen die vorhandenen `devices`/`device_activation_tokens`-Tabellen bauen; Standardregel: ein aktives Gerät pro Benutzer.
+2. Vermessungsparser/Katalogisierung auf der unveränderlichen Originalablage ergänzen.
+3. Portal/PDF/Admin/Releases schließen.
+4. Backup/Restore/Reset + E2E testen.
+5. Erst danach NAS-Cutover und Android-Umstellung.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
