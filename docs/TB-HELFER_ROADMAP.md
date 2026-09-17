@@ -1,311 +1,224 @@
 # TB-Helfer – Entwicklungsroadmap
 
-Stand: 2026-09-16
+Stand: 2026-09-17
 
-Diese Roadmap sammelt die noch offenen Änderungswünsche aus Projektregeln, aktuellem GitHub-Stand, Chat-Übergaben und den im Projekt verfügbaren bisherigen Chats. Sie ist keine zweite Source of Truth für Fachregeln: Fachliche Regeln stehen in `docs/TB-HELFER_PROJEKTREGELN.md`, der aktuelle technische Stand in `docs/TB-HELFER_AKTUELLER_STAND.md`.
+Diese Roadmap beschreibt die verbindliche Reihenfolge ab dem Wechsel auf **TB-Server 1.0 zuerst**. Fachliche Detailregeln stehen in `docs/TB-HELFER_PROJEKTREGELN.md`, der aktuelle technische Stand in `docs/TB-HELFER_AKTUELLER_STAND.md`, die vollständige Serverarchitektur in `docs/TB-SERVER_1_0_ZIELMODELL.md`.
 
 ## Grundstrategie
 
-**Zuerst Android stabil und vollständig machen, danach den produktiven Server/NAS ausbauen.**
+**Zuerst TB-Server 1.0 als vollständige stabile Grundlage bauen, danach Android systematisch an den festen Serververtrag anbinden.**
 
-Ausnahme: Wenn eine Android-Funktion zwingend einen noch fehlenden Serververtrag/API-Endpunkt benötigt, wird Android vorbereitet und die produktive Serveränderung ausdrücklich in die Serverphase verschoben. Keine produktive Migration nur für einen Zwischen-Test.
+Grund für die Richtungsänderung: Der bisherige Android-first-Weg führte wiederholt zu Zwischenlösungen, weil Hauptbaustelle, Unterbaustellen, BTB-Lebenszyklus, Rechte, Fotos und Streckendaten serverseitig noch nicht als einheitliches Modell vorhanden waren.
 
-Für jeden Update-Block gilt:
-1. aktuellen GitHub-Stand prüfen;
-2. vorhandenen Code und Entscheidungen verstehen;
-3. einen zusammenhängenden Funktionsblock ändern;
-4. Source-/Unit-Checks und lokalen Android-Build ausführen;
-5. Poco testen;
-6. Pixel/Zwei-Geräte-Verhalten testen, wenn relevant;
-7. Offline -> Online testen, wenn Sync betroffen ist;
-8. `docs/TB-HELFER_AKTUELLER_STAND.md` aktualisieren;
-9. erst danach den nächsten Block beginnen.
+Android 200050 bleibt vorerst Testclient. Keine weiteren kosmetischen Android-Hotfixes außer echten Blockern, bis der Server-1.0-Vertrag steht und End-to-End testbar ist.
 
-Keine parallelen Ersatzsysteme bauen. Vorhandene Speicher-, Sync-, Foto-, BTB- und Vermessungspfade erweitern.
+Der bisherige Serverbestand ist Testbestand. Benutzer, Baustellen und Testfachdaten dürfen beim 1.0-Cutover verworfen werden. **Originale Vermessungsdaten bleiben unverändert.** Vor jeder produktiven NAS-/DB-Änderung wird trotzdem ein vollständiges verifiziertes Backup erstellt.
 
 ---
 
-# PHASE A – ANDROID ZUERST
+# PHASE S0 – SERVER-1.0-VERTRAG UND SAUBERER ENTWICKLUNGSRAHMEN
 
-## A0 – Android 200050 und Auto-Sync stabilisieren
-
-Aktueller Kandidat: **200050**.
-
-Bereits umgesetzt, aber noch lokal zu bauen/prüfen:
-- BTB-Auto-Sync: lokal zuerst speichern, danach vorhandenen `SofortSync` anstoßen;
-- Punkte 4–8 verwenden denselben direkten `Bilder`-Pfad und jeweils den passenden `Bildtyp`;
-- `Bilder | Abbrechen | Hinzufügen` gleich breit/hoch und horizontal;
-- moderner BTB-Medien-Sync strikt über dieselbe `btbId` statt Zeitfenster;
-- Legacy-Zeitfenster nur für Altbestand ohne `btbId`;
-- Hintergrund-Sync liest alle Baustellenfotos unabhängig vom gerade geöffneten UI-BTB;
-- Firmenlogo im PDF bekommt ausdrücklich weißen Hintergrund.
-
-Praktisch testen:
-- `Fetch -> Pull -> Clean -> Build`;
-- Punkte 4–8: je Text + Bild;
-- Poco -> Pixel ohne manuellen Sync;
-- Pixel -> Poco;
-- offline speichern -> Netz wieder an;
-- zwei überlappende BTBs dürfen Fotos nicht vermischen;
-- abgeschlossener BTB bleibt im Verlauf und wird nicht automatisch reaktiviert;
-- nur `BTB bearbeiten` reaktiviert dieselbe `btbId`;
-- PDF-Firmenlogo weiß hinterlegt.
-
-Abschlusskriterium A0:
-- Build grün;
-- Punkte 4–8 inkl. Bilder auf beiden Geräten richtig;
-- kein Datenverlust/keine falsche Fotozuordnung;
-- Kamera/KM ohne Regression.
-
-## A1 – Einstellungen vollständig prüfen, reparieren und neu strukturieren
-
-Bestätigter Fehler: Foto-Aufdruck-/Overlay-Schalter springen nach Verlassen der Seite wieder auf `aus`.
-
-Für jede Einstellung prüfen:
-- Wert laden;
-- Änderung speichern;
-- zurück -> erneut öffnen -> Wert bleibt;
-- App schließen -> neu öffnen -> Wert bleibt;
-- Hell/Dunkel/System wechseln -> Wert bleibt;
-- sichtbare Einstellung hat tatsächlich Wirkung;
-- tote/doppelte/widersprüchliche Optionen entfernen;
-- Initialisierungs-Listener dürfen keine Standardwerte zurückspeichern.
-
-Neue Hauptstruktur:
-1. **Profil & Firma** – Person, Firma, Logo, Gerät/Aktivierung, letzte Serveraktualisierung.
-2. **Anzeige** – System/Hell/Dunkel, Listen-/Spaltenansicht, Widget.
-3. **Kamera & Fotos** – Fotoqualität und verständlicher `Foto-Aufdruck` statt technischem `Overlay`.
-4. **BTB & PDF** – Fotoanzahl/Raster, PDF-Kopf, Logo, Vorschau.
-5. **Synchronisation** – Auto-Sync, WLAN/Mobilfunk, letzter Sync, manueller Sync.
-6. **Benachrichtigungen**.
-7. **Wartung & Diagnose**.
-
-Gerätespezifisch bleiben u. a. Theme, Widget, Fotoqualität, Foto-Aufdruck und Anzeigeoptionen. Firmenstammdaten/Logo, Benutzeridentität, Baustellen-/Teamdaten und später firmenweites PDF-Layout sind Serverdaten.
-
-## A2 – Kamera, Fotos und Foto-Aufdruck fertigstellen
-
-Ziel: `Live-Kamera -> Foto erfassen -> JPG -> Foto-Detail -> PDF` zeigt konsistente Daten.
-
-Fertigstellen/prüfen:
-- Foto-Aufdruck bleibt gespeichert und wird ins JPG eingebrannt;
-- KM im Aufdruck groß/fett;
-- KM/GPS/Baustelle/Strecke-Gleis/Firma überall identisch;
-- `Strecke/Gleis: 5362-1` statt unpassendem `Strecke/Bahnhof: -`, wenn Struktur vorhanden;
-- keine falschen Hilfsnamen;
-- 10/30-m-Ampel beibehalten;
-- GVP/Mast/AP/KOR nicht ohne reproduzierbaren Fehler verändern;
-- externe Galerie-Fotos sauber importieren;
-- normale Baustellenfotos ohne `btbId` bleiben außerhalb moderner BTBs;
-- Foto speichern -> lokal zuerst -> vorhandenen Sync anstoßen -> offline später nachliefern.
-
-## A3 – BTB als echtes TB-/Helfer-/Mehrgeräte-System
-
-Verbindlich:
-- ein verantwortlicher TB + seine Helfer teilen ihren eigenen BTB-Bereich;
-- anderer verantwortlicher TB auf derselben Baustelle hat einen getrennten BTB-Bereich;
-- gleicher offener BTB auf Poco/Pixel = gleiche `btbId`;
-- Punkte **4–8 einschließlich Bilder** gehören zu genau diesem gemeinsamen BTB und müssen in beide Richtungen synchronisieren;
-- mehrere BTBs pro Tag möglich;
-- Mitternacht ändert die `btbId` nicht;
-- Abschluss löst aktive `btbId`;
-- Verlauf bleibt erhalten;
-- `BTB bearbeiten` reaktiviert exakt denselben BTB.
-
-Zusätzliche ältere Wünsche:
-- Dunkelmodus-Kontrast im Dialog `Neuen BTB starten`;
-- Start-/Endzeit über grafischen TimePicker;
-- Hinweis nach erstem Abschluss: erster Abschluss ist unveränderliches Original, spätere fachliche Änderungen rot;
-- ggf. später sinnvolle ZIP-/Teilen-Aktion nach Abschluss.
-
-## A4 – Baustellen-/Unterbaustellen-/Strecke-Gleis-Struktur auf Android
-
-Bekanntes Problem: Poco kennt z. B. `5362-1` und `Durchlass`, Pixel/Helfer teilweise nur die Hauptbaustelle.
-
-Verbindliches Ziel:
-- der Helfer soll gemeinsame Unterbaustellen **nicht manuell neu anlegen**;
-- verantwortlicher TB erstellt/verwaltet die gemeinsame Struktur;
-- Helfer erhält automatisch den freigegebenen Teilbaum;
-- verantwortlicher TB erhält die für ihn vollständige gemeinsame Struktur;
-- Hauptbaustelle -> Unterbaustellen -> Strecke/Gleis -> Weichen/Objekte;
-- stabile IDs statt sichtbarer Namen;
-- mehrere Baustellen lokal, genau eine aktuell;
-- keine Datenvermischung beim Wechsel;
-- Teamumfang und letzter Sync-Stand sichtbar.
-
-Es gibt **keinen einfachen Server-Schalter**, der den heute fehlenden Baum-Sync aktiviert. Schema 10 besitzt Team-/Einladungs-/`area_scope`-Grundlagen, aber die vollständige lokale `BaustellenKnoten`-Synchronisation ist noch ein Entwicklungsblock. Android zuerst vorbereiten, fehlenden Serververtrag später in S2 ergänzen.
-
-## A5 – Profil, Firma, Gerät und Firmenlogo
-
-Ziel: `QR/Aktivierung -> Benutzer/Firma/Logo laden -> lokal cachen -> BTB/PDF verwendet dieselben Stammdaten`.
-
-Profilseite:
-- Benutzername;
-- persönliche Telefon/E-Mail lokal bearbeitbar;
-- Firma, Anschrift, Firmen-Telefon/-E-Mail;
-- Firmenlogo;
-- Gerätestatus;
-- letzte Serveraktualisierung;
-- maskierte Support-/Aktivierungskennung;
-- später gültig bis / Resttage / `LÄUFT BALD AB`.
-
-Firmenlogo:
-- Standardformat **PNG**;
-- transparentes PNG zulässig;
-- Android-PDF zeichnet weißen Hintergrund;
-- JPG/WebP weiterhin lesbar;
-- SVG derzeit nicht verwenden, solange PDF-Renderer Bitmap-Dateien erwartet.
-
-Servermodell dafür bereits in Schema 10 angelegt: Datei separat speichern, DB hält u. a. Pfad, MIME-Typ, SHA-256 und Version. Schema 12 betrifft später das firmenweite PDF-/Logo-Layout.
-
-## A6 – PDF, DOCX, Abschluss und Archive
-
-Offen:
-- gleiche fachliche Fotos im PDF wie im Editor gruppieren, inkl. Zeitspanne/Bildbereich;
-- Original-/Nachtragsgruppen korrekt trennen;
-- neue/geänderte fachliche Inhalte rot;
-- entfernte Originalinhalte rot `(entfernt) ...`;
-- Strukturüberschriften schwarz;
-- Fotozeile im Hauptteil und Fotoanhang gleiche Rotlogik;
-- pro `btbId` höchstens ein gültiges Abschluss-PDF;
-- DOCX langfristig gleiche Original-/Rotlogik;
-- Tagesabschluss-ZIP, Zeitraum-ZIP, Gesamtarchiv;
-- PDF/DOCX/Bilder vollständig und ohne falsche Zuordnung;
-- Windows/Laptop später auf dieselbe Fachlogik aufsetzen.
-
-## A7 – Mängel, Abnahmen und weitere mobile Abläufe
-
-Android zuerst lokal/offline stabil:
-- Mängel;
-- Abnahmen;
-- Fotos/Anhänge eindeutig;
-- SKV-Abnahme inkl. GPS als späterer Fachblock;
-- vereinfachte Mangelaufnahme `Was? -> Wo? -> Was ist los?`;
-- Spracheingabe;
-- externe Fotos in passende Fachvorgänge übernehmen.
-
-## A8 – Vermessung / Streckendaten Android
-
-Bestehende funktionierende KM-/GVP-Logik nicht ohne reproduzierbaren Fehler umbauen.
-
-Langfristig:
-- TRA/GRA/KF/KOR/KV nachvollziehbar;
-- Originaldaten unverändert;
-- nur benötigte Daten offline;
-- bearbeitete/berechnete Abschnitte getrennt vom Original;
-- Bereiche z. B. 40–70, 70–80, 80–130 kombinierbar;
-- grafische Übersicht der Gleise/TRA und Bearbeitungsstände;
-- Farbregeln: grün belastbare Original-KM, orange manuell, rot TRA ohne belastbare KM, grau ohne Geometrie, blau Auswahl;
-- Weichen/DKW/Kreuzungen fachlich berücksichtigen.
-
-## A9 – Android technische Bereinigung / Release-Gate
-
-Erst nach funktionaler Stabilität:
-- Generated-Source-Brücke seit 200043 zurückbauen;
-- Gradle-/Configuration-Cache-Warnungen bereinigen;
-- tote Legacy-Pfade entfernen, Altbestand lesbar halten;
-- GitHub Actions wieder zuverlässig machen;
-- Unit-/Source-/Integrationstests ausbauen;
-- Android/API-Verträge für Serverphase einfrieren;
-- stabile Version auf Poco und Pixel dokumentieren.
-
----
-
-# PHASE S – SERVER / NAS DANACH
-
-Produktive Änderungen nur nach frischem verifiziertem Backup. NAS bleibt Source of Truth. Cloudflare normaler App-Sync, Tailscale Wartung/Administration.
-
-## S0 – Backup, Staging, Migrationsplan
-- PostgreSQL-/Dateibackup verifizieren;
-- produktiven Stand dokumentieren;
-- Migration zuerst Staging;
-- Rollback festlegen;
+- eigener Branch `feature/tb-server-1.0`;
+- vollständiges Zielmodell in `docs/TB-SERVER_1_0_ZIELMODELL.md`;
+- modularer Monolith statt Microservice-Split;
+- stabile `/api/v1`-API;
+- `/capabilities` statt Client-Abfragen nach DB-Schema;
+- unveränderliche nummerierte Migrationen mit Prüfsummen;
+- Test-/Staging-/Produktivtrennung;
+- Preflight/Verify für Migrationen;
+- expliziter Testdaten-Resetweg;
 - keine Secrets in GitHub/Logs.
 
-## S1 – Benutzer, Firma, Gerät, Logo und PDF-Layout
-- Schema 11 persönliche Kontakte prüfen/produktisieren;
-- Schema 12 firmenweites PDF-/Logo-Layout prüfen/produktisieren;
-- Firmenstammdaten/Logo zentrale Quelle;
-- Gerätestatus, Aktivierungs-/Ablaufdatum, Resttage;
-- Aktivierungskarte/QR sicher;
-- maskierte Supportkennung.
+Abschlusskriterium: Server-Skelett kann frisch initialisiert, migriert, geprüft und ohne Android gestartet werden.
 
-Logo-Servermodell:
-- vorzugsweise Original-PNG als Datei/Objekt;
-- DB speichert Pfad, `image/png`, SHA-256 und Version;
-- kein separater PDF-Logo-BLOB nötig.
+# PHASE S1 – FIRMA, BENUTZER, CHEF, PORTAL-LOGIN UND GERÄTE
 
-## S2 – Baustellen-/Team-/Unterbaustellen-Sync vollständig
-- gleiche Firma Pflicht;
-- mehrere verantwortliche TBs;
-- getrennte BTB-Gruppen;
-- Hauptbaustelle/Unterbaustellen/Strecke/Gleis/Weichen/Objekte;
-- Verantwortlicher TB vollständige erlaubte Struktur;
-- Helfer nur freigegebener Bereich;
-- Poco-Struktur entsprechend Rechten automatisch auf Pixel;
-- Entfernen/Verlassen serverseitig;
-- historische Daten danach nur lesbar.
+- Firma als Pflichtbezug normaler Nutzer;
+- stabile UUIDs, gleiche sichtbare Namen erlaubt;
+- Firmenrollen `CHEF` und `USER`;
+- mehrere CHEFs pro Firma möglich;
+- CHEF sieht alle Baustellen der eigenen Firma;
+- persönliche E-Mail/Telefon serverseitig synchronisierbar;
+- Firmenstammdaten + Firmenlogo zentral;
+- Portal-Login getrennt vom Geräte-Key;
+- Einmal-Aktivierung, Passwort-Hash, Sessions, CSRF, Rate-Limit;
+- Gerätebindung, Sperren, letzter Sync, App-Build, letzter Fehler;
+- Firmenlogo/PDF-Layout serverseitig versioniert.
 
-## S3 – BTB- und Foto-Sync härten
-- stabile `btbId`;
-- idempotente Uploads;
-- Konflikte nachvollziehbar;
-- Punkte 4–8 und Bilder komplett;
-- Offline-Nachlieferung;
-- keine Duplikate;
-- keine Fotovermischung zwischen BTBs/Teams.
+Abschlusskriterium: Admin kann Firma/CHEF/TB/Helfer anlegen; Nutzer kann sich im Portal anmelden; Gerät kann aktiviert/gesperrt werden.
 
-## S4 – Mängel und Abnahmen synchronisieren
-- Status/Kommentare;
-- Anhänge/Bilder;
-- Berechtigungen;
-- Offline-Nachlieferung;
-- Konfliktregeln;
-- später SKV/GPS.
+# PHASE S2 – BAUSTELLEN, MITGLIEDSCHAFTEN, RECHTE UND TEAMS
 
-## S5 – Vermessungs-/Streckendaten NAS
-- Originale dauerhaft unverändert;
-- App lädt nur benötigte Abschnitte;
-- nur bearbeitete/berechnete Daten zurück;
-- andere Geräte laden gezielt benötigte Gleise/Abschnitte;
-- Bearbeitungsstand nachvollziehbar;
-- langfristige Wiederauffindbarkeit.
+- Baustelle gehört exakt einer Firma;
+- kompletter Unterbaustellen-/Strecke-Gleis-/Objektbaum mit stabilen UUIDs;
+- Rechte serverseitig kanonisch, aber auf Handy und Portal bedienbar;
+- Rechtevorlagen: Verantwortlicher TB, Helfer Standard, Helfer erweitert, Nur Lesen;
+- individuelle Abweichungen pro Benutzer/Baustelle;
+- Rechte u. a. für BTB erstellen/bearbeiten/abschließen/löschen, Bilder, Mängel, Abnahmen, Struktur, Streckendaten, Export;
+- Vertretungsregel: CHEF oder berechtigter TB kann Verantwortung übertragen;
+- mehrere verantwortliche TB-Teams pro Baustelle;
+- andere TB-Teams bleiben beim BTB getrennt.
 
-## S6 – Admin / Windows / Laptop
-- Benutzer/Firma/Geräte;
-- Aktivierungskarten;
-- Baustellen-/Speicherstatus;
-- BTB/Mängel/Abnahmen anzeigen/ausgeben und später ggf. bearbeiten;
-- `Mein Ordner` mit `lesen` bzw. `lesen+bearbeiten`.
+Abschlusskriterium: Nutzer A erstellt Baustelle/Unterbaustellen; Helfer sieht denselben Baum; Rechte werden serverseitig durchgesetzt.
 
-## S7 – End-to-End / Betrieb / Restore
-- Poco + Pixel + Server;
-- Online/Offline/Netzwechsel;
-- mehrere TBs/Helfer;
-- große Daten-/Fotomengen;
-- Backup/Restore praktisch;
-- Monitoring/Logs ohne Geheimnisse.
+# PHASE S3 – SYNC-KERN
+
+- lokale Client-Outbox als verbindlicher Schreibschutz;
+- `client_change_id` für Idempotenz;
+- Server-Eventlog/Change-Cursor;
+- `changes since X` statt Vollsync;
+- Live-Ereignissignal über WebSocket/SSE für geöffnete Clients;
+- Pull bei Start/Resume/Baustelle/BTB;
+- periodischer Hintergrundlauf nur als Sicherheitsnetz;
+- Konflikte auf Datensatz-/Eintragsebene;
+- kein stilles Überschreiben kompletter Fachobjekte.
+
+Abschlusskriterium: Zwei Testclients können offline/online Änderungen erzeugen, ohne Verlust oder Dubletten.
+
+# PHASE S4 – GRANULARER BTB 1.0
+
+- BTB pro verantwortlichem TB-Team;
+- Server hält `active_btb_id` pro Team;
+- sichtbarer Status `BTB aktiv`, nicht `Entwurf`;
+- BTB nicht mehr nur als ein großes überschreibbares JSON;
+- eigene IDs/Versionen für Kopf, Personal, Maschinen, Wetter und einzelne Einträge 4–8;
+- Nutzer 1 und Helfer A können gleichzeitig unterschiedliche Einträge ändern;
+- erster erfolgreicher Abschluss friert Original-Snapshot unveränderlich ein;
+- Abschluss löst `active_btb_id`;
+- bewusste Nachbearbeitung reaktiviert dieselbe `btbId`;
+- Tombstone-Löschung auf allen Teamgeräten;
+- aktuelle Abschluss-PDFs serverseitig gespeichert.
+
+Abschlusskriterium: Erstellen → gemeinsam bearbeiten → gleichzeitig bearbeiten → abschließen → nachbearbeiten → erneut abschließen → löschen funktioniert mit zwei Testclients.
+
+# PHASE S5 – DATEIEN, BILDER UND CHUNKUPLOAD
+
+- Dateiobjekte mit UUID, Firma, Baustelle, Fachbezug, MIME, Größe, SHA-256, Storage-Key, Autor, Zeit, Löschstatus;
+- Bilder nur einmal hochladen;
+- Thumbnails getrennt;
+- große Uploads in 8–16-MiB-Chunks mit Wiederaufnahme;
+- Portalbilder ohne erfundenes GPS;
+- echte Baustellenfotos bleiben beim BTB-Löschen erhalten, wenn fachlich vorgesehen;
+- NAS-Speicher UUID-basiert statt sichtbare Namen als Schlüssel.
+
+Abschlusskriterium: Foto/Datei über einen Client hochladen, auf anderem Client sehen, große Uploads fortsetzen.
+
+# PHASE S6 – MÄNGEL UND ABNAHMEN
+
+- baustellenweite stabile UUIDs;
+- Status, Autor, Version, Kommentare, Bilder;
+- individuelle Rechte für erstellen/bearbeiten/abschließen;
+- Offline-/Konfliktregeln;
+- Gesamtlisten baustellenweit;
+- später SKV/GPS erweiterbar.
+
+# PHASE S7 – STRECKEN- UND VERMESSUNGSDATEN
+
+- NAS-Originale TRA/GRA/KF/KOR/KV/GVP unveränderlich;
+- getrennte versionierte Arbeitsdaten;
+- Achsen, Samples, KM-Quellen, manuelle Korrekturen, bearbeitete Abschnitte, Streckenpunkte;
+- nur benötigte Daten auf Geräte;
+- grafischer Bearbeitungsstand;
+- Farbregeln grün/orange/rot/grau/blau;
+- automatische Zusammenführung nur über stabile Strecken-/Gleis-/Geometrieidentität, nicht nur sichtbare Namen.
+
+# PHASE S8 – TB-HELFER PORTAL
+
+Portal ist vollwertiger Fachclient:
+
+- gleiche Baustellen-/Rechtebasis wie Android;
+- BTB erstellen/bearbeiten/abschließen/nachbearbeiten;
+- Punkte 4–8;
+- Bilder vom PC;
+- Mängel/Abnahmen;
+- PDF/DOCX/Archive;
+- Rechteverwaltung soweit erlaubt;
+- CHEF sieht alle Baustellen seiner Firma;
+- keine mobile Live-GPS-/Kamera-GPS-Funktion;
+- PC-Upload erfindet keine GPS-Daten.
+
+# PHASE S9 – ADMINISTRATION / SYSTEMSTATUS / BACKUP
+
+Admin getrennt vom Benutzerportal.
+
+Übersicht:
+- Speicher gesamt/belegt/frei;
+- Speicher je Firma;
+- Upload/Download 24 h;
+- API-Uptime;
+- DB-Status;
+- Backupstatus;
+- Syncqueue/Fehler;
+- aktive Geräte/Clientversionen;
+- Diagramme.
+
+Zusätzlich:
+- Firmen/Benutzer/Geräte;
+- Dateien;
+- Baustellenstatus;
+- App-Versionen;
+- Papierkorb;
+- Löschcenter;
+- Auditlog;
+- Systemstatus;
+- Restore-Test.
+
+# PHASE S10 – RELEASES UND CLIENTKOMPATIBILITÄT
+
+- Android/iOS/Windows getrennt;
+- Version, Build, SHA-256, Release Notes;
+- Mindestbuild;
+- optional/Pflichtupdate;
+- Capability-Kompatibilität;
+- Android-APK-Download mit normalem Android-Installationsmodell;
+- iOS über Store/TestFlight/MDM-Verweis.
+
+# PHASE S11 – SERVER-1.0-END-TO-END UND CUTOVER
+
+Vor NAS-Cutover:
+
+1. vollständige Integrationschecks;
+2. Firma + CHEF + TB + Helfer;
+3. Portal + Geräteaktivierung;
+4. Baustelle/Unterbaustellen/Rechte;
+5. BTB Team A und Team B;
+6. gleichzeitige Bearbeitung;
+7. Bilder;
+8. Abschluss/Nachbearbeitung/Löschen;
+9. Mängel/Abnahmen;
+10. Streckendaten;
+11. Offline/Online;
+12. Baustellenlöschung/Tombstone;
+13. Backup/Restore;
+14. Client-Kompatibilität.
+
+Dann:
+
+- produktiven Altstand sichern;
+- Backup verifizieren;
+- Testbestand darf verworfen werden;
+- Original-Vermessungsdaten bleiben erhalten;
+- TB-Server 1.0 frisch initialisieren;
+- Admin/Firma/Testnutzer neu anlegen;
+- Cloudflare/Tailscale-Verbindungen prüfen;
+- End-to-End erneut testen.
 
 ---
 
-# Spätere Komfort-/Erweiterungswünsche
+# PHASE A – ANDROID NACH SERVER 1.0
 
-Festgehalten, aber nicht stabilitätsblockierend:
-- Spracheingabe;
-- Niederschlagsmenge in mm bzw. l/m²;
-- vereinfachte Mangelaufnahme;
-- SKV-Abnahme inkl. GPS;
-- `Mein Ordner`;
-- Windows/Laptop-Bearbeitung;
-- iOS erst auf stabilem Android-/Server-Fachmodell.
+Danach Android nicht mehr gegen Zwischenverträge flicken, sondern systematisch an Server 1.0 anbinden:
 
-# Priorität ab jetzt
+1. Auth/Aktivierung/Profil/Firma/Logo;
+2. Baustellenbaum + Mitgliedschaften + Rechte;
+3. Sync-Outbox/Event-Feed/Live-Refresh;
+4. granularer BTB + Punkte 4–8 + Buttons;
+5. Fotos/Dateien;
+6. Mängel/Abnahmen;
+7. Streckendaten;
+8. PDF/Archive;
+9. Einstellungen neu strukturieren und Persistenzfehler beseitigen;
+10. Generated-Source-/Legacy-/CI-Bereinigung;
+11. Poco↔Pixel↔Portal vollständiger Praxistest.
 
-1. **A0 Android 200050 lokal bauen und Poco/Pixel testen.**
-2. **A1 Einstellungen reparieren und neu strukturieren.**
-3. **A2 Foto-Aufdruck/Fotos fertigstellen.**
-4. **A3 BTB-Zwei-Geräte-/Mehrhelfer-Verhalten absichern.**
-5. **A4 Baustellen-/Unterbaustellenstruktur.**
-6. Danach A5–A9.
-7. Erst anschließend Serverphase S0–S7.
-
-Neue Wünsche werden künftig einer Roadmap-Phase zugeordnet und versioniert, statt nur im Chat stehen zu bleiben.
+Bestehende bestätigte Android-KM/GVP/Festpunktlogik wird dabei nicht ohne reproduzierbaren Fehler verändert.
