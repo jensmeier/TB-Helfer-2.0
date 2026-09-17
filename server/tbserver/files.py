@@ -342,13 +342,14 @@ def complete_upload(
             os.replace(temp_path, final_path)
             moved = True
 
+            file_source = "APP" if user.get("auth_kind") == "DEVICE" else "PORTAL"
             cur.execute(
                 """
                 INSERT INTO tb.files(
                     id, company_id, worksite_id, storage_key, original_name, mime_type,
                     byte_size, sha256, source, captured_at, gps_lat, gps_lon,
                     gps_accuracy_m, created_by
-                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'PORTAL',%s,%s,%s,%s,%s)
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 RETURNING *
                 """,
                 (
@@ -360,6 +361,7 @@ def complete_upload(
                     upload["mime_type"],
                     actual_size,
                     actual_sha256,
+                    file_source,
                     payload.captured_at,
                     payload.gps_lat,
                     payload.gps_lon,
@@ -391,11 +393,12 @@ def complete_upload(
                 cur,
                 action="FILE_UPLOAD_COMPLETE",
                 actor_user_id=user["user_id"],
+                actor_device_id=user.get("device_id"),
                 company_id=context["company_id"],
                 worksite_id=upload["worksite_id"],
                 entity_type="FILE",
                 entity_id=file_id,
-                details={"byte_size": actual_size, "sha256": actual_sha256, "target_kind": upload["target_kind"]},
+                details={"byte_size": actual_size, "sha256": actual_sha256, "target_kind": upload["target_kind"], "source": file_source},
             )
             response = {"file": file_row, "link": link_payload}
             finish_mutation(

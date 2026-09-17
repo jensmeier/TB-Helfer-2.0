@@ -32,6 +32,9 @@ def main() -> None:
         ("os.fsync", files_source),
         ("os.replace", files_source),
         ("FILE_LINK_TARGET_NOT_FOUND", files_source),
+        ('file_source = "APP" if user.get("auth_kind") == "DEVICE" else "PORTAL"', files_source),
+        ('actor_device_id=user.get("device_id")', files_source),
+        ('"source": file_source', files_source),
         ("files_router", main_source),
         ('"files_v1": True', caps),
         ('"chunk_upload_v1": True', caps),
@@ -39,7 +42,11 @@ def main() -> None:
     missing = [needle for needle, source in assertions if needle not in source]
     if missing:
         raise SystemExit("Fehlende Datei-/Chunkupload-Vertragsmarker: " + ", ".join(missing))
-    print("OK: TB-Server 1.0 files/chunk upload source contract")
+
+    if "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'PORTAL'" in files_source:
+        raise SystemExit("Datei-Source darf beim gemeinsamen Upload nicht fest auf PORTAL verdrahtet sein")
+
+    print("OK: TB-Server 1.0 files/chunk upload source contract incl. APP/PORTAL classification")
 
 
 if __name__ == "__main__":
