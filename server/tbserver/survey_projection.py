@@ -15,10 +15,12 @@ from .permissions import require_permission, worksite_context
 from .portal import require_csrf
 from .survey_geometry import dbref_to_wgs84, densify_tra_payload, project_wgs84_to_samples, samples_to_wgs84
 from .survey_sections import _build_payload, _insert_points, _load_dataset, _section_response
+from .survey_station_merge import MERGE_VERSION, build_geometry_station_maps, merged_station_for
 
 
 router = APIRouter(prefix="/api/v1", tags=["survey-projection"])
-PROJECTION_VERSION = "survey-projection-v1"
+PROJECTION_VERSION = "survey-projection-v2"
+PROJECTION_GENERATOR_PREFIX = "survey-projection-v"
 
 
 class ProjectionRebuildRequest(BaseModel):
@@ -105,6 +107,7 @@ def _project_source_points(
     dataset_id: UUID,
     source: dict[str, Any],
     geometry: list[dict[str, Any]],
+    station_maps: dict[str, Any],
     primary_geometry_id: UUID,
     expected_route: str | None,
     max_distance_m: float,
@@ -125,6 +128,7 @@ def _project_source_points(
         "skipped_route_mismatch": 0,
         "skipped_too_far": 0,
         "skipped_no_geometry": 0,
+        "skipped_unmapped_geometry": 0,
     }
     if source.get("parse_status") != "PARSED" or not isinstance(raw_points, list):
         return [], summary
@@ -172,11 +176,20 @@ def _project_source_points(
             continue
 
         geometry_id = geometry_item["source"]["original_id"]
+        local_station_m = float(projection["station_m"])
+        merged = merged_station_for(station_maps, geometry_id, local_station_m)
+        if merged is None:
+            # A local station from an unmapped secondary TRA must never enter the
+            # common section station space, not even as a control anchor.
+            summary["skipped_unmapped_geometry"] += 1
+            continue
+        station_m, station_mapping = merged
         route_confirmed = expected_route is not None and route == expected_route
+        station_mapping_reliable = bool(station_mapping.get("reliable_for_auto_anchor"))
         reliable = (
             source["role"] == "KM"
-            and geometry_id == primary_geometry_id
             and route_confirmed
+            and station_mapping_reliable
             and distance_m <= reliable_distance_m
         )
         point_type = "ORIGINAL_ANCHOR" if reliable else "CONTROL_ANCHOR"
@@ -198,12 +211,13 @@ def _project_source_points(
             {
                 "id": deterministic_id,
                 "point_type": point_type,
-                "station_m": float(projection["station_m"]),
+                "station_m": float(station_m),
                 "km_meter": km_meter,
                 "km_after_jump_meter": None,
                 "source_original_id": source["original_id"],
                 "payload": {
                     "generated_by": PROJECTION_VERSION,
+                    "station_merge_version": MERGE_VERSION,
                     "geometry_original_id": str(geometry_id),
                     "source_point_key": _point_key(point, index),
                     "source_point_name": point.get("point_name"),
@@ -216,6 +230,12 @@ def _project_source_points(
                     "projection_quality": projection["quality"],
                     "projected_lat": projection["projected_lat"],
                     "projected_lon": projection["projected_lon"],
+                    "geometry_local_station_m": local_station_m,
+                    "geometry_merged_station_m": float(station_m),
+                    "geometry_station_map_status": station_mapping.get("status"),
+                    "geometry_station_sign": station_mapping.get("station_sign"),
+                    "geometry_station_offset_m": station_mapping.get("station_offset_m"),
+                    "geometry_station_map_reliable": station_mapping_reliable,
                     "primary_geometry": geometry_id == primary_geometry_id,
                     "reliable_distance_m": reliable_distance_m,
                 },
@@ -236,6 +256,7 @@ def build_projection_points(
     if not geometry:
         raise HTTPException(409, "SURVEY_SECTION_GEOMETRY_NOT_PROJECTABLE")
     primary_geometry_id = geometry[0]["source"]["original_id"]
+    station_maps = build_geometry_station_maps(geometry_sources)
     expected_route = _expected_route(dataset, geometry_sources)
     generated: list[dict[str, Any]] = []
     source_summaries: list[dict[str, Any]] = []
@@ -246,6 +267,7 @@ def build_projection_points(
             dataset_id=dataset["id"],
             source=source,
             geometry=geometry,
+            station_maps=station_maps,
             primary_geometry_id=primary_geometry_id,
             expected_route=expected_route,
             max_distance_m=max_distance_m,
@@ -260,6 +282,9 @@ def build_projection_points(
         "primary_geometry_original_id": str(primary_geometry_id),
         "geometry_source_count": len(geometry_sources),
         "projectable_geometry_source_count": len(geometry),
+        "mapped_geometry_source_count": station_maps.get("mapped_count", 0),
+        "reliable_mapped_geometry_source_count": station_maps.get("reliable_mapped_count", 0),
+        "station_merge": station_maps,
         "dense_sample_count": sum(item["sample_count"] for item in geometry),
         "generated_original_anchors": sum(1 for point in generated if point["point_type"] == "ORIGINAL_ANCHOR"),
         "generated_control_anchors": sum(1 for point in generated if point["point_type"] == "CONTROL_ANCHOR"),
@@ -267,6 +292,12 @@ def build_projection_points(
         "reliable_distance_m": reliable_distance_m,
         "sources": source_summaries,
     }
+
+
+def _is_projection_generated(point: dict[str, Any]) -> bool:
+    metadata = point.get("payload")
+    generated_by = metadata.get("generated_by") if isinstance(metadata, dict) else None
+    return isinstance(generated_by, str) and generated_by.startswith(PROJECTION_GENERATOR_PREFIX)
 
 
 @router.post("/survey-sections/{dataset_id}/rebuild-auto-anchors")
@@ -294,12 +325,7 @@ def rebuild_auto_anchors(
             reliable_distance_m=payload.reliable_distance_m,
         )
         existing = _load_existing_points(cur, dataset_id)
-        preserved = [
-            point
-            for point in existing
-            if not isinstance(point.get("payload"), dict)
-            or point["payload"].get("generated_by") != PROJECTION_VERSION
-        ]
+        preserved = [point for point in existing if not _is_projection_generated(point)]
         all_points = preserved + generated
         current_payload = dataset.get("payload") or {}
         rebuilt_payload = _build_payload(
@@ -333,9 +359,9 @@ def rebuild_auto_anchors(
         cur.execute(
             """
             DELETE FROM tb.track_data_km_points
-            WHERE dataset_id = %s AND payload->>'generated_by' = %s
+            WHERE dataset_id = %s AND payload->>'generated_by' LIKE %s
             """,
-            (dataset_id, PROJECTION_VERSION),
+            (dataset_id, PROJECTION_GENERATOR_PREFIX + "%"),
         )
         _insert_points(cur, dataset_id, generated, user["user_id"])
         emit_change(
@@ -358,8 +384,11 @@ def rebuild_auto_anchors(
             entity_id=dataset_id,
             details={
                 "projection_version": PROJECTION_VERSION,
+                "station_merge_version": MERGE_VERSION,
                 "generated_original_anchors": summary["generated_original_anchors"],
                 "generated_control_anchors": summary["generated_control_anchors"],
+                "mapped_geometry_source_count": summary["mapped_geometry_source_count"],
+                "reliable_mapped_geometry_source_count": summary["reliable_mapped_geometry_source_count"],
                 "dense_sample_count": summary["dense_sample_count"],
             },
         )
