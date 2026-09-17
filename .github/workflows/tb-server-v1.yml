@@ -179,6 +179,8 @@ jobs:
               "survey_parser_catalog_v1",
               "survey_section_calibration_v1",
               "survey_projection_v1",
+              "survey_station_merge_v1",
+              "survey_gra_jump_detection_v1",
               "idempotent_mutations_v1",
           }
           missing = sorted(key for key in expected_true if caps["capabilities"].get(key) is not True)
