@@ -20,6 +20,8 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - Raw-KF-Paritätstest: `9378069be8c70fc89696c8c7fbf1b9b051474204`
 - Parser-v2-/Fixture-Stand: `31cbd83b02523522f113c97dac412b3de3c829bf`
 - Abschnittsquellen/KM-Kalibrierung: `1bf2e36271f54c8945653561bc7b46d95131165d`
+- dedizierter Survey-Section-Schreibpfad: `4899fb433ef4a4fd2366691dc4fb088ed38f634d`, `c9f4816e643fbd403fdecfd694caf054458d460c`
+- TRA-Verdichtung / Punktprojektion: `a89537d2469e8aae893bc2002d3c4c20042cbf17`
 - Android bleibt vorerst Testclient: Buildkandidat **200050**
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
 
@@ -82,13 +84,33 @@ Migration `004_survey_sections.sql` ergänzt die bestehenden `track_data`-Arbeit
 - `tb.track_data_sources`: mehrere unveränderliche Originalquellen je `SURVEY_SECTION`, mit Rolle, Reihenfolge und optional umgekehrter Geometrielaufrichtung;
 - `tb.track_data_km_points`: `ORIGINAL_ANCHOR`, `MANUAL_ANCHOR`, `CONTROL_ANCHOR` und `KM_JUMP`.
 
-Die neue Fach-API kann Vermessungsabschnitte anlegen, lesen, auflisten und versioniert aktualisieren. Sie nutzt `track.edit`, `X-Client-Change-Id`, Change Feed und Audit. Mehrere TRA-Quellen werden anhand ihrer DB_REF-Endpunkte diagnostisch als `CONNECTED`, `WARNING`, `OPEN` oder `UNVERIFIED` bewertet; Originaldateien bleiben unverändert.
+Die Fach-API kann Vermessungsabschnitte anlegen, lesen, auflisten und versioniert aktualisieren. Sie nutzt `track.edit`, `X-Client-Change-Id`, Change Feed und Audit. Mehrere TRA-Quellen werden anhand ihrer DB_REF-Endpunkte diagnostisch als `CONNECTED`, `WARNING`, `OPEN` oder `UNVERIFIED` bewertet; Originaldateien bleiben unverändert.
 
 Die KM-Logik übernimmt die bestehende fachliche Richtung aus Android: zwei belastbare Originalanker -> `AUTOMATISCH/GRUEN`; manuelle 2-Punkt-Kalibrierung oder ein Anker plus bekannte Richtung -> `MANUELL/ORANGE`; Geometrie ohne belastbare KM -> `ROT`; fehlende Geometrie -> `GRAU`. KM-Sprünge werden diskret berücksichtigt und verzerren den kontinuierlichen Kalibrierfaktor nicht.
 
-Wichtig: Es wird weiterhin **keine** GRA/KF/GVP→TRA-Zuordnung aus ähnlichen Zahlen oder Dateinamen geraten. `ORIGINAL_ANCHOR` setzt bereits eine belastbare Projektion auf eine TRA-Station voraus. Die echte geometrische Projektion ist der nächste Rechenschritt. Details: `docs/TB-SERVER_1_0_SURVEY_SECTIONS.md`.
+Der generische `track-data`-Create-/Update-Pfad darf `dataset_kind=SURVEY_SECTION` nicht mehr schreiben. Survey-Sections müssen über die dedizierte API laufen, damit Quellen-, Anker- und Kalibrierregeln nicht umgangen werden können. Der bestehende generische Delete-Lebenszyklus mit Tombstone bleibt erhalten.
 
-Capabilities u. a.: `survey_originals_v1=true`, `track_data_v1=true`, `survey_parser_catalog_v1=true`, `survey_section_calibration_v1=true`, `device_fach_api_v1=true`.
+Details: `docs/TB-SERVER_1_0_SURVEY_SECTIONS.md`.
+
+### TRA-Verdichtung / DB_REF / automatische Punktprojektion
+
+Die serverseitige TRA-Geometrie übernimmt die vorhandene Android-Logik:
+- 2,0-m-Verdichtung;
+- Gerade und Kreisbogen analytisch;
+- Übergangsbogen mit 0,5-m-Integration;
+- echte TRA-Knoten bleiben exakte Segmentenden.
+
+Die bestehende Android-Transformation DB_REF/GK -> ETRS89/WGS84 wurde mit denselben Helmertparametern auf den Server portiert und erkennt GK-Streifen 3, 4 und 5 aus dem Rechtswert. Damit können auch vorhandene Zone-3-Roh-KF-Punkte mit TRA-Geometrien verglichen werden, ohne Quellkoordinaten zu verändern.
+
+Neu ist `POST /api/v1/survey-sections/{dataset_id}/rebuild-auto-anchors`. Der Rebuild projiziert koordinatenhaltige Punkte aus verknüpften `KM`-/`CONTROL`-Quellen auf die verdichtete TRA. Ein Punkt wird nur dann automatisch `ORIGINAL_ANCHOR`, wenn Quelle=`KM`, Strecke bestätigt, primäre TRA getroffen und Achsabstand <= 5 m ist. Sonstige Treffer bis 15 m werden höchstens `CONTROL_ANCHOR` und machen die Achse nicht automatisch grün. Explizite Streckenwidersprüche werden verworfen.
+
+GRA wird bewusst nicht geraten: der aktuelle GRA-Parse enthält KM/Höhe, aber keine X/Y-Koordinate. Daher erzeugt GRA allein keine geometrisch belegten Originalanker. Automatisch erzeugte Punkte sind deterministisch und mit `survey-projection-v1` markiert; ein Rebuild ersetzt nur diese erzeugten Punkte und erhält manuelle Anker, KM-Sprünge und andere Fachpunkte.
+
+Bei mehreren TRA-Quellen wird die nächstliegende Geometrie berücksichtigt. Bis die Stationsräume/Überlappungen mehrerer TRA robust verschmolzen sind, können jedoch nur Treffer auf der primären Geometrie `ORIGINAL_ANCHOR` werden; Treffer auf sekundären TRA bleiben Kontrollanker.
+
+Details: `docs/TB-SERVER_1_0_SURVEY_PROJECTION.md`.
+
+Capabilities u. a.: `survey_originals_v1=true`, `track_data_v1=true`, `survey_parser_catalog_v1=true`, `survey_section_calibration_v1=true`, `survey_projection_v1=true`, `device_fach_api_v1=true`.
 
 ## Tests / Checks
 
@@ -96,16 +118,20 @@ Workflow-Zielstand:
 - Migrationen 001 + 002 + 003 + 004;
 - `latest_known=4`, `latest_applied=4`;
 - `survey_parse_catalog`, `track_data_sources` und `track_data_km_points` als Kerntabellen;
-- Source-/Vertragschecks 20–31, einschließlich Raw-KF-Parität, date-safe Dateinamenmetadaten sowie Survey-Section-/KM-Kalibrierlogik;
+- Source-/Vertragschecks 20–32, einschließlich Raw-KF-Parität, date-safe Dateinamenmetadaten, Survey-Section-/KM-Kalibrierlogik sowie TRA-Verdichtung/DB_REF-Projektion;
 - Health/Capabilities/Auth-Checks.
 
 Lokal erfolgreich geprüft:
-- Python-Syntax-/AST-Prüfung der neuen Survey-Section-/Kalibrierdateien;
+- Python-Syntax-/AST-Prüfung der Survey-Section-, Kalibrier-, Geometrie- und Projektionsdateien;
 - automatische 2-Punkt-Kalibrierung (`GRUEN`);
 - manuelle 2-Punkt-Kalibrierung (`ORANGE`);
 - ein Anker + steigende/fallende Richtung;
 - diskreter KM-Sprung ohne Verfälschung des kontinuierlichen Faktors;
-- fehlende KM (`ROT`) und fehlende Geometrie (`GRAU`).
+- fehlende KM (`ROT`) und fehlende Geometrie (`GRAU`);
+- synthetische 10-m-TRA wird exakt auf Stationen 1000/1002/1004/1006/1008/1010 verdichtet;
+- exakter Projektionspunkt auf der Achse -> Station 1004 / 0 m / `GRUEN`;
+- 4,5-m-Seitenabstand -> `GELB`;
+- realer Zone-3-KF-Testpunkt wird mit dem portierten DB_REF-Wandler in eine plausible WGS84-Position in Deutschland transformiert.
 
 Für Parser v2 wurden zusätzlich erfolgreich ausgeführt:
 - vier Raw-KF-Paritätsfälle;
@@ -114,13 +140,14 @@ Für Parser v2 wurden zusätzlich erfolgreich ausgeführt:
 
 ### Bekanntes GitHub-Actions-Problem
 
-Auch der neue TB-Server-Lauf **#76** für Commit `1bf2e36271f54c8945653561bc7b46d95131165d` wurde bereits vor dem ersten Step beendet: Job `foundation`, `steps=[]`, `runner_id=0`, keine ausgeführten Job-Schritte. Das sind **keine ausgeführten Python-/PostgreSQL-Tests**. Das Runner-/Actions-Problem muss separat geklärt werden; lokale Source-/Fixture-Checks dürfen bis dahin nicht als im Runner bestanden bezeichnet werden.
+Auch der TB-Server-Lauf **#83** für Commit `a89537d2469e8aae893bc2002d3c4c20042cbf17` wurde bereits vor dem ersten Step beendet: Job `foundation`, `steps=[]`, `runner_id=0`, keine ausgeführten Job-Schritte. Das sind **keine ausgeführten Python-/PostgreSQL-Tests**. Das Runner-/Actions-Problem muss separat geklärt werden; lokale Source-/Fixture-Checks dürfen bis dahin nicht als im Runner bestanden bezeichnet werden.
 
 ## Bekannte/offene Punkte
 
-- echte geometrische Projektion von GRA/KF/KV/GVP/Festpunkten auf TRA und daraus belastbare `ORIGINAL_ANCHOR` erzeugen;
-- TRA-2-m-Verdichtung und DB_REF->WGS84 als abgeleitete serverseitige Rechenschritte;
-- robuste Überlappungs-/Abschnittsverschmelzung über die aktuelle Endpunktdiagnose hinaus;
+- neue Punktprojektion mit echten passenden TRA+KF/KV/GVP-Projektdateien end-to-end verifizieren und Abstandsgrenzen nur anhand realer Treffer weiter schärfen;
+- GRA nur dann einer TRA-Station zuordnen, wenn aus realen Daten ein belastbarer Zuordnungsmechanismus belegt ist; aktuell kein X/Y im GRA-Parse, daher keine automatische Projektion;
+- robuste Stationsraum-/Überlappungsverschmelzung mehrerer TRA-Quellen über die aktuelle Endpunktdiagnose hinaus;
+- Verdichtungs-/Projektionsdaten bei Bedarf performant cachen, ohne die unveränderlichen Originale zu verändern;
 - rohe/unbekannte KOR fachlich nur dann ergänzen, wenn das Format belastbar belegt ist; bis dahin `UNSUPPORTED`;
 - Android-Fachclient auf alle Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen;
 - echtes BTB-Abschluss-PDF + Nachbearbeitungsmodell;
@@ -130,8 +157,8 @@ Auch der neue TB-Server-Lauf **#76** für Commit `1bf2e36271f54c8945653561bc7b46
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. GRA/KF/KV/GVP-/Festpunkte geometrisch auf TRA projizieren und nur daraus belastbare automatische KM-Anker erzeugen.
-2. Danach TRA-2-m-Verdichtung und DB_REF->WGS84 serverseitig schließen und Überlappungen robuster verschmelzen.
+1. Reale TRA+KF/KV/GVP-Projektdateien durch Import/Parse/Projektion/Kalibrierung testen und die tatsächlichen Achsabstände/Stationswerte dokumentieren.
+2. Danach robuste Stationsraum-/Überlappungsverschmelzung mehrerer TRA-Quellen bauen; GRA nur mit belegtem Zuordnungsmechanismus ergänzen.
 3. Android-Fachvertrag praktisch gegen TB-Server 1.0 testen.
 4. Portal/PDF/Admin/Releases schließen.
 5. Backup/Restore/Reset + E2E testen.
