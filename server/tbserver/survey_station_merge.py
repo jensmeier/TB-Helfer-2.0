@@ -4,9 +4,9 @@ import math
 import statistics
 from typing import Any
 
-from .survey_geometry import densify_tra_payload
+from .survey_tra_chainage import densify_tra_chainage_payload, tra_station_discontinuities
 
-MERGE_VERSION = "survey-station-merge-v1"
+MERGE_VERSION = "survey-station-merge-v2"
 OVERLAP_MAX_DISTANCE_M = 1.0
 OVERLAP_MIN_MATCHES = 5
 OVERLAP_MIN_SPAN_M = 50.0
@@ -64,7 +64,7 @@ def geometry_axis_compatible(left: dict[str, Any], right: dict[str, Any]) -> tup
 
 
 def _samples(source: dict[str, Any]) -> list[dict[str, float]]:
-    dense = densify_tra_payload(source.get("parse_payload") or {})
+    dense = densify_tra_chainage_payload(source.get("parse_payload") or {})
     return list(reversed(dense)) if source.get("reverse_geometry") else dense
 
 
@@ -134,9 +134,6 @@ def _fit_overlap(
     if max_residual > OVERLAP_MAX_STATION_RESIDUAL_M:
         return None
 
-    # A geometric overlap only inherits automatic-anchor trust when the mapping
-    # it is chained to was itself trustworthy. This prevents an endpoint-only
-    # inference from becoming "reliable" merely because a later TRA overlaps it.
     return {
         "status": "OVERLAP_CONFIRMED",
         "station_sign": station_sign,
@@ -187,8 +184,6 @@ def _fit_endpoint(
         "station_offset_m": offset,
         "axis": axis,
         "endpoint_gap_m": gap,
-        # Endpunktnaehe belegt die Geometrieverbindung, aber keinen moeglichen
-        # Stationssprung am Uebergang. Daher nur Kontrollanker, nicht automatisch gruen.
         "reliable_for_auto_anchor": False,
     }
 
@@ -197,10 +192,14 @@ def _decorate_extent(source: dict[str, Any], mapping: dict[str, Any]) -> None:
     samples = _samples(source)
     if not samples or mapping.get("status") == "UNMAPPED":
         return
+    jumps = tra_station_discontinuities(source.get("parse_payload") or {})
     mapping["local_travel_start_m"] = samples[0]["station_m"]
     mapping["local_travel_end_m"] = samples[-1]["station_m"]
     mapping["merged_travel_start_m"] = _mapped_station(mapping, samples[0]["station_m"])
     mapping["merged_travel_end_m"] = _mapped_station(mapping, samples[-1]["station_m"])
+    mapping["source_station_discontinuity_count"] = len(jumps)
+    mapping["source_station_discontinuity_total_m"] = sum(float(item["station_jump_m"]) for item in jumps)
+    mapping["source_station_discontinuities"] = jumps
 
 
 def _overlap_sort_key(mapping: dict[str, Any]) -> tuple[float, float, float, int]:
@@ -247,9 +246,6 @@ def build_geometry_station_maps(geometry_sources: list[dict[str, Any]]) -> dict[
     mapped_chain: list[tuple[dict[str, Any], dict[str, Any]]] = [(primary, maps[primary_id])]
 
     for current in usable[1:]:
-        # Prefer a real geometric overlap with any already mapped compatible TRA.
-        # This allows a later source to tie back directly to a reliable ancestor
-        # instead of inheriting an uncertain endpoint-only station estimate.
         overlap_candidates: list[dict[str, Any]] = []
         for previous, previous_map in reversed(mapped_chain):
             candidate = _fit_overlap(previous, previous_map, current)
@@ -289,6 +285,7 @@ def build_geometry_station_maps(geometry_sources: list[dict[str, Any]]) -> dict[
     ]
     return {
         "merge_version": MERGE_VERSION,
+        "station_basis": "CONTINUOUS_GEOMETRY_CHAINAGE",
         "source_count": len(ordered),
         "mapped_count": sum(1 for value in maps.values() if value["status"] != "UNMAPPED"),
         "reliable_mapped_count": sum(1 for value in maps.values() if value.get("reliable_for_auto_anchor")),
