@@ -60,6 +60,80 @@ def verify_geometry_runtime() -> None:
     assert 45.0 < zone3[0] < 56.0 and 4.0 < zone3[1] < 17.0, zone3
 
 
+def verify_tra_chainage_runtime() -> None:
+    from tbserver.survey_tra_chainage import (
+        densify_tra_chainage_payload,
+        normalize_tra_station_payload,
+        tra_station_discontinuities,
+    )
+
+    # Distilled from real 5302S: a positive 73.660-m station jump occurs at
+    # exactly the same DB_REF position (raw type 6). It is not 73.660 m of rail.
+    positive = {
+        "nodes": [
+            {
+                "station_m": 17600.0, "x_dbref": 4_500_000.0, "y_dbref": 5_300_000.0,
+                "direction_deg": 90.0, "raw_type": 0, "length_m": 26.34,
+                "radius_from_m": 0.0, "radius_to_m": 0.0,
+            },
+            {
+                "station_m": 17626.34, "x_dbref": 4_500_026.34, "y_dbref": 5_300_000.0,
+                "direction_deg": 90.0, "raw_type": 6, "length_m": 73.66,
+                "radius_from_m": 0.0, "radius_to_m": 0.0,
+            },
+            {
+                "station_m": 17700.0, "x_dbref": 4_500_026.34, "y_dbref": 5_300_000.0,
+                "direction_deg": 90.0, "raw_type": 0, "length_m": 100.0,
+                "radius_from_m": 0.0, "radius_to_m": 0.0,
+            },
+            {
+                "station_m": 17800.0, "x_dbref": 4_500_126.34, "y_dbref": 5_300_000.0,
+                "direction_deg": 90.0, "raw_type": 0, "length_m": 0.0,
+                "radius_from_m": 0.0, "radius_to_m": 0.0,
+            },
+        ]
+    }
+    jumps = tra_station_discontinuities(positive)
+    assert len(jumps) == 1, jumps
+    assert abs(float(jumps[0]["station_jump_m"]) - 73.66) < 0.0001, jumps
+    normalized = normalize_tra_station_payload(positive)
+    stations = [float(node["station_m"]) for node in normalized["nodes"]]
+    assert abs(stations[1] - stations[2]) < 0.000001, stations
+    assert abs(stations[3] - 17726.34) < 0.000001, stations
+    samples = densify_tra_chainage_payload(positive)
+    assert all(samples[index + 1]["station_m"] >= samples[index]["station_m"] for index in range(len(samples) - 1)), samples
+    # Without normalization the Android-parity densifier would manufacture about
+    # 37 same-coordinate samples across the 73.66-m source-station jump.
+    at_jump = [sample for sample in samples if abs(sample["x_dbref"] - 4_500_026.34) < 0.001]
+    assert len(at_jump) <= 2, at_jump
+
+    # Distilled from real 8771/5300S: negative station equation at zero distance.
+    negative = {
+        "nodes": [
+            {
+                "station_m": 55606.095653, "x_dbref": 4_500_000.0, "y_dbref": 5_300_000.0,
+                "direction_deg": 90.0, "raw_type": 6, "length_m": -6.09559,
+                "radius_from_m": 0.0, "radius_to_m": 0.0,
+            },
+            {
+                "station_m": 55600.0000635, "x_dbref": 4_500_000.0000005, "y_dbref": 5_300_000.0,
+                "direction_deg": 90.0, "raw_type": 0, "length_m": 100.0,
+                "radius_from_m": 0.0, "radius_to_m": 0.0,
+            },
+            {
+                "station_m": 55700.0000635, "x_dbref": 4_500_100.0000005, "y_dbref": 5_300_000.0,
+                "direction_deg": 90.0, "raw_type": 0, "length_m": 0.0,
+                "radius_from_m": 0.0, "radius_to_m": 0.0,
+            },
+        ]
+    }
+    jumps = tra_station_discontinuities(negative)
+    assert len(jumps) == 1 and abs(float(jumps[0]["station_jump_m"]) + 6.0955895) < 0.0001, jumps
+    normalized = normalize_tra_station_payload(negative)
+    assert abs(float(normalized["nodes"][0]["station_m"]) - float(normalized["nodes"][1]["station_m"])) < 0.00001, normalized
+    assert float(normalized["nodes"][2]["station_m"]) > float(normalized["nodes"][1]["station_m"]), normalized
+
+
 def verify_gra_jump_runtime() -> None:
     from tbserver.survey_gra_jumps import GraJumpRebuildRequest, estimate_jump_station, gra_jump_candidates
 
@@ -181,6 +255,7 @@ def verify_station_merge_runtime() -> None:
     )
 
     station_maps = build_geometry_station_maps([primary, overlap, endpoint])
+    assert station_maps["station_basis"] == "CONTINUOUS_GEOMETRY_CHAINAGE", station_maps
     overlap_map = station_maps["maps"][str(overlap_id)]
     assert overlap_map["status"] == "OVERLAP_CONFIRMED", overlap_map
     assert overlap_map["reliable_for_auto_anchor"] is True, overlap_map
@@ -229,25 +304,31 @@ def verify_station_merge_runtime() -> None:
         max_distance_m=15.0,
         reliable_distance_m=5.0,
     )
+    assert summary["projection_version"] == "survey-projection-v3", summary
+    assert summary["station_basis"] == "CONTINUOUS_GEOMETRY_CHAINAGE", summary
     assert summary["reliable_mapped_geometry_source_count"] == 2, summary
     assert summary["generated_original_anchors"] == 1, summary
     assert summary["generated_control_anchors"] == 1, summary
     original = next(point for point in generated if point["point_type"] == "ORIGINAL_ANCHOR")
     control = next(point for point in generated if point["point_type"] == "CONTROL_ANCHOR")
     assert abs(float(original["station_m"]) - 1250.0) < 0.2, original
+    assert original["payload"]["geometry_station_basis"] == "CONTINUOUS_GEOMETRY_CHAINAGE", original
     assert original["payload"]["geometry_station_map_status"] == "OVERLAP_CONFIRMED", original
     assert original["payload"]["primary_geometry"] is False, original
     assert control["payload"]["geometry_station_map_status"] == "ENDPOINT_CONFIRMED", control
     assert control["payload"]["geometry_station_map_reliable"] is False, control
 
     legacy_projection = {"payload": {"generated_by": "survey-projection-v1"}}
-    current_projection = {"payload": {"generated_by": "survey-projection-v2"}}
-    auto_gra_jump = {"payload": {"generated_by": "survey-gra-jump-v1"}}
+    previous_projection = {"payload": {"generated_by": "survey-projection-v2"}}
+    current_projection = {"payload": {"generated_by": "survey-projection-v3"}}
+    auto_gra_jump = {"payload": {"generated_by": "survey-gra-jump-v2"}}
     manual_jump = {"point_type": "KM_JUMP", "payload": {}}
     assert _is_projection_generated(legacy_projection)
+    assert _is_projection_generated(previous_projection)
     assert _is_projection_generated(current_projection)
     assert not _is_projection_generated(auto_gra_jump)
     assert _is_station_dependent_generated(legacy_projection)
+    assert _is_station_dependent_generated(previous_projection)
     assert _is_station_dependent_generated(current_projection)
     assert _is_station_dependent_generated(auto_gra_jump)
     assert not _is_station_dependent_generated(manual_jump)
@@ -255,6 +336,7 @@ def verify_station_merge_runtime() -> None:
 
 def main() -> None:
     geometry = read("server/tbserver/survey_geometry.py")
+    chainage = read("server/tbserver/survey_tra_chainage.py")
     projection = read("server/tbserver/survey_projection.py")
     station_merge = read("server/tbserver/survey_station_merge.py")
     jumps = read("server/tbserver/survey_gra_jumps.py")
@@ -265,6 +347,7 @@ def main() -> None:
     android_converter = read("app/src/main/java/de/tbhelfer/vermessung/DbRefKoordinatenwandler.kt")
 
     ast.parse(geometry, filename="server/tbserver/survey_geometry.py")
+    ast.parse(chainage, filename="server/tbserver/survey_tra_chainage.py")
     ast.parse(projection, filename="server/tbserver/survey_projection.py")
     ast.parse(station_merge, filename="server/tbserver/survey_station_merge.py")
     ast.parse(jumps, filename="server/tbserver/survey_gra_jumps.py")
@@ -277,30 +360,42 @@ def main() -> None:
         ("TX = 584.9636", geometry),
         ("TY = 107.7175", geometry),
         ("TZ = 413.8067", geometry),
-        ('PROJECTION_VERSION = "survey-projection-v2"', projection),
+        ("TRA_STATION_JUMP_RAW_TYPE = 6", chainage),
+        ("TRA_STATION_JUMP_MAX_CHORD_M = 0.01", chainage),
+        ("def tra_station_discontinuities", chainage),
+        ("def normalize_tra_station_payload", chainage),
+        ("def densify_tra_chainage_payload", chainage),
+        ('PROJECTION_VERSION = "survey-projection-v3"', projection),
         ('PROJECTION_GENERATOR_PREFIX = "survey-projection-v"', projection),
         ('GRA_JUMP_GENERATOR_PREFIX = "survey-gra-jump-v"', projection),
         ('/survey-sections/{dataset_id}/rebuild-auto-anchors', projection),
         ("SURVEY_SECTION_REBUILD_AUTO_ANCHORS", projection),
         ('source["role"] == "KM"', projection),
+        ("densify_tra_chainage_payload", projection),
         ("build_geometry_station_maps", projection),
         ("merged_station_for", projection),
         ("station_mapping_reliable", projection),
         ("skipped_unmapped_geometry", projection),
+        ("geometry_station_basis", projection),
         ("geometry_station_map_status", projection),
         ("_is_station_dependent_generated", projection),
         ("invalidated_generated_gra_jump_count", projection),
         ("payload->>'generated_by' LIKE %s OR payload->>'generated_by' LIKE %s", projection),
-        ('MERGE_VERSION = "survey-station-merge-v1"', station_merge),
+        ('MERGE_VERSION = "survey-station-merge-v2"', station_merge),
+        ("densify_tra_chainage_payload", station_merge),
+        ("source_station_discontinuity_count", station_merge),
+        ('"station_basis": "CONTINUOUS_GEOMETRY_CHAINAGE"', station_merge),
         ("OVERLAP_MAX_DISTANCE_M = 1.0", station_merge),
         ("OVERLAP_MIN_SPAN_M = 50.0", station_merge),
         ("OVERLAP_MAX_STATION_RESIDUAL_M = 0.5", station_merge),
         ('"status": "OVERLAP_CONFIRMED"', station_merge),
         ('"status": "ENDPOINT_CONFIRMED"', station_merge),
         ('"reliable_for_auto_anchor": False', station_merge),
-        ('GRA_JUMP_VERSION = "survey-gra-jump-v1"', jumps),
+        ('GRA_JUMP_VERSION = "survey-gra-jump-v2"', jumps),
         ("GRA_JUMP_PARAMETER_MARKER = 1000.0", jumps),
         ("GRA_JUMP_TWO_SIDE_AGREEMENT_M = 2.0", jumps),
+        ("GRA_JUMP_REQUIRES_CURRENT_PROJECTION", jumps),
+        ("GRA_JUMP_REQUIRES_CONTINUOUS_CHAINAGE", jumps),
         ("allow_one_sided: bool = False", jumps),
         ("AXIS_IDENTITY_UNCONFIRMED", jumps),
         ('/survey-sections/{dataset_id}/rebuild-gra-jumps', jumps),
@@ -321,12 +416,13 @@ def main() -> None:
     ]
     missing = [needle for needle, source in assertions if needle not in source]
     if missing:
-        raise SystemExit("Fehlende Survey-Projektions-/Stationsmerge-/GRA-Sprung-Marker: " + ", ".join(missing))
+        raise SystemExit("Fehlende Survey-Projektions-/Chainage-/Stationsmerge-/GRA-Sprung-Marker: " + ", ".join(missing))
 
     verify_geometry_runtime()
+    verify_tra_chainage_runtime()
     verify_gra_jump_runtime()
     verify_station_merge_runtime()
-    print("OK: TB-Server 1.0 TRA projection + station-space merge + conservative GRA KM-jump placement")
+    print("OK: TB-Server 1.0 TRA chainage + projection + station-space merge + conservative GRA KM-jump placement")
 
 
 if __name__ == "__main__":
