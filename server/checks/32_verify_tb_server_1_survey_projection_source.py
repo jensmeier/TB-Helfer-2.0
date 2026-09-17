@@ -63,7 +63,6 @@ def verify_geometry_runtime() -> None:
 def verify_gra_jump_runtime() -> None:
     from tbserver.survey_gra_jumps import GraJumpRebuildRequest, estimate_jump_station, gra_jump_candidates
 
-    # Distilled from the real Gessertshausen 5302 GRA/KF combination.
     payload = {
         "points": [
             {"km_meter": 17626.340, "height_m": 480.83693038, "parameter_m": 1000.0},
@@ -143,7 +142,11 @@ def _tra_source(
 
 
 def verify_station_merge_runtime() -> None:
-    from tbserver.survey_projection import _is_projection_generated, build_projection_points
+    from tbserver.survey_projection import (
+        _is_projection_generated,
+        _is_station_dependent_generated,
+        build_projection_points,
+    )
     from tbserver.survey_station_merge import build_geometry_station_maps, merged_station_for
 
     primary_id = UUID("00000000-0000-0000-0000-000000000101")
@@ -152,8 +155,6 @@ def verify_station_merge_runtime() -> None:
     km_id = UUID("00000000-0000-0000-0000-000000000201")
     dataset_id = UUID("00000000-0000-0000-0000-000000000301")
 
-    # Primary: x 0..200 -> station 1000..1200.
-    # Secondary overlaps x 100..200, then extends to x 300 but uses local 0..200.
     primary = _tra_source(
         primary_id,
         order=0,
@@ -170,8 +171,6 @@ def verify_station_merge_runtime() -> None:
         x_start=4_500_100.0,
         x_end=4_500_300.0,
     )
-    # Endpoint-only continuation. It can be mapped for diagnostics/controls, but
-    # must not become an automatic-green source without overlap evidence.
     endpoint = _tra_source(
         endpoint_id,
         order=2,
@@ -241,10 +240,17 @@ def verify_station_merge_runtime() -> None:
     assert control["payload"]["geometry_station_map_status"] == "ENDPOINT_CONFIRMED", control
     assert control["payload"]["geometry_station_map_reliable"] is False, control
 
-    # v2 rebuild must replace legacy v1 generated points, but never other generators.
-    assert _is_projection_generated({"payload": {"generated_by": "survey-projection-v1"}})
-    assert _is_projection_generated({"payload": {"generated_by": "survey-projection-v2"}})
-    assert not _is_projection_generated({"payload": {"generated_by": "survey-gra-jump-v1"}})
+    legacy_projection = {"payload": {"generated_by": "survey-projection-v1"}}
+    current_projection = {"payload": {"generated_by": "survey-projection-v2"}}
+    auto_gra_jump = {"payload": {"generated_by": "survey-gra-jump-v1"}}
+    manual_jump = {"point_type": "KM_JUMP", "payload": {}}
+    assert _is_projection_generated(legacy_projection)
+    assert _is_projection_generated(current_projection)
+    assert not _is_projection_generated(auto_gra_jump)
+    assert _is_station_dependent_generated(legacy_projection)
+    assert _is_station_dependent_generated(current_projection)
+    assert _is_station_dependent_generated(auto_gra_jump)
+    assert not _is_station_dependent_generated(manual_jump)
 
 
 def main() -> None:
@@ -273,6 +279,7 @@ def main() -> None:
         ("TZ = 413.8067", geometry),
         ('PROJECTION_VERSION = "survey-projection-v2"', projection),
         ('PROJECTION_GENERATOR_PREFIX = "survey-projection-v"', projection),
+        ('GRA_JUMP_GENERATOR_PREFIX = "survey-gra-jump-v"', projection),
         ('/survey-sections/{dataset_id}/rebuild-auto-anchors', projection),
         ("SURVEY_SECTION_REBUILD_AUTO_ANCHORS", projection),
         ('source["role"] == "KM"', projection),
@@ -281,7 +288,9 @@ def main() -> None:
         ("station_mapping_reliable", projection),
         ("skipped_unmapped_geometry", projection),
         ("geometry_station_map_status", projection),
-        ("payload->>'generated_by' LIKE %s", projection),
+        ("_is_station_dependent_generated", projection),
+        ("invalidated_generated_gra_jump_count", projection),
+        ("payload->>'generated_by' LIKE %s OR payload->>'generated_by' LIKE %s", projection),
         ('MERGE_VERSION = "survey-station-merge-v1"', station_merge),
         ("OVERLAP_MAX_DISTANCE_M = 1.0", station_merge),
         ("OVERLAP_MIN_SPAN_M = 50.0", station_merge),
