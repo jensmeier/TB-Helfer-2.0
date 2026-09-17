@@ -51,10 +51,14 @@ def geometry_axis_compatible(left: dict[str, Any], right: dict[str, Any]) -> tup
     if not track_ok and not direction_ok:
         reasons.append("AXIS_IDENTITY_UNCONFIRMED")
     return not reasons, {
-        "left_route": left_route, "right_route": right_route,
-        "left_track": left_track, "right_track": right_track,
-        "left_direction": left_direction, "right_direction": right_direction,
-        "track_confirmed": track_ok, "direction_confirmed": direction_ok,
+        "left_route": left_route,
+        "right_route": right_route,
+        "left_track": left_track,
+        "right_track": right_track,
+        "left_direction": left_direction,
+        "right_direction": right_direction,
+        "track_confirmed": track_ok,
+        "direction_confirmed": direction_ok,
         "mismatch_reasons": reasons,
     }
 
@@ -88,13 +92,18 @@ def _mapped_station(mapping: dict[str, Any], station_m: float) -> float:
     return float(mapping["station_sign"]) * station_m + float(mapping["station_offset_m"])
 
 
-def _fit_overlap(previous: dict[str, Any], previous_map: dict[str, Any], current: dict[str, Any]) -> dict[str, Any] | None:
+def _fit_overlap(
+    previous: dict[str, Any],
+    previous_map: dict[str, Any],
+    current: dict[str, Any],
+) -> dict[str, Any] | None:
     compatible, axis = geometry_axis_compatible(previous, current)
     if not compatible:
         return None
     previous_samples, current_samples = _samples(previous), _samples(current)
     if len(previous_samples) < 2 or len(current_samples) < 2:
         return None
+
     matches: list[tuple[float, float, float]] = []
     # 2-m source samples; every fifth point gives a 10-m fitting grid.
     for sample in current_samples[::5]:
@@ -105,6 +114,7 @@ def _fit_overlap(previous: dict[str, Any], previous_map: dict[str, Any], current
         matches.append((sample["station_m"], previous_merged, projection["distance_m"]))
     if len(matches) < OVERLAP_MIN_MATCHES:
         return None
+
     span = max(row[0] for row in matches) - min(row[0] for row in matches)
     if abs(span) < OVERLAP_MIN_SPAN_M:
         return None
@@ -123,6 +133,10 @@ def _fit_overlap(previous: dict[str, Any], previous_map: dict[str, Any], current
     max_residual, median_residual, station_sign, offset = best
     if max_residual > OVERLAP_MAX_STATION_RESIDUAL_M:
         return None
+
+    # A geometric overlap only inherits automatic-anchor trust when the mapping
+    # it is chained to was itself trustworthy. This prevents an endpoint-only
+    # inference from becoming "reliable" merely because a later TRA overlaps it.
     return {
         "status": "OVERLAP_CONFIRMED",
         "station_sign": station_sign,
@@ -134,20 +148,30 @@ def _fit_overlap(previous: dict[str, Any], previous_map: dict[str, Any], current
         "max_distance_m": max(row[2] for row in matches),
         "median_station_residual_m": median_residual,
         "max_station_residual_m": max_residual,
+        "reliable_for_auto_anchor": bool(previous_map.get("reliable_for_auto_anchor")),
     }
 
 
-def _fit_endpoint(previous: dict[str, Any], previous_map: dict[str, Any], current: dict[str, Any]) -> dict[str, Any] | None:
+def _fit_endpoint(
+    previous: dict[str, Any],
+    previous_map: dict[str, Any],
+    current: dict[str, Any],
+) -> dict[str, Any] | None:
     compatible, axis = geometry_axis_compatible(previous, current)
     if not compatible:
         return None
     previous_samples, current_samples = _samples(previous), _samples(current)
     if len(previous_samples) < 2 or len(current_samples) < 2:
         return None
+
     prev_end, current_start = previous_samples[-1], current_samples[0]
-    gap = math.hypot(prev_end["x_dbref"] - current_start["x_dbref"], prev_end["y_dbref"] - current_start["y_dbref"])
+    gap = math.hypot(
+        prev_end["x_dbref"] - current_start["x_dbref"],
+        prev_end["y_dbref"] - current_start["y_dbref"],
+    )
     if gap > ENDPOINT_MAX_GAP_M:
         return None
+
     prev_start_merged = _mapped_station(previous_map, previous_samples[0]["station_m"])
     prev_end_merged = _mapped_station(previous_map, prev_end["station_m"])
     travel_sign = 1.0 if prev_end_merged >= prev_start_merged else -1.0
@@ -163,6 +187,9 @@ def _fit_endpoint(previous: dict[str, Any], previous_map: dict[str, Any], curren
         "station_offset_m": offset,
         "axis": axis,
         "endpoint_gap_m": gap,
+        # Endpunktnaehe belegt die Geometrieverbindung, aber keinen moeglichen
+        # Stationssprung am Uebergang. Daher nur Kontrollanker, nicht automatisch gruen.
+        "reliable_for_auto_anchor": False,
     }
 
 
@@ -176,39 +203,83 @@ def _decorate_extent(source: dict[str, Any], mapping: dict[str, Any]) -> None:
     mapping["merged_travel_end_m"] = _mapped_station(mapping, samples[-1]["station_m"])
 
 
+def _overlap_sort_key(mapping: dict[str, Any]) -> tuple[float, float, float, int]:
+    return (
+        0.0 if mapping.get("reliable_for_auto_anchor") else 1.0,
+        float(mapping.get("max_station_residual_m") or 0.0),
+        -float(mapping.get("overlap_span_m") or 0.0),
+        -int(mapping.get("overlap_match_count") or 0),
+    )
+
+
 def build_geometry_station_maps(geometry_sources: list[dict[str, Any]]) -> dict[str, Any]:
-    ordered = sorted(geometry_sources, key=lambda item: (item.get("order", 0), str(item.get("original_id"))))
-    usable = [source for source in ordered if source.get("parse_status") == "PARSED" and source.get("detected_format") == "TRA_ER0_BINARY"]
+    ordered = sorted(
+        geometry_sources,
+        key=lambda item: (item.get("order", 0), str(item.get("original_id"))),
+    )
+    usable = [
+        source
+        for source in ordered
+        if source.get("parse_status") == "PARSED" and source.get("detected_format") == "TRA_ER0_BINARY"
+    ]
     if not usable:
-        return {"merge_version": MERGE_VERSION, "mapped_count": 0, "source_count": len(ordered), "maps": {}}
+        return {
+            "merge_version": MERGE_VERSION,
+            "mapped_count": 0,
+            "reliable_mapped_count": 0,
+            "source_count": len(ordered),
+            "maps": {},
+        }
+
     primary = usable[0]
+    primary_id = str(primary["original_id"])
     maps: dict[str, dict[str, Any]] = {
-        str(primary["original_id"]): {
+        primary_id: {
             "status": "PRIMARY",
             "station_sign": 1.0,
             "station_offset_m": 0.0,
-            "source_original_id": str(primary["original_id"]),
+            "source_original_id": primary_id,
             "previous_original_id": None,
+            "reliable_for_auto_anchor": True,
         }
     }
-    _decorate_extent(primary, maps[str(primary["original_id"])])
-    previous, previous_map = primary, maps[str(primary["original_id"])]
+    _decorate_extent(primary, maps[primary_id])
+    mapped_chain: list[tuple[dict[str, Any], dict[str, Any]]] = [(primary, maps[primary_id])]
+
     for current in usable[1:]:
-        mapping = _fit_overlap(previous, previous_map, current)
+        # Prefer a real geometric overlap with any already mapped compatible TRA.
+        # This allows a later source to tie back directly to a reliable ancestor
+        # instead of inheriting an uncertain endpoint-only station estimate.
+        overlap_candidates: list[dict[str, Any]] = []
+        for previous, previous_map in reversed(mapped_chain):
+            candidate = _fit_overlap(previous, previous_map, current)
+            if candidate is None:
+                continue
+            candidate["previous_original_id"] = str(previous["original_id"])
+            overlap_candidates.append(candidate)
+
+        mapping = min(overlap_candidates, key=_overlap_sort_key) if overlap_candidates else None
         if mapping is None:
+            previous, previous_map = mapped_chain[-1]
             mapping = _fit_endpoint(previous, previous_map, current)
+            if mapping is not None:
+                mapping["previous_original_id"] = str(previous["original_id"])
+
+        current_id = str(current["original_id"])
         if mapping is None:
-            maps[str(current["original_id"])] = {
+            maps[current_id] = {
                 "status": "UNMAPPED",
-                "source_original_id": str(current["original_id"]),
-                "previous_original_id": str(previous["original_id"]),
+                "source_original_id": current_id,
+                "previous_original_id": str(mapped_chain[-1][0]["original_id"]),
+                "reliable_for_auto_anchor": False,
             }
             continue
-        mapping["source_original_id"] = str(current["original_id"])
-        mapping["previous_original_id"] = str(previous["original_id"])
+
+        mapping["source_original_id"] = current_id
         _decorate_extent(current, mapping)
-        maps[str(current["original_id"])] = mapping
-        previous, previous_map = current, mapping
+        maps[current_id] = mapping
+        mapped_chain.append((current, mapping))
+
     merged_values = [
         float(value[key])
         for value in maps.values()
@@ -220,13 +291,18 @@ def build_geometry_station_maps(geometry_sources: list[dict[str, Any]]) -> dict[
         "merge_version": MERGE_VERSION,
         "source_count": len(ordered),
         "mapped_count": sum(1 for value in maps.values() if value["status"] != "UNMAPPED"),
+        "reliable_mapped_count": sum(1 for value in maps.values() if value.get("reliable_for_auto_anchor")),
         "merged_station_min_m": min(merged_values) if merged_values else None,
         "merged_station_max_m": max(merged_values) if merged_values else None,
         "maps": maps,
     }
 
 
-def merged_station_for(station_map: dict[str, Any], original_id: Any, local_station_m: float) -> tuple[float, dict[str, Any]] | None:
+def merged_station_for(
+    station_map: dict[str, Any],
+    original_id: Any,
+    local_station_m: float,
+) -> tuple[float, dict[str, Any]] | None:
     mapping = (station_map.get("maps") or {}).get(str(original_id))
     if not isinstance(mapping, dict) or mapping.get("status") == "UNMAPPED":
         return None
