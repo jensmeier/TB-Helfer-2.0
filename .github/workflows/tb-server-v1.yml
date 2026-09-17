@@ -64,6 +64,7 @@ jobs:
           python server/checks/27_verify_tb_server_1_replay_coverage_source.py
           python server/checks/28_verify_tb_server_1_device_auth_source.py
           python server/checks/29_verify_tb_server_1_device_fach_auth_source.py
+          python server/checks/30_verify_tb_server_1_survey_parser_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -76,13 +77,13 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 2, current
-          assert current["latest_applied"] == 2, current
+          assert current["latest_known"] == 3, current
+          assert current["latest_applied"] == 3, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
 
-      - name: Verify core tables and device auth migration
+      - name: Verify core tables and migrations
         working-directory: server
         run: |
           python - <<'PY'
@@ -91,7 +92,7 @@ jobs:
               "companies", "users", "devices", "worksites", "worksite_nodes",
               "worksite_memberships", "teams", "btbs", "btb_entries", "files",
               "file_links", "upload_sessions", "defects", "acceptances",
-              "survey_originals", "track_data", "mutation_receipts",
+              "survey_originals", "survey_parse_catalog", "track_data", "mutation_receipts",
               "change_feed", "audit_log", "releases", "backup_runs",
           }
           with connect() as conn, conn.cursor() as cur:
@@ -106,7 +107,7 @@ jobs:
           assert {"auth_token_hash", "auth_token_hint"} <= device_columns, device_columns
           assert "devices_one_active_per_user_uq" in device_indexes, device_indexes
           assert "devices_auth_token_hash_uq" in device_indexes, device_indexes
-          print("OK: core tables/device auth migration", len(tables))
+          print("OK: core tables/migrations", len(tables))
           PY
 
       - name: Generate ephemeral bootstrap credentials
@@ -172,6 +173,7 @@ jobs:
               "acceptances_v1",
               "track_data_v1",
               "survey_originals_v1",
+              "survey_parser_catalog_v1",
               "idempotent_mutations_v1",
           }
           missing = sorted(key for key in expected_true if caps["capabilities"].get(key) is not True)
