@@ -6,11 +6,13 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from . import SERVER_VERSION
+from .acceptances import router as acceptances_router
 from .admin import router as admin_router
 from .btb import router as btb_router
 from .capabilities import router as capabilities_router
 from .config import settings
 from .database import ping
+from .defects import router as defects_router
 from .files import router as files_router
 from .migrations import status as migration_status
 from .portal import router as portal_router
@@ -36,6 +38,8 @@ app.include_router(worksites_router)
 app.include_router(btb_router)
 app.include_router(sync_router)
 app.include_router(files_router)
+app.include_router(defects_router)
+app.include_router(acceptances_router)
 
 
 @app.get("/health/live", tags=["system"])

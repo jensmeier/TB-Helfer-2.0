@@ -24,7 +24,7 @@ GitHub-Code und aktiver Branch sind Source of Truth.
 - aktiver Branch: **`feature/tb-server-1.0`**
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - Cutover-Regel-Commit: `64bb798e37f6a220fbd1715859a813a359a32eee`
-- zuletzt vor diesem Datei-/Upload-Block geprüfter Branch-Head: `7680d68e3593f685a72ccfc9a11e2f3fbedf1044`
+- Datei-/Chunkupload-Commit: `959a53459455062def10608df4ca4c4cd1b0a179`
 - Android bleibt vorerst Testclient: Buildkandidat **200050**
 - Produktivserver/NAS weiterhin unverändert: API **0.7.0**, PostgreSQL **Schema 10**
 
@@ -57,21 +57,21 @@ Ab dem ersten echten produktiven Vermessungsimport gilt dauerhaft:
 
 Details: `docs/TB-SERVER_1_0_CUTOVER.md`.
 
-## TB-Server 1.0 – bisher umgesetzt
+## TB-Server 1.0 – umgesetzt
 
 ### 1. Foundation / Migrationen
 
 Vorhanden:
-- neues Paket `server/tbserver/`;
-- separater Startpfad `server/Dockerfile.v1`;
-- frische Baseline `server/v1_migrations/001_server_1_0_base.sql`;
-- Migration Runner mit nummerierten Migrationen, SHA-256-Prüfung und PostgreSQL-Advisory-Lock;
+- `server/tbserver/` als neue 1.0-Anwendung;
+- `server/Dockerfile.v1` als separater Startpfad;
+- `server/v1_migrations/001_server_1_0_base.sql` als frische Baseline;
+- Migration Runner mit Nummerierung, SHA-256-Prüfung und PostgreSQL-Advisory-Lock;
 - `/health/live`, `/health/ready`, `/api/v1/capabilities`;
-- GitHub-Workflow `.github/workflows/tb-server-v1.yml` mit PostGIS-Service.
+- `.github/workflows/tb-server-v1.yml` mit PostGIS-Testservice.
 
 ### 2. Auth / Firmen / Benutzer / Portal-Grundlage
 
-Vorhanden sind Servermodule für:
+Vorhanden:
 - Security/Passworthash;
 - Portal-Aktivierung;
 - Portal-Login/Sessions;
@@ -89,35 +89,33 @@ Relevante Dateien:
 ### 3. Baustellen / Rechte / Teams
 
 Vorhanden:
-- Baustellen mit stabilen UUIDs;
-- Unterbaustellen-/Baumstruktur;
+- Baustellen und Unterbaustellen mit stabilen UUIDs;
 - Mitgliedschaften;
 - Rechteprofile + individuelle Abweichungen;
 - Teams mit `active_btb_id`;
 - serverseitige Rechteprüfung;
-- Change-/Audit-Ereignisse für zentrale Mutationen.
+- Change-/Audit-Ereignisse.
 
 Relevante Dateien:
 - `server/tbserver/worksites.py`
 - `server/tbserver/permissions.py`
 - `server/tbserver/events.py`
 
-Capabilities dafür stehen auf `true`:
-- `worksite_tree_v1`
-- `worksite_permissions_v1`
-- `worksite_teams_v1`
+Capabilities:
+- `worksite_tree_v1=true`
+- `worksite_permissions_v1=true`
+- `worksite_teams_v1=true`
 
 ### 4. Granularer BTB / Live-Sync
 
 Vorhanden:
-- BTB-Kopf mit stabiler `btbId`;
-- einzelne `btb_entries` mit eigener UUID/Version;
+- stabiler BTB-Kopf und einzelne `btb_entries`;
+- UUID + Version je Eintrag;
 - Versionskonfliktprüfung statt stillem Last-Write-Wins;
 - aktiver BTB je Team;
 - erster unveränderlicher Original-Snapshot beim Abschluss;
 - Abschlussstatus, Reopen/Nachbearbeitung, Tombstone-Löschen;
-- Change Feed;
-- `/api/v1/sync/changes`;
+- Change Feed `/api/v1/sync/changes`;
 - SSE-Live-Signal `/api/v1/sync/events`.
 
 Relevante Dateien:
@@ -127,63 +125,88 @@ Relevante Dateien:
 Capabilities:
 - `btb_entries_v1=true`
 - `btb_live_sync_v1=true`
-- `btb_finalize_with_pdf_v1=false` – PDF-Erzeugung ist bewusst noch nicht fertig.
+- `btb_finalize_with_pdf_v1=false` – Abschluss-PDF noch offen.
 
-### 5. Dateien / Bilder / Chunkupload – aktueller Block
+### 5. Dateien / Bilder / Chunkupload
 
-Neu ergänzt:
+Commit: `959a53459455062def10608df4ca4c4cd1b0a179`
+
+Vorhanden:
 - `server/tbserver/files.py`;
-- resumierbare, sequenzielle Upload-Sessions;
-- Standard-Chunkgröße 8 MiB, maximal 16 MiB;
-- Offset-Prüfung gegen `received_bytes`;
-- Größenprüfung und optionale erwartete SHA-256-Prüfung;
+- resumierbare sequenzielle Upload-Sessions;
+- Standard-Chunkgröße 8 MiB, Maximum 16 MiB;
+- Offset-, Größen- und SHA-256-Prüfung;
 - fsync beim Chunk-Schreiben;
-- Abschluss verschiebt die Datei atomar aus dem temporären Bereich in UUID-basierte Storage-Pfade;
-- Dateimetadaten in `tb.files`;
-- fachliche Verknüpfungen über `tb.file_links` zu Baustelle/BTB/Mangel/Abnahme;
+- atomarer Abschluss aus Tempbereich in UUID-basierte Storage-Pfade;
+- `tb.files` + `tb.file_links`;
+- Links zu Baustelle/BTB/Mangel/Abnahme;
 - Datei-Metadatenliste und geschützter Dateiabruf;
-- Abbruch offener Upload-Sessions;
-- Change-Feed- und Audit-Eintrag bei erfolgreichem Abschluss;
-- neuer Source-Check `server/checks/23_verify_tb_server_1_files_source.py`.
+- Upload-Abbruch;
+- Change-Feed + Audit beim erfolgreichen Abschluss;
+- Source-Check `23_verify_tb_server_1_files_source.py`.
 
 Capabilities:
 - `files_v1=true`
 - `chunk_upload_v1=true`
-- `company_logo_v1=false` – Firmenlogo-Workflow folgt separat.
+- `company_logo_v1=false`.
+
+### 6. Mängel / Abnahmen – aktueller Block
+
+Neu ergänzt:
+- `server/tbserver/defects.py`;
+- `server/tbserver/acceptances.py`;
+- Mangel anlegen/listen/lesen/bearbeiten/schließen;
+- Abnahme anlegen/listen/lesen/bearbeiten/finalisieren;
+- optionale clientseitige UUID beim Anlegen;
+- Zuordnung zu Baustellenknoten wird serverseitig validiert;
+- Schreibrechte werden über `defect.*` bzw. `acceptance.*` geprüft;
+- Optimistic Locking über `base_version`;
+- `409 VERSION_CONFLICT` statt stillem Überschreiben;
+- Change-Feed und Audit bei fachlichen Lebenszyklusaktionen;
+- Source-Check `24_verify_tb_server_1_defects_acceptances_source.py`.
+
+Capabilities:
+- `defects_v1=true`
+- `acceptances_v1=true`.
 
 ## CI / Tests
 
-### Bisherige Nachweise
+### Source-/Runtime-Verträge
 
-- Foundation-Pythonmodule syntaktisch geprüft.
-- Baseline-SQL strukturell geprüft.
-- Migration Runner wurde im Server-Workflow gegen PostGIS vorgesehen und bereits in vorherigen Läufen ausgeführt.
-- Auth-Source-Check vorhanden: `21_verify_tb_server_1_auth_source.py`.
-- Auth-Runtime-Check vorhanden: `22_verify_tb_server_1_auth_runtime.py`.
+Vorhanden:
+- `20_verify_tb_server_1_foundation.py`
+- `21_verify_tb_server_1_auth_source.py`
+- `22_verify_tb_server_1_auth_runtime.py`
+- `23_verify_tb_server_1_files_source.py`
+- `24_verify_tb_server_1_defects_acceptances_source.py`
 
-### Gefundener CI-Fehler am Branch-Head `7680d68...`
+Der Server-Workflow prüft außerdem Baseline-Migration, Kerntabellen, Bootstrap, Health und aktivierte Capabilities.
 
-Der TB-Server-Workflow war rot, weil der Capability-Test noch den alten Zustand `worksite_tree_v1 == false` verlangte, obwohl Baustellenbaum/Rechte/Teams inzwischen implementiert und aktiviert waren.
+### Aktuelles GitHub-Actions-Problem
 
-Im aktuellen Block wird dieser veraltete CI-Vertrag korrigiert. Der Workflow prüft jetzt die tatsächlich aktivierten Capabilities und zusätzlich Tabellen/Source-Vertrag für Dateien und Chunkupload.
+Beim Branch-Head `959a534...` wurde der Server-Workflow bereits vor dem ersten Step beendet:
+- Jobstatus `failure`;
+- `runner_id=0`;
+- keine Steps vorhanden;
+- keine Job-Logs erzeugt.
 
-Der neue GitHub-Actions-Lauf muss nach dem Commit erneut geprüft werden.
+Damit ist dieser konkrete rote Lauf **kein ausgeführter Python-/PostgreSQL-Test**. Die Ursache liegt auf GitHub-Actions-/Runner-Ebene und muss separat geklärt werden. Der zuvor veraltete Capability-Test (`worksite_tree_v1 == false`) wurde bereits korrigiert.
 
 ### Android CI
 
-Android ist für diesen Serverblock nicht der Freigabenachweis. Der produktive Android-Stand wird erst nach festem Serververtrag systematisch angepasst. Ein roter Android-Workflow auf reinen Server-Commits ist separat zu bewerten und darf nicht mit bestandenem Server-1.0-Test verwechselt werden.
+Android ist für den Server-1.0-Block vorerst Testclient und nicht dessen Freigabenachweis. Die Android-Workflow-Trigger werden deshalb auf Android-/Gradle-Dateien und die alten Android/Schema-Sourcechecks begrenzt. Reine Änderungen unter `server/tbserver/**` sollen keinen vollständigen Android-Build mehr auslösen.
 
 ## Bekannte/offene Punkte
 
 Noch nicht fertig:
-- echtes BTB-Abschluss-PDF inklusive unveränderlichem Original-/Nachbearbeitungsmodell auf Dateiebene;
-- Mängel-/Abnahme-API;
+- echtes BTB-Abschluss-PDF inklusive Dateispeicherung und Nachbearbeitungsmodell;
 - mobile Streckendaten;
 - Vermessungsoriginal-Import/-Katalog;
 - Firmenlogo/PDF-Layout;
 - vollständige Portal-Fachoberfläche;
 - Admin-Dashboard/Systemstatus/Speicher;
 - Releases/Client-Kompatibilität;
+- Idempotenz-/`client_change_id`-Vertrag noch nicht flächendeckend in allen Mutationen umgesetzt;
 - Background Jobs;
 - Backup/Restore-Werkzeuge;
 - Testdaten-Reset-Werkzeug;
@@ -194,11 +217,12 @@ Datei-/Upload-Modul ist zunächst auf baustellenbezogene Uploads mit Portal-Sess
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. aktuellen TB-Server-GitHub-Workflow grün bekommen und Ergebnis prüfen;
-2. danach **Mängel + Abnahmen** als nächsten Fachblock auf dieselbe UUID/Version/Change-Feed-Struktur setzen;
-3. anschließend mobile Streckendaten + unveränderliche Vermessungsoriginale;
-4. danach Portal-Fachoberfläche und BTB-PDF-Abschluss vollständig schließen;
+1. **mobile Streckendaten + unveränderliche Vermessungsoriginale** gegen die bereits vorhandenen Baseline-Tabellen bauen;
+2. danach Idempotenz/`client_change_id` für Offline-Outbox serverweit konsolidieren;
+3. Portal-Fachoberfläche und BTB-PDF-Abschluss schließen;
+4. Admin/Systemstatus/Releases;
 5. Backup/Restore/Reset und vollständige E2E-Tests;
-6. erst danach NAS-Cutover und Android-Anpassung.
+6. GitHub-Actions-Runnerproblem klären bzw. Tests auf verfügbarer Laufumgebung ausführen;
+7. erst danach NAS-Cutover und Android-Anpassung.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**

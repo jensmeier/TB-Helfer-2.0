@@ -17,9 +17,12 @@ CAPABILITIES: dict[str, bool] = {
     "btb_live_sync_v1": True,
     "btb_finalize_with_pdf_v1": False,
     "files_v1": True,
-    "track_data_v1": False,
-    "company_logo_v1": False,
     "chunk_upload_v1": True,
+    "defects_v1": True,
+    "acceptances_v1": True,
+    "track_data_v1": False,
+    "survey_originals_v1": False,
+    "company_logo_v1": False,
 }
 
 

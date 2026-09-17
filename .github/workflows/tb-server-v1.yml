@@ -58,6 +58,7 @@ jobs:
           python server/checks/20_verify_tb_server_1_foundation.py
           python server/checks/21_verify_tb_server_1_auth_source.py
           python server/checks/23_verify_tb_server_1_files_source.py
+          python server/checks/24_verify_tb_server_1_defects_acceptances_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -152,11 +153,14 @@ jobs:
               "btb_live_sync_v1",
               "files_v1",
               "chunk_upload_v1",
+              "defects_v1",
+              "acceptances_v1",
           }
           missing = sorted(key for key in expected_true if caps["capabilities"].get(key) is not True)
           assert not missing, {"missing_capabilities": missing, "caps": caps}
           assert caps["capabilities"]["btb_finalize_with_pdf_v1"] is False, caps
           assert caps["capabilities"]["track_data_v1"] is False, caps
+          assert caps["capabilities"]["survey_originals_v1"] is False, caps
           print("OK: API foundation/capabilities")
           PY
           cd ..
