@@ -2,7 +2,7 @@
 
 Stand: 2026-09-17
 
-Diese Datei ist die verbindliche technische Übergabe zwischen Chats/Sitzungen. Fachliche Grundsatzentscheidungen stehen in `docs/TB-HELFER_PROJEKTREGELN.md`, die Arbeitsweise in `docs/TB-HELFER_PROJEKTANWEISUNG.md`, die geplante Reihenfolge in `docs/TB-HELFER_ROADMAP.md`.
+Diese Datei ist die verbindliche technische Übergabe zwischen Chats/Sitzungen. Fachliche Grundsatzentscheidungen stehen in `docs/TB-HELFER_PROJEKTREGELN.md`, die Arbeitsweise in `docs/TB-HELFER_PROJEKTANWEISUNG.md`, die geplante Reihenfolge in `docs/TB-HELFER_ROADMAP.md`. Der neue Server-Zielvertrag steht in `docs/TB-SERVER_1_0_ZIELMODELL.md`.
 
 ## Start jedes Chats / jeder Änderung
 
@@ -10,10 +10,11 @@ Zuerst prüfen/lesen:
 1. `docs/TB-HELFER_PROJEKTANWEISUNG.md`
 2. `docs/TB-HELFER_PROJEKTREGELN.md`
 3. diese Datei
-4. aktiven Feature-Branch
-5. offenen Draft-PR
-6. neuesten relevanten Commit
-7. Chat-Übergabe nur ergänzend
+4. `docs/TB-SERVER_1_0_ZIELMODELL.md`, solange Server 1.0 aktiv entwickelt wird
+5. aktiven Feature-Branch
+6. offenen Draft-PR
+7. neuesten relevanten Commit
+8. Chat-Übergabe nur ergänzend
 
 GitHub-Code und aktiver Branch sind Source of Truth. `main` stabil halten.
 
@@ -21,214 +22,281 @@ GitHub-Code und aktiver Branch sind Source of Truth. `main` stabil halten.
 
 - Repository: `jensmeier/TB-Helfer-2.0`
 - stabil: `main`
-- aktiver Feature-Branch: `feature/admin-offline-sync`
-- Draft-PR: `#5 – Admin + Offline-Sync Grundlage`, offen/Draft
-- `main`: `fffc7c1d32e636c7d851bbadd9ce3b11789c7b25`
-- Branch-Head vor dieser Dokumentationsaktualisierung: `c92b83ec9fd514c1c865d321999e18ce32af11e8`
-- aktueller Android-Buildkandidat im Gradle-Stand: **200050**
+- Vorgänger-Feature-Branch: `feature/admin-offline-sync`
+- neuer aktiver Entwicklungsbranch: **`feature/tb-server-1.0`**
+- Ausgangspunkt des neuen Branches: `d7fbc677b33ad9e3b3780f44223c28913bf0a4a3`
+- bisheriger Draft-PR: `#5 – Admin + Offline-Sync Grundlage`
+- neuer Draft-PR für Server 1.0 wird separat geführt
+- Android-Testclient: Buildkandidat **200050**
+- letzter vom Benutzer bestätigter Android-Studio-Build: grün, nur Warnungen
 - Produktivserver/NAS weiterhin unverändert: API **0.7.0**, PostgreSQL **Schema 10**
-- vorbereiteter nächster Serverstand im Feature-Branch: API **0.7.2 / Schema 13**
 
-## Aktuelle Entwicklungsentscheidung
+## Strategiewechsel – verbindlich ab 17.09.2026
 
-Der Benutzer hat Schema 13 jetzt ausdrücklich für den nächsten produktiven Serverstand freigegeben, mit zwei zusätzlichen verbindlichen Anforderungen:
+Die bisherige Strategie `Android zuerst, Server danach` wird beendet.
 
-1. benötigte **mobile/abgeleitete Streckendaten vom Handy** sollen über den Server auf andere Baustellengeräte gelangen;
-2. wenn eine **servergebundene Baustelle komplett gelöscht** wird, muss sie auch serverseitig verschwinden und auf anderen Geräten über einen Tombstone lokal entfernt werden.
+Neue Reihenfolge:
 
-Produktive Migration trotzdem **nur nach frischem verifiziertem Backup**. Bis dahin bleibt der NAS auf Schema 10.
+1. **TB-Server 1.0 vollständig als stabile gemeinsame Grundlage bauen**;
+2. Server-End-to-End mit Testclients/Portal prüfen;
+3. produktiven NAS-Stand nach Backup kontrolliert auf Server 1.0 umstellen;
+4. danach Android systematisch gegen den festen Serververtrag anbinden;
+5. anschließend Poco↔Pixel↔Portal-Praxistests und UI-Bereinigung.
 
----
+Grund: Mehrere Android-Probleme waren keine isolierten UI-/Clientfehler, sondern Folgen eines noch unvollständigen gemeinsamen Servermodells für Unterbaustellen, Rechte, BTB-Lebenszyklus, aktiven Team-BTB, Outbox/Pull-Reihenfolge, Bilder und Streckendaten.
 
-# Fachliches Sync-Modell
+## Testdaten / Resetentscheidung
 
-## Baustellenweit gemeinsam
+Der Benutzer hat ausdrücklich freigegeben:
 
-Innerhalb derselben Baustellenmitgliedschaft sollen gemeinsam verfügbar sein:
+- der derzeitige Serverbestand ist Testbestand;
+- Testbenutzer, Testbaustellen und sonstige Testfachdaten dürfen beim TB-Server-1.0-Cutover verworfen werden;
+- es ist keine aufwendige fachliche Migration dieses Testbestands nötig;
+- **Originale Vermessungsdaten auf dem NAS bleiben unverändert und dürfen nicht gelöscht/überschrieben werden.**
+
+Trotz dieser Freigabe gilt weiterhin die Projektregel: Vor jeder produktiven NAS-/PostgreSQL-Migration oder größeren Datenänderung vollständiges Backup erstellen und verifizieren.
+
+## TB-Server 1.0 – Zielarchitektur
+
+Vollständig dokumentiert in `docs/TB-SERVER_1_0_ZIELMODELL.md`.
+
+Kernentscheidungen:
+
+- modularer Monolith statt unnötiger Microservices;
+- PostgreSQL/PostGIS + NAS-Dateispeicher;
+- stabile `/api/v1`-API;
+- Capability-Endpunkt statt Client-Abfragen nach internen Schemanummern;
+- unveränderliche nummerierte Migrationen mit Prüfsummen;
+- getrennte Fachmodule für Auth, Firmen, Benutzer, Geräte, Baustellen, Rechte, Teams, BTB, Dateien, Mängel, Abnahmen, Streckendaten, Releases, Portal, Admin, Audit und Backup;
+- Change-Feed/Eventlog statt wiederholtem Vollsync;
+- Idempotenz über `client_change_id`;
+- lokale Client-Outbox vor Server-Pull;
+- Live-Ereignissignal für offene Clients über WebSocket/SSE plus normaler Pull beim Start/Resume;
+- große Dateien chunkweise statt riesiger Einzelrequests.
+
+## Rollen / Rechte / Chef
+
+Firmenrollen:
+
+- `ADMIN` – Systemadministrator;
+- `CHEF` – Firmenleitung;
+- `USER` – normaler Firmenbenutzer.
+
+CHEF:
+
+- sieht automatisch alle Baustellen der eigenen Firma;
+- mehrere CHEFs pro Firma möglich;
+- Standard: lesen, PDF/Export, BTB/Mängel/Abnahmen/Bilder ansehen;
+- Schreib-/Abschlussrechte erweiterbar.
+
+Baustellenrollen:
+
+- `RESPONSIBLE_TB`;
+- `TB`;
+- `HELPER`;
+- `READ_ONLY`.
+
+Rechte sind serverseitig kanonisch, werden aber **auch direkt auf dem Handy und im Portal verwaltet**. Rechtevorlagen plus individuelle Abweichungen pro Nutzer/Baustelle sind vorgesehen.
+
+## Baustellenmodell
+
+Baustellenweit gemeinsam:
+
 - Hauptbaustelle;
-- Unterbaustellen / kompletter `BaustellenKnoten`-Baum;
+- Unterbaustellen/kompletter Baum;
+- Strecke/Gleis/Weichen/Objekte;
 - benötigte mobile Streckendaten;
-- Abnahmen;
 - Mängel;
-- baustellenweite Bilder-/Mängellisten.
+- Abnahmen;
+- Bilderliste gesamt;
+- Mängelliste gesamt;
+- Archive/Exporte.
 
-## BTB getrennt pro verantwortlichem TB-Team
+Baustelle gehört genau einer Firma. Interne Zuordnung ausschließlich über stabile UUIDs, nicht sichtbare Namen.
 
-- Jeder verantwortliche TB besitzt mit seinen Helfern seinen eigenen gemeinsamen BTB-Bereich.
-- Helfer desselben TB-Teams bearbeiten dieselbe stabile `btbId`.
-- Andere verantwortliche TB-Teams besitzen eigene BTBs.
-- Datum/Uhrzeit/Tag/Nacht sind Attribute, nicht Identität.
-- sichtbarer Status eines laufenden Berichtes: `BTB aktiv`, nicht `Entwurf`.
+Löschen:
 
-Der praktische Poco↔Pixel-BTB-Sync ist weiterhin **nicht als stabil bestätigt**. Vor weiteren BTB-Hotfixes zuerst Baustellenstruktur/Serverbasis stabilisieren.
+- berechtigter Baustellenbenutzer löst Löschung aus;
+- Server erzeugt Tombstone;
+- andere Geräte entfernen dieselbe Baustelle;
+- Papierkorb/Wiederherstellungsfrist vor endgültiger physischer Löschung;
+- endgültige Löschung nur über kontrollierten Löschprozess.
 
----
+## BTB 1.0
 
-# Schema 13 – Baustellenstruktur
+BTB bleibt pro verantwortlichem TB-Team getrennt.
 
-Bereits im Branch gebaut:
-- `tb.collab_worksite_nodes` mit stabiler geräteübergreifender `client_node_key`;
-- Parent/Child-Zuordnung ohne lokale Room-IDs;
-- LEAD lädt lokale Unterbaustellen hoch;
-- Helfer übernimmt den autoritativen Serverbaum;
-- gelöschte Unterbaustellen werden als Tombstones erhalten;
-- `WorksiteStructureSync` ist in den normalen Android-Sync integriert;
-- Server-Basisendpunkt: `/api/v1/collab/worksites/{worksite_id}/nodes`.
+Server hält pro Team explizit `active_btb_id`.
 
-Der frühere Test „Poco hat Unterbaustellen, Pixel nur Hauptbaustelle“ ist damit fachlich erklärt: produktiv läuft noch Schema 10 und kennt den Schema-13-Endpunkt nicht.
+Ein verantwortlicher TB und seine Helfer bearbeiten denselben aktiven BTB. Andere verantwortliche TB-Teams derselben Baustelle führen eigene BTBs.
 
----
+Wichtigste Änderung gegenüber dem heutigen Clientmodell:
 
-# Schema 13 – mobile Streckendaten
+**BTB wird serverseitig nicht mehr nur als ein großes überschreibbares JSON behandelt.**
 
-Neue Umsetzung vom 17.09.2026:
+Granulare Einträge mit eigener UUID/Version für:
 
-## Sicherheits-/Datenregel
+- Kopf;
+- Personal/Firmen;
+- Maschinen/Geräte;
+- Wetter;
+- Abschnitt 4;
+- Abschnitt 5;
+- Abschnitt 6;
+- Abschnitt 7;
+- Abschnitt 8;
+- Bilder/Anhänge.
 
-**Originale Vermessungsdateien auf dem NAS bleiben unverändert.**
-Der neue Pfad lädt keine TRA/GRA/KF/KOR-Rohdateien hoch und überschreibt keine Originale.
+Damit können Nutzer 1 und Helfer A gleichzeitig unterschiedliche BTB-Einträge bearbeiten, ohne sich gegenseitig den gesamten BTB zu überschreiben.
 
-Synchronisiert wird ein separater, baustellenbezogener mobiler Arbeitsstand:
-- `TrassenAchseEntity`-Metadaten;
-- bereits berechnete `TrassenSamplePointEntity`-Punkte inkl. GPS/KM/KM-Quelle;
-- lokale `StreckenpunktEntity`-Punkte;
-- Zuordnung über Server-Baustelle und stabile Dataset-Keys.
+Lebenszyklus:
 
-Damit kann ein Helfer die auf dem TB-Handy bereits berechnete/aufbereitete Achse verwenden, ohne die ursprünglichen Rohdateien erneut importieren zu müssen.
+- `ACTIVE` → sichtbarer Text `BTB aktiv`;
+- `FINALIZED` → abgeschlossen;
+- `REWORK` → bewusste Nachbearbeitung derselben `btbId`;
+- `DELETED` → Tombstone/Papierkorb.
 
-Noch nicht enthalten:
-- vollständige Roh-GRA/GVP/KOR/KF-Dateiinhalte;
-- separate Historie aller manuellen KM-Anker/Korrekturen. Der aktuelle berechnete KM-Stand liegt bereits in den synchronisierten Samplepunkten. Falls Helfer später selbst diese Kalibrierung weiterbearbeiten sollen, muss diese Bearbeitungshistorie zusätzlich synchronisiert werden.
+Erster erfolgreicher Abschluss friert den unveränderlichen Original-Snapshot ein. Abschluss löst `active_btb_id`. Bewusste Nachbearbeitung reaktiviert dieselbe `btbId`.
 
-## Server
+## Sync-Ziel
 
-`server/migrations/013_worksite_structure_sync.sql` enthält jetzt zusätzlich `tb.mobile_track_data` mit:
-- `source_worksite_id`;
-- `dataset_key`;
-- `dataset_kind = AXIS | STRECKENPUNKTE`;
-- optionalem `route_key`;
-- JSON-Payload und Versionsnummer;
-- Soft-Delete.
+Nicht `alle 5 Minuten alles synchronisieren`.
 
-`server/app_parts/21_part.py` setzt den vorbereiteten Serverstand auf **0.7.2** und bietet:
-- `GET /api/v1/collab/worksites/{worksite_id}/track-data`
-- `PUT /api/v1/collab/worksites/{worksite_id}/track-data`
+Normaler Ablauf:
 
-Schreiben darf nur `LEAD`; Mitglieder dürfen den Snapshot lesen.
+1. lokal speichern;
+2. in derselben lokalen Transaktion Outbox-Eintrag erzeugen;
+3. bei Netz sofort hochladen;
+4. Server speichert idempotent;
+5. Server erzeugt Event;
+6. andere offene Geräte/Portal erhalten Signal und laden nur geänderte Datensätze.
 
-## Android
+Fallback-Pull bei Start/Resume/Öffnen der Baustelle/des BTB. Periodischer Hintergrundsync nur als Sicherheitsnetz.
 
-Neu:
-- `WorksiteTrackDataApi.kt`
-- `WorksiteTrackDataSync.kt`
-- Service in `ServiceLocator`
-- `Schema13Worker.kt`
-- `SofortSync` stößt zusätzlich den Schema-13-Worker an.
+## TB-Helfer Portal
 
-LEAD: lokaler mobiler Streckendatenstand → Server.
-Helfer: Server-Snapshot → lokale Fachdatenbank der gebundenen Baustelle.
-Andere lokale Baustellen bleiben unangetastet.
+Portal wird vollwertiger Fachclient gegen dieselbe API.
 
----
+Je nach Recht:
 
-# Schema 13 – Baustelle komplett löschen
+- Baustellen öffnen;
+- BTB erstellen/bearbeiten/abschließen/nachbearbeiten;
+- Punkte 4–8;
+- Bilder vom PC hinzufügen;
+- Mängel/Abnahmen bearbeiten/abschließen;
+- PDF/DOCX/Archive;
+- Rechteverwaltung;
+- Streckendaten.
 
-Neue verbindliche Semantik:
+Nicht auf dem Portal:
 
-- Eine **rein lokale, nie servergebundene Baustelle** kann weiterhin nur lokal gelöscht werden.
-- Eine **servergebundene Baustelle** wird nicht mehr zuerst lokal gelöscht.
-- Ablauf:
-  1. Server-Binding bestimmen;
-  2. Server-DELETE ausführen;
-  3. Server erzeugt `worksite_delete_tombstones` und setzt `worksites.deleted_at`;
-  4. erst nach Server-Erfolg lokale Dateien/BTBs/Legacy-Baustelle/Teilbaum löschen und Binding lösen;
-  5. andere Geräte laden den Tombstone firmenbezogen und löschen ihre lokale Kopie ebenfalls.
-- Bei Server-/Netz-/Sessionfehler bleibt die lokale Baustelle bestehen. Damit kann sie nicht später aus dem Server wiederauferstehen.
-- Die Serverzeile bleibt als Soft-Delete-/Auditanker erhalten, taucht aber im normalen Collaboration-Kontext nicht mehr auf.
+- mobile Live-GPS-Aufnahme;
+- Handy-Kamera-GPS.
 
-Neue Dateien/Pfade:
-- `server/app_parts/21_part.py`
-- `app/src/main/java/de/tbhelfer/server/WorksiteDeletionApi.kt`
-- `app/src/main/java/de/tbhelfer/ui/baustelle/WorksiteLocalDeleteService.kt`
-- `BaustellenFragment.kt` verwendet bei gebundenen Baustellen Server-first Delete.
-- `Schema13Worker.kt` verarbeitet Remote-Tombstones.
-- Tombstone-Auflösung benutzt die persistente Server↔Root-Bindung und hängt nicht davon ab, dass die gelöschte Baustelle noch in `/collab/context` sichtbar ist.
+PC-Bilder erhalten kein künstliches GPS.
 
----
+Portal-Login ist getrennt vom Geräte-Key. Ziel: Benutzerkennung/E-Mail + Passwort nach sicherer Erstaktivierung; später Passkey/TOTP ergänzbar.
 
-# BTB / Punkte 4–8 / Buttons
+## Dateien / Firmenordner / Cloudflare
 
-Weiterhin im Branch:
-- Punkte 4–8 verwenden denselben direkten Bilderpfad mit passendem Bildtyp;
-- moderne Bilder werden strikt derselben `btbId` zugeordnet;
-- eigene feste Dreierzeile `Bilder | Abbrechen | Hinzufügen`, je 1/3 Breite;
-- Abschluss/Nachbearbeitung/Löschen-Tombstone für BTB ist implementiert, aber der gesamte Zwei-Geräte-Lebenszyklus ist praktisch noch nicht zuverlässig bestätigt.
+Jede Firma hat unabhängig von Benutzerzahl einen eigenen logischen Speicherbereich mit UUID-basierten Storage-Keys.
 
-Beim letzten Nutzer-Test funktionierte der Gesamt-Sync nicht zuverlässig. Die Analyse zeigte zusätzlich zur fehlenden Schema-13-Baustellenstruktur Probleme in der BTB-Sync-Orchestrierung (lokaler Outbox-Schutz/Pull-Reihenfolge/aktiver Team-BTB). Diese Punkte erst nach stabiler Baustellen-/Schema-13-Basis erneut systematisch angehen.
+Große Binärdaten nicht als große PostgreSQL-BLOBs speichern. DB hält Metadaten, Hash, Zuordnung und Storage-Key.
 
----
+Cloudflare Tunnel ist Transportweg, nicht Datenspeicher. Datenverkehr klein halten durch:
 
-# Kamera / KM / Foto
+- Change Feed;
+- nur geänderte Datensätze;
+- Bilder nur einmal hochladen;
+- Thumbnails;
+- 8–16-MiB-Chunks für große Dateien/Archive;
+- keine unnötigen Vollsyncs.
 
-Praktisch bestätigt aus 200049/200050-Grundlage:
-- Live-KM funktioniert;
-- Live-KM größer/fett;
-- Foto-Erfassen zeigt passenden KM/GPS/Strecke-Gleis-Kontext;
-- Qualitätsampel `<=10 m grün`, `>10–30 m gelb`, `>30 m rot`;
-- GPS-Ungenauigkeit darf nur verschlechtern, nie verbessern;
-- automatischer KM bleibt im gelben Bereich erhalten.
+## Strecken-/Vermessungsdaten
 
-Nicht erneut verändern, solange kein reproduzierbarer Fehler vorliegt:
-- KF/GVP/Festpunkt-Logik;
-- DB_REF/GK-Streifen 3/4/5;
-- vorhandene KM-Projektion.
+Originale TRA/GRA/KF/KOR/KV/GVP bleiben unverändert.
 
-Offen:
-- Foto-Aufdruck/Overlay-Einstellungen bleiben teilweise nicht persistent.
+Separat versionierte Arbeitsdaten:
 
----
+- Achsen;
+- Samples;
+- KM/KM-Quelle;
+- manuelle Korrekturen;
+- bearbeitete Abschnitte;
+- Streckenpunkte;
+- grafischer Bearbeitungsstand.
 
-# Firmenlogo / PDF
+Nur benötigte Daten werden auf Geräte übertragen.
 
-Bereits gebaut/vorgesehen:
-- Firmenlogo zentral serverseitig und auf Geräten gecacht;
-- bevorzugtes Format PNG;
-- PDF zeichnet hinter dem Logo weißen Untergrund;
-- JPEG/WebP ebenfalls im vorhandenen Downloadpfad möglich;
-- SVG derzeit nicht für den Bitmap-PDF-Pfad vorgesehen;
-- Schema 10 besitzt Firmenprofil-/Logo-Metadaten;
-- Schema 12 für firmenweites PDF-Logo-Layout ist vorbereitet, aber noch nicht produktiv.
+## Administration 1.0
 
----
+Admin und Benutzerportal bleiben getrennt.
 
-# Tests / Checks
+Admin-Ziele:
 
-Source-Checks im Workflow:
-- bestehende Schema-/BTB-Checks;
-- `17_verify_schema13_source.py` – Schema-13-Basis Unterbaustellen;
-- `18_verify_android_worksite_structure_source.py` – Android-Strukturvertrag;
-- neu `19_verify_schema13_track_delete_source.py` – mobile Streckendaten + Server-first Baustellenlöschung.
+- Übersicht Speicher gesamt/belegt/frei;
+- Speicher je Firma;
+- Upload/Download 24 h;
+- API-Uptime;
+- DB-/Storage-/Backupstatus;
+- Syncqueue/Fehler;
+- aktive Geräte/Clientversionen;
+- Diagramme;
+- Firmen/Benutzer/Geräte;
+- Dateien;
+- Baustellenstatus;
+- App-Versionen;
+- Papierkorb;
+- Löschcenter;
+- Audit;
+- Systemstatus.
 
-**Noch nicht bestätigt:**
-- aktueller Head lokal in Android Studio kompiliert;
-- Poco/Pixel mit Schema-13-Server getestet;
-- produktive Migration ausgeführt.
+## Releases / Updates
 
-GitHub Actions war zuletzt als Compilernachweis unzuverlässig; lokaler Android-Studio-Build bleibt maßgeblich.
+Releaseverwaltung getrennt nach Plattform:
 
----
+- Android;
+- Windows optional später;
+- iOS über Store/TestFlight/MDM-Verweis.
 
-# Nächste Schritte – verbindliche Reihenfolge
+Release enthält Version, Build, SHA-256, Mindestbuild, optional/Pflichtupdate, Release Notes und Downloadziel.
 
-1. aktuellen Branch auf Windows/Poco lokal bauen; Compilerfehler zuerst beheben;
-2. vor produktiver Serveränderung frisches PostgreSQL/NAS-Backup erstellen und verifizieren;
-3. Migrationsfolge 10 → 13 technisch prüfen; insbesondere entscheiden, ob 11/12 gleichzeitig produktiv aktiviert oder weiterhin nur vorbereitet bleiben;
-4. Schema-13-Migration einspielen;
-5. Servercode mit `21_part.py` aktivieren, API-Version **0.7.2** prüfen;
-6. frische Testbaustelle auf Poco anlegen, mit Unterbaustellen und mobilen Streckendaten;
-7. Pixel beitreten lassen: Hauptbaustelle + Unterbaustellen + Streckendaten müssen automatisch erscheinen;
-8. Unterbaustelle auf Poco ändern/löschen und Pixel prüfen;
-9. komplette servergebundene Baustelle auf Poco löschen: Server-Kontext muss sie verlieren, Pixel muss sie über Tombstone ebenfalls lokal löschen;
-10. danach BTB-Sync-Grundlogik erneut sauber prüfen: Outbox vor Pull, gemeinsamer aktiver BTB pro TB-Team, Abschluss/Löschen/Poco↔Pixel.
+## Backup / Restore
 
-Keine produktive NAS-Migration ohne vorher bestätigtes Backup.
+Backup umfasst PostgreSQL + Dateispeicher. Restore muss praktisch getestet werden.
+
+Neues/ersetztes Handy kann nach Aktivierung Baustellen aus dem Serverbestand wiederherstellen.
+
+## Android-Stand während Serverbau
+
+Android 200050 bleibt vorerst Testclient.
+
+Bereits vorhandene/teilweise bestätigte Funktionen werden nicht unnötig umgebaut:
+
+- Live-KM;
+- KF/GVP/Festpunktlogik;
+- 10/30-m-Qualitätsampel;
+- Kamera-/Foto-KM;
+- Punkte 4–8 Bilderpfad;
+- feste Buttonzeile `Bilder | Abbrechen | Hinzufügen`;
+- Firmenlogo mit weißem PDF-Hintergrund.
+
+Bekannte Android-Restthemen werden nach Server 1.0 systematisch bearbeitet:
+
+- stabile Serverbindung Baustellen/Unterbaustellen;
+- neuer granularer BTB-Sync;
+- Einstellungen/Foto-Aufdruck-Persistenz;
+- Rechte-UI;
+- Fotos/Mängel/Abnahmen;
+- Generated-Source-/Legacy-/CI-Bereinigung.
+
+## Nächster sinnvoller Arbeitsschritt
+
+1. neuen Draft-PR für `feature/tb-server-1.0` eröffnen;
+2. vorhandenen Server 0.7.x gegen das Zielmodell inventarisieren: behalten / umbauen / entfernen;
+3. neues Server-1.0-Schema als frischen Initialschema-Entwurf erstellen;
+4. Migration Runner + Capabilities + Auth/Firma/Benutzer-Grundlage bauen;
+5. danach die Servermodule in der Reihenfolge aus `TB-HELFER_ROADMAP.md` vollständig umsetzen;
+6. erst nach vollständigen Server-Integrationschecks produktiven NAS-Reset/Cutover durchführen.
+
+Keine produktive NAS-Migration ohne vorher bestätigtes Backup, auch wenn der aktuelle Fachbestand verworfen werden darf.
