@@ -18,8 +18,9 @@ from .survey_originals import _assert_original_access, _load_original
 
 
 router = APIRouter(prefix="/api/v1", tags=["survey-parser"])
-PARSER_VERSION = "tb-survey-parser-1"
+PARSER_VERSION = "tb-survey-parser-2"
 KF_RECORD_SIZE = 102
+_DATE_TOKEN_RE = re.compile(r"(?<!\d)(?:19|20)\d{2}[-_.]\d{2}[-_.]\d{2}(?!\d)")
 
 
 class UnsupportedSurveyFormat(ValueError):
@@ -59,11 +60,93 @@ def _text_field(data: bytes, start: int, length: int) -> str:
     return data[start : min(start + length, len(data))].decode("cp1252", errors="replace").replace("\x00", "").strip()
 
 
+def _name_stem(name: str) -> str:
+    base = name.replace("\\", "/").rsplit("/", 1)[-1]
+    return base.rsplit(".", 1)[0] if "." in base else base
+
+
+def _without_date_tokens(name: str) -> str:
+    return _DATE_TOKEN_RE.sub(" ", _name_stem(name).upper())
+
+
 def _route_from_name(name: str) -> str | None:
-    match = re.search(r"(?<![A-Z0-9])([1-9]\d{3})(?!\d)", name.upper())
-    if not match or match.group(1) == "3000":
+    upper = _without_date_tokens(name)
+    match = re.search(r"(?<![A-Z0-9])([1-9]\d{3})(?!\d)", upper)
+    if match and match.group(1) != "3000":
+        return match.group(1)
+    km_match = re.search(r"(?<![A-Z0-9])KM[_-]?([1-9]\d{3})(?!\d)", upper)
+    if not km_match or km_match.group(1) == "3000":
         return None
-    return match.group(1)
+    return km_match.group(1)
+
+
+def _route_direction_from_name(name: str) -> tuple[str | None, str | None]:
+    upper = _without_date_tokens(name)
+    direct = re.search(r"(?<!\d)([1-9]\d{3})[_-]?(SL|[LRS])(?:[_\s.-]|$)", upper)
+    if direct:
+        return direct.group(1), direct.group(2)
+    station_range = re.search(r"(?<!\d)([1-9]\d{3})[_-]\d{3}[-_]\d{3}(SL|[LRS])(?:[_\s.-]|$)", upper)
+    if station_range:
+        return station_range.group(1), station_range.group(2)
+    direction_matches = list(re.finditer(r"(?<![A-Z0-9])(SL|[LRS])(?![A-Z0-9])", upper))
+    if not direction_matches:
+        return None, None
+    direction_match = direction_matches[-1]
+    route_matches = [
+        match
+        for match in re.finditer(r"(?<!\d)([1-9]\d{3})(?!\d)", upper)
+        if match.start() < direction_match.start() and match.group(1) != "3000"
+    ]
+    if not route_matches:
+        return None, None
+    return route_matches[-1].group(1), direction_match.group(1)
+
+
+def _axis_meta_from_name(name: str) -> dict[str, str | None]:
+    upper = _name_stem(name).upper()
+    route = _route_from_name(name)
+    track: str | None = None
+    direction: str | None = None
+    source_direction: str | None = None
+    axis_type = "UNBEKANNT"
+
+    if upper.startswith("SW_") or re.search(r"^W[_-]?\d+[A-Z]?", upper):
+        axis_type = "WEICHE"
+    elif upper.startswith("WV_") or upper.startswith("WVB_"):
+        axis_type = "WEICHENVERBINDUNG"
+    else:
+        track_with_route = re.search(
+            r"(?<!\d)([1-9]\d{3})[_-]?(?:GL|GLEIS)[_\s-]*(\d+[A-Z]?)(?:[_\s.-]|$)",
+            upper,
+        )
+        short_track = re.search(r"(?:^|[_\s-])G[_\s-]*(\d+[A-Z]?)(?:[_\s.-]|$)", upper)
+        generic_track = re.search(r"(?:^|[_\s-])(?:GL|GLEIS)[_\s-]*(\d+[A-Z]?)(?:[_\s.-]|$)", upper)
+        if track_with_route:
+            route = track_with_route.group(1)
+            track = track_with_route.group(2)
+            axis_type = "GLEIS"
+        elif short_track:
+            route = None
+            track = short_track.group(1)
+            axis_type = "GLEIS"
+        else:
+            directed_route, source_direction = _route_direction_from_name(name)
+            if directed_route and source_direction:
+                route = directed_route
+                direction = {"S": "0", "L": "1", "SL": "1", "R": "2"}.get(source_direction)
+                track = {"5302L": "302", "5302R": "303"}.get(f"{route}{source_direction}")
+                axis_type = "GLEIS" if track else "STRECKE"
+            elif generic_track:
+                track = generic_track.group(1)
+                axis_type = "GLEIS"
+
+    return {
+        "route_from_name": route,
+        "track_from_name": track,
+        "direction_from_name": direction,
+        "source_direction_from_name": source_direction,
+        "axis_type_from_name": axis_type,
+    }
 
 
 def _parse_tra(name: str, data: bytes, source_sha256: str) -> tuple[str, dict, list[str]]:
@@ -135,6 +218,7 @@ def _parse_tra(name: str, data: bytes, source_sha256: str) -> tuple[str, dict, l
         "source_name": name,
         "source_signature": source_sha256[:24],
         "coordinate_system": "DB_REF2016_4",
+        **_axis_meta_from_name(name),
         "element_count": count,
         "station_from_m": nodes[0]["station_m"],
         "station_to_m": nodes[-1]["station_m"],
@@ -185,7 +269,7 @@ def _parse_gra(name: str, data: bytes, source_sha256: str) -> tuple[str, dict, l
         "source_name": name,
         "source_signature": source_sha256[:24],
         "coordinate_system": "DB_REF2016_4",
-        "route_from_name": _route_from_name(name),
+        **_axis_meta_from_name(name),
         "points": points,
     }, warnings
 
