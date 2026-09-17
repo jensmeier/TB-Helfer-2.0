@@ -13,13 +13,14 @@ from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
 from .permissions import require_permission, worksite_context
 from .portal import require_csrf
-from .survey_geometry import dbref_to_wgs84, densify_tra_payload, project_wgs84_to_samples, samples_to_wgs84
+from .survey_geometry import dbref_to_wgs84, project_wgs84_to_samples, samples_to_wgs84
 from .survey_sections import _build_payload, _insert_points, _load_dataset, _section_response
 from .survey_station_merge import MERGE_VERSION, build_geometry_station_maps, merged_station_for
+from .survey_tra_chainage import densify_tra_chainage_payload
 
 
 router = APIRouter(prefix="/api/v1", tags=["survey-projection"])
-PROJECTION_VERSION = "survey-projection-v2"
+PROJECTION_VERSION = "survey-projection-v3"
 PROJECTION_GENERATOR_PREFIX = "survey-projection-v"
 GRA_JUMP_GENERATOR_PREFIX = "survey-gra-jump-v"
 
@@ -96,7 +97,7 @@ def _geometry_cache(source: dict[str, Any]) -> dict[str, Any] | None:
     if source.get("parse_status") != "PARSED" or source.get("detected_format") != "TRA_ER0_BINARY":
         return None
     payload = source.get("parse_payload") or {}
-    dense = densify_tra_payload(payload)
+    dense = densify_tra_chainage_payload(payload)
     samples = samples_to_wgs84(dense)
     if len(samples) < 2:
         return None
@@ -177,11 +178,9 @@ def _project_source_points(
             continue
 
         geometry_id = geometry_item["source"]["original_id"]
-        local_station_m = float(projection["station_m"])
-        merged = merged_station_for(station_maps, geometry_id, local_station_m)
+        local_chainage_m = float(projection["station_m"])
+        merged = merged_station_for(station_maps, geometry_id, local_chainage_m)
         if merged is None:
-            # A local station from an unmapped secondary TRA must never enter the
-            # common section station space, not even as a control anchor.
             summary["skipped_unmapped_geometry"] += 1
             continue
         station_m, station_mapping = merged
@@ -231,7 +230,8 @@ def _project_source_points(
                     "projection_quality": projection["quality"],
                     "projected_lat": projection["projected_lat"],
                     "projected_lon": projection["projected_lon"],
-                    "geometry_local_station_m": local_station_m,
+                    "geometry_station_basis": "CONTINUOUS_GEOMETRY_CHAINAGE",
+                    "geometry_local_chainage_m": local_chainage_m,
                     "geometry_merged_station_m": float(station_m),
                     "geometry_station_map_status": station_mapping.get("status"),
                     "geometry_station_sign": station_mapping.get("station_sign"),
@@ -279,6 +279,7 @@ def build_projection_points(
     generated.sort(key=lambda point: (point["station_m"], point["point_type"], str(point["id"])))
     return generated, {
         "projection_version": PROJECTION_VERSION,
+        "station_basis": "CONTINUOUS_GEOMETRY_CHAINAGE",
         "expected_route": expected_route,
         "primary_geometry_original_id": str(primary_geometry_id),
         "geometry_source_count": len(geometry_sources),
@@ -406,6 +407,7 @@ def rebuild_auto_anchors(
             details={
                 "projection_version": PROJECTION_VERSION,
                 "station_merge_version": MERGE_VERSION,
+                "station_basis": "CONTINUOUS_GEOMETRY_CHAINAGE",
                 "generated_original_anchors": summary["generated_original_anchors"],
                 "generated_control_anchors": summary["generated_control_anchors"],
                 "mapped_geometry_source_count": summary["mapped_geometry_source_count"],
