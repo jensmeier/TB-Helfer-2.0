@@ -6,7 +6,7 @@ Diese Prüfung verwendet die im Projekt bereitgestellten realen Absteckungs-/Ver
 
 ## Ziel
 
-Nach Parser-v2, TRA-2-m-Verdichtung und DB_REF/GK->WGS84-Projektion sollte geprüft werden, ob echte KF/GVP-Punkte geometrisch belastbar auf die vorhandenen TRA-Achsen fallen und ob die daraus gebildete KM-Kalibrierung fachlich konsistent bleibt.
+Nach Parser-v2, TRA-2-m-Verdichtung und DB_REF/GK->WGS84-Projektion wurde geprüft, ob echte KF/GVP-Punkte geometrisch belastbar auf die vorhandenen TRA-Achsen fallen und ob die daraus gebildete KM-Kalibrierung fachlich konsistent bleibt.
 
 Wichtig: Ein äußerer 2-Punkt-Fit allein reicht nicht. Reale Daten enthalten KM-Sprünge. Eine scheinbar plausible Gesamtsteigung kann deshalb trotzdem zwischen den Ankern um viele Meter falsch sein.
 
@@ -36,7 +36,7 @@ Die GRA enthält ein reales KM-Sprungpaar:
 - nach Sprung: **17700,000 m**
 - Sprung: **+73,660 m**
 
-Aus den geometrisch projizierten KF/GVP-Ankern ergibt sich der Sprung auf der TRA bei ungefähr **Station 12986,912 m**. Die unabhängig von der linken und rechten Nachbarschaft berechneten Stationswerte unterscheiden sich nur um ca. **0,001 m**.
+Aus den geometrisch projizierten KF/GVP-Ankern ergibt sich der Sprung auf der TRA bei ungefähr **Station 12986,913 m**. Die unabhängig von der linken und rechten Nachbarschaft berechneten Stationswerte unterscheiden sich nur um ca. **0,001 m**.
 
 Mit modelliertem Sprung ergibt die gesamte Ankerreihe:
 
@@ -75,7 +75,7 @@ Für die R-Achse zeigt die GRA ein weiteres reales Sprungpaar:
 - nach Sprung: **55600,000063 m**
 - Sprung: ca. **-6,095590 m**.
 
-Aus den projizierten GVP-Ankern wird die Sprungstation bei ca. **4305,413 m** geschätzt. Die Schätzung aus beiden Seiten unterscheidet sich um ca. **0,436 m**. Mit diesem Sprung liegt die maximale Ankerabweichung bei ca. **0,517 m**.
+Aus den projizierten GVP-Ankern wird die Sprungstation bei ca. **4305,411 m** geschätzt. Die Schätzung aus beiden Seiten unterscheidet sich um ca. **0,403 m**. Mit diesem Sprung liegt die maximale Ankerabweichung bei ca. **0,517 m**.
 
 Das bestätigt, dass reale KM-Sprünge nicht nur positiv und groß sein können; auch negative Sprünge im einstelligen Meterbereich kommen im vorhandenen Projektbestand vor.
 
@@ -100,23 +100,49 @@ Beispiele im vorhandenen Bestand:
 - 5300 DHDN R: `55606,095653 -> 55600,000063` (-6,095590 m);
 - 5504: u. a. `5793,647999 -> 5799,998999` (+6,351 m) und `9428,9482 -> 9400,0000` (-28,9482 m).
 
-Dieses Muster ist durch mehrere reale Projektdateien belegt, wird aber noch nicht als allgemeine externe GRA-Formatspezifikation behauptet. Eine automatische Verwendung muss zusätzlich zur GRA-Marke durch die projizierte Ankerreihe plausibilisiert werden.
+Dieses Muster ist durch mehrere reale Projektdateien belegt, wird aber nicht als allgemeine externe GRA-Formatspezifikation behauptet. Eine automatische Verwendung wird deshalb zusätzlich durch Achsidentität und die geometrisch projizierte Ankerreihe abgesichert.
 
 ## Konsequenz für Server 1.0
 
-Die KM-Kalibrierung wurde deshalb verschärft:
+Die KM-Kalibrierung wurde verschärft:
 
 - `GRUEN/AUTOMATISCH` oder `ORANGE/MANUELL` darf nicht mehr nur aus dem äußersten Ankerpaar entstehen;
 - alle beteiligten Anker werden gegen die resultierende Kalibrierung geprüft;
 - maximale zulässige Ankerabweichung: **5 m**;
 - bei größerer Abweichung wird der Abschnitt `ROT/UNPLAUSIBEL` und weist auf einen möglichen nicht modellierten KM-Sprung oder eine falsche Achszuordnung hin;
-- ein korrekt modellierter KM-Sprung wird weiterhin diskret berücksichtigt und nicht in den kontinuierlichen Faktor hineingerechnet.
+- ein korrekt modellierter KM-Sprung wird diskret berücksichtigt und nicht in den kontinuierlichen Faktor hineingerechnet.
 
-Der Source-Check `31_verify_tb_server_1_survey_sections_source.py` enthält dafür einen aus dem realen Gessertshausen-5302L-Bestand destillierten Regressionstest: ohne den 73,660-m-Sprung rot/unplausibel, mit Sprung grün und <1 m maximale Ankerabweichung.
+Der Source-Check `31_verify_tb_server_1_survey_sections_source.py` enthält einen aus dem realen Gessertshausen-5302L-Bestand destillierten Regressionstest: ohne den 73,660-m-Sprung rot/unplausibel, mit Sprung grün und <1 m maximale Ankerabweichung.
+
+## Automatische, konservative GRA-Sprungerkennung
+
+`server/tbserver/survey_gra_jumps.py` ergänzt nun den getrennten Rebuild:
+
+`POST /api/v1/survey-sections/{dataset_id}/rebuild-gra-jumps`
+
+Der Rebuild darf einen GRA-Kandidaten nur als erzeugten `KM_JUMP` übernehmen, wenn:
+
+1. die GRA als `KM`-Quelle verknüpft und erfolgreich als `GRA_BINARY` geparst ist;
+2. das in den realen Dateien wiederholt beobachtete Muster `Parameter 1000 -> 0` bei praktisch gleicher Höhe vorliegt;
+3. Strecke bestätigt ist;
+4. zusätzlich Gleis **oder** Richtung zwischen GRA und primärer TRA bestätigt ist;
+5. genügend bereits geometrisch projizierte `ORIGINAL_ANCHOR` vorhanden sind;
+6. die Sprungstation unabhängig aus Ankern vor und nach dem Sprung bestimmbar ist;
+7. beide Stationsschätzungen höchstens **2 m** auseinanderliegen.
+
+Einseitige Extrapolation ist technisch vorhanden, aber standardmäßig **ausgeschaltet** (`allow_one_sided=false`). Damit wird z. B. der frühe 5302-Sprung `14897,880 -> 14900,000`, für den im vorhandenen KF-Bereich keine Anker auf beiden Seiten liegen, beim normalen Rebuild nur als nicht platzierter Kandidat geführt und nicht automatisch übernommen.
+
+Reale Gegenprüfung des neuen Builders mit `allow_one_sided=false`:
+
+- Gessertshausen 5302L: 2 GRA-Kandidaten, davon 1 beidseitig bestätigt; erzeugt `+73,660 m` bei Station ca. `12986,913`, Seitenabweichung ca. `0,001 m`;
+- Gessertshausen 5302R: 2 Kandidaten, davon 1 bestätigt; erzeugt `+73,660 m` bei Station ca. `13025,898`, Seitenabweichung < `0,001 m`;
+- 8771 / 5300 R: 1 Kandidat, bestätigt; erzeugt `-6,095590 m` bei Station ca. `4305,411`, Seitenabweichung ca. `0,403 m`.
+
+Der Rebuild ersetzt nur zuvor von `survey-gra-jump-v*` erzeugte Punkte. Manuelle KM-Sprünge bleiben erhalten und verhindern einen gleichwertigen automatisch erzeugten Doppelpunkt. Bei umgekehrter primärer Geometrie wird derzeit bewusst mit `GRA_JUMP_REVERSED_PRIMARY_GEOMETRY_NOT_SUPPORTED` abgebrochen, statt Vorher/Nachher zu raten.
 
 ## Noch offen
 
-1. Das wiederkehrende GRA-Sprungmuster serverseitig nur dann automatisch in `KM_JUMP` überführen, wenn GRA und primäre TRA fachlich eindeutig zusammengehören und die projizierten Originalanker den Sprung geometrisch bestätigen.
-2. Die Sprungstation robust aus Ankern vor/nach dem Sprung bestimmen; einseitige Extrapolation muss als schwächerer Nachweis behandelt werden.
-3. Danach reale Import->Parse->Survey-Section->Projection->Kalibrierung gegen PostgreSQL/API vollständig ausführen.
+1. Die reale Kette Import -> Parse -> Survey-Section -> Punktprojektion -> GRA-Sprung-Rebuild -> Kalibrierung vollständig gegen PostgreSQL/API ausführen.
+2. Einseitig belegte Sprünge nur dann weiter automatisieren, wenn zusätzliche reale Bestände einen sicheren Nachweis erlauben; Standard bleibt vorerst `false`.
+3. Robuste Stationsraum-/Überlappungsverschmelzung mehrerer TRA-Quellen schließen.
 4. GitHub Actions ist dafür derzeit weiterhin nicht verwendbar, weil der TB-Server-Job schon vor dem ersten Step ohne Runner endet.
