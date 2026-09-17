@@ -1,0 +1,504 @@
+from __future__ import annotations
+
+from typing import Any
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+
+from .database import transaction
+from .permissions import require_permission, worksite_context
+from .portal import current_portal_user, require_csrf
+
+
+router = APIRouter(prefix="/api/v1/worksites", tags=["worksites"])
+
+
+class WorksiteCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=240)
+    designation: str | None = Field(default=None, max_length=300)
+    route_number: str | None = Field(default=None, max_length=40)
+    station_code: str | None = Field(default=None, max_length=40)
+    station_name: str | None = Field(default=None, max_length=240)
+    company_id: UUID | None = None
+
+
+class NodeCreate(BaseModel):
+    parent_id: UUID | None = None
+    node_kind: str = Field(min_length=1, max_length=60)
+    name: str = Field(min_length=1, max_length=300)
+    route_number: str | None = Field(default=None, max_length=40)
+    track_key: str | None = Field(default=None, max_length=200)
+    external_key: str | None = Field(default=None, max_length=300)
+    sort_order: int = 0
+    payload: dict = Field(default_factory=dict)
+
+
+class NodeUpdate(BaseModel):
+    parent_id: UUID | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=300)
+    route_number: str | None = Field(default=None, max_length=40)
+    track_key: str | None = Field(default=None, max_length=200)
+    sort_order: int | None = None
+    payload: dict | None = None
+
+
+class MemberAdd(BaseModel):
+    user_id: UUID
+    worksite_role: str = Field(default="HELPER")
+    permission_profile: str = Field(default="HELPER_STANDARD")
+    permissions_override: dict = Field(default_factory=dict)
+    area_scope: dict = Field(default_factory=dict)
+    team_id: UUID | None = None
+
+
+class MemberPermissionsUpdate(BaseModel):
+    permission_profile: str
+    permissions_override: dict = Field(default_factory=dict)
+    area_scope: dict | None = None
+
+
+def _company_for_create(cur, user: dict[str, Any], requested: UUID | None) -> UUID:
+    if user["company_role"] == "ADMIN":
+        if requested is None:
+            raise HTTPException(400, "COMPANY_REQUIRED")
+        company_id = requested
+    else:
+        if user["company_id"] is None:
+            raise HTTPException(403, "COMPANY_REQUIRED")
+        if requested is not None and requested != user["company_id"]:
+            raise HTTPException(403, "COMPANY_MISMATCH")
+        company_id = user["company_id"]
+    cur.execute(
+        "SELECT id FROM tb.companies WHERE id = %s AND status = 'ACTIVE' AND deleted_at IS NULL",
+        (company_id,),
+    )
+    if not cur.fetchone():
+        raise HTTPException(404, "COMPANY_NOT_FOUND")
+    return company_id
+
+
+@router.get("")
+def list_worksites(user: dict[str, Any] = Depends(current_portal_user)) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        if user["company_role"] == "ADMIN":
+            cur.execute(
+                """
+                SELECT w.id, w.company_id, c.name AS company_name, w.name, w.designation,
+                       w.route_number, w.station_code, w.station_name, w.status, w.updated_at
+                FROM tb.worksites w JOIN tb.companies c ON c.id = w.company_id
+                WHERE w.deleted_at IS NULL
+                ORDER BY w.updated_at DESC
+                """
+            )
+        elif user["company_role"] == "CHEF":
+            cur.execute(
+                """
+                SELECT w.id, w.company_id, c.name AS company_name, w.name, w.designation,
+                       w.route_number, w.station_code, w.station_name, w.status, w.updated_at
+                FROM tb.worksites w JOIN tb.companies c ON c.id = w.company_id
+                WHERE w.company_id = %s AND w.deleted_at IS NULL
+                ORDER BY w.updated_at DESC
+                """,
+                (user["company_id"],),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT w.id, w.company_id, c.name AS company_name, w.name, w.designation,
+                       w.route_number, w.station_code, w.station_name, w.status, w.updated_at
+                FROM tb.worksites w
+                JOIN tb.companies c ON c.id = w.company_id
+                JOIN tb.worksite_memberships m ON m.worksite_id = w.id
+                WHERE m.user_id = %s AND m.status = 'ACTIVE' AND w.deleted_at IS NULL
+                ORDER BY w.updated_at DESC
+                """,
+                (user["user_id"],),
+            )
+        rows = cur.fetchall()
+    return {"worksites": rows}
+
+
+@router.post("", status_code=201)
+def create_worksite(
+    payload: WorksiteCreate,
+    user: dict[str, Any] = Depends(require_csrf),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        company_id = _company_for_create(cur, user, payload.company_id)
+        cur.execute(
+            """
+            INSERT INTO tb.worksites(
+                company_id, name, designation, route_number, station_code, station_name, created_by
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s)
+            RETURNING id, company_id, name, designation, route_number, station_code, station_name,
+                      status, version, created_at
+            """,
+            (
+                company_id,
+                payload.name.strip(),
+                payload.designation,
+                payload.route_number,
+                payload.station_code,
+                payload.station_name,
+                user["user_id"],
+            ),
+        )
+        worksite = cur.fetchone()
+        if user["company_role"] != "ADMIN":
+            cur.execute(
+                """
+                INSERT INTO tb.worksite_memberships(
+                    worksite_id, user_id, worksite_role, permission_profile, invited_by
+                ) VALUES (%s,%s,'RESPONSIBLE_TB','RESPONSIBLE_TB',%s)
+                """,
+                (worksite["id"], user["user_id"], user["user_id"]),
+            )
+            cur.execute(
+                """
+                INSERT INTO tb.teams(worksite_id, lead_user_id, name)
+                VALUES (%s,%s,%s)
+                RETURNING id
+                """,
+                (worksite["id"], user["user_id"], user["display_name"]),
+            )
+            team = cur.fetchone()
+            cur.execute(
+                "INSERT INTO tb.team_members(team_id, user_id, role) VALUES (%s,%s,'LEAD')",
+                (team["id"], user["user_id"]),
+            )
+    return worksite
+
+
+@router.get("/{worksite_id}")
+def get_worksite(
+    worksite_id: UUID,
+    user: dict[str, Any] = Depends(current_portal_user),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        context = worksite_context(cur, user, worksite_id)
+        cur.execute(
+            """
+            SELECT w.id, w.company_id, c.name AS company_name, w.name, w.designation,
+                   w.route_number, w.station_code, w.station_name, w.status, w.version,
+                   w.created_at, w.updated_at
+            FROM tb.worksites w JOIN tb.companies c ON c.id = w.company_id
+            WHERE w.id = %s
+            """,
+            (worksite_id,),
+        )
+        row = cur.fetchone()
+    return {"worksite": row, "permissions": context["effective_permissions"]}
+
+
+@router.get("/{worksite_id}/nodes")
+def list_nodes(
+    worksite_id: UUID,
+    user: dict[str, Any] = Depends(current_portal_user),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        worksite_context(cur, user, worksite_id)
+        cur.execute(
+            """
+            SELECT id, parent_id, node_kind, name, route_number, track_key, external_key,
+                   sort_order, payload, version, created_at, updated_at
+            FROM tb.worksite_nodes
+            WHERE worksite_id = %s AND deleted_at IS NULL
+            ORDER BY parent_id NULLS FIRST, sort_order, lower(name)
+            """,
+            (worksite_id,),
+        )
+        rows = cur.fetchall()
+    return {"nodes": rows}
+
+
+@router.post("/{worksite_id}/nodes", status_code=201)
+def create_node(
+    worksite_id: UUID,
+    payload: NodeCreate,
+    user: dict[str, Any] = Depends(require_csrf),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "worksite.structure.edit")
+        if payload.parent_id is not None:
+            cur.execute(
+                "SELECT id FROM tb.worksite_nodes WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL",
+                (payload.parent_id, worksite_id),
+            )
+            if not cur.fetchone():
+                raise HTTPException(400, "PARENT_NODE_INVALID")
+        cur.execute(
+            """
+            INSERT INTO tb.worksite_nodes(
+                worksite_id, parent_id, node_kind, name, route_number, track_key,
+                external_key, sort_order, payload, created_by
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            RETURNING id, parent_id, node_kind, name, route_number, track_key, external_key,
+                      sort_order, payload, version, created_at, updated_at
+            """,
+            (
+                worksite_id,
+                payload.parent_id,
+                payload.node_kind,
+                payload.name.strip(),
+                payload.route_number,
+                payload.track_key,
+                payload.external_key,
+                payload.sort_order,
+                payload.payload,
+                user["user_id"],
+            ),
+        )
+        row = cur.fetchone()
+        cur.execute("UPDATE tb.worksites SET version = version + 1, updated_at = now() WHERE id = %s", (worksite_id,))
+    return row
+
+
+@router.patch("/{worksite_id}/nodes/{node_id}")
+def update_node(
+    worksite_id: UUID,
+    node_id: UUID,
+    payload: NodeUpdate,
+    user: dict[str, Any] = Depends(require_csrf),
+) -> dict:
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(400, "NO_CHANGES")
+    with transaction() as conn, conn.cursor() as cur:
+        context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "worksite.structure.edit")
+        if "parent_id" in updates and updates["parent_id"] is not None:
+            if updates["parent_id"] == node_id:
+                raise HTTPException(400, "NODE_CYCLE")
+            cur.execute(
+                "SELECT id FROM tb.worksite_nodes WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL",
+                (updates["parent_id"], worksite_id),
+            )
+            if not cur.fetchone():
+                raise HTTPException(400, "PARENT_NODE_INVALID")
+        columns = []
+        values = []
+        for key in ("parent_id", "name", "route_number", "track_key", "sort_order", "payload"):
+            if key in updates:
+                columns.append(f"{key} = %s")
+                values.append(updates[key])
+        columns.extend(["version = version + 1", "updated_at = now()"])
+        values.extend([node_id, worksite_id])
+        cur.execute(
+            f"UPDATE tb.worksite_nodes SET {', '.join(columns)} WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL RETURNING *",
+            tuple(values),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "NODE_NOT_FOUND")
+        cur.execute("UPDATE tb.worksites SET version = version + 1, updated_at = now() WHERE id = %s", (worksite_id,))
+    return row
+
+
+@router.delete("/{worksite_id}/nodes/{node_id}", status_code=204)
+def delete_node(
+    worksite_id: UUID,
+    node_id: UUID,
+    user: dict[str, Any] = Depends(require_csrf),
+):
+    with transaction() as conn, conn.cursor() as cur:
+        context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "worksite.structure.edit")
+        cur.execute(
+            "UPDATE tb.worksite_nodes SET deleted_at = now(), version = version + 1, updated_at = now() WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL RETURNING id",
+            (node_id, worksite_id),
+        )
+        if not cur.fetchone():
+            raise HTTPException(404, "NODE_NOT_FOUND")
+        cur.execute("UPDATE tb.worksites SET version = version + 1, updated_at = now() WHERE id = %s", (worksite_id,))
+    return None
+
+
+@router.get("/{worksite_id}/members")
+def list_members(
+    worksite_id: UUID,
+    user: dict[str, Any] = Depends(current_portal_user),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        worksite_context(cur, user, worksite_id)
+        cur.execute(
+            """
+            SELECT m.id, m.user_id, u.display_name, u.personal_email, u.personal_phone,
+                   m.worksite_role, m.permission_profile, m.permissions_override,
+                   m.permissions_version, m.area_scope, m.status, m.joined_at
+            FROM tb.worksite_memberships m
+            JOIN tb.users u ON u.id = m.user_id
+            WHERE m.worksite_id = %s AND m.status = 'ACTIVE' AND u.deleted_at IS NULL
+            ORDER BY lower(u.display_name)
+            """,
+            (worksite_id,),
+        )
+        rows = cur.fetchall()
+    return {"members": rows}
+
+
+@router.post("/{worksite_id}/members", status_code=201)
+def add_member(
+    worksite_id: UUID,
+    payload: MemberAdd,
+    user: dict[str, Any] = Depends(require_csrf),
+) -> dict:
+    role = payload.worksite_role.upper()
+    if role not in {"RESPONSIBLE_TB", "TB", "HELPER", "READ_ONLY"}:
+        raise HTTPException(400, "INVALID_WORKSITE_ROLE")
+    with transaction() as conn, conn.cursor() as cur:
+        context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "members.manage")
+        cur.execute("SELECT company_id FROM tb.worksites WHERE id = %s", (worksite_id,))
+        worksite = cur.fetchone()
+        cur.execute(
+            "SELECT id, company_id, display_name FROM tb.users WHERE id = %s AND status = 'ACTIVE' AND deleted_at IS NULL",
+            (payload.user_id,),
+        )
+        target = cur.fetchone()
+        if not target or target["company_id"] != worksite["company_id"]:
+            raise HTTPException(400, "MEMBER_COMPANY_MISMATCH")
+        cur.execute("SELECT profile_key FROM tb.permission_profiles WHERE profile_key = %s", (payload.permission_profile,))
+        if not cur.fetchone():
+            raise HTTPException(400, "PERMISSION_PROFILE_INVALID")
+        cur.execute(
+            """
+            INSERT INTO tb.worksite_memberships(
+                worksite_id, user_id, worksite_role, permission_profile,
+                permissions_override, area_scope, invited_by
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (worksite_id, user_id) DO UPDATE
+            SET worksite_role = excluded.worksite_role,
+                permission_profile = excluded.permission_profile,
+                permissions_override = excluded.permissions_override,
+                area_scope = excluded.area_scope,
+                permissions_version = tb.worksite_memberships.permissions_version + 1,
+                status = 'ACTIVE', removed_at = NULL, updated_at = now()
+            RETURNING *
+            """,
+            (
+                worksite_id,
+                payload.user_id,
+                role,
+                payload.permission_profile,
+                payload.permissions_override,
+                payload.area_scope,
+                user["user_id"],
+            ),
+        )
+        membership = cur.fetchone()
+
+        if role in {"RESPONSIBLE_TB", "TB"}:
+            cur.execute(
+                """
+                INSERT INTO tb.teams(worksite_id, lead_user_id, name)
+                VALUES (%s,%s,%s)
+                ON CONFLICT (worksite_id, lead_user_id) DO UPDATE
+                SET status = 'ACTIVE', updated_at = now()
+                RETURNING id
+                """,
+                (worksite_id, payload.user_id, target["display_name"]),
+            )
+            team = cur.fetchone()
+            cur.execute(
+                """
+                INSERT INTO tb.team_members(team_id, user_id, role)
+                VALUES (%s,%s,'LEAD')
+                ON CONFLICT (team_id, user_id) DO UPDATE SET role='LEAD', removed_at=NULL
+                """,
+                (team["id"], payload.user_id),
+            )
+        elif role == "HELPER":
+            if payload.team_id is None:
+                raise HTTPException(400, "TEAM_REQUIRED_FOR_HELPER")
+            cur.execute(
+                "SELECT id FROM tb.teams WHERE id = %s AND worksite_id = %s AND status = 'ACTIVE'",
+                (payload.team_id, worksite_id),
+            )
+            if not cur.fetchone():
+                raise HTTPException(400, "TEAM_INVALID")
+            cur.execute(
+                """
+                UPDATE tb.team_members tm
+                SET removed_at = now()
+                FROM tb.teams t
+                WHERE tm.team_id = t.id AND t.worksite_id = %s
+                  AND tm.user_id = %s AND tm.removed_at IS NULL
+                """,
+                (worksite_id, payload.user_id),
+            )
+            cur.execute(
+                """
+                INSERT INTO tb.team_members(team_id, user_id, role)
+                VALUES (%s,%s,'HELPER')
+                ON CONFLICT (team_id, user_id) DO UPDATE SET role='HELPER', removed_at=NULL
+                """,
+                (payload.team_id, payload.user_id),
+            )
+    return membership
+
+
+@router.patch("/{worksite_id}/members/{member_user_id}/permissions")
+def update_member_permissions(
+    worksite_id: UUID,
+    member_user_id: UUID,
+    payload: MemberPermissionsUpdate,
+    user: dict[str, Any] = Depends(require_csrf),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "members.manage")
+        cur.execute("SELECT profile_key FROM tb.permission_profiles WHERE profile_key = %s", (payload.permission_profile,))
+        if not cur.fetchone():
+            raise HTTPException(400, "PERMISSION_PROFILE_INVALID")
+        if payload.area_scope is None:
+            cur.execute(
+                """
+                UPDATE tb.worksite_memberships
+                SET permission_profile = %s, permissions_override = %s,
+                    permissions_version = permissions_version + 1, updated_at = now()
+                WHERE worksite_id = %s AND user_id = %s AND status = 'ACTIVE'
+                RETURNING *
+                """,
+                (payload.permission_profile, payload.permissions_override, worksite_id, member_user_id),
+            )
+        else:
+            cur.execute(
+                """
+                UPDATE tb.worksite_memberships
+                SET permission_profile = %s, permissions_override = %s, area_scope = %s,
+                    permissions_version = permissions_version + 1, updated_at = now()
+                WHERE worksite_id = %s AND user_id = %s AND status = 'ACTIVE'
+                RETURNING *
+                """,
+                (payload.permission_profile, payload.permissions_override, payload.area_scope, worksite_id, member_user_id),
+            )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "MEMBERSHIP_NOT_FOUND")
+    return row
+
+
+@router.get("/{worksite_id}/teams")
+def list_teams(
+    worksite_id: UUID,
+    user: dict[str, Any] = Depends(current_portal_user),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        worksite_context(cur, user, worksite_id)
+        cur.execute(
+            """
+            SELECT t.id, t.lead_user_id, u.display_name AS lead_name, t.name, t.active_btb_id,
+                   t.status, count(tm.user_id) FILTER (WHERE tm.removed_at IS NULL) AS member_count
+            FROM tb.teams t
+            JOIN tb.users u ON u.id = t.lead_user_id
+            LEFT JOIN tb.team_members tm ON tm.team_id = t.id
+            WHERE t.worksite_id = %s AND t.status = 'ACTIVE'
+            GROUP BY t.id, u.display_name
+            ORDER BY lower(coalesce(t.name, u.display_name))
+            """,
+            (worksite_id,),
+        )
+        rows = cur.fetchall()
+    return {"teams": rows}
