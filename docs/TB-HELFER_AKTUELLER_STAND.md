@@ -19,6 +19,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - Vermessungsparser/Katalog: `3e974e7bd61c0241b69951e763d8eca9e2660e15`
 - Raw-KF-Paritätstest: `9378069be8c70fc89696c8c7fbf1b9b051474204`
 - Parser-v2-/Fixture-Stand: `31cbd83b02523522f113c97dac412b3de3c829bf`
+- Abschnittsquellen/KM-Kalibrierung: `1bf2e36271f54c8945653561bc7b46d95131165d`
 - Android bleibt vorerst Testclient: Buildkandidat **200050**
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
 
@@ -113,7 +114,7 @@ Für Parser v2 wurden zusätzlich erfolgreich ausgeführt:
 
 ### Bekanntes GitHub-Actions-Problem
 
-Die zuletzt geprüften TB-Server-Läufe werden weiterhin bereits vor dem ersten Step beendet (`steps=null`/`steps=[]`, keine Job-Logs). Das sind **keine ausgeführten Python-/PostgreSQL-Tests**. Das Runner-/Actions-Problem muss separat geklärt werden; lokale Source-/Fixture-Checks dürfen bis dahin nicht als im Runner bestanden bezeichnet werden.
+Auch der neue TB-Server-Lauf **#76** für Commit `1bf2e36271f54c8945653561bc7b46d95131165d` wurde bereits vor dem ersten Step beendet: Job `foundation`, `steps=[]`, `runner_id=0`, keine ausgeführten Job-Schritte. Das sind **keine ausgeführten Python-/PostgreSQL-Tests**. Das Runner-/Actions-Problem muss separat geklärt werden; lokale Source-/Fixture-Checks dürfen bis dahin nicht als im Runner bestanden bezeichnet werden.
 
 ## Bekannte/offene Punkte
 
