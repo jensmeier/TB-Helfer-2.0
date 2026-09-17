@@ -100,12 +100,25 @@ Der Vorgang:
 5. projiziert KM-/Kontrollpunkte auf die nächste verknüpfte TRA;
 6. überführt die lokale TRA-Station über das Stationsmapping in den gemeinsamen Abschnittsstationsraum;
 7. ersetzt alle früher von `survey-projection-v*` erzeugten Punkte;
-8. lässt manuelle Anker, KM-Sprünge und andere Generatoren unangetastet;
-9. berechnet den Abschnitts-KM-Status neu;
-10. erhöht die `track_data.version` optimistisch;
-11. schreibt Change Feed, Audit und optional das vorhandene `X-Client-Change-Id`-Receipt.
+8. verwirft zusätzlich automatisch erzeugte `survey-gra-jump-v*`-Punkte, weil deren Sprungstation vom bisherigen Projektions-/Stationsraum abhängt;
+9. erhält manuelle Anker, manuelle KM-Sprünge und andere unabhängige Fachpunkte unverändert;
+10. berechnet den Abschnitts-KM-Status mit dem jetzt gültigen Punktbestand neu;
+11. erhöht die `track_data.version` optimistisch;
+12. schreibt Change Feed, Audit und optional das vorhandene `X-Client-Change-Id`-Receipt.
 
 Die Projektionslogik ist jetzt `survey-projection-v2`. Die automatisch erzeugten UUIDs sind deterministisch aus Projektionsversion, Abschnitt, Quelloriginal, Geometriequelle, Quellpunkt und KM-Wert abgeleitet. Beim v2-Rebuild werden vorhandene v1-Projektionspunkte gezielt ersetzt, damit keine alten und neuen Stationsräume gleichzeitig wirksam bleiben.
+
+### Abhängigkeit zum GRA-Sprung-Rebuild
+
+Ein automatisch erzeugter GRA-Sprung ist eine **abgeleitete Station**. Ändert ein erneuter Projektionslauf die TRA-Zuordnung, den Stationsoffset oder die Originalanker, ist die alte automatisch berechnete Sprungstation nicht mehr sicher gültig. Darum wird sie beim Projektions-Rebuild bewusst entfernt.
+
+Verbindliche sichere Reihenfolge nach Änderungen an Geometrie/Quellen/Projektion:
+
+1. `rebuild-auto-anchors`;
+2. danach `rebuild-gra-jumps`;
+3. anschließend den im Section-Payload neu berechneten Kalibrierstatus verwenden.
+
+Zwischen Schritt 1 und 2 darf ein Abschnitt mit einem benötigten, aber noch nicht neu erzeugten GRA-Sprung vorübergehend `ROT/UNPLAUSIBEL` sein. Das ist beabsichtigt und verhindert, dass ein veralteter automatisch berechneter Sprung scheinbar einen grünen Zustand erhält. Manuell gesetzte `KM_JUMP` werden durch diesen Ablauf nicht gelöscht.
 
 ## 7. Mehrere TRA-Quellen / Stationsraum-Merge
 
@@ -178,7 +191,7 @@ Automatisch erzeugt wird ein `KM_JUMP` nur, wenn Strecke bestätigt ist, zusätz
 
 Einseitige Extrapolation ist nur eine explizite Option und standardmäßig aus. Bei `reverse_geometry=true` der primären Geometrie bricht dieser Rebuild derzeit konservativ ab, statt die Vorher-/Nachher-Semantik zu raten.
 
-Der Rebuild ersetzt ausschließlich frühere von `survey-gra-jump-v*` erzeugte Punkte. Manuelle `KM_JUMP` bleiben unverändert. Ein gleichwertiger manueller Sprung verhindert einen automatisch erzeugten Doppelpunkt.
+Der GRA-Rebuild ersetzt ausschließlich frühere von `survey-gra-jump-v*` erzeugte Punkte. Manuelle `KM_JUMP` bleiben unverändert. Ein gleichwertiger manueller Sprung verhindert einen automatisch erzeugten Doppelpunkt.
 
 Die nachfolgende Kalibrierung prüft zusätzlich **alle** beteiligten Anker. Liegt die maximale Ankerabweichung über 5 m, wird nicht grün/orange kalibriert, sondern `ROT/UNPLAUSIBEL` gemeldet. Damit kann ein fehlender KM-Sprung nicht mehr durch einen zufällig plausiblen äußeren 2-Punkt-Fit verdeckt werden.
 
