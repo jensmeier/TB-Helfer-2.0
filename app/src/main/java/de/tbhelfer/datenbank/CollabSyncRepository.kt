@@ -526,6 +526,15 @@ class CollabSyncRepository(
                         )
                         failed++
                     }
+                    is Server1BtbApi.MutationResult.Deleted -> {
+                        dao.markCollabDeleted(
+                            result.serverId,
+                            result.entityVersion,
+                            System.currentTimeMillis()
+                        )
+                        dao.deleteCollabPendingChange(change.id)
+                        uploaded++
+                    }
                     is Server1BtbApi.MutationResult.Conflict -> {
                         val detail = JSONObject()
                             .put("detail", result.detail)
@@ -573,6 +582,17 @@ class CollabSyncRepository(
             }
         }
         return Server1BtbUploadResult.Success(uploaded, failed, conflicts)
+    }
+
+    suspend fun hasPendingServer1BtbDelete(): Boolean {
+        for (context in dao.worksiteContexts()) {
+            val hasDelete = dao.collabPendingChanges(context.worksiteServerId).any { change ->
+                change.entityType.equals(SyncCollabPendingChangeEntity.TYPE_BTB, ignoreCase = true) &&
+                    change.operation.equals(SyncCollabPendingChangeEntity.OP_DELETE, ignoreCase = true)
+            }
+            if (hasDelete) return true
+        }
+        return false
     }
 
     suspend fun attachments(parentEntityId: String): List<SyncCollabAttachmentEntity> =

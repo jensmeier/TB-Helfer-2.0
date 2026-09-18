@@ -621,14 +621,17 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 65 erzwingt das granulare Server-1.0-Zielmodell und die automatische Migration des kurzzeitig verwendeten Gesamt-Bridge-Eintrags.
 - Source-Check 66 prüft BTB-Foto-Download/-Upload über `files_v1`/`chunk_upload_v1`, BTB-Dateilinks und die erneute Finalisierung nach fotoinduzierter `REWORK`-Umschaltung.
 - Source-Check 67 prüft den capability-gesteuerten Android-Download des serverseitigen Abschluss-PDFs, SHA-256, atomare lokale Ablage, lokale Invalidierung bei `REWORK` und dass dabei kein falsches Android-Erstoriginal erzeugt wird.
+- Source-Check 68 prüft die vorhandene Offline-Löschabsicht/Outbox gegen den kanonischen `DELETE /api/v1/btbs/{id}`-Vertrag, Versions-Rebase, lokalen Tombstone und die Lösch-Reconciliation vor dem normalen BTB-Import.
 
-**Noch nicht ausgeführt:** Source-Checks 34–67 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–68 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
-Für den Android-Datei-Upload-Commit `fcc3b60922dc46f0ab6f589f1f6b5d9efd51aa76` endeten TB-Server **#249 / ID 35341069107** und Android CI **#986 / ID 35341069190** erneut nach wenigen Sekunden mit leeren `steps`-Listen und `runner_id = 0`. Damit wurden auch Source-Checks bis 60 sowie Android-Unit-Test/Build nicht tatsächlich ausgeführt. Das ist weiterhin das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
+Für den Android-BTB-PDF-Commit `31d781365ad2ca808023438a0bfe389f75a6cd42` endeten TB-Server **#263 / ID 35395006263** und Android CI **#993 / ID 35395006262** erneut mit leeren `steps`-Listen und `runner_id = 0`. Es wurde also weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
-### BTB-Granularitätskorrektur\n\nDer kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1` bleibt ausschließlich Migrationsquelle. Neue Server-1.0-Schreibvorgänge zerlegen den BTB in einzelne versionierte Entries; vorhandene Bridge-Einträge werden automatisch zur Migration eingereiht und nach erfolgreicher Granularisierung gelöscht. Per-Entry-Basiszustände liegen nur im lokalen Sync-State und ermöglichen das Zusammenführen unabhängiger Eintragsänderungen.\n\n### Android-BTB-Abschluss-PDF-Übernahme
+### BTB-Granularitätskorrektur
+
+Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1` bleibt ausschließlich Migrationsquelle. Neue Server-1.0-Schreibvorgänge zerlegen den BTB in einzelne versionierte Entries; vorhandene Bridge-Einträge werden automatisch zur Migration eingereiht und nach erfolgreicher Granularisierung gelöscht. Per-Entry-Basiszustände liegen nur im lokalen Sync-State und ermöglichen das Zusammenführen unabhängiger Eintragsänderungen.\n\n### Android-BTB-Abschluss-PDF-Übernahme
 
 - `btb_finalize_with_pdf_v1` steuert den neuen Android-PDF-Pfad.
 - Finalisierte Server-BTBs tragen ihren echten Serverstatus sowie PDF-Verfügbarkeit/SHA nur als technische Sync-Metadaten.
@@ -637,6 +640,14 @@ Für den Android-Datei-Upload-Commit `fcc3b60922dc46f0ab6f589f1f6b5d9efd51aa76` 
 - Ein Server-PDF erzeugt bewusst **keine** lokale Original-Baseline. Das unveränderliche erste Original bleibt serverseitig maßgeblich.
 - Bei echtem Server-`ACTIVE/REWORK` wird nur ein zuvor gesetzter Server-Abschlussmarker invalidiert; bloßes Reaktivieren eines weiterhin `FINALIZED`-BTBs behält das gültige PDF.
 
+### Android-BTB-Löschung auf Server 1.0
+
+- Der bestehende `BtbDeleteSyncCoordinator` bleibt alleinige Offline-/Benutzer-Löschlogik.
+- Moderne DELETE-Outbox-Einträge werden über `DELETE /api/v1/btbs/{btb_id}` mit derselben `X-Client-Change-Id`-Idempotenz übertragen.
+- Vor dem DELETE werden Teamzuordnung und Basisversion gegen den aktuellen Server-BTB geprüft; Versionskonflikte werden über den vorhandenen Rebase des ausdrücklichen Benutzer-Löschwunsches behandelt.
+- Bestätigte Löschungen tombstonen den lokalen Sync-Cache sofort.
+- Die Reconciliation läuft vor dem normalen BTB-Import und verhindert dadurch ein Wiederauftauchen eines lokal bewusst gelöschten Team-BTBs.
+
 ## Bekannte/offene Punkte
 
 - vollständige Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung gegen eine echte PostgreSQL-/FastAPI-Testinstanz ausführen;
@@ -644,7 +655,7 @@ Für den Android-Datei-Upload-Commit `fcc3b60922dc46f0ab6f589f1f6b5d9efd51aa76` 
 - einseitig belegte GRA-Sprünge nur bei zusätzlicher realer Evidenz automatisieren; Default bleibt `false`;
 - Projektion/verdichtete Samples bei Bedarf performant cachen, ohne Originale zu verändern;
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
-- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; für Baustellen mit mindestens 1000 sichtbaren Dateien fehlt serverseitige Pagination, daher wird dort aktuell bewusst kein Cache-Tombstoning aus der Dateiliste abgeleitet; Einladungen, Teamdarstellung, Mängel-/Abnahme-Sync sowie der granulare Team-BTB inklusive BTB-Fotos und serverseitigem Abschluss-PDF sind capability-gesteuert an Server 1.0 angebunden; offen bleibt die praktische Android-/PostgreSQL-E2E-Prüfung;
+- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; für Baustellen mit mindestens 1000 sichtbaren Dateien fehlt serverseitige Pagination, daher wird dort aktuell bewusst kein Cache-Tombstoning aus der Dateiliste abgeleitet; Einladungen, Teamdarstellung, Mängel-/Abnahme-Sync sowie der granulare Team-BTB inklusive BTB-Fotos, serverseitigem Abschluss-PDF und Offline-BTB-Löschung ist capability-gesteuert an Server 1.0 angebunden; offen bleibt die praktische Android-/PostgreSQL-E2E-Prüfung;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
 - Android-QR-Scanner/Intent-Handling sowie gezieltes Erzeugen/Einlösen von Server-1.0-Baustelleneinladungen sind im Quellstand umgesetzt; die übrigen Android-Fachendpunkte und komfortablere Portal-Fachformulare bleiben offen;
 - Compose-Staging-Stack praktisch auf Docker/Synology starten; Backup-Retention mit echten Alt-Backups prüfen; Restore-to-Target gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen;
@@ -653,7 +664,7 @@ Für den Android-Datei-Upload-Commit `fcc3b60922dc46f0ab6f589f1f6b5d9efd51aa76` 
 ## Nächster sinnvoller Arbeitsschritt
 
 1. Die normale Compose-Basis plus optionalen Restore-Staging-Overlay auf einer echten Docker/PostgreSQL-Umgebung starten und dort Backup -> Retention -> Restore-Test -> Restore-to-Target end-to-end prüfen; in der aktuellen Arbeitsumgebung fehlen Docker/PostgreSQL.
-2. Nach bestandenem Server-Staging die übrigen Android-Fachendpunkte capability-gesteuert auf Server 1.0 umstellen; gezieltes Einladen/Einlösen, Teamdarstellung und lesender Mängel-/Abnahme-Sync sind dafür bereits angebunden. Android liest Team-BTB-Historie und BTB-Details capability-gesteuert und schreibt lokale BTB-Änderungen über die kanonischen Server-1.0-Verträge. Die vorhandene Outbox bleibt maßgeblich; Android-Inhalte liegen granular in einzelnen versionierten Server-BTB-Einträgen; `TB_HELFER_ANDROID_V1` ist nur noch Migrationsquelle. BTB-Fotos nutzen den resumierbaren Server-1.0-Dateipfad. Das serverseitig gerenderte aktuelle Abschluss-PDF wird capability-gesteuert per `/api/v1/btbs/{id}/final-pdf` in den vorhandenen Android-BTB-Ordner gespiegelt, per SHA-256 geprüft und ohne gefälschtes lokales Erstoriginal als Server-Abschluss markiert. Als nächster Schritt folgt die praktische Android-/PostgreSQL-E2E-Prüfung. Spezialisierte Portal-Fachformulare additiv verbessern.
+2. Nach bestandenem Server-Staging die übrigen Android-Fachendpunkte capability-gesteuert auf Server 1.0 umstellen; gezieltes Einladen/Einlösen, Teamdarstellung und lesender Mängel-/Abnahme-Sync sind dafür bereits angebunden. Android liest Team-BTB-Historie und BTB-Details capability-gesteuert und schreibt lokale BTB-Änderungen über die kanonischen Server-1.0-Verträge. Die vorhandene Outbox bleibt maßgeblich; Android-Inhalte liegen granular in einzelnen versionierten Server-BTB-Einträgen; `TB_HELFER_ANDROID_V1` ist nur noch Migrationsquelle. BTB-Fotos nutzen den resumierbaren Server-1.0-Dateipfad. Das serverseitig gerenderte aktuelle Abschluss-PDF wird capability-gesteuert per `/api/v1/btbs/{id}/final-pdf` in den vorhandenen Android-BTB-Ordner gespiegelt, per SHA-256 geprüft und ohne gefälschtes lokales Erstoriginal als Server-Abschluss markiert. BTB-Löschabsichten werden zusätzlich vor dem normalen Import über den kanonischen Server-1.0-DELETE abgearbeitet. Als nächster Schritt folgt die praktische Android-/PostgreSQL-E2E-Prüfung. Spezialisierte Portal-Fachformulare additiv verbessern.
 3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
 4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
 5. Anschließend den Android-Fachclient capability-gesteuert auf die fertigen `/api/v1`-Verträge umstellen; die bisherigen 0.6-/0.7-Versionsschwellen dürfen nicht die Server-1.0-Fähigkeiten bestimmen.

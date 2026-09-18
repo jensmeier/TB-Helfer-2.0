@@ -23,6 +23,7 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.BtbTeamMediaSync
+import de.tbhelfer.ui.bautagebuch.BtbDeleteSyncCoordinator
 import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.SyncWorksiteContextEntity
@@ -215,6 +216,10 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                     when (val refresh = refreshServer1BtbSnapshots(token, contexts)) {
                         null -> Unit
                         else -> return refresh
+                    }
+                    when (val deletes = reconcileServer1BtbDeletes(token, contexts)) {
+                        null -> Unit
+                        else -> return deletes
                     }
                 }
 
@@ -471,6 +476,59 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
             conflicts = conflicts,
             notifications = notifications
         )
+    }
+
+    private suspend fun reconcileServer1BtbDeletes(
+        token: String,
+        contexts: List<SyncWorksiteContextEntity>
+    ): SyncUiResult? {
+        repeat(3) {
+            val reconcile = runCatching {
+                BtbDeleteSyncCoordinator.reconcileAfterSuccessfulPull(
+                    requireContext().applicationContext
+                )
+            }.getOrElse {
+                return SyncUiResult.Error(
+                    it.message ?: "BTB-Löschungen konnten nicht mit Server 1.0 abgeglichen werden."
+                )
+            }
+
+            val hasPendingDelete = collab.hasPendingServer1BtbDelete()
+            if (!hasPendingDelete && reconcile.serverDeletesEingereiht <= 0) return null
+
+            when (val upload = collab.synchronizeServer1BtbPending(token, server1BtbApi)) {
+                CollabSyncRepository.Server1BtbUploadResult.SessionInvalid ->
+                    return SyncUiResult.SessionInvalid
+                CollabSyncRepository.Server1BtbUploadResult.Unsupported ->
+                    return SyncUiResult.Error(
+                        "Server meldet btb_live_sync_v1, die BTB-Löschung ist aber nicht erreichbar."
+                    )
+                is CollabSyncRepository.Server1BtbUploadResult.Success -> Unit
+            }
+
+            when (val refresh = refreshServer1BtbSnapshots(token, contexts)) {
+                null -> Unit
+                else -> return refresh
+            }
+        }
+
+        runCatching {
+            BtbDeleteSyncCoordinator.reconcileAfterSuccessfulPull(
+                requireContext().applicationContext
+            )
+        }.getOrElse {
+            return SyncUiResult.Error(
+                it.message ?: "BTB-Löschstatus konnte nicht abschließend geprüft werden."
+            )
+        }
+
+        return if (collab.hasPendingServer1BtbDelete()) {
+            SyncUiResult.Error(
+                "BTB-Löschung konnte nach mehreren Serveränderungen noch nicht bestätigt werden."
+            )
+        } else {
+            null
+        }
     }
 
     private suspend fun refreshServer1BtbSnapshots(

@@ -103,6 +103,7 @@ jobs:
           python server/checks/65_verify_android_server_1_btb_granularity_source.py
           python server/checks/66_verify_android_server_1_btb_media_source.py
           python server/checks/67_verify_android_server_1_btb_final_pdf_source.py
+          python server/checks/68_verify_android_server_1_btb_delete_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server

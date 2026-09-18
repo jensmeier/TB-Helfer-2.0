@@ -48,6 +48,7 @@ class Server1BtbApi(
 
     sealed interface MutationResult {
         data class Applied(val snapshot: Snapshot) : MutationResult
+        data class Deleted(val serverId: String, val entityVersion: Long) : MutationResult
         data class Conflict(val currentVersion: Long?, val detail: String) : MutationResult
         data object Unsupported : MutationResult
         data object SessionInvalid : MutationResult
@@ -124,11 +125,14 @@ class Server1BtbApi(
         change: SyncCollabPendingChangeEntity,
         baseStateJson: String? = null
     ): MutationResult {
-        if (!change.operation.equals(SyncCollabPendingChangeEntity.OP_UPSERT, ignoreCase = true)) {
-            return MutationResult.Error("Server-1.0-BTB-Löschen wird in diesem Android-Schritt noch nicht übertragen.")
-        }
         if (!change.entityType.equals(SyncCollabPendingChangeEntity.TYPE_BTB, ignoreCase = true)) {
-            return MutationResult.Error("Nicht unterstützter Server-1.0-BTB-Typ: $change")
+            return MutationResult.Error("Nicht unterstützter Server-1.0-BTB-Typ: ${change.entityType}")
+        }
+        if (change.operation.equals(SyncCollabPendingChangeEntity.OP_DELETE, ignoreCase = true)) {
+            return deletePending(token, change)
+        }
+        if (!change.operation.equals(SyncCollabPendingChangeEntity.OP_UPSERT, ignoreCase = true)) {
+            return MutationResult.Error("Nicht unterstützte Server-1.0-BTB-Operation: ${change.operation}")
         }
 
         val teamId = change.groupId?.trim().orEmpty()
@@ -443,6 +447,70 @@ class Server1BtbApi(
             is DetailResult.Success -> reloaded.detail
         }
         return MutationResult.Applied(finalDetail.snapshot)
+    }
+
+    private fun deletePending(
+        token: String,
+        change: SyncCollabPendingChangeEntity
+    ): MutationResult {
+        val serverId = change.serverId?.trim().orEmpty()
+        val teamId = change.groupId?.trim().orEmpty()
+        if (serverId.isBlank()) {
+            return MutationResult.Error("Server-ID für BTB-Löschung fehlt.")
+        }
+        if (teamId.isBlank()) {
+            return MutationResult.Error("Team-Zuordnung für BTB-Löschung fehlt.")
+        }
+
+        val active = when (val index = loadTeamIndex(token, change.worksiteServerId, teamId)) {
+            TeamIndexResult.Unsupported -> return MutationResult.Unsupported
+            TeamIndexResult.SessionInvalid -> return MutationResult.SessionInvalid
+            is TeamIndexResult.Error -> return MutationResult.Error(index.message)
+            is TeamIndexResult.Success -> index.index.activeBtbId
+        }
+
+        val current = when (val loaded = loadBtb(token, serverId, teamId, active)) {
+            DetailResult.Unsupported -> {
+                return MutationResult.Deleted(
+                    serverId,
+                    (change.baseVersion ?: 0L).coerceAtLeast(0L) + 1L
+                )
+            }
+            DetailResult.SessionInvalid -> return MutationResult.SessionInvalid
+            is DetailResult.Error -> return MutationResult.Error(loaded.message)
+            is DetailResult.Success -> loaded.detail
+        }
+
+        val baseVersion = change.baseVersion
+        if (baseVersion != null && current.snapshot.entityVersion != baseVersion) {
+            return MutationResult.Conflict(
+                current.snapshot.entityVersion,
+                "VERSION_CONFLICT"
+            )
+        }
+
+        return when (
+            val deleted = jsonMutation(
+                token,
+                "/api/v1/btbs/${encode(serverId)}",
+                "DELETE",
+                subChangeId(change.clientChangeId, "delete"),
+                JSONObject()
+            )
+        ) {
+            JsonMutationResult.SessionInvalid -> MutationResult.SessionInvalid
+            JsonMutationResult.Unsupported -> MutationResult.Deleted(
+                serverId,
+                current.snapshot.entityVersion + 1L
+            )
+            is JsonMutationResult.Conflict ->
+                MutationResult.Conflict(deleted.currentVersion, deleted.detail)
+            is JsonMutationResult.Error -> MutationResult.Error(deleted.message)
+            is JsonMutationResult.Success -> MutationResult.Deleted(
+                serverId,
+                current.snapshot.entityVersion + 1L
+            )
+        }
     }
 
     private sealed interface DetailMutationResult {
