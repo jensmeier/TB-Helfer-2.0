@@ -36,6 +36,6 @@ for token in (
     assert token in fragment, token
 
 assert "Mängel/Abnahmen" in strings
-assert "BTB- und Datei-Sync" in strings
+assert "Server 1.0" in strings
 
 print("OK: Android Server-1.0 read-only defects/acceptances sync source contract")

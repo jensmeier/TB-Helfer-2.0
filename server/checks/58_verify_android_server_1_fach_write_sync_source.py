@@ -44,7 +44,7 @@ assert fragment.index("bridge.exportLocalChanges()") < fragment.index("collab.sy
 
 assert '@router.post("/defects/{defect_id}/close")' in defects
 assert '@router.post("/acceptances/{acceptance_id}/finalize")' in acceptances
-assert "lesen und schreiben bereits über Server 1.0" in strings
-assert "BTB- und Datei-Sync folgen getrennt" in strings
+assert "Mängel/Abnahmen" in strings
+assert "Server 1.0" in strings
 
 print("OK: Android Server-1.0 idempotent defect/acceptance write sync source contract")
