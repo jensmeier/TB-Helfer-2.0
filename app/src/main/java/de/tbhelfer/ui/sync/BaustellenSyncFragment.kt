@@ -569,62 +569,101 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
             .build()
         GmsBarcodeScanning.getClient(requireActivity(), options).startScan()
             .addOnSuccessListener { barcode ->
-                val code = extractInvitationCode(barcode.rawValue.orEmpty())
-                if (code == null) Toast.makeText(requireContext(), R.string.collab_invite_invalid_qr, Toast.LENGTH_LONG).show()
-                else redeemInvitationCode(code)
+                val invitation = WorksiteInvitationLink.parse(barcode.rawValue.orEmpty())
+                if (invitation == null) {
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.collab_invite_invalid_qr,
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    redeemInvitation(invitation)
+                }
             }
+            .addOnCanceledListener { }
             .addOnFailureListener {
-                Toast.makeText(requireContext(), R.string.collab_invite_scan_error, Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    requireContext(),
+                    R.string.collab_invite_scan_error,
+                    Toast.LENGTH_LONG
+                ).show()
             }
-    }
-
-    private fun extractInvitationCode(raw: String): String? {
-        val text = raw.trim()
-        if (text.startsWith("TBI-", ignoreCase = true)) return text.uppercase()
-        val uri = runCatching { Uri.parse(text) }.getOrNull() ?: return null
-        if (!uri.scheme.equals("tbhelfer", ignoreCase = true) || !uri.host.equals("invite", ignoreCase = true)) return null
-        return uri.getQueryParameter("code")?.trim()?.takeIf { it.isNotBlank() }?.uppercase()
     }
 
     private fun showRedeemInvitationDialog() {
         val input = EditText(requireContext()).apply {
             hint = getString(R.string.collab_redeem_hint)
-            isSingleLine = true
+            isSingleLine = false
+            maxLines = 4
             setPadding(dp(10), dp(8), dp(10), dp(8))
         }
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.collab_redeem_title)
             .setView(input)
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                val code = extractInvitationCode(input.text?.toString().orEmpty())
-                if (code != null) redeemInvitationCode(code)
-                else Toast.makeText(requireContext(), R.string.collab_invite_invalid_code, Toast.LENGTH_LONG).show()
+                val invitation = WorksiteInvitationLink.parse(
+                    input.text?.toString().orEmpty()
+                )
+                if (invitation != null) {
+                    redeemInvitation(invitation)
+                } else {
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.collab_invite_invalid_code,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
-    private fun redeemInvitationCode(code: String) {
+    private fun redeemInvitation(invitation: WorksiteInvitationLink.Credential) {
         val token = SecureTokenStore(requireContext()).load()
         if (token.isNullOrBlank()) {
-            Toast.makeText(requireContext(), R.string.collab_not_activated, Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                requireContext(),
+                R.string.collab_not_activated,
+                Toast.LENGTH_LONG
+            ).show()
             return
         }
         viewLifecycleOwner.lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) { teamApi.redeemInvitation(token, code) }
+            val result = withContext(Dispatchers.IO) {
+                when (invitation) {
+                    is WorksiteInvitationLink.Credential.ServerToken ->
+                        teamApi.redeemServerInvitation(token, invitation.value)
+                    is WorksiteInvitationLink.Credential.LegacyCode ->
+                        teamApi.redeemInvitation(token, invitation.value)
+                }
+            }
             if (!isAdded) return@launch
             when (result) {
                 is TeamManagementApi.RedeemResult.Success -> {
-                    Toast.makeText(requireContext(), R.string.collab_redeem_success, Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.collab_redeem_success,
+                        Toast.LENGTH_LONG
+                    ).show()
                     synchronize()
                 }
-                TeamManagementApi.RedeemResult.Unsupported -> Toast.makeText(requireContext(), R.string.collab_team_unavailable, Toast.LENGTH_LONG).show()
+                TeamManagementApi.RedeemResult.Unsupported -> Toast.makeText(
+                    requireContext(),
+                    R.string.collab_team_unavailable,
+                    Toast.LENGTH_LONG
+                ).show()
                 TeamManagementApi.RedeemResult.SessionInvalid -> {
                     SecureTokenStore(requireContext()).clear()
-                    Toast.makeText(requireContext(), R.string.collab_session_invalid, Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.collab_session_invalid,
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
                 is TeamManagementApi.RedeemResult.Error -> Toast.makeText(
-                    requireContext(), getString(R.string.collab_invite_error, result.message), Toast.LENGTH_LONG
+                    requireContext(),
+                    getString(R.string.collab_invite_error, result.message),
+                    Toast.LENGTH_LONG
                 ).show()
             }
         }

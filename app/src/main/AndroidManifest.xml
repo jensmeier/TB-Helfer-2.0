@@ -38,6 +38,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="tbhelfer" android:host="activate" />
                 <data android:scheme="tbhelfer" android:host="invite" />
+                <data android:scheme="tbhelfer" android:host="worksite-invite" />
             </intent-filter>
         </activity>
 

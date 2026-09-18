@@ -59,8 +59,8 @@ jobs:
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v2
 
-      - name: Build Debug + Release
-        run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
+      - name: Unit tests + Build Debug + Release
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease --stacktrace
 
       - name: Lint (Debug)
         run: ./gradlew :app:lintDebug --stacktrace

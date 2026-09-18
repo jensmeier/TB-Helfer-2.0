@@ -10,6 +10,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.UUID
 
 /**
  * Selbstverwaltete Baustellen-Teams ab Server-Schema 10.
@@ -239,6 +240,70 @@ class TeamManagementApi(
         }
     }
 
+    /**
+     * TB-Server 1.0: gezielte Baustelleneinladung mit case-sensitivem Einmal-Token.
+     * Der Legacy-TBI-Pfad bleibt während der Serverumstellung separat erhalten.
+     */
+    fun redeemServerInvitation(token: String, invitationToken: String): RedeemResult {
+        val rawToken = invitationToken.trim()
+        if (rawToken.length !in 24..500) {
+            return RedeemResult.Error("Einladungstoken ist ungültig.")
+        }
+        val connection = openConnection("/api/v1/worksites/invitations/redeem", "POST")
+        return try {
+            authorize(connection, token)
+            connection.setRequestProperty(
+                "X-Client-Change-Id",
+                "android-worksite-invite-${UUID.randomUUID()}"
+            )
+            writeJson(connection, JSONObject().put("token", rawToken))
+            val code = connection.responseCode
+            val body = readBody(connection, code)
+            when (code) {
+                HttpURLConnection.HTTP_OK -> {
+                    val root = runCatching { JSONObject(body) }.getOrNull()
+                    val worksiteId = root?.optString("worksite_id").orEmpty()
+                    val membership = root?.optJSONObject("membership")
+                    if (worksiteId.isBlank() || membership == null) {
+                        RedeemResult.Error("Server lieferte keine vollständige Baustellenzuordnung.")
+                    } else {
+                        RedeemResult.Success(
+                            RedeemedInvitation(
+                                worksiteId = worksiteId,
+                                worksiteName = null,
+                                groupId = root?.nullableString("team_id").orEmpty(),
+                                memberRole = membership.optString("worksite_role")
+                                    .ifBlank { "READ_ONLY" }
+                            )
+                        )
+                    }
+                }
+                HttpURLConnection.HTTP_NOT_FOUND -> {
+                    val detail = detailMessage(body)
+                    if (detail.isBlank() || detail.equals("Not Found", ignoreCase = true)) {
+                        RedeemResult.Unsupported
+                    } else {
+                        RedeemResult.Error(detail)
+                    }
+                }
+                HttpURLConnection.HTTP_UNAUTHORIZED -> RedeemResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN -> {
+                    val detail = detailMessage(body)
+                    if (detail.startsWith("WORKSITE_INVITATION_")) {
+                        RedeemResult.Error(detail)
+                    } else {
+                        RedeemResult.SessionInvalid
+                    }
+                }
+                else -> RedeemResult.Error(errorMessage(body, code))
+            }
+        } catch (error: Exception) {
+            RedeemResult.Error(error.message ?: "Baustelleneinladung konnte nicht eingelöst werden.")
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     fun loadCompanyProfile(token: String): CompanyProfileResult {
         val connection = openConnection("/api/v1/company/profile", "GET")
         return try {
@@ -400,9 +465,17 @@ class TeamManagementApi(
         }
     }
 
+    private fun detailMessage(body: String): String {
+        val raw = runCatching { JSONObject(body).opt("detail") }.getOrNull()
+        return when (raw) {
+            is String -> raw.trim()
+            is JSONObject -> raw.optString("code").trim().ifBlank { raw.toString() }
+            else -> raw?.toString()?.trim().orEmpty()
+        }
+    }
+
     private fun errorMessage(body: String, code: Int): String {
-        val detail = runCatching { JSONObject(body).optString("detail") }.getOrNull().orEmpty()
-        return detail.ifBlank { "Serverfehler ($code)." }
+        return detailMessage(body).ifBlank { "Serverfehler ($code)." }
     }
 
     private fun encode(value: String): String =

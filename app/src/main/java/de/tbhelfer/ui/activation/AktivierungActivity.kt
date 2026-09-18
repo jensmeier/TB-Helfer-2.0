@@ -25,6 +25,7 @@ import de.tbhelfer.ui.HauptActivity
 import de.tbhelfer.ui.KeyboardAutoScroll
 import de.tbhelfer.ui.SafeAreaInsets
 import de.tbhelfer.ui.style.UiStyleApplier
+import de.tbhelfer.ui.sync.WorksiteInvitationLink
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -39,13 +40,13 @@ class AktivierungActivity : AppCompatActivity() {
     private lateinit var tokenStore: SecureTokenStore
     private val api = ActivationApi()
     private val teamApi = TeamManagementApi()
-    private var pendingInvitationCode: String? = null
+    private var pendingInvitation: WorksiteInvitationLink.Credential? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         tokenStore = SecureTokenStore(this)
-        pendingInvitationCode = extractInvitationCode(intent?.data?.toString().orEmpty())
+        pendingInvitation = WorksiteInvitationLink.parse(intent?.data?.toString().orEmpty())
 
         SafeAreaInsets.install(this)
         setContentView(R.layout.activity_aktivierung)
@@ -65,9 +66,9 @@ class AktivierungActivity : AppCompatActivity() {
 
         val existingToken = tokenStore.load()
         if (!existingToken.isNullOrBlank()) {
-            val invitationCode = pendingInvitationCode
-            if (!invitationCode.isNullOrBlank()) {
-                redeemInvitation(existingToken, invitationCode)
+            val invitation = pendingInvitation
+            if (invitation != null) {
+                redeemInvitation(existingToken, invitation)
             } else {
                 openMainApp()
             }
@@ -80,7 +81,7 @@ class AktivierungActivity : AppCompatActivity() {
             return
         }
 
-        if (!pendingInvitationCode.isNullOrBlank()) {
+        if (pendingInvitation != null) {
             setStatus(getString(R.string.collab_invite_activation_required))
         }
     }
@@ -168,9 +169,9 @@ class AktivierungActivity : AppCompatActivity() {
                         getString(R.string.activation_success, result.userName ?: ""),
                         Toast.LENGTH_LONG
                     ).show()
-                    val invitationCode = pendingInvitationCode
-                    if (!invitationCode.isNullOrBlank()) {
-                        redeemInvitation(result.token, invitationCode)
+                    val invitation = pendingInvitation
+                    if (invitation != null) {
+                        redeemInvitation(result.token, invitation)
                     } else {
                         openMainApp()
                     }
@@ -207,16 +208,24 @@ class AktivierungActivity : AppCompatActivity() {
         }
     }
 
-    private fun redeemInvitation(token: String, invitationCode: String) {
+    private fun redeemInvitation(
+        token: String,
+        invitation: WorksiteInvitationLink.Credential
+    ) {
         setBusy(true)
         setStatus(getString(R.string.collab_redeem_loading))
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                teamApi.redeemInvitation(token, invitationCode)
+                when (invitation) {
+                    is WorksiteInvitationLink.Credential.ServerToken ->
+                        teamApi.redeemServerInvitation(token, invitation.value)
+                    is WorksiteInvitationLink.Credential.LegacyCode ->
+                        teamApi.redeemInvitation(token, invitation.value)
+                }
             }
             when (result) {
                 is TeamManagementApi.RedeemResult.Success -> {
-                    pendingInvitationCode = null
+                    pendingInvitation = null
                     Toast.makeText(
                         this@AktivierungActivity,
                         R.string.collab_redeem_success,
@@ -257,16 +266,6 @@ class AktivierungActivity : AppCompatActivity() {
         if (!uri.scheme.equals("tbhelfer", ignoreCase = true)) return null
         if (!uri.host.equals("activate", ignoreCase = true)) return null
         return uri.getQueryParameter("key")?.trim()?.takeIf { it.isNotBlank() }
-    }
-
-    private fun extractInvitationCode(raw: String): String? {
-        val text = raw.trim()
-        if (text.startsWith("TBI-", ignoreCase = true)) return text.uppercase()
-
-        val uri = runCatching { Uri.parse(text) }.getOrNull() ?: return null
-        if (!uri.scheme.equals("tbhelfer", ignoreCase = true)) return null
-        if (!uri.host.equals("invite", ignoreCase = true)) return null
-        return uri.getQueryParameter("code")?.trim()?.takeIf { it.isNotBlank() }?.uppercase()
     }
 
     private fun setBusy(busy: Boolean) {

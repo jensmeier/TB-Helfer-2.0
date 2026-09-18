@@ -83,6 +83,7 @@ jobs:
           python server/checks/45_verify_tb_server_1_backup_retention_source.py
           python server/checks/46_verify_tb_server_1_invitation_only_membership_source.py
           python server/checks/47_verify_tb_server_1_invitation_qr_source.py
+          python server/checks/48_verify_android_server_1_invitation_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
