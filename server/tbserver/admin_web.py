@@ -87,6 +87,51 @@ def admin_companies_page(
     )
 
 
+
+
+@router.get("/portal/v1/worksites")
+def portal_worksites_page(
+    request: Request,
+    user: dict[str, Any] = Depends(current_portal_session_user),
+):
+    return templates.TemplateResponse(
+        "v1_worksites.html",
+        {"request": request, "user": user},
+    )
+
+
+@router.get("/portal/v1/worksites/{worksite_id}")
+def portal_worksite_page(
+    worksite_id: UUID,
+    request: Request,
+    user: dict[str, Any] = Depends(current_portal_session_user),
+):
+    return templates.TemplateResponse(
+        "v1_worksite.html",
+        {
+            "request": request,
+            "user": user,
+            "worksite_id": str(worksite_id),
+        },
+    )
+
+
+@router.get("/portal/v1/btbs/{btb_id}")
+def portal_btb_page(
+    btb_id: UUID,
+    request: Request,
+    user: dict[str, Any] = Depends(current_portal_session_user),
+):
+    return templates.TemplateResponse(
+        "v1_btb.html",
+        {
+            "request": request,
+            "user": user,
+            "btb_id": str(btb_id),
+        },
+    )
+
+
 @router.get("/admin/v1/companies/{company_id}/branding")
 def admin_company_branding_page(
     company_id: UUID,

@@ -5,11 +5,10 @@
   <h1>Portal</h1>
   <p>Angemeldet als <b>{{ user.display_name }}</b> · Rolle <span class="pill">{{ user.company_role }}</span></p>
   <p class="muted">Die fachlichen Server-1.0-Oberflächen werden schrittweise auf dieselben /api/v1-Verträge wie Android gesetzt.</p>
-  {% if user.company_role == 'ADMIN' %}
-    <div class="actions"><a class="btn" href="/admin/v1/companies">Firmen verwalten</a></div>
-  {% else %}
-    <div class="notice info">Für diesen Benutzer ist aktuell die Portal-Basis aktiv. Baustellen-/BTB-Fachseiten folgen capability-gesteuert.</div>
-  {% endif %}
+  <div class="actions">
+    <a class="btn" href="/portal/v1/worksites">Baustellen öffnen</a>
+    {% if user.company_role == 'ADMIN' %}<a class="btn secondary" href="/admin/v1/companies">Firmen verwalten</a>{% endif %}
+  </div>
 </div>
 <div class="card">
   <h3>Eigene Serveridentität</h3>

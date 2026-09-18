@@ -28,6 +28,7 @@
   <div class="brand">TB-Helfer · Server 1.0</div>
   <div class="nav">
     <a href="/portal/v1">Portal</a>
+    {% if user %}<a href="/portal/v1/worksites">Baustellen</a>{% endif %}
     {% if user and user.company_role == 'ADMIN' %}<a href="/admin/v1/companies">Firmen</a>{% endif %}
     {% if user %}<span>{{ user.display_name }}</span><button class="secondary" type="button" onclick="tbLogout()">Abmelden</button>{% endif %}
   </div>
@@ -43,6 +44,11 @@ async function tbApi(url, options){
   opts.headers=Object.assign({}, opts.headers||{});
   if((opts.method||'GET').toUpperCase()!=='GET'){
     opts.headers['X-CSRF-Token']=tbCookie('tb_portal_csrf');
+    opts.headers['X-Client-Change-Id']=opts.clientChangeId||(
+      window.crypto&&crypto.randomUUID?crypto.randomUUID():
+      'web-'+Date.now()+'-'+Math.random().toString(16).slice(2)
+    );
+    delete opts.clientChangeId;
   }
   const response=await fetch(url,opts);
   if(response.status===204) return {response,data:null};

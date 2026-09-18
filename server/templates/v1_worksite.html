@@ -1,0 +1,243 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Baustelle{% endblock %}
+{% block head %}
+<style>
+  .section-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+  .item{border:1px solid #eaecf0;border-radius:10px;padding:11px;margin:8px 0}
+  .item h4{margin:0 0 5px}.json{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+  .compact input,.compact select,.compact textarea{margin-bottom:8px}.status-open{background:#eff8ff}.status-done{background:#ecfdf3}
+</style>
+{% endblock %}
+{% block content %}
+<div class="actions" style="margin-bottom:14px">
+  <a class="btn secondary" href="/portal/v1/worksites">← Baustellen</a>
+</div>
+<div class="card">
+  <h1 id="title">Baustelle wird geladen …</h1>
+  <p id="meta" class="muted"></p>
+  <div id="msg"></div>
+</div>
+
+<div class="section-grid">
+  <div class="card">
+    <h2>Struktur</h2>
+    <div id="nodes"></div>
+    <form id="nodeForm" class="compact">
+      <label for="nodeKind">Art</label>
+      <select id="nodeKind"><option value="SECTION">Abschnitt</option><option value="TRACK">Gleis</option><option value="SWITCH">Weiche</option><option value="STATION">Bahnhof</option><option value="OTHER">Sonstiges</option></select>
+      <label for="nodeName">Name</label><input id="nodeName" required maxlength="300">
+      <label for="nodeRoute">Strecke</label><input id="nodeRoute" maxlength="40">
+      <label for="nodeTrack">Gleis-Schlüssel</label><input id="nodeTrack" maxlength="200">
+      <button type="submit">Strukturelement anlegen</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Teams / Bautagesberichte</h2>
+    <div id="teams">wird geladen …</div>
+  </div>
+</div>
+
+<div class="section-grid">
+  <div class="card">
+    <h2>Mitglieder</h2>
+    <div id="members">wird geladen …</div>
+  </div>
+
+  <div class="card">
+    <h2>Mängel</h2>
+    <div id="defects"></div>
+    <form id="defectForm" class="compact">
+      <label for="defectTitle">Neuer Mangel</label><input id="defectTitle" maxlength="500" placeholder="Titel">
+      <label for="defectNode">Strukturelement (optional)</label><select id="defectNode"><option value="">ohne Zuordnung</option></select>
+      <label for="defectPayload">Details als JSON</label><textarea id="defectPayload" class="json" rows="4">{}</textarea>
+      <button type="submit">Mangel anlegen</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Abnahmen</h2>
+  <div id="acceptances"></div>
+  <form id="acceptanceForm" class="compact">
+    <div class="grid">
+      <div><label for="acceptanceTitle">Neue Abnahme</label><input id="acceptanceTitle" maxlength="500" placeholder="Titel"></div>
+      <div><label for="acceptanceNode">Strukturelement (optional)</label><select id="acceptanceNode"><option value="">ohne Zuordnung</option></select></div>
+    </div>
+    <label for="acceptancePayload">Details als JSON</label><textarea id="acceptancePayload" class="json" rows="4">{}</textarea>
+    <button type="submit">Abnahme anlegen</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const worksiteId={{ worksite_id|tojson }};
+const msg=document.getElementById('msg');
+let worksite=null, permissions={}, nodeData=[], teamData=[];
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function can(name){return permissions['*']===true||permissions[name]===true;}
+function jsonValue(id){
+  const raw=document.getElementById(id).value.trim()||'{}';
+  const parsed=JSON.parse(raw);
+  if(parsed===null||Array.isArray(parsed)||typeof parsed!=='object') throw new Error('JSON muss ein Objekt sein.');
+  return parsed;
+}
+function nodeName(id){
+  const found=nodeData.find(function(n){return n.id===id;});
+  return found?found.name:'—';
+}
+function nodeOptions(){
+  const options='<option value="">ohne Zuordnung</option>'+nodeData.map(function(n){
+    return '<option value="'+esc(n.id)+'">'+esc(n.node_kind)+' · '+esc(n.name)+'</option>';
+  }).join('');
+  document.getElementById('defectNode').innerHTML=options;
+  document.getElementById('acceptanceNode').innerHTML=options;
+}
+async function loadOverview(){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId);
+  worksite=result.data.worksite;permissions=result.data.permissions||{};
+  document.getElementById('title').textContent=worksite.name;
+  document.getElementById('meta').textContent=[
+    worksite.company_name,worksite.designation,worksite.route_number?'Strecke '+worksite.route_number:null,
+    worksite.station_name
+  ].filter(Boolean).join(' · ');
+  document.getElementById('nodeForm').style.display=can('worksite.structure.edit')?'block':'none';
+  document.getElementById('defectForm').style.display=can('defect.create')?'block':'none';
+  document.getElementById('acceptanceForm').style.display=can('acceptance.create')?'block':'none';
+}
+async function loadNodes(){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId+'/nodes');
+  nodeData=result.data.nodes||[];
+  const target=document.getElementById('nodes');
+  target.innerHTML=nodeData.length?nodeData.map(function(n){
+    return '<div class="item"><b>'+esc(n.node_kind)+'</b> · '+esc(n.name)+
+      (n.route_number?'<div class="muted">Strecke '+esc(n.route_number)+'</div>':'')+
+      (n.track_key?'<div class="muted">Gleis '+esc(n.track_key)+'</div>':'')+'</div>';
+  }).join(''):'<p class="muted">Noch keine Struktur angelegt.</p>';
+  nodeOptions();
+}
+async function loadMembers(){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId+'/members');
+  const data=result.data.members||[];
+  document.getElementById('members').innerHTML=data.length?data.map(function(m){
+    return '<div class="item"><b>'+esc(m.display_name)+'</b> <span class="pill">'+esc(m.worksite_role)+'</span>'+
+      '<div class="muted">'+esc(m.permission_profile)+'</div>'+
+      (m.personal_email?'<div>'+esc(m.personal_email)+'</div>':'')+
+      (m.personal_phone?'<div>'+esc(m.personal_phone)+'</div>':'')+'</div>';
+  }).join(''):'<p class="muted">Keine Mitglieder.</p>';
+}
+async function loadTeams(){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId+'/teams');
+  teamData=result.data.teams||[];
+  const target=document.getElementById('teams');
+  if(!teamData.length){target.innerHTML='<p class="muted">Keine Teams.</p>';return;}
+  const blocks=await Promise.all(teamData.map(async function(t){
+    let btbs=[];
+    try{
+      const b=await tbApi('/api/v1/worksites/'+worksiteId+'/teams/'+encodeURIComponent(t.id)+'/btbs');
+      btbs=b.data.btbs||[];
+    }catch(_){}
+    const btbHtml=btbs.length?btbs.map(function(b){
+      return '<div class="item"><span class="pill">'+esc(b.status)+'</span> '+
+        esc(b.work_date||'ohne Datum')+
+        '<div class="actions" style="margin-top:7px"><a class="btn" href="/portal/v1/btbs/'+encodeURIComponent(b.id)+'">BTB öffnen</a></div></div>';
+    }).join(''):'<p class="muted">Noch kein BTB.</p>';
+    const createButton=can('btb.create')&&!t.active_btb_id?'<button type="button" onclick="createBtb(\''+esc(t.id)+'\')">Neuen BTB starten</button>':'';
+    return '<div class="item"><h4>'+esc(t.name||t.lead_name||'Team')+'</h4>'+
+      '<div class="muted">Verantwortlicher TB: '+esc(t.lead_name||'—')+' · '+esc(t.member_count)+' Mitglieder</div>'+
+      (t.active_btb_id?'<div class="notice info">Aktiver BTB: <a href="/portal/v1/btbs/'+encodeURIComponent(t.active_btb_id)+'">'+esc(t.active_btb_id)+'</a></div>':'')+
+      btbHtml+'<div class="actions">'+createButton+'</div></div>';
+  }));
+  target.innerHTML=blocks.join('');
+}
+async function createBtb(teamId){
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const result=await tbApi('/api/v1/worksites/'+worksiteId+'/btbs',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({team_id:teamId,work_date:today,header:{}})
+    });
+    show('ok','BTB angelegt.');location.href='/portal/v1/btbs/'+encodeURIComponent(result.data.id);
+  }catch(error){show('err',error.message||String(error));}
+}
+window.createBtb=createBtb;
+async function loadDefects(){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId+'/defects');
+  const data=result.data.defects||[];
+  document.getElementById('defects').innerHTML=data.length?data.map(function(d){
+    const close=can('defect.close')&&d.status!=='CLOSED'?'<button type="button" onclick="closeDefect(\''+esc(d.id)+'\','+Number(d.version)+')">Schließen</button>':'';
+    return '<div class="item '+(d.status==='CLOSED'?'status-done':'status-open')+'"><b>'+esc(d.title||'Mangel')+'</b> <span class="pill">'+esc(d.status)+'</span>'+
+      '<div class="muted">'+esc(nodeName(d.worksite_node_id))+' · Version '+esc(d.version)+'</div>'+
+      '<pre class="json">'+esc(JSON.stringify(d.payload||{},null,2))+'</pre><div class="actions">'+close+'</div></div>';
+  }).join(''):'<p class="muted">Keine Mängel.</p>';
+}
+async function closeDefect(id,version){
+  try{
+    await tbApi('/api/v1/defects/'+encodeURIComponent(id)+'/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_version:version})});
+    show('ok','Mangel geschlossen.');await loadDefects();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.closeDefect=closeDefect;
+async function loadAcceptances(){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId+'/acceptances');
+  const data=result.data.acceptances||[];
+  document.getElementById('acceptances').innerHTML=data.length?data.map(function(a){
+    const finalize=can('acceptance.finalize')&&a.status!=='FINALIZED'?'<button type="button" onclick="finalizeAcceptance(\''+esc(a.id)+'\','+Number(a.version)+')">Finalisieren</button>':'';
+    return '<div class="item '+(a.status==='FINALIZED'?'status-done':'status-open')+'"><b>'+esc(a.title||'Abnahme')+'</b> <span class="pill">'+esc(a.status)+'</span>'+
+      '<div class="muted">'+esc(nodeName(a.worksite_node_id))+' · Version '+esc(a.version)+'</div>'+
+      '<pre class="json">'+esc(JSON.stringify(a.payload||{},null,2))+'</pre><div class="actions">'+finalize+'</div></div>';
+  }).join(''):'<p class="muted">Keine Abnahmen.</p>';
+}
+async function finalizeAcceptance(id,version){
+  try{
+    await tbApi('/api/v1/acceptances/'+encodeURIComponent(id)+'/finalize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_version:version})});
+    show('ok','Abnahme finalisiert.');await loadAcceptances();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.finalizeAcceptance=finalizeAcceptance;
+
+document.getElementById('nodeForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  try{
+    await tbApi('/api/v1/worksites/'+worksiteId+'/nodes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      node_kind:document.getElementById('nodeKind').value,
+      name:document.getElementById('nodeName').value.trim(),
+      route_number:document.getElementById('nodeRoute').value.trim()||null,
+      track_key:document.getElementById('nodeTrack').value.trim()||null,payload:{}
+    })});
+    ev.target.reset();show('ok','Strukturelement angelegt.');await loadNodes();
+  }catch(error){show('err',error.message||String(error));}
+});
+document.getElementById('defectForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  try{
+    await tbApi('/api/v1/worksites/'+worksiteId+'/defects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      title:document.getElementById('defectTitle').value.trim()||null,
+      worksite_node_id:document.getElementById('defectNode').value||null,
+      payload:jsonValue('defectPayload')
+    })});
+    ev.target.reset();document.getElementById('defectPayload').value='{}';show('ok','Mangel angelegt.');await loadDefects();
+  }catch(error){show('err',error.message||String(error));}
+});
+document.getElementById('acceptanceForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  try{
+    await tbApi('/api/v1/worksites/'+worksiteId+'/acceptances',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      title:document.getElementById('acceptanceTitle').value.trim()||null,
+      worksite_node_id:document.getElementById('acceptanceNode').value||null,
+      payload:jsonValue('acceptancePayload')
+    })});
+    ev.target.reset();document.getElementById('acceptancePayload').value='{}';show('ok','Abnahme angelegt.');await loadAcceptances();
+  }catch(error){show('err',error.message||String(error));}
+});
+
+(async function(){
+  try{
+    await loadOverview();
+    await loadNodes();
+    await Promise.all([loadMembers(),loadTeams(),loadDefects(),loadAcceptances()]);
+  }catch(error){show('err',error.message||String(error));}
+})();
+</script>
+{% endblock %}

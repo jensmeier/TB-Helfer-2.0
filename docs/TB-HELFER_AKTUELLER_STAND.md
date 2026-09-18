@@ -49,6 +49,7 @@ Wichtige Server-1.0-Meilensteine:
 - BTB-Abschluss-PDF / Ein-PDF-/Original-/Nachbearbeitungsmodell: in diesem Stand serverseitig umgesetzt; stabiler PDF-Pfad pro `btbId`, unveränderlicher erster Original-Snapshot inkl. Foto-Basis, Reaktivierung ohne automatische Ungültigkeit
 - Zentrales Firmenprofil / Firmenlogo / PDF-Logo-Layout: in diesem Stand auf die vorhandenen Server-1.0-Firmen-/Dateifelder umgesetzt; Android-UUID-Kompatibilität korrigiert, PDF-Renderer auf v2 mit zentralem Branding angehoben
 - erste native Server-1.0-Portal-/Admin-Weboberfläche: Login/Portal-Start, Firmenliste/-anlage sowie Firmenprofil/Logo/PDF-Layout mit CSRF-geschützter API-Anbindung und Browser-Vorschau
+- Portal-Fachoberfläche v1: Baustellenübersicht/-detail, Struktur, Mitglieder-/Teamansicht, Team-BTBs, BTB-Bearbeitung/Abschluss-PDF sowie Mängel/Abnahmen auf denselben `/api/v1`-Verträgen; Browser-Mutationen senden CSRF + `X-Client-Change-Id`
 
 ## Verbindliche Strategie
 
@@ -288,6 +289,24 @@ Capability zusätzlich: `company_branding_admin_ui_v1=true`.
 
 Details: `docs/TB-SERVER_1_0_COMPANY_BRANDING.md`.
 
+### Portal-Fachoberfläche v1
+
+Die native Server-1.0-Weboberfläche deckt jetzt auch den ersten Fachclient-Bereich ab:
+
+- `GET /portal/v1/worksites` – rollen-/mitgliedschaftsgesteuerte Baustellenliste plus Neuanlage;
+- `GET /portal/v1/worksites/{worksite_id}` – Baustellendetail mit Struktur, Mitgliedern, Teams, Team-BTBs, Mängeln und Abnahmen;
+- `GET /portal/v1/btbs/{btb_id}` – Kopfdaten/Facheinträge, Reaktivierung, Abschluss, Abschluss-PDF und Löschen.
+
+Die Oberfläche ruft ausschließlich die bestehenden Fachendpunkte auf. Rechte bleiben serverseitig in `worksite_context`/den Fachroutern verbindlich; das Web blendet nicht erlaubte Aktionen zusätzlich aus.
+
+Die gemeinsame Browser-API-Hilfe setzt bei Nicht-GET-Aufrufen automatisch `X-CSRF-Token` sowie `X-Client-Change-Id`. Bearer-/Gerätegeheimnisse werden nicht in Browser-Templates eingebaut.
+
+Aktuell direkt möglich: Strukturknoten anlegen, Team-BTB starten, BTB-Kopf/Facheinträge bearbeiten, BTB reaktivieren/finalisieren/PDF öffnen/löschen, Mangel anlegen/schließen und Abnahme anlegen/finalisieren.
+
+Capability: `portal_worksite_fach_ui_v1=true`.
+
+Details: `docs/TB-SERVER_1_0_PORTAL_FACH_UI.md`.
+
 ### Releases / Client-Kompatibilität
 
 Der bereits in Migration `001_server_1_0_base.sql` vorhandene Release-Katalog wird jetzt als stabiler API-Vertrag genutzt; bestehende Migrationen bleiben unverändert.
@@ -325,9 +344,9 @@ Workflow-Zielstand:
 - Migrationen 001 + 002 + 003 + 004;
 - `latest_known=4`, `latest_applied=4`;
 - Kerntabellen u. a. `survey_parse_catalog`, `track_data_sources`, `track_data_km_points`;
-- Source-/Vertragschecks 20–36;
+- Source-/Vertragschecks 20–37;
 - Health/Capabilities/Auth-Checks;
-- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1` und `company_branding_admin_ui_v1`.
+- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1` und `portal_worksite_fach_ui_v1`.
 
 Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
@@ -350,8 +369,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - BTB-PDF-Renderer v1 lokal mit ReportLab erzeugt, als PNG gerendert und visuell geprüft: schwarzer Kopf, rote geänderte Fachinhalte und rote `(entfernt)`-Originalinhalte.
 - Source-Check 35 ist als Syntax-/Vertragsprüfung für Firmenprofil, Logo, Layout, PDF-Branding, Capabilities und Android-UUID-Vertrag vorbereitet.
 - Source-Check 36 ist als Syntax-/Vertragsprüfung für Portal-/Admin-Webrouten, Templates, CSRF und Branding-UI vorbereitet.
+- Source-Check 37 ist als Vertragsprüfung für Baustellen-/Team-/BTB-/Mängel-/Abnahme-Portaloberfläche, CSRF und Browser-Idempotenz vorbereitet.
 
-**Noch nicht ausgeführt:** Source-Checks 34/35/36 gegen den vollständigen neuen Branding-/Admin-Web-Branchstand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–37 gegen den vollständigen neuen Branding-/Portal-Fach-Branchstand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -366,13 +386,13 @@ Für den aktuellen Admin-Web-Commit `b03f058b975bb928f0a434c00a6a79a66bab27f0` e
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
 - Android-Fachclient auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
-- weitere Server-1.0-Portal-Fachoberflächen für Baustellen/BTB/Mängel/Abnahmen sowie Admin-Dashboard/Systemstatus/Speicher;
+- Portal-Fachoberfläche weiter vervollständigen: Mitglieder/Rechte, Struktur bearbeiten/löschen, vollständige Mängel-/Abnahme-Bearbeitung und BTB-Foto-Upload; außerdem Admin-Dashboard/Systemstatus/Speicher;
 - serverseitiger Release-Binärupload/-download, Background Jobs, Backup/Restore/Reset;
 - vollständige Integrations-/E2E-Tests und produktiver NAS-Cutover.
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Die übrigen Server-1.0-Portal-/Admin-Fachoberflächen für Baustellen/Teams/BTB/Mängel/Abnahmen sowie Systemstatus/Speicher capability-gesteuert auf die vorhandenen `/api/v1`-Verträge setzen.
+1. Portal-Fachoberfläche um Mitglieder/Rechte, Struktur-Edit/Delete, vollständige Mängel-/Abnahme-Bearbeitung und BTB-Foto-Upload vervollständigen; anschließend Systemstatus/Speicher als Server-1.0-Weboberfläche schließen.
 2. Serverseitigen Release-Binärupload/-download, Background Jobs sowie Backup/Restore/Reset schließen.
 3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
 4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
