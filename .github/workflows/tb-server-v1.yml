@@ -89,6 +89,7 @@ jobs:
           python server/checks/51_verify_android_server_1_team_source.py
           python server/checks/52_verify_android_server_1_capabilities_source.py
           python server/checks/53_verify_android_server_1_context_source.py
+          python server/checks/54_verify_tb_server_1_area_scope_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -101,8 +102,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 6, current
-          assert current["latest_applied"] == 6, current
+          assert current["latest_known"] == 7, current
+          assert current["latest_applied"] == 7, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
