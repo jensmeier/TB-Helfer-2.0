@@ -45,6 +45,7 @@ CAPABILITIES: dict[str, bool] = {
     "backup_v1": True,
     "restore_test_v1": True,
     "test_data_reset_v1": True,
+    "restore_target_v1": True,
 }
 
 

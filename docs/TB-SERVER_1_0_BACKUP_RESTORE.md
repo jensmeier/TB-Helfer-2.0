@@ -163,12 +163,50 @@ Erst danach wird das fachliche `tb`-Schema gelöscht, die nummerierte Server-1.0
 
 Nach einem Reset muss der initiale Test-Admin bewusst neu gebootstrapped und Testdaten neu angelegt werden.
 
+## Kontrollierter Restore auf getrenntes Ziel
+
+Produktive Recovery wird **nicht** als In-place-HTTP-Restore umgesetzt. Stattdessen existiert ein bewusst separater Wartungsweg, der ein verifiziertes FULL-Backup in eine **frische, vom laufenden Server getrennte** Datenbank und einen getrennten Storage-Root wiederherstellt.
+
+CLI:
+
+`python -m tbserver.restore_target restore-target --backup-run-id <uuid> --confirm RESTORE-TARGET:<uuid>:<target_db_name>`
+
+Zusätzliche Freigabe:
+
+`TB_ALLOW_RESTORE_TARGET=YES`
+
+Zielkonfiguration:
+
+- `TB_RESTORE_TARGET_DB_NAME` – Pflicht und ungleich Live-`DB_NAME`;
+- `TB_RESTORE_TARGET_DB_PASSWORD` – Pflicht;
+- `TB_RESTORE_TARGET_DB_HOST/PORT/USER` – optional;
+- `TB_RESTORE_TARGET_STORAGE_ROOT` – Pflicht, disjunkt von Live-Storage und Backup-Root.
+
+Der Ziel-Datenbankbestand muss frisch sein, also noch kein `tb`-Schema besitzen. Der Ziel-Storage muss leer sein. Es wird ausschließlich ein erfolgreiches FULL-Backup akzeptiert.
+
+Ablauf:
+
+1. äußere Backupgröße/SHA-256 verifizieren;
+2. FULL-Layout + innere SHA-256 gegen `manifest.json` verifizieren;
+3. `pg_restore` ohne `--clean` in die frische Ziel-Datenbank;
+4. Migrationsregister und zentrale Tabellen prüfen;
+5. Dateiarchiv mit denselben Pfad-/Link-Sicherheitsregeln in temporäre Ablage extrahieren;
+6. Dateien in den getrennten Ziel-Storage kopieren;
+7. Restore-Lauf als `RESTORE_TARGET` protokollieren und ohne Benutzergeheimnisse auditieren.
+
+Wenn ein Restore-Schritt scheitert, wird der neu erzeugte Ziel-Storage wieder geleert und das `tb`-Schema der getrennten Ziel-Datenbank entfernt. Die laufende Live-Datenbank und der Live-Storage werden nicht verändert.
+
+Der nächste Schritt nach erfolgreichem Restore ist **nicht** automatisches Umschalten, sondern eine Offline-/Testprüfung des Zielservers. Erst danach darf ein eigener kontrollierter Cutover auf die wiederhergestellte Zielinstanz erfolgen.
+
+Migration `005_restore_target_run_kind.sql` erweitert ausschließlich die erlaubten `tb.backup_runs.kind`-Werte um `RESTORE_TARGET`.
+
 ## Capabilities
 
 - `background_jobs_v1=true`
 - `backup_v1=true`
 - `restore_test_v1=true`
 - `test_data_reset_v1=true`
+- `restore_target_v1=true`
 
 ## Sicherheitsgrenzen
 
@@ -216,8 +254,8 @@ Vor einem späteren produktiven Restore/Cutover bleibt ein verifiziertes Backup 
 
 ## Noch offen
 
-- kontrollierter produktiver Restore;
 - Backup-Aufbewahrung/Rotation;
+- Restore-to-Target praktisch gegen eine echte PostgreSQL-/Storage-Testinstanz ausführen und danach den manuellen Cutover prüfen;
 - E2E-Test des Workers und aller Backuparten gegen PostgreSQL + persistente Storage-Mounts;
 - produktive NAS-Backup- und Restore-Abnahme.
 

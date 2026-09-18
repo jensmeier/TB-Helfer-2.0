@@ -92,11 +92,16 @@ def _prepare_restore_test_database(config: dict[str, Any]) -> None:
         raise RestoreTestError("RESTORE_TEST_DATABASE_PREPARE_FAILED") from exc
 
 
-def _run_pg_restore(dump_path: Path, config: dict[str, Any]) -> None:
-    command = [
-        "pg_restore",
-        "--clean",
-        "--if-exists",
+def _run_pg_restore(
+    dump_path: Path,
+    config: dict[str, Any],
+    *,
+    clean: bool = True,
+) -> None:
+    command = ["pg_restore"]
+    if clean:
+        command.extend(["--clean", "--if-exists"])
+    command.extend([
         "--no-owner",
         "--no-privileges",
         "--exit-on-error",
@@ -109,7 +114,7 @@ def _run_pg_restore(dump_path: Path, config: dict[str, Any]) -> None:
         "--dbname",
         str(config["dbname"]),
         str(dump_path),
-    ]
+    ])
     try:
         result = subprocess.run(
             command,

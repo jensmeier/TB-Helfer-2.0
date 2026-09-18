@@ -36,6 +36,14 @@ Obwohl der Bestand als Testbestand verworfen werden darf, gilt weiterhin:
 5. erst nach bestandenem End-to-End-Test auf den neuen Server umschalten;
 6. alten Testbestand erst danach endgültig entfernen.
 
+## 2a. Restore-Strategie
+
+Ein Restore wird nicht direkt in die laufende produktive Datenbank geschrieben.
+
+TB-Server 1.0 stellt ein verifiziertes FULL-Backup zunächst in eine getrennte Ziel-Datenbank und einen getrennten Ziel-Storage wieder her. Diese Zielinstanz wird offline/testweise geprüft. Erst wenn Datenbank, Dateien, Migrationen und Anwendung dort konsistent sind, erfolgt ein eigener kontrollierter Cutover.
+
+Damit bleiben während des Restore-Vorgangs die bisher laufende Instanz und ihre Dateien als Rückfallmöglichkeit unverändert.
+
 ## 3. Regel ab dem ersten produktiven Vermessungsimport
 
 Mit dem ersten echten produktiven Import ändert sich die Regel verbindlich:

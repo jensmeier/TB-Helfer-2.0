@@ -402,6 +402,26 @@ Ein produktiver Restore wird damit **nicht** freigegeben.
 
 Details: `docs/TB-SERVER_1_0_BACKUP_RESTORE.md`.
 
+### Kontrollierter Restore-to-Target v1
+
+Produktiver Restore wird nicht als In-place-Webaktion gebaut. `server/tbserver/restore_target.py` stellt ausschließlich ein verifiziertes FULL-Backup in eine getrennte, frische Ziel-Datenbank und einen getrennten leeren Ziel-Storage wieder her.
+
+Sicherheitsgrenzen:
+
+- zusätzliche ENV-Freigabe `TB_ALLOW_RESTORE_TARGET=YES`;
+- dynamische CLI-Bestätigung `RESTORE-TARGET:<backup_uuid>:<target_db_name>`;
+- Ziel-DB-Name ungleich Live-`DB_NAME`;
+- Ziel-DB ohne vorhandenes `tb`-Schema;
+- Ziel-Storage disjunkt von Live-Storage und Backup-Root sowie leer;
+- FULL-Manifest + innere/äußere SHA-256 werden geprüft;
+- `pg_restore` läuft ohne `--clean` gegen das frische Ziel;
+- Fehler räumen nur den getrennten Zielzustand wieder auf;
+- Live-DB und Live-Storage werden nicht verändert.
+
+Migration 005 erlaubt `RESTORE_TARGET` im Backup-/Restore-Laufprotokoll. Capability: `restore_target_v1=true`.
+
+Der eigentliche Produktionswechsel bleibt ein separater Cutover nach Prüfung der wiederhergestellten Zielinstanz.
+
 ### Releases / Client-Kompatibilität
 
 Der Release-Katalog liefert die stabile Client-Kompatibilität und kann neben externen Download-URLs auch serverseitige Binärdateien verwalten.
@@ -430,12 +450,12 @@ Details: `docs/TB-SERVER_1_0_RELEASES.md`.
 
 Workflow-Zielstand:
 
-- Migrationen 001 + 002 + 003 + 004;
-- `latest_known=4`, `latest_applied=4`;
+- Migrationen 001 + 002 + 003 + 004 + 005;
+- `latest_known=5`, `latest_applied=5`;
 - Kerntabellen u. a. `survey_parse_catalog`, `track_data_sources`, `track_data_km_points`;
-- Source-/Vertragschecks 20–42;
+- Source-/Vertragschecks 20–43;
 - Health/Capabilities/Auth-Checks;
-- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `release_binary_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1`, `worksite_invitations_v1`, `admin_system_status_v1`, `background_jobs_v1`, `backup_v1`, `restore_test_v1` und `test_data_reset_v1`.
+- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `release_binary_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1`, `worksite_invitations_v1`, `admin_system_status_v1`, `background_jobs_v1`, `backup_v1`, `restore_test_v1`, `test_data_reset_v1` und `restore_target_v1`.
 
 Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
@@ -464,8 +484,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 40 ist als Syntax-/Vertragsprüfung für Release-Binärupload/-download, SHA-256, atomaren Storage, Veröffentlichungsgrenzen und Admin-Weboberfläche vorbereitet.
 - Source-Check 41 ist als Syntax-/Vertragsprüfung für Background Worker, Backup-Root-Trennung, DATABASE/FILES/FULL-Backup, SHA-256, Retry/Stale-Recovery und Admin-Backupauftrag vorbereitet.
 - Source-Check 42 ist als Sicherheits-/Vertragsprüfung für getrennten Restore-Test, FULL-Manifest/SHA/Archivschutz und ausschließlich Development/Test/Staging erlaubten Backup-gesicherten Reset vorbereitet.
+- Source-Check 43 ist als Sicherheits-/Vertragsprüfung für Restore-to-Target, frische getrennte Ziel-DB/Storage, explizite Freigabe/Bestätigung und fehlende HTTP-Exponierung vorbereitet.
 
-**Noch nicht ausgeführt:** Source-Checks 34–42 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-Test-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–43 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -481,12 +502,12 @@ Für den aktuellen Release-Binary-Commit `4abd52b82d12f153874f07a2bbaa1a78edb2f6
 - Android-Fachclient auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
 - Teamwechsel bestehender Helfer, QR/Deep-Link für Einladungen und komfortablere Portal-Fachformulare;
-- kontrollierter produktiver Restore und Backup-Aufbewahrung/Rotation; Background-Job-Worker, DATABASE/FILES/FULL-Backup, Restore-Test und Test-/Staging-Reset sind umgesetzt;
+- Restore-to-Target praktisch gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen; Backup-Aufbewahrung/Rotation bleibt offen;
 - vollständige Integrations-/E2E-Tests und produktiver NAS-Cutover.
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Kontrollierten produktiven Restore weiter nur als expliziten Wartungs-/Disaster-Recovery-Pfad bauen; Restore-Test und Test-/Staging-Reset sind jetzt vorhanden.
+1. Restore-to-Target gegen echte getrennte PostgreSQL-/Storage-Ziele und danach den manuellen Cutover praktisch testen; der sichere Wartungs-/Disaster-Recovery-Pfad ist im Code vorbereitet.
 2. Teamwechsel/QR-Komfort und spezialisierte Portal-Fachformulare später additiv auf die stabilen Verträge setzen.
 3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
 4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
