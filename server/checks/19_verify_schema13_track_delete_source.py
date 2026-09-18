@@ -35,8 +35,16 @@ required_server = [
 for needle in required_server:
     assert needle in server, needle
 
-# Der neue Pfad synchronisiert nur bereits geparste/berechnete Datensaetze. Er darf keine
-# Rohdatei-Uploads oder NAS-Dateischreibpfade enthalten.
+# Der neue Pfad synchronisiert nur bereits geparste/berechnete Datensaetze. Server 1.0 nutzt
+# den kanonischen track_data_v1-Vertrag; /collab bleibt nur expliziter 0.7.x-Fallback.
+assert "/api/v1/worksites/" in track_api and "/track-data" in track_api
+assert "/api/v1/track-data/" in track_api
+assert '"X-Client-Change-Id"' in track_api
+assert "base_version" in track_api
+assert "legacyReplace" in track_api
+assert "/api/v1/collab/worksites/" in track_api
+
+# Rohdatei-Uploads oder NAS-Dateischreibpfade bleiben verboten.
 for forbidden in ["Multipart", "readBytes()", "TRA_UPLOAD", "GRA_UPLOAD", "KF_UPLOAD", "KOR_UPLOAD"]:
     assert forbidden not in track_api + track_sync, forbidden
 

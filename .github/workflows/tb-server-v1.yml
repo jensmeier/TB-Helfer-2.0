@@ -107,6 +107,7 @@ jobs:
           python server/checks/69_verify_android_server_1_shared_sync_source.py
           python server/checks/70_verify_tb_server_1_file_pagination_source.py
           python server/checks/71_verify_server_1_worksite_tree_sync_source.py
+          python server/checks/72_verify_android_server_1_track_data_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
