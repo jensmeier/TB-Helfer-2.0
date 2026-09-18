@@ -91,6 +91,7 @@ jobs:
           python server/checks/53_verify_android_server_1_context_source.py
           python server/checks/54_verify_tb_server_1_area_scope_source.py
           python server/checks/55_verify_tb_server_1_file_parent_visibility_source.py
+          python server/checks/56_verify_tb_server_1_acceptance_result_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -103,8 +104,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 7, current
-          assert current["latest_applied"] == 7, current
+          assert current["latest_known"] == 8, current
+          assert current["latest_applied"] == 8, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
@@ -140,6 +141,7 @@ jobs:
           assert "devices_auth_token_hash_uq" in device_indexes, device_indexes
           assert "area_scope" in defect_columns, defect_columns
           assert "area_scope" in acceptance_columns, acceptance_columns
+          assert "result" in acceptance_columns, acceptance_columns
           print("OK: core tables/migrations", len(tables))
           PY
 
@@ -224,6 +226,7 @@ jobs:
               "chunk_upload_v1",
               "defects_v1",
               "acceptances_v1",
+              "acceptance_result_v1",
               "track_data_v1",
               "survey_originals_v1",
               "survey_parser_catalog_v1",
