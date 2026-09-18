@@ -107,7 +107,7 @@ Damit darf ein Dateifehler nicht zu einem scheinbar erfolgreich abgeschlossenen 
 
 Renderer: `server/tbserver/btb_pdf.py`
 
-Renderer-Version: `tb-server-btb-pdf-1`
+Renderer-Version: `tb-server-btb-pdf-2`
 
 Beim ersten Abschluss existiert noch kein Vergleichsoriginal; der gesamte Inhalt wird normal/schwarz dargestellt.
 
@@ -185,12 +185,13 @@ Noch offen bleibt die vollständige PostgreSQL-/FastAPI-End-to-End-Prüfung auf 
 
 Dieser Baustein schließt den **fachlichen Serververtrag** für Abschluss-PDF, Original und Nachbearbeitung.
 
+Das zentrale Firmenprofil/Firmenlogo und das firmenweite PDF-Logo-Layout sind inzwischen über `docs/TB-SERVER_1_0_COMPANY_BRANDING.md` angebunden; Renderer v2 verwendet diesen zentralen Stand.
+
 Noch nicht damit erledigt:
 
-- serverseitiges Firmenlogo im PDF;
 - vollständige Pixel-/Layout-Parität zum Android-PDF;
-- Portaloberfläche für PDF-Layout;
+- Server-1.0-HTML-Adminoberfläche und Portal-Vorschau für PDF-Layout;
 - Tagesabschluss-ZIP;
 - produktiver NAS-Cutover.
 
-`company_logo_v1` bleibt deshalb bis zum eigenen Firmenlogo-/Layout-Baustein `false`.
+`company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1` sind im zugehörigen Branding-Baustein aktiv.

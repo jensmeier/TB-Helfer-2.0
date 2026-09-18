@@ -69,6 +69,7 @@ jobs:
           python server/checks/32_verify_tb_server_1_survey_projection_source.py
           python server/checks/33_verify_tb_server_1_releases_source.py
           python server/checks/34_verify_tb_server_1_btb_pdf_source.py
+          python server/checks/35_verify_tb_server_1_company_branding_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -174,6 +175,9 @@ jobs:
               "worksite_teams_v1",
               "btb_entries_v1",
               "btb_finalize_with_pdf_v1",
+              "company_profile_v1",
+              "company_logo_v1",
+              "company_pdf_logo_layout_v1",
               "btb_live_sync_v1",
               "files_v1",
               "chunk_upload_v1",
@@ -190,7 +194,6 @@ jobs:
           }
           missing = sorted(key for key in expected_true if caps["capabilities"].get(key) is not True)
           assert not missing, {"missing_capabilities": missing, "caps": caps}
-          assert caps["capabilities"]["company_logo_v1"] is False, caps
           print("OK: API foundation/capabilities")
           PY
           cd ..

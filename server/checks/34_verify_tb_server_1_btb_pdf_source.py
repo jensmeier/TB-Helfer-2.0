@@ -75,7 +75,7 @@ def render_smoke() -> None:
         data = target.read_bytes()
         assert data.startswith(b"%PDF-"), data[:16]
         assert len(data) > 1000, len(data)
-        assert PDF_RENDERER_VERSION == "tb-server-btb-pdf-1"
+        assert PDF_RENDERER_VERSION == "tb-server-btb-pdf-2"
 
 
 def main() -> None:
@@ -102,7 +102,7 @@ def main() -> None:
         ('raise HTTPException(409, "BTB_NOT_ACTIVE")', documents),
         ('def install_pdf_atomically', documents),
         ('def rollback_pdf_install', documents),
-        ('PDF_RENDERER_VERSION = "tb-server-btb-pdf-1"', pdf),
+        ('PDF_RENDERER_VERSION = "tb-server-btb-pdf-2"', pdf),
         ('textColor=colors.red', pdf),
         ('(entfernt)', pdf),
         ('prepare_btb_photo_change', files),

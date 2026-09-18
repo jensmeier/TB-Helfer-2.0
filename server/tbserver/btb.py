@@ -30,6 +30,7 @@ from .btb_documents import (
     upsert_final_pdf_file,
 )
 from .btb_pdf import PDF_RENDERER_VERSION, render_btb_pdf
+from .company import load_company_branding
 from .database import transaction
 from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
@@ -150,11 +151,9 @@ def _pdf_context(cur, btb: dict[str, Any]) -> dict[str, Any]:
     cur.execute(
         """
         SELECT w.name AS worksite_name, w.designation AS worksite_designation,
-               w.route_number, c.name AS company_name, c.street, c.postal_code,
-               c.city, c.phone, c.email, t.name AS team_name,
+               w.route_number, t.name AS team_name,
                lead.display_name AS lead_name
         FROM tb.worksites w
-        JOIN tb.companies c ON c.id = w.company_id
         JOIN tb.teams t ON t.id = %s AND t.worksite_id = w.id
         LEFT JOIN tb.users lead ON lead.id = t.lead_user_id
         WHERE w.id = %s
@@ -165,12 +164,27 @@ def _pdf_context(cur, btb: dict[str, Any]) -> dict[str, Any]:
     if not row:
         raise HTTPException(409, "BTB_PDF_CONTEXT_MISSING")
     row = dict(row)
-    address = " ".join(part for part in (row.get("street"), row.get("postal_code"), row.get("city")) if part)
-    contact = " · ".join(part for part in (row.get("phone"), row.get("email")) if part)
+    branding = load_company_branding(cur, btb["company_id"])
+    address = " ".join(
+        part
+        for part in (
+            branding.get("address_line1"),
+            branding.get("address_line2"),
+            branding.get("postal_code"),
+            branding.get("city"),
+        )
+        if part
+    )
     return {
-        "company_name": row.get("company_name"),
+        "company_name": branding.get("name"),
         "company_address": address or None,
-        "company_contact": contact or None,
+        "company_email": branding.get("email"),
+        "company_phone": branding.get("phone"),
+        "company_website": branding.get("website"),
+        "company_logo_path": branding.get("logo_path"),
+        "company_logo_mime_type": branding.get("logo_mime_type"),
+        "company_logo_sha256": branding.get("logo_sha256"),
+        "pdf_logo_layout": branding.get("pdf_layout"),
         "worksite_name": row.get("worksite_name"),
         "worksite_designation": row.get("worksite_designation"),
         "route_number": row.get("route_number"),

@@ -6,15 +6,111 @@ from pathlib import Path
 from typing import Any
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.lib.utils import ImageReader
+from reportlab.platypus import Flowable, Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
-PDF_RENDERER_VERSION = "tb-server-btb-pdf-1"
+PDF_RENDERER_VERSION = "tb-server-btb-pdf-2"
 
+
+
+class CompanyHeaderFlowable(Flowable):
+    """Server-PDF counterpart of the Android company/logo header block."""
+
+    def __init__(self, context: dict[str, Any]):
+        super().__init__()
+        self.context = context
+        self.height = 48 * mm
+
+    def wrap(self, availWidth, availHeight):
+        self.width = availWidth
+        return availWidth, self.height
+
+    def draw(self):
+        canvas = self.canv
+        layout = self.context.get("pdf_logo_layout") or {}
+        width_pt = max(40, min(250, int(layout.get("logo_width_pt", 90))))
+        offset_x = max(-120, min(120, int(layout.get("offset_x_pt", 0))))
+        offset_y = max(-60, min(180, int(layout.get("offset_y_pt", 0))))
+        show_name = bool(layout.get("show_company_name", True))
+        show_email = bool(layout.get("show_company_email", True))
+        show_phone = bool(layout.get("show_company_phone", True))
+        contacts_in_image = bool(layout.get("contacts_in_image", False))
+
+        canvas.saveState()
+        try:
+            canvas.setFillColor(colors.black)
+            canvas.setFont("Helvetica-Bold", 18)
+            canvas.drawString(0, self.height - 20, "Bautagesbericht")
+
+            box_left = max(0.51 * self.width, 84 * mm)
+            box_right = self.width
+            box_width = max(80, box_right - box_left)
+            logo_top = self.height - 3 * mm
+            logo_bottom = 17 * mm
+            logo_height_available = max(28 * mm, logo_top - logo_bottom)
+            logo_bottom_drawn = logo_top
+
+            logo_path = self.context.get("company_logo_path")
+            if isinstance(logo_path, Path) and logo_path.is_file():
+                try:
+                    image = ImageReader(str(logo_path))
+                    image_width, image_height = image.getSize()
+                    draw_width = min(float(width_pt), box_width)
+                    draw_height = draw_width * float(image_height) / float(image_width)
+                    if draw_height > logo_height_available:
+                        factor = logo_height_available / draw_height
+                        draw_width *= factor
+                        draw_height *= factor
+
+                    center_x = box_left + box_width / 2.0
+                    desired_left = center_x - draw_width / 2.0 + offset_x
+                    left = max(box_left, min(box_right - draw_width, desired_left))
+                    centered_bottom = logo_bottom + (logo_height_available - draw_height) / 2.0
+                    desired_bottom = centered_bottom - offset_y
+                    bottom = max(2 * mm, min(logo_top - draw_height, desired_bottom))
+
+                    canvas.setFillColor(colors.white)
+                    canvas.rect(left, bottom, draw_width, draw_height, fill=1, stroke=0)
+                    canvas.drawImage(
+                        image,
+                        left,
+                        bottom,
+                        width=draw_width,
+                        height=draw_height,
+                        preserveAspectRatio=True,
+                        mask="auto",
+                    )
+                    logo_bottom_drawn = bottom
+                except Exception:
+                    logo_path = None
+
+            lines: list[str] = []
+            if show_name and self.context.get("company_name"):
+                lines.append(str(self.context["company_name"]))
+            if not contacts_in_image:
+                if show_email and self.context.get("company_email"):
+                    lines.append(str(self.context["company_email"]))
+                if show_phone and self.context.get("company_phone"):
+                    lines.append(str(self.context["company_phone"]))
+
+            canvas.setFillColor(colors.black)
+            canvas.setFont("Helvetica", 8.4)
+            if isinstance(logo_path, Path) and logo_path.is_file():
+                text_y = max(4 * mm, logo_bottom_drawn - 10)
+            else:
+                text_y = min(self.height - 24, self.height - 12 - offset_y)
+            center_x = box_left + box_width / 2.0 + offset_x
+            center_x = max(box_left + 20, min(box_right - 20, center_x))
+            for line in lines:
+                value = line if len(line) <= 70 else line[:67] + "…"
+                canvas.drawCentredString(center_x, text_y, value)
+                text_y -= 10
+        finally:
+            canvas.restoreState()
 
 def _fmt(value: Any) -> str:
     if value is None:
@@ -81,14 +177,6 @@ def render_btb_pdf(
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     styles = getSampleStyleSheet()
-    title = ParagraphStyle(
-        "BtbTitle",
-        parent=styles["Title"],
-        alignment=TA_CENTER,
-        fontSize=18,
-        leading=22,
-        spaceAfter=8,
-    )
     h2 = ParagraphStyle(
         "BtbH2",
         parent=styles["Heading2"],
@@ -118,13 +206,12 @@ def render_btb_pdf(
         title="Bautagesbericht",
         author=context.get("company_name") or "TB-Helfer",
     )
-    story: list[Any] = [Paragraph("Bautagesbericht", title)]
+    story: list[Any] = [CompanyHeaderFlowable(context)]
 
     btb = snapshot.get("btb") or {}
     meta = [
-        ("Firma", context.get("company_name")),
         ("Anschrift", context.get("company_address")),
-        ("Kontakt", context.get("company_contact")),
+        ("Webseite", context.get("company_website")),
         ("Baustelle", context.get("worksite_name")),
         ("Bezeichnung", context.get("worksite_designation")),
         ("Strecke", context.get("route_number")),

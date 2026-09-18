@@ -10,6 +10,7 @@ from .acceptances import router as acceptances_router
 from .admin import router as admin_router
 from .btb import router as btb_router
 from .capabilities import router as capabilities_router
+from .company import router as company_router
 from .config import settings
 from .database import ping
 from .defects import router as defects_router
@@ -41,6 +42,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(capabilities_router)
+app.include_router(company_router)
 app.include_router(portal_router)
 app.include_router(admin_router)
 app.include_router(admin_devices_router)

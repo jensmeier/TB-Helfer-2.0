@@ -64,7 +64,7 @@ class TeamManagementApi(
     )
 
     data class CompanyProfile(
-        val companyId: Long,
+        val companyId: String,
         val name: String?,
         val addressLine1: String?,
         val addressLine2: String?,
@@ -251,7 +251,7 @@ class TeamManagementApi(
                     if (profile == null) CompanyProfileResult.Error("Firmenprofil konnte nicht gelesen werden.")
                     else CompanyProfileResult.Success(
                         CompanyProfile(
-                            companyId = profile.optLong("company_id", 0),
+                            companyId = profile.optString("company_id"),
                             name = profile.nullableString("name"),
                             addressLine1 = profile.nullableString("address_line1"),
                             addressLine2 = profile.nullableString("address_line2"),
