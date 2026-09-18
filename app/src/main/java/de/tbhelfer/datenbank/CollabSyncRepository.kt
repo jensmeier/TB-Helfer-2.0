@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.withTransaction
 import de.tbhelfer.server.CollabBenachrichtigungen
 import de.tbhelfer.server.CollabSyncApi
+import de.tbhelfer.server.Server1FachSyncApi
 import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
@@ -150,6 +151,51 @@ class CollabSyncRepository(
 
     suspend fun entities(worksiteServerId: String, entityType: String): List<SyncCollabEntity> =
         dao.collabEntities(worksiteServerId, entityType.uppercase())
+
+    /**
+     * Stores a complete read-only Server-1.0 snapshot for one Fach entity type.
+     * Missing previously cached rows are tombstoned locally so deleted/hidden
+     * objects cannot survive a later full collection refresh.
+     */
+    suspend fun replaceServer1Snapshots(
+        worksiteServerId: String,
+        entityType: String,
+        snapshots: List<Server1FachSyncApi.Snapshot>
+    ) {
+        val type = entityType.uppercase()
+        require(type == "DEFECT" || type == "ACCEPTANCE") { "Unsupported Server-1.0 snapshot type: $type" }
+        val now = System.currentTimeMillis()
+        database.withTransaction {
+            val incomingIds = snapshots.mapTo(hashSetOf()) { it.serverId }
+            dao.collabEntities(worksiteServerId, type)
+                .filter { it.serverId !in incomingIds }
+                .forEach { old ->
+                    dao.markCollabDeleted(old.serverId, old.entityVersion, now)
+                }
+            if (snapshots.isNotEmpty()) {
+                dao.upsertCollabEntities(
+                    snapshots.map { item ->
+                        SyncCollabEntity(
+                            serverId = item.serverId,
+                            worksiteServerId = worksiteServerId,
+                            groupId = null,
+                            entityType = type,
+                            clientEntityKey = item.clientEntityKey,
+                            status = item.status,
+                            areaScopeJson = item.areaScopeJson,
+                            payloadJson = item.payloadJson,
+                            entityVersion = item.entityVersion,
+                            changedByName = null,
+                            createdAtText = item.createdAtText,
+                            updatedAtText = item.updatedAtText,
+                            isDeleted = false,
+                            updatedAtEpochMs = now
+                        )
+                    }
+                )
+            }
+        }
+    }
 
     suspend fun attachments(parentEntityId: String): List<SyncCollabAttachmentEntity> =
         dao.collabAttachmentsForEntity(parentEntityId)

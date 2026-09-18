@@ -11,7 +11,7 @@
     <string name="collab_session_invalid">Die Gerätefreigabe ist nicht mehr gültig. Bitte neu aktivieren.</string>
     <string name="collab_sync_error">Synchronisation fehlgeschlagen: %1$s</string>
     <string name="collab_sync_ok">%1$d Baustellen · ↓ %2$d / ↑ %3$d · %4$d ausstehend · %5$d Konflikte</string>
-    <string name="collab_server1_context_only">%1$d Baustellen vom Server 1.0 geladen · Teams und Einladungen verfügbar · BTB/Mängel/Abnahmen noch nicht vollständig synchronisiert</string>
+    <string name="collab_server1_context_only">%1$d Baustellen vom Server 1.0 geladen · Teams/Einladungen verfügbar · Mängel/Abnahmen werden bereits lesend übernommen · BTB sowie Schreib-/Datei-Sync folgen getrennt</string>
     <string name="collab_no_worksites">Für diesen Nutzer sind noch keine Server-Baustellen freigegeben.</string>
     <string name="collab_worksite_fallback">Baustelle</string>
     <string name="collab_bound_to">Auf diesem Gerät: %1$s</string>

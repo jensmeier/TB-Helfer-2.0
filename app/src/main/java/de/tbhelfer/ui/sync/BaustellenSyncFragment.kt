@@ -30,6 +30,8 @@ import de.tbhelfer.datenbank.WorksiteBindingRepository
 import de.tbhelfer.server.CollabBenachrichtigungen
 import de.tbhelfer.server.CompanyProfileSync
 import de.tbhelfer.server.SecureTokenStore
+import de.tbhelfer.server.ServerCapabilitiesApi
+import de.tbhelfer.server.Server1FachSyncApi
 import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.server.TeamManagementApi
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +62,8 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
     private val bridge get() = ServiceLocator.collabLocalBridge
     private val bindings get() = ServiceLocator.worksiteBindingRepository
     private val teamApi = TeamManagementApi()
+    private val serverCapabilitiesApi = ServerCapabilitiesApi()
+    private val server1FachApi = Server1FachSyncApi()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -195,6 +199,40 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                             it.message ?: "Server-1.0-Baustellenkontext konnte lokal nicht gespeichert werden."
                         )
                     }
+
+                val capabilities = when (val result = serverCapabilitiesApi.load()) {
+                    is ServerCapabilitiesApi.Result.Success -> result.snapshot
+                    ServerCapabilitiesApi.Result.Unsupported -> null
+                    is ServerCapabilitiesApi.Result.Error -> return SyncUiResult.Error(result.message)
+                }
+                if (capabilities?.supports("defects_v1") == true || capabilities?.supports("acceptances_v1") == true) {
+                    for (context in contexts) {
+                        if (capabilities.supports("defects_v1")) {
+                            when (val result = server1FachApi.loadDefects(token, context.worksiteServerId)) {
+                                is Server1FachSyncApi.Result.Success ->
+                                    collab.replaceServer1Snapshots(context.worksiteServerId, "DEFECT", result.items)
+                                Server1FachSyncApi.Result.Unsupported -> Unit
+                                Server1FachSyncApi.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
+                                is Server1FachSyncApi.Result.Error -> return SyncUiResult.Error(result.message)
+                            }
+                        }
+                        if (capabilities.supports("acceptances_v1")) {
+                            when (val result = server1FachApi.loadAcceptances(token, context.worksiteServerId)) {
+                                is Server1FachSyncApi.Result.Success ->
+                                    collab.replaceServer1Snapshots(context.worksiteServerId, "ACCEPTANCE", result.items)
+                                Server1FachSyncApi.Result.Unsupported -> Unit
+                                Server1FachSyncApi.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
+                                is Server1FachSyncApi.Result.Error -> return SyncUiResult.Error(result.message)
+                            }
+                        }
+                    }
+                    runCatching { bridge.applyServerStateToLocal() }
+                        .getOrElse {
+                            return SyncUiResult.Error(
+                                it.message ?: "Server-1.0-Mängel/Abnahmen konnten lokal nicht übernommen werden."
+                            )
+                        }
+                }
                 return SyncUiResult.ContextOnly(bindings.contextsWithBindings())
             }
             TeamManagementApi.WorksiteContextResult.Unsupported -> Unit
