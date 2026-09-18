@@ -45,7 +45,7 @@ Wichtige Server-1.0-Meilensteine:
 - Regression positive/negative TRA-Stationsdiskontinuitäten: `69effc49acf55b4b9abc6d4136b089a784853540`
 - Detaildokumentation Chainage/Projektion: `e2701359efca8ff50220c452633b44ba7dba7c0d`
 - reale Typ-6-/Nullweg-Verifikation dokumentiert: `21c192ed4ad717e3d1f85fca31f85c6b398d2e49`
-- Release-Katalog / Client-Kompatibilitätsvertrag: in diesem Stand umgesetzt; öffentliche Statusabfrage + ADMIN-Verwaltung, noch ohne serverseitigen Binär-Upload
+- Release-Katalog / Client-Kompatibilitätsvertrag: öffentliche Statusabfrage + ADMIN-Verwaltung; serverseitiger streamender Binärupload/-download mit SHA-256, atomarem Dateitausch und Admin-Weboberfläche ist jetzt ebenfalls umgesetzt
 - BTB-Abschluss-PDF / Ein-PDF-/Original-/Nachbearbeitungsmodell: in diesem Stand serverseitig umgesetzt; stabiler PDF-Pfad pro `btbId`, unveränderlicher erster Original-Snapshot inkl. Foto-Basis, Reaktivierung ohne automatische Ungültigkeit
 - Zentrales Firmenprofil / Firmenlogo / PDF-Logo-Layout: in diesem Stand auf die vorhandenen Server-1.0-Firmen-/Dateifelder umgesetzt; Android-UUID-Kompatibilität korrigiert, PDF-Renderer auf v2 mit zentralem Branding angehoben
 - erste native Server-1.0-Portal-/Admin-Weboberfläche: Login/Portal-Start, Firmenliste/-anlage sowie Firmenprofil/Logo/PDF-Layout mit CSRF-geschützter API-Anbindung und Browser-Vorschau
@@ -214,6 +214,25 @@ Harburg 5300:
 
 Historische Sprungstationszahlen aus der vorherigen Projektionsbasis sind in der Real-Fixture-Dokumentation als solche gekennzeichnet. Nach v3 werden Sprungstationen neu gegen kontinuierliche Chainage berechnet; alte Auto-GRA-Punkte werden invalidiert.
 
+### Release-Binärupload / Download
+
+Der vorhandene Release-Katalog kann jetzt neben externen Download-URLs auch serverseitige Binärdateien verwalten.
+
+- `PUT /api/v1/admin/releases/{release_id}/binary` streamt einen Draft in den Server-Storage, maximal 512 MiB;
+- optionales `X-Release-SHA256` wird serverseitig gegen die während des Streams berechnete Prüfsumme verifiziert;
+- stabiler interner Storage-Key: `releases/<platform>/<release_uuid>/package.bin`;
+- Dateitausch nutzt Tempdatei + atomaren Replace + Rollback;
+- veröffentlichen ist nur mit internem Binary oder externer Download-URL zulässig;
+- veröffentlichtes Binary ist über `GET /api/v1/releases/{release_id}/download` verfügbar;
+- Draft-Binaries können entfernt/ersetzt werden, veröffentlichte Releases bleiben unveränderlich;
+- öffentliche und bereinigte Admin-Payloads geben keinen internen Storage-Key aus.
+
+Admin-Webseite: `GET /admin/v1/releases`.
+
+Capability: `release_binary_v1=true`.
+
+Details: `docs/TB-SERVER_1_0_RELEASES.md`.
+
 ### BTB-Abschluss-PDF / Ein-PDF-/Originalmodell
 
 Der Server setzt jetzt die verbindliche BTB-Regel um, dass eine `btbId` höchstens ein aktuell gültiges Abschluss-PDF besitzt.
@@ -369,9 +388,9 @@ Workflow-Zielstand:
 - Migrationen 001 + 002 + 003 + 004;
 - `latest_known=4`, `latest_applied=4`;
 - Kerntabellen u. a. `survey_parse_catalog`, `track_data_sources`, `track_data_km_points`;
-- Source-/Vertragschecks 20–39;
+- Source-/Vertragschecks 20–40;
 - Health/Capabilities/Auth-Checks;
-- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1`, `worksite_invitations_v1` und `admin_system_status_v1`.
+- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `release_binary_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1`, `worksite_invitations_v1` und `admin_system_status_v1`.
 
 Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
@@ -397,8 +416,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 37 ist als Vertragsprüfung für Baustellen-/Team-/BTB-/Mängel-/Abnahme-Portaloberfläche, CSRF, Browser-Idempotenz und BTB-Foto-Chunkupload vorbereitet.
 - Source-Check 38 ist als Sicherheits-/Vertragsprüfung für gezielte Baustelleneinladungen inkl. gehashtem Einmalcode und tokenfreiem Mutation Receipt vorbereitet.
 - Source-Check 39 ist als Syntax-/Vertragsprüfung für read-only Admin-Systemstatus/Storage inkl. Geheimnis-/Payload-Ausschluss vorbereitet.
+- Source-Check 40 ist als Syntax-/Vertragsprüfung für Release-Binärupload/-download, SHA-256, atomaren Storage, Veröffentlichungsgrenzen und Admin-Weboberfläche vorbereitet.
 
-**Noch nicht ausgeführt:** Source-Checks 34–39 gegen den vollständigen neuen Branding-/Portal-/Systemstatusstand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–40 gegen den vollständigen neuen Branding-/Portal-/System-/Releasestand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -414,12 +434,12 @@ Für den aktuellen Systemstatus-Commit `f27f2afab4dd153d193e66e8c339970b9f05cc58
 - Android-Fachclient auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
 - Teamwechsel bestehender Helfer, QR/Deep-Link für Einladungen und komfortablere Portal-Fachformulare; Systemstatus/Speicher ist read-only vorhanden, Backup-/Restore-/Job-Ausführung bleibt offen;
-- serverseitiger Release-Binärupload/-download, Background Jobs, Backup/Restore/Reset;
+- Background-Job-Worker, Backup/Restore/Reset; Release-Binärupload/-download ist umgesetzt;
 - vollständige Integrations-/E2E-Tests und produktiver NAS-Cutover.
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Serverseitigen Release-Binärupload/-download, Background-Job-Worker sowie Backup/Restore/Reset schließen; der read-only Systemstatus ist dafür jetzt die Diagnosebasis.
+1. Background-Job-Worker sowie Backup/Restore/Reset schließen; Release-Binärupload/-download und read-only Systemstatus sind dafür jetzt vorhanden.
 2. Teamwechsel/QR-Komfort und spezialisierte Portal-Fachformulare später additiv auf die stabilen Verträge setzen.
 3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
 4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
