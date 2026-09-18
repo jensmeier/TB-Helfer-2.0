@@ -1,21 +1,23 @@
 package de.tbhelfer.server
 
+import de.tbhelfer.datenbank.SyncCollabPendingChangeEntity
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 /**
- * Read-only bridge for the first Android Server-1.0 Fachsync step.
+ * Canonical Android bridge for Server-1.0 defects and acceptances.
  *
- * Defects and acceptances are loaded from the canonical Server-1.0 resources.
- * Upload/update/delete remain deliberately outside this client until their
- * idempotent mutation mapping is migrated as a separate step.
+ * Read operations use the complete area-scoped collections. Mutations reuse the
+ * existing local collaboration outbox and send its stable clientChangeId through
+ * X-Client-Change-Id. BTB and file transfer deliberately stay outside this class.
  */
 class Server1FachSyncApi(
     private val baseUrl: String = ServerConfig.BASE_URL
@@ -38,11 +40,280 @@ class Server1FachSyncApi(
         data class Error(val message: String) : Result
     }
 
+    sealed interface MutationResult {
+        data class Applied(val snapshot: Snapshot) : MutationResult
+        data class Conflict(val currentVersion: Long?, val detail: String) : MutationResult
+        data object Unsupported : MutationResult
+        data object SessionInvalid : MutationResult
+        data class Error(val message: String) : MutationResult
+    }
+
     fun loadDefects(token: String, worksiteId: String): Result =
         loadCollection(token, "/api/v1/worksites/${encode(worksiteId)}/defects", "defects", EntityKind.DEFECT)
 
     fun loadAcceptances(token: String, worksiteId: String): Result =
         loadCollection(token, "/api/v1/worksites/${encode(worksiteId)}/acceptances", "acceptances", EntityKind.ACCEPTANCE)
+
+    fun applyPending(token: String, change: SyncCollabPendingChangeEntity): MutationResult {
+        if (!change.operation.equals(SyncCollabPendingChangeEntity.OP_UPSERT, ignoreCase = true)) {
+            return MutationResult.Error(
+                "Server 1.0 unterstützt für Mängel/Abnahmen aus Android derzeit nur Anlegen/Ändern, kein Löschen."
+            )
+        }
+        return when (change.entityType.uppercase()) {
+            SyncCollabPendingChangeEntity.TYPE_DEFECT -> mutateDefect(token, change)
+            SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE -> mutateAcceptance(token, change)
+            else -> MutationResult.Error("Nicht unterstützter Server-1.0-Fachtyp: ${change.entityType}")
+        }
+    }
+
+    private fun mutateDefect(token: String, change: SyncCollabPendingChangeEntity): MutationResult {
+        val desired = change.status?.uppercase().orEmpty().ifBlank { "OFFEN" }
+        if (desired == "ABGELEHNT") {
+            return MutationResult.Error(
+                "Der lokale Mangelstatus ABGELEHNT besitzt noch kein kanonisches Server-1.0-Gegenstück."
+            )
+        }
+        if (desired !in setOf("OFFEN", "IN_ARBEIT", "ERLEDIGT")) {
+            return MutationResult.Error("Unbekannter Mangelstatus: $desired")
+        }
+
+        val fachPayload = jsonObjectOrEmpty(change.payloadJson)
+        val areaScope = jsonObjectOrEmpty(change.areaScopeJson)
+        val title = fachPayload.optString("beschreibung").trim().takeIf { it.isNotBlank() }
+        val existingId = change.serverId?.takeIf { it.isNotBlank() }
+
+        if (existingId == null) {
+            val createBody = JSONObject()
+                .put("title", title ?: JSONObject.NULL)
+                .put("payload", fachPayload)
+                .put("area_scope", areaScope)
+            val created = sendMutation(
+                token = token,
+                path = "/api/v1/worksites/${encode(change.worksiteServerId)}/defects",
+                method = "POST",
+                clientChangeId = change.clientChangeId,
+                body = createBody,
+                kind = EntityKind.DEFECT
+            )
+            if (created !is MutationResult.Applied) return created
+            return when (desired) {
+                "OFFEN" -> created
+                "IN_ARBEIT" -> updateDefect(
+                    token,
+                    created.snapshot.serverId,
+                    created.snapshot.entityVersion,
+                    fachPayload,
+                    areaScope,
+                    title,
+                    "IN_PROGRESS",
+                    derivedChangeId(change.clientChangeId, "status")
+                )
+                else -> closeDefect(
+                    token,
+                    created.snapshot.serverId,
+                    created.snapshot.entityVersion,
+                    derivedChangeId(change.clientChangeId, "close")
+                )
+            }
+        }
+
+        val baseVersion = change.baseVersion
+            ?: return MutationResult.Error("Server-Version für Mangeländerung fehlt.")
+
+        if (desired == "ERLEDIGT") {
+            val updated = updateDefect(
+                token,
+                existingId,
+                baseVersion,
+                fachPayload,
+                areaScope,
+                title,
+                null,
+                change.clientChangeId
+            )
+            if (updated !is MutationResult.Applied) return updated
+            return closeDefect(
+                token,
+                existingId,
+                updated.snapshot.entityVersion,
+                derivedChangeId(change.clientChangeId, "close")
+            )
+        }
+
+        return updateDefect(
+            token,
+            existingId,
+            baseVersion,
+            fachPayload,
+            areaScope,
+            title,
+            if (desired == "IN_ARBEIT") "IN_PROGRESS" else "OPEN",
+            change.clientChangeId
+        )
+    }
+
+    private fun updateDefect(
+        token: String,
+        serverId: String,
+        baseVersion: Long,
+        fachPayload: JSONObject,
+        areaScope: JSONObject,
+        title: String?,
+        serverStatus: String?,
+        clientChangeId: String
+    ): MutationResult {
+        val body = JSONObject()
+            .put("base_version", baseVersion)
+            .put("title", title ?: JSONObject.NULL)
+            .put("payload", fachPayload)
+            .put("area_scope", areaScope)
+        if (serverStatus != null) body.put("status", serverStatus)
+        return sendMutation(
+            token,
+            "/api/v1/defects/${encode(serverId)}",
+            "PATCH",
+            clientChangeId,
+            body,
+            EntityKind.DEFECT
+        )
+    }
+
+    private fun closeDefect(
+        token: String,
+        serverId: String,
+        baseVersion: Long,
+        clientChangeId: String
+    ): MutationResult = sendMutation(
+        token,
+        "/api/v1/defects/${encode(serverId)}/close",
+        "POST",
+        clientChangeId,
+        JSONObject().put("base_version", baseVersion),
+        EntityKind.DEFECT
+    )
+
+    private fun mutateAcceptance(token: String, change: SyncCollabPendingChangeEntity): MutationResult {
+        val desired = change.status?.uppercase().orEmpty().ifBlank { "ENTWURF" }
+        val draftResults = setOf("ENTWURF", "ABGENOMMEN_MIT_RESTPUNKTEN", "NOCH_ZU_PRUEFEN")
+        val finalResults = setOf("ABGENOMMEN", "NICHT_ABGENOMMEN")
+        if (desired !in draftResults && desired !in finalResults) {
+            return MutationResult.Error("Unbekanntes Abnahmeergebnis: $desired")
+        }
+
+        val fachPayload = jsonObjectOrEmpty(change.payloadJson)
+        val areaScope = jsonObjectOrEmpty(change.areaScopeJson)
+        val title = fachPayload.optString("bezeichnung").trim()
+            .ifBlank { fachPayload.optString("objekt").trim() }
+            .takeIf { it.isNotBlank() }
+        val existingId = change.serverId?.takeIf { it.isNotBlank() }
+
+        if (existingId == null) {
+            val createResult = if (desired in finalResults) "ENTWURF" else desired
+            val created = sendMutation(
+                token = token,
+                path = "/api/v1/worksites/${encode(change.worksiteServerId)}/acceptances",
+                method = "POST",
+                clientChangeId = change.clientChangeId,
+                body = JSONObject()
+                    .put("title", title ?: JSONObject.NULL)
+                    .put("payload", fachPayload)
+                    .put("area_scope", areaScope)
+                    .put("result", createResult),
+                kind = EntityKind.ACCEPTANCE
+            )
+            if (created !is MutationResult.Applied) return created
+            return if (desired in finalResults) {
+                finalizeAcceptance(
+                    token,
+                    created.snapshot.serverId,
+                    created.snapshot.entityVersion,
+                    desired,
+                    derivedChangeId(change.clientChangeId, "finalize")
+                )
+            } else {
+                created
+            }
+        }
+
+        val baseVersion = change.baseVersion
+            ?: return MutationResult.Error("Server-Version für Abnahmeänderung fehlt.")
+
+        if (desired in finalResults) {
+            val updated = updateAcceptance(
+                token,
+                existingId,
+                baseVersion,
+                fachPayload,
+                areaScope,
+                title,
+                result = null,
+                clientChangeId = change.clientChangeId
+            )
+            if (updated !is MutationResult.Applied) return updated
+            return finalizeAcceptance(
+                token,
+                existingId,
+                updated.snapshot.entityVersion,
+                desired,
+                derivedChangeId(change.clientChangeId, "finalize")
+            )
+        }
+
+        return updateAcceptance(
+            token,
+            existingId,
+            baseVersion,
+            fachPayload,
+            areaScope,
+            title,
+            desired,
+            change.clientChangeId
+        )
+    }
+
+    private fun updateAcceptance(
+        token: String,
+        serverId: String,
+        baseVersion: Long,
+        fachPayload: JSONObject,
+        areaScope: JSONObject,
+        title: String?,
+        result: String?,
+        clientChangeId: String
+    ): MutationResult {
+        val body = JSONObject()
+            .put("base_version", baseVersion)
+            .put("title", title ?: JSONObject.NULL)
+            .put("payload", fachPayload)
+            .put("area_scope", areaScope)
+        if (result != null) body.put("result", result)
+        return sendMutation(
+            token,
+            "/api/v1/acceptances/${encode(serverId)}",
+            "PATCH",
+            clientChangeId,
+            body,
+            EntityKind.ACCEPTANCE
+        )
+    }
+
+    private fun finalizeAcceptance(
+        token: String,
+        serverId: String,
+        baseVersion: Long,
+        result: String,
+        clientChangeId: String
+    ): MutationResult = sendMutation(
+        token,
+        "/api/v1/acceptances/${encode(serverId)}/finalize",
+        "POST",
+        clientChangeId,
+        JSONObject()
+            .put("base_version", baseVersion)
+            .put("result", result),
+        EntityKind.ACCEPTANCE
+    )
 
     private fun loadCollection(
         token: String,
@@ -50,7 +321,7 @@ class Server1FachSyncApi(
         arrayKey: String,
         kind: EntityKind
     ): Result {
-        val connection = openConnection(path)
+        val connection = openConnection(path, "GET")
         return try {
             authorize(connection, token)
             val code = connection.responseCode
@@ -69,12 +340,72 @@ class Server1FachSyncApi(
                     Result.Success(items)
                 }
                 HttpURLConnection.HTTP_NOT_FOUND -> Result.Unsupported
-                HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> Result.SessionInvalid
+                HttpURLConnection.HTTP_UNAUTHORIZED -> Result.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (isInvalidDevice(body)) Result.SessionInvalid else Result.Error(errorMessage(body, code))
                 else -> Result.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
             Result.Error(error.message ?: "Server-1.0-Fachdaten konnten nicht geladen werden.")
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun sendMutation(
+        token: String,
+        path: String,
+        method: String,
+        clientChangeId: String,
+        body: JSONObject,
+        kind: EntityKind
+    ): MutationResult {
+        val connection = openConnection(path, method)
+        return try {
+            authorize(connection, token)
+            connection.setRequestProperty("X-Client-Change-Id", clientChangeId)
+            writeJson(connection, body)
+            val code = connection.responseCode
+            val response = readBody(connection, code)
+            when (code) {
+                HttpURLConnection.HTTP_OK,
+                HttpURLConnection.HTTP_CREATED -> {
+                    val root = runCatching { JSONObject(response) }.getOrNull()
+                        ?: return MutationResult.Error("Serverantwort konnte nicht gelesen werden.")
+                    val snapshot = parseSnapshot(root, kind)
+                        ?: return MutationResult.Error("Server lieferte keine vollständige Fachentität.")
+                    MutationResult.Applied(snapshot)
+                }
+                HttpURLConnection.HTTP_CONFLICT -> {
+                    val root = runCatching { JSONObject(response) }.getOrNull()
+                    val detail = root?.opt("detail")
+                    val detailObject = detail as? JSONObject
+                    MutationResult.Conflict(
+                        currentVersion = detailObject?.optLong("current_version")
+                            ?.takeIf { it > 0L },
+                        detail = when (detail) {
+                            is String -> detail
+                            is JSONObject -> detail.optString("code").ifBlank { detail.toString() }
+                            else -> "VERSION_CONFLICT"
+                        }
+                    )
+                }
+                HttpURLConnection.HTTP_NOT_FOUND -> {
+                    val detail = detailMessage(response)
+                    if (detail.isBlank() || detail.equals("Not Found", ignoreCase = true)) {
+                        MutationResult.Unsupported
+                    } else {
+                        MutationResult.Error(detail)
+                    }
+                }
+                HttpURLConnection.HTTP_UNAUTHORIZED -> MutationResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (isInvalidDevice(response)) MutationResult.SessionInvalid
+                    else MutationResult.Error(errorMessage(response, code))
+                else -> MutationResult.Error(errorMessage(response, code))
+            }
+        } catch (error: Exception) {
+            MutationResult.Error(error.message ?: "Server-1.0-Fachänderung konnte nicht übertragen werden.")
         } finally {
             connection.disconnect()
         }
@@ -99,7 +430,7 @@ class Server1FachSyncApi(
             EntityKind.ACCEPTANCE -> item.optString("result").trim().takeIf { it.isNotBlank() }
         }
 
-        if (kind == EntityKind.ACCEPTANCE && status != null && !payload.has("ergebnis")) {
+        if (kind == EntityKind.ACCEPTANCE && status != null) {
             payload.put("ergebnis", status)
         }
 
@@ -115,17 +446,25 @@ class Server1FachSyncApi(
         )
     }
 
-    private fun openConnection(path: String): HttpURLConnection =
+    private fun openConnection(path: String, method: String): HttpURLConnection =
         (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
+            requestMethod = method
             connectTimeout = 10_000
             readTimeout = 30_000
             useCaches = false
+            if (method != "GET") {
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            }
         }
 
     private fun authorize(connection: HttpURLConnection, token: String) {
         connection.setRequestProperty("Authorization", "Bearer $token")
         connection.setRequestProperty("Accept", "application/json")
+    }
+
+    private fun writeJson(connection: HttpURLConnection, json: JSONObject) {
+        OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { it.write(json.toString()) }
     }
 
     private fun readBody(connection: HttpURLConnection, code: Int): String {
@@ -139,15 +478,26 @@ class Server1FachSyncApi(
         }
     }
 
-    private fun errorMessage(body: String, code: Int): String {
+    private fun errorMessage(body: String, code: Int): String =
+        detailMessage(body).ifBlank { "Serverfehler ($code)." }
+
+    private fun detailMessage(body: String): String {
         val raw = runCatching { JSONObject(body).opt("detail") }.getOrNull()
-        val detail = when (raw) {
-            is String -> raw
-            is JSONObject -> raw.optString("code").ifBlank { raw.toString() }
-            else -> raw?.toString().orEmpty()
+        return when (raw) {
+            is String -> raw.trim()
+            is JSONObject -> raw.optString("code").trim().ifBlank { raw.toString() }
+            else -> raw?.toString()?.trim().orEmpty()
         }
-        return detail.ifBlank { "Serverfehler ($code)." }
     }
+
+    private fun isInvalidDevice(body: String): Boolean =
+        detailMessage(body) in setOf("DEVICE_REVOKED", "USER_DISABLED", "USER_EXPIRED")
+
+    private fun jsonObjectOrEmpty(raw: String): JSONObject =
+        runCatching { JSONObject(raw) }.getOrElse { JSONObject() }
+
+    private fun derivedChangeId(base: String, suffix: String): String =
+        (base + "-" + suffix).take(200)
 
     private fun encode(value: String): String =
         URLEncoder.encode(value, StandardCharsets.UTF_8.toString())

@@ -13,7 +13,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - PR-Basis: `feature/admin-offline-sync`
 - Android bleibt vorerst Testclient: Buildkandidat **200050**
 
-- Android Server-1.0 Fach-Lesesync (Mängel/Abnahmen): aktueller Commit dieses Standes; capability-gesteuertes Laden über die kanonischen `/api/v1/worksites/{id}/defects`- und `/acceptances`-Endpunkte, lokale Snapshot-Übernahme und bewusster Read-only-Status bis Schreib-/Datei-Sync folgt.
+- Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Die vorhandene Offline-Outbox bleibt maßgeblich; BTB und Dateien bleiben getrennt offen.
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
 
 Wichtige Server-1.0-Meilensteine:
@@ -610,13 +610,13 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 52 prüft den Android-Capability-Client sowie capability-gesteuerte Team-/Einladungsumschaltung ohne 0.6-/0.7-Versionsheuristik.
 - Source-Check 53 prüft den Server-1.0-Kontext-only-Pfad über Worksites/Device-Me/Members.
 - Source-Checks 54–56 härten Area-Scope, Datei-Elternsichtbarkeit und kanonisches Abnahme-Ergebnis.
-- Source-Check 57 prüft den neuen capability-gesteuerten Android-Lesesync für Mängel/Abnahmen inklusive lokaler Snapshot-Übernahme; Schreib-/Datei-Sync bleibt ausdrücklich separat offen.
+- Source-Check 57 prüft den capability-gesteuerten Android-Lesesync für Mängel/Abnahmen inklusive lokaler Snapshot-Übernahme.\n- Source-Check 58 prüft die idempotenten Android-Server-1.0-Schreibpfade für Mängel/Abnahmen, Outbox-Wiederverwendung, Konfliktzustände, endgültige Statusaktionen und die bewusste Trennung von BTB/Dateien.
 
-**Noch nicht ausgeführt:** Source-Checks 34–57 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–58 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
-Für den aktuellen Restore-Overlay-Commit `85b29cc49e295ce8fba8f56616608ef39daff978` endete der TB-Server-Lauf **#171 / ID 35334677948** mit `foundation` = failure; der Job meldet weiterhin `steps = null`. Auch Android CI **#943 / ID 35334677976** endete ohne ausgeführte Steps. Damit wurden für diesen Stand weder Source-Checks bis 49 noch Android-Unit-Test/Build, Python-, PostgreSQL-, Compose- oder API-Schritte tatsächlich ausgeführt. Das ist weiterhin das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
+Für den Android-Fach-Lesesync-Commit `1d758ef5fa85c825d59d80d78efb7fef7158f1f7` endeten TB-Server **#238 / ID 35340031967** und Android CI **#980 / ID 35340032095** erneut nach wenigen Sekunden mit leeren `steps`-Listen. Damit wurden auch Source-Check 57 und Android-Unit-Test/Build nicht tatsächlich ausgeführt. Das ist weiterhin das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
 ## Bekannte/offene Punkte
 
@@ -625,7 +625,7 @@ Für den aktuellen Restore-Overlay-Commit `85b29cc49e295ce8fba8f56616608ef39daff
 - einseitig belegte GRA-Sprünge nur bei zusätzlicher realer Evidenz automatisieren; Default bleibt `false`;
 - Projektion/verdichtete Samples bei Bedarf performant cachen, ohne Originale zu verändern;
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
-- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; Einladungen, Teamdarstellung sowie lesender Mängel-/Abnahme-Sync sind modern angebunden; Schreib-/Datei-Sync und BTB bleiben offen;
+- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; Einladungen, Teamdarstellung sowie lesender und schreibender Mängel-/Abnahme-Sync sind modern angebunden; Datei-Sync und BTB bleiben offen;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
 - Android-QR-Scanner/Intent-Handling sowie gezieltes Erzeugen/Einlösen von Server-1.0-Baustelleneinladungen sind im Quellstand umgesetzt; die übrigen Android-Fachendpunkte und komfortablere Portal-Fachformulare bleiben offen;
 - Compose-Staging-Stack praktisch auf Docker/Synology starten; Backup-Retention mit echten Alt-Backups prüfen; Restore-to-Target gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen;
@@ -634,7 +634,7 @@ Für den aktuellen Restore-Overlay-Commit `85b29cc49e295ce8fba8f56616608ef39daff
 ## Nächster sinnvoller Arbeitsschritt
 
 1. Die normale Compose-Basis plus optionalen Restore-Staging-Overlay auf einer echten Docker/PostgreSQL-Umgebung starten und dort Backup -> Retention -> Restore-Test -> Restore-to-Target end-to-end prüfen; in der aktuellen Arbeitsumgebung fehlen Docker/PostgreSQL.
-2. Nach bestandenem Server-Staging die übrigen Android-Fachendpunkte capability-gesteuert auf Server 1.0 umstellen; gezieltes Einladen/Einlösen, Teamdarstellung und lesender Mängel-/Abnahme-Sync sind dafür bereits angebunden. Als nächster Android-Schritt folgen idempotente Mängel-/Abnahme-Schreibpfade und danach Dateien/BTB. Spezialisierte Portal-Fachformulare additiv verbessern.
+2. Nach bestandenem Server-Staging die übrigen Android-Fachendpunkte capability-gesteuert auf Server 1.0 umstellen; gezieltes Einladen/Einlösen, Teamdarstellung und lesender Mängel-/Abnahme-Sync sind dafür bereits angebunden. Als nächster Android-Schritt folgen Server-1.0-Dateien/Attachments und danach der BTB. Spezialisierte Portal-Fachformulare additiv verbessern.
 3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
 4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
 5. Anschließend den Android-Fachclient capability-gesteuert auf die fertigen `/api/v1`-Verträge umstellen; die bisherigen 0.6-/0.7-Versionsschwellen dürfen nicht die Server-1.0-Fähigkeiten bestimmen.

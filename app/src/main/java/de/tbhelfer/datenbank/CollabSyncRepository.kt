@@ -197,6 +197,111 @@ class CollabSyncRepository(
         }
     }
 
+    data class Server1FachUploadSummary(
+        val uploaded: Int,
+        val failed: Int,
+        val conflicts: Int
+    )
+
+    sealed interface Server1FachUploadResult {
+        data class Success(val summary: Server1FachUploadSummary) : Server1FachUploadResult
+        data object Unsupported : Server1FachUploadResult
+        data object SessionInvalid : Server1FachUploadResult
+    }
+
+    /**
+     * Flush only DEFECT/ACCEPTANCE changes from the existing collaboration outbox
+     * through the canonical Server-1.0 resources. BTB remains queued for its own
+     * migration step and is never sent through this path.
+     */
+    suspend fun synchronizeServer1FachPending(
+        token: String,
+        api: Server1FachSyncApi = Server1FachSyncApi()
+    ): Server1FachUploadResult {
+        var uploaded = 0
+        var failed = 0
+        var conflicts = 0
+
+        for (context in dao.worksiteContexts()) {
+            val pending = dao.collabPendingChanges(context.worksiteServerId)
+                .filter {
+                    it.entityType.uppercase() == SyncCollabPendingChangeEntity.TYPE_DEFECT ||
+                        it.entityType.uppercase() == SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE
+                }
+            for (change in pending) {
+                dao.updateCollabChangeState(
+                    change.id,
+                    SyncCollabPendingChangeEntity.STATE_UPLOADING,
+                    change.attempts + 1,
+                    null
+                )
+                when (val result = api.applyPending(token, change)) {
+                    Server1FachSyncApi.MutationResult.Unsupported -> {
+                        dao.updateCollabChangeState(
+                            change.id,
+                            SyncCollabPendingChangeEntity.STATE_PENDING,
+                            change.attempts,
+                            "Server-1.0-Fachmutation ist nicht verfügbar."
+                        )
+                        return Server1FachUploadResult.Unsupported
+                    }
+                    Server1FachSyncApi.MutationResult.SessionInvalid ->
+                        return Server1FachUploadResult.SessionInvalid
+                    is Server1FachSyncApi.MutationResult.Error -> {
+                        dao.updateCollabChangeState(
+                            change.id,
+                            SyncCollabPendingChangeEntity.STATE_FAILED,
+                            change.attempts + 1,
+                            result.message
+                        )
+                        failed++
+                    }
+                    is Server1FachSyncApi.MutationResult.Conflict -> {
+                        val detail = JSONObject()
+                            .put("detail", result.detail)
+                            .put("server_version", result.currentVersion ?: JSONObject.NULL)
+                        dao.updateCollabChangeState(
+                            change.id,
+                            SyncCollabPendingChangeEntity.STATE_CONFLICT,
+                            change.attempts + 1,
+                            detail.toString()
+                        )
+                        conflicts++
+                    }
+                    is Server1FachSyncApi.MutationResult.Applied -> {
+                        val type = change.entityType.uppercase()
+                        val item = result.snapshot
+                        dao.upsertCollabEntities(
+                            listOf(
+                                SyncCollabEntity(
+                                    serverId = item.serverId,
+                                    worksiteServerId = change.worksiteServerId,
+                                    groupId = null,
+                                    entityType = type,
+                                    clientEntityKey = item.clientEntityKey,
+                                    status = item.status,
+                                    areaScopeJson = item.areaScopeJson,
+                                    payloadJson = item.payloadJson,
+                                    entityVersion = item.entityVersion,
+                                    changedByName = null,
+                                    createdAtText = item.createdAtText,
+                                    updatedAtText = item.updatedAtText,
+                                    isDeleted = false,
+                                    updatedAtEpochMs = System.currentTimeMillis()
+                                )
+                            )
+                        )
+                        dao.deleteCollabPendingChange(change.id)
+                        uploaded++
+                    }
+                }
+            }
+        }
+        return Server1FachUploadResult.Success(
+            Server1FachUploadSummary(uploaded = uploaded, failed = failed, conflicts = conflicts)
+        )
+    }
+
     suspend fun attachments(parentEntityId: String): List<SyncCollabAttachmentEntity> =
         dao.collabAttachmentsForEntity(parentEntityId)
 

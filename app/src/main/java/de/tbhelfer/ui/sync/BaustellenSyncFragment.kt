@@ -206,32 +206,49 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                     is ServerCapabilitiesApi.Result.Error -> return SyncUiResult.Error(result.message)
                 }
                 if (capabilities?.supports("defects_v1") == true || capabilities?.supports("acceptances_v1") == true) {
-                    for (context in contexts) {
-                        if (capabilities.supports("defects_v1")) {
-                            when (val result = server1FachApi.loadDefects(token, context.worksiteServerId)) {
-                                is Server1FachSyncApi.Result.Success ->
-                                    collab.replaceServer1Snapshots(context.worksiteServerId, "DEFECT", result.items)
-                                Server1FachSyncApi.Result.Unsupported -> Unit
-                                Server1FachSyncApi.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
-                                is Server1FachSyncApi.Result.Error -> return SyncUiResult.Error(result.message)
-                            }
-                        }
-                        if (capabilities.supports("acceptances_v1")) {
-                            when (val result = server1FachApi.loadAcceptances(token, context.worksiteServerId)) {
-                                is Server1FachSyncApi.Result.Success ->
-                                    collab.replaceServer1Snapshots(context.worksiteServerId, "ACCEPTANCE", result.items)
-                                Server1FachSyncApi.Result.Unsupported -> Unit
-                                Server1FachSyncApi.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
-                                is Server1FachSyncApi.Result.Error -> return SyncUiResult.Error(result.message)
-                            }
-                        }
+                    when (val refresh = refreshServer1FachSnapshots(token, contexts, capabilities)) {
+                        null -> Unit
+                        else -> return refresh
                     }
+
+                    // Queue local changes only after the canonical snapshot is known. This keeps
+                    // existing server IDs/base versions and prevents duplicate creates.
+                    runCatching { bridge.exportLocalChanges() }
+                        .getOrElse {
+                            return SyncUiResult.Error(
+                                it.message ?: "Lokale Mängel/Abnahmen konnten nicht für Server 1.0 vorbereitet werden."
+                            )
+                        }
+
                     runCatching { bridge.applyServerStateToLocal() }
                         .getOrElse {
                             return SyncUiResult.Error(
                                 it.message ?: "Server-1.0-Mängel/Abnahmen konnten lokal nicht übernommen werden."
                             )
                         }
+
+                    when (val upload = collab.synchronizeServer1FachPending(token, server1FachApi)) {
+                        CollabSyncRepository.Server1FachUploadResult.SessionInvalid ->
+                            return SyncUiResult.SessionInvalid
+                        CollabSyncRepository.Server1FachUploadResult.Unsupported ->
+                            return SyncUiResult.Error(
+                                "Server meldet Mängel-/Abnahme-Capabilities, die Schreibendpunkte sind aber nicht erreichbar."
+                            )
+                        is CollabSyncRepository.Server1FachUploadResult.Success -> {
+                            if (upload.summary.uploaded > 0) {
+                                when (val refresh = refreshServer1FachSnapshots(token, contexts, capabilities)) {
+                                    null -> Unit
+                                    else -> return refresh
+                                }
+                                runCatching { bridge.applyServerStateToLocal() }
+                                    .getOrElse {
+                                        return SyncUiResult.Error(
+                                            it.message ?: "Bestätigte Server-1.0-Fachdaten konnten lokal nicht übernommen werden."
+                                        )
+                                    }
+                            }
+                        }
+                    }
                 }
                 return SyncUiResult.ContextOnly(bindings.contextsWithBindings())
             }
@@ -336,6 +353,40 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
             conflicts = conflicts,
             notifications = notifications
         )
+    }
+
+    private suspend fun refreshServer1FachSnapshots(
+        token: String,
+        contexts: List<TeamManagementApi.WorksiteContext>,
+        capabilities: ServerCapabilitiesApi.Snapshot
+    ): SyncUiResult? {
+        for (context in contexts) {
+            if (capabilities.supports("defects_v1")) {
+                when (val result = server1FachApi.loadDefects(token, context.worksiteId)) {
+                    is Server1FachSyncApi.Result.Success ->
+                        collab.replaceServer1Snapshots(context.worksiteId, "DEFECT", result.items)
+                    Server1FachSyncApi.Result.Unsupported ->
+                        return SyncUiResult.Error(
+                            "Server meldet defects_v1, der Mängel-Endpunkt ist aber nicht erreichbar."
+                        )
+                    Server1FachSyncApi.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
+                    is Server1FachSyncApi.Result.Error -> return SyncUiResult.Error(result.message)
+                }
+            }
+            if (capabilities.supports("acceptances_v1")) {
+                when (val result = server1FachApi.loadAcceptances(token, context.worksiteId)) {
+                    is Server1FachSyncApi.Result.Success ->
+                        collab.replaceServer1Snapshots(context.worksiteId, "ACCEPTANCE", result.items)
+                    Server1FachSyncApi.Result.Unsupported ->
+                        return SyncUiResult.Error(
+                            "Server meldet acceptances_v1, der Abnahme-Endpunkt ist aber nicht erreichbar."
+                        )
+                    Server1FachSyncApi.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
+                    is Server1FachSyncApi.Result.Error -> return SyncUiResult.Error(result.message)
+                }
+            }
+        }
+        return null
     }
 
     private data class TeamLoadSummary(
