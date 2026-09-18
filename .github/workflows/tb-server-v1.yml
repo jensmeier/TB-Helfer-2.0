@@ -90,6 +90,7 @@ jobs:
           python server/checks/52_verify_android_server_1_capabilities_source.py
           python server/checks/53_verify_android_server_1_context_source.py
           python server/checks/54_verify_tb_server_1_area_scope_source.py
+          python server/checks/55_verify_tb_server_1_file_parent_visibility_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
