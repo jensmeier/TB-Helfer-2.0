@@ -14,9 +14,9 @@ import java.util.UUID
  * - BTB-Teamtrennung spielt hier bewusst keine Rolle: der Baum ist gemeinsame Baustellendaten;
  * - nur verantwortliche TBs (LEAD) exportieren Strukturänderungen, Helfer lesen den gemeinsamen Baum.
  *
- * Schreiben benutzt die vorhandene Collaboration-Queue. Dadurch bleiben Offlinebetrieb,
- * Idempotenz und der bestehende WorkManager-Pfad erhalten. Der Snapshot-Endpunkt wird nur zum
- * Abgleich der aktuellen Serverversionen und Tombstones verwendet.
+ * Schreiben benutzt weiterhin die vorhandene Offline-Outbox. Server 1.0 transportiert diese
+ * Änderungen über den kanonischen worksite_tree_v1-Vertrag; Offlinebetrieb, Idempotenz und stabile
+ * Client-Keys bleiben erhalten, ohne den alten /collab-Transport weiterzuführen.
  */
 class WorksiteStructureSync(
     private val syncDatabase: SyncDatenbank,

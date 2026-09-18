@@ -26,12 +26,14 @@ class Server1AndroidSyncCoordinator(
     private val appContext = context.applicationContext
     private val collab get() = ServiceLocator.collabSyncRepository
     private val bridge get() = ServiceLocator.collabLocalBridge
+    private val structureSync get() = ServiceLocator.worksiteStructureSync
 
     data class Summary(
         val worksiteCount: Int,
         val fachUploaded: Int,
         val btbUploaded: Int,
         val attachmentsUploaded: Int,
+        val worksiteNodesUploaded: Int,
         val btbMediaUploaded: Int,
         val btbMediaImported: Int,
         val btbPdfImported: Int
@@ -82,17 +84,48 @@ class Server1AndroidSyncCoordinator(
             is ServerCapabilitiesApi.Result.Success -> result.snapshot
             ServerCapabilitiesApi.Result.Unsupported -> {
                 return Result.Success(
-                    Summary(cachedContexts.size, 0, 0, 0, 0, 0, 0)
+                    Summary(cachedContexts.size, 0, 0, 0, 0, 0, 0, 0)
                 )
             }
             is ServerCapabilitiesApi.Result.Error -> return Result.Error(result.message)
         }
 
+        val treeEnabled = capabilities.supports("worksite_tree_v1")
         val btbEnabled = capabilities.supports("btb_live_sync_v1")
         val fachEnabled =
             capabilities.supports("defects_v1") || capabilities.supports("acceptances_v1")
         val filesEnabled = capabilities.supports("files_v1")
         val uploadsEnabled = filesEnabled && capabilities.supports("chunk_upload_v1")
+
+        var worksiteNodesUploaded = 0
+        if (treeEnabled) {
+            when (val prepare = structureSync.prepareLocalChanges(token)) {
+                de.tbhelfer.datenbank.WorksiteStructureSync.Result.Unsupported ->
+                    return Result.Error("Server meldet worksite_tree_v1, der Baustellenbaum-Endpunkt ist aber nicht erreichbar.")
+                de.tbhelfer.datenbank.WorksiteStructureSync.Result.SessionInvalid ->
+                    return Result.SessionInvalid
+                is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Error ->
+                    return Result.Error(prepare.message)
+                is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Success -> Unit
+            }
+            when (val upload = collab.synchronizeServer1WorksiteNodePending(token)) {
+                CollabSyncRepository.Server1WorksiteNodeUploadResult.Unsupported ->
+                    return Result.Error("Server meldet worksite_tree_v1, die Baustellenbaum-Schreibendpunkte sind aber nicht erreichbar.")
+                CollabSyncRepository.Server1WorksiteNodeUploadResult.SessionInvalid ->
+                    return Result.SessionInvalid
+                is CollabSyncRepository.Server1WorksiteNodeUploadResult.Success ->
+                    worksiteNodesUploaded += upload.uploaded
+            }
+            when (val apply = structureSync.applyServerStateToLocal(token)) {
+                de.tbhelfer.datenbank.WorksiteStructureSync.Result.Unsupported ->
+                    return Result.Error("Server meldet worksite_tree_v1, der Baustellenbaum-Snapshot ist aber nicht erreichbar.")
+                de.tbhelfer.datenbank.WorksiteStructureSync.Result.SessionInvalid ->
+                    return Result.SessionInvalid
+                is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Error ->
+                    return Result.Error(apply.message)
+                is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Success -> Unit
+            }
+        }
 
         if (btbEnabled) {
             refreshBtbSnapshots(token, remoteContexts)?.let { return it }
@@ -267,6 +300,7 @@ class Server1AndroidSyncCoordinator(
                 fachUploaded = fachUploaded,
                 btbUploaded = btbUploaded,
                 attachmentsUploaded = attachmentsUploaded,
+                worksiteNodesUploaded = worksiteNodesUploaded,
                 btbMediaUploaded = btbMediaUploaded,
                 btbMediaImported = btbMediaImported,
                 btbPdfImported = btbPdfImported

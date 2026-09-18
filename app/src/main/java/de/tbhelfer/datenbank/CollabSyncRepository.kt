@@ -7,6 +7,7 @@ import de.tbhelfer.server.CollabSyncApi
 import de.tbhelfer.server.Server1FachSyncApi
 import de.tbhelfer.server.Server1BtbApi
 import de.tbhelfer.server.Server1FileApi
+import de.tbhelfer.server.WorksiteNodeApi
 import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
@@ -593,6 +594,79 @@ class CollabSyncRepository(
             if (hasDelete) return true
         }
         return false
+    }
+
+    sealed interface Server1WorksiteNodeUploadResult {
+        data class Success(val uploaded: Int, val failed: Int, val conflicts: Int) :
+            Server1WorksiteNodeUploadResult
+        data object Unsupported : Server1WorksiteNodeUploadResult
+        data object SessionInvalid : Server1WorksiteNodeUploadResult
+    }
+
+    suspend fun synchronizeServer1WorksiteNodePending(
+        token: String,
+        api: WorksiteNodeApi = WorksiteNodeApi()
+    ): Server1WorksiteNodeUploadResult {
+        var uploaded = 0
+        var failed = 0
+        var conflicts = 0
+        for (context in dao.worksiteContexts()) {
+            val pending = dao.collabPendingChanges(context.worksiteServerId)
+                .filter {
+                    it.entityType.equals(
+                        SyncCollabPendingChangeEntity.TYPE_WORKSITE_NODE,
+                        ignoreCase = true
+                    )
+                }
+            for (change in pending) {
+                dao.updateCollabChangeState(
+                    change.id,
+                    SyncCollabPendingChangeEntity.STATE_UPLOADING,
+                    change.attempts + 1,
+                    null
+                )
+                when (val result = api.applyPending(token, change)) {
+                    WorksiteNodeApi.MutationResult.Unsupported -> {
+                        dao.updateCollabChangeState(
+                            change.id,
+                            SyncCollabPendingChangeEntity.STATE_PENDING,
+                            change.attempts,
+                            "Server-1.0-Baustellenstruktur ist nicht verfügbar."
+                        )
+                        return Server1WorksiteNodeUploadResult.Unsupported
+                    }
+                    WorksiteNodeApi.MutationResult.SessionInvalid ->
+                        return Server1WorksiteNodeUploadResult.SessionInvalid
+                    is WorksiteNodeApi.MutationResult.Error -> {
+                        dao.updateCollabChangeState(
+                            change.id,
+                            SyncCollabPendingChangeEntity.STATE_FAILED,
+                            change.attempts + 1,
+                            result.message
+                        )
+                        failed++
+                    }
+                    is WorksiteNodeApi.MutationResult.Conflict -> {
+                        val detail = JSONObject()
+                            .put("detail", result.detail)
+                            .put("server_version", result.currentVersion ?: JSONObject.NULL)
+                        dao.updateCollabChangeState(
+                            change.id,
+                            SyncCollabPendingChangeEntity.STATE_CONFLICT,
+                            change.attempts + 1,
+                            detail.toString()
+                        )
+                        conflicts++
+                    }
+                    is WorksiteNodeApi.MutationResult.Applied,
+                    is WorksiteNodeApi.MutationResult.Deleted -> {
+                        dao.deleteCollabPendingChange(change.id)
+                        uploaded++
+                    }
+                }
+            }
+        }
+        return Server1WorksiteNodeUploadResult.Success(uploaded, failed, conflicts)
     }
 
     suspend fun attachments(parentEntityId: String): List<SyncCollabAttachmentEntity> =

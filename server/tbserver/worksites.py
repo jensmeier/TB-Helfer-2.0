@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from .database import transaction
@@ -40,7 +40,9 @@ class NodeCreate(BaseModel):
 
 
 class NodeUpdate(BaseModel):
+    base_version: int | None = Field(default=None, ge=1)
     parent_id: UUID | None = None
+    node_kind: str | None = Field(default=None, min_length=1, max_length=60)
     name: str | None = Field(default=None, min_length=1, max_length=300)
     route_number: str | None = Field(default=None, max_length=40)
     track_key: str | None = Field(default=None, max_length=200)
@@ -239,17 +241,29 @@ def get_worksite(
 @router.get("/{worksite_id}/nodes")
 def list_nodes(
     worksite_id: UUID,
+    include_deleted: bool = Query(default=False),
     user: dict[str, Any] = Depends(current_portal_user),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
         worksite_context(cur, user, worksite_id)
+        deleted_filter = "" if include_deleted else "AND n.deleted_at IS NULL"
         cur.execute(
-            """
-            SELECT id, parent_id, node_kind, name, route_number, track_key, external_key,
-                   sort_order, payload, version, created_at, updated_at
-            FROM tb.worksite_nodes
-            WHERE worksite_id = %s AND deleted_at IS NULL
-            ORDER BY parent_id NULLS FIRST, sort_order, lower(name)
+            f"""
+            SELECT n.id, n.parent_id, n.node_kind, n.name, n.route_number, n.track_key,
+                   n.external_key, n.sort_order, n.payload, n.version, n.created_at,
+                   n.updated_at, n.deleted_at,
+                   coalesce(n.external_key, 'server-' || n.id::text) AS client_node_key,
+                   CASE WHEN p.id IS NULL THEN NULL
+                        ELSE coalesce(p.external_key, 'server-' || p.id::text)
+                   END AS parent_client_node_key,
+                   n.version AS current_version,
+                   (n.deleted_at IS NOT NULL) AS is_deleted
+            FROM tb.worksite_nodes n
+            LEFT JOIN tb.worksite_nodes p
+              ON p.id = n.parent_id AND p.worksite_id = n.worksite_id
+            WHERE n.worksite_id = %s
+              {deleted_filter}
+            ORDER BY n.parent_id NULLS FIRST, n.sort_order, lower(n.name), n.id
             """,
             (worksite_id,),
         )
@@ -341,6 +355,7 @@ def update_node(
     mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
     updates = payload.model_dump(exclude_unset=True)
+    base_version = updates.pop("base_version", None)
     if not updates:
         raise HTTPException(400, "NO_CHANGES")
     with transaction() as conn, conn.cursor() as cur:
@@ -349,8 +364,39 @@ def update_node(
             return replay_payload(receipt)
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "worksite.structure.edit")
+        cur.execute(
+            "SELECT id, version FROM tb.worksite_nodes "
+            "WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL FOR UPDATE",
+            (node_id, worksite_id),
+        )
+        current = cur.fetchone()
+        if not current:
+            raise HTTPException(404, "NODE_NOT_FOUND")
+        current = dict(current)
+        if base_version is not None and int(current["version"]) != base_version:
+            raise HTTPException(
+                409,
+                {"code": "VERSION_CONFLICT", "current_version": int(current["version"])},
+            )
         if "parent_id" in updates and updates["parent_id"] is not None:
             if updates["parent_id"] == node_id:
+                raise HTTPException(400, "NODE_CYCLE")
+            cur.execute(
+                """
+                WITH RECURSIVE descendants AS (
+                    SELECT id FROM tb.worksite_nodes
+                    WHERE parent_id = %s AND worksite_id = %s AND deleted_at IS NULL
+                    UNION ALL
+                    SELECT child.id
+                    FROM tb.worksite_nodes child
+                    JOIN descendants parent ON child.parent_id = parent.id
+                    WHERE child.worksite_id = %s AND child.deleted_at IS NULL
+                )
+                SELECT 1 FROM descendants WHERE id = %s LIMIT 1
+                """,
+                (node_id, worksite_id, worksite_id, updates["parent_id"]),
+            )
+            if cur.fetchone():
                 raise HTTPException(400, "NODE_CYCLE")
             cur.execute(
                 "SELECT id FROM tb.worksite_nodes WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL",
@@ -360,14 +406,15 @@ def update_node(
                 raise HTTPException(400, "PARENT_NODE_INVALID")
         columns = []
         values = []
-        for key in ("parent_id", "name", "route_number", "track_key", "sort_order", "payload"):
+        for key in ("parent_id", "node_kind", "name", "route_number", "track_key", "sort_order", "payload"):
             if key in updates:
                 columns.append(f"{key} = %s")
                 values.append(updates[key])
         columns.extend(["version = version + 1", "updated_at = now()"])
         values.extend([node_id, worksite_id])
         cur.execute(
-            f"UPDATE tb.worksite_nodes SET {', '.join(columns)} WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL RETURNING *",
+            f"UPDATE tb.worksite_nodes SET {', '.join(columns)} "
+            "WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL RETURNING *",
             tuple(values),
         )
         row = cur.fetchone()
@@ -376,32 +423,18 @@ def update_node(
         row = dict(row)
         cur.execute("UPDATE tb.worksites SET version = version + 1, updated_at = now() WHERE id = %s", (worksite_id,))
         emit_change(
-            cur,
-            company_id=context["company_id"],
-            worksite_id=worksite_id,
-            entity_type="WORKSITE_NODE",
-            entity_id=node_id,
-            operation="UPDATE",
-            entity_version=row["version"],
-            actor_user_id=user["user_id"],
+            cur, company_id=context["company_id"], worksite_id=worksite_id,
+            entity_type="WORKSITE_NODE", entity_id=node_id, operation="UPDATE",
+            entity_version=row["version"], actor_user_id=user["user_id"],
         )
         audit(
-            cur,
-            action="WORKSITE_NODE_UPDATE",
-            actor_user_id=user["user_id"],
-            company_id=context["company_id"],
-            worksite_id=worksite_id,
-            entity_type="WORKSITE_NODE",
-            entity_id=node_id,
+            cur, action="WORKSITE_NODE_UPDATE", actor_user_id=user["user_id"],
+            company_id=context["company_id"], worksite_id=worksite_id,
+            entity_type="WORKSITE_NODE", entity_id=node_id,
         )
         finish_mutation(
-            cur,
-            user=user,
-            context=mutation,
-            receipt_type="WORKSITE_NODE_UPDATE",
-            entity_id=node_id,
-            result_version=row["version"],
-            response_payload=row,
+            cur, user=user, context=mutation, receipt_type="WORKSITE_NODE_UPDATE",
+            entity_id=node_id, result_version=row["version"], response_payload=row,
         )
     return row
 
@@ -410,6 +443,7 @@ def update_node(
 def delete_node(
     worksite_id: UUID,
     node_id: UUID,
+    base_version: int | None = Query(default=None, ge=1),
     user: dict[str, Any] = Depends(require_csrf),
     mutation: MutationContext = Depends(mutation_context),
 ):
@@ -420,49 +454,67 @@ def delete_node(
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "worksite.structure.edit")
         cur.execute(
-            "UPDATE tb.worksite_nodes SET deleted_at = now(), version = version + 1, updated_at = now() WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL RETURNING version",
+            "SELECT id, version FROM tb.worksite_nodes "
+            "WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL FOR UPDATE",
             (node_id, worksite_id),
         )
-        row = cur.fetchone()
-        if not row:
+        current = cur.fetchone()
+        if not current:
             raise HTTPException(404, "NODE_NOT_FOUND")
-        version = row["version"]
-        cur.execute("UPDATE tb.worksites SET version = version + 1, updated_at = now() WHERE id = %s", (worksite_id,))
+        current = dict(current)
+        if base_version is not None and int(current["version"]) != base_version:
+            raise HTTPException(
+                409,
+                {"code": "VERSION_CONFLICT", "current_version": int(current["version"])},
+            )
         cur.execute(
             """
-            INSERT INTO tb.deletion_tombstones(company_id, worksite_id, entity_type, entity_id, deleted_by)
-            VALUES (%s,%s,'WORKSITE_NODE',%s,%s)
-            ON CONFLICT (entity_type, entity_id) DO NOTHING
+            WITH RECURSIVE subtree AS (
+                SELECT id FROM tb.worksite_nodes
+                WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL
+                UNION ALL
+                SELECT child.id
+                FROM tb.worksite_nodes child
+                JOIN subtree parent ON child.parent_id = parent.id
+                WHERE child.worksite_id = %s AND child.deleted_at IS NULL
+            )
+            UPDATE tb.worksite_nodes n
+            SET deleted_at = now(), version = version + 1, updated_at = now()
+            WHERE n.id IN (SELECT id FROM subtree)
+            RETURNING n.id, n.version
             """,
-            (context["company_id"], worksite_id, node_id, user["user_id"]),
+            (node_id, worksite_id, worksite_id),
         )
-        emit_change(
-            cur,
-            company_id=context["company_id"],
-            worksite_id=worksite_id,
-            entity_type="WORKSITE_NODE",
-            entity_id=node_id,
-            operation="DELETE",
-            entity_version=version,
-            actor_user_id=user["user_id"],
-        )
+        deleted_rows = [dict(row) for row in cur.fetchall()]
+        if not deleted_rows:
+            raise HTTPException(404, "NODE_NOT_FOUND")
+        root_version = next(int(row["version"]) for row in deleted_rows if row["id"] == node_id)
+        cur.execute("UPDATE tb.worksites SET version = version + 1, updated_at = now() WHERE id = %s", (worksite_id,))
+        for deleted in deleted_rows:
+            cur.execute(
+                """
+                INSERT INTO tb.deletion_tombstones(
+                    company_id, worksite_id, entity_type, entity_id, deleted_by
+                ) VALUES (%s,%s,'WORKSITE_NODE',%s,%s)
+                ON CONFLICT (entity_type, entity_id) DO NOTHING
+                """,
+                (context["company_id"], worksite_id, deleted["id"], user["user_id"]),
+            )
+            emit_change(
+                cur, company_id=context["company_id"], worksite_id=worksite_id,
+                entity_type="WORKSITE_NODE", entity_id=deleted["id"], operation="DELETE",
+                entity_version=deleted["version"], actor_user_id=user["user_id"],
+            )
         audit(
-            cur,
-            action="WORKSITE_NODE_DELETE",
-            actor_user_id=user["user_id"],
-            company_id=context["company_id"],
-            worksite_id=worksite_id,
-            entity_type="WORKSITE_NODE",
-            entity_id=node_id,
+            cur, action="WORKSITE_NODE_DELETE", actor_user_id=user["user_id"],
+            company_id=context["company_id"], worksite_id=worksite_id,
+            entity_type="WORKSITE_NODE", entity_id=node_id,
+            details={"deleted_count": len(deleted_rows)},
         )
         finish_mutation(
-            cur,
-            user=user,
-            context=mutation,
-            receipt_type="WORKSITE_NODE_DELETE",
-            entity_id=node_id,
-            result_version=version,
-            response_payload={"deleted": True},
+            cur, user=user, context=mutation, receipt_type="WORKSITE_NODE_DELETE",
+            entity_id=node_id, result_version=root_version,
+            response_payload={"deleted": True, "deleted_count": len(deleted_rows)},
         )
     return None
 

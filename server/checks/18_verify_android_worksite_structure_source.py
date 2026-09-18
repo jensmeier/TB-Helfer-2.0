@@ -45,6 +45,8 @@ for token in [
 ]:
     assert token in worker, f"SyncWorker-Strukturhook fehlt: {token}"
 
-assert '/api/v1/collab/worksites/${encode(worksiteId)}/nodes' in api
+assert '/api/v1/worksites/${encode(worksiteId)}/nodes?include_deleted=true' in api
+assert "external_key" in api
+assert "MutationResult" in api
 assert "isDeleted" in api
-print("OK: Android-Baustellenstruktur verwendet stabile Keys, Offline-Queue und den normalen SyncWorker.")
+print("OK: Android-Baustellenstruktur verwendet stabile Keys, Offline-Outbox und kanonischen Server-1.0-Transport.")
