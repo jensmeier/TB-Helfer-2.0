@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,12 +17,17 @@ from .portal import current_portal_user, require_csrf
 router = APIRouter(prefix="/api/v1", tags=["acceptances"])
 
 
+DraftAcceptanceResult = Literal["ENTWURF", "ABGENOMMEN_MIT_RESTPUNKTEN", "NOCH_ZU_PRUEFEN"]
+FinalAcceptanceResult = Literal["ABGENOMMEN", "NICHT_ABGENOMMEN"]
+
+
 class AcceptanceCreate(BaseModel):
     id: UUID | None = None
     worksite_node_id: UUID | None = None
     title: str | None = Field(default=None, max_length=500)
     payload: dict = Field(default_factory=dict)
     area_scope: dict | None = None
+    result: DraftAcceptanceResult = "ENTWURF"
 
 
 class AcceptanceUpdate(BaseModel):
@@ -32,10 +37,12 @@ class AcceptanceUpdate(BaseModel):
     payload: dict | None = None
     status: str | None = Field(default=None, pattern="^(OPEN|IN_PROGRESS)$")
     area_scope: dict | None = None
+    result: DraftAcceptanceResult | None = None
 
 
-class VersionAction(BaseModel):
+class FinalizeAcceptanceAction(BaseModel):
     base_version: int = Field(ge=1)
+    result: FinalAcceptanceResult
 
 
 def _validate_node(cur, worksite_id: UUID, node_id: UUID | None) -> None:
@@ -79,7 +86,7 @@ def list_acceptances(worksite_id: UUID, user: dict[str, Any] = Depends(current_p
         require_permission(context, "acceptance.view")
         cur.execute(
             """
-            SELECT id, worksite_id, worksite_node_id, status, title, payload, area_scope, version,
+            SELECT id, worksite_id, worksite_node_id, status, result, title, payload, area_scope, version,
                    created_by, finalized_by, created_at, updated_at, finalized_at
             FROM tb.acceptances
             WHERE worksite_id = %s AND status <> 'DELETED' AND deleted_at IS NULL
@@ -116,9 +123,9 @@ def create_acceptance(
             cur.execute(
                 """
                 INSERT INTO tb.acceptances(
-                    worksite_id, worksite_node_id, title, payload, area_scope, created_by
+                    worksite_id, worksite_node_id, title, payload, area_scope, result, created_by
                 )
-                VALUES (%s,%s,%s,%s,%s,%s)
+                VALUES (%s,%s,%s,%s,%s,%s,%s)
                 RETURNING *
                 """,
                 (
@@ -127,6 +134,7 @@ def create_acceptance(
                     payload.title,
                     Jsonb(payload.payload),
                     Jsonb(entity_scope),
+                    payload.result,
                     user["user_id"],
                 ),
             )
@@ -137,9 +145,9 @@ def create_acceptance(
             cur.execute(
                 """
                 INSERT INTO tb.acceptances(
-                    id, worksite_id, worksite_node_id, title, payload, area_scope, created_by
+                    id, worksite_id, worksite_node_id, title, payload, area_scope, result, created_by
                 )
-                VALUES (%s,%s,%s,%s,%s,%s,%s)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
                 RETURNING *
                 """,
                 (
@@ -149,6 +157,7 @@ def create_acceptance(
                     payload.title,
                     Jsonb(payload.payload),
                     Jsonb(entity_scope),
+                    payload.result,
                     user["user_id"],
                 ),
             )
@@ -195,10 +204,12 @@ def update_acceptance(
             if updates["area_scope"] is None:
                 raise HTTPException(400, "AREA_SCOPE_REQUIRED")
             require_area_scope(context, updates["area_scope"])
+        if "result" in updates and updates["result"] is None:
+            raise HTTPException(400, "ACCEPTANCE_RESULT_REQUIRED")
 
         columns = []
         values = []
-        for key in ("worksite_node_id", "title", "payload", "status", "area_scope"):
+        for key in ("worksite_node_id", "title", "payload", "status", "area_scope", "result"):
             if key in updates:
                 columns.append(f"{key} = %s")
                 values.append(Jsonb(updates[key]) if key in {"payload", "area_scope"} else updates[key])
@@ -217,7 +228,7 @@ def update_acceptance(
 @router.post("/acceptances/{acceptance_id}/finalize")
 def finalize_acceptance(
     acceptance_id: UUID,
-    payload: VersionAction,
+    payload: FinalizeAcceptanceAction,
     user: dict[str, Any] = Depends(require_csrf),
     mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
@@ -230,23 +241,34 @@ def finalize_acceptance(
         require_permission(context, "acceptance.finalize")
         require_area_scope(context, acceptance["area_scope"])
         if acceptance["status"] == "FINALIZED":
+            if acceptance.get("result") != payload.result:
+                raise HTTPException(409, "ACCEPTANCE_FINAL_RESULT_IMMUTABLE")
             row = acceptance
         else:
             cur.execute(
                 """
                 UPDATE tb.acceptances
-                SET status = 'FINALIZED', finalized_by = %s, finalized_at = now(),
+                SET status = 'FINALIZED', result = %s, finalized_by = %s, finalized_at = now(),
                     version = version + 1, updated_at = now()
                 WHERE id = %s AND version = %s AND deleted_at IS NULL
                 RETURNING *
                 """,
-                (user["user_id"], acceptance_id, payload.base_version),
+                (payload.result, user["user_id"], acceptance_id, payload.base_version),
             )
             updated = cur.fetchone()
             if not updated:
                 _conflict_or_missing(cur, acceptance_id)
             row = dict(updated)
             emit_change(cur, company_id=context["company_id"], worksite_id=acceptance["worksite_id"], entity_type="ACCEPTANCE", entity_id=acceptance_id, operation="FINALIZE", entity_version=row["version"], actor_user_id=user["user_id"])
-            audit(cur, action="ACCEPTANCE_FINALIZE", actor_user_id=user["user_id"], company_id=context["company_id"], worksite_id=acceptance["worksite_id"], entity_type="ACCEPTANCE", entity_id=acceptance_id)
+            audit(
+                cur,
+                action="ACCEPTANCE_FINALIZE",
+                actor_user_id=user["user_id"],
+                company_id=context["company_id"],
+                worksite_id=acceptance["worksite_id"],
+                entity_type="ACCEPTANCE",
+                entity_id=acceptance_id,
+                details={"result": payload.result},
+            )
         finish_mutation(cur, user=user, context=mutation, receipt_type="ACCEPTANCE_FINALIZE", entity_id=acceptance_id, result_version=row["version"], response_payload=row)
     return row
