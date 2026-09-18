@@ -690,6 +690,7 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Mutationen verwenden deterministische `X-Client-Change-Id`-Werte; Versionskonflikte werden mit frischem Snapshot höchstens drei Runden neu abgeglichen.
 - Ein alter 0.7.x-Server ohne kanonischen Endpunkt fällt explizit auf den bisherigen Bulk-`/api/v1/collab/.../track-data`-Vertrag zurück.
 - TRA/GRA/KF/KOR-Originaldateien werden von diesem Android-Pfad weiterhin niemals hochgeladen oder verändert.
+- `Server1AndroidSyncCoordinator` führt `track_data_v1` jetzt auch beim manuellen Sync aus. `Schema13Worker` überspringt diesen Teil auf Server 1.0 und behält ihn nur für den Legacy-0.7-Fallback; damit verwenden manueller und Hintergrund-Sync denselben `track_data_v1`-Pfad ohne parallele Doppeluploads.
 
 ## Bekannte/offene Punkte
 

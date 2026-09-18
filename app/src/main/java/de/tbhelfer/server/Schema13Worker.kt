@@ -21,9 +21,9 @@ import java.util.concurrent.TimeUnit
 /**
  * Schema-13-Ergaenzung zum bestehenden SyncWorker.
  *
- * Sie bleibt absichtlich separat, bis der alte grosse SyncWorker konsolidiert wird: mobile
- * Streckendaten und Baustellen-Loeschtombstones koennen so getestet werden, ohne BTB/Maengel/
- * Abnahmen erneut umzubauen.
+ * Sie bleibt für Legacy-0.7-Streckendaten und Baustellen-Loeschtombstones separat. Auf Server 1.0
+ * übernimmt der gemeinsame Server1AndroidSyncCoordinator track_data_v1, damit manueller und
+ * Hintergrund-Sync denselben kanonischen Pfad verwenden und keine parallelen Doppeluploads laufen.
  */
 class Schema13Worker(
     appContext: Context,
@@ -39,13 +39,22 @@ class Schema13Worker(
         val tokenStore = SecureTokenStore(applicationContext)
         val token = tokenStore.load() ?: return Result.success()
 
-        when (val track = ServiceLocator.worksiteTrackDataSync.synchronize(token)) {
-            WorksiteTrackDataSync.Result.SessionInvalid -> {
-                tokenStore.clear()
-                return Result.success()
+        val server1TrackData = when (val caps = ServerCapabilitiesApi().load()) {
+            is ServerCapabilitiesApi.Result.Success ->
+                caps.snapshot.supports("track_data_v1")
+            ServerCapabilitiesApi.Result.Unsupported -> false
+            is ServerCapabilitiesApi.Result.Error -> return Result.retry()
+        }
+
+        if (!server1TrackData) {
+            when (val track = ServiceLocator.worksiteTrackDataSync.synchronize(token)) {
+                WorksiteTrackDataSync.Result.SessionInvalid -> {
+                    tokenStore.clear()
+                    return Result.success()
+                }
+                is WorksiteTrackDataSync.Result.Error -> return Result.retry()
+                else -> Unit
             }
-            is WorksiteTrackDataSync.Result.Error -> return Result.retry()
-            else -> Unit
         }
 
         when (val deletions = WorksiteDeletionApi().list(token)) {

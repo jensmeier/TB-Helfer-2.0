@@ -27,6 +27,7 @@ class Server1AndroidSyncCoordinator(
     private val collab get() = ServiceLocator.collabSyncRepository
     private val bridge get() = ServiceLocator.collabLocalBridge
     private val structureSync get() = ServiceLocator.worksiteStructureSync
+    private val trackDataSync get() = ServiceLocator.worksiteTrackDataSync
 
     data class Summary(
         val worksiteCount: Int,
@@ -34,6 +35,8 @@ class Server1AndroidSyncCoordinator(
         val btbUploaded: Int,
         val attachmentsUploaded: Int,
         val worksiteNodesUploaded: Int,
+        val trackDataUploaded: Int,
+        val trackDataApplied: Int,
         val btbMediaUploaded: Int,
         val btbMediaImported: Int,
         val btbPdfImported: Int
@@ -84,13 +87,14 @@ class Server1AndroidSyncCoordinator(
             is ServerCapabilitiesApi.Result.Success -> result.snapshot
             ServerCapabilitiesApi.Result.Unsupported -> {
                 return Result.Success(
-                    Summary(cachedContexts.size, 0, 0, 0, 0, 0, 0, 0)
+                    Summary(cachedContexts.size, 0, 0, 0, 0, 0, 0, 0, 0, 0)
                 )
             }
             is ServerCapabilitiesApi.Result.Error -> return Result.Error(result.message)
         }
 
         val treeEnabled = capabilities.supports("worksite_tree_v1")
+        val trackDataEnabled = capabilities.supports("track_data_v1")
         val btbEnabled = capabilities.supports("btb_live_sync_v1")
         val fachEnabled =
             capabilities.supports("defects_v1") || capabilities.supports("acceptances_v1")
@@ -155,6 +159,25 @@ class Server1AndroidSyncCoordinator(
                 is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Error ->
                     return Result.Error(apply.message)
                 is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Success -> Unit
+            }
+        }
+
+        var trackDataUploaded = 0
+        var trackDataApplied = 0
+        if (trackDataEnabled) {
+            when (val track = trackDataSync.synchronize(token)) {
+                de.tbhelfer.datenbank.WorksiteTrackDataSync.Result.Unsupported ->
+                    return Result.Error(
+                        "Server meldet track_data_v1, der kanonische Streckendatenvertrag ist aber nicht erreichbar."
+                    )
+                de.tbhelfer.datenbank.WorksiteTrackDataSync.Result.SessionInvalid ->
+                    return Result.SessionInvalid
+                is de.tbhelfer.datenbank.WorksiteTrackDataSync.Result.Error ->
+                    return Result.Error(track.message)
+                is de.tbhelfer.datenbank.WorksiteTrackDataSync.Result.Success -> {
+                    trackDataUploaded += track.summary.uploadedDatasets
+                    trackDataApplied += track.summary.appliedDatasets
+                }
             }
         }
 
@@ -332,6 +355,8 @@ class Server1AndroidSyncCoordinator(
                 btbUploaded = btbUploaded,
                 attachmentsUploaded = attachmentsUploaded,
                 worksiteNodesUploaded = worksiteNodesUploaded,
+                trackDataUploaded = trackDataUploaded,
+                trackDataApplied = trackDataApplied,
                 btbMediaUploaded = btbMediaUploaded,
                 btbMediaImported = btbMediaImported,
                 btbPdfImported = btbPdfImported

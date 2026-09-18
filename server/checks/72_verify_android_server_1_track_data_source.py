@@ -3,6 +3,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 api = (ROOT / "app/src/main/java/de/tbhelfer/server/WorksiteTrackDataApi.kt").read_text(encoding="utf-8")
 sync = (ROOT / "app/src/main/java/de/tbhelfer/datenbank/WorksiteTrackDataSync.kt").read_text(encoding="utf-8")
+coordinator = (ROOT / "app/src/main/java/de/tbhelfer/server/Server1AndroidSyncCoordinator.kt").read_text(encoding="utf-8")
+schema_worker = (ROOT / "app/src/main/java/de/tbhelfer/server/Schema13Worker.kt").read_text(encoding="utf-8")
 server = (ROOT / "server/tbserver/track_data.py").read_text(encoding="utf-8")
 caps = (ROOT / "server/tbserver/capabilities.py").read_text(encoding="utf-8")
 
@@ -40,6 +42,11 @@ for route in (
     assert route in server, route
 
 assert '"track_data_v1": True' in caps
+
+assert 'capabilities.supports("track_data_v1")' in coordinator
+assert "trackDataSync.synchronize(token)" in coordinator
+assert 'caps.snapshot.supports("track_data_v1")' in schema_worker
+assert "if (!server1TrackData)" in schema_worker
 
 for forbidden in ("Multipart", "TRA_UPLOAD", "GRA_UPLOAD", "KF_UPLOAD", "KOR_UPLOAD"):
     assert forbidden not in api + sync, forbidden
