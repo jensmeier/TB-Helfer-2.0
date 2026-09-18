@@ -619,13 +619,13 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 63 prüft den capability-gesteuerten Android-Lesepfad für Team-BTB-Historie und BTB-Details sowie die Wiederverwendung des vorhandenen lokalen BTB-Importcaches.
 - Source-Check 64 prüft den idempotenten Android-BTB-Schreibpfad mit bestehender Outbox, stabilem Android-BTB-Eintrag, Teamzuordnung, Versionskonflikten sowie `finalize`/`reopen`.
 
-**Noch nicht ausgeführt:** Source-Checks 34–64 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–65 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
 Für den Android-Datei-Upload-Commit `fcc3b60922dc46f0ab6f589f1f6b5d9efd51aa76` endeten TB-Server **#249 / ID 35341069107** und Android CI **#986 / ID 35341069190** erneut nach wenigen Sekunden mit leeren `steps`-Listen und `runner_id = 0`. Damit wurden auch Source-Checks bis 60 sowie Android-Unit-Test/Build nicht tatsächlich ausgeführt. Das ist weiterhin das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
-## Bekannte/offene Punkte
+### BTB-Granularitätskorrektur\n\nDer kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1` bleibt ausschließlich Migrationsquelle. Neue Server-1.0-Schreibvorgänge zerlegen den BTB in einzelne versionierte Entries; vorhandene Bridge-Einträge werden automatisch zur Migration eingereiht und nach erfolgreicher Granularisierung gelöscht. Per-Entry-Basiszustände liegen nur im lokalen Sync-State und ermöglichen das Zusammenführen unabhängiger Eintragsänderungen.\n\n## Bekannte/offene Punkte
 
 - vollständige Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung gegen eine echte PostgreSQL-/FastAPI-Testinstanz ausführen;
 - weitere reale Mehr-TRA-Fälle prüfen, besonders `reverse_geometry`, echte rückläufige Stationierung und nicht überlappende Anschlussstücke;

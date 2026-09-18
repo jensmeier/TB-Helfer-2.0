@@ -423,9 +423,10 @@ class CollabSyncRepository(
                 .forEach { old ->
                     dao.markCollabDeleted(old.serverId, old.entityVersion, now)
                 }
-            if (snapshots.isNotEmpty()) {
+
+            for (item in snapshots) {
                 dao.upsertCollabEntities(
-                    snapshots.map { item ->
+                    listOf(
                         SyncCollabEntity(
                             serverId = item.serverId,
                             worksiteServerId = worksiteServerId,
@@ -442,8 +443,39 @@ class CollabSyncRepository(
                             isDeleted = false,
                             updatedAtEpochMs = now
                         )
-                    }
+                    )
                 )
+                dao.upsertState(
+                    SyncStateEntity(
+                        key = server1BtbBaseKey(item.serverId),
+                        textValue = item.baseStateJson
+                    )
+                )
+
+                if (
+                    item.requiresGranularMigration &&
+                    dao.collabPendingAnyForClientKey(
+                        worksiteServerId,
+                        SyncCollabPendingChangeEntity.TYPE_BTB,
+                        item.clientEntityKey
+                    ) == null
+                ) {
+                    dao.enqueueCollabChange(
+                        SyncCollabPendingChangeEntity(
+                            clientChangeId = "android-${UUID.randomUUID()}",
+                            worksiteServerId = worksiteServerId,
+                            groupId = item.teamId,
+                            entityType = SyncCollabPendingChangeEntity.TYPE_BTB,
+                            serverId = item.serverId,
+                            clientEntityKey = item.clientEntityKey,
+                            baseVersion = item.entityVersion,
+                            operation = SyncCollabPendingChangeEntity.OP_UPSERT,
+                            status = item.status,
+                            areaScopeJson = "{}",
+                            payloadJson = item.payloadJson
+                        )
+                    )
+                }
             }
         }
     }
@@ -471,7 +503,9 @@ class CollabSyncRepository(
                     change.attempts + 1,
                     null
                 )
-                when (val result = api.applyPending(token, change)) {
+                val baseStateJson = change.serverId
+                    ?.let { dao.state(server1BtbBaseKey(it))?.textValue }
+                when (val result = api.applyPending(token, change, baseStateJson)) {
                     Server1BtbApi.MutationResult.Unsupported -> {
                         dao.updateCollabChangeState(
                             change.id,
@@ -524,6 +558,12 @@ class CollabSyncRepository(
                                     isDeleted = false,
                                     updatedAtEpochMs = System.currentTimeMillis()
                                 )
+                            )
+                        )
+                        dao.upsertState(
+                            SyncStateEntity(
+                                key = server1BtbBaseKey(item.serverId),
+                                textValue = item.baseStateJson
                             )
                         )
                         dao.deleteCollabPendingChange(change.id)
@@ -1008,6 +1048,8 @@ class CollabSyncRepository(
         .trim(' ', '.')
         .take(160)
         .ifBlank { "bild" }
+
+    private fun server1BtbBaseKey(serverId: String) = "server1_btb_base:$serverId"
 
     private fun sequenceKey(worksiteId: String) = "collab_sequence:$worksiteId"
 

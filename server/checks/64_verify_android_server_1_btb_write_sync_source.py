@@ -9,14 +9,16 @@ server = (ROOT / "server/tbserver/btb.py").read_text(encoding="utf-8")
 for token in (
     "fun applyPending",
     "X-Client-Change-Id",
-    "TB_HELFER_ANDROID_V1",
-    "tb_helfer_last_change_id",
+    "desiredEntries(",
+    "deterministicEntryId",
+    "BTB_ENTRY_CONFLICT",
+    "BTB_ENTRY_DELETE_CONFLICT",
+    "BTB_HEADER_CONFLICT",
     "/reopen",
     "/header",
     "/entries",
     "/finalize",
-    "deterministicEntryId",
-    "VERSION_CONFLICT",
+    '"DELETE"',
 ):
     assert token in api, token
 
@@ -24,6 +26,8 @@ for token in (
     "synchronizeServer1BtbPending",
     "TYPE_BTB",
     "STATE_CONFLICT",
+    "server1BtbBaseKey",
+    "baseStateJson",
     "deleteCollabPendingChange",
 ):
     assert token in repo, token
@@ -38,9 +42,10 @@ for route in (
     '@router.patch("/btbs/{btb_id}/header")',
     '@router.post("/btbs/{btb_id}/entries"',
     '@router.patch("/btbs/{btb_id}/entries/{entry_id}")',
+    '@router.delete("/btbs/{btb_id}/entries/{entry_id}"',
     '@router.post("/btbs/{btb_id}/finalize")',
     '@router.post("/btbs/{btb_id}/reopen")',
 ):
     assert route in server, route
 
-print("OK: Android Server-1.0 idempotent team BTB write/lifecycle source contract")
+print("OK: Android writes granular idempotent Server-1.0 team BTBs with per-entry conflicts")

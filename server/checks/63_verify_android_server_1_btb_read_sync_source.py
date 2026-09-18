@@ -11,9 +11,16 @@ for token in (
     "/teams/",
     "/btbs",
     "/api/v1/btbs/",
-    "TB_HELFER_ANDROID_V1",
-    "tb_helfer_btb_id",
-    'status = if (btb.optString("status").uppercase() == "FINALIZED") "FERTIG" else "ENTWURF"',
+    "active_btb_id",
+    "tb_helfer_android_v1",
+    "_tb_android_managed",
+    "_tb_android_slot",
+    "SECTION_FIRMA",
+    "SECTION_PERSONAL",
+    "SECTION_GERAET",
+    "SECTION_ARBEIT",
+    "SECTION_ABNAHME",
+    "SECTION_MANGEL",
 ):
     assert token in api, token
 
@@ -22,14 +29,15 @@ for token in (
     "TYPE_BTB",
     "it.groupId == teamId",
     "markCollabDeleted",
+    "baseStateJson",
+    "server1BtbBaseKey",
 ):
     assert token in repo, token
 
 assert 'capabilities?.supports("btb_live_sync_v1")' in fragment
 assert "server1BtbApi.loadTeamBtbs" in fragment
 assert "collab.replaceServer1BtbSnapshots" in fragment
-
 assert '@router.get("/worksites/{worksite_id}/teams/{team_id}/btbs")' in server
 assert '@router.get("/btbs/{btb_id}")' in server
 
-print("OK: Android Server-1.0 team BTB read/snapshot source contract")
+print("OK: Android reads granular Server-1.0 team BTBs into the existing local cache")
