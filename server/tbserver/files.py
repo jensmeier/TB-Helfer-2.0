@@ -17,7 +17,7 @@ from .config import settings
 from .database import transaction
 from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
-from .permissions import require_permission, worksite_context
+from .permissions import area_scope_allows, require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 
 
@@ -94,7 +94,84 @@ def _authorize_upload(cur, user: dict[str, Any], upload: dict, *, write: bool) -
     return context
 
 
-def _validate_link(cur, worksite_id: UUID, entity_type: str | None, entity_id: UUID | None) -> tuple[str, UUID] | None:
+def _entity_link_visible(
+    cur,
+    user: dict[str, Any],
+    context: dict[str, Any],
+    entity_type: str,
+    entity_id: UUID,
+) -> bool:
+    normalized = entity_type.strip().upper()
+    if normalized == "WORKSITE":
+        return str(entity_id) == str(context["id"])
+
+    if normalized == "BTB":
+        cur.execute(
+            "SELECT team_id, worksite_id, status FROM tb.btbs WHERE id = %s",
+            (entity_id,),
+        )
+        row = cur.fetchone()
+        if not row or row["worksite_id"] != context["id"] or row["status"] == "DELETED":
+            return False
+        if user["company_role"] in {"ADMIN", "CHEF"}:
+            return True
+        cur.execute(
+            """
+            SELECT 1
+            FROM tb.team_members
+            WHERE team_id = %s AND user_id = %s AND removed_at IS NULL
+            """,
+            (row["team_id"], user["user_id"]),
+        )
+        return cur.fetchone() is not None
+
+    if normalized == "DEFECT":
+        cur.execute(
+            """
+            SELECT worksite_id, area_scope, status, deleted_at
+            FROM tb.defects
+            WHERE id = %s
+            """,
+            (entity_id,),
+        )
+        row = cur.fetchone()
+        return bool(
+            row
+            and row["worksite_id"] == context["id"]
+            and row["status"] != "DELETED"
+            and row["deleted_at"] is None
+            and area_scope_allows(context["effective_area_scope"], row["area_scope"])
+        )
+
+    if normalized == "ACCEPTANCE":
+        cur.execute(
+            """
+            SELECT worksite_id, area_scope, status, deleted_at
+            FROM tb.acceptances
+            WHERE id = %s
+            """,
+            (entity_id,),
+        )
+        row = cur.fetchone()
+        return bool(
+            row
+            and row["worksite_id"] == context["id"]
+            and row["status"] != "DELETED"
+            and row["deleted_at"] is None
+            and area_scope_allows(context["effective_area_scope"], row["area_scope"])
+        )
+
+    return False
+
+
+def _validate_link(
+    cur,
+    user: dict[str, Any],
+    context: dict[str, Any],
+    worksite_id: UUID,
+    entity_type: str | None,
+    entity_id: UUID | None,
+) -> tuple[str, UUID] | None:
     if entity_type is None and entity_id is None:
         return None
     if entity_type is None or entity_id is None:
@@ -102,20 +179,35 @@ def _validate_link(cur, worksite_id: UUID, entity_type: str | None, entity_id: U
     normalized = entity_type.strip().upper()
     if normalized not in _ALLOWED_LINK_TYPES:
         raise HTTPException(400, "FILE_LINK_TYPE_NOT_SUPPORTED")
-    if normalized == "WORKSITE":
-        if entity_id != worksite_id:
-            raise HTTPException(400, "FILE_LINK_WORKSITE_MISMATCH")
-        return normalized, entity_id
-
-    table = {
-        "BTB": "btbs",
-        "DEFECT": "defects",
-        "ACCEPTANCE": "acceptances",
-    }[normalized]
-    cur.execute(f"SELECT 1 FROM tb.{table} WHERE id = %s AND worksite_id = %s", (entity_id, worksite_id))
-    if not cur.fetchone():
-        raise HTTPException(404, "FILE_LINK_TARGET_NOT_FOUND")
+    if normalized == "WORKSITE" and entity_id != worksite_id:
+        raise HTTPException(400, "FILE_LINK_WORKSITE_MISMATCH")
+    if not _entity_link_visible(cur, user, context, normalized, entity_id):
+        raise HTTPException(403, "FILE_LINK_TARGET_NOT_VISIBLE")
     return normalized, entity_id
+
+
+def _file_visible_for_context(
+    cur,
+    user: dict[str, Any],
+    context: dict[str, Any],
+    file_id: UUID,
+) -> bool:
+    cur.execute(
+        """
+        SELECT entity_type, entity_id
+        FROM tb.file_links
+        WHERE file_id = %s
+        ORDER BY created_at
+        """,
+        (file_id,),
+    )
+    links = cur.fetchall()
+    if not links:
+        return True
+    return any(
+        _entity_link_visible(cur, user, context, link["entity_type"], link["entity_id"])
+        for link in links
+    )
 
 
 def _hash_file(path: Path) -> str:
@@ -160,7 +252,9 @@ def _load_file_for_user(cur, user: dict[str, Any], file_id: UUID) -> dict:
         if user["company_role"] != "ADMIN" and user["company_id"] != result["company_id"]:
             raise HTTPException(403, "FILE_ACCESS_DENIED")
     else:
-        worksite_context(cur, user, result["worksite_id"])
+        context = worksite_context(cur, user, result["worksite_id"])
+        if not _file_visible_for_context(cur, user, context, result["id"]):
+            raise HTTPException(403, "FILE_ACCESS_DENIED")
     return result
 
 
@@ -327,7 +421,14 @@ def complete_upload(
             actual_sha256 = _hash_file(temp_path)
             if upload["expected_sha256"] and actual_sha256 != upload["expected_sha256"].lower():
                 raise HTTPException(409, {"code": "UPLOAD_SHA256_MISMATCH", "actual": actual_sha256})
-            link = _validate_link(cur, upload["worksite_id"], payload.entity_type, payload.entity_id)
+            link = _validate_link(
+                cur,
+                user,
+                context,
+                upload["worksite_id"],
+                payload.entity_type,
+                payload.entity_id,
+            )
 
             file_id = uuid4()
             category = {
@@ -467,7 +568,7 @@ def list_files(
     user: dict[str, Any] = Depends(current_portal_user),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
-        worksite_context(cur, user, worksite_id)
+        context = worksite_context(cur, user, worksite_id)
         cur.execute(
             """
             SELECT id, company_id, worksite_id, original_name, mime_type, byte_size,
@@ -480,7 +581,11 @@ def list_files(
             """,
             (worksite_id, limit),
         )
-        rows = [dict(row) for row in cur.fetchall()]
+        rows = [
+            dict(row)
+            for row in cur.fetchall()
+            if _file_visible_for_context(cur, user, context, row["id"])
+        ]
     return {"files": rows}
 
 
