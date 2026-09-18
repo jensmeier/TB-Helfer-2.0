@@ -124,6 +124,14 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                     status.text = getString(R.string.collab_sync_error, result.message)
                     renderCached()
                 }
+                is SyncUiResult.ContextOnly -> {
+                    status.text = getString(
+                        R.string.collab_server1_context_only,
+                        result.worksites.size
+                    )
+                    render(result.worksites)
+                    loadTeamAndCompanyProfile(token, result.worksites)
+                }
                 is SyncUiResult.Success -> {
                     status.text = getString(
                         R.string.collab_sync_ok,
@@ -147,6 +155,9 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
         data object Unsupported : SyncUiResult
         data object SessionInvalid : SyncUiResult
         data class Error(val message: String) : SyncUiResult
+        data class ContextOnly(
+            val worksites: List<WorksiteBindingRepository.BoundContext>
+        ) : SyncUiResult
         data class Success(
             val worksites: List<WorksiteBindingRepository.BoundContext>,
             val pulled: Int,
@@ -158,6 +169,41 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
     }
 
     private suspend fun synchronizeInternal(token: String): SyncUiResult {
+        when (val contextResult = teamApi.loadWorksiteContexts(token)) {
+            is TeamManagementApi.WorksiteContextResult.Success -> {
+                val now = System.currentTimeMillis()
+                val contexts = contextResult.items.map { item ->
+                    SyncWorksiteContextEntity(
+                        worksiteServerId = item.worksiteId,
+                        name = item.name,
+                        designation = item.designation,
+                        worksiteType = null,
+                        status = item.status,
+                        companyId = null,
+                        groupId = item.groupId,
+                        memberRole = item.memberRole,
+                        areaScopeJson = item.areaScopeJson,
+                        groupLabel = item.groupLabel,
+                        leadUserId = item.leadUserId,
+                        leadNameSnapshot = item.leadNameSnapshot,
+                        updatedAtEpochMs = now
+                    )
+                }
+                runCatching { collab.replaceWorksiteContexts(contexts) }
+                    .getOrElse {
+                        return SyncUiResult.Error(
+                            it.message ?: "Server-1.0-Baustellenkontext konnte lokal nicht gespeichert werden."
+                        )
+                    }
+                return SyncUiResult.ContextOnly(bindings.contextsWithBindings())
+            }
+            TeamManagementApi.WorksiteContextResult.Unsupported -> Unit
+            TeamManagementApi.WorksiteContextResult.SessionInvalid ->
+                return SyncUiResult.SessionInvalid
+            is TeamManagementApi.WorksiteContextResult.Error ->
+                return SyncUiResult.Error(contextResult.message)
+        }
+
         val notifications = mutableListOf<CollabBenachrichtigungen.Ereignis>()
         var pulled = 0
         var uploaded = 0
