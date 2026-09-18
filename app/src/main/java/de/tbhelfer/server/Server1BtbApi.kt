@@ -638,6 +638,15 @@ class Server1BtbApi(
             localPayloadFromGranular(btb, header, managed, clientKey)
         }
         canonicalizeLocalPayload(localPayload, btb, header, clientKey, activeBtbId == serverId)
+        val finalPdf = root.optJSONObject("final_pdf")
+        localPayload.put(SERVER_STATUS_KEY, btb.optString("status").uppercase())
+        localPayload.put(SERVER_FINAL_PDF_AVAILABLE_KEY, finalPdf != null)
+        if (finalPdf != null) {
+            finalPdf.nullableString("sha256")
+                ?.let { localPayload.put(SERVER_FINAL_PDF_SHA256_KEY, it) }
+        } else {
+            localPayload.remove(SERVER_FINAL_PDF_SHA256_KEY)
+        }
 
         val ownedHeaderState = headerStateFromServer(btb, header, clientKey)
         val baseState = JSONObject()
@@ -1204,6 +1213,9 @@ class Server1BtbApi(
         const val ANDROID_META_KEY = "tb_helfer_android_v1"
         const val MANAGED_KEY = "_tb_android_managed"
         const val SLOT_KEY = "_tb_android_slot"
+        const val SERVER_STATUS_KEY = "_server1_btb_status"
+        const val SERVER_FINAL_PDF_AVAILABLE_KEY = "_server1_final_pdf_available"
+        const val SERVER_FINAL_PDF_SHA256_KEY = "_server1_final_pdf_sha256"
 
         const val LEGACY_ANDROID_SECTION = "TB_HELFER_ANDROID_V1"
         const val ANDROID_CLIENT_KEY = "tb_helfer_btb_id"

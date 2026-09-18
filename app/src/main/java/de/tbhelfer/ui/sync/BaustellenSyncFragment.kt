@@ -33,6 +33,7 @@ import de.tbhelfer.server.SecureTokenStore
 import de.tbhelfer.server.ServerCapabilitiesApi
 import de.tbhelfer.server.Server1FachSyncApi
 import de.tbhelfer.server.Server1BtbApi
+import de.tbhelfer.server.Server1BtbPdfApi
 import de.tbhelfer.server.Server1FileApi
 import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.server.TeamManagementApi
@@ -67,6 +68,7 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
     private val serverCapabilitiesApi = ServerCapabilitiesApi()
     private val server1FachApi = Server1FachSyncApi()
     private val server1BtbApi = Server1BtbApi()
+    private val server1BtbPdfApi = Server1BtbPdfApi()
     private val server1FileApi = Server1FileApi()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -321,7 +323,15 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
 
                         if (capabilities.supports("btb_live_sync_v1")) {
                             val btbMedia = BtbTeamMediaSync(requireContext().applicationContext)
-                            when (val mediaResult = btbMedia.synchronize(token = token, server1Api = server1FileApi)) {
+                            when (
+                                val mediaResult = btbMedia.synchronize(
+                                    token = token,
+                                    server1Api = server1FileApi,
+                                    server1PdfApi = if (
+                                        capabilities.supports("btb_finalize_with_pdf_v1")
+                                    ) server1BtbPdfApi else null
+                                )
+                            ) {
                                 BtbTeamMediaSync.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
                                 BtbTeamMediaSync.Result.Unsupported ->
                                     return SyncUiResult.Error(

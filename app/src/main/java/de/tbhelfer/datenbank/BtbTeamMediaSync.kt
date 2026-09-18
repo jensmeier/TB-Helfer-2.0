@@ -5,16 +5,22 @@ import android.util.Base64
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.server.CollabSyncApi
 import de.tbhelfer.server.Server1FileApi
+import de.tbhelfer.server.Server1BtbApi
+import de.tbhelfer.server.Server1BtbPdfApi
 import de.tbhelfer.ui.bautagebuch.BautagebuchEintrag
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
+import de.tbhelfer.ui.bautagebuch.BtbAbschlussPdfFinder
+import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.BtbFotoZuordnungSpeicher
 import de.tbhelfer.ui.bautagebuch.SchichtTyp
+import de.tbhelfer.ui.suche.BtbSpeicher
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
+import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -34,7 +40,12 @@ class BtbTeamMediaSync(context: Context) {
     private val fotos get() = ServiceLocator.fotoRepository
     private val importedPrefs = appContext.getSharedPreferences(PREF_IMPORTED, Context.MODE_PRIVATE)
 
-    data class Summary(val uploaded: Int = 0, val alreadyPresent: Int = 0, val imported: Int = 0)
+    data class Summary(
+        val uploaded: Int = 0,
+        val alreadyPresent: Int = 0,
+        val imported: Int = 0,
+        val pdfImported: Int = 0
+    )
 
     sealed interface Result {
         data class Success(val summary: Summary) : Result
@@ -46,11 +57,13 @@ class BtbTeamMediaSync(context: Context) {
     suspend fun synchronize(
         token: String,
         api: CollabSyncApi = CollabSyncApi(),
-        server1Api: Server1FileApi? = null
+        server1Api: Server1FileApi? = null,
+        server1PdfApi: Server1BtbPdfApi? = null
     ): Result {
         var uploaded = 0
         var present = 0
         var imported = 0
+        var pdfImported = 0
 
         val bound = bindings.contextsWithBindings().filter { it.binding != null && it.localWorksite != null }
         for (item in bound) {
@@ -66,7 +79,14 @@ class BtbTeamMediaSync(context: Context) {
             // Upload: bei modernen BTBs ist die explizite Foto->btbId-Zuordnung verbindlich.
             // Nur historische BTBs ohne btbId verwenden weiterhin den Zeitfenster-Fallback;
             // bereits modern zugeordnete Fotos duerfen dabei nicht in einen Legacy-BTB rutschen.
-            val verlauf = BautagebuchSpeicher.verlaufFuerBaustelle(appContext, local.altBaustelleId, local.hauptbaustellenName)
+            val verlauf = BautagebuchSpeicher.verlaufFuerBaustelle(
+                appContext,
+                local.altBaustelleId,
+                local.hauptbaustellenName
+            )
+            val verlaufByBtbId = verlauf.mapNotNull { v ->
+                v.btbId?.takeIf { it.isNotBlank() && !it.startsWith("legacy:") }?.let { it to v }
+            }.toMap()
             for (v in verlauf) {
                 val stableBtbId = v.btbId?.takeIf { it.isNotBlank() }
                 val key = stableBtbId ?: "legacy:${v.datum}:${v.schicht.name}"
@@ -184,9 +204,101 @@ class BtbTeamMediaSync(context: Context) {
                     imported++
                 }
             }
+
+            // Abschluss-PDF: direkt aus dem kanonischen BTB-Endpunkt in denselben lokalen
+            // BTB-Ordner spiegeln, den Verlauf/Viewer bereits verwenden.
+            if (server1PdfApi != null) {
+                for ((parentKey, parent) in serverBtbs) {
+                    val localBtb = verlaufByBtbId[parentKey] ?: continue
+                    val payload = runCatching { JSONObject(parent.payloadJson) }.getOrNull() ?: continue
+                    val serverStatus = payload.optString(Server1BtbApi.SERVER_STATUS_KEY).uppercase()
+                    val pdfAvailable = payload.optBoolean(
+                        Server1BtbApi.SERVER_FINAL_PDF_AVAILABLE_KEY,
+                        false
+                    )
+                    val expectedSha = payload.optString(
+                        Server1BtbApi.SERVER_FINAL_PDF_SHA256_KEY
+                    ).trim()
+
+                    if (serverStatus == "FINALIZED" && pdfAvailable) {
+                        val marker = pdfImportMarker(parent.serverId, parent.entityVersion, expectedSha)
+                        val existing = BtbAbschlussPdfFinder.neueste(appContext, localBtb.entry)
+                        if (wasImported(marker) && existing?.isFile == true) continue
+
+                        when (val result = server1PdfApi.downloadFinalPdf(token, parent.serverId)) {
+                            Server1BtbPdfApi.Result.SessionInvalid -> return Result.SessionInvalid
+                            Server1BtbPdfApi.Result.Unsupported -> return Result.Unsupported
+                            Server1BtbPdfApi.Result.NotAvailable ->
+                                return Result.Error("Server meldet ein Abschluss-PDF, liefert es aber nicht aus.")
+                            is Server1BtbPdfApi.Result.Error -> return Result.Error(result.message)
+                            is Server1BtbPdfApi.Result.Success -> {
+                                if (expectedSha.isNotBlank()) {
+                                    val actualSha = sha256(result.file.bytes)
+                                    if (!actualSha.equals(expectedSha, ignoreCase = true)) {
+                                        return Result.Error("BTB-Abschluss-PDF hat eine abweichende SHA-256-Prüfsumme.")
+                                    }
+                                }
+                                val dir = BtbSpeicher.btbsFuerBaustelle(
+                                    appContext,
+                                    localBtb.entry.baustelleId,
+                                    localBtb.entry.datumIso
+                                )
+                                val tokenPart = BtbDokumentVersionierung.dokumentToken(localBtb.entry)
+                                val target = File(dir, "BTB_Server_${tokenPart}.pdf")
+                                val temp = File(target.absolutePath + ".tmp")
+                                val stored = runCatching {
+                                    temp.writeBytes(result.file.bytes)
+                                    BtbDokumentVersionierung.loescheAktuellesAbschlussDokument(
+                                        appContext,
+                                        localBtb.entry
+                                    )
+                                    if (target.exists()) target.delete()
+                                    if (!temp.renameTo(target)) {
+                                        temp.copyTo(target, overwrite = true)
+                                        temp.delete()
+                                    }
+                                    check(
+                                        BtbDokumentVersionierung.serverAbschlussUebernehmen(
+                                            appContext,
+                                            localBtb.entry,
+                                            target,
+                                            expectedSha.takeIf { it.isNotBlank() }
+                                        )
+                                    ) { "Server-Abschluss konnte lokal nicht bestätigt werden." }
+                                }
+                                if (stored.isFailure) {
+                                    temp.delete()
+                                    return Result.Error(
+                                        stored.exceptionOrNull()?.message
+                                            ?: "BTB-Abschluss-PDF konnte lokal nicht gespeichert werden."
+                                    )
+                                }
+                                rememberImported(marker, true)
+                                pdfImported++
+                            }
+                        }
+                    } else if (
+                        serverStatus in setOf("ACTIVE", "REWORK") &&
+                        BtbDokumentVersionierung.hatServerAbschlussMarker(appContext, localBtb.entry)
+                    ) {
+                        BtbDokumentVersionierung.serverAbschlussInvalidieren(
+                            appContext,
+                            localBtb.entry
+                        )
+                    }
+                }
+            }
         }
-        return Result.Success(Summary(uploaded, present, imported))
+        return Result.Success(Summary(uploaded, present, imported, pdfImported))
     }
+
+    private fun pdfImportMarker(serverId: String, version: Long, sha256: String): String =
+        "pdf:$serverId:" + sha256.ifBlank { version.toString() }
+
+    private fun sha256(bytes: ByteArray): String =
+        MessageDigest.getInstance("SHA-256")
+            .digest(bytes)
+            .joinToString("") { "%02x".format(it) }
 
     private fun shiftWindow(entry: BautagebuchEintrag): Pair<Long, Long> {
         val date = runCatching { LocalDate.parse(entry.datumIso) }.getOrElse { LocalDate.now() }

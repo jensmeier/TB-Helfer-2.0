@@ -20,6 +20,8 @@ import java.time.LocalDate
  */
 object BtbDokumentVersionierung {
 
+    private const val SERVER_SOURCE = "SERVER_1_0"
+
     data class Vorbereitung(
         val naechsteVersion: Int,
         val abschlussEpochMs: Long,
@@ -144,9 +146,25 @@ object BtbDokumentVersionierung {
         istVomOriginalAbweichend(context, entry)
 
     fun status(context: Context, entry: BautagebuchEintrag): BtbAbschlussStatus {
-        val baseline = readJson(baselineFile(context, entry)) ?: return BtbAbschlussStatus.ENTWURF
         val current = readJson(currentFile(context, entry)) ?: return BtbAbschlussStatus.ENTWURF
         val meta = readMeta(context, entry)
+        val baseline = readJson(baselineFile(context, entry))
+
+        // Ein vom Server geladenes Abschluss-PDF darf lokal als gültiger Abschluss erscheinen,
+        // ohne den aktuellen Stand fälschlich als "erstes Original" festzuschreiben.
+        if (meta?.optString("quelle") == SERVER_SOURCE) {
+            val pdfGueltig = meta.optBoolean("pdfGueltig", false)
+            val closureHash = meta.optString("abschlussInhaltHash")
+            val hashPasst = closureHash.isNotBlank() && closureHash == inhaltHash(current)
+            val pdf = BtbAbschlussPdfFinder.neueste(context, entry)
+            return if (pdfGueltig && hashPasst && pdf != null && pdf.exists()) {
+                BtbAbschlussStatus.ABGESCHLOSSEN
+            } else {
+                BtbAbschlussStatus.NACHBEARBEITUNG
+            }
+        }
+
+        if (baseline == null) return BtbAbschlussStatus.ENTWURF
 
         if (meta != null) {
             val pdfGueltig = meta.optBoolean("pdfGueltig", false)
@@ -245,8 +263,14 @@ object BtbDokumentVersionierung {
      * BTB-Abschluss, auch wenn der Nutzer spaeter wieder auf alte Werte zurueckgeht.
      */
     fun pflegeNachAutosave(context: Context, entry: BautagebuchEintrag) {
-        val baseline = baselineFile(context, entry)?.takeIf { it.exists() } ?: return
         val current = currentFile(context, entry)?.takeIf { it.exists() } ?: return
+        val baseline = baselineFile(context, entry)?.takeIf { it.exists() }
+        if (baseline == null) {
+            if (hatServerAbschlussMarker(context, entry)) {
+                pflegeServerAbschlussNachAutosave(context, entry, current)
+            }
+            return
+        }
         runCatching {
             val original = JSONObject(baseline.readText(Charsets.UTF_8))
             val currentJson = JSONObject(current.readText(Charsets.UTF_8))
@@ -293,6 +317,96 @@ object BtbDokumentVersionierung {
             currentJson.put("letzterAbschlussBenutzer", closureMeta.optString("letzterAbschlussBenutzer").takeIf { it.isNotBlank() } ?: JSONObject.NULL)
             currentJson.put("dokumentVersion", 0)
             current.writeText(currentJson.toString(2), Charsets.UTF_8)
+        }
+    }
+
+    fun hatServerAbschlussMarker(context: Context, entry: BautagebuchEintrag): Boolean =
+        readMeta(context, entry)?.optString("quelle") == SERVER_SOURCE
+
+    /**
+     * Bestätigt ein vom Server 1.0 erzeugtes PDF lokal, ohne eine lokale Original-Baseline
+     * anzulegen. Das unveränderliche erste Original bleibt ausschließlich der Server-Snapshot.
+     */
+    fun serverAbschlussUebernehmen(
+        context: Context,
+        entry: BautagebuchEintrag,
+        pdfFile: File,
+        serverPdfSha256: String? = null
+    ): Boolean {
+        if (!pdfFile.isFile || pdfFile.length() <= 0L) return false
+        val current = currentFile(context, entry)?.takeIf { it.isFile } ?: return false
+        return runCatching {
+            val currentJson = JSONObject(current.readText(Charsets.UTF_8))
+            val now = entry.letzterAbschlussEpochMs?.takeIf { it > 0L } ?: System.currentTimeMillis()
+            val user = entry.letzterAbschlussBenutzer?.takeIf { it.isNotBlank() } ?: "TB-Server 1.0"
+            val hash = inhaltHash(currentJson)
+
+            writeMeta(
+                context,
+                entry,
+                JSONObject().apply {
+                    put("btbId", entry.btbId)
+                    put("quelle", SERVER_SOURCE)
+                    put("abschlussInhaltHash", hash)
+                    put("abschlussPdfDateiname", pdfFile.name)
+                    put("serverPdfSha256", serverPdfSha256 ?: JSONObject.NULL)
+                    put("pdfGueltig", true)
+                    put("letzterAbschlussEpochMs", now)
+                    put("letzterAbschlussBenutzer", user)
+                }
+            )
+
+            currentJson.put("abschlussStatus", BtbAbschlussStatus.ABGESCHLOSSEN.name)
+            currentJson.put("abschlussPdfDateiname", pdfFile.name)
+            currentJson.put("abschlussInhaltHash", hash)
+            currentJson.put("letzterAbschlussEpochMs", now)
+            currentJson.put("letzterAbschlussBenutzer", user)
+            currentJson.put("istFertig", true)
+            current.writeText(currentJson.toString(2), Charsets.UTF_8)
+            true
+        }.getOrDefault(false)
+    }
+
+    fun serverAbschlussInvalidieren(context: Context, entry: BautagebuchEintrag) {
+        if (!hatServerAbschlussMarker(context, entry)) return
+        val current = currentFile(context, entry)?.takeIf { it.isFile } ?: return
+        runCatching {
+            loescheAktuellesAbschlussDokument(context, entry)
+            val meta = readMeta(context, entry) ?: JSONObject().put("btbId", entry.btbId)
+            meta.put("quelle", SERVER_SOURCE)
+            meta.put("pdfGueltig", false)
+            meta.put("abschlussPdfDateiname", JSONObject.NULL)
+            writeMeta(context, entry, meta)
+
+            val currentJson = JSONObject(current.readText(Charsets.UTF_8))
+            currentJson.put("abschlussStatus", BtbAbschlussStatus.NACHBEARBEITUNG.name)
+            currentJson.put("istFertig", false)
+            currentJson.put("abschlussPdfDateiname", JSONObject.NULL)
+            current.writeText(currentJson.toString(2), Charsets.UTF_8)
+        }
+    }
+
+    private fun pflegeServerAbschlussNachAutosave(
+        context: Context,
+        entry: BautagebuchEintrag,
+        current: File
+    ) {
+        runCatching {
+            val meta = readMeta(context, entry) ?: return@runCatching
+            if (meta.optString("quelle") != SERVER_SOURCE) return@runCatching
+            val currentJson = JSONObject(current.readText(Charsets.UTF_8))
+            val closureHash = meta.optString("abschlussInhaltHash")
+            val changed = closureHash.isBlank() || closureHash != inhaltHash(currentJson)
+            if (meta.optBoolean("pdfGueltig", false) && changed) {
+                loescheAktuellesAbschlussDokument(context, entry)
+                meta.put("pdfGueltig", false)
+                meta.put("abschlussPdfDateiname", JSONObject.NULL)
+                writeMeta(context, entry, meta)
+                currentJson.put("abschlussStatus", BtbAbschlussStatus.NACHBEARBEITUNG.name)
+                currentJson.put("istFertig", false)
+                currentJson.put("abschlussPdfDateiname", JSONObject.NULL)
+                current.writeText(currentJson.toString(2), Charsets.UTF_8)
+            }
         }
     }
 
