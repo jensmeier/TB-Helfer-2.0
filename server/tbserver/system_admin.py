@@ -3,12 +3,17 @@ from __future__ import annotations
 import shutil
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from . import SERVER_VERSION
-from .admin import require_admin
+from .admin import require_admin, require_admin_csrf
+from .backup import backup_storage_snapshot
 from .config import settings
 from .database import transaction
+from .events import audit
+from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
+from .jobs import JobError, enqueue_in_tx
 from .migrations import status as migration_status
 
 
@@ -19,6 +24,10 @@ _SAFE_SETTING_KEYS = {
     "trash_retention_days",
     "capabilities_revision",
 }
+
+
+class BackupJobCreate(BaseModel):
+    kind: str = Field(min_length=1, max_length=20)
 
 
 def _storage_snapshot() -> dict[str, Any]:
@@ -54,6 +63,7 @@ def admin_system_status(
 ) -> dict:
     migration = migration_status()
     storage = _storage_snapshot()
+    backup_storage = backup_storage_snapshot()
 
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
@@ -146,9 +156,61 @@ def admin_system_status(
         "environment": settings.environment,
         "migration": migration,
         "storage": storage,
+        "backup_storage": backup_storage,
         "counts": counts,
         "backups": backups,
         "jobs": jobs,
         "settings": server_settings,
         "companies": companies,
     }
+
+
+@router.post("/backups", status_code=202)
+def enqueue_backup(
+    payload: BackupJobCreate,
+    user: dict[str, Any] = Depends(require_admin_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    kind = payload.kind.strip().upper()
+    mapping = {
+        "DATABASE": "BACKUP_DATABASE",
+        "FILES": "BACKUP_FILES",
+        "FULL": "BACKUP_FULL",
+    }
+    job_type = mapping.get(kind)
+    if job_type is None:
+        raise HTTPException(400, "BACKUP_KIND_NOT_SUPPORTED")
+
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BACKUP_JOB_CREATE",
+        )
+        if receipt:
+            return replay_payload(receipt)
+        try:
+            job = enqueue_in_tx(cur, job_type, {})
+        except JobError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        audit(
+            cur,
+            action="BACKUP_JOB_CREATE",
+            actor_user_id=user["user_id"],
+            entity_type="BACKGROUND_JOB",
+            entity_id=job["id"],
+            details={"kind": kind, "job_type": job_type},
+        )
+        response = {"job": job}
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BACKUP_JOB_CREATE",
+            entity_id=job["id"],
+            result_version=None,
+            response_payload=response,
+        )
+    return response
+

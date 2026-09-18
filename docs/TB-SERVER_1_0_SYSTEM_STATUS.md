@@ -2,7 +2,7 @@
 
 Stand: 2026-09-18
 
-Dieser Baustein liefert den **read-only** Systemstatus für TB-Server 1.0. Er führt keine Backups, Restores, produktiven Datenänderungen oder NAS-Migrationen aus.
+Dieser Baustein liefert den Systemstatus für TB-Server 1.0. Der Status selbst bleibt read-only; zusätzlich können ADMINs jetzt sichere Backup-Aufträge in den getrennten Background-Job-Worker einreihen. Restore, produktive Datenänderungen und NAS-Migrationen werden hier weiterhin nicht ausgeführt.
 
 ## API
 
@@ -21,6 +21,7 @@ Die Antwort enthält:
 - Anzahl wartender/laufender/fehlgeschlagener Background Jobs;
 - letzten Geräte-Kontakt und letzten erfolgreichen/erfassten Sync-Zeitpunkt;
 - Dateisystembelegung des konfigurierten Storage-Roots;
+- Dateisystembelegung des getrennten Backup-Roots;
 - die letzten Backup-Läufe ohne internen Storage-Key;
 - die letzten Background Jobs ohne Payload und ohne `last_error`;
 - ausschließlich explizit freigegebene, nicht geheime `server_settings`;
@@ -52,7 +53,7 @@ Die Seite zeigt:
 - letzte Backup-Läufe;
 - letzte Background Jobs.
 
-Die Seite ist absichtlich nur lesend. Backup-/Restore-Buttons werden erst ergänzt, wenn der zugehörige Server-1.0-Backup-/Restore-Vertrag inklusive Sicherheits- und Testregeln implementiert ist.
+Die Statusanzeige bleibt lesend. Zusätzlich stehen jetzt drei ausdrücklich getrennte Aktionen zur Verfügung: Datenbank-Backup, Datei-Backup und Vollbackup. Diese Aktionen führen das Backup nicht im HTTP-Request aus, sondern stellen einen idempotenten Background Job ein. Restore bleibt weiterhin separat gesperrt.
 
 ## Warum read-only zuerst
 
@@ -64,11 +65,14 @@ Dieser Baustein trennt sauber:
 2. Background-Job-Mechanik;
 3. Backup erzeugen;
 4. Restore-Test;
-5. später produktiver Cutover.
+5. kontrollierter Restore;
+6. später produktiver Cutover.
 
-## Capability
+## Capabilities
 
-`admin_system_status_v1=true`
+- `admin_system_status_v1=true`
+- `background_jobs_v1=true`
+- `backup_v1=true`
 
 ## Tests
 
@@ -81,15 +85,15 @@ Dieser Baustein trennt sauber:
 - Capability-/Workflow-Vertrag;
 - dass keine bekannten Geheimnis-/Payloadfelder in die Statusantwort eingebaut werden.
 
+`server/checks/41_verify_tb_server_1_backup_jobs_source.py` prüft zusätzlich Background Worker, getrennten Backup-Root, pg_dump-Vertrag, Datei-/FULL-Backup, SHA-256, Retry/Stale-Job-Regeln, Admin-Backupauftrag und Capabilities.
+
 ## Noch offen
 
-- Background-Job-Worker;
-- serverseitiger Datenbank-/Datei-/FULL-Backup-Lauf;
-- Backup-Aufbewahrung;
+- Backup-Aufbewahrung/Rotation;
 - Restore-Test;
 - kontrollierter Restore;
 - Systemmetriken sammeln/aggregieren;
 - E-Mail-Berichte;
 - produktive NAS-Backup-/Cutover-Abnahme.
 
-Produktiv-NAS und produktive Daten werden durch diesen Statusbaustein nicht verändert.
+Produktiv-NAS und produktive Daten werden durch Status und Backup-Auftragscode nicht verändert. Die tatsächliche Backup-Ausführung schreibt ausschließlich in den konfigurierten `TB_BACKUP_ROOT` und liest Datenbank/Storage. Details: `docs/TB-SERVER_1_0_BACKUP_RESTORE.md`.

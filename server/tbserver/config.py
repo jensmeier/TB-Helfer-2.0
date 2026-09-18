@@ -25,6 +25,7 @@ class Settings:
     db_user: str
     db_password: str
     storage_root: Path
+    backup_root: Path
     migrations_root: Path
     environment: str
     log_level: str
@@ -41,6 +42,7 @@ class Settings:
             db_user=_env("DB_USER", "tb_helfer"),
             db_password=_env("DB_PASSWORD"),
             storage_root=Path(_env("STORAGE_ROOT", "/tb/storage-v1")),
+            backup_root=Path(_env("TB_BACKUP_ROOT", "/tb/backups-v1")),
             migrations_root=Path(
                 _env("TB_MIGRATIONS_ROOT", str(server_root / "v1_migrations"))
             ),
