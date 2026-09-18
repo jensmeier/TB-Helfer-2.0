@@ -628,8 +628,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check-Dateien 57–60/63–68 wurden nach der Coordinator-Extraktion vollständig neu ausgerichtet; dabei wurden versehentlich wörtlich gespeicherte `\\n`-Sequenzen und ein unvollständiger Check-68-Variablenumbau korrigiert. Check 59 prüft die 1000er-Grenze jetzt über `FILE_LIST_LIMIT` statt über ein nicht existentes hartes URL-Literal.
 - Source-Check 71 prüft den kanonischen `worksite_tree_v1`-Cutover: stabile `external_key`/Client-Keys, Snapshot inklusive Tombstones, `base_version`-Konflikte, rekursives Unterbaum-Löschen, bestehende Offline-Outbox sowie begrenztes Konflikt-Rebase im gemeinsamen Server-1.0-Synckern.
 - Source-Check 72 prüft den Android-Streckendaten-Cutover auf kanonisches Server-1.0-GET/POST/PATCH/DELETE mit `X-Client-Change-Id`, `base_version`, Reconcile-Schleife und ausdrücklich beibehaltenem 0.7.x-`/collab`-Fallback; Rohvermessungsdateien bleiben ausgeschlossen.
+- Source-Check 73 prüft den Server-1.0-Baustellen-Lifecycle: idempotente kanonische Anlage, verantwortlicher-TB-only Soft-Delete mit `base_version`, generischer WORKSITE-Tombstone-Feed sowie explizite Android-0.7.x-Fallbacks.
 
-**Noch nicht ausgeführt:** Source-Checks 34–72 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–73 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -691,6 +692,15 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Ein alter 0.7.x-Server ohne kanonischen Endpunkt fällt explizit auf den bisherigen Bulk-`/api/v1/collab/.../track-data`-Vertrag zurück.
 - TRA/GRA/KF/KOR-Originaldateien werden von diesem Android-Pfad weiterhin niemals hochgeladen oder verändert.
 - `Server1AndroidSyncCoordinator` führt `track_data_v1` jetzt auch beim manuellen Sync aus. `Schema13Worker` überspringt diesen Teil auf Server 1.0 und behält ihn nur für den Legacy-0.7-Fallback; damit verwenden manueller und Hintergrund-Sync denselben `track_data_v1`-Pfad ohne parallele Doppeluploads.
+
+### Server-1.0-Baustellenanlage und -löschung
+
+- Android legt neue Server-1.0-Baustellen jetzt idempotent über `POST /api/v1/worksites` mit stabilem `X-Client-Change-Id` an; der alte `/collab/worksites`-Pfad bleibt nur 0.7.x-Fallback.
+- Server 1.0 besitzt jetzt `DELETE /api/v1/worksites/{id}?base_version=...`; nur die Baustellenrolle `RESPONSIBLE_TB` darf diese operative Löschung ausführen.
+- Die Löschung ist ein Soft-Delete (`TRASHED` + `deleted_at` + Versionssprung), kein physisches Löschen von Fachdaten oder Vermessungsoriginalen.
+- Der bestehende generische `tb.deletion_tombstones`-Mechanismus trägt `WORKSITE`-Tombstones; `GET /api/v1/worksites/deletions` verteilt sie firmenweit an berechtigte Geräte.
+- Android prüft vor dem Delete die aktuelle Serverversion, rebased bei Konkurrenz höchstens drei Runden und löscht lokal weiterhin erst nach bestätigtem Servererfolg.
+- `Schema13Worker` kann denselben `WorksiteDeletionApi` weiterverwenden; auf Server 1.0 nimmt dieser automatisch den kanonischen Tombstone-Feed, auf 0.7.x den alten Fallback.
 
 ## Bekannte/offene Punkte
 

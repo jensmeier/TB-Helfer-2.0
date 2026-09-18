@@ -217,6 +217,32 @@ def create_worksite(
     return worksite
 
 
+@router.get("/deletions")
+def list_worksite_deletions(
+    user: dict[str, Any] = Depends(current_portal_user),
+) -> dict:
+    company_id = user.get("company_id")
+    if company_id is None:
+        raise HTTPException(403, "COMPANY_REQUIRED")
+
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT t.entity_id AS worksite_id,
+                   w.name AS worksite_name,
+                   t.deleted_at
+            FROM tb.deletion_tombstones t
+            LEFT JOIN tb.worksites w ON w.id = t.entity_id
+            WHERE t.company_id = %s
+              AND t.entity_type = 'WORKSITE'
+            ORDER BY t.deleted_at, t.entity_id
+            """,
+            (company_id,),
+        )
+        rows = cur.fetchall()
+    return {"deletions": rows}
+
+
 @router.get("/{worksite_id}")
 def get_worksite(
     worksite_id: UUID,
@@ -236,6 +262,125 @@ def get_worksite(
         )
         row = cur.fetchone()
     return {"worksite": row, "permissions": context["effective_permissions"]}
+
+
+@router.delete("/{worksite_id}", status_code=204)
+def delete_worksite(
+    worksite_id: UUID,
+    base_version: int = Query(ge=1),
+    user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+):
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_DELETE",
+        )
+        if receipt:
+            return Response(status_code=204)
+
+        context = worksite_context(cur, user, worksite_id)
+        if context.get("worksite_role") != "RESPONSIBLE_TB":
+            raise HTTPException(403, "WORKSITE_DELETE_LEAD_REQUIRED")
+
+        cur.execute(
+            """
+            SELECT id, company_id, name, version
+            FROM tb.worksites
+            WHERE id = %s AND deleted_at IS NULL
+            FOR UPDATE
+            """,
+            (worksite_id,),
+        )
+        current = cur.fetchone()
+        if not current:
+            raise HTTPException(404, "WORKSITE_NOT_FOUND")
+        current = dict(current)
+        if int(current["version"]) != base_version:
+            raise HTTPException(
+                409,
+                {
+                    "code": "VERSION_CONFLICT",
+                    "current_version": int(current["version"]),
+                },
+            )
+
+        cur.execute(
+            """
+            UPDATE tb.worksites
+            SET status = 'TRASHED',
+                deleted_at = now(),
+                version = version + 1,
+                updated_at = now()
+            WHERE id = %s
+              AND version = %s
+              AND deleted_at IS NULL
+            RETURNING version, deleted_at
+            """,
+            (worksite_id, base_version),
+        )
+        deleted = cur.fetchone()
+        if not deleted:
+            raise HTTPException(
+                409,
+                {
+                    "code": "VERSION_CONFLICT",
+                    "current_version": int(current["version"]),
+                },
+            )
+        deleted = dict(deleted)
+
+        cur.execute(
+            """
+            INSERT INTO tb.deletion_tombstones(
+                company_id, worksite_id, entity_type, entity_id, deleted_by, deleted_at
+            )
+            VALUES (%s,%s,'WORKSITE',%s,%s,%s)
+            ON CONFLICT (entity_type, entity_id) DO NOTHING
+            """,
+            (
+                current["company_id"],
+                worksite_id,
+                worksite_id,
+                user["user_id"],
+                deleted["deleted_at"],
+            ),
+        )
+        emit_change(
+            cur,
+            company_id=current["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE",
+            entity_id=worksite_id,
+            operation="DELETE",
+            entity_version=deleted["version"],
+            actor_user_id=user["user_id"],
+        )
+        audit(
+            cur,
+            action="WORKSITE_DELETE",
+            actor_user_id=user["user_id"],
+            company_id=current["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE",
+            entity_id=worksite_id,
+            details={"worksite_name": current["name"]},
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_DELETE",
+            entity_id=worksite_id,
+            result_version=deleted["version"],
+            response_payload={
+                "deleted": True,
+                "worksite_id": str(worksite_id),
+            },
+        )
+    return Response(status_code=204)
 
 
 @router.get("/{worksite_id}/nodes")

@@ -17,6 +17,8 @@ CAPABILITIES: dict[str, bool] = {
     "release_binary_v1": True,
     "client_compatibility_v1": True,
     "worksite_tree_v1": True,
+    "worksite_provisioning_v1": True,
+    "worksite_delete_v1": True,
     "worksite_permissions_v1": True,
     "worksite_area_scope_v1": True,
     "worksite_teams_v1": True,
