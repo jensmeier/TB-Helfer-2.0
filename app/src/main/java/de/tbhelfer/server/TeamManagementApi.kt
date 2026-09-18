@@ -51,6 +51,19 @@ class TeamManagementApi(
         val groups: List<TeamGroup>
     )
 
+    data class WorksiteContext(
+        val worksiteId: String,
+        val name: String?,
+        val designation: String?,
+        val status: String?,
+        val groupId: String,
+        val memberRole: String,
+        val areaScopeJson: String,
+        val groupLabel: String?,
+        val leadUserId: String?,
+        val leadNameSnapshot: String?
+    )
+
     data class Invitation(
         val invitationId: String,
         val invitationType: String,
@@ -106,6 +119,13 @@ class TeamManagementApi(
         val mimeType: String?
     )
 
+    sealed interface WorksiteContextResult {
+        data class Success(val items: List<WorksiteContext>) : WorksiteContextResult
+        data object Unsupported : WorksiteContextResult
+        data object SessionInvalid : WorksiteContextResult
+        data class Error(val message: String) : WorksiteContextResult
+    }
+
     sealed interface TeamResult {
         data class Success(val team: TeamOverview) : TeamResult
         data object Unsupported : TeamResult
@@ -147,6 +167,128 @@ class TeamManagementApi(
         data object Unsupported : LogoResult
         data object SessionInvalid : LogoResult
         data class Error(val message: String) : LogoResult
+    }
+
+    fun loadWorksiteContexts(token: String): WorksiteContextResult {
+        return when (val capabilities = capabilitiesApi.load()) {
+            ServerCapabilitiesApi.Result.Unsupported -> WorksiteContextResult.Unsupported
+            is ServerCapabilitiesApi.Result.Error -> WorksiteContextResult.Error(capabilities.message)
+            is ServerCapabilitiesApi.Result.Success -> {
+                val supportsContext =
+                    capabilities.snapshot.supports("worksite_tree_v1") &&
+                        capabilities.snapshot.supports("worksite_permissions_v1")
+                if (!supportsContext) {
+                    WorksiteContextResult.Unsupported
+                } else {
+                    when (val modern = loadServerWorksiteContexts(token)) {
+                        WorksiteContextResult.Unsupported -> WorksiteContextResult.Error(
+                            "Server meldet Worksite-/Berechtigungs-Capabilities, der Server-1.0-Kontextvertrag ist aber nicht erreichbar."
+                        )
+                        else -> modern
+                    }
+                }
+            }
+        }
+    }
+
+    private fun loadServerWorksiteContexts(token: String): WorksiteContextResult {
+        return try {
+            val (meCode, meBody) = getAuthorized(token, "/api/v1/device/me")
+            when (meCode) {
+                HttpURLConnection.HTTP_NOT_FOUND -> return WorksiteContextResult.Unsupported
+                HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN ->
+                    return WorksiteContextResult.SessionInvalid
+                HttpURLConnection.HTTP_OK -> Unit
+                else -> return WorksiteContextResult.Error(errorMessage(meBody, meCode))
+            }
+            val currentUserId = runCatching { JSONObject(meBody) }
+                .getOrNull()
+                ?.optJSONObject("user")
+                ?.optString("id")
+                ?.trim()
+                .orEmpty()
+            if (currentUserId.isBlank()) {
+                return WorksiteContextResult.Error("Server lieferte keine Geräteidentität.")
+            }
+
+            val (worksitesCode, worksitesBody) = getAuthorized(token, "/api/v1/worksites")
+            when (worksitesCode) {
+                HttpURLConnection.HTTP_NOT_FOUND -> return WorksiteContextResult.Unsupported
+                HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN ->
+                    return WorksiteContextResult.SessionInvalid
+                HttpURLConnection.HTTP_OK -> Unit
+                else -> return WorksiteContextResult.Error(errorMessage(worksitesBody, worksitesCode))
+            }
+            val worksites = runCatching { JSONObject(worksitesBody) }
+                .getOrNull()
+                ?.optJSONArray("worksites")
+                ?: return WorksiteContextResult.Error("Server-Baustellen konnten nicht gelesen werden.")
+
+            val contexts = buildList {
+                for (index in 0 until worksites.length()) {
+                    val worksite = worksites.optJSONObject(index) ?: continue
+                    val worksiteId = worksite.optString("id").trim()
+                    if (worksiteId.isBlank()) continue
+
+                    val (membersCode, membersBody) = getAuthorized(
+                        token,
+                        "/api/v1/worksites/${encode(worksiteId)}/members"
+                    )
+                    when (membersCode) {
+                        HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN ->
+                            return WorksiteContextResult.SessionInvalid
+                        HttpURLConnection.HTTP_OK -> Unit
+                        else -> return WorksiteContextResult.Error(errorMessage(membersBody, membersCode))
+                    }
+
+                    val members = runCatching { JSONObject(membersBody) }
+                        .getOrNull()
+                        ?.optJSONArray("members")
+                        ?: JSONArray()
+                    var currentMember: JSONObject? = null
+                    for (memberIndex in 0 until members.length()) {
+                        val member = members.optJSONObject(memberIndex) ?: continue
+                        if (member.optString("user_id").trim() == currentUserId) {
+                            currentMember = member
+                            break
+                        }
+                    }
+
+                    val rawRole = currentMember?.optString("worksite_role")
+                        ?.trim()
+                        ?.uppercase()
+                        .orEmpty()
+                    val memberRole = when (rawRole) {
+                        "RESPONSIBLE_TB", "TB" -> "LEAD"
+                        "HELPER" -> "HELPER"
+                        "READ_ONLY" -> "READ_ONLY"
+                        else -> rawRole.ifBlank { "READ_ONLY" }
+                    }
+                    add(
+                        WorksiteContext(
+                            worksiteId = worksiteId,
+                            name = worksite.nullableString("name"),
+                            designation = worksite.nullableString("designation"),
+                            status = worksite.nullableString("status"),
+                            groupId = currentMember?.nullableString("team_id").orEmpty(),
+                            memberRole = memberRole,
+                            areaScopeJson = currentMember
+                                ?.optJSONObject("area_scope")
+                                ?.toString()
+                                ?: "{}",
+                            groupLabel = currentMember?.nullableString("team_name"),
+                            leadUserId = currentMember?.nullableString("lead_user_id"),
+                            leadNameSnapshot = currentMember?.nullableString("lead_name")
+                        )
+                    )
+                }
+            }
+            WorksiteContextResult.Success(contexts)
+        } catch (error: Exception) {
+            WorksiteContextResult.Error(
+                error.message ?: "Server-1.0-Baustellenkontext konnte nicht geladen werden."
+            )
+        }
     }
 
     fun loadTeam(token: String, worksiteId: String): TeamResult {
