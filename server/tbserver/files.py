@@ -17,7 +17,7 @@ from .config import settings
 from .database import transaction
 from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
-from .permissions import area_scope_allows, require_permission, worksite_context
+from .permissions import area_scope_allows, has_permission, require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 
 
@@ -106,6 +106,8 @@ def _entity_link_visible(
         return str(entity_id) == str(context["id"])
 
     if normalized == "BTB":
+        if not has_permission(context, "btb.view"):
+            return False
         cur.execute(
             "SELECT team_id, worksite_id, status FROM tb.btbs WHERE id = %s",
             (entity_id,),
@@ -126,6 +128,8 @@ def _entity_link_visible(
         return cur.fetchone() is not None
 
     if normalized == "DEFECT":
+        if not has_permission(context, "defect.view"):
+            return False
         cur.execute(
             """
             SELECT worksite_id, area_scope, status, deleted_at
@@ -144,6 +148,8 @@ def _entity_link_visible(
         )
 
     if normalized == "ACCEPTANCE":
+        if not has_permission(context, "acceptance.view"):
+            return False
         cur.execute(
             """
             SELECT worksite_id, area_scope, status, deleted_at
