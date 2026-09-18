@@ -610,7 +610,8 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 52 prüft den Android-Capability-Client sowie capability-gesteuerte Team-/Einladungsumschaltung ohne 0.6-/0.7-Versionsheuristik.
 - Source-Check 53 prüft den Server-1.0-Kontext-only-Pfad über Worksites/Device-Me/Members.
 - Source-Checks 54–56 härten Area-Scope, Datei-Elternsichtbarkeit und kanonisches Abnahme-Ergebnis.
-- Source-Check 57 prüft den capability-gesteuerten Android-Lesesync für Mängel/Abnahmen inklusive lokaler Snapshot-Übernahme.\n- Source-Check 58 prüft die idempotenten Android-Server-1.0-Schreibpfade für Mängel/Abnahmen, Outbox-Wiederverwendung, Konfliktzustände, endgültige Statusaktionen und die bewusste Trennung von BTB/Dateien.
+- Source-Check 57 prüft den capability-gesteuerten Android-Lesesync für Mängel/Abnahmen inklusive lokaler Snapshot-Übernahme.
+- Source-Check 58 prüft die idempotenten Android-Server-1.0-Schreibpfade für Mängel/Abnahmen, Outbox-Wiederverwendung, Konfliktzustände, endgültige Statusaktionen und die bewusste Trennung von BTB/Dateien.
 
 **Noch nicht ausgeführt:** Source-Checks 34–58 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
