@@ -148,7 +148,7 @@ class Server1FileApi(
     ): UploadResult {
         if (!file.isFile) return UploadResult.Error("Datei existiert nicht mehr: ${file.name}")
         val parentType = parentEntityType.uppercase()
-        if (parentType != "DEFECT" && parentType != "ACCEPTANCE") {
+        if (parentType != "DEFECT" && parentType != "ACCEPTANCE" && parentType != "BTB") {
             return UploadResult.Error("Server-1.0-Dateilinktyp wird nicht unterstützt: $parentType")
         }
 
@@ -421,7 +421,12 @@ class Server1FileApi(
                         for (index in 0 until links.length()) {
                             val link = links.optJSONObject(index) ?: continue
                             val type = link.optString("entity_type").trim().uppercase()
-                            if (type != "DEFECT" && type != "ACCEPTANCE") continue
+                            if (type != "DEFECT" && type != "ACCEPTANCE" && type != "BTB") continue
+                            if (type == "BTB") {
+                                val purpose = link.optString("purpose").trim().uppercase()
+                                val mime = file.nullableString("mime_type").orEmpty()
+                                if (purpose == "BTB_FINAL_PDF" || !mime.startsWith("image/", ignoreCase = true)) continue
+                            }
                             val entityId = link.optString("entity_id").trim()
                             if (entityId.isBlank()) continue
                             linked += LinkedFile(
@@ -511,6 +516,7 @@ class Server1FileApi(
     private fun targetKind(parentType: String, mimeType: String): String = when {
         parentType == "DEFECT" && mimeType.startsWith("image/", ignoreCase = true) -> "DEFECT_PHOTO"
         parentType == "ACCEPTANCE" && mimeType.startsWith("image/", ignoreCase = true) -> "ACCEPTANCE_PHOTO"
+        parentType == "BTB" && mimeType.startsWith("image/", ignoreCase = true) -> "PHOTO"
         else -> "ATTACHMENT"
     }
 

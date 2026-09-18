@@ -5,7 +5,7 @@ dao = (ROOT / "app/src/main/java/de/tbhelfer/datenbank/SyncDao.kt").read_text(en
 repo = (ROOT / "app/src/main/java/de/tbhelfer/datenbank/CollabSyncRepository.kt").read_text(encoding="utf-8")
 
 assert "suspend fun collabFachAttachments" in dao
-assert "parentEntityType IN ('DEFECT','ACCEPTANCE')" in dao
+assert "parentEntityType IN ('DEFECT','ACCEPTANCE','BTB')" in dao
 assert "suspend fun markCollabAttachmentDeleted" in dao
 assert "SET isDeleted = 1" in dao
 

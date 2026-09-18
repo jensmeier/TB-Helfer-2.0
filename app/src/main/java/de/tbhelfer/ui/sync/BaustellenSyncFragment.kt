@@ -318,6 +318,44 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                                 return SyncUiResult.Error(attachmentUpload.message)
                             is CollabLocalBridge.AttachmentUploadResult.Success -> Unit
                         }
+
+                        if (capabilities.supports("btb_live_sync_v1")) {
+                            val btbMedia = BtbTeamMediaSync(requireContext().applicationContext)
+                            when (val mediaResult = btbMedia.synchronize(token = token, server1Api = server1FileApi)) {
+                                BtbTeamMediaSync.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
+                                BtbTeamMediaSync.Result.Unsupported ->
+                                    return SyncUiResult.Error(
+                                        "Server meldet Datei-/BTB-Capabilities, der BTB-Fotovertrag ist aber nicht erreichbar."
+                                    )
+                                is BtbTeamMediaSync.Result.Error -> return SyncUiResult.Error(mediaResult.message)
+                                is BtbTeamMediaSync.Result.Success -> {
+                                    if (mediaResult.summary.uploaded > 0) {
+                                        when (val lifecycle = collab.synchronizeServer1BtbPending(token, server1BtbApi)) {
+                                            CollabSyncRepository.Server1BtbUploadResult.SessionInvalid ->
+                                                return SyncUiResult.SessionInvalid
+                                            CollabSyncRepository.Server1BtbUploadResult.Unsupported ->
+                                                return SyncUiResult.Error(
+                                                    "BTB-Fotos wurden übertragen, der Abschluss-Lifecycle ist aber nicht erreichbar."
+                                                )
+                                            is CollabSyncRepository.Server1BtbUploadResult.Success -> {
+                                                if (lifecycle.uploaded > 0) {
+                                                    when (val refresh = refreshServer1BtbSnapshots(token, contexts)) {
+                                                        null -> Unit
+                                                        else -> return refresh
+                                                    }
+                                                    runCatching { bridge.applyServerStateToLocal() }
+                                                        .getOrElse {
+                                                            return SyncUiResult.Error(
+                                                                it.message ?: "BTB-Abschluss nach Foto-Sync konnte lokal nicht bestätigt werden."
+                                                            )
+                                                        }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 return SyncUiResult.ContextOnly(bindings.contextsWithBindings())

@@ -183,7 +183,7 @@ interface SyncDao {
     @Query("SELECT * FROM sync_collab_attachment WHERE parentEntityId = :parentEntityId AND isDeleted = 0 ORDER BY updatedAtEpochMs")
     suspend fun collabAttachmentsForEntity(parentEntityId: String): List<SyncCollabAttachmentEntity>
 
-    @Query("SELECT * FROM sync_collab_attachment WHERE worksiteServerId = :worksiteServerId AND parentEntityType IN ('DEFECT','ACCEPTANCE') AND isDeleted = 0 ORDER BY updatedAtEpochMs")
+    @Query("SELECT * FROM sync_collab_attachment WHERE worksiteServerId = :worksiteServerId AND parentEntityType IN ('DEFECT','ACCEPTANCE','BTB') AND isDeleted = 0 ORDER BY updatedAtEpochMs")
     suspend fun collabFachAttachments(worksiteServerId: String): List<SyncCollabAttachmentEntity>
 
     @Query("UPDATE sync_collab_attachment SET isDeleted = 1, updatedAtEpochMs = :nowEpochMs WHERE serverId = :serverId")

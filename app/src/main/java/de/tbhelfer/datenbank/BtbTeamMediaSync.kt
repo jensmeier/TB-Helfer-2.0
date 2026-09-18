@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Base64
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.server.CollabSyncApi
+import de.tbhelfer.server.Server1FileApi
 import de.tbhelfer.ui.bautagebuch.BautagebuchEintrag
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbFotoZuordnungSpeicher
@@ -42,7 +43,11 @@ class BtbTeamMediaSync(context: Context) {
         data class Error(val message: String) : Result
     }
 
-    suspend fun synchronize(token: String, api: CollabSyncApi = CollabSyncApi()): Result {
+    suspend fun synchronize(
+        token: String,
+        api: CollabSyncApi = CollabSyncApi(),
+        server1Api: Server1FileApi? = null
+    ): Result {
         var uploaded = 0
         var present = 0
         var imported = 0
@@ -76,6 +81,7 @@ class BtbTeamMediaSync(context: Context) {
                             BtbFotoZuordnungSpeicher.btbId(appContext, foto.id) == null
                     }
                 }
+                var uploadedForBtb = 0
                 for (foto in btbFotos) {
                     val file = File(foto.dateipfad)
                     if (!file.exists() || !file.isFile) continue
@@ -89,16 +95,38 @@ class BtbTeamMediaSync(context: Context) {
                             file = file,
                             uploadFilename = uploadName,
                             mimeType = CollabSyncRepository.mimeTypeFor(file),
-                            api = api
+                            api = api,
+                            server1Api = server1Api
                         )
                     ) {
                         CollabSyncRepository.LocalAttachmentUploadResult.SessionInvalid -> return Result.SessionInvalid
                         CollabSyncRepository.LocalAttachmentUploadResult.Unsupported -> return Result.Unsupported
                         is CollabSyncRepository.LocalAttachmentUploadResult.Error -> return Result.Error(result.message)
                         is CollabSyncRepository.LocalAttachmentUploadResult.Success -> {
-                            if (result.uploaded) uploaded++ else present++
+                            if (result.uploaded) {
+                                uploaded++
+                                uploadedForBtb++
+                            } else present++
                         }
                     }
+                }
+                if (
+                    server1Api != null &&
+                    uploadedForBtb > 0 &&
+                    (v.entry.istFertig || v.entry.dokumentVersion > 0)
+                ) {
+                    collab.enqueueMutation(
+                        worksiteServerId = server.worksiteServerId,
+                        entityType = SyncCollabPendingChangeEntity.TYPE_BTB,
+                        operation = SyncCollabPendingChangeEntity.OP_UPSERT,
+                        serverId = parent.serverId,
+                        clientEntityKey = parent.clientEntityKey ?: key,
+                        baseVersion = parent.entityVersion,
+                        groupId = server.groupId,
+                        status = "FERTIG",
+                        areaScopeJson = "{}",
+                        payloadJson = parent.payloadJson
+                    )
                 }
             }
 

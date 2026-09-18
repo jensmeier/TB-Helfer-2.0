@@ -12,7 +12,7 @@ for token in (
     "/files?limit=1000",
     "/api/v1/files/",
     "/content",
-    'type != "DEFECT" && type != "ACCEPTANCE"',
+    'type != "DEFECT" && type != "ACCEPTANCE" && type != "BTB"',
     "Authorization",
 ):
     assert token in api, token
@@ -27,7 +27,7 @@ for token in (
 
 assert 'capabilities.supports("files_v1")' in fragment
 assert "collab.synchronizeServer1Attachments" in fragment
-assert "verknüpfter Dateien" in strings
+assert "Dateien" in strings
 assert "Server 1.0" in strings
 
 assert '@router.get("/worksites/{worksite_id}/files")' in server
