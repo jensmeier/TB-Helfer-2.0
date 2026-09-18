@@ -129,11 +129,17 @@ jobs:
               device_columns = {row["column_name"] for row in cur.fetchall()}
               cur.execute("SELECT indexname FROM pg_indexes WHERE schemaname='tb' AND tablename='devices'")
               device_indexes = {row["indexname"] for row in cur.fetchall()}
+              cur.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='tb' AND table_name='defects'")
+              defect_columns = {row["column_name"] for row in cur.fetchall()}
+              cur.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='tb' AND table_name='acceptances'")
+              acceptance_columns = {row["column_name"] for row in cur.fetchall()}
           missing = sorted(required - tables)
           assert not missing, missing
           assert {"auth_token_hash", "auth_token_hint"} <= device_columns, device_columns
           assert "devices_one_active_per_user_uq" in device_indexes, device_indexes
           assert "devices_auth_token_hash_uq" in device_indexes, device_indexes
+          assert "area_scope" in defect_columns, defect_columns
+          assert "area_scope" in acceptance_columns, acceptance_columns
           print("OK: core tables/migrations", len(tables))
           PY
 
@@ -194,6 +200,7 @@ jobs:
               "client_compatibility_v1",
               "worksite_tree_v1",
               "worksite_permissions_v1",
+              "worksite_area_scope_v1",
               "worksite_teams_v1",
               "btb_entries_v1",
               "btb_finalize_with_pdf_v1",
