@@ -86,6 +86,7 @@ jobs:
           python server/checks/48_verify_android_server_1_invitation_source.py
           python server/checks/49_verify_tb_server_1_restore_compose_overlay_source.py
           python server/checks/50_verify_android_server_1_invitation_create_source.py
+          python server/checks/51_verify_android_server_1_team_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server

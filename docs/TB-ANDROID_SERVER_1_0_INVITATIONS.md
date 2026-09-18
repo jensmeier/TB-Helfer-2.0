@@ -34,6 +34,27 @@ Body:
 
 Authentisierung erfolgt mit dem vorhandenen Geräte-Bearer. Der Server benötigt für Geräte-Bearer keinen Browser-CSRF-Header. Android sendet zusätzlich für diese Mutation eine eigene `X-Client-Change-Id`.
 
+## Teamdarstellung auf Server 1.0
+
+Damit die neuen Einladungsfunktionen nicht mehr vom alten `/api/v1/collab/.../team`-Endpunkt abhängen, lädt `TeamManagementApi.loadTeam()` jetzt zuerst den Server-1.0-Fachvertrag:
+
+- `GET /api/v1/worksites/{worksite_id}`;
+- `GET /api/v1/device/me`;
+- `GET /api/v1/worksites/{worksite_id}/members`;
+- `GET /api/v1/worksites/{worksite_id}/teams`.
+
+Aus diesen Antworten wird die bestehende Android-`TeamOverview` aufgebaut:
+
+- aktueller Gerätebenutzer über `device/me`;
+- aktuelle Baustellenrolle/Area-Scope aus der Membership;
+- eigenes Team über `team_id`;
+- aktive TB-Teams mit ihren Helfern aus Member-/Teamlisten;
+- `RESPONSIBLE_TB` und `TB` werden für die vorhandene UI als `LEAD` dargestellt.
+
+Nur wenn der moderne Baustellenvertrag nicht vorhanden ist (404 bzw. fehlende Server-1.0-Antwortstruktur), fällt `loadTeam()` auf den bisherigen Legacy-Collab-Teamendpunkt zurück.
+
+Damit kann die Personenwahl für neue Server-1.0-Einladungen auf einer reinen Server-1.0-Instanz tatsächlich angezeigt werden.
+
 ## Erzeugen auf Android
 
 Android versucht beim Erzeugen einer Baustelleneinladung jetzt zuerst den gezielten Server-1.0-Vertrag.
@@ -143,10 +164,12 @@ Zusätzlich prüfen
 `server/checks/48_verify_android_server_1_invitation_source.py`
 den gemeinsamen Server-/Android-Einlösevertrag und
 `server/checks/50_verify_android_server_1_invitation_create_source.py`
-die gezielte Kandidaten-/Create-Anbindung mit Legacy-Fallback statisch.
+die gezielte Kandidaten-/Create-Anbindung mit Legacy-Fallback und
+`server/checks/51_verify_android_server_1_team_source.py`
+den modernen Worksite-/Member-/Team-Aufbau mit begrenztem Legacy-Fallback statisch.
 
 ## Noch nicht Teil dieses Bausteins
 
-Das Erzeugen und Einlösen gezielter Server-1.0-Einladungen ist jetzt im Android-Quellstand angebunden. Noch nicht umgestellt sind die übrigen Baustellen-, Team-, BTB-, Datei- und Sync-Endpunkte; diese folgen erst nach bestandenem Server-Staging-/E2E-Test capability-gesteuert.
+Das Erzeugen und Einlösen gezielter Server-1.0-Einladungen sowie die Teamdarstellung aus den Server-1.0-Worksite-/Member-/Team-Endpunkten sind jetzt im Android-Quellstand angebunden. Noch nicht umgestellt sind die übrigen Baustellen-, BTB-, Datei- und Sync-Endpunkte; diese folgen erst nach bestandenem Server-Staging-/E2E-Test capability-gesteuert.
 
 Produktivserver/NAS werden durch diesen Android-Quellstand nicht verändert.

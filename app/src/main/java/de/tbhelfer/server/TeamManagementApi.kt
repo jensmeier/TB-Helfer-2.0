@@ -66,6 +66,15 @@ class TeamManagementApi(
         val companyRole: String?
     )
 
+    private data class ModernTeamMember(
+        val userId: String,
+        val name: String?,
+        val email: String?,
+        val worksiteRole: String,
+        val areaScopeJson: String,
+        val teamId: String?
+    )
+
     data class RedeemedInvitation(
         val worksiteId: String,
         val worksiteName: String?,
@@ -139,6 +148,154 @@ class TeamManagementApi(
     }
 
     fun loadTeam(token: String, worksiteId: String): TeamResult {
+        return when (val modern = loadServerTeam(token, worksiteId)) {
+            TeamResult.Unsupported -> loadLegacyTeam(token, worksiteId)
+            else -> modern
+        }
+    }
+
+    private fun loadServerTeam(token: String, worksiteId: String): TeamResult {
+        return try {
+            val (worksiteCode, worksiteBody) = getAuthorized(
+                token,
+                "/api/v1/worksites/${encode(worksiteId)}"
+            )
+            when (worksiteCode) {
+                HttpURLConnection.HTTP_NOT_FOUND -> return TeamResult.Unsupported
+                HttpURLConnection.HTTP_UNAUTHORIZED -> return TeamResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN -> return TeamResult.Error(
+                    detailMessage(worksiteBody).ifBlank { "Kein Zugriff auf die Baustelle." }
+                )
+                HttpURLConnection.HTTP_OK -> Unit
+                else -> return TeamResult.Error(errorMessage(worksiteBody, worksiteCode))
+            }
+            val worksiteRoot = runCatching { JSONObject(worksiteBody) }.getOrNull()
+                ?: return TeamResult.Unsupported
+            val worksite = worksiteRoot.optJSONObject("worksite")
+                ?: return TeamResult.Unsupported
+
+            val (meCode, meBody) = getAuthorized(token, "/api/v1/device/me")
+            when (meCode) {
+                HttpURLConnection.HTTP_NOT_FOUND -> return TeamResult.Unsupported
+                HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN ->
+                    return TeamResult.SessionInvalid
+                HttpURLConnection.HTTP_OK -> Unit
+                else -> return TeamResult.Error(errorMessage(meBody, meCode))
+            }
+            val currentUserId = runCatching { JSONObject(meBody) }
+                .getOrNull()
+                ?.optJSONObject("user")
+                ?.optString("id")
+                ?.trim()
+                .orEmpty()
+            if (currentUserId.isBlank()) {
+                return TeamResult.Error("Server lieferte keine Geräteidentität.")
+            }
+
+            val (membersCode, membersBody) = getAuthorized(
+                token,
+                "/api/v1/worksites/${encode(worksiteId)}/members"
+            )
+            if (membersCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
+                return TeamResult.SessionInvalid
+            }
+            if (membersCode != HttpURLConnection.HTTP_OK) {
+                return TeamResult.Error(errorMessage(membersBody, membersCode))
+            }
+
+            val (teamsCode, teamsBody) = getAuthorized(
+                token,
+                "/api/v1/worksites/${encode(worksiteId)}/teams"
+            )
+            if (teamsCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
+                return TeamResult.SessionInvalid
+            }
+            if (teamsCode != HttpURLConnection.HTTP_OK) {
+                return TeamResult.Error(errorMessage(teamsBody, teamsCode))
+            }
+
+            val membersArray = runCatching { JSONObject(membersBody) }
+                .getOrNull()
+                ?.optJSONArray("members")
+                ?: JSONArray()
+            val teamsArray = runCatching { JSONObject(teamsBody) }
+                .getOrNull()
+                ?.optJSONArray("teams")
+                ?: JSONArray()
+
+            val members = buildList {
+                for (index in 0 until membersArray.length()) {
+                    val item = membersArray.optJSONObject(index) ?: continue
+                    val userId = item.optString("user_id").trim()
+                    if (userId.isBlank()) continue
+                    add(
+                        ModernTeamMember(
+                            userId = userId,
+                            name = item.nullableString("display_name"),
+                            email = item.nullableString("personal_email"),
+                            worksiteRole = item.optString("worksite_role").uppercase(),
+                            areaScopeJson = item.optJSONObject("area_scope")?.toString() ?: "{}",
+                            teamId = item.nullableString("team_id")
+                        )
+                    )
+                }
+            }
+
+            val currentMember = members.firstOrNull { it.userId == currentUserId }
+            val groups = buildList {
+                for (index in 0 until teamsArray.length()) {
+                    val item = teamsArray.optJSONObject(index) ?: continue
+                    val teamId = item.optString("id").trim()
+                    if (teamId.isBlank()) continue
+                    val leadUserId = item.nullableString("lead_user_id")
+                    val leadName = item.nullableString("lead_name")
+                    val teamMembers = members
+                        .filter { it.teamId == teamId }
+                        .map { member ->
+                            TeamMember(
+                                userId = member.userId,
+                                name = member.name,
+                                email = member.email,
+                                memberRole = if (member.userId == leadUserId) "LEAD" else "HELPER",
+                                areaScopeJson = member.areaScopeJson
+                            )
+                        }
+                    add(
+                        TeamGroup(
+                            groupId = teamId,
+                            label = item.nullableString("name"),
+                            leadUserId = leadUserId,
+                            leadNameSnapshot = leadName,
+                            leadNameOrdinal = 0,
+                            leadDisplayName = leadName,
+                            members = teamMembers
+                        )
+                    )
+                }
+            }
+
+            val currentRole = when (currentMember?.worksiteRole) {
+                "RESPONSIBLE_TB", "TB" -> "LEAD"
+                "HELPER" -> "HELPER"
+                else -> currentMember?.worksiteRole ?: "READ_ONLY"
+            }
+            TeamResult.Success(
+                TeamOverview(
+                    worksiteId = worksite.optString("id").ifBlank { worksiteId },
+                    worksiteName = worksite.nullableString("name"),
+                    worksiteDesignation = worksite.nullableString("designation"),
+                    currentGroupId = currentMember?.teamId.orEmpty(),
+                    currentMemberRole = currentRole,
+                    currentAreaScopeJson = currentMember?.areaScopeJson ?: "{}",
+                    groups = groups
+                )
+            )
+        } catch (error: Exception) {
+            TeamResult.Error(error.message ?: "Server-1.0-Teamdaten konnten nicht geladen werden.")
+        }
+    }
+
+    private fun loadLegacyTeam(token: String, worksiteId: String): TeamResult {
         val connection = openConnection(
             "/api/v1/collab/worksites/${encode(worksiteId)}/team",
             "GET"
@@ -566,6 +723,17 @@ class TeamManagementApi(
             currentAreaScopeJson = root.jsonText("current_area_scope") ?: "{}",
             groups = groups
         )
+    }
+
+    private fun getAuthorized(token: String, path: String): Pair<Int, String> {
+        val connection = openConnection(path, "GET")
+        return try {
+            authorize(connection, token)
+            val code = connection.responseCode
+            code to readBody(connection, code)
+        } finally {
+            connection.disconnect()
+        }
     }
 
     private fun authorize(connection: HttpURLConnection, token: String) {
