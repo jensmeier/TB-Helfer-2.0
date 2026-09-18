@@ -100,6 +100,17 @@ def portal_worksites_page(
     )
 
 
+@router.get("/portal/v1/invitations/redeem")
+def portal_invitation_redeem_page(
+    request: Request,
+    user: dict[str, Any] = Depends(current_portal_session_user),
+):
+    return templates.TemplateResponse(
+        "v1_invitation_redeem.html",
+        {"request": request, "user": user},
+    )
+
+
 @router.get("/portal/v1/worksites/{worksite_id}")
 def portal_worksite_page(
     worksite_id: UUID,

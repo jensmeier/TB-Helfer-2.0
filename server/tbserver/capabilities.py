@@ -38,6 +38,7 @@ CAPABILITIES: dict[str, bool] = {
     "company_pdf_logo_layout_v1": True,
     "company_branding_admin_ui_v1": True,
     "portal_worksite_fach_ui_v1": True,
+    "worksite_invitations_v1": True,
 }
 
 

@@ -72,6 +72,7 @@ jobs:
           python server/checks/35_verify_tb_server_1_company_branding_source.py
           python server/checks/36_verify_tb_server_1_admin_web_source.py
           python server/checks/37_verify_tb_server_1_portal_fach_ui_source.py
+          python server/checks/38_verify_tb_server_1_worksite_invitations_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -182,6 +183,7 @@ jobs:
               "company_pdf_logo_layout_v1",
               "company_branding_admin_ui_v1",
               "portal_worksite_fach_ui_v1",
+              "worksite_invitations_v1",
               "btb_live_sync_v1",
               "files_v1",
               "chunk_upload_v1",

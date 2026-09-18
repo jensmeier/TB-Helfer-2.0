@@ -59,12 +59,13 @@ Verwendete Read-APIs:
 
 Aktuelle Schreibfunktionen:
 
-- Strukturelement anlegen;
+- Strukturelement anlegen, bearbeiten und löschen;
+- Rechteprofil/Bereich eines bereits vorhandenen Baustellenmitglieds ändern;
 - neuen Team-BTB starten;
-- Mangel anlegen;
-- Mangel schließen;
-- Abnahme anlegen;
-- Abnahme finalisieren.
+- Mangel anlegen, bearbeiten und schließen;
+- Abnahme anlegen, bearbeiten und finalisieren.
+
+Neue Mitglieder werden nicht frei per Direktzuordnung ergänzt. Dafür existiert jetzt der gezielte Server-1.0-Einladungsvertrag: gleicher Firmenkontext, Zielbenutzer vorab festgelegt, Einmalcode nur gehasht gespeichert und Annahme durch genau den eingeladenen Benutzer. Helfer werden bei Annahme dem Team des einladenden verantwortlichen TB zugeordnet; ein eingeladener TB/Verantwortlicher TB erhält sein eigenes Team.
 
 Wenn das effektive Rechteprofil eine Aktion nicht erlaubt, wird ihr Formular/Knopf nicht angeboten. Die API bleibt trotzdem die verbindliche zweite Schranke.
 
@@ -89,9 +90,11 @@ Die Oberfläche berücksichtigt den bestehenden Lebenszyklus:
 - nur der aktive Team-BTB ist normal bearbeitbar;
 - ein `FINALIZED`-BTB wird zuerst bewusst reaktiviert;
 - Reaktivieren allein macht das Abschluss-PDF noch nicht ungültig;
-- erst eine gespeicherte Kopf-/Eintragsänderung führt serverseitig zu `REWORK`;
+- erst eine gespeicherte Kopf-/Eintrags-/Fotoänderung führt serverseitig zu `REWORK`;
 - erneut abschließen nutzt das vorhandene Ein-PDF-/Originalmodell;
 - bei gültigem Abschluss wird das aktuelle PDF direkt angeboten.
+
+BTB-Fotos nutzen denselben resumierbaren Datei-/Chunkupload wie andere Clients. Der Browser berechnet SHA-256, überträgt in Server-Chunkgrößen und verknüpft beim Abschluss des Uploads mit `entity_type=BTB` / Purpose `BTB_PHOTO`. Der BTB-Detailendpunkt liefert nur öffentliche Foto-Metadaten und `/api/v1/files/{file_id}/content`, niemals interne Storage-Keys. Das Lösen eines Fotos entfernt nur die BTB-Verknüpfung; das Baustellenfoto bleibt erhalten.
 
 ## Idempotenz / Browser-Schreibzugriffe
 
@@ -130,11 +133,11 @@ Sie bedeutet, dass die Server-1.0-Weboberfläche mindestens Baustellenübersicht
 
 Die erste Fachoberfläche ist absichtlich kein zweiter Client mit eigener Fachlogik. Noch zu ergänzen:
 
-- Mitglied hinzufügen/verschieben und Rechteprofile bearbeiten;
-- bestehende Strukturknoten bearbeiten/löschen;
-- Mängel und Abnahmen vollständig bearbeiten, nicht nur erstellen/abschließen;
-- BTB-Fotoauswahl/-Upload in der Portaloberfläche;
+- Teamwechsel eines bereits vorhandenen Helfers zwischen verantwortlichen TBs über einen eigenen, nachvollziehbaren Fachvertrag;
+- QR-/Deep-Link-Darstellung für den vorhandenen Einmalcode zusätzlich zur Copy/Paste-Einlösung;
+- komfortablere Rechteprofil-/Bereichsauswahl statt Text-/JSON-Dialog;
 - spezialisierte statt generischer JSON-Fachformulare;
+- Foto-Metadaten-/Auswahlkomfort über den aktuellen Upload hinaus;
 - Systemstatus/Speicher/Background Jobs/Backup- und Restore-Oberfläche;
 - visuelle Endabnahme und mobile Browserdarstellung gegen den laufenden Testserver.
 

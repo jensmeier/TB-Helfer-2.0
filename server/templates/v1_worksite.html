@@ -42,6 +42,23 @@
   <div class="card">
     <h2>Mitglieder</h2>
     <div id="members">wird geladen …</div>
+    <div id="invitePanel" style="display:none">
+      <h3>Einladung erstellen</h3>
+      <p class="muted">Neue Zusammenarbeit beginnt erst nach Annahme der Einladung. Helfer werden dem Team des einladenden verantwortlichen TB zugeordnet.</p>
+      <form id="inviteForm" class="compact">
+        <label for="inviteUser">Benutzer</label><select id="inviteUser" required><option value="">wird geladen …</option></select>
+        <div class="grid">
+          <div><label for="inviteRole">Rolle</label><select id="inviteRole"><option value="HELPER">Helfer</option><option value="TB">TB</option><option value="RESPONSIBLE_TB">Verantwortlicher TB</option><option value="READ_ONLY">Nur Lesen</option></select></div>
+          <div><label for="inviteProfile">Rechteprofil</label><select id="inviteProfile"><option value="HELPER_STANDARD">Helfer Standard</option><option value="HELPER_EXTENDED">Helfer erweitert</option><option value="RESPONSIBLE_TB">Verantwortlicher TB</option><option value="READ_ONLY">Nur Lesen</option></select></div>
+          <div><label for="inviteDays">Gültig (Tage)</label><input id="inviteDays" type="number" min="1" max="30" value="7"></div>
+        </div>
+        <label for="inviteArea">Bereich (JSON)</label><textarea id="inviteArea" class="json" rows="3">{}</textarea>
+        <button type="submit">Einladung erzeugen</button>
+      </form>
+      <div id="inviteSecret"></div>
+      <h3 style="margin-top:16px">Einladungen</h3>
+      <div id="invitations"></div>
+    </div>
   </div>
 
   <div class="card">
@@ -111,22 +128,131 @@ async function loadNodes(){
   nodeData=result.data.nodes||[];
   const target=document.getElementById('nodes');
   target.innerHTML=nodeData.length?nodeData.map(function(n){
+    const actions=can('worksite.structure.edit')?'<div class="actions" style="margin-top:7px"><button type="button" onclick="editNode(\''+esc(n.id)+'\')">Bearbeiten</button><button class="danger" type="button" onclick="deleteNode(\''+esc(n.id)+'\')">Löschen</button></div>':'';
     return '<div class="item"><b>'+esc(n.node_kind)+'</b> · '+esc(n.name)+
       (n.route_number?'<div class="muted">Strecke '+esc(n.route_number)+'</div>':'')+
-      (n.track_key?'<div class="muted">Gleis '+esc(n.track_key)+'</div>':'')+'</div>';
+      (n.track_key?'<div class="muted">Gleis '+esc(n.track_key)+'</div>':'')+actions+'</div>';
   }).join(''):'<p class="muted">Noch keine Struktur angelegt.</p>';
   nodeOptions();
 }
+
+async function editNode(id){
+  const n=nodeData.find(function(item){return item.id===id;});if(!n)return;
+  const name=prompt('Name',n.name||'');if(name===null||!name.trim())return;
+  const route=prompt('Strecke (leer = keine)',n.route_number||'');if(route===null)return;
+  const track=prompt('Gleis-Schlüssel (leer = keiner)',n.track_key||'');if(track===null)return;
+  try{
+    await tbApi('/api/v1/worksites/'+worksiteId+'/nodes/'+encodeURIComponent(id),{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:name.trim(),route_number:route.trim()||null,track_key:track.trim()||null})
+    });
+    show('ok','Strukturelement gespeichert.');await loadNodes();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.editNode=editNode;
+async function deleteNode(id){
+  if(!confirm('Strukturelement wirklich löschen? Untergeordnete Daten können dadurch ihre Zuordnung verlieren.'))return;
+  try{
+    await tbApi('/api/v1/worksites/'+worksiteId+'/nodes/'+encodeURIComponent(id),{method:'DELETE'});
+    show('ok','Strukturelement gelöscht.');await loadNodes();await Promise.all([loadDefects(),loadAcceptances()]);
+  }catch(error){show('err',error.message||String(error));}
+}
+window.deleteNode=deleteNode;
+
 async function loadMembers(){
   const result=await tbApi('/api/v1/worksites/'+worksiteId+'/members');
   const data=result.data.members||[];
   document.getElementById('members').innerHTML=data.length?data.map(function(m){
+    const actions=can('members.manage')?'<div class="actions" style="margin-top:7px"><button type="button" onclick="editMemberPermissions(\''+esc(m.user_id)+'\')">Rechte ändern</button></div>':'';
     return '<div class="item"><b>'+esc(m.display_name)+'</b> <span class="pill">'+esc(m.worksite_role)+'</span>'+
       '<div class="muted">'+esc(m.permission_profile)+'</div>'+
       (m.personal_email?'<div>'+esc(m.personal_email)+'</div>':'')+
-      (m.personal_phone?'<div>'+esc(m.personal_phone)+'</div>':'')+'</div>';
+      (m.personal_phone?'<div>'+esc(m.personal_phone)+'</div>':'')+actions+'</div>';
   }).join(''):'<p class="muted">Keine Mitglieder.</p>';
 }
+
+async function editMemberPermissions(userId){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId+'/members');
+  const m=(result.data.members||[]).find(function(item){return item.user_id===userId;});if(!m)return;
+  const profile=prompt('Berechtigungsprofil',m.permission_profile||'HELPER_STANDARD');if(profile===null||!profile.trim())return;
+  const areaRaw=prompt('Bereich (JSON)',JSON.stringify(m.area_scope||{}));if(areaRaw===null)return;
+  try{
+    const area=JSON.parse(areaRaw||'{}');
+    await tbApi('/api/v1/worksites/'+worksiteId+'/members/'+encodeURIComponent(userId)+'/permissions',{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({permission_profile:profile.trim(),permissions_override:m.permissions_override||{},area_scope:area})
+    });
+    show('ok','Mitgliedsrechte gespeichert.');await loadMembers();await loadOverview();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.editMemberPermissions=editMemberPermissions;
+
+
+async function loadInviteData(){
+  const panel=document.getElementById('invitePanel');
+  if(!can('members.manage')){panel.style.display='none';return;}
+  panel.style.display='block';
+  try{
+    const results=await Promise.all([
+      tbApi('/api/v1/worksites/'+worksiteId+'/invite-candidates'),
+      tbApi('/api/v1/worksites/'+worksiteId+'/invitations')
+    ]);
+    const candidates=results[0].data.candidates||[];
+    document.getElementById('inviteUser').innerHTML='<option value="">Benutzer wählen</option>'+candidates.map(function(u){
+      return '<option value="'+esc(u.id)+'">'+esc(u.display_name)+(u.personal_email?' · '+esc(u.personal_email):'')+'</option>';
+    }).join('');
+    const invitations=results[1].data.invitations||[];
+    document.getElementById('invitations').innerHTML=invitations.length?invitations.map(function(inv){
+      const revoke=inv.status==='OPEN'?'<button class="danger" type="button" onclick="revokeInvitation(\\''+esc(inv.id)+'\\')">Widerrufen</button>':'';
+      return '<div class="item"><b>'+esc(inv.invited_name)+'</b> <span class="pill">'+esc(inv.worksite_role)+'</span> <span class="pill">'+esc(inv.status)+'</span>'+
+        '<div class="muted">Profil '+esc(inv.permission_profile)+' · gültig bis '+esc(new Date(inv.expires_at).toLocaleString('de-DE'))+'</div>'+
+        '<div class="actions" style="margin-top:7px">'+revoke+'</div></div>';
+    }).join(''):'<p class="muted">Keine Einladungen.</p>';
+  }catch(error){show('err',error.message||String(error));}
+}
+async function revokeInvitation(id){
+  try{
+    await tbApi('/api/v1/worksites/'+worksiteId+'/invitations/'+encodeURIComponent(id)+'/revoke',{method:'POST'});
+    show('ok','Einladung widerrufen.');await loadInviteData();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.revokeInvitation=revokeInvitation;
+document.getElementById('inviteRole').addEventListener('change',function(){
+  const map={HELPER:'HELPER_STANDARD',TB:'RESPONSIBLE_TB',RESPONSIBLE_TB:'RESPONSIBLE_TB',READ_ONLY:'READ_ONLY'};
+  document.getElementById('inviteProfile').value=map[this.value]||'HELPER_STANDARD';
+});
+document.getElementById('inviteForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  try{
+    const area=JSON.parse(document.getElementById('inviteArea').value.trim()||'{}');
+    const result=await tbApi('/api/v1/worksites/'+worksiteId+'/invitations',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        invited_user_id:document.getElementById('inviteUser').value,
+        worksite_role:document.getElementById('inviteRole').value,
+        permission_profile:document.getElementById('inviteProfile').value,
+        permissions_override:{},area_scope:area,
+        expires_days:Number(document.getElementById('inviteDays').value)||7
+      })
+    });
+    const token=result.data.invite_token;
+    const box=document.getElementById('inviteSecret');
+    if(token){
+      box.className='notice info';
+      box.innerHTML='<b>Einladungscode – nur jetzt kopieren:</b><br><code id="inviteTokenValue">'+esc(token)+'</code> <button type="button" onclick="copyInviteToken()">Kopieren</button>';
+    }else{
+      box.className='notice info';
+      box.textContent='Diese Anfrage wurde bereits verarbeitet. Der geheime Einladungscode wird aus Sicherheitsgründen nicht erneut aus dem Server-Speicher ausgegeben. Bitte bei Bedarf die Einladung widerrufen und neu erzeugen.';
+    }
+    show('ok','Einladung erstellt.');await loadInviteData();
+  }catch(error){show('err',error.message||String(error));}
+});
+async function copyInviteToken(){
+  const el=document.getElementById('inviteTokenValue');if(!el)return;
+  try{await navigator.clipboard.writeText(el.textContent);show('ok','Einladungscode kopiert.');}
+  catch(_){show('err','Code konnte nicht automatisch kopiert werden. Bitte manuell markieren.');}
+}
+window.copyInviteToken=copyInviteToken;
+
 async function loadTeams(){
   const result=await tbApi('/api/v1/worksites/'+worksiteId+'/teams');
   teamData=result.data.teams||[];
@@ -166,12 +292,29 @@ async function loadDefects(){
   const result=await tbApi('/api/v1/worksites/'+worksiteId+'/defects');
   const data=result.data.defects||[];
   document.getElementById('defects').innerHTML=data.length?data.map(function(d){
+    const edit=can('defect.edit')&&d.status!=='CLOSED'?'<button type="button" onclick="editDefect(\''+esc(d.id)+'\','+Number(d.version)+')">Bearbeiten</button>':'';
     const close=can('defect.close')&&d.status!=='CLOSED'?'<button type="button" onclick="closeDefect(\''+esc(d.id)+'\','+Number(d.version)+')">Schließen</button>':'';
     return '<div class="item '+(d.status==='CLOSED'?'status-done':'status-open')+'"><b>'+esc(d.title||'Mangel')+'</b> <span class="pill">'+esc(d.status)+'</span>'+
       '<div class="muted">'+esc(nodeName(d.worksite_node_id))+' · Version '+esc(d.version)+'</div>'+
-      '<pre class="json">'+esc(JSON.stringify(d.payload||{},null,2))+'</pre><div class="actions">'+close+'</div></div>';
+      '<pre class="json">'+esc(JSON.stringify(d.payload||{},null,2))+'</pre><div class="actions">'+edit+close+'</div></div>';
   }).join(''):'<p class="muted">Keine Mängel.</p>';
 }
+
+async function editDefect(id,version){
+  try{
+    const current=await tbApi('/api/v1/defects/'+encodeURIComponent(id));const d=current.data;
+    const title=prompt('Titel',d.title||'');if(title===null)return;
+    const raw=prompt('Details (JSON)',JSON.stringify(d.payload||{},null,2));if(raw===null)return;
+    const status=prompt('Status: OPEN oder IN_PROGRESS',d.status||'OPEN');if(status===null)return;
+    await tbApi('/api/v1/defects/'+encodeURIComponent(id),{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({base_version:Number(d.version),title:title.trim()||null,payload:JSON.parse(raw||'{}'),status:status.trim().toUpperCase()})
+    });
+    show('ok','Mangel gespeichert.');await loadDefects();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.editDefect=editDefect;
+
 async function closeDefect(id,version){
   try{
     await tbApi('/api/v1/defects/'+encodeURIComponent(id)+'/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_version:version})});
@@ -183,12 +326,29 @@ async function loadAcceptances(){
   const result=await tbApi('/api/v1/worksites/'+worksiteId+'/acceptances');
   const data=result.data.acceptances||[];
   document.getElementById('acceptances').innerHTML=data.length?data.map(function(a){
+    const edit=can('acceptance.edit')&&a.status!=='FINALIZED'?'<button type="button" onclick="editAcceptance(\''+esc(a.id)+'\','+Number(a.version)+')">Bearbeiten</button>':'';
     const finalize=can('acceptance.finalize')&&a.status!=='FINALIZED'?'<button type="button" onclick="finalizeAcceptance(\''+esc(a.id)+'\','+Number(a.version)+')">Finalisieren</button>':'';
     return '<div class="item '+(a.status==='FINALIZED'?'status-done':'status-open')+'"><b>'+esc(a.title||'Abnahme')+'</b> <span class="pill">'+esc(a.status)+'</span>'+
       '<div class="muted">'+esc(nodeName(a.worksite_node_id))+' · Version '+esc(a.version)+'</div>'+
-      '<pre class="json">'+esc(JSON.stringify(a.payload||{},null,2))+'</pre><div class="actions">'+finalize+'</div></div>';
+      '<pre class="json">'+esc(JSON.stringify(a.payload||{},null,2))+'</pre><div class="actions">'+edit+finalize+'</div></div>';
   }).join(''):'<p class="muted">Keine Abnahmen.</p>';
 }
+
+async function editAcceptance(id,version){
+  try{
+    const current=await tbApi('/api/v1/acceptances/'+encodeURIComponent(id));const a=current.data;
+    const title=prompt('Titel',a.title||'');if(title===null)return;
+    const raw=prompt('Details (JSON)',JSON.stringify(a.payload||{},null,2));if(raw===null)return;
+    const status=prompt('Status: OPEN oder IN_PROGRESS',a.status||'OPEN');if(status===null)return;
+    await tbApi('/api/v1/acceptances/'+encodeURIComponent(id),{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({base_version:Number(a.version),title:title.trim()||null,payload:JSON.parse(raw||'{}'),status:status.trim().toUpperCase()})
+    });
+    show('ok','Abnahme gespeichert.');await loadAcceptances();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.editAcceptance=editAcceptance;
+
 async function finalizeAcceptance(id,version){
   try{
     await tbApi('/api/v1/acceptances/'+encodeURIComponent(id)+'/finalize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_version:version})});
@@ -236,7 +396,7 @@ document.getElementById('acceptanceForm').addEventListener('submit',async functi
   try{
     await loadOverview();
     await loadNodes();
-    await Promise.all([loadMembers(),loadTeams(),loadDefects(),loadAcceptances()]);
+    await Promise.all([loadMembers(),loadInviteData(),loadTeams(),loadDefects(),loadAcceptances()]);
   }catch(error){show('err',error.message||String(error));}
 })();
 </script>

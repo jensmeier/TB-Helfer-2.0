@@ -306,9 +306,26 @@ def get_btb(
             (btb_id,),
         )
         entries = cur.fetchall()
+        photo_files = load_btb_photo_files(cur, btb_id)
+        photos = [
+            {
+                "id": row["id"],
+                "original_name": row.get("original_name"),
+                "mime_type": row.get("mime_type"),
+                "byte_size": row.get("byte_size"),
+                "sha256": row.get("sha256"),
+                "captured_at": row.get("captured_at"),
+                "gps_lat": row.get("gps_lat"),
+                "gps_lon": row.get("gps_lon"),
+                "gps_accuracy_m": row.get("gps_accuracy_m"),
+                "purpose": row.get("purpose"),
+                "content_url": f"/api/v1/files/{row['id']}/content",
+            }
+            for row in photo_files
+        ]
         pdf_file = load_final_pdf(cur, btb_id) if btb["status"] == "FINALIZED" else None
         final_pdf = public_final_pdf(pdf_file, btb_id=btb_id) if pdf_file else None
-    return {"btb": btb, "entries": entries, "final_pdf": final_pdf}
+    return {"btb": btb, "entries": entries, "photos": photos, "final_pdf": final_pdf}
 
 
 @router.patch("/btbs/{btb_id}/header")

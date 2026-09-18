@@ -1,0 +1,33 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Einladung einlösen{% endblock %}
+{% block content %}
+<div class="card" style="max-width:760px">
+  <h1>Baustelleneinladung einlösen</h1>
+  <p class="muted">Der Einladungscode ist einmalig und wird serverseitig nur gehasht gespeichert. Die Zusammenarbeit beginnt erst nach erfolgreicher Annahme.</p>
+  <div id="msg"></div>
+  <form id="redeemForm">
+    <label for="token">Einladungscode</label>
+    <textarea id="token" rows="4" required placeholder="Einladungscode hier einfügen"></textarea>
+    <div class="actions" style="margin-top:12px"><button type="submit">Einladung annehmen</button></div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const msg=document.getElementById('msg');
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+document.getElementById('redeemForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  const token=document.getElementById('token').value.trim();
+  if(!token){show('err','Bitte Einladungscode einfügen.');return;}
+  try{
+    const result=await tbApi('/api/v1/worksites/invitations/redeem',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:token})
+    });
+    document.getElementById('token').value='';
+    show('ok','Einladung angenommen. Baustelle wird geöffnet …');
+    setTimeout(function(){location.href='/portal/v1/worksites/'+encodeURIComponent(result.data.worksite_id);},450);
+  }catch(error){show('err',error.message||String(error));}
+});
+</script>
+{% endblock %}

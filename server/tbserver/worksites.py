@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
 from .permissions import require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
+from .security import hash_token, random_token
 
 
 router = APIRouter(prefix="/api/v1/worksites", tags=["worksites"])
@@ -58,6 +60,19 @@ class MemberPermissionsUpdate(BaseModel):
     permission_profile: str
     permissions_override: dict = Field(default_factory=dict)
     area_scope: dict | None = None
+
+
+class WorksiteInvitationCreate(BaseModel):
+    invited_user_id: UUID
+    worksite_role: str = Field(default="HELPER")
+    permission_profile: str = Field(default="HELPER_STANDARD")
+    permissions_override: dict = Field(default_factory=dict)
+    area_scope: dict = Field(default_factory=dict)
+    expires_days: int = Field(default=7, ge=1, le=30)
+
+
+class WorksiteInvitationRedeem(BaseModel):
+    token: str = Field(min_length=24, max_length=500)
 
 
 def _company_for_create(cur, user: dict[str, Any], requested: UUID | None) -> UUID:
@@ -710,3 +725,445 @@ def list_teams(
         )
         rows = cur.fetchall()
     return {"teams": rows}
+
+
+@router.get("/{worksite_id}/invite-candidates")
+def list_invite_candidates(
+    worksite_id: UUID,
+    user: dict[str, Any] = Depends(current_portal_user),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "members.manage")
+        cur.execute(
+            """
+            SELECT u.id, u.display_name, u.personal_email, u.personal_phone, u.company_role
+            FROM tb.users u
+            WHERE u.company_id = %s
+              AND u.status = 'ACTIVE'
+              AND u.deleted_at IS NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM tb.worksite_memberships m
+                  WHERE m.worksite_id = %s
+                    AND m.user_id = u.id
+                    AND m.status = 'ACTIVE'
+              )
+            ORDER BY lower(u.display_name), u.id
+            """,
+            (context["company_id"], worksite_id),
+        )
+        rows = [dict(row) for row in cur.fetchall()]
+    return {"candidates": rows}
+
+
+@router.get("/{worksite_id}/invitations")
+def list_worksite_invitations(
+    worksite_id: UUID,
+    user: dict[str, Any] = Depends(current_portal_user),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "members.manage")
+        cur.execute(
+            """
+            SELECT i.id, i.invited_user_id, u.display_name AS invited_name,
+                   i.worksite_role, i.permission_profile, i.permissions_override,
+                   i.area_scope, i.invited_by, inviter.display_name AS invited_by_name,
+                   i.created_at, i.expires_at, i.accepted_at, i.revoked_at,
+                   CASE
+                     WHEN i.accepted_at IS NOT NULL THEN 'ACCEPTED'
+                     WHEN i.revoked_at IS NOT NULL THEN 'REVOKED'
+                     WHEN i.expires_at <= now() THEN 'EXPIRED'
+                     ELSE 'OPEN'
+                   END AS status
+            FROM tb.worksite_invitations i
+            JOIN tb.users u ON u.id = i.invited_user_id
+            JOIN tb.users inviter ON inviter.id = i.invited_by
+            WHERE i.worksite_id = %s
+            ORDER BY i.created_at DESC
+            LIMIT 200
+            """,
+            (worksite_id,),
+        )
+        rows = [dict(row) for row in cur.fetchall()]
+    return {"invitations": rows}
+
+
+@router.post("/{worksite_id}/invitations", status_code=201)
+def create_worksite_invitation(
+    worksite_id: UUID,
+    payload: WorksiteInvitationCreate,
+    user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    role = payload.worksite_role.strip().upper()
+    if role not in {"RESPONSIBLE_TB", "TB", "HELPER", "READ_ONLY"}:
+        raise HTTPException(400, "INVALID_WORKSITE_ROLE")
+    raw_token = random_token(32)
+    token_hash = hash_token(raw_token)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=payload.expires_days)
+
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_INVITATION_CREATE",
+        )
+        if receipt:
+            replay = replay_payload(receipt) or {}
+            return {
+                **replay,
+                "invite_token": None,
+                "token_replay_unavailable": True,
+            }
+        context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "members.manage")
+
+        cur.execute(
+            """
+            SELECT id, company_id, display_name, status, deleted_at
+            FROM tb.users
+            WHERE id = %s
+            """,
+            (payload.invited_user_id,),
+        )
+        target = cur.fetchone()
+        if (
+            not target
+            or target["deleted_at"] is not None
+            or target["status"] != "ACTIVE"
+            or target["company_id"] != context["company_id"]
+        ):
+            raise HTTPException(400, "INVITEE_COMPANY_MISMATCH")
+
+        cur.execute(
+            """
+            SELECT 1
+            FROM tb.worksite_memberships
+            WHERE worksite_id = %s AND user_id = %s AND status = 'ACTIVE'
+            """,
+            (worksite_id, payload.invited_user_id),
+        )
+        if cur.fetchone():
+            raise HTTPException(409, "ALREADY_WORKSITE_MEMBER")
+
+        cur.execute(
+            "SELECT profile_key FROM tb.permission_profiles WHERE profile_key = %s",
+            (payload.permission_profile,),
+        )
+        if not cur.fetchone():
+            raise HTTPException(400, "PERMISSION_PROFILE_INVALID")
+
+        if role == "HELPER":
+            cur.execute(
+                """
+                SELECT id
+                FROM tb.teams
+                WHERE worksite_id = %s
+                  AND lead_user_id = %s
+                  AND status = 'ACTIVE'
+                """,
+                (worksite_id, user["user_id"]),
+            )
+            if not cur.fetchone():
+                raise HTTPException(409, "HELPER_INVITER_TEAM_REQUIRED")
+
+        cur.execute(
+            """
+            INSERT INTO tb.worksite_invitations(
+                worksite_id, invited_user_id, token_hash, worksite_role,
+                permission_profile, permissions_override, area_scope,
+                invited_by, expires_at
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            RETURNING id, worksite_id, invited_user_id, worksite_role,
+                      permission_profile, area_scope, created_at, expires_at
+            """,
+            (
+                worksite_id,
+                payload.invited_user_id,
+                token_hash,
+                role,
+                payload.permission_profile,
+                payload.permissions_override,
+                payload.area_scope,
+                user["user_id"],
+                expires_at,
+            ),
+        )
+        row = dict(cur.fetchone())
+        audit(
+            cur,
+            action="WORKSITE_INVITATION_CREATE",
+            actor_user_id=user["user_id"],
+            company_id=context["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE_INVITATION",
+            entity_id=row["id"],
+            details={
+                "invited_user_id": str(payload.invited_user_id),
+                "worksite_role": role,
+                "expires_at": expires_at.isoformat(),
+            },
+        )
+        receipt_response = {
+            **row,
+            "invite_token": None,
+            "token_replay_unavailable": True,
+        }
+        response = {
+            **row,
+            "invite_token": raw_token,
+            "token_replay_unavailable": False,
+        }
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_INVITATION_CREATE",
+            entity_id=row["id"],
+            result_version=None,
+            response_payload=receipt_response,
+        )
+    return response
+
+
+@router.post("/{worksite_id}/invitations/{invitation_id}/revoke")
+def revoke_worksite_invitation(
+    worksite_id: UUID,
+    invitation_id: UUID,
+    user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_INVITATION_REVOKE",
+        )
+        if receipt:
+            return replay_payload(receipt)
+        context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "members.manage")
+        cur.execute(
+            """
+            SELECT id, accepted_at, revoked_at
+            FROM tb.worksite_invitations
+            WHERE id = %s AND worksite_id = %s
+            FOR UPDATE
+            """,
+            (invitation_id, worksite_id),
+        )
+        invitation = cur.fetchone()
+        if not invitation:
+            raise HTTPException(404, "WORKSITE_INVITATION_NOT_FOUND")
+        if invitation["accepted_at"] is not None:
+            raise HTTPException(409, "WORKSITE_INVITATION_ALREADY_ACCEPTED")
+        if invitation["revoked_at"] is None:
+            cur.execute(
+                "UPDATE tb.worksite_invitations SET revoked_at = now() WHERE id = %s",
+                (invitation_id,),
+            )
+        response = {"id": invitation_id, "status": "REVOKED"}
+        audit(
+            cur,
+            action="WORKSITE_INVITATION_REVOKE",
+            actor_user_id=user["user_id"],
+            company_id=context["company_id"],
+            worksite_id=worksite_id,
+            entity_type="WORKSITE_INVITATION",
+            entity_id=invitation_id,
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_INVITATION_REVOKE",
+            entity_id=invitation_id,
+            result_version=None,
+            response_payload=response,
+        )
+    return response
+
+
+@router.post("/invitations/redeem")
+def redeem_worksite_invitation(
+    payload: WorksiteInvitationRedeem,
+    user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    token_hash = hash_token(payload.token.strip())
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_INVITATION_REDEEM",
+        )
+        if receipt:
+            return replay_payload(receipt)
+        cur.execute(
+            """
+            SELECT i.*, w.company_id, w.status AS worksite_status, w.deleted_at AS worksite_deleted_at
+            FROM tb.worksite_invitations i
+            JOIN tb.worksites w ON w.id = i.worksite_id
+            WHERE i.token_hash = %s
+            FOR UPDATE OF i
+            """,
+            (token_hash,),
+        )
+        invitation = cur.fetchone()
+        if not invitation:
+            raise HTTPException(400, "WORKSITE_INVITATION_INVALID")
+        invitation = dict(invitation)
+        if invitation["revoked_at"] is not None:
+            raise HTTPException(409, "WORKSITE_INVITATION_REVOKED")
+        if invitation["accepted_at"] is not None:
+            raise HTTPException(409, "WORKSITE_INVITATION_ALREADY_ACCEPTED")
+        if invitation["expires_at"] <= datetime.now(timezone.utc):
+            raise HTTPException(410, "WORKSITE_INVITATION_EXPIRED")
+        if invitation["worksite_deleted_at"] is not None or invitation["worksite_status"] != "ACTIVE":
+            raise HTTPException(409, "WORKSITE_NOT_ACTIVE")
+        if invitation["invited_user_id"] != user["user_id"]:
+            raise HTTPException(403, "WORKSITE_INVITATION_WRONG_USER")
+        if invitation["company_id"] != user["company_id"]:
+            raise HTTPException(403, "WORKSITE_INVITATION_COMPANY_MISMATCH")
+
+        cur.execute(
+            """
+            INSERT INTO tb.worksite_memberships(
+                worksite_id, user_id, worksite_role, permission_profile,
+                permissions_override, area_scope, invited_by
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (worksite_id, user_id) DO UPDATE
+            SET worksite_role = excluded.worksite_role,
+                permission_profile = excluded.permission_profile,
+                permissions_override = excluded.permissions_override,
+                area_scope = excluded.area_scope,
+                permissions_version = tb.worksite_memberships.permissions_version + 1,
+                status = 'ACTIVE',
+                removed_at = NULL,
+                updated_at = now()
+            RETURNING *
+            """,
+            (
+                invitation["worksite_id"],
+                user["user_id"],
+                invitation["worksite_role"],
+                invitation["permission_profile"],
+                invitation["permissions_override"],
+                invitation["area_scope"],
+                invitation["invited_by"],
+            ),
+        )
+        membership = dict(cur.fetchone())
+        role = invitation["worksite_role"]
+        team_id = None
+
+        if role in {"RESPONSIBLE_TB", "TB"}:
+            cur.execute(
+                """
+                INSERT INTO tb.teams(worksite_id, lead_user_id, name)
+                VALUES (%s,%s,%s)
+                ON CONFLICT (worksite_id, lead_user_id) DO UPDATE
+                SET status = 'ACTIVE', updated_at = now()
+                RETURNING id
+                """,
+                (
+                    invitation["worksite_id"],
+                    user["user_id"],
+                    user["display_name"],
+                ),
+            )
+            team_id = cur.fetchone()["id"]
+            cur.execute(
+                """
+                INSERT INTO tb.team_members(team_id, user_id, role)
+                VALUES (%s,%s,'LEAD')
+                ON CONFLICT (team_id, user_id)
+                DO UPDATE SET role = 'LEAD', removed_at = NULL
+                """,
+                (team_id, user["user_id"]),
+            )
+        elif role == "HELPER":
+            cur.execute(
+                """
+                SELECT id
+                FROM tb.teams
+                WHERE worksite_id = %s
+                  AND lead_user_id = %s
+                  AND status = 'ACTIVE'
+                """,
+                (invitation["worksite_id"], invitation["invited_by"]),
+            )
+            team = cur.fetchone()
+            if not team:
+                raise HTTPException(409, "WORKSITE_INVITATION_TEAM_NO_LONGER_AVAILABLE")
+            team_id = team["id"]
+            cur.execute(
+                """
+                UPDATE tb.team_members tm
+                SET removed_at = now()
+                FROM tb.teams t
+                WHERE tm.team_id = t.id
+                  AND t.worksite_id = %s
+                  AND tm.user_id = %s
+                  AND tm.removed_at IS NULL
+                """,
+                (invitation["worksite_id"], user["user_id"]),
+            )
+            cur.execute(
+                """
+                INSERT INTO tb.team_members(team_id, user_id, role)
+                VALUES (%s,%s,'HELPER')
+                ON CONFLICT (team_id, user_id)
+                DO UPDATE SET role = 'HELPER', removed_at = NULL
+                """,
+                (team_id, user["user_id"]),
+            )
+
+        cur.execute(
+            "UPDATE tb.worksite_invitations SET accepted_at = now() WHERE id = %s",
+            (invitation["id"],),
+        )
+        emit_change(
+            cur,
+            company_id=invitation["company_id"],
+            worksite_id=invitation["worksite_id"],
+            entity_type="WORKSITE_MEMBERSHIP",
+            entity_id=membership["id"],
+            operation="UPSERT",
+            entity_version=membership["permissions_version"],
+            actor_user_id=user["user_id"],
+        )
+        audit(
+            cur,
+            action="WORKSITE_INVITATION_REDEEM",
+            actor_user_id=user["user_id"],
+            company_id=invitation["company_id"],
+            worksite_id=invitation["worksite_id"],
+            entity_type="WORKSITE_INVITATION",
+            entity_id=invitation["id"],
+            details={
+                "worksite_role": role,
+                "team_id": str(team_id) if team_id else None,
+            },
+        )
+        response = {
+            "worksite_id": invitation["worksite_id"],
+            "membership": membership,
+            "team_id": team_id,
+        }
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_INVITATION_REDEEM",
+            entity_id=membership["id"],
+            result_version=membership["permissions_version"],
+            response_payload=response,
+        )
+    return response
+
