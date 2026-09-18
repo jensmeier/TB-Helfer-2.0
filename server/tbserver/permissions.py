@@ -177,9 +177,11 @@ def worksite_context(cur, user: dict[str, Any], worksite_id: UUID | str) -> dict
     return result
 
 
-def require_permission(context: dict[str, Any], permission: str) -> None:
+def has_permission(context: dict[str, Any], permission: str) -> bool:
     permissions = context.get("effective_permissions") or {}
-    if permissions.get("*") is True:
-        return
-    if permissions.get(permission) is not True:
+    return permissions.get("*") is True or permissions.get(permission) is True
+
+
+def require_permission(context: dict[str, Any], permission: str) -> None:
+    if not has_permission(context, permission):
         raise HTTPException(403, f"PERMISSION_REQUIRED:{permission}")
