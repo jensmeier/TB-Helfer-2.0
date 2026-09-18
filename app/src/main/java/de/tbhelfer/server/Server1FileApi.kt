@@ -4,10 +4,14 @@ import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.io.File
+import java.io.FileInputStream
+import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 
 /**
  * Read side of the canonical Server-1.0 file contract.
@@ -34,6 +38,20 @@ class Server1FileApi(
         val bytes: ByteArray,
         val mimeType: String?
     )
+
+    data class UploadedFile(
+        val fileId: String,
+        val sizeBytes: Long,
+        val sha256: String?,
+        val mimeType: String?
+    )
+
+    sealed interface UploadResult {
+        data class Success(val file: UploadedFile) : UploadResult
+        data object Unsupported : UploadResult
+        data object SessionInvalid : UploadResult
+        data class Error(val message: String) : UploadResult
+    }
 
     sealed interface ListResult {
         data class Success(val files: List<LinkedFile>) : ListResult
@@ -118,6 +136,262 @@ class Server1FileApi(
         }
     }
 
+    fun uploadLinkedFile(
+        token: String,
+        worksiteId: String,
+        parentEntityType: String,
+        parentEntityId: String,
+        filename: String,
+        mimeType: String,
+        file: File,
+        sha256: String
+    ): UploadResult {
+        if (!file.isFile) return UploadResult.Error("Datei existiert nicht mehr: ${file.name}")
+        val parentType = parentEntityType.uppercase()
+        if (parentType != "DEFECT" && parentType != "ACCEPTANCE") {
+            return UploadResult.Error("Server-1.0-Dateilinktyp wird nicht unterstützt: $parentType")
+        }
+
+        val createChangeId = mutationId(
+            "file-create",
+            worksiteId,
+            parentType,
+            parentEntityId,
+            filename,
+            sha256
+        )
+        val createBody = JSONObject()
+            .put("target_kind", targetKind(parentType, mimeType))
+            .put("original_name", filename)
+            .put("mime_type", mimeType)
+            .put("expected_bytes", file.length())
+            .put("expected_sha256", sha256)
+            .put("chunk_size", DEFAULT_CHUNK_SIZE)
+
+        val uploadId = when (
+            val created = jsonMutation(
+                token,
+                "/api/v1/worksites/${encode(worksiteId)}/uploads",
+                "POST",
+                createChangeId,
+                createBody
+            )
+        ) {
+            JsonMutationResult.Unsupported -> return UploadResult.Unsupported
+            JsonMutationResult.SessionInvalid -> return UploadResult.SessionInvalid
+            is JsonMutationResult.Error -> return UploadResult.Error(created.message)
+            is JsonMutationResult.Success -> created.body.optString("id").trim()
+                .takeIf { it.isNotBlank() }
+                ?: return UploadResult.Error("Server lieferte keine Upload-ID.")
+        }
+
+        val session = when (val status = loadUploadSession(token, uploadId)) {
+            UploadSessionResult.Unsupported -> return UploadResult.Unsupported
+            UploadSessionResult.SessionInvalid -> return UploadResult.SessionInvalid
+            is UploadSessionResult.Error -> return UploadResult.Error(status.message)
+            is UploadSessionResult.Success -> status.session
+        }
+
+        when (session.status) {
+            "OPEN" -> {
+                val chunkResult = uploadRemainingChunks(
+                    token = token,
+                    uploadId = uploadId,
+                    file = file,
+                    startOffset = session.receivedBytes,
+                    chunkSize = session.chunkSize
+                )
+                when (chunkResult) {
+                    UploadResult.Unsupported -> return UploadResult.Unsupported
+                    UploadResult.SessionInvalid -> return UploadResult.SessionInvalid
+                    is UploadResult.Error -> return chunkResult
+                    is UploadResult.Success -> Unit // unreachable marker result
+                }
+            }
+            "COMPLETED" -> Unit
+            else -> return UploadResult.Error("Upload-Sitzung ist nicht offen: ${session.status}")
+        }
+
+        val completeId = mutationId("file-complete", createChangeId)
+        val completeBody = JSONObject()
+            .put("entity_type", parentType)
+            .put("entity_id", parentEntityId)
+            .put("purpose", "ATTACHMENT")
+        return when (
+            val completed = jsonMutation(
+                token,
+                "/api/v1/uploads/${encode(uploadId)}/complete",
+                "POST",
+                completeId,
+                completeBody
+            )
+        ) {
+            JsonMutationResult.Unsupported -> UploadResult.Unsupported
+            JsonMutationResult.SessionInvalid -> UploadResult.SessionInvalid
+            is JsonMutationResult.Error -> UploadResult.Error(completed.message)
+            is JsonMutationResult.Success -> {
+                val fileJson = completed.body.optJSONObject("file")
+                    ?: return UploadResult.Error("Server lieferte keine fertige Datei.")
+                val fileId = fileJson.optString("id").trim()
+                if (fileId.isBlank()) return UploadResult.Error("Server lieferte keine Datei-ID.")
+                UploadResult.Success(
+                    UploadedFile(
+                        fileId = fileId,
+                        sizeBytes = fileJson.optLong("byte_size", file.length()),
+                        sha256 = fileJson.nullableString("sha256") ?: sha256,
+                        mimeType = fileJson.nullableString("mime_type") ?: mimeType
+                    )
+                )
+            }
+        }
+    }
+
+    private data class UploadSession(
+        val receivedBytes: Long,
+        val chunkSize: Int,
+        val status: String
+    )
+
+    private sealed interface UploadSessionResult {
+        data class Success(val session: UploadSession) : UploadSessionResult
+        data object Unsupported : UploadSessionResult
+        data object SessionInvalid : UploadSessionResult
+        data class Error(val message: String) : UploadSessionResult
+    }
+
+    private fun loadUploadSession(token: String, uploadId: String): UploadSessionResult {
+        val connection = openConnection("/api/v1/uploads/${encode(uploadId)}")
+        return try {
+            authorize(connection, token)
+            val code = connection.responseCode
+            val body = readBody(connection, code)
+            when (code) {
+                HttpURLConnection.HTTP_OK -> {
+                    val root = runCatching { JSONObject(body) }.getOrNull()
+                        ?: return UploadSessionResult.Error("Upload-Status konnte nicht gelesen werden.")
+                    UploadSessionResult.Success(
+                        UploadSession(
+                            receivedBytes = root.optLong("received_bytes", 0L).coerceAtLeast(0L),
+                            chunkSize = root.optInt("chunk_size", DEFAULT_CHUNK_SIZE)
+                                .coerceIn(1024 * 1024, MAX_CHUNK_SIZE),
+                            status = root.optString("status").uppercase().ifBlank { "OPEN" }
+                        )
+                    )
+                }
+                HttpURLConnection.HTTP_NOT_FOUND -> UploadSessionResult.Unsupported
+                HttpURLConnection.HTTP_UNAUTHORIZED -> UploadSessionResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (isInvalidDevice(body)) UploadSessionResult.SessionInvalid
+                    else UploadSessionResult.Error(errorMessage(body, code))
+                else -> UploadSessionResult.Error(errorMessage(body, code))
+            }
+        } catch (error: Exception) {
+            UploadSessionResult.Error(error.message ?: "Upload-Status konnte nicht geladen werden.")
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun uploadRemainingChunks(
+        token: String,
+        uploadId: String,
+        file: File,
+        startOffset: Long,
+        chunkSize: Int
+    ): UploadResult {
+        if (startOffset < 0L || startOffset > file.length()) {
+            return UploadResult.Error("Server meldet einen ungültigen Upload-Offset.")
+        }
+        var offset = startOffset
+        FileInputStream(file).use { input ->
+            var remainingSkip = startOffset
+            while (remainingSkip > 0L) {
+                val skipped = input.skip(remainingSkip)
+                if (skipped <= 0L) return UploadResult.Error("Datei konnte nicht bis zum Upload-Offset gelesen werden.")
+                remainingSkip -= skipped
+            }
+            val buffer = ByteArray(chunkSize.coerceIn(1024 * 1024, MAX_CHUNK_SIZE))
+            while (offset < file.length()) {
+                val wanted = minOf(buffer.size.toLong(), file.length() - offset).toInt()
+                val read = input.read(buffer, 0, wanted)
+                if (read <= 0) return UploadResult.Error("Datei endete vor der erwarteten Größe.")
+
+                val connection = openConnection(
+                    "/api/v1/uploads/${encode(uploadId)}/chunk?offset=$offset",
+                    method = "PUT",
+                    contentType = "application/octet-stream"
+                )
+                try {
+                    authorize(connection, token)
+                    connection.setFixedLengthStreamingMode(read)
+                    connection.outputStream.use { it.write(buffer, 0, read) }
+                    val code = connection.responseCode
+                    if (code != HttpURLConnection.HTTP_OK) {
+                        val body = readBody(connection, code)
+                        return when (code) {
+                            HttpURLConnection.HTTP_NOT_FOUND -> UploadResult.Unsupported
+                            HttpURLConnection.HTTP_UNAUTHORIZED -> UploadResult.SessionInvalid
+                            HttpURLConnection.HTTP_FORBIDDEN ->
+                                if (isInvalidDevice(body)) UploadResult.SessionInvalid
+                                else UploadResult.Error(errorMessage(body, code))
+                            else -> UploadResult.Error(errorMessage(body, code))
+                        }
+                    }
+                } catch (error: Exception) {
+                    return UploadResult.Error(error.message ?: "Datei-Chunk konnte nicht übertragen werden.")
+                } finally {
+                    connection.disconnect()
+                }
+                offset += read
+            }
+        }
+        // Internal success marker: uploadLinkedFile performs the idempotent complete call next.
+        return UploadResult.Success(UploadedFile(uploadId, file.length(), null, null))
+    }
+
+    private sealed interface JsonMutationResult {
+        data class Success(val body: JSONObject) : JsonMutationResult
+        data object Unsupported : JsonMutationResult
+        data object SessionInvalid : JsonMutationResult
+        data class Error(val message: String) : JsonMutationResult
+    }
+
+    private fun jsonMutation(
+        token: String,
+        path: String,
+        method: String,
+        clientChangeId: String,
+        body: JSONObject
+    ): JsonMutationResult {
+        val connection = openConnection(path, method)
+        return try {
+            authorize(connection, token)
+            connection.setRequestProperty("X-Client-Change-Id", clientChangeId)
+            writeJson(connection, body)
+            val code = connection.responseCode
+            val response = readBody(connection, code)
+            when (code) {
+                HttpURLConnection.HTTP_OK,
+                HttpURLConnection.HTTP_CREATED -> {
+                    val root = response.takeIf { it.isNotBlank() }
+                        ?.let { runCatching { JSONObject(it) }.getOrNull() }
+                        ?: JSONObject()
+                    JsonMutationResult.Success(root)
+                }
+                HttpURLConnection.HTTP_NOT_FOUND -> JsonMutationResult.Unsupported
+                HttpURLConnection.HTTP_UNAUTHORIZED -> JsonMutationResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (isInvalidDevice(response)) JsonMutationResult.SessionInvalid
+                    else JsonMutationResult.Error(errorMessage(response, code))
+                else -> JsonMutationResult.Error(errorMessage(response, code))
+            }
+        } catch (error: Exception) {
+            JsonMutationResult.Error(error.message ?: "Server-1.0-Dateiänderung ist fehlgeschlagen.")
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     private sealed interface MetadataResult {
         data class Success(val files: List<LinkedFile>) : MetadataResult
         data object Unsupported : MetadataResult
@@ -178,17 +452,29 @@ class Server1FileApi(
         }
     }
 
-    private fun openConnection(path: String): HttpURLConnection =
+    private fun openConnection(
+        path: String,
+        method: String = "GET",
+        contentType: String = "application/json; charset=utf-8"
+    ): HttpURLConnection =
         (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
+            requestMethod = method
             connectTimeout = 10_000
             readTimeout = 30_000
             useCaches = false
+            if (method != "GET") {
+                doOutput = true
+                setRequestProperty("Content-Type", contentType)
+            }
         }
 
     private fun authorize(connection: HttpURLConnection, token: String) {
         connection.setRequestProperty("Authorization", "Bearer $token")
         connection.setRequestProperty("Accept", "application/json")
+    }
+
+    private fun writeJson(connection: HttpURLConnection, json: JSONObject) {
+        OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { it.write(json.toString()) }
     }
 
     private fun readBody(connection: HttpURLConnection, code: Int): String {
@@ -222,6 +508,24 @@ class Server1FileApi(
         return optString(name).trim().takeIf { it.isNotBlank() }
     }
 
+    private fun targetKind(parentType: String, mimeType: String): String = when {
+        parentType == "DEFECT" && mimeType.startsWith("image/", ignoreCase = true) -> "DEFECT_PHOTO"
+        parentType == "ACCEPTANCE" && mimeType.startsWith("image/", ignoreCase = true) -> "ACCEPTANCE_PHOTO"
+        else -> "ATTACHMENT"
+    }
+
+    private fun mutationId(prefix: String, vararg parts: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(parts.joinToString("\u001f").toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        return "android-$prefix-${digest.take(48)}"
+    }
+
     private fun encode(value: String): String =
         URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
+
+    companion object {
+        private const val DEFAULT_CHUNK_SIZE = 8 * 1024 * 1024
+        private const val MAX_CHUNK_SIZE = 16 * 1024 * 1024
+    }
 }

@@ -271,6 +271,20 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                             }
                         }
                     }
+
+                    if (capabilities.supports("files_v1") && capabilities.supports("chunk_upload_v1")) {
+                        when (val attachmentUpload = bridge.uploadLocalAttachments(token, server1Api = server1FileApi)) {
+                            CollabLocalBridge.AttachmentUploadResult.SessionInvalid ->
+                                return SyncUiResult.SessionInvalid
+                            CollabLocalBridge.AttachmentUploadResult.Unsupported ->
+                                return SyncUiResult.Error(
+                                    "Server meldet Datei-/Chunk-Capabilities, der Uploadvertrag ist aber nicht erreichbar."
+                                )
+                            is CollabLocalBridge.AttachmentUploadResult.Error ->
+                                return SyncUiResult.Error(attachmentUpload.message)
+                            is CollabLocalBridge.AttachmentUploadResult.Success -> Unit
+                        }
+                    }
                 }
                 return SyncUiResult.ContextOnly(bindings.contextsWithBindings())
             }

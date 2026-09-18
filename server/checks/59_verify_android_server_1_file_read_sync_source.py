@@ -27,8 +27,8 @@ for token in (
 
 assert 'capabilities.supports("files_v1")' in fragment
 assert "collab.synchronizeServer1Attachments" in fragment
-assert "verknüpfte Dateien herunterladen" in strings
-assert "Datei-Upload und BTB folgen getrennt" in strings
+assert "verknüpfter Dateien" in strings
+assert "Server 1.0" in strings
 
 assert '@router.get("/worksites/{worksite_id}/files")' in server
 assert '@router.get("/files/{file_id}")' in server

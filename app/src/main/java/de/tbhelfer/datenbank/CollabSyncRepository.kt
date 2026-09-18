@@ -444,7 +444,8 @@ class CollabSyncRepository(
         file: File,
         uploadFilename: String = file.name,
         mimeType: String = mimeTypeFor(file),
-        api: CollabSyncApi = CollabSyncApi()
+        api: CollabSyncApi = CollabSyncApi(),
+        server1Api: Server1FileApi? = null
     ): LocalAttachmentUploadResult {
         if (!file.exists() || !file.isFile) {
             return LocalAttachmentUploadResult.Error("Datei existiert nicht mehr: ${file.name}")
@@ -465,6 +466,47 @@ class CollabSyncRepository(
             return LocalAttachmentUploadResult.Success(uploaded = false, serverId = existing.serverId)
         }
 
+        val uploadName = safeFilename(uploadFilename)
+        if (server1Api != null) {
+            return when (
+                val result = server1Api.uploadLinkedFile(
+                    token = token,
+                    worksiteId = worksiteServerId,
+                    parentEntityType = type,
+                    parentEntityId = parentEntityId,
+                    filename = uploadName,
+                    mimeType = mimeType,
+                    file = file,
+                    sha256 = hash
+                )
+            ) {
+                Server1FileApi.UploadResult.Unsupported -> LocalAttachmentUploadResult.Unsupported
+                Server1FileApi.UploadResult.SessionInvalid -> LocalAttachmentUploadResult.SessionInvalid
+                is Server1FileApi.UploadResult.Error -> LocalAttachmentUploadResult.Error(result.message)
+                is Server1FileApi.UploadResult.Success -> {
+                    dao.upsertCollabAttachments(
+                        listOf(
+                            SyncCollabAttachmentEntity(
+                                serverId = result.file.fileId,
+                                worksiteServerId = worksiteServerId,
+                                parentEntityType = type,
+                                parentEntityId = parentEntityId,
+                                filename = uploadName,
+                                mimeType = result.file.mimeType ?: mimeType,
+                                sizeBytes = result.file.sizeBytes,
+                                sha256 = result.file.sha256 ?: hash,
+                                localPath = file.absolutePath,
+                                isDownloaded = true,
+                                isDeleted = false,
+                                updatedAtEpochMs = System.currentTimeMillis()
+                            )
+                        )
+                    )
+                    LocalAttachmentUploadResult.Success(uploaded = true, serverId = result.file.fileId)
+                }
+            }
+        }
+
         val bytes = runCatching { file.readBytes() }
             .getOrElse { return LocalAttachmentUploadResult.Error(it.message ?: "Bild konnte nicht gelesen werden.") }
         return when (
@@ -473,7 +515,7 @@ class CollabSyncRepository(
                 worksiteId = worksiteServerId,
                 entityType = type,
                 entityId = parentEntityId,
-                filename = safeFilename(uploadFilename),
+                filename = uploadName,
                 mimeType = mimeType,
                 bytes = bytes
             )
