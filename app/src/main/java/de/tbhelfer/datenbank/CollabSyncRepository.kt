@@ -139,6 +139,15 @@ class CollabSyncRepository(
 
     suspend fun worksiteContexts(): List<SyncWorksiteContextEntity> = dao.worksiteContexts()
 
+    suspend fun replaceWorksiteContexts(contexts: List<SyncWorksiteContextEntity>) {
+        database.withTransaction {
+            dao.clearWorksiteContexts()
+            if (contexts.isNotEmpty()) {
+                dao.upsertWorksiteContexts(contexts)
+            }
+        }
+    }
+
     suspend fun entities(worksiteServerId: String, entityType: String): List<SyncCollabEntity> =
         dao.collabEntities(worksiteServerId, entityType.uppercase())
 
