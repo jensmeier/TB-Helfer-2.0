@@ -32,6 +32,7 @@ import de.tbhelfer.server.CompanyProfileSync
 import de.tbhelfer.server.SecureTokenStore
 import de.tbhelfer.server.ServerCapabilitiesApi
 import de.tbhelfer.server.Server1FachSyncApi
+import de.tbhelfer.server.Server1FileApi
 import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.server.TeamManagementApi
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +65,7 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
     private val teamApi = TeamManagementApi()
     private val serverCapabilitiesApi = ServerCapabilitiesApi()
     private val server1FachApi = Server1FachSyncApi()
+    private val server1FileApi = Server1FileApi()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -209,6 +211,26 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                     when (val refresh = refreshServer1FachSnapshots(token, contexts, capabilities)) {
                         null -> Unit
                         else -> return refresh
+                    }
+
+                    if (capabilities.supports("files_v1")) {
+                        when (
+                            val files = collab.synchronizeServer1Attachments(
+                                token,
+                                contexts.map { it.worksiteId },
+                                server1FileApi
+                            )
+                        ) {
+                            CollabSyncRepository.Server1AttachmentSyncResult.Unsupported ->
+                                return SyncUiResult.Error(
+                                    "Server meldet files_v1, der kanonische Datei-Endpunkt ist aber nicht erreichbar."
+                                )
+                            CollabSyncRepository.Server1AttachmentSyncResult.SessionInvalid ->
+                                return SyncUiResult.SessionInvalid
+                            is CollabSyncRepository.Server1AttachmentSyncResult.Error ->
+                                return SyncUiResult.Error(files.message)
+                            is CollabSyncRepository.Server1AttachmentSyncResult.Success -> Unit
+                        }
                     }
 
                     // Queue local changes only after the canonical snapshot is known. This keeps

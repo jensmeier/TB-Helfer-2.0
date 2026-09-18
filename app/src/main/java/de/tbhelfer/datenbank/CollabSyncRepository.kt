@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import de.tbhelfer.server.CollabBenachrichtigungen
 import de.tbhelfer.server.CollabSyncApi
 import de.tbhelfer.server.Server1FachSyncApi
+import de.tbhelfer.server.Server1FileApi
 import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
@@ -300,6 +301,99 @@ class CollabSyncRepository(
         return Server1FachUploadResult.Success(
             Server1FachUploadSummary(uploaded = uploaded, failed = failed, conflicts = conflicts)
         )
+    }
+
+    data class Server1AttachmentSummary(
+        val linked: Int,
+        val downloaded: Int
+    )
+
+    sealed interface Server1AttachmentSyncResult {
+        data class Success(val summary: Server1AttachmentSummary) : Server1AttachmentSyncResult
+        data object Unsupported : Server1AttachmentSyncResult
+        data object SessionInvalid : Server1AttachmentSyncResult
+        data class Error(val message: String) : Server1AttachmentSyncResult
+    }
+
+    /**
+     * Mirrors visible Server-1.0 file links for DEFECT/ACCEPTANCE into the existing
+     * attachment cache and downloads missing content atomically into app-private storage.
+     */
+    suspend fun synchronizeServer1Attachments(
+        token: String,
+        worksiteIds: List<String>,
+        api: Server1FileApi = Server1FileApi()
+    ): Server1AttachmentSyncResult {
+        var linked = 0
+        var downloaded = 0
+        for (worksiteId in worksiteIds.distinct()) {
+            val files = when (val result = api.listLinkedFiles(token, worksiteId)) {
+                Server1FileApi.ListResult.Unsupported -> return Server1AttachmentSyncResult.Unsupported
+                Server1FileApi.ListResult.SessionInvalid -> return Server1AttachmentSyncResult.SessionInvalid
+                is Server1FileApi.ListResult.Error -> return Server1AttachmentSyncResult.Error(result.message)
+                is Server1FileApi.ListResult.Success -> result.files
+            }
+            for (item in files) {
+                val existing = dao.collabAttachment(item.fileId)
+                dao.upsertCollabAttachments(
+                    listOf(
+                        SyncCollabAttachmentEntity(
+                            serverId = item.fileId,
+                            worksiteServerId = item.worksiteId,
+                            parentEntityType = item.parentEntityType,
+                            parentEntityId = item.parentEntityId,
+                            filename = item.filename ?: existing?.filename,
+                            mimeType = item.mimeType ?: existing?.mimeType,
+                            sizeBytes = item.sizeBytes,
+                            sha256 = item.sha256 ?: existing?.sha256,
+                            localPath = existing?.localPath,
+                            isDownloaded = existing?.isDownloaded == true &&
+                                existing.localPath?.let { File(it).isFile } == true,
+                            isDeleted = false,
+                            updatedAtEpochMs = System.currentTimeMillis()
+                        )
+                    )
+                )
+                linked++
+
+                val cached = dao.collabAttachment(item.fileId) ?: continue
+                if (cached.isDownloaded && cached.localPath?.let { File(it).isFile } == true) continue
+                when (val content = api.downloadContent(token, item.fileId)) {
+                    Server1FileApi.ContentResult.Unsupported -> return Server1AttachmentSyncResult.Unsupported
+                    Server1FileApi.ContentResult.SessionInvalid -> return Server1AttachmentSyncResult.SessionInvalid
+                    is Server1FileApi.ContentResult.Error -> return Server1AttachmentSyncResult.Error(content.message)
+                    is Server1FileApi.ContentResult.Success -> {
+                        val safeName = safeFilename(item.filename ?: "datei")
+                        val dir = File(appContext.filesDir, "server_sync/collab/$worksiteId")
+                        if (!dir.exists() && !dir.mkdirs()) {
+                            return Server1AttachmentSyncResult.Error("Lokaler Sync-Ordner konnte nicht erstellt werden.")
+                        }
+                        val target = File(dir, "${item.fileId}_$safeName")
+                        val stored = runCatching {
+                            val temp = File(target.absolutePath + ".tmp")
+                            temp.writeBytes(content.file.bytes)
+                            if (target.exists()) target.delete()
+                            if (!temp.renameTo(target)) {
+                                temp.copyTo(target, overwrite = true)
+                                temp.delete()
+                            }
+                            dao.markCollabAttachmentDownloaded(
+                                serverId = item.fileId,
+                                localPath = target.absolutePath,
+                                mimeType = content.file.mimeType ?: item.mimeType
+                            )
+                        }
+                        if (stored.isFailure) {
+                            return Server1AttachmentSyncResult.Error(
+                                stored.exceptionOrNull()?.message ?: "Server-1.0-Datei konnte lokal nicht gespeichert werden."
+                            )
+                        }
+                        downloaded++
+                    }
+                }
+            }
+        }
+        return Server1AttachmentSyncResult.Success(Server1AttachmentSummary(linked, downloaded))
     }
 
     suspend fun attachments(parentEntityId: String): List<SyncCollabAttachmentEntity> =
