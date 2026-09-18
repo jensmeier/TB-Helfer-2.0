@@ -355,7 +355,7 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 ### Bekanntes GitHub-Actions-Problem
 
-Für den aktuellen Fachcommit `4b073b6444cd9c2623a1e91944fe374f66c02111` endete der TB-Server-Lauf **#136 / ID 35288425467** mit `foundation` = failure; der Job meldet weiterhin `steps = null`. Auch Android CI **#923 / ID 35288425491** endete ohne ausgeführte Steps. Damit wurden für diesen Commit weder Source-Check 34 noch Python-, PostgreSQL-, API- oder Android-Build-Schritte tatsächlich ausgeführt. Das ist weiterhin das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
+Für den aktuellen Admin-Web-Commit `b03f058b975bb928f0a434c00a6a79a66bab27f0` endete der TB-Server-Lauf **#141 / ID 35292082881** mit `foundation` = failure; der Job meldet weiterhin `steps = null`. Auch Android CI **#926 / ID 35292082858** endete ohne ausgeführte Steps. Damit wurden für diesen Stand weder Source-Checks 34–36 noch Python-, PostgreSQL-, API- oder Android-Build-Schritte tatsächlich ausgeführt. Das ist weiterhin das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
 ## Bekannte/offene Punkte
 
