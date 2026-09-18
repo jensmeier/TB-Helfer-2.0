@@ -13,7 +13,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - PR-Basis: `feature/admin-offline-sync`
 - Android bleibt vorerst Testclient: Buildkandidat **200050**
 
-- Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Sichtbare, mit Mängeln/Abnahmen verknüpfte Server-1.0-Dateien werden über `files_v1` aufgelöst und in den vorhandenen Attachment-Cache heruntergeladen. Lokale Mängel-/Abnahme-Attachments werden resumierbar über `chunk_upload_v1` mit deterministischen Idempotenz-IDs hochgeladen. BTB bleibt getrennt offen.
+- Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Sichtbare, mit Mängeln/Abnahmen verknüpfte Server-1.0-Dateien werden über `files_v1` aufgelöst und in den vorhandenen Attachment-Cache heruntergeladen. Lokale Mängel-/Abnahme-Attachments werden resumierbar über `chunk_upload_v1` mit deterministischen Idempotenz-IDs hochgeladen; nicht mehr sichtbare/gelöschte Fach-Attachments werden beim vollständigen Datei-Snapshot lokal tombstoned. BTB bleibt getrennt offen.
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
 
 Wichtige Server-1.0-Meilensteine:
@@ -612,13 +612,15 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Checks 54–56 härten Area-Scope, Datei-Elternsichtbarkeit und kanonisches Abnahme-Ergebnis.
 - Source-Check 57 prüft den capability-gesteuerten Android-Lesesync für Mängel/Abnahmen inklusive lokaler Snapshot-Übernahme.
 - Source-Check 58 prüft die idempotenten Android-Server-1.0-Schreibpfade für Mängel/Abnahmen, Outbox-Wiederverwendung, Konfliktzustände und endgültige Statusaktionen.
-- Source-Check 59 prüft das Auflösen sichtbarer `files_v1`-Links auf Mängel/Abnahmen, den Download über `/files/{id}/content` und die Wiederverwendung des vorhandenen Attachment-Caches.\n- Source-Check 60 prüft den resumierbaren Android-Chunk-Upload, Upload-Session-Recovery, `X-Client-Change-Id`, Complete-Link auf Mangel/Abnahme und die Weiterverwendung des Attachment-Caches.
+- Source-Check 59 prüft das Auflösen sichtbarer `files_v1`-Links auf Mängel/Abnahmen, den Download über `/files/{id}/content` und die Wiederverwendung des vorhandenen Attachment-Caches.
+- Source-Check 60 prüft den resumierbaren Android-Chunk-Upload, Upload-Session-Recovery, `X-Client-Change-Id`, Complete-Link auf Mangel/Abnahme und die Weiterverwendung des Attachment-Caches.
+- Source-Check 61 prüft, dass ein vollständiger sichtbarer `files_v1`-Snapshot nicht mehr sichtbare/gelöschte Mängel-/Abnahme-Dateien im lokalen Attachment-Cache tombstoned.
 
-**Noch nicht ausgeführt:** Source-Checks 34–60 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–61 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
-Für den Android-Fach-Lesesync-Commit `1d758ef5fa85c825d59d80d78efb7fef7158f1f7` endeten TB-Server **#238 / ID 35340031967** und Android CI **#980 / ID 35340032095** erneut nach wenigen Sekunden mit leeren `steps`-Listen. Damit wurden auch Source-Check 57 und Android-Unit-Test/Build nicht tatsächlich ausgeführt. Das ist weiterhin das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
+Für den Android-Datei-Upload-Commit `fcc3b60922dc46f0ab6f589f1f6b5d9efd51aa76` endeten TB-Server **#249 / ID 35341069107** und Android CI **#986 / ID 35341069190** erneut nach wenigen Sekunden mit leeren `steps`-Listen und `runner_id = 0`. Damit wurden auch Source-Checks bis 60 sowie Android-Unit-Test/Build nicht tatsächlich ausgeführt. Das ist weiterhin das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
 ## Bekannte/offene Punkte
 

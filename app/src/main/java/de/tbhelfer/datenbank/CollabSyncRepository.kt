@@ -333,6 +333,15 @@ class CollabSyncRepository(
                 is Server1FileApi.ListResult.Error -> return Server1AttachmentSyncResult.Error(result.message)
                 is Server1FileApi.ListResult.Success -> result.files
             }
+
+            // The files endpoint is the complete visible Server-1.0 snapshot (up to its
+            // documented limit). Anything previously cached for DEFECT/ACCEPTANCE but
+            // no longer returned must not remain importable after deletion or permission loss.
+            val visibleFileIds = files.mapTo(hashSetOf()) { it.fileId }
+            dao.collabFachAttachments(worksiteId)
+                .filter { it.serverId !in visibleFileIds }
+                .forEach { dao.markCollabAttachmentDeleted(it.serverId) }
+
             for (item in files) {
                 val existing = dao.collabAttachment(item.fileId)
                 dao.upsertCollabAttachments(
