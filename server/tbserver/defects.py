@@ -192,6 +192,8 @@ def update_defect(
         if "worksite_node_id" in updates:
             _validate_node(cur, defect["worksite_id"], updates["worksite_node_id"])
         if "area_scope" in updates:
+            if updates["area_scope"] is None:
+                raise HTTPException(400, "AREA_SCOPE_REQUIRED")
             require_area_scope(context, updates["area_scope"])
 
         columns = []
