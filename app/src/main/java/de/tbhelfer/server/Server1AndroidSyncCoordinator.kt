@@ -99,26 +99,57 @@ class Server1AndroidSyncCoordinator(
 
         var worksiteNodesUploaded = 0
         if (treeEnabled) {
-            when (val prepare = structureSync.prepareLocalChanges(token)) {
-                de.tbhelfer.datenbank.WorksiteStructureSync.Result.Unsupported ->
-                    return Result.Error("Server meldet worksite_tree_v1, der Baustellenbaum-Endpunkt ist aber nicht erreichbar.")
-                de.tbhelfer.datenbank.WorksiteStructureSync.Result.SessionInvalid ->
-                    return Result.SessionInvalid
-                is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Error ->
-                    return Result.Error(prepare.message)
-                is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Success -> Unit
+            var treeSettled = false
+            repeat(3) {
+                if (treeSettled) return@repeat
+                when (val prepare = structureSync.prepareLocalChanges(token)) {
+                    de.tbhelfer.datenbank.WorksiteStructureSync.Result.Unsupported ->
+                        return Result.Error(
+                            "Server meldet worksite_tree_v1, der Baustellenbaum-Endpunkt ist aber nicht erreichbar."
+                        )
+                    de.tbhelfer.datenbank.WorksiteStructureSync.Result.SessionInvalid ->
+                        return Result.SessionInvalid
+                    is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Error ->
+                        return Result.Error(prepare.message)
+                    is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Success -> Unit
+                }
+
+                when (val upload = collab.synchronizeServer1WorksiteNodePending(token)) {
+                    CollabSyncRepository.Server1WorksiteNodeUploadResult.Unsupported ->
+                        return Result.Error(
+                            "Server meldet worksite_tree_v1, die Baustellenbaum-Schreibendpunkte sind aber nicht erreichbar."
+                        )
+                    CollabSyncRepository.Server1WorksiteNodeUploadResult.SessionInvalid ->
+                        return Result.SessionInvalid
+                    is CollabSyncRepository.Server1WorksiteNodeUploadResult.Success -> {
+                        worksiteNodesUploaded += upload.uploaded
+                        if (upload.failed > 0) {
+                            return Result.Error(
+                                "Baustellenbaum-Änderungen konnten nicht vollständig übertragen werden."
+                            )
+                        }
+                        if (upload.conflicts == 0) {
+                            treeSettled = true
+                            return@repeat
+                        }
+                        // Konflikt nicht lokal überschreiben: prepareLocalChanges lädt den frischen
+                        // Snapshot und rebased dieselbe ausdrückliche LEAD-Änderung auf dessen Version.
+                    }
+                }
+                if (treeSettled) return@repeat
             }
-            when (val upload = collab.synchronizeServer1WorksiteNodePending(token)) {
-                CollabSyncRepository.Server1WorksiteNodeUploadResult.Unsupported ->
-                    return Result.Error("Server meldet worksite_tree_v1, die Baustellenbaum-Schreibendpunkte sind aber nicht erreichbar.")
-                CollabSyncRepository.Server1WorksiteNodeUploadResult.SessionInvalid ->
-                    return Result.SessionInvalid
-                is CollabSyncRepository.Server1WorksiteNodeUploadResult.Success ->
-                    worksiteNodesUploaded += upload.uploaded
+
+            if (!treeSettled) {
+                return Result.Error(
+                    "Baustellenbaum konnte nach mehreren parallelen Änderungen nicht konfliktfrei synchronisiert werden."
+                )
             }
+
             when (val apply = structureSync.applyServerStateToLocal(token)) {
                 de.tbhelfer.datenbank.WorksiteStructureSync.Result.Unsupported ->
-                    return Result.Error("Server meldet worksite_tree_v1, der Baustellenbaum-Snapshot ist aber nicht erreichbar.")
+                    return Result.Error(
+                        "Server meldet worksite_tree_v1, der Baustellenbaum-Snapshot ist aber nicht erreichbar."
+                    )
                 de.tbhelfer.datenbank.WorksiteStructureSync.Result.SessionInvalid ->
                     return Result.SessionInvalid
                 is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Error ->
