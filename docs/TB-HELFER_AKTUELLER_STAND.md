@@ -626,8 +626,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Checks 57–60 sowie 63–68 wurden nach der Coordinator-Extraktion auf denselben gemeinsamen Synckern umgestellt; ihre fachlichen Vertragsprüfungen bleiben unverändert bestehen und prüfen nicht mehr die alte Codeposition im Fragment.
 - Source-Check 70 prüft die stabile Cursor-Pagination der sichtbaren Server-1.0-Dateiliste, explizite Snapshot-Vollständigkeit und den Rolling-Update-Fallback auf die bisherige 1000-Dateien-Sicherheitsregel.
 - Source-Check-Dateien 57–60/63–68 wurden nach der Coordinator-Extraktion vollständig neu ausgerichtet; dabei wurden versehentlich wörtlich gespeicherte `\\n`-Sequenzen und ein unvollständiger Check-68-Variablenumbau korrigiert. Check 59 prüft die 1000er-Grenze jetzt über `FILE_LIST_LIMIT` statt über ein nicht existentes hartes URL-Literal.
+- Source-Check 71 prüft den kanonischen `worksite_tree_v1`-Cutover: stabile `external_key`/Client-Keys, Snapshot inklusive Tombstones, `base_version`-Konflikte, rekursives Unterbaum-Löschen, bestehende Offline-Outbox sowie begrenztes Konflikt-Rebase im gemeinsamen Server-1.0-Synckern.
 
-**Noch nicht ausgeführt:** Source-Checks 34–70 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–71 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -669,6 +670,17 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Bei einem alten Server ohne Cursorfelder bleibt die bisherige 1000er-Grenze als sicherer Rolling-Update-Fallback aktiv.
 - Capability `file_cursor_pagination_v1` dokumentiert den neuen Vertrag.
 
+### Android-Baustellenbaum auf Server 1.0
+
+- Die vorhandene `WorksiteStructureSync`-Fach-/Merge-Logik bleibt bestehen; ersetzt wurde nur der alte Collaboration-Transport.
+- Android liest `GET /api/v1/worksites/{id}/nodes?include_deleted=true` und verwendet `external_key` bzw. einen stabil aus der Server-UUID abgeleiteten Fallback als geräteübergreifenden Client-Key.
+- Der Snapshot enthält aktive Knoten und Tombstones, Parent-Client-Key und aktuelle Version.
+- Create/PATCH/DELETE laufen idempotent über `X-Client-Change-Id`; PATCH und DELETE prüfen `base_version` und liefern bei Konkurrenz `VERSION_CONFLICT`.
+- Das Löschen eines Elternknotens tombstoned serverseitig rekursiv den kompletten Unterbaum.
+- Bei Versionskonflikten wird die ausdrückliche lokale LEAD-Änderung höchstens drei Runden gegen den frischen Server-Snapshot rebased; erst ein konfliktfreier Stand wird lokal angewendet.
+- `Server1AndroidSyncCoordinator` führt Prepare -> Outbox-Upload -> autoritativen Snapshot capability-gesteuert über `worksite_tree_v1` aus.
+- Der Legacy-Worker behält seinen alten Strukturpfad nur für den dokumentierten alten Collaboration-Fallback.
+
 ## Bekannte/offene Punkte
 
 - vollständige Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung gegen eine echte PostgreSQL-/FastAPI-Testinstanz ausführen;
@@ -676,7 +688,7 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - einseitig belegte GRA-Sprünge nur bei zusätzlicher realer Evidenz automatisieren; Default bleibt `false`;
 - Projektion/verdichtete Samples bei Bedarf performant cachen, ohne Originale zu verändern;
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
-- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; die Dateiliste ist nun stabil über `(created_at,id)` cursor-paginiert; alte Server ohne Cursorprotokoll behalten während Rolling Updates weiterhin die konservative 1000-Dateien-Tombstone-Sperre; Einladungen, Teamdarstellung, Mängel-/Abnahme-Sync sowie der granulare Team-BTB inklusive BTB-Fotos, serverseitigem Abschluss-PDF und Offline-BTB-Löschung ist capability-gesteuert an Server 1.0 angebunden; offen bleibt die praktische Android-/PostgreSQL-E2E-Prüfung;
+- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; Baustellenbaum/Unterbaustellen nutzen jetzt ebenfalls den kanonischen `worksite_tree_v1`-Vertrag; die Dateiliste ist nun stabil über `(created_at,id)` cursor-paginiert; alte Server ohne Cursorprotokoll behalten während Rolling Updates weiterhin die konservative 1000-Dateien-Tombstone-Sperre; Einladungen, Teamdarstellung, Mängel-/Abnahme-Sync sowie der granulare Team-BTB inklusive BTB-Fotos, serverseitigem Abschluss-PDF und Offline-BTB-Löschung ist capability-gesteuert an Server 1.0 angebunden; offen bleibt die praktische Android-/PostgreSQL-E2E-Prüfung;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
 - Android-QR-Scanner/Intent-Handling sowie gezieltes Erzeugen/Einlösen von Server-1.0-Baustelleneinladungen sind im Quellstand umgesetzt; UI und Hintergrund verwenden für den modernen Baustellen-/Fachsync nun denselben capability-gesteuerten Coordinator; komfortablere Portal-Fachformulare und praktische E2E-Prüfung bleiben offen;
 - Compose-Staging-Stack praktisch auf Docker/Synology starten; Backup-Retention mit echten Alt-Backups prüfen; Restore-to-Target gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen;
@@ -688,7 +700,7 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 2. Nach bestandenem Server-Staging die übrigen Android-Fachendpunkte capability-gesteuert auf Server 1.0 umstellen; gezieltes Einladen/Einlösen, Teamdarstellung und lesender Mängel-/Abnahme-Sync sind dafür bereits angebunden. Android liest Team-BTB-Historie und BTB-Details capability-gesteuert und schreibt lokale BTB-Änderungen über die kanonischen Server-1.0-Verträge. Die vorhandene Outbox bleibt maßgeblich; Android-Inhalte liegen granular in einzelnen versionierten Server-BTB-Einträgen; `TB_HELFER_ANDROID_V1` ist nur noch Migrationsquelle. BTB-Fotos nutzen den resumierbaren Server-1.0-Dateipfad. Das serverseitig gerenderte aktuelle Abschluss-PDF wird capability-gesteuert per `/api/v1/btbs/{id}/final-pdf` in den vorhandenen Android-BTB-Ordner gespiegelt, per SHA-256 geprüft und ohne gefälschtes lokales Erstoriginal als Server-Abschluss markiert. BTB-Löschabsichten werden zusätzlich vor dem normalen Import über den kanonischen Server-1.0-DELETE abgearbeitet. Als nächster Schritt folgt die praktische Android-/PostgreSQL-E2E-Prüfung. Spezialisierte Portal-Fachformulare additiv verbessern.
 3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
 4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
-5. Den gemeinsamen capability-gesteuerten Android-Server-1.0-Synckern praktisch auf Pixel/Poco prüfen; die 0.6-/0.7-Versionsschwellen steuern im Quellstand nur noch den Legacy-Fallback.
+5. Den gemeinsamen capability-gesteuerten Android-Server-1.0-Synckern inklusive Unterbaustellen-Baum praktisch auf Pixel/Poco prüfen; die 0.6-/0.7-Versionsschwellen steuern im Quellstand nur noch den Legacy-Fallback.
 6. Vollständige Integrations-/Akzeptanztests inklusive Backup/Restore ausführen.
 7. Erst danach NAS-Cutover und produktive Android-Umstellung.
 
