@@ -446,6 +446,24 @@ Capabilities: `release_catalog_v1=true`, `release_binary_v1=true`, `client_compa
 
 Details: `docs/TB-SERVER_1_0_RELEASES.md`.
 
+### Docker-/NAS-Staging-Basis v1
+
+`server/docker-compose.v1.yml` beschreibt jetzt den reproduzierbaren Server-1.0-Stack:
+
+- PostGIS/PostgreSQL 17 mit persistentem DB-Pfad;
+- einmaliger `migrate`-Dienst vor API/Worker;
+- API mit getrenntem persistentem `STORAGE_ROOT` und `TB_BACKUP_ROOT`;
+- eigener Background-Worker auf demselben Image;
+- Ready-/DB-Healthchecks;
+- Default-API-Bindung `127.0.0.1:8081`;
+- DB-Passwort nur über externe Compose-Variable `TB_V1_DB_PASSWORD`.
+
+Standardpfade für lokale/Staging-Nutzung: `database-v1`, `storage-v1`, `backups-v1`. Für Synology werden diese bewusst auf getrennte persistente NAS-Pfade gesetzt.
+
+Restore-Test/Restore-to-Target sind keine automatischen Compose-Startdienste, sondern bleiben explizite Wartungsaktionen.
+
+Details: `docs/TB-SERVER_1_0_DEPLOYMENT.md`.
+
 ## Tests / Checks
 
 Workflow-Zielstand:
@@ -453,7 +471,7 @@ Workflow-Zielstand:
 - Migrationen 001 + 002 + 003 + 004 + 005;
 - `latest_known=5`, `latest_applied=5`;
 - Kerntabellen u. a. `survey_parse_catalog`, `track_data_sources`, `track_data_km_points`;
-- Source-/Vertragschecks 20–43;
+- Source-/Vertragschecks 20–44;
 - Health/Capabilities/Auth-Checks;
 - erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `release_binary_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1`, `worksite_invitations_v1`, `admin_system_status_v1`, `background_jobs_v1`, `backup_v1`, `restore_test_v1`, `test_data_reset_v1` und `restore_target_v1`.
 
@@ -485,8 +503,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 41 ist als Syntax-/Vertragsprüfung für Background Worker, Backup-Root-Trennung, DATABASE/FILES/FULL-Backup, SHA-256, Retry/Stale-Recovery und Admin-Backupauftrag vorbereitet.
 - Source-Check 42 ist als Sicherheits-/Vertragsprüfung für getrennten Restore-Test, FULL-Manifest/SHA/Archivschutz und ausschließlich Development/Test/Staging erlaubten Backup-gesicherten Reset vorbereitet.
 - Source-Check 43 ist als Sicherheits-/Vertragsprüfung für Restore-to-Target, frische getrennte Ziel-DB/Storage, explizite Freigabe/Bestätigung und fehlende HTTP-Exponierung vorbereitet.
+- Source-Check 44 ist als Vertragsprüfung für Compose-Staging-Basis mit PostGIS 17, Migration-Service, getrennten Storage-/Backup-Mounts, API-Healthcheck und separatem Worker vorbereitet.
 
-**Noch nicht ausgeführt:** Source-Checks 34–43 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–44 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -502,12 +521,12 @@ Für den aktuellen Release-Binary-Commit `4abd52b82d12f153874f07a2bbaa1a78edb2f6
 - Android-Fachclient auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
 - Teamwechsel bestehender Helfer, QR/Deep-Link für Einladungen und komfortablere Portal-Fachformulare;
-- Restore-to-Target praktisch gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen; Backup-Aufbewahrung/Rotation bleibt offen;
+- Compose-Staging-Stack praktisch auf Docker/Synology starten; Restore-to-Target gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen; Backup-Aufbewahrung/Rotation bleibt offen;
 - vollständige Integrations-/E2E-Tests und produktiver NAS-Cutover.
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Restore-to-Target gegen echte getrennte PostgreSQL-/Storage-Ziele und danach den manuellen Cutover praktisch testen; der sichere Wartungs-/Disaster-Recovery-Pfad ist im Code vorbereitet.
+1. Den neuen Compose-Staging-Stack auf einer echten Docker/PostgreSQL-Umgebung starten und dort Backup -> Restore-Test -> Restore-to-Target end-to-end prüfen; in der aktuellen Arbeitsumgebung fehlen Docker/PostgreSQL.
 2. Teamwechsel/QR-Komfort und spezialisierte Portal-Fachformulare später additiv auf die stabilen Verträge setzen.
 3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
 4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.

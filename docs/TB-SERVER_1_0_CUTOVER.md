@@ -54,6 +54,14 @@ Mit dem ersten echten produktiven Import ändert sich die Regel verbindlich:
 - produktive Originale dürfen bei späteren Serverupdates nicht durch einen Reset gelöscht werden;
 - spätere Migrationen müssen produktive Daten erhalten oder kontrolliert transformieren.
 
+## 3a. Technische Staging-/Cutover-Basis
+
+Der vorbereitete Stack liegt in `server/docker-compose.v1.yml` und trennt PostgreSQL, API, Background-Worker, Fach-Storage und Backup-Root. Migrationen laufen vor API/Worker als eigener einmaliger Dienst.
+
+Für den NAS-Cutover werden neue, getrennte persistente Pfade für Datenbank, Fach-Storage und Backups verwendet. Der alte Server bleibt bis nach bestandenem End-to-End-Test als Rückfallmöglichkeit erhalten.
+
+Cloudflare wird erst nach erfolgreicher Staging-/Akzeptanzprüfung auf den neuen API-Dienst umgeschaltet. Tailscale bleibt Wartung/Administration.
+
 ## 4. TB-Server-1.0-Baseline
 
 Der erste produktive TB-Server-1.0-Stand wird deshalb aus einer sauberen Baseline aufgebaut und nicht durch das Mitschleppen des bisherigen Testschemas definiert.

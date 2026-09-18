@@ -79,6 +79,7 @@ jobs:
           python server/checks/41_verify_tb_server_1_backup_jobs_source.py
           python server/checks/42_verify_tb_server_1_restore_test_reset_source.py
           python server/checks/43_verify_tb_server_1_restore_target_source.py
+          python server/checks/44_verify_tb_server_1_deployment_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
