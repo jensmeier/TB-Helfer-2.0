@@ -34,6 +34,22 @@ Body:
 
 Authentisierung erfolgt mit dem vorhandenen Geräte-Bearer. Der Server benötigt für Geräte-Bearer keinen Browser-CSRF-Header. Android sendet zusätzlich für diese Mutation eine eigene `X-Client-Change-Id`.
 
+## Capability-gesteuerter Cutover
+
+Android besitzt jetzt einen kleinen `ServerCapabilitiesApi` für `GET /api/v1/capabilities`.
+
+Wichtige Regeln:
+
+- Capabilities werden für fünf Minuten nur im Prozessspeicher gecacht;
+- ein alter Server ohne Endpoint liefert `Unsupported` und darf den dokumentierten Legacy-Fallback verwenden;
+- Netzwerk-/Serverfehler werden **nicht** als „alter Server“ fehlinterpretiert;
+- `TeamManagementApi.loadTeam()` verwendet Server 1.0 nur bei `worksite_teams_v1=true`;
+- gezieltes Einladen verwendet Server 1.0 nur bei `worksite_invitations_v1=true`;
+- meldet ein Server die Capability, aber der zugehörige Server-1.0-Vertrag ist nicht erreichbar, wird dies als Fehler sichtbar statt heimlich auf Legacy zurückzufallen;
+- es gibt keine 0.6-/0.7-/1.0-Versionsschwelle für diese Entscheidung.
+
+Damit beginnt die Android-Umstellung entsprechend dem dokumentierten Zielmodell capability-gesteuert statt versionsgesteuert.
+
 ## Teamdarstellung auf Server 1.0
 
 Damit die neuen Einladungsfunktionen nicht mehr vom alten `/api/v1/collab/.../team`-Endpunkt abhängen, lädt `TeamManagementApi.loadTeam()` jetzt zuerst den Server-1.0-Fachvertrag:
@@ -51,7 +67,7 @@ Aus diesen Antworten wird die bestehende Android-`TeamOverview` aufgebaut:
 - aktive TB-Teams mit ihren Helfern aus Member-/Teamlisten;
 - `RESPONSIBLE_TB` und `TB` werden für die vorhandene UI als `LEAD` dargestellt.
 
-Nur wenn der moderne Baustellenvertrag nicht vorhanden ist (404 bzw. fehlende Server-1.0-Antwortstruktur), fällt `loadTeam()` auf den bisherigen Legacy-Collab-Teamendpunkt zurück.
+Nur wenn der Capability-Endpunkt bzw. `worksite_teams_v1` fehlt, fällt `loadTeam()` auf den bisherigen Legacy-Collab-Teamendpunkt zurück. Meldet der Server `worksite_teams_v1=true`, aber der Fachvertrag ist nicht erreichbar, wird dies als Fehler sichtbar.
 
 Damit kann die Personenwahl für neue Server-1.0-Einladungen auf einer reinen Server-1.0-Instanz tatsächlich angezeigt werden.
 
@@ -165,8 +181,7 @@ Zusätzlich prüfen
 den gemeinsamen Server-/Android-Einlösevertrag und
 `server/checks/50_verify_android_server_1_invitation_create_source.py`
 die gezielte Kandidaten-/Create-Anbindung mit Legacy-Fallback und
-`server/checks/51_verify_android_server_1_team_source.py`
-den modernen Worksite-/Member-/Team-Aufbau mit begrenztem Legacy-Fallback statisch.
+`server/checks/51_verify_android_server_1_team_source.py` den modernen Worksite-/Member-/Team-Aufbau mit begrenztem Legacy-Fallback und `server/checks/52_verify_android_server_1_capabilities_source.py` die capability-gesteuerte Auswahl ohne Versionsschwellen statisch.
 
 ## Noch nicht Teil dieses Bausteins
 

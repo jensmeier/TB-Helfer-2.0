@@ -53,7 +53,8 @@ Wichtige Server-1.0-Meilensteine:
 - gezielte Server-1.0-Baustelleneinladungen: gleiches Unternehmen, eingeladener Zielbenutzer, gehashter Einmalcode, Widerruf/Ablauf/Einmalannahme; Helfer werden dem Team des einladenden verantwortlichen TB zugeordnet
 - Einladung Code/Link/QR: App-URI `tbhelfer://worksite-invite`, Browser-Link mit Token nur im URL-Fragment, SVG-QR in der einmaligen Create-Antwort, `Cache-Control: no-store`; Mutation Receipt/Audit bleiben tokenfrei
 - Android Server-1.0-Einladungen: stabiler `worksite-invite`-Deep-Link, QR-/Copy-Paste-Parser mit case-sensitivem Server-Token, automatisches Einlösen nach Geräteaktivierung sowie gezielte Kandidaten-/Create-Anbindung mit Legacy-`TBI`-/Legacy-Create-Fallback nur bei fehlendem Server-1.0-Endpunkt
-- Android Teamdarstellung Server 1.0: `loadTeam()` baut die bestehende UI jetzt primär aus `/worksites/{id}`, `/device/me`, `/members` und `/teams`; der alte `/collab/.../team`-Pfad bleibt nur als Unsupported-Fallback
+- Android Teamdarstellung Server 1.0: `loadTeam()` baut die bestehende UI aus `/worksites/{id}`, `/device/me`, `/members` und `/teams`; die Auswahl erfolgt jetzt über `worksite_teams_v1`, Legacy nur bei fehlender Capability
+- Android Capability-Client: `/api/v1/capabilities` wird kurzzeitig im Prozess gecacht; `worksite_teams_v1` und `worksite_invitations_v1` steuern den Cutover, Netzwerkfehler werden nicht als Legacy-Server missverstanden
 - Einladung-only-Mitgliedschaft gehärtet: generischer direkter Member-Add-Pfad entfernt; bestehende Helfer können über einen eigenen replay-sicheren Teamwechselvertrag zwischen aktiven TB-Teams verschoben werden, ohne neue Mitgliedschaft oder historische BTBs umzuschreiben
 - Admin-Systemstatus/Speicher v1: API/Webseite für Migrationen, DB-Größe, Storage-Belegung, Firmen-/Nutzer-/Geräte-/Baustellen-/Dateizahlen, Backup-Läufe und Background Jobs ohne Geheimnisse/interne Payloads
 - Background-Job-/Backup-Basis: `FOR UPDATE SKIP LOCKED`, Retry/Stale-Recovery, getrennte DATABASE/FILES/FULL-Backups, SHA-256, atomare Dateien und ADMIN-Backupaufträge
@@ -353,7 +354,7 @@ Android versteht jetzt denselben Einladungsvertrag wie Server/Portal:
 - bei noch nicht aktiviertem Gerät bleibt die Einladung bis nach erfolgreicher Aktivierung erhalten und wird anschließend automatisch eingelöst;
 - Baustellen-Sync-QR-Scanner und manuelle Eingabe verwenden denselben zentralen Parser.
 
-Zusätzlich lädt `TeamManagementApi.loadTeam()` zuerst den Server-1.0-Teamstand aus Worksite-, Device-Me-, Member- und Team-Endpunkten. `RESPONSIBLE_TB/TB` werden für die bestehende Android-UI als `LEAD` abgebildet; `currentGroupId` und Area-Scope stammen aus der aktuellen Membership. Nur bei fehlendem Server-1.0-Vertrag wird auf den bisherigen Legacy-Collab-Teamendpunkt zurückgefallen.
+Zusätzlich lädt `TeamManagementApi.loadTeam()` den Server-1.0-Teamstand aus Worksite-, Device-Me-, Member- und Team-Endpunkten, wenn `worksite_teams_v1=true` gemeldet wird. `RESPONSIBLE_TB/TB` werden für die bestehende Android-UI als `LEAD` abgebildet; `currentGroupId` und Area-Scope stammen aus der aktuellen Membership. Fehlt der Capability-Endpunkt oder die Capability, bleibt der Legacy-Collab-Teamendpunkt als Übergang erhalten; Netzwerkfehler führen nicht zu einem stillen Legacy-Fallback.
 
 Unit-Test: `WorksiteInvitationLinkTest`. Android CI führt künftig `:app:testDebugUnitTest` vor den Builds aus.
 
@@ -564,7 +565,7 @@ Workflow-Zielstand:
 - Migrationen 001 + 002 + 003 + 004 + 005 + 006;
 - `latest_known=6`, `latest_applied=6`;
 - Kerntabellen u. a. `survey_parse_catalog`, `track_data_sources`, `track_data_km_points`;
-- Source-/Vertragschecks 20–51;
+- Source-/Vertragschecks 20–52;
 - Health/Capabilities/Auth-Checks;
 - erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `release_binary_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1`, `worksite_invitations_v1`, `worksite_invitation_qr_v1`, `worksite_team_transfer_v1`, `admin_system_status_v1`, `background_jobs_v1`, `backup_v1`, `backup_retention_v1`, `restore_test_v1`, `test_data_reset_v1` und `restore_target_v1`.
 
@@ -601,8 +602,12 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 46 ist als Sicherheits-/Vertragsprüfung für Einladung-only-Mitgliedschaft, entfernten Direkt-Add-Pfad und replay-sicheren Helfer-Teamwechsel vorbereitet.
 - Source-Check 47 ist als Syntax-/Vertrags-/Runtimeprüfung für App-URI, Fragment-Link, SVG-QR, `no-store`, tokenfreien Mutation Receipt und Portal-Fragmentübernahme vorbereitet.
 - Source-Check 48 prüft den gemeinsamen Server-/Android-Vertrag für `worksite-invite`, case-sensitive Tokens, modernen Redeem-Endpunkt, Manifest-Deep-Link, Legacy-Fallback und Android-Unit-Test.
+- Source-Check 49 prüft den optionalen Restore-Staging-Compose-Overlay, getrennte DB-/Storage-Ziele, externe Passwörter, fehlende Portfreigabe und standardmäßig deaktiviertes Restore-to-Target.
+- Source-Check 50 prüft Android-Kandidatenladen und gezieltes Server-1.0-Einladungserzeugen, Client-Change-ID, Rollen-/Profilabbildung, Share-Link sowie den begrenzten Legacy-Fallback.
+- Source-Check 51 prüft den Android-Teamaufbau aus Server-1.0-Worksite/Device-Me/Member/Team-Endpunkten sowie den ausschließlich bei Unsupported verwendeten Legacy-Team-Fallback.
+- Source-Check 52 prüft den Android-Capability-Client sowie capability-gesteuerte Team-/Einladungsumschaltung ohne 0.6-/0.7-Versionsheuristik.
 
-**Noch nicht ausgeführt:** Source-Checks 34–51 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–52 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 

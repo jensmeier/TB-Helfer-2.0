@@ -21,6 +21,8 @@ import java.util.UUID
 class TeamManagementApi(
     private val baseUrl: String = ServerConfig.BASE_URL
 ) {
+    private val capabilitiesApi = ServerCapabilitiesApi(baseUrl)
+
     data class TeamMember(
         val userId: String,
         val name: String?,
@@ -148,9 +150,21 @@ class TeamManagementApi(
     }
 
     fun loadTeam(token: String, worksiteId: String): TeamResult {
-        return when (val modern = loadServerTeam(token, worksiteId)) {
-            TeamResult.Unsupported -> loadLegacyTeam(token, worksiteId)
-            else -> modern
+        return when (val capabilities = capabilitiesApi.load()) {
+            ServerCapabilitiesApi.Result.Unsupported -> loadLegacyTeam(token, worksiteId)
+            is ServerCapabilitiesApi.Result.Error -> TeamResult.Error(capabilities.message)
+            is ServerCapabilitiesApi.Result.Success -> {
+                if (!capabilities.snapshot.supports("worksite_teams_v1")) {
+                    loadLegacyTeam(token, worksiteId)
+                } else {
+                    when (val modern = loadServerTeam(token, worksiteId)) {
+                        TeamResult.Unsupported -> TeamResult.Error(
+                            "Server meldet worksite_teams_v1, der Server-1.0-Teamvertrag ist aber nicht erreichbar."
+                        )
+                        else -> modern
+                    }
+                }
+            }
         }
     }
 
@@ -324,6 +338,16 @@ class TeamManagementApi(
         token: String,
         worksiteId: String
     ): InvitationCandidatesResult {
+        when (val capabilities = capabilitiesApi.load()) {
+            ServerCapabilitiesApi.Result.Unsupported -> return InvitationCandidatesResult.Unsupported
+            is ServerCapabilitiesApi.Result.Error ->
+                return InvitationCandidatesResult.Error(capabilities.message)
+            is ServerCapabilitiesApi.Result.Success -> {
+                if (!capabilities.snapshot.supports("worksite_invitations_v1")) {
+                    return InvitationCandidatesResult.Unsupported
+                }
+            }
+        }
         val connection = openConnection(
             "/api/v1/worksites/${encode(worksiteId)}/invite-candidates",
             "GET"
@@ -384,6 +408,15 @@ class TeamManagementApi(
         areaScopeJson: String = "{}",
         expiresDays: Int = 7
     ): InvitationResult {
+        when (val capabilities = capabilitiesApi.load()) {
+            ServerCapabilitiesApi.Result.Unsupported -> return InvitationResult.Unsupported
+            is ServerCapabilitiesApi.Result.Error -> return InvitationResult.Error(capabilities.message)
+            is ServerCapabilitiesApi.Result.Success -> {
+                if (!capabilities.snapshot.supports("worksite_invitations_v1")) {
+                    return InvitationResult.Unsupported
+                }
+            }
+        }
         val connection = openConnection(
             "/api/v1/worksites/${encode(worksiteId)}/invitations",
             "POST"
