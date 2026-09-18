@@ -596,11 +596,22 @@ def get_file_metadata(
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
         row = _load_file_for_user(cur, user, file_id)
+        context = (
+            worksite_context(cur, user, row["worksite_id"])
+            if row["worksite_id"] is not None
+            else None
+        )
         cur.execute(
             "SELECT entity_type, entity_id, purpose, created_at FROM tb.file_links WHERE file_id = %s ORDER BY created_at",
             (file_id,),
         )
-        links = [dict(link) for link in cur.fetchall()]
+        raw_links = cur.fetchall()
+        links = [
+            dict(link)
+            for link in raw_links
+            if context is None
+            or _entity_link_visible(cur, user, context, link["entity_type"], link["entity_id"])
+        ]
     row.pop("storage_key", None)
     return {"file": row, "links": links}
 
