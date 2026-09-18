@@ -4,7 +4,7 @@ ROOT = Path(__file__).resolve().parents[2]
 api = (ROOT / "app/src/main/java/de/tbhelfer/server/Server1FileApi.kt").read_text(encoding="utf-8")
 dao = (ROOT / "app/src/main/java/de/tbhelfer/datenbank/SyncDao.kt").read_text(encoding="utf-8")
 media = (ROOT / "app/src/main/java/de/tbhelfer/datenbank/BtbTeamMediaSync.kt").read_text(encoding="utf-8")
-fragment = (ROOT / "app/src/main/java/de/tbhelfer/ui/sync/BaustellenSyncFragment.kt").read_text(encoding="utf-8")
+coordinator = (ROOT / "app/src/main/java/de/tbhelfer/server/Server1AndroidSyncCoordinator.kt").read_text(encoding="utf-8")\nfragment = (ROOT / "app/src/main/java/de/tbhelfer/ui/sync/BaustellenSyncFragment.kt").read_text(encoding="utf-8")
 files = (ROOT / "server/tbserver/files.py").read_text(encoding="utf-8")
 btb_docs = (ROOT / "server/tbserver/btb_documents.py").read_text(encoding="utf-8")
 
@@ -22,9 +22,10 @@ assert "server1Api: Server1FileApi? = null" in media
 assert "server1Api = server1Api" in media
 assert "uploadedForBtb" in media
 assert 'status = "FERTIG"' in media
-assert "btbMedia.synchronize" in fragment
-assert "server1Api = server1FileApi" in fragment
-assert "BTB-Abschluss nach Foto-Sync" in fragment
+assert "media.synchronize" in coordinator
+assert "server1Api = fileApi" in coordinator
+assert "BTB-Abschluss nach Foto-Sync" in coordinator
+assert "Server1AndroidSyncCoordinator" in fragment
 assert "prepare_btb_photo_change" in files
 assert "def prepare_btb_photo_change" in btb_docs
 assert "status = 'REWORK'" in btb_docs

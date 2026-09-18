@@ -28,17 +28,18 @@ for token in (
 
 for token in (
     "BtbDeleteSyncCoordinator.reconcileAfterSuccessfulPull",
-    "reconcileServer1BtbDeletes",
+    "reconcileBtbDeletes",
     "collab.hasPendingServer1BtbDelete",
     "collab.synchronizeServer1BtbPending",
-    "refreshServer1BtbSnapshots",
+    "refreshBtbSnapshots",
 ):
-    assert token in fragment, token
+    assert token in sync, token
 
-assert fragment.index("reconcileServer1BtbDeletes(token, contexts)") < fragment.index(
+assert sync.index("reconcileBtbDeletes(token, remoteContexts)") < sync.index(
     "bridge.applyServerStateToLocal()"
 )
-assert "operation = SyncCollabPendingChangeEntity.OP_DELETE" in coordinator
+assert "operation = SyncCollabPendingChangeEntity.OP_DELETE" in delete_coordinator
+assert "Server1AndroidSyncCoordinator" in fragment
 assert '@router.delete("/btbs/{btb_id}", status_code=204)' in server
 assert "deletion_tombstones" in server
 assert "invalidate_final_pdf" in server

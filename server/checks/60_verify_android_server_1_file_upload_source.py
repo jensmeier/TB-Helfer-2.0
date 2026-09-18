@@ -4,7 +4,7 @@ ROOT = Path(__file__).resolve().parents[2]
 api = (ROOT / "app/src/main/java/de/tbhelfer/server/Server1FileApi.kt").read_text(encoding="utf-8")
 repo = (ROOT / "app/src/main/java/de/tbhelfer/datenbank/CollabSyncRepository.kt").read_text(encoding="utf-8")
 bridge = (ROOT / "app/src/main/java/de/tbhelfer/datenbank/CollabLocalBridge.kt").read_text(encoding="utf-8")
-fragment = (ROOT / "app/src/main/java/de/tbhelfer/ui/sync/BaustellenSyncFragment.kt").read_text(encoding="utf-8")
+coordinator = (ROOT / "app/src/main/java/de/tbhelfer/server/Server1AndroidSyncCoordinator.kt").read_text(encoding="utf-8")\nfragment = (ROOT / "app/src/main/java/de/tbhelfer/ui/sync/BaustellenSyncFragment.kt").read_text(encoding="utf-8")
 server = (ROOT / "server/tbserver/files.py").read_text(encoding="utf-8")
 
 for token in (
@@ -29,8 +29,9 @@ for token in (
 
 assert "server1Api: Server1FileApi?" in bridge
 assert "api, server1Api" in bridge
-assert 'capabilities.supports("chunk_upload_v1")' in fragment
-assert "server1Api = server1FileApi" in fragment
+assert 'capabilities.supports("chunk_upload_v1")' in coordinator
+assert "server1Api = fileApi" in coordinator
+assert "Server1AndroidSyncCoordinator" in fragment
 
 assert '@router.post("/worksites/{worksite_id}/uploads"' in server
 assert '@router.put("/uploads/{upload_id}/chunk")' in server
