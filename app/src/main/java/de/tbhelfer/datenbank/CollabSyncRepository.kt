@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import de.tbhelfer.server.CollabBenachrichtigungen
 import de.tbhelfer.server.CollabSyncApi
 import de.tbhelfer.server.Server1FachSyncApi
+import de.tbhelfer.server.Server1BtbApi
 import de.tbhelfer.server.Server1FileApi
 import org.json.JSONObject
 import java.io.File
@@ -407,6 +408,44 @@ class CollabSyncRepository(
             }
         }
         return Server1AttachmentSyncResult.Success(Server1AttachmentSummary(linked, downloaded))
+    }
+
+    suspend fun replaceServer1BtbSnapshots(
+        worksiteServerId: String,
+        teamId: String,
+        snapshots: List<Server1BtbApi.Snapshot>
+    ) {
+        val now = System.currentTimeMillis()
+        database.withTransaction {
+            val incomingIds = snapshots.mapTo(hashSetOf()) { it.serverId }
+            dao.collabEntities(worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB)
+                .filter { it.groupId == teamId && it.serverId !in incomingIds }
+                .forEach { old ->
+                    dao.markCollabDeleted(old.serverId, old.entityVersion, now)
+                }
+            if (snapshots.isNotEmpty()) {
+                dao.upsertCollabEntities(
+                    snapshots.map { item ->
+                        SyncCollabEntity(
+                            serverId = item.serverId,
+                            worksiteServerId = worksiteServerId,
+                            groupId = item.teamId,
+                            entityType = SyncCollabPendingChangeEntity.TYPE_BTB,
+                            clientEntityKey = item.clientEntityKey,
+                            status = item.status,
+                            areaScopeJson = "{}",
+                            payloadJson = item.payloadJson,
+                            entityVersion = item.entityVersion,
+                            changedByName = null,
+                            createdAtText = item.createdAtText,
+                            updatedAtText = item.updatedAtText,
+                            isDeleted = false,
+                            updatedAtEpochMs = now
+                        )
+                    }
+                )
+            }
+        }
     }
 
     suspend fun attachments(parentEntityId: String): List<SyncCollabAttachmentEntity> =

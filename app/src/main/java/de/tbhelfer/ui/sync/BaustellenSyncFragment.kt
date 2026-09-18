@@ -32,6 +32,7 @@ import de.tbhelfer.server.CompanyProfileSync
 import de.tbhelfer.server.SecureTokenStore
 import de.tbhelfer.server.ServerCapabilitiesApi
 import de.tbhelfer.server.Server1FachSyncApi
+import de.tbhelfer.server.Server1BtbApi
 import de.tbhelfer.server.Server1FileApi
 import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.server.TeamManagementApi
@@ -65,6 +66,7 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
     private val teamApi = TeamManagementApi()
     private val serverCapabilitiesApi = ServerCapabilitiesApi()
     private val server1FachApi = Server1FachSyncApi()
+    private val server1BtbApi = Server1BtbApi()
     private val server1FileApi = Server1FileApi()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -207,6 +209,31 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                     ServerCapabilitiesApi.Result.Unsupported -> null
                     is ServerCapabilitiesApi.Result.Error -> return SyncUiResult.Error(result.message)
                 }
+                if (capabilities?.supports("btb_live_sync_v1") == true) {
+                    for (context in contexts.distinctBy { it.worksiteId + "|" + it.groupId }) {
+                        when (
+                            val result = server1BtbApi.loadTeamBtbs(
+                                token,
+                                context.worksiteId,
+                                context.groupId
+                            )
+                        ) {
+                            Server1BtbApi.Result.Unsupported ->
+                                return SyncUiResult.Error(
+                                    "Server meldet btb_live_sync_v1, der kanonische BTB-Endpunkt ist aber nicht erreichbar."
+                                )
+                            Server1BtbApi.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
+                            is Server1BtbApi.Result.Error -> return SyncUiResult.Error(result.message)
+                            is Server1BtbApi.Result.Success ->
+                                collab.replaceServer1BtbSnapshots(
+                                    context.worksiteId,
+                                    context.groupId,
+                                    result.items
+                                )
+                        }
+                    }
+                }
+
                 if (capabilities?.supports("defects_v1") == true || capabilities?.supports("acceptances_v1") == true) {
                     when (val refresh = refreshServer1FachSnapshots(token, contexts, capabilities)) {
                         null -> Unit

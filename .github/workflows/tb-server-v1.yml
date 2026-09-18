@@ -98,6 +98,7 @@ jobs:
           python server/checks/60_verify_android_server_1_file_upload_source.py
           python server/checks/61_verify_android_server_1_file_snapshot_cleanup_source.py
           python server/checks/62_verify_android_server_1_file_truncation_guard_source.py
+          python server/checks/63_verify_android_server_1_btb_read_sync_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
