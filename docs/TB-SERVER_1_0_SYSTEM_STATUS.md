@@ -53,7 +53,7 @@ Die Seite zeigt:
 - letzte Backup-Läufe;
 - letzte Background Jobs.
 
-Die Statusanzeige bleibt lesend. Zusätzlich stehen jetzt drei ausdrücklich getrennte Aktionen zur Verfügung: Datenbank-Backup, Datei-Backup und Vollbackup. Diese Aktionen führen das Backup nicht im HTTP-Request aus, sondern stellen einen idempotenten Background Job ein. Restore bleibt weiterhin separat gesperrt.
+Die Statusanzeige bleibt lesend. Zusätzlich stehen drei ausdrücklich getrennte Backup-Aktionen zur Verfügung: Datenbank-Backup, Datei-Backup und Vollbackup. Diese Aktionen führen das Backup nicht im HTTP-Request aus, sondern stellen einen idempotenten Background Job ein. Für erfolgreiche Backups kann außerdem ein Restore-Test gegen die ausdrücklich getrennte Testdatenbank/Testablage eingereiht werden. Ein Restore auf die laufende TB-Helfer-Datenbank bleibt weiterhin gesperrt.
 
 ## Warum read-only zuerst
 
@@ -73,6 +73,8 @@ Dieser Baustein trennt sauber:
 - `admin_system_status_v1=true`
 - `background_jobs_v1=true`
 - `backup_v1=true`
+- `restore_test_v1=true`
+- `test_data_reset_v1=true`
 
 ## Tests
 
@@ -87,11 +89,12 @@ Dieser Baustein trennt sauber:
 
 `server/checks/41_verify_tb_server_1_backup_jobs_source.py` prüft zusätzlich Background Worker, getrennten Backup-Root, pg_dump-Vertrag, Datei-/FULL-Backup, SHA-256, Retry/Stale-Job-Regeln, Admin-Backupauftrag und Capabilities.
 
+`server/checks/42_verify_tb_server_1_restore_test_reset_source.py` prüft Restore-Test-Trennung, pg_restore-/Archiv-/SHA-Regeln sowie den ausschließlich in Development/Test/Staging erlaubten FULL-Backup-gesicherten Test-Reset.
+
 ## Noch offen
 
 - Backup-Aufbewahrung/Rotation;
-- Restore-Test;
-- kontrollierter Restore;
+- kontrollierter produktiver Restore;
 - Systemmetriken sammeln/aggregieren;
 - E-Mail-Berichte;
 - produktive NAS-Backup-/Cutover-Abnahme.

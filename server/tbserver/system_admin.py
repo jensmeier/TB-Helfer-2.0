@@ -214,3 +214,67 @@ def enqueue_backup(
         )
     return response
 
+@router.post("/backups/{backup_run_id}/restore-test", status_code=202)
+def enqueue_restore_test(
+    backup_run_id: UUID,
+    user: dict[str, Any] = Depends(require_admin_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="RESTORE_TEST_JOB_CREATE",
+        )
+        if receipt:
+            return replay_payload(receipt)
+
+        cur.execute(
+            """
+            SELECT id, kind, status
+            FROM tb.backup_runs
+            WHERE id = %s
+            """,
+            (backup_run_id,),
+        )
+        backup = cur.fetchone()
+        if not backup:
+            raise HTTPException(404, "BACKUP_RUN_NOT_FOUND")
+        if backup["status"] != "OK":
+            raise HTTPException(409, "BACKUP_RUN_NOT_READY")
+        if backup["kind"] not in {"DATABASE", "FILES", "FULL"}:
+            raise HTTPException(409, "RESTORE_TEST_SOURCE_KIND_NOT_SUPPORTED")
+
+        try:
+            job = enqueue_in_tx(
+                cur,
+                "RESTORE_TEST",
+                {"backup_run_id": str(backup_run_id)},
+            )
+        except JobError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+        audit(
+            cur,
+            action="RESTORE_TEST_JOB_CREATE",
+            actor_user_id=user["user_id"],
+            entity_type="BACKGROUND_JOB",
+            entity_id=job["id"],
+            details={
+                "source_backup_run_id": str(backup_run_id),
+                "source_kind": backup["kind"],
+            },
+        )
+        response = {"job": job}
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="RESTORE_TEST_JOB_CREATE",
+            entity_id=job["id"],
+            result_version=None,
+            response_payload=response,
+        )
+    return response
+

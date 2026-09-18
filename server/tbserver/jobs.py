@@ -9,6 +9,7 @@ from psycopg.types.json import Jsonb
 
 from .backup import run_backup
 from .database import transaction
+from .restore import RestoreTestError, run_restore_test
 
 
 MAX_JOB_ATTEMPTS = 5
@@ -17,6 +18,7 @@ SUPPORTED_JOB_TYPES = {
     "BACKUP_DATABASE",
     "BACKUP_FILES",
     "BACKUP_FULL",
+    "RESTORE_TEST",
 }
 
 
@@ -92,6 +94,16 @@ def _execute(job: dict[str, Any]) -> dict[str, Any]:
         return run_backup("FILES")
     if job_type == "BACKUP_FULL":
         return run_backup("FULL")
+    if job_type == "RESTORE_TEST":
+        raw_run_id = (job.get("payload") or {}).get("backup_run_id")
+        try:
+            source_run_id = UUID(str(raw_run_id))
+        except (TypeError, ValueError) as exc:
+            raise JobError("RESTORE_TEST_BACKUP_RUN_ID_INVALID") from exc
+        try:
+            return run_restore_test(source_run_id)
+        except RestoreTestError as exc:
+            raise JobError(str(exc)) from exc
     raise JobError("JOB_TYPE_NOT_SUPPORTED")
 
 

@@ -15,6 +15,7 @@ Unterstützte Jobtypen:
 - `BACKUP_DATABASE`
 - `BACKUP_FILES`
 - `BACKUP_FULL`
+- `RESTORE_TEST`
 
 Arbeitsweise:
 
@@ -110,18 +111,73 @@ Der Endpunkt:
 
 Die Systemstatus-Seite kann Datenbank-, Datei- und Vollbackup-Aufträge einreihen. Sie zeigt zusätzlich die Belegung des Backup-Roots und den Zustand der Background Jobs.
 
+## Restore-Test
+
+Ein Restore-Test verändert niemals die laufende TB-Helfer-Datenbank oder den produktiven Storage.
+
+API:
+
+`POST /api/v1/admin/system/backups/{backup_run_id}/restore-test`
+
+Der Endpunkt stellt lediglich einen Background Job `RESTORE_TEST` ein. Unterstützte Quellen sind erfolgreiche DATABASE-, FILES- und FULL-Backups.
+
+Für Datenbankanteile ist eine **separate** Restore-Test-Datenbank erforderlich. Konfiguration:
+
+- `TB_RESTORE_TEST_DB_NAME` – Pflicht;
+- `TB_RESTORE_TEST_DB_PASSWORD` – Pflicht;
+- `TB_RESTORE_TEST_DB_HOST` – optional, Default wie Live-DB;
+- `TB_RESTORE_TEST_DB_PORT` – optional, Default wie Live-DB;
+- `TB_RESTORE_TEST_DB_USER` – optional, Default wie Live-DB.
+
+Der Datenbankname darf niemals dem Namen der Live-Datenbank entsprechen. Vor dem Restore wird ausschließlich in dieser getrennten Testdatenbank das Schema `tb` gelöscht und anschließend `pg_restore --clean --if-exists --exit-on-error` gegen das geprüfte Dump ausgeführt.
+
+Nach dem Restore werden mindestens das Migrationsregister und zentrale TB-Server-1.0-Tabellen geprüft.
+
+Für FILES/FULL gilt zusätzlich:
+
+- Archive dürfen nur unter `storage/` liegen;
+- absolute Pfade und `..` werden verworfen;
+- Symlinks/Hardlinks/Device-Dateien werden beim Restore-Test nicht zugelassen;
+- FULL-Backup muss exakt `database.dump`, `files.tar.gz` und `manifest.json` enthalten;
+- die beiden inneren SHA-256-Werte müssen mit dem Manifest übereinstimmen.
+
+Jeder Restore-Test erhält einen eigenen `tb.backup_runs`-Eintrag mit `kind=RESTORE_TEST`. Die normale Admin-Statusansicht zeigt weiterhin keine internen Pfade oder Fehlerdetails.
+
+## Test-/Staging-Reset
+
+CLI:
+
+`python -m tbserver.reset_test reset-test-data --backup-run-id <uuid> --confirm RESET-TEST-DATA:<uuid>`
+
+Sicherheitsgrenzen:
+
+- ausschließlich `TB_ENVIRONMENT=development|test|staging`;
+- in jeder anderen Umgebung wird der Reset hart abgelehnt;
+- vor dem Reset ist ein erfolgreicher FULL-Backup-Lauf Pflicht;
+- das FULL-Backup darf höchstens 24 Stunden alt sein;
+- Größe und SHA-256 des Backups werden vor dem Reset erneut geprüft;
+- die Bestätigung muss exakt die UUID des verifizierten FULL-Backups enthalten;
+- `TB_BACKUP_ROOT` muss außerhalb von `STORAGE_ROOT` liegen.
+
+Erst danach wird das fachliche `tb`-Schema gelöscht, die nummerierte Server-1.0-Migrationsbaseline frisch aufgebaut und anschließend nur der Inhalt von `STORAGE_ROOT` geleert. Backups, GitHub-Code und Konfiguration/Secrets liegen außerhalb und werden nicht gelöscht.
+
+Nach einem Reset muss der initiale Test-Admin bewusst neu gebootstrapped und Testdaten neu angelegt werden.
+
 ## Capabilities
 
 - `background_jobs_v1=true`
 - `backup_v1=true`
+- `restore_test_v1=true`
+- `test_data_reset_v1=true`
 
 ## Sicherheitsgrenzen
 
 Dieser Baustein:
 
 - führt keinen Restore auf die laufende Datenbank aus;
-- löscht keine produktiven Daten;
-- setzt keine Datenbank zurück;
+- führt Restore-Tests nur gegen eine ausdrücklich getrennte Testdatenbank/-ablage aus;
+- löscht produktive Daten nicht;
+- erlaubt einen Datenreset ausschließlich in Development/Test/Staging und nur nach verifiziertem frischem FULL-Backup;
 - ändert keine produktiven Vermessungsoriginale;
 - enthält keine Geheimwerte im Repository.
 
@@ -145,11 +201,22 @@ Vor einem späteren produktiven Restore/Cutover bleibt ein verifiziertes Backup 
 - Capabilities und Workflow;
 - vorhandenen PostgreSQL-17-Client im 1.0-Dockerfile.
 
+`server/checks/42_verify_tb_server_1_restore_test_reset_source.py` prüft zusätzlich:
+
+- getrennte Restore-Test-Datenbank;
+- kein Restore gegen den Live-Datenbanknamen;
+- `pg_restore` mit Passwort nur über `PGPASSWORD`;
+- FULL-Manifest-/SHA-Prüfung;
+- sichere Archivpfade ohne Symlink-/Hardlink-Wiederherstellung;
+- Restore-Test-Job/API;
+- harte Reset-Umgebungsgrenze;
+- FULL-Backup-Pflicht und 24-Stunden-Grenze;
+- dynamische Bestätigung `RESET-TEST-DATA:<backup_uuid>`;
+- frische Migrationen und getrennten Backup-Root.
+
 ## Noch offen
 
-- Restore-Test gegen eine ausdrücklich getrennte Testdatenbank;
-- kontrollierter Restore;
-- Test-/Staging-Reset mit harter Production-Sperre;
+- kontrollierter produktiver Restore;
 - Backup-Aufbewahrung/Rotation;
 - E2E-Test des Workers und aller Backuparten gegen PostgreSQL + persistente Storage-Mounts;
 - produktive NAS-Backup- und Restore-Abnahme.

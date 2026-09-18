@@ -93,7 +93,9 @@ async function load(){
       return '<tr><td><b>'+esc(row.name)+'</b></td><td>'+esc(row.user_count)+'</td><td>'+esc(row.active_device_count)+'</td><td>'+esc(row.worksite_count)+'</td><td>'+esc(row.file_count)+'</td><td>'+esc(bytes(row.file_bytes))+'</td></tr>';
     }).join('')||'<tr><td colspan="6" class="muted">Keine Firmen.</td></tr>';
     document.getElementById('backups').innerHTML=(x.backups||[]).map(function(b){
-      return '<div class="item"><b>'+esc(b.kind)+'</b> <span class="pill">'+esc(b.status)+'</span><div class="small">'+esc(dt(b.started_at))+' · '+esc(bytes(b.byte_size))+'</div></div>';
+      const restore=(b.status==='OK'&&b.kind!=='RESTORE_TEST')?
+        '<div class="actions" style="margin-top:7px"><button type="button" class="secondary" onclick="startRestoreTest(\''+esc(b.id)+'\')">Restore-Test</button></div>':'';
+      return '<div class="item"><b>'+esc(b.kind)+'</b> <span class="pill">'+esc(b.status)+'</span><div class="small">'+esc(dt(b.started_at))+' · '+esc(bytes(b.byte_size))+'</div>'+restore+'</div>';
     }).join('')||'<p class="muted">Noch keine Backup-Läufe protokolliert.</p>';
     document.getElementById('jobs').innerHTML=(x.jobs||[]).map(function(j){
       return '<div class="item"><b>'+esc(j.job_type)+'</b> <span class="pill">'+esc(j.status)+'</span><div class="small">Versuche '+esc(j.attempts)+' · geplant '+esc(dt(j.run_after))+'</div></div>';
@@ -112,6 +114,15 @@ async function startBackup(kind){
   }catch(error){show('err',error.message||String(error));}
 }
 window.startBackup=startBackup;
+async function startRestoreTest(id){
+  if(!confirm('Restore-Test dieses Backups gegen die getrennte Testumgebung starten?'))return;
+  try{
+    const result=await tbApi('/api/v1/admin/system/backups/'+encodeURIComponent(id)+'/restore-test',{method:'POST'});
+    show('ok','Restore-Test-Auftrag '+result.data.job.id+' wurde in die Warteschlange gestellt.');
+    await load();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.startRestoreTest=startRestoreTest;
 document.getElementById('refresh').addEventListener('click',load);
 load();
 </script>

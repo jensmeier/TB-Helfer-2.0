@@ -43,6 +43,8 @@ CAPABILITIES: dict[str, bool] = {
     "admin_system_status_v1": True,
     "background_jobs_v1": True,
     "backup_v1": True,
+    "restore_test_v1": True,
+    "test_data_reset_v1": True,
 }
 
 

@@ -52,7 +52,8 @@ Wichtige Server-1.0-Meilensteine:
 - Portal-Fachoberfläche v1: Baustellenübersicht/-detail, Struktur-CRUD, Mitgliederrechte/Teamansicht, Team-BTBs, BTB-Bearbeitung/Abschluss-PDF/Foto-Chunkupload sowie Mängel-/Abnahme-Bearbeitung auf denselben `/api/v1`-Verträgen; Browser-Mutationen senden CSRF + `X-Client-Change-Id`
 - gezielte Server-1.0-Baustelleneinladungen: gleiches Unternehmen, eingeladener Zielbenutzer, gehashter Einmalcode, Widerruf/Ablauf/Einmalannahme; Helfer werden dem Team des einladenden verantwortlichen TB zugeordnet
 - Admin-Systemstatus/Speicher v1: API/Webseite für Migrationen, DB-Größe, Storage-Belegung, Firmen-/Nutzer-/Geräte-/Baustellen-/Dateizahlen, Backup-Läufe und Background Jobs ohne Geheimnisse/interne Payloads
-- Background-Job-/Backup-Basis: `FOR UPDATE SKIP LOCKED`, Retry/Stale-Recovery, getrennte DATABASE/FILES/FULL-Backups, SHA-256, atomare Dateien und ADMIN-Backupaufträge; Restore bleibt getrennt
+- Background-Job-/Backup-Basis: `FOR UPDATE SKIP LOCKED`, Retry/Stale-Recovery, getrennte DATABASE/FILES/FULL-Backups, SHA-256, atomare Dateien und ADMIN-Backupaufträge
+- Restore-Test + sicherer Test-Reset: Restore nur gegen getrennte Testdatenbank/Testablage; Test-/Staging-Reset nur nach verifiziertem höchstens 24h altem FULL-Backup und harter Environment-/Bestätigungssperre
 
 ## Verbindliche Strategie
 
@@ -331,54 +332,97 @@ Details: `docs/TB-SERVER_1_0_PORTAL_FACH_UI.md`.
 
 ### Admin-Systemstatus / Speicher v1
 
-`GET /api/v1/admin/system/status` liefert ausschließlich für Portal-ADMIN den read-only Systemzustand:
+`GET /api/v1/admin/system/status` liefert ausschließlich für Portal-ADMIN den Systemzustand ohne Geheimnisse oder interne Job-Payloads:
 
 - Server-/Migrationsstand;
 - PostgreSQL-Datenbankgröße;
 - Firmen/Nutzer/aktive Geräte/Baustellen/BTBs/Dateien;
 - offene Mängel und nicht finalisierte Abnahmen;
 - erfasste Dateigröße;
-- Storage-Gesamt-/Belegt-/Freiwerte;
+- Storage- und Backup-Storage-Belegung;
 - letzte Backup-Läufe ohne internen Storage-Key;
 - letzte Background Jobs ohne Payload/`last_error`;
-- whitelisted, nicht geheime `server_settings`;
-- firmenweise Nutzer-/Geräte-/Baustellen-/Dateizahlen.
+- whitelisted, nicht geheime `server_settings`.
 
 Webseite: `GET /admin/v1/system`.
 
-Der Baustein ist absichtlich read-only. Backup/Restore wird erst mit eigenem sicheren Vertrag ergänzt; es wird durch den Status keine produktive NAS-/Datenänderung ausgelöst.
+Neben der read-only Statusanzeige können ADMINs DATABASE-/FILES-/FULL-Backup-Jobs und Restore-Tests einreihen. Die eigentliche Ausführung erfolgt im separaten Background-Worker.
 
 Capability: `admin_system_status_v1=true`.
 
 Details: `docs/TB-SERVER_1_0_SYSTEM_STATUS.md`.
 
+### Background Jobs / Backup v1
+
+Der DB-gestützte Worker verwendet die bereits vorhandene Tabelle `tb.background_jobs`.
+
+- Claim über `FOR UPDATE SKIP LOCKED`;
+- maximal fünf Versuche mit Backoff;
+- verwaiste `RUNNING`-Jobs werden nach 30 Minuten wiederhergestellt;
+- Jobs: `BACKUP_DATABASE`, `BACKUP_FILES`, `BACKUP_FULL`, `RESTORE_TEST`;
+- Workerstart: `python -m tbserver.jobs worker`.
+
+`TB_BACKUP_ROOT` muss außerhalb von `STORAGE_ROOT` liegen.
+
+Backuparten:
+
+- DATABASE: PostgreSQL-17-`pg_dump` im Custom-Format, Passwort nur über `PGPASSWORD`;
+- FILES: kompletter TB-Storage als `.tar.gz`;
+- FULL: `database.dump` + `files.tar.gz` + Manifest mit inneren SHA-256-Werten.
+
+Alle finalen Backupdateien erhalten Größe + SHA-256 in `tb.backup_runs`. `POST /api/v1/admin/system/backups` reiht idempotent einen Backup-Job ein.
+
+Capabilities: `background_jobs_v1=true`, `backup_v1=true`.
+
+### Restore-Test / Test-Reset
+
+`POST /api/v1/admin/system/backups/{backup_run_id}/restore-test` stellt einen `RESTORE_TEST`-Job ein.
+
+Für DATABASE/FULL ist eine getrennte Restore-Test-Datenbank über `TB_RESTORE_TEST_DB_*` Pflicht. Ihr Datenbankname darf nicht dem Live-`DB_NAME` entsprechen. Der Worker löscht ausschließlich dort das `tb`-Schema, führt `pg_restore` aus und verifiziert danach Migrationsregister + Kerntabellen.
+
+FILES/FULL werden nur in eine temporäre Restore-Test-Ablage unterhalb des Backup-Roots extrahiert. Archive mit absoluten/`..`-Pfaden, Symlinks/Hardlinks oder Device-Dateien werden abgelehnt; FULL prüft zusätzlich Layout und beide inneren SHA-256-Werte gegen `manifest.json`.
+
+Test-/Staging-Reset ist ausschließlich als CLI vorhanden:
+
+`python -m tbserver.reset_test reset-test-data --backup-run-id <uuid> --confirm RESET-TEST-DATA:<uuid>`
+
+Schutz:
+
+- nur `development|test|staging`;
+- erfolgreicher FULL-Backup-Lauf Pflicht;
+- Backup höchstens 24 Stunden alt;
+- Backupgröße + SHA-256 erneut verifiziert;
+- dynamische Bestätigung mit Backup-UUID;
+- Backup-Root außerhalb Storage;
+- danach frische Server-1.0-Migrationen und leerer Test-Storage.
+
+Capabilities: `restore_test_v1=true`, `test_data_reset_v1=true`.
+
+Ein produktiver Restore wird damit **nicht** freigegeben.
+
+Details: `docs/TB-SERVER_1_0_BACKUP_RESTORE.md`.
+
 ### Releases / Client-Kompatibilität
 
-Der bereits in Migration `001_server_1_0_base.sql` vorhandene Release-Katalog wird jetzt als stabiler API-Vertrag genutzt; bestehende Migrationen bleiben unverändert.
+Der Release-Katalog liefert die stabile Client-Kompatibilität und kann neben externen Download-URLs auch serverseitige Binärdateien verwalten.
 
 Öffentliche Endpunkte:
 
 - `GET /api/v1/client-compatibility`;
-- `GET /api/v1/releases/{platform}/latest`.
+- `GET /api/v1/releases/{platform}/latest`;
+- `GET /api/v1/releases/{release_id}/download` für veröffentlichte interne Binärdateien.
 
-Administrative Release-Verwaltung:
+ADMIN:
 
-- `GET /api/v1/admin/releases`;
-- `POST /api/v1/admin/releases`;
-- `PATCH /api/v1/admin/releases/{release_id}`;
-- `POST /api/v1/admin/releases/{release_id}/publish`;
-- `POST /api/v1/admin/releases/{release_id}/retire`.
+- Release-Draft anlegen/ändern;
+- internes Binary per `PUT /api/v1/admin/releases/{release_id}/binary` streamen;
+- Draft-Binary entfernen;
+- veröffentlichen/zurückziehen;
+- Admin-Webseite `GET /admin/v1/releases`.
 
-Unterstützt werden `ANDROID`, `IOS` und `WINDOWS`. Der Kompatibilitätsvertrag unterscheidet `NO_PUBLISHED_RELEASE`, `UNKNOWN_BUILD`, `SUPPORTED_CURRENT`, `SUPPORTED_UPDATE_AVAILABLE`, `UPDATE_REQUIRED` und `UNSUPPORTED_BUILD`. Damit muss ein Client nicht mehr aus Serverversionsstrings oder PostgreSQL-Schemanummern raten.
+Der Binärupload ist auf 512 MiB begrenzt, kann `X-Release-SHA256` prüfen und verwendet Tempdatei + atomaren Replace + Rollback. Ein Release kann nur mit internem Binary oder externer Download-URL veröffentlicht werden. Veröffentlichte Release-Metadaten/Binaries werden nicht still überschrieben. Öffentliche und bereinigte Admin-Payloads geben keinen internen Storage-Key aus.
 
-Veröffentlichte Release-Metadaten sind unveränderlich; Änderungen erfolgen über einen neuen Draft/Release. Für Android ist beim Veröffentlichen eine Buildnummer Pflicht. `minimum_supported_build` darf nicht größer als die Release-Buildnummer sein. Öffentliche Antworten geben keine internen `storage_key`-/SHA-/Serverpfade aus.
-
-Capabilities:
-
-- `release_catalog_v1=true`;
-- `client_compatibility_v1=true`.
-
-Der aktuelle Baustein verwaltet Metadaten und externe Downloadziele. Serverseitiger APK-/Binär-Upload und -Download bleiben ein eigener späterer Capability-Schritt.
+Capabilities: `release_catalog_v1=true`, `release_binary_v1=true`, `client_compatibility_v1=true`.
 
 Details: `docs/TB-SERVER_1_0_RELEASES.md`.
 
@@ -389,9 +433,9 @@ Workflow-Zielstand:
 - Migrationen 001 + 002 + 003 + 004;
 - `latest_known=4`, `latest_applied=4`;
 - Kerntabellen u. a. `survey_parse_catalog`, `track_data_sources`, `track_data_km_points`;
-- Source-/Vertragschecks 20–40;
+- Source-/Vertragschecks 20–42;
 - Health/Capabilities/Auth-Checks;
-- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `release_binary_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1`, `worksite_invitations_v1` und `admin_system_status_v1`.
+- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `release_binary_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1`, `worksite_invitations_v1`, `admin_system_status_v1`, `background_jobs_v1`, `backup_v1`, `restore_test_v1` und `test_data_reset_v1`.
 
 Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
@@ -418,8 +462,10 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 38 ist als Sicherheits-/Vertragsprüfung für gezielte Baustelleneinladungen inkl. gehashtem Einmalcode und tokenfreiem Mutation Receipt vorbereitet.
 - Source-Check 39 ist als Syntax-/Vertragsprüfung für read-only Admin-Systemstatus/Storage inkl. Geheimnis-/Payload-Ausschluss vorbereitet.
 - Source-Check 40 ist als Syntax-/Vertragsprüfung für Release-Binärupload/-download, SHA-256, atomaren Storage, Veröffentlichungsgrenzen und Admin-Weboberfläche vorbereitet.
+- Source-Check 41 ist als Syntax-/Vertragsprüfung für Background Worker, Backup-Root-Trennung, DATABASE/FILES/FULL-Backup, SHA-256, Retry/Stale-Recovery und Admin-Backupauftrag vorbereitet.
+- Source-Check 42 ist als Sicherheits-/Vertragsprüfung für getrennten Restore-Test, FULL-Manifest/SHA/Archivschutz und ausschließlich Development/Test/Staging erlaubten Backup-gesicherten Reset vorbereitet.
 
-**Noch nicht ausgeführt:** Source-Checks 34–40 gegen den vollständigen neuen Branding-/Portal-/System-/Releasestand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–42 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-Test-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -434,13 +480,13 @@ Für den aktuellen Release-Binary-Commit `4abd52b82d12f153874f07a2bbaa1a78edb2f6
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
 - Android-Fachclient auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
-- Teamwechsel bestehender Helfer, QR/Deep-Link für Einladungen und komfortablere Portal-Fachformulare; Systemstatus/Speicher ist read-only vorhanden, Backup-/Restore-/Job-Ausführung bleibt offen;
-- Background-Job-Worker, Backup/Restore/Reset; Release-Binärupload/-download ist umgesetzt;
+- Teamwechsel bestehender Helfer, QR/Deep-Link für Einladungen und komfortablere Portal-Fachformulare;
+- kontrollierter produktiver Restore und Backup-Aufbewahrung/Rotation; Background-Job-Worker, DATABASE/FILES/FULL-Backup, Restore-Test und Test-/Staging-Reset sind umgesetzt;
 - vollständige Integrations-/E2E-Tests und produktiver NAS-Cutover.
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Background-Job-Worker sowie Backup/Restore/Reset schließen; Release-Binärupload/-download und read-only Systemstatus sind dafür jetzt vorhanden.
+1. Kontrollierten produktiven Restore weiter nur als expliziten Wartungs-/Disaster-Recovery-Pfad bauen; Restore-Test und Test-/Staging-Reset sind jetzt vorhanden.
 2. Teamwechsel/QR-Komfort und spezialisierte Portal-Fachformulare später additiv auf die stabilen Verträge setzen.
 3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
 4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
