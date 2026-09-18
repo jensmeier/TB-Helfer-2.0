@@ -51,6 +51,7 @@ Wichtige Server-1.0-Meilensteine:
 - erste native Server-1.0-Portal-/Admin-Weboberfläche: Login/Portal-Start, Firmenliste/-anlage sowie Firmenprofil/Logo/PDF-Layout mit CSRF-geschützter API-Anbindung und Browser-Vorschau
 - Portal-Fachoberfläche v1: Baustellenübersicht/-detail, Struktur-CRUD, Mitgliederrechte/Teamansicht, Team-BTBs, BTB-Bearbeitung/Abschluss-PDF/Foto-Chunkupload sowie Mängel-/Abnahme-Bearbeitung auf denselben `/api/v1`-Verträgen; Browser-Mutationen senden CSRF + `X-Client-Change-Id`
 - gezielte Server-1.0-Baustelleneinladungen: gleiches Unternehmen, eingeladener Zielbenutzer, gehashter Einmalcode, Widerruf/Ablauf/Einmalannahme; Helfer werden dem Team des einladenden verantwortlichen TB zugeordnet
+- Admin-Systemstatus/Speicher v1: read-only API/Webseite für Migrationen, DB-Größe, Storage-Belegung, Firmen-/Nutzer-/Geräte-/Baustellen-/Dateizahlen, Backup-Läufe und Background Jobs ohne Geheimnisse/interne Payloads
 
 ## Verbindliche Strategie
 
@@ -308,6 +309,29 @@ Capability: `portal_worksite_fach_ui_v1=true`.
 
 Details: `docs/TB-SERVER_1_0_PORTAL_FACH_UI.md`.
 
+### Admin-Systemstatus / Speicher v1
+
+`GET /api/v1/admin/system/status` liefert ausschließlich für Portal-ADMIN den read-only Systemzustand:
+
+- Server-/Migrationsstand;
+- PostgreSQL-Datenbankgröße;
+- Firmen/Nutzer/aktive Geräte/Baustellen/BTBs/Dateien;
+- offene Mängel und nicht finalisierte Abnahmen;
+- erfasste Dateigröße;
+- Storage-Gesamt-/Belegt-/Freiwerte;
+- letzte Backup-Läufe ohne internen Storage-Key;
+- letzte Background Jobs ohne Payload/`last_error`;
+- whitelisted, nicht geheime `server_settings`;
+- firmenweise Nutzer-/Geräte-/Baustellen-/Dateizahlen.
+
+Webseite: `GET /admin/v1/system`.
+
+Der Baustein ist absichtlich read-only. Backup/Restore wird erst mit eigenem sicheren Vertrag ergänzt; es wird durch den Status keine produktive NAS-/Datenänderung ausgelöst.
+
+Capability: `admin_system_status_v1=true`.
+
+Details: `docs/TB-SERVER_1_0_SYSTEM_STATUS.md`.
+
 ### Releases / Client-Kompatibilität
 
 Der bereits in Migration `001_server_1_0_base.sql` vorhandene Release-Katalog wird jetzt als stabiler API-Vertrag genutzt; bestehende Migrationen bleiben unverändert.
@@ -345,9 +369,9 @@ Workflow-Zielstand:
 - Migrationen 001 + 002 + 003 + 004;
 - `latest_known=4`, `latest_applied=4`;
 - Kerntabellen u. a. `survey_parse_catalog`, `track_data_sources`, `track_data_km_points`;
-- Source-/Vertragschecks 20–38;
+- Source-/Vertragschecks 20–39;
 - Health/Capabilities/Auth-Checks;
-- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1` und `worksite_invitations_v1`.
+- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1`, `worksite_invitations_v1` und `admin_system_status_v1`.
 
 Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
@@ -372,8 +396,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 36 ist als Syntax-/Vertragsprüfung für Portal-/Admin-Webrouten, Templates, CSRF und Branding-UI vorbereitet.
 - Source-Check 37 ist als Vertragsprüfung für Baustellen-/Team-/BTB-/Mängel-/Abnahme-Portaloberfläche, CSRF, Browser-Idempotenz und BTB-Foto-Chunkupload vorbereitet.
 - Source-Check 38 ist als Sicherheits-/Vertragsprüfung für gezielte Baustelleneinladungen inkl. gehashtem Einmalcode und tokenfreiem Mutation Receipt vorbereitet.
+- Source-Check 39 ist als Syntax-/Vertragsprüfung für read-only Admin-Systemstatus/Storage inkl. Geheimnis-/Payload-Ausschluss vorbereitet.
 
-**Noch nicht ausgeführt:** Source-Checks 34–38 gegen den vollständigen neuen Branding-/Portal-Fach-/Einladungsstand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–39 gegen den vollständigen neuen Branding-/Portal-/Systemstatusstand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -388,14 +413,14 @@ Für den aktuellen Admin-Web-Commit `b03f058b975bb928f0a434c00a6a79a66bab27f0` e
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
 - Android-Fachclient auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
-- Teamwechsel bestehender Helfer, QR/Deep-Link für Einladungen und komfortablere Portal-Fachformulare; außerdem Admin-Dashboard/Systemstatus/Speicher;
+- Teamwechsel bestehender Helfer, QR/Deep-Link für Einladungen und komfortablere Portal-Fachformulare; Systemstatus/Speicher ist read-only vorhanden, Backup-/Restore-/Job-Ausführung bleibt offen;
 - serverseitiger Release-Binärupload/-download, Background Jobs, Backup/Restore/Reset;
 - vollständige Integrations-/E2E-Tests und produktiver NAS-Cutover.
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Teamwechsel/QR-Komfort später additiv auf den jetzt sicheren Einladungsvertrag setzen; als nächstes Systemstatus/Speicher als Server-1.0-Weboberfläche schließen.
-2. Serverseitigen Release-Binärupload/-download, Background Jobs sowie Backup/Restore/Reset schließen.
+1. Serverseitigen Release-Binärupload/-download, Background-Job-Worker sowie Backup/Restore/Reset schließen; der read-only Systemstatus ist dafür jetzt die Diagnosebasis.
+2. Teamwechsel/QR-Komfort und spezialisierte Portal-Fachformulare später additiv auf die stabilen Verträge setzen.
 3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
 4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
 5. Anschließend den Android-Fachclient capability-gesteuert auf die fertigen `/api/v1`-Verträge umstellen; die bisherigen 0.6-/0.7-Versionsschwellen dürfen nicht die Server-1.0-Fähigkeiten bestimmen.

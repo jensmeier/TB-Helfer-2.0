@@ -27,6 +27,7 @@ from .survey_parser import router as survey_parser_router
 from .survey_projection import router as survey_projection_router
 from .survey_sections import router as survey_sections_router
 from .sync import router as sync_router
+from .system_admin import router as system_admin_router
 from .track_data import router as track_data_router
 from .worksites import router as worksites_router
 
@@ -48,6 +49,7 @@ app.include_router(portal_router)
 app.include_router(admin_web_router)
 app.include_router(admin_router)
 app.include_router(admin_devices_router)
+app.include_router(system_admin_router)
 app.include_router(devices_router)
 app.include_router(releases_router)
 app.include_router(worksites_router)

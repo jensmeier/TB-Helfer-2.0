@@ -39,6 +39,7 @@ CAPABILITIES: dict[str, bool] = {
     "company_branding_admin_ui_v1": True,
     "portal_worksite_fach_ui_v1": True,
     "worksite_invitations_v1": True,
+    "admin_system_status_v1": True,
 }
 
 

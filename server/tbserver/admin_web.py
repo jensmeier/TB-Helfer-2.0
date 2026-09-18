@@ -58,6 +58,17 @@ def admin_v1_root(
     return RedirectResponse("/admin/v1/companies", status_code=303)
 
 
+@router.get("/admin/v1/system")
+def admin_system_page(
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
+):
+    return templates.TemplateResponse(
+        "v1_system_status.html",
+        {"request": request, "user": user},
+    )
+
+
 @router.get("/admin/v1/companies")
 def admin_companies_page(
     request: Request,

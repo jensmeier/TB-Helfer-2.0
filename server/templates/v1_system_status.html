@@ -1,0 +1,97 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Systemstatus{% endblock %}
+{% block head %}
+<style>
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.kpi{border:1px solid #eaecf0;border-radius:12px;padding:13px;background:#fff}.kpi .n{font-size:24px;font-weight:800}.kpi .l{font-size:12px;color:#667085;margin-top:3px}
+  .bar{height:12px;background:#eef2f6;border-radius:999px;overflow:hidden}.bar>div{height:100%;background:#1167d8}
+  .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}.small{font-size:12px;color:#667085}.item{border:1px solid #eaecf0;border-radius:10px;padding:10px;margin:8px 0}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="actions" style="justify-content:space-between">
+    <div><h1 style="margin-bottom:4px">Systemstatus</h1><p class="muted">Server 1.0 · Datenbank, Migrationen, Speicher, Firmen, Backups und Background Jobs.</p></div>
+    <button id="refresh" type="button">Aktualisieren</button>
+  </div>
+  <div id="msg"></div>
+</div>
+
+<div id="summary" class="kpis"></div>
+
+<div class="two" style="margin-top:16px">
+  <div class="card">
+    <h2>Server / Datenbank</h2>
+    <div id="serverInfo">wird geladen …</div>
+  </div>
+  <div class="card">
+    <h2>Speicher</h2>
+    <div id="storageInfo">wird geladen …</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Firmen</h2>
+  <div class="scroll"><table><thead><tr><th>Firma</th><th>Nutzer</th><th>aktive Geräte</th><th>Baustellen</th><th>Dateien</th><th>Dateigröße</th></tr></thead><tbody id="companies"></tbody></table></div>
+</div>
+
+<div class="two">
+  <div class="card">
+    <h2>Backups</h2>
+    <div id="backups"></div>
+  </div>
+  <div class="card">
+    <h2>Background Jobs</h2>
+    <div id="jobs"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const msg=document.getElementById('msg');
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function bytes(value){const n=Number(value);if(!Number.isFinite(n))return '—';const u=['B','KiB','MiB','GiB','TiB'];let x=n,i=0;while(x>=1024&&i<u.length-1){x/=1024;i++;}return (i===0?Math.round(x):x.toFixed(x>=100?0:x>=10?1:2))+' '+u[i];}
+function dt(value){if(!value)return '—';try{return new Date(value).toLocaleString('de-DE');}catch(_){return String(value);}}
+function kpi(n,label){return '<div class="kpi"><div class="n">'+esc(n)+'</div><div class="l">'+esc(label)+'</div></div>';}
+async function load(){
+  try{
+    const result=await tbApi('/api/v1/admin/system/status');const x=result.data,c=x.counts||{},m=x.migration||{},st=x.storage||{};
+    document.getElementById('summary').innerHTML=[
+      kpi(c.companies||0,'Firmen'),kpi((c.active_users||0)+' / '+(c.users||0),'aktive / alle Nutzer'),
+      kpi(c.active_devices||0,'aktive Geräte'),kpi(c.worksites||0,'Baustellen'),
+      kpi(c.btbs||0,'BTB'),kpi(c.open_defects||0,'offene Mängel'),kpi(c.open_acceptances||0,'offene Abnahmen'),
+      kpi(c.pending_jobs||0,'wartende Jobs')
+    ].join('');
+    document.getElementById('serverInfo').innerHTML=
+      '<p><b>API:</b> '+esc(x.server_version)+' · <span class="pill">'+esc(x.environment)+'</span></p>'+
+      '<p><b>Migrationen:</b> '+esc(m.applied)+' / '+esc(m.known)+' · latest '+esc(m.latest_applied)+' / '+esc(m.latest_known)+'</p>'+
+      '<p><b>Pending:</b> '+esc((m.pending||[]).join(', ')||'keine')+'</p>'+
+      '<p><b>Datenbankgröße:</b> '+esc(bytes(c.database_bytes))+'</p>'+
+      '<p><b>erfasste Dateigröße:</b> '+esc(bytes(c.tracked_file_bytes))+'</p>'+
+      '<p><b>letzter Gerätekontakt:</b> '+esc(dt(c.last_device_seen))+'</p>'+
+      '<p><b>letzter Sync:</b> '+esc(dt(c.last_sync))+'</p>';
+    if(st.available){
+      const pct=Number(st.percent_used||0);
+      document.getElementById('storageInfo').innerHTML=
+        '<p><b>'+esc(st.label)+'</b> · '+esc(pct.toFixed(2))+' % belegt</p>'+
+        '<div class="bar"><div style="width:'+Math.max(0,Math.min(100,pct))+'%"></div></div>'+
+        '<p>'+esc(bytes(st.used_bytes))+' belegt · '+esc(bytes(st.free_bytes))+' frei · '+esc(bytes(st.total_bytes))+' gesamt</p>';
+    }else{
+      document.getElementById('storageInfo').innerHTML='<div class="notice err">Storage nicht verfügbar.</div>';
+    }
+    document.getElementById('companies').innerHTML=(x.companies||[]).map(function(row){
+      return '<tr><td><b>'+esc(row.name)+'</b></td><td>'+esc(row.user_count)+'</td><td>'+esc(row.active_device_count)+'</td><td>'+esc(row.worksite_count)+'</td><td>'+esc(row.file_count)+'</td><td>'+esc(bytes(row.file_bytes))+'</td></tr>';
+    }).join('')||'<tr><td colspan="6" class="muted">Keine Firmen.</td></tr>';
+    document.getElementById('backups').innerHTML=(x.backups||[]).map(function(b){
+      return '<div class="item"><b>'+esc(b.kind)+'</b> <span class="pill">'+esc(b.status)+'</span><div class="small">'+esc(dt(b.started_at))+' · '+esc(bytes(b.byte_size))+'</div></div>';
+    }).join('')||'<p class="muted">Noch keine Backup-Läufe protokolliert.</p>';
+    document.getElementById('jobs').innerHTML=(x.jobs||[]).map(function(j){
+      return '<div class="item"><b>'+esc(j.job_type)+'</b> <span class="pill">'+esc(j.status)+'</span><div class="small">Versuche '+esc(j.attempts)+' · geplant '+esc(dt(j.run_after))+'</div></div>';
+    }).join('')||'<p class="muted">Noch keine Background Jobs.</p>';
+    msg.className='';msg.textContent='';
+  }catch(error){show('err',error.message||String(error));}
+}
+document.getElementById('refresh').addEventListener('click',load);
+load();
+</script>
+{% endblock %}
