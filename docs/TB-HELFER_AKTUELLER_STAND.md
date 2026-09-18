@@ -57,6 +57,7 @@ Wichtige Server-1.0-Meilensteine:
 - Admin-Systemstatus/Speicher v1: API/Webseite für Migrationen, DB-Größe, Storage-Belegung, Firmen-/Nutzer-/Geräte-/Baustellen-/Dateizahlen, Backup-Läufe und Background Jobs ohne Geheimnisse/interne Payloads
 - Background-Job-/Backup-Basis: `FOR UPDATE SKIP LOCKED`, Retry/Stale-Recovery, getrennte DATABASE/FILES/FULL-Backups, SHA-256, atomare Dateien und ADMIN-Backupaufträge
 - Restore-Test + sicherer Test-Reset: Restore nur gegen getrennte Testdatenbank/Testablage; Test-/Staging-Reset nur nach verifiziertem höchstens 24h altem FULL-Backup und harter Environment-/Bestätigungssperre
+- optionaler Restore-Staging-Compose-Overlay: getrennte Restore-Test-DB, getrennte Restore-Target-DB und eigener Restore-Target-Storage; Restore-to-Target bleibt standardmäßig deaktiviert und außerhalb des normalen Serverstarts
 
 ## Verbindliche Strategie
 
@@ -544,6 +545,10 @@ Portal: vorhandene Helfer zeigen ihr aktuelles Team und können bei `members.man
 
 Capability: `worksite_team_transfer_v1=true`.
 
+### Restore-Staging-Compose-Overlay
+
+`server/docker-compose.restore-test.v1.yml` ergänzt getrennte Restore-Test-/Restore-Target-Datenbanken und einen eigenen Ziel-Storage nur für bewusst gestartete Staging-Tests. Der normale Compose-Start bleibt frei von Restore-to-Target-Zielen; Freigabe-Default ist `NO`. Source-Check 49 prüft diese Trennung.
+
 ## Tests / Checks
 
 Workflow-Zielstand:
@@ -551,7 +556,7 @@ Workflow-Zielstand:
 - Migrationen 001 + 002 + 003 + 004 + 005 + 006;
 - `latest_known=6`, `latest_applied=6`;
 - Kerntabellen u. a. `survey_parse_catalog`, `track_data_sources`, `track_data_km_points`;
-- Source-/Vertragschecks 20–48;
+- Source-/Vertragschecks 20–49;
 - Health/Capabilities/Auth-Checks;
 - erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `release_binary_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1`, `worksite_invitations_v1`, `worksite_invitation_qr_v1`, `worksite_team_transfer_v1`, `admin_system_status_v1`, `background_jobs_v1`, `backup_v1`, `backup_retention_v1`, `restore_test_v1`, `test_data_reset_v1` und `restore_target_v1`.
 
@@ -589,7 +594,7 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 47 ist als Syntax-/Vertrags-/Runtimeprüfung für App-URI, Fragment-Link, SVG-QR, `no-store`, tokenfreien Mutation Receipt und Portal-Fragmentübernahme vorbereitet.
 - Source-Check 48 prüft den gemeinsamen Server-/Android-Vertrag für `worksite-invite`, case-sensitive Tokens, modernen Redeem-Endpunkt, Manifest-Deep-Link, Legacy-Fallback und Android-Unit-Test.
 
-**Noch nicht ausgeführt:** Source-Checks 34–48 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–49 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -610,7 +615,7 @@ Für den aktuellen Android-Einladungs-Commit `a8beb7f6cf867db9e6c692fd26b9483798
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Den neuen Compose-Staging-Stack auf einer echten Docker/PostgreSQL-Umgebung starten und dort Backup -> Retention -> Restore-Test -> Restore-to-Target end-to-end prüfen; in der aktuellen Arbeitsumgebung fehlen Docker/PostgreSQL.
+1. Die normale Compose-Basis plus optionalen Restore-Staging-Overlay auf einer echten Docker/PostgreSQL-Umgebung starten und dort Backup -> Retention -> Restore-Test -> Restore-to-Target end-to-end prüfen; in der aktuellen Arbeitsumgebung fehlen Docker/PostgreSQL.
 2. Als nächsten Android-Schritt nach dem Server-Staging die gezielte Server-1.0-Einladungserzeugung und danach die übrigen Fachendpunkte capability-gesteuert umstellen; spezialisierte Portal-Fachformulare additiv verbessern.
 3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
 4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.

@@ -116,6 +116,52 @@ Restore-Test-Datenbank und Restore-to-Target werden **nicht** automatisch in den
 
 Ein Restore-to-Target soll einen getrennten PostgreSQL-/Storage-Zielstand erzeugen. Erst nach dessen Prüfung wird ein eigener Cutover geplant; die laufende Instanz wird nicht automatisch überschrieben.
 
+## Optionaler Restore-Staging-Overlay
+
+Für den praktischen Backup-/Restore-Test gibt es zusätzlich:
+
+`server/docker-compose.restore-test.v1.yml`
+
+Der Overlay wird **nicht** vom normalen Serverstart verwendet. Er wird nur bewusst zusammen mit der Basiskonfiguration geladen:
+
+`docker compose -f docker-compose.v1.yml -f docker-compose.restore-test.v1.yml up -d --build`
+
+Zusätzlich zum normalen `TB_V1_DB_PASSWORD` müssen für diesen Testlauf separat gesetzt sein:
+
+- `TB_V1_RESTORE_TEST_DB_PASSWORD`;
+- `TB_V1_RESTORE_TARGET_DB_PASSWORD`.
+
+Der Overlay erzeugt zwei getrennte PostgreSQL-17-Ziele:
+
+- `restore-test-db` für zerstörbare Restore-Tests;
+- `restore-target-db` für den kontrollierten Restore-to-Target.
+
+Standardmäßig verwenden sie eigene persistente Pfade:
+
+- `./restore-test-database-v1`;
+- `./restore-target-database-v1`;
+- `./restore-target-storage-v1`.
+
+Der Worker erhält nur in diesem Overlay die `TB_RESTORE_TEST_DB_*`- und `TB_RESTORE_TARGET_DB_*`-Zielparameter.
+
+### Restore-Test
+
+Nach einem erfolgreichen DATABASE-/FILES-/FULL-Backup kann der Restore-Test wie bisher über die Admin-Systemseite bzw. den API-Job eingereiht werden. DATABASE/FULL verwenden dabei `restore-test-db`; FILES/FULL extrahieren nur in die gesicherte temporäre Restore-Test-Ablage.
+
+### Restore-to-Target
+
+Restore-to-Target bleibt eine explizite CLI-Wartungsaktion und ist auch im Overlay standardmäßig gesperrt:
+
+`TB_V1_ALLOW_RESTORE_TARGET=NO`
+
+Für einen bewusst gestarteten Staging-Test muss die Variable nur für diesen Testlauf auf `YES` gesetzt werden. Danach wird im Worker-Container mit der dynamischen Bestätigung gearbeitet:
+
+`python -m tbserver.restore_target restore-target --backup-run-id <uuid> --confirm RESTORE-TARGET:<uuid>:<target-db-name>`
+
+Der Ziel-Datenbankname muss vom Live-Namen abweichen. Ziel-Datenbank und Ziel-Storage müssen frisch/leer sein. Ein bereits benutztes Restore-Ziel wird nicht still überschrieben.
+
+Der Overlay ist damit eine reproduzierbare Testhilfe, **kein** automatischer Produktiv-Restore und kein Cutover-Mechanismus.
+
 ## Produktiver Cutover
 
 Verbindliche Reihenfolge:
@@ -144,4 +190,6 @@ Ab dem ersten echten produktiven Vermessungsimport sind Originaldateien unverän
 - API-Ready-Healthcheck;
 - separaten Worker-Prozess;
 - keine Restore-to-Target-Automatik im normalen Start.
+
+`server/checks/49_verify_tb_server_1_restore_compose_overlay_source.py` prüft zusätzlich den optionalen Restore-Staging-Overlay, getrennte Ziel-Datenbanken/-Pfade, externe Restore-Passwörter und die standardmäßig deaktivierte Restore-to-Target-Freigabe.
 
