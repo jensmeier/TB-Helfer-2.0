@@ -9,6 +9,7 @@ import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.FotoEntity
 import de.tbhelfer.server.SecureTokenStore
+import de.tbhelfer.server.Server1AndroidSyncCoordinator
 import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.server.WorksiteMediaApi
 import de.tbhelfer.ui.abnahme.AbnahmeExport
@@ -271,6 +272,18 @@ object GesamtMedienArchiv {
 
     /** Best-effort Sofortabgleich speziell vor einem fertigen Baustellen-Gesamtexport. */
     private suspend fun synchronizeBeforeExport(context: Context, token: String) {
+        when (
+            val modern = Server1AndroidSyncCoordinator(
+                context.applicationContext
+            ).synchronize(token)
+        ) {
+            is Server1AndroidSyncCoordinator.Result.Success -> return
+            Server1AndroidSyncCoordinator.Result.SessionInvalid -> return
+            is Server1AndroidSyncCoordinator.Result.Error -> return
+            Server1AndroidSyncCoordinator.Result.Unsupported -> Unit
+        }
+
+        // Ausschließlich alter 0.7.x-Fallback.
         val collab = ServiceLocator.collabSyncRepository
         val bridge = ServiceLocator.collabLocalBridge
         val btbMedia = BtbTeamMediaSync(context)

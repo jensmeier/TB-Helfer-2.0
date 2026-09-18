@@ -194,11 +194,41 @@ def _validate_link(
     return normalized, entity_id
 
 
+def _responsible_tb_btb_image_visible(
+    cur,
+    user: dict[str, Any],
+    context: dict[str, Any],
+    entity_id: UUID,
+) -> bool:
+    if user["company_role"] in {"ADMIN", "CHEF"}:
+        privileged = True
+    else:
+        privileged = context.get("worksite_role") == "RESPONSIBLE_TB"
+    if not privileged:
+        return False
+
+    cur.execute(
+        """
+        SELECT 1
+        FROM tb.btbs
+        WHERE id = %s
+          AND worksite_id = %s
+          AND status <> 'DELETED'
+          AND deleted_at IS NULL
+        """,
+        (entity_id, context["id"]),
+    )
+    return cur.fetchone() is not None
+
+
 def _file_visible_for_context(
     cur,
     user: dict[str, Any],
     context: dict[str, Any],
     file_id: UUID,
+    *,
+    mime_type: str | None = None,
+    allow_responsible_btb_images: bool = False,
 ) -> bool:
     cur.execute(
         """
@@ -212,10 +242,65 @@ def _file_visible_for_context(
     links = cur.fetchall()
     if not links:
         return True
-    return any(
-        _entity_link_visible(cur, user, context, link["entity_type"], link["entity_id"])
-        for link in links
+
+    for link in links:
+        if _entity_link_visible(cur, user, context, link["entity_type"], link["entity_id"]):
+            return True
+        if (
+            allow_responsible_btb_images
+            and str(mime_type or "").lower().startswith("image/")
+            and str(link["entity_type"] or "").upper() == "BTB"
+            and _responsible_tb_btb_image_visible(
+                cur,
+                user,
+                context,
+                link["entity_id"],
+            )
+        ):
+            return True
+    return False
+
+
+def _media_uploader_team(
+    cur,
+    worksite_id: UUID,
+    user_id: UUID | None,
+) -> tuple[UUID | None, str | None]:
+    if user_id is None:
+        return None, None
+    cur.execute(
+        """
+        SELECT t.id AS team_id,
+               lead.full_name AS responsible_tb
+        FROM tb.team_members tm
+        JOIN tb.teams t
+          ON t.id = tm.team_id
+         AND t.worksite_id = %s
+         AND t.status = 'ACTIVE'
+        LEFT JOIN tb.users lead ON lead.id = t.lead_user_id
+        WHERE tm.user_id = %s
+          AND tm.removed_at IS NULL
+        ORDER BY
+          CASE WHEN t.lead_user_id = %s THEN 0 ELSE 1 END,
+          t.created_at,
+          t.id
+        LIMIT 1
+        """,
+        (worksite_id, user_id, user_id),
     )
+    row = cur.fetchone()
+    if not row:
+        return None, None
+    return row["team_id"], row.get("responsible_tb")
+
+
+def _legacy_defect_status(status: str | None) -> str | None:
+    normalized = str(status or "").upper()
+    return {
+        "OPEN": "OFFEN",
+        "IN_PROGRESS": "IN_ARBEIT",
+        "CLOSED": "ERLEDIGT",
+    }.get(normalized, normalized or None)
 
 
 def _hash_file(path: Path) -> str:
@@ -264,7 +349,13 @@ def _serialize_upload(upload: dict) -> dict:
     }
 
 
-def _load_file_for_user(cur, user: dict[str, Any], file_id: UUID) -> dict:
+def _load_file_for_user(
+    cur,
+    user: dict[str, Any],
+    file_id: UUID,
+    *,
+    allow_responsible_btb_images: bool = False,
+) -> dict:
     cur.execute(
         """
         SELECT id, company_id, worksite_id, storage_key, original_name, mime_type,
@@ -283,7 +374,14 @@ def _load_file_for_user(cur, user: dict[str, Any], file_id: UUID) -> dict:
             raise HTTPException(403, "FILE_ACCESS_DENIED")
     else:
         context = worksite_context(cur, user, result["worksite_id"])
-        if not _file_visible_for_context(cur, user, context, result["id"]):
+        if not _file_visible_for_context(
+            cur,
+            user,
+            context,
+            result["id"],
+            mime_type=result["mime_type"],
+            allow_responsible_btb_images=allow_responsible_btb_images,
+        ):
             raise HTTPException(403, "FILE_ACCESS_DENIED")
     return result
 
@@ -591,6 +689,157 @@ def abort_upload(
     return None
 
 
+@router.get("/worksites/{worksite_id}/media")
+def list_worksite_media(
+    worksite_id: UUID,
+    user: dict[str, Any] = Depends(current_portal_user),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        context = worksite_context(cur, user, worksite_id)
+        cur.execute(
+            """
+            SELECT f.id,
+                   f.original_name,
+                   f.mime_type,
+                   f.sha256,
+                   f.byte_size,
+                   f.created_by,
+                   f.created_at,
+                   uploader.full_name AS uploaded_by_name,
+                   l.entity_type,
+                   l.entity_id,
+                   b.team_id AS btb_team_id,
+                   b.status AS btb_status,
+                   b.deleted_at AS btb_deleted_at,
+                   btb_lead.full_name AS btb_responsible_tb,
+                   d.area_scope AS defect_area_scope,
+                   d.status AS defect_status,
+                   d.payload AS defect_payload,
+                   d.deleted_at AS defect_deleted_at,
+                   a.area_scope AS acceptance_area_scope,
+                   a.status AS acceptance_status,
+                   a.result AS acceptance_result,
+                   a.payload AS acceptance_payload,
+                   a.deleted_at AS acceptance_deleted_at
+            FROM tb.files f
+            JOIN tb.file_links l ON l.file_id = f.id
+            LEFT JOIN tb.users uploader ON uploader.id = f.created_by
+            LEFT JOIN tb.btbs b
+              ON l.entity_type = 'BTB'
+             AND b.id = l.entity_id
+             AND b.worksite_id = f.worksite_id
+            LEFT JOIN tb.teams bt ON bt.id = b.team_id
+            LEFT JOIN tb.users btb_lead ON btb_lead.id = bt.lead_user_id
+            LEFT JOIN tb.defects d
+              ON l.entity_type = 'DEFECT'
+             AND d.id = l.entity_id
+             AND d.worksite_id = f.worksite_id
+            LEFT JOIN tb.acceptances a
+              ON l.entity_type = 'ACCEPTANCE'
+             AND a.id = l.entity_id
+             AND a.worksite_id = f.worksite_id
+            WHERE f.worksite_id = %s
+              AND f.deleted_at IS NULL
+              AND lower(f.mime_type) LIKE 'image/%%'
+              AND l.entity_type IN ('BTB','DEFECT','ACCEPTANCE')
+            ORDER BY f.created_at, f.id, l.entity_type, l.entity_id
+            """,
+            (worksite_id,),
+        )
+
+        media: list[dict[str, Any]] = []
+        for raw in cur.fetchall():
+            row = dict(raw)
+            entity_type = str(row["entity_type"] or "").upper()
+            entity_id = row["entity_id"]
+
+            normal_visible = _entity_link_visible(
+                cur,
+                user,
+                context,
+                entity_type,
+                entity_id,
+            )
+            cross_team_btb = (
+                entity_type == "BTB"
+                and _responsible_tb_btb_image_visible(
+                    cur,
+                    user,
+                    context,
+                    entity_id,
+                )
+            )
+            if not normal_visible and not cross_team_btb:
+                continue
+
+            if entity_type == "BTB":
+                if (
+                    row.get("btb_deleted_at") is not None
+                    or str(row.get("btb_status") or "").upper() == "DELETED"
+                ):
+                    continue
+                responsible_group_id = row.get("btb_team_id")
+                responsible_tb = row.get("btb_responsible_tb")
+                parent_status = row.get("btb_status")
+                area_scope = {"all": True}
+                # Absichtlich kein fremder BTB-Text im baustellenweiten Medienkatalog.
+                parent_payload = {}
+            elif entity_type == "DEFECT":
+                if row.get("defect_deleted_at") is not None:
+                    continue
+                responsible_group_id, responsible_tb = _media_uploader_team(
+                    cur,
+                    worksite_id,
+                    row.get("created_by"),
+                )
+                parent_status = _legacy_defect_status(row.get("defect_status"))
+                area_scope = row.get("defect_area_scope") or {}
+                parent_payload = row.get("defect_payload") or {}
+            else:
+                if row.get("acceptance_deleted_at") is not None:
+                    continue
+                responsible_group_id, responsible_tb = _media_uploader_team(
+                    cur,
+                    worksite_id,
+                    row.get("created_by"),
+                )
+                parent_status = row.get("acceptance_result") or row.get("acceptance_status")
+                area_scope = row.get("acceptance_area_scope") or {}
+                parent_payload = row.get("acceptance_payload") or {}
+
+            media.append(
+                {
+                    "attachment_id": str(row["id"]),
+                    "entity_type": entity_type,
+                    "parent_entity_id": str(entity_id),
+                    "filename": row.get("original_name"),
+                    "mime_type": row.get("mime_type"),
+                    "sha256": row.get("sha256"),
+                    "size_bytes": int(row.get("byte_size") or 0),
+                    "created_at": row.get("created_at"),
+                    "uploaded_by_user_id": (
+                        str(row["created_by"]) if row.get("created_by") else None
+                    ),
+                    "uploaded_by_name": row.get("uploaded_by_name"),
+                    "responsible_group_id": (
+                        str(responsible_group_id) if responsible_group_id else None
+                    ),
+                    "responsible_tb": responsible_tb,
+                    "parent_status": parent_status,
+                    "area_scope": area_scope,
+                    "parent_payload": parent_payload,
+                }
+            )
+
+    return {
+        "status": "ok",
+        "worksite_id": str(worksite_id),
+        "worksite_role": context.get("worksite_role"),
+        "count": len(media),
+        "media": media,
+    }
+
+
 @router.get("/worksites/{worksite_id}/files")
 def list_files(
     worksite_id: UUID,
@@ -695,7 +944,12 @@ def download_file(
     user: dict[str, Any] = Depends(current_portal_user),
 ):
     with transaction() as conn, conn.cursor() as cur:
-        row = _load_file_for_user(cur, user, file_id)
+        row = _load_file_for_user(
+            cur,
+            user,
+            file_id,
+            allow_responsible_btb_images=True,
+        )
     path = _absolute_storage_path(row["storage_key"])
     if not path.is_file():
         raise HTTPException(404, "FILE_CONTENT_MISSING")

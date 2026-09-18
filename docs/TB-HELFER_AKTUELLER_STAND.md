@@ -629,8 +629,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 71 prüft den kanonischen `worksite_tree_v1`-Cutover: stabile `external_key`/Client-Keys, Snapshot inklusive Tombstones, `base_version`-Konflikte, rekursives Unterbaum-Löschen, bestehende Offline-Outbox sowie begrenztes Konflikt-Rebase im gemeinsamen Server-1.0-Synckern.
 - Source-Check 72 prüft den Android-Streckendaten-Cutover auf kanonisches Server-1.0-GET/POST/PATCH/DELETE mit `X-Client-Change-Id`, `base_version`, Reconcile-Schleife und ausdrücklich beibehaltenem 0.7.x-`/collab`-Fallback; Rohvermessungsdateien bleiben ausgeschlossen.
 - Source-Check 73 prüft den Server-1.0-Baustellen-Lifecycle: idempotente kanonische Anlage, verantwortlicher-TB-only Soft-Delete mit `base_version`, generischer WORKSITE-Tombstone-Feed sowie explizite Android-0.7.x-Fallbacks.
+- Source-Check 74 prüft den kanonischen baustellenweiten Medienkatalog: ausschließlich BTB-/Mangel-/Abnahme-Bilder, Cross-Team-Bildsicht nur für `RESPONSIBLE_TB`/CHEF/Admin, kein fremder BTB-Text, Area-Scope für Mängel/Abnahmen, kanonischer Datei-Download und expliziter 0.7.x-Fallback.
 
-**Noch nicht ausgeführt:** Source-Checks 34–73 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–74 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -702,6 +703,16 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Android prüft vor dem Delete die aktuelle Serverversion, rebased bei Konkurrenz höchstens drei Runden und löscht lokal weiterhin erst nach bestätigtem Servererfolg.
 - `Schema13Worker` kann denselben `WorksiteDeletionApi` weiterverwenden; auf Server 1.0 nimmt dieser automatisch den kanonischen Tombstone-Feed, auf 0.7.x den alten Fallback.
 
+### Server-1.0-Gesamtmedienkatalog
+
+- `GET /api/v1/worksites/{id}/media` erzeugt die Bilderliste direkt aus `tb.files`, `tb.file_links` und den kanonischen BTB-/Mangel-/Abnahme-Objekten; keine zweite Medien-Tabelle wurde eingeführt.
+- Der Katalog enthält ausschließlich Bilddateien aus BTB, Mängeln und Abnahmen – identisch zur bisherigen fachlichen Gesamtbilderlogik.
+- `RESPONSIBLE_TB`, CHEF und ADMIN dürfen BTB-Bilder anderer Teams derselben Baustelle sehen und herunterladen; fremde BTB-Texte bleiben verborgen (`parent_payload={}`).
+- Normale TB-/Helfer-Benutzer sehen BTB-Bilder nur ihrer Teams. Mangel-/Abnahmebilder bleiben zusätzlich durch bestehende Fachrechte und `area_scope` begrenzt.
+- Die Cross-Team-Ausnahme ist ausschließlich beim Bilddownload opt-in; normale Datei-Liste und Datei-Metadaten erhalten dadurch keine erweiterten Fremdteam-Rechte.
+- Android `WorksiteMediaApi` nutzt kanonischen Medienkatalog + `GET /api/v1/files/{id}/content`; alte 0.7.x-Server bleiben über den bisherigen `/collab`-Katalog kompatibel.
+- Vor einem Online-Gesamtexport läuft auf Server 1.0 zuerst der gemeinsame `Server1AndroidSyncCoordinator`; nur bei echtem Legacy-Server folgt der alte Collaboration-Sync.
+
 ## Bekannte/offene Punkte
 
 - vollständige Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung gegen eine echte PostgreSQL-/FastAPI-Testinstanz ausführen;
@@ -709,7 +720,7 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - einseitig belegte GRA-Sprünge nur bei zusätzlicher realer Evidenz automatisieren; Default bleibt `false`;
 - Projektion/verdichtete Samples bei Bedarf performant cachen, ohne Originale zu verändern;
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
-- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; Baustellenbaum/Unterbaustellen nutzen `worksite_tree_v1`, mobile abgeleitete Streckendaten nutzen jetzt kanonisches `track_data_v1` mit explizitem Legacy-Fallback; die Dateiliste ist nun stabil über `(created_at,id)` cursor-paginiert; alte Server ohne Cursorprotokoll behalten während Rolling Updates weiterhin die konservative 1000-Dateien-Tombstone-Sperre; Einladungen, Teamdarstellung, Mängel-/Abnahme-Sync sowie der granulare Team-BTB inklusive BTB-Fotos, serverseitigem Abschluss-PDF und Offline-BTB-Löschung ist capability-gesteuert an Server 1.0 angebunden; offen bleibt die praktische Android-/PostgreSQL-E2E-Prüfung;
+- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; der baustellenweite Gesamtmedienexport nutzt jetzt ebenfalls den kanonischen Server-1.0-Medien-/Dateivertrag; Baustellenbaum/Unterbaustellen nutzen `worksite_tree_v1`, mobile abgeleitete Streckendaten nutzen jetzt kanonisches `track_data_v1` mit explizitem Legacy-Fallback; die Dateiliste ist nun stabil über `(created_at,id)` cursor-paginiert; alte Server ohne Cursorprotokoll behalten während Rolling Updates weiterhin die konservative 1000-Dateien-Tombstone-Sperre; Einladungen, Teamdarstellung, Mängel-/Abnahme-Sync sowie der granulare Team-BTB inklusive BTB-Fotos, serverseitigem Abschluss-PDF und Offline-BTB-Löschung ist capability-gesteuert an Server 1.0 angebunden; offen bleibt die praktische Android-/PostgreSQL-E2E-Prüfung;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
 - Android-QR-Scanner/Intent-Handling sowie gezieltes Erzeugen/Einlösen von Server-1.0-Baustelleneinladungen sind im Quellstand umgesetzt; UI und Hintergrund verwenden für den modernen Baustellen-/Fachsync nun denselben capability-gesteuerten Coordinator; komfortablere Portal-Fachformulare und praktische E2E-Prüfung bleiben offen;
 - Compose-Staging-Stack praktisch auf Docker/Synology starten; Backup-Retention mit echten Alt-Backups prüfen; Restore-to-Target gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen;
