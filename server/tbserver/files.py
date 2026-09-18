@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 import hashlib
+import json
 import os
 import re
 from datetime import datetime
@@ -222,6 +224,28 @@ def _hash_file(path: Path) -> str:
         for block in iter(lambda: src.read(_MIB), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _encode_file_cursor(created_at: datetime, file_id: UUID) -> str:
+    payload = json.dumps(
+        {"created_at": created_at.isoformat(), "id": str(file_id)},
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+
+
+def _decode_file_cursor(cursor: str | None) -> tuple[datetime, UUID] | None:
+    if cursor is None or not cursor.strip():
+        return None
+    try:
+        raw = cursor.strip()
+        raw += "=" * (-len(raw) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(raw.encode("ascii")).decode("utf-8"))
+        created_at = datetime.fromisoformat(str(payload["created_at"]))
+        file_id = UUID(str(payload["id"]))
+        return created_at, file_id
+    except Exception as exc:
+        raise HTTPException(400, "INVALID_FILE_CURSOR") from exc
 
 
 def _serialize_upload(upload: dict) -> dict:
@@ -571,28 +595,71 @@ def abort_upload(
 def list_files(
     worksite_id: UUID,
     limit: int = Query(default=200, ge=1, le=1000),
+    cursor: str | None = Query(default=None, max_length=512),
     user: dict[str, Any] = Depends(current_portal_user),
 ) -> dict:
+    after = _decode_file_cursor(cursor)
+    visible_rows: list[dict[str, Any]] = []
+    last_returned: dict[str, Any] | None = None
+    has_more_visible = False
+
     with transaction() as conn, conn.cursor() as cur:
         context = worksite_context(cur, user, worksite_id)
-        cur.execute(
-            """
-            SELECT id, company_id, worksite_id, original_name, mime_type, byte_size,
-                   sha256, source, captured_at, gps_lat, gps_lon, gps_accuracy_m,
-                   created_by, created_at
-            FROM tb.files
-            WHERE worksite_id = %s AND deleted_at IS NULL
-            ORDER BY created_at DESC
-            LIMIT %s
-            """,
-            (worksite_id, limit),
-        )
-        rows = [
-            dict(row)
-            for row in cur.fetchall()
-            if _file_visible_for_context(cur, user, context, row["id"])
-        ]
-    return {"files": rows}
+        scan_after = after
+        scan_limit = min(max(limit + 1, 200), 1001)
+
+        while True:
+            params: list[Any] = [worksite_id]
+            cursor_clause = ""
+            if scan_after is not None:
+                cursor_clause = " AND (created_at, id) < (%s, %s)"
+                params.extend([scan_after[0], scan_after[1]])
+            params.append(scan_limit)
+
+            cur.execute(
+                f"""
+                SELECT id, company_id, worksite_id, original_name, mime_type, byte_size,
+                       sha256, source, captured_at, gps_lat, gps_lon, gps_accuracy_m,
+                       created_by, created_at
+                FROM tb.files
+                WHERE worksite_id = %s
+                  AND deleted_at IS NULL
+                  {cursor_clause}
+                ORDER BY created_at DESC, id DESC
+                LIMIT %s
+                """,
+                tuple(params),
+            )
+            raw_rows = [dict(row) for row in cur.fetchall()]
+            if not raw_rows:
+                break
+
+            exhausted = len(raw_rows) < scan_limit
+            for row in raw_rows:
+                scan_after = (row["created_at"], row["id"])
+                if not _file_visible_for_context(cur, user, context, row["id"]):
+                    continue
+                visible_rows.append(row)
+                if len(visible_rows) == limit:
+                    last_returned = row
+                elif len(visible_rows) > limit:
+                    has_more_visible = True
+                    break
+
+            if has_more_visible or exhausted:
+                break
+
+    rows = visible_rows[:limit]
+    next_cursor = (
+        _encode_file_cursor(last_returned["created_at"], last_returned["id"])
+        if has_more_visible and last_returned is not None
+        else None
+    )
+    return {
+        "files": rows,
+        "next_cursor": next_cursor,
+        "snapshot_complete": next_cursor is None,
+    }
 
 
 @router.get("/files/{file_id}")

@@ -6,9 +6,13 @@ repo = (ROOT / "app/src/main/java/de/tbhelfer/datenbank/CollabSyncRepository.kt"
 
 assert "val completeSnapshot: Boolean" in api
 assert "FILE_LIST_LIMIT = 1000" in api
-assert "array.length() < FILE_LIST_LIMIT" in api
+assert 'root.has("snapshot_complete")' in api
+assert 'root.has("next_cursor")' in api
+assert "explicitPagination" in api
+assert "legacyComplete = array.length() < FILE_LIST_LIMIT" in api
+assert "seenCursors" in api
 assert "if (listResult.completeSnapshot)" in repo
 assert "possibly incomplete" in repo
 assert repo.index("if (listResult.completeSnapshot)") < repo.index("dao.markCollabAttachmentDeleted")
 
-print("OK: Android Server-1.0 file cleanup is guarded against the 1000-item truncation limit")
+print("OK: Android file cleanup supports cursor snapshots and keeps the legacy 1000-item guard")

@@ -68,44 +68,104 @@ class Server1FileApi(
     }
 
     fun listLinkedFiles(token: String, worksiteId: String): ListResult {
-        val path = "/api/v1/worksites/${encode(worksiteId)}/files?limit=$FILE_LIST_LIMIT"
-        val listConnection = openConnection(path)
-        return try {
-            authorize(listConnection, token)
-            val code = listConnection.responseCode
-            val body = readBody(listConnection, code)
-            when (code) {
-                HttpURLConnection.HTTP_OK -> {
-                    val root = runCatching { JSONObject(body) }.getOrNull()
-                        ?: return ListResult.Error("Dateiliste konnte nicht gelesen werden.")
-                    val array = root.optJSONArray("files")
-                        ?: return ListResult.Success(emptyList(), completeSnapshot = true)
-                    val result = mutableListOf<LinkedFile>()
-                    for (index in 0 until array.length()) {
-                        val file = array.optJSONObject(index) ?: continue
-                        val fileId = file.optString("id").trim()
-                        if (fileId.isBlank()) continue
-                        when (val metadata = loadMetadata(token, worksiteId, fileId, file)) {
-                            MetadataResult.Unsupported -> return ListResult.Unsupported
-                            MetadataResult.SessionInvalid -> return ListResult.SessionInvalid
-                            is MetadataResult.Error -> return ListResult.Error(metadata.message)
-                            is MetadataResult.Success -> result += metadata.files
+        val result = mutableListOf<LinkedFile>()
+        val seenCursors = hashSetOf<String>()
+        var cursor: String? = null
+        var explicitPagination = false
+        var explicitComplete = false
+        var legacyComplete = true
+
+        do {
+            val path = buildString {
+                append("/api/v1/worksites/")
+                append(encode(worksiteId))
+                append("/files?limit=")
+                append(FILE_LIST_LIMIT)
+                cursor?.let {
+                    append("&cursor=")
+                    append(encode(it))
+                }
+            }
+            val listConnection = openConnection(path)
+            try {
+                authorize(listConnection, token)
+                val code = listConnection.responseCode
+                val body = readBody(listConnection, code)
+                when (code) {
+                    HttpURLConnection.HTTP_OK -> {
+                        val root = runCatching { JSONObject(body) }.getOrNull()
+                            ?: return ListResult.Error("Dateiliste konnte nicht gelesen werden.")
+                        val array = root.optJSONArray("files") ?: JSONArray()
+
+                        for (index in 0 until array.length()) {
+                            val file = array.optJSONObject(index) ?: continue
+                            val fileId = file.optString("id").trim()
+                            if (fileId.isBlank()) continue
+                            when (val metadata = loadMetadata(token, worksiteId, fileId, file)) {
+                                MetadataResult.Unsupported -> return ListResult.Unsupported
+                                MetadataResult.SessionInvalid -> return ListResult.SessionInvalid
+                                is MetadataResult.Error -> return ListResult.Error(metadata.message)
+                                is MetadataResult.Success -> result += metadata.files
+                            }
+                        }
+
+                        val hasPaginationProtocol =
+                            root.has("snapshot_complete") || root.has("next_cursor")
+                        if (hasPaginationProtocol) {
+                            explicitPagination = true
+                            val next = root.nullableString("next_cursor")
+                            val complete = root.optBoolean("snapshot_complete", next == null)
+                            if (complete && next != null) {
+                                return ListResult.Error(
+                                    "Server meldet gleichzeitig vollständigen Snapshot und nächsten Dateicursor."
+                                )
+                            }
+                            if (!complete && next == null) {
+                                return ListResult.Error(
+                                    "Server meldet unvollständigen Dateisnapshot ohne nächsten Cursor."
+                                )
+                            }
+                            if (next != null && !seenCursors.add(next)) {
+                                return ListResult.Error(
+                                    "Server wiederholt denselben Dateicursor."
+                                )
+                            }
+                            explicitComplete = complete
+                            cursor = next
+                        } else {
+                            if (explicitPagination) {
+                                return ListResult.Error(
+                                    "Server hat die Dateipagination während des Snapshots gewechselt."
+                                )
+                            }
+                            // Rolling-Update-Schutz für alte files_v1-Server ohne Cursorprotokoll.
+                            legacyComplete = array.length() < FILE_LIST_LIMIT
+                            cursor = null
                         }
                     }
-                    ListResult.Success(result, completeSnapshot = array.length() < FILE_LIST_LIMIT)
+                    HttpURLConnection.HTTP_NOT_FOUND -> return ListResult.Unsupported
+                    HttpURLConnection.HTTP_UNAUTHORIZED -> return ListResult.SessionInvalid
+                    HttpURLConnection.HTTP_FORBIDDEN ->
+                        return if (isInvalidDevice(body)) {
+                            ListResult.SessionInvalid
+                        } else {
+                            ListResult.Error(errorMessage(body, code))
+                        }
+                    else -> return ListResult.Error(errorMessage(body, code))
                 }
-                HttpURLConnection.HTTP_NOT_FOUND -> ListResult.Unsupported
-                HttpURLConnection.HTTP_UNAUTHORIZED -> ListResult.SessionInvalid
-                HttpURLConnection.HTTP_FORBIDDEN ->
-                    if (isInvalidDevice(body)) ListResult.SessionInvalid
-                    else ListResult.Error(errorMessage(body, code))
-                else -> ListResult.Error(errorMessage(body, code))
+            } catch (error: Exception) {
+                return ListResult.Error(
+                    error.message ?: "Server-1.0-Dateiliste konnte nicht geladen werden."
+                )
+            } finally {
+                listConnection.disconnect()
             }
-        } catch (error: Exception) {
-            ListResult.Error(error.message ?: "Server-1.0-Dateiliste konnte nicht geladen werden.")
-        } finally {
-            listConnection.disconnect()
-        }
+        } while (cursor != null)
+
+        return ListResult.Success(
+            result,
+            completeSnapshot = if (explicitPagination) explicitComplete else legacyComplete
+        )
     }
 
     fun downloadContent(token: String, fileId: String): ContentResult {

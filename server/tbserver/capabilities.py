@@ -24,6 +24,7 @@ CAPABILITIES: dict[str, bool] = {
     "btb_live_sync_v1": True,
     "btb_finalize_with_pdf_v1": True,
     "files_v1": True,
+    "file_cursor_pagination_v1": True,
     "chunk_upload_v1": True,
     "defects_v1": True,
     "acceptances_v1": True,
