@@ -1,0 +1,24 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Portal{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Portal</h1>
+  <p>Angemeldet als <b>{{ user.display_name }}</b> · Rolle <span class="pill">{{ user.company_role }}</span></p>
+  <p class="muted">Die fachlichen Server-1.0-Oberflächen werden schrittweise auf dieselben /api/v1-Verträge wie Android gesetzt.</p>
+  {% if user.company_role == 'ADMIN' %}
+    <div class="actions"><a class="btn" href="/admin/v1/companies">Firmen verwalten</a></div>
+  {% else %}
+    <div class="notice info">Für diesen Benutzer ist aktuell die Portal-Basis aktiv. Baustellen-/BTB-Fachseiten folgen capability-gesteuert.</div>
+  {% endif %}
+</div>
+<div class="card">
+  <h3>Eigene Serveridentität</h3>
+  <table>
+    <tr><th>Benutzer</th><td>{{ user.display_name }}</td></tr>
+    <tr><th>Login</th><td>{{ user.login_name }}</td></tr>
+    <tr><th>Persönliche E-Mail</th><td>{{ user.personal_email or '—' }}</td></tr>
+    <tr><th>Persönliches Telefon</th><td>{{ user.personal_phone or '—' }}</td></tr>
+    <tr><th>Firma-ID</th><td><code>{{ user.company_id or 'keine' }}</code></td></tr>
+  </table>
+</div>
+{% endblock %}

@@ -289,6 +289,68 @@ def update_company_pdf_logo_layout(
     return {"status": "ok", "layout": next_layout}
 
 
+
+@router.get("/admin/companies/{company_id}/logo")
+def admin_company_logo(
+    company_id: UUID,
+    _: dict[str, Any] = Depends(require_admin),
+):
+    with transaction() as conn, conn.cursor() as cur:
+        row = _company_row(cur, company_id)
+    profile = _profile_payload(row)
+    if not profile["has_logo"]:
+        raise HTTPException(404, "COMPANY_LOGO_NOT_FOUND")
+    path = _absolute_storage_path(row["logo_storage_key"])
+    if not path.is_file():
+        raise HTTPException(404, "COMPANY_LOGO_FILE_MISSING")
+    return FileResponse(
+        path,
+        media_type=row["logo_mime_type"] or "application/octet-stream",
+        filename="firmenlogo",
+        headers={"ETag": f'"{row["logo_sha256"] or ""}"'},
+    )
+
+
+@router.put("/admin/companies/{company_id}/pdf-logo-layout")
+def admin_update_company_pdf_logo_layout(
+    company_id: UUID,
+    payload: PdfLogoLayoutUpdate,
+    user: dict[str, Any] = Depends(require_admin_csrf),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        row = _company_row(cur, company_id, for_update=True)
+        current = normalize_pdf_logo_layout(row.get("pdf_layout"))
+        next_layout = {
+            **payload.model_dump(),
+            "layout_version": int(current["layout_version"]) + 1,
+        }
+        company_settings = _settings_dict(row.get("settings"))
+        company_settings["profile_version"] = max(
+            1, int(company_settings.get("profile_version", 1))
+        ) + 1
+        cur.execute(
+            """
+            UPDATE tb.companies
+            SET pdf_layout = %s, settings = %s
+            WHERE id = %s
+            """,
+            (Jsonb(next_layout), Jsonb(company_settings), company_id),
+        )
+        audit(
+            cur,
+            action="COMPANY_PDF_LOGO_LAYOUT_UPDATED",
+            actor_user_id=user["user_id"],
+            company_id=company_id,
+            entity_type="COMPANY",
+            entity_id=company_id,
+            details={
+                "layout_version": next_layout["layout_version"],
+                "source": "ADMIN",
+            },
+        )
+    return {"status": "ok", "layout": next_layout}
+
+
 @router.get("/admin/companies/{company_id}/profile")
 def admin_company_profile(
     company_id: UUID,

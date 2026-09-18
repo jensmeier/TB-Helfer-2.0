@@ -84,8 +84,10 @@ Nur Portal-ADMIN, für Schreibzugriffe zusätzlich CSRF:
 
 - `GET /api/v1/admin/companies/{company_id}/profile`;
 - `PUT /api/v1/admin/companies/{company_id}/profile`;
+- `GET /api/v1/admin/companies/{company_id}/logo`;
 - `PUT /api/v1/admin/companies/{company_id}/logo`;
-- `DELETE /api/v1/admin/companies/{company_id}/logo`.
+- `DELETE /api/v1/admin/companies/{company_id}/logo`;
+- `PUT /api/v1/admin/companies/{company_id}/pdf-logo-layout`.
 
 Profilwerte werden in den bestehenden Server-1.0-Firmenfeldern gepflegt. `address_line2`, `website`, `profile_version` und `logo_version` liegen im vorhandenen `settings`-JSON, damit keine unnötige zweite Stammdatentabelle entsteht.
 
@@ -137,13 +139,27 @@ Der bestehende Android-Vertrag wird weiterverwendet:
 
 TB-Server 1.0 verwendet UUIDs für Firmen. Deshalb wurde `TeamManagementApi.CompanyProfile.companyId` von `Long` auf `String` korrigiert. Das ist zugleich mit dem alten numerischen Serverwert kompatibel, da auch dieser als String gelesen werden kann.
 
+## Server-1.0-Portal-/Adminoberfläche
+
+Die erste native Server-1.0-Weboberfläche ist auf denselben JSON-Endpunkten aufgebaut, nicht auf einer zweiten Fachlogik:
+
+- `GET /portal/v1/login` – Portal-Anmeldung über `POST /api/v1/portal/login`;
+- `GET /portal/v1` – einfache Portal-Startseite für den angemeldeten Benutzer;
+- `GET /admin/v1/companies` – Firmenliste plus Neuanlage;
+- `GET /admin/v1/companies/{company_id}/branding` – Firmenstammdaten, Logo-Upload/-Löschen, PDF-Logo-Layout und Browser-Vorschau.
+
+Schreibaktionen der Weboberfläche nutzen ausschließlich die vorhandene Portal-Session und den `tb_portal_csrf`-Cookie als `X-CSRF-Token`. Es werden keine Bearer-Tokens oder sonstigen Geheimwerte in das HTML eingebaut.
+
+Die Browser-Vorschau dient nur der Layoutpositionierung. Der verbindliche Abschluss bleibt der serverseitig gerenderte BTB-PDF-Renderer.
+
 ## Capabilities
 
 Neu/aktiv:
 
 - `company_profile_v1=true`;
 - `company_logo_v1=true`;
-- `company_pdf_logo_layout_v1=true`.
+- `company_pdf_logo_layout_v1=true`;
+- `company_branding_admin_ui_v1=true`.
 
 Clients sollen diese Capabilities verwenden und nicht aus einer Schema- oder Serverversionsnummer raten.
 
@@ -164,14 +180,15 @@ Clients sollen diese Capabilities verwenden und nicht aus einer Schema- oder Ser
 
 Der bestehende Check 34 bleibt der ausführbare ReportLab-PDF-Smoke-Test und wurde auf Renderer v2 aktualisiert.
 
+`server/checks/36_verify_tb_server_1_admin_web_source.py` prüft Portal-/Admin-Webrouten, CSRF-Nutzung, Branding-API-Anbindung, Templates und die Capability `company_branding_admin_ui_v1`.
+
 Die vollständige PostgreSQL-/FastAPI-/Android-End-to-End-Ausführung bleibt abhängig von einer funktionierenden Test-/CI-Umgebung.
 
 ## Noch offen
 
 Dieser Baustein liefert den zentralen Daten-/API-/PDF-Vertrag. Noch separat zu bauen bzw. fertigzustellen sind:
 
-- die Server-1.0-HTML-Adminoberfläche für Profil/Logo/Layout;
+- weitere Server-1.0-Portal-Fachseiten für Baustellen/BTB/Mängel/Abnahmen und Systemstatus;
 - visuelle Feinabstimmung/Pixel-Parität des Server-PDFs mit dem Android-PDF;
-- Portal-Vorschau des PDF-Headers;
 - vollständiger Android-Server-1.0-Cutover;
 - Release-Binärupload, Background Jobs sowie Backup/Restore/Reset.

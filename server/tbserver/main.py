@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from . import SERVER_VERSION
 from .acceptances import router as acceptances_router
 from .admin import router as admin_router
+from .admin_web import router as admin_web_router
 from .btb import router as btb_router
 from .capabilities import router as capabilities_router
 from .company import router as company_router
@@ -44,6 +45,7 @@ app = FastAPI(
 app.include_router(capabilities_router)
 app.include_router(company_router)
 app.include_router(portal_router)
+app.include_router(admin_web_router)
 app.include_router(admin_router)
 app.include_router(admin_devices_router)
 app.include_router(devices_router)

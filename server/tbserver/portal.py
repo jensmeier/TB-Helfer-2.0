@@ -113,6 +113,11 @@ def current_portal_user(request: Request) -> dict[str, Any]:
     return _load_session(request)
 
 
+def current_portal_session_user(request: Request) -> dict[str, Any]:
+    """Require a real browser portal session; never fall back to device Bearer auth."""
+    return _load_session(request)
+
+
 def require_csrf(request: Request, user: dict[str, Any] = Depends(current_portal_user)) -> dict[str, Any]:
     if user.get("auth_kind") == "DEVICE":
         # Bearer device tokens are not cookie credentials and therefore are not
