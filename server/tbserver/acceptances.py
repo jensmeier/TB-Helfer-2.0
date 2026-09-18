@@ -10,7 +10,7 @@ from psycopg.types.json import Jsonb
 from .database import transaction
 from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
-from .permissions import require_permission, worksite_context
+from .permissions import area_scope_allows, require_area_scope, require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 
 
@@ -22,6 +22,7 @@ class AcceptanceCreate(BaseModel):
     worksite_node_id: UUID | None = None
     title: str | None = Field(default=None, max_length=500)
     payload: dict = Field(default_factory=dict)
+    area_scope: dict | None = None
 
 
 class AcceptanceUpdate(BaseModel):
@@ -30,6 +31,7 @@ class AcceptanceUpdate(BaseModel):
     title: str | None = Field(default=None, max_length=500)
     payload: dict | None = None
     status: str | None = Field(default=None, pattern="^(OPEN|IN_PROGRESS)$")
+    area_scope: dict | None = None
 
 
 class VersionAction(BaseModel):
@@ -63,13 +65,21 @@ def _conflict_or_missing(cur, acceptance_id: UUID) -> None:
     raise HTTPException(409, {"code": "VERSION_CONFLICT", "current_version": current["version"]})
 
 
+def _default_entity_scope(context: dict[str, Any]) -> dict:
+    raw = context.get("area_scope")
+    if isinstance(raw, dict) and raw:
+        return raw
+    return context.get("effective_area_scope") or {"all": False}
+
+
 @router.get("/worksites/{worksite_id}/acceptances")
 def list_acceptances(worksite_id: UUID, user: dict[str, Any] = Depends(current_portal_user)) -> dict:
     with transaction() as conn, conn.cursor() as cur:
-        worksite_context(cur, user, worksite_id)
+        context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "acceptance.view")
         cur.execute(
             """
-            SELECT id, worksite_id, worksite_node_id, status, title, payload, version,
+            SELECT id, worksite_id, worksite_node_id, status, title, payload, area_scope, version,
                    created_by, finalized_by, created_at, updated_at, finalized_at
             FROM tb.acceptances
             WHERE worksite_id = %s AND status <> 'DELETED' AND deleted_at IS NULL
@@ -78,7 +88,11 @@ def list_acceptances(worksite_id: UUID, user: dict[str, Any] = Depends(current_p
             """,
             (worksite_id,),
         )
-        rows = [dict(row) for row in cur.fetchall()]
+        rows = [
+            dict(row)
+            for row in cur.fetchall()
+            if area_scope_allows(context["effective_area_scope"], row["area_scope"])
+        ]
     return {"acceptances": rows}
 
 
@@ -96,14 +110,25 @@ def create_acceptance(
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "acceptance.create")
         _validate_node(cur, worksite_id, payload.worksite_node_id)
+        entity_scope = payload.area_scope if payload.area_scope is not None else _default_entity_scope(context)
+        require_area_scope(context, entity_scope)
         if payload.id is None:
             cur.execute(
                 """
-                INSERT INTO tb.acceptances(worksite_id, worksite_node_id, title, payload, created_by)
-                VALUES (%s,%s,%s,%s,%s)
+                INSERT INTO tb.acceptances(
+                    worksite_id, worksite_node_id, title, payload, area_scope, created_by
+                )
+                VALUES (%s,%s,%s,%s,%s,%s)
                 RETURNING *
                 """,
-                (worksite_id, payload.worksite_node_id, payload.title, Jsonb(payload.payload), user["user_id"]),
+                (
+                    worksite_id,
+                    payload.worksite_node_id,
+                    payload.title,
+                    Jsonb(payload.payload),
+                    Jsonb(entity_scope),
+                    user["user_id"],
+                ),
             )
         else:
             cur.execute("SELECT 1 FROM tb.acceptances WHERE id = %s", (payload.id,))
@@ -111,11 +136,21 @@ def create_acceptance(
                 raise HTTPException(409, "ACCEPTANCE_ID_EXISTS")
             cur.execute(
                 """
-                INSERT INTO tb.acceptances(id, worksite_id, worksite_node_id, title, payload, created_by)
-                VALUES (%s,%s,%s,%s,%s,%s)
+                INSERT INTO tb.acceptances(
+                    id, worksite_id, worksite_node_id, title, payload, area_scope, created_by
+                )
+                VALUES (%s,%s,%s,%s,%s,%s,%s)
                 RETURNING *
                 """,
-                (payload.id, worksite_id, payload.worksite_node_id, payload.title, Jsonb(payload.payload), user["user_id"]),
+                (
+                    payload.id,
+                    worksite_id,
+                    payload.worksite_node_id,
+                    payload.title,
+                    Jsonb(payload.payload),
+                    Jsonb(entity_scope),
+                    user["user_id"],
+                ),
             )
         row = dict(cur.fetchone())
         emit_change(cur, company_id=context["company_id"], worksite_id=worksite_id, entity_type="ACCEPTANCE", entity_id=row["id"], operation="CREATE", entity_version=row["version"], actor_user_id=user["user_id"])
@@ -128,7 +163,9 @@ def create_acceptance(
 def get_acceptance(acceptance_id: UUID, user: dict[str, Any] = Depends(current_portal_user)) -> dict:
     with transaction() as conn, conn.cursor() as cur:
         row = _load_acceptance(cur, acceptance_id)
-        worksite_context(cur, user, row["worksite_id"])
+        context = worksite_context(cur, user, row["worksite_id"])
+        require_permission(context, "acceptance.view")
+        require_area_scope(context, row["area_scope"])
     return row
 
 
@@ -149,17 +186,20 @@ def update_acceptance(
         acceptance = _load_acceptance(cur, acceptance_id)
         context = worksite_context(cur, user, acceptance["worksite_id"])
         require_permission(context, "acceptance.edit")
+        require_area_scope(context, acceptance["area_scope"])
         if acceptance["status"] == "FINALIZED":
             raise HTTPException(409, "ACCEPTANCE_FINALIZED")
         if "worksite_node_id" in updates:
             _validate_node(cur, acceptance["worksite_id"], updates["worksite_node_id"])
+        if "area_scope" in updates:
+            require_area_scope(context, updates["area_scope"])
 
         columns = []
         values = []
-        for key in ("worksite_node_id", "title", "payload", "status"):
+        for key in ("worksite_node_id", "title", "payload", "status", "area_scope"):
             if key in updates:
                 columns.append(f"{key} = %s")
-                values.append(Jsonb(updates[key]) if key == "payload" else updates[key])
+                values.append(Jsonb(updates[key]) if key in {"payload", "area_scope"} else updates[key])
         columns.extend(["version = version + 1", "updated_at = now()"])
         values.extend([acceptance_id, payload.base_version])
         cur.execute(f"UPDATE tb.acceptances SET {', '.join(columns)} WHERE id = %s AND version = %s AND deleted_at IS NULL RETURNING *", tuple(values))
@@ -186,6 +226,7 @@ def finalize_acceptance(
         acceptance = _load_acceptance(cur, acceptance_id)
         context = worksite_context(cur, user, acceptance["worksite_id"])
         require_permission(context, "acceptance.finalize")
+        require_area_scope(context, acceptance["area_scope"])
         if acceptance["status"] == "FINALIZED":
             row = acceptance
         else:
