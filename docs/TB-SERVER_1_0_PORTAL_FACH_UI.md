@@ -61,11 +61,14 @@ Aktuelle Schreibfunktionen:
 
 - Strukturelement anlegen, bearbeiten und löschen;
 - Rechteprofil/Bereich eines bereits vorhandenen Baustellenmitglieds ändern;
+- einen bereits beigetretenen Helfer nachvollziehbar zwischen aktiven TB-Teams derselben Baustelle verschieben;
 - neuen Team-BTB starten;
 - Mangel anlegen, bearbeiten und schließen;
 - Abnahme anlegen, bearbeiten und finalisieren.
 
-Neue Mitglieder werden nicht frei per Direktzuordnung ergänzt. Dafür existiert jetzt der gezielte Server-1.0-Einladungsvertrag: gleicher Firmenkontext, Zielbenutzer vorab festgelegt, Einmalcode nur gehasht gespeichert und Annahme durch genau den eingeladenen Benutzer. Helfer werden bei Annahme dem Team des einladenden verantwortlichen TB zugeordnet; ein eingeladener TB/Verantwortlicher TB erhält sein eigenes Team.
+Neue Mitglieder werden nicht frei per Direktzuordnung ergänzt. Der frühere generische Schreibpfad `POST /api/v1/worksites/{worksite_id}/members` ist aus dem Server-1.0-Vertrag entfernt. Dafür gilt ausschließlich der gezielte Einladungsvertrag: gleicher Firmenkontext, Zielbenutzer vorab festgelegt, Einmalcode nur gehasht gespeichert und Annahme durch genau den eingeladenen Benutzer. Helfer werden bei Annahme dem Team des einladenden verantwortlichen TB zugeordnet; ein eingeladener TB/Verantwortlicher TB erhält sein eigenes Team.
+
+Für bereits beigetretene Helfer existiert getrennt `POST /api/v1/worksites/{worksite_id}/members/{member_user_id}/team`. Dieser Pfad erzeugt **keine** neue Baustellenmitgliedschaft. Er darf nur bestehende `HELPER` zwischen aktiven Teams derselben Baustelle verschieben, erhält historische Teamzuordnungen über `removed_at` und lässt frühere Team-BTBs unverändert.
 
 Wenn das effektive Rechteprofil eine Aktion nicht erlaubt, wird ihr Formular/Knopf nicht angeboten. Die API bleibt trotzdem die verbindliche zweite Schranke.
 
@@ -115,6 +118,8 @@ Spezialisierte Formulare können später additiv auf diesen stabilen API-Vertrag
 
 `portal_worksite_fach_ui_v1=true`
 
+Zusätzlich: `worksite_team_transfer_v1=true`
+
 Sie bedeutet, dass die Server-1.0-Weboberfläche mindestens Baustellenübersicht, Baustellendetail und den grundlegenden BTB-/Mängel-/Abnahme-Lebenszyklus auf den bestehenden Fachendpunkten anbietet.
 
 ## Tests
@@ -133,7 +138,6 @@ Sie bedeutet, dass die Server-1.0-Weboberfläche mindestens Baustellenübersicht
 
 Die erste Fachoberfläche ist absichtlich kein zweiter Client mit eigener Fachlogik. Noch zu ergänzen:
 
-- Teamwechsel eines bereits vorhandenen Helfers zwischen verantwortlichen TBs über einen eigenen, nachvollziehbaren Fachvertrag;
 - QR-/Deep-Link-Darstellung für den vorhandenen Einmalcode zusätzlich zur Copy/Paste-Einlösung;
 - komfortablere Rechteprofil-/Bereichsauswahl statt Text-/JSON-Dialog;
 - spezialisierte statt generischer JSON-Fachformulare;

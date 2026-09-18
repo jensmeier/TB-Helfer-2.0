@@ -163,9 +163,20 @@ async function loadMembers(){
   const result=await tbApi('/api/v1/worksites/'+worksiteId+'/members');
   const data=result.data.members||[];
   document.getElementById('members').innerHTML=data.length?data.map(function(m){
-    const actions=can('members.manage')?'<div class="actions" style="margin-top:7px"><button type="button" onclick="editMemberPermissions(\''+esc(m.user_id)+'\')">Rechte ändern</button></div>':'';
+    const permissionButton=can('members.manage')?'<button type="button" onclick="editMemberPermissions(\''+esc(m.user_id)+'\')">Rechte ändern</button>':'';
+    let transfer='';
+    if(can('members.manage')&&m.worksite_role==='HELPER'&&teamData.length){
+      const selectId='member-team-'+m.user_id;
+      const options=teamData.map(function(t){
+        const selected=t.id===m.team_id?' selected':'';
+        return '<option value="'+esc(t.id)+'"'+selected+'>'+esc(t.name||t.lead_name||'Team')+' · '+esc(t.lead_name||'—')+'</option>';
+      }).join('');
+      transfer='<select id="'+esc(selectId)+'" style="max-width:320px">'+options+'</select>'+
+        '<button type="button" onclick="transferHelperTeam(\''+esc(m.user_id)+'\')">Team wechseln</button>';
+    }
+    const actions=(permissionButton||transfer)?'<div class="actions" style="margin-top:7px">'+permissionButton+transfer+'</div>':'';
     return '<div class="item"><b>'+esc(m.display_name)+'</b> <span class="pill">'+esc(m.worksite_role)+'</span>'+
-      '<div class="muted">'+esc(m.permission_profile)+'</div>'+
+      '<div class="muted">'+esc(m.permission_profile)+(m.team_name?' · Team '+esc(m.team_name)+' · TB '+esc(m.lead_name||'—'):'')+'</div>'+
       (m.personal_email?'<div>'+esc(m.personal_email)+'</div>':'')+
       (m.personal_phone?'<div>'+esc(m.personal_phone)+'</div>':'')+actions+'</div>';
   }).join(''):'<p class="muted">Keine Mitglieder.</p>';
@@ -186,6 +197,22 @@ async function editMemberPermissions(userId){
   }catch(error){show('err',error.message||String(error));}
 }
 window.editMemberPermissions=editMemberPermissions;
+
+async function transferHelperTeam(userId){
+  const select=document.getElementById('member-team-'+userId);
+  if(!select||!select.value)return;
+  const target=teamData.find(function(t){return t.id===select.value;});
+  if(!target)return;
+  if(!confirm('Helfer zu Team '+(target.name||target.lead_name||target.id)+' / TB '+(target.lead_name||'—')+' verschieben? Historische BTBs bleiben unverändert.'))return;
+  try{
+    const result=await tbApi('/api/v1/worksites/'+worksiteId+'/members/'+encodeURIComponent(userId)+'/team',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({team_id:select.value})
+    });
+    show('ok',result.data.changed?'Teamzuordnung geändert.':'Helfer ist bereits diesem Team zugeordnet.');
+    await loadTeams();await loadMembers();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.transferHelperTeam=transferHelperTeam;
 
 
 async function loadInviteData(){
@@ -396,7 +423,8 @@ document.getElementById('acceptanceForm').addEventListener('submit',async functi
   try{
     await loadOverview();
     await loadNodes();
-    await Promise.all([loadMembers(),loadInviteData(),loadTeams(),loadDefects(),loadAcceptances()]);
+    await loadTeams();
+    await Promise.all([loadMembers(),loadInviteData(),loadDefects(),loadAcceptances()]);
   }catch(error){show('err',error.message||String(error));}
 })();
 </script>

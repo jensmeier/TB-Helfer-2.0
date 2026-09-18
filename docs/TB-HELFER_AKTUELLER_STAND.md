@@ -51,6 +51,7 @@ Wichtige Server-1.0-Meilensteine:
 - erste native Server-1.0-Portal-/Admin-Weboberfläche: Login/Portal-Start, Firmenliste/-anlage sowie Firmenprofil/Logo/PDF-Layout mit CSRF-geschützter API-Anbindung und Browser-Vorschau
 - Portal-Fachoberfläche v1: Baustellenübersicht/-detail, Struktur-CRUD, Mitgliederrechte/Teamansicht, Team-BTBs, BTB-Bearbeitung/Abschluss-PDF/Foto-Chunkupload sowie Mängel-/Abnahme-Bearbeitung auf denselben `/api/v1`-Verträgen; Browser-Mutationen senden CSRF + `X-Client-Change-Id`
 - gezielte Server-1.0-Baustelleneinladungen: gleiches Unternehmen, eingeladener Zielbenutzer, gehashter Einmalcode, Widerruf/Ablauf/Einmalannahme; Helfer werden dem Team des einladenden verantwortlichen TB zugeordnet
+- Einladung-only-Mitgliedschaft gehärtet: generischer direkter Member-Add-Pfad entfernt; bestehende Helfer können über einen eigenen replay-sicheren Teamwechselvertrag zwischen aktiven TB-Teams verschoben werden, ohne neue Mitgliedschaft oder historische BTBs umzuschreiben
 - Admin-Systemstatus/Speicher v1: API/Webseite für Migrationen, DB-Größe, Storage-Belegung, Firmen-/Nutzer-/Geräte-/Baustellen-/Dateizahlen, Backup-Läufe und Background Jobs ohne Geheimnisse/interne Payloads
 - Background-Job-/Backup-Basis: `FOR UPDATE SKIP LOCKED`, Retry/Stale-Recovery, getrennte DATABASE/FILES/FULL-Backups, SHA-256, atomare Dateien und ADMIN-Backupaufträge
 - Restore-Test + sicherer Test-Reset: Restore nur gegen getrennte Testdatenbank/Testablage; Test-/Staging-Reset nur nach verifiziertem höchstens 24h altem FULL-Backup und harter Environment-/Bestätigungssperre
@@ -479,6 +480,24 @@ Backups besitzen jetzt eine sichere Aufbewahrungsregel:
 
 Capability: `backup_retention_v1=true`.
 
+### Einladung-only-Mitgliedschaft / Helfer-Teamwechsel
+
+Die verbindliche Projektregel „ohne angenommene Einladung keine Baustellen-Zusammenarbeitsdaten“ wird jetzt auch im API-Vertrag selbst durchgesetzt.
+
+- der alte direkte `POST /api/v1/worksites/{worksite_id}/members`-Pfad wurde entfernt;
+- der Baustellenersteller bleibt weiterhin korrekt der erste verantwortliche TB;
+- weitere Mitglieder entstehen nur über den sicheren Einladungs-/Redeem-Vertrag;
+- `GET /api/v1/worksites/{worksite_id}/members` liefert zusätzlich die aktuelle Team-/TB-Zuordnung;
+- `POST /api/v1/worksites/{worksite_id}/members/{member_user_id}/team` verschiebt ausschließlich bestehende `HELPER`;
+- Zielteam muss aktiv und derselben Baustelle zugeordnet sein;
+- alte Teamzuordnung erhält `removed_at`, die neue Zuordnung wird aktiviert;
+- die Mitgliedschaft bleibt dieselbe UUID; ihre Sync-Version wird erhöht und ein Change-Event/Audit geschrieben;
+- historische BTBs des bisherigen Teams bleiben unverändert.
+
+Portal: vorhandene Helfer zeigen ihr aktuelles Team und können bei `members.manage` über „Team wechseln“ einem anderen aktiven TB-Team zugeordnet werden.
+
+Capability: `worksite_team_transfer_v1=true`.
+
 ## Tests / Checks
 
 Workflow-Zielstand:
@@ -486,9 +505,9 @@ Workflow-Zielstand:
 - Migrationen 001 + 002 + 003 + 004 + 005 + 006;
 - `latest_known=6`, `latest_applied=6`;
 - Kerntabellen u. a. `survey_parse_catalog`, `track_data_sources`, `track_data_km_points`;
-- Source-/Vertragschecks 20–45;
+- Source-/Vertragschecks 20–46;
 - Health/Capabilities/Auth-Checks;
-- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `release_binary_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1`, `worksite_invitations_v1`, `admin_system_status_v1`, `background_jobs_v1`, `backup_v1`, `backup_retention_v1`, `restore_test_v1`, `test_data_reset_v1` und `restore_target_v1`.
+- erwartete Capabilities enthalten zusätzlich `survey_station_merge_v1`, `survey_gra_jump_detection_v1`, `release_catalog_v1`, `release_binary_v1`, `client_compatibility_v1`, `btb_finalize_with_pdf_v1`, `company_profile_v1`, `company_logo_v1` und `company_pdf_logo_layout_v1`, `company_branding_admin_ui_v1`, `portal_worksite_fach_ui_v1`, `worksite_invitations_v1`, `worksite_team_transfer_v1`, `admin_system_status_v1`, `background_jobs_v1`, `backup_v1`, `backup_retention_v1`, `restore_test_v1`, `test_data_reset_v1` und `restore_target_v1`.
 
 Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
@@ -520,8 +539,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 43 ist als Sicherheits-/Vertragsprüfung für Restore-to-Target, frische getrennte Ziel-DB/Storage, explizite Freigabe/Bestätigung und fehlende HTTP-Exponierung vorbereitet.
 - Source-Check 44 ist als Vertragsprüfung für Compose-Staging-Basis mit PostGIS 17, Migration-Service, getrennten Storage-/Backup-Mounts, API-Healthcheck und separatem Worker vorbereitet.
 - Source-Check 45 ist als Vertragsprüfung für Backup-Retention, Mindestbestand je Art, PURGED-Status, idempotenten Admin-Auftrag und Compose-Policy vorbereitet.
+- Source-Check 46 ist als Sicherheits-/Vertragsprüfung für Einladung-only-Mitgliedschaft, entfernten Direkt-Add-Pfad und replay-sicheren Helfer-Teamwechsel vorbereitet.
 
-**Noch nicht ausgeführt:** Source-Checks 34–45 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–46 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -536,14 +556,14 @@ Für den aktuellen Release-Binary-Commit `4abd52b82d12f153874f07a2bbaa1a78edb2f6
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
 - Android-Fachclient auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
-- Teamwechsel bestehender Helfer, QR/Deep-Link für Einladungen und komfortablere Portal-Fachformulare;
+- QR/Deep-Link für Einladungen und komfortablere Portal-Fachformulare; Helfer-Teamwechsel ist umgesetzt;
 - Compose-Staging-Stack praktisch auf Docker/Synology starten; Backup-Retention mit echten Alt-Backups prüfen; Restore-to-Target gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen;
 - vollständige Integrations-/E2E-Tests und produktiver NAS-Cutover.
 
 ## Nächster sinnvoller Arbeitsschritt
 
 1. Den neuen Compose-Staging-Stack auf einer echten Docker/PostgreSQL-Umgebung starten und dort Backup -> Retention -> Restore-Test -> Restore-to-Target end-to-end prüfen; in der aktuellen Arbeitsumgebung fehlen Docker/PostgreSQL.
-2. Teamwechsel/QR-Komfort und spezialisierte Portal-Fachformulare später additiv auf die stabilen Verträge setzen.
+2. QR-/Deep-Link-Komfort und spezialisierte Portal-Fachformulare später additiv auf die stabilen Verträge setzen; der Helfer-Teamwechselvertrag ist jetzt vorhanden.
 3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
 4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
 5. Anschließend den Android-Fachclient capability-gesteuert auf die fertigen `/api/v1`-Verträge umstellen; die bisherigen 0.6-/0.7-Versionsschwellen dürfen nicht die Server-1.0-Fähigkeiten bestimmen.

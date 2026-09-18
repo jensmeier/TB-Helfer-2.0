@@ -47,13 +47,8 @@ class NodeUpdate(BaseModel):
     payload: dict | None = None
 
 
-class MemberAdd(BaseModel):
-    user_id: UUID
-    worksite_role: str = Field(default="HELPER")
-    permission_profile: str = Field(default="HELPER_STANDARD")
-    permissions_override: dict = Field(default_factory=dict)
-    area_scope: dict = Field(default_factory=dict)
-    team_id: UUID | None = None
+class HelperTeamTransfer(BaseModel):
+    team_id: UUID
 
 
 class MemberPermissionsUpdate(BaseModel):
@@ -482,9 +477,28 @@ def list_members(
             """
             SELECT m.id, m.user_id, u.display_name, u.personal_email, u.personal_phone,
                    m.worksite_role, m.permission_profile, m.permissions_override,
-                   m.permissions_version, m.area_scope, m.status, m.joined_at
+                   m.permissions_version, m.area_scope, m.status, m.joined_at,
+                   current_team.team_id, current_team.team_name,
+                   current_team.lead_user_id, current_team.lead_name
             FROM tb.worksite_memberships m
             JOIN tb.users u ON u.id = m.user_id
+            LEFT JOIN LATERAL (
+                SELECT t.id AS team_id,
+                       coalesce(t.name, lead.display_name) AS team_name,
+                       t.lead_user_id,
+                       lead.display_name AS lead_name
+                FROM tb.team_members tm
+                JOIN tb.teams t
+                  ON t.id = tm.team_id
+                 AND t.worksite_id = m.worksite_id
+                 AND t.status = 'ACTIVE'
+                JOIN tb.users lead ON lead.id = t.lead_user_id
+                WHERE tm.user_id = m.user_id
+                  AND tm.removed_at IS NULL
+                ORDER BY CASE WHEN tm.role = 'LEAD' THEN 0 ELSE 1 END,
+                         tm.created_at DESC
+                LIMIT 1
+            ) AS current_team ON true
             WHERE m.worksite_id = %s AND m.status = 'ACTIVE' AND u.deleted_at IS NULL
             ORDER BY lower(u.display_name)
             """,
@@ -494,138 +508,175 @@ def list_members(
     return {"members": rows}
 
 
-@router.post("/{worksite_id}/members", status_code=201)
-def add_member(
+@router.post("/{worksite_id}/members/{member_user_id}/team")
+def transfer_helper_team(
     worksite_id: UUID,
-    payload: MemberAdd,
+    member_user_id: UUID,
+    payload: HelperTeamTransfer,
     user: dict[str, Any] = Depends(require_csrf),
     mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
-    role = payload.worksite_role.upper()
-    if role not in {"RESPONSIBLE_TB", "TB", "HELPER", "READ_ONLY"}:
-        raise HTTPException(400, "INVALID_WORKSITE_ROLE")
     with transaction() as conn, conn.cursor() as cur:
-        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="WORKSITE_MEMBER_ADD")
+        receipt = begin_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="WORKSITE_HELPER_TEAM_TRANSFER",
+        )
         if receipt:
             return replay_payload(receipt)
+
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "members.manage")
-        cur.execute("SELECT company_id FROM tb.worksites WHERE id = %s", (worksite_id,))
-        worksite = cur.fetchone()
-        cur.execute(
-            "SELECT id, company_id, display_name FROM tb.users WHERE id = %s AND status = 'ACTIVE' AND deleted_at IS NULL",
-            (payload.user_id,),
-        )
-        target = cur.fetchone()
-        if not target or target["company_id"] != worksite["company_id"]:
-            raise HTTPException(400, "MEMBER_COMPANY_MISMATCH")
-        cur.execute("SELECT profile_key FROM tb.permission_profiles WHERE profile_key = %s", (payload.permission_profile,))
-        if not cur.fetchone():
-            raise HTTPException(400, "PERMISSION_PROFILE_INVALID")
+
         cur.execute(
             """
-            INSERT INTO tb.worksite_memberships(
-                worksite_id, user_id, worksite_role, permission_profile,
-                permissions_override, area_scope, invited_by
-            ) VALUES (%s,%s,%s,%s,%s,%s,%s)
-            ON CONFLICT (worksite_id, user_id) DO UPDATE
-            SET worksite_role = excluded.worksite_role,
-                permission_profile = excluded.permission_profile,
-                permissions_override = excluded.permissions_override,
-                area_scope = excluded.area_scope,
-                permissions_version = tb.worksite_memberships.permissions_version + 1,
-                status = 'ACTIVE', removed_at = NULL, updated_at = now()
-            RETURNING *
+            SELECT id, user_id, worksite_role, permissions_version
+            FROM tb.worksite_memberships
+            WHERE worksite_id = %s
+              AND user_id = %s
+              AND status = 'ACTIVE'
+            FOR UPDATE
             """,
-            (
-                worksite_id,
-                payload.user_id,
-                role,
-                payload.permission_profile,
-                payload.permissions_override,
-                payload.area_scope,
-                user["user_id"],
-            ),
+            (worksite_id, member_user_id),
         )
-        membership = dict(cur.fetchone())
+        membership = cur.fetchone()
+        if not membership:
+            raise HTTPException(404, "MEMBERSHIP_NOT_FOUND")
+        membership = dict(membership)
+        if membership["worksite_role"] != "HELPER":
+            raise HTTPException(409, "TEAM_TRANSFER_HELPER_ONLY")
 
-        if role in {"RESPONSIBLE_TB", "TB"}:
-            cur.execute(
-                """
-                INSERT INTO tb.teams(worksite_id, lead_user_id, name)
-                VALUES (%s,%s,%s)
-                ON CONFLICT (worksite_id, lead_user_id) DO UPDATE
-                SET status = 'ACTIVE', updated_at = now()
-                RETURNING id
-                """,
-                (worksite_id, payload.user_id, target["display_name"]),
+        cur.execute(
+            """
+            SELECT t.id, t.lead_user_id,
+                   coalesce(t.name, lead.display_name) AS team_name,
+                   lead.display_name AS lead_name
+            FROM tb.teams t
+            JOIN tb.users lead ON lead.id = t.lead_user_id
+            WHERE t.id = %s
+              AND t.worksite_id = %s
+              AND t.status = 'ACTIVE'
+            """,
+            (payload.team_id, worksite_id),
+        )
+        target_team = cur.fetchone()
+        if not target_team:
+            raise HTTPException(400, "TEAM_INVALID")
+        target_team = dict(target_team)
+
+        cur.execute(
+            """
+            SELECT t.id AS team_id
+            FROM tb.team_members tm
+            JOIN tb.teams t ON t.id = tm.team_id
+            WHERE t.worksite_id = %s
+              AND tm.user_id = %s
+              AND tm.removed_at IS NULL
+              AND tm.role = 'HELPER'
+            ORDER BY tm.created_at DESC
+            LIMIT 1
+            """,
+            (worksite_id, member_user_id),
+        )
+        current_team = cur.fetchone()
+        if current_team and current_team["team_id"] == payload.team_id:
+            response = {
+                "changed": False,
+                "member_user_id": member_user_id,
+                "team_id": target_team["id"],
+                "team_name": target_team["team_name"],
+                "lead_user_id": target_team["lead_user_id"],
+                "lead_name": target_team["lead_name"],
+                "membership_version": membership["permissions_version"],
+            }
+            finish_mutation(
+                cur,
+                user=user,
+                context=mutation,
+                receipt_type="WORKSITE_HELPER_TEAM_TRANSFER",
+                entity_id=membership["id"],
+                result_version=membership["permissions_version"],
+                response_payload=response,
             )
-            team = cur.fetchone()
-            cur.execute(
-                """
-                INSERT INTO tb.team_members(team_id, user_id, role)
-                VALUES (%s,%s,'LEAD')
-                ON CONFLICT (team_id, user_id) DO UPDATE SET role='LEAD', removed_at=NULL
-                """,
-                (team["id"], payload.user_id),
-            )
-        elif role == "HELPER":
-            if payload.team_id is None:
-                raise HTTPException(400, "TEAM_REQUIRED_FOR_HELPER")
-            cur.execute(
-                "SELECT id FROM tb.teams WHERE id = %s AND worksite_id = %s AND status = 'ACTIVE'",
-                (payload.team_id, worksite_id),
-            )
-            if not cur.fetchone():
-                raise HTTPException(400, "TEAM_INVALID")
-            cur.execute(
-                """
-                UPDATE tb.team_members tm
-                SET removed_at = now()
-                FROM tb.teams t
-                WHERE tm.team_id = t.id AND t.worksite_id = %s
-                  AND tm.user_id = %s AND tm.removed_at IS NULL
-                """,
-                (worksite_id, payload.user_id),
-            )
-            cur.execute(
-                """
-                INSERT INTO tb.team_members(team_id, user_id, role)
-                VALUES (%s,%s,'HELPER')
-                ON CONFLICT (team_id, user_id) DO UPDATE SET role='HELPER', removed_at=NULL
-                """,
-                (payload.team_id, payload.user_id),
-            )
+            return response
+
+        cur.execute(
+            """
+            UPDATE tb.team_members tm
+            SET removed_at = now()
+            FROM tb.teams t
+            WHERE tm.team_id = t.id
+              AND t.worksite_id = %s
+              AND tm.user_id = %s
+              AND tm.removed_at IS NULL
+            """,
+            (worksite_id, member_user_id),
+        )
+        cur.execute(
+            """
+            INSERT INTO tb.team_members(team_id, user_id, role)
+            VALUES (%s,%s,'HELPER')
+            ON CONFLICT (team_id, user_id)
+            DO UPDATE SET role = 'HELPER', removed_at = NULL
+            """,
+            (payload.team_id, member_user_id),
+        )
+        cur.execute(
+            """
+            UPDATE tb.worksite_memberships
+            SET permissions_version = permissions_version + 1,
+                updated_at = now()
+            WHERE id = %s
+            RETURNING permissions_version
+            """,
+            (membership["id"],),
+        )
+        version = int(cur.fetchone()["permissions_version"])
+
         emit_change(
             cur,
             company_id=context["company_id"],
             worksite_id=worksite_id,
             entity_type="WORKSITE_MEMBERSHIP",
             entity_id=membership["id"],
-            operation="UPSERT",
-            entity_version=membership["permissions_version"],
+            operation="UPDATE",
+            entity_version=version,
             actor_user_id=user["user_id"],
         )
         audit(
             cur,
-            action="WORKSITE_MEMBER_UPSERT",
+            action="WORKSITE_HELPER_TEAM_TRANSFER",
             actor_user_id=user["user_id"],
             company_id=context["company_id"],
             worksite_id=worksite_id,
             entity_type="WORKSITE_MEMBERSHIP",
             entity_id=membership["id"],
-            details={"member_user_id": str(payload.user_id), "role": role},
+            details={
+                "member_user_id": str(member_user_id),
+                "target_team_id": str(target_team["id"]),
+                "target_lead_user_id": str(target_team["lead_user_id"]),
+            },
         )
+        response = {
+            "changed": True,
+            "member_user_id": member_user_id,
+            "team_id": target_team["id"],
+            "team_name": target_team["team_name"],
+            "lead_user_id": target_team["lead_user_id"],
+            "lead_name": target_team["lead_name"],
+            "membership_version": version,
+        }
         finish_mutation(
             cur,
             user=user,
             context=mutation,
-            receipt_type="WORKSITE_MEMBER_ADD",
+            receipt_type="WORKSITE_HELPER_TEAM_TRANSFER",
             entity_id=membership["id"],
-            result_version=membership["permissions_version"],
-            response_payload=membership,
+            result_version=version,
+            response_payload=response,
         )
-    return membership
+    return response
 
 
 @router.patch("/{worksite_id}/members/{member_user_id}/permissions")
