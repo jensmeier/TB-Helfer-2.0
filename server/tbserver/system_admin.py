@@ -157,6 +157,10 @@ def admin_system_status(
         "migration": migration,
         "storage": storage,
         "backup_storage": backup_storage,
+        "backup_retention": {
+            "days": settings.backup_retention_days,
+            "minimum_kept_per_kind": settings.backup_retention_min_per_kind,
+        },
         "counts": counts,
         "backups": backups,
         "jobs": jobs,
@@ -213,6 +217,48 @@ def enqueue_backup(
             response_payload=response,
         )
     return response
+
+@router.post("/backups/retention", status_code=202)
+def enqueue_backup_retention(
+    user: dict[str, Any] = Depends(require_admin_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BACKUP_RETENTION_JOB_CREATE",
+        )
+        if receipt:
+            return replay_payload(receipt)
+        try:
+            job = enqueue_in_tx(cur, "BACKUP_RETENTION", {})
+        except JobError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        audit(
+            cur,
+            action="BACKUP_RETENTION_JOB_CREATE",
+            actor_user_id=user["user_id"],
+            entity_type="BACKGROUND_JOB",
+            entity_id=job["id"],
+            details={
+                "retention_days": settings.backup_retention_days,
+                "minimum_kept_per_kind": settings.backup_retention_min_per_kind,
+            },
+        )
+        response = {"job": job}
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BACKUP_RETENTION_JOB_CREATE",
+            entity_id=job["id"],
+            result_version=None,
+            response_payload=response,
+        )
+    return response
+
 
 @router.post("/backups/{backup_run_id}/restore-test", status_code=202)
 def enqueue_restore_test(

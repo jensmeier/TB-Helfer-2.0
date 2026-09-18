@@ -83,6 +83,8 @@ Optional:
 - `TB_V1_DB_USER`
 - `TB_V1_PORTAL_SESSION_HOURS`
 - `TB_V1_LOG_LEVEL`
+- `TB_V1_BACKUP_RETENTION_DAYS`
+- `TB_V1_BACKUP_RETENTION_MIN_PER_KIND`
 - `TZ`
 
 **Keine echten Werte dieser Geheimnisse/Pfade mit Zugangsdaten nach GitHub committen.**

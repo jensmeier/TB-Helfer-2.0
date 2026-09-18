@@ -60,6 +60,8 @@ services:
       TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:-staging}
       TB_PORTAL_SESSION_HOURS: ${TB_V1_PORTAL_SESSION_HOURS:-12}
       LOG_LEVEL: ${TB_V1_LOG_LEVEL:-INFO}
+      TB_BACKUP_RETENTION_DAYS: ${TB_V1_BACKUP_RETENTION_DAYS:-30}
+      TB_BACKUP_RETENTION_MIN_PER_KIND: ${TB_V1_BACKUP_RETENTION_MIN_PER_KIND:-3}
       TZ: ${TZ:-Europe/Berlin}
     volumes:
       - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1
@@ -100,6 +102,8 @@ services:
       TB_MIGRATIONS_ROOT: /app/v1_migrations
       TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:-staging}
       LOG_LEVEL: ${TB_V1_LOG_LEVEL:-INFO}
+      TB_BACKUP_RETENTION_DAYS: ${TB_V1_BACKUP_RETENTION_DAYS:-30}
+      TB_BACKUP_RETENTION_MIN_PER_KIND: ${TB_V1_BACKUP_RETENTION_MIN_PER_KIND:-3}
       TZ: ${TZ:-Europe/Berlin}
     volumes:
       - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1

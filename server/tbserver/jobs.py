@@ -7,7 +7,7 @@ from uuid import UUID
 
 from psycopg.types.json import Jsonb
 
-from .backup import run_backup
+from .backup import run_backup, run_retention
 from .database import transaction
 from .restore import RestoreTestError, run_restore_test
 
@@ -18,6 +18,7 @@ SUPPORTED_JOB_TYPES = {
     "BACKUP_DATABASE",
     "BACKUP_FILES",
     "BACKUP_FULL",
+    "BACKUP_RETENTION",
     "RESTORE_TEST",
 }
 
@@ -94,6 +95,8 @@ def _execute(job: dict[str, Any]) -> dict[str, Any]:
         return run_backup("FILES")
     if job_type == "BACKUP_FULL":
         return run_backup("FULL")
+    if job_type == "BACKUP_RETENTION":
+        return run_retention()
     if job_type == "RESTORE_TEST":
         raw_run_id = (job.get("payload") or {}).get("backup_run_id")
         try:

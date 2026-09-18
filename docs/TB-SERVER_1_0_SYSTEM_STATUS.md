@@ -53,7 +53,7 @@ Die Seite zeigt:
 - letzte Backup-Läufe;
 - letzte Background Jobs.
 
-Die Statusanzeige bleibt lesend. Zusätzlich stehen drei ausdrücklich getrennte Backup-Aktionen zur Verfügung: Datenbank-Backup, Datei-Backup und Vollbackup. Diese Aktionen führen das Backup nicht im HTTP-Request aus, sondern stellen einen idempotenten Background Job ein. Für erfolgreiche Backups kann außerdem ein Restore-Test gegen die ausdrücklich getrennte Testdatenbank/Testablage eingereiht werden. Ein Restore auf die laufende TB-Helfer-Datenbank bleibt weiterhin gesperrt.
+Die Statusanzeige bleibt lesend. Zusätzlich stehen drei ausdrücklich getrennte Backup-Aktionen zur Verfügung: Datenbank-Backup, Datei-Backup und Vollbackup. Diese Aktionen führen das Backup nicht im HTTP-Request aus, sondern stellen einen idempotenten Background Job ein. Für erfolgreiche Backups kann außerdem ein Restore-Test gegen die ausdrücklich getrennte Testdatenbank/Testablage eingereiht werden. ADMIN kann zusätzlich die konfigurierte Backup-Aufbewahrungsregel als Background Job prüfen lassen. Ein Restore auf die laufende TB-Helfer-Datenbank bleibt weiterhin gesperrt.
 
 ## Warum read-only zuerst
 
@@ -73,6 +73,7 @@ Dieser Baustein trennt sauber:
 - `admin_system_status_v1=true`
 - `background_jobs_v1=true`
 - `backup_v1=true`
+- `backup_retention_v1=true`
 - `restore_test_v1=true`
 - `test_data_reset_v1=true`
 
@@ -93,8 +94,8 @@ Dieser Baustein trennt sauber:
 
 ## Noch offen
 
-- Backup-Aufbewahrung/Rotation;
 - kontrollierter produktiver Restore;
+- Retention praktisch gegen echte Backup-Dateien prüfen;
 - Systemmetriken sammeln/aggregieren;
 - E-Mail-Berichte;
 - produktive NAS-Backup-/Cutover-Abnahme.

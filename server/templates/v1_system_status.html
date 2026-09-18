@@ -42,8 +42,10 @@
       <button type="button" onclick="startBackup('DATABASE')">Datenbank-Backup</button>
       <button type="button" onclick="startBackup('FILES')">Datei-Backup</button>
       <button type="button" onclick="startBackup('FULL')">Vollbackup</button>
+      <button type="button" class="secondary" onclick="startRetention()">Aufbewahrung prüfen</button>
     </div>
     <div id="backupStorage" class="small"></div>
+    <div id="backupRetention" class="small"></div>
     <div id="backups"></div>
   </div>
   <div class="card">
@@ -62,7 +64,7 @@ function dt(value){if(!value)return '—';try{return new Date(value).toLocaleStr
 function kpi(n,label){return '<div class="kpi"><div class="n">'+esc(n)+'</div><div class="l">'+esc(label)+'</div></div>';}
 async function load(){
   try{
-    const result=await tbApi('/api/v1/admin/system/status');const x=result.data,c=x.counts||{},m=x.migration||{},st=x.storage||{},bst=x.backup_storage||{};
+    const result=await tbApi('/api/v1/admin/system/status');const x=result.data,c=x.counts||{},m=x.migration||{},st=x.storage||{},bst=x.backup_storage||{},br=x.backup_retention||{};
     document.getElementById('summary').innerHTML=[
       kpi(c.companies||0,'Firmen'),kpi((c.active_users||0)+' / '+(c.users||0),'aktive / alle Nutzer'),
       kpi(c.active_devices||0,'aktive Geräte'),kpi(c.worksites||0,'Baustellen'),
@@ -89,6 +91,8 @@ async function load(){
     document.getElementById('backupStorage').textContent=bst.available?
       ('Backup-Speicher: '+bytes(bst.used_bytes)+' belegt · '+bytes(bst.free_bytes)+' frei · '+Number(bst.percent_used||0).toFixed(2)+' %'):
       'Backup-Speicher ist noch nicht angelegt.';
+    document.getElementById('backupRetention').textContent=
+      'Aufbewahrung: älter als '+esc(br.days||'—')+' Tage, mindestens '+esc(br.minimum_kept_per_kind||'—')+' je Backupart behalten.';
     document.getElementById('companies').innerHTML=(x.companies||[]).map(function(row){
       return '<tr><td><b>'+esc(row.name)+'</b></td><td>'+esc(row.user_count)+'</td><td>'+esc(row.active_device_count)+'</td><td>'+esc(row.worksite_count)+'</td><td>'+esc(row.file_count)+'</td><td>'+esc(bytes(row.file_bytes))+'</td></tr>';
     }).join('')||'<tr><td colspan="6" class="muted">Keine Firmen.</td></tr>';
@@ -114,6 +118,15 @@ async function startBackup(kind){
   }catch(error){show('err',error.message||String(error));}
 }
 window.startBackup=startBackup;
+async function startRetention(){
+  if(!confirm('Backup-Aufbewahrung jetzt prüfen und alte Backups nach der konfigurierten Regel freigeben?'))return;
+  try{
+    const result=await tbApi('/api/v1/admin/system/backups/retention',{method:'POST'});
+    show('ok','Aufbewahrungsauftrag '+result.data.job.id+' wurde in die Warteschlange gestellt.');
+    await load();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.startRetention=startRetention;
 async function startRestoreTest(id){
   if(!confirm('Restore-Test dieses Backups gegen die getrennte Testumgebung starten?'))return;
   try{

@@ -200,10 +200,34 @@ Der nächste Schritt nach erfolgreichem Restore ist **nicht** automatisches Umsc
 
 Migration `005_restore_target_run_kind.sql` erweitert ausschließlich die erlaubten `tb.backup_runs.kind`-Werte um `RESTORE_TARGET`.
 
+## Backup-Aufbewahrung / Rotation
+
+Konfiguration:
+
+- `TB_BACKUP_RETENTION_DAYS` – Default 30;
+- `TB_BACKUP_RETENTION_MIN_PER_KIND` – Default 3.
+
+Die Regel gilt getrennt für DATABASE, FILES und FULL. Ein Backup wird nur dann freigegeben, wenn es älter als die Aufbewahrungsfrist ist **und** für seine Art mehr als die Mindestanzahl jüngerer erfolgreicher Backups vorhanden ist.
+
+Jobtyp: `BACKUP_RETENTION`
+
+Admin-API: `POST /api/v1/admin/system/backups/retention`
+
+Sicherheitsverhalten:
+
+1. Kandidaten werden per Window-Ranking je Backupart bestimmt;
+2. der DB-Lauf wird zuerst auf `PURGED` gesetzt und der interne `storage_key` entfernt;
+3. erst danach wird die konkrete Backupdatei gelöscht;
+4. wenn das Dateilöschen scheitert, bleibt höchstens eine unreferenzierte Sicherheitsdatei zurück – niemals ein `OK`-Datensatz, der auf eine bereits gelöschte Datei zeigt;
+5. der gesamte Backup-Root wird niemals rekursiv gelöscht.
+
+Migration `006_backup_retention_status.sql` ergänzt dafür den Status `PURGED`. Die Admin-Systemseite zeigt die aktive Policy und kann die Aufbewahrungsprüfung als Background Job einreihen.
+
 ## Capabilities
 
 - `background_jobs_v1=true`
 - `backup_v1=true`
+- `backup_retention_v1=true`
 - `restore_test_v1=true`
 - `test_data_reset_v1=true`
 - `restore_target_v1=true`
@@ -254,8 +278,8 @@ Vor einem späteren produktiven Restore/Cutover bleibt ein verifiziertes Backup 
 
 ## Noch offen
 
-- Backup-Aufbewahrung/Rotation;
 - Restore-to-Target praktisch gegen eine echte PostgreSQL-/Storage-Testinstanz ausführen und danach den manuellen Cutover prüfen;
+- Retention praktisch mit echten Backup-Dateien und abgelaufenen Testläufen prüfen;
 - E2E-Test des Workers und aller Backuparten gegen PostgreSQL + persistente Storage-Mounts;
 - produktive NAS-Backup- und Restore-Abnahme.
 

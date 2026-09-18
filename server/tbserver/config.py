@@ -26,6 +26,8 @@ class Settings:
     db_password: str
     storage_root: Path
     backup_root: Path
+    backup_retention_days: int
+    backup_retention_min_per_kind: int
     migrations_root: Path
     environment: str
     log_level: str
@@ -43,6 +45,10 @@ class Settings:
             db_password=_env("DB_PASSWORD"),
             storage_root=Path(_env("STORAGE_ROOT", "/tb/storage-v1")),
             backup_root=Path(_env("TB_BACKUP_ROOT", "/tb/backups-v1")),
+            backup_retention_days=max(1, _env_int("TB_BACKUP_RETENTION_DAYS", 30)),
+            backup_retention_min_per_kind=max(
+                1, _env_int("TB_BACKUP_RETENTION_MIN_PER_KIND", 3)
+            ),
             migrations_root=Path(
                 _env("TB_MIGRATIONS_ROOT", str(server_root / "v1_migrations"))
             ),

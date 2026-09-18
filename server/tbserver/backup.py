@@ -296,3 +296,112 @@ def backup_storage_snapshot() -> dict[str, Any]:
         if usage.total
         else 0.0,
     }
+
+def _remove_empty_backup_parents(path: Path) -> None:
+    root = settings.backup_root.resolve()
+    current = path.parent
+    while current != root:
+        try:
+            current.rmdir()
+        except OSError:
+            return
+        current = current.parent
+
+
+def run_retention() -> dict[str, Any]:
+    days = settings.backup_retention_days
+    min_per_kind = settings.backup_retention_min_per_kind
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            WITH ranked AS (
+                SELECT id, kind, storage_key, finished_at, started_at,
+                       row_number() OVER (
+                           PARTITION BY kind
+                           ORDER BY finished_at DESC NULLS LAST, started_at DESC, id DESC
+                       ) AS keep_rank
+                FROM tb.backup_runs
+                WHERE kind IN ('DATABASE','FILES','FULL')
+                  AND status = 'OK'
+                  AND storage_key IS NOT NULL
+            )
+            SELECT id, kind, storage_key, finished_at, keep_rank
+            FROM ranked
+            WHERE keep_rank > %s
+              AND finished_at < now() - (%s * interval '1 day')
+            ORDER BY finished_at, id
+            """,
+            (min_per_kind, days),
+        )
+        candidates = [dict(row) for row in cur.fetchall()]
+
+    purged: list[str] = []
+    missing_files: list[str] = []
+    delete_errors: list[str] = []
+
+    for candidate in candidates:
+        backup_id = candidate["id"]
+        key = candidate["storage_key"]
+        path = _absolute_backup_path(key)
+
+        with transaction() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, kind, status, storage_key
+                FROM tb.backup_runs
+                WHERE id = %s
+                FOR UPDATE
+                """,
+                (backup_id,),
+            )
+            current = cur.fetchone()
+            if (
+                not current
+                or current["status"] != "OK"
+                or current["storage_key"] != key
+            ):
+                continue
+            cur.execute(
+                """
+                UPDATE tb.backup_runs
+                SET status = 'PURGED',
+                    storage_key = NULL,
+                    detail = %s
+                WHERE id = %s
+                """,
+                (
+                    json.dumps(
+                        {
+                            "reason": "RETENTION",
+                            "retention_days": days,
+                            "minimum_kept_per_kind": min_per_kind,
+                            "previous_storage_key": key,
+                        },
+                        sort_keys=True,
+                    ),
+                    backup_id,
+                ),
+            )
+
+        purged.append(str(backup_id))
+        try:
+            if path.exists():
+                path.unlink()
+                _remove_empty_backup_parents(path)
+            else:
+                missing_files.append(str(backup_id))
+        except OSError:
+            # DB no longer references the artifact. Leave any undeleted file as
+            # an unreferenced safety orphan for explicit maintenance cleanup.
+            delete_errors.append(str(backup_id))
+
+    return {
+        "retention_days": days,
+        "minimum_kept_per_kind": min_per_kind,
+        "candidate_count": len(candidates),
+        "purged_count": len(purged),
+        "purged_run_ids": purged,
+        "missing_file_run_ids": missing_files,
+        "delete_error_run_ids": delete_errors,
+    }
+
