@@ -4,12 +4,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from .database import transaction
 from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
+from .invitation_links import invite_app_uri, invite_browser_link, invite_qr_svg_data_url
 from .permissions import require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 from .security import hash_token, random_token
@@ -845,9 +846,12 @@ def list_worksite_invitations(
 def create_worksite_invitation(
     worksite_id: UUID,
     payload: WorksiteInvitationCreate,
+    request: Request,
+    response: Response,
     user: dict[str, Any] = Depends(require_csrf),
     mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
+    response.headers["Cache-Control"] = "no-store"
     role = payload.worksite_role.strip().upper()
     if role not in {"RESPONSIBLE_TB", "TB", "HELPER", "READ_ONLY"}:
         raise HTTPException(400, "INVALID_WORKSITE_ROLE")
@@ -867,6 +871,9 @@ def create_worksite_invitation(
             return {
                 **replay,
                 "invite_token": None,
+                "invite_uri": None,
+                "invite_link": None,
+                "invite_qr_svg_data_url": None,
                 "token_replay_unavailable": True,
             }
         context = worksite_context(cur, user, worksite_id)
@@ -977,7 +984,13 @@ def create_worksite_invitation(
             result_version=None,
             response_payload=receipt_response,
         )
-    return response
+    redeem_url = str(request.url_for("portal_invitation_redeem_page"))
+    return {
+        **response,
+        "invite_uri": invite_app_uri(raw_token),
+        "invite_link": invite_browser_link(redeem_url, raw_token),
+        "invite_qr_svg_data_url": invite_qr_svg_data_url(raw_token),
+    }
 
 
 @router.post("/{worksite_id}/invitations/{invitation_id}/revoke")

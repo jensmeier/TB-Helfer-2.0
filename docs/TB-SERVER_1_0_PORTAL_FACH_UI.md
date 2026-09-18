@@ -68,6 +68,19 @@ Aktuelle Schreibfunktionen:
 
 Neue Mitglieder werden nicht frei per Direktzuordnung ergänzt. Der frühere generische Schreibpfad `POST /api/v1/worksites/{worksite_id}/members` ist aus dem Server-1.0-Vertrag entfernt. Dafür gilt ausschließlich der gezielte Einladungsvertrag: gleicher Firmenkontext, Zielbenutzer vorab festgelegt, Einmalcode nur gehasht gespeichert und Annahme durch genau den eingeladenen Benutzer. Helfer werden bei Annahme dem Team des einladenden verantwortlichen TB zugeordnet; ein eingeladener TB/Verantwortlicher TB erhält sein eigenes Team.
 
+Einladungskomfort Code/Link/QR:
+
+- der Rohcode wird weiterhin nur in der ersten erfolgreichen Create-Antwort ausgegeben;
+- zusätzlich liefert dieselbe Antwort eine App-URI `tbhelfer://worksite-invite?token=...`, einen Browser-Link auf `/portal/v1/invitations/redeem#token=...` und einen serverseitig erzeugten SVG-QR-Code;
+- QR und App-URI enthalten denselben kurzlebigen Einladungstoken, aber keine Benutzer-Keys/Passwörter;
+- der Browser-Link legt den Token bewusst im URL-Fragment statt in Query/Path ab; dadurch wird er beim normalen HTTP-Aufruf der Einlöseseite nicht an den Server gesendet;
+- die Einlöseseite liest das Fragment clientseitig, übernimmt den Token in das Formular und entfernt das Fragment anschließend mit `history.replaceState`;
+- keine automatische Annahme: der eingeladene Benutzer bestätigt weiterhin ausdrücklich `Einladung annehmen`;
+- die Create-Antwort setzt `Cache-Control: no-store`; Mutation Receipt und Audit enthalten weiterhin weder Rohcode noch Link/QR;
+- Replay derselben Create-Mutation kann Code/Link/QR nicht rekonstruieren; bei Bedarf muss die alte Einladung widerrufen und neu erzeugt werden.
+
+Der QR-Code ist damit bereits server-/portal-seitig definiert. Die Android-Aktion `QR scannen` wird später auf dieselbe App-URI verdrahtet, ohne einen zweiten Einladungsvertrag einzuführen.
+
 Für bereits beigetretene Helfer existiert getrennt `POST /api/v1/worksites/{worksite_id}/members/{member_user_id}/team`. Dieser Pfad erzeugt **keine** neue Baustellenmitgliedschaft. Er darf nur bestehende `HELPER` zwischen aktiven Teams derselben Baustelle verschieben, erhält historische Teamzuordnungen über `removed_at` und lässt frühere Team-BTBs unverändert.
 
 Wenn das effektive Rechteprofil eine Aktion nicht erlaubt, wird ihr Formular/Knopf nicht angeboten. Die API bleibt trotzdem die verbindliche zweite Schranke.
@@ -118,7 +131,7 @@ Spezialisierte Formulare können später additiv auf diesen stabilen API-Vertrag
 
 `portal_worksite_fach_ui_v1=true`
 
-Zusätzlich: `worksite_team_transfer_v1=true`
+Zusätzlich: `worksite_team_transfer_v1=true`, `worksite_invitation_qr_v1=true`
 
 Sie bedeutet, dass die Server-1.0-Weboberfläche mindestens Baustellenübersicht, Baustellendetail und den grundlegenden BTB-/Mängel-/Abnahme-Lebenszyklus auf den bestehenden Fachendpunkten anbietet.
 
@@ -138,11 +151,11 @@ Sie bedeutet, dass die Server-1.0-Weboberfläche mindestens Baustellenübersicht
 
 Die erste Fachoberfläche ist absichtlich kein zweiter Client mit eigener Fachlogik. Noch zu ergänzen:
 
-- QR-/Deep-Link-Darstellung für den vorhandenen Einmalcode zusätzlich zur Copy/Paste-Einlösung;
+- Android-QR-Scanner/Intent-Handling für die jetzt stabile `tbhelfer://worksite-invite`-URI;
 - komfortablere Rechteprofil-/Bereichsauswahl statt Text-/JSON-Dialog;
 - spezialisierte statt generischer JSON-Fachformulare;
 - Foto-Metadaten-/Auswahlkomfort über den aktuellen Upload hinaus;
-- Systemstatus/Speicher/Background Jobs/Backup- und Restore-Oberfläche;
+- Backup-/Restore-Bedienkomfort im Admin-Portal über den bereits vorhandenen sicheren Serververtrag;
 - visuelle Endabnahme und mobile Browserdarstellung gegen den laufenden Testserver.
 
 Produktivdaten/NAS werden durch diesen Oberflächenbaustein nicht verändert.
