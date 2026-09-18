@@ -18,6 +18,7 @@ CAPABILITIES: dict[str, bool] = {
     "client_compatibility_v1": True,
     "worksite_tree_v1": True,
     "worksite_permissions_v1": True,
+    "worksite_area_scope_v1": True,
     "worksite_teams_v1": True,
     "btb_entries_v1": True,
     "btb_live_sync_v1": True,
