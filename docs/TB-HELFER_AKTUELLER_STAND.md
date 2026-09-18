@@ -625,12 +625,13 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 69 prüft den gemeinsamen capability-gesteuerten Server-1.0-Synckern für UI und Hintergrund-Worker, die unabhängige BTB/Fach/Datei-Capability-Auswertung und dass alte 0.6-/0.7-Versionsschwellen nur noch den Legacy-Fallback steuern.
 - Source-Checks 57–60 sowie 63–68 wurden nach der Coordinator-Extraktion auf denselben gemeinsamen Synckern umgestellt; ihre fachlichen Vertragsprüfungen bleiben unverändert bestehen und prüfen nicht mehr die alte Codeposition im Fragment.
 - Source-Check 70 prüft die stabile Cursor-Pagination der sichtbaren Server-1.0-Dateiliste, explizite Snapshot-Vollständigkeit und den Rolling-Update-Fallback auf die bisherige 1000-Dateien-Sicherheitsregel.
+- Source-Check-Dateien 57–60/63–68 wurden nach der Coordinator-Extraktion vollständig neu ausgerichtet; dabei wurden versehentlich wörtlich gespeicherte `\\n`-Sequenzen und ein unvollständiger Check-68-Variablenumbau korrigiert. Check 59 prüft die 1000er-Grenze jetzt über `FILE_LIST_LIMIT` statt über ein nicht existentes hartes URL-Literal.
 
 **Noch nicht ausgeführt:** Source-Checks 34–70 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
-Für den Android-BTB-PDF-Commit `31d781365ad2ca808023438a0bfe389f75a6cd42` endeten TB-Server **#263 / ID 35395006263** und Android CI **#993 / ID 35395006262** erneut mit leeren `steps`-Listen und `runner_id = 0`. Es wurde also weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
+Für den Dateipagination-Commit `702e6cf97115971dd27e6c383bf7f22ea5340dc0` endeten TB-Server **#271 / ID 35396211697** und Android CI **#997 / ID 35396211705** erneut mit leeren `steps`-Listen und `runner_id = 0`. Es wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
 ### BTB-Granularitätskorrektur
 

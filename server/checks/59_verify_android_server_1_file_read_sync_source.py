@@ -3,13 +3,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 api = (ROOT / "app/src/main/java/de/tbhelfer/server/Server1FileApi.kt").read_text(encoding="utf-8")
 repo = (ROOT / "app/src/main/java/de/tbhelfer/datenbank/CollabSyncRepository.kt").read_text(encoding="utf-8")
-coordinator = (ROOT / "app/src/main/java/de/tbhelfer/server/Server1AndroidSyncCoordinator.kt").read_text(encoding="utf-8")\nfragment = (ROOT / "app/src/main/java/de/tbhelfer/ui/sync/BaustellenSyncFragment.kt").read_text(encoding="utf-8")
+coordinator = (ROOT / "app/src/main/java/de/tbhelfer/server/Server1AndroidSyncCoordinator.kt").read_text(encoding="utf-8")
+fragment = (ROOT / "app/src/main/java/de/tbhelfer/ui/sync/BaustellenSyncFragment.kt").read_text(encoding="utf-8")
 strings = (ROOT / "app/src/main/res/values/collab_strings.xml").read_text(encoding="utf-8")
 server = (ROOT / "server/tbserver/files.py").read_text(encoding="utf-8")
 
 for token in (
     "/api/v1/worksites/",
-    "/files?limit=1000",
+    "/files?limit=",
+    "FILE_LIST_LIMIT = 1000",
     "/api/v1/files/",
     "/content",
     'type != "DEFECT" && type != "ACCEPTANCE" && type != "BTB"',

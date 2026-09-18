@@ -5,7 +5,8 @@ api = (ROOT / "app/src/main/java/de/tbhelfer/server/Server1BtbPdfApi.kt").read_t
 btb_api = (ROOT / "app/src/main/java/de/tbhelfer/server/Server1BtbApi.kt").read_text(encoding="utf-8")
 media = (ROOT / "app/src/main/java/de/tbhelfer/datenbank/BtbTeamMediaSync.kt").read_text(encoding="utf-8")
 versioning = (ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbDokumentVersionierung.kt").read_text(encoding="utf-8")
-coordinator = (ROOT / "app/src/main/java/de/tbhelfer/server/Server1AndroidSyncCoordinator.kt").read_text(encoding="utf-8")\nfragment = (ROOT / "app/src/main/java/de/tbhelfer/ui/sync/BaustellenSyncFragment.kt").read_text(encoding="utf-8")
+sync = (ROOT / "app/src/main/java/de/tbhelfer/server/Server1AndroidSyncCoordinator.kt").read_text(encoding="utf-8")
+fragment = (ROOT / "app/src/main/java/de/tbhelfer/ui/sync/BaustellenSyncFragment.kt").read_text(encoding="utf-8")
 server = (ROOT / "server/tbserver/btb.py").read_text(encoding="utf-8")
 
 for token in (
@@ -52,8 +53,8 @@ import_block = versioning.split("fun serverAbschlussUebernehmen", 1)[1].split(
 )[0]
 assert "baselineFile" not in import_block, "Server PDF import must not fabricate Android original baseline"
 
-assert 'capabilities.supports("btb_finalize_with_pdf_v1")' in coordinator
-assert "server1PdfApi = if" in coordinator
+assert 'capabilities.supports("btb_finalize_with_pdf_v1")' in sync
+assert "server1PdfApi = if" in sync
 assert "Server1AndroidSyncCoordinator" in fragment
 assert '@router.get("/btbs/{btb_id}/final-pdf")' in server
 
