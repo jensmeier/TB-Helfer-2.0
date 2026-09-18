@@ -13,7 +13,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - PR-Basis: `feature/admin-offline-sync`
 - Android bleibt vorerst Testclient: Buildkandidat **200050**
 
-- Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Sichtbare, mit Mängeln/Abnahmen verknüpfte Server-1.0-Dateien werden über `files_v1` aufgelöst und in den vorhandenen Attachment-Cache heruntergeladen. Lokale Mängel-/Abnahme-Attachments werden resumierbar über `chunk_upload_v1` mit deterministischen Idempotenz-IDs hochgeladen; nicht mehr sichtbare/gelöschte Fach-Attachments werden beim vollständigen Datei-Snapshot lokal tombstoned. BTB bleibt getrennt offen.
+- Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Sichtbare, mit Mängeln/Abnahmen verknüpfte Server-1.0-Dateien werden über `files_v1` aufgelöst und in den vorhandenen Attachment-Cache heruntergeladen. Lokale Mängel-/Abnahme-Attachments werden resumierbar über `chunk_upload_v1` mit deterministischen Idempotenz-IDs hochgeladen; nicht mehr sichtbare/gelöschte Fach-Attachments werden nur bei nachweislich vollständigem Datei-Snapshot lokal tombstoned; bei der 1000-Dateien-Grenze wird konservativ nicht gelöscht. BTB bleibt getrennt offen.
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
 
 Wichtige Server-1.0-Meilensteine:
@@ -615,8 +615,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 59 prüft das Auflösen sichtbarer `files_v1`-Links auf Mängel/Abnahmen, den Download über `/files/{id}/content` und die Wiederverwendung des vorhandenen Attachment-Caches.
 - Source-Check 60 prüft den resumierbaren Android-Chunk-Upload, Upload-Session-Recovery, `X-Client-Change-Id`, Complete-Link auf Mangel/Abnahme und die Weiterverwendung des Attachment-Caches.
 - Source-Check 61 prüft, dass ein vollständiger sichtbarer `files_v1`-Snapshot nicht mehr sichtbare/gelöschte Mängel-/Abnahme-Dateien im lokalen Attachment-Cache tombstoned.
+- Source-Check 62 verhindert gefährliches Tombstoning bei der aktuellen 1000-Dateien-Grenze: bei genau 1000 Listeneinträgen gilt der Snapshot als möglicherweise abgeschnitten und alte Cache-Einträge bleiben erhalten.
 
-**Noch nicht ausgeführt:** Source-Checks 34–61 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–62 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -629,7 +630,7 @@ Für den Android-Datei-Upload-Commit `fcc3b60922dc46f0ab6f589f1f6b5d9efd51aa76` 
 - einseitig belegte GRA-Sprünge nur bei zusätzlicher realer Evidenz automatisieren; Default bleibt `false`;
 - Projektion/verdichtete Samples bei Bedarf performant cachen, ohne Originale zu verändern;
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
-- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; Einladungen, Teamdarstellung sowie Mängel-/Abnahme-Sync inklusive Datei-Download und resumierbarem Attachment-Upload sind modern angebunden; BTB bleibt offen;
+- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; für Baustellen mit mindestens 1000 sichtbaren Dateien fehlt serverseitige Pagination, daher wird dort aktuell bewusst kein Cache-Tombstoning aus der Dateiliste abgeleitet; Einladungen, Teamdarstellung sowie Mängel-/Abnahme-Sync inklusive Datei-Download und resumierbarem Attachment-Upload sind modern angebunden; BTB bleibt offen;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
 - Android-QR-Scanner/Intent-Handling sowie gezieltes Erzeugen/Einlösen von Server-1.0-Baustelleneinladungen sind im Quellstand umgesetzt; die übrigen Android-Fachendpunkte und komfortablere Portal-Fachformulare bleiben offen;
 - Compose-Staging-Stack praktisch auf Docker/Synology starten; Backup-Retention mit echten Alt-Backups prüfen; Restore-to-Target gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen;

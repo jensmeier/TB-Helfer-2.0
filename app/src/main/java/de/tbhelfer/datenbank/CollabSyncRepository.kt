@@ -327,20 +327,24 @@ class CollabSyncRepository(
         var linked = 0
         var downloaded = 0
         for (worksiteId in worksiteIds.distinct()) {
-            val files = when (val result = api.listLinkedFiles(token, worksiteId)) {
+            val listResult = when (val result = api.listLinkedFiles(token, worksiteId)) {
                 Server1FileApi.ListResult.Unsupported -> return Server1AttachmentSyncResult.Unsupported
                 Server1FileApi.ListResult.SessionInvalid -> return Server1AttachmentSyncResult.SessionInvalid
                 is Server1FileApi.ListResult.Error -> return Server1AttachmentSyncResult.Error(result.message)
-                is Server1FileApi.ListResult.Success -> result.files
+                is Server1FileApi.ListResult.Success -> result
             }
+            val files = listResult.files
 
-            // The files endpoint is the complete visible Server-1.0 snapshot (up to its
-            // documented limit). Anything previously cached for DEFECT/ACCEPTANCE but
-            // no longer returned must not remain importable after deletion or permission loss.
-            val visibleFileIds = files.mapTo(hashSetOf()) { it.fileId }
-            dao.collabFachAttachments(worksiteId)
-                .filter { it.serverId !in visibleFileIds }
-                .forEach { dao.markCollabAttachmentDeleted(it.serverId) }
+            // Never tombstone from a truncated list. The current Server-1.0 endpoint caps
+            // one response at 1000 files and has no pagination yet; exactly 1000 therefore
+            // means "possibly incomplete". In that case new/changed files are still merged,
+            // but old cache entries are kept until a complete snapshot can be proven.
+            if (listResult.completeSnapshot) {
+                val visibleFileIds = files.mapTo(hashSetOf()) { it.fileId }
+                dao.collabFachAttachments(worksiteId)
+                    .filter { it.serverId !in visibleFileIds }
+                    .forEach { dao.markCollabAttachmentDeleted(it.serverId) }
+            }
 
             for (item in files) {
                 val existing = dao.collabAttachment(item.fileId)

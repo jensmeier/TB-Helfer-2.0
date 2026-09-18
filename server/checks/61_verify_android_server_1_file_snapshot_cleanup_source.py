@@ -17,6 +17,6 @@ for token in (
 ):
     assert token in repo, token
 
-assert repo.index("visibleFileIds = files.mapTo") < repo.index("for (item in files)")
+assert repo.index("if (listResult.completeSnapshot)") < repo.index("visibleFileIds = files.mapTo") < repo.index("for (item in files)")
 
 print("OK: Android Server-1.0 file snapshot removes stale/hidden fach attachments")

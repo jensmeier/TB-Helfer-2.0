@@ -54,7 +54,7 @@ class Server1FileApi(
     }
 
     sealed interface ListResult {
-        data class Success(val files: List<LinkedFile>) : ListResult
+        data class Success(val files: List<LinkedFile>, val completeSnapshot: Boolean) : ListResult
         data object Unsupported : ListResult
         data object SessionInvalid : ListResult
         data class Error(val message: String) : ListResult
@@ -68,7 +68,7 @@ class Server1FileApi(
     }
 
     fun listLinkedFiles(token: String, worksiteId: String): ListResult {
-        val path = "/api/v1/worksites/${encode(worksiteId)}/files?limit=1000"
+        val path = "/api/v1/worksites/${encode(worksiteId)}/files?limit=$FILE_LIST_LIMIT"
         val listConnection = openConnection(path)
         return try {
             authorize(listConnection, token)
@@ -79,7 +79,7 @@ class Server1FileApi(
                     val root = runCatching { JSONObject(body) }.getOrNull()
                         ?: return ListResult.Error("Dateiliste konnte nicht gelesen werden.")
                     val array = root.optJSONArray("files")
-                        ?: return ListResult.Success(emptyList())
+                        ?: return ListResult.Success(emptyList(), completeSnapshot = true)
                     val result = mutableListOf<LinkedFile>()
                     for (index in 0 until array.length()) {
                         val file = array.optJSONObject(index) ?: continue
@@ -92,7 +92,7 @@ class Server1FileApi(
                             is MetadataResult.Success -> result += metadata.files
                         }
                     }
-                    ListResult.Success(result)
+                    ListResult.Success(result, completeSnapshot = array.length() < FILE_LIST_LIMIT)
                 }
                 HttpURLConnection.HTTP_NOT_FOUND -> ListResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED -> ListResult.SessionInvalid
@@ -527,5 +527,6 @@ class Server1FileApi(
     companion object {
         private const val DEFAULT_CHUNK_SIZE = 8 * 1024 * 1024
         private const val MAX_CHUNK_SIZE = 16 * 1024 * 1024
+        private const val FILE_LIST_LIMIT = 1000
     }
 }
