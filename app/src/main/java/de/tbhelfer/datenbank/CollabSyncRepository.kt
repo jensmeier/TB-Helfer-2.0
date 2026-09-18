@@ -448,6 +448,93 @@ class CollabSyncRepository(
         }
     }
 
+    sealed interface Server1BtbUploadResult {
+        data class Success(val uploaded: Int, val failed: Int, val conflicts: Int) : Server1BtbUploadResult
+        data object Unsupported : Server1BtbUploadResult
+        data object SessionInvalid : Server1BtbUploadResult
+    }
+
+    suspend fun synchronizeServer1BtbPending(
+        token: String,
+        api: Server1BtbApi = Server1BtbApi()
+    ): Server1BtbUploadResult {
+        var uploaded = 0
+        var failed = 0
+        var conflicts = 0
+        for (context in dao.worksiteContexts()) {
+            val pending = dao.collabPendingChanges(context.worksiteServerId)
+                .filter { it.entityType.uppercase() == SyncCollabPendingChangeEntity.TYPE_BTB }
+            for (change in pending) {
+                dao.updateCollabChangeState(
+                    change.id,
+                    SyncCollabPendingChangeEntity.STATE_UPLOADING,
+                    change.attempts + 1,
+                    null
+                )
+                when (val result = api.applyPending(token, change)) {
+                    Server1BtbApi.MutationResult.Unsupported -> {
+                        dao.updateCollabChangeState(
+                            change.id,
+                            SyncCollabPendingChangeEntity.STATE_PENDING,
+                            change.attempts,
+                            "Server-1.0-BTB-Mutation ist nicht verfügbar."
+                        )
+                        return Server1BtbUploadResult.Unsupported
+                    }
+                    Server1BtbApi.MutationResult.SessionInvalid ->
+                        return Server1BtbUploadResult.SessionInvalid
+                    is Server1BtbApi.MutationResult.Error -> {
+                        dao.updateCollabChangeState(
+                            change.id,
+                            SyncCollabPendingChangeEntity.STATE_FAILED,
+                            change.attempts + 1,
+                            result.message
+                        )
+                        failed++
+                    }
+                    is Server1BtbApi.MutationResult.Conflict -> {
+                        val detail = JSONObject()
+                            .put("detail", result.detail)
+                            .put("server_version", result.currentVersion ?: JSONObject.NULL)
+                        dao.updateCollabChangeState(
+                            change.id,
+                            SyncCollabPendingChangeEntity.STATE_CONFLICT,
+                            change.attempts + 1,
+                            detail.toString()
+                        )
+                        conflicts++
+                    }
+                    is Server1BtbApi.MutationResult.Applied -> {
+                        val item = result.snapshot
+                        dao.upsertCollabEntities(
+                            listOf(
+                                SyncCollabEntity(
+                                    serverId = item.serverId,
+                                    worksiteServerId = change.worksiteServerId,
+                                    groupId = item.teamId,
+                                    entityType = SyncCollabPendingChangeEntity.TYPE_BTB,
+                                    clientEntityKey = item.clientEntityKey,
+                                    status = item.status,
+                                    areaScopeJson = "{}",
+                                    payloadJson = item.payloadJson,
+                                    entityVersion = item.entityVersion,
+                                    changedByName = null,
+                                    createdAtText = item.createdAtText,
+                                    updatedAtText = item.updatedAtText,
+                                    isDeleted = false,
+                                    updatedAtEpochMs = System.currentTimeMillis()
+                                )
+                            )
+                        )
+                        dao.deleteCollabPendingChange(change.id)
+                        uploaded++
+                    }
+                }
+            }
+        }
+        return Server1BtbUploadResult.Success(uploaded, failed, conflicts)
+    }
+
     suspend fun attachments(parentEntityId: String): List<SyncCollabAttachmentEntity> =
         dao.collabAttachmentsForEntity(parentEntityId)
 

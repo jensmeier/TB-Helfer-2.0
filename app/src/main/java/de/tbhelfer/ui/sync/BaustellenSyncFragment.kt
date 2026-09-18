@@ -210,27 +210,9 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                     is ServerCapabilitiesApi.Result.Error -> return SyncUiResult.Error(result.message)
                 }
                 if (capabilities?.supports("btb_live_sync_v1") == true) {
-                    for (context in contexts.distinctBy { it.worksiteId + "|" + it.groupId }) {
-                        when (
-                            val result = server1BtbApi.loadTeamBtbs(
-                                token,
-                                context.worksiteId,
-                                context.groupId
-                            )
-                        ) {
-                            Server1BtbApi.Result.Unsupported ->
-                                return SyncUiResult.Error(
-                                    "Server meldet btb_live_sync_v1, der kanonische BTB-Endpunkt ist aber nicht erreichbar."
-                                )
-                            Server1BtbApi.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
-                            is Server1BtbApi.Result.Error -> return SyncUiResult.Error(result.message)
-                            is Server1BtbApi.Result.Success ->
-                                collab.replaceServer1BtbSnapshots(
-                                    context.worksiteId,
-                                    context.groupId,
-                                    result.items
-                                )
-                        }
+                    when (val refresh = refreshServer1BtbSnapshots(token, contexts)) {
+                        null -> Unit
+                        else -> return refresh
                     }
                 }
 
@@ -295,6 +277,31 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
                                             it.message ?: "Bestätigte Server-1.0-Fachdaten konnten lokal nicht übernommen werden."
                                         )
                                     }
+                            }
+                        }
+                    }
+
+                    if (capabilities.supports("btb_live_sync_v1")) {
+                        when (val upload = collab.synchronizeServer1BtbPending(token, server1BtbApi)) {
+                            CollabSyncRepository.Server1BtbUploadResult.SessionInvalid ->
+                                return SyncUiResult.SessionInvalid
+                            CollabSyncRepository.Server1BtbUploadResult.Unsupported ->
+                                return SyncUiResult.Error(
+                                    "Server meldet btb_live_sync_v1, die BTB-Schreibendpunkte sind aber nicht erreichbar."
+                                )
+                            is CollabSyncRepository.Server1BtbUploadResult.Success -> {
+                                if (upload.uploaded > 0) {
+                                    when (val refresh = refreshServer1BtbSnapshots(token, contexts)) {
+                                        null -> Unit
+                                        else -> return refresh
+                                    }
+                                    runCatching { bridge.applyServerStateToLocal() }
+                                        .getOrElse {
+                                            return SyncUiResult.Error(
+                                                it.message ?: "Bestätigte Server-1.0-BTBs konnten lokal nicht übernommen werden."
+                                            )
+                                        }
+                                }
                             }
                         }
                     }
@@ -416,6 +423,25 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
             conflicts = conflicts,
             notifications = notifications
         )
+    }
+
+    private suspend fun refreshServer1BtbSnapshots(
+        token: String,
+        contexts: List<TeamManagementApi.WorksiteContext>
+    ): SyncUiResult? {
+        for (context in contexts.distinctBy { it.worksiteId + "|" + it.groupId }) {
+            when (val result = server1BtbApi.loadTeamBtbs(token, context.worksiteId, context.groupId)) {
+                Server1BtbApi.Result.Unsupported ->
+                    return SyncUiResult.Error(
+                        "Server meldet btb_live_sync_v1, der kanonische BTB-Endpunkt ist aber nicht erreichbar."
+                    )
+                Server1BtbApi.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
+                is Server1BtbApi.Result.Error -> return SyncUiResult.Error(result.message)
+                is Server1BtbApi.Result.Success ->
+                    collab.replaceServer1BtbSnapshots(context.worksiteId, context.groupId, result.items)
+            }
+        }
+        return null
     }
 
     private suspend fun refreshServer1FachSnapshots(
