@@ -11,7 +11,7 @@ from .database import transaction
 from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
 from .invitation_links import invite_app_uri, invite_browser_link, invite_qr_svg_data_url
-from .permissions import require_permission, worksite_context
+from .permissions import normalized_area_scope, require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 from .security import hash_token, random_token
 
@@ -166,8 +166,8 @@ def create_worksite(
             cur.execute(
                 """
                 INSERT INTO tb.worksite_memberships(
-                    worksite_id, user_id, worksite_role, permission_profile, invited_by
-                ) VALUES (%s,%s,'RESPONSIBLE_TB','RESPONSIBLE_TB',%s)
+                    worksite_id, user_id, worksite_role, permission_profile, area_scope, invited_by
+                ) VALUES (%s,%s,'RESPONSIBLE_TB','RESPONSIBLE_TB','{"all":true}'::jsonb,%s)
                 """,
                 (worksite["id"], user["user_id"], user["user_id"]),
             )
@@ -855,6 +855,15 @@ def create_worksite_invitation(
     role = payload.worksite_role.strip().upper()
     if role not in {"RESPONSIBLE_TB", "TB", "HELPER", "READ_ONLY"}:
         raise HTTPException(400, "INVALID_WORKSITE_ROLE")
+    invitation_scope = payload.area_scope
+    normalized_scope = normalized_area_scope(
+        invitation_scope,
+        empty_means_all=role in {"RESPONSIBLE_TB", "TB"},
+    )
+    if role in {"HELPER", "READ_ONLY"} and normalized_scope == {"all": False}:
+        raise HTTPException(400, "AREA_SCOPE_REQUIRED")
+    if not invitation_scope and normalized_scope.get("all") is True:
+        invitation_scope = {"all": True}
     raw_token = random_token(32)
     token_hash = hash_token(raw_token)
     expires_at = datetime.now(timezone.utc) + timedelta(days=payload.expires_days)
@@ -945,7 +954,7 @@ def create_worksite_invitation(
                 role,
                 payload.permission_profile,
                 payload.permissions_override,
-                payload.area_scope,
+                invitation_scope,
                 user["user_id"],
                 expires_at,
             ),
