@@ -39,6 +39,8 @@
     <string name="collab_invite_helper">Helfer einladen</string>
     <string name="collab_invite_lead">Weiteren TB einladen</string>
     <string name="collab_invite_creating">Einladung wird erstellt …</string>
+    <string name="collab_invite_choose_person">Person auswählen</string>
+    <string name="collab_invite_no_candidates">Es gibt aktuell keine weitere aktive Person derselben Firma, die noch nicht Mitglied dieser Baustelle ist.</string>
     <string name="collab_invite_create">Einladung erzeugen</string>
     <string name="collab_invite_helper_qr_title">Helfer einladen</string>
     <string name="collab_invite_lead_qr_title">Weiteren verantwortlichen TB einladen</string>

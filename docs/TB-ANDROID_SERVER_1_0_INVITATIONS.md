@@ -2,7 +2,7 @@
 
 Stand: 2026-09-18
 
-Dieses Dokument beschreibt den Android-Übergangsvertrag für die bereits serverseitig eingeführten gezielten Baustelleneinladungen.
+Dieses Dokument beschreibt den Android-Übergangsvertrag für die bereits serverseitig eingeführten gezielten Baustelleneinladungen – Einlösen und Erzeugen.
 
 ## Ziel
 
@@ -33,6 +33,41 @@ Body:
 `{"token":"<einmal-token>"}`
 
 Authentisierung erfolgt mit dem vorhandenen Geräte-Bearer. Der Server benötigt für Geräte-Bearer keinen Browser-CSRF-Header. Android sendet zusätzlich für diese Mutation eine eigene `X-Client-Change-Id`.
+
+## Erzeugen auf Android
+
+Android versucht beim Erzeugen einer Baustelleneinladung jetzt zuerst den gezielten Server-1.0-Vertrag.
+
+Kandidaten:
+
+`GET /api/v1/worksites/{worksite_id}/invite-candidates`
+
+Der Server liefert nur aktive Benutzer derselben Firma, die noch kein aktives Mitglied dieser Baustelle sind. Android zeigt deshalb zuerst eine konkrete Personenauswahl. Eine ungerichtete „jeder mit Code darf hinein“-Einladung wird auf Server 1.0 nicht erzeugt.
+
+Erzeugen:
+
+`POST /api/v1/worksites/{worksite_id}/invitations`
+
+Android sendet:
+
+- `invited_user_id`;
+- `worksite_role`;
+- `permission_profile`;
+- `permissions_override={}`;
+- `area_scope`;
+- `expires_days`;
+- eine eigene `X-Client-Change-Id`.
+
+Rollenabbildung im aktuellen Android-Dialog:
+
+- Helfer -> `worksite_role=HELPER`, Profil `HELPER_STANDARD`;
+- weiterer verantwortlicher TB -> `worksite_role=RESPONSIBLE_TB`, Profil `RESPONSIBLE_TB`.
+
+Für Helfer bleibt der bereits vorhandene Bereichsdialog erhalten und wird als `area_scope` an Server 1.0 weitergegeben.
+
+Die erste erfolgreiche Create-Antwort liefert den Einmal-Token sowie App-/Browser-Link. Android erzeugt den sichtbaren QR lokal aus der vom Server gelieferten App-URI und teilt bevorzugt den Browser-Link. Der geheime Token wird nicht lokal dauerhaft gespeichert.
+
+Wenn der Server den neuen Kandidaten-Endpunkt noch nicht kennt (404), fällt Android während der Umstellung auf den bisherigen Legacy-Einladungspfad zurück. Ein fachliches 403 oder ein anderer Server-1.0-Fehler wird **nicht** als Anlass genommen, heimlich eine ungezielte Legacy-Einladung zu erzeugen.
 
 ## Legacy-Fallback
 
@@ -77,13 +112,16 @@ Der vorhandene Dialog akzeptiert denselben Parser wie QR und Deep Link. Dadurch 
   - zentraler Parser;
   - trennt `ServerToken` und `LegacyCode`;
   - erhält die Groß-/Kleinschreibung moderner Tokens.
-- `TeamManagementApi.redeemServerInvitation()`
-  - ruft den Server-1.0-Endpunkt auf;
-  - sendet `X-Client-Change-Id`;
-  - behandelt gezielte 403-Einladungsfehler als Fachfehler und löscht deshalb nicht fälschlich den Geräte-Token.
+- `TeamManagementApi.loadServerInvitationCandidates()` / `createServerInvitation()` / `redeemServerInvitation()`
+  - laden konkrete Zielbenutzer;
+  - erzeugen gezielte Server-1.0-Einladungen;
+  - senden bei Mutationen `X-Client-Change-Id`;
+  - behandeln fachliche 403-Einladungsfehler als Fachfehler und löschen deshalb nicht fälschlich den Geräte-Token.
 - `AktivierungActivity`
   - Deep-Link-/Aktivierungsübergang.
 - `BaustellenSyncFragment`
+  - konkrete Personenauswahl und Server-1.0-Einladungserzeugung;
+  - lokaler QR/Teilen-Dialog;
   - QR-/Copy-Paste-Einlösung.
 - `AndroidManifest.xml`
   - registriert Host `worksite-invite`.
@@ -101,14 +139,14 @@ Der vorhandene Dialog akzeptiert denselben Parser wie QR und Deep Link. Dadurch 
 
 Android CI führt künftig `:app:testDebugUnitTest` vor Debug-/Release-Build aus.
 
-Zusätzlich prüft
+Zusätzlich prüfen
 `server/checks/48_verify_android_server_1_invitation_source.py`
-den gemeinsamen Server-/Android-Vertrag statisch.
+den gemeinsamen Server-/Android-Einlösevertrag und
+`server/checks/50_verify_android_server_1_invitation_create_source.py`
+die gezielte Kandidaten-/Create-Anbindung mit Legacy-Fallback statisch.
 
 ## Noch nicht Teil dieses Bausteins
 
-Android erzeugt in diesem Schritt noch keine neue gezielte Server-1.0-Einladung. Das bestehende Legacy-Erzeugen bleibt während der Serverumstellung bestehen.
-
-Die vollständige Android-Umstellung von Baustellen-, Team-, BTB-, Datei- und Sync-Endpunkten auf Server 1.0 erfolgt erst nach bestandenem Server-Staging-/E2E-Test.
+Das Erzeugen und Einlösen gezielter Server-1.0-Einladungen ist jetzt im Android-Quellstand angebunden. Noch nicht umgestellt sind die übrigen Baustellen-, Team-, BTB-, Datei- und Sync-Endpunkte; diese folgen erst nach bestandenem Server-Staging-/E2E-Test capability-gesteuert.
 
 Produktivserver/NAS werden durch diesen Android-Quellstand nicht verändert.

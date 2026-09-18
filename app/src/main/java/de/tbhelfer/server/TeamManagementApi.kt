@@ -54,7 +54,16 @@ class TeamManagementApi(
         val invitationType: String,
         val code: String,
         val deepLink: String?,
-        val expiresAt: String?
+        val expiresAt: String?,
+        val shareLink: String? = null
+    )
+
+    data class InvitationCandidate(
+        val userId: String,
+        val displayName: String,
+        val email: String?,
+        val phone: String?,
+        val companyRole: String?
     )
 
     data class RedeemedInvitation(
@@ -100,6 +109,13 @@ class TeamManagementApi(
         data class Error(val message: String) : InvitationResult
     }
 
+    sealed interface InvitationCandidatesResult {
+        data class Success(val candidates: List<InvitationCandidate>) : InvitationCandidatesResult
+        data object Unsupported : InvitationCandidatesResult
+        data object SessionInvalid : InvitationCandidatesResult
+        data class Error(val message: String) : InvitationCandidatesResult
+    }
+
     sealed interface RedeemResult {
         data class Success(val result: RedeemedInvitation) : RedeemResult
         data object Unsupported : RedeemResult
@@ -141,6 +157,133 @@ class TeamManagementApi(
             }
         } catch (error: Exception) {
             TeamResult.Error(error.message ?: "Teamdaten konnten nicht geladen werden.")
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    /** Server 1.0: gezielte Kandidaten derselben Firma, die noch kein aktives Baustellenmitglied sind. */
+    fun loadServerInvitationCandidates(
+        token: String,
+        worksiteId: String
+    ): InvitationCandidatesResult {
+        val connection = openConnection(
+            "/api/v1/worksites/${encode(worksiteId)}/invite-candidates",
+            "GET"
+        )
+        return try {
+            authorize(connection, token)
+            val code = connection.responseCode
+            val body = readBody(connection, code)
+            when (code) {
+                HttpURLConnection.HTTP_OK -> {
+                    val root = runCatching { JSONObject(body) }.getOrNull()
+                    val items = root?.optJSONArray("candidates") ?: JSONArray()
+                    val candidates = buildList {
+                        for (index in 0 until items.length()) {
+                            val item = items.optJSONObject(index) ?: continue
+                            val id = item.optString("id").trim()
+                            val name = item.optString("display_name").trim()
+                            if (id.isBlank() || name.isBlank()) continue
+                            add(
+                                InvitationCandidate(
+                                    userId = id,
+                                    displayName = name,
+                                    email = item.nullableString("personal_email"),
+                                    phone = item.nullableString("personal_phone"),
+                                    companyRole = item.nullableString("company_role")
+                                )
+                            )
+                        }
+                    }
+                    InvitationCandidatesResult.Success(candidates)
+                }
+                HttpURLConnection.HTTP_NOT_FOUND -> InvitationCandidatesResult.Unsupported
+                HttpURLConnection.HTTP_UNAUTHORIZED -> InvitationCandidatesResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN -> InvitationCandidatesResult.Error(
+                    detailMessage(body).ifBlank { "Keine Berechtigung zum Einladen." }
+                )
+                else -> InvitationCandidatesResult.Error(errorMessage(body, code))
+            }
+        } catch (error: Exception) {
+            InvitationCandidatesResult.Error(
+                error.message ?: "Einladungskandidaten konnten nicht geladen werden."
+            )
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    /**
+     * Server 1.0: gezielte Einladung für einen konkreten Firmenbenutzer.
+     * Der Einmal-Token wird nur in dieser ersten Antwort geliefert.
+     */
+    fun createServerInvitation(
+        token: String,
+        worksiteId: String,
+        invitedUserId: String,
+        worksiteRole: String,
+        permissionProfile: String,
+        areaScopeJson: String = "{}",
+        expiresDays: Int = 7
+    ): InvitationResult {
+        val connection = openConnection(
+            "/api/v1/worksites/${encode(worksiteId)}/invitations",
+            "POST"
+        )
+        return try {
+            authorize(connection, token)
+            connection.setRequestProperty(
+                "X-Client-Change-Id",
+                "android-worksite-invite-create-${UUID.randomUUID()}"
+            )
+            val request = JSONObject()
+                .put("invited_user_id", invitedUserId)
+                .put("worksite_role", worksiteRole.uppercase())
+                .put("permission_profile", permissionProfile)
+                .put("permissions_override", JSONObject())
+                .put(
+                    "area_scope",
+                    runCatching { JSONObject(areaScopeJson) }.getOrElse { JSONObject() }
+                )
+                .put("expires_days", expiresDays.coerceIn(1, 30))
+            writeJson(connection, request)
+            val code = connection.responseCode
+            val body = readBody(connection, code)
+            when (code) {
+                HttpURLConnection.HTTP_CREATED, HttpURLConnection.HTTP_OK -> {
+                    val root = runCatching { JSONObject(body) }.getOrNull()
+                    val id = root?.optString("id").orEmpty()
+                    val inviteToken = root?.optString("invite_token").orEmpty()
+                    if (id.isBlank()) {
+                        InvitationResult.Error("Server lieferte keine Einladungs-ID.")
+                    } else if (inviteToken.isBlank()) {
+                        InvitationResult.Error(
+                            "Einladung wurde verarbeitet, der Einmalcode kann aber nicht erneut angezeigt werden. Bitte Einladung widerrufen und neu erzeugen."
+                        )
+                    } else {
+                        InvitationResult.Success(
+                            Invitation(
+                                invitationId = id,
+                                invitationType = root?.optString("worksite_role").orEmpty()
+                                    .ifBlank { worksiteRole.uppercase() },
+                                code = inviteToken,
+                                deepLink = root?.nullableString("invite_uri"),
+                                expiresAt = root?.nullableString("expires_at"),
+                                shareLink = root?.nullableString("invite_link")
+                            )
+                        )
+                    }
+                }
+                HttpURLConnection.HTTP_NOT_FOUND -> InvitationResult.Unsupported
+                HttpURLConnection.HTTP_UNAUTHORIZED -> InvitationResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN -> InvitationResult.Error(
+                    detailMessage(body).ifBlank { "Keine Berechtigung zum Einladen." }
+                )
+                else -> InvitationResult.Error(errorMessage(body, code))
+            }
+        } catch (error: Exception) {
+            InvitationResult.Error(error.message ?: "Einladung konnte nicht erstellt werden.")
         } finally {
             connection.disconnect()
         }

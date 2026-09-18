@@ -482,29 +482,182 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
         } else text.toDoubleOrNull()
     }
 
-    private fun createInvitation(team: TeamManagementApi.TeamOverview, invitationType: String, areaScopeJson: String) {
+    private fun createInvitation(
+        team: TeamManagementApi.TeamOverview,
+        invitationType: String,
+        areaScopeJson: String
+    ) {
         val token = SecureTokenStore(requireContext()).load()
         if (token.isNullOrBlank()) {
-            Toast.makeText(requireContext(), R.string.collab_not_activated, Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                requireContext(),
+                R.string.collab_not_activated,
+                Toast.LENGTH_LONG
+            ).show()
             return
         }
-        Toast.makeText(requireContext(), R.string.collab_invite_creating, Toast.LENGTH_SHORT).show()
+
         viewLifecycleOwner.lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                teamApi.createInvitation(token, team.worksiteId, invitationType, areaScopeJson)
+            val candidates = withContext(Dispatchers.IO) {
+                teamApi.loadServerInvitationCandidates(token, team.worksiteId)
             }
             if (!isAdded) return@launch
-            when (result) {
-                is TeamManagementApi.InvitationResult.Success -> showInvitationQr(team, result.invitation)
-                TeamManagementApi.InvitationResult.Unsupported -> Toast.makeText(requireContext(), R.string.collab_team_unavailable, Toast.LENGTH_LONG).show()
-                TeamManagementApi.InvitationResult.SessionInvalid -> {
-                    SecureTokenStore(requireContext()).clear()
-                    Toast.makeText(requireContext(), R.string.collab_session_invalid, Toast.LENGTH_LONG).show()
+            when (candidates) {
+                is TeamManagementApi.InvitationCandidatesResult.Success -> {
+                    if (candidates.candidates.isEmpty()) {
+                        Toast.makeText(
+                            requireContext(),
+                            R.string.collab_invite_no_candidates,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        showServerInvitationCandidateDialog(
+                            team = team,
+                            invitationType = invitationType,
+                            areaScopeJson = areaScopeJson,
+                            token = token,
+                            candidates = candidates.candidates
+                        )
+                    }
                 }
-                is TeamManagementApi.InvitationResult.Error -> Toast.makeText(
-                    requireContext(), getString(R.string.collab_invite_error, result.message), Toast.LENGTH_LONG
+                TeamManagementApi.InvitationCandidatesResult.Unsupported -> {
+                    createLegacyInvitation(team, invitationType, areaScopeJson, token)
+                }
+                TeamManagementApi.InvitationCandidatesResult.SessionInvalid -> {
+                    SecureTokenStore(requireContext()).clear()
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.collab_session_invalid,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                is TeamManagementApi.InvitationCandidatesResult.Error -> {
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.collab_invite_error, candidates.message),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun showServerInvitationCandidateDialog(
+        team: TeamManagementApi.TeamOverview,
+        invitationType: String,
+        areaScopeJson: String,
+        token: String,
+        candidates: List<TeamManagementApi.InvitationCandidate>
+    ) {
+        val labels = candidates.map { candidate ->
+            buildString {
+                append(candidate.displayName)
+                candidate.email?.takeIf { it.isNotBlank() }?.let {
+                    append(" · ")
+                    append(it)
+                }
+            }
+        }.toTypedArray()
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.collab_invite_choose_person)
+            .setItems(labels) { _, which ->
+                val candidate = candidates.getOrNull(which) ?: return@setItems
+                createServerInvitation(
+                    team = team,
+                    invitationType = invitationType,
+                    areaScopeJson = areaScopeJson,
+                    token = token,
+                    candidate = candidate
+                )
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun createServerInvitation(
+        team: TeamManagementApi.TeamOverview,
+        invitationType: String,
+        areaScopeJson: String,
+        token: String,
+        candidate: TeamManagementApi.InvitationCandidate
+    ) {
+        val helper = invitationType.equals("HELPER", ignoreCase = true)
+        val role = if (helper) "HELPER" else "RESPONSIBLE_TB"
+        val profile = if (helper) "HELPER_STANDARD" else "RESPONSIBLE_TB"
+
+        Toast.makeText(
+            requireContext(),
+            R.string.collab_invite_creating,
+            Toast.LENGTH_SHORT
+        ).show()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                teamApi.createServerInvitation(
+                    token = token,
+                    worksiteId = team.worksiteId,
+                    invitedUserId = candidate.userId,
+                    worksiteRole = role,
+                    permissionProfile = profile,
+                    areaScopeJson = areaScopeJson
+                )
+            }
+            if (!isAdded) return@launch
+            handleInvitationResult(team, result)
+        }
+    }
+
+    private fun createLegacyInvitation(
+        team: TeamManagementApi.TeamOverview,
+        invitationType: String,
+        areaScopeJson: String,
+        token: String
+    ) {
+        Toast.makeText(
+            requireContext(),
+            R.string.collab_invite_creating,
+            Toast.LENGTH_SHORT
+        ).show()
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                teamApi.createInvitation(
+                    token,
+                    team.worksiteId,
+                    invitationType,
+                    areaScopeJson
+                )
+            }
+            if (!isAdded) return@launch
+            handleInvitationResult(team, result)
+        }
+    }
+
+    private fun handleInvitationResult(
+        team: TeamManagementApi.TeamOverview,
+        result: TeamManagementApi.InvitationResult
+    ) {
+        when (result) {
+            is TeamManagementApi.InvitationResult.Success ->
+                showInvitationQr(team, result.invitation)
+            TeamManagementApi.InvitationResult.Unsupported -> Toast.makeText(
+                requireContext(),
+                R.string.collab_team_unavailable,
+                Toast.LENGTH_LONG
+            ).show()
+            TeamManagementApi.InvitationResult.SessionInvalid -> {
+                SecureTokenStore(requireContext()).clear()
+                Toast.makeText(
+                    requireContext(),
+                    R.string.collab_session_invalid,
+                    Toast.LENGTH_LONG
                 ).show()
             }
+            is TeamManagementApi.InvitationResult.Error -> Toast.makeText(
+                requireContext(),
+                getString(R.string.collab_invite_error, result.message),
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -552,9 +705,15 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
         val worksite = team.worksiteName?.takeIf { it.isNotBlank() }
             ?: team.worksiteDesignation?.takeIf { it.isNotBlank() }
             ?: getString(R.string.collab_worksite_fallback)
-        val link = invitation.deepLink?.takeIf { it.isNotBlank() }
+        val link = invitation.shareLink?.takeIf { it.isNotBlank() }
+            ?: invitation.deepLink?.takeIf { it.isNotBlank() }
             ?: "tbhelfer://invite?code=${Uri.encode(invitation.code)}"
-        val text = getString(R.string.collab_invite_share_text, worksite, invitation.code, link)
+        val text = getString(
+            R.string.collab_invite_share_text,
+            worksite,
+            invitation.code,
+            link
+        )
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_SUBJECT, getString(R.string.collab_invite_share_title))
