@@ -183,6 +183,25 @@ den gemeinsamen Server-/Android-Einlösevertrag und
 die gezielte Kandidaten-/Create-Anbindung mit Legacy-Fallback und
 `server/checks/51_verify_android_server_1_team_source.py` den modernen Worksite-/Member-/Team-Aufbau mit begrenztem Legacy-Fallback und `server/checks/52_verify_android_server_1_capabilities_source.py` die capability-gesteuerte Auswahl ohne Versionsschwellen statisch.
 
+## Server-1.0-Kontextmodus der Baustellen-Sync-Seite
+
+Die Baustellen-Sync-Seite darf auf einer reinen Server-1.0-Instanz nicht mehr am fehlenden Legacy-`/api/v1/collab/context` scheitern.
+
+Vor dem bisherigen Fach-Vollsync wird deshalb capability-gesteuert ein moderner Kontext geladen:
+
+- `worksite_tree_v1=true` und `worksite_permissions_v1=true` aktivieren den Server-1.0-Kontextpfad;
+- `GET /api/v1/device/me` liefert die eigene stabile Benutzeridentität;
+- `GET /api/v1/worksites` liefert die sichtbaren Baustellen;
+- `GET /api/v1/worksites/{id}/members` liefert eigene Rolle, Area-Scope und Teamzuordnung;
+- der daraus gebildete Kontext wird in den vorhandenen lokalen Worksite-Kontextcache geschrieben, damit bestehende lokale Baustellenbindungen weiterverwendet werden;
+- Teams und Einladungserzeugung werden danach über die bereits capability-gesteuerten Server-1.0-Verträge geladen.
+
+Dieser Zustand ist bewusst **Kontext-only**. Die Oberfläche zeigt deshalb nicht den bisherigen Vollsync-Erfolg mit Upload-/Download-Zählern an. BTB, Mängel, Abnahmen, Dateien und sonstige Fachänderungen gelten dadurch noch nicht als vollständig auf Server 1.0 migriert.
+
+Nur wenn der Capability-Endpunkt bzw. die beiden Kontext-Capabilities fehlen, darf der bisherige `/api/v1/collab/context`-Pfad als Legacy-Fallback verwendet werden. Netzwerk-/Serverfehler werden nicht als Legacy-Server umgedeutet.
+
+Statischer Vertragscheck: `server/checks/53_verify_android_server_1_context_source.py`.
+
 ## Noch nicht Teil dieses Bausteins
 
 Das Erzeugen und Einlösen gezielter Server-1.0-Einladungen sowie die Teamdarstellung aus den Server-1.0-Worksite-/Member-/Team-Endpunkten sind jetzt im Android-Quellstand angebunden. Noch nicht umgestellt sind die übrigen Baustellen-, BTB-, Datei- und Sync-Endpunkte; diese folgen erst nach bestandenem Server-Staging-/E2E-Test capability-gesteuert.
