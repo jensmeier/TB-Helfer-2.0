@@ -224,64 +224,61 @@ class TeamManagementApi(
                 ?.optJSONArray("worksites")
                 ?: return WorksiteContextResult.Error("Server-Baustellen konnten nicht gelesen werden.")
 
-            val contexts = buildList {
-                for (index in 0 until worksites.length()) {
-                    val worksite = worksites.optJSONObject(index) ?: continue
-                    val worksiteId = worksite.optString("id").trim()
-                    if (worksiteId.isBlank()) continue
+            val contexts = mutableListOf<WorksiteContext>()
+            for (index in 0 until worksites.length()) {
+                val worksite = worksites.optJSONObject(index) ?: continue
+                val worksiteId = worksite.optString("id").trim()
+                if (worksiteId.isBlank()) continue
 
-                    val (membersCode, membersBody) = getAuthorized(
-                        token,
-                        "/api/v1/worksites/${encode(worksiteId)}/members"
-                    )
-                    when (membersCode) {
-                        HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN ->
-                            return WorksiteContextResult.SessionInvalid
-                        HttpURLConnection.HTTP_OK -> Unit
-                        else -> return WorksiteContextResult.Error(errorMessage(membersBody, membersCode))
-                    }
-
-                    val members = runCatching { JSONObject(membersBody) }
-                        .getOrNull()
-                        ?.optJSONArray("members")
-                        ?: JSONArray()
-                    var currentMember: JSONObject? = null
-                    for (memberIndex in 0 until members.length()) {
-                        val member = members.optJSONObject(memberIndex) ?: continue
-                        if (member.optString("user_id").trim() == currentUserId) {
-                            currentMember = member
-                            break
-                        }
-                    }
-
-                    val rawRole = currentMember?.optString("worksite_role")
-                        ?.trim()
-                        ?.uppercase()
-                        .orEmpty()
-                    val memberRole = when (rawRole) {
-                        "RESPONSIBLE_TB", "TB" -> "LEAD"
-                        "HELPER" -> "HELPER"
-                        "READ_ONLY" -> "READ_ONLY"
-                        else -> rawRole.ifBlank { "READ_ONLY" }
-                    }
-                    add(
-                        WorksiteContext(
-                            worksiteId = worksiteId,
-                            name = worksite.nullableString("name"),
-                            designation = worksite.nullableString("designation"),
-                            status = worksite.nullableString("status"),
-                            groupId = currentMember?.nullableString("team_id").orEmpty(),
-                            memberRole = memberRole,
-                            areaScopeJson = currentMember
-                                ?.optJSONObject("area_scope")
-                                ?.toString()
-                                ?: "{}",
-                            groupLabel = currentMember?.nullableString("team_name"),
-                            leadUserId = currentMember?.nullableString("lead_user_id"),
-                            leadNameSnapshot = currentMember?.nullableString("lead_name")
-                        )
-                    )
+                val (membersCode, membersBody) = getAuthorized(
+                    token,
+                    "/api/v1/worksites/${encode(worksiteId)}/members"
+                )
+                when (membersCode) {
+                    HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN ->
+                        return WorksiteContextResult.SessionInvalid
+                    HttpURLConnection.HTTP_OK -> Unit
+                    else -> return WorksiteContextResult.Error(errorMessage(membersBody, membersCode))
                 }
+
+                val members = runCatching { JSONObject(membersBody) }
+                    .getOrNull()
+                    ?.optJSONArray("members")
+                    ?: JSONArray()
+                var currentMember: JSONObject? = null
+                for (memberIndex in 0 until members.length()) {
+                    val member = members.optJSONObject(memberIndex) ?: continue
+                    if (member.optString("user_id").trim() == currentUserId) {
+                        currentMember = member
+                        break
+                    }
+                }
+
+                val rawRole = currentMember?.optString("worksite_role")
+                    ?.trim()
+                    ?.uppercase()
+                    .orEmpty()
+                val memberRole = when (rawRole) {
+                    "RESPONSIBLE_TB", "TB" -> "LEAD"
+                    "HELPER" -> "HELPER"
+                    "READ_ONLY" -> "READ_ONLY"
+                    else -> rawRole.ifBlank { "READ_ONLY" }
+                }
+                contexts += WorksiteContext(
+                    worksiteId = worksiteId,
+                    name = worksite.nullableString("name"),
+                    designation = worksite.nullableString("designation"),
+                    status = worksite.nullableString("status"),
+                    groupId = currentMember?.nullableString("team_id").orEmpty(),
+                    memberRole = memberRole,
+                    areaScopeJson = currentMember
+                        ?.optJSONObject("area_scope")
+                        ?.toString()
+                        ?: "{}",
+                    groupLabel = currentMember?.nullableString("team_name"),
+                    leadUserId = currentMember?.nullableString("lead_user_id"),
+                    leadNameSnapshot = currentMember?.nullableString("lead_name")
+                )
             }
             WorksiteContextResult.Success(contexts)
         } catch (error: Exception) {
