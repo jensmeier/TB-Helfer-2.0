@@ -375,8 +375,11 @@ async function loadAcceptances(){
   const data=result.data.acceptances||[];
   document.getElementById('acceptances').innerHTML=data.length?data.map(function(a){
     const edit=can('acceptance.edit')&&a.status!=='FINALIZED'?'<button type="button" onclick="editAcceptance(\''+esc(a.id)+'\','+Number(a.version)+')">Bearbeiten</button>':'';
-    const finalize=can('acceptance.finalize')&&a.status!=='FINALIZED'?'<button type="button" onclick="finalizeAcceptance(\''+esc(a.id)+'\','+Number(a.version)+')">Finalisieren</button>':'';
-    return '<div class="item '+(a.status==='FINALIZED'?'status-done':'status-open')+'"><b>'+esc(a.title||'Abnahme')+'</b> <span class="pill">'+esc(a.status)+'</span>'+
+    const finalize=can('acceptance.finalize')&&a.status!=='FINALIZED'
+      ?'<button type="button" onclick="finalizeAcceptance(\''+esc(a.id)+'\','+Number(a.version)+',\'ABGENOMMEN\')">Abgenommen</button>'+
+       '<button type="button" onclick="finalizeAcceptance(\''+esc(a.id)+'\','+Number(a.version)+',\'NICHT_ABGENOMMEN\')">Nicht abgenommen</button>'
+      :'';
+    return '<div class="item '+(a.status==='FINALIZED'?'status-done':'status-open')+'"><b>'+esc(a.title||'Abnahme')+'</b> <span class="pill">'+esc(a.status)+'</span> <span class="pill">'+esc(a.result||'ERGEBNIS_UNBEKANNT')+'</span>'+
       '<div class="muted">'+esc(nodeName(a.worksite_node_id))+' · Version '+esc(a.version)+'</div>'+
       '<pre class="json">'+esc(JSON.stringify(a.payload||{},null,2))+'</pre><div class="actions">'+edit+finalize+'</div></div>';
   }).join(''):'<p class="muted">Keine Abnahmen.</p>';
@@ -388,19 +391,35 @@ async function editAcceptance(id,version){
     const title=prompt('Titel',a.title||'');if(title===null)return;
     const raw=prompt('Details (JSON)',JSON.stringify(a.payload||{},null,2));if(raw===null)return;
     const status=prompt('Status: OPEN oder IN_PROGRESS',a.status||'OPEN');if(status===null)return;
+    const acceptanceResult=prompt(
+      'Ergebnis: ENTWURF, ABGENOMMEN_MIT_RESTPUNKTEN oder NOCH_ZU_PRUEFEN',
+      a.result||'ENTWURF'
+    );if(acceptanceResult===null)return;
     await tbApi('/api/v1/acceptances/'+encodeURIComponent(id),{
       method:'PATCH',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({base_version:Number(a.version),title:title.trim()||null,payload:JSON.parse(raw||'{}'),status:status.trim().toUpperCase()})
+      body:JSON.stringify({
+        base_version:Number(a.version),
+        title:title.trim()||null,
+        payload:JSON.parse(raw||'{}'),
+        status:status.trim().toUpperCase(),
+        result:acceptanceResult.trim().toUpperCase()
+      })
     });
     show('ok','Abnahme gespeichert.');await loadAcceptances();
   }catch(error){show('err',error.message||String(error));}
 }
 window.editAcceptance=editAcceptance;
 
-async function finalizeAcceptance(id,version){
+async function finalizeAcceptance(id,version,result){
   try{
-    await tbApi('/api/v1/acceptances/'+encodeURIComponent(id)+'/finalize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_version:version})});
-    show('ok','Abnahme finalisiert.');await loadAcceptances();
+    const label=result==='ABGENOMMEN'?'abgenommen':'nicht abgenommen';
+    if(!confirm('Abnahme wirklich als „'+label+'“ endgültig abschließen?'))return;
+    await tbApi('/api/v1/acceptances/'+encodeURIComponent(id)+'/finalize',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({base_version:version,result:result})
+    });
+    show('ok','Abnahme finalisiert: '+label+'.');await loadAcceptances();
   }catch(error){show('err',error.message||String(error));}
 }
 window.finalizeAcceptance=finalizeAcceptance;
