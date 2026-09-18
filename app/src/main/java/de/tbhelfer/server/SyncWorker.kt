@@ -70,8 +70,23 @@ class SyncWorker(
 
                 val serverVersion = catalogResult.catalog.serverVersion
 
+                // Server 1.0 wird ausschließlich per Capability erkannt. Dieser Lauf passiert
+                // bewusst VOR jeder alten 0.6-/0.7-Versionsschwelle.
+                val server1Collab = when (
+                    val modern = Server1AndroidSyncCoordinator(applicationContext).synchronize(token)
+                ) {
+                    is Server1AndroidSyncCoordinator.Result.Success -> true
+                    Server1AndroidSyncCoordinator.Result.Unsupported -> false
+                    Server1AndroidSyncCoordinator.Result.SessionInvalid -> return sessionInvalid()
+                    is Server1AndroidSyncCoordinator.Result.Error ->
+                        return retryOrManualFailure(modern.message)
+                }
+
                 // Alte Serverstände können wenigstens Katalog/Offline-Basis liefern.
                 if (!supportsIncrementalSync(serverVersion)) {
+                    if (server1Collab) {
+                        runCatching { refreshWorksiteDisplayState(token) }
+                    }
                     SyncStatusSpeicher.erfolgMerken(applicationContext)
                     return Result.success()
                 }
@@ -82,7 +97,13 @@ class SyncWorker(
                     is OfflineSyncRepository.FullSyncResult.Success -> Unit
                 }
 
-                // Ab 0.7.0 zusätzlich Baustellen-Team/BTB/Mängel/Abnahmen synchronisieren.
+                if (server1Collab) {
+                    runCatching { refreshWorksiteDisplayState(token) }
+                    SyncStatusSpeicher.erfolgMerken(applicationContext)
+                    return Result.success()
+                }
+
+                // Nur der dokumentierte Legacy-Fallback verwendet noch die alte 0.7-Schwelle.
                 if (!supportsCollabSync(serverVersion)) {
                     SyncStatusSpeicher.erfolgMerken(applicationContext)
                     return Result.success()

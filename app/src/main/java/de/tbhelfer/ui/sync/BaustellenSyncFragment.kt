@@ -23,19 +23,13 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.BtbTeamMediaSync
-import de.tbhelfer.ui.bautagebuch.BtbDeleteSyncCoordinator
 import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
-import de.tbhelfer.datenbank.SyncWorksiteContextEntity
 import de.tbhelfer.datenbank.WorksiteBindingRepository
 import de.tbhelfer.server.CollabBenachrichtigungen
 import de.tbhelfer.server.CompanyProfileSync
 import de.tbhelfer.server.SecureTokenStore
-import de.tbhelfer.server.ServerCapabilitiesApi
-import de.tbhelfer.server.Server1FachSyncApi
-import de.tbhelfer.server.Server1BtbApi
-import de.tbhelfer.server.Server1BtbPdfApi
-import de.tbhelfer.server.Server1FileApi
+import de.tbhelfer.server.Server1AndroidSyncCoordinator
 import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.server.TeamManagementApi
 import kotlinx.coroutines.Dispatchers
@@ -66,11 +60,6 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
     private val bridge get() = ServiceLocator.collabLocalBridge
     private val bindings get() = ServiceLocator.worksiteBindingRepository
     private val teamApi = TeamManagementApi()
-    private val serverCapabilitiesApi = ServerCapabilitiesApi()
-    private val server1FachApi = Server1FachSyncApi()
-    private val server1BtbApi = Server1BtbApi()
-    private val server1BtbPdfApi = Server1BtbPdfApi()
-    private val server1FileApi = Server1FileApi()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -180,206 +169,18 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
     }
 
     private suspend fun synchronizeInternal(token: String): SyncUiResult {
-        when (val contextResult = teamApi.loadWorksiteContexts(token)) {
-            is TeamManagementApi.WorksiteContextResult.Success -> {
-                val now = System.currentTimeMillis()
-                val contexts = contextResult.items.map { item ->
-                    SyncWorksiteContextEntity(
-                        worksiteServerId = item.worksiteId,
-                        name = item.name,
-                        designation = item.designation,
-                        worksiteType = null,
-                        status = item.status,
-                        companyId = null,
-                        groupId = item.groupId,
-                        memberRole = item.memberRole,
-                        areaScopeJson = item.areaScopeJson,
-                        groupLabel = item.groupLabel,
-                        leadUserId = item.leadUserId,
-                        leadNameSnapshot = item.leadNameSnapshot,
-                        updatedAtEpochMs = now
-                    )
-                }
-                runCatching { collab.replaceWorksiteContexts(contexts) }
-                    .getOrElse {
-                        return SyncUiResult.Error(
-                            it.message ?: "Server-1.0-Baustellenkontext konnte lokal nicht gespeichert werden."
-                        )
-                    }
-
-                val capabilities = when (val result = serverCapabilitiesApi.load()) {
-                    is ServerCapabilitiesApi.Result.Success -> result.snapshot
-                    ServerCapabilitiesApi.Result.Unsupported -> null
-                    is ServerCapabilitiesApi.Result.Error -> return SyncUiResult.Error(result.message)
-                }
-                if (capabilities?.supports("btb_live_sync_v1") == true) {
-                    when (val refresh = refreshServer1BtbSnapshots(token, contexts)) {
-                        null -> Unit
-                        else -> return refresh
-                    }
-                    when (val deletes = reconcileServer1BtbDeletes(token, contexts)) {
-                        null -> Unit
-                        else -> return deletes
-                    }
-                }
-
-                if (capabilities?.supports("defects_v1") == true || capabilities?.supports("acceptances_v1") == true) {
-                    when (val refresh = refreshServer1FachSnapshots(token, contexts, capabilities)) {
-                        null -> Unit
-                        else -> return refresh
-                    }
-
-                    if (capabilities.supports("files_v1")) {
-                        when (
-                            val files = collab.synchronizeServer1Attachments(
-                                token,
-                                contexts.map { it.worksiteId },
-                                server1FileApi
-                            )
-                        ) {
-                            CollabSyncRepository.Server1AttachmentSyncResult.Unsupported ->
-                                return SyncUiResult.Error(
-                                    "Server meldet files_v1, der kanonische Datei-Endpunkt ist aber nicht erreichbar."
-                                )
-                            CollabSyncRepository.Server1AttachmentSyncResult.SessionInvalid ->
-                                return SyncUiResult.SessionInvalid
-                            is CollabSyncRepository.Server1AttachmentSyncResult.Error ->
-                                return SyncUiResult.Error(files.message)
-                            is CollabSyncRepository.Server1AttachmentSyncResult.Success -> Unit
-                        }
-                    }
-
-                    // Queue local changes only after the canonical snapshot is known. This keeps
-                    // existing server IDs/base versions and prevents duplicate creates.
-                    runCatching { bridge.exportLocalChanges() }
-                        .getOrElse {
-                            return SyncUiResult.Error(
-                                it.message ?: "Lokale Mängel/Abnahmen konnten nicht für Server 1.0 vorbereitet werden."
-                            )
-                        }
-
-                    runCatching { bridge.applyServerStateToLocal() }
-                        .getOrElse {
-                            return SyncUiResult.Error(
-                                it.message ?: "Server-1.0-Mängel/Abnahmen konnten lokal nicht übernommen werden."
-                            )
-                        }
-
-                    when (val upload = collab.synchronizeServer1FachPending(token, server1FachApi)) {
-                        CollabSyncRepository.Server1FachUploadResult.SessionInvalid ->
-                            return SyncUiResult.SessionInvalid
-                        CollabSyncRepository.Server1FachUploadResult.Unsupported ->
-                            return SyncUiResult.Error(
-                                "Server meldet Mängel-/Abnahme-Capabilities, die Schreibendpunkte sind aber nicht erreichbar."
-                            )
-                        is CollabSyncRepository.Server1FachUploadResult.Success -> {
-                            if (upload.summary.uploaded > 0) {
-                                when (val refresh = refreshServer1FachSnapshots(token, contexts, capabilities)) {
-                                    null -> Unit
-                                    else -> return refresh
-                                }
-                                runCatching { bridge.applyServerStateToLocal() }
-                                    .getOrElse {
-                                        return SyncUiResult.Error(
-                                            it.message ?: "Bestätigte Server-1.0-Fachdaten konnten lokal nicht übernommen werden."
-                                        )
-                                    }
-                            }
-                        }
-                    }
-
-                    if (capabilities.supports("btb_live_sync_v1")) {
-                        when (val upload = collab.synchronizeServer1BtbPending(token, server1BtbApi)) {
-                            CollabSyncRepository.Server1BtbUploadResult.SessionInvalid ->
-                                return SyncUiResult.SessionInvalid
-                            CollabSyncRepository.Server1BtbUploadResult.Unsupported ->
-                                return SyncUiResult.Error(
-                                    "Server meldet btb_live_sync_v1, die BTB-Schreibendpunkte sind aber nicht erreichbar."
-                                )
-                            is CollabSyncRepository.Server1BtbUploadResult.Success -> {
-                                if (upload.uploaded > 0) {
-                                    when (val refresh = refreshServer1BtbSnapshots(token, contexts)) {
-                                        null -> Unit
-                                        else -> return refresh
-                                    }
-                                    runCatching { bridge.applyServerStateToLocal() }
-                                        .getOrElse {
-                                            return SyncUiResult.Error(
-                                                it.message ?: "Bestätigte Server-1.0-BTBs konnten lokal nicht übernommen werden."
-                                            )
-                                        }
-                                }
-                            }
-                        }
-                    }
-
-                    if (capabilities.supports("files_v1") && capabilities.supports("chunk_upload_v1")) {
-                        when (val attachmentUpload = bridge.uploadLocalAttachments(token, server1Api = server1FileApi)) {
-                            CollabLocalBridge.AttachmentUploadResult.SessionInvalid ->
-                                return SyncUiResult.SessionInvalid
-                            CollabLocalBridge.AttachmentUploadResult.Unsupported ->
-                                return SyncUiResult.Error(
-                                    "Server meldet Datei-/Chunk-Capabilities, der Uploadvertrag ist aber nicht erreichbar."
-                                )
-                            is CollabLocalBridge.AttachmentUploadResult.Error ->
-                                return SyncUiResult.Error(attachmentUpload.message)
-                            is CollabLocalBridge.AttachmentUploadResult.Success -> Unit
-                        }
-
-                        if (capabilities.supports("btb_live_sync_v1")) {
-                            val btbMedia = BtbTeamMediaSync(requireContext().applicationContext)
-                            when (
-                                val mediaResult = btbMedia.synchronize(
-                                    token = token,
-                                    server1Api = server1FileApi,
-                                    server1PdfApi = if (
-                                        capabilities.supports("btb_finalize_with_pdf_v1")
-                                    ) server1BtbPdfApi else null
-                                )
-                            ) {
-                                BtbTeamMediaSync.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
-                                BtbTeamMediaSync.Result.Unsupported ->
-                                    return SyncUiResult.Error(
-                                        "Server meldet Datei-/BTB-Capabilities, der BTB-Fotovertrag ist aber nicht erreichbar."
-                                    )
-                                is BtbTeamMediaSync.Result.Error -> return SyncUiResult.Error(mediaResult.message)
-                                is BtbTeamMediaSync.Result.Success -> {
-                                    if (mediaResult.summary.uploaded > 0) {
-                                        when (val lifecycle = collab.synchronizeServer1BtbPending(token, server1BtbApi)) {
-                                            CollabSyncRepository.Server1BtbUploadResult.SessionInvalid ->
-                                                return SyncUiResult.SessionInvalid
-                                            CollabSyncRepository.Server1BtbUploadResult.Unsupported ->
-                                                return SyncUiResult.Error(
-                                                    "BTB-Fotos wurden übertragen, der Abschluss-Lifecycle ist aber nicht erreichbar."
-                                                )
-                                            is CollabSyncRepository.Server1BtbUploadResult.Success -> {
-                                                if (lifecycle.uploaded > 0) {
-                                                    when (val refresh = refreshServer1BtbSnapshots(token, contexts)) {
-                                                        null -> Unit
-                                                        else -> return refresh
-                                                    }
-                                                    runCatching { bridge.applyServerStateToLocal() }
-                                                        .getOrElse {
-                                                            return SyncUiResult.Error(
-                                                                it.message ?: "BTB-Abschluss nach Foto-Sync konnte lokal nicht bestätigt werden."
-                                                            )
-                                                        }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+        when (
+            val modern = Server1AndroidSyncCoordinator(
+                requireContext().applicationContext
+            ).synchronize(token)
+        ) {
+            is Server1AndroidSyncCoordinator.Result.Success ->
                 return SyncUiResult.ContextOnly(bindings.contextsWithBindings())
-            }
-            TeamManagementApi.WorksiteContextResult.Unsupported -> Unit
-            TeamManagementApi.WorksiteContextResult.SessionInvalid ->
+            Server1AndroidSyncCoordinator.Result.Unsupported -> Unit
+            Server1AndroidSyncCoordinator.Result.SessionInvalid ->
                 return SyncUiResult.SessionInvalid
-            is TeamManagementApi.WorksiteContextResult.Error ->
-                return SyncUiResult.Error(contextResult.message)
+            is Server1AndroidSyncCoordinator.Result.Error ->
+                return SyncUiResult.Error(modern.message)
         }
 
         val notifications = mutableListOf<CollabBenachrichtigungen.Ereignis>()
@@ -476,112 +277,6 @@ class BaustellenSyncFragment : Fragment(R.layout.fragment_baustellen_sync) {
             conflicts = conflicts,
             notifications = notifications
         )
-    }
-
-    private suspend fun reconcileServer1BtbDeletes(
-        token: String,
-        contexts: List<SyncWorksiteContextEntity>
-    ): SyncUiResult? {
-        repeat(3) {
-            val reconcile = runCatching {
-                BtbDeleteSyncCoordinator.reconcileAfterSuccessfulPull(
-                    requireContext().applicationContext
-                )
-            }.getOrElse {
-                return SyncUiResult.Error(
-                    it.message ?: "BTB-Löschungen konnten nicht mit Server 1.0 abgeglichen werden."
-                )
-            }
-
-            val hasPendingDelete = collab.hasPendingServer1BtbDelete()
-            if (!hasPendingDelete && reconcile.serverDeletesEingereiht <= 0) return null
-
-            when (val upload = collab.synchronizeServer1BtbPending(token, server1BtbApi)) {
-                CollabSyncRepository.Server1BtbUploadResult.SessionInvalid ->
-                    return SyncUiResult.SessionInvalid
-                CollabSyncRepository.Server1BtbUploadResult.Unsupported ->
-                    return SyncUiResult.Error(
-                        "Server meldet btb_live_sync_v1, die BTB-Löschung ist aber nicht erreichbar."
-                    )
-                is CollabSyncRepository.Server1BtbUploadResult.Success -> Unit
-            }
-
-            when (val refresh = refreshServer1BtbSnapshots(token, contexts)) {
-                null -> Unit
-                else -> return refresh
-            }
-        }
-
-        runCatching {
-            BtbDeleteSyncCoordinator.reconcileAfterSuccessfulPull(
-                requireContext().applicationContext
-            )
-        }.getOrElse {
-            return SyncUiResult.Error(
-                it.message ?: "BTB-Löschstatus konnte nicht abschließend geprüft werden."
-            )
-        }
-
-        return if (collab.hasPendingServer1BtbDelete()) {
-            SyncUiResult.Error(
-                "BTB-Löschung konnte nach mehreren Serveränderungen noch nicht bestätigt werden."
-            )
-        } else {
-            null
-        }
-    }
-
-    private suspend fun refreshServer1BtbSnapshots(
-        token: String,
-        contexts: List<TeamManagementApi.WorksiteContext>
-    ): SyncUiResult? {
-        for (context in contexts.distinctBy { it.worksiteId + "|" + it.groupId }) {
-            when (val result = server1BtbApi.loadTeamBtbs(token, context.worksiteId, context.groupId)) {
-                Server1BtbApi.Result.Unsupported ->
-                    return SyncUiResult.Error(
-                        "Server meldet btb_live_sync_v1, der kanonische BTB-Endpunkt ist aber nicht erreichbar."
-                    )
-                Server1BtbApi.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
-                is Server1BtbApi.Result.Error -> return SyncUiResult.Error(result.message)
-                is Server1BtbApi.Result.Success ->
-                    collab.replaceServer1BtbSnapshots(context.worksiteId, context.groupId, result.items)
-            }
-        }
-        return null
-    }
-
-    private suspend fun refreshServer1FachSnapshots(
-        token: String,
-        contexts: List<TeamManagementApi.WorksiteContext>,
-        capabilities: ServerCapabilitiesApi.Snapshot
-    ): SyncUiResult? {
-        for (context in contexts) {
-            if (capabilities.supports("defects_v1")) {
-                when (val result = server1FachApi.loadDefects(token, context.worksiteId)) {
-                    is Server1FachSyncApi.Result.Success ->
-                        collab.replaceServer1Snapshots(context.worksiteId, "DEFECT", result.items)
-                    Server1FachSyncApi.Result.Unsupported ->
-                        return SyncUiResult.Error(
-                            "Server meldet defects_v1, der Mängel-Endpunkt ist aber nicht erreichbar."
-                        )
-                    Server1FachSyncApi.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
-                    is Server1FachSyncApi.Result.Error -> return SyncUiResult.Error(result.message)
-                }
-            }
-            if (capabilities.supports("acceptances_v1")) {
-                when (val result = server1FachApi.loadAcceptances(token, context.worksiteId)) {
-                    is Server1FachSyncApi.Result.Success ->
-                        collab.replaceServer1Snapshots(context.worksiteId, "ACCEPTANCE", result.items)
-                    Server1FachSyncApi.Result.Unsupported ->
-                        return SyncUiResult.Error(
-                            "Server meldet acceptances_v1, der Abnahme-Endpunkt ist aber nicht erreichbar."
-                        )
-                    Server1FachSyncApi.Result.SessionInvalid -> return SyncUiResult.SessionInvalid
-                    is Server1FachSyncApi.Result.Error -> return SyncUiResult.Error(result.message)
-                }
-            }
-        }
-        return null
     }
 
     private data class TeamLoadSummary(
