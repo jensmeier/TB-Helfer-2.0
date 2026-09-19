@@ -121,6 +121,7 @@ jobs:
           python server/checks/83_verify_android_staging_server_config_source.py
           python server/checks/84_verify_device_activation_qr_source.py
           python server/checks/85_verify_tb_server_1_user_delete_source.py
+          python server/checks/86_verify_tb_server_1_admin_overview_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -133,8 +134,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 9, current
-          assert current["latest_applied"] == 9, current
+          assert current["latest_known"] == 10, current
+          assert current["latest_applied"] == 10, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
@@ -151,6 +152,7 @@ jobs:
               "survey_originals", "survey_parse_catalog", "track_data",
               "track_data_sources", "track_data_km_points", "mutation_receipts",
               "change_feed", "audit_log", "releases", "backup_runs",
+              "system_metrics_hourly",
           }
           with connect() as conn, conn.cursor() as cur:
               cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='tb'")
