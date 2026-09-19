@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import de.tbhelfer.einstellungen.AnsichtEinstellungenSpeicher
 import de.tbhelfer.server.Schema13Worker
+import de.tbhelfer.server.ServerConfig
 import de.tbhelfer.server.SyncWorker
 import de.tbhelfer.util.StorageCleanupScheduler
 
@@ -11,6 +12,7 @@ class TBHelferApp : Application() {
     override fun onCreate() {
         super.onCreate()
         ServiceLocator.initialisieren(this)
+        ServerConfig.initialize(this)
 
         // Nachtmodus früh anwenden (damit die App direkt korrekt startet)
         // Wichtig: kein runBlocking/DataStore-IO im App-Start.
