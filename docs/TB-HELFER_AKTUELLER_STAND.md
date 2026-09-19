@@ -640,6 +640,15 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 **Noch nicht ausgeführt:** Source-Checks 34–81 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
+### Aktivierungskarte PDF + externer Cloudflare-Stagingpfad 2026-09-19
+
+- Die Geräteaktivierung erzeugt jetzt zusätzlich zur QR-/Deep-Link-Antwort eine **nicht persistent gespeicherte PDF-Aktivierungskarte** mit Benutzer, Firma, Ablaufzeit, QR und Fallback-Schlüssel.
+- Die Nutzer-/Geräte-Seite bietet `PDF herunterladen` und `PDF teilen / versenden`; wenn Web Share mit Dateien nicht verfügbar ist, fällt sie auf Download zum manuellen Versenden zurück.
+- Aktivierungsantworten setzen `Cache-Control: no-store`; serverseitig bleibt nur der Hash des Einmal-Schlüssels gespeichert.
+- Für Tests außerhalb des Heimnetzes ist ein separater Cloudflare-Staginghostname **`api-v1.tb-helfer.de`** vorgesehen. Er soll über den bestehenden Tunnel auf `http://192.168.178.3:8081` zeigen.
+- Der bestehende Produktivhostname `api.tb-helfer.de` und der alte 0.7-Server bleiben ausdrücklich unverändert; dies ist **kein produktiver Cutover**.
+- Nach bestätigtem externen Health-Test soll Android-Debug lokal auf `tb.server.base.url=https://api-v1.tb-helfer.de` zeigen; Release bleibt fest auf `https://api.tb-helfer.de`.
+
 ### Geräteaktivierung per QR im Server-1.0-Portal 2026-09-19
 
 - Der bestehende Android-Aktivierungsweg war bereits QR-/Deep-Link-fähig (`tbhelfer://activate?key=...`), die neue Server-1.0-Nutzer-/Geräteseite hatte zunächst jedoch nur Aktivierungsschlüssel und URI als Text angezeigt.
@@ -686,7 +695,7 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Für den nächsten E2E-Schritt wurde die bisher fehlende Admin-Weboberfläche **Nutzer/Geräte** ergänzt. Sie nutzt ausschließlich die vorhandenen kanonischen Admin-APIs für Nutzeranlage, einmalige Portal-Aktivierung, Geräte-Aktivierung und Gerätefreigabe; keine parallele Fachlogik wurde eingeführt.
 - Die Nutzer-/Geräte-Weboberfläche läuft praktisch; zwei Firmen-Testnutzer wurden angelegt und sind noch ohne Portal-/Geräteaktivierung.
 - Vor der Geräteaktivierung muss der neue Android-Debug-Build mit lokalem Serverendpunkt `http://192.168.178.3:8081` auf Pixel/Poco installiert werden; sonst würde die App weiter den produktiven `api.tb-helfer.de`-Endpunkt verwenden.
-- Danach offen: je einen Geräte-Aktivierungs-QR erzeugen und mit Pixel/Poco scannen; anschließend gemeinsamer Baustellen-/Team-/Fach-E2E, Backup/Retention/Restore-Test/Restore-to-Target und Vermessungs-E2E.
+- Danach offen: Cloudflare-Stagingroute `api-v1.tb-helfer.de -> http://192.168.178.3:8081` praktisch anlegen und extern testen; anschließend Android-Debug auf den HTTPS-Staginghostname setzen, je einen Geräte-Aktivierungs-QR/PDF erzeugen und mit Pixel/Poco scannen; danach gemeinsamer Baustellen-/Team-/Fach-E2E, Backup/Retention/Restore-Test/Restore-to-Target und Vermessungs-E2E.
 
 ### CI-/Migrations-Gate-Korrektur 2026-09-19
 
@@ -843,8 +852,9 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Android-Debug für den lokalen Stagingserver bauen/installieren:** auf dem Entwicklungs-Laptop in der gitignorierten `local.properties` `tb.server.base.url=http://192.168.178.3:8081` setzen, Debug-Build erzeugen und auf Pixel/Poco installieren.
-2. Danach im bereits funktionierenden Portal für die zwei vorhandenen Testnutzer je einen Geräte-Aktivierungs-QR erzeugen und mit Pixel/Poco jeweils direkt in der TB-Helfer-App scannen.
+1. **Cloudflare-Staging jetzt praktisch freischalten:** im bestehenden Tunnel den separaten Published-Application-Hostname `api-v1.tb-helfer.de` auf `http://192.168.178.3:8081` routen und `/health/ready` außerhalb des Heimnetzes prüfen; `api.tb-helfer.de` nicht verändern.
+2. Danach auf dem Entwicklungs-Laptop in der gitignorierten `local.properties` `tb.server.base.url=https://api-v1.tb-helfer.de` setzen, Debug-Build erzeugen und auf Pixel/Poco installieren.
+3. Im Portal für die zwei vorhandenen Testnutzer je einen Geräte-Aktivierungs-QR/PDF erzeugen, bei Bedarf die PDF an den jeweiligen Nutzer senden und Pixel/Poco direkt in der TB-Helfer-App aktivieren.
 3. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
 4. Parallel Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
 5. Danach die Vermessungskette mit realen Daten end-to-end ausführen: Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung; zusätzliche Mehr-TRA-/Reverse-Geometry-Fälle mitprüfen.
