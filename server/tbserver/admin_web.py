@@ -53,9 +53,16 @@ def portal_home(
 
 @router.get("/admin/v1")
 def admin_v1_root(
-    _: dict[str, Any] = Depends(require_web_admin),
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
 ):
-    return RedirectResponse("/admin/v1/companies", status_code=303)
+    return templates.TemplateResponse(
+        "v1_admin_dashboard.html",
+        {
+            "request": request,
+            "user": user,
+        },
+    )
 
 
 @router.get("/admin/v1/releases")
