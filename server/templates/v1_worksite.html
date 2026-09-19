@@ -165,7 +165,7 @@
 <script>
 const worksiteId={{ worksite_id|tojson }};
 const msg=document.getElementById('msg');
-let worksite=null, permissions={}, nodeData=[], teamData=[];
+let worksite=null, permissions={}, nodeData=[], teamData=[], mediaData=[];
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function can(name){return permissions['*']===true||permissions[name]===true;}
@@ -214,7 +214,8 @@ function acceptancePayloadFromForm(existing){
   payload.kommentar=valueOrNull('acceptanceComment')||'';
   payload.restpunkte=valueOrNull('acceptanceRemaining')||'';
   payload.ergebnis=document.getElementById('acceptanceResult').value;
-  payload.unterKnotenName=nodeName(document.getElementById('acceptanceNode').value);
+  const nodeId=document.getElementById('acceptanceNode').value;
+  payload.unterKnotenName=nodeId?nodeName(nodeId):'';
   if(!payload.baustelleName&&worksite)payload.baustelleName=worksite.name||'';
   if(!payload.startEpochMs)payload.startEpochMs=Date.now();
   if(!Array.isArray(payload.fotoRefs))payload.fotoRefs=[];
@@ -509,6 +510,83 @@ async function createBtb(teamId){
   }catch(error){show('err',error.message||String(error));}
 }
 window.createBtb=createBtb;
+async function loadWorksiteMedia(){
+  try{
+    const result=await tbApi('/api/v1/worksites/'+worksiteId+'/media');
+    mediaData=result.data.media||[];
+  }catch(error){
+    mediaData=[];
+    throw error;
+  }
+}
+function fachMedia(type,id){
+  return mediaData.filter(function(item){
+    return item.entity_type===type&&item.parent_entity_id===id;
+  });
+}
+function renderFachMedia(type,id){
+  const files=fachMedia(type,id);
+  const images=files.length?files.map(function(file){
+    const url='/api/v1/files/'+encodeURIComponent(file.attachment_id)+'/content';
+    return '<a href="'+esc(url)+'" target="_blank" rel="noopener" title="'+esc(file.filename||'Foto')+'">'+
+      '<img src="'+esc(url)+'" alt="'+esc(file.filename||'Foto')+'" style="width:96px;height:72px;object-fit:cover;border:1px solid #d0d5dd;border-radius:8px"></a>';
+  }).join(''):'<span class="muted">Noch keine Fotos.</span>';
+  const canUpload=can('files.add');
+  const inputId='fach-photo-'+type+'-'+id;
+  const upload=canUpload?'<div class="invite-share-row" style="margin-top:8px">'+
+    '<input id="'+esc(inputId)+'" type="file" accept="image/*">'+
+    '<button type="button" onclick="uploadFachPhoto(\''+type+'\',\''+esc(id)+'\',\''+esc(inputId)+'\')">Foto hochladen</button></div>':'';
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+images+'</div>'+upload;
+}
+async function sha256Hex(file){
+  const digest=await crypto.subtle.digest('SHA-256',await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+async function uploadFachPhoto(type,id,inputId){
+  const input=document.getElementById(inputId);
+  const file=input&&input.files?input.files[0]:null;
+  if(!file){show('err','Bitte zuerst ein Foto auswählen.');return;}
+  if(!(window.crypto&&crypto.subtle)){show('err','Dieser Browser unterstützt die sichere SHA-256-Prüfung nicht.');return;}
+  if(!file.type.startsWith('image/')){show('err','Für Mängel/Abnahmen bitte eine Bilddatei auswählen.');return;}
+  try{
+    show('info','Foto wird vorbereitet …');
+    const sha=await sha256Hex(file);
+    const prefix=type==='DEFECT'?'DEFECT__MANGEL__':'ACCEPTANCE_FOTO__SONSTIGES__';
+    const created=await tbApi('/api/v1/worksites/'+worksiteId+'/uploads',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        target_kind:'PHOTO',
+        original_name:prefix+file.name,
+        mime_type:file.type||'application/octet-stream',
+        expected_bytes:file.size,
+        expected_sha256:sha
+      })
+    });
+    const upload=created.data;
+    let offset=Number(upload.received_bytes||0);
+    const chunkSize=Number(upload.chunk_size||8388608);
+    while(offset<file.size){
+      const chunk=file.slice(offset,Math.min(file.size,offset+chunkSize));
+      show('info','Foto-Upload '+Math.round(offset/file.size*100)+' %');
+      const result=await tbApi('/api/v1/uploads/'+encodeURIComponent(upload.id)+'/chunk?offset='+offset,{
+        method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:chunk
+      });
+      offset=Number(result.data.received_bytes);
+    }
+    await tbApi('/api/v1/uploads/'+encodeURIComponent(upload.id)+'/complete',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        entity_type:type,
+        entity_id:id,
+        purpose:type==='DEFECT'?'DEFECT_PHOTO':'ACCEPTANCE_PHOTO'
+      })
+    });
+    input.value='';
+    await loadWorksiteMedia();
+    if(type==='DEFECT')await loadDefects();else await loadAcceptances();
+    show('ok','Foto hochgeladen und verknüpft.');
+  }catch(error){show('err',error.message||String(error));}
+}
+window.uploadFachPhoto=uploadFachPhoto;
+
 async function loadDefects(){
   const result=await tbApi('/api/v1/worksites/'+worksiteId+'/defects');
   const data=result.data.defects||[];
@@ -520,7 +598,9 @@ async function loadDefects(){
       '<div>'+esc((d.payload||{}).beschreibung||'')+'</div>'+
       '<div class="muted">'+[d.payload?.bereich,d.payload?.km,d.payload?.firma].filter(Boolean).map(esc).join(' · ')+'</div>'+
       ((d.payload||{}).kommentar?'<div class="muted">Kommentar: '+esc(d.payload.kommentar)+'</div>':'')+
-      '<details><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(d.payload||{},null,2))+'</pre></details><div class="actions">'+edit+close+'</div></div>';
+      '<details><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(d.payload||{},null,2))+'</pre></details>'+
+      '<div class="muted" style="margin-top:8px">Mangel-Fotos</div>'+renderFachMedia('DEFECT',d.id)+
+      '<div class="actions">'+edit+close+'</div></div>';
   }).join(''):'<p class="muted">Keine Mängel.</p>';
 }
 
@@ -579,7 +659,9 @@ async function loadAcceptances(){
         ((a.payload||{}).kmVon!=null?'km '+esc(a.payload.kmVon):null),
         ((a.payload||{}).kmBis!=null?'bis '+esc(a.payload.kmBis):null)].filter(Boolean).join(' · ')+'</div>'+
       ((a.payload||{}).restpunkte?'<div class="muted">Restpunkte: '+esc(a.payload.restpunkte)+'</div>':'')+
-      '<details><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(a.payload||{},null,2))+'</pre></details><div class="actions">'+edit+finalize+'</div></div>';
+      '<details><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(a.payload||{},null,2))+'</pre></details>'+
+      '<div class="muted" style="margin-top:8px">Abnahme-Fotos</div>'+renderFachMedia('ACCEPTANCE',a.id)+
+      '<div class="actions">'+edit+finalize+'</div></div>';
   }).join(''):'<p class="muted">Keine Abnahmen.</p>';
 }
 
@@ -692,7 +774,6 @@ document.getElementById('acceptanceForm').addEventListener('submit',async functi
     };
     if(editId){
       body.base_version=Number(document.getElementById('acceptanceEditVersion').value)||1;
-      body.status='IN_PROGRESS';
       await tbApi('/api/v1/acceptances/'+encodeURIComponent(editId),{
         method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
       });
@@ -713,6 +794,7 @@ document.getElementById('acceptanceForm').addEventListener('submit',async functi
     await loadOverview();
     await loadNodes();
     await loadTeams();
+    await loadWorksiteMedia();
     await Promise.all([loadMembers(),loadInviteData(),loadDefects(),loadAcceptances()]);
   }catch(error){show('err',error.message||String(error));}
 })();

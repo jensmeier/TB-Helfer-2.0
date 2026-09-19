@@ -632,12 +632,13 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 74 prüft den kanonischen baustellenweiten Medienkatalog: ausschließlich BTB-/Mangel-/Abnahme-Bilder, Cross-Team-Bildsicht nur für `RESPONSIBLE_TB`/CHEF/Admin, kein fremder BTB-Text, Area-Scope für Mängel/Abnahmen, kanonischer Datei-Download und expliziter 0.7.x-Fallback.
 - Source-Check 75 stellt sicher, dass Portal und Android dieselben kanonischen Baustellenknotentypen und Payload-Felder verwenden; Parent-Zuordnung sowie Bearbeiten/Löschen sind im Portal versionsgesichert.
 - Source-Check 76 prüft, dass Portal-Mängel und -Abnahmen dieselben fachlichen Payload-Schlüssel wie Android bearbeiten und Änderungen mit `base_version` schützen; JSON bleibt nur als additiver Expertenbereich erhalten.
+- Source-Check 77 prüft Portal-Mangel-/Abnahmefotos über den bestehenden `worksite_media_v1`-Katalog und den resumierbaren `files_v1`/`chunk_upload_v1`-Vertrag einschließlich Android-kompatibler semantischer Dateinamen.
 
-**Noch nicht ausgeführt:** Source-Checks 34–76 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–77 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
-Für den Dateipagination-Commit `702e6cf97115971dd27e6c383bf7f22ea5340dc0` endeten TB-Server **#271 / ID 35396211697** und Android CI **#997 / ID 35396211705** erneut mit leeren `steps`-Listen und `runner_id = 0`. Es wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
+Für den Portal-Fachformular-Commit `e42ac6e3437c708de959611e7d58abd062724340` endeten TB-Server **#290 / ID 35428349576** und Android CI **#1007 / ID 35428349567** erneut mit leeren `steps`-Listen und `runner_id = 0`. Es wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
 ### BTB-Granularitätskorrektur
 
@@ -731,6 +732,14 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Bearbeiten erfolgt im jeweiligen Formular und sendet die geladene `base_version`; die bisherigen vollständigen Roh-JSON-`prompt()`-Dialoge entfallen.
 - Unbekannte oder spätere Zusatzfelder bleiben erhalten: ein aufklappbarer JSON-Expertenbereich wird additiv mit den Fachfeldern gemerged.
 - Portal-Titel werden aus `beschreibung` (Mangel) bzw. `bezeichnung/objekt` (Abnahme) abgeleitet – identisch zur bestehenden Android-Server-1.0-Abbildung.
+
+### Portal-Fotos für Mängel und Abnahmen
+
+- Der vorhandene `worksite_media_v1`-Katalog liefert Mangel-/Abnahmebilder direkt in die jeweiligen Portal-Karten; kein zweiter Medienendpunkt wurde eingeführt.
+- Neue Fotos werden über denselben resumierbaren `POST /uploads -> PUT /chunk -> POST /complete`-Vertrag wie BTB-Fotos übertragen.
+- Portal-Mangelfotos tragen `DEFECT__MANGEL__...`, Abnahmefotos `ACCEPTANCE_FOTO__SONSTIGES__...`; Androids vorhandene Importlogik erkennt diese Präfixe bereits.
+- Sichtbarkeit und Uploadberechtigung bleiben vollständig beim bestehenden Server-Rechte-/Area-Scope-Vertrag.
+- Abnahmen ohne Strukturelement speichern keinen künstlichen `—`-Knotennamen mehr; Portal-Bearbeitung zwingt den Abnahmestatus außerdem nicht mehr unnötig auf `IN_PROGRESS`.
 
 ## Bekannte/offene Punkte
 
