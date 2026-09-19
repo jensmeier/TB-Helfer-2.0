@@ -39,6 +39,7 @@ def device_activation_pdf_bytes(
     company_name: str | None,
     activation_key: str,
     activation_url: str,
+    server_base_url: str,
     expires_at: datetime,
 ) -> bytes:
     buffer = io.BytesIO()
@@ -66,6 +67,8 @@ def device_activation_pdf_bytes(
     pdf.drawString(left, y, f"Login: {_text(login_name)}")
     y -= 5 * mm
     pdf.drawString(left, y, f"Firma: {_text(company_name)}")
+    y -= 5 * mm
+    pdf.drawString(left, y, f"Server: {_text(server_base_url)}")
     y -= 5 * mm
     pdf.drawString(
         left,
