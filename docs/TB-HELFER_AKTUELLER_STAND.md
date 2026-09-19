@@ -640,6 +640,16 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 **Noch nicht ausgeführt:** Source-Checks 34–81 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
+### Synology-Staging-Updatepfad vereinfacht 2026-09-19
+
+- Der praktische Synology-Test zeigte, dass Container Manager beim image-basierten Projekt `tb-helfer-server-v1:local` wiederholt ein altes lokales Image weiterverwendete. Dadurch war für reine Python-/Template-Änderungen mehrfach ein unnötiger Ablauf aus Container löschen -> Image löschen -> Rebuild erforderlich.
+- Dafür gibt es jetzt **`server/docker-compose.synology-staging.v1.yml`** als expliziten Staging-/E2E-Modus.
+- Dieser Modus bindet `tbserver/`, `templates/` und `v1_migrations/` read-only direkt aus dem NAS-Projektordner in die App-Container ein. Persistente Daten bleiben weiterhin in `database-v1/`, `storage-v1/` und `backups-v1/`.
+- Normale Code-/Portaländerungen benötigen damit künftig nur das Aktualisieren der Dateien und einen Neustart des betroffenen Containers; Container-/Image-Löschen entfällt.
+- Ein echter Image-Rebuild bleibt nur für Änderungen an `Dockerfile.v1`, `requirements.txt` oder sonstigen Image-Abhängigkeiten erforderlich.
+- Der normale `docker-compose.v1.yml` bleibt bewusst image-basiert und ohne Source-Mounts für den später reproduzierbaren Cutover/Produktivbetrieb.
+- Neuer Source-Check `82_verify_tb_server_1_synology_staging_source.py` stellt die Trennung Staging-Source-Mounts vs. Produktions-Compose sicher.
+
 ### Synology-Staging erfolgreich gestartet 2026-09-19
 
 - Der neue Server-1.0-Stack läuft auf der Synology **parallel** zum bisherigen `tb-helfer`-Stack im getrennten Projekt `tb-helfer-v1`.
@@ -812,7 +822,7 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Aktualisierten Portal-Build auf der Synology einspielen** und die neue Seite `/admin/v1/users` praktisch öffnen.
+1. **Synology-Projekt auf den neuen Staging-Compose-Modus umstellen** (`docker-compose.synology-staging.v1.yml` als Projekt-`compose.yml`) und einmalig prüfen, dass API/Worker mit den read-only Source-Mounts starten.
 2. Zwei Testnutzer unter der bereits angelegten Testfirma anlegen und je einen Geräte-Aktivierungsschlüssel erzeugen; Pixel und Poco jeweils mit eigenem Nutzer aktivieren.
 3. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
 4. Parallel Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
