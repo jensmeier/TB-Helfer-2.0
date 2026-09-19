@@ -29,10 +29,24 @@
     <div id="nodes"></div>
     <form id="nodeForm" class="compact">
       <label for="nodeKind">Art</label>
-      <select id="nodeKind"><option value="SECTION">Abschnitt</option><option value="TRACK">Gleis</option><option value="SWITCH">Weiche</option><option value="STATION">Bahnhof</option><option value="OTHER">Sonstiges</option></select>
+      <select id="nodeKind">
+        <option value="FREIE_STRECKE">Freie Strecke</option>
+        <option value="BAHNHOF">Bahnhof</option>
+        <option value="ALLGEMEIN_OBJEKT">Allgemeines Objekt</option>
+      </select>
+      <label for="nodeParent">Übergeordnetes Element (optional)</label>
+      <select id="nodeParent"><option value="">direkt unter Hauptbaustelle</option></select>
       <label for="nodeName">Name</label><input id="nodeName" required maxlength="300">
-      <label for="nodeRoute">Strecke</label><input id="nodeRoute" maxlength="40">
-      <label for="nodeTrack">Gleis-Schlüssel</label><input id="nodeTrack" maxlength="200">
+      <div class="grid">
+        <div><label for="nodeRoute">Strecke</label><input id="nodeRoute" maxlength="40"></div>
+        <div><label for="nodeTrack">Gleis / Weiche</label><input id="nodeTrack" maxlength="200"></div>
+      </div>
+      <div class="grid">
+        <div><label for="nodeKmFrom">km von</label><input id="nodeKmFrom" type="number" step="0.001"></div>
+        <div><label for="nodeKmTo">km bis</label><input id="nodeKmTo" type="number" step="0.001"></div>
+      </div>
+      <label for="nodeStation">Bahnhof</label><input id="nodeStation" maxlength="240">
+      <p class="muted">Die Felder werden im selben Baumformat wie in der Android-App gespeichert.</p>
       <button type="submit">Strukturelement anlegen</button>
     </form>
   </div>
@@ -109,12 +123,42 @@ function nodeName(id){
   const found=nodeData.find(function(n){return n.id===id;});
   return found?found.name:'—';
 }
+function nodeTypeLabel(kind){
+  return ({FREIE_STRECKE:'Freie Strecke',BAHNHOF:'Bahnhof',ALLGEMEIN_OBJEKT:'Allgemeines Objekt'})[kind]||kind||'—';
+}
+function numberOrNull(id){
+  const raw=document.getElementById(id).value.trim();
+  if(!raw)return null;
+  const value=Number(raw.replace(',','.'));
+  if(!Number.isFinite(value))throw new Error('Kilometerangabe ist ungültig.');
+  return value;
+}
+function canonicalNodePayload(source){
+  const payload=Object.assign({},source||{});
+  const kind=document.getElementById('nodeKind').value;
+  const name=document.getElementById('nodeName').value.trim();
+  const route=document.getElementById('nodeRoute').value.trim()||null;
+  const track=document.getElementById('nodeTrack').value.trim()||null;
+  const station=document.getElementById('nodeStation').value.trim()||null;
+  payload.node_type=kind;
+  payload.node_name=name||null;
+  payload.route_key=route;
+  payload.km_from=numberOrNull('nodeKmFrom');
+  payload.km_to=numberOrNull('nodeKmTo');
+  payload.station_name=station;
+  payload.track_or_switch=track;
+  return payload;
+}
 function nodeOptions(){
   const options='<option value="">ohne Zuordnung</option>'+nodeData.map(function(n){
-    return '<option value="'+esc(n.id)+'">'+esc(n.node_kind)+' · '+esc(n.name)+'</option>';
+    return '<option value="'+esc(n.id)+'">'+esc(nodeTypeLabel(n.node_kind))+' · '+esc(n.name)+'</option>';
   }).join('');
   document.getElementById('defectNode').innerHTML=options;
   document.getElementById('acceptanceNode').innerHTML=options;
+  document.getElementById('nodeParent').innerHTML=
+    '<option value="">direkt unter Hauptbaustelle</option>'+nodeData.map(function(n){
+      return '<option value="'+esc(n.id)+'">'+esc(nodeTypeLabel(n.node_kind))+' · '+esc(n.name)+'</option>';
+    }).join('');
 }
 async function loadOverview(){
   const result=await tbApi('/api/v1/worksites/'+worksiteId);
@@ -134,7 +178,7 @@ async function loadNodes(){
   const target=document.getElementById('nodes');
   target.innerHTML=nodeData.length?nodeData.map(function(n){
     const actions=can('worksite.structure.edit')?'<div class="actions" style="margin-top:7px"><button type="button" onclick="editNode(\''+esc(n.id)+'\')">Bearbeiten</button><button class="danger" type="button" onclick="deleteNode(\''+esc(n.id)+'\')">Löschen</button></div>':'';
-    return '<div class="item"><b>'+esc(n.node_kind)+'</b> · '+esc(n.name)+
+    return '<div class="item"><b>'+esc(nodeTypeLabel(n.node_kind))+'</b> · '+esc(n.name)+
       (n.route_number?'<div class="muted">Strecke '+esc(n.route_number)+'</div>':'')+
       (n.track_key?'<div class="muted">Gleis '+esc(n.track_key)+'</div>':'')+actions+'</div>';
   }).join(''):'<p class="muted">Noch keine Struktur angelegt.</p>';
@@ -143,23 +187,50 @@ async function loadNodes(){
 
 async function editNode(id){
   const n=nodeData.find(function(item){return item.id===id;});if(!n)return;
-  const name=prompt('Name',n.name||'');if(name===null||!name.trim())return;
-  const route=prompt('Strecke (leer = keine)',n.route_number||'');if(route===null)return;
-  const track=prompt('Gleis-Schlüssel (leer = keiner)',n.track_key||'');if(track===null)return;
+  const payload=n.payload||{};
+  const name=prompt('Name',n.name||payload.node_name||'');if(name===null||!name.trim())return;
+  const route=prompt('Strecke (leer = keine)',n.route_number||payload.route_key||'');if(route===null)return;
+  const track=prompt('Gleis / Weiche (leer = keine)',n.track_key||payload.track_or_switch||'');if(track===null)return;
+  const station=prompt('Bahnhof (leer = keiner)',payload.station_name||'');if(station===null)return;
+  const kmFrom=prompt('km von (leer = keiner)',payload.km_from??'');if(kmFrom===null)return;
+  const kmTo=prompt('km bis (leer = keiner)',payload.km_to??'');if(kmTo===null)return;
+  const parseKm=function(raw){
+    const value=String(raw).trim();if(!value)return null;
+    const number=Number(value.replace(',','.'));if(!Number.isFinite(number))throw new Error('Kilometerangabe ist ungültig.');
+    return number;
+  };
+  const nextPayload=Object.assign({},payload,{
+    node_type:n.node_kind,
+    node_name:name.trim(),
+    route_key:route.trim()||null,
+    track_or_switch:track.trim()||null,
+    station_name:station.trim()||null,
+    km_from:parseKm(kmFrom),
+    km_to:parseKm(kmTo)
+  });
   try{
     await tbApi('/api/v1/worksites/'+worksiteId+'/nodes/'+encodeURIComponent(id),{
       method:'PATCH',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name:name.trim(),route_number:route.trim()||null,track_key:track.trim()||null})
+      body:JSON.stringify({
+        base_version:Number(n.current_version||n.version||1),
+        node_kind:n.node_kind,
+        name:name.trim(),
+        route_number:route.trim()||null,
+        track_key:track.trim()||null,
+        payload:nextPayload
+      })
     });
     show('ok','Strukturelement gespeichert.');await loadNodes();
   }catch(error){show('err',error.message||String(error));}
 }
 window.editNode=editNode;
 async function deleteNode(id){
-  if(!confirm('Strukturelement wirklich löschen? Untergeordnete Daten können dadurch ihre Zuordnung verlieren.'))return;
+  const n=nodeData.find(function(item){return item.id===id;});if(!n)return;
+  if(!confirm('Strukturelement wirklich löschen? Untergeordnete Elemente werden serverseitig mit gelöscht.'))return;
   try{
-    await tbApi('/api/v1/worksites/'+worksiteId+'/nodes/'+encodeURIComponent(id),{method:'DELETE'});
-    show('ok','Strukturelement gelöscht.');await loadNodes();await Promise.all([loadDefects(),loadAcceptances()]);
+    const version=Number(n.current_version||n.version||1);
+    await tbApi('/api/v1/worksites/'+worksiteId+'/nodes/'+encodeURIComponent(id)+'?base_version='+encodeURIComponent(version),{method:'DELETE'});
+    show('ok','Strukturelement einschließlich Unterstruktur gelöscht.');await loadNodes();await Promise.all([loadDefects(),loadAcceptances()]);
   }catch(error){show('err',error.message||String(error));}
 }
 window.deleteNode=deleteNode;
@@ -427,11 +498,18 @@ window.finalizeAcceptance=finalizeAcceptance;
 document.getElementById('nodeForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
   try{
+    const kind=document.getElementById('nodeKind').value;
+    const name=document.getElementById('nodeName').value.trim();
+    const route=document.getElementById('nodeRoute').value.trim()||null;
+    const track=document.getElementById('nodeTrack').value.trim()||null;
+    const payload=canonicalNodePayload({});
     await tbApi('/api/v1/worksites/'+worksiteId+'/nodes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      node_kind:document.getElementById('nodeKind').value,
-      name:document.getElementById('nodeName').value.trim(),
-      route_number:document.getElementById('nodeRoute').value.trim()||null,
-      track_key:document.getElementById('nodeTrack').value.trim()||null,payload:{}
+      parent_id:document.getElementById('nodeParent').value||null,
+      node_kind:kind,
+      name:name,
+      route_number:route,
+      track_key:track,
+      payload:payload
     })});
     ev.target.reset();show('ok','Strukturelement angelegt.');await loadNodes();
   }catch(error){show('err',error.message||String(error));}

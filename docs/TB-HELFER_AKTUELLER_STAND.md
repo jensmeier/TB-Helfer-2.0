@@ -630,8 +630,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 72 prüft den Android-Streckendaten-Cutover auf kanonisches Server-1.0-GET/POST/PATCH/DELETE mit `X-Client-Change-Id`, `base_version`, Reconcile-Schleife und ausdrücklich beibehaltenem 0.7.x-`/collab`-Fallback; Rohvermessungsdateien bleiben ausgeschlossen.
 - Source-Check 73 prüft den Server-1.0-Baustellen-Lifecycle: idempotente kanonische Anlage, verantwortlicher-TB-only Soft-Delete mit `base_version`, generischer WORKSITE-Tombstone-Feed sowie explizite Android-0.7.x-Fallbacks.
 - Source-Check 74 prüft den kanonischen baustellenweiten Medienkatalog: ausschließlich BTB-/Mangel-/Abnahme-Bilder, Cross-Team-Bildsicht nur für `RESPONSIBLE_TB`/CHEF/Admin, kein fremder BTB-Text, Area-Scope für Mängel/Abnahmen, kanonischer Datei-Download und expliziter 0.7.x-Fallback.
+- Source-Check 75 stellt sicher, dass Portal und Android dieselben kanonischen Baustellenknotentypen und Payload-Felder verwenden; Parent-Zuordnung sowie Bearbeiten/Löschen sind im Portal versionsgesichert.
 
-**Noch nicht ausgeführt:** Source-Checks 34–74 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–75 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -712,6 +713,15 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Die Cross-Team-Ausnahme ist ausschließlich beim Bilddownload opt-in; normale Datei-Liste und Datei-Metadaten erhalten dadurch keine erweiterten Fremdteam-Rechte.
 - Android `WorksiteMediaApi` nutzt kanonischen Medienkatalog + `GET /api/v1/files/{id}/content`; alte 0.7.x-Server bleiben über den bisherigen `/collab`-Katalog kompatibel.
 - Vor einem Online-Gesamtexport läuft auf Server 1.0 zuerst der gemeinsame `Server1AndroidSyncCoordinator`; nur bei echtem Legacy-Server folgt der alte Collaboration-Sync.
+
+### Portal-/Android-Baustellenbaum vereinheitlicht
+
+- Das Portal erzeugt keine alten freien Typwerte `SECTION/TRACK/SWITCH/STATION/OTHER` mehr.
+- Portal und Android verwenden gemeinsam `FREIE_STRECKE`, `BAHNHOF` und `ALLGEMEIN_OBJEKT`.
+- Parent-Knoten können im Portal gewählt werden; dadurch lässt sich derselbe echte Unterbaustellenbaum wie auf Android pflegen.
+- Strecke, km von/bis, Bahnhof und Gleis/Weiche landen im bereits kanonischen Android-Payload (`route_key`, `km_from`, `km_to`, `station_name`, `track_or_switch`).
+- Portal-PATCH/DELETE senden die geladene Knoten-Version als `base_version`; konkurrierende Änderungen werden dadurch nicht still überschrieben.
+- Das Löschen weist im Portal jetzt ausdrücklich darauf hin, dass der Server den kompletten Unterbaum tombstoned.
 
 ## Bekannte/offene Punkte
 
