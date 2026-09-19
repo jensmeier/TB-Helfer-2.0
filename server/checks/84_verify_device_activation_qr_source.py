@@ -34,6 +34,7 @@ def main() -> None:
         ('device_activation_qr_svg_data_url(raw_key, public_base_url)', devices),
         ('"activation_pdf_data_url": device_activation_pdf_data_url(', devices),
         ('response.headers["Cache-Control"] = "no-store"', devices),
+        ('FOR UPDATE OF u', devices),
         ("device_activation_pdf_bytes", pdf),
         ("QrCodeWidget", pdf),
         ("data:application/pdf;base64", pdf),
