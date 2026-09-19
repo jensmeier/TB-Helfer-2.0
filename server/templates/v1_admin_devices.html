@@ -1,0 +1,82 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Geräte{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Geräte</h1>
+  <p class="muted">Gebundene Geräte je Benutzer. Freigeben löst die Gerätebindung; danach ist eine neue Aktivierungskarte erforderlich.</p>
+  <div id="msg"></div>
+</div>
+
+<div class="card">
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Nutzer</th>
+          <th>Firma</th>
+          <th>Geräte-ID</th>
+          <th>Status</th>
+          <th>Letzter Kontakt</th>
+          <th>Aktionen</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for d in devices %}
+        <tr>
+          <td><b>{{ d.display_name }}</b></td>
+          <td>{{ d.company_name or '—' }}</td>
+          <td>
+            <code>{{ d.device_uid }}</code>
+            {% if d.device_name %}<div class="muted">{{ d.device_name }} · {{ d.platform }}</div>{% endif %}
+          </td>
+          <td>
+            {% if d.status == 'ACTIVE' and not d.revoked_at %}
+              <span class="pill">AKTIV</span>
+            {% elif d.status == 'BLOCKED' %}
+              <span class="pill">BLOCKIERT</span>
+            {% else %}
+              <span class="pill">{{ d.status }}</span>
+            {% endif %}
+          </td>
+          <td>{{ d.last_seen_at or '—' }}</td>
+          <td>
+            {% if d.status == 'ACTIVE' and not d.revoked_at %}
+            <button type="button" class="secondary release-device" data-device-id="{{ d.id }}">Freigeben</button>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="muted">Noch keine Geräte gebunden.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const msg=document.getElementById('msg');
+function show(kind,text){
+  msg.className='notice '+kind;
+  msg.textContent=text;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.release-device').forEach(button=>{
+  button.addEventListener('click',async ()=>{
+    if(!confirm('Dieses Gerät wirklich freigeben? Das aktuelle Geräte-Token wird sofort ungültig.')) return;
+    button.disabled=true;
+    try{
+      await tbApi('/api/v1/admin/devices/'+button.dataset.deviceId+'/release',{method:'POST'});
+      show('ok','Gerät wurde freigegeben.');
+      setTimeout(()=>location.reload(),400);
+    }catch(error){
+      show('err',error.message||String(error));
+      button.disabled=false;
+    }
+  });
+});
+</script>
+{% endblock %}
