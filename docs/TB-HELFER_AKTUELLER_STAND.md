@@ -631,8 +631,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 73 prüft den Server-1.0-Baustellen-Lifecycle: idempotente kanonische Anlage, verantwortlicher-TB-only Soft-Delete mit `base_version`, generischer WORKSITE-Tombstone-Feed sowie explizite Android-0.7.x-Fallbacks.
 - Source-Check 74 prüft den kanonischen baustellenweiten Medienkatalog: ausschließlich BTB-/Mangel-/Abnahme-Bilder, Cross-Team-Bildsicht nur für `RESPONSIBLE_TB`/CHEF/Admin, kein fremder BTB-Text, Area-Scope für Mängel/Abnahmen, kanonischer Datei-Download und expliziter 0.7.x-Fallback.
 - Source-Check 75 stellt sicher, dass Portal und Android dieselben kanonischen Baustellenknotentypen und Payload-Felder verwenden; Parent-Zuordnung sowie Bearbeiten/Löschen sind im Portal versionsgesichert.
+- Source-Check 76 prüft, dass Portal-Mängel und -Abnahmen dieselben fachlichen Payload-Schlüssel wie Android bearbeiten und Änderungen mit `base_version` schützen; JSON bleibt nur als additiver Expertenbereich erhalten.
 
-**Noch nicht ausgeführt:** Source-Checks 34–75 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–76 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -723,6 +724,14 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Portal-PATCH/DELETE senden die geladene Knoten-Version als `base_version`; konkurrierende Änderungen werden dadurch nicht still überschrieben.
 - Das Löschen weist im Portal jetzt ausdrücklich darauf hin, dass der Server den kompletten Unterbaum tombstoned.
 
+### Portal-Fachformulare für Mängel und Abnahmen
+
+- Mängel werden im Portal jetzt über Beschreibung, Bereich, km/Lage, Firma, Status, Strukturelement und Kommentar bearbeitet.
+- Abnahmen verwenden dieselben Android-Felder für Bezeichnung, Objekt, Firmen, Abnehmenden, Anwesende, km von/bis, Kommentar, Restpunkte und Zwischenergebnis.
+- Bearbeiten erfolgt im jeweiligen Formular und sendet die geladene `base_version`; die bisherigen vollständigen Roh-JSON-`prompt()`-Dialoge entfallen.
+- Unbekannte oder spätere Zusatzfelder bleiben erhalten: ein aufklappbarer JSON-Expertenbereich wird additiv mit den Fachfeldern gemerged.
+- Portal-Titel werden aus `beschreibung` (Mangel) bzw. `bezeichnung/objekt` (Abnahme) abgeleitet – identisch zur bestehenden Android-Server-1.0-Abbildung.
+
 ## Bekannte/offene Punkte
 
 - vollständige Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung gegen eine echte PostgreSQL-/FastAPI-Testinstanz ausführen;
@@ -732,7 +741,7 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
 - Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; der baustellenweite Gesamtmedienexport nutzt jetzt ebenfalls den kanonischen Server-1.0-Medien-/Dateivertrag; Baustellenbaum/Unterbaustellen nutzen `worksite_tree_v1`, mobile abgeleitete Streckendaten nutzen jetzt kanonisches `track_data_v1` mit explizitem Legacy-Fallback; die Dateiliste ist nun stabil über `(created_at,id)` cursor-paginiert; alte Server ohne Cursorprotokoll behalten während Rolling Updates weiterhin die konservative 1000-Dateien-Tombstone-Sperre; Einladungen, Teamdarstellung, Mängel-/Abnahme-Sync sowie der granulare Team-BTB inklusive BTB-Fotos, serverseitigem Abschluss-PDF und Offline-BTB-Löschung ist capability-gesteuert an Server 1.0 angebunden; offen bleibt die praktische Android-/PostgreSQL-E2E-Prüfung;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
-- Android-QR-Scanner/Intent-Handling sowie gezieltes Erzeugen/Einlösen von Server-1.0-Baustelleneinladungen sind im Quellstand umgesetzt; UI und Hintergrund verwenden für den modernen Baustellen-/Fachsync nun denselben capability-gesteuerten Coordinator; komfortablere Portal-Fachformulare und praktische E2E-Prüfung bleiben offen;
+- Android-QR-Scanner/Intent-Handling sowie gezieltes Erzeugen/Einlösen von Server-1.0-Baustelleneinladungen sind im Quellstand umgesetzt; UI und Hintergrund verwenden für den modernen Baustellen-/Fachsync nun denselben capability-gesteuerten Coordinator; die grundlegenden Portal-Fachformulare sind jetzt an die Android-Payloads angeglichen; praktische E2E-Prüfung und weitere Komfortdetails bleiben offen;
 - Compose-Staging-Stack praktisch auf Docker/Synology starten; Backup-Retention mit echten Alt-Backups prüfen; Restore-to-Target gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen;
 - vollständige Integrations-/E2E-Tests und produktiver NAS-Cutover.
 

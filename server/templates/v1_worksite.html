@@ -84,10 +84,32 @@
     <h2>Mängel</h2>
     <div id="defects"></div>
     <form id="defectForm" class="compact">
-      <label for="defectTitle">Neuer Mangel</label><input id="defectTitle" maxlength="500" placeholder="Titel">
+      <input id="defectEditId" type="hidden">
+      <input id="defectEditVersion" type="hidden">
+      <h3 id="defectFormTitle">Neuen Mangel anlegen</h3>
+      <label for="defectDescription">Beschreibung</label>
+      <textarea id="defectDescription" rows="3" maxlength="500" required></textarea>
+      <div class="grid">
+        <div><label for="defectArea">Bereich</label><input id="defectArea" maxlength="240"></div>
+        <div><label for="defectKm">Kilometer / Lage</label><input id="defectKm" maxlength="120"></div>
+      </div>
+      <div class="grid">
+        <div><label for="defectCompany">Firma</label><input id="defectCompany" maxlength="240"></div>
+        <div><label for="defectStatus">Status</label>
+          <select id="defectStatus"><option value="OPEN">Offen</option><option value="IN_PROGRESS">In Arbeit</option></select>
+        </div>
+      </div>
       <label for="defectNode">Strukturelement (optional)</label><select id="defectNode"><option value="">ohne Zuordnung</option></select>
-      <label for="defectPayload">Details als JSON</label><textarea id="defectPayload" class="json" rows="4">{}</textarea>
-      <button type="submit">Mangel anlegen</button>
+      <label for="defectComment">Kommentar</label><textarea id="defectComment" rows="2"></textarea>
+      <details>
+        <summary>Zusatzdaten (JSON)</summary>
+        <p class="muted">Nur für zusätzliche Felder. Die Fachfelder oben bleiben maßgeblich.</p>
+        <textarea id="defectPayload" class="json" rows="4">{}</textarea>
+      </details>
+      <div class="actions">
+        <button id="defectSubmit" type="submit">Mangel anlegen</button>
+        <button id="defectCancel" class="secondary" type="button" style="display:none" onclick="resetDefectForm()">Abbrechen</button>
+      </div>
     </form>
   </div>
 </div>
@@ -96,12 +118,46 @@
   <h2>Abnahmen</h2>
   <div id="acceptances"></div>
   <form id="acceptanceForm" class="compact">
+    <input id="acceptanceEditId" type="hidden">
+    <input id="acceptanceEditVersion" type="hidden">
+    <h3 id="acceptanceFormTitle">Neue Abnahme anlegen</h3>
     <div class="grid">
-      <div><label for="acceptanceTitle">Neue Abnahme</label><input id="acceptanceTitle" maxlength="500" placeholder="Titel"></div>
-      <div><label for="acceptanceNode">Strukturelement (optional)</label><select id="acceptanceNode"><option value="">ohne Zuordnung</option></select></div>
+      <div><label for="acceptanceDesignation">Bezeichnung</label><input id="acceptanceDesignation" maxlength="500" required></div>
+      <div><label for="acceptanceObject">Objekt</label><input id="acceptanceObject" maxlength="300"></div>
     </div>
-    <label for="acceptancePayload">Details als JSON</label><textarea id="acceptancePayload" class="json" rows="4">{}</textarea>
-    <button type="submit">Abnahme anlegen</button>
+    <div class="grid">
+      <div><label for="acceptanceCompany">Firma</label><input id="acceptanceCompany" maxlength="240"></div>
+      <div><label for="acceptanceOtherCompanies">Weitere Firmen</label><input id="acceptanceOtherCompanies" maxlength="500"></div>
+    </div>
+    <div class="grid">
+      <div><label for="acceptanceInspector">Abnehmender</label><input id="acceptanceInspector" maxlength="240"></div>
+      <div><label for="acceptanceAttendees">Anwesende</label><input id="acceptanceAttendees" maxlength="500"></div>
+    </div>
+    <div class="grid">
+      <div><label for="acceptanceKmFrom">km von</label><input id="acceptanceKmFrom" type="number" step="0.001"></div>
+      <div><label for="acceptanceKmTo">km bis</label><input id="acceptanceKmTo" type="number" step="0.001"></div>
+    </div>
+    <div class="grid">
+      <div><label for="acceptanceNode">Strukturelement (optional)</label><select id="acceptanceNode"><option value="">ohne Zuordnung</option></select></div>
+      <div><label for="acceptanceResult">Zwischenergebnis</label>
+        <select id="acceptanceResult">
+          <option value="ENTWURF">Entwurf</option>
+          <option value="ABGENOMMEN_MIT_RESTPUNKTEN">Abgenommen mit Restpunkten</option>
+          <option value="NOCH_ZU_PRUEFEN">Noch zu prüfen</option>
+        </select>
+      </div>
+    </div>
+    <label for="acceptanceComment">Kommentar</label><textarea id="acceptanceComment" rows="2"></textarea>
+    <label for="acceptanceRemaining">Restpunkte</label><textarea id="acceptanceRemaining" rows="2"></textarea>
+    <details>
+      <summary>Zusatzdaten (JSON)</summary>
+      <p class="muted">Nur für zusätzliche Felder. Die Fachfelder oben bleiben maßgeblich.</p>
+      <textarea id="acceptancePayload" class="json" rows="4">{}</textarea>
+    </details>
+    <div class="actions">
+      <button id="acceptanceSubmit" type="submit">Abnahme anlegen</button>
+      <button id="acceptanceCancel" class="secondary" type="button" style="display:none" onclick="resetAcceptanceForm()">Abbrechen</button>
+    </div>
   </form>
 </div>
 {% endblock %}
@@ -118,6 +174,52 @@ function jsonValue(id){
   const parsed=JSON.parse(raw);
   if(parsed===null||Array.isArray(parsed)||typeof parsed!=='object') throw new Error('JSON muss ein Objekt sein.');
   return parsed;
+}
+function valueOrNull(id){
+  const value=document.getElementById(id).value.trim();
+  return value||null;
+}
+function decimalOrNull(id){
+  const raw=document.getElementById(id).value.trim();
+  if(!raw)return null;
+  const value=Number(raw.replace(',','.'));
+  if(!Number.isFinite(value))throw new Error('Kilometerangabe ist ungültig.');
+  return value;
+}
+function defectPayloadFromForm(existing){
+  const payload=Object.assign({},existing||{},jsonValue('defectPayload'));
+  payload.beschreibung=document.getElementById('defectDescription').value.trim();
+  payload.bereich=valueOrNull('defectArea')||'';
+  payload.km=valueOrNull('defectKm')||'';
+  payload.firma=valueOrNull('defectCompany')||'';
+  payload.kommentar=valueOrNull('defectComment')||'';
+  if(!payload.datumIso)payload.datumIso=new Date().toISOString().slice(0,10);
+  if(!payload.zeit)payload.zeit=new Date().toTimeString().slice(0,5);
+  if(!payload.baustelle&&worksite)payload.baustelle=worksite.name||'';
+  if(!Object.prototype.hasOwnProperty.call(payload,'gps'))payload.gps='';
+  if(!Object.prototype.hasOwnProperty.call(payload,'btbBildNr'))payload.btbBildNr='';
+  if(!Array.isArray(payload.fotos))payload.fotos=[];
+  return payload;
+}
+function acceptancePayloadFromForm(existing){
+  const payload=Object.assign({},existing||{},jsonValue('acceptancePayload'));
+  payload.bezeichnung=document.getElementById('acceptanceDesignation').value.trim();
+  payload.objekt=valueOrNull('acceptanceObject')||'';
+  payload.firma=valueOrNull('acceptanceCompany')||'';
+  payload.weitereFirmen=valueOrNull('acceptanceOtherCompanies')||'';
+  payload.abnehmender=valueOrNull('acceptanceInspector')||'';
+  payload.anwesende=valueOrNull('acceptanceAttendees')||'';
+  payload.kmVon=decimalOrNull('acceptanceKmFrom');
+  payload.kmBis=decimalOrNull('acceptanceKmTo');
+  payload.kommentar=valueOrNull('acceptanceComment')||'';
+  payload.restpunkte=valueOrNull('acceptanceRemaining')||'';
+  payload.ergebnis=document.getElementById('acceptanceResult').value;
+  payload.unterKnotenName=nodeName(document.getElementById('acceptanceNode').value);
+  if(!payload.baustelleName&&worksite)payload.baustelleName=worksite.name||'';
+  if(!payload.startEpochMs)payload.startEpochMs=Date.now();
+  if(!Array.isArray(payload.fotoRefs))payload.fotoRefs=[];
+  if(!Array.isArray(payload.anlagen))payload.anlagen=[];
+  return payload;
 }
 function nodeName(id){
   const found=nodeData.find(function(n){return n.id===id;});
@@ -415,23 +517,43 @@ async function loadDefects(){
     const close=can('defect.close')&&d.status!=='CLOSED'?'<button type="button" onclick="closeDefect(\''+esc(d.id)+'\','+Number(d.version)+')">Schließen</button>':'';
     return '<div class="item '+(d.status==='CLOSED'?'status-done':'status-open')+'"><b>'+esc(d.title||'Mangel')+'</b> <span class="pill">'+esc(d.status)+'</span>'+
       '<div class="muted">'+esc(nodeName(d.worksite_node_id))+' · Version '+esc(d.version)+'</div>'+
-      '<pre class="json">'+esc(JSON.stringify(d.payload||{},null,2))+'</pre><div class="actions">'+edit+close+'</div></div>';
+      '<div>'+esc((d.payload||{}).beschreibung||'')+'</div>'+
+      '<div class="muted">'+[d.payload?.bereich,d.payload?.km,d.payload?.firma].filter(Boolean).map(esc).join(' · ')+'</div>'+
+      ((d.payload||{}).kommentar?'<div class="muted">Kommentar: '+esc(d.payload.kommentar)+'</div>':'')+
+      '<details><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(d.payload||{},null,2))+'</pre></details><div class="actions">'+edit+close+'</div></div>';
   }).join(''):'<p class="muted">Keine Mängel.</p>';
 }
 
 async function editDefect(id,version){
   try{
-    const current=await tbApi('/api/v1/defects/'+encodeURIComponent(id));const d=current.data;
-    const title=prompt('Titel',d.title||'');if(title===null)return;
-    const raw=prompt('Details (JSON)',JSON.stringify(d.payload||{},null,2));if(raw===null)return;
-    const status=prompt('Status: OPEN oder IN_PROGRESS',d.status||'OPEN');if(status===null)return;
-    await tbApi('/api/v1/defects/'+encodeURIComponent(id),{
-      method:'PATCH',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({base_version:Number(d.version),title:title.trim()||null,payload:JSON.parse(raw||'{}'),status:status.trim().toUpperCase()})
-    });
-    show('ok','Mangel gespeichert.');await loadDefects();
+    const current=await tbApi('/api/v1/defects/'+encodeURIComponent(id));
+    const d=current.data,p=d.payload||{};
+    document.getElementById('defectEditId').value=id;
+    document.getElementById('defectEditVersion').value=String(d.version||version||1);
+    document.getElementById('defectDescription').value=p.beschreibung||d.title||'';
+    document.getElementById('defectArea').value=p.bereich||'';
+    document.getElementById('defectKm').value=p.km||'';
+    document.getElementById('defectCompany').value=p.firma||'';
+    document.getElementById('defectComment').value=p.kommentar||'';
+    document.getElementById('defectNode').value=d.worksite_node_id||'';
+    document.getElementById('defectStatus').value=d.status==='IN_PROGRESS'?'IN_PROGRESS':'OPEN';
+    document.getElementById('defectPayload').value=JSON.stringify(p,null,2);
+    document.getElementById('defectFormTitle').textContent='Mangel bearbeiten';
+    document.getElementById('defectSubmit').textContent='Mangel speichern';
+    document.getElementById('defectCancel').style.display='inline-block';
+    document.getElementById('defectForm').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){show('err',error.message||String(error));}
 }
+function resetDefectForm(){
+  const form=document.getElementById('defectForm');form.reset();
+  document.getElementById('defectEditId').value='';
+  document.getElementById('defectEditVersion').value='';
+  document.getElementById('defectPayload').value='{}';
+  document.getElementById('defectFormTitle').textContent='Neuen Mangel anlegen';
+  document.getElementById('defectSubmit').textContent='Mangel anlegen';
+  document.getElementById('defectCancel').style.display='none';
+}
+window.resetDefectForm=resetDefectForm;
 window.editDefect=editDefect;
 
 async function closeDefect(id,version){
@@ -452,33 +574,50 @@ async function loadAcceptances(){
       :'';
     return '<div class="item '+(a.status==='FINALIZED'?'status-done':'status-open')+'"><b>'+esc(a.title||'Abnahme')+'</b> <span class="pill">'+esc(a.status)+'</span> <span class="pill">'+esc(a.result||'ERGEBNIS_UNBEKANNT')+'</span>'+
       '<div class="muted">'+esc(nodeName(a.worksite_node_id))+' · Version '+esc(a.version)+'</div>'+
-      '<pre class="json">'+esc(JSON.stringify(a.payload||{},null,2))+'</pre><div class="actions">'+edit+finalize+'</div></div>';
+      '<div>'+esc((a.payload||{}).bezeichnung||(a.payload||{}).objekt||'')+'</div>'+
+      '<div class="muted">'+[(a.payload||{}).firma,(a.payload||{}).abnehmender,
+        ((a.payload||{}).kmVon!=null?'km '+esc(a.payload.kmVon):null),
+        ((a.payload||{}).kmBis!=null?'bis '+esc(a.payload.kmBis):null)].filter(Boolean).join(' · ')+'</div>'+
+      ((a.payload||{}).restpunkte?'<div class="muted">Restpunkte: '+esc(a.payload.restpunkte)+'</div>':'')+
+      '<details><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(a.payload||{},null,2))+'</pre></details><div class="actions">'+edit+finalize+'</div></div>';
   }).join(''):'<p class="muted">Keine Abnahmen.</p>';
 }
 
 async function editAcceptance(id,version){
   try{
-    const current=await tbApi('/api/v1/acceptances/'+encodeURIComponent(id));const a=current.data;
-    const title=prompt('Titel',a.title||'');if(title===null)return;
-    const raw=prompt('Details (JSON)',JSON.stringify(a.payload||{},null,2));if(raw===null)return;
-    const status=prompt('Status: OPEN oder IN_PROGRESS',a.status||'OPEN');if(status===null)return;
-    const acceptanceResult=prompt(
-      'Ergebnis: ENTWURF, ABGENOMMEN_MIT_RESTPUNKTEN oder NOCH_ZU_PRUEFEN',
-      a.result||'ENTWURF'
-    );if(acceptanceResult===null)return;
-    await tbApi('/api/v1/acceptances/'+encodeURIComponent(id),{
-      method:'PATCH',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        base_version:Number(a.version),
-        title:title.trim()||null,
-        payload:JSON.parse(raw||'{}'),
-        status:status.trim().toUpperCase(),
-        result:acceptanceResult.trim().toUpperCase()
-      })
-    });
-    show('ok','Abnahme gespeichert.');await loadAcceptances();
+    const current=await tbApi('/api/v1/acceptances/'+encodeURIComponent(id));
+    const a=current.data,p=a.payload||{};
+    document.getElementById('acceptanceEditId').value=id;
+    document.getElementById('acceptanceEditVersion').value=String(a.version||version||1);
+    document.getElementById('acceptanceDesignation').value=p.bezeichnung||a.title||'';
+    document.getElementById('acceptanceObject').value=p.objekt||'';
+    document.getElementById('acceptanceCompany').value=p.firma||'';
+    document.getElementById('acceptanceOtherCompanies').value=p.weitereFirmen||'';
+    document.getElementById('acceptanceInspector').value=p.abnehmender||'';
+    document.getElementById('acceptanceAttendees').value=p.anwesende||'';
+    document.getElementById('acceptanceKmFrom').value=p.kmVon??'';
+    document.getElementById('acceptanceKmTo').value=p.kmBis??'';
+    document.getElementById('acceptanceComment').value=p.kommentar||'';
+    document.getElementById('acceptanceRemaining').value=p.restpunkte||'';
+    document.getElementById('acceptanceNode').value=a.worksite_node_id||'';
+    document.getElementById('acceptanceResult').value=['ENTWURF','ABGENOMMEN_MIT_RESTPUNKTEN','NOCH_ZU_PRUEFEN'].includes(a.result)?a.result:'ENTWURF';
+    document.getElementById('acceptancePayload').value=JSON.stringify(p,null,2);
+    document.getElementById('acceptanceFormTitle').textContent='Abnahme bearbeiten';
+    document.getElementById('acceptanceSubmit').textContent='Abnahme speichern';
+    document.getElementById('acceptanceCancel').style.display='inline-block';
+    document.getElementById('acceptanceForm').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){show('err',error.message||String(error));}
 }
+function resetAcceptanceForm(){
+  const form=document.getElementById('acceptanceForm');form.reset();
+  document.getElementById('acceptanceEditId').value='';
+  document.getElementById('acceptanceEditVersion').value='';
+  document.getElementById('acceptancePayload').value='{}';
+  document.getElementById('acceptanceFormTitle').textContent='Neue Abnahme anlegen';
+  document.getElementById('acceptanceSubmit').textContent='Abnahme anlegen';
+  document.getElementById('acceptanceCancel').style.display='none';
+}
+window.resetAcceptanceForm=resetAcceptanceForm;
 window.editAcceptance=editAcceptance;
 
 async function finalizeAcceptance(id,version,result){
@@ -517,25 +656,57 @@ document.getElementById('nodeForm').addEventListener('submit',async function(ev)
 document.getElementById('defectForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
   try{
-    await tbApi('/api/v1/worksites/'+worksiteId+'/defects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      title:document.getElementById('defectTitle').value.trim()||null,
+    const editId=document.getElementById('defectEditId').value;
+    const payload=defectPayloadFromForm(editId?jsonValue('defectPayload'):{});
+    const body={
+      title:payload.beschreibung||null,
       worksite_node_id:document.getElementById('defectNode').value||null,
-      payload:jsonValue('defectPayload')
-    })});
-    ev.target.reset();document.getElementById('defectPayload').value='{}';show('ok','Mangel angelegt.');await loadDefects();
+      payload:payload
+    };
+    if(editId){
+      body.base_version=Number(document.getElementById('defectEditVersion').value)||1;
+      body.status=document.getElementById('defectStatus').value;
+      await tbApi('/api/v1/defects/'+encodeURIComponent(editId),{
+        method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+      });
+      show('ok','Mangel gespeichert.');
+    }else{
+      await tbApi('/api/v1/worksites/'+worksiteId+'/defects',{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+      });
+      show('ok','Mangel angelegt.');
+    }
+    resetDefectForm();await loadDefects();
   }catch(error){show('err',error.message||String(error));}
 });
 document.getElementById('acceptanceForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
   try{
-    await tbApi('/api/v1/worksites/'+worksiteId+'/acceptances',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      title:document.getElementById('acceptanceTitle').value.trim()||null,
+    const editId=document.getElementById('acceptanceEditId').value;
+    const payload=acceptancePayloadFromForm(editId?jsonValue('acceptancePayload'):{});
+    const body={
+      title:payload.bezeichnung||payload.objekt||null,
       worksite_node_id:document.getElementById('acceptanceNode').value||null,
-      payload:jsonValue('acceptancePayload')
-    })});
-    ev.target.reset();document.getElementById('acceptancePayload').value='{}';show('ok','Abnahme angelegt.');await loadAcceptances();
+      payload:payload,
+      result:document.getElementById('acceptanceResult').value
+    };
+    if(editId){
+      body.base_version=Number(document.getElementById('acceptanceEditVersion').value)||1;
+      body.status='IN_PROGRESS';
+      await tbApi('/api/v1/acceptances/'+encodeURIComponent(editId),{
+        method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+      });
+      show('ok','Abnahme gespeichert.');
+    }else{
+      await tbApi('/api/v1/worksites/'+worksiteId+'/acceptances',{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+      });
+      show('ok','Abnahme angelegt.');
+    }
+    resetAcceptanceForm();await loadAcceptances();
   }catch(error){show('err',error.message||String(error));}
 });
+
 
 (async function(){
   try{
