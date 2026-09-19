@@ -303,6 +303,7 @@ def issue_device_activation(
             company_name=target["company_name"],
             activation_key=raw_key,
             activation_url=activation_url,
+            server_base_url=public_base_url,
             expires_at=expires_at,
         ),
         "activation_pdf_filename": pdf_filename,
