@@ -649,7 +649,7 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 ### Bekanntes GitHub-Actions-Problem
 
-Für den Portal-Abnahme-DELETE-Commit `914b66aebbe83fdec1a7875df77ebaa779ad6927` endeten TB-Server **#300 / ID 35428854456** und Android CI **#1012 / ID 35428854443** erneut mit leeren `steps`-Listen und `runner_id = 0`. Es wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
+Für den dokumentierten CI-Gate-Stand am Head `e9a9062ad5926af5c95939c6c191b9c94abb3ad6` endeten TB-Server **#304 / ID 35429187750** und Android CI **#1015 / ID 35429187753** erneut ohne ausgeführte Schritte. Beide Jobs liefern `steps = null`, `logs_url = null`; damit wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
 ### BTB-Granularitätskorrektur
 
