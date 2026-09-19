@@ -13,6 +13,7 @@ def read(rel: str) -> str:
 def main() -> None:
     links = read("server/tbserver/device_activation_links.py")
     devices = read("server/tbserver/devices.py")
+    pdf = read("server/tbserver/device_activation_pdf.py")
     users = read("server/templates/v1_admin_users.html")
     activation = read("app/src/main/java/de/tbhelfer/ui/activation/AktivierungActivity.kt")
     requirements = read("server/requirements.txt")
@@ -26,8 +27,16 @@ def main() -> None:
         ('SvgPathImage', links),
         ('qrcode==8.2', requirements),
         ('"activation_qr_svg_data_url": device_activation_qr_svg_data_url(raw_key)', devices),
+        ('"activation_pdf_data_url": device_activation_pdf_data_url(', devices),
+        ('response.headers["Cache-Control"] = "no-store"', devices),
+        ("device_activation_pdf_bytes", pdf),
+        ("QrCodeWidget", pdf),
+        ("data:application/pdf;base64", pdf),
         ('id="deviceActivationQr"', users),
         ('showDeviceActivation(data)', users),
+        ('id="downloadDeviceActivationPdf"', users),
+        ('id="shareDeviceActivationPdf"', users),
+        ("navigator.share", users),
         ('QR-Code jetzt mit dem vorgesehenen Handy scannen', users),
         ('android:host="activate"', read("app/src/main/AndroidManifest.xml")),
         ('scanQrCode()', activation),
@@ -40,7 +49,7 @@ def main() -> None:
             "Fehlende Device-Aktivierungs-QR-Marker: " + ", ".join(missing)
         )
 
-    print("OK: device activation QR flow is wired server -> portal -> Android")
+    print("OK: device activation QR/PDF flow is wired server -> portal -> Android")
 
 
 if __name__ == "__main__":
