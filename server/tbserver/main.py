@@ -19,6 +19,7 @@ from .devices import admin_router as admin_devices_router
 from .devices import router as devices_router
 from .files import router as files_router
 from .migrations import status as migration_status
+from .metrics import SystemMetricsMiddleware
 from .portal import router as portal_router
 from .releases import router as releases_router
 from .survey_gra_jumps import router as survey_gra_jumps_router
@@ -43,6 +44,7 @@ app = FastAPI(
     version=SERVER_VERSION,
     lifespan=lifespan,
 )
+app.add_middleware(SystemMetricsMiddleware)
 app.include_router(capabilities_router)
 app.include_router(company_router)
 app.include_router(portal_router)
