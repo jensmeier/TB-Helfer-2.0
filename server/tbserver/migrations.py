@@ -3,6 +3,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import re
+import time
+
+import psycopg
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,6 +14,8 @@ from .database import connect
 
 MIGRATION_NAME_RE = re.compile(r"^(?P<version>\d{3})_[a-z0-9_]+\.sql$")
 ADVISORY_LOCK_ID = 731019001
+DB_CONNECT_ATTEMPTS = 30
+DB_CONNECT_RETRY_SECONDS = 2
 
 
 @dataclass(frozen=True)
@@ -97,11 +102,30 @@ def verify_migrations(conn, migrations: list[Migration]) -> None:
             )
 
 
+
+def _connect_for_migration():
+    last_error: psycopg.OperationalError | None = None
+    for attempt in range(1, DB_CONNECT_ATTEMPTS + 1):
+        try:
+            return connect()
+        except psycopg.OperationalError as exc:
+            last_error = exc
+            # Authentication/authorization errors carry a PostgreSQL SQLSTATE and
+            # must fail immediately. Missing SQLSTATE covers the short TCP startup
+            # window seen during a fresh PostgreSQL container initialization.
+            if exc.sqlstate is not None or attempt >= DB_CONNECT_ATTEMPTS:
+                raise
+            print(f"WAITING_DATABASE {attempt}/{DB_CONNECT_ATTEMPTS}")
+            time.sleep(DB_CONNECT_RETRY_SECONDS)
+    assert last_error is not None
+    raise last_error
+
+
 def migrate() -> list[str]:
     migrations = discover_migrations()
     applied_now: list[str] = []
 
-    with connect() as conn:
+    with _connect_for_migration() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT pg_advisory_lock(%s)", (ADVISORY_LOCK_ID,))
         try:
