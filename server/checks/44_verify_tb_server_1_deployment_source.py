@@ -20,6 +20,7 @@ def main() -> None:
     assertions = [
         ("postgis/postgis:17-3.5", compose),
         ("TB_V1_DB_PASSWORD", compose),
+        ("TB_V1_PUBLIC_BASE_URL", compose),
         ("\${TB_V1_DB_PASSWORD:?", compose),
         ("./database-v1", compose),
         ("./storage-v1", compose),
@@ -35,6 +36,7 @@ def main() -> None:
         ("postgresql-client-17", dockerfile),
         ("COPY templates ./templates", dockerfile),
         ("Restore-to-Target", docs),
+        ("TB_V1_PUBLIC_BASE_URL=https://api-v1.tb-helfer.de", docs),
         ("44_verify_tb_server_1_deployment_source.py", workflow),
         ("DB_CONNECT_ATTEMPTS", migrations),
         ("psycopg.OperationalError", migrations),
