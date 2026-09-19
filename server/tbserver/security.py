@@ -7,6 +7,7 @@ import secrets
 
 
 PASSWORD_MIN_LENGTH = 12
+ACTIVATION_KEY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 SCRYPT_N = 2**14
 SCRYPT_R = 8
 SCRYPT_P = 1
@@ -26,6 +27,12 @@ def hash_token(raw: str) -> str:
 
 def random_token(nbytes: int = 32) -> str:
     return secrets.token_urlsafe(nbytes)
+
+
+def random_activation_key() -> str:
+    raw = "".join(secrets.choice(ACTIVATION_KEY_ALPHABET) for _ in range(32))
+    groups = [raw[:8]] + [raw[i:i + 4] for i in range(8, 32, 4)]
+    return "TBH-" + "-".join(groups)
 
 
 def validate_password(password: str) -> None:
