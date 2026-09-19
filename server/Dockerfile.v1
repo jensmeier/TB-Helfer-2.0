@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY tbserver ./tbserver
 COPY v1_migrations ./v1_migrations
+COPY templates ./templates
 
 EXPOSE 8080
 CMD ["uvicorn", "tbserver.main:app", "--host", "0.0.0.0", "--port", "8080"]
