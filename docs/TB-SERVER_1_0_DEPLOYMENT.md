@@ -137,6 +137,28 @@ Der normale `docker-compose.v1.yml` bleibt absichtlich **ohne** Source-Mounts un
 
 Für Synology Container Manager wird während der Stagingphase der Inhalt von `docker-compose.synology-staging.v1.yml` als Projekt-`compose.yml` verwendet. Die bestehenden persistenten Ordner `database-v1`, `storage-v1`, `backups-v1` und die lokale `.env` bleiben unverändert.
 
+## Android gegen Synology-Staging testen
+
+Der Android-**Debug**-Build kann für den lokalen E2E-Test auf einen anderen Server zeigen, ohne die produktive Release-Adresse umzuschreiben.
+
+Auf dem Entwicklungs-Laptop wird einmalig in der bereits gitignorierten Datei `local.properties` ergänzt:
+
+```properties
+tb.server.base.url=http://192.168.178.3:8081
+```
+
+Alternativ kann derselbe Debug-Wert per Gradle-Property `tbServerBaseUrl` oder Umgebungsvariable `TB_SERVER_BASE_URL` gesetzt werden.
+
+Sicherheitsregeln:
+
+- nur der **Debug-Build** übernimmt diesen lokalen Wert;
+- Klartext-HTTP wird nur dann im Debug-Manifest erlaubt, wenn die konfigurierte Debug-Adresse mit `http://` beginnt;
+- der **Release-Build** bleibt unabhängig von lokalen Einstellungen fest auf `https://api.tb-helfer.de`;
+- Release setzt `usesCleartextTraffic=false`;
+- `local.properties` bleibt gitignoriert und darf nicht versioniert werden.
+
+Damit können Pixel/Poco im Heimnetz direkt gegen den getrennten Server-1.0-Stagingport 8081 getestet werden, ohne den produktiven Cloudflare-Endpunkt umzuschalten.
+
 ## Initialer Admin
 
 Nach einer frischen Server-1.0-Baseline wird der initiale Administrator separat über den vorhandenen Bootstrap-Pfad angelegt. Bootstrap-Zugangsdaten bleiben externe Einmal-/Umgebungswerte und gehören nicht in Compose/GitHub.
