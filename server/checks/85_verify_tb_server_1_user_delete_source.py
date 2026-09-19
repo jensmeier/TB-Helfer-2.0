@@ -21,6 +21,7 @@ def main() -> None:
         ('@router.delete("/users/{user_id}", status_code=204)', admin),
         ('"ADMIN_USER_CANNOT_BE_DELETED"', admin),
         ('"CANNOT_DELETE_SELF"', admin),
+        ('str(admin["user_id"]) == str(user_id)', admin),
         ('"USER_HAS_ACTIVE_BTB"', admin),
         ("UPDATE tb.portal_sessions", admin),
         ("UPDATE tb.portal_credentials", admin),
@@ -43,6 +44,8 @@ def main() -> None:
         ("85_verify_tb_server_1_user_delete_source.py", workflow),
     ]
     missing = [needle for needle, source in assertions if needle not in source]
+    if 'admin["id"]' in admin:
+        raise SystemExit("Benutzer-Loeschpfad verwendet veraltetes admin[id] statt admin[user_id]")
     if missing:
         raise SystemExit(
             "Fehlende sichere Benutzer-Loeschmarker: " + ", ".join(missing)
