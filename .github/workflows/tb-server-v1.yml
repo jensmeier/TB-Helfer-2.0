@@ -129,8 +129,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 8, current
-          assert current["latest_applied"] == 8, current
+          assert current["latest_known"] == 9, current
+          assert current["latest_applied"] == 9, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
@@ -159,6 +159,14 @@ jobs:
               defect_columns = {row["column_name"] for row in cur.fetchall()}
               cur.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='tb' AND table_name='acceptances'")
               acceptance_columns = {row["column_name"] for row in cur.fetchall()}
+              cur.execute("""
+                  SELECT pg_get_constraintdef(c.oid) AS definition
+                  FROM pg_constraint c
+                  JOIN pg_namespace n ON n.oid = c.connamespace
+                  WHERE n.nspname = 'tb'
+                    AND c.conname = 'defects_status_check'
+              """)
+              defect_status_constraint = cur.fetchone()["definition"]
           missing = sorted(required - tables)
           assert not missing, missing
           assert {"auth_token_hash", "auth_token_hint"} <= device_columns, device_columns
@@ -167,6 +175,7 @@ jobs:
           assert "area_scope" in defect_columns, defect_columns
           assert "area_scope" in acceptance_columns, acceptance_columns
           assert "result" in acceptance_columns, acceptance_columns
+          assert "REJECTED" in defect_status_constraint, defect_status_constraint
           print("OK: core tables/migrations", len(tables))
           PY
 
@@ -226,6 +235,8 @@ jobs:
               "release_binary_v1",
               "client_compatibility_v1",
               "worksite_tree_v1",
+              "worksite_provisioning_v1",
+              "worksite_delete_v1",
               "worksite_permissions_v1",
               "worksite_area_scope_v1",
               "worksite_teams_v1",
@@ -248,10 +259,13 @@ jobs:
               "restore_target_v1",
               "btb_live_sync_v1",
               "files_v1",
+              "worksite_media_v1",
+              "file_cursor_pagination_v1",
               "chunk_upload_v1",
               "defects_v1",
               "acceptances_v1",
               "acceptance_result_v1",
+              "acceptance_delete_v1",
               "track_data_v1",
               "survey_originals_v1",
               "survey_parser_catalog_v1",
