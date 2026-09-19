@@ -13,6 +13,7 @@ on:
       - "gradle.properties"
       - "server/checks/0*.py"
       - "server/checks/1*.py"
+      - "server/checks/83_verify_android_staging_server_config_source.py"
       - ".github/workflows/android.yml"
   pull_request:
     paths:
@@ -48,6 +49,7 @@ jobs:
           python3 server/checks/17_verify_schema13_source.py
           python3 server/checks/18_verify_android_worksite_structure_source.py
           python3 server/checks/19_verify_schema13_track_delete_source.py
+          python3 server/checks/83_verify_android_staging_server_config_source.py
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
