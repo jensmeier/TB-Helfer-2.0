@@ -684,8 +684,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 ### Praktischer NAS-Retest Admin-Dashboard / Aktivierungs-Lock 2026-09-19
 
 - Die neue Server-1.0-Übersicht läuft praktisch auf der Synology und zeigt reale Werte: 24-h-Requests/5xx, Datenverkehrsdiagramm, Prozessstart/Laufzeit, NAS-Speicher, Bestandszahlen, Probleme/Warnungen und letzte Aktivität.
-- Der laufende API-Container wurde direkt geprüft: `/app/tbserver/devices.py` enthält beim Aktivierungs-SELECT tatsächlich `FOR UPDATE OF u`. Der zuvor identifizierte PostgreSQL-Outer-Join-Lockfehler ist damit auf dem NAS ausgerollt.
-- Die Aktivierungskarte liefert dennoch weiterhin HTTP 500. Damit liegt **ein zweiter, noch nicht identifizierter Fehler nach dem Lock-Fix** vor. Nächster Schritt: einmal Aktivierungskarte auslösen und den neuen API-Traceback ab der letzten `Traceback`-Zeile bis zur finalen Exception auswerten; keine weiteren Pakete/DB-Resets auf Verdacht.
+- Der API-Container-Dateistand wurde direkt geprüft: `/app/tbserver/devices.py` enthält beim Aktivierungs-SELECT `FOR UPDATE OF u`.
+- Der danach exportierte API-Log enthält **keinen neuen Geräteaktivierungsversuch nach 17:27:27**; alle protokollierten Aktivierungs-500er stammen noch vom alten `FOR UPDATE`-Fehler. Die Dateiprüfung im laufenden Container beweist daher nicht, dass der bereits gestartete Uvicorn-Prozess die geänderte Python-Datei neu geladen hat. Vor dem nächsten Aktivierungstest muss die API einmal neu gestartet werden; danach frischen Log prüfen.
+- Derselbe Log hat zusätzlich einen unabhängigen Benutzer-Löschfehler gezeigt: `delete_user()` griff auf `admin["id"]` zu, die Portalsession liefert aber `user_id`. Behoben auf `admin["user_id"]`; Source-Check 85 schützt den Schlüssel jetzt explizit.
 
 ### Geräteaktivierung: PostgreSQL-Lock-Fix 2026-09-19
 
