@@ -640,6 +640,16 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 **Noch nicht ausgeführt:** Source-Checks 34–81 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
+### Aktivierungs-QR ist jetzt selbstbeschreibend 2026-09-19
+
+- Die zwischenzeitliche Android-Staginglösung über `local.properties` wurde auf den vorgesehenen Gerätefluss zurückgeführt: `local.properties` bleibt nur Entwickler-Fallback und ist keine Benutzerkonfiguration.
+- Der Geräte-Aktivierungs-QR/Deep-Link enthält jetzt **öffentliche HTTPS-Serveradresse + Einmal-Schlüssel**. Für das aktuelle Staging ist die Serveridentität `https://api-v1.tb-helfer.de`.
+- Server 1.0 erhält die kanonische Adresse aus der lokalen Synology-Variable `TB_V1_PUBLIC_BASE_URL`; ohne konfigurierte öffentliche URL wird keine neue Aktivierungskarte ausgegeben.
+- Android validiert die QR-Serveradresse auf HTTPS, aktiviert genau gegen diesen Server und speichert die Serveridentität **erst nach erfolgreicher Gerätebindung** lokal.
+- `ServerConfig.BASE_URL` liest danach die gespeicherte Serveridentität; neu erzeugte Sync-/Fachclients verwenden damit automatisch denselben NAS-/Cloudflare-Server. BuildConfig bleibt nur Fallback.
+- Eine erneute erfolgreiche Geräteaktivierung kann die gespeicherte Serveridentität bewusst ersetzen; ein ungültiger/manipulierter QR ändert sie nicht.
+- Die Projektregeln dokumentieren diesen Ablauf jetzt verbindlich, damit Serveridentität/QR/PDF nicht wieder als Build- oder Chatwissen verloren gehen.
+
 ### Aktivierungskarte PDF + externer Cloudflare-Stagingpfad 2026-09-19
 
 - Die Geräteaktivierung erzeugt jetzt zusätzlich zur QR-/Deep-Link-Antwort eine **nicht persistent gespeicherte PDF-Aktivierungskarte** mit Benutzer, Firma, Ablaufzeit, QR und Fallback-Schlüssel.
@@ -647,7 +657,7 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Aktivierungsantworten setzen `Cache-Control: no-store`; serverseitig bleibt nur der Hash des Einmal-Schlüssels gespeichert.
 - Für Tests außerhalb des Heimnetzes ist der separate Cloudflare-Staginghostname **`api-v1.tb-helfer.de`** jetzt praktisch aktiv. Er läuft über den bestehenden gesunden Tunnel `tb-helfer-nas` auf `http://192.168.178.3:8081`; `GET https://api-v1.tb-helfer.de/health/ready` wurde erfolgreich mit `status=ok`, `database=up`, `migrations=ok`, `server_version=1.0.0-dev` geprüft.
 - Der bestehende Produktivhostname `api.tb-helfer.de` und der alte 0.7-Server bleiben ausdrücklich unverändert; dies ist **kein produktiver Cutover**.
-- Nach bestätigtem externen Health-Test soll Android-Debug lokal auf `tb.server.base.url=https://api-v1.tb-helfer.de` zeigen; Release bleibt fest auf `https://api.tb-helfer.de`.
+- Der externe Health-Test ist bestätigt. Für die normale Geräteaktivierung muss Android **nicht** mehr per `local.properties` auf Staging umgestellt werden; die Aktivierungskarte liefert `https://api-v1.tb-helfer.de` selbst. `local.properties` bleibt nur Entwickler-Fallback.
 
 ### Geräteaktivierung per QR im Server-1.0-Portal 2026-09-19
 
@@ -852,9 +862,9 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Android-Debug jetzt auf den extern erreichbaren Stagingserver umstellen:** in der gitignorierten `local.properties` `tb.server.base.url=https://api-v1.tb-helfer.de` setzen, Debug-Build erzeugen und auf Pixel/Poco installieren.
-2. Danach auf Pixel/Poco bei ausgeschaltetem WLAN zusätzlich `/health/ready` bzw. die Geräteaktivierung über Mobilfunk praktisch bestätigen.
-3. Im Portal für die zwei vorhandenen Testnutzer je einen Geräte-Aktivierungs-QR/PDF erzeugen, bei Bedarf die PDF an den jeweiligen Nutzer senden und Pixel/Poco direkt in der TB-Helfer-App aktivieren.
+1. **Synology-Staging für selbstbeschreibende Aktivierung aktualisieren:** `TB_V1_PUBLIC_BASE_URL=https://api-v1.tb-helfer.de` in der lokalen `.env` setzen, aktuelle `tbserver/`- und `templates/`-Dateien übernehmen und API mit der aktualisierten Compose-Umgebung neu starten/recreaten.
+2. Aktuellen Android-Debug-Build installieren; keine Benutzer-Serveradresse konfigurieren. Im Portal für die zwei vorhandenen Testnutzer je einen Geräte-Aktivierungs-QR/PDF erzeugen und Pixel/Poco direkt damit aktivieren.
+3. Auf Pixel/Poco bei ausgeschaltetem WLAN Geräteaktivierung und anschließenden Server-/Synczugriff über Mobilfunk praktisch bestätigen.
 3. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
 4. Parallel Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
 5. Danach die Vermessungskette mit realen Daten end-to-end ausführen: Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung; zusätzliche Mehr-TRA-/Reverse-Geometry-Fälle mitprüfen.
