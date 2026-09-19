@@ -676,7 +676,7 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 ### Bekanntes GitHub-Actions-Problem
 
-Für den aktuellen Synology-Fix-Stand am Head `e56bcd7e3dd08fbb0cff5a0ad2faa04ac99a3edb` endeten TB-Server **#321 / ID 35436423457** und Android CI **#1026 / ID 35436423476** erneut ohne ausgeführte Schritte. Beide Jobs liefern `steps = null`, `logs_url = null`; damit wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
+Für den Synology-Staging-Compose-/Check-Stand am Commit `7de537b675e3e0a8cd652b36b15c0fb50cfae713` endeten TB-Server **#339 / ID 35441516909** und Android CI **#1037 / ID 35441516907** erneut ohne ausgeführte Schritte. Beide Jobs liefern `steps = null`, `logs_url = null`; damit wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
 ### BTB-Granularitätskorrektur
 
