@@ -166,6 +166,34 @@ def admin_user_activation_card_page(
     )
 
 
+@router.get("/admin/v1/devices")
+def admin_devices_page(
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
+):
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT d.id, d.user_id, u.display_name, c.name AS company_name,
+                   d.device_uid, d.device_name, d.platform, d.status,
+                   d.bound_at, d.last_seen_at, d.revoked_at
+            FROM tb.devices d
+            JOIN tb.users u ON u.id = d.user_id
+            LEFT JOIN tb.companies c ON c.id = u.company_id
+            ORDER BY lower(coalesce(c.name,'')), lower(u.display_name), d.bound_at DESC
+            """
+        )
+        devices = [dict(row) for row in cur.fetchall()]
+    return templates.TemplateResponse(
+        "v1_admin_devices.html",
+        {
+            "request": request,
+            "user": user,
+            "devices": devices,
+        },
+    )
+
+
 @router.get("/admin/v1/companies")
 def admin_companies_page(
     request: Request,
