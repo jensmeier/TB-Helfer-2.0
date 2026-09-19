@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import shutil
+import time
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -18,6 +20,10 @@ from .migrations import status as migration_status
 
 
 router = APIRouter(prefix="/api/v1/admin/system", tags=["admin-system"])
+
+_PROCESS_STARTED_AT = datetime.now(timezone.utc)
+_PROCESS_STARTED_MONOTONIC = time.monotonic()
+_STORAGE_WARNING_PERCENT = 85.0
 
 _SAFE_SETTING_KEYS = {
     "schema_baseline",
@@ -77,6 +83,16 @@ def admin_system_status(
               (SELECT count(*) FROM tb.btbs WHERE status <> 'DELETED') AS btbs,
               (SELECT count(*) FROM tb.files WHERE deleted_at IS NULL) AS files,
               (SELECT coalesce(sum(byte_size),0) FROM tb.files WHERE deleted_at IS NULL) AS tracked_file_bytes,
+              (SELECT count(*) FROM tb.releases WHERE status <> 'RETIRED') AS releases,
+              (SELECT count(*) FROM tb.survey_originals) AS survey_originals,
+              (
+                (SELECT count(*) FROM tb.companies WHERE deleted_at IS NOT NULL) +
+                (SELECT count(*) FROM tb.users WHERE deleted_at IS NOT NULL) +
+                (SELECT count(*) FROM tb.worksites WHERE deleted_at IS NOT NULL) +
+                (SELECT count(*) FROM tb.files WHERE deleted_at IS NOT NULL) +
+                (SELECT count(*) FROM tb.defects WHERE deleted_at IS NOT NULL) +
+                (SELECT count(*) FROM tb.acceptances WHERE deleted_at IS NOT NULL)
+              ) AS trash_items,
               (SELECT count(*) FROM tb.defects WHERE status NOT IN ('CLOSED','DELETED') AND deleted_at IS NULL) AS open_defects,
               (SELECT count(*) FROM tb.acceptances WHERE status NOT IN ('FINALIZED','DELETED') AND deleted_at IS NULL) AS open_acceptances,
               (SELECT count(*) FROM tb.background_jobs WHERE status = 'PENDING') AS pending_jobs,
@@ -91,6 +107,33 @@ def admin_system_status(
 
         cur.execute(
             """
+            WITH hours AS (
+                SELECT generate_series(
+                    date_trunc('hour', now()) - interval '23 hours',
+                    date_trunc('hour', now()),
+                    interval '1 hour'
+                ) AS bucket_start
+            )
+            SELECT h.bucket_start,
+                   coalesce(m.request_count, 0) AS request_count,
+                   coalesce(m.error_count, 0) AS error_count,
+                   coalesce(m.bytes_in, 0) AS bytes_in,
+                   coalesce(m.bytes_out, 0) AS bytes_out
+            FROM hours h
+            LEFT JOIN tb.system_metrics_hourly m USING (bucket_start)
+            ORDER BY h.bucket_start
+            """
+        )
+        traffic_series = [dict(row) for row in cur.fetchall()]
+        traffic_24h = {
+            "request_count": sum(int(row["request_count"]) for row in traffic_series),
+            "error_count": sum(int(row["error_count"]) for row in traffic_series),
+            "bytes_in": sum(int(row["bytes_in"]) for row in traffic_series),
+            "bytes_out": sum(int(row["bytes_out"]) for row in traffic_series),
+        }
+
+        cur.execute(
+            """
             SELECT id, kind, status, byte_size, sha256, started_at, finished_at
             FROM tb.backup_runs
             ORDER BY started_at DESC
@@ -98,6 +141,21 @@ def admin_system_status(
             """
         )
         backups = [dict(row) for row in cur.fetchall()]
+
+        cur.execute(
+            """
+            SELECT id, kind, status, byte_size, started_at, finished_at
+            FROM tb.backup_runs
+            WHERE status = 'OK'
+              AND kind IN ('DATABASE','FILES','FULL')
+            ORDER BY coalesce(finished_at, started_at) DESC
+            LIMIT 1
+            """
+        )
+        last_successful_backup = cur.fetchone()
+        last_successful_backup = (
+            dict(last_successful_backup) if last_successful_backup else None
+        )
 
         cur.execute(
             """
@@ -151,9 +209,95 @@ def admin_system_status(
         )
         companies = [dict(row) for row in cur.fetchall()]
 
+    now = datetime.now(timezone.utc)
+    issues: list[dict[str, str]] = []
+
+    def add_issue(severity: str, title: str, detail: str) -> None:
+        issues.append(
+            {
+                "severity": severity,
+                "title": title,
+                "detail": detail,
+            }
+        )
+
+    if migration["pending"]:
+        add_issue(
+            "critical",
+            "Migrationen ausstehend",
+            ", ".join(str(item) for item in migration["pending"]),
+        )
+    if not storage["available"]:
+        add_issue(
+            "critical",
+            "Datenspeicher nicht verfügbar",
+            "Der konfigurierte TB-Helfer-Speicherpfad ist nicht erreichbar.",
+        )
+    elif float(storage["percent_used"] or 0) >= 95.0:
+        add_issue(
+            "critical",
+            "Speicher fast voll",
+            f'{storage["percent_used"]:.2f} % des Datenträgers sind belegt.',
+        )
+    elif float(storage["percent_used"] or 0) >= _STORAGE_WARNING_PERCENT:
+        add_issue(
+            "warning",
+            "Speicherbelegung hoch",
+            f'{storage["percent_used"]:.2f} % des Datenträgers sind belegt.',
+        )
+
+    if int(counts["failed_jobs"] or 0) > 0:
+        add_issue(
+            "critical",
+            "Fehlgeschlagene Background Jobs",
+            f'{counts["failed_jobs"]} Job(s) stehen auf FAILED.',
+        )
+    if int(traffic_24h["error_count"] or 0) > 0:
+        add_issue(
+            "warning",
+            "Serverfehler in den letzten 24 Stunden",
+            f'{traffic_24h["error_count"]} HTTP-Antwort(en) hatten Status 5xx.',
+        )
+    if not settings.public_base_url:
+        add_issue(
+            "warning",
+            "Öffentliche Serveradresse fehlt",
+            "Neue Geräte-Aktivierungskarten können ohne öffentliche HTTPS-Adresse nicht vollständig erzeugt werden.",
+        )
+
+    if last_successful_backup is None:
+        add_issue(
+            "warning",
+            "Noch kein erfolgreiches Backup",
+            "Es wurde noch kein erfolgreicher Datenbank-/Datei-/Vollbackup-Lauf protokolliert.",
+        )
+    else:
+        backup_time = (
+            last_successful_backup.get("finished_at")
+            or last_successful_backup.get("started_at")
+        )
+        if backup_time and (now - backup_time).total_seconds() > 36 * 3600:
+            add_issue(
+                "warning",
+                "Backup älter als 36 Stunden",
+                "Der letzte erfolgreiche Backup-Lauf ist älter als der vorgesehene Tagesrhythmus.",
+            )
+
+    if not issues:
+        add_issue(
+            "ok",
+            "Keine aktuellen Probleme erkannt",
+            "Datenbank, Migrationen, Speicher, Jobs und letzter Backup-Stand sind unauffällig.",
+        )
+
     return {
         "server_version": SERVER_VERSION,
         "environment": settings.environment,
+        "process": {
+            "started_at": _PROCESS_STARTED_AT,
+            "uptime_seconds": max(0, int(time.monotonic() - _PROCESS_STARTED_MONOTONIC)),
+        },
+        "public_base_url": settings.public_base_url,
         "migration": migration,
         "storage": storage,
         "backup_storage": backup_storage,
@@ -162,6 +306,10 @@ def admin_system_status(
             "minimum_kept_per_kind": settings.backup_retention_min_per_kind,
         },
         "counts": counts,
+        "traffic_24h": traffic_24h,
+        "traffic_series": traffic_series,
+        "issues": issues,
+        "last_successful_backup": last_successful_backup,
         "backups": backups,
         "jobs": jobs,
         "settings": server_settings,
