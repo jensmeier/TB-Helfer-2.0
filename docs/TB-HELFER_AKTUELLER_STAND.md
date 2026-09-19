@@ -653,7 +653,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Der initiale Staging-Admin wurde erfolgreich gebootstrapped.
 - Beim ersten Browseraufruf von `/portal/v1/login` trat HTTP 500 auf. Ursache war kein Datenbank-/Authfehler, sondern fehlendes Packaging: `server/templates/` lag im Buildkontext, wurde in `Dockerfile.v1` aber nicht nach `/app/templates` kopiert. Das Dockerfile kopiert die Templates jetzt ausdrücklich; Source-/Deployment-Checks sichern diesen Vertragsbestand ab.
 - Der aktualisierte Synology-Build wurde neu erstellt; `/app/templates` ist im Image vorhanden und der Portal-Login funktioniert praktisch. Die Admin-Systemstatusseite `/admin/v1/system` wurde erfolgreich geöffnet. Sichtbarer Stand: Server `1.0.0-dev`, Environment `staging`, Migrationen `9/9`, keine Pending-Migrationen, DB erreichbar, 1 aktiver Admin-Nutzer, noch 0 Firmen / 0 Geräte / 0 Baustellen / 0 BTB / 0 Mängel / 0 Abnahmen.
-- Noch offen in diesem Staginglauf: Firma/Testnutzer/Geräte anlegen bzw. aktivieren, Pixel/Poco-E2E, Backup/Retention/Restore-Test/Restore-to-Target und Vermessungs-E2E.
+- Die erste Staging-Testfirma wurde erfolgreich über das Server-1.0-Portal angelegt; der Firmen-Create-Pfad und die Firmenliste funktionieren praktisch.
+- Für den nächsten E2E-Schritt wurde die bisher fehlende Admin-Weboberfläche **Nutzer/Geräte** ergänzt. Sie nutzt ausschließlich die vorhandenen kanonischen Admin-APIs für Nutzeranlage, einmalige Portal-Aktivierung, Geräte-Aktivierung und Gerätefreigabe; keine parallele Fachlogik wurde eingeführt.
+- Noch offen in diesem Staginglauf: aktualisierten Portal-Build auf der Synology einspielen, zwei Testnutzer anlegen und je ein Gerät aktivieren; danach Pixel/Poco-E2E, Backup/Retention/Restore-Test/Restore-to-Target und Vermessungs-E2E.
 
 ### CI-/Migrations-Gate-Korrektur 2026-09-19
 
@@ -810,8 +812,8 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Portal-Staging vervollständigen:** im funktionierenden Admin-Portal zuerst eine Testfirma anlegen und Firmenprofil/Logo/PDF-Layout prüfen.
-2. Danach Testnutzer anlegen, Portal-/Geräteaktivierung erzeugen und je einen Benutzer für Pixel und Poco aktivieren.
+1. **Aktualisierten Portal-Build auf der Synology einspielen** und die neue Seite `/admin/v1/users` praktisch öffnen.
+2. Zwei Testnutzer unter der bereits angelegten Testfirma anlegen und je einen Geräte-Aktivierungsschlüssel erzeugen; Pixel und Poco jeweils mit eigenem Nutzer aktivieren.
 3. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
 4. Parallel Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
 5. Danach die Vermessungskette mit realen Daten end-to-end ausführen: Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung; zusätzliche Mehr-TRA-/Reverse-Geometry-Fälle mitprüfen.
