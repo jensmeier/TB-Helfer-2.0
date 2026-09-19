@@ -2,33 +2,9 @@
 {% block title %}TB-Helfer · Nutzer/Geräte{% endblock %}
 {% block content %}
 <div class="card">
-  <h1>Nutzer & Geräte</h1>
-  <p class="muted">Testnutzer anlegen, Portalzugang vorbereiten und Geräte aktivieren.</p>
+  <h1>Benutzer</h1>
+  <p class="muted">Benutzer anlegen, Aktivierungskarten erzeugen und Portalzugang verwalten.</p>
   <div id="msg"></div>
-</div>
-
-<div class="card" id="deviceActivationCard" style="display:none">
-  <h2>Gerät per QR-Code aktivieren</h2>
-  <p id="deviceActivationName"></p>
-  <div class="grid" style="align-items:start">
-    <div>
-      <img id="deviceActivationQr" alt="QR-Code zur TB-Helfer-Geräteaktivierung"
-           style="width:min(320px,100%);height:auto;background:white;padding:12px;border-radius:12px">
-    </div>
-    <div>
-      <p><b>Mit der TB-Helfer-App auf dem vorgesehenen Handy scannen.</b></p>
-      <p class="muted">Der QR-Code enthält einen einmaligen Aktivierungsschlüssel und ist nur bis zum angezeigten Zeitpunkt gültig.</p>
-      <label>Aktivierungsschlüssel (Fallback)</label>
-      <code id="deviceActivationKey" style="display:block;word-break:break-all;margin:8px 0 14px"></code>
-      <div class="muted" id="deviceActivationExpiry"></div>
-      <div class="actions" style="margin-top:14px">
-        <a class="btn" id="downloadDeviceActivationPdf" download>PDF herunterladen</a>
-        <button type="button" id="shareDeviceActivationPdf">PDF teilen / versenden</button>
-        <button type="button" class="secondary" id="copyDeviceActivationKey">Schlüssel kopieren</button>
-        <button type="button" class="secondary" id="closeDeviceActivationCard">Schließen</button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <div class="card">
@@ -128,12 +104,8 @@
           </td>
           <td>
             <div class="actions">
+              <a class="btn" href="/admin/v1/users/{{ u.id }}/activation-card">Aktivierungskarte</a>
               <button type="button" class="secondary portal-activation" data-user-id="{{ u.id }}">Portal aktivieren</button>
-              {% if not u.device_id %}
-              <button type="button" class="device-activation" data-user-id="{{ u.id }}">Gerät aktivieren</button>
-              {% else %}
-              <button type="button" class="danger release-device" data-device-id="{{ u.device_id }}">Gerät freigeben</button>
-              {% endif %}
             </div>
           </td>
         </tr>
@@ -158,69 +130,6 @@ function optionalValue(id){
   const value=document.getElementById(id).value.trim();
   return value||null;
 }
-
-function showDeviceActivation(data){
-  const card=document.getElementById('deviceActivationCard');
-  document.getElementById('deviceActivationName').textContent='Aktivierung für '+data.user_name;
-  document.getElementById('deviceActivationQr').src=data.activation_qr_svg_data_url;
-  document.getElementById('deviceActivationKey').textContent=data.activation_key;
-  document.getElementById('deviceActivationExpiry').textContent='Gültig bis '+data.expires_at;
-  const download=document.getElementById('downloadDeviceActivationPdf');
-  download.href=data.activation_pdf_data_url;
-  download.download=data.activation_pdf_filename||'TB-Helfer_Aktivierung.pdf';
-  card.dataset.activationKey=data.activation_key;
-  card.dataset.activationPdf=data.activation_pdf_data_url;
-  card.dataset.activationPdfFilename=download.download;
-  card.dataset.activationUrl=data.activation_url;
-  card.style.display='block';
-  card.scrollIntoView({behavior:'smooth',block:'start'});
-}
-document.getElementById('copyDeviceActivationKey').addEventListener('click',async ()=>{
-  const key=document.getElementById('deviceActivationCard').dataset.activationKey||'';
-  if(!key) return;
-  try{
-    await navigator.clipboard.writeText(key);
-    show('ok','Aktivierungsschlüssel wurde kopiert.');
-  }catch(error){
-    show('err','Schlüssel konnte nicht kopiert werden.');
-  }
-});
-document.getElementById('shareDeviceActivationPdf').addEventListener('click',async ()=>{
-  const card=document.getElementById('deviceActivationCard');
-  const dataUrl=card.dataset.activationPdf||'';
-  const filename=card.dataset.activationPdfFilename||'TB-Helfer_Aktivierung.pdf';
-  if(!dataUrl) return;
-  try{
-    const blob=await (await fetch(dataUrl)).blob();
-    const file=new File([blob],filename,{type:'application/pdf'});
-    if(navigator.canShare && navigator.canShare({files:[file]}) && navigator.share){
-      await navigator.share({
-        title:'TB-Helfer Geräteaktivierung',
-        text:'TB-Helfer Aktivierungskarte – vertraulich, nur an die vorgesehene Person senden.',
-        files:[file]
-      });
-      return;
-    }
-    const a=document.createElement('a');
-    a.href=dataUrl;
-    a.download=filename;
-    a.click();
-    show('ok','PDF wurde heruntergeladen. Du kannst es jetzt per E-Mail oder Messenger versenden.');
-  }catch(error){
-    show('err','PDF konnte nicht geteilt werden. Bitte PDF herunterladen und als Anhang versenden.');
-  }
-});
-document.getElementById('closeDeviceActivationCard').addEventListener('click',()=>{
-  const card=document.getElementById('deviceActivationCard');
-  card.dataset.activationKey='';
-  card.dataset.activationPdf='';
-  card.dataset.activationPdfFilename='';
-  card.dataset.activationUrl='';
-  document.getElementById('deviceActivationQr').removeAttribute('src');
-  document.getElementById('downloadDeviceActivationPdf').removeAttribute('href');
-  document.getElementById('deviceActivationKey').textContent='';
-  card.style.display='none';
-});
 
 const createUser=document.getElementById('createUser');
 if(createUser){
@@ -263,38 +172,5 @@ document.querySelectorAll('.portal-activation').forEach(button=>{
   });
 });
 
-document.querySelectorAll('.device-activation').forEach(button=>{
-  button.addEventListener('click',async ()=>{
-    button.disabled=true;
-    try{
-      const {data}=await tbApi('/api/v1/admin/users/'+button.dataset.userId+'/device-activation',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({expires_hours:24})
-      });
-      show('ok','Geräte-Aktivierung wurde erzeugt. QR-Code jetzt mit dem vorgesehenen Handy scannen.');
-      showDeviceActivation(data);
-    }catch(error){
-      show('err',error.message||String(error));
-    }finally{
-      button.disabled=false;
-    }
-  });
-});
-
-document.querySelectorAll('.release-device').forEach(button=>{
-  button.addEventListener('click',async ()=>{
-    if(!confirm('Dieses Gerät wirklich freigeben? Das aktuelle Geräte-Token wird sofort ungültig.')) return;
-    button.disabled=true;
-    try{
-      await tbApi('/api/v1/admin/devices/'+button.dataset.deviceId+'/release',{method:'POST'});
-      show('ok','Gerät wurde freigegeben.');
-      setTimeout(()=>location.reload(),450);
-    }catch(error){
-      show('err',error.message||String(error));
-      button.disabled=false;
-    }
-  });
-});
 </script>
 {% endblock %}
