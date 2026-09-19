@@ -24,6 +24,18 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Die App lädt nur die für Baustelle/Berechtigung benötigten Strecken-, Gleis-, Weichen- und Abschnittsdaten.
 - Im Streckendaten-Bereich gibt es `Änderungen mit NAS synchronisieren`; übertragen werden nur geänderte/berechnete Abschnitte.
 
+## 2a. Admin-Oberfläche – bestehende Bedienlogik als Referenz
+- Die bestehende TB-Helfer-Administration 0.7 ist **Bedien-Referenz** für Server 1.0. Server 1.0 darf technisch anders aufgebaut sein, soll bewährte Admin-Abläufe aber nicht ohne fachlichen Grund neu erfinden.
+- Die Hauptnavigation bleibt fachlich getrennt in mindestens: **Übersicht, Strecken, Bahnhöfe, Benutzer, Firmen, Geräte, Dateien, Baustellen, App-Versionen, Papierkorb, Systemstatus**. Eine vorübergehende kombinierte Entwicklungsseite wie `Nutzer/Geräte` ersetzt diese Zielstruktur nicht.
+- **Übersicht** zeigt mindestens die zentralen Zähler für Strecken, Bahnhöfe, Gleise/Weichen, Baustellen, Originaldateien, Benutzer, Geräte, App-Versionen und Papierkorb sowie Firmen-/Benutzerzusammenfassung, Baustellenzusammenfassung, Serverversion, Speicherbelegung und Serverzeit.
+- **Benutzer** und **Geräte** bleiben getrennte Admin-Bereiche.
+- Die Geräteübersicht zeigt mindestens: Benutzer, Firma, Geräte-ID, Status, letzter Kontakt und Aktionen.
+- Ein aktives Gerät wird im Gerätebereich über **Freigeben** gelöst; die Benutzer-Aktivierungskarte erzeugt dagegen nur einen neuen noch unbenutzten Aktivierungs-Key und widerruft den vorherigen offenen Key. Ein bereits gebundenes Gerät bleibt aktiv, bis es ausdrücklich im Gerätebereich freigegeben wird.
+- Der Benutzerbereich bietet pro Benutzer die Aktion **Aktivierungskarte**. Die Aktivierungskarte zeigt Name, Firma, Zugriff, Klartext-Aktivierungs-Key und QR-Code sowie die Hinweise zur ersten Gerätebindung und zum sicheren Geräte-Token.
+- Die Aktivierungskarte hat die Aktionen **Drucken / als PDF speichern** und **Zurück zu Benutzer**. Eine direkt herunterladbare PDF darf ergänzend angeboten werden.
+- Der Büro-/Fernablauf ist verbindlich: **Benutzer anlegen -> Aktivierungskarte erzeugen -> QR/PDF an Nutzer übermitteln -> Nutzer scannt QR in der TB-Helfer-App -> erstes Gerät wird gebunden**.
+- Wird die Aktivierungskarte später erneut erzeugt, wird ein neuer offener Key erstellt und der vorherige noch unbenutzte Key ungültig. Bereits gebundene Geräte bleiben davon unberührt.
+- Die Server-1.0-Aktivierung darf im QR zusätzlich notwendige technische Verbindungsdaten wie die kanonische öffentliche HTTPS-Serveradresse mitführen; diese Technik bleibt für den Nutzer unsichtbar und ändert den beschriebenen Bedienablauf nicht.
 ## 3. Firmen, Benutzer und Profil-Autofill
 - Baustellen-Zusammenarbeit ist strikt auf die eigene Firma begrenzt.
 - Nutzer verschiedener Firmen dürfen nicht derselben Baustellen-Teamstruktur zugeordnet werden.
