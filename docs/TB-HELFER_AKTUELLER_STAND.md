@@ -679,47 +679,7 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Klartext-HTTP wird nur im Debug-Build und nur bei expliziter `http://`-Debugadresse über einen Manifest-Placeholder erlaubt; Release setzt `usesCleartextTraffic=false`.
 - `local.properties` ist bereits gitignoriert und bleibt lokale Maschinenkonfiguration.
 - Neuer Source-Check `83_verify_android_staging_server_config_source.py` prüft diese Trennung; TB-Server- und Android-CI referenzieren ihn.
-- Für den aktuellen Heimnetz-E2E soll lokal `tb.server.base.url=http://192.168.178.3:8081` gesetzt werden. Danach müssen Pixel/Poco mit einem **Debug-Build** installiert werden, bevor die Server-1.0-Geräteaktivierung sinnvoll getestet wird.
-
-### Synology-Staging-Updatepfad vereinfacht 2026-09-19
-
-- Der praktische Synology-Test zeigte, dass Container Manager beim image-basierten Projekt `tb-helfer-server-v1:local` wiederholt ein altes lokales Image weiterverwendete. Dadurch war für reine Python-/Template-Änderungen mehrfach ein unnötiger Ablauf aus Container löschen -> Image löschen -> Rebuild erforderlich.
-- Dafür gibt es jetzt **`server/docker-compose.synology-staging.v1.yml`** als expliziten Staging-/E2E-Modus.
-- Dieser Modus bindet `tbserver/`, `templates/` und `v1_migrations/` read-only direkt aus dem NAS-Projektordner in die App-Container ein. Persistente Daten bleiben weiterhin in `database-v1/`, `storage-v1/` und `backups-v1/`.
-- Normale Code-/Portaländerungen benötigen damit künftig nur das Aktualisieren der Dateien und einen Neustart des betroffenen Containers; Container-/Image-Löschen entfällt.
-- Ein echter Image-Rebuild bleibt nur für Änderungen an `Dockerfile.v1`, `requirements.txt` oder sonstigen Image-Abhängigkeiten erforderlich.
-- Der normale `docker-compose.v1.yml` bleibt bewusst image-basiert und ohne Source-Mounts für den später reproduzierbaren Cutover/Produktivbetrieb.
-- Neuer Source-Check `82_verify_tb_server_1_synology_staging_source.py` stellt die Trennung Staging-Source-Mounts vs. Produktions-Compose sicher.
-
-### Synology-Staging erfolgreich gestartet 2026-09-19
-
-- Der neue Server-1.0-Stack läuft auf der Synology **parallel** zum bisherigen `tb-helfer`-Stack im getrennten Projekt `tb-helfer-v1`.
-- Getrennte persistente Verzeichnisse `database-v1`, `storage-v1` und `backups-v1` wurden verwendet; der alte Server-/DB-/Cloudflare-Stack blieb unangetastet.
-- PostgreSQL/PostGIS 17 ist gesund; Migrationen **001 bis 009** wurden auf der frischen Staging-Datenbank erfolgreich angewendet.
-- `migrate` endete erfolgreich mit Exit Code 0; `api` und `worker` laufen.
-- Der API-Healthcheck `GET /health/ready` liefert wiederholt HTTP **200 OK**.
-- Beim ersten frischen PostgreSQL-Init trat einmal ein kurzes Verbindungsfenster auf: der Compose-Healthcheck sah den temporären Init-Postgres bereits als gesund, bevor dessen kontrollierter Neustart zum finalen Server abgeschlossen war. Der erste Migrationsversuch erhielt dadurch `connection refused`; ein erneuter Start lief vollständig durch.
-- Der Migrationsrunner besitzt deshalb jetzt einen begrenzten Retry ausschließlich für transportseitige `psycopg.OperationalError` ohne SQLSTATE. Zusätzlich verwendet der Einmal-Service `migrate` `restart: on-failure:5`; ein transienter Projektstartfehler wird damit automatisch erneut versucht. Nach Exit Code 0 bleibt `migrate` absichtlich gestoppt. Bei normalem Strom-/NAS-Neustart starten DB/API/Worker per `unless-stopped` selbstständig; die Migrationen sind bereits persistent angewendet.
-- LAN-Zugriff auf Staging-Port 8081 wurde praktisch bestätigt; `GET /health/ready` liefert vom Laptop `status=ok`, `database=up`, `migrations=ok`, Serverversion `1.0.0-dev`.
-- Der initiale Staging-Admin wurde erfolgreich gebootstrapped.
-- Beim ersten Browseraufruf von `/portal/v1/login` trat HTTP 500 auf. Ursache war kein Datenbank-/Authfehler, sondern fehlendes Packaging: `server/templates/` lag im Buildkontext, wurde in `Dockerfile.v1` aber nicht nach `/app/templates` kopiert. Das Dockerfile kopiert die Templates jetzt ausdrücklich; Source-/Deployment-Checks sichern diesen Vertragsbestand ab.
-- Der aktualisierte Synology-Build wurde neu erstellt; `/app/templates` ist im Image vorhanden und der Portal-Login funktioniert praktisch. Die Admin-Systemstatusseite `/admin/v1/system` wurde erfolgreich geöffnet. Sichtbarer Stand: Server `1.0.0-dev`, Environment `staging`, Migrationen `9/9`, keine Pending-Migrationen, DB erreichbar, 1 aktiver Admin-Nutzer, noch 0 Firmen / 0 Geräte / 0 Baustellen / 0 BTB / 0 Mängel / 0 Abnahmen.
-- Die erste Staging-Testfirma wurde erfolgreich über das Server-1.0-Portal angelegt; der Firmen-Create-Pfad und die Firmenliste funktionieren praktisch.
-- Für den nächsten E2E-Schritt wurde die bisher fehlende Admin-Weboberfläche **Nutzer/Geräte** ergänzt. Sie nutzt ausschließlich die vorhandenen kanonischen Admin-APIs für Nutzeranlage, einmalige Portal-Aktivierung, Geräte-Aktivierung und Gerätefreigabe; keine parallele Fachlogik wurde eingeführt.
-- Die Nutzer-/Geräte-Weboberfläche läuft praktisch; zwei Firmen-Testnutzer wurden angelegt und sind noch ohne Portal-/Geräteaktivierung.
-- Vor der Geräteaktivierung muss der neue Android-Debug-Build mit lokalem Serverendpunkt `http://192.168.178.3:8081` auf Pixel/Poco installiert werden; sonst würde die App weiter den produktiven `api.tb-helfer.de`-Endpunkt verwenden.
-- Danach offen: Cloudflare-Stagingroute `api-v1.tb-helfer.de -> http://192.168.178.3:8081` praktisch anlegen und extern testen; anschließend Android-Debug auf den HTTPS-Staginghostname setzen, je einen Geräte-Aktivierungs-QR/PDF erzeugen und mit Pixel/Poco scannen; danach gemeinsamer Baustellen-/Team-/Fach-E2E, Backup/Retention/Restore-Test/Restore-to-Target und Vermessungs-E2E.
-
-### CI-/Migrations-Gate-Korrektur 2026-09-19
-
-- In `.github/workflows/tb-server-v1.yml` war der Runtime-Migrationscheck noch auf `latest_known == 8` / `latest_applied == 8` fest verdrahtet, obwohl Migration `009_defect_rejected_status.sql` bereits zum Head gehört. Das hätte bei wieder funktionierenden GitHub-Runnern einen künstlichen CI-Fehler erzeugt.
-- Der Workflow prüft jetzt Migration **009**, validiert den tatsächlich wirksamen `defects_status_check` auf `REJECTED` und erwartet zusätzlich die bereits aktiven Capabilities `worksite_provisioning_v1`, `worksite_delete_v1`, `worksite_media_v1`, `file_cursor_pagination_v1` und `acceptance_delete_v1`.
-- Diese Änderung betrifft ausschließlich den Test-/CI-Pfad; Server-/Android-Fachlogik wurde dabei nicht geändert.
-- Praktisch ausgeführt werden konnte der Workflow weiterhin nicht, weil GitHub Actions auf dem Repository aktuell keine Runner-Schritte startet.
-
-### Bekanntes GitHub-Actions-Problem
-
-Für den aktuellen Aktivierungs-PDF-/Cloudflare-Staging-Stand am Head `2a1eb2733a3385d87ff2aec249ed8b39ec6d1fcd` endeten TB-Server **#374 / ID 35442864123** und Android CI **#1061 / ID 35442864122** erneut ohne ausgeführte Schritte. Beide Jobs liefern `steps = null`, `logs_url = null`; damit wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
+- Für den aktuellen Aktivierungs-/Serveridentitäts-Stand am Head `15c84435a4aad3d5eca7b8205f0c327f11febd78` endeten TB-Server **#404 / ID 35444118778** und Android CI **#1081 / ID 35444118780** erneut ohne ausgeführte Schritte. Beide Jobs liefern `steps = null`, `logs_url = null`; damit wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
 ### BTB-Granularitätskorrektur
 
