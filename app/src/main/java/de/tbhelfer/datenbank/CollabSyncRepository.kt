@@ -156,6 +156,12 @@ class CollabSyncRepository(
     suspend fun entities(worksiteServerId: String, entityType: String): List<SyncCollabEntity> =
         dao.collabEntities(worksiteServerId, entityType.uppercase())
 
+    suspend fun deletedEntities(
+        worksiteServerId: String,
+        entityType: String
+    ): List<SyncCollabEntity> =
+        dao.deletedCollabEntities(worksiteServerId, entityType.uppercase())
+
     /**
      * Stores a complete read-only Server-1.0 snapshot for one Fach entity type.
      * Missing previously cached rows are tombstoned locally so deleted/hidden

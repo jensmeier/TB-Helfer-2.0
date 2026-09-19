@@ -635,12 +635,13 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 77 prüft Portal-Mangel-/Abnahmefotos über den bestehenden `worksite_media_v1`-Katalog und den resumierbaren `files_v1`/`chunk_upload_v1`-Vertrag einschließlich Android-kompatibler semantischer Dateinamen.
 - Source-Check 78 prüft die verlustfreie Mangelstatus-Abbildung `ABGELEHNT ↔ REJECTED` inklusive Baseline, Migration 009, Server-API, Medienkatalog, Android-Sync und Portal.
 - Source-Check 79 prüft die explizite Offline-Abnahme-Löschabsicht, `acceptance_delete_v1`, versionierten kanonischen DELETE, Finalize-Zusatzrecht, Server-Tombstone und die Bestätigung des lokalen Intents erst nach Servererfolg.
+- Source-Check 80 prüft den Gegenweg: fremde `ACCEPTANCE`-Tombstones entfernen die lokale Abnahme ohne Echo-DELETE; vorhandene lokale Pending-Änderungen werden dabei nicht still verworfen.
 
-**Noch nicht ausgeführt:** Source-Checks 34–79 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–80 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
-Für den Portal-Fachformular-Commit `e42ac6e3437c708de959611e7d58abd062724340` endeten TB-Server **#290 / ID 35428349576** und Android CI **#1007 / ID 35428349567** erneut mit leeren `steps`-Listen und `runner_id = 0`. Es wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
+Für den Abnahme-Lösch-Commit `06e435f7df6dfdb64e8747417d1115e5a7003f8f` endeten TB-Server **#296 / ID 35428736201** und Android CI **#1010 / ID 35428736220** erneut mit leeren `steps`-Listen und `runner_id = 0`. Es wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
 ### BTB-Granularitätskorrektur
 
@@ -761,6 +762,7 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Normale Abnahmen erfordern `acceptance.edit`; für bereits endgültig abgeschlossene Abnahmen ist zusätzlich `acceptance.finalize` nötig, passend zum stärkeren Eingriff.
 - Die Serverlöschung ist ein Soft-Delete mit `DELETED`, Versionssprung, Change-Feed, Audit und `ACCEPTANCE`-Tombstone. Zugeordnete Dateien/Fotos werden nicht physisch vernichtet.
 - Erst nach bestätigtem Server-DELETE werden Outbox und lokaler Lösch-Intent entfernt.
+- Fremde Server-Tombstones werden ebenfalls lokal angewendet: löscht Pixel eine Abnahme, entfernt Poco sie beim nächsten vollständigen Sync. Der lokale Server-Tombstone-Pfad erzeugt ausdrücklich keinen neuen Lösch-Intent.
 
 ## Bekannte/offene Punkte
 

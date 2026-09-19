@@ -304,6 +304,24 @@ object AbnahmeSpeicher {
     fun loeschen(context: Context, abnahme: Abnahme, dateienLoeschen: Boolean = false) {
         // Der ausdrückliche Benutzerwunsch muss einen Offline-Neustart überleben.
         AbnahmeDeleteIntentStore.merken(context, abnahme.baustelleId, abnahme.id)
+        loescheLokal(context, abnahme, dateienLoeschen)
+    }
+
+    /**
+     * Wendet einen bereits serverseitig bestätigten Tombstone lokal an.
+     * Wichtig: daraus darf niemals erneut ein ausgehender Löschwunsch entstehen.
+     */
+    @Synchronized
+    fun loeschenVomServer(context: Context, abnahme: Abnahme) {
+        AbnahmeDeleteIntentStore.bestaetigen(context, abnahme.id)
+        loescheLokal(context, abnahme, dateienLoeschen = false)
+    }
+
+    private fun loescheLokal(
+        context: Context,
+        abnahme: Abnahme,
+        dateienLoeschen: Boolean
+    ) {
         prefs(context).edit().remove(abnahme.id).commit()
         if (dateienLoeschen) {
             runCatching { abnahmeOrdner(context, abnahme).deleteRecursively() }

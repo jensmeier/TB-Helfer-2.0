@@ -420,6 +420,27 @@ class CollabLocalBridge(
                 val finalSaved = AbnahmeSpeicher.laden(appContext, saved.id) ?: saved
                 rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(finalSaved.ergebnis.name, acceptancePayload(finalSaved, localName)))
             }
+
+            val deletedAcceptanceItems = collabRepository.deletedEntities(
+                server.worksiteServerId,
+                SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE
+            )
+            for (entity in deletedAcceptanceItems) {
+                val key = entity.clientEntityKey ?: continue
+                // Lokale noch nicht bestätigte Änderungen niemals still durch einen fremden
+                // Tombstone verwerfen. Der bestehende Konflikt-/Outboxpfad bleibt maßgeblich.
+                if (
+                    dao.collabPendingAnyForClientKey(
+                        server.worksiteServerId,
+                        SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
+                        key
+                    ) != null
+                ) continue
+
+                val localAcceptance = AbnahmeSpeicher.laden(appContext, key) ?: continue
+                AbnahmeSpeicher.loeschenVomServer(appContext, localAcceptance)
+                acceptanceWritten++
+            }
         }
         return ImportSummary(bound.size, btbWritten, defectStatuses, acceptanceWritten, attachmentsImported)
     }
