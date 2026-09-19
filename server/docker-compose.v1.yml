@@ -25,7 +25,7 @@ services:
       context: .
       dockerfile: Dockerfile.v1
     image: tb-helfer-server-v1:local
-    restart: "no"
+    restart: "on-failure:5"
     environment:
       DB_HOST: db
       DB_PORT: "5432"
