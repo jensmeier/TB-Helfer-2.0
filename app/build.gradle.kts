@@ -3,11 +3,36 @@ import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.ksp)
 }
+
+val localTbProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.isFile) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+val debugServerBaseUrl = providers.gradleProperty("tbServerBaseUrl")
+    .orElse(providers.environmentVariable("TB_SERVER_BASE_URL"))
+    .orElse(localTbProperties.getProperty("tb.server.base.url") ?: "https://api.tb-helfer.de")
+    .get()
+    .trim()
+    .trimEnd('/')
+
+require(
+    debugServerBaseUrl.startsWith("http://") || debugServerBaseUrl.startsWith("https://")
+) {
+    "tb.server.base.url muss mit http:// oder https:// beginnen."
+}
+
+val escapedDebugServerBaseUrl = debugServerBaseUrl
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
 
 abstract class GenerateBtb200043Sources : DefaultTask() {
     @get:InputDirectory
@@ -545,14 +570,21 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            buildConfigField("String", "SERVER_BASE_URL", "\"$escapedDebugServerBaseUrl\"")
+            manifestPlaceholders["usesCleartextTraffic"] =
+                debugServerBaseUrl.startsWith("http://").toString()
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            buildConfigField("String", "SERVER_BASE_URL", "\"https://api.tb-helfer.de\"")
+            manifestPlaceholders["usesCleartextTraffic"] = "false"
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 
-    buildFeatures { buildConfig = false }
+    buildFeatures { buildConfig = true }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
