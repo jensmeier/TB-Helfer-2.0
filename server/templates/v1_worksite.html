@@ -96,7 +96,7 @@
       <div class="grid">
         <div><label for="defectCompany">Firma</label><input id="defectCompany" maxlength="240"></div>
         <div><label for="defectStatus">Status</label>
-          <select id="defectStatus"><option value="OPEN">Offen</option><option value="IN_PROGRESS">In Arbeit</option></select>
+          <select id="defectStatus"><option value="OPEN">Offen</option><option value="IN_PROGRESS">In Arbeit</option><option value="REJECTED">Abgelehnt</option></select>
         </div>
       </div>
       <label for="defectNode">Strukturelement (optional)</label><select id="defectNode"><option value="">ohne Zuordnung</option></select>
@@ -616,7 +616,7 @@ async function editDefect(id,version){
     document.getElementById('defectCompany').value=p.firma||'';
     document.getElementById('defectComment').value=p.kommentar||'';
     document.getElementById('defectNode').value=d.worksite_node_id||'';
-    document.getElementById('defectStatus').value=d.status==='IN_PROGRESS'?'IN_PROGRESS':'OPEN';
+    document.getElementById('defectStatus').value=['OPEN','IN_PROGRESS','REJECTED'].includes(d.status)?d.status:'OPEN';
     document.getElementById('defectPayload').value=JSON.stringify(p,null,2);
     document.getElementById('defectFormTitle').textContent='Mangel bearbeiten';
     document.getElementById('defectSubmit').textContent='Mangel speichern';

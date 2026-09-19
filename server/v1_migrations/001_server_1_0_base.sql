@@ -327,7 +327,7 @@ CREATE TABLE tb.defects (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     worksite_id uuid NOT NULL REFERENCES tb.worksites(id) ON DELETE CASCADE,
     worksite_node_id uuid REFERENCES tb.worksite_nodes(id) ON DELETE SET NULL,
-    status text NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','IN_PROGRESS','CLOSED','DELETED')),
+    status text NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','IN_PROGRESS','REJECTED','CLOSED','DELETED')),
     title text,
     payload jsonb NOT NULL DEFAULT '{}'::jsonb,
     version integer NOT NULL DEFAULT 1 CHECK (version >= 1),

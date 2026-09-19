@@ -633,8 +633,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 75 stellt sicher, dass Portal und Android dieselben kanonischen Baustellenknotentypen und Payload-Felder verwenden; Parent-Zuordnung sowie Bearbeiten/Löschen sind im Portal versionsgesichert.
 - Source-Check 76 prüft, dass Portal-Mängel und -Abnahmen dieselben fachlichen Payload-Schlüssel wie Android bearbeiten und Änderungen mit `base_version` schützen; JSON bleibt nur als additiver Expertenbereich erhalten.
 - Source-Check 77 prüft Portal-Mangel-/Abnahmefotos über den bestehenden `worksite_media_v1`-Katalog und den resumierbaren `files_v1`/`chunk_upload_v1`-Vertrag einschließlich Android-kompatibler semantischer Dateinamen.
+- Source-Check 78 prüft die verlustfreie Mangelstatus-Abbildung `ABGELEHNT ↔ REJECTED` inklusive Baseline, Migration 009, Server-API, Medienkatalog, Android-Sync und Portal.
 
-**Noch nicht ausgeführt:** Source-Checks 34–77 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–78 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -740,6 +741,15 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Portal-Mangelfotos tragen `DEFECT__MANGEL__...`, Abnahmefotos `ACCEPTANCE_FOTO__SONSTIGES__...`; Androids vorhandene Importlogik erkennt diese Präfixe bereits.
 - Sichtbarkeit und Uploadberechtigung bleiben vollständig beim bestehenden Server-Rechte-/Area-Scope-Vertrag.
 - Abnahmen ohne Strukturelement speichern keinen künstlichen `—`-Knotennamen mehr; Portal-Bearbeitung zwingt den Abnahmestatus außerdem nicht mehr unnötig auf `IN_PROGRESS`.
+
+### Mangelstatus ABGELEHNT / REJECTED
+
+- Androids bestehender Status `ABGELEHNT` besitzt jetzt das kanonische Server-1.0-Gegenstück `REJECTED`.
+- Fresh-Install-Baseline und Migration `009_defect_rejected_status.sql` erlauben `REJECTED` in `tb.defects.status`.
+- Der Status bleibt – wie in Android – normal bearbeitbar und ist **nicht** mit dem endgültigen `ERLEDIGT/CLOSED` gleichgesetzt.
+- Android schreibt `ABGELEHNT -> REJECTED` und liest `REJECTED -> ABGELEHNT` zurück.
+- Medienkatalog und Portal zeigen denselben Status; das Portal kann einen offenen Mangel direkt auf „Abgelehnt“ setzen.
+- Damit entfällt der bisherige explizite Server-1.0-Syncfehler für abgelehnte Mängel.
 
 ## Bekannte/offene Punkte
 

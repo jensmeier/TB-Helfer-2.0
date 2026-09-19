@@ -299,6 +299,7 @@ def _legacy_defect_status(status: str | None) -> str | None:
     return {
         "OPEN": "OFFEN",
         "IN_PROGRESS": "IN_ARBEIT",
+        "REJECTED": "ABGELEHNT",
         "CLOSED": "ERLEDIGT",
     }.get(normalized, normalized or None)
 

@@ -30,7 +30,7 @@ class DefectUpdate(BaseModel):
     worksite_node_id: UUID | None = None
     title: str | None = Field(default=None, max_length=500)
     payload: dict | None = None
-    status: str | None = Field(default=None, pattern="^(OPEN|IN_PROGRESS)$")
+    status: str | None = Field(default=None, pattern="^(OPEN|IN_PROGRESS|REJECTED)$")
     area_scope: dict | None = None
 
 
@@ -83,7 +83,7 @@ def list_defects(worksite_id: UUID, user: dict[str, Any] = Depends(current_porta
                    created_by, closed_by, created_at, updated_at, closed_at
             FROM tb.defects
             WHERE worksite_id = %s AND status <> 'DELETED' AND deleted_at IS NULL
-            ORDER BY CASE status WHEN 'OPEN' THEN 0 WHEN 'IN_PROGRESS' THEN 1 ELSE 2 END,
+            ORDER BY CASE status WHEN 'OPEN' THEN 0 WHEN 'IN_PROGRESS' THEN 1 WHEN 'REJECTED' THEN 2 ELSE 3 END,
                      updated_at DESC, created_at DESC
             """,
             (worksite_id,),

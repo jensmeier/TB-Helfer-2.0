@@ -113,6 +113,7 @@ jobs:
           python server/checks/75_verify_portal_worksite_tree_model_source.py
           python server/checks/76_verify_portal_fach_forms_source.py
           python server/checks/77_verify_portal_fach_media_source.py
+          python server/checks/78_verify_defect_rejected_status_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server

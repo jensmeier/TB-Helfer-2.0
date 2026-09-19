@@ -17,7 +17,8 @@ for token in (
     "/close",
     "/acceptances",
     "/finalize",
-    'desired == "ABGELEHNT"',
+    '"ABGELEHNT"',
+    '"REJECTED"',
     "derivedChangeId",
     "DEVICE_REVOKED",
 ):

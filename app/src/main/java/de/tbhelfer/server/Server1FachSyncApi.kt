@@ -69,12 +69,7 @@ class Server1FachSyncApi(
 
     private fun mutateDefect(token: String, change: SyncCollabPendingChangeEntity): MutationResult {
         val desired = change.status?.uppercase().orEmpty().ifBlank { "OFFEN" }
-        if (desired == "ABGELEHNT") {
-            return MutationResult.Error(
-                "Der lokale Mangelstatus ABGELEHNT besitzt noch kein kanonisches Server-1.0-Gegenstück."
-            )
-        }
-        if (desired !in setOf("OFFEN", "IN_ARBEIT", "ERLEDIGT")) {
+        if (desired !in setOf("OFFEN", "IN_ARBEIT", "ABGELEHNT", "ERLEDIGT")) {
             return MutationResult.Error("Unbekannter Mangelstatus: $desired")
         }
 
@@ -99,14 +94,14 @@ class Server1FachSyncApi(
             if (created !is MutationResult.Applied) return created
             return when (desired) {
                 "OFFEN" -> created
-                "IN_ARBEIT" -> updateDefect(
+                "IN_ARBEIT", "ABGELEHNT" -> updateDefect(
                     token,
                     created.snapshot.serverId,
                     created.snapshot.entityVersion,
                     fachPayload,
                     areaScope,
                     title,
-                    "IN_PROGRESS",
+                    if (desired == "ABGELEHNT") "REJECTED" else "IN_PROGRESS",
                     derivedChangeId(change.clientChangeId, "status")
                 )
                 else -> closeDefect(
@@ -148,7 +143,11 @@ class Server1FachSyncApi(
             fachPayload,
             areaScope,
             title,
-            if (desired == "IN_ARBEIT") "IN_PROGRESS" else "OPEN",
+            when (desired) {
+                "IN_ARBEIT" -> "IN_PROGRESS"
+                "ABGELEHNT" -> "REJECTED"
+                else -> "OPEN"
+            },
             change.clientChangeId
         )
     }
@@ -424,6 +423,7 @@ class Server1FachSyncApi(
             EntityKind.DEFECT -> when (item.optString("status").uppercase()) {
                 "OPEN" -> "OFFEN"
                 "IN_PROGRESS" -> "IN_ARBEIT"
+                "REJECTED" -> "ABGELEHNT"
                 "CLOSED" -> "ERLEDIGT"
                 else -> item.optString("status").trim().takeIf { it.isNotBlank() }
             }
