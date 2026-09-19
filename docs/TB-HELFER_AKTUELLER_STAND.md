@@ -640,6 +640,17 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 **Noch nicht ausgeführt:** Source-Checks 34–81 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
+### Android-Debug gegen Synology-Staging 2026-09-19
+
+- Der praktische Geräte-E2E wäre sonst gegen den falschen Server gelaufen: `ServerConfig.BASE_URL` war weiterhin fest auf `https://api.tb-helfer.de` gesetzt.
+- Android liest den Serverendpunkt jetzt über `BuildConfig.SERVER_BASE_URL`.
+- Für **Debug** kann der Endpunkt lokal aus `local.properties` (`tb.server.base.url`), alternativ Gradle-Property `tbServerBaseUrl` oder `TB_SERVER_BASE_URL`, gesetzt werden.
+- Der **Release-Build** bleibt unabhängig von lokalen Debugwerten fest auf `https://api.tb-helfer.de`.
+- Klartext-HTTP wird nur im Debug-Build und nur bei expliziter `http://`-Debugadresse über einen Manifest-Placeholder erlaubt; Release setzt `usesCleartextTraffic=false`.
+- `local.properties` ist bereits gitignoriert und bleibt lokale Maschinenkonfiguration.
+- Neuer Source-Check `83_verify_android_staging_server_config_source.py` prüft diese Trennung; TB-Server- und Android-CI referenzieren ihn.
+- Für den aktuellen Heimnetz-E2E soll lokal `tb.server.base.url=http://192.168.178.3:8081` gesetzt werden. Danach müssen Pixel/Poco mit einem **Debug-Build** installiert werden, bevor die Server-1.0-Geräteaktivierung sinnvoll getestet wird.
+
 ### Synology-Staging-Updatepfad vereinfacht 2026-09-19
 
 - Der praktische Synology-Test zeigte, dass Container Manager beim image-basierten Projekt `tb-helfer-server-v1:local` wiederholt ein altes lokales Image weiterverwendete. Dadurch war für reine Python-/Template-Änderungen mehrfach ein unnötiger Ablauf aus Container löschen -> Image löschen -> Rebuild erforderlich.
@@ -665,7 +676,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Der aktualisierte Synology-Build wurde neu erstellt; `/app/templates` ist im Image vorhanden und der Portal-Login funktioniert praktisch. Die Admin-Systemstatusseite `/admin/v1/system` wurde erfolgreich geöffnet. Sichtbarer Stand: Server `1.0.0-dev`, Environment `staging`, Migrationen `9/9`, keine Pending-Migrationen, DB erreichbar, 1 aktiver Admin-Nutzer, noch 0 Firmen / 0 Geräte / 0 Baustellen / 0 BTB / 0 Mängel / 0 Abnahmen.
 - Die erste Staging-Testfirma wurde erfolgreich über das Server-1.0-Portal angelegt; der Firmen-Create-Pfad und die Firmenliste funktionieren praktisch.
 - Für den nächsten E2E-Schritt wurde die bisher fehlende Admin-Weboberfläche **Nutzer/Geräte** ergänzt. Sie nutzt ausschließlich die vorhandenen kanonischen Admin-APIs für Nutzeranlage, einmalige Portal-Aktivierung, Geräte-Aktivierung und Gerätefreigabe; keine parallele Fachlogik wurde eingeführt.
-- Noch offen in diesem Staginglauf: aktualisierten Portal-Build auf der Synology einspielen, zwei Testnutzer anlegen und je ein Gerät aktivieren; danach Pixel/Poco-E2E, Backup/Retention/Restore-Test/Restore-to-Target und Vermessungs-E2E.
+- Die Nutzer-/Geräte-Weboberfläche läuft praktisch; zwei Firmen-Testnutzer wurden angelegt und sind noch ohne Portal-/Geräteaktivierung.
+- Vor der Geräteaktivierung muss der neue Android-Debug-Build mit lokalem Serverendpunkt `http://192.168.178.3:8081` auf Pixel/Poco installiert werden; sonst würde die App weiter den produktiven `api.tb-helfer.de`-Endpunkt verwenden.
+- Danach offen: je einen Geräte-Aktivierungsschlüssel erzeugen und Pixel/Poco aktivieren; anschließend gemeinsamer Baustellen-/Team-/Fach-E2E, Backup/Retention/Restore-Test/Restore-to-Target und Vermessungs-E2E.
 
 ### CI-/Migrations-Gate-Korrektur 2026-09-19
 
@@ -822,8 +835,8 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Synology-Projekt auf den neuen Staging-Compose-Modus umstellen** (`docker-compose.synology-staging.v1.yml` als Projekt-`compose.yml`) und einmalig prüfen, dass API/Worker mit den read-only Source-Mounts starten.
-2. Zwei Testnutzer unter der bereits angelegten Testfirma anlegen und je einen Geräte-Aktivierungsschlüssel erzeugen; Pixel und Poco jeweils mit eigenem Nutzer aktivieren.
+1. **Android-Debug für den lokalen Stagingserver bauen/installieren:** auf dem Entwicklungs-Laptop in der gitignorierten `local.properties` `tb.server.base.url=http://192.168.178.3:8081` setzen, Debug-Build erzeugen und auf Pixel/Poco installieren.
+2. Danach im bereits funktionierenden Portal für die zwei vorhandenen Testnutzer je einen Geräte-Aktivierungsschlüssel erzeugen und Pixel/Poco jeweils mit eigenem Nutzer aktivieren.
 3. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
 4. Parallel Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
 5. Danach die Vermessungskette mit realen Daten end-to-end ausführen: Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung; zusätzliche Mehr-TRA-/Reverse-Geometry-Fälle mitprüfen.
