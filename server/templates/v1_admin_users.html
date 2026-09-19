@@ -1,0 +1,212 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Nutzer/Geräte{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Nutzer & Geräte</h1>
+  <p class="muted">Testnutzer anlegen, Portalzugang vorbereiten und Geräte aktivieren.</p>
+  <div id="msg"></div>
+</div>
+
+<div class="card">
+  <h2>Nutzer anlegen</h2>
+  {% if companies %}
+  <form id="createUser">
+    <div class="grid">
+      <div>
+        <label for="company">Firma</label>
+        <select id="company" required>
+          {% for c in companies %}
+          <option value="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="displayName">Anzeigename</label>
+        <input id="displayName" required maxlength="200">
+      </div>
+      <div>
+        <label for="firstName">Vorname</label>
+        <input id="firstName" maxlength="120">
+      </div>
+      <div>
+        <label for="lastName">Nachname</label>
+        <input id="lastName" maxlength="120">
+      </div>
+      <div>
+        <label for="loginName">Loginname</label>
+        <input id="loginName" required minlength="3" maxlength="120" autocomplete="off">
+      </div>
+      <div>
+        <label for="role">Firmenrolle</label>
+        <select id="role">
+          <option value="USER">USER</option>
+          <option value="CHEF">CHEF</option>
+        </select>
+      </div>
+      <div>
+        <label for="email">Persönliche E-Mail</label>
+        <input id="email" type="email" maxlength="320">
+      </div>
+      <div>
+        <label for="phone">Persönliches Telefon</label>
+        <input id="phone" maxlength="100">
+      </div>
+    </div>
+    <div class="actions" style="margin-top:14px">
+      <button type="submit">Nutzer anlegen</button>
+    </div>
+  </form>
+  {% else %}
+  <div class="notice info">Zuerst muss eine aktive Firma angelegt werden.</div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Vorhandene Nutzer</h2>
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Nutzer</th>
+          <th>Firma</th>
+          <th>Rolle</th>
+          <th>Portal</th>
+          <th>Gerät</th>
+          <th>Aktionen</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for u in users %}
+        <tr>
+          <td>
+            <b>{{ u.display_name }}</b>
+            <div class="muted">Login: <code>{{ u.login_name }}</code></div>
+            <div class="muted"><code>{{ u.id }}</code></div>
+          </td>
+          <td>{{ u.company_name or '—' }}</td>
+          <td><span class="pill">{{ u.company_role }}</span></td>
+          <td>
+            {% if u.activated_at %}
+              aktiviert
+              {% if u.last_login_at %}<div class="muted">letzter Login: {{ u.last_login_at }}</div>{% endif %}
+            {% else %}
+              noch nicht aktiviert
+            {% endif %}
+          </td>
+          <td>
+            {% if u.device_id %}
+              <b>{{ u.device_name or u.platform }}</b>
+              <div class="muted">{{ u.device_status }}</div>
+              {% if u.last_seen_at %}<div class="muted">zuletzt: {{ u.last_seen_at }}</div>{% endif %}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            <div class="actions">
+              <button type="button" class="secondary portal-activation" data-user-id="{{ u.id }}">Portal aktivieren</button>
+              {% if not u.device_id %}
+              <button type="button" class="device-activation" data-user-id="{{ u.id }}">Gerät aktivieren</button>
+              {% else %}
+              <button type="button" class="danger release-device" data-device-id="{{ u.device_id }}">Gerät freigeben</button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="muted">Noch keine Firmen-Nutzer vorhanden.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const msg=document.getElementById('msg');
+function show(kind,text){
+  msg.className='notice '+kind;
+  msg.textContent=text;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function optionalValue(id){
+  const value=document.getElementById(id).value.trim();
+  return value||null;
+}
+
+const createUser=document.getElementById('createUser');
+if(createUser){
+  createUser.addEventListener('submit',async ev=>{
+    ev.preventDefault();
+    try{
+      await tbApi('/api/v1/admin/users',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          company_id:document.getElementById('company').value,
+          display_name:document.getElementById('displayName').value.trim(),
+          first_name:optionalValue('firstName'),
+          last_name:optionalValue('lastName'),
+          login_name:document.getElementById('loginName').value.trim(),
+          personal_email:optionalValue('email'),
+          personal_phone:optionalValue('phone'),
+          company_role:document.getElementById('role').value
+        })
+      });
+      show('ok','Nutzer wurde angelegt.');
+      setTimeout(()=>location.reload(),450);
+    }catch(error){
+      show('err',error.message||String(error));
+    }
+  });
+}
+
+document.querySelectorAll('.portal-activation').forEach(button=>{
+  button.addEventListener('click',async ()=>{
+    button.disabled=true;
+    try{
+      const {data}=await tbApi('/api/v1/admin/users/'+button.dataset.userId+'/portal-activation',{method:'POST'});
+      show('ok','Portal-Aktivierung für '+data.login_name+': '+data.activation_token+' · gültig bis '+data.expires_at);
+    }catch(error){
+      show('err',error.message||String(error));
+    }finally{
+      button.disabled=false;
+    }
+  });
+});
+
+document.querySelectorAll('.device-activation').forEach(button=>{
+  button.addEventListener('click',async ()=>{
+    button.disabled=true;
+    try{
+      const {data}=await tbApi('/api/v1/admin/users/'+button.dataset.userId+'/device-activation',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({expires_hours:24})
+      });
+      show('ok','Geräte-Aktivierung für '+data.user_name+': '+data.activation_key+' · '+data.activation_url+' · gültig bis '+data.expires_at);
+    }catch(error){
+      show('err',error.message||String(error));
+    }finally{
+      button.disabled=false;
+    }
+  });
+});
+
+document.querySelectorAll('.release-device').forEach(button=>{
+  button.addEventListener('click',async ()=>{
+    if(!confirm('Dieses Gerät wirklich freigeben? Das aktuelle Geräte-Token wird sofort ungültig.')) return;
+    button.disabled=true;
+    try{
+      await tbApi('/api/v1/admin/devices/'+button.dataset.deviceId+'/release',{method:'POST'});
+      show('ok','Gerät wurde freigegeben.');
+      setTimeout(()=>location.reload(),450);
+    }catch(error){
+      show('err',error.message||String(error));
+      button.disabled=false;
+    }
+  });
+});
+</script>
+{% endblock %}
