@@ -1,0 +1,101 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Aktivierungskarte{% endblock %}
+{% block head %}
+<style>
+.activation-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.activation-sheet{max-width:760px;margin:0 auto;background:#fff;border:2px solid #1d2939;border-radius:14px;padding:28px}
+.activation-sheet h1{font-size:30px;margin:4px 0 2px}
+.activation-kicker{color:#667085;font-size:16px}
+.activation-brand{float:right;font-weight:800}
+.activation-key{display:block;margin:18px 0;padding:16px;border-radius:10px;background:#f2f4f7;font:700 20px/1.35 "Courier New",monospace;letter-spacing:.7px;word-break:break-all}
+.activation-qr{display:block;width:260px;max-width:100%;height:auto;margin:22px auto;background:white}
+.activation-warning{margin-top:18px;padding:14px;border:1px solid #f6c344;border-radius:10px;background:#fffaeb;color:#5f4900}
+.activation-error{margin-top:16px;padding:12px;border-radius:9px;background:#fef3f2;color:#b42318}
+.activation-muted{color:#667085}
+@media print{
+  header,.activation-toolbar{display:none!important}
+  body{background:#fff}
+  main{max-width:none;padding:0}
+  .activation-sheet{border:2px solid #111;box-shadow:none;margin:0;max-width:none}
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="activation-toolbar">
+  <button type="button" onclick="window.print()">Drucken / als PDF speichern</button>
+  <a class="btn secondary" href="/admin/v1/users">Zurück zu Benutzer</a>
+  <a class="btn secondary" id="downloadPdf" download style="display:none">PDF herunterladen</a>
+</div>
+
+<div class="activation-sheet">
+  <div class="activation-brand">TB-Helfer</div>
+  <div class="activation-kicker">TB-Helfer Geräteaktivierung</div>
+  <h1>{{ target.display_name }}</h1>
+  <div><b>{{ target.company_name or '—' }}</b></div>
+  <div style="margin-top:5px">
+    <b>Zugriff:</b>
+    {% if target.access_valid_until %}
+      bis {{ target.access_valid_until }}
+    {% else %}
+      unbegrenzt
+    {% endif %}
+  </div>
+
+  <div style="margin-top:18px">Aktivierungs-Key:</div>
+  <code class="activation-key" id="activationKey">wird erzeugt …</code>
+
+  <img class="activation-qr" id="activationQr" alt="QR-Code zur TB-Helfer-Geräteaktivierung">
+
+  <p>
+    <b>Am Android-Gerät:</b> TB-Helfer öffnen und den QR-Code scannen.
+    Der Key wird nur für die erste Gerätebindung benötigt.
+    Danach verwendet die App ein sicher gespeichertes Geräte-Token.
+  </p>
+
+  <div class="activation-warning">
+    <b>Wichtig:</b> Diese Karte zeigt den Key im Klartext. Sicher aufbewahren.
+    Wird später erneut auf <b>Aktivierungskarte</b> geklickt, wird ein neuer Key erzeugt
+    und der vorherige unbenutzte Aktivierungs-Key ungültig.
+    {% if target.has_active_device %}
+      Ein bereits gebundenes Gerät bleibt dabei aktiv, bis es im Admin unter
+      <b>Geräte</b> freigegeben wird.
+    {% else %}
+      Ein später gebundenes Gerät bleibt aktiv, bis es im Admin unter
+      <b>Geräte</b> freigegeben wird.
+    {% endif %}
+  </div>
+
+  <div class="activation-muted" id="activationMeta" style="margin-top:12px"></div>
+  <div class="activation-error" id="activationError" style="display:none"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async()=>{
+  const keyEl=document.getElementById('activationKey');
+  const qrEl=document.getElementById('activationQr');
+  const metaEl=document.getElementById('activationMeta');
+  const errorEl=document.getElementById('activationError');
+  const download=document.getElementById('downloadPdf');
+  try{
+    const {data}=await tbApi('/api/v1/admin/users/{{ target.id }}/device-activation',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({expires_hours:24})
+    });
+    keyEl.textContent=data.activation_key;
+    qrEl.src=data.activation_qr_svg_data_url;
+    metaEl.textContent='Gültig bis '+data.expires_at+' · Server '+data.server_base_url;
+    download.href=data.activation_pdf_data_url;
+    download.download=data.activation_pdf_filename||'TB-Helfer_Aktivierung.pdf';
+    download.style.display='inline-block';
+  }catch(error){
+    keyEl.textContent='Aktivierung konnte nicht erzeugt werden';
+    qrEl.style.display='none';
+    errorEl.textContent=error.message||String(error);
+    errorEl.style.display='block';
+  }
+})();
+</script>
+{% endblock %}
