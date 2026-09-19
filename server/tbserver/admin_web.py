@@ -127,6 +127,45 @@ def admin_users_page(
     )
 
 
+@router.get("/admin/v1/users/{user_id}/activation-card")
+def admin_user_activation_card_page(
+    user_id: UUID,
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
+):
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT u.id, u.display_name, u.login_name, u.status, u.access_valid_until,
+                   c.name AS company_name,
+                   EXISTS (
+                     SELECT 1 FROM tb.devices d
+                     WHERE d.user_id = u.id
+                       AND d.status = 'ACTIVE'
+                       AND d.revoked_at IS NULL
+                   ) AS has_active_device
+            FROM tb.users u
+            LEFT JOIN tb.companies c ON c.id = u.company_id
+            WHERE u.id = %s
+              AND u.deleted_at IS NULL
+              AND u.company_role <> 'ADMIN'
+            """,
+            (user_id,),
+        )
+        target = cur.fetchone()
+    if not target:
+        from fastapi import HTTPException
+        raise HTTPException(404, "USER_NOT_FOUND")
+    return templates.TemplateResponse(
+        "v1_device_activation_card.html",
+        {
+            "request": request,
+            "user": user,
+            "target": dict(target),
+        },
+    )
+
+
 @router.get("/admin/v1/companies")
 def admin_companies_page(
     request: Request,
