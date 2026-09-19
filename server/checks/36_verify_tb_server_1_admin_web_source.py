@@ -21,6 +21,7 @@ def main() -> None:
     main_source = read("server/tbserver/main.py")
     capabilities = read("server/tbserver/capabilities.py")
     workflow = read(".github/workflows/tb-server-v1.yml")
+    dockerfile = read("server/Dockerfile.v1")
     base = read("server/templates/v1_base.html")
     login = read("server/templates/v1_portal_login.html")
     home = read("server/templates/v1_portal_home.html")
@@ -44,6 +45,7 @@ def main() -> None:
         ('"company_branding_admin_ui_v1": True', capabilities),
         ('36_verify_tb_server_1_admin_web_source.py', workflow),
         ('"company_branding_admin_ui_v1"', workflow),
+        ("COPY templates ./templates", dockerfile),
         ("tb_portal_csrf", base),
         ("X-CSRF-Token", base),
         ("/api/v1/portal/logout", base),
