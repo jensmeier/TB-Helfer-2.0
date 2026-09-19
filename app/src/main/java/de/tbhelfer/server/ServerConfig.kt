@@ -1,12 +1,13 @@
 package de.tbhelfer.server
 
+import de.tbhelfer.BuildConfig
+
 /**
- * Zentraler HTTPS-Endpunkt des TB-Helfer-Servers.
+ * Zentraler Server-Endpunkt.
  *
- * Der Zugriff läuft über Cloudflare Tunnel auf api.tb-helfer.de. Die API selbst
- * bleibt zusätzlich durch die TB-Helfer-Geräte-/Aktivierungs-Authentifizierung
- * geschützt.
+ * Debug kann lokal per local.properties / Gradle-Property auf Staging zeigen.
+ * Release bleibt im Buildskript fest auf https://api.tb-helfer.de gesetzt.
  */
 object ServerConfig {
-    const val BASE_URL = "https://api.tb-helfer.de"
+    val BASE_URL: String = BuildConfig.SERVER_BASE_URL.trimEnd('/')
 }
