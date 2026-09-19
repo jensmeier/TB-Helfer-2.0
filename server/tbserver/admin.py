@@ -231,7 +231,7 @@ def delete_user(
             raise HTTPException(404, "USER_NOT_FOUND")
         if target["company_role"] == "ADMIN":
             raise HTTPException(409, "ADMIN_USER_CANNOT_BE_DELETED")
-        if str(admin["id"]) == str(user_id):
+        if str(admin["user_id"]) == str(user_id):
             raise HTTPException(409, "CANNOT_DELETE_SELF")
 
         cur.execute(
