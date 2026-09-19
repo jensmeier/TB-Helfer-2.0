@@ -640,6 +640,17 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 **Noch nicht ausgeführt:** Source-Checks 34–81 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
+### Alte Admin-Bedienlogik als verbindliche Server-1.0-Referenz übernommen 2026-09-19
+
+- Referenzscreenshots des bestehenden Admin 0.7 bestätigen die bewährten Bereiche: Übersicht, Strecken, Bahnhöfe, Benutzer, Firmen, Geräte, Dateien, Baustellen, App-Versionen, Papierkorb und Systemstatus.
+- Die Projektregeln schreiben diese Admin-Bedienlogik jetzt ausdrücklich als Referenz fest. Server 1.0 darf technisch moderner sein, soll diese Fachabläufe aber nicht ohne Grund neu erfinden.
+- Benutzer und Geräte werden in Server 1.0 wieder als getrennte Admin-Bereiche geführt. Die vorübergehende kombinierte Seite `Nutzer/Geräte` ist nur Entwicklungszwischenstand und nicht Ziel-UX.
+- Die Benutzerseite verwendet wieder die Aktion **Aktivierungskarte**. Dafür gibt es jetzt eine dedizierte Seite `/admin/v1/users/{user_id}/activation-card`, optisch und fachlich am bestehenden Ablauf orientiert.
+- Die Aktivierungskarte zeigt Benutzer, Firma, Zugriff, Klartext-Key, QR, Hinweise zur ersten Gerätebindung und bietet **Drucken / als PDF speichern**, direkten PDF-Download und **PDF teilen / versenden**.
+- Erneutes Öffnen/Erzeugen der Aktivierungskarte widerruft nur vorherige noch unbenutzte Aktivierungs-Keys. Ein bereits gebundenes Gerät bleibt aktiv, bis es im getrennten Gerätebereich ausdrücklich **Freigeben** wird.
+- Die Geräteverwaltung ist jetzt wieder eine eigene Seite `/admin/v1/devices` mit Benutzer, Firma, Geräte-ID, Status, letztem Kontakt und Freigabe-Aktion.
+- Aktivierungs-Keys verwenden wieder ein gut lesbares `TBH-...`-Format statt eines technisch zufälligen URL-safe Tokens. Serverseitig bleibt ausschließlich der Hash gespeichert.
+
 ### Aktivierungs-QR ist jetzt selbstbeschreibend 2026-09-19
 
 - Nach der Umstellung wurde vor dem Gerätebuild noch eine veraltete `teamApi`-Referenz in `AktivierungActivity` gefunden und behoben; der QR-Aktivierungsweg verwendet jetzt durchgängig neu erzeugte `TeamManagementApi`-Clients mit der nach erfolgreicher Aktivierung gespeicherten Serveridentität.
@@ -825,9 +836,9 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Synology-Staging für selbstbeschreibende Aktivierung aktualisieren:** `TB_V1_PUBLIC_BASE_URL=https://api-v1.tb-helfer.de` in der lokalen `.env` setzen, aktuelle `tbserver/`- und `templates/`-Dateien übernehmen und API mit der aktualisierten Compose-Umgebung neu starten/recreaten.
-2. Aktuellen Android-Debug-Build installieren; keine Benutzer-Serveradresse konfigurieren. Im Portal für die zwei vorhandenen Testnutzer je einen Geräte-Aktivierungs-QR/PDF erzeugen und Pixel/Poco direkt damit aktivieren.
-3. Auf Pixel/Poco bei ausgeschaltetem WLAN Geräteaktivierung und anschließenden Server-/Synczugriff über Mobilfunk praktisch bestätigen.
+1. **Synology-Staging aktualisieren:** `TB_V1_PUBLIC_BASE_URL=https://api-v1.tb-helfer.de` in der lokalen `.env` setzen, aktuelle `tbserver/`- und `templates/`-Dateien übernehmen und API mit der aktualisierten Compose-Umgebung neu starten/recreaten.
+2. Danach die neue Server-1.0-Benutzerseite und die dedizierte **Aktivierungskarte** praktisch öffnen; für die vorhandenen Pixel-/Poco-Testnutzer je eine Karte erzeugen und QR/PDF prüfen.
+3. Aktuellen Android-Debug-Build installieren und Pixel/Poco über die Aktivierungskarten binden; anschließend bei ausgeschaltetem WLAN Server-/Synczugriff über Mobilfunk praktisch bestätigen.
 3. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
 4. Parallel Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
 5. Danach die Vermessungskette mit realen Daten end-to-end ausführen: Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung; zusätzliche Mehr-TRA-/Reverse-Geometry-Fälle mitprüfen.
