@@ -25,6 +25,7 @@
   <button type="button" onclick="window.print()">Drucken / als PDF speichern</button>
   <a class="btn secondary" href="/admin/v1/users">Zurück zu Benutzer</a>
   <a class="btn secondary" id="downloadPdf" download style="display:none">PDF herunterladen</a>
+  <button type="button" class="secondary" id="sharePdf" style="display:none">PDF teilen / versenden</button>
 </div>
 
 <div class="activation-sheet">
@@ -78,6 +79,7 @@
   const metaEl=document.getElementById('activationMeta');
   const errorEl=document.getElementById('activationError');
   const download=document.getElementById('downloadPdf');
+  const share=document.getElementById('sharePdf');
   try{
     const {data}=await tbApi('/api/v1/admin/users/{{ target.id }}/device-activation',{
       method:'POST',
@@ -90,6 +92,29 @@
     download.href=data.activation_pdf_data_url;
     download.download=data.activation_pdf_filename||'TB-Helfer_Aktivierung.pdf';
     download.style.display='inline-block';
+    share.style.display='inline-block';
+    share.onclick=async()=>{
+      try{
+        const blob=await (await fetch(data.activation_pdf_data_url)).blob();
+        const file=new File(
+          [blob],
+          data.activation_pdf_filename||'TB-Helfer_Aktivierung.pdf',
+          {type:'application/pdf'}
+        );
+        if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+          await navigator.share({
+            title:'TB-Helfer Geräteaktivierung',
+            text:'TB-Helfer Aktivierungskarte – vertraulich.',
+            files:[file]
+          });
+        }else{
+          download.click();
+          alert('PDF wurde heruntergeladen und kann jetzt als Anhang versendet werden.');
+        }
+      }catch(error){
+        alert('PDF konnte nicht direkt geteilt werden. Bitte herunterladen und als Anhang versenden.');
+      }
+    };
   }catch(error){
     keyEl.textContent='Aktivierung konnte nicht erzeugt werden';
     qrEl.style.display='none';
