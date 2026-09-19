@@ -16,6 +16,7 @@ def main() -> None:
     pdf = read("server/tbserver/device_activation_pdf.py")
     users = read("server/templates/v1_admin_users.html")
     activation = read("app/src/main/java/de/tbhelfer/ui/activation/AktivierungActivity.kt")
+    server_config = read("app/src/main/java/de/tbhelfer/server/ServerConfig.kt")
     requirements = read("server/requirements.txt")
     workflow = read(".github/workflows/tb-server-v1.yml")
 
@@ -23,10 +24,13 @@ def main() -> None:
         ('ACTIVATION_SCHEME = "tbhelfer"', links),
         ('ACTIVATION_HOST = "activate"', links),
         ('device_activation_app_uri', links),
+        ('?server=', links),
+        ('PUBLIC_BASE_URL_MUST_USE_HTTPS', links),
         ('device_activation_qr_svg_data_url', links),
         ('SvgPathImage', links),
         ('qrcode==8.2', requirements),
-        ('"activation_qr_svg_data_url": device_activation_qr_svg_data_url(raw_key)', devices),
+        ('"server_base_url": public_base_url', devices),
+        ('device_activation_qr_svg_data_url(raw_key, public_base_url)', devices),
         ('"activation_pdf_data_url": device_activation_pdf_data_url(', devices),
         ('response.headers["Cache-Control"] = "no-store"', devices),
         ("device_activation_pdf_bytes", pdf),
@@ -40,7 +44,11 @@ def main() -> None:
         ('QR-Code jetzt mit dem vorgesehenen Handy scannen', users),
         ('android:host="activate"', read("app/src/main/AndroidManifest.xml")),
         ('scanQrCode()', activation),
-        ('extractActivationKey(raw)', activation),
+        ('extractActivationCredential(raw)', activation),
+        ('ServerConfig.rememberActivatedServer(', activation),
+        ('ServerConfig.activationServer(rawServer)', activation),
+        ('activated_server_base_url', server_config),
+        ('BuildConfig.SERVER_BASE_URL', server_config),
         ('84_verify_device_activation_qr_source.py', workflow),
     ]
     missing = [needle for needle, source in assertions if needle not in source]
