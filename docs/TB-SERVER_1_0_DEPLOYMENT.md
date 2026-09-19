@@ -106,6 +106,37 @@ Die Startreihenfolge ist:
 
 Praktischer Synology-Staginglauf am 19.09.2026: frische PostgreSQL-17-Instanz gestartet, Migrationen `001` bis `009` erfolgreich angewendet, API und Worker gestartet und `/health/ready` mit HTTP 200 bestätigt. Beim allerersten Init trat einmal das PostgreSQL-Initialisierungsfenster zwischen temporärem Init-Server und finalem Serverstart auf; der oben beschriebene begrenzte Retry plus Compose-`on-failure`-Absicherung wurde danach ergänzt. Beim ersten Portalaufruf zeigte sich zusätzlich, dass `server/templates/` zwar im Repository und NAS-Buildkontext lag, aber im Dockerfile nicht ins Image kopiert wurde. `Dockerfile.v1` kopiert die Templates jetzt nach `/app/templates`; der Deployment-Check prüft das ausdrücklich.
 
+## Synology-Staging ohne Image-Löschen
+
+Für die laufende Entwicklungs-/E2E-Testphase gibt es zusätzlich:
+
+`server/docker-compose.synology-staging.v1.yml`
+
+Diese Datei ist **nur für Staging/Test auf der Synology** gedacht. Sie hält die persistente Datenhaltung unverändert getrennt, bindet aber die versionierten Laufzeitquellen read-only direkt aus dem Projektordner ein:
+
+- `./tbserver -> /app/tbserver:ro`
+- `./templates -> /app/templates:ro`
+- `./v1_migrations -> /app/v1_migrations:ro`
+
+Damit gilt im normalen Staging-Alltag:
+
+1. aktuelle Dateien aus GitHub nach `/docker/tb-helfer-v1` übernehmen;
+2. bei Python-Codeänderungen den betroffenen Container (`api` bzw. `worker`) neu starten;
+3. bei Template-Änderungen Browser neu laden; bei Bedarf `api` kurz neu starten;
+4. **kein** Löschen von Containern oder `tb-helfer-server-v1:local` erforderlich.
+
+Ein echter Image-Rebuild bleibt nur nötig, wenn sich die Image-Grundlage ändert, insbesondere:
+
+- `Dockerfile.v1`;
+- `requirements.txt`;
+- Betriebssystem-/Python-Abhängigkeiten.
+
+Neue oder geänderte DB-Migrationen bleiben ein bewusster Deployment-Schritt: `migrate` muss gegen die aktualisierten read-only gemounteten `v1_migrations` erfolgreich laufen, bevor API/Worker mit dem neuen Schema getestet werden.
+
+Der normale `docker-compose.v1.yml` bleibt absichtlich **ohne** Source-Mounts und ist weiterhin der reproduzierbare image-basierte Vertrag für späteren Cutover/Produktivbetrieb.
+
+Für Synology Container Manager wird während der Stagingphase der Inhalt von `docker-compose.synology-staging.v1.yml` als Projekt-`compose.yml` verwendet. Die bestehenden persistenten Ordner `database-v1`, `storage-v1`, `backups-v1` und die lokale `.env` bleiben unverändert.
+
 ## Initialer Admin
 
 Nach einer frischen Server-1.0-Baseline wird der initiale Administrator separat über den vorhandenen Bootstrap-Pfad angelegt. Bootstrap-Zugangsdaten bleiben externe Einmal-/Umgebungswerte und gehören nicht in Compose/GitHub.
