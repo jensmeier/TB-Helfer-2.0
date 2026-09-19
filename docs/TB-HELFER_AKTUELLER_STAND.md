@@ -694,6 +694,8 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Manuelle GitHub-Querprüfung gegen Basisschema, Migration 002, Migration 010, `portal.py`, `devices.py` und `v1_admin_users.html`: **25/25 Prüfmarker erfüllt, 0 fehlend**.
 - Praktischer NAS-Retest nach Pull/Übernahme und API-Neustart ist noch offen: Testbenutzer löschen, erneut mit gleichem Login anlegen, Aktivierungskarte erzeugen und Gerätebindung prüfen.
 
+- Nach dem Admin-Neuaufbau endeten die aktuellen GitHub-Actions-Läufe **TB-Server 1.0 #482 / ID 35453481227** und **Android CI #1124 / ID 35453481198** erneut ohne ausgeführte Schritte (`steps = null`, `logs_url = null`). Das ist weiterhin das bekannte Runner-/Actions-Infrastrukturproblem; aus diesen Läufen lässt sich kein fachlicher Build-/Testfehler ableiten.
+
 ### Praktischer NAS-Retest Admin-Dashboard / Aktivierungs-Lock 2026-09-19
 
 - Die neue Server-1.0-Übersicht läuft praktisch auf der Synology und zeigt reale Werte: 24-h-Requests/5xx, Datenverkehrsdiagramm, Prozessstart/Laufzeit, NAS-Speicher, Bestandszahlen, Probleme/Warnungen und letzte Aktivität.
