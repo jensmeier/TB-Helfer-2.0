@@ -29,7 +29,7 @@
   <div class="nav">
     <a href="/portal/v1">Portal</a>
     {% if user %}<a href="/portal/v1/worksites">Baustellen</a>{% endif %}
-    {% if user and user.company_role == 'ADMIN' %}<a href="/admin/v1/companies">Firmen</a><a href="/admin/v1/users">Nutzer/Geräte</a><a href="/admin/v1/releases">Releases</a><a href="/admin/v1/system">System</a>{% endif %}
+    {% if user and user.company_role == 'ADMIN' %}<a href="/admin/v1/users">Benutzer</a><a href="/admin/v1/companies">Firmen</a><a href="/admin/v1/devices">Geräte</a><a href="/admin/v1/releases">App-Versionen</a><a href="/admin/v1/system">Systemstatus</a>{% endif %}
     {% if user %}<span>{{ user.display_name }}</span><button class="secondary" type="button" onclick="tbLogout()">Abmelden</button>{% endif %}
   </div>
 </header>
