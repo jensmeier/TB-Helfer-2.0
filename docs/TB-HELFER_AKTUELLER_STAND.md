@@ -681,6 +681,15 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Android scannt den QR weiterhin über den vorhandenen Aktivierungs-Scanner und verarbeitet denselben `tbhelfer://activate`-Deep-Link. Kein zweiter Aktivierungsweg wurde eingeführt.
 - Neuer Source-Check `84_verify_device_activation_qr_source.py` prüft Server -> Portal -> Android durchgängig.
 
+### Geräteaktivierung: PostgreSQL-Lock-Fix 2026-09-19
+
+- Der praktische Synology-Test der Server-1.0-Aktivierungskarte erreichte den API-Endpunkt, scheiterte aber mit HTTP 500.
+- Ursache laut API-Protokoll: `psycopg.errors.FeatureNotSupported: FOR UPDATE cannot be applied to the nullable side of an outer join` in `issue_device_activation()`. Die Abfrage verband `tb.users` per `LEFT JOIN` mit `tb.companies` und verwendete ein unqualifiziertes `FOR UPDATE`.
+- Korrektur: `FOR UPDATE OF u` sperrt ausschließlich den für die Aktivierung maßgeblichen Benutzer-Datensatz; die optionale Firmenzeile wird nicht gelockt.
+- Der bestehende Source-Check `84_verify_device_activation_qr_source.py` sichert den qualifizierten Lock jetzt zusätzlich ab.
+- Auf der Synology wurde separat bestätigt, dass `qrcode` und `reportlab` im API-Container importierbar sind (`QR/PDF OK`). Ein fehlendes QR-/PDF-Paket war nicht die Ursache.
+- Praktischer Retest nach Übernahme des aktuellen Branch-Standes auf die Synology ist noch offen: Aktivierungskarte muss Key, QR und PDF ohne HTTP 500 erzeugen.
+
 ### Android-Debug gegen Synology-Staging 2026-09-19
 
 - Der praktische Geräte-E2E wäre sonst gegen den falschen Server gelaufen: `ServerConfig.BASE_URL` war weiterhin fest auf `https://api.tb-helfer.de` gesetzt.
