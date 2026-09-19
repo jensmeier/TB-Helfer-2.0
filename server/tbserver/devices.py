@@ -4,12 +4,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from .admin import require_admin, require_admin_csrf
 from .database import transaction
 from .device_activation_links import device_activation_app_uri, device_activation_qr_svg_data_url
+from .device_activation_pdf import device_activation_pdf_data_url
 from .events import audit
 from .security import hash_token, random_token
 
@@ -224,6 +225,7 @@ def list_devices(_: dict[str, Any] = Depends(require_admin)) -> dict:
 def issue_device_activation(
     user_id: UUID,
     payload: DeviceActivationCreate,
+    response: Response,
     admin: dict[str, Any] = Depends(require_admin_csrf),
 ) -> dict:
     raw_key = random_token(32)
@@ -232,7 +234,14 @@ def issue_device_activation(
     expires_at = _now() + timedelta(hours=payload.expires_hours)
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
-            "SELECT id, company_id, display_name, status, deleted_at FROM tb.users WHERE id = %s FOR UPDATE",
+            """
+            SELECT u.id, u.company_id, u.display_name, u.login_name, u.status, u.deleted_at,
+                   c.name AS company_name
+            FROM tb.users u
+            LEFT JOIN tb.companies c ON c.id = u.company_id
+            WHERE u.id = %s
+            FOR UPDATE
+            """,
             (user_id,),
         )
         target = cur.fetchone()
@@ -268,12 +277,27 @@ def issue_device_activation(
             entity_id=user_id,
             details={"expires_at": expires_at.isoformat(), "token_hint": key_hint},
         )
+    activation_url = device_activation_app_uri(raw_key)
+    pdf_filename = f"TB-Helfer_Aktivierung_{target['login_name']}.pdf"
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
     return {
         "user_id": user_id,
         "user_name": target["display_name"],
+        "login_name": target["login_name"],
+        "company_name": target["company_name"],
         "activation_key": raw_key,
-        "activation_url": device_activation_app_uri(raw_key),
+        "activation_url": activation_url,
         "activation_qr_svg_data_url": device_activation_qr_svg_data_url(raw_key),
+        "activation_pdf_data_url": device_activation_pdf_data_url(
+            user_name=target["display_name"],
+            login_name=target["login_name"],
+            company_name=target["company_name"],
+            activation_key=raw_key,
+            activation_url=activation_url,
+            expires_at=expires_at,
+        ),
+        "activation_pdf_filename": pdf_filename,
         "token_hint": key_hint,
         "expires_at": expires_at,
         "created_at": token_row["created_at"],
