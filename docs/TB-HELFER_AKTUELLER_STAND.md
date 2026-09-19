@@ -681,6 +681,19 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Android scannt den QR weiterhin über den vorhandenen Aktivierungs-Scanner und verarbeitet denselben `tbhelfer://activate`-Deep-Link. Kein zweiter Aktivierungsweg wurde eingeführt.
 - Neuer Source-Check `84_verify_device_activation_qr_source.py` prüft Server -> Portal -> Android durchgängig.
 
+### Admin-API komplett neu aufgebaut und quergeprüft 2026-09-19
+
+- `server/tbserver/admin.py` wurde im Feature-Branch vollständig neu aufgebaut statt weiter punktuell geflickt.
+- Admin-Sessionzugriff verwendet durchgängig `admin["user_id"]`; der beobachtete Benutzer-Löschfehler `KeyError: 'id'` ist damit beseitigt.
+- Schreibende Admin-Pfade bleiben CSRF-geschützt. Firmenanlage, Benutzeranlage, Portal-Aktivierung und Benutzer-Soft-Delete schreiben jetzt Audit-Einträge ohne Geheimwerte.
+- Benutzer-Soft-Delete widerruft Browser-Sessions, Portalzugang, offene Geräteaktivierungen und Gerätezugänge; `auth_token_hash` und `auth_token_hint` werden entfernt, Geräte auf `REVOKED` gesetzt und laufende Benutzer-/Teamzuordnungen beendet. Offene Baustelleneinladungen an den Benutzer **und von ihm erzeugte** offene Einladungen werden widerrufen.
+- Benutzer mit aktivem BTB als Teamleitung bleiben vor Löschung geschützt (`USER_HAS_ACTIVE_BTB`). Admin-Benutzer und der eigene Admin-Account können über diesen Pfad nicht gelöscht werden.
+- Portal-Aktivierung wird für bereits aktivierte Benutzer nicht nochmals als unbrauchbarer Token ausgegeben (`PORTAL_ALREADY_ACTIVATED`); die Benutzeroberfläche blendet den Aktivierungsbutton dann aus.
+- Querprüfung zu Migration 010 ergab einen notwendigen Login-Fix: `portal.py` filtert die Loginname-Suche jetzt ebenfalls auf `u.deleted_at IS NULL`, damit ein nach Soft-Delete wiederverwendeter Login den neuen aktiven Benutzer erreicht.
+- Source-Check 85 wurde erweitert: Python-AST-Parsing plus Querchecks für Admin-Session-Key, Audit, Token-Widerruf, Login-Wiederverwendung und Benutzeroberfläche.
+- Manuelle GitHub-Querprüfung gegen Basisschema, Migration 002, Migration 010, `portal.py`, `devices.py` und `v1_admin_users.html`: **25/25 Prüfmarker erfüllt, 0 fehlend**.
+- Praktischer NAS-Retest nach Pull/Übernahme und API-Neustart ist noch offen: Testbenutzer löschen, erneut mit gleichem Login anlegen, Aktivierungskarte erzeugen und Gerätebindung prüfen.
+
 ### Praktischer NAS-Retest Admin-Dashboard / Aktivierungs-Lock 2026-09-19
 
 - Die neue Server-1.0-Übersicht läuft praktisch auf der Synology und zeigt reale Werte: 24-h-Requests/5xx, Datenverkehrsdiagramm, Prozessstart/Laufzeit, NAS-Speicher, Bestandszahlen, Probleme/Warnungen und letzte Aktivität.
