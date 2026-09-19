@@ -640,6 +640,17 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 **Noch nicht ausgeführt:** Source-Checks 34–81 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
+### Synology-Staging erfolgreich gestartet 2026-09-19
+
+- Der neue Server-1.0-Stack läuft auf der Synology **parallel** zum bisherigen `tb-helfer`-Stack im getrennten Projekt `tb-helfer-v1`.
+- Getrennte persistente Verzeichnisse `database-v1`, `storage-v1` und `backups-v1` wurden verwendet; der alte Server-/DB-/Cloudflare-Stack blieb unangetastet.
+- PostgreSQL/PostGIS 17 ist gesund; Migrationen **001 bis 009** wurden auf der frischen Staging-Datenbank erfolgreich angewendet.
+- `migrate` endete erfolgreich mit Exit Code 0; `api` und `worker` laufen.
+- Der API-Healthcheck `GET /health/ready` liefert wiederholt HTTP **200 OK**.
+- Beim ersten frischen PostgreSQL-Init trat einmal ein kurzes Verbindungsfenster auf: der Compose-Healthcheck sah den temporären Init-Postgres bereits als gesund, bevor dessen kontrollierter Neustart zum finalen Server abgeschlossen war. Der erste Migrationsversuch erhielt dadurch `connection refused`; ein erneuter Start lief vollständig durch.
+- Der Migrationsrunner besitzt deshalb jetzt einen begrenzten Retry ausschließlich für transportseitige `psycopg.OperationalError` ohne SQLSTATE. Echte PostgreSQL-Fehler mit SQLSTATE werden weiterhin sofort abgebrochen.
+- Noch offen in diesem Staginglauf: externer/LAN-Zugriff, initialer Admin/Portal, Firmen/Testnutzer/Geräte, Pixel/Poco-E2E, Backup/Retention/Restore-Test/Restore-to-Target und Vermessungs-E2E.
+
 ### CI-/Migrations-Gate-Korrektur 2026-09-19
 
 - In `.github/workflows/tb-server-v1.yml` war der Runtime-Migrationscheck noch auf `latest_known == 8` / `latest_applied == 8` fest verdrahtet, obwohl Migration `009_defect_rejected_status.sql` bereits zum Head gehört. Das hätte bei wieder funktionierenden GitHub-Runnern einen künstlichen CI-Fehler erzeugt.
@@ -790,16 +801,17 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Der Android-Server-1.0-Fachcutover ist im Quellstand weitgehend abgeschlossen und muss jetzt praktisch getestet werden: Baustellenkontext/Teams/Einladungen, Unterbaustellenbaum, mobile `track_data_v1`-Arbeitsdaten, Mängel, Abnahmen inklusive expliziter Offline-Löschung/Tombstones, Dateien/Fotos, granularer Team-BTB, BTB-Fotos und serverseitiges Abschluss-PDF laufen capability-gesteuert über kanonische `/api/v1`-Verträge. Dokumentierte 0.7.x-`/collab`-Pfade bleiben ausschließlich Legacy-Fallback. Offen bleibt die praktische Android-/PostgreSQL-E2E-Prüfung;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
 - Android-QR-Scanner/Intent-Handling sowie gezieltes Erzeugen/Einlösen von Server-1.0-Baustelleneinladungen sind im Quellstand umgesetzt; UI und Hintergrund verwenden für den modernen Baustellen-/Fachsync nun denselben capability-gesteuerten Coordinator; die grundlegenden Portal-Fachformulare sind jetzt an die Android-Payloads angeglichen; praktische E2E-Prüfung und weitere Komfortdetails bleiben offen;
-- Compose-Staging-Stack praktisch auf Docker/Synology starten; Backup-Retention mit echten Alt-Backups prüfen; Restore-to-Target gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen;
+- Compose-Staging-Stack läuft praktisch auf der Synology; offen bleiben LAN-/Portal-/Android-E2E sowie Backup-Retention mit echten Alt-Backups und Restore-to-Target gegen getrennte PostgreSQL-/Storage-Ziele, danach separaten NAS-Cutover abnehmen;
 - vollständige Integrations-/E2E-Tests und produktiver NAS-Cutover.
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Jetzt praktisch testen statt weitere Fachpfade auf Verdacht umzubauen:** Server-1.0-Compose/PostgreSQL in einer echten Test-/Staging-Umgebung starten und die aktuelle Migration bis einschließlich `009_defect_rejected_status.sql` anwenden.
-2. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
-3. Parallel Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target. In der aktuellen Chat-Arbeitsumgebung fehlen Docker/PostgreSQL; dieser Schritt braucht daher die echte Testumgebung/Synology.
-4. Danach die Vermessungskette mit realen Daten end-to-end ausführen: Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung; zusätzliche Mehr-TRA-/Reverse-Geometry-Fälle mitprüfen.
-5. Gefundene E2E-Fehler im bestehenden Feature-Branch beheben und `docs/TB-HELFER_AKTUELLER_STAND.md` jeweils mit Testergebnis aktualisieren.
-6. Erst nach bestandenen Android-/Server-/Backup-/Restore-Akzeptanztests den NAS-Cutover freigeben.
+1. **Staging jetzt nach außen testbar machen, ohne den Produktivpfad umzuschalten:** Server 1.0 im Heimnetz auf dem getrennten Port 8081 erreichbar machen und Health/Capabilities vom Laptop prüfen.
+2. Initialen Staging-Admin bootstrappen, Portal anmelden und Firma/Testnutzer/Geräte anlegen bzw. aktivieren.
+3. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
+4. Parallel Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
+5. Danach die Vermessungskette mit realen Daten end-to-end ausführen: Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung; zusätzliche Mehr-TRA-/Reverse-Geometry-Fälle mitprüfen.
+6. Gefundene E2E-Fehler im bestehenden Feature-Branch beheben und `docs/TB-HELFER_AKTUELLER_STAND.md` jeweils mit Testergebnis aktualisieren.
+7. Erst nach bestandenen Android-/Server-/Backup-/Restore-Akzeptanztests den NAS-Cutover freigeben.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
