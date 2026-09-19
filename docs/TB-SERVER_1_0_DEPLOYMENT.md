@@ -24,7 +24,7 @@ Verwendet dasselbe `Dockerfile.v1` wie API/Worker und führt vor deren Start aus
 
 `python -m tbserver.migrations up`
 
-Der Migration Runner prüft weiterhin die SHA-256 bereits angewendeter Migrationen. API/Worker starten erst nach erfolgreichem Migrationslauf. Zusätzlich wartet der Migrationsprozess bei einem rein transportseitigen PostgreSQL-Startfehler (`OperationalError` ohne SQLSTATE) begrenzt und versucht die Verbindung erneut. Damit wird das beim frischen Synology/PostgreSQL-Init beobachtete kurze Neustartfenster abgefangen; echte PostgreSQL-Fehler mit SQLSTATE werden weiterhin sofort abgebrochen.
+Der Migration Runner prüft weiterhin die SHA-256 bereits angewendeter Migrationen. API/Worker starten erst nach erfolgreichem Migrationslauf. Zusätzlich wartet der Migrationsprozess bei einem rein transportseitigen PostgreSQL-Startfehler (`OperationalError` ohne SQLSTATE) begrenzt und versucht die Verbindung erneut. Der Compose-Service besitzt ergänzend `restart: on-failure:5`, damit ein transient fehlgeschlagener Einmallauf beim frischen Projektstart automatisch erneut versucht wird. Nach erfolgreichem Lauf endet `migrate` absichtlich mit Exit Code 0 und bleibt gestoppt; das ist der Sollzustand. Bei einem normalen NAS-/Docker-Neustart starten DB, API und Worker über `unless-stopped` selbstständig wieder, während die bereits angewendeten Migrationen persistent in PostgreSQL erhalten bleiben. Echte PostgreSQL-Fehler mit SQLSTATE werden weiterhin sofort abgebrochen.
 
 ### api
 
@@ -104,7 +104,7 @@ Die Startreihenfolge ist:
 3. API + Worker starten;
 4. API-Ready-Healthcheck grün.
 
-Praktischer Synology-Staginglauf am 19.09.2026: frische PostgreSQL-17-Instanz gestartet, Migrationen `001` bis `009` erfolgreich angewendet, API und Worker gestartet und `/health/ready` mit HTTP 200 bestätigt. Beim allerersten Init trat einmal das PostgreSQL-Initialisierungsfenster zwischen temporärem Init-Server und finalem Serverstart auf; der oben beschriebene begrenzte Retry wurde danach im Migrationsrunner ergänzt.
+Praktischer Synology-Staginglauf am 19.09.2026: frische PostgreSQL-17-Instanz gestartet, Migrationen `001` bis `009` erfolgreich angewendet, API und Worker gestartet und `/health/ready` mit HTTP 200 bestätigt. Beim allerersten Init trat einmal das PostgreSQL-Initialisierungsfenster zwischen temporärem Init-Server und finalem Serverstart auf; der oben beschriebene begrenzte Retry plus Compose-`on-failure`-Absicherung wurde danach ergänzt. Beim ersten Portalaufruf zeigte sich zusätzlich, dass `server/templates/` zwar im Repository und NAS-Buildkontext lag, aber im Dockerfile nicht ins Image kopiert wurde. `Dockerfile.v1` kopiert die Templates jetzt nach `/app/templates`; der Deployment-Check prüft das ausdrücklich.
 
 ## Initialer Admin
 
