@@ -681,6 +681,12 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Android scannt den QR weiterhin über den vorhandenen Aktivierungs-Scanner und verarbeitet denselben `tbhelfer://activate`-Deep-Link. Kein zweiter Aktivierungsweg wurde eingeführt.
 - Neuer Source-Check `84_verify_device_activation_qr_source.py` prüft Server -> Portal -> Android durchgängig.
 
+### Praktischer NAS-Retest Admin-Dashboard / Aktivierungs-Lock 2026-09-19
+
+- Die neue Server-1.0-Übersicht läuft praktisch auf der Synology und zeigt reale Werte: 24-h-Requests/5xx, Datenverkehrsdiagramm, Prozessstart/Laufzeit, NAS-Speicher, Bestandszahlen, Probleme/Warnungen und letzte Aktivität.
+- Der laufende API-Container wurde direkt geprüft: `/app/tbserver/devices.py` enthält beim Aktivierungs-SELECT tatsächlich `FOR UPDATE OF u`. Der zuvor identifizierte PostgreSQL-Outer-Join-Lockfehler ist damit auf dem NAS ausgerollt.
+- Die Aktivierungskarte liefert dennoch weiterhin HTTP 500. Damit liegt **ein zweiter, noch nicht identifizierter Fehler nach dem Lock-Fix** vor. Nächster Schritt: einmal Aktivierungskarte auslösen und den neuen API-Traceback ab der letzten `Traceback`-Zeile bis zur finalen Exception auswerten; keine weiteren Pakete/DB-Resets auf Verdacht.
+
 ### Geräteaktivierung: PostgreSQL-Lock-Fix 2026-09-19
 
 - Der praktische Synology-Test der Server-1.0-Aktivierungskarte erreichte den API-Endpunkt, scheiterte aber mit HTTP 500.
