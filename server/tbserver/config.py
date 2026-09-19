@@ -17,6 +17,14 @@ def _env_int(name: str, default: int) -> int:
     return default if raw is None or not raw.strip() else int(raw)
 
 
+def _env_optional(name: str) -> str | None:
+    raw = os.getenv(name)
+    if raw is None:
+        return None
+    value = raw.strip()
+    return value or None
+
+
 @dataclass(frozen=True)
 class Settings:
     db_host: str
@@ -32,6 +40,7 @@ class Settings:
     environment: str
     log_level: str
     portal_session_hours: int
+    public_base_url: str | None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -55,6 +64,7 @@ class Settings:
             environment=_env("TB_ENVIRONMENT", "development").lower(),
             log_level=_env("LOG_LEVEL", "INFO").upper(),
             portal_session_hours=max(1, _env_int("TB_PORTAL_SESSION_HOURS", 12)),
+            public_base_url=_env_optional("TB_PUBLIC_BASE_URL"),
         )
 
 
