@@ -4,6 +4,7 @@ import android.content.Context
 import de.tbhelfer.server.CollabSyncApi
 import de.tbhelfer.server.Server1FileApi
 import de.tbhelfer.ui.abnahme.AbnahmeSpeicher
+import de.tbhelfer.ui.abnahme.AbnahmeDeleteIntentStore
 import de.tbhelfer.ui.baustelle.MaengellisteExport
 import de.tbhelfer.ui.baustelle.MangelStatusSpeicher
 import de.tbhelfer.ui.baustelle.SyncMangelSpeicher
@@ -160,6 +161,79 @@ class CollabLocalBridge(
             }
         }
         return ExportSummary(bound.size, total, btbCount, defectCount, acceptanceCount)
+    }
+
+    data class AcceptanceDeleteQueueSummary(
+        val queued: Int,
+        val alreadyQueued: Int,
+        val alreadyGoneOrLocalOnly: Int
+    )
+
+    /**
+     * Überführt nur ausdrücklich gespeicherte Benutzer-Löschwünsche in die Server-1.0-Outbox.
+     * Diese Methode darf erst nach einem vollständigen aktuellen Acceptance-Snapshot laufen.
+     */
+    suspend fun queueServer1AcceptanceDeletes(): AcceptanceDeleteQueueSummary {
+        val bound = bindingRepository.contextsWithBindings()
+            .filter { it.binding != null && it.localWorksite != null }
+        var queued = 0
+        var alreadyQueued = 0
+        var gone = 0
+
+        for (item in bound) {
+            val local = item.localWorksite ?: continue
+            val server = item.context
+            val serverByKey = collabRepository.entities(
+                server.worksiteServerId,
+                SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE
+            ).mapNotNull { entity ->
+                entity.clientEntityKey?.takeIf { it.isNotBlank() }?.let { it to entity }
+            }.toMap()
+
+            for (intent in AbnahmeDeleteIntentStore.fuerBaustelle(appContext, local.altBaustelleId)) {
+                val pending = dao.collabPendingAnyForClientKey(
+                    server.worksiteServerId,
+                    SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
+                    intent.acceptanceId
+                )
+                val serverEntity = serverByKey[intent.acceptanceId]
+
+                if (serverEntity == null) {
+                    // Nie hochgeladen oder bereits anderweitig gelöscht. Eine alte UPSERT/DELETE-
+                    // Queue darf die lokale Benutzerlöschung nicht wieder auferstehen lassen.
+                    if (pending != null) dao.deleteCollabPendingChange(pending.id)
+                    AbnahmeDeleteIntentStore.bestaetigen(appContext, intent.acceptanceId)
+                    gone++
+                    continue
+                }
+
+                if (pending?.operation.equals(
+                        SyncCollabPendingChangeEntity.OP_DELETE,
+                        ignoreCase = true
+                    )
+                ) {
+                    alreadyQueued++
+                    continue
+                }
+
+                if (pending != null) dao.deleteCollabPendingChange(pending.id)
+                collabRepository.enqueueMutation(
+                    worksiteServerId = server.worksiteServerId,
+                    entityType = SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
+                    operation = SyncCollabPendingChangeEntity.OP_DELETE,
+                    serverId = serverEntity.serverId,
+                    clientEntityKey = intent.acceptanceId,
+                    baseVersion = serverEntity.entityVersion,
+                    groupId = null,
+                    status = serverEntity.status,
+                    areaScopeJson = serverEntity.areaScopeJson,
+                    payloadJson = "{}"
+                )
+                queued++
+            }
+        }
+
+        return AcceptanceDeleteQueueSummary(queued, alreadyQueued, gone)
     }
 
     suspend fun uploadLocalAttachments(

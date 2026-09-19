@@ -98,6 +98,7 @@ class Server1AndroidSyncCoordinator(
         val btbEnabled = capabilities.supports("btb_live_sync_v1")
         val fachEnabled =
             capabilities.supports("defects_v1") || capabilities.supports("acceptances_v1")
+        val acceptanceDeleteEnabled = capabilities.supports("acceptance_delete_v1")
         val filesEnabled = capabilities.supports("files_v1")
         val uploadsEnabled = filesEnabled && capabilities.supports("chunk_upload_v1")
 
@@ -210,6 +211,16 @@ class Server1AndroidSyncCoordinator(
                     return Result.Error(result.message)
                 is CollabSyncRepository.Server1AttachmentSyncResult.Success -> Unit
             }
+        }
+
+        if (acceptanceDeleteEnabled) {
+            runCatching { bridge.queueServer1AcceptanceDeletes() }
+                .getOrElse {
+                    return Result.Error(
+                        it.message
+                            ?: "Lokale Abnahme-Löschungen konnten nicht für Server 1.0 vorbereitet werden."
+                    )
+                }
         }
 
         if (fachEnabled || btbEnabled) {

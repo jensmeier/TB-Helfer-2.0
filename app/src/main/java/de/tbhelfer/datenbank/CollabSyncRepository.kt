@@ -8,6 +8,7 @@ import de.tbhelfer.server.Server1FachSyncApi
 import de.tbhelfer.server.Server1BtbApi
 import de.tbhelfer.server.Server1FileApi
 import de.tbhelfer.server.WorksiteNodeApi
+import de.tbhelfer.ui.abnahme.AbnahmeDeleteIntentStore
 import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
@@ -258,6 +259,25 @@ class CollabSyncRepository(
                             result.message
                         )
                         failed++
+                    }
+                    is Server1FachSyncApi.MutationResult.Deleted -> {
+                        dao.markCollabDeleted(
+                            result.serverId,
+                            result.entityVersion,
+                            System.currentTimeMillis()
+                        )
+                        dao.deleteCollabPendingChange(change.id)
+                        if (
+                            change.entityType.equals(
+                                SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
+                                ignoreCase = true
+                            )
+                        ) {
+                            change.clientEntityKey?.let {
+                                AbnahmeDeleteIntentStore.bestaetigen(appContext, it)
+                            }
+                        }
+                        uploaded++
                     }
                     is Server1FachSyncApi.MutationResult.Conflict -> {
                         val detail = JSONObject()

@@ -32,6 +32,7 @@ CAPABILITIES: dict[str, bool] = {
     "defects_v1": True,
     "acceptances_v1": True,
     "acceptance_result_v1": True,
+    "acceptance_delete_v1": True,
     "track_data_v1": True,
     "survey_originals_v1": True,
     "survey_parser_catalog_v1": True,

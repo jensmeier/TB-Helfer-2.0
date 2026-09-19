@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from psycopg.types.json import Jsonb
 
@@ -223,6 +223,98 @@ def update_acceptance(
         emit_change(cur, company_id=context["company_id"], worksite_id=acceptance["worksite_id"], entity_type="ACCEPTANCE", entity_id=acceptance_id, operation="UPDATE", entity_version=row["version"], actor_user_id=user["user_id"])
         finish_mutation(cur, user=user, context=mutation, receipt_type="ACCEPTANCE_UPDATE", entity_id=acceptance_id, result_version=row["version"], response_payload=row)
     return row
+
+
+@router.delete("/acceptances/{acceptance_id}", status_code=204)
+def delete_acceptance(
+    acceptance_id: UUID,
+    base_version: int = Query(ge=1),
+    user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+):
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="ACCEPTANCE_DELETE",
+        )
+        if receipt:
+            return None
+
+        acceptance = _load_acceptance(cur, acceptance_id)
+        context = worksite_context(cur, user, acceptance["worksite_id"])
+        require_permission(context, "acceptance.edit")
+        if acceptance["status"] == "FINALIZED":
+            # Android bietet die bewusste Löschung auch nach dem endgültigen Abschluss an.
+            # Für diesen stärkeren Eingriff muss zusätzlich das Abschlussrecht vorliegen.
+            require_permission(context, "acceptance.finalize")
+        require_area_scope(context, acceptance["area_scope"])
+
+        cur.execute(
+            """
+            UPDATE tb.acceptances
+            SET status = 'DELETED',
+                deleted_at = now(),
+                version = version + 1,
+                updated_at = now()
+            WHERE id = %s
+              AND version = %s
+              AND deleted_at IS NULL
+            RETURNING version
+            """,
+            (acceptance_id, base_version),
+        )
+        row = cur.fetchone()
+        if not row:
+            _conflict_or_missing(cur, acceptance_id)
+        version = row["version"]
+
+        cur.execute(
+            """
+            INSERT INTO tb.deletion_tombstones(
+                company_id, worksite_id, entity_type, entity_id, deleted_by
+            )
+            VALUES (%s,%s,'ACCEPTANCE',%s,%s)
+            ON CONFLICT (entity_type, entity_id) DO NOTHING
+            """,
+            (
+                context["company_id"],
+                acceptance["worksite_id"],
+                acceptance_id,
+                user["user_id"],
+            ),
+        )
+        emit_change(
+            cur,
+            company_id=context["company_id"],
+            worksite_id=acceptance["worksite_id"],
+            entity_type="ACCEPTANCE",
+            entity_id=acceptance_id,
+            operation="DELETE",
+            entity_version=version,
+            actor_user_id=user["user_id"],
+        )
+        audit(
+            cur,
+            action="ACCEPTANCE_DELETE",
+            actor_user_id=user["user_id"],
+            company_id=context["company_id"],
+            worksite_id=acceptance["worksite_id"],
+            entity_type="ACCEPTANCE",
+            entity_id=acceptance_id,
+            details={"was_finalized": acceptance["status"] == "FINALIZED"},
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="ACCEPTANCE_DELETE",
+            entity_id=acceptance_id,
+            result_version=version,
+            response_payload={"deleted": True},
+        )
+    return None
 
 
 @router.post("/acceptances/{acceptance_id}/finalize")

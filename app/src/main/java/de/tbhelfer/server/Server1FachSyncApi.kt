@@ -42,6 +42,7 @@ class Server1FachSyncApi(
 
     sealed interface MutationResult {
         data class Applied(val snapshot: Snapshot) : MutationResult
+        data class Deleted(val serverId: String, val entityVersion: Long) : MutationResult
         data class Conflict(val currentVersion: Long?, val detail: String) : MutationResult
         data object Unsupported : MutationResult
         data object SessionInvalid : MutationResult
@@ -55,9 +56,19 @@ class Server1FachSyncApi(
         loadCollection(token, "/api/v1/worksites/${encode(worksiteId)}/acceptances", "acceptances", EntityKind.ACCEPTANCE)
 
     fun applyPending(token: String, change: SyncCollabPendingChangeEntity): MutationResult {
+        if (change.operation.equals(SyncCollabPendingChangeEntity.OP_DELETE, ignoreCase = true)) {
+            return when (change.entityType.uppercase()) {
+                SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE -> deleteAcceptance(token, change)
+                SyncCollabPendingChangeEntity.TYPE_DEFECT ->
+                    MutationResult.Error("Mangel-Löschen besitzt derzeit keinen Android-Benutzer-Löschvorgang.")
+                else -> MutationResult.Error(
+                    "Nicht unterstützter Server-1.0-Fachtyp: ${change.entityType}"
+                )
+            }
+        }
         if (!change.operation.equals(SyncCollabPendingChangeEntity.OP_UPSERT, ignoreCase = true)) {
             return MutationResult.Error(
-                "Server 1.0 unterstützt für Mängel/Abnahmen aus Android derzeit nur Anlegen/Ändern, kein Löschen."
+                "Nicht unterstützte Server-1.0-Fachoperation: ${change.operation}"
             )
         }
         return when (change.entityType.uppercase()) {
@@ -191,6 +202,65 @@ class Server1FachSyncApi(
         JSONObject().put("base_version", baseVersion),
         EntityKind.DEFECT
     )
+
+    private fun deleteAcceptance(
+        token: String,
+        change: SyncCollabPendingChangeEntity
+    ): MutationResult {
+        val serverId = change.serverId?.takeIf { it.isNotBlank() }
+            ?: return MutationResult.Error("Server-ID für Abnahme-Löschung fehlt.")
+        val baseVersion = change.baseVersion
+            ?: return MutationResult.Error("Server-Version für Abnahme-Löschung fehlt.")
+
+        val path = "/api/v1/acceptances/${encode(serverId)}?base_version=$baseVersion"
+        val connection = openConnection(path, "DELETE").apply {
+            // DELETE trägt die Version im Query und absichtlich keinen JSON-Body.
+            doOutput = false
+        }
+        return try {
+            authorize(connection, token)
+            connection.setRequestProperty("X-Client-Change-Id", change.clientChangeId)
+            val code = connection.responseCode
+            val response = readBody(connection, code)
+            when (code) {
+                HttpURLConnection.HTTP_NO_CONTENT ->
+                    MutationResult.Deleted(serverId, baseVersion + 1L)
+                HttpURLConnection.HTTP_CONFLICT -> {
+                    val root = runCatching { JSONObject(response) }.getOrNull()
+                    val detail = root?.opt("detail")
+                    val detailObject = detail as? JSONObject
+                    MutationResult.Conflict(
+                        currentVersion = detailObject?.optLong("current_version")
+                            ?.takeIf { it > 0L },
+                        detail = when (detail) {
+                            is String -> detail
+                            is JSONObject -> detail.optString("code").ifBlank { detail.toString() }
+                            else -> "VERSION_CONFLICT"
+                        }
+                    )
+                }
+                HttpURLConnection.HTTP_NOT_FOUND -> {
+                    val detail = detailMessage(response)
+                    if (detail.isBlank() || detail.equals("Not Found", ignoreCase = true)) {
+                        MutationResult.Unsupported
+                    } else {
+                        MutationResult.Error(detail)
+                    }
+                }
+                HttpURLConnection.HTTP_UNAUTHORIZED -> MutationResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (isInvalidDevice(response)) MutationResult.SessionInvalid
+                    else MutationResult.Error(errorMessage(response, code))
+                else -> MutationResult.Error(errorMessage(response, code))
+            }
+        } catch (error: Exception) {
+            MutationResult.Error(
+                error.message ?: "Server-1.0-Abnahme konnte nicht gelöscht werden."
+            )
+        } finally {
+            connection.disconnect()
+        }
+    }
 
     private fun mutateAcceptance(token: String, change: SyncCollabPendingChangeEntity): MutationResult {
         val desired = change.status?.uppercase().orEmpty().ifBlank { "ENTWURF" }

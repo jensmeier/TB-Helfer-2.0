@@ -302,6 +302,8 @@ object AbnahmeSpeicher {
 
     @Synchronized
     fun loeschen(context: Context, abnahme: Abnahme, dateienLoeschen: Boolean = false) {
+        // Der ausdrückliche Benutzerwunsch muss einen Offline-Neustart überleben.
+        AbnahmeDeleteIntentStore.merken(context, abnahme.baustelleId, abnahme.id)
         prefs(context).edit().remove(abnahme.id).commit()
         if (dateienLoeschen) {
             runCatching { abnahmeOrdner(context, abnahme).deleteRecursively() }

@@ -634,8 +634,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 76 prüft, dass Portal-Mängel und -Abnahmen dieselben fachlichen Payload-Schlüssel wie Android bearbeiten und Änderungen mit `base_version` schützen; JSON bleibt nur als additiver Expertenbereich erhalten.
 - Source-Check 77 prüft Portal-Mangel-/Abnahmefotos über den bestehenden `worksite_media_v1`-Katalog und den resumierbaren `files_v1`/`chunk_upload_v1`-Vertrag einschließlich Android-kompatibler semantischer Dateinamen.
 - Source-Check 78 prüft die verlustfreie Mangelstatus-Abbildung `ABGELEHNT ↔ REJECTED` inklusive Baseline, Migration 009, Server-API, Medienkatalog, Android-Sync und Portal.
+- Source-Check 79 prüft die explizite Offline-Abnahme-Löschabsicht, `acceptance_delete_v1`, versionierten kanonischen DELETE, Finalize-Zusatzrecht, Server-Tombstone und die Bestätigung des lokalen Intents erst nach Servererfolg.
 
-**Noch nicht ausgeführt:** Source-Checks 34–78 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+**Noch nicht ausgeführt:** Source-Checks 34–79 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
 ### Bekanntes GitHub-Actions-Problem
 
@@ -751,6 +752,16 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Medienkatalog und Portal zeigen denselben Status; das Portal kann einen offenen Mangel direkt auf „Abgelehnt“ setzen.
 - Damit entfällt der bisherige explizite Server-1.0-Syncfehler für abgelehnte Mängel.
 
+### Android-Abnahme-Löschung auf Server 1.0
+
+- Der vorhandene Android-Löschbutton erzeugt vor dem lokalen Entfernen einen dauerhaften `AbnahmeDeleteIntentStore`-Eintrag.
+- Ein Server-DELETE wird **nur** aus diesem ausdrücklichen Benutzerwunsch abgeleitet; eine neu vom anderen Gerät kommende, lokal noch fehlende Abnahme kann dadurch niemals versehentlich gelöscht werden.
+- Nach aktuellem Server-Snapshot wird der Intent mit Server-ID und `base_version` in die bestehende Outbox überführt.
+- Server 1.0 bietet capability-gesteuert `acceptance_delete_v1` und `DELETE /api/v1/acceptances/{id}?base_version=...`.
+- Normale Abnahmen erfordern `acceptance.edit`; für bereits endgültig abgeschlossene Abnahmen ist zusätzlich `acceptance.finalize` nötig, passend zum stärkeren Eingriff.
+- Die Serverlöschung ist ein Soft-Delete mit `DELETED`, Versionssprung, Change-Feed, Audit und `ACCEPTANCE`-Tombstone. Zugeordnete Dateien/Fotos werden nicht physisch vernichtet.
+- Erst nach bestätigtem Server-DELETE werden Outbox und lokaler Lösch-Intent entfernt.
+
 ## Bekannte/offene Punkte
 
 - vollständige Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung gegen eine echte PostgreSQL-/FastAPI-Testinstanz ausführen;
@@ -758,7 +769,7 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - einseitig belegte GRA-Sprünge nur bei zusätzlicher realer Evidenz automatisieren; Default bleibt `false`;
 - Projektion/verdichtete Samples bei Bedarf performant cachen, ohne Originale zu verändern;
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
-- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; der baustellenweite Gesamtmedienexport nutzt jetzt ebenfalls den kanonischen Server-1.0-Medien-/Dateivertrag; Baustellenbaum/Unterbaustellen nutzen `worksite_tree_v1`, mobile abgeleitete Streckendaten nutzen jetzt kanonisches `track_data_v1` mit explizitem Legacy-Fallback; die Dateiliste ist nun stabil über `(created_at,id)` cursor-paginiert; alte Server ohne Cursorprotokoll behalten während Rolling Updates weiterhin die konservative 1000-Dateien-Tombstone-Sperre; Einladungen, Teamdarstellung, Mängel-/Abnahme-Sync sowie der granulare Team-BTB inklusive BTB-Fotos, serverseitigem Abschluss-PDF und Offline-BTB-Löschung ist capability-gesteuert an Server 1.0 angebunden; offen bleibt die praktische Android-/PostgreSQL-E2E-Prüfung;
+- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; der baustellenweite Gesamtmedienexport nutzt jetzt ebenfalls den kanonischen Server-1.0-Medien-/Dateivertrag; Baustellenbaum/Unterbaustellen nutzen `worksite_tree_v1`, mobile abgeleitete Streckendaten nutzen jetzt kanonisches `track_data_v1` mit explizitem Legacy-Fallback; die Dateiliste ist nun stabil über `(created_at,id)` cursor-paginiert; alte Server ohne Cursorprotokoll behalten während Rolling Updates weiterhin die konservative 1000-Dateien-Tombstone-Sperre; Einladungen, Teamdarstellung, Mängel-/Abnahme-Sync inklusive expliziter Abnahme-Löschungen sowie der granulare Team-BTB inklusive BTB-Fotos, serverseitigem Abschluss-PDF und Offline-BTB-Löschung ist capability-gesteuert an Server 1.0 angebunden; offen bleibt die praktische Android-/PostgreSQL-E2E-Prüfung;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
 - Android-QR-Scanner/Intent-Handling sowie gezieltes Erzeugen/Einlösen von Server-1.0-Baustelleneinladungen sind im Quellstand umgesetzt; UI und Hintergrund verwenden für den modernen Baustellen-/Fachsync nun denselben capability-gesteuerten Coordinator; die grundlegenden Portal-Fachformulare sind jetzt an die Android-Payloads angeglichen; praktische E2E-Prüfung und weitere Komfortdetails bleiben offen;
 - Compose-Staging-Stack praktisch auf Docker/Synology starten; Backup-Retention mit echten Alt-Backups prüfen; Restore-to-Target gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen;
