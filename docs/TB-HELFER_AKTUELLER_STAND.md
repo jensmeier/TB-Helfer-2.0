@@ -1,6 +1,6 @@
 # TB-Helfer – aktueller Projektstand
 
-Stand: 2026-09-18
+Stand: 2026-09-19
 
 Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEKTREGELN.md`, diese Datei, `docs/TB-SERVER_1_0_ZIELMODELL.md` und `docs/TB-SERVER_1_0_CUTOVER.md`.
 
@@ -639,6 +639,13 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Source-Check 81 prüft den Portal-Abnahme-DELETE gegen denselben `acceptance_delete_v1`-Vertrag einschließlich `base_version` und der zusätzlichen Finalize-Berechtigung bei endgültig abgeschlossenen Abnahmen.
 
 **Noch nicht ausgeführt:** Source-Checks 34–81 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
+
+### CI-/Migrations-Gate-Korrektur 2026-09-19
+
+- In `.github/workflows/tb-server-v1.yml` war der Runtime-Migrationscheck noch auf `latest_known == 8` / `latest_applied == 8` fest verdrahtet, obwohl Migration `009_defect_rejected_status.sql` bereits zum Head gehört. Das hätte bei wieder funktionierenden GitHub-Runnern einen künstlichen CI-Fehler erzeugt.
+- Der Workflow prüft jetzt Migration **009**, validiert den tatsächlich wirksamen `defects_status_check` auf `REJECTED` und erwartet zusätzlich die bereits aktiven Capabilities `worksite_provisioning_v1`, `worksite_delete_v1`, `worksite_media_v1`, `file_cursor_pagination_v1` und `acceptance_delete_v1`.
+- Diese Änderung betrifft ausschließlich den Test-/CI-Pfad; Server-/Android-Fachlogik wurde dabei nicht geändert.
+- Praktisch ausgeführt werden konnte der Workflow weiterhin nicht, weil GitHub Actions auf dem Repository aktuell keine Runner-Schritte startet.
 
 ### Bekanntes GitHub-Actions-Problem
 
