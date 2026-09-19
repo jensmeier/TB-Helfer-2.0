@@ -116,6 +116,7 @@ jobs:
           python server/checks/78_verify_defect_rejected_status_source.py
           python server/checks/79_verify_acceptance_delete_sync_source.py
           python server/checks/80_verify_acceptance_tombstone_apply_source.py
+          python server/checks/81_verify_portal_acceptance_delete_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server

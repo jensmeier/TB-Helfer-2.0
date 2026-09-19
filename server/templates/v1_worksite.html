@@ -652,6 +652,9 @@ async function loadAcceptances(){
       ?'<button type="button" onclick="finalizeAcceptance(\''+esc(a.id)+'\','+Number(a.version)+',\'ABGENOMMEN\')">Abgenommen</button>'+
        '<button type="button" onclick="finalizeAcceptance(\''+esc(a.id)+'\','+Number(a.version)+',\'NICHT_ABGENOMMEN\')">Nicht abgenommen</button>'
       :'';
+    const remove=can('acceptance.edit')&&(a.status!=='FINALIZED'||can('acceptance.finalize'))
+      ?'<button type="button" class="secondary" onclick="deleteAcceptance(\''+esc(a.id)+'\','+Number(a.version)+','+(a.status==='FINALIZED'?'true':'false')+')">Löschen</button>'
+      :'';
     return '<div class="item '+(a.status==='FINALIZED'?'status-done':'status-open')+'"><b>'+esc(a.title||'Abnahme')+'</b> <span class="pill">'+esc(a.status)+'</span> <span class="pill">'+esc(a.result||'ERGEBNIS_UNBEKANNT')+'</span>'+
       '<div class="muted">'+esc(nodeName(a.worksite_node_id))+' · Version '+esc(a.version)+'</div>'+
       '<div>'+esc((a.payload||{}).bezeichnung||(a.payload||{}).objekt||'')+'</div>'+
@@ -661,7 +664,7 @@ async function loadAcceptances(){
       ((a.payload||{}).restpunkte?'<div class="muted">Restpunkte: '+esc(a.payload.restpunkte)+'</div>':'')+
       '<details><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(a.payload||{},null,2))+'</pre></details>'+
       '<div class="muted" style="margin-top:8px">Abnahme-Fotos</div>'+renderFachMedia('ACCEPTANCE',a.id)+
-      '<div class="actions">'+edit+finalize+'</div></div>';
+      '<div class="actions">'+edit+finalize+remove+'</div></div>';
   }).join(''):'<p class="muted">Keine Abnahmen.</p>';
 }
 
@@ -715,6 +718,24 @@ async function finalizeAcceptance(id,version,result){
   }catch(error){show('err',error.message||String(error));}
 }
 window.finalizeAcceptance=finalizeAcceptance;
+
+async function deleteAcceptance(id,version,wasFinalized){
+  try{
+    const detail=wasFinalized
+      ?'Diese Abnahme ist endgültig abgeschlossen. Zum Löschen ist zusätzlich das Abschlussrecht erforderlich.'
+      :'Die Abnahme wird als Server-Tombstone gelöscht. Zugeordnete Dateien und Fotos werden nicht physisch vernichtet.';
+    if(!confirm('Abnahme wirklich löschen?\n\n'+detail))return;
+    await tbApi(
+      '/api/v1/acceptances/'+encodeURIComponent(id)+'?base_version='+encodeURIComponent(version),
+      {method:'DELETE'}
+    );
+    resetAcceptanceForm();
+    await loadWorksiteMedia();
+    await loadAcceptances();
+    show('ok','Abnahme gelöscht.');
+  }catch(error){show('err',error.message||String(error));}
+}
+window.deleteAcceptance=deleteAcceptance;
 
 document.getElementById('nodeForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
