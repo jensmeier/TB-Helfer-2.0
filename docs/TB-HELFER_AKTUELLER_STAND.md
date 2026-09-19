@@ -648,8 +648,11 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - `migrate` endete erfolgreich mit Exit Code 0; `api` und `worker` laufen.
 - Der API-Healthcheck `GET /health/ready` liefert wiederholt HTTP **200 OK**.
 - Beim ersten frischen PostgreSQL-Init trat einmal ein kurzes Verbindungsfenster auf: der Compose-Healthcheck sah den temporären Init-Postgres bereits als gesund, bevor dessen kontrollierter Neustart zum finalen Server abgeschlossen war. Der erste Migrationsversuch erhielt dadurch `connection refused`; ein erneuter Start lief vollständig durch.
-- Der Migrationsrunner besitzt deshalb jetzt einen begrenzten Retry ausschließlich für transportseitige `psycopg.OperationalError` ohne SQLSTATE. Echte PostgreSQL-Fehler mit SQLSTATE werden weiterhin sofort abgebrochen.
-- Noch offen in diesem Staginglauf: externer/LAN-Zugriff, initialer Admin/Portal, Firmen/Testnutzer/Geräte, Pixel/Poco-E2E, Backup/Retention/Restore-Test/Restore-to-Target und Vermessungs-E2E.
+- Der Migrationsrunner besitzt deshalb jetzt einen begrenzten Retry ausschließlich für transportseitige `psycopg.OperationalError` ohne SQLSTATE. Zusätzlich verwendet der Einmal-Service `migrate` `restart: on-failure:5`; ein transienter Projektstartfehler wird damit automatisch erneut versucht. Nach Exit Code 0 bleibt `migrate` absichtlich gestoppt. Bei normalem Strom-/NAS-Neustart starten DB/API/Worker per `unless-stopped` selbstständig; die Migrationen sind bereits persistent angewendet.
+- LAN-Zugriff auf Staging-Port 8081 wurde praktisch bestätigt; `GET /health/ready` liefert vom Laptop `status=ok`, `database=up`, `migrations=ok`, Serverversion `1.0.0-dev`.
+- Der initiale Staging-Admin wurde erfolgreich gebootstrapped.
+- Beim ersten Browseraufruf von `/portal/v1/login` trat HTTP 500 auf. Ursache war kein Datenbank-/Authfehler, sondern fehlendes Packaging: `server/templates/` lag im Buildkontext, wurde in `Dockerfile.v1` aber nicht nach `/app/templates` kopiert. Das Dockerfile kopiert die Templates jetzt ausdrücklich; Source-/Deployment-Checks sichern diesen Vertragsbestand ab.
+- Noch offen in diesem Staginglauf: aktualisiertes Image auf der Synology neu bauen und Portal-Login praktisch bestätigen; anschließend Firma/Testnutzer/Geräte, Pixel/Poco-E2E, Backup/Retention/Restore-Test/Restore-to-Target und Vermessungs-E2E.
 
 ### CI-/Migrations-Gate-Korrektur 2026-09-19
 
@@ -806,8 +809,8 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Staging jetzt nach außen testbar machen, ohne den Produktivpfad umzuschalten:** Server 1.0 im Heimnetz auf dem getrennten Port 8081 erreichbar machen und Health/Capabilities vom Laptop prüfen.
-2. Initialen Staging-Admin bootstrappen, Portal anmelden und Firma/Testnutzer/Geräte anlegen bzw. aktivieren.
+1. **Aktualisierten Server-1.0-Build auf der Synology neu bauen**, damit DB-Startup-Retry, Compose-`on-failure` und das Portal-Template-Packaging aktiv sind; danach `/health/ready` und `/portal/v1/login` praktisch prüfen.
+2. Im Portal mit dem bereits gebootstrappten Staging-Admin anmelden und Firma/Testnutzer/Geräte anlegen bzw. aktivieren.
 3. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
 4. Parallel Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
 5. Danach die Vermessungskette mit realen Daten end-to-end ausführen: Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung; zusätzliche Mehr-TRA-/Reverse-Geometry-Fälle mitprüfen.
