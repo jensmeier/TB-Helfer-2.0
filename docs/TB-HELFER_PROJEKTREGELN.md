@@ -28,6 +28,11 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Baustellen-Zusammenarbeit ist strikt auf die eigene Firma begrenzt.
 - Nutzer verschiedener Firmen dürfen nicht derselben Baustellen-Teamstruktur zugeordnet werden.
 - Ein Benutzer hat standardmäßig genau ein aktives Gerät.
+- Die Geräte-Aktivierungskarte/der Geräte-QR enthält neben dem kurzlebigen Einmal-Schlüssel auch die kanonische öffentliche **HTTPS-Serveradresse**. Ein Benutzer muss niemals eine Serveradresse manuell in der App konfigurieren.
+- Android übernimmt die Serveradresse erst nach erfolgreicher Geräteaktivierung, speichert sie lokal als nicht geheime Serveridentität und verwendet sie anschließend für alle Server-/NAS-/Cloudflare-Syncpfade.
+- Eine spätere Reaktivierung darf die gespeicherte Serveridentität nur durch eine erneut erfolgreich bestätigte Aktivierung ersetzen.
+- BuildConfig/`local.properties` dürfen ausschließlich als Entwickler-/Legacy-Fallback dienen und sind kein normaler Aktivierungs- oder Benutzerkonfigurationsweg.
+- Aktivierungskarten dürfen als QR/PDF erzeugt und an entfernte Nutzer versendet werden. QR/PDF enthalten einen geheimen Einmal-Schlüssel, sind vertraulich zu behandeln und werden serverseitig nicht dauerhaft mit Klartext-Schlüssel archiviert.
 - Admin kann ein Gerät freigeben; danach ist eine neue Aktivierungskarte/Einmal-Schlüssel nötig.
 - Nach Geräteaktivierung übernimmt die App vorhandene Stammdaten automatisch vom Server, soweit der Serverstand sie bereitstellt.
 - Firmenstammdaten sind zentral: Firmenname, Anschrift, Firmentelefon, Firmen-E-Mail und Firmenlogo.
