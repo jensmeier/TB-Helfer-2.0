@@ -80,6 +80,53 @@ def admin_system_page(
     )
 
 
+@router.get("/admin/v1/users")
+def admin_users_page(
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
+):
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, name
+            FROM tb.companies
+            WHERE deleted_at IS NULL AND status = 'ACTIVE'
+            ORDER BY lower(name)
+            """
+        )
+        companies = [dict(row) for row in cur.fetchall()]
+        cur.execute(
+            """
+            SELECT u.id, u.company_id, c.name AS company_name, u.display_name,
+                   u.first_name, u.last_name, u.login_name, u.personal_email,
+                   u.personal_phone, u.company_role, u.status, u.access_valid_until,
+                   pc.activated_at, pc.last_login_at,
+                   d.id AS device_id, d.device_name, d.platform, d.status AS device_status,
+                   d.bound_at, d.last_seen_at
+            FROM tb.users u
+            LEFT JOIN tb.companies c ON c.id = u.company_id
+            LEFT JOIN tb.portal_credentials pc ON pc.user_id = u.id
+            LEFT JOIN tb.devices d
+              ON d.user_id = u.id
+             AND d.status = 'ACTIVE'
+             AND d.revoked_at IS NULL
+            WHERE u.deleted_at IS NULL
+              AND u.company_role <> 'ADMIN'
+            ORDER BY lower(coalesce(c.name,'')), lower(u.display_name)
+            """
+        )
+        users = [dict(row) for row in cur.fetchall()]
+    return templates.TemplateResponse(
+        "v1_admin_users.html",
+        {
+            "request": request,
+            "user": user,
+            "companies": companies,
+            "users": users,
+        },
+    )
+
+
 @router.get("/admin/v1/companies")
 def admin_companies_page(
     request: Request,
