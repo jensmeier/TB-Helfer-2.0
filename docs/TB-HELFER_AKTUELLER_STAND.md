@@ -642,7 +642,7 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 ### Bekanntes GitHub-Actions-Problem
 
-Für den Acceptance-Tombstone-Commit `2aa4451a3ab25001778fbfbb417889524374bdaf` endeten TB-Server **#298 / ID 35428785524** und Android CI **#1011 / ID 35428785530** erneut mit leeren `steps`-Listen und `runner_id = 0`. Es wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
+Für den Portal-Abnahme-DELETE-Commit `914b66aebbe83fdec1a7875df77ebaa779ad6927` endeten TB-Server **#300 / ID 35428854456** und Android CI **#1012 / ID 35428854443** erneut mit leeren `steps`-Listen und `runner_id = 0`. Es wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
 ### BTB-Granularitätskorrektur
 
@@ -766,6 +766,13 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Fremde Server-Tombstones werden ebenfalls lokal angewendet: löscht Pixel eine Abnahme, entfernt Poco sie beim nächsten vollständigen Sync. Der lokale Server-Tombstone-Pfad erzeugt ausdrücklich keinen neuen Lösch-Intent.
 - Das Portal nutzt denselben versionsgesicherten DELETE. Der Löschbutton wird nur bei `acceptance.edit` angeboten; endgültige Abnahmen zusätzlich nur mit `acceptance.finalize`.
 
+### Fach-DELETE-Abgrenzung
+
+- Abnahmen besitzen in Android einen echten Benutzer-Löschvorgang; deshalb ist der vollständige Server-1.0-DELETE-/Tombstone-Lifecycle umgesetzt.
+- Für Mängel existiert im aktuellen Android-Fachablauf **kein** entsprechender Benutzer-Löschvorgang. `Server1FachSyncApi` erzeugt daher bewusst keinen künstlichen Mangel-DELETE.
+- Mangelstatus wie `ERLEDIGT` und `ABGELEHNT` werden stattdessen kanonisch als Statusänderungen synchronisiert.
+- Mangel-DELETE wird nicht künstlich ergänzt, solange dafür keine dokumentierte Fachfunktion/Benutzeraktion existiert.
+
 ## Bekannte/offene Punkte
 
 - vollständige Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung gegen eine echte PostgreSQL-/FastAPI-Testinstanz ausführen;
@@ -773,7 +780,7 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - einseitig belegte GRA-Sprünge nur bei zusätzlicher realer Evidenz automatisieren; Default bleibt `false`;
 - Projektion/verdichtete Samples bei Bedarf performant cachen, ohne Originale zu verändern;
 - rohe/unbekannte KOR nur bei belastbar belegtem Format ergänzen;
-- Android-Fachclient weiter auf Server-1.0-Endpunkte umstellen und Upload/Sync praktisch testen; der baustellenweite Gesamtmedienexport nutzt jetzt ebenfalls den kanonischen Server-1.0-Medien-/Dateivertrag; Baustellenbaum/Unterbaustellen nutzen `worksite_tree_v1`, mobile abgeleitete Streckendaten nutzen jetzt kanonisches `track_data_v1` mit explizitem Legacy-Fallback; die Dateiliste ist nun stabil über `(created_at,id)` cursor-paginiert; alte Server ohne Cursorprotokoll behalten während Rolling Updates weiterhin die konservative 1000-Dateien-Tombstone-Sperre; Einladungen, Teamdarstellung, Mängel-/Abnahme-Sync inklusive expliziter Abnahme-Löschungen sowie der granulare Team-BTB inklusive BTB-Fotos, serverseitigem Abschluss-PDF und Offline-BTB-Löschung ist capability-gesteuert an Server 1.0 angebunden; offen bleibt die praktische Android-/PostgreSQL-E2E-Prüfung;
+- Der Android-Server-1.0-Fachcutover ist im Quellstand weitgehend abgeschlossen und muss jetzt praktisch getestet werden: Baustellenkontext/Teams/Einladungen, Unterbaustellenbaum, mobile `track_data_v1`-Arbeitsdaten, Mängel, Abnahmen inklusive expliziter Offline-Löschung/Tombstones, Dateien/Fotos, granularer Team-BTB, BTB-Fotos und serverseitiges Abschluss-PDF laufen capability-gesteuert über kanonische `/api/v1`-Verträge. Dokumentierte 0.7.x-`/collab`-Pfade bleiben ausschließlich Legacy-Fallback. Offen bleibt die praktische Android-/PostgreSQL-E2E-Prüfung;
 - BTB-Abschluss-PDF-Lebenszyklus noch gegen echte PostgreSQL-/FastAPI-Testinstanz end-to-end prüfen;
 - Android-QR-Scanner/Intent-Handling sowie gezieltes Erzeugen/Einlösen von Server-1.0-Baustelleneinladungen sind im Quellstand umgesetzt; UI und Hintergrund verwenden für den modernen Baustellen-/Fachsync nun denselben capability-gesteuerten Coordinator; die grundlegenden Portal-Fachformulare sind jetzt an die Android-Payloads angeglichen; praktische E2E-Prüfung und weitere Komfortdetails bleiben offen;
 - Compose-Staging-Stack praktisch auf Docker/Synology starten; Backup-Retention mit echten Alt-Backups prüfen; Restore-to-Target gegen echte PostgreSQL-/Storage-Ziele prüfen, danach separaten NAS-Cutover abnehmen;
@@ -781,12 +788,11 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Die normale Compose-Basis plus optionalen Restore-Staging-Overlay auf einer echten Docker/PostgreSQL-Umgebung starten und dort Backup -> Retention -> Restore-Test -> Restore-to-Target end-to-end prüfen; in der aktuellen Arbeitsumgebung fehlen Docker/PostgreSQL.
-2. Nach bestandenem Server-Staging die übrigen Android-Fachendpunkte capability-gesteuert auf Server 1.0 umstellen; gezieltes Einladen/Einlösen, Teamdarstellung und lesender Mängel-/Abnahme-Sync sind dafür bereits angebunden. Android liest Team-BTB-Historie und BTB-Details capability-gesteuert und schreibt lokale BTB-Änderungen über die kanonischen Server-1.0-Verträge. Die vorhandene Outbox bleibt maßgeblich; Android-Inhalte liegen granular in einzelnen versionierten Server-BTB-Einträgen; `TB_HELFER_ANDROID_V1` ist nur noch Migrationsquelle. BTB-Fotos nutzen den resumierbaren Server-1.0-Dateipfad. Das serverseitig gerenderte aktuelle Abschluss-PDF wird capability-gesteuert per `/api/v1/btbs/{id}/final-pdf` in den vorhandenen Android-BTB-Ordner gespiegelt, per SHA-256 geprüft und ohne gefälschtes lokales Erstoriginal als Server-Abschluss markiert. BTB-Löschabsichten werden zusätzlich vor dem normalen Import über den kanonischen Server-1.0-DELETE abgearbeitet. Als nächster Schritt folgt die praktische Android-/PostgreSQL-E2E-Prüfung. Spezialisierte Portal-Fachformulare additiv verbessern.
-3. Sobald eine PostgreSQL-Testinstanz verfügbar ist, den neuen BTB-Abschluss-PDF-Lebenszyklus inklusive erstem Abschluss, unverändertem Reaktivieren, echter Nachbearbeitung, Fotoänderung, erneutem Abschluss und Löschen end-to-end ausführen.
-4. Danach die vollständige Vermessungs- und Fach-API-Kette end-to-end ausführen; bis dahin Source-/Fixture-Regressionen weiter absichern.
-5. Den gemeinsamen capability-gesteuerten Android-Server-1.0-Synckern inklusive Unterbaustellen-Baum praktisch auf Pixel/Poco prüfen; die 0.6-/0.7-Versionsschwellen steuern im Quellstand nur noch den Legacy-Fallback.
-6. Vollständige Integrations-/Akzeptanztests inklusive Backup/Restore ausführen.
-7. Erst danach NAS-Cutover und produktive Android-Umstellung.
+1. **Jetzt praktisch testen statt weitere Fachpfade auf Verdacht umzubauen:** Server-1.0-Compose/PostgreSQL in einer echten Test-/Staging-Umgebung starten und die aktuelle Migration bis einschließlich `009_defect_rejected_status.sql` anwenden.
+2. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
+3. Parallel Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target. In der aktuellen Chat-Arbeitsumgebung fehlen Docker/PostgreSQL; dieser Schritt braucht daher die echte Testumgebung/Synology.
+4. Danach die Vermessungskette mit realen Daten end-to-end ausführen: Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung; zusätzliche Mehr-TRA-/Reverse-Geometry-Fälle mitprüfen.
+5. Gefundene E2E-Fehler im bestehenden Feature-Branch beheben und `docs/TB-HELFER_AKTUELLER_STAND.md` jeweils mit Testergebnis aktualisieren.
+6. Erst nach bestandenen Android-/Server-/Backup-/Restore-Akzeptanztests den NAS-Cutover freigeben.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
