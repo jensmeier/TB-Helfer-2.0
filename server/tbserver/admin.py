@@ -5,14 +5,18 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response
+from psycopg.errors import UniqueViolation
 from pydantic import BaseModel, Field
 
 from .database import transaction
+from .events import audit
 from .portal import current_portal_user, require_csrf
 from .security import hash_token, random_token
 
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
+
+_ALLOWED_COMPANY_ROLES = {"CHEF", "USER"}
 
 
 class CompanyCreate(BaseModel):
@@ -36,28 +40,51 @@ class UserCreate(BaseModel):
     company_role: str = Field(default="USER")
 
 
+def _required_text(value: str, error_code: str) -> str:
+    normalized = value.strip()
+    if not normalized:
+        raise HTTPException(400, error_code)
+    return normalized
+
+
+def _optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
 def _assert_admin(user: dict[str, Any]) -> dict[str, Any]:
-    if user["company_role"] != "ADMIN":
+    if user.get("company_role") != "ADMIN":
         raise HTTPException(403, "ADMIN_REQUIRED")
+    if not user.get("user_id"):
+        raise HTTPException(401, "ADMIN_SESSION_INVALID")
     return user
 
 
-def require_admin(user: dict[str, Any] = Depends(current_portal_user)) -> dict[str, Any]:
+def require_admin(
+    user: dict[str, Any] = Depends(current_portal_user),
+) -> dict[str, Any]:
     return _assert_admin(user)
 
 
-def require_admin_csrf(user: dict[str, Any] = Depends(require_csrf)) -> dict[str, Any]:
+def require_admin_csrf(
+    user: dict[str, Any] = Depends(require_csrf),
+) -> dict[str, Any]:
     return _assert_admin(user)
 
 
 @router.get("/companies")
-def list_companies(_: dict[str, Any] = Depends(require_admin)) -> dict:
+def list_companies(_: dict[str, Any] = Depends(require_admin)) -> dict[str, Any]:
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
             """
             SELECT c.id, c.name, c.street, c.postal_code, c.city, c.country_code,
                    c.phone, c.email, c.status, c.created_at,
-                   count(u.id) FILTER (WHERE u.deleted_at IS NULL) AS user_count
+                   count(u.id) FILTER (
+                       WHERE u.deleted_at IS NULL
+                         AND u.company_role <> 'ADMIN'
+                   ) AS user_count
             FROM tb.companies c
             LEFT JOIN tb.users u ON u.company_id = c.id
             WHERE c.deleted_at IS NULL
@@ -65,105 +92,147 @@ def list_companies(_: dict[str, Any] = Depends(require_admin)) -> dict:
             ORDER BY lower(c.name)
             """
         )
-        rows = cur.fetchall()
-    return {"companies": rows}
+        companies = [dict(row) for row in cur.fetchall()]
+    return {"companies": companies}
 
 
 @router.post("/companies", status_code=201)
 def create_company(
     payload: CompanyCreate,
-    _: dict[str, Any] = Depends(require_admin_csrf),
-) -> dict:
+    admin: dict[str, Any] = Depends(require_admin_csrf),
+) -> dict[str, Any]:
+    name = _required_text(payload.name, "COMPANY_NAME_REQUIRED")
+    country_code = payload.country_code.strip().upper()
+    if len(country_code) != 2:
+        raise HTTPException(400, "INVALID_COUNTRY_CODE")
+
     with transaction() as conn, conn.cursor() as cur:
         try:
             cur.execute(
                 """
-                INSERT INTO tb.companies(name, street, postal_code, city, country_code, phone, email)
+                INSERT INTO tb.companies(
+                    name, street, postal_code, city, country_code, phone, email
+                )
                 VALUES (%s,%s,%s,%s,%s,%s,%s)
-                RETURNING id, name, street, postal_code, city, country_code, phone, email, status, created_at
+                RETURNING id, name, street, postal_code, city, country_code,
+                          phone, email, status, created_at
                 """,
                 (
-                    payload.name.strip(),
-                    payload.street,
-                    payload.postal_code,
-                    payload.city,
-                    payload.country_code.upper(),
-                    payload.phone,
-                    payload.email,
+                    name,
+                    _optional_text(payload.street),
+                    _optional_text(payload.postal_code),
+                    _optional_text(payload.city),
+                    country_code,
+                    _optional_text(payload.phone),
+                    _optional_text(payload.email),
                 ),
             )
-        except Exception as exc:
-            if getattr(exc, "sqlstate", None) == "23505":
-                raise HTTPException(409, "COMPANY_EXISTS") from exc
-            raise
-        row = cur.fetchone()
+        except UniqueViolation as exc:
+            raise HTTPException(409, "COMPANY_EXISTS") from exc
+
+        row = dict(cur.fetchone())
+        audit(
+            cur,
+            action="COMPANY_CREATE",
+            actor_user_id=admin["user_id"],
+            company_id=row["id"],
+            entity_type="COMPANY",
+            entity_id=row["id"],
+        )
     return row
 
 
 @router.get("/users")
-def list_users(_: dict[str, Any] = Depends(require_admin)) -> dict:
+def list_users(_: dict[str, Any] = Depends(require_admin)) -> dict[str, Any]:
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT u.id, u.company_id, c.name AS company_name, u.display_name, u.first_name,
-                   u.last_name, u.login_name, u.personal_email, u.personal_phone,
-                   u.company_role, u.status, u.access_valid_until, u.created_at,
+            SELECT u.id, u.company_id, c.name AS company_name, u.display_name,
+                   u.first_name, u.last_name, u.login_name, u.personal_email,
+                   u.personal_phone, u.company_role, u.status,
+                   u.access_valid_until, u.created_at,
                    pc.activated_at, pc.last_login_at
             FROM tb.users u
             LEFT JOIN tb.companies c ON c.id = u.company_id
             LEFT JOIN tb.portal_credentials pc ON pc.user_id = u.id
             WHERE u.deleted_at IS NULL
+              AND u.company_role <> 'ADMIN'
             ORDER BY lower(coalesce(c.name,'')), lower(u.display_name)
             """
         )
-        rows = cur.fetchall()
-    return {"users": rows}
+        users = [dict(row) for row in cur.fetchall()]
+    return {"users": users}
 
 
 @router.post("/users", status_code=201)
 def create_user(
     payload: UserCreate,
-    _: dict[str, Any] = Depends(require_admin_csrf),
-) -> dict:
-    role = payload.company_role.upper()
-    if role not in {"CHEF", "USER"}:
+    admin: dict[str, Any] = Depends(require_admin_csrf),
+) -> dict[str, Any]:
+    display_name = _required_text(payload.display_name, "DISPLAY_NAME_REQUIRED")
+    login_name = _required_text(payload.login_name, "LOGIN_NAME_REQUIRED")
+    role = payload.company_role.strip().upper()
+    if role not in _ALLOWED_COMPANY_ROLES:
         raise HTTPException(400, "INVALID_COMPANY_ROLE")
+
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
-            "SELECT id FROM tb.companies WHERE id = %s AND deleted_at IS NULL AND status = 'ACTIVE'",
+            """
+            SELECT id
+            FROM tb.companies
+            WHERE id = %s
+              AND deleted_at IS NULL
+              AND status = 'ACTIVE'
+            FOR SHARE
+            """,
             (payload.company_id,),
         )
         if not cur.fetchone():
             raise HTTPException(404, "COMPANY_NOT_FOUND")
+
         try:
             cur.execute(
                 """
                 INSERT INTO tb.users(
                     company_id, first_name, last_name, display_name, login_name,
                     personal_email, personal_phone, company_role
-                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-                RETURNING id, company_id, display_name, first_name, last_name, login_name,
-                          personal_email, personal_phone, company_role, status, created_at
+                )
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                RETURNING id, company_id, display_name, first_name, last_name,
+                          login_name, personal_email, personal_phone,
+                          company_role, status, created_at
                 """,
                 (
                     payload.company_id,
-                    payload.first_name,
-                    payload.last_name,
-                    payload.display_name.strip(),
-                    payload.login_name.strip(),
-                    payload.personal_email,
-                    payload.personal_phone,
+                    _optional_text(payload.first_name),
+                    _optional_text(payload.last_name),
+                    display_name,
+                    login_name,
+                    _optional_text(payload.personal_email),
+                    _optional_text(payload.personal_phone),
                     role,
                 ),
             )
-        except Exception as exc:
-            if getattr(exc, "sqlstate", None) == "23505":
-                raise HTTPException(409, "LOGIN_NAME_EXISTS") from exc
-            raise
-        row = cur.fetchone()
+        except UniqueViolation as exc:
+            raise HTTPException(409, "LOGIN_NAME_EXISTS") from exc
+
+        row = dict(cur.fetchone())
         cur.execute(
-            "INSERT INTO tb.portal_credentials(user_id) VALUES (%s)",
+            """
+            INSERT INTO tb.portal_credentials(user_id)
+            VALUES (%s)
+            ON CONFLICT (user_id) DO NOTHING
+            """,
             (row["id"],),
+        )
+        audit(
+            cur,
+            action="USER_CREATE",
+            actor_user_id=admin["user_id"],
+            company_id=row["company_id"],
+            entity_type="USER",
+            entity_id=row["id"],
+            details={"company_role": row["company_role"]},
         )
     return row
 
@@ -171,38 +240,60 @@ def create_user(
 @router.post("/users/{user_id}/portal-activation")
 def issue_portal_activation(
     user_id: UUID,
-    _: dict[str, Any] = Depends(require_admin_csrf),
-) -> dict:
+    admin: dict[str, Any] = Depends(require_admin_csrf),
+) -> dict[str, Any]:
     raw_token = random_token(32)
     expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT u.id, u.display_name, u.login_name, u.status, u.deleted_at
+            SELECT u.id, u.company_id, u.display_name, u.login_name,
+                   u.company_role, u.status, u.deleted_at,
+                   pc.activated_at
             FROM tb.users u
+            LEFT JOIN tb.portal_credentials pc ON pc.user_id = u.id
             WHERE u.id = %s
-            FOR UPDATE
+            FOR UPDATE OF u
             """,
             (user_id,),
         )
         user = cur.fetchone()
         if not user:
             raise HTTPException(404, "USER_NOT_FOUND")
+        if user["company_role"] == "ADMIN":
+            raise HTTPException(409, "ADMIN_PORTAL_ACTIVATION_NOT_ALLOWED")
         if user["deleted_at"] is not None or user["status"] != "ACTIVE":
             raise HTTPException(409, "USER_NOT_ACTIVE")
+        if user["activated_at"] is not None:
+            raise HTTPException(409, "PORTAL_ALREADY_ACTIVATED")
+
         cur.execute(
             """
             INSERT INTO tb.portal_credentials(
-                user_id, activation_token_hash, activation_expires_at, must_change_password, updated_at
-            ) VALUES (%s,%s,%s,true,now())
+                user_id, activation_token_hash, activation_expires_at,
+                must_change_password, updated_at
+            )
+            VALUES (%s,%s,%s,true,now())
             ON CONFLICT (user_id) DO UPDATE
             SET activation_token_hash = excluded.activation_token_hash,
                 activation_expires_at = excluded.activation_expires_at,
                 must_change_password = true,
+                failed_login_count = 0,
+                locked_until = NULL,
                 updated_at = now()
             """,
             (user_id, hash_token(raw_token), expires_at),
         )
+        audit(
+            cur,
+            action="PORTAL_ACTIVATION_ISSUE",
+            actor_user_id=admin["user_id"],
+            company_id=user["company_id"],
+            entity_type="USER",
+            entity_id=user_id,
+        )
+
     return {
         "user_id": str(user_id),
         "login_name": user["login_name"],
@@ -219,7 +310,8 @@ def delete_user(
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT id, display_name, login_name, company_role, status, deleted_at
+            SELECT id, company_id, display_name, login_name,
+                   company_role, status, deleted_at
             FROM tb.users
             WHERE id = %s
             FOR UPDATE
@@ -239,7 +331,6 @@ def delete_user(
             SELECT id
             FROM tb.teams
             WHERE lead_user_id = %s
-              AND status = 'ACTIVE'
               AND active_btb_id IS NOT NULL
             LIMIT 1
             """,
@@ -248,7 +339,7 @@ def delete_user(
         if cur.fetchone():
             raise HTTPException(409, "USER_HAS_ACTIVE_BTB")
 
-        # Alle direkten Zugänge sofort ungültig machen.
+        # Browserzugang und offene Portal-Aktivierung sofort ungültig machen.
         cur.execute(
             """
             UPDATE tb.portal_sessions
@@ -273,6 +364,8 @@ def delete_user(
             """,
             (user_id,),
         )
+
+        # Noch nicht verwendete Geräte-Aktivierungskarten und alle Gerätezugänge sperren.
         cur.execute(
             """
             UPDATE tb.device_activation_tokens
@@ -288,6 +381,8 @@ def delete_user(
             UPDATE tb.devices
             SET status = 'REVOKED',
                 revoked_at = COALESCE(revoked_at, now()),
+                auth_token_hash = NULL,
+                auth_token_hint = NULL,
                 token_version = token_version + 1,
                 updated_at = now()
             WHERE user_id = %s
@@ -296,7 +391,7 @@ def delete_user(
             (user_id,),
         )
 
-        # Laufende Zuordnungen beenden; historische Referenzen bleiben erhalten.
+        # Nur laufende Zuordnungen beenden; historische Fachreferenzen bleiben erhalten.
         cur.execute(
             """
             UPDATE tb.worksite_memberships
@@ -332,11 +427,11 @@ def delete_user(
             """
             UPDATE tb.worksite_invitations
             SET revoked_at = COALESCE(revoked_at, now())
-            WHERE invited_user_id = %s
+            WHERE (invited_user_id = %s OR invited_by = %s)
               AND accepted_at IS NULL
               AND revoked_at IS NULL
             """,
-            (user_id,),
+            (user_id, user_id),
         )
 
         cur.execute(
@@ -348,6 +443,15 @@ def delete_user(
             WHERE id = %s
             """,
             (user_id,),
+        )
+        audit(
+            cur,
+            action="USER_SOFT_DELETE",
+            actor_user_id=admin["user_id"],
+            company_id=target["company_id"],
+            entity_type="USER",
+            entity_id=user_id,
+            details={"previous_status": target["status"]},
         )
 
     return Response(status_code=204)
