@@ -162,29 +162,29 @@ Für den gemeinsamen App-API-Hostname wird im Staging **keine interaktive Cloudf
 
 ## Android gegen Synology-Staging testen
 
-Der Android-**Debug**-Build kann für den lokalen E2E-Test auf einen anderen Server zeigen, ohne die produktive Release-Adresse umzuschreiben.
+Der normale Gerätefluss benötigt **keine manuell konfigurierte Serveradresse**. Die Geräte-Aktivierungskarte trägt die kanonische öffentliche HTTPS-Serveradresse im QR/Deep-Link mit. Android speichert diese Adresse erst nach erfolgreicher Aktivierung und verwendet sie anschließend für alle Server-/Sync-Clients.
 
-Auf dem Entwicklungs-Laptop wird einmalig in der bereits gitignorierten Datei `local.properties` ergänzt:
+Für Staging muss der Server deshalb einmalig seine öffentliche Adresse kennen:
 
 ```properties
-tb.server.base.url=http://192.168.178.3:8081
+TB_V1_PUBLIC_BASE_URL=https://api-v1.tb-helfer.de
 ```
 
-Alternativ kann derselbe Debug-Wert per Gradle-Property `tbServerBaseUrl` oder Umgebungsvariable `TB_SERVER_BASE_URL` gesetzt werden.
+Diese Variable gehört in die lokale Synology-`.env` und wird nicht nach GitHub committed.
+
+Der Android-Debug-Build behält `local.properties`/`tbServerBaseUrl`/`TB_SERVER_BASE_URL` nur als **Entwickler-Fallback**, z. B. für manuelle Key-Tests ohne QR. Für die normale QR-Aktivierung ist das nicht erforderlich.
 
 Sicherheitsregeln:
 
-- nur der **Debug-Build** übernimmt diesen lokalen Wert;
-- Klartext-HTTP wird nur dann im Debug-Manifest erlaubt, wenn die konfigurierte Debug-Adresse mit `http://` beginnt;
-- der **Release-Build** bleibt unabhängig von lokalen Einstellungen fest auf `https://api.tb-helfer.de`;
-- Release setzt `usesCleartextTraffic=false`;
+- Aktivierungs-QRs akzeptieren als Serveridentität ausschließlich HTTPS;
+- die Serveradresse wird erst nach erfolgreicher Gerätebindung persistent übernommen;
+- der Aktivierungs-Key selbst wird nach erfolgreicher Bindung nicht gespeichert;
+- der **Release-Build** bleibt als Fallback fest auf `https://api.tb-helfer.de`;
 - `local.properties` bleibt gitignoriert und darf nicht versioniert werden.
-
-Damit können Pixel/Poco im Heimnetz direkt gegen den getrennten Server-1.0-Stagingport 8081 getestet werden, ohne den produktiven Cloudflare-Endpunkt umzuschalten.
 
 ## Geräteaktivierungskarte als QR/PDF
 
-Die Server-1.0-Geräteaktivierung erzeugt weiterhin einen kurzlebigen Einmal-Schlüssel und die App-URI `tbhelfer://activate?key=...`.
+Die Server-1.0-Geräteaktivierung erzeugt weiterhin einen kurzlebigen Einmal-Schlüssel. Die App-URI enthält jetzt zusätzlich die kanonische öffentliche Serveridentität: `tbhelfer://activate?server=https%3A...&key=...`.
 
 Die Admin-Seite **Nutzer/Geräte** liefert nach `Gerät aktivieren` zusätzlich:
 
