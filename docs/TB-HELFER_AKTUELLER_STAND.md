@@ -645,7 +645,7 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Die Geräteaktivierung erzeugt jetzt zusätzlich zur QR-/Deep-Link-Antwort eine **nicht persistent gespeicherte PDF-Aktivierungskarte** mit Benutzer, Firma, Ablaufzeit, QR und Fallback-Schlüssel.
 - Die Nutzer-/Geräte-Seite bietet `PDF herunterladen` und `PDF teilen / versenden`; wenn Web Share mit Dateien nicht verfügbar ist, fällt sie auf Download zum manuellen Versenden zurück.
 - Aktivierungsantworten setzen `Cache-Control: no-store`; serverseitig bleibt nur der Hash des Einmal-Schlüssels gespeichert.
-- Für Tests außerhalb des Heimnetzes ist ein separater Cloudflare-Staginghostname **`api-v1.tb-helfer.de`** vorgesehen. Er soll über den bestehenden Tunnel auf `http://192.168.178.3:8081` zeigen.
+- Für Tests außerhalb des Heimnetzes ist der separate Cloudflare-Staginghostname **`api-v1.tb-helfer.de`** jetzt praktisch aktiv. Er läuft über den bestehenden gesunden Tunnel `tb-helfer-nas` auf `http://192.168.178.3:8081`; `GET https://api-v1.tb-helfer.de/health/ready` wurde erfolgreich mit `status=ok`, `database=up`, `migrations=ok`, `server_version=1.0.0-dev` geprüft.
 - Der bestehende Produktivhostname `api.tb-helfer.de` und der alte 0.7-Server bleiben ausdrücklich unverändert; dies ist **kein produktiver Cutover**.
 - Nach bestätigtem externen Health-Test soll Android-Debug lokal auf `tb.server.base.url=https://api-v1.tb-helfer.de` zeigen; Release bleibt fest auf `https://api.tb-helfer.de`.
 
@@ -852,8 +852,8 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Cloudflare-Staging jetzt praktisch freischalten:** im bestehenden Tunnel den separaten Published-Application-Hostname `api-v1.tb-helfer.de` auf `http://192.168.178.3:8081` routen und `/health/ready` außerhalb des Heimnetzes prüfen; `api.tb-helfer.de` nicht verändern.
-2. Danach auf dem Entwicklungs-Laptop in der gitignorierten `local.properties` `tb.server.base.url=https://api-v1.tb-helfer.de` setzen, Debug-Build erzeugen und auf Pixel/Poco installieren.
+1. **Android-Debug jetzt auf den extern erreichbaren Stagingserver umstellen:** in der gitignorierten `local.properties` `tb.server.base.url=https://api-v1.tb-helfer.de` setzen, Debug-Build erzeugen und auf Pixel/Poco installieren.
+2. Danach auf Pixel/Poco bei ausgeschaltetem WLAN zusätzlich `/health/ready` bzw. die Geräteaktivierung über Mobilfunk praktisch bestätigen.
 3. Im Portal für die zwei vorhandenen Testnutzer je einen Geräte-Aktivierungs-QR/PDF erzeugen, bei Bedarf die PDF an den jeweiligen Nutzer senden und Pixel/Poco direkt in der TB-Helfer-App aktivieren.
 3. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
 4. Parallel Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
