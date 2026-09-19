@@ -1,6 +1,6 @@
 # TB-Server 1.0 – Docker-/NAS-Deployment
 
-Stand: 2026-09-18
+Stand: 2026-09-19
 
 Dieser Stand ergänzt eine reproduzierbare Compose-Basis für **Staging/Test und den später kontrollierten NAS-Cutover**. Er führt selbst keinen produktiven Cutover aus.
 
@@ -24,7 +24,7 @@ Verwendet dasselbe `Dockerfile.v1` wie API/Worker und führt vor deren Start aus
 
 `python -m tbserver.migrations up`
 
-Der Migration Runner prüft weiterhin die SHA-256 bereits angewendeter Migrationen. API/Worker starten erst nach erfolgreichem Migrationslauf.
+Der Migration Runner prüft weiterhin die SHA-256 bereits angewendeter Migrationen. API/Worker starten erst nach erfolgreichem Migrationslauf. Zusätzlich wartet der Migrationsprozess bei einem rein transportseitigen PostgreSQL-Startfehler (`OperationalError` ohne SQLSTATE) begrenzt und versucht die Verbindung erneut. Damit wird das beim frischen Synology/PostgreSQL-Init beobachtete kurze Neustartfenster abgefangen; echte PostgreSQL-Fehler mit SQLSTATE werden weiterhin sofort abgebrochen.
 
 ### api
 
@@ -103,6 +103,8 @@ Die Startreihenfolge ist:
 2. nummerierte Migrationen erfolgreich;
 3. API + Worker starten;
 4. API-Ready-Healthcheck grün.
+
+Praktischer Synology-Staginglauf am 19.09.2026: frische PostgreSQL-17-Instanz gestartet, Migrationen `001` bis `009` erfolgreich angewendet, API und Worker gestartet und `/health/ready` mit HTTP 200 bestätigt. Beim allerersten Init trat einmal das PostgreSQL-Initialisierungsfenster zwischen temporärem Init-Server und finalem Serverstart auf; der oben beschriebene begrenzte Retry wurde danach im Migrationsrunner ergänzt.
 
 ## Initialer Admin
 
