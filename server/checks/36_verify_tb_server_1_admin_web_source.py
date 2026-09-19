@@ -17,6 +17,8 @@ def read(rel: str) -> str:
 def main() -> None:
     web = read("server/tbserver/admin_web.py")
     company = read("server/tbserver/company.py")
+    admin = read("server/tbserver/admin.py")
+    devices = read("server/tbserver/devices.py")
     portal = read("server/tbserver/portal.py")
     main_source = read("server/tbserver/main.py")
     capabilities = read("server/tbserver/capabilities.py")
@@ -26,6 +28,7 @@ def main() -> None:
     login = read("server/templates/v1_portal_login.html")
     home = read("server/templates/v1_portal_home.html")
     companies = read("server/templates/v1_admin_companies.html")
+    users = read("server/templates/v1_admin_users.html")
     branding = read("server/templates/v1_company_branding.html")
 
     assertions = [
@@ -33,6 +36,7 @@ def main() -> None:
         ('@router.get("/portal/v1")', web),
         ('@router.get("/admin/v1")', web),
         ('@router.get("/admin/v1/companies")', web),
+        ('@router.get("/admin/v1/users")', web),
         ('@router.get("/admin/v1/companies/{company_id}/branding")', web),
         ('Depends(current_portal_session_user)', web),
         ('Depends(require_web_admin)', web),
@@ -52,6 +56,15 @@ def main() -> None:
         ("/api/v1/portal/login", login),
         ("/admin/v1/companies", home),
         ("/api/v1/admin/companies", companies),
+        ("/admin/v1/users", base),
+        ("/api/v1/admin/users", users),
+        ("/portal-activation", users),
+        ("/device-activation", users),
+        ("/release", users),
+        ('@router.post("/users", status_code=201)', admin),
+        ('@router.post("/users/{user_id}/portal-activation")', admin),
+        ('@admin_router.post("/users/{user_id}/device-activation")', devices),
+        ('@admin_router.post("/devices/{device_id}/release", status_code=204)', devices),
         ("Profil / Logo / PDF", companies),
         ("/pdf-logo-layout", branding),
         ("/logo", branding),
