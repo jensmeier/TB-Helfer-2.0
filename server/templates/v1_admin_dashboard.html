@@ -1,0 +1,249 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Übersicht{% endblock %}
+{% block head %}
+<style>
+  .hero{position:relative;overflow:hidden;padding:26px;background:linear-gradient(135deg,#0b4fad,#1167d8 58%,#4188e7);color:#fff;border:0}
+  .hero:after{content:"";position:absolute;width:320px;height:320px;border-radius:50%;right:-110px;top:-190px;background:rgba(255,255,255,.12)}
+  .hero h1{font-size:32px;margin-bottom:6px}.hero p{margin:0;color:#eaf2ff}.hero .actions{position:relative;z-index:1}
+  .hero button{background:#fff;color:#0b4fad}.hero .pill{background:rgba(255,255,255,.18);color:#fff}
+  .headline{display:flex;gap:18px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+  .primary-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:16px 0}
+  .metric{background:#fff;border:1px solid #e4e7ec;border-radius:16px;padding:17px;box-shadow:0 3px 12px rgba(16,24,40,.045)}
+  .metric .eyebrow{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#667085}
+  .metric .value{font-size:28px;font-weight:850;margin:5px 0 1px;color:#101828}
+  .metric .sub{font-size:12px;color:#667085;min-height:18px}
+  .metric.warning{border-color:#fedf89;background:#fffcf5}.metric.critical{border-color:#fecdca;background:#fff8f7}
+  .overview-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.85fr);gap:16px}
+  .mini-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+  .mini-kpi{border:1px solid #eaecf0;border-radius:12px;padding:12px;background:#fbfcfe}
+  .mini-kpi .n{font-size:22px;font-weight:850}.mini-kpi .l{font-size:12px;color:#667085;margin-top:2px}
+  .chart-wrap{height:255px;margin-top:12px}.chart-wrap svg{width:100%;height:100%;display:block}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:#475467;margin-top:8px}
+  .legend span:before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  .legend .up:before{background:#12b76a}.legend .down:before{background:#1167d8}
+  .issue{border:1px solid #eaecf0;border-left-width:4px;border-radius:11px;padding:11px 12px;margin:9px 0}
+  .issue.ok{border-left-color:#12b76a;background:#f6fef9}.issue.warning{border-left-color:#f79009;background:#fffcf5}.issue.critical{border-left-color:#d92d20;background:#fff8f7}
+  .issue b{display:block;margin-bottom:3px}.issue small{color:#667085;line-height:1.35}
+  .storage-bar{height:12px;background:#edf1f5;border-radius:999px;overflow:hidden;margin:10px 0}.storage-bar>div{height:100%;background:linear-gradient(90deg,#1167d8,#53a0ff)}
+  .quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.quick a{border:1px solid #e4e7ec;border-radius:12px;padding:14px;background:#fff;color:#344054;font-weight:750;text-decoration:none}.quick a:hover{border-color:#84adff;background:#f5f8ff;text-decoration:none}
+  .quick small{display:block;color:#667085;font-weight:500;margin-top:4px}
+  .status-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.status-box{border:1px solid #eaecf0;border-radius:12px;padding:12px}
+  @media(max-width:980px){.primary-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-grid{grid-template-columns:1fr}.mini-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:600px){.primary-kpis,.mini-kpis,.quick,.status-row{grid-template-columns:1fr}.hero h1{font-size:27px}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card hero">
+  <div class="headline">
+    <div>
+      <div class="pill">TB-Helfer · Server 1.0</div>
+      <h1>Übersicht</h1>
+      <p>Speicher, Datenverkehr, Laufzeit, Probleme und wichtigste Projektdaten auf einen Blick.</p>
+    </div>
+    <div class="actions">
+      <span id="healthPill" class="pill">wird geprüft …</span>
+      <button id="refreshDashboard" type="button">Aktualisieren</button>
+    </div>
+  </div>
+</div>
+
+<div class="primary-kpis">
+  <div class="metric" id="storageMetric">
+    <div class="eyebrow">Speicher</div>
+    <div class="value" id="storageTotal">—</div>
+    <div class="sub" id="storageSub">wird geladen …</div>
+  </div>
+  <div class="metric">
+    <div class="eyebrow">Upload · 24 h</div>
+    <div class="value" id="trafficIn">—</div>
+    <div class="sub">zum TB-Helfer-Server</div>
+  </div>
+  <div class="metric">
+    <div class="eyebrow">Download · 24 h</div>
+    <div class="value" id="trafficOut">—</div>
+    <div class="sub">vom TB-Helfer-Server</div>
+  </div>
+  <div class="metric" id="problemMetric">
+    <div class="eyebrow">Probleme</div>
+    <div class="value" id="problemCount">—</div>
+    <div class="sub" id="problemSub">wird geprüft …</div>
+  </div>
+</div>
+
+<div class="overview-grid">
+  <div>
+    <div class="card">
+      <div class="headline">
+        <div>
+          <h2 style="margin-bottom:4px">Datenverkehr · letzte 24 Stunden</h2>
+          <div class="muted"><span id="requestCount">—</span> Requests · <span id="errorCount">—</span> Serverfehler</div>
+        </div>
+        <div class="muted">stündlich</div>
+      </div>
+      <div class="chart-wrap"><svg id="trafficChart" viewBox="0 0 820 240" preserveAspectRatio="none"></svg></div>
+      <div class="legend"><span class="up">Upload zum Server</span><span class="down">Download vom Server</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Bestand</h2>
+      <div class="mini-kpis" id="stockKpis"></div>
+    </div>
+
+    <div class="card">
+      <h2>Schnellzugriff</h2>
+      <div class="quick">
+        <a href="/admin/v1/users">Benutzer<small>Anlegen, Aktivierungskarte, Portalzugang</small></a>
+        <a href="/admin/v1/devices">Geräte<small>Bindungen, letzter Kontakt, Freigeben</small></a>
+        <a href="/admin/v1/companies">Firmen<small>Stammdaten, Logo und PDF</small></a>
+        <a href="/portal/v1/worksites">Baustellen<small>Baustellen und Fachinhalte</small></a>
+        <a href="/admin/v1/releases">App-Versionen<small>Android/iOS/Windows Releases</small></a>
+        <a href="/admin/v1/system">Systemstatus<small>Backups, Jobs und technische Details</small></a>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Server</h2>
+      <div class="status-row">
+        <div class="status-box"><div class="muted">Online seit</div><b id="startedAt">—</b></div>
+        <div class="status-box"><div class="muted">Laufzeit</div><b id="uptime">—</b></div>
+        <div class="status-box"><div class="muted">Version</div><b id="serverVersion">—</b></div>
+        <div class="status-box"><div class="muted">Umgebung</div><b id="environment">—</b></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Speicherbelegung</h2>
+      <div id="storageDetail" class="muted">wird geladen …</div>
+      <div class="storage-bar"><div id="storageBar" style="width:0%"></div></div>
+      <div id="trackedFiles" class="muted"></div>
+    </div>
+
+    <div class="card">
+      <div class="headline"><h2 style="margin-bottom:0">Probleme & Warnungen</h2><a href="/admin/v1/system">Details</a></div>
+      <div id="issues"></div>
+    </div>
+
+    <div class="card">
+      <h2>Letzte Aktivität</h2>
+      <p><b>Gerätekontakt:</b><br><span id="lastDevice" class="muted">—</span></p>
+      <p><b>Sync:</b><br><span id="lastSync" class="muted">—</span></p>
+      <p><b>Backup:</b><br><span id="lastBackup" class="muted">—</span></p>
+      <p><b>Öffentlicher Server:</b><br><span id="publicServer" class="muted">—</span></p>
+    </div>
+  </div>
+</div>
+
+<div id="dashboardError" class="notice err" style="display:none"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const $=id=>document.getElementById(id);
+const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function bytes(value){
+  const n=Number(value);if(!Number.isFinite(n))return '—';
+  const units=['B','KiB','MiB','GiB','TiB'];let x=n,i=0;
+  while(x>=1024&&i<units.length-1){x/=1024;i++;}
+  return (i===0?Math.round(x):x.toFixed(x>=100?0:x>=10?1:2))+' '+units[i];
+}
+function gb(value){const n=Number(value);return Number.isFinite(n)?(n/1073741824).toFixed(n>=107374182400?0:1)+' GB':'—';}
+function dt(value){if(!value)return '—';try{return new Date(value).toLocaleString('de-DE');}catch(_){return String(value);}}
+function duration(seconds){
+  let s=Math.max(0,Number(seconds)||0),d=Math.floor(s/86400);s%=86400;
+  let h=Math.floor(s/3600);s%=3600;let m=Math.floor(s/60);
+  if(d)return d+' T '+h+' Std';if(h)return h+' Std '+m+' Min';return m+' Min';
+}
+function mini(n,label){return '<div class="mini-kpi"><div class="n">'+esc(n)+'</div><div class="l">'+esc(label)+'</div></div>';}
+function renderChart(series){
+  const svg=$('trafficChart'), w=820,h=240,padL=45,padR=10,padT=12,padB=32, iw=w-padL-padR,ih=h-padT-padB;
+  const values=series.flatMap(r=>[Number(r.bytes_in)||0,Number(r.bytes_out)||0]);
+  const max=Math.max(1,...values);
+  const point=(value,i)=>[(padL+(series.length<=1?0:i*iw/(series.length-1))).toFixed(1),(padT+ih-(Number(value)||0)/max*ih).toFixed(1)];
+  const up=series.map((r,i)=>point(r.bytes_in,i).join(',')).join(' ');
+  const down=series.map((r,i)=>point(r.bytes_out,i).join(',')).join(' ');
+  let html='';
+  for(let i=0;i<=4;i++){
+    const y=padT+i*ih/4, val=max*(1-i/4);
+    html+='<line x1="'+padL+'" y1="'+y+'" x2="'+(w-padR)+'" y2="'+y+'" stroke="#e4e7ec" stroke-width="1"/>';
+    html+='<text x="'+(padL-7)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" fill="#667085">'+esc(bytes(val))+'</text>';
+  }
+  series.forEach((r,i)=>{
+    if(i%4!==0&&i!==series.length-1)return;
+    const x=padL+(series.length<=1?0:i*iw/(series.length-1));
+    let label='';
+    try{label=new Date(r.bucket_start).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});}catch(_){label='';}
+    html+='<text x="'+x+'" y="'+(h-8)+'" text-anchor="middle" font-size="10" fill="#667085">'+esc(label)+'</text>';
+  });
+  html+='<polyline fill="none" stroke="#12b76a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="'+up+'"/>';
+  html+='<polyline fill="none" stroke="#1167d8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="'+down+'"/>';
+  svg.innerHTML=html;
+}
+async function loadDashboard(){
+  $('refreshDashboard').disabled=true;
+  $('dashboardError').style.display='none';
+  try{
+    const {data:x}=await tbApi('/api/v1/admin/system/status');
+    const c=x.counts||{},st=x.storage||{},tr=x.traffic_24h||{},p=x.process||{};
+    $('storageTotal').textContent=st.available?gb(st.total_bytes):'nicht verfügbar';
+    $('storageSub').textContent=st.available?(gb(st.free_bytes)+' frei · '+Number(st.percent_used||0).toFixed(1)+' % belegt'):'Speicherpfad nicht erreichbar';
+    $('trafficIn').textContent=bytes(tr.bytes_in||0);
+    $('trafficOut').textContent=bytes(tr.bytes_out||0);
+    $('requestCount').textContent=Number(tr.request_count||0).toLocaleString('de-DE');
+    $('errorCount').textContent=Number(tr.error_count||0).toLocaleString('de-DE');
+
+    const issues=(x.issues||[]), problems=issues.filter(i=>i.severity!=='ok');
+    $('problemCount').textContent=problems.length;
+    $('problemSub').textContent=problems.length?'bitte prüfen':'alles unauffällig';
+    $('problemMetric').className='metric '+(problems.some(i=>i.severity==='critical')?'critical':problems.length?'warning':'');
+    $('healthPill').textContent=problems.some(i=>i.severity==='critical')?'Handlungsbedarf':problems.length?'Warnungen':'System OK';
+
+    $('stockKpis').innerHTML=[
+      mini((c.active_users||0)+' / '+(c.users||0),'aktive / alle Benutzer'),
+      mini(c.active_devices||0,'aktive Geräte'),
+      mini(c.companies||0,'Firmen'),
+      mini(c.worksites||0,'Baustellen'),
+      mini(c.files||0,'Dateien'),
+      mini(c.releases||0,'App-Versionen'),
+      mini(c.survey_originals||0,'Vermessungsoriginale'),
+      mini(c.trash_items||0,'Papierkorb / gelöscht')
+    ].join('');
+
+    $('startedAt').textContent=dt(p.started_at);
+    $('uptime').textContent=duration(p.uptime_seconds);
+    $('serverVersion').textContent=x.server_version||'—';
+    $('environment').textContent=x.environment||'—';
+    $('publicServer').textContent=x.public_base_url||'nicht konfiguriert';
+
+    if(st.available){
+      const pct=Math.max(0,Math.min(100,Number(st.percent_used||0)));
+      $('storageDetail').textContent=bytes(st.used_bytes)+' belegt · '+bytes(st.free_bytes)+' frei · '+bytes(st.total_bytes)+' gesamt';
+      $('storageBar').style.width=pct+'%';
+    }else{
+      $('storageDetail').textContent='Datenspeicher nicht verfügbar.';
+      $('storageBar').style.width='0%';
+    }
+    $('trackedFiles').textContent='In TB-Helfer erfasste Dateien: '+bytes(c.tracked_file_bytes||0);
+
+    $('issues').innerHTML=issues.map(i=>
+      '<div class="issue '+esc(i.severity)+'"><b>'+esc(i.title)+'</b><small>'+esc(i.detail)+'</small></div>'
+    ).join('')||'<div class="issue ok"><b>Keine Probleme</b><small>Keine Warnungen gemeldet.</small></div>';
+
+    $('lastDevice').textContent=dt(c.last_device_seen);
+    $('lastSync').textContent=dt(c.last_sync);
+    const b=x.last_successful_backup;
+    $('lastBackup').textContent=b?(dt(b.finished_at||b.started_at)+' · '+String(b.kind||'')):'noch kein erfolgreiches Backup';
+
+    renderChart(x.traffic_series||[]);
+  }catch(error){
+    $('dashboardError').textContent=error.message||String(error);
+    $('dashboardError').style.display='block';
+    $('healthPill').textContent='Statusfehler';
+  }finally{
+    $('refreshDashboard').disabled=false;
+  }
+}
+$('refreshDashboard').addEventListener('click',loadDashboard);
+loadDashboard();
+</script>
+{% endblock %}
