@@ -232,9 +232,9 @@ class AktivierungActivity : AppCompatActivity() {
             val result = withContext(Dispatchers.IO) {
                 when (invitation) {
                     is WorksiteInvitationLink.Credential.ServerToken ->
-                        teamApi.redeemServerInvitation(token, invitation.value)
+                        TeamManagementApi().redeemServerInvitation(token, invitation.value)
                     is WorksiteInvitationLink.Credential.LegacyCode ->
-                        teamApi.redeemInvitation(token, invitation.value)
+                        TeamManagementApi().redeemInvitation(token, invitation.value)
                 }
             }
             when (result) {
