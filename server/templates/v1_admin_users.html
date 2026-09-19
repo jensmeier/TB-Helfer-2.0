@@ -1,5 +1,5 @@
 {% extends "v1_base.html" %}
-{% block title %}TB-Helfer · Nutzer/Geräte{% endblock %}
+{% block title %}TB-Helfer · Benutzer{% endblock %}
 {% block content %}
 <div class="card">
   <h1>Benutzer</h1>
@@ -106,6 +106,9 @@
             <div class="actions">
               <a class="btn" href="/admin/v1/users/{{ u.id }}/activation-card">Aktivierungskarte</a>
               <button type="button" class="secondary portal-activation" data-user-id="{{ u.id }}">Portal aktivieren</button>
+              <button type="button" class="danger delete-user"
+                      data-user-id="{{ u.id }}"
+                      data-user-name="{{ u.display_name }}">Löschen</button>
             </div>
           </td>
         </tr>
@@ -167,6 +170,26 @@ document.querySelectorAll('.portal-activation').forEach(button=>{
     }catch(error){
       show('err',error.message||String(error));
     }finally{
+      button.disabled=false;
+    }
+  });
+});
+
+document.querySelectorAll('.delete-user').forEach(button=>{
+  button.addEventListener('click',async ()=>{
+    const name=button.dataset.userName||'diesen Benutzer';
+    if(!confirm(
+      'Benutzer "'+name+'" wirklich löschen?\n\n'+
+      'Das Gerät wird freigegeben, offene Aktivierungs-Keys und Portalzugänge werden ungültig. '+
+      'Die technische Historie bleibt erhalten.'
+    )) return;
+    button.disabled=true;
+    try{
+      await tbApi('/api/v1/admin/users/'+button.dataset.userId,{method:'DELETE'});
+      show('ok','Benutzer wurde gelöscht und vorhandene Geräte wurden freigegeben.');
+      setTimeout(()=>location.reload(),450);
+    }catch(error){
+      show('err',error.message||String(error));
       button.disabled=false;
     }
   });
