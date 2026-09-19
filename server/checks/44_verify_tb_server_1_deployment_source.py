@@ -15,6 +15,7 @@ def main() -> None:
     dockerfile = read("server/Dockerfile.v1")
     docs = read("docs/TB-SERVER_1_0_DEPLOYMENT.md")
     workflow = read(".github/workflows/tb-server-v1.yml")
+    migrations = read("server/tbserver/migrations.py")
 
     assertions = [
         ("postgis/postgis:17-3.5", compose),
@@ -33,6 +34,10 @@ def main() -> None:
         ("postgresql-client-17", dockerfile),
         ("Restore-to-Target", docs),
         ("44_verify_tb_server_1_deployment_source.py", workflow),
+        ("DB_CONNECT_ATTEMPTS", migrations),
+        ("psycopg.OperationalError", migrations),
+        ("WAITING_DATABASE", migrations),
+        ("time.sleep(DB_CONNECT_RETRY_SECONDS)", migrations),
     ]
     missing = [needle for needle, source in assertions if needle not in source]
     if missing:
