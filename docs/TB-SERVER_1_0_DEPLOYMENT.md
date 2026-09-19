@@ -137,6 +137,29 @@ Der normale `docker-compose.v1.yml` bleibt absichtlich **ohne** Source-Mounts un
 
 Für Synology Container Manager wird während der Stagingphase der Inhalt von `docker-compose.synology-staging.v1.yml` als Projekt-`compose.yml` verwendet. Die bestehenden persistenten Ordner `database-v1`, `storage-v1`, `backups-v1` und die lokale `.env` bleiben unverändert.
 
+## Cloudflare-Staging für Tests außerhalb des Heimnetzes
+
+Für den E2E-Test außerhalb des Heimnetzes wird **nicht** der bestehende Produktivhostname `api.tb-helfer.de` umgeschaltet. Stattdessen wird ein eigener Staging-Hostname verwendet:
+
+`https://api-v1.tb-helfer.de`
+
+Der vorhandene Cloudflare-Tunnel kann eine zusätzliche Published-Application-Route auf denselben NAS-Host bekommen:
+
+- Public hostname: `api-v1.tb-helfer.de`
+- Origin/Service URL: `http://192.168.178.3:8081`
+
+Der alte Server und `api.tb-helfer.de` bleiben dabei unverändert. Der Staging-Server muss im LAN weiter auf `0.0.0.0:8081` lauschen. Cloudflare terminiert extern HTTPS; der Tunnel spricht intern HTTP zum getrennten Staging-Port.
+
+Für Android-Debug wird nach erfolgreichem externen Health-Test in `local.properties` statt der LAN-Adresse gesetzt:
+
+```properties
+tb.server.base.url=https://api-v1.tb-helfer.de
+```
+
+Der Release-Build bleibt unabhängig davon fest auf `https://api.tb-helfer.de`.
+
+Für den gemeinsamen App-API-Hostname wird im Staging **keine interaktive Cloudflare-Access-Anmeldung** vorgeschaltet, weil Android die Geräteaktivierungs-/Bearer-API direkt erreichen muss. Portal und API bleiben durch ihre eigenen Server-1.0-Authentifizierungsmechanismen geschützt. Eine spätere Trennung von Admin-Portal und App-API auf getrennte Hostnamen kann zusätzlich gehärtet werden.
+
 ## Android gegen Synology-Staging testen
 
 Der Android-**Debug**-Build kann für den lokalen E2E-Test auf einen anderen Server zeigen, ohne die produktive Release-Adresse umzuschreiben.
@@ -158,6 +181,20 @@ Sicherheitsregeln:
 - `local.properties` bleibt gitignoriert und darf nicht versioniert werden.
 
 Damit können Pixel/Poco im Heimnetz direkt gegen den getrennten Server-1.0-Stagingport 8081 getestet werden, ohne den produktiven Cloudflare-Endpunkt umzuschalten.
+
+## Geräteaktivierungskarte als QR/PDF
+
+Die Server-1.0-Geräteaktivierung erzeugt weiterhin einen kurzlebigen Einmal-Schlüssel und die App-URI `tbhelfer://activate?key=...`.
+
+Die Admin-Seite **Nutzer/Geräte** liefert nach `Gerät aktivieren` zusätzlich:
+
+- QR-Code für den direkten Scan in der Android-App;
+- herunterladbare PDF-Aktivierungskarte mit Benutzer, Firma, Ablaufzeit, QR und Fallback-Schlüssel;
+- Browser-Aktion `PDF teilen / versenden`; falls Web Share mit Dateien nicht verfügbar ist, wird die PDF zum manuellen Anhängen heruntergeladen.
+
+Die PDF wird nicht als dauerhafte Serverdatei abgelegt. Sie wird nur in der einmaligen Aktivierungsantwort erzeugt. Die Antwort trägt `Cache-Control: no-store`; auf dem Server bleiben Aktivierungsschlüssel weiterhin nur gehasht gespeichert.
+
+Eine neu erzeugte noch unbenutzte Aktivierung widerruft den vorherigen offenen Aktivierungsschlüssel desselben Benutzers. Bereits gebundene Geräte bleiben davon unberührt, bis sie ausdrücklich freigegeben werden.
 
 ## Initialer Admin
 
