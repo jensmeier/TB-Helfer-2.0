@@ -13,7 +13,7 @@ from .database import transaction
 from .device_activation_links import device_activation_app_uri, device_activation_qr_svg_data_url
 from .device_activation_pdf import device_activation_pdf_data_url
 from .events import audit
-from .security import hash_token, random_token
+from .security import hash_token, random_activation_key, random_token
 
 
 router = APIRouter(prefix="/api/v1/device", tags=["devices"])
@@ -229,7 +229,7 @@ def issue_device_activation(
     response: Response,
     admin: dict[str, Any] = Depends(require_admin_csrf),
 ) -> dict:
-    raw_key = random_token(32)
+    raw_key = random_activation_key()
     key_hash = hash_token(raw_key)
     key_hint = raw_key[-6:]
     expires_at = _now() + timedelta(hours=payload.expires_hours)
@@ -250,12 +250,6 @@ def issue_device_activation(
             raise HTTPException(404, "USER_NOT_FOUND")
         if target["deleted_at"] is not None or target["status"] != "ACTIVE":
             raise HTTPException(409, "USER_NOT_ACTIVE")
-        cur.execute(
-            "SELECT id FROM tb.devices WHERE user_id = %s AND status = 'ACTIVE' AND revoked_at IS NULL",
-            (user_id,),
-        )
-        if cur.fetchone():
-            raise HTTPException(409, "DEVICE_ALREADY_BOUND")
         cur.execute(
             "UPDATE tb.device_activation_tokens SET revoked_at = now() WHERE user_id = %s AND used_at IS NULL AND revoked_at IS NULL",
             (user_id,),
