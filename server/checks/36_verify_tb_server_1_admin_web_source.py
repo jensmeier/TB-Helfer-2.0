@@ -29,6 +29,8 @@ def main() -> None:
     home = read("server/templates/v1_portal_home.html")
     companies = read("server/templates/v1_admin_companies.html")
     users = read("server/templates/v1_admin_users.html")
+    devices_page = read("server/templates/v1_admin_devices.html")
+    activation_card = read("server/templates/v1_device_activation_card.html")
     branding = read("server/templates/v1_company_branding.html")
 
     assertions = [
@@ -37,6 +39,8 @@ def main() -> None:
         ('@router.get("/admin/v1")', web),
         ('@router.get("/admin/v1/companies")', web),
         ('@router.get("/admin/v1/users")', web),
+        ('@router.get("/admin/v1/devices")', web),
+        ('@router.get("/admin/v1/users/{user_id}/activation-card")', web),
         ('@router.get("/admin/v1/companies/{company_id}/branding")', web),
         ('Depends(current_portal_session_user)', web),
         ('Depends(require_web_admin)', web),
@@ -59,8 +63,12 @@ def main() -> None:
         ("/admin/v1/users", base),
         ("/api/v1/admin/users", users),
         ("/portal-activation", users),
-        ("/device-activation", users),
-        ("/release", users),
+        ("/activation-card", users),
+        ("/api/v1/admin/users/", activation_card),
+        ("/device-activation", activation_card),
+        ("Drucken / als PDF speichern", activation_card),
+        ("PDF teilen / versenden", activation_card),
+        ("/release", devices_page),
         ('@router.post("/users", status_code=201)', admin),
         ('@router.post("/users/{user_id}/portal-activation")', admin),
         ('@admin_router.post("/users/{user_id}/device-activation")', devices),
