@@ -640,6 +640,14 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 **Noch nicht ausgeführt:** Source-Checks 34–81 gegen den vollständigen neuen Branding-/Portal-/System-/Release-/Backup-/Restore-/Deployment-/Retention-/Teamwechsel-/QR-Stand (CI-Runner führt weiterhin keine Steps aus) sowie die vollständige PostgreSQL-/FastAPI-End-to-End-Kette für Import -> Parse -> Section -> Projection v3 -> GRA-Sprung v2 -> Kalibrierung. In der aktuellen Arbeitsumgebung stehen weder `postgres`/`psql` noch Docker/Podman zur Verfügung.
 
+### Geräteaktivierung per QR im Server-1.0-Portal 2026-09-19
+
+- Der bestehende Android-Aktivierungsweg war bereits QR-/Deep-Link-fähig (`tbhelfer://activate?key=...`), die neue Server-1.0-Nutzer-/Geräteseite hatte zunächst jedoch nur Aktivierungsschlüssel und URI als Text angezeigt.
+- Die Server-1.0-Geräteaktivierung liefert jetzt zusätzlich einen einmaligen SVG-QR als Data-URL. Der QR enthält ausschließlich dieselbe einmalige Aktivierungs-URI; der Schlüssel wird serverseitig weiterhin nur gehasht gespeichert.
+- Die Portal-Seite **Nutzer/Geräte** zeigt nach **Gerät aktivieren** eine Aktivierungskarte mit QR-Code, Ablaufzeit und Schlüssel nur als Fallback/Kopiermöglichkeit.
+- Android scannt den QR weiterhin über den vorhandenen Aktivierungs-Scanner und verarbeitet denselben `tbhelfer://activate`-Deep-Link. Kein zweiter Aktivierungsweg wurde eingeführt.
+- Neuer Source-Check `84_verify_device_activation_qr_source.py` prüft Server -> Portal -> Android durchgängig.
+
 ### Android-Debug gegen Synology-Staging 2026-09-19
 
 - Der praktische Geräte-E2E wäre sonst gegen den falschen Server gelaufen: `ServerConfig.BASE_URL` war weiterhin fest auf `https://api.tb-helfer.de` gesetzt.
@@ -678,7 +686,7 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Für den nächsten E2E-Schritt wurde die bisher fehlende Admin-Weboberfläche **Nutzer/Geräte** ergänzt. Sie nutzt ausschließlich die vorhandenen kanonischen Admin-APIs für Nutzeranlage, einmalige Portal-Aktivierung, Geräte-Aktivierung und Gerätefreigabe; keine parallele Fachlogik wurde eingeführt.
 - Die Nutzer-/Geräte-Weboberfläche läuft praktisch; zwei Firmen-Testnutzer wurden angelegt und sind noch ohne Portal-/Geräteaktivierung.
 - Vor der Geräteaktivierung muss der neue Android-Debug-Build mit lokalem Serverendpunkt `http://192.168.178.3:8081` auf Pixel/Poco installiert werden; sonst würde die App weiter den produktiven `api.tb-helfer.de`-Endpunkt verwenden.
-- Danach offen: je einen Geräte-Aktivierungsschlüssel erzeugen und Pixel/Poco aktivieren; anschließend gemeinsamer Baustellen-/Team-/Fach-E2E, Backup/Retention/Restore-Test/Restore-to-Target und Vermessungs-E2E.
+- Danach offen: je einen Geräte-Aktivierungs-QR erzeugen und mit Pixel/Poco scannen; anschließend gemeinsamer Baustellen-/Team-/Fach-E2E, Backup/Retention/Restore-Test/Restore-to-Target und Vermessungs-E2E.
 
 ### CI-/Migrations-Gate-Korrektur 2026-09-19
 
@@ -836,7 +844,7 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 ## Nächster sinnvoller Arbeitsschritt
 
 1. **Android-Debug für den lokalen Stagingserver bauen/installieren:** auf dem Entwicklungs-Laptop in der gitignorierten `local.properties` `tb.server.base.url=http://192.168.178.3:8081` setzen, Debug-Build erzeugen und auf Pixel/Poco installieren.
-2. Danach im bereits funktionierenden Portal für die zwei vorhandenen Testnutzer je einen Geräte-Aktivierungsschlüssel erzeugen und Pixel/Poco jeweils mit eigenem Nutzer aktivieren.
+2. Danach im bereits funktionierenden Portal für die zwei vorhandenen Testnutzer je einen Geräte-Aktivierungs-QR erzeugen und mit Pixel/Poco jeweils direkt in der TB-Helfer-App scannen.
 3. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
 4. Parallel Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
 5. Danach die Vermessungskette mit realen Daten end-to-end ausführen: Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung; zusätzliche Mehr-TRA-/Reverse-Geometry-Fälle mitprüfen.
