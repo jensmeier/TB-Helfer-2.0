@@ -19,6 +19,7 @@ import de.tbhelfer.server.ActivationApi
 import de.tbhelfer.server.CompanyProfileSync
 import de.tbhelfer.server.DeviceIdentity
 import de.tbhelfer.server.SecureTokenStore
+import de.tbhelfer.server.ServerConfig
 import de.tbhelfer.server.TeamManagementApi
 import de.tbhelfer.server.UserDisplayCache
 import de.tbhelfer.ui.HauptActivity
@@ -38,8 +39,6 @@ class AktivierungActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
 
     private lateinit var tokenStore: SecureTokenStore
-    private val api = ActivationApi()
-    private val teamApi = TeamManagementApi()
     private var pendingInvitation: WorksiteInvitationLink.Credential? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,7 +60,20 @@ class AktivierungActivity : AppCompatActivity() {
 
         scanButton.setOnClickListener { scanQrCode() }
         activateButton.setOnClickListener {
-            activateWithKey(keyInput.text?.toString().orEmpty())
+            activateWithCredential(
+                ActivationCredential(
+                    key = keyInput.text?.toString().orEmpty(),
+                    serverBaseUrl = null
+                )
+            )
+        }
+
+        val deepLinkActivation =
+            extractActivationCredential(intent?.data?.toString().orEmpty())
+        if (deepLinkActivation != null) {
+            keyInput.setText(deepLinkActivation.key)
+            activateWithCredential(deepLinkActivation)
+            return
         }
 
         val existingToken = tokenStore.load()
@@ -72,12 +84,6 @@ class AktivierungActivity : AppCompatActivity() {
             } else {
                 openMainApp()
             }
-            return
-        }
-
-        extractActivationKey(intent?.data?.toString().orEmpty())?.let { deepLinkKey ->
-            keyInput.setText(deepLinkKey)
-            activateWithKey(deepLinkKey)
             return
         }
 
@@ -96,12 +102,12 @@ class AktivierungActivity : AppCompatActivity() {
         scanner.startScan()
             .addOnSuccessListener { barcode ->
                 val raw = barcode.rawValue.orEmpty()
-                val key = extractActivationKey(raw)
-                if (key == null) {
+                val credential = extractActivationCredential(raw)
+                if (credential == null) {
                     setStatus(getString(R.string.activation_invalid_qr), isError = true)
                 } else {
-                    keyInput.setText(key)
-                    activateWithKey(key)
+                    keyInput.setText(credential.key)
+                    activateWithCredential(credential)
                 }
             }
             .addOnCanceledListener {
@@ -112,8 +118,8 @@ class AktivierungActivity : AppCompatActivity() {
             }
     }
 
-    private fun activateWithKey(rawKey: String) {
-        val key = rawKey.trim()
+    private fun activateWithCredential(credential: ActivationCredential) {
+        val key = credential.key.trim()
         if (key.length < 16) {
             setStatus(getString(R.string.activation_key_too_short), isError = true)
             return
@@ -123,8 +129,9 @@ class AktivierungActivity : AppCompatActivity() {
         setStatus(getString(R.string.activation_connecting))
 
         lifecycleScope.launch {
+            val activationBaseUrl = credential.serverBaseUrl ?: ServerConfig.BASE_URL
             val result = withContext(Dispatchers.IO) {
-                api.activate(
+                ActivationApi(activationBaseUrl).activate(
                     key = key,
                     deviceUid = DeviceIdentity.stableUid(this@AktivierungActivity),
                     deviceName = DeviceIdentity.deviceName(),
@@ -142,6 +149,13 @@ class AktivierungActivity : AppCompatActivity() {
                         return@launch
                     }
 
+                    credential.serverBaseUrl?.let { serverBaseUrl ->
+                        ServerConfig.rememberActivatedServer(
+                            applicationContext,
+                            serverBaseUrl
+                        )
+                    }
+
                     // Nur nicht geheime Anzeigedaten cachen. Technische Identität und Rechte bleiben
                     // weiterhin ausschließlich beim Server-Token und den Server-UUIDs.
                     UserDisplayCache.rememberName(applicationContext, result.userName)
@@ -153,7 +167,7 @@ class AktivierungActivity : AppCompatActivity() {
                         CompanyProfileSync.synchronize(
                             applicationContext,
                             result.token,
-                            teamApi
+                            TeamManagementApi()
                         )
                     }
                     if (profileResult is CompanyProfileSync.Result.Error) {
@@ -258,14 +272,31 @@ class AktivierungActivity : AppCompatActivity() {
         }
     }
 
-    private fun extractActivationKey(raw: String): String? {
+    private data class ActivationCredential(
+        val key: String,
+        val serverBaseUrl: String?
+    )
+
+    private fun extractActivationCredential(raw: String): ActivationCredential? {
         val text = raw.trim()
-        if (text.startsWith("TBH-", ignoreCase = true)) return text.uppercase()
+        if (text.startsWith("TBH-", ignoreCase = true)) {
+            return ActivationCredential(text.uppercase(), null)
+        }
 
         val uri = runCatching { Uri.parse(text) }.getOrNull() ?: return null
         if (!uri.scheme.equals("tbhelfer", ignoreCase = true)) return null
         if (!uri.host.equals("activate", ignoreCase = true)) return null
-        return uri.getQueryParameter("key")?.trim()?.takeIf { it.isNotBlank() }
+
+        val key = uri.getQueryParameter("key")?.trim()?.takeIf { it.isNotBlank() }
+            ?: return null
+        val rawServer = uri.getQueryParameter("server")?.trim()?.takeIf { it.isNotBlank() }
+        val server = if (rawServer == null) {
+            null
+        } else {
+            runCatching { ServerConfig.activationServer(rawServer) }.getOrNull()
+                ?: return null
+        }
+        return ActivationCredential(key, server)
     }
 
     private fun setBusy(busy: Boolean) {
