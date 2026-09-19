@@ -642,6 +642,9 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 ### Aktivierungs-QR ist jetzt selbstbeschreibend 2026-09-19
 
+- Nach der Umstellung wurde vor dem Gerätebuild noch eine veraltete `teamApi`-Referenz in `AktivierungActivity` gefunden und behoben; der QR-Aktivierungsweg verwendet jetzt durchgängig neu erzeugte `TeamManagementApi`-Clients mit der nach erfolgreicher Aktivierung gespeicherten Serveridentität.
+- Source-Check 84 schlägt jetzt zusätzlich fehl, falls diese veraltete Referenz wieder auftaucht.
+
 - Die zwischenzeitliche Android-Staginglösung über `local.properties` wurde auf den vorgesehenen Gerätefluss zurückgeführt: `local.properties` bleibt nur Entwickler-Fallback und ist keine Benutzerkonfiguration.
 - Der Geräte-Aktivierungs-QR/Deep-Link enthält jetzt **öffentliche HTTPS-Serveradresse + Einmal-Schlüssel**. Für das aktuelle Staging ist die Serveridentität `https://api-v1.tb-helfer.de`.
 - Server 1.0 erhält die kanonische Adresse aus der lokalen Synology-Variable `TB_V1_PUBLIC_BASE_URL`; ohne konfigurierte öffentliche URL wird keine neue Aktivierungskarte ausgegeben.
