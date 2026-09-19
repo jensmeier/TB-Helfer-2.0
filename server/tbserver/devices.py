@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from .admin import require_admin, require_admin_csrf
+from .config import settings
 from .database import transaction
 from .device_activation_links import device_activation_app_uri, device_activation_qr_svg_data_url
 from .device_activation_pdf import device_activation_pdf_data_url
@@ -277,7 +278,13 @@ def issue_device_activation(
             entity_id=user_id,
             details={"expires_at": expires_at.isoformat(), "token_hint": key_hint},
         )
-    activation_url = device_activation_app_uri(raw_key)
+    public_base_url = settings.public_base_url
+    if public_base_url is None:
+        raise HTTPException(503, "PUBLIC_BASE_URL_NOT_CONFIGURED")
+    try:
+        activation_url = device_activation_app_uri(raw_key, public_base_url)
+    except ValueError as exc:
+        raise HTTPException(503, str(exc)) from exc
     pdf_filename = f"TB-Helfer_Aktivierung_{target['login_name']}.pdf"
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
@@ -288,7 +295,8 @@ def issue_device_activation(
         "company_name": target["company_name"],
         "activation_key": raw_key,
         "activation_url": activation_url,
-        "activation_qr_svg_data_url": device_activation_qr_svg_data_url(raw_key),
+        "server_base_url": public_base_url,
+        "activation_qr_svg_data_url": device_activation_qr_svg_data_url(raw_key, public_base_url),
         "activation_pdf_data_url": device_activation_pdf_data_url(
             user_name=target["display_name"],
             login_name=target["login_name"],
