@@ -241,7 +241,7 @@ def issue_device_activation(
             FROM tb.users u
             LEFT JOIN tb.companies c ON c.id = u.company_id
             WHERE u.id = %s
-            FOR UPDATE
+            FOR UPDATE OF u
             """,
             (user_id,),
         )
