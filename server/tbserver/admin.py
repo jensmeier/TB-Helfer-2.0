@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from .database import transaction
@@ -209,3 +209,120 @@ def issue_portal_activation(
         "activation_token": raw_token,
         "expires_at": expires_at,
     }
+
+
+@router.delete("/users/{user_id}", status_code=204)
+def delete_user(
+    user_id: UUID,
+    admin: dict[str, Any] = Depends(require_admin_csrf),
+) -> Response:
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, display_name, login_name, company_role, status, deleted_at
+            FROM tb.users
+            WHERE id = %s
+            FOR UPDATE
+            """,
+            (user_id,),
+        )
+        target = cur.fetchone()
+        if not target or target["deleted_at"] is not None:
+            raise HTTPException(404, "USER_NOT_FOUND")
+        if target["company_role"] == "ADMIN":
+            raise HTTPException(409, "ADMIN_USER_CANNOT_BE_DELETED")
+        if str(admin["id"]) == str(user_id):
+            raise HTTPException(409, "CANNOT_DELETE_SELF")
+
+        # Alle direkten Zugänge sofort ungültig machen.
+        cur.execute(
+            """
+            UPDATE tb.portal_sessions
+            SET revoked_at = COALESCE(revoked_at, now())
+            WHERE user_id = %s
+              AND revoked_at IS NULL
+            """,
+            (user_id,),
+        )
+        cur.execute(
+            """
+            UPDATE tb.portal_credentials
+            SET password_hash = NULL,
+                activation_token_hash = NULL,
+                activation_expires_at = NULL,
+                must_change_password = true,
+                failed_login_count = 0,
+                locked_until = NULL,
+                activated_at = NULL,
+                updated_at = now()
+            WHERE user_id = %s
+            """,
+            (user_id,),
+        )
+        cur.execute(
+            """
+            UPDATE tb.device_activation_tokens
+            SET revoked_at = COALESCE(revoked_at, now())
+            WHERE user_id = %s
+              AND used_at IS NULL
+              AND revoked_at IS NULL
+            """,
+            (user_id,),
+        )
+        cur.execute(
+            """
+            UPDATE tb.devices
+            SET status = 'REVOKED',
+                revoked_at = COALESCE(revoked_at, now()),
+                token_version = token_version + 1,
+                updated_at = now()
+            WHERE user_id = %s
+              AND revoked_at IS NULL
+            """,
+            (user_id,),
+        )
+
+        # Laufende Zuordnungen beenden; historische Referenzen bleiben erhalten.
+        cur.execute(
+            """
+            UPDATE tb.worksite_memberships
+            SET status = 'REMOVED',
+                removed_at = COALESCE(removed_at, now()),
+                updated_at = now()
+            WHERE user_id = %s
+              AND status = 'ACTIVE'
+            """,
+            (user_id,),
+        )
+        cur.execute(
+            """
+            UPDATE tb.team_members
+            SET removed_at = COALESCE(removed_at, now())
+            WHERE user_id = %s
+              AND removed_at IS NULL
+            """,
+            (user_id,),
+        )
+        cur.execute(
+            """
+            UPDATE tb.worksite_invitations
+            SET revoked_at = COALESCE(revoked_at, now())
+            WHERE invited_user_id = %s
+              AND accepted_at IS NULL
+              AND revoked_at IS NULL
+            """,
+            (user_id,),
+        )
+
+        cur.execute(
+            """
+            UPDATE tb.users
+            SET status = 'DISABLED',
+                deleted_at = now(),
+                updated_at = now()
+            WHERE id = %s
+            """,
+            (user_id,),
+        )
+
+    return Response(status_code=204)
