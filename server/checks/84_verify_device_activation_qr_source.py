@@ -52,6 +52,8 @@ def main() -> None:
         ('84_verify_device_activation_qr_source.py', workflow),
     ]
     missing = [needle for needle, source in assertions if needle not in source]
+    if 'teamApi.' in activation:
+        raise SystemExit("Aktivierungs-Activity enthält veraltete teamApi-Referenz")
     if missing:
         raise SystemExit(
             "Fehlende Device-Aktivierungs-QR-Marker: " + ", ".join(missing)
