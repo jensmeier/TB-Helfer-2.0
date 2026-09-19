@@ -105,7 +105,7 @@
           <td>
             <div class="actions">
               <a class="btn" href="/admin/v1/users/{{ u.id }}/activation-card">Aktivierungskarte</a>
-              <button type="button" class="secondary portal-activation" data-user-id="{{ u.id }}">Portal aktivieren</button>
+              {% if not u.activated_at %}<button type="button" class="secondary portal-activation" data-user-id="{{ u.id }}">Portal aktivieren</button>{% endif %}
               <button type="button" class="danger delete-user"
                       data-user-id="{{ u.id }}"
                       data-user-name="{{ u.display_name }}">Löschen</button>
