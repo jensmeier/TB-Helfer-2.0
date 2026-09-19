@@ -355,7 +355,7 @@ def block_device(
             """
             SELECT d.id, d.user_id, u.company_id
             FROM tb.devices d JOIN tb.users u ON u.id = d.user_id
-            WHERE d.id = %s FOR UPDATE
+            WHERE d.id = %s FOR UPDATE OF u
             """,
             (device_id,),
         )
