@@ -187,6 +187,7 @@ def _find_login(cur, login: str):
         FROM tb.users u
         JOIN tb.portal_credentials c ON c.user_id = u.id
         WHERE lower(u.login_name) = lower(%s)
+          AND u.deleted_at IS NULL
         """,
         (identifier,),
     )
