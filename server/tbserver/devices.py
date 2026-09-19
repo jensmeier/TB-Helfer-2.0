@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from .admin import require_admin, require_admin_csrf
 from .database import transaction
+from .device_activation_links import device_activation_app_uri, device_activation_qr_svg_data_url
 from .events import audit
 from .security import hash_token, random_token
 
@@ -271,7 +272,8 @@ def issue_device_activation(
         "user_id": user_id,
         "user_name": target["display_name"],
         "activation_key": raw_key,
-        "activation_url": f"tbhelfer://activate?key={raw_key}",
+        "activation_url": device_activation_app_uri(raw_key),
+        "activation_qr_svg_data_url": device_activation_qr_svg_data_url(raw_key),
         "token_hint": key_hint,
         "expires_at": expires_at,
         "created_at": token_row["created_at"],
