@@ -690,7 +690,7 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Klartext-HTTP wird nur im Debug-Build und nur bei expliziter `http://`-Debugadresse über einen Manifest-Placeholder erlaubt; Release setzt `usesCleartextTraffic=false`.
 - `local.properties` ist bereits gitignoriert und bleibt lokale Maschinenkonfiguration.
 - Neuer Source-Check `83_verify_android_staging_server_config_source.py` prüft diese Trennung; TB-Server- und Android-CI referenzieren ihn.
-- Für den aktuellen Aktivierungs-/Serveridentitäts-Stand am Head `15c84435a4aad3d5eca7b8205f0c327f11febd78` endeten TB-Server **#404 / ID 35444118778** und Android CI **#1081 / ID 35444118780** erneut ohne ausgeführte Schritte. Beide Jobs liefern `steps = null`, `logs_url = null`; damit wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
+- Für den aktuellen Admin-Übersicht-/Metrik-Stand am Head `5fa07366f60c365446d7cf6e82763d4607980282` endeten TB-Server **#462 / ID 35446883603** und Android CI **#1113 / ID 35446883605** erneut ohne ausgeführte Schritte. Beide Jobs liefern `steps = null`, `logs_url = null`; damit wurde weiterhin kein Workflow-Schritt, Source-Check, Unit-Test oder Android-Build gestartet. Das ist das bekannte Runner-/Actions-Infrastrukturproblem und kein festgestellter fachlicher Server-/Android-Testfehler.
 
 ### BTB-Granularitätskorrektur
 
