@@ -234,6 +234,20 @@ def delete_user(
         if str(admin["id"]) == str(user_id):
             raise HTTPException(409, "CANNOT_DELETE_SELF")
 
+        cur.execute(
+            """
+            SELECT id
+            FROM tb.teams
+            WHERE lead_user_id = %s
+              AND status = 'ACTIVE'
+              AND active_btb_id IS NOT NULL
+            LIMIT 1
+            """,
+            (user_id,),
+        )
+        if cur.fetchone():
+            raise HTTPException(409, "USER_HAS_ACTIVE_BTB")
+
         # Alle direkten Zugänge sofort ungültig machen.
         cur.execute(
             """
@@ -300,6 +314,17 @@ def delete_user(
             SET removed_at = COALESCE(removed_at, now())
             WHERE user_id = %s
               AND removed_at IS NULL
+            """,
+            (user_id,),
+        )
+        cur.execute(
+            """
+            UPDATE tb.teams
+            SET status = 'ARCHIVED',
+                active_btb_id = NULL,
+                updated_at = now()
+            WHERE lead_user_id = %s
+              AND status = 'ACTIVE'
             """,
             (user_id,),
         )
