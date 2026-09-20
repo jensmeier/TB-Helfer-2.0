@@ -35,6 +35,9 @@ def main() -> None:
         ('"activation_pdf_data_url": device_activation_pdf_data_url(', devices),
         ('response.headers["Cache-Control"] = "no-store"', devices),
         ('FOR UPDATE OF u', devices),
+        ('default=30 * 24', devices),
+        ('id <> %s', devices),
+        ('activation["user_id"], activation["id"]', devices),
         ("device_activation_pdf_bytes", pdf),
         ("QrCodeWidget", pdf),
         ("data:application/pdf;base64", pdf),
@@ -44,6 +47,8 @@ def main() -> None:
         ('id="sharePdf"', activation_card),
         ("navigator.share", activation_card),
         ("Drucken / als PDF speichern", activation_card),
+        ('expires_hours:720', activation_card),
+        ("Der Aktivierungs-Key ist 30 Tage gültig", activation_card),
         ("Der Key wird nur für die erste Gerätebindung benötigt.", activation_card),
         ('android:host="activate"', read("app/src/main/AndroidManifest.xml")),
         ('scanQrCode()', activation),
@@ -57,6 +62,8 @@ def main() -> None:
     missing = [needle for needle, source in assertions if needle not in source]
     if 'teamApi.' in activation:
         raise SystemExit("Aktivierungs-Activity enthält veraltete teamApi-Referenz")
+    if 'UPDATE tb.device_activation_tokens SET revoked_at = now() WHERE user_id = %s AND used_at IS NULL AND revoked_at IS NULL' in devices:
+        raise SystemExit("Neue Aktivierungskarte darf ältere unbenutzte 30-Tage-Keys nicht sofort widerrufen")
     if missing:
         raise SystemExit(
             "Fehlende Device-Aktivierungs-QR-Marker: " + ", ".join(missing)
