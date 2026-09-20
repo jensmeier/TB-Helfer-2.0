@@ -3,7 +3,7 @@
 **Stand:** 2026-09-20  
 **Branch:** `feature/tb-server-1.0`  
 **Draft-PR:** #6 – TB-Server 1.0 – gemeinsame Serverbasis  
-**Geprüfter Quellstand vor Tracker-Update:** `787c49b8c8d870d6b919cbdb4cecf51c0ab6e10c`  
+**Geprüfter Quellstand vor Tracker-Update:** `ef11f723e41b4a93c5d87b5b58acaa0df57fb9b9`  
 **Android:** 1.3.3 / versionCode 200053  
 **Server:** 1.0.0-dev / staging
 
