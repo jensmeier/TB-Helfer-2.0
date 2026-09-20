@@ -79,6 +79,8 @@ def _public_release(row: dict[str, Any]) -> dict[str, Any]:
         "mandatory": row["mandatory"],
         "download_url": download_url,
         "release_notes": row["release_notes"],
+        "sha256": row.get("sha256"),
+        "byte_size": row.get("byte_size"),
         "status": row["status"],
         "published_at": row["published_at"],
     }
