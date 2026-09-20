@@ -551,10 +551,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200052: Compile-Fix fuer Server1FileApi/BaustellenSyncFragment;
-        // Server-1.0-Aktivierung bleibt sichtbar gegen den QR-Zielserver pruefbar.
-        versionCode = 200052
-        versionName = "1.3.2"
+        // Android 200053: Server-gesteuerter App-Updater.
+        // Update-Symbol am Start, manuelle Prüfung in Wartung & Diagnose, APK-Download mit SHA-256.
+        versionCode = 200053
+        versionName = "1.3.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
