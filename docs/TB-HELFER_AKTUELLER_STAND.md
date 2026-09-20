@@ -110,7 +110,7 @@ Umgesetzt:
 - Server-Public-Release-Payload liefert dafür zusätzlich `sha256` und `byte_size`; die Admin-Release-Seite erklärt Release Notes und blau/rot.
 - Android wurde auf **1.3.3 / versionCode 200053** angehoben.
 
-Praktisch bestätigt: 200053 wurde erfolgreich gebaut und auf Pixel + Poco installiert. Noch **nicht** als E2E bestätigt ist der eigentliche Updateweg: 200054 muss im Server-Admin hochgeladen/veröffentlicht und anschließend auf beiden Handys ausschließlich über den neuen Updateweg installiert werden. Geräte-Token, gespeicherte Serveradresse und lokale Baustellendaten müssen danach unverändert vorhanden sein.
+Praktisch bestätigt: 200053 wurde erfolgreich gebaut und auf Pixel + Poco installiert. Der echte Updateweg **200053 → 200054** wurde anschließend über Server 1.0 auf **beiden Handys** durchgeführt. Pixel und Poco laufen auf **1.3.4 / 200054** und melden bei manueller Prüfung jeweils **„TB-Helfer ist aktuell“**. Damit ist die normale Server-Updateverteilung E2E bestätigt. Separat offen bleibt nur der kurze Datenerhalt-Spotcheck für Gerätebindung/Serveradresse und vorhandene lokale Baustellendaten.
 
 ### Compile-Fix nach lokalem Buildtest 2026-09-20 12:25
 
@@ -991,10 +991,9 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. Auf **Pixel und Poco** prüfen, dass nach dem Update auf 200054 Geräteaktivierung/Serveradresse und lokale Baustellendaten erhalten sind; auf dem zweiten Gerät einmal **Nach Updates suchen** ausführen.
-2. Danach PLAN-006/PLAN-008 vollständig als bestätigt/erledigt markieren.
-3. Die neue Release-Komfortoberfläche aus GitHub auf Server 1.0 deployen (`v1_releases.html` + Check 87), Browser neu laden und bei einem späteren Release **Release-Datei + APK** gemeinsam testen.
-4. Danach **Benutzerdaten bearbeiten + klarer QR-Erneuern-Ablauf** umsetzen.
+1. Die neue Release-Komfortoberfläche aus GitHub auf Server 1.0 deployen: zur Laufzeit erforderlich ist `server/templates/v1_releases.html`; `server/checks/87_verify_release_admin_package_ui.py` ist der passende Source-Check. Da `Dockerfile.v1` die Templates ins Image kopiert, muss der API-Container danach neu gebaut/erstellt werden.
+2. Auf Pixel und Poco noch kurz prüfen, dass nach dem Update Geräteaktivierung/Serveradresse und vorhandene lokale Baustellendaten erhalten sind; das ist nur ein Abschlusscheck, keine geplante Codeänderung.
+3. Danach **Benutzerdaten bearbeiten + klarer QR-Erneuern-Ablauf** umsetzen.
 5. Anschließend Pixel + Poco Server-1.0-Fach-E2E fortsetzen: Einladung/Team, Unterbaustellenbaum, `track_data_v1`, Mangel inkl. `ABGELEHNT`, Abnahme inkl. Löschen/Tombstone, Dateien/Fotos, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
 6. Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
 7. Danach Vermessungskette mit realen Daten end-to-end ausführen.
