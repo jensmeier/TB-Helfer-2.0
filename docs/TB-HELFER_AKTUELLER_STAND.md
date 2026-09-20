@@ -85,7 +85,7 @@ Betroffene neue/angepasste Dateien:
 - `server/templates/v1_worksites.html`
 - `server/checks/88_verify_admin_permanent_purge_source.py`
 
-Status: **Quellstand fertig, Deployment/E2E auf bewusst erzeugten Testobjekten offen.** Keine produktiven oder bestätigten Daten wurden durch diese Änderung gelöscht.
+Status: **Auf Synology-Staging praktisch bestätigt.** Der Benutzer bestätigt den vollständigen Admin-Purge mit „funktioniert super“. Release-Draft, Benutzer, Gerät, Baustelle und Firma lassen sich über die getrennten Komplett-Löschpfade entfernen; die Pflichttexteingabe `ENDGUELTIG LOESCHEN` bleibt aktiv. Der bestehende sichere Benutzer-Soft-Delete bleibt separat erhalten. Der Production-Schutz für echte Vermessungsoriginale bleibt verbindlich und wurde nicht durch einen destruktiven Produktionstest aufgehoben.
 
 ## Android 200054 – Server-Update praktisch verteilt
 
