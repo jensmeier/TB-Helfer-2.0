@@ -22,7 +22,10 @@ def main() -> None:
         ('TB_SERVER_BASE_URL', gradle),
         ('getByName("debug")', gradle),
         ('buildConfigField("String", "SERVER_BASE_URL"', gradle),
+        ('"https://api-v1.tb-helfer.de"', gradle),
         ('"https://api.tb-helfer.de"', gradle),
+        ('versionCode = 200051', gradle),
+        ('versionName = "1.3.1"', gradle),
         ('manifestPlaceholders["usesCleartextTraffic"] = "false"', gradle),
         ('debugServerBaseUrl.startsWith("http://")', gradle),
         ('buildFeatures { buildConfig = true }', gradle),
@@ -47,7 +50,7 @@ def main() -> None:
             "Release muss fest auf https://api.tb-helfer.de zeigen."
         )
 
-    print("OK: Android debug staging endpoint is local-configurable; release stays HTTPS production")
+    print("OK: Android 200051 debug defaults to Server 1.0 staging; release stays HTTPS production")
 
 
 if __name__ == "__main__":
