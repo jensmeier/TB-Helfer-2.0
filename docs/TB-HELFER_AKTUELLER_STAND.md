@@ -11,7 +11,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - aktiver Branch: **`feature/tb-server-1.0`**
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - PR-Basis: `feature/admin-offline-sync`
-- Android bleibt vorerst Testclient: Buildkandidat **200053 / 1.3.3**
+- Android bleibt vorerst Testclient: **200053 / 1.3.3 ist auf Pixel + Poco installiert**; aktueller Quellkandidat für den ersten Server-Update-Test ist **200054 / 1.3.4**
 
 - Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Sichtbare, mit Mängeln/Abnahmen verknüpfte Server-1.0-Dateien werden über `files_v1` aufgelöst und in den vorhandenen Attachment-Cache heruntergeladen. Lokale Mängel-/Abnahme-Attachments werden resumierbar über `chunk_upload_v1` mit deterministischen Idempotenz-IDs hochgeladen; nicht mehr sichtbare/gelöschte Fach-Attachments werden nur bei nachweislich vollständigem Datei-Snapshot lokal tombstoned; bei der 1000-Dateien-Grenze wird konservativ nicht gelöscht. BTB bleibt getrennt offen.
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
@@ -63,7 +63,23 @@ Wichtige Server-1.0-Meilensteine:
 - Restore-Test + sicherer Test-Reset: Restore nur gegen getrennte Testdatenbank/Testablage; Test-/Staging-Reset nur nach verifiziertem höchstens 24h altem FULL-Backup und harter Environment-/Bestätigungssperre
 - optionaler Restore-Staging-Compose-Overlay: getrennte Restore-Test-DB, getrennte Restore-Target-DB und eigener Restore-Target-Storage; Restore-to-Target bleibt standardmäßig deaktiviert und außerhalb des normalen Serverstarts
 
-## Android 200053 – Server-gesteuerter Updater (Quellstand fertig, E2E offen)
+## Android 200054 – erster echter Server-Update-Test vorbereitet
+
+Android **1.3.3 / versionCode 200053** wurde nach dem Coroutine-Compile-Fix am 2026-09-20 erfolgreich gebaut und anschließend auf **Pixel und Poco** installiert. Damit ist 200053 die praktisch bestätigte Ausgangsbasis für den ersten echten App-Update-E2E.
+
+Für den Update-Test wird der Quellstand auf **1.3.4 / versionCode 200054** angehoben. Fachlich bleibt der Updater unverändert; zusätzlich wird der beim erfolgreichen 200053-Build sichtbare Deprecation-Warnhinweis für `android.R.color.primary_text_light` entfernt, indem die ursprüngliche Textfarbe des Update-Statusfelds wiederverwendet wird. Das ist keine Änderung an QR-/Geräteaktivierung, Sync, BTB oder Datenhaltung.
+
+Nächster praktischer Test:
+1. 200054 lokal bauen.
+2. Im Server-1.0-Admin unter **App-Versionen** ein ANDROID-Release **1.3.4 / 200054** anlegen, APK hochladen und kurze Release Notes eintragen.
+3. Zunächst **kein Pflichtupdate** setzen, damit auf beiden Handys das normale blaue Update-Symbol geprüft wird.
+4. Release veröffentlichen.
+5. Pixel + Poco müssen das Update erkennen, herunterladen, per SHA-256/Dateigröße prüfen und an den Android-Paketinstaller übergeben.
+6. Danach kontrollieren: Geräte-Token, gespeicherte Serveradresse und lokale Baustellendaten sind weiterhin vorhanden.
+
+Erst nach diesem Test gilt der Server-Updateweg als E2E bestätigt.
+
+## Android 200053 – Server-gesteuerter Updater (Quellstand fertig, Build/Installation bestätigt, Update-E2E offen)
 
 Der vorhandene Server-1.0-Releasevertrag wird jetzt direkt in Android verwendet; es entsteht **keine zweite Update-Infrastruktur**.
 
@@ -76,13 +92,13 @@ Umgesetzt:
 - Server-Public-Release-Payload liefert dafür zusätzlich `sha256` und `byte_size`; die Admin-Release-Seite erklärt Release Notes und blau/rot.
 - Android wurde auf **1.3.3 / versionCode 200053** angehoben.
 
-Noch **nicht** als E2E bestätigt: 200053 lokal bauen und einmal manuell auf Pixel/Poco installieren; danach 200054 im Server-Admin hochladen/veröffentlichen und auf beiden Handys ausschließlich über den neuen Updateweg installieren. Geräte-Token, gespeicherte Serveradresse und lokale Baustellendaten müssen danach unverändert vorhanden sein.
+Praktisch bestätigt: 200053 wurde erfolgreich gebaut und auf Pixel + Poco installiert. Noch **nicht** als E2E bestätigt ist der eigentliche Updateweg: 200054 muss im Server-Admin hochgeladen/veröffentlicht und anschließend auf beiden Handys ausschließlich über den neuen Updateweg installiert werden. Geräte-Token, gespeicherte Serveradresse und lokale Baustellendaten müssen danach unverändert vorhanden sein.
 
 ### Compile-Fix nach lokalem Buildtest 2026-09-20 12:25
 
 Der erste lokale Build von Android **1.3.3 / 200053** erreichte `:app:compileDebugKotlin`, scheiterte dort aber mit vier Meldungen in `WartungDiagnoseFragment.kt`. Die eigentliche Ursache war ein fehlender Import von `kotlinx.coroutines.launch`; dadurch war `viewLifecycleOwner.lifecycleScope.launch { ... }` nicht auflösbar und die Aufrufe der suspend-Funktionen `AppUpdateManager.check()` und `downloadApk()` wurden anschließend nur als Folgefehler gemeldet.
 
-Korrigiert wurde ausschließlich dieser Coroutine-Import. Die Update-Fachlogik, Geräteaktivierung, Serveradresse, Geräte-Token, Sync- und BTB-Logik wurden nicht verändert. Source-Check 86 prüft den Import jetzt ausdrücklich mit. **Praktischer Build-Retest bleibt offen:** nach Pull erneut `./gradlew clean assembleDebug` bzw. unter Windows `.\\gradlew.bat clean assembleDebug` ausführen.
+Korrigiert wurde ausschließlich dieser Coroutine-Import. Die Update-Fachlogik, Geräteaktivierung, Serveradresse, Geräte-Token, Sync- und BTB-Logik wurden nicht verändert. Source-Check 86 prüft den Import ausdrücklich mit. **Praktischer Build-Retest bestanden:** der Build lief am 2026-09-20 erfolgreich durch und 200053 wurde danach auf Pixel + Poco installiert.
 
 ## Android 200052 – Compile-Fix nach lokalem Buildtest 2026-09-20
 

@@ -23,6 +23,7 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
     private lateinit var updateStatus: TextView
     private lateinit var updateNotes: TextView
     private lateinit var updateInstallButton: MaterialButton
+    private var updateDefaultTextColor: Int = Color.BLACK
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -32,6 +33,7 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
         }
 
         updateStatus = view.findViewById(R.id.txtWartungUpdateStatus)
+        updateDefaultTextColor = updateStatus.currentTextColor
         updateNotes = view.findViewById(R.id.txtWartungUpdateNotes)
         updateInstallButton = view.findViewById(R.id.btnWartungUpdateInstallieren)
         updateStatus.text = "Aktuell: ${AppUpdateManager.currentVersionLabel()}\nNoch nicht geprüft."
@@ -78,7 +80,7 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
     }
 
     private fun pruefeAufUpdate() {
-        updateStatus.setTextColor(requireContext().getColor(android.R.color.primary_text_light))
+        updateStatus.setTextColor(updateDefaultTextColor)
         updateStatus.text = "Aktuell: ${AppUpdateManager.currentVersionLabel()}\nSuche nach Updates …"
         updateNotes.visibility = View.GONE
         updateInstallButton.visibility = View.GONE

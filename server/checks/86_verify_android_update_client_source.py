@@ -36,8 +36,9 @@ checks = [
     ("manual update button", "btnWartungNachUpdates", wartung_kt),
     ("maintenance notes", "txtWartungUpdateNotes", wartung_kt),
     ("maintenance coroutine import", "import kotlinx.coroutines.launch", wartung_kt),
-    ("android versionCode", "versionCode = 200053", gradle),
-    ("android versionName", 'versionName = "1.3.3"', gradle),
+    ("maintenance default text color", "updateDefaultTextColor", wartung_kt),
+    ("android versionCode", "versionCode = 200054", gradle),
+    ("android versionName", 'versionName = "1.3.4"', gradle),
 ]
 
 missing = [name for name, needle, haystack in checks if needle not in haystack]
@@ -60,4 +61,7 @@ for needle, haystack in [
     if needle not in haystack:
         raise SystemExit("Android updater source check failed: " + needle)
 
-print("OK Android 200053 server-driven updater source contract")
+if "android.R.color.primary_text_light" in wartung_kt:
+    raise SystemExit("Android updater source check failed: deprecated primary_text_light still used")
+
+print("OK Android 200054 server-driven updater source contract")

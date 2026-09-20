@@ -551,10 +551,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200053: Server-gesteuerter App-Updater.
-        // Update-Symbol am Start, manuelle Prüfung in Wartung & Diagnose, APK-Download mit SHA-256.
-        versionCode = 200053
-        versionName = "1.3.3"
+        // Android 200054: erster echter Server-Update-Test auf der bestätigten 200053-Basis.
+        // Fachlogik des Updaters bleibt gleich; 200054 dient als reale Update-Zielversion.
+        versionCode = 200054
+        versionName = "1.3.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
