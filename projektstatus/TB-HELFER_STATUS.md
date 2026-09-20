@@ -3,7 +3,7 @@
 **Stand:** 2026-09-20  
 **Branch:** `feature/tb-server-1.0`  
 **Draft-PR:** #6 – TB-Server 1.0 – gemeinsame Serverbasis  
-**Geprüfter Quellstand vor Tracker-Update:** `25d111ff093ac860eec9a9c5abb64caa5adff253`  
+**Geprüfter Quellstand vor Tracker-Update:** `2126607c6471834c13772c946d31ac12aedb7541`  
 **Android:** 1.3.3 / versionCode 200053  
 **Server:** 1.0.0-dev / staging
 
@@ -76,7 +76,7 @@
 | PLAN-003 | Pixel + Poco Server-1.0 E2E | GEPLANT | ☐ | Gemeinsame echte Testbaustelle auf zwei Geräten. | Einladung/Team, Unterbaustellen, Mängel/Abgelehnt, Abnahmen/Löschen, Fotos, BTB, PDF, Hintergrund-Sync vollständig abhaken. | 1.3 / versionCode 200050 | NEIN | 2026-09-20 |  |
 | PLAN-004 | Backup/Restore-Abnahme | GEPLANT | ☐ | Vor produktivem Cutover zwingend. | Backup prüfen, Retention, getrennten Restore-Test und Restore-to-Target durchführen. | 1.0.0-dev / staging | NEIN | 2026-09-20 |  |
 | PLAN-005 | Server 0.7 abschalten | SPÄTER | ☐ | Erst nach erfolgreichem Server-1.0-E2E und produktivem Cloudflare-Cutover. | Kontrolliert stoppen, Rollback-Backup zunächst behalten. | 0.7.x → 1.0 | JA | 2026-09-20 |  |
-| PLAN-006 | Android-Updates vom Server | NÄCHSTER SCHRITT | ☐ | Vorhandene Server-Release-Infrastruktur soll direkt genutzt werden. | Android: Kompatibilität prüfen, Updatehinweis anzeigen, APK über HTTPS laden, Hash prüfen und Android-Paketinstaller öffnen; manuellen Punkt „Nach Updates suchen“ ergänzen. | Ziel 1.3.3 / 200053 | NEIN | 2026-09-20 | Kein eigener zweiter Downloadserver nötig. |
+| PLAN-006 | Android-Updates vom Server | QUELLSTAND FERTIG / E2E OFFEN | ☐ | Android-Updater für Startbildschirm und Wartung & Diagnose ist im Quellstand 1.3.3 / 200053 umgesetzt. Server liefert dafür den vorhandenen client-compatibility-Vertrag samt Release Notes/Prüfsumme. | 200053 lokal bauen und einmal manuell auf Pixel + Poco installieren. Danach 200054 ausschließlich über Server → Update-Symbol → Aktualisieren → Android-Installer testen. | 1.3.3 / versionCode 200053 | NEIN | 2026-09-20 | Erster echter Server-Update-E2E steht noch aus. |
 | PLAN-007 | Benutzer bearbeiten + QR erneuern | GEPLANT | ☐ | Benutzerdaten sollen im Admin änderbar sein. Abgelaufene Aktivierungs-QRs sollen klar erneuerbar sein; technisch erzeugt die vorhandene Aktivierungskarte bereits einen neuen 30-Tage-Key. | Bearbeiten-Aktion/PATCH ergänzen und Aktivierungskarte mit klarer Aktion „Neuen QR erzeugen“/Ablaufstatus verbessern. | Server 1.0 | NEIN | 2026-09-20 | App-Update benötigt keinen neuen QR, solange App-Daten/Geräte-Token erhalten bleiben. |
 | PLAN-008 | Erster echter Zwei-Handy-Serverupdate-Test | GEPLANT | ☐ | Nach manueller Installation von 200053 soll 200054 erstmals vollständig über Server 1.0 verteilt werden. | APK 200054 im Admin hochladen, Release Notes eintragen, optional/Pflicht testen, Pixel + Poco aktualisieren und prüfen, dass Geräte-Token, Serveradresse und lokale Baustellendaten erhalten bleiben. | Ziel 1.3.4 / 200054 | NEIN | 2026-09-20 | Android zeigt normalen Release blau, Pflichtrelease rot; ohne Update kein Symbol. |
 
