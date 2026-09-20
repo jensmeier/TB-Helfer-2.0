@@ -31,7 +31,7 @@ class DeviceLoginRequest(BaseModel):
 
 
 class DeviceActivationCreate(BaseModel):
-    expires_hours: int = Field(default=24, ge=1, le=168)
+    expires_hours: int = Field(default=30 * 24, ge=1, le=30 * 24)
 
 
 def _now() -> datetime:
@@ -154,6 +154,17 @@ def device_login(payload: DeviceLoginRequest) -> dict:
         )
         device = dict(cur.fetchone())
         cur.execute("UPDATE tb.device_activation_tokens SET used_at = now() WHERE id = %s", (activation["id"],))
+        cur.execute(
+            """
+            UPDATE tb.device_activation_tokens
+            SET revoked_at = now()
+            WHERE user_id = %s
+              AND id <> %s
+              AND used_at IS NULL
+              AND revoked_at IS NULL
+            """,
+            (activation["user_id"], activation["id"]),
+        )
         audit(
             cur,
             action="DEVICE_ACTIVATE",
@@ -250,10 +261,6 @@ def issue_device_activation(
             raise HTTPException(404, "USER_NOT_FOUND")
         if target["deleted_at"] is not None or target["status"] != "ACTIVE":
             raise HTTPException(409, "USER_NOT_ACTIVE")
-        cur.execute(
-            "UPDATE tb.device_activation_tokens SET revoked_at = now() WHERE user_id = %s AND used_at IS NULL AND revoked_at IS NULL",
-            (user_id,),
-        )
         cur.execute(
             """
             INSERT INTO tb.device_activation_tokens(user_id, token_hash, token_hint, created_by, expires_at)
