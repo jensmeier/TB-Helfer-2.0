@@ -63,13 +63,37 @@ Wichtige Server-1.0-Meilensteine:
 - Restore-Test + sicherer Test-Reset: Restore nur gegen getrennte Testdatenbank/Testablage; Test-/Staging-Reset nur nach verifiziertem höchstens 24h altem FULL-Backup und harter Environment-/Bestätigungssperre
 - optionaler Restore-Staging-Compose-Overlay: getrennte Restore-Test-DB, getrennte Restore-Target-DB und eigener Restore-Target-Storage; Restore-to-Target bleibt standardmäßig deaktiviert und außerhalb des normalen Serverstarts
 
+## Admin – vollständiges Löschen/Purge für Test-/Administrationsfälle
+
+Auf ausdrücklichen Benutzerwunsch wird zusätzlich zum bestehenden sicheren Soft-Delete ein klar getrennter **Komplett löschen**-Pfad vorbereitet.
+
+Quellstand:
+- Release-Draft: vollständiges Löschen des Draft-Datensatzes plus ggf. hochgeladener Draft-Binärdatei; veröffentlichte/zurückgezogene Releases bleiben unveränderlich bzw. nur zurückziehbar.
+- Benutzer: `Sicher löschen` bleibt das bestätigte Soft-Delete. Zusätzlich `Komplett löschen` entfernt Benutzeridentität, Portal-/Aktivierungsdaten, Geräte und direkte Zuordnungen. Bei vorhandener BTB-Historie als Teamleitung stoppt der Server den Purge, damit nicht beiläufig historische Baustellendaten verloren gehen.
+- Gerät: kompletter Geräte-Datensatz samt Geräte-Token-/Synczustand kann entfernt werden.
+- Baustelle: kompletter Server-Datensatz einschließlich Teams, BTBs, Mängel, Abnahmen, baustellenbezogener Dateien und Upload-Zwischenstände kann entfernt werden.
+- Firma: vollständiger Firmen-Purge löscht in staging/test zugehörige Benutzer, Geräte, Baustellen, Dateien und Firmen-Vermessungsoriginale. In production wird der Firmen-Purge bei vorhandenen Vermessungsoriginalen blockiert, damit die verbindliche Originaldaten-Schutzregel nicht ausgehebelt wird.
+- Alle Komplett-Purge-Aktionen sind ADMIN/CSRF-geschützt und verlangen zusätzlich die Texteingabe `ENDGUELTIG LOESCHEN`.
+
+Betroffene neue/angepasste Dateien:
+- `server/tbserver/admin_purge.py`
+- `server/tbserver/main.py`
+- `server/templates/v1_releases.html`
+- `server/templates/v1_admin_users.html`
+- `server/templates/v1_admin_companies.html`
+- `server/templates/v1_admin_devices.html`
+- `server/templates/v1_worksites.html`
+- `server/checks/88_verify_admin_permanent_purge_source.py`
+
+Status: **Quellstand fertig, Deployment/E2E auf bewusst erzeugten Testobjekten offen.** Keine produktiven oder bestätigten Daten wurden durch diese Änderung gelöscht.
+
 ## Android 200054 – Server-Update praktisch verteilt
 
 Der erste echte Updateversuch von **Android 1.3.3 / 200053 auf 1.3.4 / 200054** wurde praktisch durchgeführt. Server 1.0 zeigt ANDROID 1.3.4 / Build 200054 als **PUBLISHED** mit hinterlegter Binärdatei und SHA-256. Die beiden Testgeräte Pixel und Poco zeigen anschließend jeweils die installierte Version **1.3.4 / 200054**; auf einem Gerät meldet die manuelle Prüfung bereits **„TB-Helfer ist aktuell“**.
 
 Damit ist die normale Updateverteilung über den vorhandenen Server-Release-Katalog praktisch bestätigt. Noch separat zu prüfen sind auf beiden Geräten: bestehende Geräteaktivierung/gespeicherte Serveradresse sowie Erhalt der lokalen Baustellendaten. Auf dem zweiten Gerät soll einmal die manuelle Updateprüfung ausgeführt werden. Ein rotes Pflichtupdate bleibt ein späterer eigener Test.
 
-Der aktuelle Server-Screenshot zeigt bei **App-Versionen** weiterhin die alte Adminoberfläche. Die im GitHub-Quellstand vorhandene neue Komfortoberfläche mit Release-Datei + sichtbarer APK-Auswahl ist deshalb **noch nicht auf dem NAS deployed**. 200054 wurde erfolgreich über die alte Oberfläche veröffentlicht; SRV-016 bleibt folgerichtig separat offen.
+Die neue **App-Versionen**-Komfortoberfläche ist inzwischen auf dem Synology-Stagingserver sichtbar und praktisch geöffnet: Release-Datei (.md/.txt), APK-Auswahl, Neu/Verbessert/Behoben sowie editierbare Drafts werden angezeigt. SRV-016 gilt damit für Deployment/Bedienoberfläche als bestätigt.
 
 ## Server-Release-Admin – Release-Datei + APK in einem Ablauf
 

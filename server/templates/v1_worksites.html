@@ -65,9 +65,30 @@ async function loadWorksites(){
         '<td>'+esc(w.route_number||'—')+'</td>'+
         '<td><span class="pill">'+esc(w.status)+'</span></td>'+
         '<td>'+esc(fmtDate(w.updated_at))+'</td>'+
-        '<td class="right"><a class="btn" href="/portal/v1/worksites/'+encodeURIComponent(w.id)+'">Öffnen</a></td>'+
+        '<td class="right"><div class="actions"><a class="btn" href="/portal/v1/worksites/'+encodeURIComponent(w.id)+'">Öffnen</a>'+
+        (userRole==='ADMIN'?'<button type="button" class="danger purge-worksite" data-worksite-id="'+esc(w.id)+'" data-worksite-name="'+esc(w.name)+'">Komplett löschen</button>':'')+
+        '</div></td>'+
       '</tr>';
     }).join(''):'<tr><td colspan="6" class="muted">Noch keine Baustellen vorhanden.</td></tr>';
+    document.querySelectorAll('.purge-worksite').forEach(function(button){
+      button.addEventListener('click',async function(){
+        const id=button.dataset.worksiteId, name=button.dataset.worksiteName||'diese Baustelle';
+        const typed=prompt(
+          'Baustelle "'+name+'" KOMPLETT löschen?\n\n'+
+          'Baustellenstruktur, Teams, BTBs, Mängel, Abnahmen, mobile Streckendaten und alle dieser Baustelle zugeordneten Dateien werden endgültig entfernt.\n\n'+
+          'Zum Bestätigen ENDGUELTIG LOESCHEN eingeben.'
+        );
+        if(typed!=='ENDGUELTIG LOESCHEN')return;
+        button.disabled=true;
+        try{
+          await tbApi('/api/v1/admin/purge/worksites/'+id,{
+            method:'DELETE',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({confirm_id:id,confirm_text:typed})
+          });
+          show('ok','Baustelle wurde vollständig gelöscht.');await loadWorksites();
+        }catch(error){show('err',error.message||String(error));button.disabled=false;}
+      });
+    });
   }catch(error){rows.innerHTML='<tr><td colspan="6"></td></tr>';show('err',error.message||String(error));}
 }
 document.getElementById('createWorksite').addEventListener('submit',async function(ev){

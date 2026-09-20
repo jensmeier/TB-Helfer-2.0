@@ -106,9 +106,12 @@
             <div class="actions">
               <a class="btn" href="/admin/v1/users/{{ u.id }}/activation-card">Aktivierungskarte</a>
               {% if not u.activated_at %}<button type="button" class="secondary portal-activation" data-user-id="{{ u.id }}">Portal aktivieren</button>{% endif %}
-              <button type="button" class="danger delete-user"
+              <button type="button" class="secondary delete-user"
                       data-user-id="{{ u.id }}"
-                      data-user-name="{{ u.display_name }}">Löschen</button>
+                      data-user-name="{{ u.display_name }}">Sicher löschen</button>
+              <button type="button" class="danger purge-user"
+                      data-user-id="{{ u.id }}"
+                      data-user-name="{{ u.display_name }}">Komplett löschen</button>
             </div>
           </td>
         </tr>
@@ -187,6 +190,31 @@ document.querySelectorAll('.delete-user').forEach(button=>{
     try{
       await tbApi('/api/v1/admin/users/'+button.dataset.userId,{method:'DELETE'});
       show('ok','Benutzer wurde gelöscht und vorhandene Geräte wurden freigegeben.');
+      setTimeout(()=>location.reload(),450);
+    }catch(error){
+      show('err',error.message||String(error));
+      button.disabled=false;
+    }
+  });
+});
+
+document.querySelectorAll('.purge-user').forEach(button=>{
+  button.addEventListener('click',async ()=>{
+    const id=button.dataset.userId, name=button.dataset.userName||'diesen Benutzer';
+    const typed=prompt(
+      'Benutzer "'+name+'" ENDGÜLTIG aus der Serverdatenbank löschen?\n\n'+
+      'Geräte, Portal-/Aktivierungsdaten und direkte Benutzerzuordnungen werden entfernt. '+
+      'Wenn der Benutzer eine BTB-Historie als Teamleitung besitzt, stoppt der Server den Vorgang und verlangt zuerst das komplette Löschen der betroffenen Baustelle.\n\n'+
+      'Zum Bestätigen ENDGUELTIG LOESCHEN eingeben.'
+    );
+    if(typed!=='ENDGUELTIG LOESCHEN')return;
+    button.disabled=true;
+    try{
+      await tbApi('/api/v1/admin/purge/users/'+id,{
+        method:'DELETE',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({confirm_id:id,confirm_text:typed})
+      });
+      show('ok','Benutzer wurde vollständig gelöscht.');
       setTimeout(()=>location.reload(),450);
     }catch(error){
       show('err',error.message||String(error));

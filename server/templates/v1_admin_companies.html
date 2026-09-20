@@ -35,7 +35,11 @@
           <td>{{ c.user_count }}</td>
           <td><span class="pill">{{ c.status }}</span></td>
           <td>{% if c.logo_file_id %}vorhanden{% else %}—{% endif %}</td>
-          <td class="right"><a class="btn" href="/admin/v1/companies/{{ c.id }}/branding">Profil / Logo / PDF</a></td>
+          <td class="right"><div class="actions">
+            <a class="btn" href="/admin/v1/companies/{{ c.id }}/branding">Profil / Logo / PDF</a>
+            <button type="button" class="danger purge-company"
+                    data-company-id="{{ c.id }}" data-company-name="{{ c.name }}">Komplett löschen</button>
+          </div></td>
         </tr>
       {% else %}
         <tr><td colspan="6" class="muted">Noch keine Firmen vorhanden.</td></tr>
@@ -66,6 +70,27 @@ form.addEventListener('submit',async ev=>{
     });
     show('ok','Firma wurde angelegt.');setTimeout(()=>location.reload(),350);
   }catch(error){show('err',error.message||String(error));}
+});
+document.querySelectorAll('.purge-company').forEach(button=>{
+  button.addEventListener('click',async ()=>{
+    const id=button.dataset.companyId, name=button.dataset.companyName||'diese Firma';
+    const typed=prompt(
+      'Firma "'+name+'" KOMPLETT löschen?\n\n'+
+      'Dabei werden die Firma sowie ihre Benutzer, Geräte, Baustellen, BTBs, Mängel, Abnahmen und Dateien endgültig entfernt. '+
+      'In staging/test werden auch Firmen-Vermessungsoriginale entfernt. In production blockiert der Server diesen Schritt, sobald geschützte Originale vorhanden sind.\n\n'+
+      'Zum Bestätigen ENDGUELTIG LOESCHEN eingeben.'
+    );
+    if(typed!=='ENDGUELTIG LOESCHEN')return;
+    button.disabled=true;
+    try{
+      await tbApi('/api/v1/admin/purge/companies/'+id,{
+        method:'DELETE',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({confirm_id:id,confirm_text:typed})
+      });
+      show('ok','Firma einschließlich zugehöriger Serverdaten wurde vollständig gelöscht.');
+      setTimeout(()=>location.reload(),500);
+    }catch(error){show('err',error.message||String(error));button.disabled=false;}
+  });
 });
 </script>
 {% endblock %}

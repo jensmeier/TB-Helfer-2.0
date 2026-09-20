@@ -40,11 +40,14 @@
           </td>
           <td>{{ d.last_seen_at or '—' }}</td>
           <td>
-            {% if d.status == 'ACTIVE' and not d.revoked_at %}
-            <button type="button" class="secondary release-device" data-device-id="{{ d.id }}">Freigeben</button>
-            {% else %}
-            —
-            {% endif %}
+            <div class="actions">
+              {% if d.status == 'ACTIVE' and not d.revoked_at %}
+              <button type="button" class="secondary release-device" data-device-id="{{ d.id }}">Freigeben</button>
+              {% endif %}
+              <button type="button" class="danger purge-device"
+                      data-device-id="{{ d.id }}"
+                      data-device-name="{{ d.device_name or d.device_uid }}">Komplett löschen</button>
+            </div>
           </td>
         </tr>
       {% else %}
@@ -76,6 +79,26 @@ document.querySelectorAll('.release-device').forEach(button=>{
       show('err',error.message||String(error));
       button.disabled=false;
     }
+  });
+});
+document.querySelectorAll('.purge-device').forEach(button=>{
+  button.addEventListener('click',async ()=>{
+    const id=button.dataset.deviceId, name=button.dataset.deviceName||'dieses Gerät';
+    const typed=prompt(
+      'Gerät "'+name+'" vollständig aus Server 1.0 löschen?\n\n'+
+      'Geräte-Token, Geräte-Synczustand und der Geräte-Datensatz werden endgültig entfernt. Eine spätere Nutzung benötigt eine neue Aktivierung.\n\n'+
+      'Zum Bestätigen ENDGUELTIG LOESCHEN eingeben.'
+    );
+    if(typed!=='ENDGUELTIG LOESCHEN')return;
+    button.disabled=true;
+    try{
+      await tbApi('/api/v1/admin/purge/devices/'+id,{
+        method:'DELETE',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({confirm_id:id,confirm_text:typed})
+      });
+      show('ok','Gerät wurde vollständig gelöscht.');
+      setTimeout(()=>location.reload(),400);
+    }catch(error){show('err',error.message||String(error));button.disabled=false;}
   });
 });
 </script>

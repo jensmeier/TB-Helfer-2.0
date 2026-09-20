@@ -262,6 +262,7 @@ function draftEditor(r){
       '<button type="button" onclick="saveDraft(\''+esc(r.id)+'\')">Änderungen speichern</button>'+
       '<button class="secondary" type="button" onclick="downloadReleaseManifest(\''+esc(r.id)+'\')">Release-Datei herunterladen</button>'+
       (binary.configured?'<button class="danger" type="button" onclick="deleteBinary(\''+esc(r.id)+'\')">Binärdatei entfernen</button>':'')+
+      '<button class="danger" type="button" onclick="purgeDraft(\''+esc(r.id)+'\')">Draft komplett löschen</button>'+
       '<button type="button" onclick="publishRelease(\''+esc(r.id)+'\')">Veröffentlichen</button>'+
     '</div>'+
     '<div id="progress-'+esc(r.id)+'" class="muted" style="margin-top:8px"></div>'+
@@ -403,6 +404,25 @@ async function deleteBinary(id){
   catch(error){show('err',error.message||String(error));}
 }
 window.deleteBinary=deleteBinary;
+
+async function purgeDraft(id){
+  const r=releaseCache[id];
+  const label=r?(r.platform+' · '+r.version_name):id;
+  const typed=prompt(
+    'Draft "'+label+'" wirklich komplett löschen?\n\n'+
+    'Der Draft-Datensatz und eine bereits hochgeladene APK/Binärdatei werden endgültig entfernt.\n\n'+
+    'Zum Bestätigen ENDGUELTIG LOESCHEN eingeben.'
+  );
+  if(typed!=='ENDGUELTIG LOESCHEN')return;
+  try{
+    await tbApi('/api/v1/admin/purge/releases/'+encodeURIComponent(id),{
+      method:'DELETE',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({confirm_id:id,confirm_text:typed})
+    });
+    show('ok','Draft wurde vollständig gelöscht.');await loadReleases();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.purgeDraft=purgeDraft;
 
 async function publishRelease(id){
   if(!confirm('Release veröffentlichen? Veröffentlichte Metadaten/Binärdatei dürfen danach nicht still überschrieben werden.'))return;
