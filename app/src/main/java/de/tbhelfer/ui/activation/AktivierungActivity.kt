@@ -130,6 +130,11 @@ class AktivierungActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             val activationBaseUrl = credential.serverBaseUrl ?: ServerConfig.BASE_URL
+            val activationHost = runCatching { Uri.parse(activationBaseUrl).host }
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() }
+                ?: activationBaseUrl
+            setStatus(getString(R.string.activation_connecting_server, activationHost))
             val result = withContext(Dispatchers.IO) {
                 ActivationApi(activationBaseUrl).activate(
                     key = key,
@@ -198,7 +203,10 @@ class AktivierungActivity : AppCompatActivity() {
 
                 ActivationApi.LoginResult.InvalidKey -> {
                     setBusy(false)
-                    setStatus(getString(R.string.activation_invalid_key), isError = true)
+                    setStatus(
+                        getString(R.string.activation_invalid_key_server, activationHost),
+                        isError = true
+                    )
                 }
 
                 ActivationApi.LoginResult.UserDisabled -> {
