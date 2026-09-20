@@ -681,6 +681,13 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Android scannt den QR weiterhin über den vorhandenen Aktivierungs-Scanner und verarbeitet denselben `tbhelfer://activate`-Deep-Link. Kein zweiter Aktivierungsweg wurde eingeführt.
 - Neuer Source-Check `84_verify_device_activation_qr_source.py` prüft Server -> Portal -> Android durchgängig.
 
+### Praktischer E2E-Stand Benutzer/Geräteaktivierung 2026-09-20
+
+- NAS-/Admin-Retest nach dem Admin-Neuaufbau: Benutzer löschen, Entfernen aus der Liste, Login erneut anlegen, Aktivierungskarte erzeugen und QR anzeigen funktionieren praktisch.
+- Offener Fehler ist aktuell nur Schritt 6 **Gerätebindung Android**: Die App zeigt `Der Aktivierungs-Key ist ungültig oder wurde durch einen neueren Key ersetzt.`; damit kommt beim Aktivierungsversuch ein 401-artiger Aktivierungsfehler zurück.
+- Die gezeigte Aktivierungskarte ist nicht frisch erzeugt: `Gültig bis 2026-09-20T15:48:33Z` bedeutet bei 24 Stunden Gültigkeit Erzeugung am 19.09.2026 gegen 17:48 CEST. Nach Projektregel macht jede später erzeugte Aktivierungskarte den vorherigen noch unbenutzten Key ungültig. Deshalb vor Codeänderungen zuerst mit **einer frisch erzeugten Karte sofort** testen.
+- Falls der frische Key ebenfalls scheitert: keine weitere Karte erzeugen; im API-Protokoll den dazugehörigen `POST /api/v1/device/login` prüfen. Fehlt der Request dort, verwendet die installierte Android-App nicht den QR-Server `https://api-v1.tb-helfer.de`; bei vorhandenem 401 muss der konkrete Server-Detailcode (`ACTIVATION_INVALID`/`ACTIVATION_EXPIRED`) geprüft werden.
+
 ### Admin-API komplett neu aufgebaut und quergeprüft 2026-09-19
 
 - `server/tbserver/admin.py` wurde im Feature-Branch vollständig neu aufgebaut statt weiter punktuell geflickt.
