@@ -74,6 +74,14 @@ Korrigiert wurde ausschließlich diese Compile-Ursache; keine Fachlogik wurde ge
 
 Praktischer Build-Retest ist noch offen: GitHub Desktop aktualisieren und `assembleDebug` erneut ausführen. Erst ein erfolgreicher APK-Build ist ein Buildnachweis; GitHub Actions ohne Runner-Steps gelten weiterhin nicht als Test.
 
+## Praktisch bestätigt am 2026-09-20 – Android-Geräteaktivierung
+
+Android **1.3.2 / versionCode 200052** wurde nach dem Compile-Fix erfolgreich gebaut/installiert. Der Benutzer hat die Geräteaktivierung mit einem frischen **Server-1.0-QR** praktisch bestätigt: der QR-Code funktioniert und das Gerät lässt sich aktivieren. Die Aktivierungs-/Serveradresslogik ist damit geschützt und wird nicht ohne reproduzierbaren Fehler wieder umgebaut.
+
+Nächster sinnvoller Android-Schritt ist die vorhandene Server-1.0-Release-Infrastruktur tatsächlich im Client zu nutzen. Der Server besitzt bereits `/api/v1/client-compatibility`, Release-Katalog, Admin-Binärupload, Veröffentlichung und öffentlichen APK-Download. Es soll **keine zweite Update-Infrastruktur** entstehen. Ziel: APK einmal in der Admin-Oberfläche hochladen/veröffentlichen; Pixel und Poco erkennen die neue Version in der App, laden sie über HTTPS und öffnen nach Integritätsprüfung den Android-Paketinstaller.
+
+Zusätzlich gewünscht: Benutzerdaten im Admin nachträglich bearbeiten. Der bestehende Benutzervertrag wird um einen sicheren Änderungsweg erweitert, ohne stabile Benutzer-ID oder bestehende Gerätebindung unnötig zu ersetzen. Für abgelaufene Geräte-Aktivierungs-QRs existiert technisch bereits die Erzeugung eines neuen 30-Tage-Einmal-Keys; die Admin-Oberfläche soll diesen Ablauf künftig klar als **QR erneuern / neuen QR erzeugen** darstellen.
+
 ## Verbindliche Strategie
 
 Serverbasis vollständig bauen und testen, danach kontrollierter NAS-Cutover mit vorher geprüftem Backup, anschließend Android systematisch auf `/api/v1` umstellen. Der derzeitige Server-Fachdatenbestand ist Testbestand und darf beim 1.0-Cutover zurückgesetzt werden. GitHub-Code, Konfiguration/Secrets und Backups bleiben erhalten.
