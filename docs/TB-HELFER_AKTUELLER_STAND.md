@@ -697,6 +697,16 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Für `Benutzer löschen -> denselben Login neu anlegen` bleibt Migration 010 zwingend: der Synology-Systemstatus muss nach Aktualisierung **10/10 Migrationen** zeigen. Bei 9/9 ist der alte globale Login-Unique-Index noch aktiv und der gleiche Login kann nicht sauber wiederverwendet werden.
 - Praktischer Retest offen: aktuellen Branch auf Synology übernehmen, Migrationen anwenden/10 von 10 prüfen, API neu starten, Benutzer löschen -> gleicher Login neu -> Aktivierungskarte erzeugen -> QR sofort und später nochmals prüfen -> erfolgreiche Bindung -> derselbe QR muss danach ungültig sein.
 
+### Android 200051 – QR-Zielserver sichtbar und Debug auf Server 1.0 vorbereitet 2026-09-20
+
+- Android wurde auf **Version 1.3.1 / versionCode 200051** angehoben, damit beim Gerät eindeutig erkennbar ist, ob wirklich der neue Build installiert ist.
+- Der Debug-Fallback ohne lokale Vorgabe zeigt im Feature-Branch jetzt auf `https://api-v1.tb-helfer.de`; `local.properties`/Gradle-Property dürfen Debug weiterhin gezielt überschreiben. Der Release-Fallback bleibt bis zum produktiven Cutover bewusst `https://api.tb-helfer.de`.
+- Beim QR-Scan bleibt die Fachregel unverändert: `credential.serverBaseUrl` aus dem QR hat Vorrang vor `ServerConfig.BASE_URL` und wird direkt an `ActivationApi(activationBaseUrl)` übergeben.
+- Die Aktivierungsseite zeigt beim Verbindungsversuch jetzt den tatsächlich verwendeten Zielhost, z. B. **„Verbinde mit api-v1.tb-helfer.de …“**. Wird der Key abgelehnt, nennt auch die Fehlermeldung den antwortenden Host. Damit ist ein versehentlicher Login gegen den alten Server sofort sichtbar.
+- Source-Check 83 sichert Android 200051 + Server-1.0-Debugfallback; Source-Check 84 prüft jetzt zusätzlich explizit, dass der QR-Server wirklich an `ActivationApi` übergeben wird.
+- Manuelle GitHub-Querprüfung des Quellstands: Version 200051, QR-Server-Vorrang, tatsächlicher `ActivationApi`-Zielserver, sichtbarer Zielhost und aktualisierte Source-Checks sind vorhanden.
+- GitHub Actions **TB-Server #504 / ID 35493733756** und **Android #1141 / ID 35493733801** endeten erneut ohne ausgeführte Steps/Logs (`steps = null`, `logs_url = null`). Das bleibt das bekannte Runnerproblem und ist kein festgestellter Code-/Buildfehler.
+
 ### Praktischer E2E-Stand Benutzer/Geräteaktivierung 2026-09-20
 
 - NAS-/Admin-Retest nach dem Admin-Neuaufbau ist praktisch bestätigt: Benutzer löschen, aus der aktiven Liste entfernen, denselben Login erneut anlegen, Aktivierungskarte erzeugen, QR anzeigen sowie Migration 010 mit **10/10 / pending keine** funktionieren.
@@ -907,8 +917,8 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Android zuerst:** aktuellen Debug-Build aus `feature/tb-server-1.0` erzeugen und auf genau einem Testgerät installieren. Die installierte Alt-APK darf nicht als Referenz für den Server-1.0-QR gelten.
-2. Auf Server 1.0 einen frischen Testbenutzer/30-Tage-Aktivierungs-QR erzeugen und sofort scannen. Erfolgskriterium: `POST /api/v1/device/login -> 200` im Log von `tb-helfer-v1-api-1`; im alten `tb-helfer-api` erscheint für diesen Versuch kein `device/login`.
+1. **Android zuerst:** Debug-APK **1.3.1 / 200051** aus `feature/tb-server-1.0` erzeugen und auf genau einem Testgerät installieren. Die installierte Alt-APK darf nicht als Referenz für den Server-1.0-QR gelten.
+2. Auf Server 1.0 einen frischen Testbenutzer/30-Tage-Aktivierungs-QR erzeugen und sofort scannen. Auf dem Handy muss zuerst sichtbar **„Verbinde mit api-v1.tb-helfer.de …“** erscheinen. Erfolgskriterium: `POST /api/v1/device/login -> 200` im Log von `tb-helfer-v1-api-1`; im alten `tb-helfer-api` erscheint für diesen Versuch kein `device/login`.
 3. Nach erfolgreicher Bindung prüfen: gespeicherte Serveridentität `https://api-v1.tb-helfer.de`, Geräte-Token/`device/me`, Firmenprofil und Sync. Danach WLAN ausschalten und denselben Zugriff über Mobilfunk/Cloudflare bestätigen.
 4. Erst danach **Pixel + Poco** an Server 1.0 binden und dieselbe Testbaustelle vollständig prüfen: Einladung/Team, Unterbaustellenbaum, `track_data_v1`, Mangel inkl. `ABGELEHNT`, Abnahme inkl. Löschen/Cross-Device-Tombstone, Dateien/Fotos, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
 5. Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
