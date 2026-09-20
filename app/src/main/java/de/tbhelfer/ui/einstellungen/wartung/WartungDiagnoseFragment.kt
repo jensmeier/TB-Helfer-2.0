@@ -15,6 +15,7 @@ import de.tbhelfer.R
 import de.tbhelfer.server.AppUpdateManager
 import de.tbhelfer.util.StorageCleanupScheduler
 import de.tbhelfer.util.StorageCleanupWorker
+import kotlinx.coroutines.launch
 
 class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
 

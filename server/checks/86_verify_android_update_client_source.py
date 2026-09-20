@@ -35,6 +35,7 @@ checks = [
     ("start auto check", "AppUpdateManager.check()", start_kt),
     ("manual update button", "btnWartungNachUpdates", wartung_kt),
     ("maintenance notes", "txtWartungUpdateNotes", wartung_kt),
+    ("maintenance coroutine import", "import kotlinx.coroutines.launch", wartung_kt),
     ("android versionCode", "versionCode = 200053", gradle),
     ("android versionName", 'versionName = "1.3.3"', gradle),
 ]

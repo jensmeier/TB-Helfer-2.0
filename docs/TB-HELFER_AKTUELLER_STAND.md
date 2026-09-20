@@ -78,6 +78,12 @@ Umgesetzt:
 
 Noch **nicht** als E2E bestätigt: 200053 lokal bauen und einmal manuell auf Pixel/Poco installieren; danach 200054 im Server-Admin hochladen/veröffentlichen und auf beiden Handys ausschließlich über den neuen Updateweg installieren. Geräte-Token, gespeicherte Serveradresse und lokale Baustellendaten müssen danach unverändert vorhanden sein.
 
+### Compile-Fix nach lokalem Buildtest 2026-09-20 12:25
+
+Der erste lokale Build von Android **1.3.3 / 200053** erreichte `:app:compileDebugKotlin`, scheiterte dort aber mit vier Meldungen in `WartungDiagnoseFragment.kt`. Die eigentliche Ursache war ein fehlender Import von `kotlinx.coroutines.launch`; dadurch war `viewLifecycleOwner.lifecycleScope.launch { ... }` nicht auflösbar und die Aufrufe der suspend-Funktionen `AppUpdateManager.check()` und `downloadApk()` wurden anschließend nur als Folgefehler gemeldet.
+
+Korrigiert wurde ausschließlich dieser Coroutine-Import. Die Update-Fachlogik, Geräteaktivierung, Serveradresse, Geräte-Token, Sync- und BTB-Logik wurden nicht verändert. Source-Check 86 prüft den Import jetzt ausdrücklich mit. **Praktischer Build-Retest bleibt offen:** nach Pull erneut `./gradlew clean assembleDebug` bzw. unter Windows `.\\gradlew.bat clean assembleDebug` ausführen.
+
 ## Android 200052 – Compile-Fix nach lokalem Buildtest 2026-09-20
 
 Der lokale Android-Build von 200051 scheiterte in `:app:compileDebugKotlin` mit genau 8 Folgefehlern. Ursache waren zwei fehlende Imports im kanonischen Quellbaum, der durch `generateBtb200043Sources` in den generierten Build-Quellbaum kopiert wird:
