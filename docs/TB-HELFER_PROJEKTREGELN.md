@@ -38,7 +38,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Der Benutzerbereich bietet pro Benutzer die Aktion **Aktivierungskarte**. Die Aktivierungskarte zeigt Name, Firma, Zugriff, Klartext-Aktivierungs-Key und QR-Code sowie die Hinweise zur ersten Gerätebindung und zum sicheren Geräte-Token.
 - Die Aktivierungskarte hat die Aktionen **Drucken / als PDF speichern** und **Zurück zu Benutzer**. Eine direkt herunterladbare PDF darf ergänzend angeboten werden.
 - Der Büro-/Fernablauf ist verbindlich: **Benutzer anlegen -> Aktivierungskarte erzeugen -> QR/PDF an Nutzer übermitteln -> Nutzer scannt QR in der TB-Helfer-App -> erstes Gerät wird gebunden**.
-- Wird die Aktivierungskarte später erneut erzeugt, wird ein neuer offener Key erstellt und der vorherige noch unbenutzte Key ungültig. Bereits gebundene Geräte bleiben davon unberührt.
+- Geräte-Aktivierungs-Keys sind ab Erzeugung **30 Tage gültig** und **nur einmal verwendbar**. Ein erneutes Öffnen/Erzeugen einer Aktivierungskarte darf bereits ausgegebene, noch unbenutzte Keys nicht allein dadurch ungültig machen. Sobald ein Key erfolgreich ein Gerät bindet, wird dieser Key verbraucht und alle anderen noch offenen Geräte-Aktivierungs-Keys desselben Benutzers werden ungültig. Benutzerlöschen/-deaktivieren widerruft offene Keys ebenfalls. Bereits gebundene Geräte bleiben von bloß neu erzeugten Aktivierungskarten unberührt.
 - Die Server-1.0-Aktivierung darf im QR zusätzlich notwendige technische Verbindungsdaten wie die kanonische öffentliche HTTPS-Serveradresse mitführen; diese Technik bleibt für den Nutzer unsichtbar und ändert den beschriebenen Bedienablauf nicht.
 ## 3. Firmen, Benutzer und Profil-Autofill
 - Baustellen-Zusammenarbeit ist strikt auf die eigene Firma begrenzt.
@@ -48,7 +48,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Android übernimmt die Serveradresse erst nach erfolgreicher Geräteaktivierung, speichert sie lokal als nicht geheime Serveridentität und verwendet sie anschließend für alle Server-/NAS-/Cloudflare-Syncpfade.
 - Eine spätere Reaktivierung darf die gespeicherte Serveridentität nur durch eine erneut erfolgreich bestätigte Aktivierung ersetzen.
 - BuildConfig/`local.properties` dürfen ausschließlich als Entwickler-/Legacy-Fallback dienen und sind kein normaler Aktivierungs- oder Benutzerkonfigurationsweg.
-- Aktivierungskarten dürfen als QR/PDF erzeugt und an entfernte Nutzer versendet werden. QR/PDF enthalten einen geheimen Einmal-Schlüssel, sind vertraulich zu behandeln und werden serverseitig nicht dauerhaft mit Klartext-Schlüssel archiviert.
+- Aktivierungskarten dürfen als QR/PDF erzeugt und an entfernte Nutzer versendet werden. QR/PDF enthalten einen geheimen, **30 Tage gültigen Einmal-Schlüssel**, sind vertraulich zu behandeln und werden serverseitig nicht dauerhaft mit Klartext-Schlüssel archiviert.
 - Admin kann ein Gerät freigeben; danach ist eine neue Aktivierungskarte/Einmal-Schlüssel nötig.
 - Nach Geräteaktivierung übernimmt die App vorhandene Stammdaten automatisch vom Server, soweit der Serverstand sie bereitstellt.
 - Firmenstammdaten sind zentral: Firmenname, Anschrift, Firmentelefon, Firmen-E-Mail und Firmenlogo.
