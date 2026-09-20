@@ -24,7 +24,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:layout_marginBottom="16dp"
-            android:text="Seltene Funktionen für Geräteprüfung und Speicherpflege."
+            android:text="Geräteprüfung, Speicherpflege und App-Aktualisierung."
             android:textColor="?attr/colorOnBackground"
             android:alpha="0.8" />
 
