@@ -9,7 +9,7 @@
 {% block content %}
 <div class="card">
   <h1>Client-Releases</h1>
-  <p class="muted">Release-Metadaten, optionaler Server-Binärupload und Veröffentlichung. Veröffentlichte Releases werden nicht still überschrieben.</p>
+  <p class="muted">Release-Metadaten, Server-Binärupload und Veröffentlichung. Android zeigt normale Updates blau und Pflichtupdates rot. Veröffentlichte Releases werden nicht still überschrieben.</p>
   <div id="msg"></div>
 </div>
 
@@ -24,7 +24,8 @@
       <div class="check"><input id="mandatory" type="checkbox"><label for="mandatory">Pflichtupdate</label></div>
       <div><label for="externalUrl">Externe Download-URL (optional)</label><input id="externalUrl" type="url" placeholder="https://…"></div>
     </div>
-    <label for="releaseNotes">Release Notes</label><textarea id="releaseNotes" rows="5"></textarea>
+    <label for="releaseNotes">Was ist neu? / Release Notes</label><textarea id="releaseNotes" rows="5" placeholder="z. B. Neu: Server-Update direkt in der App&#10;Verbessert: Synchronisierung&#10;Behoben: …"></textarea>
+    <p class="muted">Dieser Text wird in Android unter „Wartung &amp; Diagnose“ und beim Update-Hinweis angezeigt.</p>
     <div class="actions" style="margin-top:12px"><button type="submit">Draft anlegen</button></div>
   </form>
 </div>
