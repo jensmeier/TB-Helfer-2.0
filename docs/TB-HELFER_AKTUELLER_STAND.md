@@ -11,7 +11,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - aktiver Branch: **`feature/tb-server-1.0`**
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - PR-Basis: `feature/admin-offline-sync`
-- Android bleibt vorerst Testclient: **200053 / 1.3.3 ist auf Pixel + Poco installiert**; aktueller Quellkandidat für den ersten Server-Update-Test ist **200054 / 1.3.4**
+- Android Testclient: **200054 / 1.3.4 ist jetzt auf Pixel + Poco installiert**; die Verteilung 200053 → 200054 über den Server-Release ist praktisch erfolgt. Offen ist nur noch der explizite Datenerhalt-Abschlusscheck.
 
 - Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Sichtbare, mit Mängeln/Abnahmen verknüpfte Server-1.0-Dateien werden über `files_v1` aufgelöst und in den vorhandenen Attachment-Cache heruntergeladen. Lokale Mängel-/Abnahme-Attachments werden resumierbar über `chunk_upload_v1` mit deterministischen Idempotenz-IDs hochgeladen; nicht mehr sichtbare/gelöschte Fach-Attachments werden nur bei nachweislich vollständigem Datei-Snapshot lokal tombstoned; bei der 1000-Dateien-Grenze wird konservativ nicht gelöscht. BTB bleibt getrennt offen.
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
@@ -62,6 +62,14 @@ Wichtige Server-1.0-Meilensteine:
 - Background-Job-/Backup-Basis: `FOR UPDATE SKIP LOCKED`, Retry/Stale-Recovery, getrennte DATABASE/FILES/FULL-Backups, SHA-256, atomare Dateien und ADMIN-Backupaufträge
 - Restore-Test + sicherer Test-Reset: Restore nur gegen getrennte Testdatenbank/Testablage; Test-/Staging-Reset nur nach verifiziertem höchstens 24h altem FULL-Backup und harter Environment-/Bestätigungssperre
 - optionaler Restore-Staging-Compose-Overlay: getrennte Restore-Test-DB, getrennte Restore-Target-DB und eigener Restore-Target-Storage; Restore-to-Target bleibt standardmäßig deaktiviert und außerhalb des normalen Serverstarts
+
+## Android 200054 – Server-Update praktisch verteilt
+
+Der erste echte Updateversuch von **Android 1.3.3 / 200053 auf 1.3.4 / 200054** wurde praktisch durchgeführt. Server 1.0 zeigt ANDROID 1.3.4 / Build 200054 als **PUBLISHED** mit hinterlegter Binärdatei und SHA-256. Die beiden Testgeräte Pixel und Poco zeigen anschließend jeweils die installierte Version **1.3.4 / 200054**; auf einem Gerät meldet die manuelle Prüfung bereits **„TB-Helfer ist aktuell“**.
+
+Damit ist die normale Updateverteilung über den vorhandenen Server-Release-Katalog praktisch bestätigt. Noch separat zu prüfen sind auf beiden Geräten: bestehende Geräteaktivierung/gespeicherte Serveradresse sowie Erhalt der lokalen Baustellendaten. Auf dem zweiten Gerät soll einmal die manuelle Updateprüfung ausgeführt werden. Ein rotes Pflichtupdate bleibt ein späterer eigener Test.
+
+Der aktuelle Server-Screenshot zeigt bei **App-Versionen** weiterhin die alte Adminoberfläche. Die im GitHub-Quellstand vorhandene neue Komfortoberfläche mit Release-Datei + sichtbarer APK-Auswahl ist deshalb **noch nicht auf dem NAS deployed**. 200054 wurde erfolgreich über die alte Oberfläche veröffentlicht; SRV-016 bleibt folgerichtig separat offen.
 
 ## Server-Release-Admin – Release-Datei + APK in einem Ablauf
 
@@ -983,13 +991,13 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Android zuerst:** Debug-APK **1.3.1 / 200051** aus `feature/tb-server-1.0` erzeugen und auf genau einem Testgerät installieren. Die installierte Alt-APK darf nicht als Referenz für den Server-1.0-QR gelten.
-2. Auf Server 1.0 einen frischen Testbenutzer/30-Tage-Aktivierungs-QR erzeugen und sofort scannen. Auf dem Handy muss zuerst sichtbar **„Verbinde mit api-v1.tb-helfer.de …“** erscheinen. Erfolgskriterium: `POST /api/v1/device/login -> 200` im Log von `tb-helfer-v1-api-1`; im alten `tb-helfer-api` erscheint für diesen Versuch kein `device/login`.
-3. Nach erfolgreicher Bindung prüfen: gespeicherte Serveridentität `https://api-v1.tb-helfer.de`, Geräte-Token/`device/me`, Firmenprofil und Sync. Danach WLAN ausschalten und denselben Zugriff über Mobilfunk/Cloudflare bestätigen.
-4. Erst danach **Pixel + Poco** an Server 1.0 binden und dieselbe Testbaustelle vollständig prüfen: Einladung/Team, Unterbaustellenbaum, `track_data_v1`, Mangel inkl. `ABGELEHNT`, Abnahme inkl. Löschen/Cross-Device-Tombstone, Dateien/Fotos, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
-5. Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
-6. Danach die Vermessungskette mit realen Daten end-to-end ausführen: Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung; zusätzliche Mehr-TRA-/Reverse-Geometry-Fälle mitprüfen.
-7. Gefundene E2E-Fehler im bestehenden Feature-Branch beheben und `docs/TB-HELFER_AKTUELLER_STAND.md` sowie `projektstatus/TB-HELFER_STATUS.md/.xlsx` jeweils mit Testergebnis aktualisieren.
-8. **Erst nach bestandenen Android-/Server-/Backup-/Restore-Akzeptanztests** Cutover durchführen: produktive Cloudflare-Routen auf Server 1.0 umstellen, Abschlusskontrolle durchführen und anschließend den alten API-0.7-Server kontrolliert stoppen. Der alte Server wird nicht vorher gelöscht; Backup/Rollback bleibt für die Cutover-Phase erhalten.
+1. Auf **Pixel und Poco** prüfen, dass nach dem Update auf 200054 Geräteaktivierung/Serveradresse und lokale Baustellendaten erhalten sind; auf dem zweiten Gerät einmal **Nach Updates suchen** ausführen.
+2. Danach PLAN-006/PLAN-008 vollständig als bestätigt/erledigt markieren.
+3. Die neue Release-Komfortoberfläche aus GitHub auf Server 1.0 deployen (`v1_releases.html` + Check 87), Browser neu laden und bei einem späteren Release **Release-Datei + APK** gemeinsam testen.
+4. Danach **Benutzerdaten bearbeiten + klarer QR-Erneuern-Ablauf** umsetzen.
+5. Anschließend Pixel + Poco Server-1.0-Fach-E2E fortsetzen: Einladung/Team, Unterbaustellenbaum, `track_data_v1`, Mangel inkl. `ABGELEHNT`, Abnahme inkl. Löschen/Tombstone, Dateien/Fotos, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
+6. Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
+7. Danach Vermessungskette mit realen Daten end-to-end ausführen.
+8. **Erst nach bestandenen Android-/Server-/Backup-/Restore-Akzeptanztests** produktiven Cutover durchführen und alten API-0.7-Server kontrolliert stoppen.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
