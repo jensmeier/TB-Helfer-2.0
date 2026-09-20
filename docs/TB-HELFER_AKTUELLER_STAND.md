@@ -1,6 +1,6 @@
 # TB-Helfer – aktueller Projektstand
 
-Stand: 2026-09-19
+Stand: 2026-09-20
 
 Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEKTREGELN.md`, diese Datei, `docs/TB-SERVER_1_0_ZIELMODELL.md` und `docs/TB-SERVER_1_0_CUTOVER.md`.
 
@@ -11,7 +11,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - aktiver Branch: **`feature/tb-server-1.0`**
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - PR-Basis: `feature/admin-offline-sync`
-- Android bleibt vorerst Testclient: Buildkandidat **200050**
+- Android bleibt vorerst Testclient: Buildkandidat **200052 / 1.3.2**
 
 - Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Sichtbare, mit Mängeln/Abnahmen verknüpfte Server-1.0-Dateien werden über `files_v1` aufgelöst und in den vorhandenen Attachment-Cache heruntergeladen. Lokale Mängel-/Abnahme-Attachments werden resumierbar über `chunk_upload_v1` mit deterministischen Idempotenz-IDs hochgeladen; nicht mehr sichtbare/gelöschte Fach-Attachments werden nur bei nachweislich vollständigem Datei-Snapshot lokal tombstoned; bei der 1000-Dateien-Grenze wird konservativ nicht gelöscht. BTB bleibt getrennt offen.
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
@@ -62,6 +62,17 @@ Wichtige Server-1.0-Meilensteine:
 - Background-Job-/Backup-Basis: `FOR UPDATE SKIP LOCKED`, Retry/Stale-Recovery, getrennte DATABASE/FILES/FULL-Backups, SHA-256, atomare Dateien und ADMIN-Backupaufträge
 - Restore-Test + sicherer Test-Reset: Restore nur gegen getrennte Testdatenbank/Testablage; Test-/Staging-Reset nur nach verifiziertem höchstens 24h altem FULL-Backup und harter Environment-/Bestätigungssperre
 - optionaler Restore-Staging-Compose-Overlay: getrennte Restore-Test-DB, getrennte Restore-Target-DB und eigener Restore-Target-Storage; Restore-to-Target bleibt standardmäßig deaktiviert und außerhalb des normalen Serverstarts
+
+## Android 200052 – Compile-Fix nach lokalem Buildtest 2026-09-20
+
+Der lokale Android-Build von 200051 scheiterte in `:app:compileDebugKotlin` mit genau 8 Folgefehlern. Ursache waren zwei fehlende Imports im kanonischen Quellbaum, der durch `generateBtb200043Sources` in den generierten Build-Quellbaum kopiert wird:
+
+- `Server1FileApi.kt`: `org.json.JSONArray` fehlte; dadurch war `root.optJSONArray("files") ?: JSONArray()` nicht kompilierbar.
+- `BaustellenSyncFragment.kt`: `de.tbhelfer.datenbank.SyncWorksiteContextEntity` fehlte; dadurch waren der Typ sowie die daraus abgeleiteten Zugriffe `memberRole`, `name` und `designation` nicht auflösbar.
+
+Korrigiert wurde ausschließlich diese Compile-Ursache; keine Fachlogik wurde geändert. Der neue eindeutig unterscheidbare Buildkandidat ist **Android 1.3.2 / versionCode 200052**. Source-Check `server/checks/85_verify_android_200052_compile_imports.py` schützt beide Imports, die dazugehörigen Entity-Felder und den Versionsstand.
+
+Praktischer Build-Retest ist noch offen: GitHub Desktop aktualisieren und `assembleDebug` erneut ausführen. Erst ein erfolgreicher APK-Build ist ein Buildnachweis; GitHub Actions ohne Runner-Steps gelten weiterhin nicht als Test.
 
 ## Verbindliche Strategie
 
