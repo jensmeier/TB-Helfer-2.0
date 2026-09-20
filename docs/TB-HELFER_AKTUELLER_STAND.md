@@ -681,6 +681,15 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Android scannt den QR weiterhin über den vorhandenen Aktivierungs-Scanner und verarbeitet denselben `tbhelfer://activate`-Deep-Link. Kein zweiter Aktivierungsweg wurde eingeführt.
 - Neuer Source-Check `84_verify_device_activation_qr_source.py` prüft Server -> Portal -> Android durchgängig.
 
+### Geräteaktivierung auf altes bewährtes Verhalten zurückgeführt 2026-09-20
+
+- Fachliche Klarstellung aus dem Praxistest: Die bewährte 0.7-Logik bleibt maßgeblich. Ein Geräte-Aktivierungs-QR ist **30 Tage gültig** und **nur einmal verwendbar**.
+- Das bloße erneute Öffnen/Erzeugen einer Aktivierungskarte darf einen bereits ausgegebenen, noch unbenutzten 30-Tage-Key nicht ungültig machen. Das bisherige Server-1.0-Verhalten (neue Karte widerruft sofort den vorherigen offenen Key) war fachlich falsch und konnte dazu führen, dass eine zuvor versendete Karte auf dem Handy sofort als ungültig erschien.
+- Server 1.0 wurde korrigiert: neue Keys laufen standardmäßig 720 Stunden; mehrere vor der ersten Bindung ausgegebene offene Keys dürfen bis dahin bestehen. Bei der **ersten erfolgreichen Gerätebindung** wird der verwendete Key verbraucht und alle übrigen noch offenen Aktivierungs-Keys desselben Benutzers werden widerrufen.
+- Benutzer löschen/deaktivieren widerruft offene Keys weiterhin sofort. Nach Gerätefreigabe ist eine neue Aktivierungskarte nötig.
+- Für `Benutzer löschen -> denselben Login neu anlegen` bleibt Migration 010 zwingend: der Synology-Systemstatus muss nach Aktualisierung **10/10 Migrationen** zeigen. Bei 9/9 ist der alte globale Login-Unique-Index noch aktiv und der gleiche Login kann nicht sauber wiederverwendet werden.
+- Praktischer Retest offen: aktuellen Branch auf Synology übernehmen, Migrationen anwenden/10 von 10 prüfen, API neu starten, Benutzer löschen -> gleicher Login neu -> Aktivierungskarte erzeugen -> QR sofort und später nochmals prüfen -> erfolgreiche Bindung -> derselbe QR muss danach ungültig sein.
+
 ### Praktischer E2E-Stand Benutzer/Geräteaktivierung 2026-09-20
 
 - NAS-/Admin-Retest nach dem Admin-Neuaufbau: Benutzer löschen, Entfernen aus der Liste, Login erneut anlegen, Aktivierungskarte erzeugen und QR anzeigen funktionieren praktisch.
