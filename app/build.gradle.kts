@@ -19,7 +19,7 @@ val localTbProperties = Properties().apply {
 
 val debugServerBaseUrl = providers.gradleProperty("tbServerBaseUrl")
     .orElse(providers.environmentVariable("TB_SERVER_BASE_URL"))
-    .orElse(localTbProperties.getProperty("tb.server.base.url") ?: "https://api.tb-helfer.de")
+    .orElse(localTbProperties.getProperty("tb.server.base.url") ?: "https://api-v1.tb-helfer.de")
     .get()
     .trim()
     .trimEnd('/')
@@ -551,9 +551,9 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200050: BTB-Punkte 4-8 gleicher Bilder-Pfad + gleich grosse Aktionsbuttons.
-        versionCode = 200050
-        versionName = "1.3"
+        // Android 200051: Server-1.0-Aktivierung sichtbar gegen QR-Zielserver pruefbar.
+        versionCode = 200051
+        versionName = "1.3.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
