@@ -4,7 +4,7 @@
 **Branch:** `feature/tb-server-1.0`  
 **Draft-PR:** #6 – TB-Server 1.0 – gemeinsame Serverbasis  
 **Geprüfter Quellstand vor Tracker-Update:** `25d111ff093ac860eec9a9c5abb64caa5adff253`  
-**Android:** 1.3.2 / versionCode 200052  
+**Android:** 1.3.3 / versionCode 200053  
 **Server:** 1.0.0-dev / staging
 
 ## Verbindliche Nutzung
@@ -35,7 +35,7 @@
 | APP-009 | BTB – ein PDF / unveränderliches Original / Nachbearbeitung | UMGESETZT / E2E OFFEN | ☐ | Server- und Android-Vertrag ist implementiert; erstes Original bleibt unverändert, aktuelles Abschluss-PDF wird ersetzt. | Echte PostgreSQL-/Android-E2E-Prüfung inkl. Fotos und Reaktivierung. | 1.3 / versionCode 200050 | JA | 2026-09-20 |  |
 | APP-010 | Aktuelle Baustelle / mehrere Baustellen lokal | FACHREGEL FEST | ☑ | Mehrere Baustellen dürfen lokal vorhanden sein; genau eine ist aktuell; Daten dürfen sich nicht vermischen. | Im Zwei-Geräte-E2E erneut bestätigen. | 1.3 / versionCode 200050 | JA | 2026-09-20 |  |
 | APP-011 | Benutzerdaten im Admin bearbeiten | GEPLANT | ☐ | Bestehender Server kann Benutzer anlegen/löschen, aber noch nicht vollständig im Admin bearbeiten. Gewünscht sind mindestens Name, Login, persönliche E-Mail/Telefon, Firmenrolle und Zugriffsdaten. | Sicheren PATCH-Adminpfad + Bearbeiten-Dialog ergänzen; stabile Benutzer-ID und bestehende Gerätebindung beibehalten. | Server 1.0 / Android 1.3.2 | NEIN | 2026-09-20 | Firmenwechsel zunächst nur mit Schutzregeln bzw. separat behandeln. |
-| APP-012 | Android-App-Update direkt vom TB-Server | GEPLANT | ☐ | Server 1.0 besitzt bereits Release-Katalog, Kompatibilitätsprüfung, APK-Binärupload und öffentlichen Download. Android-Client für Updateprüfung/Download/Installationsübergabe fehlt noch. | Android-Updater auf vorhandenen /api/v1/client-compatibility- und Release-Vertrag bauen; manuelle Prüfung + automatische Hinweisprüfung. | ab Android 1.3.3 | NEIN | 2026-09-20 | Ziel: APK einmal im Admin hochladen, Pixel und Poco erhalten Updatehinweis direkt in der App. |
+| APP-012 | Android-App-Update direkt vom TB-Server | QUELLSTAND FERTIG / E2E OFFEN | ☐ | Android 1.3.3 / 200053 besitzt den Server-Updateclient: automatische Prüfung am Startbildschirm, Update-Symbol nur bei verfügbarem Release (blau normal / rot Pflicht), manuelle Prüfung unter Wartung & Diagnose, Release Notes, APK-Download und SHA-256-Prüfung sowie Übergabe an den Android-Paketinstaller. | 200053 einmal manuell auf Pixel + Poco installieren; danach 200054 im Server-Admin hochladen/veröffentlichen und den echten Updateweg auf beiden Geräten testen. | 1.3.3 / versionCode 200053 | JA | 2026-09-20 | Kein separates Update-Menü. App-Update darf Gerätebindung und lokale Daten nicht löschen. |
 
 ## Server
 
@@ -55,7 +55,7 @@
 | SRV-012 | Backup / Retention / Restore-to-Target | UMGESETZT / PRAKTISCH OFFEN | ☐ | Backup-/Restore-Mechanismen sind vorbereitet; Restore soll immer in getrennte Ziel-DB/Storage erfolgen. | Backup → Retention → Restore-Test → Restore-to-Target praktisch ausführen. | 1.0.0-dev / staging | JA | 2026-09-20 |  |
 | SRV-013 | Produktiver NAS-Cutover | GESPERRT BIS E2E | ☐ | Kein produktiver Cutover ohne vollständiges verifiziertes Backup und bestandene Android-/Server-/Restore-Tests. | Erst am Ende Cloudflare-Routen produktiv auf 1.0 umstellen und alten Server stoppen. | 1.0.0-dev / staging | JA | 2026-09-20 |  |
 | SRV-014 | Originale Vermessungsdaten | FACHREGEL FEST | ☑ | Ab erstem produktiven Import bleiben TRA/GRA/KF/KOR/KV/GVP unverändert. Bearbeitete Daten werden getrennt gespeichert. | Nie durch Reset/Update überschreiben oder löschen. | 1.0.0-dev / staging | JA | 2026-09-20 |  |
-| SRV-015 | Release-Katalog / App-Versionen | SERVERSEITIG UMGESETZT / ANDROID OFFEN | ☐ | Server 1.0 hat bereits /client-compatibility, latest Release, Admin-Releaseverwaltung, APK-Binärupload, SHA-256 und öffentlichen Download. | Android-Updateclient anbinden; danach APK im Admin hochladen/veröffentlichen und auf Pixel + Poco testen. | 1.0.0-dev / staging | JA | 2026-09-20 | Keine parallele zweite Update-Infrastruktur bauen. |
+| SRV-015 | Release-Katalog / App-Versionen | SERVERSEITIG UMGESETZT / E2E OFFEN | ☐ | Server 1.0 liefert Release Notes, Pflichtupdate-Flag, Version/Build, Downloadziel sowie für Server-Binaries öffentliche SHA-256-Prüfsumme und Dateigröße. Adminseite erklärt die Android-Anzeige (blau/rot) und Release Notes. | Nach Android-200053-Installation einen Android-200054-Draft mit APK und Release Notes anlegen, veröffentlichen und Download/Kompatibilität praktisch prüfen. | 1.0.0-dev / staging | JA | 2026-09-20 | Vorhandene Release-Infrastruktur erweitert; keine zweite Update-Infrastruktur. |
 
 ## Probleme
 
@@ -78,6 +78,7 @@
 | PLAN-005 | Server 0.7 abschalten | SPÄTER | ☐ | Erst nach erfolgreichem Server-1.0-E2E und produktivem Cloudflare-Cutover. | Kontrolliert stoppen, Rollback-Backup zunächst behalten. | 0.7.x → 1.0 | JA | 2026-09-20 |  |
 | PLAN-006 | Android-Updates vom Server | NÄCHSTER SCHRITT | ☐ | Vorhandene Server-Release-Infrastruktur soll direkt genutzt werden. | Android: Kompatibilität prüfen, Updatehinweis anzeigen, APK über HTTPS laden, Hash prüfen und Android-Paketinstaller öffnen; manuellen Punkt „Nach Updates suchen“ ergänzen. | Ziel 1.3.3 / 200053 | NEIN | 2026-09-20 | Kein eigener zweiter Downloadserver nötig. |
 | PLAN-007 | Benutzer bearbeiten + QR erneuern | GEPLANT | ☐ | Benutzerdaten sollen im Admin änderbar sein. Abgelaufene Aktivierungs-QRs sollen klar erneuerbar sein; technisch erzeugt die vorhandene Aktivierungskarte bereits einen neuen 30-Tage-Key. | Bearbeiten-Aktion/PATCH ergänzen und Aktivierungskarte mit klarer Aktion „Neuen QR erzeugen“/Ablaufstatus verbessern. | Server 1.0 | NEIN | 2026-09-20 | App-Update benötigt keinen neuen QR, solange App-Daten/Geräte-Token erhalten bleiben. |
+| PLAN-008 | Erster echter Zwei-Handy-Serverupdate-Test | GEPLANT | ☐ | Nach manueller Installation von 200053 soll 200054 erstmals vollständig über Server 1.0 verteilt werden. | APK 200054 im Admin hochladen, Release Notes eintragen, optional/Pflicht testen, Pixel + Poco aktualisieren und prüfen, dass Geräte-Token, Serveradresse und lokale Baustellendaten erhalten bleiben. | Ziel 1.3.4 / 200054 | NEIN | 2026-09-20 | Android zeigt normalen Release blau, Pflichtrelease rot; ohne Update kein Symbol. |
 
 ## Erledigt
 
