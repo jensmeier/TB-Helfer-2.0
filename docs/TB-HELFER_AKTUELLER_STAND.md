@@ -11,7 +11,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - aktiver Branch: **`feature/tb-server-1.0`**
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - PR-Basis: `feature/admin-offline-sync`
-- Android bleibt vorerst Testclient: Buildkandidat **200052 / 1.3.2**
+- Android bleibt vorerst Testclient: Buildkandidat **200053 / 1.3.3**
 
 - Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Sichtbare, mit Mängeln/Abnahmen verknüpfte Server-1.0-Dateien werden über `files_v1` aufgelöst und in den vorhandenen Attachment-Cache heruntergeladen. Lokale Mängel-/Abnahme-Attachments werden resumierbar über `chunk_upload_v1` mit deterministischen Idempotenz-IDs hochgeladen; nicht mehr sichtbare/gelöschte Fach-Attachments werden nur bei nachweislich vollständigem Datei-Snapshot lokal tombstoned; bei der 1000-Dateien-Grenze wird konservativ nicht gelöscht. BTB bleibt getrennt offen.
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
@@ -62,6 +62,21 @@ Wichtige Server-1.0-Meilensteine:
 - Background-Job-/Backup-Basis: `FOR UPDATE SKIP LOCKED`, Retry/Stale-Recovery, getrennte DATABASE/FILES/FULL-Backups, SHA-256, atomare Dateien und ADMIN-Backupaufträge
 - Restore-Test + sicherer Test-Reset: Restore nur gegen getrennte Testdatenbank/Testablage; Test-/Staging-Reset nur nach verifiziertem höchstens 24h altem FULL-Backup und harter Environment-/Bestätigungssperre
 - optionaler Restore-Staging-Compose-Overlay: getrennte Restore-Test-DB, getrennte Restore-Target-DB und eigener Restore-Target-Storage; Restore-to-Target bleibt standardmäßig deaktiviert und außerhalb des normalen Serverstarts
+
+## Android 200053 – Server-gesteuerter Updater (Quellstand fertig, E2E offen)
+
+Der vorhandene Server-1.0-Releasevertrag wird jetzt direkt in Android verwendet; es entsteht **keine zweite Update-Infrastruktur**.
+
+Umgesetzt:
+- Startbildschirm prüft `/api/v1/client-compatibility` unaufdringlich; ohne Update bleibt das Symbol verborgen.
+- normales Update = blaues `↻`; Pflicht-/wichtiges Update = rotes `↻`.
+- Antippen zeigt aktuelle/neue Version und serverseitige Release Notes und bietet `Aktualisieren`.
+- `Einstellungen → Wartung & Diagnose` besitzt dauerhaft `Nach Updates suchen`, Status/Version, Release Notes und den Installationsbutton.
+- APK-Download nutzt den veröffentlichten Serverpfad, akzeptiert produktiv nur HTTPS, prüft serverseitige Dateigröße/SHA-256 und öffnet anschließend den Android-Paketinstaller.
+- Server-Public-Release-Payload liefert dafür zusätzlich `sha256` und `byte_size`; die Admin-Release-Seite erklärt Release Notes und blau/rot.
+- Android wurde auf **1.3.3 / versionCode 200053** angehoben.
+
+Noch **nicht** als E2E bestätigt: 200053 lokal bauen und einmal manuell auf Pixel/Poco installieren; danach 200054 im Server-Admin hochladen/veröffentlichen und auf beiden Handys ausschließlich über den neuen Updateweg installieren. Geräte-Token, gespeicherte Serveradresse und lokale Baustellendaten müssen danach unverändert vorhanden sein.
 
 ## Android 200052 – Compile-Fix nach lokalem Buildtest 2026-09-20
 
