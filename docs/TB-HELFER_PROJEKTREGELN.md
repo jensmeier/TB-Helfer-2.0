@@ -1,5 +1,13 @@
 # TB-Helfer – verbindliche Projektregeln
 
+## 0. Projektstatus-Tracker
+
+- Zusätzlich zu diesen Projektregeln und `docs/TB-HELFER_AKTUELLER_STAND.md` wird der laufende Arbeits-/Teststand in `projektstatus/TB-HELFER_STATUS.md` und der gleichnamigen Excel-Datei gespiegelt.
+- Vor Änderungen ist der Tracker zu prüfen. Ein mit `☑` bestätigter Punkt und/oder `Nicht ohne Grund ändern = JA` wird nicht beiläufig umgebaut. Änderungen daran erfolgen nur bei reproduzierbarem Fehler, neuer belegter Fachanforderung oder ausdrücklichem Benutzerwunsch.
+- Neue wesentliche Probleme, Entscheidungen, Tests, Versionen und erledigte Punkte werden mit stabiler ID in MD und Excel nachgeführt.
+- GitHub-Code und diese Projektregeln bleiben Source of Truth; der Tracker ist eine zusätzliche, schnell lesbare Arbeits- und Abnahmeliste.
+- Geheimwerte, insbesondere Cloudflare-Tunnel-Tokens, Passwörter, Geräte-Bearer und Klartext-Aktivierungs-Keys, dürfen niemals in den Tracker geschrieben werden.
+
 Stand: 2026-09-14
 
 Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und später iOS fest. Bei Änderungen zuerst diese Datei aktualisieren.
@@ -34,7 +42,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Die Geräteübersicht zeigt mindestens: Benutzer, Firma, Geräte-ID, Status, letzter Kontakt und Aktionen.
 - **Benutzer löschen** folgt dem bestehenden sicheren Admin-Verhalten: Der Benutzer wird soft-deleted/deaktiviert und verschwindet aus der aktiven Benutzerliste; Portal-Sessions, Portal-Aktivierung, offene Geräte-Aktivierungs-Keys und aktive Geräte-Tokens werden sofort ungültig. Gebundene Geräte werden dabei freigegeben. Aktive Baustellen-/Teamzuordnungen werden beendet, historische Fachreferenzen bleiben über die stabile Benutzer-ID erhalten. Ein Benutzer mit aktivem BTB als Teamleitung darf nicht gelöscht werden, bevor der aktive BTB beendet/gelöst ist.
 - Ein soft-gelöschter Benutzer blockiert seinen Login-Namen nicht dauerhaft; derselbe Login darf nach dem sicheren Löschen wieder für einen neuen aktiven Benutzer verwendet werden. Endgültiges Löschen/Purge bleibt ein separater Löschcenter-/Papierkorb-Schritt.
-- Ein aktives Gerät wird im Gerätebereich über **Freigeben** gelöst; die Benutzer-Aktivierungskarte erzeugt dagegen nur einen neuen noch unbenutzten Aktivierungs-Key und widerruft den vorherigen offenen Key. Ein bereits gebundenes Gerät bleibt aktiv, bis es ausdrücklich im Gerätebereich freigegeben wird.
+- Ein aktives Gerät wird im Gerätebereich über **Freigeben** gelöst. Die Benutzer-Aktivierungskarte kann einen weiteren noch unbenutzten Aktivierungs-Key erzeugen, ohne bereits ausgegebene offene 30-Tage-Keys allein dadurch zu widerrufen. Erst die erste erfolgreiche Gerätebindung verbraucht den verwendeten Key und widerruft die übrigen offenen Aktivierungs-Keys desselben Benutzers. Ein bereits gebundenes Gerät bleibt aktiv, bis es ausdrücklich im Gerätebereich freigegeben wird.
 - Der Benutzerbereich bietet pro Benutzer die Aktion **Aktivierungskarte**. Die Aktivierungskarte zeigt Name, Firma, Zugriff, Klartext-Aktivierungs-Key und QR-Code sowie die Hinweise zur ersten Gerätebindung und zum sicheren Geräte-Token.
 - Die Aktivierungskarte hat die Aktionen **Drucken / als PDF speichern** und **Zurück zu Benutzer**. Eine direkt herunterladbare PDF darf ergänzend angeboten werden.
 - Der Büro-/Fernablauf ist verbindlich: **Benutzer anlegen -> Aktivierungskarte erzeugen -> QR/PDF an Nutzer übermitteln -> Nutzer scannt QR in der TB-Helfer-App -> erstes Gerät wird gebunden**.
