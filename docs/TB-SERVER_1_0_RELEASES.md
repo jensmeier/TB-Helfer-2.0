@@ -1,6 +1,6 @@
 # TB-Server 1.0 – Releases und Client-Kompatibilität
 
-Stand: 2026-09-18
+Stand: 2026-09-20
 
 Dieser Baustein setzt den bereits im Zielmodell vorgesehenen stabilen Client-Kompatibilitätsvertrag um. Er verwendet die schon in Migration `001_server_1_0_base.sql` vorhandene Tabelle `tb.releases`; keine bestehende Migration wird nachträglich verändert.
 
@@ -64,6 +64,17 @@ Zusätzlich liefert der Endpunkt die Booleans `supported`, `update_available` un
 - Öffentliche Release-Antworten und die bereinigte Admin-Liste geben interne `storage_key`-Pfade nicht aus.
 - Für ein serverseitiges Binary wird öffentlich nur der sichere relative Downloadendpunkt geliefert.
 - Der öffentliche Binärdownload liefert nur Releases mit Status `PUBLISHED`.
+
+## Android-Updatevertrag
+
+- Android fragt beim Start unaufdringlich `GET /api/v1/client-compatibility` mit eigener Buildnummer/Version ab.
+- Ohne Update bleibt auf dem Startbildschirm **kein Update-Symbol** sichtbar.
+- Optionales Update: blaues Update-Symbol; Pflichtupdate: rotes Update-Symbol.
+- Unter **Einstellungen → Wartung & Diagnose** bleibt `Nach Updates suchen` als manueller Kontrollweg sichtbar.
+- `release_notes` werden dort als „Was ist neu?“ angezeigt.
+- Für serverseitig hochgeladene Binärdateien liefert der öffentliche Release-Payload zusätzlich `sha256` und `byte_size`. Android prüft beides vor dem Paketinstaller.
+- Android lädt die APK über den veröffentlichten HTTPS-Downloadvertrag. Die eigentliche Installation bleibt eine Android-Systemaktion; beim ersten Mal kann die Freigabe „Apps aus dieser Quelle installieren“ erforderlich sein.
+- Ein normales In-Place-Update darf die gespeicherte Gerätebindung, Serveridentität und lokale Baustellendaten nicht löschen.
 
 ## Admin-Weboberfläche
 
