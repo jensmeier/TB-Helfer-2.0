@@ -551,9 +551,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200051: Server-1.0-Aktivierung sichtbar gegen QR-Zielserver pruefbar.
-        versionCode = 200051
-        versionName = "1.3.1"
+        // Android 200052: Compile-Fix fuer Server1FileApi/BaustellenSyncFragment;
+        // Server-1.0-Aktivierung bleibt sichtbar gegen den QR-Zielserver pruefbar.
+        versionCode = 200052
+        versionName = "1.3.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
