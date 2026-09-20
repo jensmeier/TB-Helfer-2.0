@@ -66,4 +66,6 @@
     <string name="collab_team_tb_prefix">Verantwortlicher TB: %1$s</string>
     <string name="collab_team_helpers_prefix">Helfer: %1$s</string>
     <string name="collab_company_profile_error">Firmenprofil konnte nicht aktualisiert werden: %1$s</string>
+    <string name="activation_connecting_server">Verbinde mit %1$s …</string>
+    <string name="activation_invalid_key_server">Der Aktivierungs-Key wurde von %1$s abgelehnt.</string>
 </resources>
