@@ -55,8 +55,9 @@
 
   <div class="activation-warning">
     <b>Wichtig:</b> Diese Karte zeigt den Key im Klartext. Sicher aufbewahren.
-    Wird später erneut auf <b>Aktivierungskarte</b> geklickt, wird ein neuer Key erzeugt
-    und der vorherige unbenutzte Aktivierungs-Key ungültig.
+    Der Aktivierungs-Key ist 30 Tage gültig und kann nur einmal verwendet werden.
+    Eine neu erzeugte Aktivierungskarte macht bereits ausgegebene, noch unbenutzte Keys nicht automatisch ungültig.
+    Nach der ersten erfolgreichen Gerätebindung werden alle noch offenen Aktivierungs-Keys dieses Benutzers ungültig.
     {% if target.has_active_device %}
       Ein bereits gebundenes Gerät bleibt dabei aktiv, bis es im Admin unter
       <b>Geräte</b> freigegeben wird.
@@ -84,7 +85,7 @@
     const {data}=await tbApi('/api/v1/admin/users/{{ target.id }}/device-activation',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({expires_hours:24})
+      body:JSON.stringify({expires_hours:720})
     });
     keyEl.textContent=data.activation_key;
     qrEl.src=data.activation_qr_svg_data_url;
