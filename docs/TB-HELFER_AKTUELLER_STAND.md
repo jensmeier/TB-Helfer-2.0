@@ -63,6 +63,16 @@ Wichtige Server-1.0-Meilensteine:
 - Restore-Test + sicherer Test-Reset: Restore nur gegen getrennte Testdatenbank/Testablage; Test-/Staging-Reset nur nach verifiziertem höchstens 24h altem FULL-Backup und harter Environment-/Bestätigungssperre
 - optionaler Restore-Staging-Compose-Overlay: getrennte Restore-Test-DB, getrennte Restore-Target-DB und eigener Restore-Target-Storage; Restore-to-Target bleibt standardmäßig deaktiviert und außerhalb des normalen Serverstarts
 
+## Server-Release-Admin – Release-Datei + APK in einem Ablauf
+
+Die App-Versionen-Seite wurde für den ersten echten 200053→200054-Update-Test vereinfacht. Statt erst einen leeren Draft anzulegen und die APK später in der Release-Liste suchen zu müssen, gibt es jetzt oben sichtbar **Release-Datei auswählen** und **APK/Binärdatei auswählen**.
+
+Release-Dateien (`.md`/`.txt`) können Version, Build, Mindestbuild, Pflichtupdate und die Blöcke **Neu / Verbessert / Behoben** enthalten. Die Angaben werden beim Einlesen in die Serverfelder übernommen und bleiben vor der Veröffentlichung editierbar. Eine ausgewählte APK wird beim Anlegen des Drafts direkt über den bereits vorhandenen SHA-256-geschützten Binärupload gespeichert. Bestehende Drafts können Metadaten weiter per PATCH bearbeiten, eine neue Release-Datei einlesen, die APK ersetzen/entfernen und eine aktuelle Release-Datei wieder herunterladen.
+
+Es gibt weiterhin **nur einen** Release-Katalog und **keinen** zweiten Metadatenspeicher: die Datei ist Import-/Exporthilfe, kanonisch bleiben die vorhandenen `tb.releases`-Felder. Android muss dafür nicht erneut geändert werden; die App liest weiterhin `release_notes` aus demselben Serververtrag.
+
+Quellprüfung: `server/checks/87_verify_release_admin_package_ui.py`. Praktischer Server-UI-/200054-Update-E2E bleibt bis zum Deployment und Handytest offen.
+
 ## Android 200054 – erster echter Server-Update-Test vorbereitet
 
 Android **1.3.3 / versionCode 200053** wurde nach dem Coroutine-Compile-Fix am 2026-09-20 erfolgreich gebaut und anschließend auf **Pixel und Poco** installiert. Damit ist 200053 die praktisch bestätigte Ausgangsbasis für den ersten echten App-Update-E2E.

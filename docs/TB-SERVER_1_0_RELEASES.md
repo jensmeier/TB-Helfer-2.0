@@ -78,12 +78,46 @@ Zusätzlich liefert der Endpunkt die Booleans `supported`, `update_available` un
 
 ## Admin-Weboberfläche
 
-`GET /admin/v1/releases` bietet eine dünne Server-1.0-Weboberfläche auf denselben Release-Endpunkten:
+`GET /admin/v1/releases` bietet die Release-Verwaltung auf denselben API-Endpunkten.
 
-- Draft anlegen;
-- externe URL setzen oder serverseitige Binärdatei hochladen;
+Der Büroablauf ist bewusst dateibasiert und trotzdem serverseitig editierbar:
+
+1. optionale **Release-Datei** (`.md`/`.txt`) auswählen und einlesen;
+2. APK/Binärdatei sichtbar auswählen;
+3. Version, Build, Mindestbuild, Pflichtupdate sowie `Neu`/`Verbessert`/`Behoben` auf der Seite prüfen oder ändern;
+4. Draft anlegen; eine ausgewählte APK wird direkt danach per vorhandenem Binärupload hochgeladen und SHA-256-geprüft;
+5. Draft kann weiterhin auf dem Server bearbeitet, mit einer neuen Release-Datei neu befüllt oder mit einer anderen APK versehen werden;
+6. erst nach bewusster Prüfung veröffentlichen.
+
+Die Release-Datei ist ein einfacher menschenlesbarer Vertrag. Vorlage: `docs/TB-HELFER_RELEASE_VORLAGE.md`.
+
+```text
+TB-HELFER-RELEASE
+PLATTFORM: ANDROID
+VERSION: 1.3.4
+BUILD: 200054
+MINIMUM_BUILD:
+PFLICHTUPDATE: NEIN
+DOWNLOAD_URL:
+
+NEU:
+- ...
+
+VERBESSERT:
+- ...
+
+BEHOBEN:
+- ...
+```
+
+Beim Einlesen werden die Metadaten und drei Änderungsblöcke in die Formularfelder übernommen. Im Server gespeichert werden weiterhin die kanonischen Release-Felder in `tb.releases`; es entsteht kein zweiter Metadatenspeicher. Aus jedem Draft/PUBLISHED/RETIRED-Release kann wieder eine aktuelle Release-Datei heruntergeladen werden.
+
+Weitere Eigenschaften:
+
+- externe URL oder serverseitige Binärdatei als alternative Downloadquelle;
 - SHA-256 vor dem Upload im Browser berechnen und als `X-Release-SHA256` mitsenden;
-- Draft-Binary entfernen;
+- Draft-Metadaten über den vorhandenen `PATCH`-Vertrag bearbeiten;
+- Draft-Binary ersetzen/entfernen;
 - Release veröffentlichen;
 - veröffentlichten Release zurückziehen;
 - öffentlichen Download prüfen.
@@ -121,4 +155,4 @@ Damit kann Android den Server-1.0-Vertrag künftig über Capabilities erkennen u
 - Admin-Webroute und Upload-/Publish-Oberfläche;
 - Capability `release_binary_v1`.
 
-Die vollständige PostgreSQL-/FastAPI-Laufzeitprüfung bleibt wegen des bekannten GitHub-Runner-Problems und der aktuell fehlenden lokalen PostgreSQL-Instanz noch offen.
+`server/checks/87_verify_release_admin_package_ui.py` prüft zusätzlich die sichtbare Release-/APK-Dateiauswahl, den Manifest-Import/-Export, die drei Änderungsbereiche und den serverseitig editierbaren Draft-Ablauf.\n\nDie vollständige PostgreSQL-/FastAPI-Laufzeitprüfung bleibt wegen des bekannten GitHub-Runner-Problems und der aktuell fehlenden lokalen PostgreSQL-Instanz noch offen.
