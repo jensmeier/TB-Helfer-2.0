@@ -11,6 +11,8 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - aktiver Branch: **`feature/tb-server-1.0`**
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - PR-Basis: `feature/admin-offline-sync`
+- Funktionscommit globaler Katalog + Benutzeridentität: **`511bb5c00552b5a7e54d35d930ea982cf4629598`**
+- GitHub Actions für diesen Funktionscommit liefern weiterhin **keinen Testnachweis**: Android-Run `35524333713`, Server-PR-Run `35524333722` und Server-Push-Run `35524332208` endeten ohne zugewiesenen Runner (`runner_id=0`, `runner_name=""`, `steps=[]`). Das bleibt Infrastrukturproblem PRB-002 und ist kein belegter Fach-/Compilefehler.
 - Android Testclient: **200054 / 1.3.4 ist auf Pixel + Poco installiert und bestätigt**. Der neue Quellstand **200055 / 1.3.5** für globalen Katalog und Benutzerprofil ist vorbereitet, aber noch nicht gebaut/installiert; 200054 bleibt bis zum praktischen Test die bestätigte Gerätebasis.
 
 - Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Sichtbare, mit Mängeln/Abnahmen verknüpfte Server-1.0-Dateien werden über `files_v1` aufgelöst und in den vorhandenen Attachment-Cache heruntergeladen. Lokale Mängel-/Abnahme-Attachments werden resumierbar über `chunk_upload_v1` mit deterministischen Idempotenz-IDs hochgeladen; nicht mehr sichtbare/gelöschte Fach-Attachments werden nur bei nachweislich vollständigem Datei-Snapshot lokal tombstoned; bei der 1000-Dateien-Grenze wird konservativ nicht gelöscht. BTB bleibt getrennt offen.
@@ -94,6 +96,7 @@ Betroffene Kern-Dateien:
 
 Tests dieses Quellblocks:
 - statischer Source-Vertragscheck für Migration, API-Routen, Delete-Sperre, Basisversion, Benutzeridentität, Android-Endpunkte, Editorpfade und Pending-Erhalt: **bestanden**;
+- GitHub Actions: drei Läufe auf Funktionscommit `511bb5c0…` wurden zwar als `failure` beendet, führten aber **keinen einzigen Step** aus; daher kein Build-/Testnachweis;
 - Android-APK-Build: **noch nicht ausgeführt**;
 - PostgreSQL-Migration 011: **noch nicht auf Staging ausgeführt**;
 - echte API-/Pixel-/Poco-E2E-Prüfung: **OFFEN**.

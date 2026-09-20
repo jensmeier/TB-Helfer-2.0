@@ -3,7 +3,8 @@
 **Stand:** 2026-09-20  
 **Branch:** `feature/tb-server-1.0`  
 **Draft-PR:** #6 – TB-Server 1.0 – gemeinsame Serverbasis  
-**Geprüfter Ausgangsstand:** `761d885670ee8181eb83f8b64c2f8192e453fce2`  
+**Funktionscommit globaler Katalog / Benutzeridentität:** `511bb5c00552b5a7e54d35d930ea982cf4629598`  
+**CI auf Funktionscommit:** Android `35524333713`, Server-PR `35524333722`, Server-Push `35524332208` – jeweils kein Runner und `steps=[]`; deshalb kein Build-/Testnachweis  
 **Android installiert auf Pixel + Poco:** 1.3.4 / versionCode 200054  
 **Android-Updateverteilung:** 200053 → 200054 auf Pixel + Poco vollständig als Updateverteilung bestätigt; beide Geräte melden 1.3.4 / 200054 aktuell; Datenerhalt-Abschlusscheck separat offen  
 **Server:** 1.0.0-dev / staging
@@ -69,7 +70,7 @@
 | ID | Funktion / Thema | Status | Haken | Stand / Ergebnis | Nächster Schritt | Version / Commit | Nicht ohne Grund ändern | Letzte Prüfung | Notiz |
 |---|---|---|:---:|---|---|---|:---:|---|---|
 | PRB-001 | Android-Aktivierung landet am alten Server | ERLEDIGT | ☑ | Nach dem korrigierten Android-Build 1.3.2 / 200052 funktioniert die Geräteaktivierung per Server-1.0-QR praktisch. | Nicht erneut umbauen, solange kein reproduzierbarer Fehler vorliegt. | 1.3.2 / versionCode 200052 | JA | 2026-09-20 | Vom Benutzer bestätigt. |
-| PRB-002 | GitHub Actions Runner | OFFEN / INFRASTRUKTUR | ☐ | Neueste CI-Läufe erhalten wieder keinen Runner/keine Steps. Deshalb kein belastbarer Build-/Testnachweis aus Actions. | Nicht als Fachfehler behandeln; lokale/echte E2E-Tests fortsetzen und Runner später separat reparieren. | GitHub Actions | NEIN | 2026-09-20 |  |
+| PRB-002 | GitHub Actions Runner | OFFEN / INFRASTRUKTUR | ☐ | Auch auf Funktionscommit 511bb5c0… endeten Android-Run 35524333713, Server-PR-Run 35524333722 und Server-Push-Run 35524332208 ohne Runner (runner_id=0, runner_name leer, steps=[]). Deshalb kein ausgeführter Build-/Testnachweis und kein belegter Codefehler aus Actions. | Nicht als Fachfehler behandeln; Staging-/lokale Build- und echte E2E-Tests fortsetzen und Runner separat reparieren. | GitHub Actions | NEIN | 2026-09-20 | Runner-Infrastruktur offen. |
 | PRB-003 | Alte 0.7 API liefert für neuere App-Pfade 404 | BEKANNT / DURCH CUTOVER ZU LÖSEN | ☐ | Im alten Serverlog erscheinen u.a. 404 für nodes, track-data, worksite-deletions und user/profile. | Nicht den alten Server auf neue 1.0-Fachpfade nachrüsten; aktuellen App-Build sauber auf Server 1.0 aktivieren. | 0.7.x | JA | 2026-09-20 |  |
 | PRB-005 | Android 200051 Compilefehler | ERLEDIGT | ☑ | Die zwei Importursachen wurden in 200052 korrigiert; der Build wurde anschließend erfolgreich erstellt und für den QR-Test installiert. | Source-Check 85 beibehalten. | 1.3.2 / versionCode 200052 | JA | 2026-09-20 | Praktisch bestätigt durch erfolgreichen APK-/QR-Test. |
 | PRB-006 | Android 200053 Compilefehler – fehlender Coroutine-Import | ERLEDIGT | ☑ | Der fehlende Coroutine-Import wurde ergänzt. Der anschließende lokale Build 1.3.3 / 200053 lief erfolgreich durch und die APK wurde auf Pixel + Poco installiert. | So lassen. Source-Check schützt den Import weiter. | 1.3.3 / versionCode 200053 | JA | 2026-09-20 | Vom Benutzer durch erfolgreichen Build und Installation auf beiden Handys bestätigt. |
