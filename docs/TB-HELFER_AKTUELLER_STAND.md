@@ -681,6 +681,13 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Android scannt den QR weiterhin über den vorhandenen Aktivierungs-Scanner und verarbeitet denselben `tbhelfer://activate`-Deep-Link. Kein zweiter Aktivierungsweg wurde eingeführt.
 - Neuer Source-Check `84_verify_device_activation_qr_source.py` prüft Server -> Portal -> Android durchgängig.
 
+### NAS-Retest nach 30-Tage-Aktivierungsfix 2026-09-20
+
+- Synology-Systemstatus praktisch bestätigt: Migrationen **10 / 10**, latest **10 / 10**, pending **keine**. Migration 010 ist damit angewendet.
+- `devices.py` wurde auf dem NAS aktualisiert und der API-Container anschließend neu gestartet.
+- Gerätebindung funktioniert trotzdem noch nicht; Bestandsanzeige bleibt bei **0 aktiven Geräten**. Damit ist der Fehler nicht mehr durch fehlende Migration 010 oder einen nicht neu gestarteten API-Prozess erklärt.
+- Nächster zwingender Diagnosepunkt ist der konkrete Aktivierungsrequest vom Android-Gerät: Im API-Protokoll prüfen, ob beim Scan ein `POST /api/v1/device/login` auf **Server 1.0** ankommt. Kein Request bedeutet falscher/alter Android-Serverpfad bzw. alter APK-Stand; ein 401 auf Server 1.0 muss anschließend gegen den neuesten Datensatz in `tb.device_activation_tokens` (used/revoked/expires/token_hint) geprüft werden.
+
 ### Geräteaktivierung auf altes bewährtes Verhalten zurückgeführt 2026-09-20
 
 - Fachliche Klarstellung aus dem Praxistest: Die bewährte 0.7-Logik bleibt maßgeblich. Ein Geräte-Aktivierungs-QR ist **30 Tage gültig** und **nur einmal verwendbar**.
