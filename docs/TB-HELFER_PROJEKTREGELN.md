@@ -184,3 +184,14 @@ Admin-Auswahl mindestens:
 - Mängel dauerhaft speichern
 - Abnahmen dauerhaft speichern
 - Alles dauerhaft speichern
+
+## Android-App-Updates über Server 1.0
+- Es gibt **kein separates Update-Hauptmenü**. Die vorhandene Server-1.0-Release-Infrastruktur ist der einzige Updatevertrag.
+- Beim App-Start wird die Client-Kompatibilität unaufdringlich geprüft. **Kein Update = kein Symbol** neben `TB-Helfer`.
+- Normales Update = **blaues** Aktualisieren-Symbol; als wichtig/Pflicht markiertes Update = **rotes** Symbol.
+- Antippen zeigt aktuelle/neue Version, die serverseitigen Release Notes („Was ist neu?“) und die Aktion `Aktualisieren`.
+- Unter `Einstellungen → Wartung & Diagnose` bleibt `Nach Updates suchen` als manueller Kontrollweg mit aktueller/neuer Version und Release Notes vorhanden.
+- APKs werden vom TB-Server über HTTPS geladen. Bei internem Server-Binary werden SHA-256 und Dateigröße vor der Installation geprüft.
+- Android startet danach den System-Paketinstaller. Eine eventuell einmalig erforderliche Android-Freigabe für „Apps aus dieser Quelle installieren“ bleibt eine Systementscheidung.
+- Ein normales App-Update darf gespeicherte Serveridentität, Geräte-Token, Aktivierung und lokale Baustellendaten nicht löschen. Ein neuer Geräte-QR ist nur bei Freigabe/Neuinstallation/verlorenen App-Daten nötig.
+
