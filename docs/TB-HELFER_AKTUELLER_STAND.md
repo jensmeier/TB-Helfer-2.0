@@ -875,6 +875,22 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Mangelstatus wie `ERLEDIGT` und `ABGELEHNT` werden stattdessen kanonisch als Statusänderungen synchronisiert.
 - Mangel-DELETE wird nicht künstlich ergänzt, solange dafür keine dokumentierte Fachfunktion/Benutzeraktion existiert.
 
+### Dauerhafter Projektstatus-Tracker 2026-09-20
+
+- Neuer dauerhaft gepflegter Arbeits-/Abnahmetracker unter `projektstatus/TB-HELFER_STATUS.md`; eine gleichnamige Excel-Datei wird parallel als bearbeitbare Benutzeransicht geführt.
+- Tracker trennt App, Server, Probleme, Planung und Erledigt und verwendet stabile IDs sowie `☑/☐`.
+- Ein bestätigter Punkt mit `☑` und/oder `Nicht ohne Grund ändern = JA` wird nicht beiläufig neu gebaut. Änderung nur bei reproduzierbarem Fehler, neuer belegter Fachanforderung oder ausdrücklichem Benutzerwunsch.
+- Geheimwerte werden ausdrücklich nicht in Tracker/GitHub geschrieben.
+- Cloudflare-Tunnel-Token: als NAS-Secret wichtig, solange derselbe Tunnel weiterverwendet wird; nicht nach GitHub übernehmen. Alte Geräte-/Bearer-/Aktivierungs-Tokens des 0.7-Servers werden nicht migriert; Geräte werden auf Server 1.0 neu aktiviert.
+
+### Geräteaktivierung – Ursache praktisch eingegrenzt 2026-09-20
+
+- Das Log des alten 0.7-Servers zeigt bei den aktuellen QR-Aktivierungsversuchen mehrfach `POST /api/v1/device/login` mit `401 Unauthorized`.
+- Damit ist bestätigt, dass die derzeit installierte Android-App den Aktivierungsversuch noch an den alten Server sendet. Der neue Server-1.0-Key ist dort unbekannt; deshalb erscheint in der App die Meldung, der Aktivierungs-Key sei ungültig.
+- Der nächste Schritt ist **kein weiterer Server-`devices.py`-Umbau**, sondern ein aktueller Android-Build aus `feature/tb-server-1.0`, Installation auf einem Testgerät und erneuter Scan eines frischen Server-1.0-QR.
+- Erfolgskriterium: `POST /api/v1/device/login` erscheint im Log von `tb-helfer-v1-api-1` mit 200; im alten `tb-helfer-api` erscheint für denselben Aktivierungsversuch kein `device/login`.
+- Erst nach bestätigter Gerätebindung folgen Pixel/Poco-Fach-E2E und danach Backup/Restore/Cutover.
+
 ## Bekannte/offene Punkte
 
 - vollständige Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung gegen eine echte PostgreSQL-/FastAPI-Testinstanz ausführen;
