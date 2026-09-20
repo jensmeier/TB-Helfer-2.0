@@ -1,6 +1,7 @@
 package de.tbhelfer.datenbank
 
 import org.json.JSONObject
+import java.util.UUID
 import kotlin.math.max
 import kotlin.math.min
 
@@ -12,6 +13,180 @@ import kotlin.math.min
 class SyncOfflineEditor(
     private val dao: SyncDao
 ) {
+    suspend fun createRoute(routeNumber: String, name: String?): String {
+        val id = UUID.randomUUID().toString()
+        val normalizedNumber = routeNumber.trim()
+        require(normalizedNumber.isNotBlank()) { "ROUTE_NUMBER_REQUIRED" }
+        val payload = JSONObject()
+            .put("route_number", normalizedNumber)
+            .putNullable("name", name?.trim()?.takeIf { it.isNotBlank() })
+            .put("data_status", "MANUAL")
+        dao.enqueueChange(
+            SyncPendingChangeEntity(
+                objectKind = SyncPendingChangeEntity.KIND_ROUTE,
+                serverId = id,
+                baseVersion = null,
+                operation = SyncPendingChangeEntity.OP_UPSERT,
+                payloadJson = payload.toString()
+            )
+        )
+        dao.upsertRoutes(
+            listOf(
+                SyncRouteEntity(
+                    serverId = id,
+                    routeNumber = normalizedNumber,
+                    name = name?.trim()?.takeIf { it.isNotBlank() },
+                    entityVersion = 0,
+                    updatedAtEpochMs = System.currentTimeMillis()
+                )
+            )
+        )
+        return id
+    }
+
+    suspend fun updateRoute(serverId: String, routeNumber: String, name: String?): Long {
+        val current = dao.route(serverId) ?: error("ROUTE_NOT_CACHED")
+        val normalizedNumber = routeNumber.trim()
+        require(normalizedNumber.isNotBlank()) { "ROUTE_NUMBER_REQUIRED" }
+        val payload = JSONObject()
+            .put("route_number", normalizedNumber)
+            .putNullable("name", name?.trim()?.takeIf { it.isNotBlank() })
+            .putNullable("description", current.description)
+        val queueId = replacePending(
+            kind = SyncPendingChangeEntity.KIND_ROUTE,
+            serverId = serverId,
+            currentVersion = current.entityVersion,
+            operation = SyncPendingChangeEntity.OP_UPSERT,
+            payloadJson = payload.toString()
+        )
+        dao.upsertRoutes(
+            listOf(
+                current.copy(
+                    routeNumber = normalizedNumber,
+                    name = name?.trim()?.takeIf { it.isNotBlank() },
+                    isDeleted = false,
+                    updatedAtEpochMs = System.currentTimeMillis()
+                )
+            )
+        )
+        return queueId
+    }
+
+    suspend fun createStation(stationCode: String?, name: String, shortName: String?): String {
+        val id = UUID.randomUUID().toString()
+        val normalizedName = name.trim()
+        require(normalizedName.isNotBlank()) { "STATION_NAME_REQUIRED" }
+        val payload = JSONObject()
+            .putNullable("station_code", stationCode?.trim()?.takeIf { it.isNotBlank() })
+            .put("name", normalizedName)
+            .putNullable("short_name", shortName?.trim()?.takeIf { it.isNotBlank() })
+            .put("data_status", "MANUAL")
+        dao.enqueueChange(
+            SyncPendingChangeEntity(
+                objectKind = SyncPendingChangeEntity.KIND_STATION,
+                serverId = id,
+                baseVersion = null,
+                operation = SyncPendingChangeEntity.OP_UPSERT,
+                payloadJson = payload.toString()
+            )
+        )
+        dao.upsertStations(
+            listOf(
+                SyncStationEntity(
+                    serverId = id,
+                    stationCode = stationCode?.trim()?.takeIf { it.isNotBlank() },
+                    name = normalizedName,
+                    shortName = shortName?.trim()?.takeIf { it.isNotBlank() },
+                    entityVersion = 0,
+                    updatedAtEpochMs = System.currentTimeMillis()
+                )
+            )
+        )
+        return id
+    }
+
+    suspend fun updateStation(
+        serverId: String,
+        stationCode: String?,
+        name: String,
+        shortName: String?
+    ): Long {
+        val current = dao.station(serverId) ?: error("STATION_NOT_CACHED")
+        val normalizedName = name.trim()
+        require(normalizedName.isNotBlank()) { "STATION_NAME_REQUIRED" }
+        val payload = JSONObject()
+            .putNullable("station_code", stationCode?.trim()?.takeIf { it.isNotBlank() })
+            .put("name", normalizedName)
+            .putNullable("short_name", shortName?.trim()?.takeIf { it.isNotBlank() })
+            .putNullable("description", current.description)
+        val queueId = replacePending(
+            kind = SyncPendingChangeEntity.KIND_STATION,
+            serverId = serverId,
+            currentVersion = current.entityVersion,
+            operation = SyncPendingChangeEntity.OP_UPSERT,
+            payloadJson = payload.toString()
+        )
+        dao.upsertStations(
+            listOf(
+                current.copy(
+                    stationCode = stationCode?.trim()?.takeIf { it.isNotBlank() },
+                    name = normalizedName,
+                    shortName = shortName?.trim()?.takeIf { it.isNotBlank() },
+                    isDeleted = false,
+                    updatedAtEpochMs = System.currentTimeMillis()
+                )
+            )
+        )
+        return queueId
+    }
+
+    suspend fun createObject(
+        stationServerId: String?,
+        routeServerId: String?,
+        objectType: String,
+        designation: String,
+        kmM: Double?
+    ): String {
+        require(!stationServerId.isNullOrBlank() || !routeServerId.isNullOrBlank()) {
+            "OBJECT_PARENT_REQUIRED"
+        }
+        val normalizedName = designation.trim()
+        require(normalizedName.isNotBlank()) { "OBJECT_DESIGNATION_REQUIRED" }
+        val id = UUID.randomUUID().toString()
+        val payload = JSONObject()
+            .putNullable("route_id", routeServerId)
+            .putNullable("station_id", stationServerId)
+            .put("object_type", objectType.trim().uppercase())
+            .put("designation", normalizedName)
+            .putNullable("km_m", kmM)
+            .put("data_status", "MANUAL")
+        dao.enqueueChange(
+            SyncPendingChangeEntity(
+                objectKind = SyncPendingChangeEntity.KIND_OBJECT,
+                serverId = id,
+                baseVersion = null,
+                operation = SyncPendingChangeEntity.OP_UPSERT,
+                payloadJson = payload.toString()
+            )
+        )
+        dao.upsertObjects(
+            listOf(
+                SyncObjectEntity(
+                    serverId = id,
+                    routeServerId = routeServerId,
+                    stationServerId = stationServerId,
+                    objectType = objectType.trim().uppercase(),
+                    designation = normalizedName,
+                    kmM = kmM,
+                    dataStatus = "MANUAL",
+                    entityVersion = 0,
+                    updatedAtEpochMs = System.currentTimeMillis()
+                )
+            )
+        )
+        return id
+    }
+
     suspend fun updateSection(
         serverId: String,
         designation: String?,
@@ -139,6 +314,39 @@ class SyncOfflineEditor(
         val now = System.currentTimeMillis()
 
         when (conflict.objectKind) {
+            SyncPendingChangeEntity.KIND_ROUTE -> {
+                val existing = conflict.serverId?.let { dao.route(it) } ?: return false
+                dao.upsertRoutes(
+                    listOf(
+                        existing.copy(
+                            routeNumber = server.optString("route_number").ifBlank { existing.routeNumber },
+                            name = server.optNullableString("name"),
+                            description = server.optNullableString("description"),
+                            entityVersion = server.optLong("current_version", existing.entityVersion),
+                            isDeleted = false,
+                            updatedAtEpochMs = now
+                        )
+                    )
+                )
+            }
+
+            SyncPendingChangeEntity.KIND_STATION -> {
+                val existing = conflict.serverId?.let { dao.station(it) } ?: return false
+                dao.upsertStations(
+                    listOf(
+                        existing.copy(
+                            stationCode = server.optNullableString("station_code"),
+                            name = server.optString("name").ifBlank { existing.name },
+                            shortName = server.optNullableString("short_name"),
+                            description = server.optNullableString("description"),
+                            entityVersion = server.optLong("current_version", existing.entityVersion),
+                            isDeleted = false,
+                            updatedAtEpochMs = now
+                        )
+                    )
+                )
+            }
+
             SyncPendingChangeEntity.KIND_SECTION -> {
                 val existing = conflict.serverId?.let { dao.section(it) } ?: return false
                 dao.upsertSections(
@@ -209,7 +417,7 @@ class SyncOfflineEditor(
         payloadJson: String
     ): Long {
         val previous = dao.pendingForEntity(kind, serverId)
-        val baseVersion = previous?.baseVersion ?: currentVersion
+        val baseVersion = previous?.baseVersion ?: currentVersion.takeIf { it > 0 }
         if (previous != null) dao.deletePendingChange(previous.id)
         return dao.enqueueChange(
             SyncPendingChangeEntity(

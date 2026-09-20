@@ -11,7 +11,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - aktiver Branch: **`feature/tb-server-1.0`**
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - PR-Basis: `feature/admin-offline-sync`
-- Android Testclient: **200054 / 1.3.4 ist jetzt auf Pixel + Poco installiert**; die Verteilung 200053 → 200054 über den Server-Release ist praktisch erfolgt. Offen ist nur noch der explizite Datenerhalt-Abschlusscheck.
+- Android Testclient: **200054 / 1.3.4 ist auf Pixel + Poco installiert und bestätigt**. Der neue Quellstand **200055 / 1.3.5** für globalen Katalog und Benutzerprofil ist vorbereitet, aber noch nicht gebaut/installiert; 200054 bleibt bis zum praktischen Test die bestätigte Gerätebasis.
 
 - Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Sichtbare, mit Mängeln/Abnahmen verknüpfte Server-1.0-Dateien werden über `files_v1` aufgelöst und in den vorhandenen Attachment-Cache heruntergeladen. Lokale Mängel-/Abnahme-Attachments werden resumierbar über `chunk_upload_v1` mit deterministischen Idempotenz-IDs hochgeladen; nicht mehr sichtbare/gelöschte Fach-Attachments werden nur bei nachweislich vollständigem Datei-Snapshot lokal tombstoned; bei der 1000-Dateien-Grenze wird konservativ nicht gelöscht. BTB bleibt getrennt offen.
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
@@ -62,6 +62,48 @@ Wichtige Server-1.0-Meilensteine:
 - Background-Job-/Backup-Basis: `FOR UPDATE SKIP LOCKED`, Retry/Stale-Recovery, getrennte DATABASE/FILES/FULL-Backups, SHA-256, atomare Dateien und ADMIN-Backupaufträge
 - Restore-Test + sicherer Test-Reset: Restore nur gegen getrennte Testdatenbank/Testablage; Test-/Staging-Reset nur nach verifiziertem höchstens 24h altem FULL-Backup und harter Environment-/Bestätigungssperre
 - optionaler Restore-Staging-Compose-Overlay: getrennte Restore-Test-DB, getrennte Restore-Target-DB und eigener Restore-Target-Storage; Restore-to-Target bleibt standardmäßig deaktiviert und außerhalb des normalen Serverstarts
+
+## Server 1.0 + Android 200055 – globaler Katalog und Benutzeridentität
+
+Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Der Stagingserver wurde für diesen Block noch nicht migriert; auf Pixel/Poco ist weiterhin der bestätigte Build 200054 installiert.
+
+Umgesetzt:
+- neue Migration `011_global_catalog_identity.sql` mit firmenübergreifenden Tabellen für Strecken, Bahnhöfe/Betriebsstellen, Abschnitte sowie Gleise/Weichen/Objekte;
+- unveränderliche Katalog-Historie mit Version, Vorher/Nachher, Bearbeiter und Firma;
+- Katalogschreiben über `/api/v1/catalog/mutations` mit Idempotenz, Basisversion und 409-Konflikt; **globales DELETE ist gesperrt**;
+- eigener Katalog-Changefeed `/api/v1/catalog/changes`; der bestehende Baustellen-/BTB-Sync unter `/api/v1/sync` bleibt unberührt;
+- Android verwendet den vorhandenen Offline-Katalogcache weiter, kann Strecken/Bahnhöfe sowie z. B. `Gleis 28`, Weichen/Kreuzungen/weitere Objekte lokal ergänzen und Katalogeinträge korrigieren;
+- Pending-/Konfliktstände werden beim Server-Snapshot nicht aus dem lokalen Cache verdrängt;
+- neu auf anderen Geräten erzeugte Abschnitte/Objekte können über den Changefeed auch ohne vorherigen lokalen Datensatz angelegt werden;
+- Android-Katalogtransport ist auf `/api/v1/catalog` umgestellt; keine neue Android-Room-Datenbank wurde eingeführt;
+- Serverprofil `/api/v1/user/profile` ergänzt den bereits vorhandenen Android-Profilpfad für persönliche E-Mail/Telefon; `/api/v1/user/directory` liefert persönliche Kontakte ausschließlich innerhalb derselben Firma;
+- Admin-Neuanlage verwendet Firma, Vorname, Nachname, Rolle und optionale Zugriffsgültigkeit; der Server erzeugt einen vorläufigen eindeutigen Login;
+- erste Portal-Aktivierung: Benutzer setzt eigenen Login, Anzeigenamen, Passwort, persönliche E-Mail und Telefon;
+- Admin-Bearbeitung erhält stabile Benutzer-ID/Gerätebindung und blockiert Firmenwechsel bei vorhandener Baustellen-/Teamhistorie;
+- Portal bietet eigenes Profil und firmeninternes Kontaktverzeichnis; Admin besitzt eine vollständige Katalog-Historienseite;
+- Android-Quellversion auf **1.3.5 / 200055** angehoben.
+
+Betroffene Kern-Dateien:
+- `server/v1_migrations/011_global_catalog_identity.sql`
+- `server/tbserver/catalog.py`, `profile.py`, `admin.py`, `portal.py`, `admin_web.py`, `main.py`, `capabilities.py`
+- `server/templates/v1_admin_users.html`, `v1_portal_activate.html`, `v1_portal_home.html`, `v1_catalog_history.html`
+- `app/.../server/SyncCatalogApi.kt`, `SyncDetailApi.kt`, `SyncChangeApi.kt`
+- `app/.../datenbank/SyncOfflineEditor.kt`, `OfflineSyncRepository.kt`
+- `app/.../ui/sync/SyncOfflineDialogs.kt`, `SyncKatalogFragment.kt`
+- `server/checks/89_verify_identity_global_catalog_source.py`
+
+Tests dieses Quellblocks:
+- statischer Source-Vertragscheck für Migration, API-Routen, Delete-Sperre, Basisversion, Benutzeridentität, Android-Endpunkte, Editorpfade und Pending-Erhalt: **bestanden**;
+- Android-APK-Build: **noch nicht ausgeführt**;
+- PostgreSQL-Migration 011: **noch nicht auf Staging ausgeführt**;
+- echte API-/Pixel-/Poco-E2E-Prüfung: **OFFEN**.
+
+Nächster praktischer Schritt:
+1. Branch auf Synology deployen und Migration 011 ausführen; `/health/ready` muss danach migrations=ok melden.
+2. Admin-Neuanlage + Portal-Erstaktivierung + Profil/Verzeichnis mit Testbenutzern prüfen.
+3. Android 1.3.5 / 200055 bauen/installieren.
+4. Auf Pixel/Poco denselben globalen Eintrag ergänzen/korrigieren (z. B. `Gleis 28`) und Historie/Versionskonflikt prüfen.
+5. Danach erst Status auf BESTÄTIGT/ERLEDIGT setzen.
 
 ## Admin – vollständiges Löschen/Purge für Test-/Administrationsfälle
 

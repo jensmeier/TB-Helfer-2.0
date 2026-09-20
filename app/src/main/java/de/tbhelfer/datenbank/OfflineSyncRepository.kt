@@ -79,11 +79,31 @@ class OfflineSyncRepository(
             )
         }
 
+        // Lokale Pending-/Konfliktänderungen dürfen von einem frischen globalen
+        // Server-Snapshot nicht überschrieben werden. Sie bleiben sichtbar, bis der Upload
+        // erfolgreich ist oder der Konflikt bewusst aufgelöst wurde.
+        val localChanges = (dao.pendingChanges() + dao.conflicts())
+            .filter { it.operation == SyncPendingChangeEntity.OP_UPSERT }
+        val localRouteIds = localChanges
+            .filter { it.objectKind == SyncPendingChangeEntity.KIND_ROUTE }
+            .mapNotNull { it.serverId }
+            .toSet()
+        val localStationIds = localChanges
+            .filter { it.objectKind == SyncPendingChangeEntity.KIND_STATION }
+            .mapNotNull { it.serverId }
+            .toSet()
+        val preservedRoutes = localRouteIds.mapNotNull { dao.route(it) }
+        val preservedStations = localStationIds.mapNotNull { dao.station(it) }
+        val mergedRoutes = (routes.filterNot { it.serverId in localRouteIds } + preservedRoutes)
+            .distinctBy { it.serverId }
+        val mergedStations = (stations.filterNot { it.serverId in localStationIds } + preservedStations)
+            .distinctBy { it.serverId }
+
         database.withTransaction {
             dao.clearRoutes()
             dao.clearStations()
-            if (routes.isNotEmpty()) dao.upsertRoutes(routes)
-            if (stations.isNotEmpty()) dao.upsertStations(stations)
+            if (mergedRoutes.isNotEmpty()) dao.upsertRoutes(mergedRoutes)
+            if (mergedStations.isNotEmpty()) dao.upsertStations(mergedStations)
             dao.upsertState(SyncStateEntity(key = SyncStateEntity.KEY_LAST_CATALOG_SYNC, longValue = nowEpochMs))
             dao.upsertState(SyncStateEntity(key = SyncStateEntity.KEY_LAST_SUCCESSFUL_SYNC, longValue = nowEpochMs))
             dao.upsertState(SyncStateEntity(key = SyncStateEntity.KEY_SERVER_VERSION, textValue = catalog.serverVersion))
@@ -142,9 +162,20 @@ class OfflineSyncRepository(
                 updatedAtEpochMs = nowEpochMs
             )
         }
+        val localChanges = (dao.pendingChanges() + dao.conflicts())
+            .filter {
+                it.objectKind == SyncPendingChangeEntity.KIND_SECTION &&
+                    it.operation == SyncPendingChangeEntity.OP_UPSERT
+            }
+        val localIds = localChanges.mapNotNull { it.serverId }.toSet()
+        val preserved = localIds.mapNotNull { dao.section(it) }
+            .filter { it.routeServerId == routeServerId }
+        val merged = (entities.filterNot { it.serverId in localIds } + preserved)
+            .distinctBy { it.serverId }
+
         database.withTransaction {
             dao.clearSectionsForRoute(routeServerId)
-            if (entities.isNotEmpty()) dao.upsertSections(entities)
+            if (merged.isNotEmpty()) dao.upsertSections(merged)
             dao.upsertState(SyncStateEntity(key = SyncStateEntity.KEY_LAST_SUCCESSFUL_SYNC, longValue = nowEpochMs))
         }
     }
@@ -170,9 +201,20 @@ class OfflineSyncRepository(
                 updatedAtEpochMs = nowEpochMs
             )
         }
+        val localChanges = (dao.pendingChanges() + dao.conflicts())
+            .filter {
+                it.objectKind == SyncPendingChangeEntity.KIND_OBJECT &&
+                    it.operation == SyncPendingChangeEntity.OP_UPSERT
+            }
+        val localIds = localChanges.mapNotNull { it.serverId }.toSet()
+        val preserved = localIds.mapNotNull { dao.objectById(it) }
+            .filter { it.stationServerId == stationServerId }
+        val merged = (entities.filterNot { it.serverId in localIds } + preserved)
+            .distinctBy { it.serverId }
+
         database.withTransaction {
             dao.clearObjectsForStation(stationServerId)
-            if (entities.isNotEmpty()) dao.upsertObjects(entities)
+            if (merged.isNotEmpty()) dao.upsertObjects(merged)
             dao.upsertState(SyncStateEntity(key = SyncStateEntity.KEY_LAST_SUCCESSFUL_SYNC, longValue = nowEpochMs))
         }
     }
@@ -393,21 +435,22 @@ class OfflineSyncRepository(
             }
 
             SyncPendingChangeEntity.KIND_SECTION -> {
-                val existing = dao.section(change.entityId) ?: return
+                val existing = dao.section(change.entityId)
+                val routeId = data.optString("route_id").ifBlank { existing?.routeServerId ?: return }
                 dao.upsertSections(
                     listOf(
                         SyncSectionEntity(
                             serverId = change.entityId,
-                            routeServerId = data.optString("route_id").ifBlank { existing.routeServerId },
-                            designation = data.optNullableString("designation"),
-                            kmFromM = data.optNullableDouble("km_from_m"),
-                            kmToM = data.optNullableDouble("km_to_m"),
-                            kmMinM = data.optNullableDouble("km_min_m"),
-                            kmMaxM = data.optNullableDouble("km_max_m"),
-                            dataStatus = data.optNullableString("data_status") ?: existing.dataStatus,
-                            geometryJson = data.optJsonText("geom") ?: data.optJsonText("geometry") ?: existing.geometryJson,
-                            entityVersion = version.takeIf { it > 0 } ?: data.optLong("current_version", existing.entityVersion),
-                            downloadedAtEpochMs = existing.downloadedAtEpochMs,
+                            routeServerId = routeId,
+                            designation = data.optNullableString("designation") ?: existing?.designation,
+                            kmFromM = data.optNullableDouble("km_from_m") ?: existing?.kmFromM,
+                            kmToM = data.optNullableDouble("km_to_m") ?: existing?.kmToM,
+                            kmMinM = data.optNullableDouble("km_min_m") ?: existing?.kmMinM,
+                            kmMaxM = data.optNullableDouble("km_max_m") ?: existing?.kmMaxM,
+                            dataStatus = data.optNullableString("data_status") ?: existing?.dataStatus,
+                            geometryJson = data.optJsonText("geom") ?: data.optJsonText("geometry") ?: existing?.geometryJson,
+                            entityVersion = version.takeIf { it > 0 } ?: data.optLong("current_version", existing?.entityVersion ?: 0),
+                            downloadedAtEpochMs = existing?.downloadedAtEpochMs ?: now,
                             updatedAtEpochMs = now
                         )
                     )
@@ -415,21 +458,26 @@ class OfflineSyncRepository(
             }
 
             SyncPendingChangeEntity.KIND_OBJECT -> {
-                val existing = dao.objectById(change.entityId) ?: return
+                val existing = dao.objectById(change.entityId)
+                val routeId = data.optNullableString("route_id") ?: existing?.routeServerId
+                val stationId = data.optNullableString("station_id") ?: existing?.stationServerId
+                if (routeId.isNullOrBlank() && stationId.isNullOrBlank()) return
+                val objectType = data.optString("object_type").ifBlank { existing?.objectType ?: "OTHER" }
+                val designation = data.optNullableString("designation") ?: existing?.designation
                 dao.upsertObjects(
                     listOf(
                         SyncObjectEntity(
                             serverId = change.entityId,
-                            routeServerId = data.optNullableString("route_id") ?: existing.routeServerId,
-                            stationServerId = data.optNullableString("station_id") ?: existing.stationServerId,
-                            objectType = data.optString("object_type").ifBlank { existing.objectType },
-                            designation = data.optNullableString("designation") ?: existing.designation,
-                            kmM = data.optNullableDouble("km_m"),
-                            dataStatus = data.optNullableString("data_status") ?: existing.dataStatus,
-                            geometryJson = data.optJsonText("geom") ?: data.optJsonText("geometry") ?: existing.geometryJson,
-                            propertiesJson = data.optJsonText("properties") ?: existing.propertiesJson,
-                            entityVersion = version.takeIf { it > 0 } ?: data.optLong("current_version", existing.entityVersion),
-                            downloadedAtEpochMs = existing.downloadedAtEpochMs,
+                            routeServerId = routeId,
+                            stationServerId = stationId,
+                            objectType = objectType,
+                            designation = designation,
+                            kmM = data.optNullableDouble("km_m") ?: existing?.kmM,
+                            dataStatus = data.optNullableString("data_status") ?: existing?.dataStatus,
+                            geometryJson = data.optJsonText("geom") ?: data.optJsonText("geometry") ?: existing?.geometryJson,
+                            propertiesJson = data.optJsonText("properties") ?: existing?.propertiesJson,
+                            entityVersion = version.takeIf { it > 0 } ?: data.optLong("current_version", existing?.entityVersion ?: 0),
+                            downloadedAtEpochMs = existing?.downloadedAtEpochMs ?: now,
                             updatedAtEpochMs = now
                         )
                     )

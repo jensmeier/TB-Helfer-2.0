@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from .config import settings
 from .database import transaction
+from .events import audit
 from .security import hash_password, hash_token, random_token, validate_password, verify_password
 
 
@@ -18,8 +19,11 @@ CSRF_COOKIE = "tb_portal_csrf"
 
 class ActivateRequest(BaseModel):
     token: str = Field(min_length=24, max_length=500)
+    login_name: str = Field(min_length=3, max_length=120)
+    display_name: str = Field(min_length=1, max_length=200)
     password: str = Field(min_length=12, max_length=200)
-
+    personal_email: str | None = Field(default=None, max_length=320)
+    personal_phone: str | None = Field(default=None, max_length=100)
 
 class LoginRequest(BaseModel):
     login: str = Field(min_length=1, max_length=320)
@@ -29,6 +33,13 @@ class LoginRequest(BaseModel):
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
+
+
+def _optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    result = value.strip()
+    return result or None
 
 def _set_session_cookies(response: Response, session_token: str, csrf_token: str) -> None:
     secure = settings.environment == "production"
@@ -138,15 +149,24 @@ def activate(payload: ActivateRequest) -> Response:
         validate_password(payload.password)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+
+    login_name = payload.login_name.strip()
+    display_name = payload.display_name.strip()
+    if not login_name:
+        raise HTTPException(400, "LOGIN_NAME_REQUIRED")
+    if not display_name:
+        raise HTTPException(400, "DISPLAY_NAME_REQUIRED")
+
     token_hash = hash_token(payload.token)
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT u.id, u.status, u.deleted_at, c.activation_expires_at, c.activated_at
+            SELECT u.id, u.company_id, u.login_name, u.display_name, u.status, u.deleted_at,
+                   c.activation_expires_at, c.activated_at
             FROM tb.portal_credentials c
             JOIN tb.users u ON u.id = c.user_id
             WHERE c.activation_token_hash = %s
-            FOR UPDATE
+            FOR UPDATE OF c, u
             """,
             (token_hash,),
         )
@@ -159,6 +179,36 @@ def activate(payload: ActivateRequest) -> Response:
             raise HTTPException(409, "ALREADY_ACTIVATED")
         if row["activation_expires_at"] is None or row["activation_expires_at"] <= _now():
             raise HTTPException(400, "ACTIVATION_EXPIRED")
+
+        cur.execute(
+            """
+            SELECT id FROM tb.users
+            WHERE lower(login_name) = lower(%s)
+              AND deleted_at IS NULL
+              AND id <> %s
+            LIMIT 1
+            """,
+            (login_name, row["id"]),
+        )
+        if cur.fetchone():
+            raise HTTPException(409, "LOGIN_NAME_EXISTS")
+
+        cur.execute(
+            """
+            UPDATE tb.users
+            SET login_name=%s, display_name=%s,
+                personal_email=%s, personal_phone=%s,
+                profile_version=profile_version+1, updated_at=now()
+            WHERE id=%s
+            """,
+            (
+                login_name,
+                display_name,
+                _optional_text(payload.personal_email),
+                _optional_text(payload.personal_phone),
+                row["id"],
+            ),
+        )
         cur.execute(
             """
             UPDATE tb.portal_credentials
@@ -174,8 +224,19 @@ def activate(payload: ActivateRequest) -> Response:
             """,
             (hash_password(payload.password), row["id"]),
         )
+        audit(
+            cur,
+            action="PORTAL_FIRST_ACTIVATION",
+            actor_user_id=row["id"],
+            company_id=row["company_id"],
+            entity_type="USER",
+            entity_id=row["id"],
+            details={
+                "login_changed": login_name.lower() != str(row["login_name"]).lower(),
+                "display_name_changed": display_name != row["display_name"],
+            },
+        )
     return Response(status_code=204)
-
 
 def _find_login(cur, login: str):
     identifier = login.strip()

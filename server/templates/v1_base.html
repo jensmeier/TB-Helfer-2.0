@@ -47,6 +47,7 @@
         <a class="{% if request.url.path == '/admin/v1' %}active{% endif %}" href="/admin/v1">Übersicht</a>
         <a class="{% if request.url.path.startswith('/admin/v1/users') %}active{% endif %}" href="/admin/v1/users">Benutzer</a>
         <a class="{% if request.url.path.startswith('/admin/v1/companies') %}active{% endif %}" href="/admin/v1/companies">Firmen</a>
+        <a class="{% if request.url.path.startswith('/admin/v1/catalog-history') %}active{% endif %}" href="/admin/v1/catalog-history">Katalog-Historie</a>
         <a class="{% if request.url.path.startswith('/admin/v1/devices') %}active{% endif %}" href="/admin/v1/devices">Geräte</a>
         <a class="{% if request.url.path.startswith('/portal/v1/worksites') %}active{% endif %}" href="/portal/v1/worksites">Baustellen</a>
         <a class="{% if request.url.path.startswith('/admin/v1/releases') %}active{% endif %}" href="/admin/v1/releases">App-Versionen</a>

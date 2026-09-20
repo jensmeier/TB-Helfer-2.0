@@ -33,6 +33,7 @@
   <div class="activation-kicker">TB-Helfer Geräteaktivierung</div>
   <h1>{{ target.display_name }}</h1>
   <div><b>{{ target.company_name or '—' }}</b></div>
+  <div style="margin-top:5px"><b>Vorläufiger Portal-Login:</b> <code>{{ target.login_name }}</code></div>
   <div style="margin-top:5px">
     <b>Zugriff:</b>
     {% if target.access_valid_until %}

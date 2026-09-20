@@ -71,7 +71,7 @@ class SyncChangeApi(
 
     fun loadChanges(token: String, after: Long, limit: Int = 100): PullResult {
         val safeLimit = limit.coerceIn(1, 500)
-        val connection = openConnection("/api/v1/sync/changes?after=${after.coerceAtLeast(0)}&limit=$safeLimit", "GET")
+        val connection = openConnection("/api/v1/catalog/changes?after=${after.coerceAtLeast(0)}&limit=$safeLimit", "GET")
         return try {
             authorize(connection, token)
             val code = connection.responseCode
@@ -122,7 +122,7 @@ class SyncChangeApi(
     }
 
     fun acknowledge(token: String, sequenceNo: Long): AckResult {
-        val connection = openConnection("/api/v1/sync/ack", "POST")
+        val connection = openConnection("/api/v1/catalog/ack", "POST")
         return try {
             authorize(connection, token)
             writeJson(connection, JSONObject().put("sequence_no", sequenceNo.coerceAtLeast(0)))
@@ -143,7 +143,7 @@ class SyncChangeApi(
     }
 
     fun uploadMutation(token: String, change: SyncPendingChangeEntity): MutationResult {
-        val connection = openConnection("/api/v1/sync/mutations", "POST")
+        val connection = openConnection("/api/v1/catalog/mutations", "POST")
         return try {
             authorize(connection, token)
             val payload = runCatching { JSONObject(change.payloadJson) }.getOrElse { JSONObject() }

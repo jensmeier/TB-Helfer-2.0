@@ -551,10 +551,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200054: erster echter Server-Update-Test auf der bestätigten 200053-Basis.
-        // Fachlogik des Updaters bleibt gleich; 200054 dient als reale Update-Zielversion.
-        versionCode = 200054
-        versionName = "1.3.4"
+        // Android 200055: globaler Katalog + Benutzeridentität gegen Server 1.0.
+        // Quellstand für Build/E2E; bestätigte Aktivierungs-/Updatepfade bleiben unverändert.
+        versionCode = 200055
+        versionName = "1.3.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

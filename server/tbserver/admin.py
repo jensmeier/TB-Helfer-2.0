@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import re
+import secrets
+import unicodedata
 from typing import Any
 from uuid import UUID
 
@@ -31,14 +34,18 @@ class CompanyCreate(BaseModel):
 
 class UserCreate(BaseModel):
     company_id: UUID
-    display_name: str = Field(min_length=1, max_length=200)
-    first_name: str | None = Field(default=None, max_length=120)
-    last_name: str | None = Field(default=None, max_length=120)
-    login_name: str = Field(min_length=3, max_length=120)
-    personal_email: str | None = Field(default=None, max_length=320)
-    personal_phone: str | None = Field(default=None, max_length=100)
+    first_name: str = Field(min_length=1, max_length=120)
+    last_name: str = Field(min_length=1, max_length=120)
     company_role: str = Field(default="USER")
+    access_valid_until: datetime | None = None
 
+
+class UserAdminUpdate(BaseModel):
+    company_id: UUID | None = None
+    first_name: str | None = Field(default=None, min_length=1, max_length=120)
+    last_name: str | None = Field(default=None, min_length=1, max_length=120)
+    company_role: str | None = None
+    access_valid_until: datetime | None = None
 
 def _required_text(value: str, error_code: str) -> str:
     normalized = value.strip()
@@ -53,6 +60,59 @@ def _optional_text(value: str | None) -> str | None:
     normalized = value.strip()
     return normalized or None
 
+
+
+def _display_name(first_name: str, last_name: str) -> str:
+    return f"{first_name.strip()} {last_name.strip()}".strip()
+
+
+def _login_part(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value)
+    ascii_text = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    cleaned = re.sub(r"[^a-zA-Z0-9]+", ".", ascii_text).strip(".").lower()
+    return cleaned or "nutzer"
+
+
+def _provisional_login(first_name: str, last_name: str) -> str:
+    stem = f"{_login_part(first_name)}.{_login_part(last_name)}".strip(".")
+    stem = stem[:110].rstrip(".")
+    return f"{stem}-{secrets.randbelow(10000):04d}"
+
+
+def _assert_company(cur, company_id: UUID) -> None:
+    cur.execute(
+        """
+        SELECT id
+        FROM tb.companies
+        WHERE id = %s
+          AND deleted_at IS NULL
+          AND status = 'ACTIVE'
+        FOR SHARE
+        """,
+        (company_id,),
+    )
+    if not cur.fetchone():
+        raise HTTPException(404, "COMPANY_NOT_FOUND")
+
+
+def _user_has_worksite_or_team_history(cur, user_id: UUID) -> bool:
+    cur.execute(
+        """
+        SELECT EXISTS(SELECT 1 FROM tb.worksites WHERE created_by = %s)
+            OR EXISTS(SELECT 1 FROM tb.worksite_nodes WHERE created_by = %s)
+            OR EXISTS(SELECT 1 FROM tb.worksite_memberships WHERE user_id = %s)
+            OR EXISTS(
+                SELECT 1 FROM tb.worksite_invitations
+                WHERE invited_user_id = %s OR invited_by = %s
+            )
+            OR EXISTS(SELECT 1 FROM tb.teams WHERE lead_user_id = %s)
+            OR EXISTS(SELECT 1 FROM tb.team_members WHERE user_id = %s)
+            OR EXISTS(SELECT 1 FROM tb.btbs WHERE created_by = %s)
+            AS locked
+        """,
+        (user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id),
+    )
+    return bool(cur.fetchone()["locked"])
 
 def _assert_admin(user: dict[str, Any]) -> dict[str, Any]:
     if user.get("company_role") != "ADMIN":
@@ -150,7 +210,7 @@ def list_users(_: dict[str, Any] = Depends(require_admin)) -> dict[str, Any]:
             SELECT u.id, u.company_id, c.name AS company_name, u.display_name,
                    u.first_name, u.last_name, u.login_name, u.personal_email,
                    u.personal_phone, u.company_role, u.status,
-                   u.access_valid_until, u.created_at,
+                   u.access_valid_until, u.created_at, u.profile_version,
                    pc.activated_at, pc.last_login_at
             FROM tb.users u
             LEFT JOIN tb.companies c ON c.id = u.company_id
@@ -169,54 +229,51 @@ def create_user(
     payload: UserCreate,
     admin: dict[str, Any] = Depends(require_admin_csrf),
 ) -> dict[str, Any]:
-    display_name = _required_text(payload.display_name, "DISPLAY_NAME_REQUIRED")
-    login_name = _required_text(payload.login_name, "LOGIN_NAME_REQUIRED")
+    first_name = _required_text(payload.first_name, "FIRST_NAME_REQUIRED")
+    last_name = _required_text(payload.last_name, "LAST_NAME_REQUIRED")
+    display_name = _display_name(first_name, last_name)
     role = payload.company_role.strip().upper()
     if role not in _ALLOWED_COMPANY_ROLES:
         raise HTTPException(400, "INVALID_COMPANY_ROLE")
 
     with transaction() as conn, conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT id
-            FROM tb.companies
-            WHERE id = %s
-              AND deleted_at IS NULL
-              AND status = 'ACTIVE'
-            FOR SHARE
-            """,
-            (payload.company_id,),
-        )
-        if not cur.fetchone():
-            raise HTTPException(404, "COMPANY_NOT_FOUND")
-
-        try:
-            cur.execute(
-                """
-                INSERT INTO tb.users(
-                    company_id, first_name, last_name, display_name, login_name,
-                    personal_email, personal_phone, company_role
+        _assert_company(cur, payload.company_id)
+        row = None
+        for attempt in range(50):
+            login_name = _provisional_login(first_name, last_name)
+            savepoint = f"provisional_login_{attempt}"
+            cur.execute(f"SAVEPOINT {savepoint}")
+            try:
+                cur.execute(
+                    """
+                    INSERT INTO tb.users(
+                        company_id, first_name, last_name, display_name, login_name,
+                        personal_email, personal_phone, company_role, access_valid_until
+                    )
+                    VALUES (%s,%s,%s,%s,%s,NULL,NULL,%s,%s)
+                    RETURNING id, company_id, display_name, first_name, last_name,
+                              login_name, personal_email, personal_phone,
+                              company_role, status, access_valid_until, profile_version, created_at
+                    """,
+                    (
+                        payload.company_id,
+                        first_name,
+                        last_name,
+                        display_name,
+                        login_name,
+                        role,
+                        payload.access_valid_until,
+                    ),
                 )
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-                RETURNING id, company_id, display_name, first_name, last_name,
-                          login_name, personal_email, personal_phone,
-                          company_role, status, created_at
-                """,
-                (
-                    payload.company_id,
-                    _optional_text(payload.first_name),
-                    _optional_text(payload.last_name),
-                    display_name,
-                    login_name,
-                    _optional_text(payload.personal_email),
-                    _optional_text(payload.personal_phone),
-                    role,
-                ),
-            )
-        except UniqueViolation as exc:
-            raise HTTPException(409, "LOGIN_NAME_EXISTS") from exc
+                row = dict(cur.fetchone())
+                cur.execute(f"RELEASE SAVEPOINT {savepoint}")
+                break
+            except UniqueViolation:
+                cur.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+                cur.execute(f"RELEASE SAVEPOINT {savepoint}")
+        if row is None:
+            raise HTTPException(503, "PROVISIONAL_LOGIN_GENERATION_FAILED")
 
-        row = dict(cur.fetchone())
         cur.execute(
             """
             INSERT INTO tb.portal_credentials(user_id)
@@ -232,9 +289,105 @@ def create_user(
             company_id=row["company_id"],
             entity_type="USER",
             entity_id=row["id"],
-            details={"company_role": row["company_role"]},
+            details={"company_role": row["company_role"], "provisional_login": True},
         )
     return row
+
+
+@router.patch("/users/{user_id}")
+def update_user(
+    user_id: UUID,
+    payload: UserAdminUpdate,
+    admin: dict[str, Any] = Depends(require_admin_csrf),
+) -> dict[str, Any]:
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT u.id, u.company_id, u.first_name, u.last_name, u.display_name,
+                   u.login_name, u.company_role, u.status, u.access_valid_until,
+                   u.deleted_at, pc.activated_at
+            FROM tb.users u
+            LEFT JOIN tb.portal_credentials pc ON pc.user_id = u.id
+            WHERE u.id = %s
+            FOR UPDATE OF u
+            """,
+            (user_id,),
+        )
+        current = cur.fetchone()
+        if not current or current["deleted_at"] is not None:
+            raise HTTPException(404, "USER_NOT_FOUND")
+        if current["company_role"] == "ADMIN":
+            raise HTTPException(409, "ADMIN_USER_CANNOT_BE_EDITED")
+
+        next_company = (
+            payload.company_id
+            if "company_id" in payload.model_fields_set and payload.company_id is not None
+            else current["company_id"]
+        )
+        if next_company != current["company_id"]:
+            _assert_company(cur, next_company)
+            if _user_has_worksite_or_team_history(cur, user_id):
+                raise HTTPException(409, "USER_COMPANY_CHANGE_BLOCKED_BY_HISTORY")
+
+        first_name = (
+            _required_text(payload.first_name, "FIRST_NAME_REQUIRED")
+            if "first_name" in payload.model_fields_set and payload.first_name is not None
+            else current["first_name"]
+        )
+        last_name = (
+            _required_text(payload.last_name, "LAST_NAME_REQUIRED")
+            if "last_name" in payload.model_fields_set and payload.last_name is not None
+            else current["last_name"]
+        )
+        if not first_name or not last_name:
+            raise HTTPException(400, "USER_NAME_REQUIRED")
+
+        role = current["company_role"]
+        if "company_role" in payload.model_fields_set and payload.company_role is not None:
+            role = payload.company_role.strip().upper()
+            if role not in _ALLOWED_COMPANY_ROLES:
+                raise HTTPException(400, "INVALID_COMPANY_ROLE")
+
+        valid_until = (
+            payload.access_valid_until
+            if "access_valid_until" in payload.model_fields_set
+            else current["access_valid_until"]
+        )
+        display_name = (
+            _display_name(first_name, last_name)
+            if current["activated_at"] is None
+            else current["display_name"]
+        )
+
+        cur.execute(
+            """
+            UPDATE tb.users
+            SET company_id=%s, first_name=%s, last_name=%s, display_name=%s,
+                company_role=%s, access_valid_until=%s,
+                profile_version=profile_version+1, updated_at=now()
+            WHERE id=%s
+            RETURNING id, company_id, first_name, last_name, display_name, login_name,
+                      personal_email, personal_phone, company_role, status,
+                      access_valid_until, profile_version, created_at
+            """,
+            (next_company, first_name, last_name, display_name, role, valid_until, user_id),
+        )
+        updated = dict(cur.fetchone())
+        audit(
+            cur,
+            action="USER_ADMIN_UPDATE",
+            actor_user_id=admin["user_id"],
+            company_id=updated["company_id"],
+            entity_type="USER",
+            entity_id=user_id,
+            details={
+                "company_changed": next_company != current["company_id"],
+                "role_changed": role != current["company_role"],
+                "name_changed": first_name != current["first_name"] or last_name != current["last_name"],
+                "validity_changed": valid_until != current["access_valid_until"],
+            },
+        )
+    return updated
 
 
 @router.post("/users/{user_id}/portal-activation")

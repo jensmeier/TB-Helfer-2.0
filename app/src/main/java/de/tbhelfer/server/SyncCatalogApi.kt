@@ -43,7 +43,7 @@ class SyncCatalogApi(
     }
 
     fun loadCatalog(token: String): Result {
-        val connection = openConnection("/api/v1/sync/catalog")
+        val connection = openConnection("/api/v1/catalog")
         return try {
             connection.setRequestProperty("Authorization", "Bearer $token")
             connection.setRequestProperty("Accept", "application/json")

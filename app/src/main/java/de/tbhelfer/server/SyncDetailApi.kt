@@ -44,7 +44,7 @@ class SyncDetailApi(
     }
 
     fun loadRouteSections(token: String, routeId: String): Result<List<SectionItem>> =
-        loadList("/api/v1/sync/routes/$routeId/sections", token, "sections") { item ->
+        loadList("/api/v1/catalog/routes/$routeId/sections", token, "sections") { item ->
             SectionItem(
                 id = item.optString("id"),
                 routeId = item.optNullableString("route_id"),
@@ -60,7 +60,7 @@ class SyncDetailApi(
         }
 
     fun loadStationObjects(token: String, stationId: String): Result<List<ObjectItem>> =
-        loadList("/api/v1/sync/stations/$stationId/objects", token, "objects") { item ->
+        loadList("/api/v1/catalog/stations/$stationId/objects", token, "objects") { item ->
             ObjectItem(
                 id = item.optString("id"),
                 routeId = item.optNullableString("route_id"),

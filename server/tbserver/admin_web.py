@@ -37,6 +37,14 @@ def portal_login_page(request: Request):
     )
 
 
+@router.get("/portal/v1/activate")
+def portal_activate_page(request: Request):
+    return templates.TemplateResponse(
+        "v1_portal_activate.html",
+        {"request": request},
+    )
+
+
 @router.get("/portal/v1")
 def portal_home(
     request: Request,
@@ -62,6 +70,32 @@ def admin_v1_root(
             "request": request,
             "user": user,
         },
+    )
+
+
+@router.get("/admin/v1/catalog-history")
+def admin_catalog_history_page(
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
+):
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT h.change_id, h.entity_type, h.entity_id, h.entity_version,
+                   h.operation, h.before_data, h.after_data, h.changed_at,
+                   u.display_name AS actor_display_name,
+                   c.name AS actor_company_name
+            FROM tb.catalog_history h
+            LEFT JOIN tb.users u ON u.id = h.changed_by_user_id
+            LEFT JOIN tb.companies c ON c.id = h.changed_by_company_id
+            ORDER BY h.change_id DESC
+            LIMIT 500
+            """
+        )
+        history = [dict(row) for row in cur.fetchall()]
+    return templates.TemplateResponse(
+        "v1_catalog_history.html",
+        {"request": request, "user": user, "history": history},
     )
 
 
@@ -107,7 +141,7 @@ def admin_users_page(
             SELECT u.id, u.company_id, c.name AS company_name, u.display_name,
                    u.first_name, u.last_name, u.login_name, u.personal_email,
                    u.personal_phone, u.company_role, u.status, u.access_valid_until,
-                   pc.activated_at, pc.last_login_at,
+                   u.profile_version, pc.activated_at, pc.last_login_at,
                    d.id AS device_id, d.device_name, d.platform, d.status AS device_status,
                    d.bound_at, d.last_seen_at
             FROM tb.users u

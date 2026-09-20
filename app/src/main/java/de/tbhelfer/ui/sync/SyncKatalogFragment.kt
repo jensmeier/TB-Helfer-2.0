@@ -249,6 +249,14 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         stationsTitle.text = getString(R.string.sync_stations_count, catalog.stations.size)
 
         routesContainer.removeAllViews()
+        routesContainer.addView(
+            createCatalogItem(
+                "＋ Strecke ergänzen",
+                "Firmenübergreifend zum gemeinsamen Katalog hinzufügen"
+            ) {
+                offlineDialogs.showCreateRoute { loadCatalog() }
+            }
+        )
         if (catalog.routes.isEmpty()) {
             routesContainer.addView(createMutedText(getString(R.string.sync_no_routes)))
         } else {
@@ -258,11 +266,19 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                     route.name?.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }
                 }
                 val detail = "${route.sectionCount} Abschnitte · ${route.objectCount} Objekte"
-                routesContainer.addView(createCatalogItem(title, detail) { openRouteSelection(route) })
+                routesContainer.addView(createCatalogItem(title, detail) { showRouteActions(route) })
             }
         }
 
         stationsContainer.removeAllViews()
+        stationsContainer.addView(
+            createCatalogItem(
+                "＋ Bahnhof ergänzen",
+                "Firmenübergreifend zum gemeinsamen Katalog hinzufügen"
+            ) {
+                offlineDialogs.showCreateStation { loadCatalog() }
+            }
+        )
         if (catalog.stations.isEmpty()) {
             stationsContainer.addView(createMutedText(getString(R.string.sync_no_stations)))
         } else {
@@ -275,9 +291,35 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                     station.stationCode?.takeIf { it.isNotBlank() }?.let { append(it).append(" · ") }
                     append(station.objectCount).append(" Objekte")
                 }
-                stationsContainer.addView(createCatalogItem(title, detail) { openStationSelection(station) })
+                stationsContainer.addView(createCatalogItem(title, detail) { showStationActions(station) })
             }
         }
+    }
+
+    private fun showRouteActions(route: SyncCatalogApi.RouteItem) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(route.routeNumber.ifBlank { "Strecke" })
+            .setItems(arrayOf("Abschnitte öffnen", "Strecke korrigieren")) { _, which ->
+                when (which) {
+                    0 -> openRouteSelection(route)
+                    1 -> offlineDialogs.showEditRoute(route) { loadCatalog() }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showStationActions(station: SyncCatalogApi.StationItem) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(station.name.ifBlank { "Bahnhof" })
+            .setItems(arrayOf("Gleise / Weichen / Objekte öffnen", "Bahnhof korrigieren")) { _, which ->
+                when (which) {
+                    0 -> openStationSelection(station)
+                    1 -> offlineDialogs.showEditStation(station) { loadCatalog() }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun openRouteSelection(route: SyncCatalogApi.RouteItem) {
@@ -374,10 +416,9 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         cached: List<SyncObjectEntity>
     ) {
         if (available.isEmpty()) {
-            if (cached.isNotEmpty()) {
-                offlineDialogs.showObjects(cached) { refreshConflictButton() }
-            } else {
-                Toast.makeText(requireContext(), R.string.sync_no_objects_for_station, Toast.LENGTH_LONG).show()
+            offlineDialogs.showObjectsAndCreate(station, cached) {
+                refreshConflictButton()
+                loadCatalog()
             }
             return
         }
@@ -402,9 +443,11 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                     }
                 }
             }
-        if (cached.isNotEmpty()) {
-            builder.setNeutralButton(R.string.sync_edit_offline) { _, _ ->
-                offlineDialogs.showObjects(cached) { refreshConflictButton() }
+        builder.setNeutralButton("Bearbeiten / ergänzen") { _, _ ->
+            val selectedOrCached = if (cached.isNotEmpty()) cached else emptyList()
+            offlineDialogs.showObjectsAndCreate(station, selectedOrCached) {
+                refreshConflictButton()
+                loadCatalog()
             }
         }
         builder.show()

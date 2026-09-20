@@ -11,6 +11,7 @@ from .admin import router as admin_router
 from .admin_purge import router as admin_purge_router
 from .admin_web import router as admin_web_router
 from .btb import router as btb_router
+from .catalog import router as catalog_router
 from .capabilities import router as capabilities_router
 from .company import router as company_router
 from .config import settings
@@ -22,6 +23,7 @@ from .files import router as files_router
 from .migrations import status as migration_status
 from .metrics import SystemMetricsMiddleware
 from .portal import router as portal_router
+from .profile import router as profile_router
 from .releases import router as releases_router
 from .survey_gra_jumps import router as survey_gra_jumps_router
 from .survey_originals import router as survey_originals_router
@@ -49,6 +51,8 @@ app.add_middleware(SystemMetricsMiddleware)
 app.include_router(capabilities_router)
 app.include_router(company_router)
 app.include_router(portal_router)
+app.include_router(profile_router)
+app.include_router(catalog_router)
 app.include_router(admin_web_router)
 app.include_router(admin_router)
 app.include_router(admin_purge_router)

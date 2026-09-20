@@ -31,6 +31,11 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Berechnete oder manuell bearbeitete Streckenabschnitte werden getrennt von den Originaldaten synchronisiert.
 - Die App lädt nur die für Baustelle/Berechtigung benötigten Strecken-, Gleis-, Weichen- und Abschnittsdaten.
 - Im Streckendaten-Bereich gibt es `Änderungen mit NAS synchronisieren`; übertragen werden nur geänderte/berechnete Abschnitte.
+- Zusätzlich gibt es einen **firmenübergreifend gemeinsamen Fachkatalog** für Strecken, Bahnhöfe/Betriebsstellen, Gleise, Weichen/Kreuzungen und weitere Bahnhof-/Streckenobjekte. Authentifizierte Benutzer dürfen fehlende Katalogeinträge ergänzen und vorhandene Einträge korrigieren.
+- Der gemeinsame Fachkatalog hat **kein normales globales Löschen**. Eine falsche Eingabe wird durch eine neue Korrekturversion berichtigt; der vorherige Stand bleibt in der Änderungshistorie nachvollziehbar.
+- Jede Katalogänderung wird mit stabiler Objekt-ID, Versionsnummer, Vorher-/Nachher-Stand sowie Bearbeiter/Firma protokolliert. Gleichzeitige Änderungen werden über Basisversion/Versionskonflikt geschützt.
+- Für normale Nutzer werden Bearbeiter/Firma bei Änderungen anderer Firmen nicht offengelegt; sichtbar bleibt nur eine neutrale Änderungsangabe. Admin sieht die vollständige Historie.
+- Der gemeinsame Fachkatalog überschreibt niemals geschützte Vermessungsoriginale.
 
 ## 2a. Admin-Oberfläche – bestehende Bedienlogik als Referenz
 - Die bestehende TB-Helfer-Administration 0.7 ist **Bedien-Referenz** für Server 1.0. Server 1.0 darf technisch anders aufgebaut sein, soll bewährte Admin-Abläufe aber nicht ohne fachlichen Grund neu erfinden.
@@ -74,6 +79,12 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Das Firmenlogo wird einmal serverseitig hinterlegt und von Geräten derselben Firma geladen/gecached.
 - Die App darf eine nicht geheime Support-/Gerätekennung und einen maskierten Schlüsselhinweis anzeigen, niemals vollständige Geheimwerte.
 - Baustellen-Einladungen verändern Benutzer-/Firmenstammdaten nicht.
+- Die technische Benutzeridentität ist die stabile UUID. Gleiche sichtbare Vor-/Nachnamen bei mehreren Personen sind erlaubt und werden nicht als Identitätsschlüssel verwendet.
+- Beim administrativen Anlegen eines Benutzers genügen Firma, Vorname, Nachname, Firmenrolle und optionale Zugriffsgültigkeit. Der Server erzeugt einen vorläufigen eindeutigen Portal-Login.
+- Bei der **ersten Portal-Aktivierung** legt der Benutzer seinen eigenen eindeutigen Login, Anzeigenamen, Passwort sowie persönliche E-Mail/Telefon fest.
+- Der Admin darf Firmenzuordnung, Vor-/Nachname als administrative Stammdaten, Firmenrolle und Zugriffsgültigkeit bearbeiten. Ein Firmenwechsel wird blockiert, sobald Baustellen-/Teamhistorie vorhanden ist.
+- Nach erfolgter Portal-Aktivierung überschreibt eine normale Admin-Bearbeitung nicht den selbst gepflegten Login, Anzeigenamen oder persönliche E-Mail/Telefon.
+- Persönliche Kontakte sind für aktive Benutzer derselben Firma sichtbar; andere Firmen erhalten sie nicht.
 
 ## 4. Baustellen-Teammodell und Einladungen
 - Der Admin verwaltet Benutzer, Firmen, Geräte und Server-Speicheroptionen, aber nicht die laufende Baustellenzuordnung.
