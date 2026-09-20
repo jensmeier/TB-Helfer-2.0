@@ -699,10 +699,11 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 
 ### Praktischer E2E-Stand Benutzer/Geräteaktivierung 2026-09-20
 
-- NAS-/Admin-Retest nach dem Admin-Neuaufbau: Benutzer löschen, Entfernen aus der Liste, Login erneut anlegen, Aktivierungskarte erzeugen und QR anzeigen funktionieren praktisch.
-- Offener Fehler ist aktuell nur Schritt 6 **Gerätebindung Android**: Die App zeigt `Der Aktivierungs-Key ist ungültig oder wurde durch einen neueren Key ersetzt.`; damit kommt beim Aktivierungsversuch ein 401-artiger Aktivierungsfehler zurück.
-- Die gezeigte Aktivierungskarte ist nicht frisch erzeugt: `Gültig bis 2026-09-20T15:48:33Z` bedeutet bei 24 Stunden Gültigkeit Erzeugung am 19.09.2026 gegen 17:48 CEST. Nach Projektregel macht jede später erzeugte Aktivierungskarte den vorherigen noch unbenutzten Key ungültig. Deshalb vor Codeänderungen zuerst mit **einer frisch erzeugten Karte sofort** testen.
-- Falls der frische Key ebenfalls scheitert: keine weitere Karte erzeugen; im API-Protokoll den dazugehörigen `POST /api/v1/device/login` prüfen. Fehlt der Request dort, verwendet die installierte Android-App nicht den QR-Server `https://api-v1.tb-helfer.de`; bei vorhandenem 401 muss der konkrete Server-Detailcode (`ACTIVATION_INVALID`/`ACTIVATION_EXPIRED`) geprüft werden.
+- NAS-/Admin-Retest nach dem Admin-Neuaufbau ist praktisch bestätigt: Benutzer löschen, aus der aktiven Liste entfernen, denselben Login erneut anlegen, Aktivierungskarte erzeugen, QR anzeigen sowie Migration 010 mit **10/10 / pending keine** funktionieren.
+- Aktivierungskarte/QR/PDF auf Server 1.0 funktionieren serverseitig. Geräte-Aktivierungs-Keys gelten fachlich **30 Tage** und **einmalig**; bloßes erneutes Erzeugen einer Karte widerruft andere offene Keys nicht.
+- Der verbleibende Fehler liegt aktuell auf der installierten Android-Seite: Beim QR-Aktivierungsversuch erscheint `Aktivierungs-Key ungültig`, während das Log des alten 0.7-Servers zeitgleich `POST /api/v1/device/login -> 401` zeigt. Im neuen Server-1.0-Log fehlt der passende Geräte-Login.
+- Damit ist die Ursache praktisch eingegrenzt: Die derzeit installierte APK sendet den Geräte-Login noch an den alten Server. Der neue Server-1.0-Key ist dort unbekannt. **Kein weiterer Umbau an `devices.py` vor dem Test eines aktuellen Android-Builds.**
+- Nächster Android-Erfolgstest: aktueller Build aus `feature/tb-server-1.0` auf Testgerät installieren, frischen Server-1.0-QR scannen; im Log von `tb-helfer-v1-api-1` muss `POST /api/v1/device/login` mit 200 erscheinen, im alten `tb-helfer-api` für denselben Versuch kein Geräte-Login.
 
 ### Admin-API komplett neu aufgebaut und quergeprüft 2026-09-19
 
@@ -715,7 +716,7 @@ Lokal bzw. gegen bereitgestellte Fixtures erfolgreich geprüft:
 - Querprüfung zu Migration 010 ergab einen notwendigen Login-Fix: `portal.py` filtert die Loginname-Suche jetzt ebenfalls auf `u.deleted_at IS NULL`, damit ein nach Soft-Delete wiederverwendeter Login den neuen aktiven Benutzer erreicht.
 - Source-Check 85 wurde erweitert: Python-AST-Parsing plus Querchecks für Admin-Session-Key, Audit, Token-Widerruf, Login-Wiederverwendung und Benutzeroberfläche.
 - Manuelle GitHub-Querprüfung gegen Basisschema, Migration 002, Migration 010, `portal.py`, `devices.py` und `v1_admin_users.html`: **25/25 Prüfmarker erfüllt, 0 fehlend**.
-- Praktischer NAS-Retest nach Pull/Übernahme und API-Neustart ist noch offen: Testbenutzer löschen, erneut mit gleichem Login anlegen, Aktivierungskarte erzeugen und Gerätebindung prüfen.
+- Praktischer NAS-Retest nach Pull/Übernahme und API-Neustart: Benutzer löschen, aus Liste entfernen, denselben Login neu anlegen und Aktivierungskarte erzeugen sind bestätigt. Offen bleibt ausschließlich die Android-Gerätebindung gegen den richtigen Server-1.0-Endpunkt.
 
 - Nach dem Admin-Neuaufbau endeten die aktuellen GitHub-Actions-Läufe **TB-Server 1.0 #482 / ID 35453481227** und **Android CI #1124 / ID 35453481198** erneut ohne ausgeführte Schritte (`steps = null`, `logs_url = null`). Das ist weiterhin das bekannte Runner-/Actions-Infrastrukturproblem; aus diesen Läufen lässt sich kein fachlicher Build-/Testfehler ableiten.
 
@@ -906,13 +907,13 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Nächster sinnvoller Arbeitsschritt
 
-1. **Synology-Staging auf den aktuellen GitHub-Head aktualisieren:** aktuelle `tbserver/`, `templates/` und `v1_migrations/` übernehmen und das Projekt recreaten, damit Migration 010 und die neue Admin-Übersicht aktiv werden. `TB_V1_PUBLIC_BASE_URL=https://api-v1.tb-helfer.de` bleibt gesetzt.
-2. Praktisch im Browser prüfen: `/admin/v1` (Speicher, 24-h Traffic, Laufzeit, Probleme, Diagramm), Benutzer-Löschen, getrennte Geräteverwaltung und Aktivierungskarte QR/PDF.
-3. Aktuellen Android-Debug-Build installieren und Pixel/Poco über die Aktivierungskarten binden; anschließend bei ausgeschaltetem WLAN Server-/Synczugriff über Mobilfunk bestätigen.
-4. Mit **Pixel + Poco** dieselbe Testbaustelle verwenden und mindestens prüfen: Einladung/Team, Unterbaustellenbaum, Mangel erstellen/ändern/`ABGELEHNT`, Abnahme erstellen/ändern/finalisieren/löschen, Cross-Device-Tombstone, Fotos/Anhänge, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
+1. **Android zuerst:** aktuellen Debug-Build aus `feature/tb-server-1.0` erzeugen und auf genau einem Testgerät installieren. Die installierte Alt-APK darf nicht als Referenz für den Server-1.0-QR gelten.
+2. Auf Server 1.0 einen frischen Testbenutzer/30-Tage-Aktivierungs-QR erzeugen und sofort scannen. Erfolgskriterium: `POST /api/v1/device/login -> 200` im Log von `tb-helfer-v1-api-1`; im alten `tb-helfer-api` erscheint für diesen Versuch kein `device/login`.
+3. Nach erfolgreicher Bindung prüfen: gespeicherte Serveridentität `https://api-v1.tb-helfer.de`, Geräte-Token/`device/me`, Firmenprofil und Sync. Danach WLAN ausschalten und denselben Zugriff über Mobilfunk/Cloudflare bestätigen.
+4. Erst danach **Pixel + Poco** an Server 1.0 binden und dieselbe Testbaustelle vollständig prüfen: Einladung/Team, Unterbaustellenbaum, `track_data_v1`, Mangel inkl. `ABGELEHNT`, Abnahme inkl. Löschen/Cross-Device-Tombstone, Dateien/Fotos, Team-BTB, BTB-Fotos, Abschluss-PDF und Hintergrund-Sync.
 5. Server-Staging vollständig prüfen: Backup -> Retention -> Restore-Test -> Restore-to-Target.
 6. Danach die Vermessungskette mit realen Daten end-to-end ausführen: Import -> Parse -> Survey-Section -> Punktprojektion v3 -> GRA-Sprung v2 -> Kalibrierung; zusätzliche Mehr-TRA-/Reverse-Geometry-Fälle mitprüfen.
-7. Gefundene E2E-Fehler im bestehenden Feature-Branch beheben und diese Datei jeweils mit Testergebnis aktualisieren.
+7. Gefundene E2E-Fehler im bestehenden Feature-Branch beheben und `docs/TB-HELFER_AKTUELLER_STAND.md` sowie `projektstatus/TB-HELFER_STATUS.md/.xlsx` jeweils mit Testergebnis aktualisieren.
 8. **Erst nach bestandenen Android-/Server-/Backup-/Restore-Akzeptanztests** Cutover durchführen: produktive Cloudflare-Routen auf Server 1.0 umstellen, Abschlusskontrolle durchführen und anschließend den alten API-0.7-Server kontrolliert stoppen. Der alte Server wird nicht vorher gelöscht; Backup/Rollback bleibt für die Cutover-Phase erhalten.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
