@@ -79,7 +79,10 @@ Stand **21.09.2026**:
 - **Restore-Test am 21.09.2026 praktisch BESTÄTIGT:** derselbe getrennte Restore-Test wurde nach der Worker-Neuerstellung erfolgreich ausgeführt. Background Job `RESTORE_TEST` steht auf `DONE`, der zugehörige Backup-Lauf `RESTORE_TEST` auf `OK`. Die laufende Live-Datenbank wurde dabei nicht verändert.
 - Damit sind FULL-Backup und getrennte Restore-Test-Wiederherstellung praktisch bestätigt.
 - **Backup-Retention am 21.09.2026 praktisch bestätigt:** manueller `BACKUP_RETENTION`-Job lief mit Versuch 1 auf `DONE`. Bei aktueller Policy (30 Tage, mindestens 3 je Backupart) wurden die jungen Backups erwartungsgemäß nicht entfernt.
-- **Noch offen:** Restore-to-Target gegen das getrennte Ziel prüfen; danach ist die Backup-/Recovery-Abnahme vollständig und Migrationen 011 + 012 können kontrolliert ausgerollt werden.
+- Erster Restore-to-Target-Versuch erreichte `pg_restore`, scheiterte aber reproduzierbar mit `PG_RESTORE_FAILED_EXIT_1`. Target-Cleanup funktionierte: das `tb`-Schema war danach wieder leer.
+- Ursache praktisch eingegrenzt: `postgis/postgis:17-3.5` bringt im frischen Target bereits `fuzzystrmatch`, `postgis`, `postgis_tiger_geocoder` und `postgis_topology` mit; derselbe FULL-Dump enthält diese Extensions ebenfalls (plus `pgcrypto`). Restore-Test funktioniert bereits mit `--clean --if-exists`, Restore-to-Target lief dagegen mit `clean=False`.
+- Quellfix `5bd9e070deb7…`: Restore-to-Target nutzt nach den bestehenden Trenn-/Freshness-Prüfungen ebenfalls den sauberen Clean-Restore; Source-Check 43 angepasst (`0893b8204d59…`).
+- **Noch offen:** diesen Restore-to-Target-Fix auf Synology übernehmen und denselben getrennten Target-Restore erneut praktisch prüfen; danach ist die Backup-/Recovery-Abnahme vollständig und Migrationen 011 + 012 können kontrolliert ausgerollt werden.
 - Migration 011 wurde zu diesem Zeitpunkt **noch nicht** auf Staging ausgeführt.
 
 ## Laufzeitbefunde 21.09.2026 – Restore-Test und Release-Draft-Prüfung
@@ -94,10 +97,11 @@ Stand **21.09.2026**:
 - **Updateweg nach Veröffentlichung am 21.09.2026 erneut praktisch bestätigt:** Admin-Binary-Download funktioniert, veröffentlichter Release wird vom Handy erkannt und installiert; danach blieben Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten erhalten. Der bestehende Updatevertrag bleibt damit geschützt.
 
 Nächster Laufzeitschritt:
-1. Restore-to-Target ausschließlich gegen die bereits getrennte Target-DB/Target-Ablage praktisch durchführen und prüfen;
-2. danach FULL-/Restore-Test-/Retention-Pfade als geschützt belassen;
-3. anschließend Migrationen 011 + 012 kontrolliert auf Synology-Staging ausrollen und `/health/ready` auf 12/12 prüfen;
-4. danach System-Automatik/SMTP sowie Katalog-/Profil-E2E fortsetzen.
+1. aktuellen GitHub-Fix `restore_target.py` auf Synology übernehmen;
+2. denselben Restore-to-Target ausschließlich gegen die getrennte Target-DB/Target-Ablage erneut ausführen und auf `OK` prüfen;
+3. danach FULL-/Restore-Test-/Retention-/Target-Restore-Pfade als geschützt belassen;
+4. anschließend Migrationen 011 + 012 kontrolliert auf Synology-Staging ausrollen und `/health/ready` auf 12/12 prüfen;
+5. danach System-Automatik/SMTP sowie Katalog-/Profil-E2E fortsetzen.
 ## Server 1.0 – Backup-Automatik, E-Mail-Berichte und Audit
 
 Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Dieser Block wurde noch nicht auf Synology-Staging ausgerollt. Der praktisch bestätigte FULL-Backup-Pfad wurde nicht ersetzt oder umgebaut.
