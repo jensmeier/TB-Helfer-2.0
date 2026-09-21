@@ -207,9 +207,45 @@ object GesamtMedienArchiv {
                 excludedHashes = serverHashes,
                 plans = plans
             )
-            val mediaRows = (serverRows + localRows)
+            val orderedTimedRows = (serverRows + localRows)
                 .sortedWith(compareBy<TimedRow> { it.epochMs }.thenBy { it.hash })
+            val mediaRows = orderedTimedRows
                 .mapIndexed { index, item -> item.row.copy(nr = index + 1) }
+            val finalRowByHash = orderedTimedRows
+                .mapIndexed { index, item -> item.hash to item.row.copy(nr = index + 1) }
+                .toMap()
+
+            // 200056: Jede reale Schicht erhält eine eigene XLSX. Erst in dieser letzten
+            // Exportstufe stehen die endgültigen merge-sicheren Bildpfade fest, deshalb
+            // werden auch die anklickbaren Links hier erzeugt.
+            val shiftLists = runCatching {
+                BautagebuchSpeicher.verlaufFuerBaustelle(appContext, localBaustelleId, baustelleName)
+            }.getOrDefault(emptyList()).map { v ->
+                val entry = v.entry
+                val (from, to) = btbWindow(entry)
+                val photos = BtbFotoBtbFilter.fotosFuerBtb(
+                    context = appContext,
+                    entry = entry,
+                    alleFotos = localFotos,
+                    legacyFromEpochMs = from,
+                    legacyToEpochMs = to
+                ).sortedBy { it.erstelltAmEpochMs }
+
+                val rows = photos.mapNotNull { foto ->
+                    val hash = localHashByFotoId[foto.id] ?: return@mapNotNull null
+                    val finalRow = finalRowByHash[hash] ?: return@mapNotNull null
+                    finalRow.copy(
+                        kurzbeschreibung = foto.kurztext,
+                        langtext = foto.notiz.orEmpty(),
+                        relativePath = "../../${finalRow.relativePath}"
+                    )
+                }.mapIndexed { index, row -> row.copy(nr = index + 1) }
+
+                ShiftImageList(
+                    path = "$archiveRoot/BTB/${entry.datumIso}/${shiftListFilename(entry)}",
+                    bytes = GesamtBilderlisteXlsx.bytes(rows, sheetName = "Bilder ${entry.datumIso}")
+                )
+            }
 
             val abnahmeCsv = AbnahmeExport.csvText(abnahmen)
             val abnahmePdf = AbnahmeExport.listenPdfBytes(appContext, baustelleName, abnahmen, "Gesamt")
@@ -264,6 +300,7 @@ object GesamtMedienArchiv {
                 }
 
                 val csvBom = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
+                shiftLists.forEach { list -> writeBytes(list.path, list.bytes) }
                 writeBytes(
                     "$archiveRoot/Bilderliste_gesamt.csv",
                     csvBom + GesamtBilderlisteXlsx.csv(mediaRows).toByteArray(Charsets.UTF_8)
