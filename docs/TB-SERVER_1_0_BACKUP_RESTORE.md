@@ -149,7 +149,23 @@ Beim ersten praktischen Restore-Test auf Synology waren Restore-Test-DB, Restore
 
 Quellfix: `from uuid import UUID` in `system_admin.py`. Source-Check 42 verlangt diesen Import jetzt ausdrücklich, damit derselbe ForwardRef-Fehler nicht wieder eingeführt wird.
 
-Wichtig: Dieser Fehler betrifft nicht das Backup-Artefakt und nicht die getrennte Restore-Test-Datenbank. Das bestätigte FULL-Backup bleibt unverändert. Nach Deployment des Fixes muss derselbe bestätigte FULL-Lauf erneut über `Restore-Test` gestartet und bis `DONE`/`RESTORE_TEST OK` praktisch bestätigt werden.
+Wichtig: Dieser Fehler betraf nicht das Backup-Artefakt und nicht die getrennte Restore-Test-Datenbank.
+
+### Praktische Restore-Test-Abnahme 21.09.2026
+
+Nach dem UUID-Fix trat zunächst `TB_RESTORE_TEST_DB_NAME_MISSING` auf. Ursache war, dass der Worker bei einer Neuerstellung ohne Restore-Overlay keine `TB_RESTORE_*`-Variablen mehr besaß. Die Synology-Staging-Compose wurde deshalb so erweitert, dass der Worker die Restore-Test-/Restore-Target-Konfiguration dauerhaft erhält; die getrennten Restore-Datenbankdienste bleiben weiterhin separat.
+
+Nach Übernahme dieser Compose-Konfiguration und Neuerstellung ausschließlich des Workers wurde derselbe bestätigte FULL-Backup-Lauf erneut getestet.
+
+Praktisches Ergebnis:
+- `RESTORE_TEST` Background Job: **DONE**, Versuch 1;
+- zugehöriger `tb.backup_runs`-Lauf: **RESTORE_TEST / OK**;
+- getrennte Restore-Test-Datenbank wurde verwendet;
+- Live-Datenbank und Live-Storage wurden nicht als Restore-Ziel verwendet.
+
+Damit ist der **getrennte Restore-Test-Pfad praktisch BESTÄTIGT**. Der funktionierende Pfad darf nicht ohne reproduzierbaren Fehler oder ausdrücklichen Auftrag verändert werden.
+
+Noch offen für die vollständige Recovery-Abnahme sind Backup-Retention und der ausdrücklich getrennte Restore-to-Target-Wartungsweg.
 ## Test-/Staging-Reset
 
 CLI:
