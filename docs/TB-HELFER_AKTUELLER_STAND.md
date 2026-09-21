@@ -74,24 +74,28 @@ Stand **21.09.2026**:
 - Auf Synology-Staging wurde über den vorhandenen Systemstatus-/Background-Job-Pfad ein **FULL-Backup** erfolgreich ausgeführt.
 - Der Benutzer hat diesen Schritt ausdrücklich als **funktionierend** bestätigt.
 - Dieser bestätigte FULL-Backup-Pfad bleibt geschützt und wird nicht ohne reproduzierbaren Fehler oder ausdrücklichen Änderungswunsch umgebaut.
-- Erster praktischer Restore-Test-Versuch: Restore-Test-DB/Restore-Target-DB/Worker wurden erfolgreich als getrennte Container gestartet; der HTTP-Aufruf scheiterte jedoch noch vor Job-Erstellung mit FastAPI/Pydantic-ForwardRef `UUID` (fehlender Import in `system_admin.py`). Quellfix ist committed, **Deployment + Wiederholung E2E offen**.
-- **Noch offen:** aktuellen Server-Fix deployen und getrennten Restore-Test genau dieses Backups erneut ausführen; danach Retention und Restore-to-Target praktisch abnehmen.
+- Der frühere HTTP-500-/UUID-Fehler ist praktisch überwunden: Restore-Test-Jobs werden inzwischen eingereiht und vom Worker verarbeitet.
+- Aktueller reproduzierter Restore-Fehler: `tb.background_jobs.last_error = TB_RESTORE_TEST_DB_NAME_MISSING`. Im laufenden Worker ergab `env | grep '^TB_RESTORE' | sort` keine Ausgabe; die Restore-Umgebungsvariablen gingen bei einer Worker-Neuerstellung über die normale Synology-`compose.yml` verloren.
+- Quellfix: `server/docker-compose.synology-staging.v1.yml` enthält die Restore-Test-/Restore-Target-Variablen jetzt dauerhaft im Worker sowie den Restore-Target-Storage-Mount. Source-Check 82 schützt diesen Deploymentvertrag. Die getrennten Restore-DB-Dienste bleiben weiterhin im optionalen Restore-Overlay.
+- **Noch offen:** aktualisierte Staging-`compose.yml` auf Synology übernehmen, Worker neu erstellen, Restore-Umgebung im Worker prüfen und denselben bestätigten FULL-Backup-Lauf erneut testen; danach Retention und Restore-to-Target praktisch abnehmen.
 - Migration 011 wurde zu diesem Zeitpunkt **noch nicht** auf Staging ausgeführt.
 
 ## Laufzeitbefunde 21.09.2026 – Restore-Test und Release-Draft-Prüfung
 
 - Restore-Infrastruktur auf Synology ist angelegt: getrennte `restore-test-db`, `restore-target-db` und Worker laufen; Live-API und Live-DB blieben dabei erreichbar.
-- Beim Klick auf `Restore-Test` lieferte die API HTTP 500. Ursache reproduziert: `system_admin.py` verwendete `backup_run_id: UUID`, importierte `UUID` aber nicht. Durch `from __future__ import annotations` blieb ein nicht auflösbarer ForwardRef für FastAPI/Pydantic. Quellfix `e58d9fca9840…`: `from uuid import UUID`; Source-Check 42 schützt den Import jetzt.
-- Ein Restore-Job wurde bei diesem Fehlversuch **nicht** eingereiht. Das FULL-Backup selbst wurde dadurch weder verändert noch als fehlerhaft nachgewiesen.
+- Der frühere Klickfehler `UUID` ist behoben: Restore-Test-Jobs werden inzwischen erfolgreich erstellt.
+- Die aktuellen Restore-Test-Jobs liefen bis Versuch 5 und endeten `FAILED`. Direkt aus `tb.background_jobs.last_error` gelesen: `TB_RESTORE_TEST_DB_NAME_MISSING`.
+- Diagnose im laufenden Worker: `env | grep '^TB_RESTORE' | sort` liefert keine Einträge. Damit ist die Ursache ein Deployment-/Container-Environment-Verlust und kein Defekt des FULL-Backups.
+- Quellfix `1dcfc4586592…`: Restore-Test-/Restore-Target-Variablen werden im Synology-Staging-Worker dauerhaft mitgeführt; `bbee4d4de82f…` erweitert den Source-Check. Restore-Datenbanken bleiben weiterhin getrennte Dienste.
 - Release 1.3.6 / Build 200056 ist im Admin aktuell ein **DRAFT**. Android 1.3.4 zeigt deshalb korrekt „aktuell“: DRAFT-Releases dürfen nicht über den öffentlichen Kompatibilitätsvertrag angeboten werden.
 - Der Admin-Button `Download prüfen` eines DRAFTs zeigte jedoch auf den öffentlichen Downloadvertrag und erhielt deshalb korrekt `RELEASE_NOT_FOUND`. Quellfix: eigener ADMIN-geschützter GET-Binary-Pfad für DRAFT-Prüfung; öffentlicher Download bleibt unverändert auf `PUBLISHED` beschränkt.
 - **Updateweg nach Veröffentlichung am 21.09.2026 erneut praktisch bestätigt:** Admin-Binary-Download funktioniert, veröffentlichter Release wird vom Handy erkannt und installiert; danach blieben Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten erhalten. Der bestehende Updatevertrag bleibt damit geschützt.
 
 Nächster Laufzeitschritt:
-1. nur die kleinen Serverfixes auf Synology ausrollen/API+Worker neu starten, noch **keine** Migration 011/012 erzwingen;
-2. dasselbe bestätigte FULL-Backup erneut per Restore-Test starten und Jobstatus bis `DONE`/Restore-Lauf `OK` prüfen;
-3. Release-/App-Updateweg ist erneut praktisch bestätigt; hier keine weitere Änderung ohne reproduzierbaren Fehler;
-4. als Nächstes den weiterhin fehlgeschlagenen `RESTORE_TEST` anhand des Worker-Logs eingrenzen;
+1. aktuelle `server/docker-compose.synology-staging.v1.yml` als Synology-`compose.yml` übernehmen;
+2. nur den Worker neu erstellen und prüfen, dass `TB_RESTORE_TEST_DB_NAME` sowie die übrigen `TB_RESTORE_*`-Variablen vorhanden sind;
+3. dasselbe bestätigte FULL-Backup erneut per Restore-Test starten und Jobstatus bis `DONE`/Restore-Lauf `OK` prüfen;
+4. Release-/App-Updateweg ist erneut praktisch bestätigt; hier keine weitere Änderung ohne reproduzierbaren Fehler;
 5. erst danach mit dem geplanten Deployment 011+012 fortfahren.
 ## Server 1.0 – Backup-Automatik, E-Mail-Berichte und Audit
 
