@@ -211,13 +211,25 @@ Ablauf:
 
 1. äußere Backupgröße/SHA-256 verifizieren;
 2. FULL-Layout + innere SHA-256 gegen `manifest.json` verifizieren;
-3. `pg_restore` ohne `--clean` in die frische Ziel-Datenbank;
+3. `pg_restore --clean --if-exists` in die bereits als getrennt/frisch geprüfte Ziel-Datenbank; das ist erforderlich, weil das verwendete `postgis/postgis`-Image PostGIS-Extensions bereits vorinstalliert, die zugleich Bestandteil des Dumps sind;
 4. Migrationsregister und zentrale Tabellen prüfen;
 5. Dateiarchiv mit denselben Pfad-/Link-Sicherheitsregeln in temporäre Ablage extrahieren;
 6. Dateien in den getrennten Ziel-Storage kopieren;
 7. Restore-Lauf als `RESTORE_TARGET` protokollieren und ohne Benutzergeheimnisse auditieren.
 
 Wenn ein Restore-Schritt scheitert, wird der neu erzeugte Ziel-Storage wieder geleert und das `tb`-Schema der getrennten Ziel-Datenbank entfernt. Die laufende Live-Datenbank und der Live-Storage werden nicht verändert.
+
+### Staging-Befund 21.09.2026 – PostGIS-Extension-Kollision
+
+Der erste praktische Restore-to-Target erreichte `pg_restore`, endete aber mit `PG_RESTORE_FAILED_EXIT_1`. Die getrennte Target-Datenbank wurde danach korrekt zurückgeräumt; `to_regnamespace('tb')` war wieder leer.
+
+Diagnose:
+- das Target-Image `postgis/postgis:17-3.5` enthält bereits `fuzzystrmatch`, `postgis`, `postgis_tiger_geocoder` und `postgis_topology`;
+- der bestätigte FULL-Dump enthält dieselben Extensions sowie `pgcrypto`;
+- der bestätigte Restore-Test verwendet bereits erfolgreich `pg_restore --clean --if-exists`;
+- Restore-to-Target verwendete dagegen bislang `clean=False` und kollidierte dadurch mit den vorinstallierten Extension-Objekten.
+
+Quellfix: Restore-to-Target nutzt nach den bestehenden harten Trenn-/Freshness-Prüfungen jetzt ebenfalls den sauberen `--clean --if-exists`-Restore. Die Live-Datenbank kann weiterhin nicht als Target gewählt werden. Source-Check 43 schützt diesen Vertrag.
 
 Der nächste Schritt nach erfolgreichem Restore ist **nicht** automatisches Umschalten, sondern eine Offline-/Testprüfung des Zielservers. Erst danach darf ein eigener kontrollierter Cutover auf die wiederhergestellte Zielinstanz erfolgen.
 
