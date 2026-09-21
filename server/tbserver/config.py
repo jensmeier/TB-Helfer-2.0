@@ -25,6 +25,18 @@ def _env_optional(name: str) -> str | None:
     return value or None
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    raise RuntimeError(f"{name} ungültig")
+
+
 @dataclass(frozen=True)
 class Settings:
     db_host: str
@@ -41,6 +53,13 @@ class Settings:
     log_level: str
     portal_session_hours: int
     public_base_url: str | None
+    smtp_host: str | None
+    smtp_port: int
+    smtp_user: str | None
+    smtp_password: str | None
+    smtp_sender: str | None
+    smtp_starttls: bool
+    smtp_ssl: bool
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -65,6 +84,13 @@ class Settings:
             log_level=_env("LOG_LEVEL", "INFO").upper(),
             portal_session_hours=max(1, _env_int("TB_PORTAL_SESSION_HOURS", 12)),
             public_base_url=_env_optional("TB_PUBLIC_BASE_URL"),
+            smtp_host=_env_optional("TB_SMTP_HOST"),
+            smtp_port=_env_int("TB_SMTP_PORT", 587),
+            smtp_user=_env_optional("TB_SMTP_USER"),
+            smtp_password=_env_optional("TB_SMTP_PASSWORD"),
+            smtp_sender=_env_optional("TB_SMTP_SENDER"),
+            smtp_starttls=_env_bool("TB_SMTP_STARTTLS", True),
+            smtp_ssl=_env_bool("TB_SMTP_SSL", False),
         )
 
 
