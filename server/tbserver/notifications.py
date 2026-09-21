@@ -164,7 +164,9 @@ def run_system_email_report(*, test: bool = False) -> dict[str, Any]:
     policy = load_automation_policy()
     recipients = list(policy["email_recipients"])
     if not test and not policy["email_enabled"]:
-        raise NotificationError("EMAIL_REPORTS_DISABLED")
+        return {"sent": False, "skipped": "EMAIL_REPORTS_DISABLED", "test": False}
+    if not test and not recipients:
+        return {"sent": False, "skipped": "EMAIL_RECIPIENTS_EMPTY", "test": False}
     subject, body = _build_report(policy, test=test)
     _send(subject, body, recipients)
     with transaction() as conn, conn.cursor() as cur:

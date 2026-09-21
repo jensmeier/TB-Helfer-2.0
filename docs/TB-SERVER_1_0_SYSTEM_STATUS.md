@@ -101,3 +101,28 @@ Dieser Baustein trennt sauber:
 - produktive NAS-Backup-/Cutover-Abnahme.
 
 Produktiv-NAS und produktive Daten werden durch Status und Backup-Auftragscode nicht verändert. Die tatsächliche Backup-Ausführung schreibt ausschließlich in den konfigurierten `TB_BACKUP_ROOT` und liest Datenbank/Storage. Details: `docs/TB-SERVER_1_0_BACKUP_RESTORE.md`.
+
+## Automatik, E-Mail-Berichte und Audit
+
+Server 1.0 erweitert die bestehende Systemstatus-Seite um die bewährte Bedienlogik des bisherigen Servers, verwendet darunter aber ausschließlich die neue Background-Job-/Backup-Infrastruktur.
+
+Konfigurierbar im Admin:
+- automatische Backupart `DATABASE`, `FILES` oder `FULL` und Uhrzeit;
+- automatische Retention-Prüfung und Uhrzeit;
+- Aufbewahrungstage und Mindestanzahl erfolgreicher Backups je Art;
+- E-Mail-Berichte täglich, wöchentlich oder monatlich;
+- Berichtsuhrzeit, Wochentag/Monatstag und IANA-Zeitzone;
+- Empfängerliste;
+- Warnzeitraum für auslaufende Benutzerzugänge;
+- Speicherwarnschwelle;
+- manueller SMTP-Testbericht.
+
+Der Worker prüft Zeitpläne periodisch. `tb.system_schedule_runs` reserviert pro Zeitfenster einen eindeutigen Slot, damit ein Neustart oder mehrere Worker denselben automatischen Auftrag nicht doppelt erzeugen.
+
+Die Admin-Seite zeigt zusätzlich:
+- bald ablaufende Benutzer;
+- letzte Audit-/Sicherheitsereignisse;
+- SMTP-Status ohne Geheimwerte;
+- letzten E-Mail-Background-Job.
+
+SMTP wird ausschließlich über Umgebungsvariablen/Secrets konfiguriert. Das Passwort wird weder in PostgreSQL noch im HTML, Audit oder Status-Payload ausgegeben.

@@ -85,6 +85,13 @@ Optional:
 - `TB_V1_LOG_LEVEL`
 - `TB_V1_BACKUP_RETENTION_DAYS`
 - `TB_V1_BACKUP_RETENTION_MIN_PER_KIND`
+- `TB_V1_SMTP_HOST`
+- `TB_V1_SMTP_PORT`
+- `TB_V1_SMTP_USER`
+- `TB_V1_SMTP_PASSWORD`
+- `TB_V1_SMTP_SENDER`
+- `TB_V1_SMTP_STARTTLS`
+- `TB_V1_SMTP_SSL`
 - `TZ`
 
 **Keine echten Werte dieser Geheimnisse/Pfade mit Zugangsdaten nach GitHub committen.**
@@ -285,3 +292,9 @@ Ab dem ersten echten produktiven Vermessungsimport sind Originaldateien unverän
 
 `server/checks/49_verify_tb_server_1_restore_compose_overlay_source.py` prüft zusätzlich den optionalen Restore-Staging-Overlay, getrennte Ziel-Datenbanken/-Pfade, externe Restore-Passwörter und die standardmäßig deaktivierte Restore-to-Target-Freigabe.
 
+
+### SMTP für Systemberichte
+
+SMTP wird ausschließlich über die lokale Synology-`.env` bzw. Secret-Verwaltung gesetzt. Insbesondere `TB_V1_SMTP_PASSWORD` darf nie nach GitHub, in Statusdateien, Screenshots oder Logs übernommen werden.
+
+Die Admin-Oberfläche zeigt nur Host/Port/Absender und ob ein Passwort gesetzt ist. Automatische und manuelle Testberichte werden über den Background-Worker versendet.

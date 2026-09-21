@@ -57,6 +57,8 @@ CAPABILITIES: dict[str, bool] = {
     "worksite_invitation_qr_v1": True,
     "worksite_team_transfer_v1": True,
     "admin_system_status_v1": True,
+    "system_automation_v1": True,
+    "system_email_reports_v1": True,
     "background_jobs_v1": True,
     "backup_v1": True,
     "backup_retention_v1": True,

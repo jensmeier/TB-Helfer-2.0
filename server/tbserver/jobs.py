@@ -1,25 +1,32 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import time
 from typing import Any
 from uuid import UUID
 
 from psycopg.types.json import Jsonb
 
+from .automation import schedule_due_automation
 from .backup import run_backup, run_retention
 from .database import transaction
+from .notifications import NotificationError, run_system_email_report
 from .restore import RestoreTestError, run_restore_test
 
 
 MAX_JOB_ATTEMPTS = 5
 STALE_RUNNING_MINUTES = 30
+SCHEDULE_CHECK_SECONDS = 30.0
+logger = logging.getLogger(__name__)
+
 SUPPORTED_JOB_TYPES = {
     "BACKUP_DATABASE",
     "BACKUP_FILES",
     "BACKUP_FULL",
     "BACKUP_RETENTION",
     "RESTORE_TEST",
+    "SYSTEM_EMAIL_REPORT",
 }
 
 
@@ -97,6 +104,12 @@ def _execute(job: dict[str, Any]) -> dict[str, Any]:
         return run_backup("FULL")
     if job_type == "BACKUP_RETENTION":
         return run_retention()
+    if job_type == "SYSTEM_EMAIL_REPORT":
+        test = bool((job.get("payload") or {}).get("test", False))
+        try:
+            return run_system_email_report(test=test)
+        except NotificationError as exc:
+            raise JobError(str(exc)) from exc
     if job_type == "RESTORE_TEST":
         raw_run_id = (job.get("payload") or {}).get("backup_run_id")
         try:
@@ -179,7 +192,15 @@ def run_one() -> bool:
 
 def worker_loop(*, once: bool = False, idle_seconds: float = 2.0) -> None:
     recover_stale_jobs()
+    next_schedule_check = 0.0
     while True:
+        now = time.monotonic()
+        if now >= next_schedule_check:
+            try:
+                schedule_due_automation()
+            except Exception as exc:
+                logger.error("system automation scheduler failed: %s", type(exc).__name__)
+            next_schedule_check = now + SCHEDULE_CHECK_SECONDS
         worked = run_one()
         if once:
             return
