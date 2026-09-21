@@ -4,6 +4,7 @@ import shutil
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
