@@ -122,6 +122,7 @@ Weitere Eigenschaften:
 - Draft-Binary ersetzen/entfernen;
 - Release veröffentlichen;
 - veröffentlichten Release zurückziehen;
+- zurückgezogene/`RETIRED` Releases bleiben aus Nachvollziehbarkeitsgründen erhalten, werden in der normalen Admin-Liste aber standardmäßig als Archiv ausgeblendet und über **Archivierte anzeigen** eingeblendet;
 - bei `DRAFT` den ADMIN-geschützten Binary-Download prüfen; nach Veröffentlichung den öffentlichen Download prüfen.
 
 ## Capabilities
