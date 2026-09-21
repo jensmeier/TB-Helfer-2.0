@@ -165,6 +165,99 @@ object MaengellisteExport {
         return buildString {
             append(header.joinToString(";") { csv(it) }).append('\n')
             items.forEachIndexed { idx, item ->
+                val wert = MangelStatusSpeicher.laden(context, item.key)
+                val fotos: List<MangelFoto?> = if (item.fotos.isEmpty()) listOf(null) else item.fotos.map { it }
+                fotos.forEach { mf ->
+                    val f = mf?.foto
+                    val row = listOf(
+                        (idx + 1).toString().padStart(3, '0'),
+                        statusText(wert.status),
+                        mf?.art?.let { fotoArtText(it) }.orEmpty(),
+                        datumDe(item.datumIso),
+                        item.zeit,
+                        item.baustelle,
+                        item.bereich,
+                        item.km,
+                        item.firma,
+                        item.beschreibung,
+                        f?.notiz?.takeIf { it.isNotBlank() }.orEmpty(),
+                        item.btbBildNr,
+                        f?.dateipfad?.let { File(it).name }.orEmpty(),
+                        f?.let { "%.6f, %.6f".format(Locale.US, it.gpsLat, it.gpsLon) } ?: item.gps,
+                        wert.erledigtAmEpochMs?.let { datumZeit(it) }.orEmpty(),
+                        wert.kommentar,
+                        item.key
+                    )
+                    append(row.joinToString(";") { csv(it) }).append('\n')
+                }
+            }
+        }
+    }
+
+    fun pdfBytes(context: Context, baustelleName: String, items: List<MangelItem>, titelSuffix: String = ""): ByteArray {
+        val doc = PdfDocument()
+        val w = 595
+        val h = 842
+        var pageNo = 1
+        var page = doc.startPage(PdfDocument.PageInfo.Builder(w, h, pageNo).create())
+        var canvas = page.canvas
+        val title = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = 18f; typeface = Typeface.DEFAULT_BOLD }
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = 10.5f }
+        val small = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.DKGRAY; textSize = 7.6f }
+        val gpsLinkPaint = Paint(small).apply {
+            color = Color.parseColor("#1565C0")
+            isUnderlineText = true
+        }
+        val bold = Paint(text).apply { typeface = Typeface.DEFAULT_BOLD }
+        val gpsLinks = mutableListOf<PdfGpsLinkAnnotator.Target>()
+
+        fun header() {
+            val suffix = titelSuffix.takeIf { it.isNotBlank() }?.let { " - $it" }.orEmpty()
+            canvas.drawText("MÄNGELLISTE - ${baustelleName.ifBlank { "Baustelle" }}$suffix", 36f, 42f, title)
+            canvas.drawText("Stand: ${datumZeit(System.currentTimeMillis())}", 36f, 60f, text)
+        }
+        fun newPage() {
+            doc.finishPage(page)
+            pageNo += 1
+            page = doc.startPage(PdfDocument.PageInfo.Builder(w, h, pageNo).create())
+            canvas = page.canvas
+            header()
+        }
+        fun wrapLines(s: String, maxW: Float, paint: Paint): List<String> {
+            val words = s.split(" ").filter { it.isNotBlank() }
+            if (words.isEmpty()) return listOf("")
+            val result = mutableListOf<String>()
+            var line = ""
+            words.forEach { word ->
+                val test = if (line.isBlank()) word else "$line $word"
+                if (paint.measureText(test) > maxW && line.isNotBlank()) {
+                    result.add(line)
+                    line = word
+                } else {
+                    line = test
+                }
+            }
+            if (line.isNotBlank()) result.add(line)
+            return result
+        }
+        fun fieldLines(label: String, value: String, maxW: Float): List<String> = wrapLines("$label$value", maxW, text)
+        fun drawField(label: String, value: String, x: Float, startY: Float, maxW: Float): Float {
+            val lines = fieldLines(label, value, maxW)
+            var cy = startY
+            lines.forEachIndexed { index, line ->
+                if (index == 0 && line.startsWith(label)) {
+                    canvas.drawText(label, x, cy, bold)
+                    canvas.drawText(line.removePrefix(label), x + bold.measureText(label), cy, text)
+                } else {
+                    canvas.drawText(line, x, cy, text)
+                }
+                cy += text.textSize + 3f
+            }
+            return cy
+        }
+        header()
+        var y = 84f
+        items.forEachIndexed { idx, item ->
             val wert = MangelStatusSpeicher.laden(context, item.key)
             val alleFotos = item.fotos.take(18)
             val fotoBloecke: List<List<MangelFoto>> =
@@ -189,9 +282,8 @@ object MaengellisteExport {
             val rightLines = rightInfo.sumOf { fieldLines(it.first, it.second, colW).size }
             val infoH = maxOf(leftLines, rightLines) * (text.textSize + 3f)
 
-            // Android 200059: Beweisfotos im PDF deutlich groesser. Pro Seite maximal
-            // zwei Fotozeilen (6 Bilder), damit trotz groesserer Darstellung nichts
-            // abgeschnitten wird. Weitere Bilder laufen als Fortsetzung auf Folgeseiten.
+            // Android 200059: maximal 6 deutlich groessere Beweisfotos pro PDF-Seite.
+            // Weitere Fotos werden als Fortsetzung desselben Mangels ausgegeben.
             val imgW = 164f
             val imgH = 164f
             val photoGapX = 7.5f
@@ -201,6 +293,7 @@ object MaengellisteExport {
                 val rows = if (fotos.isEmpty()) 0 else ceil(fotos.size / 3.0).toInt()
                 val photosH = if (rows > 0) 18f + rows * photoRowH else 18f
                 val cardH = (44f + infoH + photosH + 20f).coerceAtLeast(160f).coerceAtMost(730f)
+
                 if (y + cardH > h - 36f) {
                     newPage()
                     y = 84f
