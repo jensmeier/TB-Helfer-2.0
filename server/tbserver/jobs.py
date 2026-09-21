@@ -20,6 +20,22 @@ STALE_RUNNING_MINUTES = 30
 SCHEDULE_CHECK_SECONDS = 30.0
 logger = logging.getLogger(__name__)
 
+
+def _set_progress(job_id: UUID, percent: int, text: str) -> None:
+    safe_percent = max(0, min(100, int(percent)))
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE tb.background_jobs
+            SET progress_percent = %s,
+                progress_text = %s,
+                updated_at = now()
+            WHERE id = %s AND status = 'RUNNING'
+            """,
+            (safe_percent, str(text)[:200], job_id),
+        )
+
+
 SUPPORTED_JOB_TYPES = {
     "BACKUP_DATABASE",
     "BACKUP_FILES",
@@ -40,6 +56,8 @@ def recover_stale_jobs() -> int:
             """
             UPDATE tb.background_jobs
             SET status = CASE WHEN attempts >= %s THEN 'FAILED' ELSE 'PENDING' END,
+                progress_percent = CASE WHEN attempts >= %s THEN progress_percent ELSE 0 END,
+                progress_text = CASE WHEN attempts >= %s THEN 'Fehlgeschlagen' ELSE 'Neuer Versuch geplant' END,
                 run_after = CASE
                     WHEN attempts >= %s THEN run_after
                     ELSE now() + interval '1 minute'
@@ -52,6 +70,8 @@ def recover_stale_jobs() -> int:
             RETURNING id
             """,
             (
+                MAX_JOB_ATTEMPTS,
+                MAX_JOB_ATTEMPTS,
                 MAX_JOB_ATTEMPTS,
                 MAX_JOB_ATTEMPTS,
                 MAX_JOB_ATTEMPTS,
@@ -82,12 +102,14 @@ def claim_job() -> dict[str, Any] | None:
             UPDATE tb.background_jobs
             SET status = 'RUNNING',
                 attempts = attempts + 1,
+                progress_percent = 5,
+                progress_text = 'Wird gestartet',
                 last_error = NULL,
                 finished_at = NULL,
                 updated_at = now()
             WHERE id = %s
             RETURNING id, job_type, payload, status, attempts, run_after,
-                      created_at, updated_at
+                      progress_percent, progress_text, created_at, updated_at
             """,
             (candidate["id"],),
         )
@@ -96,18 +118,24 @@ def claim_job() -> dict[str, Any] | None:
 
 def _execute(job: dict[str, Any]) -> dict[str, Any]:
     job_type = str(job["job_type"]).upper()
+    job_id = UUID(str(job["id"]))
+    progress = lambda percent, text: _set_progress(job_id, percent, text)
     if job_type == "BACKUP_DATABASE":
-        return run_backup("DATABASE")
+        return run_backup("DATABASE", progress=progress)
     if job_type == "BACKUP_FILES":
-        return run_backup("FILES")
+        return run_backup("FILES", progress=progress)
     if job_type == "BACKUP_FULL":
-        return run_backup("FULL")
+        return run_backup("FULL", progress=progress)
     if job_type == "BACKUP_RETENTION":
+        progress(35, "Backup-Aufbewahrung wird geprüft")
         return run_retention()
     if job_type == "SYSTEM_EMAIL_REPORT":
         test = bool((job.get("payload") or {}).get("test", False))
+        progress(30, "Systembericht wird erstellt")
         try:
-            return run_system_email_report(test=test)
+            result = run_system_email_report(test=test)
+            progress(90, "E-Mail-Bericht wurde versendet")
+            return result
         except NotificationError as exc:
             raise JobError(str(exc)) from exc
     if job_type == "RESTORE_TEST":
@@ -117,7 +145,7 @@ def _execute(job: dict[str, Any]) -> dict[str, Any]:
         except (TypeError, ValueError) as exc:
             raise JobError("RESTORE_TEST_BACKUP_RUN_ID_INVALID") from exc
         try:
-            return run_restore_test(source_run_id)
+            return run_restore_test(source_run_id, progress=progress)
         except RestoreTestError as exc:
             raise JobError(str(exc)) from exc
     raise JobError("JOB_TYPE_NOT_SUPPORTED")
@@ -139,6 +167,7 @@ def _mark_done(job_id: UUID) -> None:
             """
             UPDATE tb.background_jobs
             SET status = 'DONE', last_error = NULL, finished_at = now(),
+                progress_percent = 100, progress_text = 'Fertig',
                 updated_at = now()
             WHERE id = %s AND status = 'RUNNING'
             """,
@@ -159,6 +188,8 @@ def _mark_failed_or_retry(job: dict[str, Any], exc: Exception) -> None:
             """
             UPDATE tb.background_jobs
             SET status = %s,
+                progress_percent = CASE WHEN %s THEN progress_percent ELSE 0 END,
+                progress_text = CASE WHEN %s THEN 'Fehlgeschlagen' ELSE 'Neuer Versuch geplant' END,
                 run_after = CASE WHEN %s THEN run_after
                                  ELSE now() + (%s * interval '1 minute') END,
                 last_error = %s,
@@ -168,6 +199,8 @@ def _mark_failed_or_retry(job: dict[str, Any], exc: Exception) -> None:
             """,
             (
                 "FAILED" if permanent else "PENDING",
+                permanent,
+                permanent,
                 permanent,
                 backoff_minutes,
                 _safe_error(exc),
@@ -214,9 +247,12 @@ def enqueue_in_tx(cur, job_type: str, payload: dict[str, Any] | None = None) -> 
         raise JobError("JOB_TYPE_NOT_SUPPORTED")
     cur.execute(
         """
-        INSERT INTO tb.background_jobs(job_type, payload, status)
-        VALUES (%s, %s, 'PENDING')
-        RETURNING id, job_type, status, attempts, run_after, created_at
+        INSERT INTO tb.background_jobs(
+            job_type, payload, status, progress_percent, progress_text
+        )
+        VALUES (%s, %s, 'PENDING', 0, 'Wartet')
+        RETURNING id, job_type, status, attempts, run_after,
+                  progress_percent, progress_text, created_at
         """,
         (normalized, Jsonb(payload or {})),
     )
