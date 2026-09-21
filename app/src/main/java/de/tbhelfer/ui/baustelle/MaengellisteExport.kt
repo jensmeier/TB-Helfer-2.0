@@ -264,7 +264,6 @@ object MaengellisteExport {
                 if (alleFotos.isEmpty()) listOf(emptyList()) else alleFotos.chunked(6)
 
             val colW = 238f
-            val gvp = gvpMastText(item)
             val leftInfo = buildList {
                 add("Datum/Zeit: " to "${datumDe(item.datumIso)} ${item.zeit}")
                 add("Baustelle: " to anzeigeBaustelle(item))
@@ -272,7 +271,6 @@ object MaengellisteExport {
                 item.km.takeIf { it.isNotBlank() && it != "-" }?.let {
                     add("Ort / KM / Bereich: " to it)
                 }
-                if (gvp.isNotBlank()) add("GVP/Mast: " to gvp)
                 add("Text: " to item.beschreibung)
             }
             val rightInfo = listOf(
@@ -479,21 +477,37 @@ object MaengellisteExport {
     private fun decodeSampledBitmap(src: File, reqW: Int, reqH: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(src.absolutePath, bounds)
-        var sample = 1
         val h = bounds.outHeight
         val w = bounds.outWidth
+        if (h <= 0 || w <= 0) return null
+
+        var sample = 1
         if (h > reqH || w > reqW) {
-            var halfH = h / 2
-            var halfW = w / 2
+            val halfH = h / 2
+            val halfW = w / 2
             while ((halfH / sample) >= reqH && (halfW / sample) >= reqW) {
                 sample *= 2
             }
         }
+
         val opts = BitmapFactory.Options().apply {
             inSampleSize = sample.coerceAtLeast(1)
             inPreferredConfig = Bitmap.Config.RGB_565
         }
-        return runCatching { BitmapFactory.decodeFile(src.absolutePath, opts) }.getOrNull()
+        val decoded = runCatching { BitmapFactory.decodeFile(src.absolutePath, opts) }.getOrNull() ?: return null
+
+        val scale = minOf(
+            reqW.toFloat() / decoded.width.toFloat().coerceAtLeast(1f),
+            reqH.toFloat() / decoded.height.toFloat().coerceAtLeast(1f),
+            1f
+        )
+        if (scale >= 0.999f) return decoded
+
+        val targetW = (decoded.width * scale).roundToInt().coerceAtLeast(1)
+        val targetH = (decoded.height * scale).roundToInt().coerceAtLeast(1)
+        val scaled = Bitmap.createScaledBitmap(decoded, targetW, targetH, true)
+        if (scaled !== decoded) decoded.recycle()
+        return scaled
     }
 
     private fun drawBitmapFit(canvas: android.graphics.Canvas, bmp: Bitmap, box: RectF) {
