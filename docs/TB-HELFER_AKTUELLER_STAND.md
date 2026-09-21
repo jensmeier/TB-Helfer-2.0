@@ -13,6 +13,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - PR-Basis: `feature/admin-offline-sync`
 - Funktionscommit globaler Katalog + Benutzeridentität: **`511bb5c00552b5a7e54d35d930ea982cf4629598`**
 - Server-Automatik/E-Mail/Audit-Quellblock: **`dd0bf1c6b5640951e74494969b5032a5ada86e1d`** (Migration 012; danach nur Doku/Statuspflege)
+- Restore-Test-/DRAFT-Download-Laufzeitfixes vom 21.09.2026: **`e58d9fca9840…`** (UUID-Pathparameter) + **`4c20bde651f0…`/`946a62501610…`** (ADMIN-Draft-Binary-Prüfung); dazu Source-Checks 42/40/87 nachgezogen.
 - GitHub Actions für diesen Funktionscommit liefern weiterhin **keinen Testnachweis**: Android-Run `35524333713`, Server-PR-Run `35524333722` und Server-Push-Run `35524332208` endeten ohne zugewiesenen Runner (`runner_id=0`, `runner_name=""`, `steps=[]`). Das bleibt Infrastrukturproblem PRB-002 und ist kein belegter Fach-/Compilefehler.
 - Android Testclient: **200054 / 1.3.4 ist auf Pixel + Poco installiert und bestätigt**. Der neue Quellstand **200055 / 1.3.5** für globalen Katalog und Benutzerprofil ist vorbereitet, aber noch nicht gebaut/installiert; 200054 bleibt bis zum praktischen Test die bestätigte Gerätebasis.
 
@@ -73,9 +74,23 @@ Stand **21.09.2026**:
 - Auf Synology-Staging wurde über den vorhandenen Systemstatus-/Background-Job-Pfad ein **FULL-Backup** erfolgreich ausgeführt.
 - Der Benutzer hat diesen Schritt ausdrücklich als **funktionierend** bestätigt.
 - Dieser bestätigte FULL-Backup-Pfad bleibt geschützt und wird nicht ohne reproduzierbaren Fehler oder ausdrücklichen Änderungswunsch umgebaut.
-- **Noch offen:** getrennten Restore-Test genau dieses Backups ausführen; danach Retention und Restore-to-Target praktisch abnehmen.
+- Erster praktischer Restore-Test-Versuch: Restore-Test-DB/Restore-Target-DB/Worker wurden erfolgreich als getrennte Container gestartet; der HTTP-Aufruf scheiterte jedoch noch vor Job-Erstellung mit FastAPI/Pydantic-ForwardRef `UUID` (fehlender Import in `system_admin.py`). Quellfix ist committed, **Deployment + Wiederholung E2E offen**.
+- **Noch offen:** aktuellen Server-Fix deployen und getrennten Restore-Test genau dieses Backups erneut ausführen; danach Retention und Restore-to-Target praktisch abnehmen.
 - Migration 011 wurde zu diesem Zeitpunkt **noch nicht** auf Staging ausgeführt.
 
+## Laufzeitbefunde 21.09.2026 – Restore-Test und Release-Draft-Prüfung
+
+- Restore-Infrastruktur auf Synology ist angelegt: getrennte `restore-test-db`, `restore-target-db` und Worker laufen; Live-API und Live-DB blieben dabei erreichbar.
+- Beim Klick auf `Restore-Test` lieferte die API HTTP 500. Ursache reproduziert: `system_admin.py` verwendete `backup_run_id: UUID`, importierte `UUID` aber nicht. Durch `from __future__ import annotations` blieb ein nicht auflösbarer ForwardRef für FastAPI/Pydantic. Quellfix `e58d9fca9840…`: `from uuid import UUID`; Source-Check 42 schützt den Import jetzt.
+- Ein Restore-Job wurde bei diesem Fehlversuch **nicht** eingereiht. Das FULL-Backup selbst wurde dadurch weder verändert noch als fehlerhaft nachgewiesen.
+- Release 1.3.6 / Build 200056 ist im Admin aktuell ein **DRAFT**. Android 1.3.4 zeigt deshalb korrekt „aktuell“: DRAFT-Releases dürfen nicht über den öffentlichen Kompatibilitätsvertrag angeboten werden.
+- Der Admin-Button `Download prüfen` eines DRAFTs zeigte jedoch auf den öffentlichen Downloadvertrag und erhielt deshalb korrekt `RELEASE_NOT_FOUND`. Quellfix: eigener ADMIN-geschützter GET-Binary-Pfad für DRAFT-Prüfung; öffentlicher Download bleibt unverändert auf `PUBLISHED` beschränkt.
+
+Nächster Laufzeitschritt:
+1. nur die kleinen Serverfixes auf Synology ausrollen/API+Worker neu starten, noch **keine** Migration 011/012 erzwingen;
+2. dasselbe bestätigte FULL-Backup erneut per Restore-Test starten und Jobstatus bis `DONE`/Restore-Lauf `OK` prüfen;
+3. DRAFT 1.3.6 im Admin über `Download prüfen` verifizieren; Android darf es weiterhin nicht als Update sehen, solange nicht veröffentlicht;
+4. erst danach mit dem geplanten Deployment 011+012 fortfahren.
 ## Server 1.0 – Backup-Automatik, E-Mail-Berichte und Audit
 
 Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Dieser Block wurde noch nicht auf Synology-Staging ausgerollt. Der praktisch bestätigte FULL-Backup-Pfad wurde nicht ersetzt oder umgebaut.
@@ -1120,22 +1135,27 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
 
 
-## Android 1.3.6 / 200056 – Foto-/BTB-Text, Windows-Export und lokaler Buildfehler
+## Android 1.3.7 / 200057 – bearbeitbare Mängelliste und Foto-Ortsdaten
 
 Stand **21.09.2026**:
 - Android-Arbeitsbranch: `feature/tb-android-2.0`; Draft-PR **#7**.
-- Zielversion: **1.3.6 / versionCode 200056**; installierter bestätigter Gerätebestand bleibt **1.3.4 / 200054**.
-- Fotoerfassung trennt Kurzbeschreibung (max. 80 Zeichen) und Langtext / BTB-Text; freie Info1–Info3-Eingaben sind aus der normalen Fotomaske entfernt, Altwerte bleiben kompatibel erhalten.
-- Gesamt-Bilderliste und BTB-/Schicht-Bilderlisten sind als XLSX vorbereitet; Export-Bilddateinamen wurden für Windows-Pfade deutlich verkürzt.
-- Lokaler Android-Studio-Build vom Benutzer zeigte in `SyncOfflineDialogs.kt` Zeile 198 einen echten Kotlin-Syntaxfehler: `items.map((:objectLabel)` statt Funktionsreferenz `items.map(::objectLabel)`.
-- Ursache im kanonischen Android-Quellfile reproduziert und auf dem Android-Branch mit Commit `70f973de032c8ad3e6a7e1661fdbda78cb772d04` korrigiert. Die generierte Datei unter `app/build/generated/...` darf nicht direkt editiert werden.
-- Zweiter lokaler Buildlauf zeigte danach in der generierten `FotoErfassenFragment.kt` die Folgefehler `Unresolved reference 'normalizeOptionalValue'` (2×) sowie eine daraus folgende Typinferenz-Meldung. Ursache: Beim Entfernen des freien Optional-Blocks wurde die Hilfsfunktion entfernt, GVP/Mast und AP/KOR nutzten sie im Speicherpfad aber noch. Im kanonischen Source korrigiert: beide festen Fachwerte werden direkt getrimmt/normalisiert und `alleOptionalValues` ist explizit als `List<String?>` typisiert. Fix-Commit: `45ef2d774ffb56c08a6e69163c7d72a1539f9749`.
-- GitHub Actions Run **35576320371** startet weiterhin keinen Runner-Step (`steps=[]`) und ist deshalb **kein Buildnachweis**.
-- Wichtig für den lokalen Build: Android 200056 liegt auf `feature/tb-android-2.0`. `feature/tb-server-1.0` enthält weiterhin den Server-Arbeitsstand und Android 1.3.5 / 200055.
-- Server-HEAD bei dieser Prüfung: `445afd3a01b51e5750bbba6fa8daca22f1da954a`; keine Android-API-Ersatzlösung gebaut.
+- Zielversion: **1.3.7 / versionCode 200057**. Der zuvor lokal erfolgreich gebaute Stand **1.3.6 / 200056** bleibt als Buildnachweis für den Vorgängerstand erhalten; **200057 ist noch nicht gebaut/installiert**.
+- Mängel können in der App über **Bearbeiten** bei nicht endgültig erledigten Vorgängen hinsichtlich Baustelle/Unterbaustelle-Anzeige, KM, Firma, Beschreibung und Kommentar korrigiert werden. Die Korrekturen werden im bestehenden Mangel-Payload mitgeführt; es wurde kein paralleler Mängelspeicher oder Server-Fallback eingeführt.
+- Im Mängel-PDF heißt das bisherige Feld `Bereich` nun **Baustelle** und zeigt die vorhandene Haupt-/Unterbaustellenbezeichnung. Die allgemeine GPS-Zeile im Mangelkopf ist entfernt.
+- Wenn vorhanden, wird **GVP/Mast** aus dem bestehenden Foto-Fachfeld ergänzt.
+- Unter jedem Mangel-Foto stehen Foto-KM und GPS; die Android-Mängelliste zeigt größere Vorschaubilder und öffnet beim Antippen der GPS-Zeile Google Maps, mit Browser-Fallback.
+- Der bestehende Android-`PdfDocument`-Export zeigt die GPS-Koordinaten unter den Fotos. Ein echter PDF-Link-Annotation-Pfad wurde nicht neu eingeführt; die sichere Google-Maps-Aktion ist aktuell in der Android-Oberfläche umgesetzt.
+- Kommentar kann über **Bearbeiten** gepflegt werden; bei `Erledigt` wird der vorhandene Kommentar vorbefüllt. Die bestehende Fachregel, dass ein erledigter Mangel nicht wieder geöffnet wird, bleibt erhalten.
+- Server-Vertrag geprüft: der aktuelle Server-1.0-Vertrag unterstützt Mangel-`PATCH` inklusive `payload`; für diese Android-Änderung ist **keine Server-API-Änderung nötig**.
+- Server-HEAD bei Abschluss dieses Android-Blocks: `d5e27763124f8d4b8fe123ea2197c2aad54078d3`. Seit dem zuvor geprüften Mangelvertrag kamen nur Server-/Doku-/Release-/Restore-Checks hinzu, keine inkompatible Mängel-API-Änderung.
+- Source-Checks für Version, Edit-UI, Google-Maps-Sprung, PDF-Feldnamen, Foto-KM/GPS/GVP, Override-Persistenz und Sync-Payload sind bestanden. GitHub Actions liefern weiterhin keinen Runner-Testnachweis.
 
-- Lokaler Android-Studio-Build nach den beiden Compile-Fixes am 21.09.2026 vom Benutzer erfolgreich ausgeführt: `BUILD SUCCESSFUL`; `:app:assembleDebug` erfolgreich. Damit ist **BUILD ERFOLGREICH** für Android **1.3.6 / 200056** praktisch belegt.
-- Die Gradle-Meldung zur Configuration-Cache-Verträglichkeit von `verifyRoomGeneratedImplementation` ist aktuell eine nicht-blockierende Warnung; sie hat den Build nicht verhindert und wird nicht mit diesem Release auf Verdacht umgebaut.
-- Der aktuelle Server-HEAD `445afd3a01b51e5750bbba6fa8daca22f1da954a` ändert gegenüber der bereits synchronisierten Serverbasis nur `projektstatus/TB-HELFER_STATUS.xlsx`; kein neuer API-Vertrag ist für 200056 hinzugekommen.
+Betroffene Android-Dateien:
+- `app/src/main/java/de/tbhelfer/ui/baustelle/MaengellisteFragment.kt`
+- `app/src/main/java/de/tbhelfer/ui/baustelle/MaengellisteExport.kt`
+- `app/src/main/java/de/tbhelfer/ui/baustelle/MangelStatusSpeicher.kt`
+- `app/src/main/java/de/tbhelfer/datenbank/CollabLocalBridge.kt`
+- `app/build.gradle.kts`
+- `releases/TB-Helfer_1.3.7_200057.md`
 
-Teststatus: **QUELLSTAND KORRIGIERT / BUILD ERFOLGREICH / APK LOKAL ERZEUGBAR / INSTALLATION + PIXEL/POCO E2E OFFEN**.
+Teststatus: **QUELLSTAND FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200057 OFFEN / INSTALLATION OFFEN / PIXEL+POCO E2E OFFEN**.
