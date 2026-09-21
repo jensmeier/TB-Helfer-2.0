@@ -75,28 +75,28 @@ Stand **21.09.2026**:
 - Der Benutzer hat diesen Schritt ausdrücklich als **funktionierend** bestätigt.
 - Dieser bestätigte FULL-Backup-Pfad bleibt geschützt und wird nicht ohne reproduzierbaren Fehler oder ausdrücklichen Änderungswunsch umgebaut.
 - Der frühere HTTP-500-/UUID-Fehler ist praktisch überwunden: Restore-Test-Jobs werden inzwischen eingereiht und vom Worker verarbeitet.
-- Aktueller reproduzierter Restore-Fehler: `tb.background_jobs.last_error = TB_RESTORE_TEST_DB_NAME_MISSING`. Im laufenden Worker ergab `env | grep '^TB_RESTORE' | sort` keine Ausgabe; die Restore-Umgebungsvariablen gingen bei einer Worker-Neuerstellung über die normale Synology-`compose.yml` verloren.
-- Quellfix: `server/docker-compose.synology-staging.v1.yml` enthält die Restore-Test-/Restore-Target-Variablen jetzt dauerhaft im Worker sowie den Restore-Target-Storage-Mount. Source-Check 82 schützt diesen Deploymentvertrag. Die getrennten Restore-DB-Dienste bleiben weiterhin im optionalen Restore-Overlay.
-- **Noch offen:** aktualisierte Staging-`compose.yml` auf Synology übernehmen, Worker neu erstellen, Restore-Umgebung im Worker prüfen und denselben bestätigten FULL-Backup-Lauf erneut testen; danach Retention und Restore-to-Target praktisch abnehmen.
+- Der zwischenzeitliche Worker-Environment-Fehler `TB_RESTORE_TEST_DB_NAME_MISSING` wurde reproduziert und behoben: die Restore-Test-/Restore-Target-Variablen sind dauerhaft im Synology-Staging-Worker hinterlegt; Source-Check 82 schützt den Deploymentvertrag.
+- **Restore-Test am 21.09.2026 praktisch BESTÄTIGT:** derselbe getrennte Restore-Test wurde nach der Worker-Neuerstellung erfolgreich ausgeführt. Background Job `RESTORE_TEST` steht auf `DONE`, der zugehörige Backup-Lauf `RESTORE_TEST` auf `OK`. Die laufende Live-Datenbank wurde dabei nicht verändert.
+- Damit sind FULL-Backup und getrennte Restore-Test-Wiederherstellung praktisch bestätigt. **Noch offen:** Retention praktisch abnehmen und Restore-to-Target gegen das getrennte Ziel prüfen; danach Migrationen 011 + 012 kontrolliert ausrollen.
 - Migration 011 wurde zu diesem Zeitpunkt **noch nicht** auf Staging ausgeführt.
 
 ## Laufzeitbefunde 21.09.2026 – Restore-Test und Release-Draft-Prüfung
 
 - Restore-Infrastruktur auf Synology ist angelegt: getrennte `restore-test-db`, `restore-target-db` und Worker laufen; Live-API und Live-DB blieben dabei erreichbar.
 - Der frühere Klickfehler `UUID` ist behoben: Restore-Test-Jobs werden inzwischen erfolgreich erstellt.
-- Die aktuellen Restore-Test-Jobs liefen bis Versuch 5 und endeten `FAILED`. Direkt aus `tb.background_jobs.last_error` gelesen: `TB_RESTORE_TEST_DB_NAME_MISSING`.
-- Diagnose im laufenden Worker: `env | grep '^TB_RESTORE' | sort` liefert keine Einträge. Damit ist die Ursache ein Deployment-/Container-Environment-Verlust und kein Defekt des FULL-Backups.
-- Quellfix `1dcfc4586592…`: Restore-Test-/Restore-Target-Variablen werden im Synology-Staging-Worker dauerhaft mitgeführt; `bbee4d4de82f…` erweitert den Source-Check. Restore-Datenbanken bleiben weiterhin getrennte Dienste.
+- Die früheren Restore-Test-Fehler `TB_RESTORE_TEST_DB_NAME_MISSING` waren ein Deployment-/Container-Environment-Problem. Quellfix `1dcfc4586592…` führt die Restore-Test-/Restore-Target-Variablen dauerhaft im Synology-Staging-Worker; `bbee4d4de82f…` schützt dies per Source-Check.
+- Nach Übernahme der aktualisierten `compose.yml` und Neuerstellung ausschließlich des Workers waren die `TB_RESTORE_*`-Variablen praktisch vorhanden.
+- **Abschluss 21.09.2026:** neuer Restore-Test-Job lief mit Versuch 1 auf `DONE`; der korrespondierende Restore-Test-Lauf steht auf `OK`. Damit ist der getrennte Restore-Test des bestätigten FULL-Backups praktisch bestanden.
 - Release 1.3.6 / Build 200056 ist im Admin aktuell ein **DRAFT**. Android 1.3.4 zeigt deshalb korrekt „aktuell“: DRAFT-Releases dürfen nicht über den öffentlichen Kompatibilitätsvertrag angeboten werden.
 - Der Admin-Button `Download prüfen` eines DRAFTs zeigte jedoch auf den öffentlichen Downloadvertrag und erhielt deshalb korrekt `RELEASE_NOT_FOUND`. Quellfix: eigener ADMIN-geschützter GET-Binary-Pfad für DRAFT-Prüfung; öffentlicher Download bleibt unverändert auf `PUBLISHED` beschränkt.
 - **Updateweg nach Veröffentlichung am 21.09.2026 erneut praktisch bestätigt:** Admin-Binary-Download funktioniert, veröffentlichter Release wird vom Handy erkannt und installiert; danach blieben Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten erhalten. Der bestehende Updatevertrag bleibt damit geschützt.
 
 Nächster Laufzeitschritt:
-1. aktuelle `server/docker-compose.synology-staging.v1.yml` als Synology-`compose.yml` übernehmen;
-2. nur den Worker neu erstellen und prüfen, dass `TB_RESTORE_TEST_DB_NAME` sowie die übrigen `TB_RESTORE_*`-Variablen vorhanden sind;
-3. dasselbe bestätigte FULL-Backup erneut per Restore-Test starten und Jobstatus bis `DONE`/Restore-Lauf `OK` prüfen;
-4. Release-/App-Updateweg ist erneut praktisch bestätigt; hier keine weitere Änderung ohne reproduzierbaren Fehler;
-5. erst danach mit dem geplanten Deployment 011+012 fortfahren.
+1. Backup-Retention praktisch prüfen und bestätigen;
+2. Restore-to-Target ausschließlich gegen die bereits getrennte Target-DB/Target-Ablage praktisch durchführen und prüfen;
+3. den bestätigten FULL-/Restore-Test-Pfad danach nicht weiter verändern;
+4. anschließend Migrationen 011 + 012 kontrolliert auf Synology-Staging ausrollen und `/health/ready` auf 12/12 prüfen;
+5. danach System-Automatik/SMTP sowie Katalog-/Profil-E2E fortsetzen.
 ## Server 1.0 – Backup-Automatik, E-Mail-Berichte und Audit
 
 Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Dieser Block wurde noch nicht auf Synology-Staging ausgerollt. Der praktisch bestätigte FULL-Backup-Pfad wurde nicht ersetzt oder umgebaut.
@@ -128,11 +128,11 @@ Tests:
 - Migration 012, automatische Jobs und echter SMTP-Versand auf Synology: **E2E OFFEN**.
 
 Sicherer nächster Ablauf:
-1. zuerst den bereits bestätigten FULL-Backup-Lauf per getrenntem Restore-Test verifizieren;
-2. danach aktuellen Serverbranch deployen und Migrationen **011 + 012** anwenden; `/health/ready` muss dann migrations=ok / 12 von 12 melden;
-3. Systemstatus öffnen, Automatikwerte speichern, SMTP-Secret ausschließlich auf Synology setzen und Testbericht versenden;
-4. einen automatischen Testslot für Backup/Retention praktisch prüfen;
-5. erst danach Katalog-/Profil-E2E und Android 200055 fortsetzen.
+1. FULL-Backup und getrennter Restore-Test sind praktisch bestätigt; diese Pfade jetzt schützen.
+2. Retention und Restore-to-Target als verbleibende Backup-/Recovery-Abnahme praktisch prüfen.
+3. Danach aktuellen Serverbranch deployen und Migrationen **011 + 012** anwenden; `/health/ready` muss dann migrations=ok / 12 von 12 melden.
+4. Systemstatus öffnen, Automatikwerte speichern, SMTP-Secret ausschließlich auf Synology setzen und Testbericht versenden.
+5. Einen automatischen Backup-/Retention-Slot praktisch prüfen und danach Katalog-/Profil-E2E fortsetzen.
 
 ## Server 1.0 + Android 200055 – globaler Katalog und Benutzeridentität
 
