@@ -204,7 +204,12 @@ object MaengellisteExport {
         val title = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = 18f; typeface = Typeface.DEFAULT_BOLD }
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = 10.5f }
         val small = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.DKGRAY; textSize = 7.6f }
+        val gpsLinkPaint = Paint(small).apply {
+            color = Color.parseColor("#1565C0")
+            isUnderlineText = true
+        }
         val bold = Paint(text).apply { typeface = Typeface.DEFAULT_BOLD }
+        val gpsLinks = mutableListOf<PdfGpsLinkAnnotator.Target>()
 
         fun header() {
             val suffix = titelSuffix.takeIf { it.isNotBlank() }?.let { " - $it" }.orEmpty()
@@ -327,7 +332,20 @@ object MaengellisteExport {
                 ).joinToString(" · ")
                 if (kmGvp.isNotBlank()) canvas.drawText(kmGvp, fx, fy + imgH + 20f, small)
                 val gpsText = fotoGpsText(mf.foto)
-                if (gpsText.isNotBlank()) canvas.drawText("GPS: $gpsText", fx, fy + imgH + 30f, small)
+                if (gpsText.isNotBlank()) {
+                    val gpsLabel = "GPS: $gpsText"
+                    val gpsBaseline = fy + imgH + 30f
+                    canvas.drawText(gpsLabel, fx, gpsBaseline, gpsLinkPaint)
+                    gpsLinks += PdfGpsLinkAnnotator.Target(
+                        pageIndex = pageNo - 1,
+                        x = fx,
+                        top = gpsBaseline - gpsLinkPaint.textSize - 2f,
+                        width = gpsLinkPaint.measureText(gpsLabel),
+                        height = gpsLinkPaint.textSize + 5f,
+                        lat = mf.foto.gpsLat,
+                        lon = mf.foto.gpsLon
+                    )
+                }
                 val kommentar = mf.foto.notiz?.trim()?.takeIf { it.isNotBlank() } ?: mf.foto.kurztext.trim()
                 wrapLines(kommentar, imgW, small).take(2).forEachIndexed { lineIdx, line ->
                     canvas.drawText(line, fx, fy + imgH + 40f + lineIdx * 9f, small)
@@ -345,7 +363,8 @@ object MaengellisteExport {
         val out = ByteArrayOutputStream()
         doc.writeTo(out)
         doc.close()
-        return out.toByteArray()
+        val rawPdf = out.toByteArray()
+        return PdfGpsLinkAnnotator.addGoogleMapsLinks(context, rawPdf, gpsLinks)
     }
 
     fun statusText(status: MangelStatusSpeicher.Status): String = when (status) {
