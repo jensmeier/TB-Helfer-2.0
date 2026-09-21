@@ -25,6 +25,7 @@ def main() -> None:
 
     assertions = [
         ('@router.get("/releases/{release_id}/download")', releases),
+        ('@router.get("/admin/releases/{release_id}/binary")', releases),
         ('@router.put("/admin/releases/{release_id}/binary")', releases),
         ('@router.delete("/admin/releases/{release_id}/binary"', releases),
         ('request.stream()', releases),
@@ -77,12 +78,21 @@ def main() -> None:
             "Oeffentliche Release-Metadaten duerfen Storage-Key/SHA nicht leaken"
         )
 
-    download_block = releases[
+    public_download_block = releases[
         releases.index("def download_release_binary"):
+        releases.index("def admin_download_release_binary")
+    ]
+    if 'row["status"] != "PUBLISHED"' not in public_download_block:
+        raise SystemExit("Oeffentlicher Release-Binaerdownload muss auf PUBLISHED begrenzt sein")
+
+    admin_download_block = releases[
+        releases.index("def admin_download_release_binary"):
         releases.index("def admin_upload_release_binary")
     ]
-    if 'row["status"] != "PUBLISHED"' not in download_block:
-        raise SystemExit("Release-Binaerdownload muss auf PUBLISHED begrenzt sein")
+    if "Depends(require_admin)" not in admin_download_block:
+        raise SystemExit("Draft-Binaerpruefung muss Admin-Authentisierung verlangen")
+    if 'row["status"] != "PUBLISHED"' in admin_download_block:
+        raise SystemExit("Admin-Draft-Binaerpruefung darf DRAFT nicht ausschliessen")
 
     print("OK: TB-Server 1.0 release binary upload/download contract")
 
