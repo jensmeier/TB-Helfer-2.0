@@ -13,6 +13,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - PR-Basis: `feature/admin-offline-sync`
 - Funktionscommit globaler Katalog + Benutzeridentität: **`511bb5c00552b5a7e54d35d930ea982cf4629598`**
 - Server-Automatik/E-Mail/Audit-Quellblock: **`dd0bf1c6b5640951e74494969b5032a5ada86e1d`** (Migration 012; danach nur Doku/Statuspflege)
+- Systemstatus kompakt/live + Job-Fortschritt: Migration **013** ergänzt `progress_percent`/`progress_text`; Worker, Backup-/Restore-Test, Admin-Systemstatus und Release-Archivansicht wurden auf den neuen Bedienvertrag erweitert. Quellblock ab `8cdfe781…` bis `91b673b6…`; **DEPLOY + E2E OFFEN**.
 - Restore-Test-/DRAFT-Download-Laufzeitfixes vom 21.09.2026: **`e58d9fca9840…`** (UUID-Pathparameter) + **`4c20bde651f0…`/`946a62501610…`** (ADMIN-Draft-Binary-Prüfung); dazu Source-Checks 42/40/87 nachgezogen.
 - GitHub Actions für diesen Funktionscommit liefern weiterhin **keinen Testnachweis**: Android-Run `35524333713`, Server-PR-Run `35524333722` und Server-Push-Run `35524332208` endeten ohne zugewiesenen Runner (`runner_id=0`, `runner_name=""`, `steps=[]`). Das bleibt Infrastrukturproblem PRB-002 und ist kein belegter Fach-/Compilefehler.
 - Android-Updateweg: der bereits bestätigte Server-Updatepfad wurde am **21.09.2026 erneut praktisch bestätigt**. Ein neu veröffentlichter Android-Release wurde vom Handy gefunden und installiert; Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten blieben erhalten. Der konkrete installierte Zielbuild wurde in dieser Bestätigung nicht nochmals separat genannt. Der aktuelle Android-Quellbranch steht auf **1.3.7 / 200057**.
@@ -102,10 +103,42 @@ Stand **21.09.2026**:
 
 Nächster Laufzeitschritt:
 1. bestätigte FULL-/Restore-Test-/Retention-/Restore-to-Target-Pfade nicht weiter verändern;
-2. Migrationen **011 + 012** kontrolliert auf Synology-Staging ausrollen;
-3. anschließend `/health/ready` prüfen: migrations=ok / **12 von 12**;
+2. Migrationen **011 + 012 + 013** kontrolliert auf Synology-Staging ausrollen;
+3. anschließend `/health/ready` prüfen: migrations=ok / **13 von 13**;
 4. danach System-Automatik/SMTP praktisch prüfen;
 5. anschließend Katalog-/Profil-E2E und den gemeinsamen Pixel/Poco-Server-1.0-E2E fortsetzen.
+## Server 1.0 – kompakter Systemstatus / Live-Jobs / Release-Archiv
+
+Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Die bestehende, praktisch bestätigte Backup-/Recovery-Logik wurde nicht ersetzt; ergänzt wurden Fortschritts-/Anzeige- und Administrationsfunktionen.
+
+Umgesetzt:
+- Migration `013_job_progress.sql` ergänzt `tb.background_jobs.progress_percent` und `progress_text`;
+- der Worker schreibt echte Arbeitsschritte für DATABASE/FILES/FULL-Backup, Restore-Test, Retention und Systembericht; `DONE` wird im Admin als **Fertig**, `RUNNING` als **Läuft**, `PENDING` als **Wartet**, `FAILED` als **Fehlgeschlagen** dargestellt;
+- laufende Vorgänge zeigen Prozentbalken und aktuellen Arbeitsschritt; Systemstatus pollt während aktiver Vorgänge schneller und im Leerlauf langsamer;
+- rohe interne `last_error`-Texte bleiben serverseitig; die Oberfläche erhält nur sichere deutsche Fehlerbeschreibungen;
+- fertige/fehlgeschlagene Background-Job-Einträge können einzeln oder gesammelt aus dem Job-Verlauf entfernt werden; wartende/laufende Jobs sind serverseitig vor Löschung geschützt;
+- Warnungen können quittiert werden, ohne Audit- oder Messdaten zu löschen; neue Fehler werden wieder sichtbar;
+- Backups, Vorgänge und Audit-Nachweis sind kompakt zusammengeführt; Automatik/E-Mail, Firmen und bald ablaufende Nutzer sind einklappbar;
+- `RETIRED` Releases bleiben als nachvollziehbare Update-Historie erhalten, werden aber standardmäßig als Archiv ausgeblendet und über **Archivierte anzeigen** eingeblendet; Drafts bleiben vollständig löschbar.
+
+Schutzregeln:
+- Audit wird durch Aufräumen niemals gelöscht;
+- bestätigte FULL-/Restore-Test-/Retention-/Restore-to-Target-Pfade bleiben unverändert;
+- veröffentlichte/zurückgezogene Releases werden nicht hart gelöscht;
+- keine Secrets oder rohen internen Jobfehler werden im Browser ausgegeben.
+
+Quellprüfung:
+- die neuen/angepassten Marker für Progress, sichere Job-Löschung, Warnungsquittierung, Live-UI und Release-Archiv wurden direkt gegen den aktuellen GitHub-Inhalt geprüft: **25/25 erfüllt**;
+- der neue Source-Check `91_verify_system_status_live_ui_source.py` sowie Checks 39/41/42/90 wurden auf den neuen Vertrag angepasst;
+- GitHub Actions auf dem aktuellen Quellstand liefern weiterhin **keinen belastbaren Testnachweis**, weil die Jobs ohne Runner-Steps enden; **Synology-E2E bleibt offen**.
+
+Nächster Schritt dieses Blocks:
+1. Serverquellstand inkl. Migrationen **011, 012 und 013** kontrolliert auf Synology-Staging übernehmen;
+2. Migrationen anwenden und `/health/ready` auf **13/13** prüfen;
+3. Systemstatus praktisch prüfen: Live-Prozent bei einem Backup, deutsche Status-/Fehlertexte, Job-Verlauf löschen/quittieren, kompakte Bereiche;
+4. App-Versionen prüfen: zurückgezogene Releases standardmäßig verborgen, über **Archivierte anzeigen** sichtbar;
+5. anschließend SMTP/Automatik und Katalog-/Profil-E2E fortsetzen.
+
 ## Server 1.0 – Backup-Automatik, E-Mail-Berichte und Audit
 
 Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Dieser Block wurde noch nicht auf Synology-Staging ausgerollt. Der praktisch bestätigte FULL-Backup-Pfad wurde nicht ersetzt oder umgebaut.
@@ -120,7 +153,7 @@ Umgesetzt:
 - SMTP-Host/Port/User/Absender/TLS/SSL kommen aus Server-Environment; das Passwort bleibt ausschließlich `.env`/Secret;
 - Systemstatus zeigt bald ablaufende Nutzer, konfigurierbare Speicherwarnschwelle und die letzten Audit-/Sicherheitsereignisse;
 - neue Capabilities `system_automation_v1` und `system_email_reports_v1`;
-- CI-Vertrag erwartet auf frischer Testdatenbank nun Migration 012 und prüft zusätzlich die Migration-011-Katalogtabellen sowie Source-Check 90.
+- Der CI-Vertrag erwartet auf frischer Testdatenbank nun den Gesamtstand bis Migration 013; Migration 012 bleibt der Automatik-/Zeitplan-Baustein, Migration 013 ergänzt ausschließlich den Job-Fortschritt. Zusätzlich werden die Migration-011-Katalogtabellen sowie Source-Checks 90 und 91 geprüft.
 
 Betroffene Kern-Dateien:
 - `server/v1_migrations/012_system_automation.sql`;
@@ -138,7 +171,7 @@ Tests:
 
 Sicherer nächster Ablauf:
 1. FULL-Backup, Restore-Test, Retention und Restore-to-Target sind praktisch bestätigt; Recovery ist abgeschlossen und geschützt.
-2. Aktuellen Serverbranch deployen und Migrationen **011 + 012** anwenden; `/health/ready` muss migrations=ok / 12 von 12 melden.
+2. Aktuellen Serverbranch deployen und Migrationen **011 + 012 + 013** anwenden; `/health/ready` muss migrations=ok / 13 von 13 melden.
 3. Systemstatus öffnen, Automatikwerte speichern, SMTP-Secret ausschließlich auf Synology setzen und Testbericht versenden.
 4. Einen automatischen Backup-/Retention-Slot praktisch prüfen.
 5. Danach Katalog-/Profil-E2E und Pixel/Poco-Server-1.0-E2E fortsetzen.
@@ -180,9 +213,9 @@ Tests dieses Quellblocks:
 - echte API-/Pixel-/Poco-E2E-Prüfung: **OFFEN**.
 
 Nächster praktischer Schritt:
-1. Zuerst getrennten Restore-Test des am 21.09.2026 bestätigten FULL-Backups abschließen.
-2. Danach Branch auf Synology deployen und Migrationen 011 + 012 ausführen; `/health/ready` muss danach migrations=ok und 12/12 melden.
-3. Server-Automatik/SMTP-Test sowie Admin-Neuanlage + Portal-Erstaktivierung + Profil/Verzeichnis mit Testbenutzern prüfen.
+1. Backup-/Recovery-Abnahme ist vollständig bestätigt; diesen Pfad nicht weiter verändern.
+2. Branch auf Synology deployen und Migrationen 011 + 012 + 013 ausführen; `/health/ready` muss danach migrations=ok und 13/13 melden.
+3. Kompakten Systemstatus/Live-Job-Fortschritt sowie Server-Automatik/SMTP-Test und Admin-Neuanlage + Portal-Erstaktivierung + Profil/Verzeichnis mit Testbenutzern prüfen.
 4. Android 1.3.5 / 200055 bauen/installieren.
 5. Auf Pixel/Poco denselben globalen Eintrag ergänzen/korrigieren (z. B. `Gleis 28`) und Historie/Versionskonflikt prüfen.
 6. Danach erst Status auf BESTÄTIGT/ERLEDIGT setzen.
