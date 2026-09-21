@@ -77,7 +77,9 @@ Stand **21.09.2026**:
 - Der frühere HTTP-500-/UUID-Fehler ist praktisch überwunden: Restore-Test-Jobs werden inzwischen eingereiht und vom Worker verarbeitet.
 - Der zwischenzeitliche Worker-Environment-Fehler `TB_RESTORE_TEST_DB_NAME_MISSING` wurde reproduziert und behoben: die Restore-Test-/Restore-Target-Variablen sind dauerhaft im Synology-Staging-Worker hinterlegt; Source-Check 82 schützt den Deploymentvertrag.
 - **Restore-Test am 21.09.2026 praktisch BESTÄTIGT:** derselbe getrennte Restore-Test wurde nach der Worker-Neuerstellung erfolgreich ausgeführt. Background Job `RESTORE_TEST` steht auf `DONE`, der zugehörige Backup-Lauf `RESTORE_TEST` auf `OK`. Die laufende Live-Datenbank wurde dabei nicht verändert.
-- Damit sind FULL-Backup und getrennte Restore-Test-Wiederherstellung praktisch bestätigt. **Noch offen:** Retention praktisch abnehmen und Restore-to-Target gegen das getrennte Ziel prüfen; danach Migrationen 011 + 012 kontrolliert ausrollen.
+- Damit sind FULL-Backup und getrennte Restore-Test-Wiederherstellung praktisch bestätigt.
+- **Backup-Retention am 21.09.2026 praktisch bestätigt:** manueller `BACKUP_RETENTION`-Job lief mit Versuch 1 auf `DONE`. Bei aktueller Policy (30 Tage, mindestens 3 je Backupart) wurden die jungen Backups erwartungsgemäß nicht entfernt.
+- **Noch offen:** Restore-to-Target gegen das getrennte Ziel prüfen; danach ist die Backup-/Recovery-Abnahme vollständig und Migrationen 011 + 012 können kontrolliert ausgerollt werden.
 - Migration 011 wurde zu diesem Zeitpunkt **noch nicht** auf Staging ausgeführt.
 
 ## Laufzeitbefunde 21.09.2026 – Restore-Test und Release-Draft-Prüfung
@@ -92,11 +94,10 @@ Stand **21.09.2026**:
 - **Updateweg nach Veröffentlichung am 21.09.2026 erneut praktisch bestätigt:** Admin-Binary-Download funktioniert, veröffentlichter Release wird vom Handy erkannt und installiert; danach blieben Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten erhalten. Der bestehende Updatevertrag bleibt damit geschützt.
 
 Nächster Laufzeitschritt:
-1. Backup-Retention praktisch prüfen und bestätigen;
-2. Restore-to-Target ausschließlich gegen die bereits getrennte Target-DB/Target-Ablage praktisch durchführen und prüfen;
-3. den bestätigten FULL-/Restore-Test-Pfad danach nicht weiter verändern;
-4. anschließend Migrationen 011 + 012 kontrolliert auf Synology-Staging ausrollen und `/health/ready` auf 12/12 prüfen;
-5. danach System-Automatik/SMTP sowie Katalog-/Profil-E2E fortsetzen.
+1. Restore-to-Target ausschließlich gegen die bereits getrennte Target-DB/Target-Ablage praktisch durchführen und prüfen;
+2. danach FULL-/Restore-Test-/Retention-Pfade als geschützt belassen;
+3. anschließend Migrationen 011 + 012 kontrolliert auf Synology-Staging ausrollen und `/health/ready` auf 12/12 prüfen;
+4. danach System-Automatik/SMTP sowie Katalog-/Profil-E2E fortsetzen.
 ## Server 1.0 – Backup-Automatik, E-Mail-Berichte und Audit
 
 Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Dieser Block wurde noch nicht auf Synology-Staging ausgerollt. Der praktisch bestätigte FULL-Backup-Pfad wurde nicht ersetzt oder umgebaut.
@@ -128,8 +129,8 @@ Tests:
 - Migration 012, automatische Jobs und echter SMTP-Versand auf Synology: **E2E OFFEN**.
 
 Sicherer nächster Ablauf:
-1. FULL-Backup und getrennter Restore-Test sind praktisch bestätigt; diese Pfade jetzt schützen.
-2. Retention und Restore-to-Target als verbleibende Backup-/Recovery-Abnahme praktisch prüfen.
+1. FULL-Backup, getrennter Restore-Test und manuelle Retention sind praktisch bestätigt; diese Pfade jetzt schützen.
+2. Als letzten Recovery-Punkt Restore-to-Target gegen die getrennte Target-DB/Target-Ablage praktisch prüfen.
 3. Danach aktuellen Serverbranch deployen und Migrationen **011 + 012** anwenden; `/health/ready` muss dann migrations=ok / 12 von 12 melden.
 4. Systemstatus öffnen, Automatikwerte speichern, SMTP-Secret ausschließlich auf Synology setzen und Testbericht versenden.
 5. Einen automatischen Backup-/Retention-Slot praktisch prüfen und danach Katalog-/Profil-E2E fortsetzen.
