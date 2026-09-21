@@ -814,7 +814,7 @@ object BtbExportPaket {
     private fun btbTextOfFoto(f: FotoEntity, textOverrides: Map<Long, String>): String {
         val ov = textOverrides[f.id]?.trim().orEmpty()
         if (ov.isNotBlank()) return ov
-        return f.kurztext.trim()
+        return f.notiz?.trim()?.takeIf { it.isNotBlank() } ?: f.kurztext.trim()
     }
 
     private fun fotoLinesForType(
@@ -1155,18 +1155,15 @@ object BtbExportPaket {
         val ext = src.extension.ifBlank { "jpg" }.lowercase(Locale.ROOT)
         val nr = (index + 1).toString().padStart(3, '0')
 
-        // V6: kurz genug für ZIP/Windows/Android, aber weiterhin direkt suchbar
-        // nach Baustelle, Ort, Firma, Bildtyp und Kurztext – auch nach dem Entpacken.
-        val baustelle = safeFilePart(baustelleName, "Baustelle", 22)
-        val zeit = fotoZeitDatei(foto)
-        val ort = safeFilePart(unterbaustelle(foto, knotenLabels), "Hauptbaustelle", 24)
-        val km = safeFilePart(kmCsv(foto.km).replace(" ", ""), "", 9).takeIf { it.isNotBlank() }
-        val firma = safeFilePart(foto.firma, "Firma", 14)
+        // 200056: kurz genug für Windows-ZIP-Pfade, aber weiterhin direkt suchbar.
+        // Baustelle/Ort/Firma stehen bereits in Ordner, Bilderliste und JPEG-Metadaten.
+        val zeit = fotoZeitDatei(foto).replace("-", "")
+        val km = safeFilePart(kmCsv(foto.km).replace(" ", ""), "", 10).takeIf { it.isNotBlank() }
         val typ = bildtypKurz(foto.bildtyp)
-        val kurz = safeFilePart(foto.kurztext, "Foto", 28)
+        val kurz = safeFilePart(foto.kurztext, "Foto", 30)
 
-        val parts = listOfNotNull("B$nr", zeit, baustelle, ort, km, firma, typ, kurz)
-        return safeFileNameKeepingExtension(parts.joinToString("_") + ".$ext", maxLen = 125)
+        val parts = listOfNotNull("B$nr", zeit, km, typ, kurz)
+        return safeFileNameKeepingExtension(parts.joinToString("_") + ".$ext", maxLen = 80)
     }
 
     suspend fun erstellen(
