@@ -28,7 +28,7 @@ def main() -> None:
         ("progress_percent", migration),
         ("progress_text", migration),
         ("def _set_progress", jobs),
-        ("run_backup("FULL", progress=progress)", jobs),
+        ('run_backup("FULL", progress=progress)', jobs),
         ("run_restore_test(source_run_id, progress=progress)", jobs),
         ("ProgressCallback", backup),
         ("ProgressCallback", restore),
