@@ -238,11 +238,18 @@ def run_restore_target(
                 restored_files_root,
             )
             source_storage = restored_files_root / "storage"
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if target.exists():
-                target.rmdir()
+            # The target path can be the root of a Docker bind mount. Removing
+            # that mount point with rmdir() fails with EBUSY even when it is
+            # empty. Freshness was already checked above, so keep the mount
+            # root and copy the restored storage contents into it.
+            target.mkdir(parents=True, exist_ok=True)
             storage_started = True
-            shutil.copytree(source_storage, target, symlinks=False)
+            shutil.copytree(
+                source_storage,
+                target,
+                symlinks=False,
+                dirs_exist_ok=True,
+            )
 
         row = _finish_restore_target(run_id, ok=True, detail=detail)
         return {
