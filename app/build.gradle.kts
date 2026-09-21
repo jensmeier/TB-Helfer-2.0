@@ -551,10 +551,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200058: GPS-Koordinaten in exportierten Mängel-PDFs werden echte
-        // anklickbare Google-Maps-Links. Bestehender PdfDocument-Renderer bleibt erhalten.
-        versionCode = 200058
-        versionName = "1.3.8"
+        // Android 200059: Mängel-PDF mit deutlich größeren Beweisfotos,
+        // getrennten KM-/GVP-Zeilen und sicherer Foto-Fortsetzung auf Folgeseiten.
+        versionCode = 200059
+        versionName = "1.3.9"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
