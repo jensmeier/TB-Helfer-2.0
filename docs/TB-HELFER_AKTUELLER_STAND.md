@@ -1,6 +1,6 @@
 # TB-Helfer – aktueller Projektstand
 
-Stand: 2026-09-20
+Stand: 2026-09-21
 
 Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEKTREGELN.md`, diese Datei, `docs/TB-SERVER_1_0_ZIELMODELL.md` und `docs/TB-SERVER_1_0_CUTOVER.md`.
 
@@ -12,6 +12,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - PR-Basis: `feature/admin-offline-sync`
 - Funktionscommit globaler Katalog + Benutzeridentität: **`511bb5c00552b5a7e54d35d930ea982cf4629598`**
+- Server-Automatik/E-Mail/Audit-Quellblock: **`dd0bf1c6b5640951e74494969b5032a5ada86e1d`** (Migration 012; danach nur Doku/Statuspflege)
 - GitHub Actions für diesen Funktionscommit liefern weiterhin **keinen Testnachweis**: Android-Run `35524333713`, Server-PR-Run `35524333722` und Server-Push-Run `35524332208` endeten ohne zugewiesenen Runner (`runner_id=0`, `runner_name=""`, `steps=[]`). Das bleibt Infrastrukturproblem PRB-002 und ist kein belegter Fach-/Compilefehler.
 - Android Testclient: **200054 / 1.3.4 ist auf Pixel + Poco installiert und bestätigt**. Der neue Quellstand **200055 / 1.3.5** für globalen Katalog und Benutzerprofil ist vorbereitet, aber noch nicht gebaut/installiert; 200054 bleibt bis zum praktischen Test die bestätigte Gerätebasis.
 
@@ -64,6 +65,7 @@ Wichtige Server-1.0-Meilensteine:
 - Background-Job-/Backup-Basis: `FOR UPDATE SKIP LOCKED`, Retry/Stale-Recovery, getrennte DATABASE/FILES/FULL-Backups, SHA-256, atomare Dateien und ADMIN-Backupaufträge
 - Restore-Test + sicherer Test-Reset: Restore nur gegen getrennte Testdatenbank/Testablage; Test-/Staging-Reset nur nach verifiziertem höchstens 24h altem FULL-Backup und harter Environment-/Bestätigungssperre
 - optionaler Restore-Staging-Compose-Overlay: getrennte Restore-Test-DB, getrennte Restore-Target-DB und eigener Restore-Target-Storage; Restore-to-Target bleibt standardmäßig deaktiviert und außerhalb des normalen Serverstarts
+- System-Automatik/E-Mail/Audit v1: deduplizierte Zeitplan-Slots, automatische DATABASE-/FILES-/FULL-Backups, automatische Retention, tägliche/wöchentliche/monatliche Systemberichte, SMTP-Test, Warnschwellen, ablaufende Nutzer und Auditübersicht; SMTP-Passwort bleibt ausschließlich Server-Secret
 
 ## Backup-Vorabnahme vor Migration 011
 
@@ -73,6 +75,43 @@ Stand **21.09.2026**:
 - Dieser bestätigte FULL-Backup-Pfad bleibt geschützt und wird nicht ohne reproduzierbaren Fehler oder ausdrücklichen Änderungswunsch umgebaut.
 - **Noch offen:** getrennten Restore-Test genau dieses Backups ausführen; danach Retention und Restore-to-Target praktisch abnehmen.
 - Migration 011 wurde zu diesem Zeitpunkt **noch nicht** auf Staging ausgeführt.
+
+## Server 1.0 – Backup-Automatik, E-Mail-Berichte und Audit
+
+Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Dieser Block wurde noch nicht auf Synology-Staging ausgerollt. Der praktisch bestätigte FULL-Backup-Pfad wurde nicht ersetzt oder umgebaut.
+
+Umgesetzt:
+- Migration `012_system_automation.sql` ergänzt deduplizierte Zeitplan-Slots, damit Worker-Neustarts oder mehrere Worker keinen automatischen Auftrag doppelt erzeugen;
+- automatische Backups nutzen ausschließlich die vorhandenen `BACKUP_DATABASE`/`BACKUP_FILES`/`BACKUP_FULL`-Jobs;
+- automatische Retention nutzt denselben vorhandenen sicheren Retention-Pfad; Aufbewahrungstage und Mindestanzahl je Backupart sind nun im Admin einstellbar;
+- E-Mail-Systemberichte können täglich, wöchentlich oder monatlich mit Zeitzone/Uhrzeit/Wochentag/Monatstag geplant werden;
+- manueller `Testbericht senden` läuft ebenfalls als Background Job;
+- Systemstatus zeigt SMTP-Bereitschaft, aber niemals das SMTP-Passwort;
+- SMTP-Host/Port/User/Absender/TLS/SSL kommen aus Server-Environment; das Passwort bleibt ausschließlich `.env`/Secret;
+- Systemstatus zeigt bald ablaufende Nutzer, konfigurierbare Speicherwarnschwelle und die letzten Audit-/Sicherheitsereignisse;
+- neue Capabilities `system_automation_v1` und `system_email_reports_v1`;
+- CI-Vertrag erwartet auf frischer Testdatenbank nun Migration 012 und prüft zusätzlich die Migration-011-Katalogtabellen sowie Source-Check 90.
+
+Betroffene Kern-Dateien:
+- `server/v1_migrations/012_system_automation.sql`;
+- `server/tbserver/system_settings.py`, `automation.py`, `notifications.py`, `jobs.py`, `system_admin.py`, `backup.py`, `config.py`, `capabilities.py`;
+- `server/templates/v1_system_status.html`;
+- `server/docker-compose.v1.yml`, `server/docker-compose.synology-staging.v1.yml`;
+- `server/checks/90_verify_system_automation_email_source.py`;
+- `.github/workflows/tb-server-v1.yml`.
+
+Tests:
+- lokaler Python-Syntaxcheck der drei neu angelegten Module `system_settings.py`, `automation.py` und `notifications.py`: **bestanden**;
+- bestehende Backup-/Retention-/Systemstatus-Source-Checks wurden gegen die geänderten Marker/Schutzregeln geprüft; keine absichtliche Lockerung;
+- vollständiger Source-Check 90 / Fresh-PostgreSQL-Lauf ist **noch nicht ausgeführt**; GitHub Actions bleibt wegen PRB-002 kein belastbarer Testnachweis, solange keine Runner-Steps laufen;
+- Migration 012, automatische Jobs und echter SMTP-Versand auf Synology: **E2E OFFEN**.
+
+Sicherer nächster Ablauf:
+1. zuerst den bereits bestätigten FULL-Backup-Lauf per getrenntem Restore-Test verifizieren;
+2. danach aktuellen Serverbranch deployen und Migrationen **011 + 012** anwenden; `/health/ready` muss dann migrations=ok / 12 von 12 melden;
+3. Systemstatus öffnen, Automatikwerte speichern, SMTP-Secret ausschließlich auf Synology setzen und Testbericht versenden;
+4. einen automatischen Testslot für Backup/Retention praktisch prüfen;
+5. erst danach Katalog-/Profil-E2E und Android 200055 fortsetzen.
 
 ## Server 1.0 + Android 200055 – globaler Katalog und Benutzeridentität
 
@@ -111,11 +150,12 @@ Tests dieses Quellblocks:
 - echte API-/Pixel-/Poco-E2E-Prüfung: **OFFEN**.
 
 Nächster praktischer Schritt:
-1. Branch auf Synology deployen und Migration 011 ausführen; `/health/ready` muss danach migrations=ok melden.
-2. Admin-Neuanlage + Portal-Erstaktivierung + Profil/Verzeichnis mit Testbenutzern prüfen.
-3. Android 1.3.5 / 200055 bauen/installieren.
-4. Auf Pixel/Poco denselben globalen Eintrag ergänzen/korrigieren (z. B. `Gleis 28`) und Historie/Versionskonflikt prüfen.
-5. Danach erst Status auf BESTÄTIGT/ERLEDIGT setzen.
+1. Zuerst getrennten Restore-Test des am 21.09.2026 bestätigten FULL-Backups abschließen.
+2. Danach Branch auf Synology deployen und Migrationen 011 + 012 ausführen; `/health/ready` muss danach migrations=ok und 12/12 melden.
+3. Server-Automatik/SMTP-Test sowie Admin-Neuanlage + Portal-Erstaktivierung + Profil/Verzeichnis mit Testbenutzern prüfen.
+4. Android 1.3.5 / 200055 bauen/installieren.
+5. Auf Pixel/Poco denselben globalen Eintrag ergänzen/korrigieren (z. B. `Gleis 28`) und Historie/Versionskonflikt prüfen.
+6. Danach erst Status auf BESTÄTIGT/ERLEDIGT setzen.
 
 ## Admin – vollständiges Löschen/Purge für Test-/Administrationsfälle
 
