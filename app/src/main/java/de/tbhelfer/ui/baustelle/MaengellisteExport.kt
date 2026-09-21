@@ -338,7 +338,9 @@ object MaengellisteExport {
 
                     val src = File(mf.foto.dateipfad)
                     if (src.exists()) {
-                        val bmp = decodeSampledBitmap(src, 900, 900)
+                        // 164 pt entsprechen gut 2,3 Zoll. 480 px liefern >200 dpi
+                        // und vermeiden Mehr-Megapixel-Bilder im PDF.
+                        val bmp = decodeSampledBitmap(src, 480, 480)
                         if (bmp != null) {
                             drawBitmapFit(canvas, bmp, RectF(fx, fy, fx + imgW, fy + imgH))
                             bmp.recycle()
