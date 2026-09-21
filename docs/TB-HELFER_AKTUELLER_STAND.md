@@ -1200,12 +1200,13 @@ Stand **21.09.2026 18:15**:
 - Ursache reproduziert: `kotlin.math.roundToInt` wurde beim 480-px-Downscale verwendet, aber der Import fehlte. Kein Logik-/Strukturfehler; die übrigen 200061-Änderungen waren davon nicht betroffen.
 - Fix-Commit: `eb0af6998929c300e409900adae5dd26899844ef` ergänzt ausschließlich `import kotlin.math.roundToInt` in der echten Quelldatei `app/src/main/java/.../MaengellisteExport.kt`. Die generierte Datei unter `app/build/generated/**` bleibt unangetastet.
 - Source-Checks danach bestanden: Import + beide Aufrufe, Version 200061, 480px-PDF-Cap, GVP-Kopfentfernung/fotoeigenes GVP, GPS-Link-Erhalt, Mediathek und Strukturchecks.
+- **Benutzerbestätigung nach dem Fix:** Build 200061 ist erfolgreich durchgelaufen. Damit ist `BUILD ERFOLGREICH` bestätigt; Installation und praktische Funktions-E2E-Prüfung sind weiterhin offen.
 - `STATUS.xlsx` ist auf dem Server-Branch neuer und wird vom Android-Projekt nicht überschrieben.
 
-Teststatus: **QUELLSTAND 200061 KORRIGIERT / SOURCE-CHECKS BESTANDEN / BUILD 200061 ERNEUT OFFEN / INSTALLATION OFFEN / PDF-GRÖSSEN-E2E OFFEN / MEDIATHEK-E2E OFFEN**.
+Teststatus: **QUELLSTAND 200061 KORRIGIERT / SOURCE-CHECKS BESTANDEN / BUILD 200061 ERFOLGREICH / INSTALLATION OFFEN / PDF-GRÖSSEN-E2E OFFEN / MEDIATHEK-E2E OFFEN**.
 
 Nächster Test:
-1. Android-Branch pullen, Clean Project und 200061 erneut lokal bauen; Erfolgskriterium: kein `roundToInt`-Fehler.
+1. 200061 auf dem Testgerät installieren.
 2. Neues 9-Foto-Mängel-PDF exportieren und Dateigröße messen.
 3. Prüfen: kein GVP/Mast mehr im Mangelkopf; GVP bleibt unter jedem Foto.
 4. GPS-Link im PDF anklicken.
