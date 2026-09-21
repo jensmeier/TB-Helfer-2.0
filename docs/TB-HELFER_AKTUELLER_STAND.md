@@ -1182,10 +1182,9 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
 
-
 ## Android 1.3.10 / 200060 – Vollbild-Mangeleditor + bündige PDF-Fotos
 
-Stand **21.09.2026 17:12**:
+Stand **21.09.2026 17:34**:
 - Android-Arbeitsbranch: `feature/tb-android-2.0`; Draft-PR **#7**.
 - Der vom Benutzer gezeigte 200059-Funktionsstand läuft praktisch auf dem Testgerät: Mängelliste und das neu erzeugte PDF zeigen die großen Beweisfotos, getrennte KM-/GVP-Zeilen und die bestätigten GPS-Links. Der 200059-PDF-Block ist damit gebaut/installiert und praktisch sichtbar; als offene Layoutkorrektur blieb die linke Bildkante bei Hochformatfotos optisch eingerückt.
 - Neue Zielversion: **1.3.10 / versionCode 200060**.
@@ -1196,8 +1195,9 @@ Stand **21.09.2026 17:12**:
 - Unterbaustelle ist keine reine Textkorrektur mehr: vorhandene Mangel-Fotos werden lokal auf den ausgewählten Baustellenknoten umgehängt; vorhandene BTB-Kontext-Overrides werden dabei mitgeführt und der bestehende Sync-Pfad wird angestoßen. Hauptbaustelle wird technisch als keine Unterknoten-ID behandelt.
 - Der lokale Status merkt die gewählte Knoten-ID, damit neu aufgenommene oder später zugeordnete Mangel-Fotos derselben Zuordnung folgen. Über den bestehenden Server-Mangel-Payload werden weiterhin die fachlichen Textwerte `bereich` und `km` synchronisiert; keine neue Server-API wurde eingeführt.
 - Erledigte Mängel bleiben gemäß bestehender Fachregel gesperrt.
-- Server-Vertrag erneut geprüft gegen `91b673b6a61cd51fb2843888245df2064798f144`: die jüngsten Serveränderungen betreffen Systemstatus/Backup/Restore/Migration 013; keine inkompatible Mängel-API-Änderung.
+- Server-Vertrag erneut geprüft gegen `80d2c26f86245ed8fe71c7b7bd49c6d45afafcc2`: die jüngsten Serveränderungen betreffen Systemstatus/Backup/Restore/Migration 013 und den konsolidierten Server-Status; keine inkompatible Mängel-API-Änderung.
 - Source-Checks bestanden: Navigation/Layout-IDs, Version 200060, Vollbild-Editor, Knoten-Persistenz, Foto-Knotenupdate inkl. BTB-Override, optionaler Ort/KM/Bereich-Text inkl. leerem Wert, PDF-Linksbündigkeit, große 200059-Fotos und GPS-Linkpfad.
+- **Lokaler Android-Studio-Build 200060 am 21.09.2026 um 17:34 erfolgreich abgeschlossen.** Der Build-Output zeigt `Build TB-Helfer-2.0: finished` ohne Fehler; `:app:compileDebugKotlin` meldet 16 Warnungen. Die Warnungen betreffen bestehende Deprecated-/Opt-in-Hinweise und sind kein Buildfehler.
 - `STATUS.xlsx` ist auf dem Server-Branch neuer und wird vom Android-Projekt **nicht überschrieben**; Android-Stand ist vollständig in MD dokumentiert.
 
 Betroffene Dateien:
@@ -1214,10 +1214,10 @@ Betroffene Dateien:
 - `app/build.gradle.kts`
 - `releases/TB-Helfer_1.3.10_200060.md`
 
-Teststatus: **QUELLSTAND 200060 FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200060 OFFEN / INSTALLATION 200060 OFFEN / PIXEL+POCO E2E OFFEN**.
+Teststatus: **QUELLSTAND 200060 FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200060 ERFOLGREICH / INSTALLATION 200060 OFFEN / PIXEL+POCO E2E OFFEN**.
 
 Nächster Test:
-1. Android-Branch pullen und 200060 lokal bauen.
+1. 200060 auf dem Testgerät installieren.
 2. Vollbildseite öffnen und Unterbaustelle + `Modulgebäude` als freien Ort speichern.
 3. Zur Mängelliste zurückkehren und automatische Aktualisierung prüfen.
 4. Neues Mängel-PDF erzeugen: sichtbare Bildkante muss links bündig mit Bildtext/Metadaten sein.
