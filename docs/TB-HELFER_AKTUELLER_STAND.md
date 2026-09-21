@@ -1166,4 +1166,7 @@ Betroffene Dateien:
 - `.github/workflows/android.yml`
 - `releases/TB-Helfer_1.3.8_200058.md`
 
-Teststatus: **QUELLSTAND FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200058 OFFEN / INSTALLATION 200058 OFFEN / PDF-LINK-E2E OFFEN**.
+- Benutzerbestätigung am **21.09.2026**: GPS-Funktion bei den Mangel-Fotos funktioniert praktisch; der PDF-Export funktioniert ebenfalls und die GPS-Funktion im PDF ist praktisch bestätigt. Damit ist der 200058-Funktionsblock auf dem Testgerät installiert und die GPS-/PDF-Funktion **BESTÄTIGT**.
+- Diese Bestätigung gilt für den gezeigten Testgerätepfad und den Mängel-PDF-Export; ein vollständiger Pixel/Poco-Zwei-Geräte-/Sync-E2E ist davon weiterhin getrennt offen.
+
+Teststatus: **BUILD 200058 PRAKTISCH BESTÄTIGT / INSTALLIERT AUF TESTGERÄT / GPS BILDER BESTÄTIGT / PDF + GPS-LINK BESTÄTIGT / PIXEL+POCO GESAMT-E2E OFFEN**.
