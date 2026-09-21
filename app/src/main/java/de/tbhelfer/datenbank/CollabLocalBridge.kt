@@ -376,7 +376,11 @@ class CollabLocalBridge(
                 val newValue = if (old.status == MangelStatusSpeicher.Status.ERLEDIGT) old else old.copy(
                     status = incomingStatus,
                     kommentar = payload.optString("kommentar", old.kommentar),
-                    erledigtAmEpochMs = payload.optNullableLong("erledigtAmEpochMs") ?: old.erledigtAmEpochMs
+                    erledigtAmEpochMs = payload.optNullableLong("erledigtAmEpochMs") ?: old.erledigtAmEpochMs,
+                    bereichOverride = payload.optString("bereich").trim().takeIf { it.isNotBlank() },
+                    kmOverride = payload.optString("km").trim().takeIf { it.isNotBlank() },
+                    firmaOverride = payload.optString("firma").trim().takeIf { it.isNotBlank() },
+                    beschreibungOverride = payload.optString("beschreibung").trim().takeIf { it.isNotBlank() }
                 )
                 MangelStatusSpeicher.speichern(appContext, key, newValue)
                 SyncMangelSpeicher.speichern(
@@ -603,6 +607,10 @@ class CollabLocalBridge(
         val payload = runCatching { JSONObject(raw) }.getOrElse { JSONObject() }
         payload.put("kommentar", status.kommentar)
         payload.putNullable("erledigtAmEpochMs", status.erledigtAmEpochMs)
+        status.bereichOverride?.takeIf { it.isNotBlank() }?.let { payload.put("bereich", it) }
+        status.kmOverride?.takeIf { it.isNotBlank() }?.let { payload.put("km", it) }
+        status.firmaOverride?.takeIf { it.isNotBlank() }?.let { payload.put("firma", it) }
+        status.beschreibungOverride?.takeIf { it.isNotBlank() }?.let { payload.put("beschreibung", it) }
         payload.put("fotos", JSONArray())
         return payload.toString()
     }
