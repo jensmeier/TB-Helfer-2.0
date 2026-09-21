@@ -17,7 +17,11 @@ object MangelStatusSpeicher {
         val status: Status = Status.OFFEN,
         val kommentar: String = "",
         val erledigtAmEpochMs: Long? = null,
-        val nachweisFotoId: Long? = null
+        val nachweisFotoId: Long? = null,
+        val bereichOverride: String? = null,
+        val kmOverride: String? = null,
+        val firmaOverride: String? = null,
+        val beschreibungOverride: String? = null
     )
 
     data class FotoZuordnung(
@@ -38,7 +42,11 @@ object MangelStatusSpeicher {
                 status = runCatching { Status.valueOf(o.optString("status", Status.OFFEN.name)) }.getOrDefault(Status.OFFEN),
                 kommentar = o.optString("kommentar", ""),
                 erledigtAmEpochMs = if (o.has("erledigtAmEpochMs") && !o.isNull("erledigtAmEpochMs")) o.optLong("erledigtAmEpochMs") else null,
-                nachweisFotoId = if (o.has("nachweisFotoId") && !o.isNull("nachweisFotoId")) o.optLong("nachweisFotoId") else null
+                nachweisFotoId = if (o.has("nachweisFotoId") && !o.isNull("nachweisFotoId")) o.optLong("nachweisFotoId") else null,
+                bereichOverride = nullableText(o, "bereichOverride"),
+                kmOverride = nullableText(o, "kmOverride"),
+                firmaOverride = nullableText(o, "firmaOverride"),
+                beschreibungOverride = nullableText(o, "beschreibungOverride")
             )
         }.getOrDefault(Wert())
     }
@@ -48,7 +56,11 @@ object MangelStatusSpeicher {
         val final = if (alt.status == Status.ERLEDIGT && wert.status != Status.ERLEDIGT) {
             alt.copy(
                 kommentar = wert.kommentar.ifBlank { alt.kommentar },
-                nachweisFotoId = wert.nachweisFotoId ?: alt.nachweisFotoId
+                nachweisFotoId = wert.nachweisFotoId ?: alt.nachweisFotoId,
+                bereichOverride = wert.bereichOverride ?: alt.bereichOverride,
+                kmOverride = wert.kmOverride ?: alt.kmOverride,
+                firmaOverride = wert.firmaOverride ?: alt.firmaOverride,
+                beschreibungOverride = wert.beschreibungOverride ?: alt.beschreibungOverride
             )
         } else {
             wert
@@ -59,6 +71,10 @@ object MangelStatusSpeicher {
             put("kommentar", final.kommentar)
             if (final.erledigtAmEpochMs != null) put("erledigtAmEpochMs", final.erledigtAmEpochMs) else put("erledigtAmEpochMs", JSONObject.NULL)
             if (final.nachweisFotoId != null) put("nachweisFotoId", final.nachweisFotoId) else put("nachweisFotoId", JSONObject.NULL)
+            putNullableText("bereichOverride", final.bereichOverride)
+            putNullableText("kmOverride", final.kmOverride)
+            putNullableText("firmaOverride", final.firmaOverride)
+            putNullableText("beschreibungOverride", final.beschreibungOverride)
         }
         context.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putString(key, o.toString()).apply()
         de.tbhelfer.widget.TBHelferWidgetUpdater.updateAll(context)
@@ -115,6 +131,13 @@ object MangelStatusSpeicher {
 
     fun fotoZuordnungenFuerMangel(context: Context, mangelKey: String): List<FotoZuordnung> {
         return alleFotoZuordnungen(context).filter { it.mangelKey == mangelKey }
+    }
+
+    private fun nullableText(o: JSONObject, key: String): String? =
+        if (!o.has(key) || o.isNull(key)) null else o.optString(key).trim().takeIf { it.isNotBlank() }
+
+    private fun JSONObject.putNullableText(key: String, value: String?) {
+        if (value.isNullOrBlank()) put(key, JSONObject.NULL) else put(key, value.trim())
     }
 
     private fun parseZuordnung(raw: String): FotoZuordnung? {
