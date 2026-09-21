@@ -248,6 +248,24 @@ Quellfix:
 
 Die Live-Datenbank und der Live-Storage bleiben weiterhin ausgeschlossen.
 
+### Praktische Restore-to-Target-Abnahme 21.09.2026
+
+Nach den beiden reproduzierten Staging-Korrekturen (PostGIS-Clean-Restore und bind-mount-sicheres Target-Storage) wurde derselbe bestätigte FULL-Backup-Lauf erneut gegen die **getrennte** Restore-Target-Umgebung ausgeführt.
+
+Praktisches Ergebnis:
+- CLI-Ausgabe: **OK**;
+- `RESTORE_TARGET`-Lauf: **status OK**;
+- Quellbackup: `4a169020-96d7-4937-8203-453c74bf2b5f`;
+- Ziel-Datenbank: `tb_helfer_v1_restore_target`;
+- Ziel-Storage: `/tb/restore-target-v1`;
+- Datenbankprüfung: **10 angewendete Migrationen**, latest **10**, **5/5 Kerntabellen** vorhanden;
+- Datei-Wiederherstellung: **2 Dateien**, insgesamt **34.267.460 Byte**;
+- Live-Datenbank und Live-Storage wurden nicht als Restore-Ziel verwendet.
+
+Damit sind **FULL-Backup, getrennter Restore-Test, Retention und Restore-to-Target praktisch BESTÄTIGT**. Der funktionierende Recovery-Vertrag ist geschützt und darf nicht ohne reproduzierbaren Fehler oder ausdrücklichen Auftrag verändert werden.
+
+Der nächste Server-Schritt ist nicht automatisch ein Cutover auf das Restore-Target, sondern das kontrollierte Staging-Deployment der bereits vorbereiteten Migrationen 011 + 012 auf die laufende Server-1.0-Staginginstanz.
+
 Der nächste Schritt nach erfolgreichem Restore ist **nicht** automatisches Umschalten, sondern eine Offline-/Testprüfung des Zielservers. Erst danach darf ein eigener kontrollierter Cutover auf die wiederhergestellte Zielinstanz erfolgen.
 
 Migration `005_restore_target_run_kind.sql` erweitert ausschließlich die erlaubten `tb.backup_runs.kind`-Werte um `RESTORE_TARGET`.
