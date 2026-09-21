@@ -36,7 +36,7 @@ def main() -> None:
         ('_run_pg_restore(database_dump, config, clean=True)', target),
         ('preinstalls extension objects', target),
         ('_verify_restored_database(config)', target),
-        ('shutil.copytree(source_storage, target, symlinks=False)', target),
+        ('dirs_exist_ok=True', target),
         ('action="RESTORE_TARGET_START"', target),
         ('action="RESTORE_TARGET_OK"', target),
         ('action="RESTORE_TARGET_FAILED"', target),
@@ -57,6 +57,11 @@ def main() -> None:
     if "@router." in target:
         raise SystemExit(
             "Kontrollierter Restore darf nicht als normale HTTP-API exponiert werden"
+        )
+
+    if "target.rmdir()" in target:
+        raise SystemExit(
+            "Restore-Target darf den gemounteten Target-Storage-Root nicht entfernen"
         )
 
     if "settings.db_password" in target:
