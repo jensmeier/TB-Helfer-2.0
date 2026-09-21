@@ -143,6 +143,13 @@ Für FILES/FULL gilt zusätzlich:
 
 Jeder Restore-Test erhält einen eigenen `tb.backup_runs`-Eintrag mit `kind=RESTORE_TEST`. Die normale Admin-Statusansicht zeigt weiterhin keine internen Pfade oder Fehlerdetails.
 
+### Staging-Befund 21.09.2026 – Restore-Test-Routenparameter
+
+Beim ersten praktischen Restore-Test auf Synology waren Restore-Test-DB, Restore-Target-DB und Worker erreichbar, der HTTP-Aufruf wurde aber noch **vor dem Einreihen des Background Jobs** mit HTTP 500 abgebrochen. Ursache war ein fehlender Laufzeitimport von `UUID` in `system_admin.py` bei aktivem `from __future__ import annotations`; FastAPI/Pydantic konnte den Path-Parameter dadurch nicht auflösen.
+
+Quellfix: `from uuid import UUID` in `system_admin.py`. Source-Check 42 verlangt diesen Import jetzt ausdrücklich, damit derselbe ForwardRef-Fehler nicht wieder eingeführt wird.
+
+Wichtig: Dieser Fehler betrifft nicht das Backup-Artefakt und nicht die getrennte Restore-Test-Datenbank. Das bestätigte FULL-Backup bleibt unverändert. Nach Deployment des Fixes muss derselbe bestätigte FULL-Lauf erneut über `Restore-Test` gestartet und bis `DONE`/`RESTORE_TEST OK` praktisch bestätigt werden.
 ## Test-/Staging-Reset
 
 CLI:
