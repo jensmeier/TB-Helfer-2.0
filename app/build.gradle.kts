@@ -551,10 +551,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200059: Mängel-PDF mit deutlich größeren Beweisfotos,
-        // getrennten KM-/GVP-Zeilen und sicherer Foto-Fortsetzung auf Folgeseiten.
-        versionCode = 200059
-        versionName = "1.3.9"
+        // Android 200060: Vollbild-Mangeleditor mit echter Unterbaustellen-Zuordnung
+        // und freiem Ort/KM/Bereich; PDF-Fotos links bündig mit ihren Metadaten.
+        versionCode = 200060
+        versionName = "1.3.10"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
