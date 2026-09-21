@@ -122,6 +122,10 @@ jobs:
           python server/checks/84_verify_device_activation_qr_source.py
           python server/checks/85_verify_tb_server_1_user_delete_source.py
           python server/checks/86_verify_tb_server_1_admin_overview_source.py
+          python server/checks/87_verify_release_admin_package_ui.py
+          python server/checks/88_verify_admin_permanent_purge_source.py
+          python server/checks/89_verify_identity_global_catalog_source.py
+          python server/checks/90_verify_system_automation_email_source.py
 
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
@@ -134,8 +138,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 10, current
-          assert current["latest_applied"] == 10, current
+          assert current["latest_known"] == 12, current
+          assert current["latest_applied"] == 12, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
@@ -152,7 +156,9 @@ jobs:
               "survey_originals", "survey_parse_catalog", "track_data",
               "track_data_sources", "track_data_km_points", "mutation_receipts",
               "change_feed", "audit_log", "releases", "backup_runs",
-              "system_metrics_hourly",
+              "system_metrics_hourly", "catalog_routes", "catalog_stations",
+              "catalog_sections", "catalog_objects", "catalog_history",
+              "system_schedule_runs",
           }
           with connect() as conn, conn.cursor() as cur:
               cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='tb'")
@@ -257,6 +263,13 @@ jobs:
               "worksite_invitation_qr_v1",
               "worksite_team_transfer_v1",
               "admin_system_status_v1",
+              "system_automation_v1",
+              "system_email_reports_v1",
+              "user_profile_v1",
+              "user_directory_v1",
+              "global_catalog_v1",
+              "catalog_history_v1",
+              "catalog_no_global_delete_v1",
               "background_jobs_v1",
               "backup_v1",
               "backup_retention_v1",
