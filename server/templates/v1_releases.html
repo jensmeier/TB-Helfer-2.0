@@ -62,8 +62,12 @@
 <div class="card">
   <div class="actions" style="justify-content:space-between">
     <h2 style="margin:0">Releases</h2>
-    <button id="refresh" type="button" class="secondary">Aktualisieren</button>
+    <div class="actions">
+      <button id="showArchived" type="button" class="secondary">Archivierte anzeigen</button>
+      <button id="refresh" type="button" class="secondary">Aktualisieren</button>
+    </div>
   </div>
+  <p class="muted">Zurückgezogene/veröffentlichte Releases bleiben aus Nachvollziehbarkeitsgründen erhalten. Zurückgezogene Releases werden standardmäßig ausgeblendet; Drafts können weiterhin vollständig gelöscht werden.</p>
   <div id="releases">wird geladen …</div>
 </div>
 {% endblock %}
@@ -72,6 +76,7 @@
 const msg=document.getElementById('msg'), target=document.getElementById('releases');
 const createProgress=document.getElementById('createProgress');
 let releaseCache={};
+let showRetired=false;
 
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -271,8 +276,11 @@ function draftEditor(r){
 
 async function loadReleases(){
   try{
-    const result=await tbApi('/api/v1/admin/releases');const list=result.data.releases||[];
-    releaseCache={};list.forEach(function(r){releaseCache[r.id]=r;});
+    const result=await tbApi('/api/v1/admin/releases');const all=result.data.releases||[];
+    releaseCache={};all.forEach(function(r){releaseCache[r.id]=r;});
+    const retiredCount=all.filter(function(r){return r.status==='RETIRED';}).length;
+    document.getElementById('showArchived').textContent=showRetired?'Archivierte ausblenden':'Archivierte anzeigen ('+retiredCount+')';
+    const list=showRetired?all:all.filter(function(r){return r.status!=='RETIRED';});
     target.innerHTML=list.length?list.map(function(r){
       const binary=r.binary||{};
       let actions='';
@@ -286,8 +294,9 @@ async function loadReleases(){
         ? '/api/v1/admin/releases/'+encodeURIComponent(r.id)+'/binary'
         : r.download_url;
       const download=verifyUrl?'<a class="btn" href="'+esc(verifyUrl)+'" target="_blank" rel="noopener">Download prüfen</a>':'';
+      const statusLabel=r.status==='RETIRED'?'ARCHIVIERT':r.status;
       return '<div class="release-card">'+
-        '<div class="actions" style="justify-content:space-between"><div><b>'+esc(r.platform)+' · '+esc(r.version_name)+'</b> <span class="pill">'+esc(r.status)+'</span>'+
+        '<div class="actions" style="justify-content:space-between"><div><b>'+esc(r.platform)+' · '+esc(r.version_name)+'</b> <span class="pill">'+esc(statusLabel)+'</span>'+
         '<div class="muted">Build '+esc(r.build_number??'—')+' · Minimum '+esc(r.minimum_supported_build??'—')+(r.mandatory?' · Pflichtupdate':'')+'</div></div>'+
         '<div>'+download+'</div></div>'+
         '<pre class="release-notes">'+esc(r.release_notes||'Keine Release Notes')+'</pre>'+
@@ -441,6 +450,7 @@ async function retireRelease(id){
 }
 window.retireRelease=retireRelease;
 
+document.getElementById('showArchived').addEventListener('click',function(){showRetired=!showRetired;loadReleases();});
 document.getElementById('refresh').addEventListener('click',loadReleases);
 loadReleases();
 </script>
