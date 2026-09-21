@@ -278,14 +278,17 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Status ändern")
             .setItems(werte) { _, which ->
+                if (which == 2) {
+                    erledigtDialog(item)
+                    return@setItems
+                }
                 val status = when (which) {
                     1 -> MangelStatusSpeicher.Status.IN_ARBEIT
-                    2 -> MangelStatusSpeicher.Status.ERLEDIGT
                     3 -> MangelStatusSpeicher.Status.ABGELEHNT
                     else -> MangelStatusSpeicher.Status.OFFEN
                 }
                 val old = MangelStatusSpeicher.laden(requireContext(), item.key)
-                val neu = old.copy(status = status, erledigtAmEpochMs = if (status == MangelStatusSpeicher.Status.ERLEDIGT) (old.erledigtAmEpochMs ?: System.currentTimeMillis()) else null)
+                val neu = old.copy(status = status, erledigtAmEpochMs = null)
                 MangelStatusSpeicher.speichern(requireContext(), item.key, neu)
                 view?.let { lade(it) }
             }
@@ -293,7 +296,11 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
     }
 
     private fun erledigtDialog(item: MaengellisteExport.MangelItem) {
-        val input = EditText(requireContext()).apply { hint = "Kommentar zur Erledigung" }
+        val existing = MangelStatusSpeicher.laden(requireContext(), item.key)
+        val input = EditText(requireContext()).apply {
+            hint = "Kommentar zur Erledigung"
+            setText(existing.kommentar)
+        }
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Mangel erledigt markieren")
             .setView(input)
