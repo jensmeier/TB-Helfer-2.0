@@ -82,10 +82,14 @@ def main() -> None:
         system.index("def admin_system_status"):
         system.index('@router.post("/backups"')
     ]
-    if '"storage_key"' in status_block or '"last_error"' in status_block:
+    if '"storage_key"' in status_block:
+        raise SystemExit("Systemstatus darf Backup-Pfade nicht offenlegen")
+    if 'result.pop("last_error", None)' not in status_block:
         raise SystemExit(
-            "Systemstatus darf Backup-Pfade/Job-Fehlerdetails nicht offenlegen"
+            "Rohe Job-Fehler muessen vor der Admin-Antwort serverseitig entfernt werden"
         )
+    if "last_error" in template:
+        raise SystemExit("Admin-Template darf rohe Job-Fehler nicht anzeigen")
 
     print("OK: TB-Server 1.0 background jobs + backup contract")
 
