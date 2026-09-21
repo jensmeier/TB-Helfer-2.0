@@ -160,7 +160,7 @@ function renderJobs(jobs){
     const pct=Math.max(0,Math.min(100,Number(j.progress_percent||0)));
     const progress=(j.status==='PENDING'||j.status==='RUNNING')?
       '<div class="bar" style="margin-top:8px"><div style="width:'+pct+'%"></div></div><div class="small" style="margin-top:4px">'+esc(pct)+' % · '+esc(j.progress_text||j.status_label||j.status)+'</div>':'';
-    const error=j.error_description?'<div class="job-error">'+esc(j.error_description)+(j.last_error?'<details><summary class="small">Technischen Code anzeigen</summary><code>'+esc(j.last_error)+'</code></details>':'')+'</div>':'';
+    const error=j.error_description?'<div class="job-error">'+esc(j.error_description)+'</div>':'';
     const del=(j.status==='DONE'||j.status==='FAILED')?'<button type="button" class="secondary" onclick="deleteJob(\''+esc(j.id)+'\')">Eintrag löschen</button>':'';
     return '<div class="item '+statusClass(j.status)+'"><div class="job-head"><div><div class="job-title">'+esc(j.job_label||j.job_type)+' · '+esc(j.status_label||j.status)+'</div><div class="job-meta">Versuch '+esc(j.attempts)+' · '+esc(dt(j.created_at))+'</div></div><div>'+del+'</div></div>'+progress+error+'</div>';
   }).join('')||'<p class="muted">Keine Vorgänge protokolliert.</p>';
