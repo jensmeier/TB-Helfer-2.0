@@ -1184,7 +1184,7 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 ## Android 1.3.11 / 200061 – PDF-Größe, Mediathek, Editor-Feinschliff
 
-Stand **21.09.2026 17:40+**:
+Stand **21.09.2026 18:15**:
 - Android-Arbeitsbranch: `feature/tb-android-2.0`; Draft-PR **#7**.
 - **1.3.10 / 200060** wurde lokal erfolgreich gebaut und auf dem Testgerät installiert. Benutzerbestätigt sind die neue Vollbildseite `Mangel bearbeiten`, die Darstellung der zugeordneten Fotos mit antippbarer Detailansicht sowie die bestehende Auswahl `Vorhandenes Foto auswählen` („sieht super aus“). Das praktische Speichern einer geänderten Unterbaustellen-Zuordnung bleibt noch als eigener E2E-Punkt offen.
 - Das vom Benutzer hochgeladene 200060-Mängel-PDF enthält 9 Fotos auf 2 Seiten; Foto-KM, fotoeigenes GVP/Mast und anklickbare GPS-Zeilen sind vorhanden. Die PDF-Größe ist jedoch mit rund **30 MiB** zu hoch.
@@ -1195,17 +1195,19 @@ Stand **21.09.2026 17:40+**:
 - `Vorhandenes Foto auswählen` behält seine bestätigte TB-Helfer-Fotoliste und erhält links neben `Abbrechen` den Button **Mediathek**. Dieser öffnet den Android-Datei-/Medienpicker für Bilder auf dem Handy. Das ausgewählte Bild wird in den TB-Helfer-Fotoordner kopiert, als Mangel-Foto in der lokalen DB angelegt und dem Mangel zugeordnet; vorhandenes EXIF-GPS wird übernommen.
 - Das freie Feld `Ort / KM / Bereich` bleibt Freitext. Die KM-Erkennung wurde verschärft: nur ein echter Dezimal-KM wie `76,235` oder `KM 76,235` wird als numerischer KM interpretiert; `Bahnsteig 2` und `Weiche 12` nicht.
 - `Abbrechen` und `Speichern` im Vollbildeditor verwenden jetzt dieselbe TB-Helfer-Grundform mit 14-dp-Rundung und gleicher Höhe; `Abbrechen` bleibt als Outline-Variante, `Speichern` als blauer Primärbutton.
-- Server-Vertrag erneut geprüft gegen `80d2c26f86245ed8fe71c7b7bd49c6d45afafcc2`: keine Serveränderung für diesen Block erforderlich.
-- Source-Checks bestanden: Version 200061, Mediathek-Launcher/Import, EXIF-GPS-Übernahme, Mangel-Zuordnung, strikte KM-Erkennung, GVP-Kopfentfernung, PDF-480px-Downscale, GPS-Link-Erhalt, große Foto-/Paginierungslogik, einheitliche Buttonstyles, Workflow und Release-Datei.
+- Server-Vertrag erneut geprüft gegen `ea23de17704e071084e1385566fd9a4cb5d9c6e1`: der neue Server-Commit dokumentiert nur den Synology-GUI-Deploymentweg; keine Mängel-API-Änderung und keine Serveränderung für diesen Android-Fix erforderlich.
+- Lokaler Buildversuch 200061 am **21.09.2026 18:14** scheiterte mit genau **2 Kotlin-Fehlern** in `MaengellisteExport.kt`: `Unresolved reference 'roundToInt'` in den beiden neuen PDF-Downscale-Zeilen.
+- Ursache reproduziert: `kotlin.math.roundToInt` wurde beim 480-px-Downscale verwendet, aber der Import fehlte. Kein Logik-/Strukturfehler; die übrigen 200061-Änderungen waren davon nicht betroffen.
+- Fix-Commit: `eb0af6998929c300e409900adae5dd26899844ef` ergänzt ausschließlich `import kotlin.math.roundToInt` in der echten Quelldatei `app/src/main/java/.../MaengellisteExport.kt`. Die generierte Datei unter `app/build/generated/**` bleibt unangetastet.
+- Source-Checks danach bestanden: Import + beide Aufrufe, Version 200061, 480px-PDF-Cap, GVP-Kopfentfernung/fotoeigenes GVP, GPS-Link-Erhalt, Mediathek und Strukturchecks.
 - `STATUS.xlsx` ist auf dem Server-Branch neuer und wird vom Android-Projekt nicht überschrieben.
 
-Teststatus: **QUELLSTAND 200061 FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200061 OFFEN / INSTALLATION OFFEN / PDF-GRÖSSEN-E2E OFFEN / MEDIATHEK-E2E OFFEN**.
+Teststatus: **QUELLSTAND 200061 KORRIGIERT / SOURCE-CHECKS BESTANDEN / BUILD 200061 ERNEUT OFFEN / INSTALLATION OFFEN / PDF-GRÖSSEN-E2E OFFEN / MEDIATHEK-E2E OFFEN**.
 
 Nächster Test:
-1. 200061 lokal bauen und installieren.
+1. Android-Branch pullen, Clean Project und 200061 erneut lokal bauen; Erfolgskriterium: kein `roundToInt`-Fehler.
 2. Neues 9-Foto-Mängel-PDF exportieren und Dateigröße messen.
 3. Prüfen: kein GVP/Mast mehr im Mangelkopf; GVP bleibt unter jedem Foto.
 4. GPS-Link im PDF anklicken.
 5. `Vorhandenes Foto auswählen` öffnen → `Mediathek` → Handybild auswählen → Fotoart wählen → Zuordnung prüfen.
 6. Vollbildeditor: gleiche Rundung/Höhe von `Abbrechen` und `Speichern` prüfen.
-
