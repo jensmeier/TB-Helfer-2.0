@@ -1162,7 +1162,14 @@ Betroffene Dateien:
 - `.github/workflows/android.yml`
 - `releases/TB-Helfer_1.3.9_200059.md`
 
-Teststatus: **QUELLSTAND FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200059 OFFEN / INSTALLATION OFFEN / PDF-LAYOUT-E2E OFFEN**.
+- Lokaler Buildversuch 200059 am **21.09.2026 16:05** scheiterte mit **112 Kotlin-Fehlern** in der generierten `MaengellisteExport.kt`. Das war ein echter Android-Quellfehler dieses Arbeitsblocks.
+- Ursache exakt eingegrenzt: Beim PDF-Layout-Umbau wurde der erste allgemeine Suchanker `items.forEachIndexed { idx, item ->` getroffen. Dieser lag im **CSV-Export** und nicht im `pdfBytes`-Block. Dadurch wurde ein großer Quellabschnitt ab `csvText` versehentlich durch PDF-Code ersetzt; die vielen `Unresolved reference`-Meldungen waren Kaskadenfehler.
+- Reparatur: `MaengellisteExport.kt` vollständig aus dem praktisch bestätigten 200058-Quellstand `29376d13…` rekonstruiert und die 200059-Änderung anschließend ausschließlich innerhalb des eindeutig begrenzten `pdfBytes`-Blocks erneut angewendet.
+- Fix-Commit: `51c14ba111c66f4335445d7365816228fd0da124`.
+- Zusätzliche Strukturprüfung: Quellpräfix bis `pdfBytes` ist identisch zum bestätigten 200058-Stand; Quellsuffix ab `statusText` ist ebenfalls identisch. Der 200059-Unterschied liegt damit nur noch im PDF-Renderblock. CSV-Export und Hilfsfunktionen sind wieder vollständig vorhanden.
+- Die bestätigte 200058-GPS-PDF-Funktion wurde aus dem bekannten guten Quellstand übernommen und bleibt im neuen PDF-Block erhalten.
+
+Teststatus: **QUELLSTAND 200059 KORRIGIERT / STRUKTURCHECKS BESTANDEN / BUILD ERNEUT OFFEN / INSTALLATION OFFEN / PDF-LAYOUT-E2E OFFEN**.
 
 Bestätigtes Folgekonzept bleibt offen:
 - `Mangel bearbeiten` als eigene Vollbildseite;
