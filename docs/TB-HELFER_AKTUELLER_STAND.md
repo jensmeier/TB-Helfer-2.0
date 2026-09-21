@@ -75,28 +75,29 @@ Stand **21.09.2026**:
 - Der Benutzer hat diesen Schritt ausdrücklich als **funktionierend** bestätigt.
 - Dieser bestätigte FULL-Backup-Pfad bleibt geschützt und wird nicht ohne reproduzierbaren Fehler oder ausdrücklichen Änderungswunsch umgebaut.
 - Der frühere HTTP-500-/UUID-Fehler ist praktisch überwunden: Restore-Test-Jobs werden inzwischen eingereiht und vom Worker verarbeitet.
-- Aktueller reproduzierter Restore-Fehler: `tb.background_jobs.last_error = TB_RESTORE_TEST_DB_NAME_MISSING`. Im laufenden Worker ergab `env | grep '^TB_RESTORE' | sort` keine Ausgabe; die Restore-Umgebungsvariablen gingen bei einer Worker-Neuerstellung über die normale Synology-`compose.yml` verloren.
-- Quellfix: `server/docker-compose.synology-staging.v1.yml` enthält die Restore-Test-/Restore-Target-Variablen jetzt dauerhaft im Worker sowie den Restore-Target-Storage-Mount. Source-Check 82 schützt diesen Deploymentvertrag. Die getrennten Restore-DB-Dienste bleiben weiterhin im optionalen Restore-Overlay.
-- **Noch offen:** aktualisierte Staging-`compose.yml` auf Synology übernehmen, Worker neu erstellen, Restore-Umgebung im Worker prüfen und denselben bestätigten FULL-Backup-Lauf erneut testen; danach Retention und Restore-to-Target praktisch abnehmen.
+- Der zwischenzeitliche Worker-Environment-Fehler `TB_RESTORE_TEST_DB_NAME_MISSING` wurde reproduziert und behoben: die Restore-Test-/Restore-Target-Variablen sind dauerhaft im Synology-Staging-Worker hinterlegt; Source-Check 82 schützt den Deploymentvertrag.
+- **Restore-Test am 21.09.2026 praktisch BESTÄTIGT:** derselbe getrennte Restore-Test wurde nach der Worker-Neuerstellung erfolgreich ausgeführt. Background Job `RESTORE_TEST` steht auf `DONE`, der zugehörige Backup-Lauf `RESTORE_TEST` auf `OK`. Die laufende Live-Datenbank wurde dabei nicht verändert.
+- Damit sind FULL-Backup und getrennte Restore-Test-Wiederherstellung praktisch bestätigt.
+- **Backup-Retention am 21.09.2026 praktisch bestätigt:** manueller `BACKUP_RETENTION`-Job lief mit Versuch 1 auf `DONE`. Bei aktueller Policy (30 Tage, mindestens 3 je Backupart) wurden die jungen Backups erwartungsgemäß nicht entfernt.
+- **Noch offen:** Restore-to-Target gegen das getrennte Ziel prüfen; danach ist die Backup-/Recovery-Abnahme vollständig und Migrationen 011 + 012 können kontrolliert ausgerollt werden.
 - Migration 011 wurde zu diesem Zeitpunkt **noch nicht** auf Staging ausgeführt.
 
 ## Laufzeitbefunde 21.09.2026 – Restore-Test und Release-Draft-Prüfung
 
 - Restore-Infrastruktur auf Synology ist angelegt: getrennte `restore-test-db`, `restore-target-db` und Worker laufen; Live-API und Live-DB blieben dabei erreichbar.
 - Der frühere Klickfehler `UUID` ist behoben: Restore-Test-Jobs werden inzwischen erfolgreich erstellt.
-- Die aktuellen Restore-Test-Jobs liefen bis Versuch 5 und endeten `FAILED`. Direkt aus `tb.background_jobs.last_error` gelesen: `TB_RESTORE_TEST_DB_NAME_MISSING`.
-- Diagnose im laufenden Worker: `env | grep '^TB_RESTORE' | sort` liefert keine Einträge. Damit ist die Ursache ein Deployment-/Container-Environment-Verlust und kein Defekt des FULL-Backups.
-- Quellfix `1dcfc4586592…`: Restore-Test-/Restore-Target-Variablen werden im Synology-Staging-Worker dauerhaft mitgeführt; `bbee4d4de82f…` erweitert den Source-Check. Restore-Datenbanken bleiben weiterhin getrennte Dienste.
+- Die früheren Restore-Test-Fehler `TB_RESTORE_TEST_DB_NAME_MISSING` waren ein Deployment-/Container-Environment-Problem. Quellfix `1dcfc4586592…` führt die Restore-Test-/Restore-Target-Variablen dauerhaft im Synology-Staging-Worker; `bbee4d4de82f…` schützt dies per Source-Check.
+- Nach Übernahme der aktualisierten `compose.yml` und Neuerstellung ausschließlich des Workers waren die `TB_RESTORE_*`-Variablen praktisch vorhanden.
+- **Abschluss 21.09.2026:** neuer Restore-Test-Job lief mit Versuch 1 auf `DONE`; der korrespondierende Restore-Test-Lauf steht auf `OK`. Damit ist der getrennte Restore-Test des bestätigten FULL-Backups praktisch bestanden.
 - Release 1.3.6 / Build 200056 ist im Admin aktuell ein **DRAFT**. Android 1.3.4 zeigt deshalb korrekt „aktuell“: DRAFT-Releases dürfen nicht über den öffentlichen Kompatibilitätsvertrag angeboten werden.
 - Der Admin-Button `Download prüfen` eines DRAFTs zeigte jedoch auf den öffentlichen Downloadvertrag und erhielt deshalb korrekt `RELEASE_NOT_FOUND`. Quellfix: eigener ADMIN-geschützter GET-Binary-Pfad für DRAFT-Prüfung; öffentlicher Download bleibt unverändert auf `PUBLISHED` beschränkt.
 - **Updateweg nach Veröffentlichung am 21.09.2026 erneut praktisch bestätigt:** Admin-Binary-Download funktioniert, veröffentlichter Release wird vom Handy erkannt und installiert; danach blieben Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten erhalten. Der bestehende Updatevertrag bleibt damit geschützt.
 
 Nächster Laufzeitschritt:
-1. aktuelle `server/docker-compose.synology-staging.v1.yml` als Synology-`compose.yml` übernehmen;
-2. nur den Worker neu erstellen und prüfen, dass `TB_RESTORE_TEST_DB_NAME` sowie die übrigen `TB_RESTORE_*`-Variablen vorhanden sind;
-3. dasselbe bestätigte FULL-Backup erneut per Restore-Test starten und Jobstatus bis `DONE`/Restore-Lauf `OK` prüfen;
-4. Release-/App-Updateweg ist erneut praktisch bestätigt; hier keine weitere Änderung ohne reproduzierbaren Fehler;
-5. erst danach mit dem geplanten Deployment 011+012 fortfahren.
+1. Restore-to-Target ausschließlich gegen die bereits getrennte Target-DB/Target-Ablage praktisch durchführen und prüfen;
+2. danach FULL-/Restore-Test-/Retention-Pfade als geschützt belassen;
+3. anschließend Migrationen 011 + 012 kontrolliert auf Synology-Staging ausrollen und `/health/ready` auf 12/12 prüfen;
+4. danach System-Automatik/SMTP sowie Katalog-/Profil-E2E fortsetzen.
 ## Server 1.0 – Backup-Automatik, E-Mail-Berichte und Audit
 
 Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Dieser Block wurde noch nicht auf Synology-Staging ausgerollt. Der praktisch bestätigte FULL-Backup-Pfad wurde nicht ersetzt oder umgebaut.
@@ -128,11 +129,11 @@ Tests:
 - Migration 012, automatische Jobs und echter SMTP-Versand auf Synology: **E2E OFFEN**.
 
 Sicherer nächster Ablauf:
-1. zuerst den bereits bestätigten FULL-Backup-Lauf per getrenntem Restore-Test verifizieren;
-2. danach aktuellen Serverbranch deployen und Migrationen **011 + 012** anwenden; `/health/ready` muss dann migrations=ok / 12 von 12 melden;
-3. Systemstatus öffnen, Automatikwerte speichern, SMTP-Secret ausschließlich auf Synology setzen und Testbericht versenden;
-4. einen automatischen Testslot für Backup/Retention praktisch prüfen;
-5. erst danach Katalog-/Profil-E2E und Android 200055 fortsetzen.
+1. FULL-Backup, getrennter Restore-Test und manuelle Retention sind praktisch bestätigt; diese Pfade jetzt schützen.
+2. Als letzten Recovery-Punkt Restore-to-Target gegen die getrennte Target-DB/Target-Ablage praktisch prüfen.
+3. Danach aktuellen Serverbranch deployen und Migrationen **011 + 012** anwenden; `/health/ready` muss dann migrations=ok / 12 von 12 melden.
+4. Systemstatus öffnen, Automatikwerte speichern, SMTP-Secret ausschließlich auf Synology setzen und Testbericht versenden.
+5. Einen automatischen Backup-/Retention-Slot praktisch prüfen und danach Katalog-/Profil-E2E fortsetzen.
 
 ## Server 1.0 + Android 200055 – globaler Katalog und Benutzeridentität
 
@@ -1141,32 +1142,29 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
 
 
-## Android 1.3.8 / 200058 – GPS im Mängel-PDF anklickbar
+## Android 1.3.9 / 200059 – größere Mängel-PDF-Fotos und getrennte KM/GVP-Zeilen
 
 Stand **21.09.2026**:
 - Android-Arbeitsbranch: `feature/tb-android-2.0`; Draft-PR **#7**.
-- Vorgängerstand **1.3.7 / 200057**: lokaler Android-Studio-Build vom Benutzer am 21.09.2026 13:40 erfolgreich abgeschlossen; nur zwei nicht blockierende Deprecation-Warnungen in `FotoErfassenFragment.kt`. Die neue Mängelliste läuft praktisch auf dem gezeigten Testgerät (Bearbeiten, Kommentar, größere Fotos, Foto-KM/GPS, GVP/Mast sichtbar). Damit: **BUILD ERFOLGREICH / INSTALLIERT auf Testgerät / Gesamt-E2E noch offen**.
-- Vom Benutzer exportiertes Mängel-PDF zeigt bereits individuelle Foto-KM/GVP/GPS-Zeilen. Die GPS-Zeilen waren dort bisher nur Text und nicht als PDF-Linkannotation hinterlegt.
-- Neue Zielversion: **1.3.8 / versionCode 200058**.
-- Der bestehende `android.graphics.pdf.PdfDocument`-Renderer bleibt vollständig erhalten. Nach dem Rendern werden ausschließlich über den gezeichneten GPS-Zeilen echte URI-Link-Annotationen ergänzt.
-- Ziel-URL je Foto: `https://www.google.com/maps/search/?api=1&query=<lat>,<lon>`. Dadurch kann ein normaler PDF-Reader die GPS-Zeile antippen und Google Maps bzw. den Standardbrowser öffnen.
-- Die GPS-Zeile wird im PDF blau und unterstrichen gezeichnet, damit die Klickbarkeit sichtbar ist.
-- Für die Annotationen wird `com.tom-roush:pdfbox-android:2.0.27.0` verwendet. PDFBox wird nur zum Nachtragen der Link-Annotationen eingesetzt; der bestehende PDF-Aufbau und die Bild-/Textpositionen werden nicht neu gerendert.
-- Release-R8 berücksichtigt den optionalen, von TB-Helfer nicht verwendeten JPX-Decoder mit `-dontwarn com.gemalto.jp2.**`.
-- Server-Vertrag unverändert; hierfür ist keine Serveränderung erforderlich. Server-HEAD geprüft: `3257d3b0ae1f90396cc3a2f00ff2c976d899c6f3`. Seit dem letzten Mangelvertrag wurden dort nur Doku/Status/Excel fortgeschrieben, keine Mängel-API geändert.
-- Source-Checks für Version, PDFBox-Abhängigkeit, Link-Annotation, Google-Maps-URL, GPS-Linkpositionen, R8-Regel, Workflow und Release-Datei sind bestanden.
-- `STATUS.xlsx` auf dem Server-Branch ist neuer als die Android-Kopie und wird deshalb vom Android-Projekt nicht überschrieben.
-- **UI-Konzept vom Benutzer bestätigt:** `Mangel bearbeiten` soll künftig als eigene Vollbildseite statt als Dialog erscheinen. Die Seite erhält echte Feldbezeichnungen, eine echte Auswahl für Haupt-/Unterbaustelle, Firma, Beschreibung und Kommentar. Das bisherige KM-Feld wird fachlich zu **`Ort / KM / Bereich (optional)`**: freie Texte wie `KM 76,235`, `Modulgebäude`, `Bahnsteig 2` oder `Weiche 12` sind zulässig; ein reiner numerischer KM-Wert ist nicht verpflichtend. Fotos bleiben direkt auf der Bearbeitungsseite sichtbar/aufrufbar. Dieses Konzept ist **BESTÄTIGT**, aber noch nicht implementiert.
+- Vorgänger **1.3.8 / 200058** ist für den GPS-/PDF-Funktionspfad praktisch **BESTÄTIGT**: GPS bei den Mangel-Fotos funktioniert; PDF-Export und GPS-Funktion im PDF funktionieren ebenfalls. Diese bestätigte Funktion bleibt geschützt.
+- Neue Zielversion: **1.3.9 / versionCode 200059**.
+- Mängel-PDF: Foto-Boxen von 160×106 auf **164×164 pt** vergrößert. Hochformat-Bilder werden dadurch deutlich größer dargestellt; die vollständige Bildgeometrie bleibt erhalten, es wird nicht gecroppt.
+- Pro PDF-Seite werden maximal **6 Mangel-Fotos** (3 Spalten × 2 Zeilen) dargestellt. Weitere Fotos laufen als **FORTSETZUNG** auf einer Folgeseite weiter, damit bei größeren Bildern nichts abgeschnitten wird.
+- Foto-Metadaten unter jedem Bild sind jetzt klar getrennt: Bildinfo → **KM** → **GVP/Mast** → **GPS** → Beschreibung. KM und GVP/Mast stehen nicht mehr in derselben Zeile.
+- GPS bleibt blau/unterstrichen und nutzt unverändert die in 200058 bestätigten anklickbaren PDF-Link-Annotationen zu Google Maps.
+- Server-Vertrag unverändert; keine Serveränderung erforderlich. Server-HEAD geprüft: `ca5f467d4ccb95e1cc218af4e3053223e8a919c9`.
+- Source-Checks für Version, 6er-Paginierung, größere Fotobox, getrennte KM-/GVP-Ausgabe, GPS-Link-Erhalt, Workflow und Release-Datei sind bestanden.
+- `STATUS.xlsx` ist auf dem Server-Branch neuer und wird vom Android-Projekt nicht überschrieben.
 
 Betroffene Dateien:
 - `app/src/main/java/de/tbhelfer/ui/baustelle/MaengellisteExport.kt`
-- `app/src/main/java/de/tbhelfer/ui/baustelle/PdfGpsLinkAnnotator.kt`
 - `app/build.gradle.kts`
-- `app/proguard-rules.pro`
 - `.github/workflows/android.yml`
-- `releases/TB-Helfer_1.3.8_200058.md`
+- `releases/TB-Helfer_1.3.9_200059.md`
 
-- Benutzerbestätigung am **21.09.2026**: GPS-Funktion bei den Mangel-Fotos funktioniert praktisch; der PDF-Export funktioniert ebenfalls und die GPS-Funktion im PDF ist praktisch bestätigt. Damit ist der 200058-Funktionsblock auf dem Testgerät installiert und die GPS-/PDF-Funktion **BESTÄTIGT**.
-- Diese Bestätigung gilt für den gezeigten Testgerätepfad und den Mängel-PDF-Export; ein vollständiger Pixel/Poco-Zwei-Geräte-/Sync-E2E ist davon weiterhin getrennt offen.
+Teststatus: **QUELLSTAND FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200059 OFFEN / INSTALLATION OFFEN / PDF-LAYOUT-E2E OFFEN**.
 
-Teststatus: **BUILD 200058 PRAKTISCH BESTÄTIGT / INSTALLIERT AUF TESTGERÄT / GPS BILDER BESTÄTIGT / PDF + GPS-LINK BESTÄTIGT / PIXEL+POCO GESAMT-E2E OFFEN**.
+Bestätigtes Folgekonzept bleibt offen:
+- `Mangel bearbeiten` als eigene Vollbildseite;
+- echte Haupt-/Unterbaustellen-Auswahl;
+- freies Feld `Ort / KM / Bereich (optional)`, z. B. `KM 76,235`, `Modulgebäude`, `Bahnsteig 2`.
