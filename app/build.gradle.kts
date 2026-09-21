@@ -551,10 +551,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200056: Foto-/BTB-Texttrennung, kompakter Windows-Export und Schicht-Bilderlisten.
-        // Bestehende bestätigte Aktivierungs-/Updatepfade bleiben unverändert.
-        versionCode = 200056
-        versionName = "1.3.6"
+        // Android 200057: bearbeitbare Mängelliste, korrigierte Baustellen-/KM-Anzeige,
+        // Foto-KM/GPS sowie Google-Maps-Sprung. Bestehende Updatepfade bleiben unverändert.
+        versionCode = 200057
+        versionName = "1.3.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
