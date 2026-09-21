@@ -551,10 +551,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200057: bearbeitbare Mängelliste, korrigierte Baustellen-/KM-Anzeige,
-        // Foto-KM/GPS sowie Google-Maps-Sprung. Bestehende Updatepfade bleiben unverändert.
-        versionCode = 200057
-        versionName = "1.3.7"
+        // Android 200058: GPS-Koordinaten in exportierten Mängel-PDFs werden echte
+        // anklickbare Google-Maps-Links. Bestehender PdfDocument-Renderer bleibt erhalten.
+        versionCode = 200058
+        versionName = "1.3.8"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -661,6 +661,8 @@ dependencies {
     implementation(libs.androidx.camera.extensions)
     implementation(libs.play.services.code.scanner)
     implementation(libs.zxing.core)
+    // 200058: nur zum Nachtragen echter URI-Link-Annotationen in bereits gerenderte PDFs.
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     testImplementation(libs.junit4)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.espresso.core)
