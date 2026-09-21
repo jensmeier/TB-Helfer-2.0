@@ -36,6 +36,8 @@ def main() -> None:
         ("_SAFE_SETTING_KEYS", system),
         ("last_device_seen", system),
         ("last_sync", system),
+        ('result.pop("last_error", None)', system),
+        ('"error_description"', system),
         ("system_admin_router", main_source),
         ('@router.get("/admin/v1/system")', web),
         ('/api/v1/admin/system/status', template),
@@ -59,7 +61,6 @@ def main() -> None:
         "smtp_password",
         "token_hash",
         "storage_key AS",
-        "last_error",
         "payload jsonb",
     ]
     exposed = [needle for needle in forbidden if needle in system]
