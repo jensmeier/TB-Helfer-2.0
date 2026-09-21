@@ -378,7 +378,7 @@ class CollabLocalBridge(
                     kommentar = payload.optString("kommentar", old.kommentar),
                     erledigtAmEpochMs = payload.optNullableLong("erledigtAmEpochMs") ?: old.erledigtAmEpochMs,
                     bereichOverride = payload.optString("bereich").trim().takeIf { it.isNotBlank() },
-                    kmOverride = payload.optString("km").trim().takeIf { it.isNotBlank() },
+                    kmOverride = if (payload.has("km") && !payload.isNull("km")) payload.optString("km", "").trim() else old.kmOverride,
                     firmaOverride = payload.optString("firma").trim().takeIf { it.isNotBlank() },
                     beschreibungOverride = payload.optString("beschreibung").trim().takeIf { it.isNotBlank() }
                 )
@@ -608,7 +608,7 @@ class CollabLocalBridge(
         payload.put("kommentar", status.kommentar)
         payload.putNullable("erledigtAmEpochMs", status.erledigtAmEpochMs)
         status.bereichOverride?.takeIf { it.isNotBlank() }?.let { payload.put("bereich", it) }
-        status.kmOverride?.takeIf { it.isNotBlank() }?.let { payload.put("km", it) }
+        status.kmOverride?.let { payload.put("km", it) }
         status.firmaOverride?.takeIf { it.isNotBlank() }?.let { payload.put("firma", it) }
         status.beschreibungOverride?.takeIf { it.isNotBlank() }?.let { payload.put("beschreibung", it) }
         payload.put("fotos", JSONArray())
