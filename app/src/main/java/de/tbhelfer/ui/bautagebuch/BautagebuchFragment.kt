@@ -4750,7 +4750,7 @@ cardCurrentReport.setOnClickListener {
             val grouped = relevant.groupBy { f ->
                 val firm = f.firma.trim().takeIf { it.isNotBlank() }
                 val ov = overridesByFotoId[f.id]?.trim().orEmpty()
-                val txt = if (ov.isNotBlank()) ov else (f.notiz?.trim()?.takeIf { it.isNotBlank() } ?: f.notiz?.trim()?.takeIf { it.isNotBlank() } ?: f.kurztext.trim())
+                val txt = if (ov.isNotBlank()) ov else (f.notiz?.trim()?.takeIf { it.isNotBlank() } ?: f.kurztext.trim())
                 firm to txt
             }
 
@@ -4867,7 +4867,7 @@ cardCurrentReport.setOnClickListener {
                 }
 
                 fun effectiveText(f: de.tbhelfer.datenbank.FotoEntity): String =
-                    f.notiz?.trim()?.takeIf { it.isNotBlank() } ?: f.notiz?.trim()?.takeIf { it.isNotBlank() } ?: f.kurztext.trim()
+                    f.notiz?.trim()?.takeIf { it.isNotBlank() } ?: f.kurztext.trim()
 
                 fun bildLabel(numsIn: List<Int>): String {
                     if (numsIn.isEmpty()) return ""
