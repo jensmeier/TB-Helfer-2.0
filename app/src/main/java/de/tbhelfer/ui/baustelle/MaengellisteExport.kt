@@ -87,7 +87,7 @@ object MaengellisteExport {
             if (meta.km.isNullOrBlank()) meta.km = foto.km?.let { "KM ${de.tbhelfer.util.KmAnzeige.wert(it)}" } ?: "-"
             if (meta.firma.isNullOrBlank() || meta.firma == "-") meta.firma = foto.firma.ifBlank { "-" }
             if (meta.beschreibung.isNullOrBlank()) meta.beschreibung = foto.notiz?.takeIf { it.isNotBlank() } ?: foto.kurztext
-            if (meta.gps.isNullOrBlank()) meta.gps = "%.6f, %.6f".format(Locale.US, foto.gpsLat, foto.gpsLon)
+            if (meta.gps.isNullOrBlank()) meta.gps = fotoGpsText(foto).ifBlank { "-" }
         }
 
         alleFotos
@@ -132,7 +132,7 @@ object MaengellisteExport {
 
         return gruppen.map { (key, meta) ->
             val fotos = meta.fotos.distinctBy { it.foto.id }.sortedBy { it.foto.erstelltAmEpochMs }
-            MangelItem(
+            val base = MangelItem(
                 key = key,
                 datumIso = meta.datumIso ?: fotos.firstOrNull()?.foto?.let { datumIso(it.erstelltAmEpochMs) }.orEmpty(),
                 zeit = meta.zeit ?: fotos.firstOrNull()?.foto?.let { zeit(it.erstelltAmEpochMs) }.orEmpty(),
@@ -144,6 +144,13 @@ object MaengellisteExport {
                 gps = meta.gps ?: "-",
                 fotos = fotos,
                 btbBildNr = meta.btbBildNr
+            )
+            val edit = MangelStatusSpeicher.laden(context, key)
+            base.copy(
+                bereich = edit.bereichOverride ?: base.bereich,
+                km = edit.kmOverride ?: base.km,
+                firma = edit.firmaOverride ?: base.firma,
+                beschreibung = edit.beschreibungOverride ?: base.beschreibung
             )
         }
             .distinctBy { it.key }
@@ -251,15 +258,16 @@ object MaengellisteExport {
             val fotosAnzahl = fotos.size.coerceAtMost(18)
             val rows = if (fotosAnzahl <= 0) 0 else ceil(fotosAnzahl / 3.0).toInt()
             val colW = 238f
-            val leftInfo = listOf(
-                "Datum/Zeit: " to "${datumDe(item.datumIso)} ${item.zeit}",
-                "Bereich: " to item.bereich,
-                "Firma: " to item.firma,
-                "KM: " to item.km,
-                "Text: " to item.beschreibung
-            )
+            val gvp = gvpMastText(item)
+            val leftInfo = buildList {
+                add("Datum/Zeit: " to "${datumDe(item.datumIso)} ${item.zeit}")
+                add("Baustelle: " to anzeigeBaustelle(item))
+                add("Firma: " to item.firma)
+                add("KM: " to item.km)
+                if (gvp.isNotBlank()) add("GVP/Mast: " to gvp)
+                add("Text: " to item.beschreibung)
+            }
             val rightInfo = listOf(
-                "GPS: " to item.gps,
                 "Fotos: " to "Mangel ${countArt(item, MangelStatusSpeicher.FotoArt.MANGEL)} · in Arbeit ${countArt(item, MangelStatusSpeicher.FotoArt.IN_ARBEIT)} · erledigt ${countArt(item, MangelStatusSpeicher.FotoArt.ERLEDIGT)}",
                 "Erledigt: " to (wert.erledigtAmEpochMs?.let { datumZeit(it) } ?: "__________"),
                 "Kommentar: " to wert.kommentar.ifBlank { "__________" }
@@ -267,7 +275,8 @@ object MaengellisteExport {
             val leftLines = leftInfo.sumOf { fieldLines(it.first, it.second, colW).size }
             val rightLines = rightInfo.sumOf { fieldLines(it.first, it.second, colW).size }
             val infoH = maxOf(leftLines, rightLines) * (text.textSize + 3f)
-            val photosH = if (rows > 0) 18f + rows * 148f else 18f
+            val photoRowH = 176f
+            val photosH = if (rows > 0) 18f + rows * photoRowH else 18f
             val cardH = (44f + infoH + photosH + 20f).coerceAtLeast(160f).coerceAtMost(730f)
             if (y + cardH > h - 36f) { newPage(); y = 84f }
 
@@ -289,7 +298,7 @@ object MaengellisteExport {
             var fx = 44f
             val imgW = 160f
             val imgH = 106f
-            val rowH = 148f
+            val rowH = photoRowH
             fotos.take(18).forEachIndexed { fIdx, mf ->
                 if (fIdx > 0 && fIdx % 3 == 0) {
                     fx = 44f
@@ -310,9 +319,18 @@ object MaengellisteExport {
                 }
                 val caption1 = "${fotoArtText(mf.art)} · ${zeit(mf.foto.erstelltAmEpochMs)} · Bild ${mf.foto.id}"
                 canvas.drawText(caption1, fx, fy + imgH + 10f, small)
+                val kmText = fotoKmText(mf.foto)
+                val gvpFoto = mf.foto.info1Wert?.trim().orEmpty()
+                val kmGvp = listOfNotNull(
+                    kmText.takeIf { it.isNotBlank() }?.let { "KM: $it" },
+                    gvpFoto.takeIf { it.isNotBlank() }?.let { "GVP/Mast: $it" }
+                ).joinToString(" · ")
+                if (kmGvp.isNotBlank()) canvas.drawText(kmGvp, fx, fy + imgH + 20f, small)
+                val gpsText = fotoGpsText(mf.foto)
+                if (gpsText.isNotBlank()) canvas.drawText("GPS: $gpsText", fx, fy + imgH + 30f, small)
                 val kommentar = mf.foto.notiz?.trim()?.takeIf { it.isNotBlank() } ?: mf.foto.kurztext.trim()
                 wrapLines(kommentar, imgW, small).take(2).forEachIndexed { lineIdx, line ->
-                    canvas.drawText(line, fx, fy + imgH + 20f + lineIdx * 9f, small)
+                    canvas.drawText(line, fx, fy + imgH + 40f + lineIdx * 9f, small)
                 }
                 fx += imgW + 12f
             }
@@ -357,6 +375,19 @@ object MaengellisteExport {
     }
 
     fun countArt(item: MangelItem, art: MangelStatusSpeicher.FotoArt): Int = item.fotos.count { it.art == art }
+
+    fun anzeigeBaustelle(item: MangelItem): String =
+        item.bereich.trim().takeIf { it.isNotBlank() && !it.equals("Hauptbaustelle", ignoreCase = true) }
+            ?: item.baustelle.ifBlank { "Hauptbaustelle" }
+
+    fun gvpMastText(item: MangelItem): String =
+        item.fotos.asSequence().mapNotNull { it.foto.info1Wert?.trim()?.takeIf(String::isNotBlank) }.firstOrNull().orEmpty()
+
+    fun fotoKmText(foto: FotoEntity): String =
+        foto.km?.let { de.tbhelfer.util.KmAnzeige.wert(it) }.orEmpty()
+
+    fun fotoGpsText(foto: FotoEntity): String =
+        if (foto.gpsLat == 0.0 && foto.gpsLon == 0.0) "" else "%.6f, %.6f".format(Locale.US, foto.gpsLat, foto.gpsLon)
 
     private fun csv(s: String): String = "\"" + s.replace("\"", "\"\"") + "\""
     private fun datumIso(epoch: Long): String = Instant.ofEpochMilli(epoch).atZone(ZoneId.systemDefault()).toLocalDate().toString()
