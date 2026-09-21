@@ -100,6 +100,15 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
                         )
                     }
                 val kombiniert = (lokal + serverNur)
+                    .map { item ->
+                        val edit = MangelStatusSpeicher.laden(ctx, item.key)
+                        item.copy(
+                            bereich = edit.bereichOverride ?: item.bereich,
+                            km = edit.kmOverride ?: item.km,
+                            firma = edit.firmaOverride ?: item.firma,
+                            beschreibung = edit.beschreibungOverride ?: item.beschreibung
+                        )
+                    }
                     .distinctBy { it.key }
                     .sortedWith(compareBy<MaengellisteExport.MangelItem> { it.datumIso }.thenBy { it.zeit }.thenBy { it.beschreibung })
                 val by = server.mapNotNull { s -> s.changedByName?.takeIf { it.isNotBlank() }?.let { s.mangelKey to it } }.toMap()
@@ -133,8 +142,12 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
             setPadding(dp(12), dp(10), dp(12), dp(10))
         }
         inner.addView(textView("Mangel ${nr.toString().padStart(3, '0')} · $label", 17f, Color.BLACK, true))
-        inner.addView(textView("${datumDe(item.datumIso)} · ${item.zeit} · ${item.bereich}", 13f, Color.DKGRAY, false))
+        inner.addView(textView("${datumDe(item.datumIso)} · ${item.zeit}", 13f, Color.DKGRAY, false))
+        inner.addView(textView("Baustelle: ${MaengellisteExport.anzeigeBaustelle(item)}", 13f, Color.DKGRAY, false))
         inner.addView(textView("Firma: ${item.firma}   KM: ${item.km}", 13f, Color.DKGRAY, false))
+        MaengellisteExport.gvpMastText(item).takeIf { it.isNotBlank() }?.let {
+            inner.addView(textView("GVP/Mast: $it", 13f, Color.DKGRAY, false))
+        }
         syncUrheber[item.key]?.let { inner.addView(textView("Synchronisiert von: $it", 12f, Color.DKGRAY, false)) }
         inner.addView(textView(item.beschreibung, 15f, Color.BLACK, false))
         val countLine = "Fotos: Mangel ${MaengellisteExport.countArt(item, MangelStatusSpeicher.FotoArt.MANGEL)} · in Arbeit ${MaengellisteExport.countArt(item, MangelStatusSpeicher.FotoArt.IN_ARBEIT)} · erledigt ${MaengellisteExport.countArt(item, MangelStatusSpeicher.FotoArt.ERLEDIGT)}"
@@ -159,28 +172,105 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
             item.fotos.forEach { mf ->
                 val box = LinearLayout(ctx).apply {
                     orientation = LinearLayout.VERTICAL
-                    layoutParams = LinearLayout.LayoutParams(dp(96), LinearLayout.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(6) }
+                    layoutParams = LinearLayout.LayoutParams(dp(150), LinearLayout.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(8) }
                 }
                 val img = ImageView(ctx).apply {
                     scaleType = ImageView.ScaleType.CENTER_CROP
-                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(76))
+                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(105))
                 }
                 ThumbnailLoader.loadInto(img, mf.foto.dateipfad, android.R.drawable.ic_menu_report_image, 500, 350)
                 box.addView(img)
                 box.addView(textView(MaengellisteExport.fotoArtText(mf.art), 11f, Color.DKGRAY, false))
+                MaengellisteExport.fotoKmText(mf.foto).takeIf { it.isNotBlank() }?.let {
+                    box.addView(textView("KM: $it", 11f, Color.DKGRAY, false))
+                }
+                val gpsText = MaengellisteExport.fotoGpsText(mf.foto)
+                if (gpsText.isNotBlank()) {
+                    val gps = textView("GPS: $gpsText", 10.5f, Color.parseColor("#1565C0"), false).apply {
+                        paintFlags = paintFlags or android.graphics.Paint.UNDERLINE_TEXT_FLAG
+                        setOnClickListener { openGps(mf.foto.gpsLat, mf.foto.gpsLon) }
+                    }
+                    box.addView(gps)
+                }
                 previewRow.addView(box)
             }
             previewScroll.addView(previewRow)
             inner.addView(previewScroll)
         }
 
-        val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        row.addView(button("Status") { statusDialog(item) })
-        row.addView(button("Erledigt") { erledigtDialog(item) })
-        row.addView(button("Foto hinzufügen") { fotoHinzufuegenDialog(item) })
-        inner.addView(row)
+        val row1 = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        row1.addView(button("Bearbeiten") { bearbeitenDialog(item) })
+        row1.addView(button("Status") { statusDialog(item) })
+        inner.addView(row1)
+        val row2 = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        row2.addView(button("Erledigt") { erledigtDialog(item) })
+        row2.addView(button("Foto hinzufügen") { fotoHinzufuegenDialog(item) })
+        inner.addView(row2)
         card.addView(inner)
         return card
+    }
+
+    private fun bearbeitenDialog(item: MaengellisteExport.MangelItem) {
+        val ctx = requireContext()
+        val old = MangelStatusSpeicher.laden(ctx, item.key)
+        if (old.status == MangelStatusSpeicher.Status.ERLEDIGT) {
+            Toast.makeText(ctx, "Erledigter Mangel ist fachlich abgeschlossen und nicht mehr änderbar.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val box = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(4), dp(20), 0)
+        }
+        fun field(hint: String, value: String, multiline: Boolean = false): EditText =
+            EditText(ctx).apply {
+                this.hint = hint
+                setText(value)
+                if (multiline) {
+                    minLines = 3
+                    gravity = android.view.Gravity.TOP
+                    inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                } else {
+                    singleLine = true
+                    inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                }
+            }
+
+        val ort = field("Baustelle / Unterbaustelle", MaengellisteExport.anzeigeBaustelle(item))
+        val km = field("KM", item.km)
+        val firma = field("Firma", item.firma)
+        val beschreibung = field("Beschreibung", item.beschreibung, multiline = true)
+        val kommentar = field("Kommentar", old.kommentar, multiline = true)
+        box.addView(ort)
+        box.addView(km)
+        box.addView(firma)
+        box.addView(beschreibung)
+        box.addView(kommentar)
+
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle("Mangel bearbeiten")
+            .setView(box)
+            .setPositiveButton("Speichern") { _, _ ->
+                val ortText = ort.text?.toString()?.trim().orEmpty()
+                val kmText = km.text?.toString()?.trim().orEmpty()
+                val firmaText = firma.text?.toString()?.trim().orEmpty()
+                val beschreibungText = beschreibung.text?.toString()?.trim().orEmpty()
+                val kommentarText = kommentar.text?.toString()?.trim().orEmpty()
+                MangelStatusSpeicher.speichern(
+                    ctx,
+                    item.key,
+                    old.copy(
+                        bereichOverride = ortText.takeIf { it.isNotBlank() },
+                        kmOverride = kmText.takeIf { it.isNotBlank() },
+                        firmaOverride = firmaText.takeIf { it.isNotBlank() },
+                        beschreibungOverride = beschreibungText.takeIf { it.isNotBlank() },
+                        kommentar = kommentarText
+                    )
+                )
+                view?.let { lade(it) }
+            }
+            .setNegativeButton("Abbrechen", null)
+            .show()
     }
 
     private fun statusDialog(item: MaengellisteExport.MangelItem) {
@@ -283,10 +373,10 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
                 putString(KameraFragment.ARG_NACHWEIS_STATUS, MangelStatusSpeicher.fotoArtZuStatus(art).name)
                 putString(KameraFragment.ARG_MANGEL_FOTO_ART, art.name)
                 putString(KameraFragment.ARG_PREFILL_FIRMA, item.firma.takeIf { it != "-" }.orEmpty())
-                putString(KameraFragment.ARG_PREFILL_KURZTEXT, item.beschreibung.take(90))
+                putString(KameraFragment.ARG_PREFILL_KURZTEXT, item.beschreibung.take(80))
                 putString(KameraFragment.ARG_PREFILL_NOTIZ, "$artText-Foto zu Mangel: ${item.beschreibung}")
                 item.hauptFoto?.baustellenKnotenId?.let { putLong(KameraFragment.ARG_NACHWEIS_KNOTEN_ID, it) }
-                item.hauptFoto?.km?.let { putDouble(KameraFragment.ARG_PREFILL_KM, it) }
+                (parseKm(item.km) ?: item.hauptFoto?.km)?.let { putDouble(KameraFragment.ARG_PREFILL_KM, it) }
             }
             Toast.makeText(requireContext(), "Kamera für Mangel-Foto vorbereitet", Toast.LENGTH_SHORT).show()
             findNavController().navigate(R.id.kameraFragment, bundle)
@@ -430,6 +520,24 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         }
         runCatching { startActivity(intent) }
             .onFailure { shareFile(file, mime, "Datei teilen") }
+    }
+
+    private fun openGps(lat: Double, lon: Double) {
+        if (lat == 0.0 && lon == 0.0) return
+        val geo = Uri.parse("geo:$lat,$lon?q=$lat,$lon")
+        val googleMaps = Intent(Intent.ACTION_VIEW, geo).apply { setPackage("com.google.android.apps.maps") }
+        val pm = requireContext().packageManager
+        if (googleMaps.resolveActivity(pm) != null) {
+            startActivity(googleMaps)
+        } else {
+            val web = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon")
+            startActivity(Intent(Intent.ACTION_VIEW, web))
+        }
+    }
+
+    private fun parseKm(value: String): Double? {
+        val raw = Regex("-?\\d+(?:[.,]\\d+)?").find(value)?.value ?: return null
+        return raw.replace(',', '.').toDoubleOrNull()
     }
 
     private fun farben(status: MangelStatusSpeicher.Status): Triple<Int, Int, String> = when (status) {
