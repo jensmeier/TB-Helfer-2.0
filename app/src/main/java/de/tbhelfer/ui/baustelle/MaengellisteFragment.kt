@@ -231,7 +231,7 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
                     gravity = android.view.Gravity.TOP
                     inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
                 } else {
-                    singleLine = true
+                    setSingleLine(true)
                     inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
                 }
             }
