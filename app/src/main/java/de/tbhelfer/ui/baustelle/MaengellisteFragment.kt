@@ -70,7 +70,11 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         view.findViewById<TextView>(R.id.tvMaengelSubtitle).text = baustelleName.ifBlank { "Baustelle" }
         view.findViewById<MaterialButton>(R.id.btnMaengelPdf).setOnClickListener { exportPdf() }
         view.findViewById<MaterialButton>(R.id.btnMaengelCsv).setOnClickListener { exportCsv() }
-        lade(view)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        view?.let { lade(it) }
     }
 
     private fun lade(root: View) {
@@ -144,7 +148,10 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         inner.addView(textView("Mangel ${nr.toString().padStart(3, '0')} · $label", 17f, Color.BLACK, true))
         inner.addView(textView("${datumDe(item.datumIso)} · ${item.zeit}", 13f, Color.DKGRAY, false))
         inner.addView(textView("Baustelle: ${MaengellisteExport.anzeigeBaustelle(item)}", 13f, Color.DKGRAY, false))
-        inner.addView(textView("Firma: ${item.firma}   KM: ${item.km}", 13f, Color.DKGRAY, false))
+        inner.addView(textView("Firma: ${item.firma}", 13f, Color.DKGRAY, false))
+        item.km.takeIf { it.isNotBlank() && it != "-" }?.let {
+            inner.addView(textView("Ort / KM / Bereich: $it", 13f, Color.DKGRAY, false))
+        }
         MaengellisteExport.gvpMastText(item).takeIf { it.isNotBlank() }?.let {
             inner.addView(textView("GVP/Mast: $it", 13f, Color.DKGRAY, false))
         }
@@ -199,7 +206,7 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         }
 
         val row1 = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        row1.addView(button("Bearbeiten") { bearbeitenDialog(item) })
+        row1.addView(button("Bearbeiten") { oeffneMangelEditor(item) })
         row1.addView(button("Status") { statusDialog(item) })
         inner.addView(row1)
         val row2 = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
@@ -208,6 +215,18 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         inner.addView(row2)
         card.addView(inner)
         return card
+    }
+
+    private fun oeffneMangelEditor(item: MaengellisteExport.MangelItem) {
+        findNavController().navigate(
+            R.id.mangelEditorFragment,
+            Bundle().apply {
+                putLong(MangelEditorFragment.ARG_HAUPT_KNOTEN_ID, hauptKnotenId)
+                putLong(MangelEditorFragment.ARG_ALT_BAUSTELLE_ID, altBaustelleId)
+                putString(MangelEditorFragment.ARG_BAUSTELLE_NAME, baustelleName)
+                putString(MangelEditorFragment.ARG_MANGEL_KEY, item.key)
+            }
+        )
     }
 
     private fun bearbeitenDialog(item: MaengellisteExport.MangelItem) {
@@ -360,8 +379,15 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
 
     private fun starteNeuesMangelFoto(item: MaengellisteExport.MangelItem, art: MangelStatusSpeicher.FotoArt) {
         lifecycleScope.launch {
+            val gespeicherterStatus = MangelStatusSpeicher.laden(requireContext(), item.key)
+            val nodeOverride = gespeicherterStatus.knotenIdOverride
+            val mangelKnotenId = when {
+                nodeOverride != null && nodeOverride == hauptKnotenId -> null
+                nodeOverride != null && nodeOverride > 0L -> nodeOverride
+                else -> item.hauptFoto?.baustellenKnotenId
+            }
+
             if (hauptKnotenId > 0L && altBaustelleId > 0L) {
-                val mangelKnotenId = item.hauptFoto?.baustellenKnotenId
                 if (mangelKnotenId != null && mangelKnotenId > 0L) {
                     ServiceLocator.aktuelleBaustelleSpeicher.setzenKnoten(
                         aktuellerKnotenId = mangelKnotenId,
@@ -382,7 +408,7 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
                 putString(KameraFragment.ARG_PREFILL_FIRMA, item.firma.takeIf { it != "-" }.orEmpty())
                 putString(KameraFragment.ARG_PREFILL_KURZTEXT, item.beschreibung.take(80))
                 putString(KameraFragment.ARG_PREFILL_NOTIZ, "$artText-Foto zu Mangel: ${item.beschreibung}")
-                item.hauptFoto?.baustellenKnotenId?.let { putLong(KameraFragment.ARG_NACHWEIS_KNOTEN_ID, it) }
+                mangelKnotenId?.let { putLong(KameraFragment.ARG_NACHWEIS_KNOTEN_ID, it) }
                 (parseKm(item.km) ?: item.hauptFoto?.km)?.let { putDouble(KameraFragment.ARG_PREFILL_KM, it) }
             }
             Toast.makeText(requireContext(), "Kamera für Mangel-Foto vorbereitet", Toast.LENGTH_SHORT).show()
@@ -407,9 +433,19 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
                 fotos = fotos,
                 onSelected = { foto ->
                     fotoArtDialog("Fotoart für ausgewähltes Foto") { art ->
+                        val saved = MangelStatusSpeicher.laden(requireContext(), item.key)
                         MangelStatusSpeicher.fotoZuordnen(requireContext(), item.key, foto.id, art)
-                        Toast.makeText(requireContext(), "Foto zugeordnet", Toast.LENGTH_SHORT).show()
-                        view?.let { lade(it) }
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            val selectedNode = saved.knotenIdOverride
+                            if (selectedNode != null) {
+                                val photoNode = selectedNode.takeIf { it > 0L && it != hauptKnotenId }
+                                withContext(Dispatchers.IO) {
+                                    ServiceLocator.fotoRepository.updateBaustellenKnotenMitIds(listOf(foto.id), photoNode)
+                                }
+                            }
+                            Toast.makeText(requireContext(), "Foto zugeordnet", Toast.LENGTH_SHORT).show()
+                            view?.let { lade(it) }
+                        }
                     }
                 }
             )
