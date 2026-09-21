@@ -18,6 +18,7 @@ checks = [
     ("draft manifest export", "downloadReleaseManifest", template),
     ("visible APK upload", "APK / Binärdatei auswählen", template),
     ("create plus upload flow", "await uploadBinaryFile(created.id,binary,createProgress)", template),
+    ("draft binary verification route", "'/api/v1/admin/releases/'+encodeURIComponent(r.id)+'/binary'", template),
     ("release package documentation", "TB-HELFER-RELEASE", release_doc),
 ]
 
