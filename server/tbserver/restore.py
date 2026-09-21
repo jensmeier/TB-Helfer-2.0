@@ -8,7 +8,7 @@ import subprocess
 import tarfile
 import tempfile
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Callable
 from uuid import UUID
 
 import psycopg
@@ -20,6 +20,12 @@ from .database import transaction
 
 
 FULL_BACKUP_FORMAT = "tb-server-1.0-full-backup-v1"
+ProgressCallback = Callable[[int, str], None]
+
+
+def _progress(callback: ProgressCallback | None, percent: int, text: str) -> None:
+    if callback is not None:
+        callback(percent, text)
 
 
 class RestoreTestError(RuntimeError):
@@ -280,12 +286,16 @@ def _finish_restore_test(
         return dict(cur.fetchone())
 
 
-def run_restore_test(source_run_id: UUID) -> dict[str, Any]:
+def run_restore_test(
+    source_run_id: UUID,
+    progress: ProgressCallback | None = None,
+) -> dict[str, Any]:
     try:
         source, source_path = backup_path_for_run(source_run_id)
     except BackupError as exc:
         raise RestoreTestError(str(exc)) from exc
 
+    _progress(progress, 10, "Backup wird geprüft")
     restore_run_id = _begin_restore_test(source_run_id)
     detail: dict[str, Any] = {
         "source_run_id": str(source_run_id),
@@ -302,31 +312,44 @@ def run_restore_test(source_run_id: UUID) -> dict[str, Any]:
             kind = source["kind"]
             if kind == "DATABASE":
                 config = _restore_db_config()
+                _progress(progress, 25, "Restore-Test-Datenbank wird vorbereitet")
                 _prepare_restore_test_database(config)
+                _progress(progress, 50, "Datenbank wird testweise wiederhergestellt")
                 _run_pg_restore(source_path, config)
+                _progress(progress, 85, "Wiederhergestellte Datenbank wird geprüft")
                 detail["database"] = _verify_restored_database(config)
             elif kind == "FILES":
+                _progress(progress, 45, "Datei-Backup wird testweise entpackt")
                 detail["files"] = _extract_storage_archive(
                     source_path,
                     temp / "restored-files",
                 )
+                _progress(progress, 90, "Wiederhergestellte Dateien werden geprüft")
             elif kind == "FULL":
+                _progress(progress, 20, "Vollbackup wird entpackt und geprüft")
                 database_dump, files_archive, manifest = _extract_full_backup(
                     source_path,
                     temp / "full",
                 )
                 detail["manifest_created_at"] = manifest.get("created_at")
                 config = _restore_db_config()
+                _progress(progress, 35, "Restore-Test-Datenbank wird vorbereitet")
                 _prepare_restore_test_database(config)
+                _progress(progress, 50, "Datenbank wird testweise wiederhergestellt")
                 _run_pg_restore(database_dump, config)
+                _progress(progress, 72, "Wiederhergestellte Datenbank wird geprüft")
                 detail["database"] = _verify_restored_database(config)
+                _progress(progress, 82, "Dateien werden testweise wiederhergestellt")
                 detail["files"] = _extract_storage_archive(
                     files_archive,
                     temp / "restored-files",
                 )
+                _progress(progress, 94, "Restore-Test wird abgeschlossen")
             else:
                 raise RestoreTestError("RESTORE_TEST_SOURCE_KIND_NOT_SUPPORTED")
-        return _finish_restore_test(restore_run_id, ok=True, detail=detail)
+        result = _finish_restore_test(restore_run_id, ok=True, detail=detail)
+        _progress(progress, 98, "Restore-Test erfolgreich")
+        return result
     except Exception as exc:
         code = (
             str(exc)
