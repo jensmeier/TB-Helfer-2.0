@@ -9,7 +9,7 @@ import tarfile
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from uuid import UUID
 
 from .config import settings
@@ -18,6 +18,12 @@ from .database import transaction
 
 
 BACKUP_KINDS = {"DATABASE", "FILES", "FULL"}
+ProgressCallback = Callable[[int, str], None]
+
+
+def _progress(callback: ProgressCallback | None, percent: int, text: str) -> None:
+    if callback is not None:
+        callback(percent, text)
 
 
 class BackupError(RuntimeError):
@@ -157,33 +163,46 @@ def _finish_run_failed(run_id: UUID, code: str) -> None:
         )
 
 
-def _database_backup(run_id: UUID) -> tuple[str, Path]:
+def _database_backup(
+    run_id: UUID,
+    progress: ProgressCallback | None = None,
+) -> tuple[str, Path]:
     key = f"database/{_timestamp()}_{run_id}.dump"
     final_path = _absolute_backup_path(key)
     final_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = final_path.with_suffix(final_path.suffix + ".tmp")
     try:
+        _progress(progress, 20, "Datenbank wird gesichert")
         _run_pg_dump(temp_path)
+        _progress(progress, 85, "Datenbanksicherung wird abgeschlossen")
         os.replace(temp_path, final_path)
     finally:
         temp_path.unlink(missing_ok=True)
     return key, final_path
 
 
-def _files_backup(run_id: UUID) -> tuple[str, Path]:
+def _files_backup(
+    run_id: UUID,
+    progress: ProgressCallback | None = None,
+) -> tuple[str, Path]:
     key = f"files/{_timestamp()}_{run_id}.tar.gz"
     final_path = _absolute_backup_path(key)
     final_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = final_path.with_suffix(final_path.suffix + ".tmp")
     try:
+        _progress(progress, 20, "Dateien werden gepackt")
         _archive_storage(temp_path)
+        _progress(progress, 85, "Dateisicherung wird abgeschlossen")
         os.replace(temp_path, final_path)
     finally:
         temp_path.unlink(missing_ok=True)
     return key, final_path
 
 
-def _full_backup(run_id: UUID) -> tuple[str, Path]:
+def _full_backup(
+    run_id: UUID,
+    progress: ProgressCallback | None = None,
+) -> tuple[str, Path]:
     key = f"full/{_timestamp()}_{run_id}.tar.gz"
     final_path = _absolute_backup_path(key)
     final_path.parent.mkdir(parents=True, exist_ok=True)
@@ -195,8 +214,11 @@ def _full_backup(run_id: UUID) -> tuple[str, Path]:
         database_dump = scratch / "database.dump"
         files_archive = scratch / "files.tar.gz"
         manifest = scratch / "manifest.json"
+        _progress(progress, 15, "Datenbankteil wird gesichert")
         _run_pg_dump(database_dump)
+        _progress(progress, 45, "Dateien werden für das Vollbackup gepackt")
         _archive_storage(files_archive)
+        _progress(progress, 75, "Prüfsummen und Manifest werden erstellt")
         manifest.write_text(
             json.dumps(
                 {
@@ -213,6 +235,7 @@ def _full_backup(run_id: UUID) -> tuple[str, Path]:
             ),
             encoding="utf-8",
         )
+        _progress(progress, 88, "Vollbackup wird fertig gepackt")
         try:
             with tarfile.open(temp_path, "w:gz") as archive:
                 archive.add(database_dump, arcname="database.dump", recursive=False)
@@ -224,7 +247,10 @@ def _full_backup(run_id: UUID) -> tuple[str, Path]:
     return key, final_path
 
 
-def run_backup(kind: str) -> dict[str, Any]:
+def run_backup(
+    kind: str,
+    progress: ProgressCallback | None = None,
+) -> dict[str, Any]:
     normalized = kind.strip().upper()
     if normalized not in BACKUP_KINDS:
         raise BackupError("BACKUP_KIND_NOT_SUPPORTED")
@@ -233,13 +259,17 @@ def run_backup(kind: str) -> dict[str, Any]:
     run_id = _begin_run(normalized)
     final_path: Path | None = None
     try:
+        _progress(progress, 10, "Backup wird vorbereitet")
         if normalized == "DATABASE":
-            key, final_path = _database_backup(run_id)
+            key, final_path = _database_backup(run_id, progress)
         elif normalized == "FILES":
-            key, final_path = _files_backup(run_id)
+            key, final_path = _files_backup(run_id, progress)
         else:
-            key, final_path = _full_backup(run_id)
-        return _finish_run_ok(run_id, key, final_path)
+            key, final_path = _full_backup(run_id, progress)
+        _progress(progress, 94, "Prüfsumme wird kontrolliert")
+        result = _finish_run_ok(run_id, key, final_path)
+        _progress(progress, 98, "Backup ist gespeichert")
+        return result
     except Exception as exc:
         if final_path is not None:
             final_path.unlink(missing_ok=True)
