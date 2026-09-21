@@ -13,6 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from .config import settings
+from .system_settings import retention_policy
 from .database import transaction
 
 
@@ -309,8 +310,7 @@ def _remove_empty_backup_parents(path: Path) -> None:
 
 
 def run_retention() -> dict[str, Any]:
-    days = settings.backup_retention_days
-    min_per_kind = settings.backup_retention_min_per_kind
+    days, min_per_kind = retention_policy()
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
             """
