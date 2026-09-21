@@ -43,6 +43,7 @@ def main() -> None:
         ('VALUES (\'RESTORE_TEST\', \'RUNNING\', %s)', restore),
         ('"RESTORE_TEST"', jobs),
         ('run_restore_test(source_run_id)', jobs),
+        ('from uuid import UUID', system),
         ('@router.post("/backups/{backup_run_id}/restore-test"', system),
         ('receipt_type="RESTORE_TEST_JOB_CREATE"', system),
         ('action="RESTORE_TEST_JOB_CREATE"', system),
