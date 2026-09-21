@@ -82,7 +82,10 @@ Stand **21.09.2026**:
 - Erster Restore-to-Target-Versuch erreichte `pg_restore`, scheiterte aber reproduzierbar mit `PG_RESTORE_FAILED_EXIT_1`. Target-Cleanup funktionierte: das `tb`-Schema war danach wieder leer.
 - Ursache praktisch eingegrenzt: `postgis/postgis:17-3.5` bringt im frischen Target bereits `fuzzystrmatch`, `postgis`, `postgis_tiger_geocoder` und `postgis_topology` mit; derselbe FULL-Dump enthält diese Extensions ebenfalls (plus `pgcrypto`). Restore-Test funktioniert bereits mit `--clean --if-exists`, Restore-to-Target lief dagegen mit `clean=False`.
 - Quellfix `5bd9e070deb7…`: Restore-to-Target nutzt nach den bestehenden Trenn-/Freshness-Prüfungen ebenfalls den sauberen Clean-Restore; Source-Check 43 angepasst (`0893b8204d59…`).
-- **Noch offen:** diesen Restore-to-Target-Fix auf Synology übernehmen und denselben getrennten Target-Restore erneut praktisch prüfen; danach ist die Backup-/Recovery-Abnahme vollständig und Migrationen 011 + 012 können kontrolliert ausgerollt werden.
+- Praktischer Wiederholungslauf bestätigt, dass dieser PostGIS-Fix wirkt: Restore-to-Target lief über `pg_restore` und die Datenbankverifikation hinaus.
+- Neuer reproduzierbarer Fehler erst beim Datei-Target: `OSError [Errno 16] Device or resource busy: /tb/restore-target-v1`. Ursache: der Code versuchte den Root des Docker-Bind-Mounts per `target.rmdir()` zu entfernen.
+- Quellfix `de1c70ba042d…`: Bind-Mount-Root bleibt bestehen; nach bereits bestandener Leerheitsprüfung werden die Restore-Dateiinhalte mit `copytree(..., dirs_exist_ok=True)` in den leeren Target-Mount kopiert. Source-Check 43 verbietet jetzt `target.rmdir()` (`03f2130c0d03…`).
+- **Noch offen:** aktuellen `restore_target.py`-Fix auf Synology übernehmen und denselben getrennten Target-Restore erneut praktisch prüfen; danach ist die Backup-/Recovery-Abnahme vollständig und Migrationen 011 + 012 können kontrolliert ausgerollt werden.
 - Migration 011 wurde zu diesem Zeitpunkt **noch nicht** auf Staging ausgeführt.
 
 ## Laufzeitbefunde 21.09.2026 – Restore-Test und Release-Draft-Prüfung
@@ -97,7 +100,7 @@ Stand **21.09.2026**:
 - **Updateweg nach Veröffentlichung am 21.09.2026 erneut praktisch bestätigt:** Admin-Binary-Download funktioniert, veröffentlichter Release wird vom Handy erkannt und installiert; danach blieben Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten erhalten. Der bestehende Updatevertrag bleibt damit geschützt.
 
 Nächster Laufzeitschritt:
-1. aktuellen GitHub-Fix `restore_target.py` auf Synology übernehmen;
+1. aktuellen GitHub-Fix `restore_target.py` (Bind-Mount-Root beibehalten) auf Synology übernehmen;
 2. denselben Restore-to-Target ausschließlich gegen die getrennte Target-DB/Target-Ablage erneut ausführen und auf `OK` prüfen;
 3. danach FULL-/Restore-Test-/Retention-/Target-Restore-Pfade als geschützt belassen;
 4. anschließend Migrationen 011 + 012 kontrolliert auf Synology-Staging ausrollen und `/health/ready` auf 12/12 prüfen;
