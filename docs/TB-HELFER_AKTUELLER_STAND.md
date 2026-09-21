@@ -1118,3 +1118,19 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 8. **Erst nach bestandenen Android-/Server-/Backup-/Restore-Akzeptanztests** produktiven Cutover durchführen und alten API-0.7-Server kontrolliert stoppen.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
+
+
+## Android 1.3.6 / 200056 – Foto-/BTB-Text, Windows-Export und lokaler Buildfehler
+
+Stand **21.09.2026**:
+- Android-Arbeitsbranch: `feature/tb-android-2.0`; Draft-PR **#7**.
+- Zielversion: **1.3.6 / versionCode 200056**; installierter bestätigter Gerätebestand bleibt **1.3.4 / 200054**.
+- Fotoerfassung trennt Kurzbeschreibung (max. 80 Zeichen) und Langtext / BTB-Text; freie Info1–Info3-Eingaben sind aus der normalen Fotomaske entfernt, Altwerte bleiben kompatibel erhalten.
+- Gesamt-Bilderliste und BTB-/Schicht-Bilderlisten sind als XLSX vorbereitet; Export-Bilddateinamen wurden für Windows-Pfade deutlich verkürzt.
+- Lokaler Android-Studio-Build vom Benutzer zeigte in `SyncOfflineDialogs.kt` Zeile 198 einen echten Kotlin-Syntaxfehler: `items.map((:objectLabel)` statt Funktionsreferenz `items.map(::objectLabel)`.
+- Ursache im kanonischen Android-Quellfile reproduziert und auf dem Android-Branch mit Commit `70f973de032c8ad3e6a7e1661fdbda78cb772d04` korrigiert. Die generierte Datei unter `app/build/generated/...` darf nicht direkt editiert werden.
+- GitHub Actions Run **35576320371** startet weiterhin keinen Runner-Step (`steps=[]`) und ist deshalb **kein Buildnachweis**.
+- Wichtig für den lokalen Build: Android 200056 liegt auf `feature/tb-android-2.0`. `feature/tb-server-1.0` enthält weiterhin den Server-Arbeitsstand und Android 1.3.5 / 200055.
+- Server-HEAD bei dieser Prüfung: `445afd3a01b51e5750bbba6fa8daca22f1da954a`; keine Android-API-Ersatzlösung gebaut.
+
+Teststatus: **QUELLSTAND KORRIGIERT / BUILD ERNEUT LOKAL AUSZUFÜHREN / APK NOCH NICHT NACHGEWIESEN / PIXEL+POCO E2E OFFEN**.
