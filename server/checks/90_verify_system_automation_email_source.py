@@ -55,7 +55,7 @@ def main() -> None:
         ("TB_SMTP_PASSWORD", staging),
         ("Automatik & E-Mail-Berichte", template),
         ("Bald ablaufende Nutzer", template),
-        ("Sicherheit / Audit", template),
+        ("Sicherheits-/Audit-Nachweis anzeigen", template),
         ("90_verify_system_automation_email_source.py", workflow),
     ]
     missing = [needle for needle, source in assertions if needle not in source]
