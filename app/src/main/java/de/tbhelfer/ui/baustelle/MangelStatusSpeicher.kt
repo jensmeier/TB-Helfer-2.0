@@ -18,6 +18,8 @@ object MangelStatusSpeicher {
         val kommentar: String = "",
         val erledigtAmEpochMs: Long? = null,
         val nachweisFotoId: Long? = null,
+        /** Lokale echte Knoten-Zuordnung fuer den Vollbild-Mangeleditor. null = noch nicht uebersteuert. */
+        val knotenIdOverride: Long? = null,
         val bereichOverride: String? = null,
         val kmOverride: String? = null,
         val firmaOverride: String? = null,
@@ -43,8 +45,10 @@ object MangelStatusSpeicher {
                 kommentar = o.optString("kommentar", ""),
                 erledigtAmEpochMs = if (o.has("erledigtAmEpochMs") && !o.isNull("erledigtAmEpochMs")) o.optLong("erledigtAmEpochMs") else null,
                 nachweisFotoId = if (o.has("nachweisFotoId") && !o.isNull("nachweisFotoId")) o.optLong("nachweisFotoId") else null,
+                knotenIdOverride = if (o.has("knotenIdOverride") && !o.isNull("knotenIdOverride")) o.optLong("knotenIdOverride") else null,
                 bereichOverride = nullableText(o, "bereichOverride"),
-                kmOverride = nullableText(o, "kmOverride"),
+                // Leerer String ist hier bewusst ein gesetzter Wert: "Ort / KM / Bereich" ist optional und darf geloescht werden.
+                kmOverride = optionalText(o, "kmOverride"),
                 firmaOverride = nullableText(o, "firmaOverride"),
                 beschreibungOverride = nullableText(o, "beschreibungOverride")
             )
@@ -57,6 +61,7 @@ object MangelStatusSpeicher {
             alt.copy(
                 kommentar = wert.kommentar.ifBlank { alt.kommentar },
                 nachweisFotoId = wert.nachweisFotoId ?: alt.nachweisFotoId,
+                knotenIdOverride = wert.knotenIdOverride ?: alt.knotenIdOverride,
                 bereichOverride = wert.bereichOverride ?: alt.bereichOverride,
                 kmOverride = wert.kmOverride ?: alt.kmOverride,
                 firmaOverride = wert.firmaOverride ?: alt.firmaOverride,
@@ -71,8 +76,9 @@ object MangelStatusSpeicher {
             put("kommentar", final.kommentar)
             if (final.erledigtAmEpochMs != null) put("erledigtAmEpochMs", final.erledigtAmEpochMs) else put("erledigtAmEpochMs", JSONObject.NULL)
             if (final.nachweisFotoId != null) put("nachweisFotoId", final.nachweisFotoId) else put("nachweisFotoId", JSONObject.NULL)
+            if (final.knotenIdOverride != null) put("knotenIdOverride", final.knotenIdOverride) else put("knotenIdOverride", JSONObject.NULL)
             putNullableText("bereichOverride", final.bereichOverride)
-            putNullableText("kmOverride", final.kmOverride)
+            putOptionalText("kmOverride", final.kmOverride)
             putNullableText("firmaOverride", final.firmaOverride)
             putNullableText("beschreibungOverride", final.beschreibungOverride)
         }
@@ -135,6 +141,13 @@ object MangelStatusSpeicher {
 
     private fun nullableText(o: JSONObject, key: String): String? =
         if (!o.has(key) || o.isNull(key)) null else o.optString(key).trim().takeIf { it.isNotBlank() }
+
+    private fun optionalText(o: JSONObject, key: String): String? =
+        if (!o.has(key) || o.isNull(key)) null else o.optString(key, "").trim()
+
+    private fun JSONObject.putOptionalText(key: String, value: String?) {
+        if (value == null) put(key, JSONObject.NULL) else put(key, value.trim())
+    }
 
     private fun JSONObject.putNullableText(key: String, value: String?) {
         if (value.isNullOrBlank()) put(key, JSONObject.NULL) else put(key, value.trim())
