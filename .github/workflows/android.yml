@@ -73,13 +73,13 @@ jobs:
       - name: Lint (Debug)
         run: ./gradlew :app:lintDebug --stacktrace
 
-      - name: Upload Android 200058 package
+      - name: Upload Android 200059 package
         uses: actions/upload-artifact@v4
         with:
-          name: TB-Helfer-1.3.8-200058
+          name: TB-Helfer-1.3.9-200059
           if-no-files-found: error
           retention-days: 14
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
-            releases/TB-Helfer_1.3.8_200058.md
+            releases/TB-Helfer_1.3.9_200059.md
