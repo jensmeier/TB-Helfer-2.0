@@ -28,6 +28,7 @@ import java.security.MessageDigest
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -77,8 +78,31 @@ object GesamtMedienArchiv {
         val row: GesamtBilderlisteXlsx.Row
     )
 
+    private data class ShiftImageList(
+        val path: String,
+        val bytes: ByteArray
+    )
+
     private val isoDate = DateTimeFormatter.ISO_LOCAL_DATE
     private val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
+    private val shortDateFmt = DateTimeFormatter.ofPattern("dd.MM.yy")
+
+    private fun btbWindow(entry: BautagebuchEintrag): Pair<Long, Long> {
+        val date = runCatching { LocalDate.parse(entry.datumIso, isoDate) }.getOrDefault(LocalDate.now())
+        val start = entry.startUhrzeit?.trim()?.let { runCatching { LocalTime.parse(it, timeFmt) }.getOrNull() } ?: LocalTime.MIN
+        val end = entry.endeUhrzeit?.trim()?.let { runCatching { LocalTime.parse(it, timeFmt) }.getOrNull() } ?: LocalTime.MAX
+        val zone = ZoneId.systemDefault()
+        val from = date.atTime(start).atZone(zone).toInstant().toEpochMilli()
+        val toDate = if (end.isAfter(start)) date else date.plusDays(1)
+        val to = toDate.atTime(end).atZone(zone).toInstant().toEpochMilli()
+        return from to to
+    }
+
+    private fun shiftListFilename(entry: BautagebuchEintrag): String {
+        val date = runCatching { LocalDate.parse(entry.datumIso, isoDate).format(shortDateFmt) }.getOrDefault(entry.datumIso)
+        val start = entry.startUhrzeit?.trim()?.takeIf { it.isNotBlank() }?.replace(':', '-') ?: entry.schicht.name
+        return "${date}_${start}_Bilderliste.xlsx"
+    }
 
     suspend fun ergaenzen(
         context: Context,
@@ -118,10 +142,14 @@ object GesamtMedienArchiv {
         val localFotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(localBaustelleId)
             .filter { it.baustelleId == localBaustelleId && File(it.dateipfad).isFile }
         val localFileByHash = linkedMapOf<String, File>()
+        val localFotoByHash = linkedMapOf<String, FotoEntity>()
+        val localHashByFotoId = linkedMapOf<Long, String>()
         localFotos.forEach { foto ->
             val file = File(foto.dateipfad)
             val digest = runCatching { sha256(file.readBytes()) }.getOrNull() ?: return@forEach
             localFileByHash.putIfAbsent(digest, file)
+            localFotoByHash.putIfAbsent(digest, foto)
+            localHashByFotoId[foto.id] = digest
         }
 
         val localMaengel = MaengellisteExport.ladeItems(appContext, localBaustelleId, baustelleName)
@@ -162,6 +190,7 @@ object GesamtMedienArchiv {
                 archiveRoot = archiveRoot,
                 baustelleName = baustelleName,
                 localFileByHash = localFileByHash,
+                localFotoByHash = localFotoByHash,
                 mangelPathByHash = mangelPathByHash,
                 mangelFolderByServerId = mangelFolderByServerId,
                 acceptancePathByHash = acceptancePathByHash,
@@ -522,6 +551,7 @@ object GesamtMedienArchiv {
         archiveRoot: String,
         baustelleName: String,
         localFileByHash: Map<String, File>,
+        localFotoByHash: Map<String, FotoEntity>,
         mangelPathByHash: Map<String, String>,
         mangelFolderByServerId: Map<String, String>,
         acceptancePathByHash: Map<String, String>,
@@ -544,6 +574,7 @@ object GesamtMedienArchiv {
             val hash = item.sha256?.lowercase(Locale.ROOT)?.takeIf { it.isNotBlank() }
                 ?: sha256(item.attachmentId.toByteArray(Charsets.UTF_8))
             val meta = mediaMeta(item)
+            val localFoto = localFotoByHash[hash]
             val dateTime = Instant.ofEpochMilli(meta.epochMs).atZone(ZoneId.systemDefault())
             val date = dateTime.toLocalDate().format(isoDate)
             val target = when (item.entityType.uppercase(Locale.ROOT)) {
@@ -554,7 +585,7 @@ object GesamtMedienArchiv {
                     ?: "$archiveRoot/Mängel/$date/Mangel_${safeToken(item.parentEntityId).take(12)}/Fotos/${safeToken(defectArt(item.filename))}_${hash.take(12)}.${extension(item.filename, item.mimeType)}"
                 "ACCEPTANCE" -> acceptancePathByHash[hash]
                     ?: "$archiveRoot/Abnahmen/$date/Abnahme_${safeToken(item.parentEntityId).take(8)}/${acceptanceMediaFolder(item.filename)}/Abnahme_${hash.take(12)}.${extension(item.filename, item.mimeType)}"
-                else -> "$archiveRoot/Bilder/$date/${safeToken(meta.art)}_${safeToken(meta.beschreibung).take(32)}_${hash.take(12)}.${extension(item.filename, item.mimeType)}"
+                else -> "$archiveRoot/Bilder/$date/${safeToken(meta.art)}_${safeToken(localFoto?.kurztext ?: meta.beschreibung).take(24)}_${hash.take(12)}.${extension(item.filename, item.mimeType)}"
             }
 
             if (plans.none { it.path.equals(target, ignoreCase = true) }) {
@@ -578,8 +609,9 @@ object GesamtMedienArchiv {
                     baustelle = baustelleName,
                     bereich = meta.bereich,
                     km = meta.km,
-                    firma = meta.firma,
-                    beschreibung = meta.beschreibung,
+                    firma = localFoto?.firma ?: meta.firma,
+                    kurzbeschreibung = localFoto?.kurztext ?: meta.beschreibung,
+                    langtext = localFoto?.notiz.orEmpty(),
                     status = displayStatus(item),
                     bilddatei = target.substringAfterLast('/'),
                     gps = meta.gps,
@@ -609,7 +641,7 @@ object GesamtMedienArchiv {
             val date = dateTime.toLocalDate().format(isoDate)
             val target = mangelPathByHash[hash]
                 ?: acceptancePathByHash[hash]
-                ?: "$archiveRoot/Bilder/$date/${safeToken(bildtypLabel(foto.bildtyp))}_${safeToken(foto.notiz?.takeIf { it.isNotBlank() } ?: foto.kurztext).take(32)}_${hash.take(12)}.${extension(file.name, null)}"
+                ?: "$archiveRoot/Bilder/$date/${safeToken(bildtypLabel(foto.bildtyp))}_${safeToken(foto.kurztext).take(24)}_${hash.take(12)}.${extension(file.name, null)}"
 
             if (plans.none { it.path.equals(target, ignoreCase = true) }) {
                 plans += BinaryPlan(path = target, localFile = file)
@@ -632,7 +664,8 @@ object GesamtMedienArchiv {
                     bereich = foto.objektBereich.orEmpty(),
                     km = foto.km?.let { "KM ${de.tbhelfer.util.KmAnzeige.wert(it)}" }.orEmpty(),
                     firma = foto.firma,
-                    beschreibung = foto.notiz?.takeIf { it.isNotBlank() } ?: foto.kurztext,
+                    kurzbeschreibung = foto.kurztext,
+                    langtext = foto.notiz.orEmpty(),
                     status = "",
                     bilddatei = target.substringAfterLast('/'),
                     gps = if (foto.gpsLat == 0.0 && foto.gpsLon == 0.0) "" else "%.6f, %.6f".format(Locale.US, foto.gpsLat, foto.gpsLon),
@@ -802,6 +835,7 @@ object GesamtMedienArchiv {
         if (path.equals("$archiveRoot/Bilderliste_gesamt.csv", ignoreCase = true)) return true
         if (path.equals("$archiveRoot/Bilderliste_gesamt.xlsx", ignoreCase = true)) return true
         if (path.startsWith("$archiveRoot/Bilder/", ignoreCase = true)) return true
+        if (path.contains("/BTB/", ignoreCase = true) && path.endsWith("_Bilderliste.xlsx", ignoreCase = true)) return true
         if (path.startsWith("$archiveRoot/Mängel/", ignoreCase = true)) return true
         if (path.startsWith("$archiveRoot/Abnahmen/", ignoreCase = true)) return true
         if (path.equals("$archiveRoot/Maengelliste/Maengelliste_Gesamt.csv", ignoreCase = true)) return true
