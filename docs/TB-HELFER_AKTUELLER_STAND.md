@@ -85,7 +85,8 @@ Stand **21.09.2026**:
 - Praktischer Wiederholungslauf bestätigt, dass dieser PostGIS-Fix wirkt: Restore-to-Target lief über `pg_restore` und die Datenbankverifikation hinaus.
 - Neuer reproduzierbarer Fehler erst beim Datei-Target: `OSError [Errno 16] Device or resource busy: /tb/restore-target-v1`. Ursache: der Code versuchte den Root des Docker-Bind-Mounts per `target.rmdir()` zu entfernen.
 - Quellfix `de1c70ba042d…`: Bind-Mount-Root bleibt bestehen; nach bereits bestandener Leerheitsprüfung werden die Restore-Dateiinhalte mit `copytree(..., dirs_exist_ok=True)` in den leeren Target-Mount kopiert. Source-Check 43 verbietet jetzt `target.rmdir()` (`03f2130c0d03…`).
-- **Noch offen:** aktuellen `restore_target.py`-Fix auf Synology übernehmen und denselben getrennten Target-Restore erneut praktisch prüfen; danach ist die Backup-/Recovery-Abnahme vollständig und Migrationen 011 + 012 können kontrolliert ausgerollt werden.
+- **Restore-to-Target am 21.09.2026 praktisch BESTÄTIGT:** derselbe FULL-Lauf wurde erfolgreich in die getrennte Target-Umgebung wiederhergestellt. CLI `OK`, Restore-Lauf `RESTORE_TARGET / OK`, Ziel-DB `tb_helfer_v1_restore_target`, Ziel-Storage `/tb/restore-target-v1`; DB-Prüfung 10 Migrationen/latest 10/5 Kerntabellen; 2 Dateien mit 34.267.460 Byte wiederhergestellt.
+- Damit ist die **Backup-/Recovery-Abnahme vollständig bestanden**: FULL-Backup, Restore-Test, Retention und Restore-to-Target sind praktisch bestätigt. Dieser Pfad ist geschützt.
 - Migration 011 wurde zu diesem Zeitpunkt **noch nicht** auf Staging ausgeführt.
 
 ## Laufzeitbefunde 21.09.2026 – Restore-Test und Release-Draft-Prüfung
@@ -100,11 +101,11 @@ Stand **21.09.2026**:
 - **Updateweg nach Veröffentlichung am 21.09.2026 erneut praktisch bestätigt:** Admin-Binary-Download funktioniert, veröffentlichter Release wird vom Handy erkannt und installiert; danach blieben Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten erhalten. Der bestehende Updatevertrag bleibt damit geschützt.
 
 Nächster Laufzeitschritt:
-1. aktuellen GitHub-Fix `restore_target.py` (Bind-Mount-Root beibehalten) auf Synology übernehmen;
-2. denselben Restore-to-Target ausschließlich gegen die getrennte Target-DB/Target-Ablage erneut ausführen und auf `OK` prüfen;
-3. danach FULL-/Restore-Test-/Retention-/Target-Restore-Pfade als geschützt belassen;
-4. anschließend Migrationen 011 + 012 kontrolliert auf Synology-Staging ausrollen und `/health/ready` auf 12/12 prüfen;
-5. danach System-Automatik/SMTP sowie Katalog-/Profil-E2E fortsetzen.
+1. bestätigte FULL-/Restore-Test-/Retention-/Restore-to-Target-Pfade nicht weiter verändern;
+2. Migrationen **011 + 012** kontrolliert auf Synology-Staging ausrollen;
+3. anschließend `/health/ready` prüfen: migrations=ok / **12 von 12**;
+4. danach System-Automatik/SMTP praktisch prüfen;
+5. anschließend Katalog-/Profil-E2E und den gemeinsamen Pixel/Poco-Server-1.0-E2E fortsetzen.
 ## Server 1.0 – Backup-Automatik, E-Mail-Berichte und Audit
 
 Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Dieser Block wurde noch nicht auf Synology-Staging ausgerollt. Der praktisch bestätigte FULL-Backup-Pfad wurde nicht ersetzt oder umgebaut.
@@ -136,11 +137,11 @@ Tests:
 - Migration 012, automatische Jobs und echter SMTP-Versand auf Synology: **E2E OFFEN**.
 
 Sicherer nächster Ablauf:
-1. FULL-Backup, getrennter Restore-Test und manuelle Retention sind praktisch bestätigt; diese Pfade jetzt schützen.
-2. Als letzten Recovery-Punkt Restore-to-Target gegen die getrennte Target-DB/Target-Ablage praktisch prüfen.
-3. Danach aktuellen Serverbranch deployen und Migrationen **011 + 012** anwenden; `/health/ready` muss dann migrations=ok / 12 von 12 melden.
-4. Systemstatus öffnen, Automatikwerte speichern, SMTP-Secret ausschließlich auf Synology setzen und Testbericht versenden.
-5. Einen automatischen Backup-/Retention-Slot praktisch prüfen und danach Katalog-/Profil-E2E fortsetzen.
+1. FULL-Backup, Restore-Test, Retention und Restore-to-Target sind praktisch bestätigt; Recovery ist abgeschlossen und geschützt.
+2. Aktuellen Serverbranch deployen und Migrationen **011 + 012** anwenden; `/health/ready` muss migrations=ok / 12 von 12 melden.
+3. Systemstatus öffnen, Automatikwerte speichern, SMTP-Secret ausschließlich auf Synology setzen und Testbericht versenden.
+4. Einen automatischen Backup-/Retention-Slot praktisch prüfen.
+5. Danach Katalog-/Profil-E2E und Pixel/Poco-Server-1.0-E2E fortsetzen.
 
 ## Server 1.0 + Android 200055 – globaler Katalog und Benutzeridentität
 
