@@ -269,7 +269,9 @@ object MaengellisteExport {
                 add("Datum/Zeit: " to "${datumDe(item.datumIso)} ${item.zeit}")
                 add("Baustelle: " to anzeigeBaustelle(item))
                 add("Firma: " to item.firma)
-                add("KM: " to item.km)
+                item.km.takeIf { it.isNotBlank() && it != "-" }?.let {
+                    add("Ort / KM / Bereich: " to it)
+                }
                 if (gvp.isNotBlank()) add("GVP/Mast: " to gvp)
                 add("Text: " to item.beschreibung)
             }
@@ -500,7 +502,10 @@ object MaengellisteExport {
         val scale = minOf(box.width() / bw, box.height() / bh)
         val dw = bw * scale
         val dh = bh * scale
-        val left = box.left + (box.width() - dw) / 2f
+        // Android 200060: sichtbare Bildkante links buendig mit Bildunterschrift/Metadaten.
+        // Die Bildgeometrie bleibt vollstaendig erhalten; nur die horizontale Zentrierung in
+        // einer quadratischen Fotobox wird entfernt. Vertikal bleibt das Bild zentriert.
+        val left = box.left
         val top = box.top + (box.height() - dh) / 2f
         canvas.drawBitmap(bmp, null, RectF(left, top, left + dw, top + dh), null)
     }
