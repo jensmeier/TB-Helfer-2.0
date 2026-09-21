@@ -15,7 +15,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - Server-Automatik/E-Mail/Audit-Quellblock: **`dd0bf1c6b5640951e74494969b5032a5ada86e1d`** (Migration 012; danach nur Doku/Statuspflege)
 - Restore-Test-/DRAFT-Download-Laufzeitfixes vom 21.09.2026: **`e58d9fca9840…`** (UUID-Pathparameter) + **`4c20bde651f0…`/`946a62501610…`** (ADMIN-Draft-Binary-Prüfung); dazu Source-Checks 42/40/87 nachgezogen.
 - GitHub Actions für diesen Funktionscommit liefern weiterhin **keinen Testnachweis**: Android-Run `35524333713`, Server-PR-Run `35524333722` und Server-Push-Run `35524332208` endeten ohne zugewiesenen Runner (`runner_id=0`, `runner_name=""`, `steps=[]`). Das bleibt Infrastrukturproblem PRB-002 und ist kein belegter Fach-/Compilefehler.
-- Android Testclient: **200054 / 1.3.4 ist auf Pixel + Poco installiert und bestätigt**. Der neue Quellstand **200055 / 1.3.5** für globalen Katalog und Benutzerprofil ist vorbereitet, aber noch nicht gebaut/installiert; 200054 bleibt bis zum praktischen Test die bestätigte Gerätebasis.
+- Android-Updateweg: der bereits bestätigte Server-Updatepfad wurde am **21.09.2026 erneut praktisch bestätigt**. Ein neu veröffentlichter Android-Release wurde vom Handy gefunden und installiert; Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten blieben erhalten. Der konkrete installierte Zielbuild wurde in dieser Bestätigung nicht nochmals separat genannt. Der aktuelle Android-Quellbranch steht auf **1.3.7 / 200057**.
 
 - Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Sichtbare, mit Mängeln/Abnahmen verknüpfte Server-1.0-Dateien werden über `files_v1` aufgelöst und in den vorhandenen Attachment-Cache heruntergeladen. Lokale Mängel-/Abnahme-Attachments werden resumierbar über `chunk_upload_v1` mit deterministischen Idempotenz-IDs hochgeladen; nicht mehr sichtbare/gelöschte Fach-Attachments werden nur bei nachweislich vollständigem Datei-Snapshot lokal tombstoned; bei der 1000-Dateien-Grenze wird konservativ nicht gelöscht. BTB bleibt getrennt offen.
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
@@ -85,12 +85,14 @@ Stand **21.09.2026**:
 - Ein Restore-Job wurde bei diesem Fehlversuch **nicht** eingereiht. Das FULL-Backup selbst wurde dadurch weder verändert noch als fehlerhaft nachgewiesen.
 - Release 1.3.6 / Build 200056 ist im Admin aktuell ein **DRAFT**. Android 1.3.4 zeigt deshalb korrekt „aktuell“: DRAFT-Releases dürfen nicht über den öffentlichen Kompatibilitätsvertrag angeboten werden.
 - Der Admin-Button `Download prüfen` eines DRAFTs zeigte jedoch auf den öffentlichen Downloadvertrag und erhielt deshalb korrekt `RELEASE_NOT_FOUND`. Quellfix: eigener ADMIN-geschützter GET-Binary-Pfad für DRAFT-Prüfung; öffentlicher Download bleibt unverändert auf `PUBLISHED` beschränkt.
+- **Updateweg nach Veröffentlichung am 21.09.2026 erneut praktisch bestätigt:** Admin-Binary-Download funktioniert, veröffentlichter Release wird vom Handy erkannt und installiert; danach blieben Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten erhalten. Der bestehende Updatevertrag bleibt damit geschützt.
 
 Nächster Laufzeitschritt:
 1. nur die kleinen Serverfixes auf Synology ausrollen/API+Worker neu starten, noch **keine** Migration 011/012 erzwingen;
 2. dasselbe bestätigte FULL-Backup erneut per Restore-Test starten und Jobstatus bis `DONE`/Restore-Lauf `OK` prüfen;
-3. DRAFT 1.3.6 im Admin über `Download prüfen` verifizieren; Android darf es weiterhin nicht als Update sehen, solange nicht veröffentlicht;
-4. erst danach mit dem geplanten Deployment 011+012 fortfahren.
+3. Release-/App-Updateweg ist erneut praktisch bestätigt; hier keine weitere Änderung ohne reproduzierbaren Fehler;
+4. als Nächstes den weiterhin fehlgeschlagenen `RESTORE_TEST` anhand des Worker-Logs eingrenzen;
+5. erst danach mit dem geplanten Deployment 011+012 fortfahren.
 ## Server 1.0 – Backup-Automatik, E-Mail-Berichte und Audit
 
 Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Dieser Block wurde noch nicht auf Synology-Staging ausgerollt. Der praktisch bestätigte FULL-Backup-Pfad wurde nicht ersetzt oder umgebaut.
