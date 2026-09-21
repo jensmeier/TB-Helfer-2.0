@@ -1182,44 +1182,30 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
 
-## Android 1.3.10 / 200060 – Vollbild-Mangeleditor + bündige PDF-Fotos
+## Android 1.3.11 / 200061 – PDF-Größe, Mediathek, Editor-Feinschliff
 
-Stand **21.09.2026 17:34**:
+Stand **21.09.2026 17:40+**:
 - Android-Arbeitsbranch: `feature/tb-android-2.0`; Draft-PR **#7**.
-- Der vom Benutzer gezeigte 200059-Funktionsstand läuft praktisch auf dem Testgerät: Mängelliste und das neu erzeugte PDF zeigen die großen Beweisfotos, getrennte KM-/GVP-Zeilen und die bestätigten GPS-Links. Der 200059-PDF-Block ist damit gebaut/installiert und praktisch sichtbar; als offene Layoutkorrektur blieb die linke Bildkante bei Hochformatfotos optisch eingerückt.
-- Neue Zielversion: **1.3.10 / versionCode 200060**.
-- PDF-Korrektur: `drawBitmapFit` behält die vollständige Bildgeometrie bei, richtet die sichtbare Bildkante aber links an `Fotos:`, Bildunterschrift und Metadaten aus. Die bestätigten großen Fotos, 6er-Paginierung und anklickbaren GPS-Links bleiben unverändert erhalten.
-- `Mangel bearbeiten` ist im Quellstand als **eigene Vollbildseite** umgesetzt; der alte kleine Bearbeiten-Dialog ist aus dem aktiven Pfad entfernt.
-- Die Vollbildseite hat klar beschriftete Felder für Unterbaustelle, `Ort / KM / Bereich (optional)`, Firma, Beschreibung und Kommentar sowie die zugeordneten Fotos mit Sprung in die vorhandene Foto-Detailansicht.
-- `Ort / KM / Bereich (optional)` ist bewusst Freitext und darf leer sein. Beispiele: `KM 76,235`, `Modulgebäude`, `Bahnsteig 2`, `Weiche 12`.
-- Unterbaustelle ist keine reine Textkorrektur mehr: vorhandene Mangel-Fotos werden lokal auf den ausgewählten Baustellenknoten umgehängt; vorhandene BTB-Kontext-Overrides werden dabei mitgeführt und der bestehende Sync-Pfad wird angestoßen. Hauptbaustelle wird technisch als keine Unterknoten-ID behandelt.
-- Der lokale Status merkt die gewählte Knoten-ID, damit neu aufgenommene oder später zugeordnete Mangel-Fotos derselben Zuordnung folgen. Über den bestehenden Server-Mangel-Payload werden weiterhin die fachlichen Textwerte `bereich` und `km` synchronisiert; keine neue Server-API wurde eingeführt.
-- Erledigte Mängel bleiben gemäß bestehender Fachregel gesperrt.
-- Server-Vertrag erneut geprüft gegen `80d2c26f86245ed8fe71c7b7bd49c6d45afafcc2`: die jüngsten Serveränderungen betreffen Systemstatus/Backup/Restore/Migration 013 und den konsolidierten Server-Status; keine inkompatible Mängel-API-Änderung.
-- Source-Checks bestanden: Navigation/Layout-IDs, Version 200060, Vollbild-Editor, Knoten-Persistenz, Foto-Knotenupdate inkl. BTB-Override, optionaler Ort/KM/Bereich-Text inkl. leerem Wert, PDF-Linksbündigkeit, große 200059-Fotos und GPS-Linkpfad.
-- **Lokaler Android-Studio-Build 200060 am 21.09.2026 um 17:34 erfolgreich abgeschlossen.** Der Build-Output zeigt `Build TB-Helfer-2.0: finished` ohne Fehler; `:app:compileDebugKotlin` meldet 16 Warnungen. Die Warnungen betreffen bestehende Deprecated-/Opt-in-Hinweise und sind kein Buildfehler.
-- `STATUS.xlsx` ist auf dem Server-Branch neuer und wird vom Android-Projekt **nicht überschrieben**; Android-Stand ist vollständig in MD dokumentiert.
+- **1.3.10 / 200060** wurde lokal erfolgreich gebaut und auf dem Testgerät installiert. Benutzerbestätigt sind die neue Vollbildseite `Mangel bearbeiten`, die Darstellung der zugeordneten Fotos mit antippbarer Detailansicht sowie die bestehende Auswahl `Vorhandenes Foto auswählen` („sieht super aus“). Das praktische Speichern einer geänderten Unterbaustellen-Zuordnung bleibt noch als eigener E2E-Punkt offen.
+- Das vom Benutzer hochgeladene 200060-Mängel-PDF enthält 9 Fotos auf 2 Seiten; Foto-KM, fotoeigenes GVP/Mast und anklickbare GPS-Zeilen sind vorhanden. Die PDF-Größe ist jedoch mit rund **30 MiB** zu hoch.
+- Ursache im Android-Code/Datei geprüft: die 164-pt-PDF-Fotoboxen bekamen trotz sichtbarer kleiner Darstellung noch Bilder mit ungefähr 1536×2040 Pixeln. Die reine `inSampleSize`-Logik reduzierte deshalb nicht weit genug.
+- Neue Zielversion: **1.3.11 / versionCode 200061**.
+- PDF-Bilder werden nun zusätzlich exakt auf maximal **480×480 px passend** skaliert. Für die 164-pt-Darstellung entspricht das weiterhin über 200 dpi; große 200059-Fotos, 6er-Paginierung und anklickbare GPS-Link-Annotationen bleiben erhalten. Praktische Zielgröße des neuen PDFs muss nach Build gemessen werden.
+- **GVP/Mast im Mangelkopf wurde entfernt.** GVP/Mast bleibt ausschließlich fotoindividuell unter den jeweiligen Bildern erhalten.
+- `Vorhandenes Foto auswählen` behält seine bestätigte TB-Helfer-Fotoliste und erhält links neben `Abbrechen` den Button **Mediathek**. Dieser öffnet den Android-Datei-/Medienpicker für Bilder auf dem Handy. Das ausgewählte Bild wird in den TB-Helfer-Fotoordner kopiert, als Mangel-Foto in der lokalen DB angelegt und dem Mangel zugeordnet; vorhandenes EXIF-GPS wird übernommen.
+- Das freie Feld `Ort / KM / Bereich` bleibt Freitext. Die KM-Erkennung wurde verschärft: nur ein echter Dezimal-KM wie `76,235` oder `KM 76,235` wird als numerischer KM interpretiert; `Bahnsteig 2` und `Weiche 12` nicht.
+- `Abbrechen` und `Speichern` im Vollbildeditor verwenden jetzt dieselbe TB-Helfer-Grundform mit 14-dp-Rundung und gleicher Höhe; `Abbrechen` bleibt als Outline-Variante, `Speichern` als blauer Primärbutton.
+- Server-Vertrag erneut geprüft gegen `80d2c26f86245ed8fe71c7b7bd49c6d45afafcc2`: keine Serveränderung für diesen Block erforderlich.
+- Source-Checks bestanden: Version 200061, Mediathek-Launcher/Import, EXIF-GPS-Übernahme, Mangel-Zuordnung, strikte KM-Erkennung, GVP-Kopfentfernung, PDF-480px-Downscale, GPS-Link-Erhalt, große Foto-/Paginierungslogik, einheitliche Buttonstyles, Workflow und Release-Datei.
+- `STATUS.xlsx` ist auf dem Server-Branch neuer und wird vom Android-Projekt nicht überschrieben.
 
-Betroffene Dateien:
-- `app/src/main/java/de/tbhelfer/ui/baustelle/MangelEditorFragment.kt`
-- `app/src/main/res/layout/fragment_mangel_editor.xml`
-- `app/src/main/res/navigation/nav_graph.xml`
-- `app/src/main/java/de/tbhelfer/ui/baustelle/MaengellisteFragment.kt`
-- `app/src/main/java/de/tbhelfer/ui/baustelle/MaengellisteExport.kt`
-- `app/src/main/java/de/tbhelfer/ui/baustelle/MangelStatusSpeicher.kt`
-- `app/src/main/java/de/tbhelfer/datenbank/FotoDao.kt`
-- `app/src/main/java/de/tbhelfer/datenbank/FotoRepository.kt`
-- `app/src/main/java/de/tbhelfer/datenbank/BaustellenBaumRepository.kt`
-- `app/src/main/java/de/tbhelfer/datenbank/CollabLocalBridge.kt`
-- `app/build.gradle.kts`
-- `releases/TB-Helfer_1.3.10_200060.md`
-
-Teststatus: **QUELLSTAND 200060 FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200060 ERFOLGREICH / INSTALLATION 200060 OFFEN / PIXEL+POCO E2E OFFEN**.
+Teststatus: **QUELLSTAND 200061 FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200061 OFFEN / INSTALLATION OFFEN / PDF-GRÖSSEN-E2E OFFEN / MEDIATHEK-E2E OFFEN**.
 
 Nächster Test:
-1. 200060 auf dem Testgerät installieren.
-2. Vollbildseite öffnen und Unterbaustelle + `Modulgebäude` als freien Ort speichern.
-3. Zur Mängelliste zurückkehren und automatische Aktualisierung prüfen.
-4. Neues Mängel-PDF erzeugen: sichtbare Bildkante muss links bündig mit Bildtext/Metadaten sein.
-5. GPS im PDF erneut anklicken.
-6. Bei Änderung der Unterbaustelle vorhandene Fotos und danach ein neues Mangel-Foto auf korrekte Zuordnung prüfen.
+1. 200061 lokal bauen und installieren.
+2. Neues 9-Foto-Mängel-PDF exportieren und Dateigröße messen.
+3. Prüfen: kein GVP/Mast mehr im Mangelkopf; GVP bleibt unter jedem Foto.
+4. GPS-Link im PDF anklicken.
+5. `Vorhandenes Foto auswählen` öffnen → `Mediathek` → Handybild auswählen → Fotoart wählen → Zuordnung prüfen.
+6. Vollbildeditor: gleiche Rundung/Höhe von `Abbrechen` und `Speichern` prüfen.
+
