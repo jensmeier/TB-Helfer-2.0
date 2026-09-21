@@ -129,12 +129,25 @@ services:
       TB_SMTP_SENDER: ${TB_V1_SMTP_SENDER:-}
       TB_SMTP_STARTTLS: ${TB_V1_SMTP_STARTTLS:-true}
       TB_SMTP_SSL: ${TB_V1_SMTP_SSL:-false}
+      TB_RESTORE_TEST_DB_HOST: ${TB_V1_RESTORE_TEST_DB_HOST:-restore-test-db}
+      TB_RESTORE_TEST_DB_PORT: ${TB_V1_RESTORE_TEST_DB_PORT:-5432}
+      TB_RESTORE_TEST_DB_NAME: ${TB_V1_RESTORE_TEST_DB_NAME:-tb_helfer_v1_restore_test}
+      TB_RESTORE_TEST_DB_USER: ${TB_V1_RESTORE_TEST_DB_USER:-tb_helfer_restore_test}
+      TB_RESTORE_TEST_DB_PASSWORD: ${TB_V1_RESTORE_TEST_DB_PASSWORD:-}
+      TB_RESTORE_TARGET_DB_HOST: ${TB_V1_RESTORE_TARGET_DB_HOST:-restore-target-db}
+      TB_RESTORE_TARGET_DB_PORT: ${TB_V1_RESTORE_TARGET_DB_PORT:-5432}
+      TB_RESTORE_TARGET_DB_NAME: ${TB_V1_RESTORE_TARGET_DB_NAME:-tb_helfer_v1_restore_target}
+      TB_RESTORE_TARGET_DB_USER: ${TB_V1_RESTORE_TARGET_DB_USER:-tb_helfer_restore_target}
+      TB_RESTORE_TARGET_DB_PASSWORD: ${TB_V1_RESTORE_TARGET_DB_PASSWORD:-}
+      TB_RESTORE_TARGET_STORAGE_ROOT: /tb/restore-target-v1
+      TB_ALLOW_RESTORE_TARGET: ${TB_V1_ALLOW_RESTORE_TARGET:-NO}
       TZ: ${TZ:-Europe/Berlin}
     volumes:
       - ${TB_V1_SOURCE_TBSERVER_DIR:-./tbserver}:/app/tbserver:ro
       - ${TB_V1_SOURCE_MIGRATIONS_DIR:-./v1_migrations}:/app/v1_migrations:ro
       - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1
       - ${TB_V1_BACKUP_DIR:-./backups-v1}:/tb/backups-v1
+      - ${TB_V1_RESTORE_TARGET_STORAGE_DIR:-./restore-target-storage-v1}:/tb/restore-target-v1
     command: ["python", "-m", "tbserver.jobs", "worker"]
     depends_on:
       db:
