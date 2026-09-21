@@ -6,8 +6,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
+from psycopg.types.json import Jsonb
 
 from . import SERVER_VERSION
 from .admin import require_admin, require_admin_csrf
@@ -55,6 +56,95 @@ class AutomationSettingsUpdate(BaseModel):
     backup_retention_min_per_kind: int = 3
 
 
+_WARNING_ACK_KEY = "system_warning_acknowledged_at"
+
+_JOB_LABELS = {
+    "BACKUP_DATABASE": "Datenbank-Backup",
+    "BACKUP_FILES": "Datei-Backup",
+    "BACKUP_FULL": "Vollbackup",
+    "BACKUP_RETENTION": "Backup-Aufbewahrung",
+    "RESTORE_TEST": "Restore-Test",
+    "SYSTEM_EMAIL_REPORT": "Systembericht per E-Mail",
+}
+_JOB_STATUS_LABELS = {
+    "PENDING": "Wartet",
+    "RUNNING": "Läuft",
+    "DONE": "Fertig",
+    "FAILED": "Fehlgeschlagen",
+}
+_ERROR_MESSAGES = {
+    "STALE_WORKER_RECOVERED": "Der Worker wurde während des Vorgangs unterbrochen. Der Auftrag wurde erneut eingeplant.",
+    "TB_RESTORE_TEST_DB_NAME_MISSING": "Die getrennte Restore-Test-Datenbank war im Worker nicht konfiguriert.",
+    "TB_RESTORE_TEST_DB_PASSWORD_MISSING": "Das Passwort der Restore-Test-Datenbank fehlt in der Server-Konfiguration.",
+    "PG_RESTORE_FAILED_EXIT_1": "PostgreSQL konnte die Wiederherstellung nicht vollständig durchführen.",
+    "PG_DUMP_FAILED_EXIT_1": "PostgreSQL konnte das Datenbank-Backup nicht erstellen.",
+    "SMTP_NOT_CONFIGURED": "Der E-Mail-Versand ist noch nicht vollständig eingerichtet.",
+    "EMAIL_RECIPIENTS_EMPTY": "Für den Systembericht ist noch kein E-Mail-Empfänger hinterlegt.",
+}
+_AUDIT_LABELS = {
+    "RESTORE_TARGET_START": "Restore ins getrennte Ziel gestartet",
+    "RESTORE_TARGET_OK": "Restore ins getrennte Ziel erfolgreich",
+    "RESTORE_TARGET_FAILED": "Restore ins getrennte Ziel fehlgeschlagen",
+    "RESTORE_TEST_JOB_CREATE": "Restore-Test gestartet",
+    "BACKUP_JOB_CREATE": "Backup-Auftrag erstellt",
+    "BACKUP_RETENTION_JOB_CREATE": "Aufbewahrungsprüfung gestartet",
+    "SYSTEM_EMAIL_TEST_JOB_CREATE": "E-Mail-Testbericht gestartet",
+    "SYSTEM_WARNINGS_ACKNOWLEDGED": "Systemwarnungen quittiert",
+    "SYSTEM_JOB_HISTORY_DELETE": "Job-Verlauf bereinigt",
+    "SYSTEM_JOB_DELETE": "Job-Eintrag gelöscht",
+}
+
+
+def _parse_timestamp(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, str) and value.strip():
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    else:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _friendly_error(value: Any) -> str | None:
+    if value is None:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    if raw in _ERROR_MESSAGES:
+        return _ERROR_MESSAGES[raw]
+    for code, message in _ERROR_MESSAGES.items():
+        if code in raw:
+            return message
+    return "Technischer Fehler: " + raw[:240]
+
+
+def _job_view(row: dict[str, Any]) -> dict[str, Any]:
+    result = dict(row)
+    job_type = str(result.get("job_type") or "").upper()
+    status = str(result.get("status") or "").upper()
+    result["job_label"] = _JOB_LABELS.get(job_type, job_type.replace("_", " ").title())
+    result["status_label"] = _JOB_STATUS_LABELS.get(status, status)
+    result["error_description"] = _friendly_error(result.get("last_error"))
+    return result
+
+
+def _audit_view(row: dict[str, Any]) -> dict[str, Any]:
+    result = dict(row)
+    action = str(result.get("action") or "")
+    result["action_label"] = _AUDIT_LABELS.get(
+        action,
+        action.replace("_", " ").title(),
+    )
+    result["is_failure"] = action.endswith("_FAILED") or "ERROR" in action
+    return result
+
+
 def _storage_snapshot() -> dict[str, Any]:
     root = settings.storage_root
     if not root.exists():
@@ -96,6 +186,15 @@ def admin_system_status(
 
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
+            "SELECT value FROM tb.server_settings WHERE setting_key = %s",
+            (_WARNING_ACK_KEY,),
+        )
+        warning_ack_row = cur.fetchone()
+        warning_acknowledged_at = _parse_timestamp(
+            warning_ack_row["value"] if warning_ack_row else None
+        )
+
+        cur.execute(
             """
             SELECT
               (SELECT count(*) FROM tb.companies WHERE deleted_at IS NULL) AS companies,
@@ -121,6 +220,7 @@ def admin_system_status(
               (SELECT count(*) FROM tb.background_jobs WHERE status = 'PENDING') AS pending_jobs,
               (SELECT count(*) FROM tb.background_jobs WHERE status = 'RUNNING') AS running_jobs,
               (SELECT count(*) FROM tb.background_jobs WHERE status = 'FAILED') AS failed_jobs,
+              (SELECT max(created_at) FROM tb.background_jobs WHERE status = 'FAILED') AS last_failed_job_at,
               (SELECT max(last_seen_at) FROM tb.devices WHERE status = 'ACTIVE' AND revoked_at IS NULL) AS last_device_seen,
               (SELECT max(last_sync_at) FROM tb.devices WHERE status = 'ACTIVE' AND revoked_at IS NULL) AS last_sync,
               pg_database_size(current_database()) AS database_bytes
@@ -154,6 +254,15 @@ def admin_system_status(
             "bytes_in": sum(int(row["bytes_in"]) for row in traffic_series),
             "bytes_out": sum(int(row["bytes_out"]) for row in traffic_series),
         }
+        traffic_24h["unacknowledged_error_count"] = sum(
+            int(row["error_count"])
+            for row in traffic_series
+            if int(row["error_count"]) > 0
+            and (
+                warning_acknowledged_at is None
+                or row["bucket_start"] > warning_acknowledged_at
+            )
+        )
 
         cur.execute(
             """
@@ -183,13 +292,14 @@ def admin_system_status(
         cur.execute(
             """
             SELECT id, job_type, status, attempts, run_after, created_at,
-                   updated_at, finished_at
+                   updated_at, finished_at, last_error,
+                   progress_percent, progress_text
             FROM tb.background_jobs
             ORDER BY created_at DESC
             LIMIT 20
             """
         )
-        jobs = [dict(row) for row in cur.fetchall()]
+        jobs = [_job_view(dict(row)) for row in cur.fetchall()]
 
         cur.execute(
             """
@@ -250,7 +360,7 @@ def admin_system_status(
 
         cur.execute(
             """
-            SELECT a.action, a.entity_type, a.created_at,
+            SELECT a.id, a.action, a.entity_type, a.entity_id, a.created_at,
                    u.display_name AS actor_display_name
             FROM tb.audit_log a
             LEFT JOIN tb.users u ON u.id = a.actor_user_id
@@ -258,7 +368,7 @@ def admin_system_status(
             LIMIT 30
             """
         )
-        audit_events = [dict(row) for row in cur.fetchall()]
+        audit_events = [_audit_view(dict(row)) for row in cur.fetchall()]
 
         cur.execute(
             """
@@ -273,6 +383,16 @@ def admin_system_status(
         last_email_job = dict(last_email_job) if last_email_job else None
 
     now = status_now
+    last_failed_job_at = _parse_timestamp(counts.get("last_failed_job_at"))
+    failed_jobs_unacknowledged = int(counts["failed_jobs"] or 0)
+    if (
+        warning_acknowledged_at is not None
+        and last_failed_job_at is not None
+        and last_failed_job_at <= warning_acknowledged_at
+    ):
+        failed_jobs_unacknowledged = 0
+    counts["failed_jobs_unacknowledged"] = failed_jobs_unacknowledged
+
     issues: list[dict[str, str]] = []
 
     def add_issue(severity: str, title: str, detail: str) -> None:
@@ -309,17 +429,17 @@ def admin_system_status(
             f'{storage["percent_used"]:.2f} % des Datenträgers sind belegt.',
         )
 
-    if int(counts["failed_jobs"] or 0) > 0:
+    if failed_jobs_unacknowledged > 0:
         add_issue(
             "critical",
-            "Fehlgeschlagene Background Jobs",
-            f'{counts["failed_jobs"]} Job(s) stehen auf FAILED.',
+            "Fehlgeschlagene Vorgänge",
+            f"{failed_jobs_unacknowledged} fehlgeschlagene Vorgänge sind noch nicht bereinigt oder quittiert.",
         )
-    if int(traffic_24h["error_count"] or 0) > 0:
+    if int(traffic_24h["unacknowledged_error_count"] or 0) > 0:
         add_issue(
             "warning",
-            "Serverfehler in den letzten 24 Stunden",
-            f'{traffic_24h["error_count"]} HTTP-Antwort(en) hatten Status 5xx.',
+            "Serverfehler seit der letzten Quittierung",
+            f'{traffic_24h["unacknowledged_error_count"]} HTTP-Antwort(en) mit Status 5xx sind seit der letzten Quittierung hinzugekommen.',
         )
     if not settings.public_base_url:
         add_issue(
@@ -393,6 +513,7 @@ def admin_system_status(
         "traffic_24h": traffic_24h,
         "traffic_series": traffic_series,
         "issues": issues,
+        "warning_acknowledged_at": warning_acknowledged_at,
         "last_successful_backup": last_successful_backup,
         "backups": backups,
         "jobs": jobs,
@@ -404,6 +525,89 @@ def admin_system_status(
     }
 
 
+
+
+@router.post("/warnings/acknowledge")
+def acknowledge_system_warnings(
+    user: dict[str, Any] = Depends(require_admin_csrf),
+) -> dict:
+    acknowledged_at = datetime.now(timezone.utc)
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO tb.server_settings(setting_key, value, updated_at)
+            VALUES (%s, %s, now())
+            ON CONFLICT (setting_key) DO UPDATE
+            SET value = EXCLUDED.value, updated_at = now()
+            """,
+            (_WARNING_ACK_KEY, Jsonb(acknowledged_at.isoformat())),
+        )
+        audit(
+            cur,
+            action="SYSTEM_WARNINGS_ACKNOWLEDGED",
+            actor_user_id=user["user_id"],
+            entity_type="SYSTEM",
+            details={"acknowledged_at": acknowledged_at.isoformat()},
+        )
+    return {"acknowledged_at": acknowledged_at}
+
+
+@router.delete("/jobs/history", status_code=204)
+def delete_terminal_job_history(
+    user: dict[str, Any] = Depends(require_admin_csrf),
+) -> Response:
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT count(*)::int AS count
+            FROM tb.background_jobs
+            WHERE status IN ('DONE','FAILED')
+            """
+        )
+        count = int(cur.fetchone()["count"])
+        cur.execute(
+            "DELETE FROM tb.background_jobs WHERE status IN ('DONE','FAILED')"
+        )
+        audit(
+            cur,
+            action="SYSTEM_JOB_HISTORY_DELETE",
+            actor_user_id=user["user_id"],
+            entity_type="SYSTEM",
+            details={"deleted_jobs": count},
+        )
+    return Response(status_code=204)
+
+
+@router.delete("/jobs/{job_id}", status_code=204)
+def delete_terminal_job(
+    job_id: UUID,
+    user: dict[str, Any] = Depends(require_admin_csrf),
+) -> Response:
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, job_type, status
+            FROM tb.background_jobs
+            WHERE id = %s
+            FOR UPDATE
+            """,
+            (job_id,),
+        )
+        job = cur.fetchone()
+        if not job:
+            raise HTTPException(404, "BACKGROUND_JOB_NOT_FOUND")
+        if job["status"] not in {"DONE", "FAILED"}:
+            raise HTTPException(409, "ACTIVE_BACKGROUND_JOB_CANNOT_BE_DELETED")
+        audit(
+            cur,
+            action="SYSTEM_JOB_DELETE",
+            actor_user_id=user["user_id"],
+            entity_type="BACKGROUND_JOB",
+            entity_id=job_id,
+            details={"job_type": job["job_type"], "status": job["status"]},
+        )
+        cur.execute("DELETE FROM tb.background_jobs WHERE id = %s", (job_id,))
+    return Response(status_code=204)
 
 
 @router.put("/automation")
