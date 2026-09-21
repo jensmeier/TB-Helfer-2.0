@@ -282,7 +282,10 @@ async function loadReleases(){
       }else if(r.status==='RETIRED'){
         actions+='<button class="secondary" type="button" onclick="downloadReleaseManifest(\''+esc(r.id)+'\')">Release-Datei herunterladen</button>';
       }
-      const download=r.download_url?'<a class="btn" href="'+esc(r.download_url)+'" target="_blank" rel="noopener">Download prüfen</a>':'';
+      const verifyUrl=(r.status==='DRAFT'&&binary.configured)
+        ? '/api/v1/admin/releases/'+encodeURIComponent(r.id)+'/binary'
+        : r.download_url;
+      const download=verifyUrl?'<a class="btn" href="'+esc(verifyUrl)+'" target="_blank" rel="noopener">Download prüfen</a>':'';
       return '<div class="release-card">'+
         '<div class="actions" style="justify-content:space-between"><div><b>'+esc(r.platform)+' · '+esc(r.version_name)+'</b> <span class="pill">'+esc(r.status)+'</span>'+
         '<div class="muted">Build '+esc(r.build_number??'—')+' · Minimum '+esc(r.minimum_supported_build??'—')+(r.mandatory?' · Pflichtupdate':'')+'</div></div>'+
