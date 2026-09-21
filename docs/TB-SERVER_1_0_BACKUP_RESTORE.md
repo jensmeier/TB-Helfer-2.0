@@ -246,6 +246,18 @@ Sicherheitsverhalten:
 
 Migration `006_backup_retention_status.sql` ergänzt dafür den Status `PURGED`. Die Admin-Systemseite zeigt die aktive Policy und kann die Aufbewahrungsprüfung als Background Job einreihen.
 
+### Praktische Retention-Abnahme 21.09.2026
+
+Die manuelle Aufbewahrungsprüfung wurde auf Synology-Staging über die Admin-Systemseite ausgeführt.
+
+Praktisches Ergebnis:
+- Background Job `BACKUP_RETENTION`: **DONE**, Versuch 1;
+- aktive Policy: 30 Tage Aufbewahrung, mindestens 3 erfolgreiche Backups je Backupart;
+- die aktuellen jungen Testbackups blieben erwartungsgemäß erhalten;
+- FULL-Backup und Restore-Test-Läufe wurden durch die Prüfung nicht beschädigt.
+
+Damit ist der **manuelle Retention-Pfad praktisch BESTÄTIGT**. Ein gezielter Purge abgelaufener Altbackups bleibt für später möglich, wenn ausreichend alte Testartefakte vorhanden sind; der vorhandene funktionierende Pfad darf nicht ohne reproduzierbaren Fehler geändert werden.
+
 ## Capabilities
 
 - `background_jobs_v1=true`
