@@ -65,6 +65,15 @@ Wichtige Server-1.0-Meilensteine:
 - Restore-Test + sicherer Test-Reset: Restore nur gegen getrennte Testdatenbank/Testablage; Test-/Staging-Reset nur nach verifiziertem höchstens 24h altem FULL-Backup und harter Environment-/Bestätigungssperre
 - optionaler Restore-Staging-Compose-Overlay: getrennte Restore-Test-DB, getrennte Restore-Target-DB und eigener Restore-Target-Storage; Restore-to-Target bleibt standardmäßig deaktiviert und außerhalb des normalen Serverstarts
 
+## Backup-Vorabnahme vor Migration 011
+
+Stand **21.09.2026**:
+- Auf Synology-Staging wurde über den vorhandenen Systemstatus-/Background-Job-Pfad ein **FULL-Backup** erfolgreich ausgeführt.
+- Der Benutzer hat diesen Schritt ausdrücklich als **funktionierend** bestätigt.
+- Dieser bestätigte FULL-Backup-Pfad bleibt geschützt und wird nicht ohne reproduzierbaren Fehler oder ausdrücklichen Änderungswunsch umgebaut.
+- **Noch offen:** getrennten Restore-Test genau dieses Backups ausführen; danach Retention und Restore-to-Target praktisch abnehmen.
+- Migration 011 wurde zu diesem Zeitpunkt **noch nicht** auf Staging ausgeführt.
+
 ## Server 1.0 + Android 200055 – globaler Katalog und Benutzeridentität
 
 Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Der Stagingserver wurde für diesen Block noch nicht migriert; auf Pixel/Poco ist weiterhin der bestätigte Build 200054 installiert.
