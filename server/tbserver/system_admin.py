@@ -126,11 +126,12 @@ def _friendly_error(value: Any) -> str | None:
 
 def _job_view(row: dict[str, Any]) -> dict[str, Any]:
     result = dict(row)
+    raw_error = result.pop("last_error", None)
     job_type = str(result.get("job_type") or "").upper()
     status = str(result.get("status") or "").upper()
     result["job_label"] = _JOB_LABELS.get(job_type, job_type.replace("_", " ").title())
     result["status_label"] = _JOB_STATUS_LABELS.get(status, status)
-    result["error_description"] = _friendly_error(result.get("last_error"))
+    result["error_description"] = _friendly_error(raw_error)
     return result
 
 
