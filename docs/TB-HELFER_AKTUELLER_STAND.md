@@ -13,6 +13,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - PR-Basis: `feature/admin-offline-sync`
 - Funktionscommit globaler Katalog + Benutzeridentität: **`511bb5c00552b5a7e54d35d930ea982cf4629598`**
 - Server-Automatik/E-Mail/Audit-Quellblock: **`dd0bf1c6b5640951e74494969b5032a5ada86e1d`** (Migration 012; danach nur Doku/Statuspflege)
+- Restore-Test-/DRAFT-Download-Laufzeitfixes vom 21.09.2026: **`e58d9fca9840…`** (UUID-Pathparameter) + **`4c20bde651f0…`/`946a62501610…`** (ADMIN-Draft-Binary-Prüfung); dazu Source-Checks 42/40/87 nachgezogen.
 - GitHub Actions für diesen Funktionscommit liefern weiterhin **keinen Testnachweis**: Android-Run `35524333713`, Server-PR-Run `35524333722` und Server-Push-Run `35524332208` endeten ohne zugewiesenen Runner (`runner_id=0`, `runner_name=""`, `steps=[]`). Das bleibt Infrastrukturproblem PRB-002 und ist kein belegter Fach-/Compilefehler.
 - Android Testclient: **200054 / 1.3.4 ist auf Pixel + Poco installiert und bestätigt**. Der neue Quellstand **200055 / 1.3.5** für globalen Katalog und Benutzerprofil ist vorbereitet, aber noch nicht gebaut/installiert; 200054 bleibt bis zum praktischen Test die bestätigte Gerätebasis.
 
@@ -73,9 +74,23 @@ Stand **21.09.2026**:
 - Auf Synology-Staging wurde über den vorhandenen Systemstatus-/Background-Job-Pfad ein **FULL-Backup** erfolgreich ausgeführt.
 - Der Benutzer hat diesen Schritt ausdrücklich als **funktionierend** bestätigt.
 - Dieser bestätigte FULL-Backup-Pfad bleibt geschützt und wird nicht ohne reproduzierbaren Fehler oder ausdrücklichen Änderungswunsch umgebaut.
-- **Noch offen:** getrennten Restore-Test genau dieses Backups ausführen; danach Retention und Restore-to-Target praktisch abnehmen.
+- Erster praktischer Restore-Test-Versuch: Restore-Test-DB/Restore-Target-DB/Worker wurden erfolgreich als getrennte Container gestartet; der HTTP-Aufruf scheiterte jedoch noch vor Job-Erstellung mit FastAPI/Pydantic-ForwardRef `UUID` (fehlender Import in `system_admin.py`). Quellfix ist committed, **Deployment + Wiederholung E2E offen**.
+- **Noch offen:** aktuellen Server-Fix deployen und getrennten Restore-Test genau dieses Backups erneut ausführen; danach Retention und Restore-to-Target praktisch abnehmen.
 - Migration 011 wurde zu diesem Zeitpunkt **noch nicht** auf Staging ausgeführt.
 
+## Laufzeitbefunde 21.09.2026 – Restore-Test und Release-Draft-Prüfung
+
+- Restore-Infrastruktur auf Synology ist angelegt: getrennte `restore-test-db`, `restore-target-db` und Worker laufen; Live-API und Live-DB blieben dabei erreichbar.
+- Beim Klick auf `Restore-Test` lieferte die API HTTP 500. Ursache reproduziert: `system_admin.py` verwendete `backup_run_id: UUID`, importierte `UUID` aber nicht. Durch `from __future__ import annotations` blieb ein nicht auflösbarer ForwardRef für FastAPI/Pydantic. Quellfix `e58d9fca9840…`: `from uuid import UUID`; Source-Check 42 schützt den Import jetzt.
+- Ein Restore-Job wurde bei diesem Fehlversuch **nicht** eingereiht. Das FULL-Backup selbst wurde dadurch weder verändert noch als fehlerhaft nachgewiesen.
+- Release 1.3.6 / Build 200056 ist im Admin aktuell ein **DRAFT**. Android 1.3.4 zeigt deshalb korrekt „aktuell“: DRAFT-Releases dürfen nicht über den öffentlichen Kompatibilitätsvertrag angeboten werden.
+- Der Admin-Button `Download prüfen` eines DRAFTs zeigte jedoch auf den öffentlichen Downloadvertrag und erhielt deshalb korrekt `RELEASE_NOT_FOUND`. Quellfix: eigener ADMIN-geschützter GET-Binary-Pfad für DRAFT-Prüfung; öffentlicher Download bleibt unverändert auf `PUBLISHED` beschränkt.
+
+Nächster Laufzeitschritt:
+1. nur die kleinen Serverfixes auf Synology ausrollen/API+Worker neu starten, noch **keine** Migration 011/012 erzwingen;
+2. dasselbe bestätigte FULL-Backup erneut per Restore-Test starten und Jobstatus bis `DONE`/Restore-Lauf `OK` prüfen;
+3. DRAFT 1.3.6 im Admin über `Download prüfen` verifizieren; Android darf es weiterhin nicht als Update sehen, solange nicht veröffentlicht;
+4. erst danach mit dem geplanten Deployment 011+012 fortfahren.
 ## Server 1.0 – Backup-Automatik, E-Mail-Berichte und Audit
 
 Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Dieser Block wurde noch nicht auf Synology-Staging ausgerollt. Der praktisch bestätigte FULL-Backup-Pfad wurde nicht ersetzt oder umgebaut.
