@@ -163,6 +163,46 @@ class FotoRepository(
         dao.updateNotizMitIds(ids, notiz)
     }
 
+    /**
+     * Korrigiert die echte Unterbaustellen-Zuordnung vorhandener Fotos.
+     * null bedeutet Hauptbaustelle. Vorhandene BTB-Kontext-Overrides werden mitgezogen,
+     * damit der korrigierte Ort nicht beim naechsten Lesevorgang wieder ueberschrieben wird.
+     */
+    suspend fun updateBaustellenKnotenMitIds(ids: List<Long>, knotenId: Long?): Int = withContext(Dispatchers.IO) {
+        if (ids.isEmpty()) return@withContext 0
+        val ctx = appContext
+        val before = dao.fotosMitIds(ids)
+        val affectedBtbs = if (ctx != null) {
+            before.mapNotNull { foto ->
+                BtbFotoZuordnungSpeicher.btbId(ctx, foto.id)?.let { btbId -> foto.baustelleId to btbId }
+            }.distinct()
+        } else emptyList()
+
+        if (ctx != null) {
+            before.forEach { foto ->
+                val btbId = BtbFotoZuordnungSpeicher.btbId(ctx, foto.id) ?: return@forEach
+                val existing = BtbPhotoContextOverrideStore.load(ctx, btbId)[foto.id]
+                val override = existing?.copy(ortId = knotenId ?: 0L)
+                    ?: BtbPhotoContextOverrideStore.ContextOverride(
+                        firma = foto.firma,
+                        objektKennung = foto.objektKennung,
+                        objektBereich = foto.objektBereich,
+                        ortId = knotenId ?: 0L
+                    )
+                BtbPhotoContextOverrideStore.setOverride(ctx, btbId, foto.id, override)
+            }
+        }
+
+        val result = dao.updateBaustellenKnotenMitIds(ids, knotenId)
+        if (ctx != null && result > 0) {
+            affectedBtbs.forEach { (baustelleId, btbId) ->
+                invalidiereFotoAbschlussWennNoetig(ctx, baustelleId, btbId)
+            }
+            runCatching { SofortSync.anstossen(ctx) }
+        }
+        result
+    }
+
     suspend fun loeschen(entity: FotoEntity): Int = withContext(Dispatchers.IO) {
         val ctx = appContext
         val btbId = ctx?.let { BtbFotoZuordnungSpeicher.btbId(it, entity.id) }
