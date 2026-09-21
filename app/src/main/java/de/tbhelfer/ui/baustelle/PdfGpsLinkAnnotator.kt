@@ -8,7 +8,6 @@ import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
 import com.tom_roush.pdfbox.pdmodel.interactive.action.PDActionURI
 import com.tom_roush.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.Locale
 
@@ -39,7 +38,7 @@ internal object PdfGpsLinkAnnotator {
 
         PDFBoxResourceLoader.init(context.applicationContext)
 
-        val document = PDDocument.load(ByteArrayInputStream(pdfBytes))
+        val document = PDDocument.load(pdfBytes)
         return document.use { doc ->
             targets.forEach { target ->
                 if (target.pageIndex !in 0 until doc.numberOfPages) return@forEach
@@ -49,22 +48,26 @@ internal object PdfGpsLinkAnnotator {
                 val lowerLeftY = pageHeight - (target.top + target.height)
 
                 val action = PDActionURI().apply {
-                    uri = googleMapsUrl(target.lat, target.lon)
+                    setURI(googleMapsUrl(target.lat, target.lon))
                 }
                 val link = PDAnnotationLink().apply {
-                    rectangle = PDRectangle(
-                        target.x,
-                        lowerLeftY,
-                        target.width.coerceAtLeast(1f),
-                        target.height.coerceAtLeast(1f)
+                    setRectangle(
+                        PDRectangle(
+                            target.x,
+                            lowerLeftY,
+                            target.width.coerceAtLeast(1f),
+                            target.height.coerceAtLeast(1f)
+                        )
                     )
-                    this.action = action
+                    setAction(action)
                     setPage(page)
-                    border = COSArray().apply {
-                        add(COSInteger.ZERO)
-                        add(COSInteger.ZERO)
-                        add(COSInteger.ZERO)
-                    }
+                    setBorder(
+                        COSArray().apply {
+                            add(COSInteger.ZERO)
+                            add(COSInteger.ZERO)
+                            add(COSInteger.ZERO)
+                        }
+                    )
                 }
                 page.annotations.add(link)
             }
