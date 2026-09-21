@@ -1148,7 +1148,8 @@ Stand **21.09.2026**:
 - Kommentar kann über **Bearbeiten** gepflegt werden; bei `Erledigt` wird der vorhandene Kommentar vorbefüllt. Die bestehende Fachregel, dass ein erledigter Mangel nicht wieder geöffnet wird, bleibt erhalten.
 - Server-Vertrag geprüft: der aktuelle Server-1.0-Vertrag unterstützt Mangel-`PATCH` inklusive `payload`; für diese Android-Änderung ist **keine Server-API-Änderung nötig**.
 - Server-HEAD bei Abschluss dieses Android-Blocks: `d5e27763124f8d4b8fe123ea2197c2aad54078d3`. Seit dem zuvor geprüften Mangelvertrag kamen nur Server-/Doku-/Release-/Restore-Checks hinzu, keine inkompatible Mängel-API-Änderung.
-- Source-Checks für Version, Edit-UI, Google-Maps-Sprung, PDF-Feldnamen, Foto-KM/GPS/GVP, Override-Persistenz und Sync-Payload sind bestanden. GitHub Actions liefern weiterhin keinen Runner-Testnachweis.
+- Erster lokaler Buildversuch von **200057** am 21.09.2026 13:34 scheiterte reproduzierbar in der generierten `MaengellisteFragment.kt` Zeile 234 mit `Unresolved reference 'singleLine'`. Ursache lag im kanonischen Source: im neuen Editor-Feld wurde die nicht auflösbare Kotlin-Zuweisung `singleLine = true` verwendet. Korrigiert auf den Android-API-Aufruf `setSingleLine(true)`; Fix-Commit `3ed601dc162fb0f0550935763baf390c6d01fc7e`. Generated Source wurde nicht direkt bearbeitet. Neuer Build ist offen.
+- Source-Checks für Version, Edit-UI, Google-Maps-Sprung, PDF-Feldnamen, Foto-KM/GPS/GVP, Override-Persistenz und Sync-Payload sind bestanden; zusätzlich ist kein `singleLine =` mehr in der kanonischen Mängellisten-Datei vorhanden. GitHub Actions liefern weiterhin keinen Runner-Testnachweis.
 
 Betroffene Android-Dateien:
 - `app/src/main/java/de/tbhelfer/ui/baustelle/MaengellisteFragment.kt`
