@@ -1,5 +1,19 @@
 # TB-Helfer – verbindliche Projektregeln
 
+
+## Synology-Arbeitsweg SERVER
+
+Für praktische Arbeiten auf der Synology gilt als Standardweg:
+
+1. aktuellen SERVER-Stand über **GitHub Desktop** auf den PC holen;
+2. benötigte Dateien/Ordner über **Synology File Station** nach `/volume1/docker/tb-helfer-v1` hochladen bzw. ersetzen;
+3. Projekte/Container ausschließlich über **Synology Container Manager** stoppen, neu erstellen und starten;
+4. notwendige Diagnose-/Migrationsbefehle im **Terminal des jeweiligen Containers** (`api`, `worker`, `db`) ausführen;
+5. **kein NAS-SSH als Standardarbeitsweg**; SSH nur auf ausdrücklichen Benutzerwunsch;
+6. `.env`, Secrets, Datenbank-/Storage-Verzeichnisse und Backup-Verzeichnisse beim Datei-Upload niemals überschreiben oder löschen.
+
+Bei Deployment-Anleitungen für SERVER sind daher File Station + Container Manager + Container-Terminal zu bevorzugen.
+
 ## 0. Projektstatus-Tracker
 
 - Zusätzlich zu diesen Projektregeln und `docs/TB-HELFER_AKTUELLER_STAND.md` wird der laufende Arbeits-/Teststand in `projektstatus/TB-HELFER_STATUS.md` und der gleichnamigen Excel-Datei gespiegelt.
