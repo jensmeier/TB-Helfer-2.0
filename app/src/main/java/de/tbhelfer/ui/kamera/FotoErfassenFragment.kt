@@ -133,32 +133,10 @@ class FotoErfassenFragment : Fragment(R.layout.fragment_foto_erfassen) {
         val actKurz = view.findViewById<AutoCompleteTextView>(R.id.actKurztext)
         val edtNotiz = view.findViewById<EditText>(R.id.edtNotiz)
         val scrollView = view.findViewById<ScrollView>(R.id.scrollFotoErfassen)
-        val btnToggleOptional = view.findViewById<MaterialButton>(R.id.btnToggleOptional)
-        val optionalContainer = view.findViewById<View>(R.id.optionalContainer)
-        val edtInfo1Label = view.findViewById<EditText>(R.id.edtInfo1Label)
-        val edtInfo2Label = view.findViewById<EditText>(R.id.edtInfo2Label)
-        val edtInfo3Label = view.findViewById<EditText>(R.id.edtInfo3Label)
-        val edtInfo1Value = view.findViewById<EditText>(R.id.edtInfo1Value)
-        val edtInfo2Value = view.findViewById<EditText>(R.id.edtInfo2Value)
-        val edtInfo3Value = view.findViewById<EditText>(R.id.edtInfo3Value)
-
-        val optionalLabelEdits = listOf(edtInfo1Label, edtInfo2Label, edtInfo3Label)
-        val optionalValueEdits = listOf(edtInfo1Value, edtInfo2Value, edtInfo3Value)
 
         val btnAbbrechen = view.findViewById<Button>(R.id.btnAbbrechen)
         val btnSpeichern = view.findViewById<Button>(R.id.btnSpeichern)
 
-        fun defaultOptionalLabel(index: Int): String = "Info$index"
-        fun normalizeOptionalLabel(index: Int, raw: String?): String = raw?.trim()?.takeIf { it.isNotBlank() } ?: defaultOptionalLabel(index)
-        fun normalizeOptionalValue(raw: String?): String? = raw?.trim()?.takeIf { it.isNotBlank() }
-        fun currentOptionalLabels(): List<String> = optionalLabelEdits.mapIndexed { index, edit -> normalizeOptionalLabel(index + 1, edit.text?.toString()) }
-        fun currentOptionalValues(): List<String?> = optionalValueEdits.map { normalizeOptionalValue(it.text?.toString()) }
-        fun refreshOptionalValueHints() {
-            val labels = currentOptionalLabels()
-            optionalValueEdits.forEachIndexed { index, edit ->
-                edit.hint = "Wert zu ${labels[index]}"
-            }
-        }
         val baseScrollPaddingLeft = scrollView.paddingLeft
         val baseScrollPaddingTop = scrollView.paddingTop
         val baseScrollPaddingRight = scrollView.paddingRight
@@ -192,20 +170,16 @@ class FotoErfassenFragment : Fragment(R.layout.fragment_foto_erfassen) {
         fun isMangelBildtyp(): Boolean = aktuellerBildtyp() == Bildtyp.MAENGEL_SCHAEDEN
 
         fun updateFotokommentarVisibility() {
-            val show = isMangelBildtyp() || abnahmeMode
-            edtNotiz.visibility = if (show) View.VISIBLE else View.GONE
-            edtNotiz.hint = if (abnahmeMode) "Bemerkung zum Foto (optional)" else "Fotokommentar"
-            if (!show) edtNotiz.setText("")
+            // 200056: notiz ist der sichtbare Langtext/BTB-Text für jedes Foto.
+            // Für Mängel/Abnahmen bleibt derselbe Datenwert erhalten; nur der Hinweis wird angepasst.
+            edtNotiz.visibility = View.VISIBLE
+            edtNotiz.hint = when {
+                abnahmeMode -> "Bemerkung / Langtext (optional)"
+                isMangelBildtyp() -> "Mangelbeschreibung / Langtext (optional)"
+                else -> "Langtext / BTB-Text (optional)"
+            }
         }
 
-        fun updateOptionalToggleText() {
-            val label = when {
-                abnahmeMode -> "Bemerkung zum Foto"
-                isMangelBildtyp() -> "Fotokommentar"
-                else -> "Optional"
-            }
-            btnToggleOptional.text = if (optionalContainer.visibility == View.VISIBLE) "$label ▲" else "$label ▼"
-        }
         fun scrollFieldIntoView(target: View) {
             fun reveal() {
                 val rect = android.graphics.Rect()
@@ -223,29 +197,11 @@ class FotoErfassenFragment : Fragment(R.layout.fragment_foto_erfassen) {
         // Die zentrale KeyboardAutoScroll-Logik bleibt die Hauptloesung; dieser Fallback
         // hilft insbesondere auf Geraeten, die die Tastatur als Overlay anzeigen.
         listOf<View>(actKurz, edtNotiz, edtGvpMastValue, edtApKorValue)
-            .plus(optionalLabelEdits)
-            .plus(optionalValueEdits)
             .forEach { target ->
                 target.setOnFocusChangeListener { _, hasFocus ->
                     if (hasFocus) scrollFieldIntoView(target)
                 }
             }
-
-        btnToggleOptional.setOnClickListener {
-            optionalContainer.visibility = if (optionalContainer.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-            updateOptionalToggleText()
-            if (optionalContainer.visibility == View.VISIBLE) {
-                refreshOptionalValueHints()
-                scrollFieldIntoView(optionalContainer)
-            }
-        }
-        updateOptionalToggleText()
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            val labels = FotoOptionalFelderSpeicher.laden(requireContext(), baustelleId).asList()
-            optionalLabelEdits.forEachIndexed { index, edit -> edit.setText(labels[index]) }
-            refreshOptionalValueHints()
-        }
 
         viewLifecycleOwner.lifecycleScope.launch {
             val letzterKurztext = runCatching {
@@ -327,7 +283,6 @@ class FotoErfassenFragment : Fragment(R.layout.fragment_foto_erfassen) {
             selectedBildtypForUi = Bildtyp.FOTODOKUMENTATION
         }
         updateFotokommentarVisibility()
-        updateOptionalToggleText()
 
         // Patch 31: Vorschlags-km aus Kamera/Trasse exakt mit 3 Nachkommastellen übernehmen.
         // Nicht auf 10 m runden, damit die Foto-Maske genau den Wert aus dem Kamera-Overlay anzeigt.
@@ -750,7 +705,6 @@ class FotoErfassenFragment : Fragment(R.layout.fragment_foto_erfassen) {
                 val typ = bildtypen.getOrNull(position)
                 selectedBildtypForUi = typ ?: Bildtyp.FOTODOKUMENTATION
                 updateFotokommentarVisibility()
-                updateOptionalToggleText()
                 if (typ == Bildtyp.MAENGEL_SCHAEDEN) pruefeVorhandeneMaengel()
             }
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
@@ -1058,9 +1012,10 @@ class FotoErfassenFragment : Fragment(R.layout.fragment_foto_erfassen) {
             val objektKennung: String? = trassenObjektKennung.takeIf { it.isNotBlank() }
             val objektBereich = objektBereichOptionen.getOrNull(spObjektBereich.selectedItemPosition)
                 ?.takeUnless { it.equals("Allgemein", ignoreCase = true) || it == objektBereichTrenner }
-            val optionalLabels = currentOptionalLabels()
-            val optionalValues = currentOptionalValues()
-            refreshOptionalValueHints()
+            // Alte Info1-3-Felder bleiben aus Kompatibilitätsgründen in FotoEntity erhalten,
+            // werden ab 200056 aber nicht mehr in der normalen Fotomaske neu befüllt.
+            val optionalLabels = emptyList<String>()
+            val optionalValues = emptyList<String?>()
 
             // UI-Suffix entfernt: wir übernehmen den Suffix aus den Args (Standard: -0)
             val bildtyp = when {

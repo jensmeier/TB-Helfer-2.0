@@ -617,7 +617,9 @@ object BtbDruckModellBuilder {
     ): List<PrintEvent> {
         data class Row(val firma: String?, val ortId: Long, val text: String, val km: Double?, val id: Long, val epochMs: Long)
         val rows = fotos.mapNotNull { f ->
-            val txt = (textOverrides[f.id]?.trim().takeIf { !it.isNullOrBlank() } ?: f.kurztext.trim())
+            val txt = textOverrides[f.id]?.trim()?.takeIf { it.isNotBlank() }
+                ?: f.notiz?.trim()?.takeIf { it.isNotBlank() }
+                ?: f.kurztext.trim()
             if (txt.isBlank()) return@mapNotNull null
             val firma = f.firma.trim().takeIf { it.isNotBlank() }?.let { firmCanonicalByLower[it.lowercase(Locale.ROOT)] ?: it }
             Row(firma, f.baustellenKnotenId ?: 0L, txt, f.km, f.id, f.erstelltAmEpochMs)

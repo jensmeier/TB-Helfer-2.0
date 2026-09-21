@@ -551,10 +551,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200055: globaler Katalog + Benutzeridentität gegen Server 1.0.
-        // Quellstand für Build/E2E; bestätigte Aktivierungs-/Updatepfade bleiben unverändert.
-        versionCode = 200055
-        versionName = "1.3.5"
+        // Android 200056: Foto-/BTB-Texttrennung, kompakter Windows-Export und Schicht-Bilderlisten.
+        // Bestehende bestätigte Aktivierungs-/Updatepfade bleiben unverändert.
+        versionCode = 200056
+        versionName = "1.3.6"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
