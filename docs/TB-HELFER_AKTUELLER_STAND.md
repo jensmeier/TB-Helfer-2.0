@@ -1156,6 +1156,7 @@ Stand **21.09.2026**:
 - Server-Vertrag unverändert; hierfür ist keine Serveränderung erforderlich. Server-HEAD geprüft: `3257d3b0ae1f90396cc3a2f00ff2c976d899c6f3`. Seit dem letzten Mangelvertrag wurden dort nur Doku/Status/Excel fortgeschrieben, keine Mängel-API geändert.
 - Source-Checks für Version, PDFBox-Abhängigkeit, Link-Annotation, Google-Maps-URL, GPS-Linkpositionen, R8-Regel, Workflow und Release-Datei sind bestanden.
 - `STATUS.xlsx` auf dem Server-Branch ist neuer als die Android-Kopie und wird deshalb vom Android-Projekt nicht überschrieben.
+- **UI-Konzept vom Benutzer bestätigt:** `Mangel bearbeiten` soll künftig als eigene Vollbildseite statt als Dialog erscheinen. Die Seite erhält echte Feldbezeichnungen, eine echte Auswahl für Haupt-/Unterbaustelle, Firma, Beschreibung und Kommentar. Das bisherige KM-Feld wird fachlich zu **`Ort / KM / Bereich (optional)`**: freie Texte wie `KM 76,235`, `Modulgebäude`, `Bahnsteig 2` oder `Weiche 12` sind zulässig; ein reiner numerischer KM-Wert ist nicht verpflichtend. Fotos bleiben direkt auf der Bearbeitungsseite sichtbar/aufrufbar. Dieses Konzept ist **BESTÄTIGT**, aber noch nicht implementiert.
 
 Betroffene Dateien:
 - `app/src/main/java/de/tbhelfer/ui/baustelle/MaengellisteExport.kt`
