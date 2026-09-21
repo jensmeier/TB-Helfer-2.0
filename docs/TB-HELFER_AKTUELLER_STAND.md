@@ -13,6 +13,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - PR-Basis: `feature/admin-offline-sync`
 - Funktionscommit globaler Katalog + Benutzeridentität: **`511bb5c00552b5a7e54d35d930ea982cf4629598`**
 - Server-Automatik/E-Mail/Audit-Quellblock: **`dd0bf1c6b5640951e74494969b5032a5ada86e1d`** (Migration 012; danach nur Doku/Statuspflege)
+- Systemstatus kompakt/live + Job-Fortschritt: Migration **013** ergänzt `progress_percent`/`progress_text`; Worker, Backup-/Restore-Test, Admin-Systemstatus und Release-Archivansicht wurden auf den neuen Bedienvertrag erweitert. Quellblock ab `8cdfe781…` bis `57b28a76…`; **DEPLOY + E2E OFFEN**.
 - Restore-Test-/DRAFT-Download-Laufzeitfixes vom 21.09.2026: **`e58d9fca9840…`** (UUID-Pathparameter) + **`4c20bde651f0…`/`946a62501610…`** (ADMIN-Draft-Binary-Prüfung); dazu Source-Checks 42/40/87 nachgezogen.
 - GitHub Actions für diesen Funktionscommit liefern weiterhin **keinen Testnachweis**: Android-Run `35524333713`, Server-PR-Run `35524333722` und Server-Push-Run `35524332208` endeten ohne zugewiesenen Runner (`runner_id=0`, `runner_name=""`, `steps=[]`). Das bleibt Infrastrukturproblem PRB-002 und ist kein belegter Fach-/Compilefehler.
 - Android-Updateweg: der bereits bestätigte Server-Updatepfad wurde am **21.09.2026 erneut praktisch bestätigt**. Ein neu veröffentlichter Android-Release wurde vom Handy gefunden und installiert; Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten blieben erhalten. Der konkrete installierte Zielbuild wurde in dieser Bestätigung nicht nochmals separat genannt. Der aktuelle Android-Quellbranch steht auf **1.3.7 / 200057**.
@@ -79,7 +80,14 @@ Stand **21.09.2026**:
 - **Restore-Test am 21.09.2026 praktisch BESTÄTIGT:** derselbe getrennte Restore-Test wurde nach der Worker-Neuerstellung erfolgreich ausgeführt. Background Job `RESTORE_TEST` steht auf `DONE`, der zugehörige Backup-Lauf `RESTORE_TEST` auf `OK`. Die laufende Live-Datenbank wurde dabei nicht verändert.
 - Damit sind FULL-Backup und getrennte Restore-Test-Wiederherstellung praktisch bestätigt.
 - **Backup-Retention am 21.09.2026 praktisch bestätigt:** manueller `BACKUP_RETENTION`-Job lief mit Versuch 1 auf `DONE`. Bei aktueller Policy (30 Tage, mindestens 3 je Backupart) wurden die jungen Backups erwartungsgemäß nicht entfernt.
-- **Noch offen:** Restore-to-Target gegen das getrennte Ziel prüfen; danach ist die Backup-/Recovery-Abnahme vollständig und Migrationen 011 + 012 können kontrolliert ausgerollt werden.
+- Erster Restore-to-Target-Versuch erreichte `pg_restore`, scheiterte aber reproduzierbar mit `PG_RESTORE_FAILED_EXIT_1`. Target-Cleanup funktionierte: das `tb`-Schema war danach wieder leer.
+- Ursache praktisch eingegrenzt: `postgis/postgis:17-3.5` bringt im frischen Target bereits `fuzzystrmatch`, `postgis`, `postgis_tiger_geocoder` und `postgis_topology` mit; derselbe FULL-Dump enthält diese Extensions ebenfalls (plus `pgcrypto`). Restore-Test funktioniert bereits mit `--clean --if-exists`, Restore-to-Target lief dagegen mit `clean=False`.
+- Quellfix `5bd9e070deb7…`: Restore-to-Target nutzt nach den bestehenden Trenn-/Freshness-Prüfungen ebenfalls den sauberen Clean-Restore; Source-Check 43 angepasst (`0893b8204d59…`).
+- Praktischer Wiederholungslauf bestätigt, dass dieser PostGIS-Fix wirkt: Restore-to-Target lief über `pg_restore` und die Datenbankverifikation hinaus.
+- Neuer reproduzierbarer Fehler erst beim Datei-Target: `OSError [Errno 16] Device or resource busy: /tb/restore-target-v1`. Ursache: der Code versuchte den Root des Docker-Bind-Mounts per `target.rmdir()` zu entfernen.
+- Quellfix `de1c70ba042d…`: Bind-Mount-Root bleibt bestehen; nach bereits bestandener Leerheitsprüfung werden die Restore-Dateiinhalte mit `copytree(..., dirs_exist_ok=True)` in den leeren Target-Mount kopiert. Source-Check 43 verbietet jetzt `target.rmdir()` (`03f2130c0d03…`).
+- **Restore-to-Target am 21.09.2026 praktisch BESTÄTIGT:** derselbe FULL-Lauf wurde erfolgreich in die getrennte Target-Umgebung wiederhergestellt. CLI `OK`, Restore-Lauf `RESTORE_TARGET / OK`, Ziel-DB `tb_helfer_v1_restore_target`, Ziel-Storage `/tb/restore-target-v1`; DB-Prüfung 10 Migrationen/latest 10/5 Kerntabellen; 2 Dateien mit 34.267.460 Byte wiederhergestellt.
+- Damit ist die **Backup-/Recovery-Abnahme vollständig bestanden**: FULL-Backup, Restore-Test, Retention und Restore-to-Target sind praktisch bestätigt. Dieser Pfad ist geschützt.
 - Migration 011 wurde zu diesem Zeitpunkt **noch nicht** auf Staging ausgeführt.
 
 ## Laufzeitbefunde 21.09.2026 – Restore-Test und Release-Draft-Prüfung
@@ -94,10 +102,43 @@ Stand **21.09.2026**:
 - **Updateweg nach Veröffentlichung am 21.09.2026 erneut praktisch bestätigt:** Admin-Binary-Download funktioniert, veröffentlichter Release wird vom Handy erkannt und installiert; danach blieben Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten erhalten. Der bestehende Updatevertrag bleibt damit geschützt.
 
 Nächster Laufzeitschritt:
-1. Restore-to-Target ausschließlich gegen die bereits getrennte Target-DB/Target-Ablage praktisch durchführen und prüfen;
-2. danach FULL-/Restore-Test-/Retention-Pfade als geschützt belassen;
-3. anschließend Migrationen 011 + 012 kontrolliert auf Synology-Staging ausrollen und `/health/ready` auf 12/12 prüfen;
-4. danach System-Automatik/SMTP sowie Katalog-/Profil-E2E fortsetzen.
+1. bestätigte FULL-/Restore-Test-/Retention-/Restore-to-Target-Pfade nicht weiter verändern;
+2. Migrationen **011 + 012 + 013** kontrolliert auf Synology-Staging ausrollen;
+3. anschließend `/health/ready` prüfen: migrations=ok / **13 von 13**;
+4. danach System-Automatik/SMTP praktisch prüfen;
+5. anschließend Katalog-/Profil-E2E und den gemeinsamen Pixel/Poco-Server-1.0-E2E fortsetzen.
+## Server 1.0 – kompakter Systemstatus / Live-Jobs / Release-Archiv
+
+Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Die bestehende, praktisch bestätigte Backup-/Recovery-Logik wurde nicht ersetzt; ergänzt wurden Fortschritts-/Anzeige- und Administrationsfunktionen.
+
+Umgesetzt:
+- Migration `013_job_progress.sql` ergänzt `tb.background_jobs.progress_percent` und `progress_text`;
+- der Worker schreibt echte Arbeitsschritte für DATABASE/FILES/FULL-Backup, Restore-Test, Retention und Systembericht; `DONE` wird im Admin als **Fertig**, `RUNNING` als **Läuft**, `PENDING` als **Wartet**, `FAILED` als **Fehlgeschlagen** dargestellt;
+- laufende Vorgänge zeigen Prozentbalken und aktuellen Arbeitsschritt; Systemstatus pollt während aktiver Vorgänge schneller und im Leerlauf langsamer;
+- rohe interne `last_error`-Texte bleiben serverseitig; die Oberfläche erhält nur sichere deutsche Fehlerbeschreibungen;
+- fertige/fehlgeschlagene Background-Job-Einträge können einzeln oder gesammelt aus dem Job-Verlauf entfernt werden; wartende/laufende Jobs sind serverseitig vor Löschung geschützt;
+- Warnungen können quittiert werden, ohne Audit- oder Messdaten zu löschen; neue Fehler werden wieder sichtbar;
+- Backups, Vorgänge und Audit-Nachweis sind kompakt zusammengeführt; Automatik/E-Mail, Firmen und bald ablaufende Nutzer sind einklappbar;
+- `RETIRED` Releases bleiben als nachvollziehbare Update-Historie erhalten, werden aber standardmäßig als Archiv ausgeblendet und über **Archivierte anzeigen** eingeblendet; Drafts bleiben vollständig löschbar.
+
+Schutzregeln:
+- Audit wird durch Aufräumen niemals gelöscht;
+- bestätigte FULL-/Restore-Test-/Retention-/Restore-to-Target-Pfade bleiben unverändert;
+- veröffentlichte/zurückgezogene Releases werden nicht hart gelöscht;
+- keine Secrets oder rohen internen Jobfehler werden im Browser ausgegeben.
+
+Quellprüfung:
+- die neuen/angepassten Marker für Progress, sichere Job-Löschung, Warnungsquittierung, Live-UI und Release-Archiv wurden direkt gegen den aktuellen GitHub-Inhalt geprüft: **25/25 erfüllt**;
+- der neue Source-Check `91_verify_system_status_live_ui_source.py` sowie Checks 39/41/42/90 wurden auf den neuen Vertrag angepasst;
+- GitHub Actions auf dem aktuellen Quellstand liefern weiterhin **keinen belastbaren Testnachweis**, weil die Jobs ohne Runner-Steps enden; **Synology-E2E bleibt offen**.
+
+Nächster Schritt dieses Blocks:
+1. Serverquellstand inkl. Migrationen **011, 012 und 013** kontrolliert auf Synology-Staging übernehmen;
+2. Migrationen anwenden und `/health/ready` auf **13/13** prüfen;
+3. Systemstatus praktisch prüfen: Live-Prozent bei einem Backup, deutsche Status-/Fehlertexte, Job-Verlauf löschen/quittieren, kompakte Bereiche;
+4. App-Versionen prüfen: zurückgezogene Releases standardmäßig verborgen, über **Archivierte anzeigen** sichtbar;
+5. anschließend SMTP/Automatik und Katalog-/Profil-E2E fortsetzen.
+
 ## Server 1.0 – Backup-Automatik, E-Mail-Berichte und Audit
 
 Quellstand: **FERTIG / DEPLOY + E2E OFFEN**. Dieser Block wurde noch nicht auf Synology-Staging ausgerollt. Der praktisch bestätigte FULL-Backup-Pfad wurde nicht ersetzt oder umgebaut.
@@ -112,7 +153,7 @@ Umgesetzt:
 - SMTP-Host/Port/User/Absender/TLS/SSL kommen aus Server-Environment; das Passwort bleibt ausschließlich `.env`/Secret;
 - Systemstatus zeigt bald ablaufende Nutzer, konfigurierbare Speicherwarnschwelle und die letzten Audit-/Sicherheitsereignisse;
 - neue Capabilities `system_automation_v1` und `system_email_reports_v1`;
-- CI-Vertrag erwartet auf frischer Testdatenbank nun Migration 012 und prüft zusätzlich die Migration-011-Katalogtabellen sowie Source-Check 90.
+- Der CI-Vertrag erwartet auf frischer Testdatenbank nun den Gesamtstand bis Migration 013; Migration 012 bleibt der Automatik-/Zeitplan-Baustein, Migration 013 ergänzt ausschließlich den Job-Fortschritt. Zusätzlich werden die Migration-011-Katalogtabellen sowie Source-Checks 90 und 91 geprüft.
 
 Betroffene Kern-Dateien:
 - `server/v1_migrations/012_system_automation.sql`;
@@ -129,11 +170,11 @@ Tests:
 - Migration 012, automatische Jobs und echter SMTP-Versand auf Synology: **E2E OFFEN**.
 
 Sicherer nächster Ablauf:
-1. FULL-Backup, getrennter Restore-Test und manuelle Retention sind praktisch bestätigt; diese Pfade jetzt schützen.
-2. Als letzten Recovery-Punkt Restore-to-Target gegen die getrennte Target-DB/Target-Ablage praktisch prüfen.
-3. Danach aktuellen Serverbranch deployen und Migrationen **011 + 012** anwenden; `/health/ready` muss dann migrations=ok / 12 von 12 melden.
-4. Systemstatus öffnen, Automatikwerte speichern, SMTP-Secret ausschließlich auf Synology setzen und Testbericht versenden.
-5. Einen automatischen Backup-/Retention-Slot praktisch prüfen und danach Katalog-/Profil-E2E fortsetzen.
+1. FULL-Backup, Restore-Test, Retention und Restore-to-Target sind praktisch bestätigt; Recovery ist abgeschlossen und geschützt.
+2. Aktuellen Serverbranch deployen und Migrationen **011 + 012 + 013** anwenden; `/health/ready` muss migrations=ok / 13 von 13 melden.
+3. Systemstatus öffnen, Automatikwerte speichern, SMTP-Secret ausschließlich auf Synology setzen und Testbericht versenden.
+4. Einen automatischen Backup-/Retention-Slot praktisch prüfen.
+5. Danach Katalog-/Profil-E2E und Pixel/Poco-Server-1.0-E2E fortsetzen.
 
 ## Server 1.0 + Android 200055 – globaler Katalog und Benutzeridentität
 
@@ -172,9 +213,9 @@ Tests dieses Quellblocks:
 - echte API-/Pixel-/Poco-E2E-Prüfung: **OFFEN**.
 
 Nächster praktischer Schritt:
-1. Zuerst getrennten Restore-Test des am 21.09.2026 bestätigten FULL-Backups abschließen.
-2. Danach Branch auf Synology deployen und Migrationen 011 + 012 ausführen; `/health/ready` muss danach migrations=ok und 12/12 melden.
-3. Server-Automatik/SMTP-Test sowie Admin-Neuanlage + Portal-Erstaktivierung + Profil/Verzeichnis mit Testbenutzern prüfen.
+1. Backup-/Recovery-Abnahme ist vollständig bestätigt; diesen Pfad nicht weiter verändern.
+2. Branch auf Synology deployen und Migrationen 011 + 012 + 013 ausführen; `/health/ready` muss danach migrations=ok und 13/13 melden.
+3. Kompakten Systemstatus/Live-Job-Fortschritt sowie Server-Automatik/SMTP-Test und Admin-Neuanlage + Portal-Erstaktivierung + Profil/Verzeichnis mit Testbenutzern prüfen.
 4. Android 1.3.5 / 200055 bauen/installieren.
 5. Auf Pixel/Poco denselben globalen Eintrag ergänzen/korrigieren (z. B. `Gleis 28`) und Historie/Versionskonflikt prüfen.
 6. Danach erst Status auf BESTÄTIGT/ERLEDIGT setzen.
@@ -1142,36 +1183,43 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
 
 
-## Android 1.3.9 / 200059 – größere Mängel-PDF-Fotos und getrennte KM/GVP-Zeilen
+## Android 1.3.10 / 200060 – Vollbild-Mangeleditor + bündige PDF-Fotos
 
-Stand **21.09.2026**:
+Stand **21.09.2026 17:12**:
 - Android-Arbeitsbranch: `feature/tb-android-2.0`; Draft-PR **#7**.
-- Vorgänger **1.3.8 / 200058** ist für den GPS-/PDF-Funktionspfad praktisch **BESTÄTIGT**: GPS bei den Mangel-Fotos funktioniert; PDF-Export und GPS-Funktion im PDF funktionieren ebenfalls. Diese bestätigte Funktion bleibt geschützt.
-- Neue Zielversion: **1.3.9 / versionCode 200059**.
-- Mängel-PDF: Foto-Boxen von 160×106 auf **164×164 pt** vergrößert. Hochformat-Bilder werden dadurch deutlich größer dargestellt; die vollständige Bildgeometrie bleibt erhalten, es wird nicht gecroppt.
-- Pro PDF-Seite werden maximal **6 Mangel-Fotos** (3 Spalten × 2 Zeilen) dargestellt. Weitere Fotos laufen als **FORTSETZUNG** auf einer Folgeseite weiter, damit bei größeren Bildern nichts abgeschnitten wird.
-- Foto-Metadaten unter jedem Bild sind jetzt klar getrennt: Bildinfo → **KM** → **GVP/Mast** → **GPS** → Beschreibung. KM und GVP/Mast stehen nicht mehr in derselben Zeile.
-- GPS bleibt blau/unterstrichen und nutzt unverändert die in 200058 bestätigten anklickbaren PDF-Link-Annotationen zu Google Maps.
-- Server-Vertrag unverändert; keine Serveränderung erforderlich. Server-HEAD geprüft: `ca5f467d4ccb95e1cc218af4e3053223e8a919c9`.
-- Source-Checks für Version, 6er-Paginierung, größere Fotobox, getrennte KM-/GVP-Ausgabe, GPS-Link-Erhalt, Workflow und Release-Datei sind bestanden.
-- `STATUS.xlsx` ist auf dem Server-Branch neuer und wird vom Android-Projekt nicht überschrieben.
+- Der vom Benutzer gezeigte 200059-Funktionsstand läuft praktisch auf dem Testgerät: Mängelliste und das neu erzeugte PDF zeigen die großen Beweisfotos, getrennte KM-/GVP-Zeilen und die bestätigten GPS-Links. Der 200059-PDF-Block ist damit gebaut/installiert und praktisch sichtbar; als offene Layoutkorrektur blieb die linke Bildkante bei Hochformatfotos optisch eingerückt.
+- Neue Zielversion: **1.3.10 / versionCode 200060**.
+- PDF-Korrektur: `drawBitmapFit` behält die vollständige Bildgeometrie bei, richtet die sichtbare Bildkante aber links an `Fotos:`, Bildunterschrift und Metadaten aus. Die bestätigten großen Fotos, 6er-Paginierung und anklickbaren GPS-Links bleiben unverändert erhalten.
+- `Mangel bearbeiten` ist im Quellstand als **eigene Vollbildseite** umgesetzt; der alte kleine Bearbeiten-Dialog ist aus dem aktiven Pfad entfernt.
+- Die Vollbildseite hat klar beschriftete Felder für Unterbaustelle, `Ort / KM / Bereich (optional)`, Firma, Beschreibung und Kommentar sowie die zugeordneten Fotos mit Sprung in die vorhandene Foto-Detailansicht.
+- `Ort / KM / Bereich (optional)` ist bewusst Freitext und darf leer sein. Beispiele: `KM 76,235`, `Modulgebäude`, `Bahnsteig 2`, `Weiche 12`.
+- Unterbaustelle ist keine reine Textkorrektur mehr: vorhandene Mangel-Fotos werden lokal auf den ausgewählten Baustellenknoten umgehängt; vorhandene BTB-Kontext-Overrides werden dabei mitgeführt und der bestehende Sync-Pfad wird angestoßen. Hauptbaustelle wird technisch als keine Unterknoten-ID behandelt.
+- Der lokale Status merkt die gewählte Knoten-ID, damit neu aufgenommene oder später zugeordnete Mangel-Fotos derselben Zuordnung folgen. Über den bestehenden Server-Mangel-Payload werden weiterhin die fachlichen Textwerte `bereich` und `km` synchronisiert; keine neue Server-API wurde eingeführt.
+- Erledigte Mängel bleiben gemäß bestehender Fachregel gesperrt.
+- Server-Vertrag erneut geprüft gegen `91b673b6a61cd51fb2843888245df2064798f144`: die jüngsten Serveränderungen betreffen Systemstatus/Backup/Restore/Migration 013; keine inkompatible Mängel-API-Änderung.
+- Source-Checks bestanden: Navigation/Layout-IDs, Version 200060, Vollbild-Editor, Knoten-Persistenz, Foto-Knotenupdate inkl. BTB-Override, optionaler Ort/KM/Bereich-Text inkl. leerem Wert, PDF-Linksbündigkeit, große 200059-Fotos und GPS-Linkpfad.
+- `STATUS.xlsx` ist auf dem Server-Branch neuer und wird vom Android-Projekt **nicht überschrieben**; Android-Stand ist vollständig in MD dokumentiert.
 
 Betroffene Dateien:
+- `app/src/main/java/de/tbhelfer/ui/baustelle/MangelEditorFragment.kt`
+- `app/src/main/res/layout/fragment_mangel_editor.xml`
+- `app/src/main/res/navigation/nav_graph.xml`
+- `app/src/main/java/de/tbhelfer/ui/baustelle/MaengellisteFragment.kt`
 - `app/src/main/java/de/tbhelfer/ui/baustelle/MaengellisteExport.kt`
+- `app/src/main/java/de/tbhelfer/ui/baustelle/MangelStatusSpeicher.kt`
+- `app/src/main/java/de/tbhelfer/datenbank/FotoDao.kt`
+- `app/src/main/java/de/tbhelfer/datenbank/FotoRepository.kt`
+- `app/src/main/java/de/tbhelfer/datenbank/BaustellenBaumRepository.kt`
+- `app/src/main/java/de/tbhelfer/datenbank/CollabLocalBridge.kt`
 - `app/build.gradle.kts`
-- `.github/workflows/android.yml`
-- `releases/TB-Helfer_1.3.9_200059.md`
+- `releases/TB-Helfer_1.3.10_200060.md`
 
-- Lokaler Buildversuch 200059 am **21.09.2026 16:05** scheiterte mit **112 Kotlin-Fehlern** in der generierten `MaengellisteExport.kt`. Das war ein echter Android-Quellfehler dieses Arbeitsblocks.
-- Ursache exakt eingegrenzt: Beim PDF-Layout-Umbau wurde der erste allgemeine Suchanker `items.forEachIndexed { idx, item ->` getroffen. Dieser lag im **CSV-Export** und nicht im `pdfBytes`-Block. Dadurch wurde ein großer Quellabschnitt ab `csvText` versehentlich durch PDF-Code ersetzt; die vielen `Unresolved reference`-Meldungen waren Kaskadenfehler.
-- Reparatur: `MaengellisteExport.kt` vollständig aus dem praktisch bestätigten 200058-Quellstand `29376d13…` rekonstruiert und die 200059-Änderung anschließend ausschließlich innerhalb des eindeutig begrenzten `pdfBytes`-Blocks erneut angewendet.
-- Fix-Commit: `51c14ba111c66f4335445d7365816228fd0da124`.
-- Zusätzliche Strukturprüfung: Quellpräfix bis `pdfBytes` ist identisch zum bestätigten 200058-Stand; Quellsuffix ab `statusText` ist ebenfalls identisch. Der 200059-Unterschied liegt damit nur noch im PDF-Renderblock. CSV-Export und Hilfsfunktionen sind wieder vollständig vorhanden.
-- Die bestätigte 200058-GPS-PDF-Funktion wurde aus dem bekannten guten Quellstand übernommen und bleibt im neuen PDF-Block erhalten.
+Teststatus: **QUELLSTAND 200060 FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200060 OFFEN / INSTALLATION 200060 OFFEN / PIXEL+POCO E2E OFFEN**.
 
-Teststatus: **QUELLSTAND 200059 KORRIGIERT / STRUKTURCHECKS BESTANDEN / BUILD ERNEUT OFFEN / INSTALLATION OFFEN / PDF-LAYOUT-E2E OFFEN**.
-
-Bestätigtes Folgekonzept bleibt offen:
-- `Mangel bearbeiten` als eigene Vollbildseite;
-- echte Haupt-/Unterbaustellen-Auswahl;
-- freies Feld `Ort / KM / Bereich (optional)`, z. B. `KM 76,235`, `Modulgebäude`, `Bahnsteig 2`.
+Nächster Test:
+1. Android-Branch pullen und 200060 lokal bauen.
+2. Vollbildseite öffnen und Unterbaustelle + `Modulgebäude` als freien Ort speichern.
+3. Zur Mängelliste zurückkehren und automatische Aktualisierung prüfen.
+4. Neues Mängel-PDF erzeugen: sichtbare Bildkante muss links bündig mit Bildtext/Metadaten sein.
+5. GPS im PDF erneut anklicken.
+6. Bei Änderung der Unterbaustelle vorhandene Fotos und danach ein neues Mangel-Foto auf korrekte Zuordnung prüfen.
