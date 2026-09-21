@@ -22,7 +22,8 @@ class GesamtBilderlisteXlsxTest {
                     bereich = "Gleis 2",
                     km = "KM 10+123,000",
                     firma = "GTU",
-                    beschreibung = "Beispiel",
+                    kurzbeschreibung = "Beispiel kurz",
+                    langtext = "Beispiel ausführlicher BTB-Text",
                     status = "Erledigt",
                     bilddatei = "MANGEL_abc123.jpg",
                     gps = "48.123456, 11.123456",
@@ -35,11 +36,14 @@ class GesamtBilderlisteXlsxTest {
         val sheet = entries.getValue("xl/worksheets/sheet1.xml")
         val rels = entries.getValue("xl/worksheets/_rels/sheet1.xml.rels")
 
-        assertTrue(sheet.contains("<autoFilter ref=\"A1:N2\"/>"))
+        assertTrue(sheet.contains("<autoFilter ref=\"A1:O2\"/>"))
         assertTrue(sheet.contains("state=\"frozen\""))
-        assertTrue(sheet.contains("<hyperlink ref=\"M2\" r:id=\"rId1\"/>"))
+        assertTrue(sheet.contains("<hyperlink ref=\"N2\" r:id=\"rId1\"/>"))
         assertTrue(sheet.contains("Verantwortlicher TB"))
         assertTrue(sheet.contains("Jens Zinkel"))
+        assertTrue(sheet.contains("Kurzbeschreibung"))
+        assertTrue(sheet.contains("Langtext / BTB-Text"))
+        assertTrue(sheet.contains("Beispiel ausführlicher BTB-Text"))
         assertTrue(rels.contains("Mängel/2026-09-10/Mangel_abc/Fotos/MANGEL_abc123.jpg"))
     }
 
