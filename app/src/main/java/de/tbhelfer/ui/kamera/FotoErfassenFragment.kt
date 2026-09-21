@@ -728,10 +728,12 @@ class FotoErfassenFragment : Fragment(R.layout.fragment_foto_erfassen) {
             optionalValues: List<String?>,
             andMaybeAddFirmaToBtb: ((String) -> Unit)? = null
         ) {
-            val gvpMastWert = normalizeOptionalValue(edtGvpMastValue.text?.toString())
-            val apKorWert = normalizeOptionalValue(edtApKorValue.text?.toString())
+            // GVP/Mast und AP/KOR sind feste Fachfelder und bleiben erhalten.
+            // Die frühere normalizeOptionalValue-Hilfe gehörte zum entfernten freien Optional-Block.
+            val gvpMastWert: String? = edtGvpMastValue.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
+            val apKorWert: String? = edtApKorValue.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
             val alleOptionalLabels = listOf("GVP / Mast", "AP / KOR") + optionalLabels
-            val alleOptionalValues = listOf(gvpMastWert, apKorWert) + optionalValues
+            val alleOptionalValues: List<String?> = listOf(gvpMastWert, apKorWert) + optionalValues
 
             viewLifecycleOwner.lifecycleScope.launch {
                 // Doppelklick verhindern
