@@ -231,6 +231,23 @@ Diagnose:
 
 Quellfix: Restore-to-Target nutzt nach den bestehenden harten Trenn-/Freshness-Prüfungen jetzt ebenfalls den sauberen `--clean --if-exists`-Restore. Die Live-Datenbank kann weiterhin nicht als Target gewählt werden. Source-Check 43 schützt diesen Vertrag.
 
+### Staging-Befund 21.09.2026 – Bind-Mount-Root darf nicht entfernt werden
+
+Nach dem PostGIS-Clean-Restore-Fix lief Restore-to-Target erfolgreich über `pg_restore` und die anschließende Datenbankverifikation hinaus. Der nächste Fehler trat erst beim Datei-Target auf:
+
+`OSError: [Errno 16] Device or resource busy: '/tb/restore-target-v1'`
+
+Ursache: `TB_RESTORE_TARGET_STORAGE_ROOT` ist im Worker der Root eines Docker-Bind-Mounts. Auch wenn dieser Mount leer ist, darf sein Root-Verzeichnis innerhalb des Containers nicht per `rmdir()` entfernt werden.
+
+Quellfix:
+- die bestehende Freshness-Prüfung verlangt weiterhin einen leeren Target-Storage;
+- der Bind-Mount-Root wird danach **beibehalten**;
+- `shutil.copytree(..., dirs_exist_ok=True)` kopiert ausschließlich die wiederhergestellten Storage-Inhalte in diesen bereits leeren Mount;
+- Fehler-Cleanup leert weiterhin nur den Inhalt des Target-Storage und entfernt nicht den Mount-Root;
+- Source-Check 43 verbietet `target.rmdir()` ausdrücklich.
+
+Die Live-Datenbank und der Live-Storage bleiben weiterhin ausgeschlossen.
+
 Der nächste Schritt nach erfolgreichem Restore ist **nicht** automatisches Umschalten, sondern eine Offline-/Testprüfung des Zielservers. Erst danach darf ein eigener kontrollierter Cutover auf die wiederhergestellte Zielinstanz erfolgen.
 
 Migration `005_restore_target_run_kind.sql` erweitert ausschließlich die erlaubten `tb.backup_runs.kind`-Werte um `RESTORE_TARGET`.
