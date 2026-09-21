@@ -269,6 +269,26 @@ def download_release_binary(release_id: UUID):
     )
 
 
+@router.get("/admin/releases/{release_id}/binary")
+def admin_download_release_binary(
+    release_id: UUID,
+    _: dict[str, Any] = Depends(require_admin),
+):
+    with transaction() as conn, conn.cursor() as cur:
+        row = _load_release(cur, release_id)
+    if not row.get("storage_key"):
+        raise HTTPException(404, "RELEASE_BINARY_NOT_CONFIGURED")
+    path = _absolute_storage_path(row["storage_key"])
+    if not path.is_file():
+        raise HTTPException(404, "RELEASE_BINARY_FILE_MISSING")
+    return FileResponse(
+        path,
+        media_type="application/octet-stream",
+        filename=_release_filename(row),
+        headers={"ETag": f'"{row.get("sha256") or ""}"'},
+    )
+
+
 @router.put("/admin/releases/{release_id}/binary")
 async def admin_upload_release_binary(
     release_id: UUID,
