@@ -283,3 +283,17 @@ Vor einem späteren produktiven Restore/Cutover bleibt ein verifiziertes Backup 
 - E2E-Test des Workers und aller Backuparten gegen PostgreSQL + persistente Storage-Mounts;
 - produktive NAS-Backup- und Restore-Abnahme.
 
+
+## Automatische Backup- und Retention-Aufträge
+
+Migration `012_system_automation.sql` ergänzt deduplizierte Zeitplan-Slots. Der Background-Worker kann damit nach der im Admin gespeicherten Policy automatisch `BACKUP_DATABASE`, `BACKUP_FILES` oder `BACKUP_FULL` sowie `BACKUP_RETENTION` einreihen.
+
+Die Automatik ruft dieselben vorhandenen, geprüften Backupfunktionen auf wie die manuellen Buttons. Sie baut **keinen zweiten Backupweg** und verändert den Restore-Vertrag nicht.
+
+Die Retention-Werte können im Admin angepasst werden. Sie bleiben weiterhin sicher:
+- nur erfolgreiche DATABASE-/FILES-/FULL-Artefakte;
+- Mindestbestand je Backupart;
+- keine rekursive Löschung des Backup-Roots;
+- Restore-Test und Restore-to-Target bleiben getrennte, explizite Vorgänge.
+
+Der aktuell praktisch bestätigte FULL-Backup-Pfad wird durch diese Erweiterung nicht geändert.
