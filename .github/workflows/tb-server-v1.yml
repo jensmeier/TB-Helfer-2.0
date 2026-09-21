@@ -126,7 +126,9 @@ jobs:
           python server/checks/88_verify_admin_permanent_purge_source.py
           python server/checks/89_verify_identity_global_catalog_source.py
           python server/checks/90_verify_system_automation_email_source.py
+          python server/checks/91_verify_system_status_live_ui_source.py
 
+      # Migration 013_job_progress.sql is included by the normal migration runner.
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
         run: python -m tbserver.migrations up
@@ -138,8 +140,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 12, current
-          assert current["latest_applied"] == 12, current
+          assert current["latest_known"] == 13, current
+          assert current["latest_applied"] == 13, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
@@ -171,6 +173,8 @@ jobs:
               defect_columns = {row["column_name"] for row in cur.fetchall()}
               cur.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='tb' AND table_name='acceptances'")
               acceptance_columns = {row["column_name"] for row in cur.fetchall()}
+              cur.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='tb' AND table_name='background_jobs'")
+              background_job_columns = {row["column_name"] for row in cur.fetchall()}
               cur.execute("""
                   SELECT pg_get_constraintdef(c.oid) AS definition
                   FROM pg_constraint c
@@ -187,6 +191,7 @@ jobs:
           assert "area_scope" in defect_columns, defect_columns
           assert "area_scope" in acceptance_columns, acceptance_columns
           assert "result" in acceptance_columns, acceptance_columns
+          assert {"progress_percent", "progress_text"} <= background_job_columns, background_job_columns
           assert "REJECTED" in defect_status_constraint, defect_status_constraint
           print("OK: core tables/migrations", len(tables))
           PY
