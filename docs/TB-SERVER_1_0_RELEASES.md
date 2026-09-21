@@ -18,6 +18,7 @@ Administrative Verwaltung:
 - `GET /api/v1/admin/releases`
 - `POST /api/v1/admin/releases`
 - `PATCH /api/v1/admin/releases/{release_id}`
+- `GET /api/v1/admin/releases/{release_id}/binary` – angemeldete Admin-Prüfung einer DRAFT-/PUBLISHED-Binärdatei;
 - `PUT /api/v1/admin/releases/{release_id}/binary`
 - `DELETE /api/v1/admin/releases/{release_id}/binary`
 - `POST /api/v1/admin/releases/{release_id}/publish`
@@ -64,6 +65,7 @@ Zusätzlich liefert der Endpunkt die Booleans `supported`, `update_available` un
 - Öffentliche Release-Antworten und die bereinigte Admin-Liste geben interne `storage_key`-Pfade nicht aus.
 - Für ein serverseitiges Binary wird öffentlich nur der sichere relative Downloadendpunkt geliefert.
 - Der öffentliche Binärdownload liefert nur Releases mit Status `PUBLISHED`.
+- Ein noch nicht veröffentlichtes DRAFT-Binary kann ausschließlich über den ADMIN-geschützten GET-Pfad geprüft werden. Dadurch bleibt ein Draft für Android unsichtbar, während der Admin die hochgeladene APK vor dem Veröffentlichen tatsächlich herunterladen kann.
 
 ## Android-Updatevertrag
 
@@ -120,7 +122,7 @@ Weitere Eigenschaften:
 - Draft-Binary ersetzen/entfernen;
 - Release veröffentlichen;
 - veröffentlichten Release zurückziehen;
-- öffentlichen Download prüfen.
+- bei `DRAFT` den ADMIN-geschützten Binary-Download prüfen; nach Veröffentlichung den öffentlichen Download prüfen.
 
 ## Capabilities
 
