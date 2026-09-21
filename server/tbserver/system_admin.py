@@ -80,6 +80,12 @@ _ERROR_MESSAGES = {
     "PG_DUMP_FAILED_EXIT_1": "PostgreSQL konnte das Datenbank-Backup nicht erstellen.",
     "SMTP_NOT_CONFIGURED": "Der E-Mail-Versand ist noch nicht vollständig eingerichtet.",
     "EMAIL_RECIPIENTS_EMPTY": "Für den Systembericht ist noch kein E-Mail-Empfänger hinterlegt.",
+    "RESTORE_TEST_DATABASE_PREPARE_FAILED": "Die getrennte Restore-Test-Datenbank konnte nicht vorbereitet werden.",
+    "RESTORE_TEST_DATABASE_VERIFY_FAILED": "Die wiederhergestellte Test-Datenbank konnte nicht vollständig geprüft werden.",
+    "RESTORE_TEST_CORE_TABLES_MISSING": "Im Restore-Test fehlen erwartete Kerntabellen.",
+    "BACKUP_FILE_MISSING": "Die zu diesem Backup gehörende Sicherungsdatei fehlt.",
+    "BACKUP_SHA256_MISMATCH": "Die Prüfsumme der Sicherungsdatei stimmt nicht; das Backup wird nicht verwendet.",
+    "BACKUP_SIZE_MISMATCH": "Die Größe der Sicherungsdatei stimmt nicht mit dem gespeicherten Backup-Eintrag überein.",
 }
 _AUDIT_LABELS = {
     "RESTORE_TARGET_START": "Restore ins getrennte Ziel gestartet",
@@ -121,7 +127,7 @@ def _friendly_error(value: Any) -> str | None:
     for code, message in _ERROR_MESSAGES.items():
         if code in raw:
             return message
-    return "Technischer Fehler: " + raw[:240]
+    return "Der Vorgang ist fehlgeschlagen. Technische Details bleiben im Serverprotokoll."
 
 
 def _job_view(row: dict[str, Any]) -> dict[str, Any]:
