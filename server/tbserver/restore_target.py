@@ -224,7 +224,12 @@ def run_restore_target(
             detail["manifest_created_at"] = manifest.get("created_at")
 
             database_started = True
-            _run_pg_restore(database_dump, config, clean=False)
+            # The dedicated PostGIS target database is fresh from the TB-Helfer
+            # perspective (no tb schema) but the postgis/postgis image already
+            # preinstalls extension objects. Use the same safe clean restore as
+            # the confirmed restore-test so dump-owned extensions/schemas are
+            # replaced before the backup is restored.
+            _run_pg_restore(database_dump, config, clean=True)
             detail["database"] = _verify_restored_database(config)
 
             restored_files_root = temp / "restored-files"
