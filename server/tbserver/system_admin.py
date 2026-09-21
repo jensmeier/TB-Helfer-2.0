@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import shutil
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,14 +17,13 @@ from .events import audit
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
 from .jobs import JobError, enqueue_in_tx
 from .migrations import status as migration_status
+from .system_settings import load_automation_policy, save_automation_policy, smtp_status
 
 
 router = APIRouter(prefix="/api/v1/admin/system", tags=["admin-system"])
 
 _PROCESS_STARTED_AT = datetime.now(timezone.utc)
 _PROCESS_STARTED_MONOTONIC = time.monotonic()
-_STORAGE_WARNING_PERCENT = 85.0
-
 _SAFE_SETTING_KEYS = {
     "schema_baseline",
     "trash_retention_days",
@@ -34,6 +33,25 @@ _SAFE_SETTING_KEYS = {
 
 class BackupJobCreate(BaseModel):
     kind: str = Field(min_length=1, max_length=20)
+
+
+class AutomationSettingsUpdate(BaseModel):
+    email_enabled: bool = False
+    email_frequency: str = Field(default="WEEKLY", min_length=1, max_length=20)
+    email_hour: int = 8
+    email_weekday: int = 0
+    email_monthday: int = 1
+    email_recipients: list[str] = Field(default_factory=list, max_length=20)
+    timezone: str = Field(default="Europe/Berlin", min_length=1, max_length=100)
+    user_expiry_warning_days: int = 30
+    storage_warning_percent: float = 85.0
+    automatic_backup_enabled: bool = False
+    backup_kind: str = Field(default="DATABASE", min_length=1, max_length=20)
+    backup_hour: int = 4
+    automatic_retention_enabled: bool = False
+    retention_hour: int = 5
+    backup_retention_days: int = 30
+    backup_retention_min_per_kind: int = 3
 
 
 def _storage_snapshot() -> dict[str, Any]:
@@ -70,6 +88,10 @@ def admin_system_status(
     migration = migration_status()
     storage = _storage_snapshot()
     backup_storage = backup_storage_snapshot()
+    automation = load_automation_policy()
+    smtp = smtp_status()
+    status_now = datetime.now(timezone.utc)
+    warning_until = status_now + timedelta(days=int(automation["user_expiry_warning_days"]))
 
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
@@ -209,7 +231,47 @@ def admin_system_status(
         )
         companies = [dict(row) for row in cur.fetchall()]
 
-    now = datetime.now(timezone.utc)
+        cur.execute(
+            """
+            SELECT id, display_name, login_name, access_valid_until
+            FROM tb.users
+            WHERE deleted_at IS NULL
+              AND status = 'ACTIVE'
+              AND access_valid_until IS NOT NULL
+              AND access_valid_until > now()
+              AND access_valid_until <= %s
+            ORDER BY access_valid_until, lower(display_name)
+            LIMIT 100
+            """,
+            (warning_until,),
+        )
+        expiring_users = [dict(row) for row in cur.fetchall()]
+
+        cur.execute(
+            """
+            SELECT a.action, a.entity_type, a.created_at,
+                   u.display_name AS actor_display_name
+            FROM tb.audit_log a
+            LEFT JOIN tb.users u ON u.id = a.actor_user_id
+            ORDER BY a.created_at DESC
+            LIMIT 30
+            """
+        )
+        audit_events = [dict(row) for row in cur.fetchall()]
+
+        cur.execute(
+            """
+            SELECT id, status, attempts, run_after, created_at, updated_at, finished_at
+            FROM tb.background_jobs
+            WHERE job_type = 'SYSTEM_EMAIL_REPORT'
+            ORDER BY created_at DESC
+            LIMIT 1
+            """
+        )
+        last_email_job = cur.fetchone()
+        last_email_job = dict(last_email_job) if last_email_job else None
+
+    now = status_now
     issues: list[dict[str, str]] = []
 
     def add_issue(severity: str, title: str, detail: str) -> None:
@@ -239,7 +301,7 @@ def admin_system_status(
             "Speicher fast voll",
             f'{storage["percent_used"]:.2f} % des Datenträgers sind belegt.',
         )
-    elif float(storage["percent_used"] or 0) >= _STORAGE_WARNING_PERCENT:
+    elif float(storage["percent_used"] or 0) >= float(automation["storage_warning_percent"]):
         add_issue(
             "warning",
             "Speicherbelegung hoch",
@@ -263,6 +325,25 @@ def admin_system_status(
             "warning",
             "Öffentliche Serveradresse fehlt",
             "Neue Geräte-Aktivierungskarten können ohne öffentliche HTTPS-Adresse nicht vollständig erzeugt werden.",
+        )
+
+    if automation["email_enabled"] and not smtp["configured"]:
+        add_issue(
+            "warning",
+            "E-Mail-Berichte nicht versandbereit",
+            "E-Mail-Berichte sind aktiviert, aber die SMTP-Konfiguration ist unvollständig.",
+        )
+    if automation["email_enabled"] and not automation["email_recipients"]:
+        add_issue(
+            "warning",
+            "Kein E-Mail-Empfänger",
+            "E-Mail-Berichte sind aktiviert, aber es ist kein Empfänger hinterlegt.",
+        )
+    if expiring_users:
+        add_issue(
+            "warning",
+            "Nutzerzugänge laufen bald ab",
+            f"{len(expiring_users)} Nutzerzugang/-zugänge laufen innerhalb des Warnzeitraums ab.",
         )
 
     if last_successful_backup is None:
@@ -302,9 +383,11 @@ def admin_system_status(
         "storage": storage,
         "backup_storage": backup_storage,
         "backup_retention": {
-            "days": settings.backup_retention_days,
-            "minimum_kept_per_kind": settings.backup_retention_min_per_kind,
+            "days": automation["backup_retention_days"],
+            "minimum_kept_per_kind": automation["backup_retention_min_per_kind"],
         },
+        "automation": automation,
+        "smtp": smtp,
         "counts": counts,
         "traffic_24h": traffic_24h,
         "traffic_series": traffic_series,
@@ -314,7 +397,105 @@ def admin_system_status(
         "jobs": jobs,
         "settings": server_settings,
         "companies": companies,
+        "expiring_users": expiring_users,
+        "audit_events": audit_events,
+        "last_email_job": last_email_job,
     }
+
+
+
+
+@router.put("/automation")
+def update_automation_settings(
+    payload: AutomationSettingsUpdate,
+    user: dict[str, Any] = Depends(require_admin_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="SYSTEM_AUTOMATION_SETTINGS_UPDATE",
+        )
+        if receipt:
+            return replay_payload(receipt)
+        try:
+            policy = save_automation_policy(cur, payload.model_dump())
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        audit(
+            cur,
+            action="SYSTEM_AUTOMATION_SETTINGS_UPDATE",
+            actor_user_id=user["user_id"],
+            entity_type="SYSTEM",
+            details={
+                "email_enabled": policy["email_enabled"],
+                "email_frequency": policy["email_frequency"],
+                "recipient_count": len(policy["email_recipients"]),
+                "automatic_backup_enabled": policy["automatic_backup_enabled"],
+                "backup_kind": policy["backup_kind"],
+                "automatic_retention_enabled": policy["automatic_retention_enabled"],
+                "backup_retention_days": policy["backup_retention_days"],
+            },
+        )
+        response = {"automation": policy, "smtp": smtp_status()}
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="SYSTEM_AUTOMATION_SETTINGS_UPDATE",
+            entity_id=None,
+            result_version=None,
+            response_payload=response,
+        )
+    return response
+
+
+@router.post("/email/test", status_code=202)
+def enqueue_test_email(
+    user: dict[str, Any] = Depends(require_admin_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    policy = load_automation_policy()
+    smtp = smtp_status()
+    if not smtp["configured"]:
+        raise HTTPException(409, "SMTP_NOT_CONFIGURED")
+    if not policy["email_recipients"]:
+        raise HTTPException(409, "EMAIL_RECIPIENTS_EMPTY")
+
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="SYSTEM_EMAIL_TEST_JOB_CREATE",
+        )
+        if receipt:
+            return replay_payload(receipt)
+        try:
+            job = enqueue_in_tx(cur, "SYSTEM_EMAIL_REPORT", {"test": True})
+        except JobError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        audit(
+            cur,
+            action="SYSTEM_EMAIL_TEST_JOB_CREATE",
+            actor_user_id=user["user_id"],
+            entity_type="BACKGROUND_JOB",
+            entity_id=job["id"],
+            details={"recipient_count": len(policy["email_recipients"])},
+        )
+        response = {"job": job}
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="SYSTEM_EMAIL_TEST_JOB_CREATE",
+            entity_id=job["id"],
+            result_version=None,
+            response_payload=response,
+        )
+    return response
 
 
 @router.post("/backups", status_code=202)
