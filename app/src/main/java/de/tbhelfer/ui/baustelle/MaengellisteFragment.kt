@@ -229,69 +229,6 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         )
     }
 
-    private fun bearbeitenDialog(item: MaengellisteExport.MangelItem) {
-        val ctx = requireContext()
-        val old = MangelStatusSpeicher.laden(ctx, item.key)
-        if (old.status == MangelStatusSpeicher.Status.ERLEDIGT) {
-            Toast.makeText(ctx, "Erledigter Mangel ist fachlich abgeschlossen und nicht mehr änderbar.", Toast.LENGTH_LONG).show()
-            return
-        }
-
-        val box = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(4), dp(20), 0)
-        }
-        fun field(hint: String, value: String, multiline: Boolean = false): EditText =
-            EditText(ctx).apply {
-                this.hint = hint
-                setText(value)
-                if (multiline) {
-                    minLines = 3
-                    gravity = android.view.Gravity.TOP
-                    inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
-                } else {
-                    setSingleLine(true)
-                    inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-                }
-            }
-
-        val ort = field("Baustelle / Unterbaustelle", MaengellisteExport.anzeigeBaustelle(item))
-        val km = field("KM", item.km)
-        val firma = field("Firma", item.firma)
-        val beschreibung = field("Beschreibung", item.beschreibung, multiline = true)
-        val kommentar = field("Kommentar", old.kommentar, multiline = true)
-        box.addView(ort)
-        box.addView(km)
-        box.addView(firma)
-        box.addView(beschreibung)
-        box.addView(kommentar)
-
-        MaterialAlertDialogBuilder(ctx)
-            .setTitle("Mangel bearbeiten")
-            .setView(box)
-            .setPositiveButton("Speichern") { _, _ ->
-                val ortText = ort.text?.toString()?.trim().orEmpty()
-                val kmText = km.text?.toString()?.trim().orEmpty()
-                val firmaText = firma.text?.toString()?.trim().orEmpty()
-                val beschreibungText = beschreibung.text?.toString()?.trim().orEmpty()
-                val kommentarText = kommentar.text?.toString()?.trim().orEmpty()
-                MangelStatusSpeicher.speichern(
-                    ctx,
-                    item.key,
-                    old.copy(
-                        bereichOverride = ortText.takeIf { it.isNotBlank() },
-                        kmOverride = kmText.takeIf { it.isNotBlank() },
-                        firmaOverride = firmaText.takeIf { it.isNotBlank() },
-                        beschreibungOverride = beschreibungText.takeIf { it.isNotBlank() },
-                        kommentar = kommentarText
-                    )
-                )
-                view?.let { lade(it) }
-            }
-            .setNegativeButton("Abbrechen", null)
-            .show()
-    }
-
     private fun statusDialog(item: MaengellisteExport.MangelItem) {
         val werte = arrayOf("Offen", "In Arbeit", "Erledigt", "Abgelehnt")
         MaterialAlertDialogBuilder(requireContext())
