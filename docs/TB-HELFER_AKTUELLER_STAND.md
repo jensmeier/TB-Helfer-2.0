@@ -1134,4 +1134,8 @@ Stand **21.09.2026**:
 - Wichtig für den lokalen Build: Android 200056 liegt auf `feature/tb-android-2.0`. `feature/tb-server-1.0` enthält weiterhin den Server-Arbeitsstand und Android 1.3.5 / 200055.
 - Server-HEAD bei dieser Prüfung: `445afd3a01b51e5750bbba6fa8daca22f1da954a`; keine Android-API-Ersatzlösung gebaut.
 
-Teststatus: **QUELLSTAND KORRIGIERT / BUILD ERNEUT LOKAL AUSZUFÜHREN / APK NOCH NICHT NACHGEWIESEN / PIXEL+POCO E2E OFFEN**.
+- Lokaler Android-Studio-Build nach den beiden Compile-Fixes am 21.09.2026 vom Benutzer erfolgreich ausgeführt: `BUILD SUCCESSFUL`; `:app:assembleDebug` erfolgreich. Damit ist **BUILD ERFOLGREICH** für Android **1.3.6 / 200056** praktisch belegt.
+- Die Gradle-Meldung zur Configuration-Cache-Verträglichkeit von `verifyRoomGeneratedImplementation` ist aktuell eine nicht-blockierende Warnung; sie hat den Build nicht verhindert und wird nicht mit diesem Release auf Verdacht umgebaut.
+- Der aktuelle Server-HEAD `445afd3a01b51e5750bbba6fa8daca22f1da954a` ändert gegenüber der bereits synchronisierten Serverbasis nur `projektstatus/TB-HELFER_STATUS.xlsx`; kein neuer API-Vertrag ist für 200056 hinzugekommen.
+
+Teststatus: **QUELLSTAND KORRIGIERT / BUILD ERFOLGREICH / APK LOKAL ERZEUGBAR / INSTALLATION + PIXEL/POCO E2E OFFEN**.
