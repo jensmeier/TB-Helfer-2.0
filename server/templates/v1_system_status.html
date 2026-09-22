@@ -101,50 +101,73 @@
 </div>
 
 <details class="panel">
-  <summary>Automatik &amp; E-Mail-Berichte</summary>
+  <summary>Automatik, Backups &amp; E-Mail</summary>
   <div class="panel-body">
-    <p class="muted">Passwörter werden hier nie gespeichert oder angezeigt. SMTP-Geheimnisse bleiben ausschließlich in der Server-.env/Secret-Konfiguration.</p>
+    <p class="muted">Alle Zeiten gelten in der gewählten Zeitzone. SMTP-Passwörter bleiben ausschließlich in der Server-.env/Secret-Konfiguration und werden hier niemals angezeigt.</p>
     <div id="smtpState" class="notice info">SMTP-Status wird geladen …</div>
-    <div class="section-title">E-Mail-Bericht</div>
+
+    <div class="section-title">Regelmäßiger Systembericht</div>
     <div class="form-grid">
-      <div class="inline-check"><input id="emailEnabled" type="checkbox"><label for="emailEnabled">E-Mail-Berichte aktiv</label></div>
+      <div class="inline-check"><input id="emailEnabled" type="checkbox"><label for="emailEnabled">Systembericht per E-Mail aktiv</label></div>
       <div><label for="emailFrequency">Häufigkeit</label><select id="emailFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></div>
-      <div><label for="emailHour">Uhrzeit (0–23)</label><input id="emailHour" type="number" min="0" max="23"></div>
+      <div><label for="emailTime">Uhrzeit</label><input id="emailTime" type="time"></div>
       <div><label for="emailWeekday">Wochentag</label><select id="emailWeekday"><option value="0">Montag</option><option value="1">Dienstag</option><option value="2">Mittwoch</option><option value="3">Donnerstag</option><option value="4">Freitag</option><option value="5">Samstag</option><option value="6">Sonntag</option></select></div>
       <div><label for="emailMonthday">Monatstag (1–28)</label><input id="emailMonthday" type="number" min="1" max="28"></div>
       <div><label for="timezone">Zeitzone</label><input id="timezone" type="text" maxlength="100"></div>
-      <div><label for="expiryWarning">Warnung Ablauf (Tage)</label><input id="expiryWarning" type="number" min="1" max="365"></div>
-      <div><label for="storageWarning">Speicherwarnung ab %</label><input id="storageWarning" type="number" min="50" max="99.9" step="0.1"></div>
       <div class="wide"><label for="emailRecipients">E-Mail-Empfänger (Komma oder Zeile)</label><textarea id="emailRecipients" rows="3" maxlength="4000"></textarea></div>
     </div>
-    <div class="section-title">Backup-Automatik</div>
+
+    <div class="section-title">Sofortige Fehler-Mails</div>
     <div class="form-grid">
-      <div class="inline-check"><input id="autoBackup" type="checkbox"><label for="autoBackup">automatisches Backup aktiv</label></div>
-      <div><label for="backupKind">Backupart</label><select id="backupKind"><option value="DATABASE">Datenbank</option><option value="FILES">Dateien</option><option value="FULL">Vollbackup</option></select></div>
-      <div><label for="backupHour">Backup-Uhrzeit</label><input id="backupHour" type="number" min="0" max="23"></div>
-      <div class="inline-check"><input id="autoRetention" type="checkbox"><label for="autoRetention">Aufbewahrung automatisch prüfen</label></div>
-      <div><label for="retentionHour">Prüf-Uhrzeit</label><input id="retentionHour" type="number" min="0" max="23"></div>
+      <div class="inline-check"><input id="alertEmailEnabled" type="checkbox"><label for="alertEmailEnabled">Fehler-Mails aktiv</label></div>
+      <div class="inline-check"><input id="alertRecoveryEnabled" type="checkbox"><label for="alertRecoveryEnabled">„Wieder OK“-Mail senden</label></div>
+      <div><label for="alertCooldown">Sperrzeit gleicher Alarm (Min.)</label><input id="alertCooldown" type="number" min="5" max="1440"></div>
+      <div class="wide">
+        <label>Welche Ereignisse melden?</label>
+        <div class="actions" style="gap:14px;flex-wrap:wrap">
+          <label class="inline-check"><input id="alertDatabase" type="checkbox"> Datenbank</label>
+          <label class="inline-check"><input id="alertInternalApi" type="checkbox"> interne API</label>
+          <label class="inline-check"><input id="alertWorker" type="checkbox"> Worker/Neustart</label>
+          <label class="inline-check"><input id="alertBackup" type="checkbox"> Backups</label>
+          <label class="inline-check"><input id="alertPublicApi" type="checkbox"> Cloudflare/öffentliche API</label>
+          <label class="inline-check"><input id="alertStorage" type="checkbox"> Speicher</label>
+        </div>
+      </div>
+      <div><label for="expiryWarning">Warnung Nutzerablauf (Tage)</label><input id="expiryWarning" type="number" min="1" max="365"></div>
+      <div><label for="storageWarning">Speicherwarnung ab %</label><input id="storageWarning" type="number" min="50" max="99.9" step="0.1"></div>
+    </div>
+
+    <div class="section-title">Automatische Backups</div>
+    <p class="small">Standard: Datenbank täglich 01:30 · Dateien täglich 03:30 · Vollbackup sonntags 05:00. Jeder Plan kann unabhängig geändert oder deaktiviert werden.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Backup</th><th>Aktiv</th><th>Häufigkeit</th><th>Wochentag</th><th>Monatstag</th><th>Uhrzeit</th></tr></thead>
+        <tbody>
+          <tr><td><b>Datenbank</b></td><td><input id="dbEnabled" type="checkbox"></td><td><select id="dbFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></td><td><select id="dbWeekday"><option value="0">Mo</option><option value="1">Di</option><option value="2">Mi</option><option value="3">Do</option><option value="4">Fr</option><option value="5">Sa</option><option value="6">So</option></select></td><td><input id="dbMonthday" type="number" min="1" max="28"></td><td><input id="dbTime" type="time"></td></tr>
+          <tr><td><b>Dateien</b></td><td><input id="filesEnabled" type="checkbox"></td><td><select id="filesFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></td><td><select id="filesWeekday"><option value="0">Mo</option><option value="1">Di</option><option value="2">Mi</option><option value="3">Do</option><option value="4">Fr</option><option value="5">Sa</option><option value="6">So</option></select></td><td><input id="filesMonthday" type="number" min="1" max="28"></td><td><input id="filesTime" type="time"></td></tr>
+          <tr><td><b>Vollbackup</b></td><td><input id="fullEnabled" type="checkbox"></td><td><select id="fullFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></td><td><select id="fullWeekday"><option value="0">Mo</option><option value="1">Di</option><option value="2">Mi</option><option value="3">Do</option><option value="4">Fr</option><option value="5">Sa</option><option value="6">So</option></select></td><td><input id="fullMonthday" type="number" min="1" max="28"></td><td><input id="fullTime" type="time"></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-title">Aufbewahrung</div>
+    <div class="form-grid">
+      <div class="inline-check"><input id="retentionEnabled" type="checkbox"><label for="retentionEnabled">automatisch bereinigen</label></div>
+      <div><label for="retentionFrequency">Häufigkeit</label><select id="retentionFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></div>
+      <div><label for="retentionWeekday">Wochentag</label><select id="retentionWeekday"><option value="0">Montag</option><option value="1">Dienstag</option><option value="2">Mittwoch</option><option value="3">Donnerstag</option><option value="4">Freitag</option><option value="5">Samstag</option><option value="6">Sonntag</option></select></div>
+      <div><label for="retentionMonthday">Monatstag</label><input id="retentionMonthday" type="number" min="1" max="28"></div>
+      <div><label for="retentionTime">Uhrzeit</label><input id="retentionTime" type="time"></div>
       <div><label for="retentionDays">Backups behalten (Tage)</label><input id="retentionDays" type="number" min="1" max="3650"></div>
       <div><label for="retentionMin">Mindestens je Backupart</label><input id="retentionMin" type="number" min="1" max="50"></div>
     </div>
+
     <div class="actions" style="margin-top:16px">
-      <button id="saveAutomation" type="button">Systemeinstellungen speichern</button>
+      <button id="saveAutomation" type="button">Automatik speichern</button>
       <button id="testEmail" class="secondary" type="button">Testbericht senden</button>
     </div>
   </div>
 </details>
 
-<details class="panel">
-  <summary>Firmenübersicht</summary>
-  <div class="panel-body">
-    <div class="scroll"><table><thead><tr><th>Firma</th><th>Nutzer</th><th>aktive Geräte</th><th>Baustellen</th><th>Dateien</th><th>Dateigröße</th></tr></thead><tbody id="companies"></tbody></table></div>
-  </div>
-</details>
-
-<details class="panel">
-  <summary>Bald ablaufende Nutzer</summary>
-  <div class="panel-body"><div id="expiringUsers"></div></div>
-</details>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -162,13 +185,17 @@ function val(id,value){document.getElementById(id).value=value??'';}
 function checked(id,value){document.getElementById(id).checked=!!value;}
 function numberValue(id){return Number(document.getElementById(id).value);}
 function recipientsValue(){return document.getElementById('emailRecipients').value.split(/[\n,;]+/).map(v=>v.trim()).filter(Boolean);}
+function setTime(id,hour,minute){document.getElementById(id).value=String(Number(hour||0)).padStart(2,'0')+':'+String(Number(minute||0)).padStart(2,'0');}
+function timeParts(id){const raw=document.getElementById(id).value||'00:00',p=raw.split(':');return {hour:Number(p[0]||0),minute:Number(p[1]||0)};}
+function fillSchedule(prefix,s){const x=s||{};checked(prefix+'Enabled',x.enabled);val(prefix+'Frequency',x.frequency||'DAILY');val(prefix+'Weekday',x.weekday??6);val(prefix+'Monthday',x.monthday??1);setTime(prefix+'Time',x.hour??0,x.minute??0);}
+function scheduleValue(prefix){const t=timeParts(prefix+'Time');return {enabled:document.getElementById(prefix+'Enabled').checked,frequency:document.getElementById(prefix+'Frequency').value,hour:t.hour,minute:t.minute,weekday:numberValue(prefix+'Weekday'),monthday:numberValue(prefix+'Monthday')};}
 function backupKindLabel(kind){return ({DATABASE:'Datenbank-Backup',FILES:'Datei-Backup',FULL:'Vollbackup',RESTORE_TEST:'Restore-Test',RESTORE_TARGET:'Restore ins getrennte Ziel'})[kind]||kind;}
 function backupStatusLabel(status){return ({OK:'OK',FAILED:'Fehlgeschlagen',RUNNING:'Läuft',PURGED:'Bereinigt'})[status]||status;}
 function statusClass(status){return status==='FAILED'?'bad':status==='DONE'?'good':status==='RUNNING'?'running':'';}
 function pollAgain(active){clearTimeout(pollTimer);pollTimer=setTimeout(function(){load(false);},active?1500:8000);}
 
 function monitorStatusLabel(status){
-  return ({OK:'OK',WARN:'Warnung',ERROR:'Fehler',SKIP:'nicht konfiguriert',UNKNOWN:'unbekannt'})[String(status||'UNKNOWN').toUpperCase()]||String(status||'unbekannt');
+  return ({OK:'OK',WARN:'Warnung',ERROR:'Fehler',SKIP:'nicht verfügbar',UNKNOWN:'unbekannt'})[String(status||'UNKNOWN').toUpperCase()]||String(status||'unbekannt');
 }
 function monitorBox(label,check,value){
   const x=check||{},s=String(x.status||'UNKNOWN').toUpperCase(),cls=s==='ERROR'?'error':s==='WARN'?'warn':s==='OK'?'ok':'';
@@ -185,19 +212,27 @@ function renderMonitor(mon){
   const overall=String(mon.overall||'UNKNOWN').toUpperCase(),ch=mon.checks||{},ev=mon.events_24h||{};
   const stateClass=overall==='ERROR'?'status-bad':overall==='WARN'?'status-warn':'status-good';
   state.innerHTML='<span class="'+stateClass+'">● '+esc(monitorStatusLabel(overall))+'</span><span> · '+esc(dt(mon.updated_at))+'</span>';
-  const db=ch.database||{},api=ch.api||{},pub=ch.public||{},worker=ch.worker||{},io=ch.io||{},mem=ch.memory||{};
+  const db=ch.database||{},api=ch.api||{},pub=ch.public||{},worker=ch.worker||{},backup=ch.backup||{},storage=ch.storage||{},io=ch.io||{},mem=ch.memory||{},cur=mon.current||{};
   summary.innerHTML=[
     monitorBox('Datenbank',db,monitorStatusLabel(db.status)+(db.latency_ms!=null?' · '+db.latency_ms+' ms':'')),
     monitorBox('Interne API',api,monitorStatusLabel(api.status)+(api.latency_ms!=null?' · '+api.latency_ms+' ms':'')),
     monitorBox('Worker',worker,monitorStatusLabel(worker.status)+(worker.age_seconds!=null?' · '+worker.age_seconds+' s':'')),
+    monitorBox('Backups',backup,monitorStatusLabel(backup.status)),
+    monitorBox('Datenspeicher',storage,monitorStatusLabel(storage.status)+(storage.percent_used!=null?' · '+storage.percent_used+' %':'')),
     monitorBox('I/O-Druck',io,monitorStatusLabel(io.status)+(io.full_avg10!=null?' · '+io.full_avg10+' %':'')),
     monitorBox('Swap',mem,monitorStatusLabel(mem.status)+(mem.swap_used_percent!=null?' · '+mem.swap_used_percent+' %':'')),
     monitorBox('Cloudflare / öffentliche API',pub,monitorStatusLabel(pub.status)+(pub.latency_ms!=null?' · '+pub.latency_ms+' ms':'')),
-    monitorBox('Letzte 24 h',{status:Number(ev.error||0)>0?'WARN':'OK',detail:'Warnungen: '+Number(ev.warn||0)},String(Number(ev.error||0))+' Fehler')
+    monitorBox('Fehlerlage',{status:Number(cur.error||0)>0?'ERROR':Number(cur.warn||0)>0?'WARN':'OK',detail:'Letzte 24 h: '+Number(ev.error||0)+' Fehler · '+Number(ev.warn||0)+' Warnungen'},'Aktuell '+Number(cur.error||0)+' Fehler · '+Number(cur.warn||0)+' Warnungen')
   ].join('');
   events.innerHTML=(mon.recent_events||[]).map(function(e){
-    const level=String(e.level||'INFO').toUpperCase(),cls=level==='ERROR'?'bad':level==='WARN'?'running':'good';
-    return '<div class="item '+cls+'"><div class="job-head"><div><b>'+esc(e.code||'MONITOR')+'</b><div class="small">'+esc(e.message||'')+'</div></div><div class="small">'+esc(dt(e.timestamp))+'</div></div></div>';
+    const level=String(e.level||'INFO').toUpperCase(),cls=level==='ERROR'?'bad':level==='WARN'?'running':'good',d=e.data||{},details=[];
+    if(d.error_type)details.push('Fehlertyp: '+d.error_type);
+    if(d.http_status!=null)details.push('HTTP '+d.http_status);
+    if(d.latency_ms!=null)details.push(d.latency_ms+' ms');
+    if(d.age_seconds!=null)details.push('Heartbeat '+d.age_seconds+' s');
+    if(d.percent_used!=null)details.push('Speicher '+d.percent_used+' %');
+    if(d.detail)details.push(d.detail);
+    return '<div class="item '+cls+'"><div class="job-head"><div><b>'+esc(e.code||'MONITOR')+'</b><div class="small">'+esc(e.message||'')+'</div>'+(details.length?'<div class="small" style="margin-top:4px">'+esc(details.join(' · '))+'</div>':'')+'</div><div class="small">'+esc(dt(e.timestamp))+'</div></div></div>';
   }).join('')||'<p class="muted">Noch keine Diagnose-Ereignisse.</p>';
 }
 
@@ -221,11 +256,14 @@ async function load(hydrateForm=true){
   try{
     const result=await tbApi('/api/v1/admin/system/status');
     const x=result.data,c=x.counts||{},m=x.migration||{},st=x.storage||{},bst=x.backup_storage||{},br=x.backup_retention||{},a=x.automation||{},smtp=x.smtp||{},mon=x.monitor||{};
+    const mch=(mon.checks||{}),mdb=mch.database||{},mworker=mch.worker||{};
     document.getElementById('summary').innerHTML=[
-      kpi(c.companies||0,'Firmen'),
-      kpi((c.active_users||0)+' / '+(c.users||0),'aktive / alle Nutzer'),
-      kpi(c.active_devices||0,'aktive Geräte'),
-      kpi(c.worksites||0,'Baustellen'),
+      kpi(x.server_version||'—','Server'),
+      kpi((m.applied||0)+' / '+(m.known||0),'Migrationen'),
+      kpi(mdb.status==='OK'?(mdb.latency_ms!=null?mdb.latency_ms+' ms':'OK'):monitorStatusLabel(mdb.status),'Datenbank'),
+      kpi(mworker.status==='OK'?'OK':monitorStatusLabel(mworker.status),'Worker'),
+      kpi(st.available?Number(st.percent_used||0).toFixed(1)+' %':'—','Speicher belegt'),
+      kpi(x.last_successful_backup?'OK':'—','letztes Backup'),
       kpi((c.running_jobs||0)+' / '+(c.pending_jobs||0),'läuft / wartet'),
       kpi(c.failed_jobs_unacknowledged||0,'offene Fehler'),
       kpi(mon.available?monitorStatusLabel(mon.overall):'—','Serverüberwachung')
@@ -273,14 +311,6 @@ async function load(hydrateForm=true){
       return '<div class="audit-row '+(e.is_failure?'bad':'')+'"><div class="small">'+esc(dt(e.created_at))+'</div><div><b>'+esc(e.action_label||e.action)+'</b><div class="small">'+esc(e.actor_display_name||'System')+(e.entity_type?' · '+esc(e.entity_type):'')+'</div></div></div>';
     }).join('')||'<p class="muted">Noch keine Audit-Ereignisse.</p>';
 
-    document.getElementById('companies').innerHTML=(x.companies||[]).map(function(row){
-      return '<tr><td><b>'+esc(row.name)+'</b></td><td>'+esc(row.user_count)+'</td><td>'+esc(row.active_device_count)+'</td><td>'+esc(row.worksite_count)+'</td><td>'+esc(row.file_count)+'</td><td>'+esc(bytes(row.file_bytes))+'</td></tr>';
-    }).join('')||'<tr><td colspan="6" class="muted">Keine Firmen.</td></tr>';
-
-    document.getElementById('expiringUsers').innerHTML=(x.expiring_users||[]).map(function(u){
-      return '<div class="item"><b>'+esc(u.display_name)+'</b><div class="small">'+esc(u.login_name)+' · gültig bis '+esc(dt(u.access_valid_until))+'</div></div>';
-    }).join('')||'<p class="muted">Keine innerhalb des Warnzeitraums.</p>';
-
     const smtpClass=smtp.configured?'status-good':'status-warn';
     document.getElementById('smtpState').innerHTML=
       '<span class="'+smtpClass+'">'+(smtp.configured?'SMTP vorbereitet':'SMTP noch nicht vollständig eingerichtet')+'</span>'+
@@ -288,11 +318,13 @@ async function load(hydrateForm=true){
       '<div class="small">Letzter Bericht: '+esc(x.last_email_job?((x.last_email_job.status_label||x.last_email_job.status)+' · '+dt(x.last_email_job.finished_at||x.last_email_job.created_at)):'noch keiner')+'</div>';
 
     if((hydrateForm||firstLoad)&&!formDirty){
-      checked('emailEnabled',a.email_enabled);val('emailFrequency',a.email_frequency||'WEEKLY');val('emailHour',a.email_hour??8);val('emailWeekday',a.email_weekday??0);val('emailMonthday',a.email_monthday??1);
+      checked('emailEnabled',a.email_enabled);val('emailFrequency',a.email_frequency||'WEEKLY');setTime('emailTime',a.email_hour??10,a.email_minute??0);val('emailWeekday',a.email_weekday??6);val('emailMonthday',a.email_monthday??1);
       val('timezone',a.timezone||'Europe/Berlin');val('expiryWarning',a.user_expiry_warning_days??30);val('storageWarning',a.storage_warning_percent??85);
       val('emailRecipients',(a.email_recipients||[]).join('\n'));
-      checked('autoBackup',a.automatic_backup_enabled);val('backupKind',a.backup_kind||'DATABASE');val('backupHour',a.backup_hour??4);
-      checked('autoRetention',a.automatic_retention_enabled);val('retentionHour',a.retention_hour??5);val('retentionDays',a.backup_retention_days??30);val('retentionMin',a.backup_retention_min_per_kind??3);
+      checked('alertEmailEnabled',a.alert_email_enabled);checked('alertRecoveryEnabled',a.alert_recovery_enabled);val('alertCooldown',a.alert_cooldown_minutes??30);
+      const at=a.alert_types||{};checked('alertDatabase',at.database!==false);checked('alertInternalApi',at.internal_api!==false);checked('alertWorker',at.worker!==false);checked('alertBackup',at.backup!==false);checked('alertPublicApi',at.public_api!==false);checked('alertStorage',at.storage!==false);
+      const bs=a.backup_schedules||{};fillSchedule('db',bs.DATABASE||{enabled:true,frequency:'DAILY',hour:1,minute:30});fillSchedule('files',bs.FILES||{enabled:true,frequency:'DAILY',hour:3,minute:30});fillSchedule('full',bs.FULL||{enabled:true,frequency:'WEEKLY',weekday:6,hour:5,minute:0});
+      fillSchedule('retention',a.retention_schedule||{enabled:true,frequency:'WEEKLY',weekday:6,hour:6,minute:30});val('retentionDays',a.backup_retention_days??90);val('retentionMin',a.backup_retention_min_per_kind??3);
     }
     firstLoad=false;
     msg.className='';msg.textContent='';
@@ -301,14 +333,20 @@ async function load(hydrateForm=true){
 }
 
 async function saveAutomation(){
+  const et=timeParts('emailTime');
   const body={
     email_enabled:document.getElementById('emailEnabled').checked,
     email_frequency:document.getElementById('emailFrequency').value,
-    email_hour:numberValue('emailHour'),email_weekday:numberValue('emailWeekday'),email_monthday:numberValue('emailMonthday'),
-    email_recipients:recipientsValue(),timezone:document.getElementById('timezone').value.trim(),
+    email_hour:et.hour,email_minute:et.minute,email_weekday:numberValue('emailWeekday'),email_monthday:numberValue('emailMonthday'),
+    email_recipients:recipientsValue(),
+    alert_email_enabled:document.getElementById('alertEmailEnabled').checked,
+    alert_recovery_enabled:document.getElementById('alertRecoveryEnabled').checked,
+    alert_cooldown_minutes:numberValue('alertCooldown'),
+    alert_types:{database:document.getElementById('alertDatabase').checked,internal_api:document.getElementById('alertInternalApi').checked,worker:document.getElementById('alertWorker').checked,backup:document.getElementById('alertBackup').checked,public_api:document.getElementById('alertPublicApi').checked,storage:document.getElementById('alertStorage').checked},
+    timezone:document.getElementById('timezone').value.trim(),
     user_expiry_warning_days:numberValue('expiryWarning'),storage_warning_percent:numberValue('storageWarning'),
-    automatic_backup_enabled:document.getElementById('autoBackup').checked,backup_kind:document.getElementById('backupKind').value,backup_hour:numberValue('backupHour'),
-    automatic_retention_enabled:document.getElementById('autoRetention').checked,retention_hour:numberValue('retentionHour'),
+    backup_schedules:{DATABASE:scheduleValue('db'),FILES:scheduleValue('files'),FULL:scheduleValue('full')},
+    retention_schedule:scheduleValue('retention'),
     backup_retention_days:numberValue('retentionDays'),backup_retention_min_per_kind:numberValue('retentionMin')
   };
   try{
