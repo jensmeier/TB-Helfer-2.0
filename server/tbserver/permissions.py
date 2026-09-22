@@ -6,7 +6,13 @@ from uuid import UUID
 from fastapi import HTTPException
 
 
-ADMIN_PERMISSIONS = {"*": True}
+ADMIN_PERMISSIONS = {
+    "worksite.view": True,
+    "btb.view": True,
+    "files.view": True,
+    "acceptance.view": True,
+    "defect.view": True,
+}
 CHEF_DEFAULT_PERMISSIONS = {
     "worksite.view": True,
     "btb.view": True,
