@@ -175,10 +175,11 @@ def normalize_automation_policy(raw: dict[str, Any] | None) -> dict[str, Any]:
 
     previous_revision = 0
     if raw:
+        inferred_revision = POLICY_REVISION if "backup_schedules" in raw else 1
         try:
-            previous_revision = int(raw.get("policy_revision", 1))
+            previous_revision = int(raw.get("policy_revision", inferred_revision))
         except (TypeError, ValueError):
-            previous_revision = 1
+            previous_revision = inferred_revision
     if raw and previous_revision < POLICY_REVISION:
         # Server-1.0 policy v2 introduces the user-approved split schedule.
         merged["backup_schedules"] = defaults["backup_schedules"]
