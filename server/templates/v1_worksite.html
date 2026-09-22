@@ -20,6 +20,9 @@
 <div class="card">
   <h1 id="title">Baustelle wird geladen …</h1>
   <p id="meta" class="muted"></p>
+  {% if user.company_role == 'ADMIN' %}
+  <div class="notice info"><b>Admin-Kontrollansicht:</b> Fachinhalte, Teams und Zuordnungen sind hier nur lesbar. Änderungen erfolgen durch den verantwortlichen TB bzw. die berechtigten Baustellennutzer.</div>
+  {% endif %}
   <div id="msg"></div>
 </div>
 
@@ -164,11 +167,12 @@
 {% block scripts %}
 <script>
 const worksiteId={{ worksite_id|tojson }};
+const adminReadOnly={{ (user.company_role == 'ADMIN')|tojson }};
 const msg=document.getElementById('msg');
 let worksite=null, permissions={}, nodeData=[], teamData=[], mediaData=[];
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-function can(name){return permissions['*']===true||permissions[name]===true;}
+function can(name){if(adminReadOnly)return false;return permissions['*']===true||permissions[name]===true;}
 function jsonValue(id){
   const raw=document.getElementById(id).value.trim()||'{}';
   const parsed=JSON.parse(raw);
