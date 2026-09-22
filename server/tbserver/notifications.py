@@ -76,11 +76,18 @@ def _report_data(policy: dict[str, Any]) -> dict[str, Any]:
         }
     else:
         storage_info = None
+    try:
+        from .monitor import read_monitor_snapshot
+
+        monitor = read_monitor_snapshot(event_limit=10)
+    except Exception:
+        monitor = {"available": False, "overall": "UNKNOWN", "events_24h": {}}
     return {
         "last_backup": dict(last_backup) if last_backup else None,
         "failed_jobs": failed_jobs,
         "expiring_users": expiring_users,
         "storage": storage_info,
+        "monitor": monitor,
     }
 
 
@@ -109,6 +116,16 @@ def _build_report(policy: dict[str, Any], *, test: bool) -> tuple[str, str]:
     else:
         lines.append("Speicher: nicht verfügbar")
     lines.append(f"Fehlgeschlagene Background Jobs: {data['failed_jobs']}")
+    monitor = data.get("monitor") or {}
+    if monitor.get("available"):
+        events = monitor.get("events_24h") or {}
+        lines.append(
+            "Servermonitor: "
+            + str(monitor.get("overall") or "UNKNOWN")
+            + f" / letzte 24 h {int(events.get('error') or 0)} Fehler, {int(events.get('warn') or 0)} Warnungen"
+        )
+    else:
+        lines.append("Servermonitor: noch keine Daten verfügbar")
     lines.append("")
     users = data["expiring_users"]
     lines.append(
@@ -158,6 +175,10 @@ def _send(subject: str, body: str, recipients: list[str]) -> None:
         raise
     except Exception as exc:
         raise NotificationError(f"SMTP_SEND_FAILED_{type(exc).__name__}") from exc
+
+
+def send_system_message(subject: str, body: str, recipients: list[str]) -> None:
+    _send(subject, body, recipients)
 
 
 def run_system_email_report(*, test: bool = False) -> dict[str, Any]:
