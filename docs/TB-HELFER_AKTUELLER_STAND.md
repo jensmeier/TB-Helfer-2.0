@@ -1,6 +1,6 @@
 # TB-Helfer – aktueller Projektstand
 
-Stand: 2026-09-21
+Stand: 2026-09-22
 
 Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEKTREGELN.md`, diese Datei, `docs/TB-SERVER_1_0_ZIELMODELL.md` und `docs/TB-SERVER_1_0_CUTOVER.md`.
 
@@ -17,6 +17,7 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - Restore-Test-/DRAFT-Download-Laufzeitfixes vom 21.09.2026: **`e58d9fca9840…`** (UUID-Pathparameter) + **`4c20bde651f0…`/`946a62501610…`** (ADMIN-Draft-Binary-Prüfung); dazu Source-Checks 42/40/87 nachgezogen.
 - GitHub Actions für diesen Funktionscommit liefern weiterhin **keinen Testnachweis**: Android-Run `35524333713`, Server-PR-Run `35524333722` und Server-Push-Run `35524332208` endeten ohne zugewiesenen Runner (`runner_id=0`, `runner_name=""`, `steps=[]`). Das bleibt Infrastrukturproblem PRB-002 und ist kein belegter Fach-/Compilefehler.
 - Android-Updateweg: der bereits bestätigte Server-Updatepfad wurde am **21.09.2026 erneut praktisch bestätigt**. Ein neu veröffentlichter Android-Release wurde vom Handy gefunden und installiert; Gerätebindung, Serveradresse und vorhandene lokale Baustellendaten blieben erhalten. Der konkrete installierte Zielbuild wurde in dieser Bestätigung nicht nochmals separat genannt. Der aktuelle Android-Quellbranch steht auf **1.3.7 / 200057**.
+- Android **1.3.13 / 200063**: BTB-Aktivzustand-/Sync-Schleifen-Fix im Quellstand; lokaler Android-Studio-Build am **22.09.2026 erfolgreich** (4 Warnungen, keine Build-Fehler). **INSTALLATION + PIXEL/POCO-/SERVER-E2E OFFEN.** Android-HEAD zum Build: `33665a7fb791051974da85c0155631231d8d305f`. Serververtrag erneut gegen `a35457c0b4984837f5956412bdbbdacb32a8c1cd` geprüft; seit `5a724bc6…` nur Monitoring geändert, keine BTB-API-Datei.
 
 - Android Server-1.0 Fachsync Mängel/Abnahmen: capability-gesteuertes Laden sowie idempotentes Schreiben über die kanonischen `/api/v1/worksites/{id}/defects`, `/defects/{id}`, `/close`, `/acceptances/{id}` und `/finalize`-Verträge. Sichtbare, mit Mängeln/Abnahmen verknüpfte Server-1.0-Dateien werden über `files_v1` aufgelöst und in den vorhandenen Attachment-Cache heruntergeladen. Lokale Mängel-/Abnahme-Attachments werden resumierbar über `chunk_upload_v1` mit deterministischen Idempotenz-IDs hochgeladen; nicht mehr sichtbare/gelöschte Fach-Attachments werden nur bei nachweislich vollständigem Datei-Snapshot lokal tombstoned; bei der 1000-Dateien-Grenze wird konservativ nicht gelöscht. BTB bleibt getrennt offen.
 - Produktivserver/NAS unverändert: API **0.7.0**, PostgreSQL **Schema 10**
