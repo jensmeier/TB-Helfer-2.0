@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -9,7 +10,10 @@ from typing import Any
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from .config import settings
 from .database import connect
+from .notifications import NotificationError, send_system_message
+from .system_settings import load_automation_policy, smtp_status
 
 
 DIAGNOSTICS_ROOT = Path(os.getenv("TB_DIAGNOSTICS_ROOT", "/tb/diagnostics-v1"))
@@ -25,6 +29,8 @@ API_URL = os.getenv("TB_MONITOR_API_URL", "http://api:8080/health/ready").strip(
 PUBLIC_URL = os.getenv("TB_MONITOR_PUBLIC_URL", "").strip().rstrip("/")
 MAX_EVENT_LOG_BYTES = 5 * 1024 * 1024
 _WORKER_STARTED_AT = datetime.now(timezone.utc).isoformat()
+_cached_policy: dict[str, Any] | None = None
+_last_alert_sent: dict[str, datetime] = {}
 
 
 def _now() -> datetime:
@@ -128,7 +134,7 @@ def _http_check(url: str, *, timeout: float = 4.5) -> dict[str, Any]:
         return {"status": "SKIP", "detail": "nicht konfiguriert"}
     started = time.monotonic()
     try:
-        request = Request(url, headers={"User-Agent": "TB-Helfer-Monitor/1.0"})
+        request = Request(url, headers={"User-Agent": "TB-Helfer-Monitor/1.1"})
         with urlopen(request, timeout=timeout) as response:
             body = response.read(4096)
             status_code = int(getattr(response, "status", 200))
@@ -173,8 +179,14 @@ def _http_check(url: str, *, timeout: float = 4.5) -> dict[str, Any]:
 
 
 def _read_io_pressure() -> dict[str, Any]:
+    path = Path("/proc/pressure/io")
+    if not path.exists():
+        return {
+            "status": "SKIP",
+            "detail": "Auf dieser Synology im Container nicht verfügbar",
+        }
     try:
-        raw = Path("/proc/pressure/io").read_text(encoding="utf-8")
+        raw = path.read_text(encoding="utf-8")
         values: dict[str, dict[str, float]] = {}
         for line in raw.splitlines():
             parts = line.split()
@@ -224,6 +236,61 @@ def _read_memory() -> dict[str, Any]:
         }
     except Exception as exc:
         return {"status": "UNKNOWN", "detail": _safe_message(exc)}
+
+
+def _check_storage(warning_percent: float) -> dict[str, Any]:
+    try:
+        usage = shutil.disk_usage(settings.storage_root)
+        pct = round((usage.used / usage.total) * 100.0, 2) if usage.total else 0.0
+        return {
+            "status": "WARN" if pct >= warning_percent else "OK",
+            "percent_used": pct,
+            "free_bytes": usage.free,
+            "total_bytes": usage.total,
+            "warning_percent": warning_percent,
+            "detail": "Datenspeicher",
+        }
+    except Exception as exc:
+        return {
+            "status": "ERROR",
+            "error_type": type(exc).__name__,
+            "detail": _safe_message(exc),
+        }
+
+
+def _check_backup(database: dict[str, Any]) -> dict[str, Any]:
+    if database.get("status") == "ERROR":
+        return {"status": "SKIP", "detail": "Datenbank nicht erreichbar"}
+    try:
+        with connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, job_type, status, updated_at, last_error
+                FROM tb.background_jobs
+                WHERE job_type IN ('BACKUP_DATABASE','BACKUP_FILES','BACKUP_FULL','BACKUP_RETENTION')
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """
+            )
+            row = cur.fetchone()
+        if not row:
+            return {"status": "OK", "detail": "Noch kein automatischer Backup-Job protokolliert"}
+        item = dict(row)
+        status = str(item.get("status") or "")
+        return {
+            "status": "ERROR" if status == "FAILED" else "OK",
+            "job_type": item.get("job_type"),
+            "job_status": status,
+            "updated_at": item.get("updated_at"),
+            "error_type": item.get("last_error") if status == "FAILED" else None,
+            "detail": "Letzter Backup-Job fehlgeschlagen" if status == "FAILED" else "Backup-Jobs unauffällig",
+        }
+    except Exception as exc:
+        return {
+            "status": "UNKNOWN",
+            "error_type": type(exc).__name__,
+            "detail": _safe_message(exc),
+        }
 
 
 def _parse_iso(value: Any) -> datetime | None:
@@ -276,6 +343,8 @@ def _transition_code(name: str, current: dict[str, Any]) -> tuple[str, str, str]
         "worker": "Worker",
         "io": "Datenträger-I/O",
         "memory": "Speicher/Swap",
+        "storage": "Datenspeicher",
+        "backup": "Backup",
     }
     prefix = {
         "database": "DB",
@@ -284,6 +353,8 @@ def _transition_code(name: str, current: dict[str, Any]) -> tuple[str, str, str]
         "worker": "WORKER",
         "io": "IO_PRESSURE",
         "memory": "SWAP",
+        "storage": "STORAGE",
+        "backup": "BACKUP",
     }.get(name, name.upper())
     label = labels.get(name, name)
     if status == "OK":
@@ -295,9 +366,103 @@ def _transition_code(name: str, current: dict[str, Any]) -> tuple[str, str, str]
     return "INFO", prefix + "_STATE", label + " Status geändert"
 
 
+def _refresh_policy(database: dict[str, Any]) -> dict[str, Any] | None:
+    global _cached_policy
+    if database.get("status") == "ERROR":
+        return _cached_policy
+    try:
+        _cached_policy = load_automation_policy()
+    except Exception:
+        pass
+    return _cached_policy
+
+
+def _alert_type(name: str) -> str | None:
+    return {
+        "database": "database",
+        "api": "internal_api",
+        "worker": "worker",
+        "backup": "backup",
+        "public": "public_api",
+        "storage": "storage",
+    }.get(name)
+
+
+def _alert_allowed(policy: dict[str, Any] | None, alert_type: str | None) -> bool:
+    if not policy or not alert_type or not policy.get("alert_email_enabled"):
+        return False
+    return bool((policy.get("alert_types") or {}).get(alert_type, False))
+
+
+def _send_alert(
+    policy: dict[str, Any] | None,
+    *,
+    alert_type: str | None,
+    key: str,
+    subject: str,
+    body: str,
+    recovery: bool = False,
+) -> None:
+    if not _alert_allowed(policy, alert_type):
+        return
+    if recovery and not policy.get("alert_recovery_enabled", True):
+        return
+    recipients = list(policy.get("email_recipients") or [])
+    if not recipients or not smtp_status().get("configured"):
+        return
+    now = _now()
+    cooldown = timedelta(minutes=int(policy.get("alert_cooldown_minutes", 30)))
+    last = _last_alert_sent.get(key)
+    if last is not None and now - last < cooldown:
+        return
+    try:
+        send_system_message(subject, body, recipients)
+        _last_alert_sent[key] = now
+        _append_event(
+            "INFO",
+            "ALERT_EMAIL_SENT",
+            "Monitor-E-Mail wurde versendet",
+            data={"alert_type": alert_type, "subject": subject, "recovery": recovery},
+        )
+    except NotificationError as exc:
+        _append_event(
+            "WARN",
+            "ALERT_EMAIL_FAILED",
+            "Monitor-E-Mail konnte nicht versendet werden",
+            data={"alert_type": alert_type, "detail": str(exc)[:200]},
+        )
+    except Exception as exc:
+        _append_event(
+            "WARN",
+            "ALERT_EMAIL_FAILED",
+            "Monitor-E-Mail konnte nicht versendet werden",
+            data={"alert_type": alert_type, "detail": _safe_message(exc)},
+        )
+
+
+def _event_body(name: str, current: dict[str, Any], code: str) -> str:
+    values = [
+        "TB-Helfer Server 1.0 – Serverüberwachung",
+        f"Ereignis: {code}",
+        f"Zeit: {_now_iso()}",
+        f"Bereich: {name}",
+        f"Status: {current.get('status', 'UNKNOWN')}",
+    ]
+    if current.get("latency_ms") is not None:
+        values.append(f"Antwortzeit: {current['latency_ms']} ms")
+    if current.get("http_status") is not None:
+        values.append(f"HTTP: {current['http_status']}")
+    if current.get("error_type"):
+        values.append(f"Fehlertyp: {current['error_type']}")
+    if current.get("detail"):
+        values.append(f"Detail: {current['detail']}")
+    return "\n".join(values)
+
+
 def _record_transitions(
     checks: dict[str, dict[str, Any]],
     previous: dict[str, Any] | None,
+    policy: dict[str, Any] | None,
 ) -> None:
     previous_checks = (previous or {}).get("checks") or {}
     for name, current in checks.items():
@@ -306,36 +471,78 @@ def _record_transitions(
         new_status = str(current.get("status", "UNKNOWN")).upper()
         if old_status and old_status == new_status:
             continue
+
+        # First monitor sample only records actionable states; healthy startup is not an error history.
+        if not old_status and new_status not in {"ERROR", "WARN"}:
+            continue
+
         level, code, message = _transition_code(name, current)
         _append_event(level, code, message, data=current)
+        alert_type = _alert_type(name)
+
+        if new_status == "ERROR" or (name == "storage" and new_status == "WARN"):
+            _send_alert(
+                policy,
+                alert_type=alert_type,
+                key=f"{alert_type}:problem",
+                subject=f"TB-Helfer Serverwarnung – {message}",
+                body=_event_body(name, current, code),
+            )
+        elif new_status == "OK" and old_status in {"ERROR", "WARN"}:
+            _send_alert(
+                policy,
+                alert_type=alert_type,
+                key=f"{alert_type}:recovery",
+                subject=f"TB-Helfer wieder OK – {message}",
+                body=_event_body(name, current, code),
+                recovery=True,
+            )
 
     old_worker = previous_checks.get("worker") or {}
     new_worker = checks.get("worker") or {}
     old_pid = old_worker.get("pid")
     new_pid = new_worker.get("pid")
     if old_pid and new_pid and old_pid != new_pid:
+        data = {
+            "previous_pid": old_pid,
+            "new_pid": new_pid,
+            "started_at": new_worker.get("started_at"),
+        }
         _append_event(
             "WARN",
             "WORKER_RESTARTED",
             "Worker-Prozess wurde neu gestartet",
-            data={
-                "previous_pid": old_pid,
-                "new_pid": new_pid,
-                "started_at": new_worker.get("started_at"),
-            },
+            data=data,
+        )
+        _send_alert(
+            policy,
+            alert_type="worker",
+            key="worker:restart",
+            subject="TB-Helfer Serverwarnung – Worker neu gestartet",
+            body=(
+                "TB-Helfer Server 1.0 – Serverüberwachung\n"
+                f"Zeit: {_now_iso()}\n"
+                f"Alter PID: {old_pid}\nNeuer PID: {new_pid}\n"
+                f"Start: {new_worker.get('started_at') or 'unbekannt'}"
+            ),
         )
 
 
 def _run_once(previous: dict[str, Any] | None) -> dict[str, Any]:
+    database = _check_database()
+    policy = _refresh_policy(database)
+    warning_percent = float((policy or {}).get("storage_warning_percent", 85.0))
     checks = {
-        "database": _check_database(),
+        "database": database,
         "api": _http_check(API_URL),
         "public": _http_check(PUBLIC_URL + "/health/ready" if PUBLIC_URL else ""),
         "worker": _check_worker(),
+        "backup": _check_backup(database),
+        "storage": _check_storage(warning_percent),
         "io": _read_io_pressure(),
         "memory": _read_memory(),
     }
-    _record_transitions(checks, previous)
+    _record_transitions(checks, previous, policy)
     return {
         "updated_at": _now_iso(),
         "overall": _overall(checks),
@@ -351,6 +558,7 @@ def read_monitor_snapshot(*, event_limit: int = 30) -> dict[str, Any]:
             "overall": "UNKNOWN",
             "updated_at": None,
             "checks": {},
+            "current": {"error": 0, "warn": 0},
             "events_24h": {"all": 0, "warn": 0, "error": 0},
             "recent_events": [],
         }
@@ -374,10 +582,16 @@ def read_monitor_snapshot(*, event_limit: int = 30) -> dict[str, Any]:
         if (_parse_iso(event.get("timestamp")) or datetime.min.replace(tzinfo=timezone.utc))
         >= cutoff
     ]
+    checks = state.get("checks") or {}
+    current_statuses = [str(item.get("status", "UNKNOWN")).upper() for item in checks.values()]
     result = dict(state)
     result.update(
         {
             "available": True,
+            "current": {
+                "error": sum(1 for status in current_statuses if status == "ERROR"),
+                "warn": sum(1 for status in current_statuses if status == "WARN"),
+            },
             "events_24h": {
                 "all": len(recent_24h),
                 "warn": sum(1 for e in recent_24h if str(e.get("level")).upper() == "WARN"),
