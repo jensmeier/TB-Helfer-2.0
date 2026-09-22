@@ -24,6 +24,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.server.SofortSync
 import de.tbhelfer.server.UserDisplayCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -330,6 +331,17 @@ object BtbModernLifecycleInstaller {
                     }
                     BtbOriginalFotoSpeicher.sichernWennFehlt(appContext, saved.entry.btbId, aktuelleFotoIds)
                     pdfEngine.deleteEntwurfPdf(saved.entry)
+
+                    // Ein echter Abschluss beendet den aktiven BTB sofort und deterministisch.
+                    // Dadurch koennen alte "bewusst reaktiviert"-Marker aus Verlauf/Schnellwechsel
+                    // den gerade abgeschlossenen BTB nicht weiter aktiv halten.
+                    BtbActivePointerControl.nachAbschlussInaktivMerken(
+                        appContext,
+                        saved.baustelleId,
+                        saved.baustelleName,
+                        saved.btbId
+                    )
+                    runCatching { SofortSync.anstossen(appContext) }
                     file
                 }.also {
                     BtbFotoRenderMarkierung.clear()
