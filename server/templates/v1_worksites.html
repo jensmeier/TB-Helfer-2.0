@@ -7,6 +7,12 @@
   <div id="msg"></div>
 </div>
 
+{% if user.company_role == 'ADMIN' %}
+<div class="card">
+  <h2>Admin-Kontrolle</h2>
+  <p class="muted">Baustellen werden fachlich durch einen verantwortlichen TB angelegt und über sichere Einladungen mit weiteren TBs/Helfern verbunden. Der Server-Admin kontrolliert den Bestand, greift aber nicht in die laufende Baustellen- oder Teamzuordnung ein.</p>
+</div>
+{% else %}
 <div class="card">
   <h2>Baustelle anlegen</h2>
   <form id="createWorksite">
@@ -26,6 +32,8 @@
     <div class="actions" style="margin-top:14px"><button type="submit">Baustelle anlegen</button></div>
   </form>
 </div>
+
+{% endif %}
 
 <div class="card">
   <h2>Vorhandene Baustellen</h2>
@@ -91,21 +99,23 @@ async function loadWorksites(){
     });
   }catch(error){rows.innerHTML='<tr><td colspan="6"></td></tr>';show('err',error.message||String(error));}
 }
-document.getElementById('createWorksite').addEventListener('submit',async function(ev){
-  ev.preventDefault();
-  const payload={
-    name:document.getElementById('name').value.trim(),
-    designation:document.getElementById('designation').value.trim()||null,
-    route_number:document.getElementById('route').value.trim()||null,
-    station_code:document.getElementById('stationCode').value.trim()||null,
-    station_name:document.getElementById('stationName').value.trim()||null
-  };
-  if(userRole==='ADMIN') payload.company_id=document.getElementById('companyId').value||null;
-  try{
-    await tbApi('/api/v1/worksites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    show('ok','Baustelle angelegt.');ev.target.reset();await loadWorksites();
-  }catch(error){show('err',error.message||String(error));}
-});
+const createForm=document.getElementById('createWorksite');
+if(createForm){
+  createForm.addEventListener('submit',async function(ev){
+    ev.preventDefault();
+    const payload={
+      name:document.getElementById('name').value.trim(),
+      designation:document.getElementById('designation').value.trim()||null,
+      route_number:document.getElementById('route').value.trim()||null,
+      station_code:document.getElementById('stationCode').value.trim()||null,
+      station_name:document.getElementById('stationName').value.trim()||null
+    };
+    try{
+      await tbApi('/api/v1/worksites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      show('ok','Baustelle angelegt.');ev.target.reset();await loadWorksites();
+    }catch(error){show('err',error.message||String(error));}
+  });
+}
 loadCompanies();loadWorksites();
 </script>
 {% endblock %}
