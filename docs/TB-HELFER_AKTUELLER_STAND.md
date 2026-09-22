@@ -1201,9 +1201,11 @@ Stand **22.09.2026 14:18+**:
   - Nach Rückkehr aus PDF/Foto/Mangel/Sync lädt der Fragment-View den kanonischen aktiven BTB neu, wenn btbId oder Änderungsstand gewechselt haben. Offene Dirty-Eingaben werden dabei ausdrücklich nicht überschrieben.
   - `CollabLocalBridge` sendet `FERTIG` nur noch für tatsächlich `ABGESCHLOSSEN`; `ENTWURF` und `NACHBEARBEITUNG` werden als `ENTWURF` synchronisiert.
   - `BtbTeamMediaSync` importiert ein Abschluss-PDF nur, wenn der **kanonische Snapshotstatus** `FERTIG` ist. Ist ein serverseitig noch FINALIZED markierter BTB über `active_btb_id` wieder aktiv, wird ein alter Server-Abschlussmarker invalidiert statt den BTB erneut zu schließen.
+  - Ein echter `BTB Abschluss` beendet den aktiven Pointer jetzt unmittelbar über `nachAbschlussInaktivMerken(...)`, räumt einen eventuell vorhandenen Reaktivierungsmarker auf und stößt danach SofortSync an. Damit kann ein zuvor bewusst geöffneter BTB nach erfolgreichem Abschluss nicht versehentlich aktiv bleiben.
   - Der alte Gradle-Build-time-Patch für die aktive BTB-Ladelogik wurde entfernt; diese Logik liegt nun direkt im kanonischen `BautagebuchFragment.kt`.
-- Server-Vertrag geprüft gegen `69c2c4f077239484f9171de05a6fd73dca146b82`: **keine Serveränderung erforderlich**. Der bestehende Serververtrag mit `active_btb_id` liefert die nötige Information; der Fehler lag in Androids Zustands-/Sync-Auswertung.
+- Server-Vertrag zuletzt geprüft gegen `5a724bc657aa19766590dec85dd95f1593e9390b`: **keine Serveränderung erforderlich**. Die 15 neueren Server-Commits seit 69c2c4f betreffen Monitoring/Admin/Automatik-/Berichtzeitpläne; keine BTB-API-Datei wurde geändert. Der bestehende Vertrag mit `active_btb_id` liefert die nötige Information; der Fehler lag in Androids Zustands-/Sync-Auswertung.
 - Source-Checks bestanden: reine Lesewege, explizite Aktivierung, btbId-Navigation, Dokumentstatus-Lifecycle, Resume-Refresh mit Dirty-Guard, Syncstatus, Server-PDF-Importstatus, Version/Workflow/Release und Strukturchecks.
+- Source-Checks nach dem finalen Abschluss-Pointer-Fix erneut vollständig bestanden. Quell-/Release-Stand vor Dokuabschluss: `1880b39473ff0563183dbc896b23bbdb1cac0a73`.
 - GitHub Actions Run **#1337** endete als `failure`, enthält aber **keine ausgeführten Steps und keine Job-Logs**. Nach Projektregel ist das kein Build-/Testnachweis und auch kein belegter Quellfehler.
 - `STATUS.xlsx` ist auf dem Server-Branch neuer und wird vom Android-Projekt nicht überschrieben.
 
