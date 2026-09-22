@@ -413,7 +413,7 @@ async function loadInviteData(){
     }).join('');
     const invitations=results[1].data.invitations||[];
     document.getElementById('invitations').innerHTML=invitations.length?invitations.map(function(inv){
-      const revoke=inv.status==='OPEN'?'<button class="danger" type="button" onclick="revokeInvitation(\\''+esc(inv.id)+'\\')">Widerrufen</button>':'';
+      const revoke=inv.status==='OPEN'?'<button class="danger" type="button" data-invite-id="'+esc(inv.id)+'" onclick="revokeInvitation(this.dataset.inviteId)">Widerrufen</button>':'';
       return '<div class="item"><b>'+esc(inv.invited_name)+'</b> <span class="pill">'+esc(inv.worksite_role)+'</span> <span class="pill">'+esc(inv.status)+'</span>'+
         '<div class="muted">Profil '+esc(inv.permission_profile)+' · gültig bis '+esc(new Date(inv.expires_at).toLocaleString('de-DE'))+'</div>'+
         '<div class="actions" style="margin-top:7px">'+revoke+'</div></div>';
