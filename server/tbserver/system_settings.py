@@ -49,6 +49,7 @@ def default_automation_policy() -> dict[str, Any]:
         "alert_cooldown_minutes": 30,
         "alert_types": {
             "database": True,
+            "internal_api": True,
             "worker": True,
             "backup": True,
             "public_api": True,
