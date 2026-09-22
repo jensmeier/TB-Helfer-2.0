@@ -1334,7 +1334,6 @@ object BtbExportPaket {
                 entry, gesamtFotos.filterNot { it.foto.id in strukturierteAbnahmeFotoIdsGesamt }, labels, knotenLabels, btbPlan, gesamt = true
             )
             val schichtExportFotos = exportFotos.filterNot { it.foto.id in strukturierteAbnahmeFotoIds }
-            val gesamtExportFotos = gesamtFotos.filterNot { it.foto.id in strukturierteAbnahmeFotoIdsGesamt }
             val verantwortlicherTb = dokumentIdentitaet.verantwortlicherTb
             val bilderlisteSchichtXlsx = GesamtBilderlisteXlsx.bytes(
                 bilderListeXlsxRows(
@@ -1347,17 +1346,6 @@ object BtbExportPaket {
                 ),
                 sheetName = "Bilder Schicht"
             )
-            val bilderlisteGesamtXlsx = GesamtBilderlisteXlsx.bytes(
-                bilderListeXlsxRows(
-                    entry = entry,
-                    exportFotos = gesamtExportFotos,
-                    knotenLabels = knotenLabels,
-                    relativePathFor = { info -> "Bilder/${fotoDatumIso(info.foto)}/${info.exportName}" },
-                    verantwortlicherTb = verantwortlicherTb,
-                    btbPlan = null
-                ),
-                sheetName = "Bilder gesamt"
-            )
             val schichtBilderlisteName = runCatching {
                 LocalDate.parse(datum, isoFmt).format(DateTimeFormatter.ofPattern("dd.MM.yy"))
             }.getOrDefault(datum) + "_Bilderliste.xlsx"
@@ -1366,7 +1354,6 @@ object BtbExportPaket {
             addBinary(zos, uniquePath("$btbFolder/BTB_$datum.docx", used), btbDocxBytes(btbTxtContent))
             addCsvText(zos, uniquePath("$btbFolder/Bilderliste_Schicht.csv", used), bilderlisteSchichtCsv)
             addBinary(zos, uniquePath("$btbFolder/$schichtBilderlisteName", used), bilderlisteSchichtXlsx)
-            addBinary(zos, uniquePath("$root/Bilderliste_gesamt.xlsx", used), bilderlisteGesamtXlsx)
             addBinary(zos, uniquePath("$btbFolder/Maengelliste_Schicht.pdf", used), maengelSchichtPdf)
             addCsvText(zos, uniquePath("$btbFolder/Maengelliste_Schicht.csv", used), maengelSchichtCsv)
             // Gesamt = alle Bilder und Mängel der Baustelle.
@@ -1591,6 +1578,38 @@ object BtbExportPaket {
             )
             addCsvText(zos, uniquePath("$root/Bilderliste_gesamt.csv", used), einfacheBilderlisteCsv(strukturierteAbnahmeFotoIds))
             addBinary(zos, uniquePath("$root/Bilderliste_gesamt.xlsx", used), bilderlisteGesamtXlsx)
+
+            val exportInfoById = exportFotos.associateBy { it.foto.id }
+            verlauf.forEach { v ->
+                val datum = v.datum.format(isoFmt)
+                val (legacyFrom, legacyTo) = shiftWindowEpochMs(v.entry)
+                val btbFotos = BtbFotoBtbFilter.fotosFuerBtb(
+                    context = context,
+                    entry = v.entry,
+                    alleFotos = alleFotosDerBaustelle,
+                    legacyFromEpochMs = legacyFrom,
+                    legacyToEpochMs = legacyTo
+                ).sortedBy { it.erstelltAmEpochMs }
+                val btbPlan = buildBtbFotoPlan(context, v.entry, btbFotos)
+                val schichtExportFotos = btbFotos
+                    .mapNotNull { exportInfoById[it.id] }
+                    .filterNot { it.foto.id in strukturierteAbnahmeFotoIds }
+                val identity = BtbDokumentIdentitaet.aufloesen(context, v.entry)
+                val schichtXlsx = GesamtBilderlisteXlsx.bytes(
+                    bilderListeXlsxRows(
+                        entry = v.entry,
+                        exportFotos = schichtExportFotos,
+                        knotenLabels = knotenLabels,
+                        relativePathFor = { info -> "../../Bilder/${fotoDatumIso(info.foto)}/${info.exportName}" },
+                        verantwortlicherTb = identity.verantwortlicherTb,
+                        btbPlan = btbPlan
+                    ),
+                    sheetName = "Bilder Schicht"
+                )
+                val schichtName = v.datum.format(DateTimeFormatter.ofPattern("dd.MM.yy")) + "_Bilderliste.xlsx"
+                addBinary(zos, uniquePath("$root/BTB/$datum/$schichtName", used), schichtXlsx)
+            }
+
             addBinary(zos, uniquePath("$root/Maengelliste/Maengelliste_Gesamt.pdf", used), MaengellisteExport.pdfBytes(context, baustelleName, maengelGesamt, "Gesamt"))
             addCsvText(zos, uniquePath("$root/Maengelliste/Maengelliste_Gesamt.csv", used), MaengellisteExport.csvText(context, maengelGesamt))
             if (vonDatum != null || bisDatum != null) {
