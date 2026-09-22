@@ -10,6 +10,7 @@ import de.tbhelfer.server.Server1BtbPdfApi
 import de.tbhelfer.ui.bautagebuch.BautagebuchEintrag
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbAbschlussPdfFinder
+import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.BtbFotoZuordnungSpeicher
 import de.tbhelfer.ui.bautagebuch.SchichtTyp
@@ -130,10 +131,11 @@ class BtbTeamMediaSync(context: Context) {
                         }
                     }
                 }
+                val lifecycleStatus = BtbDokumentVersionierung.status(appContext, v.entry)
                 if (
                     server1Api != null &&
                     uploadedForBtb > 0 &&
-                    (v.entry.istFertig || v.entry.dokumentVersion > 0)
+                    lifecycleStatus == BtbAbschlussStatus.ABGESCHLOSSEN
                 ) {
                     collab.enqueueMutation(
                         worksiteServerId = server.worksiteServerId,
