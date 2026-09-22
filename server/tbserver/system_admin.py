@@ -41,20 +41,28 @@ class BackupJobCreate(BaseModel):
 class AutomationSettingsUpdate(BaseModel):
     email_enabled: bool = False
     email_frequency: str = Field(default="WEEKLY", min_length=1, max_length=20)
-    email_hour: int = 8
-    email_weekday: int = 0
+    email_hour: int = 10
+    email_minute: int = 0
+    email_weekday: int = 6
     email_monthday: int = 1
     email_recipients: list[str] = Field(default_factory=list, max_length=20)
+    alert_email_enabled: bool = False
+    alert_recovery_enabled: bool = True
+    alert_cooldown_minutes: int = 30
+    alert_types: dict[str, bool] = Field(default_factory=dict)
     timezone: str = Field(default="Europe/Berlin", min_length=1, max_length=100)
     user_expiry_warning_days: int = 30
     storage_warning_percent: float = 85.0
+    backup_schedules: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    retention_schedule: dict[str, Any] = Field(default_factory=dict)
+    backup_retention_days: int = 90
+    backup_retention_min_per_kind: int = 3
+    # Legacy input fields remain accepted while older admin pages are phased out.
     automatic_backup_enabled: bool = False
     backup_kind: str = Field(default="DATABASE", min_length=1, max_length=20)
     backup_hour: int = 4
     automatic_retention_enabled: bool = False
     retention_hour: int = 5
-    backup_retention_days: int = 30
-    backup_retention_min_per_kind: int = 3
 
 
 _WARNING_ACK_KEY = "system_warning_acknowledged_at"
@@ -457,13 +465,13 @@ def admin_system_status(
             "Neue Geräte-Aktivierungskarten können ohne öffentliche HTTPS-Adresse nicht vollständig erzeugt werden.",
         )
 
-    if automation["email_enabled"] and not smtp["configured"]:
+    if (automation["email_enabled"] or automation.get("alert_email_enabled")) and not smtp["configured"]:
         add_issue(
             "warning",
             "E-Mail-Berichte nicht versandbereit",
             "E-Mail-Berichte sind aktiviert, aber die SMTP-Konfiguration ist unvollständig.",
         )
-    if automation["email_enabled"] and not automation["email_recipients"]:
+    if (automation["email_enabled"] or automation.get("alert_email_enabled")) and not automation["email_recipients"]:
         add_issue(
             "warning",
             "Kein E-Mail-Empfänger",
@@ -647,10 +655,13 @@ def update_automation_settings(
             details={
                 "email_enabled": policy["email_enabled"],
                 "email_frequency": policy["email_frequency"],
+                "alert_email_enabled": policy["alert_email_enabled"],
                 "recipient_count": len(policy["email_recipients"]),
-                "automatic_backup_enabled": policy["automatic_backup_enabled"],
-                "backup_kind": policy["backup_kind"],
-                "automatic_retention_enabled": policy["automatic_retention_enabled"],
+                "backup_schedules_enabled": [
+                    kind for kind, schedule in policy["backup_schedules"].items()
+                    if schedule.get("enabled")
+                ],
+                "automatic_retention_enabled": policy["retention_schedule"]["enabled"],
                 "backup_retention_days": policy["backup_retention_days"],
             },
         )
