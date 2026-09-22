@@ -15,3 +15,14 @@ VERBESSERT:
 - Der Mangel-Editor überspringt unnötige Foto-Knoten-Updates bereits vor dem Repository-Aufruf
 - Die Repository-Logik prüft zusätzlich selbst den bisherigen wirksamen Knoten und schützt damit auch andere Aufrufer vor derselben No-op-Invalidierung
 - Echte Unterbaustellenänderungen invalidieren den betroffenen Abschluss weiterhin wie fachlich vorgesehen
+
+
+NEU:
+- Gesamt-/Zeitraum-ZIP enthält wieder `Bilderliste_gesamt.xlsx`
+- Die Spalte `Bilddatei` ist in Excel anklickbar und öffnet das jeweilige Bild über einen relativen Pfad im entpackten ZIP-Ordner
+- Für jeden enthaltenen BTB wird zusätzlich eine Schichtliste nach dem Muster `21.09.26_Bilderliste.xlsx` im jeweiligen BTB-Datumsordner erzeugt
+- Der einzelne Schicht-/BTB-Export enthält ebenfalls die datumsbezogene anklickbare XLSX-Bilderliste
+- CSV-Bilderlisten bleiben parallel als Roh-/Sicherungsliste erhalten
+
+HINWEIS:
+- Die Bildlinks sind bewusst relativ. ZIP vollständig entpacken und die Ordnerstruktur beibehalten; dann kann Windows/Excel aus der XLSX direkt zum Foto springen.
