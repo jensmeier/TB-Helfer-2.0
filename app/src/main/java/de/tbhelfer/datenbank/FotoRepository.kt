@@ -189,7 +189,7 @@ class FotoRepository(
                 val btbId = BtbFotoZuordnungSpeicher.btbId(ctx, foto.id) ?: return@forEach
                 val existing = BtbPhotoContextOverrideStore.load(ctx, btbId)[foto.id]
                 val effectiveBefore = if (existing != null) {
-                    existing.ortId.takeIf { it > 0L }
+                    existing.ortId?.takeIf { it > 0L }
                 } else {
                     foto.baustellenKnotenId
                 }
