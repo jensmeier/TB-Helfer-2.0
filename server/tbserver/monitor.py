@@ -285,11 +285,14 @@ def _check_backup(database: dict[str, Any]) -> dict[str, Any]:
         else:
             item = dict(row)
             status = str(item.get("status") or "")
+            updated_at = item.get("updated_at")
+            if isinstance(updated_at, datetime):
+                updated_at = updated_at.isoformat()
             result = {
                 "status": "ERROR" if status == "FAILED" else "OK",
                 "job_type": item.get("job_type"),
                 "job_status": status,
-                "updated_at": item.get("updated_at"),
+                "updated_at": updated_at,
                 "error_type": item.get("last_error") if status == "FAILED" else None,
                 "detail": "Letzter Backup-Job fehlgeschlagen" if status == "FAILED" else "Backup-Jobs unauffällig",
             }
