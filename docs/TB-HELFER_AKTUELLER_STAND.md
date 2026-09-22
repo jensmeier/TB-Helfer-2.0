@@ -1243,3 +1243,13 @@ Regressionstest:
 - **Build 200062 bleibt offen**, weil diese ZIP-Struktur nach dem letzten erfolgreichen 200061-Build hinzugekommen ist.
 - GitHub Actions Lauf **#1298** zum aktuellen PR-Stand endete als `failure`, aber der Job enthält **keine ausgeführten Steps** und es stehen keine Job-Logs zur Verfügung. Nach Projektregel ist das **kein Build-/Testnachweis** und auch kein belegter Android-Quellfehler; der lokale Android-Studio-Build 200062 bleibt erforderlich.
 
+### Build 200062 – nullable `ortId` Compile-Fix
+
+- Lokaler Buildversuch am **22.09.2026 07:01** scheiterte mit genau **1 Kotlin-Fehler** in `FotoRepository.kt` Zeile 192: `Operator call is prohibited on a nullable receiver of type 'Long?'`.
+- Ursache: `existing.ortId` ist laut `BtbPhotoContextOverrideStore.ContextOverride` nullable (`Long?`), wurde im neuen BTB-Schutz aber direkt mit `takeIf { it > 0L }` verwendet.
+- Fix: `existing.ortId?.takeIf { it > 0L }`. Keine Fachlogikänderung; nur korrekte Nullbehandlung.
+- Fix-Commit: `18f54c7489f7200c89c75b00f1e9a7eaa1001d35`.
+- Version bleibt **1.3.12 / 200062**, da dieser Build noch nicht erfolgreich abgeschlossen war.
+- Source-Check nach Fix: korrigierte Nullable-Stelle vorhanden; keine weitere identische `.ortId.takeIf`-Stelle im Android-Code gefunden.
+
+Teststatus: **QUELLSTAND 200062 KORRIGIERT / SOURCE-CHECK BESTANDEN / BUILD 200062 ERNEUT OFFEN / INSTALLATION OFFEN / E2E OFFEN**.
