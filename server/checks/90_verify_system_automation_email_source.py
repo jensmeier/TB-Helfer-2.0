@@ -24,6 +24,7 @@ def main() -> None:
     backup = read("server/tbserver/backup.py")
     caps = read("server/tbserver/capabilities.py")
     template = read("server/templates/v1_system_status.html")
+    dashboard = read("server/templates/v1_admin_dashboard.html")
     migration = read("server/v1_migrations/012_system_automation.sql")
     compose = read("server/docker-compose.v1.yml")
     staging = read("server/docker-compose.synology-staging.v1.yml")
@@ -32,6 +33,8 @@ def main() -> None:
     assertions = [
         ("admin_automation", settings),
         ("backup_retention_days", settings),
+        ("backup_schedules", settings),
+        ("alert_email_enabled", settings),
         ("smtp_status", settings),
         ("system_schedule_runs", migration),
         ("schedule_due_automation", automation),
@@ -53,8 +56,9 @@ def main() -> None:
         ("TB_SMTP_PASSWORD", config),
         ("TB_SMTP_PASSWORD", compose),
         ("TB_SMTP_PASSWORD", staging),
-        ("Automatik & E-Mail-Berichte", template),
-        ("Bald ablaufende Nutzer", template),
+        ("Automatik, Backups &amp; E-Mail", template),
+        ("Sofortige Fehler-Mails", template),
+        ("Bald ablaufende Nutzer", dashboard),
         ("Sicherheits-/Audit-Nachweis anzeigen", template),
         ("90_verify_system_automation_email_source.py", workflow),
     ]
