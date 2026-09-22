@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200062: abgeschlossene BTBs werden bei unveraendertem
-        // Mangel-Foto-Ort nicht mehr faelschlich invalidiert.
-        versionCode = 200062
-        versionName = "1.3.12"
+        // Android 200063: stabiler BTB-Aktivzustand ohne Pointer-Flattern,
+        // deterministisches Wiederladen und Sync-Lifecycle nach echtem Dokumentstatus.
+        versionCode = 200063
+        versionName = "1.3.13"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
