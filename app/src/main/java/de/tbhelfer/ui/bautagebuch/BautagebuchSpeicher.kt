@@ -254,7 +254,9 @@ object BautagebuchSpeicher {
             val datum = runCatching { LocalDate.parse(dd.name, isoFmt) }.getOrNull() ?: return@forEach
             val f = instanzDatei(context, baustelleId, baustelleName, datum, btbId)
             parseEntryFile(f)?.let { e ->
-                writeActivePointer(context, baustelleId, baustelleName, btbId, datum, e.schicht)
+                // Reiner Leseweg: Das Laden eines BTB darf niemals den globalen aktiven
+                // BTB-Pointer veraendern. Aktivierung erfolgt ausschliesslich ueber
+                // aktivierenBtb()/neueBtbIdVorbereiten() nach einer bewussten Benutzeraktion.
                 return e.copy(btbId = e.btbId ?: btbId)
             }
         }
@@ -338,7 +340,8 @@ object BautagebuchSpeicher {
             .mapNotNull { parseEntryFile(it) }
             .firstOrNull { it.schicht == schicht }
         if (newest != null && !newest.btbId.isNullOrBlank()) {
-            writeActivePointer(context, baustelleId, baustelleName, newest.btbId, datum, schicht)
+            // Reiner Leseweg. Historie, Vortag-Uebernahme und Statusabfragen duerfen
+            // den aktiven BTB nicht im Hintergrund umschalten.
             return newest
         }
 
