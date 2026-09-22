@@ -28,5 +28,5 @@ TECHNIK:
 
 TESTSTATUS:
 - Quellstand umgesetzt; Source-Checks bestanden
-- Android-Build 200063 noch offen
+- Android-Build 200063 am 22.09.2026 in Android Studio erfolgreich abgeschlossen (4 Warnungen, keine Build-Fehler)
 - Installation und praktischer Pixel/Poco-E2E noch offen
