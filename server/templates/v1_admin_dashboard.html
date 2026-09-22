@@ -70,6 +70,17 @@
   </div>
 </div>
 
+<div id="expiringCard" class="card" style="display:none;border-left:4px solid #f79009">
+  <div class="headline">
+    <div>
+      <h2 style="margin-bottom:4px">Bald ablaufende Nutzer</h2>
+      <div class="muted">Nur sichtbar, wenn innerhalb des eingestellten Warnzeitraums Zugänge auslaufen.</div>
+    </div>
+    <a href="/admin/v1/users">Benutzer verwalten</a>
+  </div>
+  <div id="expiringUsers" style="margin-top:10px"></div>
+</div>
+
 <div class="overview-grid">
   <div>
     <div class="card">
@@ -228,6 +239,12 @@ async function loadDashboard(){
     $('issues').innerHTML=issues.map(i=>
       '<div class="issue '+esc(i.severity)+'"><b>'+esc(i.title)+'</b><small>'+esc(i.detail)+'</small></div>'
     ).join('')||'<div class="issue ok"><b>Keine Probleme</b><small>Keine Warnungen gemeldet.</small></div>';
+
+    const expiring=x.expiring_users||[];
+    $('expiringCard').style.display=expiring.length?'block':'none';
+    $('expiringUsers').innerHTML=expiring.map(u=>
+      '<div class="issue warning"><b>'+esc(u.display_name)+'</b><small>'+esc(u.login_name)+' · gültig bis '+esc(dt(u.access_valid_until))+'</small></div>'
+    ).join('');
 
     $('lastDevice').textContent=dt(c.last_device_seen);
     $('lastSync').textContent=dt(c.last_sync);
