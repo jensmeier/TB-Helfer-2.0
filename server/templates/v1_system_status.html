@@ -16,6 +16,7 @@
   .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end}.wide{grid-column:1/-1}.section-title{margin:18px 0 10px;font-weight:800;color:#101828}.inline-check{display:flex;gap:8px;align-items:center;min-height:42px}.inline-check input{width:auto}.inline-check label{margin:0}
   .status-good{color:#067647;font-weight:800}.status-warn{color:#b54708;font-weight:800}.audit-row{display:grid;grid-template-columns:145px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f5}.audit-row.bad{border-left:3px solid #f04438;padding-left:8px}
   .backup-list{max-height:390px;overflow:auto}.activity-list{max-height:500px;overflow:auto}.muted-line{color:#667085;font-size:12px}
+  .monitor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px}.monitor-box{border:1px solid #eaecf0;border-left:4px solid #98a2b3;border-radius:10px;padding:11px;background:#fff}.monitor-box.ok{border-left-color:#12b76a}.monitor-box.warn{border-left-color:#f79009}.monitor-box.error{border-left-color:#f04438}.monitor-value{font-weight:800;margin-top:3px}.status-bad{color:#b42318;font-weight:800}.monitor-events{max-height:330px;overflow:auto}
   @media(max-width:760px){.audit-row{grid-template-columns:1fr}.two{grid-template-columns:1fr}.status-head{display:block}.status-head .compact-actions{margin-top:10px}}
 </style>
 {% endblock %}
@@ -44,6 +45,21 @@
     <h2>Speicher</h2>
     <div id="storageInfo">wird geladen …</div>
   </div>
+</div>
+
+<div class="card">
+  <div class="status-head">
+    <div>
+      <h2 style="margin-bottom:3px">Serverüberwachung / Diagnose</h2>
+      <p class="muted" style="margin:0">Datenbank, API, Worker, I/O und Swap werden unabhängig überwacht. Fehler bleiben im Diagnoseprotokoll erhalten.</p>
+    </div>
+    <div id="monitorState" class="status-live"><span class="dot"></span><span>wird geladen …</span></div>
+  </div>
+  <div id="monitorSummary" class="monitor-grid"></div>
+  <details style="margin-top:12px">
+    <summary><b>Diagnose-Ereignisse anzeigen</b></summary>
+    <div id="monitorEvents" class="monitor-events" style="margin-top:8px"></div>
+  </details>
 </div>
 
 <div class="card">
@@ -151,6 +167,40 @@ function backupStatusLabel(status){return ({OK:'OK',FAILED:'Fehlgeschlagen',RUNN
 function statusClass(status){return status==='FAILED'?'bad':status==='DONE'?'good':status==='RUNNING'?'running':'';}
 function pollAgain(active){clearTimeout(pollTimer);pollTimer=setTimeout(function(){load(false);},active?1500:8000);}
 
+function monitorStatusLabel(status){
+  return ({OK:'OK',WARN:'Warnung',ERROR:'Fehler',SKIP:'nicht konfiguriert',UNKNOWN:'unbekannt'})[String(status||'UNKNOWN').toUpperCase()]||String(status||'unbekannt');
+}
+function monitorBox(label,check,value){
+  const x=check||{},s=String(x.status||'UNKNOWN').toUpperCase(),cls=s==='ERROR'?'error':s==='WARN'?'warn':s==='OK'?'ok':'';
+  return '<div class="monitor-box '+cls+'"><div class="small">'+esc(label)+'</div><div class="monitor-value">'+esc(value||monitorStatusLabel(s))+'</div><div class="small" style="margin-top:4px">'+esc(x.detail||'')+'</div></div>';
+}
+function renderMonitor(mon){
+  const state=document.getElementById('monitorState'),summary=document.getElementById('monitorSummary'),events=document.getElementById('monitorEvents');
+  if(!mon||!mon.available){
+    state.innerHTML='<span class="dot busy"></span><span>Monitor noch nicht aktiv</span>';
+    summary.innerHTML='<div class="notice info">Noch keine Monitordaten vorhanden. Nach dem Start des Monitor-Containers erscheinen die Werte automatisch.</div>';
+    events.innerHTML='<p class="muted">Noch keine Diagnose-Ereignisse.</p>';
+    return;
+  }
+  const overall=String(mon.overall||'UNKNOWN').toUpperCase(),ch=mon.checks||{},ev=mon.events_24h||{};
+  const stateClass=overall==='ERROR'?'status-bad':overall==='WARN'?'status-warn':'status-good';
+  state.innerHTML='<span class="'+stateClass+'">● '+esc(monitorStatusLabel(overall))+'</span><span> · '+esc(dt(mon.updated_at))+'</span>';
+  const db=ch.database||{},api=ch.api||{},pub=ch.public||{},worker=ch.worker||{},io=ch.io||{},mem=ch.memory||{};
+  summary.innerHTML=[
+    monitorBox('Datenbank',db,monitorStatusLabel(db.status)+(db.latency_ms!=null?' · '+db.latency_ms+' ms':'')),
+    monitorBox('Interne API',api,monitorStatusLabel(api.status)+(api.latency_ms!=null?' · '+api.latency_ms+' ms':'')),
+    monitorBox('Worker',worker,monitorStatusLabel(worker.status)+(worker.age_seconds!=null?' · '+worker.age_seconds+' s':'')),
+    monitorBox('I/O-Druck',io,monitorStatusLabel(io.status)+(io.full_avg10!=null?' · '+io.full_avg10+' %':'')),
+    monitorBox('Swap',mem,monitorStatusLabel(mem.status)+(mem.swap_used_percent!=null?' · '+mem.swap_used_percent+' %':'')),
+    monitorBox('Cloudflare / öffentliche API',pub,monitorStatusLabel(pub.status)+(pub.latency_ms!=null?' · '+pub.latency_ms+' ms':'')),
+    monitorBox('Letzte 24 h',{status:Number(ev.error||0)>0?'WARN':'OK',detail:'Warnungen: '+Number(ev.warn||0)},String(Number(ev.error||0))+' Fehler')
+  ].join('');
+  events.innerHTML=(mon.recent_events||[]).map(function(e){
+    const level=String(e.level||'INFO').toUpperCase(),cls=level==='ERROR'?'bad':level==='WARN'?'running':'good';
+    return '<div class="item '+cls+'"><div class="job-head"><div><b>'+esc(e.code||'MONITOR')+'</b><div class="small">'+esc(e.message||'')+'</div></div><div class="small">'+esc(dt(e.timestamp))+'</div></div></div>';
+  }).join('')||'<p class="muted">Noch keine Diagnose-Ereignisse.</p>';
+}
+
 function renderJobs(jobs){
   const list=jobs||[];
   const active=list.some(j=>j.status==='PENDING'||j.status==='RUNNING');
@@ -170,14 +220,15 @@ function renderJobs(jobs){
 async function load(hydrateForm=true){
   try{
     const result=await tbApi('/api/v1/admin/system/status');
-    const x=result.data,c=x.counts||{},m=x.migration||{},st=x.storage||{},bst=x.backup_storage||{},br=x.backup_retention||{},a=x.automation||{},smtp=x.smtp||{};
+    const x=result.data,c=x.counts||{},m=x.migration||{},st=x.storage||{},bst=x.backup_storage||{},br=x.backup_retention||{},a=x.automation||{},smtp=x.smtp||{},mon=x.monitor||{};
     document.getElementById('summary').innerHTML=[
       kpi(c.companies||0,'Firmen'),
       kpi((c.active_users||0)+' / '+(c.users||0),'aktive / alle Nutzer'),
       kpi(c.active_devices||0,'aktive Geräte'),
       kpi(c.worksites||0,'Baustellen'),
       kpi((c.running_jobs||0)+' / '+(c.pending_jobs||0),'läuft / wartet'),
-      kpi(c.failed_jobs_unacknowledged||0,'offene Fehler')
+      kpi(c.failed_jobs_unacknowledged||0,'offene Fehler'),
+      kpi(mon.available?monitorStatusLabel(mon.overall):'—','Serverüberwachung')
     ].join('');
 
     document.getElementById('serverInfo').innerHTML=
@@ -196,6 +247,8 @@ async function load(hydrateForm=true){
         '<p>'+esc(bytes(st.used_bytes))+' belegt · '+esc(bytes(st.free_bytes))+' frei · '+esc(bytes(st.total_bytes))+' gesamt</p>'+
         '<p class="small">Erfasste Dateien: '+esc(bytes(c.tracked_file_bytes))+'</p>';
     }else document.getElementById('storageInfo').innerHTML='<div class="notice err">Datenspeicher ist nicht verfügbar.</div>';
+
+    renderMonitor(mon);
 
     document.getElementById('issues').innerHTML=(x.issues||[]).map(function(i){
       return '<div class="item issue-'+esc(i.severity)+'"><b>'+esc(i.title)+'</b><div class="small">'+esc(i.detail)+'</div></div>';
