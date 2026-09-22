@@ -1182,33 +1182,31 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
 
-## Android 1.3.11 / 200061 – PDF-Größe, Mediathek, Editor-Feinschliff
+## Android 1.3.12 / 200062 – BTB-Falschinvalidierung durch Mangel-Editor
 
-Stand **21.09.2026 18:15**:
+Stand **22.09.2026**:
 - Android-Arbeitsbranch: `feature/tb-android-2.0`; Draft-PR **#7**.
-- **1.3.10 / 200060** wurde lokal erfolgreich gebaut und auf dem Testgerät installiert. Benutzerbestätigt sind die neue Vollbildseite `Mangel bearbeiten`, die Darstellung der zugeordneten Fotos mit antippbarer Detailansicht sowie die bestehende Auswahl `Vorhandenes Foto auswählen` („sieht super aus“). Das praktische Speichern einer geänderten Unterbaustellen-Zuordnung bleibt noch als eigener E2E-Punkt offen.
-- Das vom Benutzer hochgeladene 200060-Mängel-PDF enthält 9 Fotos auf 2 Seiten; Foto-KM, fotoeigenes GVP/Mast und anklickbare GPS-Zeilen sind vorhanden. Die PDF-Größe ist jedoch mit rund **30 MiB** zu hoch.
-- Ursache im Android-Code/Datei geprüft: die 164-pt-PDF-Fotoboxen bekamen trotz sichtbarer kleiner Darstellung noch Bilder mit ungefähr 1536×2040 Pixeln. Die reine `inSampleSize`-Logik reduzierte deshalb nicht weit genug.
-- Neue Zielversion: **1.3.11 / versionCode 200061**.
-- PDF-Bilder werden nun zusätzlich exakt auf maximal **480×480 px passend** skaliert. Für die 164-pt-Darstellung entspricht das weiterhin über 200 dpi; große 200059-Fotos, 6er-Paginierung und anklickbare GPS-Link-Annotationen bleiben erhalten. Praktische Zielgröße des neuen PDFs muss nach Build gemessen werden.
-- **GVP/Mast im Mangelkopf wurde entfernt.** GVP/Mast bleibt ausschließlich fotoindividuell unter den jeweiligen Bildern erhalten.
-- `Vorhandenes Foto auswählen` behält seine bestätigte TB-Helfer-Fotoliste und erhält links neben `Abbrechen` den Button **Mediathek**. Dieser öffnet den Android-Datei-/Medienpicker für Bilder auf dem Handy. Das ausgewählte Bild wird in den TB-Helfer-Fotoordner kopiert, als Mangel-Foto in der lokalen DB angelegt und dem Mangel zugeordnet; vorhandenes EXIF-GPS wird übernommen.
-- Das freie Feld `Ort / KM / Bereich` bleibt Freitext. Die KM-Erkennung wurde verschärft: nur ein echter Dezimal-KM wie `76,235` oder `KM 76,235` wird als numerischer KM interpretiert; `Bahnsteig 2` und `Weiche 12` nicht.
-- `Abbrechen` und `Speichern` im Vollbildeditor verwenden jetzt dieselbe TB-Helfer-Grundform mit 14-dp-Rundung und gleicher Höhe; `Abbrechen` bleibt als Outline-Variante, `Speichern` als blauer Primärbutton.
-- Server-Vertrag erneut geprüft gegen `ea23de17704e071084e1385566fd9a4cb5d9c6e1`: der neue Server-Commit dokumentiert nur den Synology-GUI-Deploymentweg; keine Mängel-API-Änderung und keine Serveränderung für diesen Android-Fix erforderlich.
-- Lokaler Buildversuch 200061 am **21.09.2026 18:14** scheiterte mit genau **2 Kotlin-Fehlern** in `MaengellisteExport.kt`: `Unresolved reference 'roundToInt'` in den beiden neuen PDF-Downscale-Zeilen.
-- Ursache reproduziert: `kotlin.math.roundToInt` wurde beim 480-px-Downscale verwendet, aber der Import fehlte. Kein Logik-/Strukturfehler; die übrigen 200061-Änderungen waren davon nicht betroffen.
-- Fix-Commit: `eb0af6998929c300e409900adae5dd26899844ef` ergänzt ausschließlich `import kotlin.math.roundToInt` in der echten Quelldatei `app/src/main/java/.../MaengellisteExport.kt`. Die generierte Datei unter `app/build/generated/**` bleibt unangetastet.
-- Source-Checks danach bestanden: Import + beide Aufrufe, Version 200061, 480px-PDF-Cap, GVP-Kopfentfernung/fotoeigenes GVP, GPS-Link-Erhalt, Mediathek und Strukturchecks.
-- **Benutzerbestätigung nach dem Fix:** Build 200061 ist erfolgreich durchgelaufen. Damit ist `BUILD ERFOLGREICH` bestätigt; Installation und praktische Funktions-E2E-Prüfung sind weiterhin offen.
+- Benutzer meldet: BTB vom **20.09.2026** erscheint im Verlauf plötzlich orange als `Nachbearbeitung · Abschluss-PDF ungültig`, obwohl der BTB selbst nicht erneut bearbeitet wurde; `PDF öffnen` findet kein gültiges Abschluss-PDF.
+- Reproduktion im aktuellen 200061-Quellstand: Der Vollbild-Mangeleditor ruft beim Speichern für alle zugeordneten Mangel-Fotos `updateBaustellenKnotenMitIds(...)` auf, auch wenn die ausgewählte Unterbaustelle unverändert ist.
+- `FotoRepository.updateBaustellenKnotenMitIds` führte anschließend bei jedem erfolgreichen SQL-UPDATE für alle betroffenen BTBs `invalidiereFotoAbschlussWennNoetig(...)` aus. Diese Funktion löscht das aktuelle Abschluss-PDF eines BTB mit Foto-Originalstand. Damit konnte bereits ein **No-op-Speichern** eines Mangels mit Fotos aus einem älteren abgeschlossenen BTB dessen PDF löschen.
+- Das erklärt die Beobachtung fachlich: die Mangel-Fotos vom 20.09. waren dem damaligen BTB zugeordnet; der BTB-Text musste dafür nicht bearbeitet werden. Im Verlauf wird der BTB danach als Nachbearbeitung angezeigt, und `PDF öffnen` scheitert, weil das Abschluss-PDF tatsächlich nicht mehr vorhanden ist.
+- Die vom Benutzer bereitgestellte Baustellen-ZIP wurde geprüft: sie enthält nur den BTB vom **21.09.2026** und keine Abschluss-PDF des 20.09.; daraus kann der gelöschte 20.09-Abschluss daher nicht wiederhergestellt werden.
+- Fix **1.3.12 / versionCode 200062**:
+  - Mangel-Editor überspringt den Foto-Knoten-Updatepfad, wenn kein Foto tatsächlich auf einen anderen Knoten wechseln muss.
+  - Repository schützt zusätzlich selbst: DB-Update nur für wirklich abweichende Foto-Knoten; BTB-Invalidierung nur bei fachlich geänderter **wirksamer** Knoten-Zuordnung.
+  - Reines Speichern mit unveränderter Unterbaustelle ist jetzt ein No-op und darf kein Abschluss-PDF löschen.
+  - Eine echte Unterbaustellenänderung bleibt weiterhin eine relevante Änderung und invalidiert den betroffenen BTB wie vorgesehen.
+- Bestehender ungültiger BTB 20.09 wird nicht automatisch als gültig erklärt. Sein bereits gelöschtes PDF muss über `BTB bearbeiten` → Daten prüfen → erneuten `BTB Abschluss` neu erzeugt werden. Das unveränderliche Original-/BTB-Datenmodell wird dabei nicht umgangen.
+- Server-Vertrag geprüft gegen `ea23de17704e071084e1385566fd9a4cb5d9c6e1`: keine Serveränderung erforderlich.
+- Source-Checks für No-op-Guard, effektiven Knotenvergleich, selektives DB-Update, selektive BTB-Invalidierung, Version/Workflow/Release bestanden.
 - `STATUS.xlsx` ist auf dem Server-Branch neuer und wird vom Android-Projekt nicht überschrieben.
 
-Teststatus: **QUELLSTAND 200061 KORRIGIERT / SOURCE-CHECKS BESTANDEN / BUILD 200061 ERFOLGREICH / INSTALLATION OFFEN / PDF-GRÖSSEN-E2E OFFEN / MEDIATHEK-E2E OFFEN**.
+Teststatus: **URSACHE REPRODUZIERT / QUELLSTAND 200062 FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200062 OFFEN / INSTALLATION OFFEN / REGRESSION-E2E OFFEN**.
 
-Nächster Test:
-1. 200061 auf dem Testgerät installieren.
-2. Neues 9-Foto-Mängel-PDF exportieren und Dateigröße messen.
-3. Prüfen: kein GVP/Mast mehr im Mangelkopf; GVP bleibt unter jedem Foto.
-4. GPS-Link im PDF anklicken.
-5. `Vorhandenes Foto auswählen` öffnen → `Mediathek` → Handybild auswählen → Fotoart wählen → Zuordnung prüfen.
-6. Vollbildeditor: gleiche Rundung/Höhe von `Abbrechen` und `Speichern` prüfen.
+Regressionstest:
+1. abgeschlossenen Test-BTB mit einem Mangel-Foto erzeugen;
+2. Mangel öffnen und ohne Unterbaustellenänderung nur `Speichern`;
+3. BTB muss grün bleiben und PDF weiter öffnen;
+4. danach Unterbaustelle des Mangel-Fotos wirklich ändern;
+5. erst dann darf der betroffene BTB als Nachbearbeitung markiert werden.
+
