@@ -26,6 +26,7 @@ class WorksiteCreate(BaseModel):
     station_code: str | None = Field(default=None, max_length=40)
     station_name: str | None = Field(default=None, max_length=240)
     company_id: UUID | None = None
+    responsible_tb_user_id: UUID | None = None
 
 
 class NodeCreate(BaseModel):
@@ -75,15 +76,12 @@ class WorksiteInvitationRedeem(BaseModel):
 
 def _company_for_create(cur, user: dict[str, Any], requested: UUID | None) -> UUID:
     if user["company_role"] == "ADMIN":
-        if requested is None:
-            raise HTTPException(400, "COMPANY_REQUIRED")
-        company_id = requested
-    else:
-        if user["company_id"] is None:
-            raise HTTPException(403, "COMPANY_REQUIRED")
-        if requested is not None and requested != user["company_id"]:
-            raise HTTPException(403, "COMPANY_MISMATCH")
-        company_id = user["company_id"]
+        raise HTTPException(403, "ADMIN_WORKSITE_READ_ONLY")
+    if user["company_id"] is None:
+        raise HTTPException(403, "COMPANY_REQUIRED")
+    if requested is not None and requested != user["company_id"]:
+        raise HTTPException(403, "COMPANY_MISMATCH")
+    company_id = user["company_id"]
     cur.execute(
         "SELECT id FROM tb.companies WHERE id = %s AND status = 'ACTIVE' AND deleted_at IS NULL",
         (company_id,),
@@ -91,6 +89,38 @@ def _company_for_create(cur, user: dict[str, Any], requested: UUID | None) -> UU
     if not cur.fetchone():
         raise HTTPException(404, "COMPANY_NOT_FOUND")
     return company_id
+
+
+def _responsible_tb_for_create(
+    cur,
+    user: dict[str, Any],
+    company_id: UUID,
+    requested: UUID | None,
+) -> dict[str, Any]:
+    creator_id = user["user_id"]
+    if user["company_role"] == "CHEF":
+        target_id = requested or creator_id
+    else:
+        if requested is not None and requested != creator_id:
+            raise HTTPException(403, "RESPONSIBLE_TB_ASSIGNMENT_FORBIDDEN")
+        target_id = creator_id
+
+    cur.execute(
+        """
+        SELECT id, company_id, display_name, company_role, status, deleted_at
+        FROM tb.users
+        WHERE id = %s
+        """,
+        (target_id,),
+    )
+    target = cur.fetchone()
+    if not target or target["deleted_at"] is not None or target["status"] != "ACTIVE":
+        raise HTTPException(404, "RESPONSIBLE_TB_USER_NOT_FOUND")
+    if target["company_id"] != company_id:
+        raise HTTPException(403, "RESPONSIBLE_TB_COMPANY_MISMATCH")
+    if target["company_role"] == "ADMIN":
+        raise HTTPException(403, "RESPONSIBLE_TB_ADMIN_FORBIDDEN")
+    return dict(target)
 
 
 @router.get("")
@@ -145,6 +175,9 @@ def create_worksite(
         if receipt:
             return replay_payload(receipt)
         company_id = _company_for_create(cur, user, payload.company_id)
+        responsible_tb = _responsible_tb_for_create(
+            cur, user, company_id, payload.responsible_tb_user_id
+        )
         cur.execute(
             """
             INSERT INTO tb.worksites(
@@ -164,28 +197,27 @@ def create_worksite(
             ),
         )
         worksite = dict(cur.fetchone())
-        if user["company_role"] != "ADMIN":
-            cur.execute(
-                """
-                INSERT INTO tb.worksite_memberships(
-                    worksite_id, user_id, worksite_role, permission_profile, area_scope, invited_by
-                ) VALUES (%s,%s,'RESPONSIBLE_TB','RESPONSIBLE_TB','{"all":true}'::jsonb,%s)
-                """,
-                (worksite["id"], user["user_id"], user["user_id"]),
-            )
-            cur.execute(
-                """
-                INSERT INTO tb.teams(worksite_id, lead_user_id, name)
-                VALUES (%s,%s,%s)
-                RETURNING id
-                """,
-                (worksite["id"], user["user_id"], user["display_name"]),
-            )
-            team = cur.fetchone()
-            cur.execute(
-                "INSERT INTO tb.team_members(team_id, user_id, role) VALUES (%s,%s,'LEAD')",
-                (team["id"], user["user_id"]),
-            )
+        cur.execute(
+            """
+            INSERT INTO tb.worksite_memberships(
+                worksite_id, user_id, worksite_role, permission_profile, area_scope, invited_by
+            ) VALUES (%s,%s,'RESPONSIBLE_TB','RESPONSIBLE_TB','{"all":true}'::jsonb,%s)
+            """,
+            (worksite["id"], responsible_tb["id"], user["user_id"]),
+        )
+        cur.execute(
+            """
+            INSERT INTO tb.teams(worksite_id, lead_user_id, name)
+            VALUES (%s,%s,%s)
+            RETURNING id
+            """,
+            (worksite["id"], responsible_tb["id"], responsible_tb["display_name"]),
+        )
+        team = cur.fetchone()
+        cur.execute(
+            "INSERT INTO tb.team_members(team_id, user_id, role) VALUES (%s,%s,'LEAD')",
+            (team["id"], responsible_tb["id"]),
+        )
         emit_change(
             cur,
             company_id=company_id,
@@ -204,6 +236,10 @@ def create_worksite(
             worksite_id=worksite["id"],
             entity_type="WORKSITE",
             entity_id=worksite["id"],
+            details={
+                "responsible_tb_user_id": str(responsible_tb["id"]),
+                "created_by_company_role": user["company_role"],
+            },
         )
         finish_mutation(
             cur,
