@@ -47,6 +47,37 @@ class GesamtBilderlisteXlsxTest {
         assertTrue(rels.contains("Mängel/2026-09-10/Mangel_abc/Fotos/MANGEL_abc123.jpg"))
     }
 
+    @Test
+    fun `schicht xlsx behaelt relativen pfad zu bilderordner`() {
+        val bytes = GesamtBilderlisteXlsx.bytes(
+            listOf(
+                GesamtBilderlisteXlsx.Row(
+                    nr = 1,
+                    datum = "2026-09-21",
+                    uhrzeit = "17:17",
+                    ersteller = "",
+                    verantwortlicherTb = "pixeljens",
+                    art = "FOTODOKUMENTATION",
+                    baustelle = "GE Immenstadt - Kempten",
+                    bereich = "",
+                    km = "KM 74,977",
+                    firma = "Schwerbau",
+                    kurzbeschreibung = "BRM",
+                    langtext = "",
+                    status = "Im BTB/PDF · Bild 1",
+                    bilddatei = "B001_20260921_1717_KM74,977_FOTO_BRM.jpg",
+                    gps = "47.000000, 10.000000",
+                    relativePath = "../../Bilder/2026-09-21/B001_20260921_1717_KM74,977_FOTO_BRM.jpg"
+                )
+            ),
+            sheetName = "Bilder Schicht"
+        )
+
+        val entries = unzipText(bytes)
+        val rels = entries.getValue("xl/worksheets/_rels/sheet1.xml.rels")
+        assertTrue(rels.contains("../../Bilder/2026-09-21/B001_20260921_1717_KM74,977_FOTO_BRM.jpg"))
+    }
+
     private fun unzipText(bytes: ByteArray): Map<String, String> {
         val result = linkedMapOf<String, String>()
         ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
