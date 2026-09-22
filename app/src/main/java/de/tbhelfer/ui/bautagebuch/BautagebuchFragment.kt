@@ -326,6 +326,7 @@ private var widgetOpenEditorRequest: Boolean = false
 private var requestedBtbId: String? = null
 private var loadedBtbId: String? = null
 private var loadedBtbChangedEpochMs: Long = Long.MIN_VALUE
+private var btbLoadInitialized: Boolean = false
 
 // Für Wechsel-Dialog: wenn der Nutzer gerade noch tippt, kurz nachfragen
 private var lastUserEditAtMs: Long = 0L
@@ -678,6 +679,41 @@ cardCurrentReport.setOnClickListener {
     override fun onResume() {
         super.onResume()
         if (::chipBtbAbnahmeJa.isInitialized) refreshBtbStatusChips()
+        refreshActiveBtbAfterResume()
+    }
+
+    /**
+     * Nach PDF/Foto/Mangel/Sync-Rueckkehr kann derselbe Fragment-View weiterleben.
+     * Dann waren bisher Kopf/Pointer bereits aktuell, die Eingabefelder aber noch der alte Stand.
+     * Nur ohne ungespeicherte lokale Eingabe wird der kanonische aktive BTB neu eingelesen.
+     */
+    private fun refreshActiveBtbAfterResume() {
+        if (!btbLoadInitialized || isSwitchingContext || !isAdded) return
+        if (sectionsDirtySinceMs != null || pmDirtySinceMs != null || wetterDirtySinceMs != null) return
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val ctx = resolveAktuelleBaustelle() ?: return@launch
+            val active = withContext(Dispatchers.IO) {
+                BtbActiveContext.laden(requireContext().applicationContext, ctx.id)
+            }
+            val mussNeuLaden = when {
+                active == null -> loadedBtbId != null
+                active.btbId != loadedBtbId -> true
+                active.entry.geaendertAmEpochMs > loadedBtbChangedEpochMs -> true
+                else -> false
+            }
+            if (!mussNeuLaden) return@launch
+            if (isSwitchingContext || sectionsDirtySinceMs != null || pmDirtySinceMs != null || wetterDirtySinceMs != null) {
+                return@launch
+            }
+
+            beginContextSwitch()
+            try {
+                ladeEintragFallsVorhanden(autoPickSchichtForToday = true)
+            } finally {
+                endContextSwitch()
+            }
+        }
     }
 
     private fun refreshBtbStatusChips() {
@@ -2601,6 +2637,8 @@ cardCurrentReport.setOnClickListener {
                 renderSectionPreviews()
                 setStatus("Geladen")
             }
+
+            btbLoadInitialized = true
 
             // Foto-Chips: Zähler aktualisieren (Fotos in aktueller Schicht)
             val fotoCutoffEpochMs = currentBtbStartEpochMs ?: entry?.erstelltAmEpochMs
