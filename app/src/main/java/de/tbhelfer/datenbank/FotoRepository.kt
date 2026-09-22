@@ -172,35 +172,62 @@ class FotoRepository(
         if (ids.isEmpty()) return@withContext 0
         val ctx = appContext
         val before = dao.fotosMitIds(ids)
-        val affectedBtbs = if (ctx != null) {
-            before.mapNotNull { foto ->
-                BtbFotoZuordnungSpeicher.btbId(ctx, foto.id)?.let { btbId -> foto.baustelleId to btbId }
-            }.distinct()
-        } else emptyList()
+        if (before.isEmpty()) return@withContext 0
+
+        val targetOrtId = knotenId ?: 0L
+        val dbChangedIds = before
+            .filter { it.baustellenKnotenId != knotenId }
+            .map { it.id }
+
+        // Nur eine fachlich echte Ortsaenderung darf einen bereits abgeschlossenen BTB
+        // invalidieren. Ein reines "Speichern" des Mangel-Editors mit unveraenderter
+        // Unterbaustelle ist ein No-op und darf kein Abschluss-PDF loeschen.
+        val effectiveChanged = mutableListOf<Pair<FotoEntity, String>>()
 
         if (ctx != null) {
             before.forEach { foto ->
                 val btbId = BtbFotoZuordnungSpeicher.btbId(ctx, foto.id) ?: return@forEach
                 val existing = BtbPhotoContextOverrideStore.load(ctx, btbId)[foto.id]
-                val override = existing?.copy(ortId = knotenId ?: 0L)
-                    ?: BtbPhotoContextOverrideStore.ContextOverride(
-                        firma = foto.firma,
-                        objektKennung = foto.objektKennung,
-                        objektBereich = foto.objektBereich,
-                        ortId = knotenId ?: 0L
-                    )
-                BtbPhotoContextOverrideStore.setOverride(ctx, btbId, foto.id, override)
+                val effectiveBefore = if (existing != null) {
+                    existing.ortId.takeIf { it > 0L }
+                } else {
+                    foto.baustellenKnotenId
+                }
+
+                if (effectiveBefore != knotenId) {
+                    val override = existing?.copy(ortId = targetOrtId)
+                        ?: BtbPhotoContextOverrideStore.ContextOverride(
+                            firma = foto.firma,
+                            objektKennung = foto.objektKennung,
+                            objektBereich = foto.objektBereich,
+                            ortId = targetOrtId
+                        )
+                    BtbPhotoContextOverrideStore.setOverride(ctx, btbId, foto.id, override)
+                    effectiveChanged += foto to btbId
+                }
             }
         }
 
-        val result = dao.updateBaustellenKnotenMitIds(ids, knotenId)
-        if (ctx != null && result > 0) {
-            affectedBtbs.forEach { (baustelleId, btbId) ->
-                invalidiereFotoAbschlussWennNoetig(ctx, baustelleId, btbId)
-            }
-            runCatching { SofortSync.anstossen(ctx) }
+        val dbResult = if (dbChangedIds.isNotEmpty()) {
+            dao.updateBaustellenKnotenMitIds(dbChangedIds, knotenId)
+        } else {
+            0
         }
-        result
+
+        if (ctx != null) {
+            effectiveChanged
+                .map { (foto, btbId) -> foto.baustelleId to btbId }
+                .distinct()
+                .forEach { (baustelleId, btbId) ->
+                    invalidiereFotoAbschlussWennNoetig(ctx, baustelleId, btbId)
+                }
+
+            if (dbResult > 0 || effectiveChanged.isNotEmpty()) {
+                runCatching { SofortSync.anstossen(ctx) }
+            }
+        }
+
+        (dbChangedIds + effectiveChanged.map { it.first.id }).distinct().size
     }
 
     suspend fun loeschen(entity: FotoEntity): Int = withContext(Dispatchers.IO) {
