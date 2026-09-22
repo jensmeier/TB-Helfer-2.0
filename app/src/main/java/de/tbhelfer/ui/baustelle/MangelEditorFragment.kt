@@ -367,7 +367,10 @@ class MangelEditorFragment : Fragment(R.layout.fragment_mangel_editor) {
                 val fotoKnotenId = selected.id.takeIf { !selected.istHaupt && it > 0L }
 
                 withContext(Dispatchers.IO) {
-                    if (fotoIds.isNotEmpty()) {
+                    val nodeAenderungNoetig = current.fotos.any {
+                        it.foto.baustellenKnotenId != fotoKnotenId
+                    }
+                    if (fotoIds.isNotEmpty() && nodeAenderungNoetig) {
                         ServiceLocator.fotoRepository.updateBaustellenKnotenMitIds(fotoIds, fotoKnotenId)
                     }
                 }
