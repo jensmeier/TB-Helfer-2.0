@@ -26,6 +26,6 @@ TECHNIK:
 - Version 1.3.13 / Build 200063 baut auf den 200062-Fixes für BTB-Schutz, XLSX-Bilderlisten und feste ZIP-Struktur auf
 
 TESTSTATUS:
-- Quellstand umgesetzt und Source-Checks vorgesehen/auszuführen
+- Quellstand umgesetzt; Source-Checks bestanden
 - Android-Build 200063 noch offen
 - Installation und praktischer Pixel/Poco-E2E noch offen
