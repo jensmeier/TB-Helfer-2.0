@@ -212,52 +212,9 @@ abstract class GenerateBtb200043Sources : DefaultTask() {
         }
         patched = patched.replace(effectiveOrtOld, effectiveOrtNew)
 
-        // Android 200047: Beim normalen Oeffnen ist die aktive btbId die Identitaet.
-        // Nicht erneut nur 'heute TAG/NACHT' durchsuchen: das verlor einen Nacht-BTB,
-        // der vor Mitternacht begonnen hat, nach 00:00 aus dem sichtbaren Kontext.
-        val activeLoadOld = """
-            val entry = withContext(Dispatchers.IO) {
-                if (!autoPickSchichtForToday) {
-                    BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, selectedSchichtTyp)
-                } else {
-                    // Heute: beide Schichten prüfen und den zuletzt geänderten Entwurf öffnen
-                    val tag = BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, SchichtTyp.TAG)
-                    val nacht = BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, SchichtTyp.NACHT)
-                    listOfNotNull(tag, nacht).maxByOrNull { it.geaendertAmEpochMs }
-                }
-            }
-""".trim('\n')
-        val activeLoadNew = """
-            val entry = withContext(Dispatchers.IO) {
-                if (autoPickSchichtForToday) {
-                    // Aktiver Pointer -> btbId ist kanonisch, auch ueber 23:59/00:00 hinweg.
-                    BtbActiveContext.laden(requireContext(), ctx.id)?.entry
-                } else {
-                    BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, selectedSchichtTyp)
-                }
-            }
-""".trim('\n')
-        check(patched.contains(activeLoadOld)) {
-            "Android 200047: aktiver-BTB-Ladeanker wurde nicht gefunden."
-        }
-        patched = patched.replace(activeLoadOld, activeLoadNew)
-
-        // Wenn ein aktiver Nacht-BTB nach Mitternacht geladen wird, muss auch das UI-Datum
-        // wieder das Start-/BTB-Datum dieses Datensatzes tragen; sonst koennte der naechste
-        // Autosave denselben btbId-Datensatz faelschlich unter dem Folgetag aufbauen.
-        val activeDateOld = """
-                currentBtbStartEpochMs = entry.erstelltAmEpochMs
-                selectedSchichtTyp = entry.schicht
-""".trim('\n')
-        val activeDateNew = """
-                currentBtbStartEpochMs = entry.erstelltAmEpochMs
-                runCatching { LocalDate.parse(entry.datumIso, isoFmt) }.getOrNull()?.let { selectedDate = it }
-                selectedSchichtTyp = entry.schicht
-""".trim('\n')
-        check(patched.contains(activeDateOld)) {
-            "Android 200047: BTB-Datumsanker wurde nicht gefunden."
-        }
-        patched = patched.replace(activeDateOld, activeDateNew)
+        // Android 200063: Die aktive-btbId-Ladelogik ist jetzt kanonisch in
+        // BautagebuchFragment.kt umgesetzt. Kein Build-time-Patch mehr fuer diesen Pfad,
+        // damit Quellstand und tatsaechlich kompilierter Stand identisch bleiben.
 
         target.writeText(patched)
 
