@@ -30,6 +30,9 @@ PUBLIC_URL = os.getenv("TB_MONITOR_PUBLIC_URL", "").strip().rstrip("/")
 MAX_EVENT_LOG_BYTES = 5 * 1024 * 1024
 _WORKER_STARTED_AT = datetime.now(timezone.utc).isoformat()
 _cached_policy: dict[str, Any] | None = None
+_cached_policy_checked_at = 0.0
+_cached_backup: dict[str, Any] | None = None
+_cached_backup_checked_at = 0.0
 _last_alert_sent: dict[str, datetime] = {}
 
 
@@ -259,8 +262,12 @@ def _check_storage(warning_percent: float) -> dict[str, Any]:
 
 
 def _check_backup(database: dict[str, Any]) -> dict[str, Any]:
+    global _cached_backup, _cached_backup_checked_at
     if database.get("status") == "ERROR":
-        return {"status": "SKIP", "detail": "Datenbank nicht erreichbar"}
+        return _cached_backup or {"status": "SKIP", "detail": "Datenbank nicht erreichbar"}
+    now_mono = time.monotonic()
+    if _cached_backup is not None and now_mono - _cached_backup_checked_at < 30.0:
+        return _cached_backup
     try:
         with connect() as conn, conn.cursor() as cur:
             cur.execute(
@@ -274,19 +281,23 @@ def _check_backup(database: dict[str, Any]) -> dict[str, Any]:
             )
             row = cur.fetchone()
         if not row:
-            return {"status": "OK", "detail": "Noch kein automatischer Backup-Job protokolliert"}
-        item = dict(row)
-        status = str(item.get("status") or "")
-        return {
-            "status": "ERROR" if status == "FAILED" else "OK",
-            "job_type": item.get("job_type"),
-            "job_status": status,
-            "updated_at": item.get("updated_at"),
-            "error_type": item.get("last_error") if status == "FAILED" else None,
-            "detail": "Letzter Backup-Job fehlgeschlagen" if status == "FAILED" else "Backup-Jobs unauffällig",
-        }
+            result = {"status": "OK", "detail": "Noch kein automatischer Backup-Job protokolliert"}
+        else:
+            item = dict(row)
+            status = str(item.get("status") or "")
+            result = {
+                "status": "ERROR" if status == "FAILED" else "OK",
+                "job_type": item.get("job_type"),
+                "job_status": status,
+                "updated_at": item.get("updated_at"),
+                "error_type": item.get("last_error") if status == "FAILED" else None,
+                "detail": "Letzter Backup-Job fehlgeschlagen" if status == "FAILED" else "Backup-Jobs unauffällig",
+            }
+        _cached_backup = result
+        _cached_backup_checked_at = now_mono
+        return result
     except Exception as exc:
-        return {
+        return _cached_backup or {
             "status": "UNKNOWN",
             "error_type": type(exc).__name__,
             "detail": _safe_message(exc),
@@ -367,11 +378,15 @@ def _transition_code(name: str, current: dict[str, Any]) -> tuple[str, str, str]
 
 
 def _refresh_policy(database: dict[str, Any]) -> dict[str, Any] | None:
-    global _cached_policy
+    global _cached_policy, _cached_policy_checked_at
     if database.get("status") == "ERROR":
+        return _cached_policy
+    now_mono = time.monotonic()
+    if _cached_policy is not None and now_mono - _cached_policy_checked_at < 60.0:
         return _cached_policy
     try:
         _cached_policy = load_automation_policy()
+        _cached_policy_checked_at = now_mono
     except Exception:
         pass
     return _cached_policy
