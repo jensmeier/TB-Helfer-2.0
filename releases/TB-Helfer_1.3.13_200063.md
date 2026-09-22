@@ -13,6 +13,7 @@ BEHOBEN:
 - Navigation aus dem BTB-Verlauf lädt die übergebene stabile btbId deterministisch statt nur indirekt über Datum/Schicht
 - Nach Rückkehr aus PDF/Foto/Mangel/Sync wird der kanonische aktive BTB bei geändertem Stand neu geladen, ohne ungespeicherte Eingaben zu überschreiben
 - NACHBEARBEITUNG und ENTWURF bleiben aktiv; nur ein wirklich gültiger Abschluss wird automatisch aus dem aktiven Kontext gelöst
+- Ein echter `BTB Abschluss` löst den aktiven Pointer jetzt sofort und räumt Reaktivierungsmarker auf; dadurch kann ein zuvor bewusst geöffneter BTB nach dem Abschluss nicht versehentlich aktiv bleiben
 
 SYNC:
 - Der Android-Sync entscheidet FERTIG/ENTWURF jetzt nach dem tatsächlichen BTB-Dokumentstatus statt nach Legacy-Feldern wie dokumentVersion
