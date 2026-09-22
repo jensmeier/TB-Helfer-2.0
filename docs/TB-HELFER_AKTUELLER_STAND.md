@@ -1225,3 +1225,20 @@ Regressionstest:
 - Source-Checks bestanden: Gesamt-XLSX, Schicht-XLSX im Einzel- und Zeitraumexport, `dd.MM.yy_Bilderliste.xlsx`, relative Links, Filter/Fixierung, CSV-Erhalt und Unit-Test für den `../../Bilder`-Pfad.
 - **Build 200062 bleibt offen**, da diese XLSX-Ergänzung nach dem letzten Build hinzugekommen ist.
 
+### Feste Windows-Zielstruktur beim ZIP-Entpacken
+
+- Benutzerwunsch bestätigt: Unter Windows soll bei jedem Export immer derselbe vorhandene Zielordner `TB-Helfer` gewählt werden können.
+- ZIP-Inhalt beginnt deshalb ab 200062 fest mit:
+  - `Baustelle/<Baustellenname>/Bilderliste_gesamt.xlsx`
+  - `Baustelle/<Baustellenname>/Bilder/<Datum>/...`
+  - `Baustelle/<Baustellenname>/BTB/<Datum>/...`
+  - `Baustelle/<Baustellenname>/Maengelliste/...`
+  - weitere vorhandene Unterordner bleiben unter derselben Baustelle.
+- Beim Windows-Befehl `Alle extrahieren` wird als Ziel nur der vorhandene Ordner `TB-Helfer` gewählt. Ergebnis: `TB-Helfer/Baustelle/<Baustellenname>/...`.
+- Sowohl Einzel-BTB-/Schichtexport als auch Gesamt-/Zeitraumexport nutzen dieselbe feste Wurzel.
+- Die relativen XLSX-Fotolinks bleiben korrekt:
+  - Gesamt-XLSX: `Bilder/<Datum>/<Datei>`
+  - Schicht-XLSX in `BTB/<Datum>/`: `../../Bilder/<Datum>/<Datei>`
+- Source-Checks: beide ZIP-Root-Zuweisungen auf `Baustelle/$safeBaustelle`, keine alte Root-Zuweisung mehr, XLSX-Pfade unverändert gültig.
+- **Build 200062 bleibt offen**, weil diese ZIP-Struktur nach dem letzten erfolgreichen 200061-Build hinzugekommen ist.
+
