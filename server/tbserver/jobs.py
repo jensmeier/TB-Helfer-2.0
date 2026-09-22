@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import threading
 import time
 from typing import Any
 from uuid import UUID
@@ -13,6 +14,7 @@ from .backup import run_backup, run_retention
 from .database import transaction
 from .notifications import NotificationError, run_system_email_report
 from .restore import RestoreTestError, run_restore_test
+from .monitor import write_worker_heartbeat
 
 
 MAX_JOB_ATTEMPTS = 5
@@ -223,7 +225,18 @@ def run_one() -> bool:
     return True
 
 
+def _worker_heartbeat_loop() -> None:
+    while True:
+        write_worker_heartbeat()
+        time.sleep(10.0)
+
+
 def worker_loop(*, once: bool = False, idle_seconds: float = 2.0) -> None:
+    threading.Thread(
+        target=_worker_heartbeat_loop,
+        name="tb-worker-heartbeat",
+        daemon=True,
+    ).start()
     recover_stale_jobs()
     next_schedule_check = 0.0
     while True:
