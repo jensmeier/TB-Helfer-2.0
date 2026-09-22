@@ -323,6 +323,9 @@ private var lastKnownRevisionCount: Int? = null
 private var topFieldsCollapsed: Boolean = true
 private var widgetSectionRequest: Int? = null
 private var widgetOpenEditorRequest: Boolean = false
+private var requestedBtbId: String? = null
+private var loadedBtbId: String? = null
+private var loadedBtbChangedEpochMs: Long = Long.MIN_VALUE
 
 // Für Wechsel-Dialog: wenn der Nutzer gerade noch tippt, kurz nachfragen
 private var lastUserEditAtMs: Long = 0L
@@ -342,6 +345,7 @@ private var pmDirtySinceMs: Long? = null
         arguments?.getString("schichtTyp")?.takeIf { it.isNotBlank() }?.let { raw ->
             runCatching { selectedSchichtTyp = SchichtTyp.valueOf(raw) }
         }
+        requestedBtbId = arguments?.getString("btbId")?.trim()?.takeIf { it.isNotBlank() && !it.startsWith("legacy:") }
         widgetSectionRequest = arguments?.getInt("widgetSection", -1)?.takeIf { it in 4..8 }
         widgetOpenEditorRequest = arguments?.getBoolean("widgetOpenEditor", false) == true
 
@@ -2459,17 +2463,53 @@ cardCurrentReport.setOnClickListener {
             // Autocomplete Optionen aus Historie laden
             loadHistoryOptions(ctx.name)
 
+            val explicitBtbId = requestedBtbId
             val entry = withContext(Dispatchers.IO) {
-                if (!autoPickSchichtForToday) {
-                    BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, selectedSchichtTyp)
-                } else {
-                    // Heute: beide Schichten prüfen und den zuletzt geänderten Entwurf öffnen
-                    val tag = BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, SchichtTyp.TAG)
-                    val nacht = BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, SchichtTyp.NACHT)
-                    listOfNotNull(tag, nacht).maxByOrNull { it.geaendertAmEpochMs }
+                when {
+                    explicitBtbId != null -> {
+                        // Verlauf/Schnellwechsel: exakt dieselbe stabile btbId laden.
+                        BautagebuchSpeicher.ladenById(requireContext(), ctx.id, ctx.name, explicitBtbId)
+                    }
+                    autoPickSchichtForToday -> {
+                        // Normaler Einstieg: ausschliesslich der aktive Pointer entscheidet.
+                        // Datum/Schicht-Historienabfragen duerfen diesen Pointer nicht veraendern.
+                        BtbActiveContext.laden(requireContext(), ctx.id)?.entry
+                    }
+                    else -> {
+                        // Bewusster Datum-/Schichtwechsel im Editor. Der Leseweg selbst bleibt
+                        // side-effect-frei; erfolgreiche Auswahl wird unten explizit aktiviert.
+                        BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, selectedSchichtTyp)
+                    }
                 }
             }
+            requestedBtbId = null
+
+            if (entry != null && (explicitBtbId != null || !autoPickSchichtForToday)) {
+                val id = entry.btbId?.trim()?.takeIf { it.isNotBlank() && !it.startsWith("legacy:") }
+                val entryDate = runCatching { LocalDate.parse(entry.datumIso, isoFmt) }.getOrNull()
+                if (id != null && entryDate != null) {
+                    withContext(Dispatchers.IO) {
+                        BautagebuchSpeicher.aktivierenBtb(
+                            requireContext(),
+                            ctx.id,
+                            ctx.name,
+                            id,
+                            entryDate,
+                            entry.schicht
+                        )
+                        BtbActivePointerControl.bewusstReaktivieren(
+                            requireContext(),
+                            ctx.id,
+                            ctx.name,
+                            id
+                        )
+                    }
+                }
+            }
+
             if (entry == null) {
+                loadedBtbId = null
+                loadedBtbChangedEpochMs = Long.MIN_VALUE
                 currentBtbStartEpochMs = System.currentTimeMillis()
                 // Felder leeren
                 shiftStart = null
@@ -2503,7 +2543,10 @@ cardCurrentReport.setOnClickListener {
                 lastSavedEpochMs = null
             } else {
                 currentBtbStartEpochMs = entry.erstelltAmEpochMs
+                runCatching { LocalDate.parse(entry.datumIso, isoFmt) }.getOrNull()?.let { selectedDate = it }
                 selectedSchichtTyp = entry.schicht
+                loadedBtbId = entry.btbId
+                loadedBtbChangedEpochMs = entry.geaendertAmEpochMs
                 shiftStart = entry.startUhrzeit
                 shiftEnd = entry.endeUhrzeit
                 etStart.setText(entry.startUhrzeit.orEmpty())
