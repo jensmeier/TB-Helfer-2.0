@@ -17,17 +17,22 @@
   <h2>Baustelle anlegen</h2>
   <form id="createWorksite">
     <div class="grid">
-      {% if user.company_role == 'ADMIN' %}
-      <div>
-        <label for="companyId">Firma</label>
-        <select id="companyId" required><option value="">wird geladen …</option></select>
-      </div>
-      {% endif %}
       <div><label for="name">Name</label><input id="name" required maxlength="240"></div>
       <div><label for="designation">Bezeichnung</label><input id="designation" maxlength="300"></div>
       <div><label for="route">Strecke</label><input id="route" maxlength="40"></div>
       <div><label for="stationCode">Bahnhofscode</label><input id="stationCode" maxlength="40"></div>
       <div><label for="stationName">Bahnhof</label><input id="stationName" maxlength="240"></div>
+      {% if user.company_role == 'CHEF' %}
+      <div>
+        <label for="responsibleTb">Erster verantwortlicher TB</label>
+        <select id="responsibleTb" required><option value="">wird geladen …</option></select>
+      </div>
+      {% else %}
+      <div>
+        <label>Erster verantwortlicher TB</label>
+        <div class="muted" style="padding-top:10px">Du wirst beim Anlegen automatisch als erster verantwortlicher TB eingetragen.</div>
+      </div>
+      {% endif %}
     </div>
     <div class="actions" style="margin-top:14px"><button type="submit">Baustelle anlegen</button></div>
   </form>
@@ -48,20 +53,29 @@
 {% block scripts %}
 <script>
 const userRole={{ user.company_role|tojson }};
+const currentUserId={{ user.user_id|tojson }};
 const rows=document.getElementById('rows'), msg=document.getElementById('msg');
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function fmtDate(value){if(!value)return '—';try{return new Date(value).toLocaleString('de-DE');}catch(_){return value;}}
-async function loadCompanies(){
-  if(userRole!=='ADMIN') return;
-  const select=document.getElementById('companyId');
+async function loadResponsibleTbCandidates(){
+  if(userRole!=='CHEF') return;
+  const select=document.getElementById('responsibleTb');
   if(!select) return;
   try{
-    const result=await tbApi('/api/v1/admin/companies');
-    select.innerHTML='<option value="">Firma wählen</option>'+result.data.companies.map(function(c){
-      return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';
-    }).join('');
-  }catch(error){select.innerHTML='<option value="">Fehler beim Laden</option>';show('err',error.message||String(error));}
+    const result=await tbApi('/api/v1/user/directory');
+    const users=(result.data&&result.data.users)||[];
+    select.innerHTML=users.length?users.map(function(u){
+      const role=u.company_role==='CHEF'?'Chef':'Nutzer';
+      return '<option value="'+esc(u.id)+'">'+esc(u.display_name||u.full_name||u.id)+' · '+role+'</option>';
+    }).join(''):'<option value="">Keine aktiven Nutzer gefunden</option>';
+    if(users.some(function(u){return String(u.id)===String(currentUserId);})){
+      select.value=String(currentUserId);
+    }
+  }catch(error){
+    select.innerHTML='<option value="">Fehler beim Laden</option>';
+    show('err',error.message||String(error));
+  }
 }
 async function loadWorksites(){
   try{
@@ -111,12 +125,15 @@ if(createForm){
       station_code:document.getElementById('stationCode').value.trim()||null,
       station_name:document.getElementById('stationName').value.trim()||null
     };
+    if(userRole==='CHEF'){
+      payload.responsible_tb_user_id=document.getElementById('responsibleTb').value||null;
+    }
     try{
       await tbApi('/api/v1/worksites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       show('ok','Baustelle angelegt.');ev.target.reset();await loadWorksites();
     }catch(error){show('err',error.message||String(error));}
   });
 }
-loadCompanies();loadWorksites();
+loadResponsibleTbCandidates();loadWorksites();
 </script>
 {% endblock %}
