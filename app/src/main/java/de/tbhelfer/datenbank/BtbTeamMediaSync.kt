@@ -214,6 +214,12 @@ class BtbTeamMediaSync(context: Context) {
                     val localBtb = verlaufByBtbId[parentKey] ?: continue
                     val payload = runCatching { JSONObject(parent.payloadJson) }.getOrNull() ?: continue
                     val serverStatus = payload.optString(Server1BtbApi.SERVER_STATUS_KEY).uppercase()
+                    // parent.status ist bereits der kanonische Lifecycle-Status aus
+                    // Server1BtbApi: FERTIG nur wenn FINALIZED UND nicht mehr active_btb_id.
+                    // Ein serverseitig noch als FINALIZED markierter, aber wieder aktiver BTB
+                    // ist fuer Android ein ENTWURF/Nachbearbeitungs-BTB und darf nicht erneut
+                    // durch das alte Abschluss-PDF "geschlossen" werden.
+                    val snapshotFinished = parent.status.equals("FERTIG", ignoreCase = true)
                     val pdfAvailable = payload.optBoolean(
                         Server1BtbApi.SERVER_FINAL_PDF_AVAILABLE_KEY,
                         false
@@ -222,7 +228,7 @@ class BtbTeamMediaSync(context: Context) {
                         Server1BtbApi.SERVER_FINAL_PDF_SHA256_KEY
                     ).trim()
 
-                    if (serverStatus == "FINALIZED" && pdfAvailable) {
+                    if (snapshotFinished && serverStatus == "FINALIZED" && pdfAvailable) {
                         val marker = pdfImportMarker(parent.serverId, parent.entityVersion, expectedSha)
                         val existing = BtbAbschlussPdfFinder.neueste(appContext, localBtb.entry)
                         if (wasImported(marker) && existing?.isFile == true) continue
@@ -280,7 +286,7 @@ class BtbTeamMediaSync(context: Context) {
                             }
                         }
                     } else if (
-                        serverStatus in setOf("ACTIVE", "REWORK") &&
+                        !snapshotFinished &&
                         BtbDokumentVersionierung.hatServerAbschlussMarker(appContext, localBtb.entry)
                     ) {
                         BtbDokumentVersionierung.serverAbschlussInvalidieren(
