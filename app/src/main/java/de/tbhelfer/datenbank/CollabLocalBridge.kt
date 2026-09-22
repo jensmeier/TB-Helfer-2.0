@@ -9,6 +9,8 @@ import de.tbhelfer.ui.baustelle.MaengellisteExport
 import de.tbhelfer.ui.baustelle.MangelStatusSpeicher
 import de.tbhelfer.ui.baustelle.SyncMangelSpeicher
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
+import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
+import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.SchichtTyp
 import org.json.JSONArray
 import org.json.JSONObject
@@ -85,12 +87,20 @@ class CollabLocalBridge(
                 val payloadObject = runCatching { JSONObject(source.readText(Charsets.UTF_8)) }.getOrElse { JSONObject() }
                 if (payloadObject.optString("btbId").isBlank()) payloadObject.put("btbId", clientKey)
                 val payload = sanitizeBtbPayload(payloadObject.toString(), localBaustelleId, localName)
+                val lifecycleStatus = BtbDokumentVersionierung.status(appContext, verlauf.entry)
+                val syncStatus = if (lifecycleStatus == BtbAbschlussStatus.ABGESCHLOSSEN) {
+                    "FERTIG"
+                } else {
+                    // ENTWURF und NACHBEARBEITUNG sind beide aktiv/bearbeitbar.
+                    // Legacy-Felder duerfen einen nachbearbeiteten BTB nicht erneut finalisieren.
+                    "ENTWURF"
+                }
                 if (queueIfChanged(
                         worksiteServerId = server.worksiteServerId,
                         entityType = SyncCollabPendingChangeEntity.TYPE_BTB,
                         clientKey = clientKey,
                         groupId = server.groupId,
-                        status = if (verlauf.entry.istFertig || verlauf.entry.dokumentVersion > 0) "FERTIG" else "ENTWURF",
+                        status = syncStatus,
                         areaScopeJson = server.areaScopeJson,
                         payloadJson = payload
                     )
