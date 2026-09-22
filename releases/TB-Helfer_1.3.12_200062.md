@@ -26,3 +26,10 @@ NEU:
 
 HINWEIS:
 - Die Bildlinks sind bewusst relativ. ZIP vollständig entpacken und die Ordnerstruktur beibehalten; dann kann Windows/Excel aus der XLSX direkt zum Foto springen.
+
+
+VERBESSERT:
+- ZIP-Inhalt beginnt jetzt fest mit `Baustelle/<Baustellenname>/...`
+- Dadurch kann unter Windows bei „Alle extrahieren“ immer derselbe vorhandene Ordner `TB-Helfer` als Ziel gewählt werden
+- Ergebnis ist dauerhaft `TB-Helfer/Baustelle/<Baustellenname>/...`; keine wechselnden zusätzlichen Export-Unterordner im Ziel
+- Relative XLSX-Bildlinks bleiben innerhalb des Baustellenordners gültig
