@@ -1201,7 +1201,7 @@ cardCurrentReport.setOnClickListener {
                     selectedDate = picked
                     selectedSchichtTyp = st
                     updateDateTimeButton()
-                    ladeEintragFallsVorhanden()
+                    ladeEintragFallsVorhanden(activateSelection = true)
                     endContextSwitch()
                     onPicked?.invoke()
                 }
@@ -1335,7 +1335,7 @@ cardCurrentReport.setOnClickListener {
                     selectedDate = date
                     selectedSchichtTyp = st
                     updateDateTimeButton()
-                    ladeEintragFallsVorhanden()
+                    ladeEintragFallsVorhanden(activateSelection = true)
                     endContextSwitch()
                 }
             }
@@ -2338,7 +2338,7 @@ cardCurrentReport.setOnClickListener {
 
                             // Ziel-Schicht laden/leer starten
                             setStatus("Lade ${if (newType == SchichtTyp.TAG) getString(R.string.btb_shift_tag) else getString(R.string.btb_shift_nacht)}…")
-                            ladeEintragFallsVorhanden()
+                            ladeEintragFallsVorhanden(activateSelection = true)
 
                             // gewählte Zeiten im Ziel-BTB beibehalten
                             shiftStart = newStart
@@ -2480,7 +2480,10 @@ cardCurrentReport.setOnClickListener {
             return fotos
         }
 
-        private suspend fun ladeEintragFallsVorhanden(autoPickSchichtForToday: Boolean = false) {
+        private suspend fun ladeEintragFallsVorhanden(
+            autoPickSchichtForToday: Boolean = false,
+            activateSelection: Boolean = false
+        ) {
             val ctx = resolveAktuelleBaustelle()
             if (ctx == null) {
                 currentBtbStartEpochMs = null
@@ -2520,7 +2523,7 @@ cardCurrentReport.setOnClickListener {
             }
             requestedBtbId = null
 
-            if (entry != null && (explicitBtbId != null || !autoPickSchichtForToday)) {
+            if (entry != null && (explicitBtbId != null || activateSelection)) {
                 val id = entry.btbId?.trim()?.takeIf { it.isNotBlank() && !it.startsWith("legacy:") }
                 val entryDate = runCatching { LocalDate.parse(entry.datumIso, isoFmt) }.getOrNull()
                 if (id != null && entryDate != null) {
