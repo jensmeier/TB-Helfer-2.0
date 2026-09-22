@@ -1241,4 +1241,5 @@ Regressionstest:
   - Schicht-XLSX in `BTB/<Datum>/`: `../../Bilder/<Datum>/<Datei>`
 - Source-Checks: beide ZIP-Root-Zuweisungen auf `Baustelle/$safeBaustelle`, keine alte Root-Zuweisung mehr, XLSX-Pfade unverändert gültig.
 - **Build 200062 bleibt offen**, weil diese ZIP-Struktur nach dem letzten erfolgreichen 200061-Build hinzugekommen ist.
+- GitHub Actions Lauf **#1298** zum aktuellen PR-Stand endete als `failure`, aber der Job enthält **keine ausgeführten Steps** und es stehen keine Job-Logs zur Verfügung. Nach Projektregel ist das **kein Build-/Testnachweis** und auch kein belegter Android-Quellfehler; der lokale Android-Studio-Build 200062 bleibt erforderlich.
 
