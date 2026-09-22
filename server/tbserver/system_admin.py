@@ -19,6 +19,7 @@ from .events import audit
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
 from .jobs import JobError, enqueue_in_tx
 from .migrations import status as migration_status
+from .monitor import read_monitor_snapshot
 from .system_settings import load_automation_policy, save_automation_policy, smtp_status
 
 
@@ -188,6 +189,7 @@ def admin_system_status(
     backup_storage = backup_storage_snapshot()
     automation = load_automation_policy()
     smtp = smtp_status()
+    monitor = read_monitor_snapshot()
     status_now = datetime.now(timezone.utc)
     warning_until = status_now + timedelta(days=int(automation["user_expiry_warning_days"]))
 
@@ -516,6 +518,7 @@ def admin_system_status(
         },
         "automation": automation,
         "smtp": smtp,
+        "monitor": monitor,
         "counts": counts,
         "traffic_24h": traffic_24h,
         "traffic_series": traffic_series,
