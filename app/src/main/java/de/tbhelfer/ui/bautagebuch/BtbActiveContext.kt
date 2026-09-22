@@ -47,7 +47,12 @@ object BtbActiveContext {
         if (inactiveId == btbId) return null
 
         val entry = BautagebuchSpeicher.ladenById(appContext, baustelleId, name, btbId) ?: return null
-        val abgeschlossen = entry.istFertig || entry.dokumentVersion > 0
+
+        // Nicht die Legacy-/Transportfelder entscheiden ueber "geschlossen", sondern der
+        // tatsaechliche Dokumentstatus. NACHBEARBEITUNG und ENTWURF muessen aktiv bleiben;
+        // sonst verschwindet ein bewusst geoeffneter BTB waehrend Autosave/Sync wieder.
+        val abgeschlossen =
+            BtbDokumentVersionierung.status(appContext, entry) == BtbAbschlussStatus.ABGESCHLOSSEN
         if (abgeschlossen && !BtbActivePointerControl.istBewusstReaktiviert(
                 appContext,
                 baustelleId,
