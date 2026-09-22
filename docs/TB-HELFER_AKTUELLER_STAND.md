@@ -1201,7 +1201,7 @@ Stand **22.09.2026**:
 - Source-Checks für No-op-Guard, effektiven Knotenvergleich, selektives DB-Update, selektive BTB-Invalidierung, Version/Workflow/Release bestanden.
 - `STATUS.xlsx` ist auf dem Server-Branch neuer und wird vom Android-Projekt nicht überschrieben.
 
-Teststatus: **URSACHE REPRODUZIERT / QUELLSTAND 200062 FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200062 OFFEN / INSTALLATION OFFEN / REGRESSION-E2E OFFEN**.
+Teststatus: **URSACHE BTB-FALSCHINVALIDIERUNG + FEHLENDE XLSX REPRODUZIERT / QUELLSTAND 200062 FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200062 OFFEN / INSTALLATION OFFEN / REGRESSION-/XLSX-E2E OFFEN**.
 
 Regressionstest:
 1. abgeschlossenen Test-BTB mit einem Mangel-Foto erzeugen;
@@ -1209,4 +1209,19 @@ Regressionstest:
 3. BTB muss grün bleiben und PDF weiter öffnen;
 4. danach Unterbaustelle des Mangel-Fotos wirklich ändern;
 5. erst dann darf der betroffene BTB als Nachbearbeitung markiert werden.
+
+### Klickbare XLSX-Bilderlisten im ZIP
+
+- Die vom Benutzer am **22.09.2026** hochgeladene Zeitraum-ZIP wurde direkt geprüft: **38 ZIP-Einträge**, darunter `Bilderliste_gesamt.csv`, aber **keine einzige .xlsx-Datei**. Der Fehler ist damit reproduziert.
+- Der XLSX-Generator `GesamtBilderlisteXlsx.kt` war bereits vorhanden und besitzt Filter, eingefrorene Kopfzeile sowie relative Hyperlinks in der Spalte `Bilddatei`; er war im aktuellen Exportpfad jedoch nicht eingebunden.
+- 200062 bindet den vorhandenen Generator jetzt ein:
+  - Gesamt-/Zeitraum-Export: `Bilderliste_gesamt.xlsx` direkt im Baustellenordner.
+  - Je enthaltenem BTB/Schicht: Datei nach dem Muster `21.09.26_Bilderliste.xlsx` im jeweiligen `BTB/<Datum>/`-Ordner.
+  - Einzelner Schicht-/BTB-Export: ebenfalls datumsbezogene XLSX im BTB-Datumsordner.
+  - Die bestehenden CSV-Listen bleiben parallel erhalten.
+- Die Links sind absichtlich **relativ zur entpackten ZIP-Struktur**. Gesamt-XLSX verweist auf `Bilder/<Datum>/<Datei>`; Schicht-XLSX aus `BTB/<Datum>/` verweist über `../../Bilder/<Datum>/<Datei>`.
+- Dadurch kann Excel/Windows nach vollständigem Entpacken des ZIPs mit einem Klick in der Spalte `Bilddatei` das zugehörige JPG öffnen.
+- Bestehende kurze Windows-taugliche Exportdateinamen und JPEG-Suchmetadaten bleiben unverändert.
+- Source-Checks bestanden: Gesamt-XLSX, Schicht-XLSX im Einzel- und Zeitraumexport, `dd.MM.yy_Bilderliste.xlsx`, relative Links, Filter/Fixierung, CSV-Erhalt und Unit-Test für den `../../Bilder`-Pfad.
+- **Build 200062 bleibt offen**, da diese XLSX-Ergänzung nach dem letzten Build hinzugekommen ist.
 
