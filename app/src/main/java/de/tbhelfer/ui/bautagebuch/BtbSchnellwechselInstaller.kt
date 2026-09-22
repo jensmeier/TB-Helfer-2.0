@@ -162,11 +162,14 @@ object BtbSchnellwechselInstaller {
                             item.datum,
                             item.schicht
                         )
-                        // Bewusstes Oeffnen muss den Abschluss-Inaktivmarker sofort aufheben.
-                        BtbActivePointerControl.inaktivMarkerLoeschen(
+                        // Bewusstes Oeffnen eines vorhandenen/abgeschlossenen BTB muss
+                        // nicht nur den Inaktivmarker loeschen, sondern die Reaktivierung explizit
+                        // markieren. Sonst kann der Lifecycle-Watcher den BTB direkt wieder loesen.
+                        BtbActivePointerControl.bewusstReaktivieren(
                             appContext,
                             altBaustelleId,
-                            baustelleName
+                            baustelleName,
+                            id
                         )
                     }
             }
