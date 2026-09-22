@@ -1277,7 +1277,9 @@ object BtbExportPaket {
         exportRoot.mkdirs()
         val zipFile = File(exportRoot, "TB-Helfer_${safeBaustelle}_${datum}_${System.currentTimeMillis()}.zip")
 
-        val root = safeBaustelle
+        // Fester Windows-Zielpfad: ZIP in den bestehenden Ordner "TB-Helfer"
+        // entpacken -> TB-Helfer/Baustelle/<Baustellenname>/...
+        val root = "Baustelle/$safeBaustelle"
         val btbFolder = "$root/BTB/$datum"
         val bilderFolder = "$root/Bilder/$datum"
         val maengellisteFolder = "$root/Maengelliste"
@@ -1473,7 +1475,9 @@ object BtbExportPaket {
         val exportRoot = File(exportBase, "TB-Helfer-Export")
         exportRoot.mkdirs()
         val zipFile = File(exportRoot, "TB-Helfer_${safeBaustelle}_${rangeName}_${System.currentTimeMillis()}.zip")
-        val root = safeBaustelle
+        // Fester Windows-Zielpfad: ZIP in den bestehenden Ordner "TB-Helfer"
+        // entpacken -> TB-Helfer/Baustelle/<Baustellenname>/...
+        val root = "Baustelle/$safeBaustelle"
         val used = linkedSetOf<String>()
         var fotosOk = 0
         var fotosFehlen = 0
