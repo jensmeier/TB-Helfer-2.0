@@ -1182,74 +1182,48 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
 
-## Android 1.3.12 / 200062 – BTB-Falschinvalidierung durch Mangel-Editor
+## Android 1.3.13 / 200063 – BTB-Aktivzustand / Lade- und Sync-Schleife
 
-Stand **22.09.2026**:
+Stand **22.09.2026 14:18+**:
 - Android-Arbeitsbranch: `feature/tb-android-2.0`; Draft-PR **#7**.
-- Benutzer meldet: BTB vom **20.09.2026** erscheint im Verlauf plötzlich orange als `Nachbearbeitung · Abschluss-PDF ungültig`, obwohl der BTB selbst nicht erneut bearbeitet wurde; `PDF öffnen` findet kein gültiges Abschluss-PDF.
-- Reproduktion im aktuellen 200061-Quellstand: Der Vollbild-Mangeleditor ruft beim Speichern für alle zugeordneten Mangel-Fotos `updateBaustellenKnotenMitIds(...)` auf, auch wenn die ausgewählte Unterbaustelle unverändert ist.
-- `FotoRepository.updateBaustellenKnotenMitIds` führte anschließend bei jedem erfolgreichen SQL-UPDATE für alle betroffenen BTBs `invalidiereFotoAbschlussWennNoetig(...)` aus. Diese Funktion löscht das aktuelle Abschluss-PDF eines BTB mit Foto-Originalstand. Damit konnte bereits ein **No-op-Speichern** eines Mangels mit Fotos aus einem älteren abgeschlossenen BTB dessen PDF löschen.
-- Das erklärt die Beobachtung fachlich: die Mangel-Fotos vom 20.09. waren dem damaligen BTB zugeordnet; der BTB-Text musste dafür nicht bearbeitet werden. Im Verlauf wird der BTB danach als Nachbearbeitung angezeigt, und `PDF öffnen` scheitert, weil das Abschluss-PDF tatsächlich nicht mehr vorhanden ist.
-- Die vom Benutzer bereitgestellte Baustellen-ZIP wurde geprüft: sie enthält nur den BTB vom **21.09.2026** und keine Abschluss-PDF des 20.09.; daraus kann der gelöschte 20.09-Abschluss daher nicht wiederhergestellt werden.
-- Fix **1.3.12 / versionCode 200062**:
-  - Mangel-Editor überspringt den Foto-Knoten-Updatepfad, wenn kein Foto tatsächlich auf einen anderen Knoten wechseln muss.
-  - Repository schützt zusätzlich selbst: DB-Update nur für wirklich abweichende Foto-Knoten; BTB-Invalidierung nur bei fachlich geänderter **wirksamer** Knoten-Zuordnung.
-  - Reines Speichern mit unveränderter Unterbaustelle ist jetzt ein No-op und darf kein Abschluss-PDF löschen.
-  - Eine echte Unterbaustellenänderung bleibt weiterhin eine relevante Änderung und invalidiert den betroffenen BTB wie vorgesehen.
-- Bestehender ungültiger BTB 20.09 wird nicht automatisch als gültig erklärt. Sein bereits gelöschtes PDF muss über `BTB bearbeiten` → Daten prüfen → erneuten `BTB Abschluss` neu erzeugt werden. Das unveränderliche Original-/BTB-Datenmodell wird dabei nicht umgangen.
-- Server-Vertrag geprüft gegen `ea23de17704e071084e1385566fd9a4cb5d9c6e1`: keine Serveränderung erforderlich.
-- Source-Checks für No-op-Guard, effektiven Knotenvergleich, selektives DB-Update, selektive BTB-Invalidierung, Version/Workflow/Release bestanden.
+- Benutzerbeobachtung auf dem Testgerät: aktueller BTB 22.09.2026 erscheint zeitweise als `Nachbearbeitung · Abschluss-PDF ungültig`, lässt sich nicht zuverlässig laden und wird teilweise erst nach Verlassen des Bautagebuchs und erneutem Öffnen wieder sichtbar. Gleichzeitig kann der Entwurfs-PDF-Viewer denselben 22.09-BTB als `ENTWURF (ohne Tagesabschluss)` darstellen.
+- Die Untersuchung ergab **drei zusammenwirkende Android-Ursachen**:
+  1. `BautagebuchSpeicher.laden(...)` und `ladenById(...)` waren keine reinen Lesewege. Historische Abfragen (7-Tage-Dialog, Vortag-Übernahme, Vorschlag für neuen BTB usw.) konnten nebenbei `.active_btb.json` auf einen anderen BTB umstellen. Danach passte der aktive Pointer nicht mehr zu Datum/Schicht des sichtbaren BTB; Autosaves konnten dadurch aussetzen und Lifecycle-Watcher sahen zeitweise einen anderen bzw. keinen aktiven BTB.
+  2. Der blaue Schnellwechsel aktivierte die btbId, löschte aber nur den Inaktivmarker. Für einen zuvor abgeschlossenen BTB fehlte der Marker `bewusstReaktivieren`; der Lifecycle-Watcher konnte ihn deshalb unmittelbar wieder aus dem aktiven Kontext lösen.
+  3. Beim Server-PDF-Import wurde der rohe Serverstatus `FINALIZED` verwendet. Der Serververtrag liefert jedoch zusätzlich `active_btb_id`; `Server1BtbApi` bildet einen FINALIZED-BTB, der wieder `active_btb_id` ist, bewusst als Android-`ENTWURF` ab. `BtbTeamMediaSync` ignorierte diese kanonische Snapshot-Einstufung und konnte das vorhandene Server-Abschluss-PDF erneut importieren und den **aktuellen aktiven BTB lokal wieder schließen**.
+- Fix **1.3.13 / versionCode 200063**:
+  - `BautagebuchSpeicher.laden` und `ladenById` verändern den aktiven Pointer nicht mehr.
+  - Aktivierung erfolgt nur noch explizit über `aktivierenBtb` / `neueBtbIdVorbereiten` nach einer tatsächlichen Benutzeraktion.
+  - Verlauf/Schnellwechsel laden exakt die stabile `btbId`; Schnellwechsel setzt jetzt `bewusstReaktivieren`.
+  - `BautagebuchFragment` wertet das übergebene `btbId`-Argument aus und lädt beim ersten Öffnen genau diesen Datensatz.
+  - Normaler Einstieg nutzt ausschließlich `BtbActiveContext`; die aktive btbId bleibt damit auch über Mitternacht kanonisch.
+  - `BtbActiveContext` beurteilt `geschlossen` nach `BtbDokumentVersionierung.status == ABGESCHLOSSEN`. `ENTWURF` und `NACHBEARBEITUNG` bleiben aktiv; Legacy-/Transportfelder dürfen den BTB nicht mehr aus dem aktiven Kontext werfen.
+  - Nach Rückkehr aus PDF/Foto/Mangel/Sync lädt der Fragment-View den kanonischen aktiven BTB neu, wenn btbId oder Änderungsstand gewechselt haben. Offene Dirty-Eingaben werden dabei ausdrücklich nicht überschrieben.
+  - `CollabLocalBridge` sendet `FERTIG` nur noch für tatsächlich `ABGESCHLOSSEN`; `ENTWURF` und `NACHBEARBEITUNG` werden als `ENTWURF` synchronisiert.
+  - `BtbTeamMediaSync` importiert ein Abschluss-PDF nur, wenn der **kanonische Snapshotstatus** `FERTIG` ist. Ist ein serverseitig noch FINALIZED markierter BTB über `active_btb_id` wieder aktiv, wird ein alter Server-Abschlussmarker invalidiert statt den BTB erneut zu schließen.
+  - Der alte Gradle-Build-time-Patch für die aktive BTB-Ladelogik wurde entfernt; diese Logik liegt nun direkt im kanonischen `BautagebuchFragment.kt`.
+- Server-Vertrag geprüft gegen `69c2c4f077239484f9171de05a6fd73dca146b82`: **keine Serveränderung erforderlich**. Der bestehende Serververtrag mit `active_btb_id` liefert die nötige Information; der Fehler lag in Androids Zustands-/Sync-Auswertung.
+- Source-Checks bestanden: reine Lesewege, explizite Aktivierung, btbId-Navigation, Dokumentstatus-Lifecycle, Resume-Refresh mit Dirty-Guard, Syncstatus, Server-PDF-Importstatus, Version/Workflow/Release und Strukturchecks.
+- GitHub Actions Run **#1337** endete als `failure`, enthält aber **keine ausgeführten Steps und keine Job-Logs**. Nach Projektregel ist das kein Build-/Testnachweis und auch kein belegter Quellfehler.
 - `STATUS.xlsx` ist auf dem Server-Branch neuer und wird vom Android-Projekt nicht überschrieben.
 
-Teststatus: **URSACHE BTB-FALSCHINVALIDIERUNG + FEHLENDE XLSX REPRODUZIERT / QUELLSTAND 200062 FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200062 OFFEN / INSTALLATION OFFEN / REGRESSION-/XLSX-E2E OFFEN**.
+Betroffene Dateien:
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchSpeicher.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbActiveContext.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbSchnellwechselInstaller.kt`
+- `app/src/main/java/de/tbhelfer/ui/bautagebuch/BautagebuchFragment.kt`
+- `app/src/main/java/de/tbhelfer/datenbank/CollabLocalBridge.kt`
+- `app/src/main/java/de/tbhelfer/datenbank/BtbTeamMediaSync.kt`
+- `app/build.gradle.kts`
+- `.github/workflows/android.yml`
+- `releases/TB-Helfer_1.3.13_200063.md`
 
-Regressionstest:
-1. abgeschlossenen Test-BTB mit einem Mangel-Foto erzeugen;
-2. Mangel öffnen und ohne Unterbaustellenänderung nur `Speichern`;
-3. BTB muss grün bleiben und PDF weiter öffnen;
-4. danach Unterbaustelle des Mangel-Fotos wirklich ändern;
-5. erst dann darf der betroffene BTB als Nachbearbeitung markiert werden.
+Teststatus: **URSACHE EINGEGRENZT/REPRODUZIERBAR IM CODE / QUELLSTAND 200063 FERTIG / SOURCE-CHECKS BESTANDEN / BUILD 200063 OFFEN / INSTALLATION OFFEN / PIXEL+POCO-/SERVER-E2E OFFEN**.
 
-### Klickbare XLSX-Bilderlisten im ZIP
-
-- Die vom Benutzer am **22.09.2026** hochgeladene Zeitraum-ZIP wurde direkt geprüft: **38 ZIP-Einträge**, darunter `Bilderliste_gesamt.csv`, aber **keine einzige .xlsx-Datei**. Der Fehler ist damit reproduziert.
-- Der XLSX-Generator `GesamtBilderlisteXlsx.kt` war bereits vorhanden und besitzt Filter, eingefrorene Kopfzeile sowie relative Hyperlinks in der Spalte `Bilddatei`; er war im aktuellen Exportpfad jedoch nicht eingebunden.
-- 200062 bindet den vorhandenen Generator jetzt ein:
-  - Gesamt-/Zeitraum-Export: `Bilderliste_gesamt.xlsx` direkt im Baustellenordner.
-  - Je enthaltenem BTB/Schicht: Datei nach dem Muster `21.09.26_Bilderliste.xlsx` im jeweiligen `BTB/<Datum>/`-Ordner.
-  - Einzelner Schicht-/BTB-Export: ebenfalls datumsbezogene XLSX im BTB-Datumsordner.
-  - Die bestehenden CSV-Listen bleiben parallel erhalten.
-- Die Links sind absichtlich **relativ zur entpackten ZIP-Struktur**. Gesamt-XLSX verweist auf `Bilder/<Datum>/<Datei>`; Schicht-XLSX aus `BTB/<Datum>/` verweist über `../../Bilder/<Datum>/<Datei>`.
-- Dadurch kann Excel/Windows nach vollständigem Entpacken des ZIPs mit einem Klick in der Spalte `Bilddatei` das zugehörige JPG öffnen.
-- Bestehende kurze Windows-taugliche Exportdateinamen und JPEG-Suchmetadaten bleiben unverändert.
-- Source-Checks bestanden: Gesamt-XLSX, Schicht-XLSX im Einzel- und Zeitraumexport, `dd.MM.yy_Bilderliste.xlsx`, relative Links, Filter/Fixierung, CSV-Erhalt und Unit-Test für den `../../Bilder`-Pfad.
-- **Build 200062 bleibt offen**, da diese XLSX-Ergänzung nach dem letzten Build hinzugekommen ist.
-
-### Feste Windows-Zielstruktur beim ZIP-Entpacken
-
-- Benutzerwunsch bestätigt: Unter Windows soll bei jedem Export immer derselbe vorhandene Zielordner `TB-Helfer` gewählt werden können.
-- ZIP-Inhalt beginnt deshalb ab 200062 fest mit:
-  - `Baustelle/<Baustellenname>/Bilderliste_gesamt.xlsx`
-  - `Baustelle/<Baustellenname>/Bilder/<Datum>/...`
-  - `Baustelle/<Baustellenname>/BTB/<Datum>/...`
-  - `Baustelle/<Baustellenname>/Maengelliste/...`
-  - weitere vorhandene Unterordner bleiben unter derselben Baustelle.
-- Beim Windows-Befehl `Alle extrahieren` wird als Ziel nur der vorhandene Ordner `TB-Helfer` gewählt. Ergebnis: `TB-Helfer/Baustelle/<Baustellenname>/...`.
-- Sowohl Einzel-BTB-/Schichtexport als auch Gesamt-/Zeitraumexport nutzen dieselbe feste Wurzel.
-- Die relativen XLSX-Fotolinks bleiben korrekt:
-  - Gesamt-XLSX: `Bilder/<Datum>/<Datei>`
-  - Schicht-XLSX in `BTB/<Datum>/`: `../../Bilder/<Datum>/<Datei>`
-- Source-Checks: beide ZIP-Root-Zuweisungen auf `Baustelle/$safeBaustelle`, keine alte Root-Zuweisung mehr, XLSX-Pfade unverändert gültig.
-- **Build 200062 bleibt offen**, weil diese ZIP-Struktur nach dem letzten erfolgreichen 200061-Build hinzugekommen ist.
-- GitHub Actions Lauf **#1298** zum aktuellen PR-Stand endete als `failure`, aber der Job enthält **keine ausgeführten Steps** und es stehen keine Job-Logs zur Verfügung. Nach Projektregel ist das **kein Build-/Testnachweis** und auch kein belegter Android-Quellfehler; der lokale Android-Studio-Build 200062 bleibt erforderlich.
-
-### Build 200062 – nullable `ortId` Compile-Fix
-
-- Lokaler Buildversuch am **22.09.2026 07:01** scheiterte mit genau **1 Kotlin-Fehler** in `FotoRepository.kt` Zeile 192: `Operator call is prohibited on a nullable receiver of type 'Long?'`.
-- Ursache: `existing.ortId` ist laut `BtbPhotoContextOverrideStore.ContextOverride` nullable (`Long?`), wurde im neuen BTB-Schutz aber direkt mit `takeIf { it > 0L }` verwendet.
-- Fix: `existing.ortId?.takeIf { it > 0L }`. Keine Fachlogikänderung; nur korrekte Nullbehandlung.
-- Fix-Commit: `18f54c7489f7200c89c75b00f1e9a7eaa1001d35`.
-- Version bleibt **1.3.12 / 200062**, da dieser Build noch nicht erfolgreich abgeschlossen war.
-- Source-Check nach Fix: korrigierte Nullable-Stelle vorhanden; keine weitere identische `.ortId.takeIf`-Stelle im Android-Code gefunden.
-
-Teststatus: **QUELLSTAND 200062 KORRIGIERT / SOURCE-CHECK BESTANDEN / BUILD 200062 ERNEUT OFFEN / INSTALLATION OFFEN / E2E OFFEN**.
+Regressionstest 200063:
+1. aktuellen 22.09-BTB öffnen und mehrere Minuten im Bautagebuch bleiben; er darf nicht verschwinden;
+2. Vortag/7-Tage-/Neuer-BTB-Vorschläge nur ansehen und abbrechen; der aktuelle BTB muss unverändert aktiv bleiben;
+3. BTB-Verlauf → abgeschlossenen BTB → `BTB bearbeiten`; er muss beim ersten Öffnen zuverlässig laden;
+4. zurück zum aktuellen BTB wechseln; kein Verlassen der Bautagebuchseite als Workaround nötig;
+5. aktiven Nachbearbeitungs-BTB synchronisieren; er darf vom Server-PDF-Import nicht erneut auf `Abgeschlossen` springen;
+6. echten `BTB Abschluss` ausführen; erst dann muss der BTB aus dem aktiven Kontext gehen und im Verlauf grün mit gültigem PDF erscheinen.
