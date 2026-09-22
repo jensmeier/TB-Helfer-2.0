@@ -55,6 +55,7 @@ function fmtDate(value){if(!value)return '—';try{return new Date(value).toLoca
 async function loadCompanies(){
   if(userRole!=='ADMIN') return;
   const select=document.getElementById('companyId');
+  if(!select) return;
   try{
     const result=await tbApi('/api/v1/admin/companies');
     select.innerHTML='<option value="">Firma wählen</option>'+result.data.companies.map(function(c){
