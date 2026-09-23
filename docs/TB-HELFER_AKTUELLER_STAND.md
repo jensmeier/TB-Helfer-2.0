@@ -12,6 +12,45 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - PR-Basis: `feature/admin-offline-sync`
 
+## Arbeitsblock 23.09.2026 – Reihenfolge 1 → 2 → 4 → 3
+
+Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Blocks vor Statusaktualisierung: **`3045b965651794abbd4f83fdee375c81116774dc`**. Android bleibt auf **`3ea67aa1542a47f4057dca38014a5e73f1e6717f`**.
+
+1. **Benutzer-Gültigkeit – QUELLSTAND FERTIG / DEPLOY+E2E OFFEN**
+   - Admin bietet `3 Monate`, `6 Monate`, `1 Jahr`, `Manuell` und weiterhin optional keinen Ablauf.
+   - Keine Uhrzeiteingabe mehr. Manuell wählt nur den letzten gültigen Kalendertag.
+   - Neuer API-Vertrag `access_valid_through`; serverseitige Umrechnung mit `ZoneInfo("Europe/Berlin")` auf **Folgetag 00:01 Uhr**, anschließend UTC-Speicherung in der bestehenden Spalte `access_valid_until`.
+   - Keine DB-Migration erforderlich. Alte `access_valid_until`-Clients bleiben kompatibel.
+   - Benutzerliste zeigt nur den letzten gültigen Tag, nicht den technischen UTC-Zeitstempel.
+
+2. **Öffentliches Portal `www.tb-helfer.de` – QUELLSTAND FERTIG / CLOUDFLARE+DEPLOY E2E OFFEN**
+   - App/API bleibt getrennt auf **`https://api-v1.tb-helfer.de`**.
+   - Neue Konfiguration `TB_V1_PORTAL_PUBLIC_BASE_URL` → Server-`TB_PORTAL_PUBLIC_BASE_URL`.
+   - Portal-Aktivierungslinks und Browser-Baustelleneinladungen verwenden die Portal-Basisadresse.
+   - Root `/` leitet auf `/portal/v1/login`.
+   - Synology-Compose enthält die neue API-Environment-Variable; lokale `.env` soll `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de` setzen.
+   - Cloudflare-Tunnel `tb-helfer-nas`: zusätzlicher Public Hostname `www.tb-helfer.de` muss noch praktisch auf denselben funktionierenden internen API-Dienst wie `api-v1.tb-helfer.de` geroutet werden.
+
+4. **Baustellen-QR-Einladungen – URSACHE IM ANDROID-CODE NACHGEWIESEN / ANDROID-FIX OFFEN**
+   - Server erzeugt korrekt `tbhelfer://worksite-invite?token=...`.
+   - Androids allgemeiner `WorksiteInvitationLink` kann modernen Server-Token und Legacy bereits korrekt unterscheiden.
+   - Der direkte Baustellenbutton `QR scannen` in `BaustellenTeamDirekt` verwendet jedoch noch einen eigenen Legacy-Parser und akzeptiert nur `tbhelfer://invite?code=TBI-...`; anschließend ruft er nur den Legacy-`redeemInvitation()`-Pfad auf.
+   - Benötigter Android-Fix: dort `WorksiteInvitationLink.parse()` verwenden; `ServerToken` → `redeemServerInvitation()`, `LegacyCode` → `redeemInvitation()`. Moderne Tokens niemals uppercasen.
+   - Nach Projekttrennung wurde **`app/**` im SERVER-Projekt nicht geändert**.
+
+3. **Strecken/Bahnhöfe im Admin – QUELLSTAND FERTIG / DEPLOY+E2E OFFEN**
+   - Neue getrennte Admin-Navigation **Strecken** und **Bahnhöfe**.
+   - Neue Seiten `/admin/v1/routes` und `/admin/v1/stations` verwenden ausschließlich den vorhandenen gemeinsamen `/api/v1/catalog`.
+   - Strecken: Anlage/Korrektur, Abschnitte, Streckenobjekte (Gleis/Weiche/Kreuzung/Bahnsteig/Signal/Sonstiges), Versionsanzeige.
+   - Bahnhöfe/Betriebsstellen: Anlage/Korrektur und zugehörige Gleise/Weichen/Objekte.
+   - Kein globales Löschen; vorhandene Katalog-Historie/Versionierung bleibt maßgeblich.
+   - Browser-Katalogmutationen sind nun CSRF-geschützt; Geräte-Bearer bleibt über den bestehenden `require_csrf`-Bypass für DEVICE kompatibel.
+   - Keine DB-Migration erforderlich.
+
+**Teststatus:** GitHub-Actions-Serverlauf auf dem Zwischenstand endete erneut ohne ausgeführte Runner-Steps; daher kein Testnachweis. Praktischer Synology-/Cloudflare-/Android-E2E bleibt offen.  
+**STATUS.xlsx:** nicht überschrieben, da die aktuelle GitHub-Binärdatei neuer ist als die hier bearbeitbare Library-Kopie; zuerst konfliktfreien Binärstand beschaffen.
+
+
 ## Laufzeitbefund 23.09.2026 – Baustellenbaum / Portal-Medien
 
 - SERVER-Quellfix-Stand vor dieser Dokuaktualisierung: **`909d970797a0c74aa6d60d5fdd34406b5bf77b93`**; ANDROID-Branch: **`3ea67aa1542a47f4057dca38014a5e73f1e6717f`**.
