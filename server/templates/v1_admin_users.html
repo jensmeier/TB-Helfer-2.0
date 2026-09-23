@@ -15,7 +15,21 @@
     <div><label for="firstName">Vorname</label><input id="firstName" required maxlength="120"></div>
     <div><label for="lastName">Nachname</label><input id="lastName" required maxlength="120"></div>
     <div><label for="role">Firmenrolle</label><select id="role"><option value="USER">USER</option><option value="CHEF">CHEF</option></select></div>
-    <div><label for="validUntil">Zugriff gültig bis (optional)</label><input id="validUntil" type="datetime-local"></div>
+    <div>
+      <label for="validPreset">Zugriff gültig</label>
+      <select id="validPreset">
+        <option value="">Kein Ablauf</option>
+        <option value="3">3 Monate</option>
+        <option value="6">6 Monate</option>
+        <option value="12">1 Jahr</option>
+        <option value="manual">Manuell</option>
+      </select>
+    </div>
+    <div>
+      <label for="validDate">Letzter gültiger Tag</label>
+      <input id="validDate" type="date" disabled>
+      <div class="muted" style="margin-top:5px">Der Zugang endet automatisch am Folgetag um 00:01 Uhr.</div>
+    </div>
   </div><div class="actions" style="margin-top:14px"><button type="submit">Nutzer anlegen</button></div></form>
   {% else %}<div class="notice info">Zuerst muss eine aktive Firma angelegt werden.</div>{% endif %}
 </div>
@@ -53,7 +67,21 @@
               <div><label>Vorname</label><input class="edit-first" value="{{ u.first_name or '' }}" maxlength="120"></div>
               <div><label>Nachname</label><input class="edit-last" value="{{ u.last_name or '' }}" maxlength="120"></div>
               <div><label>Rolle</label><select class="edit-role"><option value="USER" {% if u.company_role == 'USER' %}selected{% endif %}>USER</option><option value="CHEF" {% if u.company_role == 'CHEF' %}selected{% endif %}>CHEF</option></select></div>
-              <div><label>Gültig bis</label><input class="edit-valid" type="datetime-local" value="{% if u.access_valid_until %}{{ u.access_valid_until.strftime('%Y-%m-%dT%H:%M') }}{% endif %}"></div>
+              <div>
+                <label>Gültigkeit</label>
+                <select class="edit-valid-preset">
+                  <option value="">Kein Ablauf</option>
+                  <option value="3">3 Monate</option>
+                  <option value="6">6 Monate</option>
+                  <option value="12">1 Jahr</option>
+                  <option value="manual" {% if u.access_valid_until %}selected{% endif %}>Manuell</option>
+                </select>
+              </div>
+              <div>
+                <label>Letzter gültiger Tag</label>
+                <input class="edit-valid-date" type="date" data-current-until="{% if u.access_valid_until %}{{ u.access_valid_until.isoformat() }}{% endif %}" {% if not u.access_valid_until %}disabled{% endif %}>
+                <div class="muted" style="margin-top:5px">Ende automatisch am Folgetag um 00:01 Uhr.</div>
+              </div>
             </div>
             <div class="actions" style="margin-top:10px"><button type="button" class="save-edit" data-user-id="{{ u.id }}">Änderungen speichern</button></div>
             <div class="muted" style="margin-top:7px">Firmenwechsel wird blockiert, sobald Baustellen-/Teamhistorie existiert. Login, Anzeigename und persönliche Kontakte werden hier nicht überschrieben.</div>
@@ -70,7 +98,58 @@
 <script>
 const msg=document.getElementById('msg');
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;window.scrollTo({top:0,behavior:'smooth'});}
-function localDateToIso(value){return value?new Date(value).toISOString():null;}
+function localDateValue(date){
+  const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+d;
+}
+function addCalendarMonths(months){
+  const now=new Date();
+  const day=now.getDate();
+  const target=new Date(now.getFullYear(),now.getMonth()+months,1);
+  const lastDay=new Date(target.getFullYear(),target.getMonth()+1,0).getDate();
+  target.setDate(Math.min(day,lastDay));
+  return localDateValue(target);
+}
+function expiryIsoFromLastValidDate(value){
+  if(!value)return null;
+  const parts=value.split('-').map(Number);
+  if(parts.length!==3||parts.some(Number.isNaN))return null;
+  return new Date(parts[0],parts[1]-1,parts[2]+1,0,1,0,0).toISOString();
+}
+function applyValidityPreset(select,dateInput){
+  const preset=select.value;
+  if(!preset){
+    dateInput.value='';
+    dateInput.disabled=true;
+    return;
+  }
+  dateInput.disabled=false;
+  if(preset==='manual'){
+    if(!dateInput.value)dateInput.focus();
+    return;
+  }
+  dateInput.value=addCalendarMonths(Number(preset));
+}
+function setExistingValidityDate(input){
+  const raw=input.dataset.currentUntil||'';
+  if(!raw)return;
+  const expiry=new Date(raw);
+  if(Number.isNaN(expiry.getTime()))return;
+  expiry.setMinutes(expiry.getMinutes()-1);
+  input.value=localDateValue(expiry);
+}
+
+const validPreset=document.getElementById('validPreset'), validDate=document.getElementById('validDate');
+if(validPreset&&validDate){
+  validPreset.addEventListener('change',()=>applyValidityPreset(validPreset,validDate));
+}
+
+document.querySelectorAll('.edit-valid-date').forEach(setExistingValidityDate);
+document.querySelectorAll('.edit-valid-preset').forEach(select=>{
+  const panel=select.closest('[id^="edit-"]');
+  const dateInput=panel&&panel.querySelector('.edit-valid-date');
+  if(dateInput)select.addEventListener('change',()=>applyValidityPreset(select,dateInput));
+});
 
 const createUser=document.getElementById('createUser');
 if(createUser){createUser.addEventListener('submit',async ev=>{
@@ -81,7 +160,7 @@ if(createUser){createUser.addEventListener('submit',async ev=>{
       first_name:document.getElementById('firstName').value.trim(),
       last_name:document.getElementById('lastName').value.trim(),
       company_role:document.getElementById('role').value,
-      access_valid_until:localDateToIso(document.getElementById('validUntil').value)
+      access_valid_until:expiryIsoFromLastValidDate(document.getElementById('validDate').value)
     })});
     show('ok','Nutzer wurde angelegt. Vorläufiger Login: '+data.login_name);
     setTimeout(()=>location.reload(),900);
@@ -101,7 +180,7 @@ document.querySelectorAll('.save-edit').forEach(button=>button.addEventListener(
       first_name:panel.querySelector('.edit-first').value.trim(),
       last_name:panel.querySelector('.edit-last').value.trim(),
       company_role:panel.querySelector('.edit-role').value,
-      access_valid_until:localDateToIso(panel.querySelector('.edit-valid').value)
+      access_valid_until:expiryIsoFromLastValidDate(panel.querySelector('.edit-valid-date').value)
     })});
     show('ok','Benutzerdaten wurden gespeichert.');setTimeout(()=>location.reload(),550);
   }catch(error){show('err',error.message||String(error));button.disabled=false;}
