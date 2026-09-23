@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -179,6 +180,13 @@ def admin_users_page(
             """
         )
         users = [dict(row) for row in cur.fetchall()]
+        for item in users:
+            valid_until = item.get("access_valid_until")
+            item["access_valid_through"] = (
+                (valid_until - timedelta(minutes=1)).date()
+                if valid_until is not None
+                else None
+            )
     return templates.TemplateResponse(
         "v1_admin_users.html",
         {
