@@ -45,6 +45,8 @@
     <div class="nav">
       {% if user and user.company_role == 'ADMIN' %}
         <a class="{% if request.url.path == '/admin/v1' %}active{% endif %}" href="/admin/v1">Übersicht</a>
+        <a class="{% if request.url.path.startswith('/admin/v1/routes') %}active{% endif %}" href="/admin/v1/routes">Strecken</a>
+        <a class="{% if request.url.path.startswith('/admin/v1/stations') %}active{% endif %}" href="/admin/v1/stations">Bahnhöfe</a>
         <a class="{% if request.url.path.startswith('/admin/v1/users') %}active{% endif %}" href="/admin/v1/users">Benutzer</a>
         <a class="{% if request.url.path.startswith('/admin/v1/companies') %}active{% endif %}" href="/admin/v1/companies">Firmen</a>
         <a class="{% if request.url.path.startswith('/admin/v1/catalog-history') %}active{% endif %}" href="/admin/v1/catalog-history">Katalog-Historie</a>
