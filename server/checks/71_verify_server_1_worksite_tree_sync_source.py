@@ -23,6 +23,9 @@ for token in (
     '"VERSION_CONFLICT"',
     "WITH RECURSIVE subtree",
     "deleted_count",
+    "from psycopg.types.json import Jsonb",
+    "Jsonb(payload.payload)",
+    'Jsonb(updates[key]) if key == "payload" else updates[key]',
 ):
     assert token in server, token
 
