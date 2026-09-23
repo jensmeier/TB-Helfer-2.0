@@ -7,7 +7,7 @@
 
 - Repository: `jensmeier/TB-Helfer-2.0`
 - SERVER-Branch: `feature/tb-server-1.0`
-- SERVER-Quellfix-HEAD vor Dokuaktualisierung: `909d970797a0c74aa6d60d5fdd34406b5bf77b93`
+- SERVER-Quellstand vor dieser Prüfstand-Aktualisierung: `3045b965651794abbd4f83fdee375c81116774dc`
 - SERVER-Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - ANDROID-Branch: `feature/tb-android-2.0`
 - ANDROID-HEAD: `3ea67aa1542a47f4057dca38014a5e73f1e6717f`
@@ -76,6 +76,15 @@ Zusätzlich wurde ein unabhängiger Portalfehler reproduziert:
 - Quellfix `817c0b5d…`, Regression-Check `909d9707…`;
 - **praktisch bestätigt:** Nach Deployment laden Struktur, Teams, Mitglieder und Mängel; beim Testmangel sind **8 Fotos** im Portal sichtbar. Dieser Medien-500er ist erledigt und geschützt.
 
+## 5. Neuer Arbeitsblock 1 → 2 → 4 → 3
+
+- **1 Benutzer-Gültigkeit:** Quellstand fertig; Presets 3/6/12 Monate + manuelles Datum, kein Uhrzeitfeld, Europe/Berlin Folgetag 00:01; Deploy/E2E offen.
+- **2 Portal:** Quellstand fertig; `www.tb-helfer.de` als getrennte Portalbasis vorbereitet, App/API bleibt `api-v1.tb-helfer.de`. Synology-.env + API-Neuerstellung + Cloudflare-Public-Hostname noch praktisch auszuführen.
+- **4 QR-Einladung:** Ursache im Android-Code nachgewiesen. Direkter Baustellen-Scanner verarbeitet nur Legacy-`tbhelfer://invite?code=TBI-...`; moderner Server liefert `tbhelfer://worksite-invite?token=...`. Fix gehört ins ANDROID-Projekt; SERVER-`app/**` unverändert.
+- **3 Strecken/Bahnhöfe:** neue Adminseiten auf vorhandenem globalen Katalog fertig; Deploy/E2E offen; keine neue Datenbank/Migration.
+
+`STATUS.xlsx` bleibt bis zu einem konfliktfreien Zugriff auf den aktuellen GitHub-Binärstand unverändert.
+
 ## 5. Sync-Anzeige im Systemstatus
 
 Der Systemstatus zeigt derzeit bei **„Letzter Sync“** noch `—`.
@@ -101,13 +110,15 @@ Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand t
 
 ## 7. Nächster sinnvoller Schritt
 
-1. Auf dem Android-Gerät erneut **Daten vom NAS -> Neu laden** ausführen.
-2. Im API-Protokoll nach `nodes` filtern.
-3. Prüfen, dass der bisherige `POST .../nodes -> 500` nicht mehr auftritt und Create-Mutationen erfolgreich (201) sind.
-4. Wenn der Handy-Sync vollständig meldet: Baustellenbaum-Fix als praktisch bestätigt markieren.
-5. Danach Pixel -> Poco gemeinsamen Baustellen-/Mängel-/Foto-Sync testen.
-6. Erst anschließend `Letzter Sync`/`last_sync_at` als eigenen Anzeigepunkt korrigieren, falls weiterhin nötig.
-7. `STATUS.xlsx` erst nach konfliktfreiem Zugriff auf den aktuellen GitHub-Binärstand konsolidieren.
+1. Aktuellen SERVER-Stand auf Synology übernehmen.
+2. In lokaler `.env` setzen: `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de`; keine Secrets dokumentieren.
+3. API-Container mit aktualisierter Compose **neu erstellen** und `/health/ready` prüfen.
+4. Benutzer-Gültigkeit praktisch testen (3/6/12 Monate + manuell).
+5. Im Cloudflare-Tunnel `tb-helfer-nas` Public Hostname `www.tb-helfer.de` auf denselben internen Dienst wie die funktionierende `api-v1`-Route legen; `https://www.tb-helfer.de/` und Portal-Aktivierungslink testen.
+6. QR-Fix im ANDROID-Projekt umsetzen und modernen Baustellen-QR praktisch scannen/einlösen.
+7. Danach Strecken-/Bahnhöfe-Admin praktisch prüfen.
+8. Anschließend den noch offenen Baustellenbaum-Sync (`POST .../nodes`) sowie Pixel↔Poco-E2E fortsetzen.
+9. `STATUS.xlsx` erst nach konfliktfreiem Zugriff auf den aktuellen GitHub-Binärstand konsolidieren.
 
 ## 8. Synology-Arbeitsweg bleibt verbindlich
 
@@ -121,4 +132,4 @@ Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand t
 ---
 
 **Checkpoint erstellt:** 23.09.2026  
-**Aktueller nächster Schritt:** Android `Neu laden` und erfolgreichen Baustellenbaum-POST im API-Log bestätigen; Portal-Medienpfad ist bereits praktisch bestätigt.
+**Aktueller nächster Schritt:** neuen SERVER-Quellstand deployen, Benutzer-Gültigkeit testen und `www.tb-helfer.de` am bestehenden Cloudflare-Tunnel aktivieren; danach Android-QR-Fix im ANDROID-Projekt.
