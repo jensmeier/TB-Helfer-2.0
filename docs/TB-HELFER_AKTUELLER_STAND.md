@@ -23,13 +23,13 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
    - Keine DB-Migration erforderlich. Alte `access_valid_until`-Clients bleiben kompatibel.
    - Benutzerliste zeigt nur den letzten gültigen Tag, nicht den technischen UTC-Zeitstempel.
 
-2. **Öffentliches Portal `www.tb-helfer.de` – CLOUDFLARE-ROUTE PRAKTISCH BESTÄTIGT / LOGIN-E2E OFFEN**
+2. **Öffentliches Portal `www.tb-helfer.de` – ERLEDIGT / PRAKTISCH BESTÄTIGT**
    - App/API bleibt getrennt auf **`https://api-v1.tb-helfer.de`**.
    - Neue Konfiguration `TB_V1_PORTAL_PUBLIC_BASE_URL` → Server-`TB_PORTAL_PUBLIC_BASE_URL`.
    - Portal-Aktivierungslinks und Browser-Baustelleneinladungen verwenden die Portal-Basisadresse.
    - Root `/` leitet auf `/portal/v1/login`.
    - Synology-Compose enthält die neue API-Environment-Variable; lokale `.env` soll `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de` setzen.
-   - Cloudflare-Tunnel `tb-helfer-nas`: zusätzlicher Public Hostname `www.tb-helfer.de` ist praktisch eingerichtet und extern erreichbar. Aufruf von `https://www.tb-helfer.de` leitet korrekt auf `/portal/v1/login`; die TB-Helfer-Portal-Anmeldeseite wird geladen. Echter Login/Aktivierungslink bleiben noch separat zu testen.
+   - Cloudflare-Tunnel `tb-helfer-nas`: zusätzlicher Public Hostname `www.tb-helfer.de` ist praktisch eingerichtet und extern erreichbar. Echter Benutzerlogin funktioniert; Portal-Start, Profil/Firmenkontakte und Baustellenliste laden. Die Testbaustelle `GE Immenstadt - Kempten` ist sichtbar und öffnbar. Die öffentliche Portalroute und der Login gelten damit als praktisch bestätigt; der Erstaktivierungslink bleibt nur als separater Bedienfall offen, falls noch nicht explizit getestet.
 
 4. **Baustellen-QR-Einladungen – URSACHE IM ANDROID-CODE NACHGEWIESEN / ANDROID-FIX OFFEN**
    - Server erzeugt korrekt `tbhelfer://worksite-invite?token=...`.
