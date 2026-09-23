@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from psycopg.errors import UniqueViolation
 from pydantic import BaseModel, Field
 
+from .config import settings
 from .database import transaction
 from .events import audit
 from .portal import current_portal_user, require_csrf
@@ -447,10 +448,17 @@ def issue_portal_activation(
             entity_id=user_id,
         )
 
+    portal_base = (settings.portal_public_base_url or settings.public_base_url or "").rstrip("/")
+    activation_url = (
+        f"{portal_base}/portal/v1/activate?token={raw_token}&login={user['login_name']}"
+        if portal_base
+        else None
+    )
     return {
         "user_id": str(user_id),
         "login_name": user["login_name"],
         "activation_token": raw_token,
+        "activation_url": activation_url,
         "expires_at": expires_at,
     }
 
