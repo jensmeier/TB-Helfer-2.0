@@ -53,6 +53,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 
 ## 2a. Admin-Oberfläche – bestehende Bedienlogik als Referenz
 - Die bestehende TB-Helfer-Administration 0.7 ist **Bedien-Referenz** für Server 1.0. Server 1.0 darf technisch anders aufgebaut sein, soll bewährte Admin-Abläufe aber nicht ohne fachlichen Grund neu erfinden.
+- Das öffentliche Benutzerportal läuft unter **`https://www.tb-helfer.de`**. Die App-/API-Basis **`https://api-v1.tb-helfer.de`** bleibt davon getrennt; Geräteaktivierung und mobile Syncpfade werden nicht auf die Portal-Domain umgebogen. Portal-Aktivierungslinks und Browser-Baustelleneinladungen verwenden die Portal-Domain.
 - Die Hauptnavigation bleibt fachlich getrennt in mindestens: **Übersicht, Strecken, Bahnhöfe, Benutzer, Firmen, Geräte, Dateien, Baustellen, App-Versionen, Papierkorb, Systemstatus**. Eine vorübergehende kombinierte Entwicklungsseite wie `Nutzer/Geräte` ersetzt diese Zielstruktur nicht.
 - **App-Versionen** verwendet den vorhandenen Release-Katalog. Der Admin soll eine Release-Info-Datei (`.md`/`.txt`) und die APK/Binärdatei sichtbar auswählen können. Die Release-Datei darf Version, Build, Mindestbuild, Pflichtupdate sowie die Abschnitte `Neu`, `Verbessert`, `Behoben` enthalten. Nach dem Einlesen bleiben alle Angaben im Draft auf dem Server editierbar; veröffentlicht wird erst nach bewusster Prüfung. Eine zweite Update-Infrastruktur wird nicht aufgebaut.
 - **Übersicht** zeigt mindestens die zentralen Zähler für Strecken, Bahnhöfe, Gleise/Weichen, Baustellen, Originaldateien, Benutzer, Geräte, App-Versionen und Papierkorb sowie Firmen-/Benutzerzusammenfassung, Baustellenzusammenfassung, Serverversion, Speicherbelegung und Serverzeit.
@@ -104,6 +105,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Beim administrativen Anlegen eines Benutzers genügen Firma, Vorname, Nachname, Firmenrolle und optionale Zugriffsgültigkeit. Der Server erzeugt einen vorläufigen eindeutigen Portal-Login.
 - Bei der **ersten Portal-Aktivierung** legt der Benutzer seinen eigenen eindeutigen Login, Anzeigenamen, Passwort sowie persönliche E-Mail/Telefon fest.
 - Der Admin darf Firmenzuordnung, Vor-/Nachname als administrative Stammdaten, Firmenrolle und Zugriffsgültigkeit bearbeiten. Ein Firmenwechsel wird blockiert, sobald Baustellen-/Teamhistorie vorhanden ist.
+- Die Zugriffsgültigkeit wird im Admin **ohne Uhrzeiteingabe** gepflegt. Angeboten werden mindestens **3 Monate, 6 Monate, 1 Jahr und Manuell**; bei Manuell wird nur der letzte gültige Kalendertag gewählt. Der Zugang bleibt diesen Tag vollständig gültig und endet in der Server-Betriebszeitzone **Europe/Berlin am Folgetag um 00:01 Uhr**.
 - Nach erfolgter Portal-Aktivierung überschreibt eine normale Admin-Bearbeitung nicht den selbst gepflegten Login, Anzeigenamen oder persönliche E-Mail/Telefon.
 - Persönliche Kontakte sind für aktive Benutzer derselben Firma sichtbar; andere Firmen erhalten sie nicht.
 
@@ -116,6 +118,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Einladungen enthalten keine Benutzer-Keys/Passwörter, sondern kurzlebige/widerrufbare Tokens.
 - A/B/C/D bleibt rein technisch und wird Benutzern nicht angezeigt.
 - `QR scannen` und `Nutzer hinzufügen` gehören direkt in die Baustellenansicht.
+- Der direkte Baustellen-QR-Scanner muss den modernen Server-1.0-Link **`tbhelfer://worksite-invite?token=...`** case-sensitiv verarbeiten und während der Übergangszeit zusätzlich den Legacy-Link **`tbhelfer://invite?code=TBI-...`** akzeptieren. Moderne Tokens dürfen niemals uppercased werden.
 - Rolle kommt aus der Einladung und wird nach dem Scan nicht erneut gewählt.
 - Nach Beitritt wird eine bereits aktive andere Baustelle nicht ungefragt ersetzt; die App fragt `Jetzt öffnen?` / `Später`.
 - Verantwortliche TBs erhalten vollständige gemeinsame Baustellenstruktur und benötigte Streckendaten.
