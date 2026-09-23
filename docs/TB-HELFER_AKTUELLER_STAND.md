@@ -50,6 +50,8 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
 **Teststatus:** GitHub-Actions-Serverlauf auf dem Zwischenstand endete erneut ohne ausgeführte Runner-Steps; daher kein Testnachweis. Praktischer Synology-/Cloudflare-/Android-E2E bleibt offen.  
 **STATUS.xlsx:** nicht überschrieben, da die aktuelle GitHub-Binärdatei neuer ist als die hier bearbeitbare Library-Kopie; zuerst konfliktfreien Binärstand beschaffen.
 
+**Deployment-Bestätigung 23.09.2026:** Der Benutzer hat die Deployment-Schritte 1–3 als erledigt bestätigt: aktueller SERVER-Stand auf Synology übernommen, `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de` in der lokalen `.env` gesetzt und API-Container mit aktualisierter Compose neu erstellt. Damit sind SRV-022/SRV-024 deployed, aber noch nicht fachlich E2E bestätigt; SRV-023 wartet als nächstes auf den Cloudflare-Public-Hostname `www.tb-helfer.de` und externen Portaltest.
+
 
 ## Laufzeitbefund 23.09.2026 – Baustellenbaum / Portal-Medien
 
