@@ -53,7 +53,7 @@
 {% block scripts %}
 <script>
 const userRole={{ user.company_role|tojson }};
-const currentUserId={{ user.user_id|tojson }};
+const currentUserId={{ user.user_id|string|tojson }};
 const rows=document.getElementById('rows'), msg=document.getElementById('msg');
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
