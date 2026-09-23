@@ -73,6 +73,28 @@ def admin_v1_root(
     )
 
 
+@router.get("/admin/v1/routes")
+def admin_routes_page(
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
+):
+    return templates.TemplateResponse(
+        "v1_admin_routes.html",
+        {"request": request, "user": user},
+    )
+
+
+@router.get("/admin/v1/stations")
+def admin_stations_page(
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
+):
+    return templates.TemplateResponse(
+        "v1_admin_stations.html",
+        {"request": request, "user": user},
+    )
+
+
 @router.get("/admin/v1/catalog-history")
 def admin_catalog_history_page(
     request: Request,
