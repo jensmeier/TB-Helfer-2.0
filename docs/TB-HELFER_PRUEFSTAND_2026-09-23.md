@@ -59,6 +59,13 @@ Folgende bereits bestätigte Funktionen/Pfade nicht ohne reproduzierbaren Fehler
 
 Source-Check, Build, Installation und GitHub Actions ohne ausgeführte Steps sind **kein E2E-Nachweis**.
 
+## 4a. Neuer Laufzeitfehler nach Synology-Neuerstellung
+
+- **Worker startet nicht:** Synology meldet `Bind mount failed: .../restore-target-storage-v1 does not exist`. Ursache ist der veraltete Restore-Target-Mount im normalen Synology-Compose nach bewusstem Entfernen des Restore-Targets.
+- Quellfix: Restore-Target vollständig aus normalem Worker entfernt; `restore-test-db` bleibt ausdrücklich als persistenter eigener Service bestehen. Restore-to-Target nur noch optionales Wartungs-Overlay.
+- **cloudflared startet nicht selbstständig:** Quellfix `restart: always`, kein API-Health-`depends_on` mehr. Tunnel startet unabhängig und retryt den Origin.
+- Deployment/E2E dieser beiden Fixes ist noch offen. DB, Storage, Backups und Secrets nicht verändern/löschen.
+
 ## 4. Aktueller Sync-/Portalfehlerstand
 
 Der Android-Baustellenbaumfehler wurde reproduziert und serverseitig eingegrenzt:
@@ -132,4 +139,4 @@ Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand t
 ---
 
 **Checkpoint erstellt:** 23.09.2026  
-**Aktueller nächster Schritt:** neuen SERVER-Quellstand deployen, Benutzer-Gültigkeit testen und `www.tb-helfer.de` am bestehenden Cloudflare-Tunnel aktivieren; danach Android-QR-Fix im ANDROID-Projekt.
+**Aktueller nächster Schritt:** aktualisierte Synology-Compose mit Worker-/cloudflared-Fix übernehmen, Worker + cloudflared neu erstellen/starten und Laufzeit prüfen; erst danach `www.tb-helfer.de` weiter testen.
