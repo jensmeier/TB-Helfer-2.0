@@ -225,12 +225,19 @@ def admin_devices_page(
             """
         )
         devices = [dict(row) for row in cur.fetchall()]
+    device_groups: list[dict[str, Any]] = []
+    for device in devices:
+        company_name = device.get("company_name") or "Ohne Firma"
+        if not device_groups or device_groups[-1]["company_name"] != company_name:
+            device_groups.append({"company_name": company_name, "devices": []})
+        device_groups[-1]["devices"].append(device)
     return templates.TemplateResponse(
         "v1_admin_devices.html",
         {
             "request": request,
             "user": user,
             "devices": devices,
+            "device_groups": device_groups,
         },
     )
 
