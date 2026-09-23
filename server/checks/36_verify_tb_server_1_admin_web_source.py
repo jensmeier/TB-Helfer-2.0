@@ -63,6 +63,12 @@ def main() -> None:
         ("/admin/v1/users", base),
         ("/api/v1/admin/users", users),
         ("/portal-activation", users),
+        ("3 Monate", users),
+        ("6 Monate", users),
+        ("1 Jahr", users),
+        ("Letzter gültiger Tag", users),
+        ("00:01 Uhr", users),
+        ("expiryIsoFromLastValidDate", users),
         ("/activation-card", users),
         ("/api/v1/admin/users/", activation_card),
         ("/device-activation", activation_card),
@@ -85,6 +91,8 @@ def main() -> None:
             "Fehlende Server-1.0-Admin-Web-Marker: " + ", ".join(missing)
         )
 
+    if "datetime-local" in users:
+        raise SystemExit("Benutzer-Gültigkeit darf keine Uhrzeiteingabe verlangen")
     if "password" in base.lower():
         raise SystemExit("Basislayout darf kein Passwort/Geheimnis rendern")
     if "Authorization" in branding:
