@@ -71,7 +71,7 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
 - Derselbe Fehler wäre anschließend beim Redeem erneut aufgetreten, weil die aus PostgreSQL gelesenen JSONB-Dicts wieder roh in `tb.worksite_memberships` geschrieben wurden.
 - Quellfix: `Jsonb(payload.permissions_override)`, `Jsonb(invitation_scope)` sowie `Jsonb(invitation["permissions_override"])` / `Jsonb(invitation["area_scope"])`.
 - Commit: `c8671dbdbecc301fe28212d45db7326b422fff81`; Regression-Guard: `6067a1af6dcb1afccf220b73c3ba99dadeef4df1`.
-- **Deployment/E2E offen.** Keine Migration; nur `worksites.py` muss auf die Synology und die API neu gestartet werden.
+- **ERLEDIGT / PRAKTISCH BESTÄTIGT.** `worksites.py` wurde auf Synology übernommen; QR-Erzeugung und Redeem funktionieren nach dem JSONB-Fix. Keine Migration.
 
 ## Laufzeitbefund 23.09.2026 – Baustellen-QR-Erzeugung
 
@@ -87,7 +87,7 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
   - `/api/v1/collab/worksites/{id}/invitations` ist nur ein Rolling-Update-Adapter für bereits installierte Android-Versionen und ruft intern `create_worksite_invitation(...)` auf;
   - Capability `worksite_open_invitations_v1` ergänzt.
 - Quellcommits: `a56402882ea4a2092bd9d7400ef19f299fda10b6`, `bf9676f2b9d34f0e9fa4a804df0fbb845020aec8`, `cd9b1df4012f08626562f533bd8a0447127755bf`, Check `eb978139c5a30ac75236201e8b4605f6c7a1442a`.
-- **Deployment/E2E offen:** Runtime-Dateien auf Synology übernehmen, nur API neu starten, QR-Erzeugung und anschließendes Einlösen praktisch prüfen.
+- **Praktisch bestätigt am 23.09.2026:** Runtime-Dateien wurden auf Synology übernommen; QR-Erzeugung und anschließendes Einlösen mit Android 1.3.16 / 200066 funktionieren. Benutzerbestätigung: „okay läuft“.
 - Keine DB-Migration, keine Änderung an DB-/Storage-/Backups-/Restore-Test-Daten.
 - `STATUS.xlsx` weiterhin nicht blind überschrieben.
 
