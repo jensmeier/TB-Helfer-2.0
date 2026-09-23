@@ -13,7 +13,8 @@ BEHOBEN:
 - Falls kein anderes Ziel existiert, wird „Kein anderes Ziel vorhanden“ angezeigt
 
 UNVERÄNDERT AUS 1.3.14 / 200064:
-- Bilder zu einem gespeicherten manuellen BTB-Eintrag werden groß in einem 2-spaltigen Raster angezeigt
+- Bilder zu einem gespeicherten manuellen BTB-Eintrag werden groß in **einer horizontalen Reihe** angezeigt
+- Die Bildreihe ist nach links / rechts scrollbar bzw. per Wischgeste bedienbar
 - Bilder können groß geöffnet werden
 - Weitere Bilder können nachträglich über Kamera oder Galerie/Dateien ergänzt werden
 - Zugeordnete Bildanzahl wird am Eintrag mit 📷 angezeigt
