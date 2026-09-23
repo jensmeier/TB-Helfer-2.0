@@ -32,6 +32,10 @@ def main() -> None:
     devices_page = read("server/templates/v1_admin_devices.html")
     activation_card = read("server/templates/v1_device_activation_card.html")
     branding = read("server/templates/v1_company_branding.html")
+    routes_page = read("server/templates/v1_admin_routes.html")
+    stations_page = read("server/templates/v1_admin_stations.html")
+    config = read("server/tbserver/config.py")
+    compose = read("server/docker-compose.synology-staging.v1.yml")
 
     assertions = [
         ('@router.get("/portal/v1/login")', web),
@@ -41,6 +45,8 @@ def main() -> None:
         ("data.activation_url", users),
         ('@router.get("/admin/v1")', web),
         ('@router.get("/admin/v1/companies")', web),
+        ('@router.get("/admin/v1/routes")', web),
+        ('@router.get("/admin/v1/stations")', web),
         ('@router.get("/admin/v1/users")', web),
         ('@router.get("/admin/v1/devices")', web),
         ('@router.get("/admin/v1/users/{user_id}/activation-card")', web),
@@ -65,6 +71,8 @@ def main() -> None:
         ("/api/v1/portal/login", login),
         ("/admin/v1/companies", home),
         ("/api/v1/admin/companies", companies),
+        ("/admin/v1/routes", base),
+        ("/admin/v1/stations", base),
         ("/admin/v1/users", base),
         ("/api/v1/admin/users", users),
         ("/portal-activation", users),
@@ -89,6 +97,16 @@ def main() -> None:
         ("/logo", branding),
         ("Vorschau Firmenkopf", branding),
         ("contactsInImage", branding),
+        ("/api/v1/catalog", routes_page),
+        ("/api/v1/catalog/mutations", routes_page),
+        ("Abschnitt ergänzen / korrigieren", routes_page),
+        ("Streckenobjekt ergänzen / korrigieren", routes_page),
+        ("/api/v1/catalog", stations_page),
+        ("/api/v1/catalog/mutations", stations_page),
+        ("Bahnhofsobjekt ergänzen / korrigieren", stations_page),
+        ("portal_public_base_url", config),
+        ("TB_PORTAL_PUBLIC_BASE_URL", config),
+        ("TB_PORTAL_PUBLIC_BASE_URL", compose),
     ]
     missing = [needle for needle, source in assertions if needle not in source]
     if missing:
