@@ -27,6 +27,8 @@ def main() -> None:
         ("./database-v1", compose),
         ("./storage-v1", compose),
         ("./backups-v1", compose),
+        ("restore-test-db:", compose),
+        ("restore-test-database-v1", compose),
         ("TB_RESTORE_TEST_DB_NAME", compose),
         ("TB_RESTORE_TEST_DB_PASSWORD", compose),
         ("cloudflared:", compose),
