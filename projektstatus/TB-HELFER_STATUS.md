@@ -1,6 +1,6 @@
 # TB-Helfer 2.0 – dauerhafter Projektstatus
 
-**Stand:** 2026-09-21  
+**Stand:** 2026-09-23  
 **Branch:** `feature/tb-server-1.0`  
 **Draft-PR:** #6 – TB-Server 1.0 – gemeinsame Serverbasis  
 **Funktionscommit globaler Katalog / Benutzeridentität:** `511bb5c00552b5a7e54d35d930ea982cf4629598`  
@@ -9,6 +9,14 @@
 **Android-Updateverteilung:** 200053 → 200054 auf Pixel + Poco vollständig als Updateverteilung bestätigt; beide Geräte melden 1.3.4 / 200054 aktuell; Datenerhalt-Abschlusscheck separat offen  
 **Server:** 1.0.0-dev / staging
 
+## Aktueller Integrationsblock 23.09.2026
+
+| ID | Funktion / Thema | Status | Haken | Stand / Ergebnis | Nächster Schritt | Version / Commit | Nicht ohne Grund ändern | Letzte Prüfung | Notiz |
+|---|---|---|:---:|---|---|---|:---:|---|---|
+| PRB-012 | Baustellenbaum-POST endet mit HTTP 500 | QUELLFIX + DEPLOY / ANDROID-E2E OFFEN | ☐ | Reproduziert: `POST /api/v1/worksites/{id}/nodes` scheiterte mit `psycopg.ProgrammingError: cannot adapt type 'dict'`. Ursache war die direkte Übergabe eines Python-Dicts an JSONB. `Jsonb(...)` ist für CREATE und den zugehörigen PATCH-Pfad ergänzt und auf die Synology übernommen. | Auf Android `Neu laden`; im API-Log erfolgreiche `POST .../nodes`-Antwort (bei Create 201) bestätigen und danach Pixel/Poco-Cross-Device-Sync prüfen. | `3100c080` + Check `2dcf83ad` | NEIN | 2026-09-23 | Noch nicht als E2E/BESTÄTIGT markieren. |
+| PRB-013 | Baustellenportal Medien-Endpunkt HTTP 500 | ERLEDIGT / PRAKTISCH BESTÄTIGT | ☑ | Reproduziert: `GET /api/v1/worksites/{id}/media` scheiterte in `files.py`, weil `tb.users.full_name` abgefragt wurde, obwohl Server 1.0 `display_name` verwendet. Drei Medienabfragen wurden korrigiert. Nach Deployment laden Mitglieder/Mängel wieder und beim Testmangel sind 8 hochgeladene Fotos sichtbar. | So lassen; nur bei erneut reproduzierbarem Fehler ändern. | `817c0b5d` + Check `909d9707` | JA | 2026-09-23 | Portal-/Medienpfad bestätigt; Android-Gesamtsync bleibt separat offen. |
+
+**Tracker-Hinweis:** Ältere Tabellenzeilen weiter unten enthalten noch historische Vor-Cutover-Angaben. Für den aktuellen 23.09.-Integrationsstand hat dieser Block Vorrang, bis die Altzeilen vollständig konsolidiert sind. Die GitHub-XLSX ist neuer als die verfügbare bearbeitbare Library-Kopie; `STATUS.xlsx` wurde deshalb in diesem Schritt **nicht blind überschrieben**.
 ## Verbindliche Nutzung
 
 - Vor einer Änderung zuerst diesen Tracker **und** die verbindlichen Projektregeln/den aktuellen GitHub-Stand prüfen.
