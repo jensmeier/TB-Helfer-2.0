@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 import re
 import secrets
 import unicodedata
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from psycopg.errors import UniqueViolation
@@ -39,6 +40,7 @@ class UserCreate(BaseModel):
     last_name: str = Field(min_length=1, max_length=120)
     company_role: str = Field(default="USER")
     access_valid_until: datetime | None = None
+    access_valid_through: date | None = None
 
 
 class UserAdminUpdate(BaseModel):
@@ -47,6 +49,21 @@ class UserAdminUpdate(BaseModel):
     last_name: str | None = Field(default=None, min_length=1, max_length=120)
     company_role: str | None = None
     access_valid_until: datetime | None = None
+    access_valid_through: date | None = None
+
+_BERLIN_TZ = ZoneInfo("Europe/Berlin")
+
+
+def _valid_until_from_through(day: date | None) -> datetime | None:
+    if day is None:
+        return None
+    local_expiry = datetime.combine(
+        day + timedelta(days=1),
+        time(hour=0, minute=1),
+        tzinfo=_BERLIN_TZ,
+    )
+    return local_expiry.astimezone(timezone.utc)
+
 
 def _required_text(value: str, error_code: str) -> str:
     normalized = value.strip()
@@ -263,7 +280,11 @@ def create_user(
                         display_name,
                         login_name,
                         role,
-                        payload.access_valid_until,
+                        (
+                            _valid_until_from_through(payload.access_valid_through)
+                            if "access_valid_through" in payload.model_fields_set
+                            else payload.access_valid_until
+                        ),
                     ),
                 )
                 row = dict(cur.fetchone())
@@ -349,11 +370,12 @@ def update_user(
             if role not in _ALLOWED_COMPANY_ROLES:
                 raise HTTPException(400, "INVALID_COMPANY_ROLE")
 
-        valid_until = (
-            payload.access_valid_until
-            if "access_valid_until" in payload.model_fields_set
-            else current["access_valid_until"]
-        )
+        if "access_valid_through" in payload.model_fields_set:
+            valid_until = _valid_until_from_through(payload.access_valid_through)
+        elif "access_valid_until" in payload.model_fields_set:
+            valid_until = payload.access_valid_until
+        else:
+            valid_until = current["access_valid_until"]
         display_name = (
             _display_name(first_name, last_name)
             if current["activated_at"] is None
