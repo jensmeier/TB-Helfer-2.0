@@ -190,7 +190,9 @@ document.querySelectorAll('.portal-activation').forEach(button=>button.addEventL
   button.disabled=true;
   try{
     const {data}=await tbApi('/api/v1/admin/users/'+button.dataset.userId+'/portal-activation',{method:'POST'});
-    const url=location.origin+'/portal/v1/activate?token='+encodeURIComponent(data.activation_token)+'&login='+encodeURIComponent(data.login_name);
+    const url=data.activation_url||(
+      location.origin+'/portal/v1/activate?token='+encodeURIComponent(data.activation_token)+'&login='+encodeURIComponent(data.login_name)
+    );
     if(navigator.clipboard){try{await navigator.clipboard.writeText(url);}catch(_){}}
     show('ok','Portal-Aktivierungslink wurde erzeugt und nach Möglichkeit kopiert: '+url);
   }catch(error){show('err',error.message||String(error));}finally{button.disabled=false;}
