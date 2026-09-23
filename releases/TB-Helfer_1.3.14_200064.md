@@ -35,3 +35,12 @@ BUILD-HINWEIS 23.09.2026:
 - Ursache behoben in f070fab9277f3296b177f428160972b2f732edaf
 - Die redundante autoPhotoOrtLabel-Übergabe wurde entfernt; die bestehende Ort-Auflösung im BtbPdfAuswahlFragment bleibt maßgeblich
 - Build 200064 muss erneut ausgeführt werden; BUILD ERFOLGREICH ist noch offen
+
+PRAKTISCHER TEST 23.09.2026:
+- Build 200064 ist lokal erfolgreich durchgelaufen
+- Build 200064 wurde auf dem Gerät installiert und praktisch getestet
+- Bild nachträglich hinzufügen funktioniert
+- Bilder werden am gespeicherten Eintrag als große Vorschauen angezeigt
+- Long-Press-Menü „Verschieben / Löschen“ erscheint
+- Fehler gefunden: Nach „Verschieben“ war die Zielauswahl leer
+- Dieser Fehler wird in 1.3.15 / 200065 behoben; 200064 daher nicht als vollständig bestätigt markieren
