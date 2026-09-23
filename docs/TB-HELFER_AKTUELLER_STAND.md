@@ -16,12 +16,13 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 
 Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Blocks vor Statusaktualisierung: **`3045b965651794abbd4f83fdee375c81116774dc`**. Android bleibt auf **`3ea67aa1542a47f4057dca38014a5e73f1e6717f`**.
 
-1. **Benutzer-Gültigkeit – QUELLSTAND FERTIG / DEPLOY+E2E OFFEN**
+1. **Benutzer-Gültigkeit – ERLEDIGT / PRAKTISCH BESTÄTIGT**
    - Admin bietet `3 Monate`, `6 Monate`, `1 Jahr`, `Manuell` und weiterhin optional keinen Ablauf.
    - Keine Uhrzeiteingabe mehr. Manuell wählt nur den letzten gültigen Kalendertag.
    - Neuer API-Vertrag `access_valid_through`; serverseitige Umrechnung mit `ZoneInfo("Europe/Berlin")` auf **Folgetag 00:01 Uhr**, anschließend UTC-Speicherung in der bestehenden Spalte `access_valid_until`.
    - Keine DB-Migration erforderlich. Alte `access_valid_until`-Clients bleiben kompatibel.
    - Benutzerliste zeigt nur den letzten gültigen Tag, nicht den technischen UTC-Zeitstempel.
+   - **Praktisch bestätigt am 23.09.2026:** Benutzer-Gültigkeit wurde nach Deployment getestet und vom Benutzer mit „passt und klappt“ bestätigt. Dieser Bedien-/Ablaufpfad ist damit geschützt.
 
 2. **Öffentliches Portal `www.tb-helfer.de` – ERLEDIGT / PRAKTISCH BESTÄTIGT**
    - App/API bleibt getrennt auf **`https://api-v1.tb-helfer.de`**.
