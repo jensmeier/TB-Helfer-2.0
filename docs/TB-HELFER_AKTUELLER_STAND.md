@@ -53,6 +53,15 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
 **Deployment-Bestätigung 23.09.2026:** Der Benutzer hat die Deployment-Schritte 1–3 als erledigt bestätigt: aktueller SERVER-Stand auf Synology übernommen, `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de` in der lokalen `.env` gesetzt und API-Container mit aktualisierter Compose neu erstellt. Damit sind SRV-022/SRV-024 deployed, aber noch nicht fachlich E2E bestätigt; SRV-023 wartet als nächstes auf den Cloudflare-Public-Hostname `www.tb-helfer.de` und externen Portaltest.
 
 
+## Laufzeitbefund 23.09.2026 – Worker / Cloudflare nach Deployment
+
+- Nach der API-Neuerstellung wurden zwei getrennte Laufzeitfehler reproduziert.
+- **Worker:** Containerstart scheitert mit `Bind mount failed`, weil die normale Synology-Compose weiterhin `restore-target-storage-v1` mountete, obwohl das Restore-Target bewusst entfernt wurde. Quellfix entfernt alle Restore-Target-Variablen/Mounts aus dem normalen Worker. Der bewusst dauerhaft beibehaltene `restore-test-db` ist jetzt ausdrücklich wieder eigener persistenter Service in der Synology-Compose. Restore-to-Target bleibt ausschließlich im optionalen Wartungs-Overlay.
+- **Cloudflare:** `cloudflared` startete nicht zuverlässig selbstständig. Quellfix setzt `restart: always` und entfernt das unnötige API-Health-`depends_on`; der Tunnel startet unabhängig und retryt den Origin selbstständig.
+- Relevante Commits: Compose `b64432b798a4a1036a3292c3a550ced22d1d5211`, persistenter Restore-Test-Service `c747c1b3f47a8106316937ffb97508ef255c9e14`, Source-Checks `e4fdbad34db39e2c7a9030883054691b1c64ee82` / `9bb6001eab8830461f29df27d06b219f46a25068`, Deployment-Doku `4e68fd4a289d252570407bb60db488c1087caeb1`.
+- **Teststatus:** QUELLFIX vorhanden; Synology-Neuerstellung und praktischer Worker-/Tunnel-Autostarttest noch offen.
+- `STATUS.xlsx` bleibt weiterhin unangetastet, weil die aktuelle GitHub-Binärdatei nicht konfliktfrei bearbeitbar vorliegt.
+
 ## Laufzeitbefund 23.09.2026 – Baustellenbaum / Portal-Medien
 
 - SERVER-Quellfix-Stand vor dieser Dokuaktualisierung: **`909d970797a0c74aa6d60d5fdd34406b5bf77b93`**; ANDROID-Branch: **`3ea67aa1542a47f4057dca38014a5e73f1e6717f`**.
