@@ -8,60 +8,144 @@
 </div>
 
 <div class="card">
-  <div class="scroll">
-    <table>
-      <thead>
-        <tr>
-          <th>Nutzer</th>
-          <th>Firma</th>
-          <th>Geräte-ID</th>
-          <th>Status</th>
-          <th>Letzter Kontakt</th>
-          <th>Aktionen</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for d in devices %}
-        <tr>
-          <td><b>{{ d.display_name }}</b></td>
-          <td>{{ d.company_name or '—' }}</td>
-          <td>
-            <code>{{ d.device_uid }}</code>
-            {% if d.device_name %}<div class="muted">{{ d.device_name }} · {{ d.platform }}</div>{% endif %}
-          </td>
-          <td>
-            {% if d.status == 'ACTIVE' and not d.revoked_at %}
-              <span class="pill">AKTIV</span>
-            {% elif d.status == 'BLOCKED' %}
-              <span class="pill">BLOCKIERT</span>
-            {% else %}
-              <span class="pill">{{ d.status }}</span>
-            {% endif %}
-          </td>
-          <td>{{ d.last_seen_at or '—' }}</td>
-          <td>
-            <div class="actions">
-              {% if d.status == 'ACTIVE' and not d.revoked_at %}
-              <button type="button" class="secondary release-device" data-device-id="{{ d.id }}">Freigeben</button>
-              {% endif %}
-              <button type="button" class="danger purge-device"
-                      data-device-id="{{ d.id }}"
-                      data-device-name="{{ d.device_name or d.device_uid }}">Komplett löschen</button>
-            </div>
-          </td>
-        </tr>
-      {% else %}
-        <tr><td colspan="6" class="muted">Noch keine Geräte gebunden.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  <div class="headline">
+    <div>
+      <h2 style="margin-bottom:4px">Gebundene Geräte</h2>
+      <div id="deviceCount" class="muted">{{ devices|length }} {{ 'Gerät' if devices|length == 1 else 'Geräte' }}</div>
+    </div>
   </div>
+
+  <div class="grid" style="margin:14px 0">
+    <div>
+      <label for="companyFilter">Firma</label>
+      <select id="companyFilter">
+        <option value="">Alle Firmen</option>
+        {% for group in device_groups %}
+        <option value="{{ group.company_name }}">{{ group.company_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="deviceSearch">Suche</label>
+      <input id="deviceSearch" type="search" placeholder="Firma, Nutzer oder Gerät suchen …">
+    </div>
+  </div>
+
+  <div id="deviceGroups">
+  {% for group in device_groups %}
+    <details class="panel device-company-group" data-company="{{ group.company_name }}" style="margin-bottom:10px">
+      <summary>
+        <b>{{ group.company_name }}</b>
+        <span class="pill group-count" data-total="{{ group.devices|length }}">{{ group.devices|length }} {{ 'Gerät' if group.devices|length == 1 else 'Geräte' }}</span>
+      </summary>
+      <div class="panel-body">
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Nutzer</th>
+                <th>Geräte-ID</th>
+                <th>Status</th>
+                <th>Letzter Kontakt</th>
+                <th>Aktionen</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for d in group.devices %}
+              <tr class="device-row"
+                  data-search="{{ (group.company_name ~ ' ' ~ d.display_name ~ ' ' ~ (d.device_name or '') ~ ' ' ~ d.device_uid ~ ' ' ~ d.platform)|lower }}">
+                <td><b>{{ d.display_name }}</b></td>
+                <td>
+                  <code>{{ d.device_uid }}</code>
+                  {% if d.device_name %}<div class="muted">{{ d.device_name }} · {{ d.platform }}</div>{% endif %}
+                </td>
+                <td>
+                  {% if d.status == 'ACTIVE' and not d.revoked_at %}
+                    <span class="pill">AKTIV</span>
+                  {% elif d.status == 'BLOCKED' %}
+                    <span class="pill">BLOCKIERT</span>
+                  {% else %}
+                    <span class="pill">{{ d.status }}</span>
+                  {% endif %}
+                </td>
+                <td>{{ d.last_seen_at or '—' }}</td>
+                <td>
+                  <div class="actions">
+                    {% if d.status == 'ACTIVE' and not d.revoked_at %}
+                    <button type="button" class="secondary release-device" data-device-id="{{ d.id }}">Freigeben</button>
+                    {% endif %}
+                    <button type="button" class="danger purge-device"
+                            data-device-id="{{ d.id }}"
+                            data-device-name="{{ d.device_name or d.device_uid }}">Komplett löschen</button>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  {% else %}
+    <p class="muted">Noch keine Geräte gebunden.</p>
+  {% endfor %}
+  </div>
+  <p id="deviceEmpty" class="muted" hidden>Keine passenden Geräte gefunden.</p>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 const msg=document.getElementById('msg');
+const companyFilter=document.getElementById('companyFilter');
+const deviceSearch=document.getElementById('deviceSearch');
+const deviceGroups=Array.from(document.querySelectorAll('.device-company-group'));
+const deviceCount=document.getElementById('deviceCount');
+const deviceEmpty=document.getElementById('deviceEmpty');
+
+function applyDeviceFilters(){
+  const selected=companyFilter?companyFilter.value:'';
+  const query=(deviceSearch?deviceSearch.value:'').trim().toLocaleLowerCase('de-DE');
+  let visibleDevices=0;
+  let visibleCompanies=0;
+
+  deviceGroups.forEach(group=>{
+    const company=group.dataset.company||'';
+    const companyMatches=!selected||company===selected;
+    let groupVisible=0;
+
+    group.querySelectorAll('.device-row').forEach(row=>{
+      const rowMatches=companyMatches&&(!query||(row.dataset.search||'').includes(query));
+      row.hidden=!rowMatches;
+      if(rowMatches) groupVisible++;
+    });
+
+    group.hidden=groupVisible===0;
+    if(groupVisible>0){
+      visibleCompanies++;
+      visibleDevices+=groupVisible;
+      if(selected||query) group.open=true;
+    }
+
+    const badge=group.querySelector('.group-count');
+    if(badge){
+      const total=Number(badge.dataset.total||0);
+      badge.textContent=(selected||query)
+        ? groupVisible+' / '+total+' Geräte'
+        : total+' '+(total===1?'Gerät':'Geräte');
+    }
+  });
+
+  if(deviceCount){
+    deviceCount.textContent=visibleCompanies+' '+(visibleCompanies===1?'Firma':'Firmen')+' · '+visibleDevices+' '+(visibleDevices===1?'Gerät':'Geräte');
+  }
+  if(deviceEmpty) deviceEmpty.hidden=visibleDevices!==0;
+}
+
+if(companyFilter) companyFilter.addEventListener('change',applyDeviceFilters);
+if(deviceSearch) deviceSearch.addEventListener('input',applyDeviceFilters);
+applyDeviceFilters();
+
 function show(kind,text){
   msg.className='notice '+kind;
   msg.textContent=text;
