@@ -7,10 +7,10 @@
 
 - Repository: `jensmeier/TB-Helfer-2.0`
 - SERVER-Branch: `feature/tb-server-1.0`
-- SERVER-HEAD: `3ffa65b1dbc27ed122ef9ac91eb84c9caedcbabb`
+- SERVER-Quellfix-HEAD vor Dokuaktualisierung: `909d970797a0c74aa6d60d5fdd34406b5bf77b93`
 - SERVER-Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - ANDROID-Branch: `feature/tb-android-2.0`
-- ANDROID-HEAD: `8230d4fce7486b758af49499f82b4f8748836b80`
+- ANDROID-HEAD: `3ea67aa1542a47f4057dca38014a5e73f1e6717f`
 - ANDROID-Draft-PR: **#7 – Android 1.3.15 / 200065 – BTB-Verschiebeziele sichtbar + Bilder nachtragen**
 - Android-Quellstand laut PR-Titel: **1.3.15 / 200065**
 - Weitere ältere offene PRs existieren (#5, #1); für den aktuellen Server-/Android-Stand sind #6/#7 maßgeblich.
@@ -59,15 +59,22 @@ Folgende bereits bestätigte Funktionen/Pfade nicht ohne reproduzierbaren Fehler
 
 Source-Check, Build, Installation und GitHub Actions ohne ausgeführte Steps sind **kein E2E-Nachweis**.
 
-## 4. Aktuell neuer offener Fehler – höchste Priorität
+## 4. Aktueller Sync-/Portalfehlerstand
 
-Beim realen Android-Sync erscheint auf dem Handy:
+Der Android-Baustellenbaumfehler wurde reproduziert und serverseitig eingegrenzt:
 
-> **Synchronisation unvollständig: Baustellenbaum-Änderungen konnten nicht vollständig übertragen werden.**
+- `POST /api/v1/worksites/{id}/nodes` -> HTTP 500;
+- Trace: `psycopg.ProgrammingError: cannot adapt type 'dict'`;
+- Ursache: JSONB-`payload` wurde in `worksites.py` als rohes Python-`dict` an Psycopg übergeben;
+- Quellfix `3100c080…`, Regression-Check `2dcf83ad…`, auf Synology eingespielt;
+- **Android-E2E noch offen:** erfolgreicher `POST .../nodes` muss im echten Handy-Sync noch bestätigt werden.
 
-Zusätzlich zeigt die Sync-Seite aktuell **Strecken (0)**.
+Zusätzlich wurde ein unabhängiger Portalfehler reproduziert:
 
-Dieser Fehler wurde erst nach dem Server-Aufräumen/Cutover sichtbar und ist der nächste Prüfpunkt. Nicht vorschnell Server- oder Android-Code ändern: zuerst reproduzieren und anhand Server-/Android-Logs den konkret fehlgeschlagenen Baustellenbaum-Endpunkt bestimmen.
+- `GET /api/v1/worksites/{id}/media` -> HTTP 500 in `files.py`;
+- Ursache: SQL verwendete dreimal `users.full_name`, tatsächlich existiert `display_name`;
+- Quellfix `817c0b5d…`, Regression-Check `909d9707…`;
+- **praktisch bestätigt:** Nach Deployment laden Struktur, Teams, Mitglieder und Mängel; beim Testmangel sind **8 Fotos** im Portal sichtbar. Dieser Medien-500er ist erledigt und geschützt.
 
 ## 5. Sync-Anzeige im Systemstatus
 
@@ -89,18 +96,18 @@ Erst nach dem realen Baustellenbaum-Syncfehler entscheiden, ob `last_sync_at` se
 
 Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand teilweise veraltet.
 
-**Noch nicht geändert:** STATUS.md und STATUS.xlsx wurden in diesem Sicherungsschritt absichtlich nicht aktualisiert.  
-Die XLSX-Datei konnte über den GitHub-Connector wegen Binärformat nicht inhaltlich geprüft werden; Konsistenz MD/XLSX ist daher derzeit nicht bestätigt.
+**Aktualisiert:** `docs/TB-HELFER_AKTUELLER_STAND.md` und `projektstatus/TB-HELFER_STATUS.md` enthalten den neuen 23.09.-Fehler-/Fixstand.  
+`STATUS.xlsx` wurde bewusst noch nicht überschrieben: Die aktuelle GitHub-XLSX ist neuer als die verfügbare bearbeitbare Library-Kopie; ein Blind-Overwrite wäre nach Projektregel unzulässig.
 
-## 7. Nächster sinnvoller Schritt im neuen Chat
+## 7. Nächster sinnvoller Schritt
 
-1. GitHub erneut prüfen (#6/#7 + HEADs).
-2. Den Android-Syncfehler **„Baustellenbaum-Änderungen konnten nicht vollständig übertragen werden“** reproduzieren.
-3. Zeitgleich Server-API-Protokoll prüfen und den fehlgeschlagenen Request/HTTP-Status identifizieren.
-4. Android-Log/Syncstatus danebenlegen.
-5. Erst danach entscheiden: Serververtrag, Android-Client oder Datenzustand.
-6. Danach Pixel + Poco gemeinsamen E2E-Sync vollständig abhaken.
-7. Erst nach erfolgreichem realen Sync die veralteten STATUS-/AKTUELLER_STAND-Angaben mit ausdrücklichem Benutzerauftrag nachziehen.
+1. Auf dem Android-Gerät erneut **Daten vom NAS -> Neu laden** ausführen.
+2. Im API-Protokoll nach `nodes` filtern.
+3. Prüfen, dass der bisherige `POST .../nodes -> 500` nicht mehr auftritt und Create-Mutationen erfolgreich (201) sind.
+4. Wenn der Handy-Sync vollständig meldet: Baustellenbaum-Fix als praktisch bestätigt markieren.
+5. Danach Pixel -> Poco gemeinsamen Baustellen-/Mängel-/Foto-Sync testen.
+6. Erst anschließend `Letzter Sync`/`last_sync_at` als eigenen Anzeigepunkt korrigieren, falls weiterhin nötig.
+7. `STATUS.xlsx` erst nach konfliktfreiem Zugriff auf den aktuellen GitHub-Binärstand konsolidieren.
 
 ## 8. Synology-Arbeitsweg bleibt verbindlich
 
@@ -114,4 +121,4 @@ Die XLSX-Datei konnte über den GitHub-Connector wegen Binärformat nicht inhalt
 ---
 
 **Checkpoint erstellt:** 23.09.2026  
-**Nächster Chat startet bei:** Android-Syncfehler Baustellenbaum nach erfolgreichem Server-/Cloudflare-Cutover.
+**Aktueller nächster Schritt:** Android `Neu laden` und erfolgreichen Baustellenbaum-POST im API-Log bestätigen; Portal-Medienpfad ist bereits praktisch bestätigt.
