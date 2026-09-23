@@ -64,6 +64,21 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
 - **Praktischer Stand:** Aktualisierte Compose wurde auf Synology übernommen und das Projekt neu erstellt. Worker läuft wieder, `restore-test-db` ist grün und `cloudflared` läuft grün. Damit ist der Worker-Mountfehler praktisch behoben. Beim Tunnel ist der aktuelle Start bestätigt; ein echter NAS-/Docker-Neustarttest für automatischen Wiederanlauf bleibt offen.
 - `STATUS.xlsx` bleibt weiterhin unangetastet, weil die aktuelle GitHub-Binärdatei nicht konfliktfrei bearbeitbar vorliegt.
 
+## Neuer Integrationsauftrag 23.09.2026 – selektiver Sofort-Sync
+
+- Benutzeranforderung: Eine lokale BTB-Änderung darf nicht mehr den gesamten Datenbestand synchronisieren. Beispiel: BTB-Textänderung → nur dieser BTB.
+- Bestand geprüft: `BautagebuchSpeicher.speichern(...)` stößt heute zentral `SofortSync.anstossen(...)` an; `SofortSync` startet den normalen `SyncWorker`, der vor dem Server-1.0-Fachsync Katalog lädt und danach im `Server1AndroidSyncCoordinator` Baum, TrackData, BTB, Fachobjekte und Dateien verarbeitet.
+- Das widerspricht nicht dem Servermodell, sondern dem noch nicht fertig umgesetzten Clientpfad: `docs/TB-SERVER_1_0_ZIELMODELL.md` Abschnitt 9 fordert bereits dauerhafte Outbox, sofortige gezielte Mutation, Sync-Event und objektbezogenes Nachladen über Cursor.
+- Servergrundlage ist vorhanden: `GET /api/v1/sync/changes?after=...`, granulare BTB-Endpunkte, idempotente Mutationen. Bei jeder `BTB_ENTRY`-Änderung erzeugt der Server zusätzlich ein Eltern-`BTB`-Change-Event.
+- Server advertised diesen bestehenden Vertrag nun explizit mit Capability **`sync_change_feed_v1=true`**. Keine DB-Migration.
+- Projektregeln ergänzt: Sofort-Sync ist bereichsbezogen; Vollsync bleibt nur für `Neu laden`, Aktivierung/Reaktivierung, Beitritt, ausdrückliche manuelle Aktualisierung und Recovery.
+- Verbindliche Android-Übergabe: `uebergaben/TB-ANDROID_SELEKTIVER_SYNC_2026-09-23.md`.
+- Sicherheitsstrategie: bestehenden `SyncWorker`/Vollsync nicht ersetzen. Zuerst separaten persistenten selektiven Worker für BTB bauen und E2E bestätigen; danach Change-Feed-Pull auf anderen Geräten.
+- SERVER-Commits: Capability `7c40fc6c…`, Check `3dea21e2…`, Regeln `8e560ae6…`, Übergabe `68ad212d…`.
+- ANDROID bleibt aktuell `ac972afecf96504b2f13dd697895100cf4a27fee` / **1.3.16 (200066)**.
+- **Umsetzung/Build/E2E im ANDROID-Projekt offen.**
+- `STATUS.xlsx` weiterhin nicht blind überschrieben; aktuelle GitHub-Binärdatei ist neuer als die bearbeitbare Library-Kopie.
+
 ## Laufzeitbefund 23.09.2026 – QR-Erzeugung HTTP 500
 
 - Nach Deployment des offenen Einladungsvertrags endete das QR-Erzeugen mit HTTP 500.
