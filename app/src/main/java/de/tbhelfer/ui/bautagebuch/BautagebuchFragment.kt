@@ -5314,11 +5314,159 @@ cardCurrentReport.setOnClickListener {
                     return listOfNotNull(mi.time, kmAnzeige(mi.kmVon, mi.kmBis), mi.text).joinToString(" ").trim()
                 }
 
+                fun matchingFotoIds(mi: ManualItem): List<Long> {
+                    fun sameFirma(a: String?, b: String?): Boolean =
+                        a.orEmpty().trim().equals(b.orEmpty().trim(), ignoreCase = true)
+
+                    return lastGroups.asSequence()
+                        .filter { g ->
+                            g.ortId == mi.ortId &&
+                                sameFirma(g.firma, mi.firma) &&
+                                g.text.trim().equals(mi.text.trim(), ignoreCase = true)
+                        }
+                        .flatMap { it.ids.asSequence() }
+                        .distinct()
+                        .toList()
+                }
+
+                fun showManualPhotoLarge(foto: de.tbhelfer.datenbank.FotoEntity, number: Int) {
+                    val ctx = requireContext()
+                    val image = android.widget.ImageView(ctx).apply {
+                        adjustViewBounds = true
+                        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                        layoutParams = android.widget.LinearLayout.LayoutParams(
+                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                            dp(380)
+                        )
+                    }
+                    de.tbhelfer.util.ThumbnailLoader.loadInto(
+                        imageView = image,
+                        filePath = foto.dateipfad,
+                        placeholderResId = android.R.drawable.ic_menu_report_image,
+                        reqW = 1600,
+                        reqH = 1600
+                    )
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+                        .setTitle("Bild $number")
+                        .setView(image)
+                        .setNegativeButton("Schließen", null)
+                        .show()
+                }
+
+                fun launchPhotoForManualItem(mi: ManualItem, source: String) {
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val ctx = resolveAktuelleBaustelle()
+                        if (ctx == null) {
+                            Snackbar.make(requireView(), "Bitte zuerst eine Baustelle auswählen", Snackbar.LENGTH_LONG).show()
+                            return@launch
+                        }
+                        val activeId = loadedBtbId?.trim()?.takeIf { it.isNotBlank() }
+                            ?: withContext(Dispatchers.IO) {
+                                BtbActiveContext.laden(requireContext(), ctx.id)?.btbId
+                            }
+                        if (activeId.isNullOrBlank()) {
+                            Snackbar.make(requireView(), "Kein aktiver BTB für Bilder", Snackbar.LENGTH_LONG).show()
+                            return@launch
+                        }
+
+                        val b = Bundle().apply {
+                            putLong("baustelleId", ctx.id)
+                            putString("baustelleName", ctx.name)
+                            putString("datumIso", selectedDate.format(isoFmt))
+                            putString("shiftStart", shiftStart)
+                            putString("shiftEnd", shiftEnd)
+                            putString("schichtTyp", selectedSchichtTyp.name)
+                            putString("filterBildtyp", fotoType?.name ?: de.tbhelfer.datenbank.Bildtyp.FOTODOKUMENTATION.name)
+                            putString("btbId", activeId)
+                            putString("autoPhotoSource", source)
+                            putString("autoPhotoFirma", mi.firma.orEmpty())
+                            putLong("autoPhotoOrtId", mi.ortId)
+                            putString("autoPhotoOrtLabel", labelForOrtCached(mi.ortId))
+                            putString("autoPhotoText", mi.text)
+                            mi.time?.let { putString("autoPhotoTime", it) }
+                            mi.kmVon?.let { putDouble("autoPhotoKmVon", it) }
+                            mi.kmBis?.let { putDouble("autoPhotoKmBis", it) }
+                        }
+                        dialog.dismiss()
+                        findNavController().navigate(R.id.btbPdfAuswahlFragment, b)
+                    }
+                }
+
+                fun moveManualItem(mi: ManualItem) {
+                    val firms = LinkedHashSet<String>().apply {
+                        lastFirmaBlocks.asSequence()
+                            .filter { !it.isDeleted }
+                            .map { it.name.trim() }
+                            .filter { it.isNotBlank() }
+                            .forEach(::add)
+                        lastGroups.asSequence()
+                            .mapNotNull { it.firma?.trim() }
+                            .filter { it.isNotBlank() }
+                            .forEach(::add)
+                    }.toList()
+
+                    val targets = listOf<String?>(null) + firms
+                    val labels = targets.map { it ?: getString(R.string.btb_company_general) }.toTypedArray()
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("Eintrag verschieben")
+                        .setMessage("Wohin soll der Eintrag verschoben werden?")
+                        .setItems(labels) { _, which ->
+                            val targetFirma = targets[which]
+                            if (targetFirma.orEmpty().equals(mi.firma.orEmpty(), ignoreCase = true)) return@setItems
+
+                            val photoIds = matchingFotoIds(mi)
+                            val targetOrt = if (targetFirma == null) 0L else mi.ortId
+                            val lines = etFull.text?.toString().orEmpty().lines().toMutableList()
+                            if (mi.lineIndex in lines.indices) {
+                                lines[mi.lineIndex] = buildManualLine(
+                                    targetOrt,
+                                    targetFirma,
+                                    mi.time,
+                                    mi.text,
+                                    mi.kmVon,
+                                    mi.kmBis
+                                )
+                                setRawLines(lines)
+                                onSave(etFull.text?.toString().orEmpty())
+                            }
+
+                            val btbId = loadedBtbId?.trim().orEmpty()
+                            viewLifecycleOwner.lifecycleScope.launch {
+                                if (photoIds.isNotEmpty() && btbId.isNotBlank()) {
+                                    val photos = withContext(Dispatchers.IO) {
+                                        ServiceLocator.fotoRepository.fotosMitIds(photoIds)
+                                    }
+                                    withContext(Dispatchers.IO) {
+                                        photos.forEach { foto ->
+                                            BtbPhotoContextOverrideStore.setOverride(
+                                                requireContext(),
+                                                btbId,
+                                                foto.id,
+                                                BtbPhotoContextOverrideStore.ContextOverride(
+                                                    firma = targetFirma.orEmpty(),
+                                                    objektKennung = foto.objektKennung,
+                                                    objektBereich = foto.objektBereich,
+                                                    ortId = targetOrt
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                                saveAndReloadWholeBtbSilently()
+                                Snackbar.make(requireView(), "Eintrag verschoben", Snackbar.LENGTH_SHORT).show()
+                            }
+                            dialog.dismiss()
+                        }
+                        .setNegativeButton("Abbrechen", null)
+                        .show()
+                }
+
                 fun addManualBullet(mi: ManualItem) {
                     val line = formatManual(mi)
+                    val relatedPhotoCount = matchingFotoIds(mi).size
 
                     val tv = android.widget.TextView(requireContext()).apply {
-                        text = "• $line"
+                        text = if (relatedPhotoCount > 0) "• $line   📷 $relatedPhotoCount" else "• $line"
                         setPadding(dp(10), dp(6), dp(10), dp(6))
                         textSize = 13f
                     }
@@ -5581,6 +5729,101 @@ cardCurrentReport.setOnClickListener {
                         tilText.addView(etText)
                         root.addView(tilText)
 
+                        val photoHeader = android.widget.TextView(requireContext()).apply {
+                            text = "Bilder zu diesem Eintrag"
+                            textSize = 13f
+                            setTypeface(typeface, android.graphics.Typeface.BOLD)
+                            setPadding(0, dp(12), 0, dp(4))
+                        }
+                        root.addView(photoHeader)
+
+                        val photoGrid = android.widget.LinearLayout(requireContext()).apply {
+                            orientation = android.widget.LinearLayout.VERTICAL
+                        }
+                        root.addView(photoGrid)
+
+                        val relatedPhotoIds = matchingFotoIds(mi)
+                        val btnEntryPhotos = com.google.android.material.button.MaterialButton(requireContext()).apply {
+                            isAllCaps = false
+                            text = if (relatedPhotoIds.isEmpty()) "Bild hinzufügen" else "Bilder (${relatedPhotoIds.size}) · hinzufügen"
+                            setIconResource(R.drawable.ic_image_picker_24)
+                        }
+                        root.addView(
+                            btnEntryPhotos,
+                            android.widget.LinearLayout.LayoutParams(
+                                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                            ).apply {
+                                topMargin = dp(6)
+                                bottomMargin = dp(4)
+                            }
+                        )
+
+                        if (relatedPhotoIds.isEmpty()) {
+                            photoGrid.addView(android.widget.TextView(requireContext()).apply {
+                                text = "Noch keine Bilder direkt zu diesem Eintrag."
+                                textSize = 12f
+                                alpha = 0.70f
+                                setPadding(dp(4), dp(2), dp(4), dp(6))
+                            })
+                        } else {
+                            viewLifecycleOwner.lifecycleScope.launch {
+                                val photos = withContext(Dispatchers.IO) {
+                                    ServiceLocator.fotoRepository.fotosMitIds(relatedPhotoIds)
+                                }.associateBy { it.id }
+                                if (!isAdded) return@launch
+                                photoGrid.removeAllViews()
+                                relatedPhotoIds.chunked(2).forEachIndexed { rowIndex, ids ->
+                                    val row = android.widget.LinearLayout(requireContext()).apply {
+                                        orientation = android.widget.LinearLayout.HORIZONTAL
+                                        weightSum = 2f
+                                    }
+                                    ids.forEachIndexed { colIndex, id ->
+                                        val foto = photos[id] ?: return@forEachIndexed
+                                        val cell = android.widget.LinearLayout(requireContext()).apply {
+                                            orientation = android.widget.LinearLayout.VERTICAL
+                                            setPadding(dp(3), dp(3), dp(3), dp(3))
+                                            layoutParams = android.widget.LinearLayout.LayoutParams(
+                                                0,
+                                                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                                                1f
+                                            )
+                                        }
+                                        val image = android.widget.ImageView(requireContext()).apply {
+                                            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                                            adjustViewBounds = false
+                                            contentDescription = "Bild ${rowIndex * 2 + colIndex + 1} öffnen"
+                                            layoutParams = android.widget.LinearLayout.LayoutParams(
+                                                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                                dp(138)
+                                            )
+                                        }
+                                        de.tbhelfer.util.ThumbnailLoader.loadInto(
+                                            imageView = image,
+                                            filePath = foto.dateipfad,
+                                            placeholderResId = android.R.drawable.ic_menu_report_image,
+                                            reqW = 640,
+                                            reqH = 640
+                                        )
+                                        val number = rowIndex * 2 + colIndex + 1
+                                        image.setOnClickListener { showManualPhotoLarge(foto, number) }
+                                        cell.addView(image)
+                                        cell.addView(android.widget.TextView(requireContext()).apply {
+                                            text = "Bild $number"
+                                            textSize = 11.5f
+                                            gravity = android.view.Gravity.CENTER
+                                            setPadding(0, dp(2), 0, 0)
+                                        })
+                                        row.addView(cell)
+                                    }
+                                    if (ids.size == 1) {
+                                        row.addView(android.view.View(requireContext()), android.widget.LinearLayout.LayoutParams(0, 1, 1f))
+                                    }
+                                    photoGrid.addView(row)
+                                }
+                            }
+                        }
+
                         val firmTitle = mi.firma ?: getString(R.string.btb_company_general)
 
                         val dlg = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
@@ -5614,6 +5857,31 @@ cardCurrentReport.setOnClickListener {
                             override fun afterTextChanged(s: android.text.Editable?) { updateTimeError() }
                         })
                         updateTimeError()
+
+                        btnEntryPhotos.setOnClickListener {
+                            val textChanged = etText.text?.toString().orEmpty().trim() != mi.text.trim()
+                            val timeChanged = etTime.text?.toString().orEmpty().trim().replace('-', '–') != mi.time.orEmpty().trim().replace('-', '–')
+                            val kmVonChanged = parseKmValue(etKmVon.text?.toString()) != mi.kmVon
+                            val kmBisChanged = parseKmValue(etKmBis.text?.toString()) != mi.kmBis
+                            val ortChanged = selectedOrtMarkerId != mi.ortId
+                            if (textChanged || timeChanged || kmVonChanged || kmBisChanged || ortChanged) {
+                                Snackbar.make(
+                                    requireView(),
+                                    "Bitte Änderungen zuerst speichern und den Eintrag danach erneut öffnen.",
+                                    Snackbar.LENGTH_LONG
+                                ).show()
+                                return@setOnClickListener
+                            }
+
+                            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                                .setTitle("Bild hinzufügen")
+                                .setItems(arrayOf("Kamera", "Galerie & Dateien")) { _, which ->
+                                    dlg.dismiss()
+                                    launchPhotoForManualItem(mi, if (which == 0) "camera" else "gallery")
+                                }
+                                .setNegativeButton("Abbrechen", null)
+                                .show()
+                        }
 
                         dlg.setOnShowListener {
                             val btn = dlg.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
@@ -5658,7 +5926,16 @@ cardCurrentReport.setOnClickListener {
                     }
 
                     tv.setOnLongClickListener {
-                        confirmDeleteManualItem(mi)
+                        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("Eintrag")
+                            .setItems(arrayOf("Verschieben", "Löschen")) { _, which ->
+                                when (which) {
+                                    0 -> moveManualItem(mi)
+                                    1 -> confirmDeleteManualItem(mi)
+                                }
+                            }
+                            .setNegativeButton("Abbrechen", null)
+                            .show()
                         true
                     }
 
