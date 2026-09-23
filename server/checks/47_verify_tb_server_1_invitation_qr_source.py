@@ -57,6 +57,8 @@ def main() -> None:
         ('INVITE_HOST = "worksite-invite"', links),
         ("SvgPathImage", links),
         ("invite_qr_svg_data_url", links),
+        ("settings.portal_public_base_url", worksites),
+        ('f"{portal_base}/portal/v1/invitations/redeem"', worksites),
         ("request.url_for(\"portal_invitation_redeem_page\")", worksites),
         ('"invite_uri": None', worksites),
         ('"invite_link": None', worksites),
