@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200063: stabiler BTB-Aktivzustand ohne Pointer-Flattern,
-        // deterministisches Wiederladen und Sync-Lifecycle nach echtem Dokumentstatus.
-        versionCode = 200063
-        versionName = "1.3.13"
+        // Android 200064: gespeicherte BTB-Einträge können verschoben werden;
+        // zu einem manuellen Eintrag sind große Bildvorschauen + nachträgliches Hinzufügen erreichbar.
+        versionCode = 200064
+        versionName = "1.3.14"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
