@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from psycopg.types.json import Jsonb
 
+from .config import settings
 from .database import transaction
 from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
@@ -1227,7 +1228,12 @@ def create_worksite_invitation(
             result_version=None,
             response_payload=receipt_response,
         )
-    redeem_url = str(request.url_for("portal_invitation_redeem_page"))
+    portal_base = (settings.portal_public_base_url or "").rstrip("/")
+    redeem_url = (
+        f"{portal_base}/portal/v1/invitations/redeem"
+        if portal_base
+        else str(request.url_for("portal_invitation_redeem_page"))
+    )
     return {
         **response,
         "invite_uri": invite_app_uri(raw_token),
