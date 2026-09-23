@@ -24,6 +24,25 @@ services:
       retries: 20
       start_period: 10s
 
+  restore-test-db:
+    image: postgis/postgis:17-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TB_V1_RESTORE_TEST_DB_NAME:-tb_helfer_v1_restore_test}
+      POSTGRES_USER: ${TB_V1_RESTORE_TEST_DB_USER:-tb_helfer_restore_test}
+      POSTGRES_PASSWORD: ${TB_V1_RESTORE_TEST_DB_PASSWORD:?TB_V1_RESTORE_TEST_DB_PASSWORD fehlt}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - ${TB_V1_RESTORE_TEST_DB_DATA_DIR:-./restore-test-database-v1}:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
   migrate:
     build:
       context: .
