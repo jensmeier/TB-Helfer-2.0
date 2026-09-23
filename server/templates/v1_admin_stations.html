@@ -1,0 +1,74 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Bahnhöfe{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Bahnhöfe / Betriebsstellen</h1>
+  <p class="muted">Gemeinsamer Katalog für Bahnhof/Betriebsstelle und die zugehörigen Gleise, Weichen und weiteren Objekte. Änderungen bleiben versioniert in der Katalog-Historie.</p>
+  <div id="msg"></div>
+</div>
+
+<div class="card">
+  <h2>Bahnhof / Betriebsstelle ergänzen oder korrigieren</h2>
+  <form id="stationForm">
+    <input id="stationId" type="hidden"><input id="stationVersion" type="hidden">
+    <div class="grid">
+      <div><label for="stationCode">Kürzel</label><input id="stationCode" maxlength="50"></div>
+      <div><label for="stationName">Name</label><input id="stationName" required maxlength="200"></div>
+      <div><label for="stationShort">Kurzname</label><input id="stationShort" maxlength="100"></div>
+      <div><label for="stationDescription">Beschreibung</label><input id="stationDescription" maxlength="1000"></div>
+    </div>
+    <div class="actions" style="margin-top:12px">
+      <button type="submit">Speichern</button>
+      <button id="stationCancel" class="secondary" type="button" style="display:none">Bearbeitung abbrechen</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Bahnhofsobjekt ergänzen / korrigieren</h2>
+  <form id="stationObjectForm">
+    <input id="stationObjectId" type="hidden"><input id="stationObjectVersion" type="hidden">
+    <div class="grid">
+      <div><label for="stationObjectStation">Bahnhof</label><select id="stationObjectStation" required></select></div>
+      <div><label for="stationObjectType">Typ</label><select id="stationObjectType"><option value="TRACK">Gleis</option><option value="SWITCH">Weiche</option><option value="CROSSING">Kreuzung</option><option value="PLATFORM">Bahnsteig</option><option value="SIGNAL">Signal</option><option value="OTHER">Sonstiges</option></select></div>
+      <div><label for="stationObjectName">Bezeichnung</label><input id="stationObjectName" required maxlength="300"></div>
+      <div><label for="stationObjectKm">km (optional)</label><input id="stationObjectKm" placeholder="z. B. 78+571"></div>
+      <div><label for="stationObjectStatus">Datenstatus</label><input id="stationObjectStatus" maxlength="50"></div>
+    </div>
+    <div class="actions" style="margin-top:12px">
+      <button type="submit">Objekt speichern</button>
+      <button id="stationObjectCancel" class="secondary" type="button" style="display:none">Bearbeitung abbrechen</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Vorhandene Bahnhöfe / Betriebsstellen</h2>
+  <div id="stations">wird geladen …</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const msg=document.getElementById('msg');let catalog={routes:[],stations:[]};
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;window.scrollTo({top:0,behavior:'smooth'});}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function changeId(prefix){return prefix+'-'+(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());}
+function parseKm(value){const t=String(value||'').trim().replace(',','.');if(!t)return null;if(t.includes('+')){const p=t.split('+');const a=Number(p[0]),b=Number(p[1]);return Number.isFinite(a)&&Number.isFinite(b)?a*1000+b:null;}const n=Number(t);return Number.isFinite(n)?n*1000:null;}
+function formatKm(m){if(m===null||m===undefined||m==='')return '—';const n=Number(m);if(!Number.isFinite(n))return '—';return Math.floor(n/1000)+'+'+(n%1000).toFixed(3).padStart(7,'0');}
+function mutation(kind,id,version,payload){return tbApi('/api/v1/catalog/mutations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_change_id:changeId('admin-catalog'),entity_type:kind,operation:'UPSERT',entity_id:id||null,base_version:version?Number(version):null,payload})});}
+async function loadCatalog(){const {data}=await tbApi('/api/v1/catalog');catalog=data;stationObjectStation.innerHTML=['<option value="">Bahnhof wählen …</option>'].concat(catalog.stations.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.station_code||'—')+' · '+esc(s.name)+'</option>')).join('');renderStations();}
+function renderStations(){const root=document.getElementById('stations');if(!catalog.stations.length){root.innerHTML='<p class="muted">Noch keine Bahnhöfe/Betriebsstellen im gemeinsamen Katalog.</p>';return;}root.innerHTML=catalog.stations.map(s=>'<div class="item" style="margin-bottom:10px"><b>'+esc(s.name)+'</b>'+(s.station_code?' · '+esc(s.station_code):'')+'<div class="muted">Version '+esc(s.current_version)+' · '+esc(s.object_count)+' Objekte'+(s.short_name?' · '+esc(s.short_name):'')+'</div>'+(s.description?'<div>'+esc(s.description)+'</div>':'')+'<div class="actions" style="margin-top:8px"><button type="button" onclick="editStation(\''+esc(s.id)+'\')">Bearbeiten</button><button class="secondary" type="button" onclick="loadStationObjects(\''+esc(s.id)+'\')">Gleise / Weichen / Objekte</button></div><div id="objects-'+esc(s.id)+'" style="margin-top:10px"></div></div>').join('');}
+function editStation(id){const s=catalog.stations.find(x=>x.id===id);if(!s)return;stationId.value=s.id;stationVersion.value=s.current_version;stationCode.value=s.station_code||'';stationName.value=s.name||'';stationShort.value=s.short_name||'';stationDescription.value=s.description||'';stationCancel.style.display='inline-block';stationName.focus();}
+function clearStation(){stationId.value='';stationVersion.value='';stationCode.value='';stationName.value='';stationShort.value='';stationDescription.value='';stationCancel.style.display='none';}
+stationCancel.addEventListener('click',clearStation);
+stationForm.addEventListener('submit',async ev=>{ev.preventDefault();try{await mutation('STATION',stationId.value,stationVersion.value,{station_code:stationCode.value.trim()||null,name:stationName.value.trim(),short_name:stationShort.value.trim()||null,description:stationDescription.value.trim()||null});show('ok','Bahnhof/Betriebsstelle gespeichert.');clearStation();await loadCatalog();}catch(e){show('err',e.message||String(e));}});
+async function loadStationObjects(id){const target=document.getElementById('objects-'+id);target.textContent='wird geladen …';try{const {data}=await tbApi('/api/v1/catalog/stations/'+encodeURIComponent(id)+'/objects');const items=data.objects||[];target.innerHTML=items.length?items.map(x=>'<div class="item">'+esc(x.object_type)+' · '+esc(x.designation||'')+' · '+formatKm(x.km_m)+' · V'+esc(x.current_version)+' <button type="button" class="secondary" onclick=\'editStationObject('+JSON.stringify(id)+','+JSON.stringify(x)+')\'>Bearbeiten</button></div>').join(''):'<p class="muted">Keine Objekte.</p>';}catch(e){target.innerHTML='<div class="notice err">'+esc(e.message||String(e))+'</div>';}}
+function editStationObject(stationIdValue,x){stationObjectId.value=x.id;stationObjectVersion.value=x.current_version;stationObjectStation.value=stationIdValue;stationObjectType.value=x.object_type||'OTHER';stationObjectName.value=x.designation||'';stationObjectKm.value=x.km_m==null?'':formatKm(x.km_m);stationObjectStatus.value=x.data_status||'';stationObjectCancel.style.display='inline-block';stationObjectName.focus();}
+function clearStationObject(){stationObjectId.value='';stationObjectVersion.value='';stationObjectName.value='';stationObjectKm.value='';stationObjectStatus.value='';stationObjectType.value='TRACK';stationObjectCancel.style.display='none';}
+stationObjectCancel.addEventListener('click',clearStationObject);
+stationObjectForm.addEventListener('submit',async ev=>{ev.preventDefault();try{await mutation('OBJECT',stationObjectId.value,stationObjectVersion.value,{route_id:null,station_id:stationObjectStation.value,object_type:stationObjectType.value,designation:stationObjectName.value.trim(),km_m:parseKm(stationObjectKm.value),data_status:stationObjectStatus.value.trim()||null,properties:{}});show('ok','Bahnhofsobjekt gespeichert.');clearStationObject();await loadCatalog();}catch(e){show('err',e.message||String(e));}});
+window.editStation=editStation;window.loadStationObjects=loadStationObjects;window.editStationObject=editStationObject;
+loadCatalog().catch(e=>show('err',e.message||String(e)));
+</script>
+{% endblock %}
