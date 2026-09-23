@@ -20,8 +20,13 @@ for token in (
     "parent_payload = {}",
     "_legacy_defect_status",
     "acceptance_result",
+    "lead.display_name AS responsible_tb",
+    "uploader.display_name AS uploaded_by_name",
+    "btb_lead.display_name AS btb_responsible_tb",
 ):
     assert token in server, token
+
+assert ".full_name" not in server
 
 # The image-only override must stay opt-in: normal file list/metadata keep existing visibility.
 assert "allow_responsible_btb_images: bool = False" in server
