@@ -271,7 +271,7 @@ def _media_uploader_team(
     cur.execute(
         """
         SELECT t.id AS team_id,
-               lead.full_name AS responsible_tb
+               lead.display_name AS responsible_tb
         FROM tb.team_members tm
         JOIN tb.teams t
           ON t.id = tm.team_id
@@ -706,13 +706,13 @@ def list_worksite_media(
                    f.byte_size,
                    f.created_by,
                    f.created_at,
-                   uploader.full_name AS uploaded_by_name,
+                   uploader.display_name AS uploaded_by_name,
                    l.entity_type,
                    l.entity_id,
                    b.team_id AS btb_team_id,
                    b.status AS btb_status,
                    b.deleted_at AS btb_deleted_at,
-                   btb_lead.full_name AS btb_responsible_tb,
+                   btb_lead.display_name AS btb_responsible_tb,
                    d.area_scope AS defect_area_scope,
                    d.status AS defect_status,
                    d.payload AS defect_payload,
