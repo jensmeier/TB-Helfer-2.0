@@ -87,7 +87,7 @@ Zusätzlich wurde ein unabhängiger Portalfehler reproduziert:
 
 - **1 Benutzer-Gültigkeit:** **ERLEDIGT / PRAKTISCH BESTÄTIGT.** Presets 3/6/12 Monate + manuelles Datum funktionieren ohne Uhrzeitfeld; Ablaufregel Europe/Berlin Folgetag 00:01 wurde nach Deployment vom Benutzer mit „passt und klappt“ bestätigt.
 - **2 Portal:** praktisch bestätigt. `www.tb-helfer.de` ist extern erreichbar; echter Benutzerlogin funktioniert. Portal-Start, Profil/Firmenkontakte und Baustellenliste laden, die Testbaustelle `GE Immenstadt - Kempten` ist sichtbar/öffnbar. App/API bleibt getrennt auf `api-v1.tb-helfer.de`. Der Erstaktivierungslink bleibt nur als eigener Bedienfall offen, falls noch nicht explizit getestet.
-- **4 QR-Einladung:** Ursache im Android-Code nachgewiesen. Direkter Baustellen-Scanner verarbeitet nur Legacy-`tbhelfer://invite?code=TBI-...`; moderner Server liefert `tbhelfer://worksite-invite?token=...`. Fix gehört ins ANDROID-Projekt; SERVER-`app/**` unverändert.
+- **4 QR-Einladung:** Ursache im Android-Code bestätigt und Fix exakt vorbereitet. Verbindliche Übergabe: `uebergaben/TB-ANDROID_QR_EINLADUNGSFIX_2026-09-23.md`; SERVER-Check 48 erzwingt künftig denselben `WorksiteInvitationLink`-Parser auch im direkten Baustellen-Scanner. Umsetzung/Build/E2E bleiben im ANDROID-Projekt; SERVER-`app/**` unverändert.
 - **3 Strecken/Bahnhöfe:** neue Adminseiten auf vorhandenem globalen Katalog sind auf Synology deployt; fachlicher E2E offen; keine neue Datenbank/Migration.
 
 `STATUS.xlsx` bleibt bis zu einem konfliktfreien Zugriff auf den aktuellen GitHub-Binärstand unverändert.
@@ -139,4 +139,4 @@ Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand t
 ---
 
 **Checkpoint erstellt:** 23.09.2026  
-**Aktueller nächster Schritt:** Android-QR-Fix im ANDROID-Projekt umsetzen/testen; danach Strecken-/Bahnhöfe-E2E. Cloudflared-Reboot-Test bleibt separat offen.
+**Aktueller nächster Schritt:** im ANDROID-Projekt die vorbereitete QR-Übergabe umsetzen, Build installieren und modernen `worksite-invite`-QR E2E testen; danach Strecken-/Bahnhöfe-E2E. Cloudflared-Reboot-Test bleibt separat offen.
