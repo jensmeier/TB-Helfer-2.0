@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200065: Zielauswahl beim Verschieben manueller BTB-Einträge
-        // zuverlässig als sichtbare Liste anzeigen; 200064-Foto-/Eintrag-Funktionen bleiben erhalten.
-        versionCode = 200065
-        versionName = "1.3.15"
+        // Android 200066: direkter Baustellen-QR-Scanner nutzt den gemeinsamen
+        // Server-1.0-Einladungsparser mit case-sensitivem Token und Legacy-TBI-Fallback.
+        versionCode = 200066
+        versionName = "1.3.16"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
