@@ -29,6 +29,10 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 ## 1. Grundarchitektur
 - Synology/NAS ist zentrale Serverinstanz und Source of Truth.
 - Android arbeitet offline mit lokalen Kopien und synchronisiert nur benötigte Daten.
+- **Sofort-Sync ist bereichsbezogen, kein Vollsync:** Eine lokale Fachänderung stößt nur den betroffenen Bereich an. Beispiel: BTB-Textänderung → nur dieser BTB; BTB-Foto → dieser BTB + seine Medien; Mangel → dieser Mangel (+ Bilder); Abnahme → diese Abnahme (+ Anlagen); Baustellenbaum → nur Baum; Streckendaten → nur betroffene Datensätze.
+- Ein **Vollabgleich** bleibt bewusst für `Neu laden`, Erst-/Reaktivierung, Baustellenbeitritt, ausdrückliche manuelle Aktualisierung und Recovery nach inkonsistentem Cursor/Konflikt verfügbar. Er darf nicht mehr der normale Sofortpfad nach jedem Autosave sein.
+- Mehrere schnelle Änderungen werden entprellt und dauerhaft zusammengefasst. Ein bereits wartender Sync darf eine später hinzugekommene Dirty-Markierung nicht verlieren.
+- Eingehende Änderungen werden über den Server-Change-Feed/Cursor erkannt und anschließend objektbezogen nachgeladen; Change-Signale enthalten IDs/Versionen statt große Gesamtsnapshots.
 - Originale Vermessungsdateien (z. B. TRA, GRA, KF, KOR) bleiben unverändert und dauerhaft nachvollziehbar.
 - Bearbeitete/berechnete Abschnitte werden getrennt und nachvollziehbar gespeichert.
 - Cloudflare/TLS für normale App-Synchronisation; Tailscale nur Wartung/Notfall.
