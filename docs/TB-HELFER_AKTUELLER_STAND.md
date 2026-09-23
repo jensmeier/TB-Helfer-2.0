@@ -64,6 +64,24 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
 - **Praktischer Stand:** Aktualisierte Compose wurde auf Synology übernommen und das Projekt neu erstellt. Worker läuft wieder, `restore-test-db` ist grün und `cloudflared` läuft grün. Damit ist der Worker-Mountfehler praktisch behoben. Beim Tunnel ist der aktuelle Start bestätigt; ein echter NAS-/Docker-Neustarttest für automatischen Wiederanlauf bleibt offen.
 - `STATUS.xlsx` bleibt weiterhin unangetastet, weil die aktuelle GitHub-Binärdatei nicht konfliktfrei bearbeitbar vorliegt.
 
+## Laufzeitbefund 23.09.2026 – Baustellen-QR-Erzeugung
+
+- Android-Branch ist inzwischen **1.3.16 / 200066** auf `ac972afecf96504b2f13dd697895100cf4a27fee`; der direkte Scanner verwendet den gemeinsamen modernen `WorksiteInvitationLink`-Parser. Scanner-E2E ist noch offen.
+- Praktischer Fehler beim Erzeugen: App zeigt nach `QR wird erzeugt …` **`Einladungen werden vom Server nicht unterstützt.`**
+- Ursache aus Codevertrag bestätigt: `BaustellenTeamDirekt.createInvitation(...)` verwendet noch den Rolling-Update-/Legacy-Create-Pfad `POST /api/v1/collab/worksites/{id}/invitations`; Server 1.0 hatte diesen Pfad nicht. Gleichzeitig war `WorksiteInvitationCreate.invited_user_id` im Python-Modell Pflicht, obwohl die DB-Spalte bereits nullable ist und die Projektregel offene QR-/Link-/Code-Einladungen vorsieht.
+- Serverfix ohne Migration:
+  - `invited_user_id` im kanonischen Vertrag optional;
+  - offene Einladung darf von jedem aktiven Benutzer derselben Firma eingelöst werden;
+  - gezielte Einladung bleibt weiterhin an die Benutzer-ID gebunden;
+  - bereits aktives Baustellenmitglied kann offenen QR nicht zum Rollenwechsel verwenden;
+  - HELPER bleibt an das Team des einladenden TB gebunden; TB/RESPONSIBLE_TB erhält wie bisher eigenes Team;
+  - `/api/v1/collab/worksites/{id}/invitations` ist nur ein Rolling-Update-Adapter für bereits installierte Android-Versionen und ruft intern `create_worksite_invitation(...)` auf;
+  - Capability `worksite_open_invitations_v1` ergänzt.
+- Quellcommits: `a56402882ea4a2092bd9d7400ef19f299fda10b6`, `bf9676f2b9d34f0e9fa4a804df0fbb845020aec8`, `cd9b1df4012f08626562f533bd8a0447127755bf`, Check `eb978139c5a30ac75236201e8b4605f6c7a1442a`.
+- **Deployment/E2E offen:** Runtime-Dateien auf Synology übernehmen, nur API neu starten, QR-Erzeugung und anschließendes Einlösen praktisch prüfen.
+- Keine DB-Migration, keine Änderung an DB-/Storage-/Backups-/Restore-Test-Daten.
+- `STATUS.xlsx` weiterhin nicht blind überschrieben.
+
 ## Laufzeitbefund 23.09.2026 – Baustellenbaum / Portal-Medien
 
 - SERVER-Quellfix-Stand vor dieser Dokuaktualisierung: **`909d970797a0c74aa6d60d5fdd34406b5bf77b93`**; ANDROID-Branch: **`3ea67aa1542a47f4057dca38014a5e73f1e6717f`**.
