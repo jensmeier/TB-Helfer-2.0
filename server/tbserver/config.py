@@ -53,6 +53,7 @@ class Settings:
     log_level: str
     portal_session_hours: int
     public_base_url: str | None
+    portal_public_base_url: str | None
     smtp_host: str | None
     smtp_port: int
     smtp_user: str | None
@@ -84,6 +85,7 @@ class Settings:
             log_level=_env("LOG_LEVEL", "INFO").upper(),
             portal_session_hours=max(1, _env_int("TB_PORTAL_SESSION_HOURS", 12)),
             public_base_url=_env_optional("TB_PUBLIC_BASE_URL"),
+            portal_public_base_url=_env_optional("TB_PORTAL_PUBLIC_BASE_URL"),
             smtp_host=_env_optional("TB_SMTP_HOST"),
             smtp_port=_env_int("TB_SMTP_PORT", 587),
             smtp_user=_env_optional("TB_SMTP_USER"),
