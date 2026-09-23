@@ -5775,9 +5775,8 @@ cardCurrentReport.setOnClickListener {
                             orientation = android.widget.LinearLayout.HORIZONTAL
                             setPadding(0, 0, dp(6), 0)
                         }
-                        // HorizontalScrollView ist ein FrameLayout. Keine vermeintlichen
-                        // HorizontalScrollView.LayoutParams verwenden; addView erzeugt die
-                        // passenden internen LayoutParams automatisch.
+                        // HorizontalScrollView ist intern ein FrameLayout; addView erzeugt
+                        // hier die passenden Child-LayoutParams automatisch.
                         photoScroller.addView(photoRow)
                         root.addView(
                             photoScroller,
