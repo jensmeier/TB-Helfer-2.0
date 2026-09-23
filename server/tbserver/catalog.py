@@ -12,7 +12,7 @@ from psycopg.types.json import Jsonb
 from . import SERVER_VERSION
 from .database import transaction
 from .events import audit
-from .portal import current_portal_user
+from .portal import current_portal_user, require_csrf
 
 router = APIRouter(prefix="/api/v1/catalog", tags=["catalog"])
 
@@ -628,7 +628,7 @@ def _write(
 @router.post("/mutations")
 def mutate(
     payload: Mutation,
-    user: dict[str, Any] = Depends(current_portal_user),
+    user: dict[str, Any] = Depends(require_csrf),
 ):
     kind = payload.entity_type.strip().upper()
     operation = payload.operation.strip().upper()
