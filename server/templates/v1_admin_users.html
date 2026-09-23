@@ -45,7 +45,7 @@
           <b>{{ u.display_name }}</b><div class="muted">{{ u.first_name }} {{ u.last_name }}</div>
           <div class="muted">{% if u.activated_at %}Login{% else %}Vorläufiger Login{% endif %}: <code>{{ u.login_name }}</code></div>
           <div class="muted"><code>{{ u.id }}</code></div>
-          {% if u.access_valid_until %}<div class="muted">gültig bis {{ u.access_valid_until }}</div>{% endif %}
+          {% if u.access_valid_through %}<div class="muted">gültig bis {{ u.access_valid_through.strftime('%d.%m.%Y') }}</div>{% endif %}
         </td>
         <td><div>{{ u.company_name or '—' }}</div><span class="pill">{{ u.company_role }}</span></td>
         <td><div>{{ u.personal_email or '—' }}</div><div>{{ u.personal_phone or '—' }}</div><div class="muted">nur Anzeige · Benutzer pflegt diese Daten selbst</div></td>
@@ -154,6 +154,7 @@ document.querySelectorAll('.edit-valid-preset').forEach(select=>{
 const createUser=document.getElementById('createUser');
 if(createUser){createUser.addEventListener('submit',async ev=>{
   ev.preventDefault();
+  if(validPreset.value==='manual'&&!validDate.value){show('err','Bitte den letzten gültigen Tag auswählen.');validDate.focus();return;}
   try{
     const {data}=await tbApi('/api/v1/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       company_id:document.getElementById('company').value,
@@ -173,7 +174,10 @@ document.querySelectorAll('.toggle-edit').forEach(button=>button.addEventListene
 }));
 
 document.querySelectorAll('.save-edit').forEach(button=>button.addEventListener('click',async()=>{
-  const panel=document.getElementById('edit-'+button.dataset.userId);button.disabled=true;
+  const panel=document.getElementById('edit-'+button.dataset.userId);
+  const preset=panel.querySelector('.edit-valid-preset'),dateInput=panel.querySelector('.edit-valid-date');
+  if(preset.value==='manual'&&!dateInput.value){show('err','Bitte den letzten gültigen Tag auswählen.');dateInput.focus();return;}
+  button.disabled=true;
   try{
     await tbApi('/api/v1/admin/users/'+button.dataset.userId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       company_id:panel.querySelector('.edit-company').value,
