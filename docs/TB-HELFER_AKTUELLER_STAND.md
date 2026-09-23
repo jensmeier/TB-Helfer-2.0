@@ -32,12 +32,13 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
    - Synology-Compose enthält die neue API-Environment-Variable; lokale `.env` soll `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de` setzen.
    - Cloudflare-Tunnel `tb-helfer-nas`: zusätzlicher Public Hostname `www.tb-helfer.de` ist praktisch eingerichtet und extern erreichbar. Echter Benutzerlogin funktioniert; Portal-Start, Profil/Firmenkontakte und Baustellenliste laden. Die Testbaustelle `GE Immenstadt - Kempten` ist sichtbar und öffnbar. Die öffentliche Portalroute und der Login gelten damit als praktisch bestätigt; der Erstaktivierungslink bleibt nur als separater Bedienfall offen, falls noch nicht explizit getestet.
 
-4. **Baustellen-QR-Einladungen – URSACHE IM ANDROID-CODE NACHGEWIESEN / ANDROID-FIX OFFEN**
+4. **Baustellen-QR-Einladungen – URSACHE BESTÄTIGT / ANDROID-FIX EXAKT VORBEREITET**
    - Server erzeugt korrekt `tbhelfer://worksite-invite?token=...`.
    - Androids allgemeiner `WorksiteInvitationLink` kann modernen Server-Token und Legacy bereits korrekt unterscheiden.
    - Der direkte Baustellenbutton `QR scannen` in `BaustellenTeamDirekt` verwendet jedoch noch einen eigenen Legacy-Parser und akzeptiert nur `tbhelfer://invite?code=TBI-...`; anschließend ruft er nur den Legacy-`redeemInvitation()`-Pfad auf.
    - Benötigter Android-Fix: dort `WorksiteInvitationLink.parse()` verwenden; `ServerToken` → `redeemServerInvitation()`, `LegacyCode` → `redeemInvitation()`. Moderne Tokens niemals uppercasen.
    - Nach Projekttrennung wurde **`app/**` im SERVER-Projekt nicht geändert**.
+   - Verbindliche Android-Übergabe: `uebergaben/TB-ANDROID_QR_EINLADUNGSFIX_2026-09-23.md` (`45d55128…`). SERVER-Check 48 wurde mit Commit `66ae2adf…` erweitert und fordert nun auch im direkten Baustellen-Scanner `WorksiteInvitationLink.parse(...)`, modernen `redeemServerInvitation(...)`-Pfad, Legacy-Fallback und das Entfernen des parallelen `extractInvitationCode(...)`.
 
 3. **Strecken/Bahnhöfe im Admin – QUELLSTAND FERTIG / DEPLOY+E2E OFFEN**
    - Neue getrennte Admin-Navigation **Strecken** und **Bahnhöfe**.
