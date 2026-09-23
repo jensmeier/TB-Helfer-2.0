@@ -110,12 +110,6 @@ function addCalendarMonths(months){
   target.setDate(Math.min(day,lastDay));
   return localDateValue(target);
 }
-function expiryIsoFromLastValidDate(value){
-  if(!value)return null;
-  const parts=value.split('-').map(Number);
-  if(parts.length!==3||parts.some(Number.isNaN))return null;
-  return new Date(parts[0],parts[1]-1,parts[2]+1,0,1,0,0).toISOString();
-}
 function applyValidityPreset(select,dateInput){
   const preset=select.value;
   if(!preset){
@@ -161,7 +155,7 @@ if(createUser){createUser.addEventListener('submit',async ev=>{
       first_name:document.getElementById('firstName').value.trim(),
       last_name:document.getElementById('lastName').value.trim(),
       company_role:document.getElementById('role').value,
-      access_valid_until:expiryIsoFromLastValidDate(document.getElementById('validDate').value)
+      access_valid_through:document.getElementById('validDate').value||null
     })});
     show('ok','Nutzer wurde angelegt. Vorläufiger Login: '+data.login_name);
     setTimeout(()=>location.reload(),900);
@@ -184,7 +178,7 @@ document.querySelectorAll('.save-edit').forEach(button=>button.addEventListener(
       first_name:panel.querySelector('.edit-first').value.trim(),
       last_name:panel.querySelector('.edit-last').value.trim(),
       company_role:panel.querySelector('.edit-role').value,
-      access_valid_until:expiryIsoFromLastValidDate(panel.querySelector('.edit-valid-date').value)
+      access_valid_through:panel.querySelector('.edit-valid-date').value||null
     })});
     show('ok','Benutzerdaten wurden gespeichert.');setTimeout(()=>location.reload(),550);
   }catch(error){show('err',error.message||String(error));button.disabled=false;}
