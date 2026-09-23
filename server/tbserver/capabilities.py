@@ -48,6 +48,7 @@ CAPABILITIES: dict[str, bool] = {
     "survey_station_merge_v1": True,
     "survey_gra_jump_detection_v1": True,
     "idempotent_mutations_v1": True,
+    "sync_change_feed_v1": True,
     "company_profile_v1": True,
     "company_logo_v1": True,
     "company_pdf_logo_layout_v1": True,
