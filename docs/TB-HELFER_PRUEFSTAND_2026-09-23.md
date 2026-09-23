@@ -59,6 +59,16 @@ Folgende bereits bestätigte Funktionen/Pfade nicht ohne reproduzierbaren Fehler
 
 Source-Check, Build, Installation und GitHub Actions ohne ausgeführte Steps sind **kein E2E-Nachweis**.
 
+## 4d. Selektiver Sofort-Sync statt Vollsync
+
+- Neuer Benutzerauftrag: Bei BTB-Eingaben nur den betroffenen BTB synchronisieren, nicht Katalog/Baum/Streckendaten/Mängel/Abnahmen/Dateien komplett mitziehen.
+- Aktuelle Ursache im Android-Code bestätigt: `BautagebuchSpeicher` → `SofortSync` → normaler `SyncWorker` → breiter Server-1.0-Sync.
+- Zielmodell war bereits auf Delta-Sync ausgelegt: Outbox + Change Feed + gezieltes Nachladen.
+- Server-Change-Feed ist vorhanden und nun als `sync_change_feed_v1=true` advertised.
+- Keine DB-Migration.
+- Android-Umsetzung exakt vorbereitet in `uebergaben/TB-ANDROID_SELEKTIVER_SYNC_2026-09-23.md`.
+- Bestehender Vollsync bleibt geschützt und wird erst nach bestätigtem selektivem Pfad als Standard-Sofortweg abgelöst.
+
 ## 4c. Baustellen-QR – HTTP 500 nach Create-Adapter
 
 - Nach dem Rolling-Update-Adapter wurde beim QR-Erzeugen HTTP 500 reproduziert.
@@ -156,4 +166,4 @@ Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand t
 ---
 
 **Checkpoint erstellt:** 23.09.2026  
-**Aktueller nächster Schritt:** Strecken-/Bahnhöfe-Admin E2E testen. QR-Erzeugung und QR-Einlösen sind praktisch bestätigt.
+**Aktueller nächster Schritt:** im ANDROID-Projekt zuerst Phase A des selektiven Syncs umsetzen: BTB-Autosave → nur genau diesen BTB senden; bestehenden Vollsync für `Neu laden`/Recovery erhalten. Danach API-Log-E2E. Strecken-/Bahnhöfe-Admin E2E bleibt anschließend offen.
