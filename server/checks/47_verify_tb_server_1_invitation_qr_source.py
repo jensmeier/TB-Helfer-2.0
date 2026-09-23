@@ -50,6 +50,7 @@ def main() -> None:
     redeem_ui = read("server/templates/v1_invitation_redeem.html")
     requirements = read("server/requirements.txt")
     caps = read("server/tbserver/capabilities.py")
+    main_source = read("server/tbserver/main.py")
     workflow = read(".github/workflows/tb-server-v1.yml")
 
     assertions = [
@@ -74,6 +75,16 @@ def main() -> None:
         ('meta name="referrer" content="no-referrer"', redeem_ui),
         ("qrcode==8.2", requirements),
         ('"worksite_invitation_qr_v1": True', caps),
+        ('"worksite_open_invitations_v1": True', caps),
+        ('invited_user_id: UUID | None = None', worksites),
+        ('LEFT JOIN tb.users u ON u.id = i.invited_user_id', worksites),
+        ('@legacy_router.post("/worksites/{worksite_id}/invitations")', worksites),
+        ('created = create_worksite_invitation(', worksites),
+        ('"deep_link": created.get("invite_uri")', worksites),
+        ('if invitation["invited_user_id"] is not None and invitation["invited_user_id"] != user["user_id"]', worksites),
+        ('if invitation["invited_user_id"] is None:', worksites),
+        ('raise HTTPException(409, "ALREADY_WORKSITE_MEMBER")', worksites),
+        ('app.include_router(legacy_worksites_router)', main_source),
         ("47_verify_tb_server_1_invitation_qr_source.py", workflow),
         ('"worksite_invitation_qr_v1"', workflow),
     ]
@@ -81,6 +92,19 @@ def main() -> None:
     if missing:
         raise SystemExit(
             "Fehlende QR-/Deep-Link-Einladungsmarker: " + ", ".join(missing)
+        )
+
+    legacy_block = worksites[
+        worksites.index("def create_legacy_worksite_invitation"):
+        worksites.index("def revoke_worksite_invitation")
+    ]
+    if 'INSERT INTO tb.worksite_invitations' in legacy_block:
+        raise SystemExit(
+            "Legacy-Android-Adapter darf keine zweite Einladungs-Fachlogik/Datenbanklogik besitzen"
+        )
+    if "create_worksite_invitation(" not in legacy_block:
+        raise SystemExit(
+            "Legacy-Android-Adapter muss den kanonischen Server-1.0-Einladungsweg verwenden"
         )
 
     create_block = worksites[
