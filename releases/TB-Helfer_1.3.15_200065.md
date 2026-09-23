@@ -31,3 +31,11 @@ TESTSTATUS:
 HINWEIS:
 - Keine Serveränderung erforderlich
 - Serververtrag btbId-/Foto-Synchronisation bleibt unverändert
+
+BUILD-HINWEIS 23.09.2026 14:39:
+- Erster lokaler Build 200065 fehlgeschlagen mit 3x Unresolved reference 'LayoutParams'
+- Ursache: HorizontalScrollView.LayoutParams war im Kotlin-Quelltext ungültig
+- Behoben: photoScroller.addView(photoRow) verwendet die passenden Child-LayoutParams automatisch
+- Fix-Stand: 90076c0d43405b3b577e54925969bdee1b7d7936
+- Build 200065 muss erneut ausgeführt werden
+- BUILD ERFOLGREICH, INSTALLIERT und E2E bleiben offen
