@@ -1,6 +1,6 @@
 # TB-Helfer – aktueller Projektstand
 
-Stand: 2026-09-21
+Stand: 2026-09-23
 
 Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEKTREGELN.md`, diese Datei, `docs/TB-SERVER_1_0_ZIELMODELL.md` und `docs/TB-SERVER_1_0_CUTOVER.md`.
 
@@ -11,6 +11,15 @@ Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEK
 - aktiver Branch: **`feature/tb-server-1.0`**
 - Draft-PR: **#6 – TB-Server 1.0 – gemeinsame Serverbasis**
 - PR-Basis: `feature/admin-offline-sync`
+
+## Laufzeitbefund 23.09.2026 – Baustellenbaum / Portal-Medien
+
+- SERVER-Quellfix-Stand vor dieser Dokuaktualisierung: **`909d970797a0c74aa6d60d5fdd34406b5bf77b93`**; ANDROID-Branch: **`3ea67aa1542a47f4057dca38014a5e73f1e6717f`**.
+- Android-Syncfehler reproduziert: `POST /api/v1/worksites/{id}/nodes` lieferte HTTP 500. Ursache: Python-`dict` wurde in `worksites.py` ohne Psycopg-`Jsonb(...)` an die JSONB-Spalte `payload` übergeben. Quellfix: **`3100c080162a631f224aedacb1475a76d108e1be`**, Regression-Check: **`2dcf83ad94c71dc47bbbe4305c4226096f9a1ae7`**. **Auf Synology eingespielt; Android-E2E/201-Nachweis noch offen.**
+- Separater Portalfehler reproduziert: `GET /api/v1/worksites/{id}/media` lieferte HTTP 500. Ursache: Medien-SQL verwendete `users.full_name`, die Server-1.0-Tabelle besitzt `display_name`. Quellfix: **`817c0b5dfa7589a7cdcc884f3408c4f5fbf9a488`**, Regression-Check: **`909d970797a0c74aa6d60d5fdd34406b5bf77b93`**.
+- **Portal-Medienpfad praktisch BESTÄTIGT:** Nach Deployment laden Baustellenstruktur, Teams, Mitglieder und Mängel wieder; beim Testmangel sind **8 hochgeladene Fotos** im Portal sichtbar. Dieser konkrete 500er gilt damit als behoben.
+- Der Android-Gesamtsync ist dadurch **noch nicht** bestätigt. Nächster Test: Handy `Neu laden`, anschließend im API-Log prüfen, dass `POST .../nodes` nicht mehr 500, sondern erfolgreich (bei Neuanlage 201) antwortet.
+- `projektstatus/TB-HELFER_STATUS.xlsx` wird in diesem Schritt bewusst **nicht** überschrieben: Die aktuelle GitHub-XLSX ist neuer als die verfügbare bearbeitbare Library-Kopie. Zuerst konfliktfrei den aktuellen Binärstand beschaffen/konsolidieren.
 - Funktionscommit globaler Katalog + Benutzeridentität: **`511bb5c00552b5a7e54d35d930ea982cf4629598`**
 - Server-Automatik/E-Mail/Audit-Quellblock: **`dd0bf1c6b5640951e74494969b5032a5ada86e1d`** (Migration 012; danach nur Doku/Statuspflege)
 - Systemstatus kompakt/live + Job-Fortschritt: Migration **013** ergänzt `progress_percent`/`progress_text`; Worker, Backup-/Restore-Test, Admin-Systemstatus und Release-Archivansicht wurden auf den neuen Bedienvertrag erweitert. Quellblock ab `8cdfe781…` bis `57b28a76…`; **DEPLOY + E2E OFFEN**.
