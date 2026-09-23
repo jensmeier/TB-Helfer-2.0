@@ -64,7 +64,7 @@ Source-Check, Build, Installation und GitHub Actions ohne ausgeführte Steps sin
 - **Worker startet nicht:** Synology meldet `Bind mount failed: .../restore-target-storage-v1 does not exist`. Ursache ist der veraltete Restore-Target-Mount im normalen Synology-Compose nach bewusstem Entfernen des Restore-Targets.
 - Quellfix: Restore-Target vollständig aus normalem Worker entfernt; `restore-test-db` bleibt ausdrücklich als persistenter eigener Service bestehen. Restore-to-Target nur noch optionales Wartungs-Overlay.
 - **cloudflared startet nicht selbstständig:** Quellfix `restart: always`, kein API-Health-`depends_on` mehr. Tunnel startet unabhängig und retryt den Origin.
-- Deployment/E2E dieser beiden Fixes ist noch offen. DB, Storage, Backups und Secrets nicht verändern/löschen.
+- Aktualisierte Compose wurde auf Synology übernommen und das Projekt neu erstellt. Worker, Restore-Test-DB und cloudflared laufen wieder grün. Worker-Fix damit praktisch bestätigt; beim cloudflared-Autostart bleibt nur der echte NAS-/Docker-Neustarttest offen. DB, Storage, Backups und Secrets bleiben unverändert.
 
 ## 4. Aktueller Sync-/Portalfehlerstand
 
@@ -139,4 +139,4 @@ Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand t
 ---
 
 **Checkpoint erstellt:** 23.09.2026  
-**Aktueller nächster Schritt:** aktualisierte Synology-Compose mit Worker-/cloudflared-Fix übernehmen, Worker + cloudflared neu erstellen/starten und Laufzeit prüfen; erst danach `www.tb-helfer.de` weiter testen.
+**Aktueller nächster Schritt:** `www.tb-helfer.de` am bestehenden Cloudflare-Tunnel aktivieren und extern testen; parallel bleibt der echte NAS-/Docker-Neustarttest für cloudflared-Autostart offen.
