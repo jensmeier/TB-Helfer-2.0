@@ -29,9 +29,8 @@ def main() -> None:
         ("./backups-v1", compose),
         ("TB_RESTORE_TEST_DB_NAME", compose),
         ("TB_RESTORE_TEST_DB_PASSWORD", compose),
-        ("TB_RESTORE_TARGET_DB_NAME", compose),
-        ("TB_ALLOW_RESTORE_TARGET", compose),
-        ("./restore-target-storage-v1", compose),
+        ("cloudflared:", compose),
+        ("restart: always", compose),
         ('restart: "on-failure:5"', compose),
         ("condition: service_completed_successfully", compose),
         ("docker-compose.synology-staging.v1.yml", docs),
@@ -54,6 +53,25 @@ def main() -> None:
         raise SystemExit(
             "Produktions-Compose darf keine Staging-Source-Mounts enthalten: "
             + ", ".join(leaked)
+        )
+
+    forbidden_in_synology = [
+        "TB_RESTORE_TARGET_",
+        "TB_ALLOW_RESTORE_TARGET",
+        "restore-target-storage-v1",
+        "/tb/restore-target-v1",
+    ]
+    leaked_synology = [needle for needle in forbidden_in_synology if needle in compose]
+    if leaked_synology:
+        raise SystemExit(
+            "Normaler Synology-Start darf kein entferntes Restore-Target mounten: "
+            + ", ".join(leaked_synology)
+        )
+
+    cloudflared_section = compose.split("  cloudflared:", 1)[1]
+    if "depends_on:" in cloudflared_section:
+        raise SystemExit(
+            "cloudflared muss auf Synology unabhängig von API-Health starten können"
         )
 
     print("OK: TB-Server 1.0 Synology staging source-mount deployment")
