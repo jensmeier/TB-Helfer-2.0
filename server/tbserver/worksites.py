@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
+from psycopg.types.json import Jsonb
 
 from .database import transaction
 from .events import audit, emit_change
@@ -490,7 +491,7 @@ def create_node(
                 payload.track_key,
                 payload.external_key,
                 payload.sort_order,
-                payload.payload,
+                Jsonb(payload.payload),
                 user["user_id"],
             ),
         )
@@ -590,7 +591,7 @@ def update_node(
         for key in ("parent_id", "node_kind", "name", "route_number", "track_key", "sort_order", "payload"):
             if key in updates:
                 columns.append(f"{key} = %s")
-                values.append(updates[key])
+                values.append(Jsonb(updates[key]) if key == "payload" else updates[key])
         columns.extend(["version = version + 1", "updated_at = now()"])
         values.extend([node_id, worksite_id])
         cur.execute(
