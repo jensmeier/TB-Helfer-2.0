@@ -29,3 +29,9 @@ HINWEIS:
 - Bilder werden einem manuellen Eintrag über den bestehenden fachlichen Kontext Firma + Ort + Text zugeordnet
 - Direkte Source-Prüfung bestanden: 200064-Funktionsmarker vorhanden; bestehender BTB-Build-Source-Generator-Anker weiterhin vorhanden
 - Android-Build, Installation und praktischer Pixel/Poco-Test sind noch offen
+
+BUILD-HINWEIS 23.09.2026:
+- Erster lokaler Buildversuch 07:25 fehlgeschlagen: Unresolved reference 'labelForOrtCached' im generierten BautagebuchFragment
+- Ursache behoben in f070fab9277f3296b177f428160972b2f732edaf
+- Die redundante autoPhotoOrtLabel-Übergabe wurde entfernt; die bestehende Ort-Auflösung im BtbPdfAuswahlFragment bleibt maßgeblich
+- Build 200064 muss erneut ausgeführt werden; BUILD ERFOLGREICH ist noch offen
