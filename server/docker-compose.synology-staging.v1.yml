@@ -187,3 +187,15 @@ services:
       - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1
       - ${TB_V1_DIAGNOSTICS_DIR:-./diagnostics-v1}:/tb/diagnostics-v1
     command: ["python", "-m", "tbserver.monitor"]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    environment:
+      TUNNEL_TOKEN: ${TB_V1_CLOUDFLARE_TUNNEL_TOKEN:?TB_V1_CLOUDFLARE_TUNNEL_TOKEN fehlt}
+      TZ: ${TZ:-Europe/Berlin}
+    command: ["tunnel", "--no-autoupdate", "run"]
+    depends_on:
+      api:
+        condition: service_healthy
+
