@@ -146,7 +146,7 @@ Für Synology Container Manager wird während der Stagingphase der Inhalt von `d
 
 Aktueller Laufzeitvertrag nach Entfernung des einmaligen Restore-Targets:
 - der normale Synology-Worker mountet **kein** `restore-target-storage-v1` und erhält keine `TB_RESTORE_TARGET_*`-Variablen;
-- der getrennte `restore-test-db`-Pfad bleibt erhalten;
+- der getrennte `restore-test-db` bleibt als eigener, persistenter Synology-Service erhalten (`restore-test-database-v1`), ist aber keine Startvoraussetzung für den normalen Worker;
 - Restore-to-Target existiert nur noch im optionalen `docker-compose.restore-test.v1.yml`-Wartungs-Overlay;
 - `cloudflared` startet im normalen Synology-Projekt unabhängig vom API-Health mit `restart: always`. Der Tunnel darf bereits verbunden sein, während die API noch hochfährt; dadurch bleibt der Tunnelstart nicht an einem einmaligen Health-Gate hängen.
 
