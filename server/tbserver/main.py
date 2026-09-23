@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from . import SERVER_VERSION
 from .acceptances import router as acceptances_router
@@ -72,6 +72,11 @@ app.include_router(survey_projection_router)
 app.include_router(survey_gra_jumps_router)
 app.include_router(survey_sections_router)
 app.include_router(track_data_router)
+
+
+@app.get("/", include_in_schema=False)
+def portal_entry():
+    return RedirectResponse(url="/portal/v1/login", status_code=307)
 
 
 @app.get("/health/live", tags=["system"])
