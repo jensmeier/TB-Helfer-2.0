@@ -59,6 +59,14 @@ Folgende bereits bestätigte Funktionen/Pfade nicht ohne reproduzierbaren Fehler
 
 Source-Check, Build, Installation und GitHub Actions ohne ausgeführte Steps sind **kein E2E-Nachweis**.
 
+## 4c. Baustellen-QR – HTTP 500 nach Create-Adapter
+
+- Nach dem Rolling-Update-Adapter wurde beim QR-Erzeugen HTTP 500 reproduziert.
+- Ursache im GitHub-Code eindeutig: Einladung-Create schreibt JSONB-Felder als rohe Python-`dict`-Werte; Psycopg benötigt `Jsonb(...)`. Derselbe Fehler war im Redeem-Pfad ebenfalls vorhanden.
+- Quellfix `c8671dbd…`, Check `6067a1af…`.
+- Keine Migration. Auf Synology nur `tbserver/worksites.py` aktualisieren und API neu starten.
+- Danach zuerst QR-Erzeugung, anschließend moderner Scan/Redeem auf zweitem aktivierten Gerät prüfen.
+
 ## 4b. Baustellen-QR – Erzeugung nach Android 1.3.16
 
 - Android `1.3.16 / 200066` hat den direkten Scanner im Quellstand auf den modernen `worksite-invite`-Parser umgestellt.
@@ -148,4 +156,4 @@ Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand t
 ---
 
 **Checkpoint erstellt:** 23.09.2026  
-**Aktueller nächster Schritt:** Server-QR-Erzeugungsfix (`worksites.py`, `main.py`, `capabilities.py`) auf Synology übernehmen und API neu starten; danach mit Android 1.3.16 QR erzeugen und modernen `worksite-invite`-QR auf zweitem aktivierten Gerät E2E einlösen. Danach Strecken-/Bahnhöfe-E2E.
+**Aktueller nächster Schritt:** aktualisierte `tbserver/worksites.py` mit JSONB-Fix auf Synology übernehmen und nur API neu starten; danach QR erzeugen und modernen `worksite-invite`-QR auf zweitem aktivierten Gerät E2E einlösen. Danach Strecken-/Bahnhöfe-E2E.
