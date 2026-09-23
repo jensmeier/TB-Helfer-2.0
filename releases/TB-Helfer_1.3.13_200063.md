@@ -29,4 +29,5 @@ TECHNIK:
 TESTSTATUS:
 - Quellstand umgesetzt; Source-Checks bestanden
 - Android-Build 200063 am 22.09.2026 in Android Studio erfolgreich abgeschlossen (4 Warnungen, keine Build-Fehler)
-- Installation und praktischer Pixel/Poco-E2E noch offen
+- Installation und der konkrete BTB-Lifecycle-Fix wurden am 23.09.2026 vom Benutzer praktisch bestätigt („passt und läuft“)
+- Vollständiger Pixel↔Poco-Gesamt-E2E der übrigen Sync-Funktionen bleibt separat offen
