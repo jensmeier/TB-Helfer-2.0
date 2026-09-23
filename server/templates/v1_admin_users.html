@@ -79,7 +79,7 @@
               </div>
               <div>
                 <label>Letzter gültiger Tag</label>
-                <input class="edit-valid-date" type="date" data-current-until="{% if u.access_valid_until %}{{ u.access_valid_until.isoformat() }}{% endif %}" {% if not u.access_valid_until %}disabled{% endif %}>
+                <input class="edit-valid-date" type="date" data-current-through="{% if u.access_valid_through %}{{ u.access_valid_through.isoformat() }}{% endif %}" {% if not u.access_valid_until %}disabled{% endif %}>
                 <div class="muted" style="margin-top:5px">Ende automatisch am Folgetag um 00:01 Uhr.</div>
               </div>
             </div>
@@ -125,12 +125,8 @@ function applyValidityPreset(select,dateInput){
   dateInput.value=addCalendarMonths(Number(preset));
 }
 function setExistingValidityDate(input){
-  const raw=input.dataset.currentUntil||'';
-  if(!raw)return;
-  const expiry=new Date(raw);
-  if(Number.isNaN(expiry.getTime()))return;
-  expiry.setMinutes(expiry.getMinutes()-1);
-  input.value=localDateValue(expiry);
+  const raw=input.dataset.currentThrough||'';
+  if(raw)input.value=raw;
 }
 
 const validPreset=document.getElementById('validPreset'), validDate=document.getElementById('validDate');
