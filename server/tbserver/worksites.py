@@ -19,6 +19,7 @@ from .security import hash_token, random_token
 
 
 router = APIRouter(prefix="/api/v1/worksites", tags=["worksites"])
+legacy_router = APIRouter(prefix="/api/v1/collab", tags=["legacy-collab"])
 
 
 class WorksiteCreate(BaseModel):
@@ -64,7 +65,7 @@ class MemberPermissionsUpdate(BaseModel):
 
 
 class WorksiteInvitationCreate(BaseModel):
-    invited_user_id: UUID
+    invited_user_id: UUID | None = None
     worksite_role: str = Field(default="HELPER")
     permission_profile: str = Field(default="HELPER_STANDARD")
     permissions_override: dict = Field(default_factory=dict)
@@ -74,6 +75,12 @@ class WorksiteInvitationCreate(BaseModel):
 
 class WorksiteInvitationRedeem(BaseModel):
     token: str = Field(min_length=24, max_length=500)
+
+
+class LegacyWorksiteInvitationCreate(BaseModel):
+    invitation_type: str = Field(default="HELPER", max_length=40)
+    area_scope: dict = Field(default_factory=dict)
+    expires_days: int = Field(default=7, ge=1, le=30)
 
 
 def _company_for_create(cur, user: dict[str, Any], requested: UUID | None) -> UUID:
@@ -1065,7 +1072,7 @@ def list_worksite_invitations(
                      ELSE 'OPEN'
                    END AS status
             FROM tb.worksite_invitations i
-            JOIN tb.users u ON u.id = i.invited_user_id
+            LEFT JOIN tb.users u ON u.id = i.invited_user_id
             JOIN tb.users inviter ON inviter.id = i.invited_by
             WHERE i.worksite_id = %s
             ORDER BY i.created_at DESC
@@ -1123,33 +1130,34 @@ def create_worksite_invitation(
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "members.manage")
 
-        cur.execute(
-            """
-            SELECT id, company_id, display_name, status, deleted_at
-            FROM tb.users
-            WHERE id = %s
-            """,
-            (payload.invited_user_id,),
-        )
-        target = cur.fetchone()
-        if (
-            not target
-            or target["deleted_at"] is not None
-            or target["status"] != "ACTIVE"
-            or target["company_id"] != context["company_id"]
-        ):
-            raise HTTPException(400, "INVITEE_COMPANY_MISMATCH")
+        if payload.invited_user_id is not None:
+            cur.execute(
+                """
+                SELECT id, company_id, display_name, status, deleted_at
+                FROM tb.users
+                WHERE id = %s
+                """,
+                (payload.invited_user_id,),
+            )
+            target = cur.fetchone()
+            if (
+                not target
+                or target["deleted_at"] is not None
+                or target["status"] != "ACTIVE"
+                or target["company_id"] != context["company_id"]
+            ):
+                raise HTTPException(400, "INVITEE_COMPANY_MISMATCH")
 
-        cur.execute(
-            """
-            SELECT 1
-            FROM tb.worksite_memberships
-            WHERE worksite_id = %s AND user_id = %s AND status = 'ACTIVE'
-            """,
-            (worksite_id, payload.invited_user_id),
-        )
-        if cur.fetchone():
-            raise HTTPException(409, "ALREADY_WORKSITE_MEMBER")
+            cur.execute(
+                """
+                SELECT 1
+                FROM tb.worksite_memberships
+                WHERE worksite_id = %s AND user_id = %s AND status = 'ACTIVE'
+                """,
+                (worksite_id, payload.invited_user_id),
+            )
+            if cur.fetchone():
+                raise HTTPException(409, "ALREADY_WORKSITE_MEMBER")
 
         cur.execute(
             "SELECT profile_key FROM tb.permission_profiles WHERE profile_key = %s",
@@ -1204,7 +1212,7 @@ def create_worksite_invitation(
             entity_type="WORKSITE_INVITATION",
             entity_id=row["id"],
             details={
-                "invited_user_id": str(payload.invited_user_id),
+                "invited_user_id": str(payload.invited_user_id) if payload.invited_user_id else None,
                 "worksite_role": role,
                 "expires_at": expires_at.isoformat(),
             },
@@ -1239,6 +1247,57 @@ def create_worksite_invitation(
         "invite_uri": invite_app_uri(raw_token),
         "invite_link": invite_browser_link(redeem_url, raw_token),
         "invite_qr_svg_data_url": invite_qr_svg_data_url(raw_token),
+    }
+
+
+@legacy_router.post("/worksites/{worksite_id}/invitations")
+def create_legacy_worksite_invitation(
+    worksite_id: UUID,
+    payload: LegacyWorksiteInvitationCreate,
+    request: Request,
+    response: Response,
+    user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    """
+    Rolling-Update-Adapter für bereits installierte Android-Versionen.
+    Die Fachlogik bleibt vollständig im kanonischen Server-1.0-Einladungsweg.
+    """
+    invitation_type = payload.invitation_type.strip().upper()
+    if invitation_type == "LEAD":
+        worksite_role = "RESPONSIBLE_TB"
+        permission_profile = "RESPONSIBLE_TB"
+        area_scope = {"all": True}
+    elif invitation_type == "HELPER":
+        worksite_role = "HELPER"
+        permission_profile = "HELPER_STANDARD"
+        area_scope = payload.area_scope
+    else:
+        raise HTTPException(400, "INVALID_INVITATION_TYPE")
+
+    created = create_worksite_invitation(
+        worksite_id=worksite_id,
+        payload=WorksiteInvitationCreate(
+            invited_user_id=None,
+            worksite_role=worksite_role,
+            permission_profile=permission_profile,
+            area_scope=area_scope,
+            expires_days=payload.expires_days,
+        ),
+        request=request,
+        response=response,
+        user=user,
+        mutation=mutation,
+    )
+    invite_token = created.get("invite_token")
+    if not invite_token:
+        raise HTTPException(409, "INVITATION_TOKEN_REPLAY_UNAVAILABLE")
+    return {
+        "invitation_id": created["id"],
+        "invitation_type": invitation_type,
+        "code": invite_token,
+        "deep_link": created.get("invite_uri"),
+        "expires_at": created.get("expires_at"),
     }
 
 
@@ -1339,10 +1398,24 @@ def redeem_worksite_invitation(
             raise HTTPException(410, "WORKSITE_INVITATION_EXPIRED")
         if invitation["worksite_deleted_at"] is not None or invitation["worksite_status"] != "ACTIVE":
             raise HTTPException(409, "WORKSITE_NOT_ACTIVE")
-        if invitation["invited_user_id"] != user["user_id"]:
+        if invitation["invited_user_id"] is not None and invitation["invited_user_id"] != user["user_id"]:
             raise HTTPException(403, "WORKSITE_INVITATION_WRONG_USER")
         if invitation["company_id"] != user["company_id"]:
             raise HTTPException(403, "WORKSITE_INVITATION_COMPANY_MISMATCH")
+
+        if invitation["invited_user_id"] is None:
+            cur.execute(
+                """
+                SELECT 1
+                FROM tb.worksite_memberships
+                WHERE worksite_id = %s
+                  AND user_id = %s
+                  AND status = 'ACTIVE'
+                """,
+                (invitation["worksite_id"], user["user_id"]),
+            )
+            if cur.fetchone():
+                raise HTTPException(409, "ALREADY_WORKSITE_MEMBER")
 
         cur.execute(
             """
