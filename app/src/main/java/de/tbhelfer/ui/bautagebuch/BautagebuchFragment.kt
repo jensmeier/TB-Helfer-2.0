@@ -5398,11 +5398,11 @@ cardCurrentReport.setOnClickListener {
                             .filter { !it.isDeleted }
                             .map { it.name.trim() }
                             .filter { it.isNotBlank() }
-                            .forEach(::add)
+                            .forEach { add(it) }
                         lastGroups.asSequence()
                             .mapNotNull { it.firma?.trim() }
                             .filter { it.isNotBlank() }
-                            .forEach(::add)
+                            .forEach { add(it) }
                     }.toList()
 
                     val targets = listOf<String?>(null) + firms
@@ -5779,42 +5779,44 @@ cardCurrentReport.setOnClickListener {
                                         weightSum = 2f
                                     }
                                     ids.forEachIndexed { colIndex, id ->
-                                        val foto = photos[id] ?: return@forEachIndexed
-                                        val cell = android.widget.LinearLayout(requireContext()).apply {
-                                            orientation = android.widget.LinearLayout.VERTICAL
-                                            setPadding(dp(3), dp(3), dp(3), dp(3))
-                                            layoutParams = android.widget.LinearLayout.LayoutParams(
-                                                0,
-                                                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                                                1f
+                                        val foto = photos[id]
+                                        if (foto != null) {
+                                            val cell = android.widget.LinearLayout(requireContext()).apply {
+                                                orientation = android.widget.LinearLayout.VERTICAL
+                                                setPadding(dp(3), dp(3), dp(3), dp(3))
+                                                layoutParams = android.widget.LinearLayout.LayoutParams(
+                                                    0,
+                                                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                                                    1f
+                                                )
+                                            }
+                                            val image = android.widget.ImageView(requireContext()).apply {
+                                                scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                                                adjustViewBounds = false
+                                                contentDescription = "Bild ${rowIndex * 2 + colIndex + 1} öffnen"
+                                                layoutParams = android.widget.LinearLayout.LayoutParams(
+                                                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                                    dp(138)
+                                                )
+                                            }
+                                            de.tbhelfer.util.ThumbnailLoader.loadInto(
+                                                imageView = image,
+                                                filePath = foto.dateipfad,
+                                                placeholderResId = android.R.drawable.ic_menu_report_image,
+                                                reqW = 640,
+                                                reqH = 640
                                             )
+                                            val number = rowIndex * 2 + colIndex + 1
+                                            image.setOnClickListener { showManualPhotoLarge(foto, number) }
+                                            cell.addView(image)
+                                            cell.addView(android.widget.TextView(requireContext()).apply {
+                                                text = "Bild $number"
+                                                textSize = 11.5f
+                                                gravity = android.view.Gravity.CENTER
+                                                setPadding(0, dp(2), 0, 0)
+                                            })
+                                            row.addView(cell)
                                         }
-                                        val image = android.widget.ImageView(requireContext()).apply {
-                                            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-                                            adjustViewBounds = false
-                                            contentDescription = "Bild ${rowIndex * 2 + colIndex + 1} öffnen"
-                                            layoutParams = android.widget.LinearLayout.LayoutParams(
-                                                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                                                dp(138)
-                                            )
-                                        }
-                                        de.tbhelfer.util.ThumbnailLoader.loadInto(
-                                            imageView = image,
-                                            filePath = foto.dateipfad,
-                                            placeholderResId = android.R.drawable.ic_menu_report_image,
-                                            reqW = 640,
-                                            reqH = 640
-                                        )
-                                        val number = rowIndex * 2 + colIndex + 1
-                                        image.setOnClickListener { showManualPhotoLarge(foto, number) }
-                                        cell.addView(image)
-                                        cell.addView(android.widget.TextView(requireContext()).apply {
-                                            text = "Bild $number"
-                                            textSize = 11.5f
-                                            gravity = android.view.Gravity.CENTER
-                                            setPadding(0, dp(2), 0, 0)
-                                        })
-                                        row.addView(cell)
                                     }
                                     if (ids.size == 1) {
                                         row.addView(android.view.View(requireContext()), android.widget.LinearLayout.LayoutParams(0, 1, 1f))
