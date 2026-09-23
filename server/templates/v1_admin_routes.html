@@ -1,0 +1,131 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Strecken{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Strecken</h1>
+  <p class="muted">Gemeinsamer TB-Helfer-Fachkatalog. Änderungen erzeugen neue Versionen; globales Löschen ist nicht vorgesehen.</p>
+  <div id="msg"></div>
+</div>
+
+<div class="card">
+  <h2>Strecke ergänzen / korrigieren</h2>
+  <form id="routeForm">
+    <input id="routeId" type="hidden">
+    <input id="routeVersion" type="hidden">
+    <div class="grid">
+      <div><label for="routeNumber">Streckennummer</label><input id="routeNumber" required maxlength="40" placeholder="z. B. 5362"></div>
+      <div><label for="routeName">Bezeichnung</label><input id="routeName" maxlength="200"></div>
+      <div><label for="routeDescription">Beschreibung</label><input id="routeDescription" maxlength="1000"></div>
+    </div>
+    <div class="actions" style="margin-top:12px">
+      <button type="submit">Speichern</button>
+      <button id="routeCancel" class="secondary" type="button" style="display:none">Bearbeitung abbrechen</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Abschnitt ergänzen / korrigieren</h2>
+  <form id="sectionForm">
+    <input id="sectionId" type="hidden"><input id="sectionVersion" type="hidden">
+    <div class="grid">
+      <div><label for="sectionRoute">Strecke</label><select id="sectionRoute" required></select></div>
+      <div><label for="sectionName">Bezeichnung</label><input id="sectionName" maxlength="300"></div>
+      <div><label for="sectionFrom">km von</label><input id="sectionFrom" placeholder="z. B. 70+500"></div>
+      <div><label for="sectionTo">km bis</label><input id="sectionTo" placeholder="z. B. 81+600"></div>
+      <div><label for="sectionStatus">Datenstatus</label><input id="sectionStatus" maxlength="50" placeholder="z. B. IMPORTIERT"></div>
+    </div>
+    <div class="actions" style="margin-top:12px">
+      <button type="submit">Abschnitt speichern</button>
+      <button id="sectionCancel" class="secondary" type="button" style="display:none">Bearbeitung abbrechen</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Streckenobjekt ergänzen / korrigieren</h2>
+  <form id="objectForm">
+    <input id="objectId" type="hidden"><input id="objectVersion" type="hidden">
+    <div class="grid">
+      <div><label for="objectRoute">Strecke</label><select id="objectRoute" required></select></div>
+      <div><label for="objectType">Typ</label><select id="objectType"><option value="TRACK">Gleis</option><option value="SWITCH">Weiche</option><option value="CROSSING">Kreuzung</option><option value="PLATFORM">Bahnsteig</option><option value="SIGNAL">Signal</option><option value="OTHER">Sonstiges</option></select></div>
+      <div><label for="objectName">Bezeichnung</label><input id="objectName" required maxlength="300"></div>
+      <div><label for="objectKm">km</label><input id="objectKm" placeholder="z. B. 78+571"></div>
+      <div><label for="objectStatus">Datenstatus</label><input id="objectStatus" maxlength="50"></div>
+    </div>
+    <div class="actions" style="margin-top:12px">
+      <button type="submit">Objekt speichern</button>
+      <button id="objectCancel" class="secondary" type="button" style="display:none">Bearbeitung abbrechen</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Vorhandene Strecken</h2>
+  <div id="routes">wird geladen …</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const msg=document.getElementById('msg');
+let catalog={routes:[],stations:[]};
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;window.scrollTo({top:0,behavior:'smooth'});}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function changeId(prefix){return prefix+'-'+(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());}
+function parseKm(value){
+  const t=String(value||'').trim().replace(',','.');
+  if(!t)return null;
+  if(t.includes('+')){const p=t.split('+');const km=Number(p[0]),m=Number(p[1]);return Number.isFinite(km)&&Number.isFinite(m)?km*1000+m:null;}
+  const n=Number(t);return Number.isFinite(n)?n*1000:null;
+}
+function formatKm(m){if(m===null||m===undefined||m==='')return '—';const n=Number(m);if(!Number.isFinite(n))return '—';return Math.floor(n/1000)+'+'+(n%1000).toFixed(3).padStart(7,'0');}
+function mutation(kind,id,version,payload){
+  return tbApi('/api/v1/catalog/mutations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    client_change_id:changeId('admin-catalog'),entity_type:kind,operation:'UPSERT',
+    entity_id:id||null,base_version:version?Number(version):null,payload
+  })});
+}
+function routeOptions(){
+  const html=['<option value="">Strecke wählen …</option>'].concat(catalog.routes.map(r=>'<option value="'+esc(r.id)+'">'+esc(r.route_number)+(r.name?' · '+esc(r.name):'')+'</option>')).join('');
+  document.getElementById('sectionRoute').innerHTML=html;
+  document.getElementById('objectRoute').innerHTML=html;
+}
+async function loadCatalog(){
+  const {data}=await tbApi('/api/v1/catalog');catalog=data;routeOptions();renderRoutes();
+}
+function renderRoutes(){
+  const root=document.getElementById('routes');
+  if(!catalog.routes.length){root.innerHTML='<p class="muted">Noch keine Strecken im gemeinsamen Katalog.</p>';return;}
+  root.innerHTML=catalog.routes.map(r=>'<div class="item" style="margin-bottom:10px">'+
+    '<b>'+esc(r.route_number)+'</b>'+(r.name?' · '+esc(r.name):'')+
+    '<div class="muted">Version '+esc(r.current_version)+' · '+esc(r.section_count)+' Abschnitte · '+esc(r.object_count)+' Objekte</div>'+
+    (r.description?'<div>'+esc(r.description)+'</div>':'')+
+    '<div class="actions" style="margin-top:8px"><button type="button" onclick="editRoute(\''+esc(r.id)+'\')">Bearbeiten</button><button class="secondary" type="button" onclick="loadRouteDetails(\''+esc(r.id)+'\')">Abschnitte / Objekte</button></div>'+
+    '<div id="details-'+esc(r.id)+'" style="margin-top:10px"></div></div>').join('');
+}
+function editRoute(id){const r=catalog.routes.find(x=>x.id===id);if(!r)return;routeId.value=r.id;routeVersion.value=r.current_version;routeNumber.value=r.route_number||'';routeName.value=r.name||'';routeDescription.value=r.description||'';routeCancel.style.display='inline-block';routeNumber.focus();}
+function clearRoute(){routeId.value='';routeVersion.value='';routeNumber.value='';routeName.value='';routeDescription.value='';routeCancel.style.display='none';}
+routeCancel.addEventListener('click',clearRoute);
+routeForm.addEventListener('submit',async ev=>{ev.preventDefault();try{await mutation('ROUTE',routeId.value,routeVersion.value,{route_number:routeNumber.value.trim(),name:routeName.value.trim()||null,description:routeDescription.value.trim()||null});show('ok','Strecke gespeichert.');clearRoute();await loadCatalog();}catch(e){show('err',e.message||String(e));}});
+async function loadRouteDetails(id){
+  const target=document.getElementById('details-'+id);target.textContent='wird geladen …';
+  try{
+    const [s,o]=await Promise.all([tbApi('/api/v1/catalog/routes/'+encodeURIComponent(id)+'/sections'),tbApi('/api/v1/catalog/routes/'+encodeURIComponent(id)+'/objects')]);
+    const sections=s.data.sections||[],objects=o.data.objects||[];
+    target.innerHTML='<h3>Abschnitte</h3>'+(sections.length?sections.map(x=>'<div class="item">'+esc(x.designation||'Abschnitt')+' · '+formatKm(x.km_from_m)+' bis '+formatKm(x.km_to_m)+' · V'+esc(x.current_version)+' <button type="button" class="secondary" onclick=\'editSection('+JSON.stringify(id)+','+JSON.stringify(x)+')\'>Bearbeiten</button></div>').join(''):'<p class="muted">Keine Abschnitte.</p>')+
+      '<h3 style="margin-top:12px">Objekte</h3>'+(objects.length?objects.map(x=>'<div class="item">'+esc(x.object_type)+' · '+esc(x.designation||'')+' · '+formatKm(x.km_m)+' · V'+esc(x.current_version)+' <button type="button" class="secondary" onclick=\'editObject('+JSON.stringify(id)+','+JSON.stringify(x)+')\'>Bearbeiten</button></div>').join(''):'<p class="muted">Keine Objekte.</p>');
+  }catch(e){target.innerHTML='<div class="notice err">'+esc(e.message||String(e))+'</div>';}
+}
+function editSection(routeIdValue,x){sectionId.value=x.id;sectionVersion.value=x.current_version;sectionRoute.value=routeIdValue;sectionName.value=x.designation||'';sectionFrom.value=x.km_from_m==null?'':formatKm(x.km_from_m);sectionTo.value=x.km_to_m==null?'':formatKm(x.km_to_m);sectionStatus.value=x.data_status||'';sectionCancel.style.display='inline-block';sectionName.focus();}
+function clearSection(){sectionId.value='';sectionVersion.value='';sectionName.value='';sectionFrom.value='';sectionTo.value='';sectionStatus.value='';sectionCancel.style.display='none';}
+sectionCancel.addEventListener('click',clearSection);
+sectionForm.addEventListener('submit',async ev=>{ev.preventDefault();try{await mutation('SECTION',sectionId.value,sectionVersion.value,{route_id:sectionRoute.value,designation:sectionName.value.trim()||null,km_from_m:parseKm(sectionFrom.value),km_to_m:parseKm(sectionTo.value),data_status:sectionStatus.value.trim()||null});show('ok','Abschnitt gespeichert.');clearSection();await loadCatalog();}catch(e){show('err',e.message||String(e));}});
+function editObject(routeIdValue,x){objectId.value=x.id;objectVersion.value=x.current_version;objectRoute.value=routeIdValue;objectType.value=x.object_type||'OTHER';objectName.value=x.designation||'';objectKm.value=x.km_m==null?'':formatKm(x.km_m);objectStatus.value=x.data_status||'';objectCancel.style.display='inline-block';objectName.focus();}
+function clearObject(){objectId.value='';objectVersion.value='';objectName.value='';objectKm.value='';objectStatus.value='';objectType.value='TRACK';objectCancel.style.display='none';}
+objectCancel.addEventListener('click',clearObject);
+objectForm.addEventListener('submit',async ev=>{ev.preventDefault();try{await mutation('OBJECT',objectId.value,objectVersion.value,{route_id:objectRoute.value,station_id:null,object_type:objectType.value,designation:objectName.value.trim(),km_m:parseKm(objectKm.value),data_status:objectStatus.value.trim()||null,properties:{}});show('ok','Streckenobjekt gespeichert.');clearObject();await loadCatalog();}catch(e){show('err',e.message||String(e));}});
+window.editRoute=editRoute;window.loadRouteDetails=loadRouteDetails;window.editSection=editSection;window.editObject=editObject;
+loadCatalog().catch(e=>show('err',e.message||String(e)));
+</script>
+{% endblock %}
