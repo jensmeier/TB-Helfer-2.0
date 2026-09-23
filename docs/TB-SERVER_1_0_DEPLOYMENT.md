@@ -175,9 +175,14 @@ Für Staging muss der Server deshalb einmalig seine öffentliche Adresse kennen:
 
 ```properties
 TB_V1_PUBLIC_BASE_URL=https://api-v1.tb-helfer.de
+TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de
 ```
 
-Diese Variable gehört in die lokale Synology-`.env` und wird nicht nach GitHub committed.
+`TB_V1_PUBLIC_BASE_URL` bleibt die kanonische App-/API-Adresse. `TB_V1_PORTAL_PUBLIC_BASE_URL` ist die getrennte Browser-/Portaladresse und wird für Portal-Aktivierungslinks sowie Browser-Baustelleneinladungen verwendet.
+
+Für den bestehenden remote verwalteten Tunnel `tb-helfer-nas` wird zusätzlich ein **Public Hostname `www.tb-helfer.de`** angelegt. Als Service/Origin wird **derselbe interne API-Dienst verwendet wie bei der funktionierenden `api-v1.tb-helfer.de`-Route**; keine zweite Serverinstanz anlegen. Nach dem Routing führt `https://www.tb-helfer.de/` auf `/portal/v1/login`.
+
+Diese Variablen gehören in die lokale Synology-`.env` und werden nicht nach GitHub committed. Weil `TB_V1_PORTAL_PUBLIC_BASE_URL` eine Container-Environment-Variable ist, muss der API-Container nach der Compose-/ENV-Änderung **neu erstellt** werden; ein bloßer Prozess-Neustart übernimmt neue Environment-Werte nicht zuverlässig.
 
 Der Android-Debug-Build behält `local.properties`/`tbServerBaseUrl`/`TB_SERVER_BASE_URL` nur als **Entwickler-Fallback**, z. B. für manuelle Key-Tests ohne QR. Für die normale QR-Aktivierung ist das nicht erforderlich.
 
