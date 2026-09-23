@@ -36,6 +36,9 @@ def main() -> None:
     assertions = [
         ('@router.get("/portal/v1/login")', web),
         ('@router.get("/portal/v1")', web),
+        ("portal_public_base_url", admin),
+        ("activation_url", admin),
+        ("data.activation_url", users),
         ('@router.get("/admin/v1")', web),
         ('@router.get("/admin/v1/companies")', web),
         ('@router.get("/admin/v1/users")', web),
@@ -50,6 +53,8 @@ def main() -> None:
         ('@router.put("/admin/companies/{company_id}/pdf-logo-layout")', company),
         ('Depends(require_admin_csrf)', company),
         ('admin_web_router', main_source),
+        ('@app.get("/", include_in_schema=False)', main_source),
+        ('RedirectResponse(url="/portal/v1/login"', main_source),
         ('"company_branding_admin_ui_v1": True', capabilities),
         ('36_verify_tb_server_1_admin_web_source.py', workflow),
         ('"company_branding_admin_ui_v1"', workflow),
