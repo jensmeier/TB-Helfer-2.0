@@ -5369,13 +5369,32 @@ cardCurrentReport.setOnClickListener {
                             return@launch
                         }
 
+                        // Vor dem Wechsel in Kamera/Galerie den kompletten aktuellen Abschnittsstand
+                        // persistieren. So gehen auch Änderungen an anderen manuellen Einträgen aus
+                        // demselben geöffneten Editor nicht verloren.
+                        onSave(etFull.text?.toString().orEmpty())
+                        val existing = withContext(Dispatchers.IO) {
+                            BautagebuchSpeicher.ladenById(requireContext(), ctx.id, ctx.name, activeId)
+                        }
+                        val draft = buildEntry(ctx)
+                        val snapshot = draft.copy(
+                            btbId = activeId,
+                            maxFotosInPdf = existing?.maxFotosInPdf ?: draft.maxFotosInPdf,
+                            pdfAuswahl = existing?.pdfAuswahl ?: draft.pdfAuswahl,
+                            erstelltAmEpochMs = existing?.erstelltAmEpochMs ?: draft.erstelltAmEpochMs,
+                            geaendertAmEpochMs = System.currentTimeMillis()
+                        )
+                        withContext(Dispatchers.IO) {
+                            BautagebuchSpeicher.speichern(requireContext(), snapshot)
+                        }
+
                         val b = Bundle().apply {
-                            putLong("baustelleId", ctx.id)
-                            putString("baustelleName", ctx.name)
-                            putString("datumIso", selectedDate.format(isoFmt))
-                            putString("shiftStart", shiftStart)
-                            putString("shiftEnd", shiftEnd)
-                            putString("schichtTyp", selectedSchichtTyp.name)
+                            putLong("baustelleId", snapshot.baustelleId)
+                            putString("baustelleName", snapshot.baustelleName)
+                            putString("datumIso", snapshot.datumIso)
+                            putString("shiftStart", snapshot.startUhrzeit)
+                            putString("shiftEnd", snapshot.endeUhrzeit)
+                            putString("schichtTyp", snapshot.schicht.name)
                             putString("filterBildtyp", fotoType?.name ?: de.tbhelfer.datenbank.Bildtyp.FOTODOKUMENTATION.name)
                             putString("btbId", activeId)
                             putString("autoPhotoSource", source)
