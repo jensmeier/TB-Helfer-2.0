@@ -78,10 +78,10 @@ Zusätzlich wurde ein unabhängiger Portalfehler reproduziert:
 
 ## 5. Neuer Arbeitsblock 1 → 2 → 4 → 3
 
-- **1 Benutzer-Gültigkeit:** Quellstand fertig; Presets 3/6/12 Monate + manuelles Datum, kein Uhrzeitfeld, Europe/Berlin Folgetag 00:01; Deploy/E2E offen.
-- **2 Portal:** Quellstand fertig; `www.tb-helfer.de` als getrennte Portalbasis vorbereitet, App/API bleibt `api-v1.tb-helfer.de`. Synology-.env + API-Neuerstellung + Cloudflare-Public-Hostname noch praktisch auszuführen.
+- **1 Benutzer-Gültigkeit:** Serverstand ist auf Synology deployt; Presets 3/6/12 Monate + manuelles Datum, kein Uhrzeitfeld, Europe/Berlin Folgetag 00:01; fachlicher E2E noch offen.
+- **2 Portal:** Synology-.env mit `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de` ist gesetzt und API mit aktualisierter Compose neu erstellt. App/API bleibt `api-v1.tb-helfer.de`. Als Nächstes Cloudflare-Public-Hostname `www.tb-helfer.de` praktisch anlegen und extern testen.
 - **4 QR-Einladung:** Ursache im Android-Code nachgewiesen. Direkter Baustellen-Scanner verarbeitet nur Legacy-`tbhelfer://invite?code=TBI-...`; moderner Server liefert `tbhelfer://worksite-invite?token=...`. Fix gehört ins ANDROID-Projekt; SERVER-`app/**` unverändert.
-- **3 Strecken/Bahnhöfe:** neue Adminseiten auf vorhandenem globalen Katalog fertig; Deploy/E2E offen; keine neue Datenbank/Migration.
+- **3 Strecken/Bahnhöfe:** neue Adminseiten auf vorhandenem globalen Katalog sind auf Synology deployt; fachlicher E2E offen; keine neue Datenbank/Migration.
 
 `STATUS.xlsx` bleibt bis zu einem konfliktfreien Zugriff auf den aktuellen GitHub-Binärstand unverändert.
 
@@ -110,9 +110,9 @@ Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand t
 
 ## 7. Nächster sinnvoller Schritt
 
-1. Aktuellen SERVER-Stand auf Synology übernehmen.
-2. In lokaler `.env` setzen: `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de`; keine Secrets dokumentieren.
-3. API-Container mit aktualisierter Compose **neu erstellen** und `/health/ready` prüfen.
+1. **ERLEDIGT:** aktuellen SERVER-Stand auf Synology übernommen.
+2. **ERLEDIGT:** lokale `.env` enthält `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de`.
+3. **ERLEDIGT:** API-Container mit aktualisierter Compose neu erstellt.
 4. Benutzer-Gültigkeit praktisch testen (3/6/12 Monate + manuell).
 5. Im Cloudflare-Tunnel `tb-helfer-nas` Public Hostname `www.tb-helfer.de` auf denselben internen Dienst wie die funktionierende `api-v1`-Route legen; `https://www.tb-helfer.de/` und Portal-Aktivierungslink testen.
 6. QR-Fix im ANDROID-Projekt umsetzen und modernen Baustellen-QR praktisch scannen/einlösen.
