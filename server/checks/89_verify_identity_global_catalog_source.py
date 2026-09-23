@@ -15,6 +15,9 @@ profile = read("server/tbserver/profile.py")
 main = read("server/tbserver/main.py")
 caps = read("server/tbserver/capabilities.py")
 admin_users = read("server/templates/v1_admin_users.html")
+admin_routes = read("server/templates/v1_admin_routes.html")
+admin_stations = read("server/templates/v1_admin_stations.html")
+admin_web = read("server/tbserver/admin_web.py")
 activation_card = read("server/templates/v1_device_activation_card.html")
 portal_activate = read("server/templates/v1_portal_activate.html")
 portal_home = read("server/templates/v1_portal_home.html")
@@ -43,6 +46,7 @@ assert 'router = APIRouter(prefix="/api/v1/catalog"' in catalog
 assert '@router.get("/changes")' in catalog
 assert '@router.get("/history")' in catalog
 assert '@router.post("/mutations")' in catalog
+assert "Depends(require_csrf)" in catalog
 assert "CATALOG_DELETE_NOT_ALLOWED" in catalog
 assert "BASE_VERSION_REQUIRED" in catalog
 assert "CLIENT_CHANGE_ID_REUSED" in catalog
@@ -80,6 +84,10 @@ assert "Vorläufiger Portal-Login" in activation_card
 assert "first_name" in admin_users and "personal_email" in admin_users
 assert "/api/v1/portal/activate" in portal_activate
 assert "/api/v1/user/directory" in portal_home
+assert '@router.get("/admin/v1/routes")' in admin_web
+assert '@router.get("/admin/v1/stations")' in admin_web
+assert "/api/v1/catalog/mutations" in admin_routes
+assert "/api/v1/catalog/mutations" in admin_stations
 
 assert '"/api/v1/catalog"' in sync_catalog
 assert '"/api/v1/catalog/routes/' in sync_detail
