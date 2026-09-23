@@ -33,6 +33,7 @@ from .survey_sections import router as survey_sections_router
 from .sync import router as sync_router
 from .system_admin import router as system_admin_router
 from .track_data import router as track_data_router
+from .worksites import legacy_router as legacy_worksites_router
 from .worksites import router as worksites_router
 
 
@@ -61,6 +62,7 @@ app.include_router(system_admin_router)
 app.include_router(devices_router)
 app.include_router(releases_router)
 app.include_router(worksites_router)
+app.include_router(legacy_worksites_router)
 app.include_router(btb_router)
 app.include_router(sync_router)
 app.include_router(files_router)
