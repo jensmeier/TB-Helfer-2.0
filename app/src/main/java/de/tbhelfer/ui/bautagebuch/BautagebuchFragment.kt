@@ -5423,14 +5423,25 @@ cardCurrentReport.setOnClickListener {
                             .forEach { add(it) }
                     }.toList()
 
-                    val targets = listOf<String?>(null) + firms
+                    val targets = (listOf<String?>(null) + firms).filterNot { target ->
+                        target.orEmpty().trim().equals(mi.firma.orEmpty().trim(), ignoreCase = true)
+                    }
+                    if (targets.isEmpty()) {
+                        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("Eintrag verschieben")
+                            .setMessage("Kein anderes Ziel vorhanden.")
+                            .setPositiveButton("OK", null)
+                            .show()
+                        return
+                    }
+
                     val labels = targets.map { it ?: getString(R.string.btb_company_general) }.toTypedArray()
                     com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("Eintrag verschieben")
-                        .setMessage("Wohin soll der Eintrag verschoben werden?")
+                        .setTitle("Eintrag verschieben – Ziel wählen")
+                        // AlertDialog zeigt Message und Listeninhalt nicht zuverlässig gemeinsam.
+                        // Deshalb hier nur die Zielliste; so bleiben Allgemein/Firmen immer sichtbar.
                         .setItems(labels) { _, which ->
                             val targetFirma = targets[which]
-                            if (targetFirma.orEmpty().equals(mi.firma.orEmpty(), ignoreCase = true)) return@setItems
 
                             val photoIds = matchingFotoIds(mi)
                             val targetOrt = if (targetFirma == null) 0L else mi.ortId
