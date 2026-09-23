@@ -27,4 +27,5 @@ HINWEIS:
 - Build 200064 baut auf dem praktisch bestätigten BTB-Lifecycle-Fix 1.3.13 / 200063 auf
 - Der Serververtrag wird nicht geändert; die bestehende btbId-/Foto-Synchronisation bleibt erhalten
 - Bilder werden einem manuellen Eintrag über den bestehenden fachlichen Kontext Firma + Ort + Text zugeordnet
+- Direkte Source-Prüfung bestanden: 200064-Funktionsmarker vorhanden; bestehender BTB-Build-Source-Generator-Anker weiterhin vorhanden
 - Android-Build, Installation und praktischer Pixel/Poco-Test sind noch offen
