@@ -23,13 +23,13 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
    - Keine DB-Migration erforderlich. Alte `access_valid_until`-Clients bleiben kompatibel.
    - Benutzerliste zeigt nur den letzten gültigen Tag, nicht den technischen UTC-Zeitstempel.
 
-2. **Öffentliches Portal `www.tb-helfer.de` – QUELLSTAND FERTIG / CLOUDFLARE+DEPLOY E2E OFFEN**
+2. **Öffentliches Portal `www.tb-helfer.de` – CLOUDFLARE-ROUTE PRAKTISCH BESTÄTIGT / LOGIN-E2E OFFEN**
    - App/API bleibt getrennt auf **`https://api-v1.tb-helfer.de`**.
    - Neue Konfiguration `TB_V1_PORTAL_PUBLIC_BASE_URL` → Server-`TB_PORTAL_PUBLIC_BASE_URL`.
    - Portal-Aktivierungslinks und Browser-Baustelleneinladungen verwenden die Portal-Basisadresse.
    - Root `/` leitet auf `/portal/v1/login`.
    - Synology-Compose enthält die neue API-Environment-Variable; lokale `.env` soll `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de` setzen.
-   - Cloudflare-Tunnel `tb-helfer-nas`: zusätzlicher Public Hostname `www.tb-helfer.de` muss noch praktisch auf denselben funktionierenden internen API-Dienst wie `api-v1.tb-helfer.de` geroutet werden.
+   - Cloudflare-Tunnel `tb-helfer-nas`: zusätzlicher Public Hostname `www.tb-helfer.de` ist praktisch eingerichtet und extern erreichbar. Aufruf von `https://www.tb-helfer.de` leitet korrekt auf `/portal/v1/login`; die TB-Helfer-Portal-Anmeldeseite wird geladen. Echter Login/Aktivierungslink bleiben noch separat zu testen.
 
 4. **Baustellen-QR-Einladungen – URSACHE IM ANDROID-CODE NACHGEWIESEN / ANDROID-FIX OFFEN**
    - Server erzeugt korrekt `tbhelfer://worksite-invite?token=...`.
@@ -50,7 +50,7 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
 **Teststatus:** GitHub-Actions-Serverlauf auf dem Zwischenstand endete erneut ohne ausgeführte Runner-Steps; daher kein Testnachweis. Praktischer Synology-/Cloudflare-/Android-E2E bleibt offen.  
 **STATUS.xlsx:** nicht überschrieben, da die aktuelle GitHub-Binärdatei neuer ist als die hier bearbeitbare Library-Kopie; zuerst konfliktfreien Binärstand beschaffen.
 
-**Deployment-Bestätigung 23.09.2026:** Der Benutzer hat die Deployment-Schritte 1–3 als erledigt bestätigt: aktueller SERVER-Stand auf Synology übernommen, `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de` in der lokalen `.env` gesetzt und API-Container mit aktualisierter Compose neu erstellt. Damit sind SRV-022/SRV-024 deployed, aber noch nicht fachlich E2E bestätigt; SRV-023 wartet als nächstes auf den Cloudflare-Public-Hostname `www.tb-helfer.de` und externen Portaltest.
+**Deployment-Bestätigung 23.09.2026:** Der Benutzer hat die Deployment-Schritte 1–3 als erledigt bestätigt: aktueller SERVER-Stand auf Synology übernommen, `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de` in der lokalen `.env` gesetzt und API-Container mit aktualisierter Compose neu erstellt. Damit sind SRV-022/SRV-024 deployed, aber noch nicht fachlich E2E bestätigt; SRV-023 hat den externen Cloudflare-Routingtest bestanden; als nächstes bleiben echter Portal-Login und Portal-Aktivierungslink.
 
 
 ## Laufzeitbefund 23.09.2026 – Worker / Cloudflare nach Deployment
