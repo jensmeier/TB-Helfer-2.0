@@ -59,7 +59,7 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
 - **Worker:** Containerstart scheitert mit `Bind mount failed`, weil die normale Synology-Compose weiterhin `restore-target-storage-v1` mountete, obwohl das Restore-Target bewusst entfernt wurde. Quellfix entfernt alle Restore-Target-Variablen/Mounts aus dem normalen Worker. Der bewusst dauerhaft beibehaltene `restore-test-db` ist jetzt ausdrücklich wieder eigener persistenter Service in der Synology-Compose. Restore-to-Target bleibt ausschließlich im optionalen Wartungs-Overlay.
 - **Cloudflare:** `cloudflared` startete nicht zuverlässig selbstständig. Quellfix setzt `restart: always` und entfernt das unnötige API-Health-`depends_on`; der Tunnel startet unabhängig und retryt den Origin selbstständig.
 - Relevante Commits: Compose `b64432b798a4a1036a3292c3a550ced22d1d5211`, persistenter Restore-Test-Service `c747c1b3f47a8106316937ffb97508ef255c9e14`, Source-Checks `e4fdbad34db39e2c7a9030883054691b1c64ee82` / `9bb6001eab8830461f29df27d06b219f46a25068`, Deployment-Doku `4e68fd4a289d252570407bb60db488c1087caeb1`.
-- **Teststatus:** QUELLFIX vorhanden; Synology-Neuerstellung und praktischer Worker-/Tunnel-Autostarttest noch offen.
+- **Praktischer Stand:** Aktualisierte Compose wurde auf Synology übernommen und das Projekt neu erstellt. Worker läuft wieder, `restore-test-db` ist grün und `cloudflared` läuft grün. Damit ist der Worker-Mountfehler praktisch behoben. Beim Tunnel ist der aktuelle Start bestätigt; ein echter NAS-/Docker-Neustarttest für automatischen Wiederanlauf bleibt offen.
 - `STATUS.xlsx` bleibt weiterhin unangetastet, weil die aktuelle GitHub-Binärdatei nicht konfliktfrei bearbeitbar vorliegt.
 
 ## Laufzeitbefund 23.09.2026 – Baustellenbaum / Portal-Medien
