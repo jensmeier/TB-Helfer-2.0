@@ -15,6 +15,7 @@ def main() -> None:
     team_api = read("app/src/main/java/de/tbhelfer/server/TeamManagementApi.kt")
     activation = read("app/src/main/java/de/tbhelfer/ui/activation/AktivierungActivity.kt")
     sync_ui = read("app/src/main/java/de/tbhelfer/ui/sync/BaustellenSyncFragment.kt")
+    direct_team_ui = read("app/src/main/java/de/tbhelfer/ui/baustelle/BaustellenTeamDirekt.kt")
     manifest = read("app/src/main/AndroidManifest.xml")
     test = read("app/src/test/java/de/tbhelfer/ui/sync/WorksiteInvitationLinkTest.kt")
     android_ci = read(".github/workflows/android.yml")
@@ -37,6 +38,12 @@ def main() -> None:
         ('teamApi.redeemServerInvitation(token, invitation.value)', activation),
         ('WorksiteInvitationLink.parse(barcode.rawValue.orEmpty())', sync_ui),
         ('teamApi.redeemServerInvitation(token, invitation.value)', sync_ui),
+        ('import de.tbhelfer.ui.sync.WorksiteInvitationLink', direct_team_ui),
+        ('WorksiteInvitationLink.parse(barcode.rawValue.orEmpty())', direct_team_ui),
+        ('WorksiteInvitationLink.Credential.ServerToken', direct_team_ui),
+        ('teamApi.redeemServerInvitation(token, invitation.value)', direct_team_ui),
+        ('WorksiteInvitationLink.Credential.LegacyCode', direct_team_ui),
+        ('teamApi.redeemInvitation(token, invitation.value)', direct_team_ui),
         ('android:host="worksite-invite"', manifest),
         ('parsesServerAppUriWithoutChangingTokenCase', test),
         ('keepsLegacyInviteCompatibility', test),
@@ -46,6 +53,11 @@ def main() -> None:
     if missing:
         raise SystemExit(
             "Fehlende Android-/Server-1.0-Einladungsmarker: " + ", ".join(missing)
+        )
+
+    if "extractInvitationCode(" in direct_team_ui:
+        raise SystemExit(
+            "Direkter Baustellen-QR-Scanner darf keinen parallelen Legacy-Parser mehr verwenden"
         )
 
     if 'uppercase()' in parser[
