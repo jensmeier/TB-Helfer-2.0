@@ -86,7 +86,7 @@ Zusätzlich wurde ein unabhängiger Portalfehler reproduziert:
 ## 5. Neuer Arbeitsblock 1 → 2 → 4 → 3
 
 - **1 Benutzer-Gültigkeit:** Serverstand ist auf Synology deployt; Presets 3/6/12 Monate + manuelles Datum, kein Uhrzeitfeld, Europe/Berlin Folgetag 00:01; fachlicher E2E noch offen.
-- **2 Portal:** Synology-.env mit `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de` ist gesetzt und API mit aktualisierter Compose neu erstellt. App/API bleibt `api-v1.tb-helfer.de`. Als Nächstes Cloudflare-Public-Hostname `www.tb-helfer.de` praktisch anlegen und extern testen.
+- **2 Portal:** `www.tb-helfer.de` ist im Cloudflare-Tunnel eingerichtet und extern erreichbar; Root leitet korrekt auf `/portal/v1/login` und die TB-Helfer-Portal-Anmeldeseite wird geladen. App/API bleibt `api-v1.tb-helfer.de`. Echter Portal-Login und Portal-Aktivierungslink sind noch separat zu testen.
 - **4 QR-Einladung:** Ursache im Android-Code nachgewiesen. Direkter Baustellen-Scanner verarbeitet nur Legacy-`tbhelfer://invite?code=TBI-...`; moderner Server liefert `tbhelfer://worksite-invite?token=...`. Fix gehört ins ANDROID-Projekt; SERVER-`app/**` unverändert.
 - **3 Strecken/Bahnhöfe:** neue Adminseiten auf vorhandenem globalen Katalog sind auf Synology deployt; fachlicher E2E offen; keine neue Datenbank/Migration.
 
@@ -121,7 +121,7 @@ Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand t
 2. **ERLEDIGT:** lokale `.env` enthält `TB_V1_PORTAL_PUBLIC_BASE_URL=https://www.tb-helfer.de`.
 3. **ERLEDIGT:** API-Container mit aktualisierter Compose neu erstellt.
 4. Benutzer-Gültigkeit praktisch testen (3/6/12 Monate + manuell).
-5. Im Cloudflare-Tunnel `tb-helfer-nas` Public Hostname `www.tb-helfer.de` auf denselben internen Dienst wie die funktionierende `api-v1`-Route legen; `https://www.tb-helfer.de/` und Portal-Aktivierungslink testen.
+5. **ERLEDIGT:** Cloudflare-Public-Hostname `www.tb-helfer.de` eingerichtet; `https://www.tb-helfer.de/` leitet extern korrekt auf `/portal/v1/login` und zeigt die TB-Helfer-Portal-Anmeldung. Noch offen: echter Login + Aktivierungslink.
 6. QR-Fix im ANDROID-Projekt umsetzen und modernen Baustellen-QR praktisch scannen/einlösen.
 7. Danach Strecken-/Bahnhöfe-Admin praktisch prüfen.
 8. Anschließend den noch offenen Baustellenbaum-Sync (`POST .../nodes`) sowie Pixel↔Poco-E2E fortsetzen.
@@ -139,4 +139,4 @@ Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand t
 ---
 
 **Checkpoint erstellt:** 23.09.2026  
-**Aktueller nächster Schritt:** `www.tb-helfer.de` am bestehenden Cloudflare-Tunnel aktivieren und extern testen; parallel bleibt der echte NAS-/Docker-Neustarttest für cloudflared-Autostart offen.
+**Aktueller nächster Schritt:** echten Portal-Login und Portal-Aktivierungslink über `www.tb-helfer.de` testen; danach Benutzer-Gültigkeit/QR/Strecken-Bahnhöfe fortsetzen. Cloudflared-Reboot-Test bleibt separat offen.
