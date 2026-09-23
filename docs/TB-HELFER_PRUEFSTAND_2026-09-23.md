@@ -86,7 +86,7 @@ Zusätzlich wurde ein unabhängiger Portalfehler reproduziert:
 ## 5. Neuer Arbeitsblock 1 → 2 → 4 → 3
 
 - **1 Benutzer-Gültigkeit:** Serverstand ist auf Synology deployt; Presets 3/6/12 Monate + manuelles Datum, kein Uhrzeitfeld, Europe/Berlin Folgetag 00:01; fachlicher E2E noch offen.
-- **2 Portal:** `www.tb-helfer.de` ist im Cloudflare-Tunnel eingerichtet und extern erreichbar; Root leitet korrekt auf `/portal/v1/login` und die TB-Helfer-Portal-Anmeldeseite wird geladen. App/API bleibt `api-v1.tb-helfer.de`. Echter Portal-Login und Portal-Aktivierungslink sind noch separat zu testen.
+- **2 Portal:** praktisch bestätigt. `www.tb-helfer.de` ist extern erreichbar; echter Benutzerlogin funktioniert. Portal-Start, Profil/Firmenkontakte und Baustellenliste laden, die Testbaustelle `GE Immenstadt - Kempten` ist sichtbar/öffnbar. App/API bleibt getrennt auf `api-v1.tb-helfer.de`. Der Erstaktivierungslink bleibt nur als eigener Bedienfall offen, falls noch nicht explizit getestet.
 - **4 QR-Einladung:** Ursache im Android-Code nachgewiesen. Direkter Baustellen-Scanner verarbeitet nur Legacy-`tbhelfer://invite?code=TBI-...`; moderner Server liefert `tbhelfer://worksite-invite?token=...`. Fix gehört ins ANDROID-Projekt; SERVER-`app/**` unverändert.
 - **3 Strecken/Bahnhöfe:** neue Adminseiten auf vorhandenem globalen Katalog sind auf Synology deployt; fachlicher E2E offen; keine neue Datenbank/Migration.
 
@@ -139,4 +139,4 @@ Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand t
 ---
 
 **Checkpoint erstellt:** 23.09.2026  
-**Aktueller nächster Schritt:** echten Portal-Login und Portal-Aktivierungslink über `www.tb-helfer.de` testen; danach Benutzer-Gültigkeit/QR/Strecken-Bahnhöfe fortsetzen. Cloudflared-Reboot-Test bleibt separat offen.
+**Aktueller nächster Schritt:** Benutzer-Gültigkeit (3/6/12 Monate + manuell, ohne Uhrzeit) praktisch testen; danach Android-QR-Fix und Strecken-/Bahnhöfe-E2E. Cloudflared-Reboot-Test bleibt separat offen.
