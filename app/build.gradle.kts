@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200064: gespeicherte BTB-Einträge können verschoben werden;
-        // zu einem manuellen Eintrag sind große Bildvorschauen + nachträgliches Hinzufügen erreichbar.
-        versionCode = 200064
-        versionName = "1.3.14"
+        // Android 200065: Zielauswahl beim Verschieben manueller BTB-Einträge
+        // zuverlässig als sichtbare Liste anzeigen; 200064-Foto-/Eintrag-Funktionen bleiben erhalten.
+        versionCode = 200065
+        versionName = "1.3.15"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
