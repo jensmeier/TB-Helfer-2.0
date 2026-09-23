@@ -5400,7 +5400,6 @@ cardCurrentReport.setOnClickListener {
                             putString("autoPhotoSource", source)
                             putString("autoPhotoFirma", mi.firma.orEmpty())
                             putLong("autoPhotoOrtId", mi.ortId)
-                            putString("autoPhotoOrtLabel", labelForOrtCached(mi.ortId))
                             putString("autoPhotoText", mi.text)
                             mi.time?.let { putString("autoPhotoTime", it) }
                             mi.kmVon?.let { putDouble("autoPhotoKmVon", it) }
