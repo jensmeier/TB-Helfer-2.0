@@ -29,6 +29,7 @@ def main() -> None:
         ("ServerCapabilitiesApi.Result.Error -> TeamResult.Error", team),
         ('"worksite_teams_v1": True', server),
         ('"worksite_invitations_v1": True', server),
+        ('"sync_change_feed_v1": True', server),
         ("52_verify_android_server_1_capabilities_source.py", workflow),
     ]
     missing = [needle for needle, source in assertions if needle not in source]
