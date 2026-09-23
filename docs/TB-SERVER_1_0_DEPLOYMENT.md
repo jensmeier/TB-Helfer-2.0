@@ -144,6 +144,12 @@ Der normale `docker-compose.v1.yml` bleibt absichtlich **ohne** Source-Mounts un
 
 Für Synology Container Manager wird während der Stagingphase der Inhalt von `docker-compose.synology-staging.v1.yml` als Projekt-`compose.yml` verwendet. Die bestehenden persistenten Ordner `database-v1`, `storage-v1`, `backups-v1` und die lokale `.env` bleiben unverändert.
 
+Aktueller Laufzeitvertrag nach Entfernung des einmaligen Restore-Targets:
+- der normale Synology-Worker mountet **kein** `restore-target-storage-v1` und erhält keine `TB_RESTORE_TARGET_*`-Variablen;
+- der getrennte `restore-test-db`-Pfad bleibt erhalten;
+- Restore-to-Target existiert nur noch im optionalen `docker-compose.restore-test.v1.yml`-Wartungs-Overlay;
+- `cloudflared` startet im normalen Synology-Projekt unabhängig vom API-Health mit `restart: always`. Der Tunnel darf bereits verbunden sein, während die API noch hochfährt; dadurch bleibt der Tunnelstart nicht an einem einmaligen Health-Gate hängen.
+
 ## Cloudflare-Staging für Tests außerhalb des Heimnetzes
 
 Für den E2E-Test außerhalb des Heimnetzes wird **nicht** der bestehende Produktivhostname `api.tb-helfer.de` umgeschaltet. Stattdessen wird ein eigener Staging-Hostname verwendet:
