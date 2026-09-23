@@ -64,6 +64,15 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
 - **Praktischer Stand:** Aktualisierte Compose wurde auf Synology übernommen und das Projekt neu erstellt. Worker läuft wieder, `restore-test-db` ist grün und `cloudflared` läuft grün. Damit ist der Worker-Mountfehler praktisch behoben. Beim Tunnel ist der aktuelle Start bestätigt; ein echter NAS-/Docker-Neustarttest für automatischen Wiederanlauf bleibt offen.
 - `STATUS.xlsx` bleibt weiterhin unangetastet, weil die aktuelle GitHub-Binärdatei nicht konfliktfrei bearbeitbar vorliegt.
 
+## Laufzeitbefund 23.09.2026 – QR-Erzeugung HTTP 500
+
+- Nach Deployment des offenen Einladungsvertrags endete das QR-Erzeugen mit HTTP 500.
+- Im aktuellen Quellstand eindeutig nachvollziehbarer DB-Fehler: `tb.worksite_invitations.permissions_override` und `area_scope` sind JSONB, wurden im Create-Pfad aber als rohe Python-`dict`-Objekte an Psycopg übergeben.
+- Derselbe Fehler wäre anschließend beim Redeem erneut aufgetreten, weil die aus PostgreSQL gelesenen JSONB-Dicts wieder roh in `tb.worksite_memberships` geschrieben wurden.
+- Quellfix: `Jsonb(payload.permissions_override)`, `Jsonb(invitation_scope)` sowie `Jsonb(invitation["permissions_override"])` / `Jsonb(invitation["area_scope"])`.
+- Commit: `c8671dbdbecc301fe28212d45db7326b422fff81`; Regression-Guard: `6067a1af6dcb1afccf220b73c3ba99dadeef4df1`.
+- **Deployment/E2E offen.** Keine Migration; nur `worksites.py` muss auf die Synology und die API neu gestartet werden.
+
 ## Laufzeitbefund 23.09.2026 – Baustellen-QR-Erzeugung
 
 - Android-Branch ist inzwischen **1.3.16 / 200066** auf `ac972afecf96504b2f13dd697895100cf4a27fee`; der direkte Scanner verwendet den gemeinsamen modernen `WorksiteInvitationLink`-Parser. Scanner-E2E ist noch offen.
