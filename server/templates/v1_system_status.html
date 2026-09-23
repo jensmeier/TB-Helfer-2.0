@@ -180,6 +180,7 @@ function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function bytes(value){const n=Number(value);if(!Number.isFinite(n))return '—';const u=['B','KiB','MiB','GiB','TiB'];let x=n,i=0;while(x>=1024&&i<u.length-1){x/=1024;i++;}return (i===0?Math.round(x):x.toFixed(x>=100?0:x>=10?1:2))+' '+u[i];}
 function dt(value){if(!value)return '—';try{return new Date(value).toLocaleString('de-DE');}catch(_){return String(value);}}
+function shortDt(value){if(!value)return '—';try{return new Date(value).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(_){return String(value);}}
 function kpi(n,label){return '<div class="kpi"><div class="n">'+esc(n)+'</div><div class="l">'+esc(label)+'</div></div>';}
 function val(id,value){document.getElementById(id).value=value??'';}
 function checked(id,value){document.getElementById(id).checked=!!value;}
@@ -212,13 +213,11 @@ function renderMonitor(mon){
   const overall=String(mon.overall||'UNKNOWN').toUpperCase(),ch=mon.checks||{},ev=mon.events_24h||{};
   const stateClass=overall==='ERROR'?'status-bad':overall==='WARN'?'status-warn':'status-good';
   state.innerHTML='<span class="'+stateClass+'">● '+esc(monitorStatusLabel(overall))+'</span><span> · '+esc(dt(mon.updated_at))+'</span>';
-  const db=ch.database||{},api=ch.api||{},pub=ch.public||{},worker=ch.worker||{},backup=ch.backup||{},storage=ch.storage||{},io=ch.io||{},mem=ch.memory||{},cur=mon.current||{};
+  const db=ch.database||{},api=ch.api||{},pub=ch.public||{},worker=ch.worker||{},io=ch.io||{},mem=ch.memory||{},cur=mon.current||{};
   summary.innerHTML=[
     monitorBox('Datenbank',db,monitorStatusLabel(db.status)+(db.latency_ms!=null?' · '+db.latency_ms+' ms':'')),
     monitorBox('Interne API',api,monitorStatusLabel(api.status)+(api.latency_ms!=null?' · '+api.latency_ms+' ms':'')),
     monitorBox('Worker',worker,monitorStatusLabel(worker.status)+(worker.age_seconds!=null?' · '+worker.age_seconds+' s':'')),
-    monitorBox('Backups',backup,monitorStatusLabel(backup.status)),
-    monitorBox('Datenspeicher',storage,monitorStatusLabel(storage.status)+(storage.percent_used!=null?' · '+storage.percent_used+' %':'')),
     monitorBox('I/O-Druck',io,monitorStatusLabel(io.status)+(io.full_avg10!=null?' · '+io.full_avg10+' %':'')),
     monitorBox('Swap',mem,monitorStatusLabel(mem.status)+(mem.swap_used_percent!=null?' · '+mem.swap_used_percent+' %':'')),
     monitorBox('Cloudflare / öffentliche API',pub,monitorStatusLabel(pub.status)+(pub.latency_ms!=null?' · '+pub.latency_ms+' ms':'')),
@@ -256,17 +255,14 @@ async function load(hydrateForm=true){
   try{
     const result=await tbApi('/api/v1/admin/system/status');
     const x=result.data,c=x.counts||{},m=x.migration||{},st=x.storage||{},bst=x.backup_storage||{},br=x.backup_retention||{},a=x.automation||{},smtp=x.smtp||{},mon=x.monitor||{};
-    const mch=(mon.checks||{}),mdb=mch.database||{},mworker=mch.worker||{};
+    const lastBackup=x.last_successful_backup||{};
     document.getElementById('summary').innerHTML=[
-      kpi(x.server_version||'—','Server'),
-      kpi((m.applied||0)+' / '+(m.known||0),'Migrationen'),
-      kpi(mdb.status==='OK'?(mdb.latency_ms!=null?mdb.latency_ms+' ms':'OK'):monitorStatusLabel(mdb.status),'Datenbank'),
-      kpi(mworker.status==='OK'?'OK':monitorStatusLabel(mworker.status),'Worker'),
-      kpi(st.available?Number(st.percent_used||0).toFixed(1)+' %':'—','Speicher belegt'),
-      kpi(x.last_successful_backup?'OK':'—','letztes Backup'),
-      kpi((c.running_jobs||0)+' / '+(c.pending_jobs||0),'läuft / wartet'),
+      kpi(mon.available?monitorStatusLabel(mon.overall):'—','System'),
       kpi(c.failed_jobs_unacknowledged||0,'offene Fehler'),
-      kpi(mon.available?monitorStatusLabel(mon.overall):'—','Serverüberwachung')
+      kpi((c.running_jobs||0)+' / '+(c.pending_jobs||0),'läuft / wartet'),
+      kpi(shortDt(lastBackup.finished_at||lastBackup.started_at),'letztes Backup'),
+      kpi(shortDt(c.last_device_seen),'letzter Gerätekontakt'),
+      kpi(shortDt(c.last_sync),'letzter Sync')
     ].join('');
 
     document.getElementById('serverInfo').innerHTML=
