@@ -5766,10 +5766,29 @@ cardCurrentReport.setOnClickListener {
                         }
                         root.addView(photoHeader)
 
-                        val photoGrid = android.widget.LinearLayout(requireContext()).apply {
-                            orientation = android.widget.LinearLayout.VERTICAL
+                        val photoScroller = android.widget.HorizontalScrollView(requireContext()).apply {
+                            isFillViewport = false
+                            isHorizontalScrollBarEnabled = true
+                            overScrollMode = android.view.View.OVER_SCROLL_IF_CONTENT_SCROLLS
                         }
-                        root.addView(photoGrid)
+                        val photoRow = android.widget.LinearLayout(requireContext()).apply {
+                            orientation = android.widget.LinearLayout.HORIZONTAL
+                            setPadding(0, 0, dp(6), 0)
+                        }
+                        photoScroller.addView(
+                            photoRow,
+                            android.widget.HorizontalScrollView.LayoutParams(
+                                android.widget.HorizontalScrollView.LayoutParams.WRAP_CONTENT,
+                                android.widget.HorizontalScrollView.LayoutParams.WRAP_CONTENT
+                            )
+                        )
+                        root.addView(
+                            photoScroller,
+                            android.widget.LinearLayout.LayoutParams(
+                                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                            )
+                        )
 
                         val relatedPhotoIds = matchingFotoIds(mi)
                         val btnEntryPhotos = com.google.android.material.button.MaterialButton(requireContext()).apply {
@@ -5789,68 +5808,67 @@ cardCurrentReport.setOnClickListener {
                         )
 
                         if (relatedPhotoIds.isEmpty()) {
-                            photoGrid.addView(android.widget.TextView(requireContext()).apply {
+                            photoRow.addView(android.widget.TextView(requireContext()).apply {
                                 text = "Noch keine Bilder direkt zu diesem Eintrag."
                                 textSize = 12f
                                 alpha = 0.70f
                                 setPadding(dp(4), dp(2), dp(4), dp(6))
                             })
                         } else {
+                            root.addView(android.widget.TextView(requireContext()).apply {
+                                text = "← Bilder nach links / rechts wischen →"
+                                textSize = 11.5f
+                                alpha = 0.68f
+                                gravity = android.view.Gravity.CENTER
+                                setPadding(0, dp(2), 0, dp(2))
+                            }, root.indexOfChild(photoScroller) + 1)
+
                             viewLifecycleOwner.lifecycleScope.launch {
                                 val photos = withContext(Dispatchers.IO) {
                                     ServiceLocator.fotoRepository.fotosMitIds(relatedPhotoIds)
                                 }.associateBy { it.id }
                                 if (!isAdded) return@launch
-                                photoGrid.removeAllViews()
-                                relatedPhotoIds.chunked(2).forEachIndexed { rowIndex, ids ->
-                                    val row = android.widget.LinearLayout(requireContext()).apply {
-                                        orientation = android.widget.LinearLayout.HORIZONTAL
-                                        weightSum = 2f
-                                    }
-                                    ids.forEachIndexed { colIndex, id ->
-                                        val foto = photos[id]
-                                        if (foto != null) {
-                                            val cell = android.widget.LinearLayout(requireContext()).apply {
-                                                orientation = android.widget.LinearLayout.VERTICAL
-                                                setPadding(dp(3), dp(3), dp(3), dp(3))
-                                                layoutParams = android.widget.LinearLayout.LayoutParams(
-                                                    0,
-                                                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                                                    1f
-                                                )
-                                            }
-                                            val image = android.widget.ImageView(requireContext()).apply {
-                                                scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-                                                adjustViewBounds = false
-                                                contentDescription = "Bild ${rowIndex * 2 + colIndex + 1} öffnen"
-                                                layoutParams = android.widget.LinearLayout.LayoutParams(
-                                                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                                                    dp(138)
-                                                )
-                                            }
-                                            de.tbhelfer.util.ThumbnailLoader.loadInto(
-                                                imageView = image,
-                                                filePath = foto.dateipfad,
-                                                placeholderResId = android.R.drawable.ic_menu_report_image,
-                                                reqW = 640,
-                                                reqH = 640
-                                            )
-                                            val number = rowIndex * 2 + colIndex + 1
-                                            image.setOnClickListener { showManualPhotoLarge(foto, number) }
-                                            cell.addView(image)
-                                            cell.addView(android.widget.TextView(requireContext()).apply {
-                                                text = "Bild $number"
-                                                textSize = 11.5f
-                                                gravity = android.view.Gravity.CENTER
-                                                setPadding(0, dp(2), 0, 0)
-                                            })
-                                            row.addView(cell)
+                                photoRow.removeAllViews()
+
+                                relatedPhotoIds.forEachIndexed { index, id ->
+                                    val foto = photos[id] ?: return@forEachIndexed
+                                    val cell = android.widget.LinearLayout(requireContext()).apply {
+                                        orientation = android.widget.LinearLayout.VERTICAL
+                                        gravity = android.view.Gravity.CENTER
+                                        setPadding(dp(4), dp(3), dp(4), dp(3))
+                                        layoutParams = android.widget.LinearLayout.LayoutParams(
+                                            dp(240),
+                                            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                                        ).apply {
+                                            marginEnd = dp(8)
                                         }
                                     }
-                                    if (ids.size == 1) {
-                                        row.addView(android.view.View(requireContext()), android.widget.LinearLayout.LayoutParams(0, 1, 1f))
+                                    val image = android.widget.ImageView(requireContext()).apply {
+                                        scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                                        adjustViewBounds = false
+                                        contentDescription = "Bild ${index + 1} öffnen"
+                                        layoutParams = android.widget.LinearLayout.LayoutParams(
+                                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                            dp(175)
+                                        )
                                     }
-                                    photoGrid.addView(row)
+                                    de.tbhelfer.util.ThumbnailLoader.loadInto(
+                                        imageView = image,
+                                        filePath = foto.dateipfad,
+                                        placeholderResId = android.R.drawable.ic_menu_report_image,
+                                        reqW = 960,
+                                        reqH = 700
+                                    )
+                                    val number = index + 1
+                                    image.setOnClickListener { showManualPhotoLarge(foto, number) }
+                                    cell.addView(image)
+                                    cell.addView(android.widget.TextView(requireContext()).apply {
+                                        text = "Bild $number"
+                                        textSize = 12f
+                                        gravity = android.view.Gravity.CENTER
+                                        setPadding(0, dp(3), 0, 0)
+                                    })
+                                    photoRow.addView(cell)
                                 }
                             }
                         }
