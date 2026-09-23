@@ -136,13 +136,6 @@ services:
       TB_RESTORE_TEST_DB_NAME: ${TB_V1_RESTORE_TEST_DB_NAME:-tb_helfer_v1_restore_test}
       TB_RESTORE_TEST_DB_USER: ${TB_V1_RESTORE_TEST_DB_USER:-tb_helfer_restore_test}
       TB_RESTORE_TEST_DB_PASSWORD: ${TB_V1_RESTORE_TEST_DB_PASSWORD:-}
-      TB_RESTORE_TARGET_DB_HOST: ${TB_V1_RESTORE_TARGET_DB_HOST:-restore-target-db}
-      TB_RESTORE_TARGET_DB_PORT: ${TB_V1_RESTORE_TARGET_DB_PORT:-5432}
-      TB_RESTORE_TARGET_DB_NAME: ${TB_V1_RESTORE_TARGET_DB_NAME:-tb_helfer_v1_restore_target}
-      TB_RESTORE_TARGET_DB_USER: ${TB_V1_RESTORE_TARGET_DB_USER:-tb_helfer_restore_target}
-      TB_RESTORE_TARGET_DB_PASSWORD: ${TB_V1_RESTORE_TARGET_DB_PASSWORD:-}
-      TB_RESTORE_TARGET_STORAGE_ROOT: /tb/restore-target-v1
-      TB_ALLOW_RESTORE_TARGET: ${TB_V1_ALLOW_RESTORE_TARGET:-NO}
       TZ: ${TZ:-Europe/Berlin}
     volumes:
       - ${TB_V1_SOURCE_TBSERVER_DIR:-./tbserver}:/app/tbserver:ro
@@ -150,7 +143,6 @@ services:
       - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1
       - ${TB_V1_BACKUP_DIR:-./backups-v1}:/tb/backups-v1
       - ${TB_V1_DIAGNOSTICS_DIR:-./diagnostics-v1}:/tb/diagnostics-v1
-      - ${TB_V1_RESTORE_TARGET_STORAGE_DIR:-./restore-target-storage-v1}:/tb/restore-target-v1
     command: ["python", "-m", "tbserver.jobs", "worker"]
     depends_on:
       db:
@@ -191,12 +183,11 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    restart: unless-stopped
+    # Tunnel startet unabhängig von der API und verbindet/retryt selbstständig.
+    # "always" sorgt insbesondere nach NAS-/Docker-Neustarts für automatischen Start.
+    restart: always
     environment:
       TUNNEL_TOKEN: ${TB_V1_CLOUDFLARE_TUNNEL_TOKEN:?TB_V1_CLOUDFLARE_TUNNEL_TOKEN fehlt}
       TZ: ${TZ:-Europe/Berlin}
     command: ["tunnel", "--no-autoupdate", "run"]
-    depends_on:
-      api:
-        condition: service_healthy
 
