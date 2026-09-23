@@ -59,6 +59,15 @@ Folgende bereits bestätigte Funktionen/Pfade nicht ohne reproduzierbaren Fehler
 
 Source-Check, Build, Installation und GitHub Actions ohne ausgeführte Steps sind **kein E2E-Nachweis**.
 
+## 4b. Baustellen-QR – Erzeugung nach Android 1.3.16
+
+- Android `1.3.16 / 200066` hat den direkten Scanner im Quellstand auf den modernen `worksite-invite`-Parser umgestellt.
+- Praktisch beim Erzeugen reproduziert: `QR wird erzeugt …` -> `Einladungen werden vom Server nicht unterstützt.`
+- Ursache: Android-Direct-UI nutzt beim **Erzeugen** noch `POST /api/v1/collab/worksites/{id}/invitations`; Server 1.0 hatte nur den kanonischen gezielten `/api/v1/worksites/{id}/invitations`-Create-Pfad.
+- Fach-/DB-Prüfung: offene sichere QR-Einladungen sind fachlich vorgesehen; `tb.worksite_invitations.invited_user_id` ist bereits nullable. Keine Migration erforderlich.
+- Server-Quellfix: kanonischer Create-Pfad unterstützt offene oder gezielte Einladung; Redeem schützt Firma, Einmaligkeit und bestehende Mitgliedschaft. Rolling-Update-Adapter unter `/collab` delegiert ausschließlich an denselben kanonischen Create-Weg.
+- Deployment + praktischer QR-Create/Scan/Redeem-E2E offen.
+
 ## 4a. Neuer Laufzeitfehler nach Synology-Neuerstellung
 
 - **Worker startet nicht:** Synology meldet `Bind mount failed: .../restore-target-storage-v1 does not exist`. Ursache ist der veraltete Restore-Target-Mount im normalen Synology-Compose nach bewusstem Entfernen des Restore-Targets.
@@ -139,4 +148,4 @@ Diese Angaben sind gegenüber dem inzwischen praktisch bestätigten Live-Stand t
 ---
 
 **Checkpoint erstellt:** 23.09.2026  
-**Aktueller nächster Schritt:** im ANDROID-Projekt die vorbereitete QR-Übergabe umsetzen, Build installieren und modernen `worksite-invite`-QR E2E testen; danach Strecken-/Bahnhöfe-E2E. Cloudflared-Reboot-Test bleibt separat offen.
+**Aktueller nächster Schritt:** Server-QR-Erzeugungsfix (`worksites.py`, `main.py`, `capabilities.py`) auf Synology übernehmen und API neu starten; danach mit Android 1.3.16 QR erzeugen und modernen `worksite-invite`-QR auf zweitem aktivierten Gerät E2E einlösen. Danach Strecken-/Bahnhöfe-E2E.
