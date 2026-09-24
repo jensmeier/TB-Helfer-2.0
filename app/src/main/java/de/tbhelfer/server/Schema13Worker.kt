@@ -5,18 +5,15 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.WorksiteTrackDataSync
 import de.tbhelfer.einstellungen.SyncEinstellungenSpeicher
 import de.tbhelfer.ui.baustelle.WorksiteLocalDeleteService
-import java.util.concurrent.TimeUnit
 
 /**
  * Schema-13-Ergaenzung zum bestehenden SyncWorker.
@@ -33,7 +30,6 @@ class Schema13Worker(
     override suspend fun doWork(): Result {
         ServiceLocator.initialisieren(applicationContext)
         val settings = SyncEinstellungenSpeicher.laden(applicationContext)
-        if (settings.zeitplan == SyncEinstellungenSpeicher.Zeitplan.MANUELL) return Result.success()
         if (!networkAllowed(settings.netz)) return Result.success()
 
         val tokenStore = SecureTokenStore(applicationContext)
@@ -99,27 +95,10 @@ class Schema13Worker(
         private const val NOW_NAME = "tbhelfer-schema13-now"
 
         fun schedule(context: Context) {
-            val appContext = context.applicationContext
-            val settings = SyncEinstellungenSpeicher.laden(appContext)
-            val wm = WorkManager.getInstance(appContext)
-            if (settings.zeitplan == SyncEinstellungenSpeicher.Zeitplan.MANUELL) {
-                wm.cancelUniqueWork(PERIODIC_NAME)
-                return
-            }
-            val hours = when (settings.zeitplan) {
-                SyncEinstellungenSpeicher.Zeitplan.MANUELL -> return
-                SyncEinstellungenSpeicher.Zeitplan.STUENDLICH -> 1L
-                SyncEinstellungenSpeicher.Zeitplan.TAEGLICH -> 24L
-            }
-            val request = PeriodicWorkRequestBuilder<Schema13Worker>(hours, TimeUnit.HOURS)
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .setRequiresBatteryNotLow(true)
-                        .build()
-                )
-                .build()
-            wm.enqueueUniquePeriodicWork(PERIODIC_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
+            // Der alte MANUELL/STÜNDLICH/TÄGLICH-Zeitplan ist entfernt. Schema-13-Daten
+            // werden nur noch ereignisgetrieben angestoßen, bis ihr eigener Delta-Pfad steht.
+            WorkManager.getInstance(context.applicationContext)
+                .cancelUniqueWork(PERIODIC_NAME)
         }
 
         fun enqueueNow(context: Context) {
