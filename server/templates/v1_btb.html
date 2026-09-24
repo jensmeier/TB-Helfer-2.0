@@ -144,6 +144,21 @@
   </details>
 </div>
 
+<div id="weatherModal" class="btb-modal" aria-hidden="true">
+  <div class="btb-modal-panel">
+    <div class="btb-modal-head"><h3>Wetter bearbeiten</h3><button id="weatherModalClose" class="secondary" type="button">Schließen</button></div>
+    <div class="btb-modal-body">
+      <div class="btb-modal-grid">
+        <div class="wide"><label for="weatherLocation">Ort / Wetterstation</label><input id="weatherLocation" type="text"></div>
+        <div class="wide"><label for="weatherLegacy">Zusätzliche Wetterangabe</label><textarea id="weatherLegacy" rows="2"></textarea></div>
+      </div>
+      <div class="btb-weather-editor-head"><b>Wetterzeiten</b><button id="weatherAddSlot" class="btb-add" type="button">+ Zeitpunkt</button></div>
+      <div id="weatherEditorRows"></div>
+    </div>
+    <div class="btb-modal-actions"><button id="weatherModalCancel" class="secondary" type="button">Abbrechen</button><button id="weatherModalSave" type="button">Speichern</button></div>
+  </div>
+</div>
+
 <div id="entryModal" class="btb-modal" aria-hidden="true">
   <div class="btb-modal-panel" role="dialog" aria-modal="true" aria-labelledby="entryModalTitle">
     <div class="btb-modal-head">
