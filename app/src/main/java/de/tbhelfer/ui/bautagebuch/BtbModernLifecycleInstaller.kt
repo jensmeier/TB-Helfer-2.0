@@ -341,7 +341,16 @@ object BtbModernLifecycleInstaller {
                         saved.baustelleName,
                         saved.btbId
                     )
-                    runCatching { SofortSync.anstossen(appContext) }
+                    // Abschluss ist eine BTB-Fachänderung und muss in den selektiven
+                    // Dirty-Scope dieses konkreten BTB. Ein allgemeiner SofortSync würde den
+                    // neuen 15×15-Vertrag umgehen und kann den Serverstatus ACTIVE stehen lassen.
+                    runCatching {
+                        SofortSync.btbAnstossen(
+                            context = appContext,
+                            localBaustelleId = saved.baustelleId,
+                            clientBtbId = saved.btbId
+                        )
+                    }
                     file
                 }.also {
                     BtbFotoRenderMarkierung.clear()
