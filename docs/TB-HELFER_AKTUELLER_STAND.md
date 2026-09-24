@@ -1,3 +1,30 @@
+## Portal-Sichtprüfung 24.09.2026 – BTB-Ansicht nach Android-Vorbild nachgebessert
+
+- Benutzer hat die erste lesbare Portal-BTB-Version praktisch auf Synology geprüft und mehrere konkrete Darstellungsfehler per Screenshot bestätigt.
+- Reproduzierte Portalprobleme:
+  - `Schicht Ende` und `0 fertig · 0 arbeitet` wurden angezeigt, obwohl auf Synology bewusst nur das neue Template, aber noch nicht Migration 014 + neuer Teilnehmer-Backendvertrag installiert waren.
+  - `FIRMA`-Metadaten wurden als eigene sichtbare Rohdaten angezeigt, einschließlich technischer Felder wie `isDeleted`, `visibleInPersonal`, `visibleInMaschinen`.
+  - Personal und Geräte erschienen doppelt: strukturierte Android-Zeilen plus zusätzliche Legacy-Zusammenfassungen aus `personal-frei:*` / `geraet-frei:*`.
+  - `Bearbeiten` öffnete weiterhin Sortierung/Version/Roh-JSON statt einer fachlichen Eingabemaske wie in Android.
+  - BTB-Fotos zeigten lange technische Dateinamen als Hauptüberschrift.
+- Quellfix:
+  - Teilnehmer-/Schichtkarte und Schichtende-Aktionen werden nur noch angezeigt, wenn die BTB-API tatsächlich `participants` **und** `current_user` liefert. Damit täuscht ein isoliert aktualisiertes Template den noch nicht deployten Migration-014-Vertrag nicht mehr vor.
+  - `FIRMA` ist nur noch Gruppierungs-/Metadatenquelle und wird nicht als eigene Rohdaten-Sektion gerendert.
+  - Personal/Geräte werden nach Firma gruppiert, Firmenzeit sichtbar kompakt dargestellt und Android-Legacy-Zusammenfassungen bei vorhandenen strukturierten Zeilen nur in der **Anzeige** dedupliziert. Persistierte Daten bleiben unverändert.
+  - `Bearbeiten` öffnet jetzt einen Portal-Dialog mit fachlichen Feldern:
+    - Firma: Name + Personal-/Gerätezeiten;
+    - Personal: Anzahl + Rolle;
+    - Geräte: Anzahl + Bezeichnung;
+    - Arbeiten/Abnahmen/Einweisung/Besonderheiten/Mängel/Notizen: Uhrzeit/KM/Text, soweit vorhanden.
+  - Sortierung/Version/JSON bleiben nur unter `Technische Details` zur Diagnose.
+  - Status `ACTIVE/REWORK/FINALIZED` wird als `Aktiv/Nachbearbeitung/Abgeschlossen` angezeigt; BTB-ID ist nur noch kleine technische Zusatzinfo.
+  - Fotos werden als `Foto 1`, `Foto 2`, ... mit Aufnahmezeit/Dateigröße dargestellt; technischer Originalname liegt hinter `Dateiinformation`.
+- Daten-/Syncvertrag wurde nicht verändert; keine DB-/API-/Android-Codeänderung.
+- Template-JavaScript wurde gegen den aktuellen Branch syntaktisch kompiliert: **OK**.
+- Source-Check `95_verify_portal_btb_android_like_editor_source.py` + CI-Eintrag ergänzt.
+- **Status: QUELLSTAND FERTIG / ERNEUTER LIVE-DEPLOY DER EINEN TEMPLATE-DATEI + SICHTPRÜFUNG OFFEN.**
+- `STATUS.xlsx` weiterhin nicht blind überschrieben.
+
 ## Praxistest + Portalansicht 24.09.2026 – Android-BTB im Portal lesbar
 
 - Android **1.3.17 / 200067** ist laut Android-Branch installiert (`feature/tb-android-2.0` HEAD `d7869a2d`).
