@@ -56,6 +56,17 @@ for token in (
 # Firmen-Metadaten sind nur Gruppierungsdaten, keine eigene Rohdaten-Sektion.
 assert "if(key==='FIRMA')return" in portal
 
+# Androids internes Feld "notizen" ist fachlich Bestandteil von
+# "4. Ausgeführte Arbeiten" und darf im Portal keinen eigenen Abschnitt bilden.
+for token in (
+    "legacyWorkLines",
+    "groups.NOTIZEN",
+    "groups.ALLGEMEIN",
+    "renderWorkGrouped(list,firms,legacyWork)",
+):
+    assert token in portal, token
+assert "Weitere Angaben / Notizen" not in portal
+
 # Bearbeiten ist ausschließlich fachlich. Kein Benutzer darf im normalen
 # Portal Roh-JSON, Sortierung oder Versionsfelder editieren.
 for token in (
