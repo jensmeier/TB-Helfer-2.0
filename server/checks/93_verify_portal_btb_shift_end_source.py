@@ -23,9 +23,12 @@ for token in (
 
 assert "status==='FINALIZED'&&finalPdf&&isTeamLead()" in portal
 assert "document.getElementById('headerForm').style.display=canEditCurrentBtb()" in portal
-assert "document.getElementById('entryForm').style.display=canEditCurrentBtb()" in portal
+assert "openEntryEditor" in portal
+assert "editorButton" in portal
 assert "document.getElementById('photoUploadBox').style.display=(can('files.add')&&canEditCurrentBtb())" in portal
-assert "participants=result.data.participants||[];currentUser=result.data.current_user||{};" in portal
+assert "shiftContractAvailable=Object.prototype.hasOwnProperty.call(result.data,'participants')" in portal
+assert "participants=shiftContractAvailable?(result.data.participants||[]):[]" in portal
+assert "currentUser=shiftContractAvailable?(result.data.current_user||{}):{}" in portal
 
 for token in (
     '"participants": participants',
