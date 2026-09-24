@@ -159,3 +159,26 @@ SERVER/Portal-Quellstand vom 24.09.2026:
 - Portal-Source-Check: `server/checks/93_verify_portal_btb_shift_end_source.py`.
 
 Android soll fachlich **denselben Ablauf** abbilden, aber vor `shift-finish` zusätzlich den selektiven lokalen BTB-/Bild-Sync sicher abschließen.
+
+## Praktischer Befund 24.09.2026 – lokaler BTB-Abschluss erreicht Server nicht zuverlässig
+
+Live-Befund mit installiertem Android **1.3.17 / 200067**:
+- Benutzer hat den BTB gegen **19:20 lokal abgeschlossen**;
+- Android zeigt den lokalen Abschlusszustand;
+- Portal liest denselben Server-BTB später weiterhin als **`ACTIVE`**.
+
+Quellursache / Integrationslücke:
+- `BtbModernLifecycleInstaller.closeCurrentBtb(...)` speichert zunächst den BTB;
+- `BtbDokumentVersionierung.abschlussBestaetigen(...)` schreibt anschließend direkt `abschlussStatus=ABGESCHLOSSEN` / `istFertig=true` in die lokale BTB-Datei;
+- danach wird aktuell nur `SofortSync.anstossen(appContext)` verwendet;
+- der neue Phase-1-Vertrag für einen konkreten BTB wäre dagegen `SofortSync.btbAnstossen(appContext, saved.baustelleId, saved.btbId)`.
+
+ANDROID-Auftrag:
+1. nach **erfolgreichem** `abschlussBestaetigen` den gerade abgeschlossenen stabilen BTB explizit mit `btbAnstossen(...)` als Dirty-Scope markieren;
+2. erst den tatsächlich abgeschlossenen Dateistand exportieren (`status=FERTIG`);
+3. Server-`/finalize` bestätigen und erst danach den Serverabschluss als erfolgreich betrachten;
+4. generischen Vollsync nicht als notwendige Abschlusslogik verwenden;
+5. Offline: Abschluss lokal darf bestehen, aber UI muss Server-Sync ausstehend kenntlich machen, bis Finalize bestätigt ist;
+6. Test: lokalen Abschluss durchführen, **ohne** manuellen Syncbutton; Portal muss anschließend denselben BTB als `FINALIZED/Abgeschlossen` sehen.
+
+SERVER-Seite erfindet bei diesem Befund keinen Abschlussstatus. `ACTIVE` im Portal ist der aktuell vom Server gespeicherte Zustand.
