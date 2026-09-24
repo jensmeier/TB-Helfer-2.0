@@ -56,17 +56,17 @@ class SelectiveSyncWorker(
         var retryNeeded = false
 
         for (scope in scopes) {
-            when (
-                val exported = runCatching {
-                    bridge.exportBtbChange(
-                        localBaustelleId = scope.localBaustelleId,
-                        clientBtbId = scope.clientBtbId
-                    )
-                }.getOrElse {
-                    retryNeeded = true
-                    continue
-                }
-            ) {
+            val exported = try {
+                bridge.exportBtbChange(
+                    localBaustelleId = scope.localBaustelleId,
+                    clientBtbId = scope.clientBtbId
+                )
+            } catch (_: Exception) {
+                retryNeeded = true
+                continue
+            }
+
+            when (exported) {
                 CollabLocalBridge.BtbExportResult.NotBound -> {
                     retryNeeded = true
                 }
