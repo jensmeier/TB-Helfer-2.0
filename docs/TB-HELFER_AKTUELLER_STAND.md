@@ -1,3 +1,31 @@
+## Portal-BTB 24.09.2026 – Hinzufügen/Löschen ergänzt
+
+- Benutzerfeedback aus Live-Portal: vorhandene Einträge waren bearbeitbar, aber neue Fachzeilen konnten nicht bequem hinzugefügt und bestehende nicht direkt gelöscht werden.
+- Bestehende Server-API geprüft: `POST /api/v1/btbs/{btb_id}/entries`, `PATCH .../entries/{id}` und `DELETE .../entries/{id}` sind bereits vorhanden; kein neuer Backend-Endpunkt und keine DB-Migration notwendig.
+- Android-Vertrag geprüft: Android verarbeitet nur granulare, verwaltete Einträge über `_tb_android_managed=true` + `_tb_android_slot`. Deshalb erzeugt das Portal **keine eigenen Sonderdatensätze**, sondern exakt kompatible Slots:
+  - Firma: `firma:<firmaId>`
+  - Personal: `firma:<firmaId>:personal:<index>`
+  - Gerät: `firma:<firmaId>:geraet:<index>`
+  - Arbeiten: `firma:<firmaId>:arbeit:<index>`
+  - Allgemeine Arbeiten: bestehender interner `notizen:0`-Slot, weiterhin sichtbar unter Punkt 4
+  - Abnahmen: `abnahme:<index>`
+  - Einweisung/Unterweisung: `einweisung:<index>`
+  - Besonderheiten: `besonderheit:<index>`
+  - Mängel/Schäden: `mangel:<index>`
+- Portal-V5-Quellstand:
+  - `+ Firma` in Punkt 3;
+  - pro Firma `+ Personal` bzw. `+ Gerät`;
+  - in Punkten 4–8 jeweils `+ Eintrag`;
+  - sichtbare `Bearbeiten`- und `Löschen`-Aktionen pro Fachzeile;
+  - Firmenlöschung warnt und entfernt zugehörige Personal-/Geräte-/Arbeitszeilen mit;
+  - allgemeine Alt-/Notizzeilen unter Punkt 4 lassen sich einzeln löschen, ohne den gesamten Mehrzeilen-Servereintrag zu entfernen.
+- Keine Roh-JSON-Oberfläche wieder eingeführt.
+- Template-JavaScript syntaktisch geprüft: **OK**.
+- Source-Check `96_verify_portal_btb_crud_source.py` + CI-Eintrag ergänzt.
+- **Status: QUELLSTAND FERTIG / LIVE-REDEPLOY + CRUD-SICHTPRÜFUNG OFFEN.**
+- Keine DB-/Migration-/Android-Codeänderung. Migration 014 weiterhin nicht deployen.
+- `STATUS.xlsx` weiterhin nicht blind überschrieben.
+
 ## Portal-Sichtprüfung 24.09.2026 – kein eigener Notiz-Abschnitt
 
 - Benutzer hat per Live-Screenshot bestätigt: Portal zeigte fälschlich `Weitere Angaben / Notizen` mit `test`, `test`, `@ORT=3 • Schwerbau: test`.
