@@ -321,6 +321,7 @@ function legacyWorkLines(list){
       out.push({
         id:String(entry.id)+'-legacy-'+index,
         sourceEntry:entry,
+        lineIndex:index,
         text:line,
         sort:Number(entry.sort_order||0)*1000+index
       });
@@ -450,8 +451,9 @@ function renderWorkGrouped(list,firms,legacyLines){
   if((legacyLines||[]).length){
     html+='<div class="btb-firm"><div class="btb-firm-head"><span class="btb-firm-name">Allgemein</span></div>'+
       legacyLines.sort((a,b)=>a.sort-b.sort).map(function(item){
-        return '<div class="btb-compact-row"><div class="btb-compact-text">'+esc(item.text)+'</div>'+
-          editorButton(item.sourceEntry)+'</div>';
+        const actions=canEditCurrentBtb()?'<div class="btb-row-actions">'+editorButton(item.sourceEntry)+
+          '<button class="danger btb-icon-danger" type="button" onclick="deleteLegacyWorkLine(\''+esc(item.sourceEntry.id)+'\','+Number(item.lineIndex)+')">Löschen</button></div>':'';
+        return '<div class="btb-compact-row"><div class="btb-compact-text">'+esc(item.text)+'</div>'+actions+'</div>';
       }).join('')+'</div>';
   }
   return html;
@@ -724,6 +726,30 @@ async function deleteEntryDirect(id){
   catch(error){show('err',error.message||String(error));}
 }
 window.deleteEntryDirect=deleteEntryDirect;
+async function deleteLegacyWorkLine(entryId,lineIndex){
+  const entry=entries.find(e=>String(e.id)===String(entryId));if(!entry)return;
+  const lines=String(entry.payload&&entry.payload.text||'').split('\n');
+  if(lineIndex<0||lineIndex>=lines.length)return;
+  const shown=cleanDisplayText(lines[lineIndex]).trim()||'diesen Eintrag';
+  if(!confirm('Eintrag "'+shown+'" wirklich löschen?'))return;
+  lines.splice(lineIndex,1);
+  try{
+    const remaining=lines.join('\n').trim();
+    if(!remaining){
+      await deleteEntryId(entry.id);
+    }else{
+      const payload=JSON.parse(JSON.stringify(entry.payload||{}));
+      payload.text=remaining;
+      await tbApi('/api/v1/btbs/'+btbId+'/entries/'+encodeURIComponent(entry.id),{
+        method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+          base_version:entry.version,sort_order:Number(entry.sort_order||0),payload:payload
+        })
+      });
+    }
+    show('ok','Eintrag gelöscht.');await loadBtb();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.deleteLegacyWorkLine=deleteLegacyWorkLine;
 async function deleteModalEntry(){
   if(creatingEntry)return;
   if(!editingEntry)return;
