@@ -87,6 +87,20 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
 - **Praktischer Stand:** Aktualisierte Compose wurde auf Synology übernommen und das Projekt neu erstellt. Worker läuft wieder, `restore-test-db` ist grün und `cloudflared` läuft grün. Damit ist der Worker-Mountfehler praktisch behoben. Beim Tunnel ist der aktuelle Start bestätigt; ein echter NAS-/Docker-Neustarttest für automatischen Wiederanlauf bleibt offen.
 - `STATUS.xlsx` bleibt weiterhin unangetastet, weil die aktuelle GitHub-Binärdatei nicht konfliktfrei bearbeitbar vorliegt.
 
+## Fachentscheidung 24.09.2026 – Foto-Sync und Schichtende
+
+- Mobiles Kameroriginal bleibt auf dem Aufnahme-Handy; Online-Server erhält nur kleine BTB-/Portal-Sync-Version + Thumbnail + vollständige Bildmetadaten/Bildlisten-Zuordnung.
+- Richtwert: Sync-Version ca. 1920 px längste Kante / JPEG 80–82 %, Thumbnail ca. 512 px; Werte nach praktischem Qualitäts-/Lasttest anpassbar.
+- Portalbilder: Portaldatei darf als serverseitige Quelldatei auf NAS bleiben; an mobile Geräte nur kleine Sync-Version/Thumbnail.
+- Originale werden nach Schichtende manuell Handy → Laptop/USB → verantwortlicher TB übergeben. Für spätere sichere Zusammenführung ist ein Manifest mit stabilen Foto-/BTB-/Benutzer-IDs und Prüfsumme vorgesehen.
+- BTB-Schichtende ist zweistufig:
+  - jeder beteiligte Nutzer markiert nur den eigenen Beitrag als `FERTIG`;
+  - nur verantwortlicher Haupt-TB/Teamleiter darf den gemeinsamen BTB endgültig abschließen.
+- Haupt-TB sieht Status aller Beteiligten; offene Nutzer müssen vor Finalisierung sichtbar sein. Normalfall: alle Beteiligten fertig; Ausnahmeabschluss nur bewusst bestätigt.
+- USB-Volloriginalübergabe blockiert den BTB-Abschluss nicht; Text/Fachdaten, Bildmetadaten und kleine Sync-Versionen müssen aber serverseitig bestätigt sein.
+- Projektregeln und `docs/TB-SYNC_15x15_ZIELMODELL.md` entsprechend aktualisiert.
+- Umsetzung in Server/Android/Portal noch offen; keine DB-/App-Codeänderung in diesem Schritt.
+
 ## Architekturprüfung 24.09.2026 – automatischer Delta-Sync / Lastziel 15×15
 
 - Benutzeranforderung verbindlich präzisiert: Android-Zeitplan **Manuell / Stündlich / Täglich entfällt**. Normale kleine Fach-Deltas laufen automatisch; `Neu laden` bleibt nur Recovery/Vollabgleich.
