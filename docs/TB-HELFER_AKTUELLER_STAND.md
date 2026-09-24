@@ -1541,3 +1541,15 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 8. **Erst nach bestandenen Android-/Server-/Backup-/Restore-Akzeptanztests** produktiven Cutover durchführen und alten API-0.7-Server kontrolliert stoppen.
 
 **Kein produktiver NAS-Cutover ohne vollständiges, verifiziertes Backup und bestandenen End-to-End-Test.**
+
+
+### Portal-BTB V7 – getrennte Firmen, editierbares Wetter, Fotos nach Punkten 4–8 (24.09.2026)
+
+- In **3. Personal / Geräte** ist der allgemeine Button **+ Firma** entfernt. Personal und Geräte/Maschinen besitzen jetzt jeweils ihren eigenen **+ Firma hinzufügen**-Pfad.
+- Neu im Personalbereich angelegte Firmen sind nur dort sichtbar; neu im Geräte-/Maschinenbereich angelegte Firmen nur dort. Bereits vorhandene gemeinsame Firmen bleiben kompatibel und können weiterhin in beiden Bereichen erscheinen.
+- Firmen werden schon direkt nach der Anlage angezeigt, auch wenn noch kein Personal- bzw. Maschineneintrag darunter angelegt wurde.
+- **2. Wetter** ist im Portal jetzt über ein normales Fachformular bearbeitbar: Ort/Wetterstation, Zusatzangabe sowie beliebig viele Wetterzeiten mit Uhrzeit, Temperatur, Bewölkung, Niederschlag und Menge. Unbekannte vorhandene Android-Wetterfelder werden beim Speichern nicht absichtlich verworfen.
+- Die Fotogalerie ist jetzt fachlich in der Reihenfolge **4. Ausgeführte Arbeiten**, **5. Abnahmen**, **6. Einweisung / Unterweisung**, **7. Besonderheiten**, **8. Mängel / Schäden** gruppiert. Vorhandene `BTBP1__`-Metadaten, GPS-Link, Deduplizierung und Foto-Lösen bleiben erhalten.
+- Keine DB- oder Migrationsänderung. Für diesen Portalstand genügt erneut `server/templates/v1_btb.html` auf der Synology und ein Neustart nur von `tb-helfer-v1-api-1`.
+- Source-Check **98** schützt die getrennten Firmenpfade, Wetterbearbeitung und Fotogruppierung. Zusätzlich wurde der eingebettete Portal-JavaScriptblock über Connector-Assertion syntaktisch geparst; dies ist ein Source-Check, kein Browser-/E2E-Nachweis.
+- Diagnose zum weiterhin als **Aktiv** angezeigten Test-BTB: Android 1.3.17 / 200067 beendet ihn lokal und setzt den lokalen aktiven Zeiger zurück, ruft danach in `BtbModernLifecycleInstaller` aber weiterhin `SofortSync.anstossen(...)` auf. Der selektive BTB-Pfad wäre `SofortSync.btbAnstossen(..., btbId)`, der den BTB als dirty markiert und den `SelectiveSyncWorker` startet. Solange die Server-Finalisierung dadurch nicht angekommen ist, bleibt der autoritative Serverstatus korrekt `ACTIVE`. **app/** wurde im SERVER-Projekt nicht geändert; die Triggerkorrektur bleibt Aufgabe des ANDROID-Projekts.
