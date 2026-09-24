@@ -87,6 +87,36 @@ Benutzerauftrag in dieser Reihenfolge umgesetzt/geprüft. Quellstand dieses Bloc
 - **Praktischer Stand:** Aktualisierte Compose wurde auf Synology übernommen und das Projekt neu erstellt. Worker läuft wieder, `restore-test-db` ist grün und `cloudflared` läuft grün. Damit ist der Worker-Mountfehler praktisch behoben. Beim Tunnel ist der aktuelle Start bestätigt; ein echter NAS-/Docker-Neustarttest für automatischen Wiederanlauf bleibt offen.
 - `STATUS.xlsx` bleibt weiterhin unangetastet, weil die aktuelle GitHub-Binärdatei nicht konfliktfrei bearbeitbar vorliegt.
 
+## Architekturprüfung 24.09.2026 – automatischer Delta-Sync / Lastziel 15×15
+
+- Benutzeranforderung verbindlich präzisiert: Android-Zeitplan **Manuell / Stündlich / Täglich entfällt**. Normale kleine Fach-Deltas laufen automatisch; `Neu laden` bleibt nur Recovery/Vollabgleich.
+- Lastmodell für Planung/Test: **15 verantwortliche TBs × 15 Helfer = 240 mobile Nutzer** plus **15 gleichzeitig offene Portal-/Laptop-Sitzungen = 255 aktive Clients**.
+- Positiv vorhanden:
+  - Server ist Source of Truth;
+  - `tb.change_feed` mit `company_id/change_id`- und `worksite_id/change_id`-Index;
+  - granulare BTB-IDs/Entry-IDs/Versionen;
+  - BTB Entry-Änderungen erzeugen zusätzlich Eltern-`BTB`-Change;
+  - Portal-BTB schreibt bereits über dieselben kanonischen API-Pfade und erzeugt damit Change-Events;
+  - `GET /api/v1/btbs/{id}` erlaubt gezieltes Nachladen genau eines BTB.
+- Aktuelle Skalierungsgrenzen:
+  - Android Default ist heute stündlich; `SofortSync` startet noch den breiten Vollsync;
+  - allgemeiner Android-`SyncChangeApi` ist bislang Katalog-orientiert und nutzt nicht den neuen Fach-`/api/v1/sync/changes`-Delta-Pfad;
+  - aktueller `/api/v1/sync/events` pollt je Verbindung alle 2 s und öffnet dafür jedes Mal eine neue Psycopg-Verbindung;
+  - bei 255 permanenten Clients wären das rechnerisch 127,5 DB-Verbindungsaufbauten/Queries pro Sekunde selbst im Leerlauf;
+  - `database.py` besitzt aktuell keinen Connection Pool; Synology-API läuft aktuell als ein Uvicorn-Prozess;
+  - der heutige Change-Feed ist worksite-basiert und muss für BTB-Fanout teambezogen werden, damit ein Team-BTB nicht alle 240 Geräte weckt.
+- Zielarchitektur:
+  - mobile Geräte: kein Dauer-SSE; inhaltsfreies Push-Wake + dauerhafter Change-Feed/Cursor + gezieltes Objekt-Nachladen;
+  - Sicherheit: Pushverlust wird durch App-Resume, Netz-Rückkehr und kleinen periodischen Delta-Fallback aufgeholt;
+  - BTB-Fanout nur an das Team des verantwortlichen TBs (1 TB + 15 Helfer);
+  - Portal: Live-Signal über gemeinsamen Server-Notifier, nicht per Browser alle 2 s neue DB-Verbindung;
+  - DB-Pooling und Burst/Jitter/Coalescing vor 15×15-Freigabe;
+  - Fotos: optimierte Sync-Version + Thumbnail/Lazy-Download; Originalarchiv getrennt.
+- Detailzielbild: `docs/TB-SYNC_15x15_ZIELMODELL.md`.
+- Android-Übergabe: `uebergaben/TB-ANDROID_AUTOSYNC_15x15_2026-09-24.md`.
+- **Status:** Architektur tragfähig mit den dokumentierten Nachrüstungen; heutiger Vollsync-/2s-SSE-Pfad ausdrücklich noch nicht für 255 Clients freigegeben.
+- Keine DB-/API-/Android-Implementierung in diesem Prüfschritt. `STATUS.xlsx` weiterhin unangetastet.
+
 ## Neuer Integrationsauftrag 23.09.2026 – selektiver Sofort-Sync
 
 - Benutzeranforderung: Eine lokale BTB-Änderung darf nicht mehr den gesamten Datenbestand synchronisieren. Beispiel: BTB-Textänderung → nur dieser BTB.
