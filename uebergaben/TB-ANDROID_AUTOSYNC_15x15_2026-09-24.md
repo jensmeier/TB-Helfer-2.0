@@ -140,3 +140,22 @@ Wichtig für Android-Reihenfolge:
 Bei Offline/Fehler nur lokal `Schichtende vorgemerkt / Sync ausstehend`; nicht so tun, als sei der Serverstatus bereits `FERTIG`.
 
 Der Serverblock ist bewusst **noch nicht deployt**. Android/Portal-Vertrag zuerst fertigstellen, dann gemeinsame kontrollierte Migration 014 + E2E.
+
+## Portal-Referenz umgesetzt – Android kann dieselbe Rollenlogik übernehmen
+
+SERVER/Portal-Quellstand vom 24.09.2026:
+
+- Portal liest `current_user.is_team_lead` und `participant_status` direkt aus `GET /api/v1/btbs/{id}`.
+- Helfer:
+  - `Schicht Ende` → `POST /shift-finish`;
+  - bei `FINISHED` read-only;
+  - `Schicht fortsetzen` → `POST /shift-resume`;
+  - keine Abschluss-PDF-Aktion.
+- Haupt-TB:
+  - Teilnehmerübersicht;
+  - `NOT_PARTICIPATING` / `WORKING` für Helfer pflegen;
+  - endgültiger Abschluss;
+  - bei offenen `WORKING`-Helfern Namen anzeigen + bewusste Bestätigung für `allow_unfinished=true`.
+- Portal-Source-Check: `server/checks/93_verify_portal_btb_shift_end_source.py`.
+
+Android soll fachlich **denselben Ablauf** abbilden, aber vor `shift-finish` zusätzlich den selektiven lokalen BTB-/Bild-Sync sicher abschließen.
