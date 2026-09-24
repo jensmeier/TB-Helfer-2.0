@@ -978,6 +978,62 @@ function weatherSlots(){
   if(Array.isArray(meta.weatherSlots)&&meta.weatherSlots.length)return meta.weatherSlots;
   return [];
 }
+let weatherDraftSlots=[];
+function weatherNumber(value){const raw=String(value??'').trim();if(!raw)return null;const n=Number(raw.replace(',','.'));return Number.isFinite(n)?n:null;}
+function weatherSlotInput(index,field,label,value,type){return '<div><label>'+esc(label)+'</label><input data-weather-field="'+esc(field)+'" type="'+(type||'text')+'" value="'+esc(value??'')+'"></div>';}
+function syncWeatherDraftFromDom(){
+  document.querySelectorAll('#weatherEditorRows .btb-weather-edit-row').forEach(function(row){
+    const index=Number(row.dataset.index);if(!weatherDraftSlots[index])return;
+    row.querySelectorAll('[data-weather-field]').forEach(function(input){weatherDraftSlots[index][input.dataset.weatherField]=input.value;});
+  });
+}
+function renderWeatherEditorRows(){
+  const t=document.getElementById('weatherEditorRows');
+  t.innerHTML=weatherDraftSlots.map(function(s,index){
+    return '<div class="btb-weather-edit-row" data-index="'+index+'">'+
+      weatherSlotInput(index,'uhrzeit','Uhrzeit',s.uhrzeit||'','time')+
+      weatherSlotInput(index,'tempC','Temperatur °C',s.tempC??'','number')+
+      weatherSlotInput(index,'bewoelkung','Bewölkung',s.bewoelkung||'')+
+      weatherSlotInput(index,'niederschlag','Niederschlag',s.niederschlag||'')+
+      weatherSlotInput(index,'niederschlagMm','Menge mm',s.niederschlagMm??'','number')+
+      '<button class="danger btb-icon-danger btb-weather-remove" type="button" onclick="removeWeatherSlot('+index+')">Entfernen</button></div>';
+  }).join('')||'<div class="muted">Noch keine Wetterzeiten. Über „+ Zeitpunkt“ kann eine Angabe ergänzt werden.</div>';
+}
+function openWeatherEditor(){
+  if(!canEditCurrentBtb())return;
+  const meta=androidHeaderMeta(),weather=meta.weather&&typeof meta.weather==='object'&&!Array.isArray(meta.weather)?meta.weather:{};
+  document.getElementById('weatherLocation').value=weather.locationName||weather.stationName||'';
+  document.getElementById('weatherLegacy').value=typeof meta.wetter==='string'?meta.wetter:'';
+  weatherDraftSlots=weatherSlots().map(s=>JSON.parse(JSON.stringify(s||{})));
+  renderWeatherEditorRows();document.getElementById('weatherModal').classList.add('open');document.getElementById('weatherModal').setAttribute('aria-hidden','false');
+}
+function closeWeatherEditor(){weatherDraftSlots=[];document.getElementById('weatherModal').classList.remove('open');document.getElementById('weatherModal').setAttribute('aria-hidden','true');}
+function addWeatherSlot(){syncWeatherDraftFromDom();weatherDraftSlots.push({uhrzeit:'',tempC:'',bewoelkung:'',niederschlag:'',niederschlagMm:''});renderWeatherEditorRows();}
+function removeWeatherSlot(index){syncWeatherDraftFromDom();weatherDraftSlots.splice(index,1);renderWeatherEditorRows();}
+function builtWeatherSlots(){
+  syncWeatherDraftFromDom();
+  return weatherDraftSlots.map(function(raw){
+    const s=JSON.parse(JSON.stringify(raw||{})),time=String(s.uhrzeit||'').trim(),cloud=String(s.bewoelkung||'').trim(),rain=String(s.niederschlag||'').trim();
+    const temp=weatherNumber(s.tempC),mm=weatherNumber(s.niederschlagMm);
+    if(time)s.uhrzeit=time;else delete s.uhrzeit;if(cloud)s.bewoelkung=cloud;else delete s.bewoelkung;if(rain)s.niederschlag=rain;else delete s.niederschlag;
+    if(temp!=null)s.tempC=temp;else delete s.tempC;if(mm!=null)s.niederschlagMm=mm;else delete s.niederschlagMm;return s;
+  }).filter(s=>Object.keys(s).length);
+}
+async function saveWeatherEditor(){
+  try{
+    const header=JSON.parse(JSON.stringify(current.header||{})),nested=header.tb_helfer_android_v1;
+    const meta=nested&&typeof nested==='object'&&!Array.isArray(nested)?nested:header;
+    const weather=meta.weather&&typeof meta.weather==='object'&&!Array.isArray(meta.weather)?JSON.parse(JSON.stringify(meta.weather)):{};
+    const location=document.getElementById('weatherLocation').value.trim();
+    const key=Object.prototype.hasOwnProperty.call(weather,'stationName')&&!Object.prototype.hasOwnProperty.call(weather,'locationName')?'stationName':'locationName';
+    if(location)weather[key]=location;else{delete weather.locationName;delete weather.stationName;}
+    const slots=builtWeatherSlots();weather.slots=slots;meta.weather=weather;if(Object.prototype.hasOwnProperty.call(meta,'weatherSlots'))meta.weatherSlots=slots;
+    const legacy=document.getElementById('weatherLegacy').value.trim();if(legacy)meta.wetter=legacy;else if(typeof meta.wetter==='string')delete meta.wetter;
+    await tbApi('/api/v1/btbs/'+btbId+'/header',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_version:current.version,work_date:current.work_date||null,started_at:current.started_at||null,ended_at:current.ended_at||null,header:header})});
+    closeWeatherEditor();show('ok','Wetter gespeichert.');await loadBtb();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.openWeatherEditor=openWeatherEditor;window.addWeatherSlot=addWeatherSlot;window.removeWeatherSlot=removeWeatherSlot;
 function renderWeather(){
   const target=document.getElementById('weatherSummary');
   const meta=androidHeaderMeta();
