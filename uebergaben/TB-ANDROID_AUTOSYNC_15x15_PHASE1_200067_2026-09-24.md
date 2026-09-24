@@ -81,7 +81,7 @@ Direkt gegen aktuellen Android-Code geprüft: **BESTANDEN**
 - **QUELLSTAND FERTIG**
 - **SOURCE-CHECKS BESTANDEN**
 - **ANDROID-BUILD ERFOLGREICH** – lokaler Android-Studio-Build 24.09.2026 15:04, 16 Warnungen, keine Build-Fehler
-- **INSTALLATION OFFEN**
+- **INSTALLIERT** – vom Benutzer am 24.09.2026 bestätigt
 - **PIXEL/POCO-/SERVER-E2E OFFEN**
 
 Der lokale Android-Studio-Build ist erfolgreich abgeschlossen. Gebauter App-Quellstand: `19c2757fb0244cfd75e989566c61aa2ea94c1cde`. GitHub Actions bleibt dafür kein zusätzlicher Testnachweis.
