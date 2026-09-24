@@ -56,7 +56,7 @@ def main() -> None:
         ("/reopen", btb),
         ("Abschluss-PDF öffnen", btb),
         ("BTB löschen", btb),
-        ("BTB-Fotos", btb),
+        ("<summary>Fotos</summary>", btb),
         ("/uploads/", btb),
         ("sha256Hex", btb),
         ("BTB_PHOTO", btb),
