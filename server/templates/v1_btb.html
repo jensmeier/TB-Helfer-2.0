@@ -309,7 +309,7 @@ function compactLine(entry){
   return [time,km,text].filter(Boolean).join(' · ')||'Eintrag';
 }
 function normalizedSummary(value){
-  return cleanDisplayText(value).toLowerCase().replace(/\s+/g,' ').replace(/\s*-\s*/g,'-').trim();
+  return cleanDisplayText(value).toLowerCase().replace(/[–—-]/g,' ').replace(/\s+/g,' ').trim();
 }
 function isLegacyDuplicate(entry,section,structured,firms){
   const slot=slotOf(entry);
