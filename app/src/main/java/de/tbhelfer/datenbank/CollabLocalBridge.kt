@@ -45,6 +45,16 @@ class CollabLocalBridge(
         val acceptances: Int
     )
 
+    sealed interface BtbExportResult {
+        data class Success(
+            val worksiteServerId: String,
+            val queuedOrUpdated: Boolean
+        ) : BtbExportResult
+
+        data object NotBound : BtbExportResult
+        data object NotFound : BtbExportResult
+    }
+
     data class ImportSummary(
         val worksites: Int,
         val btbWritten: Int,
@@ -64,6 +74,74 @@ class CollabLocalBridge(
         data object Unsupported : AttachmentUploadResult
         data object SessionInvalid : AttachmentUploadResult
         data class Error(val message: String) : AttachmentUploadResult
+    }
+
+    /**
+     * Exportiert ausschließlich genau einen lokalen BTB in die bestehende Collaboration-Outbox.
+     *
+     * Kein Scan von Mängeln, Abnahmen, Baustellenbaum oder anderen BTBs. Die bestehende
+     * queueIfChanged-/Hash-/Sanitizing-Logik bleibt maßgeblich.
+     */
+    suspend fun exportBtbChange(
+        localBaustelleId: Long,
+        clientBtbId: String
+    ): BtbExportResult {
+        if (clientBtbId.isBlank()) return BtbExportResult.NotFound
+
+        val item = bindingRepository.contextsWithBindings()
+            .firstOrNull { bound ->
+                bound.binding != null &&
+                    bound.localWorksite?.altBaustelleId == localBaustelleId
+            }
+            ?: return BtbExportResult.NotBound
+
+        val local = item.localWorksite ?: return BtbExportResult.NotBound
+        val server = item.context
+        val localName = local.hauptbaustellenName
+        val entry = BautagebuchSpeicher.ladenById(
+            appContext,
+            localBaustelleId,
+            localName,
+            clientBtbId
+        ) ?: return BtbExportResult.NotFound
+        val datum = runCatching { LocalDate.parse(entry.datumIso) }.getOrNull()
+            ?: return BtbExportResult.NotFound
+        val source = findBtbJson(
+            localBaustelleId,
+            localName,
+            datum,
+            entry.schicht,
+            clientBtbId
+        ) ?: return BtbExportResult.NotFound
+
+        val payloadObject = runCatching {
+            JSONObject(source.readText(Charsets.UTF_8))
+        }.getOrElse { JSONObject() }
+        if (payloadObject.optString("btbId").isBlank()) {
+            payloadObject.put("btbId", clientBtbId)
+        }
+        val payload = sanitizeBtbPayload(
+            payloadObject.toString(),
+            localBaustelleId,
+            localName
+        )
+        val lifecycleStatus = BtbDokumentVersionierung.status(appContext, entry)
+        val syncStatus = if (lifecycleStatus == BtbAbschlussStatus.ABGESCHLOSSEN) {
+            "FERTIG"
+        } else {
+            "ENTWURF"
+        }
+
+        val queued = queueIfChanged(
+            worksiteServerId = server.worksiteServerId,
+            entityType = SyncCollabPendingChangeEntity.TYPE_BTB,
+            clientKey = clientBtbId,
+            groupId = server.groupId,
+            status = syncStatus,
+            areaScopeJson = server.areaScopeJson,
+            payloadJson = payload
+        )
+        return BtbExportResult.Success(server.worksiteServerId, queued)
     }
 
     suspend fun exportLocalChanges(): ExportSummary {
