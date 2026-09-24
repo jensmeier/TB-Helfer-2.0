@@ -1,3 +1,20 @@
+## Quellblock 24.09.2026 – Portal für Schichtende vorbereitet
+
+- Portal-BTB-Seite auf den neuen Teilnehmer-/Teamleitervertrag angepasst.
+- Helfer sieht bei aktivem BTB **`Schicht Ende`**; nach serverseitigem `FINISHED` nur **`Schicht fortsetzen`**.
+- Nach `FINISHED` werden Kopfdaten-/Eintrags-/Foto-Bearbeitung im Portal ausgeblendet; der Server-Guard bleibt zusätzlich maßgeblich.
+- Helfer erhält im Portal keine Abschluss-PDF-Aktion.
+- Haupt-TB (`current_user.is_team_lead`) sieht:
+  - Teilnehmerübersicht mit `ARBEITET / FERTIG / NICHT BETEILIGT`;
+  - Pflege `Nicht beteiligt` / `Als beteiligt markieren`;
+  - `BTB endgültig abschließen`;
+  - Abschluss-PDF und Nachbearbeitung.
+- Bei offenen Helfern zeigt das Portal vor dem endgültigen Abschluss die Namen und verlangt eine bewusste Bestätigung; erst dann wird `allow_unfinished=true` gesendet.
+- Source-Check `93_verify_portal_btb_shift_end_source.py` ergänzt und im Server-CI-Workflow eingetragen.
+- Connector-Source-Assertions: **OK**.
+- **Status: SERVER + PORTAL QUELLSTAND FERTIG / ANDROID + MIGRATION 014 + SYNOLGY-E2E OFFEN.**
+- Weiterhin noch kein Deployment auf Synology, damit der bestehende Android-Client nicht gegen den neuen Abschlussvertrag läuft.
+
 ## Quellblock 24.09.2026 – BTB-Schichtende / Teamleiter-Finalisierung
 
 - Auftrag aus SYNC-003/SYNC-004 serverseitig als erster Baustein umgesetzt.
