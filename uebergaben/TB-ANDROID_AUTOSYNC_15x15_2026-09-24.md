@@ -114,3 +114,29 @@ Für die spätere Android-Umsetzung verbindlich:
 - alleinige Aktion `BTB endgültig abschließen`.
 
 Nicht nur UI prüfen: Server wird den Abschluss-PDF-Zugriff ebenfalls auf Teamleiter/PDF-Recht begrenzen.
+
+## SERVER-Vertrag umgesetzt – Schichtende (24.09.2026)
+
+Der SERVER-Quellstand stellt jetzt bereit:
+
+- Capability `btb_participant_shift_end_v1=true`
+- Capability `btb_pdf_team_lead_only_v1=true`
+- `GET /api/v1/btbs/{btbId}/participants`
+- `POST /api/v1/btbs/{btbId}/shift-finish`
+- `POST /api/v1/btbs/{btbId}/shift-resume`
+- `PATCH /api/v1/btbs/{btbId}/participants/{userId}` nur Haupt-TB, Payload `{"status":"WORKING"}` oder `{"status":"NOT_PARTICIPATING"}`
+- `GET /api/v1/btbs/{btbId}` liefert zusätzlich `participants` und `current_user.is_team_lead / participant_status / can_view_btb_pdf / can_finalize_btb`.
+- `POST /api/v1/btbs/{btbId}/finalize`: nur tatsächlicher `teams.lead_user_id`; mit offenen `WORKING`-Teilnehmern 409 `BTB_PARTICIPANTS_NOT_FINISHED`. Bewusster Ausnahmeabschluss: Body `{"allow_unfinished":true}`.
+- Helfer mit `FINISHED` erhalten bei weiteren BTB-Schreibversuchen 409 `BTB_PARTICIPANT_FINISHED`, bis `shift-resume` erfolgreich war.
+- Abschluss-PDF ist serverseitig nur für den Teamleiter lesbar, auch nicht über den generischen Datei-Content-Pfad.
+
+Wichtig für Android-Reihenfolge:
+1. letzten lokalen BTB-Stand speichern;
+2. selektiven BTB-Sync vollständig bestätigen;
+3. kleine Bild-Sync-Versionen/Metadaten bestätigen (sobald Medienphase umgesetzt ist);
+4. **erst dann** `shift-finish` senden;
+5. nach erfolgreichem Server-`FINISHED` UI read-only schalten.
+
+Bei Offline/Fehler nur lokal `Schichtende vorgemerkt / Sync ausstehend`; nicht so tun, als sei der Serverstatus bereits `FERTIG`.
+
+Der Serverblock ist bewusst **noch nicht deployt**. Android/Portal-Vertrag zuerst fertigstellen, dann gemeinsame kontrollierte Migration 014 + E2E.
