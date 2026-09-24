@@ -1,3 +1,40 @@
+## Portal-BTB 24.09.2026 – Foto-Metadaten, Dedupe und Abschluss-Syncbefund
+
+- Live-Test nach Portal-V5:
+  - reproduzierbarer Fehler beim Löschen einer Firma: `can't access property "id", editingEntry is null`;
+  - Portal zeigte den BTB weiterhin als `Aktiv`, obwohl der Benutzer den BTB auf Android gegen 19:20 lokal abgeschlossen hatte;
+  - Fotoansicht sollte die bereits auf Android sichtbaren Fachinformationen inklusive GPS wieder anzeigen.
+- **Firma-Löschfehler behoben:** die Firmen-ID/Entry-ID wird vor dem Schließen des Dialogs lokal gesichert; nach `closeEntryEditor()` wird nicht mehr auf das auf `null` gesetzte `editingEntry` zugegriffen.
+- **Foto-Metadaten ohne Neu-Upload:** Androids vorhandenes `BTBP1__`-Binärformat wurde gegen `BtbTeamMediaSync` geprüft und im Portal-Template kompatibel decodiert:
+  - Aufnahmezeit;
+  - GPS Lat/Lon;
+  - Höhe/Achsabstand soweit vorhanden;
+  - KM;
+  - Bildtyp;
+  - Indikator;
+  - Firma;
+  - Kurztext;
+  - Objektkennung/Bereich.
+- Foto-Karten zeigen Kurztext als Titel, Foto-Nummer/Größe, Zeit · KM · Firma, Ort/Bereich und anklickbare GPS-Koordinaten zu Google Maps.
+- Fotos werden zusätzlich ihrem fachlichen Punkt 4–8 zugeordnet:
+  - `FOTODOKUMENTATION -> 4. Ausgeführte Arbeiten`
+  - `ABNAHMEN -> 5. Abnahmen`
+  - `EINWEISUNG_UNTERWEISUNG -> 6. Einweisung / Unterweisung`
+  - `BESONDERHEITEN -> 7. Besonderheiten`
+  - `MAENGEL_SCHAEDEN -> 8. Mängel / Schäden`
+- Deduplizierung:
+  - Foto-Liste dedupliziert identische Serverdateien bevorzugt über `sha256`;
+  - exakt identische Fachzeilen werden in der normalen Anzeige nur einmal gerendert;
+  - ein identischer Portal-Neueintrag wird mit `Ein identischer Eintrag ist bereits vorhanden.` blockiert;
+  - Foto-Ereignis wird nicht ein zweites Mal unter 4–8 ausgegeben, wenn Zeit + Kurztext bereits als Fachzeile repräsentiert sind;
+  - Alt-Dubletten werden nicht automatisch aus der DB gelöscht.
+- **Abschlussstatus-Befund:** Die Portal-Pille `Aktiv` kommt direkt aus Server-`btb.status=ACTIVE`; das Portal erfindet den Status nicht. Android 1.3.17/200067 setzt beim lokalen Abschluss über `BtbDokumentVersionierung.abschlussBestaetigen(...)` die lokale BTB-Datei auf abgeschlossen, ruft anschließend in `BtbModernLifecycleInstaller.closeCurrentBtb(...)` aber noch den generischen `SofortSync.anstossen(...)` statt des neuen selektiven `SofortSync.btbAnstossen(localBaustelleId, clientBtbId)` auf. Praktisch ist der Abschluss dieses BTB daher auf dem Server noch nicht bestätigt.
+- SERVER ändert den Android-Code nicht. Android-Handoff ergänzt: der Abschluss muss nach erfolgreichem lokalen Abschluss den konkreten BTB erneut als Dirty-Scope markieren und selektiv bis `FINALIZED` bestätigen.
+- Template-JavaScript syntaktisch geprüft: **OK**. Source-Check `97_verify_portal_btb_photo_meta_dedupe_source.py` + CI-Eintrag ergänzt.
+- **Status: PORTAL-FIX QUELLSTAND FERTIG / LIVE-REDEPLOY OFFEN; ANDROID-ABSCHLUSS-SYNC E2E/BUGFIX OFFEN.**
+- Keine DB-Migration. Migration 014 weiterhin nicht deployen.
+- `STATUS.xlsx` weiterhin nicht blind überschrieben.
+
 ## Portal-BTB 24.09.2026 – Hinzufügen/Löschen ergänzt
 
 - Benutzerfeedback aus Live-Portal: vorhandene Einträge waren bearbeitbar, aber neue Fachzeilen konnten nicht bequem hinzugefügt und bestehende nicht direkt gelöscht werden.
