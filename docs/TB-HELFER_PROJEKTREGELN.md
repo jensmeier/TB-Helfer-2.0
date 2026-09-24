@@ -144,6 +144,10 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - BTB ist NICHT baustellenweit gemeinsam.
 - Jeder verantwortliche TB besitzt mit seinen Helfern seinen eigenen gemeinsamen BTB-Bereich.
 - Helfer desselben TB-Teams bearbeiten denselben BTB; andere verantwortliche TB-Teams bleiben getrennt.
+- **Schichtende ist zweistufig:** Jeder am BTB beteiligte Nutzer kann nur seinen eigenen Beitrag mit `Schicht fertig` / `Beitrag fertig` markieren. Das speichert/synchronisiert seine letzten Fachänderungen und kleinen Bild-Sync-Versionen, beendet aber den gemeinsamen BTB nicht.
+- Nur der **verantwortliche Haupt-TB / Teamleiter** besitzt die Aktion `BTB endgültig abschließen`. Erst diese Aktion führt den bestehenden fachlichen BTB-Abschluss/PDF-/Original-Snapshot-Prozess aus.
+- Der Haupt-TB sieht pro beteiligtem Nutzer den Schichtstatus (mindestens `ARBEITET`, `FERTIG`, optional `NICHT_BETEILIGT`). Normalerweise soll der endgültige Abschluss erst erfolgen, wenn alle tatsächlich beteiligten Nutzer `FERTIG` sind; fehlende Nutzer müssen sichtbar genannt und ein bewusster Ausnahmeabschluss ausdrücklich bestätigt werden.
+- `Schicht fertig` ist serverseitiger Team-/BTB-Status und muss sowohl in App als auch Portal/Laptop sichtbar sein. Ein Nutzer darf seinen eigenen Beitrag vor dem endgültigen Haupt-TB-Abschluss bewusst wieder öffnen; nach endgültigem BTB-Abschluss gelten die bestehenden Nachbearbeitungsregeln.
 - Ein BTB wird nur bewusst über `Neuer BTB` angelegt. Bloßes Öffnen erzeugt keinen Entwurf und keine Tag-/Nacht-Leerplätze.
 - Jeder neue BTB erhält eine **dauerhafte stabile `btbId`**. Diese `btbId` bleibt beim Bearbeiten, Datums-/Zeitänderungen und Abschließen immer erhalten.
 - Datum, Beginn, Ende und ggf. abgeleitete Tag/Nacht-Anzeige sind Attribute, nicht Identität.
@@ -203,6 +207,11 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Datum/Uhrzeit bleiben Anzeige/Sortierung, nicht technische Foto-BTB-Zuordnung.
 - Mängel-/Abnahme-Zuordnungen bleiben als eigene Fachbeziehungen bestehen.
 - Allgemeine BTB-Bilder eines Helfers werden nicht automatisch auf alle Helfergeräte verteilt; Server + verantwortlicher TB + Erstellergerät wie beschlossen.
+- **Mobiles Foto-Original bleibt auf dem Aufnahmegerät.** Der normale Server-Sync überträgt nicht das volle Kameroriginal, sondern eine für BTB/Portal geeignete Sync-Version plus Thumbnail und strukturierte Metadaten/Bildlisten-Eintrag.
+- Richtwert für die mobile Sync-Version: längste Bildkante ca. **1920 px**, JPEG ca. **80–82 %**, niemals hochskalieren; Thumbnail ca. **512 px**. Die exakten Werte dürfen nach praktischem Qualitäts-/Lasttest angepasst werden.
+- Bildlisten werden über Metadaten vollständig synchronisiert, auch wenn das Volloriginal nur lokal vorhanden ist. Jedes Foto besitzt eine stabile Foto-ID und eindeutige BTB-/Benutzerzuordnung, damit Laptop-/USB-Zusammenführung kollisionsfrei bleibt.
+- Ein im **Portal/Laptop hochgeladenes Bild** darf als serverseitige Quelldatei/Original auf dem NAS liegen. Auf mobile Geräte werden davon nur Thumbnail/kleine Sync-Version verteilt, niemals ungefragt die volle Portaldaten-Datei.
+- Die manuelle Originalübergabe am Schichtende (Handy → Laptop/USB → verantwortlicher TB) ist vom normalen Online-Sync getrennt. Sie blockiert den fachlichen BTB-Abschluss nicht, solange Textdaten, Bildmetadaten und kleine Sync-Versionen vollständig auf dem Server bestätigt sind.
 
 ### Merge-sichere ZIP-/Laptop-Struktur
 - Baustellen-Gesamtexport/Tagesabschluss besitzt als oberste Struktur `TB-Helfer/<Baustelle>/...` bzw. die bestehende exportierte Baustellenstruktur.
