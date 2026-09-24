@@ -8,14 +8,31 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 
 /**
- * Kurzer, entprellter Sofort-Trigger fuer neue Baustellendaten/Bilder.
+ * Trigger für Fachänderungen.
  *
- * Er ersetzt NICHT die Upload-Queue und auch nicht den periodischen Sync. Mehrere Fotos in kurzer
- * Folge erzeugen dank unique KEEP nur einen Lauf. Ohne Netz wartet WorkManager; ohne aktiviertes
- * Gerät beendet sich [SyncWorker] ohne Fehler.
+ * BTB mit stabiler btbId läuft selektiv über [SelectiveSyncWorker]. Der generische Pfad bleibt
+ * während der schrittweisen Umstellung für noch nicht selektiv angebundene Fachbereiche erhalten.
  */
 object SofortSync {
     private const val UNIQUE_NAME = "tbhelfer-server-sync-now"
+
+    fun btbAnstossen(
+        context: Context,
+        localBaustelleId: Long,
+        clientBtbId: String
+    ) {
+        val appContext = context.applicationContext
+        if (clientBtbId.isBlank()) {
+            anstossen(appContext)
+            return
+        }
+        SelectiveSyncStore.markBtbDirty(
+            appContext,
+            localBaustelleId,
+            clientBtbId
+        )
+        SelectiveSyncWorker.enqueue(appContext)
+    }
 
     fun anstossen(context: Context) {
         val appContext = context.applicationContext
