@@ -7,6 +7,8 @@ PFLICHTUPDATE: NEIN
 DOWNLOAD_URL:
 
 BEHOBEN:
+- Bilderliste_gesamt.xlsx und Bilderliste_gesamt.csv verwenden jetzt wirklich alle lokalen Fotos der Baustelle über alle BTBs und Tage; sie werden nicht mehr auf den aktuell geöffneten BTB bzw. den gewählten Exportzeitraum reduziert
+- Der Baustellenexport nutzt dafür bewusst den ungescopten Foto-Leseweg; strukturierte Abnahmefotos werden in der Gesamt-Liste weiterhin korrekt separat behandelt
 - Ein echter BTB-Abschluss wird nach dem lokalen Abschluss jetzt gezielt über den selektiven BTB-Delta-Sync an den Server gemeldet
 - BtbModernLifecycleInstaller verwendet nach erfolgreichem Abschluss nicht mehr den allgemeinen SofortSync.anstossen(...)
 - Stattdessen wird genau der abgeschlossene BTB über SofortSync.btbAnstossen(..., btbId) als Dirty-Scope markiert
