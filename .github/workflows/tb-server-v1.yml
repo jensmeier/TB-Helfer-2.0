@@ -127,8 +127,9 @@ jobs:
           python server/checks/89_verify_identity_global_catalog_source.py
           python server/checks/90_verify_system_automation_email_source.py
           python server/checks/91_verify_system_status_live_ui_source.py
+          python server/checks/92_verify_btb_shift_end_source.py
 
-      # Migration 013_job_progress.sql is included by the normal migration runner.
+      # Migration 014_btb_participant_shift_status.sql is included by the normal migration runner.
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
         run: python -m tbserver.migrations up
@@ -140,8 +141,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 13, current
-          assert current["latest_applied"] == 13, current
+          assert current["latest_known"] == 14, current
+          assert current["latest_applied"] == 14, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
@@ -160,7 +161,7 @@ jobs:
               "change_feed", "audit_log", "releases", "backup_runs",
               "system_metrics_hourly", "catalog_routes", "catalog_stations",
               "catalog_sections", "catalog_objects", "catalog_history",
-              "system_schedule_runs",
+              "system_schedule_runs", "btb_participant_states",
           }
           with connect() as conn, conn.cursor() as cur:
               cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='tb'")
@@ -259,6 +260,8 @@ jobs:
               "worksite_teams_v1",
               "btb_entries_v1",
               "btb_finalize_with_pdf_v1",
+              "btb_participant_shift_end_v1",
+              "btb_pdf_team_lead_only_v1",
               "company_profile_v1",
               "company_logo_v1",
               "company_pdf_logo_layout_v1",
