@@ -265,9 +265,7 @@ const SECTION_META={
   ABNAHME:{title:'5. Abnahmen',order:50},
   EINWEISUNG_UNTERWEISUNG:{title:'6. Einweisung / Unterweisung',order:60},
   BESONDERHEIT:{title:'7. Besonderheiten',order:70},
-  MANGEL_SCHADEN:{title:'8. Mängel / Schäden',order:80},
-  NOTIZEN:{title:'Notizen',order:90},
-  ALLGEMEIN:{title:'Allgemein',order:95}
+  MANGEL_SCHADEN:{title:'8. Mängel / Schäden',order:80}
 };
 const ALWAYS_OPEN_SECTIONS=['ARBEIT','ABNAHME','EINWEISUNG_UNTERWEISUNG','BESONDERHEIT','MANGEL_SCHADEN'];
 function sectionInfo(section){
@@ -278,8 +276,28 @@ function slotOf(entry){return String(entry&&entry.payload&&entry.payload._tb_and
 function firmIdOf(entry){return String(entry&&entry.payload&&entry.payload.firmaId||'').trim();}
 function cleanDisplayText(value){
   return String(value??'').split('\n').map(line=>
-    line.replace(/^@ALLGEMEIN\s*[•·-]?\s*/i,'').trimEnd()
+    line
+      .replace(/^@ALLGEMEIN\s*[•·-]?\s*/i,'')
+      .replace(/^@ORT=\d+\s*[•·-]?\s*/i,'')
+      .trimEnd()
   ).join('\n').trim();
+}
+function legacyWorkLines(list){
+  const out=[];
+  (list||[]).forEach(function(entry){
+    const text=String(entry&&entry.payload&&entry.payload.text||'');
+    text.split('\n').forEach(function(raw,index){
+      const line=cleanDisplayText(raw).trim();
+      if(!line)return;
+      out.push({
+        id:String(entry.id)+'-legacy-'+index,
+        sourceEntry:entry,
+        text:line,
+        sort:Number(entry.sort_order||0)*1000+index
+      });
+    });
+  });
+  return out;
 }
 function firmDirectory(){
   const map={};
@@ -361,10 +379,10 @@ function renderFirmGrouped(section,list,firms){
       '</div>';
   }).join('');
 }
-function renderWorkGrouped(list,firms){
+function renderWorkGrouped(list,firms,legacyLines){
   const groups={};
   list.forEach(function(e){const id=firmIdOf(e)||'__general__';if(!groups[id])groups[id]=[];groups[id].push(e);});
-  return Object.keys(groups).map(function(id){
+  let html=Object.keys(groups).map(function(id){
     const firm=id==='__general__'?null:firms[id];
     const title=firm?firm.name:'Allgemein';
     return '<div class="btb-firm"><div class="btb-firm-head"><span class="btb-firm-name">'+esc(title)+'</span></div>'+
@@ -372,6 +390,14 @@ function renderWorkGrouped(list,firms){
         return '<div class="btb-compact-row"><div class="btb-compact-text">'+esc(compactLine(e))+'</div>'+editorButton(e)+'</div>';
       }).join('')+'</div>';
   }).join('');
+  if((legacyLines||[]).length){
+    html+='<div class="btb-firm"><div class="btb-firm-head"><span class="btb-firm-name">Allgemein</span></div>'+
+      legacyLines.sort((a,b)=>a.sort-b.sort).map(function(item){
+        return '<div class="btb-compact-row"><div class="btb-compact-text">'+esc(item.text)+'</div>'+
+          editorButton(item.sourceEntry)+'</div>';
+      }).join('')+'</div>';
+  }
+  return html;
 }
 function renderSimple(list){
   return list.sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)).map(function(e){
@@ -401,30 +427,19 @@ function renderEntries(){
   document.getElementById('deviceEntries').innerHTML=deviceShown.length
     ?renderFirmGrouped('GERAET',deviceShown,firms):emptySectionText();
 
+  const legacyWork=legacyWorkLines([...(groups.NOTIZEN||[]),...(groups.ALLGEMEIN||[])]);
   const target=document.getElementById('entries');
   const main=ALWAYS_OPEN_SECTIONS.map(function(key){
     const list=(groups[key]||[]).slice(), info=sectionInfo(key);
     let body='';
-    if(key==='ARBEIT')body=renderWorkGrouped(list,firms);
+    if(key==='ARBEIT')body=renderWorkGrouped(list,firms,legacyWork);
     else body=renderSimple(list);
     if(!body)body=emptySectionText();
     return '<section class="btb-section"><div class="btb-section-head"><h3>'+esc(info.title)+'</h3></div>'+
       '<div class="btb-section-body">'+body+'</div></section>';
   }).join('');
 
-  const extraKeys=Object.keys(groups).filter(key=>
-    !['PERSONAL','GERAET','FIRMA'].includes(key)&&!ALWAYS_OPEN_SECTIONS.includes(key)
-  ).sort((a,b)=>sectionInfo(a).order-sectionInfo(b).order);
-  const extras=extraKeys.length?(
-    '<details class="btb-extra-fold"><summary>Weitere Angaben / Notizen</summary><div style="padding:4px 14px 12px">'+
-    extraKeys.map(function(key){
-      const list=groups[key].slice(), info=sectionInfo(key);
-      const body=renderSimple(list)||emptySectionText();
-      return '<div class="btb-firm"><div class="btb-firm-head"><span class="btb-firm-name">'+esc(info.title)+'</span></div>'+body+'</div>';
-    }).join('')+'</div></details>'
-  ):'';
-
-  target.innerHTML=main+extras;
+  target.innerHTML=main;
 }
 function editorField(id,label,value,type,wide){
   const cls=wide?' class="wide"':'';
