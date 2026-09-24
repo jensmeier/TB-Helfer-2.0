@@ -1,3 +1,24 @@
+## Portal-Sichtprüfung 24.09.2026 – BTB V3 nach Benutzerfeedback
+
+- Zweite Live-Sichtprüfung per Screenshots bestätigt weitere konkrete UX-Anforderungen.
+- Bedeutung der bisherigen kleinen Zahl im Abschnittskopf: reine Anzahl der granularen Server-Einträge; für den Arbeitsablauf nicht hilfreich und deshalb entfernt.
+- Verbindliches Portal-Layout jetzt:
+  - `1. Berichtszeit` einklappbar;
+  - `2. Wetter` einklappbar und aus dem vorhandenen Android-Header `tb_helfer_android_v1.wetter / weather / weatherSlots` lesbar;
+  - `3. Personal / Geräte`: zwei nebeneinander liegende, getrennt einklappbare Bereiche (mobil untereinander);
+  - `4. Ausgeführte Arbeiten`, `5. Abnahmen`, `6. Einweisung / Unterweisung`, `7. Besonderheiten`, `8. Mängel / Schäden` **immer sichtbar**, auch ohne Einträge;
+  - weitere Angaben/Notizen und Fotos einklappbar.
+- Fehler in den bisherigen Section-Mappings korrigiert: Android/Server verwenden `EINWEISUNG_UNTERWEISUNG` und `MANGEL_SCHADEN`; Portal nutzt jetzt exakt dieselben Schlüssel.
+- Sämtliche sichtbaren Roh-JSON-/Sortierungs-/Versions-/Dateinamen-Diagnosefelder aus der normalen Portaloberfläche entfernt.
+- Fachliche Bearbeitungsdialoge bleiben; beim Speichern werden unbekannte/interne Payload-Felder unverändert mitgeführt.
+- Kopfdatenbearbeitung erhält den bestehenden `current.header` unverändert; Wetter-/Android-Metadaten werden dadurch nicht überschrieben.
+- Fotos zeigen nur Foto-Nummer, Aufnahmezeit, Größe und Vorschau; technischer Originaldateiname ist nicht mehr Teil der normalen Ansicht.
+- Wenn Punkt 4 nach diesem Deploy leer erscheint, obwohl Android dort Einträge zeigt, ist das kein Darstellungsfehler mehr, sondern ein gezielt zu prüfender Android→Server-`ARBEIT`-Syncbefund.
+- Template-JavaScript syntaktisch geprüft: **OK**. Source-Checks 37/93/94/95 auf den neuen UI-Vertrag konsolidiert.
+- **Status: PORTAL V3 QUELLSTAND FERTIG / LIVE-REDEPLOY + SICHTPRÜFUNG OFFEN.**
+- Keine DB-/API-/Android-Codeänderung. Migration 014 weiterhin nicht deployen.
+- `STATUS.xlsx` weiterhin nicht blind überschrieben.
+
 ## Portal-Sichtprüfung 24.09.2026 – BTB-Ansicht nach Android-Vorbild nachgebessert
 
 - Benutzer hat die erste lesbare Portal-BTB-Version praktisch auf Synology geprüft und mehrere konkrete Darstellungsfehler per Screenshot bestätigt.
