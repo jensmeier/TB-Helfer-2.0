@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200067: persistenter selektiver BTB-Delta-Sync (Phase 1 des 15x15-Modells);
-        // alter MANUELL/STÜNDLICH/TÄGLICH-Zeitplan und periodischer Vollsync entfernt.
-        versionCode = 200067
-        versionName = "1.3.17"
+        // Android 200068: BTB-Abschluss markiert gezielt denselben btbId-Dirty-Scope,
+        // damit der Serverstatus zuverlässig von ACTIVE auf abgeschlossen wechselt.
+        versionCode = 200068
+        versionName = "1.3.18"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
