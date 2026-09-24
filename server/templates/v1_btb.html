@@ -342,28 +342,36 @@ function photoEventText(p,index){
   const parts=[photoTime(m),photoKm(m),String(m.kurztext||'').trim()].filter(Boolean);
   return parts.join(' · ')+(parts.length?' · ':'')+'Bild '+(index+1);
 }
+function photoCardHtml(p,index,editable){
+  const m=photoMeta(p);
+  const title=String(m.kurztext||'').trim()||('Foto '+(index+1));
+  const main=[photoTime(m),photoKm(m),String(m.firma||'').trim()].filter(Boolean).join(' · ');
+  const place=[String(m.objektKennung||'').trim(),String(m.objektBereich||'').trim()].filter(Boolean).join(' · ');
+  const gps=validGps(m)?Number(m.lat).toFixed(6)+', '+Number(m.lon).toFixed(6):'';
+  const mapUrl=gps?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(Number(m.lat)+','+Number(m.lon)):'';
+  const indicator=String(m.indikator||'').trim();
+  return '<div class="btb-photo-card"><div class="btb-photo-head"><div><div class="btb-photo-title">'+esc(title)+'</div>'+
+    '<div class="btb-photo-meta">Foto '+(index+1)+(p.byte_size?' · '+esc(bytesLabel(p.byte_size)):'')+'</div></div>'+
+    (editable?'<button class="danger btb-mini-edit" type="button" onclick="detachPhoto(\''+esc(p.id)+'\')">Entfernen</button>':'')+'</div>'+
+    '<a href="'+esc(p.content_url)+'" target="_blank" rel="noopener"><img src="'+esc(p.content_url)+'" alt="BTB-Foto '+(index+1)+'"></a>'+
+    '<div class="btb-photo-details">'+
+      (main?'<div>'+esc(main)+'</div>':'')+
+      (place?'<div>Ort: '+esc(place)+'</div>':'')+
+      (indicator?'<div>Indikator: '+esc(indicator.replace('GRUEN','Grün').replace('GELB','Gelb').replace('ROT','Rot'))+'</div>':'')+
+      (gps?'<div><a href="'+esc(mapUrl)+'" target="_blank" rel="noopener">GPS: '+esc(gps)+' ↗</a></div>':'')+
+    '</div></div>';
+}
 function renderPhotos(){
   const target=document.getElementById('photos');
   const editable=canEditCurrentBtb(),list=uniquePhotos();
-  target.className=list.length?'btb-photo-grid':'';
-  target.innerHTML=list.length?list.map(function(p,index){
-    const m=photoMeta(p);
-    const title=String(m.kurztext||'').trim()||('Foto '+(index+1));
-    const main=[photoTime(m),photoKm(m),String(m.firma||'').trim()].filter(Boolean).join(' · ');
-    const place=[String(m.objektKennung||'').trim(),String(m.objektBereich||'').trim()].filter(Boolean).join(' · ');
-    const gps=validGps(m)?Number(m.lat).toFixed(6)+', '+Number(m.lon).toFixed(6):'';
-    const mapUrl=gps?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(Number(m.lat)+','+Number(m.lon)):'';
-    const indicator=String(m.indikator||'').trim();
-    return '<div class="btb-photo-card"><div class="btb-photo-head"><div><div class="btb-photo-title">'+esc(title)+'</div>'+
-      '<div class="btb-photo-meta">Foto '+(index+1)+(p.byte_size?' · '+esc(bytesLabel(p.byte_size)):'')+'</div></div>'+
-      (editable?'<button class="danger btb-mini-edit" type="button" onclick="detachPhoto(\''+esc(p.id)+'\')">Entfernen</button>':'')+'</div>'+
-      '<a href="'+esc(p.content_url)+'" target="_blank" rel="noopener"><img src="'+esc(p.content_url)+'" alt="BTB-Foto '+(index+1)+'"></a>'+
-      '<div class="btb-photo-details">'+
-        (main?'<div>'+esc(main)+'</div>':'')+
-        (place?'<div>Ort: '+esc(place)+'</div>':'')+
-        (indicator?'<div>Indikator: '+esc(indicator.replace('GRUEN','Grün').replace('GELB','Gelb').replace('ROT','Rot'))+'</div>':'')+
-        (gps?'<div><a href="'+esc(mapUrl)+'" target="_blank" rel="noopener">GPS: '+esc(gps)+' ↗</a></div>':'')+
-      '</div></div>';
+  const indexed=list.map(function(p,index){return {p:p,index:index,section:photoSection(photoMeta(p))};});
+  const grouped=ALWAYS_OPEN_SECTIONS.map(function(section){
+    return {section:section,items:indexed.filter(x=>x.section===section)};
+  }).filter(group=>group.items.length);
+  target.className='';
+  target.innerHTML=grouped.length?grouped.map(function(group){
+    return '<div class="btb-photo-group"><h3 class="btb-photo-group-title">'+esc(sectionInfo(group.section).title)+'</h3>'+
+      '<div class="btb-photo-grid">'+group.items.map(x=>photoCardHtml(x.p,x.index,editable)).join('')+'</div></div>';
   }).join(''):'<p class="muted">Noch keine BTB-Fotos.</p>';
   document.getElementById('photoUploadBox').style.display=(can('files.add')&&canEditCurrentBtb())?'block':'none';
 }
