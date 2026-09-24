@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -30,11 +30,23 @@ from .btb_documents import (
     upsert_final_pdf_file,
 )
 from .btb_pdf import PDF_RENDERER_VERSION, render_btb_pdf
+from .btb_participants import (
+    FINISHED,
+    NOT_PARTICIPATING,
+    WORKING,
+    ensure_participants,
+    mark_lead_finished,
+    participant_rows,
+    require_participant_writable,
+    set_lead_managed_status,
+    set_own_status,
+    unfinished_participants,
+)
 from .company import load_company_branding
 from .database import transaction
 from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
-from .permissions import require_permission, worksite_context
+from .permissions import is_team_lead, require_permission, require_team_lead, worksite_context
 from .portal import current_portal_user, require_csrf
 
 
@@ -68,6 +80,14 @@ class BtbEntryUpdate(BaseModel):
     base_version: int = Field(ge=1)
     sort_order: int | None = None
     payload: dict | None = None
+
+
+class BtbFinalizeRequest(BaseModel):
+    allow_unfinished: bool = False
+
+
+class BtbParticipantLeadUpdate(BaseModel):
+    status: Literal["WORKING", "NOT_PARTICIPATING"]
 
 
 def _team(cur, worksite_id: UUID, team_id: UUID) -> dict:
@@ -255,6 +275,7 @@ def create_btb(
         )
         row = dict(cur.fetchone())
         cur.execute("UPDATE tb.teams SET active_btb_id = %s, updated_at = now() WHERE id = %s", (row["id"], payload.team_id))
+        ensure_participants(cur, btb_id=row["id"], team_id=payload.team_id)
         emit_change(
             cur,
             company_id=context["company_id"],
@@ -296,6 +317,12 @@ def get_btb(
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.view")
         _assert_team_member(cur, user, btb["team_id"])
+        participants = participant_rows(cur, btb_id=btb_id, team_id=btb["team_id"])
+        is_lead = is_team_lead(cur, user, btb["team_id"])
+        current_participant = next(
+            (row for row in participants if str(row["user_id"]) == str(user["user_id"])),
+            None,
+        )
         cur.execute(
             """
             SELECT id, section, sort_order, payload, version, created_by, updated_by, created_at, updated_at
@@ -323,9 +350,21 @@ def get_btb(
             }
             for row in photo_files
         ]
-        pdf_file = load_final_pdf(cur, btb_id) if btb["status"] == "FINALIZED" else None
+        pdf_file = load_final_pdf(cur, btb_id) if btb["status"] == "FINALIZED" and is_lead else None
         final_pdf = public_final_pdf(pdf_file, btb_id=btb_id) if pdf_file else None
-    return {"btb": btb, "entries": entries, "photos": photos, "final_pdf": final_pdf}
+    return {
+        "btb": btb,
+        "entries": entries,
+        "photos": photos,
+        "final_pdf": final_pdf,
+        "participants": participants,
+        "current_user": {
+            "is_team_lead": is_lead,
+            "participant_status": current_participant["status"] if current_participant else None,
+            "can_view_btb_pdf": is_lead,
+            "can_finalize_btb": is_lead,
+        },
+    }
 
 
 @router.patch("/btbs/{btb_id}/header")
@@ -347,6 +386,7 @@ def update_btb_header(
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.edit")
         _assert_team_member(cur, user, btb["team_id"])
+        require_participant_writable(cur, user=user, btb_id=btb_id, team_id=btb["team_id"])
         if btb["version"] != payload.base_version:
             raise HTTPException(409, {"code": "VERSION_CONFLICT", "current_version": btb["version"]})
         effective = {key: value for key, value in updates.items() if btb.get(key) != value}
@@ -391,6 +431,7 @@ def create_entry(
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.edit")
         _assert_team_member(cur, user, btb["team_id"])
+        require_participant_writable(cur, user=user, btb_id=btb_id, team_id=btb["team_id"])
         invalidated_pdf_keys.extend(prepare_btb_content_change(cur, btb))
         values = (btb_id, payload.section, payload.sort_order, Jsonb(payload.payload), user["user_id"], user["user_id"])
         if payload.id is None:
@@ -427,6 +468,7 @@ def update_entry(
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.edit")
         _assert_team_member(cur, user, btb["team_id"])
+        require_participant_writable(cur, user=user, btb_id=btb_id, team_id=btb["team_id"])
         cur.execute("SELECT id, sort_order, payload, version FROM tb.btb_entries WHERE id = %s AND btb_id = %s AND deleted_at IS NULL FOR UPDATE", (entry_id, btb_id))
         current = cur.fetchone()
         if not current:
@@ -473,6 +515,7 @@ def delete_entry(
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.edit")
         _assert_team_member(cur, user, btb["team_id"])
+        require_participant_writable(cur, user=user, btb_id=btb_id, team_id=btb["team_id"])
         cur.execute("SELECT id FROM tb.btb_entries WHERE id = %s AND btb_id = %s AND deleted_at IS NULL FOR UPDATE", (entry_id, btb_id))
         if not cur.fetchone():
             raise HTTPException(404, "ENTRY_NOT_FOUND")
@@ -488,9 +531,131 @@ def delete_entry(
     return None
 
 
+@router.get("/btbs/{btb_id}/participants")
+def get_btb_participants(
+    btb_id: UUID,
+    user: dict[str, Any] = Depends(current_portal_user),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        btb = _load_btb(cur, btb_id)
+        context = worksite_context(cur, user, btb["worksite_id"])
+        require_permission(context, "btb.view")
+        _assert_team_member(cur, user, btb["team_id"])
+        rows = participant_rows(cur, btb_id=btb_id, team_id=btb["team_id"])
+        lead = is_team_lead(cur, user, btb["team_id"])
+    return {
+        "btb_id": btb_id,
+        "is_team_lead": lead,
+        "participants": rows,
+    }
+
+
+@router.post("/btbs/{btb_id}/shift-finish")
+def finish_own_shift(
+    btb_id: UUID,
+    user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_SHIFT_FINISH")
+        if receipt:
+            return replay_payload(receipt)
+        btb = _load_btb(cur, btb_id, for_update=True)
+        context = worksite_context(cur, user, btb["worksite_id"])
+        require_permission(context, "btb.edit")
+        _assert_team_member(cur, user, btb["team_id"])
+        team = _team(cur, btb["worksite_id"], btb["team_id"])
+        if team["active_btb_id"] != btb_id or btb["status"] not in {"ACTIVE", "REWORK"}:
+            raise HTTPException(409, "BTB_NOT_ACTIVE")
+        row = set_own_status(
+            cur,
+            btb_id=btb_id,
+            team_id=btb["team_id"],
+            user_id=user["user_id"],
+            status=FINISHED,
+        )
+        emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB_PARTICIPANT", entity_id=user["user_id"], operation="UPDATE", entity_version=row["version"], actor_user_id=user["user_id"])
+        emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id, operation="UPDATE", entity_version=btb["version"], actor_user_id=user["user_id"])
+        audit(cur, action="BTB_SHIFT_FINISH", actor_user_id=user["user_id"], company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id)
+        response = {"btb_id": btb_id, "participant": row}
+        finish_mutation(cur, user=user, context=mutation, receipt_type="BTB_SHIFT_FINISH", entity_id=btb_id, result_version=row["version"], response_payload=response)
+    return response
+
+
+@router.post("/btbs/{btb_id}/shift-resume")
+def resume_own_shift(
+    btb_id: UUID,
+    user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_SHIFT_RESUME")
+        if receipt:
+            return replay_payload(receipt)
+        btb = _load_btb(cur, btb_id, for_update=True)
+        context = worksite_context(cur, user, btb["worksite_id"])
+        require_permission(context, "btb.edit")
+        _assert_team_member(cur, user, btb["team_id"])
+        team = _team(cur, btb["worksite_id"], btb["team_id"])
+        if team["active_btb_id"] != btb_id or btb["status"] not in {"ACTIVE", "REWORK"}:
+            raise HTTPException(409, "BTB_NOT_ACTIVE")
+        row = set_own_status(
+            cur,
+            btb_id=btb_id,
+            team_id=btb["team_id"],
+            user_id=user["user_id"],
+            status=WORKING,
+        )
+        emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB_PARTICIPANT", entity_id=user["user_id"], operation="UPDATE", entity_version=row["version"], actor_user_id=user["user_id"])
+        emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id, operation="UPDATE", entity_version=btb["version"], actor_user_id=user["user_id"])
+        audit(cur, action="BTB_SHIFT_RESUME", actor_user_id=user["user_id"], company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id)
+        response = {"btb_id": btb_id, "participant": row}
+        finish_mutation(cur, user=user, context=mutation, receipt_type="BTB_SHIFT_RESUME", entity_id=btb_id, result_version=row["version"], response_payload=response)
+    return response
+
+
+@router.patch("/btbs/{btb_id}/participants/{participant_user_id}")
+def update_btb_participant_by_lead(
+    btb_id: UUID,
+    participant_user_id: UUID,
+    payload: BtbParticipantLeadUpdate,
+    user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_PARTICIPANT_LEAD_UPDATE")
+        if receipt:
+            return replay_payload(receipt)
+        btb = _load_btb(cur, btb_id, for_update=True)
+        context = worksite_context(cur, user, btb["worksite_id"])
+        require_permission(context, "btb.finalize")
+        _assert_team_member(cur, user, btb["team_id"])
+        require_team_lead(cur, user, btb["team_id"])
+        team = _team(cur, btb["worksite_id"], btb["team_id"])
+        if team["active_btb_id"] != btb_id or btb["status"] not in {"ACTIVE", "REWORK"}:
+            raise HTTPException(409, "BTB_NOT_ACTIVE")
+        if str(participant_user_id) == str(team["lead_user_id"]):
+            raise HTTPException(400, "BTB_LEAD_PARTICIPANT_STATUS_MANAGED_BY_FINALIZE")
+        row = set_lead_managed_status(
+            cur,
+            btb_id=btb_id,
+            team_id=btb["team_id"],
+            target_user_id=participant_user_id,
+            actor_user_id=user["user_id"],
+            status=payload.status,
+        )
+        emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB_PARTICIPANT", entity_id=participant_user_id, operation="UPDATE", entity_version=row["version"], actor_user_id=user["user_id"])
+        emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id, operation="UPDATE", entity_version=btb["version"], actor_user_id=user["user_id"])
+        audit(cur, action="BTB_PARTICIPANT_LEAD_UPDATE", actor_user_id=user["user_id"], company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id, details={"participant_user_id": str(participant_user_id), "status": payload.status})
+        response = {"btb_id": btb_id, "participant": row}
+        finish_mutation(cur, user=user, context=mutation, receipt_type="BTB_PARTICIPANT_LEAD_UPDATE", entity_id=btb_id, result_version=row["version"], response_payload=response)
+    return response
+
+
 @router.post("/btbs/{btb_id}/finalize")
 def finalize_btb(
     btb_id: UUID,
+    payload: BtbFinalizeRequest | None = None,
     user: dict[str, Any] = Depends(require_csrf),
     mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
@@ -506,8 +671,37 @@ def finalize_btb(
             context = worksite_context(cur, user, btb["worksite_id"])
             require_permission(context, "btb.finalize")
             _assert_team_member(cur, user, btb["team_id"])
+            require_team_lead(cur, user, btb["team_id"])
+            team = _team(cur, btb["worksite_id"], btb["team_id"])
+            mark_lead_finished(
+                cur,
+                btb_id=btb_id,
+                team_id=btb["team_id"],
+                lead_user_id=user["user_id"],
+            )
+            unfinished = unfinished_participants(
+                cur,
+                btb_id=btb_id,
+                team_id=btb["team_id"],
+                exclude_user_id=user["user_id"],
+            )
+            allow_unfinished = bool(payload and payload.allow_unfinished)
+            if unfinished and not allow_unfinished:
+                raise HTTPException(
+                    409,
+                    {
+                        "code": "BTB_PARTICIPANTS_NOT_FINISHED",
+                        "participants": [
+                            {
+                                "user_id": str(row["user_id"]),
+                                "display_name": row.get("display_name"),
+                                "status": row["status"],
+                            }
+                            for row in unfinished
+                        ],
+                    },
+                )
             if btb["status"] == "FINALIZED":
-                team = _team(cur, btb["worksite_id"], btb["team_id"])
                 if team["active_btb_id"] != btb_id:
                     raise HTTPException(409, "BTB_NOT_ACTIVE")
                 pdf_file = load_final_pdf(cur, btb_id)
@@ -559,7 +753,7 @@ def finalize_btb(
             cur.execute("UPDATE tb.teams SET active_btb_id = NULL, updated_at = now() WHERE id = %s AND active_btb_id = %s", (btb["team_id"], btb_id))
             emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="FILE", entity_id=pdf_file["id"], operation=pdf_operation, entity_version=None, actor_user_id=user["user_id"])
             emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id, operation="FINALIZE", entity_version=row["version"], actor_user_id=user["user_id"])
-            audit(cur, action="BTB_FINALIZE", actor_user_id=user["user_id"], company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id, details={"snapshot_sha256": digest, "pdf_sha256": pdf_sha256, "pdf_file_id": str(pdf_file["id"]), "pdf_renderer": PDF_RENDERER_VERSION})
+            audit(cur, action="BTB_FINALIZE", actor_user_id=user["user_id"], company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id, details={"snapshot_sha256": digest, "pdf_sha256": pdf_sha256, "pdf_file_id": str(pdf_file["id"]), "pdf_renderer": PDF_RENDERER_VERSION, "unfinished_override": allow_unfinished, "unfinished_user_ids": [str(item["user_id"]) for item in unfinished]})
             response = {**row, "final_pdf": public_final_pdf(pdf_file, btb_id=btb_id)}
             finish_mutation(cur, user=user, context=mutation, receipt_type="BTB_FINALIZE", entity_id=btb_id, result_version=row["version"], response_payload=response)
         finish_pdf_install(temp_path, backup_path)
@@ -582,6 +776,7 @@ def get_final_pdf(
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.view")
         _assert_team_member(cur, user, btb["team_id"])
+        require_team_lead(cur, user, btb["team_id"])
         if btb["status"] != "FINALIZED":
             raise HTTPException(404, "BTB_FINAL_PDF_NOT_AVAILABLE")
         pdf_file = load_final_pdf(cur, btb_id)
@@ -607,6 +802,7 @@ def reopen_btb(
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.edit")
         _assert_team_member(cur, user, btb["team_id"])
+        require_team_lead(cur, user, btb["team_id"])
         if btb["status"] != "FINALIZED":
             raise HTTPException(409, "BTB_NOT_FINALIZED")
         team = _team(cur, btb["worksite_id"], btb["team_id"])
@@ -635,6 +831,7 @@ def detach_btb_photo(
         context = worksite_context(cur, user, btb["worksite_id"])
         require_permission(context, "btb.edit")
         _assert_team_member(cur, user, btb["team_id"])
+        require_participant_writable(cur, user=user, btb_id=btb_id, team_id=btb["team_id"])
         cur.execute("SELECT f.id FROM tb.file_links l JOIN tb.files f ON f.id = l.file_id WHERE l.entity_type = 'BTB' AND l.entity_id = %s AND l.file_id = %s AND f.deleted_at IS NULL AND f.mime_type LIKE 'image/%%' FOR UPDATE", (btb_id, file_id))
         if not cur.fetchone():
             raise HTTPException(404, "BTB_PHOTO_NOT_FOUND")
