@@ -14,12 +14,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from .btb_documents import prepare_btb_photo_change, remove_storage_keys
+from .btb_documents import FINAL_PDF_PURPOSE, prepare_btb_photo_change, remove_storage_keys
+from .btb_participants import require_participant_writable
 from .config import settings
 from .database import transaction
 from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
-from .permissions import area_scope_allows, has_permission, require_permission, worksite_context
+from .permissions import area_scope_allows, has_permission, is_team_lead, require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 
 
@@ -102,6 +103,7 @@ def _entity_link_visible(
     context: dict[str, Any],
     entity_type: str,
     entity_id: UUID,
+    purpose: str | None = None,
 ) -> bool:
     normalized = entity_type.strip().upper()
     if normalized == "WORKSITE":
@@ -117,6 +119,8 @@ def _entity_link_visible(
         row = cur.fetchone()
         if not row or row["worksite_id"] != context["id"] or row["status"] == "DELETED":
             return False
+        if str(purpose or "").upper() == FINAL_PDF_PURPOSE:
+            return is_team_lead(cur, user, row["team_id"])
         if user["company_role"] in {"ADMIN", "CHEF"}:
             return True
         cur.execute(
@@ -232,7 +236,7 @@ def _file_visible_for_context(
 ) -> bool:
     cur.execute(
         """
-        SELECT entity_type, entity_id
+        SELECT entity_type, entity_id, purpose
         FROM tb.file_links
         WHERE file_id = %s
         ORDER BY created_at
@@ -244,7 +248,14 @@ def _file_visible_for_context(
         return True
 
     for link in links:
-        if _entity_link_visible(cur, user, context, link["entity_type"], link["entity_id"]):
+        if _entity_link_visible(
+            cur,
+            user,
+            context,
+            link["entity_type"],
+            link["entity_id"],
+            link.get("purpose"),
+        ):
             return True
         if (
             allow_responsible_btb_images
@@ -605,7 +616,22 @@ def complete_upload(
             link_payload = None
             if link:
                 purpose = payload.purpose.strip().upper()
+                if purpose == FINAL_PDF_PURPOSE:
+                    raise HTTPException(400, "FILE_PURPOSE_RESERVED")
                 if link[0] == "BTB" and upload["mime_type"].lower().startswith("image/"):
+                    cur.execute(
+                        "SELECT team_id FROM tb.btbs WHERE id = %s AND worksite_id = %s AND status <> 'DELETED'",
+                        (link[1], upload["worksite_id"]),
+                    )
+                    btb_row = cur.fetchone()
+                    if not btb_row:
+                        raise HTTPException(404, "BTB_NOT_FOUND")
+                    require_participant_writable(
+                        cur,
+                        user=user,
+                        btb_id=link[1],
+                        team_id=btb_row["team_id"],
+                    )
                     invalidated_pdf_keys.extend(
                         prepare_btb_photo_change(
                             cur,
@@ -933,7 +959,14 @@ def get_file_metadata(
             dict(link)
             for link in raw_links
             if context is None
-            or _entity_link_visible(cur, user, context, link["entity_type"], link["entity_id"])
+            or _entity_link_visible(
+                cur,
+                user,
+                context,
+                link["entity_type"],
+                link["entity_id"],
+                link.get("purpose"),
+            )
         ]
     row.pop("storage_key", None)
     return {"file": row, "links": links}
