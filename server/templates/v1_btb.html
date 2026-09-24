@@ -4,6 +4,8 @@
 <style>
   .entry{border:1px solid #eaecf0;border-radius:10px;padding:12px;margin:10px 0}.json{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
   .topline{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}.danger-zone{border-color:#fecdca}
+  .participant-grid{display:grid;gap:10px}.participant-row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid #eaecf0;border-radius:10px;padding:10px 12px}
+  .shift-finished{background:#ecfdf3}.shift-working{background:#fffaeb}.shift-na{background:#f2f4f7}
 </style>
 {% endblock %}
 {% block content %}
@@ -20,6 +22,16 @@
   </div>
   <div id="msg"></div>
   <div id="lifecycle" class="actions"></div>
+</div>
+
+<div class="card" id="participantsCard">
+  <div class="topline">
+    <div>
+      <h2>Schichtstatus</h2>
+      <p id="participantSummary" class="muted">wird geladen …</p>
+    </div>
+  </div>
+  <div id="participants" class="participant-grid"></div>
 </div>
 
 <div class="card">
@@ -70,10 +82,21 @@
 <script>
 const btbId={{ btb_id|tojson }};
 const msg=document.getElementById('msg');
-let current=null, entries=[], photos=[], finalPdf=null, permissions={}, activeBtbId=null;
+let current=null, entries=[], photos=[], finalPdf=null, permissions={}, activeBtbId=null, participants=[], currentUser={};
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function can(name){return permissions['*']===true||permissions[name]===true;}
+function isTeamLead(){return currentUser&&currentUser.is_team_lead===true;}
+function ownShiftFinished(){return currentUser&&currentUser.participant_status==='FINISHED';}
+function ownShiftNotParticipating(){return currentUser&&currentUser.participant_status==='NOT_PARTICIPATING';}
+function canEditCurrentBtb(){
+  if(!current||activeBtbId!==btbId||!can('btb.edit'))return false;
+  if(isTeamLead())return true;
+  return !ownShiftFinished()&&!ownShiftNotParticipating();
+}
+function participantLabel(status){
+  return status==='FINISHED'?'FERTIG':status==='NOT_PARTICIPATING'?'NICHT BETEILIGT':'ARBEITET';
+}
 function jsonObject(raw){const x=JSON.parse(raw.trim()||'{}');if(x===null||Array.isArray(x)||typeof x!=='object')throw new Error('JSON muss ein Objekt sein.');return x;}
 function localInput(value){
   if(!value)return '';
@@ -85,29 +108,35 @@ function lifecycle(){
   const target=document.getElementById('lifecycle');const status=current.status;
   const isActive=activeBtbId===btbId;
   let html='';
-  if(status==='FINALIZED'&&finalPdf){
+  if(status==='FINALIZED'&&finalPdf&&isTeamLead()){
     html+='<a class="btn" href="'+esc(finalPdf.content_url)+'" target="_blank" rel="noopener">Abschluss-PDF öffnen</a>';
   }
-  if(status==='FINALIZED'&&!isActive&&can('btb.edit')){
+  if(status==='FINALIZED'&&!isActive&&isTeamLead()&&can('btb.edit')){
     html+='<button type="button" onclick="reopenBtb()">Nachbearbeitung öffnen</button>';
   }
-  if((status==='ACTIVE'||status==='REWORK'||(status==='FINALIZED'&&isActive))&&can('btb.finalize')){
-    html+='<button type="button" onclick="finalizeBtb()">BTB abschließen</button>';
+  if((status==='ACTIVE'||status==='REWORK'||(status==='FINALIZED'&&isActive))&&isTeamLead()&&can('btb.finalize')){
+    html+='<button type="button" onclick="finalizeBtb()">BTB endgültig abschließen</button>';
+  }else if(isActive&&(status==='ACTIVE'||status==='REWORK')&&!isTeamLead()&&can('btb.edit')){
+    if(ownShiftFinished()){
+      html+='<button type="button" onclick="resumeShift()">Schicht fortsetzen</button>';
+    }else if(!ownShiftNotParticipating()){
+      html+='<button type="button" onclick="finishShift()">Schicht Ende</button>';
+    }
   }
   target.innerHTML=html||'<span class="muted">Keine Aktion verfügbar.</span>';
-  document.getElementById('headerForm').style.display=(can('btb.edit')&&isActive)?'block':'none';
-  document.getElementById('entryForm').style.display=(can('btb.edit')&&isActive)?'block':'none';
-  document.getElementById('deleteBtb').style.display=can('btb.delete')?'inline-block':'none';
+  document.getElementById('headerForm').style.display=canEditCurrentBtb()?'block':'none';
+  document.getElementById('entryForm').style.display=canEditCurrentBtb()?'block':'none';
+  document.getElementById('deleteBtb').style.display=(can('btb.delete')&&isTeamLead())?'inline-block':'none';
 }
 function renderPhotos(){
   const target=document.getElementById('photos');
-  const editable=can('btb.edit')&&activeBtbId===btbId;
+  const editable=canEditCurrentBtb();
   target.innerHTML=photos.length?photos.map(function(p){
     return '<div class="entry"><div class="topline"><div><b>'+esc(p.original_name||'Foto')+'</b><div class="muted">'+esc(p.mime_type||'')+' · '+esc(p.byte_size||0)+' Byte</div></div>'+
       (editable?'<button class="danger" type="button" onclick="detachPhoto(\''+esc(p.id)+'\')">Aus BTB lösen</button>':'')+'</div>'+
       '<div style="margin-top:8px"><a href="'+esc(p.content_url)+'" target="_blank" rel="noopener"><img src="'+esc(p.content_url)+'" alt="" style="max-width:100%;max-height:360px;object-fit:contain;border:1px solid #eaecf0;border-radius:8px"></a></div></div>';
   }).join(''):'<p class="muted">Noch keine BTB-Fotos.</p>';
-  document.getElementById('photoUploadBox').style.display=(can('files.add')&&activeBtbId===btbId)?'block':'none';
+  document.getElementById('photoUploadBox').style.display=(can('files.add')&&canEditCurrentBtb())?'block':'none';
 }
 async function detachPhoto(id){
   if(!confirm('Foto nur aus diesem BTB lösen? Das Baustellenfoto bleibt erhalten.'))return;
@@ -120,7 +149,7 @@ window.detachPhoto=detachPhoto;
 function renderEntries(){
   const target=document.getElementById('entries');
   target.innerHTML=entries.length?entries.map(function(e){
-    const editable=can('btb.edit')&&activeBtbId===btbId;
+    const editable=canEditCurrentBtb();
     return '<div class="entry" data-entry="'+esc(e.id)+'">'+
       '<div class="topline"><div><b>'+esc(e.section)+'</b> <span class="pill">Version '+esc(e.version)+'</span></div>'+
       (editable?'<button class="danger" type="button" onclick="deleteEntry(\''+esc(e.id)+'\')">Entfernen</button>':'')+'</div>'+
@@ -130,9 +159,43 @@ function renderEntries(){
       '</div>';
   }).join(''):'<p class="muted">Noch keine Facheinträge.</p>';
 }
+function renderParticipants(){
+  const target=document.getElementById('participants');
+  const working=participants.filter(p=>p.status==='WORKING').length;
+  const finished=participants.filter(p=>p.status==='FINISHED').length;
+  const notPart=participants.filter(p=>p.status==='NOT_PARTICIPATING').length;
+  document.getElementById('participantSummary').textContent=
+    finished+' fertig · '+working+' arbeitet'+(notPart?' · '+notPart+' nicht beteiligt':'');
+  target.innerHTML=participants.length?participants.map(function(p){
+    const statusClass=p.status==='FINISHED'?'shift-finished':p.status==='NOT_PARTICIPATING'?'shift-na':'shift-working';
+    const leadMark=p.is_team_lead?' · Haupt-TB':'';
+    let actions='';
+    if(isTeamLead()&&!p.is_team_lead&&activeBtbId===btbId&&(current.status==='ACTIVE'||current.status==='REWORK')){
+      if(p.status==='NOT_PARTICIPATING'){
+        actions='<button type="button" onclick="setParticipantStatus(\''+esc(p.user_id)+'\',\'WORKING\')">Als beteiligt markieren</button>';
+      }else if(p.status==='WORKING'){
+        actions='<button class="secondary" type="button" onclick="setParticipantStatus(\''+esc(p.user_id)+'\',\'NOT_PARTICIPATING\')">Nicht beteiligt</button>';
+      }
+    }
+    return '<div class="participant-row '+statusClass+'"><div><b>'+esc(p.display_name||p.user_id)+'</b><div class="muted">'+esc(participantLabel(p.status))+leadMark+'</div></div><div class="actions">'+actions+'</div></div>';
+  }).join(''):'<p class="muted">Keine Teilnehmer vorhanden.</p>';
+}
+async function setParticipantStatus(userId,status){
+  const label=status==='NOT_PARTICIPATING'?'als nicht beteiligt markieren':'wieder als beteiligt markieren';
+  if(!confirm('Nutzer wirklich '+label+'?'))return;
+  try{
+    await tbApi('/api/v1/btbs/'+btbId+'/participants/'+encodeURIComponent(userId),{
+      method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:status})
+    });
+    show('ok','Schichtstatus aktualisiert.');await loadBtb();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.setParticipantStatus=setParticipantStatus;
+
 async function loadBtb(){
   const result=await tbApi('/api/v1/btbs/'+btbId);
   current=result.data.btb;entries=result.data.entries||[];photos=result.data.photos||[];finalPdf=result.data.final_pdf;
+  participants=result.data.participants||[];currentUser=result.data.current_user||{};
   const ws=await tbApi('/api/v1/worksites/'+encodeURIComponent(current.worksite_id));
   permissions=ws.data.permissions||{};
   const list=await tbApi('/api/v1/worksites/'+encodeURIComponent(current.worksite_id)+'/teams/'+encodeURIComponent(current.team_id)+'/btbs');
@@ -144,7 +207,7 @@ async function loadBtb(){
   document.getElementById('startedAt').value=localInput(current.started_at);
   document.getElementById('endedAt').value=localInput(current.ended_at);
   document.getElementById('headerJson').value=JSON.stringify(current.header||{},null,2);
-  renderEntries();renderPhotos();lifecycle();
+  renderParticipants();renderEntries();renderPhotos();lifecycle();
 }
 document.getElementById('headerForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
@@ -195,9 +258,39 @@ async function reopenBtb(){
   catch(error){show('err',error.message||String(error));}
 }
 window.reopenBtb=reopenBtb;
+async function finishShift(){
+  if(!confirm('Schicht beenden? Dein Beitrag wird danach schreibgeschützt, kann aber vor dem endgültigen BTB-Abschluss wieder fortgesetzt werden.'))return;
+  try{
+    await tbApi('/api/v1/btbs/'+btbId+'/shift-finish',{method:'POST'});
+    show('ok','Schicht ist beendet.');await loadBtb();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.finishShift=finishShift;
+async function resumeShift(){
+  if(!confirm('Schicht wirklich fortsetzen?'))return;
+  try{
+    await tbApi('/api/v1/btbs/'+btbId+'/shift-resume',{method:'POST'});
+    show('ok','Schicht wird fortgesetzt.');await loadBtb();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.resumeShift=resumeShift;
 async function finalizeBtb(){
-  try{await tbApi('/api/v1/btbs/'+btbId+'/finalize',{method:'POST'});show('ok','BTB abgeschlossen.');await loadBtb();}
-  catch(error){show('err',error.message||String(error));}
+  const unfinished=participants.filter(p=>!p.is_team_lead&&p.status==='WORKING');
+  let allowUnfinished=false;
+  if(unfinished.length){
+    const names=unfinished.map(p=>p.display_name||p.user_id).join(', ');
+    if(!confirm('Noch nicht fertig: '+names+'\n\nBTB trotzdem endgültig abschließen?'))return;
+    allowUnfinished=true;
+  }else if(!confirm('BTB endgültig abschließen und Abschluss-PDF erzeugen?')){
+    return;
+  }
+  try{
+    await tbApi('/api/v1/btbs/'+btbId+'/finalize',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({allow_unfinished:allowUnfinished})
+    });
+    show('ok','BTB endgültig abgeschlossen.');await loadBtb();
+  }catch(error){show('err',error.message||String(error));}
 }
 window.finalizeBtb=finalizeBtb;
 
