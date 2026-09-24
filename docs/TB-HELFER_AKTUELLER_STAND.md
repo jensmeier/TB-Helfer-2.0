@@ -1,3 +1,19 @@
+## Portal-Sichtprüfung 24.09.2026 – kein eigener Notiz-Abschnitt
+
+- Benutzer hat per Live-Screenshot bestätigt: Portal zeigte fälschlich `Weitere Angaben / Notizen` mit `test`, `test`, `@ORT=3 • Schwerbau: test`.
+- Android-Fachlogik geprüft: `BtbDruckModellBuilder` nimmt `entry.notizen` ausdrücklich über `manualEventsFromMultiline(...)` in **4. Ausgeführte Arbeiten** auf; `notizen` ist damit nur ein interner Speicher-/Legacybegriff und kein eigener BTB-Abschnitt.
+- Portal korrigiert:
+  - kein sichtbarer Abschnitt `Weitere Angaben / Notizen` mehr;
+  - Serversektionen `NOTIZEN` und `ALLGEMEIN` werden nur für die Darstellung in **4. Ausgeführte Arbeiten** eingemischt;
+  - mehrzeilige Alttexte werden zeilenweise dargestellt;
+  - interne `@ORT=<id>`-Marker werden in der normalen Anzeige ausgeblendet; der eigentliche Text bleibt erhalten;
+  - Persistenz/Datenvertrag bleibt unverändert.
+- Template-JavaScript syntaktisch geprüft: **OK**.
+- Source-Check 95 ergänzt: separater Notizblock ist verboten; Legacy-Notizen müssen in Punkt 4 gerendert werden.
+- **Status: QUELLSTAND FERTIG / LIVE-REDEPLOY + SICHTPRÜFUNG OFFEN.**
+- Foto-GPS-/Metadatenanzeige bleibt der unmittelbar folgende Portalblock; vorhandene `BTBP1__`-Metadaten können dafür rückwirkend ausgewertet werden.
+- `STATUS.xlsx` weiterhin nicht blind überschrieben.
+
 ## Portal-Sichtprüfung 24.09.2026 – BTB V3 nach Benutzerfeedback
 
 - Zweite Live-Sichtprüfung per Screenshots bestätigt weitere konkrete UX-Anforderungen.
