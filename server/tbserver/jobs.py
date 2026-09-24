@@ -20,6 +20,9 @@ from .monitor import write_worker_heartbeat
 MAX_JOB_ATTEMPTS = 5
 STALE_RUNNING_MINUTES = 30
 SCHEDULE_CHECK_SECONDS = 30.0
+STALE_RECOVERY_CHECK_SECONDS = 60.0
+WORKER_ERROR_RETRY_SECONDS = 5.0
+JOB_STATE_UPDATE_ATTEMPTS = 5
 logger = logging.getLogger(__name__)
 
 
@@ -163,6 +166,39 @@ def _safe_error(exc: Exception) -> str:
     return f"{name}: {safe}"[:500]
 
 
+def _retry_job_state_update(label: str, action) -> None:
+    """
+    Jobstatus-Aktualisierungen dürfen den dauerhaften Worker nicht bei einem kurzen
+    PostgreSQL-Aussetzer beenden. Nach wenigen lokalen Retries übernimmt die äußere
+    Worker-Schleife; ein liegen gebliebener RUNNING-Job wird anschließend über die
+    periodische Stale-Recovery wieder eingeordnet.
+    """
+    last_error: Exception | None = None
+    for attempt in range(1, JOB_STATE_UPDATE_ATTEMPTS + 1):
+        try:
+            action()
+            return
+        except Exception as exc:
+            last_error = exc
+            if attempt >= JOB_STATE_UPDATE_ATTEMPTS:
+                break
+            delay = min(
+                WORKER_ERROR_RETRY_SECONDS,
+                max(0.5, float(attempt)),
+            )
+            logger.warning(
+                "worker %s failed (%s), retry %s/%s in %.1fs",
+                label,
+                type(exc).__name__,
+                attempt + 1,
+                JOB_STATE_UPDATE_ATTEMPTS,
+                delay,
+            )
+            time.sleep(delay)
+    assert last_error is not None
+    raise last_error
+
+
 def _mark_done(job_id: UUID) -> None:
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
@@ -219,9 +255,15 @@ def run_one() -> bool:
     try:
         _execute(job)
     except Exception as exc:
-        _mark_failed_or_retry(job, exc)
+        _retry_job_state_update(
+            "job failure state update",
+            lambda: _mark_failed_or_retry(job, exc),
+        )
     else:
-        _mark_done(job["id"])
+        _retry_job_state_update(
+            "job completion state update",
+            lambda: _mark_done(job["id"]),
+        )
     return True
 
 
@@ -237,17 +279,61 @@ def worker_loop(*, once: bool = False, idle_seconds: float = 2.0) -> None:
         name="tb-worker-heartbeat",
         daemon=True,
     ).start()
-    recover_stale_jobs()
+
+    # depends_on/DB-health reduziert Startprobleme, schützt aber nicht vor einem kurzen
+    # PostgreSQL-Neustart direkt danach. Der Langzeit-Worker wartet deshalb selbst, statt
+    # wegen eines einzelnen Verbindungsfehlers den kompletten Containerprozess zu beenden.
+    while True:
+        try:
+            recover_stale_jobs()
+            break
+        except Exception as exc:
+            logger.exception(
+                "worker startup database recovery failed; worker stays alive: %s",
+                type(exc).__name__,
+            )
+            if once:
+                raise
+            time.sleep(WORKER_ERROR_RETRY_SECONDS)
+
     next_schedule_check = 0.0
+    next_stale_recovery_check = time.monotonic() + STALE_RECOVERY_CHECK_SECONDS
     while True:
         now = time.monotonic()
         if now >= next_schedule_check:
             try:
                 schedule_due_automation()
             except Exception as exc:
-                logger.error("system automation scheduler failed: %s", type(exc).__name__)
+                logger.exception(
+                    "system automation scheduler failed; worker stays alive: %s",
+                    type(exc).__name__,
+                )
             next_schedule_check = now + SCHEDULE_CHECK_SECONDS
-        worked = run_one()
+
+        if now >= next_stale_recovery_check:
+            try:
+                recovered = recover_stale_jobs()
+                if recovered:
+                    logger.warning("worker recovered %s stale background job(s)", recovered)
+            except Exception as exc:
+                logger.exception(
+                    "worker stale-job recovery failed; worker stays alive: %s",
+                    type(exc).__name__,
+                )
+            next_stale_recovery_check = now + STALE_RECOVERY_CHECK_SECONDS
+
+        try:
+            worked = run_one()
+        except Exception as exc:
+            logger.exception(
+                "worker loop iteration failed; worker stays alive and retries: %s",
+                type(exc).__name__,
+            )
+            if once:
+                raise
+            time.sleep(WORKER_ERROR_RETRY_SECONDS)
+            continue
+
         if once:
             return
         if not worked:
