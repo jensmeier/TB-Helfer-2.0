@@ -159,25 +159,54 @@ Ziel bei 15 gleichzeitig geänderten Team-BTBs:
 
 ## 9. Medien/Fotos
 
-Heute:
-- App erzeugt 512px-JPEG-Thumbnails lokal für UI;
-- Server-1.0-Upload überträgt die ausgewählte Datei bytegenau in Chunks;
-- Upload unterstützt SHA-256 und Fortsetzen;
-- keine automatische Sync-Komprimierung vor Upload.
+Verbindliches Hybridmodell:
 
-Ziel:
-- lokale Originaldatei bleibt unverändert;
-- normaler Sofort-Sync erzeugt/überträgt eine optimierte Sync-Version (z. B. max. 2560px längste Kante, JPEG ca. 82–85 %, nie hochskalieren);
-- Thumbnail ca. 512px;
-- andere Handys laden zunächst Metadaten/Thumbnail;
-- größere Sync-Version nur bei Anzeige/offline angeforderter Baustelle;
-- Originalarchiv optional separat und bevorzugt WLAN/NAS, niemals automatisch auf jedes andere Handy.
+### Mobile Aufnahme
+- Kameroriginal bleibt unverändert auf dem Aufnahme-Handy.
+- Online-Sync erzeugt nur:
+  - stabile Foto-ID + Metadaten/Bildlisten-Eintrag;
+  - kleine BTB-/Portal-Sync-Version (Richtwert längste Kante ca. 1920 px, JPEG 80–82 %, nie hochskalieren);
+  - Thumbnail ca. 512 px.
+- Server und verantwortlicher TB erhalten die kleine Sync-Version; allgemeine Helfergeräte müssen weiterhin nicht jedes fremde Helferfoto automatisch als Bilddatei vorladen.
+- Bildlisten/BTB-Zuordnungen sind trotzdem auf allen berechtigten Geräten vollständig bekannt.
 
-Lastbeispiel mit Faktor 15:
-- 240 mobile Nutzer × 15 Fotos/Tag = **3.600 Fotos/Tag**.
-- Bei 8 MB Original wären das etwa 28,8 GB Upload/Tag allein für Originale.
-- Bei ~1 MB Sync-Version etwa 3,6 GB/Tag.
-- Würde jedes Bild zusätzlich automatisch an die anderen 15 Teamgeräte verteilt, entstünden 54.000 Bild-Downloads/Tag; deshalb sind Thumbnail/Lazy-Download zwingend sinnvoll.
+### Portal-/Laptop-Aufnahme
+- Wird ein Bild im Portal hochgeladen, ist die dort empfangene Datei die serverseitige Quelldatei und darf auf dem NAS erhalten bleiben.
+- Der Server erzeugt daraus dieselbe kleine Sync-Version + Thumbnail.
+- Mobile Geräte erhalten nur diese kleine Version bzw. Thumbnail, nicht ungefragt die volle Portaldatei.
+
+### Originalübergabe nach Schicht
+- Handy-Originale werden nicht über den normalen Delta-Sync vervielfacht.
+- Jeder Nutzer kann seine Originale nach Schichtende per Laptop/USB an den verantwortlichen TB übergeben.
+- Für die spätere Umsetzung ist ein Exportmanifest mit stabilen Foto-IDs, BTB-ID, Ersteller-ID, Dateiname, Aufnahmezeit und Prüfsumme vorzusehen, damit 15 Nutzer ihre Originale kollisionsfrei in einen gemeinsamen Laptop-Bestand zusammenführen können.
+- Die USB-/Laptop-Originalübergabe ist ein Archiv-/Übergabeprozess und kein Grund, den fachlichen Online-BTB-Abschluss zu blockieren.
+
+Lastbeispiel:
+- 240 mobile Nutzer × 15 Fotos/Tag = 3.600 Fotos/Tag.
+- Volloriginale werden dadurch nicht automatisch auf NAS und anschließend auf Teamgeräte vervielfacht.
+- Online-Last besteht primär aus kleinen Sync-Versionen/Thumbnails/Metadaten; Originalarchivierung bleibt separater manueller bzw. später optionaler WLAN-Prozess.
+
+## 9a. Schichtende / gemeinsamer BTB
+
+Ein Team-BTB bleibt ein gemeinsamer BTB des verantwortlichen TBs und seiner Helfer.
+
+Deshalb gibt es zwei getrennte Zustände:
+
+1. **Nutzerbeitrag / Schicht fertig**
+   - jeder beteiligte Nutzer markiert nur seinen eigenen Beitrag als fertig;
+   - zuvor werden lokale Fachänderungen und kleine Bild-Sync-Versionen übertragen;
+   - der gemeinsame BTB bleibt offen;
+   - eigener Status ist serverseitig sichtbar und kann vor dem finalen Abschluss bewusst wieder geöffnet werden.
+
+2. **BTB endgültig abschließen**
+   - ausschließlich verantwortlicher Haupt-TB / Teamleiter;
+   - sieht Status aller am BTB beteiligten Nutzer;
+   - normaler Abschluss erst, wenn alle beteiligten Nutzer fertig bzw. bewusst als nicht beteiligt markiert sind;
+   - falls trotzdem abgeschlossen werden muss, müssen offene Nutzer ausdrücklich angezeigt und ein Ausnahmeabschluss bestätigt werden;
+   - danach greift der bestehende BTB-Finalize-/Original-Snapshot-/PDF-Vertrag.
+
+Der endgültige BTB-Abschluss benötigt **nicht** die manuellen Volloriginale vom USB-Stick. Er benötigt aber vollständig synchronisierte Fachinhalte, Bildmetadaten und kleine Server-Sync-Versionen.
+
 
 ## 10. Autosave-/Schreiblast
 
