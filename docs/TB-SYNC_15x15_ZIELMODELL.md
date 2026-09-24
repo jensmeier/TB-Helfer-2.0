@@ -294,6 +294,19 @@ Erfolg bedeutet:
 
 ## 13. Aktueller Status
 
-**ARCHITEKTUR GEPRÜFT / 15×15-ZIEL TRAGFÄHIG MIT NACHRÜSTUNGEN / HEUTIGER 2s-SSE+VOLLSYNC-PFAD NICHT FÜR 255 CLIENTS FREIGEGEBEN**
+**ARCHITEKTUR GEPRÜFT / BTB-SCHICHTSTATUS SERVER-QUELLSTAND FERTIG / 15×15-DELTA-/PUSH-/MEDIENUMSETZUNG WEITER OFFEN**
 
-Keine DB-/API-Umsetzung in diesem Prüfschritt. Android-`app/**` wurde im SERVER-Projekt nicht geändert.
+Server-Quellstand 24.09.2026:
+- Migration `014_btb_participant_shift_status.sql` legt BTB-Teilnehmerzustände `WORKING / FINISHED / NOT_PARTICIPATING` an.
+- API besitzt `/participants`, `/shift-finish`, `/shift-resume` und Teamleiter-Statuspflege.
+- Helfer mit `FINISHED` sind serverseitig für weitere BTB-Inhalts-/BTB-Fotoänderungen gesperrt, bis sie ihre Schicht fortsetzen.
+- `BTB endgültig abschließen` sowie Reaktivierung und Abschluss-PDF sind an den tatsächlichen `teams.lead_user_id` gebunden.
+- Abschluss mit offenen Beteiligten liefert standardmäßig Konflikt; bewusster `allow_unfinished`-Ausnahmeabschluss ist vorgesehen und auditierbar.
+- Abschluss-PDF wird zusätzlich im allgemeinen Datei-/Content-Pfad für Nicht-Teamleiter verborgen; der reservierte Zweck `BTB_FINAL_PDF` kann nicht über normalen Upload erzeugt werden.
+- Capabilities: `btb_participant_shift_end_v1`, `btb_pdf_team_lead_only_v1`.
+- CI wurde auf Migration 14 + Source-Check 92 aktualisiert.
+- Lokale/Connector-Source-Assertions waren erfolgreich. GitHub-Actions-Läufe am 24.09.2026 endeten jedoch ohne ausgeführte Runner-Steps; daraus wird ausdrücklich kein bestandener CI-/Runtime-Test abgeleitet.
+- **Deployment bewusst offen:** Erst Portal/Android an den neuen Vertrag anbinden, danach Migration 014 kontrolliert auf Synology anwenden.
+- Android-`app/**` wurde im SERVER-Projekt nicht geändert.
+
+Weiter offen bleiben insbesondere Team-Delta-Fanout, Push-Wake, DB-Pooling, kleine Bildrenditionen/Thumbnails und der 15×15-Lasttest.
