@@ -1129,12 +1129,17 @@ document.getElementById('headerForm').addEventListener('submit',async function(e
     show('ok','Kopfdaten gespeichert.');await loadBtb();
   }catch(error){show('err',error.message||String(error));}
 });
+document.getElementById('weatherModalClose').addEventListener('click',closeWeatherEditor);
+document.getElementById('weatherModalCancel').addEventListener('click',closeWeatherEditor);
+document.getElementById('weatherModalSave').addEventListener('click',saveWeatherEditor);
+document.getElementById('weatherAddSlot').addEventListener('click',addWeatherSlot);
+document.getElementById('weatherModal').addEventListener('click',function(ev){if(ev.target===this)closeWeatherEditor();});
 document.getElementById('entryModalClose').addEventListener('click',closeEntryEditor);
 document.getElementById('entryModalCancel').addEventListener('click',closeEntryEditor);
 document.getElementById('entryModalSave').addEventListener('click',saveModalEntry);
 document.getElementById('entryModalDelete').addEventListener('click',deleteModalEntry);
 document.getElementById('entryModal').addEventListener('click',function(ev){if(ev.target===this)closeEntryEditor();});
-document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&document.getElementById('entryModal').classList.contains('open'))closeEntryEditor();});
+document.addEventListener('keydown',function(ev){if(ev.key!=='Escape')return;if(document.getElementById('weatherModal').classList.contains('open'))closeWeatherEditor();if(document.getElementById('entryModal').classList.contains('open'))closeEntryEditor();});
 async function deleteEntry(id){
   if(!confirm('Eintrag wirklich aus dem BTB entfernen?'))return;
   try{
