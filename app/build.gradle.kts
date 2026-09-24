@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200066: direkter Baustellen-QR-Scanner nutzt den gemeinsamen
-        // Server-1.0-Einladungsparser mit case-sensitivem Token und Legacy-TBI-Fallback.
-        versionCode = 200066
-        versionName = "1.3.16"
+        // Android 200067: persistenter selektiver BTB-Delta-Sync (Phase 1 des 15x15-Modells);
+        // alter MANUELL/STÜNDLICH/TÄGLICH-Zeitplan und periodischer Vollsync entfernt.
+        versionCode = 200067
+        versionName = "1.3.17"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
