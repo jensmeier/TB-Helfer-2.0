@@ -49,6 +49,8 @@
   .btb-weather-head{font-weight:700;margin-bottom:8px}.btb-weather-slots{display:flex;flex-wrap:wrap;gap:8px}
   .btb-weather-slot{border:1px solid #e4e7ec;border-radius:12px;padding:8px 10px;background:#f8fafc;min-width:125px}
   .btb-weather-time{font-weight:700}.btb-weather-detail{font-size:13px;color:#475467;margin-top:2px}
+  .btb-subsection-tools{display:flex;justify-content:flex-end;padding:10px 0 6px}.btb-photo-group{margin-bottom:22px}.btb-photo-group:last-child{margin-bottom:0}.btb-photo-group-title{font-size:16px;margin:0 0 10px;color:#101828}
+  .btb-weather-editor-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 0 8px}.btb-weather-edit-row{display:grid;grid-template-columns:110px 100px 1fr 1fr 100px auto;gap:8px;align-items:end;padding:10px 0;border-top:1px solid #eaecf0}.btb-weather-edit-row:first-child{border-top:0}.btb-weather-edit-row label{font-size:12px}
   .btb-extra-fold{margin-top:12px;border:1px solid #e4e7ec;border-radius:14px;overflow:hidden}
   .btb-extra-fold>summary{cursor:pointer;padding:12px 14px;font-weight:700;background:#f8fafc}
   @media (max-width:760px){.btb-overview-grid{grid-template-columns:1fr}}
@@ -104,23 +106,22 @@
 <div class="card">
   <details class="btb-fold">
     <summary>2. Wetter</summary>
-    <div id="weatherSummary" class="btb-fold-content"></div>
+    <div class="btb-fold-content"><div class="btb-section-actions" style="justify-content:flex-end;margin-bottom:10px"><button id="editWeatherButton" class="btb-add" type="button" onclick="openWeatherEditor()">Wetter bearbeiten</button></div><div id="weatherSummary"></div></div>
   </details>
 </div>
 
 <div class="card">
   <div class="topline">
     <h2>3. Personal / Geräte</h2>
-    <button id="addFirmButton" class="btb-add" type="button" onclick="openEntryCreator('FIRMA')">+ Firma</button>
   </div>
   <div class="btb-overview-grid">
     <details class="btb-subfold">
       <summary>Personal</summary>
-      <div id="personalEntries" class="btb-subfold-body"></div>
+      <div class="btb-subfold-body"><div class="btb-subsection-tools"><button id="addPersonalFirmButton" class="btb-add" type="button" onclick="openEntryCreator('FIRMA','PERSONAL')">+ Firma hinzufügen</button></div><div id="personalEntries"></div></div>
     </details>
     <details class="btb-subfold">
       <summary>Geräte / Maschinen</summary>
-      <div id="deviceEntries" class="btb-subfold-body"></div>
+      <div class="btb-subfold-body"><div class="btb-subsection-tools"><button id="addDeviceFirmButton" class="btb-add" type="button" onclick="openEntryCreator('FIRMA','MASCHINEN')">+ Firma hinzufügen</button></div><div id="deviceEntries"></div></div>
     </details>
   </div>
 </div>
@@ -242,7 +243,7 @@ function lifecycle(){
   document.getElementById('participantsCard').style.display=shiftContractAvailable?'block':'none';
   document.getElementById('headerForm').style.display=canEditCurrentBtb()?'block':'none';
   document.getElementById('headerEditor').style.display=canEditCurrentBtb()?'block':'none';
-  document.getElementById('addFirmButton').style.display=canEditCurrentBtb()?'inline-block':'none';
+  ['addPersonalFirmButton','addDeviceFirmButton','editWeatherButton'].forEach(function(id){document.getElementById(id).style.display=canEditCurrentBtb()?'inline-block':'none';});
   document.getElementById('deleteBtb').style.display=(can('btb.delete')&&(!shiftContractAvailable||isTeamLead()))?'inline-block':'none';
 }
 const PHOTO_TYPES=['ABNAHMEN','EINWEISUNG_UNTERWEISUNG','BESONDERHEITEN','MAENGEL_SCHAEDEN','FOTODOKUMENTATION'];
