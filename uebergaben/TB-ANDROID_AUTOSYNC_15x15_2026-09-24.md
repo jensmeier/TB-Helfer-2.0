@@ -56,3 +56,35 @@ Später:
 ## Zuständigkeit
 
 `app/**` wird im ANDROID-Projekt umgesetzt. SERVER liefert Change-Feed, Push-Zielgruppen, DB-Pooling und Live-Notifier.
+
+## Ergänzung 24.09.2026 – Fotos und Schichtende
+
+### Fotos
+
+- Mobiles Kameroriginal bleibt auf dem Aufnahmegerät.
+- Normaler Online-Sync überträgt nur:
+  - stabile Foto-ID und Metadaten;
+  - kleine Sync-Version (Richtwert ca. 1920 px längste Kante, JPEG 80–82 %);
+  - Thumbnail ca. 512 px.
+- Kein automatischer Volloriginal-Upload aus der normalen Kamera-Syncstrecke.
+- Bildlisten müssen trotzdem vollständig aus Metadaten aufgebaut werden.
+- Portalbilder: Server/NAS darf die dort hochgeladene Quelldatei behalten; Android lädt nur kleine Sync-Version/Thumbnail.
+- Späterer Originalexport Handy → Laptop/USB → Haupt-TB benötigt stabile Foto-/BTB-/Benutzer-ID und Manifest/Prüfsumme.
+
+### Schichtende
+
+Nicht den gemeinsamen BTB durch jeden Helfer finalisieren.
+
+Neuer Rollenvertrag:
+- jeder beteiligte Nutzer: eigener Status `ARBEITET` / `FERTIG` (optional `NICHT_BETEILIGT`);
+- Aktion in App: `Schicht fertig` / `Beitrag fertig`;
+- davor selektiven Sync der letzten Fachdaten und kleinen Bild-Versionen sicherstellen;
+- `FERTIG` beendet nur diesen Nutzerbeitrag;
+- eigener Beitrag darf bis zum finalen Teamabschluss bewusst wieder geöffnet werden;
+- nur verantwortlicher Haupt-TB/Teamleiter besitzt `BTB endgültig abschließen`;
+- Haupt-TB sieht alle Teilnehmerzustände;
+- Normalfall: alle beteiligten Nutzer fertig;
+- offene Nutzer bei Ausnahmeabschluss sichtbar nennen und ausdrückliche Bestätigung verlangen;
+- USB-Volloriginale sind kein technisches Finalize-Kriterium.
+
+Bestehende Server-1.0-BTB-Finalize-/Original-Snapshot-/PDF-Regeln dürfen dabei nicht ersetzt werden.
