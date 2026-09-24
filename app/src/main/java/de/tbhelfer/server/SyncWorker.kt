@@ -5,11 +5,9 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
@@ -22,14 +20,13 @@ import de.tbhelfer.datenbank.WorksiteStructureSync
 import de.tbhelfer.einstellungen.SyncEinstellungenSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbDeleteSyncCoordinator
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 
 /**
  * Gemeinsamer vollständiger Server-Sync für Hintergrund und bewusst manuelle Läufe.
  *
- * Automatische Läufe halten sich strikt an Zeitplan + Netzregel. Ein bewusst über die UI
- * ausgelöster manueller Lauf umgeht diese beiden Präferenzen, benötigt aber weiterhin eine
- * tatsächlich vorhandene Internetverbindung (WorkManager-Constraint).
+ * Der vollständige Lauf ist Recovery/Vollabgleich. Der frühere periodische Zeitplan ist entfernt.
+ * Übergangsweise können noch nicht selektiv angebundene Fachbereiche diesen Worker ereignisgetrieben
+ * anstoßen. "Neu laden" bleibt der bewusst manuelle Vollabgleich.
  */
 class SyncWorker(
     appContext: Context,
@@ -40,9 +37,8 @@ class SyncWorker(
         ServiceLocator.initialisieren(applicationContext)
         val manualRun = inputData.getBoolean(INPUT_MANUAL, false)
         val settings = SyncEinstellungenSpeicher.laden(applicationContext)
-        if (!manualRun) {
-            if (settings.zeitplan == SyncEinstellungenSpeicher.Zeitplan.MANUELL) return Result.success()
-            if (!networkAllowed(settings.netz)) return Result.success()
+        if (!manualRun && !networkAllowed(settings.netz)) {
+            return Result.success()
         }
 
         val tokenStore = SecureTokenStore(applicationContext)
@@ -325,32 +321,9 @@ class SyncWorker(
         const val OUTPUT_MESSAGE = "sync_message"
 
         fun schedule(context: Context) {
-            val appContext = context.applicationContext
-            val settings = SyncEinstellungenSpeicher.laden(appContext)
-            val workManager = WorkManager.getInstance(appContext)
-            if (settings.zeitplan == SyncEinstellungenSpeicher.Zeitplan.MANUELL) {
-                workManager.cancelUniqueWork(UNIQUE_NAME)
-                return
-            }
-
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresBatteryNotLow(true)
-                .build()
-            val repeatHours = when (settings.zeitplan) {
-                SyncEinstellungenSpeicher.Zeitplan.MANUELL -> return
-                SyncEinstellungenSpeicher.Zeitplan.STUENDLICH -> 1L
-                SyncEinstellungenSpeicher.Zeitplan.TAEGLICH -> 24L
-            }
-            val request = PeriodicWorkRequestBuilder<SyncWorker>(repeatHours, TimeUnit.HOURS)
-                .setConstraints(constraints)
-                .build()
-
-            workManager.enqueueUniquePeriodicWork(
-                UNIQUE_NAME,
-                ExistingPeriodicWorkPolicy.UPDATE,
-                request
-            )
+            // Altinstallationen können noch einen stündlichen/täglichen PeriodicWork-Eintrag
+            // besitzen. Der neue 15x15-Vertrag erlaubt keinen periodischen Vollsync.
+            WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_NAME)
         }
 
         /**
