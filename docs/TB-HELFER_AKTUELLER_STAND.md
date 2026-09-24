@@ -1,3 +1,27 @@
+## Quellblock 24.09.2026 – BTB-Schichtende / Teamleiter-Finalisierung
+
+- Auftrag aus SYNC-003/SYNC-004 serverseitig als erster Baustein umgesetzt.
+- Neue Migration **014**: `tb.btb_participant_states` mit `WORKING`, `FINISHED`, `NOT_PARTICIPATING`, Versions-/Zeitstempel und Indizes.
+- Neue Server-API:
+  - `GET /api/v1/btbs/{btb_id}/participants`
+  - `POST /api/v1/btbs/{btb_id}/shift-finish`
+  - `POST /api/v1/btbs/{btb_id}/shift-resume`
+  - `PATCH /api/v1/btbs/{btb_id}/participants/{user_id}` für Teamleiter (`WORKING` / `NOT_PARTICIPATING`).
+- Bei neuem BTB werden aktuelle Teammitglieder in den Teilnehmerstatus übernommen; später hinzugekommene aktive Teammitglieder werden beim Statuszugriff/Fertigstellen/Finalisieren nachgezogen.
+- Ein Helfer mit serverseitigem `FINISHED` kann BTB-Kopf, Einträge und BTB-Fotoänderungen nicht weiter schreiben. `shift-resume` öffnet den eigenen Beitrag vor dem finalen Teamabschluss wieder.
+- **Nur `teams.lead_user_id`** darf den gemeinsamen BTB finalisieren oder einen abgeschlossenen BTB reaktivieren.
+- Beim Finalisieren wird der Teamleiter selbst als `FINISHED` geführt. Offene Helfer erzeugen standardmäßig `BTB_PARTICIPANTS_NOT_FINISHED`; bewusster Ausnahmeabschluss über `allow_unfinished=true` wird im Audit dokumentiert.
+- PDF-Sicherheit geschlossen:
+  - `GET /api/v1/btbs/{id}/final-pdf` verlangt Teamleitung;
+  - `GET /api/v1/files/{id}`, Dateiliste und `/content` respektieren bei `BTB_FINAL_PDF` ebenfalls den Teamleiter-Guard;
+  - normaler Upload darf den reservierten Zweck `BTB_FINAL_PDF` nicht setzen.
+- Neue Capabilities: `btb_participant_shift_end_v1=true`, `btb_pdf_team_lead_only_v1=true`.
+- CI auf Migration 14 und Source-Check `92_verify_btb_shift_end_source.py` aktualisiert. Connector-Source-Assertions bestanden.
+- GitHub Actions lief am aktuellen Quellstand **ohne Runner-Steps** in Failure; keine Logs/ausgeführten Tests vorhanden. Das ist **kein Runtime-/CI-Testnachweis** und wird nicht als bestanden ausgegeben.
+- **Status: QUELLSTAND FERTIG / DEPLOYMENT + MIGRATION 014 + PORTAL/ANDROID + E2E OFFEN.**
+- Noch **nicht auf Synology deployen**, bis Portal/Android `Schicht Ende`, Teilnehmerstatus und Teamleiter-Finalisierung unterstützen; sonst würden bestehende Clients beim Abschluss erwartungsgemäß in den neuen Guard laufen.
+- `STATUS.xlsx` bleibt in diesem Schritt unverändert: Android-XLSX ist älter als die Server-XLSX, aber die binäre GitHub-Datei liegt hier nicht sicher editierbar/materialisiert vor; kein blindes Überschreiben.
+
 # TB-Helfer – aktueller Projektstand
 
 ## Laufzeitbefund 24.09.2026 – Background-Worker startet wiederholt neu
