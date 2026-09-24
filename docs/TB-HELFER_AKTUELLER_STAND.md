@@ -16,8 +16,9 @@
   - Heartbeat bleibt unabhängig aktiv.
 - Regression-Check 41 wurde erweitert: `0013fa37e84a2f422927d14c56ec0e773524ee9a`.
 - **Keine DB-Migration und keine Compose-Änderung.** `restart: unless-stopped` bleibt korrekt und dient nur noch als letzte Rückfallebene.
-- **Laufzeitdiagnose bestätigt:** Der aktuell laufende Worker enthält den Robustheitsfix noch nicht (alle vier Prüfmarker fehlen). PID 1 lief beim Test erst ca. 41 Minuten. Der exportierte Log zeigt 23.09. 18:41 `database system is shutting down` und 24.09. 07:02 einen `ConnectionTimeout` in `claim_job()`. Anschließend waren 20/20 direkte DB-Pings erfolgreich. Die DB ist aktuell stabil; der alte Worker stirbt aber bei temporären DB-/Netzunterbrechungen weiterhin.
-- **Deployment/Langzeittest weiterhin offen:** `server/tbserver/jobs.py` tatsächlich auf Synology ersetzen, Worker neu starten, Marker erneut prüfen und danach mindestens einen Background-Job praktisch ausführen. Zusätzlich DB-Startzeit/DB-Log um die beiden Fehlerzeitpunkte prüfen, um den Auslöser der PostgreSQL-Unterbrechung zu bestimmen.
+- **Laufzeitdiagnose bestätigt:** Der exportierte Log zeigt 23.09. 18:41 `database system is shutting down`; die Datenbank meldet als Startzeit 23.09. 18:42:18 und wurde damit zu diesem Zeitpunkt tatsächlich neu gestartet. Am 24.09. 07:02 trat zusätzlich ein `ConnectionTimeout` in `claim_job()` auf, obwohl PostgreSQL seit 18:42 durchlief. 20/20 direkte DB-Pings waren anschließend erfolgreich.
+- **Fix jetzt deployt:** `jobs.py` wurde auf Synology aktualisiert und der Worker neu gestartet. Im laufenden Container wurden alle vier Robustheitsmarker mit `OK` bestätigt: `WORKER_ERROR_RETRY_SECONDS`, `JOB_STATE_UPDATE_ATTEMPTS`, äußere Loop-Retry-Barriere und Startup-DB-Retry. PID 1 war beim ersten Nachtest frisch gestartet.
+- **Langzeittest offen:** Worker über längere Zeit beobachten und mindestens einen Background-Job praktisch ausführen. Bei erneutem Neustart neuen Worker-Trace plus DB-/Container-Log derselben Uhrzeit sichern; erst dann weitere Ursache eingrenzen.
 - Sollte der Worker danach trotzdem neu starten, ist der neue Worker-Trace zu prüfen; externe Prozessabbrüche wie OOM/Kill wären dann separat nachzuweisen.
 - `STATUS.xlsx` bleibt wegen des bekannten Binär-/Versionsstands unangetastet.
 
