@@ -28,6 +28,6 @@ SERVERVERTRAG:
 TESTSTATUS:
 - Ursache im aktuellen Android-Code reproduziert
 - Source-Fix umgesetzt
-- Source-Check offen/anschließend zu bestätigen
+- Source-Checks bestanden: Abschluss verwendet SofortSync.btbAnstossen(...) mit saved.baustelleId + saved.btbId; allgemeiner SofortSync.anstossen(...) ist aus diesem Abschlussblock entfernt
 - Android-Build 200068 noch offen
 - Installation und Server-E2E offen
