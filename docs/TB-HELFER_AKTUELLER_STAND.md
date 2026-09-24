@@ -1,3 +1,23 @@
+## Praxistest + Portalansicht 24.09.2026 – Android-BTB im Portal lesbar
+
+- Android **1.3.17 / 200067** ist laut Android-Branch installiert (`feature/tb-android-2.0` HEAD `d7869a2d`).
+- Praktischer Teilnachweis durch Benutzer: auf dem Android-Gerät eingegebener BTB-Testtext ist serverseitig angekommen und im Portal-BTB sichtbar.
+- Dieser Nachweis bestätigt **Android → Server → Portal für den geänderten BTB-Inhalt praktisch**, aber noch nicht die vollständige Selektivität. API-Logprüfung, dass dabei keine Katalog-/Baum-/Track-/Mangel-/Abnahme-Vollpfade liefen, bleibt offen.
+- Benutzerfeedback zur Portalansicht: bisherige Standarddarstellung mit Sortierung, Version und Roh-JSON ist im Arbeitsalltag zu unübersichtlich und der eingegangene Text schwer auffindbar.
+- Portal-BTB-Quellstand deshalb auf eine **lesbare App-nahe Abschnittsdarstellung** umgestellt:
+  - Einträge werden nach fachlichen Abschnitten gruppiert;
+  - feste Bezeichnungen u. a. `Personal`, `Geräte / Maschinen`, `Ausgeführte Arbeiten`, `Abnahmen`, `Einweisung / Unterweisung`, `Besonderheiten`, `Mängel / Schäden`, `Notizen`;
+  - Android-interne Felder `_tb_android_*` werden in der normalen Ansicht ausgeblendet;
+  - `@ALLGEMEIN •`-Präfixe werden nur für die Anzeige bereinigt, die gespeicherten Daten bleiben unverändert;
+  - Sortierung, Version und JSON erscheinen nur noch hinter `Bearbeiten`;
+  - Berichtsdatum/Beginn/Ende stehen als kompakte Übersicht oben;
+  - technischer JSON-Bearbeitungsweg bleibt erhalten und verändert den Sync-/Datenvertrag nicht.
+- Bestehende Rollenlogik `Schicht Ende` / Haupt-TB-Finalisierung / PDF-Sperre wurde nicht ersetzt.
+- Source-Check `94_verify_portal_btb_readable_source.py` ergänzt und im Server-CI eingetragen; Connector-Source-Assertions bestanden.
+- **Status: PORTAL-LESBARKEIT QUELLSTAND FERTIG / LIVE-DEPLOY + PRAKTISCHE SICHTPRÜFUNG OFFEN.**
+- Kein `app/**` im SERVER-Projekt geändert.
+- `STATUS.xlsx` weiterhin nicht blind überschrieben; GitHub-Server-XLSX ist neuer als der Android-XLSX-Stand und die binäre Datei liegt in diesem Arbeitsweg nicht sicher editierbar vor.
+
 ## Quellblock 24.09.2026 – Portal für Schichtende vorbereitet
 
 - Portal-BTB-Seite auf den neuen Teilnehmer-/Teamleitervertrag angepasst.
