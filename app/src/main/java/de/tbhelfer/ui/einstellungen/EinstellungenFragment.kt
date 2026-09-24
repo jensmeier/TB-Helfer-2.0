@@ -12,6 +12,8 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import de.tbhelfer.R
 import de.tbhelfer.einstellungen.SyncEinstellungenSpeicher
+import de.tbhelfer.server.Schema13Worker
+import de.tbhelfer.server.SelectiveSyncWorker
 import de.tbhelfer.server.SyncStatusSpeicher
 import de.tbhelfer.server.SyncWorker
 
@@ -73,7 +75,7 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
         }
         btnSynchronisation.text = buildString {
             append("Synchronisation\n")
-            append(SyncEinstellungenSpeicher.zeitplanLabel(cfg.zeitplan))
+            append("Automatischer Delta-Sync")
             append(" · ")
             append(SyncEinstellungenSpeicher.netzLabel(cfg.netz))
             append(" · ")
@@ -98,16 +100,6 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
             setPadding(0, gap, 0, gap / 2)
         }
 
-        val zeitplan = RadioGroup(requireContext()).apply { orientation = RadioGroup.VERTICAL }
-        val zeitplanButtons = SyncEinstellungenSpeicher.Zeitplan.entries.associateWith { value ->
-            RadioButton(requireContext()).apply {
-                text = SyncEinstellungenSpeicher.zeitplanLabel(value)
-                isChecked = value == current.zeitplan
-                id = View.generateViewId()
-                zeitplan.addView(this)
-            }
-        }
-
         val netz = RadioGroup(requireContext()).apply { orientation = RadioGroup.VERTICAL }
         val netzButtons = SyncEinstellungenSpeicher.Netz.entries.associateWith { value ->
             RadioButton(requireContext()).apply {
@@ -118,12 +110,17 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
             }
         }
 
-        box.addView(sectionTitle("Automatischer Sync"))
-        box.addView(zeitplan)
+        box.addView(sectionTitle("Automatischer Delta-Sync"))
+        box.addView(TextView(requireContext()).apply {
+            text = "Fachänderungen werden automatisch klein und gezielt synchronisiert. Neu laden bleibt der bewusste vollständige Recovery-Abgleich."
+            textSize = 12f
+            alpha = 0.78f
+            setPadding(0, 0, 0, gap)
+        })
         box.addView(sectionTitle("Erlaubtes Netz"))
         box.addView(netz)
         box.addView(TextView(requireContext()).apply {
-            text = "Manuell ausgelöste Synchronisation bleibt bewusst möglich; die Netzregel steuert vor allem den automatischen Hintergrund-Sync."
+            text = "Die Netzregel gilt für den automatischen Delta-Sync. Ein bewusstes Neu laden bleibt als Vollabgleich verfügbar."
             textSize = 12f
             alpha = 0.72f
             setPadding(0, gap, 0, 0)
@@ -134,15 +131,16 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
             .setView(box)
             .setNegativeButton("Abbrechen", null)
             .setPositiveButton("Speichern") { _, _ ->
-                val selectedZeitplan = zeitplanButtons.entries.firstOrNull { it.value.isChecked }?.key
-                    ?: current.zeitplan
                 val selectedNetz = netzButtons.entries.firstOrNull { it.value.isChecked }?.key
                     ?: current.netz
                 SyncEinstellungenSpeicher.speichern(
                     requireContext(),
-                    SyncEinstellungenSpeicher.Einstellungen(selectedZeitplan, selectedNetz)
+                    SyncEinstellungenSpeicher.Einstellungen(selectedNetz)
                 )
+                // Alte periodische Vollsync-Einträge sicher entfernen; Dirty-Scopes bleiben erhalten.
                 SyncWorker.schedule(requireContext())
+                Schema13Worker.schedule(requireContext())
+                SelectiveSyncWorker.enqueueIfPending(requireContext())
                 aktualisiereSyncButton()
             }
             .show()
