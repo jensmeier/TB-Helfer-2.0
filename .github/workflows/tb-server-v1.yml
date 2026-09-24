@@ -131,6 +131,7 @@ jobs:
           python server/checks/93_verify_portal_btb_shift_end_source.py
           python server/checks/94_verify_portal_btb_readable_source.py
           python server/checks/95_verify_portal_btb_android_like_editor_source.py
+          python server/checks/96_verify_portal_btb_crud_source.py
 
       # Migration 014_btb_participant_shift_status.sql is included by the normal migration runner.
       - name: Apply fresh TB-Server 1.0 baseline
