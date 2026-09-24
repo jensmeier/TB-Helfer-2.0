@@ -110,3 +110,23 @@ Der lokale Android-Studio-Build ist erfolgreich abgeschlossen. Gebauter App-Quel
   - vor `shift-finish` selektiven BTB-/Bild-Sync vollständig bestätigen.
 
 **Migration 014 / neuer Schichtende-Serververtrag weiterhin nicht allein wegen dieses Phase-1-Android-Commits deployen. Gemeinsamen Android-/Portal-/Serverstand zuerst zusammen E2E prüfen.**
+
+
+## Nachtrag 200068 – BTB-Abschluss-Trigger
+
+Beim E2E von 200067 wurde ein konkreter Triggerfehler gefunden:
+
+- Handy schließt den BTB lokal korrekt ab.
+- Danach verwendete `BtbModernLifecycleInstaller` noch `SofortSync.anstossen(...)`.
+- Der Abschluss landete damit nicht zuverlässig im selektiven Dirty-Scope des konkreten BTB.
+- Server/Portal konnten deshalb weiterhin `ACTIVE` anzeigen.
+
+Android 1.3.18 / 200068 korrigiert ausschließlich diesen Trigger:
+`SofortSync.btbAnstossen(appContext, saved.baustelleId, saved.btbId)`
+
+Serververtrag unverändert. Nach neuem Build E2E prüfen:
+1. BTB abschließen.
+2. selektiven Upload des gleichen btbId nachweisen.
+3. Server-BTB muss FINALIZED sein.
+4. Team `active_btb_id` muss NULL sein.
+5. Portal muss anschließend „Abgeschlossen“ anzeigen.
