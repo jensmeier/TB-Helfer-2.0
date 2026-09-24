@@ -88,3 +88,29 @@ Neuer Rollenvertrag:
 - USB-Volloriginale sind kein technisches Finalize-Kriterium.
 
 Bestehende Server-1.0-BTB-Finalize-/Original-Snapshot-/PDF-Regeln dürfen dabei nicht ersetzt werden.
+
+## Ergänzung – rollenabhängige BTB-Aktionen
+
+Für die spätere Android-Umsetzung verbindlich:
+
+### HELFER
+- `btnPdfFinal` darf fachlich nicht mehr `BTB Abschluss` auslösen.
+- sichtbare Abschlussaktion heißt **`Schicht Ende`**.
+- `Schicht Ende`:
+  1. lokalen BTB speichern;
+  2. selektiven Sync abwarten;
+  3. kleine Bildrenditionen/Metadaten bestätigen;
+  4. eigenen Teilnehmerstatus serverseitig auf `FERTIG` setzen.
+- offline: `Schichtende vorgemerkt / Synchronisation ausstehend`; noch nicht als serverseitig fertig ausgeben.
+- danach Eingabe read-only; bewusste Aktion `Schicht fortsetzen` bis Haupt-TB finalisiert.
+- `btnPdf` / PDF-Entwurf ausblenden.
+- Abschluss-PDF/BTB-PDF-Viewer aus BTB-Verlauf ausblenden.
+- **Originalbilder exportieren** bleibt als eigenständiger Exportweg verfügbar.
+
+### HAUPT-TB / TEAMLEITER
+- maßgeblich ist die serverseitige Teamleitung (`teams.lead_user_id`);
+- PDF-Entwurf und Abschluss-PDF bleiben verfügbar;
+- Teilnehmerstatus anzeigen;
+- alleinige Aktion `BTB endgültig abschließen`.
+
+Nicht nur UI prüfen: Server wird den Abschluss-PDF-Zugriff ebenfalls auf Teamleiter/PDF-Recht begrenzen.
