@@ -515,14 +515,21 @@ class CollabSyncRepository(
 
     suspend fun synchronizeServer1BtbPending(
         token: String,
-        api: Server1BtbApi = Server1BtbApi()
+        api: Server1BtbApi = Server1BtbApi(),
+        worksiteServerId: String? = null,
+        clientBtbId: String? = null
     ): Server1BtbUploadResult {
         var uploaded = 0
         var failed = 0
         var conflicts = 0
-        for (context in dao.worksiteContexts()) {
+        for (context in dao.worksiteContexts().filter { item ->
+            worksiteServerId == null || item.worksiteServerId == worksiteServerId
+        }) {
             val pending = dao.collabPendingChanges(context.worksiteServerId)
-                .filter { it.entityType.uppercase() == SyncCollabPendingChangeEntity.TYPE_BTB }
+                .filter { change ->
+                    change.entityType.uppercase() == SyncCollabPendingChangeEntity.TYPE_BTB &&
+                        (clientBtbId == null || change.clientEntityKey == clientBtbId)
+                }
             for (change in pending) {
                 dao.updateCollabChangeState(
                     change.id,
