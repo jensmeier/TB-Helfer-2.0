@@ -646,10 +646,10 @@ function renderEntries(){
   const deviceStructured=devices.filter(x=>firmIdOf(x));
   const personalShown=personal.filter(e=>!isLegacyDuplicate(e,'PERSONAL',personalStructured,firms));
   const deviceShown=devices.filter(e=>!isLegacyDuplicate(e,'GERAET',deviceStructured,firms));
-  document.getElementById('personalEntries').innerHTML=personalShown.length
-    ?renderFirmGrouped('PERSONAL',personalShown,firms):emptySectionText();
-  document.getElementById('deviceEntries').innerHTML=deviceShown.length
-    ?renderFirmGrouped('GERAET',deviceShown,firms):emptySectionText();
+  const personalHtml=renderFirmGrouped('PERSONAL',personalShown,firms);
+  const deviceHtml=renderFirmGrouped('GERAET',deviceShown,firms);
+  document.getElementById('personalEntries').innerHTML=personalHtml||emptySectionText();
+  document.getElementById('deviceEntries').innerHTML=deviceHtml||emptySectionText();
 
   const legacyWork=legacyWorkLines([...(groups.NOTIZEN||[]),...(groups.ALLGEMEIN||[])]);
   const target=document.getElementById('entries');
@@ -686,9 +686,10 @@ function openEntryEditor(id){
   document.getElementById('entryModalTitle').textContent=(section==='FIRMA'?'Firma':sectionInfo(section).title)+' bearbeiten';
   let fields='';
   if(section==='FIRMA'){
+    const inPersonal=p.visibleInPersonal!==false,inMaschinen=p.visibleInMaschinen!==false;
     fields=editorField('edit-name','Firma',p.name||'','text',true)+
-      editorField('edit-personalVon','Personal von',p.personalVon||'','time')+editorField('edit-personalBis','Personal bis',p.personalBis||'','time')+
-      editorField('edit-maschinenVon','Geräte von',p.maschinenVon||'','time')+editorField('edit-maschinenBis','Geräte bis',p.maschinenBis||'','time');
+      (inPersonal?editorField('edit-personalVon','Personal von',p.personalVon||'','time')+editorField('edit-personalBis','Personal bis',p.personalBis||'','time'):'')+
+      (inMaschinen?editorField('edit-maschinenVon','Geräte von',p.maschinenVon||'','time')+editorField('edit-maschinenBis','Geräte bis',p.maschinenBis||'','time'):'');
   }else if(section==='PERSONAL'){
     fields=editorField('edit-anzahl','Anzahl',p.anzahl??'','number')+editorField('edit-rolle','Rolle',p.rolle||'','text');
   }else if(section==='GERAET'){
@@ -722,12 +723,11 @@ function openEntryCreator(section,firmId){
   const s=creatingEntry.section;
   let title='Eintrag hinzufügen',fields='';
   if(s==='FIRMA'){
-    title='Firma hinzufügen';
+    const scope=String(creatingEntry.firmId||'').toUpperCase();
+    title=scope==='PERSONAL'?'Firma für Personal hinzufügen':scope==='MASCHINEN'?'Firma für Geräte / Maschinen hinzufügen':'Firma hinzufügen';
     fields=editorField('edit-name','Firma','','text',true)+
-      editorField('edit-personalVon','Personal von',timeOnly(current.started_at)==='–'?'':timeOnly(current.started_at),'time')+
-      editorField('edit-personalBis','Personal bis',timeOnly(current.ended_at)==='–'?'':timeOnly(current.ended_at),'time')+
-      editorField('edit-maschinenVon','Geräte von',timeOnly(current.started_at)==='–'?'':timeOnly(current.started_at),'time')+
-      editorField('edit-maschinenBis','Geräte bis',timeOnly(current.ended_at)==='–'?'':timeOnly(current.ended_at),'time');
+      (scope!=='MASCHINEN'?editorField('edit-personalVon','Personal von',timeOnly(current.started_at)==='–'?'':timeOnly(current.started_at),'time')+editorField('edit-personalBis','Personal bis',timeOnly(current.ended_at)==='–'?'':timeOnly(current.ended_at),'time'):'')+
+      (scope!=='PERSONAL'?editorField('edit-maschinenVon','Geräte von',timeOnly(current.started_at)==='–'?'':timeOnly(current.started_at),'time')+editorField('edit-maschinenBis','Geräte bis',timeOnly(current.ended_at)==='–'?'':timeOnly(current.ended_at),'time'):'');
   }else if(s==='PERSONAL'){
     title='Personal hinzufügen';
     fields=editorField('edit-anzahl','Anzahl',1,'number')+editorField('edit-rolle','Rolle','','text');
@@ -830,12 +830,14 @@ async function createModalEntry(){
   const s=ctx.section;
   if(s==='FIRMA'){
     const name=editorValue('edit-name');if(!name)throw new Error('Bitte Firma eingeben.');
+    const scope=String(ctx.firmId||'').toUpperCase();
+    const visibleInPersonal=scope!=='MASCHINEN',visibleInMaschinen=scope!=='PERSONAL';
     const id=newFirmId(),index=entries.filter(e=>String(e.section||'').toUpperCase()==='FIRMA').length;
     await postManagedEntry('FIRMA','firma:'+id,index,{
       firmaId:id,name:name,
-      personalVon:editorValue('edit-personalVon')||null,personalBis:editorValue('edit-personalBis')||null,
-      maschinenVon:editorValue('edit-maschinenVon')||null,maschinenBis:editorValue('edit-maschinenBis')||null,
-      visibleInPersonal:true,visibleInMaschinen:true,isDeleted:false
+      personalVon:visibleInPersonal?(editorValue('edit-personalVon')||null):null,personalBis:visibleInPersonal?(editorValue('edit-personalBis')||null):null,
+      maschinenVon:visibleInMaschinen?(editorValue('edit-maschinenVon')||null):null,maschinenBis:visibleInMaschinen?(editorValue('edit-maschinenBis')||null):null,
+      visibleInPersonal:visibleInPersonal,visibleInMaschinen:visibleInMaschinen,isDeleted:false
     });
     return;
   }
