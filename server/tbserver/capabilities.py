@@ -32,6 +32,8 @@ CAPABILITIES: dict[str, bool] = {
     "btb_entries_v1": True,
     "btb_live_sync_v1": True,
     "btb_finalize_with_pdf_v1": True,
+    "btb_participant_shift_end_v1": True,
+    "btb_pdf_team_lead_only_v1": True,
     "files_v1": True,
     "worksite_media_v1": True,
     "file_cursor_pagination_v1": True,
