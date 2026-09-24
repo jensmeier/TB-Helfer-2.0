@@ -29,6 +29,9 @@
   .btb-photo-card img{display:block;width:100%;height:260px;object-fit:contain;background:#f8fafc;border-radius:10px}
   .btb-photo-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
   .btb-photo-meta{font-size:12px;color:#667085;margin-top:2px}
+  .btb-photo-title{font-weight:800;color:#101828}.btb-photo-details{font-size:13px;color:#344054;line-height:1.45;margin:8px 0}
+  .btb-photo-details a{font-weight:700}.btb-photo-event{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;margin:5px 0;background:#f8fafc;border-radius:10px}
+  .btb-photo-badge{font-size:11px;color:#667085;white-space:nowrap}
   .btb-modal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.48);padding:24px;align-items:center;justify-content:center}
   .btb-modal.open{display:flex}.btb-modal-panel{width:min(680px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 24px 80px rgba(15,23,42,.28)}
   .btb-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #e4e7ec}
@@ -242,17 +245,124 @@ function lifecycle(){
   document.getElementById('addFirmButton').style.display=canEditCurrentBtb()?'inline-block':'none';
   document.getElementById('deleteBtb').style.display=(can('btb.delete')&&(!shiftContractAvailable||isTeamLead()))?'inline-block':'none';
 }
+const PHOTO_TYPES=['ABNAHMEN','EINWEISUNG_UNTERWEISUNG','BESONDERHEITEN','MAENGEL_SCHAEDEN','FOTODOKUMENTATION'];
+const PHOTO_INDICATORS=['GRUEN','GELB','ROT'];
+function decodeBase64Url(raw){
+  let s=String(raw||'').replace(/-/g,'+').replace(/_/g,'/');
+  while(s.length%4)s+='=';
+  const bin=atob(s),out=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
+  return out;
+}
+function readTinyUtf(view,bytes,state){
+  const size=view.getUint8(state.pos);state.pos+=1;
+  const slice=bytes.slice(state.pos,state.pos+size);state.pos+=size;
+  return new TextDecoder('utf-8').decode(slice);
+}
+function decodePhotoMetadata(filename){
+  const raw=String(filename||'');
+  if(raw.startsWith('BTBP1__')){
+    try{
+      const encoded=raw.slice('BTBP1__'.length).split('__')[0];
+      const bytes=decodeBase64Url(encoded),view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),state={pos:0};
+      const epoch=Number(view.getBigInt64(state.pos,false));state.pos+=8;
+      const lat=view.getFloat32(state.pos,false);state.pos+=4;
+      const lon=view.getFloat32(state.pos,false);state.pos+=4;
+      const alt=view.getFloat32(state.pos,false);state.pos+=4;
+      const km=view.getFloat32(state.pos,false);state.pos+=4;
+      const achs=view.getFloat32(state.pos,false);state.pos+=4;
+      const kmSuffix=view.getInt16(state.pos,false);state.pos+=2;
+      const flags=view.getUint8(state.pos);state.pos+=1;
+      const typIndex=view.getUint8(state.pos);state.pos+=1;
+      const indikatorIndex=view.getUint8(state.pos);state.pos+=1;
+      return {
+        epoch:epoch,lat:lat,lon:lon,
+        alt:Number.isNaN(alt)?null:alt,km:Number.isNaN(km)?null:km,achsabstand:Number.isNaN(achs)?null:achs,
+        kmSuffix:kmSuffix,kmManuell:(flags&1)!==0,
+        typ:PHOTO_TYPES[typIndex]||'FOTODOKUMENTATION',
+        indikator:PHOTO_INDICATORS[indikatorIndex]||'',
+        firma:readTinyUtf(view,bytes,state),
+        kurztext:readTinyUtf(view,bytes,state)||'Foto',
+        objektKennung:readTinyUtf(view,bytes,state),
+        objektBereich:readTinyUtf(view,bytes,state)
+      };
+    }catch(_){return null;}
+  }
+  if(raw.startsWith('BTBPHOTO__')){
+    try{
+      const encoded=raw.slice('BTBPHOTO__'.length).split('__')[0];
+      return JSON.parse(new TextDecoder('utf-8').decode(decodeBase64Url(encoded)));
+    }catch(_){return null;}
+  }
+  return null;
+}
+function uniquePhotos(){
+  const seen=new Set(),out=[];
+  photos.forEach(function(p){
+    const key=String(p.sha256||p.original_name||p.id||'');
+    if(key&&seen.has(key))return;
+    if(key)seen.add(key);
+    out.push(p);
+  });
+  return out;
+}
+function photoMeta(p){
+  const decoded=decodePhotoMetadata(p.original_name)||{};
+  if((decoded.lat==null||decoded.lon==null)&&p.gps_lat!=null&&p.gps_lon!=null){
+    decoded.lat=Number(p.gps_lat);decoded.lon=Number(p.gps_lon);
+  }
+  if(!decoded.epoch&&p.captured_at){
+    const d=new Date(p.captured_at);if(!Number.isNaN(d.getTime()))decoded.epoch=d.getTime();
+  }
+  return decoded;
+}
+function photoTime(meta){
+  if(!meta||!meta.epoch)return '';
+  const d=new Date(Number(meta.epoch));if(Number.isNaN(d.getTime()))return '';
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function photoKm(meta){
+  const n=Number(meta&&meta.km);if(!Number.isFinite(n))return '';
+  return 'KM '+n.toFixed(3).replace('.',',');
+}
+function validGps(meta){
+  const lat=Number(meta&&meta.lat),lon=Number(meta&&meta.lon);
+  return Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180&&!(lat===0&&lon===0);
+}
+function photoSection(meta){
+  const type=String(meta&&meta.typ||'FOTODOKUMENTATION').toUpperCase();
+  return type==='ABNAHMEN'?'ABNAHME':
+    type==='EINWEISUNG_UNTERWEISUNG'?'EINWEISUNG_UNTERWEISUNG':
+    type==='BESONDERHEITEN'?'BESONDERHEIT':
+    type==='MAENGEL_SCHAEDEN'?'MANGEL_SCHADEN':'ARBEIT';
+}
+function photoEventText(p,index){
+  const m=photoMeta(p);
+  const parts=[photoTime(m),photoKm(m),String(m.kurztext||'').trim()].filter(Boolean);
+  return parts.join(' · ')+(parts.length?' · ':'')+'Bild '+(index+1);
+}
 function renderPhotos(){
   const target=document.getElementById('photos');
-  const editable=canEditCurrentBtb();
-  target.className=photos.length?'btb-photo-grid':'';
-  target.innerHTML=photos.length?photos.map(function(p,index){
-    const when=p.captured_at?deDateTime(p.captured_at):'';
-    return '<div class="btb-photo-card"><div class="btb-photo-head"><div><b>Foto '+(index+1)+'</b>'+
-      (when?'<div class="btb-photo-meta">'+esc(when)+'</div>':'')+
-      '<div class="btb-photo-meta">'+esc(bytesLabel(p.byte_size))+'</div></div>'+
+  const editable=canEditCurrentBtb(),list=uniquePhotos();
+  target.className=list.length?'btb-photo-grid':'';
+  target.innerHTML=list.length?list.map(function(p,index){
+    const m=photoMeta(p);
+    const title=String(m.kurztext||'').trim()||('Foto '+(index+1));
+    const main=[photoTime(m),photoKm(m),String(m.firma||'').trim()].filter(Boolean).join(' · ');
+    const place=[String(m.objektKennung||'').trim(),String(m.objektBereich||'').trim()].filter(Boolean).join(' · ');
+    const gps=validGps(m)?Number(m.lat).toFixed(6)+', '+Number(m.lon).toFixed(6):'';
+    const mapUrl=gps?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(Number(m.lat)+','+Number(m.lon)):'';
+    const indicator=String(m.indikator||'').trim();
+    return '<div class="btb-photo-card"><div class="btb-photo-head"><div><div class="btb-photo-title">'+esc(title)+'</div>'+
+      '<div class="btb-photo-meta">Foto '+(index+1)+(p.byte_size?' · '+esc(bytesLabel(p.byte_size)):'')+'</div></div>'+
       (editable?'<button class="danger btb-mini-edit" type="button" onclick="detachPhoto(\''+esc(p.id)+'\')">Entfernen</button>':'')+'</div>'+
-      '<a href="'+esc(p.content_url)+'" target="_blank" rel="noopener"><img src="'+esc(p.content_url)+'" alt="BTB-Foto '+(index+1)+'"></a></div>';
+      '<a href="'+esc(p.content_url)+'" target="_blank" rel="noopener"><img src="'+esc(p.content_url)+'" alt="BTB-Foto '+(index+1)+'"></a>'+
+      '<div class="btb-photo-details">'+
+        (main?'<div>'+esc(main)+'</div>':'')+
+        (place?'<div>Ort: '+esc(place)+'</div>':'')+
+        (indicator?'<div>Indikator: '+esc(indicator.replace('GRUEN','Grün').replace('GELB','Gelb').replace('ROT','Rot'))+'</div>':'')+
+        (gps?'<div><a href="'+esc(mapUrl)+'" target="_blank" rel="noopener">GPS: '+esc(gps)+' ↗</a></div>':'')+
+      '</div></div>';
   }).join(''):'<p class="muted">Noch keine BTB-Fotos.</p>';
   document.getElementById('photoUploadBox').style.display=(can('files.add')&&canEditCurrentBtb())?'block':'none';
 }
@@ -327,7 +437,8 @@ function legacyWorkLines(list){
       });
     });
   });
-  return out;
+  const seen=new Set();
+  return out.filter(function(item){const key=normalizedSummary(item.text);if(seen.has(key))return false;seen.add(key);return true;});
 }
 function firmDirectory(){
   const map={};
@@ -365,6 +476,33 @@ function compactLine(entry){
 }
 function normalizedSummary(value){
   return cleanDisplayText(value).toLowerCase().replace(/[–—-]/g,' ').replace(/\s+/g,' ').trim();
+}
+function canonicalValue(value){
+  if(Array.isArray(value))return value.map(canonicalValue);
+  if(value&&typeof value==='object'){
+    const out={};
+    Object.keys(value).filter(k=>!k.startsWith('_tb_')).sort().forEach(k=>{out[k]=canonicalValue(value[k]);});
+    return out;
+  }
+  if(typeof value==='string')return value.trim();
+  return value;
+}
+function semanticEntryKey(entry){
+  return String(entry.section||'').toUpperCase()+'|'+JSON.stringify(canonicalValue(entry.payload||{}));
+}
+function dedupeEntries(list){
+  const seen=new Set(),out=[];
+  (list||[]).forEach(function(e){
+    const key=semanticEntryKey(e);
+    if(seen.has(key))return;
+    seen.add(key);out.push(e);
+  });
+  return out;
+}
+function ensureNoDuplicate(section,payload){
+  const probe={section:section,payload:payload};
+  const key=semanticEntryKey(probe);
+  if(entries.some(e=>semanticEntryKey(e)===key))throw new Error('Ein identischer Eintrag ist bereits vorhanden.');
 }
 function isLegacyDuplicate(entry,section,structured,firms){
   const slot=slotOf(entry);
@@ -405,6 +543,7 @@ function sectionAddButton(section){
   return '<button class="btb-add" type="button" onclick="openEntryCreator(\''+esc(section)+'\')">+ Eintrag</button>';
 }
 function renderFirmGrouped(section,list,firms){
+  list=dedupeEntries(list);
   const structured=list.filter(e=>firmIdOf(e));
   const visible=list.filter(e=>!isLegacyDuplicate(e,section,structured,firms));
   const groups={};
@@ -437,7 +576,28 @@ function renderFirmGrouped(section,list,firms){
       '</div>';
   }).join('');
 }
+function photoAlreadyRepresented(meta,list,legacyLines){
+  const text=normalizedSummary(meta&&meta.kurztext||'');
+  const time=photoTime(meta);
+  if(!text||text==='foto'||text==='synchronisiertes btb foto')return false;
+  const candidates=(list||[]).map(compactLine).concat((legacyLines||[]).map(x=>x.text));
+  return candidates.some(function(line){
+    const n=normalizedSummary(line);
+    return n.includes(text)&&(!time||n.includes(time));
+  });
+}
+function renderPhotoEvents(section,list,legacyLines){
+  const out=[];
+  uniquePhotos().forEach(function(p,index){
+    const m=photoMeta(p);
+    if(photoSection(m)!==section)return;
+    if(photoAlreadyRepresented(m,list,legacyLines))return;
+    out.push('<div class="btb-photo-event"><div>'+esc(photoEventText(p,index))+'</div><span class="btb-photo-badge">Foto</span></div>');
+  });
+  return out.join('');
+}
 function renderWorkGrouped(list,firms,legacyLines){
+  list=dedupeEntries(list);
   const groups={};
   list.forEach(function(e){const id=firmIdOf(e)||'__general__';if(!groups[id])groups[id]=[];groups[id].push(e);});
   let html=Object.keys(groups).map(function(id){
@@ -456,13 +616,17 @@ function renderWorkGrouped(list,firms,legacyLines){
         return '<div class="btb-compact-row"><div class="btb-compact-text">'+esc(item.text)+'</div>'+actions+'</div>';
       }).join('')+'</div>';
   }
+  html+=renderPhotoEvents('ARBEIT',list,legacyLines);
   return html;
 }
-function renderSimple(list){
-  return list.sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)).map(function(e){
+function renderSimple(list,section){
+  list=dedupeEntries(list);
+  let html=list.sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)).map(function(e){
     return '<div class="btb-readable-entry"><div class="btb-entry-text">'+esc(compactLine(e))+'</div>'+
       '<div class="btb-entry-actions">'+rowActions(e)+'</div></div>';
   }).join('');
+  html+=renderPhotoEvents(section,list,[]);
+  return html;
 }
 function emptySectionText(){
   return '<div class="btb-empty">Keine Einträge.</div>';
@@ -492,7 +656,7 @@ function renderEntries(){
     const list=(groups[key]||[]).slice(), info=sectionInfo(key);
     let body='';
     if(key==='ARBEIT')body=renderWorkGrouped(list,firms,legacyWork);
-    else body=renderSimple(list);
+    else body=renderSimple(list,key);
     if(!body)body=emptySectionText();
     return '<section class="btb-section"><div class="btb-section-head"><h3>'+esc(info.title)+'</h3>'+
       '<div class="btb-section-actions">'+sectionAddButton(key)+'</div></div>'+
@@ -631,6 +795,7 @@ function createSectionItemPayload(){
   return p;
 }
 async function postManagedEntry(section,slot,sortOrder,payload){
+  ensureNoDuplicate(section,payload);
   return tbApi('/api/v1/btbs/'+btbId+'/entries',{
     method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       section:section,sort_order:sortOrder,payload:managedPayload(payload,slot)
@@ -642,6 +807,9 @@ async function appendGeneralWork(){
   const time=editorValue('edit-uhrzeit');
   const line=[time,text].filter(Boolean).join(' ').trim();
   if(!line)throw new Error('Bitte Text eingeben.');
+  const wanted=normalizedSummary(line);
+  const existingLegacy=legacyWorkLines(entries.filter(e=>['NOTIZEN','ALLGEMEIN'].includes(String(e.section||'').toUpperCase())));
+  if(existingLegacy.some(x=>normalizedSummary(x.text)===wanted))throw new Error('Ein identischer Eintrag ist bereits vorhanden.');
   const note=entries.find(e=>String(e.section||'').toUpperCase()==='NOTIZEN'&&slotOf(e)==='notizen:0');
   if(note){
     const payload=JSON.parse(JSON.stringify(note.payload||{}));
@@ -755,13 +923,14 @@ async function deleteModalEntry(){
   if(!editingEntry)return;
   const section=String(editingEntry.section||'').toUpperCase();
   if(section==='FIRMA'){
+    const firmEntryId=editingEntry.id;
     const firmaId=firmIdOf(editingEntry);
-    const children=entries.filter(e=>firmIdOf(e)===firmaId&&String(e.id)!==String(editingEntry.id));
+    const children=entries.filter(e=>firmIdOf(e)===firmaId&&String(e.id)!==String(firmEntryId));
     if(!confirm('Firma wirklich löschen? Zugehöriges Personal, Geräte und Arbeiten ('+children.length+' Einträge) werden ebenfalls aus diesem BTB entfernt.'))return;
     try{
       closeEntryEditor();
       for(const child of children)await deleteEntryId(child.id);
-      await deleteEntryId(editingEntry.id);
+      await deleteEntryId(firmEntryId);
       show('ok','Firma und zugehörige Einträge gelöscht.');await loadBtb();
     }catch(error){show('err',error.message||String(error));}
     return;
