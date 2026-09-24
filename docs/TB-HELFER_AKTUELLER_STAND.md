@@ -1,5 +1,26 @@
 # TB-Helfer – aktueller Projektstand
 
+## Laufzeitbefund 24.09.2026 – Background-Worker startet wiederholt neu
+
+- Praktisch beobachtet: `tb-helfer-v1-worker-1` war erneut erst wenige Minuten aktiv, während API/DB/Monitor/Cloudflare bereits seit vielen Stunden liefen. Das ist ein neuer Laufzeitfehler und nicht der bereits erledigte Restore-Target-Bind-Mount-Fehler PRB-015.
+- Ein zuvor gezeigter Worker-Trace enthielt `psycopg.OperationalError` / PostgreSQL `Connection refused`. Im aktuellen Quellstand konnte ein solcher temporärer Infrastrukturfehler den dauerhaften Workerprozess tatsächlich beenden:
+  - `recover_stale_jobs()` wurde beim Start ohne Retry aufgerufen;
+  - `run_one()` rief `claim_job()` außerhalb einer äußeren Fehlerbarriere auf;
+  - Fehler beim Setzen von DONE/PENDING/FAILED konnten ebenfalls aus `run_one()` herauslaufen;
+  - Stale-Recovery lief bisher nur beim Workerstart.
+- Quellfix `d687a449499cf5070760727e5090c46a963a27e2`:
+  - Worker wartet bei Start-/DB-Fehlern intern und beendet nicht den Containerprozess;
+  - jede normale Worker-Iteration besitzt eine äußere Fehlerbarriere mit Trace-Logging;
+  - Job-Abschluss-/Fehlerstatus werden bis zu fünfmal lokal wiederholt;
+  - Stale-Recovery wird zusätzlich alle 60 Sekunden geprüft;
+  - Heartbeat bleibt unabhängig aktiv.
+- Regression-Check 41 wurde erweitert: `0013fa37e84a2f422927d14c56ec0e773524ee9a`.
+- **Keine DB-Migration und keine Compose-Änderung.** `restart: unless-stopped` bleibt korrekt und dient nur noch als letzte Rückfallebene.
+- **Deployment/Langzeittest offen:** nur `server/tbserver/jobs.py` auf Synology ersetzen und `tb-helfer-v1-worker-1` neu starten. Danach Laufzeit beobachten und mindestens einen Background-Job praktisch ausführen.
+- Sollte der Worker danach trotzdem neu starten, ist der neue Worker-Trace zu prüfen; externe Prozessabbrüche wie OOM/Kill wären dann separat nachzuweisen.
+- `STATUS.xlsx` bleibt wegen des bekannten Binär-/Versionsstands unangetastet.
+
+
 Stand: 2026-09-23
 
 Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEKTREGELN.md`, diese Datei, `docs/TB-SERVER_1_0_ZIELMODELL.md` und `docs/TB-SERVER_1_0_CUTOVER.md`.
