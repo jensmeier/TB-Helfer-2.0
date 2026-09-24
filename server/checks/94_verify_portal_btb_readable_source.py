@@ -3,30 +3,34 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 portal = (ROOT / "server/templates/v1_btb.html").read_text(encoding="utf-8")
 
+# Grundstruktur der lesbaren Portalansicht.
 for token in (
-    "BTB-Inhalte",
-    "Lesbare Darstellung wie in der App",
+    "1. Berichtszeit",
+    "2. Wetter",
+    "3. Personal / Geräte",
+    "4. Ausgeführte Arbeiten",
+    "5. Abnahmen",
+    "6. Einweisung / Unterweisung",
+    "7. Besonderheiten",
+    "8. Mängel / Schäden",
     "Geräte / Maschinen",
-    "Ausgeführte Arbeiten",
-    "Abnahmen",
-    "Einweisung / Unterweisung",
-    "Besonderheiten",
-    "Mängel / Schäden",
-    "Notizen",
-    "Technischer Inhalt (JSON)",
-    "toggleEntryEditor",
-    "cleanDisplayText",
     "renderHeaderSummary",
+    "renderWeather",
+    "renderEntries",
     "btb-readable-entry",
     "btb-section-head",
 ):
     assert token in portal, token
 
-# Roh-JSON bleibt als Bearbeitungsweg erhalten, ist aber nicht mehr die
-# Standarddarstellung jedes Eintrags.
-assert "renderPayload(e.payload||{})" in portal
-assert "btb-entry-editor" in portal
-assert "style.display=canEditCurrentBtb()" in portal
+# Android-interne Daten bleiben intern; die normale Portaloberfläche bietet
+# keine Roh-JSON-Bearbeitung mehr an.
+for forbidden in (
+    "Technischer Inhalt (JSON)",
+    "Technische Kopfdaten (JSON)",
+    "JSON (nur zur Diagnose)",
+    "Inhalt als JSON",
+):
+    assert forbidden not in portal, forbidden
 
 # Bestehende Rollen-/Schichtregeln dürfen durch die Darstellungsänderung
 # nicht verschwinden.
@@ -38,4 +42,4 @@ for token in (
 ):
     assert token in portal, token
 
-print("OK: portal BTB renders readable app-like sections and keeps technical editing behind an editor")
+print("OK: portal BTB renders the readable app-like 1-8 structure without raw JSON controls")
