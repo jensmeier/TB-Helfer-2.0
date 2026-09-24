@@ -45,6 +45,8 @@ TESTSTATUS:
 - Übergaben TB-ANDROID_AUTOSYNC_15x15_2026-09-24.md und TB-ANDROID_SELEKTIVER_SYNC_2026-09-23.md gelesen
 - Direkte Source-Checks für Zeitplan-Entfernung, persistenten Dirty-Scope, gezielten BTB-Export, gefilterten Pending-Upload und App-Neustart-Wiederaufnahme bestanden
 - Android-Studio-Build 200067 am 24.09.2026 15:04 erfolgreich abgeschlossen; 16 Warnungen, keine Build-Fehler
-- BUILD ERFOLGREICH; Installation und praktischer Pixel/Poco-/Server-E2E noch offen
+- BUILD ERFOLGREICH
+- Installation von 1.3.17 / 200067 am 24.09.2026 vom Benutzer bestätigt
+- Praktischer Pixel/Poco-/Server-E2E noch offen
 
 BUILT_APP_SOURCE_HEAD: 19c2757fb0244cfd75e989566c61aa2ea94c1cde
