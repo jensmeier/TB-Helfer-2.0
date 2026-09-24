@@ -22,7 +22,7 @@ Bei Deployment-Anleitungen für SERVER sind daher File Station + Container Manag
 - GitHub-Code und diese Projektregeln bleiben Source of Truth; der Tracker ist eine zusätzliche, schnell lesbare Arbeits- und Abnahmeliste.
 - Geheimwerte, insbesondere Cloudflare-Tunnel-Tokens, Passwörter, Geräte-Bearer und Klartext-Aktivierungs-Keys, dürfen niemals in den Tracker geschrieben werden.
 
-Stand: 2026-09-14
+Stand: 2026-09-24
 
 Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und später iOS fest. Bei Änderungen zuerst diese Datei aktualisieren.
 
