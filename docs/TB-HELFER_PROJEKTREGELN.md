@@ -33,6 +33,14 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Ein **Vollabgleich** bleibt bewusst für `Neu laden`, Erst-/Reaktivierung, Baustellenbeitritt, ausdrückliche manuelle Aktualisierung und Recovery nach inkonsistentem Cursor/Konflikt verfügbar. Er darf nicht mehr der normale Sofortpfad nach jedem Autosave sein.
 - Mehrere schnelle Änderungen werden entprellt und dauerhaft zusammengefasst. Ein bereits wartender Sync darf eine später hinzugekommene Dirty-Markierung nicht verlieren.
 - Eingehende Änderungen werden über den Server-Change-Feed/Cursor erkannt und anschließend objektbezogen nachgeladen; Change-Signale enthalten IDs/Versionen statt große Gesamtsnapshots.
+- Die Android-Auswahl **`stündlich / täglich / manuell` entfällt**. Kleine Fach-/Metadaten-Deltas laufen automatisch, sobald Netz verfügbar ist; ein Benutzer soll für normalen Mehrgerätebetrieb keinen Sync-Button benötigen.
+- `Neu laden` bleibt als bewusster **Recovery-/Vollabgleich**, nicht als normaler Sync-Modus.
+- Netz-/Datenregeln werden künftig nach Datenart getrennt: kleine Fach-Deltas automatisch; größere Medien/Originalarchive dürfen eigene WLAN-/Mobilfunkregeln haben.
+- **Lastziel 15×15:** Architektur und Tests müssen mindestens 15 verantwortliche TBs mit jeweils 15 Helfern unterstützen (= 240 mobile Nutzer) sowie zusätzlich 15 gleichzeitig offene Portal-/Laptop-Sitzungen (= 255 aktive Clients als Planungsfall).
+- Mobile Geräte dürfen für dieses Lastziel **nicht** dauerhaft den heutigen 2-Sekunden-SSE-Pollingpfad verwenden. Geschlossene/ruhende Android-Geräte werden nur mit einem inhaltsfreien Push-Wecksignal angestoßen und holen anschließend den dauerhaften Change-Feed; App-Start/Resume, Netz-Rückkehr und ein kleiner periodischer Delta-Fallback sichern verpasste Pushs ab.
+- BTB-Änderungen werden im Fanout **teambezogen** behandelt. Ein BTB eines verantwortlichen TBs soll nur dessen Team (TB + Helfer), nicht pauschal alle Geräte der Baustelle, wecken.
+- Mehrere Wecksignale/Änderungen werden pro Gerät kurz zusammengefasst und mit kleinem Jitter abgeholt, damit bei vielen gleichzeitig aktiven Nutzern keine unnötige Lastspitze entsteht.
+- Portal-/Laptop-Änderungen verwenden dieselben kanonischen Fachendpunkte und erzeugen denselben Change-Feed wie Geräteänderungen. Offene Portalansichten dürfen live aktualisieren, aber ohne pro Browser alle 2 Sekunden eine neue DB-Verbindung zu erzeugen.
 - Originale Vermessungsdateien (z. B. TRA, GRA, KF, KOR) bleiben unverändert und dauerhaft nachvollziehbar.
 - Bearbeitete/berechnete Abschnitte werden getrennt und nachvollziehbar gespeichert.
 - Cloudflare/TLS für normale App-Synchronisation; Tailscale nur Wartung/Notfall.
