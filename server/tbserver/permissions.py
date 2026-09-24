@@ -191,3 +191,22 @@ def has_permission(context: dict[str, Any], permission: str) -> bool:
 def require_permission(context: dict[str, Any], permission: str) -> None:
     if not has_permission(context, permission):
         raise HTTPException(403, f"PERMISSION_REQUIRED:{permission}")
+
+
+def team_lead_user_id(cur, team_id: UUID | str) -> UUID | None:
+    cur.execute(
+        "SELECT lead_user_id FROM tb.teams WHERE id = %s AND status = 'ACTIVE'",
+        (team_id,),
+    )
+    row = cur.fetchone()
+    return row["lead_user_id"] if row else None
+
+
+def is_team_lead(cur, user: dict[str, Any], team_id: UUID | str) -> bool:
+    lead_user_id = team_lead_user_id(cur, team_id)
+    return lead_user_id is not None and str(lead_user_id) == str(user["user_id"])
+
+
+def require_team_lead(cur, user: dict[str, Any], team_id: UUID | str) -> None:
+    if not is_team_lead(cur, user, team_id):
+        raise HTTPException(403, "BTB_TEAM_LEAD_REQUIRED")
