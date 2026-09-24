@@ -208,6 +208,38 @@ Deshalb gibt es zwei getrennte Zustände:
 Der endgültige BTB-Abschluss benötigt **nicht** die manuellen Volloriginale vom USB-Stick. Er benötigt aber vollständig synchronisierte Fachinhalte, Bildmetadaten und kleine Server-Sync-Versionen.
 
 
+### Rollenabhängige Android-Bedienung
+
+**Helfer:**
+- untere Hauptaktion heißt `Schicht Ende`, nicht `BTB Abschluss`;
+- kein `PDF Entwurf`;
+- kein Öffnen/Anzeigen des BTB-Abschluss-PDF;
+- nach bestätigtem Schichtende eigener BTB-Bereich read-only, mit bewusster Aktion `Schicht fortsetzen` solange der Teamleiter noch nicht finalisiert hat;
+- eigener Originalbilder-Export bleibt unabhängig verfügbar.
+
+**Verantwortlicher Haupt-TB / Teamleiter (`teams.lead_user_id`):**
+- sieht Teilnehmerstatus;
+- darf PDF-Entwurf/Abschluss-PDF nutzen;
+- besitzt allein `BTB endgültig abschließen`;
+- die Teamleiter-ID ist maßgeblich, nicht nur ein sichtbares Rollenlabel.
+
+### Sync-Sicherheit beim Schichtende
+
+`Schicht Ende` ist ein kleiner Workflow:
+1. lokale Eingaben speichern;
+2. selektiven BTB-/Bildmetadaten-Sync ausführen;
+3. kleine Bild-Sync-Versionen bestätigen;
+4. erst danach serverseitigen Teilnehmerstatus auf `FERTIG` setzen.
+
+Bei Offline/Fehler bleibt der lokale Zustand `SCHICHTENDE_AUSSTEHEND`; der Haupt-TB sieht serverseitig weiter `ARBEITET` bzw. `SYNC_AUSSTEHEND` und kann den Ausnahmeabschluss bewusst entscheiden.
+
+### Aktuell nachgewiesene Lücke
+
+Server 1.0 schützt `POST /api/v1/btbs/{id}/finalize` bereits mit `btb.finalize`; `HELPER_STANDARD` besitzt dieses Recht nicht.
+
+Der aktuelle Abschluss-PDF-Endpunkt `GET /api/v1/btbs/{id}/final-pdf` prüft jedoch nur `btb.view`. Da Helfer `btb.view=true` besitzen, ist die neue Fachregel serverseitig noch nicht umgesetzt. Vor E2E ist ein separates PDF-Leserecht/Teamleiter-Guard erforderlich.
+
+
 ## 10. Autosave-/Schreiblast
 
 Nicht jede Taste darf einen Netzrequest erzeugen.
