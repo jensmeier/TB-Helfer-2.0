@@ -1438,8 +1438,12 @@ object BtbExportPaket {
         vonDatum: LocalDate? = null,
         bisDatum: LocalDate? = null
     ): Ergebnis {
+        // Gesamt-Export darf NICHT vom aktuell geöffneten BTB eingegrenzt werden.
+        // fotosFuerBaustelleOnce(...) ist ein UI-Leseweg und kann durch BtbFotoQueryScope
+        // auf die aktuelle btbId reduziert sein. Für Bilderliste_gesamt brauchen wir bewusst
+        // alle lokalen Fotos dieser Baustelle über alle BTBs und Tage.
         val alleFotosDerBaustelle = ServiceLocator.fotoRepository
-            .fotosFuerBaustelleOnce(baustelleId)
+            .fotosFuerBaustelleSyncOnce(baustelleId)
             .filter { it.baustelleId == baustelleId }
             .sortedBy { it.erstelltAmEpochMs }
 
@@ -1484,10 +1488,16 @@ object BtbExportPaket {
         val exportFotos = fotos.mapIndexed { index, foto ->
             FotoExportInfo(foto, exportFotoName(foto, index, knotenLabels, baustelleName))
         }
+        val gesamtExportFotos = alleFotosDerBaustelle.mapIndexed { index, foto ->
+            FotoExportInfo(foto, exportFotoName(foto, index, knotenLabels, baustelleName))
+        }
 
-        fun einfacheBilderlisteCsv(ausgeschlosseneFotoIds: Set<Long>): String = buildString {
+        fun einfacheBilderlisteCsv(
+            quellFotos: List<FotoEntity>,
+            ausgeschlosseneFotoIds: Set<Long>
+        ): String = buildString {
             appendLine("Datum;Zeit;Baustelle;Unterbaustelle;Bereich;KM;Firma;Bildtyp;Kurzbeschreibung;Bilddatei;GPS")
-            fotos.filterNot { it.id in ausgeschlosseneFotoIds }.forEach { f ->
+            quellFotos.filterNot { it.id in ausgeschlosseneFotoIds }.forEach { f ->
                 val z = Instant.ofEpochMilli(f.erstelltAmEpochMs).atZone(ZoneId.systemDefault())
                 val row = listOf(
                     z.toLocalDate().format(isoFmt),
@@ -1563,6 +1573,7 @@ object BtbExportPaket {
             }
             val abnahmenExport = if (vonDatum == null && bisDatum == null) abnahmenGesamt else abnahmenZeitraum
             val strukturierteAbnahmeFotoIds = abnahmenExport.flatMap { it.fotos }.map { it.fotoId }.toSet()
+            val strukturierteAbnahmeFotoIdsGesamt = abnahmenGesamt.flatMap { it.fotos }.map { it.fotoId }.toSet()
             val strukturierteAbnahmeFotos = ServiceLocator.fotoRepository
                 .fotosMitIds(strukturierteAbnahmeFotoIds.toList())
                 .associateBy { it.id }
@@ -1574,13 +1585,17 @@ object BtbExportPaket {
                         baustelleId = baustelleId,
                         datumIso = vonDatum?.format(isoFmt) ?: bisDatum?.format(isoFmt) ?: LocalDate.now().format(isoFmt)
                     ),
-                    exportFotos = exportFotos.filterNot { it.foto.id in strukturierteAbnahmeFotoIds },
+                    exportFotos = gesamtExportFotos.filterNot { it.foto.id in strukturierteAbnahmeFotoIdsGesamt },
                     knotenLabels = knotenLabels,
                     relativePathFor = { info -> "Bilder/${fotoDatumIso(info.foto)}/${info.exportName}" }
                 ),
                 sheetName = "Bilder gesamt"
             )
-            addCsvText(zos, uniquePath("$root/Bilderliste_gesamt.csv", used), einfacheBilderlisteCsv(strukturierteAbnahmeFotoIds))
+            addCsvText(
+                zos,
+                uniquePath("$root/Bilderliste_gesamt.csv", used),
+                einfacheBilderlisteCsv(alleFotosDerBaustelle, strukturierteAbnahmeFotoIdsGesamt)
+            )
             addBinary(zos, uniquePath("$root/Bilderliste_gesamt.xlsx", used), bilderlisteGesamtXlsx)
 
             val exportInfoById = exportFotos.associateBy { it.foto.id }
