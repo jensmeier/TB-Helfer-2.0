@@ -1553,3 +1553,12 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Keine DB- oder Migrationsänderung. Für diesen Portalstand genügt erneut `server/templates/v1_btb.html` auf der Synology und ein Neustart nur von `tb-helfer-v1-api-1`.
 - Source-Check **98** schützt die getrennten Firmenpfade, Wetterbearbeitung und Fotogruppierung. Zusätzlich wurde der eingebettete Portal-JavaScriptblock über Connector-Assertion syntaktisch geparst; dies ist ein Source-Check, kein Browser-/E2E-Nachweis.
 - Diagnose zum weiterhin als **Aktiv** angezeigten Test-BTB: Android 1.3.17 / 200067 beendet ihn lokal und setzt den lokalen aktiven Zeiger zurück, ruft danach in `BtbModernLifecycleInstaller` aber weiterhin `SofortSync.anstossen(...)` auf. Der selektive BTB-Pfad wäre `SofortSync.btbAnstossen(..., btbId)`, der den BTB als dirty markiert und den `SelectiveSyncWorker` startet. Solange die Server-Finalisierung dadurch nicht angekommen ist, bleibt der autoritative Serverstatus korrekt `ACTIVE`. **app/** wurde im SERVER-Projekt nicht geändert; die Triggerkorrektur bleibt Aufgabe des ANDROID-Projekts.
+
+
+### BTB-Sync E2E-Fund 25.09.2026 – neuer lokaler BTB blockiert, solange alter Server-BTB ACTIVE ist
+
+- Praktisch reproduziert: Auf Android wurde ein neuer BTB für den 25.09. ab 07:00 angelegt. Im Portal bleibt der 24.09.-BTB weiterhin Aktiv, der neue 25.09.-BTB erscheint noch nicht.
+- Serverseitig ist das Verhalten eindeutig: POST /api/v1/worksites/{worksite_id}/btbs verweigert einen zweiten aktiven Team-BTB mit 409 TEAM_ALREADY_HAS_ACTIVE_BTB, solange tb.teams.active_btb_id noch auf den alten BTB zeigt. Das ist die gewollte Ein-aktiver-BTB-Regel und kein Portal-Anzeigefehler.
+- Der neue lokale BTB darf deshalb nicht gelöscht oder manuell ersetzt werden. Zuerst muss der alte 24.09.-BTB serverseitig sauber finalisiert werden; erst danach kann der neue BTB regulär angelegt/synchronisiert werden.
+- GitHub-Projektstatus weist weiterhin Android 1.3.17 / 200067 als installiert aus. Android 1.3.18 / 200068 enthält zwar den korrigierten selektiven Abschluss-Trigger SofortSync.btbAnstossen(..., btbId), ist aber laut Status noch Build + Installation + E2E offen.
+- Nächste Diagnose ohne Änderung auf Verdacht: installierte App-Version am Testgerät prüfen und API-Log der letzten BTB-Vorgänge auf POST .../btbs, /finalize und HTTP 409 kontrollieren. Keine DB-Korrektur und kein künstliches Setzen des Portalstatus.
