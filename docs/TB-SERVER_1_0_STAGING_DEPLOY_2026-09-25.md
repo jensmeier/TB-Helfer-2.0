@@ -246,3 +246,37 @@ der Migration.
 Wichtig: Das Skript ersetzt **nicht** den vollständigen Quell-Sync. Es wird erst gestartet,
 wenn `tbserver/**`, `templates/**`, `v1_migrations/**`, `tools/**` und die aktuelle
 Compose-Datei auf dem NAS auf demselben SERVER-HEAD liegen.
+
+
+## Read-only Server-Abnahme
+
+Für die Serverfunktionen, die ohne Fachdatenmutation geprüft werden können, liegt zusätzlich
+`server/tools/server1_readonly_acceptance.py` vor.
+
+Es verwendet absichtlich **einen** Cookie-Jar und prüft damit zugleich die Trennung von
+Benutzerportal und Admin-Sitzung. Geprüft werden read-only:
+
+- Portal-Login und `/api/v1/portal/me`
+- Benutzerprofil und Firmenverzeichnis
+- globaler Katalog + Historie
+- Portal-Start + Baustellenübersicht
+- Admin-Login parallel zur Portal-Session
+- Admin-Systemstatus, Firmen- und Benutzerliste
+- Admin-Seiten Übersicht / Strecken / Bahnhöfe / System
+- Portal-Logout ohne Verlust der Admin-Sitzung
+- Admin-Logout
+
+Credentials nur lokal als Umgebungsvariablen setzen; niemals in GitHub, Chat oder Logs schreiben.
+
+Beispiel von einem Rechner mit Zugriff auf die Portal-URL:
+
+```bash
+python server/tools/server1_readonly_acceptance.py \
+  --base-url https://www.tb-helfer.de
+```
+
+Wenn Login/Passwörter über Umgebungsvariablen gesetzt sind, müssen sie nicht als Kommandozeilenargument
+auftauchen. Das Tool führt keine fachlichen CREATE/UPDATE/DELETE-Aufrufe aus.
+
+Die mutierenden Fach-E2Es (z. B. Katalog CREATE/UPDATE, automatischer Backupjob, BTB-/Foto-Sync)
+bleiben bewusst separate praktische Tests.
