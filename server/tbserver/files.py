@@ -58,6 +58,7 @@ class UploadComplete(BaseModel):
     gps_lat: float | None = Field(default=None, ge=-90, le=90)
     gps_lon: float | None = Field(default=None, ge=-180, le=180)
     gps_accuracy_m: float | None = Field(default=None, ge=0)
+    photo_metadata: dict[str, Any] | None = None
 
 
 def _safe_name(name: str | None) -> str:
@@ -380,7 +381,7 @@ def _load_file_for_user(
         """
         SELECT id, company_id, worksite_id, storage_key, original_name, mime_type,
                byte_size, sha256, source, captured_at, gps_lat, gps_lon,
-               gps_accuracy_m, created_by, created_at, deleted_at
+               gps_accuracy_m, photo_metadata, created_by, created_at, deleted_at
         FROM tb.files WHERE id = %s
         """,
         (file_id,),
@@ -389,6 +390,15 @@ def _load_file_for_user(
     if not row or row["deleted_at"] is not None:
         raise HTTPException(404, "FILE_NOT_FOUND")
     result = dict(row)
+    canonical = canonical_photo_metadata(
+        filename=result.get("original_name"),
+        captured_at=result.get("captured_at"),
+        gps_lat=result.get("gps_lat"),
+        gps_lon=result.get("gps_lon"),
+        gps_accuracy_m=result.get("gps_accuracy_m"),
+        photo_metadata=result.get("photo_metadata"),
+    )
+    result["photo_metadata"] = canonical["photo_metadata"]
     if result["worksite_id"] is None:
         if user["company_role"] != "ADMIN" and user["company_id"] != result["company_id"]:
             raise HTTPException(403, "FILE_ACCESS_DENIED")
@@ -600,14 +610,15 @@ def complete_upload(
                 gps_lat=payload.gps_lat,
                 gps_lon=payload.gps_lon,
                 gps_accuracy_m=payload.gps_accuracy_m,
+                photo_metadata=payload.photo_metadata,
             )
             cur.execute(
                 """
                 INSERT INTO tb.files(
                     id, company_id, worksite_id, storage_key, original_name, mime_type,
                     byte_size, sha256, source, captured_at, gps_lat, gps_lon,
-                    gps_accuracy_m, created_by
-                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    gps_accuracy_m, photo_metadata, created_by
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 RETURNING *
                 """,
                 (
@@ -624,6 +635,7 @@ def complete_upload(
                     canonical_meta["gps_lat"],
                     canonical_meta["gps_lon"],
                     canonical_meta["gps_accuracy_m"],
+                    canonical_meta["photo_metadata"] or {},
                     user["user_id"],
                 ),
             )
@@ -751,6 +763,7 @@ def list_worksite_media(
                    f.gps_lat,
                    f.gps_lon,
                    f.gps_accuracy_m,
+                   f.photo_metadata,
                    f.source,
                    uploader.display_name AS uploaded_by_name,
                    l.entity_type,
@@ -879,6 +892,7 @@ def list_worksite_media(
                         gps_lat=row.get("gps_lat"),
                         gps_lon=row.get("gps_lon"),
                         gps_accuracy_m=row.get("gps_accuracy_m"),
+                        photo_metadata=row.get("photo_metadata"),
                     )["photo_metadata"],
                     "uploaded_by_user_id": (
                         str(row["created_by"]) if row.get("created_by") else None
@@ -932,7 +946,7 @@ def list_files(
                 f"""
                 SELECT id, company_id, worksite_id, original_name, mime_type, byte_size,
                        sha256, source, captured_at, gps_lat, gps_lon, gps_accuracy_m,
-                       created_by, created_at
+                       photo_metadata, created_by, created_at
                 FROM tb.files
                 WHERE worksite_id = %s
                   AND deleted_at IS NULL
@@ -963,6 +977,14 @@ def list_files(
 
     rows = visible_rows[:limit]
     for row in rows:
+        row["photo_metadata"] = canonical_photo_metadata(
+            filename=row.get("original_name"),
+            captured_at=row.get("captured_at"),
+            gps_lat=row.get("gps_lat"),
+            gps_lon=row.get("gps_lon"),
+            gps_accuracy_m=row.get("gps_accuracy_m"),
+            photo_metadata=row.get("photo_metadata"),
+        )["photo_metadata"]
         row["renditions"] = image_rendition_urls(row["id"], row.get("mime_type"))
     next_cursor = (
         _encode_file_cursor(last_returned["created_at"], last_returned["id"])
