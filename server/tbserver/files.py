@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .btb_documents import FINAL_PDF_PURPOSE, prepare_btb_photo_change, remove_storage_keys
+from .btb_photo_meta import canonical_photo_metadata
 from .btb_participants import require_participant_writable
 from .config import settings
 from .database import transaction
@@ -586,6 +587,13 @@ def complete_upload(
             moved = True
 
             file_source = "APP" if user.get("auth_kind") == "DEVICE" else "PORTAL"
+            canonical_meta = canonical_photo_metadata(
+                filename=upload["original_name"],
+                captured_at=payload.captured_at,
+                gps_lat=payload.gps_lat,
+                gps_lon=payload.gps_lon,
+                gps_accuracy_m=payload.gps_accuracy_m,
+            )
             cur.execute(
                 """
                 INSERT INTO tb.files(
@@ -605,10 +613,10 @@ def complete_upload(
                     actual_size,
                     actual_sha256,
                     file_source,
-                    payload.captured_at,
-                    payload.gps_lat,
-                    payload.gps_lon,
-                    payload.gps_accuracy_m,
+                    canonical_meta["captured_at"],
+                    canonical_meta["gps_lat"],
+                    canonical_meta["gps_lon"],
+                    canonical_meta["gps_accuracy_m"],
                     user["user_id"],
                 ),
             )
@@ -732,6 +740,11 @@ def list_worksite_media(
                    f.byte_size,
                    f.created_by,
                    f.created_at,
+                   f.captured_at,
+                   f.gps_lat,
+                   f.gps_lon,
+                   f.gps_accuracy_m,
+                   f.source,
                    uploader.display_name AS uploaded_by_name,
                    l.entity_type,
                    l.entity_id,
@@ -844,6 +857,18 @@ def list_worksite_media(
                     "sha256": row.get("sha256"),
                     "size_bytes": int(row.get("byte_size") or 0),
                     "created_at": row.get("created_at"),
+                    "captured_at": row.get("captured_at"),
+                    "gps_lat": row.get("gps_lat"),
+                    "gps_lon": row.get("gps_lon"),
+                    "gps_accuracy_m": row.get("gps_accuracy_m"),
+                    "source": row.get("source"),
+                    "photo_metadata": canonical_photo_metadata(
+                        filename=row.get("original_name"),
+                        captured_at=row.get("captured_at"),
+                        gps_lat=row.get("gps_lat"),
+                        gps_lon=row.get("gps_lon"),
+                        gps_accuracy_m=row.get("gps_accuracy_m"),
+                    )["photo_metadata"],
                     "uploaded_by_user_id": (
                         str(row["created_by"]) if row.get("created_by") else None
                     ),
