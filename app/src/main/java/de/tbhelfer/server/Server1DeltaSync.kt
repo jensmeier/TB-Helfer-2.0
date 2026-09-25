@@ -126,86 +126,149 @@ class Server1DeltaSync(context: Context) {
             .toSet()
         if (affectedWorksites.isEmpty()) return ApplyResult.Success
 
-        val contexts = ServiceLocator.collabSyncRepository.worksiteContexts()
+        // Nur lokal gebundene Baustellen sind fuer dieses Android-Geraet Fachobjekte.
+        // Sichtbare, aber hier nicht gebundene Firmenbaustellen duerfen den globalen Cursor
+        // nicht blockieren; ein spaeteres Binding macht ohnehin einen Recovery-/Initialabgleich.
+        val bound = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
             .filter {
-                it.worksiteServerId in affectedWorksites &&
-                    it.groupId.isNotBlank()
+                it.binding != null &&
+                    it.localWorksite != null &&
+                    it.context.worksiteServerId in affectedWorksites
             }
-        val knownWorksites = contexts.mapTo(hashSetOf()) { it.worksiteServerId }
-        val unresolved = affectedWorksites - knownWorksites
-        if (unresolved.isNotEmpty()) {
-            // Cursor absichtlich NICHT fortschreiben. Nach QR/Recovery wird derselbe Batch mit
-            // vorhandenem Baustellenkontext erneut verarbeitet.
-            return ApplyResult.Error("Baustellenkontext für Server-Delta fehlt noch.")
+        if (bound.isEmpty()) return ApplyResult.Success
+
+        val contextsByWorksite = bound.groupBy { it.context.worksiteServerId }
+        val targetBtbIds = linkedMapOf<String, MutableSet<String>>()
+        val needsActiveFallback = linkedSetOf<String>()
+
+        fun target(worksiteId: String, btbId: String) {
+            if (btbId.isBlank()) return
+            targetBtbIds.getOrPut(worksiteId) { linkedSetOf() }.add(btbId)
         }
 
-        // BTB_ENTRY/BTB_PARTICIPANT/FILE tragen im Feed nicht zwingend die parent-btbId.
-        // Deshalb laden wir nur die betroffene Baustelle + genau die sichtbare Team-BTB-Liste
-        // neu, niemals alle Baustellen/Fachobjekte.
-        for (context in contexts.distinctBy { it.worksiteServerId + "|" + it.groupId }) {
+        // BTB-Events tragen bereits die parent-btbId. ENTRY/PARTICIPANT werden serverseitig
+        // zusammen mit einem BTB-Event emittiert; falls die Paarung an einer Seitengrenze
+        // getrennt wurde, wird nur der aktive BTB dieser Baustelle als Fallback nachgeladen.
+        page.changes.forEach { change ->
+            val worksiteId = change.worksiteId ?: return@forEach
+            if (worksiteId !in contextsByWorksite) return@forEach
+            when (change.entityType) {
+                "BTB" -> target(worksiteId, change.entityId)
+                "BTB_ENTRY", "BTB_PARTICIPANT" -> needsActiveFallback += worksiteId
+            }
+        }
+
+        // FILE-Events werden ueber /files/{id} exakt auf ihre sichtbare BTB-Verknuepfung
+        // aufgeloest. Bei einem Portal-Unlink liefert der lokale Attachment-Cache den alten
+        // Parent zusaetzlich, damit genau dieser BTB seine Zuordnung entfernen kann.
+        for (change in page.changes.filter { it.entityType == "FILE" }) {
+            val worksiteId = change.worksiteId ?: continue
+            if (worksiteId !in contextsByWorksite) continue
             when (
-                val result = btbApi.loadTeamBtbs(
-                    token,
-                    context.worksiteServerId,
-                    context.groupId
+                val refreshed = ServiceLocator.collabSyncRepository.refreshServer1File(
+                    token = token,
+                    worksiteId = worksiteId,
+                    fileId = change.entityId,
+                    api = fileApi
                 )
             ) {
-                Server1BtbApi.Result.Unsupported -> return ApplyResult.Unsupported
-                Server1BtbApi.Result.SessionInvalid -> return ApplyResult.SessionInvalid
-                is Server1BtbApi.Result.Error -> return ApplyResult.Error(result.message)
-                is Server1BtbApi.Result.Success -> {
-                    ServiceLocator.collabSyncRepository.replaceServer1BtbSnapshots(
-                        context.worksiteServerId,
-                        context.groupId,
-                        result.items
+                de.tbhelfer.datenbank.CollabSyncRepository.Server1FileRefreshResult.SessionInvalid ->
+                    return ApplyResult.SessionInvalid
+                is de.tbhelfer.datenbank.CollabSyncRepository.Server1FileRefreshResult.Error ->
+                    return ApplyResult.Error(refreshed.message)
+                is de.tbhelfer.datenbank.CollabSyncRepository.Server1FileRefreshResult.Success ->
+                    refreshed.affectedBtbServerIds.forEach { target(worksiteId, it) }
+            }
+        }
+
+        val refreshedBtbIds = linkedSetOf<String>()
+        val refreshedWorksites = linkedSetOf<String>()
+
+        for ((worksiteId, contexts) in contextsByWorksite) {
+            val directIds = targetBtbIds[worksiteId].orEmpty().toMutableSet()
+            val context = contexts.firstOrNull { it.context.groupId.isNotBlank() }?.context ?: continue
+
+            for (btbId in directIds) {
+                when (
+                    val access = btbApi.loadBtbAccess(
+                        token = token,
+                        worksiteId = worksiteId,
+                        teamId = context.groupId,
+                        serverBtbId = btbId
                     )
+                ) {
+                    Server1BtbApi.AccessResult.Unsupported -> return ApplyResult.Unsupported
+                    Server1BtbApi.AccessResult.SessionInvalid -> return ApplyResult.SessionInvalid
+                    is Server1BtbApi.AccessResult.Error -> return ApplyResult.Error(access.message)
+                    is Server1BtbApi.AccessResult.Success -> {
+                        ServiceLocator.collabSyncRepository.upsertServer1BtbSnapshot(
+                            worksiteId,
+                            access.access.snapshot
+                        )
+                        refreshedBtbIds += access.access.snapshot.serverId
+                        refreshedWorksites += worksiteId
+                    }
+                }
+            }
+
+            if (worksiteId in needsActiveFallback && directIds.isEmpty()) {
+                when (
+                    val access = btbApi.loadActiveBtbAccess(
+                        token = token,
+                        worksiteId = worksiteId,
+                        teamId = context.groupId
+                    )
+                ) {
+                    Server1BtbApi.AccessResult.Unsupported -> return ApplyResult.Unsupported
+                    Server1BtbApi.AccessResult.SessionInvalid -> return ApplyResult.SessionInvalid
+                    is Server1BtbApi.AccessResult.Error -> {
+                        // Kein aktiver BTB ist bei einem zeitlich ueberholten Teilnehmer-/Entry-
+                        // Event nach Finalize legitim. Die folgende BTB-FINALIZE-Seite ist dann
+                        // der kanonische Zustand; dieser Event muss den Cursor nicht blockieren.
+                        if (!access.message.contains("Kein aktiver BTB", ignoreCase = true)) {
+                            return ApplyResult.Error(access.message)
+                        }
+                    }
+                    is Server1BtbApi.AccessResult.Success -> {
+                        ServiceLocator.collabSyncRepository.upsertServer1BtbSnapshot(
+                            worksiteId,
+                            access.access.snapshot
+                        )
+                        refreshedBtbIds += access.access.snapshot.serverId
+                        refreshedWorksites += worksiteId
+                    }
                 }
             }
         }
 
-        val fileWorksites = affectedWorksites.filter { id ->
-            page.changes.any {
-                it.worksiteId == id &&
-                    it.entityType in setOf("FILE", "BTB", "BTB_ENTRY", "BTB_PARTICIPANT")
-            }
-        }
-        if (fileWorksites.isNotEmpty()) {
-            when (
-                val files = ServiceLocator.collabSyncRepository.synchronizeServer1Attachments(
-                    token = token,
-                    worksiteIds = fileWorksites,
-                    api = fileApi
+        if (refreshedBtbIds.isNotEmpty()) {
+            runCatching {
+                ServiceLocator.collabLocalBridge.applyServerStateToLocal(
+                    worksiteServerIds = refreshedWorksites,
+                    btbServerIds = refreshedBtbIds,
+                    includeOtherEntities = false
                 )
-            ) {
-                de.tbhelfer.datenbank.CollabSyncRepository.Server1AttachmentSyncResult.Unsupported ->
-                    return ApplyResult.Unsupported
-                de.tbhelfer.datenbank.CollabSyncRepository.Server1AttachmentSyncResult.SessionInvalid ->
-                    return ApplyResult.SessionInvalid
-                is de.tbhelfer.datenbank.CollabSyncRepository.Server1AttachmentSyncResult.Error ->
-                    return ApplyResult.Error(files.message)
-                is de.tbhelfer.datenbank.CollabSyncRepository.Server1AttachmentSyncResult.Success -> Unit
-            }
-        }
-
-        runCatching { ServiceLocator.collabLocalBridge.applyServerStateToLocal() }
-            .getOrElse {
+            }.getOrElse {
                 return ApplyResult.Error(
                     it.message ?: "Server-BTB-Delta konnte lokal nicht angewendet werden."
                 )
             }
 
-        when (
-            val media = BtbTeamMediaSync(appContext).synchronize(
-                token = token,
-                server1Api = fileApi,
-                server1PdfApi = pdfApi,
-                worksiteServerIds = affectedWorksites
-            )
-        ) {
-            BtbTeamMediaSync.Result.Unsupported -> return ApplyResult.Unsupported
-            BtbTeamMediaSync.Result.SessionInvalid -> return ApplyResult.SessionInvalid
-            is BtbTeamMediaSync.Result.Error -> return ApplyResult.Error(media.message)
-            is BtbTeamMediaSync.Result.Success -> Unit
+            when (
+                val media = BtbTeamMediaSync(appContext).synchronize(
+                    token = token,
+                    server1Api = fileApi,
+                    server1PdfApi = pdfApi,
+                    worksiteServerIds = refreshedWorksites,
+                    btbServerIds = refreshedBtbIds,
+                    allowUploads = false
+                )
+            ) {
+                BtbTeamMediaSync.Result.Unsupported -> return ApplyResult.Unsupported
+                BtbTeamMediaSync.Result.SessionInvalid -> return ApplyResult.SessionInvalid
+                is BtbTeamMediaSync.Result.Error -> return ApplyResult.Error(media.message)
+                is BtbTeamMediaSync.Result.Success -> Unit
+            }
         }
 
         return ApplyResult.Success
