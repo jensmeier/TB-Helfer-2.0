@@ -1667,3 +1667,14 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Der API-Prozess startet um `14:53:22Z` erneut, wird kurz darauf sauber beendet und startet um `15:00:11Z` nochmals. Nach diesem Neustart bleibt die Readiness zunächst 503 und wird erst ab ca. `15:01:44Z` wieder 200.
 - Schlussfolgerung: Für den Vorfall ist **kein Finalize-Codefehler bewiesen**. Bewiesen ist ein Origin-/DB-/Hostausfall, der den Finalizeversuch überholt hat. Der BTB-Lifecycle darf deshalb nicht auf Verdacht geändert werden.
 - Nächste Beweise: `api-inspect.txt` (OOMKilled, ExitCode, RestartCount) und DB-Containerlog für ca. `16:35–16:55 CEST`. Erst danach Hostursache festlegen.
+
+
+### 25.09.2026 – OOM-Root-Cause bestätigt und PDF-Fotopipeline speicherbegrenzt
+
+- Hostdiagnose bestätigt den NAS-Ausfall eindeutig als **Out-of-Memory**: Swap war vollständig belegt; der Kernel startete den OOM-Killer und tötete den Uvicorn-Prozess.
+- Praktischer Test am betroffenen BTB `5d5d865d-...`: **63,3 MiB** gespeicherte Bilddateien entsprechen grob **1290,9 MiB** entpackten RGBA-Pixeldaten. Damit ist die Größenordnung des RAM-Drucks durch die bisherigen Originalfotos im synchronen Finalize-PDF-Pfad bestätigt.
+- Serverfix in `server/tbserver/btb_pdf.py`: Originalfotos werden beim PDF-Rendern **nicht verändert**, sondern einzeln als temporäre Arbeitskopie auf maximal **1600×1200 px** begrenzt und als JPEG gespeichert. ReportLab erhält nur diese begrenzten Renderkopien; der temporäre Ordner wird nach `doc.build()` entfernt.
+- Für JPEG wird vor dem eigentlichen Thumbnail zusätzlich `draft()` verwendet, damit der Decoder nach Möglichkeit bereits kleiner dekodiert. Dadurch bleibt der Spitzenbedarf pro Foto begrenzt statt alle hochauflösenden Pixel in die PDF-Struktur zu tragen.
+- Renderer-Version auf `tb-server-btb-pdf-3` angehoben. Source-/Smoke-Check 34 wurde um einen echten 3072×4080-Fototest erweitert und prüft die Begrenzung.
+- **Originalbilder, Datenbank, BTB-Inhalt und Android bleiben unverändert.** Kein Image-Rebuild erforderlich; Pillow ist im vorhandenen Serverimage bereits über ReportLab vorhanden und wurde auf der Synology im Diagnose-Test praktisch verwendet.
+- Deploy/E2E offen: neue `btb_pdf.py` auf die Synology, nur API neu starten, Health prüfen, dann 24.09.-BTB einmal finalisieren. Ziel: FINALIZED + `active_btb_id=NULL` ohne OOM/502.
