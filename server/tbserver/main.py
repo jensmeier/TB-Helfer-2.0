@@ -9,6 +9,7 @@ from . import SERVER_VERSION
 from .acceptances import router as acceptances_router
 from .admin import router as admin_router
 from .admin_purge import router as admin_purge_router
+from .admin_session import router as admin_session_router
 from .admin_web import router as admin_web_router
 from .btb import router as btb_router
 from .catalog import router as catalog_router
@@ -52,6 +53,7 @@ app.add_middleware(SystemMetricsMiddleware)
 app.include_router(capabilities_router)
 app.include_router(company_router)
 app.include_router(portal_router)
+app.include_router(admin_session_router)
 app.include_router(profile_router)
 app.include_router(catalog_router)
 app.include_router(admin_web_router)
