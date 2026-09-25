@@ -55,41 +55,57 @@ class SelectiveSyncWorker(
         val collab = ServiceLocator.collabSyncRepository
         val btbApi = Server1BtbApi()
 
-        // Vor jedem Push nur die Team-BTB-Snapshots der tatsaechlich betroffenen Baustellen
-        // aktualisieren. So erkennt ein altes Dirty-Scope einen inzwischen serverseitig
-        // FINALIZED/read-only BTB, bevor Android versehentlich BTB_NOT_ACTIVE provoziert.
-        val localIds = scopes.mapTo(linkedSetOf()) { it.localBaustelleId }
-        val bound = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
-            .filter { it.localWorksite?.altBaustelleId in localIds && it.context.groupId.isNotBlank() }
-        for (item in bound.distinctBy { it.context.worksiteServerId + "|" + it.context.groupId }) {
-            when (
-                val snapshot = btbApi.loadTeamBtbs(
-                    token,
-                    item.context.worksiteServerId,
-                    item.context.groupId
-                )
-            ) {
-                Server1BtbApi.Result.Unsupported -> return Result.success()
-                Server1BtbApi.Result.SessionInvalid -> {
-                    tokenStore.clear()
-                    return Result.success()
-                }
-                is Server1BtbApi.Result.Error -> return retryAutomatic()
-                is Server1BtbApi.Result.Success -> {
-                    collab.replaceServer1BtbSnapshots(
-                        item.context.worksiteServerId,
-                        item.context.groupId,
-                        snapshot.items
-                    )
-                }
-            }
-        }
-        runCatching { bridge.applyServerStateToLocal() }
-            .getOrElse { return retryAutomatic() }
+        // Kein Team-/Worksite-Vollscan: jeder Dirty-Scope wird unten exakt gegen seine
+        // bereits bekannte serverBtbId geprüft. Neue lokale BTBs haben noch keine serverBtbId
+        // und werden direkt über den bestehenden idempotenten Create-Pfad angelegt.
 
         var retryNeeded = false
 
         for (scope in scopes) {
+            val boundItem = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
+                .firstOrNull {
+                    it.binding != null &&
+                        it.localWorksite?.altBaustelleId == scope.localBaustelleId
+                }
+            if (boundItem == null) {
+                retryNeeded = true
+                continue
+            }
+            val worksiteId = boundItem.context.worksiteServerId
+            val teamId = boundItem.context.groupId
+            val knownEntity = collab.entities(
+                worksiteId,
+                de.tbhelfer.datenbank.SyncCollabPendingChangeEntity.TYPE_BTB
+            ).firstOrNull { it.clientEntityKey == scope.clientBtbId }
+
+            if (knownEntity != null && teamId.isNotBlank()) {
+                when (
+                    val access = btbApi.loadBtbAccess(
+                        token = token,
+                        worksiteId = worksiteId,
+                        teamId = teamId,
+                        serverBtbId = knownEntity.serverId
+                    )
+                ) {
+                    Server1BtbApi.AccessResult.Unsupported -> return Result.success()
+                    Server1BtbApi.AccessResult.SessionInvalid -> {
+                        tokenStore.clear()
+                        return Result.success()
+                    }
+                    is Server1BtbApi.AccessResult.Error -> return retryAutomatic()
+                    is Server1BtbApi.AccessResult.Success -> {
+                        collab.upsertServer1BtbSnapshot(worksiteId, access.access.snapshot)
+                        runCatching {
+                            bridge.applyServerStateToLocal(
+                                worksiteServerIds = setOf(worksiteId),
+                                btbServerIds = setOf(access.access.snapshot.serverId),
+                                includeOtherEntities = false
+                            )
+                        }.getOrElse { return retryAutomatic() }
+                    }
+                }
+            }
+
             val exported = try {
                 bridge.exportBtbChange(
                     localBaustelleId = scope.localBaustelleId,
@@ -149,12 +165,19 @@ class SelectiveSyncWorker(
                                 continue
                             }
 
+                            val currentServerBtbId = collab.entities(
+                                exported.worksiteServerId,
+                                de.tbhelfer.datenbank.SyncCollabPendingChangeEntity.TYPE_BTB
+                            ).firstOrNull { it.clientEntityKey == scope.clientBtbId }?.serverId
+
                             when (
                                 val media = BtbTeamMediaSync(applicationContext).synchronize(
                                     token = token,
                                     server1Api = Server1FileApi(),
                                     server1PdfApi = Server1BtbPdfApi(),
-                                    worksiteServerIds = setOf(exported.worksiteServerId)
+                                    worksiteServerIds = setOf(exported.worksiteServerId),
+                                    btbServerIds = currentServerBtbId?.let { setOf(it) },
+                                    allowUploads = true
                                 )
                             ) {
                                 BtbTeamMediaSync.Result.SessionInvalid -> {
