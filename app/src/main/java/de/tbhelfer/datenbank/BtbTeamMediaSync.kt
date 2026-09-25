@@ -61,7 +61,9 @@ class BtbTeamMediaSync(context: Context) {
         api: CollabSyncApi = CollabSyncApi(),
         server1Api: Server1FileApi? = null,
         server1PdfApi: Server1BtbPdfApi? = null,
-        worksiteServerIds: Set<String>? = null
+        worksiteServerIds: Set<String>? = null,
+        btbServerIds: Set<String>? = null,
+        allowUploads: Boolean = true
     ): Result {
         var uploaded = 0
         var present = 0
@@ -79,7 +81,11 @@ class BtbTeamMediaSync(context: Context) {
             val localFotos = fotos.fotosFuerBaustelleSyncOnce(local.altBaustelleId)
             val localPaths = localFotos.mapTo(hashSetOf()) { runCatching { File(it.dateipfad).canonicalPath }.getOrDefault(it.dateipfad) }
             val serverBtbs = collab.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB)
-                .filter { !it.isDeleted && it.groupId == server.groupId }
+                .filter {
+                    !it.isDeleted &&
+                        it.groupId == server.groupId &&
+                        (btbServerIds == null || it.serverId in btbServerIds)
+                }
                 .mapNotNull { entity -> entity.clientEntityKey?.let { it to entity } }
                 .toMap()
 
@@ -94,7 +100,7 @@ class BtbTeamMediaSync(context: Context) {
             val verlaufByBtbId = verlauf.mapNotNull { v ->
                 v.btbId?.takeIf { it.isNotBlank() && !it.startsWith("legacy:") }?.let { it to v }
             }.toMap()
-            for (v in verlauf) {
+            if (allowUploads) for (v in verlauf) {
                 val stableBtbId = v.btbId?.takeIf { it.isNotBlank() }
                 val key = stableBtbId ?: "legacy:${v.datum}:${v.schicht.name}"
                 val parent = serverBtbs[key] ?: continue
