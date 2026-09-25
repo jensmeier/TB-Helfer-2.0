@@ -1220,15 +1220,16 @@ class Server1BtbApi(
                     slot = "$slotPrefix:$maxSuffix"
                 } while (slot in usedSlots)
             }
-            usedSlots += slot
+            val resolvedSlot = slot ?: continue
+            usedSlots += resolvedSlot
             out += DesiredEntry(
-                deterministicEntryId(worksiteId, teamId, clientKey, slot),
+                deterministicEntryId(worksiteId, teamId, clientKey, resolvedSlot),
                 section,
-                slot,
+                resolvedSlot,
                 index,
                 JSONObject(item.toString())
                     .put(MANAGED_KEY, true)
-                    .put(SLOT_KEY, slot)
+                    .put(SLOT_KEY, resolvedSlot)
             )
         }
     }
