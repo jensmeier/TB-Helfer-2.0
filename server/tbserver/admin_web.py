@@ -319,7 +319,7 @@ def portal_worksites_page(
 ):
     return templates.TemplateResponse(
         "v1_worksites.html",
-        {"request": request, "user": user},
+        {"request": request, "user": user, "page_prefix": "/portal/v1"},
     )
 
 
@@ -346,6 +346,7 @@ def portal_worksite_page(
             "request": request,
             "user": user,
             "worksite_id": str(worksite_id),
+            "page_prefix": "/portal/v1",
         },
     )
 
@@ -362,6 +363,54 @@ def portal_btb_page(
             "request": request,
             "user": user,
             "btb_id": str(btb_id),
+            "page_prefix": "/portal/v1",
+        },
+    )
+
+
+
+
+@router.get("/admin/v1/worksites")
+def admin_worksites_page(
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
+):
+    return templates.TemplateResponse(
+        "v1_worksites.html",
+        {"request": request, "user": user, "page_prefix": "/admin/v1"},
+    )
+
+
+@router.get("/admin/v1/worksites/{worksite_id}")
+def admin_worksite_page(
+    worksite_id: UUID,
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
+):
+    return templates.TemplateResponse(
+        "v1_worksite.html",
+        {
+            "request": request,
+            "user": user,
+            "worksite_id": str(worksite_id),
+            "page_prefix": "/admin/v1",
+        },
+    )
+
+
+@router.get("/admin/v1/btbs/{btb_id}")
+def admin_btb_page(
+    btb_id: UUID,
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
+):
+    return templates.TemplateResponse(
+        "v1_btb.html",
+        {
+            "request": request,
+            "user": user,
+            "btb_id": str(btb_id),
+            "page_prefix": "/admin/v1",
         },
     )
 
