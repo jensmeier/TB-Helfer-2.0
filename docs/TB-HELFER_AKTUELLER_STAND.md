@@ -1723,3 +1723,14 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - **Deploy-Runbook:** `docs/TB-SERVER_1_0_STAGING_DEPLOY_2026-09-25.md` beschreibt Backup, vollständigen Quell-Sync, Migration 015, API-Recreate, Preflight und Browser-/Delta-E2E.
 - **Android parallel:** Android-Branch entwickelt den festgeschriebenen Clientvertrag weiter. SERVER verändert weiterhin kein `app/**`.
 - `STATUS.xlsx` wurde **nicht** überschrieben, weil Server- und Android-Branch weiterhin unterschiedliche Workbook-Blobs besitzen. MD ist der konsolidierte Integrationsstand bis zur konfliktfreien Excel-Nachführung.
+
+
+### 25.09.2026 – Integrations-Härtung nach Querprüfung
+
+- Vor Abschluss dieses Quellblocks erneut GitHub geprüft: SERVER `1c46f5e3f5491e601cfefce9455ad5d06de81cca`, ANDROID `fcc0fc92fbb8ef7003367c57b7ecc46047e0817c`; Android arbeitet parallel weiter.
+- Delta-Long-Poll weiter gehärtet: Bei unverändertem globalem Feed-Head endet ein Timeout ohne zusätzliche caller-spezifische DB-Abfrage. Die 255-Client-Probe ermittelt standardmäßig zunächst den aktuellen Head und testet dadurch den echten Wait-Pfad.
+- Bild-Renditions weiter gehärtet: maximal zwei High-Resolution-Decodes gleichzeitig; nach Eintritt in die Semaphore wird der Cache nochmals geprüft. Dadurch wird ein First-Load mit vielen Fotos speicherbegrenzt.
+- Portal-Fotoupload übergibt, wenn verfügbar, den Browser-Dateizeitstempel (`file.lastModified`) als `captured_at`; Punkt/Kurztext/Firma/KM/Objekt/Bereich bleiben strukturierte `photo_metadata`.
+- Für PRB-020 liegt zusätzlich `server/tools/session_split_e2e.py` vor. Es simuliert absichtlich einen Browser mit **einem** Cookie-Jar und prüft, dass Portal- und Admin-Sitzung gleichzeitig bestehen und unabhängig abgemeldet werden können.
+- Staging-Runbook wurde entsprechend ergänzt. Praktische Deployment-/Browser-/Last-E2E bleiben offen und werden nicht als Source-Test ausgegeben.
+- `STATUS.xlsx` bleibt wegen abweichendem Android-Workbook unverändert.
