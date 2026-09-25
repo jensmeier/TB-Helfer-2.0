@@ -71,6 +71,11 @@ function tbCookie(name){
   return found?decodeURIComponent(found.substring(name.length+1)):'';
 }
 const tbAdminScope=location.pathname.startsWith('/admin/v1');
+function tbScopedUrl(url){
+  if(!tbAdminScope)return url;
+  const sep=String(url).includes('?')?'&':'?';
+  return String(url)+sep+'_tb_session=admin';
+}
 async function tbApi(url, options){
   const opts=Object.assign({credentials:'same-origin'}, options||{});
   opts.headers=Object.assign({}, opts.headers||{});
