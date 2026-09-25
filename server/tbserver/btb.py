@@ -436,9 +436,76 @@ def create_entry(
         values = (btb_id, payload.section, payload.sort_order, Jsonb(payload.payload), user["user_id"], user["user_id"])
         if payload.id is None:
             cur.execute("INSERT INTO tb.btb_entries(btb_id, section, sort_order, payload, created_by, updated_by) VALUES (%s,%s,%s,%s,%s,%s) RETURNING *", values)
+            row = dict(cur.fetchone())
         else:
-            cur.execute("INSERT INTO tb.btb_entries(id, btb_id, section, sort_order, payload, created_by, updated_by) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *", (payload.id, *values))
-        row = dict(cur.fetchone())
+            cur.execute(
+                """
+                SELECT id, btb_id, section, sort_order, payload, version,
+                       created_by, updated_by, created_at, updated_at, deleted_at
+                FROM tb.btb_entries
+                WHERE id = %s
+                FOR UPDATE
+                """,
+                (payload.id,),
+            )
+            existing = cur.fetchone()
+            if existing is None:
+                cur.execute(
+                    "INSERT INTO tb.btb_entries(id, btb_id, section, sort_order, payload, created_by, updated_by) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING *",
+                    (payload.id, *values),
+                )
+                row = dict(cur.fetchone())
+            else:
+                existing = dict(existing)
+                if existing["btb_id"] != btb_id:
+                    raise HTTPException(
+                        409,
+                        {"code": "ENTRY_ID_CONFLICT", "current_version": existing["version"]},
+                    )
+                same_content = (
+                    existing["section"] == payload.section
+                    and existing["sort_order"] == payload.sort_order
+                    and existing["payload"] == payload.payload
+                )
+                if existing["deleted_at"] is None:
+                    if not same_content:
+                        raise HTTPException(
+                            409,
+                            {"code": "ENTRY_ID_CONFLICT", "current_version": existing["version"]},
+                        )
+                    finish_mutation(
+                        cur,
+                        user=user,
+                        context=mutation,
+                        receipt_type="BTB_ENTRY_CREATE",
+                        entity_id=existing["id"],
+                        result_version=existing["version"],
+                        response_payload=existing,
+                    )
+                    return existing
+                cur.execute(
+                    """
+                    UPDATE tb.btb_entries
+                    SET section = %s,
+                        sort_order = %s,
+                        payload = %s,
+                        deleted_at = NULL,
+                        version = version + 1,
+                        updated_by = %s,
+                        updated_at = now()
+                    WHERE id = %s AND btb_id = %s AND deleted_at IS NOT NULL
+                    RETURNING *
+                    """,
+                    (
+                        payload.section,
+                        payload.sort_order,
+                        Jsonb(payload.payload),
+                        user["user_id"],
+                        payload.id,
+                        btb_id,
+                    ),
+                )
+                row = dict(cur.fetchone())
         cur.execute("UPDATE tb.btbs SET version = version + 1, updated_at = now() WHERE id = %s RETURNING version", (btb_id,))
         parent_version = cur.fetchone()["version"]
         emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB_ENTRY", entity_id=row["id"], operation="CREATE", entity_version=row["version"], actor_user_id=user["user_id"])
