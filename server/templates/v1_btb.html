@@ -1232,9 +1232,12 @@ document.getElementById('uploadPhoto').addEventListener('click',async function()
       objektBereich:String(document.getElementById('photoArea').value||'').trim()
     };
     if(Number.isFinite(km))photoMetadata.km=km;
+    const capturedAt=Number.isFinite(Number(file.lastModified))&&Number(file.lastModified)>0
+      ?new Date(Number(file.lastModified)).toISOString():null;
     await tbApi('/api/v1/uploads/'+encodeURIComponent(upload.id)+'/complete',{
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        entity_type:'BTB',entity_id:btbId,purpose:'BTB_PHOTO',photo_metadata:photoMetadata
+        entity_type:'BTB',entity_id:btbId,purpose:'BTB_PHOTO',
+        captured_at:capturedAt,photo_metadata:photoMetadata
       })
     });
     document.getElementById('photoFile').value='';
