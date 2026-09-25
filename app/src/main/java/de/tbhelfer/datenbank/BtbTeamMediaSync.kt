@@ -179,7 +179,15 @@ class BtbTeamMediaSync(context: Context) {
                     if (!file.exists() || !file.isFile) continue
                     val canonical = runCatching { file.canonicalPath }.getOrDefault(file.absolutePath)
                     if (canonical in localPaths) {
-                        rememberImported(attachment.serverId, true)
+                        val own = localFotos.firstOrNull { foto ->
+                            runCatching { File(foto.dateipfad).canonicalPath }
+                                .getOrDefault(foto.dateipfad) == canonical
+                        }
+                        if (own != null) {
+                            rememberImportedPhoto(attachment.serverId, own.id, parentKey)
+                        } else {
+                            rememberImported(attachment.serverId, true)
+                        }
                         continue
                     }
                     if (wasImported(attachment.serverId)) continue
