@@ -429,6 +429,60 @@ class CollabLocalBridge(
         return AttachmentUploadResult.Success(AttachmentUploadSummary(bound.size, uploaded, present))
     }
 
+    /**
+     * Uebernimmt nur Rollen/Lifecycle/Slot-Metadaten aus dem bereits geladenen Servercache.
+     * Lokale BTB-Fachinhalte werden dabei NICHT ueberschrieben. Dieser Schritt muss bei einem
+     * Recovery-Vollsync vor exportLocalChanges laufen, damit alte FINALIZED-BTBs keine neue
+     * Outbox-Mutation erzeugen und vorhandene _tb_android_slot-Werte erhalten bleiben.
+     */
+    suspend fun primeBtbServerState(
+        worksiteServerIds: Set<String>? = null
+    ): Int {
+        val bound = bindingRepository.contextsWithBindings().filter {
+            it.binding != null &&
+                it.localWorksite != null &&
+                (worksiteServerIds == null || it.context.worksiteServerId in worksiteServerIds)
+        }
+        var primed = 0
+        for (item in bound) {
+            val local = item.localWorksite ?: continue
+            val server = item.context
+            val localBaustelleId = local.altBaustelleId
+            val btbItems = collabRepository.entities(
+                server.worksiteServerId,
+                SyncCollabPendingChangeEntity.TYPE_BTB
+            ).filter { it.groupId == server.groupId }
+
+            for (entity in btbItems) {
+                val key = entity.clientEntityKey ?: continue
+                val payload = runCatching { JSONObject(entity.payloadJson) }.getOrNull() ?: continue
+                BtbServerStateStore.rememberSnapshot(
+                    appContext,
+                    worksiteServerId = server.worksiteServerId,
+                    serverBtbId = entity.serverId,
+                    teamId = entity.groupId ?: server.groupId,
+                    clientBtbId = key,
+                    payloadJson = entity.payloadJson
+                )
+                BtbEntrySlotStore.remember(
+                    appContext,
+                    key,
+                    payload.optJSONObject(Server1BtbApi.LOCAL_ENTRY_SLOTS_KEY)
+                )
+                val serverFinal = entity.status.equals("FERTIG", ignoreCase = true) &&
+                    payload.optString(Server1BtbApi.SERVER_STATUS_KEY)
+                        .equals("FINALIZED", ignoreCase = true) &&
+                    !payload.optBoolean(Server1BtbApi.SERVER_ACTIVE_KEY, false)
+                if (serverFinal) {
+                    collabRepository.clearServer1BtbPending(server.worksiteServerId, key)
+                    SelectiveSyncStore.clearBtb(appContext, localBaustelleId, key)
+                }
+                primed++
+            }
+        }
+        return primed
+    }
+
     suspend fun applyServerStateToLocal(
         worksiteServerIds: Set<String>? = null,
         btbServerIds: Set<String>? = null,
