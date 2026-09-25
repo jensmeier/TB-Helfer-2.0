@@ -3,6 +3,8 @@ package de.tbhelfer.server
 import android.content.Context
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.BtbTeamMediaSync
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Wendet den gefilterten Server-1.0-Changefeed als kleine Android-Deltas an.
@@ -33,6 +35,13 @@ class Server1DeltaSync(context: Context) {
     suspend fun synchronize(
         firstWaitSeconds: Int = 0,
         maxPages: Int = 20
+    ): Result = processMutex.withLock {
+        synchronizeLocked(firstWaitSeconds, maxPages)
+    }
+
+    private suspend fun synchronizeLocked(
+        firstWaitSeconds: Int,
+        maxPages: Int
     ): Result {
         ServiceLocator.initialisieren(appContext)
         val tokenStore = SecureTokenStore(appContext)
@@ -193,5 +202,9 @@ class Server1DeltaSync(context: Context) {
         }
 
         return ApplyResult.Success
+    }
+
+    companion object {
+        private val processMutex = Mutex()
     }
 }
