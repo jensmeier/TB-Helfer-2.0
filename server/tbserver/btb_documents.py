@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 from fastapi import HTTPException
 
+from .btb_photo_meta import canonical_photo_metadata
 from .config import settings
 
 
@@ -133,7 +134,14 @@ def snapshot_photo_metadata(photo_files: list[dict[str, Any]]) -> list[dict[str,
                 "gps_lat": photo.get("gps_lat"),
                 "gps_lon": photo.get("gps_lon"),
                 "gps_accuracy_m": photo.get("gps_accuracy_m"),
-                "photo_metadata": photo.get("photo_metadata") or None,
+                "photo_metadata": canonical_photo_metadata(
+                    filename=photo.get("original_name"),
+                    captured_at=photo.get("captured_at"),
+                    gps_lat=photo.get("gps_lat"),
+                    gps_lon=photo.get("gps_lon"),
+                    gps_accuracy_m=photo.get("gps_accuracy_m"),
+                    photo_metadata=photo.get("photo_metadata"),
+                )["photo_metadata"],
                 "purpose": photo.get("purpose"),
             }
         )
