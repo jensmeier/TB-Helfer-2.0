@@ -1630,3 +1630,12 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Konsequenz: Mit mindestens einem zweiten Teammitglied kann 200068 den BTB derzeit nicht regulär finalisieren, solange dessen Teilnehmerstatus serverseitig WORKING bleibt. Dadurch bleibt `active_btb_id` gesetzt und der neue 25.09.-BTB kann serverseitig nicht angelegt werden.
 - **Keine Serverlockerung und keine manuelle SQL-Korrektur.** Nächster fachlich korrekter Schritt liegt im ANDROID-Projekt: Helfer-Schichtende an `shift-finish` anbinden; Teamlead bei offenen Teilnehmern klar anzeigen und optional nur nach bewusster Bestätigung den vorhandenen Server-Override `allow_unfinished=true` verwenden.
 - Ziel-E2E danach: Poco -> Schicht Ende -> Teilnehmer FINISHED; Pixel/Teamlead -> BTB abschließen -> BTB FINALIZED + `active_btb_id=NULL`; anschließend neuer 25.09.-BTB erfolgreich serverseitig angelegt.
+
+
+### 25.09.2026 – Portal-Recovery: Poco-Schichtstatus jetzt FERTIG
+
+- Screenshot im normalen Benutzerportal als `poco`: aktiver BTB 24.09. ist sichtbar; Schichtstatus zeigt `poco = FERTIG` und `test.test = ARBEITET · Haupt-TB`. Der Button `Schicht fortsetzen` bestätigt, dass der eigene Helferstatus serverseitig FINISHED ist.
+- Screenshot im Admin-Bereich zeigt denselben Schichtstatus, aber keinen Abschlussbutton. Das ist korrekt: der Admin ist nicht der verantwortliche Teamlead und darf den Teamlead-Lifecycle nicht stellvertretend ausführen.
+- Der vorherige konkrete Finalize-Blocker `poco = WORKING` ist im Recoveryzustand damit gelöst. Nächster praktischer Schritt: als `test.test` im normalen Benutzerportal anmelden, aktiven 24.09.-BTB öffnen und `BTB endgültig abschließen` ausführen.
+- Erwartung danach: BTB = FINALIZED, `active_btb_id = NULL`; anschließend Pixel 200068 `Neu laden`, sodass der lokale 25.09.-BTB serverseitig angelegt werden kann.
+- Android-Schichtende bleibt dennoch als Produktfix offen; der Portal-Recoverytest ersetzt nicht die mobile Implementierung.
