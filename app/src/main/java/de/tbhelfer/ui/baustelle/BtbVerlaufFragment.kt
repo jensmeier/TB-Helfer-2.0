@@ -17,6 +17,7 @@ import com.google.android.material.card.MaterialCardView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.server.BtbServerStateStore
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
 import de.tbhelfer.ui.bautagebuch.BtbActivePointerControl
@@ -84,6 +85,8 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
     private fun cardFor(item: BautagebuchSpeicher.VerlaufEintrag): View {
         val ctx = requireContext()
         val status = BtbDokumentVersionierung.status(ctx, item.entry)
+        val serverState = BtbServerStateStore.state(ctx.applicationContext, item.btbId)
+        val serverFinalReadOnly = serverState?.serverFinalReadOnly == true
         val pdf = BtbDokumentVersionierung.aktuellesAbschlussPdf(ctx, item.entry)
         val bg = when (status) {
             BtbAbschlussStatus.ABGESCHLOSSEN -> Color.parseColor("#E8F5E9")
@@ -97,10 +100,14 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         }
         // "ENTWURF" bleibt nur eine interne technische Zustandsbezeichnung. Fuer den Benutzer
         // existiert ein real angelegter gemeinsamer BTB bereits und wird deshalb als aktiv gezeigt.
-        val statusText = when (status) {
-            BtbAbschlussStatus.ABGESCHLOSSEN -> "Abgeschlossen · erneut bearbeitbar"
-            BtbAbschlussStatus.NACHBEARBEITUNG -> "Nachbearbeitung · Abschluss-PDF ungültig"
-            BtbAbschlussStatus.ENTWURF -> "BTB aktiv"
+        val statusText = if (serverFinalReadOnly) {
+            "Abgeschlossen · nur lesen"
+        } else {
+            when (status) {
+                BtbAbschlussStatus.ABGESCHLOSSEN -> "Abgeschlossen · erneut bearbeitbar"
+                BtbAbschlussStatus.NACHBEARBEITUNG -> "Nachbearbeitung · Abschluss-PDF ungültig"
+                BtbAbschlussStatus.ENTWURF -> "BTB aktiv"
+            }
         }
         val startDate = runCatching { LocalDate.parse(item.entry.datumIso) }.getOrDefault(item.datum)
         val endDate = item.entry.endeDatumIso?.let { raw -> runCatching { LocalDate.parse(raw) }.getOrNull() }
@@ -132,8 +139,12 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         inner.addView(textView(if (pdf != null) "PDF vorhanden" else "Kein gültiges Abschluss-PDF", 13f, Color.DKGRAY, false))
 
         val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        row.addView(button("BTB bearbeiten") { bearbeite(item) })
-        row.addView(button("PDF öffnen") { oeffnePdf(item) })
+        if (!serverFinalReadOnly) {
+            row.addView(button("BTB bearbeiten") { bearbeite(item) })
+        }
+        if (serverState?.canViewPdf != false) {
+            row.addView(button("PDF öffnen") { oeffnePdf(item) })
+        }
         row.addView(button("ZIP teilen") { teileTagesabschlussZip(item) })
         inner.addView(row)
 
@@ -146,6 +157,15 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
     }
 
     private fun bearbeite(item: BautagebuchSpeicher.VerlaufEintrag) {
+        val serverState = BtbServerStateStore.state(requireContext().applicationContext, item.btbId)
+        if (serverState?.serverFinalReadOnly == true) {
+            com.google.android.material.snackbar.Snackbar.make(
+                requireView(),
+                "Dieser BTB ist serverseitig abgeschlossen und nur noch lesbar.",
+                com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+            ).show()
+            return
+        }
         lifecycleScope.launch {
             if (hauptKnotenId > 0L && altBaustelleId > 0L) {
                 ServiceLocator.aktuelleBaustelleSpeicher.setzenNurHaupt(hauptKnotenId, altBaustelleId)
