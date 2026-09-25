@@ -105,12 +105,26 @@ def _run_pg_dump(target: Path) -> None:
         raise BackupError("PG_DUMP_EMPTY")
 
 
+def _storage_backup_filter(info: tarfile.TarInfo) -> tarfile.TarInfo | None:
+    # Image renditions are derived, immutable-cache data and are recreated from
+    # the protected original file on demand. Keeping them out of FILES/FULL
+    # backups avoids duplicating thumbnail/preview caches in every backup.
+    if ".renditions" in Path(info.name).parts:
+        return None
+    return info
+
+
 def _archive_storage(target: Path) -> None:
     root = settings.storage_root
     target.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(target, "w:gz", dereference=False) as archive:
         if root.exists():
-            archive.add(root, arcname="storage", recursive=True)
+            archive.add(
+                root,
+                arcname="storage",
+                recursive=True,
+                filter=_storage_backup_filter,
+            )
         else:
             info = tarfile.TarInfo("storage/")
             info.type = tarfile.DIRTYPE
