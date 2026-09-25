@@ -25,10 +25,25 @@ assert '"tb_admin_csrf" if user.get("auth_kind") == "ADMIN_PORTAL"' in portal
 assert 'Depends(current_admin_session_user)' in admin
 assert 'Depends(current_admin_session_user)' in admin_web
 assert '@router.get("/admin/v1/login")' in admin_web
+for token in (
+    '@router.get("/admin/v1/worksites")',
+    '@router.get("/admin/v1/worksites/{worksite_id}")',
+    '@router.get("/admin/v1/btbs/{btb_id}")',
+    '"page_prefix": "/admin/v1"',
+):
+    assert token in admin_web, token
 assert "const tbAdminScope=location.pathname.startsWith('/admin/v1');" in base
 assert "tbAdminScope?'tb_admin_csrf':'tb_portal_csrf'" in base
 assert "/api/v1/admin/session/logout" in base
 assert "/admin/v1/login" in portal_login
+worksites = (ROOT / "server/templates/v1_worksites.html").read_text(encoding="utf-8")
+worksite = (ROOT / "server/templates/v1_worksite.html").read_text(encoding="utf-8")
+btb = (ROOT / "server/templates/v1_btb.html").read_text(encoding="utf-8")
+dashboard = (ROOT / "server/templates/v1_admin_dashboard.html").read_text(encoding="utf-8")
+assert "pagePrefix" in worksites
+assert "pagePrefix" in worksite
+assert "pagePrefix" in btb
+assert 'href="/admin/v1/worksites"' in dashboard
 assert "/api/v1/admin/session/login" in admin_login
 assert "admin_session_router" in main
 
