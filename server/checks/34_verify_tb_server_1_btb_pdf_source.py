@@ -18,7 +18,13 @@ def read(rel: str) -> str:
 
 def render_smoke() -> None:
     sys.path.insert(0, str(ROOT / "server"))
-    from tbserver.btb_pdf import PDF_RENDERER_VERSION, render_btb_pdf
+    from PIL import Image as PILImage
+    from tbserver.btb_pdf import (
+        PDF_PHOTO_MAX_SIZE_PX,
+        PDF_RENDERER_VERSION,
+        _prepare_pdf_photo,
+        render_btb_pdf,
+    )
 
     snapshot = {
         "btb": {
@@ -75,7 +81,17 @@ def render_smoke() -> None:
         data = target.read_bytes()
         assert data.startswith(b"%PDF-"), data[:16]
         assert len(data) > 1000, len(data)
-        assert PDF_RENDERER_VERSION == "tb-server-btb-pdf-2"
+        assert PDF_RENDERER_VERSION == "tb-server-btb-pdf-3"
+
+        large_source = Path(temp_dir) / "large-phone-photo.jpg"
+        bounded_target = Path(temp_dir) / "bounded-photo.jpg"
+        with PILImage.new("RGB", (3072, 4080), "white") as large:
+            large.save(large_source, "JPEG", quality=90)
+        _prepare_pdf_photo(large_source, bounded_target)
+        with PILImage.open(bounded_target) as bounded:
+            assert bounded.width <= PDF_PHOTO_MAX_SIZE_PX[0]
+            assert bounded.height <= PDF_PHOTO_MAX_SIZE_PX[1]
+            assert bounded.width * bounded.height < 3072 * 4080
 
 
 def main() -> None:
@@ -102,7 +118,11 @@ def main() -> None:
         ('raise HTTPException(409, "BTB_NOT_ACTIVE")', documents),
         ('def install_pdf_atomically', documents),
         ('def rollback_pdf_install', documents),
-        ('PDF_RENDERER_VERSION = "tb-server-btb-pdf-2"', pdf),
+        ('PDF_RENDERER_VERSION = "tb-server-btb-pdf-3"', pdf),
+        ('PDF_PHOTO_MAX_SIZE_PX = (1600, 1200)', pdf),
+        ('def _prepare_pdf_photo', pdf),
+        ('source.draft("RGB", PDF_PHOTO_MAX_SIZE_PX)', pdf),
+        ('photo_temp_dir.cleanup()', pdf),
         ('textColor=colors.red', pdf),
         ('(entfernt)', pdf),
         ('prepare_btb_photo_change', files),
