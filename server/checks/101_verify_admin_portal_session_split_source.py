@@ -1,0 +1,35 @@
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+admin_session = (ROOT / "server/tbserver/admin_session.py").read_text(encoding="utf-8")
+portal = (ROOT / "server/tbserver/portal.py").read_text(encoding="utf-8")
+admin = (ROOT / "server/tbserver/admin.py").read_text(encoding="utf-8")
+admin_web = (ROOT / "server/tbserver/admin_web.py").read_text(encoding="utf-8")
+base = (ROOT / "server/templates/v1_base.html").read_text(encoding="utf-8")
+portal_login = (ROOT / "server/templates/v1_portal_login.html").read_text(encoding="utf-8")
+admin_login = (ROOT / "server/templates/v1_admin_login.html").read_text(encoding="utf-8")
+main = (ROOT / "server/tbserver/main.py").read_text(encoding="utf-8")
+
+for token in (
+    'ADMIN_SESSION_COOKIE = "tb_admin_session"',
+    'ADMIN_CSRF_COOKIE = "tb_admin_csrf"',
+    '@router.post("/login")',
+    'current_admin_session_user',
+    'require_admin_session_csrf',
+):
+    assert token in admin_session, token
+
+assert 'ADMIN_USE_ADMIN_LOGIN' in portal
+assert 'X-TB-Session-Scope' in portal
+assert '"tb_admin_csrf" if user.get("auth_kind") == "ADMIN_PORTAL"' in portal
+assert 'Depends(current_admin_session_user)' in admin
+assert 'Depends(current_admin_session_user)' in admin_web
+assert '@router.get("/admin/v1/login")' in admin_web
+assert "const tbAdminScope=location.pathname.startsWith('/admin/v1');" in base
+assert "tbAdminScope?'tb_admin_csrf':'tb_portal_csrf'" in base
+assert "/api/v1/admin/session/logout" in base
+assert "/admin/v1/login" in portal_login
+assert "/api/v1/admin/session/login" in admin_login
+assert "admin_session_router" in main
+
+print("OK: admin and user portal use independent browser sessions and CSRF cookies")
