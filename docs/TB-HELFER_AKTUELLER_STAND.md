@@ -1608,3 +1608,14 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Eigenständige Fach-Abnahmefotos werden separat aus `AbnahmeSpeicher.fotos` an den Parent `ACCEPTANCE` hochgeladen. Nur diese erscheinen im Portal direkt unter der jeweiligen Fach-Abnahme bei `Abnahme-Fotos`.
 - Daher beweist `4/4` im BTB nicht, dass dieselben vier Dateien auch der Fach-Abnahme zugeordnet sind. Automatisches Cross-Linking wird nicht auf Verdacht eingeführt, weil mehrere Fach-Abnahmen pro BTB möglich sind und die Zuordnung sonst mehrdeutig wäre.
 - Der hochgeladene Worker-Log zeigt nur temporäre PostgreSQL-Verbindungsfehler während eines DB-Neustarts und bestätigt ausdrücklich, dass der Worker weiterlebt und erneut versucht. Für den aktuellen `BTB_NOT_ACTIVE`-Syncpfad wird der **API-Log** direkt nach einem frischen `Neu laden` benötigt.
+
+
+### 25.09.2026 – API-Log nach Entry-PK-Fix: 500 behoben, verbleibende 409 getrennt
+
+- Der neue API-Log bestätigt den deployten Serverfix praktisch: Beim aktiven BTB `5d5d865d-59da-4195-8c5b-d9850ec7811a` läuft der zuvor abstürzende Granularpfad nun durch: Entry-POST `201 Created`, danach Entry-PATCH `200 OK` und Entry-DELETE `204 No Content`. Die frühere `btb_entries_pkey`-500-Ursache ist damit im Recoverylauf nicht mehr reproduziert.
+- Direkt danach scheitert `POST /api/v1/btbs/5d5d865d-.../finalize` mit **409**. Solange dieser BTB nicht finalisiert wird, bleibt er der aktive Team-BTB; neue BTB-Erstellungen liefern deshalb weiter **409**. Der Access-Log enthält den HTTP-Status, aber nicht den 409-Response-Body; der exakte Finalize-Code ist deshalb noch separat zu bestimmen.
+- Zusätzlich gibt es einen zweiten, unabhängigen Fehlerpfad mit dem historischen BTB `82f7c698-51a4-4b7f-a677-2f80e90879a5`: Android sendet weiterhin einen Header-PATCH auf diesen alten BTB (409) und versucht wiederholt dieselbe Datei-Upload-Session `2037e668-...` abzuschließen (409).
+- Serverseitig ist das erwarteter Schutz: `prepare_btb_content_change()` verlangt für Inhalts-/Fotoänderungen, dass der BTB aktuell als `active_btb_id` des Teams gesetzt ist, andernfalls folgt `BTB_NOT_ACTIVE`. Dieser Schutz wird **nicht** gelockert, weil finalisierte Historie sonst still verändert würde.
+- Der verbleibende historische Schreibversuch ist damit ein **Android-Sync-Thema**: `BtbTeamMediaSync` und der lokale BTB-Export dürfen serverseitig fertige/inaktive historische BTBs nicht ohne explizite Nachbearbeitung erneut als Header-/Medienänderung senden. Das ist im ANDROID-Projekt umzusetzen; SERVER ändert keine `app/**`-Dateien.
+- Separater nächster SERVER-Diagnoseschritt für den aktiven `5d5d865d...`: Teilnehmerstatus und BTB-/Teamstatus prüfen, um den exakten Finalize-409 zu bestimmen. Keine Änderung auf Verdacht.
+- `STATUS.xlsx` wurde bewusst **nicht** überschrieben: SERVER- und ANDROID-Branch haben unterschiedliche XLSX-Blobs; gemäß Integrator-Regel zuerst konfliktfrei konsolidieren.
