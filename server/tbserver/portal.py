@@ -121,7 +121,11 @@ def current_portal_user(request: Request) -> dict[str, Any]:
         from .devices import current_device_user
 
         return current_device_user(request)
-    if (request.headers.get("X-TB-Session-Scope") or "").strip().upper() == "ADMIN":
+    requested_scope = (
+        (request.headers.get("X-TB-Session-Scope") or "")
+        or (request.query_params.get("_tb_session") or "")
+    ).strip().upper()
+    if requested_scope == "ADMIN":
         from .admin_session import current_admin_session_user
 
         return current_admin_session_user(request)
