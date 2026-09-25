@@ -112,7 +112,6 @@ class BtbTeamMediaSync(context: Context) {
                             BtbFotoZuordnungSpeicher.btbId(appContext, foto.id) == null
                     }
                 }
-                var uploadedForBtb = 0
                 for (foto in btbFotos) {
                     val file = File(foto.dateipfad)
                     if (!file.exists() || !file.isFile) continue
@@ -142,30 +141,12 @@ class BtbTeamMediaSync(context: Context) {
                             rememberImportedPhoto(result.serverId, foto.id, key)
                             if (result.uploaded) {
                                 uploaded++
-                                uploadedForBtb++
                             } else present++
                         }
                     }
                 }
-                val lifecycleStatus = BtbDokumentVersionierung.status(appContext, v.entry)
-                if (
-                    server1Api != null &&
-                    uploadedForBtb > 0 &&
-                    lifecycleStatus == BtbAbschlussStatus.ABGESCHLOSSEN
-                ) {
-                    collab.enqueueMutation(
-                        worksiteServerId = server.worksiteServerId,
-                        entityType = SyncCollabPendingChangeEntity.TYPE_BTB,
-                        operation = SyncCollabPendingChangeEntity.OP_UPSERT,
-                        serverId = parent.serverId,
-                        clientEntityKey = parent.clientEntityKey ?: key,
-                        baseVersion = parent.entityVersion,
-                        groupId = server.groupId,
-                        status = "FERTIG",
-                        areaScopeJson = "{}",
-                        payloadJson = parent.payloadJson
-                    )
-                }
+                // Medienupload aendert nur Fotos. Der Lifecycle wird seit Vertrag 25.09.2026
+                // ausschliesslich ueber shift-finish/shift-resume/finalize gesteuert.
             }
 
             // Import: heruntergeladene BTB-Fotos als normale lokale Fotos verfügbar machen.
