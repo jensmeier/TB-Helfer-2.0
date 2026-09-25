@@ -532,9 +532,11 @@ function fachMedia(type,id){
 function renderFachMedia(type,id){
   const files=fachMedia(type,id);
   const images=files.length?files.map(function(file){
-    const url=tbScopedUrl('/api/v1/files/'+encodeURIComponent(file.attachment_id)+'/content');
-    return '<a href="'+esc(url)+'" target="_blank" rel="noopener" title="'+esc(file.filename||'Foto')+'">'+
-      '<img src="'+esc(url)+'" alt="'+esc(file.filename||'Foto')+'" style="width:96px;height:72px;object-fit:cover;border:1px solid #d0d5dd;border-radius:8px"></a>';
+    const original=tbScopedUrl('/api/v1/files/'+encodeURIComponent(file.attachment_id)+'/content');
+    const thumbPath=file.renditions&&file.renditions.thumb?file.renditions.thumb:'/api/v1/files/'+encodeURIComponent(file.attachment_id)+'/rendition/thumb';
+    const thumb=tbScopedUrl(thumbPath);
+    return '<a href="'+esc(original)+'" target="_blank" rel="noopener" title="'+esc(file.filename||'Foto')+'">'+
+      '<img src="'+esc(thumb)+'" alt="'+esc(file.filename||'Foto')+'" style="width:96px;height:72px;object-fit:cover;border:1px solid #d0d5dd;border-radius:8px"></a>';
   }).join(''):'<span class="muted">Noch keine Fotos.</span>';
   const canUpload=can('files.add');
   const inputId='fach-photo-'+type+'-'+id;
