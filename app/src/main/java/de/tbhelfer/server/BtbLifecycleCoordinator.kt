@@ -37,7 +37,11 @@ class BtbLifecycleCoordinator(context: Context) {
         data class Error(val message: String) : ActionResult
     }
 
-    suspend fun prepareAccess(localBaustelleId: Long, clientBtbId: String): PrepareResult {
+    suspend fun prepareAccess(
+        localBaustelleId: Long,
+        clientBtbId: String,
+        uploadContent: Boolean = false
+    ): PrepareResult {
         ServiceLocator.initialisieren(appContext)
         val tokenStore = SecureTokenStore(appContext)
         val token = tokenStore.load()
@@ -51,53 +55,108 @@ class BtbLifecycleCoordinator(context: Context) {
             ?: return PrepareResult.Error("Baustelle ist noch nicht eindeutig mit dem Server verbunden.")
         val context = bound.context
 
-        when (
-            val exported = bridge.exportBtbChange(
-                localBaustelleId = localBaustelleId,
-                clientBtbId = clientBtbId
-            )
-        ) {
-            CollabLocalBridge.BtbExportResult.NotBound ->
-                return PrepareResult.Error("Baustelle ist noch nicht mit dem Server verbunden.")
-            CollabLocalBridge.BtbExportResult.NotFound ->
-                return PrepareResult.Error("Der lokale BTB wurde nicht gefunden.")
-            CollabLocalBridge.BtbExportResult.ReadOnly -> Unit
-            is CollabLocalBridge.BtbExportResult.Success -> {
-                when (
-                    val upload = collab.synchronizeServer1BtbPending(
-                        token = token,
-                        api = api,
-                        worksiteServerId = exported.worksiteServerId,
-                        clientBtbId = clientBtbId
-                    )
-                ) {
-                    CollabSyncRepository.Server1BtbUploadResult.SessionInvalid -> {
-                        tokenStore.clear()
-                        return PrepareResult.SessionInvalid
-                    }
-                    CollabSyncRepository.Server1BtbUploadResult.Unsupported ->
-                        return PrepareResult.Error("Der Server unterstützt den BTB-Lifecycle nicht.")
-                    is CollabSyncRepository.Server1BtbUploadResult.Success -> {
-                        if (upload.conflicts > 0) {
-                            return PrepareResult.Conflict("BTB wurde parallel geändert. Bitte zuerst aktualisieren.")
+        suspend fun uploadPending(): PrepareResult? {
+            return when (
+                val exported = bridge.exportBtbChange(
+                    localBaustelleId = localBaustelleId,
+                    clientBtbId = clientBtbId
+                )
+            ) {
+                CollabLocalBridge.BtbExportResult.NotBound ->
+                    PrepareResult.Error("Baustelle ist noch nicht mit dem Server verbunden.")
+                CollabLocalBridge.BtbExportResult.NotFound ->
+                    PrepareResult.Error("Der lokale BTB wurde nicht gefunden.")
+                CollabLocalBridge.BtbExportResult.ReadOnly -> null
+                is CollabLocalBridge.BtbExportResult.Success -> {
+                    when (
+                        val upload = collab.synchronizeServer1BtbPending(
+                            token = token,
+                            api = api,
+                            worksiteServerId = exported.worksiteServerId,
+                            clientBtbId = clientBtbId
+                        )
+                    ) {
+                        CollabSyncRepository.Server1BtbUploadResult.SessionInvalid -> {
+                            tokenStore.clear()
+                            PrepareResult.SessionInvalid
                         }
-                        if (upload.failed > 0) {
-                            return PrepareResult.Error("BTB-Inhalt konnte nicht vollständig übertragen werden.")
+                        CollabSyncRepository.Server1BtbUploadResult.Unsupported ->
+                            PrepareResult.Error("Der Server unterstützt den BTB-Lifecycle nicht.")
+                        is CollabSyncRepository.Server1BtbUploadResult.Success -> when {
+                            upload.conflicts > 0 ->
+                                PrepareResult.Conflict("BTB wurde parallel geändert. Bitte zuerst aktualisieren.")
+                            upload.failed > 0 ->
+                                PrepareResult.Error("BTB-Inhalt konnte nicht vollständig übertragen werden.")
+                            else -> null
                         }
                     }
                 }
             }
         }
 
-        // Vor Schichtende/Finalisierung muessen auch die zu diesem BTB gehoerenden Fotos
-        // serverseitig vorhanden sein. Sonst wuerde das kanonische Abschluss-PDF einen
-        // unvollstaendigen Medienstand einfrieren.
+        var entity = collab.entities(
+            context.worksiteServerId,
+            SyncCollabPendingChangeEntity.TYPE_BTB
+        ).firstOrNull { it.clientEntityKey == clientBtbId }
+
+        // Ein neuer lokaler BTB muss einmal gezielt angelegt werden, bevor Rollen/Teilnehmer
+        // serverseitig gelesen werden können.
+        if (entity == null) {
+            uploadPending()?.let { return it }
+            entity = collab.entities(
+                context.worksiteServerId,
+                SyncCollabPendingChangeEntity.TYPE_BTB
+            ).firstOrNull { it.clientEntityKey == clientBtbId }
+                ?: return PrepareResult.Error("Der BTB ist auf dem Server noch nicht verfügbar.")
+        }
+
+        suspend fun loadAccess(): PrepareResult {
+            return when (
+                val access = api.loadBtbAccess(
+                    token = token,
+                    worksiteId = context.worksiteServerId,
+                    teamId = context.groupId,
+                    serverBtbId = entity!!.serverId
+                )
+            ) {
+                Server1BtbApi.AccessResult.Unsupported ->
+                    PrepareResult.Error("Der Server-BTB konnte nicht geladen werden.")
+                Server1BtbApi.AccessResult.SessionInvalid -> {
+                    tokenStore.clear()
+                    PrepareResult.SessionInvalid
+                }
+                is Server1BtbApi.AccessResult.Error -> PrepareResult.Error(access.message)
+                is Server1BtbApi.AccessResult.Success -> {
+                    remember(context.worksiteServerId, access.access)
+                    PrepareResult.Success(access.access)
+                }
+            }
+        }
+
+        val first = loadAccess()
+        val access = (first as? PrepareResult.Success)?.access ?: return first
+
+        if (!uploadContent) return first
+
+        val writable = !access.snapshot.status.equals("FERTIG", true) &&
+            (access.isTeamLead || access.participantStatus.equals("WORKING", true))
+        if (!writable) {
+            // FINISHED/NOT_PARTICIPATING und historisch FINALIZED bleiben bewusst read-only.
+            return first
+        }
+
+        uploadPending()?.let { return it }
+
+        // Vor Schichtende/Finalisierung muessen genau die Fotos dieses BTB serverseitig
+        // vorhanden sein. Andere BTBs der Baustelle werden nicht angefasst.
         when (
             val media = BtbTeamMediaSync(appContext).synchronize(
                 token = token,
                 server1Api = Server1FileApi(),
                 server1PdfApi = null,
-                worksiteServerIds = setOf(context.worksiteServerId)
+                worksiteServerIds = setOf(context.worksiteServerId),
+                btbServerIds = setOf(entity!!.serverId),
+                allowUploads = true
             )
         ) {
             BtbTeamMediaSync.Result.SessionInvalid -> {
@@ -110,39 +169,16 @@ class BtbLifecycleCoordinator(context: Context) {
             is BtbTeamMediaSync.Result.Success -> Unit
         }
 
-        val entity = collab.entities(
-            context.worksiteServerId,
-            SyncCollabPendingChangeEntity.TYPE_BTB
-        ).firstOrNull { it.clientEntityKey == clientBtbId }
-            ?: return PrepareResult.Error("Der BTB ist auf dem Server noch nicht verfügbar.")
-
-        return when (
-            val access = api.loadBtbAccess(
-                token = token,
-                worksiteId = context.worksiteServerId,
-                teamId = context.groupId,
-                serverBtbId = entity.serverId
-            )
-        ) {
-            Server1BtbApi.AccessResult.Unsupported ->
-                PrepareResult.Error("Der Server-BTB konnte nicht geladen werden.")
-            Server1BtbApi.AccessResult.SessionInvalid -> {
-                tokenStore.clear()
-                PrepareResult.SessionInvalid
-            }
-            is Server1BtbApi.AccessResult.Error -> PrepareResult.Error(access.message)
-            is Server1BtbApi.AccessResult.Success -> {
-                remember(context.worksiteServerId, access.access)
-                PrepareResult.Success(access.access)
-            }
-        }
+        // Uploads können BTB-Version/Fotozustand geändert haben; Lifecycle immer gegen
+        // den frisch gelesenen kanonischen Serverstand ausführen.
+        return loadAccess()
     }
 
     suspend fun shiftFinish(
         localBaustelleId: Long,
         clientBtbId: String
     ): ActionResult {
-        val prepared = prepareAccess(localBaustelleId, clientBtbId)
+        val prepared = prepareAccess(localBaustelleId, clientBtbId, uploadContent = true)
         val access = when (prepared) {
             is PrepareResult.Success -> prepared.access
             PrepareResult.SessionInvalid -> return ActionResult.SessionInvalid
