@@ -7,6 +7,8 @@ ROOT = Path(__file__).resolve().parents[2]
 files = (ROOT / "server/tbserver/files.py").read_text(encoding="utf-8")
 btb = (ROOT / "server/tbserver/btb.py").read_text(encoding="utf-8")
 capabilities = (ROOT / "server/tbserver/capabilities.py").read_text(encoding="utf-8")
+btb_template = (ROOT / "server/templates/v1_btb.html").read_text(encoding="utf-8")
+worksite_template = (ROOT / "server/templates/v1_worksite.html").read_text(encoding="utf-8")
 
 for token in (
     '@router.get("/files/{file_id}/rendition/{kind}")',
@@ -17,6 +19,8 @@ for token in (
 
 assert '"file_image_renditions_v1": True' in capabilities
 assert '"renditions": image_rendition_urls(' in btb
+assert "p.renditions&&p.renditions.preview" in btb_template
+assert "file.renditions&&file.renditions.thumb" in worksite_template
 
 from tbserver.image_renditions import (
     RENDITION_SPECS,
