@@ -148,9 +148,11 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         row.addView(button("ZIP teilen") { teileTagesabschlussZip(item) })
         inner.addView(row)
 
-        val deleteRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        deleteRow.addView(button("BTB löschen", Color.parseColor("#C62828")) { bestaetigeLoeschen(item) })
-        inner.addView(deleteRow)
+        if (!serverFinalReadOnly) {
+            val deleteRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+            deleteRow.addView(button("BTB löschen", Color.parseColor("#C62828")) { bestaetigeLoeschen(item) })
+            inner.addView(deleteRow)
+        }
 
         card.addView(inner)
         return card
