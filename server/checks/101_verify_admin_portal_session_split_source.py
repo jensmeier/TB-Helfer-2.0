@@ -38,6 +38,8 @@ assert "function tbScopedUrl(url)" in base
 assert 'request.query_params.get("_tb_session")' in portal
 assert "/api/v1/admin/session/logout" in base
 assert "/admin/v1/login" in portal_login
+assert "ADMIN_USE_ADMIN_LOGIN" in portal_login
+assert "new URLSearchParams(location.search).get('login')" in admin_login
 worksites = (ROOT / "server/templates/v1_worksites.html").read_text(encoding="utf-8")
 worksite = (ROOT / "server/templates/v1_worksite.html").read_text(encoding="utf-8")
 btb = (ROOT / "server/templates/v1_btb.html").read_text(encoding="utf-8")
