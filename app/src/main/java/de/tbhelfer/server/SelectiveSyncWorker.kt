@@ -53,6 +53,39 @@ class SelectiveSyncWorker(
         val bridge = ServiceLocator.collabLocalBridge
         val collab = ServiceLocator.collabSyncRepository
         val btbApi = Server1BtbApi()
+
+        // Vor jedem Push nur die Team-BTB-Snapshots der tatsaechlich betroffenen Baustellen
+        // aktualisieren. So erkennt ein altes Dirty-Scope einen inzwischen serverseitig
+        // FINALIZED/read-only BTB, bevor Android versehentlich BTB_NOT_ACTIVE provoziert.
+        val localIds = scopes.mapTo(linkedSetOf()) { it.localBaustelleId }
+        val bound = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
+            .filter { it.localWorksite?.altBaustelleId in localIds && it.context.groupId.isNotBlank() }
+        for (item in bound.distinctBy { it.context.worksiteServerId + "|" + it.context.groupId }) {
+            when (
+                val snapshot = btbApi.loadTeamBtbs(
+                    token,
+                    item.context.worksiteServerId,
+                    item.context.groupId
+                )
+            ) {
+                Server1BtbApi.Result.Unsupported -> return Result.success()
+                Server1BtbApi.Result.SessionInvalid -> {
+                    tokenStore.clear()
+                    return Result.success()
+                }
+                is Server1BtbApi.Result.Error -> return retryAutomatic()
+                is Server1BtbApi.Result.Success -> {
+                    collab.replaceServer1BtbSnapshots(
+                        item.context.worksiteServerId,
+                        item.context.groupId,
+                        snapshot.items
+                    )
+                }
+            }
+        }
+        runCatching { bridge.applyServerStateToLocal() }
+            .getOrElse { return retryAutomatic() }
+
         var retryNeeded = false
 
         for (scope in scopes) {
