@@ -2,6 +2,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sync = (ROOT / "server/tbserver/sync.py").read_text(encoding="utf-8")
+capabilities = (ROOT / "server/tbserver/capabilities.py").read_text(encoding="utf-8")
 
 for token in (
     "class _ChangeHub:",
