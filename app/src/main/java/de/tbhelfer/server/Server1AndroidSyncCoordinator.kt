@@ -185,6 +185,16 @@ class Server1AndroidSyncCoordinator(
         if (btbEnabled) {
             refreshBtbSnapshots(token, remoteContexts)?.let { return it }
             reconcileBtbDeletes(token, remoteContexts)?.let { return it }
+            // Lifecycle/Rollen/Slots zuerst primen, OHNE lokale Fachinhalte zu ueberschreiben.
+            // So erzeugen historische FINALIZED-BTBs beim anschliessenden Recovery-Export
+            // keine neue Mutation und vorhandene Server-Slots bleiben stabil.
+            runCatching {
+                bridge.primeBtbServerState(remoteContexts.mapTo(linkedSetOf()) { it.worksiteId })
+            }.getOrElse {
+                return Result.Error(
+                    it.message ?: "BTB-Serverstatus konnte vor dem Recovery-Export nicht vorbereitet werden."
+                )
+            }
         }
 
         if (fachEnabled) {
@@ -332,29 +342,8 @@ class Server1AndroidSyncCoordinator(
                     btbMediaImported += result.summary.imported
                     btbPdfImported += result.summary.pdfImported
 
-                    if (result.summary.uploaded > 0) {
-                        when (val lifecycle = collab.synchronizeServer1BtbPending(token, btbApi)) {
-                            CollabSyncRepository.Server1BtbUploadResult.SessionInvalid ->
-                                return Result.SessionInvalid
-                            CollabSyncRepository.Server1BtbUploadResult.Unsupported ->
-                                return Result.Error(
-                                    "BTB-Fotos wurden übertragen, der Abschluss-Lifecycle ist aber nicht erreichbar."
-                                )
-                            is CollabSyncRepository.Server1BtbUploadResult.Success -> {
-                                btbUploaded += lifecycle.uploaded
-                                if (lifecycle.uploaded > 0) {
-                                    refreshBtbSnapshots(token, remoteContexts)?.let { return it }
-                                    runCatching { bridge.applyServerStateToLocal() }
-                                        .getOrElse {
-                                            return Result.Error(
-                                                it.message
-                                                    ?: "BTB-Abschluss nach Foto-Sync konnte lokal nicht bestätigt werden."
-                                            )
-                                        }
-                                }
-                            }
-                        }
-                    }
+                    // Foto-Upload ist seit Vertrag 25.09.2026 KEIN Lifecycle-Trigger.
+                    // shift-finish/shift-resume/finalize werden ausschliesslich explizit aufgerufen.
                 }
             }
         }
