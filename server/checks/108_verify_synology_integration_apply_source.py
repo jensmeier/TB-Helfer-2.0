@@ -6,6 +6,10 @@ script = (ROOT / "server/tools/synology_integration_apply.sh").read_text(encodin
 assert 'Vollständigen Integrations-Quellstand prüfen' in script
 assert 'TB_V1_API_MEMORY_LIMIT' in script
 assert 'TB_V1_SOURCE_TOOLS_DIR' in script
+assert 'sync_change_wait_v1' in script
+assert 'file_image_renditions_v1' in script
+assert 'photo_metadata:photoMetadata' in script
+assert 'tb_admin_session' in script
 assert '015_file_photo_metadata.sql' in script
 assert 'server1_runtime_probe.py' in script
 assert 'run_backup("FULL")' in script
