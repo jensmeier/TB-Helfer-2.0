@@ -717,6 +717,38 @@ class CollabSyncRepository(
         )
     }
 
+    suspend fun upsertServer1BtbSnapshot(
+        worksiteServerId: String,
+        item: Server1BtbApi.Snapshot
+    ) {
+        dao.upsertCollabEntities(
+            listOf(
+                SyncCollabEntity(
+                    serverId = item.serverId,
+                    worksiteServerId = worksiteServerId,
+                    groupId = item.teamId,
+                    entityType = SyncCollabPendingChangeEntity.TYPE_BTB,
+                    clientEntityKey = item.clientEntityKey,
+                    status = item.status,
+                    areaScopeJson = "{}",
+                    payloadJson = item.payloadJson,
+                    entityVersion = item.entityVersion,
+                    changedByName = null,
+                    createdAtText = item.createdAtText,
+                    updatedAtText = item.updatedAtText,
+                    isDeleted = false,
+                    updatedAtEpochMs = System.currentTimeMillis()
+                )
+            )
+        )
+        dao.upsertState(
+            SyncStateEntity(
+                key = server1BtbBaseKey(item.serverId),
+                textValue = item.baseStateJson
+            )
+        )
+    }
+
     suspend fun enqueueMutation(
         worksiteServerId: String,
         entityType: String,
