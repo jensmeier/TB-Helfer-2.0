@@ -261,6 +261,16 @@ async def wait_changes(
     if observed_head <= after and wait_seconds > 0:
         observed_head = await _CHANGE_HUB.wait_for_head(after, wait_seconds)
 
+    # A quiet long-poll timeout needs no caller-specific DB query at all. The shared
+    # hub already proved that the global feed head did not move beyond this cursor.
+    if observed_head <= after:
+        return {
+            "changes": [],
+            "next_after": after,
+            "head": observed_head,
+            "caught_up": True,
+        }
+
     rows = await _run_sync_query(
         _visible_changes,
         user,
