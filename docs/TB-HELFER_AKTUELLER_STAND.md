@@ -1777,3 +1777,12 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Standardtest ist `DATABASE`; `FULL` kann für den kompletten Backup-Pfad bewusst gewählt werden.
 - Damit sind PRB-019 sowie der praktische Background-Job-/Fortschrittsanteil von SRV-020/SRV-021 reproduzierbar testbar, ohne Passwörter auszugeben.
 - Source-Check 110 schützt den Testvertrag; Server-CI ruft jetzt Checks 98–110 auf.
+
+
+### 25.09.2026 – Android-Vertrag erneut gegen aktuellen Parallelstand quergeprüft
+
+- Parallelstand während der Server-Abschlussarbeit erneut geprüft: ANDROID `1bd1fb548396f70b7d5a20c47dd797680e3b276c` (`Preserve local dirty BTB content while resolving roles`).
+- Aktuelle Android-Quellen verwenden genau die festgelegten Serververträge: `/shift-finish`, `/shift-resume`, explizites `/finalize` mit `allow_unfinished`, `participants/current_user`, `/api/v1/sync/changes/wait` mit `next_after/head/caught_up`, sowie strukturiertes `photo_metadata` beim Upload.
+- Der aktuelle Android-Delta-Client filtert mindestens `BTB,BTB_ENTRY,BTB_PARTICIPANT,FILE`; diese Typen und Antwortfelder liefert der SERVER-Quellstand.
+- Targeted File-Link-Refresh nutzt `GET /api/v1/files/{file_id}`; der Server liefert dort Datei + Links und zusätzlich die neuen strukturierten Metadaten/Rendition-URLs.
+- Aus dieser Querprüfung ergibt sich **keine zusätzliche inkompatible Serveränderung**. Android-Geräte-E2E bleibt trotzdem offen und wird nicht durch Source-Vergleich ersetzt.
