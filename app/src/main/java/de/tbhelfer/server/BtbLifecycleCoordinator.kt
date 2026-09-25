@@ -2,6 +2,7 @@ package de.tbhelfer.server
 
 import android.content.Context
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.datenbank.BtbTeamMediaSync
 import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.datenbank.SyncCollabPendingChangeEntity
@@ -86,6 +87,27 @@ class BtbLifecycleCoordinator(context: Context) {
                     }
                 }
             }
+        }
+
+        // Vor Schichtende/Finalisierung muessen auch die zu diesem BTB gehoerenden Fotos
+        // serverseitig vorhanden sein. Sonst wuerde das kanonische Abschluss-PDF einen
+        // unvollstaendigen Medienstand einfrieren.
+        when (
+            val media = BtbTeamMediaSync(appContext).synchronize(
+                token = token,
+                server1Api = Server1FileApi(),
+                server1PdfApi = null,
+                worksiteServerIds = setOf(context.worksiteServerId)
+            )
+        ) {
+            BtbTeamMediaSync.Result.SessionInvalid -> {
+                tokenStore.clear()
+                return PrepareResult.SessionInvalid
+            }
+            BtbTeamMediaSync.Result.Unsupported ->
+                return PrepareResult.Error("BTB-Fotos können vom Server noch nicht verarbeitet werden.")
+            is BtbTeamMediaSync.Result.Error -> return PrepareResult.Error(media.message)
+            is BtbTeamMediaSync.Result.Success -> Unit
         }
 
         val entity = collab.entities(
