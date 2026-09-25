@@ -29,6 +29,10 @@ from tbserver.image_renditions import (
 )
 
 assert set(RENDITION_SPECS) == {"thumb", "preview"}
+source_text = (ROOT / "server/tbserver/image_renditions.py").read_text(encoding="utf-8")
+assert "_MAX_CONCURRENT_RENDITION_RENDERS = 2" in source_text
+assert "threading.BoundedSemaphore" in source_text
+assert "with _RENDITION_RENDER_SEMAPHORE:" in source_text
 urls = image_rendition_urls("00000000-0000-0000-0000-000000000001", "image/jpeg")
 assert urls["thumb"].endswith("/rendition/thumb")
 assert urls["preview"].endswith("/rendition/preview")
