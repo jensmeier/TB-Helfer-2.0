@@ -461,6 +461,7 @@ object BautagebuchSpeicher {
         fun sectionToJson(sb: SectionBlock): JSONArray = JSONArray().apply { sb.items.forEach { item -> put(JSONObject().apply {
             put("uhrzeit", item.uhrzeit); put("text", item.text); put("kmVon", item.kmVon); put("kmBis", item.kmBis)
         }) } }
+        put("arbeiten", sectionToJson(e.arbeiten))
         put("abnahmen", sectionToJson(e.abnahmen))
         put("einweisungUnterweisung", sectionToJson(e.einweisungUnterweisung))
         put("besonderheiten", sectionToJson(e.besonderheiten))
@@ -599,6 +600,7 @@ object BautagebuchSpeicher {
             maxFotosInPdf = o.optInt("maxFotosInPdf", 60),
             pdfAuswahl = pdfAuswahlMap(),
             firmen = firmenList(),
+            arbeiten = sectionFromArray(o.optJSONArray("arbeiten")),
             abnahmen = sectionFromArray(o.optJSONArray("abnahmen")),
             einweisungUnterweisung = sectionFromArray(o.optJSONArray("einweisungUnterweisung")),
             besonderheiten = sectionFromArray(o.optJSONArray("besonderheiten")),
