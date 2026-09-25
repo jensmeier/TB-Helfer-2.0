@@ -1599,3 +1599,12 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - `python -m tbserver.migrations up` meldete anschließend `APPLIED 014_btb_participant_shift_status.sql`.
 - Nachkontrolle: `known=14`, `applied=14`, `pending=[]`, `latest_known=14`, `latest_applied=14`. Damit existiert `tb.btb_participant_states` jetzt auf Synology-Staging.
 - Nächster Schritt ist kein weiterer DB-Eingriff, sondern derselbe Pixel-200068-Recoverylauf. Dabei prüfen wir, ob der vorherige `UndefinedTable`-500 verschwunden ist und anschließend auch der bereits gebaute Soft-Delete-/Entry-ID-Fix greift.
+
+
+### 25.09.2026 – BTB-Punkt 5 und Fach-Abnahmefotos sind getrennte Zuordnungen
+
+- Neuer praktischer Befund: Im Android-BTB zeigt Punkt **5. Abnahmen** vier Bilder (`4/4`). Im Baustellenportal ist gleichzeitig eine neue Fach-Abnahme `OPEN / ENTWURF` angekommen, dort steht bei `Abnahme-Fotos` jedoch `Noch keine Fotos`.
+- Das ist im aktuellen Datenvertrag nicht automatisch widersprüchlich: BTB-Fotos werden über `BtbTeamMediaSync` an den Parent `BTB`/die konkrete `btbId` gebunden. Der Bildtyp `ABNAHMEN` bezeichnet dabei nur die BTB-Fotokategorie für Punkt 5.
+- Eigenständige Fach-Abnahmefotos werden separat aus `AbnahmeSpeicher.fotos` an den Parent `ACCEPTANCE` hochgeladen. Nur diese erscheinen im Portal direkt unter der jeweiligen Fach-Abnahme bei `Abnahme-Fotos`.
+- Daher beweist `4/4` im BTB nicht, dass dieselben vier Dateien auch der Fach-Abnahme zugeordnet sind. Automatisches Cross-Linking wird nicht auf Verdacht eingeführt, weil mehrere Fach-Abnahmen pro BTB möglich sind und die Zuordnung sonst mehrdeutig wäre.
+- Der hochgeladene Worker-Log zeigt nur temporäre PostgreSQL-Verbindungsfehler während eines DB-Neustarts und bestätigt ausdrücklich, dass der Worker weiterlebt und erneut versucht. Für den aktuellen `BTB_NOT_ACTIVE`-Syncpfad wird der **API-Log** direkt nach einem frischen `Neu laden` benötigt.
