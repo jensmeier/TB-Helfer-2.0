@@ -55,7 +55,7 @@ class TBHelferApp : Application() {
 
     private fun installDeltaLifecycle() {
         var startedActivities = 0
-        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+        registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) {
                 startedActivities += 1
                 if (startedActivities == 1) {
