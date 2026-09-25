@@ -47,6 +47,27 @@ class BtbLifecycleCoordinator(context: Context) {
         val token = tokenStore.load()
             ?: return PrepareResult.Error("Gerät ist noch nicht für den Server aktiviert.")
 
+        val capabilities = when (val result = ServerCapabilitiesApi().load()) {
+            ServerCapabilitiesApi.Result.Unsupported ->
+                return PrepareResult.Error("Server-Capabilities sind für den neuen BTB-Vertrag nicht verfügbar.")
+            is ServerCapabilitiesApi.Result.Error -> return PrepareResult.Error(result.message)
+            is ServerCapabilitiesApi.Result.Success -> result.snapshot
+        }
+        val required = listOf(
+            "btb_entries_v1",
+            "btb_participant_shift_end_v1",
+            "btb_pdf_team_lead_only_v1",
+            "btb_general_work_entries_v1",
+            "btb_photo_metadata_v1"
+        )
+        val missing = required.filterNot(capabilities::supports)
+        if (missing.isNotEmpty()) {
+            return PrepareResult.Error(
+                "Server unterstützt den aktuellen BTB-Vertrag noch nicht vollständig: " +
+                    missing.joinToString(", ")
+            )
+        }
+
         val bound = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
             .firstOrNull {
                 it.binding != null &&
