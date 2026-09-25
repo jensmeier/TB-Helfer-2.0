@@ -3,6 +3,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 script = (ROOT / "server/tools/synology_integration_apply.sh").read_text(encoding="utf-8")
 
+assert 'Vollständigen Integrations-Quellstand prüfen' in script
+assert 'TB_V1_API_MEMORY_LIMIT' in script
+assert 'TB_V1_SOURCE_TOOLS_DIR' in script
+assert '015_file_photo_metadata.sql' in script
+assert 'server1_runtime_probe.py' in script
 assert 'run_backup("FULL")' in script
 assert 'expected latest_known=15' in script
 assert '015_file_photo_metadata.sql' in script
