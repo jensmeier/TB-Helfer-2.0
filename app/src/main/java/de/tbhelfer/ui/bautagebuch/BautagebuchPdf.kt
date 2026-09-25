@@ -433,8 +433,20 @@ class BautagebuchPdf(
                 return canon to tail
             }
 
-            e.notizen.orEmpty()
-                .lines()
+            val generalWorkLines = if (e.arbeiten.items.isNotEmpty()) {
+                e.arbeiten.items.map { item ->
+                    buildString {
+                        item.uhrzeit?.takeIf { it.isNotBlank() }?.let { append(it).append(' ') }
+                        val km = de.tbhelfer.util.KmAnzeige.bereich(item.kmVon, item.kmBis, inKlammern = false)
+                        if (km.isNotBlank()) append(km).append(' ')
+                        append(item.text)
+                    }.trim()
+                }
+            } else {
+                // Legacy bis 200068: Punkt 4 lag in notizen.
+                e.notizen.orEmpty().lines()
+            }
+            generalWorkLines
                 .forEach { rawLine ->
                     val (newOrt, cleaned0) = applyOrtMarker(rawLine, ortId)
                     ortId = newOrt
@@ -1903,7 +1915,11 @@ grouped.entries.forEach { (k, list) ->
 
     val events = ArrayList<PdfEvent>()
     events += leistungEvents(kind = 0, seqBase = 0)
-    events += manualEventsFromMultiline(entry.notizen, kind = 1, seqBase = 10_000)
+    events += if (entry.arbeiten.items.isNotEmpty()) {
+        manualEventsFromSection(entry.arbeiten, kind = 1, seqBase = 10_000)
+    } else {
+        manualEventsFromMultiline(entry.notizen, kind = 1, seqBase = 10_000)
+    }
     events += fotoEventsForType(Bildtyp.FOTODOKUMENTATION, kind = 2, seqBase = 20_000)
 
     drawFirmaGrouped(events, emptyText = "Keine Arbeiten eingetragen.")
