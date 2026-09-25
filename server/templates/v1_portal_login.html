@@ -10,7 +10,7 @@
     .card{width:min(460px,100%);background:white;border:1px solid #e4e7ec;border-radius:16px;padding:24px;box-shadow:0 8px 30px rgba(16,24,40,.08)}
     h1{margin:0 0 6px}.muted{color:#667085;margin-top:0}label{display:block;font-weight:700;font-size:13px;margin:14px 0 5px}
     input{width:100%;padding:11px;border:1px solid #d0d5dd;border-radius:9px;font:inherit}button{margin-top:18px;width:100%;padding:11px;border:0;border-radius:9px;background:#1167d8;color:white;font:inherit;font-weight:750;cursor:pointer}
-    button:disabled{opacity:.55}.msg{margin-top:14px;padding:10px;border-radius:9px;background:#fef3f2;color:#b42318;display:none}
+    button:disabled{opacity:.55}.msg{margin-top:14px;padding:10px;border-radius:9px;background:#fef3f2;color:#b42318;display:none}.admin-link{display:block;text-align:center;margin-top:18px;color:#475467;font-weight:700;text-decoration:none}
   </style>
 </head>
 <body>
@@ -25,6 +25,7 @@
       <button id="submit" type="submit">Anmelden</button>
     </form>
     <div id="msg" class="msg"></div>
+    <a class="admin-link" href="/admin/v1/login">Admin-Anmeldung</a>
   </div>
 <script>
 const form=document.getElementById('loginForm'), button=document.getElementById('submit'), msg=document.getElementById('msg');
@@ -37,7 +38,7 @@ form.addEventListener('submit',async ev=>{
     });
     const text=await response.text();let data={};try{data=text?JSON.parse(text):{};}catch(_){}
     if(!response.ok) throw new Error((data&&data.detail)||'Anmeldung fehlgeschlagen.');
-    location.href=(data.user&&data.user.company_role==='ADMIN')?'/admin/v1/companies':'/portal/v1';
+    location.href='/portal/v1';
   }catch(error){msg.textContent=error.message||String(error);msg.style.display='block';}
   finally{button.disabled=false;}
 });
