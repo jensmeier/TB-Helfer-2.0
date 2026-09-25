@@ -231,6 +231,21 @@ class BtbTeamMediaSync(context: Context) {
                 }
             }
 
+            // Portal-Unlink: nur die BTB-Zuordnung entfernen, das lokale Originalfoto behalten.
+            for ((parentKey, _) in serverBtbs) {
+                val state = BtbServerStateStore.state(appContext, parentKey) ?: continue
+                val photos = runCatching { org.json.JSONArray(state.photosJson) }.getOrNull()
+                val activeServerPhotoIds = (0 until (photos?.length() ?: 0)).mapNotNull { index ->
+                    photos?.optJSONObject(index)?.optString("id")?.trim()?.takeIf { it.isNotBlank() }
+                }.toSet()
+                importedMappingsForBtb(parentKey)
+                    .filter { it.first !in activeServerPhotoIds }
+                    .forEach { (serverFileId, localFotoId) ->
+                        BtbFotoZuordnungSpeicher.entfernen(appContext, localFotoId)
+                        forgetImportedPhoto(serverFileId)
+                    }
+            }
+
             // Abschluss-PDF: direkt aus dem kanonischen BTB-Endpunkt in denselben lokalen
             // BTB-Ordner spiegeln, den Verlauf/Viewer bereits verwenden.
             if (server1PdfApi != null) {
@@ -454,9 +469,93 @@ class BtbTeamMediaSync(context: Context) {
         return String(bytes, Charsets.UTF_8)
     }
 
-    private fun wasImported(serverAttachmentId: String): Boolean = importedPrefs.getBoolean(serverAttachmentId, false)
+    private fun wasImported(serverAttachmentId: String): Boolean {
+        val value = importedPrefs.all[serverAttachmentId]
+        return value == true || value is Long
+    }
+
     private fun rememberImported(serverAttachmentId: String, value: Boolean) {
         importedPrefs.edit().putBoolean(serverAttachmentId, value).apply()
+    }
+
+    private fun rememberImportedPhoto(serverAttachmentId: String, localFotoId: Long, btbId: String) {
+        importedPrefs.edit()
+            .putLong(serverAttachmentId, localFotoId)
+            .putString("btb:$serverAttachmentId", btbId)
+            .apply()
+    }
+
+    private fun importedMappingsForBtb(btbId: String): List<Pair<String, Long>> =
+        importedPrefs.all.entries.mapNotNull { (key, value) ->
+            if (key.startsWith("btb:")) return@mapNotNull null
+            val localId = value as? Long ?: return@mapNotNull null
+            val mappedBtb = importedPrefs.getString("btb:$key", null)
+            if (mappedBtb == btbId) key to localId else null
+        }
+
+    private fun forgetImportedPhoto(serverAttachmentId: String) {
+        importedPrefs.edit()
+            .remove(serverAttachmentId)
+            .remove("btb:$serverAttachmentId")
+            .apply()
+    }
+
+    private fun structuredPhotoMetadata(foto: FotoEntity): JSONObject = JSONObject()
+        .put("epoch", foto.erstelltAmEpochMs)
+        .put("lat", foto.gpsLat)
+        .put("lon", foto.gpsLon)
+        .putNullable("alt", foto.gpsAltM)
+        .putNullable("km", foto.km)
+        .putNullable("achsabstand", foto.achsabstandM)
+        .put("kmSuffix", foto.kmSuffix)
+        .put("kmManuell", foto.kmManuell)
+        .put("typ", foto.bildtyp.name)
+        .put("indikator", foto.indikator?.name ?: "")
+        .put("firma", foto.firma)
+        .put("kurztext", foto.kurztext)
+        .put("objektKennung", foto.objektKennung ?: "")
+        .put("objektBereich", foto.objektBereich ?: "")
+        .put("notiz", foto.notiz ?: "")
+        .put("info1", foto.info1Wert ?: "")
+        .put("info2", foto.info2Wert ?: "")
+        .put("info3", foto.info3Wert ?: "")
+        .put("info4", foto.info4Wert ?: "")
+        .put("info5", foto.info5Wert ?: "")
+
+    private fun mergedPhotoMetadata(serverPhoto: JSONObject?, legacy: JSONObject?): JSONObject {
+        val out = legacy?.let { JSONObject(it.toString()) } ?: JSONObject()
+        serverPhoto?.optJSONObject("photo_metadata")?.let { structured ->
+            val keys = structured.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                if (!structured.isNull(key)) out.put(key, structured.opt(key))
+            }
+        }
+
+        serverPhoto?.optString("captured_at")?.trim()?.takeIf { it.isNotBlank() }?.let { value ->
+            val epoch = runCatching { java.time.Instant.parse(value).toEpochMilli() }.getOrNull()
+                ?: runCatching { java.time.OffsetDateTime.parse(value).toInstant().toEpochMilli() }.getOrNull()
+            epoch?.let { out.put("epoch", it) }
+        }
+        if (serverPhoto != null && serverPhoto.has("gps_lat") && !serverPhoto.isNull("gps_lat")) {
+            out.put("lat", serverPhoto.optDouble("gps_lat"))
+        }
+        if (serverPhoto != null && serverPhoto.has("gps_lon") && !serverPhoto.isNull("gps_lon")) {
+            out.put("lon", serverPhoto.optDouble("gps_lon"))
+        }
+
+        if (out.optString("typ").isBlank()) out.put("typ", Bildtyp.FOTODOKUMENTATION.name)
+        if (!out.has("epoch")) out.put("epoch", System.currentTimeMillis())
+        if (!out.has("lat")) out.put("lat", 0.0)
+        if (!out.has("lon")) out.put("lon", 0.0)
+        if (out.optString("kurztext").isBlank()) {
+            out.put(
+                "kurztext",
+                serverPhoto?.optString("original_name")?.takeIf { it.isNotBlank() }
+                    ?: "Synchronisiertes BTB-Foto"
+            )
+        }
+        return out
     }
 
     private fun JSONObject.putNullable(key: String, value: Any?): JSONObject {
