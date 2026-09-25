@@ -1769,3 +1769,11 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Neues Tool `server/tools/server1_readonly_acceptance.py`: ein gemeinsamer Browser-Cookie-Jar prüft parallel Portal- und Admin-Sitzung sowie read-only Profil, Firmenverzeichnis, globalen Katalog/History, Portal-Seiten, Admin-Systemstatus, Firmen-/Benutzerliste und Adminseiten Strecken/Bahnhöfe/System.
 - Das Tool führt bewusst **keine fachlichen CREATE/UPDATE/DELETE-Aufrufe** aus. Mutierende Fach-E2Es bleiben getrennt und werden erst auf der echten Staging-Instanz durchgeführt.
 - Source-Check 109 schützt die Read-only-Grenze; Server-CI ruft jetzt Checks 98–109 auf.
+
+
+### 25.09.2026 – Echter Worker-/Backup-E2E vorbereitet
+
+- Neues Werkzeug `server/tools/server1_backup_job_e2e.py` gebaut. Es erzeugt bewusst einen realen Admin-Backupjob, pollt den Systemstatus und verlangt Worker-Abschluss `DONE` sowie einen neuen passenden Backup-Run mit `OK`, positiver Größe und SHA-256.
+- Standardtest ist `DATABASE`; `FULL` kann für den kompletten Backup-Pfad bewusst gewählt werden.
+- Damit sind PRB-019 sowie der praktische Background-Job-/Fortschrittsanteil von SRV-020/SRV-021 reproduzierbar testbar, ohne Passwörter auszugeben.
+- Source-Check 110 schützt den Testvertrag; Server-CI ruft jetzt Checks 98–110 auf.
