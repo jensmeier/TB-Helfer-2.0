@@ -28,13 +28,33 @@ object BtbRenderOriginalDiff {
             current.schicht
         ) ?: return current
 
-        val removedNotes = echteLoeschungen(
-            original.notizen.orEmpty().lines().filter { fachText(it).isNotBlank() },
-            current.notizen.orEmpty().lines().filter { fachText(it).isNotBlank() },
-            ::fachText,
-            ::zeitPraefix
-        )
-        val renderedNotes = appendLines(current.notizen, removedNotes.map(::entferntZeile))
+        val legacyWorkMode = current.arbeiten.items.isEmpty() && original.arbeiten.items.isEmpty()
+        val removedNotes = if (legacyWorkMode) {
+            echteLoeschungen(
+                original.notizen.orEmpty().lines().filter { fachText(it).isNotBlank() },
+                current.notizen.orEmpty().lines().filter { fachText(it).isNotBlank() },
+                ::fachText,
+                ::zeitPraefix
+            )
+        } else {
+            emptyList()
+        }
+        val renderedNotes = if (legacyWorkMode) {
+            appendLines(current.notizen, removedNotes.map(::entferntZeile))
+        } else {
+            current.notizen
+        }
+
+        val originalWork = if (original.arbeiten.items.isNotEmpty()) {
+            original.arbeiten
+        } else {
+            legacyNotesAsSection(original.notizen)
+        }
+        val currentWork = if (current.arbeiten.items.isNotEmpty()) {
+            current.arbeiten
+        } else {
+            legacyNotesAsSection(current.notizen)
+        }
 
         val renderedFirmen = current.firmen.map { curFirm ->
             val origFirm = original.firmen.firstOrNull { it.firmaId == curFirm.firmaId }
@@ -55,6 +75,7 @@ object BtbRenderOriginalDiff {
 
         return current.copy(
             notizen = renderedNotes,
+            arbeiten = renderBlock(originalWork, currentWork),
             firmen = renderedFirmen,
             abnahmen = renderBlock(original.abnahmen, current.abnahmen),
             einweisungUnterweisung = renderBlock(original.einweisungUnterweisung, current.einweisungUnterweisung),
@@ -62,6 +83,13 @@ object BtbRenderOriginalDiff {
             maengelSchaeden = renderBlock(original.maengelSchaeden, current.maengelSchaeden)
         )
     }
+
+    private fun legacyNotesAsSection(raw: String?): SectionBlock = SectionBlock(
+        raw.orEmpty().lines().mapNotNull { line ->
+            val text = line.trim()
+            if (text.isBlank()) null else SectionItem(text = text)
+        }
+    )
 
     private fun renderBlock(original: SectionBlock, current: SectionBlock): SectionBlock {
         val removed = echteLoeschungen(
