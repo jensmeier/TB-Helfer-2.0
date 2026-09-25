@@ -34,6 +34,8 @@ for token in (
     assert token in admin_web, token
 assert "const tbAdminScope=location.pathname.startsWith('/admin/v1');" in base
 assert "tbAdminScope?'tb_admin_csrf':'tb_portal_csrf'" in base
+assert "function tbScopedUrl(url)" in base
+assert 'request.query_params.get("_tb_session")' in portal
 assert "/api/v1/admin/session/logout" in base
 assert "/admin/v1/login" in portal_login
 worksites = (ROOT / "server/templates/v1_worksites.html").read_text(encoding="utf-8")
@@ -43,6 +45,8 @@ dashboard = (ROOT / "server/templates/v1_admin_dashboard.html").read_text(encodi
 assert "pagePrefix" in worksites
 assert "pagePrefix" in worksite
 assert "pagePrefix" in btb
+assert "tbScopedUrl(p.content_url)" in btb
+assert "tbScopedUrl('/api/v1/files/'" in worksite
 assert 'href="/admin/v1/worksites"' in dashboard
 assert "/api/v1/admin/session/login" in admin_login
 assert "admin_session_router" in main
