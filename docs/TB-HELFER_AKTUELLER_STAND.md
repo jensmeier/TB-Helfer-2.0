@@ -1569,3 +1569,12 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Der Benutzer hat per Screenshot bestätigt, dass Android **1.3.18 / Build 200068** bereits installiert wurde. Damit ist die vorherige Annahme '200068 noch nicht installiert' überholt.
 - Der 24.09.-BTB steht serverseitig dennoch noch auf ACTIVE; der lokal neue 25.09.-BTB ab 07:00 fehlt im Portal. Da der Server nur einen aktiven Team-BTB erlaubt, muss zuerst der alte Server-BTB sauber FINALIZED und active_btb_id gelöst werden. Für einen Abschluss, der vor Installation des 200068-Triggers lokal erfolgt ist, ist der bestehende **Neu laden**-Vollsync der vorgesehene Recovery-Weg; der neue lokale BTB bleibt erhalten.
 - Zusätzlich ist die beobachtete Admin-/Portal-Umschaltung im selben Browser im Quellstand erklärt: Admin und normales Portal teilen derzeit `tb_portal_session` und `tb_portal_csrf` mit Cookie-Path `/`. Ein Login als anderer Nutzer überschreibt dadurch die aktive Browseridentität auch für bereits offene Admin-Tabs. Das ist ein echter Session-Isolationsmangel; Fix noch offen.
+
+
+### 25.09.2026 – Zielbild Admin und Benutzerportal getrennt
+
+- Verbindliche UX-Entscheidung des Benutzers: Das normale Portal ist für die normalen Nutzer. Der Adminbereich bleibt eine eigene Oberfläche/ein eigener Einstieg.
+- Eine Anmeldung mit einem Admin-Konto soll direkt in den Adminbereich führen. Optional kann auf der Portal-/Login-Seite oben rechts nur ein kleiner Link/Button **Admin** zum Admin-Einstieg angeboten werden; die normalen Portal-Funktionen bleiben davon getrennt.
+- Technisch werden Admin- und Portal-Sitzungen getrennt geführt (eigene Session-/CSRF-Cookies bzw. klar getrennte Session-Kontexte), damit im selben Browser gleichzeitig ein Admin und ein normaler Nutzer angemeldet sein können, ohne dass offene Tabs ihre Identität wechseln.
+- Bestehende bestätigte Admin-Seiten/Funktionen werden nicht ersetzt oder neu erfunden; es wird nur die Sitzungs- und Einstiegs-Trennung ergänzt.
+- Umsetzung bewusst nach dem aktuell laufenden BTB-Recovery-/Finalize-E2E, damit nicht zwei Fehlerbilder gleichzeitig verändert werden.
