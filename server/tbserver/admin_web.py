@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 
 from .company import _company_row, _profile_payload, normalize_pdf_logo_layout
 from .database import transaction
+from .admin_session import current_admin_session_user
 from .portal import current_portal_session_user
 
 
@@ -20,7 +21,7 @@ templates = Jinja2Templates(
 )
 
 def require_web_admin(
-    user: dict[str, Any] = Depends(current_portal_session_user),
+    user: dict[str, Any] = Depends(current_admin_session_user),
 ) -> dict[str, Any]:
     if user["company_role"] != "ADMIN":
         from fastapi import HTTPException
@@ -28,6 +29,14 @@ def require_web_admin(
         raise HTTPException(403, "ADMIN_REQUIRED")
     return user
 
+
+
+@router.get("/admin/v1/login")
+def admin_login_page(request: Request):
+    return templates.TemplateResponse(
+        "v1_admin_login.html",
+        {"request": request},
+    )
 
 
 @router.get("/portal/v1/login")
