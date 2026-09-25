@@ -41,8 +41,10 @@ object BtbServerStateStore {
             get() = serverStatus.equals("FINALIZED", true) && !active
 
         val participantReadOnly: Boolean
-            get() = participantStatus.equals("FINISHED", true) ||
-                participantStatus.equals("NOT_PARTICIPATING", true)
+            get() = !isTeamLead && (
+                participantStatus.equals("FINISHED", true) ||
+                    participantStatus.equals("NOT_PARTICIPATING", true)
+                )
 
         val readOnly: Boolean
             get() = serverFinalReadOnly || participantReadOnly
