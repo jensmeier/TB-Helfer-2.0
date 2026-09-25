@@ -17,6 +17,25 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
+def fetch_head(base_url: str, token: str, timeout: float) -> int:
+    query = urllib.parse.urlencode(
+        {
+            "after": 0,
+            "limit": 1,
+            "entity_types": "BTB,BTB_ENTRY,BTB_PARTICIPANT,FILE",
+            "wait_seconds": 0,
+        }
+    )
+    url = base_url.rstrip("/") + "/api/v1/sync/changes/wait?" + query
+    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    head = int(payload.get("head", -1))
+    if head < 0:
+        raise RuntimeError("Server returned no valid delta head")
+    return head
+
+
 def run_one(base_url: str, token: str, after: int, wait_seconds: float, timeout: float) -> tuple[int, float, str]:
     query = urllib.parse.urlencode(
         {
@@ -48,7 +67,7 @@ def main() -> int:
     parser.add_argument("--base-url", default=os.environ.get("TB_SERVER_BASE_URL", ""))
     parser.add_argument("--token", default=os.environ.get("TB_DEVICE_TOKEN", ""))
     parser.add_argument("--clients", type=int, default=32)
-    parser.add_argument("--after", type=int, default=0)
+    parser.add_argument("--after", type=int, default=None)
     parser.add_argument("--wait-seconds", type=float, default=10.0)
     parser.add_argument("--timeout", type=float, default=40.0)
     args = parser.parse_args()
@@ -58,11 +77,22 @@ def main() -> int:
     if args.clients < 1 or args.clients > 255:
         parser.error("--clients must be between 1 and 255")
 
+    try:
+        after = args.after if args.after is not None else fetch_head(
+            args.base_url,
+            args.token,
+            min(args.timeout, 15.0),
+        )
+    except Exception as exc:
+        print(f"FAIL could not determine delta head: {exc}")
+        return 1
+    print(f"long_poll_after={after}")
+
     results = []
     started = time.monotonic()
     with ThreadPoolExecutor(max_workers=args.clients) as pool:
         futures = [
-            pool.submit(run_one, args.base_url, args.token, args.after, args.wait_seconds, args.timeout)
+            pool.submit(run_one, args.base_url, args.token, after, args.wait_seconds, args.timeout)
             for _ in range(args.clients)
         ]
         for future in as_completed(futures):
