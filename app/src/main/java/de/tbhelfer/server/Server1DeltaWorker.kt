@@ -30,7 +30,8 @@ class Server1DeltaWorker(
                 maxPages = 50
             )
         ) {
-            is Server1DeltaSync.Result.Success -> Result.success()
+            is Server1DeltaSync.Result.Success ->
+                if (result.caughtUp) Result.success() else Result.retry()
             Server1DeltaSync.Result.Unsupported -> Result.success()
             Server1DeltaSync.Result.SessionInvalid -> Result.success()
             is Server1DeltaSync.Result.Error -> Result.retry()
