@@ -59,7 +59,7 @@
 {% endblock %}
 {% block content %}
 <div class="actions" style="margin-bottom:14px">
-  <a id="back" class="btn secondary" href="/portal/v1/worksites">← Baustelle</a>
+  <a id="back" class="btn secondary" href="{{ page_prefix|default('/portal/v1') }}/worksites">← Baustelle</a>
 </div>
 <div class="card">
   <div class="topline">
@@ -182,6 +182,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
+const pagePrefix={{ (page_prefix|default('/portal/v1'))|tojson }};
 const btbId={{ btb_id|tojson }};
 const msg=document.getElementById('msg');
 let current=null, entries=[], photos=[], finalPdf=null, permissions={}, activeBtbId=null, participants=[], currentUser={};
@@ -1097,7 +1098,7 @@ async function loadBtb(){
   permissions=ws.data.permissions||{};
   const list=await tbApi('/api/v1/worksites/'+encodeURIComponent(current.worksite_id)+'/teams/'+encodeURIComponent(current.team_id)+'/btbs');
   activeBtbId=list.data.active_btb_id;
-  document.getElementById('back').href='/portal/v1/worksites/'+encodeURIComponent(current.worksite_id);
+  document.getElementById('back').href=pagePrefix+'/worksites/'+encodeURIComponent(current.worksite_id);
   const timeRange=[timeOnly(current.started_at),timeOnly(current.ended_at)].filter(v=>v&&v!=='–').join('–');
   document.getElementById('meta').textContent=deDate(current.work_date)+(timeRange?' · '+timeRange:'');
   document.getElementById('status').innerHTML='<span class="pill btb-status-friendly">'+esc(friendlyBtbStatus(current.status))+'</span>';
@@ -1219,7 +1220,7 @@ document.getElementById('uploadPhoto').addEventListener('click',async function()
 
 document.getElementById('deleteBtb').addEventListener('click',async function(){
   if(!current||!confirm('Diesen BTB vollständig löschen?'))return;
-  const target='/portal/v1/worksites/'+encodeURIComponent(current.worksite_id);
+  const target=pagePrefix+'/worksites/'+encodeURIComponent(current.worksite_id);
   try{await tbApi('/api/v1/btbs/'+btbId,{method:'DELETE'});location.href=target;}
   catch(error){show('err',error.message||String(error));}
 });
