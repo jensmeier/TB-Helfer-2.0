@@ -227,7 +227,7 @@ class BtbLifecycleCoordinator(context: Context) {
         clientBtbId: String,
         allowUnfinished: Boolean
     ): ActionResult {
-        val prepared = prepareAccess(localBaustelleId, clientBtbId)
+        val prepared = prepareAccess(localBaustelleId, clientBtbId, uploadContent = true)
         val access = when (prepared) {
             is PrepareResult.Success -> prepared.access
             PrepareResult.SessionInvalid -> return ActionResult.SessionInvalid
