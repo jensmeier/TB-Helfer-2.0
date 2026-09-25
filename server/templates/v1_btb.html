@@ -829,24 +829,14 @@ async function postManagedEntry(section,slot,sortOrder,payload){
 async function appendGeneralWork(){
   const text=editorValue('edit-text');
   const time=editorValue('edit-uhrzeit');
-  const line=[time,text].filter(Boolean).join(' ').trim();
-  if(!line)throw new Error('Bitte Text eingeben.');
-  const wanted=normalizedSummary(line);
+  if(!text)throw new Error('Bitte Text eingeben.');
+  const payload={text:text};
+  if(time)payload.uhrzeit=time;
+  const wanted=normalizedSummary([time,text].filter(Boolean).join(' '));
   const existingLegacy=legacyWorkLines(entries.filter(e=>['NOTIZEN','ALLGEMEIN'].includes(String(e.section||'').toUpperCase())));
   if(existingLegacy.some(x=>normalizedSummary(x.text)===wanted))throw new Error('Ein identischer Eintrag ist bereits vorhanden.');
-  const note=entries.find(e=>String(e.section||'').toUpperCase()==='NOTIZEN'&&slotOf(e)==='notizen:0');
-  if(note){
-    const payload=JSON.parse(JSON.stringify(note.payload||{}));
-    const old=String(payload.text||'').trim();
-    payload.text=old?old+'\n'+line:line;
-    await tbApi('/api/v1/btbs/'+btbId+'/entries/'+encodeURIComponent(note.id),{
-      method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        base_version:note.version,sort_order:Number(note.sort_order||0),payload:payload
-      })
-    });
-  }else{
-    await postManagedEntry('NOTIZEN','notizen:0',0,{text:line});
-  }
+  const prefix='arbeit-frei:',index=nextSlotIndex(prefix);
+  await postManagedEntry('ARBEIT',prefix+index,index,payload);
 }
 async function createModalEntry(){
   const ctx=creatingEntry;if(!ctx)return;
