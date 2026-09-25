@@ -1707,3 +1707,19 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - **Android-Übergabe:** `docs/TB-SERVER_ANDROID_SYNC_VERTRAG_2026-09-25.md` beschreibt verbindlich Rollen/Schichtende, historische FINALIZED-BTBs, stabile Entry-Slots, allgemeine Arbeiten, Foto-Metadaten, Delta-Pull, Retry und den gemeinsamen E2E-Abnahmelauf.
 - GitHub Actions für den aktuellen Stand liefern weiterhin Jobs ohne Runner-Steps; sie gelten nicht als Testnachweis.
 - `STATUS.xlsx` bleibt wegen unterschiedlicher Server-/Android-Workbookstände unverändert; kein blindes Überschreiben.
+
+
+### 25.09.2026 – SERVER Integrationsbau 1–4 Quellstand abgeschlossen
+
+- Repository/Branches vor Sicherung geprüft: SERVER `e94e1352d51e27dbce15eb773b7e05d8ee5e5bdd`, ANDROID `58bdaf89b44995a36f96d87013e80ccb3106601a`, Draft-PR #6 offen.
+- **Server/Portal-Datenvertrag:** allgemeine Punkt-4-Arbeiten werden als echte `ARBEIT`-Entries mit stabilen `arbeit-frei:<n>`-Slots gespeichert. Neue Portal-Daten verwenden hierfür keine NOTIZEN-Ersatzlogik mehr.
+- **Admin/Portal:** getrennte Admin-/Portal-Sessions und CSRF-Cookies, eigener Admin-Einstieg, scope-sichere Worksite-/BTB-/Asset-Navigation und getrennte Logouts sind umgesetzt. Admin-Loginversuche im Benutzerportal werden auf den Admin-Einstieg umgeleitet.
+- **Delta-Sync serverseitig:** `/api/v1/sync/changes/wait`, gemeinsamer Wake-Hub, begrenzte parallele DB-Abfragen und 255-Client-Probe sind vorhanden. Der Server ist damit source-seitig für den Android-Delta-Cursor vorbereitet.
+- **Fotovertrag:** neue Migration **015** ergänzt `tb.files.photo_metadata`. Strukturierte Fotoangaben werden serverseitig normalisiert/persistiert; BTBP1 bleibt Legacy-Fallback. Portal kann Punkt 4–8, Kurztext, Firma, KM und Objekt/Bereich beim Upload setzen.
+- **Kleine Bilder:** `thumb` max. 320×320 und `preview` max. 1280×1280 werden speicherbegrenzt als gecachte JPEG-Renditions erzeugt; gleiche Dateiberechtigung wie beim Original. Portal nutzt Renditions für Vorschaubilder; Original bleibt für Öffnen/Export erhalten.
+- **NAS-Schutz:** Staging-API erhält zusätzlich zum bereits bestätigten speicherbegrenzten PDF-Pfad ein Compose-Memory-Limit von standardmäßig 512 MiB. Dafür ist ein API-Service-Recreate erforderlich.
+- **Migrationen:** Synology ist praktisch 14/14 bestätigt; Source kennt jetzt 15. Migration 015 ist bewusst **noch nicht als deployed/E2E** markiert.
+- **CI:** Workflow ist auf Migration 015 und Checks 98–105 aktualisiert. GitHub-Actions-Runner liefert weiterhin keine Runner-Steps; daraus wird kein Testnachweis abgeleitet.
+- **Deploy-Runbook:** `docs/TB-SERVER_1_0_STAGING_DEPLOY_2026-09-25.md` beschreibt Backup, vollständigen Quell-Sync, Migration 015, API-Recreate, Preflight und Browser-/Delta-E2E.
+- **Android parallel:** Android-Branch entwickelt den festgeschriebenen Clientvertrag weiter. SERVER verändert weiterhin kein `app/**`.
+- `STATUS.xlsx` wurde **nicht** überschrieben, weil Server- und Android-Branch weiterhin unterschiedliche Workbook-Blobs besitzen. MD ist der konsolidierte Integrationsstand bis zur konfliktfreien Excel-Nachführung.
