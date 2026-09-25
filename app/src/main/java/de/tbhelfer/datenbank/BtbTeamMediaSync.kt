@@ -231,7 +231,7 @@ class BtbTeamMediaSync(context: Context) {
                     val localFotoId = if (parentKey.startsWith("legacy:")) {
                         fotos.einfuegen(entity)
                     } else {
-                        fotos.einfuegenFuerBtb(entity, parentKey)
+                        fotos.einfuegenFuerBtb(entity, parentKey, triggerSync = false)
                     }
                     rememberImportedPhoto(attachment.serverId, localFotoId, parentKey)
                     localPaths += canonical
