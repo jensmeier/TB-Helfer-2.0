@@ -82,7 +82,13 @@ class FotoRepository(
                 BtbFotoZuordnungSpeicher.entfernen(ctx, foto.id)
                 loescheAppFotoDateiWennUnbenutzt(ctx, foto)
             }
-            runCatching { SofortSync.anstossen(ctx) }
+            if (affected.isNotEmpty()) {
+                affected.forEach { (baustelleId, btbId) ->
+                    runCatching { SofortSync.btbAnstossen(ctx, baustelleId, btbId) }
+                }
+            } else {
+                runCatching { SofortSync.anstossen(ctx) }
+            }
         }
         result
     }
@@ -126,16 +132,21 @@ class FotoRepository(
     suspend fun einfuegen(entity: FotoEntity): Long {
         val id = withContext(Dispatchers.IO) { dao.einfuegen(entity) }
         appContext?.let { ctx ->
+            var activeBtbId: String? = null
             runCatching {
                 val active = BtbActiveContext.laden(ctx, entity.baustelleId)
-                val activeBtbId = active?.btbId
+                activeBtbId = active?.btbId
                 if (!activeBtbId.isNullOrBlank()) {
                     BtbFotoZuordnungSpeicher.zuordnen(ctx, id, activeBtbId)
                     val alleFotos = dao.fotosFuerBaustelleOnce(entity.baustelleId)
-                    invalidiereFotoAbschlussWennNoetig(ctx, entity.baustelleId, activeBtbId, alleFotos)
+                    invalidiereFotoAbschlussWennNoetig(ctx, entity.baustelleId, activeBtbId!!, alleFotos)
                 }
             }
-            runCatching { SofortSync.anstossen(ctx) }
+            if (!activeBtbId.isNullOrBlank()) {
+                runCatching { SofortSync.btbAnstossen(ctx, entity.baustelleId, activeBtbId!!) }
+            } else {
+                runCatching { SofortSync.anstossen(ctx) }
+            }
         }
         return id
     }
@@ -144,7 +155,7 @@ class FotoRepository(
      * Import-/Sonderpfad: ordnet das Foto ausdrücklich der übergebenen stabilen BTB-ID zu.
      * Datum/Uhrzeit entscheiden bei modernen BTBs nicht über die Zugehörigkeit.
      */
-    suspend fun einfuegenFuerBtb(entity: FotoEntity, btbId: String): Long {
+    suspend fun einfuegenFuerBtb(entity: FotoEntity, btbId: String, triggerSync: Boolean = true): Long {
         val stableId = btbId.trim()
         if (stableId.isBlank()) return einfuegen(entity)
         val id = withContext(Dispatchers.IO) { dao.einfuegen(entity) }
@@ -154,7 +165,9 @@ class FotoRepository(
                 val alleFotos = dao.fotosFuerBaustelleOnce(entity.baustelleId)
                 invalidiereFotoAbschlussWennNoetig(ctx, entity.baustelleId, stableId, alleFotos)
             }
-            runCatching { SofortSync.anstossen(ctx) }
+            if (triggerSync) {
+                runCatching { SofortSync.btbAnstossen(ctx, entity.baustelleId, stableId) }
+            }
         }
         return id
     }
@@ -222,7 +235,14 @@ class FotoRepository(
                     invalidiereFotoAbschlussWennNoetig(ctx, baustelleId, btbId)
                 }
 
-            if (dbResult > 0 || effectiveChanged.isNotEmpty()) {
+            if (effectiveChanged.isNotEmpty()) {
+                effectiveChanged
+                    .map { (foto, btbId) -> foto.baustelleId to btbId }
+                    .distinct()
+                    .forEach { (baustelleId, btbId) ->
+                        runCatching { SofortSync.btbAnstossen(ctx, baustelleId, btbId) }
+                    }
+            } else if (dbResult > 0) {
                 runCatching { SofortSync.anstossen(ctx) }
             }
         }
@@ -241,7 +261,11 @@ class FotoRepository(
             BtbPhotoContextOverrideStore.clearForPhoto(ctx, btbId, entity.id)
             BtbFotoZuordnungSpeicher.entfernen(ctx, entity.id)
             loescheAppFotoDateiWennUnbenutzt(ctx, entity)
-            runCatching { SofortSync.anstossen(ctx) }
+            if (!btbId.isNullOrBlank()) {
+                runCatching { SofortSync.btbAnstossen(ctx, entity.baustelleId, btbId) }
+            } else {
+                runCatching { SofortSync.anstossen(ctx) }
+            }
         }
         result
     }
