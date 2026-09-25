@@ -216,3 +216,33 @@ Der Clientvertrag steht in:
 Gesamt-Sync wird erst BESTÄTIGT, wenn der dort beschriebene Pixel ↔ Server ↔ Poco ↔ Portal-E2E
 inklusive Schicht Ende, Finalize, Foto-Sync, Foto-Lösen, automatischem Delta und Offline-Retry
 praktisch bestanden ist.
+
+
+## Bevorzugter Synology-Apply
+
+Nach dem vollständigen Upload/Synchronisieren des aktuellen SERVER-Quellstands kann der
+Integrationsblock als **ein bewachter Ablauf** über den DSM-Aufgabenplaner ausgeführt werden.
+
+Benutzer: `root`
+
+```bash
+sh /volume1/docker/tb-helfer-v1/tools/synology_integration_apply.sh
+```
+
+Das Skript führt absichtlich nur diese Reihenfolge aus:
+
+1. laufende Kerncontainer prüfen,
+2. FULL-Backup erstellen und `OK` verlangen,
+3. Migrationsstand auf genau Source 15 / Staging 14 oder bereits 15 prüfen,
+4. Migration 015 anwenden und 15/15 verlangen,
+5. **nur** API/Worker/Monitor recreaten – DB-/Restore-Volumes werden nicht angefasst,
+6. API-Health abwarten,
+7. `server1_runtime_probe.py` ausführen.
+
+Es gibt im Skript kein `compose down`, kein `-v`, kein Volume-Remove, kein Prune und kein
+rekursives Löschen. Bei unerwartetem Migrationsstand oder fehlerhaftem Backup stoppt es vor
+der Migration.
+
+Wichtig: Das Skript ersetzt **nicht** den vollständigen Quell-Sync. Es wird erst gestartet,
+wenn `tbserver/**`, `templates/**`, `v1_migrations/**`, `tools/**` und die aktuelle
+Compose-Datei auf dem NAS auf demselben SERVER-HEAD liegen.
