@@ -99,7 +99,7 @@ class BtbTeamMediaSync(context: Context) {
                 val key = stableBtbId ?: "legacy:${v.datum}:${v.schicht.name}"
                 val parent = serverBtbs[key] ?: continue
                 val serverState = BtbServerStateStore.state(appContext, key)
-                if (parent.status.equals("FERTIG", true) || serverState?.serverFinalReadOnly == true) {
+                if (parent.status.equals("FERTIG", true) || serverState?.readOnly == true) {
                     continue
                 }
                 val btbFotos = if (stableBtbId != null) {
