@@ -1619,3 +1619,14 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Der verbleibende historische Schreibversuch ist damit ein **Android-Sync-Thema**: `BtbTeamMediaSync` und der lokale BTB-Export dürfen serverseitig fertige/inaktive historische BTBs nicht ohne explizite Nachbearbeitung erneut als Header-/Medienänderung senden. Das ist im ANDROID-Projekt umzusetzen; SERVER ändert keine `app/**`-Dateien.
 - Separater nächster SERVER-Diagnoseschritt für den aktiven `5d5d865d...`: Teilnehmerstatus und BTB-/Teamstatus prüfen, um den exakten Finalize-409 zu bestimmen. Keine Änderung auf Verdacht.
 - `STATUS.xlsx` wurde bewusst **nicht** überschrieben: SERVER- und ANDROID-Branch haben unterschiedliche XLSX-Blobs; gemäß Integrator-Regel zuerst konfliktfrei konsolidieren.
+
+
+### 25.09.2026 – Finalize-409 exakt bestimmt: Helferstatus WORKING blockiert korrekt
+
+- Live-DB-Abfrage des aktiven BTB `5d5d865d-59da-4195-8c5b-d9850ec7811a` bestätigt: Team `880136ec-e107-486e-b354-89d1f4d9e51c` hat diesen BTB korrekt als `active_btb_id`, BTB-Status ist `ACTIVE`, Arbeitstag 24.09.2026, Version 44.
+- Teilnehmerzustände: `poco poco` = **MITGLIED / WORKING**, `test.test` = **TEAMLEAD / WORKING**.
+- Der Servercode erklärt den beobachteten 409 vollständig: `finalize_btb()` markiert den Teamlead innerhalb derselben DB-Transaktion zunächst FINISHED und prüft danach `unfinished_participants(... exclude_user_id=teamlead)`. Der noch WORKING gesetzte Helfer `poco poco` führt daher zu `409 BTB_PARTICIPANTS_NOT_FINISHED`. Weil die Transaktion bei diesem 409 zurückgerollt wird, bleibt der Teamlead in der späteren DB-Abfrage ebenfalls als WORKING sichtbar.
+- Android 1.3.18 / 200068 verwendet die bereits vorhandenen Teilnehmerendpunkte `/shift-finish` und `/shift-resume` noch nicht. Beim BTB-Finalize sendet `Server1BtbApi` weiterhin nur `JSONObject()`; damit bleibt `allow_unfinished=false`.
+- Konsequenz: Mit mindestens einem zweiten Teammitglied kann 200068 den BTB derzeit nicht regulär finalisieren, solange dessen Teilnehmerstatus serverseitig WORKING bleibt. Dadurch bleibt `active_btb_id` gesetzt und der neue 25.09.-BTB kann serverseitig nicht angelegt werden.
+- **Keine Serverlockerung und keine manuelle SQL-Korrektur.** Nächster fachlich korrekter Schritt liegt im ANDROID-Projekt: Helfer-Schichtende an `shift-finish` anbinden; Teamlead bei offenen Teilnehmern klar anzeigen und optional nur nach bewusster Bestätigung den vorhandenen Server-Override `allow_unfinished=true` verwenden.
+- Ziel-E2E danach: Poco -> Schicht Ende -> Teilnehmer FINISHED; Pixel/Teamlead -> BTB abschließen -> BTB FINALIZED + `active_btb_id=NULL`; anschließend neuer 25.09.-BTB erfolgreich serverseitig angelegt.
