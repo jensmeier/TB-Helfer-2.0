@@ -2,6 +2,7 @@ package de.tbhelfer.ui.bautagebuch
 
 import android.content.Context
 import android.os.Environment
+import de.tbhelfer.server.BtbServerStateStore
 import de.tbhelfer.server.SofortSync
 import org.json.JSONArray
 import org.json.JSONObject
@@ -401,6 +402,10 @@ object BautagebuchSpeicher {
         val id = explicitId ?: pointer?.btbId?.takeIf { pointerMatches }
 
         if (!id.isNullOrBlank()) {
+            // Kanonisch bestaetigter FINALIZED-BTB bzw. beendete Helferschicht ist read-only.
+            // Autosave darf daraus keine neue lokale Mutation erzeugen, die spaeter BTB_NOT_ACTIVE
+            // oder BTB_PARTICIPANT_FINISHED provoziert.
+            if (BtbServerStateStore.state(context, id)?.readOnly == true) return
             val normalized = entry.copy(btbId = id)
             val f = instanzDatei(context, entry.baustelleId, entry.baustelleName, datum, id)
             f.writeText(toJson(normalized).toString(2), Charsets.UTF_8)
