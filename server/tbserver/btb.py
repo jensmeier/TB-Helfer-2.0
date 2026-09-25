@@ -47,6 +47,7 @@ from .company import load_company_branding
 from .database import transaction
 from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
+from .image_renditions import image_rendition_urls
 from .permissions import is_team_lead, require_permission, require_team_lead, worksite_context
 from .portal import current_portal_user, require_csrf
 
@@ -355,6 +356,10 @@ def get_btb(
                 )["photo_metadata"],
                 "purpose": row.get("purpose"),
                 "content_url": f"/api/v1/files/{row['id']}/content",
+                "renditions": image_rendition_urls(
+                    row["id"],
+                    row.get("mime_type"),
+                ),
             }
             for row in photo_files
         ]
