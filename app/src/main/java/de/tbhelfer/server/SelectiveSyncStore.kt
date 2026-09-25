@@ -63,6 +63,17 @@ object SelectiveSyncStore {
 
     fun hasPending(context: Context): Boolean = btbScopes(context).isNotEmpty()
 
+    fun clearBtb(context: Context, localBaustelleId: Long, clientBtbId: String): Boolean {
+        if (clientBtbId.isBlank()) return false
+        val appContext = context.applicationContext
+        synchronized(lock) {
+            return appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .remove(btbKey(localBaustelleId, clientBtbId))
+                .commit()
+        }
+    }
+
     private fun btbKey(localBaustelleId: Long, clientBtbId: String): String =
         "$BTB_PREFIX$localBaustelleId:${encode(clientBtbId)}"
 
