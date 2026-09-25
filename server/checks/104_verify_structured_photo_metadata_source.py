@@ -30,6 +30,8 @@ normalized = normalize_photo_metadata(
         "km": "76.215",
         "lat": "48.123",
         "lon": "11.456",
+        "notiz": "Detailnotiz",
+        "info1": "Zusatz 1",
         "ignored": "not persisted",
     }
 )
@@ -37,6 +39,8 @@ assert normalized["typ"] == "ABNAHMEN"
 assert normalized["kurztext"] == "Abnahme Gleis 2"
 assert normalized["firma"] == "Firma"
 assert normalized["km"] == 76.215
+assert normalized["notiz"] == "Detailnotiz"
+assert normalized["info1"] == "Zusatz 1"
 assert "ignored" not in normalized
 
 canonical = canonical_photo_metadata(
