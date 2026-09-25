@@ -1697,3 +1697,13 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Der Server hat für den neuen BTB beide Teammitglieder als Teilnehmer angelegt: `test.test` = Haupt-TB / ARBEITET, `poco` = ARBEITET. Damit ist die Server-Recovery-Kette vollständig bestätigt: **24.09 FINALIZED → active_btb_id frei → lokaler 25.09.-BTB wird serverseitig angelegt**.
 - Kein weiterer Serverfix ist für diese konkrete Recovery-Kette nötig. Offen bleiben die bereits dokumentierten Android-Themen: historischer `BTB_NOT_ACTIVE`-Uploadpfad, echtes mobiles `Schicht Ende` und automatischer Server→Handy-Delta-Pull.
 - `STATUS.xlsx` wird weiterhin nicht blind überschrieben, weil Server- und Android-Branch unterschiedliche Workbook-Stände besitzen.
+
+
+### 25.09.2026 – Server-Querprüfung 1–3 umgesetzt / Android-Vertrag festgeschrieben
+
+- **Punkt 1 Server/Portal-Datenvertrag:** allgemeine ausgeführte Arbeiten ohne Firma werden jetzt als echte `ARBEIT`-Einträge mit stabilen `arbeit-frei:<n>`-Slots gespeichert; neue Portal-Daten verwenden dafür nicht mehr `NOTIZEN`. BTB-Fotos erhalten serverseitig kanonische strukturierte Metadaten; vorhandene `BTBP1__`-Dateinamen bleiben nur Rückwärtskompatibilität. Source-Check 100 schützt beide Verträge.
+- **Punkt 2 Admin/Portal-Trennung:** eigener Admin-Login und getrennte Session-/CSRF-Cookies (`tb_admin_*`) sind umgesetzt. Admin-Worksite-/BTB-Navigation und direkte Asset-Aufrufe bleiben im Admin-Session-Scope. Source-Check 101 schützt den Vertrag. Praktischer Same-Browser-E2E auf Synology steht noch aus.
+- **Punkt 3 Server-Delta-Sync:** neuer Long-Poll-Endpunkt `/api/v1/sync/changes/wait`, gemeinsamer Wake-Hub pro API-Prozess und begrenzte parallele Delta-DB-Abfragen (`Semaphore(16)`) sind umgesetzt. Der alte per-Client-2s-DB-Poll im SSE-Pfad ist entfernt. Capability `sync_change_wait_v1` ist veröffentlicht. Source-Check 102 und ein 255-Client-Probe-Skript liegen vor; echter Lasttest auf Synology bleibt offen.
+- **Android-Übergabe:** `docs/TB-SERVER_ANDROID_SYNC_VERTRAG_2026-09-25.md` beschreibt verbindlich Rollen/Schichtende, historische FINALIZED-BTBs, stabile Entry-Slots, allgemeine Arbeiten, Foto-Metadaten, Delta-Pull, Retry und den gemeinsamen E2E-Abnahmelauf.
+- GitHub Actions für den aktuellen Stand liefern weiterhin Jobs ohne Runner-Steps; sie gelten nicht als Testnachweis.
+- `STATUS.xlsx` bleibt wegen unterschiedlicher Server-/Android-Workbookstände unverändert; kein blindes Überschreiben.
