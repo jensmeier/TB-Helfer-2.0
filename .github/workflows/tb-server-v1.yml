@@ -145,6 +145,7 @@ jobs:
           python server/checks/107_verify_runtime_probe_source.py
           python server/checks/108_verify_synology_integration_apply_source.py
           python server/checks/109_verify_readonly_acceptance_source.py
+          python server/checks/110_verify_backup_job_e2e_source.py
 
       # Migrations through 015_file_photo_metadata.sql are included by the normal migration runner.
       - name: Apply fresh TB-Server 1.0 baseline
