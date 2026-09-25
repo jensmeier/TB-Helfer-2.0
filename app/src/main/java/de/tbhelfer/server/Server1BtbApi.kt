@@ -889,7 +889,7 @@ class Server1BtbApi(
         }
         fun putSlots(key: String, slots: List<String>) {
             if (slots.isNotEmpty()) {
-                slotMap.put(key, JSONArray().apply { slots.forEach(::put) })
+                slotMap.put(key, JSONArray().apply { slots.forEach { slot -> put(slot) } })
             }
         }
 
