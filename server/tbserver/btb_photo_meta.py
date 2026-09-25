@@ -19,6 +19,72 @@ PHOTO_INDICATORS = ("GRUEN", "GELB", "ROT")
 _PREFIX_V1 = "BTBP1__"
 _PREFIX_LEGACY = "BTBPHOTO__"
 
+_STRING_LIMITS = {
+    "firma": 200,
+    "kurztext": 500,
+    "objektKennung": 240,
+    "objektBereich": 240,
+}
+
+
+def normalize_photo_metadata(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+
+    result: dict[str, Any] = {}
+
+    raw_type = str(value.get("typ") or "").strip().upper()
+    if raw_type in PHOTO_TYPES:
+        result["typ"] = raw_type
+
+    raw_indicator = str(value.get("indikator") or "").strip().upper()
+    if raw_indicator in PHOTO_INDICATORS:
+        result["indikator"] = raw_indicator
+
+    for key, limit in _STRING_LIMITS.items():
+        if key not in value or value.get(key) is None:
+            continue
+        text = str(value.get(key)).strip()
+        if text:
+            result[key] = text[:limit]
+
+    def finite_float(key: str) -> None:
+        if key not in value or value.get(key) is None:
+            return
+        try:
+            number = float(value.get(key))
+        except (TypeError, ValueError):
+            return
+        if math.isfinite(number):
+            result[key] = number
+
+    for key in ("alt", "km", "achsabstand", "lat", "lon"):
+        finite_float(key)
+
+    if "lat" in result and not (-90.0 <= float(result["lat"]) <= 90.0):
+        result.pop("lat", None)
+    if "lon" in result and not (-180.0 <= float(result["lon"]) <= 180.0):
+        result.pop("lon", None)
+
+    if value.get("epoch") is not None:
+        try:
+            epoch = int(value.get("epoch"))
+            if epoch >= 0:
+                result["epoch"] = epoch
+        except (TypeError, ValueError, OverflowError):
+            pass
+
+    if value.get("kmSuffix") is not None:
+        try:
+            result["kmSuffix"] = int(value.get("kmSuffix"))
+        except (TypeError, ValueError, OverflowError):
+            pass
+
+    if value.get("kmManuell") is not None:
+        result["kmManuell"] = bool(value.get("kmManuell"))
+
+    return result
+
 
 def _b64url_decode(raw: str) -> bytes:
     padding = "=" * ((4 - len(raw) % 4) % 4)
@@ -102,13 +168,17 @@ def canonical_photo_metadata(
     gps_lat: float | None = None,
     gps_lon: float | None = None,
     gps_accuracy_m: float | None = None,
+    photo_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    decoded = decode_btb_photo_metadata(filename) or {}
+    decoded = normalize_photo_metadata(decode_btb_photo_metadata(filename) or {})
+    structured = normalize_photo_metadata(photo_metadata)
+    merged = dict(decoded)
+    merged.update(structured)
     resolved_captured_at = captured_at
-    if resolved_captured_at is None and decoded.get("epoch") is not None:
+    if resolved_captured_at is None and merged.get("epoch") is not None:
         try:
             resolved_captured_at = datetime.fromtimestamp(
-                float(decoded["epoch"]) / 1000.0,
+                float(merged["epoch"]) / 1000.0,
                 tz=timezone.utc,
             )
         except (OverflowError, OSError, TypeError, ValueError):
@@ -121,12 +191,18 @@ def canonical_photo_metadata(
             return None
         return number if minimum <= number <= maximum else None
 
-    resolved_lat = gps_lat if gps_lat is not None else valid_coordinate(decoded.get("lat"), -90.0, 90.0)
-    resolved_lon = gps_lon if gps_lon is not None else valid_coordinate(decoded.get("lon"), -180.0, 180.0)
+    resolved_lat = gps_lat if gps_lat is not None else valid_coordinate(merged.get("lat"), -90.0, 90.0)
+    resolved_lon = gps_lon if gps_lon is not None else valid_coordinate(merged.get("lon"), -180.0, 180.0)
+    if resolved_lat is not None:
+        merged["lat"] = resolved_lat
+    if resolved_lon is not None:
+        merged["lon"] = resolved_lon
+    if resolved_captured_at is not None:
+        merged.setdefault("epoch", int(resolved_captured_at.timestamp() * 1000))
     return {
         "captured_at": resolved_captured_at,
         "gps_lat": resolved_lat,
         "gps_lon": resolved_lon,
         "gps_accuracy_m": gps_accuracy_m,
-        "photo_metadata": decoded or None,
+        "photo_metadata": merged or None,
     }
