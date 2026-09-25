@@ -13,6 +13,7 @@ import de.tbhelfer.ui.baustelle.MaengellisteExport
 import de.tbhelfer.ui.baustelle.MangelStatusSpeicher
 import de.tbhelfer.ui.baustelle.SyncMangelSpeicher
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
+import de.tbhelfer.ui.bautagebuch.BtbActivePointerControl
 import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.SchichtTyp
@@ -527,9 +528,10 @@ class CollabLocalBridge(
                     payload.optJSONObject(Server1BtbApi.LOCAL_ENTRY_SLOTS_KEY)
                 )
 
+                val serverActive = payload.optBoolean(Server1BtbApi.SERVER_ACTIVE_KEY, false)
                 val serverFinal = entity.status.equals("FERTIG", ignoreCase = true) &&
                     payload.optString(Server1BtbApi.SERVER_STATUS_KEY).equals("FINALIZED", ignoreCase = true) &&
-                    !payload.optBoolean(Server1BtbApi.SERVER_ACTIVE_KEY, false)
+                    !serverActive
                 if (serverFinal) {
                     // Kanonisch bestaetigter historischer BTB: alte Auto-Dirty-/Pending-Reste
                     // duerfen keinen neuen Header-/Entry-/Foto-Upload mehr provozieren.
@@ -564,6 +566,45 @@ class CollabLocalBridge(
                     "btb_${safeBtbFileToken(payload.optString("btbId", key))}.json"
                 )
                 if (writeIfDifferent(target, localPayload.toString(2))) btbWritten++
+
+                // Server ist fuer den Team-Lifecycle kanonisch. Ein aktiver Server-BTB wird auf
+                // allen Geraeten derselben Baustelle aktiv; ein bestaetigtes FINALIZED loest nur
+                // dann den lokalen Pointer, wenn genau dieser BTB dort noch aktiv war.
+                if (serverActive) {
+                    BtbActivePointerControl.inaktivMarkerLoeschen(
+                        appContext,
+                        localBaustelleId,
+                        localName
+                    )
+                    BtbActivePointerControl.reaktivierungsMarkerLoeschen(
+                        appContext,
+                        localBaustelleId,
+                        localName
+                    )
+                    BautagebuchSpeicher.aktivierenBtb(
+                        appContext,
+                        localBaustelleId,
+                        localName,
+                        key,
+                        datum,
+                        schicht
+                    )
+                } else if (
+                    serverFinal &&
+                    BautagebuchSpeicher.aktiveBtbId(
+                        appContext,
+                        localBaustelleId,
+                        localName
+                    ) == key
+                ) {
+                    BtbActivePointerControl.nachAbschlussInaktivMerken(
+                        appContext,
+                        localBaustelleId,
+                        localName,
+                        key
+                    )
+                }
+
                 rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(entity.status, canonicalPayload))
             }
 
