@@ -142,6 +142,11 @@ Neu liefert der Server bei BTB-Fotos zusätzlich kanonisch:
 - `gps_accuracy_m`
 - `photo_metadata` mit u. a. Typ, Firma, Kurztext, KM, Objekt/Bereich, Indikator (wenn bekannt)
 
+Die strukturierten Foto-Metadaten werden serverseitig dauerhaft in `tb.files.photo_metadata`
+gespeichert. Dafür gehört **Migration 015 (`015_file_photo_metadata.sql`)** zum Vertrag.
+Ein Serverstand mit Capability `btb_photo_metadata_v1` + `file_image_renditions_v1` setzt
+deshalb den angewendeten DB-Stand bis einschließlich Migration 015 voraus.
+
 Android darf beim Import **nicht mehr verlangen**, dass der Dateiname mit `BTBP1__` beginnt.
 Portal-Fotos mit normalen Dateinamen müssen ebenfalls importiert werden.
 
