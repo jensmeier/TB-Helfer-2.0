@@ -257,4 +257,11 @@ interface SyncDao {
 
     @Query("DELETE FROM sync_collab_pending WHERE id = :id")
     suspend fun deleteCollabPendingChange(id: Long)
+
+    @Query("DELETE FROM sync_collab_pending WHERE worksiteServerId = :worksiteServerId AND entityType = :entityType AND clientEntityKey = :clientEntityKey")
+    suspend fun deleteCollabPendingForClientKey(
+        worksiteServerId: String,
+        entityType: String,
+        clientEntityKey: String
+    )
 }
