@@ -1590,3 +1590,12 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - **Serverfix Quellstand:** `create_entry()` prüft explizite Entry-IDs jetzt vor dem INSERT. Eine soft-gelöschte ID desselben BTB wird atomar wieder aktiviert (`deleted_at = NULL`, Version +1, gewünschte Nutzdaten); ein bereits aktiver identischer Eintrag wird idempotent akzeptiert; eine echte ID-Kollision liefert kontrolliert `409 ENTRY_ID_CONFLICT` statt eines rohen PostgreSQL-500.
 - Keine DB-Migration und kein manuelles Löschen/Ändern vorhandener BTB-Daten erforderlich. Neuer Source-Check **99** schützt diesen Vertrag. Source-Markerprüfung gegen den GitHub-Stand ist erfolgreich; NAS-/Android-E2E ist noch offen.
 - Nächster Test: Serverfix deployen, Pixel 200068 erneut **Neu laden**, API-Log prüfen. Erwartet: kein `btb_entries_pkey`-500 mehr; danach muss der 24.09.-BTB bis zum Finalize gelangen und der 25.09.-BTB serverseitig angelegt werden können.
+
+
+### 25.09.2026 – Migration 014 auf Synology-Staging praktisch bestätigt
+
+- Im laufenden API-Container wurde vor der Migration `known=14`, `applied=13`, `pending=['014_btb_participant_shift_status.sql']`, `latest_applied=13` bestätigt.
+- Direkt davor wurde ein FULL-Backup erfolgreich erstellt; Ausgabe `status='OK'` wurde vom Benutzer per Screenshot bestätigt.
+- `python -m tbserver.migrations up` meldete anschließend `APPLIED 014_btb_participant_shift_status.sql`.
+- Nachkontrolle: `known=14`, `applied=14`, `pending=[]`, `latest_known=14`, `latest_applied=14`. Damit existiert `tb.btb_participant_states` jetzt auf Synology-Staging.
+- Nächster Schritt ist kein weiterer DB-Eingriff, sondern derselbe Pixel-200068-Recoverylauf. Dabei prüfen wir, ob der vorherige `UndefinedTable`-500 verschwunden ist und anschließend auch der bereits gebaute Soft-Delete-/Entry-ID-Fix greift.
