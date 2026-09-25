@@ -127,7 +127,7 @@ class BtbLifecycleCoordinator(context: Context) {
                 }
                 is Server1BtbApi.AccessResult.Error -> PrepareResult.Error(access.message)
                 is Server1BtbApi.AccessResult.Success -> {
-                    remember(context.worksiteServerId, access.access)
+                    remember(context.worksiteServerId, access.access, applyLocal = false)
                     PrepareResult.Success(access.access)
                 }
             }
@@ -275,7 +275,7 @@ class BtbLifecycleCoordinator(context: Context) {
                         before.snapshot.clientEntityKey
                     )?.worksiteServerId
                     .orEmpty()
-                if (worksiteId.isNotBlank()) remember(worksiteId, result.access)
+                if (worksiteId.isNotBlank()) remember(worksiteId, result.access, applyLocal = true)
                 ActionResult.Success(result.access)
             }
         }
@@ -283,14 +283,21 @@ class BtbLifecycleCoordinator(context: Context) {
 
     private suspend fun remember(
         worksiteServerId: String,
-        access: Server1BtbApi.Access
+        access: Server1BtbApi.Access,
+        applyLocal: Boolean
     ) {
         if (worksiteServerId.isBlank()) return
         collab.upsertServer1BtbSnapshot(worksiteServerId, access.snapshot)
-        bridge.applyServerStateToLocal(
-            worksiteServerIds = setOf(worksiteServerId),
-            btbServerIds = setOf(access.snapshot.serverId),
-            includeOtherEntities = false
-        )
+        if (applyLocal) {
+            bridge.applyServerStateToLocal(
+                worksiteServerIds = setOf(worksiteServerId),
+                btbServerIds = setOf(access.snapshot.serverId),
+                includeOtherEntities = false
+            )
+        } else {
+            // Rollen/Lifecycle/Slots merken, aber lokale noch nicht hochgeladene Fachinhalte
+            // vor shift-finish/finalize keinesfalls mit dem Server-Snapshot ueberschreiben.
+            bridge.primeBtbServerState(setOf(worksiteServerId))
+        }
     }
 }
