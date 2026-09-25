@@ -280,3 +280,31 @@ auftauchen. Das Tool führt keine fachlichen CREATE/UPDATE/DELETE-Aufrufe aus.
 
 Die mutierenden Fach-E2Es (z. B. Katalog CREATE/UPDATE, automatischer Backupjob, BTB-/Foto-Sync)
 bleiben bewusst separate praktische Tests.
+
+
+## Worker-/Backup-E2E
+
+Nach erfolgreichem Deploy + Runtime-Probe kann der echte Background-Worker mit einem realen
+Backupjob geprüft werden:
+
+`server/tools/server1_backup_job_e2e.py`
+
+Das Tool:
+
+1. meldet sich über die getrennte Admin-Session an,
+2. legt **einen echten Backup-Background-Job** an,
+3. pollt den Admin-Systemstatus,
+4. protokolliert Status/Prozent/Arbeitsschritt,
+5. verlangt `DONE`,
+6. verlangt anschließend einen neuen passenden Backup-Run mit `status=OK`,
+   positiver Dateigröße und vorhandener SHA-256,
+7. meldet die Admin-Sitzung wieder ab.
+
+Standard ist `DATABASE`, damit der Worker-Test klein bleibt. Für den vollständigen
+Backup-Pfad kann bewusst `--kind FULL` verwendet werden.
+
+Credentials ausschließlich lokal als Umgebungsvariablen oder interaktiv bereitstellen;
+niemals in Chat, GitHub oder gespeicherte Logs kopieren.
+
+Dieser Test deckt insbesondere den offenen praktischen Teil von PRB-019 sowie
+SRV-020/SRV-021 ab. Ein bestandener Source-Check ersetzt diesen echten Worker-Lauf nicht.
