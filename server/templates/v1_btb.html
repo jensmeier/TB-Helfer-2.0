@@ -366,10 +366,11 @@ function photoCardHtml(p,index,editable){
   const gps=validGps(m)?Number(m.lat).toFixed(6)+', '+Number(m.lon).toFixed(6):'';
   const mapUrl=gps?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(Number(m.lat)+','+Number(m.lon)):'';
   const indicator=String(m.indikator||'').trim();
+  const previewUrl=p.renditions&&p.renditions.preview?p.renditions.preview:p.content_url;
   return '<div class="btb-photo-card"><div class="btb-photo-head"><div><div class="btb-photo-title">'+esc(title)+'</div>'+
     '<div class="btb-photo-meta">Foto '+(index+1)+(p.byte_size?' · '+esc(bytesLabel(p.byte_size)):'')+'</div></div>'+
     (editable?'<button class="danger btb-mini-edit" type="button" onclick="detachPhoto(\''+esc(p.id)+'\')">Entfernen</button>':'')+'</div>'+
-    '<a href="'+esc(tbScopedUrl(p.content_url))+'" target="_blank" rel="noopener"><img src="'+esc(tbScopedUrl(p.content_url))+'" alt="BTB-Foto '+(index+1)+'"></a>'+
+    '<a href="'+esc(tbScopedUrl(p.content_url))+'" target="_blank" rel="noopener"><img src="'+esc(tbScopedUrl(previewUrl))+'" alt="BTB-Foto '+(index+1)+'"></a>'+
     '<div class="btb-photo-details">'+
       (main?'<div>'+esc(main)+'</div>':'')+
       (place?'<div>Ort: '+esc(place)+'</div>':'')+
