@@ -47,7 +47,12 @@ class SelectiveSyncWorker(
             is ServerCapabilitiesApi.Result.Error -> return retryAutomatic()
             is ServerCapabilitiesApi.Result.Success -> result.snapshot
         }
-        if (!capabilities.supports("btb_live_sync_v1")) {
+        if (
+            !capabilities.supports("btb_live_sync_v1") ||
+            !capabilities.supports("btb_entries_v1") ||
+            !capabilities.supports("btb_general_work_entries_v1") ||
+            !capabilities.supports("btb_photo_metadata_v1")
+        ) {
             return Result.success()
         }
 
