@@ -72,6 +72,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
+const pagePrefix={{ (page_prefix|default('/portal/v1'))|tojson }};
 const userRole={{ user.company_role|tojson }};
 const currentUserId={{ user.user_id|string|tojson }};
 const rows=document.getElementById('rows'), companyGroups=document.getElementById('companyGroups'), msg=document.getElementById('msg');
@@ -104,7 +105,7 @@ function worksiteRow(w,adminMode){
     '<td>'+esc(w.route_number||'—')+'</td>'+
     '<td><span class="pill">'+esc(w.status)+'</span></td>'+
     '<td>'+esc(fmtDate(w.updated_at))+'</td>'+
-    '<td class="right"><div class="actions"><a class="btn" href="/portal/v1/worksites/'+encodeURIComponent(w.id)+'">Öffnen</a>'+
+    '<td class="right"><div class="actions"><a class="btn" href="'+pagePrefix+'/worksites/'+encodeURIComponent(w.id)+'">Öffnen</a>'+
     (adminMode?'<button type="button" class="danger purge-worksite" data-worksite-id="'+esc(w.id)+'" data-worksite-name="'+esc(w.name)+'">Komplett löschen</button>':'')+
     '</div></td>'+
   '</tr>';
