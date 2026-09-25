@@ -28,6 +28,10 @@ Branch: `feature/tb-server-1.0`
 3. FULL-Backup erstellen und nur bei Status `OK` fortfahren.
 4. Aktuellen Migrationsstand prüfen.
 
+Die neuen `.renditions`-Verzeichnisse sind **nur abgeleitete Thumbnail-/Preview-Caches**.
+FILES/FULL-Backups schließen diese Caches bewusst aus; Originaldateien bleiben vollständig im Backup.
+Nach Restore werden Renditions bei Bedarf automatisch neu erzeugt.
+
 Vor dem Einspielen von Migration 015 wird auf der aktuell laufenden Synology erwartet:
 
 ```
@@ -102,6 +106,24 @@ Nach dem Recreate müssen mindestens grün/gesund sein:
 - `tb-helfer-v1-api-1`
 - `tb-helfer-v1-worker-1`
 - `tb-helfer-v1-cloudflared-1`
+
+## In-Container Runtime-Probe
+
+Nach Migration + API-Recreate im API-Container:
+
+```bash
+python /app/tools/server1_runtime_probe.py
+```
+
+Der Probe ändert keine Live-Fachdaten. Erwartet werden:
+- DB erreichbar
+- Migrationen 15/15, keine Pending-Migration
+- `tb.files.photo_metadata` = NOT NULL jsonb
+- benötigte Integrations-Capabilities vorhanden
+- synthetische Preview-Rendition max. 1280×1280
+- API-cgroup-Memory-Limit aktiv
+
+Erst bei `"status": "OK"` mit Browser-/Delta-E2E fortfahren.
 
 ## Read-only Preflight
 
