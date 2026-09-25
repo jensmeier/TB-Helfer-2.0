@@ -1688,3 +1688,12 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Das Portal zeigt `FINALIZED 2026-09-24`; ein neuer BTB kann wieder gestartet werden. Der zuvor aktive Team-Slot ist damit freigegeben.
 - Beim Abschluss trat kein erneuter 502-/OOM-Ausfall auf. PRB-025 ist praktisch bestätigt behoben.
 - Nächster Test: auf Pixel 200068 `Neu laden` ausführen und prüfen, ob der bereits lokal vorhandene BTB vom 25.09.2026 serverseitig erscheint.
+
+
+### 25.09.2026 – Pixel-Recovery bis neuer BTB 25.09 erfolgreich
+
+- Nach dem erfolgreichen Finalize des 24.09.-BTB wurde auf Pixel 200068 erneut `Neu laden` ausgeführt.
+- Praktischer Screenshot bestätigt: der bereits lokal vorhandene **25.09.2026**-BTB ist nun auf dem Server angekommen und im Portal als **Aktiv** sichtbar.
+- Der Server hat für den neuen BTB beide Teammitglieder als Teilnehmer angelegt: `test.test` = Haupt-TB / ARBEITET, `poco` = ARBEITET. Damit ist die Server-Recovery-Kette vollständig bestätigt: **24.09 FINALIZED → active_btb_id frei → lokaler 25.09.-BTB wird serverseitig angelegt**.
+- Kein weiterer Serverfix ist für diese konkrete Recovery-Kette nötig. Offen bleiben die bereits dokumentierten Android-Themen: historischer `BTB_NOT_ACTIVE`-Uploadpfad, echtes mobiles `Schicht Ende` und automatischer Server→Handy-Delta-Pull.
+- `STATUS.xlsx` wird weiterhin nicht blind überschrieben, weil Server- und Android-Branch unterschiedliche Workbook-Stände besitzen.
