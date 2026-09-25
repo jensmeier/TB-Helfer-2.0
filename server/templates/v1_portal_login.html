@@ -37,7 +37,13 @@ form.addEventListener('submit',async ev=>{
       body:JSON.stringify({login:document.getElementById('login').value,password:document.getElementById('password').value})
     });
     const text=await response.text();let data={};try{data=text?JSON.parse(text):{};}catch(_){}
-    if(!response.ok) throw new Error((data&&data.detail)||'Anmeldung fehlgeschlagen.');
+    if(!response.ok){
+      if(data&&data.detail==='ADMIN_USE_ADMIN_LOGIN'){
+        location.href='/admin/v1/login?login='+encodeURIComponent(document.getElementById('login').value);
+        return;
+      }
+      throw new Error((data&&data.detail)||'Anmeldung fehlgeschlagen.');
+    }
     location.href='/portal/v1';
   }catch(error){msg.textContent=error.message||String(error);msg.style.display='block';}
   finally{button.disabled=false;}
