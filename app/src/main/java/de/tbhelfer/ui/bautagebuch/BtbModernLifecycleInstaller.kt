@@ -319,7 +319,9 @@ object BtbModernLifecycleInstaller {
             }
 
             val coordinator = BtbLifecycleCoordinator(fragment.requireContext())
-            val prepared = coordinator.prepareAccess(saved.baustelleId, saved.btbId)
+            val prepared = withContext(Dispatchers.IO) {
+                coordinator.prepareAccess(saved.baustelleId, saved.btbId)
+            }
             val access = when (prepared) {
                 is BtbLifecycleCoordinator.PrepareResult.Success -> prepared.access
                 BtbLifecycleCoordinator.PrepareResult.SessionInvalid -> {
@@ -379,9 +381,13 @@ object BtbModernLifecycleInstaller {
 
             if (!access.isTeamLead) {
                 val action = if (access.participantStatus.equals("FINISHED", true)) {
-                    coordinator.shiftResume(saved.baustelleId, saved.btbId)
+                    withContext(Dispatchers.IO) {
+                        coordinator.shiftResume(saved.baustelleId, saved.btbId)
+                    }
                 } else {
-                    coordinator.shiftFinish(saved.baustelleId, saved.btbId)
+                    withContext(Dispatchers.IO) {
+                        coordinator.shiftFinish(saved.baustelleId, saved.btbId)
+                    }
                 }
                 when (action) {
                     is BtbLifecycleCoordinator.ActionResult.Success -> handleSuccess(action, true)
@@ -406,7 +412,10 @@ object BtbModernLifecycleInstaller {
                 return@launch
             }
 
-            when (val action = coordinator.finalize(saved.baustelleId, saved.btbId, false)) {
+            val finalizeAction = withContext(Dispatchers.IO) {
+                coordinator.finalize(saved.baustelleId, saved.btbId, false)
+            }
+            when (val action = finalizeAction) {
                 is BtbLifecycleCoordinator.ActionResult.Success -> handleSuccess(action, false)
                 is BtbLifecycleCoordinator.ActionResult.ParticipantsNotFinished -> {
                     val names = action.participants.joinToString("\n") {
@@ -423,11 +432,13 @@ object BtbModernLifecycleInstaller {
                         .setPositiveButton("Trotzdem abschließen") { _, _ ->
                             fragment.viewLifecycleOwner.lifecycleScope.launch {
                                 when (
-                                    val forced = coordinator.finalize(
-                                        saved.baustelleId,
-                                        saved.btbId,
-                                        true
-                                    )
+                                    val forced = withContext(Dispatchers.IO) {
+                                        coordinator.finalize(
+                                            saved.baustelleId,
+                                            saved.btbId,
+                                            true
+                                        )
+                                    }
                                 ) {
                                     is BtbLifecycleCoordinator.ActionResult.Success ->
                                         handleSuccess(forced, false)
