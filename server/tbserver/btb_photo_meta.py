@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import json
 import math
 import struct
@@ -79,7 +80,7 @@ def decode_btb_photo_metadata(filename: str | None) -> dict[str, Any] | None:
                 "objektKennung": object_name,
                 "objektBereich": object_area,
             }
-        except (ValueError, UnicodeDecodeError, struct.error):
+        except (binascii.Error, ValueError, UnicodeDecodeError, struct.error):
             return None
 
     if raw.startswith(_PREFIX_LEGACY):
@@ -89,7 +90,7 @@ def decode_btb_photo_metadata(filename: str | None) -> dict[str, Any] | None:
         try:
             value = json.loads(_b64url_decode(encoded).decode("utf-8"))
             return value if isinstance(value, dict) else None
-        except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
+        except (binascii.Error, ValueError, UnicodeDecodeError, json.JSONDecodeError):
             return None
     return None
 
