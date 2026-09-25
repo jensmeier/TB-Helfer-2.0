@@ -13,6 +13,7 @@ assert "photo_metadata: dict[str, Any] | None = None" in files
 assert "Jsonb(canonical_meta[\"photo_metadata\"] or {})" in files
 assert "f.photo_metadata" in files
 assert "f.photo_metadata" in documents
+assert '"photo_metadata": canonical_photo_metadata(' in documents
 assert "photo_metadata=row.get(\"photo_metadata\")" in btb
 assert 'id="photoType"' in portal
 assert "photo_metadata:photoMetadata" in portal
