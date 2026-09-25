@@ -482,7 +482,7 @@ class CollabSyncRepository(
             old?.parentEntityId == item.parentEntityId
         val oldPathValid = sameParent &&
             old?.isDownloaded == true &&
-            old.localPath?.let { File(it).isFile } == true
+            old?.localPath?.let { File(it).isFile } == true
 
         dao.upsertCollabAttachments(
             listOf(
