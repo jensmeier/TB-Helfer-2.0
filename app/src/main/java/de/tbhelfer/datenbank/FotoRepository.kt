@@ -2,6 +2,7 @@ package de.tbhelfer.datenbank
 
 import android.content.Context
 import android.os.Environment
+import de.tbhelfer.server.BtbServerStateStore
 import de.tbhelfer.server.SofortSync
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbActiveContext
@@ -43,6 +44,7 @@ class FotoRepository(
         btbId: String,
         alleFotos: List<FotoEntity>? = null
     ) {
+        if (BtbServerStateStore.state(context, btbId)?.readOnly == true) return
         val active = BtbActiveContext.laden(context, baustelleId)
         val entry = when {
             active?.btbId == btbId -> active.entry
