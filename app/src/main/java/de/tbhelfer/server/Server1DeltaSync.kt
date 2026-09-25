@@ -131,6 +131,13 @@ class Server1DeltaSync(context: Context) {
                 it.worksiteServerId in affectedWorksites &&
                     it.groupId.isNotBlank()
             }
+        val knownWorksites = contexts.mapTo(hashSetOf()) { it.worksiteServerId }
+        val unresolved = affectedWorksites - knownWorksites
+        if (unresolved.isNotEmpty()) {
+            // Cursor absichtlich NICHT fortschreiben. Nach QR/Recovery wird derselbe Batch mit
+            // vorhandenem Baustellenkontext erneut verarbeitet.
+            return ApplyResult.Error("Baustellenkontext für Server-Delta fehlt noch.")
+        }
 
         // BTB_ENTRY/BTB_PARTICIPANT/FILE tragen im Feed nicht zwingend die parent-btbId.
         // Deshalb laden wir nur die betroffene Baustelle + genau die sichtbare Team-BTB-Liste
