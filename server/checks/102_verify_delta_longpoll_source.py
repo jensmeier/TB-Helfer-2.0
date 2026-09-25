@@ -13,6 +13,8 @@ for token in (
     "wait_seconds:",
     '"caught_up": not has_more',
     "await _CHANGE_HUB.wait_for_head",
+    "if observed_head <= after:",
+    '"changes": []',
     "_MAX_CONCURRENT_SYNC_QUERIES = 16",
     "_SYNC_QUERY_SEMAPHORE = asyncio.Semaphore",
     "async def _run_sync_query",
