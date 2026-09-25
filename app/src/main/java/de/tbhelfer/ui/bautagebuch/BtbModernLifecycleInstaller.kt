@@ -143,6 +143,22 @@ object BtbModernLifecycleInstaller {
                 Snackbar.make(anchor, "Noch kein aktueller BTB vorhanden. Neuen BTB über + starten.", Snackbar.LENGTH_LONG).show()
                 return@launch
             }
+            val serverState = BtbServerStateStore.state(
+                fragment.requireContext().applicationContext,
+                current.btbId
+            )
+            if (serverState?.readOnly == true) {
+                Snackbar.make(
+                    anchor,
+                    if (serverState.serverFinalReadOnly) {
+                        "Abgeschlossener Server-BTB ist schreibgeschützt."
+                    } else {
+                        "Eigene Schicht ist beendet. Zum Bearbeiten zuerst „Schicht fortsetzen“."
+                    },
+                    Snackbar.LENGTH_LONG
+                ).show()
+                return@launch
+            }
             val status = withContext(Dispatchers.IO) {
                 BtbDokumentVersionierung.status(fragment.requireContext().applicationContext, current.entry)
             }
@@ -487,8 +503,15 @@ object BtbModernLifecycleInstaller {
                         root.findViewById<View>(R.id.btnPdf)?.visibility = View.VISIBLE
                         root.findViewById<View>(R.id.btnPdfFinal)?.visibility = View.VISIBLE
 
+                        val confirmedServerState = BtbServerStateStore.state(
+                            fragment.requireContext().applicationContext,
+                            current.btbId
+                        )
                         val changedStamp = current.entry.geaendertAmEpochMs
-                        if (current.btbId != lastSeenId || changedStamp != lastSeenChange) {
+                        if (
+                            confirmedServerState?.readOnly != true &&
+                            (current.btbId != lastSeenId || changedStamp != lastSeenChange)
+                        ) {
                             withContext(Dispatchers.IO) {
                                 BtbDokumentVersionierung.pflegeNachAutosave(
                                     fragment.requireContext().applicationContext,
@@ -501,7 +524,9 @@ object BtbModernLifecycleInstaller {
 
                         if (photoRefreshTick % 2 == 0) {
                             try {
-                                invalidateClosureForPhotoDiff(fragment, current.entry)
+                                if (confirmedServerState?.readOnly != true) {
+                                    invalidateClosureForPhotoDiff(fragment, current.entry)
+                                }
                                 BtbPhotoCounterFix.refresh(fragment.requireContext(), root, current.entry)
                             } catch (_: Exception) {
                                 // UI-Helfer darf den BTB-Lebenszyklus nie abbrechen.
