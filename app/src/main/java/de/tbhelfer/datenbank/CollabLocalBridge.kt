@@ -429,8 +429,16 @@ class CollabLocalBridge(
         return AttachmentUploadResult.Success(AttachmentUploadSummary(bound.size, uploaded, present))
     }
 
-    suspend fun applyServerStateToLocal(): ImportSummary {
-        val bound = bindingRepository.contextsWithBindings().filter { it.binding != null && it.localWorksite != null }
+    suspend fun applyServerStateToLocal(
+        worksiteServerIds: Set<String>? = null,
+        btbServerIds: Set<String>? = null,
+        includeOtherEntities: Boolean = true
+    ): ImportSummary {
+        val bound = bindingRepository.contextsWithBindings().filter {
+            it.binding != null &&
+                it.localWorksite != null &&
+                (worksiteServerIds == null || it.context.worksiteServerId in worksiteServerIds)
+        }
         var btbWritten = 0
         var defectStatuses = 0
         var acceptanceWritten = 0
@@ -443,7 +451,10 @@ class CollabLocalBridge(
             val localName = local.hauptbaustellenName
 
             val btbItems = collabRepository.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB)
-                .filter { it.groupId == server.groupId }
+                .filter {
+                    it.groupId == server.groupId &&
+                        (btbServerIds == null || it.serverId in btbServerIds)
+                }
             for (entity in btbItems) {
                 val key = entity.clientEntityKey ?: continue
                 val payload = runCatching { JSONObject(entity.payloadJson) }.getOrNull() ?: continue
@@ -501,6 +512,8 @@ class CollabLocalBridge(
                 if (writeIfDifferent(target, localPayload.toString(2))) btbWritten++
                 rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(entity.status, canonicalPayload))
             }
+
+            if (!includeOtherEntities) continue
 
             val defectItems = collabRepository.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_DEFECT)
             val activeDefectServerIds = defectItems.mapTo(hashSetOf()) { it.serverId }
