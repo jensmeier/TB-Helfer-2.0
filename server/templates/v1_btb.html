@@ -235,11 +235,11 @@ function lifecycle(){
   let html='';
   if(!shiftContractAvailable){
     if(status==='FINALIZED'&&finalPdf){
-      html+='<a class="btn" href="'+esc(finalPdf.content_url)+'" target="_blank" rel="noopener">Abschluss-PDF öffnen</a>';
+      html+='<a class="btn" href="'+esc(tbScopedUrl(finalPdf.content_url))+'" target="_blank" rel="noopener">Abschluss-PDF öffnen</a>';
     }
   }else{
     if(status==='FINALIZED'&&finalPdf&&isTeamLead()){
-      html+='<a class="btn" href="'+esc(finalPdf.content_url)+'" target="_blank" rel="noopener">Abschluss-PDF öffnen</a>';
+      html+='<a class="btn" href="'+esc(tbScopedUrl(finalPdf.content_url))+'" target="_blank" rel="noopener">Abschluss-PDF öffnen</a>';
     }
     if(status==='FINALIZED'&&!isActive&&isTeamLead()&&can('btb.edit')){
       html+='<button type="button" onclick="reopenBtb()">Nachbearbeitung öffnen</button>';
@@ -369,7 +369,7 @@ function photoCardHtml(p,index,editable){
   return '<div class="btb-photo-card"><div class="btb-photo-head"><div><div class="btb-photo-title">'+esc(title)+'</div>'+
     '<div class="btb-photo-meta">Foto '+(index+1)+(p.byte_size?' · '+esc(bytesLabel(p.byte_size)):'')+'</div></div>'+
     (editable?'<button class="danger btb-mini-edit" type="button" onclick="detachPhoto(\''+esc(p.id)+'\')">Entfernen</button>':'')+'</div>'+
-    '<a href="'+esc(p.content_url)+'" target="_blank" rel="noopener"><img src="'+esc(p.content_url)+'" alt="BTB-Foto '+(index+1)+'"></a>'+
+    '<a href="'+esc(tbScopedUrl(p.content_url))+'" target="_blank" rel="noopener"><img src="'+esc(tbScopedUrl(p.content_url))+'" alt="BTB-Foto '+(index+1)+'"></a>'+
     '<div class="btb-photo-details">'+
       (main?'<div>'+esc(main)+'</div>':'')+
       (place?'<div>Ort: '+esc(place)+'</div>':'')+
