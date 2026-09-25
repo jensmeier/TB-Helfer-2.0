@@ -39,6 +39,7 @@ CAPABILITIES: dict[str, bool] = {
     "files_v1": True,
     "worksite_media_v1": True,
     "file_cursor_pagination_v1": True,
+    "file_image_renditions_v1": True,
     "chunk_upload_v1": True,
     "defects_v1": True,
     "acceptances_v1": True,
