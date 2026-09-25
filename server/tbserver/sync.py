@@ -172,9 +172,9 @@ def _visible_changes(
                 tuple(params),
             )
         elif user["company_role"] == "USER":
-            params = [user["company_id"], after, *base_params, user["user_id"]]
+            params = [user["company_id"], after, *base_params]
             type_clause = _type_clause("f.entity_type", entity_types, params)
-            params.append(limit)
+            params.extend([user["user_id"], limit])
             cur.execute(
                 f"""
                 SELECT f.change_id, f.company_id, f.worksite_id, f.entity_type, f.entity_id,
