@@ -23,6 +23,7 @@ folgende Capabilities maßgeblich:
 - `btb_pdf_team_lead_only_v1`
 - `btb_general_work_entries_v1`
 - `btb_photo_metadata_v1`
+- `file_image_renditions_v1`
 - `sync_change_feed_v1`
 - `sync_change_wait_v1`
 
@@ -156,6 +157,18 @@ Beim Android-Upload sollen bekannte strukturierte Metadaten zusätzlich im
 - `gps_lat`
 - `gps_lon`
 - `gps_accuracy_m`
+
+Für Bilder liefert der Server außerdem unter `renditions` kleinere Downloadpfade:
+- `thumb` → maximal 320×320 px
+- `preview` → maximal 1280×1280 px
+
+Direkter Vertrag:
+- `GET /api/v1/files/{file_id}/rendition/thumb`
+- `GET /api/v1/files/{file_id}/rendition/preview`
+
+Die Renditions werden serverseitig speicherbegrenzt erzeugt, als JPEG gecacht und verwenden dieselbe
+Berechtigungsprüfung wie das Original. Android soll für Listen/Galerien bevorzugt `thumb` bzw.
+`preview` laden und das Original nur bei Bedarf öffnen/exportieren.
 
 Der BTBP1-Dateiname bleibt Übergangskompatibilität, nicht die dauerhafte einzige Datenquelle.
 
