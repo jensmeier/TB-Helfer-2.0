@@ -275,33 +275,20 @@ class Server1BtbApi(
 
         val parsedBase = baseStateJson?.let { runCatching { JSONObject(it) }.getOrNull() }
 
+        // Fester Vertrag 25.09.2026: FINALIZED + nicht mehr active_btb_id ist historisch
+        // read-only. Ein alter Dirty-/Pending-Rest darf diesen BTB weder reopen noch mutieren.
+        val confirmedAccess = accessFromDetail(detail)
         if (
-            desiredStatus == "ENTWURF" &&
             detail.btb.optString("status").uppercase() == "FINALIZED" &&
             detail.activeBtbId != detail.snapshot.serverId
         ) {
-            when (
-                val reopened = jsonMutation(
-                    token,
-                    "/api/v1/btbs/${encode(detail.snapshot.serverId)}/reopen",
-                    "POST",
-                    subChangeId(change.clientChangeId, "reopen"),
-                    JSONObject()
-                )
-            ) {
-                JsonMutationResult.Unsupported -> return MutationResult.Unsupported
-                JsonMutationResult.SessionInvalid -> return MutationResult.SessionInvalid
-                is JsonMutationResult.Conflict ->
-                    return MutationResult.Conflict(reopened.currentVersion, reopened.detail)
-                is JsonMutationResult.Error -> return MutationResult.Error(reopened.message)
-                is JsonMutationResult.Success -> Unit
-            }
-            detail = when (val reloaded = loadBtb(token, detail.snapshot.serverId, teamId, detail.snapshot.serverId)) {
-                DetailResult.Unsupported -> return MutationResult.Unsupported
-                DetailResult.SessionInvalid -> return MutationResult.SessionInvalid
-                is DetailResult.Error -> return MutationResult.Error(reloaded.message)
-                is DetailResult.Success -> reloaded.detail
-            }
+            return MutationResult.Applied(detail.snapshot)
+        }
+        if (
+            !confirmedAccess.isTeamLead &&
+            confirmedAccess.participantStatus in setOf("FINISHED", "NOT_PARTICIPATING")
+        ) {
+            return MutationResult.Applied(detail.snapshot)
         }
 
         val desiredHeaderState = headerStateFromLocal(desired, clientKey)
@@ -489,21 +476,6 @@ class Server1BtbApi(
                 is JsonMutationResult.Error -> return MutationResult.Error(deleted.message)
                 is JsonMutationResult.Success -> Unit
             }
-        }
-
-        val activeBeforeFinalize = when (val index = loadTeamIndex(token, change.worksiteServerId, teamId)) {
-            TeamIndexResult.Unsupported -> return MutationResult.Unsupported
-            TeamIndexResult.SessionInvalid -> return MutationResult.SessionInvalid
-            is TeamIndexResult.Error -> return MutationResult.Error(index.message)
-            is TeamIndexResult.Success -> index.index.activeBtbId
-        }
-        val statusBeforeFinalize = when (
-            val reloaded = loadBtb(token, detail.snapshot.serverId, teamId, activeBeforeFinalize)
-        ) {
-            DetailResult.Unsupported -> return MutationResult.Unsupported
-            DetailResult.SessionInvalid -> return MutationResult.SessionInvalid
-            is DetailResult.Error -> return MutationResult.Error(reloaded.message)
-            is DetailResult.Success -> reloaded.detail
         }
 
         // Serververtrag 25.09.2026: Fachinhalt und Lifecycle sind getrennt.
