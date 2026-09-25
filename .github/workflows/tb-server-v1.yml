@@ -133,8 +133,16 @@ jobs:
           python server/checks/95_verify_portal_btb_android_like_editor_source.py
           python server/checks/96_verify_portal_btb_crud_source.py
           python server/checks/97_verify_portal_btb_photo_meta_dedupe_source.py
+          python server/checks/98_verify_portal_btb_split_firms_weather_photo_sort_source.py
+          python server/checks/99_verify_btb_entry_soft_delete_recreate_source.py
+          python server/checks/100_verify_server_portal_btb_contract_source.py
+          python server/checks/101_verify_admin_portal_session_split_source.py
+          python server/checks/102_verify_delta_longpoll_source.py
+          python server/checks/103_verify_image_renditions_source.py
+          python server/checks/104_verify_structured_photo_metadata_source.py
+          python server/checks/105_verify_staging_memory_guard_source.py
 
-      # Migration 014_btb_participant_shift_status.sql is included by the normal migration runner.
+      # Migrations through 015_file_photo_metadata.sql are included by the normal migration runner.
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
         run: python -m tbserver.migrations up
@@ -146,8 +154,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 14, current
-          assert current["latest_applied"] == 14, current
+          assert current["latest_known"] == 15, current
+          assert current["latest_applied"] == 15, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
@@ -181,6 +189,8 @@ jobs:
               acceptance_columns = {row["column_name"] for row in cur.fetchall()}
               cur.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='tb' AND table_name='background_jobs'")
               background_job_columns = {row["column_name"] for row in cur.fetchall()}
+              cur.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='tb' AND table_name='files'")
+              file_columns = {row["column_name"] for row in cur.fetchall()}
               cur.execute("""
                   SELECT pg_get_constraintdef(c.oid) AS definition
                   FROM pg_constraint c
@@ -198,6 +208,7 @@ jobs:
           assert "area_scope" in acceptance_columns, acceptance_columns
           assert "result" in acceptance_columns, acceptance_columns
           assert {"progress_percent", "progress_text"} <= background_job_columns, background_job_columns
+          assert "photo_metadata" in file_columns, file_columns
           assert "REJECTED" in defect_status_constraint, defect_status_constraint
           print("OK: core tables/migrations", len(tables))
           PY
@@ -266,6 +277,8 @@ jobs:
               "btb_entries_v1",
               "btb_finalize_with_pdf_v1",
               "btb_participant_shift_end_v1",
+              "btb_general_work_entries_v1",
+              "btb_photo_metadata_v1",
               "btb_pdf_team_lead_only_v1",
               "company_profile_v1",
               "company_logo_v1",
@@ -293,6 +306,7 @@ jobs:
               "files_v1",
               "worksite_media_v1",
               "file_cursor_pagination_v1",
+              "file_image_renditions_v1",
               "chunk_upload_v1",
               "defects_v1",
               "acceptances_v1",
@@ -306,6 +320,9 @@ jobs:
               "survey_station_merge_v1",
               "survey_gra_jump_detection_v1",
               "idempotent_mutations_v1",
+              "sync_change_feed_v1",
+              "sync_change_wait_v1",
+              "admin_portal_session_split_v1",
           }
           missing = sorted(key for key in expected_true if caps["capabilities"].get(key) is not True)
           assert not missing, {"missing_capabilities": missing, "caps": caps}
