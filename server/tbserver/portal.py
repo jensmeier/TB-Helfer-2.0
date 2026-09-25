@@ -121,6 +121,10 @@ def current_portal_user(request: Request) -> dict[str, Any]:
         from .devices import current_device_user
 
         return current_device_user(request)
+    if (request.headers.get("X-TB-Session-Scope") or "").strip().upper() == "ADMIN":
+        from .admin_session import current_admin_session_user
+
+        return current_admin_session_user(request)
     return _load_session(request)
 
 
@@ -134,7 +138,8 @@ def require_csrf(request: Request, user: dict[str, Any] = Depends(current_portal
         # Bearer device tokens are not cookie credentials and therefore are not
         # exposed to browser CSRF. Device authorization is already validated.
         return user
-    cookie = request.cookies.get(CSRF_COOKIE)
+    csrf_cookie_name = "tb_admin_csrf" if user.get("auth_kind") == "ADMIN_PORTAL" else CSRF_COOKIE
+    cookie = request.cookies.get(csrf_cookie_name)
     header = request.headers.get("X-CSRF-Token")
     if not cookie or not header or cookie != header:
         raise HTTPException(403, "CSRF_INVALID")
@@ -307,6 +312,8 @@ def login(payload: LoginRequest, request: Request, response: Response) -> dict:
                 (failed, locked_until, user["id"]),
             )
             login_error = HTTPException(401, "LOGIN_INVALID")
+        elif user["company_role"] == "ADMIN":
+            login_error = HTTPException(403, "ADMIN_USE_ADMIN_LOGIN")
         else:
             session_token = random_token(32)
             csrf_token = random_token(24)
