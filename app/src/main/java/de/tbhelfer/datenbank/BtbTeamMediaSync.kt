@@ -527,15 +527,25 @@ class BtbTeamMediaSync(context: Context) {
             }
         }
 
-        serverPhoto?.optString("captured_at")?.trim()?.takeIf { it.isNotBlank() }?.let { value ->
-            val epoch = runCatching { java.time.Instant.parse(value).toEpochMilli() }.getOrNull()
-                ?: runCatching { java.time.OffsetDateTime.parse(value).toInstant().toEpochMilli() }.getOrNull()
-            epoch?.let { out.put("epoch", it) }
+        // Prioritaet Vertrag 25.09.2026:
+        // 1) strukturierte photo_metadata, 2) captured_at/GPS, 3) BTBP1-Legacy.
+        // Da out zuerst Legacy und danach structured enthaelt, duerfen die separaten
+        // Serverfelder nur noch fehlende Werte ergaenzen, nicht structured ueberschreiben.
+        if (!out.has("epoch") || out.isNull("epoch")) {
+            serverPhoto?.optString("captured_at")?.trim()?.takeIf { it.isNotBlank() }?.let { value ->
+                val epoch = runCatching { java.time.Instant.parse(value).toEpochMilli() }.getOrNull()
+                    ?: runCatching { java.time.OffsetDateTime.parse(value).toInstant().toEpochMilli() }.getOrNull()
+                epoch?.let { out.put("epoch", it) }
+            }
         }
-        if (serverPhoto != null && serverPhoto.has("gps_lat") && !serverPhoto.isNull("gps_lat")) {
+        if ((!out.has("lat") || out.isNull("lat")) &&
+            serverPhoto != null && serverPhoto.has("gps_lat") && !serverPhoto.isNull("gps_lat")
+        ) {
             out.put("lat", serverPhoto.optDouble("gps_lat"))
         }
-        if (serverPhoto != null && serverPhoto.has("gps_lon") && !serverPhoto.isNull("gps_lon")) {
+        if ((!out.has("lon") || out.isNull("lon")) &&
+            serverPhoto != null && serverPhoto.has("gps_lon") && !serverPhoto.isNull("gps_lon")
+        ) {
             out.put("lon", serverPhoto.optDouble("gps_lon"))
         }
 
