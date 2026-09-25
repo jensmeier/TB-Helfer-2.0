@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+from psycopg.types.json import Jsonb
 
 from .btb_documents import FINAL_PDF_PURPOSE, prepare_btb_photo_change, remove_storage_keys
 from .btb_photo_meta import canonical_photo_metadata
@@ -635,7 +636,7 @@ def complete_upload(
                     canonical_meta["gps_lat"],
                     canonical_meta["gps_lon"],
                     canonical_meta["gps_accuracy_m"],
-                    canonical_meta["photo_metadata"] or {},
+                    Jsonb(canonical_meta["photo_metadata"] or {}),
                     user["user_id"],
                 ),
             )
