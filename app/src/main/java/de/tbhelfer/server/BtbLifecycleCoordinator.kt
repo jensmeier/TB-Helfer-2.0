@@ -287,6 +287,10 @@ class BtbLifecycleCoordinator(context: Context) {
     ) {
         if (worksiteServerId.isBlank()) return
         collab.upsertServer1BtbSnapshot(worksiteServerId, access.snapshot)
-        bridge.applyServerStateToLocal()
+        bridge.applyServerStateToLocal(
+            worksiteServerIds = setOf(worksiteServerId),
+            btbServerIds = setOf(access.snapshot.serverId),
+            includeOtherEntities = false
+        )
     }
 }
