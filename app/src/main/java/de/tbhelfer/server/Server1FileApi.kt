@@ -68,6 +68,26 @@ class Server1FileApi(
         data class Error(val message: String) : ContentResult
     }
 
+    sealed interface FileLinksResult {
+        data class Success(val files: List<LinkedFile>) : FileLinksResult
+        data object NotFound : FileLinksResult
+        data object SessionInvalid : FileLinksResult
+        data class Error(val message: String) : FileLinksResult
+    }
+
+    fun linkedFilesForFile(
+        token: String,
+        worksiteId: String,
+        fileId: String
+    ): FileLinksResult {
+        return when (val metadata = loadMetadata(token, worksiteId, fileId, JSONObject())) {
+            MetadataResult.Unsupported -> FileLinksResult.NotFound
+            MetadataResult.SessionInvalid -> FileLinksResult.SessionInvalid
+            is MetadataResult.Error -> FileLinksResult.Error(metadata.message)
+            is MetadataResult.Success -> FileLinksResult.Success(metadata.files)
+        }
+    }
+
     fun listLinkedFiles(token: String, worksiteId: String): ListResult {
         val result = mutableListOf<LinkedFile>()
         val seenCursors = hashSetOf<String>()
