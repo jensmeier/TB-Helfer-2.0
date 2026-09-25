@@ -141,6 +141,7 @@ jobs:
           python server/checks/103_verify_image_renditions_source.py
           python server/checks/104_verify_structured_photo_metadata_source.py
           python server/checks/105_verify_staging_memory_guard_source.py
+          python server/checks/106_verify_backup_rendition_exclusion_source.py
 
       # Migrations through 015_file_photo_metadata.sql are included by the normal migration runner.
       - name: Apply fresh TB-Server 1.0 baseline
