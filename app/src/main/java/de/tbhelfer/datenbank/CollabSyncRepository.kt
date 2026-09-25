@@ -705,6 +705,18 @@ class CollabSyncRepository(
     suspend fun attachments(parentEntityId: String): List<SyncCollabAttachmentEntity> =
         dao.collabAttachmentsForEntity(parentEntityId)
 
+    suspend fun clearServer1BtbPending(
+        worksiteServerId: String,
+        clientBtbId: String
+    ) {
+        if (clientBtbId.isBlank()) return
+        dao.deleteCollabPendingForClientKey(
+            worksiteServerId,
+            SyncCollabPendingChangeEntity.TYPE_BTB,
+            clientBtbId
+        )
+    }
+
     suspend fun enqueueMutation(
         worksiteServerId: String,
         entityType: String,
