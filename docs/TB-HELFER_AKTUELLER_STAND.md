@@ -1742,3 +1742,14 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Migrationen 011–013 waren durch den bereits praktisch bestätigten Staging-Stand 14/14 längst deployt; die alten Statuszeilen/Pläne wurden entsprechend auf **DB-Basis deployed / Fach-E2E offen** korrigiert. Es gibt keinen Grund, 011–013 erneut anzuwenden.
 - Android-Branch wurde erneut geprüft (`0339290ad8292a1218ee076ac1e2cafde6ad58af`): Rollen-/Schichtende-/Finalize-Source, stabile Slots, Delta-Cursor, Photo-Unlink/Metadata und selektive Retry-Änderungen werden parallel umgesetzt. Das ist weiterhin **Source**, kein Geräte-E2E.
 - SERVER-Branch bei Sicherung: `9ee7fa594ac4ea6debf3d81911229b5fbd73d500`.
+
+
+### 25.09.2026 – SERVER Integrationsblock deployfertig vorbereitet
+
+- Nach erneuter GitHub-/Android-Querprüfung wurde der Serverblock weiter gehärtet; keine `app/**`-Datei im SERVER-Branch geändert.
+- **Backup-Regel für Bild-Renditions:** `.renditions` sind ausschließlich neu erzeugbare Thumbnail-/Preview-Caches und werden nun aus FILES/FULL-Backups herausgefiltert. Originalfotos und alle Fachdaten bleiben Bestandteil des Backups. Dadurch wachsen wiederholte Backups nicht unnötig durch Derivate.
+- **Runtime-Probe:** `server/tools/server1_runtime_probe.py` prüft innerhalb des API-Containers DB-Erreichbarkeit, Migration 15/15, `tb.files.photo_metadata` als NOT NULL jsonb, ungültige Metadatenzeilen, Integrations-Capabilities, echte Preview-Erzeugung und aktives cgroup-Memory-Limit. Der Probe ändert keine Live-Fachdaten.
+- Synology-Compose bindet `server/tools` read-only nach `/app/tools`; der Runtime-Probe kann damit nach dem API-Recreate direkt per `python /app/tools/server1_runtime_probe.py` ausgeführt werden.
+- Source-Check 106 schützt den Backup-Ausschluss, Check 107 den Runtime-Probe-/Compose-Vertrag; Workflow führt jetzt Checks 98–107 und erwartet Migration 015.
+- Staging-Runbook enthält Backup-Regel und Runtime-Probe. Praktisches Deployment/Migration 015/Browser-/Last-E2E bleibt bewusst **OFFEN**, bis es auf der echten Synology ausgeführt wurde.
+- STATUS.xlsx bleibt unverändert, da Android- und Server-Branch weiterhin unterschiedliche Workbook-Blobs besitzen; kein blindes Überschreiben.
