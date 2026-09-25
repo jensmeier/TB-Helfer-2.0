@@ -353,6 +353,7 @@ def get_btb(
                     gps_lat=row.get("gps_lat"),
                     gps_lon=row.get("gps_lon"),
                     gps_accuracy_m=row.get("gps_accuracy_m"),
+                    photo_metadata=row.get("photo_metadata"),
                 )["photo_metadata"],
                 "purpose": row.get("purpose"),
                 "content_url": f"/api/v1/files/{row['id']}/content",
