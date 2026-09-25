@@ -30,6 +30,7 @@ from .btb_documents import (
     upsert_final_pdf_file,
 )
 from .btb_pdf import PDF_RENDERER_VERSION, render_btb_pdf
+from .btb_photo_meta import canonical_photo_metadata
 from .btb_participants import (
     FINISHED,
     NOT_PARTICIPATING,
@@ -345,6 +346,13 @@ def get_btb(
                 "gps_lat": row.get("gps_lat"),
                 "gps_lon": row.get("gps_lon"),
                 "gps_accuracy_m": row.get("gps_accuracy_m"),
+                "photo_metadata": canonical_photo_metadata(
+                    filename=row.get("original_name"),
+                    captured_at=row.get("captured_at"),
+                    gps_lat=row.get("gps_lat"),
+                    gps_lon=row.get("gps_lon"),
+                    gps_accuracy_m=row.get("gps_accuracy_m"),
+                )["photo_metadata"],
                 "purpose": row.get("purpose"),
                 "content_url": f"/api/v1/files/{row['id']}/content",
             }
