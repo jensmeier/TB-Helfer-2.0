@@ -324,7 +324,7 @@ function uniquePhotos(){
   return out;
 }
 function photoMeta(p){
-  const decoded=decodePhotoMetadata(p.original_name)||{};
+  const decoded=Object.assign({},p.photo_metadata||decodePhotoMetadata(p.original_name)||{});
   if((decoded.lat==null||decoded.lon==null)&&p.gps_lat!=null&&p.gps_lon!=null){
     decoded.lat=Number(p.gps_lat);decoded.lon=Number(p.gps_lon);
   }
