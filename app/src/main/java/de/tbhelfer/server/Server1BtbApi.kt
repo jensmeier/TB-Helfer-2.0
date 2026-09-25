@@ -153,6 +153,26 @@ class Server1BtbApi(
         return Result.Success(snapshots, index.activeBtbId)
     }
 
+    fun loadActiveBtbAccess(
+        token: String,
+        worksiteId: String,
+        teamId: String
+    ): AccessResult {
+        val index = when (val result = loadTeamIndex(token, worksiteId, teamId)) {
+            TeamIndexResult.Unsupported -> return AccessResult.Unsupported
+            TeamIndexResult.SessionInvalid -> return AccessResult.SessionInvalid
+            is TeamIndexResult.Error -> return AccessResult.Error(result.message)
+            is TeamIndexResult.Success -> result.index
+        }
+        val activeId = index.activeBtbId ?: return AccessResult.Error("Kein aktiver BTB vorhanden.")
+        return when (val loaded = loadBtb(token, activeId, teamId, index.activeBtbId)) {
+            DetailResult.Unsupported -> AccessResult.Unsupported
+            DetailResult.SessionInvalid -> AccessResult.SessionInvalid
+            is DetailResult.Error -> AccessResult.Error(loaded.message)
+            is DetailResult.Success -> AccessResult.Success(accessFromDetail(loaded.detail))
+        }
+    }
+
     fun loadBtbAccess(
         token: String,
         worksiteId: String,
