@@ -104,8 +104,8 @@ def load_btb_photo_files(cur, btb_id: UUID) -> list[dict[str, Any]]:
     cur.execute(
         """
         SELECT f.id, f.storage_key, f.original_name, f.mime_type, f.byte_size, f.sha256,
-               f.captured_at, f.gps_lat, f.gps_lon, f.gps_accuracy_m, f.created_at,
-               l.purpose
+               f.captured_at, f.gps_lat, f.gps_lon, f.gps_accuracy_m, f.photo_metadata,
+               f.created_at, l.purpose
         FROM tb.file_links l
         JOIN tb.files f ON f.id = l.file_id
         WHERE l.entity_type = 'BTB' AND l.entity_id = %s
@@ -133,6 +133,7 @@ def snapshot_photo_metadata(photo_files: list[dict[str, Any]]) -> list[dict[str,
                 "gps_lat": photo.get("gps_lat"),
                 "gps_lon": photo.get("gps_lon"),
                 "gps_accuracy_m": photo.get("gps_accuracy_m"),
+                "photo_metadata": photo.get("photo_metadata") or None,
                 "purpose": photo.get("purpose"),
             }
         )
