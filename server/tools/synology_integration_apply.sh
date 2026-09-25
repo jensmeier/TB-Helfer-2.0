@@ -35,7 +35,30 @@ echo "Root:    $ROOT"
 echo "Compose: $COMPOSE_FILE"
 echo
 
-echo "[1/7] Laufende Kerncontainer prüfen"
+echo "[1/8] Vollständigen Integrations-Quellstand prüfen"
+required_files="
+$ROOT/tbserver/image_renditions.py
+$ROOT/tbserver/btb_photo_meta.py
+$ROOT/v1_migrations/015_file_photo_metadata.sql
+$ROOT/tools/server1_runtime_probe.py
+"
+for required in $required_files; do
+  if [ ! -f "$required" ]; then
+    echo "FEHLER: Integrationsdatei fehlt: $required" >&2
+    echo "STOP: zuerst den vollständigen aktuellen SERVER-Quellstand auf das NAS synchronisieren." >&2
+    exit 2
+  fi
+done
+if ! grep -q "TB_V1_API_MEMORY_LIMIT" "$COMPOSE_FILE"; then
+  echo "FEHLER: Compose-Datei enthält den aktuellen API-Memory-Guard nicht." >&2
+  exit 2
+fi
+if ! grep -q "TB_V1_SOURCE_TOOLS_DIR" "$COMPOSE_FILE"; then
+  echo "FEHLER: Compose-Datei enthält den aktuellen /app/tools-Mount nicht." >&2
+  exit 2
+fi
+
+echo "[2/8] Laufende Kerncontainer prüfen"
 for service in db api worker cloudflared; do
   cid="$(compose ps -q "$service" 2>/dev/null || true)"
   if [ -z "$cid" ]; then
@@ -44,7 +67,7 @@ for service in db api worker cloudflared; do
   fi
 done
 
-echo "[2/7] FULL-Backup vor Migration 015"
+echo "[3/8] FULL-Backup vor Migration 015"
 compose exec -T api python - <<'PY'
 from tbserver.backup import run_backup
 
@@ -59,7 +82,7 @@ print(
 )
 PY
 
-echo "[3/7] Migrationsstand vor Apply prüfen"
+echo "[4/8] Migrationsstand vor Apply prüfen"
 compose exec -T api python - <<'PY'
 from tbserver.migrations import status
 
@@ -80,7 +103,7 @@ else:
     raise SystemExit(f"STOP: unexpected latest_applied={applied}")
 PY
 
-echo "[4/7] Migrationen anwenden"
+echo "[5/8] Migrationen anwenden"
 compose exec -T api python -m tbserver.migrations up
 compose exec -T api python - <<'PY'
 from tbserver.migrations import status
@@ -96,11 +119,11 @@ if (
 print("MIGRATIONS_OK 15/15")
 PY
 
-echo "[5/7] API/Worker/Monitor mit aktuellem Quellstand neu erzeugen"
+echo "[6/8] API/Worker/Monitor mit aktuellem Quellstand neu erzeugen"
 # DB und Restore-DB werden absichtlich NICHT recreated.
 compose up -d --no-deps --force-recreate api worker monitor
 
-echo "[6/7] API-Health abwarten"
+echo "[7/8] API-Health abwarten"
 api_cid="$(compose ps -q api)"
 attempt=0
 while [ "$attempt" -lt 60 ]; do
@@ -123,7 +146,7 @@ if [ "$attempt" -ge 60 ]; then
   exit 4
 fi
 
-echo "[7/7] In-Container Runtime-Probe"
+echo "[8/8] In-Container Runtime-Probe"
 compose exec -T api python /app/tools/server1_runtime_probe.py
 
 echo
