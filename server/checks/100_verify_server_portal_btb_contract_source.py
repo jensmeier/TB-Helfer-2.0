@@ -39,6 +39,7 @@ assert meta["typ"] == "ABNAHMEN"
 assert meta["indikator"] == "ROT"
 assert meta["firma"] == "Firma"
 assert meta["kurztext"] == "Stopfen"
+assert decode_btb_photo_metadata("BTBP1__%%%__broken.jpg") is None
 canonical = canonical_photo_metadata(filename=f"BTBP1__{encoded}__bild.jpg")
 assert canonical["captured_at"] is not None
 assert abs(canonical["gps_lat"] - 48.1234) < 0.001
