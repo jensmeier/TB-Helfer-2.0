@@ -136,8 +136,21 @@
     <div class="btb-fold-content">
       <div id="photos"></div>
       <div id="photoUploadBox">
-        <label for="photoFile">Foto auswählen</label>
-        <input id="photoFile" type="file" accept="image/*">
+        <div class="btb-modal-grid" style="margin-top:10px">
+          <div class="wide"><label for="photoFile">Foto auswählen</label><input id="photoFile" type="file" accept="image/*"></div>
+          <div><label for="photoType">Zuordnung</label><select id="photoType">
+            <option value="FOTODOKUMENTATION">4. Ausgeführte Arbeiten</option>
+            <option value="ABNAHMEN">5. Abnahmen</option>
+            <option value="EINWEISUNG_UNTERWEISUNG">6. Einweisung / Unterweisung</option>
+            <option value="BESONDERHEITEN">7. Besonderheiten</option>
+            <option value="MAENGEL_SCHAEDEN">8. Mängel / Schäden</option>
+          </select></div>
+          <div><label for="photoShortText">Kurztext</label><input id="photoShortText" type="text" maxlength="500" placeholder="z. B. Stopfen begonnen"></div>
+          <div><label for="photoCompany">Firma</label><input id="photoCompany" type="text" maxlength="200"></div>
+          <div><label for="photoKm">KM</label><input id="photoKm" type="text" inputmode="decimal" placeholder="z. B. 76,215"></div>
+          <div><label for="photoObject">Objekt</label><input id="photoObject" type="text" maxlength="240" placeholder="z. B. BÜ 76.215"></div>
+          <div><label for="photoArea">Bereich</label><input id="photoArea" type="text" maxlength="240" placeholder="z. B. Gleis 2"></div>
+        </div>
         <div class="actions" style="margin-top:10px"><button id="uploadPhoto" type="button">Foto hochladen</button><span id="photoProgress" class="muted"></span></div>
       </div>
     </div>
@@ -1209,12 +1222,24 @@ document.getElementById('uploadPhoto').addEventListener('click',async function()
       offset=Number(result.data.received_bytes);
     }
     progress.textContent='Foto wird verknüpft …';
+    const kmRaw=String(document.getElementById('photoKm').value||'').trim().replace(',','.');
+    const km=kmRaw===''?null:Number(kmRaw);
+    const photoMetadata={
+      typ:String(document.getElementById('photoType').value||'FOTODOKUMENTATION'),
+      kurztext:String(document.getElementById('photoShortText').value||'').trim(),
+      firma:String(document.getElementById('photoCompany').value||'').trim(),
+      objektKennung:String(document.getElementById('photoObject').value||'').trim(),
+      objektBereich:String(document.getElementById('photoArea').value||'').trim()
+    };
+    if(Number.isFinite(km))photoMetadata.km=km;
     await tbApi('/api/v1/uploads/'+encodeURIComponent(upload.id)+'/complete',{
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        entity_type:'BTB',entity_id:btbId,purpose:'BTB_PHOTO'
+        entity_type:'BTB',entity_id:btbId,purpose:'BTB_PHOTO',photo_metadata:photoMetadata
       })
     });
-    document.getElementById('photoFile').value='';progress.textContent='';
+    document.getElementById('photoFile').value='';
+    document.getElementById('photoShortText').value='';
+    progress.textContent='';
     show('ok','Foto hochgeladen und mit BTB verknüpft.');await loadBtb();
   }catch(error){progress.textContent='';show('err',error.message||String(error));}
 });
