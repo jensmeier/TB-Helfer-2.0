@@ -3,6 +3,7 @@ package de.tbhelfer.datenbank
 import android.content.Context
 import android.util.Base64
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.server.BtbServerStateStore
 import de.tbhelfer.server.CollabSyncApi
 import de.tbhelfer.server.Server1FileApi
 import de.tbhelfer.server.Server1BtbApi
@@ -59,14 +60,19 @@ class BtbTeamMediaSync(context: Context) {
         token: String,
         api: CollabSyncApi = CollabSyncApi(),
         server1Api: Server1FileApi? = null,
-        server1PdfApi: Server1BtbPdfApi? = null
+        server1PdfApi: Server1BtbPdfApi? = null,
+        worksiteServerIds: Set<String>? = null
     ): Result {
         var uploaded = 0
         var present = 0
         var imported = 0
         var pdfImported = 0
 
-        val bound = bindings.contextsWithBindings().filter { it.binding != null && it.localWorksite != null }
+        val bound = bindings.contextsWithBindings().filter {
+            it.binding != null &&
+                it.localWorksite != null &&
+                (worksiteServerIds == null || it.context.worksiteServerId in worksiteServerIds)
+        }
         for (item in bound) {
             val local = item.localWorksite ?: continue
             val server = item.context
@@ -92,6 +98,10 @@ class BtbTeamMediaSync(context: Context) {
                 val stableBtbId = v.btbId?.takeIf { it.isNotBlank() }
                 val key = stableBtbId ?: "legacy:${v.datum}:${v.schicht.name}"
                 val parent = serverBtbs[key] ?: continue
+                val serverState = BtbServerStateStore.state(appContext, key)
+                if (parent.status.equals("FERTIG", true) || serverState?.serverFinalReadOnly == true) {
+                    continue
+                }
                 val btbFotos = if (stableBtbId != null) {
                     val fotoIds = BtbFotoZuordnungSpeicher.fotoIdsFuerBtb(appContext, stableBtbId)
                     localFotos.filter { it.id in fotoIds }
@@ -116,6 +126,11 @@ class BtbTeamMediaSync(context: Context) {
                             file = file,
                             uploadFilename = uploadName,
                             mimeType = CollabSyncRepository.mimeTypeFor(file),
+                            capturedAtEpochMs = foto.erstelltAmEpochMs,
+                            gpsLat = foto.gpsLat,
+                            gpsLon = foto.gpsLon,
+                            gpsAccuracyM = null,
+                            photoMetadata = structuredPhotoMetadata(foto),
                             api = api,
                             server1Api = server1Api
                         )
@@ -124,6 +139,7 @@ class BtbTeamMediaSync(context: Context) {
                         CollabSyncRepository.LocalAttachmentUploadResult.Unsupported -> return Result.Unsupported
                         is CollabSyncRepository.LocalAttachmentUploadResult.Error -> return Result.Error(result.message)
                         is CollabSyncRepository.LocalAttachmentUploadResult.Success -> {
+                            rememberImportedPhoto(result.serverId, foto.id, key)
                             if (result.uploaded) {
                                 uploaded++
                                 uploadedForBtb++
@@ -167,7 +183,15 @@ class BtbTeamMediaSync(context: Context) {
                         continue
                     }
                     if (wasImported(attachment.serverId)) continue
-                    val meta = decodePhotoMetadata(attachment.filename) ?: continue
+                    val serverPhoto = BtbServerStateStore.photoMetadata(
+                        appContext,
+                        parentKey,
+                        attachment.serverId
+                    )
+                    val meta = mergedPhotoMetadata(
+                        serverPhoto = serverPhoto,
+                        legacy = decodePhotoMetadata(attachment.filename)
+                    )
                     val typ = runCatching { Bildtyp.valueOf(meta.optString("typ")) }
                         .getOrDefault(Bildtyp.FOTODOKUMENTATION)
                     val entity = FotoEntity(
@@ -196,12 +220,12 @@ class BtbTeamMediaSync(context: Context) {
                         info5Wert = meta.optString("info5").takeIf { it.isNotBlank() },
                         erstelltAmEpochMs = meta.optLong("epoch", System.currentTimeMillis())
                     )
-                    if (parentKey.startsWith("legacy:")) {
+                    val localFotoId = if (parentKey.startsWith("legacy:")) {
                         fotos.einfuegen(entity)
                     } else {
                         fotos.einfuegenFuerBtb(entity, parentKey)
                     }
-                    rememberImported(attachment.serverId, true)
+                    rememberImportedPhoto(attachment.serverId, localFotoId, parentKey)
                     localPaths += canonical
                     imported++
                 }
@@ -228,7 +252,8 @@ class BtbTeamMediaSync(context: Context) {
                         Server1BtbApi.SERVER_FINAL_PDF_SHA256_KEY
                     ).trim()
 
-                    if (snapshotFinished && serverStatus == "FINALIZED" && pdfAvailable) {
+                    val canViewPdf = BtbServerStateStore.state(appContext, parentKey)?.canViewPdf == true
+                    if (snapshotFinished && serverStatus == "FINALIZED" && pdfAvailable && canViewPdf) {
                         val marker = pdfImportMarker(parent.serverId, parent.entityVersion, expectedSha)
                         val existing = BtbAbschlussPdfFinder.neueste(appContext, localBtb.entry)
                         if (wasImported(marker) && existing?.isFile == true) continue
