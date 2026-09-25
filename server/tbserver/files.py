@@ -21,6 +21,13 @@ from .config import settings
 from .database import transaction
 from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
+from .image_renditions import (
+    RENDITION_SPECS,
+    RENDITION_VERSION,
+    image_rendition_urls,
+    render_image_rendition,
+    rendition_cache_path,
+)
 from .permissions import area_scope_allows, has_permission, is_team_lead, require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
 
@@ -856,6 +863,10 @@ def list_worksite_media(
                     "mime_type": row.get("mime_type"),
                     "sha256": row.get("sha256"),
                     "size_bytes": int(row.get("byte_size") or 0),
+                    "renditions": image_rendition_urls(
+                        row["id"],
+                        row.get("mime_type"),
+                    ),
                     "created_at": row.get("created_at"),
                     "captured_at": row.get("captured_at"),
                     "gps_lat": row.get("gps_lat"),
@@ -951,6 +962,8 @@ def list_files(
                 break
 
     rows = visible_rows[:limit]
+    for row in rows:
+        row["renditions"] = image_rendition_urls(row["id"], row.get("mime_type"))
     next_cursor = (
         _encode_file_cursor(last_returned["created_at"], last_returned["id"])
         if has_more_visible and last_returned is not None
@@ -994,6 +1007,7 @@ def get_file_metadata(
             )
         ]
     row.pop("storage_key", None)
+    row["renditions"] = image_rendition_urls(row["id"], row.get("mime_type"))
     return {"file": row, "links": links}
 
 
@@ -1016,4 +1030,45 @@ def download_file(
         path,
         media_type=row["mime_type"],
         filename=_safe_name(row["original_name"]),
+    )
+
+
+@router.get("/files/{file_id}/rendition/{kind}")
+def download_image_rendition(
+    file_id: UUID,
+    kind: str,
+    user: dict[str, Any] = Depends(current_portal_user),
+):
+    if kind not in RENDITION_SPECS:
+        raise HTTPException(404, "IMAGE_RENDITION_NOT_FOUND")
+
+    with transaction() as conn, conn.cursor() as cur:
+        row = _load_file_for_user(
+            cur,
+            user,
+            file_id,
+            allow_responsible_btb_images=True,
+        )
+
+    if not str(row.get("mime_type") or "").lower().startswith("image/"):
+        raise HTTPException(415, "IMAGE_RENDITION_REQUIRES_IMAGE")
+
+    source_path = _absolute_storage_path(row["storage_key"])
+    if not source_path.is_file():
+        raise HTTPException(404, "FILE_CONTENT_MISSING")
+
+    target_path = rendition_cache_path(source_path, kind)
+    if not target_path.is_file():
+        try:
+            render_image_rendition(source_path, target_path, kind)
+        except (OSError, ValueError) as exc:
+            raise HTTPException(422, "IMAGE_RENDITION_FAILED") from exc
+
+    return FileResponse(
+        target_path,
+        media_type="image/jpeg",
+        headers={
+            "Cache-Control": "private, max-age=31536000, immutable",
+            "ETag": f'"{row["sha256"]}-{kind}-{RENDITION_VERSION}"',
+        },
     )
