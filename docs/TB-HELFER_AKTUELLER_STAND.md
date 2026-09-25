@@ -1647,3 +1647,12 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Direkt danach lieferte `www.tb-helfer.de` eine Cloudflare-Seite `502 Bad gateway / Host Error` mit Browser=Working und Cloudflare=Working. Damit war der NAS-Origin/Portal-Backendpfad temporär nicht erreichbar; die Ursache ist noch **nicht** bewiesen.
 - Der aktuelle Finalize-Pfad erzeugt das Abschluss-PDF synchron innerhalb des Requests. Deshalb muss der API-Log exakt zum Zeitpunkt des Ausfalls geprüft werden, bevor Code verändert wird. Möglich sind u. a. API-Prozessabbruch/Restart, DB-Verlust oder Fehler beim PDF-/Dateipfad; ohne Log keine Festlegung.
 - Nächster Schritt: Container-Uptime von `tb-helfer-v1-api-1` prüfen und API-Protokoll um ca. 16:37 CEST auf `/api/v1/btbs/5d5d865d.../finalize`, Traceback, Prozessende/Neustart oder Speicherfehler untersuchen. Keine erneute Finalize-Schleife und kein DB-Eingriff auf Verdacht.
+
+
+### 25.09.2026 – Synology nach Finalize-Versuch abgestürzt
+
+- Nach dem Portal-Finalize-Versuch mit `NetworkError` und anschließendem Cloudflare-`502 Host Error` ist die Synology selbst ausgefallen und muss neu gestartet werden.
+- Damit ist der aktuelle Schwerpunkt zunächst **Host-/Container-Recovery**, nicht Android- oder Servercodeänderung.
+- Nach dem Reboot werden zuerst Synology/Container Manager, `tb-helfer-v1-db-1`, `tb-helfer-v1-api-1`, `tb-helfer-v1-worker-1`, `tb-helfer-v1-cloudflared-1` und die Migrationen geprüft. Migration 014 war vor dem Absturz praktisch als 14/14 bestätigt; dieser Stand muss nach dem Reboot weiterhin vorhanden sein.
+- Der Reboot ist gleichzeitig der bisher offene praktische Autostart-Test für cloudflared (`PRB-016`).
+- Erst wenn DB/API/Worker/Cloudflare stabil sind und die Logs/Uptime rund um den Ausfall gesichert wurden, wird der BTB-Finalize erneut getestet. Keine App-/Nutzerlöschung und keine DB-Korrektur auf Verdacht.
