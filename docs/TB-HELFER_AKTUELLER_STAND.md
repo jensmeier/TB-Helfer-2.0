@@ -1734,3 +1734,11 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Für PRB-020 liegt zusätzlich `server/tools/session_split_e2e.py` vor. Es simuliert absichtlich einen Browser mit **einem** Cookie-Jar und prüft, dass Portal- und Admin-Sitzung gleichzeitig bestehen und unabhängig abgemeldet werden können.
 - Staging-Runbook wurde entsprechend ergänzt. Praktische Deployment-/Browser-/Last-E2E bleiben offen und werden nicht als Source-Test ausgegeben.
 - `STATUS.xlsx` bleibt wegen abweichendem Android-Workbook unverändert.
+
+
+### 25.09.2026 – Statusbereinigung nach bestätigtem Recovery
+
+- PRB-021 (soft-gelöschte deterministische BTB-Entry-ID) ist jetzt als **BESTÄTIGT BEHOBEN** geführt: der korrigierte Entry-Pfad lief praktisch ohne PK-500 weiter, der 24.09.-BTB wurde danach finalisiert und der 25.09.-BTB erfolgreich angelegt.
+- Migrationen 011–013 waren durch den bereits praktisch bestätigten Staging-Stand 14/14 längst deployt; die alten Statuszeilen/Pläne wurden entsprechend auf **DB-Basis deployed / Fach-E2E offen** korrigiert. Es gibt keinen Grund, 011–013 erneut anzuwenden.
+- Android-Branch wurde erneut geprüft (`0339290ad8292a1218ee076ac1e2cafde6ad58af`): Rollen-/Schichtende-/Finalize-Source, stabile Slots, Delta-Cursor, Photo-Unlink/Metadata und selektive Retry-Änderungen werden parallel umgesetzt. Das ist weiterhin **Source**, kein Geräte-E2E.
+- SERVER-Branch bei Sicherung: `9ee7fa594ac4ea6debf3d81911229b5fbd73d500`.
