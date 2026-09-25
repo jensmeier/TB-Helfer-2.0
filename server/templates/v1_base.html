@@ -43,7 +43,7 @@
       <div class="brand">TB-Helfer<small>Server 1.0</small></div>
     </div>
     <div class="nav">
-      {% if user and user.company_role == 'ADMIN' %}
+      {% if request.url.path.startswith('/admin/v1') and user and user.company_role == 'ADMIN' %}
         <a class="{% if request.url.path == '/admin/v1' %}active{% endif %}" href="/admin/v1">Übersicht</a>
         <a class="{% if request.url.path.startswith('/admin/v1/routes') %}active{% endif %}" href="/admin/v1/routes">Strecken</a>
         <a class="{% if request.url.path.startswith('/admin/v1/stations') %}active{% endif %}" href="/admin/v1/stations">Bahnhöfe</a>
@@ -51,12 +51,12 @@
         <a class="{% if request.url.path.startswith('/admin/v1/companies') %}active{% endif %}" href="/admin/v1/companies">Firmen</a>
         <a class="{% if request.url.path.startswith('/admin/v1/catalog-history') %}active{% endif %}" href="/admin/v1/catalog-history">Katalog-Historie</a>
         <a class="{% if request.url.path.startswith('/admin/v1/devices') %}active{% endif %}" href="/admin/v1/devices">Geräte</a>
-        <a class="{% if request.url.path.startswith('/portal/v1/worksites') %}active{% endif %}" href="/portal/v1/worksites">Baustellen</a>
         <a class="{% if request.url.path.startswith('/admin/v1/releases') %}active{% endif %}" href="/admin/v1/releases">App-Versionen</a>
         <a class="{% if request.url.path.startswith('/admin/v1/system') %}active{% endif %}" href="/admin/v1/system">Systemstatus</a>
       {% else %}
         <a class="{% if request.url.path == '/portal/v1' %}active{% endif %}" href="/portal/v1">Portal</a>
         {% if user %}<a class="{% if request.url.path.startswith('/portal/v1/worksites') %}active{% endif %}" href="/portal/v1/worksites">Baustellen</a>{% endif %}
+        <a class="secondary" href="/admin/v1/login">Admin</a>
       {% endif %}
       {% if user %}
         <div class="user-chip"><span>{{ user.display_name }}</span><button class="secondary" type="button" onclick="tbLogout()">Abmelden</button></div>
@@ -70,11 +70,13 @@ function tbCookie(name){
   const found=document.cookie.split(';').map(v=>v.trim()).find(v=>v.startsWith(name+'='));
   return found?decodeURIComponent(found.substring(name.length+1)):'';
 }
+const tbAdminScope=location.pathname.startsWith('/admin/v1');
 async function tbApi(url, options){
   const opts=Object.assign({credentials:'same-origin'}, options||{});
   opts.headers=Object.assign({}, opts.headers||{});
+  if(tbAdminScope)opts.headers['X-TB-Session-Scope']='ADMIN';
   if((opts.method||'GET').toUpperCase()!=='GET'){
-    opts.headers['X-CSRF-Token']=tbCookie('tb_portal_csrf');
+    opts.headers['X-CSRF-Token']=tbCookie(tbAdminScope?'tb_admin_csrf':'tb_portal_csrf');
     opts.headers['X-Client-Change-Id']=opts.clientChangeId||(
       window.crypto&&crypto.randomUUID?crypto.randomUUID():
       'web-'+Date.now()+'-'+Math.random().toString(16).slice(2)
@@ -92,8 +94,9 @@ async function tbApi(url, options){
   return {response,data};
 }
 async function tbLogout(){
-  try{await tbApi('/api/v1/portal/logout',{method:'POST'});}catch(_){}
-  location.href='/portal/v1/login';
+  const endpoint=tbAdminScope?'/api/v1/admin/session/logout':'/api/v1/portal/logout';
+  try{await tbApi(endpoint,{method:'POST'});}catch(_){}
+  location.href=tbAdminScope?'/admin/v1/login':'/portal/v1/login';
 }
 </script>
 {% block scripts %}{% endblock %}
