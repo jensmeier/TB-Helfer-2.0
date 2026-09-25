@@ -52,7 +52,10 @@ class Server1DeltaSync(context: Context) {
             is ServerCapabilitiesApi.Result.Error -> return Result.Error(caps.message)
             is ServerCapabilitiesApi.Result.Success -> caps.snapshot
         }
-        if (!capabilities.supports("sync_change_wait_v1")) return Result.Unsupported
+        if (
+            !capabilities.supports("sync_change_feed_v1") ||
+            !capabilities.supports("sync_change_wait_v1")
+        ) return Result.Unsupported
 
         var cursor = Server1DeltaCursorStore.load(appContext)
         var pages = 0
