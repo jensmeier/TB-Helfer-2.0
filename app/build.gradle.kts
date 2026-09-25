@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200068: BTB-Abschluss markiert gezielt denselben btbId-Dirty-Scope,
-        // damit der Serverstatus zuverlässig von ACTIVE auf abgeschlossen wechselt.
-        versionCode = 200068
-        versionName = "1.3.18"
+        // Android 200069: fester Serververtrag 25.09.2026 –
+        // Rollen/Schichtstatus, FINALIZED-read-only, stabile Slots und automatischer Delta-Pull.
+        versionCode = 200069
+        versionName = "1.3.19"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
