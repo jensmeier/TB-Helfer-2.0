@@ -17,6 +17,8 @@ from .portal import current_portal_user
 router = APIRouter(prefix="/api/v1/sync", tags=["sync"])
 _MAX_WAIT_SECONDS = 30.0
 _HUB_POLL_SECONDS = 1.0
+_MAX_CONCURRENT_SYNC_QUERIES = 16
+_SYNC_QUERY_SEMAPHORE = asyncio.Semaphore(_MAX_CONCURRENT_SYNC_QUERIES)
 
 
 def _serialize_change(row: dict) -> dict:
@@ -95,6 +97,11 @@ class _ChangeHub:
 
 
 _CHANGE_HUB = _ChangeHub()
+
+
+async def _run_sync_query(func, *args, **kwargs):
+    async with _SYNC_QUERY_SEMAPHORE:
+        return await asyncio.to_thread(func, *args, **kwargs)
 
 
 def _entity_types(raw: str | None) -> list[str]:
@@ -254,7 +261,7 @@ async def wait_changes(
     if observed_head <= after and wait_seconds > 0:
         observed_head = await _CHANGE_HUB.wait_for_head(after, wait_seconds)
 
-    rows = await asyncio.to_thread(
+    rows = await _run_sync_query(
         _visible_changes,
         user,
         after=after,
@@ -292,7 +299,7 @@ def live_events(
             if head <= cursor:
                 yield ": keepalive\n\n"
                 continue
-            rows = await asyncio.to_thread(_changes_for_worksite, worksite_id, cursor, head, 200)
+            rows = await _run_sync_query(_changes_for_worksite, worksite_id, cursor, head, 200)
             if rows:
                 for row in rows:
                     cursor = row["change_id"]
