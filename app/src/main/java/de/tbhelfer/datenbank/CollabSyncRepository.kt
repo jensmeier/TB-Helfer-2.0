@@ -794,6 +794,11 @@ class CollabSyncRepository(
         file: File,
         uploadFilename: String = file.name,
         mimeType: String = mimeTypeFor(file),
+        capturedAtEpochMs: Long? = null,
+        gpsLat: Double? = null,
+        gpsLon: Double? = null,
+        gpsAccuracyM: Double? = null,
+        photoMetadata: JSONObject? = null,
         api: CollabSyncApi = CollabSyncApi(),
         server1Api: Server1FileApi? = null
     ): LocalAttachmentUploadResult {
@@ -827,7 +832,12 @@ class CollabSyncRepository(
                     filename = uploadName,
                     mimeType = mimeType,
                     file = file,
-                    sha256 = hash
+                    sha256 = hash,
+                    capturedAtEpochMs = capturedAtEpochMs,
+                    gpsLat = gpsLat,
+                    gpsLon = gpsLon,
+                    gpsAccuracyM = gpsAccuracyM,
+                    photoMetadata = photoMetadata
                 )
             ) {
                 Server1FileApi.UploadResult.Unsupported -> LocalAttachmentUploadResult.Unsupported
