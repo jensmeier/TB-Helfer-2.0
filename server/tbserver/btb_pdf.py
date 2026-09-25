@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 from html import escape
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
+from PIL import Image as PILImage, ImageOps
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -13,7 +15,9 @@ from reportlab.lib.utils import ImageReader
 from reportlab.platypus import Flowable, Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
-PDF_RENDERER_VERSION = "tb-server-btb-pdf-2"
+PDF_RENDERER_VERSION = "tb-server-btb-pdf-3"
+PDF_PHOTO_MAX_SIZE_PX = (1600, 1200)
+PDF_PHOTO_JPEG_QUALITY = 82
 
 
 
@@ -167,6 +171,50 @@ def _photo_identity(photo: dict[str, Any]) -> tuple[str, Any]:
     return str(photo.get("id")), photo.get("sha256")
 
 
+def _prepare_pdf_photo(source_path: Path, target_path: Path) -> Path:
+    """Create a bounded JPEG render copy so large phone photos cannot exhaust NAS RAM."""
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    with PILImage.open(source_path) as source:
+        # JPEG decoders can often avoid a full-resolution decode when draft() is used.
+        try:
+            source.draft("RGB", PDF_PHOTO_MAX_SIZE_PX)
+        except Exception:
+            pass
+
+        normalized = ImageOps.exif_transpose(source)
+        prepared = None
+        try:
+            normalized.thumbnail(
+                PDF_PHOTO_MAX_SIZE_PX,
+                resample=PILImage.Resampling.LANCZOS,
+            )
+            if normalized.mode == "RGB":
+                prepared = normalized
+            elif normalized.mode in {"RGBA", "LA"} or "transparency" in normalized.info:
+                rgba = normalized.convert("RGBA")
+                try:
+                    prepared = PILImage.new("RGB", rgba.size, "white")
+                    prepared.paste(rgba, mask=rgba.getchannel("A"))
+                finally:
+                    rgba.close()
+            else:
+                prepared = normalized.convert("RGB")
+
+            prepared.save(
+                target_path,
+                format="JPEG",
+                quality=PDF_PHOTO_JPEG_QUALITY,
+                optimize=True,
+                progressive=True,
+            )
+        finally:
+            if prepared is not None and prepared is not normalized:
+                prepared.close()
+            if normalized is not source:
+                normalized.close()
+    return target_path
+
+
 def render_btb_pdf(
     output_path: Path,
     *,
@@ -176,6 +224,11 @@ def render_btb_pdf(
     photo_files: list[dict[str, Any]],
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    photo_temp_dir = TemporaryDirectory(
+        prefix=".tb-btb-pdf-photos-",
+        dir=str(output_path.parent),
+    )
+    photo_render_dir = Path(photo_temp_dir.name)
     styles = getSampleStyleSheet()
     h2 = ParagraphStyle(
         "BtbH2",
@@ -347,7 +400,11 @@ def render_btb_pdf(
         path = file_info.get("path") if file_info else None
         if isinstance(path, Path) and path.is_file():
             try:
-                image = Image(str(path))
+                render_path = _prepare_pdf_photo(
+                    path,
+                    photo_render_dir / f"{index:04d}.jpg",
+                )
+                image = Image(str(render_path))
                 max_w, max_h = 165 * mm, 90 * mm
                 scale = min(
                     max_w / image.imageWidth,
@@ -393,4 +450,7 @@ def render_btb_pdf(
             ),
         )
     )
-    doc.build(story)
+    try:
+        doc.build(story)
+    finally:
+        photo_temp_dir.cleanup()
