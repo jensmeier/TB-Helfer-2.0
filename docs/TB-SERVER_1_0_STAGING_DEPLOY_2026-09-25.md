@@ -132,6 +132,17 @@ Im **selben Browser**:
 
 Erst dann PRB-020 praktisch bestätigen.
 
+Optional kann derselbe Vertrag ohne Passwortausgabe automatisiert geprüft werden.
+Credentials nur lokal als Umgebungsvariablen setzen:
+
+```bash
+python server/tools/session_split_e2e.py \
+  --base-url https://www.tb-helfer.de
+```
+
+Das Werkzeug verwendet absichtlich **einen** Cookie-Jar und erwartet gleichzeitig
+`tb_portal_*` und `tb_admin_*`.
+
 ### BTB Punkt 4
 
 Im Portal eine allgemeine Arbeit ohne Firma anlegen.
