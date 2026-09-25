@@ -1656,3 +1656,14 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Nach dem Reboot werden zuerst Synology/Container Manager, `tb-helfer-v1-db-1`, `tb-helfer-v1-api-1`, `tb-helfer-v1-worker-1`, `tb-helfer-v1-cloudflared-1` und die Migrationen geprüft. Migration 014 war vor dem Absturz praktisch als 14/14 bestätigt; dieser Stand muss nach dem Reboot weiterhin vorhanden sein.
 - Der Reboot ist gleichzeitig der bisher offene praktische Autostart-Test für cloudflared (`PRB-016`).
 - Erst wenn DB/API/Worker/Cloudflare stabil sind und die Logs/Uptime rund um den Ausfall gesichert wurden, wird der BTB-Finalize erneut getestet. Keine App-/Nutzerlöschung und keine DB-Korrektur auf Verdacht.
+
+
+### 25.09.2026 – API-Log nach NAS-Ausfall ausgewertet: Finalize erreichte die API nicht
+
+- Export `api-finalize-1637.log` vollständig geprüft. Zeitstempel sind UTC; `14:37Z` entspricht `16:37 CEST`.
+- Bis `14:37:08Z` war die API noch gesund: Portal-/BTB-GETs und `/health/ready` liefen mit 200.
+- Im **gesamten exportierten Log gibt es keinen einzigen `/finalize`-Request**. Der Klick im Portal wurde daher nicht als abgeschlossener HTTP-Request in Uvicorn geloggt. Das passt zum unmittelbaren Browser-`NetworkError` und Cloudflare-`502 Host Error` um `14:37:34Z`.
+- Ab etwa `14:40Z` folgen ASGI-Exceptions; die konkrete Ursache in den Stacktraces ist fehlende DB-Erreichbarkeit: `psycopg.errors.ConnectionTimeout: connection timeout expired`. Später fällt `/health/ready` auf 503.
+- Der API-Prozess startet um `14:53:22Z` erneut, wird kurz darauf sauber beendet und startet um `15:00:11Z` nochmals. Nach diesem Neustart bleibt die Readiness zunächst 503 und wird erst ab ca. `15:01:44Z` wieder 200.
+- Schlussfolgerung: Für den Vorfall ist **kein Finalize-Codefehler bewiesen**. Bewiesen ist ein Origin-/DB-/Hostausfall, der den Finalizeversuch überholt hat. Der BTB-Lifecycle darf deshalb nicht auf Verdacht geändert werden.
+- Nächste Beweise: `api-inspect.txt` (OOMKilled, ExitCode, RestartCount) und DB-Containerlog für ca. `16:35–16:55 CEST`. Erst danach Hostursache festlegen.
