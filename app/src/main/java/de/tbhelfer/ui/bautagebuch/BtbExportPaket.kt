@@ -924,7 +924,13 @@ object BtbExportPaket {
 
             append(renderGroupedSection(
                 title = "4. AUSGEFÜHRTE ARBEITEN",
-                lines = manualLinesFromRaw(entry.notizen, knownFirms) + fotoLinesForType(btbFotos, Bildtyp.FOTODOKUMENTATION, fotoNum, knotenLabels, textOverrides, startOverrides),
+                lines = (
+                    if (entry.arbeiten.items.isNotEmpty()) {
+                        manualLinesFromBlock(entry.arbeiten, knownFirms)
+                    } else {
+                        manualLinesFromRaw(entry.notizen, knownFirms)
+                    }
+                ) + fotoLinesForType(btbFotos, Bildtyp.FOTODOKUMENTATION, fotoNum, knotenLabels, textOverrides, startOverrides),
                 emptyText = "Keine Arbeiten eingetragen"
             ))
             append(renderGroupedSection(
