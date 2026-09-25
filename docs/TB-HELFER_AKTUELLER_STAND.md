@@ -1680,3 +1680,11 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Isolierter Funktionstest des neuen Renderpfads lokal bestanden: synthetisches 3072×4080-JPEG wurde auf **904×1200 px** begrenzt und als JPEG geschrieben. Das bestätigt die eigentliche Begrenzungslogik; es ist **noch kein Server-E2E**.
 - Der zugehörige GitHub-Actions-Lauf wurde zwar als fehlgeschlagen geführt, enthielt aber **keine ausgeführten Runner-Steps** und gilt daher gemäß Projektregel nicht als Testnachweis.
 - Deploy/E2E offen: neue `btb_pdf.py` auf die Synology, nur API neu starten, Health prüfen, dann 24.09.-BTB einmal finalisieren. Ziel: FINALIZED + `active_btb_id=NULL` ohne OOM/502.
+
+
+### 25.09.2026 – Finalize nach OOM-Fix praktisch bestätigt
+
+- Der BTB vom 24.09.2026 wurde nach Deployment der speicherbegrenzten PDF-Fotopipeline erfolgreich finalisiert.
+- Das Portal zeigt `FINALIZED 2026-09-24`; ein neuer BTB kann wieder gestartet werden. Der zuvor aktive Team-Slot ist damit freigegeben.
+- Beim Abschluss trat kein erneuter 502-/OOM-Ausfall auf. PRB-025 ist praktisch bestätigt behoben.
+- Nächster Test: auf Pixel 200068 `Neu laden` ausführen und prüfen, ob der bereits lokal vorhandene BTB vom 25.09.2026 serverseitig erscheint.
