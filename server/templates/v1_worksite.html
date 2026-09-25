@@ -15,7 +15,7 @@
 {% endblock %}
 {% block content %}
 <div class="actions" style="margin-bottom:14px">
-  <a class="btn secondary" href="/portal/v1/worksites">← Baustellen</a>
+  <a class="btn secondary" href="{{ page_prefix|default('/portal/v1') }}/worksites">← Baustellen</a>
 </div>
 <div class="card">
   <h1 id="title">Baustelle wird geladen …</h1>
@@ -166,6 +166,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
+const pagePrefix={{ (page_prefix|default('/portal/v1'))|tojson }};
 const worksiteId={{ worksite_id|tojson }};
 const adminReadOnly={{ (user.company_role == 'ADMIN')|tojson }};
 const msg=document.getElementById('msg');
@@ -493,12 +494,12 @@ async function loadTeams(){
     const btbHtml=btbs.length?btbs.map(function(b){
       return '<div class="item"><span class="pill">'+esc(b.status)+'</span> '+
         esc(b.work_date||'ohne Datum')+
-        '<div class="actions" style="margin-top:7px"><a class="btn" href="/portal/v1/btbs/'+encodeURIComponent(b.id)+'">BTB öffnen</a></div></div>';
+        '<div class="actions" style="margin-top:7px"><a class="btn" href="'+pagePrefix+'/btbs/'+encodeURIComponent(b.id)+'">BTB öffnen</a></div></div>';
     }).join(''):'<p class="muted">Noch kein BTB.</p>';
     const createButton=can('btb.create')&&!t.active_btb_id?'<button type="button" onclick="createBtb(\''+esc(t.id)+'\')">Neuen BTB starten</button>':'';
     return '<div class="item"><h4>'+esc(t.name||t.lead_name||'Team')+'</h4>'+
       '<div class="muted">Verantwortlicher TB: '+esc(t.lead_name||'—')+' · '+esc(t.member_count)+' Mitglieder</div>'+
-      (t.active_btb_id?'<div class="notice info">Aktiver BTB: <a href="/portal/v1/btbs/'+encodeURIComponent(t.active_btb_id)+'">'+esc(t.active_btb_id)+'</a></div>':'')+
+      (t.active_btb_id?'<div class="notice info">Aktiver BTB: <a href="'+pagePrefix+'/btbs/'+encodeURIComponent(t.active_btb_id)+'">'+esc(t.active_btb_id)+'</a></div>':'')+
       btbHtml+'<div class="actions">'+createButton+'</div></div>';
   }));
   target.innerHTML=blocks.join('');
@@ -510,7 +511,7 @@ async function createBtb(teamId){
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({team_id:teamId,work_date:today,header:{}})
     });
-    show('ok','BTB angelegt.');location.href='/portal/v1/btbs/'+encodeURIComponent(result.data.id);
+    show('ok','BTB angelegt.');location.href=pagePrefix+'/btbs/'+encodeURIComponent(result.data.id);
   }catch(error){show('err',error.message||String(error));}
 }
 window.createBtb=createBtb;
