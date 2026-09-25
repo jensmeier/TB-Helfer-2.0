@@ -136,6 +136,11 @@ data class BautagebuchEintrag(
     val firmen: List<FirmaBlock> = emptyList(),
     val personal: List<String> = emptyList(),
     val geraete: List<String> = emptyList(),
+
+    /** Punkt 4 – allgemeine ausgeführte Arbeiten ohne zwingende Firmenzuordnung. */
+    val arbeiten: SectionBlock = SectionBlock(),
+
+    /** Historische freie Notizen bleiben separat lesbar; neue Punkt-4-Arbeiten landen nicht hier. */
     val notizen: String? = null,
 
     val abnahmen: SectionBlock = SectionBlock(),
