@@ -1677,4 +1677,6 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Für JPEG wird vor dem eigentlichen Thumbnail zusätzlich `draft()` verwendet, damit der Decoder nach Möglichkeit bereits kleiner dekodiert. Dadurch bleibt der Spitzenbedarf pro Foto begrenzt statt alle hochauflösenden Pixel in die PDF-Struktur zu tragen.
 - Renderer-Version auf `tb-server-btb-pdf-3` angehoben. Source-/Smoke-Check 34 wurde um einen echten 3072×4080-Fototest erweitert und prüft die Begrenzung.
 - **Originalbilder, Datenbank, BTB-Inhalt und Android bleiben unverändert.** Kein Image-Rebuild erforderlich; Pillow ist im vorhandenen Serverimage bereits über ReportLab vorhanden und wurde auf der Synology im Diagnose-Test praktisch verwendet.
+- Isolierter Funktionstest des neuen Renderpfads lokal bestanden: synthetisches 3072×4080-JPEG wurde auf **904×1200 px** begrenzt und als JPEG geschrieben. Das bestätigt die eigentliche Begrenzungslogik; es ist **noch kein Server-E2E**.
+- Der zugehörige GitHub-Actions-Lauf wurde zwar als fehlgeschlagen geführt, enthielt aber **keine ausgeführten Runner-Steps** und gilt daher gemäß Projektregel nicht als Testnachweis.
 - Deploy/E2E offen: neue `btb_pdf.py` auf die Synology, nur API neu starten, Health prüfen, dann 24.09.-BTB einmal finalisieren. Ziel: FINALIZED + `active_btb_id=NULL` ohne OOM/502.
