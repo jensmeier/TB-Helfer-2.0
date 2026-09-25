@@ -35,7 +35,7 @@ class SelectiveSyncWorker(
 
         val settings = SyncEinstellungenSpeicher.laden(applicationContext)
         if (!networkAllowed(settings.netz)) {
-            return retryLimited()
+            return retryAutomatic()
         }
 
         val tokenStore = SecureTokenStore(applicationContext)
@@ -43,7 +43,7 @@ class SelectiveSyncWorker(
 
         val capabilities = when (val result = ServerCapabilitiesApi().load()) {
             ServerCapabilitiesApi.Result.Unsupported -> return Result.success()
-            is ServerCapabilitiesApi.Result.Error -> return retryLimited()
+            is ServerCapabilitiesApi.Result.Error -> return retryAutomatic()
             is ServerCapabilitiesApi.Result.Success -> result.snapshot
         }
         if (!capabilities.supports("btb_live_sync_v1")) {
@@ -75,6 +75,16 @@ class SelectiveSyncWorker(
                     if (!SelectiveSyncStore.removeBtbIfUnchanged(applicationContext, scope)) {
                         retryNeeded = true
                     }
+                }
+
+                CollabLocalBridge.BtbExportResult.ReadOnly -> {
+                    // Server bestaetigt FINALIZED/Teilnehmer-FINISHED: keine alte Mutation
+                    // wiederbeleben. Bridge hat Pending + Dirty bereits gezielt aufgeraeumt.
+                    SelectiveSyncStore.clearBtb(
+                        applicationContext,
+                        scope.localBaustelleId,
+                        scope.clientBtbId
+                    )
                 }
 
                 is CollabLocalBridge.BtbExportResult.Success -> {
@@ -114,7 +124,7 @@ class SelectiveSyncWorker(
             }
         }
 
-        if (retryNeeded) return retryLimited()
+        if (retryNeeded) return retryAutomatic()
 
         if (!SelectiveSyncStore.hasPending(applicationContext)) {
             SyncStatusSpeicher.erfolgMerken(applicationContext)
@@ -122,8 +132,12 @@ class SelectiveSyncWorker(
         return Result.success()
     }
 
-    private fun retryLimited(): Result =
-        if (runAttemptCount < MAX_AUTOMATIC_RETRIES) Result.retry() else Result.success()
+    /**
+     * Dirty-Scope darf auch nach laengerem Netz-/Serverausfall nicht ohne geplanten Lauf liegen.
+     * WorkManager begrenzt den Backoff plattformseitig; Result.retry() plant deshalb so lange
+     * weiter, bis der persistente Scope erfolgreich verarbeitet oder kanonisch read-only wird.
+     */
+    private fun retryAutomatic(): Result = Result.retry()
 
     private fun networkAllowed(net: SyncEinstellungenSpeicher.Netz): Boolean {
         val cm = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
@@ -142,7 +156,6 @@ class SelectiveSyncWorker(
     companion object {
         private const val UNIQUE_NAME = "tbhelfer-selective-sync"
         private const val DEBOUNCE_SECONDS = 2L
-        private const val MAX_AUTOMATIC_RETRIES = 5
 
         fun enqueue(context: Context) {
             val appContext = context.applicationContext
@@ -155,8 +168,8 @@ class SelectiveSyncWorker(
             val request = OneTimeWorkRequestBuilder<SelectiveSyncWorker>()
                 .setInitialDelay(DEBOUNCE_SECONDS, TimeUnit.SECONDS)
                 .setBackoffCriteria(
-                    BackoffPolicy.LINEAR,
-                    10L,
+                    BackoffPolicy.EXPONENTIAL,
+                    30L,
                     TimeUnit.SECONDS
                 )
                 .setConstraints(
