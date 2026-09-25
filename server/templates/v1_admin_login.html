@@ -29,6 +29,8 @@
   </div>
 <script>
 const form=document.getElementById('loginForm'),button=document.getElementById('submit'),msg=document.getElementById('msg');
+const prefill=new URLSearchParams(location.search).get('login');
+if(prefill)document.getElementById('login').value=prefill;
 form.addEventListener('submit',async ev=>{
   ev.preventDefault();msg.style.display='none';button.disabled=true;
   try{
