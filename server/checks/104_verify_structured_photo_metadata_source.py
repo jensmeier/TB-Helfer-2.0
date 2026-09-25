@@ -17,6 +17,8 @@ assert '"photo_metadata": canonical_photo_metadata(' in documents
 assert "photo_metadata=row.get(\"photo_metadata\")" in btb
 assert 'id="photoType"' in portal
 assert "photo_metadata:photoMetadata" in portal
+assert "file.lastModified" in portal
+assert "captured_at:capturedAt" in portal
 
 from tbserver.btb_photo_meta import canonical_photo_metadata, normalize_photo_metadata
 
