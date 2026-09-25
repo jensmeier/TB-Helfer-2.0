@@ -24,6 +24,14 @@ _STRING_LIMITS = {
     "kurztext": 500,
     "objektKennung": 240,
     "objektBereich": 240,
+    # Android stores these fields in FotoEntity as well. Keep them in the
+    # canonical round-trip even when the current portal does not render them.
+    "notiz": 2000,
+    "info1": 500,
+    "info2": 500,
+    "info3": 500,
+    "info4": 500,
+    "info5": 500,
 }
 
 
