@@ -74,6 +74,10 @@ services:
       dockerfile: Dockerfile.v1
     image: tb-helfer-server-v1:local
     restart: unless-stopped
+    # Schutzschicht nach dem praktisch reproduzierten Host-OOM vom 25.09.2026.
+    # Der PDF-/Bildpfad ist zusätzlich speicherbegrenzt; dieses Limit verhindert,
+    # dass ein künftiger API-Speicherfehler den gesamten NAS in den OOM zieht.
+    mem_limit: ${TB_V1_API_MEMORY_LIMIT:-512m}
     environment:
       DB_HOST: db
       DB_PORT: "5432"
