@@ -1753,3 +1753,12 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Source-Check 106 schützt den Backup-Ausschluss, Check 107 den Runtime-Probe-/Compose-Vertrag; Workflow führt jetzt Checks 98–107 und erwartet Migration 015.
 - Staging-Runbook enthält Backup-Regel und Runtime-Probe. Praktisches Deployment/Migration 015/Browser-/Last-E2E bleibt bewusst **OFFEN**, bis es auf der echten Synology ausgeführt wurde.
 - STATUS.xlsx bleibt unverändert, da Android- und Server-Branch weiterhin unterschiedliche Workbook-Blobs besitzen; kein blindes Überschreiben.
+
+
+### 25.09.2026 – Bewachter Synology-Apply gebaut
+
+- Neuer Host-Deploy-Helfer `server/tools/synology_integration_apply.sh` gebaut. Er ist für DSM-Aufgabenplaner/root gedacht und setzt voraus, dass der aktuelle SERVER-Quellstand vorher vollständig nach `/volume1/docker/tb-helfer-v1` synchronisiert wurde.
+- Sicherheitsreihenfolge ist fest eingebaut: laufende Kerncontainer → FULL-Backup mit Status OK → exakter Source/Staging-Migrationscheck → Migration 015 → Ziel 15/15 → nur API/Worker/Monitor recreaten → Health → In-Container-Runtime-Probe.
+- Das Skript enthält bewusst **kein** `compose down`, kein `-v`, kein Volume-Remove, kein Prune und kein `rm -rf`; DB-/Restore-Volumes werden nicht recreated.
+- Source-Check 108 schützt diesen Deploy-Vertrag; Server-CI ruft nun Checks 98–108 auf.
+- Praktisches Synology-Deployment bleibt bis zur tatsächlichen Ausführung E2E OFFEN.
