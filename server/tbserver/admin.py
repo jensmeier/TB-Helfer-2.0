@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from .config import settings
 from .database import transaction
 from .events import audit
-from .portal import current_portal_user, require_csrf
+from .admin_session import current_admin_session_user, require_admin_session_csrf
 from .security import hash_token, random_token
 
 
@@ -141,13 +141,13 @@ def _assert_admin(user: dict[str, Any]) -> dict[str, Any]:
 
 
 def require_admin(
-    user: dict[str, Any] = Depends(current_portal_user),
+    user: dict[str, Any] = Depends(current_admin_session_user),
 ) -> dict[str, Any]:
     return _assert_admin(user)
 
 
 def require_admin_csrf(
-    user: dict[str, Any] = Depends(require_csrf),
+    user: dict[str, Any] = Depends(require_admin_session_csrf),
 ) -> dict[str, Any]:
     return _assert_admin(user)
 
