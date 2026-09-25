@@ -1639,3 +1639,11 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Der vorherige konkrete Finalize-Blocker `poco = WORKING` ist im Recoveryzustand damit gelöst. Nächster praktischer Schritt: als `test.test` im normalen Benutzerportal anmelden, aktiven 24.09.-BTB öffnen und `BTB endgültig abschließen` ausführen.
 - Erwartung danach: BTB = FINALIZED, `active_btb_id = NULL`; anschließend Pixel 200068 `Neu laden`, sodass der lokale 25.09.-BTB serverseitig angelegt werden kann.
 - Android-Schichtende bleibt dennoch als Produktfix offen; der Portal-Recoverytest ersetzt nicht die mobile Implementierung.
+
+
+### 25.09.2026 – Finalize-Recovery erzeugt NetworkError + Cloudflare 502 Host Error
+
+- Beim praktischen Portal-Recovery als Teamlead `test.test` wurde `BTB endgültig abschließen` ausgelöst. Das Portal meldete unmittelbar `NetworkError when attempting to fetch resource.`.
+- Direkt danach lieferte `www.tb-helfer.de` eine Cloudflare-Seite `502 Bad gateway / Host Error` mit Browser=Working und Cloudflare=Working. Damit war der NAS-Origin/Portal-Backendpfad temporär nicht erreichbar; die Ursache ist noch **nicht** bewiesen.
+- Der aktuelle Finalize-Pfad erzeugt das Abschluss-PDF synchron innerhalb des Requests. Deshalb muss der API-Log exakt zum Zeitpunkt des Ausfalls geprüft werden, bevor Code verändert wird. Möglich sind u. a. API-Prozessabbruch/Restart, DB-Verlust oder Fehler beim PDF-/Dateipfad; ohne Log keine Festlegung.
+- Nächster Schritt: Container-Uptime von `tb-helfer-v1-api-1` prüfen und API-Protokoll um ca. 16:37 CEST auf `/api/v1/btbs/5d5d865d.../finalize`, Traceback, Prozessende/Neustart oder Speicherfehler untersuchen. Keine erneute Finalize-Schleife und kein DB-Eingriff auf Verdacht.
