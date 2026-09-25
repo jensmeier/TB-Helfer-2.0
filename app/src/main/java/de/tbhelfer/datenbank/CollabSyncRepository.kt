@@ -343,6 +343,12 @@ class CollabSyncRepository(
         data class Error(val message: String) : Server1AttachmentSyncResult
     }
 
+    sealed interface Server1FileRefreshResult {
+        data class Success(val affectedBtbServerIds: Set<String>) : Server1FileRefreshResult
+        data object SessionInvalid : Server1FileRefreshResult
+        data class Error(val message: String) : Server1FileRefreshResult
+    }
+
     /**
      * Mirrors visible Server-1.0 file links for DEFECT/ACCEPTANCE into the existing
      * attachment cache and downloads missing content atomically into app-private storage.
@@ -435,6 +441,107 @@ class CollabSyncRepository(
             }
         }
         return Server1AttachmentSyncResult.Success(Server1AttachmentSummary(linked, downloaded))
+    }
+
+    suspend fun refreshServer1File(
+        token: String,
+        worksiteId: String,
+        fileId: String,
+        api: Server1FileApi = Server1FileApi()
+    ): Server1FileRefreshResult {
+        val old = dao.collabAttachment(fileId)
+        val affected = linkedSetOf<String>()
+        if (old?.parentEntityType.equals(SyncCollabPendingChangeEntity.TYPE_BTB, ignoreCase = true)) {
+            affected += old!!.parentEntityId
+        }
+
+        val links = when (val result = api.linkedFilesForFile(token, worksiteId, fileId)) {
+            Server1FileApi.FileLinksResult.NotFound -> {
+                old?.let { dao.markCollabAttachmentDeleted(it.serverId) }
+                return Server1FileRefreshResult.Success(affected)
+            }
+            Server1FileApi.FileLinksResult.SessionInvalid -> return Server1FileRefreshResult.SessionInvalid
+            is Server1FileApi.FileLinksResult.Error -> return Server1FileRefreshResult.Error(result.message)
+            is Server1FileApi.FileLinksResult.Success -> result.files
+        }
+
+        val item = links.firstOrNull {
+            it.parentEntityType.equals(SyncCollabPendingChangeEntity.TYPE_BTB, ignoreCase = true)
+        } ?: links.firstOrNull()
+
+        if (item == null) {
+            old?.let { dao.markCollabAttachmentDeleted(it.serverId) }
+            return Server1FileRefreshResult.Success(affected)
+        }
+
+        if (item.parentEntityType.equals(SyncCollabPendingChangeEntity.TYPE_BTB, ignoreCase = true)) {
+            affected += item.parentEntityId
+        }
+
+        val sameParent = old?.parentEntityType.equals(item.parentEntityType, ignoreCase = true) &&
+            old?.parentEntityId == item.parentEntityId
+        val oldPathValid = sameParent &&
+            old?.isDownloaded == true &&
+            old.localPath?.let { File(it).isFile } == true
+
+        dao.upsertCollabAttachments(
+            listOf(
+                SyncCollabAttachmentEntity(
+                    serverId = item.fileId,
+                    worksiteServerId = item.worksiteId,
+                    parentEntityType = item.parentEntityType,
+                    parentEntityId = item.parentEntityId,
+                    filename = item.filename ?: old?.filename,
+                    mimeType = item.mimeType ?: old?.mimeType,
+                    sizeBytes = item.sizeBytes,
+                    sha256 = item.sha256 ?: old?.sha256,
+                    localPath = if (oldPathValid) old?.localPath else null,
+                    isDownloaded = oldPathValid,
+                    isDeleted = false,
+                    updatedAtEpochMs = System.currentTimeMillis()
+                )
+            )
+        )
+
+        if (!oldPathValid) {
+            when (val content = api.downloadContent(token, item.fileId)) {
+                Server1FileApi.ContentResult.Unsupported ->
+                    return Server1FileRefreshResult.Error("Server-Datei ist nicht mehr verfügbar.")
+                Server1FileApi.ContentResult.SessionInvalid ->
+                    return Server1FileRefreshResult.SessionInvalid
+                is Server1FileApi.ContentResult.Error ->
+                    return Server1FileRefreshResult.Error(content.message)
+                is Server1FileApi.ContentResult.Success -> {
+                    val safeName = safeFilename(item.filename ?: "datei")
+                    val dir = File(appContext.filesDir, "server_sync/collab/$worksiteId")
+                    if (!dir.exists() && !dir.mkdirs()) {
+                        return Server1FileRefreshResult.Error("Lokaler Sync-Ordner konnte nicht erstellt werden.")
+                    }
+                    val target = File(dir, item.fileId + "_" + safeName)
+                    val stored = runCatching {
+                        val temp = File(target.absolutePath + ".tmp")
+                        temp.writeBytes(content.file.bytes)
+                        if (target.exists()) target.delete()
+                        if (!temp.renameTo(target)) {
+                            temp.copyTo(target, overwrite = true)
+                            temp.delete()
+                        }
+                        dao.markCollabAttachmentDownloaded(
+                            serverId = item.fileId,
+                            localPath = target.absolutePath,
+                            mimeType = content.file.mimeType ?: item.mimeType
+                        )
+                    }
+                    if (stored.isFailure) {
+                        return Server1FileRefreshResult.Error(
+                            stored.exceptionOrNull()?.message
+                                ?: "Server-Datei konnte lokal nicht gespeichert werden."
+                        )
+                    }
+                }
+            }
+        }
+        return Server1FileRefreshResult.Success(affected)
     }
 
     suspend fun replaceServer1BtbSnapshots(
