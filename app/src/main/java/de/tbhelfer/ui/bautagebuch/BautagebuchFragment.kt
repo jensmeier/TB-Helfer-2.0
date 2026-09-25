@@ -959,7 +959,12 @@ cardCurrentReport.setOnClickListener {
         count += pairAndCount(buildSection(current.einweisungUnterweisung), buildSection(baseline.einweisungUnterweisung))
         count += pairAndCount(buildSection(current.besonderheiten), buildSection(baseline.besonderheiten))
         count += pairAndCount(buildSection(current.maengelSchaeden), buildSection(baseline.maengelSchaeden))
-        count += pairAndCount(buildSection(sectionFromMultiline(stripOrtMarkers(rawArbeiten))), buildSection(sectionFromMultiline(stripOrtMarkers(baseline.notizen.orEmpty()))))
+        val baselineArbeiten = if (baseline.arbeiten.items.isNotEmpty()) {
+            baseline.arbeiten
+        } else {
+            sectionFromMultiline(stripOrtMarkers(baseline.notizen.orEmpty()))
+        }
+        count += pairAndCount(buildSection(sectionFromMultiline(stripOrtMarkers(rawArbeiten))), buildSection(baselineArbeiten))
         return count.coerceAtLeast(1)
     }
 
@@ -2630,7 +2635,12 @@ cardCurrentReport.setOnClickListener {
                 }
 
                 // Phase 3b: Standardabschnitte aus Entry übernehmen
-                rawArbeiten = entry.notizen.orEmpty()
+                rawArbeiten = if (entry.arbeiten.items.isNotEmpty()) {
+                    stripOrtMarkers(sectionToMultiline(entry.arbeiten))
+                } else {
+                    // Historische Android-BTBs legten Punkt 4 als notizen ab.
+                    entry.notizen.orEmpty()
+                }
                 rawAbnahmen = stripOrtMarkers(sectionToMultiline(entry.abnahmen))
                 rawEinweisung = stripOrtMarkers(sectionToMultiline(entry.einweisungUnterweisung))
                 rawBesonderheiten = stripOrtMarkers(sectionToMultiline(entry.besonderheiten))
@@ -2868,6 +2878,13 @@ cardCurrentReport.setOnClickListener {
             return if (hm.isNullOrBlank()) "Automatisch gespeichert" else "Automatisch gespeichert $hm"
         }
 
+        private fun existingLegacyNotesForBuild(): String? {
+            // Punkt 4 wurde bis 200068 in notizen gespeichert. Nach dem ersten Laden landet der
+            // Inhalt in rawArbeiten und wird fortan als arbeiten geschrieben. Neue Punkt-4-Texte
+            // duerfen nicht erneut einen NOTIZEN-Servereintrag erzeugen.
+            return null
+        }
+
         private fun buildEntry(ctx: BaustelleKontext): BautagebuchEintrag {
             // Phase 3: Personal/Geräte kommen aus PM-UI und werden als Firmenblöcke persistiert.
             // Für Abwärtskompatibilität erzeugen wir zusätzlich Legacy-Zeilen.
@@ -2898,11 +2915,13 @@ cardCurrentReport.setOnClickListener {
                 firmen = firmen,
                 personal = legacyPersonalLines(),
                 geraete = legacyGeraeteLines(),
+                arbeiten = sectionFromMultiline(stripOrtMarkers(rawArbeiten)),
                 abnahmen = sectionFromMultiline(stripOrtMarkers(rawAbnahmen)),
                 einweisungUnterweisung = sectionFromMultiline(stripOrtMarkers(rawEinweisung)),
                 besonderheiten = sectionFromMultiline(stripOrtMarkers(rawBesonderheiten)),
                 maengelSchaeden = sectionFromMultiline(stripOrtMarkers(rawMaengel)),
-                notizen = rawArbeiten.trim().takeUnless { it.isBlank() },
+                // Neue Punkt-4-Arbeiten sind echte ARBEIT-Eintraege; notizen bleibt Legacy/sonstige Notiz.
+                notizen = existingLegacyNotesForBuild(),
                 includeFotos = true,
                 includeBtbs = true,
                 erstelltAmEpochMs = currentBtbStartEpochMs ?: System.currentTimeMillis())
