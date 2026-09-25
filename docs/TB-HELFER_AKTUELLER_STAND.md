@@ -1762,3 +1762,10 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Das Skript enthält bewusst **kein** `compose down`, kein `-v`, kein Volume-Remove, kein Prune und kein `rm -rf`; DB-/Restore-Volumes werden nicht recreated.
 - Source-Check 108 schützt diesen Deploy-Vertrag; Server-CI ruft nun Checks 98–108 auf.
 - Praktisches Synology-Deployment bleibt bis zur tatsächlichen Ausführung E2E OFFEN.
+
+
+### 25.09.2026 – Read-only Server-Abnahme automatisiert
+
+- Neues Tool `server/tools/server1_readonly_acceptance.py`: ein gemeinsamer Browser-Cookie-Jar prüft parallel Portal- und Admin-Sitzung sowie read-only Profil, Firmenverzeichnis, globalen Katalog/History, Portal-Seiten, Admin-Systemstatus, Firmen-/Benutzerliste und Adminseiten Strecken/Bahnhöfe/System.
+- Das Tool führt bewusst **keine fachlichen CREATE/UPDATE/DELETE-Aufrufe** aus. Mutierende Fach-E2Es bleiben getrennt und werden erst auf der echten Staging-Instanz durchgeführt.
+- Source-Check 109 schützt die Read-only-Grenze; Server-CI ruft jetzt Checks 98–109 auf.
