@@ -57,6 +57,22 @@ if ! grep -q "TB_V1_SOURCE_TOOLS_DIR" "$COMPOSE_FILE"; then
   echo "FEHLER: Compose-Datei enthält den aktuellen /app/tools-Mount nicht." >&2
   exit 2
 fi
+if ! grep -q "sync_change_wait_v1" "$ROOT/tbserver/capabilities.py"; then
+  echo "FEHLER: capabilities.py ist nicht der aktuelle Delta-Sync-Stand." >&2
+  exit 2
+fi
+if ! grep -q "file_image_renditions_v1" "$ROOT/tbserver/capabilities.py"; then
+  echo "FEHLER: capabilities.py enthält den Rendition-Vertrag nicht." >&2
+  exit 2
+fi
+if ! grep -q "photo_metadata:photoMetadata" "$ROOT/templates/v1_btb.html"; then
+  echo "FEHLER: v1_btb.html enthält den strukturierten Foto-Upload noch nicht." >&2
+  exit 2
+fi
+if ! grep -q "tb_admin_session" "$ROOT/tbserver/admin_session.py"; then
+  echo "FEHLER: getrennte Admin-Session fehlt im NAS-Quellstand." >&2
+  exit 2
+fi
 
 echo "[2/8] Laufende Kerncontainer prüfen"
 for service in db api worker cloudflared; do
