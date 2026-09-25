@@ -12,6 +12,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.datenbank.BtbTeamMediaSync
 import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.einstellungen.SyncEinstellungenSpeicher
@@ -147,6 +148,27 @@ class SelectiveSyncWorker(
                                 retryNeeded = true
                                 continue
                             }
+
+                            when (
+                                val media = BtbTeamMediaSync(applicationContext).synchronize(
+                                    token = token,
+                                    server1Api = Server1FileApi(),
+                                    server1PdfApi = Server1BtbPdfApi(),
+                                    worksiteServerIds = setOf(exported.worksiteServerId)
+                                )
+                            ) {
+                                BtbTeamMediaSync.Result.SessionInvalid -> {
+                                    tokenStore.clear()
+                                    return Result.success()
+                                }
+                                BtbTeamMediaSync.Result.Unsupported -> return Result.success()
+                                is BtbTeamMediaSync.Result.Error -> {
+                                    retryNeeded = true
+                                    continue
+                                }
+                                is BtbTeamMediaSync.Result.Success -> Unit
+                            }
+
                             if (!SelectiveSyncStore.removeBtbIfUnchanged(applicationContext, scope)) {
                                 // Während des Uploads kam bereits ein neuerer Autosave.
                                 retryNeeded = true
