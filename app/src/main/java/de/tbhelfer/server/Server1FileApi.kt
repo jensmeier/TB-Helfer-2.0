@@ -205,7 +205,12 @@ class Server1FileApi(
         filename: String,
         mimeType: String,
         file: File,
-        sha256: String
+        sha256: String,
+        capturedAtEpochMs: Long? = null,
+        gpsLat: Double? = null,
+        gpsLon: Double? = null,
+        gpsAccuracyM: Double? = null,
+        photoMetadata: JSONObject? = null
     ): UploadResult {
         if (!file.isFile) return UploadResult.Error("Datei existiert nicht mehr: ${file.name}")
         val parentType = parentEntityType.uppercase()
@@ -278,6 +283,13 @@ class Server1FileApi(
             .put("entity_type", parentType)
             .put("entity_id", parentEntityId)
             .put("purpose", "ATTACHMENT")
+        capturedAtEpochMs?.let {
+            completeBody.put("captured_at", java.time.Instant.ofEpochMilli(it).toString())
+        }
+        gpsLat?.takeIf { it in -90.0..90.0 }?.let { completeBody.put("gps_lat", it) }
+        gpsLon?.takeIf { it in -180.0..180.0 }?.let { completeBody.put("gps_lon", it) }
+        gpsAccuracyM?.takeIf { it >= 0.0 }?.let { completeBody.put("gps_accuracy_m", it) }
+        photoMetadata?.let { completeBody.put("photo_metadata", JSONObject(it.toString())) }
         return when (
             val completed = jsonMutation(
                 token,
