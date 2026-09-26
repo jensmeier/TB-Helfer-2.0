@@ -239,3 +239,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD OFFEN**
 - HELPER bleibt ohne PDF-Entwurf mit eigener Schichtaktion.
 - Version **1.3.24 / 200074**.
 - Release-MD: `projektsteuerung/releases/TB-Helfer_1.3.24_200074.md`.
+
+
+## BTB-UI-001 PRAXIS BESTÄTIGT 1.3.24
+- Pixel-Haupt-TB: PDF Entwurf + BTB Abschluss bleiben stabil sichtbar.
+- Benutzer bestätigt: kein Springen mehr.
+- Pixel-UI-E2E: BESTÄTIGT.
+- Poco/HELPER-E2E bleibt offen.
