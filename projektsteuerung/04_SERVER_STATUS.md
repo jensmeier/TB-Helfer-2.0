@@ -196,3 +196,12 @@ Status: **UPLOAD BESTÄTIGT / MIGRATION OFFEN**
 - Keine sichtbare `APPLIED 016_...`-Zeile.
 - Daher noch **nicht** als „Migration 016 bestätigt“ werten.
 - Nächster Nachweis: `python -m tbserver.migrations status`; erwartet werden `pending: []`, `latest_known: 16`, `latest_applied: 16`.
+
+
+## BTB-EDIT-001 – Migration 016 praktisch bestätigt
+Status: **MIGRATION BESTÄTIGT**
+
+- Praxisnachweis im API-Terminal: `APPLIED 016_btb_photo_link_metadata.sql`.
+- DB-Schema für versionierte BTB-Foto-Link-Metadaten ist damit vorhanden.
+- API/Worker liefen beim Anwenden noch als bestehende Prozesse; daher müssen sie jetzt neu gestartet werden, damit der hochgeladene Python-Quellstand sicher aktiv ist.
+- Kein DB-/Storage-/Backup-Reset erforderlich.
