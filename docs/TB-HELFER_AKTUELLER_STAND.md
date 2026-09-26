@@ -1837,3 +1837,14 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Cloudflare-Schutz wird dafür **nicht** abgeschaltet. Automatisierte Session-/Read-only-/Worker-/Delta-Abnahmen im API-Container laufen ab jetzt intern über `http://127.0.0.1:8080`.
 - Der echte öffentliche Same-Browser-E2E über `https://www.tb-helfer.de` bleibt separat manuell im Browser zu bestätigen.
 - Runtime-Probe bleibt praktisch PASS; Same-Browser-Serververtrag ist noch nicht bestätigt, bis der interne automatisierte Lauf bzw. echte Browserlauf bestanden ist.
+
+
+### 26.09.2026 – Interne Post-Deploy-Session-/Read-only-Abnahme praktisch bestanden
+
+- Auf der echten Synology wurde `server1_post_deploy_e2e.py` intern gegen `http://127.0.0.1:8080` mit aktivem USER- und separatem ADMIN-Konto ausgeführt.
+- Runtime-Probe erneut **PASS**.
+- Same-Browser Session-Split intern praktisch **PASS**: Portal- und Admin-Session koexistieren mit getrennten Cookies; Portal-Logout lässt Admin aktiv und Admin-Logout funktioniert unabhängig.
+- Read-only Portal/Admin-Abnahme praktisch **PASS**: `portal/me`, Profil, Firmenverzeichnis, globaler Katalog/History, Portal-/Baustellenseiten, Admin-Session, Systemstatus, Firmen, Benutzer, Routen, Bahnhöfe und Systemseite lieferten HTTP 200; beide Logouts HTTP 204.
+- Der Runner endete mit **`=== POST_DEPLOY_E2E_OK ===`** für die angeforderten Prüfungen. Bei diesem Lauf waren Worker-Backup und Delta-Lasttest bewusst mit `--skip-backup --skip-loadtest` ausgenommen und bleiben separat offen.
+- Der öffentliche Same-Browser-Test über `https://www.tb-helfer.de` bleibt zusätzlich manuell im echten Browser offen; der Python-Client wird dort weiterhin absichtlich von Cloudflare blockiert.
+- `STATUS.xlsx` bleibt wegen des abweichenden Android-Workbook-Blobs unverändert.
