@@ -210,3 +210,13 @@ Nächster Schritt:
 4. Portaländerung → Pixel;
 5. parallelen Autosave während Upload prüfen;
 6. danach Poco.
+
+
+## BTB-SYNC-002 – Gerätebestätigung 1.3.23 / 200073
+Status: **PIXEL↔PORTAL BASIS-E2E BESTÄTIGT**
+
+- Pixel → Portal: **BESTANDEN**.
+- Portal → Pixel: **BESTANDEN**.
+- Der frühere Fehler „lokale Pixel-Eingabe erreicht Portal nicht und wird später vom Serverstand überschrieben“ ist im normalen Hin-und-zurück-Test nicht mehr reproduziert.
+- Parallel-Autosave/Conflict-E2E bleibt separat offen.
+- Poco/HELPER-E2E bleibt separat offen.
