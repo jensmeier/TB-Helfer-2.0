@@ -210,3 +210,14 @@ Status: **BESTÄTIGT**
 - Der vorherige Fehlerzustand „weiter 1.3.19 / Update verfügbar“ ist damit für diesen Testlauf nicht mehr vorhanden.
 - UPD-001 gilt als praktisch bestätigt.
 - Pixel/Poco-BTB-E2E bleibt davon getrennt weiterhin offen.
+
+
+## BTB-SYNC-001 E2E 1.3.21 weiterhin fehlerhaft
+Status: **FEHLER REPRODUZIERT / SOURCE-FIX NICHT AUSREICHEND**
+
+Praxis auf **1.3.21 / 200071**:
+- Pixel ist der verantwortliche TB, aber die untere Aktion **„BTB Abschluss“** springt weiterhin sichtbar hin und her.
+- Poco zeigt den aktiven BTB **26.09** nur sehr kurz und fällt direkt wieder auf **„kein BTB vorhanden“** zurück.
+- Damit ist der Fix `f57c532...` source-seitig zwar vorhanden, praktisch aber **nicht ausreichend**.
+- Server/Portal-Lifecycle für denselben 26.09-BTB war zuvor bestätigt ACTIVE; kein neuer Server-/NAS-Workaround auf Verdacht.
+- Nächster Schritt: Android Runtime-/Sourcepfade um `BtbServerStateStore`, Active-Pointer und Lifecycle-Watcher vollständig verfolgen; insbesondere prüfen, ob ServerState zeitweise fehlt/gelöscht wird oder unter einer anderen BTB-ID gespeichert wird.

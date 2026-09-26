@@ -151,3 +151,12 @@ Status: **BESTÄTIGT**
 - Update-E2E: **BESTÄTIGT**.
 - UPD-001 darf ohne neuen reproduzierbaren Fehler nicht wieder geöffnet werden.
 - BTB-SYNC-001 / Pixel-Poco-Fach-E2E bleibt offen.
+
+
+## BTB-SYNC-001 – Praxis 1.3.21 weiterhin fehlerhaft
+Status: **REPRODUZIERT / SOURCE-FIX NICHT AUSREICHEND**
+- Pixel: `BTB Abschluss` flackert weiterhin.
+- Poco: aktiver 26.09-BTB verschwindet weiterhin nach sehr kurzer Anzeige.
+- Installierter Stand: 1.3.21 / 200071, Updateweg bestätigt.
+- Deshalb keine Versions-/Updateursache mehr.
+- Nächste Quellprüfung: ServerState-Persistenz/ID-Mapping/Pointer-Schreiber/Lifecycle-Watcher.

@@ -6,11 +6,11 @@ Stand: 2026-09-26
 |---|---:|---|---|---|
 | REL-001 | P0 | ANDROID | 200070 wurde bereits für Updateversuch verwendet | nächster Build 1.3.21 / 200071; weitere Builds strikt hochzählen |
 | DEV-META-001 | P2 | SERVER | `tb.devices.app_version/app_build` bleiben nach App-Update ohne Neuaktivierung auf altem Aktivierungsstand | später Runtime-Metadaten-Updatevertrag definieren; kein Blocker für BTB-SYNC-001 |
-| BTB-SYNC-001 | P0 | ANDROID | Source-Fix committed: Server-active hat in BtbActiveContext Vorrang | Build 200070 → Pixel/Poco installieren → BTB 26.09 E2E |
+| BTB-SYNC-001 | P0 | ANDROID | 1.3.21 E2E weiter fehlerhaft: Pixel Button flackert, Poco verliert 26.09 | ServerState-Persistenz + ID-Mapping + alle Pointer-Schreiber analysieren |
 | NET-001 | P1 | GEMEINSAM | Pixel synchronisiert wieder; Ursache des vorherigen App-DNS-Fehlers ungeklärt | nur bei erneuter Reproduktion vertiefen; jetzt Fach-E2E fortsetzen |
 | E2E-001 | P0 | GEMEINSAM | Verantwortliches TB-Handy muss zuerst mit Server/Portal sauber funktionieren | echte Fachkette Handy ↔ Server ↔ Portal reproduzierbar prüfen |
 | IMG-001 | P1 | GEMEINSAM | Quellaudit bestätigt: Android lädt Volloriginal hoch und nutzt Server-Renditions nicht | nach stabilem Hauptgerät-/Helfer-Sync ANDROID: Sync-JPEG + preview/thumb + Metadaten; SERVER: Migration015/Renditions E2E |
-| DEV-001 | P0 | ANDROID | Poco-Erstabgleich abgeschlossen und Baustelle geladen; BTB 26.09 verschwindet nach kurzem Anzeigen | gemeinsam mit BTB-SYNC-001 diagnostizieren; kein weiterer Reset |
+| DEV-001 | P0 | ANDROID | Poco verliert 26.09 auch auf 1.3.21 weiterhin nach kurzem Anzeigen | gemeinsam mit BTB-SYNC-001 Source-Ursache vollständig isolieren; kein Reset |
 | AND-001 | P0 | ANDROID | 1.3.21 / 200071 Build + Updateinstallation bestätigt; Fach-E2E offen | Pixel → Poco → BTB 26.09 |
 | SRV-001 | P1 | SERVER | Migration 015 nicht praktisch bestätigt | Deploy + Runtime-Probe |
 | SYNC-001 | P2 | GEMEINSAM | vollständiger 15×15 Last-/Delta-E2E offen; Delta-Wait 255/255 als Teiltest bestanden | Gesamtlast nach Hauptgerät-/Helfer-E2E und nach RAM-/NAS-Ausbau wiederholen |

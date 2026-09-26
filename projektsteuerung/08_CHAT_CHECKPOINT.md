@@ -216,3 +216,13 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Release-MD/APK-Paarung funktioniert.
 - UPD-001: **BESTÄTIGT**.
 - Nächster Arbeitsblock: BTB-SYNC-001 mit Pixel und Poco auf dem aktuellen Build erneut testen.
+
+
+## BTB-SYNC-001 – 1.3.21 E2E fehlgeschlagen
+- Update auf 1.3.21 / 200071 funktioniert und ist bestätigt.
+- Fach-E2E bleibt jedoch fehlerhaft:
+  - Pixel Haupt-TB: `BTB Abschluss` flackert weiterhin.
+  - Poco HELPER: 26.09 erscheint kurz und verschwindet sofort wieder.
+- Damit ist `f57c532...` nicht ausreichend.
+- Nächster Android-Diagnoseblock: `BtbServerStateStore` Persistenz/Keys, lokale/serverseitige BTB-ID-Zuordnung, Pointer-Schreiber und Lifecycle-Watcher.
+- Keine App-Daten löschen, keine Neuaktivierung, kein NAS-/Server-Umbau.

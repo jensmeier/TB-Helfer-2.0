@@ -8,11 +8,11 @@ Stand: 2026-09-26
 | Android 1.3.21 / 200071 Installation | BESTÄTIGT | installiert / Updateweg funktioniert |
 | UPD-001 Updateprüfung 1.3.21 / 200071 | BESTÄTIGT | geschlossen; nur bei neuer Reproduktion wieder öffnen |
 | Pixel/Poco Versionsgleichstand | BENUTZER BESTÄTIGT: BEIDE 1.3.19 | Server-DB-Appversion ist Aktivierungs-Snapshot und kein Runtime-Nachweis |
-| Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200070 praktisch prüfen |
+| Pixel ACTIVE↔PDF-Flackern | 1.3.21 PRAKTISCH WEITERHIN FEHLERHAFT | Runtimepfad ServerState/Lifecycle-Watcher prüfen |
 | Haupt-TB-Handy ↔ Server/Portal | PRIORITÄT / E2E OFFEN | echte Fachkette zuerst sauber bestätigen |
 | BTB 26.09 Pixel → Server/Portal/Poco | PIXEL→SERVER→PORTAL BESTÄTIGT / POCO FEHLER OFFEN | Portal nach Reload korrekt; Poco Active-Pointer/UI-Apply prüfen |
 | Haupt-TB-Handy DNS/API-Erreichbarkeit | PIXEL SYNCHRONISIERT WIEDER / URSACHE ALTFEHLER OFFEN | Fachkette Pixel↔Server↔Portal weiterprüfen; DNS-Altfehler nur bei Wiederholung vertiefen |
-| Poco Team-/BTB-Daten | SOURCE-FIX COMMITTED / BUILD+INSTALL+E2E OFFEN | 200070 bauen, Pixel/Poco installieren, BTB 26.09 erneut prüfen |
+| Poco Team-/BTB-Daten | 1.3.21 PRAKTISCH WEITERHIN FEHLERHAFT | ServerState/ID-Mapping/Active-Pointer vollständig prüfen |
 | Helfer Schicht Ende → Server FINISHED → Pixel | E2E OFFEN | echter Geräte-/Server-Lauf |
 | Haupt-TB Finalize + PDF | TEILWEISE BESTÄTIGT | Android-Gesamtkette offen |
 | IMG-001 Handyfoto → Server | QUELLAUDIT FEHLER BESTÄTIGT / FIX SPÄTER | Nach E2E-PRIO-001 Android-Fix; dann Original- vs Sync-Dateigröße messen |
@@ -73,3 +73,10 @@ Nachtest: beide öffentlichen Seiten sind auf demselben Hauptgerät im Browser e
 - Release-MD + APK desselben Builds verwendet.
 - Build/Installation/Update-E2E: **BESTÄTIGT**.
 - BTB-SYNC-001 bleibt separater nächster Geräte-E2E.
+
+
+### BTB-SYNC-001 E2E 1.3.21
+- Pixel: Abschlussbutton flackert weiterhin.
+- Poco: 26.09 kurz sichtbar, danach kein BTB vorhanden.
+- Ergebnis: **NICHT BESTANDEN**.
+- Update-E2E bleibt separat BESTÄTIGT.

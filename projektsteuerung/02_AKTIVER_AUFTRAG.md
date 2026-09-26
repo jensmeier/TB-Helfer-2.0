@@ -275,3 +275,17 @@ Status: **VERBINDLICHE BENUTZERANFORDERUNG**
 - Release-MD/APK-Paarung und Android-Schutzfix sind praktisch wirksam.
 - UPD-001: **BESTÄTIGT**.
 - Nächster fachlicher Test bleibt BTB-SYNC-001 auf Pixel/Poco mit demselben 26.09-BTB.
+
+
+### BTB-SYNC-001 E2E-Nachtest 1.3.21 fehlgeschlagen
+- Benutzer testet 1.3.21 / 200071.
+- Pixel: weiterhin Flackern der unteren `BTB Abschluss`-Anzeige trotz Haupt-TB-Rolle.
+- Poco: 26.09 erscheint nur kurz, danach wieder `kein BTB vorhanden`.
+- Bewertung: vorhandener Active-Pointer-Fix deckt den tatsächlichen Laufzeitpfad noch nicht vollständig ab.
+- Keine Poco-Daten löschen, keine Neuaktivierung, keine NAS-/Serveränderung.
+- Diagnoseauftrag ANDROID:
+  1. alle Schreib-/Löschstellen von `BtbServerStateStore` prüfen;
+  2. Mapping lokale `btbId` ↔ Server-BTB-ID ↔ Client-BTB-ID prüfen;
+  3. alle Stellen prüfen, die Active-Pointer setzen/lösen;
+  4. Lifecycle-Watcher/Bottom-Button auf Wechsel zwischen ServerState und Legacy-Fallback prüfen;
+  5. erst nach reproduzierbarer Source-Ursache korrigieren.
