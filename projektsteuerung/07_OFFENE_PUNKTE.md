@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| AND-BUILD-200075 | P0 | ANDROID | lokaler Build reproduzierbar fehlerhaft: generateBtb200043Sources findet alten Android-200047-Ortsmarker-Anker nicht | Buildgenerator/kanonischen Ortsmarkerpfad korrigieren, dann 200075 erneut bauen |
+| AND-BUILD-200075 | P0 | ANDROID | Sourcegenerator-Fix 606aa3a committed; alter 200047-Anker entfernt | 200075 erneut lokal bauen; nächsten Fehler nur reproduzierbar weiterverfolgen |
 | BTB-EDIT-001 | P1 | ANDROID | Diagnose abgeschlossen; Server section-/photo-PATCH source-seitig vorhanden; Android-Modell festgelegt | SectionItem + Node-Key + Foto-Metadaten + Editpfad implementieren; Identität erhalten |
 | PORTAL-WEATHER-001 | P1 | GEMEINSAM | Android 0-mm→null-Fehler bestätigt; tempC wird source-seitig serialisiert, Runtime-Verluststelle offen | Android 0-mm erhalten; Server-Header/Portal-Payload für tempC separat vergleichen |
 | PORTAL-LIVE-001 | P0 | SERVER | SSE/Change-Feed Source-Fix vorhanden; laufendes NAS braucht noch F5 | SERVER deployen + Portal ohne F5 E2E; Android nicht ändern |

@@ -42,7 +42,7 @@ SERVERVERTRAG:
 
 TESTSTATUS:
 - QUELLSTAND VORBEREITET
-- BUILD FEHLGESCHLAGEN – lokaler Android-Studio-Build erreicht generateBtb200043Sources und scheitert am veralteten Android-200047-Ortsmarker-Anker
+- BUILD ERNEUT OFFEN – Sourcegenerator-Fix 606aa3a beseitigt den reproduzierten Android-200047-Ankerfehler
 - GitHub CI RUN 36252246995 blieb zusätzlich infrastrukturell vor Step 1 ohne Runner
 - INSTALLATION OFFEN
 - BTB-EDIT-001 E2E OFFEN
@@ -70,3 +70,11 @@ LOKALER BUILD-FEHLER:
 - Android 200047: Hauptbaustellen-Ortsmarker-Anker wurde nicht gefunden
 - Ursache: Build-time-Source-Patch erwartet alten BautagebuchFragment-Quellanker, der durch BTB-EDIT-001 nicht mehr existiert.
 - 1.3.25 / 200075 bleibt die Zielversion; kein versionCode-Sprung, da kein erfolgreicher APK-Build vorliegt.
+
+
+SOURCEGENERATOR-FIX:
+- Commit 606aa3ad1f8ea438372484b056a0fc1264ae2aac.
+- Veralteter Android-200047-Build-time-Patch entfernt.
+- Hauptbaustelle schreibt im kanonischen Editor jetzt explizit @ORT=0; Unterbaustellen behalten lokale @ORT-Hilfe plus stabile @NODE/clientNodeKey-Syncidentität.
+- Legacy-Standalone-Ortsmarker bleiben lesbar; Inline-Ortsmarker wirken nicht auf Folgezeilen.
+- Source-Check PASST; Build 200075 muss erneut tatsächlich ausgeführt werden.
