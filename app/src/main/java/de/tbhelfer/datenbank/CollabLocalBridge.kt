@@ -368,8 +368,15 @@ class CollabLocalBridge(
                     if (!file.exists() || !file.isFile) continue
                     val uploadName = semanticFilename("DEFECT", mf.art.name, file.name)
                     when (val result = collabRepository.uploadAttachment(
-                        token, server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_DEFECT,
-                        serverEntity.serverId, file, uploadName, CollabSyncRepository.mimeTypeFor(file), api, server1Api
+                        token = token,
+                        worksiteServerId = server.worksiteServerId,
+                        parentEntityType = SyncCollabPendingChangeEntity.TYPE_DEFECT,
+                        parentEntityId = serverEntity.serverId,
+                        file = file,
+                        uploadFilename = uploadName,
+                        mimeType = CollabSyncRepository.mimeTypeFor(file),
+                        api = api,
+                        server1Api = server1Api
                     )) {
                         CollabSyncRepository.LocalAttachmentUploadResult.SessionInvalid -> return AttachmentUploadResult.SessionInvalid
                         CollabSyncRepository.LocalAttachmentUploadResult.Unsupported -> return AttachmentUploadResult.Unsupported
@@ -393,8 +400,15 @@ class CollabLocalBridge(
                     if (!file.exists() || !file.isFile) continue
                     val uploadName = semanticFilename("ACCEPTANCE_FOTO", ref.bildArt.name, file.name)
                     when (val result = collabRepository.uploadAttachment(
-                        token, server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
-                        serverEntity.serverId, file, uploadName, CollabSyncRepository.mimeTypeFor(file), api, server1Api
+                        token = token,
+                        worksiteServerId = server.worksiteServerId,
+                        parentEntityType = SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
+                        parentEntityId = serverEntity.serverId,
+                        file = file,
+                        uploadFilename = uploadName,
+                        mimeType = CollabSyncRepository.mimeTypeFor(file),
+                        api = api,
+                        server1Api = server1Api
                     )) {
                         CollabSyncRepository.LocalAttachmentUploadResult.SessionInvalid -> return AttachmentUploadResult.SessionInvalid
                         CollabSyncRepository.LocalAttachmentUploadResult.Unsupported -> return AttachmentUploadResult.Unsupported
@@ -413,8 +427,15 @@ class CollabLocalBridge(
                     if (!file.exists() || !file.isFile) continue
                     val uploadName = semanticFilename("ACCEPTANCE_ANLAGE", anlage.typ.name, file.name)
                     when (val result = collabRepository.uploadAttachment(
-                        token, server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
-                        serverEntity.serverId, file, uploadName, CollabSyncRepository.mimeTypeFor(file), api, server1Api
+                        token = token,
+                        worksiteServerId = server.worksiteServerId,
+                        parentEntityType = SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
+                        parentEntityId = serverEntity.serverId,
+                        file = file,
+                        uploadFilename = uploadName,
+                        mimeType = CollabSyncRepository.mimeTypeFor(file),
+                        api = api,
+                        server1Api = server1Api
                     )) {
                         CollabSyncRepository.LocalAttachmentUploadResult.SessionInvalid -> return AttachmentUploadResult.SessionInvalid
                         CollabSyncRepository.LocalAttachmentUploadResult.Unsupported -> return AttachmentUploadResult.Unsupported
