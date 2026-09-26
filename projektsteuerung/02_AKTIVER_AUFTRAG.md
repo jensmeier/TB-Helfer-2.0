@@ -341,3 +341,34 @@ Server-Arbeitsumfang dieses Blocks:
 4. Bestehenden bestätigten SSE-Live-Refresh nicht umbauen.
 5. Source-Checks ausführen; Deployment/E2E bleibt danach getrennt offen.
 6. Android-`app/**` wird in diesem SERVER-Block nicht geändert.
+
+
+### BTB-EDIT-001 – Server-Quellblock umgesetzt
+Status: **QUELLSTAND FERTIG / DEPLOY + MIGRATION 016 + E2E OFFEN**
+
+Server-Umsetzung:
+- `PATCH /btbs/{btb_id}/entries/{entry_id}` kann denselben Eintrag versioniert zwischen Punkt 4–8 verschieben.
+- `worksiteNodeKey` wird gegen den kanonischen Worksite-Node-Baum validiert.
+- Migration `016_btb_photo_link_metadata.sql` ergänzt versionierte BTB-spezifische Foto-Verknüpfungsmetadaten.
+- `PATCH /btbs/{btb_id}/photos/{file_id}` ändert die fachliche Foto-Zuordnung, ohne Foto-Datei, Aufnahmezeit oder GPS umzuschreiben.
+- BTB-Detail liefert effektive Foto-Metadaten + `link_version`.
+- Portal lädt denselben Worksite-Baum wie Android und kann bei Punkt 4–8 Firma/Allgemein, Unterbaustelle, Zeit, KM und Text bearbeiten.
+- Fotos können im Portal nachträglich Punkt/Firma/Unterbaustelle/Text/KM zugeordnet werden.
+- Unterbaustellen werden hierarchisch und Android-nah dargestellt, z. B. freie Strecke mit KM-Bereich.
+- bestätigter SSE-Live-Refresh bleibt erhalten.
+
+Quellprüfung:
+- Portal-JavaScript Syntax: **PASS**.
+- Source-Assertions 94–100: **PASS**.
+- Capture-Schutz für GPS/Aufnahmezeit: **PASS**.
+- GitHub Actions aktueller HEAD: kein Testnachweis, da keine Runner-Schritte geliefert wurden.
+
+Parallelstand ANDROID:
+- aktueller Android-HEAD `da0806fe29f34363247463bc4fb599778ee42a53`;
+- Entry-Modell/Node-Key/Entry-Identität bereits source-seitig in Umsetzung;
+- Android-Foto-Umhängen mit stabilem `worksiteNodeKey`/Foto-PATCH noch offen.
+
+Noch nicht behaupten:
+- nicht deployed;
+- Migration 016 nicht praktisch angewendet;
+- kein Server-Runtime-/Geräte-E2E für BTB-EDIT-001.
