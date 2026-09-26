@@ -4,7 +4,7 @@ Stand: 2026-09-26
 Branch: `feature/tb-android-2.0`
 Fach-HEAD vor Projektsteuerungscommit: `d272f8a7586cce3ea1eda29100473f7af5d540bb`
 Draft-PR: #7
-Version: **1.3.20 / 200070**
+Version: **1.3.23 / 200073**
 
 - Server/Android-Vertrag 25.09 im Quellstand berücksichtigt.
 - Pixel ACTIVE↔PDF-Flackern source-seitig korrigiert.
@@ -177,3 +177,36 @@ Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
   - Gradle 1.3.22 / 200072;
   - passende Release-MD vorhanden.
 - **Kein Buildnachweis**; GitHub Actions hat für den Fixcommit keinen Run erzeugt.
+
+
+## BTB-SYNC-002 – P0 Outbox-Reihenfolge korrigiert
+Status: **SOURCE-FIX UMGESETZT / BUILD OFFEN**
+
+Ausgangsfehler:
+- `SelectiveSyncWorker` konnte einen Server-Snapshot lokal anwenden, bevor der gerade gespeicherte Pixel-Stand in Pending/Outbox exportiert war.
+- Dadurch war stiller Verlust lokaler BTB-Fachänderungen möglich.
+
+Android-Fix:
+- dirty BTB zuerst `exportBtbChange(...)`;
+- kein vorgelagerter `loadBtbAccess(...)` + `applyServerStateToLocal(...)` mehr;
+- Upload/Version/Conflict erst danach über den bestehenden Mutation-Pfad;
+- `CollabLocalBridge` blockiert BTB-Snapshot-Apply bei Pending oder Dirty;
+- lokaler Save und Server-Apply sind pro BTB serialisiert;
+- Dirty-Generation verhindert, dass ein während des Uploads neuer Autosave als verarbeitet gilt;
+- nach bestätigtem Upload wird der Snapshot nur dann lokal angewendet, wenn der verarbeitete Dirty-Stand noch aktuell ist.
+
+Zielversion: **1.3.23 / 200073**.
+Release-MD: `projektsteuerung/releases/TB-Helfer_1.3.23_200073.md`.
+
+Nicht geändert:
+- kein `server/**`;
+- Server-/DB-Vertrag unverändert;
+- PORTAL-LIVE-001 bleibt SERVER: Source-Fix vorhanden, Deploy/E2E offen.
+
+Nächster Schritt:
+1. Build 200073;
+2. Pixel installieren;
+3. Pixeländerung → Portal;
+4. Portaländerung → Pixel;
+5. parallelen Autosave während Upload prüfen;
+6. danach Poco.
