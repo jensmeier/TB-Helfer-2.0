@@ -211,3 +211,21 @@ Gemeinsam offen:
 4. Eintrag 4→5, Firmawechsel, BÜ-Wechsel sowie Foto-Umhängen in beide Richtungen E2E prüfen;
 5. GPS/Aufnahmezeit müssen unverändert bleiben;
 6. Live-Refresh weiterhin ohne F5 bestätigen.
+
+
+## INT-001 – Android/Server Branch-Integration
+Status: **KONFLIKT FESTGESTELLT / NOCH NICHT AUFGELÖST**
+
+- Live-Prüfung nach paralleler BTB-EDIT-001-Entwicklung:
+  - Server-Branch und Android-Branch sind divergiert.
+  - Android Draft-PR #7 meldet aktuell `mergeable=false`.
+- Android arbeitet gleichzeitig aktiv weiter; deshalb kein Merge/Rebase mitten in diesem Arbeitsblock.
+- Android-Stand bis `7c7cf7b502ec1f701f167c13780b10a014bba6d9`:
+  - Entry-/Node-Identität strukturiert;
+  - lokale Foto-Korrektur enthält jetzt `firmaId`, `worksiteNodeKey`, `bildtyp`;
+  - Server-Foto-PATCH-Nutzung/Sync ist noch separat zu bestätigen.
+- Nach Abschluss des Android-Blocks ist SERVER als Integrator zuständig:
+  1. aktuellen Serverstand in Android-Branch integrieren;
+  2. Konflikte in gemeinsamen `projektsteuerung/**`-Dateien bewusst zusammenführen;
+  3. `server/**` und `app/**` jeweils aus ihrem zuständigen Branch erhalten;
+  4. erst danach gemeinsamen Deploy/Build/E2E starten.
