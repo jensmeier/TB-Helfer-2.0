@@ -60,9 +60,9 @@ class SelectiveSyncWorker(
         val collab = ServiceLocator.collabSyncRepository
         val btbApi = Server1BtbApi()
 
-        // Kein Team-/Worksite-Vollscan: jeder Dirty-Scope wird unten exakt gegen seine
-        // bereits bekannte serverBtbId geprüft. Neue lokale BTBs haben noch keine serverBtbId
-        // und werden direkt über den bestehenden idempotenten Create-Pfad angelegt.
+        // Kein Team-/Worksite-Vollscan: jeder Dirty-Scope wird exakt aus dem lokalen Fachstand
+        // exportiert. Bekannte Server-BTBs werden im bestehenden Mutation-/Versionspfad geprüft;
+        // neue lokale BTBs laufen weiterhin über den idempotenten Create-Pfad.
 
         var retryNeeded = false
 
@@ -76,8 +76,6 @@ class SelectiveSyncWorker(
                 retryNeeded = true
                 continue
             }
-            val worksiteId = boundItem.context.worksiteServerId
-
             // BTB-SYNC-002: Bei einem Dirty-BTB darf niemals zuerst ein Server-Snapshot
             // lokal angewendet werden. Der lokale Stand wird zuerst persistent in die Outbox
             // exportiert; Serverversion/Conflict werden anschließend im Mutation-Pfad geprüft.
@@ -174,7 +172,7 @@ class SelectiveSyncWorker(
                                 continue
                             }
 
-                            if (currentServerBtbId.isNullOrBlank()) {
+                            if (currentServerBtbId == null || currentServerBtbId.isBlank()) {
                                 // Upload war erfolgreich, aber der bestätigte Server-BTB ist lokal
                                 // noch nicht eindeutig auflösbar. Dirty erneut markieren und gezielt
                                 // wiederholen statt einen breiten Snapshot anzuwenden.
