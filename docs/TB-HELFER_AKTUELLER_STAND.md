@@ -1860,3 +1860,14 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - `server1_post_deploy_e2e.py` verwendet für den Server-Lasttest standardmäßig Portal-Auth; `--delta-auth device` bleibt für einen expliziten Bearer-Test verfügbar. Der mobile Bearer-/Delta-Vertrag wird weiterhin im gemeinsamen Pixel/Poco-E2E praktisch bestätigt.
 - Source-Check 111 und Staging-Runbook wurden entsprechend erweitert.
 - `STATUS.xlsx` bleibt wegen des abweichenden Android-Workbook-Blobs unverändert.
+
+
+### 26.09.2026 – 32-Client-Delta-Lasttest praktisch bestanden
+
+- Auf der echten Synology wurde `sync_wait_loadtest.py` intern gegen `http://127.0.0.1:8080` mit Portal-Session ausgeführt.
+- Authentifizierter Delta-Preflight erfolgreich; verwendeter Startcursor: `long_poll_after=279`.
+- Praktischer 32-Client-Long-Poll-Lauf: **32 erfolgreich / 0 Fehler**.
+- Gemessener Lauf: Walltime **26.06 s**, Latenz min **10.17 s**, Median **14.13 s**, max **26.00 s**.
+- Damit ist der 32-Client-Server-Lasttest für `/api/v1/sync/changes/wait` praktisch bestätigt. Der höhere 255-Client-Stagingtest bleibt als nächster Schritt offen.
+- Der mobile Device-Bearer-/Delta-Vertrag bleibt separat im Pixel/Poco-E2E zu bestätigen.
+- `STATUS.xlsx` bleibt wegen des abweichenden Android-Workbook-Blobs unverändert.
