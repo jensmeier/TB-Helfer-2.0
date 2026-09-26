@@ -101,3 +101,12 @@ Aktiver BTB 26.09: Server/NAS enthält 4 zugehörig wirkende Bilder, Portal zeig
 - Benutzeranforderung: Neue BTBs/Bilder/Fachdaten sollen in einer offenen Portalansicht automatisch sichtbar werden; F5 darf für normalen Betrieb nicht nötig sein.
 - Bestehende Architekturregel gilt: offene Portalansichten dürfen live aktualisieren, aber nicht über 2-Sekunden-DB-Polling pro Browser. Vorhandener Change-Feed/SSE-/Long-Poll-Pfad ist zu verwenden.
 Server-Seite ist zuständig; Umsetzung im Portal-JavaScript gegen vorhandenen Change-Feed.
+
+## PORTAL-LIVE-001 – QUELLSTAND FERTIG
+- Source-Fix Commit: `c0355161a2d7ecceaadd1fc79f2bbade346a78cc`.
+- `v1_btb.html` und `v1_worksite.html` abonnieren jetzt den vorhandenen worksite-bezogenen SSE-Change-Feed `/api/v1/sync/events`.
+- Relevante Änderungen werden entprellt und gezielt nachgeladen; auf der BTB-Seite insbesondere `BTB`, `BTB_ENTRY`, `BTB_PARTICIPANT` und `FILE`.
+- Baustellenseite aktualisiert Teams/BTBs, Medien, Mängel, Abnahmen, Mitglieder und Baum abhängig vom Change-Typ.
+- Kein 2-Sekunden-Polling; vorhandener gemeinsamer Change-Hub wird verwendet.
+- Source-Assertions für EventSource/SSE-Pfad und gezielte Reload-Funktionen: **PASS**.
+- Status bleibt: **QUELLSTAND FERTIG / DEPLOY OFFEN / E2E OFFEN**.

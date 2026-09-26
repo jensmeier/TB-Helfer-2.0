@@ -218,3 +218,13 @@ Umfang zuerst:
 2. bei relevanten Änderungen nur die betroffenen Portalbereiche nachladen (Teams/BTBs, Medien, Mängel, Abnahmen);
 3. keine vollständige Seitennavigation und kein permanentes Kurzintervall-Polling;
 4. Reconnect/Fehler robust behandeln; F5 bleibt nur Recovery.
+
+### PORTAL-LIVE-001 Source-Fix umgesetzt
+- Source-Fix Commit: `c0355161a2d7ecceaadd1fc79f2bbade346a78cc`.
+- `v1_btb.html` und `v1_worksite.html` abonnieren jetzt den vorhandenen worksite-bezogenen SSE-Change-Feed `/api/v1/sync/events`.
+- Relevante Änderungen werden entprellt und gezielt nachgeladen; auf der BTB-Seite insbesondere `BTB`, `BTB_ENTRY`, `BTB_PARTICIPANT` und `FILE`.
+- Baustellenseite aktualisiert Teams/BTBs, Medien, Mängel, Abnahmen, Mitglieder und Baum abhängig vom Change-Typ.
+- Kein 2-Sekunden-Polling; vorhandener gemeinsamer Change-Hub wird verwendet.
+- Source-Assertions für EventSource/SSE-Pfad und gezielte Reload-Funktionen: **PASS**.
+- Status bleibt: **QUELLSTAND FERTIG / DEPLOY OFFEN / E2E OFFEN**.
+Nächster Schritt: Serverstand deployen und real prüfen, dass neue Handy-Bilder/BTB-Änderungen ohne F5 in offener Portalansicht erscheinen.

@@ -152,3 +152,14 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Benutzeranforderung: Neue BTBs/Bilder/Fachdaten sollen in einer offenen Portalansicht automatisch sichtbar werden; F5 darf für normalen Betrieb nicht nötig sein.
 - Bestehende Architekturregel gilt: offene Portalansichten dürfen live aktualisieren, aber nicht über 2-Sekunden-DB-Polling pro Browser. Vorhandener Change-Feed/SSE-/Long-Poll-Pfad ist zu verwenden.
 - Nächster Server-Arbeitsblock: bestehende Portal-Templates und `/api/v1/sync/events`/`changes/wait` prüfen und gezielten Live-Refresh implementieren.
+
+## PORTAL-LIVE-001 – Source-Fix gesichert
+- Source-Fix Commit: `c0355161a2d7ecceaadd1fc79f2bbade346a78cc`.
+- `v1_btb.html` und `v1_worksite.html` abonnieren jetzt den vorhandenen worksite-bezogenen SSE-Change-Feed `/api/v1/sync/events`.
+- Relevante Änderungen werden entprellt und gezielt nachgeladen; auf der BTB-Seite insbesondere `BTB`, `BTB_ENTRY`, `BTB_PARTICIPANT` und `FILE`.
+- Baustellenseite aktualisiert Teams/BTBs, Medien, Mängel, Abnahmen, Mitglieder und Baum abhängig vom Change-Typ.
+- Kein 2-Sekunden-Polling; vorhandener gemeinsamer Change-Hub wird verwendet.
+- Source-Assertions für EventSource/SSE-Pfad und gezielte Reload-Funktionen: **PASS**.
+- Status bleibt: **QUELLSTAND FERTIG / DEPLOY OFFEN / E2E OFFEN**.
+- Deployment nach Synology-Regel: GitHub Desktop → File Station → Container Manager.
+- Danach E2E mit offenem Portal und neuem Handyfoto; F5 darf nicht mehr nötig sein.

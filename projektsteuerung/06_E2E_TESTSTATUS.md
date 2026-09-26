@@ -16,7 +16,7 @@ Stand: 2026-09-26
 | Haupt-TB Finalize + PDF | TEILWEISE BESTÄTIGT | Android-Gesamtkette offen |
 | IMG-001 Handyfoto → Server | QUELLAUDIT FEHLER BESTÄTIGT / FIX SPÄTER | Nach E2E-PRIO-001 Android-Fix; dann Original- vs Sync-Dateigröße messen |
 | IMG-001 Portal → Handy | QUELLAUDIT FEHLER BESTÄTIGT / FIX SPÄTER | Nach E2E-PRIO-001 Android auf preview/thumb; dann Quelle/Rendition/Gerät vergleichen |
-| BTB 26.09 Fotos Server → Portal | NACH F5 VOLLSTÄNDIG / LIVE-REFRESH FEHLT | offene Portalansicht automatisch über Change-Feed aktualisieren |
+| BTB 26.09 Fotos Server → Portal | SOURCE-FIX / DEPLOY+E2E OFFEN | nach Deploy neues Handyfoto senden und ohne F5 Sichtbarkeit prüfen |
 | IMG-001 Handy → anderes Handy | QUELLAUDIT FEHLER BESTÄTIGT / FIX SPÄTER | Nach E2E-PRIO-001 Pixel/Poco Abmessungen/Größe vergleichen |
 | Migration 015 | DEPLOY/E2E OFFEN | Runtime-Probe |
 | 15×15 Delta-/Lasttest | KAPAZITÄTSTEILTEST 255/255 BESTANDEN / GESAMT-E2E OFFEN | Erst Hauptgerät↔Portal, dann HELPER/Poco; Gesamtlast nach RAM-/NAS-Ausbau wiederholen |
