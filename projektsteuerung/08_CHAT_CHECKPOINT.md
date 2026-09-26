@@ -256,3 +256,13 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Build konnte in diesem Arbeitsblock nicht ausgeführt werden: GitHub Actions erzeugte für die aktuellen PR-Commits keinen Run; Container hat keinen externen GitHub-Netzzugriff.
 - Daher Status sauber getrennt: **SOURCE-FIX UMGESETZT / BUILD OFFEN / INSTALLATION OFFEN / E2E OFFEN**.
 - Nächster Test nach Build: Pixel `ABC` → Portal `ABC` → Portal `XYZ` → Pixel `XYZ`; Parallel-Autosave darf nicht verschwinden. Danach Poco.
+
+
+## BTB-SYNC-002 – bidirektionaler Basistest 1.3.23
+- Benutzer bestätigt den gerade getesteten BTB-Sync: **funktioniert in beide Richtungen**.
+- Pixel → Portal: **BESTANDEN**.
+- Portal → Pixel: **BESTANDEN**.
+- Damit ist BTB-SYNC-002 für den normalen bidirektionalen Pfad praktisch bestätigt.
+- Noch nicht als bestätigt markieren: gezielter Parallel-Autosave-/Conflict-Fall während laufendem Upload.
+- Poco/HELPER bleibt separater E2E.
+- Server/API/DB unverändert; PORTAL-LIVE-001 bleibt weiterhin eigener SERVER-Deploy/E2E-Punkt.
