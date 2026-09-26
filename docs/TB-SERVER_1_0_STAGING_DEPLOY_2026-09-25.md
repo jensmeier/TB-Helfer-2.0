@@ -377,3 +377,35 @@ http://127.0.0.1:8080
 Der öffentliche Cloudflare-/Browserweg bleibt ein separater praktischer E2E mit einem echten Browser:
 normalen Portalnutzer und Admin in zwei Tabs anmelden, zwischen beiden wechseln und die unabhängigen
 Sessions/Logouts bestätigen.
+
+
+### Realistischer Portal-Lasttest mit getrennten Sessions
+
+Der erste hohe Portal-Lasttest verwendete eine einzige Portal-Session für alle simulierten Clients.
+Da jeder Request `portal_sessions.last_seen_at` aktualisiert, serialisiert dieser Aufbau künstlich
+auf derselben DB-Zeile. Deshalb ist für Kapazitätsmessungen ab jetzt der Standard:
+
+```
+--portal-session-mode unique
+```
+
+Dabei erzeugt das Testwerkzeug **vor** der Zeitmessung für jeden simulierten Client eine eigene
+Portal-Session. Der eigentliche Long-Poll-Test startet erst danach. Die erzeugten Testsessions
+werden am Ende wieder per Portal-Logout widerrufen.
+
+Beispiel:
+
+```bash
+python /app/tools/sync_wait_loadtest.py \
+  --base-url http://127.0.0.1:8080 \
+  --auth portal \
+  --portal-login <normaler-testnutzer> \
+  --portal-session-mode unique \
+  --clients 100 \
+  --wait-seconds 10 \
+  --timeout 40
+```
+
+Zum Vergleich kann `--portal-session-mode shared` den alten künstlichen Ein-Session-Test
+weiter reproduzieren. Ergebnisse aus `shared` dürfen nicht als Benutzerlimit pro Firma oder
+für den Gesamtserver interpretiert werden.
