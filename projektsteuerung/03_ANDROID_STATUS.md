@@ -67,3 +67,6 @@ Pixel läuft nach Benutzerbestätigung ebenfalls auf `1.3.19`. Der Serverwert `1
 
 ### BTB-SYNC-001 nach Portal-Bestätigung erneut reproduziert
 Poco zeigt den serverseitig und im Portal bestätigten aktiven 26.09-BTB kurz und danach wieder „kein BTB vorhanden“. Android-seitige Ursache jetzt isoliert.
+
+### BTB-SYNC-001 Source-Ursache
+`BtbActiveContext.laden()` kann einen serverseitig bestätigten aktiven BTB lokal wieder deaktivieren, weil es den lokalen Dokumentstatus `ABGESCHLOSSEN` höher bewertet als `BtbServerStateStore.active=true`. Der UI-Watcher läuft ca. alle 600 ms; das erklärt das kurze Anzeigen und anschließende Verschwinden. Android-Fix erforderlich; noch kein Build/E2E.
