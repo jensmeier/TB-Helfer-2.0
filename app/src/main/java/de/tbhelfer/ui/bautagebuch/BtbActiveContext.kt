@@ -2,6 +2,7 @@ package de.tbhelfer.ui.bautagebuch
 
 import android.content.Context
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.server.BtbServerStateStore
 import kotlinx.coroutines.flow.first
 
 /**
@@ -37,19 +38,42 @@ object BtbActiveContext {
             ?.takeIf { it.isNotBlank() }
             ?: return null
 
-        // Ein lokal oder von einem Teamgeraet abgeschlossener BTB darf nicht ueber einen stale
-        // Pointer weiter als "aktiv" erscheinen. Nur die ausdrueckliche Verlauf-Aktion
-        // "BTB bearbeiten" setzt bewusstReaktivieren(...) und erlaubt denselben Abschluss wieder.
+        val entry = BautagebuchSpeicher.ladenById(appContext, baustelleId, name, btbId) ?: return null
+
+        // BTB-SYNC-001 / Vertrag 26.09.2026:
+        // Bei servergebundenen BTBs ist der kanonische Server-Lifecycle vorrangig.
+        // Ein lokales/stales Abschluss-PDF oder eine alte Baseline darf einen vom Server
+        // weiterhin als aktiv bestaetigten BTB niemals aus dem Active-Pointer entfernen.
+        val serverState = BtbServerStateStore.state(appContext, btbId)
+        if (serverState != null) {
+            if (serverState.active) {
+                return Result(baustelleId, name, btbId, entry)
+            }
+
+            // Den servergebundenen Pointer erst loesen, wenn der Server den BTB
+            // eindeutig FINALIZED und nicht mehr aktiv bestaetigt hat.
+            if (serverState.serverFinalReadOnly) {
+                BtbActivePointerControl.nachAbschlussInaktivMerken(
+                    appContext,
+                    baustelleId,
+                    name,
+                    btbId
+                )
+                return null
+            }
+
+            // Fuer sonstige servergebundene Zwischenstaende entscheidet kein lokaler
+            // PDF-/Baseline-/Abschlussstatus ueber den Team-Lifecycle.
+            return Result(baustelleId, name, btbId, entry)
+        }
+
+        // Nur fuer rein lokale/Legacy-BTBs ohne Server-Snapshot bleibt die bisherige
+        // Abschlusslogik maßgeblich.
         val inactiveId = BtbActivePointerControl.nachAbschlussInaktiveBtbId(
             appContext, baustelleId, name
         )
         if (inactiveId == btbId) return null
 
-        val entry = BautagebuchSpeicher.ladenById(appContext, baustelleId, name, btbId) ?: return null
-
-        // Nicht die Legacy-/Transportfelder entscheiden ueber "geschlossen", sondern der
-        // tatsaechliche Dokumentstatus. NACHBEARBEITUNG und ENTWURF muessen aktiv bleiben;
-        // sonst verschwindet ein bewusst geoeffneter BTB waehrend Autosave/Sync wieder.
         val abgeschlossen =
             BtbDokumentVersionierung.status(appContext, entry) == BtbAbschlussStatus.ABGESCHLOSSEN
         if (abgeschlossen && !BtbActivePointerControl.istBewusstReaktiviert(
