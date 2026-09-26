@@ -1,6 +1,6 @@
 # TB-Helfer 2.0 – dauerhafter Projektstatus
 
-**Stand:** 2026-09-24  
+**Stand:** 2026-09-26  
 **Branch:** `feature/tb-server-1.0`  
 **Draft-PR:** #6 – TB-Server 1.0 – gemeinsame Serverbasis  
 **Funktionscommit globaler Katalog / Benutzeridentität:** `511bb5c00552b5a7e54d35d930ea982cf4629598`  
@@ -144,3 +144,15 @@
 | DONE-016 | Getrennter Restore-Test des FULL-Backups praktisch bestanden | ERLEDIGT | ☑ | Nach Korrektur des Worker-Environments wurde der bestätigte FULL-Backup-Lauf am 21.09.2026 erfolgreich in der getrennten Restore-Test-Umgebung geprüft. Background Job RESTORE_TEST = DONE, Restore-Lauf = OK. | — | Server 1.0 / staging | JA | 2026-09-21 | Live-Datenbank/Live-Storage wurden nicht als Restore-Ziel verwendet. |
 | DONE-017 | Backup-Retention praktisch bestanden | ERLEDIGT | ☑ | Die manuelle Aufbewahrungsprüfung lief am 21.09.2026 über den bestehenden Background-Worker als BACKUP_RETENTION mit Versuch 1 auf DONE. Bei 30 Tagen Aufbewahrung und mindestens 3 Backups je Art wurden die jungen Backups erwartungsgemäß nicht entfernt. | — | Server 1.0 / staging | JA | 2026-09-21 | Retention-Pfad bestätigt; gezielter Purge alter Testbackups erst sinnvoll, wenn ausreichend alte Artefakte vorhanden sind. |
 | DONE-018 | Restore-to-Target praktisch bestanden / Recovery vollständig abgenommen | ERLEDIGT | ☑ | Der bestätigte FULL-Lauf wurde erfolgreich in die getrennte Target-DB und Target-Ablage wiederhergestellt. CLI OK, RESTORE_TARGET status OK, 10 Migrationen/latest 10/5 Kerntabellen, 2 Dateien/34.267.460 Byte. | — | Server 1.0 / Recovery E2E | JA | 2026-09-21 | FULL + Restore-Test + Retention + Restore-to-Target vollständig bestätigt. |
+
+
+## Integrationsnachtrag 26.09.2026 – Android 1.3.19 / 200069 Buildkorrektur
+
+- ANDROID-Branch `feature/tb-android-2.0`, HEAD nach Fix `0a22f17526a7e5dd3e5ac71cd4b027b7ecb4dfac`.
+- SERVER geprüft auf `feature/tb-server-1.0`, HEAD `6b3e66cb2f98f273b3ee0886403a1a217626fbc2`; dessen jüngster Commit betrifft nur Server-Statusdokumentation, keinen neuen Android-API-Vertrag.
+- Lokaler Android-Studio-Build 26.09.2026: `:app:compileDebugKotlin` mit 7 Fehlern abgebrochen.
+- Ursache 1: `KmAnzeige.bereich(...)` ist nullable; `BautagebuchPdf.kt` verwendete `km.isNotBlank()`. Behoben in `411c09e620386831ee3e841ffb476e9c975907c1`.
+- Ursache 2: drei ältere positionale `uploadAttachment(...)`-Aufrufe in `CollabLocalBridge.kt` passten nach der neuen Foto-Metadaten-Signatur nicht mehr; `CollabSyncApi`/`Server1FileApi` wurden als `Long?/Double?` interpretiert. Alle drei Aufrufe verwenden jetzt benannte Parameter; behoben in `0a22f17526a7e5dd3e5ac71cd4b027b7ecb4dfac`.
+- Version bleibt **1.3.19 / 200069**.
+- Status: **QUELLKORREKTUR FERTIG / COMMITTED / BUILD-WIEDERHOLUNG OFFEN / INSTALLATION OFFEN / E2E OFFEN**.
+- `STATUS.xlsx` nicht geändert, weil Android- und Server-Workbook unterschiedliche Blobs besitzen (`f73ead35113257bc382e77187a4ca817fe2f9767` vs. `a56c44ccbd85ebe1499a27c4777bc77409eb9479`). Kein blindes Überschreiben; SERVER-Projekt konsolidiert Excel.
