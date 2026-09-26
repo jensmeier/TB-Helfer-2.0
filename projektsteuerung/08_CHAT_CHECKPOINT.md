@@ -533,3 +533,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
   - keine alten Top-Level-Ordner zurückgekehrt.
 - GitHub Actions auf Merge-HEAD: Server + Android jeweils failure ohne Steps; kein Testnachweis.
 - Nächster praktischer Block: Synology-Deploy, Migration016, Runtime-/Portal-Smoke.
+
+
+## BTB-EDIT-001 – Upload auf NAS bestätigt
+- Benutzer: „dateinoben“.
+- Gewertet als: benötigte Server-/Portal-/Migration016-Dateien wurden auf die Synology hochgeladen.
+- Noch nicht gewertet als deployed/E2E.
+- Nächster Schritt: `migrate` erneut ausführen und Migration 016 bestätigen; danach API/Worker neu starten und Portal-Smoke.
