@@ -154,3 +154,15 @@ Status: **VERBINDLICH**
 - CI-Artefaktname und Release-Datei wurden ebenfalls auf 1.3.20 / 200070 umgestellt.
 - Source-Check der Versionswerte: **PASST**.
 - Build selbst: **OFFEN**.
+
+
+## UPD-001 – Update installiert, UI meldet weiter Update
+Status: **FEHLER REPRODUZIERT / URSACHE OFFEN**
+
+Praxisbefund nach Update auf den neuen Android-Stand:
+- Updatevorgang ist durchgelaufen.
+- Unter „Nach Update suchen“ wird weiterhin die alte installierte Version **1.3.19** angezeigt.
+- Auf der Hauptansicht bleibt „Update verfügbar“ sichtbar.
+- Erwartung: Nach erfolgreicher Installation von **1.3.20 / 200070** muss die App ihre **tatsächlich installierte Package-Version** anzeigen und darf 200070 nicht erneut als Update anbieten.
+
+Nächster Diagnoseblock: Android-Updateanzeige, lokale/Server-Versionsquelle, Cache und Vergleichslogik prüfen. Keine Neuinstallation/Neuaktivierung auf Verdacht.

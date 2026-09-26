@@ -208,3 +208,24 @@ Status: **VERBINDLICHE BENUTZERENTSCHEIDUNG**
 - `1.3.19 / 200069` bleibt der vorherige Stand und wird nicht für eine neue APK wiederverwendet.
 - Für jeden weiteren auslieferbaren Test-/Release-Build muss der `versionCode` erneut steigen.
 - Nächster Schritt nach dieser Sicherung: Android-Quellstand und Release-MD auf 1.3.20 / 200070 anheben, dann bauen.
+
+
+## UPD-001 – Nach Update weiter alte Version / Update verfügbar
+Status: **FEHLER REPRODUZIERT / DIAGNOSE VOR FIX**
+
+Benutzerbefund:
+- Update wurde ausgeführt.
+- „Nach Update suchen“ zeigt danach weiterhin **1.3.19** als installierten Stand.
+- Hauptansicht zeigt weiterhin **Update verfügbar**.
+
+Verbindliches Soll:
+- Installierte Version/Build kommen aus dem aktuell installierten Android-Package (`PackageManager`/BuildConfig), nicht aus einem stale Geräte-Aktivierungswert.
+- Releasekatalog/Serverantwort beschreibt das verfügbare Release.
+- Updatehinweis nur, wenn verfügbarer `versionCode` **größer** als der tatsächlich installierte `versionCode` ist.
+- Nach erfolgreicher Installation 1.3.20 / 200070 darf 200070 nicht erneut angeboten werden.
+
+Vor Codeänderung prüfen:
+1. Wartung/Update-UI: Quelle für „installierte Version“.
+2. Startseiten-Banner: Vergleichsquelle und Cache.
+3. Server Release-API: published version/build.
+4. App-Prozess/PackageManager nach Installer-Rückkehr.

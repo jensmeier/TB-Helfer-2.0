@@ -166,3 +166,12 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Aktueller Android-Zielstand ist **1.3.20 / 200070**.
 - Release-MD liegt unter `projektsteuerung/releases/TB-Helfer_1.3.20_200070.md`.
 - Build/Installation/E2E weiterhin offen.
+
+
+## UPD-001 – Praxisbefund nach Update
+- Benutzer meldet: Updatevorgang durchgelaufen.
+- Danach zeigt „Nach Update suchen“ weiterhin installierte Version 1.3.19.
+- Hauptansicht zeigt weiterhin „Update verfügbar“.
+- Zielrelease ist 1.3.20 / 200070.
+- Fehler zuerst dokumentiert; nächster Schritt ist Quellprüfung der Updateanzeige und Vergleichslogik.
+- Keine Neuaktivierung, kein Löschen von App-Daten, kein Server-/NAS-Umbau auf Verdacht.

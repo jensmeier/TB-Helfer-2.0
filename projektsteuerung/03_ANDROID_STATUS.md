@@ -101,3 +101,13 @@ Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
 - neue Release-MD: `projektsteuerung/releases/TB-Helfer_1.3.20_200070.md`
 - GitHub-Workflow-Artefakt auf `TB-Helfer-1.3.20-200070` umgestellt.
 - Build noch nicht ausgeführt.
+
+
+## UPD-001 – Updateanzeige stale nach Installation
+Status: **REPRODUZIERT / URSACHE OFFEN**
+
+- Updateprozess läuft durch, aber Updateprüfung zeigt weiterhin 1.3.19.
+- Startseite zeigt weiterhin „Update verfügbar“.
+- Zielstand ist 1.3.20 / 200070.
+- Erst prüfen, ob UI/Updateclient die lokale Package-Version oder einen stale Server-/Aktivierungswert verwendet.
+- Kein weiterer Versionssprung nur zur Kaschierung dieses Anzeige-/Vergleichsfehlers.

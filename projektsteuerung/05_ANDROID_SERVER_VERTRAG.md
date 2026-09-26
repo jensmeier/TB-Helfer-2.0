@@ -69,3 +69,12 @@ Für servergebundene BTBs gilt verbindlich:
 - Ein neuer APK-/Updatekatalog-Eintrag darf keinen bereits verwendeten `versionCode` wiederverwenden.
 - Der auf 1.3.19 / 200069 folgende BTB-SYNC-001-Build ist **1.3.20 / 200070**.
 - Diese Nummernregel ändert keinen BTB-/Sync-API-Vertrag; sie stellt nur sicher, dass Server-Updatekatalog und Android einen neuen Build eindeutig erkennen.
+
+
+## Updatevertrag – installierte Version vs. Releasekatalog
+Verbindlich:
+- **Installierter Android-Stand** wird lokal aus dem installierten Package bestimmt (`versionName/versionCode`).
+- **Verfügbarer Stand** kommt aus dem veröffentlichten Server-Releasekatalog.
+- Geräte-Aktivierungsmetadaten wie `tb.devices.app_version/app_build` sind kein zulässiger Runtime-Nachweis für den aktuell installierten App-Stand.
+- Update verfügbar genau dann, wenn `release.versionCode > installed.versionCode`.
+- Nach Installation eines Releases mit gleichem/höherem installierten `versionCode` darf dieses Release nicht erneut als Update angezeigt werden.

@@ -5,7 +5,8 @@ Stand: 2026-09-26
 | Bereich | Status | Nächster Test |
 |---|---|---|
 | Android 1.3.20 / 200070 Build | VERSION + SOURCE-FIX FERTIG / BUILD OFFEN | Android Studio Build 200070 |
-| Android 200070 Installation | OFFEN | Pixel/Poco nach Build |
+| Android 200070 Installation | BENUTZER: UPDATE DURCHGELAUFEN / RUNTIME-VERSION NOCH NICHT BESTÄTIGT | UPD-001 prüfen |
+| Update 1.3.20 / 200070 Nachprüfung | FEHLER: UI ZEIGT 1.3.19 + UPDATE VERFÜGBAR | lokale Package-Version / Releasevergleich prüfen |
 | Pixel/Poco Versionsgleichstand | BENUTZER BESTÄTIGT: BEIDE 1.3.19 | Server-DB-Appversion ist Aktivierungs-Snapshot und kein Runtime-Nachweis |
 | Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200070 praktisch prüfen |
 | Haupt-TB-Handy ↔ Server/Portal | PRIORITÄT / E2E OFFEN | echte Fachkette zuerst sauber bestätigen |
