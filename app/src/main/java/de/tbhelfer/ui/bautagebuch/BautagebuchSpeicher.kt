@@ -470,7 +470,14 @@ object BautagebuchSpeicher {
             put("leistungen", JSONArray().apply { f.leistungen.forEach { l -> put(JSONObject().apply { put("uhrzeit", l.uhrzeit); put("text", l.text) }) } })
         }) } })
         fun sectionToJson(sb: SectionBlock): JSONArray = JSONArray().apply { sb.items.forEach { item -> put(JSONObject().apply {
-            put("uhrzeit", item.uhrzeit); put("text", item.text); put("kmVon", item.kmVon); put("kmBis", item.kmBis)
+            put("clientEntryKey", item.clientEntryKey)
+            put("uhrzeit", item.uhrzeit)
+            put("text", item.text)
+            put("kmVon", item.kmVon)
+            put("kmBis", item.kmBis)
+            put("firmaId", item.firmaId)
+            put("firmaName", item.firmaName)
+            put("worksiteNodeKey", item.worksiteNodeKey)
         }) } }
         put("arbeiten", sectionToJson(e.arbeiten))
         put("abnahmen", sectionToJson(e.abnahmen))
@@ -529,9 +536,14 @@ object BautagebuchSpeicher {
                 val x = a.optJSONObject(i) ?: return@mapNotNull null
                 val text = x.optString("text").trim(); if (text.isBlank()) return@mapNotNull null
                 SectionItem(
-                    uhrzeit = x.optString("uhrzeit").takeUnless { it.isBlank() }, text = text,
+                    clientEntryKey = x.optString("clientEntryKey").trim().takeIf { it.isNotBlank() },
+                    uhrzeit = x.optString("uhrzeit").takeUnless { it.isBlank() },
+                    text = text,
                     kmVon = if (x.has("kmVon") && !x.isNull("kmVon")) x.optDouble("kmVon").takeUnless { it.isNaN() } else null,
-                    kmBis = if (x.has("kmBis") && !x.isNull("kmBis")) x.optDouble("kmBis").takeUnless { it.isNaN() } else null
+                    kmBis = if (x.has("kmBis") && !x.isNull("kmBis")) x.optDouble("kmBis").takeUnless { it.isNaN() } else null,
+                    firmaId = x.optString("firmaId").trim().takeIf { it.isNotBlank() },
+                    firmaName = x.optString("firmaName").trim().takeIf { it.isNotBlank() },
+                    worksiteNodeKey = x.optString("worksiteNodeKey").trim().takeIf { it.isNotBlank() }
                 )
             })
         }
