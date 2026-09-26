@@ -203,3 +203,12 @@
 - Kein TB-Login-/Rollenfehler; Cloudflare-Schutzregeln bleiben unverändert.
 - Automatisierte Serverabnahme im API-Container künftig über `http://127.0.0.1:8080`; öffentlicher Same-Browser-Test separat mit echtem Browser.
 - Session-Split bleibt bis zum bestandenen internen bzw. Browser-E2E **OFFEN**.
+
+
+## Integrationsnachtrag 26.09.2026 – Interne Session-/Read-only-E2E bestätigt
+
+- Interner Post-Deploy-Lauf gegen `127.0.0.1:8080` praktisch bestanden: Runtime-Probe PASS, Same-Browser Session-Split PASS, Read-only Portal/Admin/Profile/Katalog/System PASS.
+- Unabhängige Portal-/Admin-Cookies und unabhängige Logouts praktisch bestätigt.
+- `POST_DEPLOY_E2E_OK` erreicht; Worker-Backup und Delta-Lasttest waren in diesem Lauf bewusst übersprungen und bleiben offen.
+- Öffentlicher Same-Browser-Test über `www.tb-helfer.de` bleibt manuell mit echtem Browser offen.
+- `STATUS.xlsx` wegen abweichendem Android-Workbook weiterhin nicht blind überschrieben.
