@@ -540,3 +540,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Gewertet als: benötigte Server-/Portal-/Migration016-Dateien wurden auf die Synology hochgeladen.
 - Noch nicht gewertet als deployed/E2E.
 - Nächster Schritt: `migrate` erneut ausführen und Migration 016 bestätigen; danach API/Worker neu starten und Portal-Smoke.
+
+
+## BTB-EDIT-001 – Migrationskommando OK
+- Benutzer-Screenshot: API-Container, `python -m tbserver.migrations up` → `OK`.
+- Kein sichtbares `APPLIED 016_btb_photo_link_metadata.sql`.
+- Deshalb keine voreilige 016-Bestätigung.
+- Nächster Schritt: Migrationsstatus prüfen; erst bei `latest_known=16`, `latest_applied=16`, `pending=[]` API/Worker neu starten.
