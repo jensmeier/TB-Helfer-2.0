@@ -212,3 +212,12 @@
 - `POST_DEPLOY_E2E_OK` erreicht; Worker-Backup und Delta-Lasttest waren in diesem Lauf bewusst übersprungen und bleiben offen.
 - Öffentlicher Same-Browser-Test über `www.tb-helfer.de` bleibt manuell mit echtem Browser offen.
 - `STATUS.xlsx` wegen abweichendem Android-Workbook weiterhin nicht blind überschrieben.
+
+
+## Integrationsnachtrag 26.09.2026 – Worker-Backup E2E bestanden
+
+- Echter Worker-DATABASE-Backupjob praktisch **BESTANDEN**: PENDING/RUNNING/DONE, Fortschritt sichtbar, Backup-Run OK, 274969 Byte, SHA vorhanden.
+- 32-Client-Delta-Test noch **OFFEN**: erster Lauf stoppte bereits beim Auth-Preflight mit HTTP 401 = ungültiger Geräte-Bearer-Token; kein Last-/Long-Poll-Fehler nachgewiesen.
+- Delta-Loadtest um Portal-Session-Modus erweitert. Standard-Serverlasttest kann damit intern ohne Extraktion des Android-Keystore-Tokens laufen; Device-Bearer bleibt optional und wird im Pixel/Poco-E2E bestätigt.
+- Nächster Schritt: aktualisierten `sync_wait_loadtest.py` auf NAS übernehmen und 32-Client-Lauf intern mit Portal-Auth ausführen; danach bei Erfolg 255 Clients.
+- `STATUS.xlsx` weiterhin nicht blind überschrieben.
