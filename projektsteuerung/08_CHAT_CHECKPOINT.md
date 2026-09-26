@@ -547,3 +547,12 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Kein sichtbares `APPLIED 016_btb_photo_link_metadata.sql`.
 - Deshalb keine voreilige 016-Bestätigung.
 - Nächster Schritt: Migrationsstatus prüfen; erst bei `latest_known=16`, `latest_applied=16`, `pending=[]` API/Worker neu starten.
+
+
+## BTB-EDIT-001 – Migration 016 angewendet
+- Benutzer-Screenshot zeigt im API-Container:
+  - `python -m tbserver.migrations up`
+  - `OK`
+  - `APPLIED 016_btb_photo_link_metadata.sql`
+- Migration 016 damit praktisch **BESTÄTIGT**.
+- Nächster Schritt: API + Worker neu starten; danach Health und Portal-BTB Smoke.
