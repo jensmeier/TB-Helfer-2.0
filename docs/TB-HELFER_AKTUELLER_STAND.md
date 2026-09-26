@@ -1881,3 +1881,19 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Zusätzlich läuft die API aktuell mit einem Uvicorn-Prozess und 512-MiB-cgroup-Limit; der Long-Poll selbst nutzt den gemeinsamen Change-Hub und begrenzt fachliche Sync-DB-Queries auf 16 gleichzeitig.
 - Nächster Diagnose-Schritt: gleiche Testart gestaffelt mit **50 / 100 / 150 / 200** Clients bei identischem 40-s-Timeout messen. Danach gezielt den ersten problematischen Wert mit höherem Timeout bzw. getrennten Sessions gegenprüfen, bevor Serverparameter geändert werden.
 - `STATUS.xlsx` bleibt wegen des abweichenden Android-Workbook-Blobs unverändert.
+
+
+### 26.09.2026 – Shared-Session-Staffel gemessen / realistischer Unique-Session-Test gebaut
+
+- Shared-Portal-Session-Stresstest praktisch gemessen:
+  - 50 Clients: **50/50 erfolgreich**, Wall 19.44 s, Median 16.01 s, Max 19.42 s.
+  - 100 Clients: **79 erfolgreich / 21 Timeout**, Wall 40.30 s, Median 20.84 s, Max 40.05 s.
+  - 150 Clients: **63 erfolgreich / 87 Timeout**, Wall 40.55 s, Median 40.04 s, Max 40.05 s.
+  - 200 Clients: **61 erfolgreich / 139 Timeout**, Wall 43.27 s, Median 40.04 s, Max 43.05 s.
+  - 255 Clients: **65 erfolgreich / 190 Timeout**, Wall 41.65 s.
+- Diese Werte sind **kein Benutzerlimit pro Firma und kein festes Gesamtserverlimit**. Alle simulierten Clients teilten dieselbe Portal-Session und aktualisierten dadurch dieselbe `portal_sessions.last_seen_at`-Zeile.
+- `sync_wait_loadtest.py` wurde deshalb um `--portal-session-mode unique` erweitert und verwendet bei Portal-Auth standardmäßig **eine unabhängige Portal-Session pro simuliertem Client**. Sessions werden vor der Zeitmessung vorbereitet und anschließend wieder widerrufen.
+- `--portal-session-mode shared` bleibt nur zur Reproduktion des bisherigen künstlichen Engpasses erhalten.
+- Source-Check 111 und Staging-Runbook schützen/dokumentieren den neuen Testmodus.
+- Nächster praktischer Schritt: aktualisierte Testdatei auf Synology übernehmen und die Staffel 50 / 100 / 150 / 200 / 255 mit `unique` erneut messen. Erst daraus eine Kapazitätsaussage ableiten.
+- `STATUS.xlsx` bleibt wegen des abweichenden Android-Workbook-Blobs unverändert.
