@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200073: BTB-SYNC-002 – Dirty-BTB zuerst in Outbox sichern, dann Server-Snapshot anwenden.
+        // Android 200074: BTB-UI-001 – rollenreine, stabile Abschlussleiste.
         // Jeder auslieferbare Test-/Release-Build erhält einen strikt höheren versionCode.
-        versionCode = 200073
-        versionName = "1.3.23"
+        versionCode = 200074
+        versionName = "1.3.24"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
