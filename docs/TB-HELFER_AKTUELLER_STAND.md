@@ -1871,3 +1871,13 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Damit ist der 32-Client-Server-Lasttest für `/api/v1/sync/changes/wait` praktisch bestätigt. Der höhere 255-Client-Stagingtest bleibt als nächster Schritt offen.
 - Der mobile Device-Bearer-/Delta-Vertrag bleibt separat im Pixel/Poco-E2E zu bestätigen.
 - `STATUS.xlsx` bleibt wegen des abweichenden Android-Workbook-Blobs unverändert.
+
+
+### 26.09.2026 – 255-Client-Delta-Stresstest erreicht Timeout-Grenze
+
+- Nach bestandenem 32-Client-Lauf wurde derselbe interne Portal-Session-Test mit **255 Clients** und `wait_seconds=10`, Client-Timeout 40 s ausgeführt.
+- Ergebnis: **65 erfolgreich / 190 Timeout**, Walltime **41.65 s**, Latenz min **10.28 s**, Median **40.04 s**, max **41.05 s**. Fehler waren Client-`timed out`, keine HTTP-/DB-/Auth-Fehler.
+- Das beweist **keinen** harten 65-Client-Servergrenzwert und noch keinen reinen NAS-Leistungsmangel. Der synthetische Portal-Lasttest verwendet für alle Clients dieselbe Portal-Session; `current_portal_user` aktualisiert pro Request dieselbe `tb.portal_sessions.last_seen_at`-Zeile. Dadurch entsteht zusätzliche Row-Lock-/Auth-Serialisierung, die bei echten getrennten Geräte-/Browser-Sessions so nicht identisch auftritt.
+- Zusätzlich läuft die API aktuell mit einem Uvicorn-Prozess und 512-MiB-cgroup-Limit; der Long-Poll selbst nutzt den gemeinsamen Change-Hub und begrenzt fachliche Sync-DB-Queries auf 16 gleichzeitig.
+- Nächster Diagnose-Schritt: gleiche Testart gestaffelt mit **50 / 100 / 150 / 200** Clients bei identischem 40-s-Timeout messen. Danach gezielt den ersten problematischen Wert mit höherem Timeout bzw. getrennten Sessions gegenprüfen, bevor Serverparameter geändert werden.
+- `STATUS.xlsx` bleibt wegen des abweichenden Android-Workbook-Blobs unverändert.
