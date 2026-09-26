@@ -73,3 +73,10 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Poco-App gelöscht, neu installiert und neu aktiviert.
 - Poco-Erstabgleich läuft nach >3 Minuten weiter.
 - Nächster Schritt: anhand Android-Quellpfad klären, was beim Erstabgleich alles geladen wird und welche Phase die lange Laufzeit verursacht; keine weiteren Resets auf Verdacht.
+
+## BTB-SYNC-001 – 26.09 fehlt/verschwindet
+- Poco-Erstabgleich abgeschlossen; Baustelle herunterladen erfolgreich.
+- Pixel: neuer BTB 26.09 angelegt.
+- Portal: zeigt weiterhin BTBs 23./24./25.09, 26.09 fehlt.
+- Poco: 26.09 erscheint kurz, dann „kein BTB vorhanden“.
+- Nächster Schritt: zuerst Serverzustand/DB/API/Change-Feed prüfen, danach Android-Snapshot/Active-Pointer. Keine Änderung auf Verdacht.

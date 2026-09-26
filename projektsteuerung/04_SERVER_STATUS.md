@@ -48,3 +48,9 @@ Status: **SERVER-RENDITIONS VORHANDEN / ANDROID-NUTZUNG FEHLT**
 - Dateiliste und Metadaten liefern Rendition-URLs.
 - Für den Kernfehler ist kein Server-Ersatzumbau vorgesehen. Android soll kleine Sync-Dateien senden und mobile Renditions nutzen.
 - Migration 015/Rendition-/Metadaten-Runtime-E2E bleibt offen.
+
+## BTB-SYNC-001 Praxisfehler 26.09
+- Pixel hat neuen BTB 26.09 angelegt.
+- Portal zeigt weiterhin nur bis 25.09.
+- Poco sieht 26.09 kurz, anschließend „kein BTB vorhanden“.
+- Serverdiagnose hat Vorrang: Team-`active_btb_id`, BTB-Status/Teamzuordnung, `client_entity_key`, Versionen, Change-Feed und Team-BTB-API prüfen. Keine DB-/API-Änderung auf Verdacht.

@@ -8,8 +8,9 @@ Stand: 2026-09-26
 | Android 200069 Installation | OFFEN | Pixel/Poco nach Build |
 | Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200069 praktisch prüfen |
 | Haupt-TB-Handy ↔ Server/Portal | PRIORITÄT / E2E OFFEN | echte Fachkette zuerst sauber bestätigen |
+| BTB 26.09 Pixel → Server/Portal/Poco | FEHLER REPRODUZIERT | Portal fehlt 26.09; Poco zeigt kurz und verliert ihn wieder |
 | Haupt-TB-Handy DNS/API-Erreichbarkeit | PIXEL SYNCHRONISIERT WIEDER / URSACHE ALTFEHLER OFFEN | Fachkette Pixel↔Server↔Portal weiterprüfen; DNS-Altfehler nur bei Wiederholung vertiefen |
-| Poco Team-/BTB-Daten | NEU AKTIVIERT / ERSTABGLEICH >3 MIN LÄUFT | Erstsync-Phasen/Datenumfang messen; nicht erneut zurücksetzen |
+| Poco Team-/BTB-Daten | ERSTABGLEICH FERTIG / BAUSTELLE GELADEN / BTB 26.09 VERSCHWINDET | BTB-SYNC-001 Serverzustand + Android-Snapshot prüfen |
 | Helfer Schicht Ende → Server FINISHED → Pixel | E2E OFFEN | echter Geräte-/Server-Lauf |
 | Haupt-TB Finalize + PDF | TEILWEISE BESTÄTIGT | Android-Gesamtkette offen |
 | IMG-001 Handyfoto → Server | QUELLAUDIT FEHLER BESTÄTIGT / FIX SPÄTER | Nach E2E-PRIO-001 Android-Fix; dann Original- vs Sync-Dateigröße messen |

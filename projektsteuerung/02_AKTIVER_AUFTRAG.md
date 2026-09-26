@@ -104,3 +104,20 @@ Browser-Nachtest auf demselben Hauptgerät:
 - Poco zeigt beim anschließenden ersten Datenabruf nach >3 Minuten weiterhin laufenden Abruf.
 - Das ist noch kein bestätigter Sync-Erfolg und noch kein bestätigter Fehler. Vor Änderungen zuerst klären, welche Erstsync-Phasen/Datenmengen tatsächlich laufen und an welcher Phase Zeit verloren geht.
 - Keine Neu-Anlage von Firma/Benutzer/Team/Baustelle auf Verdacht.
+
+## BTB-SYNC-001 – Neuer BTB 26.09 fehlt im Portal und verschwindet auf Helfer
+Status: **FEHLER REPRODUZIERT / URSACHE OFFEN**
+
+Praktischer Ablauf:
+1. Poco nach Neuinstallation/Neuaktivierung: Erstabgleich abgeschlossen, Baustelle erfolgreich heruntergeladen.
+2. Pixel: neuer BTB 26.09 angelegt.
+3. Portal: weiterhin letzter sichtbarer BTB 25.09, 26.09 fehlt.
+4. Poco: 26.09-BTB erscheint kurz, danach nach ca. einer Sekunde „kein BTB vorhanden“.
+
+Zwingende Diagnose vor Änderung:
+- betroffene Firma/Baustelle/Team und `active_btb_id`;
+- Server-BTB-Datensatz 26.09: ID, Status, Team, client_key, Version, created/updated;
+- Change-Feed-Einträge für diesen BTB;
+- API-Antwort für Team-BTB-Liste;
+- Android-Snapshot/Active-Pointer-Anwendung auf Poco;
+- keine Neu-Anlage von Benutzer/Team/Baustelle und kein Lifecycle-Workaround auf Verdacht.
