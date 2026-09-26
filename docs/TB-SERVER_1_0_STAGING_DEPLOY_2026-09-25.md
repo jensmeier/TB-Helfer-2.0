@@ -308,3 +308,46 @@ niemals in Chat, GitHub oder gespeicherte Logs kopieren.
 
 Dieser Test deckt insbesondere den offenen praktischen Teil von PRB-019 sowie
 SRV-020/SRV-021 ab. Ein bestandener Source-Check ersetzt diesen echten Worker-Lauf nicht.
+
+
+## Gebündelte Post-Deploy-Abnahme
+
+Nach erfolgreichem `=== DEPLOY_OK ===` kann die vorbereitete Abnahme gebündelt im **API-Container-Terminal** ausgeführt werden:
+
+```bash
+python /app/tools/server1_post_deploy_e2e.py \
+  --portal-base-url https://www.tb-helfer.de \
+  --server-base-url https://api-v1.tb-helfer.de \
+  --portal-login <normaler-testnutzer> \
+  --admin-login <admin-testnutzer>
+```
+
+Fehlende Geheimwerte werden interaktiv verdeckt abgefragt:
+- Portal-Passwort
+- Admin-Passwort
+- Geräte-Token für den Delta-Test
+
+Die Geheimwerte werden nicht ausgegeben und nicht als Child-Process-Argumente weitergereicht.
+Für nicht-interaktive Ausführung müssen sie ausschließlich als lokale Environment-Werte
+`TB_PORTAL_PASSWORD`, `TB_ADMIN_PASSWORD` und `TB_DEVICE_TOKEN` vorhanden sein.
+
+Reihenfolge:
+1. In-Container Runtime-Probe
+2. Same-Browser Session-Split
+3. Read-only Portal/Admin/Profile/Katalog/System-Abnahme
+4. echter Worker-`DATABASE`-Backupjob
+5. Delta-Long-Poll mit standardmäßig 32 Clients
+
+Optional:
+- `--backup-kind FULL` für bewussten FULL-Backup-E2E
+- `--clients 255` erst nach bestandenem 32-Client-Lauf
+- `--skip-backup` bzw. `--skip-loadtest` nur wenn der jeweilige praktische Test bewusst separat erfolgt
+
+Erfolg ist ausschließlich:
+
+```
+=== POST_DEPLOY_E2E_OK ===
+```
+
+Das Werkzeug ersetzt **nicht** den anschließenden Pixel/Poco/Portal-Fach-E2E. Es bündelt nur
+die bereits vorhandenen Server-Abnahmen.
