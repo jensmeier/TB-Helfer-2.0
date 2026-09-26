@@ -4,14 +4,14 @@ Stand: 2026-09-26
 
 | Bereich | Status | Nächster Test |
 |---|---|---|
-| Android 1.3.19 / 200069 Build | OFFEN | Build-Wiederholung |
+| Android 1.3.19 / 200069 Build | SOURCE-FIX VORHANDEN / BUILD OFFEN | Android Studio Build-Wiederholung |
 | Android 200069 Installation | OFFEN | Pixel/Poco nach Build |
 | Pixel/Poco Versionsgleichstand | BENUTZER BESTÄTIGT: BEIDE 1.3.19 | Server-DB-Appversion ist Aktivierungs-Snapshot und kein Runtime-Nachweis |
 | Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200069 praktisch prüfen |
 | Haupt-TB-Handy ↔ Server/Portal | PRIORITÄT / E2E OFFEN | echte Fachkette zuerst sauber bestätigen |
 | BTB 26.09 Pixel → Server/Portal/Poco | PIXEL→SERVER→PORTAL BESTÄTIGT / POCO FEHLER OFFEN | Portal nach Reload korrekt; Poco Active-Pointer/UI-Apply prüfen |
 | Haupt-TB-Handy DNS/API-Erreichbarkeit | PIXEL SYNCHRONISIERT WIEDER / URSACHE ALTFEHLER OFFEN | Fachkette Pixel↔Server↔Portal weiterprüfen; DNS-Altfehler nur bei Wiederholung vertiefen |
-| Poco Team-/BTB-Daten | SOURCE-URSACHE EINGEGRENZT / FIX+E2E OFFEN | BtbActiveContext: Server-active muss lokalen Abschlussstatus überstimmen |
+| Poco Team-/BTB-Daten | SOURCE-FIX COMMITTED / BUILD+INSTALL+E2E OFFEN | 200069 bauen, Pixel/Poco installieren, BTB 26.09 erneut prüfen |
 | Helfer Schicht Ende → Server FINISHED → Pixel | E2E OFFEN | echter Geräte-/Server-Lauf |
 | Haupt-TB Finalize + PDF | TEILWEISE BESTÄTIGT | Android-Gesamtkette offen |
 | IMG-001 Handyfoto → Server | QUELLAUDIT FEHLER BESTÄTIGT / FIX SPÄTER | Nach E2E-PRIO-001 Android-Fix; dann Original- vs Sync-Dateigröße messen |
@@ -37,3 +37,10 @@ Nachtest: beide öffentlichen Seiten sind auf demselben Hauptgerät im Browser e
 
 ### NET-001 Browser-Nachtest
 `www.tb-helfer.de` und `api-v1.tb-helfer.de/health/live` sind auf demselben Hauptgerät im Browser erreichbar. App-Retest offen.
+
+
+### BTB-SYNC-001 Source-Fix
+- Commit `f57c532863d2f92b81729b9af1466b57a22f8723`.
+- Server-`active=true` überstimmt jetzt lokale Abschluss-/PDF-/Baseline-Zustände in `BtbActiveContext`.
+- Server-`FINALIZED && !active` darf den Pointer lösen.
+- Build wurde noch nicht ausgeführt; GitHub Actions lieferte für den aktuellen HEAD keinen Workflow-Run. Kein Build-/Installations-/E2E-Nachweis.

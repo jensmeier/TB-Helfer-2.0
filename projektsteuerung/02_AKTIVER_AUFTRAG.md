@@ -106,7 +106,7 @@ Browser-Nachtest auf demselben Hauptgerät:
 - Keine Neu-Anlage von Firma/Benutzer/Team/Baustelle auf Verdacht.
 
 ## BTB-SYNC-001 – Neuer BTB 26.09 fehlt im Portal und verschwindet auf Helfer
-Status: **FEHLER REPRODUZIERT / URSACHE OFFEN**
+Status: **SOURCE-FIX COMMITTED / BUILD + INSTALLATION + E2E OFFEN**
 
 Praktischer Ablauf:
 1. Poco nach Neuinstallation/Neuaktivierung: Erstabgleich abgeschlossen, Baustelle erfolgreich heruntergeladen.
@@ -189,3 +189,13 @@ Weiter offen:
 - Serververtrag ist bereits kanonisch: solange Server-`active_btb_id` auf den BTB zeigt und Teilnehmer `WORKING` ist, darf ein lokaler/staler Abschlusszustand den Active-Pointer nicht lösen.
 
 Benötigte Android-Anpassung: `BtbActiveContext` muss bei vorhandenem ServerState mit `active=true` den kanonischen Server-Lifecycle respektieren und darf den Pointer nicht aufgrund eines lokalen Abschlussstatus lösen. SERVER ändert dafür keinen DB-/API-Vertrag.
+
+
+### BTB-SYNC-001 Android-Umsetzung
+- Projektsteuerungs-/Vertragsstand aus `e71585cb21fa13c01f184036337d3ea68725f37e` vor Codeänderung in den Android-Branch übernommen.
+- Codefix `f57c532863d2f92b81729b9af1466b57a22f8723`.
+- `BtbActiveContext` prüft den Server-Snapshot jetzt vor lokalen Abschlussmarkern.
+- Server `active=true` hat Vorrang vor lokalen PDF-/Baseline-/Abschlussartefakten.
+- Pointerlösung durch diesen Leseweg nur bei `FINALIZED + !active`; ohne Server-Snapshot bleibt Legacy-Verhalten erhalten.
+- Keine Poco-Daten gelöscht, keine Neuaktivierung, keine NAS-/Serveränderung.
+- Nächster Schritt: Android Studio Build 1.3.19 / 200069 → Pixel/Poco installieren → denselben BTB vom 26.09 erneut prüfen.

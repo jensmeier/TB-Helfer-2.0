@@ -70,3 +70,19 @@ Poco zeigt den serverseitig und im Portal bestätigten aktiven 26.09-BTB kurz un
 
 ### BTB-SYNC-001 Source-Ursache
 `BtbActiveContext.laden()` kann einen serverseitig bestätigten aktiven BTB lokal wieder deaktivieren, weil es den lokalen Dokumentstatus `ABGESCHLOSSEN` höher bewertet als `BtbServerStateStore.active=true`. Der UI-Watcher läuft ca. alle 600 ms; das erklärt das kurze Anzeigen und anschließende Verschwinden. Android-Fix erforderlich; noch kein Build/E2E.
+
+
+## BTB-SYNC-001 – Active-Pointer-Fix
+Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
+
+- Vorheriger Fehler: `BtbActiveContext.laden()` konnte trotz `BtbServerStateStore.active=true` einen lokalen Abschlussstatus als maßgeblich behandeln und `nachAbschlussInaktivMerken()` auslösen.
+- Fix: `f57c532863d2f92b81729b9af1466b57a22f8723`.
+- Jetzt gilt für servergebundene BTBs:
+  - Server `active=true` → Result bleibt aktiv, lokale Abschlussmarker werden nicht ausgewertet.
+  - Server `FINALIZED && !active` → Pointer wird gelöst.
+  - anderer vorhandener Serverstatus → kein lokales Abschlussartefakt darf den Server-Lifecycle überstimmen.
+  - nur ohne Server-Snapshot gilt die bisherige lokale/Legacy-Abschlusslogik.
+- Version unverändert: **1.3.19 / 200069**.
+- Kein Servercode geändert.
+- GitHub Actions: kein Workflow-Run für aktuellen HEAD entstanden, weil die verfügbaren PR-Basen aktuell nicht mergebar sind. Das ist **kein Buildnachweis**.
+- Nächster Schritt: lokal in Android Studio bauen, danach Pixel und Poco installieren und BTB 26.09 erneut testen.
