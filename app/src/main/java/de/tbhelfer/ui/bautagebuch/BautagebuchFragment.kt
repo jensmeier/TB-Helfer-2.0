@@ -5091,9 +5091,12 @@ cardCurrentReport.setOnClickListener {
                 data class ManualItem(
                     val lineIndex: Int,
                     val firma: String?,
+                    val firmaId: String?,
                     val time: String?,     // "HH:mm" oder "HH:mm–HH:mm" oder null
                     val timeMin: Int?,     // Minuten seit 00:00 oder null
-                    val ortId: Long,       // 0 = Nur Hauptbaustelle, sonst BaustellenKnotenId
+                    val ortId: Long,       // lokale UI-ID; nicht synchronisieren
+                    val worksiteNodeKey: String?,
+                    val clientEntryKey: String?,
                     val text: String,
                     val kmVon: Double? = null,
                     val kmBis: Double? = null
@@ -5187,14 +5190,19 @@ cardCurrentReport.setOnClickListener {
                     val out = ArrayList<ManualItem>()
                     val lines = raw.lines()
                     var currentOrtId: Long = 0L
+                    var currentNodeKey: String? = null
 
-                    // Firmen-Matching robust machen: Nutzer tippen oft 'BBG' vs 'bbg'.
-                    // Wir mappen daher case-insensitive auf die kanonische Schreibweise aus knownFirms.
                     val firmMap = knownFirms
                         .mapNotNull { it.trim().takeIf { s -> s.isNotBlank() } }
                         .associateBy { it.lowercase(java.util.Locale.ROOT) }
+                    val firmIdByName = lastFirmaBlocks
+                        .filter { !it.isDeleted && it.name.isNotBlank() }
+                        .associate { it.name.trim().lowercase(java.util.Locale.ROOT) to it.firmaId }
 
-                    val reOrt = Regex("""^@ORT=(\d+)\s*(.*)$""")
+                    val reEntry = Regex("""^@ENTRY=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
+                    val reNode = Regex("""^@NODE=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
+                    val reFirmaId = Regex("""^@FIRMAID=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
+                    val reOrt = Regex("""^@ORT=(\d+)\s*(.*)$""", RegexOption.IGNORE_CASE)
                     val reKm = Regex("""^@KM=([0-9]+(?:[.,][0-9]+)?)(?:\s*[-–]\s*([0-9]+(?:[.,][0-9]+)?))?\s*(.*)$""", RegexOption.IGNORE_CASE)
                     val reGeneral = Regex("""^@ALLGEMEIN\b\s*(.*)$""", RegexOption.IGNORE_CASE)
 
@@ -5202,92 +5210,110 @@ cardCurrentReport.setOnClickListener {
                         var line = line0.trim()
                         if (line.isBlank()) return@forEachIndexed
 
-                        // Ort-Marker: entweder eigene Zeile oder Inline-Prefix
-                        val mo = reOrt.matchEntire(line)
-                        if (mo != null) {
-                            currentOrtId = mo.groupValues[1].toLongOrNull() ?: 0L
-                            line = mo.groupValues.getOrNull(2).orEmpty().trim()
-                            if (line.isBlank()) return@forEachIndexed
-                        }
-
+                        var clientEntryKey: String? = null
+                        var nodeKey: String? = null
+                        var explicitFirmaId: String? = null
+                        var forcedGeneral = false
                         var kmVon: Double? = null
                         var kmBis: Double? = null
-                        // Marker in beliebiger Reihenfolge akzeptieren, damit ältere und neue
-                        // gespeicherte BTB-Zeilen gleichermaßen bearbeitbar bleiben.
-                        var forcedGeneral = false
+
                         var markerGefunden: Boolean
                         do {
                             markerGefunden = false
-                            val mg = reGeneral.matchEntire(line)
-                            if (mg != null) {
-                                forcedGeneral = true
-                                line = mg.groupValues.getOrNull(1).orEmpty().trim()
+                            reEntry.matchEntire(line)?.let {
+                                clientEntryKey = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                                line = it.groupValues[2].trim()
                                 markerGefunden = true
-                                continue
                             }
-                            val mk = reKm.matchEntire(line)
-                            if (mk != null) {
-                                kmVon = parseKmValue(mk.groupValues[1])
-                                kmBis = parseKmValue(mk.groupValues.getOrNull(2))
-                                line = mk.groupValues.getOrNull(3).orEmpty().trim()
+                            if (markerGefunden) continue
+                            reNode.matchEntire(line)?.let {
+                                nodeKey = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                                currentNodeKey = nodeKey
+                                nodeKey?.let { key ->
+                                    btbLocalIdByNodeKey[key]?.let { currentOrtId = it }
+                                }
+                                line = it.groupValues[2].trim()
+                                markerGefunden = true
+                            }
+                            if (markerGefunden) continue
+                            reFirmaId.matchEntire(line)?.let {
+                                explicitFirmaId = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                                line = it.groupValues[2].trim()
+                                markerGefunden = true
+                            }
+                            if (markerGefunden) continue
+                            reOrt.matchEntire(line)?.let {
+                                currentOrtId = it.groupValues[1].toLongOrNull() ?: 0L
+                                currentNodeKey = btbNodeKeyByLocalId[currentOrtId]
+                                line = it.groupValues[2].trim()
+                                markerGefunden = true
+                            }
+                            if (markerGefunden) continue
+                            reGeneral.matchEntire(line)?.let {
+                                forcedGeneral = true
+                                explicitFirmaId = null
+                                line = it.groupValues[1].trim()
+                                markerGefunden = true
+                            }
+                            if (markerGefunden) continue
+                            reKm.matchEntire(line)?.let {
+                                kmVon = parseKmValue(it.groupValues[1])
+                                kmBis = parseKmValue(it.groupValues.getOrNull(2))
+                                line = it.groupValues.getOrNull(3).orEmpty().trim()
                                 markerGefunden = true
                             }
                         } while (markerGefunden && line.isNotBlank())
                         if (line.isBlank()) return@forEachIndexed
 
-                        // Bullet entfernen fürs Parsing
                         if (line.startsWith("•")) line = line.removePrefix("•").trimStart()
                         if (line.isBlank()) return@forEachIndexed
 
-                        // Zeit optional am Anfang: 'HH:mm ...' oder 'HH:mm–HH:mm ...'
                         var timeStr: String? = null
                         var timeMin: Int? = null
                         var rest = line
-
-                        // Single time: "HH:mm Text"  | Span: "HH:mm–HH:mm Text"
                         val m = Regex("""^(\d{1,2}:\d{2})(?:\s*[-–]\s*\(?\s*(\d{1,2}:\d{2})\s*\)?\s*)?\s+(.*)$""").find(line)
                         if (m != null) {
                             val startNorm = normalizeHm(m.groupValues[1])
                             if (startNorm != null) {
                                 val endRaw = m.groupValues.getOrNull(2).orEmpty().trim()
                                 val endNorm = endRaw.takeIf { it.isNotBlank() }?.let { normalizeHm(it) }
-
                                 timeStr = if (endNorm != null) "$startNorm–$endNorm" else startNorm
                                 timeMin = hmToMin(startNorm)
                                 rest = m.groupValues[3].trim()
                             }
                         }
 
-                        // Firma-Prefix "Firma: Text" (nur wenn Firma bekannt ist)
                         var firma: String? = null
                         var text2 = rest
-
                         if (!forcedGeneral) {
                             val cIdx = rest.indexOf(':')
                             if (cIdx > 0) {
-                                val prefix = rest.substring(0, cIdx).trim()
+                                val prefixName = rest.substring(0, cIdx).trim()
                                 val tail = rest.substring(cIdx + 1).trim()
-                                if (prefix.isNotBlank()) {
-                                    val canon = firmMap[prefix.lowercase(java.util.Locale.ROOT)]
-                                    if (canon != null) {
-                                        firma = canon
-                                        text2 = tail
-                                    }
+                                val canon = firmMap[prefixName.lowercase(java.util.Locale.ROOT)]
+                                if (canon != null || explicitFirmaId != null) {
+                                    firma = canon ?: prefixName
+                                    text2 = tail
                                 }
                             }
                         }
-
                         if (text2.isBlank()) return@forEachIndexed
 
-                        val effectiveOrtId = if (forcedGeneral || firma == null) 0L else currentOrtId
+                        val firmaId = if (forcedGeneral) null else (
+                            explicitFirmaId ?: firma?.lowercase(java.util.Locale.ROOT)?.let { firmIdByName[it] }
+                        )
+                        val effectiveNodeKey = nodeKey ?: currentNodeKey ?: btbNodeKeyByLocalId[currentOrtId]
 
                         out.add(
                             ManualItem(
                                 lineIndex = idxLine,
-                                firma = firma,
+                                firma = if (forcedGeneral) null else firma,
+                                firmaId = firmaId,
                                 time = timeStr,
                                 timeMin = timeMin,
-                                ortId = effectiveOrtId,
+                                ortId = currentOrtId,
+                                worksiteNodeKey = effectiveNodeKey,
+                                clientEntryKey = clientEntryKey,
                                 text = text2,
                                 kmVon = kmVon,
                                 kmBis = kmBis
@@ -5297,16 +5323,37 @@ cardCurrentReport.setOnClickListener {
                     return out
                 }
 
-
-                fun buildManualLine(ortId: Long, firm: String?, time: String?, text2: String, kmVon: Double? = null, kmBis: Double? = null): String {
+                fun buildManualLine(
+                    ortId: Long,
+                    firm: String?,
+                    time: String?,
+                    text2: String,
+                    kmVon: Double? = null,
+                    kmBis: Double? = null,
+                    firmaId: String? = null,
+                    worksiteNodeKey: String? = null,
+                    clientEntryKey: String? = null
+                ): String {
                     val t = time?.trim().orEmpty().takeIf { it.isNotBlank() }
                     val f = firm?.trim().orEmpty().takeIf { it.isNotBlank() }
                     val txt = text2.trim()
-                    val effectiveOrtId = if (f == null) 0L else ortId
+                    val stableEntry = clientEntryKey?.trim()?.takeIf { it.isNotBlank() }
+                        ?: "bte-${java.util.UUID.randomUUID()}"
+                    val stableNode = worksiteNodeKey?.trim()?.takeIf { it.isNotBlank() }
+                        ?: btbNodeKeyByLocalId[ortId]
+                    val stableFirmaId = if (f == null) null else (
+                        firmaId?.trim()?.takeIf { it.isNotBlank() }
+                            ?: lastFirmaBlocks.firstOrNull {
+                                it.name.trim().equals(f, ignoreCase = true) && !it.isDeleted
+                            }?.firmaId
+                    )
 
                     return buildString {
-                        if (effectiveOrtId != 0L) append("@ORT=").append(effectiveOrtId).append(" ")
-                        if (f == null) append("@ALLGEMEIN ")
+                        append("@ENTRY=").append(stableEntry).append(" ")
+                        stableNode?.let { append("@NODE=").append(it).append(" ") }
+                        if (ortId > 0L) append("@ORT=").append(ortId).append(" ")
+                        if (stableFirmaId != null) append("@FIRMAID=").append(stableFirmaId).append(" ")
+                        else append("@ALLGEMEIN ")
                         kmMarker(kmVon, kmBis)?.let { append(it).append(" ") }
                         append("• ")
                         if (t != null) append(t).append(' ')
@@ -5314,6 +5361,7 @@ cardCurrentReport.setOnClickListener {
                         append(txt)
                     }.trimEnd()
                 }
+
 
                 fun setRawLines(lines: List<String>) {
                     // Wichtig: Ort-Marker im hidden Field behalten, sonst geht die Gruppierung verloren.
