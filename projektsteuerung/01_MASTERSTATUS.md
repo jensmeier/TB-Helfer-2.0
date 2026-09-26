@@ -199,7 +199,7 @@ SERVER:
 - Source-Assertions + Portal-JS-Syntax PASS.
 
 ANDROID live geprüft:
-- HEAD `da0806fe29f34363247463bc4fb599778ee42a53`;
+- HEAD `623704990072c7006e6a48e611441d7aa08b989e`;
 - `SectionItem` erweitert um `clientEntryKey`, `firmaId/firmaName`, `worksiteNodeKey`;
 - stabile Node-Key-Auflösung und Abschnittsidentität werden source-seitig umgesetzt;
 - Foto-Umhängepfad ist noch nicht vollständig auf den neuen Server-Foto-PATCH gehoben.
