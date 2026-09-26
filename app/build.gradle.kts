@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200074: BTB-UI-001 – rollenreine, stabile Abschlussleiste.
+        // Android 200075: BTB-EDIT-001 – stabile Entry-/Node-Identität und Umhängen Punkt 4–8.
         // Jeder auslieferbare Test-/Release-Build erhält einen strikt höheren versionCode.
-        versionCode = 200074
-        versionName = "1.3.24"
+        versionCode = 200075
+        versionName = "1.3.25"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
