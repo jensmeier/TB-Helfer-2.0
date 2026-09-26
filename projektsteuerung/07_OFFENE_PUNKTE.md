@@ -6,7 +6,7 @@ Stand: 2026-09-26
 |---|---:|---|---|---|
 | BTB-SYNC-002 | P0 | ANDROID | Pixel↔Portal Basissync mit 1.3.23/200073 in beide Richtungen bestätigt | Parallel-Autosave-/Conflict-Test bleibt offen; danach Poco separat |
 | PORTAL-BTB-UI-001 | P1 | SERVER | Live-Sync bestätigt; BTB im Portal muss fachlich/optisch nachgearbeitet werden | konkrete Portal-BTB-Anpassungen festlegen, dann gezielt umsetzen |
-| BTB-EDIT-001 | P1 | GEMEINSAM | Einträge/Fotos müssen Firma, Unterbaustelle/Bauobjekt und Punkt 4–8 nachträglich strukturiert wechseln können | Android↔Portal/API/DB Istvergleich; fehlende Felder/Mutationen dokumentieren; danach getrennt umsetzen |
+| BTB-EDIT-001 | P1 | GEMEINSAM | SERVER: Quellstand inkl. Migration016/Entry-/Foto-PATCH/Portal-Editor fertig; ANDROID: Entry-/Node-Modell in Umsetzung, Foto-Pfad noch offen | Android Foto-Vertrag fertigstellen → Server deployen/Migration016 → gemeinsamer Eintrag-/Foto-E2E |
 | PORTAL-WEATHER-001 | P1 | SERVER/ANDROID | Portal kann tempC anzeigen, Praxis-BTB zeigt aber keine Temperaturen; 0-Niederschlag darf nicht als unbekannt/null verschwinden | aktuellen Header-Payload + Android-Wetterwrite prüfen, dann Ursache gezielt beheben |
 | PORTAL-PART-001 | P1 | SERVER | gelöschte/nicht mehr aktive Helfer sollen aktuelle BTB-Ansicht nicht unnötig belegen | Teilnehmerquelle/Lifecycle prüfen; Anzeige filtern ohne historische Nachweise zu löschen |
 | DEV-META-001 | P2 | SERVER | `tb.devices.app_version/app_build` bleiben nach App-Update ohne Neuaktivierung auf altem Aktivierungsstand | später Runtime-Metadaten-Updatevertrag definieren; kein Blocker für BTB-SYNC-001 |
