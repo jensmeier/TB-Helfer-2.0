@@ -372,3 +372,15 @@ Noch nicht behaupten:
 - nicht deployed;
 - Migration 016 nicht praktisch angewendet;
 - kein Server-Runtime-/Geräte-E2E für BTB-EDIT-001.
+
+
+### INT-001 – Android-Arbeitsblock vom Benutzer als fertig bestätigt
+Benutzerbestätigung am 26.09.2026: **„Android ist fertig“**.
+
+Einordnung gemäß Testregeln:
+- die Bestätigung beendet den laufenden Android-Entwicklungsblock und gibt die Branch-Integration an SERVER frei;
+- sie ist **keine** nachträgliche Behauptung eines erfolgreichen Builds 1.3.25/200075;
+- laut aktuellem Android-HEAD `a1b4667b110a993796e8242d4a21be3748c06d68` wurde der CI-Runner nicht zugewiesen und keine Gradle-Step ausgeführt;
+- Build/Installation/BTB-EDIT-001-Geräte-E2E bleiben deshalb getrennt offen.
+
+Nächster Arbeitsblock: SERVER löst `INT-001`, integriert Server- und Android-Branch konfliktbewusst und schützt dabei `server/**` bzw. `app/**`.
