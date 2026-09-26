@@ -767,3 +767,15 @@ Nach abgeschlossener Branch-Integration:
 7. erst danach gemeinsamer Geräte-E2E.
 
 Android 1.3.25/200075 bleibt Build-Retest offen; das blockiert den Server-Deploy nicht, aber den vollständigen Geräte-E2E.
+
+
+## BTB-EDIT-001 – Dateien auf Synology hochgeladen
+Status: **DATEIEN OBEN / MIGRATION 016 NOCH NICHT AUSGEFÜHRT**
+
+Benutzer bestätigt am 26.09.2026: die für BTB-EDIT-001 benötigten Serverdateien wurden nach `/volume1/docker/tb-helfer-v1` hochgeladen.
+
+Jetzt ausdrücklich noch offen:
+- Migration 016 ausführen;
+- API/Worker mit neuem Stand neu starten;
+- Runtime-/Portal-Smoke-Test;
+- noch kein Deploy-/E2E-Erfolg behaupten.
