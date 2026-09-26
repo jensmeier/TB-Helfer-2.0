@@ -1807,3 +1807,17 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Source-Check **111** schützt Reihenfolge/Secret-Handhabung; Server-Workflow führt ihn nach Check 110 aus. Das Staging-Deploy-Runbook enthält den neuen Ablauf.
 - Praktische Ausführung bleibt bis zum echten Synology-Deploy **E2E OFFEN**.
 - `STATUS.xlsx` bleibt wegen des weiterhin abweichenden Android-Workbook-Blobs unverändert.
+
+
+### 26.09.2026 – Migration 015 + Runtime-Probe praktisch bestätigt
+
+- Auf der echten Synology wurde Migration **015_file_photo_metadata.sql** praktisch angewendet. Der anschließende Runtime-Probe meldete **known 15 / applied 15 / pending [] / latest 15**.
+- `tb.files.photo_metadata` ist praktisch als `jsonb NOT NULL DEFAULT '{}'::jsonb` bestätigt; der Probe fand **0 ungültige Metadatenzeilen**.
+- Alle vom Integrationsblock verlangten Capabilities waren vorhanden; `required_capabilities_missing = []`.
+- Die echte Preview-Rendition lief erfolgreich mit **964 × 1280 px**.
+- Das aktive API-cgroup-Limit wurde mit **536870912 Byte = 512 MiB** bestätigt.
+- Ergebnis des Runtime-Probes: **`status: "OK"`, `failures: []`**.
+- Besonderheit beim DSM-Aufgabenplaner: `synology_integration_apply.sh` erzeugte den vorgesehenen FULL-Backup-Lauf erfolgreich (neuer FULL-Lauf `OK`, ca. 531 MiB), kehrte im protokollierten DSM-Lauf aber nach Schritt `[3/8]` nicht sichtbar zu Schritt 4 zurück. Migration 015 wurde deshalb anschließend kontrolliert manuell über den bestehenden Migrationsrunner angewendet und durch den Runtime-Probe bestätigt.
+- Der vollständige Endmarker `DEPLOY_OK` des Helfers wurde dadurch **nicht** als praktischer Nachweis gewertet. Vor dem Worker-/Backup-E2E sollen Worker/Monitor einmal kontrolliert neu gestartet werden, damit die laufenden Prozesse den aktuellen bind-gemounteten Quellstand sicher neu laden.
+- Android-Parallelstand bei Sicherung: `d5656cbb0c67ba9dcadfdd39870ac145e6ce2b99`.
+- `STATUS.xlsx` bleibt wegen des abweichenden Android-Workbook-Blobs unverändert.
