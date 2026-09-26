@@ -779,3 +779,15 @@ Jetzt ausdrücklich noch offen:
 - API/Worker mit neuem Stand neu starten;
 - Runtime-/Portal-Smoke-Test;
 - noch kein Deploy-/E2E-Erfolg behaupten.
+
+
+## BTB-EDIT-001 – Migrationslauf OK, 016-Verifikation offen
+Praxis am 26.09.2026:
+- im API-Container ausgeführt: `python -m tbserver.migrations up`;
+- Ausgabe: `OK`;
+- kein `APPLIED 016_btb_photo_link_metadata.sql` in der sichtbaren Ausgabe.
+
+Einordnung:
+- Migrationsrunner lief ohne Fehler;
+- daraus allein folgt noch nicht, ob 016 bereits vorher angewendet war oder ob der Container die neue Migrationsdatei nicht sieht;
+- vor Neustart von API/Worker deshalb `python -m tbserver.migrations status` ausführen und `latest_known/latest_applied/pending` prüfen.
