@@ -230,3 +230,12 @@ Status: **REPRODUZIERT / SOURCE-FIX AUSSTEHEND**
 - Ziel: Haupt-TB aktiv = stabil `PDF Entwurf` + `BTB Abschluss`.
 - Helfer = kein PDF-Entwurf; Rollen-/Schichtaktion separat.
 - Neuer Zielbuild: **1.3.24 / 200074**.
+
+
+## BTB-UI-001 – Fix 1.3.24
+Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD OFFEN**
+- Haupt-TB-UI zeigt stabil zwei Buttons: `PDF Entwurf` + `BTB Abschluss`.
+- Kein vorgelagertes Umschalten auf beide sichtbar und anschließendes Ausblenden mehr.
+- HELPER bleibt ohne PDF-Entwurf mit eigener Schichtaktion.
+- Version **1.3.24 / 200074**.
+- Release-MD: `projektsteuerung/releases/TB-Helfer_1.3.24_200074.md`.

@@ -276,3 +276,14 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Gewünschter Haupt-TB-Zustand ist stabil **PDF Entwurf + BTB Abschluss**.
 - Quellursache im `BtbModernLifecycleInstaller` nachvollziehbar: pauschal beide Buttons VISIBLE, danach Haupt-TB-Zweig `btnPdf=GONE`.
 - Vor Codeänderung dokumentiert. Nächster Zielbuild 1.3.24 / 200074.
+
+
+## BTB-UI-001 – Source-Fix gesichert
+- Praxisbefund: Pixel Haupt-TB wechselte unten zwischen 1 und 2 Buttons.
+- Quellursache: Lifecycle-Watcher setzte zunächst beide Buttons sichtbar und blendete im Haupt-TB-Zweig `PDF Entwurf` wieder aus.
+- Fixcommit `7fdb4dad2e72515dcda958c00bc2065c38d9f5da`.
+- Versions-/Releasecommit `446312c8c09a99ed71950fe3b08adc53070ddc91`.
+- Neuer Zielstand **1.3.24 / 200074**.
+- Haupt-TB: stabil `PDF Entwurf` + `BTB Abschluss`.
+- HELPER: kein PDF-Entwurf; rollenbezogene Schichtaktion.
+- Source-Check passt; Build/Installation/E2E offen.

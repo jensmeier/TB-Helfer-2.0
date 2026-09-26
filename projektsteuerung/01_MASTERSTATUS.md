@@ -281,3 +281,14 @@ Praxis 26.09.2026 auf Pixel:
   **`PDF Entwurf` + `BTB Abschluss`**.
 - Rollenabhängige Helferansicht bleibt ohne PDF-Entwurf und mit eigener Schichtaktion gemäß Serverrolle.
 - Kein periodisches Umschalten der Button-Sichtbarkeit zulässig.
+
+
+### BTB-UI-001 Source-Fix 1.3.24
+- Codefix: `7fdb4dad2e72515dcda958c00bc2065c38d9f5da`.
+- Versionierung/Release: `446312c8c09a99ed71950fe3b08adc53070ddc91`.
+- Haupt-TB-Zweig zeigt jetzt stabil `PDF Entwurf` + `BTB Abschluss`.
+- Vorgelagerte pauschale VISIBLE-Schaltung von `btnPdf/btnPdfFinal` entfernt.
+- HELPER bleibt ohne PDF-Entwurf mit rollenbezogener Schichtaktion.
+- Zielbuild **1.3.24 / 200074**.
+- Source-Check der geänderten Stellen: **PASST**.
+- Build/Installation/Praxis-E2E offen.

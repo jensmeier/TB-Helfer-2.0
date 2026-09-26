@@ -4,7 +4,9 @@ Stand: 2026-09-26
 
 | Bereich | Status | Nächster Test |
 |---|---|---|
-| BTB-UI-001 Abschlussleiste | FEHLER REPRODUZIERT | 1.3.24/200074: Haupt-TB stabil PDF Entwurf + BTB Abschluss; Helfer ohne PDF Entwurf |
+| Android 1.3.24 / 200074 Build | SOURCE-CHECK PASST / BUILD OFFEN | Android Studio/CI Build 200074 |
+| Android 1.3.24 / 200074 Installation | OFFEN | Pixel nach Build |
+| BTB-UI-001 Abschlussleiste | SOURCE-FIX UMGESETZT / BUILD OFFEN | 1.3.24/200074 bauen/installieren; Haupt-TB 2 Buttons stabil prüfen |
 | Android 1.3.23 / 200073 Build | SOURCE-FIX UMGESETZT / BUILD OFFEN | Android Studio/CI Build 200073 |
 | Android 1.3.23 / 200073 Installation | OFFEN | zuerst Pixel, danach Poco |
 | BTB-SYNC-002 Pixel→Portal Datenverlust | SOURCE-URSACHE BESTÄTIGT / ANDROID-FIX UMGESETZT / E2E OFFEN | Pixel ABC → Portal ABC; Parallel-Autosave schützen |

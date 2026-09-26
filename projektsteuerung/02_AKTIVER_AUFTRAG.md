@@ -388,3 +388,13 @@ Verbindliches Soll:
 - Die Sichtbarkeit wird pro Zyklus nur aus genau einem Rollen-/Lifecycle-Zweig gesetzt; keine vorgelagerte pauschale VISIBLE-Schaltung.
 
 Nächster Build nach Fix: **1.3.24 / 200074**.
+
+
+### BTB-UI-001 Android-Fix umgesetzt
+Status: **SOURCE-FIX FERTIG / BUILD OFFEN**
+- `BtbModernLifecycleInstaller`: keine pauschale Button-Sichtbarkeit mehr vor der Rollenentscheidung.
+- Haupt-TB + aktiver BTB: `btnPdf=VISIBLE`, `btnPdfFinal=VISIBLE`, Text `BTB Abschluss`.
+- HELPER: `btnPdf=GONE`, nur Schichtaktion.
+- FINALIZED/read-only unverändert nach Serverrecht.
+- Commit `7fdb4dad2e72515dcda958c00bc2065c38d9f5da`.
+- Version **1.3.24 / 200074**, Release-MD vorhanden.
