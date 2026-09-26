@@ -172,3 +172,16 @@ Status: **PIXEL↔PORTAL BASIS-E2E BESTÄTIGT**
 - Benutzer bestätigt den normalen Sync in beide Richtungen: Pixel → Portal und Portal → Pixel.
 - Parallel-Autosave-/Conflict-Test bleibt separat offen.
 - Nächster SERVER-Schritt: PORTAL-LIVE-001 deployen und ohne F5 testen.
+
+
+## PORTAL-LIVE-001 – E2E bestätigt
+Status: **BESTÄTIGT**
+
+- Portal aktualisiert ohne F5.
+- Praxistest: ca. 1–2 Sekunden bis zur sichtbaren Änderung.
+- Erstellen und Löschen werden automatisch übernommen.
+- Funktioniert in beide Richtungen.
+- Live-/SSE-Pfad bleibt geschützt.
+
+Separat offen:
+- `PORTAL-BTB-UI-001`: BTB im Portal fachlich/optisch nacharbeiten.
