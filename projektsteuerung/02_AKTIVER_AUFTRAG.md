@@ -393,3 +393,9 @@ Vor Branch-Integration live festgestellt:
 - alter Android-200047-Ortsmarker-Anker passt nicht mehr zur neuen BTB-EDIT-Quelle.
 
 SERVER integriert den Quellstand konfliktbewusst, ändert den Android-Buildgenerator aber nicht. Build 200075 bleibt danach offen und geht zurück an ANDROID.
+
+
+### AND-BUILD-200075 – Generatorfix vorhanden
+Android-HEAD enthält mit `606aa3ad1f8ea438372484b056a0fc1264ae2aac` den Fix für den reproduzierten `generateBtb200043Sources`-/Android-200047-Ankerfehler.
+
+SERVER ändert diesen Android-Code nicht. Vor endgültiger Integration wird nur noch geprüft, ob der Android-HEAD stabil bleibt und ob ein erfolgreicher Buildnachweis nachgereicht wurde.
