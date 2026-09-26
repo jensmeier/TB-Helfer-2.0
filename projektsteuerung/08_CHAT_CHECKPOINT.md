@@ -249,3 +249,13 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Dieser Commit ergänzt lokale stabile Foto-Zuordnungsdaten (`firmaId`, `worksiteNodeKey`, `bildtyp`).
 - Nächster Integrationsschritt nach Android-Abschluss: SERVER führt Branches gezielt zusammen und löst gemeinsame Status-/Vertragskonflikte bewusst.
 - Neuer Serverstand bleibt bis dahin **QUELLSTAND FERTIG / NICHT DEPLOYT**.
+
+
+## INT-001 – Android fertig, Integration freigegeben
+- Benutzer bestätigt am 26.09.2026: **Android ist fertig**.
+- Live-GitHub unmittelbar davor:
+  - SERVER HEAD `18618bba0286e2a4137be75071efcfd17da34dc1`;
+  - ANDROID HEAD `a1b4667b110a993796e8242d4a21be3748c06d68`;
+  - PR #7 weiterhin `mergeable=false` gegen `feature/tb-server-1.0`.
+- Android-Build 1.3.25/200075 ist nicht als erfolgreich belegt; CI hatte keinen Runner und keine Steps.
+- SERVER darf jetzt den zuvor zurückgestellten Branch-Abgleich `INT-001` durchführen.
