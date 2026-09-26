@@ -18,6 +18,13 @@
         <item name="autoSizeStepGranularity">1sp</item>
     </style>
 
+    <style name="TbButtonOutlined" parent="TbButton">
+        <item name="backgroundTint">@android:color/transparent</item>
+        <item name="android:textColor">@color/tb_blue</item>
+        <item name="strokeColor">@color/tb_blue</item>
+        <item name="strokeWidth">2dp</item>
+    </style>
+
     <!-- Kompakter Button für enge Toolbars (z.B. Personal/Maschinen) -->
     <style name="TbButtonCompact" parent="TbButton">
         <item name="android:minHeight">44dp</item>

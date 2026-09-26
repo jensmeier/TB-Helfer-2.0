@@ -27,6 +27,7 @@ import de.tbhelfer.server.TeamDisplayCache
 import de.tbhelfer.server.TeamManagementApi
 import de.tbhelfer.server.WorksiteProvisioningApi
 import de.tbhelfer.ui.sync.InvitationQr
+import de.tbhelfer.ui.sync.WorksiteInvitationLink
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -85,11 +86,15 @@ object BaustellenTeamDirekt {
             .build()
         GmsBarcodeScanning.getClient(fragment.requireActivity(), options).startScan()
             .addOnSuccessListener { barcode ->
-                val code = extractInvitationCode(barcode.rawValue.orEmpty())
-                if (code == null) {
-                    Toast.makeText(fragment.requireContext(), "Kein gültiger TB-Helfer-Baustellen-QR.", Toast.LENGTH_LONG).show()
+                val invitation = WorksiteInvitationLink.parse(barcode.rawValue.orEmpty())
+                if (invitation == null) {
+                    Toast.makeText(
+                        fragment.requireContext(),
+                        "Kein gültiger TB-Helfer-Baustellen-QR.",
+                        Toast.LENGTH_LONG
+                    ).show()
                 } else {
-                    redeemInvitationCode(fragment, code)
+                    redeemInvitationCredential(fragment, invitation)
                 }
             }
             .addOnFailureListener {
@@ -343,15 +348,10 @@ object BaustellenTeamDirekt {
         fragment.startActivity(Intent.createChooser(intent, "Einladung teilen / senden"))
     }
 
-    private fun extractInvitationCode(raw: String): String? {
-        val text = raw.trim()
-        if (text.startsWith("TBI-", ignoreCase = true)) return text.uppercase()
-        val uri = runCatching { Uri.parse(text) }.getOrNull() ?: return null
-        if (!uri.scheme.equals("tbhelfer", ignoreCase = true) || !uri.host.equals("invite", ignoreCase = true)) return null
-        return uri.getQueryParameter("code")?.trim()?.takeIf { it.isNotBlank() }?.uppercase()
-    }
-
-    private fun redeemInvitationCode(fragment: Fragment, code: String) {
+    private fun redeemInvitationCredential(
+        fragment: Fragment,
+        invitation: WorksiteInvitationLink.Credential
+    ) {
         val tokenStore = SecureTokenStore(fragment.requireContext())
         val token = tokenStore.load()
         if (token.isNullOrBlank()) {
@@ -361,7 +361,15 @@ object BaustellenTeamDirekt {
 
         fragment.viewLifecycleOwner.lifecycleScope.launch {
             Toast.makeText(fragment.requireContext(), "Baustelle wird übernommen …", Toast.LENGTH_SHORT).show()
-            val redeem = withContext(Dispatchers.IO) { teamApi.redeemInvitation(token, code) }
+            val redeem = withContext(Dispatchers.IO) {
+                when (invitation) {
+                    is WorksiteInvitationLink.Credential.ServerToken ->
+                        teamApi.redeemServerInvitation(token, invitation.value)
+
+                    is WorksiteInvitationLink.Credential.LegacyCode ->
+                        teamApi.redeemInvitation(token, invitation.value)
+                }
+            }
             if (!fragment.isAdded) return@launch
 
             when (redeem) {

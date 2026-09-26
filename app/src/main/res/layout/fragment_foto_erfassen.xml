@@ -170,101 +170,27 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/ui_fragment_foto_erfassen_hint_8"
-            android:inputType="textCapSentences" />
+            android:inputType="textCapSentences"
+            android:maxLength="80" />
 
-        <!-- Cleaner Toggle: erst bei Bedarf Notiz + Objekt anzeigen -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnToggleOptional"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:layout_gravity="start"
-            android:text="@string/ui_fragment_foto_erfassen_text_9"
-            android:textAllCaps="false"
-            android:textSize="13sp"
-            android:textColor="?attr/colorOnBackground"
-            android:alpha="0.95"
-            android:minHeight="0dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:paddingStart="0dp"
-            android:paddingEnd="0dp" />
 
-        <LinearLayout
-            android:id="@+id/optionalContainer"
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone">
+            android:layout_marginTop="12dp"
+            android:text="Langtext / BTB-Text (optional)"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnBackground" />
 
-            <EditText
-                android:id="@+id/edtNotiz"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/ui_fragment_foto_erfassen_hint_10"
-                android:minLines="3"
-                android:gravity="top"
-                android:inputType="textCapSentences|textMultiLine" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="Bild-Zusatzinfos"
-                android:textStyle="bold"
-                android:textColor="?attr/colorOnBackground" />
-
-            <EditText
-                android:id="@+id/edtInfo1Label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Info1"
-                android:inputType="textCapWords" />
-
-            <EditText
-                android:id="@+id/edtInfo1Value"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:hint="Wert zu Info1"
-                android:inputType="textCapSentences" />
-
-            <EditText
-                android:id="@+id/edtInfo2Label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="Info2"
-                android:inputType="textCapWords" />
-
-            <EditText
-                android:id="@+id/edtInfo2Value"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:hint="Wert zu Info2"
-                android:inputType="textCapSentences" />
-
-            <EditText
-                android:id="@+id/edtInfo3Label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="Info3"
-                android:inputType="textCapWords" />
-
-            <EditText
-                android:id="@+id/edtInfo3Value"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:hint="Wert zu Info3"
-                android:inputType="textCapSentences" />
-
-        </LinearLayout>
+        <EditText
+            android:id="@+id/edtNotiz"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:hint="Ausführlicher Text für das Bautagebuch"
+            android:minLines="3"
+            android:gravity="top"
+            android:inputType="textCapSentences|textMultiLine" />
 
         <LinearLayout
             android:layout_width="match_parent"

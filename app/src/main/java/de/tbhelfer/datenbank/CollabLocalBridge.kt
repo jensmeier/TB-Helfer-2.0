@@ -1,7 +1,11 @@
 package de.tbhelfer.datenbank
 
 import android.content.Context
+import de.tbhelfer.server.BtbEntrySlotStore
+import de.tbhelfer.server.BtbServerStateStore
 import de.tbhelfer.server.CollabSyncApi
+import de.tbhelfer.server.SelectiveSyncStore
+import de.tbhelfer.server.Server1BtbApi
 import de.tbhelfer.server.Server1FileApi
 import de.tbhelfer.ui.abnahme.AbnahmeSpeicher
 import de.tbhelfer.ui.abnahme.AbnahmeDeleteIntentStore
@@ -9,6 +13,9 @@ import de.tbhelfer.ui.baustelle.MaengellisteExport
 import de.tbhelfer.ui.baustelle.MangelStatusSpeicher
 import de.tbhelfer.ui.baustelle.SyncMangelSpeicher
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
+import de.tbhelfer.ui.bautagebuch.BtbActivePointerControl
+import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
+import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.SchichtTyp
 import org.json.JSONArray
 import org.json.JSONObject
@@ -43,6 +50,17 @@ class CollabLocalBridge(
         val acceptances: Int
     )
 
+    sealed interface BtbExportResult {
+        data class Success(
+            val worksiteServerId: String,
+            val queuedOrUpdated: Boolean
+        ) : BtbExportResult
+
+        data object NotBound : BtbExportResult
+        data object NotFound : BtbExportResult
+        data object ReadOnly : BtbExportResult
+    }
+
     data class ImportSummary(
         val worksites: Int,
         val btbWritten: Int,
@@ -64,6 +82,81 @@ class CollabLocalBridge(
         data class Error(val message: String) : AttachmentUploadResult
     }
 
+    /**
+     * Exportiert ausschließlich genau einen lokalen BTB in die bestehende Collaboration-Outbox.
+     *
+     * Kein Scan von Mängeln, Abnahmen, Baustellenbaum oder anderen BTBs. Die bestehende
+     * queueIfChanged-/Hash-/Sanitizing-Logik bleibt maßgeblich.
+     */
+    suspend fun exportBtbChange(
+        localBaustelleId: Long,
+        clientBtbId: String
+    ): BtbExportResult {
+        if (clientBtbId.isBlank()) return BtbExportResult.NotFound
+
+        val item = bindingRepository.contextsWithBindings()
+            .firstOrNull { bound ->
+                bound.binding != null &&
+                    bound.localWorksite?.altBaustelleId == localBaustelleId
+            }
+            ?: return BtbExportResult.NotBound
+
+        val local = item.localWorksite ?: return BtbExportResult.NotBound
+        val server = item.context
+        val serverState = BtbServerStateStore.state(appContext, clientBtbId)
+        if (serverState?.readOnly == true) {
+            collabRepository.clearServer1BtbPending(server.worksiteServerId, clientBtbId)
+            SelectiveSyncStore.clearBtb(appContext, localBaustelleId, clientBtbId)
+            return BtbExportResult.ReadOnly
+        }
+        val localName = local.hauptbaustellenName
+        val entry = BautagebuchSpeicher.ladenById(
+            appContext,
+            localBaustelleId,
+            localName,
+            clientBtbId
+        ) ?: return BtbExportResult.NotFound
+        val datum = runCatching { LocalDate.parse(entry.datumIso) }.getOrNull()
+            ?: return BtbExportResult.NotFound
+        val source = findBtbJson(
+            localBaustelleId,
+            localName,
+            datum,
+            entry.schicht,
+            clientBtbId
+        ) ?: return BtbExportResult.NotFound
+
+        val payloadObject = runCatching {
+            JSONObject(source.readText(Charsets.UTF_8))
+        }.getOrElse { JSONObject() }
+        if (payloadObject.optString("btbId").isBlank()) {
+            payloadObject.put("btbId", clientBtbId)
+        }
+        BtbEntrySlotStore.injectInto(appContext, clientBtbId, payloadObject)
+        val payload = sanitizeBtbPayload(
+            payloadObject.toString(),
+            localBaustelleId,
+            localName
+        )
+        val lifecycleStatus = BtbDokumentVersionierung.status(appContext, entry)
+        val syncStatus = if (lifecycleStatus == BtbAbschlussStatus.ABGESCHLOSSEN) {
+            "FERTIG"
+        } else {
+            "ENTWURF"
+        }
+
+        val queued = queueIfChanged(
+            worksiteServerId = server.worksiteServerId,
+            entityType = SyncCollabPendingChangeEntity.TYPE_BTB,
+            clientKey = clientBtbId,
+            groupId = server.groupId,
+            status = syncStatus,
+            areaScopeJson = server.areaScopeJson,
+            payloadJson = payload
+        )
+        return BtbExportResult.Success(server.worksiteServerId, queued)
+    }
+
     suspend fun exportLocalChanges(): ExportSummary {
         val bound = bindingRepository.contextsWithBindings().filter { it.binding != null && it.localWorksite != null }
         var total = 0
@@ -81,16 +174,31 @@ class CollabLocalBridge(
             for (verlauf in BautagebuchSpeicher.verlaufFuerBaustelle(appContext, localBaustelleId, localName)) {
                 val clientKey = verlauf.btbId?.takeIf { it.isNotBlank() }
                     ?: "legacy:${verlauf.datum}:${verlauf.schicht.name}"
+                val serverState = BtbServerStateStore.state(appContext, clientKey)
+                if (serverState?.readOnly == true) {
+                    collabRepository.clearServer1BtbPending(server.worksiteServerId, clientKey)
+                    SelectiveSyncStore.clearBtb(appContext, localBaustelleId, clientKey)
+                    continue
+                }
                 val source = findBtbJson(localBaustelleId, localName, verlauf.datum, verlauf.schicht, clientKey) ?: continue
                 val payloadObject = runCatching { JSONObject(source.readText(Charsets.UTF_8)) }.getOrElse { JSONObject() }
                 if (payloadObject.optString("btbId").isBlank()) payloadObject.put("btbId", clientKey)
+                BtbEntrySlotStore.injectInto(appContext, clientKey, payloadObject)
                 val payload = sanitizeBtbPayload(payloadObject.toString(), localBaustelleId, localName)
+                val lifecycleStatus = BtbDokumentVersionierung.status(appContext, verlauf.entry)
+                val syncStatus = if (lifecycleStatus == BtbAbschlussStatus.ABGESCHLOSSEN) {
+                    "FERTIG"
+                } else {
+                    // ENTWURF und NACHBEARBEITUNG sind beide aktiv/bearbeitbar.
+                    // Legacy-Felder duerfen einen nachbearbeiteten BTB nicht erneut finalisieren.
+                    "ENTWURF"
+                }
                 if (queueIfChanged(
                         worksiteServerId = server.worksiteServerId,
                         entityType = SyncCollabPendingChangeEntity.TYPE_BTB,
                         clientKey = clientKey,
                         groupId = server.groupId,
-                        status = if (verlauf.entry.istFertig || verlauf.entry.dokumentVersion > 0) "FERTIG" else "ENTWURF",
+                        status = syncStatus,
                         areaScopeJson = server.areaScopeJson,
                         payloadJson = payload
                     )
@@ -260,8 +368,15 @@ class CollabLocalBridge(
                     if (!file.exists() || !file.isFile) continue
                     val uploadName = semanticFilename("DEFECT", mf.art.name, file.name)
                     when (val result = collabRepository.uploadAttachment(
-                        token, server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_DEFECT,
-                        serverEntity.serverId, file, uploadName, CollabSyncRepository.mimeTypeFor(file), api, server1Api
+                        token = token,
+                        worksiteServerId = server.worksiteServerId,
+                        parentEntityType = SyncCollabPendingChangeEntity.TYPE_DEFECT,
+                        parentEntityId = serverEntity.serverId,
+                        file = file,
+                        uploadFilename = uploadName,
+                        mimeType = CollabSyncRepository.mimeTypeFor(file),
+                        api = api,
+                        server1Api = server1Api
                     )) {
                         CollabSyncRepository.LocalAttachmentUploadResult.SessionInvalid -> return AttachmentUploadResult.SessionInvalid
                         CollabSyncRepository.LocalAttachmentUploadResult.Unsupported -> return AttachmentUploadResult.Unsupported
@@ -285,8 +400,15 @@ class CollabLocalBridge(
                     if (!file.exists() || !file.isFile) continue
                     val uploadName = semanticFilename("ACCEPTANCE_FOTO", ref.bildArt.name, file.name)
                     when (val result = collabRepository.uploadAttachment(
-                        token, server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
-                        serverEntity.serverId, file, uploadName, CollabSyncRepository.mimeTypeFor(file), api, server1Api
+                        token = token,
+                        worksiteServerId = server.worksiteServerId,
+                        parentEntityType = SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
+                        parentEntityId = serverEntity.serverId,
+                        file = file,
+                        uploadFilename = uploadName,
+                        mimeType = CollabSyncRepository.mimeTypeFor(file),
+                        api = api,
+                        server1Api = server1Api
                     )) {
                         CollabSyncRepository.LocalAttachmentUploadResult.SessionInvalid -> return AttachmentUploadResult.SessionInvalid
                         CollabSyncRepository.LocalAttachmentUploadResult.Unsupported -> return AttachmentUploadResult.Unsupported
@@ -305,8 +427,15 @@ class CollabLocalBridge(
                     if (!file.exists() || !file.isFile) continue
                     val uploadName = semanticFilename("ACCEPTANCE_ANLAGE", anlage.typ.name, file.name)
                     when (val result = collabRepository.uploadAttachment(
-                        token, server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
-                        serverEntity.serverId, file, uploadName, CollabSyncRepository.mimeTypeFor(file), api, server1Api
+                        token = token,
+                        worksiteServerId = server.worksiteServerId,
+                        parentEntityType = SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
+                        parentEntityId = serverEntity.serverId,
+                        file = file,
+                        uploadFilename = uploadName,
+                        mimeType = CollabSyncRepository.mimeTypeFor(file),
+                        api = api,
+                        server1Api = server1Api
                     )) {
                         CollabSyncRepository.LocalAttachmentUploadResult.SessionInvalid -> return AttachmentUploadResult.SessionInvalid
                         CollabSyncRepository.LocalAttachmentUploadResult.Unsupported -> return AttachmentUploadResult.Unsupported
@@ -322,8 +451,70 @@ class CollabLocalBridge(
         return AttachmentUploadResult.Success(AttachmentUploadSummary(bound.size, uploaded, present))
     }
 
-    suspend fun applyServerStateToLocal(): ImportSummary {
-        val bound = bindingRepository.contextsWithBindings().filter { it.binding != null && it.localWorksite != null }
+    /**
+     * Uebernimmt nur Rollen/Lifecycle/Slot-Metadaten aus dem bereits geladenen Servercache.
+     * Lokale BTB-Fachinhalte werden dabei NICHT ueberschrieben. Dieser Schritt muss bei einem
+     * Recovery-Vollsync vor exportLocalChanges laufen, damit alte FINALIZED-BTBs keine neue
+     * Outbox-Mutation erzeugen und vorhandene _tb_android_slot-Werte erhalten bleiben.
+     */
+    suspend fun primeBtbServerState(
+        worksiteServerIds: Set<String>? = null
+    ): Int {
+        val bound = bindingRepository.contextsWithBindings().filter {
+            it.binding != null &&
+                it.localWorksite != null &&
+                (worksiteServerIds == null || it.context.worksiteServerId in worksiteServerIds)
+        }
+        var primed = 0
+        for (item in bound) {
+            val local = item.localWorksite ?: continue
+            val server = item.context
+            val localBaustelleId = local.altBaustelleId
+            val btbItems = collabRepository.entities(
+                server.worksiteServerId,
+                SyncCollabPendingChangeEntity.TYPE_BTB
+            ).filter { it.groupId == server.groupId }
+
+            for (entity in btbItems) {
+                val key = entity.clientEntityKey ?: continue
+                val payload = runCatching { JSONObject(entity.payloadJson) }.getOrNull() ?: continue
+                BtbServerStateStore.rememberSnapshot(
+                    appContext,
+                    worksiteServerId = server.worksiteServerId,
+                    serverBtbId = entity.serverId,
+                    teamId = entity.groupId ?: server.groupId,
+                    clientBtbId = key,
+                    payloadJson = entity.payloadJson
+                )
+                BtbEntrySlotStore.remember(
+                    appContext,
+                    key,
+                    payload.optJSONObject(Server1BtbApi.LOCAL_ENTRY_SLOTS_KEY)
+                )
+                val serverFinal = entity.status.equals("FERTIG", ignoreCase = true) &&
+                    payload.optString(Server1BtbApi.SERVER_STATUS_KEY)
+                        .equals("FINALIZED", ignoreCase = true) &&
+                    !payload.optBoolean(Server1BtbApi.SERVER_ACTIVE_KEY, false)
+                if (serverFinal) {
+                    collabRepository.clearServer1BtbPending(server.worksiteServerId, key)
+                    SelectiveSyncStore.clearBtb(appContext, localBaustelleId, key)
+                }
+                primed++
+            }
+        }
+        return primed
+    }
+
+    suspend fun applyServerStateToLocal(
+        worksiteServerIds: Set<String>? = null,
+        btbServerIds: Set<String>? = null,
+        includeOtherEntities: Boolean = true
+    ): ImportSummary {
+        val bound = bindingRepository.contextsWithBindings().filter {
+            it.binding != null &&
+                it.localWorksite != null &&
+                (worksiteServerIds == null || it.context.worksiteServerId in worksiteServerIds)
+        }
         var btbWritten = 0
         var defectStatuses = 0
         var acceptanceWritten = 0
@@ -336,11 +527,51 @@ class CollabLocalBridge(
             val localName = local.hauptbaustellenName
 
             val btbItems = collabRepository.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB)
-                .filter { it.groupId == server.groupId }
+                .filter {
+                    it.groupId == server.groupId &&
+                        (btbServerIds == null || it.serverId in btbServerIds)
+                }
             for (entity in btbItems) {
                 val key = entity.clientEntityKey ?: continue
-                if (dao.collabPendingForClientKey(server.worksiteServerId, entity.entityType, key) != null) continue
                 val payload = runCatching { JSONObject(entity.payloadJson) }.getOrNull() ?: continue
+
+                BtbServerStateStore.rememberSnapshot(
+                    appContext,
+                    worksiteServerId = server.worksiteServerId,
+                    serverBtbId = entity.serverId,
+                    teamId = entity.groupId ?: server.groupId,
+                    clientBtbId = key,
+                    payloadJson = entity.payloadJson
+                )
+                BtbEntrySlotStore.remember(
+                    appContext,
+                    key,
+                    payload.optJSONObject(Server1BtbApi.LOCAL_ENTRY_SLOTS_KEY)
+                )
+
+                val serverActive = payload.optBoolean(Server1BtbApi.SERVER_ACTIVE_KEY, false)
+                val serverFinal = entity.status.equals("FERTIG", ignoreCase = true) &&
+                    payload.optString(Server1BtbApi.SERVER_STATUS_KEY).equals("FINALIZED", ignoreCase = true) &&
+                    !serverActive
+                if (serverFinal) {
+                    // Kanonisch bestaetigter historischer BTB: alte Auto-Dirty-/Pending-Reste
+                    // duerfen keinen neuen Header-/Entry-/Foto-Upload mehr provozieren.
+                    collabRepository.clearServer1BtbPending(server.worksiteServerId, key)
+                    SelectiveSyncStore.clearBtb(appContext, localBaustelleId, key)
+                } else if (
+                    dao.collabPendingForClientKey(server.worksiteServerId, entity.entityType, key) != null ||
+                    SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, key)
+                ) {
+                    // Unbestätigte lokale Fachänderung hat Vorrang vor einem Snapshot-Apply.
+                    // Der Serverstand bleibt im Cache/BtbServerStateStore bekannt, darf aber die
+                    // lokale BTB-Datei erst nach Upload-/Conflict-Abschluss ersetzen.
+                    continue
+                }
+
+                payload.remove(Server1BtbApi.SERVER_CURRENT_USER_KEY)
+                payload.remove(Server1BtbApi.SERVER_PARTICIPANTS_KEY)
+                payload.remove(Server1BtbApi.SERVER_PHOTOS_KEY)
+                payload.remove(Server1BtbApi.LOCAL_ENTRY_SLOTS_KEY)
                 val datum = payload.optString("datumIso").takeIf { it.isNotBlank() }
                     ?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: continue
                 val schicht = runCatching { SchichtTyp.valueOf(payload.optString("schicht", SchichtTyp.TAG.name)) }
@@ -359,9 +590,61 @@ class CollabLocalBridge(
                     BautagebuchSpeicher.ordner(appContext, localBaustelleId, localName, datum),
                     "btb_${safeBtbFileToken(payload.optString("btbId", key))}.json"
                 )
-                if (writeIfDifferent(target, localPayload.toString(2))) btbWritten++
+
+                val appliedToLocal = SelectiveSyncStore.withBtbMutationLock(localBaustelleId, key) {
+                    // Zweite Dirty-Prüfung im selben Lock wie der Dateischreibzugriff schließt
+                    // das Rennen "Autosave nach erster Prüfung, aber vor Snapshot-Write".
+                    if (!serverFinal && SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, key)) {
+                        false
+                    } else {
+                        if (writeIfDifferent(target, localPayload.toString(2))) btbWritten++
+
+                        // Server ist fuer den Team-Lifecycle kanonisch. Ein aktiver Server-BTB wird auf
+                        // allen Geraeten derselben Baustelle aktiv; ein bestaetigtes FINALIZED loest nur
+                        // dann den lokalen Pointer, wenn genau dieser BTB dort noch aktiv war.
+                        if (serverActive) {
+                            BtbActivePointerControl.inaktivMarkerLoeschen(
+                                appContext,
+                                localBaustelleId,
+                                localName
+                            )
+                            BtbActivePointerControl.reaktivierungsMarkerLoeschen(
+                                appContext,
+                                localBaustelleId,
+                                localName
+                            )
+                            BautagebuchSpeicher.aktivierenBtb(
+                                appContext,
+                                localBaustelleId,
+                                localName,
+                                key,
+                                datum,
+                                schicht
+                            )
+                        } else if (
+                            serverFinal &&
+                            BautagebuchSpeicher.aktiveBtbId(
+                                appContext,
+                                localBaustelleId,
+                                localName
+                            ) == key
+                        ) {
+                            BtbActivePointerControl.nachAbschlussInaktivMerken(
+                                appContext,
+                                localBaustelleId,
+                                localName,
+                                key
+                            )
+                        }
+                        true
+                    }
+                }
+                if (!appliedToLocal) continue
+
                 rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(entity.status, canonicalPayload))
             }
+
+            if (!includeOtherEntities) continue
 
             val defectItems = collabRepository.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_DEFECT)
             val activeDefectServerIds = defectItems.mapTo(hashSetOf()) { it.serverId }
@@ -376,7 +659,11 @@ class CollabLocalBridge(
                 val newValue = if (old.status == MangelStatusSpeicher.Status.ERLEDIGT) old else old.copy(
                     status = incomingStatus,
                     kommentar = payload.optString("kommentar", old.kommentar),
-                    erledigtAmEpochMs = payload.optNullableLong("erledigtAmEpochMs") ?: old.erledigtAmEpochMs
+                    erledigtAmEpochMs = payload.optNullableLong("erledigtAmEpochMs") ?: old.erledigtAmEpochMs,
+                    bereichOverride = payload.optString("bereich").trim().takeIf { it.isNotBlank() },
+                    kmOverride = if (payload.has("km") && !payload.isNull("km")) payload.optString("km", "").trim() else old.kmOverride,
+                    firmaOverride = payload.optString("firma").trim().takeIf { it.isNotBlank() },
+                    beschreibungOverride = payload.optString("beschreibung").trim().takeIf { it.isNotBlank() }
                 )
                 MangelStatusSpeicher.speichern(appContext, key, newValue)
                 SyncMangelSpeicher.speichern(
@@ -603,6 +890,10 @@ class CollabLocalBridge(
         val payload = runCatching { JSONObject(raw) }.getOrElse { JSONObject() }
         payload.put("kommentar", status.kommentar)
         payload.putNullable("erledigtAmEpochMs", status.erledigtAmEpochMs)
+        status.bereichOverride?.takeIf { it.isNotBlank() }?.let { payload.put("bereich", it) }
+        status.kmOverride?.let { payload.put("km", it) }
+        status.firmaOverride?.takeIf { it.isNotBlank() }?.let { payload.put("firma", it) }
+        status.beschreibungOverride?.takeIf { it.isNotBlank() }?.let { payload.put("beschreibung", it) }
         payload.put("fotos", JSONArray())
         return payload.toString()
     }

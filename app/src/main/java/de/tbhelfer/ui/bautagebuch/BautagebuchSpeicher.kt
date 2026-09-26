@@ -2,6 +2,8 @@ package de.tbhelfer.ui.bautagebuch
 
 import android.content.Context
 import android.os.Environment
+import de.tbhelfer.server.BtbServerStateStore
+import de.tbhelfer.server.SelectiveSyncStore
 import de.tbhelfer.server.SofortSync
 import org.json.JSONArray
 import org.json.JSONObject
@@ -27,8 +29,23 @@ object BautagebuchSpeicher {
      * Server-Sync ist nur ein entprellter WorkManager-Trigger und darf einen erfolgreichen
      * lokalen BTB-Speichervorgang niemals nachträglich scheitern lassen.
      */
-    private fun syncNachLokalemSpeichernAnstossen(context: Context) {
-        runCatching { SofortSync.anstossen(context.applicationContext) }
+    private fun syncNachLokalemSpeichernAnstossen(
+        context: Context,
+        baustelleId: Long,
+        btbId: String?
+    ) {
+        runCatching {
+            if (!btbId.isNullOrBlank()) {
+                SofortSync.btbAnstossen(
+                    context = context.applicationContext,
+                    localBaustelleId = baustelleId,
+                    clientBtbId = btbId
+                )
+            } else {
+                // Dokumentierter Legacy-Fallback ohne stabile BTB-ID.
+                SofortSync.anstossen(context.applicationContext)
+            }
+        }
     }
 
     private fun tbRoot(context: Context): File {
@@ -254,7 +271,9 @@ object BautagebuchSpeicher {
             val datum = runCatching { LocalDate.parse(dd.name, isoFmt) }.getOrNull() ?: return@forEach
             val f = instanzDatei(context, baustelleId, baustelleName, datum, btbId)
             parseEntryFile(f)?.let { e ->
-                writeActivePointer(context, baustelleId, baustelleName, btbId, datum, e.schicht)
+                // Reiner Leseweg: Das Laden eines BTB darf niemals den globalen aktiven
+                // BTB-Pointer veraendern. Aktivierung erfolgt ausschliesslich ueber
+                // aktivierenBtb()/neueBtbIdVorbereiten() nach einer bewussten Benutzeraktion.
                 return e.copy(btbId = e.btbId ?: btbId)
             }
         }
@@ -338,7 +357,8 @@ object BautagebuchSpeicher {
             .mapNotNull { parseEntryFile(it) }
             .firstOrNull { it.schicht == schicht }
         if (newest != null && !newest.btbId.isNullOrBlank()) {
-            writeActivePointer(context, baustelleId, baustelleName, newest.btbId, datum, schicht)
+            // Reiner Leseweg. Historie, Vortag-Uebernahme und Statusabfragen duerfen
+            // den aktiven BTB nicht im Hintergrund umschalten.
             return newest
         }
 
@@ -383,12 +403,21 @@ object BautagebuchSpeicher {
         val id = explicitId ?: pointer?.btbId?.takeIf { pointerMatches }
 
         if (!id.isNullOrBlank()) {
+            // Kanonisch bestaetigter FINALIZED-BTB bzw. beendete Helferschicht ist read-only.
+            // Autosave darf daraus keine neue lokale Mutation erzeugen, die spaeter BTB_NOT_ACTIVE
+            // oder BTB_PARTICIPANT_FINISHED provoziert.
+            if (BtbServerStateStore.state(context, id)?.readOnly == true) return
             val normalized = entry.copy(btbId = id)
-            val f = instanzDatei(context, entry.baustelleId, entry.baustelleName, datum, id)
-            f.writeText(toJson(normalized).toString(2), Charsets.UTF_8)
-            writeActivePointer(context, entry.baustelleId, entry.baustelleName, id, datum, normalized.schicht)
-            de.tbhelfer.widget.TBHelferWidgetUpdater.updateAll(context)
-            syncNachLokalemSpeichernAnstossen(context)
+            SelectiveSyncStore.withBtbMutationLock(entry.baustelleId, id) {
+                val f = instanzDatei(context, entry.baustelleId, entry.baustelleName, datum, id)
+                f.writeText(toJson(normalized).toString(2), Charsets.UTF_8)
+                writeActivePointer(context, entry.baustelleId, entry.baustelleName, id, datum, normalized.schicht)
+                de.tbhelfer.widget.TBHelferWidgetUpdater.updateAll(context)
+                // Dirty-Markierung bleibt im selben BTB-Mutationslock wie der Dateisave.
+                // Ein paralleler Server-Apply kann damit niemals zwischen lokalem Save und
+                // persistenter Dirty-Markierung denselben BTB wieder ueberschreiben.
+                syncNachLokalemSpeichernAnstossen(context, normalized.baustelleId, id)
+            }
             return
         }
 
@@ -401,7 +430,7 @@ object BautagebuchSpeicher {
         if (!legacy.exists()) return
         legacy.writeText(toJson(entry).toString(2), Charsets.UTF_8)
         de.tbhelfer.widget.TBHelferWidgetUpdater.updateAll(context)
-        syncNachLokalemSpeichernAnstossen(context)
+        syncNachLokalemSpeichernAnstossen(context, entry.baustelleId, null)
     }
 
     private fun toJson(e: BautagebuchEintrag): JSONObject = JSONObject().apply {
@@ -441,8 +470,16 @@ object BautagebuchSpeicher {
             put("leistungen", JSONArray().apply { f.leistungen.forEach { l -> put(JSONObject().apply { put("uhrzeit", l.uhrzeit); put("text", l.text) }) } })
         }) } })
         fun sectionToJson(sb: SectionBlock): JSONArray = JSONArray().apply { sb.items.forEach { item -> put(JSONObject().apply {
-            put("uhrzeit", item.uhrzeit); put("text", item.text); put("kmVon", item.kmVon); put("kmBis", item.kmBis)
+            put("clientEntryKey", item.clientEntryKey)
+            put("uhrzeit", item.uhrzeit)
+            put("text", item.text)
+            put("kmVon", item.kmVon)
+            put("kmBis", item.kmBis)
+            put("firmaId", item.firmaId)
+            put("firmaName", item.firmaName)
+            put("worksiteNodeKey", item.worksiteNodeKey)
         }) } }
+        put("arbeiten", sectionToJson(e.arbeiten))
         put("abnahmen", sectionToJson(e.abnahmen))
         put("einweisungUnterweisung", sectionToJson(e.einweisungUnterweisung))
         put("besonderheiten", sectionToJson(e.besonderheiten))
@@ -499,9 +536,14 @@ object BautagebuchSpeicher {
                 val x = a.optJSONObject(i) ?: return@mapNotNull null
                 val text = x.optString("text").trim(); if (text.isBlank()) return@mapNotNull null
                 SectionItem(
-                    uhrzeit = x.optString("uhrzeit").takeUnless { it.isBlank() }, text = text,
+                    clientEntryKey = x.optString("clientEntryKey").trim().takeIf { it.isNotBlank() },
+                    uhrzeit = x.optString("uhrzeit").takeUnless { it.isBlank() },
+                    text = text,
                     kmVon = if (x.has("kmVon") && !x.isNull("kmVon")) x.optDouble("kmVon").takeUnless { it.isNaN() } else null,
-                    kmBis = if (x.has("kmBis") && !x.isNull("kmBis")) x.optDouble("kmBis").takeUnless { it.isNaN() } else null
+                    kmBis = if (x.has("kmBis") && !x.isNull("kmBis")) x.optDouble("kmBis").takeUnless { it.isNaN() } else null,
+                    firmaId = x.optString("firmaId").trim().takeIf { it.isNotBlank() },
+                    firmaName = x.optString("firmaName").trim().takeIf { it.isNotBlank() },
+                    worksiteNodeKey = x.optString("worksiteNodeKey").trim().takeIf { it.isNotBlank() }
                 )
             })
         }
@@ -581,6 +623,7 @@ object BautagebuchSpeicher {
             maxFotosInPdf = o.optInt("maxFotosInPdf", 60),
             pdfAuswahl = pdfAuswahlMap(),
             firmen = firmenList(),
+            arbeiten = sectionFromArray(o.optJSONArray("arbeiten")),
             abnahmen = sectionFromArray(o.optJSONArray("abnahmen")),
             einweisungUnterweisung = sectionFromArray(o.optJSONArray("einweisungUnterweisung")),
             besonderheiten = sectionFromArray(o.optJSONArray("besonderheiten")),

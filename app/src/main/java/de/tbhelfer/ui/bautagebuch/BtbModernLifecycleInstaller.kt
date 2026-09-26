@@ -24,6 +24,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.server.BtbLifecycleCoordinator
+import de.tbhelfer.server.BtbServerStateStore
 import de.tbhelfer.server.UserDisplayCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -139,6 +141,22 @@ object BtbModernLifecycleInstaller {
             val current = BtbUiSaveBridge.aktuell(fragment)
             if (current == null) {
                 Snackbar.make(anchor, "Noch kein aktueller BTB vorhanden. Neuen BTB über + starten.", Snackbar.LENGTH_LONG).show()
+                return@launch
+            }
+            val serverState = BtbServerStateStore.state(
+                fragment.requireContext().applicationContext,
+                current.btbId
+            )
+            if (serverState?.readOnly == true) {
+                Snackbar.make(
+                    anchor,
+                    if (serverState.serverFinalReadOnly) {
+                        "Abgeschlossener Server-BTB ist schreibgeschützt."
+                    } else {
+                        "Eigene Schicht ist beendet. Zum Bearbeiten zuerst „Schicht fortsetzen“."
+                    },
+                    Snackbar.LENGTH_LONG
+                ).show()
                 return@launch
             }
             val status = withContext(Dispatchers.IO) {
@@ -293,59 +311,156 @@ object BtbModernLifecycleInstaller {
 
     private fun closeCurrentBtb(fragment: BautagebuchFragment, root: View, anchor: View) {
         fragment.viewLifecycleOwner.lifecycleScope.launch {
-            Snackbar.make(anchor, "BTB wird gespeichert und abgeschlossen …", Snackbar.LENGTH_LONG).show()
+            Snackbar.make(anchor, "BTB wird gespeichert und mit dem Server abgeglichen …", Snackbar.LENGTH_LONG).show()
             val saved = BtbUiSaveBridge.speichernUndNeuLaden(fragment, root)
             if (saved == null) {
                 Snackbar.make(anchor, "BTB konnte nicht vollständig gespeichert werden. Bitte Eingaben prüfen.", Snackbar.LENGTH_LONG).show()
                 return@launch
             }
 
-            val appContext = fragment.requireContext().applicationContext
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    BtbDokumentVersionierung.pflegeNachAutosave(appContext, saved.entry)
-                    BtbRendererBaselineBridge.prepare(appContext, saved.entry)
-
-                    val renderEntry = BtbRenderOriginalDiff.aufbereiten(appContext, saved.entry)
-
-                    BtbFotoRenderMarkierung.clear()
-                    val pdfEngine = BautagebuchPdf(appContext, ServiceLocator.fotoRepository)
-                    val alleFotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(saved.entry.baustelleId)
-                    BtbOriginalFotoSpeicher.migriereAusBestehendemOriginalWennFehlt(appContext, saved.entry, alleFotos)
-                    val aktuelleFotoIds = BtbOriginalFotoSpeicher.aktuelleFotoIds(appContext, saved.entry, alleFotos)
-                    val roteFotoIds = BtbOriginalFotoSpeicher.neueFotoIds(appContext, saved.entry.btbId, aktuelleFotoIds)
-                    BtbFotoRenderMarkierung.vorbereiten(appContext, alleFotos, roteFotoIds)
-
-                    val file = try {
-                        BtbFotoBtbFilter.mitFilter(appContext, saved.entry, alleFotos) {
-                            pdfEngine.erstellenPdf(renderEntry, asDraft = false)
-                        }
-                    } finally {
-                        BtbFotoRenderMarkierung.clear()
-                    }
-
-                    val user = UserDisplayCache.userName(appContext)?.trim().orEmpty().ifBlank { "TB" }
-                    if (!BtbDokumentVersionierung.abschlussBestaetigen(appContext, saved.entry, file, user)) {
-                        throw IllegalStateException("Abschluss konnte nicht bestätigt werden")
-                    }
-                    BtbOriginalFotoSpeicher.sichernWennFehlt(appContext, saved.entry.btbId, aktuelleFotoIds)
-                    pdfEngine.deleteEntwurfPdf(saved.entry)
-                    file
-                }.also {
-                    BtbFotoRenderMarkierung.clear()
+            val coordinator = BtbLifecycleCoordinator(fragment.requireContext())
+            val prepared = withContext(Dispatchers.IO) {
+                coordinator.prepareAccess(saved.baustelleId, saved.btbId)
+            }
+            val access = when (prepared) {
+                is BtbLifecycleCoordinator.PrepareResult.Success -> prepared.access
+                BtbLifecycleCoordinator.PrepareResult.SessionInvalid -> {
+                    Snackbar.make(anchor, "Gerätefreigabe ist nicht mehr gültig.", Snackbar.LENGTH_LONG).show()
+                    return@launch
+                }
+                is BtbLifecycleCoordinator.PrepareResult.Conflict -> {
+                    Snackbar.make(anchor, prepared.message, Snackbar.LENGTH_LONG).show()
+                    return@launch
+                }
+                is BtbLifecycleCoordinator.PrepareResult.Error -> {
+                    Snackbar.make(anchor, prepared.message, Snackbar.LENGTH_LONG).show()
+                    return@launch
                 }
             }
 
-            if (!fragment.isAdded || fragment.view == null) return@launch
-            result.onSuccess { file ->
-                root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = "Abgeschlossen"
-                Snackbar.make(anchor, "BTB abgeschlossen", Snackbar.LENGTH_SHORT).show()
-                fragment.startActivity(Intent(fragment.requireContext(), BtbPdfViewerActivity::class.java).apply {
-                    putExtra(BtbPdfViewerActivity.EXTRA_FILE_PATH, file.absolutePath)
-                    putExtra(BtbPdfViewerActivity.EXTRA_TITLE, "BTB-PDF")
-                })
-            }.onFailure { error ->
-                Snackbar.make(anchor, "BTB-Abschluss fehlgeschlagen: ${error.message ?: "unbekannter Fehler"}", Snackbar.LENGTH_LONG).show()
+            suspend fun handleSuccess(
+                result: BtbLifecycleCoordinator.ActionResult.Success,
+                helperAction: Boolean
+            ) {
+                val state = BtbServerStateStore.state(
+                    fragment.requireContext().applicationContext,
+                    saved.btbId
+                )
+                if (helperAction) {
+                    val finished = result.access.participantStatus.equals("FINISHED", true)
+                    Snackbar.make(
+                        anchor,
+                        if (finished) "Schicht beendet." else "Schicht fortgesetzt.",
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                } else {
+                    if (!result.access.snapshot.status.equals("FERTIG", true)) {
+                        Snackbar.make(anchor, "Server hat den Abschluss noch nicht bestätigt.", Snackbar.LENGTH_LONG).show()
+                        return
+                    }
+                    withContext(Dispatchers.IO) {
+                        BtbActivePointerControl.nachAbschlussInaktivMerken(
+                            fragment.requireContext().applicationContext,
+                            saved.baustelleId,
+                            saved.baustelleName,
+                            saved.btbId
+                        )
+                    }
+                    root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = "Abgeschlossen"
+                    Snackbar.make(
+                        anchor,
+                        if (state?.canViewPdf == true) {
+                            "BTB serverseitig abgeschlossen. Abschluss-PDF wird automatisch nachgeladen."
+                        } else {
+                            "BTB serverseitig abgeschlossen."
+                        },
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                }
+            }
+
+            if (!access.isTeamLead) {
+                val action = if (access.participantStatus.equals("FINISHED", true)) {
+                    withContext(Dispatchers.IO) {
+                        coordinator.shiftResume(saved.baustelleId, saved.btbId)
+                    }
+                } else {
+                    withContext(Dispatchers.IO) {
+                        coordinator.shiftFinish(saved.baustelleId, saved.btbId)
+                    }
+                }
+                when (action) {
+                    is BtbLifecycleCoordinator.ActionResult.Success -> handleSuccess(action, true)
+                    BtbLifecycleCoordinator.ActionResult.SessionInvalid ->
+                        Snackbar.make(anchor, "Gerätefreigabe ist nicht mehr gültig.", Snackbar.LENGTH_LONG).show()
+                    is BtbLifecycleCoordinator.ActionResult.Conflict ->
+                        Snackbar.make(anchor, action.message, Snackbar.LENGTH_LONG).show()
+                    is BtbLifecycleCoordinator.ActionResult.Error ->
+                        Snackbar.make(anchor, action.message, Snackbar.LENGTH_LONG).show()
+                    is BtbLifecycleCoordinator.ActionResult.ParticipantsNotFinished ->
+                        Snackbar.make(anchor, "Schichtstatus konnte nicht geändert werden.", Snackbar.LENGTH_LONG).show()
+                }
+                return@launch
+            }
+
+            if (!access.canFinalize) {
+                Snackbar.make(
+                    anchor,
+                    "Nur der Haupt-TB darf den Bautagesbericht endgültig abschließen.",
+                    Snackbar.LENGTH_LONG
+                ).show()
+                return@launch
+            }
+
+            val finalizeAction = withContext(Dispatchers.IO) {
+                coordinator.finalize(saved.baustelleId, saved.btbId, false)
+            }
+            when (val action = finalizeAction) {
+                is BtbLifecycleCoordinator.ActionResult.Success -> handleSuccess(action, false)
+                is BtbLifecycleCoordinator.ActionResult.ParticipantsNotFinished -> {
+                    val names = action.participants.joinToString("\n") {
+                        "• " + (it.displayName ?: it.userId)
+                    }
+                    MaterialAlertDialogBuilder(fragment.requireContext())
+                        .setTitle("Teilnehmer noch nicht fertig")
+                        .setMessage(
+                            "Folgende Teilnehmer haben ihre Schicht noch nicht beendet:\n\n" +
+                                names +
+                                "\n\nNur wenn du bewusst fortfahren willst, wird trotzdem abgeschlossen."
+                        )
+                        .setNegativeButton("Abbrechen", null)
+                        .setPositiveButton("Trotzdem abschließen") { _, _ ->
+                            fragment.viewLifecycleOwner.lifecycleScope.launch {
+                                when (
+                                    val forced = withContext(Dispatchers.IO) {
+                                        coordinator.finalize(
+                                            saved.baustelleId,
+                                            saved.btbId,
+                                            true
+                                        )
+                                    }
+                                ) {
+                                    is BtbLifecycleCoordinator.ActionResult.Success ->
+                                        handleSuccess(forced, false)
+                                    BtbLifecycleCoordinator.ActionResult.SessionInvalid ->
+                                        Snackbar.make(anchor, "Gerätefreigabe ist nicht mehr gültig.", Snackbar.LENGTH_LONG).show()
+                                    is BtbLifecycleCoordinator.ActionResult.Conflict ->
+                                        Snackbar.make(anchor, forced.message, Snackbar.LENGTH_LONG).show()
+                                    is BtbLifecycleCoordinator.ActionResult.Error ->
+                                        Snackbar.make(anchor, forced.message, Snackbar.LENGTH_LONG).show()
+                                    is BtbLifecycleCoordinator.ActionResult.ParticipantsNotFinished ->
+                                        Snackbar.make(anchor, "Teilnehmerstatus hat sich erneut geändert.", Snackbar.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                        .show()
+                }
+                BtbLifecycleCoordinator.ActionResult.SessionInvalid ->
+                    Snackbar.make(anchor, "Gerätefreigabe ist nicht mehr gültig.", Snackbar.LENGTH_LONG).show()
+                is BtbLifecycleCoordinator.ActionResult.Conflict ->
+                    Snackbar.make(anchor, action.message, Snackbar.LENGTH_LONG).show()
+                is BtbLifecycleCoordinator.ActionResult.Error ->
+                    Snackbar.make(anchor, action.message, Snackbar.LENGTH_LONG).show()
             }
         }
     }
@@ -396,11 +511,20 @@ object BtbModernLifecycleInstaller {
                         root.findViewById<View>(R.id.topFieldsToggleRow)?.visibility = View.VISIBLE
                         root.findViewWithTag<View>(EDIT_BUTTON_TAG)?.visibility = View.VISIBLE
                         root.findViewWithTag<View>(EDIT_SPACER_TAG)?.visibility = View.VISIBLE
-                        root.findViewById<View>(R.id.btnPdf)?.visibility = View.VISIBLE
-                        root.findViewById<View>(R.id.btnPdfFinal)?.visibility = View.VISIBLE
 
+                        // BTB-UI-001: PDF-/Abschlussbuttons nicht mehr pauschal sichtbar machen.
+                        // Die Sichtbarkeit wird ausschließlich unten im kanonischen Rollen-/
+                        // Lifecycle-Zweig gesetzt. Sonst springt die Leiste zwischen 1 und 2 Buttons.
+
+                        val confirmedServerState = BtbServerStateStore.state(
+                            fragment.requireContext().applicationContext,
+                            current.btbId
+                        )
                         val changedStamp = current.entry.geaendertAmEpochMs
-                        if (current.btbId != lastSeenId || changedStamp != lastSeenChange) {
+                        if (
+                            confirmedServerState?.readOnly != true &&
+                            (current.btbId != lastSeenId || changedStamp != lastSeenChange)
+                        ) {
                             withContext(Dispatchers.IO) {
                                 BtbDokumentVersionierung.pflegeNachAutosave(
                                     fragment.requireContext().applicationContext,
@@ -413,7 +537,9 @@ object BtbModernLifecycleInstaller {
 
                         if (photoRefreshTick % 2 == 0) {
                             try {
-                                invalidateClosureForPhotoDiff(fragment, current.entry)
+                                if (confirmedServerState?.readOnly != true) {
+                                    invalidateClosureForPhotoDiff(fragment, current.entry)
+                                }
                                 BtbPhotoCounterFix.refresh(fragment.requireContext(), root, current.entry)
                             } catch (_: Exception) {
                                 // UI-Helfer darf den BTB-Lebenszyklus nie abbrechen.
@@ -425,10 +551,57 @@ object BtbModernLifecycleInstaller {
                         val status = withContext(Dispatchers.IO) {
                             BtbDokumentVersionierung.status(fragment.requireContext().applicationContext, current.entry)
                         }
-                        root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = when (status) {
-                            BtbAbschlussStatus.ENTWURF -> "Entwurf"
-                            BtbAbschlussStatus.ABGESCHLOSSEN -> "Abgeschlossen"
-                            BtbAbschlussStatus.NACHBEARBEITUNG -> "Nachbearbeitung · Abschluss-PDF ungültig"
+                        val serverState = BtbServerStateStore.state(
+                            fragment.requireContext().applicationContext,
+                            current.btbId
+                        )
+                        val finalButton = root.findViewById<MaterialButton>(R.id.btnPdfFinal)
+                        val previewButton = root.findViewById<View>(R.id.btnPdf)
+                        val editButton = root.findViewWithTag<View>(EDIT_BUTTON_TAG)
+
+                        when {
+                            serverState?.serverFinalReadOnly == true -> {
+                                root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = "Abgeschlossen"
+                                finalButton?.visibility = View.GONE
+                                previewButton?.visibility = if (serverState.canViewPdf) View.VISIBLE else View.GONE
+                                editButton?.visibility = View.GONE
+                            }
+                            serverState != null && !serverState.isTeamLead -> {
+                                val finished = serverState.participantStatus.equals("FINISHED", true)
+                                root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text =
+                                    if (finished) "Eigene Schicht beendet" else "Aktiv"
+                                finalButton?.visibility = View.VISIBLE
+                                finalButton?.text = if (finished) "Schicht fortsetzen" else "Schicht Ende"
+                                previewButton?.visibility = View.GONE
+                                editButton?.visibility = if (finished) View.GONE else View.VISIBLE
+                            }
+                            serverState != null && serverState.isTeamLead -> {
+                                // Fuer einen servergebundenen Haupt-TB ist der kanonische
+                                // Server-Lifecycle maßgeblich. Solange der Server-BTB aktiv ist,
+                                // bleiben beide Haupt-TB-Aktionen stabil sichtbar:
+                                // PDF Entwurf + BTB Abschluss.
+                                val reopenedFinalized =
+                                    serverState.serverStatus.equals("FINALIZED", true) && serverState.active
+                                root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text =
+                                    if (reopenedFinalized) "Nachbearbeitung" else "Aktiv"
+                                previewButton?.visibility = View.VISIBLE
+                                finalButton?.visibility = View.VISIBLE
+                                finalButton?.text = "BTB Abschluss"
+                                editButton?.visibility = View.VISIBLE
+                            }
+                            else -> {
+                                root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = when (status) {
+                                    BtbAbschlussStatus.ENTWURF -> "Entwurf"
+                                    BtbAbschlussStatus.ABGESCHLOSSEN -> "Abgeschlossen"
+                                    BtbAbschlussStatus.NACHBEARBEITUNG -> "Nachbearbeitung · Abschluss-PDF ungültig"
+                                }
+                                finalButton?.visibility =
+                                    if (status == BtbAbschlussStatus.ABGESCHLOSSEN) View.GONE else View.VISIBLE
+                                finalButton?.text = "BTB Abschluss"
+                                previewButton?.visibility =
+                                    if (status == BtbAbschlussStatus.ABGESCHLOSSEN) View.VISIBLE else View.GONE
+                                editButton?.visibility = View.VISIBLE
+                            }
                         }
                     }
                     photoRefreshTick += 1

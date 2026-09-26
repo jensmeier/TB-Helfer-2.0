@@ -4,7 +4,7 @@ Stand: 2026-09-26
 Branch: `feature/tb-android-2.0`
 Fach-HEAD vor Projektsteuerungscommit: `d272f8a7586cce3ea1eda29100473f7af5d540bb`
 Draft-PR: #7
-Version: **1.3.19 / 200069**
+Version: **1.3.23 / 200073**
 
 - Server/Android-Vertrag 25.09 im Quellstand berücksichtigt.
 - Pixel ACTIVE↔PDF-Flackern source-seitig korrigiert.
@@ -71,8 +71,276 @@ Poco zeigt den serverseitig und im Portal bestätigten aktiven 26.09-BTB kurz un
 ### BTB-SYNC-001 Source-Ursache
 `BtbActiveContext.laden()` kann einen serverseitig bestätigten aktiven BTB lokal wieder deaktivieren, weil es den lokalen Dokumentstatus `ABGESCHLOSSEN` höher bewertet als `BtbServerStateStore.active=true`. Der UI-Watcher läuft ca. alle 600 ms; das erklärt das kurze Anzeigen und anschließende Verschwinden. Android-Fix erforderlich; noch kein Build/E2E.
 
+
+## BTB-SYNC-001 – Active-Pointer-Fix
+Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
+
+- Vorheriger Fehler: `BtbActiveContext.laden()` konnte trotz `BtbServerStateStore.active=true` einen lokalen Abschlussstatus als maßgeblich behandeln und `nachAbschlussInaktivMerken()` auslösen.
+- Fix: `f57c532863d2f92b81729b9af1466b57a22f8723`.
+- Jetzt gilt für servergebundene BTBs:
+  - Server `active=true` → Result bleibt aktiv, lokale Abschlussmarker werden nicht ausgewertet.
+  - Server `FINALIZED && !active` → Pointer wird gelöst.
+  - anderer vorhandener Serverstatus → kein lokales Abschlussartefakt darf den Server-Lifecycle überstimmen.
+  - nur ohne Server-Snapshot gilt die bisherige lokale/Legacy-Abschlusslogik.
+- Version: **1.3.20 / 200070**.
+- Kein Servercode geändert.
+- GitHub Actions: kein Workflow-Run für aktuellen HEAD entstanden, weil die verfügbaren PR-Basen aktuell nicht mergebar sind. Das ist **kein Buildnachweis**.
+- Nächster Schritt: lokal in Android Studio 1.3.20 / 200070 bauen, danach Pixel und Poco installieren und BTB 26.09 erneut testen.
+
+
+## Versionierung – nächster Build 1.3.20 / 200070
+- Benutzerentscheidung 26.09.2026: neue APKs dürfen nicht erneut mit bereits verwendeter Buildnummer 200069 erzeugt/hochgeladen werden.
+- BTB-SYNC-001 wird als **1.3.20 / 200070** gebaut.
+- Build/Installation/E2E bleiben bis zum tatsächlichen Build offen.
+
+
+### Release-Bump umgesetzt
+- Commit `f9a7421ec9265b73ca170d28a1946644527cbe5a`.
+- `versionName = 1.3.20`
+- `versionCode = 200070`
+- neue Release-MD: `projektsteuerung/releases/TB-Helfer_1.3.20_200070.md`
+- GitHub-Workflow-Artefakt auf `TB-Helfer-1.3.20-200070` umgestellt.
+- Build noch nicht ausgeführt.
+
+
+## UPD-001 – Updateanzeige stale nach Installation
+Status: **REPRODUZIERT / URSACHE OFFEN**
+
+- Updateprozess läuft durch, aber Updateprüfung zeigt weiterhin 1.3.19.
+- Startseite zeigt weiterhin „Update verfügbar“.
+- Zielstand ist 1.3.20 / 200070.
+- Erst prüfen, ob UI/Updateclient die lokale Package-Version oder einen stale Server-/Aktivierungswert verwendet.
+- Kein weiterer Versionssprung nur zur Kaschierung dieses Anzeige-/Vergleichsfehlers.
+
+
+## UPD-001 – Binärdatei gegen Release prüfen
+Status: **SOURCE-URSACHE EINGEGRENZT / FIX AUFTRAG**
+
+- Lokale Versionsanzeige basiert auf `BuildConfig`; kein Anzeige-Cache.
+- Updatecheck basiert auf dem lokalen `BuildConfig.VERSION_CODE`.
+- Fehlerschutz fehlt: APK-Inhalt wird vor dem Installer nicht gegen Release-`versionName/buildNumber` validiert.
+- Android-Schutzfix wird in **1.3.21 / 200071** umgesetzt.
+
+
+## UPD-001 – Schutzfix committed
+Status: **BESTÄTIGT**
+- Commit: `19d688a4752c98209570e0ff69ccd2eae789541e`.
+- `AppUpdateManager` blockiert APKs mit falscher Package-ID oder abweichendem `versionName/versionCode`.
+- Zielbuild: **1.3.21 / 200071**.
+- Build, Installation und Update-E2E für 1.3.21 / 200071 vom Benutzer bestätigt.
+
+
+## REL-FILE-001 – Buildbegleitdatei Pflicht
+- Ab sofort hat jeder neue Android-Build eine Release-MD unter `projektsteuerung/releases/`.
+- Die aktuelle Zielversion 1.3.21 / 200071 besitzt bereits `projektsteuerung/releases/TB-Helfer_1.3.21_200071.md`.
+- Bei jeder Übergabe wird diese Datei auch als Download mitgeliefert.
+- CI soll VERSION/BUILD der MD gegen `app/build.gradle.kts` prüfen, damit Build und Metadaten nicht auseinanderlaufen.
+
+
+### REL-FILE-001 CI-Schutz aktiv
+- Commit `e76933cd7270da21d8cd251ece1cba87c7db0cf8`.
+- Kein Android-CI-Build soll künftig ohne passende Release-MD durchlaufen.
+- Artifact-Name und Release-Dateipfad werden aus dem aktuellen `versionName/versionCode` abgeleitet.
+- Damit ist die Benutzeranforderung „bei jedem Build/GitHub-Stand Release-Datei mitgeben“ nicht nur dokumentiert, sondern im CI-Paket technisch abgesichert.
+
+
+### Praxisbestätigung 1.3.21 / 200071
+- Benutzer: **hat funktioniert**.
+- Build: **ERFOLGREICH**.
+- Installation/Update auf Gerät: **BESTÄTIGT**.
+- Update-E2E: **BESTÄTIGT**.
+- UPD-001 darf ohne neuen reproduzierbaren Fehler nicht wieder geöffnet werden.
+- BTB-SYNC-001 / Pixel-Poco-Fach-E2E bleibt offen.
+
+
+## BTB-SYNC-001 – Praxis 1.3.21 weiterhin fehlerhaft
+Status: **REPRODUZIERT / SOURCE-FIX NICHT AUSREICHEND**
+- Pixel: `BTB Abschluss` flackert weiterhin.
+- Poco: aktiver 26.09-BTB verschwindet weiterhin nach sehr kurzer Anzeige.
+- Installierter Stand: 1.3.21 / 200071, Updateweg bestätigt.
+- Deshalb keine Versions-/Updateursache mehr.
+- Nächste Quellprüfung: ServerState-Persistenz/ID-Mapping/Pointer-Schreiber/Lifecycle-Watcher.
+
+
+## BTB-SYNC-001 – zweiter Guard-Fix 1.3.22
+Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
+
+- Commit: `4f0e33a8060d0d98279cfe96aed280fee5c8adcb`.
+- Ursache Poco: `BtbPatch200033Installer.startActivePointerGuard()` konnte serveraktiven Pointer alle 450 ms über stale Inaktiv-Marker löschen.
+- Ursache Pixel-Rollen-/Buttonkonflikt: Patch200033 wurde nach dem modernen Lifecycle installiert und konnte dessen Abschlusslistener überschreiben.
+- Fix: alter Guard server-aware + ModernLifecycleInstaller zuletzt binden.
+- Version: **1.3.22 / 200072**.
+- Direkt geprüfter Quellstand:
+  - `BtbServerStateStore` Import vorhanden;
+  - `serverState.active` schützt Pointer;
+  - `serverFinalReadOnly` löst Pointer;
+  - Gradle 1.3.22 / 200072;
+  - passende Release-MD vorhanden.
+- **Kein Buildnachweis**; GitHub Actions hat für den Fixcommit keinen Run erzeugt.
+
+
+## BTB-SYNC-002 – P0 Outbox-Reihenfolge korrigiert
+Status: **SOURCE-FIX UMGESETZT / BUILD OFFEN**
+
+Ausgangsfehler:
+- `SelectiveSyncWorker` konnte einen Server-Snapshot lokal anwenden, bevor der gerade gespeicherte Pixel-Stand in Pending/Outbox exportiert war.
+- Dadurch war stiller Verlust lokaler BTB-Fachänderungen möglich.
+
+Android-Fix:
+- dirty BTB zuerst `exportBtbChange(...)`;
+- kein vorgelagerter `loadBtbAccess(...)` + `applyServerStateToLocal(...)` mehr;
+- Upload/Version/Conflict erst danach über den bestehenden Mutation-Pfad;
+- `CollabLocalBridge` blockiert BTB-Snapshot-Apply bei Pending oder Dirty;
+- lokaler Save und Server-Apply sind pro BTB serialisiert;
+- Dirty-Generation verhindert, dass ein während des Uploads neuer Autosave als verarbeitet gilt;
+- nach bestätigtem Upload wird der Snapshot nur dann lokal angewendet, wenn der verarbeitete Dirty-Stand noch aktuell ist.
+
+Zielversion: **1.3.23 / 200073**.
+Release-MD: `projektsteuerung/releases/TB-Helfer_1.3.23_200073.md`.
+
+Nicht geändert:
+- kein `server/**`;
+- Server-/DB-Vertrag unverändert;
+- PORTAL-LIVE-001 bleibt SERVER: Source-Fix vorhanden, Deploy/E2E offen.
+
+Nächster Schritt:
+1. Build 200073;
+2. Pixel installieren;
+3. Pixeländerung → Portal;
+4. Portaländerung → Pixel;
+5. parallelen Autosave während Upload prüfen;
+6. danach Poco.
+
+
+## BTB-SYNC-002 – Gerätebestätigung 1.3.23 / 200073
+Status: **PIXEL↔PORTAL BASIS-E2E BESTÄTIGT**
+
+- Pixel → Portal: **BESTANDEN**.
+- Portal → Pixel: **BESTANDEN**.
+- Der frühere Fehler „lokale Pixel-Eingabe erreicht Portal nicht und wird später vom Serverstand überschrieben“ ist im normalen Hin-und-zurück-Test nicht mehr reproduziert.
+- Parallel-Autosave/Conflict-E2E bleibt separat offen.
+- Poco/HELPER-E2E bleibt separat offen.
+
+
+## BTB-UI-001 – Abschlussbuttons
+Status: **REPRODUZIERT / SOURCE-FIX AUSSTEHEND**
+
+- Pixel als Haupt-TB zeigt wechselnd 1 oder 2 Abschlussbuttons.
+- Ursache im aktuellen Quellpfad: Lifecycle-Watcher setzt Buttons zunächst beide sichtbar und blendet `PDF Entwurf` im Haupt-TB-Zweig wieder aus.
+- Ziel: Haupt-TB aktiv = stabil `PDF Entwurf` + `BTB Abschluss`.
+- Helfer = kein PDF-Entwurf; Rollen-/Schichtaktion separat.
+- Neuer Zielbuild: **1.3.24 / 200074**.
+
+
+## BTB-UI-001 – Fix 1.3.24
+Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD OFFEN**
+- Haupt-TB-UI zeigt stabil zwei Buttons: `PDF Entwurf` + `BTB Abschluss`.
+- Kein vorgelagertes Umschalten auf beide sichtbar und anschließendes Ausblenden mehr.
+- HELPER bleibt ohne PDF-Entwurf mit eigener Schichtaktion.
+- Version **1.3.24 / 200074**.
+- Release-MD: `projektsteuerung/releases/TB-Helfer_1.3.24_200074.md`.
+
+
+## BTB-UI-001 PRAXIS BESTÄTIGT 1.3.24
+- Pixel-Haupt-TB: PDF Entwurf + BTB Abschluss bleiben stabil sichtbar.
+- Benutzer bestätigt: kein Springen mehr.
+- Pixel-UI-E2E: BESTÄTIGT.
+- Poco/HELPER-E2E bleibt offen.
+
+
+## BTB-SYNC-002 – Praxis vollständig bestätigt
+Status: **BESTÄTIGT**
+
+- Pixel ↔ Portal Basissync: **BESTANDEN**.
+- Parallel-Autosave während laufendem Upload: **BESTANDEN**.
+- Neuere lokale Dirty-Änderung wird nicht durch älteren bestätigten Server-Snapshot verloren.
+- Outbox-/Dirty-/Mutationslock-Fix ist praktisch bestätigt.
+- Geschützt: nicht ohne neuen reproduzierbaren Fehler ändern.
+- Nächster Android-Gerätepunkt: Poco/HELPER-E2E.
+
+
+## BTB-EDIT-001 – Android-Audit und Zielmodell
+Status: **DIAGNOSE ABGESCHLOSSEN / IMPLEMENTIERUNG OFFEN**
+
+Quellbefunde:
+- `SectionItem`: nur Zeit/Text/KM.
+- `BautagebuchFragment`: technische `@ORT=<Long>`-Marker; `buildEntry()` entfernt sie bei Punkt 4–8.
+- Firmenpräfix ist nicht strukturiert im Entry-Modell.
+- `BtbPhotoContextOverrideStore`: lokale `ortId`, keine stabile Node-Referenz.
+- `WorksiteStructureSync` / `SyncWorksiteNodeBindingEntity`: stabile `clientNodeKey`-Infrastruktur bereits vorhanden.
+- `BtbEntrySlotStore`: stabile Server-Slots vorhanden, aber nur parallel zur lokalen Arrayposition.
+
+Android-Ziel:
+- Entry: `clientEntryKey`, `firmaId/firmaName`, `worksiteNodeKey`, Zeit, KM, Text; Punkt 4–8 über Zielsektion.
+- Foto-Override/Sync: `worksiteNodeKey` zusätzlich/anstatt lokaler `ortId` als kanonische Referenz.
+- bestehende IDs bleiben beim Umhängen erhalten.
+- alter Local-ID-Pfad wird migriert, nicht als Mehrgerätevertrag weitergeführt.
+
+Serververtrag jetzt source-seitig vorhanden: `cd9b18fc062a7a3d4354c611a949ed3d8408d709`.
+
+## PORTAL-WEATHER-001 – Android-Diagnose 26.09.2026
+Status: **TEILURSACHE BESTÄTIGT / tempC-VERLUST NOCH NICHT ANDROID-SEITIG NACHGEWIESEN**
+
+- Androids `BautagebuchSpeicher` serialisiert `weatherSlots[].tempC` und `niederschlagMm`.
+- `Server1BtbApi.HEADER_META_KEYS` enthält `weather` und `weatherSlots`; diese Daten sind damit grundsätzlich Teil des Android→Server-Headers.
+- Open-Meteo liefert Temperatur und Niederschlag als echte Zahlen; Android rundet `tempC` und setzt es in `WetterSlot`.
+- Für bekannten Niederschlag **0.0 mm** existiert jedoch ein konkreter Android-Fehler: Auto-Wetter verwendet `h.precipMm.takeIf { it > 0.0 }`. Dadurch wird genau 0.0 zu `null`.
+- Fachregel: Bei erfolgreicher Wetterquelle muss 0.0 als **0.0 mm** erhalten bleiben.
+- Dass `tempC` im aktuellen Portal-BTB fehlt, ist nach dem Quellaudit noch nicht als Android-Serialisierungsfehler belegt; hierfür muss der konkrete Server-Header-/Runtime-Payload mit Android-Ausgabe verglichen werden.
+- Wetterfix bleibt getrennt von BTB-EDIT-001.
+
+
+## Buildziel 1.3.25 / 200075
+- Benutzer hat Build angefordert.
+- Version **1.3.25 / 200075** reserviert.
+- Source-Check und echter Build müssen noch durchgeführt werden.
+- BUILD ERFOLGREICH erst nach tatsächlichem Gradle/CI-Nachweis.
+
+
+## AND-BUILD-200075 – CI-Buildversuch
+Status: **BUILD NICHT GESTARTET / CI-RUNNER NICHT ZUGEWIESEN**
+
+- Ziel: **1.3.25 / 200075**.
+- Temporärer mergebarer CI-PR #10 wurde ausschließlich für den echten Android-CI-Build angelegt.
+- Android-CI Run: `36252246995`.
+- Versuch 1 und Wiederholungsversuch 2 endeten jeweils nach ca. 3 Sekunden mit `failure`.
+- Der Job `build` erhielt **keinen Runner** (`runner_name = ""`) und **keine Steps wurden gestartet** (`steps = []`).
+- Damit wurden weder Checkout noch Source-Checks, Gradle, Tests, APK-Build oder Lint ausgeführt.
+- Bewertung: **kein Android-Compilefehler nachgewiesen**; GitHub-Actions-Infrastruktur hat den Job vor Step 1 nicht gestartet.
+- Deshalb Status weiterhin sauber getrennt: QUELLSTAND/VERSION VORBEREITET, BUILD OFFEN, INSTALLATION OFFEN, E2E OFFEN.
+- Nächster valider Buildweg: Android Studio/lokaler Gradle-Build `:app:testDebugUnitTest :app:assembleDebug :app:assembleRelease` oder funktionierender GitHub-Runner.
+
+
+## AND-BUILD-200075 – lokaler Buildfehler generateBtb200043Sources
+Status: **REPRODUZIERT / URSACHE EINGEGRENZT**
+
+- Benutzer-Build in Android Studio am 26.09.2026 scheitert in `:app:generateBtb200043Sources`.
+- Fehlermeldung: `Android 200047: Hauptbaustellen-Ortsmarker-Anker wurde nicht gefunden`.
+- Damit ist jetzt erstmals ein echter lokaler Buildfehler für 1.3.25 / 200075 nachgewiesen.
+- Ursache liegt **nicht** in Server/API/DB, sondern im Android-Buildgenerator `GenerateBtb200043Sources` in `app/build.gradle.kts`.
+- Der Generator sucht noch nach dem alten 200047-Quellanker `if (effectiveOrtId != 0L) ...`; BTB-EDIT-001 hat den kanonischen Editor inzwischen auf `clientEntryKey/worksiteNodeKey` und eine neue `buildManualLine`-/Parserstruktur umgestellt.
+- Fixziel: veralteten Build-time-Patch 200047 nicht mehr gegen den neuen Quelltext laufen lassen; die notwendige Hauptbaustellen-/Legacy-Ortsmarker-Semantik direkt im kanonischen `BautagebuchFragment.kt` erhalten.
+- Version bleibt **1.3.25 / 200075**, weil der Build nicht erfolgreich erzeugt/installiert wurde.
+
+
+## AND-BUILD-200075 – Sourcegenerator-Fix
+Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
+
+- Fehler aus dem lokalen Android-Studio-Build war reproduzierbar: `:app:generateBtb200043Sources` brach am alten Android-200047-Ortsmarker-Anker ab.
+- Fixcommit: `606aa3ad1f8ea438372484b056a0fc1264ae2aac`.
+- Der veraltete Android-200047-Build-time-Patch wurde aus `GenerateBtb200043Sources` entfernt.
+- Ortsmarker-Semantik liegt jetzt direkt im kanonischen `BautagebuchFragment.kt`:
+  - jede moderne Zeile schreibt explizit `@ORT=<lokale UI-ID>`, Hauptbaustelle also `@ORT=0`;
+  - `@NODE=<clientNodeKey>` bleibt die geräteübergreifende Sync-Identität;
+  - Inline-`@ORT` wirkt nur auf die aktuelle Zeile;
+  - alte Standalone-`@ORT`-Gruppen bleiben kompatibel.
+- Source-Check bestätigt: alter Fehlertext/alte Patch-Anker sind aus `app/build.gradle.kts` entfernt; 1.3.25 / 200075 bleibt unverändert.
+- **Noch kein neuer Buildnachweis.** Nächster Schritt: Git Pull → Android-Studio-Build 200075 erneut starten.
+
+
 ### BTB-SYNC-002 – Pixeländerung wird nicht hochgeladen und später überschrieben
 Pixel-Eingabe erreicht das Portal nicht; nach Portaländerung übernimmt Android den Serverstand und die lokale Pixel-Eingabe geht verloren. Android muss zuerst Save→Outbox→Upload→Apply-Reihenfolge und Konfliktschutz nachweisen.
+
 
 ### BTB-SYNC-002 exakte Source-Ursache
 Im `SelectiveSyncWorker` wird bei bekanntem BTB aktuell der Server-Snapshot angewendet, bevor `exportBtbChange()` die lokal gespeicherte Änderung in die Outbox überführt. Der Dirty-Eintrag im `SelectiveSyncStore` schützt `applyServerStateToLocal()` nicht. Dadurch kann der Serverstand die lokale Änderung vor dem Upload überschreiben. Android-Fix erforderlich.
@@ -124,3 +392,10 @@ Einordnung:
 - Android-Arbeitsblock ist beendet und Integration freigegeben.
 - Der fehlende Foto-PATCH bleibt ein klar abgegrenzter Android-Restpunkt nach Branch-Integration.
 - SERVER ändert dafür kein `app/**`.
+
+### Android-Quellstand an SERVER-Integrator übergeben
+- Benutzer bestätigt Android-Arbeitsblock als fertig.
+- Übergebener Android-Parent: `4de3350fa4bc3777a6f2f51514e85a145ca4a9c6`.
+- Generatorfix 606aa3ad ist enthalten und source-seitig geprüft.
+- Build 1.3.25/200075 muss erneut tatsächlich ausgeführt werden.
+- Versionierter Server-Foto-PATCH/`link_version` bleibt im Android-Client offen.

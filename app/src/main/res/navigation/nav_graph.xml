@@ -29,6 +29,13 @@
         <argument ns0:name="baustelleName" ns1:argType="string" ns0:defaultValue="" />
     </fragment>
 
+    <fragment ns0:id="@+id/mangelEditorFragment" ns0:name="de.tbhelfer.ui.baustelle.MangelEditorFragment" ns0:label="Mangel bearbeiten">
+        <argument ns0:name="hauptKnotenId" ns1:argType="long" ns0:defaultValue="-1L" />
+        <argument ns0:name="altBaustelleId" ns1:argType="long" ns0:defaultValue="-1L" />
+        <argument ns0:name="baustelleName" ns1:argType="string" ns0:defaultValue="" />
+        <argument ns0:name="mangelKey" ns1:argType="string" ns0:defaultValue="" />
+    </fragment>
+
     <fragment ns0:id="@+id/abnahmelisteFragment" ns0:name="de.tbhelfer.ui.abnahme.AbnahmelisteFragment" ns0:label="Abnahmen">
         <argument ns0:name="baustelleId" ns1:argType="long" ns0:defaultValue="-1L" />
         <argument ns0:name="baustelleName" ns1:argType="string" ns0:defaultValue="" />

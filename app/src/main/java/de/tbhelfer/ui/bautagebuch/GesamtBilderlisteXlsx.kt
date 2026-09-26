@@ -24,7 +24,8 @@ object GesamtBilderlisteXlsx {
         val bereich: String,
         val km: String,
         val firma: String,
-        val beschreibung: String,
+        val kurzbeschreibung: String,
+        val langtext: String,
         val status: String,
         val bilddatei: String,
         val gps: String,
@@ -34,8 +35,8 @@ object GesamtBilderlisteXlsx {
 
     private val headers = listOf(
         "Nr.", "Datum", "Uhrzeit", "Ersteller", "Verantwortlicher TB", "Art",
-        "Baustelle", "Bereich/Gleis", "KM", "Firma", "Beschreibung", "Status",
-        "Bilddatei", "GPS"
+        "Baustelle", "Bereich/Gleis", "KM", "Firma", "Kurzbeschreibung", "Langtext / BTB-Text",
+        "Status", "Bilddatei", "GPS"
     )
 
     fun csv(rows: List<Row>): String = buildString {
@@ -45,7 +46,7 @@ object GesamtBilderlisteXlsx {
                 listOf(
                     row.nr.toString(), row.datum, row.uhrzeit, row.ersteller,
                     row.verantwortlicherTb, row.art, row.baustelle, row.bereich, row.km,
-                    row.firma, row.beschreibung, row.status, row.bilddatei, row.gps
+                    row.firma, row.kurzbeschreibung, row.langtext, row.status, row.bilddatei, row.gps
                 ).joinToString(";") { csvCell(it) }
             )
         }
@@ -90,11 +91,11 @@ object GesamtBilderlisteXlsx {
                 val values = listOf(
                     row.nr.toString(), row.datum, row.uhrzeit, row.ersteller,
                     row.verantwortlicherTb, row.art, row.baustelle, row.bereich, row.km,
-                    row.firma, row.beschreibung, row.status, row.bilddatei, row.gps
+                    row.firma, row.kurzbeschreibung, row.langtext, row.status, row.bilddatei, row.gps
                 )
                 append("<row r=\"").append(r).append("\" ht=\"22\" customHeight=\"1\">")
                 values.forEachIndexed { column, value ->
-                    append(inlineCell(column + 1, r, value, if (column == 12 && row.relativePath.isNotBlank()) linkStyle else style))
+                    append(inlineCell(column + 1, r, value, if (column == 13 && row.relativePath.isNotBlank()) linkStyle else style))
                 }
                 append("</row>")
             }
@@ -103,7 +104,7 @@ object GesamtBilderlisteXlsx {
         val hyperlinkXml = if (links.isEmpty()) "" else buildString {
             append("<hyperlinks>")
             links.forEach { link ->
-                append("<hyperlink ref=\"M").append(link.rowNumber).append("\" r:id=\"")
+                append("<hyperlink ref=\"N").append(link.rowNumber).append("\" r:id=\"")
                     .append(link.id).append("\"/>")
             }
             append("</hyperlinks>")
@@ -111,7 +112,7 @@ object GesamtBilderlisteXlsx {
 
         return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"$relationNamespace>
-  <dimension ref="A1:N$lastRow"/>
+  <dimension ref="A1:O$lastRow"/>
   <sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
   <sheetFormatPr defaultRowHeight="20"/>
   <cols>
@@ -123,13 +124,14 @@ object GesamtBilderlisteXlsx {
     <col min="8" max="8" width="25" customWidth="1"/>
     <col min="9" max="9" width="14" customWidth="1"/>
     <col min="10" max="10" width="20" customWidth="1"/>
-    <col min="11" max="11" width="45" customWidth="1"/>
-    <col min="12" max="12" width="20" customWidth="1"/>
-    <col min="13" max="13" width="48" customWidth="1"/>
-    <col min="14" max="14" width="24" customWidth="1"/>
+    <col min="11" max="11" width="32" customWidth="1"/>
+    <col min="12" max="12" width="48" customWidth="1"/>
+    <col min="13" max="13" width="20" customWidth="1"/>
+    <col min="14" max="14" width="48" customWidth="1"/>
+    <col min="15" max="15" width="24" customWidth="1"/>
   </cols>
   <sheetData>$data</sheetData>
-  <autoFilter ref="A1:N$lastRow"/>
+  <autoFilter ref="A1:O$lastRow"/>
   $hyperlinkXml
   <pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>
 </worksheet>""".trimIndent()

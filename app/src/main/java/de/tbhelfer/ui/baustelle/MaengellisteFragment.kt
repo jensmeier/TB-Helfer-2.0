@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.util.TypedValue
 import android.view.View
+import android.webkit.MimeTypeMap
 import android.widget.EditText
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
@@ -16,8 +17,10 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import androidx.core.view.setPadding
+import androidx.exifinterface.media.ExifInterface
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -28,6 +31,7 @@ import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.datenbank.Bildtyp
 import de.tbhelfer.datenbank.FotoEntity
+import de.tbhelfer.ui.kamera.FotoSpeicher
 import de.tbhelfer.ui.kamera.KameraFragment
 import de.tbhelfer.util.ThumbnailLoader
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +64,17 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
     private var baustelleName: String = ""
     private var aktuelleItems: List<MaengellisteExport.MangelItem> = emptyList()
     private var syncUrheber: Map<String, String> = emptyMap()
+    private var mediathekMangel: MaengellisteExport.MangelItem? = null
+
+    private val mediathekPicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        val item = mediathekMangel
+        mediathekMangel = null
+        if (uri != null && item != null && isAdded) {
+            fotoArtDialog("Fotoart für Mediathek-Foto") { art ->
+                importiereMediathekFoto(item, uri, art)
+            }
+        }
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -70,7 +85,11 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         view.findViewById<TextView>(R.id.tvMaengelSubtitle).text = baustelleName.ifBlank { "Baustelle" }
         view.findViewById<MaterialButton>(R.id.btnMaengelPdf).setOnClickListener { exportPdf() }
         view.findViewById<MaterialButton>(R.id.btnMaengelCsv).setOnClickListener { exportCsv() }
-        lade(view)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        view?.let { lade(it) }
     }
 
     private fun lade(root: View) {
@@ -100,6 +119,15 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
                         )
                     }
                 val kombiniert = (lokal + serverNur)
+                    .map { item ->
+                        val edit = MangelStatusSpeicher.laden(ctx, item.key)
+                        item.copy(
+                            bereich = edit.bereichOverride ?: item.bereich,
+                            km = edit.kmOverride ?: item.km,
+                            firma = edit.firmaOverride ?: item.firma,
+                            beschreibung = edit.beschreibungOverride ?: item.beschreibung
+                        )
+                    }
                     .distinctBy { it.key }
                     .sortedWith(compareBy<MaengellisteExport.MangelItem> { it.datumIso }.thenBy { it.zeit }.thenBy { it.beschreibung })
                 val by = server.mapNotNull { s -> s.changedByName?.takeIf { it.isNotBlank() }?.let { s.mangelKey to it } }.toMap()
@@ -133,8 +161,12 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
             setPadding(dp(12), dp(10), dp(12), dp(10))
         }
         inner.addView(textView("Mangel ${nr.toString().padStart(3, '0')} · $label", 17f, Color.BLACK, true))
-        inner.addView(textView("${datumDe(item.datumIso)} · ${item.zeit} · ${item.bereich}", 13f, Color.DKGRAY, false))
-        inner.addView(textView("Firma: ${item.firma}   KM: ${item.km}", 13f, Color.DKGRAY, false))
+        inner.addView(textView("${datumDe(item.datumIso)} · ${item.zeit}", 13f, Color.DKGRAY, false))
+        inner.addView(textView("Baustelle: ${MaengellisteExport.anzeigeBaustelle(item)}", 13f, Color.DKGRAY, false))
+        inner.addView(textView("Firma: ${item.firma}", 13f, Color.DKGRAY, false))
+        item.km.takeIf { it.isNotBlank() && it != "-" }?.let {
+            inner.addView(textView("Ort / KM / Bereich: $it", 13f, Color.DKGRAY, false))
+        }
         syncUrheber[item.key]?.let { inner.addView(textView("Synchronisiert von: $it", 12f, Color.DKGRAY, false)) }
         inner.addView(textView(item.beschreibung, 15f, Color.BLACK, false))
         val countLine = "Fotos: Mangel ${MaengellisteExport.countArt(item, MangelStatusSpeicher.FotoArt.MANGEL)} · in Arbeit ${MaengellisteExport.countArt(item, MangelStatusSpeicher.FotoArt.IN_ARBEIT)} · erledigt ${MaengellisteExport.countArt(item, MangelStatusSpeicher.FotoArt.ERLEDIGT)}"
@@ -159,28 +191,54 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
             item.fotos.forEach { mf ->
                 val box = LinearLayout(ctx).apply {
                     orientation = LinearLayout.VERTICAL
-                    layoutParams = LinearLayout.LayoutParams(dp(96), LinearLayout.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(6) }
+                    layoutParams = LinearLayout.LayoutParams(dp(150), LinearLayout.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(8) }
                 }
                 val img = ImageView(ctx).apply {
                     scaleType = ImageView.ScaleType.CENTER_CROP
-                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(76))
+                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(105))
                 }
                 ThumbnailLoader.loadInto(img, mf.foto.dateipfad, android.R.drawable.ic_menu_report_image, 500, 350)
                 box.addView(img)
                 box.addView(textView(MaengellisteExport.fotoArtText(mf.art), 11f, Color.DKGRAY, false))
+                MaengellisteExport.fotoKmText(mf.foto).takeIf { it.isNotBlank() }?.let {
+                    box.addView(textView("KM: $it", 11f, Color.DKGRAY, false))
+                }
+                val gpsText = MaengellisteExport.fotoGpsText(mf.foto)
+                if (gpsText.isNotBlank()) {
+                    val gps = textView("GPS: $gpsText", 10.5f, Color.parseColor("#1565C0"), false).apply {
+                        paintFlags = paintFlags or android.graphics.Paint.UNDERLINE_TEXT_FLAG
+                        setOnClickListener { openGps(mf.foto.gpsLat, mf.foto.gpsLon) }
+                    }
+                    box.addView(gps)
+                }
                 previewRow.addView(box)
             }
             previewScroll.addView(previewRow)
             inner.addView(previewScroll)
         }
 
-        val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        row.addView(button("Status") { statusDialog(item) })
-        row.addView(button("Erledigt") { erledigtDialog(item) })
-        row.addView(button("Foto hinzufügen") { fotoHinzufuegenDialog(item) })
-        inner.addView(row)
+        val row1 = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        row1.addView(button("Bearbeiten") { oeffneMangelEditor(item) })
+        row1.addView(button("Status") { statusDialog(item) })
+        inner.addView(row1)
+        val row2 = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        row2.addView(button("Erledigt") { erledigtDialog(item) })
+        row2.addView(button("Foto hinzufügen") { fotoHinzufuegenDialog(item) })
+        inner.addView(row2)
         card.addView(inner)
         return card
+    }
+
+    private fun oeffneMangelEditor(item: MaengellisteExport.MangelItem) {
+        findNavController().navigate(
+            R.id.mangelEditorFragment,
+            Bundle().apply {
+                putLong(MangelEditorFragment.ARG_HAUPT_KNOTEN_ID, hauptKnotenId)
+                putLong(MangelEditorFragment.ARG_ALT_BAUSTELLE_ID, altBaustelleId)
+                putString(MangelEditorFragment.ARG_BAUSTELLE_NAME, baustelleName)
+                putString(MangelEditorFragment.ARG_MANGEL_KEY, item.key)
+            }
+        )
     }
 
     private fun statusDialog(item: MaengellisteExport.MangelItem) {
@@ -188,14 +246,17 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Status ändern")
             .setItems(werte) { _, which ->
+                if (which == 2) {
+                    erledigtDialog(item)
+                    return@setItems
+                }
                 val status = when (which) {
                     1 -> MangelStatusSpeicher.Status.IN_ARBEIT
-                    2 -> MangelStatusSpeicher.Status.ERLEDIGT
                     3 -> MangelStatusSpeicher.Status.ABGELEHNT
                     else -> MangelStatusSpeicher.Status.OFFEN
                 }
                 val old = MangelStatusSpeicher.laden(requireContext(), item.key)
-                val neu = old.copy(status = status, erledigtAmEpochMs = if (status == MangelStatusSpeicher.Status.ERLEDIGT) (old.erledigtAmEpochMs ?: System.currentTimeMillis()) else null)
+                val neu = old.copy(status = status, erledigtAmEpochMs = null)
                 MangelStatusSpeicher.speichern(requireContext(), item.key, neu)
                 view?.let { lade(it) }
             }
@@ -203,7 +264,11 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
     }
 
     private fun erledigtDialog(item: MaengellisteExport.MangelItem) {
-        val input = EditText(requireContext()).apply { hint = "Kommentar zur Erledigung" }
+        val existing = MangelStatusSpeicher.laden(requireContext(), item.key)
+        val input = EditText(requireContext()).apply {
+            hint = "Kommentar zur Erledigung"
+            setText(existing.kommentar)
+        }
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Mangel erledigt markieren")
             .setView(input)
@@ -263,8 +328,15 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
 
     private fun starteNeuesMangelFoto(item: MaengellisteExport.MangelItem, art: MangelStatusSpeicher.FotoArt) {
         lifecycleScope.launch {
+            val gespeicherterStatus = MangelStatusSpeicher.laden(requireContext(), item.key)
+            val nodeOverride = gespeicherterStatus.knotenIdOverride
+            val mangelKnotenId = when {
+                nodeOverride != null && nodeOverride == hauptKnotenId -> null
+                nodeOverride != null && nodeOverride > 0L -> nodeOverride
+                else -> item.hauptFoto?.baustellenKnotenId
+            }
+
             if (hauptKnotenId > 0L && altBaustelleId > 0L) {
-                val mangelKnotenId = item.hauptFoto?.baustellenKnotenId
                 if (mangelKnotenId != null && mangelKnotenId > 0L) {
                     ServiceLocator.aktuelleBaustelleSpeicher.setzenKnoten(
                         aktuellerKnotenId = mangelKnotenId,
@@ -283,10 +355,10 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
                 putString(KameraFragment.ARG_NACHWEIS_STATUS, MangelStatusSpeicher.fotoArtZuStatus(art).name)
                 putString(KameraFragment.ARG_MANGEL_FOTO_ART, art.name)
                 putString(KameraFragment.ARG_PREFILL_FIRMA, item.firma.takeIf { it != "-" }.orEmpty())
-                putString(KameraFragment.ARG_PREFILL_KURZTEXT, item.beschreibung.take(90))
+                putString(KameraFragment.ARG_PREFILL_KURZTEXT, item.beschreibung.take(80))
                 putString(KameraFragment.ARG_PREFILL_NOTIZ, "$artText-Foto zu Mangel: ${item.beschreibung}")
-                item.hauptFoto?.baustellenKnotenId?.let { putLong(KameraFragment.ARG_NACHWEIS_KNOTEN_ID, it) }
-                item.hauptFoto?.km?.let { putDouble(KameraFragment.ARG_PREFILL_KM, it) }
+                mangelKnotenId?.let { putLong(KameraFragment.ARG_NACHWEIS_KNOTEN_ID, it) }
+                (parseKm(item.km) ?: item.hauptFoto?.km)?.let { putDouble(KameraFragment.ARG_PREFILL_KM, it) }
             }
             Toast.makeText(requireContext(), "Kamera für Mangel-Foto vorbereitet", Toast.LENGTH_SHORT).show()
             findNavController().navigate(R.id.kameraFragment, bundle)
@@ -301,25 +373,40 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
                     .sortedByDescending { it.erstelltAmEpochMs }
                     .take(120)
             }
-            if (fotos.isEmpty()) {
-                Toast.makeText(requireContext(), "Keine Fotos vorhanden", Toast.LENGTH_SHORT).show()
-                return@launch
-            }
             zeigeFotoAuswahlMitVorschau(
                 title = "Vorhandenes Foto auswählen",
                 fotos = fotos,
+                onMediathek = {
+                    mediathekMangel = item
+                    mediathekPicker.launch("image/*")
+                },
                 onSelected = { foto ->
                     fotoArtDialog("Fotoart für ausgewähltes Foto") { art ->
+                        val saved = MangelStatusSpeicher.laden(requireContext(), item.key)
                         MangelStatusSpeicher.fotoZuordnen(requireContext(), item.key, foto.id, art)
-                        Toast.makeText(requireContext(), "Foto zugeordnet", Toast.LENGTH_SHORT).show()
-                        view?.let { lade(it) }
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            val selectedNode = saved.knotenIdOverride
+                            if (selectedNode != null) {
+                                val photoNode = selectedNode.takeIf { it > 0L && it != hauptKnotenId }
+                                withContext(Dispatchers.IO) {
+                                    ServiceLocator.fotoRepository.updateBaustellenKnotenMitIds(listOf(foto.id), photoNode)
+                                }
+                            }
+                            Toast.makeText(requireContext(), "Foto zugeordnet", Toast.LENGTH_SHORT).show()
+                            view?.let { lade(it) }
+                        }
                     }
                 }
             )
         }
     }
 
-    private fun zeigeFotoAuswahlMitVorschau(title: String, fotos: List<FotoEntity>, onSelected: (FotoEntity) -> Unit) {
+    private fun zeigeFotoAuswahlMitVorschau(
+        title: String,
+        fotos: List<FotoEntity>,
+        onMediathek: () -> Unit,
+        onSelected: (FotoEntity) -> Unit
+    ) {
         val ctx = requireContext()
         val scroll = ScrollView(ctx).apply {
             isFillViewport = false
@@ -333,8 +420,20 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         val dialog = MaterialAlertDialogBuilder(ctx)
             .setTitle(title)
             .setView(scroll)
+            .setNeutralButton("Mediathek") { _, _ -> onMediathek() }
             .setNegativeButton("Abbrechen", null)
             .create()
+
+        if (fotos.isEmpty()) {
+            liste.addView(
+                textView(
+                    "Keine TB-Helfer-Fotos vorhanden. Über „Mediathek“ kannst du Bilder vom Handy auswählen.",
+                    13f,
+                    secondaryTextColor(),
+                    false
+                )
+            )
+        }
 
         fotos.forEach { foto ->
             val card = MaterialCardView(ctx).apply {
@@ -373,6 +472,86 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
             liste.addView(card)
         }
         dialog.show()
+    }
+
+    private fun importiereMediathekFoto(
+        item: MaengellisteExport.MangelItem,
+        uri: Uri,
+        art: MangelStatusSpeicher.FotoArt
+    ) {
+        val ctx = requireContext().applicationContext
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val resolver = ctx.contentResolver
+                    val ext = MimeTypeMap.getSingleton()
+                        .getExtensionFromMimeType(resolver.getType(uri))
+                        ?.lowercase(Locale.ROOT)
+                        ?.takeIf { it in setOf("jpg", "jpeg", "png", "webp") }
+                        ?: "jpg"
+                    val datumIso = LocalDate.now().toString()
+                    val target = FotoSpeicher.zielDateiFuerBildtyp(
+                        context = ctx,
+                        baustellenname = baustelleName.ifBlank { "Baustelle" },
+                        bildtyp = Bildtyp.MAENGEL_SCHAEDEN,
+                        datumIso = datumIso,
+                        originalName = "mediathek_${System.currentTimeMillis()}.$ext"
+                    )
+
+                    target.parentFile?.mkdirs()
+                    resolver.openInputStream(uri)?.use { input ->
+                        target.outputStream().buffered(64 * 1024).use { output ->
+                            input.copyTo(output, 64 * 1024)
+                        }
+                    } ?: error("Bild konnte nicht gelesen werden")
+
+                    val exif = runCatching { ExifInterface(target) }.getOrNull()
+                    val latLon = exif?.latLong
+                    val lat = latLon?.getOrNull(0) ?: 0.0
+                    val lon = latLon?.getOrNull(1) ?: 0.0
+
+                    FotoSpeicher.erstelleThumbnailWennMoeglich(target)
+
+                    val saved = MangelStatusSpeicher.laden(ctx, item.key)
+                    val nodeOverride = saved.knotenIdOverride
+                    val fotoKnotenId = when {
+                        nodeOverride != null && nodeOverride == hauptKnotenId -> null
+                        nodeOverride != null && nodeOverride > 0L -> nodeOverride
+                        else -> item.hauptFoto?.baustellenKnotenId
+                    }
+
+                    val neueFotoId = ServiceLocator.fotoRepository.einfuegen(
+                        FotoEntity(
+                            baustelleId = altBaustelleId,
+                            baustellenKnotenId = fotoKnotenId,
+                            dateipfad = target.absolutePath,
+                            gpsLat = lat,
+                            gpsLon = lon,
+                            km = parseKm(item.km),
+                            kmManuell = parseKm(item.km) != null,
+                            firma = item.firma.takeUnless { it == "-" }.orEmpty(),
+                            bildtyp = Bildtyp.MAENGEL_SCHAEDEN,
+                            kurztext = item.beschreibung.take(80),
+                            notiz = "Mediathek-Foto zu Mangel: ${item.beschreibung}",
+                            erstelltAmEpochMs = System.currentTimeMillis()
+                        )
+                    )
+                    MangelStatusSpeicher.fotoZuordnen(ctx, item.key, neueFotoId, art)
+                    neueFotoId
+                }
+            }
+
+            result.onSuccess {
+                Toast.makeText(requireContext(), "Mediathek-Foto zugeordnet", Toast.LENGTH_SHORT).show()
+                view?.let { lade(it) }
+            }.onFailure { err ->
+                Toast.makeText(
+                    requireContext(),
+                    err.message?.takeIf { it.isNotBlank() } ?: "Mediathek-Foto konnte nicht importiert werden",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 
     private fun exportCsv() {
@@ -430,6 +609,24 @@ class MaengellisteFragment : Fragment(R.layout.fragment_maengelliste) {
         }
         runCatching { startActivity(intent) }
             .onFailure { shareFile(file, mime, "Datei teilen") }
+    }
+
+    private fun openGps(lat: Double, lon: Double) {
+        if (lat == 0.0 && lon == 0.0) return
+        val geo = Uri.parse("geo:$lat,$lon?q=$lat,$lon")
+        val googleMaps = Intent(Intent.ACTION_VIEW, geo).apply { setPackage("com.google.android.apps.maps") }
+        val pm = requireContext().packageManager
+        if (googleMaps.resolveActivity(pm) != null) {
+            startActivity(googleMaps)
+        } else {
+            val web = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon")
+            startActivity(Intent(Intent.ACTION_VIEW, web))
+        }
+    }
+
+    private fun parseKm(value: String): Double? {
+        val match = Regex("^\\s*(?i:KM\\s*)?(-?\\d{1,3}[.,]\\d{1,4})\\s*$").matchEntire(value) ?: return null
+        return match.groupValues[1].replace(',', '.').toDoubleOrNull()
     }
 
     private fun farben(status: MangelStatusSpeicher.Status): Triple<Int, Int, String> = when (status) {

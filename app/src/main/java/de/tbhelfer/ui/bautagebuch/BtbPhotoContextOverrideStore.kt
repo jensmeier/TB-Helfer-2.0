@@ -1,6 +1,7 @@
 package de.tbhelfer.ui.bautagebuch
 
 import android.content.Context
+import de.tbhelfer.datenbank.Bildtyp
 import de.tbhelfer.datenbank.FotoEntity
 import org.json.JSONObject
 import java.io.File
@@ -18,14 +19,19 @@ object BtbPhotoContextOverrideStore {
 
     data class ContextOverride(
         val firma: String = "",
+        val firmaId: String? = null,
         val objektKennung: String? = null,
         val objektBereich: String? = null,
-        /** null = Ort nicht ueberschreiben; 0 = Hauptbaustelle; >0 = BaustellenKnotenId. */
-        val ortId: Long? = null
+        /** null = Ort nicht ueberschreiben; 0 = Hauptbaustelle; >0 = lokale BaustellenKnotenId. */
+        val ortId: Long? = null,
+        /** Kanonische geräteübergreifende Unterbaustellenreferenz. */
+        val worksiteNodeKey: String? = null,
+        /** Fachlicher BTB-Punkt des Fotos; Datei/GPS/Aufnahmezeit bleiben unverändert. */
+        val bildtyp: Bildtyp? = null
     )
 
     private const val DIR_NAME = "btb_photo_context_overrides"
-    private const val VERSION = 2
+    private const val VERSION = 3
 
     fun load(context: Context, btbId: String?): MutableMap<Long, ContextOverride> {
         val id = btbId?.trim().orEmpty()
@@ -46,11 +52,16 @@ object BtbPhotoContextOverrideStore {
                 } else null
                 out[fotoId] = ContextOverride(
                     firma = value.optString("firma", "").trim(),
+                    firmaId = value.optString("firmaId", "").trim().takeIf { it.isNotBlank() },
                     objektKennung = value.optString("objektKennung", "")
                         .trim().takeIf { it.isNotBlank() },
                     objektBereich = value.optString("objektBereich", "")
                         .trim().takeIf { it.isNotBlank() },
-                    ortId = ortId
+                    ortId = ortId,
+                    worksiteNodeKey = value.optString("worksiteNodeKey", "")
+                        .trim().takeIf { it.isNotBlank() },
+                    bildtyp = value.optString("bildtyp", "").trim().takeIf { it.isNotBlank() }
+                        ?.let { runCatching { Bildtyp.valueOf(it) }.getOrNull() }
                 )
             }
             out
@@ -94,6 +105,7 @@ object BtbPhotoContextOverrideStore {
         return foto.copy(
             baustellenKnotenId = nodeId,
             firma = value.firma.trim(),
+            bildtyp = value.bildtyp ?: foto.bildtyp,
             objektKennung = value.objektKennung?.trim()?.takeIf { it.isNotBlank() },
             objektBereich = value.objektBereich?.trim()?.takeIf { it.isNotBlank() }
         )
@@ -114,9 +126,12 @@ object BtbPhotoContextOverrideStore {
         map.forEach { (fotoId, value) ->
             obj.put(fotoId.toString(), JSONObject().apply {
                 put("firma", value.firma.trim())
+                put("firmaId", value.firmaId?.trim().orEmpty())
                 put("objektKennung", value.objektKennung?.trim().orEmpty())
                 put("objektBereich", value.objektBereich?.trim().orEmpty())
                 value.ortId?.let { put("ortId", it) }
+                put("worksiteNodeKey", value.worksiteNodeKey?.trim().orEmpty())
+                put("bildtyp", value.bildtyp?.name.orEmpty())
             })
         }
         root.put("overrides", obj)

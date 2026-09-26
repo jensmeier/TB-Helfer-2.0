@@ -164,3 +164,12 @@ Deployment:
 - neue Migration 016 muss vor Runtime-Nutzung angewendet sein;
 - danach Server/API/Portal neu deployen;
 - E2E erst zusammen mit passendem Android-Stand.
+
+
+## INT-001 – Android-Quellstand integriert
+Status: **INTEGRIERT / ANDROID-BUILD-RETEST OFFEN**
+
+- Android-Parent `606aa3ad1f8ea438372484b056a0fc1264ae2aac` in den gemeinsamen Integrationsstand übernommen.
+- `server/**` blieb inhaltlich unverändert; `app/**` stammt unverändert aus dem Android-Parent.
+- Server-Deploy/Migration 016 bleibt separat offen.
+- Android 1.3.25/200075 Build-Retest/Installation/E2E bleibt separat offen.

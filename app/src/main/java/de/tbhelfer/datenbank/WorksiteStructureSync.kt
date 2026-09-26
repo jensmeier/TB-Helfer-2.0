@@ -81,6 +81,51 @@ class WorksiteStructureSync(
         return Result.Success(Summary(supported, queued, applied))
     }
 
+    /**
+     * Liefert/erzeugt den stabilen Worksite-Node-Key für einen lokalen Unterknoten.
+     *
+     * Room-Long-IDs bleiben rein lokal. Neue BTB-Referenzen dürfen ausschließlich diesen
+     * clientNodeKey dauerhaft synchronisieren.
+     */
+    suspend fun ensureClientNodeKey(
+        localRootKnotenId: Long,
+        localKnotenId: Long
+    ): String? {
+        if (localKnotenId <= 0L || localKnotenId == localRootKnotenId) return null
+        nodeBindingDao.forLocalNode(localKnotenId)?.let { return it.clientNodeKey }
+
+        val bound = bindingRepository.contextsWithBindings()
+            .firstOrNull { it.localWorksite?.id == localRootKnotenId }
+            ?: return null
+        val localNode = localWorksiteDao.laden(localKnotenId) ?: return null
+        if (localNode.rootId != localRootKnotenId || localNode.typ == BaustellenKnotenTyp.HAUPT) {
+            return null
+        }
+
+        val item = SyncWorksiteNodeBindingEntity(
+            localKnotenId = localKnotenId,
+            localRootKnotenId = localRootKnotenId,
+            worksiteServerId = bound.context.worksiteServerId,
+            clientNodeKey = "wsn-${UUID.randomUUID()}"
+        )
+        nodeBindingDao.upsert(item)
+        return item.clientNodeKey
+    }
+
+    /** Rückauflösung eines stabilen Node-Keys auf die lokale Room-ID dieses Geräts. */
+    suspend fun localNodeIdForClientKey(
+        localRootKnotenId: Long,
+        clientNodeKey: String?
+    ): Long? {
+        val key = clientNodeKey?.trim().orEmpty()
+        if (key.isBlank()) return null
+        val bound = bindingRepository.contextsWithBindings()
+            .firstOrNull { it.localWorksite?.id == localRootKnotenId }
+            ?: return null
+        val binding = nodeBindingDao.forClientKey(bound.context.worksiteServerId, key) ?: return null
+        return binding.localKnotenId.takeIf { binding.localRootKnotenId == localRootKnotenId }
+    }
+
     /** Nach einem möglichen Upload nochmals laden, damit Poco und Pixel denselben Baum sehen. */
     suspend fun applyServerStateToLocal(token: String): Result {
         val contexts = bindingRepository.contextsWithBindings()

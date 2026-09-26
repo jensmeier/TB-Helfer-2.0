@@ -61,6 +61,10 @@ interface FotoDao {
     @Query("UPDATE foto SET notiz = :notiz WHERE id IN (:ids)")
     suspend fun updateNotizMitIds(ids: List<Long>, notiz: String?): Int
 
+    /** Echte Haupt-/Unterbaustellen-Zuordnung mehrerer Mangel-Fotos korrigieren. null = Hauptbaustelle. */
+    @Query("UPDATE foto SET baustellenKnotenId = :knotenId WHERE id IN (:ids)")
+    suspend fun updateBaustellenKnotenMitIds(ids: List<Long>, knotenId: Long?): Int
+
     @Delete
     suspend fun loeschen(entity: FotoEntity): Int
 }

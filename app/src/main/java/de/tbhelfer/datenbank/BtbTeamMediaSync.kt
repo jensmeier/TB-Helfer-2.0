@@ -3,6 +3,7 @@ package de.tbhelfer.datenbank
 import android.content.Context
 import android.util.Base64
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.server.BtbServerStateStore
 import de.tbhelfer.server.CollabSyncApi
 import de.tbhelfer.server.Server1FileApi
 import de.tbhelfer.server.Server1BtbApi
@@ -10,6 +11,7 @@ import de.tbhelfer.server.Server1BtbPdfApi
 import de.tbhelfer.ui.bautagebuch.BautagebuchEintrag
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbAbschlussPdfFinder
+import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.BtbFotoZuordnungSpeicher
 import de.tbhelfer.ui.bautagebuch.SchichtTyp
@@ -58,21 +60,32 @@ class BtbTeamMediaSync(context: Context) {
         token: String,
         api: CollabSyncApi = CollabSyncApi(),
         server1Api: Server1FileApi? = null,
-        server1PdfApi: Server1BtbPdfApi? = null
+        server1PdfApi: Server1BtbPdfApi? = null,
+        worksiteServerIds: Set<String>? = null,
+        btbServerIds: Set<String>? = null,
+        allowUploads: Boolean = true
     ): Result {
         var uploaded = 0
         var present = 0
         var imported = 0
         var pdfImported = 0
 
-        val bound = bindings.contextsWithBindings().filter { it.binding != null && it.localWorksite != null }
+        val bound = bindings.contextsWithBindings().filter {
+            it.binding != null &&
+                it.localWorksite != null &&
+                (worksiteServerIds == null || it.context.worksiteServerId in worksiteServerIds)
+        }
         for (item in bound) {
             val local = item.localWorksite ?: continue
             val server = item.context
             val localFotos = fotos.fotosFuerBaustelleSyncOnce(local.altBaustelleId)
             val localPaths = localFotos.mapTo(hashSetOf()) { runCatching { File(it.dateipfad).canonicalPath }.getOrDefault(it.dateipfad) }
             val serverBtbs = collab.entities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB)
-                .filter { !it.isDeleted && it.groupId == server.groupId }
+                .filter {
+                    !it.isDeleted &&
+                        it.groupId == server.groupId &&
+                        (btbServerIds == null || it.serverId in btbServerIds)
+                }
                 .mapNotNull { entity -> entity.clientEntityKey?.let { it to entity } }
                 .toMap()
 
@@ -87,10 +100,14 @@ class BtbTeamMediaSync(context: Context) {
             val verlaufByBtbId = verlauf.mapNotNull { v ->
                 v.btbId?.takeIf { it.isNotBlank() && !it.startsWith("legacy:") }?.let { it to v }
             }.toMap()
-            for (v in verlauf) {
+            if (allowUploads) for (v in verlauf) {
                 val stableBtbId = v.btbId?.takeIf { it.isNotBlank() }
                 val key = stableBtbId ?: "legacy:${v.datum}:${v.schicht.name}"
                 val parent = serverBtbs[key] ?: continue
+                val serverState = BtbServerStateStore.state(appContext, key)
+                if (parent.status.equals("FERTIG", true) || serverState?.readOnly == true) {
+                    continue
+                }
                 val btbFotos = if (stableBtbId != null) {
                     val fotoIds = BtbFotoZuordnungSpeicher.fotoIdsFuerBtb(appContext, stableBtbId)
                     localFotos.filter { it.id in fotoIds }
@@ -101,7 +118,6 @@ class BtbTeamMediaSync(context: Context) {
                             BtbFotoZuordnungSpeicher.btbId(appContext, foto.id) == null
                     }
                 }
-                var uploadedForBtb = 0
                 for (foto in btbFotos) {
                     val file = File(foto.dateipfad)
                     if (!file.exists() || !file.isFile) continue
@@ -115,6 +131,11 @@ class BtbTeamMediaSync(context: Context) {
                             file = file,
                             uploadFilename = uploadName,
                             mimeType = CollabSyncRepository.mimeTypeFor(file),
+                            capturedAtEpochMs = foto.erstelltAmEpochMs,
+                            gpsLat = foto.gpsLat,
+                            gpsLon = foto.gpsLon,
+                            gpsAccuracyM = null,
+                            photoMetadata = structuredPhotoMetadata(foto),
                             api = api,
                             server1Api = server1Api
                         )
@@ -123,31 +144,15 @@ class BtbTeamMediaSync(context: Context) {
                         CollabSyncRepository.LocalAttachmentUploadResult.Unsupported -> return Result.Unsupported
                         is CollabSyncRepository.LocalAttachmentUploadResult.Error -> return Result.Error(result.message)
                         is CollabSyncRepository.LocalAttachmentUploadResult.Success -> {
+                            rememberImportedPhoto(result.serverId, foto.id, key)
                             if (result.uploaded) {
                                 uploaded++
-                                uploadedForBtb++
                             } else present++
                         }
                     }
                 }
-                if (
-                    server1Api != null &&
-                    uploadedForBtb > 0 &&
-                    (v.entry.istFertig || v.entry.dokumentVersion > 0)
-                ) {
-                    collab.enqueueMutation(
-                        worksiteServerId = server.worksiteServerId,
-                        entityType = SyncCollabPendingChangeEntity.TYPE_BTB,
-                        operation = SyncCollabPendingChangeEntity.OP_UPSERT,
-                        serverId = parent.serverId,
-                        clientEntityKey = parent.clientEntityKey ?: key,
-                        baseVersion = parent.entityVersion,
-                        groupId = server.groupId,
-                        status = "FERTIG",
-                        areaScopeJson = "{}",
-                        payloadJson = parent.payloadJson
-                    )
-                }
+                // Medienupload aendert nur Fotos. Der Lifecycle wird seit Vertrag 25.09.2026
+                // ausschliesslich ueber shift-finish/shift-resume/finalize gesteuert.
             }
 
             // Import: heruntergeladene BTB-Fotos als normale lokale Fotos verfügbar machen.
@@ -161,11 +166,27 @@ class BtbTeamMediaSync(context: Context) {
                     if (!file.exists() || !file.isFile) continue
                     val canonical = runCatching { file.canonicalPath }.getOrDefault(file.absolutePath)
                     if (canonical in localPaths) {
-                        rememberImported(attachment.serverId, true)
+                        val own = localFotos.firstOrNull { foto ->
+                            runCatching { File(foto.dateipfad).canonicalPath }
+                                .getOrDefault(foto.dateipfad) == canonical
+                        }
+                        if (own != null) {
+                            rememberImportedPhoto(attachment.serverId, own.id, parentKey)
+                        } else {
+                            rememberImported(attachment.serverId, true)
+                        }
                         continue
                     }
                     if (wasImported(attachment.serverId)) continue
-                    val meta = decodePhotoMetadata(attachment.filename) ?: continue
+                    val serverPhoto = BtbServerStateStore.photoMetadata(
+                        appContext,
+                        parentKey,
+                        attachment.serverId
+                    )
+                    val meta = mergedPhotoMetadata(
+                        serverPhoto = serverPhoto,
+                        legacy = decodePhotoMetadata(attachment.filename)
+                    )
                     val typ = runCatching { Bildtyp.valueOf(meta.optString("typ")) }
                         .getOrDefault(Bildtyp.FOTODOKUMENTATION)
                     val entity = FotoEntity(
@@ -194,15 +215,30 @@ class BtbTeamMediaSync(context: Context) {
                         info5Wert = meta.optString("info5").takeIf { it.isNotBlank() },
                         erstelltAmEpochMs = meta.optLong("epoch", System.currentTimeMillis())
                     )
-                    if (parentKey.startsWith("legacy:")) {
+                    val localFotoId = if (parentKey.startsWith("legacy:")) {
                         fotos.einfuegen(entity)
                     } else {
-                        fotos.einfuegenFuerBtb(entity, parentKey)
+                        fotos.einfuegenFuerBtb(entity, parentKey, triggerSync = false)
                     }
-                    rememberImported(attachment.serverId, true)
+                    rememberImportedPhoto(attachment.serverId, localFotoId, parentKey)
                     localPaths += canonical
                     imported++
                 }
+            }
+
+            // Portal-Unlink: nur die BTB-Zuordnung entfernen, das lokale Originalfoto behalten.
+            for ((parentKey, _) in serverBtbs) {
+                val state = BtbServerStateStore.state(appContext, parentKey) ?: continue
+                val photos = runCatching { org.json.JSONArray(state.photosJson) }.getOrNull()
+                val activeServerPhotoIds = (0 until (photos?.length() ?: 0)).mapNotNull { index ->
+                    photos?.optJSONObject(index)?.optString("id")?.trim()?.takeIf { it.isNotBlank() }
+                }.toSet()
+                importedMappingsForBtb(parentKey)
+                    .filter { it.first !in activeServerPhotoIds }
+                    .forEach { (serverFileId, localFotoId) ->
+                        BtbFotoZuordnungSpeicher.entfernen(appContext, localFotoId)
+                        forgetImportedPhoto(serverFileId)
+                    }
             }
 
             // Abschluss-PDF: direkt aus dem kanonischen BTB-Endpunkt in denselben lokalen
@@ -212,6 +248,12 @@ class BtbTeamMediaSync(context: Context) {
                     val localBtb = verlaufByBtbId[parentKey] ?: continue
                     val payload = runCatching { JSONObject(parent.payloadJson) }.getOrNull() ?: continue
                     val serverStatus = payload.optString(Server1BtbApi.SERVER_STATUS_KEY).uppercase()
+                    // parent.status ist bereits der kanonische Lifecycle-Status aus
+                    // Server1BtbApi: FERTIG nur wenn FINALIZED UND nicht mehr active_btb_id.
+                    // Ein serverseitig noch als FINALIZED markierter, aber wieder aktiver BTB
+                    // ist fuer Android ein ENTWURF/Nachbearbeitungs-BTB und darf nicht erneut
+                    // durch das alte Abschluss-PDF "geschlossen" werden.
+                    val snapshotFinished = parent.status.equals("FERTIG", ignoreCase = true)
                     val pdfAvailable = payload.optBoolean(
                         Server1BtbApi.SERVER_FINAL_PDF_AVAILABLE_KEY,
                         false
@@ -220,7 +262,8 @@ class BtbTeamMediaSync(context: Context) {
                         Server1BtbApi.SERVER_FINAL_PDF_SHA256_KEY
                     ).trim()
 
-                    if (serverStatus == "FINALIZED" && pdfAvailable) {
+                    val canViewPdf = BtbServerStateStore.state(appContext, parentKey)?.canViewPdf == true
+                    if (snapshotFinished && serverStatus == "FINALIZED" && pdfAvailable && canViewPdf) {
                         val marker = pdfImportMarker(parent.serverId, parent.entityVersion, expectedSha)
                         val existing = BtbAbschlussPdfFinder.neueste(appContext, localBtb.entry)
                         if (wasImported(marker) && existing?.isFile == true) continue
@@ -278,7 +321,7 @@ class BtbTeamMediaSync(context: Context) {
                             }
                         }
                     } else if (
-                        serverStatus in setOf("ACTIVE", "REWORK") &&
+                        !snapshotFinished &&
                         BtbDokumentVersionierung.hatServerAbschlussMarker(appContext, localBtb.entry)
                     ) {
                         BtbDokumentVersionierung.serverAbschlussInvalidieren(
@@ -421,9 +464,103 @@ class BtbTeamMediaSync(context: Context) {
         return String(bytes, Charsets.UTF_8)
     }
 
-    private fun wasImported(serverAttachmentId: String): Boolean = importedPrefs.getBoolean(serverAttachmentId, false)
+    private fun wasImported(serverAttachmentId: String): Boolean {
+        val value = importedPrefs.all[serverAttachmentId]
+        return value == true || value is Long
+    }
+
     private fun rememberImported(serverAttachmentId: String, value: Boolean) {
         importedPrefs.edit().putBoolean(serverAttachmentId, value).apply()
+    }
+
+    private fun rememberImportedPhoto(serverAttachmentId: String, localFotoId: Long, btbId: String) {
+        importedPrefs.edit()
+            .putLong(serverAttachmentId, localFotoId)
+            .putString("btb:$serverAttachmentId", btbId)
+            .apply()
+    }
+
+    private fun importedMappingsForBtb(btbId: String): List<Pair<String, Long>> =
+        importedPrefs.all.entries.mapNotNull { (key, value) ->
+            if (key.startsWith("btb:")) return@mapNotNull null
+            val localId = value as? Long ?: return@mapNotNull null
+            val mappedBtb = importedPrefs.getString("btb:$key", null)
+            if (mappedBtb == btbId) key to localId else null
+        }
+
+    private fun forgetImportedPhoto(serverAttachmentId: String) {
+        importedPrefs.edit()
+            .remove(serverAttachmentId)
+            .remove("btb:$serverAttachmentId")
+            .apply()
+    }
+
+    private fun structuredPhotoMetadata(foto: FotoEntity): JSONObject = JSONObject()
+        .put("epoch", foto.erstelltAmEpochMs)
+        .put("lat", foto.gpsLat)
+        .put("lon", foto.gpsLon)
+        .putNullable("alt", foto.gpsAltM)
+        .putNullable("km", foto.km)
+        .putNullable("achsabstand", foto.achsabstandM)
+        .put("kmSuffix", foto.kmSuffix)
+        .put("kmManuell", foto.kmManuell)
+        .put("typ", foto.bildtyp.name)
+        .put("indikator", foto.indikator?.name ?: "")
+        .put("firma", foto.firma)
+        .put("kurztext", foto.kurztext)
+        .put("objektKennung", foto.objektKennung ?: "")
+        .put("objektBereich", foto.objektBereich ?: "")
+        .put("notiz", foto.notiz ?: "")
+        .put("info1", foto.info1Wert ?: "")
+        .put("info2", foto.info2Wert ?: "")
+        .put("info3", foto.info3Wert ?: "")
+        .put("info4", foto.info4Wert ?: "")
+        .put("info5", foto.info5Wert ?: "")
+
+    private fun mergedPhotoMetadata(serverPhoto: JSONObject?, legacy: JSONObject?): JSONObject {
+        val out = legacy?.let { JSONObject(it.toString()) } ?: JSONObject()
+        serverPhoto?.optJSONObject("photo_metadata")?.let { structured ->
+            val keys = structured.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                if (!structured.isNull(key)) out.put(key, structured.opt(key))
+            }
+        }
+
+        // Prioritaet Vertrag 25.09.2026:
+        // 1) strukturierte photo_metadata, 2) captured_at/GPS, 3) BTBP1-Legacy.
+        // Da out zuerst Legacy und danach structured enthaelt, duerfen die separaten
+        // Serverfelder nur noch fehlende Werte ergaenzen, nicht structured ueberschreiben.
+        if (!out.has("epoch") || out.isNull("epoch")) {
+            serverPhoto?.optString("captured_at")?.trim()?.takeIf { it.isNotBlank() }?.let { value ->
+                val epoch = runCatching { java.time.Instant.parse(value).toEpochMilli() }.getOrNull()
+                    ?: runCatching { java.time.OffsetDateTime.parse(value).toInstant().toEpochMilli() }.getOrNull()
+                epoch?.let { out.put("epoch", it) }
+            }
+        }
+        if ((!out.has("lat") || out.isNull("lat")) &&
+            serverPhoto != null && serverPhoto.has("gps_lat") && !serverPhoto.isNull("gps_lat")
+        ) {
+            out.put("lat", serverPhoto.optDouble("gps_lat"))
+        }
+        if ((!out.has("lon") || out.isNull("lon")) &&
+            serverPhoto != null && serverPhoto.has("gps_lon") && !serverPhoto.isNull("gps_lon")
+        ) {
+            out.put("lon", serverPhoto.optDouble("gps_lon"))
+        }
+
+        if (out.optString("typ").isBlank()) out.put("typ", Bildtyp.FOTODOKUMENTATION.name)
+        if (!out.has("epoch")) out.put("epoch", System.currentTimeMillis())
+        if (!out.has("lat")) out.put("lat", 0.0)
+        if (!out.has("lon")) out.put("lon", 0.0)
+        if (out.optString("kurztext").isBlank()) {
+            out.put(
+                "kurztext",
+                serverPhoto?.optString("original_name")?.takeIf { it.isNotBlank() }
+                    ?: "Synchronisiertes BTB-Foto"
+            )
+        }
+        return out
     }
 
     private fun JSONObject.putNullable(key: String, value: Any?): JSONObject {

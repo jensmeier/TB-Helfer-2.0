@@ -285,3 +285,26 @@ Admin-Auswahl mindestens:
 - Android startet danach den System-Paketinstaller. Eine eventuell einmalig erforderliche Android-Freigabe für „Apps aus dieser Quelle installieren“ bleibt eine Systementscheidung.
 - Ein normales App-Update darf gespeicherte Serveridentität, Geräte-Token, Aktivierung und lokale Baustellendaten nicht löschen. Ein neuer Geräte-QR ist nur bei Freigabe/Neuinstallation/verlorenen App-Daten nötig.
 
+
+## 9. Android Release-Begleitdatei – verbindlich
+Für **jeden neuen Android-Build/Release**, der gebaut, getestet, in GitHub übergeben oder im Server-Releasekatalog verwendet wird, muss eine passende Release-Begleitdatei unter `projektsteuerung/releases/` vorhanden sein.
+
+Pflichtschema am Dateianfang:
+- `TB-HELFER-RELEASE`
+- `PLATTFORM: ANDROID`
+- `VERSION: <versionName>`
+- `BUILD: <versionCode>`
+- `MINIMUM_BUILD:`
+- `PFLICHTUPDATE: JA|NEIN`
+- `DOWNLOAD_URL:`
+
+Danach mindestens die fachlich passenden Abschnitte `NEU:`, `VERBESSERT:`, `BEHOBEN:`; weitere Abschnitte wie `UNVERÄNDERT:`, `SERVERVERTRAG:`, `TESTSTATUS:` und `NÄCHSTER TEST:` sind erlaubt und erwünscht.
+
+Verbindliche Konsistenz:
+- `VERSION` muss exakt dem Android-`versionName` entsprechen.
+- `BUILD` muss exakt dem Android-`versionCode` entsprechen.
+- Release-MD und APK gehören als Paar zusammen und dürfen nicht aus unterschiedlichen Builds stammen.
+- Die Release-MD beschreibt den Server-Releaseeintrag; sie ändert niemals die intern in der APK eingebettete Version.
+- Vor Upload/Veröffentlichung immer APK + Release-MD desselben Builds verwenden.
+
+Diese Datei ist Teil jeder Build-/Release-Übergabe und darf künftig nicht vergessen werden.

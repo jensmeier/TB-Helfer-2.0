@@ -21,6 +21,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.ceil
+import kotlin.math.roundToInt
 
 object MaengellisteExport {
 
@@ -87,7 +88,7 @@ object MaengellisteExport {
             if (meta.km.isNullOrBlank()) meta.km = foto.km?.let { "KM ${de.tbhelfer.util.KmAnzeige.wert(it)}" } ?: "-"
             if (meta.firma.isNullOrBlank() || meta.firma == "-") meta.firma = foto.firma.ifBlank { "-" }
             if (meta.beschreibung.isNullOrBlank()) meta.beschreibung = foto.notiz?.takeIf { it.isNotBlank() } ?: foto.kurztext
-            if (meta.gps.isNullOrBlank()) meta.gps = "%.6f, %.6f".format(Locale.US, foto.gpsLat, foto.gpsLon)
+            if (meta.gps.isNullOrBlank()) meta.gps = fotoGpsText(foto).ifBlank { "-" }
         }
 
         alleFotos
@@ -132,7 +133,7 @@ object MaengellisteExport {
 
         return gruppen.map { (key, meta) ->
             val fotos = meta.fotos.distinctBy { it.foto.id }.sortedBy { it.foto.erstelltAmEpochMs }
-            MangelItem(
+            val base = MangelItem(
                 key = key,
                 datumIso = meta.datumIso ?: fotos.firstOrNull()?.foto?.let { datumIso(it.erstelltAmEpochMs) }.orEmpty(),
                 zeit = meta.zeit ?: fotos.firstOrNull()?.foto?.let { zeit(it.erstelltAmEpochMs) }.orEmpty(),
@@ -144,6 +145,13 @@ object MaengellisteExport {
                 gps = meta.gps ?: "-",
                 fotos = fotos,
                 btbBildNr = meta.btbBildNr
+            )
+            val edit = MangelStatusSpeicher.laden(context, key)
+            base.copy(
+                bereich = edit.bereichOverride ?: base.bereich,
+                km = edit.kmOverride ?: base.km,
+                firma = edit.firmaOverride ?: base.firma,
+                beschreibung = edit.beschreibungOverride ?: base.beschreibung
             )
         }
             .distinctBy { it.key }
@@ -197,7 +205,12 @@ object MaengellisteExport {
         val title = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = 18f; typeface = Typeface.DEFAULT_BOLD }
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = 10.5f }
         val small = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.DKGRAY; textSize = 7.6f }
+        val gpsLinkPaint = Paint(small).apply {
+            color = Color.parseColor("#1565C0")
+            isUnderlineText = true
+        }
         val bold = Paint(text).apply { typeface = Typeface.DEFAULT_BOLD }
+        val gpsLinks = mutableListOf<PdfGpsLinkAnnotator.Target>()
 
         fun header() {
             val suffix = titelSuffix.takeIf { it.isNotBlank() }?.let { " - $it" }.orEmpty()
@@ -247,19 +260,21 @@ object MaengellisteExport {
         var y = 84f
         items.forEachIndexed { idx, item ->
             val wert = MangelStatusSpeicher.laden(context, item.key)
-            val fotos = item.fotos
-            val fotosAnzahl = fotos.size.coerceAtMost(18)
-            val rows = if (fotosAnzahl <= 0) 0 else ceil(fotosAnzahl / 3.0).toInt()
+            val alleFotos = item.fotos.take(18)
+            val fotoBloecke: List<List<MangelFoto>> =
+                if (alleFotos.isEmpty()) listOf(emptyList()) else alleFotos.chunked(6)
+
             val colW = 238f
-            val leftInfo = listOf(
-                "Datum/Zeit: " to "${datumDe(item.datumIso)} ${item.zeit}",
-                "Bereich: " to item.bereich,
-                "Firma: " to item.firma,
-                "KM: " to item.km,
-                "Text: " to item.beschreibung
-            )
+            val leftInfo = buildList {
+                add("Datum/Zeit: " to "${datumDe(item.datumIso)} ${item.zeit}")
+                add("Baustelle: " to anzeigeBaustelle(item))
+                add("Firma: " to item.firma)
+                item.km.takeIf { it.isNotBlank() && it != "-" }?.let {
+                    add("Ort / KM / Bereich: " to it)
+                }
+                add("Text: " to item.beschreibung)
+            }
             val rightInfo = listOf(
-                "GPS: " to item.gps,
                 "Fotos: " to "Mangel ${countArt(item, MangelStatusSpeicher.FotoArt.MANGEL)} · in Arbeit ${countArt(item, MangelStatusSpeicher.FotoArt.IN_ARBEIT)} · erledigt ${countArt(item, MangelStatusSpeicher.FotoArt.ERLEDIGT)}",
                 "Erledigt: " to (wert.erledigtAmEpochMs?.let { datumZeit(it) } ?: "__________"),
                 "Kommentar: " to wert.kommentar.ifBlank { "__________" }
@@ -267,67 +282,139 @@ object MaengellisteExport {
             val leftLines = leftInfo.sumOf { fieldLines(it.first, it.second, colW).size }
             val rightLines = rightInfo.sumOf { fieldLines(it.first, it.second, colW).size }
             val infoH = maxOf(leftLines, rightLines) * (text.textSize + 3f)
-            val photosH = if (rows > 0) 18f + rows * 148f else 18f
-            val cardH = (44f + infoH + photosH + 20f).coerceAtLeast(160f).coerceAtMost(730f)
-            if (y + cardH > h - 36f) { newPage(); y = 84f }
 
-            val stroke = statusColor(wert.status)
-            val pStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1.5f; color = stroke }
-            val pFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL; color = Color.WHITE }
-            canvas.drawRoundRect(32f, y, w - 32f, y + cardH, 10f, 10f, pFill)
-            canvas.drawRoundRect(32f, y, w - 32f, y + cardH, 10f, 10f, pStroke)
-            canvas.drawText("Mangel ${(idx + 1).toString().padStart(3, '0')} · ${statusText(wert.status).uppercase(Locale.GERMANY)}", 44f, y + 20f, bold)
+            // Android 200059: maximal 6 deutlich groessere Beweisfotos pro PDF-Seite.
+            // Weitere Fotos werden als Fortsetzung desselben Mangels ausgegeben.
+            val imgW = 164f
+            val imgH = 164f
+            val photoGapX = 7.5f
+            val photoRowH = 238f
 
-            var leftY = y + 40f
-            leftInfo.forEach { leftY = drawField(it.first, it.second, 44f, leftY, colW) }
-            var rightY = y + 40f
-            rightInfo.forEach { rightY = drawField(it.first, it.second, 306f, rightY, colW) }
+            fotoBloecke.forEachIndexed { blockIndex, fotos ->
+                val rows = if (fotos.isEmpty()) 0 else ceil(fotos.size / 3.0).toInt()
+                val photosH = if (rows > 0) 18f + rows * photoRowH else 18f
+                val cardH = (44f + infoH + photosH + 20f).coerceAtLeast(160f).coerceAtMost(730f)
 
-            var fy = maxOf(leftY, rightY) + 10f
-            canvas.drawText("Fotos:", 44f, fy, bold)
-            fy += 10f
-            var fx = 44f
-            val imgW = 160f
-            val imgH = 106f
-            val rowH = 148f
-            fotos.take(18).forEachIndexed { fIdx, mf ->
-                if (fIdx > 0 && fIdx % 3 == 0) {
-                    fx = 44f
-                    fy += rowH
-                    if (fy + imgH > y + cardH - 12f) return@forEachIndexed
+                if (y + cardH > h - 36f) {
+                    newPage()
+                    y = 84f
                 }
-                val src = File(mf.foto.dateipfad)
-                if (src.exists()) {
-                    val bmp = decodeSampledBitmap(src, 640, 480)
-                    if (bmp != null) {
-                        drawBitmapFit(canvas, bmp, RectF(fx, fy, fx + imgW, fy + imgH))
-                        bmp.recycle()
-                    } else {
-                        canvas.drawText("Bild nicht lesbar", fx, fy + 28f, small)
+
+                val stroke = statusColor(wert.status)
+                val pStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 1.5f
+                    color = stroke
+                }
+                val pFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.FILL
+                    color = Color.WHITE
+                }
+                canvas.drawRoundRect(32f, y, w - 32f, y + cardH, 10f, 10f, pFill)
+                canvas.drawRoundRect(32f, y, w - 32f, y + cardH, 10f, 10f, pStroke)
+
+                val fortsetzung = if (blockIndex == 0) "" else " · FORTSETZUNG"
+                canvas.drawText(
+                    "Mangel ${(idx + 1).toString().padStart(3, '0')} · ${statusText(wert.status).uppercase(Locale.GERMANY)}$fortsetzung",
+                    44f,
+                    y + 20f,
+                    bold
+                )
+
+                var leftY = y + 40f
+                leftInfo.forEach { leftY = drawField(it.first, it.second, 44f, leftY, colW) }
+                var rightY = y + 40f
+                rightInfo.forEach { rightY = drawField(it.first, it.second, 306f, rightY, colW) }
+
+                var fy = maxOf(leftY, rightY) + 10f
+                canvas.drawText("Fotos:", 44f, fy, bold)
+                fy += 10f
+                var fx = 44f
+
+                fotos.forEachIndexed { fIdx, mf ->
+                    if (fIdx > 0 && fIdx % 3 == 0) {
+                        fx = 44f
+                        fy += photoRowH
                     }
-                } else {
-                    canvas.drawText("Bild fehlt", fx, fy + 28f, small)
+
+                    val src = File(mf.foto.dateipfad)
+                    if (src.exists()) {
+                        // 164 pt entsprechen gut 2,3 Zoll. 480 px liefern >200 dpi
+                        // und vermeiden Mehr-Megapixel-Bilder im PDF.
+                        val bmp = decodeSampledBitmap(src, 480, 480)
+                        if (bmp != null) {
+                            drawBitmapFit(canvas, bmp, RectF(fx, fy, fx + imgW, fy + imgH))
+                            bmp.recycle()
+                        } else {
+                            canvas.drawText("Bild nicht lesbar", fx, fy + 28f, small)
+                        }
+                    } else {
+                        canvas.drawText("Bild fehlt", fx, fy + 28f, small)
+                    }
+
+                    val caption1 = "${fotoArtText(mf.art)} · ${zeit(mf.foto.erstelltAmEpochMs)} · Bild ${mf.foto.id}"
+                    canvas.drawText(caption1, fx, fy + imgH + 10f, small)
+
+                    val kmText = fotoKmText(mf.foto)
+                    if (kmText.isNotBlank()) {
+                        canvas.drawText("KM: $kmText", fx, fy + imgH + 20f, small)
+                    }
+
+                    val gvpFoto = mf.foto.info1Wert?.trim().orEmpty()
+                    if (gvpFoto.isNotBlank()) {
+                        wrapLines("GVP/Mast: $gvpFoto", imgW, small).take(2).forEachIndexed { lineIdx, line ->
+                            canvas.drawText(line, fx, fy + imgH + 30f + lineIdx * 9f, small)
+                        }
+                    }
+
+                    val gpsText = fotoGpsText(mf.foto)
+                    if (gpsText.isNotBlank()) {
+                        val gpsLabel = "GPS: $gpsText"
+                        val gpsBaseline = fy + imgH + 49f
+                        canvas.drawText(gpsLabel, fx, gpsBaseline, gpsLinkPaint)
+                        gpsLinks += PdfGpsLinkAnnotator.Target(
+                            pageIndex = pageNo - 1,
+                            x = fx,
+                            top = gpsBaseline - gpsLinkPaint.textSize - 2f,
+                            width = gpsLinkPaint.measureText(gpsLabel),
+                            height = gpsLinkPaint.textSize + 5f,
+                            lat = mf.foto.gpsLat,
+                            lon = mf.foto.gpsLon
+                        )
+                    }
+
+                    val kommentar = mf.foto.notiz?.trim()?.takeIf { it.isNotBlank() } ?: mf.foto.kurztext.trim()
+                    wrapLines(kommentar, imgW, small).take(2).forEachIndexed { lineIdx, line ->
+                        canvas.drawText(line, fx, fy + imgH + 59f + lineIdx * 9f, small)
+                    }
+
+                    fx += imgW + photoGapX
                 }
-                val caption1 = "${fotoArtText(mf.art)} · ${zeit(mf.foto.erstelltAmEpochMs)} · Bild ${mf.foto.id}"
-                canvas.drawText(caption1, fx, fy + imgH + 10f, small)
-                val kommentar = mf.foto.notiz?.trim()?.takeIf { it.isNotBlank() } ?: mf.foto.kurztext.trim()
-                wrapLines(kommentar, imgW, small).take(2).forEachIndexed { lineIdx, line ->
-                    canvas.drawText(line, fx, fy + imgH + 20f + lineIdx * 9f, small)
+
+                if (fotos.isEmpty()) {
+                    canvas.drawText("Keine Fotos zugeordnet", 44f, fy + 14f, small)
                 }
-                fx += imgW + 12f
+
+                val istLetzterBlock = blockIndex == fotoBloecke.lastIndex
+                if (istLetzterBlock && item.fotos.size > 18) {
+                    canvas.drawText(
+                        "Weitere Fotos: ${item.fotos.size - 18} (im ZIP/Bilderordner)",
+                        44f,
+                        y + cardH - 12f,
+                        small
+                    )
+                }
+
+                y += cardH + 10f
             }
-            if (fotos.isEmpty()) {
-                canvas.drawText("Keine Fotos zugeordnet", 44f, fy + 14f, small)
-            }
-            if (fotos.size > 18) canvas.drawText("Weitere Fotos: ${fotos.size - 18} (im ZIP/Bilderordner)", 44f, y + cardH - 12f, small)
-            y += cardH + 10f
         }
         if (items.isEmpty()) canvas.drawText("Keine Mängel vorhanden.", 36f, y, text)
         doc.finishPage(page)
         val out = ByteArrayOutputStream()
         doc.writeTo(out)
         doc.close()
-        return out.toByteArray()
+        val rawPdf = out.toByteArray()
+        return PdfGpsLinkAnnotator.addGoogleMapsLinks(context, rawPdf, gpsLinks)
     }
 
     fun statusText(status: MangelStatusSpeicher.Status): String = when (status) {
@@ -358,6 +445,19 @@ object MaengellisteExport {
 
     fun countArt(item: MangelItem, art: MangelStatusSpeicher.FotoArt): Int = item.fotos.count { it.art == art }
 
+    fun anzeigeBaustelle(item: MangelItem): String =
+        item.bereich.trim().takeIf { it.isNotBlank() && !it.equals("Hauptbaustelle", ignoreCase = true) }
+            ?: item.baustelle.ifBlank { "Hauptbaustelle" }
+
+    fun gvpMastText(item: MangelItem): String =
+        item.fotos.asSequence().mapNotNull { it.foto.info1Wert?.trim()?.takeIf(String::isNotBlank) }.firstOrNull().orEmpty()
+
+    fun fotoKmText(foto: FotoEntity): String =
+        foto.km?.let { de.tbhelfer.util.KmAnzeige.wert(it) }.orEmpty()
+
+    fun fotoGpsText(foto: FotoEntity): String =
+        if (foto.gpsLat == 0.0 && foto.gpsLon == 0.0) "" else "%.6f, %.6f".format(Locale.US, foto.gpsLat, foto.gpsLon)
+
     private fun csv(s: String): String = "\"" + s.replace("\"", "\"\"") + "\""
     private fun datumIso(epoch: Long): String = Instant.ofEpochMilli(epoch).atZone(ZoneId.systemDefault()).toLocalDate().toString()
     private fun zeit(epoch: Long): String {
@@ -380,21 +480,37 @@ object MaengellisteExport {
     private fun decodeSampledBitmap(src: File, reqW: Int, reqH: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(src.absolutePath, bounds)
-        var sample = 1
         val h = bounds.outHeight
         val w = bounds.outWidth
+        if (h <= 0 || w <= 0) return null
+
+        var sample = 1
         if (h > reqH || w > reqW) {
-            var halfH = h / 2
-            var halfW = w / 2
+            val halfH = h / 2
+            val halfW = w / 2
             while ((halfH / sample) >= reqH && (halfW / sample) >= reqW) {
                 sample *= 2
             }
         }
+
         val opts = BitmapFactory.Options().apply {
             inSampleSize = sample.coerceAtLeast(1)
             inPreferredConfig = Bitmap.Config.RGB_565
         }
-        return runCatching { BitmapFactory.decodeFile(src.absolutePath, opts) }.getOrNull()
+        val decoded = runCatching { BitmapFactory.decodeFile(src.absolutePath, opts) }.getOrNull() ?: return null
+
+        val scale = minOf(
+            reqW.toFloat() / decoded.width.toFloat().coerceAtLeast(1f),
+            reqH.toFloat() / decoded.height.toFloat().coerceAtLeast(1f),
+            1f
+        )
+        if (scale >= 0.999f) return decoded
+
+        val targetW = (decoded.width * scale).roundToInt().coerceAtLeast(1)
+        val targetH = (decoded.height * scale).roundToInt().coerceAtLeast(1)
+        val scaled = Bitmap.createScaledBitmap(decoded, targetW, targetH, true)
+        if (scaled !== decoded) decoded.recycle()
+        return scaled
     }
 
     private fun drawBitmapFit(canvas: android.graphics.Canvas, bmp: Bitmap, box: RectF) {
@@ -403,7 +519,10 @@ object MaengellisteExport {
         val scale = minOf(box.width() / bw, box.height() / bh)
         val dw = bw * scale
         val dh = bh * scale
-        val left = box.left + (box.width() - dw) / 2f
+        // Android 200060: sichtbare Bildkante links buendig mit Bildunterschrift/Metadaten.
+        // Die Bildgeometrie bleibt vollstaendig erhalten; nur die horizontale Zentrierung in
+        // einer quadratischen Fotobox wird entfernt. Vertikal bleibt das Bild zentriert.
+        val left = box.left
         val top = box.top + (box.height() - dh) / 2f
         canvas.drawBitmap(bmp, null, RectF(left, top, left + dw, top + dh), null)
     }

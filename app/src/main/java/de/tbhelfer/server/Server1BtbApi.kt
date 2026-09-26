@@ -55,6 +55,39 @@ class Server1BtbApi(
         data class Error(val message: String) : MutationResult
     }
 
+    data class Participant(
+        val userId: String,
+        val displayName: String?,
+        val status: String,
+        val isTeamLead: Boolean
+    )
+
+    data class Access(
+        val snapshot: Snapshot,
+        val active: Boolean,
+        val isTeamLead: Boolean,
+        val participantStatus: String?,
+        val canFinalize: Boolean,
+        val canViewPdf: Boolean,
+        val participants: List<Participant>
+    )
+
+    sealed interface AccessResult {
+        data class Success(val access: Access) : AccessResult
+        data object Unsupported : AccessResult
+        data object SessionInvalid : AccessResult
+        data class Error(val message: String) : AccessResult
+    }
+
+    sealed interface LifecycleResult {
+        data class Success(val access: Access) : LifecycleResult
+        data class ParticipantsNotFinished(val participants: List<Participant>) : LifecycleResult
+        data class Conflict(val code: String) : LifecycleResult
+        data object Unsupported : LifecycleResult
+        data object SessionInvalid : LifecycleResult
+        data class Error(val message: String) : LifecycleResult
+    }
+
     private data class ManagedEntry(
         val id: String,
         val section: String,
@@ -120,6 +153,92 @@ class Server1BtbApi(
         return Result.Success(snapshots, index.activeBtbId)
     }
 
+    fun loadActiveBtbAccess(
+        token: String,
+        worksiteId: String,
+        teamId: String
+    ): AccessResult {
+        val index = when (val result = loadTeamIndex(token, worksiteId, teamId)) {
+            TeamIndexResult.Unsupported -> return AccessResult.Unsupported
+            TeamIndexResult.SessionInvalid -> return AccessResult.SessionInvalid
+            is TeamIndexResult.Error -> return AccessResult.Error(result.message)
+            is TeamIndexResult.Success -> result.index
+        }
+        val activeId = index.activeBtbId ?: return AccessResult.Error("Kein aktiver BTB vorhanden.")
+        return when (val loaded = loadBtb(token, activeId, teamId, index.activeBtbId)) {
+            DetailResult.Unsupported -> AccessResult.Unsupported
+            DetailResult.SessionInvalid -> AccessResult.SessionInvalid
+            is DetailResult.Error -> AccessResult.Error(loaded.message)
+            is DetailResult.Success -> AccessResult.Success(accessFromDetail(loaded.detail))
+        }
+    }
+
+    fun loadBtbAccess(
+        token: String,
+        worksiteId: String,
+        teamId: String,
+        serverBtbId: String
+    ): AccessResult {
+        val index = when (val result = loadTeamIndex(token, worksiteId, teamId)) {
+            TeamIndexResult.Unsupported -> return AccessResult.Unsupported
+            TeamIndexResult.SessionInvalid -> return AccessResult.SessionInvalid
+            is TeamIndexResult.Error -> return AccessResult.Error(result.message)
+            is TeamIndexResult.Success -> result.index
+        }
+        return when (val loaded = loadBtb(token, serverBtbId, teamId, index.activeBtbId)) {
+            DetailResult.Unsupported -> AccessResult.Unsupported
+            DetailResult.SessionInvalid -> AccessResult.SessionInvalid
+            is DetailResult.Error -> AccessResult.Error(loaded.message)
+            is DetailResult.Success -> AccessResult.Success(accessFromDetail(loaded.detail))
+        }
+    }
+
+    fun shiftFinish(
+        token: String,
+        worksiteId: String,
+        teamId: String,
+        serverBtbId: String
+    ): LifecycleResult = lifecycleMutation(
+        token = token,
+        worksiteId = worksiteId,
+        teamId = teamId,
+        serverBtbId = serverBtbId,
+        suffix = "shift-finish",
+        path = "/api/v1/btbs/${encode(serverBtbId)}/shift-finish",
+        body = JSONObject()
+    )
+
+    fun shiftResume(
+        token: String,
+        worksiteId: String,
+        teamId: String,
+        serverBtbId: String
+    ): LifecycleResult = lifecycleMutation(
+        token = token,
+        worksiteId = worksiteId,
+        teamId = teamId,
+        serverBtbId = serverBtbId,
+        suffix = "shift-resume",
+        path = "/api/v1/btbs/${encode(serverBtbId)}/shift-resume",
+        body = JSONObject()
+    )
+
+    fun finalizeBtb(
+        token: String,
+        worksiteId: String,
+        teamId: String,
+        serverBtbId: String,
+        allowUnfinished: Boolean
+    ): LifecycleResult = lifecycleMutation(
+        token = token,
+        worksiteId = worksiteId,
+        teamId = teamId,
+        serverBtbId = serverBtbId,
+        suffix = if (allowUnfinished) "finalize-override" else "finalize",
+        path = "/api/v1/btbs/${encode(serverBtbId)}/finalize",
+        body = JSONObject().put("allow_unfinished", allowUnfinished)
+    )
+
     fun applyPending(
         token: String,
         change: SyncCollabPendingChangeEntity,
@@ -176,33 +295,20 @@ class Server1BtbApi(
 
         val parsedBase = baseStateJson?.let { runCatching { JSONObject(it) }.getOrNull() }
 
+        // Fester Vertrag 25.09.2026: FINALIZED + nicht mehr active_btb_id ist historisch
+        // read-only. Ein alter Dirty-/Pending-Rest darf diesen BTB weder reopen noch mutieren.
+        val confirmedAccess = accessFromDetail(detail)
         if (
-            desiredStatus == "ENTWURF" &&
             detail.btb.optString("status").uppercase() == "FINALIZED" &&
             detail.activeBtbId != detail.snapshot.serverId
         ) {
-            when (
-                val reopened = jsonMutation(
-                    token,
-                    "/api/v1/btbs/${encode(detail.snapshot.serverId)}/reopen",
-                    "POST",
-                    subChangeId(change.clientChangeId, "reopen"),
-                    JSONObject()
-                )
-            ) {
-                JsonMutationResult.Unsupported -> return MutationResult.Unsupported
-                JsonMutationResult.SessionInvalid -> return MutationResult.SessionInvalid
-                is JsonMutationResult.Conflict ->
-                    return MutationResult.Conflict(reopened.currentVersion, reopened.detail)
-                is JsonMutationResult.Error -> return MutationResult.Error(reopened.message)
-                is JsonMutationResult.Success -> Unit
-            }
-            detail = when (val reloaded = loadBtb(token, detail.snapshot.serverId, teamId, detail.snapshot.serverId)) {
-                DetailResult.Unsupported -> return MutationResult.Unsupported
-                DetailResult.SessionInvalid -> return MutationResult.SessionInvalid
-                is DetailResult.Error -> return MutationResult.Error(reloaded.message)
-                is DetailResult.Success -> reloaded.detail
-            }
+            return MutationResult.Applied(detail.snapshot)
+        }
+        if (
+            !confirmedAccess.isTeamLead &&
+            confirmedAccess.participantStatus in setOf("FINISHED", "NOT_PARTICIPATING")
+        ) {
+            return MutationResult.Applied(detail.snapshot)
         }
 
         val desiredHeaderState = headerStateFromLocal(desired, clientKey)
@@ -293,9 +399,8 @@ class Server1BtbApi(
                     return MutationResult.Conflict(currentEntry.version, "BTB_ENTRY_CONFLICT:$slot")
                 }
                 if (!jsonEquivalent(currentState, desiredState)) {
-                    if (currentEntry.section != desiredEntry.section) {
-                        return MutationResult.Conflict(currentEntry.version, "BTB_ENTRY_SECTION_CONFLICT:$slot")
-                    }
+                    // Serververtrag BTB-EDIT-001: Abschnitt 4–8 ist jetzt am selben Eintrag
+                    // versioniert änderbar. Derselbe slot/clientEntryKey bleibt erhalten.
                     when (
                         val updated = jsonMutation(
                             token,
@@ -304,6 +409,7 @@ class Server1BtbApi(
                             subChangeId(change.clientChangeId, "entry-update-${slotToken(slot)}"),
                             JSONObject()
                                 .put("base_version", currentEntry.version)
+                                .put("section", desiredEntry.section)
                                 .put("sort_order", desiredEntry.sortOrder)
                                 .put("payload", desiredEntry.payload)
                         )
@@ -392,45 +498,11 @@ class Server1BtbApi(
             }
         }
 
-        val activeBeforeFinalize = when (val index = loadTeamIndex(token, change.worksiteServerId, teamId)) {
-            TeamIndexResult.Unsupported -> return MutationResult.Unsupported
-            TeamIndexResult.SessionInvalid -> return MutationResult.SessionInvalid
-            is TeamIndexResult.Error -> return MutationResult.Error(index.message)
-            is TeamIndexResult.Success -> index.index.activeBtbId
-        }
-        val statusBeforeFinalize = when (
-            val reloaded = loadBtb(token, detail.snapshot.serverId, teamId, activeBeforeFinalize)
-        ) {
-            DetailResult.Unsupported -> return MutationResult.Unsupported
-            DetailResult.SessionInvalid -> return MutationResult.SessionInvalid
-            is DetailResult.Error -> return MutationResult.Error(reloaded.message)
-            is DetailResult.Success -> reloaded.detail
-        }
-
-        if (
-            desiredStatus == "FERTIG" &&
-            (
-                statusBeforeFinalize.btb.optString("status").uppercase() != "FINALIZED" ||
-                    statusBeforeFinalize.activeBtbId == statusBeforeFinalize.snapshot.serverId
-            )
-        ) {
-            when (
-                val finalized = jsonMutation(
-                    token,
-                    "/api/v1/btbs/${encode(detail.snapshot.serverId)}/finalize",
-                    "POST",
-                    subChangeId(change.clientChangeId, "finalize"),
-                    JSONObject()
-                )
-            ) {
-                JsonMutationResult.Unsupported -> return MutationResult.Unsupported
-                JsonMutationResult.SessionInvalid -> return MutationResult.SessionInvalid
-                is JsonMutationResult.Conflict ->
-                    return MutationResult.Conflict(finalized.currentVersion, finalized.detail)
-                is JsonMutationResult.Error -> return MutationResult.Error(finalized.message)
-                is JsonMutationResult.Success -> Unit
-            }
-        }
+        // Serververtrag 25.09.2026: Fachinhalt und Lifecycle sind getrennt.
+        // Ein normaler Dirty-BTB darf niemals implizit /finalize aufrufen. Helfer verwenden
+        // shift-finish/shift-resume; nur der Haupt-TB finalisiert nach expliziter Benutzeraktion.
+        // desiredStatus=FERTIG bleibt nur fuer Alt-Queues lesbar und wird hier NICHT in einen
+        // Lifecycle-Aufruf uebersetzt.
 
         val finalIndex = when (val index = loadTeamIndex(token, change.worksiteServerId, teamId)) {
             TeamIndexResult.Unsupported -> return MutationResult.Unsupported
@@ -706,6 +778,19 @@ class Server1BtbApi(
             localPayloadFromGranular(btb, header, managed, clientKey)
         }
         canonicalizeLocalPayload(localPayload, btb, header, clientKey, activeBtbId == serverId)
+        localPayload.put(SERVER_ACTIVE_KEY, activeBtbId == serverId)
+        localPayload.put(
+            SERVER_CURRENT_USER_KEY,
+            root.optJSONObject("current_user")?.let { JSONObject(it.toString()) } ?: JSONObject()
+        )
+        localPayload.put(
+            SERVER_PARTICIPANTS_KEY,
+            root.optJSONArray("participants")?.let { JSONArray(it.toString()) } ?: JSONArray()
+        )
+        localPayload.put(
+            SERVER_PHOTOS_KEY,
+            root.optJSONArray("photos")?.let { JSONArray(it.toString()) } ?: JSONArray()
+        )
         val finalPdf = root.optJSONObject("final_pdf")
         localPayload.put(SERVER_STATUS_KEY, btb.optString("status").uppercase())
         localPayload.put(SERVER_FINAL_PDF_AVAILABLE_KEY, finalPdf != null)
@@ -769,25 +854,35 @@ class Server1BtbApi(
     ): JSONObject {
         val local = androidHeaderMeta(header)
         local.put("btbId", clientKey)
+        val slotMap = JSONObject()
 
+        data class SlottedJson(val sort: Int, val slot: String, val value: JSONObject)
+        data class SlottedText(val sort: Int, val slot: String, val value: String)
         data class FirmParts(
             var base: JSONObject,
-            val personal: MutableList<Pair<Int, JSONObject>> = mutableListOf(),
-            val devices: MutableList<Pair<Int, JSONObject>> = mutableListOf(),
-            val work: MutableList<Pair<Int, JSONObject>> = mutableListOf()
+            var baseSlot: String? = null,
+            val personal: MutableList<SlottedJson> = mutableListOf(),
+            val devices: MutableList<SlottedJson> = mutableListOf(),
+            val work: MutableList<SlottedJson> = mutableListOf()
         )
 
         val firms = linkedMapOf<String, FirmParts>()
-        val abnahmen = mutableListOf<Pair<Int, JSONObject>>()
-        val einweisung = mutableListOf<Pair<Int, JSONObject>>()
-        val besonderheiten = mutableListOf<Pair<Int, JSONObject>>()
-        val maengel = mutableListOf<Pair<Int, JSONObject>>()
-        val freePersonal = mutableListOf<Pair<Int, String>>()
-        val freeDevices = mutableListOf<Pair<Int, String>>()
-        val notes = mutableListOf<Pair<Int, String>>()
+        val abnahmen = mutableListOf<SlottedJson>()
+        val einweisung = mutableListOf<SlottedJson>()
+        val besonderheiten = mutableListOf<SlottedJson>()
+        val maengel = mutableListOf<SlottedJson>()
+        val freePersonal = mutableListOf<SlottedText>()
+        val freeDevices = mutableListOf<SlottedText>()
+        val freeWork = mutableListOf<SlottedJson>()
+        val notes = mutableListOf<SlottedText>()
 
         fun firm(id: String): FirmParts = firms.getOrPut(id) {
             FirmParts(JSONObject().put("firmaId", id))
+        }
+        fun putSlots(key: String, slots: List<String>) {
+            if (slots.isNotEmpty()) {
+                slotMap.put(key, JSONArray().apply { slots.forEach { slot -> put(slot) } })
+            }
         }
 
         entries.values.forEach { entry ->
@@ -795,68 +890,115 @@ class Server1BtbApi(
             when (entry.section.uppercase()) {
                 SECTION_FIRMA -> {
                     val id = payload.nullableString("firmaId") ?: return@forEach
-                    firm(id).base = JSONObject(payload.toString()).put("firmaId", id)
+                    firm(id).apply {
+                        base = JSONObject(payload.toString()).put("firmaId", id)
+                        baseSlot = entry.slot
+                    }
                 }
                 SECTION_PERSONAL -> {
                     val firmId = payload.nullableString("firmaId")
                     if (firmId == null) {
-                        payload.nullableString("text")?.let { freePersonal += entry.sortOrder to it }
+                        payload.nullableString("text")?.let {
+                            freePersonal += SlottedText(entry.sortOrder, entry.slot, it)
+                        }
                     } else {
-                        firm(firmId).personal += entry.sortOrder to
+                        firm(firmId).personal += SlottedJson(
+                            entry.sortOrder,
+                            entry.slot,
                             JSONObject(payload.toString()).apply { remove("firmaId") }
+                        )
                     }
                 }
                 SECTION_GERAET -> {
                     val firmId = payload.nullableString("firmaId")
                     if (firmId == null) {
-                        payload.nullableString("text")?.let { freeDevices += entry.sortOrder to it }
+                        payload.nullableString("text")?.let {
+                            freeDevices += SlottedText(entry.sortOrder, entry.slot, it)
+                        }
                     } else {
-                        firm(firmId).devices += entry.sortOrder to
+                        firm(firmId).devices += SlottedJson(
+                            entry.sortOrder,
+                            entry.slot,
                             JSONObject(payload.toString()).apply { remove("firmaId") }
+                        )
                     }
                 }
                 SECTION_ARBEIT -> {
-                    val firmId = payload.nullableString("firmaId") ?: return@forEach
-                    firm(firmId).work += entry.sortOrder to
-                        JSONObject(payload.toString()).apply { remove("firmaId") }
+                    // BTB-EDIT-001: ARBEIT bleibt wie Punkt 5–8 als gemeinsames strukturiertes
+                    // SectionItem erhalten. firmaId bleibt im Payload; die sichtbare Firma wird
+                    // unten aus dem Firmen-Basisobjekt ergänzt. Dadurch gehen Node-/KM-/Entry-Key
+                    // beim Server→Android-Rundlauf nicht mehr über FirmaBlock.leistungen verloren.
+                    freeWork += SlottedJson(entry.sortOrder, entry.slot, payload)
                 }
-                SECTION_ABNAHME -> abnahmen += entry.sortOrder to payload
-                SECTION_EINWEISUNG -> einweisung += entry.sortOrder to payload
-                SECTION_BESONDERHEIT -> besonderheiten += entry.sortOrder to payload
-                SECTION_MANGEL -> maengel += entry.sortOrder to payload
-                SECTION_NOTIZEN -> payload.nullableString("text")?.let { notes += entry.sortOrder to it }
+                SECTION_ABNAHME -> abnahmen += SlottedJson(entry.sortOrder, entry.slot, payload)
+                SECTION_EINWEISUNG -> einweisung += SlottedJson(entry.sortOrder, entry.slot, payload)
+                SECTION_BESONDERHEIT -> besonderheiten += SlottedJson(entry.sortOrder, entry.slot, payload)
+                SECTION_MANGEL -> maengel += SlottedJson(entry.sortOrder, entry.slot, payload)
+                SECTION_NOTIZEN -> payload.nullableString("text")?.let {
+                    notes += SlottedText(entry.sortOrder, entry.slot, it)
+                }
             }
         }
 
         local.put("firmen", JSONArray().apply {
-            firms.values.forEach { parts ->
+            firms.forEach { (firmId, parts) ->
+                val personal = parts.personal.sortedBy { it.sort }
+                val devices = parts.devices.sortedBy { it.sort }
+                val work = parts.work.sortedBy { it.sort }
                 put(
                     JSONObject(parts.base.toString())
-                        .put("personal", JSONArray().apply {
-                            parts.personal.sortedBy { it.first }.forEach { put(it.second) }
-                        })
-                        .put("geraete", JSONArray().apply {
-                            parts.devices.sortedBy { it.first }.forEach { put(it.second) }
-                        })
-                        .put("leistungen", JSONArray().apply {
-                            parts.work.sortedBy { it.first }.forEach { put(it.second) }
-                        })
+                        .put("personal", JSONArray().apply { personal.forEach { put(it.value) } })
+                        .put("geraete", JSONArray().apply { devices.forEach { put(it.value) } })
+                        .put("leistungen", JSONArray().apply { work.forEach { put(it.value) } })
                 )
+                parts.baseSlot?.let { putSlots("firma.base:$firmId", listOf(it)) }
+                putSlots("firma.personal:$firmId", personal.map { it.slot })
+                putSlots("firma.geraete:$firmId", devices.map { it.slot })
+                putSlots("firma.arbeit:$firmId", work.map { it.slot })
             }
         })
-        local.put("abnahmen", jsonArraySorted(abnahmen))
-        local.put("einweisungUnterweisung", jsonArraySorted(einweisung))
-        local.put("besonderheiten", jsonArraySorted(besonderheiten))
-        local.put("maengelSchaeden", jsonArraySorted(maengel))
+
+        fun jsonArray(values: List<SlottedJson>): JSONArray = JSONArray().apply {
+            values.sortedBy { it.sort }.forEach { item ->
+                val value = JSONObject(item.value.toString())
+                    .put("clientEntryKey", item.slot)
+                value.nullableString("firmaId")?.let { firmId ->
+                    if (value.nullableString("firmaName") == null) {
+                        firms[firmId]?.base?.nullableString("name")?.let { value.put("firmaName", it) }
+                    }
+                }
+                put(value)
+            }
+        }
+        fun slots(values: List<SlottedJson>): List<String> =
+            values.sortedBy { it.sort }.map { it.slot }
+
+        local.put("arbeiten", jsonArray(freeWork))
+        local.put("abnahmen", jsonArray(abnahmen))
+        local.put("einweisungUnterweisung", jsonArray(einweisung))
+        local.put("besonderheiten", jsonArray(besonderheiten))
+        local.put("maengelSchaeden", jsonArray(maengel))
         local.put("personal", JSONArray().apply {
-            freePersonal.sortedBy { it.first }.forEach { put(it.second) }
+            freePersonal.sortedBy { it.sort }.forEach { put(it.value) }
         })
         local.put("geraete", JSONArray().apply {
-            freeDevices.sortedBy { it.first }.forEach { put(it.second) }
+            freeDevices.sortedBy { it.sort }.forEach { put(it.value) }
         })
+
+        putSlots("arbeiten", slots(freeWork))
+        putSlots("abnahmen", slots(abnahmen))
+        putSlots("einweisungUnterweisung", slots(einweisung))
+        putSlots("besonderheiten", slots(besonderheiten))
+        putSlots("maengelSchaeden", slots(maengel))
+        putSlots("personal", freePersonal.sortedBy { it.sort }.map { it.slot })
+        putSlots("geraete", freeDevices.sortedBy { it.sort }.map { it.slot })
+
         if (notes.isNotEmpty()) {
-            local.put("notizen", notes.sortedBy { it.first }.joinToString("\n") { it.second })
+            val ordered = notes.sortedBy { it.sort }
+            local.put("notizen", ordered.joinToString("\n") { it.value })
+            putSlots("notizen", ordered.map { it.slot })
         }
+        if (slotMap.length() > 0) local.put(LOCAL_ENTRY_SLOTS_KEY, slotMap)
         return local
     }
 
@@ -901,9 +1043,46 @@ class Server1BtbApi(
         clientKey: String
     ): List<DesiredEntry> {
         val out = mutableListOf<DesiredEntry>()
+        val remembered = desired.optJSONObject(LOCAL_ENTRY_SLOTS_KEY) ?: JSONObject()
+        val usedSlots = linkedSetOf<String>()
+
+        fun rememberedSlot(key: String, index: Int): String? =
+            remembered.optJSONArray(key)
+                ?.optString(index)
+                ?.trim()
+                ?.takeIf { it.isNotBlank() && it !in usedSlots }
+
+        fun nextSlot(prefix: String): String {
+            var max = -1
+            val keys = remembered.keys()
+            while (keys.hasNext()) {
+                val array = remembered.optJSONArray(keys.next()) ?: continue
+                for (i in 0 until array.length()) {
+                    val slot = array.optString(i)
+                    if (slot.startsWith("$prefix:")) {
+                        slot.substringAfterLast(':').toIntOrNull()?.let { max = maxOf(max, it) }
+                    }
+                }
+            }
+            while (true) {
+                max += 1
+                val candidate = "$prefix:$max"
+                if (candidate !in usedSlots) return candidate
+            }
+        }
+
+        fun chooseSlot(key: String, index: Int, prefix: String, fixed: String? = null): String {
+            val slot = fixed
+                ?.takeIf { it.isNotBlank() && it !in usedSlots }
+                ?: rememberedSlot(key, index)
+                ?: nextSlot(prefix)
+            usedSlots += slot
+            return slot
+        }
 
         fun add(section: String, slot: String, sort: Int, raw: JSONObject) {
             val payload = JSONObject(raw.toString())
+                .apply { remove(LOCAL_ENTRY_SLOTS_KEY) }
                 .put(MANAGED_KEY, true)
                 .put(SLOT_KEY, slot)
             out += DesiredEntry(
@@ -927,13 +1106,18 @@ class Server1BtbApi(
             base.remove("geraete")
             base.remove("leistungen")
             base.put("firmaId", firmId)
-            add(SECTION_FIRMA, "firma:$firmId", firmIndex, base)
+            add(
+                SECTION_FIRMA,
+                chooseSlot("firma.base:$firmId", 0, "firma", "firma:$firmId"),
+                firmIndex,
+                base
+            )
 
             for (index in 0 until personal.length()) {
                 val item = personal.optJSONObject(index) ?: continue
                 add(
                     SECTION_PERSONAL,
-                    "firma:$firmId:personal:$index",
+                    chooseSlot("firma.personal:$firmId", index, "firma:$firmId:personal"),
                     index,
                     JSONObject(item.toString()).put("firmaId", firmId)
                 )
@@ -942,7 +1126,7 @@ class Server1BtbApi(
                 val item = devices.optJSONObject(index) ?: continue
                 add(
                     SECTION_GERAET,
-                    "firma:$firmId:geraet:$index",
+                    chooseSlot("firma.geraete:$firmId", index, "firma:$firmId:geraet"),
                     index,
                     JSONObject(item.toString()).put("firmaId", firmId)
                 )
@@ -951,7 +1135,7 @@ class Server1BtbApi(
                 val item = work.optJSONObject(index) ?: continue
                 add(
                     SECTION_ARBEIT,
-                    "firma:$firmId:arbeit:$index",
+                    chooseSlot("firma.arbeit:$firmId", index, "firma:$firmId:arbeit"),
                     index,
                     JSONObject(item.toString()).put("firmaId", firmId)
                 )
@@ -962,24 +1146,39 @@ class Server1BtbApi(
         for (index in 0 until freePersonal.length()) {
             val value = freePersonal.optString(index).trim()
             if (value.isNotBlank()) {
-                add(SECTION_PERSONAL, "personal-frei:$index", index, JSONObject().put("text", value))
+                add(
+                    SECTION_PERSONAL,
+                    chooseSlot("personal", index, "personal-frei"),
+                    index,
+                    JSONObject().put("text", value)
+                )
             }
         }
         val freeDevices = desired.optJSONArray("geraete") ?: JSONArray()
         for (index in 0 until freeDevices.length()) {
             val value = freeDevices.optString(index).trim()
             if (value.isNotBlank()) {
-                add(SECTION_GERAET, "geraet-frei:$index", index, JSONObject().put("text", value))
+                add(
+                    SECTION_GERAET,
+                    chooseSlot("geraete", index, "geraet-frei"),
+                    index,
+                    JSONObject().put("text", value)
+                )
             }
         }
 
-        addArrayEntries(desired, "abnahmen", SECTION_ABNAHME, "abnahme", out, worksiteId, teamId, clientKey)
-        addArrayEntries(desired, "einweisungUnterweisung", SECTION_EINWEISUNG, "einweisung", out, worksiteId, teamId, clientKey)
-        addArrayEntries(desired, "besonderheiten", SECTION_BESONDERHEIT, "besonderheit", out, worksiteId, teamId, clientKey)
-        addArrayEntries(desired, "maengelSchaeden", SECTION_MANGEL, "mangel", out, worksiteId, teamId, clientKey)
+        addArrayEntries(desired, "arbeiten", SECTION_ARBEIT, "arbeit-frei", remembered, usedSlots, out, worksiteId, teamId, clientKey)
+        addArrayEntries(desired, "abnahmen", SECTION_ABNAHME, "abnahme", remembered, usedSlots, out, worksiteId, teamId, clientKey)
+        addArrayEntries(desired, "einweisungUnterweisung", SECTION_EINWEISUNG, "einweisung", remembered, usedSlots, out, worksiteId, teamId, clientKey)
+        addArrayEntries(desired, "besonderheiten", SECTION_BESONDERHEIT, "besonderheit", remembered, usedSlots, out, worksiteId, teamId, clientKey)
+        addArrayEntries(desired, "maengelSchaeden", SECTION_MANGEL, "mangel", remembered, usedSlots, out, worksiteId, teamId, clientKey)
 
         desired.nullableString("notizen")?.takeIf { it.isNotBlank() }?.let {
-            add(SECTION_NOTIZEN, "notizen:0", 0, JSONObject().put("text", it))
+            val slot = remembered.optJSONArray("notizen")?.optString(0)?.trim()
+                ?.takeIf { value -> value.isNotBlank() && value !in usedSlots }
+                ?: "notizen:0"
+            usedSlots += slot
+            add(SECTION_NOTIZEN, slot, 0, JSONObject().put("text", it))
         }
         return out
     }
@@ -989,23 +1188,47 @@ class Server1BtbApi(
         key: String,
         section: String,
         slotPrefix: String,
+        remembered: JSONObject,
+        usedSlots: MutableSet<String>,
         out: MutableList<DesiredEntry>,
         worksiteId: String,
         teamId: String,
         clientKey: String
     ) {
         val array = desired.optJSONArray(key) ?: JSONArray()
+        val rememberedSlots = remembered.optJSONArray(key)
+        var maxSuffix = -1
+        if (rememberedSlots != null) {
+            for (i in 0 until rememberedSlots.length()) {
+                val slot = rememberedSlots.optString(i)
+                if (slot.startsWith("$slotPrefix:")) {
+                    slot.substringAfterLast(':').toIntOrNull()?.let { maxSuffix = maxOf(maxSuffix, it) }
+                }
+            }
+        }
         for (index in 0 until array.length()) {
             val item = array.optJSONObject(index) ?: continue
-            val slot = "$slotPrefix:$index"
+            var slot = item.nullableString("clientEntryKey")
+                ?.takeIf { it !in usedSlots }
+                ?: rememberedSlots?.optString(index)?.trim()
+                    ?.takeIf { it.isNotBlank() && it !in usedSlots }
+            if (slot == null) {
+                do {
+                    maxSuffix += 1
+                    slot = "$slotPrefix:$maxSuffix"
+                } while (slot in usedSlots)
+            }
+            val resolvedSlot = slot ?: continue
+            usedSlots += resolvedSlot
             out += DesiredEntry(
-                deterministicEntryId(worksiteId, teamId, clientKey, slot),
+                deterministicEntryId(worksiteId, teamId, clientKey, resolvedSlot),
                 section,
-                slot,
+                resolvedSlot,
                 index,
                 JSONObject(item.toString())
+                    .apply { remove("clientEntryKey") }
                     .put(MANAGED_KEY, true)
-                    .put(SLOT_KEY, slot)
+                    .put(SLOT_KEY, resolvedSlot)
             )
         }
     }
@@ -1129,6 +1352,102 @@ class Server1BtbApi(
         data object Unsupported : JsonMutationResult
         data object SessionInvalid : JsonMutationResult
         data class Error(val message: String) : JsonMutationResult
+    }
+
+    private fun accessFromDetail(detail: Detail): Access {
+        val payload = runCatching { JSONObject(detail.snapshot.payloadJson) }.getOrElse { JSONObject() }
+        val current = payload.optJSONObject(SERVER_CURRENT_USER_KEY) ?: JSONObject()
+        val participantsJson = payload.optJSONArray(SERVER_PARTICIPANTS_KEY) ?: JSONArray()
+        val participants = (0 until participantsJson.length()).mapNotNull { index ->
+            val item = participantsJson.optJSONObject(index) ?: return@mapNotNull null
+            val userId = item.optString("user_id").trim()
+            if (userId.isBlank()) return@mapNotNull null
+            Participant(
+                userId = userId,
+                displayName = item.nullableString("display_name"),
+                status = item.optString("status").trim().uppercase().ifBlank { "WORKING" },
+                isTeamLead = item.optBoolean("is_team_lead", false)
+            )
+        }
+        return Access(
+            snapshot = detail.snapshot,
+            active = payload.optBoolean(SERVER_ACTIVE_KEY, false),
+            isTeamLead = current.optBoolean("is_team_lead", false),
+            participantStatus = current.nullableString("participant_status")?.uppercase(),
+            canFinalize = current.optBoolean("can_finalize_btb", false),
+            canViewPdf = current.optBoolean("can_view_btb_pdf", false),
+            participants = participants
+        )
+    }
+
+    private fun lifecycleMutation(
+        token: String,
+        worksiteId: String,
+        teamId: String,
+        serverBtbId: String,
+        suffix: String,
+        path: String,
+        body: JSONObject
+    ): LifecycleResult {
+        val connection = openConnection(path, "POST")
+        return try {
+            authorize(connection, token)
+            connection.setRequestProperty(
+                "X-Client-Change-Id",
+                "android-lifecycle-${UUID.randomUUID()}-$suffix".take(200)
+            )
+            OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { it.write(body.toString()) }
+            val code = connection.responseCode
+            val response = readBody(connection, code)
+            when (code) {
+                HttpURLConnection.HTTP_OK,
+                HttpURLConnection.HTTP_CREATED,
+                HttpURLConnection.HTTP_NO_CONTENT -> {
+                    when (val fresh = loadBtbAccess(token, worksiteId, teamId, serverBtbId)) {
+                        is AccessResult.Success -> LifecycleResult.Success(fresh.access)
+                        AccessResult.Unsupported -> LifecycleResult.Unsupported
+                        AccessResult.SessionInvalid -> LifecycleResult.SessionInvalid
+                        is AccessResult.Error -> LifecycleResult.Error(fresh.message)
+                    }
+                }
+                HttpURLConnection.HTTP_CONFLICT -> {
+                    val detail = runCatching { JSONObject(response).opt("detail") }.getOrNull()
+                    val objectDetail = detail as? JSONObject
+                    val codeText = when (detail) {
+                        is String -> detail
+                        is JSONObject -> detail.optString("code").ifBlank { detail.toString() }
+                        else -> "CONFLICT"
+                    }
+                    if (codeText == "BTB_PARTICIPANTS_NOT_FINISHED") {
+                        val array = objectDetail?.optJSONArray("participants") ?: JSONArray()
+                        val open = (0 until array.length()).mapNotNull { index ->
+                            val item = array.optJSONObject(index) ?: return@mapNotNull null
+                            val userId = item.optString("user_id").trim()
+                            if (userId.isBlank()) return@mapNotNull null
+                            Participant(
+                                userId = userId,
+                                displayName = item.nullableString("display_name"),
+                                status = item.optString("status").trim().uppercase().ifBlank { "WORKING" },
+                                isTeamLead = item.optBoolean("is_team_lead", false)
+                            )
+                        }
+                        LifecycleResult.ParticipantsNotFinished(open)
+                    } else {
+                        LifecycleResult.Conflict(codeText)
+                    }
+                }
+                HttpURLConnection.HTTP_NOT_FOUND -> LifecycleResult.Unsupported
+                HttpURLConnection.HTTP_UNAUTHORIZED -> LifecycleResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (isInvalidDevice(response)) LifecycleResult.SessionInvalid
+                    else LifecycleResult.Error(errorMessage(response, code))
+                else -> LifecycleResult.Error(errorMessage(response, code))
+            }
+        } catch (error: Exception) {
+            LifecycleResult.Error(error.message ?: "BTB-Lifecycle konnte nicht synchronisiert werden.")
+        } finally {
+            connection.disconnect()
+        }
     }
 
     private fun jsonMutation(
@@ -1284,6 +1603,11 @@ class Server1BtbApi(
         const val SERVER_STATUS_KEY = "_server1_btb_status"
         const val SERVER_FINAL_PDF_AVAILABLE_KEY = "_server1_final_pdf_available"
         const val SERVER_FINAL_PDF_SHA256_KEY = "_server1_final_pdf_sha256"
+        const val SERVER_ACTIVE_KEY = "_server1_btb_active"
+        const val SERVER_CURRENT_USER_KEY = "_server1_current_user"
+        const val SERVER_PARTICIPANTS_KEY = "_server1_participants"
+        const val SERVER_PHOTOS_KEY = "_server1_photos"
+        const val LOCAL_ENTRY_SLOTS_KEY = "_tb_android_entry_slots"
 
         const val LEGACY_ANDROID_SECTION = "TB_HELFER_ANDROID_V1"
         const val ANDROID_CLIENT_KEY = "tb_helfer_btb_id"

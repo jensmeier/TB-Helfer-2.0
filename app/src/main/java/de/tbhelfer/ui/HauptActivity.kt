@@ -53,11 +53,13 @@ class HauptActivity : AppCompatActivity() {
         val navHost = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         navController = navHost.navController
         de.tbhelfer.ui.bautagebuch.BtbSchnellwechselInstaller.install(this)
-        de.tbhelfer.ui.bautagebuch.BtbModernLifecycleInstaller.install(this)
         de.tbhelfer.ui.bautagebuch.BtbPatch200031Installer.install(this)
         de.tbhelfer.ui.bautagebuch.BtbPatch200032Installer.install(this)
         de.tbhelfer.ui.bautagebuch.BtbPatch200033Installer.install(this)
         de.tbhelfer.ui.bautagebuch.BtbPatch200034Installer.install(this)
+        // Modernen Rollen-/Server-Lifecycle zuletzt binden, damit der historische 200033-
+        // Abschlusslistener nicht mehr den serverbewussten Schicht-/Finalize-Handler ueberschreibt.
+        de.tbhelfer.ui.bautagebuch.BtbModernLifecycleInstaller.install(this)
         widgetRootDestination = savedInstanceState?.getInt(STATE_WIDGET_ROOT_DESTINATION, -1)?.takeIf { it != -1 }
         installWidgetBackHandling()
 

@@ -195,7 +195,7 @@ class SyncOfflineDialogs(
     ) {
         val labels = buildList {
             add("＋ Gleis / Weiche / Objekt ergänzen")
-            addAll(items.map((:objectLabel))
+            addAll(items.map(::objectLabel))
         }.toTypedArray()
         AlertDialog.Builder(fragment.requireContext())
             .setTitle("${station.name} · gemeinsamer Katalog")
