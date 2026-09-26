@@ -1,257 +1,42 @@
-# TB-HELFER – VERBINDLICHE PROJEKTANWEISUNG
+# TB-HELFER 2.0 – VERBINDLICHE PROJEKTANWEISUNG
 
-GitHub-Repository:
-`jensmeier/TB-Helfer-2.0`
+Repository: `jensmeier/TB-Helfer-2.0`
 
-==================================================
-## 1. SOURCE OF TRUTH / START JEDES CHATS
-==================================================
+## 1. EINZIGER EINSTIEG
+Vor jedem neuen Chat und Arbeitsblock zuerst `projektsteuerung/00_START_HIER.md` lesen und danach den dort festgelegten GitHub-Leseweg abarbeiten. Nicht aus altem Chat oder Erinnerung weiterarbeiten.
 
-Vor jeder Änderung und bei jedem neuen Chat zuerst den aktuellen GitHub-Stand prüfen.
+## 2. GITHUB VOR PROJEKTÄNDERUNG
+Enthält eine Benutzernachricht eine neue Projektanforderung, Entscheidung, Vertragsänderung, Bestätigung, Fehlerfeststellung oder Statusänderung, wird sie zuerst in der passenden Datei unter `projektsteuerung/` gesichert und committed, bevor darauf aufbauend entwickelt oder „erledigt“ gemeldet wird. Reine Erklärungen oder unveränderte Auskünfte brauchen keinen Commit.
 
-Mindestens prüfen/lesen:
+## 3. ROLLEN
+- ANDROID: `feature/tb-android-2.0`, primär `app/**`; kein selbstständiger Server-Umbau.
+- SERVER: `feature/tb-server-1.0`, primär `server/**`; kein beiläufiger Android-Umbau; Integrator für gemeinsame Serverstände/Excel-Konflikte.
+- PRÜFUNG/WOCHENBERICHT: prüft beide Branches unabhängig; entwickelt normalerweise weder Android noch Server.
 
-1. `docs/TB-HELFER_PROJEKTREGELN.md`
-2. `docs/TB-HELFER_AKTUELLER_STAND.md`
-3. aktuell relevanten Feature-Branch
-4. aktuell offenen Draft-PR
-5. neuesten relevanten Commit
+## 4. GEMEINSAME STEUERUNG
+Verbindlich:
+- `projektsteuerung/01_MASTERSTATUS.md`
+- `projektsteuerung/02_AKTIVER_AUFTRAG.md`
+- `projektsteuerung/03_ANDROID_STATUS.md`
+- `projektsteuerung/04_SERVER_STATUS.md`
+- `projektsteuerung/05_ANDROID_SERVER_VERTRAG.md`
+- `projektsteuerung/06_E2E_TESTSTATUS.md`
+- `projektsteuerung/07_OFFENE_PUNKTE.md`
+- `projektsteuerung/TB-HELFER_STATUS.xlsx`
 
-GitHub und die dort versionierten Projekt-MDs sind maßgeblich.
+Technische Fachregeln bleiben in `docs/TB-HELFER_PROJEKTREGELN.md`.
 
-Priorität:
+## 5. SICHERUNG STATT CHAT-PROZENT
+Es gibt keinen verlässlichen, aus dem Repository messbaren Chat-Kontext-Prozentwert. Daher Checkpoints nach jedem abgeschlossenen atomaren Arbeitsblock, vor ANDROID↔SERVER-Wechsel, nach Build/Test, vor „fertig/erledigt/bestätigt“ und sobald ältere Details unsicher erscheinen. Dann `projektsteuerung/08_CHAT_CHECKPOINT.md` und die betroffenen Statusdateien aktualisieren und committen.
 
-1. aktueller GitHub-Code / aktiver Branch
-2. `docs/TB-HELFER_PROJEKTREGELN.md`
-3. `docs/TB-HELFER_AKTUELLER_STAND.md`
-4. aktuelle Projektdateien
-5. Chat-Übergabe-MD
-6. alte Chat-Zusammenfassungen / Erinnerungen
+## 6. ALTE ORDNER
+Nicht mehr verwenden und nicht neu anlegen: `projektstatus/`, `releases/`, `uebergaben/`. Deren Inhalte liegen jetzt unter `projektsteuerung/`.
 
-Wenn GitHub neuer ist, gilt GitHub.
+## 7. TESTBEGRIFFE
+QUELLSTAND FERTIG ≠ BUILD ERFOLGREICH ≠ INSTALLIERT ≠ E2E. GitHub Actions ohne ausgeführte Runner-Steps sind kein Testnachweis.
 
-Alte Chat-Zusammenfassungen oder Erinnerungen niemals als alleinige Source of Truth verwenden.
+## 8. SICHERHEIT
+Keine Secrets in GitHub, Status, Logs, Screenshots oder Übergaben.
 
-Bereits dokumentierte Entscheidungen nicht erneut erfinden, unnötig ändern oder erneut abfragen.
-
-==================================================
-## 2. PROJEKT-MD
-==================================================
-
-Die vollständigen fachlichen und technischen Projektregeln stehen in:
-
-`docs/TB-HELFER_PROJEKTREGELN.md`
-
-Der aktuelle Entwicklungsstand steht in:
-
-`docs/TB-HELFER_AKTUELLER_STAND.md`
-
-Nach jeder wesentlichen Änderung muss
-`docs/TB-HELFER_AKTUELLER_STAND.md`
-im aktiven Feature-Branch aktualisiert werden.
-
-Dort mindestens festhalten:
-
-- aktueller Stand
-- umgesetzte Änderungen
-- betroffene Dateien
-- wichtige technische Entscheidungen
-- bekannte Fehler
-- offene Punkte
-- Tests und Ergebnisse
-- nächster sinnvoller Arbeitsschritt
-
-Die Projekt-MDs sollen zusammen mit den dazugehörigen Codeänderungen versioniert werden.
-
-Wenn eine MD beschädigt, unvollständig, widersprüchlich oder offensichtlich veraltet ist:
-
-**NICHT raten.**
-
-Stattdessen GitHub-Code, Commit-Historie, Branches, PRs und frühere Versionen der MD prüfen.
-
-GitHub muss so dokumentiert sein, dass der wesentliche Projektstand auch ohne alten Chat wiederhergestellt werden kann.
-
-==================================================
-## 3. SERVER / DATEN
-==================================================
-
-Synology/NAS ist Source of Truth für produktive Projektdaten.
-
-Originale Vermessungsdaten bleiben unverändert.
-
-Nur tatsächlich benötigte Daten werden für Offline-Arbeit auf das Handy übertragen.
-
-Cloudflare:
-normale App-Synchronisation.
-
-Tailscale:
-nur Wartung und Administration.
-
-Produktive NAS-Migrationen oder größere Datenänderungen nur nach vorherigem Backup.
-
-Die genauen Server-, Sync-, Benutzer-, Team-, BTB-, Mängel-, Abnahme- und Datenregeln stehen in:
-`docs/TB-HELFER_PROJEKTREGELN.md`
-
-==================================================
-## 4. SICHERHEIT
-==================================================
-
-Keine Geheimnisse in GitHub, Commits, Dokumentation, Logs, Screenshots oder Chat-Übergaben speichern.
-
-Dazu gehören insbesondere:
-
-- Passwörter
-- `.env`-Dateien bzw. deren Geheimwerte
-- API-Schlüssel
-- Cloudflare-Tokens
-- Tunnel-Tokens
-- Tailscale-Schlüssel
-- Signing-Keys
-- private Zertifikate
-- sonstige Zugangsdaten
-
-Wenn solche Daten in einer Datei gefunden werden, nicht ungeprüft wiedergeben oder nach GitHub übernehmen.
-
-==================================================
-## 5. GITHUB / ENTWICKLUNG
-==================================================
-
-`main` stabil halten.
-
-Größere Änderungen zuerst über:
-**Feature-Branch + Draft-PR.**
-
-Vor neuen Lösungen zuerst prüfen, was bereits vorhanden ist.
-
-Bestehende funktionierende Komponenten bevorzugt erweitern.
-
-Keine parallelen Ersatzlösungen bauen, wenn bereits eine Projektlösung vorhanden ist.
-
-Vor Änderungen:
-1. Bestand prüfen
-2. vorhandenen Code verstehen
-3. dokumentierte Entscheidungen prüfen
-4. Änderung planen
-5. umsetzen
-6. testen
-7. dokumentieren
-
-==================================================
-## 6. CODIERUNG / AUFTRÄGE
-==================================================
-
-Wenn der Benutzer einen klaren Programmier- oder Änderungsauftrag erteilt, diesen möglichst vollständig bearbeiten.
-
-Nicht nach jedem Teilschritt anhalten und nicht unnötig auf ein weiteres „OK“ warten.
-
-Analyse, Codeänderungen, Build, Tests, Fehlerbehebung und Dokumentation gehören zum selben Auftrag, sofern sie für die Aufgabe erforderlich sind.
-
-Nicht nach einem Zwischenstand schreiben:
-
-„Bis hierhin fertig – soll ich weitermachen?“
-
-wenn der ursprüngliche Auftrag bereits die Weiterarbeit umfasst.
-
-Selbstständig weiterarbeiten, bis:
-
-- der gesamte beauftragte Umfang erledigt ist,
-- eine echte Entscheidung des Benutzers erforderlich ist,
-- notwendige Informationen oder Berechtigungen fehlen,
-- eine produktive/riskante Aktion ausdrücklich freigegeben werden muss,
-- oder eine technische Begrenzung die Weiterarbeit verhindert.
-
-Nur bei echten Unklarheiten nachfragen.
-
-Am Ende eines Auftrags klar zusammenfassen:
-
-- was geändert wurde
-- was getestet wurde
-- was funktioniert
-- welche Fehler behoben wurden
-- was noch offen ist
-- welcher nächste Schritt sinnvoll ist
-
-==================================================
-## 7. CHAT WIRD ZU VOLL
-==================================================
-
-Bei sehr langen Entwicklungs-Chats auf drohenden Kontextverlust achten.
-
-Da kein garantiert exakter Kontext-Prozentwert verfügbar ist, bei erkennbar sehr hohem Verbrauch rechtzeitig reagieren.
-
-Ziel:
-ungefähr bei 95–98 %, soweit einschätzbar.
-
-Dann deutlich melden:
-
-**„⚠️ Dieser TB-Helfer-Chat wird sehr voll. Bitte einen neuen Chat in diesem Projekt öffnen.“**
-
-Nicht warten, bis wichtige ältere Informationen bereits verloren gegangen sind.
-
-Vor dem Chatwechsel möglichst zuerst:
-`docs/TB-HELFER_AKTUELLER_STAND.md`
-aktualisieren.
-
-Danach eine vollständige Chat-Übergabe-MD erstellen.
-
-Dateiname zum Beispiel:
-
-`TB-HELFER_CHAT_UEBERGABE_YYYY-MM-DD_BRANCH.md`
-
-Die Übergabe-MD enthält mindestens:
-
-- aktuellen Branch
-- aktuellen Commit
-- aktuellen Draft-PR
-- aktuellen Arbeitsstand
-- zuletzt bearbeitete Dateien
-- noch nicht dokumentierte Entscheidungen
-- letzte Änderungen
-- bekannte Fehler
-- offene Aufgaben
-- Tests und Ergebnisse
-- nächsten Arbeitsschritt
-- Informationen aus dem Chat, die noch nicht sicher in GitHub stehen
-
-**WICHTIG:**
-
-Die Chat-Übergabe-MD ist nur eine zusätzliche Übergabehilfe.
-
-Sie ersetzt niemals GitHub.
-
-Wenn die Übergabe-MD verloren geht oder beschädigt ist, muss der wesentliche technische Projektstand aus GitHub und den Projekt-MDs rekonstruierbar sein.
-
-==================================================
-## 8. NEUER CHAT NACH ÜBERGABE
-==================================================
-
-Eine Chat-Übergabe-MD niemals blind als aktuellen Stand übernehmen.
-
-Im neuen Chat zuerst GitHub prüfen.
-
-Danach:
-
-1. `TB-HELFER_PROJEKTREGELN.md` lesen
-2. `TB-HELFER_AKTUELLER_STAND.md` lesen
-3. Branch / Draft-PR prüfen
-4. neuesten Commit prüfen
-5. anschließend Übergabe-MD ergänzend lesen
-
-Wenn GitHub neuer ist als die Übergabe-MD, gilt GitHub.
-
-==================================================
 ## GRUNDSATZ
-==================================================
-
-GitHub sichert den Projektstand.
-Projekt-MDs dokumentieren Regeln und Entwicklungsstand.
-Die Chat-Übergabe sichert nur zusätzlichen Arbeitskontext.
-
-**Erst Bestand prüfen.**
-**Dann verstehen.**
-**Dann planen.**
-**Dann ändern.**
-**Dann testen.**
-**Dann dokumentieren.**
-
-Nicht bei jedem neuen Chat das Projekt neu erfinden.
+**GitHub lesen → Auftrag sichern → Bestand/Vertrag prüfen → ändern → bauen/testen → Status sichern → committen → erst dann Abschluss melden.**
