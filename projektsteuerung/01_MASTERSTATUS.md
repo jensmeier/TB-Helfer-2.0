@@ -256,3 +256,13 @@ Status: **SOURCE-FIX UMGESETZT / BUILD + INSTALL + E2E OFFEN**
 
 Nächster E2E:
 Pixel `ABC` → Portal muss `ABC` sehen → Portal `XYZ` → Pixel erhält `XYZ`, ohne einen parallel neueren lokalen Stand still zu verlieren. Danach Poco.
+
+
+## BTB-SYNC-002 – Praxisbestätigung 1.3.23 / 200073
+Status: **BIDIREKTIONALER BASIS-E2E BESTÄTIGT / PARALLEL-AUTOSAVE NOCH OFFEN**
+
+- Benutzer bestätigt: Pixel → Portal funktioniert.
+- Benutzer bestätigt: Portal → Pixel funktioniert.
+- Der ursprüngliche asymmetrische Datenverlustpfad ist damit im normalen Hin-und-zurück-Test nicht mehr reproduziert.
+- Offen bleibt der gezielte Parallel-Autosave-/Conflict-Test während eines laufenden Uploads sowie danach der separate Poco/HELPER-E2E.
+- Server/API/DB unverändert.
