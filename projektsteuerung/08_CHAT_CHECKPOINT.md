@@ -521,3 +521,15 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Build-Retest 1.3.25/200075 bleibt offen.
 - Android-Foto-PATCH/`link_version` bleibt offener BTB-EDIT-Restpunkt.
 - Server Migration016/Deploy und gemeinsamer E2E bleiben offen.
+
+
+## INT-001 – Integration abgeschlossen, Deploy als Nächstes
+- SERVER-Branch auf Merge-Commit `ee8358e0cb403347a17d389dcad562ac6858aff7` gesetzt.
+- Android-Parent `4de3350fa4bc3777a6f2f51514e85a145ca4a9c6` ist im Server-HEAD enthalten.
+- PR #7 jetzt merged/closed.
+- Verifikation:
+  - `server/**` exakt Server-Parent;
+  - `app/**` exakt Android-Parent;
+  - keine alten Top-Level-Ordner zurückgekehrt.
+- GitHub Actions auf Merge-HEAD: Server + Android jeweils failure ohne Steps; kein Testnachweis.
+- Nächster praktischer Block: Synology-Deploy, Migration016, Runtime-/Portal-Smoke.
