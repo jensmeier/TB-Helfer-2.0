@@ -160,3 +160,20 @@ Status: **REPRODUZIERT / SOURCE-FIX NICHT AUSREICHEND**
 - Installierter Stand: 1.3.21 / 200071, Updateweg bestätigt.
 - Deshalb keine Versions-/Updateursache mehr.
 - Nächste Quellprüfung: ServerState-Persistenz/ID-Mapping/Pointer-Schreiber/Lifecycle-Watcher.
+
+
+## BTB-SYNC-001 – zweiter Guard-Fix 1.3.22
+Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
+
+- Commit: `4f0e33a8060d0d98279cfe96aed280fee5c8adcb`.
+- Ursache Poco: `BtbPatch200033Installer.startActivePointerGuard()` konnte serveraktiven Pointer alle 450 ms über stale Inaktiv-Marker löschen.
+- Ursache Pixel-Rollen-/Buttonkonflikt: Patch200033 wurde nach dem modernen Lifecycle installiert und konnte dessen Abschlusslistener überschreiben.
+- Fix: alter Guard server-aware + ModernLifecycleInstaller zuletzt binden.
+- Version: **1.3.22 / 200072**.
+- Direkt geprüfter Quellstand:
+  - `BtbServerStateStore` Import vorhanden;
+  - `serverState.active` schützt Pointer;
+  - `serverFinalReadOnly` löst Pointer;
+  - Gradle 1.3.22 / 200072;
+  - passende Release-MD vorhanden.
+- **Kein Buildnachweis**; GitHub Actions hat für den Fixcommit keinen Run erzeugt.

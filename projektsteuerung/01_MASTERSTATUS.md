@@ -221,3 +221,23 @@ Praxis auf **1.3.21 / 200071**:
 - Damit ist der Fix `f57c532...` source-seitig zwar vorhanden, praktisch aber **nicht ausreichend**.
 - Server/Portal-Lifecycle für denselben 26.09-BTB war zuvor bestätigt ACTIVE; kein neuer Server-/NAS-Workaround auf Verdacht.
 - Nächster Schritt: Android Runtime-/Sourcepfade um `BtbServerStateStore`, Active-Pointer und Lifecycle-Watcher vollständig verfolgen; insbesondere prüfen, ob ServerState zeitweise fehlt/gelöscht wird oder unter einer anderen BTB-ID gespeichert wird.
+
+
+## BTB-SYNC-001 zweite Source-Ursache 1.3.22
+Status: **URSACHE BESTÄTIGT / SOURCE-FIX COMMITTED / BUILD OFFEN**
+
+Nach fehlgeschlagenem 1.3.21-Geräte-E2E wurde ein zweiter konkurrierender Lifecycle-Pfad gefunden:
+- `BtbPatch200033Installer.startActivePointerGuard()` läuft parallel zum modernen Lifecycle-Watcher alle **450 ms**.
+- Der alte Guard konnte bei `activeId == blockedId` den Active-Pointer direkt lösen, ohne `BtbServerStateStore` zu beachten.
+- Das erklärt den Poco-Ablauf: Server-Sync aktiviert 26.09 → alter Guard sieht stale Abschlussmarker → löscht Pointer → „kein BTB vorhanden“.
+- Zusätzlich wurde `BtbPatch200033Installer` nach `BtbModernLifecycleInstaller` installiert und überschrieb dadurch den modernen server-/rollenbewussten Abschluss-Click-Handler.
+
+Fixcommit: `4f0e33a8060d0d98279cfe96aed280fee5c8adcb`.
+- alter Pointer-Guard ist für servergebundene BTBs jetzt serverkanonisch;
+- `active=true` behält Pointer und räumt stale Inaktiv-Marker weg;
+- `FINALIZED && !active` darf Pointer lösen;
+- Legacy ohne ServerState behält historisches Verhalten;
+- Installer-Reihenfolge geändert: `BtbModernLifecycleInstaller` wird zuletzt gebunden.
+
+Zielbuild: **1.3.22 / 200072**.
+Source-Check: **PASST**. Build/Installation/E2E: **OFFEN**.

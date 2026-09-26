@@ -289,3 +289,19 @@ Status: **VERBINDLICHE BENUTZERANFORDERUNG**
   3. alle Stellen prüfen, die Active-Pointer setzen/lösen;
   4. Lifecycle-Watcher/Bottom-Button auf Wechsel zwischen ServerState und Legacy-Fallback prüfen;
   5. erst nach reproduzierbarer Source-Ursache korrigieren.
+
+
+### BTB-SYNC-001 zweite Runtime-Ursache und Fix
+- Zweiter Pointer-Schreiber gefunden: historischer `BtbPatch200033Installer.startActivePointerGuard()`.
+- Dieser Guard läuft alle 450 ms und hatte die Server-vor-Lokal-Vorrangregel noch nicht.
+- Er konnte den gerade vom Server gesetzten 26.09-Pointer anhand des lokalen `.inactive_after_completion`-Markers wieder löschen.
+- Gleichzeitig überschrieb Patch200033 durch Installationsreihenfolge den modernen Rollen-/Finalize-Click-Handler.
+
+Umgesetzt in `4f0e33a8060d0d98279cfe96aed280fee5c8adcb`:
+1. servergebundener Guard wertet `BtbServerStateStore` aus;
+2. Server `active=true` → Pointer behalten, stale Inaktiv-Marker löschen;
+3. Server `FINALIZED && !active` → Pointer lösen erlaubt;
+4. ohne ServerState bleibt Legacy-Verhalten;
+5. ModernLifecycleInstaller wird in `HauptActivity` zuletzt installiert.
+
+Neuer Build zwingend: **1.3.22 / 200072**.

@@ -226,3 +226,14 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Damit ist `f57c532...` nicht ausreichend.
 - Nächster Android-Diagnoseblock: `BtbServerStateStore` Persistenz/Keys, lokale/serverseitige BTB-ID-Zuordnung, Pointer-Schreiber und Lifecycle-Watcher.
 - Keine App-Daten löschen, keine Neuaktivierung, kein NAS-/Server-Umbau.
+
+
+## BTB-SYNC-001 – zweiter konkurrierender Guard gefunden
+- 1.3.21-Gerätetest blieb fehlerhaft.
+- Quellprüfung hat den bisher übersehenen `BtbPatch200033Installer.startActivePointerGuard()` bestätigt.
+- Guard läuft alle 450 ms und löste bei stale Inaktiv-Marker den Pointer, ohne den ServerState zu berücksichtigen.
+- Parallel überschreibt Patch200033 aufgrund bisheriger Installationsreihenfolge den modernen Abschlusslistener.
+- Fixcommit: `4f0e33a8060d0d98279cfe96aed280fee5c8adcb`.
+- Neuer Zielstand: **1.3.22 / 200072**.
+- Source-Check passt; Build/Installation/Praxis-E2E offen.
+- Nichts am Poco löschen, nicht neu aktivieren, nichts am NAS ändern.
