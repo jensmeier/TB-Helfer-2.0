@@ -239,3 +239,12 @@
 - Noch kein Schluss „NAS zu schwach“: alle synthetischen Clients teilen dieselbe Portal-Session und serialisieren damit u. a. `last_seen_at` auf derselben DB-Zeile.
 - Nächster Schritt: identische Staffeltests 50 / 100 / 150 / 200 bei 40-s-Timeout; danach problematische Stufe mit höherem Timeout bzw. getrennten Sessions gegenprüfen.
 - `STATUS.xlsx` weiterhin nicht blind überschrieben.
+
+
+## Integrationsnachtrag 26.09.2026 – Realistischer Delta-Kapazitätstest
+
+- Shared-Session-Staffel: 50=50/50, 100=79/100, 150=63/150, 200=61/200, 255=65/255; Ausfälle jeweils Timeouts.
+- Diese Staffel bildet **kein Firmen-/Gesamtbenutzerlimit** ab, weil alle Clients dieselbe Portal-Session/DB-Zeile teilen.
+- Delta-Loadtest erweitert: `--portal-session-mode unique` erzeugt pro Client eine eigene Portal-Session, misst erst danach und räumt die Testsessions anschließend wieder auf. Portal-Standard ist jetzt `unique`.
+- Nächster Schritt: auf Synology neue Testdatei übernehmen und 50/100/150/200/255 mit getrennten Sessions wiederholen.
+- `STATUS.xlsx` weiterhin nicht blind überschrieben.
