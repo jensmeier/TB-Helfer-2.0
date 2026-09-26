@@ -188,3 +188,11 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Server/API/DB sind für diesen Fehler nicht zu ändern.
 - Nächster Arbeitsblock gehört in ANDROID: SelectiveSyncWorker-Reihenfolge korrigieren, anschließend Build/Install und denselben 26.09-BTB mit Pixel↔Portal erneut testen.
 - SERVER bleibt unverändert.
+
+
+## PORTAL-LIVE-001 – nächster Serverblock 26.09.2026
+- Benutzer bestätigt: Pixel↔Portal läuft aktuell in beide Richtungen.
+- Jetzt gewünscht: Portal automatisch aktualisieren, damit F5 nicht mehr nötig ist.
+- Source-Fix existiert bereits im Server-Branch, Commit `c0355161a2d7ecceaadd1fc79f2bbade346a78cc`.
+- Kein neuer Fachcode nötig, bevor dieser Stand deployed und praktisch getestet wurde.
+- Nach Deploy E2E: Portal geöffnet lassen → Pixel-Text oder Foto ändern → Portal muss ohne F5 nachziehen.
