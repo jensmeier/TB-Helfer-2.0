@@ -101,3 +101,18 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Change-Feed: wiederholte UPDATEs, sichtbar mindestens Version 7–19.
 - Pixel→Server ist damit nicht der fehlende Schritt.
 - Nächster Diagnosepunkt: Team/`active_btb_id`/Status/Teilnehmer für exakt diesen BTB, danach Portal- und Poco-Leseweg.
+
+## BTB-SYNC-001 – Server-Lifecycle korrekt
+
+- Direkter DB-Check für BTB `ba2144b7-9ede-4f53-abdc-1accd172e875`:
+  - Baustelle: `GE Immenstadt - Kempten`
+  - Team: `pixeljens`
+  - Team-Lead: `zinkel.Jens`
+  - `teams.active_btb_id` == BTB-ID
+  - `active_date=2026-09-26`
+  - `active_status=ACTIVE`
+  - BTB selbst: `status=ACTIVE`, `version=19`
+  - Client-BTB-ID vorhanden
+  - Poco = HELPER / participant `WORKING`
+  - zinkel.Jens = LEAD / participant `WORKING`
+- Damit ist der kanonische Server-Lifecycle für den 26.09-BTB korrekt. Ursache liegt jetzt im Portal-/Android-Lese-/Anwendungspfad, nicht in fehlendem `active_btb_id` oder Teilnehmerstatus.

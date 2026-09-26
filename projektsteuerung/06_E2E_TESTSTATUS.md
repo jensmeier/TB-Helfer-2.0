@@ -9,7 +9,7 @@ Stand: 2026-09-26
 | Pixel/Poco Versionsgleichstand | BENUTZER BESTÄTIGT: BEIDE 1.3.19 | Server-DB-Appversion ist Aktivierungs-Snapshot und kein Runtime-Nachweis |
 | Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200069 praktisch prüfen |
 | Haupt-TB-Handy ↔ Server/Portal | PRIORITÄT / E2E OFFEN | echte Fachkette zuerst sauber bestätigen |
-| BTB 26.09 Pixel → Server/Portal/Poco | SERVER-EINGANG BESTÄTIGT / PORTAL+POCO FEHLER OFFEN | BTB existiert serverseitig; active_btb_id/Status/Team prüfen |
+| BTB 26.09 Pixel → Server/Portal/Poco | SERVER-LIFECYCLE BESTÄTIGT / PORTAL+POCO FEHLER OFFEN | active_btb_id, ACTIVE-Status und Teilnehmer WORKING korrekt; Read-/Apply-Pfade prüfen |
 | Haupt-TB-Handy DNS/API-Erreichbarkeit | PIXEL SYNCHRONISIERT WIEDER / URSACHE ALTFEHLER OFFEN | Fachkette Pixel↔Server↔Portal weiterprüfen; DNS-Altfehler nur bei Wiederholung vertiefen |
 | Poco Team-/BTB-Daten | ERSTABGLEICH FERTIG / BAUSTELLE GELADEN / BTB 26.09 VERSCHWINDET | BTB-SYNC-001 Serverzustand + Android-Snapshot prüfen |
 | Helfer Schicht Ende → Server FINISHED → Pixel | E2E OFFEN | echter Geräte-/Server-Lauf |

@@ -148,3 +148,20 @@ Zwingende Diagnose vor Änderung:
   - aktueller Header/Version
   - Teilnehmerstatus Pixel/Poco
 - Erst danach Portal-/Android-Leseweg bewerten.
+
+### BTB-SYNC-001 Diagnosefund – Server-Lifecycle vollständig korrekt
+
+- Direkter DB-Check für BTB `ba2144b7-9ede-4f53-abdc-1accd172e875`:
+  - Baustelle: `GE Immenstadt - Kempten`
+  - Team: `pixeljens`
+  - Team-Lead: `zinkel.Jens`
+  - `teams.active_btb_id` == BTB-ID
+  - `active_date=2026-09-26`
+  - `active_status=ACTIVE`
+  - BTB selbst: `status=ACTIVE`, `version=19`
+  - Client-BTB-ID vorhanden
+  - Poco = HELPER / participant `WORKING`
+  - zinkel.Jens = LEAD / participant `WORKING`
+- Damit ist der kanonische Server-Lifecycle für den 26.09-BTB korrekt. Ursache liegt jetzt im Portal-/Android-Lese-/Anwendungspfad, nicht in fehlendem `active_btb_id` oder Teilnehmerstatus.
+
+Nächster Schritt: Portal-Team-BTB-Leseweg und Android-Snapshot/Active-Pointer gezielt prüfen.
