@@ -15,7 +15,7 @@ Version: **1.3.19 / 200069**
 
 Geschützt: bestätigter BTB-Lifecycle-Fix 200063, bestätigter Server-App-Updateweg mit Datenerhalt, Geräteaktivierung, kein breiter Vollsync als normaler Autosave-Pfad.
 
-Nächste Schritte: IMG-001 Uploadpfad prüfen → 200069 bauen → Pixel/Poco testen → gemeinsamer E2E.
+Nächste Schritte: NET-001 klären → Haupt-TB-Handy ↔ Server/Portal E2E → Poco/HELPER E2E → danach IMG-001 implementieren → Build/Regression.
 
 Historischer Tracker: `projektsteuerung/archiv/ANDROID_STATUS_ALT_2026-09-26.md`
 
@@ -25,3 +25,17 @@ Beim Anlegen einer Testbaustelle meldet die App:
 `Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
 
 Bewertung: aktueller Geräte-E2E ist durch Namensauflösung/Netz blockiert; noch kein Nachweis eines Fachsync-Fehlers in diesem Lauf. Zuerst Domain-/Geräte-DNS prüfen, danach denselben Test fortsetzen.
+
+
+## IMG-001 Quellaudit
+Status: **FEHLER BESTÄTIGT / IMPLEMENTIERUNG ZURÜCKGESTELLT BIS E2E-PRIO-001**
+
+- `BtbTeamMediaSync` und `CollabLocalBridge` verwenden lokale Originaldateien als Uploadquelle.
+- `Server1FileApi` überträgt exakt diese Datei und kennt aktuell keine Rendition-Downloadmethode.
+- `synchronizeServer1Attachments()` lädt fehlende Bilder über `/content` vollständig.
+- Lokales 512-px-Thumbnail vorhanden, aber nicht im Online-Sync genutzt.
+- `FotoEntity` speichert keine GPS-Genauigkeit; BTB-Upload sendet deshalb `gpsAccuracyM = null`.
+- Mangel-/Abnahmefoto-Uploads übergeben keine gleichwertigen strukturierten Foto-Metadaten.
+
+Geplanter Android-Fix nach stabilem Hauptgerät-/Poco-E2E:
+kleine Sync-JPEG-Datei → Upload; `preview/thumb` für mobile Downloads; Metadaten vollständig.
