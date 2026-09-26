@@ -172,3 +172,9 @@ Nach Seitenneuladen zeigt das Portal den aktiven 26.09-BTB korrekt. Damit ist di
 Weiter offen:
 - Poco sieht denselben aktiven BTB kurz und fällt danach auf „kein BTB vorhanden“ zurück.
 - Nächster Diagnosepunkt ausschließlich Android: Server-Snapshot → lokaler BTB-Cache → Active-Pointer → UI-Auswahl.
+
+### BTB-SYNC-001 Poco erneut reproduziert nach Portal-Bestätigung
+- Portal zeigt den 26.09-BTB nach Reload korrekt als ACTIVE.
+- Poco zeigt denselben 26.09-BTB weiterhin nur kurz und springt danach auf „kein BTB vorhanden“.
+- Damit ist der Fehler jetzt eindeutig Android/Poco-seitig reproduziert, nachdem Server-Lifecycle und Portal-Read bestätigt sind.
+- Nächster Schritt: Android Active-Pointer-/Marker-/UI-Auswahllogik gezielt im Quellstand prüfen; kein Serverfix auf Verdacht.

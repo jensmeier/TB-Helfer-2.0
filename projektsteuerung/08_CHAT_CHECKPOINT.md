@@ -122,3 +122,9 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Pixel→Server→Portal ist für diesen BTB damit praktisch bestätigt.
 - Restfehler ist Android/Poco: BTB kurz sichtbar, danach kein aktiver BTB.
 - Nächster Schritt: Android Snapshot-/Active-Pointer-/UI-Pfad diagnostizieren.
+
+## BTB-SYNC-001 – Poco erneut reproduziert nach Portal-Bestätigung
+- Portal 26.09 ACTIVE bestätigt.
+- Poco zeigt 26.09 kurz und verliert ihn unmittelbar wieder.
+- Restursache ist damit auf Android/Poco eingegrenzt.
+- Nächster Schritt: Active-Pointer/Marker/UI-Pfad im aktuellen Android-HEAD analysieren.
