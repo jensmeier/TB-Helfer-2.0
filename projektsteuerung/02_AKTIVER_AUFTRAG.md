@@ -256,3 +256,15 @@ Serverbedarf separat dokumentiert: auch der Release-Upload sollte künftig APK-M
 - Bei Mismatch: Datei löschen, verständliche Fehlermeldung, kein Installerstart.
 - Version auf **1.3.21 / 200071** angehoben.
 - Nächster Schritt: frisch bauen, exakt diese APK im Portal zu 1.3.21/200071 hochladen und Update-E2E durchführen.
+
+
+## REL-FILE-001 – Release-MD bei jedem Android-Build
+Status: **VERBINDLICHE BENUTZERANFORDERUNG**
+
+- Zu jedem neuen Android-Build gehört zwingend eine passende `.md`-Release-Datei wie bei 1.3.16/200066, 1.3.17/200067 und 1.3.18/200068.
+- Ablage im Repository: `projektsteuerung/releases/`.
+- Die Datei wird bei jeder Build-/GitHub-Übergabe mitgeführt und dem Benutzer zusätzlich zum Download bereitgestellt.
+- `VERSION` und `BUILD` müssen exakt mit `app/build.gradle.kts` und der APK übereinstimmen.
+- `PFLICHTUPDATE`, `MINIMUM_BUILD`, `DOWNLOAD_URL` sowie Neu/Verbessert/Behoben werden aus dieser Datei in den Release-Draft übernommen.
+- Die Datei kann Server-Metadaten korrekt setzen, ändert aber nicht die in der APK eingebettete Version.
+- Deshalb dürfen eine alte APK und eine neue Release-MD niemals gemeinsam veröffentlicht werden.

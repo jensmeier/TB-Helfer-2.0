@@ -128,3 +128,10 @@ Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
 - `AppUpdateManager` blockiert APKs mit falscher Package-ID oder abweichendem `versionName/versionCode`.
 - Zielbuild: **1.3.21 / 200071**.
 - Build/Installation/E2E noch nicht bestätigt.
+
+
+## REL-FILE-001 – Buildbegleitdatei Pflicht
+- Ab sofort hat jeder neue Android-Build eine Release-MD unter `projektsteuerung/releases/`.
+- Die aktuelle Zielversion 1.3.21 / 200071 besitzt bereits `projektsteuerung/releases/TB-Helfer_1.3.21_200071.md`.
+- Bei jeder Übergabe wird diese Datei auch als Download mitgeliefert.
+- CI soll VERSION/BUILD der MD gegen `app/build.gradle.kts` prüfen, damit Build und Metadaten nicht auseinanderlaufen.

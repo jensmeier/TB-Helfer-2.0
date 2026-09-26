@@ -86,3 +86,11 @@ Für Android-Releases gilt zusätzlich:
 - Android darf eine heruntergeladene APK nicht installieren, wenn APK-Package oder eingebettete Version/Build vom Server-Release abweichen.
 - Server-Releaseverwaltung soll perspektivisch denselben Abgleich bereits beim Upload/Publish erzwingen.
 - Bis zur Servervalidierung ist der Android-Client-Schutz verbindlich.
+
+
+## Release-MD als Server-Metadatenquelle
+- Die Android-Release-MD ist der vorgesehene Import für den Server-Release-Draft.
+- Sie enthält mindestens Plattform, Version, Build, Mindestbuild, Pflichtupdate und Download-URL sowie die Release-Notes.
+- Sie ist **Metadatenquelle**, nicht die APK selbst.
+- Für einen gültigen Release müssen Release-MD und APK denselben `versionName/versionCode` tragen.
+- Android validiert ab 1.3.21 / 200071 zusätzlich die heruntergeladene APK gegen diese Server-Metadaten.
