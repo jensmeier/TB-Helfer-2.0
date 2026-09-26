@@ -189,3 +189,18 @@ Weiter offen:
 - Serververtrag ist bereits kanonisch: solange Server-`active_btb_id` auf den BTB zeigt und Teilnehmer `WORKING` ist, darf ein lokaler/staler Abschlusszustand den Active-Pointer nicht lösen.
 
 Benötigte Android-Anpassung: `BtbActiveContext` muss bei vorhandenem ServerState mit `active=true` den kanonischen Server-Lifecycle respektieren und darf den Pointer nicht aufgrund eines lokalen Abschlussstatus lösen. SERVER ändert dafür keinen DB-/API-Vertrag.
+
+## IMG-PORTAL-001 – 4 Serverbilder, 1 Portalbild
+Status: **FEHLER FESTGESTELLT / URSACHE OFFEN**
+
+Praxis:
+- aktiver BTB 26.09;
+- auf Server/NAS liegen 4 zugehörig wirkende Bilder;
+- Portal zeigt nur 1 Bild.
+
+Diagnose vor Änderung:
+1. Attachment-Datensätze der vier Dateien prüfen;
+2. `parent_entity_type`, `parent_entity_id`, `purpose`, MIME, Dateiname und Metadaten vergleichen;
+3. prüfen, welche Fotos der BTB-Detail/API tatsächlich zurückliefert;
+4. Portal-Template/-JS nur ändern, wenn API alle 4 liefert, UI aber filtert;
+5. keine Dateien oder DB-Zuordnungen auf Verdacht ändern.

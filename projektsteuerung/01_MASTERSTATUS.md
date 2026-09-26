@@ -121,3 +121,8 @@ Priorität bleibt gemäß E2E-PRIO-001:
   - Dieser lokale Dokumentstatus wird dort derzeit geprüft, **ohne einen bereits bestätigten `BtbServerStateStore.active=true` als Vorrang zu behandeln**.
 - Das passt exakt zum Praxisbild: 26.09 erscheint kurz, nach etwa einer Sekunde „kein BTB vorhanden“.
 - Serververtrag ist bereits kanonisch: solange Server-`active_btb_id` auf den BTB zeigt und Teilnehmer `WORKING` ist, darf ein lokaler/staler Abschlusszustand den Active-Pointer nicht lösen.
+
+## IMG-PORTAL-001 – Server enthält 4 Fotos, Portal zeigt nur 1
+- Neuer Praxisbefund am aktiven BTB 26.09: Auf dem Server/NAS liegen 4 Bilder dieses heutigen BTB, im Portal wird nur 1 Bild angezeigt.
+- Noch offen ist, ob alle 4 Dateien korrekt dem BTB als `BTB_PHOTO` zugeordnet sind, ob Metadaten/parent_entity_id abweichen oder ob das Portal filtert.
+- Vor Änderungen zuerst DB-/API-Zuordnung der vier Dateien und Portal-Renderpfad prüfen.

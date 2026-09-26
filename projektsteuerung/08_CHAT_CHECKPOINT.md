@@ -139,3 +139,9 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Serververtrag ist bereits kanonisch: solange Server-`active_btb_id` auf den BTB zeigt und Teilnehmer `WORKING` ist, darf ein lokaler/staler Abschlusszustand den Active-Pointer nicht lösen.
 - Nächster Zuständigkeitswechsel: ANDROID muss `BtbActiveContext` korrigieren und danach Build/Install/Poco-E2E durchführen.
 - SERVER-Seite bleibt unverändert; Server-Lifecycle/Portal sind bestätigt.
+
+## IMG-PORTAL-001 – 4 Serverbilder, 1 Portalbild
+- Neuer Befund am aktiven BTB 26.09.
+- Server/NAS: 4 zugehörig wirkende Bilder.
+- Portal: nur 1 Bild sichtbar.
+- Nächster Schritt: Attachment-Zuordnung/Metadaten und BTB-API prüfen; danach erst Portal-Renderpfad.

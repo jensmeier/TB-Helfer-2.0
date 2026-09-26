@@ -91,3 +91,6 @@ Kein Server-DB-Fix auf Verdacht.
 
 ### BTB-SYNC-001 Portal-Read bestätigt
 Portal-Neuladen zeigt den 26.09-BTB korrekt als ACTIVE und verlinkt denselben `active_btb_id`. Kein weiterer Server-/Portal-Fix aus diesem Befund.
+
+## IMG-PORTAL-001 Praxisfehler
+Aktiver BTB 26.09: Server/NAS enthält 4 zugehörig wirkende Bilder, Portal zeigt nur 1. Ursache noch offen. Zuerst Attachment-Zuordnung und BTB-API/Portal-Read prüfen; keine Serveränderung auf Verdacht.
