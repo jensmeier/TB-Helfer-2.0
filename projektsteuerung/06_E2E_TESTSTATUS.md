@@ -178,3 +178,9 @@ Dies ist **kein Build-/Installations-/Geräte-E2E-Nachweis**. Android 1.3.25/200
 - Android CI Run `36253773908`: `failure`, Job `build`, `steps=[]`.
 - Bewertung: **keine Runner-Schritte ausgeführt → kein Testnachweis**.
 - Server-Deploy/Migration016, Android-Build-Retest und Geräte-E2E bleiben offen.
+
+
+### BTB-EDIT-001 Migration 016 – Praxisnachweis
+**BESTÄTIGT:** Synology/API-Terminal meldet `APPLIED 016_btb_photo_link_metadata.sql`.
+
+Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime und Portal-/Geräte-E2E sind noch getrennt zu prüfen.
