@@ -187,23 +187,27 @@ Originaldateien bleiben unverändert.
 
 ## Delta-Lastprobe
 
-Erst mit einem **lokal gesetzten** gültigen Device-Token:
+Für die reine **Server-Long-Poll-/Wake-Hub-/Semaphore-Lastprobe** kann innerhalb des
+API-Containers die bereits bestätigte Portal-Session verwendet werden. Das vermeidet, einen
+auf Android verschlüsselt gespeicherten Geräte-Token extrahieren zu müssen:
 
 ```bash
-python server/tools/sync_wait_loadtest.py \
-  --base-url https://api-v1.tb-helfer.de \
+python /app/tools/sync_wait_loadtest.py \
+  --base-url http://127.0.0.1:8080 \
+  --auth portal \
+  --portal-login <normaler-testnutzer> \
   --clients 32 \
   --wait-seconds 10
 ```
 
-Wenn 32/32 stabil sind, anschließend:
+Das Portal-Passwort wird verdeckt abgefragt bzw. nur lokal über `TB_PORTAL_PASSWORD`
+übernommen. Es wird nicht ausgegeben.
 
-```bash
-python server/tools/sync_wait_loadtest.py \
-  --base-url https://api-v1.tb-helfer.de \
-  --clients 255 \
-  --wait-seconds 10
-```
+Wenn 32/32 stabil sind, anschließend denselben Lauf mit `--clients 255`.
+
+Der mobile Bearer-Vertrag bleibt unverändert. Wer ihn separat prüfen will, kann weiterhin
+`--auth device` mit lokal gesetztem `TB_DEVICE_TOKEN` verwenden. Der echte mobile
+Bearer-/Delta-Vertrag wird zusätzlich im Pixel/Poco-E2E bestätigt.
 
 Das ist ein Staging-Lasttest, kein Produktivtest.
 
@@ -325,7 +329,10 @@ python /app/tools/server1_post_deploy_e2e.py \
 Fehlende Geheimwerte werden interaktiv verdeckt abgefragt:
 - Portal-Passwort
 - Admin-Passwort
-- Geräte-Token für den Delta-Test
+- Geräte-Token nur bei explizitem `--delta-auth device`
+
+Standard für die Server-Lastprobe ist `--delta-auth portal`; der vorhandene Portal-Login
+wird dafür wiederverwendet.
 
 Die Geheimwerte werden nicht ausgegeben und nicht als Child-Process-Argumente weitergereicht.
 Für nicht-interaktive Ausführung müssen sie ausschließlich als lokale Environment-Werte
