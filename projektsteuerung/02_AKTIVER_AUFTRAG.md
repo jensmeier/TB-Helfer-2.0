@@ -321,3 +321,31 @@ Neuer Build zwingend: **1.3.22 / 200072**.
   5. `status`, `active`, `client_btb_id`, `team_id`, `current_user` und Teilnehmerstatus;
   6. Android-Parser/Snapshot-Replacement gegen diese Werte.
 - Keine Poco-Daten löschen, keine Neuaktivierung, keine NAS-/Serveränderung auf Verdacht.
+
+
+## BTB-SYNC-002 – Android-Datenverlust vor Outbox
+Status: **P0 / URSACHE BESTÄTIGT / ANDROID-FIX JETZT**
+
+Korrektur zum vorherigen Diagnoseauftrag:
+- Der Fehler ist **nicht** zuerst serverseitig zu suchen.
+- `SelectiveSyncWorker` lädt bei einem bereits bekannten dirty BTB aktuell zuerst den Serverstand, speichert ihn und ruft `bridge.applyServerStateToLocal(...)` auf.
+- Erst **danach** wird `bridge.exportBtbChange(...)` ausgeführt.
+- Dadurch kann eine gerade lokal auf dem Pixel gespeicherte Änderung durch den Server-Snapshot überschrieben werden, bevor sie überhaupt als Pending/Outbox-Mutation existiert.
+- Praxisbild: Pixel schreibt `ABC` → Portal erhält `ABC` nicht → Portal schreibt `XYZ` → Pixel übernimmt `XYZ` → `ABC` verschwindet.
+- Server/API/DB-Vertrag ist für BTB-SYNC-002 **nicht die Ursache**.
+
+Verbindlicher Android-Fix:
+1. dirty BTB zuerst aus dem lokalen Fachstand in Pending/Outbox exportieren;
+2. danach kanonischen Serverstand/Version laden bzw. innerhalb des bestehenden Mutation-/Konfliktpfads prüfen;
+3. solange für denselben `clientBtbId` eine unbestätigte lokale Mutation bzw. ein neuer Dirty-Stand existiert, keinen eingehenden Server-Snapshot still lokal anwenden;
+4. bei Versionskonflikt Pending erhalten und explizit den bestehenden Conflict-/Rebase-Pfad verwenden;
+5. Server-Snapshot erst nach erfolgreichem Upload/Bestätigung anwenden und dabei einen während des Uploads entstandenen neueren Dirty-Stand schützen.
+
+Neuer Android-Build nach dem Fix: **1.3.23 / 200073**.
+1.3.22 / 200072 bleibt der getestete, fehlerhafte Vorgängerstand.
+
+## PORTAL-LIVE-001 – Zuständigkeitsabgrenzung
+- Der Portal-Source-Fix über SSE/Change-Feed existiert bereits serverseitig.
+- Status bleibt **QUELLSTAND FERTIG / DEPLOY OFFEN / E2E OFFEN**.
+- Dass auf dem aktuell laufenden NAS noch F5 nötig ist, wird nicht durch einen weiteren Android-Fix behoben.
+- ANDROID ändert dafür keine `server/**`-Datei.
