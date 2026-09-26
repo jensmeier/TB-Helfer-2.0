@@ -96,3 +96,15 @@ Live geprüft am 26.09.2026:
 - sichtbarer BTB-Editor erhält jetzt stabile Entry-/Node-Identitäten (`clientEntryKey`, `firmaId`, `worksiteNodeKey`) und hält lokale `ortId` nur noch als UI-/Legacy-Cache.
 - Entry-/Unterbaustellenpfad nähert sich damit dem gemeinsamen Serververtrag.
 - Foto-Umhängen über den neuen versionierten Server-Foto-PATCH bleibt weiterhin offen.
+
+
+### BTB-EDIT-001 – Foto-Metadaten Live-Nachtrag 7c7cf7b5
+- Android-HEAD live geprüft: `7c7cf7b502ec1f701f167c13780b10a014bba6d9`.
+- `BtbPhotoContextOverrideStore.ContextOverride` enthält jetzt:
+  - `firmaId`,
+  - `worksiteNodeKey`,
+  - `bildtyp`,
+  - lokale `ortId` weiterhin nur als UI-/Legacy-ID.
+- Damit ist die lokale Android-Grundlage für Foto-Umhängen passend zum Serververtrag vorhanden.
+- Noch zu bestätigen/umzusetzen: tatsächlicher versionierter Aufruf von `PATCH /btbs/{btb_id}/photos/{file_id}` und Konflikt-/Sync-Roundtrip.
+- Draft-PR #7 aktuell gegen SERVER `mergeable=false`; Integration erst nach abgeschlossenem Android-Arbeitsblock.
