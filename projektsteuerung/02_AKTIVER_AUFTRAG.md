@@ -305,3 +305,19 @@ Umgesetzt in `4f0e33a8060d0d98279cfe96aed280fee5c8adcb`:
 5. ModernLifecycleInstaller wird in `HauptActivity` zuletzt installiert.
 
 Neuer Build zwingend: **1.3.22 / 200072**.
+
+
+### BTB-SYNC-001 1.3.22 Praxisfehler / Serverabgleich
+- Benutzer bestätigt: **1.3.22 / 200072 behebt den Fehler nicht**.
+- Pixel: `BTB Abschluss` flackert weiterhin trotz Haupt-TB-Rolle.
+- Poco: Datum `26.09` erscheint kurz und fällt danach wieder auf `kein BTB vorhanden`.
+- Die bisher gefundenen Android-Pointer-/Listener-Konflikte waren real, aber nicht die vollständige Ursache.
+- Ab jetzt **kein weiterer Android-Fix auf Verdacht**.
+- Nächster Diagnoseauftrag ist der direkte Android↔Server-Abgleich:
+  1. Team-/Worksite-Kontext und `active_btb_id`;
+  2. Team-BTB-Liste;
+  3. BTB-Detailantwort;
+  4. Delta-/Change-Feed;
+  5. `status`, `active`, `client_btb_id`, `team_id`, `current_user` und Teilnehmerstatus;
+  6. Android-Parser/Snapshot-Replacement gegen diese Werte.
+- Keine Poco-Daten löschen, keine Neuaktivierung, keine NAS-/Serveränderung auf Verdacht.
