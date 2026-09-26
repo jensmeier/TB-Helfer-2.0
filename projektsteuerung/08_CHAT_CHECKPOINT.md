@@ -2,7 +2,7 @@
 
 Stand: 2026-09-26
 
-Letzter gesicherter Arbeitsblock: **IMG-001 Bildtransport vollständig im Quellstand auditiert**.
+Letzter gesicherter Arbeitsblock: **Projektsteuerung vereinheitlicht und verifiziert**.
 
 - Zentrale: `projektsteuerung/`
 - alte Top-Level-Ordner `projektstatus/`, `releases/`, `uebergaben/` entfernt
@@ -17,16 +17,32 @@ Letzter gesicherter Arbeitsblock: **IMG-001 Bildtransport vollständig im Quells
 
 Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prüfen.
 
+## Arbeitsentscheidung / Testnachtrag 26.09.2026
 
-## IMG-001 Auditbefund
-- Android-Live-HEAD vor Auditdokumentation: `57f5e18639aff0d49c0d46086855487e0a7353c0`.
-- Server-Live-HEAD bei Audit: `b5ceb6f455028d8ebeef6766cb523fd1ef7e76fd`.
+- Delta-Wait-Kapazitätsteiltest praktisch: 255 getrennte Portal-Sessions, 255/255 erfolgreich, 0 Fehler.
+- Testsession-Reste kontrolliert bereinigt; abschließend 0 aktive Python-Test-Sessions.
+- Das ist **nicht** der vollständige 15×15-E2E.
+- Neue verbindliche Reihenfolge: zuerst Haupt-TB-Handy ↔ Server/Portal, danach HELPER/Poco, danach weitere Fach-E2Es.
+- Vollständigen Lasttest erst nach funktionaler Stabilität und nach geplantem 8-GB-RAM-Ausbau bzw. NAS-Wechsel erneut durchführen.
+- Keine Performanceänderungen auf Verdacht.
+
+## Gerätebefund NET-001 – Testbaustelle
+
+- Hauptgerät: Testbaustelle angelegt.
+- Sync scheitert unmittelbar mit `Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
+- Fachsync ist damit in diesem Lauf noch nicht geprüft.
+- Nächster Schritt: öffentliche Domain/API-Erreichbarkeit und danach Geräte-DNS/Netz prüfen.
+- Keine Codeänderung auf Verdacht.
+
+
+## IMG-001 Quellaudit 26.09.2026
+
+- Quellaudit abgeschlossen; kein Fachcode geändert.
 - Android lädt BTB-/Mangel-/Abnahmefotos aktuell aus dem lokalen Originalpfad hoch.
 - Server speichert empfangene Bytes unverändert; APP-Volloriginal auf NAS ist daher Folge des Android-Uploads.
 - Server-Renditions existieren: `thumb` 320 px / `preview` 1280 px.
-- Android-Dateiclient kennt/nutzt die Renditions nicht und lädt fehlende Bilder über `/content`.
+- Android-Dateiclient nutzt diese Renditions nicht und lädt fehlende Bilder über `/content`.
 - Lokales Android-Thumbnail 512 px/Qualität 82 existiert bereits, ist aber nicht in den Online-Sync eingebunden.
 - Metadatenlücken: GPS-Genauigkeit nicht persistent; Mangel-/Abnahmefoto-Upload strukturell unvollständig.
 - Detailnachweis: `projektsteuerung/uebergaben/IMG-001_BILDTRANSPORT_AUDIT_2026-09-26.md`.
-- Keine Fachcodeänderung in diesem Arbeitsblock.
-- Nächster Fachblock: Android-seitige IMG-001-Korrektur erst auf Basis dieses gesicherten Vertrags; anschließend Build und realer Größen-/Pixel-/Poco-/Portal-E2E.
+- E2E-PRIO-001 bleibt maßgeblich: NET-001 → Hauptgerät↔Portal → HELPER/Poco → danach IMG-001-Implementierung.

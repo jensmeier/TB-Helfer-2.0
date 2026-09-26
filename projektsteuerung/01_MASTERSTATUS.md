@@ -24,18 +24,33 @@ Rollen-/Schichtvertrag und FINALIZED-Schutz verbindlich. Migration 014 praktisch
 
 Alles mit `☑`, `BESTÄTIGT`, `ERLEDIGT`, `PASST`, `FUNKTIONIERT` oder `Nicht ohne Grund ändern = JA` bleibt geschützt.
 
+## Priorität ab 26.09.2026 – Funktions-E2E vor Last-E2E
+
+Verbindliche Reihenfolge:
+1. zuerst ein verantwortliches TB-Handy sauber gegen Server/Portal E2E zum Laufen bringen;
+2. danach den HELPER-/Poco-Syncfehler gezielt lösen und Helfer-E2E bestätigen;
+3. erst danach den vollständigen 15×15-Gesamtlasttest wiederholen.
+
+Der bereits praktisch gelaufene Delta-Wait-Kapazitätstest mit 255 getrennten Portal-Sessions war erfolgreich (255/255, keine Request-Fehler). Er ist ein **Kapazitätsteiltest**, kein vollständiger 15×15-E2E. Nach dem geplanten Ausbau auf 8 GB RAM bzw. einem NAS-Wechsel wird der Last-/Kapazitätstest auf der dann maßgeblichen Hardware erneut ausgeführt.
+
+Bis dahin gilt: Funktionsfehler zuerst reproduzierbar eingrenzen; keine Performance-Umbauten auf Verdacht.
+
 
 ## IMG-001 Quellaudit 26.09.2026
-Status: **ABWEICHUNG BESTÄTIGT / IMPLEMENTIERUNG OFFEN**
+Status: **ABWEICHUNG BESTÄTIGT / IMPLEMENTIERUNG NACH E2E-PRIO-001**
 
-Der aktuelle Android-Bildpfad entspricht dem festgelegten 15×15-Vertrag noch nicht:
-- BTB-, Mangel- und Abnahmefotos werden aus dem lokalen Originalpfad an den Upload übergeben.
-- `Server1FileApi.uploadLinkedFile()` setzt `expected_bytes = file.length()` und überträgt genau diese Datei.
-- Android lädt sichtbare Serverbilder aktuell über `/api/v1/files/{id}/content` und damit die serverseitige Quelldatei; `thumb/preview` werden im Android-Dateiclient nicht ausgewertet.
-- Der Server speichert die empfangenen Bytes unverändert, besitzt aber bereits geschützte JPEG-Renditions `thumb` (320 px) und `preview` (1280 px).
-- Ein lokales 512-px-Thumbnail existiert bereits auf Android, wird vom Online-Sync aber nicht verwendet.
-- BTB-Fotometadaten werden weitgehend strukturiert übertragen; `gps_accuracy_m` geht derzeit verloren. Mangel-/Abnahmefoto-Uploads übergeben aktuell keine gleichwertigen strukturierten Foto-Metadaten.
+Quellprüfung:
+- Android übergibt BTB-, Mangel- und Abnahmefotos aktuell aus dem lokalen Originalpfad an den Upload.
+- `Server1FileApi.uploadLinkedFile()` überträgt genau diese Datei (`expected_bytes = file.length()`).
+- Android lädt Serverbilder aktuell über `/api/v1/files/{id}/content`; `thumb/preview` werden vom Android-Dateiclient nicht genutzt.
+- Der Server speichert empfangene Bytes unverändert, besitzt aber bereits `thumb` (320 px) und `preview` (1280 px).
+- Das lokale 512-px-Thumbnail ist vorhanden, wird aber nicht als Online-Sync-Artefakt verwendet.
+- BTB-Metadaten sind teilweise strukturiert; GPS-Genauigkeit fehlt. Mangel-/Abnahmefoto-Metadaten sind im Uploadpfad unvollständig.
 
 Detaudit: `projektsteuerung/uebergaben/IMG-001_BILDTRANSPORT_AUDIT_2026-09-26.md`.
 
-Keine `app/**`- oder `server/**`-Fachänderung in diesem Auditblock.
+Priorität bleibt gemäß E2E-PRIO-001:
+1. NET-001/Hauptgerät-Erreichbarkeit,
+2. Haupt-TB-Handy ↔ Server/Portal,
+3. HELPER/Poco,
+4. danach IMG-001-Implementierung.

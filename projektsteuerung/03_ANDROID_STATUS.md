@@ -15,26 +15,27 @@ Version: **1.3.19 / 200069**
 
 Geschützt: bestätigter BTB-Lifecycle-Fix 200063, bestätigter Server-App-Updateweg mit Datenerhalt, Geräteaktivierung, kein breiter Vollsync als normaler Autosave-Pfad.
 
-Nächste Schritte: IMG-001 Uploadpfad prüfen → 200069 bauen → Pixel/Poco testen → gemeinsamer E2E.
+Nächste Schritte: NET-001 klären → Haupt-TB-Handy ↔ Server/Portal E2E → Poco/HELPER E2E → danach IMG-001 implementieren → Build/Regression.
 
 Historischer Tracker: `projektsteuerung/archiv/ANDROID_STATUS_ALT_2026-09-26.md`
 
+## Praxisbefund Hauptgerät – DNS/Hostauflösung
+
+Beim Anlegen einer Testbaustelle meldet die App:
+`Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
+
+Bewertung: aktueller Geräte-E2E ist durch Namensauflösung/Netz blockiert; noch kein Nachweis eines Fachsync-Fehlers in diesem Lauf. Zuerst Domain-/Geräte-DNS prüfen, danach denselben Test fortsetzen.
+
 
 ## IMG-001 Quellaudit
-Status: **FEHLER BESTÄTIGT / SOURCE-UMSETZUNG OFFEN**
+Status: **FEHLER BESTÄTIGT / IMPLEMENTIERUNG ZURÜCKGESTELLT BIS E2E-PRIO-001**
 
-- `BtbTeamMediaSync` verwendet `File(foto.dateipfad)` direkt als Uploadquelle.
-- `CollabLocalBridge` macht dasselbe für Mangel- und Abnahmefotos.
-- `CollabSyncRepository.uploadAttachment()` hasht und übergibt diese Originaldatei unverändert an `Server1FileApi.uploadLinkedFile()`.
-- `Server1FileApi` überträgt exakt `file.length()`/dieselbe Datei und kennt aktuell keine Rendition-Downloadmethode.
-- `synchronizeServer1Attachments()` lädt fehlende Dateien über `downloadContent()` = `/content` vollständig herunter.
-- Das bestehende lokale 512-px-Thumbnail aus `FotoSpeicher.erstelleThumbnailWennMoeglich()` wird im Online-Sync nicht verwendet.
-- `FotoEntity` speichert keine GPS-Genauigkeit; BTB-Upload sendet daher `gpsAccuracyM = null`.
-- Mangel-/Abnahmefoto-Aufrufe liefern derzeit keine strukturierten Aufnahme-/GPS-/Foto-Metadaten an `uploadAttachment()`.
+- `BtbTeamMediaSync` und `CollabLocalBridge` verwenden lokale Originaldateien als Uploadquelle.
+- `Server1FileApi` überträgt exakt diese Datei und kennt aktuell keine Rendition-Downloadmethode.
+- `synchronizeServer1Attachments()` lädt fehlende Bilder über `/content` vollständig.
+- Lokales 512-px-Thumbnail vorhanden, aber nicht im Online-Sync genutzt.
+- `FotoEntity` speichert keine GPS-Genauigkeit; BTB-Upload sendet deshalb `gpsAccuracyM = null`.
+- Mangel-/Abnahmefoto-Uploads übergeben keine gleichwertigen strukturierten Foto-Metadaten.
 
-Nächster Android-Fachblock erst nach diesem gesicherten Audit:
-1. Sync-JPEG temporär/ableitbar erzeugen (max. ca. 1920 px, JPEG ca. 80–82 %, nie hochskalieren).
-2. Volloriginal unverändert am Aufnahmegerät lassen.
-3. Serverbilder mobil über `preview`, Listen/kleine Ansichten über `thumb`; Original-`/content` nicht als normaler Bildsync.
-4. Metadaten vollständig mitführen.
-5. Danach Build 200069/folgender Build und E2E.
+Geplanter Android-Fix nach stabilem Hauptgerät-/Poco-E2E:
+kleine Sync-JPEG-Datei → Upload; `preview/thumb` für mobile Downloads; Metadaten vollständig.
