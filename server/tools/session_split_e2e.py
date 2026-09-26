@@ -51,6 +51,20 @@ def json_request(
         return exc.code, payload
 
 
+def safe_error_detail(payload: object) -> str:
+    """Return a short server error reason without echoing credentials."""
+    if isinstance(payload, dict):
+        for key in ("detail", "error", "code"):
+            value = payload.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()[:200]
+        return "json_error_without_detail"
+    if isinstance(payload, str):
+        text = " ".join(payload.split())
+        return text[:200] if text else "empty_error_body"
+    return type(payload).__name__
+
+
 def cookie_value(jar: http.cookiejar.CookieJar, name: str) -> str | None:
     for cookie in jar:
         if cookie.name == name:
@@ -84,7 +98,7 @@ def main() -> int:
     jar = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 
-    status, _ = json_request(
+    status, portal_login_payload = json_request(
         opener,
         args.base_url,
         "/api/v1/portal/login",
@@ -92,10 +106,13 @@ def main() -> int:
         body={"login": args.portal_login, "password": args.portal_password},
     )
     if status != 200:
-        print(f"FAIL portal login HTTP {status}")
+        print(
+            f"FAIL portal login HTTP {status} "
+            f"detail={safe_error_detail(portal_login_payload)}"
+        )
         return 1
 
-    status, _ = json_request(
+    status, admin_login_payload = json_request(
         opener,
         args.base_url,
         "/api/v1/admin/session/login",
@@ -103,7 +120,10 @@ def main() -> int:
         body={"login": args.admin_login, "password": args.admin_password},
     )
     if status != 200:
-        print(f"FAIL admin login HTTP {status}")
+        print(
+            f"FAIL admin login HTTP {status} "
+            f"detail={safe_error_detail(admin_login_payload)}"
+        )
         return 1
 
     expected_cookies = {
