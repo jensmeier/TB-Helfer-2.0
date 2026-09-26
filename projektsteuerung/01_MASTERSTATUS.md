@@ -229,3 +229,10 @@ Status: **KONFLIKT FESTGESTELLT / NOCH NICHT AUFGELÖST**
   2. Konflikte in gemeinsamen `projektsteuerung/**`-Dateien bewusst zusammenführen;
   3. `server/**` und `app/**` jeweils aus ihrem zuständigen Branch erhalten;
   4. erst danach gemeinsamen Deploy/Build/E2E starten.
+
+
+## INT-001 – Android-Arbeitsblock beendet
+**BENUTZER BESTÄTIGT:** Android-Arbeitsblock ist fertig; SERVER darf jetzt integrieren.
+
+Aktueller Android-HEAD bei Übergabe: `a1b4667b110a993796e8242d4a21be3748c06d68`.
+Wichtig: Android 1.3.25/200075 ist weiterhin **BUILD OFFEN**, weil der GitHub-CI-Job keinen Runner/keine Steps bekam. Das ist getrennt von der abgeschlossenen Quellarbeit zu behandeln.
