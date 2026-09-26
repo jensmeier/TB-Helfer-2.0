@@ -1821,3 +1821,10 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Der vollständige Endmarker `DEPLOY_OK` des Helfers wurde dadurch **nicht** als praktischer Nachweis gewertet. Vor dem Worker-/Backup-E2E sollen Worker/Monitor einmal kontrolliert neu gestartet werden, damit die laufenden Prozesse den aktuellen bind-gemounteten Quellstand sicher neu laden.
 - Android-Parallelstand bei Sicherung: `d5656cbb0c67ba9dcadfdd39870ac145e6ce2b99`.
 - `STATUS.xlsx` bleibt wegen des abweichenden Android-Workbook-Blobs unverändert.
+
+
+### 26.09.2026 – Session-Split-403 Diagnose verbessert
+
+- Praktischer Post-Deploy-Lauf: Runtime-Probe erneut **PASS**, Same-Browser Session-Split scheitert beim normalen Portal-Login weiterhin mit HTTP 403, auch mit aktivem USER-Konto.
+- `server/tools/session_split_e2e.py` gibt bei Login-Fehlern jetzt einen auf 200 Zeichen begrenzten sicheren Fehlergrund aus, ohne Credentials zu loggen. Dadurch ist beim nächsten Lauf erkennbar, ob der 403 aus der TB-API (`USER_DISABLED`, `USER_EXPIRED`, `ADMIN_USE_ADMIN_LOGIN`, etc.) oder aus einem vorgeschalteten Proxy/Cloudflare-Pfad stammt.
+- Source-Check 111 schützt diese Diagnoseausgabe. Praktische Ursache des 403 bleibt bis zum nächsten Lauf **OFFEN**.
