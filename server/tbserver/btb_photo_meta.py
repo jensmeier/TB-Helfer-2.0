@@ -21,6 +21,8 @@ _PREFIX_LEGACY = "BTBPHOTO__"
 
 _STRING_LIMITS = {
     "firma": 200,
+    "firmaId": 200,
+    "worksiteNodeKey": 240,
     "kurztext": 500,
     "objektKennung": 240,
     "objektBereich": 240,
@@ -92,6 +94,52 @@ def normalize_photo_metadata(value: Any) -> dict[str, Any]:
         result["kmManuell"] = bool(value.get("kmManuell"))
 
     return result
+
+
+
+
+BTB_PHOTO_OVERRIDE_KEYS = frozenset({
+    "typ",
+    "indikator",
+    "firma",
+    "firmaId",
+    "worksiteNodeKey",
+    "kurztext",
+    "km",
+    "objektKennung",
+    "objektBereich",
+})
+
+
+def normalize_btb_photo_override(value: Any) -> dict[str, Any]:
+    """Normalize a BTB-link metadata patch while preserving explicit clears."""
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, Any] = {}
+    for key in BTB_PHOTO_OVERRIDE_KEYS:
+        if key not in value:
+            continue
+        raw = value.get(key)
+        if raw is None or (isinstance(raw, str) and not raw.strip()):
+            result[key] = None
+            continue
+        normalized = normalize_photo_metadata({key: raw})
+        if key in normalized:
+            result[key] = normalized[key]
+    return result
+
+
+def merge_btb_photo_metadata(
+    base: dict[str, Any] | None,
+    override: dict[str, Any] | None,
+) -> dict[str, Any]:
+    merged = normalize_photo_metadata(base)
+    for key, value in normalize_btb_photo_override(override).items():
+        if value is None:
+            merged.pop(key, None)
+        else:
+            merged[key] = value
+    return merged
 
 
 def _b64url_decode(raw: str) -> bytes:
