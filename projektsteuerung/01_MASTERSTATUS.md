@@ -553,3 +553,18 @@ CI auf dem Merge-HEAD:
 - TB-Server 1.0 Run `36253773890`: failure, Job `foundation`, **0 Steps**;
 - Android CI Run `36253773908`: failure, Job `build`, **0 Steps**;
 - daher gemäß Projektregel **kein Testnachweis und kein Sourcefehler-Nachweis**.
+
+
+## BTB-EDIT-001 – Migration 016 auf Synology angewendet
+Status: **MIGRATION 016 BESTÄTIGT / RUNTIME-RESTART + SMOKE OFFEN**
+
+Praxisnachweis 26.09.2026:
+- im laufenden API-Container `python -m tbserver.migrations up` ausgeführt;
+- sichtbare Ausgabe: `APPLIED 016_btb_photo_link_metadata.sql`;
+- damit ist Migration 016 praktisch auf der Synology-Datenbank angewendet.
+
+Noch offen:
+- API und Worker mit dem hochgeladenen Quellstand neu starten;
+- Runtime/Health prüfen;
+- Portal-BTB Smoke-Test durchführen;
+- Geräte-E2E bleibt separat offen.
