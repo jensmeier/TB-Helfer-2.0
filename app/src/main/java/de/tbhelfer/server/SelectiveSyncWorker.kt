@@ -77,40 +77,10 @@ class SelectiveSyncWorker(
                 continue
             }
             val worksiteId = boundItem.context.worksiteServerId
-            val teamId = boundItem.context.groupId
-            val knownEntity = collab.entities(
-                worksiteId,
-                de.tbhelfer.datenbank.SyncCollabPendingChangeEntity.TYPE_BTB
-            ).firstOrNull { it.clientEntityKey == scope.clientBtbId }
 
-            if (knownEntity != null && teamId.isNotBlank()) {
-                when (
-                    val access = btbApi.loadBtbAccess(
-                        token = token,
-                        worksiteId = worksiteId,
-                        teamId = teamId,
-                        serverBtbId = knownEntity.serverId
-                    )
-                ) {
-                    Server1BtbApi.AccessResult.Unsupported -> return Result.success()
-                    Server1BtbApi.AccessResult.SessionInvalid -> {
-                        tokenStore.clear()
-                        return Result.success()
-                    }
-                    is Server1BtbApi.AccessResult.Error -> return retryAutomatic()
-                    is Server1BtbApi.AccessResult.Success -> {
-                        collab.upsertServer1BtbSnapshot(worksiteId, access.access.snapshot)
-                        runCatching {
-                            bridge.applyServerStateToLocal(
-                                worksiteServerIds = setOf(worksiteId),
-                                btbServerIds = setOf(access.access.snapshot.serverId),
-                                includeOtherEntities = false
-                            )
-                        }.getOrElse { return retryAutomatic() }
-                    }
-                }
-            }
-
+            // BTB-SYNC-002: Bei einem Dirty-BTB darf niemals zuerst ein Server-Snapshot
+            // lokal angewendet werden. Der lokale Stand wird zuerst persistent in die Outbox
+            // exportiert; Serverversion/Conflict werden anschließend im Mutation-Pfad geprüft.
             val exported = try {
                 bridge.exportBtbChange(
                     localBaustelleId = scope.localBaustelleId,
@@ -199,6 +169,54 @@ class SelectiveSyncWorker(
 
                             if (!SelectiveSyncStore.removeBtbIfUnchanged(applicationContext, scope)) {
                                 // Während des Uploads kam bereits ein neuerer Autosave.
+                                // Diesen Stand nicht mit dem gerade bestätigten Snapshot überfahren.
+                                retryNeeded = true
+                                continue
+                            }
+
+                            if (currentServerBtbId.isNullOrBlank()) {
+                                // Upload war erfolgreich, aber der bestätigte Server-BTB ist lokal
+                                // noch nicht eindeutig auflösbar. Dirty erneut markieren und gezielt
+                                // wiederholen statt einen breiten Snapshot anzuwenden.
+                                SelectiveSyncStore.markBtbDirty(
+                                    applicationContext,
+                                    scope.localBaustelleId,
+                                    scope.clientBtbId
+                                )
+                                retryNeeded = true
+                                continue
+                            }
+
+                            val applied = runCatching {
+                                bridge.applyServerStateToLocal(
+                                    worksiteServerIds = setOf(exported.worksiteServerId),
+                                    btbServerIds = setOf(currentServerBtbId),
+                                    includeOtherEntities = false
+                                )
+                            }
+                            if (applied.isFailure) {
+                                // Bestätigter Upload darf bei lokalem Apply-Fehler nicht als
+                                // abgeschlossen verloren gehen. Re-run ist idempotent; queueIfChanged
+                                // erkennt den bereits bestätigten Fachstand.
+                                SelectiveSyncStore.markBtbDirty(
+                                    applicationContext,
+                                    scope.localBaustelleId,
+                                    scope.clientBtbId
+                                )
+                                retryNeeded = true
+                                continue
+                            }
+
+                            if (
+                                SelectiveSyncStore.isBtbDirty(
+                                    applicationContext,
+                                    scope.localBaustelleId,
+                                    scope.clientBtbId
+                                )
+                            ) {
+                                // Ein Autosave kam nach dem bestätigten Upload. Der Apply-Pfad
+                                // schützt ihn per BTB-Mutationslock; KEEP darf aber keinen Folgelauf
+                                // verschlucken, deshalb diesen Worker explizit erneut planen.
                                 retryNeeded = true
                             }
                         }
