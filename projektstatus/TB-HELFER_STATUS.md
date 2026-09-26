@@ -177,3 +177,13 @@
 - Standardlauf: DATABASE-Backup + 32 Delta-Clients. `FULL` und 255 Clients sind bewusste Folgeoptionen.
 - Source-Check 111 + Workflow-Einbindung umgesetzt. **QUELLSTAND FERTIG / PRAKTISCHER SYNLOGY-LAUF OFFEN.**
 - `STATUS.xlsx` wegen abweichendem Android-Workbook weiterhin nicht blind überschrieben.
+
+
+## Integrationsnachtrag 26.09.2026 – Migration 015 praktisch bestätigt
+
+- Synology-Staging praktisch: Migration 015 ist **15/15 angewendet**, `pending=[]`.
+- Runtime-Probe praktisch **OK**: `photo_metadata` jsonb/NOT NULL, 0 ungültige Zeilen, keine fehlenden Integrations-Capabilities, Preview 964×1280, aktives API-Memory-Limit 512 MiB, `failures=[]`.
+- Der vorgeschaltete FULL-Backup wurde praktisch mit Status `OK` abgeschlossen (ca. 531 MiB).
+- DSM-Aufgabenplaner-Deploy-Helfer lieferte keinen vollständigen `DEPLOY_OK`-Endmarker; Log endete nach `[3/8]`. Deshalb gilt nur **Migration 015 + Runtime-Probe BESTÄTIGT**, nicht der gesamte Helferlauf.
+- Nächster Server-Schritt: Worker/Monitor kontrolliert neu starten und danach gebündelte Post-Deploy-Abnahme (Session-Split, Read-only, Worker-Backup, Delta-Lasttest) ausführen.
+- `STATUS.xlsx` wegen abweichendem Android-Workbook weiterhin nicht blind überschrieben.
