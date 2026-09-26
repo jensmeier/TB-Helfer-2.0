@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200071: UPD-001 – Release-Metadaten gegen APK-Inhalt validieren.
+        // Android 200072: BTB-SYNC-001 – historischen Pointer-Guard serverkanonisch machen.
         // Jeder auslieferbare Test-/Release-Build erhält einen strikt höheren versionCode.
-        versionCode = 200071
-        versionName = "1.3.21"
+        versionCode = 200072
+        versionName = "1.3.22"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

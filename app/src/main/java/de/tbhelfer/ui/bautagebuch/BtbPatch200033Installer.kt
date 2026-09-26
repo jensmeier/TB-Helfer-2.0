@@ -18,6 +18,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
+import de.tbhelfer.server.BtbServerStateStore
 import de.tbhelfer.server.UserDisplayCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -314,18 +315,56 @@ object BtbPatch200033Installer {
                                 BtbActivePointerControl.nachAbschlussInaktiveBtbId(fragment.requireContext().applicationContext, siteId, name)
                             }
 
-                            if (explicitId != null && activeId == explicitId) {
+                            val appContext = fragment.requireContext().applicationContext
+                            val serverState = activeId?.let { id ->
+                                BtbServerStateStore.state(appContext, id)
+                            }
+
+                            if (activeId != null && serverState != null) {
+                                // BTB-SYNC-001: Fuer servergebundene BTBs ist der Server-Lifecycle
+                                // kanonisch. Der alte 200033-Guard darf einen vom Server weiterhin
+                                // aktiven Pointer niemals wegen eines lokalen/stalen Abschlussmarkers
+                                // loeschen. Genau dieser zweite Pointer-Schreiber hat den 26.09-BTB
+                                // auf dem HELPER nach dem Sync wieder entfernt.
+                                when {
+                                    serverState.active -> {
+                                        withContext(Dispatchers.IO) {
+                                            BtbActivePointerControl.inaktivMarkerLoeschen(
+                                                appContext, siteId, name
+                                            )
+                                        }
+                                    }
+                                    serverState.serverFinalReadOnly -> {
+                                        withContext(Dispatchers.IO) {
+                                            BtbActivePointerControl.aktiveBtbLoesen(
+                                                appContext, siteId, name
+                                            )
+                                        }
+                                        activeId = null
+                                    }
+                                    else -> {
+                                        // Zwischenzustand vom Server: kein lokaler Marker darf
+                                        // den kanonischen Serverzustand ueberstimmen.
+                                        withContext(Dispatchers.IO) {
+                                            BtbActivePointerControl.inaktivMarkerLoeschen(
+                                                appContext, siteId, name
+                                            )
+                                        }
+                                    }
+                                }
+                            } else if (explicitId != null && activeId == explicitId) {
                                 withContext(Dispatchers.IO) {
-                                    BtbActivePointerControl.inaktivMarkerLoeschen(fragment.requireContext().applicationContext, siteId, name)
+                                    BtbActivePointerControl.inaktivMarkerLoeschen(appContext, siteId, name)
                                 }
                             } else if (activeId != null && blockedId != null && activeId == blockedId) {
+                                // Legacy/lokal ohne Server-Snapshot: bisheriges 200033-Verhalten.
                                 withContext(Dispatchers.IO) {
-                                    BtbActivePointerControl.aktiveBtbLoesen(fragment.requireContext().applicationContext, siteId, name)
+                                    BtbActivePointerControl.aktiveBtbLoesen(appContext, siteId, name)
                                 }
                                 activeId = null
                             } else if (activeId != null && blockedId != null && activeId != blockedId) {
                                 withContext(Dispatchers.IO) {
-                                    BtbActivePointerControl.inaktivMarkerLoeschen(fragment.requireContext().applicationContext, siteId, name)
+                                    BtbActivePointerControl.inaktivMarkerLoeschen(appContext, siteId, name)
                                 }
                             }
 
