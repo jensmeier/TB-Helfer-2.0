@@ -63,6 +63,7 @@ def main() -> int:
     parser.add_argument("--backup-kind", choices=("DATABASE", "FILES", "FULL"), default="DATABASE")
     parser.add_argument("--clients", type=int, default=32)
     parser.add_argument("--wait-seconds", type=float, default=10.0)
+    parser.add_argument("--delta-auth", choices=("portal", "device"), default="portal")
     parser.add_argument("--skip-backup", action="store_true")
     parser.add_argument("--skip-loadtest", action="store_true")
     args = parser.parse_args()
@@ -89,7 +90,7 @@ def main() -> int:
         child_env["TB_ADMIN_PASSWORD"] = _secret(
             "TB_ADMIN_PASSWORD", "Admin-Passwort (wird nicht angezeigt)"
         )
-        if not args.skip_loadtest:
+        if not args.skip_loadtest and args.delta_auth == "device":
             child_env["TB_DEVICE_TOKEN"] = _secret(
                 "TB_DEVICE_TOKEN", "Geräte-Token für Delta-Test (wird nicht angezeigt)"
             )
@@ -132,6 +133,8 @@ def main() -> int:
                 "sync_wait_loadtest.py",
                 [
                     "--base-url", server_base_url,
+                    "--auth", args.delta_auth,
+                    "--portal-login", portal_login,
                     "--clients", str(args.clients),
                     "--wait-seconds", str(args.wait_seconds),
                 ],
