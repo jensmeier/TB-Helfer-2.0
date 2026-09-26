@@ -42,8 +42,8 @@ SERVERVERTRAG:
 
 TESTSTATUS:
 - QUELLSTAND VORBEREITET
-- BUILD OFFEN – GitHub-CI-Runner wurde nicht zugewiesen
-- CI RUN 36252246995: failure vor Step 1; Checkout/Gradle wurden nicht ausgeführt
+- BUILD FEHLGESCHLAGEN – lokaler Android-Studio-Build erreicht generateBtb200043Sources und scheitert am veralteten Android-200047-Ortsmarker-Anker
+- GitHub CI RUN 36252246995 blieb zusätzlich infrastrukturell vor Step 1 ohne Runner
 - INSTALLATION OFFEN
 - BTB-EDIT-001 E2E OFFEN
 - POCO/HELPER-E2E OFFEN
@@ -63,3 +63,10 @@ BUILDHINWEIS:
 - Beide Versuche: build-Job ohne Runnername und ohne Steps; deshalb kein echter Gradle-Build.
 - Das ist kein Nachweis eines Source-/Compilefehlers.
 - Nächster echter Build muss lokal/Android Studio oder über einen wieder funktionierenden Runner erfolgen.
+
+
+LOKALER BUILD-FEHLER:
+- :app:generateBtb200043Sources
+- Android 200047: Hauptbaustellen-Ortsmarker-Anker wurde nicht gefunden
+- Ursache: Build-time-Source-Patch erwartet alten BautagebuchFragment-Quellanker, der durch BTB-EDIT-001 nicht mehr existiert.
+- 1.3.25 / 200075 bleibt die Zielversion; kein versionCode-Sprung, da kein erfolgreicher APK-Build vorliegt.
