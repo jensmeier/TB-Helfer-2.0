@@ -752,3 +752,18 @@ SERVER ändert diesen Android-Code nicht. Vor endgültiger Integration wird nur 
 - Generatorfix 606aa3ad + Statuscheckpoint 4de3350f sind enthalten; Build-Retest 200075 bleibt offen.
 - Build/Installation/E2E werden durch die Integration nicht bestätigt.
 - Android-Foto-PATCH-Restpunkt bleibt separat offen.
+
+
+## NÄCHSTER SERVERBLOCK – Deploy BTB-EDIT-001 / Migration 016
+Status: **BEREIT ZUM PRAKTISCHEN SERVER-DEPLOY**
+
+Nach abgeschlossener Branch-Integration:
+1. aktuellen `feature/tb-server-1.0` per GitHub Desktop auf den PC holen;
+2. Serverstand per File Station nach `/volume1/docker/tb-helfer-v1` übernehmen, ohne `.env`, Datenbank, Storage oder Backups zu überschreiben;
+3. Container über Container Manager neu erstellen/starten;
+4. Migrationen im API-Container prüfen/anwenden; Ziel neu: Migration 016;
+5. Runtime-Status prüfen;
+6. Portal-BTB öffnen und BTB-EDIT-001 Entry-/Foto-Editor smoke-testen;
+7. erst danach gemeinsamer Geräte-E2E.
+
+Android 1.3.25/200075 bleibt Build-Retest offen; das blockiert den Server-Deploy nicht, aber den vollständigen Geräte-E2E.
