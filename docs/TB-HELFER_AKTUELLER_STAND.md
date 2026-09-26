@@ -1786,3 +1786,13 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Der aktuelle Android-Delta-Client filtert mindestens `BTB,BTB_ENTRY,BTB_PARTICIPANT,FILE`; diese Typen und Antwortfelder liefert der SERVER-Quellstand.
 - Targeted File-Link-Refresh nutzt `GET /api/v1/files/{file_id}`; der Server liefert dort Datei + Links und zusätzlich die neuen strukturierten Metadaten/Rendition-URLs.
 - Aus dieser Querprüfung ergibt sich **keine zusätzliche inkompatible Serveränderung**. Android-Geräte-E2E bleibt trotzdem offen und wird nicht durch Source-Vergleich ersetzt.
+
+
+### 26.09.2026 – Android 200069 gegen SERVER-Vertrag quergeprüft
+
+- Vor der Querprüfung: SERVER `6cf1e49ea1892cefea86d675c256a8212d0067e3`, ANDROID `2ca5aa0884450c78e06111e5a1c444c10d74d8ab`; Server-Draft-PR #6 und Android-Draft-PR #7 sind offen.
+- Android steht jetzt auf **1.3.19 / Build 200069**. Seit der letzten SERVER-Querprüfung kamen 13 Android-Commits hinzu, vor allem für rollenbewussten BTB-Lifecycle, vollständige Capability-Gates, kanonischen FINALIZED-/Active-Pointer-Abgleich und Read-only-Schutz historischer serverseitig finalisierter BTBs.
+- Die von Android 200069 vorausgesetzten SERVER-Capabilities sind im aktuellen Serverquellstand vorhanden: `btb_entries_v1`, `btb_live_sync_v1`, `btb_participant_shift_end_v1`, `btb_general_work_entries_v1`, `btb_photo_metadata_v1`, `btb_pdf_team_lead_only_v1`, `sync_change_feed_v1` und `sync_change_wait_v1`.
+- `GET /api/v1/sync/changes/wait` ist serverseitig vorhanden; Runtime-Probe und Syncvertrag verlangen ebenfalls `sync_change_wait_v1`. Aus der aktuellen Android-Querprüfung ergibt sich **keine zusätzliche Server-API- oder DB-Änderung**.
+- Das ist ein **Source-/Vertragscheck**, kein Geräte-E2E. Migration 015, Synology-Integrationsdeploy, Same-Browser-Sessiontest, Read-only-Abnahme, Worker-/Backup-E2E und Delta-Lasttest bleiben praktisch offen.
+- `STATUS.xlsx` wurde bewusst nicht überschrieben: SERVER-Blob `a56c44cc…` und ANDROID-Blob `f73ead35…` unterscheiden sich. STATUS.md bleibt bis zur konfliktfreien Excel-Konsolidierung der Integrator-Stand.
