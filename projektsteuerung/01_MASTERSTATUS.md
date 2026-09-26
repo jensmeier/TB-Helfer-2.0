@@ -354,3 +354,17 @@ Aktueller Serverstand neu geprüft:
 - Entry-Payload nutzt `worksiteNodeKey` und validiert ihn gegen die aktive Baustellenstruktur.
 - `PATCH /api/v1/btbs/{btb_id}/photos/{file_id}` aktualisiert versionierte linkbezogene `photo_metadata`; Foto-Datei, GPS und Aufnahmezeit bleiben unangetastet.
 - Server-Source ist damit vorhanden; Android darf jetzt gegen diesen Vertrag implementieren. Server-Deploy/E2E ist separat zu bestätigen.
+
+
+## AND-BUILD-200075 – CI-Buildversuch
+Status: **BUILD NICHT GESTARTET / CI-RUNNER NICHT ZUGEWIESEN**
+
+- Ziel: **1.3.25 / 200075**.
+- Temporärer mergebarer CI-PR #10 wurde ausschließlich für den echten Android-CI-Build angelegt.
+- Android-CI Run: `36252246995`.
+- Versuch 1 und Wiederholungsversuch 2 endeten jeweils nach ca. 3 Sekunden mit `failure`.
+- Der Job `build` erhielt **keinen Runner** (`runner_name = ""`) und **keine Steps wurden gestartet** (`steps = []`).
+- Damit wurden weder Checkout noch Source-Checks, Gradle, Tests, APK-Build oder Lint ausgeführt.
+- Bewertung: **kein Android-Compilefehler nachgewiesen**; GitHub-Actions-Infrastruktur hat den Job vor Step 1 nicht gestartet.
+- Deshalb Status weiterhin sauber getrennt: QUELLSTAND/VERSION VORBEREITET, BUILD OFFEN, INSTALLATION OFFEN, E2E OFFEN.
+- Nächster valider Buildweg: Android Studio/lokaler Gradle-Build `:app:testDebugUnitTest :app:assembleDebug :app:assembleRelease` oder funktionierender GitHub-Runner.

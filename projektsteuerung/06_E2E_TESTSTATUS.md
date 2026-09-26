@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | Bereich | Status | Nächster Test |
 |---|---|---|
-| Android 1.3.25 / 200075 Build | VERSION RESERVIERT / BUILD OFFEN | CI/Gradle Build + APK-Artefakt |
+| Android 1.3.25 / 200075 Build | BUILD OFFEN – CI-RUNNER NICHT ZUGEWIESEN | lokal/Android Studio oder funktionierenden Runner ausführen |
 | Android 1.3.24 / 200074 Build | ERFOLGREICH / PRAXIS NACHGEWIESEN | installiert auf Pixel |
 | Android 1.3.24 / 200074 Installation | PIXEL BESTÄTIGT | Poco/HELPER separat |
 | BTB-UI-001 Abschlussleiste | SOURCE-FIX UMGESETZT / BUILD OFFEN | 1.3.24/200074 bauen/installieren; Haupt-TB 2 Buttons stabil prüfen |

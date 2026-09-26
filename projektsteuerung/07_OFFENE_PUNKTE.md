@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| AND-BUILD-200075 | P0 | ANDROID | BTB-EDIT-001 Build angefordert; 1.3.25/200075 reserviert | Version/Release-MD setzen → Build → Artefakt prüfen |
+| AND-BUILD-200075 | P0 | ANDROID | 1.3.25/200075 vorbereitet; CI Run 36252246995 startet keinen Runner/keine Steps | lokalen Gradle-/Android-Studio-Build ausführen oder Runner wiederherstellen |
 | BTB-EDIT-001 | P1 | ANDROID | Diagnose abgeschlossen; Server section-/photo-PATCH source-seitig vorhanden; Android-Modell festgelegt | SectionItem + Node-Key + Foto-Metadaten + Editpfad implementieren; Identität erhalten |
 | PORTAL-WEATHER-001 | P1 | GEMEINSAM | Android 0-mm→null-Fehler bestätigt; tempC wird source-seitig serialisiert, Runtime-Verluststelle offen | Android 0-mm erhalten; Server-Header/Portal-Payload für tempC separat vergleichen |
 | PORTAL-LIVE-001 | P0 | SERVER | SSE/Change-Feed Source-Fix vorhanden; laufendes NAS braucht noch F5 | SERVER deployen + Portal ohne F5 E2E; Android nicht ändern |

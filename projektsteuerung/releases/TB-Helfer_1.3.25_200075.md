@@ -42,7 +42,8 @@ SERVERVERTRAG:
 
 TESTSTATUS:
 - QUELLSTAND VORBEREITET
-- BUILD OFFEN
+- BUILD OFFEN – GitHub-CI-Runner wurde nicht zugewiesen
+- CI RUN 36252246995: failure vor Step 1; Checkout/Gradle wurden nicht ausgeführt
 - INSTALLATION OFFEN
 - BTB-EDIT-001 E2E OFFEN
 - POCO/HELPER-E2E OFFEN
@@ -54,3 +55,11 @@ NÄCHSTER TEST:
 - Eintrag Punkt 4 → 5 und zurück verschieben; Identität muss erhalten bleiben.
 - Zugeordnetes Foto fachlich umhängen; Original, Aufnahmezeit und GPS müssen unverändert bleiben.
 - Pixel ↔ Portal Sync prüfen; BTB-SYNC-002 darf nicht regressieren.
+
+
+BUILDHINWEIS:
+- Temporärer CI-PR #10 war mergebar.
+- GitHub Actions Run 36252246995 wurde zweimal gestartet.
+- Beide Versuche: build-Job ohne Runnername und ohne Steps; deshalb kein echter Gradle-Build.
+- Das ist kein Nachweis eines Source-/Compilefehlers.
+- Nächster echter Build muss lokal/Android Studio oder über einen wieder funktionierenden Runner erfolgen.
