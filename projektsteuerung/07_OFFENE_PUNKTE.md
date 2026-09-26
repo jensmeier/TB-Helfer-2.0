@@ -5,8 +5,7 @@ Stand: 2026-09-26
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
 | BTB-SYNC-002 | P0 | ANDROID | Pixel↔Portal Basissync mit 1.3.23/200073 in beide Richtungen bestätigt | Parallel-Autosave-/Conflict-Test bleibt offen; danach Poco separat |
-| PORTAL-LIVE-001 | P0 | SERVER | Source-Fix vorhanden: Portal nutzt SSE-Change-Feed statt F5 | Deploy + E2E: neues Bild/BTB vom Handy ohne Browser-Reload sichtbar |
-| IMG-PORTAL-001 | P0 | SERVER | Daten nach F5 korrekt; Live-Refresh-Source-Fix vorhanden | zusammen mit PORTAL-LIVE-001 deployen und ohne F5 E2E bestätigen |
+| PORTAL-BTB-UI-001 | P1 | SERVER | Live-Sync bestätigt; BTB im Portal muss fachlich/optisch nachgearbeitet werden | konkrete Portal-BTB-Anpassungen festlegen, dann gezielt umsetzen |
 | DEV-META-001 | P2 | SERVER | `tb.devices.app_version/app_build` bleiben nach App-Update ohne Neuaktivierung auf altem Aktivierungsstand | später Runtime-Metadaten-Updatevertrag definieren; kein Blocker für BTB-SYNC-001 |
 | BTB-SYNC-001 | P0 | ANDROID | Source-Ursache eingegrenzt: BtbActiveContext kann server-active Pointer wegen lokalem ABGESCHLOSSEN lösen | Android-Fix auf feature/tb-android-2.0, Build/Install, Poco-E2E |
 | NET-001 | P1 | GEMEINSAM | Pixel synchronisiert wieder; Ursache des vorherigen App-DNS-Fehlers ungeklärt | nur bei erneuter Reproduktion vertiefen; jetzt Fach-E2E fortsetzen |
