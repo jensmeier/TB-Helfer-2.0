@@ -409,7 +409,7 @@ function photoCardHtml(p,index,editable){
       (gps?'<div><a href="'+esc(mapUrl)+'" target="_blank" rel="noopener">GPS: '+esc(gps)+' ↗</a></div>':'')+
     '</div></div>';
 }
-function renderPhotos(){function renderPhotos(){
+function renderPhotos(){
   const target=document.getElementById('photos');
   const editable=canEditCurrentBtb(),list=uniquePhotos();
   const indexed=list.map(function(p,index){return {p:p,index:index,section:photoSection(photoMeta(p))};});
@@ -793,7 +793,7 @@ function renderWorkGrouped(list,firms,legacyLines){
 function renderSimple(list,section,firms){
   return renderContentGrouped(section,list,firms,[]);
 }
-function editorFieldfunction editorField(id,label,value,type,wide){
+function editorField(id,label,value,type,wide){
   const cls=wide?' class="wide"':'';
   if(type==='textarea'){
     return '<div'+cls+'><label for="'+id+'">'+esc(label)+'</label><textarea id="'+id+'" rows="5">'+esc(value??'')+'</textarea></div>';
@@ -890,7 +890,7 @@ function openEntryCreator(section,firmId){
 }
 window.openEntryCreator=openEntryCreator;
 window.openEntryEditor=openEntryEditor;
-function closeEntryEditor(){function closeEntryEditor(){
+function closeEntryEditor(){
   editingEntry=null;creatingEntry=null;
   document.getElementById('entryModal').classList.remove('open');
   document.getElementById('entryModal').setAttribute('aria-hidden','true');
@@ -1013,7 +1013,7 @@ async function saveModalEntry(){
     closeEntryEditor();show('ok','Eintrag gespeichert.');await loadBtb();
   }catch(error){show('err',error.message||String(error));}
 }
-async function deleteEntryId(id){async function deleteEntryId(id){
+async function deleteEntryId(id){
   await tbApi('/api/v1/btbs/'+btbId+'/entries/'+encodeURIComponent(id),{method:'DELETE'});
 }
 async function deleteEntryDirect(id){
