@@ -82,10 +82,17 @@ Im `SelectiveSyncWorker` wird bei bekanntem BTB aktuell der Server-Snapshot ange
 Status: **ENTRY-/NODE-QUELLUMSETZUNG LÄUFT / FOTO-PFAD NOCH OFFEN**
 
 Live geprüft am 26.09.2026:
-- Android-HEAD: `da0806fe29f34363247463bc4fb599778ee42a53`.
+- Android-HEAD: `623704990072c7006e6a48e611441d7aa08b989e`.
 - `SectionItem` enthält jetzt `clientEntryKey`, `firmaId/firmaName`, `worksiteNodeKey`.
 - Worksite-Struktur stellt stabile `clientNodeKey`-Zuordnung und Rückauflösung bereit.
 - Server1BtbApi sendet bei Entry-PATCH bereits `section` und erhält die Entry-/Slot-Identität.
 - Android-Editor migriert Legacy-`@ORT` in stabile `@NODE`-/strukturierte Node-Referenzen.
 - Android-Foto-Sync `BtbTeamMediaSync` führt aktuell noch keinen `worksiteNodeKey`/`firmaId`-Umhänge-PATCH für bestehende Fotos aus.
 - Daher gemeinsamer BTB-EDIT-001 Geräte-E2E noch offen.
+
+
+### BTB-EDIT-001 – Android Live-Nachtrag
+- aktueller HEAD: `623704990072c7006e6a48e611441d7aa08b989e`.
+- sichtbarer BTB-Editor erhält jetzt stabile Entry-/Node-Identitäten (`clientEntryKey`, `firmaId`, `worksiteNodeKey`) und hält lokale `ortId` nur noch als UI-/Legacy-Cache.
+- Entry-/Unterbaustellenpfad nähert sich damit dem gemeinsamen Serververtrag.
+- Foto-Umhängen über den neuen versionierten Server-Foto-PATCH bleibt weiterhin offen.
