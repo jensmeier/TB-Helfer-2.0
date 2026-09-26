@@ -70,3 +70,6 @@ Poco zeigt den serverseitig und im Portal bestätigten aktiven 26.09-BTB kurz un
 
 ### BTB-SYNC-001 Source-Ursache
 `BtbActiveContext.laden()` kann einen serverseitig bestätigten aktiven BTB lokal wieder deaktivieren, weil es den lokalen Dokumentstatus `ABGESCHLOSSEN` höher bewertet als `BtbServerStateStore.active=true`. Der UI-Watcher läuft ca. alle 600 ms; das erklärt das kurze Anzeigen und anschließende Verschwinden. Android-Fix erforderlich; noch kein Build/E2E.
+
+### BTB-SYNC-002 – Pixeländerung wird nicht hochgeladen und später überschrieben
+Pixel-Eingabe erreicht das Portal nicht; nach Portaländerung übernimmt Android den Serverstand und die lokale Pixel-Eingabe geht verloren. Android muss zuerst Save→Outbox→Upload→Apply-Reihenfolge und Konfliktschutz nachweisen.

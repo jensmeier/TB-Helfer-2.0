@@ -62,3 +62,11 @@ Für servergebundene BTBs gilt verbindlich:
 - Ein HELPER mit Teilnehmerstatus `WORKING` bleibt im aktiven BTB.
 - Pointer lösen erst bei kanonischem Serverzustand `FINALIZED` + nicht aktiv bzw. bei explizitem zulässigem Lifecycle-Übergang.
 - Lokale/stale Abschlussartefakte dürfen den Server-Lifecycle nicht überstimmen.
+
+## BTB Konflikt-/Overwrite-Schutz
+Für denselben aktiven BTB gilt:
+- lokal gespeicherte, noch nicht serverbestätigte Android-Änderungen dürfen durch einen eingehenden Server-Snapshot nicht still verloren gehen;
+- Android muss solche Änderungen entweder zuerst erfolgreich hochladen oder bei Versionskonflikt explizit rebasen/als Konflikt behandeln;
+- Portal- und Android-Mutationen müssen versioniert gegen denselben kanonischen BTB-/Entry-Stand arbeiten;
+- „last server snapshot wins“ ohne Konflikterkennung ist für lokale unbestätigte BTB-Fachänderungen unzulässig;
+- ein Server-Snapshot darf erst dann den lokalen Fachstand ersetzen, wenn für denselben Scope keine unbestätigte lokale Mutation mehr existiert oder die Mutation bewusst konfliktaufgelöst wurde.

@@ -38,3 +38,6 @@ Nachtest: beide öffentlichen Seiten sind auf demselben Hauptgerät im Browser e
 
 ### NET-001 Browser-Nachtest
 `www.tb-helfer.de` und `api-v1.tb-helfer.de/health/live` sind auf demselben Hauptgerät im Browser erreichbar. App-Retest offen.
+
+### BTB-SYNC-002 Datenverlust-E2E
+**FEHLER REPRODUZIERT:** Pixeländerung erscheint nicht im Portal; Portaländerung kommt auf Pixel an und überschreibt die Pixeländerung. E2E gilt bis zur Konflikt-/Outbox-Klärung als fehlgeschlagen.

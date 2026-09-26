@@ -141,3 +141,16 @@ Priorität bleibt gemäß E2E-PRIO-001:
 - Kein 2-Sekunden-Polling; vorhandener gemeinsamer Change-Hub wird verwendet.
 - Source-Assertions für EventSource/SSE-Pfad und gezielte Reload-Funktionen: **PASS**.
 - Status bleibt: **QUELLSTAND FERTIG / DEPLOY OFFEN / E2E OFFEN**.
+
+## BTB-SYNC-002 – Pixel→Portal fehlt / Portal überschreibt Pixel-Eingabe
+- Praxisbefund am aktiven BTB 26.09:
+  - Eingabe/Änderung auf dem Pixel erscheint **nicht** im Portal.
+  - Änderung im Portal kommt anschließend auf dem Pixel an.
+  - Beim Eintreffen des Portalstands wird die zuvor auf dem Pixel eingegebene Änderung überschrieben/gelöscht.
+- Das ist ein P0-Datenverlust-/Konfliktfehler. Bis zur Ursache keine weiteren produktiven BTB-Eingaben für diesen Testdatensatz erzwingen.
+- Vor Änderung prüfen:
+  1. ob die Pixel-Eingabe lokal bereits gespeichert ist;
+  2. ob dafür eine Android-Outbox/BTB-Pending-Mutation entsteht;
+  3. ob diese Mutation zum Server gesendet oder durch einen vorherigen Server-Snapshot verworfen wird;
+  4. Server-BTB-Version/Entry-Versionen und Change-Feed vor/nach Pixel- und Portaländerung;
+  5. Merge-/Conflict-Regel für dieselbe BTB-Sektion bzw. denselben Slot.

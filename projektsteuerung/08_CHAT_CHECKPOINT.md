@@ -163,3 +163,17 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Status bleibt: **QUELLSTAND FERTIG / DEPLOY OFFEN / E2E OFFEN**.
 - Deployment nach Synology-Regel: GitHub Desktop → File Station → Container Manager.
 - Danach E2E mit offenem Portal und neuem Handyfoto; F5 darf nicht mehr nötig sein.
+
+## BTB-SYNC-002 – asymmetrischer Sync / lokale Eingabe verloren
+- Praxisbefund am aktiven BTB 26.09:
+  - Eingabe/Änderung auf dem Pixel erscheint **nicht** im Portal.
+  - Änderung im Portal kommt anschließend auf dem Pixel an.
+  - Beim Eintreffen des Portalstands wird die zuvor auf dem Pixel eingegebene Änderung überschrieben/gelöscht.
+- Das ist ein P0-Datenverlust-/Konfliktfehler. Bis zur Ursache keine weiteren produktiven BTB-Eingaben für diesen Testdatensatz erzwingen.
+- Vor Änderung prüfen:
+  1. ob die Pixel-Eingabe lokal bereits gespeichert ist;
+  2. ob dafür eine Android-Outbox/BTB-Pending-Mutation entsteht;
+  3. ob diese Mutation zum Server gesendet oder durch einen vorherigen Server-Snapshot verworfen wird;
+  4. Server-BTB-Version/Entry-Versionen und Change-Feed vor/nach Pixel- und Portaländerung;
+  5. Merge-/Conflict-Regel für dieselbe BTB-Sektion bzw. denselben Slot.
+- Nächster Schritt: aktuellen Android- und Server-Quellpfad diagnostizieren, bevor irgendein Fix gebaut wird.

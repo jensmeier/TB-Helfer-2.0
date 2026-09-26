@@ -110,3 +110,6 @@ Server-Seite ist zuständig; Umsetzung im Portal-JavaScript gegen vorhandenen Ch
 - Kein 2-Sekunden-Polling; vorhandener gemeinsamer Change-Hub wird verwendet.
 - Source-Assertions für EventSource/SSE-Pfad und gezielte Reload-Funktionen: **PASS**.
 - Status bleibt: **QUELLSTAND FERTIG / DEPLOY OFFEN / E2E OFFEN**.
+
+### BTB-SYNC-002 – Serverdiagnose erforderlich, kein Fix auf Verdacht
+Aktueller Praxisbefund ist asymmetrisch: Portal→Pixel funktioniert, Pixel→Portal nicht; Portalstand überschreibt Pixeländerung. Vor Serveränderung müssen Change-Feed, BTB-/Entry-Versionen und tatsächlich eingehende Pixel-Mutationen geprüft werden.
