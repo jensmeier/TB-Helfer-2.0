@@ -791,3 +791,16 @@ Einordnung:
 - Migrationsrunner lief ohne Fehler;
 - daraus allein folgt noch nicht, ob 016 bereits vorher angewendet war oder ob der Container die neue Migrationsdatei nicht sieht;
 - vor Neustart von API/Worker deshalb `python -m tbserver.migrations status` ausführen und `latest_known/latest_applied/pending` prüfen.
+
+
+## BTB-EDIT-001 – Migration 016 bestätigt
+Status: **MIGRATION ANGEWENDET / API+WORKER NEUSTART ALS NÄCHSTES**
+
+Benutzer-Screenshot zeigt eindeutig:
+`APPLIED 016_btb_photo_link_metadata.sql`.
+
+Damit ist der DB-Schritt abgeschlossen. Nächster praktischer Ablauf:
+1. API-Container neu starten;
+2. Worker-Container neu starten;
+3. API-Health/Portal prüfen;
+4. BTB-EDIT-001 Smoke-Test im Portal.
