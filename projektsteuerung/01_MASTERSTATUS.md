@@ -54,3 +54,70 @@ Priorität bleibt gemäß E2E-PRIO-001:
 2. Haupt-TB-Handy ↔ Server/Portal,
 3. HELPER/Poco,
 4. danach IMG-001-Implementierung.
+
+## Praxisnachtrag 26.09.2026 – Pixel wieder online / Poco Erstabgleich
+- Pixel hat nach den vorherigen App-DNS-Fehlern inzwischen wieder mit dem NAS synchronisiert. NET-001 ist damit aktuell **nicht mehr als dauerhafter Verbindungsblocker nachgewiesen**, Ursache des vorherigen Fehlers bleibt ungeklärt.
+- Poco wurde neu installiert und erneut aktiviert. Der anschließende erste Datenabruf läuft sehr lange (>3 Minuten) und ist noch nicht als erfolgreich/fehlgeschlagen abgeschlossen.
+- Priorität bleibt: Hauptgerät↔Portal-Fachkette bestätigen, danach Poco-Erstabgleich gezielt messen/eingrenzen.
+
+## Praxisnachtrag – Poco-Erstabgleich fertig / neuer BTB 26.09 inkonsistent
+- Poco-Erstabgleich ist abgeschlossen; Baustelle konnte erfolgreich heruntergeladen werden.
+- Pixel hat einen neuen BTB für 26.09 angelegt.
+- Portal zeigt weiterhin nur BTBs bis 25.09; der 26.09-BTB erscheint dort nicht.
+- Poco zeigt den 26.09-BTB kurzzeitig und fällt etwa eine Sekunde später auf „kein BTB vorhanden“ zurück.
+- Damit ist jetzt ein konkreter BTB-Sync-/Lifecycle-Fehler reproduziert. Vor Codeänderung Serverzustand, Team-`active_btb_id`, BTB-Status und Android-Snapshot-Anwendung prüfen.
+
+## BTB-SYNC-001 Diagnose – gemischte Android-Versionen erkannt
+- Server-Diagnose zeigt aktive Geräte mit unterschiedlichen Appständen:
+  - Pixel / `zinkel.jens`: **TB-Helfer 1.3.4**
+  - Poco / `poco`: **TB-Helfer 1.3.19**
+- Aktueller Android-Zielstand ist 1.3.19 / Build 200069.
+- Im Change-Feed sind am 26.09. mehrere aufeinanderfolgende `UPDATE`-Einträge für denselben BTB sichtbar (Versionen mindestens 14–19).
+- Dadurch ist der aktuelle Pixel↔Poco-E2E nicht versionsrein. Vor Codeänderung Pixel auf den aktuellen bestätigten Android-Zielstand bringen bzw. Installation 200069 nachweisen.
+
+## Korrektur – Pixel ist tatsächlich 1.3.19
+- Benutzer bestätigt: Pixel läuft ebenfalls auf **1.3.19**.
+- Die Server-DB-Anzeige `tb.devices.app_version = 1.3.4` ist **kein verlässlicher Runtime-Versionsnachweis**.
+- Quellprüfung Server: `app_version/app_build` werden beim `/api/v1/device/login` gespeichert; normale authentisierte Requests aktualisieren nur `last_seen_at`.
+- Pixel wurde nach einem späteren App-Update nicht neu aktiviert, daher bleibt der alte Aktivierungswert in `tb.devices` stehen.
+- Die zuvor angenommene Versionsabweichung als Ursache von BTB-SYNC-001 ist damit **verworfen**. BTB-SYNC-001 bleibt unverändert offen.
+
+## BTB-SYNC-001 Diagnose – 26.09 ist auf dem Server vorhanden
+- Der 26.09-BTB ist in `tb.btbs` vorhanden und erzeugt Change-Feed-Einträge.
+- Sichtbarer BTB: `ba2144b7-9ede-4f53-abdc-1accd172e875`.
+- Am 26.09 wurden für genau diesen BTB wiederholt `UPDATE`-Changes beobachtet, mindestens Version 7 bis 19 in kurzer Folge.
+- Damit ist „Pixel lädt den 26.09-BTB gar nicht zum Server“ ausgeschlossen.
+- Offen bleiben Team/`active_btb_id`/Status und warum Portal/Poco den serverseitig vorhandenen BTB nicht stabil anzeigen.
+
+## BTB-SYNC-001 Diagnose – Server-Lifecycle korrekt
+
+- Direkter DB-Check für BTB `ba2144b7-9ede-4f53-abdc-1accd172e875`:
+  - Baustelle: `GE Immenstadt - Kempten`
+  - Team: `pixeljens`
+  - Team-Lead: `zinkel.Jens`
+  - `teams.active_btb_id` == BTB-ID
+  - `active_date=2026-09-26`
+  - `active_status=ACTIVE`
+  - BTB selbst: `status=ACTIVE`, `version=19`
+  - Client-BTB-ID vorhanden
+  - Poco = HELPER / participant `WORKING`
+  - zinkel.Jens = LEAD / participant `WORKING`
+- Damit ist der kanonische Server-Lifecycle für den 26.09-BTB korrekt. Ursache liegt jetzt im Portal-/Android-Lese-/Anwendungspfad, nicht in fehlendem `active_btb_id` oder Teilnehmerstatus.
+
+## BTB-SYNC-001 Portal-Nachtest – 26.09 sichtbar
+- Nach vollständigem Neuladen der Portal-Baustellenseite wird der 26.09-BTB korrekt angezeigt:
+  - Team `pixeljens`
+  - aktiver BTB `ba2144b7-9ede-4f53-abdc-1accd172e875`
+  - Status `ACTIVE`
+  - Datum `2026-09-26`
+- Der vorherige Portalbefund „nur bis 25.09“ war daher ein nicht aktualisierter Seitenstand, kein fehlerhafter Server-/Portal-Datensatz.
+- Offen bleibt nur noch der Poco-/Android-Lese-/Apply-Pfad, bei dem der 26.09-BTB kurz erscheint und danach lokal verschwindet.
+
+## BTB-SYNC-001 Source-Diagnose – Active-Pointer wird lokal wieder gelöst
+- Quellpfad isoliert:
+  - `CollabLocalBridge.applyServerStateToLocal()` setzt bei `serverActive=true` den lokalen Active-Pointer korrekt.
+  - `BtbModernLifecycleInstaller` fragt über `BtbUiSaveBridge.aktuell()` ungefähr alle 600 ms den aktiven BTB ab.
+  - `BtbActiveContext.laden()` kann danach den gerade gesetzten Pointer wieder löschen, wenn `BtbDokumentVersionierung.status(...)=ABGESCHLOSSEN` ergibt.
+  - Dieser lokale Dokumentstatus wird dort derzeit geprüft, **ohne einen bereits bestätigten `BtbServerStateStore.active=true` als Vorrang zu behandeln**.
+- Das passt exakt zum Praxisbild: 26.09 erscheint kurz, nach etwa einer Sekunde „kein BTB vorhanden“.
+- Serververtrag ist bereits kanonisch: solange Server-`active_btb_id` auf den BTB zeigt und Teilnehmer `WORKING` ist, darf ein lokaler/staler Abschlusszustand den Active-Pointer nicht lösen.

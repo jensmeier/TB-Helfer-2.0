@@ -53,3 +53,12 @@ Jetzt prüfen, ob Android tatsächlich eine kleine Sync-Version hochlädt, Serve
 
 ### Priorität
 Implementierung nach `NET-001`, Hauptgerät↔Server/Portal-E2E und HELPER/Poco-E2E gemäß `E2E-PRIO-001`.
+
+## BTB Active-Pointer Vorrangregel
+Für servergebundene BTBs gilt verbindlich:
+- `teams.active_btb_id == btb.id` ist der kanonische Team-Aktivzustand.
+- Android übernimmt diesen Zustand als lokalen Active-Pointer.
+- Solange der Server-Snapshot für denselben BTB `active=true` meldet, darf Android den Active-Pointer **nicht** allein wegen lokaler Abschluss-/PDF-/Baseline-Metadaten lösen.
+- Ein HELPER mit Teilnehmerstatus `WORKING` bleibt im aktiven BTB.
+- Pointer lösen erst bei kanonischem Serverzustand `FINALIZED` + nicht aktiv bzw. bei explizitem zulässigem Lifecycle-Übergang.
+- Lokale/stale Abschlussartefakte dürfen den Server-Lifecycle nicht überstimmen.

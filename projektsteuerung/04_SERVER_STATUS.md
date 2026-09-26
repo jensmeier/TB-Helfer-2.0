@@ -48,3 +48,46 @@ Status: **SERVER-RENDITIONS VORHANDEN / ANDROID-NUTZUNG FEHLT**
 - Dateiliste und Metadaten liefern Rendition-URLs.
 - Für den Kernfehler ist kein Server-Ersatzumbau vorgesehen. Android soll kleine Sync-Dateien senden und mobile Renditions nutzen.
 - Migration 015/Rendition-/Metadaten-Runtime-E2E bleibt offen.
+
+## BTB-SYNC-001 Praxisfehler 26.09
+- Pixel hat neuen BTB 26.09 angelegt.
+- Portal zeigt weiterhin nur bis 25.09.
+- Poco sieht 26.09 kurz, anschließend „kein BTB vorhanden“.
+- Serverdiagnose hat Vorrang: Team-`active_btb_id`, BTB-Status/Teamzuordnung, `client_entity_key`, Versionen, Change-Feed und Team-BTB-API prüfen. Keine DB-/API-Änderung auf Verdacht.
+
+### BTB-SYNC-001 Diagnose – kein Serverfix vor Versionsgleichstand
+DB-Diagnose zeigt Pixel mit Android-App `1.3.4` und Poco mit `1.3.19`. Change-Feed enthält mehrere Updates desselben BTB bis mindestens Version 19. Server-/DB-Änderungen bleiben gesperrt, bis der Pixel auf dem aktuellen Android-Zielstand getestet wird.
+
+### Geräte-Metadaten app_version sind Aktivierungs-Snapshot
+Quellprüfung:
+- `/api/v1/device/login` schreibt `app_version` und `app_build` in `tb.devices`.
+- `current_device_user` aktualisiert bei normalen Requests nur `last_seen_at`.
+- Nach einem normalen APK-Update ohne Neuaktivierung bleibt daher die alte App-Version in `tb.devices`.
+
+Folge: `tb.devices.app_version` darf aktuell nicht als Runtime-Versionsnachweis für E2E verwendet werden. Kein Serverfix daraus ohne separaten Auftrag.
+
+### BTB-SYNC-001 – Server-Existenz bestätigt / Update-Serie
+- 26.09-BTB `ba2144b7-9ede-4f53-abdc-1accd172e875` existiert serverseitig.
+- Change-Feed zeigt in kurzer Folge Updates bis mindestens Version 19.
+- Kein Nachweis eines fehlenden Pixel-Uploads; Ursache liegt nach aktuellem Stand hinter dem Server-Eingang bzw. in Lifecycle/Read-Modell.
+- `active_btb_id`, Teamzuordnung, Status und Teilnehmerzustände müssen noch direkt für diesen BTB geprüft werden.
+
+### BTB-SYNC-001 – DB-Lifecycle bestätigt
+
+- Direkter DB-Check für BTB `ba2144b7-9ede-4f53-abdc-1accd172e875`:
+  - Baustelle: `GE Immenstadt - Kempten`
+  - Team: `pixeljens`
+  - Team-Lead: `zinkel.Jens`
+  - `teams.active_btb_id` == BTB-ID
+  - `active_date=2026-09-26`
+  - `active_status=ACTIVE`
+  - BTB selbst: `status=ACTIVE`, `version=19`
+  - Client-BTB-ID vorhanden
+  - Poco = HELPER / participant `WORKING`
+  - zinkel.Jens = LEAD / participant `WORKING`
+- Damit ist der kanonische Server-Lifecycle für den 26.09-BTB korrekt. Ursache liegt jetzt im Portal-/Android-Lese-/Anwendungspfad, nicht in fehlendem `active_btb_id` oder Teilnehmerstatus.
+
+Kein Server-DB-Fix auf Verdacht.
+
+### BTB-SYNC-001 Portal-Read bestätigt
+Portal-Neuladen zeigt den 26.09-BTB korrekt als ACTIVE und verlinkt denselben `active_btb_id`. Kein weiterer Server-/Portal-Fix aus diesem Befund.

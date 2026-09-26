@@ -46,3 +46,96 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Metadatenlücken: GPS-Genauigkeit nicht persistent; Mangel-/Abnahmefoto-Upload strukturell unvollständig.
 - Detailnachweis: `projektsteuerung/uebergaben/IMG-001_BILDTRANSPORT_AUDIT_2026-09-26.md`.
 - E2E-PRIO-001 bleibt maßgeblich: NET-001 → Hauptgerät↔Portal → HELPER/Poco → danach IMG-001-Implementierung.
+
+## NET-001 Nachtest – Browser erreichbar
+- Auf demselben Hauptgerät sind `https://www.tb-helfer.de` und `https://api-v1.tb-helfer.de/health/live` im Browser erreichbar.
+- Öffentliche DNS/API-Erreichbarkeit ist damit grundsätzlich vorhanden.
+- Der vorherige App-Fehler kann transient oder app-/prozessspezifisch gewesen sein.
+- Nächster Schritt: in der App denselben Sync mit `Neu laden` erneut auslösen und die genaue Ausgabe prüfen.
+- Keine Codeänderung auf Verdacht.
+
+## NET-001 Reproduktion – App-only DNS-Fehler
+- Browser auf demselben Hauptgerät: Portal + API-Health erreichbar.
+- App `Neu laden`: gleicher Fehler `Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
+- Damit allgemeine öffentliche DNS-/Cloudflare-Störung als alleinige Ursache ausgeschlossen.
+- Nächster Schritt: Android-Netzpfad/Serverbasis/HTTP-Client prüfen; Server/DB nicht auf Verdacht ändern.
+
+## NET-001 – Force-Stop + Mobilfunk ohne Änderung
+- App vollständig gestoppt und neu gestartet: gleicher DNS-Fehler.
+- WLAN aus, Mobilfunk aktiv: gleicher DNS-Fehler.
+- WLAN-spezifische Ursache dadurch unwahrscheinlich.
+- Nächster Schritt: Android `Privates DNS`, VPN und DNS-/Adblock-Filter prüfen.
+- Keine App-Daten löschen, keine Neuaktivierung, keine Serveränderung auf Verdacht.
+
+## Praxisnachtrag – Pixel synchronisiert, Poco Erstabgleich läuft
+- Pixel hat inzwischen wieder mit dem NAS synchronisiert.
+- Frühere App-DNS-Störung daher aktuell kein dauerhafter Blocker; Ursache weiterhin unbekannt.
+- Poco-App gelöscht, neu installiert und neu aktiviert.
+- Poco-Erstabgleich läuft nach >3 Minuten weiter.
+- Nächster Schritt: anhand Android-Quellpfad klären, was beim Erstabgleich alles geladen wird und welche Phase die lange Laufzeit verursacht; keine weiteren Resets auf Verdacht.
+
+## BTB-SYNC-001 – 26.09 fehlt/verschwindet
+- Poco-Erstabgleich abgeschlossen; Baustelle herunterladen erfolgreich.
+- Pixel: neuer BTB 26.09 angelegt.
+- Portal: zeigt weiterhin BTBs 23./24./25.09, 26.09 fehlt.
+- Poco: 26.09 erscheint kurz, dann „kein BTB vorhanden“.
+- Nächster Schritt: zuerst Serverzustand/DB/API/Change-Feed prüfen, danach Android-Snapshot/Active-Pointer. Keine Änderung auf Verdacht.
+
+## BTB-SYNC-001 Diagnose – Pixel 1.3.4 vs Poco 1.3.19
+- Server-Geräteabfrage zeigt:
+  - Pixel / zinkel.jens: TB-Helfer 1.3.4
+  - Poco / poco: TB-Helfer 1.3.19
+- Change-Feed zeigt für denselben BTB am 26.09 mehrere UPDATEs bis mindestens Version 19.
+- Aktueller Android-Zielstand laut Projektsteuerung: 1.3.19 / 200069.
+- Nächster Schritt: Pixel-Version angleichen bzw. 200069-Installation nachweisen; erst danach BTB-SYNC-001 erneut testen.
+
+## Korrektur – Pixel-Version
+- Benutzer bestätigt Pixel ebenfalls auf TB-Helfer 1.3.19.
+- Serverwert 1.3.4 ist stale: `app_version/app_build` werden nur bei Geräteaktivierung geschrieben; normale Requests aktualisieren nur `last_seen_at`.
+- Vorherige Schlussfolgerung „gemischte Android-Versionen“ verworfen.
+- BTB-SYNC-001 weiter diagnostizieren: 26.09-BTB + Team-`active_btb_id` + API-Snapshot.
+
+## BTB-SYNC-001 – Servereingang 26.09 bestätigt
+- BTB-ID: `ba2144b7-9ede-4f53-abdc-1accd172e875`
+- work_date: 2026-09-26
+- Change-Feed: wiederholte UPDATEs, sichtbar mindestens Version 7–19.
+- Pixel→Server ist damit nicht der fehlende Schritt.
+- Nächster Diagnosepunkt: Team/`active_btb_id`/Status/Teilnehmer für exakt diesen BTB, danach Portal- und Poco-Leseweg.
+
+## BTB-SYNC-001 – Server-Lifecycle korrekt
+
+- Direkter DB-Check für BTB `ba2144b7-9ede-4f53-abdc-1accd172e875`:
+  - Baustelle: `GE Immenstadt - Kempten`
+  - Team: `pixeljens`
+  - Team-Lead: `zinkel.Jens`
+  - `teams.active_btb_id` == BTB-ID
+  - `active_date=2026-09-26`
+  - `active_status=ACTIVE`
+  - BTB selbst: `status=ACTIVE`, `version=19`
+  - Client-BTB-ID vorhanden
+  - Poco = HELPER / participant `WORKING`
+  - zinkel.Jens = LEAD / participant `WORKING`
+- Damit ist der kanonische Server-Lifecycle für den 26.09-BTB korrekt. Ursache liegt jetzt im Portal-/Android-Lese-/Anwendungspfad, nicht in fehlendem `active_btb_id` oder Teilnehmerstatus.
+
+## BTB-SYNC-001 – Portal nach Reload korrekt
+- Portal zeigt nach vollständigem Reload Team `pixeljens`, aktiven BTB `ba2144b7-9ede-4f53-abdc-1accd172e875`, Status ACTIVE, Datum 26.09.
+- Pixel→Server→Portal ist für diesen BTB damit praktisch bestätigt.
+- Restfehler ist Android/Poco: BTB kurz sichtbar, danach kein aktiver BTB.
+- Nächster Schritt: Android Snapshot-/Active-Pointer-/UI-Pfad diagnostizieren.
+
+## BTB-SYNC-001 – Poco erneut reproduziert nach Portal-Bestätigung
+- Portal 26.09 ACTIVE bestätigt.
+- Poco zeigt 26.09 kurz und verliert ihn unmittelbar wieder.
+- Restursache ist damit auf Android/Poco eingegrenzt.
+- Nächster Schritt: Active-Pointer/Marker/UI-Pfad im aktuellen Android-HEAD analysieren.
+
+## BTB-SYNC-001 – Source-Ursache Active-Pointer
+- Quellpfad isoliert:
+  - `CollabLocalBridge.applyServerStateToLocal()` setzt bei `serverActive=true` den lokalen Active-Pointer korrekt.
+  - `BtbModernLifecycleInstaller` fragt über `BtbUiSaveBridge.aktuell()` ungefähr alle 600 ms den aktiven BTB ab.
+  - `BtbActiveContext.laden()` kann danach den gerade gesetzten Pointer wieder löschen, wenn `BtbDokumentVersionierung.status(...)=ABGESCHLOSSEN` ergibt.
+  - Dieser lokale Dokumentstatus wird dort derzeit geprüft, **ohne einen bereits bestätigten `BtbServerStateStore.active=true` als Vorrang zu behandeln**.
+- Das passt exakt zum Praxisbild: 26.09 erscheint kurz, nach etwa einer Sekunde „kein BTB vorhanden“.
+- Serververtrag ist bereits kanonisch: solange Server-`active_btb_id` auf den BTB zeigt und Teilnehmer `WORKING` ist, darf ein lokaler/staler Abschlusszustand den Active-Pointer nicht lösen.
+- Nächster Zuständigkeitswechsel: ANDROID muss `BtbActiveContext` korrigieren und danach Build/Install/Poco-E2E durchführen.
+- SERVER-Seite bleibt unverändert; Server-Lifecycle/Portal sind bestätigt.

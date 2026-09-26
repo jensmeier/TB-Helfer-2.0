@@ -6,10 +6,12 @@ Stand: 2026-09-26
 |---|---|---|
 | Android 1.3.19 / 200069 Build | OFFEN | Build-Wiederholung |
 | Android 200069 Installation | OFFEN | Pixel/Poco nach Build |
+| Pixel/Poco Versionsgleichstand | BENUTZER BESTÄTIGT: BEIDE 1.3.19 | Server-DB-Appversion ist Aktivierungs-Snapshot und kein Runtime-Nachweis |
 | Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200069 praktisch prüfen |
 | Haupt-TB-Handy ↔ Server/Portal | PRIORITÄT / E2E OFFEN | echte Fachkette zuerst sauber bestätigen |
-| Haupt-TB-Handy DNS/API-Erreichbarkeit | FEHLER / E2E BLOCKIERT | api-v1.tb-helfer.de Namensauflösung prüfen |
-| Poco Team-/BTB-Daten | FEHLER OFFEN | Binding/Sync/API/Logs |
+| BTB 26.09 Pixel → Server/Portal/Poco | PIXEL→SERVER→PORTAL BESTÄTIGT / POCO FEHLER OFFEN | Portal nach Reload korrekt; Poco Active-Pointer/UI-Apply prüfen |
+| Haupt-TB-Handy DNS/API-Erreichbarkeit | PIXEL SYNCHRONISIERT WIEDER / URSACHE ALTFEHLER OFFEN | Fachkette Pixel↔Server↔Portal weiterprüfen; DNS-Altfehler nur bei Wiederholung vertiefen |
+| Poco Team-/BTB-Daten | SOURCE-URSACHE EINGEGRENZT / FIX+E2E OFFEN | BtbActiveContext: Server-active muss lokalen Abschlussstatus überstimmen |
 | Helfer Schicht Ende → Server FINISHED → Pixel | E2E OFFEN | echter Geräte-/Server-Lauf |
 | Haupt-TB Finalize + PDF | TEILWEISE BESTÄTIGT | Android-Gesamtkette offen |
 | IMG-001 Handyfoto → Server | QUELLAUDIT FEHLER BESTÄTIGT / FIX SPÄTER | Nach E2E-PRIO-001 Android-Fix; dann Original- vs Sync-Dateigröße messen |
@@ -31,4 +33,7 @@ Dieser Nachweis bestätigt nur den Delta-Wait-Kapazitätsteil. 15 Teams, echte G
 Beim Hauptgerät nach Anlage einer Testbaustelle:
 `Synchronisation unvollständig: Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
 
-Bis die Namensauflösung funktioniert, ist der eigentliche Handy↔Server↔Portal-Fach-E2E noch nicht bewertbar.
+Nachtest: beide öffentlichen Seiten sind auf demselben Hauptgerät im Browser erreichbar. Öffentliche DNS/API-Erreichbarkeit ist damit nachgewiesen; der App-Sync muss jetzt erneut getestet werden.
+
+### NET-001 Browser-Nachtest
+`www.tb-helfer.de` und `api-v1.tb-helfer.de/health/live` sind auf demselben Hauptgerät im Browser erreichbar. App-Retest offen.
