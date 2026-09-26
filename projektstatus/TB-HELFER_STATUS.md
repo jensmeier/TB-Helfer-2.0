@@ -1,6 +1,6 @@
 # TB-Helfer 2.0 – dauerhafter Projektstatus
 
-**Stand:** 2026-09-23  
+**Stand:** 2026-09-26  
 **Branch:** `feature/tb-server-1.0`  
 **Draft-PR:** #6 – TB-Server 1.0 – gemeinsame Serverbasis  
 **Funktionscommit globaler Katalog / Benutzeridentität:** `511bb5c00552b5a7e54d35d930ea982cf4629598`  
@@ -159,3 +159,12 @@
 | DONE-016 | Getrennter Restore-Test des FULL-Backups praktisch bestanden | ERLEDIGT | ☑ | Nach Korrektur des Worker-Environments wurde der bestätigte FULL-Backup-Lauf am 21.09.2026 erfolgreich in der getrennten Restore-Test-Umgebung geprüft. Background Job RESTORE_TEST = DONE, Restore-Lauf = OK. | — | Server 1.0 / staging | JA | 2026-09-21 | Live-Datenbank/Live-Storage wurden nicht als Restore-Ziel verwendet. |
 | DONE-017 | Backup-Retention praktisch bestanden | ERLEDIGT | ☑ | Die manuelle Aufbewahrungsprüfung lief am 21.09.2026 über den bestehenden Background-Worker als BACKUP_RETENTION mit Versuch 1 auf DONE. Bei 30 Tagen Aufbewahrung und mindestens 3 Backups je Art wurden die jungen Backups erwartungsgemäß nicht entfernt. | — | Server 1.0 / staging | JA | 2026-09-21 | Retention-Pfad bestätigt; gezielter Purge alter Testbackups erst sinnvoll, wenn ausreichend alte Artefakte vorhanden sind. |
 | DONE-018 | Restore-to-Target praktisch bestanden / Recovery vollständig abgenommen | ERLEDIGT | ☑ | Der bestätigte FULL-Lauf wurde erfolgreich in die getrennte Target-DB und Target-Ablage wiederhergestellt. CLI OK, RESTORE_TARGET status OK, 10 Migrationen/latest 10/5 Kerntabellen, 2 Dateien/34.267.460 Byte. | — | Server 1.0 / Recovery E2E | JA | 2026-09-21 | FULL + Restore-Test + Retention + Restore-to-Target vollständig bestätigt. |
+
+
+## Integrationsnachtrag 26.09.2026 – Android 200069
+
+- SERVER vor Nachtrag: `6cf1e49ea1892cefea86d675c256a8212d0067e3`; ANDROID aktuell: `2ca5aa0884450c78e06111e5a1c444c10d74d8ab` (**1.3.19 / 200069**).
+- Androids neue Lifecycle-/Delta-Gates wurden gegen den aktuellen SERVER-Quellvertrag geprüft. Alle benötigten BTB-/Delta-Capabilities einschließlich `sync_change_wait_v1` sind vorhanden; der Long-Poll-Endpunkt `/api/v1/sync/changes/wait` existiert.
+- Ergebnis: **keine neue Server-API-/DB-Anpassung erforderlich**. Historische serverseitig finalisierte BTBs bleiben geschützt/read-only; mobile Lifecycle-/Read-only-Anpassungen liegen im ANDROID-Branch.
+- Teststatus bleibt: **QUELLVERTRAG KOMPATIBEL / SYNOLGY-INTEGRATIONSDEPLOY + GEMEINSAMER E2E OFFEN**.
+- `STATUS.xlsx` nicht geändert, weil SERVER- und ANDROID-Workbook weiterhin unterschiedliche Blobs besitzen; kein blindes Überschreiben.
