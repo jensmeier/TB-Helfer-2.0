@@ -349,3 +349,21 @@ Neuer Android-Build nach dem Fix: **1.3.23 / 200073**.
 - Status bleibt **QUELLSTAND FERTIG / DEPLOY OFFEN / E2E OFFEN**.
 - Dass auf dem aktuell laufenden NAS noch F5 nötig ist, wird nicht durch einen weiteren Android-Fix behoben.
 - ANDROID ändert dafür keine `server/**`-Datei.
+
+
+### BTB-SYNC-002 Android-Umsetzung 1.3.23
+Status: **SOURCE-FIX UMGESETZT / BUILD OFFEN**
+
+Umgesetzt auf `feature/tb-android-2.0`:
+- `SelectiveSyncWorker` wendet für einen dirty BTB keinen Server-Snapshot mehr vor dem lokalen Export an.
+- Lokaler BTB wird zuerst mit `exportBtbChange(...)` in Pending/Outbox gesichert.
+- Serverversion und Konflikte werden danach im bestehenden `synchronizeServer1BtbPending(...)` / `Server1BtbApi.applyPending(...)`-Pfad geprüft.
+- Erst nach konfliktfrei bestätigtem Upload wird der bestätigte Server-Snapshot lokal angewendet.
+- `CollabLocalBridge.applyServerStateToLocal()` überspringt BTB-Datei-Apply bei Pending **oder Dirty**.
+- Lokaler BTB-Save und Server-Apply sind pro BTB über einen Mutationslock serialisiert.
+- `SelectiveSyncStore` schützt Dirty-Generation; ein während des Uploads neu entstandener Autosave bleibt erhalten und erzwingt einen weiteren Worker-Lauf.
+- Keine `server/**`-Datei geändert.
+
+Quellstand nach Fachfix/Versionierung: `3038d5107bac8cf53cb59b55353628d95653932a` plus Release-MD-Stand im selben Branch.
+Zielbuild: **1.3.23 / 200073**.
+Build, Installation und Pixel↔Portal-/Poco-E2E bleiben offen.
