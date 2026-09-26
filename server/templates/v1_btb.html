@@ -793,6 +793,43 @@ function renderWorkGrouped(list,firms,legacyLines){
 function renderSimple(list,section,firms){
   return renderContentGrouped(section,list,firms,[]);
 }
+function emptySectionText(){
+  return '<div class="btb-empty">Keine Einträge.</div>';
+}
+function renderEntries(){
+  const firms=firmDirectory(), groups={};
+  entries.forEach(function(e){
+    const key=String(e.section||'ALLGEMEIN').trim().toUpperCase();
+    if(key==='FIRMA')return;
+    if(!groups[key])groups[key]=[];
+    groups[key].push(e);
+  });
+
+  const personal=groups.PERSONAL||[], devices=groups.GERAET||[];
+  const personalStructured=personal.filter(x=>firmIdOf(x));
+  const deviceStructured=devices.filter(x=>firmIdOf(x));
+  const personalShown=personal.filter(e=>!isLegacyDuplicate(e,'PERSONAL',personalStructured,firms));
+  const deviceShown=devices.filter(e=>!isLegacyDuplicate(e,'GERAET',deviceStructured,firms));
+  const personalHtml=renderFirmGrouped('PERSONAL',personalShown,firms);
+  const deviceHtml=renderFirmGrouped('GERAET',deviceShown,firms);
+  document.getElementById('personalEntries').innerHTML=personalHtml||emptySectionText();
+  document.getElementById('deviceEntries').innerHTML=deviceHtml||emptySectionText();
+
+  const legacyWork=legacyWorkLines([...(groups.NOTIZEN||[]),...(groups.ALLGEMEIN||[])]);
+  const target=document.getElementById('entries');
+  const main=ALWAYS_OPEN_SECTIONS.map(function(key){
+    const list=(groups[key]||[]).slice(), info=sectionInfo(key);
+    let body='';
+    if(key==='ARBEIT')body=renderWorkGrouped(list,firms,legacyWork);
+    else body=renderSimple(list,key,firms);
+    if(!body)body=emptySectionText();
+    return '<section class="btb-section"><div class="btb-section-head"><h3>'+esc(info.title)+'</h3>'+
+      '<div class="btb-section-actions">'+sectionAddButton(key)+'</div></div>'+
+      '<div class="btb-section-body">'+body+'</div></section>';
+  }).join('');
+
+  target.innerHTML=main;
+}
 function editorField(id,label,value,type,wide){
   const cls=wide?' class="wide"':'';
   if(type==='textarea'){
