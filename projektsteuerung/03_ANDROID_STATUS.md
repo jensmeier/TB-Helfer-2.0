@@ -120,3 +120,11 @@ Status: **SOURCE-URSACHE EINGEGRENZT / FIX AUFTRAG**
 - Updatecheck basiert auf dem lokalen `BuildConfig.VERSION_CODE`.
 - Fehlerschutz fehlt: APK-Inhalt wird vor dem Installer nicht gegen Release-`versionName/buildNumber` validiert.
 - Android-Schutzfix wird in **1.3.21 / 200071** umgesetzt.
+
+
+## UPD-001 – Schutzfix committed
+Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
+- Commit: `19d688a4752c98209570e0ff69ccd2eae789541e`.
+- `AppUpdateManager` blockiert APKs mit falscher Package-ID oder abweichendem `versionName/versionCode`.
+- Zielbuild: **1.3.21 / 200071**.
+- Build/Installation/E2E noch nicht bestätigt.

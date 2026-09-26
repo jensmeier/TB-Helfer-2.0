@@ -59,3 +59,10 @@ Nachtest: beide öffentlichen Seiten sind auf demselben Hauptgerät im Browser e
 - Keine relevante Cacheursache im geprüften Pfad.
 - APK-Metadaten werden weder beim Serverupload noch im Android-Installerpfad gegen Releasefelder validiert.
 - Nächster Build für Schutzfix: 1.3.21 / 200071.
+
+
+### UPD-001 Source-Fix 1.3.21 / 200071
+- APK-Metadatenvalidierung source-seitig umgesetzt.
+- Noch kein Buildnachweis.
+- E2E-Erwartung: nach erfolgreicher 200071-Installation zeigt Wartung 1.3.21 (200071), Startseiten-Updatehinweis verschwindet.
+- Negativtest: absichtlich falsche/alte APK unter 200071-Metadaten muss vor Installer blockiert werden.

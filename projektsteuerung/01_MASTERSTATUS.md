@@ -181,3 +181,13 @@ Quellprüfung:
 Damit kann eine alte APK unter einem neuen Release-Metadatensatz veröffentlicht werden und anschließend in einer Update-Schleife landen.
 
 Nächster auslieferbarer Schutzfix: **1.3.21 / 200071**.
+
+
+### UPD-001 Android-Schutzfix committed
+- Codecommit: `19d688a4752c98209570e0ff69ccd2eae789541e`.
+- Neuer Zielstand: **1.3.21 / 200071**.
+- Android liest die heruntergeladene APK jetzt vor Installation mit `PackageManager.getPackageArchiveInfo()`.
+- Geprüft werden Package-ID, `versionName` und `versionCode` gegen den Server-Releaseeintrag.
+- Bei Abweichung wird die APK gelöscht und der Installer nicht gestartet.
+- Damit kann ein versehentlich unter falschen Release-Metadaten hochgeladenes altes APK nicht mehr unbemerkt in eine Update-Schleife führen.
+- Build/Installation/Update-E2E bleiben offen.

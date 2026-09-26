@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| UPD-001 | P0 | ANDROID | Update-Release kann Metadaten/APK-Version mismatchen; Gerät bleibt 1.3.19 und bekommt Update erneut angeboten | APK vor Installation gegen Package/versionName/versionCode validieren; 1.3.21/200071 |
+| UPD-001 | P0 | ANDROID | APK-Metadatenvalidierung source-seitig umgesetzt | Build 200071 → korrekte APK hochladen → Update-E2E + Negativtest |
 | REL-001 | P0 | ANDROID | 200070 wurde bereits für Updateversuch verwendet | nächster Build 1.3.21 / 200071; weitere Builds strikt hochzählen |
 | DEV-META-001 | P2 | SERVER | `tb.devices.app_version/app_build` bleiben nach App-Update ohne Neuaktivierung auf altem Aktivierungsstand | später Runtime-Metadaten-Updatevertrag definieren; kein Blocker für BTB-SYNC-001 |
 | BTB-SYNC-001 | P0 | ANDROID | Source-Fix committed: Server-active hat in BtbActiveContext Vorrang | Build 200070 → Pixel/Poco installieren → BTB 26.09 E2E |

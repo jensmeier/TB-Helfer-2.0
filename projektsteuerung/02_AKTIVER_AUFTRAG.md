@@ -246,3 +246,13 @@ Android-Auftrag:
 5. nächster Build **1.3.21 / 200071**.
 
 Serverbedarf separat dokumentiert: auch der Release-Upload sollte künftig APK-Metadaten gegen Draft-Felder validieren. Keine `server/**`-Änderung im Android-Projekt.
+
+
+### UPD-001 Android-Fix umgesetzt
+- Commit `19d688a4752c98209570e0ff69ccd2eae789541e`.
+- `AppUpdateManager.downloadApk()` validiert nach SHA/Größe zusätzlich die interne APK-Metadaten.
+- Package muss `de.tbhelfer` entsprechen.
+- APK-`versionName/versionCode` müssen exakt dem Release entsprechen.
+- Bei Mismatch: Datei löschen, verständliche Fehlermeldung, kein Installerstart.
+- Version auf **1.3.21 / 200071** angehoben.
+- Nächster Schritt: frisch bauen, exakt diese APK im Portal zu 1.3.21/200071 hochladen und Update-E2E durchführen.

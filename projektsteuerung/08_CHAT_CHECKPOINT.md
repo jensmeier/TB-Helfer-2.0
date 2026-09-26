@@ -184,3 +184,12 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Android prüft aktuell nur SHA-256 und Dateigröße.
 - Schutzfix: APK-Package + eingebettete Version/Build vor Installer validieren.
 - 200070 ist bereits benutzt; nächster auslieferbarer Build: **1.3.21 / 200071**.
+
+
+## UPD-001 – Android-Schutzfix
+- Commit `19d688a4752c98209570e0ff69ccd2eae789541e`.
+- Version **1.3.21 / 200071**.
+- heruntergeladene APK wird vor Installer auf Package-ID + eingebettete Version/Build geprüft.
+- falsches/altes APK wird verworfen statt installiert.
+- Server-Releaseverwaltung sollte denselben Abgleich später zusätzlich serverseitig erzwingen; kein Servercode in diesem Android-Block geändert.
+- Build/Installation/Update-E2E offen.
