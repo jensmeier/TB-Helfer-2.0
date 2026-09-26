@@ -79,7 +79,7 @@ object SelectiveSyncStore {
      * denselben BTB. Dadurch kann zwischen Dirty-Prüfung und Dateischreibzugriff kein Autosave
      * unbemerkt dazwischenlaufen und anschließend vom Serverstand überschrieben werden.
      */
-    inline fun <T> withBtbMutationLock(
+    fun <T> withBtbMutationLock(
         localBaustelleId: Long,
         clientBtbId: String,
         block: () -> T
