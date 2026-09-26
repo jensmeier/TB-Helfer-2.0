@@ -4,12 +4,12 @@ Stand: 2026-09-26
 
 | Bereich | Status | Nächster Test |
 |---|---|---|
-| Android 1.3.24 / 200074 Build | SOURCE-CHECK PASST / BUILD OFFEN | Android Studio/CI Build 200074 |
-| Android 1.3.24 / 200074 Installation | OFFEN | Pixel nach Build |
+| Android 1.3.24 / 200074 Build | ERFOLGREICH / PRAXIS NACHGEWIESEN | installiert auf Pixel |
+| Android 1.3.24 / 200074 Installation | PIXEL BESTÄTIGT | Poco/HELPER separat |
 | BTB-UI-001 Abschlussleiste | SOURCE-FIX UMGESETZT / BUILD OFFEN | 1.3.24/200074 bauen/installieren; Haupt-TB 2 Buttons stabil prüfen |
 | Android 1.3.23 / 200073 Build | SOURCE-FIX UMGESETZT / BUILD OFFEN | Android Studio/CI Build 200073 |
 | Android 1.3.23 / 200073 Installation | OFFEN | zuerst Pixel, danach Poco |
-| BTB-SYNC-002 Pixel→Portal Datenverlust | SOURCE-URSACHE BESTÄTIGT / ANDROID-FIX UMGESETZT / E2E OFFEN | Pixel ABC → Portal ABC; Parallel-Autosave schützen |
+| BTB-SYNC-002 Pixel↔Portal Datenverlust | BESTÄTIGT | Bidirektional + Parallel-Autosave bestanden; geschützt |
 | Android 1.3.21 / 200071 Build | VERSION + SOURCE-FIX FERTIG / BUILD OFFEN | Android Studio Build 200070 |
 | Android 1.3.22 / 200072 Build | SOURCE-CHECK PASST / BUILD OFFEN | Android Studio Build 200072 |
 | Android 1.3.22 / 200072 Installation | OFFEN | Pixel + Poco nach Build |
@@ -120,3 +120,11 @@ Damit ist der normale bidirektionale Datenweg des BTB-SYNC-002-Fixes praktisch b
 - PDF Entwurf + BTB Abschluss bleiben stabil sichtbar.
 - Pixel-UI-E2E: **BESTÄTIGT**.
 - Poco/HELPER: **OFFEN**.
+
+
+### BTB-SYNC-002 Abschluss-E2E
+- Pixel → Portal: **BESTANDEN**.
+- Portal → Pixel: **BESTANDEN**.
+- Parallel-Autosave-/Dirty-Schutz: **BESTANDEN**.
+- Gesamtstatus BTB-SYNC-002: **BESTÄTIGT**.
+- Nächster E2E: Poco/HELPER.

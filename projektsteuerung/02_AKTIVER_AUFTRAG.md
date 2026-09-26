@@ -404,3 +404,14 @@ Status: **SOURCE-FIX FERTIG / BUILD OFFEN**
 - Benutzer bestätigt 1.3.24 / 200074 auf dem Pixel: kein Springen mehr.
 - Haupt-TB-Ansicht mit PDF Entwurf + BTB Abschluss ist praktisch bestätigt.
 - Nächster Gerätepunkt: Poco/HELPER-E2E.
+
+
+### BTB-SYNC-002 Praxis vollständig bestätigt
+- Benutzer bestätigt den Pflichttest vollständig:
+  - lokale Pixeländerung wird zum Portal übertragen;
+  - Portaländerung kommt zum Pixel zurück;
+  - erneute Pixeländerung während laufendem Upload bleibt erhalten.
+- BTB-SYNC-002: **BESTÄTIGT**.
+- Der P0-Datenverlustpfad ist damit geschlossen und geschützt.
+- Nächster Arbeitsblock: Poco wieder regulär als HELPER in den aktiven Team-/BTB-Kontext nehmen und HELPER-E2E prüfen.
+- Keine App-Daten löschen, keine Neuaktivierung und kein NAS-Umbau auf Verdacht.

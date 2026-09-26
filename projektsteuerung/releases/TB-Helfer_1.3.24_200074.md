@@ -52,3 +52,14 @@ NÄCHSTER TEST:
 PRAXISBESTÄTIGUNG:
 - Pixel-Haupt-TB: PDF Entwurf + BTB Abschluss bleiben stabil sichtbar.
 - Kein Springen mehr.
+
+
+BTB-SYNC-002 PRAXISBESTÄTIGUNG:
+- Pixel → Portal: BESTANDEN.
+- Portal → Pixel: BESTANDEN.
+- Parallel-Autosave-/Dirty-Schutz während laufendem Upload: BESTANDEN.
+- Kein stiller Verlust einer neueren lokalen Pixeländerung.
+- BTB-SYNC-002: BESTÄTIGT / geschützt.
+
+NÄCHSTER GERÄTETEST:
+- Poco/HELPER-E2E separat durchführen.

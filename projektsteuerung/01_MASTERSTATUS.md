@@ -299,3 +299,18 @@ Status: **BESTÄTIGT**
 - Pixel-Haupt-TB zeigt stabil PDF Entwurf + BTB Abschluss.
 - Kein Springen mehr zwischen Ein- und Zwei-Button-Zustand.
 - Poco/HELPER-E2E bleibt separat offen.
+
+
+## BTB-SYNC-002 vollständig bestätigt
+Status: **BESTÄTIGT / GESCHÜTZT**
+
+Praxis auf Pixel mit aktuellem 1.3.24 / 200074:
+- Pixel → Portal: **BESTANDEN**.
+- Portal → Pixel: **BESTANDEN**.
+- Parallel-Autosave-/Conflict-Schutz während laufendem Upload: **BESTANDEN**.
+- Der zuletzt lokal gespeicherte Pixel-Stand ging nicht verloren.
+- Ein bestätigter älterer Server-Snapshot hat keinen neueren lokalen Dirty-Stand überschrieben.
+- Damit ist der P0-Datenverlustfehler BTB-SYNC-002 praktisch vollständig bestätigt.
+
+BTB-SYNC-002 ohne neuen reproduzierbaren Fehler nicht erneut ändern.
+Nächster Geräte-E2E: **Poco/HELPER**.

@@ -294,3 +294,12 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Haupt-TB zeigt stabil PDF Entwurf + BTB Abschluss.
 - Punkt geschützt: nur bei neuem reproduzierbaren Fehler wieder öffnen.
 - Poco/HELPER-E2E bleibt offen.
+
+
+## BTB-SYNC-002 – vollständig bestätigt
+- Benutzer bestätigt auch den zuvor noch offenen Parallel-Autosave-/Conflict-Test.
+- Pixel → Portal: BESTANDEN.
+- Portal → Pixel: BESTANDEN.
+- neuerer lokaler Pixel-Stand während laufendem Upload bleibt erhalten: BESTANDEN.
+- BTB-SYNC-002 ist damit **BESTÄTIGT** und geschützt.
+- Nächster Geräteblock: Poco/HELPER-E2E.

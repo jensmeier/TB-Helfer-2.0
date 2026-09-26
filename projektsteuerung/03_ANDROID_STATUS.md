@@ -246,3 +246,14 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD OFFEN**
 - Benutzer bestätigt: kein Springen mehr.
 - Pixel-UI-E2E: BESTÄTIGT.
 - Poco/HELPER-E2E bleibt offen.
+
+
+## BTB-SYNC-002 – Praxis vollständig bestätigt
+Status: **BESTÄTIGT**
+
+- Pixel ↔ Portal Basissync: **BESTANDEN**.
+- Parallel-Autosave während laufendem Upload: **BESTANDEN**.
+- Neuere lokale Dirty-Änderung wird nicht durch älteren bestätigten Server-Snapshot verloren.
+- Outbox-/Dirty-/Mutationslock-Fix ist praktisch bestätigt.
+- Geschützt: nicht ohne neuen reproduzierbaren Fehler ändern.
+- Nächster Android-Gerätepunkt: Poco/HELPER-E2E.
