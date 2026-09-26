@@ -237,5 +237,5 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
   - Live-SSE unverändert.
 - Quellprüfung 94–100 + Portal-JS-Syntax: PASS.
 - Deploy/Migration016/E2E noch offen.
-- Android parallel weiter: HEAD `da0806fe29f34363247463bc4fb599778ee42a53`; Entry-/Node-Modell in Umsetzung, Foto-Pfad noch offen.
+- Android parallel weiter: HEAD `623704990072c7006e6a48e611441d7aa08b989e`; Entry-/Node-Modell in Umsetzung, Foto-Pfad noch offen.
 - Nächster Server-Schritt nach Android-Kompatibilitätsstand: Synology deployen, Migration016 prüfen, dann gemeinsamer E2E.
