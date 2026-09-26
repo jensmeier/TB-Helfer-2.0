@@ -189,3 +189,10 @@ Status: **UPLOAD BESTÄTIGT / MIGRATION OFFEN**
 - Staging-Compose bindet `tbserver/`, `templates/` und `v1_migrations/` read-only direkt vom NAS ein.
 - Deshalb ist kein Image-Rebuild wegen dieser Python-/Template-/SQL-Dateien erforderlich.
 - Vor API-/Worker-Runtime mit dem neuen Schema muss der einmalige `migrate`-Service Migration 016 erfolgreich ausführen.
+
+
+## BTB-EDIT-001 – Migrationsrunner erfolgreich, 016 noch zu verifizieren
+- API-Terminal: `python -m tbserver.migrations up` → `OK`.
+- Keine sichtbare `APPLIED 016_...`-Zeile.
+- Daher noch **nicht** als „Migration 016 bestätigt“ werten.
+- Nächster Nachweis: `python -m tbserver.migrations status`; erwartet werden `pending: []`, `latest_known: 16`, `latest_applied: 16`.
