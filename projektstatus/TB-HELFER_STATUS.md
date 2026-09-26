@@ -156,3 +156,16 @@
 - Version bleibt **1.3.19 / 200069**.
 - Status: **QUELLKORREKTUR FERTIG / COMMITTED / BUILD-WIEDERHOLUNG OFFEN / INSTALLATION OFFEN / E2E OFFEN**.
 - `STATUS.xlsx` nicht geändert, weil Android- und Server-Workbook unterschiedliche Blobs besitzen (`f73ead35113257bc382e77187a4ca817fe2f9767` vs. `a56c44ccbd85ebe1499a27c4777bc77409eb9479`). Kein blindes Überschreiben; SERVER-Projekt konsolidiert Excel.
+
+
+## Integrationsnachtrag 26.09.2026 – Pixel-Abschlussbutton flackert / Poco ohne Daten
+
+- Serverrollen praktisch geprüft: Pixel = verantwortlicher TB/LEAD, Poco = HELPER im selben Team.
+- Pixel-Fehler reproduzierbar: geöffneter BTB wechselt sichtbar zwischen `BTB Abschluss` und PDF-Anzeige.
+- Ursache im Android-Quellstand: Bei vorhandenem Server-State für den Haupt-TB wurde im ACTIVE-Zustand dennoch der lokale `BtbDokumentVersionierung.status(...)` für die Buttonsichtbarkeit verwendet. Damit konnte ein lokaler/staler PDF-Zustand gegen den kanonischen Server-Lifecycle arbeiten.
+- Behoben in `19e07feee5b2accea9dcacf0348afb759f8f2dd3`: servergebundener Haupt-TB verwendet für die sichtbare Abschlussaktion den Server-Lifecycle. ACTIVE → `BTB Abschluss`; FINALIZED + nicht aktiv → read-only/PDF gemäß Serverrecht. Legacy/lokal ohne Server-State behält die lokale Dokumentstatuslogik.
+- Keine Serverdatei geändert; Serververtrag 25.09. bleibt unverändert.
+- Release-MD `releases/TB-Helfer_1.3.19_200069.md` zum Buildpaket ergänzt.
+- Poco-Problem bleibt bewusst separat: trotz korrekter HELPER-/Teamzuordnung und ausgeführtem `Neu laden` kommen keine Daten auf dem Poco an. Nächster Diagnoseblock: Worksite-Kontext → lokale Binding-Zuordnung → Server-Snapshot → `applyServerStateToLocal()` auf dem Poco prüfen; keine Neuaktivierung/Neuanlage auf Verdacht.
+- Status: **PIXEL SOURCE-FIX FERTIG / BUILD OFFEN / INSTALLATION OFFEN / PIXEL-PRAXISTEST OFFEN / POCO-SYNC-FEHLER OFFEN / GESAMT-E2E OFFEN**.
+- `STATUS.xlsx` nicht überschrieben (Android `f73ead35113257bc382e77187a4ca817fe2f9767`, Server `a56c44ccbd85ebe1499a27c4777bc77409eb9479`).
