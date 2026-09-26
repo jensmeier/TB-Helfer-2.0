@@ -257,3 +257,34 @@ Status: **BESTÄTIGT**
 - Outbox-/Dirty-/Mutationslock-Fix ist praktisch bestätigt.
 - Geschützt: nicht ohne neuen reproduzierbaren Fehler ändern.
 - Nächster Android-Gerätepunkt: Poco/HELPER-E2E.
+
+
+## BTB-EDIT-001 – Android-Audit und Zielmodell
+Status: **DIAGNOSE ABGESCHLOSSEN / IMPLEMENTIERUNG OFFEN**
+
+Quellbefunde:
+- `SectionItem`: nur Zeit/Text/KM.
+- `BautagebuchFragment`: technische `@ORT=<Long>`-Marker; `buildEntry()` entfernt sie bei Punkt 4–8.
+- Firmenpräfix ist nicht strukturiert im Entry-Modell.
+- `BtbPhotoContextOverrideStore`: lokale `ortId`, keine stabile Node-Referenz.
+- `WorksiteStructureSync` / `SyncWorksiteNodeBindingEntity`: stabile `clientNodeKey`-Infrastruktur bereits vorhanden.
+- `BtbEntrySlotStore`: stabile Server-Slots vorhanden, aber nur parallel zur lokalen Arrayposition.
+
+Android-Ziel:
+- Entry: `clientEntryKey`, `firmaId/firmaName`, `worksiteNodeKey`, Zeit, KM, Text; Punkt 4–8 über Zielsektion.
+- Foto-Override/Sync: `worksiteNodeKey` zusätzlich/anstatt lokaler `ortId` als kanonische Referenz.
+- bestehende IDs bleiben beim Umhängen erhalten.
+- alter Local-ID-Pfad wird migriert, nicht als Mehrgerätevertrag weitergeführt.
+
+Serververtrag jetzt source-seitig vorhanden: `cd9b18fc062a7a3d4354c611a949ed3d8408d709`.
+
+## PORTAL-WEATHER-001 – Android-Diagnose 26.09.2026
+Status: **TEILURSACHE BESTÄTIGT / tempC-VERLUST NOCH NICHT ANDROID-SEITIG NACHGEWIESEN**
+
+- Androids `BautagebuchSpeicher` serialisiert `weatherSlots[].tempC` und `niederschlagMm`.
+- `Server1BtbApi.HEADER_META_KEYS` enthält `weather` und `weatherSlots`; diese Daten sind damit grundsätzlich Teil des Android→Server-Headers.
+- Open-Meteo liefert Temperatur und Niederschlag als echte Zahlen; Android rundet `tempC` und setzt es in `WetterSlot`.
+- Für bekannten Niederschlag **0.0 mm** existiert jedoch ein konkreter Android-Fehler: Auto-Wetter verwendet `h.precipMm.takeIf { it > 0.0 }`. Dadurch wird genau 0.0 zu `null`.
+- Fachregel: Bei erfolgreicher Wetterquelle muss 0.0 als **0.0 mm** erhalten bleiben.
+- Dass `tempC` im aktuellen Portal-BTB fehlt, ist nach dem Quellaudit noch nicht als Android-Serialisierungsfehler belegt; hierfür muss der konkrete Server-Header-/Runtime-Payload mit Android-Ausgabe verglichen werden.
+- Wetterfix bleibt getrennt von BTB-EDIT-001.

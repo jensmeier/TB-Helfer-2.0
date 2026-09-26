@@ -463,3 +463,20 @@ Servergrenze:
 Separat und nicht mit BTB-EDIT vermischen:
 - `PORTAL-WEATHER-001`: prüfen, warum `tempC` im aktuellen Portal-BTB fehlt;
 - fachlich eindeutiger „kein Niederschlag“-Wert bleibt **0 mm** und darf nicht zu `null` werden.
+
+
+### BTB-EDIT-001 Diagnose abgeschlossen / Serververtrag jetzt vorhanden
+- Android-Istmodell vollständig geprüft.
+- Kritische Lücke: `@ORT=<lokale ID>` wird in allen Punkten 4–8 vor dem strukturierten `SectionItem` entfernt; stabile Node-Zuordnung fehlt im lokalen Modell.
+- `SectionItem` bekommt als Zielmodell `clientEntryKey`, `firmaId/firmaName`, `worksiteNodeKey` zusätzlich zu Zeit/KM/Text.
+- Server-HEAD `cd9b18fc062a7a3d4354c611a949ed3d8408d709` enthält inzwischen Entry-`section`-PATCH und versionierten BTB-Foto-Metadaten-PATCH.
+- Der zuvor dokumentierte „Serververtrag noch offen“-Stand ist damit überholt. Kein Delete/Create-Workaround nötig.
+- Android-Implementierung darf jetzt auf Identitätserhalt + stabile Node-Keys ausgerichtet werden.
+- FINALIZED bleibt read-only; BTB-SYNC-002 bleibt geschützt.
+
+
+### PORTAL-WEATHER-001 Android-Teilbefund
+- Android serialisiert `tempC` grundsätzlich bis in `weatherSlots`/Header-Meta.
+- konkrete Android-Teilursache für Niederschlag gefunden: `0.0` wird durch `takeIf { it > 0.0 }` zu `null`.
+- 0-mm-Erhalt wird in einem separaten Wetter-Fix korrigiert.
+- tempC-Fehlstelle erst mit konkretem Runtime-Payload weiter eingrenzen; nicht mit BTB-EDIT vermischen.

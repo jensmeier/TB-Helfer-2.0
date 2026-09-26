@@ -303,3 +303,20 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - neuerer lokaler Pixel-Stand während laufendem Upload bleibt erhalten: BESTANDEN.
 - BTB-SYNC-002 ist damit **BESTÄTIGT** und geschützt.
 - Nächster Geräteblock: Poco/HELPER-E2E.
+
+
+## BTB-EDIT-001 – Diagnosecheckpoint
+- Anforderung vor Implementierung in Projektsteuerung gesichert: `fb790f782e9097314d6c5f41d75c10c3bdbb1c6b`.
+- Quellaudit bestätigt: `@ORT=<Long>`/Foto-`ortId` sind lokale Identitäten; Punkt 4–8 verlieren den Ort beim aktuellen `SectionItem`-Build.
+- stabiles Worksite-Node-Binding mit `clientNodeKey` existiert bereits.
+- stabiles Entry-Slot-Konzept existiert bereits über `BtbEntrySlotStore`.
+- Android-Zielmodell festgelegt: `clientEntryKey + firmaId/firmaName + worksiteNodeKey + Zeit/KM/Text`.
+- Server-HEAD `cd9b18fc062a7a3d4354c611a949ed3d8408d709` hat den zuvor fehlenden section-PATCH und BTB-Foto-Metadaten-PATCH inzwischen implementiert.
+- Nächster Block: Android-Modell/Serializer/Server1BtbApi/Editor/Foto-Metadaten gezielt anpassen; kein Delete/Create.
+
+
+## PORTAL-WEATHER-001 – Diagnosecheckpoint
+- Android-Serializer trägt `tempC` und `niederschlagMm`.
+- konkreter Android-Bug: Auto-Wetter macht aus bekanntem `0.0 mm` ein `null`.
+- tempC-Verlust im Portal ist noch nicht source-seitig lokalisiert.
+- Wetter bleibt separater Block, nicht Teil von BTB-EDIT-001.

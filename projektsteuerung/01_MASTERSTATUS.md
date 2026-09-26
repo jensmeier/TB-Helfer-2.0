@@ -314,3 +314,43 @@ Praxis auf Pixel mit aktuellem 1.3.24 / 200074:
 
 BTB-SYNC-002 ohne neuen reproduzierbaren Fehler nicht erneut ändern.
 Nächster Geräte-E2E: **Poco/HELPER**.
+
+## BTB-EDIT-001 – Android-Istmodell-Audit 26.09.2026
+Status: **DIAGNOSE ABGESCHLOSSEN / MODELL FESTGELEGT / IMPLEMENTIERUNG NÄCHSTER SCHRITT**
+
+Bestätigte Android-Istlage:
+- `SectionItem` enthält aktuell nur `uhrzeit`, `text`, `kmVon`, `kmBis`; keine stabile Eintrags-ID, keine Firma und keine stabile Unterbaustellenreferenz.
+- Punkt 4–8 werden lokal als getrennte Listen `arbeiten`, `abnahmen`, `einweisungUnterweisung`, `besonderheiten`, `maengelSchaeden` gespeichert.
+- Der aktuelle Editor kodiert die Unterbaustelle in technischen Rohzeilen als `@ORT=<lokale Room-Long-ID>`.
+- `buildEntry()` ruft für **alle Punkte 4–8** `sectionFromMultiline(stripOrtMarkers(...))` auf. Damit geht die Unterbaustelleninformation beim Übergang in das strukturierte `SectionItem` verloren.
+- Firmenzuordnung wird im manuellen Editor überwiegend als sichtbares Präfix `Firma: Text` behandelt; sie ist im `SectionItem` nicht strukturiert.
+- `BtbPhotoContextOverrideStore` speichert aktuell `ortId: Long?` und setzt damit lokal `baustellenKnotenId`; das ist gerätespezifisch und keine dauerhafte Sync-Identität.
+- Der Worksite-Tree-Sync besitzt bereits die richtige stabile Infrastruktur: `SyncWorksiteNodeBindingEntity.clientNodeKey` mit Mapping `localKnotenId ↔ worksiteServerId ↔ clientNodeKey`.
+- Serverseitig erhalten Android-Einträge bereits stabile Slots über `BtbEntrySlotStore` / `_tb_android_slot`. Diese Identität wird aktuell aber parallel zur Arrayposition geführt und ist noch nicht Bestandteil des lokalen `SectionItem`.
+- Damit würde ein Abschnittswechsel über heutige Arrays die Identität nicht zuverlässig beibehalten.
+
+Festgelegtes Android-Zielmodell für einen BTB-Facheintrag:
+- `clientEntryKey`: stabile Eintragsidentität/Server-Slot; bleibt bei Punktwechsel erhalten;
+- Abschnitt bleibt fachlich Punkt 4–8 und wird beim Editieren als Zielabschnitt gewählt;
+- `firmaId` + `firmaName` bzw. Allgemein;
+- `worksiteNodeKey`: kanonischer stabiler Node-Key; null = Hauptbaustelle/keine Unterzuordnung;
+- `uhrzeit`, `kmVon`, `kmBis`, `text`;
+- lokale Room-`Long`-ID darf nur als UI-/Cache-Hilfe existieren, nicht als Syncfeld.
+
+Migration:
+- bestehende Servereinträge übernehmen ihren vorhandenen `_tb_android_slot` als `clientEntryKey`;
+- neue Android-Einträge erhalten einen stabilen lokalen Entry-Key und behalten ihn bei späteren Punkt-/Firmen-/Node-Änderungen;
+- alte `@ORT=<Long>`-Daten werden beim Bearbeiten/Save über das Worksite-Node-Binding auf `worksiteNodeKey` migriert; der lokale Marker bleibt höchstens Legacy-/Editorhilfe.
+
+Foto-Zielmodell:
+- bestehende Fotoidentität bleibt unverändert;
+- BTB-Fachmetadaten verwenden `worksiteNodeKey` statt lokaler `ortId` als Syncidentität;
+- lokale `ortId` darf als Cache/Legacy erhalten bleiben;
+- GPS, Aufnahmezeit und Originaldatei werden beim fachlichen Umhängen niemals verändert.
+
+Aktueller Serverstand neu geprüft:
+- Server-HEAD `cd9b18fc062a7a3d4354c611a949ed3d8408d709` implementiert inzwischen den benötigten Vertrag.
+- `PATCH /api/v1/btbs/{btb_id}/entries/{entry_id}` akzeptiert `section` und erlaubt Wechsel zwischen ARBEIT/ABNAHME/EINWEISUNG_UNTERWEISUNG/BESONDERHEIT/MANGEL_SCHADEN bei gleicher Entry-ID.
+- Entry-Payload nutzt `worksiteNodeKey` und validiert ihn gegen die aktive Baustellenstruktur.
+- `PATCH /api/v1/btbs/{btb_id}/photos/{file_id}` aktualisiert versionierte linkbezogene `photo_metadata`; Foto-Datei, GPS und Aufnahmezeit bleiben unangetastet.
+- Server-Source ist damit vorhanden; Android darf jetzt gegen diesen Vertrag implementieren. Server-Deploy/E2E ist separat zu bestätigen.

@@ -127,7 +127,7 @@ Die Anzeige folgt `BtbServerStateStore.isTeamLead` und dem kanonischen Server-Li
 
 
 ## BTB-EDIT-001 – strukturierte Eintrags-/Fotozuordnung
-Status: **VERTRAGSANFORDERUNG / API-ERWEITERUNG SERVER NOCH OFFEN**
+Status: **VERTRAG FEST / SERVER-SOURCE VORHANDEN / ANDROID-ANPASSUNG OFFEN**
 
 ### Stabile Unterbaustellenidentität
 - Android darf eine BTB-Unterbaustelle geräteübergreifend **nicht** über lokale Room-`Long`-IDs, `@ORT=<id>` oder lokale Foto-`ortId` identifizieren.
@@ -165,17 +165,16 @@ Beim Umhängen unverändert zu erhalten:
 - GPS-Daten;
 - Fotoidentität.
 
-### Benötigte Servermutationen – noch NICHT durch Android zu umgehen
-Der aktuelle Serververtrag reicht für BTB-EDIT-001 noch nicht vollständig:
-1. bestehender `btb_entry`: PATCH muss einen fachlichen Wechsel von `section` 4↔5↔6↔7↔8 unterstützen sowie die strukturierte Firmen-/Node-Zuordnung aktualisieren;
-2. bestehendes BTB-Foto: allgemeiner Metadaten-PATCH zum Ändern von Punkt/Entry/Firma/`clientNodeKey`, ohne neue Datei-ID und ohne Neu-Upload des unveränderten Originals;
-3. Mutationen müssen bestehende Version-/Conflict-Regeln verwenden;
-4. FINALIZED/read-only bleibt unveränderbar.
+### Servermutationen – Stand Server-HEAD cd9b18fc
+Der benötigte Vertrag ist serverseitig source-seitig implementiert:
+1. `PATCH /api/v1/btbs/{btb_id}/entries/{entry_id}` unterstützt `section` zusätzlich zu `sort_order`/`payload`;
+2. Abschnittswechsel sind bei gleicher Entry-ID zwischen den fünf BTB-Fachsektionen zulässig;
+3. kanonisches Payloadfeld für den stabilen Baustellenknoten ist **`worksiteNodeKey`**, Wert = vorhandener `clientNodeKey` des Worksite-Node-Bindings;
+4. `PATCH /api/v1/btbs/{btb_id}/photos/{file_id}` nimmt `base_version` + partielle `photo_metadata` für die BTB-Verknüpfung;
+5. Foto-Datei, GPS und Aufnahmezeit bleiben beim fachlichen Umhängen unverändert;
+6. beide Mutationen bleiben versioniert/conflict-aware und FINALIZED/read-only geschützt.
 
-Bis diese Servermutationen existieren:
-- **kein Delete/Create-Ersatzweg in Android**;
-- keine neue inkompatible Parallelstruktur;
-- Android bereitet Modell/UI/Mapping so vor, dass dieselben stabilen Felder später direkt an die Server-API gehen.
+Android baut weiterhin **keinen Delete/Create-Ersatzweg**, sondern nutzt die bestehenden Identitäten.
 
 ### Sync-Schutz
 BTB-EDIT-001 muss den bestätigten BTB-SYNC-002-Vertrag einhalten:
@@ -183,3 +182,24 @@ BTB-EDIT-001 muss den bestätigten BTB-SYNC-002-Vertrag einhalten:
 - kein stilles Snapshot-Overwrite eines Dirty-Stands;
 - Conflict/Rebase über bestehende Versionslogik;
 - Objektidentität bleibt bei fachlicher Umhängung erhalten.
+
+
+### Android-konkretes Entry-Modell 26.09.2026
+Lokales/synchronisiertes `SectionItem` wird rückwärtskompatibel erweitert um:
+- `clientEntryKey: String?` – stabile fachliche Entry-/Slot-Identität;
+- `firmaId: String?`;
+- `firmaName: String?` – Anzeige/Fallback, nicht Primäridentität;
+- `worksiteNodeKey: String?` – kanonischer Node-Key; null = Hauptbaustelle/keine Unterzuordnung;
+- bestehend: `uhrzeit`, `text`, `kmVon`, `kmBis`.
+
+Der Abschnitt selbst bleibt durch den enthaltenden `SectionBlock` bestimmt. Beim Verschieben wird **dasselbe SectionItem mit demselben clientEntryKey** aus dem Quellblock in den Zielblock übernommen.
+
+Serverimport:
+- `_tb_android_slot` → `clientEntryKey`.
+Serverexport:
+- `clientEntryKey` hat Vorrang vor indexbasiertem Slot-Fallback.
+- `worksiteNodeKey` und `firmaId` gehen als strukturierte Payloadfelder.
+
+Legacy:
+- `@ORT=<Long>` darf nur zur Migration/Editor-Abwärtskompatibilität gelesen werden.
+- Für neue/gespeicherte strukturierte Daten ist `worksiteNodeKey` die dauerhafte Identität.
