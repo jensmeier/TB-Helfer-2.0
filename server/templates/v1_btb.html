@@ -854,7 +854,7 @@ function contentEditorFields(section,p){
     editorSelect('edit-firmaSelect','Firma / Allgemein',firmOptions(true,firmValue),firmValue,true)+
     editorSelect('edit-nodeSelect','Unterbaustelle / Bauobjekt',worksiteNodeOptions(nodeValue),nodeValue,true)+
     editorField('edit-uhrzeit','Uhrzeit',p&&p.uhrzeit||'','time')+
-    editorField('edit-kmVon','KM von',p&&p.kmVon??'','number')+editorField('edit-kmBis','KM bis',p&&p.kmBis??'','number')+
+    editorField('edit-kmVon','KM von',(p&&p.kmVon!=null)?p.kmVon:'','number')+editorField('edit-kmBis','KM bis',(p&&p.kmBis!=null)?p.kmBis:'','number')+
     editorField('edit-text','Text',p&&(p.text||p.beschreibung||p.kommentar)||'','textarea',true);
 }
 function openEntryCreator(section,firmId){
