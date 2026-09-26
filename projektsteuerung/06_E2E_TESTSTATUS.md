@@ -48,3 +48,9 @@ Source-Ursache bestätigt: `SelectiveSyncWorker` wendet bei bekanntem BTB einen 
 
 ### BTB-SYNC-002 bidirektionaler Basistest 1.3.23
 **BENUTZER BESTÄTIGT:** Pixel → Portal und Portal → Pixel funktionieren im aktuellen Test. Der normale bidirektionale Datenweg ist damit praktisch bestanden. Der zusätzliche Parallel-Autosave-/Conflict-Test bleibt separat offen.
+
+
+### PORTAL-LIVE-001 Praxis-E2E
+**BENUTZER BESTÄTIGT:** Portal aktualisiert ohne F5 nach ca. 1–2 Sekunden. Erstellen und Löschen werden automatisch sichtbar; der getestete Datenweg funktioniert in beide Richtungen. Status: **BESTÄTIGT**.
+
+Die notwendige Nacharbeit am BTB-Portal wird separat als `PORTAL-BTB-UI-001` geführt und ändert diesen E2E-Nachweis nicht.
