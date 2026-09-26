@@ -12,6 +12,7 @@ def read(rel: str) -> str:
 
 def main() -> None:
     runner = read("server/tools/server1_post_deploy_e2e.py")
+    session_split = read("server/tools/session_split_e2e.py")
     workflow = read(".github/workflows/tb-server-v1.yml")
 
     required = [
@@ -44,6 +45,9 @@ def main() -> None:
             "Post-deploy E2E runner must not place secrets on child command lines: "
             + ", ".join(present)
         )
+
+    if "safe_error_detail" not in session_split or "detail=" not in session_split:
+        raise SystemExit("Session-split E2E must expose a bounded safe login error detail")
 
     if "111_verify_post_deploy_e2e_source.py" not in workflow:
         raise SystemExit("Server workflow does not execute post-deploy E2E source check 111")
