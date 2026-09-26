@@ -187,3 +187,11 @@
 - DSM-Aufgabenplaner-Deploy-Helfer lieferte keinen vollständigen `DEPLOY_OK`-Endmarker; Log endete nach `[3/8]`. Deshalb gilt nur **Migration 015 + Runtime-Probe BESTÄTIGT**, nicht der gesamte Helferlauf.
 - Nächster Server-Schritt: Worker/Monitor kontrolliert neu starten und danach gebündelte Post-Deploy-Abnahme (Session-Split, Read-only, Worker-Backup, Delta-Lasttest) ausführen.
 - `STATUS.xlsx` wegen abweichendem Android-Workbook weiterhin nicht blind überschrieben.
+
+
+## Integrationsnachtrag 26.09.2026 – Session-Split 403
+
+- Runtime-Probe praktisch weiterhin PASS; Same-Browser Session-Split scheitert am Portal-Login mit HTTP 403.
+- Aktives USER-Konto wurde verwendet; genaue 403-Ursache noch offen.
+- Session-Split-E2E zeigt ab jetzt einen begrenzten sicheren Server-Fehlergrund an, ohne Passwort/Token zu loggen.
+- Nächster Schritt: aktualisierte Testdatei auf NAS übernehmen und denselben Post-Deploy-Lauf erneut bis zur 403-Detailausgabe starten.
