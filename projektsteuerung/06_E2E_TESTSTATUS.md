@@ -10,9 +10,9 @@ Stand: 2026-09-26
 | Poco Team-/BTB-Daten | FEHLER OFFEN | Binding/Sync/API/Logs |
 | Helfer Schicht Ende → Server FINISHED → Pixel | E2E OFFEN | echter Geräte-/Server-Lauf |
 | Haupt-TB Finalize + PDF | TEILWEISE BESTÄTIGT | Android-Gesamtkette offen |
-| IMG-001 Handyfoto → Server | NICHT GESTARTET | Original- vs Sync-Dateigröße messen |
-| IMG-001 Portal → Handy | NICHT GESTARTET | Quelldatei/Rendition/Gerät vergleichen |
-| IMG-001 Handy → anderes Handy | NICHT GESTARTET | Pixel/Poco Abmessungen/Größe vergleichen |
+| IMG-001 Handyfoto → Server | QUELLAUDIT FEHLER BESTÄTIGT / FIX OFFEN | Nach Android-Fix Original- vs Sync-Dateigröße messen |
+| IMG-001 Portal → Handy | QUELLAUDIT FEHLER BESTÄTIGT / FIX OFFEN | Android muss preview/thumb laden; danach Quelle/Rendition/Gerät vergleichen |
+| IMG-001 Handy → anderes Handy | QUELLAUDIT FEHLER BESTÄTIGT / FIX OFFEN | Nach Android-Fix Pixel/Poco Abmessungen/Größe vergleichen |
 | Migration 015 | DEPLOY/E2E OFFEN | Runtime-Probe |
 | 15×15 Delta-/Lasttest | E2E OFFEN | Staging-Probe |
 

@@ -2,7 +2,7 @@
 
 Stand: 2026-09-26
 
-Letzter gesicherter Arbeitsblock: **Projektsteuerung vereinheitlicht und verifiziert**.
+Letzter gesicherter Arbeitsblock: **IMG-001 Bildtransport vollständig im Quellstand auditiert**.
 
 - Zentrale: `projektsteuerung/`
 - alte Top-Level-Ordner `projektstatus/`, `releases/`, `uebergaben/` entfernt
@@ -16,3 +16,17 @@ Letzter gesicherter Arbeitsblock: **Projektsteuerung vereinheitlicht und verifiz
 - weiterer P0: Poco bekommt keine Daten
 
 Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prüfen.
+
+
+## IMG-001 Auditbefund
+- Android-Live-HEAD vor Auditdokumentation: `57f5e18639aff0d49c0d46086855487e0a7353c0`.
+- Server-Live-HEAD bei Audit: `b5ceb6f455028d8ebeef6766cb523fd1ef7e76fd`.
+- Android lädt BTB-/Mangel-/Abnahmefotos aktuell aus dem lokalen Originalpfad hoch.
+- Server speichert empfangene Bytes unverändert; APP-Volloriginal auf NAS ist daher Folge des Android-Uploads.
+- Server-Renditions existieren: `thumb` 320 px / `preview` 1280 px.
+- Android-Dateiclient kennt/nutzt die Renditions nicht und lädt fehlende Bilder über `/content`.
+- Lokales Android-Thumbnail 512 px/Qualität 82 existiert bereits, ist aber nicht in den Online-Sync eingebunden.
+- Metadatenlücken: GPS-Genauigkeit nicht persistent; Mangel-/Abnahmefoto-Upload strukturell unvollständig.
+- Detailnachweis: `projektsteuerung/uebergaben/IMG-001_BILDTRANSPORT_AUDIT_2026-09-26.md`.
+- Keine Fachcodeänderung in diesem Arbeitsblock.
+- Nächster Fachblock: Android-seitige IMG-001-Korrektur erst auf Basis dieses gesicherten Vertrags; anschließend Build und realer Größen-/Pixel-/Poco-/Portal-E2E.
