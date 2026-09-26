@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200069: fester Serververtrag 25.09.2026 –
-        // Rollen/Schichtstatus, FINALIZED-read-only, stabile Slots und automatischer Delta-Pull.
-        versionCode = 200069
-        versionName = "1.3.19"
+        // Android 200070: BTB-SYNC-001 Active-Pointer-Vorrangregel.
+        // Jeder auslieferbare Test-/Release-Build erhält einen strikt höheren versionCode.
+        versionCode = 200070
+        versionName = "1.3.20"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
