@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200072: BTB-SYNC-001 – historischen Pointer-Guard serverkanonisch machen.
+        // Android 200073: BTB-SYNC-002 – Dirty-BTB zuerst in Outbox sichern, dann Server-Snapshot anwenden.
         // Jeder auslieferbare Test-/Release-Build erhält einen strikt höheren versionCode.
-        versionCode = 200072
-        versionName = "1.3.22"
+        versionCode = 200073
+        versionName = "1.3.23"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
