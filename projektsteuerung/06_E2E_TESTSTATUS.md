@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | Bereich | Status | Nächster Test |
 |---|---|---|
-| Android 1.3.20 / 200070 Build | SOURCE-FIX VORHANDEN / BUILD OFFEN | Android Studio Build 200070 |
+| Android 1.3.20 / 200070 Build | VERSION + SOURCE-FIX FERTIG / BUILD OFFEN | Android Studio Build 200070 |
 | Android 200070 Installation | OFFEN | Pixel/Poco nach Build |
 | Pixel/Poco Versionsgleichstand | BENUTZER BESTÄTIGT: BEIDE 1.3.19 | Server-DB-Appversion ist Aktivierungs-Snapshot und kein Runtime-Nachweis |
 | Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200070 praktisch prüfen |
@@ -44,3 +44,9 @@ Nachtest: beide öffentlichen Seiten sind auf demselben Hauptgerät im Browser e
 - Server-`active=true` überstimmt jetzt lokale Abschluss-/PDF-/Baseline-Zustände in `BtbActiveContext`.
 - Server-`FINALIZED && !active` darf den Pointer lösen.
 - Build wurde noch nicht ausgeführt; GitHub Actions lieferte für den aktuellen HEAD keinen Workflow-Run. Kein Build-/Installations-/E2E-Nachweis.
+
+
+### Version 1.3.20 / 200070
+- Quellwerte, Release-MD und CI-Artefaktname auf 1.3.20 / 200070 angehoben.
+- Commit `f9a7421ec9265b73ca170d28a1946644527cbe5a`.
+- GitHub Actions hat für diesen HEAD keinen Workflow-Run geliefert; daher weiterhin **BUILD OFFEN**.

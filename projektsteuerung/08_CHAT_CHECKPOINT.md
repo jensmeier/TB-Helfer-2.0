@@ -157,3 +157,12 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Verbindlicher nächster Android-Zielstand: **1.3.20 / 200070**.
 - 1.3.19 / 200069 bleibt historischer vorheriger Stand.
 - Erst nach Dokumentationscommit werden Builddateien/Release-MD angepasst.
+
+
+## 1.3.20 / 200070 vorbereitet
+- Benutzerhinweis zur wiederverwendeten Buildnummer umgesetzt.
+- Dokumentationsentscheidung: `32f57241a9717a6748d427af53eae3a593ad656b`.
+- Build-/Release-Quelländerung: `f9a7421ec9265b73ca170d28a1946644527cbe5a`.
+- Aktueller Android-Zielstand ist **1.3.20 / 200070**.
+- Release-MD liegt unter `projektsteuerung/releases/TB-Helfer_1.3.20_200070.md`.
+- Build/Installation/E2E weiterhin offen.

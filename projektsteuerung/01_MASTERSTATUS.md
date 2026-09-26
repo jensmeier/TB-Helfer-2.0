@@ -11,7 +11,7 @@ Stand: 2026-09-26
 - Server-Quellmigrationen: **001–015**
 
 ## Android
-Pixel-UI-Flackern ACTIVE↔PDF source-seitig korrigiert. Build-Wiederholung 200069, Installation und Pixel/Poco/Server-E2E offen. Poco ist serverseitig HELPER im richtigen Team, bekommt auf dem Gerät aber weiterhin keine Daten.
+Pixel-UI-Flackern ACTIVE↔PDF source-seitig korrigiert. Build 200070, Installation und Pixel/Poco/Server-E2E offen. Poco ist serverseitig HELPER im richtigen Team, bekommt auf dem Gerät aber weiterhin keine Daten.
 
 ## Server
 Rollen-/Schichtvertrag und FINALIZED-Schutz verbindlich. Migration 014 praktisch bestätigt. Migration 015/Foto-Metadaten Deployment/Runtime-E2E offen. Delta-Wait/15×15-Last-E2E offen. Finalize-OOM/502-Fix praktisch bestätigt und geschützt.
@@ -134,7 +134,7 @@ Status: **SOURCE-FIX COMMITTED / BUILD + INSTALLATION + E2E OFFEN**
   - sonstiger vorhandener Serverstatus → lokaler Abschlussstatus darf den Server-Lifecycle nicht überstimmen.
   - rein lokale/Legacy-BTBs ohne Server-Snapshot behalten die bisherige Abschlusslogik.
 - Keine `server/**`-Datei geändert.
-- Version bleibt `1.3.19 / 200069`.
+- Version ist jetzt `1.3.20 / 200070`.
 - GitHub-CI konnte für den aktuellen HEAD nicht als Buildnachweis gestartet werden; regulärer PR #7 und temporärer Build-PR waren nicht mergebar, daher kein Workflow-Run. Lokaler Android-Studio-Build bleibt erforderlich.
 
 
@@ -146,3 +146,11 @@ Status: **VERBINDLICH**
 - Neuer Zielstand: **1.3.20 / 200070**.
 - Bereits verwendete/veröffentlichte Buildnummern werden nicht wiederverwendet.
 - Hintergrund: Updatekatalog und Android-Updateerkennung müssen einen eindeutig neueren Build erkennen können.
+
+
+### 1.3.20 / 200070 Quellstand
+- Buildversions-Quellstand `f9a7421ec9265b73ca170d28a1946644527cbe5a`.
+- `app/build.gradle.kts`: `versionName=1.3.20`, `versionCode=200070`.
+- CI-Artefaktname und Release-Datei wurden ebenfalls auf 1.3.20 / 200070 umgestellt.
+- Source-Check der Versionswerte: **PASST**.
+- Build selbst: **OFFEN**.

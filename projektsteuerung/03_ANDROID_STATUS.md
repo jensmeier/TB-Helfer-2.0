@@ -82,13 +82,22 @@ Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
   - Server `FINALIZED && !active` → Pointer wird gelöst.
   - anderer vorhandener Serverstatus → kein lokales Abschlussartefakt darf den Server-Lifecycle überstimmen.
   - nur ohne Server-Snapshot gilt die bisherige lokale/Legacy-Abschlusslogik.
-- Version unverändert: **1.3.19 / 200069**.
+- Version: **1.3.20 / 200070**.
 - Kein Servercode geändert.
 - GitHub Actions: kein Workflow-Run für aktuellen HEAD entstanden, weil die verfügbaren PR-Basen aktuell nicht mergebar sind. Das ist **kein Buildnachweis**.
-- Nächster Schritt: lokal in Android Studio bauen, danach Pixel und Poco installieren und BTB 26.09 erneut testen.
+- Nächster Schritt: lokal in Android Studio 1.3.20 / 200070 bauen, danach Pixel und Poco installieren und BTB 26.09 erneut testen.
 
 
 ## Versionierung – nächster Build 1.3.20 / 200070
 - Benutzerentscheidung 26.09.2026: neue APKs dürfen nicht erneut mit bereits verwendeter Buildnummer 200069 erzeugt/hochgeladen werden.
 - BTB-SYNC-001 wird als **1.3.20 / 200070** gebaut.
 - Build/Installation/E2E bleiben bis zum tatsächlichen Build offen.
+
+
+### Release-Bump umgesetzt
+- Commit `f9a7421ec9265b73ca170d28a1946644527cbe5a`.
+- `versionName = 1.3.20`
+- `versionCode = 200070`
+- neue Release-MD: `projektsteuerung/releases/TB-Helfer_1.3.20_200070.md`
+- GitHub-Workflow-Artefakt auf `TB-Helfer-1.3.20-200070` umgestellt.
+- Build noch nicht ausgeführt.
