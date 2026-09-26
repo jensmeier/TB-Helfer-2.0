@@ -82,3 +82,10 @@ Browser-Nachtest auf demselben Hauptgerät:
 - nächster Schritt: denselben App-Sync erneut auslösen;
 - nur bei erneutem App-only `Unable to resolve host` Android-Netzpfad/Prozess/Private-DNS/VPN/HTTP-Client gezielt eingrenzen;
 - keine Sync-/DB-/API-Codeänderung auf Verdacht.
+
+### NET-001 Reproduktion nach Browser-Nachweis
+- Auf demselben Hauptgerät sind `www.tb-helfer.de` und `api-v1.tb-helfer.de/health/live` im Browser erreichbar.
+- Unmittelbarer erneuter App-Test mit `Neu laden` reproduziert weiterhin exakt `Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
+- Der Fehler ist damit **app-/Android-Netzpfad-spezifisch reproduziert** und nicht durch eine allgemeine öffentliche DNS-/Cloudflare-Störung erklärt.
+- Nächster Schritt: Android-Netzpfad, gespeicherte Serverbasis, HTTP-Client und App-Prozess gezielt gegen den Browserpfad prüfen.
+- Keine Server-/DB-Änderung auf Verdacht.

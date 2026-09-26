@@ -8,7 +8,7 @@ Stand: 2026-09-26
 | Android 200069 Installation | OFFEN | Pixel/Poco nach Build |
 | Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200069 praktisch prüfen |
 | Haupt-TB-Handy ↔ Server/Portal | PRIORITÄT / E2E OFFEN | echte Fachkette zuerst sauber bestätigen |
-| Haupt-TB-Handy DNS/API-Erreichbarkeit | BROWSER BESTANDEN / APP-RETEST OFFEN | App-Sync erneut auslösen; nur bei erneutem App-only DNS-Fehler Android-Netzpfad eingrenzen |
+| Haupt-TB-Handy DNS/API-Erreichbarkeit | BROWSER BESTANDEN / APP-DNS-FEHLER REPRODUZIERT | Android-App-Netzpfad/Serverbasis/HTTP-Client gezielt prüfen |
 | Poco Team-/BTB-Daten | FEHLER OFFEN | Binding/Sync/API/Logs |
 | Helfer Schicht Ende → Server FINISHED → Pixel | E2E OFFEN | echter Geräte-/Server-Lauf |
 | Haupt-TB Finalize + PDF | TEILWEISE BESTÄTIGT | Android-Gesamtkette offen |

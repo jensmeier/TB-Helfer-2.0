@@ -42,3 +42,6 @@ kleine Sync-JPEG-Datei → Upload; `preview/thumb` für mobile Downloads; Metada
 
 ### Browser-Nachtest NET-001
 Beide öffentlichen TB-Helfer-Seiten sind auf demselben Hauptgerät im Browser erreichbar. App-Retest ist der nächste Schritt.
+
+### NET-001 reproduziert
+Browserzugriff auf Portal und API-Health funktioniert auf demselben Gerät; `Neu laden` in der App liefert weiterhin `Unable to resolve host "api-v1.tb-helfer.de"`. Damit ist der Fehler app-/Android-netzpfadspezifisch reproduziert. Source-/Runtime-Diagnose erforderlich; keine Neuaktivierung oder Datenlöschung auf Verdacht.

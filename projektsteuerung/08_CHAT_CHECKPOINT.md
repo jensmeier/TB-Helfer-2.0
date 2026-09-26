@@ -53,3 +53,9 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Der vorherige App-Fehler kann transient oder app-/prozessspezifisch gewesen sein.
 - Nächster Schritt: in der App denselben Sync mit `Neu laden` erneut auslösen und die genaue Ausgabe prüfen.
 - Keine Codeänderung auf Verdacht.
+
+## NET-001 Reproduktion – App-only DNS-Fehler
+- Browser auf demselben Hauptgerät: Portal + API-Health erreichbar.
+- App `Neu laden`: gleicher Fehler `Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
+- Damit allgemeine öffentliche DNS-/Cloudflare-Störung als alleinige Ursache ausgeschlossen.
+- Nächster Schritt: Android-Netzpfad/Serverbasis/HTTP-Client prüfen; Server/DB nicht auf Verdacht ändern.
