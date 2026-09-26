@@ -1796,3 +1796,14 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - `GET /api/v1/sync/changes/wait` ist serverseitig vorhanden; Runtime-Probe und Syncvertrag verlangen ebenfalls `sync_change_wait_v1`. Aus der aktuellen Android-Querprüfung ergibt sich **keine zusätzliche Server-API- oder DB-Änderung**.
 - Das ist ein **Source-/Vertragscheck**, kein Geräte-E2E. Migration 015, Synology-Integrationsdeploy, Same-Browser-Sessiontest, Read-only-Abnahme, Worker-/Backup-E2E und Delta-Lasttest bleiben praktisch offen.
 - `STATUS.xlsx` wurde bewusst nicht überschrieben: SERVER-Blob `a56c44cc…` und ANDROID-Blob `f73ead35…` unterscheiden sich. STATUS.md bleibt bis zur konfliktfreien Excel-Konsolidierung der Integrator-Stand.
+
+
+### 26.09.2026 – Gebündelte Post-Deploy-Serverabnahme gebaut
+
+- Neues Werkzeug `server/tools/server1_post_deploy_e2e.py` bündelt nach erfolgreichem Synology-Apply die bereits vorbereiteten praktischen Serverprüfungen in fester Reihenfolge: Runtime-Probe → Same-Browser Session-Split → Read-only Portal/Admin/Profile/Katalog/System → echter Worker-Backupjob → Delta-Long-Poll-Lasttest.
+- Geheimwerte werden nicht geloggt und nicht als Child-Process-Argumente übergeben. Interaktiv fehlende Portal-/Admin-Passwörter und der Geräte-Token werden verdeckt per `getpass` abgefragt; nicht-interaktiv nur über lokale Environment-Werte.
+- Standard ist ein echter `DATABASE`-Backupjob und 32 Long-Poll-Clients. FULL-Backup und 255 Clients bleiben bewusst explizite Optionen nach bestandenem kleineren Lauf.
+- Erfolgsmeldung ist ausschließlich `=== POST_DEPLOY_E2E_OK ===`. Das ersetzt nicht den anschließenden Pixel/Poco/Portal-Fach-E2E.
+- Source-Check **111** schützt Reihenfolge/Secret-Handhabung; Server-Workflow führt ihn nach Check 110 aus. Das Staging-Deploy-Runbook enthält den neuen Ablauf.
+- Praktische Ausführung bleibt bis zum echten Synology-Deploy **E2E OFFEN**.
+- `STATUS.xlsx` bleibt wegen des weiterhin abweichenden Android-Workbook-Blobs unverändert.
