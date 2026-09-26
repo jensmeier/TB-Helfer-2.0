@@ -102,3 +102,11 @@ Pflichttest:
 3. Portal ändert auf `XYZ`;
 4. Pixel erhält `XYZ`;
 5. zusätzlicher Pixel-Autosave während laufendem Upload darf nicht still verschwinden.
+
+
+## BTB-SYNC-002 – bidirektionaler Basistest 1.3.23
+**BENUTZER BESTÄTIGT:** Der BTB-Sync funktioniert im aktuellen Test in beide Richtungen:
+- Pixel → Portal: **BESTANDEN**
+- Portal → Pixel: **BESTANDEN**
+
+Damit ist der normale bidirektionale Datenweg des BTB-SYNC-002-Fixes praktisch bestätigt. Nicht durch diese Aussage abgedeckt ist der zusätzliche Parallel-Autosave-/Konflikttest während eines laufenden Uploads; dieser bleibt offen. Poco/HELPER bleibt ebenfalls ein eigener E2E.
