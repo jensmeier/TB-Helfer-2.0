@@ -8,7 +8,7 @@ Status: **UMGESETZT IM QUELLSTAND DIESER STEUERUNGSÄNDERUNG**
 Ein gemeinsamer Einstieg unter `projektsteuerung/`; Android/Server-Codebereiche bleiben getrennt; alte Top-Level-Steuerungsordner entfallen; Chat-Sicherung erfolgt ereignisbasiert. Kein `app/**`- oder `server/**`-Fachcode wird durch PS-001 geändert.
 
 ## IMG-001 – Bildtransport / Serverlast
-Status: **ANFORDERUNG FEST / IMPLEMENTIERUNGSAUDIT NÄCHSTER TECHNISCHER SCHRITT**
+Status: **QUELLAUDIT ABGESCHLOSSEN / ABWEICHUNGEN BESTÄTIGT / IMPLEMENTIERUNG NACH E2E-PRIO-001**
 
 Verbindlich:
 - Handyoriginal bleibt auf dem Aufnahme-Handy.
@@ -26,6 +26,16 @@ Nächster Schritt:
 4. Abweichungen dokumentieren.
 5. erst dann getrennte Android-/Server-Aufträge.
 6. E2E mit realen Dateigrößen.
+
+### IMG-001 Audit-Ergebnis 26.09.2026
+- Android lädt aktuell das lokale Foto-Original hoch, nicht eine separate kleine Sync-Version.
+- Server speichert die empfangene APP-Datei unverändert.
+- Server-Renditions `thumb`/ `preview` existieren bereits.
+- Android ignoriert diese Renditions und lädt über `/content`.
+- Lokales 512-px-Thumbnail existiert, wird im Online-Sync aber nicht genutzt.
+- Metadatenlücken: GPS-Genauigkeit nicht persistent; Mangel-/Abnahmefoto-Upload strukturell unvollständig.
+
+Umsetzung ist dokumentiert, aber gemäß `E2E-PRIO-001` erst nach stabiler Hauptgerät-/Poco-Fachkette dran.
 
 ## SYNC-DEVICE-001 – Poco erhält keine Daten
 Status: **OFFEN**
