@@ -199,3 +199,14 @@ Nächster auslieferbarer Schutzfix: **1.3.21 / 200071**.
 - Für genau diesen Stand muss `projektsteuerung/releases/TB-Helfer_<version>_<build>.md` existieren.
 - Pflichtfelder der Release-MD werden gegen Version/Build geprüft.
 - Das Build-Artefakt enthält automatisch APK(s) plus die zugehörige Release-MD desselben Builds.
+
+
+## UPD-001 bestätigt 26.09.2026
+Status: **BESTÄTIGT**
+
+- Benutzer bestätigt den Updateweg mit **1.3.21 / 200071** als funktionierend.
+- Passende Release-MD + frisch gebaute APK wurden gemeinsam verwendet.
+- Updateinstallation lief erfolgreich.
+- Der vorherige Fehlerzustand „weiter 1.3.19 / Update verfügbar“ ist damit für diesen Testlauf nicht mehr vorhanden.
+- UPD-001 gilt als praktisch bestätigt.
+- Pixel/Poco-BTB-E2E bleibt davon getrennt weiterhin offen.

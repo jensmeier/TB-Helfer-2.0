@@ -208,3 +208,11 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - CI prüft passende Release-MD gegen Android-`versionName/versionCode`.
 - CI-Artefakt enthält automatisch APK + passende Release-MD.
 - Zusätzlich wird die jeweilige Release-MD im Chat als Download bereitgestellt.
+
+
+## UPD-001 – Praxis bestätigt
+- Benutzer bestätigt den Updateweg **1.3.21 / 200071** als funktionierend.
+- Build und Installation sind damit praktisch nachgewiesen.
+- Release-MD/APK-Paarung funktioniert.
+- UPD-001: **BESTÄTIGT**.
+- Nächster Arbeitsblock: BTB-SYNC-001 mit Pixel und Poco auf dem aktuellen Build erneut testen.

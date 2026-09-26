@@ -5,8 +5,8 @@ Stand: 2026-09-26
 | Bereich | Status | Nächster Test |
 |---|---|---|
 | Android 1.3.21 / 200071 Build | VERSION + SOURCE-FIX FERTIG / BUILD OFFEN | Android Studio Build 200070 |
-| Android 200070 Installation | UPDATEVORGANG DURCHGELAUFEN, GERÄT MELDET WEITER 1.3.19 | Release/APK-Mismatch bestätigt als möglicher Pfad; 200071 Schutzfix |
-| Update 1.3.20 / 200070 Nachprüfung | FEHLER: UI ZEIGT 1.3.19 + UPDATE VERFÜGBAR | lokale Package-Version / Releasevergleich prüfen |
+| Android 1.3.21 / 200071 Installation | BESTÄTIGT | installiert / Updateweg funktioniert |
+| UPD-001 Updateprüfung 1.3.21 / 200071 | BESTÄTIGT | geschlossen; nur bei neuer Reproduktion wieder öffnen |
 | Pixel/Poco Versionsgleichstand | BENUTZER BESTÄTIGT: BEIDE 1.3.19 | Server-DB-Appversion ist Aktivierungs-Snapshot und kein Runtime-Nachweis |
 | Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200070 praktisch prüfen |
 | Haupt-TB-Handy ↔ Server/Portal | PRIORITÄT / E2E OFFEN | echte Fachkette zuerst sauber bestätigen |
@@ -66,3 +66,10 @@ Nachtest: beide öffentlichen Seiten sind auf demselben Hauptgerät im Browser e
 - Noch kein Buildnachweis.
 - E2E-Erwartung: nach erfolgreicher 200071-Installation zeigt Wartung 1.3.21 (200071), Startseiten-Updatehinweis verschwindet.
 - Negativtest: absichtlich falsche/alte APK unter 200071-Metadaten muss vor Installer blockiert werden.
+
+
+### UPD-001 Praxis-E2E bestätigt
+- Benutzer bestätigt 1.3.21 / 200071 Updatepfad als funktionierend.
+- Release-MD + APK desselben Builds verwendet.
+- Build/Installation/Update-E2E: **BESTÄTIGT**.
+- BTB-SYNC-001 bleibt separater nächster Geräte-E2E.

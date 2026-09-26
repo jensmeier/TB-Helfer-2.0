@@ -123,11 +123,11 @@ Status: **SOURCE-URSACHE EINGEGRENZT / FIX AUFTRAG**
 
 
 ## UPD-001 – Schutzfix committed
-Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
+Status: **BESTÄTIGT**
 - Commit: `19d688a4752c98209570e0ff69ccd2eae789541e`.
 - `AppUpdateManager` blockiert APKs mit falscher Package-ID oder abweichendem `versionName/versionCode`.
 - Zielbuild: **1.3.21 / 200071**.
-- Build/Installation/E2E noch nicht bestätigt.
+- Build, Installation und Update-E2E für 1.3.21 / 200071 vom Benutzer bestätigt.
 
 
 ## REL-FILE-001 – Buildbegleitdatei Pflicht
@@ -142,3 +142,12 @@ Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
 - Kein Android-CI-Build soll künftig ohne passende Release-MD durchlaufen.
 - Artifact-Name und Release-Dateipfad werden aus dem aktuellen `versionName/versionCode` abgeleitet.
 - Damit ist die Benutzeranforderung „bei jedem Build/GitHub-Stand Release-Datei mitgeben“ nicht nur dokumentiert, sondern im CI-Paket technisch abgesichert.
+
+
+### Praxisbestätigung 1.3.21 / 200071
+- Benutzer: **hat funktioniert**.
+- Build: **ERFOLGREICH**.
+- Installation/Update auf Gerät: **BESTÄTIGT**.
+- Update-E2E: **BESTÄTIGT**.
+- UPD-001 darf ohne neuen reproduzierbaren Fehler nicht wieder geöffnet werden.
+- BTB-SYNC-001 / Pixel-Poco-Fach-E2E bleibt offen.

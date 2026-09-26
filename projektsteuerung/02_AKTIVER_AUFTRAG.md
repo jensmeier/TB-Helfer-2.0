@@ -268,3 +268,10 @@ Status: **VERBINDLICHE BENUTZERANFORDERUNG**
 - `PFLICHTUPDATE`, `MINIMUM_BUILD`, `DOWNLOAD_URL` sowie Neu/Verbessert/Behoben werden aus dieser Datei in den Release-Draft übernommen.
 - Die Datei kann Server-Metadaten korrekt setzen, ändert aber nicht die in der APK eingebettete Version.
 - Deshalb dürfen eine alte APK und eine neue Release-MD niemals gemeinsam veröffentlicht werden.
+
+
+### UPD-001 Praxisbestätigung
+- Benutzer bestätigt: Update mit **1.3.21 / 200071** hat funktioniert.
+- Release-MD/APK-Paarung und Android-Schutzfix sind praktisch wirksam.
+- UPD-001: **BESTÄTIGT**.
+- Nächster fachlicher Test bleibt BTB-SYNC-001 auf Pixel/Poco mit demselben 26.09-BTB.

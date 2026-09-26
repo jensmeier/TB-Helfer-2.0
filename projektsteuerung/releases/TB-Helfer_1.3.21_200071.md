@@ -35,14 +35,14 @@ QUELLSTAND:
 
 TESTSTATUS:
 - QUELLSTAND FERTIG / SOURCE-FIX COMMITTED
-- BUILD OFFEN
-- INSTALLATION OFFEN
-- UPDATE-E2E OFFEN
-- PIXEL/POCO-E2E OFFEN
+- BUILD ERFOLGREICH / BENUTZER BESTÄTIGT
+- INSTALLATION BESTÄTIGT
+- UPDATE-E2E BESTÄTIGT
+- PIXEL/POCO-BTB-E2E OFFEN
 
 NÄCHSTER TEST:
-- 1.3.21 / 200071 frisch bauen.
-- Im Portal genau diese neue APK zusammen mit dieser Release-MD verwenden.
-- Release veröffentlichen.
-- Von installiertem 1.3.19/200069 oder 1.3.20/200070 auf 1.3.21/200071 aktualisieren.
-- Danach muss „Nach Update suchen“ 1.3.21 (200071) als aktuell zeigen und der Startseiten-Updatebutton verschwinden.
+- Updateweg 1.3.21 / 200071 ist bestätigt.
+- Als Nächstes Pixel und Poco auf diesem Build prüfen.
+- Denselben BTB vom 26.09 erneut testen.
+- Poco: aktiver BTB muss sichtbar bleiben.
+- Pixel: Haupt-TB-Rolle und Abschlussanzeige müssen stabil bleiben.
