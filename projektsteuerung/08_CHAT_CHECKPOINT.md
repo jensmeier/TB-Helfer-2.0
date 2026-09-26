@@ -218,3 +218,24 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Bestehende Fotos können serverseitig aktuell nicht über einen allgemeinen Metadaten-PATCH fachlich umgehängt werden.
 - Noch nichts gebaut.
 - Nebenbefunde aus Benutzerannotation: aktuelle Ansicht soll gelöschte Helfer nicht unnötig zeigen; Wettertemperaturen fehlen im Praxisfall; 0-Niederschlag soll nicht als unbekannt/null verschwinden; GPS an allen Fotos aus Handy/Portal erhalten.
+
+
+## BTB-EDIT-001 – Server-Quellblock fertig
+- Benutzerauftrag: weiterbauen.
+- Serververtrag vor Codeänderung committed.
+- neue Migration: `server/v1_migrations/016_btb_photo_link_metadata.sql`.
+- Server-API:
+  - Entry `section` 4–8 PATCH bei gleicher ID;
+  - `worksiteNodeKey`-Validierung;
+  - BTB-Foto-PATCH mit `base_version` und linkbezogenen Metadaten.
+- Portal:
+  - gleicher Worksite-Node-Baum wie Android;
+  - Firma/Allgemein + Unterbaustelle + Punkt 4–8 editierbar;
+  - Zeit/KM/Text editierbar;
+  - Foto-Zuordnung editierbar;
+  - Android-nahe Unterbaustellenlabels;
+  - Live-SSE unverändert.
+- Quellprüfung 94–100 + Portal-JS-Syntax: PASS.
+- Deploy/Migration016/E2E noch offen.
+- Android parallel weiter: HEAD `da0806fe29f34363247463bc4fb599778ee42a53`; Entry-/Node-Modell in Umsetzung, Foto-Pfad noch offen.
+- Nächster Server-Schritt nach Android-Kompatibilitätsstand: Synology deployen, Migration016 prüfen, dann gemeinsamer E2E.
