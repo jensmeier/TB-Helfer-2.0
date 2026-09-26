@@ -13,6 +13,7 @@ def read(rel: str) -> str:
 def main() -> None:
     runner = read("server/tools/server1_post_deploy_e2e.py")
     session_split = read("server/tools/session_split_e2e.py")
+    loadtest = read("server/tools/sync_wait_loadtest.py")
     workflow = read(".github/workflows/tb-server-v1.yml")
 
     required = [
@@ -26,6 +27,8 @@ def main() -> None:
         'child_env["TB_PORTAL_PASSWORD"]',
         'child_env["TB_ADMIN_PASSWORD"]',
         'child_env["TB_DEVICE_TOKEN"]',
+        "--delta-auth",
+        'choices=("portal", "device")',
         "--skip-backup",
         "--skip-loadtest",
     ]
@@ -48,6 +51,15 @@ def main() -> None:
 
     if "safe_error_detail" not in session_split or "detail=" not in session_split:
         raise SystemExit("Session-split E2E must expose a bounded safe login error detail")
+
+    for needle in (
+        'choices=("device", "portal")',
+        "TB_PORTAL_PASSWORD",
+        "tb_portal_session",
+        'print(f"auth={args.auth}")',
+    ):
+        if needle not in loadtest:
+            raise SystemExit("Delta loadtest portal auth mode missing marker: " + needle)
 
     if "111_verify_post_deploy_e2e_source.py" not in workflow:
         raise SystemExit("Server workflow does not execute post-deploy E2E source check 111")
