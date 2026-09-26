@@ -19,7 +19,7 @@
   .btb-empty{padding:16px;border:1px dashed #d0d5dd;border-radius:12px;color:#667085;text-align:center}
   .btb-firm{padding:12px 0;border-bottom:1px solid #eef2f6}.btb-firm:last-child{border-bottom:0}
   .btb-firm-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
-  .btb-firm-name{font-weight:800;color:#101828}.btb-firm-time{font-size:12px;color:#667085;margin-left:8px}
+  .btb-firm-name{font-weight:800;color:#101828}.btb-firm-time{font-size:12px;color:#667085;margin-left:8px}.btb-node-group{margin:8px 0 12px 14px;padding-left:12px;border-left:3px solid #e4e7ec}.btb-node-title{font-size:13px;font-weight:800;color:#475467;margin:6px 0}
   .btb-compact-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;margin:5px 0;background:#f8fafc;border-radius:10px}
   .btb-compact-text{white-space:pre-wrap;line-height:1.4}.btb-mini-edit{padding:6px 10px!important;font-size:12px!important;min-height:0!important}
   .btb-row-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}.btb-add{padding:6px 10px!important;font-size:12px!important;min-height:0!important}
@@ -146,7 +146,7 @@
             <option value="MAENGEL_SCHAEDEN">8. Mängel / Schäden</option>
           </select></div>
           <div><label for="photoShortText">Kurztext</label><input id="photoShortText" type="text" maxlength="500" placeholder="z. B. Stopfen begonnen"></div>
-          <div><label for="photoCompany">Firma</label><input id="photoCompany" type="text" maxlength="200"></div>
+          <div><label for="photoCompany">Firma</label><select id="photoCompany"></select></div><div><label for="photoNode">Unterbaustelle / Bauobjekt</label><select id="photoNode"></select></div>
           <div><label for="photoKm">KM</label><input id="photoKm" type="text" inputmode="decimal" placeholder="z. B. 76,215"></div>
           <div><label for="photoObject">Objekt</label><input id="photoObject" type="text" maxlength="240" placeholder="z. B. BÜ 76.215"></div>
           <div><label for="photoArea">Bereich</label><input id="photoArea" type="text" maxlength="240" placeholder="z. B. Gleis 2"></div>
@@ -187,6 +187,20 @@
   </div>
 </div>
 
+<div id="photoModal" class="btb-modal" aria-hidden="true">
+  <div class="btb-modal-panel" role="dialog" aria-modal="true" aria-labelledby="photoModalTitle">
+    <div class="btb-modal-head">
+      <h3 id="photoModalTitle">Foto bearbeiten</h3>
+      <button id="photoModalClose" class="secondary" type="button">Schließen</button>
+    </div>
+    <div id="photoModalBody" class="btb-modal-body"></div>
+    <div class="btb-modal-actions">
+      <button id="photoModalCancel" class="secondary" type="button">Abbrechen</button>
+      <button id="photoModalSave" type="button">Speichern</button>
+    </div>
+  </div>
+</div>
+
 <div class="card danger-zone">
   <h2>BTB löschen</h2>
   <p class="muted">Löscht den BTB-Tombstone, seinen Original-Snapshot und das Abschluss-PDF. Echte Baustellenfotos bleiben erhalten.</p>
@@ -198,8 +212,8 @@
 const pagePrefix={{ (page_prefix|default('/portal/v1'))|tojson }};
 const btbId={{ btb_id|tojson }};
 const msg=document.getElementById('msg');
-let current=null, entries=[], photos=[], finalPdf=null, permissions={}, activeBtbId=null, participants=[], currentUser={};
-let shiftContractAvailable=false, editingEntry=null, creatingEntry=null;
+let current=null, entries=[], photos=[], finalPdf=null, permissions={}, activeBtbId=null, participants=[], currentUser={}, worksiteNodes=[];
+let shiftContractAvailable=false, editingEntry=null, creatingEntry=null, editingPhoto=null;
 let liveEvents=null, liveReloadTimer=null, liveReloadRunning=false, liveReloadQueued=false;
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -369,21 +383,24 @@ function photoSection(meta){
 }
 function photoEventText(p,index){
   const m=photoMeta(p);
-  const parts=[photoTime(m),photoKm(m),String(m.kurztext||'').trim()].filter(Boolean);
+  const node=worksiteNodeLabel(String(m.worksiteNodeKey||''));
+  const parts=[photoTime(m),photoKm(m),String(m.firma||'').trim(),node==='Hauptbaustelle'?'':node,String(m.kurztext||'').trim()].filter(Boolean);
   return parts.join(' · ')+(parts.length?' · ':'')+'Bild '+(index+1);
 }
 function photoCardHtml(p,index,editable){
   const m=photoMeta(p);
   const title=String(m.kurztext||'').trim()||('Foto '+(index+1));
   const main=[photoTime(m),photoKm(m),String(m.firma||'').trim()].filter(Boolean).join(' · ');
-  const place=[String(m.objektKennung||'').trim(),String(m.objektBereich||'').trim()].filter(Boolean).join(' · ');
+  const node=worksiteNodeLabel(String(m.worksiteNodeKey||''));
+  const objectPlace=[String(m.objektKennung||'').trim(),String(m.objektBereich||'').trim()].filter(Boolean).join(' · ');
+  const place=[node,objectPlace].filter(Boolean).join(' · ');
   const gps=validGps(m)?Number(m.lat).toFixed(6)+', '+Number(m.lon).toFixed(6):'';
   const mapUrl=gps?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(Number(m.lat)+','+Number(m.lon)):'';
   const indicator=String(m.indikator||'').trim();
   const previewUrl=p.renditions&&p.renditions.preview?p.renditions.preview:p.content_url;
+  const actions=editable?'<div class="btb-row-actions"><button class="secondary btb-mini-edit" type="button" onclick="openPhotoEditor(\''+esc(p.id)+'\')">Bearbeiten</button><button class="danger btb-mini-edit" type="button" onclick="detachPhoto(\''+esc(p.id)+'\')">Entfernen</button></div>':'';
   return '<div class="btb-photo-card"><div class="btb-photo-head"><div><div class="btb-photo-title">'+esc(title)+'</div>'+
-    '<div class="btb-photo-meta">Foto '+(index+1)+(p.byte_size?' · '+esc(bytesLabel(p.byte_size)):'')+'</div></div>'+
-    (editable?'<button class="danger btb-mini-edit" type="button" onclick="detachPhoto(\''+esc(p.id)+'\')">Entfernen</button>':'')+'</div>'+
+    '<div class="btb-photo-meta">Foto '+(index+1)+(p.byte_size?' · '+esc(bytesLabel(p.byte_size)):'')+'</div></div>'+actions+'</div>'+
     '<a href="'+esc(tbScopedUrl(p.content_url))+'" target="_blank" rel="noopener"><img src="'+esc(tbScopedUrl(previewUrl))+'" alt="BTB-Foto '+(index+1)+'"></a>'+
     '<div class="btb-photo-details">'+
       (main?'<div>'+esc(main)+'</div>':'')+
@@ -392,7 +409,7 @@ function photoCardHtml(p,index,editable){
       (gps?'<div><a href="'+esc(mapUrl)+'" target="_blank" rel="noopener">GPS: '+esc(gps)+' ↗</a></div>':'')+
     '</div></div>';
 }
-function renderPhotos(){
+function renderPhotos(){function renderPhotos(){
   const target=document.getElementById('photos');
   const editable=canEditCurrentBtb(),list=uniquePhotos();
   const indexed=list.map(function(p,index){return {p:p,index:index,section:photoSection(photoMeta(p))};});
@@ -406,6 +423,58 @@ function renderPhotos(){
   }).join(''):'<p class="muted">Noch keine BTB-Fotos.</p>';
   document.getElementById('photoUploadBox').style.display=(can('files.add')&&canEditCurrentBtb())?'block':'none';
 }
+function photoTypeForSection(section){
+  return section==='ABNAHME'?'ABNAHMEN':
+    section==='EINWEISUNG_UNTERWEISUNG'?'EINWEISUNG_UNTERWEISUNG':
+    section==='BESONDERHEIT'?'BESONDERHEITEN':
+    section==='MANGEL_SCHADEN'?'MAENGEL_SCHAEDEN':'FOTODOKUMENTATION';
+}
+function openPhotoEditor(id){
+  const p=photos.find(x=>String(x.id)===String(id));if(!p||!canEditCurrentBtb())return;
+  editingPhoto=p;
+  const m=photoMeta(p),section=photoSection(m),firm=String(m.firmaId||'').trim()||'__general__',node=String(m.worksiteNodeKey||'').trim();
+  const fields=editorSelect('photo-edit-section','BTB-Punkt',contentSectionOptions(),section,true)+
+    editorSelect('photo-edit-firma','Firma / Allgemein',firmOptions(true,firm),firm,true)+
+    editorSelect('photo-edit-node','Unterbaustelle / Bauobjekt',worksiteNodeOptions(node),node,true)+
+    editorField('photo-edit-kurztext','Kurztext',m.kurztext||'','text',true)+
+    editorField('photo-edit-km','KM',m.km??'','number')+
+    editorField('photo-edit-objekt','Objekt',m.objektKennung||'','text')+
+    editorField('photo-edit-bereich','Bereich',m.objektBereich||'','text');
+  document.getElementById('photoModalBody').innerHTML='<div class="btb-modal-grid">'+fields+'</div>';
+  document.getElementById('photoModal').classList.add('open');
+  document.getElementById('photoModal').setAttribute('aria-hidden','false');
+}
+function closePhotoEditor(){
+  editingPhoto=null;
+  document.getElementById('photoModal').classList.remove('open');
+  document.getElementById('photoModal').setAttribute('aria-hidden','true');
+}
+function photoEditorValue(id){const el=document.getElementById(id);return el?String(el.value||'').trim():'';}
+async function savePhotoEditor(){
+  if(!editingPhoto)return;
+  try{
+    const firmId=photoEditorValue('photo-edit-firma');
+    const firms=firmDirectory();
+    const metadata={
+      typ:photoTypeForSection(photoEditorValue('photo-edit-section')),
+      firmaId:firmId&&firmId!=='__general__'?firmId:null,
+      firma:firmId&&firmId!=='__general__'?(firms[firmId]&&firms[firmId].name||null):null,
+      worksiteNodeKey:photoEditorValue('photo-edit-node')||null,
+      kurztext:photoEditorValue('photo-edit-kurztext')||null,
+      km:(function(){const raw=photoEditorValue('photo-edit-km').replace(',','.');const n=Number(raw);return raw!==''&&Number.isFinite(n)?n:null;})(),
+      objektKennung:photoEditorValue('photo-edit-objekt')||null,
+      objektBereich:photoEditorValue('photo-edit-bereich')||null
+    };
+    await tbApi('/api/v1/btbs/'+btbId+'/photos/'+encodeURIComponent(editingPhoto.id),{
+      method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        base_version:Number(editingPhoto.link_version||1),
+        photo_metadata:metadata
+      })
+    });
+    closePhotoEditor();show('ok','Foto-Zuordnung gespeichert.');await loadBtb();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.openPhotoEditor=openPhotoEditor;
 async function detachPhoto(id){
   if(!confirm('Foto nur aus diesem BTB lösen? Das Baustellenfoto bleibt erhalten.'))return;
   try{
@@ -427,6 +496,49 @@ const ALWAYS_OPEN_SECTIONS=['ARBEIT','ABNAHME','EINWEISUNG_UNTERWEISUNG','BESOND
 function sectionInfo(section){
   const key=String(section||'ALLGEMEIN').trim().toUpperCase();
   return SECTION_META[key]||{title:key.replaceAll('_',' '),order:500};
+}
+function contentSectionOptions(){
+  return ALWAYS_OPEN_SECTIONS.map(function(key){return {value:key,label:sectionInfo(key).title};});
+}
+function worksiteNodeKeyOf(entry){
+  return String(entry&&entry.payload&&entry.payload.worksiteNodeKey||'').trim();
+}
+function worksiteNodeDirectory(){
+  const map={};
+  (worksiteNodes||[]).forEach(function(n){const key=String(n.client_node_key||'').trim();if(key)map[key]=n;});
+  return map;
+}
+function worksiteNodeLabel(key){
+  const k=String(key||'').trim();
+  if(!k)return 'Hauptbaustelle';
+  const n=worksiteNodeDirectory()[k];
+  if(!n)return 'Unterbaustelle '+k;
+  return String(n.name||n.node_kind||k).trim()||k;
+}
+function worksiteNodeOptions(selectedKey){
+  const nodes=(worksiteNodes||[]).slice(),byParent={},seen=new Set(),out=[{value:'',label:'— Hauptbaustelle'}];
+  nodes.forEach(function(n){
+    const parent=String(n.parent_client_node_key||'');
+    if(!byParent[parent])byParent[parent]=[];
+    byParent[parent].push(n);
+  });
+  Object.keys(byParent).forEach(function(k){byParent[k].sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)||String(a.name||'').localeCompare(String(b.name||''),'de'));});
+  function add(parent,depth){
+    (byParent[parent]||[]).forEach(function(n){
+      const key=String(n.client_node_key||'').trim();if(!key||seen.has(key))return;
+      seen.add(key);
+      out.push({value:key,label:'   '.repeat(depth)+'› '+worksiteNodeLabel(key)});
+      add(key,depth+1);
+    });
+  }
+  add('',0);
+  nodes.forEach(function(n){
+    const key=String(n.client_node_key||'').trim();
+    if(key&&!seen.has(key))out.push({value:key,label:'› '+worksiteNodeLabel(key)});
+  });
+  const selected=String(selectedKey||'').trim();
+  if(selected&&!out.some(o=>o.value===selected))out.push({value:selected,label:'Nicht mehr vorhanden: '+selected});
+  return out;
 }
 function slotOf(entry){return String(entry&&entry.payload&&entry.payload._tb_android_slot||'');}
 function firmIdOf(entry){return String(entry&&entry.payload&&entry.payload.firmaId||'').trim();}
@@ -636,76 +748,52 @@ function renderPhotoEvents(section,list,legacyLines){
   });
   return out.join('');
 }
-function renderWorkGrouped(list,firms,legacyLines){
-  list=dedupeEntries(list);
-  const groups={};
-  list.forEach(function(e){const id=firmIdOf(e)||'__general__';if(!groups[id])groups[id]=[];groups[id].push(e);});
-  let html=Object.keys(groups).map(function(id){
-    const firm=id==='__general__'?null:firms[id];
-    const title=firm?firm.name:'Allgemein';
-    return '<div class="btb-firm"><div class="btb-firm-head"><span class="btb-firm-name">'+esc(title)+'</span></div>'+
-      groups[id].sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)).map(function(e){
+function renderContentNodeGroups(rows){
+  const byNode={};
+  rows.forEach(function(e){const key=worksiteNodeKeyOf(e)||'__main__';if(!byNode[key])byNode[key]=[];byNode[key].push(e);});
+  return Object.keys(byNode).sort(function(a,b){
+    if(a==='__main__')return -1;if(b==='__main__')return 1;
+    return worksiteNodeLabel(a).localeCompare(worksiteNodeLabel(b),'de');
+  }).map(function(key){
+    const label=key==='__main__'?'Hauptbaustelle':worksiteNodeLabel(key);
+    return '<div class="btb-node-group"><div class="btb-node-title">'+esc(label)+'</div>'+
+      byNode[key].sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)).map(function(e){
         return '<div class="btb-compact-row"><div class="btb-compact-text">'+esc(compactLine(e))+'</div>'+rowActions(e)+'</div>';
       }).join('')+'</div>';
   }).join('');
+}
+function renderContentGrouped(section,list,firms,legacyLines){
+  list=dedupeEntries(list);
+  const groups={};
+  list.forEach(function(e){const id=firmIdOf(e)||'__general__';if(!groups[id])groups[id]=[];groups[id].push(e);});
+  let html=Object.keys(groups).sort(function(a,b){
+    if(a==='__general__')return -1;if(b==='__general__')return 1;
+    return String(firms[a]&&firms[a].name||a).localeCompare(String(firms[b]&&firms[b].name||b),'de');
+  }).map(function(id){
+    const firm=id==='__general__'?null:firms[id];
+    const title=firm?firm.name:'Allgemein';
+    return '<div class="btb-firm"><div class="btb-firm-head"><span class="btb-firm-name">'+esc(title)+'</span></div>'+
+      renderContentNodeGroups(groups[id])+'</div>';
+  }).join('');
   if((legacyLines||[]).length){
     html+='<div class="btb-firm"><div class="btb-firm-head"><span class="btb-firm-name">Allgemein</span></div>'+
+      '<div class="btb-node-group"><div class="btb-node-title">Hauptbaustelle</div>'+
       legacyLines.sort((a,b)=>a.sort-b.sort).map(function(item){
         const actions=canEditCurrentBtb()?'<div class="btb-row-actions">'+editorButton(item.sourceEntry)+
           '<button class="danger btb-icon-danger" type="button" onclick="deleteLegacyWorkLine(\''+esc(item.sourceEntry.id)+'\','+Number(item.lineIndex)+')">Löschen</button></div>':'';
         return '<div class="btb-compact-row"><div class="btb-compact-text">'+esc(item.text)+'</div>'+actions+'</div>';
-      }).join('')+'</div>';
+      }).join('')+'</div></div>';
   }
-  html+=renderPhotoEvents('ARBEIT',list,legacyLines);
+  html+=renderPhotoEvents(section,list,legacyLines||[]);
   return html;
 }
-function renderSimple(list,section){
-  list=dedupeEntries(list);
-  let html=list.sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)).map(function(e){
-    return '<div class="btb-readable-entry"><div class="btb-entry-text">'+esc(compactLine(e))+'</div>'+
-      '<div class="btb-entry-actions">'+rowActions(e)+'</div></div>';
-  }).join('');
-  html+=renderPhotoEvents(section,list,[]);
-  return html;
+function renderWorkGrouped(list,firms,legacyLines){
+  return renderContentGrouped('ARBEIT',list,firms,legacyLines);
 }
-function emptySectionText(){
-  return '<div class="btb-empty">Keine Einträge.</div>';
+function renderSimple(list,section,firms){
+  return renderContentGrouped(section,list,firms,[]);
 }
-function renderEntries(){
-  const firms=firmDirectory(), groups={};
-  entries.forEach(function(e){
-    const key=String(e.section||'ALLGEMEIN').trim().toUpperCase();
-    if(key==='FIRMA')return;
-    if(!groups[key])groups[key]=[];
-    groups[key].push(e);
-  });
-
-  const personal=groups.PERSONAL||[], devices=groups.GERAET||[];
-  const personalStructured=personal.filter(x=>firmIdOf(x));
-  const deviceStructured=devices.filter(x=>firmIdOf(x));
-  const personalShown=personal.filter(e=>!isLegacyDuplicate(e,'PERSONAL',personalStructured,firms));
-  const deviceShown=devices.filter(e=>!isLegacyDuplicate(e,'GERAET',deviceStructured,firms));
-  const personalHtml=renderFirmGrouped('PERSONAL',personalShown,firms);
-  const deviceHtml=renderFirmGrouped('GERAET',deviceShown,firms);
-  document.getElementById('personalEntries').innerHTML=personalHtml||emptySectionText();
-  document.getElementById('deviceEntries').innerHTML=deviceHtml||emptySectionText();
-
-  const legacyWork=legacyWorkLines([...(groups.NOTIZEN||[]),...(groups.ALLGEMEIN||[])]);
-  const target=document.getElementById('entries');
-  const main=ALWAYS_OPEN_SECTIONS.map(function(key){
-    const list=(groups[key]||[]).slice(), info=sectionInfo(key);
-    let body='';
-    if(key==='ARBEIT')body=renderWorkGrouped(list,firms,legacyWork);
-    else body=renderSimple(list,key);
-    if(!body)body=emptySectionText();
-    return '<section class="btb-section"><div class="btb-section-head"><h3>'+esc(info.title)+'</h3>'+
-      '<div class="btb-section-actions">'+sectionAddButton(key)+'</div></div>'+
-      '<div class="btb-section-body">'+body+'</div></section>';
-  }).join('');
-
-  target.innerHTML=main;
-}
-function editorField(id,label,value,type,wide){
+function editorFieldfunction editorField(id,label,value,type,wide){
   const cls=wide?' class="wide"':'';
   if(type==='textarea'){
     return '<div'+cls+'><label for="'+id+'">'+esc(label)+'</label><textarea id="'+id+'" rows="5">'+esc(value??'')+'</textarea></div>';
@@ -733,6 +821,8 @@ function openEntryEditor(id){
     fields=editorField('edit-anzahl','Anzahl',p.anzahl??'','number')+editorField('edit-rolle','Rolle',p.rolle||'','text');
   }else if(section==='GERAET'){
     fields=editorField('edit-anzahl','Anzahl',p.anzahl??'','number')+editorField('edit-bezeichnung','Bezeichnung',p.bezeichnung||'','text');
+  }else if(ALWAYS_OPEN_SECTIONS.includes(section)){
+    fields=contentEditorFields(section,p);
   }else{
     fields=editorField('edit-uhrzeit','Uhrzeit',p.uhrzeit||'','time')+
       editorField('edit-kmVon','KM von',p.kmVon??'','number')+editorField('edit-kmBis','KM bis',p.kmBis??'','number')+
@@ -746,14 +836,26 @@ function openEntryEditor(id){
   document.getElementById('entryModal').classList.add('open');
   document.getElementById('entryModal').setAttribute('aria-hidden','false');
 }
-function firmOptions(includeGeneral){
+function firmOptions(includeGeneral,selectedId){
   const firms=firmDirectory();
   const options=[];
   if(includeGeneral)options.push({value:'__general__',label:'Allgemein'});
   Object.keys(firms).sort((a,b)=>firms[a].name.localeCompare(firms[b].name,'de')).forEach(function(id){
     options.push({value:id,label:firms[id].name});
   });
+  const selected=String(selectedId||'').trim();
+  if(selected&&selected!=='__general__'&&!options.some(o=>o.value===selected))options.push({value:selected,label:'Nicht mehr vorhanden: '+selected});
   return options;
+}
+function contentEditorFields(section,p){
+  const firmValue=String(p&&p.firmaId||'').trim()||'__general__';
+  const nodeValue=String(p&&p.worksiteNodeKey||'').trim();
+  return editorSelect('edit-section','BTB-Punkt',contentSectionOptions(),section,true)+
+    editorSelect('edit-firmaSelect','Firma / Allgemein',firmOptions(true,firmValue),firmValue,true)+
+    editorSelect('edit-nodeSelect','Unterbaustelle / Bauobjekt',worksiteNodeOptions(nodeValue),nodeValue,true)+
+    editorField('edit-uhrzeit','Uhrzeit',p&&p.uhrzeit||'','time')+
+    editorField('edit-kmVon','KM von',p&&p.kmVon??'','number')+editorField('edit-kmBis','KM bis',p&&p.kmBis??'','number')+
+    editorField('edit-text','Text',p&&(p.text||p.beschreibung||p.kommentar)||'','textarea',true);
 }
 function openEntryCreator(section,firmId){
   if(!canEditCurrentBtb())return;
@@ -773,16 +875,11 @@ function openEntryCreator(section,firmId){
   }else if(s==='GERAET'){
     title='Gerät / Maschine hinzufügen';
     fields=editorField('edit-anzahl','Anzahl',1,'number')+editorField('edit-bezeichnung','Bezeichnung','','text');
-  }else if(s==='ARBEIT'){
-    title='Ausgeführte Arbeit hinzufügen';
-    const options=firmOptions(true);
-    fields=editorSelect('edit-firmaSelect','Bereich / Firma',options,'__general__',true)+
-      editorField('edit-uhrzeit','Uhrzeit','','time')+editorField('edit-text','Text','','textarea',true);
-  }else{
+  }else if(ALWAYS_OPEN_SECTIONS.includes(s)){
     title=sectionInfo(s).title+' – Eintrag hinzufügen';
-    fields=editorField('edit-uhrzeit','Uhrzeit','','time')+
-      editorField('edit-kmVon','KM von','','number')+editorField('edit-kmBis','KM bis','','number')+
-      editorField('edit-text','Text','','textarea',true);
+    fields=contentEditorFields(s,{firmaId:creatingEntry.firmId||'',worksiteNodeKey:''});
+  }else{
+    fields=editorField('edit-uhrzeit','Uhrzeit','','time')+editorField('edit-text','Text','','textarea',true);
   }
   document.getElementById('entryModalTitle').textContent=title;
   document.getElementById('entryModalBody').innerHTML='<div class="btb-modal-grid">'+fields+'</div>';
@@ -793,7 +890,7 @@ function openEntryCreator(section,firmId){
 }
 window.openEntryCreator=openEntryCreator;
 window.openEntryEditor=openEntryEditor;
-function closeEntryEditor(){
+function closeEntryEditor(){function closeEntryEditor(){
   editingEntry=null;creatingEntry=null;
   document.getElementById('entryModal').classList.remove('open');
   document.getElementById('entryModal').setAttribute('aria-hidden','true');
@@ -819,6 +916,14 @@ function buildEditedPayload(){
     if(time)p.uhrzeit=time;else delete p.uhrzeit;
     if(kmVon!=null)p.kmVon=kmVon;else delete p.kmVon;
     if(kmBis!=null)p.kmBis=kmBis;else delete p.kmBis;
+    if(document.getElementById('edit-firmaSelect')){
+      const firm=editorValue('edit-firmaSelect');
+      if(firm&&firm!=='__general__')p.firmaId=firm;else delete p.firmaId;
+    }
+    if(document.getElementById('edit-nodeSelect')){
+      const node=editorValue('edit-nodeSelect');
+      if(node)p.worksiteNodeKey=node;else delete p.worksiteNodeKey;
+    }
     if('beschreibung' in p&&!('text' in p))p.beschreibung=text;
     else if('kommentar' in p&&!('text' in p))p.kommentar=text;
     else p.text=text;
@@ -828,10 +933,13 @@ function buildEditedPayload(){
 function createSectionItemPayload(){
   const p={};
   const time=editorValue('edit-uhrzeit'), kmVon=numberOrNull('edit-kmVon'), kmBis=numberOrNull('edit-kmBis'), text=editorValue('edit-text');
+  const firm=editorValue('edit-firmaSelect'),node=editorValue('edit-nodeSelect');
   if(time)p.uhrzeit=time;
   p.text=text;
   if(kmVon!=null)p.kmVon=kmVon;
   if(kmBis!=null)p.kmBis=kmBis;
+  if(firm&&firm!=='__general__')p.firmaId=firm;
+  if(node)p.worksiteNodeKey=node;
   return p;
 }
 async function postManagedEntry(section,slot,sortOrder,payload){
@@ -841,18 +949,6 @@ async function postManagedEntry(section,slot,sortOrder,payload){
       section:section,sort_order:sortOrder,payload:managedPayload(payload,slot)
     })
   });
-}
-async function appendGeneralWork(){
-  const text=editorValue('edit-text');
-  const time=editorValue('edit-uhrzeit');
-  if(!text)throw new Error('Bitte Text eingeben.');
-  const payload={text:text};
-  if(time)payload.uhrzeit=time;
-  const wanted=normalizedSummary([time,text].filter(Boolean).join(' '));
-  const existingLegacy=legacyWorkLines(entries.filter(e=>['NOTIZEN','ALLGEMEIN'].includes(String(e.section||'').toUpperCase())));
-  if(existingLegacy.some(x=>normalizedSummary(x.text)===wanted))throw new Error('Ein identischer Eintrag ist bereits vorhanden.');
-  const prefix='arbeit-frei:',index=nextSlotIndex(prefix);
-  await postManagedEntry('ARBEIT',prefix+index,index,payload);
 }
 async function createModalEntry(){
   const ctx=creatingEntry;if(!ctx)return;
@@ -884,20 +980,19 @@ async function createModalEntry(){
     await postManagedEntry('GERAET',prefix+index,index,{firmaId:firmaId,anzahl:numberOrNull('edit-anzahl'),bezeichnung:name});
     return;
   }
-  if(s==='ARBEIT'){
-    const firmaId=editorValue('edit-firmaSelect');
-    if(firmaId==='__general__'){await appendGeneralWork();return;}
-    const text=editorValue('edit-text');if(!text)throw new Error('Bitte Text eingeben.');
-    const prefix='firma:'+firmaId+':arbeit:',index=nextSlotIndex(prefix);
-    const payload={firmaId:firmaId,text:text};
-    const time=editorValue('edit-uhrzeit');if(time)payload.uhrzeit=time;
-    await postManagedEntry('ARBEIT',prefix+index,index,payload);
+  if(ALWAYS_OPEN_SECTIONS.includes(s)){
+    const targetSection=editorValue('edit-section')||s;
+    const payload=createSectionItemPayload();if(!payload.text)throw new Error('Bitte Text eingeben.');
+    const firm=String(payload.firmaId||'');
+    const prefix=targetSection==='ARBEIT'
+      ?(firm?'firma:'+firm+':arbeit:':'arbeit-frei:')
+      :sectionSlotPrefix(targetSection);
+    if(!prefix)throw new Error('Abschnitt wird nicht unterstützt.');
+    const index=nextSlotIndex(prefix);
+    await postManagedEntry(targetSection,prefix+index,index,payload);
     return;
   }
-  const prefix=sectionSlotPrefix(s);if(!prefix)throw new Error('Abschnitt wird nicht unterstützt.');
-  const payload=createSectionItemPayload();if(!payload.text)throw new Error('Bitte Text eingeben.');
-  const index=nextSlotIndex(prefix);
-  await postManagedEntry(s,prefix+index,index,payload);
+  throw new Error('Abschnitt wird nicht unterstützt.');
 }
 async function saveModalEntry(){
   try{
@@ -906,9 +1001,11 @@ async function saveModalEntry(){
       closeEntryEditor();show('ok','Eintrag hinzugefügt.');await loadBtb();return;
     }
     if(!editingEntry)return;
+    const targetSection=document.getElementById('edit-section')?editorValue('edit-section'):String(editingEntry.section||'');
     await tbApi('/api/v1/btbs/'+btbId+'/entries/'+encodeURIComponent(editingEntry.id),{
       method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         base_version:editingEntry.version,
+        section:targetSection,
         sort_order:Number(editingEntry.sort_order||0),
         payload:buildEditedPayload()
       })
@@ -916,7 +1013,7 @@ async function saveModalEntry(){
     closeEntryEditor();show('ok','Eintrag gespeichert.');await loadBtb();
   }catch(error){show('err',error.message||String(error));}
 }
-async function deleteEntryId(id){
+async function deleteEntryId(id){async function deleteEntryId(id){
   await tbApi('/api/v1/btbs/'+btbId+'/entries/'+encodeURIComponent(id),{method:'DELETE'});
 }
 async function deleteEntryDirect(id){
@@ -1104,6 +1201,15 @@ async function setParticipantStatus(userId,status){
 }
 window.setParticipantStatus=setParticipantStatus;
 
+function setSelectOptions(id,options,value){
+  const el=document.getElementById(id);if(!el)return;
+  el.innerHTML=(options||[]).map(function(o){return '<option value="'+esc(o.value)+'">'+esc(o.label)+'</option>';}).join('');
+  if(value!=null)el.value=String(value);
+}
+function refreshPhotoUploadSelectors(){
+  setSelectOptions('photoCompany',firmOptions(true),'__general__');
+  setSelectOptions('photoNode',worksiteNodeOptions(),'');
+}
 const LIVE_BTB_ENTITY_TYPES=new Set(['BTB','BTB_ENTRY','BTB_PARTICIPANT','FILE']);
 function scheduleBtbLiveReload(){
   if(liveReloadTimer)clearTimeout(liveReloadTimer);
@@ -1150,6 +1256,8 @@ async function loadBtb(){
   participants=shiftContractAvailable?(result.data.participants||[]):[];currentUser=shiftContractAvailable?(result.data.current_user||{}):{};
   const ws=await tbApi('/api/v1/worksites/'+encodeURIComponent(current.worksite_id));
   permissions=ws.data.permissions||{};
+  const nodeResult=await tbApi('/api/v1/worksites/'+encodeURIComponent(current.worksite_id)+'/nodes');
+  worksiteNodes=nodeResult.data.nodes||[];
   const list=await tbApi('/api/v1/worksites/'+encodeURIComponent(current.worksite_id)+'/teams/'+encodeURIComponent(current.team_id)+'/btbs');
   activeBtbId=list.data.active_btb_id;
   document.getElementById('back').href=pagePrefix+'/worksites/'+encodeURIComponent(current.worksite_id);
@@ -1159,7 +1267,7 @@ async function loadBtb(){
   document.getElementById('workDate').value=current.work_date||'';
   document.getElementById('startedAt').value=localInput(current.started_at);
   document.getElementById('endedAt').value=localInput(current.ended_at);
-  renderHeaderSummary();renderWeather();renderParticipants();renderEntries();renderPhotos();lifecycle();
+  renderHeaderSummary();renderWeather();renderParticipants();renderEntries();renderPhotos();refreshPhotoUploadSelectors();lifecycle();
 }
 document.getElementById('headerForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
@@ -1184,7 +1292,11 @@ document.getElementById('entryModalCancel').addEventListener('click',closeEntryE
 document.getElementById('entryModalSave').addEventListener('click',saveModalEntry);
 document.getElementById('entryModalDelete').addEventListener('click',deleteModalEntry);
 document.getElementById('entryModal').addEventListener('click',function(ev){if(ev.target===this)closeEntryEditor();});
-document.addEventListener('keydown',function(ev){if(ev.key!=='Escape')return;if(document.getElementById('weatherModal').classList.contains('open'))closeWeatherEditor();if(document.getElementById('entryModal').classList.contains('open'))closeEntryEditor();});
+document.getElementById('photoModalClose').addEventListener('click',closePhotoEditor);
+document.getElementById('photoModalCancel').addEventListener('click',closePhotoEditor);
+document.getElementById('photoModalSave').addEventListener('click',savePhotoEditor);
+document.getElementById('photoModal').addEventListener('click',function(ev){if(ev.target===this)closePhotoEditor();});
+document.addEventListener('keydown',function(ev){if(ev.key!=='Escape')return;if(document.getElementById('weatherModal').classList.contains('open'))closeWeatherEditor();if(document.getElementById('entryModal').classList.contains('open'))closeEntryEditor();if(document.getElementById('photoModal').classList.contains('open'))closePhotoEditor();});
 async function deleteEntry(id){
   if(!confirm('Eintrag wirklich aus dem BTB entfernen?'))return;
   try{
@@ -1264,10 +1376,14 @@ document.getElementById('uploadPhoto').addEventListener('click',async function()
     progress.textContent='Foto wird verknüpft …';
     const kmRaw=String(document.getElementById('photoKm').value||'').trim().replace(',','.');
     const km=kmRaw===''?null:Number(kmRaw);
+    const uploadFirmId=String(document.getElementById('photoCompany').value||'').trim();
+    const uploadFirms=firmDirectory();
     const photoMetadata={
       typ:String(document.getElementById('photoType').value||'FOTODOKUMENTATION'),
       kurztext:String(document.getElementById('photoShortText').value||'').trim(),
-      firma:String(document.getElementById('photoCompany').value||'').trim(),
+      firma:uploadFirmId&&uploadFirmId!=='__general__'?(uploadFirms[uploadFirmId]&&uploadFirms[uploadFirmId].name||''):'',
+      firmaId:uploadFirmId&&uploadFirmId!=='__general__'?uploadFirmId:'',
+      worksiteNodeKey:String(document.getElementById('photoNode').value||'').trim(),
       objektKennung:String(document.getElementById('photoObject').value||'').trim(),
       objektBereich:String(document.getElementById('photoArea').value||'').trim()
     };
