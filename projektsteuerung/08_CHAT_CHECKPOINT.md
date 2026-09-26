@@ -33,3 +33,16 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Fachsync ist damit in diesem Lauf noch nicht geprüft.
 - Nächster Schritt: öffentliche Domain/API-Erreichbarkeit und danach Geräte-DNS/Netz prüfen.
 - Keine Codeänderung auf Verdacht.
+
+
+## IMG-001 Quellaudit 26.09.2026
+
+- Quellaudit abgeschlossen; kein Fachcode geändert.
+- Android lädt BTB-/Mangel-/Abnahmefotos aktuell aus dem lokalen Originalpfad hoch.
+- Server speichert empfangene Bytes unverändert; APP-Volloriginal auf NAS ist daher Folge des Android-Uploads.
+- Server-Renditions existieren: `thumb` 320 px / `preview` 1280 px.
+- Android-Dateiclient nutzt diese Renditions nicht und lädt fehlende Bilder über `/content`.
+- Lokales Android-Thumbnail 512 px/Qualität 82 existiert bereits, ist aber nicht in den Online-Sync eingebunden.
+- Metadatenlücken: GPS-Genauigkeit nicht persistent; Mangel-/Abnahmefoto-Upload strukturell unvollständig.
+- Detailnachweis: `projektsteuerung/uebergaben/IMG-001_BILDTRANSPORT_AUDIT_2026-09-26.md`.
+- E2E-PRIO-001 bleibt maßgeblich: NET-001 → Hauptgerät↔Portal → HELPER/Poco → danach IMG-001-Implementierung.
