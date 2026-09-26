@@ -113,3 +113,13 @@ Server-Seite ist zuständig; Umsetzung im Portal-JavaScript gegen vorhandenen Ch
 
 ### BTB-SYNC-002 – Serverdiagnose erforderlich, kein Fix auf Verdacht
 Aktueller Praxisbefund ist asymmetrisch: Portal→Pixel funktioniert, Pixel→Portal nicht; Portalstand überschreibt Pixeländerung. Vor Serveränderung müssen Change-Feed, BTB-/Entry-Versionen und tatsächlich eingehende Pixel-Mutationen geprüft werden.
+
+
+## PORTAL-LIVE-001 – aktueller Deployauftrag
+Status: **QUELLSTAND FERTIG / DEPLOY JETZT / E2E DANACH**
+
+- Benutzer bestätigt: Pixel↔Portal synchronisiert fachlich in beide Richtungen.
+- Nächster Server-Schritt ist deshalb jetzt ausschließlich der bereits fertige Live-Refresh des Portals.
+- Commit `c0355161a2d7ecceaadd1fc79f2bbade346a78cc` bindet BTB- und Baustellenseite an den vorhandenen SSE-Change-Feed.
+- Ziel: neue BTBs, BTB-Änderungen und Bilder erscheinen in einer geöffneten Portalansicht automatisch; F5 entfällt.
+- Deployment über GitHub Desktop → File Station → Container Manager; kein NAS-SSH.
