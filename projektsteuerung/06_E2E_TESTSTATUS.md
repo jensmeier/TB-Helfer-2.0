@@ -6,7 +6,7 @@ Stand: 2026-09-26
 |---|---|---|
 | Android 1.3.19 / 200069 Build | OFFEN | Build-Wiederholung |
 | Android 200069 Installation | OFFEN | Pixel/Poco nach Build |
-| Pixel/Poco Versionsgleichstand | FEHLER FESTGESTELLT | Pixel meldet 1.3.4, Poco 1.3.19; Pixel auf Zielstand 1.3.19/200069 bringen |
+| Pixel/Poco Versionsgleichstand | BENUTZER BESTÄTIGT: BEIDE 1.3.19 | Server-DB-Appversion ist Aktivierungs-Snapshot und kein Runtime-Nachweis |
 | Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200069 praktisch prüfen |
 | Haupt-TB-Handy ↔ Server/Portal | PRIORITÄT / E2E OFFEN | echte Fachkette zuerst sauber bestätigen |
 | BTB 26.09 Pixel → Server/Portal/Poco | FEHLER REPRODUZIERT | Portal fehlt 26.09; Poco zeigt kurz und verliert ihn wieder |

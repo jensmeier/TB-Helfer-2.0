@@ -61,3 +61,6 @@ Force-Stop/Neustart der App sowie WLAN aus / Mobilfunk ändern den Fehler nicht.
 
 ### BTB-SYNC-001 Versionsabweichung auf Testgeräten
 Server-Geräteabfrage: Pixel meldet `1.3.4`, Poco `1.3.19`. Damit ist der aktuelle Geräte-E2E gemischt. Installation des aktuellen Zielstands `1.3.19 / 200069` auf Pixel ist vor weiterer Ursachenbewertung zwingend nachzuweisen.
+
+### Korrektur Versionsdiagnose
+Pixel läuft nach Benutzerbestätigung ebenfalls auf `1.3.19`. Der Serverwert `1.3.4` stammt aus der Geräteaktivierung und ist nach App-Updates stale. Kein Versionsgleichstandsfehler als Ursache von BTB-SYNC-001 bestätigt.

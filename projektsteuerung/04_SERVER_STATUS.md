@@ -57,3 +57,11 @@ Status: **SERVER-RENDITIONS VORHANDEN / ANDROID-NUTZUNG FEHLT**
 
 ### BTB-SYNC-001 Diagnose – kein Serverfix vor Versionsgleichstand
 DB-Diagnose zeigt Pixel mit Android-App `1.3.4` und Poco mit `1.3.19`. Change-Feed enthält mehrere Updates desselben BTB bis mindestens Version 19. Server-/DB-Änderungen bleiben gesperrt, bis der Pixel auf dem aktuellen Android-Zielstand getestet wird.
+
+### Geräte-Metadaten app_version sind Aktivierungs-Snapshot
+Quellprüfung:
+- `/api/v1/device/login` schreibt `app_version` und `app_build` in `tb.devices`.
+- `current_device_user` aktualisiert bei normalen Requests nur `last_seen_at`.
+- Nach einem normalen APK-Update ohne Neuaktivierung bleibt daher die alte App-Version in `tb.devices`.
+
+Folge: `tb.devices.app_version` darf aktuell nicht als Runtime-Versionsnachweis für E2E verwendet werden. Kein Serverfix daraus ohne separaten Auftrag.

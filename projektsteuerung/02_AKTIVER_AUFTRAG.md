@@ -129,3 +129,9 @@ Zwingende Diagnose vor Änderung:
 - Projektziel/aktueller Android-Fachstand: `1.3.19 / 200069`.
 - Change-Feed zeigt wiederholte Updates desselben BTB bis mindestens Version 19.
 - Bewertung: erst Versionsgleichstand herstellen/prüfen. Kein Server- oder DB-Fix, solange das Hauptgerät noch mit einem älteren Android-Syncvertrag arbeitet.
+
+### Korrektur zu BTB-SYNC-001 Diagnosefund
+- Pixel ist laut Geräteanzeige tatsächlich auf `1.3.19`.
+- `tb.devices.app_version` ist nur der bei Aktivierung gemeldete Stand und wird bei normalem Sync nicht aktualisiert.
+- Die Schlussfolgerung „Pixel läuft noch 1.3.4“ war falsch und wird nicht weiterverfolgt.
+- Nächster Schritt bleibt die eigentliche BTB-Diagnose: Team-`active_btb_id`, 26.09-BTB-Datensatz, Change-Feed und API-Snapshot.

@@ -88,3 +88,9 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Change-Feed zeigt für denselben BTB am 26.09 mehrere UPDATEs bis mindestens Version 19.
 - Aktueller Android-Zielstand laut Projektsteuerung: 1.3.19 / 200069.
 - Nächster Schritt: Pixel-Version angleichen bzw. 200069-Installation nachweisen; erst danach BTB-SYNC-001 erneut testen.
+
+## Korrektur – Pixel-Version
+- Benutzer bestätigt Pixel ebenfalls auf TB-Helfer 1.3.19.
+- Serverwert 1.3.4 ist stale: `app_version/app_build` werden nur bei Geräteaktivierung geschrieben; normale Requests aktualisieren nur `last_seen_at`.
+- Vorherige Schlussfolgerung „gemischte Android-Versionen“ verworfen.
+- BTB-SYNC-001 weiter diagnostizieren: 26.09-BTB + Team-`active_btb_id` + API-Snapshot.
