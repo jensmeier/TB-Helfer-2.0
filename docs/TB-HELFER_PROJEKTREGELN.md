@@ -36,7 +36,7 @@ Neue fachliche Anforderungen, Vertragsänderungen oder wesentliche Statusänderu
 
 Der Chat-Kontext wird nicht mit erfundenen Prozentwerten bewertet. Stattdessen gilt ereignisbasierte Sicherung: nach jedem atomaren Arbeitsblock, vor Android↔Server-Wechsel, nach Build/Test und vor einer Antwort mit „fertig/erledigt“ den Stand in `projektsteuerung/08_CHAT_CHECKPOINT.md` bzw. den zuständigen Statusdateien sichern.
 
-Die früheren Top-Level-Ordner `projektstatus/`, `projektsteuerung/releases/` und `projektsteuerung/uebergaben/` sind außer Betrieb und dürfen nicht neu angelegt werden.
+Die früheren Top-Level-Ordner `projektstatus/`, `releases/` und `uebergaben/` sind außer Betrieb und dürfen nicht neu angelegt werden.
 
 Stand: 2026-09-26
 
