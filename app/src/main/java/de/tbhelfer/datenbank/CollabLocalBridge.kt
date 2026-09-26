@@ -559,8 +559,12 @@ class CollabLocalBridge(
                     collabRepository.clearServer1BtbPending(server.worksiteServerId, key)
                     SelectiveSyncStore.clearBtb(appContext, localBaustelleId, key)
                 } else if (
-                    dao.collabPendingForClientKey(server.worksiteServerId, entity.entityType, key) != null
+                    dao.collabPendingForClientKey(server.worksiteServerId, entity.entityType, key) != null ||
+                    SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, key)
                 ) {
+                    // Unbestätigte lokale Fachänderung hat Vorrang vor einem Snapshot-Apply.
+                    // Der Serverstand bleibt im Cache/BtbServerStateStore bekannt, darf aber die
+                    // lokale BTB-Datei erst nach Upload-/Conflict-Abschluss ersetzen.
                     continue
                 }
 
@@ -586,45 +590,56 @@ class CollabLocalBridge(
                     BautagebuchSpeicher.ordner(appContext, localBaustelleId, localName, datum),
                     "btb_${safeBtbFileToken(payload.optString("btbId", key))}.json"
                 )
-                if (writeIfDifferent(target, localPayload.toString(2))) btbWritten++
 
-                // Server ist fuer den Team-Lifecycle kanonisch. Ein aktiver Server-BTB wird auf
-                // allen Geraeten derselben Baustelle aktiv; ein bestaetigtes FINALIZED loest nur
-                // dann den lokalen Pointer, wenn genau dieser BTB dort noch aktiv war.
-                if (serverActive) {
-                    BtbActivePointerControl.inaktivMarkerLoeschen(
-                        appContext,
-                        localBaustelleId,
-                        localName
-                    )
-                    BtbActivePointerControl.reaktivierungsMarkerLoeschen(
-                        appContext,
-                        localBaustelleId,
-                        localName
-                    )
-                    BautagebuchSpeicher.aktivierenBtb(
-                        appContext,
-                        localBaustelleId,
-                        localName,
-                        key,
-                        datum,
-                        schicht
-                    )
-                } else if (
-                    serverFinal &&
-                    BautagebuchSpeicher.aktiveBtbId(
-                        appContext,
-                        localBaustelleId,
-                        localName
-                    ) == key
-                ) {
-                    BtbActivePointerControl.nachAbschlussInaktivMerken(
-                        appContext,
-                        localBaustelleId,
-                        localName,
-                        key
-                    )
+                val appliedToLocal = SelectiveSyncStore.withBtbMutationLock(localBaustelleId, key) {
+                    // Zweite Dirty-Prüfung im selben Lock wie der Dateischreibzugriff schließt
+                    // das Rennen "Autosave nach erster Prüfung, aber vor Snapshot-Write".
+                    if (!serverFinal && SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, key)) {
+                        false
+                    } else {
+                        if (writeIfDifferent(target, localPayload.toString(2))) btbWritten++
+
+                        // Server ist fuer den Team-Lifecycle kanonisch. Ein aktiver Server-BTB wird auf
+                        // allen Geraeten derselben Baustelle aktiv; ein bestaetigtes FINALIZED loest nur
+                        // dann den lokalen Pointer, wenn genau dieser BTB dort noch aktiv war.
+                        if (serverActive) {
+                            BtbActivePointerControl.inaktivMarkerLoeschen(
+                                appContext,
+                                localBaustelleId,
+                                localName
+                            )
+                            BtbActivePointerControl.reaktivierungsMarkerLoeschen(
+                                appContext,
+                                localBaustelleId,
+                                localName
+                            )
+                            BautagebuchSpeicher.aktivierenBtb(
+                                appContext,
+                                localBaustelleId,
+                                localName,
+                                key,
+                                datum,
+                                schicht
+                            )
+                        } else if (
+                            serverFinal &&
+                            BautagebuchSpeicher.aktiveBtbId(
+                                appContext,
+                                localBaustelleId,
+                                localName
+                            ) == key
+                        ) {
+                            BtbActivePointerControl.nachAbschlussInaktivMerken(
+                                appContext,
+                                localBaustelleId,
+                                localName,
+                                key
+                            )
+                        }
+                        true
+                    }
                 }
+                if (!appliedToLocal) continue
 
                 rememberHash(server.worksiteServerId, entity.entityType, key, stableHash(entity.status, canonicalPayload))
             }
