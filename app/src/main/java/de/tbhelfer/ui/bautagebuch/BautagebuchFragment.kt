@@ -5702,6 +5702,90 @@ cardCurrentReport.setOnClickListener {
                         .show()
                 }
 
+                fun moveManualItemToSection(mi: ManualItem) {
+                    val sourceSection = currentEditSection ?: return
+                    val targets = BtbEditSection.values().filter { it != sourceSection }
+                    val labels = targets.map { "${it.point}. ${it.label}" }.toTypedArray()
+
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("BTB-Punkt ändern")
+                        .setItems(labels) { _, which ->
+                            val targetSection = targets[which]
+                            val photoIds = matchingFotoIds(mi)
+
+                            // Quelle entfernen.
+                            val sourceLines = etFull.text?.toString().orEmpty().lines().toMutableList()
+                            if (mi.lineIndex !in sourceLines.indices) return@setItems
+                            sourceLines.removeAt(mi.lineIndex)
+                            setRawLines(sourceLines.filter { it.isNotBlank() })
+                            onSave(etFull.text?.toString().orEmpty())
+
+                            // Derselbe fachliche Eintrag wandert mit derselben clientEntryKey in
+                            // den Zielabschnitt. Das führt im Server1BtbApi zum section-PATCH,
+                            // nicht zu Delete/Create.
+                            val movedLine = buildManualLine(
+                                ortId = mi.ortId,
+                                firm = mi.firma,
+                                time = mi.time,
+                                text2 = mi.text,
+                                kmVon = mi.kmVon,
+                                kmBis = mi.kmBis,
+                                firmaId = mi.firmaId,
+                                worksiteNodeKey = mi.worksiteNodeKey,
+                                clientEntryKey = mi.clientEntryKey
+                            )
+                            val targetRaw = rawForEditSection(targetSection)
+                            val targetLines = targetRaw.lines()
+                                .filter { it.isNotBlank() }
+                                .toMutableList()
+                                .apply { add(movedLine) }
+                            setRawForEditSection(targetSection, targetLines.joinToString("\n"))
+                            renderSectionPreviews()
+                            scheduleSectionsAutosave(force = true)
+
+                            // Zugeordnete Fotos behalten Datei, Aufnahmezeit, GPS und Foto-ID.
+                            // Nur ihre BTB-Link-Metadaten/Punktzuordnung werden geändert.
+                            val btbId = loadedBtbId?.trim().orEmpty()
+                            viewLifecycleOwner.lifecycleScope.launch {
+                                if (photoIds.isNotEmpty() && btbId.isNotBlank()) {
+                                    val photos = withContext(Dispatchers.IO) {
+                                        ServiceLocator.fotoRepository.fotosMitIds(photoIds)
+                                    }
+                                    withContext(Dispatchers.IO) {
+                                        val currentOverrides =
+                                            BtbPhotoContextOverrideStore.load(requireContext(), btbId)
+                                        photos.forEach { foto ->
+                                            val previous = currentOverrides[foto.id]
+                                            BtbPhotoContextOverrideStore.setOverride(
+                                                requireContext(),
+                                                btbId,
+                                                foto.id,
+                                                BtbPhotoContextOverrideStore.ContextOverride(
+                                                    firma = mi.firma.orEmpty(),
+                                                    firmaId = mi.firmaId,
+                                                    objektKennung = previous?.objektKennung ?: foto.objektKennung,
+                                                    objektBereich = previous?.objektBereich ?: foto.objektBereich,
+                                                    ortId = mi.ortId,
+                                                    worksiteNodeKey = mi.worksiteNodeKey,
+                                                    bildtyp = targetSection.photoType
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                                saveAndReloadWholeBtbSilently()
+                                Snackbar.make(
+                                    requireView(),
+                                    "Eintrag nach Punkt ${targetSection.point} verschoben",
+                                    Snackbar.LENGTH_SHORT
+                                ).show()
+                            }
+                            dialog.dismiss()
+                        }
+                        .setNegativeButton("Abbrechen", null)
+                        .show()
+                }
+
                 fun addManualBullet(mi: ManualItem) {
                     val line = formatManual(mi)
                     val relatedPhotoCount = matchingFotoIds(mi).size
@@ -6184,11 +6268,18 @@ cardCurrentReport.setOnClickListener {
 
                     tv.setOnLongClickListener {
                         com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                            .setTitle("Eintrag")
-                            .setItems(arrayOf("Verschieben", "Löschen")) { _, which ->
+                            .setTitle("Eintrag bearbeiten")
+                            .setItems(
+                                arrayOf(
+                                    "Firma / Allgemein ändern",
+                                    "Punkt 4–8 ändern",
+                                    "Löschen"
+                                )
+                            ) { _, which ->
                                 when (which) {
                                     0 -> moveManualItem(mi)
-                                    1 -> confirmDeleteManualItem(mi)
+                                    1 -> moveManualItemToSection(mi)
+                                    2 -> confirmDeleteManualItem(mi)
                                 }
                             }
                             .setNegativeButton("Abbrechen", null)
