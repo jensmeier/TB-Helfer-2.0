@@ -3,6 +3,7 @@ package de.tbhelfer.server
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -208,6 +209,12 @@ object AppUpdateManager {
                     temp.copyTo(target, overwrite = true)
                     temp.delete()
                 }
+
+                validateDownloadedApk(context, target, release)?.let { validationError ->
+                    target.delete()
+                    return@withContext DownloadResult.Error(validationError)
+                }
+
                 DownloadResult.Success(target)
             } catch (error: Exception) {
                 temp.delete()
@@ -216,6 +223,55 @@ object AppUpdateManager {
                 connection.disconnect()
             }
         }
+
+    /**
+     * Schutz gegen einen inkonsistenten Release-Draft:
+     * Server-Metadaten und die tatsächlich hochgeladene APK müssen exakt zusammenpassen.
+     * Sonst würde Android eine alte APK installieren und anschließend dasselbe Update erneut
+     * angeboten bekommen.
+     */
+    private fun validateDownloadedApk(
+        context: Context,
+        apk: File,
+        release: ReleaseInfo
+    ): String? {
+        val packageInfo = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageArchiveInfo(
+                    apk.absolutePath,
+                    PackageManager.PackageInfoFlags.of(0)
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
+            }
+        }.getOrNull()
+            ?: return "APK konnte nicht als Android-Paket gelesen werden. Update wurde verworfen."
+
+        val apkPackage = packageInfo.packageName.orEmpty()
+        val apkVersionName = packageInfo.versionName.orEmpty()
+        val apkVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            packageInfo.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            packageInfo.versionCode.toLong()
+        }
+
+        if (apkPackage != context.packageName) {
+            return "APK gehört nicht zu TB-Helfer: Paket '${apkPackage}' statt '${context.packageName}'. Update wurde verworfen."
+        }
+
+        if (
+            apkVersionName != release.versionName ||
+            apkVersionCode != release.buildNumber.toLong()
+        ) {
+            return "APK passt nicht zum Release: Datei enthält TB-Helfer " +
+                "${apkVersionName} (${apkVersionCode}), Server erwartet " +
+                "${release.versionName} (${release.buildNumber}). Update wurde verworfen."
+        }
+
+        return null
+    }
 
     fun launchInstaller(activity: Activity, apk: File) {
         val uri = FileProvider.getUriForFile(

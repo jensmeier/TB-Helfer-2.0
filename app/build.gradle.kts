@@ -508,10 +508,10 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200070: BTB-SYNC-001 Active-Pointer-Vorrangregel.
+        // Android 200071: UPD-001 – Release-Metadaten gegen APK-Inhalt validieren.
         // Jeder auslieferbare Test-/Release-Build erhält einen strikt höheren versionCode.
-        versionCode = 200070
-        versionName = "1.3.20"
+        versionCode = 200071
+        versionName = "1.3.21"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
