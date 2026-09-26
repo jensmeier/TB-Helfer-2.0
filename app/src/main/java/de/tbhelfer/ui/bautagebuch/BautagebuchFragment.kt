@@ -4503,7 +4503,10 @@ cardCurrentReport.setOnClickListener {
             val timeIn = java.time.format.DateTimeFormatter.ofPattern("H:mm")
             val timeOut = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
             val reTime = Regex("""^(\d{1,2}:\d{2})(?:\s*[-–]\s*\(?\s*(\d{1,2}:\d{2})\s*\)?)?\s+(.+)$""")
-            val reOrt = Regex("""^@ORT=\d+\s*(.*)$""", RegexOption.IGNORE_CASE)
+            val reEntry = Regex("""^@ENTRY=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
+            val reNode = Regex("""^@NODE=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
+            val reFirmaId = Regex("""^@FIRMAID=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
+            val reOrt = Regex("""^@ORT=(\d+)\s*(.*)$""", RegexOption.IGNORE_CASE)
             val reGeneral = Regex("""^@ALLGEMEIN\b\s*(.*)$""", RegexOption.IGNORE_CASE)
             val reKm = Regex("""^@KM=([0-9]+(?:[.,][0-9]+)?)(?:\s*[-–]\s*([0-9]+(?:[.,][0-9]+)?))?\s*(.*)$""", RegexOption.IGNORE_CASE)
 
@@ -4516,38 +4519,95 @@ cardCurrentReport.setOnClickListener {
                 var line = source.trim().removePrefix("•").trim()
                 if (line.isBlank()) return@mapNotNull null
 
-                // Interne Editor-Marker in beliebiger sinnvoller Reihenfolge entfernen,
-                // den BTB-KM-Marker aber als echte SectionItem-Daten erhalten.
-                val mo = reOrt.matchEntire(line)
-                if (mo != null) line = mo.groupValues.getOrNull(1).orEmpty().trim()
-                val mg = reGeneral.matchEntire(line)
-                if (mg != null) line = mg.groupValues.getOrNull(1).orEmpty().trim()
+                var clientEntryKey: String? = null
+                var worksiteNodeKey: String? = null
+                var firmaId: String? = null
+                var legacyOrtId: Long? = null
+                var explicitGeneral = false
+
+                // Technische Editor-Marker dürfen in beliebiger Reihenfolge am Zeilenanfang stehen.
+                // Dauerhafte Sync-Identitäten sind ENTRY/NODE/FIRMAID; ORT ist nur Legacy/UI-Cache.
+                var markerConsumed: Boolean
+                do {
+                    markerConsumed = false
+                    reEntry.matchEntire(line)?.let {
+                        clientEntryKey = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                        line = it.groupValues[2].trim()
+                        markerConsumed = true
+                    }
+                    if (markerConsumed) continue
+                    reNode.matchEntire(line)?.let {
+                        worksiteNodeKey = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                        line = it.groupValues[2].trim()
+                        markerConsumed = true
+                    }
+                    if (markerConsumed) continue
+                    reFirmaId.matchEntire(line)?.let {
+                        firmaId = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                        line = it.groupValues[2].trim()
+                        markerConsumed = true
+                    }
+                    if (markerConsumed) continue
+                    reOrt.matchEntire(line)?.let {
+                        legacyOrtId = it.groupValues[1].toLongOrNull()
+                        line = it.groupValues[2].trim()
+                        markerConsumed = true
+                    }
+                    if (markerConsumed) continue
+                    reGeneral.matchEntire(line)?.let {
+                        explicitGeneral = true
+                        line = it.groupValues[1].trim()
+                        markerConsumed = true
+                    }
+                } while (markerConsumed && line.isNotBlank())
+
+                if (worksiteNodeKey == null) {
+                    worksiteNodeKey = legacyOrtId?.let { btbNodeKeyByLocalId[it] }
+                }
 
                 var kmVon: Double? = null
                 var kmBis: Double? = null
-                val mk = reKm.matchEntire(line)
-                if (mk != null) {
-                    kmVon = km(mk.groupValues.getOrNull(1))
-                    kmBis = km(mk.groupValues.getOrNull(2))
-                    line = mk.groupValues.getOrNull(3).orEmpty().trim()
-                }
-                if (line.startsWith("@ALLGEMEIN", ignoreCase = true)) {
-                    line = line.substringAfter(' ', "").trim()
+                reKm.matchEntire(line)?.let {
+                    kmVon = km(it.groupValues.getOrNull(1))
+                    kmBis = km(it.groupValues.getOrNull(2))
+                    line = it.groupValues.getOrNull(3).orEmpty().trim()
                 }
                 line = line.removePrefix("•").trim()
                 if (line.isBlank()) return@mapNotNull null
 
+                fun build(time: String?, rawText: String): SectionItem? {
+                    var text = rawText.trim()
+                    if (text.isBlank()) return null
+                    var firmaName: String? = null
+                    if (!explicitGeneral && firmaId != null) {
+                        val splitAt = text.indexOf(": ")
+                        if (splitAt > 0) {
+                            firmaName = text.substring(0, splitAt).trim().takeIf(String::isNotBlank)
+                            text = text.substring(splitAt + 2).trim()
+                        }
+                    }
+                    if (text.isBlank()) return null
+                    return SectionItem(
+                        clientEntryKey = clientEntryKey,
+                        uhrzeit = time,
+                        text = text,
+                        kmVon = kmVon,
+                        kmBis = kmBis,
+                        firmaId = if (explicitGeneral) null else firmaId,
+                        firmaName = if (explicitGeneral) null else firmaName,
+                        worksiteNodeKey = worksiteNodeKey
+                    )
+                }
+
                 val m = reTime.matchEntire(line)
                 if (m != null) {
-                    val startNorm = norm(m.groupValues[1])
+                    val startNorm = norm(m.groupValues[1]) ?: return@mapNotNull null
                     val endRaw = m.groupValues.getOrNull(2).orEmpty().trim()
                     val endNorm = endRaw.takeIf { it.isNotBlank() }?.let(::norm)
-                    val txt = m.groupValues[3].trim()
-                    if (txt.isBlank() || startNorm == null) return@mapNotNull null
                     val t = if (endNorm != null) "$startNorm–$endNorm" else startNorm
-                    SectionItem(uhrzeit = t, text = txt, kmVon = kmVon, kmBis = kmBis)
+                    build(t, m.groupValues[3])
                 } else {
-                    SectionItem(uhrzeit = null, text = line, kmVon = kmVon, kmBis = kmBis)
+                    build(null, line)
                 }
             }
             return if (items.isEmpty()) SectionBlock() else SectionBlock(items = items)
@@ -4555,14 +4615,23 @@ cardCurrentReport.setOnClickListener {
 
         private fun sectionToMultiline(sb: SectionBlock): String {
             return sb.items.filter { it.text.isNotBlank() }.joinToString("\n") { item ->
-                val kmMarker = item.kmVon?.let { von ->
-                    val a = String.format(java.util.Locale.US, "%.3f", von)
-                    val b = item.kmBis?.takeIf { kotlin.math.abs(it - von) > 0.0000001 }
-                        ?.let { String.format(java.util.Locale.US, "%.3f", it) }
-                    if (b != null) "@KM=$a-$b " else "@KM=$a "
-                }.orEmpty()
+                val markers = buildList {
+                    item.clientEntryKey?.trim()?.takeIf { it.isNotBlank() }?.let { add("@ENTRY=$it") }
+                    item.worksiteNodeKey?.trim()?.takeIf { it.isNotBlank() }?.let { add("@NODE=$it") }
+                    item.firmaId?.trim()?.takeIf { it.isNotBlank() }?.let { add("@FIRMAID=$it") }
+                        ?: add("@ALLGEMEIN")
+                    item.kmVon?.let { von ->
+                        val a = String.format(java.util.Locale.US, "%.3f", von)
+                        val b = item.kmBis?.takeIf { kotlin.math.abs(it - von) > 0.0000001 }
+                            ?.let { String.format(java.util.Locale.US, "%.3f", it) }
+                        add(if (b != null) "@KM=$a-$b" else "@KM=$a")
+                    }
+                }.joinToString(" ")
                 val time = item.uhrzeit?.takeIf { it.isNotBlank() }?.plus(" ").orEmpty()
-                "$kmMarker• $time${item.text}".trimEnd()
+                val firma = item.firmaName?.trim()?.takeIf { it.isNotBlank() }?.let { "$it: " }.orEmpty()
+                listOf(markers, "• $time$firma${item.text}".trimEnd())
+                    .filter { it.isNotBlank() }
+                    .joinToString(" ")
             }
         }
 
