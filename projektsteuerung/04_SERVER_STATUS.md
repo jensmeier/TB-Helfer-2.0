@@ -180,3 +180,12 @@ Status: **INTEGRIERT / ANDROID-BUILD-RETEST OFFEN**
 - Android PR #7 merged/closed;
 - nächster SERVER-Schritt: Synology-Deploy des integrierten Serverstands und Migration 016;
 - GitHub Actions auf dem Merge-HEAD liefen nicht: beide Jobs 0 Steps, daher kein CI-Testnachweis.
+
+
+## BTB-EDIT-001 – Synology Upload bestätigt
+Status: **UPLOAD BESTÄTIGT / MIGRATION OFFEN**
+
+- Benutzer bestätigt: die fünf benötigten BTB-EDIT-001-Dateien liegen auf der Synology.
+- Staging-Compose bindet `tbserver/`, `templates/` und `v1_migrations/` read-only direkt vom NAS ein.
+- Deshalb ist kein Image-Rebuild wegen dieser Python-/Template-/SQL-Dateien erforderlich.
+- Vor API-/Worker-Runtime mit dem neuen Schema muss der einmalige `migrate`-Service Migration 016 erfolgreich ausführen.
