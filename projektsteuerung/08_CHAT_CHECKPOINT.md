@@ -237,3 +237,22 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Neuer Zielstand: **1.3.22 / 200072**.
 - Source-Check passt; Build/Installation/Praxis-E2E offen.
 - Nichts am Poco löschen, nicht neu aktivieren, nichts am NAS ändern.
+
+
+## BTB-SYNC-002 – 1.3.23 Source-Fix gesichert
+- Benutzerkorrektur übernommen: Ursache ist Android-Reihenfolge, nicht Server/DB-Vertrag.
+- P0-Fehler: lokaler Pixel-Stand konnte vor Outbox-Export durch Server-Snapshot überschrieben werden.
+- Projektsteuerung vor Codeänderung aktualisiert/committed.
+- Android-Fix:
+  - Dirty-BTB zuerst `exportBtbChange`;
+  - kein Server-Snapshot-Apply vor Outbox;
+  - Pending/Dirty sperrt `applyServerStateToLocal`;
+  - lokaler Save + Dirty-Markierung und Server-Apply pro BTB serialisiert;
+  - neue Dirty-Generation während Upload bleibt erhalten und erzwingt Retry.
+- Version angehoben auf **1.3.23 / 200073**.
+- Release-MD: `projektsteuerung/releases/TB-Helfer_1.3.23_200073.md`.
+- Kein `server/**` geändert.
+- PORTAL-LIVE-001 bleibt SERVER-seitig: Source-Fix vorhanden, Deploy/E2E offen; bis Deployment kann F5 auf dem NAS weiter nötig sein.
+- Build konnte in diesem Arbeitsblock nicht ausgeführt werden: GitHub Actions erzeugte für die aktuellen PR-Commits keinen Run; Container hat keinen externen GitHub-Netzzugriff.
+- Daher Status sauber getrennt: **SOURCE-FIX UMGESETZT / BUILD OFFEN / INSTALLATION OFFEN / E2E OFFEN**.
+- Nächster Test nach Build: Pixel `ABC` → Portal `ABC` → Portal `XYZ` → Pixel `XYZ`; Parallel-Autosave darf nicht verschwinden. Danach Poco.
