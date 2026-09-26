@@ -76,3 +76,16 @@ Pixel-Eingabe erreicht das Portal nicht; nach Portaländerung übernimmt Android
 
 ### BTB-SYNC-002 exakte Source-Ursache
 Im `SelectiveSyncWorker` wird bei bekanntem BTB aktuell der Server-Snapshot angewendet, bevor `exportBtbChange()` die lokal gespeicherte Änderung in die Outbox überführt. Der Dirty-Eintrag im `SelectiveSyncStore` schützt `applyServerStateToLocal()` nicht. Dadurch kann der Serverstand die lokale Änderung vor dem Upload überschreiben. Android-Fix erforderlich.
+
+
+## BTB-EDIT-001 – Live-Integrationsstand Android
+Status: **ENTRY-/NODE-QUELLUMSETZUNG LÄUFT / FOTO-PFAD NOCH OFFEN**
+
+Live geprüft am 26.09.2026:
+- Android-HEAD: `da0806fe29f34363247463bc4fb599778ee42a53`.
+- `SectionItem` enthält jetzt `clientEntryKey`, `firmaId/firmaName`, `worksiteNodeKey`.
+- Worksite-Struktur stellt stabile `clientNodeKey`-Zuordnung und Rückauflösung bereit.
+- Server1BtbApi sendet bei Entry-PATCH bereits `section` und erhält die Entry-/Slot-Identität.
+- Android-Editor migriert Legacy-`@ORT` in stabile `@NODE`-/strukturierte Node-Referenzen.
+- Android-Foto-Sync `BtbTeamMediaSync` führt aktuell noch keinen `worksiteNodeKey`/`firmaId`-Umhänge-PATCH für bestehende Fotos aus.
+- Daher gemeinsamer BTB-EDIT-001 Geräte-E2E noch offen.
