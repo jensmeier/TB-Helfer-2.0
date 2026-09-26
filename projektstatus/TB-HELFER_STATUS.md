@@ -230,3 +230,12 @@
 - Startcursor `279`; Auth-Preflight erfolgreich.
 - Nächster Schritt: 255-Client-Staging-Lasttest ausführen. Mobile Device-Bearer-/Delta-Funktion bleibt separat im Pixel/Poco-E2E offen.
 - `STATUS.xlsx` weiterhin nicht blind überschrieben.
+
+
+## Integrationsnachtrag 26.09.2026 – Delta 255 Clients Timeout
+
+- 255-Client-Portal-Session-Stresstest praktisch: **65 success / 190 timeout**, Wall 41.65 s, Median 40.04 s.
+- Keine HTTP-/Auth-/DB-Fehler; Fehler sind Client-`timed out`.
+- Noch kein Schluss „NAS zu schwach“: alle synthetischen Clients teilen dieselbe Portal-Session und serialisieren damit u. a. `last_seen_at` auf derselben DB-Zeile.
+- Nächster Schritt: identische Staffeltests 50 / 100 / 150 / 200 bei 40-s-Timeout; danach problematische Stufe mit höherem Timeout bzw. getrennten Sessions gegenprüfen.
+- `STATUS.xlsx` weiterhin nicht blind überschrieben.
