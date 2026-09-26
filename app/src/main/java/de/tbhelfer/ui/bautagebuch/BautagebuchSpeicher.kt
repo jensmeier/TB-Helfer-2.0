@@ -3,6 +3,7 @@ package de.tbhelfer.ui.bautagebuch
 import android.content.Context
 import android.os.Environment
 import de.tbhelfer.server.BtbServerStateStore
+import de.tbhelfer.server.SelectiveSyncStore
 import de.tbhelfer.server.SofortSync
 import org.json.JSONArray
 import org.json.JSONObject
@@ -407,11 +408,16 @@ object BautagebuchSpeicher {
             // oder BTB_PARTICIPANT_FINISHED provoziert.
             if (BtbServerStateStore.state(context, id)?.readOnly == true) return
             val normalized = entry.copy(btbId = id)
-            val f = instanzDatei(context, entry.baustelleId, entry.baustelleName, datum, id)
-            f.writeText(toJson(normalized).toString(2), Charsets.UTF_8)
-            writeActivePointer(context, entry.baustelleId, entry.baustelleName, id, datum, normalized.schicht)
-            de.tbhelfer.widget.TBHelferWidgetUpdater.updateAll(context)
-            syncNachLokalemSpeichernAnstossen(context, normalized.baustelleId, id)
+            SelectiveSyncStore.withBtbMutationLock(entry.baustelleId, id) {
+                val f = instanzDatei(context, entry.baustelleId, entry.baustelleName, datum, id)
+                f.writeText(toJson(normalized).toString(2), Charsets.UTF_8)
+                writeActivePointer(context, entry.baustelleId, entry.baustelleName, id, datum, normalized.schicht)
+                de.tbhelfer.widget.TBHelferWidgetUpdater.updateAll(context)
+                // Dirty-Markierung bleibt im selben BTB-Mutationslock wie der Dateisave.
+                // Ein paralleler Server-Apply kann damit niemals zwischen lokalem Save und
+                // persistenter Dirty-Markierung denselben BTB wieder ueberschreiben.
+                syncNachLokalemSpeichernAnstossen(context, normalized.baustelleId, id)
+            }
             return
         }
 
