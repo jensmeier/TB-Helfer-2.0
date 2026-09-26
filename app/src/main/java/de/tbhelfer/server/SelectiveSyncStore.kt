@@ -13,6 +13,7 @@ object SelectiveSyncStore {
     private const val PREFS = "tbhelfer_selective_sync_v1"
     private const val BTB_PREFIX = "btb:"
     private val lock = Any()
+    private val btbMutationLocks = java.util.concurrent.ConcurrentHashMap<String, Any>()
 
     data class BtbScope(
         val localBaustelleId: Long,
@@ -62,6 +63,31 @@ object SelectiveSyncStore {
     }
 
     fun hasPending(context: Context): Boolean = btbScopes(context).isNotEmpty()
+
+    fun isBtbDirty(
+        context: Context,
+        localBaustelleId: Long,
+        clientBtbId: String
+    ): Boolean {
+        if (clientBtbId.isBlank()) return false
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return prefs.contains(btbKey(localBaustelleId, clientBtbId))
+    }
+
+    /**
+     * Serialisiert lokale BTB-Dateischreibvorgänge und kanonische Server-Applies für genau
+     * denselben BTB. Dadurch kann zwischen Dirty-Prüfung und Dateischreibzugriff kein Autosave
+     * unbemerkt dazwischenlaufen und anschließend vom Serverstand überschrieben werden.
+     */
+    inline fun <T> withBtbMutationLock(
+        localBaustelleId: Long,
+        clientBtbId: String,
+        block: () -> T
+    ): T {
+        val key = "$localBaustelleId:$clientBtbId"
+        val mutationLock = btbMutationLocks.getOrPut(key) { Any() }
+        return synchronized(mutationLock) { block() }
+    }
 
     fun clearBtb(context: Context, localBaustelleId: Long, clientBtbId: String): Boolean {
         if (clientBtbId.isBlank()) return false
