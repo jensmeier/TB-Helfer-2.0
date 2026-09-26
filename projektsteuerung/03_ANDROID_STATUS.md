@@ -48,3 +48,8 @@ Browserzugriff auf Portal und API-Health funktioniert auf demselben Gerät; `Neu
 
 ### NET-001 nach Prozessneustart und Mobilfunk
 Force-Stop/Neustart der App sowie WLAN aus / Mobilfunk ändern den Fehler nicht. `Unable to resolve host "api-v1.tb-helfer.de"` bleibt reproduzierbar. Als nächstes systemweite Android-DNS-/VPN-/Filtereinstellungen prüfen; App-Daten/Token nicht löschen.
+
+### Praxisnachtrag – Pixel wieder synchron / Poco frisch aktiviert
+- Pixel hat inzwischen wieder erfolgreich mit dem NAS synchronisiert; der zuvor reproduzierte DNS-Fehler blockiert den aktuellen Lauf nicht mehr.
+- Poco: App gelöscht, neu installiert und neu aktiviert; erster Datenabruf läuft >3 Minuten.
+- Nächster Schritt ist kein weiterer Reset, sondern Erstsync-Pipeline/Datenumfang prüfen und Laufzeitphase eingrenzen.

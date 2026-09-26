@@ -54,3 +54,8 @@ Priorität bleibt gemäß E2E-PRIO-001:
 2. Haupt-TB-Handy ↔ Server/Portal,
 3. HELPER/Poco,
 4. danach IMG-001-Implementierung.
+
+## Praxisnachtrag 26.09.2026 – Pixel wieder online / Poco Erstabgleich
+- Pixel hat nach den vorherigen App-DNS-Fehlern inzwischen wieder mit dem NAS synchronisiert. NET-001 ist damit aktuell **nicht mehr als dauerhafter Verbindungsblocker nachgewiesen**, Ursache des vorherigen Fehlers bleibt ungeklärt.
+- Poco wurde neu installiert und erneut aktiviert. Der anschließende erste Datenabruf läuft sehr lange (>3 Minuten) und ist noch nicht als erfolgreich/fehlgeschlagen abgeschlossen.
+- Priorität bleibt: Hauptgerät↔Portal-Fachkette bestätigen, danach Poco-Erstabgleich gezielt messen/eingrenzen.

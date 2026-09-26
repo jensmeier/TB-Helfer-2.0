@@ -66,3 +66,10 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - WLAN-spezifische Ursache dadurch unwahrscheinlich.
 - Nächster Schritt: Android `Privates DNS`, VPN und DNS-/Adblock-Filter prüfen.
 - Keine App-Daten löschen, keine Neuaktivierung, keine Serveränderung auf Verdacht.
+
+## Praxisnachtrag – Pixel synchronisiert, Poco Erstabgleich läuft
+- Pixel hat inzwischen wieder mit dem NAS synchronisiert.
+- Frühere App-DNS-Störung daher aktuell kein dauerhafter Blocker; Ursache weiterhin unbekannt.
+- Poco-App gelöscht, neu installiert und neu aktiviert.
+- Poco-Erstabgleich läuft nach >3 Minuten weiter.
+- Nächster Schritt: anhand Android-Quellpfad klären, was beim Erstabgleich alles geladen wird und welche Phase die lange Laufzeit verursacht; keine weiteren Resets auf Verdacht.

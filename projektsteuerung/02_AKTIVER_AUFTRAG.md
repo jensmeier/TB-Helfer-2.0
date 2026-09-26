@@ -97,3 +97,10 @@ Browser-Nachtest auf demselben Hauptgerät:
 - Browserzugriff auf Portal/API war auf demselben Gerät zuvor erfolgreich.
 - Nächster Diagnosepunkt: Android systemweite DNS-/VPN-/Filter-Ebene (Privates DNS, VPN/Adblock/NextDNS o. ä.) gegen den Browserpfad prüfen.
 - Keine Server-/DB-/Sync-Codeänderung auf Verdacht.
+
+### NET-001 / SYNC-DEVICE-001 Praxisnachtrag – Pixel synchronisiert, Poco Erstabgleich langsam
+- Pixel synchronisiert inzwischen wieder mit dem NAS. Der frühere `Unable to resolve host`-Fehler ist aktuell nicht mehr reproduzierbar als dauerhafter Blocker; Ursache bleibt offen.
+- Poco wurde deinstalliert, neu installiert und neu aktiviert.
+- Poco zeigt beim anschließenden ersten Datenabruf nach >3 Minuten weiterhin laufenden Abruf.
+- Das ist noch kein bestätigter Sync-Erfolg und noch kein bestätigter Fehler. Vor Änderungen zuerst klären, welche Erstsync-Phasen/Datenmengen tatsächlich laufen und an welcher Phase Zeit verloren geht.
+- Keine Neu-Anlage von Firma/Benutzer/Team/Baustelle auf Verdacht.
