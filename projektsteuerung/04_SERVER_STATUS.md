@@ -88,3 +88,6 @@ Folge: `tb.devices.app_version` darf aktuell nicht als Runtime-Versionsnachweis 
 - Damit ist der kanonische Server-Lifecycle für den 26.09-BTB korrekt. Ursache liegt jetzt im Portal-/Android-Lese-/Anwendungspfad, nicht in fehlendem `active_btb_id` oder Teilnehmerstatus.
 
 Kein Server-DB-Fix auf Verdacht.
+
+### BTB-SYNC-001 Portal-Read bestätigt
+Portal-Neuladen zeigt den 26.09-BTB korrekt als ACTIVE und verlinkt denselben `active_btb_id`. Kein weiterer Server-/Portal-Fix aus diesem Befund.

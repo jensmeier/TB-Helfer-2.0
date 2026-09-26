@@ -116,3 +116,9 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
   - Poco = HELPER / participant `WORKING`
   - zinkel.Jens = LEAD / participant `WORKING`
 - Damit ist der kanonische Server-Lifecycle für den 26.09-BTB korrekt. Ursache liegt jetzt im Portal-/Android-Lese-/Anwendungspfad, nicht in fehlendem `active_btb_id` oder Teilnehmerstatus.
+
+## BTB-SYNC-001 – Portal nach Reload korrekt
+- Portal zeigt nach vollständigem Reload Team `pixeljens`, aktiven BTB `ba2144b7-9ede-4f53-abdc-1accd172e875`, Status ACTIVE, Datum 26.09.
+- Pixel→Server→Portal ist für diesen BTB damit praktisch bestätigt.
+- Restfehler ist Android/Poco: BTB kurz sichtbar, danach kein aktiver BTB.
+- Nächster Schritt: Android Snapshot-/Active-Pointer-/UI-Pfad diagnostizieren.

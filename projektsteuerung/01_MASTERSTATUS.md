@@ -103,3 +103,12 @@ Priorität bleibt gemäß E2E-PRIO-001:
   - Poco = HELPER / participant `WORKING`
   - zinkel.Jens = LEAD / participant `WORKING`
 - Damit ist der kanonische Server-Lifecycle für den 26.09-BTB korrekt. Ursache liegt jetzt im Portal-/Android-Lese-/Anwendungspfad, nicht in fehlendem `active_btb_id` oder Teilnehmerstatus.
+
+## BTB-SYNC-001 Portal-Nachtest – 26.09 sichtbar
+- Nach vollständigem Neuladen der Portal-Baustellenseite wird der 26.09-BTB korrekt angezeigt:
+  - Team `pixeljens`
+  - aktiver BTB `ba2144b7-9ede-4f53-abdc-1accd172e875`
+  - Status `ACTIVE`
+  - Datum `2026-09-26`
+- Der vorherige Portalbefund „nur bis 25.09“ war daher ein nicht aktualisierter Seitenstand, kein fehlerhafter Server-/Portal-Datensatz.
+- Offen bleibt nur noch der Poco-/Android-Lese-/Apply-Pfad, bei dem der 26.09-BTB kurz erscheint und danach lokal verschwindet.
