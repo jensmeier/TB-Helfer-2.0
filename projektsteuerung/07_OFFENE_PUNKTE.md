@@ -5,7 +5,7 @@ Stand: 2026-09-26
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
 | AND-BUILD-200075 | P0 | ANDROID | Generatorfehler source-seitig mit 606aa3ad korrigiert; erfolgreicher Build 1.3.25/200075 noch nicht nachgewiesen | lokalen/Android-Studio-Build erneut ausführen; APK erst nach Erfolg freigeben |
-| BTB-EDIT-001 | P1 | GEMEINSAM | SERVER Entry-/Foto-PATCH + Portal-Editor fertig; ANDROID Entry/Node + lokale Foto-Metadaten integriert; Android nutzt Server-Foto-PATCH/link_version noch nicht | Android Foto-PATCH-Clientpfad schließen → Build 200075 → Server Migration016/Deploy → gemeinsamer Eintrag-/Foto-E2E |
+| BTB-EDIT-001 | P1 | GEMEINSAM | SERVER Source + Migration016 auf Synology vorhanden; ANDROID Entry/Node + lokale Foto-Metadaten integriert; Android nutzt Server-Foto-PATCH/link_version noch nicht | API+Worker neu starten → Portal-Smoke; Android Foto-PATCH-Clientpfad schließen → Build 200075 → gemeinsamer E2E |
 | PORTAL-BTB-UI-001 | P1 | SERVER | Live-Sync bestätigt; BTB im Portal muss fachlich/optisch nachgearbeitet werden | konkrete Portal-BTB-Anpassungen gezielt umsetzen und E2E prüfen |
 | PORTAL-WEATHER-001 | P1 | SERVER/ANDROID | Android 0-mm→null-Fehler bestätigt; tempC wird source-seitig serialisiert, Praxisverluststelle offen | Android 0-mm erhalten; Server-Header/Portal-Payload für tempC separat vergleichen |
 | PORTAL-PART-001 | P1 | SERVER | gelöschte/nicht mehr aktive Helfer sollen aktuelle BTB-Ansicht nicht unnötig belegen | Teilnehmerquelle/Lifecycle prüfen; Anzeige filtern ohne historische Nachweise zu löschen |
