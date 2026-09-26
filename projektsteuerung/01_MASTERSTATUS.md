@@ -247,3 +247,14 @@ Live-Android-HEAD: `57c960fc2f0b133f8c577ba5bcaf2176375d287d`.
 - Ursache ist der Android-Buildgenerator in `app/build.gradle.kts`, nicht Server/API/DB.
 - Kein erfolgreicher APK-Build, keine Installation, kein BTB-EDIT-Geräte-E2E.
 - Benutzerbestätigung „Android ist fertig“ wird als Ende des Android-Arbeitsblocks verstanden, nicht als Buildfreigabe.
+
+
+## AND-BUILD-200075 – Generatorfix 606aa3ad
+Status: **SOURCE-FIX VORHANDEN / BUILD-RETEST OFFEN**
+
+Android-Commit `606aa3ad1f8ea438372484b056a0fc1264ae2aac` entfernt den veralteten Android-200047 Build-time-Source-Patch und verlagert die Ortsmarker-Semantik in den kanonischen `BautagebuchFragment.kt`-Pfad.
+
+Einordnung:
+- konkrete Buildursache source-seitig korrigiert;
+- noch kein erfolgreicher 1.3.25/200075 Build nach diesem Fix belegt;
+- Installation/E2E weiterhin offen.
