@@ -59,3 +59,10 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - App `Neu laden`: gleicher Fehler `Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
 - Damit allgemeine öffentliche DNS-/Cloudflare-Störung als alleinige Ursache ausgeschlossen.
 - Nächster Schritt: Android-Netzpfad/Serverbasis/HTTP-Client prüfen; Server/DB nicht auf Verdacht ändern.
+
+## NET-001 – Force-Stop + Mobilfunk ohne Änderung
+- App vollständig gestoppt und neu gestartet: gleicher DNS-Fehler.
+- WLAN aus, Mobilfunk aktiv: gleicher DNS-Fehler.
+- WLAN-spezifische Ursache dadurch unwahrscheinlich.
+- Nächster Schritt: Android `Privates DNS`, VPN und DNS-/Adblock-Filter prüfen.
+- Keine App-Daten löschen, keine Neuaktivierung, keine Serveränderung auf Verdacht.

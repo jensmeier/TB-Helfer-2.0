@@ -45,3 +45,6 @@ Beide öffentlichen TB-Helfer-Seiten sind auf demselben Hauptgerät im Browser e
 
 ### NET-001 reproduziert
 Browserzugriff auf Portal und API-Health funktioniert auf demselben Gerät; `Neu laden` in der App liefert weiterhin `Unable to resolve host "api-v1.tb-helfer.de"`. Damit ist der Fehler app-/Android-netzpfadspezifisch reproduziert. Source-/Runtime-Diagnose erforderlich; keine Neuaktivierung oder Datenlöschung auf Verdacht.
+
+### NET-001 nach Prozessneustart und Mobilfunk
+Force-Stop/Neustart der App sowie WLAN aus / Mobilfunk ändern den Fehler nicht. `Unable to resolve host "api-v1.tb-helfer.de"` bleibt reproduzierbar. Als nächstes systemweite Android-DNS-/VPN-/Filtereinstellungen prüfen; App-Daten/Token nicht löschen.

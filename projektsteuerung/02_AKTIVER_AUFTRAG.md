@@ -89,3 +89,11 @@ Browser-Nachtest auf demselben Hauptgerät:
 - Der Fehler ist damit **app-/Android-Netzpfad-spezifisch reproduziert** und nicht durch eine allgemeine öffentliche DNS-/Cloudflare-Störung erklärt.
 - Nächster Schritt: Android-Netzpfad, gespeicherte Serverbasis, HTTP-Client und App-Prozess gezielt gegen den Browserpfad prüfen.
 - Keine Server-/DB-Änderung auf Verdacht.
+
+### NET-001 Netzwechsel-Reproduktion
+- App vollständig gestoppt/neu gestartet: Fehler bleibt identisch.
+- WLAN deaktiviert und erneuter App-Test über Mobilfunk: Fehler bleibt identisch.
+- Damit ist ein nur im aktuellen WLAN auftretender DNS-Fehler unwahrscheinlich.
+- Browserzugriff auf Portal/API war auf demselben Gerät zuvor erfolgreich.
+- Nächster Diagnosepunkt: Android systemweite DNS-/VPN-/Filter-Ebene (Privates DNS, VPN/Adblock/NextDNS o. ä.) gegen den Browserpfad prüfen.
+- Keine Server-/DB-/Sync-Codeänderung auf Verdacht.
