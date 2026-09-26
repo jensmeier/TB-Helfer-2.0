@@ -195,3 +195,11 @@
 - Aktives USER-Konto wurde verwendet; genaue 403-Ursache noch offen.
 - Session-Split-E2E zeigt ab jetzt einen begrenzten sicheren Server-Fehlergrund an, ohne Passwort/Token zu loggen.
 - Nächster Schritt: aktualisierte Testdatei auf NAS übernehmen und denselben Post-Deploy-Lauf erneut bis zur 403-Detailausgabe starten.
+
+
+## Integrationsnachtrag 26.09.2026 – Cloudflare blockiert Python-Browsersignatur
+
+- HTTP-403-Ursache des automatischen Session-Split-Tests eindeutig identifiziert: Cloudflare meldet `The site owner has blocked access based on your browser's signature.`.
+- Kein TB-Login-/Rollenfehler; Cloudflare-Schutzregeln bleiben unverändert.
+- Automatisierte Serverabnahme im API-Container künftig über `http://127.0.0.1:8080`; öffentlicher Same-Browser-Test separat mit echtem Browser.
+- Session-Split bleibt bis zum bestandenen internen bzw. Browser-E2E **OFFEN**.
