@@ -384,3 +384,12 @@ Einordnung gemäß Testregeln:
 - Build/Installation/BTB-EDIT-001-Geräte-E2E bleiben deshalb getrennt offen.
 
 Nächster Arbeitsblock: SERVER löst `INT-001`, integriert Server- und Android-Branch konfliktbewusst und schützt dabei `server/**` bzw. `app/**`.
+
+
+### AND-BUILD-200075 – Integrationshinweis
+Vor Branch-Integration live festgestellt:
+- Android-HEAD `57c960fc2f0b133f8c577ba5bcaf2176375d287d`;
+- lokaler Build scheitert reproduzierbar in `generateBtb200043Sources`;
+- alter Android-200047-Ortsmarker-Anker passt nicht mehr zur neuen BTB-EDIT-Quelle.
+
+SERVER integriert den Quellstand konfliktbewusst, ändert den Android-Buildgenerator aber nicht. Build 200075 bleibt danach offen und geht zurück an ANDROID.
