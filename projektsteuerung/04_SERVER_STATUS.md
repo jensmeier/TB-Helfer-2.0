@@ -173,3 +173,10 @@ Status: **INTEGRIERT / ANDROID-BUILD-RETEST OFFEN**
 - `server/**` blieb inhaltlich unverändert; `app/**` stammt unverändert aus dem Android-Parent.
 - Server-Deploy/Migration 016 bleibt separat offen.
 - Android 1.3.25/200075 Build-Retest/Installation/E2E bleibt separat offen.
+
+
+## INT-001 – Integration praktisch abgeschlossen
+- gemeinsamer HEAD: `ee8358e0cb403347a17d389dcad562ac6858aff7`;
+- Android PR #7 merged/closed;
+- nächster SERVER-Schritt: Synology-Deploy des integrierten Serverstands und Migration 016;
+- GitHub Actions auf dem Merge-HEAD liefen nicht: beide Jobs 0 Steps, daher kein CI-Testnachweis.
