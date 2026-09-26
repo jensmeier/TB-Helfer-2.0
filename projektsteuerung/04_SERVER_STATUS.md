@@ -123,3 +123,20 @@ Status: **QUELLSTAND FERTIG / DEPLOY JETZT / E2E DANACH**
 - Commit `c0355161a2d7ecceaadd1fc79f2bbade346a78cc` bindet BTB- und Baustellenseite an den vorhandenen SSE-Change-Feed.
 - Ziel: neue BTBs, BTB-Änderungen und Bilder erscheinen in einer geöffneten Portalansicht automatisch; F5 entfällt.
 - Deployment über GitHub Desktop → File Station → Container Manager; kein NAS-SSH.
+
+
+## PORTAL-LIVE-001 – praktisch bestätigt
+Status: **BESTÄTIGT**
+
+- Benutzer bestätigt nach Deployment: offene Portalansichten aktualisieren sich ohne F5.
+- Reaktionszeit im Praxistest: ca. 1–2 Sekunden.
+- Erstellen und Löschen werden automatisch sichtbar.
+- Synchronisation funktioniert in beide Richtungen.
+- SSE-/Change-Feed-Pfad gilt damit praktisch als bestätigt und bleibt geschützt.
+
+## PORTAL-BTB-UI-001 – BTB im Portal nacharbeiten
+Status: **OFFEN**
+
+- Benutzer meldet ausdrücklich: BTB im Portal muss noch nachgearbeitet werden.
+- Das ist ein separater Portal-/Darstellungs-/Facharbeitsblock und kein Live-Sync-Fehler.
+- Bestehenden bestätigten PORTAL-LIVE-001-Pfad dabei nicht ohne reproduzierbaren Grund ändern.
