@@ -241,3 +241,18 @@ Fixcommit: `4f0e33a8060d0d98279cfe96aed280fee5c8adcb`.
 
 Zielbuild: **1.3.22 / 200072**.
 Source-Check: **PASST**. Build/Installation/E2E: **OFFEN**.
+
+
+## BTB-SYNC-002 – Android Source-Fix 1.3.23
+Status: **SOURCE-FIX UMGESETZT / BUILD + INSTALL + E2E OFFEN**
+
+- P0-Datenverlustursache war Android-seitig: Dirty-Pixelstand konnte vor Outbox-Export durch einen Server-Snapshot überschrieben werden.
+- `SelectiveSyncWorker` exportiert jetzt zuerst lokal → Pending/Outbox und prüft Serverversion/Conflict erst danach.
+- `CollabLocalBridge.applyServerStateToLocal()` überschreibt keinen BTB mit Pending/Dirty-Stand.
+- Lokaler Save und Server-Apply sind pro BTB serialisiert; neuere Autosaves während Upload bleiben dirty.
+- Zielbuild: **1.3.23 / 200073**.
+- Keine `server/**`-Änderung; Server-/DB-Vertrag bleibt unverändert.
+- PORTAL-LIVE-001 bleibt separat SERVER-seitig: Source-Fix vorhanden, Deploy/E2E offen.
+
+Nächster E2E:
+Pixel `ABC` → Portal muss `ABC` sehen → Portal `XYZ` → Pixel erhält `XYZ`, ohne einen parallel neueren lokalen Stand still zu verlieren. Danach Poco.
