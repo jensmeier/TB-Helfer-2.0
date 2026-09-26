@@ -100,3 +100,26 @@ Für bearbeitbare BTBs gilt verbindlich:
 - Anzeigenamen (z. B. „BÜ 76.215“) bleiben Darstellung und dürfen umbenannt werden, ohne die BTB-Zuordnung zu verlieren.
 - Entry-Update muss einen Wechsel des BTB-Abschnitts 4–8 unterstützen; dies ist eine versionierte Mutation desselben Eintrags, kein Löschen+Neuanlegen.
 - Foto-Metadaten/Fachzuordnung müssen ebenfalls versioniert nachbearbeitbar werden (Abschnitt/Typ, Firma, Unterbaustelle, Text/KM), ohne das Foto selbst neu hochzuladen.
+
+
+### BTB-EDIT-001 – exakter Serververtrag
+Für den gemeinsamen strukturierten BTB-Edit-Pfad gilt ab dieser Umsetzung:
+
+**Eintrag**
+- kanonisches Payload-Feld für die Unterbaustelle: `worksiteNodeKey`;
+- Wert = vorhandener stabiler `client_node_key` aus `GET /api/v1/worksites/{worksite_id}/nodes`;
+- fehlt/leer = Hauptbaustelle;
+- `firmaId` bleibt die stabile BTB-interne Firmenzuordnung; fehlt/leer = Allgemein;
+- `PATCH /api/v1/btbs/{btb_id}/entries/{entry_id}` darf bei bestehenden Facheinträgen zusätzlich `section` ändern;
+- Abschnittswechsel ist nur zwischen `ARBEIT`, `ABNAHME`, `EINWEISUNG_UNTERWEISUNG`, `BESONDERHEIT`, `MANGEL_SCHADEN` zulässig;
+- Identität des Eintrags bleibt erhalten, Version wird erhöht; kein Delete/Create.
+
+**Foto**
+- das physische Foto und seine Aufnahme-Metadaten bleiben unverändert;
+- BTB-spezifische Korrekturen werden linkbezogen versioniert gespeichert, damit ein Foto nicht für andere Verwendungen umgeschrieben wird;
+- kanonische BTB-Fotofelder umfassen weiterhin `typ`, `firma`, `firmaId`, `kurztext`, `km`, Objektfelder sowie neu `worksiteNodeKey`;
+- `PATCH /api/v1/btbs/{btb_id}/photos/{file_id}` erhält `base_version` der BTB-Fotoverknüpfung und eine partielle `photo_metadata`-Änderung;
+- Antwort der BTB-Detail-API liefert die effektiv zusammengeführten Foto-Metadaten plus `link_version`;
+- GPS/Aufnahmezeit/Dateiinhalt werden durch fachliches Umhängen nicht verändert.
+
+Server validiert einen gesetzten `worksiteNodeKey` gegen die aktive Baustellenstruktur derselben Baustelle.
