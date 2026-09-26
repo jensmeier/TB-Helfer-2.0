@@ -44,3 +44,7 @@ Nachtest: beide öffentlichen Seiten sind auf demselben Hauptgerät im Browser e
 
 ### BTB-SYNC-002 Source-Diagnose
 Source-Ursache bestätigt: `SelectiveSyncWorker` wendet bei bekanntem BTB einen Server-Snapshot lokal an, bevor die dirty Pixel-Änderung mit `exportBtbChange()` in Pending/Outbox gesichert wird. Status: **SOURCE-URSACHE BESTÄTIGT / ANDROID-FIX + BUILD + INSTALL + E2E OFFEN**.
+
+
+### BTB-SYNC-002 bidirektionaler Basistest 1.3.23
+**BENUTZER BESTÄTIGT:** Pixel → Portal und Portal → Pixel funktionieren im aktuellen Test. Der normale bidirektionale Datenweg ist damit praktisch bestanden. Der zusätzliche Parallel-Autosave-/Conflict-Test bleibt separat offen.
