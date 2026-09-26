@@ -108,3 +108,19 @@ Live geprüft am 26.09.2026:
 - Damit ist die lokale Android-Grundlage für Foto-Umhängen passend zum Serververtrag vorhanden.
 - Noch zu bestätigen/umzusetzen: tatsächlicher versionierter Aufruf von `PATCH /btbs/{btb_id}/photos/{file_id}` und Konflikt-/Sync-Roundtrip.
 - Draft-PR #7 aktuell gegen SERVER `mergeable=false`; Integration erst nach abgeschlossenem Android-Arbeitsblock.
+
+
+### BTB-EDIT-001 – Abschlussaudit vor Integration
+Benutzer bestätigt den Android-Arbeitsblock als fertig.
+
+Live-Quellprüfung des Android-HEAD `a1b4667b110a993796e8242d4a21be3748c06d68`:
+- Entry-/Node-Identität ist umgesetzt.
+- lokale Foto-Kontextdaten enthalten `firmaId`, `worksiteNodeKey` und Bildtyp.
+- `Server1BtbApi.kt` enthält jedoch noch keinen Clientpfad für `PATCH /api/v1/btbs/{btb_id}/photos/{file_id}`;
+- Android wertet noch kein `link_version` für BTB-Fotoverknüpfungen aus;
+- `BtbTeamMediaSync.kt` sendet die lokale Foto-Umsortierung daher noch nicht als versionierte Servermutation.
+
+Einordnung:
+- Android-Arbeitsblock ist beendet und Integration freigegeben.
+- Der fehlende Foto-PATCH bleibt ein klar abgegrenzter Android-Restpunkt nach Branch-Integration.
+- SERVER ändert dafür kein `app/**`.
