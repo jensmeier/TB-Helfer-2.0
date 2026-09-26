@@ -308,3 +308,24 @@ Benutzeranforderung:
 - Bestehender bestätigter Live-Sync bleibt geschützt.
 
 Vor Implementierung zuerst Istvergleich Android↔Portal/API/DB durchführen und fehlende strukturierte Felder/Mutationsendpunkte bestimmen.
+
+
+### BTB-EDIT-001 Istvergleich Android ↔ Portal 26.09.2026
+Status: **STRUKTURLÜCKE BESTÄTIGT / NOCH NICHT IMPLEMENTIERT**
+
+Quellvergleich:
+- Android bietet bei Punkt-4-Einträgen bereits „Ort / Unterbaustelle“ mit hierarchischer Auswahl aus dem Baustellenbaum.
+- Android speichert diese Auswahl im aktuellen Editor jedoch teilweise als lokalen Marker `@ORT=<lokale Room-Long-ID>`; diese ID ist gerätespezifisch und kein geeigneter Server-/Mehrgeräte-Schlüssel.
+- Beim Umwandeln in strukturierte `SectionItem`-Daten werden `@ORT`-Marker teilweise entfernt; `SectionItem` besitzt selbst kein Unterbaustellenfeld.
+- Androids stabiler Baustellenstruktur-Sync kennt bereits `clientNodeKey` für Unterknoten. Für BTB-Zuordnungen muss künftig dieser/stabiler äquivalenter Schlüssel verwendet werden, nicht die lokale Long-ID.
+- Portal zeigt aktuell keine Unterbaustellenhierarchie im BTB-Editor und lädt für den BTB-Editor keinen auswählbaren Baustellenbaum.
+- Portal-Entry-Editor kann aktuell Zeit, KM und Text ändern; Abschnitt 4–8, Firma und Unterbaustelle sind nicht vollständig umhängbar.
+- Server `BtbEntryUpdate` erlaubt aktuell nur `sort_order` und `payload`; `section` kann per PATCH nicht geändert werden. Ein echtes Verschieben 4↔5↔6↔7↔8 fehlt daher im API-Vertrag.
+- Bei Fotos existiert Upload + Zuordnung + Detach, aber kein allgemeiner PATCH-Pfad zum nachträglichen Ändern von Foto-Metadaten/Fachzuordnung. Android hat lokale Foto-Kontext-Overrides inkl. `ortId`, überträgt diesen Ort jedoch nicht als stabilen Node-Key in `structuredPhotoMetadata`.
+- Ergebnis: die gewünschte Nachbearbeitung erfordert einen gemeinsamen strukturierten Android↔Server-Vertrag, nicht nur eine Portal-UI-Änderung.
+
+Zusätzliche Benutzerhinweise für denselben Portal-BTB-Arbeitsblock:
+- gelöschte/nicht mehr aktive Helfer sollen in der aktuellen BTB-Ansicht nicht unnötig weiter angezeigt werden; historische Nachweise dürfen nicht physisch gelöscht werden;
+- Wetter: Temperaturen fehlen in der Praxisansicht. Der Portalrenderer kann `tempC` anzeigen, daher muss geprüft werden, ob der aktuelle BTB-Header die Temperaturwerte überhaupt liefert;
+- Niederschlagsmenge soll bei fachlich bekanntem „kein Niederschlag“ als 0 statt als fehlender/null-Wert behandelt/angezeigt werden, sofern die Quelle dies eindeutig liefert;
+- alle BTB-Fotos sollen ihre GPS-Daten aus Handy- und Portalaufnahme behalten und anklickbar darstellen.
