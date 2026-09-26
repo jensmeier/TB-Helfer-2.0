@@ -56,10 +56,26 @@ data class WeatherBlock(
 )
 
 data class SectionItem(
+    /**
+     * Stabile fachliche Identität dieses BTB-Eintrags.
+     *
+     * Bei Server-BTBs entspricht sie dem vorhandenen Android-/Server-Slot
+     * (_tb_android_slot). Sie bleibt bei einem Wechsel zwischen Punkt 4–8 erhalten.
+     */
+    val clientEntryKey: String? = null,
     val uhrzeit: String? = null,
     val text: String,
     val kmVon: Double? = null,
-    val kmBis: Double? = null
+    val kmBis: Double? = null,
+    /** Stabile BTB-interne Firmenzuordnung; null = Allgemein. */
+    val firmaId: String? = null,
+    /** Nur Darstellung/Fallback. Die Identität ist firmaId. */
+    val firmaName: String? = null,
+    /**
+     * Kanonische geräteübergreifende Unterbaustellenreferenz.
+     * Wert = clientNodeKey des Worksite-Node-Bindings; null = Hauptbaustelle.
+     */
+    val worksiteNodeKey: String? = null
 )
 
 data class SectionBlock(
