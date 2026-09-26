@@ -511,8 +511,10 @@ object BtbModernLifecycleInstaller {
                         root.findViewById<View>(R.id.topFieldsToggleRow)?.visibility = View.VISIBLE
                         root.findViewWithTag<View>(EDIT_BUTTON_TAG)?.visibility = View.VISIBLE
                         root.findViewWithTag<View>(EDIT_SPACER_TAG)?.visibility = View.VISIBLE
-                        root.findViewById<View>(R.id.btnPdf)?.visibility = View.VISIBLE
-                        root.findViewById<View>(R.id.btnPdfFinal)?.visibility = View.VISIBLE
+
+                        // BTB-UI-001: PDF-/Abschlussbuttons nicht mehr pauschal sichtbar machen.
+                        // Die Sichtbarkeit wird ausschließlich unten im kanonischen Rollen-/
+                        // Lifecycle-Zweig gesetzt. Sonst springt die Leiste zwischen 1 und 2 Buttons.
 
                         val confirmedServerState = BtbServerStateStore.state(
                             fragment.requireContext().applicationContext,
@@ -576,15 +578,15 @@ object BtbModernLifecycleInstaller {
                             serverState != null && serverState.isTeamLead -> {
                                 // Fuer einen servergebundenen Haupt-TB ist der kanonische
                                 // Server-Lifecycle maßgeblich. Solange der Server-BTB aktiv ist,
-                                // darf ein lokales/stales Abschluss-PDF die UI nicht zwischen
-                                // „BTB Abschluss“ und PDF-Vorschau umschalten lassen.
+                                // bleiben beide Haupt-TB-Aktionen stabil sichtbar:
+                                // PDF Entwurf + BTB Abschluss.
                                 val reopenedFinalized =
                                     serverState.serverStatus.equals("FINALIZED", true) && serverState.active
                                 root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text =
                                     if (reopenedFinalized) "Nachbearbeitung" else "Aktiv"
+                                previewButton?.visibility = View.VISIBLE
                                 finalButton?.visibility = View.VISIBLE
                                 finalButton?.text = "BTB Abschluss"
-                                previewButton?.visibility = View.GONE
                                 editButton?.visibility = View.VISIBLE
                             }
                             else -> {
