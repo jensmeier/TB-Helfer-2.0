@@ -573,6 +573,20 @@ object BtbModernLifecycleInstaller {
                                 previewButton?.visibility = View.GONE
                                 editButton?.visibility = if (finished) View.GONE else View.VISIBLE
                             }
+                            serverState != null && serverState.isTeamLead -> {
+                                // Fuer einen servergebundenen Haupt-TB ist der kanonische
+                                // Server-Lifecycle maßgeblich. Solange der Server-BTB aktiv ist,
+                                // darf ein lokales/stales Abschluss-PDF die UI nicht zwischen
+                                // „BTB Abschluss“ und PDF-Vorschau umschalten lassen.
+                                val reopenedFinalized =
+                                    serverState.serverStatus.equals("FINALIZED", true) && serverState.active
+                                root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text =
+                                    if (reopenedFinalized) "Nachbearbeitung" else "Aktiv"
+                                finalButton?.visibility = View.VISIBLE
+                                finalButton?.text = "BTB Abschluss"
+                                previewButton?.visibility = View.GONE
+                                editButton?.visibility = View.VISIBLE
+                            }
                             else -> {
                                 root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = when (status) {
                                     BtbAbschlussStatus.ENTWURF -> "Entwurf"
