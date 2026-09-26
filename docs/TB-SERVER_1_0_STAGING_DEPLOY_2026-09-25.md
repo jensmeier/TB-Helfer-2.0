@@ -316,8 +316,8 @@ Nach erfolgreichem `=== DEPLOY_OK ===` kann die vorbereitete Abnahme gebündelt 
 
 ```bash
 python /app/tools/server1_post_deploy_e2e.py \
-  --portal-base-url https://www.tb-helfer.de \
-  --server-base-url https://api-v1.tb-helfer.de \
+  --portal-base-url http://127.0.0.1:8080 \
+  --server-base-url http://127.0.0.1:8080 \
   --portal-login <normaler-testnutzer> \
   --admin-login <admin-testnutzer>
 ```
@@ -351,3 +351,22 @@ Erfolg ist ausschließlich:
 
 Das Werkzeug ersetzt **nicht** den anschließenden Pixel/Poco/Portal-Fach-E2E. Es bündelt nur
 die bereits vorhandenen Server-Abnahmen.
+
+
+### Cloudflare-Hinweis für automatisierte Browser/API-Tests
+
+Der praktische Lauf am 26.09.2026 zeigte, dass Cloudflare den Python-`urllib`-Client
+auf `https://www.tb-helfer.de` mit HTTP 403 und
+`The site owner has blocked access based on your browser's signature.` blockiert.
+
+Das ist **kein TB-Portal-Loginfehler** und kein Grund, Browser-/Bot-Schutzregeln abzuschalten.
+Für die automatisierten Session-/Read-only-/Worker-/Delta-Abnahmen **innerhalb des API-Containers**
+wird deshalb die interne echte API verwendet:
+
+```
+http://127.0.0.1:8080
+```
+
+Der öffentliche Cloudflare-/Browserweg bleibt ein separater praktischer E2E mit einem echten Browser:
+normalen Portalnutzer und Admin in zwei Tabs anmelden, zwischen beiden wechseln und die unabhängigen
+Sessions/Logouts bestätigen.
