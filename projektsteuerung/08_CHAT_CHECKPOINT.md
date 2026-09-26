@@ -267,3 +267,10 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Kein Branch wurde bis dahin verschoben; nur unverknüpfte Git-Blobs aus der Mergevorbereitung entstanden.
 - Fehler ist Android-Buildgenerator, nicht Server/API/DB.
 - SERVER integriert erst den stabilen neuesten Android-HEAD und lässt den Generator-Fix bei ANDROID.
+
+
+## AND-BUILD-200075 – Android Generatorfix nachgereicht
+- Android-Commit `606aa3ad1f8ea438372484b056a0fc1264ae2aac` behebt den unmittelbar zuvor dokumentierten Buildgenerator-Ankerfehler.
+- Kein Server/API/DB-Fix erforderlich.
+- Build 200075 muss nach diesem Fix erneut tatsächlich ausgeführt werden.
+- Branch-Integration bleibt bis zum stabilen finalen Android-HEAD angehalten; noch kein Ref wurde verschoben.
