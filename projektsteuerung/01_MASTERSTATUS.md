@@ -163,3 +163,12 @@ Priorität bleibt gemäß E2E-PRIO-001:
   - Ergebnis: der ältere/andere Serverstand überschreibt die lokal gespeicherte Pixel-Änderung, erst danach wird exportiert. Damit wird der überschriebenen Serverstand statt der Pixel-Änderung hochgeladen.
 - Das erklärt exakt den Praxisbefund: Pixel→Portal fehlt; Portal→Pixel kommt an und entfernt die Pixel-Eingabe.
 - Server/API/DB sind für diesen Fehler nicht zu ändern.
+
+
+## BTB-SYNC-002 – Integrationsstand 1.3.23 / 200073
+Status: **PIXEL↔PORTAL BASIS-E2E BESTÄTIGT**
+
+- Android-Branch steht bei 1.3.23 / 200073 mit Outbox-Datenverlustfix.
+- Benutzer bestätigt den normalen Sync in beide Richtungen: Pixel → Portal und Portal → Pixel.
+- Parallel-Autosave-/Conflict-Test bleibt separat offen.
+- Nächster SERVER-Schritt: PORTAL-LIVE-001 deployen und ohne F5 testen.
