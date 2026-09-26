@@ -167,6 +167,11 @@ class BautagebuchFragment : Fragment(R.layout.fragment_bautagebuch) {
     private var rawBesonderheiten: String = ""
     private var rawMaengel: String = ""
 
+    // BTB-EDIT-001: lokale Room-IDs sind nur UI-Hilfe. Synchronisiert wird ausschließlich
+    // der stabile clientNodeKey/worksiteNodeKey.
+    private val btbNodeKeyByLocalId = linkedMapOf<Long, String>()
+    private val btbLocalIdByNodeKey = linkedMapOf<String, Long>()
+
     // Für Bild-Nummerierung (Bild 1–3) wie im PDF
     private var currentMaxFotosInPdf: Int = 60
 
@@ -2400,40 +2405,30 @@ cardCurrentReport.setOnClickListener {
                 else -> "–${b}"
             }
         }
-        /** Entfernt technische Marker wie '@ORT=123' und '@ALLGEMEIN' aus Textfeldern. */
+        /** Entfernt nur technische Editor-Marker aus sichtbaren Vorschauen. */
         private fun stripOrtMarkers(raw: String): String {
             if (raw.isBlank()) return raw
-            val reOrt = Regex("""^@ORT=(\d+)\s*(.*)$""")
-            val reGeneral = Regex("""^@ALLGEMEIN\b\s*(.*)$""", RegexOption.IGNORE_CASE)
-            val cleaned = raw.lines().mapNotNull { ln0 ->
-                var ln = ln0.trimEnd()
-                if (ln.isBlank()) return@mapNotNull ln
-
-                val trimmed = ln.trim()
-                val mOrt = reOrt.matchEntire(trimmed)
-                ln = if (mOrt != null) {
-                    mOrt.groupValues.getOrNull(2)?.trim().orEmpty()
-                } else if (trimmed.startsWith("@ORT=")) {
-                    trimmed.substringAfter(' ', missingDelimiterValue = "").trim()
-                } else {
-                    ln
-                }
-
-                if (ln.isBlank()) return@mapNotNull null
-
-                val trimmed2 = ln.trim()
-                val mGeneral = reGeneral.matchEntire(trimmed2)
-                ln = if (mGeneral != null) {
-                    mGeneral.groupValues.getOrNull(1)?.trim().orEmpty()
-                } else if (trimmed2.startsWith("@ALLGEMEIN", ignoreCase = true)) {
-                    trimmed2.substringAfter(' ', missingDelimiterValue = "").trim()
-                } else {
-                    ln
-                }
-
-                ln.takeIf { it.isNotBlank() }
-            }.joinToString("\n")
-            return cleaned.trimEnd()
+            val marker = Regex("""^@(ORT|NODE|ENTRY|FIRMAID)=[^\s]+\s*""", RegexOption.IGNORE_CASE)
+            val general = Regex("""^@ALLGEMEIN\b\s*""", RegexOption.IGNORE_CASE)
+            return raw.lines().mapNotNull { source ->
+                var line = source.trimEnd().trimStart()
+                if (line.isBlank()) return@mapNotNull null
+                var changed: Boolean
+                do {
+                    changed = false
+                    val next = marker.replaceFirst(line, "")
+                    if (next != line) {
+                        line = next.trimStart()
+                        changed = true
+                    }
+                    val generalNext = general.replaceFirst(line, "")
+                    if (generalNext != line) {
+                        line = generalNext.trimStart()
+                        changed = true
+                    }
+                } while (changed)
+                line.takeIf { it.isNotBlank() }
+            }.joinToString("\n").trimEnd()
         }
 
         private fun setupStartEndDropdowns() {
@@ -2472,7 +2467,37 @@ cardCurrentReport.setOnClickListener {
                 ?: streckeAusRoot(hauptKnotenId)
                 ?: entity.streckennummer
 
-            return BaustelleKontext(id = altId, name = entity.baustellenname, strecke = strecke)
+            return BaustelleKontext(
+                id = altId,
+                name = entity.baustellenname,
+                strecke = strecke,
+                rootKnotenId = hauptKnotenId
+            )
+        }
+
+        private suspend fun refreshBtbNodeBindingCache(rootKnotenId: Long?) {
+            btbNodeKeyByLocalId.clear()
+            btbLocalIdByNodeKey.clear()
+            val rootId = rootKnotenId ?: return
+            val binding = ServiceLocator.worksiteBindingRepository.bindingForLocalRoot(rootId) ?: return
+            val bindings = ServiceLocator.syncDatenbank.worksiteNodeSyncDao()
+                .forWorksite(binding.worksiteServerId)
+            bindings.filter { it.localRootKnotenId == rootId }.forEach { item ->
+                btbNodeKeyByLocalId[item.localKnotenId] = item.clientNodeKey
+                btbLocalIdByNodeKey[item.clientNodeKey] = item.localKnotenId
+            }
+        }
+
+        private suspend fun stableNodeKey(rootKnotenId: Long?, localNodeId: Long): String? {
+            if (localNodeId <= 0L) return null
+            btbNodeKeyByLocalId[localNodeId]?.let { return it }
+            val rootId = rootKnotenId ?: return null
+            return ServiceLocator.worksiteStructureSync
+                .ensureClientNodeKey(rootId, localNodeId)
+                ?.also { key ->
+                    btbNodeKeyByLocalId[localNodeId] = key
+                    btbLocalIdByNodeKey[key] = localNodeId
+                }
         }
 
         private fun filterFotosForBtbStart(
@@ -2497,6 +2522,8 @@ cardCurrentReport.setOnClickListener {
                 setEnabledUi(false)
                 return
             }
+            refreshBtbNodeBindingCache(ctx.rootKnotenId)
+
             // Titel: aktuelle Baustelle ganz oben anzeigen
             tvTitleBaustelle.text = "Aktuelle Baustelle: ${ctx.name}"
             setEnabledUi(true)
@@ -2636,15 +2663,15 @@ cardCurrentReport.setOnClickListener {
 
                 // Phase 3b: Standardabschnitte aus Entry übernehmen
                 rawArbeiten = if (entry.arbeiten.items.isNotEmpty()) {
-                    stripOrtMarkers(sectionToMultiline(entry.arbeiten))
+                    sectionToMultiline(entry.arbeiten)
                 } else {
                     // Historische Android-BTBs legten Punkt 4 als notizen ab.
                     entry.notizen.orEmpty()
                 }
-                rawAbnahmen = stripOrtMarkers(sectionToMultiline(entry.abnahmen))
-                rawEinweisung = stripOrtMarkers(sectionToMultiline(entry.einweisungUnterweisung))
-                rawBesonderheiten = stripOrtMarkers(sectionToMultiline(entry.besonderheiten))
-                rawMaengel = stripOrtMarkers(sectionToMultiline(entry.maengelSchaeden))
+                rawAbnahmen = sectionToMultiline(entry.abnahmen)
+                rawEinweisung = sectionToMultiline(entry.einweisungUnterweisung)
+                rawBesonderheiten = sectionToMultiline(entry.besonderheiten)
+                rawMaengel = sectionToMultiline(entry.maengelSchaeden)
                 currentMaxFotosInPdf = entry.maxFotosInPdf
                 lastSavedEpochMs = entry.geaendertAmEpochMs
                 renderSectionPreviews()
@@ -2915,11 +2942,11 @@ cardCurrentReport.setOnClickListener {
                 firmen = firmen,
                 personal = legacyPersonalLines(),
                 geraete = legacyGeraeteLines(),
-                arbeiten = sectionFromMultiline(stripOrtMarkers(rawArbeiten)),
-                abnahmen = sectionFromMultiline(stripOrtMarkers(rawAbnahmen)),
-                einweisungUnterweisung = sectionFromMultiline(stripOrtMarkers(rawEinweisung)),
-                besonderheiten = sectionFromMultiline(stripOrtMarkers(rawBesonderheiten)),
-                maengelSchaeden = sectionFromMultiline(stripOrtMarkers(rawMaengel)),
+                arbeiten = sectionFromMultiline(rawArbeiten),
+                abnahmen = sectionFromMultiline(rawAbnahmen),
+                einweisungUnterweisung = sectionFromMultiline(rawEinweisung),
+                besonderheiten = sectionFromMultiline(rawBesonderheiten),
+                maengelSchaeden = sectionFromMultiline(rawMaengel),
                 // Neue Punkt-4-Arbeiten sind echte ARBEIT-Eintraege; notizen bleibt Legacy/sonstige Notiz.
                 notizen = existingLegacyNotesForBuild(),
                 includeFotos = true,
@@ -7581,5 +7608,6 @@ cardCurrentReport.setOnClickListener {
 private data class BaustelleKontext(
     val id: Long,
     val name: String,
-    val strecke: String?
+    val strecke: String?,
+    val rootKnotenId: Long? = null
 )
