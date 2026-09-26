@@ -175,3 +175,12 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Zielrelease ist 1.3.20 / 200070.
 - Fehler zuerst dokumentiert; nächster Schritt ist Quellprüfung der Updateanzeige und Vergleichslogik.
 - Keine Neuaktivierung, kein Löschen von App-Daten, kein Server-/NAS-Umbau auf Verdacht.
+
+
+## UPD-001 – Quellprüfung abgeschlossen
+- `currentVersionLabel()` zeigt `BuildConfig.VERSION_NAME/VERSION_CODE`; daher ist 1.3.19 nach Installer kein stale UI-Wert.
+- Startmenü prüft Update beim Resume erneut, Update-HTTP nutzt `useCaches=false`.
+- Serverrelease kann aktuell eine Binärdatei erhalten, deren internes APK-`versionName/versionCode` nicht zu den Releasefeldern passt.
+- Android prüft aktuell nur SHA-256 und Dateigröße.
+- Schutzfix: APK-Package + eingebettete Version/Build vor Installer validieren.
+- 200070 ist bereits benutzt; nächster auslieferbarer Build: **1.3.21 / 200071**.

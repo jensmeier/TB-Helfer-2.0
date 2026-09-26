@@ -229,3 +229,20 @@ Vor Codeänderung prüfen:
 2. Startseiten-Banner: Vergleichsquelle und Cache.
 3. Server Release-API: published version/build.
 4. App-Prozess/PackageManager nach Installer-Rückkehr.
+
+
+### UPD-001 Ursache / Schutzfix
+- Anzeigequelle ist nicht stale: `AppUpdateManager.currentVersionLabel()` nutzt den eingebauten Android-`BuildConfig`.
+- Startseite prüft bei `onResume()` erneut; `HttpURLConnection.useCaches=false`.
+- Symptom „nach Update weiterhin 1.3.19 + Update verfügbar“ bedeutet deshalb: installierte APK ist weiterhin Build 200069 bzw. das neue Release enthielt nicht die erwartete neue APK.
+- Server-Upload validiert APK-Inhalt gegen Release-Metadaten derzeit nicht.
+- Android lädt/verifiziert SHA/Größe, aber validiert vor Installation weder Package-ID noch eingebettetes `versionName/versionCode`.
+
+Android-Auftrag:
+1. heruntergeladene APK vor Installer mit `PackageManager.getPackageArchiveInfo()` prüfen;
+2. Package-ID muss `de.tbhelfer` entsprechen;
+3. eingebettete Version/Build müssen exakt dem Server-Release entsprechen;
+4. bei Abweichung Installation blockieren und klare Fehlermeldung anzeigen;
+5. nächster Build **1.3.21 / 200071**.
+
+Serverbedarf separat dokumentiert: auch der Release-Upload sollte künftig APK-Metadaten gegen Draft-Felder validieren. Keine `server/**`-Änderung im Android-Projekt.

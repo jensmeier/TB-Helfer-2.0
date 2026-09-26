@@ -111,3 +111,12 @@ Status: **REPRODUZIERT / URSACHE OFFEN**
 - Zielstand ist 1.3.20 / 200070.
 - Erst prüfen, ob UI/Updateclient die lokale Package-Version oder einen stale Server-/Aktivierungswert verwendet.
 - Kein weiterer Versionssprung nur zur Kaschierung dieses Anzeige-/Vergleichsfehlers.
+
+
+## UPD-001 – Binärdatei gegen Release prüfen
+Status: **SOURCE-URSACHE EINGEGRENZT / FIX AUFTRAG**
+
+- Lokale Versionsanzeige basiert auf `BuildConfig`; kein Anzeige-Cache.
+- Updatecheck basiert auf dem lokalen `BuildConfig.VERSION_CODE`.
+- Fehlerschutz fehlt: APK-Inhalt wird vor dem Installer nicht gegen Release-`versionName/buildNumber` validiert.
+- Android-Schutzfix wird in **1.3.21 / 200071** umgesetzt.

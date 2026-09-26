@@ -4,8 +4,8 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| UPD-001 | P0 | ANDROID | Update durchgelaufen, aber Updateprüfung zeigt weiter 1.3.19 und Startseite „Update verfügbar“ | lokale Package-Version, Releasevergleich und Cache prüfen |
-| REL-001 | P0 | ANDROID | Version auf 1.3.20 / 200070 angehoben | Build 200070; weitere Builds strikt hochzählen |
+| UPD-001 | P0 | ANDROID | Update-Release kann Metadaten/APK-Version mismatchen; Gerät bleibt 1.3.19 und bekommt Update erneut angeboten | APK vor Installation gegen Package/versionName/versionCode validieren; 1.3.21/200071 |
+| REL-001 | P0 | ANDROID | 200070 wurde bereits für Updateversuch verwendet | nächster Build 1.3.21 / 200071; weitere Builds strikt hochzählen |
 | DEV-META-001 | P2 | SERVER | `tb.devices.app_version/app_build` bleiben nach App-Update ohne Neuaktivierung auf altem Aktivierungsstand | später Runtime-Metadaten-Updatevertrag definieren; kein Blocker für BTB-SYNC-001 |
 | BTB-SYNC-001 | P0 | ANDROID | Source-Fix committed: Server-active hat in BtbActiveContext Vorrang | Build 200070 → Pixel/Poco installieren → BTB 26.09 E2E |
 | NET-001 | P1 | GEMEINSAM | Pixel synchronisiert wieder; Ursache des vorherigen App-DNS-Fehlers ungeklärt | nur bei erneuter Reproduktion vertiefen; jetzt Fach-E2E fortsetzen |

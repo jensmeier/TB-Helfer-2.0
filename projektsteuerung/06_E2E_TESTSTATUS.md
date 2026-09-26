@@ -4,8 +4,8 @@ Stand: 2026-09-26
 
 | Bereich | Status | Nächster Test |
 |---|---|---|
-| Android 1.3.20 / 200070 Build | VERSION + SOURCE-FIX FERTIG / BUILD OFFEN | Android Studio Build 200070 |
-| Android 200070 Installation | BENUTZER: UPDATE DURCHGELAUFEN / RUNTIME-VERSION NOCH NICHT BESTÄTIGT | UPD-001 prüfen |
+| Android 1.3.21 / 200071 Build | VERSION + SOURCE-FIX FERTIG / BUILD OFFEN | Android Studio Build 200070 |
+| Android 200070 Installation | UPDATEVORGANG DURCHGELAUFEN, GERÄT MELDET WEITER 1.3.19 | Release/APK-Mismatch bestätigt als möglicher Pfad; 200071 Schutzfix |
 | Update 1.3.20 / 200070 Nachprüfung | FEHLER: UI ZEIGT 1.3.19 + UPDATE VERFÜGBAR | lokale Package-Version / Releasevergleich prüfen |
 | Pixel/Poco Versionsgleichstand | BENUTZER BESTÄTIGT: BEIDE 1.3.19 | Server-DB-Appversion ist Aktivierungs-Snapshot und kein Runtime-Nachweis |
 | Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200070 praktisch prüfen |
@@ -51,3 +51,11 @@ Nachtest: beide öffentlichen Seiten sind auf demselben Hauptgerät im Browser e
 - Quellwerte, Release-MD und CI-Artefaktname auf 1.3.20 / 200070 angehoben.
 - Commit `f9a7421ec9265b73ca170d28a1946644527cbe5a`.
 - GitHub Actions hat für diesen HEAD keinen Workflow-Run geliefert; daher weiterhin **BUILD OFFEN**.
+
+
+### UPD-001 Diagnose
+- Wartungsanzeige = eingebauter `BuildConfig`-Stand.
+- Startbanner = Serververgleich gegen eingebauten `BuildConfig.VERSION_CODE`.
+- Keine relevante Cacheursache im geprüften Pfad.
+- APK-Metadaten werden weder beim Serverupload noch im Android-Installerpfad gegen Releasefelder validiert.
+- Nächster Build für Schutzfix: 1.3.21 / 200071.

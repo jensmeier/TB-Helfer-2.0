@@ -78,3 +78,11 @@ Verbindlich:
 - Geräte-Aktivierungsmetadaten wie `tb.devices.app_version/app_build` sind kein zulässiger Runtime-Nachweis für den aktuell installierten App-Stand.
 - Update verfügbar genau dann, wenn `release.versionCode > installed.versionCode`.
 - Nach Installation eines Releases mit gleichem/höherem installierten `versionCode` darf dieses Release nicht erneut als Update angezeigt werden.
+
+
+## Release-Binärvertrag
+Für Android-Releases gilt zusätzlich:
+- Release-Metadaten und APK-Binärdatei müssen dieselbe Package-ID, `versionName` und `versionCode` tragen.
+- Android darf eine heruntergeladene APK nicht installieren, wenn APK-Package oder eingebettete Version/Build vom Server-Release abweichen.
+- Server-Releaseverwaltung soll perspektivisch denselben Abgleich bereits beim Upload/Publish erzwingen.
+- Bis zur Servervalidierung ist der Android-Client-Schutz verbindlich.
