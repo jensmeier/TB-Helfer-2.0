@@ -168,3 +168,12 @@
 - Ergebnis: **keine neue Server-API-/DB-Anpassung erforderlich**. Historische serverseitig finalisierte BTBs bleiben geschützt/read-only; mobile Lifecycle-/Read-only-Anpassungen liegen im ANDROID-Branch.
 - Teststatus bleibt: **QUELLVERTRAG KOMPATIBEL / SYNOLGY-INTEGRATIONSDEPLOY + GEMEINSAMER E2E OFFEN**.
 - `STATUS.xlsx` nicht geändert, weil SERVER- und ANDROID-Workbook weiterhin unterschiedliche Blobs besitzen; kein blindes Überschreiben.
+
+
+## Integrationsnachtrag 26.09.2026 – Post-Deploy-Abnahme
+
+- `server1_post_deploy_e2e.py` bündelt Runtime-Probe, Session-Split, Read-only-Abnahme, echten Worker-Backupjob und Delta-Lasttest nach `DEPLOY_OK`.
+- Secret-Regel: Passwörter/Device-Token weder GitHub noch Logs noch Kommandozeilen; interaktiv verdeckt oder lokal als Environment.
+- Standardlauf: DATABASE-Backup + 32 Delta-Clients. `FULL` und 255 Clients sind bewusste Folgeoptionen.
+- Source-Check 111 + Workflow-Einbindung umgesetzt. **QUELLSTAND FERTIG / PRAKTISCHER SYNLOGY-LAUF OFFEN.**
+- `STATUS.xlsx` wegen abweichendem Android-Workbook weiterhin nicht blind überschrieben.
