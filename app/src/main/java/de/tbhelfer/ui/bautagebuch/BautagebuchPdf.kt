@@ -438,7 +438,7 @@ class BautagebuchPdf(
                     buildString {
                         item.uhrzeit?.takeIf { it.isNotBlank() }?.let { append(it).append(' ') }
                         val km = de.tbhelfer.util.KmAnzeige.bereich(item.kmVon, item.kmBis, inKlammern = false)
-                        if (km.isNotBlank()) append(km).append(' ')
+                        if (!km.isNullOrBlank()) append(km).append(' ')
                         append(item.text)
                     }.trim()
                 }
