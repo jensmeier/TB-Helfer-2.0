@@ -6253,13 +6253,72 @@ cardCurrentReport.setOnClickListener {
                                 tilKmVon.error = null
                                 tilKmBis.error = null
 
-                                val lines = etFull.text?.toString().orEmpty().lines().toMutableList()
-                                if (mi.lineIndex in lines.indices) {
-                                    lines[mi.lineIndex] = buildManualLine(selectedOrtMarkerId, mi.firma, tNorm, txt, kmVon, kmBis)
-                                    setRawLines(lines)
+                                viewLifecycleOwner.lifecycleScope.launch {
+                                    val rootId = cachedHauptKnotenId
+                                        ?: ServiceLocator.aktuelleBaustelleSpeicher.aktuelleHauptbaustelleKnotenId.first()
+                                    val nodeKey = if (selectedOrtMarkerId > 0L) {
+                                        stableNodeKey(rootId, selectedOrtMarkerId)
+                                    } else null
+                                    if (selectedOrtMarkerId > 0L && nodeKey == null) {
+                                        Snackbar.make(
+                                            requireView(),
+                                            "Unterbaustelle konnte nicht stabil zugeordnet werden.",
+                                            Snackbar.LENGTH_LONG
+                                        ).show()
+                                        return@launch
+                                    }
+
+                                    val lines = etFull.text?.toString().orEmpty().lines().toMutableList()
+                                    if (mi.lineIndex in lines.indices) {
+                                        lines[mi.lineIndex] = buildManualLine(
+                                            ortId = selectedOrtMarkerId,
+                                            firm = mi.firma,
+                                            time = tNorm,
+                                            text2 = txt,
+                                            kmVon = kmVon,
+                                            kmBis = kmBis,
+                                            firmaId = mi.firmaId,
+                                            worksiteNodeKey = nodeKey,
+                                            clientEntryKey = mi.clientEntryKey
+                                        )
+                                        setRawLines(lines)
+                                    }
+
+                                    // Eine geänderte Unterbaustelle am Eintrag wird für bereits
+                                    // direkt zugeordnete Fotos als BTB-Link-Kontext mitgeführt.
+                                    val btbId = loadedBtbId?.trim().orEmpty()
+                                    val photoIds = matchingFotoIds(mi)
+                                    if (photoIds.isNotEmpty() && btbId.isNotBlank()) {
+                                        val photos = withContext(Dispatchers.IO) {
+                                            ServiceLocator.fotoRepository.fotosMitIds(photoIds)
+                                        }
+                                        withContext(Dispatchers.IO) {
+                                            val currentOverrides =
+                                                BtbPhotoContextOverrideStore.load(requireContext(), btbId)
+                                            photos.forEach { foto ->
+                                                val previous = currentOverrides[foto.id]
+                                                BtbPhotoContextOverrideStore.setOverride(
+                                                    requireContext(),
+                                                    btbId,
+                                                    foto.id,
+                                                    BtbPhotoContextOverrideStore.ContextOverride(
+                                                        firma = mi.firma.orEmpty(),
+                                                        firmaId = mi.firmaId,
+                                                        objektKennung = previous?.objektKennung ?: foto.objektKennung,
+                                                        objektBereich = previous?.objektBereich ?: foto.objektBereich,
+                                                        ortId = selectedOrtMarkerId,
+                                                        worksiteNodeKey = nodeKey,
+                                                        bildtyp = previous?.bildtyp ?: foto.bildtyp
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    renderMerged?.invoke(lastGroups)
+                                    saveAndReloadWholeBtbSilently()
+                                    dlg.dismiss()
                                 }
-                                renderMerged?.invoke(lastGroups)
-                                dlg.dismiss()
                             }
                         }
 
@@ -7105,15 +7164,44 @@ cardCurrentReport.setOnClickListener {
                                 tilKmVon.error = null
                                 tilKmBis.error = null
 
-                                val line = buildManualLine(selectedOrtMarkerId, firm, tNorm, txt, kmVon, kmBis)
+                                viewLifecycleOwner.lifecycleScope.launch {
+                                    val rootId = cachedHauptKnotenId
+                                        ?: ServiceLocator.aktuelleBaustelleSpeicher.aktuelleHauptbaustelleKnotenId.first()
+                                    val nodeKey = if (selectedOrtMarkerId > 0L) {
+                                        stableNodeKey(rootId, selectedOrtMarkerId)
+                                    } else null
+                                    if (selectedOrtMarkerId > 0L && nodeKey == null) {
+                                        Snackbar.make(
+                                            requireView(),
+                                            "Unterbaustelle konnte nicht stabil zugeordnet werden.",
+                                            Snackbar.LENGTH_LONG
+                                        ).show()
+                                        return@launch
+                                    }
+                                    val firmId = firm?.let { name ->
+                                        lastFirmaBlocks.firstOrNull {
+                                            !it.isDeleted && it.name.trim().equals(name.trim(), ignoreCase = true)
+                                        }?.firmaId
+                                    }
+                                    val line = buildManualLine(
+                                        ortId = selectedOrtMarkerId,
+                                        firm = firm,
+                                        time = tNorm,
+                                        text2 = txt,
+                                        kmVon = kmVon,
+                                        kmBis = kmBis,
+                                        firmaId = firmId,
+                                        worksiteNodeKey = nodeKey
+                                    )
 
-                                val curLines = etFull.text?.toString().orEmpty().lines().toMutableList()
-                                val base = if (curLines.size == 1 && curLines.first().isBlank()) mutableListOf<String>() else curLines
-                                val nextLines = (base + line).toMutableList()
-                                setRawLines(nextLines.filter { it.isNotBlank() })
+                                    val curLines = etFull.text?.toString().orEmpty().lines().toMutableList()
+                                    val base = if (curLines.size == 1 && curLines.first().isBlank()) mutableListOf<String>() else curLines
+                                    val nextLines = (base + line).toMutableList()
+                                    setRawLines(nextLines.filter { it.isNotBlank() })
 
-                                renderMerged?.invoke(lastGroups)
-                                dlg.dismiss()
+                                    renderMerged?.invoke(lastGroups)
+                                    dlg.dismiss()
+                                }
                             }
                         }
 
