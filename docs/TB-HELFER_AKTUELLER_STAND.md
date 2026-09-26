@@ -1848,3 +1848,15 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Der Runner endete mit **`=== POST_DEPLOY_E2E_OK ===`** für die angeforderten Prüfungen. Bei diesem Lauf waren Worker-Backup und Delta-Lasttest bewusst mit `--skip-backup --skip-loadtest` ausgenommen und bleiben separat offen.
 - Der öffentliche Same-Browser-Test über `https://www.tb-helfer.de` bleibt zusätzlich manuell im echten Browser offen; der Python-Client wird dort weiterhin absichtlich von Cloudflare blockiert.
 - `STATUS.xlsx` bleibt wegen des abweichenden Android-Workbook-Blobs unverändert.
+
+
+### 26.09.2026 – Worker-Backup E2E bestanden / Delta-Lasttest Authweg korrigiert
+
+- Praktischer Post-Deploy-Lauf auf der Synology: echter Background-Worker-`DATABASE`-Backupjob **BESTANDEN**. Ablauf: `PENDING → RUNNING → DONE`; Fortschritt wurde sichtbar gemeldet; neuer Backup-Run `OK`, positive Größe (**274969 Byte**) und SHA-256 vorhanden.
+- Damit ist der aktuelle Worker-/Background-Job-/Backup-Pfad praktisch bestätigt. Der vorher offene Worker-Anteil aus PRB-019/SRV-020/SRV-021 ist für den DATABASE-Backupjob bestanden; andere Fachjobs bleiben separat zu testen.
+- Der anschließende 32-Client-Delta-Test scheiterte vor Lastaufbau beim Auth-Preflight mit HTTP 401. Der Loadtest sendet dabei einen nichtleeren Bearer-Header; nach aktuellem Serververtrag bedeutet das `DEVICE_TOKEN_INVALID`. Ursache ist kein Long-Poll-/DB-/Semaphore-Fehler, sondern ein nicht aktueller bzw. falscher Geräte-Bearer-Token.
+- Der Server speichert Geräte-Tokens absichtlich nur gehasht; Android speichert den gültigen Token verschlüsselt im Android Keystore. Der Token wird deshalb nicht serverseitig rekonstruiert oder aus dem Handy extrahiert.
+- `sync_wait_loadtest.py` unterstützt zusätzlich einen **Portal-Session-Modus** für die reine Server-Long-Poll-/Wake-Hub-/Semaphore-Lastprobe. Der bestehende Device-Bearer-Modus bleibt unverändert verfügbar.
+- `server1_post_deploy_e2e.py` verwendet für den Server-Lasttest standardmäßig Portal-Auth; `--delta-auth device` bleibt für einen expliziten Bearer-Test verfügbar. Der mobile Bearer-/Delta-Vertrag wird weiterhin im gemeinsamen Pixel/Poco-E2E praktisch bestätigt.
+- Source-Check 111 und Staging-Runbook wurden entsprechend erweitert.
+- `STATUS.xlsx` bleibt wegen des abweichenden Android-Workbook-Blobs unverändert.
