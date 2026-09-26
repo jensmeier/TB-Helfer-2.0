@@ -16,3 +16,12 @@ Letzter gesicherter Arbeitsblock: **Projektsteuerung vereinheitlicht und verifiz
 - weiterer P0: Poco bekommt keine Daten
 
 Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prüfen.
+
+## Arbeitsentscheidung / Testnachtrag 26.09.2026
+
+- Delta-Wait-Kapazitätsteiltest praktisch: 255 getrennte Portal-Sessions, 255/255 erfolgreich, 0 Fehler.
+- Testsession-Reste kontrolliert bereinigt; abschließend 0 aktive Python-Test-Sessions.
+- Das ist **nicht** der vollständige 15×15-E2E.
+- Neue verbindliche Reihenfolge: zuerst Haupt-TB-Handy ↔ Server/Portal, danach HELPER/Poco, danach weitere Fach-E2Es.
+- Vollständigen Lasttest erst nach funktionaler Stabilität und nach geplantem 8-GB-RAM-Ausbau bzw. NAS-Wechsel erneut durchführen.
+- Keine Performanceänderungen auf Verdacht.

@@ -23,3 +23,14 @@ Rollen-/Schichtvertrag und FINALIZED-Schutz verbindlich. Migration 014 praktisch
 4. Frühere gemischte Tracker sind nur noch Archiv; ab jetzt getrennte Android-/Server-Statusdateien plus Masterstatus.
 
 Alles mit `☑`, `BESTÄTIGT`, `ERLEDIGT`, `PASST`, `FUNKTIONIERT` oder `Nicht ohne Grund ändern = JA` bleibt geschützt.
+
+## Priorität ab 26.09.2026 – Funktions-E2E vor Last-E2E
+
+Verbindliche Reihenfolge:
+1. zuerst ein verantwortliches TB-Handy sauber gegen Server/Portal E2E zum Laufen bringen;
+2. danach den HELPER-/Poco-Syncfehler gezielt lösen und Helfer-E2E bestätigen;
+3. erst danach den vollständigen 15×15-Gesamtlasttest wiederholen.
+
+Der bereits praktisch gelaufene Delta-Wait-Kapazitätstest mit 255 getrennten Portal-Sessions war erfolgreich (255/255, keine Request-Fehler). Er ist ein **Kapazitätsteiltest**, kein vollständiger 15×15-E2E. Nach dem geplanten Ausbau auf 8 GB RAM bzw. einem NAS-Wechsel wird der Last-/Kapazitätstest auf der dann maßgeblichen Hardware erneut ausgeführt.
+
+Bis dahin gilt: Funktionsfehler zuerst reproduzierbar eingrenzen; keine Performance-Umbauten auf Verdacht.

@@ -18,3 +18,22 @@ Bildpfad: Mobile Aufnahmen laut 15×15 nur kleine Sync-Version + Thumbnail + Met
 Nächste Schritte: IMG-001 Audit → Migration 015 Runtime-E2E → 15×15 Lasttest.
 
 Historischer Tracker: `projektsteuerung/archiv/SERVER_STATUS_ALT_2026-09-26.md`
+
+## Praxisnachtrag – Delta-Wait 255 / neue Testreihenfolge
+
+Praktischer Staging-Kapazitätsteiltest für `/api/v1/sync/changes/wait`:
+- 255 getrennte Portal-Sessions vorbereitet;
+- 255/255 Requests erfolgreich, 0 Fehler;
+- Wall 16,43 s, Median 14,28 s, Maximum 15,79 s;
+- Testsession-Cleanup meldete zunächst 253/255; über gezielte DB-Kontrolle wurden 7 noch aktive Python-Test-Sessions gefunden und ausschließlich diese Test-Sessions auf `revoked_at` gesetzt;
+- anschließende Kontrolle: 0 aktive Python-Test-Sessions.
+
+Status: **KAPAZITÄTSTEILTEST BESTANDEN**, aber **kein vollständiger 15×15-E2E**.
+
+Neue Server-Reihenfolge:
+1. verantwortliches TB-Handy ↔ Server/Portal funktional E2E;
+2. HELPER/Poco-Syncfehler reproduzierbar eingrenzen und beheben;
+3. danach weitere gemeinsame Fach-E2Es;
+4. vollständige Lastwiederholung nach 8-GB-RAM-Ausbau bzw. auf neuem NAS.
+
+Keine Server-Performanceänderung aus diesem Test ableiten, solange kein reproduzierbarer funktionaler Engpass vorliegt.
