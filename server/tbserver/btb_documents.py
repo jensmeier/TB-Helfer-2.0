@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 
 from fastapi import HTTPException
 
-from .btb_photo_meta import canonical_photo_metadata
+from .btb_photo_meta import canonical_photo_metadata, merge_btb_photo_metadata
 from .config import settings
 
 
@@ -106,7 +106,7 @@ def load_btb_photo_files(cur, btb_id: UUID) -> list[dict[str, Any]]:
         """
         SELECT f.id, f.storage_key, f.original_name, f.mime_type, f.byte_size, f.sha256,
                f.captured_at, f.gps_lat, f.gps_lon, f.gps_accuracy_m, f.photo_metadata,
-               f.created_at, l.purpose
+               f.created_at, l.purpose, l.link_metadata, l.version AS link_version
         FROM tb.file_links l
         JOIN tb.files f ON f.id = l.file_id
         WHERE l.entity_type = 'BTB' AND l.entity_id = %s
@@ -118,6 +118,20 @@ def load_btb_photo_files(cur, btb_id: UUID) -> list[dict[str, Any]]:
         (btb_id, FINAL_PDF_PURPOSE),
     )
     return [dict(row) for row in cur.fetchall()]
+
+
+
+
+def effective_btb_photo_metadata(photo: dict[str, Any]) -> dict[str, Any]:
+    base = canonical_photo_metadata(
+        filename=photo.get("original_name"),
+        captured_at=photo.get("captured_at"),
+        gps_lat=photo.get("gps_lat"),
+        gps_lon=photo.get("gps_lon"),
+        gps_accuracy_m=photo.get("gps_accuracy_m"),
+        photo_metadata=photo.get("photo_metadata"),
+    )["photo_metadata"] or {}
+    return merge_btb_photo_metadata(base, photo.get("link_metadata"))
 
 
 def snapshot_photo_metadata(photo_files: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -134,15 +148,9 @@ def snapshot_photo_metadata(photo_files: list[dict[str, Any]]) -> list[dict[str,
                 "gps_lat": photo.get("gps_lat"),
                 "gps_lon": photo.get("gps_lon"),
                 "gps_accuracy_m": photo.get("gps_accuracy_m"),
-                "photo_metadata": canonical_photo_metadata(
-                    filename=photo.get("original_name"),
-                    captured_at=photo.get("captured_at"),
-                    gps_lat=photo.get("gps_lat"),
-                    gps_lon=photo.get("gps_lon"),
-                    gps_accuracy_m=photo.get("gps_accuracy_m"),
-                    photo_metadata=photo.get("photo_metadata"),
-                )["photo_metadata"],
+                "photo_metadata": effective_btb_photo_metadata(photo),
                 "purpose": photo.get("purpose"),
+                "link_version": photo.get("link_version", 1),
             }
         )
     return result
@@ -152,6 +160,7 @@ def photo_files_for_render(photo_files: list[dict[str, Any]]) -> list[dict[str, 
     result: list[dict[str, Any]] = []
     for photo in photo_files:
         row = dict(photo)
+        row["photo_metadata"] = effective_btb_photo_metadata(row)
         row["path"] = _absolute_storage_path(row["storage_key"])
         result.append(row)
     return result
