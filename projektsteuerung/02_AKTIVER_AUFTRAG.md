@@ -364,7 +364,7 @@ Quellprüfung:
 - GitHub Actions aktueller HEAD: kein Testnachweis, da keine Runner-Schritte geliefert wurden.
 
 Parallelstand ANDROID:
-- aktueller Android-HEAD `da0806fe29f34363247463bc4fb599778ee42a53`;
+- aktueller Android-HEAD `623704990072c7006e6a48e611441d7aa08b989e`;
 - Entry-Modell/Node-Key/Entry-Identität bereits source-seitig in Umsetzung;
 - Android-Foto-Umhängen mit stabilem `worksiteNodeKey`/Foto-PATCH noch offen.
 
