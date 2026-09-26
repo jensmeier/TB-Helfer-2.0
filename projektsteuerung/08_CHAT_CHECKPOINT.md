@@ -94,3 +94,10 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Serverwert 1.3.4 ist stale: `app_version/app_build` werden nur bei Geräteaktivierung geschrieben; normale Requests aktualisieren nur `last_seen_at`.
 - Vorherige Schlussfolgerung „gemischte Android-Versionen“ verworfen.
 - BTB-SYNC-001 weiter diagnostizieren: 26.09-BTB + Team-`active_btb_id` + API-Snapshot.
+
+## BTB-SYNC-001 – Servereingang 26.09 bestätigt
+- BTB-ID: `ba2144b7-9ede-4f53-abdc-1accd172e875`
+- work_date: 2026-09-26
+- Change-Feed: wiederholte UPDATEs, sichtbar mindestens Version 7–19.
+- Pixel→Server ist damit nicht der fehlende Schritt.
+- Nächster Diagnosepunkt: Team/`active_btb_id`/Status/Teilnehmer für exakt diesen BTB, danach Portal- und Poco-Leseweg.

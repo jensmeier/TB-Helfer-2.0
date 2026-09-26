@@ -135,3 +135,16 @@ Zwingende Diagnose vor Änderung:
 - `tb.devices.app_version` ist nur der bei Aktivierung gemeldete Stand und wird bei normalem Sync nicht aktualisiert.
 - Die Schlussfolgerung „Pixel läuft noch 1.3.4“ war falsch und wird nicht weiterverfolgt.
 - Nächster Schritt bleibt die eigentliche BTB-Diagnose: Team-`active_btb_id`, 26.09-BTB-Datensatz, Change-Feed und API-Snapshot.
+
+### BTB-SYNC-001 Diagnosefund – Server empfängt 26.09-BTB
+- Change-Feed bestätigt den BTB `ba2144b7-9ede-4f53-abdc-1accd172e875` mit `work_date=2026-09-26`.
+- Mehrere aufeinanderfolgende `UPDATE`-Changes in wenigen Sekunden, sichtbar mindestens Version 7–19.
+- Pixel→Server-Transport funktioniert daher grundsätzlich.
+- Nächste Abgrenzung: kompakten DB-Check nur für diesen BTB ausführen:
+  - Worksite/Team/Lead
+  - `teams.active_btb_id`
+  - BTB-Status
+  - Client-BTB-ID
+  - aktueller Header/Version
+  - Teilnehmerstatus Pixel/Poco
+- Erst danach Portal-/Android-Leseweg bewerten.

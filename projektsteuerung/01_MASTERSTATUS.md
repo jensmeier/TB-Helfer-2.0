@@ -81,3 +81,10 @@ Priorität bleibt gemäß E2E-PRIO-001:
 - Quellprüfung Server: `app_version/app_build` werden beim `/api/v1/device/login` gespeichert; normale authentisierte Requests aktualisieren nur `last_seen_at`.
 - Pixel wurde nach einem späteren App-Update nicht neu aktiviert, daher bleibt der alte Aktivierungswert in `tb.devices` stehen.
 - Die zuvor angenommene Versionsabweichung als Ursache von BTB-SYNC-001 ist damit **verworfen**. BTB-SYNC-001 bleibt unverändert offen.
+
+## BTB-SYNC-001 Diagnose – 26.09 ist auf dem Server vorhanden
+- Der 26.09-BTB ist in `tb.btbs` vorhanden und erzeugt Change-Feed-Einträge.
+- Sichtbarer BTB: `ba2144b7-9ede-4f53-abdc-1accd172e875`.
+- Am 26.09 wurden für genau diesen BTB wiederholt `UPDATE`-Changes beobachtet, mindestens Version 7 bis 19 in kurzer Folge.
+- Damit ist „Pixel lädt den 26.09-BTB gar nicht zum Server“ ausgeschlossen.
+- Offen bleiben Team/`active_btb_id`/Status und warum Portal/Poco den serverseitig vorhandenen BTB nicht stabil anzeigen.
