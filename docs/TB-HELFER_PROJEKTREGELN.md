@@ -1,14 +1,30 @@
 # TB-Helfer – verbindliche Projektregeln
 
-## 0. Projektstatus-Tracker
+## 0. Gemeinsame Projektsteuerung
 
-- Zusätzlich zu diesen Projektregeln und `projektsteuerung/01_MASTERSTATUS.md` wird der laufende Arbeits-/Teststand in `projektsteuerung/01_MASTERSTATUS.md` und der gleichnamigen Excel-Datei gespiegelt.
-- Vor Änderungen ist der Tracker zu prüfen. Ein mit `☑` bestätigter Punkt und/oder `Nicht ohne Grund ändern = JA` wird nicht beiläufig umgebaut. Änderungen daran erfolgen nur bei reproduzierbarem Fehler, neuer belegter Fachanforderung oder ausdrücklichem Benutzerwunsch.
-- Neue wesentliche Probleme, Entscheidungen, Tests, Versionen und erledigte Punkte werden mit stabiler ID in MD und Excel nachgeführt.
-- GitHub-Code und diese Projektregeln bleiben Source of Truth; der Tracker ist eine zusätzliche, schnell lesbare Arbeits- und Abnahmeliste.
-- Geheimwerte, insbesondere Cloudflare-Tunnel-Tokens, Passwörter, Geräte-Bearer und Klartext-Aktivierungs-Keys, dürfen niemals in den Tracker geschrieben werden.
+Die gemeinsame Projektsteuerung liegt ausschließlich unter `projektsteuerung/`.
 
-Stand: 2026-09-14
+Verbindlicher Einstieg für **jeden neuen Chat und jeden neuen Arbeitsblock**:
+1. `projektsteuerung/00_START_HIER.md`
+2. Live-GitHub-Stand beider Arbeitsbranches + Draft-PRs
+3. `projektsteuerung/01_MASTERSTATUS.md`
+4. `projektsteuerung/02_AKTIVER_AUFTRAG.md`
+5. eigener Rollenstatus: `03_ANDROID_STATUS.md` oder `04_SERVER_STATUS.md`
+6. Gegenstellenstatus
+7. `projektsteuerung/05_ANDROID_SERVER_VERTRAG.md`
+8. `projektsteuerung/06_E2E_TESTSTATUS.md`
+9. `projektsteuerung/07_OFFENE_PUNKTE.md`
+10. relevante Fachregeln und aktuelle Code-Dateien
+
+Neue fachliche Anforderungen, Vertragsänderungen oder wesentliche Statusänderungen werden **vor der Implementierung** in der Projektsteuerung gesichert und committed. Reine Erklärungen oder unveränderte Auskünfte brauchen keinen Commit.
+
+`☑`, `BESTÄTIGT`, `ERLEDIGT`, `PASST`, `FUNKTIONIERT` und `Nicht ohne Grund ändern = JA` bleiben geschützt.
+
+Der Chat-Kontext wird nicht mit erfundenen Prozentwerten bewertet. Stattdessen gilt ereignisbasierte Sicherung: nach jedem atomaren Arbeitsblock, vor Android↔Server-Wechsel, nach Build/Test und vor einer Antwort mit „fertig/erledigt“ den Stand in `projektsteuerung/08_CHAT_CHECKPOINT.md` bzw. den zuständigen Statusdateien sichern.
+
+Die früheren Top-Level-Ordner `projektstatus/`, `releases/` und `uebergaben/` sind außer Betrieb und dürfen nicht neu angelegt werden.
+
+Stand: 2026-09-26
 
 Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und später iOS fest. Bei Änderungen zuerst diese Datei aktualisieren.
 
