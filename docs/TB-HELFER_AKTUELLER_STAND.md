@@ -1,6 +1,6 @@
 # TB-Helfer – aktueller Projektstand
 
-Stand: 2026-09-24
+Stand: 2026-09-26
 
 Maßgeblich sind aktueller GitHub-Code im aktiven Branch, `docs/TB-HELFER_PROJEKTREGELN.md`, diese Datei, `docs/TB-SERVER_1_0_ZIELMODELL.md` und `docs/TB-SERVER_1_0_CUTOVER.md`.
 
@@ -1236,3 +1236,21 @@ Regressionstest 200063:
 4. zurück zum aktuellen BTB wechseln; kein Verlassen der Bautagebuchseite als Workaround nötig;
 5. aktiven Nachbearbeitungs-BTB synchronisieren; er darf vom Server-PDF-Import nicht erneut auf `Abgeschlossen` springen;
 6. echten `BTB Abschluss` ausführen; erst dann muss der BTB aus dem aktiven Kontext gehen und im Verlauf grün mit gültigem PDF erscheinen.
+
+
+## Android 1.3.19 / 200069 – Buildkorrektur 26.09.2026
+
+- Android-Branch: `feature/tb-android-2.0`
+- Android-HEAD nach Korrektur: `0a22f17526a7e5dd3e5ac71cd4b027b7ecb4dfac`
+- Server-Branch geprüft: `feature/tb-server-1.0`
+- Server-HEAD bei der Korrektur: `6b3e66cb2f98f273b3ee0886403a1a217626fbc2`
+- Version bleibt `1.3.19 / 200069`; der fehlgeschlagene lokale Compile-Versuch verbraucht keinen neuen versionCode.
+- Praktischer Android-Studio-Buildversuch vom 26.09.2026 scheiterte in `:app:compileDebugKotlin` mit 7 Compilefehlern:
+  - 1× `BautagebuchPdf.kt`: `KmAnzeige.bereich(...)` liefert nullable `String?`; der Aufruf `km.isNotBlank()` war deshalb unzulässig.
+  - 6× Folgefehler an drei `CollabLocalBridge.uploadAttachment(...)`-Aufrufen: nach Erweiterung der Signatur um strukturierte Foto-Metadaten wurden `api` und `server1Api` noch positional übergeben und dadurch fälschlich an `capturedAtEpochMs/gpsLat/...` gebunden.
+- Korrekturen:
+  - Commit `411c09e620386831ee3e841ffb476e9c975907c1`: nullable KM-Anzeige mit `!km.isNullOrBlank()` abgesichert.
+  - Commit `0a22f17526a7e5dd3e5ac71cd4b027b7ecb4dfac`: alle drei betroffenen Attachment-Aufrufe auf benannte Parameter umgestellt; Server-/API-Objekte landen wieder in `api` bzw. `server1Api`.
+- Keine `server/**`-Datei geändert; Serververtrag bleibt unverändert.
+- Teststatus: **QUELLKORREKTUR COMMITTED / BUILD-WIEDERHOLUNG OFFEN / INSTALLATION OFFEN / PIXEL-POCO-SERVER-E2E OFFEN**.
+- `STATUS.xlsx` wurde bewusst nicht überschrieben: Android-Blob `f73ead35113257bc382e77187a4ca817fe2f9767`, Server-Blob `a56c44ccbd85ebe1499a27c4777bc77409eb9479`. SERVER-Projekt konsolidiert die Excel-Datei.
