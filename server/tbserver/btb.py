@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from psycopg.types.json import Jsonb
 
 from .btb_documents import (
+    effective_btb_photo_metadata,
     final_pdf_content_path,
     final_pdf_paths,
     finish_pdf_install,
@@ -30,7 +31,7 @@ from .btb_documents import (
     upsert_final_pdf_file,
 )
 from .btb_pdf import PDF_RENDERER_VERSION, render_btb_pdf
-from .btb_photo_meta import canonical_photo_metadata
+from .btb_photo_meta import canonical_photo_metadata, merge_btb_photo_metadata, normalize_btb_photo_override
 from .btb_participants import (
     FINISHED,
     NOT_PARTICIPATING,
@@ -53,6 +54,42 @@ from .portal import current_portal_user, require_csrf
 
 
 router = APIRouter(prefix="/api/v1", tags=["btb"])
+
+
+BTB_CONTENT_SECTIONS = frozenset({
+    "ARBEIT",
+    "ABNAHME",
+    "EINWEISUNG_UNTERWEISUNG",
+    "BESONDERHEIT",
+    "MANGEL_SCHADEN",
+})
+
+
+def _validate_worksite_node_key(cur, worksite_id: UUID, node_key: Any) -> None:
+    key = str(node_key or "").strip()
+    if not key:
+        return
+    cur.execute(
+        """
+        SELECT 1
+        FROM tb.worksite_nodes
+        WHERE worksite_id = %s
+          AND deleted_at IS NULL
+          AND coalesce(external_key, 'server-' || id::text) = %s
+        """,
+        (worksite_id, key),
+    )
+    if not cur.fetchone():
+        raise HTTPException(
+            400,
+            {"code": "WORKSITE_NODE_INVALID", "worksiteNodeKey": key},
+        )
+
+
+def _validate_entry_payload_node(cur, btb: dict[str, Any], payload: Any) -> None:
+    if not isinstance(payload, dict):
+        return
+    _validate_worksite_node_key(cur, btb["worksite_id"], payload.get("worksiteNodeKey"))
 
 
 class BtbCreate(BaseModel):
@@ -80,8 +117,14 @@ class BtbEntryCreate(BaseModel):
 
 class BtbEntryUpdate(BaseModel):
     base_version: int = Field(ge=1)
+    section: str | None = Field(default=None, min_length=1, max_length=80)
     sort_order: int | None = None
     payload: dict | None = None
+
+
+class BtbPhotoUpdate(BaseModel):
+    base_version: int = Field(ge=1)
+    photo_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class BtbFinalizeRequest(BaseModel):
@@ -347,15 +390,9 @@ def get_btb(
                 "gps_lat": row.get("gps_lat"),
                 "gps_lon": row.get("gps_lon"),
                 "gps_accuracy_m": row.get("gps_accuracy_m"),
-                "photo_metadata": canonical_photo_metadata(
-                    filename=row.get("original_name"),
-                    captured_at=row.get("captured_at"),
-                    gps_lat=row.get("gps_lat"),
-                    gps_lon=row.get("gps_lon"),
-                    gps_accuracy_m=row.get("gps_accuracy_m"),
-                    photo_metadata=row.get("photo_metadata"),
-                )["photo_metadata"],
+                "photo_metadata": effective_btb_photo_metadata(row),
                 "purpose": row.get("purpose"),
+                "link_version": row.get("link_version", 1),
                 "content_url": f"/api/v1/files/{row['id']}/content",
                 "renditions": image_rendition_urls(
                     row["id"],
@@ -446,6 +483,7 @@ def create_entry(
         require_permission(context, "btb.edit")
         _assert_team_member(cur, user, btb["team_id"])
         require_participant_writable(cur, user=user, btb_id=btb_id, team_id=btb["team_id"])
+        _validate_entry_payload_node(cur, btb, payload.payload)
         invalidated_pdf_keys.extend(prepare_btb_content_change(cur, btb))
         values = (btb_id, payload.section, payload.sort_order, Jsonb(payload.payload), user["user_id"], user["user_id"])
         if payload.id is None:
@@ -550,20 +588,40 @@ def update_entry(
         require_permission(context, "btb.edit")
         _assert_team_member(cur, user, btb["team_id"])
         require_participant_writable(cur, user=user, btb_id=btb_id, team_id=btb["team_id"])
-        cur.execute("SELECT id, sort_order, payload, version FROM tb.btb_entries WHERE id = %s AND btb_id = %s AND deleted_at IS NULL FOR UPDATE", (entry_id, btb_id))
+        cur.execute("SELECT id, section, sort_order, payload, version FROM tb.btb_entries WHERE id = %s AND btb_id = %s AND deleted_at IS NULL FOR UPDATE", (entry_id, btb_id))
         current = cur.fetchone()
         if not current:
             raise HTTPException(404, "ENTRY_NOT_FOUND")
         current = dict(current)
         if current["version"] != payload.base_version:
             raise HTTPException(409, {"code": "VERSION_CONFLICT", "current_version": current["version"]})
+        if "section" in updates:
+            target_section = str(updates["section"] or "").strip().upper()
+            current_section = str(current["section"] or "").strip().upper()
+            if not target_section:
+                raise HTTPException(400, "ENTRY_SECTION_REQUIRED")
+            if target_section != current_section and (
+                current_section not in BTB_CONTENT_SECTIONS
+                or target_section not in BTB_CONTENT_SECTIONS
+            ):
+                raise HTTPException(
+                    400,
+                    {
+                        "code": "ENTRY_SECTION_MOVE_NOT_ALLOWED",
+                        "current_section": current_section,
+                        "target_section": target_section,
+                    },
+                )
+            updates["section"] = target_section
+        next_payload = updates.get("payload", current["payload"])
+        _validate_entry_payload_node(cur, btb, next_payload)
         effective = {key: value for key, value in updates.items() if current.get(key) != value}
         if not effective:
             raise HTTPException(400, "NO_CHANGES")
         invalidated_pdf_keys.extend(prepare_btb_content_change(cur, btb))
         columns = []
         values = []
-        for key in ("sort_order", "payload"):
+        for key in ("section", "sort_order", "payload"):
             if key in effective:
                 columns.append(f"{key} = %s")
                 values.append(Jsonb(effective[key]) if key == "payload" else effective[key])
@@ -894,6 +952,154 @@ def reopen_btb(
         audit(cur, action="BTB_REACTIVATE", actor_user_id=user["user_id"], company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id)
         finish_mutation(cur, user=user, context=mutation, receipt_type="BTB_REOPEN", entity_id=btb_id, result_version=btb["version"], response_payload=btb)
     return btb
+
+
+
+@router.patch("/btbs/{btb_id}/photos/{file_id}")
+def update_btb_photo(
+    btb_id: UUID,
+    file_id: UUID,
+    payload: BtbPhotoUpdate,
+    user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    patch = normalize_btb_photo_override(payload.photo_metadata)
+    if not patch:
+        raise HTTPException(400, "NO_CHANGES")
+    invalidated_pdf_keys: list[str] = []
+    with transaction() as conn, conn.cursor() as cur:
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_PHOTO_UPDATE")
+        if receipt:
+            return replay_payload(receipt)
+        btb = _load_btb(cur, btb_id, for_update=True)
+        context = worksite_context(cur, user, btb["worksite_id"])
+        require_permission(context, "btb.edit")
+        _assert_team_member(cur, user, btb["team_id"])
+        require_participant_writable(cur, user=user, btb_id=btb_id, team_id=btb["team_id"])
+        cur.execute(
+            """
+            SELECT l.link_metadata, l.version AS link_version,
+                   f.original_name, f.captured_at, f.gps_lat, f.gps_lon,
+                   f.gps_accuracy_m, f.photo_metadata
+            FROM tb.file_links l
+            JOIN tb.files f ON f.id = l.file_id
+            WHERE l.entity_type = 'BTB'
+              AND l.entity_id = %s
+              AND l.file_id = %s
+              AND l.purpose <> %s
+              AND f.deleted_at IS NULL
+              AND f.mime_type LIKE 'image/%%'
+            FOR UPDATE
+            """,
+            (btb_id, file_id, "BTB_FINAL_PDF"),
+        )
+        current = cur.fetchone()
+        if not current:
+            raise HTTPException(404, "BTB_PHOTO_NOT_FOUND")
+        current = dict(current)
+        if int(current["link_version"]) != payload.base_version:
+            raise HTTPException(
+                409,
+                {"code": "VERSION_CONFLICT", "current_version": current["link_version"]},
+            )
+        next_override = dict(current.get("link_metadata") or {})
+        next_override.update(patch)
+        if next_override == dict(current.get("link_metadata") or {}):
+            raise HTTPException(400, "NO_CHANGES")
+        base_meta = canonical_photo_metadata(
+            filename=current.get("original_name"),
+            captured_at=current.get("captured_at"),
+            gps_lat=current.get("gps_lat"),
+            gps_lon=current.get("gps_lon"),
+            gps_accuracy_m=current.get("gps_accuracy_m"),
+            photo_metadata=current.get("photo_metadata"),
+        )["photo_metadata"] or {}
+        effective_meta = merge_btb_photo_metadata(base_meta, next_override)
+        _validate_worksite_node_key(
+            cur,
+            btb["worksite_id"],
+            effective_meta.get("worksiteNodeKey"),
+        )
+        invalidated_pdf_keys.extend(prepare_btb_content_change(cur, btb))
+        cur.execute(
+            """
+            UPDATE tb.file_links
+            SET link_metadata = %s,
+                version = version + 1,
+                updated_by = %s,
+                updated_at = now()
+            WHERE file_id = %s
+              AND entity_type = 'BTB'
+              AND entity_id = %s
+              AND version = %s
+            RETURNING version, link_metadata
+            """,
+            (
+                Jsonb(next_override),
+                user["user_id"],
+                file_id,
+                btb_id,
+                payload.base_version,
+            ),
+        )
+        updated_link = cur.fetchone()
+        if not updated_link:
+            raise HTTPException(
+                409,
+                {"code": "VERSION_CONFLICT", "current_version": current["link_version"]},
+            )
+        updated_link = dict(updated_link)
+        cur.execute(
+            "UPDATE tb.btbs SET version = version + 1, updated_at = now() WHERE id = %s RETURNING version",
+            (btb_id,),
+        )
+        parent_version = cur.fetchone()["version"]
+        response = {
+            "file_id": str(file_id),
+            "link_version": updated_link["version"],
+            "photo_metadata": merge_btb_photo_metadata(base_meta, updated_link["link_metadata"]),
+        }
+        emit_change(
+            cur,
+            company_id=context["company_id"],
+            worksite_id=btb["worksite_id"],
+            entity_type="FILE",
+            entity_id=file_id,
+            operation="UPDATE",
+            entity_version=updated_link["version"],
+            actor_user_id=user["user_id"],
+        )
+        emit_change(
+            cur,
+            company_id=context["company_id"],
+            worksite_id=btb["worksite_id"],
+            entity_type="BTB",
+            entity_id=btb_id,
+            operation="UPDATE",
+            entity_version=parent_version,
+            actor_user_id=user["user_id"],
+        )
+        audit(
+            cur,
+            action="BTB_PHOTO_UPDATE",
+            actor_user_id=user["user_id"],
+            company_id=context["company_id"],
+            worksite_id=btb["worksite_id"],
+            entity_type="FILE",
+            entity_id=file_id,
+            details={"btb_id": str(btb_id), "fields": sorted(patch.keys())},
+        )
+        finish_mutation(
+            cur,
+            user=user,
+            context=mutation,
+            receipt_type="BTB_PHOTO_UPDATE",
+            entity_id=file_id,
+            result_version=updated_link["version"],
+            response_payload=response,
+        )
+    remove_storage_keys(invalidated_pdf_keys)
+    return response
 
 
 @router.delete("/btbs/{btb_id}/photos/{file_id}", status_code=204)
