@@ -223,6 +223,41 @@ class BautagebuchFragment : Fragment(R.layout.fragment_bautagebuch) {
 
     private enum class PmSection { PERSONAL, MASCHINEN }
 
+    private enum class BtbEditSection(
+        val point: Int,
+        val label: String,
+        val photoType: de.tbhelfer.datenbank.Bildtyp
+    ) {
+        ARBEIT(4, "Ausgeführte Arbeiten", de.tbhelfer.datenbank.Bildtyp.FOTODOKUMENTATION),
+        ABNAHME(5, "Abnahmen", de.tbhelfer.datenbank.Bildtyp.ABNAHMEN),
+        EINWEISUNG(6, "Einweisung/Unterweisung", de.tbhelfer.datenbank.Bildtyp.EINWEISUNG_UNTERWEISUNG),
+        BESONDERHEIT(7, "Besonderheiten", de.tbhelfer.datenbank.Bildtyp.BESONDERHEITEN),
+        MANGEL(8, "Mängel/Schäden", de.tbhelfer.datenbank.Bildtyp.MAENGEL_SCHAEDEN);
+
+        companion object {
+            fun fromPhotoType(type: de.tbhelfer.datenbank.Bildtyp?): BtbEditSection? =
+                values().firstOrNull { it.photoType == type }
+        }
+    }
+
+    private fun rawForEditSection(section: BtbEditSection): String = when (section) {
+        BtbEditSection.ARBEIT -> rawArbeiten
+        BtbEditSection.ABNAHME -> rawAbnahmen
+        BtbEditSection.EINWEISUNG -> rawEinweisung
+        BtbEditSection.BESONDERHEIT -> rawBesonderheiten
+        BtbEditSection.MANGEL -> rawMaengel
+    }
+
+    private fun setRawForEditSection(section: BtbEditSection, value: String) {
+        when (section) {
+            BtbEditSection.ARBEIT -> rawArbeiten = value
+            BtbEditSection.ABNAHME -> rawAbnahmen = value
+            BtbEditSection.EINWEISUNG -> rawEinweisung = value
+            BtbEditSection.BESONDERHEIT -> rawBesonderheiten = value
+            BtbEditSection.MANGEL -> rawMaengel = value
+        }
+    }
+
     private data class PairRowUi(
         val root: View,
         val acAnzahl: MaterialAutoCompleteTextView,
