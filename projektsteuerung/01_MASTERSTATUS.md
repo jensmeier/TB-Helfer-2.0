@@ -236,3 +236,14 @@ Status: **KONFLIKT FESTGESTELLT / NOCH NICHT AUFGELÖST**
 
 Aktueller Android-HEAD bei Übergabe: `a1b4667b110a993796e8242d4a21be3748c06d68`.
 Wichtig: Android 1.3.25/200075 ist weiterhin **BUILD OFFEN**, weil der GitHub-CI-Job keinen Runner/keine Steps bekam. Das ist getrennt von der abgeschlossenen Quellarbeit zu behandeln.
+
+
+## AND-BUILD-200075 – lokaler Buildfehler beim Integrationsabschluss
+Status: **REPRODUZIERT / ANDROID-ZUSTÄNDIG**
+
+Live-Android-HEAD: `57c960fc2f0b133f8c577ba5bcaf2176375d287d`.
+
+- Android-Studio-Build 1.3.25 / 200075 erreicht `:app:generateBtb200043Sources` und scheitert am veralteten Android-200047-Ortsmarker-Anker.
+- Ursache ist der Android-Buildgenerator in `app/build.gradle.kts`, nicht Server/API/DB.
+- Kein erfolgreicher APK-Build, keine Installation, kein BTB-EDIT-Geräte-E2E.
+- Benutzerbestätigung „Android ist fertig“ wird als Ende des Android-Arbeitsblocks verstanden, nicht als Buildfreigabe.
