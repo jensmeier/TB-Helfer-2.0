@@ -57,6 +57,11 @@ def main() -> None:
         "TB_PORTAL_PASSWORD",
         "tb_portal_session",
         'print(f"auth={args.auth}")',
+        "--portal-session-mode",
+        'choices=("shared", "unique")',
+        'default="unique"',
+        "preparing_portal_sessions=",
+        "portal_sessions_cleanup=",
     ):
         if needle not in loadtest:
             raise SystemExit("Delta loadtest portal auth mode missing marker: " + needle)
