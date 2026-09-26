@@ -292,3 +292,10 @@ Praxis 26.09.2026 auf Pixel:
 - Zielbuild **1.3.24 / 200074**.
 - Source-Check der geänderten Stellen: **PASST**.
 - Build/Installation/Praxis-E2E offen.
+
+
+## BTB-UI-001 Praxisbestätigung 1.3.24
+Status: **BESTÄTIGT**
+- Pixel-Haupt-TB zeigt stabil PDF Entwurf + BTB Abschluss.
+- Kein Springen mehr zwischen Ein- und Zwei-Button-Zustand.
+- Poco/HELPER-E2E bleibt separat offen.

@@ -398,3 +398,9 @@ Status: **SOURCE-FIX FERTIG / BUILD OFFEN**
 - FINALIZED/read-only unverändert nach Serverrecht.
 - Commit `7fdb4dad2e72515dcda958c00bc2065c38d9f5da`.
 - Version **1.3.24 / 200074**, Release-MD vorhanden.
+
+
+### BTB-UI-001 abgeschlossen
+- Benutzer bestätigt 1.3.24 / 200074 auf dem Pixel: kein Springen mehr.
+- Haupt-TB-Ansicht mit PDF Entwurf + BTB Abschluss ist praktisch bestätigt.
+- Nächster Gerätepunkt: Poco/HELPER-E2E.

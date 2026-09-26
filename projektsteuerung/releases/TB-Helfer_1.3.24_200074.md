@@ -39,9 +39,9 @@ QUELLSTAND:
 TESTSTATUS:
 - SOURCE-FIX UMGESETZT
 - SOURCE-CHECK PASST
-- BUILD OFFEN
-- INSTALLATION OFFEN
-- PIXEL-UI-E2E OFFEN
+- BUILD ERFOLGREICH / praktisch nachgewiesen
+- INSTALLATION PIXEL BESTÄTIGT
+- PIXEL-UI-E2E BESTÄTIGT
 - POCO/HELPER-E2E OFFEN
 
 NÄCHSTER TEST:
@@ -52,3 +52,7 @@ NÄCHSTER TEST:
   PDF Entwurf + BTB Abschluss müssen dauerhaft gleichzeitig sichtbar bleiben.
 - Keine Wechsel mehr zwischen 1-Button- und 2-Button-Zustand.
 - HELPER/Poco anschließend separat prüfen.
+
+PRAXISBESTÄTIGUNG:
+- Pixel-Haupt-TB: PDF Entwurf + BTB Abschluss bleiben stabil sichtbar.
+- Kein Springen mehr.

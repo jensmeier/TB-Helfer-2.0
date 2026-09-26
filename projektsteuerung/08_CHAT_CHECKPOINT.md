@@ -287,3 +287,10 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Haupt-TB: stabil `PDF Entwurf` + `BTB Abschluss`.
 - HELPER: kein PDF-Entwurf; rollenbezogene Schichtaktion.
 - Source-Check passt; Build/Installation/E2E offen.
+
+
+## BTB-UI-001 bestätigt 1.3.24
+- Benutzer bestätigt: Pixel springt unten nicht mehr.
+- Haupt-TB zeigt stabil PDF Entwurf + BTB Abschluss.
+- Punkt geschützt: nur bei neuem reproduzierbaren Fehler wieder öffnen.
+- Poco/HELPER-E2E bleibt offen.

@@ -113,3 +113,10 @@ Pflichttest:
 - Portal → Pixel: **BESTANDEN**
 
 Damit ist der normale bidirektionale Datenweg des BTB-SYNC-002-Fixes praktisch bestätigt. Nicht durch diese Aussage abgedeckt ist der zusätzliche Parallel-Autosave-/Konflikttest während eines laufenden Uploads; dieser bleibt offen. Poco/HELPER bleibt ebenfalls ein eigener E2E.
+
+
+### BTB-UI-001 1.3.24 Praxis
+- Pixel: **BESTANDEN**.
+- PDF Entwurf + BTB Abschluss bleiben stabil sichtbar.
+- Pixel-UI-E2E: **BESTÄTIGT**.
+- Poco/HELPER: **OFFEN**.
