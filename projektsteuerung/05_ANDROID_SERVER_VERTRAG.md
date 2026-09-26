@@ -90,3 +90,13 @@ Für bearbeitbare BTBs gilt verbindlich:
 - Verschieben von Punkt 4 nach 5/6/7/8 oder Wechsel von Firma/Unterbaustelle muss auf allen Clients nach Sync identisch erscheinen.
 - FINALIZED bleibt read-only gemäß bestehendem Lifecyclevertrag.
 - Der bestätigte SSE-Live-Refresh bleibt unverändert und reagiert lediglich auf die resultierenden Change-Feed-Ereignisse.
+
+
+### Kanonische Unterbaustellenreferenz für BTB
+- Lokale Android-`Long`-Knoten-IDs und Textmarker wie `@ORT=123` sind **keine** geräteübergreifende Identität.
+- Für BTB-Einträge und BTB-Fotos ist die vorhandene stabile Baustellenstruktur-Identität (`clientNodeKey` bzw. ein eindeutig darauf abgebildeter kanonischer Server-Schlüssel) zu verwenden.
+- Android löst lokale Knoten über sein Worksite-Node-Binding auf diesen stabilen Schlüssel auf.
+- Portal liest dieselbe Baustellenbaumstruktur und speichert denselben Schlüssel.
+- Anzeigenamen (z. B. „BÜ 76.215“) bleiben Darstellung und dürfen umbenannt werden, ohne die BTB-Zuordnung zu verlieren.
+- Entry-Update muss einen Wechsel des BTB-Abschnitts 4–8 unterstützen; dies ist eine versionierte Mutation desselben Eintrags, kein Löschen+Neuanlegen.
+- Foto-Metadaten/Fachzuordnung müssen ebenfalls versioniert nachbearbeitbar werden (Abschnitt/Typ, Firma, Unterbaustelle, Text/KM), ohne das Foto selbst neu hochzuladen.
