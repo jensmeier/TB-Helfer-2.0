@@ -94,3 +94,23 @@ Für Android-Releases gilt zusätzlich:
 - Sie ist **Metadatenquelle**, nicht die APK selbst.
 - Für einen gültigen Release müssen Release-MD und APK denselben `versionName/versionCode` tragen.
 - Android validiert ab 1.3.21 / 200071 zusätzlich die heruntergeladene APK gegen diese Server-Metadaten.
+
+
+## BTB Konflikt-/Overwrite-Schutz
+Für denselben aktiven BTB gilt verbindlich:
+- lokal gespeicherte, noch nicht serverbestätigte Android-Änderungen dürfen durch einen eingehenden Server-Snapshot nicht still verloren gehen;
+- ANDROID muss einen dirty BTB **vor jedem Snapshot-Apply** zuerst in Pending/Outbox sichern;
+- der Server bleibt kanonische Quelle für bestätigte Version/Lifecycle, aber ein Server-Snapshot darf eine noch unbestätigte lokale Mutation nicht vor deren Upload-/Konfliktprüfung überschreiben;
+- Uploads arbeiten gegen Basisversionen; bei Versionsabweichung ist der bestehende Conflict-/Rebase-Pfad zu verwenden;
+- solange für denselben `clientBtbId` ein Pending oder ein nach Export neu entstandener Dirty-Stand existiert, ist ein stilles `applyServerStateToLocal` für diesen BTB unzulässig;
+- nach erfolgreichem Upload darf der bestätigte Server-Snapshot lokal angewendet werden, sofern seit dem verarbeiteten Dirty-Generation-Stand keine neuere lokale Änderung entstanden ist.
+
+### Selektiver BTB-Sync – Reihenfolge
+1. lokaler Save markiert Dirty;
+2. Worker exportiert genau diesen lokalen BTB in Pending/Outbox;
+3. Serverversion wird im Mutation-/Konfliktpfad geprüft;
+4. Upload/Conflict wird abgearbeitet;
+5. nur bei bestätigtem Upload und unverändertem Dirty-Generation-Stand wird der Server-Snapshot lokal angewendet;
+6. ein neuer Autosave während des Uploads bleibt Dirty und darf nicht durch den gerade bestätigten älteren Snapshot ersetzt werden.
+
+BTB-SYNC-002 erfordert dafür **keine Server-/DB-Vertragsänderung**.
