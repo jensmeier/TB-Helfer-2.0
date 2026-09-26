@@ -54,3 +54,16 @@ Source-Ursache bestätigt: `SelectiveSyncWorker` wendet bei bekanntem BTB einen 
 **BENUTZER BESTÄTIGT:** Portal aktualisiert ohne F5 nach ca. 1–2 Sekunden. Erstellen und Löschen werden automatisch sichtbar; der getestete Datenweg funktioniert in beide Richtungen. Status: **BESTÄTIGT**.
 
 Die notwendige Nacharbeit am BTB-Portal wird separat als `PORTAL-BTB-UI-001` geführt und ändert diesen E2E-Nachweis nicht.
+
+
+### BTB-EDIT-001 Source-/E2E-Status
+**SOURCE-PRÜFUNG:** PASS für den Server-Quellstand:
+- bestehende Portal-BTB Source-Checks 94–99 gegen den aktuellen Inhalt geprüft;
+- neuer Check 100 für strukturiertes Entry-/Foto-Umhängen vorhanden und Assertions erfüllt;
+- kompletter Portal-JavaScript-Block syntaktisch erfolgreich geparst;
+- SSE-Live-Refresh weiterhin vorhanden;
+- GPS/Lat/Lon/Epoch sind keine erlaubten BTB-Link-Override-Felder.
+
+**NICHT E2E:** Migration 016 wurde auf der Synology noch nicht praktisch angewendet; neuer API-/Portalstand nicht deployed; kein Geräte-E2E mit Android für BTB-EDIT-001.
+
+GitHub Actions am Server-HEAD lieferte einen fehlgeschlagenen Job ohne ausführbare/gelieferte Runner-Schritte; gemäß Projektregel kein Testnachweis.
