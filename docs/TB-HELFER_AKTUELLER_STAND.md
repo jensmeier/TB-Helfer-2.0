@@ -1254,3 +1254,39 @@ Regressionstest 200063:
 - Keine `server/**`-Datei geändert; Serververtrag bleibt unverändert.
 - Teststatus: **QUELLKORREKTUR COMMITTED / BUILD-WIEDERHOLUNG OFFEN / INSTALLATION OFFEN / PIXEL-POCO-SERVER-E2E OFFEN**.
 - `STATUS.xlsx` wurde bewusst nicht überschrieben: Android-Blob `f73ead35113257bc382e77187a4ca817fe2f9767`, Server-Blob `a56c44ccbd85ebe1499a27c4777bc77409eb9479`. SERVER-Projekt konsolidiert die Excel-Datei.
+
+
+## Android 1.3.19 / 200069 – Pixel Rollen-/Abschlussanzeige 26.09.2026
+
+Praktischer Befund:
+- Pixel ist serverseitig weiterhin korrekt als verantwortlicher TB/LEAD eingetragen.
+- Poco ist serverseitig korrekt als HELPER im selben Team eingetragen.
+- Pixel zeigte im geöffneten BTB reproduzierbar ein Flackern zwischen „BTB Abschluss“ und der lokalen PDF-Anzeige.
+- Poco erhält trotz „Neu laden“ weiterhin keine Nutzdaten; dieser zweite Fehler bleibt separat offen und wird nicht mit dem Pixel-UI-Fix vermischt.
+
+Ursache Pixel:
+- `BtbModernLifecycleInstaller.startLifecycleWatcher()` verwendete bei einem servergebundenen Haupt-TB weiterhin den lokalen `BtbDokumentVersionierung.status(...)`, solange `serverFinalReadOnly == false` war.
+- Dadurch konnte ein lokaler/staler Abschluss-PDF-Zustand einen serverseitig weiterhin aktiven BTB kurz als lokal abgeschlossen darstellen.
+- Der 600-ms-UI-Watcher wechselte dadurch zwischen Abschlussaktion und PDF-Anzeige, obwohl der Server-Lifecycle eindeutig ACTIVE war.
+
+Korrektur:
+- Commit `19e07feee5b2accea9dcacf0348afb759f8f2dd3`.
+- Für `serverState != null && isTeamLead` ist jetzt der Server-Lifecycle verbindlich:
+  - ACTIVE bzw. bewusst wieder aktiver BTB → stabil `BTB Abschluss`
+  - FINALIZED + nicht aktiv → schreibgeschützt; PDF nur gemäß `can_view_btb_pdf`
+  - lokale Abschlussstatuslogik bleibt nur für nicht servergebundene/Legacy-Fälle.
+- Keine `server/**`-Datei geändert.
+- Release-Datei `releases/TB-Helfer_1.3.19_200069.md` ist jetzt im Android-Branch vorhanden und wird damit auch vom vorhandenen CI-Artefaktpfad gefunden.
+
+Serverprüfung:
+- SERVER-Branch `feature/tb-server-1.0`, zuletzt geprüft bis `c1204501fd2147452f2eb5e47e1c2b9c871b8ecd`.
+- Die zuletzt hinzugekommenen Server-Commits betreffen Status-/Delta-Lasttest-Dokumentation; kein neuer Android-API-Vertrag.
+
+Teststatus:
+- Pixel-Fehler reproduziert und Source-Fix committed.
+- Build-Wiederholung 1.3.19 / 200069: OFFEN.
+- Installation: OFFEN.
+- Pixel-Praxisprüfung „kein Flackern mehr“: OFFEN.
+- Poco-Datenempfang/Binding/Sync: FEHLER REPRODUZIERT / URSACHE OFFEN.
+- Pixel/Poco/Server-Gesamt-E2E: OFFEN.
+- `STATUS.xlsx` wegen unterschiedlicher Android-/Server-Blobs nicht überschrieben.
