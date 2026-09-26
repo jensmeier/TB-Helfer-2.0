@@ -259,3 +259,11 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
   - PR #7 weiterhin `mergeable=false` gegen `feature/tb-server-1.0`.
 - Android-Build 1.3.25/200075 ist nicht als erfolgreich belegt; CI hatte keinen Runner und keine Steps.
 - SERVER darf jetzt den zuvor zurückgestellten Branch-Abgleich `INT-001` durchführen.
+
+
+## AND-BUILD-200075 – Integrationsstopp wegen neuem Android-Status
+- Während der vorbereiteten 3-Wege-Integration sprang Android-HEAD von `a1b4667b...` auf `57c960fc...`.
+- Neuer Commit dokumentiert echten lokalen Buildfehler in `generateBtb200043Sources`.
+- Kein Branch wurde bis dahin verschoben; nur unverknüpfte Git-Blobs aus der Mergevorbereitung entstanden.
+- Fehler ist Android-Buildgenerator, nicht Server/API/DB.
+- SERVER integriert erst den stabilen neuesten Android-HEAD und lässt den Generator-Fix bei ANDROID.
