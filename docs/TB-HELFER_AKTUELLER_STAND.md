@@ -1828,3 +1828,12 @@ Der kurzzeitig eingeführte Android-Gesamt-Bridge-Eintrag `TB_HELFER_ANDROID_V1`
 - Praktischer Post-Deploy-Lauf: Runtime-Probe erneut **PASS**, Same-Browser Session-Split scheitert beim normalen Portal-Login weiterhin mit HTTP 403, auch mit aktivem USER-Konto.
 - `server/tools/session_split_e2e.py` gibt bei Login-Fehlern jetzt einen auf 200 Zeichen begrenzten sicheren Fehlergrund aus, ohne Credentials zu loggen. Dadurch ist beim nächsten Lauf erkennbar, ob der 403 aus der TB-API (`USER_DISABLED`, `USER_EXPIRED`, `ADMIN_USE_ADMIN_LOGIN`, etc.) oder aus einem vorgeschalteten Proxy/Cloudflare-Pfad stammt.
 - Source-Check 111 schützt diese Diagnoseausgabe. Praktische Ursache des 403 bleibt bis zum nächsten Lauf **OFFEN**.
+
+
+### 26.09.2026 – Session-Split-403 als Cloudflare-Browser-Signatur identifiziert
+
+- Der verbesserte Session-Split-Test lieferte für den 403 den eindeutigen externen Text: `The site owner has blocked access based on your browser's signature.`
+- Damit ist der bisherige 403 **nicht** dem TB-Benutzerstatus, Passwort oder Session-Split-Code zuzuordnen, sondern dem vorgeschalteten Cloudflare-Browser-/Bot-Schutz gegen den Python-`urllib`-Client.
+- Cloudflare-Schutz wird dafür **nicht** abgeschaltet. Automatisierte Session-/Read-only-/Worker-/Delta-Abnahmen im API-Container laufen ab jetzt intern über `http://127.0.0.1:8080`.
+- Der echte öffentliche Same-Browser-E2E über `https://www.tb-helfer.de` bleibt separat manuell im Browser zu bestätigen.
+- Runtime-Probe bleibt praktisch PASS; Same-Browser-Serververtrag ist noch nicht bestätigt, bis der interne automatisierte Lauf bzw. echte Browserlauf bestanden ist.
