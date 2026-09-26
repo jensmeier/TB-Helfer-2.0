@@ -7,7 +7,11 @@ Authentication modes:
 - device: Bearer token from TB_DEVICE_TOKEN/--token (mobile contract)
 - portal: normal portal session using TB_PORTAL_PASSWORD plus --portal-login
 
-Secrets are never printed.
+For portal auth, unique session mode creates one independent portal session per
+simulated client before timing the long-poll requests. This avoids an artificial
+row-lock bottleneck on one shared portal_sessions.last_seen_at row.
+
+Secrets and session cookies are never printed.
 """
 from __future__ import annotations
 
@@ -23,6 +27,13 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class PortalSession:
+    headers: dict[str, str]
+    csrf: str
 
 
 def _safe_error(payload: str) -> str:
@@ -40,7 +51,12 @@ def _safe_error(payload: str) -> str:
     return "json_error_without_detail"
 
 
-def _portal_headers(base_url: str, login: str, password: str, timeout: float) -> dict[str, str]:
+def _portal_session(
+    base_url: str,
+    login: str,
+    password: str,
+    timeout: float,
+) -> PortalSession:
     jar = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
     body = json.dumps({"login": login, "password": password}).encode("utf-8")
@@ -62,10 +78,62 @@ def _portal_headers(base_url: str, login: str, password: str, timeout: float) ->
         detail = _safe_error(exc.read().decode("utf-8", "replace"))
         raise RuntimeError(f"portal login HTTP {exc.code} detail={detail}") from exc
 
-    cookie_header = "; ".join(f"{cookie.name}={cookie.value}" for cookie in jar)
-    if "tb_portal_session=" not in cookie_header:
+    cookie_values = {cookie.name: cookie.value for cookie in jar}
+    session_cookie = cookie_values.get("tb_portal_session", "")
+    csrf = cookie_values.get("tb_portal_csrf", "")
+    if not session_cookie:
         raise RuntimeError("portal login returned no tb_portal_session cookie")
-    return {"Cookie": cookie_header, "Accept": "application/json"}
+    if not csrf:
+        raise RuntimeError("portal login returned no tb_portal_csrf cookie")
+
+    cookie_header = "; ".join(
+        f"{name}={value}" for name, value in cookie_values.items()
+    )
+    return PortalSession(
+        headers={"Cookie": cookie_header, "Accept": "application/json"},
+        csrf=csrf,
+    )
+
+
+def _logout_portal_session(
+    base_url: str,
+    session: PortalSession,
+    timeout: float,
+) -> bool:
+    headers = dict(session.headers)
+    headers["X-CSRF-Token"] = session.csrf
+    request = urllib.request.Request(
+        base_url.rstrip("/") + "/api/v1/portal/logout",
+        headers=headers,
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            response.read()
+            return response.status == 204
+    except Exception:
+        return False
+
+
+def _prepare_portal_sessions(
+    base_url: str,
+    login: str,
+    password: str,
+    count: int,
+    timeout: float,
+    mode: str,
+) -> list[PortalSession]:
+    target = 1 if mode == "shared" else count
+    print(f"preparing_portal_sessions={target} mode={mode}", flush=True)
+    sessions: list[PortalSession] = []
+    for index in range(target):
+        sessions.append(_portal_session(base_url, login, password, timeout))
+        completed = index + 1
+        if target >= 50 and (completed % 50 == 0 or completed == target):
+            print(f"portal_sessions_ready={completed}/{target}", flush=True)
+    if mode == "shared":
+        return [sessions[0]] * count
+    return sessions
 
 
 def _device_headers(token: str) -> dict[str, str]:
@@ -74,7 +142,11 @@ def _device_headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}", "Accept": "application/json"}
 
 
-def _request_json(url: str, headers: dict[str, str], timeout: float) -> tuple[int, object]:
+def _request_json(
+    url: str,
+    headers: dict[str, str],
+    timeout: float,
+) -> tuple[int, object]:
     request = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
@@ -147,6 +219,12 @@ def main() -> int:
     )
     parser.add_argument("--token", default=os.environ.get("TB_DEVICE_TOKEN", ""))
     parser.add_argument("--portal-login", default=os.environ.get("TB_PORTAL_LOGIN", ""))
+    parser.add_argument(
+        "--portal-session-mode",
+        choices=("shared", "unique"),
+        default="unique",
+        help="portal auth only: one shared session or one independent session per client",
+    )
     parser.add_argument("--clients", type=int, default=32)
     parser.add_argument("--after", type=int, default=None)
     parser.add_argument("--wait-seconds", type=float, default=10.0)
@@ -158,9 +236,11 @@ def main() -> int:
     if args.clients < 1 or args.clients > 255:
         parser.error("--clients must be between 1 and 255")
 
+    portal_sessions: list[PortalSession] = []
+    unique_sessions_for_cleanup: list[PortalSession] = []
     try:
         if args.auth == "device":
-            headers = _device_headers(args.token)
+            headers_per_client = [_device_headers(args.token)] * args.clients
         else:
             if not args.portal_login:
                 raise RuntimeError("--portal-login/TB_PORTAL_LOGIN is required for --auth portal")
@@ -171,59 +251,82 @@ def main() -> int:
                 password = getpass.getpass("Portal-Passwort (wird nicht angezeigt): ")
             if not password:
                 raise RuntimeError("TB_PORTAL_PASSWORD is required for --auth portal")
-            headers = _portal_headers(
+            portal_sessions = _prepare_portal_sessions(
                 args.base_url,
                 args.portal_login,
                 password,
+                args.clients,
                 min(args.timeout, 15.0),
+                args.portal_session_mode,
+            )
+            headers_per_client = [session.headers for session in portal_sessions]
+            unique_sessions_for_cleanup = (
+                portal_sessions[:1]
+                if args.portal_session_mode == "shared"
+                else portal_sessions
             )
 
         after = args.after if args.after is not None else fetch_head(
             args.base_url,
-            headers,
+            headers_per_client[0],
             min(args.timeout, 15.0),
         )
-    except Exception as exc:
-        print(f"FAIL could not determine delta head: {exc}")
-        return 1
 
-    print(f"auth={args.auth}")
-    print(f"long_poll_after={after}")
+        print(f"auth={args.auth}")
+        if args.auth == "portal":
+            print(f"portal_session_mode={args.portal_session_mode}")
+        print(f"long_poll_after={after}")
 
-    results = []
-    started = time.monotonic()
-    with ThreadPoolExecutor(max_workers=args.clients) as pool:
-        futures = [
-            pool.submit(
-                run_one,
-                args.base_url,
-                headers,
-                after,
-                args.wait_seconds,
-                args.timeout,
-            )
-            for _ in range(args.clients)
-        ]
-        for future in as_completed(futures):
-            results.append(future.result())
+        results = []
+        started = time.monotonic()
+        with ThreadPoolExecutor(max_workers=args.clients) as pool:
+            futures = [
+                pool.submit(
+                    run_one,
+                    args.base_url,
+                    headers_per_client[index],
+                    after,
+                    args.wait_seconds,
+                    args.timeout,
+                )
+                for index in range(args.clients)
+            ]
+            for future in as_completed(futures):
+                results.append(future.result())
 
-    elapsed = time.monotonic() - started
-    latencies = [item[1] for item in results]
-    failures = [item for item in results if item[0] != 200]
-    print(
-        f"clients={args.clients} wall={elapsed:.2f}s "
-        f"success={len(results)-len(failures)} failure={len(failures)}"
-    )
-    if latencies:
+        elapsed = time.monotonic() - started
+        latencies = [item[1] for item in results]
+        failures = [item for item in results if item[0] != 200]
         print(
-            "latency_s "
-            f"min={min(latencies):.2f} "
-            f"median={statistics.median(latencies):.2f} "
-            f"max={max(latencies):.2f}"
+            f"clients={args.clients} wall={elapsed:.2f}s "
+            f"success={len(results)-len(failures)} failure={len(failures)}"
         )
-    for status, latency, detail in failures[:10]:
-        print(f"FAIL status={status} latency={latency:.2f}s detail={detail}")
-    return 1 if failures else 0
+        if latencies:
+            print(
+                "latency_s "
+                f"min={min(latencies):.2f} "
+                f"median={statistics.median(latencies):.2f} "
+                f"max={max(latencies):.2f}"
+            )
+        for status, latency, detail in failures[:10]:
+            print(f"FAIL status={status} latency={latency:.2f}s detail={detail}")
+        return 1 if failures else 0
+    except Exception as exc:
+        print(f"FAIL could not run delta loadtest: {exc}")
+        return 1
+    finally:
+        if unique_sessions_for_cleanup:
+            cleanup_timeout = min(max(args.timeout, 5.0), 15.0)
+            cleaned = sum(
+                1
+                for session in unique_sessions_for_cleanup
+                if _logout_portal_session(args.base_url, session, cleanup_timeout)
+            )
+            print(
+                f"portal_sessions_cleanup={cleaned}/"
+                f"{len(unique_sessions_for_cleanup)}",
+                flush=True,
+            )
 
 
 if __name__ == "__main__":
