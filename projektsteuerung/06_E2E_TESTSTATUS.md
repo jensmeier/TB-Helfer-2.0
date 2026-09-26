@@ -171,3 +171,10 @@ Dies ist erstmals ein echter ausgeführter lokaler Buildpfad; anders als der fr�
 **SOURCE-INTEGRATION:** Android-Parent `4de3350fa4bc3777a6f2f51514e85a145ca4a9c6` und Server-Parent `c7358cd223cbd3575146fc98a3477fc6993501d2` konfliktbewusst zusammengeführt.
 
 Dies ist **kein Build-/Installations-/Geräte-E2E-Nachweis**. Android 1.3.25/200075 Build-Retest, Server Migration016/Deploy und BTB-EDIT-001 E2E bleiben offen.
+
+
+### Gemeinsamer Merge-HEAD ee8358e0 – CI
+- TB-Server 1.0 Run `36253773890`: `failure`, Job `foundation`, `steps=[]`.
+- Android CI Run `36253773908`: `failure`, Job `build`, `steps=[]`.
+- Bewertung: **keine Runner-Schritte ausgeführt → kein Testnachweis**.
+- Server-Deploy/Migration016, Android-Build-Retest und Geräte-E2E bleiben offen.
