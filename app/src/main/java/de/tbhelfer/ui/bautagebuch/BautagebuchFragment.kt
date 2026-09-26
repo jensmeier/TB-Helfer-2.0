@@ -5046,7 +5046,8 @@ cardCurrentReport.setOnClickListener {
 
             // Abschnitte 4–8 nutzen den Firmen-/Pill-Editor (Einträge + Foto-Pills pro Bildtyp).
             val sectionNo = Regex("""^\s*(\d+)\.""").find(title)?.groupValues?.getOrNull(1)?.toIntOrNull()
-            val enableFotoPanel = (sectionNo != null && sectionNo in 4..8 && fotoType != null)
+            val currentEditSection = BtbEditSection.fromPhotoType(fotoType)
+            val enableFotoPanel = (sectionNo != null && sectionNo in 4..8 && currentEditSection != null)
 
             // Volltext anzeigen
             etFull.setText(initial)
@@ -5640,18 +5641,26 @@ cardCurrentReport.setOnClickListener {
                         // Deshalb hier nur die Zielliste; so bleiben Allgemein/Firmen immer sichtbar.
                         .setItems(labels) { _, which ->
                             val targetFirma = targets[which]
+                            val targetFirmaId = targetFirma?.let { name ->
+                                lastFirmaBlocks.firstOrNull {
+                                    !it.isDeleted && it.name.trim().equals(name.trim(), ignoreCase = true)
+                                }?.firmaId
+                            }
 
                             val photoIds = matchingFotoIds(mi)
-                            val targetOrt = if (targetFirma == null) 0L else mi.ortId
+                            val targetOrt = mi.ortId
                             val lines = etFull.text?.toString().orEmpty().lines().toMutableList()
                             if (mi.lineIndex in lines.indices) {
                                 lines[mi.lineIndex] = buildManualLine(
-                                    targetOrt,
-                                    targetFirma,
-                                    mi.time,
-                                    mi.text,
-                                    mi.kmVon,
-                                    mi.kmBis
+                                    ortId = targetOrt,
+                                    firm = targetFirma,
+                                    time = mi.time,
+                                    text2 = mi.text,
+                                    kmVon = mi.kmVon,
+                                    kmBis = mi.kmBis,
+                                    firmaId = targetFirmaId,
+                                    worksiteNodeKey = mi.worksiteNodeKey,
+                                    clientEntryKey = mi.clientEntryKey
                                 )
                                 setRawLines(lines)
                                 onSave(etFull.text?.toString().orEmpty())
@@ -5664,23 +5673,28 @@ cardCurrentReport.setOnClickListener {
                                         ServiceLocator.fotoRepository.fotosMitIds(photoIds)
                                     }
                                     withContext(Dispatchers.IO) {
+                                        val currentOverrides = BtbPhotoContextOverrideStore.load(requireContext(), btbId)
                                         photos.forEach { foto ->
+                                            val previous = currentOverrides[foto.id]
                                             BtbPhotoContextOverrideStore.setOverride(
                                                 requireContext(),
                                                 btbId,
                                                 foto.id,
                                                 BtbPhotoContextOverrideStore.ContextOverride(
                                                     firma = targetFirma.orEmpty(),
-                                                    objektKennung = foto.objektKennung,
-                                                    objektBereich = foto.objektBereich,
-                                                    ortId = targetOrt
+                                                    firmaId = targetFirmaId,
+                                                    objektKennung = previous?.objektKennung ?: foto.objektKennung,
+                                                    objektBereich = previous?.objektBereich ?: foto.objektBereich,
+                                                    ortId = targetOrt,
+                                                    worksiteNodeKey = mi.worksiteNodeKey,
+                                                    bildtyp = previous?.bildtyp ?: foto.bildtyp
                                                 )
                                             )
                                         }
                                     }
                                 }
                                 saveAndReloadWholeBtbSilently()
-                                Snackbar.make(requireView(), "Eintrag verschoben", Snackbar.LENGTH_SHORT).show()
+                                Snackbar.make(requireView(), "Firma / Allgemein geändert", Snackbar.LENGTH_SHORT).show()
                             }
                             dialog.dismiss()
                         }
