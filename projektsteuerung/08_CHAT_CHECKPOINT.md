@@ -239,3 +239,13 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Deploy/Migration016/E2E noch offen.
 - Android parallel weiter: HEAD `623704990072c7006e6a48e611441d7aa08b989e`; Entry-/Node-Modell in Umsetzung, Foto-Pfad noch offen.
 - Nächster Server-Schritt nach Android-Kompatibilitätsstand: Synology deployen, Migration016 prüfen, dann gemeinsamer E2E.
+
+
+## INT-001 – parallele Branches aktuell nicht mergebar
+- Nach BTB-EDIT-001 Serverbau Live-Prüfung von PR #7: `mergeable=false`.
+- Branchvergleich: Android und Server stark divergiert; gemeinsame Projektsteuerungsdateien wurden parallel geändert.
+- Android arbeitet aktuell weiter; deshalb **jetzt kein Merge/Rebase**.
+- Android-HEAD bei Feststellung: `7c7cf7b502ec1f701f167c13780b10a014bba6d9`.
+- Dieser Commit ergänzt lokale stabile Foto-Zuordnungsdaten (`firmaId`, `worksiteNodeKey`, `bildtyp`).
+- Nächster Integrationsschritt nach Android-Abschluss: SERVER führt Branches gezielt zusammen und löst gemeinsame Status-/Vertragskonflikte bewusst.
+- Neuer Serverstand bleibt bis dahin **QUELLSTAND FERTIG / NICHT DEPLOYT**.
