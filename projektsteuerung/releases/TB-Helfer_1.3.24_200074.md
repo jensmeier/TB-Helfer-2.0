@@ -45,13 +45,9 @@ TESTSTATUS:
 - POCO/HELPER-E2E OFFEN
 
 NÄCHSTER TEST:
-- 1.3.24 / 200074 frisch bauen.
-- APK + genau diese Release-MD gemeinsam im Portal verwenden.
-- Pixel aktualisieren.
-- Haupt-TB im aktiven BTB prüfen:
-  PDF Entwurf + BTB Abschluss müssen dauerhaft gleichzeitig sichtbar bleiben.
-- Keine Wechsel mehr zwischen 1-Button- und 2-Button-Zustand.
-- HELPER/Poco anschließend separat prüfen.
+- Pixel-Haupt-TB-UI ist bestätigt.
+- Als Nächstes HELPER/Poco separat prüfen.
+- BTB-UI-001 nur bei neuem reproduzierbaren Fehler wieder öffnen.
 
 PRAXISBESTÄTIGUNG:
 - Pixel-Haupt-TB: PDF Entwurf + BTB Abschluss bleiben stabil sichtbar.
