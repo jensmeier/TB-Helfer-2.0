@@ -25,3 +25,11 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Neue verbindliche Reihenfolge: zuerst Haupt-TB-Handy ↔ Server/Portal, danach HELPER/Poco, danach weitere Fach-E2Es.
 - Vollständigen Lasttest erst nach funktionaler Stabilität und nach geplantem 8-GB-RAM-Ausbau bzw. NAS-Wechsel erneut durchführen.
 - Keine Performanceänderungen auf Verdacht.
+
+## Gerätebefund NET-001 – Testbaustelle
+
+- Hauptgerät: Testbaustelle angelegt.
+- Sync scheitert unmittelbar mit `Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
+- Fachsync ist damit in diesem Lauf noch nicht geprüft.
+- Nächster Schritt: öffentliche Domain/API-Erreichbarkeit und danach Geräte-DNS/Netz prüfen.
+- Keine Codeänderung auf Verdacht.

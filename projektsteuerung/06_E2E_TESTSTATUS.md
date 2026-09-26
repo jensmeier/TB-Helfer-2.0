@@ -8,6 +8,7 @@ Stand: 2026-09-26
 | Android 200069 Installation | OFFEN | Pixel/Poco nach Build |
 | Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200069 praktisch prüfen |
 | Haupt-TB-Handy ↔ Server/Portal | PRIORITÄT / E2E OFFEN | echte Fachkette zuerst sauber bestätigen |
+| Haupt-TB-Handy DNS/API-Erreichbarkeit | FEHLER / E2E BLOCKIERT | api-v1.tb-helfer.de Namensauflösung prüfen |
 | Poco Team-/BTB-Daten | FEHLER OFFEN | Binding/Sync/API/Logs |
 | Helfer Schicht Ende → Server FINISHED → Pixel | E2E OFFEN | echter Geräte-/Server-Lauf |
 | Haupt-TB Finalize + PDF | TEILWEISE BESTÄTIGT | Android-Gesamtkette offen |
@@ -24,3 +25,10 @@ Source-Check ≠ Build ≠ Installation ≠ E2E.
 `sync/changes/wait` mit 255 getrennten Portal-Sessions: 255 erfolgreich, 0 Fehler; Wall 16,43 s, Median 14,28 s, Max 15,79 s. Testsession-Reste anschließend kontrolliert auf 0 bereinigt.
 
 Dieser Nachweis bestätigt nur den Delta-Wait-Kapazitätsteil. 15 Teams, echte Geräteidentitäten, BTB-Fanout, Offline/Online, Medien, Konflikte und Recovery bleiben Bestandteile des offenen Gesamt-E2E.
+
+### Gerätebefund NET-001
+
+Beim Hauptgerät nach Anlage einer Testbaustelle:
+`Synchronisation unvollständig: Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
+
+Bis die Namensauflösung funktioniert, ist der eigentliche Handy↔Server↔Portal-Fach-E2E noch nicht bewertbar.

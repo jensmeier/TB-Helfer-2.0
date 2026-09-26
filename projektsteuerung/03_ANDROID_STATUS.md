@@ -18,3 +18,10 @@ Geschützt: bestätigter BTB-Lifecycle-Fix 200063, bestätigter Server-App-Updat
 Nächste Schritte: IMG-001 Uploadpfad prüfen → 200069 bauen → Pixel/Poco testen → gemeinsamer E2E.
 
 Historischer Tracker: `projektsteuerung/archiv/ANDROID_STATUS_ALT_2026-09-26.md`
+
+## Praxisbefund Hauptgerät – DNS/Hostauflösung
+
+Beim Anlegen einer Testbaustelle meldet die App:
+`Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
+
+Bewertung: aktueller Geräte-E2E ist durch Namensauflösung/Netz blockiert; noch kein Nachweis eines Fachsync-Fehlers in diesem Lauf. Zuerst Domain-/Geräte-DNS prüfen, danach denselben Test fortsetzen.

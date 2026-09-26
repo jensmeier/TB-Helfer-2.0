@@ -4,6 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
+| NET-001 | P0 | GEMEINSAM | Hauptgerät kann api-v1.tb-helfer.de nicht auflösen | öffentliche DNS/API-Erreichbarkeit prüfen, danach Geräte-DNS/Netz eingrenzen |
 | E2E-001 | P0 | GEMEINSAM | Verantwortliches TB-Handy muss zuerst mit Server/Portal sauber funktionieren | echte Fachkette Handy ↔ Server ↔ Portal reproduzierbar prüfen |
 | IMG-001 | P1 | GEMEINSAM | Bildtransport muss 15×15-Vertrag entsprechen | nach stabilem Hauptgerät-/Helfer-Sync Android-Upload + Server-Storage/Renditions + Download auditieren |
 | DEV-001 | P0 | ANDROID | Poco bekommt trotz richtiger HELPER-/Teamrolle keine Daten | Binding/Sync/API/Logs |

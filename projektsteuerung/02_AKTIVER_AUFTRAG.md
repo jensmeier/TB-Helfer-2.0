@@ -50,3 +50,17 @@ Bereits praktisch beobachteter Kapazitätsteiltest:
 - verbliebene Python-Testsessions anschließend kontrolliert von 7 auf 0 bereinigt
 
 Bewertung: **DELTA-WAIT-KAPAZITÄTSTEILTEST BESTANDEN / VOLLSTÄNDIGER 15×15-E2E WEITER OFFEN**.
+
+## NET-001 – Hauptgerät kann api-v1.tb-helfer.de nicht auflösen
+Status: **FEHLER FESTGESTELLT / URSACHE OFFEN**
+
+Praktischer Befund beim Anlegen einer Testbaustelle auf dem Hauptgerät:
+- App meldet `Synchronisation unvollständig`;
+- konkrete Ursache: `Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`;
+- damit ist der aktuelle Hauptgerät↔Server/Portal-E2E bereits vor der Fachsync-Prüfung durch DNS/Netzauflösung blockiert.
+
+Vorgehen:
+1. öffentliche Erreichbarkeit/DNS von `api-v1.tb-helfer.de` prüfen;
+2. bei öffentlich funktionierender Domain Geräte-DNS/Netz/Private-DNS/VPN eingrenzen;
+3. erst nach erfolgreicher Namensauflösung Fachsync und Portal-Konvergenz prüfen;
+4. keine Sync-/DB-/API-Codeänderung auf Verdacht.
