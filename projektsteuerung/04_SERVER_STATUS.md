@@ -54,3 +54,6 @@ Status: **SERVER-RENDITIONS VORHANDEN / ANDROID-NUTZUNG FEHLT**
 - Portal zeigt weiterhin nur bis 25.09.
 - Poco sieht 26.09 kurz, anschließend „kein BTB vorhanden“.
 - Serverdiagnose hat Vorrang: Team-`active_btb_id`, BTB-Status/Teamzuordnung, `client_entity_key`, Versionen, Change-Feed und Team-BTB-API prüfen. Keine DB-/API-Änderung auf Verdacht.
+
+### BTB-SYNC-001 Diagnose – kein Serverfix vor Versionsgleichstand
+DB-Diagnose zeigt Pixel mit Android-App `1.3.4` und Poco mit `1.3.19`. Change-Feed enthält mehrere Updates desselben BTB bis mindestens Version 19. Server-/DB-Änderungen bleiben gesperrt, bis der Pixel auf dem aktuellen Android-Zielstand getestet wird.

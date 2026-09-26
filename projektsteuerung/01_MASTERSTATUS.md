@@ -66,3 +66,11 @@ Priorität bleibt gemäß E2E-PRIO-001:
 - Portal zeigt weiterhin nur BTBs bis 25.09; der 26.09-BTB erscheint dort nicht.
 - Poco zeigt den 26.09-BTB kurzzeitig und fällt etwa eine Sekunde später auf „kein BTB vorhanden“ zurück.
 - Damit ist jetzt ein konkreter BTB-Sync-/Lifecycle-Fehler reproduziert. Vor Codeänderung Serverzustand, Team-`active_btb_id`, BTB-Status und Android-Snapshot-Anwendung prüfen.
+
+## BTB-SYNC-001 Diagnose – gemischte Android-Versionen erkannt
+- Server-Diagnose zeigt aktive Geräte mit unterschiedlichen Appständen:
+  - Pixel / `zinkel.jens`: **TB-Helfer 1.3.4**
+  - Poco / `poco`: **TB-Helfer 1.3.19**
+- Aktueller Android-Zielstand ist 1.3.19 / Build 200069.
+- Im Change-Feed sind am 26.09. mehrere aufeinanderfolgende `UPDATE`-Einträge für denselben BTB sichtbar (Versionen mindestens 14–19).
+- Dadurch ist der aktuelle Pixel↔Poco-E2E nicht versionsrein. Vor Codeänderung Pixel auf den aktuellen bestätigten Android-Zielstand bringen bzw. Installation 200069 nachweisen.

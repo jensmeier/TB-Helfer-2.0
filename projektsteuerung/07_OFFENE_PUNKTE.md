@@ -4,6 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
+| VER-001 | P0 | ANDROID | Testgeräte laufen nicht auf gleichem Stand: Pixel 1.3.4, Poco 1.3.19 | Pixel auf aktuellen Zielstand 1.3.19/200069 bringen und Installation nachweisen |
 | BTB-SYNC-001 | P0 | GEMEINSAM | Neuer Pixel-BTB 26.09 fehlt im Portal; Poco zeigt ihn kurz und verliert ihn wieder | Team active_btb_id + BTB-Datensatz + Change-Feed + Team-BTB-API + Android-Snapshot prüfen |
 | NET-001 | P1 | GEMEINSAM | Pixel synchronisiert wieder; Ursache des vorherigen App-DNS-Fehlers ungeklärt | nur bei erneuter Reproduktion vertiefen; jetzt Fach-E2E fortsetzen |
 | E2E-001 | P0 | GEMEINSAM | Verantwortliches TB-Handy muss zuerst mit Server/Portal sauber funktionieren | echte Fachkette Handy ↔ Server ↔ Portal reproduzierbar prüfen |

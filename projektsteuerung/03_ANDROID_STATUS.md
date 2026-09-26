@@ -58,3 +58,6 @@ Force-Stop/Neustart der App sowie WLAN aus / Mobilfunk ändern den Fehler nicht.
 - Poco-Erstabgleich abgeschlossen; Baustelle erfolgreich geladen.
 - Nach neuem Pixel-BTB 26.09 erscheint dieser auf Poco kurz und verschwindet danach wieder („kein BTB vorhanden“).
 - Android-seitig daher besonders prüfen: Server-Snapshot ersetzt/entfernt lokalen Active-Pointer? FINALIZED-/Statuslogik? Team-/Group-Filter? Kein Fix ohne Serverzustand.
+
+### BTB-SYNC-001 Versionsabweichung auf Testgeräten
+Server-Geräteabfrage: Pixel meldet `1.3.4`, Poco `1.3.19`. Damit ist der aktuelle Geräte-E2E gemischt. Installation des aktuellen Zielstands `1.3.19 / 200069` auf Pixel ist vor weiterer Ursachenbewertung zwingend nachzuweisen.

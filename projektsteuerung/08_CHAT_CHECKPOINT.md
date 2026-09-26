@@ -80,3 +80,11 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Portal: zeigt weiterhin BTBs 23./24./25.09, 26.09 fehlt.
 - Poco: 26.09 erscheint kurz, dann „kein BTB vorhanden“.
 - Nächster Schritt: zuerst Serverzustand/DB/API/Change-Feed prüfen, danach Android-Snapshot/Active-Pointer. Keine Änderung auf Verdacht.
+
+## BTB-SYNC-001 Diagnose – Pixel 1.3.4 vs Poco 1.3.19
+- Server-Geräteabfrage zeigt:
+  - Pixel / zinkel.jens: TB-Helfer 1.3.4
+  - Poco / poco: TB-Helfer 1.3.19
+- Change-Feed zeigt für denselben BTB am 26.09 mehrere UPDATEs bis mindestens Version 19.
+- Aktueller Android-Zielstand laut Projektsteuerung: 1.3.19 / 200069.
+- Nächster Schritt: Pixel-Version angleichen bzw. 200069-Installation nachweisen; erst danach BTB-SYNC-001 erneut testen.

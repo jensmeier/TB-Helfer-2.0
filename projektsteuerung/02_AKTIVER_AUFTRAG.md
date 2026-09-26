@@ -121,3 +121,11 @@ Zwingende Diagnose vor Änderung:
 - API-Antwort für Team-BTB-Liste;
 - Android-Snapshot/Active-Pointer-Anwendung auf Poco;
 - keine Neu-Anlage von Benutzer/Team/Baustelle und kein Lifecycle-Workaround auf Verdacht.
+
+### BTB-SYNC-001 Diagnosefund – Pixel läuft noch 1.3.4
+- Gerätestatus aus der Server-DB:
+  - Pixel: App-Version `1.3.4`
+  - Poco: App-Version `1.3.19`
+- Projektziel/aktueller Android-Fachstand: `1.3.19 / 200069`.
+- Change-Feed zeigt wiederholte Updates desselben BTB bis mindestens Version 19.
+- Bewertung: erst Versionsgleichstand herstellen/prüfen. Kein Server- oder DB-Fix, solange das Hauptgerät noch mit einem älteren Android-Syncvertrag arbeitet.
