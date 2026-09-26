@@ -329,3 +329,15 @@ Zusätzliche Benutzerhinweise für denselben Portal-BTB-Arbeitsblock:
 - Wetter: Temperaturen fehlen in der Praxisansicht. Der Portalrenderer kann `tempC` anzeigen, daher muss geprüft werden, ob der aktuelle BTB-Header die Temperaturwerte überhaupt liefert;
 - Niederschlagsmenge soll bei fachlich bekanntem „kein Niederschlag“ als 0 statt als fehlender/null-Wert behandelt/angezeigt werden, sofern die Quelle dies eindeutig liefert;
 - alle BTB-Fotos sollen ihre GPS-Daten aus Handy- und Portalaufnahme behalten und anklickbar darstellen.
+
+
+### BTB-EDIT-001 Server-Umsetzung freigegeben
+Benutzerauftrag: **weiterbauen**.
+
+Server-Arbeitsumfang dieses Blocks:
+1. Entry-PATCH um versionierten Abschnittswechsel 4–8 und `worksiteNodeKey`-Validierung erweitern.
+2. BTB-Fotoverknüpfung um versionierte linkbezogene Fachmetadaten erweitern; Original-/Aufnahmedaten nicht verändern.
+3. Portal-BTB auf dieselbe Baustellenbaumstruktur anbinden und Bearbeiten von Punkt, Firma, Unterbaustelle, Zeit/KM/Text ermöglichen.
+4. Bestehenden bestätigten SSE-Live-Refresh nicht umbauen.
+5. Source-Checks ausführen; Deployment/E2E bleibt danach getrennt offen.
+6. Android-`app/**` wird in diesem SERVER-Block nicht geändert.
