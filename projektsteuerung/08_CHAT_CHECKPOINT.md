@@ -200,3 +200,11 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Referenzformat bestätigt durch die bereitgestellten Dateien 1.3.16/200066, 1.3.17/200067 und 1.3.18/200068.
 - Die Datei enthält die Release-Metadaten für den Server-Draft, ersetzt aber nicht die APK-interne Version.
 - Release-MD + APK müssen immer aus exakt demselben Build stammen.
+
+
+## REL-FILE-001 – CI abgesichert
+- Dauerregel bereits in Projektregeln/Projektsteuerung gesichert.
+- CI-Commit: `e76933cd7270da21d8cd251ece1cba87c7db0cf8`.
+- CI prüft passende Release-MD gegen Android-`versionName/versionCode`.
+- CI-Artefakt enthält automatisch APK + passende Release-MD.
+- Zusätzlich wird die jeweilige Release-MD im Chat als Download bereitgestellt.

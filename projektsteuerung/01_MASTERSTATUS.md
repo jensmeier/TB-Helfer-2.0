@@ -191,3 +191,11 @@ Nächster auslieferbarer Schutzfix: **1.3.21 / 200071**.
 - Bei Abweichung wird die APK gelöscht und der Installer nicht gestartet.
 - Damit kann ein versehentlich unter falschen Release-Metadaten hochgeladenes altes APK nicht mehr unbemerkt in eine Update-Schleife führen.
 - Build/Installation/Update-E2E bleiben offen.
+
+
+### REL-FILE-001 CI-Schutz
+- Commit `e76933cd7270da21d8cd251ece1cba87c7db0cf8`.
+- Android-CI ermittelt künftig `versionName/versionCode` direkt aus `app/build.gradle.kts`.
+- Für genau diesen Stand muss `projektsteuerung/releases/TB-Helfer_<version>_<build>.md` existieren.
+- Pflichtfelder der Release-MD werden gegen Version/Build geprüft.
+- Das Build-Artefakt enthält automatisch APK(s) plus die zugehörige Release-MD desselben Builds.

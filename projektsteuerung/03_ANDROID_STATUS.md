@@ -135,3 +135,10 @@ Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
 - Die aktuelle Zielversion 1.3.21 / 200071 besitzt bereits `projektsteuerung/releases/TB-Helfer_1.3.21_200071.md`.
 - Bei jeder Übergabe wird diese Datei auch als Download mitgeliefert.
 - CI soll VERSION/BUILD der MD gegen `app/build.gradle.kts` prüfen, damit Build und Metadaten nicht auseinanderlaufen.
+
+
+### REL-FILE-001 CI-Schutz aktiv
+- Commit `e76933cd7270da21d8cd251ece1cba87c7db0cf8`.
+- Kein Android-CI-Build soll künftig ohne passende Release-MD durchlaufen.
+- Artifact-Name und Release-Dateipfad werden aus dem aktuellen `versionName/versionCode` abgeleitet.
+- Damit ist die Benutzeranforderung „bei jedem Build/GitHub-Stand Release-Datei mitgeben“ nicht nur dokumentiert, sondern im CI-Paket technisch abgesichert.
