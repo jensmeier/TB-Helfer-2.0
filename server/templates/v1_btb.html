@@ -513,7 +513,27 @@ function worksiteNodeLabel(key){
   if(!k)return 'Hauptbaustelle';
   const n=worksiteNodeDirectory()[k];
   if(!n)return 'Unterbaustelle '+k;
-  return String(n.name||n.node_kind||k).trim()||k;
+  const payload=n.payload&&typeof n.payload==='object'&&!Array.isArray(n.payload)?n.payload:{};
+  const kind=String(payload.node_type||n.node_kind||'').trim().toUpperCase();
+  const nodeName=String(payload.node_name||n.name||'').trim();
+  const route=String(payload.route_key||n.route_number||'').trim();
+  let label=nodeName;
+  if(kind==='FREIE_STRECKE'&&!nodeName){
+    label='Freie Strecke'+(route?' '+route:'');
+  }else if(kind==='BAHNHOF'&&!nodeName){
+    const station=String(payload.station_name||'').trim(),track=String(payload.track_or_switch||n.track_key||'').trim();
+    label=['Bahnhof',station,track].filter(Boolean).join(' ');
+  }else if(!label){
+    label=route||String(n.node_kind||k);
+  }
+  const kmFrom=Number(payload.km_from),kmTo=Number(payload.km_to);
+  const hasFrom=Number.isFinite(kmFrom),hasTo=Number.isFinite(kmTo);
+  if(hasFrom||hasTo){
+    const fmt=v=>Number(v).toFixed(3).replace('.',',').replace(/,?0+$/,'');
+    const km=hasFrom&&hasTo?fmt(kmFrom)+'–'+fmt(kmTo):fmt(hasFrom?kmFrom:kmTo);
+    label+=' (KM '+km+')';
+  }
+  return label||k;
 }
 function worksiteNodeOptions(selectedKey){
   const nodes=(worksiteNodes||[]).slice(),byParent={},seen=new Set(),out=[{value:'',label:'— Hauptbaustelle'}];
