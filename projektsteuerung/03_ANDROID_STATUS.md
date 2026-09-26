@@ -24,7 +24,7 @@ Historischer Tracker: `projektsteuerung/archiv/ANDROID_STATUS_ALT_2026-09-26.md`
 Beim Anlegen einer Testbaustelle meldet die App:
 `Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
 
-Bewertung: aktueller Geräte-E2E ist durch Namensauflösung/Netz blockiert; noch kein Nachweis eines Fachsync-Fehlers in diesem Lauf. Zuerst Domain-/Geräte-DNS prüfen, danach denselben Test fortsetzen.
+Nachtest auf demselben Hauptgerät: `https://www.tb-helfer.de` und `https://api-v1.tb-helfer.de/health/live` sind im Browser erreichbar. Damit ist die öffentliche DNS/API-Erreichbarkeit grundsätzlich vorhanden. Nächster Schritt: App-Sync erneut auslösen; nur bei erneutem App-only `Unable to resolve host` den Android-Netzpfad gezielt untersuchen.
 
 
 ## IMG-001 Quellaudit
@@ -39,3 +39,6 @@ Status: **FEHLER BESTÄTIGT / IMPLEMENTIERUNG ZURÜCKGESTELLT BIS E2E-PRIO-001**
 
 Geplanter Android-Fix nach stabilem Hauptgerät-/Poco-E2E:
 kleine Sync-JPEG-Datei → Upload; `preview/thumb` für mobile Downloads; Metadaten vollständig.
+
+### Browser-Nachtest NET-001
+Beide öffentlichen TB-Helfer-Seiten sind auf demselben Hauptgerät im Browser erreichbar. App-Retest ist der nächste Schritt.

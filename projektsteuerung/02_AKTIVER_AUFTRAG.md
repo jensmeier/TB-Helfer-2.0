@@ -62,7 +62,7 @@ Bereits praktisch beobachteter Kapazitätsteiltest:
 Bewertung: **DELTA-WAIT-KAPAZITÄTSTEILTEST BESTANDEN / VOLLSTÄNDIGER 15×15-E2E WEITER OFFEN**.
 
 ## NET-001 – Hauptgerät kann api-v1.tb-helfer.de nicht auflösen
-Status: **FEHLER FESTGESTELLT / URSACHE OFFEN**
+Status: **ÖFFENTLICHE DNS/API ERREICHBAR / APP-SEITIGE URSACHE OFFEN**
 
 Praktischer Befund beim Anlegen einer Testbaustelle auf dem Hauptgerät:
 - App meldet `Synchronisation unvollständig`;
@@ -74,3 +74,11 @@ Vorgehen:
 2. bei öffentlich funktionierender Domain Geräte-DNS/Netz/Private-DNS/VPN eingrenzen;
 3. erst nach erfolgreicher Namensauflösung Fachsync und Portal-Konvergenz prüfen;
 4. keine Sync-/DB-/API-Codeänderung auf Verdacht.
+
+Browser-Nachtest auf demselben Hauptgerät:
+- `https://www.tb-helfer.de` erreichbar;
+- `https://api-v1.tb-helfer.de/health/live` erreichbar;
+- öffentliche Domain/Cloudflare/DNS sind damit grundsätzlich erreichbar;
+- nächster Schritt: denselben App-Sync erneut auslösen;
+- nur bei erneutem App-only `Unable to resolve host` Android-Netzpfad/Prozess/Private-DNS/VPN/HTTP-Client gezielt eingrenzen;
+- keine Sync-/DB-/API-Codeänderung auf Verdacht.

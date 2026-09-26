@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| NET-001 | P0 | GEMEINSAM | Hauptgerät kann api-v1.tb-helfer.de nicht auflösen | öffentliche DNS/API-Erreichbarkeit prüfen, danach Geräte-DNS/Netz eingrenzen |
+| NET-001 | P0 | GEMEINSAM | Browser erreicht www + api-v1 auf demselben Hauptgerät; App meldete zuvor DNS-Fehler | App-Sync erneut testen; nur bei Wiederholung Android-App-Netzpfad eingrenzen |
 | E2E-001 | P0 | GEMEINSAM | Verantwortliches TB-Handy muss zuerst mit Server/Portal sauber funktionieren | echte Fachkette Handy ↔ Server ↔ Portal reproduzierbar prüfen |
 | IMG-001 | P1 | GEMEINSAM | Quellaudit bestätigt: Android lädt Volloriginal hoch und nutzt Server-Renditions nicht | nach stabilem Hauptgerät-/Helfer-Sync ANDROID: Sync-JPEG + preview/thumb + Metadaten; SERVER: Migration015/Renditions E2E |
 | DEV-001 | P0 | ANDROID | Poco bekommt trotz richtiger HELPER-/Teamrolle keine Daten | Binding/Sync/API/Logs |

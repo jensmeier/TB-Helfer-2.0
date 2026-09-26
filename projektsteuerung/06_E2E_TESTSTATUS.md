@@ -8,7 +8,7 @@ Stand: 2026-09-26
 | Android 200069 Installation | OFFEN | Pixel/Poco nach Build |
 | Pixel ACTIVE↔PDF-Flackern | SOURCE-FIX / E2E OFFEN | 200069 praktisch prüfen |
 | Haupt-TB-Handy ↔ Server/Portal | PRIORITÄT / E2E OFFEN | echte Fachkette zuerst sauber bestätigen |
-| Haupt-TB-Handy DNS/API-Erreichbarkeit | FEHLER / E2E BLOCKIERT | api-v1.tb-helfer.de Namensauflösung prüfen |
+| Haupt-TB-Handy DNS/API-Erreichbarkeit | BROWSER BESTANDEN / APP-RETEST OFFEN | App-Sync erneut auslösen; nur bei erneutem App-only DNS-Fehler Android-Netzpfad eingrenzen |
 | Poco Team-/BTB-Daten | FEHLER OFFEN | Binding/Sync/API/Logs |
 | Helfer Schicht Ende → Server FINISHED → Pixel | E2E OFFEN | echter Geräte-/Server-Lauf |
 | Haupt-TB Finalize + PDF | TEILWEISE BESTÄTIGT | Android-Gesamtkette offen |
@@ -31,4 +31,7 @@ Dieser Nachweis bestätigt nur den Delta-Wait-Kapazitätsteil. 15 Teams, echte G
 Beim Hauptgerät nach Anlage einer Testbaustelle:
 `Synchronisation unvollständig: Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
 
-Bis die Namensauflösung funktioniert, ist der eigentliche Handy↔Server↔Portal-Fach-E2E noch nicht bewertbar.
+Nachtest: beide öffentlichen Seiten sind auf demselben Hauptgerät im Browser erreichbar. Öffentliche DNS/API-Erreichbarkeit ist damit nachgewiesen; der App-Sync muss jetzt erneut getestet werden.
+
+### NET-001 Browser-Nachtest
+`www.tb-helfer.de` und `api-v1.tb-helfer.de/health/live` sind auf demselben Hauptgerät im Browser erreichbar. App-Retest offen.
