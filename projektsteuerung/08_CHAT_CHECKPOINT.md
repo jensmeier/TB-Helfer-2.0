@@ -196,3 +196,13 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Source-Fix existiert bereits im Server-Branch, Commit `c0355161a2d7ecceaadd1fc79f2bbade346a78cc`.
 - Kein neuer Fachcode nötig, bevor dieser Stand deployed und praktisch getestet wurde.
 - Nach Deploy E2E: Portal geöffnet lassen → Pixel-Text oder Foto ändern → Portal muss ohne F5 nachziehen.
+
+
+## PORTAL-LIVE-001 – Praxis bestätigt / Portal-BTB offen
+- Benutzer bestätigt: kein F5 mehr nötig.
+- Änderungen erscheinen nach ca. 1–2 Sekunden.
+- Erstellen und Löschen werden automatisch übernommen.
+- Funktioniert in beide Richtungen.
+- PORTAL-LIVE-001 damit praktisch **BESTÄTIGT**.
+- Separat offen: `PORTAL-BTB-UI-001` – BTB im Portal muss noch nachgearbeitet werden.
+- Keine Portal-BTB-Nacharbeit auf Verdacht; konkreten Änderungsumfang im nächsten Arbeitsblock festlegen.
