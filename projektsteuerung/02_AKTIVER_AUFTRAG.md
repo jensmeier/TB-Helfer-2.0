@@ -415,3 +415,51 @@ Status: **SOURCE-FIX FERTIG / BUILD OFFEN**
 - Der P0-Datenverlustpfad ist damit geschlossen und geschützt.
 - Nächster Arbeitsblock: Poco wieder regulär als HELPER in den aktiven Team-/BTB-Kontext nehmen und HELPER-E2E prüfen.
 - Keine App-Daten löschen, keine Neuaktivierung und kein NAS-Umbau auf Verdacht.
+
+
+## BTB-EDIT-001 – Android-Auftrag
+Status: **NEUE FACHANFORDERUNG / VOR IMPLEMENTIERUNG GESICHERT**
+
+Ziel:
+- Ein noch bearbeitbarer BTB-Eintrag oder ein BTB-Foto muss nachträglich vollständig fachlich korrigiert werden können, **ohne Löschen+Neuanlegen als Standardweg**.
+- Die bestehende Android-Unterbaustellenwahl bleibt fachlich erhalten:
+  **Hauptbaustelle → Freie Strecke → BÜ / weitere Unterbaustellen**.
+- Gerätespezifische lokale IDs dürfen nicht die geräteübergreifende Sync-Identität sein.
+
+Mindestens nachträglich änderbar:
+- BTB-Punkt **4 / 5 / 6 / 7 / 8**;
+- **Firma / Allgemein**;
+- **Unterbaustelle/Bauobjekt**;
+- Uhrzeit;
+- KM;
+- Text/Kurztext;
+- Foto-Zuordnung.
+
+Verbindliche Android-Regeln:
+1. bestehende Einträge/Fotos behalten ihre fachliche Identität;
+2. Punkt-/Firmen-/Unterbaustellenwechsel ist eine Mutation desselben Objekts, kein Delete/Create;
+3. lokale Marker wie `@ORT=<Room-Long-ID>` und lokale `ortId` sind nur Gerätehilfswerte und keine Sync-Identität;
+4. für geräteübergreifende Unterbaustellenzuordnung wird die bereits vorhandene stabile Baustellenbaum-Identität `clientNodeKey` bzw. das vorhandene Worksite-Node-Binding verwendet;
+5. Zielstruktur:
+   `BTB-Punkt → Firma/Allgemein → Unterbaustelle/Bauobjekt → Eintrag/Foto`;
+6. Pixel, Poco und Portal müssen dieselbe fachliche Zuordnung sehen;
+7. GPS, Aufnahmezeit und Originalfoto bleiben beim Umhängen eines Fotos unverändert erhalten;
+8. FINALIZED/abgeschlossene BTBs bleiben read-only;
+9. bestätigter BTB-SYNC-002 Outbox-/Dirty-Schutz bleibt geschützt und darf nicht durch Edit-Mutationen umgangen werden.
+
+Android-Diagnose vor Codeänderung:
+- Fundstellen von `@ORT=` und lokalen `ortId`-Overrides;
+- Speicher-/Lesemodell Punkt 4 gegenüber Punkt 5–8;
+- vorhandene stabile `clientNodeKey`-/Node-Bindings;
+- Entry-/Foto-Identitäten und vorhandene Edit-/Sync-Mutationen;
+- erst danach gemeinsames strukturiertes Android-Modell festlegen.
+
+Servergrenze:
+- Android baut keinen Delete/Create-Workaround.
+- Der aktuelle Server kann `section` eines bestehenden `btb_entry` noch nicht per PATCH ändern.
+- Für bestehende Fotos fehlt noch ein allgemeiner Metadaten-PATCH zum fachlichen Umhängen.
+- Android dokumentiert den exakt benötigten Vertrag; SERVER implementiert die API anschließend im Serverprojekt.
+
+Separat und nicht mit BTB-EDIT vermischen:
+- `PORTAL-WEATHER-001`: prüfen, warum `tempC` im aktuellen Portal-BTB fehlt;
+- fachlich eindeutiger „kein Niederschlag“-Wert bleibt **0 mm** und darf nicht zu `null` werden.

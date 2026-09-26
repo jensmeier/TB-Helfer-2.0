@@ -124,3 +124,62 @@ Für einen aktiven servergebundenen BTB gilt:
 - Android darf die Sichtbarkeit nicht zwischen konkurrierenden Legacy-/Lifecycle-Zuständen wechseln.
 
 Die Anzeige folgt `BtbServerStateStore.isTeamLead` und dem kanonischen Server-Lifecycle.
+
+
+## BTB-EDIT-001 – strukturierte Eintrags-/Fotozuordnung
+Status: **VERTRAGSANFORDERUNG / API-ERWEITERUNG SERVER NOCH OFFEN**
+
+### Stabile Unterbaustellenidentität
+- Android darf eine BTB-Unterbaustelle geräteübergreifend **nicht** über lokale Room-`Long`-IDs, `@ORT=<id>` oder lokale Foto-`ortId` identifizieren.
+- Kanonische mobile Referenz ist `clientNodeKey` bzw. das bestehende stabile Worksite-Node-Binding.
+- Lokale DB-IDs dürfen intern gecacht werden, müssen aber jederzeit über das Binding auf den stabilen Node-Key zurückführbar sein.
+- Portal und andere Geräte verwenden dieselbe stabile Node-Identität.
+
+### Gemeinsames strukturiertes BTB-Entry-Modell
+Ein bearbeitbarer BTB-Eintrag benötigt fachlich mindestens:
+- stabile Eintragsidentität;
+- `section` / BTB-Punkt 4–8;
+- Firma oder Kennzeichen `Allgemein`;
+- stabile Unterbaustellen-/Bauobjektreferenz `clientNodeKey` (nullable, wenn fachlich Hauptbaustelle/keine Unterzuordnung);
+- Uhrzeit;
+- KM;
+- Text/Kurztext;
+- stabile Foto-Zuordnungen.
+
+Eine Bearbeitung ändert diese Felder **am selben Eintrag**. Identität und Sync-Historie bleiben erhalten.
+
+### Gemeinsames strukturiertes Foto-Modell
+Ein bestehendes BTB-Foto benötigt für die fachliche Zuordnung mindestens:
+- stabile Fotoidentität;
+- BTB-/Entry-Zuordnung;
+- BTB-Punkt 4–8;
+- Firma/Allgemein soweit fachlich relevant;
+- stabile Unterbaustellenreferenz `clientNodeKey`;
+- vorhandene Fotoart/Kurzbeschreibung;
+- Aufnahmezeit;
+- GPS Lat/Lon und Genauigkeit soweit vorhanden.
+
+Beim Umhängen unverändert zu erhalten:
+- Originaldatei auf dem Aufnahmegerät;
+- Aufnahmezeit;
+- GPS-Daten;
+- Fotoidentität.
+
+### Benötigte Servermutationen – noch NICHT durch Android zu umgehen
+Der aktuelle Serververtrag reicht für BTB-EDIT-001 noch nicht vollständig:
+1. bestehender `btb_entry`: PATCH muss einen fachlichen Wechsel von `section` 4↔5↔6↔7↔8 unterstützen sowie die strukturierte Firmen-/Node-Zuordnung aktualisieren;
+2. bestehendes BTB-Foto: allgemeiner Metadaten-PATCH zum Ändern von Punkt/Entry/Firma/`clientNodeKey`, ohne neue Datei-ID und ohne Neu-Upload des unveränderten Originals;
+3. Mutationen müssen bestehende Version-/Conflict-Regeln verwenden;
+4. FINALIZED/read-only bleibt unveränderbar.
+
+Bis diese Servermutationen existieren:
+- **kein Delete/Create-Ersatzweg in Android**;
+- keine neue inkompatible Parallelstruktur;
+- Android bereitet Modell/UI/Mapping so vor, dass dieselben stabilen Felder später direkt an die Server-API gehen.
+
+### Sync-Schutz
+BTB-EDIT-001 muss den bestätigten BTB-SYNC-002-Vertrag einhalten:
+- lokale Änderung zuerst Outbox/Pending;
+- kein stilles Snapshot-Overwrite eines Dirty-Stands;
+- Conflict/Rebase über bestehende Versionslogik;
+- Objektidentität bleibt bei fachlicher Umhängung erhalten.
