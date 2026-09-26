@@ -537,3 +537,19 @@ Status: **QUELLSTAND INTEGRIERT / BUILD-RETEST 200075 OFFEN**
 - Generatorfix `606aa3ad...` und Android-Statuscheckpoint `4de3350f...` sind enthalten.
 - Nach dem Generatorfix ist noch kein erfolgreicher 1.3.25/200075 Build belegt.
 - Android-Clientnutzung des versionierten Server-Foto-PATCH (`link_version`) bleibt offen.
+
+
+## INT-001 – gemeinsamer HEAD nach Merge
+Status: **INTEGRATION ABGESCHLOSSEN**
+
+- gemeinsamer Server-HEAD nach Android-Integration: `ee8358e0cb403347a17d389dcad562ac6858aff7`;
+- Android Draft-PR #7 wurde von GitHub als **merged/closed** erkannt;
+- `server/**` entspricht exakt dem vorherigen Server-Parent;
+- `app/**` entspricht exakt dem finalen Android-Parent `4de3350fa4bc3777a6f2f51514e85a145ca4a9c6`;
+- 10 echte gemeinsame Dokument-/Statuskonflikte wurden bewusst zusammengeführt;
+- keine verbotenen alten Top-Level-Ordner wieder eingeführt.
+
+CI auf dem Merge-HEAD:
+- TB-Server 1.0 Run `36253773890`: failure, Job `foundation`, **0 Steps**;
+- Android CI Run `36253773908`: failure, Job `build`, **0 Steps**;
+- daher gemäß Projektregel **kein Testnachweis und kein Sourcefehler-Nachweis**.
