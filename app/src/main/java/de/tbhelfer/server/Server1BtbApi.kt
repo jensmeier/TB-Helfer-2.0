@@ -399,9 +399,8 @@ class Server1BtbApi(
                     return MutationResult.Conflict(currentEntry.version, "BTB_ENTRY_CONFLICT:$slot")
                 }
                 if (!jsonEquivalent(currentState, desiredState)) {
-                    if (currentEntry.section != desiredEntry.section) {
-                        return MutationResult.Conflict(currentEntry.version, "BTB_ENTRY_SECTION_CONFLICT:$slot")
-                    }
+                    // Serververtrag BTB-EDIT-001: Abschnitt 4–8 ist jetzt am selben Eintrag
+                    // versioniert änderbar. Derselbe slot/clientEntryKey bleibt erhalten.
                     when (
                         val updated = jsonMutation(
                             token,
@@ -410,6 +409,7 @@ class Server1BtbApi(
                             subChangeId(change.clientChangeId, "entry-update-${slotToken(slot)}"),
                             JSONObject()
                                 .put("base_version", currentEntry.version)
+                                .put("section", desiredEntry.section)
                                 .put("sort_order", desiredEntry.sortOrder)
                                 .put("payload", desiredEntry.payload)
                         )
@@ -924,16 +924,11 @@ class Server1BtbApi(
                     }
                 }
                 SECTION_ARBEIT -> {
-                    val firmId = payload.nullableString("firmaId")
-                    if (firmId == null) {
-                        freeWork += SlottedJson(entry.sortOrder, entry.slot, payload)
-                    } else {
-                        firm(firmId).work += SlottedJson(
-                            entry.sortOrder,
-                            entry.slot,
-                            JSONObject(payload.toString()).apply { remove("firmaId") }
-                        )
-                    }
+                    // BTB-EDIT-001: ARBEIT bleibt wie Punkt 5–8 als gemeinsames strukturiertes
+                    // SectionItem erhalten. firmaId bleibt im Payload; die sichtbare Firma wird
+                    // unten aus dem Firmen-Basisobjekt ergänzt. Dadurch gehen Node-/KM-/Entry-Key
+                    // beim Server→Android-Rundlauf nicht mehr über FirmaBlock.leistungen verloren.
+                    freeWork += SlottedJson(entry.sortOrder, entry.slot, payload)
                 }
                 SECTION_ABNAHME -> abnahmen += SlottedJson(entry.sortOrder, entry.slot, payload)
                 SECTION_EINWEISUNG -> einweisung += SlottedJson(entry.sortOrder, entry.slot, payload)
@@ -964,7 +959,16 @@ class Server1BtbApi(
         })
 
         fun jsonArray(values: List<SlottedJson>): JSONArray = JSONArray().apply {
-            values.sortedBy { it.sort }.forEach { put(it.value) }
+            values.sortedBy { it.sort }.forEach { item ->
+                val value = JSONObject(item.value.toString())
+                    .put("clientEntryKey", item.slot)
+                value.nullableString("firmaId")?.let { firmId ->
+                    if (value.nullableString("firmaName") == null) {
+                        firms[firmId]?.base?.nullableString("name")?.let { value.put("firmaName", it) }
+                    }
+                }
+                put(value)
+            }
         }
         fun slots(values: List<SlottedJson>): List<String> =
             values.sortedBy { it.sort }.map { it.slot }
@@ -1204,8 +1208,10 @@ class Server1BtbApi(
         }
         for (index in 0 until array.length()) {
             val item = array.optJSONObject(index) ?: continue
-            var slot = rememberedSlots?.optString(index)?.trim()
-                ?.takeIf { it.isNotBlank() && it !in usedSlots }
+            var slot = item.nullableString("clientEntryKey")
+                ?.takeIf { it !in usedSlots }
+                ?: rememberedSlots?.optString(index)?.trim()
+                    ?.takeIf { it.isNotBlank() && it !in usedSlots }
             if (slot == null) {
                 do {
                     maxSuffix += 1
@@ -1220,6 +1226,7 @@ class Server1BtbApi(
                 resolvedSlot,
                 index,
                 JSONObject(item.toString())
+                    .apply { remove("clientEntryKey") }
                     .put(MANAGED_KEY, true)
                     .put(SLOT_KEY, resolvedSlot)
             )
