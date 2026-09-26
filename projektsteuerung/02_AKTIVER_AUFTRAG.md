@@ -275,3 +275,20 @@ Status: **BENUTZER BESTÄTIGT / SERVER-DEPLOY JETZT PRIORITÄT**
 - Betroffene Portaldateien: `server/templates/v1_btb.html` und `server/templates/v1_worksite.html`.
 - Vorhandener SSE-/Change-Feed `/api/v1/sync/events` wird genutzt; kein 2-Sekunden-DB-Polling.
 - Nächster Schritt: Synology-Deploy nach Projektregel und anschließend E2E mit offenem Portal + Handyänderung/Foto ohne F5.
+
+
+## PORTAL-LIVE-001 – Praxis bestätigt / BTB-Portal-Nacharbeit separat
+Status: **PORTAL-LIVE-001 BESTÄTIGT / PORTAL-BTB-UI-001 OFFEN**
+
+Praktische Benutzerbestätigung:
+- offene Portalansicht aktualisiert sich ohne F5;
+- Änderungen erscheinen nach ca. 1–2 Sekunden;
+- Erstellen und Löschen werden automatisch sichtbar;
+- Synchronisation funktioniert in beide Richtungen.
+
+Damit ist PORTAL-LIVE-001 praktisch bestätigt. Der Live-/SSE-Pfad darf nicht ohne neuen reproduzierbaren Fehler geändert werden.
+
+Neue getrennte Anforderung:
+- Der BTB im Portal muss fachlich/optisch noch nachgearbeitet werden.
+- Diese Nacharbeit wird als `PORTAL-BTB-UI-001` getrennt vom bestätigten Live-Sync geführt.
+- Noch keine UI-/Fachänderung auf Verdacht; konkrete gewünschte Portal-BTB-Anpassungen werden separat festgelegt.
