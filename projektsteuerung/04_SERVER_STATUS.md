@@ -140,3 +140,27 @@ Status: **OFFEN**
 - Benutzer meldet ausdrücklich: BTB im Portal muss noch nachgearbeitet werden.
 - Das ist ein separater Portal-/Darstellungs-/Facharbeitsblock und kein Live-Sync-Fehler.
 - Bestehenden bestätigten PORTAL-LIVE-001-Pfad dabei nicht ohne reproduzierbaren Grund ändern.
+
+
+## BTB-EDIT-001 – strukturierte Nachbearbeitung
+Status: **QUELLSTAND FERTIG / DEPLOY OFFEN / E2E OFFEN**
+
+Umgesetzt:
+- Migration 016: versionierte `file_links.link_metadata`.
+- Entry-PATCH unterstützt Abschnittswechsel 4–8 bei gleicher Entry-ID.
+- stabile Unterbaustellenreferenz `worksiteNodeKey` wird serverseitig validiert.
+- Foto-PATCH speichert BTB-spezifische Fachzuordnung auf der Verknüpfung; Original/GPS/Aufnahmezeit bleiben unverändert.
+- Portal-BTB: Firma → Unterbaustelle → Eintrag, mit nachträglicher Änderung von Punkt/Firma/Unterbaustelle/Zeit/KM/Text.
+- Portal-Fotos: nachträgliche Änderung von Punkt/Firma/Unterbaustelle/Kurztext/KM/Objekt.
+- Worksite-Node-Auswahl nutzt denselben `client_node_key`/Endpoint wie Android.
+- PORTAL-LIVE-001 / EventSource unverändert erhalten.
+
+Quellprüfungen:
+- Checks 94–100 fachlich gegen aktuellen Quellstand: PASS.
+- kompletter Portal-JS-Block via JS-Parser: PASS.
+- GitHub-Actions-Run ohne Runner-Steps wird nicht als Test gewertet.
+
+Deployment:
+- neue Migration 016 muss vor Runtime-Nutzung angewendet sein;
+- danach Server/API/Portal neu deployen;
+- E2E erst zusammen mit passendem Android-Stand.
