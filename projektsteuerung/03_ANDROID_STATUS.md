@@ -73,3 +73,6 @@ Poco zeigt den serverseitig und im Portal bestätigten aktiven 26.09-BTB kurz un
 
 ### BTB-SYNC-002 – Pixeländerung wird nicht hochgeladen und später überschrieben
 Pixel-Eingabe erreicht das Portal nicht; nach Portaländerung übernimmt Android den Serverstand und die lokale Pixel-Eingabe geht verloren. Android muss zuerst Save→Outbox→Upload→Apply-Reihenfolge und Konfliktschutz nachweisen.
+
+### BTB-SYNC-002 exakte Source-Ursache
+Im `SelectiveSyncWorker` wird bei bekanntem BTB aktuell der Server-Snapshot angewendet, bevor `exportBtbChange()` die lokal gespeicherte Änderung in die Outbox überführt. Der Dirty-Eintrag im `SelectiveSyncStore` schützt `applyServerStateToLocal()` nicht. Dadurch kann der Serverstand die lokale Änderung vor dem Upload überschreiben. Android-Fix erforderlich.

@@ -249,3 +249,18 @@ Diagnose-Reihenfolge:
 - dann Server-API/Version/Change-Feed;
 - dann Portal-Mutation/Version;
 - erst danach Fix in genau einer verantwortlichen Schicht.
+
+### BTB-SYNC-002 Source-Ursache – SelectiveSyncWorker überschreibt vor Export
+- **Source-Ursache gefunden im aktuellen Android-HEAD `ef7077923e2917ac615b9f3b5143ac2638fb92ac`:**
+  - `BautagebuchSpeicher.speichern()` speichert die Pixel-Änderung lokal und markiert den BTB nur im `SelectiveSyncStore` als dirty.
+  - `SelectiveSyncWorker` lädt bei bereits bekanntem Server-BTB **zuerst** `loadBtbAccess(...)`, speichert den Server-Snapshot und ruft **vor** `exportBtbChange(...)` bereits `bridge.applyServerStateToLocal(...)` auf.
+  - Zu diesem Zeitpunkt existiert noch keine `collabPending`-Mutation für die neue Pixel-Änderung; der Guard in `applyServerStateToLocal()` kann sie daher nicht schützen.
+  - Ergebnis: der ältere/andere Serverstand überschreibt die lokal gespeicherte Pixel-Änderung, erst danach wird exportiert. Damit wird der überschriebenen Serverstand statt der Pixel-Änderung hochgeladen.
+- Das erklärt exakt den Praxisbefund: Pixel→Portal fehlt; Portal→Pixel kommt an und entfernt die Pixel-Eingabe.
+- Server/API/DB sind für diesen Fehler nicht zu ändern.
+
+Benötigte Android-Korrektur:
+1. bei dirty BTB zuerst den lokalen Stand in die Outbox/exportieren bzw. gezielt sichern;
+2. erst danach Serverzugriff/Version prüfen und konfliktbewusst hochladen;
+3. eingehenden Snapshot nicht lokal anwenden, solange für denselben `clientBtbId` ein Dirty-/Pending-Stand existiert;
+4. bei Versionskonflikt kein stilles Überschreiben, sondern Rebase/Conflict-Pfad.

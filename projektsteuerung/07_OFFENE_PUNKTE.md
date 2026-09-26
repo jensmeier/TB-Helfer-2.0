@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| BTB-SYNC-002 | P0 | GEMEINSAM | Pixel→Portal fehlt; Portal→Pixel überschreibt lokale Pixel-Eingabe | Save/Outbox/Upload/Version/Conflict-Pfad prüfen; kein Snapshot-Overwrite unbestätigter lokaler Änderungen |
+| BTB-SYNC-002 | P0 | ANDROID | Source-Ursache bestätigt: SelectiveSyncWorker applyServerStateToLocal vor exportBtbChange | Android-Reihenfolge korrigieren; Build/Install; Pixel→Portal und Konflikt-E2E |
 | PORTAL-LIVE-001 | P0 | SERVER | Source-Fix vorhanden: Portal nutzt SSE-Change-Feed statt F5 | Deploy + E2E: neues Bild/BTB vom Handy ohne Browser-Reload sichtbar |
 | IMG-PORTAL-001 | P0 | SERVER | Daten nach F5 korrekt; Live-Refresh-Source-Fix vorhanden | zusammen mit PORTAL-LIVE-001 deployen und ohne F5 E2E bestätigen |
 | DEV-META-001 | P2 | SERVER | `tb.devices.app_version/app_build` bleiben nach App-Update ohne Neuaktivierung auf altem Aktivierungsstand | später Runtime-Metadaten-Updatevertrag definieren; kein Blocker für BTB-SYNC-001 |

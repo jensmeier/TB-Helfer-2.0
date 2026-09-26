@@ -70,3 +70,11 @@ Für denselben aktiven BTB gilt:
 - Portal- und Android-Mutationen müssen versioniert gegen denselben kanonischen BTB-/Entry-Stand arbeiten;
 - „last server snapshot wins“ ohne Konflikterkennung ist für lokale unbestätigte BTB-Fachänderungen unzulässig;
 - ein Server-Snapshot darf erst dann den lokalen Fachstand ersetzen, wenn für denselben Scope keine unbestätigte lokale Mutation mehr existiert oder die Mutation bewusst konfliktaufgelöst wurde.
+
+### Selektiver BTB-Sync – verbindliche Reihenfolge
+Für einen dirty markierten BTB gilt:
+1. lokale Änderung zuerst persistiert erfassen und als Pending/Outbox sichern;
+2. danach kanonischen Serverstand/Version laden;
+3. Pending gegen diese Version hochladen bzw. konfliktbewusst rebasen;
+4. Server-Snapshot erst anwenden, wenn keine unbestätigte lokale Mutation für denselben `clientBtbId` mehr existiert.
+Ein vorgelagerter Snapshot-Apply vor Outbox-Sicherung ist unzulässig, weil dadurch lokale Eingaben verloren gehen können.

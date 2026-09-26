@@ -41,3 +41,6 @@ Nachtest: beide öffentlichen Seiten sind auf demselben Hauptgerät im Browser e
 
 ### BTB-SYNC-002 Datenverlust-E2E
 **FEHLER REPRODUZIERT:** Pixeländerung erscheint nicht im Portal; Portaländerung kommt auf Pixel an und überschreibt die Pixeländerung. E2E gilt bis zur Konflikt-/Outbox-Klärung als fehlgeschlagen.
+
+### BTB-SYNC-002 Source-Diagnose
+Source-Ursache bestätigt: `SelectiveSyncWorker` wendet bei bekanntem BTB einen Server-Snapshot lokal an, bevor die dirty Pixel-Änderung mit `exportBtbChange()` in Pending/Outbox gesichert wird. Status: **SOURCE-URSACHE BESTÄTIGT / ANDROID-FIX + BUILD + INSTALL + E2E OFFEN**.
