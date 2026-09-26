@@ -78,3 +78,15 @@ Für einen dirty markierten BTB gilt:
 3. Pending gegen diese Version hochladen bzw. konfliktbewusst rebasen;
 4. Server-Snapshot erst anwenden, wenn keine unbestätigte lokale Mutation für denselben `clientBtbId` mehr existiert.
 Ein vorgelagerter Snapshot-Apply vor Outbox-Sicherung ist unzulässig, weil dadurch lokale Eingaben verloren gehen können.
+
+
+## BTB strukturierte Nachbearbeitung / Umhängen
+Für bearbeitbare BTBs gilt verbindlich:
+- BTB-Einträge und BTB-Fotos sind strukturierte Objekte mit änderbarer fachlicher Zuordnung.
+- Nachträglich änderbar müssen mindestens sein: Abschnitt/Punkt 4–8, Firma, Unterbaustelle/Bauobjekt, Text/Kurztext, Zeit/KM und bei Fotos die fachliche Zuordnung.
+- Unterbaustelle/Bauobjekt referenziert nach Möglichkeit eine stabile Baustellenbaum-/Node-ID; sichtbarer Name allein ist kein Identitätsschlüssel.
+- Portal und Android zeigen dieselben auswählbaren Baustellenknoten (z. B. Hauptbaustelle, freie Strecke, BÜ) und schreiben dieselbe kanonische Zuordnung.
+- Eine Korrektur wird als normale versionierte Mutation synchronisiert; kein Löschen+Neuanlegen als Standardweg.
+- Verschieben von Punkt 4 nach 5/6/7/8 oder Wechsel von Firma/Unterbaustelle muss auf allen Clients nach Sync identisch erscheinen.
+- FINALIZED bleibt read-only gemäß bestehendem Lifecyclevertrag.
+- Der bestätigte SSE-Live-Refresh bleibt unverändert und reagiert lediglich auf die resultierenden Change-Feed-Ereignisse.
