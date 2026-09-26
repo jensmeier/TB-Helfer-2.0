@@ -220,3 +220,13 @@ Status: **PIXEL↔PORTAL BASIS-E2E BESTÄTIGT**
 - Der frühere Fehler „lokale Pixel-Eingabe erreicht Portal nicht und wird später vom Serverstand überschrieben“ ist im normalen Hin-und-zurück-Test nicht mehr reproduziert.
 - Parallel-Autosave/Conflict-E2E bleibt separat offen.
 - Poco/HELPER-E2E bleibt separat offen.
+
+
+## BTB-UI-001 – Abschlussbuttons
+Status: **REPRODUZIERT / SOURCE-FIX AUSSTEHEND**
+
+- Pixel als Haupt-TB zeigt wechselnd 1 oder 2 Abschlussbuttons.
+- Ursache im aktuellen Quellpfad: Lifecycle-Watcher setzt Buttons zunächst beide sichtbar und blendet `PDF Entwurf` im Haupt-TB-Zweig wieder aus.
+- Ziel: Haupt-TB aktiv = stabil `PDF Entwurf` + `BTB Abschluss`.
+- Helfer = kein PDF-Entwurf; Rollen-/Schichtaktion separat.
+- Neuer Zielbuild: **1.3.24 / 200074**.

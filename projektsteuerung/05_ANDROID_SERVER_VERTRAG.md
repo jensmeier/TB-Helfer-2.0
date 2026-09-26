@@ -114,3 +114,13 @@ Für denselben aktiven BTB gilt verbindlich:
 6. ein neuer Autosave während des Uploads bleibt Dirty und darf nicht durch den gerade bestätigten älteren Snapshot ersetzt werden.
 
 BTB-SYNC-002 erfordert dafür **keine Server-/DB-Vertragsänderung**.
+
+
+## Rollenabhängige BTB-Abschlussleiste
+Für einen aktiven servergebundenen BTB gilt:
+- verantwortlicher TB/Haupt-TB: `PDF Entwurf` + `BTB Abschluss` sichtbar;
+- HELPER: kein `PDF Entwurf`; nur die eigene Schichtaktion gemäß Teilnehmerstatus;
+- FINALIZED + nicht aktiv: keine Abschlussaktion; PDF nur gemäß `can_view_btb_pdf`;
+- Android darf die Sichtbarkeit nicht zwischen konkurrierenden Legacy-/Lifecycle-Zuständen wechseln.
+
+Die Anzeige folgt `BtbServerStateStore.isTeamLead` und dem kanonischen Server-Lifecycle.

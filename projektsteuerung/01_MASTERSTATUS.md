@@ -266,3 +266,18 @@ Status: **BIDIREKTIONALER BASIS-E2E BESTÄTIGT / PARALLEL-AUTOSAVE NOCH OFFEN**
 - Der ursprüngliche asymmetrische Datenverlustpfad ist damit im normalen Hin-und-zurück-Test nicht mehr reproduziert.
 - Offen bleibt der gezielte Parallel-Autosave-/Conflict-Test während eines laufenden Uploads sowie danach der separate Poco/HELPER-E2E.
 - Server/API/DB unverändert.
+
+
+## BTB-UI-001 – Abschlussleiste nach Rollenwechsel
+Status: **FEHLER REPRODUZIERT / SOLL VERBINDLICH**
+
+Praxis 26.09.2026 auf Pixel:
+- Pixel ist aktuell verantwortlicher TB/Haupt-TB.
+- Poco/Helfer wurde aus der aktiven Helferrolle entlassen.
+- Untere BTB-Aktionsleiste springt sichtbar zwischen:
+  - nur `BTB Abschluss`
+  - `PDF Entwurf` + `BTB Abschluss`
+- Für den verantwortlichen TB im aktiven BTB ist der korrekte stabile Zustand:
+  **`PDF Entwurf` + `BTB Abschluss`**.
+- Rollenabhängige Helferansicht bleibt ohne PDF-Entwurf und mit eigener Schichtaktion gemäß Serverrolle.
+- Kein periodisches Umschalten der Button-Sichtbarkeit zulässig.

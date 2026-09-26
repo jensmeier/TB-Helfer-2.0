@@ -4,6 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
+| BTB-UI-001 | P0 | ANDROID | Pixel Haupt-TB: Abschlussleiste springt zwischen 1 und 2 Buttons | Lifecycle-Watcher rollenrein machen; Build 1.3.24/200074 |
 | BTB-SYNC-002 | P0 | ANDROID | Pixel↔Portal Basissync mit 1.3.23/200073 in beide Richtungen bestätigt | nur Parallel-Autosave-/Conflict-Test während laufendem Upload noch offen |
 | PORTAL-LIVE-001 | P0 | SERVER | SSE/Change-Feed Source-Fix vorhanden; laufendes NAS braucht noch F5 | SERVER deployen + Portal ohne F5 E2E; Android nicht ändern |
 | REL-001 | P0 | ANDROID | 200070 wurde bereits für Updateversuch verwendet | nächster Build 1.3.21 / 200071; weitere Builds strikt hochzählen |

@@ -367,3 +367,24 @@ Umgesetzt auf `feature/tb-android-2.0`:
 Quellstand nach Fachfix/Versionierung: `3038d5107bac8cf53cb59b55353628d95653932a` plus Release-MD-Stand im selben Branch.
 Zielbuild: **1.3.23 / 200073**.
 Build, Installation und Pixel↔Portal-/Poco-E2E bleiben offen.
+
+
+## BTB-UI-001 – Pixel Buttonleiste flackert
+Status: **URSACHE IM ANDROID-UI-PFAD EINGEGRENZT / FIX NÄCHSTER SCHRITT**
+
+Benutzerbefund:
+- Pixel ist Haupt-TB und aktuell allein im aktiven BTB.
+- Die Abschlussleiste wechselt zwischen nur `BTB Abschluss` und `PDF Entwurf + BTB Abschluss`.
+
+Quellbefund:
+- `BtbModernLifecycleInstaller.startLifecycleWatcher()` setzt in jedem 600-ms-Zyklus zunächst `btnPdf` und `btnPdfFinal` beide auf VISIBLE.
+- Im servergebundenen Haupt-TB-Zweig wird `btnPdf` anschließend wieder auf GONE gesetzt.
+- Damit widerspricht der Haupt-TB-Zweig dem gewünschten UI-Vertrag und erzeugt konkurrierende Sichtbarkeitszustände.
+
+Verbindliches Soll:
+- Haupt-TB + aktiver BTB: `PDF Entwurf` sichtbar + `BTB Abschluss` sichtbar, stabil.
+- HELPER: kein PDF-Entwurf; nur rollenbezogene Schichtaktion.
+- FINALIZED/read-only: nur erlaubte PDF-Ansicht gemäß Serverrecht.
+- Die Sichtbarkeit wird pro Zyklus nur aus genau einem Rollen-/Lifecycle-Zweig gesetzt; keine vorgelagerte pauschale VISIBLE-Schaltung.
+
+Nächster Build nach Fix: **1.3.24 / 200074**.

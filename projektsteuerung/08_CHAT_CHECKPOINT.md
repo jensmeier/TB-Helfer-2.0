@@ -266,3 +266,13 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Noch nicht als bestätigt markieren: gezielter Parallel-Autosave-/Conflict-Fall während laufendem Upload.
 - Poco/HELPER bleibt separater E2E.
 - Server/API/DB unverändert; PORTAL-LIVE-001 bleibt weiterhin eigener SERVER-Deploy/E2E-Punkt.
+
+
+## BTB-UI-001 – neuer Praxisbefund
+- Pixel ist Haupt-TB; Poco/Helfer ist aus der aktiven Helferrolle entlassen.
+- Screenshot zeigt Wechsel zwischen:
+  - nur `BTB Abschluss`;
+  - `PDF Entwurf` + `BTB Abschluss`.
+- Gewünschter Haupt-TB-Zustand ist stabil **PDF Entwurf + BTB Abschluss**.
+- Quellursache im `BtbModernLifecycleInstaller` nachvollziehbar: pauschal beide Buttons VISIBLE, danach Haupt-TB-Zweig `btnPdf=GONE`.
+- Vor Codeänderung dokumentiert. Nächster Zielbuild 1.3.24 / 200074.
