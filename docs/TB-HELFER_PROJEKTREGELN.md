@@ -2,7 +2,7 @@
 
 ## 0. Projektstatus-Tracker
 
-- Zusätzlich zu diesen Projektregeln und `docs/TB-HELFER_AKTUELLER_STAND.md` wird der laufende Arbeits-/Teststand in `projektstatus/TB-HELFER_STATUS.md` und der gleichnamigen Excel-Datei gespiegelt.
+- Zusätzlich zu diesen Projektregeln und `projektsteuerung/01_MASTERSTATUS.md` wird der laufende Arbeits-/Teststand in `projektsteuerung/01_MASTERSTATUS.md` und der gleichnamigen Excel-Datei gespiegelt.
 - Vor Änderungen ist der Tracker zu prüfen. Ein mit `☑` bestätigter Punkt und/oder `Nicht ohne Grund ändern = JA` wird nicht beiläufig umgebaut. Änderungen daran erfolgen nur bei reproduzierbarem Fehler, neuer belegter Fachanforderung oder ausdrücklichem Benutzerwunsch.
 - Neue wesentliche Probleme, Entscheidungen, Tests, Versionen und erledigte Punkte werden mit stabiler ID in MD und Excel nachgeführt.
 - GitHub-Code und diese Projektregeln bleiben Source of Truth; der Tracker ist eine zusätzliche, schnell lesbare Arbeits- und Abnahmeliste.

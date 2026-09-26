@@ -82,4 +82,4 @@ jobs:
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
-            releases/TB-Helfer_1.3.19_200069.md
+            projektsteuerung/releases/TB-Helfer_1.3.19_200069.md
