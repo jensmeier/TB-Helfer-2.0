@@ -264,3 +264,14 @@ Benötigte Android-Korrektur:
 2. erst danach Serverzugriff/Version prüfen und konfliktbewusst hochladen;
 3. eingehenden Snapshot nicht lokal anwenden, solange für denselben `clientBtbId` ein Dirty-/Pending-Stand existiert;
 4. bei Versionskonflikt kein stilles Überschreiben, sondern Rebase/Conflict-Pfad.
+
+
+## PORTAL-LIVE-001 – Deploy jetzt
+Status: **BENUTZER BESTÄTIGT / SERVER-DEPLOY JETZT PRIORITÄT**
+
+- Der bidirektionale Pixel↔Portal-Basissync ist auf Android 1.3.23 / 200073 praktisch bestätigt.
+- Benutzerauftrag: als nächstes den bereits vorhandenen Portal-Live-Refresh deployen, damit im normalen Portalbetrieb kein F5 mehr nötig ist.
+- Source-Fix ist bereits vorhanden: Commit `c0355161a2d7ecceaadd1fc79f2bbade346a78cc`.
+- Betroffene Portaldateien: `server/templates/v1_btb.html` und `server/templates/v1_worksite.html`.
+- Vorhandener SSE-/Change-Feed `/api/v1/sync/events` wird genutzt; kein 2-Sekunden-DB-Polling.
+- Nächster Schritt: Synology-Deploy nach Projektregel und anschließend E2E mit offenem Portal + Handyänderung/Foto ohne F5.
