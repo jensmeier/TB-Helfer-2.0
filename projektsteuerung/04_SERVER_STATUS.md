@@ -15,7 +15,7 @@ Quellmigrationen: **001–015**
 
 Bildpfad: Mobile Aufnahmen laut 15×15 nur kleine Sync-Version + Thumbnail + Metadaten. Portal-Uploads dürfen serverseitige Quelldatei bleiben. Vor Serveränderung zuerst Android-Upload auditieren.
 
-Nächste Schritte: IMG-001 Audit → Migration 015 Runtime-E2E → 15×15 Lasttest.
+Nächste Schritte: Hauptgerät↔Server/Portal E2E → HELPER/Poco → IMG-001 Android-Implementierung → Migration 015/Rendition-E2E; Gesamtlast später gemäß E2E-PRIO-001.
 
 Historischer Tracker: `projektsteuerung/archiv/SERVER_STATUS_ALT_2026-09-26.md`
 
@@ -37,3 +37,14 @@ Neue Server-Reihenfolge:
 4. vollständige Lastwiederholung nach 8-GB-RAM-Ausbau bzw. auf neuem NAS.
 
 Keine Server-Performanceänderung aus diesem Test ableiten, solange kein reproduzierbarer funktionaler Engpass vorliegt.
+
+
+## IMG-001 Quellaudit
+Status: **SERVER-RENDITIONS VORHANDEN / ANDROID-NUTZUNG FEHLT**
+
+- Upload-Complete speichert empfangene Bytes unverändert; kein heimlicher Server-Downscale von APP-Uploads.
+- APP-Volloriginale auf dem NAS sind aktuell Folge des Android-Uploads.
+- `image_renditions.py`: `thumb` 320×320/JPEG72 und `preview` 1280×1280/JPEG82, gecacht und speicherbegrenzt.
+- Dateiliste und Metadaten liefern Rendition-URLs.
+- Für den Kernfehler ist kein Server-Ersatzumbau vorgesehen. Android soll kleine Sync-Dateien senden und mobile Renditions nutzen.
+- Migration 015/Rendition-/Metadaten-Runtime-E2E bleibt offen.
