@@ -200,6 +200,7 @@ const btbId={{ btb_id|tojson }};
 const msg=document.getElementById('msg');
 let current=null, entries=[], photos=[], finalPdf=null, permissions={}, activeBtbId=null, participants=[], currentUser={};
 let shiftContractAvailable=false, editingEntry=null, creatingEntry=null;
+let liveEvents=null, liveReloadTimer=null, liveReloadRunning=false, liveReloadQueued=false;
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function can(name){return permissions['*']===true||permissions[name]===true;}
@@ -1103,6 +1104,45 @@ async function setParticipantStatus(userId,status){
 }
 window.setParticipantStatus=setParticipantStatus;
 
+const LIVE_BTB_ENTITY_TYPES=new Set(['BTB','BTB_ENTRY','BTB_PARTICIPANT','FILE']);
+function scheduleBtbLiveReload(){
+  if(liveReloadTimer)clearTimeout(liveReloadTimer);
+  liveReloadTimer=setTimeout(function(){
+    liveReloadTimer=null;
+    runBtbLiveReload();
+  },250);
+}
+async function runBtbLiveReload(){
+  if(liveReloadRunning){liveReloadQueued=true;return;}
+  liveReloadRunning=true;
+  try{
+    do{
+      liveReloadQueued=false;
+      await loadBtb();
+    }while(liveReloadQueued);
+  }catch(error){
+    console.warn('Portal-Live-Aktualisierung fehlgeschlagen',error);
+  }finally{
+    liveReloadRunning=false;
+  }
+}
+function startBtbLiveUpdates(){
+  if(liveEvents||!window.EventSource||!current||!current.worksite_id)return;
+  const url=tbScopedUrl('/api/v1/sync/events?worksite_id='+encodeURIComponent(current.worksite_id));
+  liveEvents=new EventSource(url);
+  liveEvents.addEventListener('change',function(event){
+    try{
+      const change=JSON.parse(event.data||'{}');
+      if(String(change.worksite_id||'')!==String(current.worksite_id||''))return;
+      if(!LIVE_BTB_ENTITY_TYPES.has(String(change.entity_type||'').toUpperCase()))return;
+      scheduleBtbLiveReload();
+    }catch(_){}
+  });
+  window.addEventListener('beforeunload',function(){
+    if(liveEvents){liveEvents.close();liveEvents=null;}
+  },{once:true});
+}
+
 async function loadBtb(){
   const result=await tbApi('/api/v1/btbs/'+btbId);
   current=result.data.btb;entries=result.data.entries||[];photos=result.data.photos||[];finalPdf=result.data.final_pdf;
@@ -1253,6 +1293,8 @@ document.getElementById('deleteBtb').addEventListener('click',async function(){
   try{await tbApi('/api/v1/btbs/'+btbId,{method:'DELETE'});location.href=target;}
   catch(error){show('err',error.message||String(error));}
 });
-loadBtb().catch(function(error){show('err',error.message||String(error));});
+loadBtb()
+  .then(startBtbLiveUpdates)
+  .catch(function(error){show('err',error.message||String(error));});
 </script>
 {% endblock %}

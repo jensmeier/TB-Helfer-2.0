@@ -171,6 +171,8 @@ const worksiteId={{ worksite_id|tojson }};
 const adminReadOnly={{ (user.company_role == 'ADMIN')|tojson }};
 const msg=document.getElementById('msg');
 let worksite=null, permissions={}, nodeData=[], teamData=[], mediaData=[];
+let liveEvents=null, liveRefreshTimer=null, liveRefreshRunning=false, liveRefreshQueued=false;
+const liveDirtyTypes=new Set();
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function can(name){if(adminReadOnly)return false;return permissions['*']===true||permissions[name]===true;}
@@ -817,6 +819,68 @@ document.getElementById('acceptanceForm').addEventListener('submit',async functi
 });
 
 
+const LIVE_WORKSITE_ENTITY_TYPES=new Set([
+  'WORKSITE','WORKSITE_NODE','WORKSITE_MEMBERSHIP','WORKSITE_INVITATION',
+  'BTB','BTB_ENTRY','BTB_PARTICIPANT','FILE','DEFECT','ACCEPTANCE'
+]);
+function scheduleWorksiteLiveRefresh(entityType){
+  const type=String(entityType||'').toUpperCase();
+  if(type)liveDirtyTypes.add(type);
+  if(liveRefreshTimer)clearTimeout(liveRefreshTimer);
+  liveRefreshTimer=setTimeout(function(){
+    liveRefreshTimer=null;
+    runWorksiteLiveRefresh();
+  },250);
+}
+async function runWorksiteLiveRefresh(){
+  if(liveRefreshRunning){liveRefreshQueued=true;return;}
+  liveRefreshRunning=true;
+  try{
+    do{
+      liveRefreshQueued=false;
+      const dirty=new Set(liveDirtyTypes);
+      liveDirtyTypes.clear();
+
+      const mediaChanged=dirty.has('FILE');
+      if(mediaChanged)await loadWorksiteMedia();
+
+      const tasks=[];
+      if(dirty.has('WORKSITE'))tasks.push(loadOverview());
+      if(dirty.has('WORKSITE_NODE'))tasks.push(loadNodes());
+      if(
+        dirty.has('BTB')||dirty.has('BTB_ENTRY')||dirty.has('BTB_PARTICIPANT')||
+        dirty.has('WORKSITE_MEMBERSHIP')
+      )tasks.push(loadTeams());
+      if(dirty.has('WORKSITE_MEMBERSHIP')||dirty.has('WORKSITE_INVITATION'))tasks.push(loadMembers(),loadInviteData());
+      if(dirty.has('DEFECT')||mediaChanged)tasks.push(loadDefects());
+      if(dirty.has('ACCEPTANCE')||mediaChanged)tasks.push(loadAcceptances());
+
+      if(tasks.length)await Promise.all(tasks);
+    }while(liveRefreshQueued||liveDirtyTypes.size);
+  }catch(error){
+    console.warn('Portal-Live-Aktualisierung fehlgeschlagen',error);
+  }finally{
+    liveRefreshRunning=false;
+  }
+}
+function startWorksiteLiveUpdates(){
+  if(liveEvents||!window.EventSource)return;
+  const url=tbScopedUrl('/api/v1/sync/events?worksite_id='+encodeURIComponent(worksiteId));
+  liveEvents=new EventSource(url);
+  liveEvents.addEventListener('change',function(event){
+    try{
+      const change=JSON.parse(event.data||'{}');
+      if(String(change.worksite_id||'')!==String(worksiteId))return;
+      const type=String(change.entity_type||'').toUpperCase();
+      if(!LIVE_WORKSITE_ENTITY_TYPES.has(type))return;
+      scheduleWorksiteLiveRefresh(type);
+    }catch(_){}
+  });
+  window.addEventListener('beforeunload',function(){
+    if(liveEvents){liveEvents.close();liveEvents=null;}
+  },{once:true});
+}
+
 (async function(){
   try{
     await loadOverview();
@@ -824,6 +888,7 @@ document.getElementById('acceptanceForm').addEventListener('submit',async functi
     await loadTeams();
     await loadWorksiteMedia();
     await Promise.all([loadMembers(),loadInviteData(),loadDefects(),loadAcceptances()]);
+    startWorksiteLiveUpdates();
   }catch(error){show('err',error.message||String(error));}
 })();
 </script>
