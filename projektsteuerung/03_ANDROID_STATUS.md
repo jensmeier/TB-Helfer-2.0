@@ -288,3 +288,10 @@ Status: **TEILURSACHE BESTÄTIGT / tempC-VERLUST NOCH NICHT ANDROID-SEITIG NACHG
 - Fachregel: Bei erfolgreicher Wetterquelle muss 0.0 als **0.0 mm** erhalten bleiben.
 - Dass `tempC` im aktuellen Portal-BTB fehlt, ist nach dem Quellaudit noch nicht als Android-Serialisierungsfehler belegt; hierfür muss der konkrete Server-Header-/Runtime-Payload mit Android-Ausgabe verglichen werden.
 - Wetterfix bleibt getrennt von BTB-EDIT-001.
+
+
+## Buildziel 1.3.25 / 200075
+- Benutzer hat Build angefordert.
+- Version **1.3.25 / 200075** reserviert.
+- Source-Check und echter Build müssen noch durchgeführt werden.
+- BUILD ERFOLGREICH erst nach tatsächlichem Gradle/CI-Nachweis.

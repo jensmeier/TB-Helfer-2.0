@@ -480,3 +480,14 @@ Separat und nicht mit BTB-EDIT vermischen:
 - konkrete Android-Teilursache für Niederschlag gefunden: `0.0` wird durch `takeIf { it > 0.0 }` zu `null`.
 - 0-mm-Erhalt wird in einem separaten Wetter-Fix korrigiert.
 - tempC-Fehlstelle erst mit konkretem Runtime-Payload weiter eingrenzen; nicht mit BTB-EDIT vermischen.
+
+
+### BTB-EDIT-001 Buildziel 1.3.25 / 200075
+Status: **BUILD ANGEFORDERT / VERSION RESERVIERT**
+
+- Benutzerauftrag: **bauen**.
+- Letzter bestätigter installierter Build: 1.3.24 / 200074.
+- Nächster auslieferbarer Android-Build gemäß REL-001: **1.3.25 / 200075**.
+- Enthalten: aktueller BTB-EDIT-001-Android-Quellstand mit stabiler Entry-Identität, `worksiteNodeKey`, Firma/Allgemein und Punkt-4–8-Verschiebung ohne Delete/Create.
+- Geschützte Fixes BTB-UI-001 und BTB-SYNC-002 bleiben enthalten.
+- Wetterpunkt PORTAL-WEATHER-001 wird bewusst **nicht** in diesen BTB-EDIT-Build hineingemischt.

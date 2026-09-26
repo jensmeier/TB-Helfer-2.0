@@ -320,3 +320,11 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - konkreter Android-Bug: Auto-Wetter macht aus bekanntem `0.0 mm` ein `null`.
 - tempC-Verlust im Portal ist noch nicht source-seitig lokalisiert.
 - Wetter bleibt separater Block, nicht Teil von BTB-EDIT-001.
+
+
+## Buildauftrag 1.3.25 / 200075
+- Benutzer: **bauen**.
+- Neuer Build muss höher als 200074 sein; daher **1.3.25 / 200075**.
+- Vor Build Source-Check der BTB-EDIT-001-Änderungen.
+- Release-MD zwingend gemeinsam mit APK.
+- Noch kein Buildstatus behaupten, bis CI/Gradle tatsächlich erfolgreich durchgelaufen ist.
