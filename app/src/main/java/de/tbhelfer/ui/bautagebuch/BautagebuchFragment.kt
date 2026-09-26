@@ -5227,6 +5227,7 @@ cardCurrentReport.setOnClickListener {
                     val lines = raw.lines()
                     var currentOrtId: Long = 0L
                     var currentNodeKey: String? = null
+                    var currentOrtIstStandaloneMarker = false
 
                     val firmMap = knownFirms
                         .mapNotNull { it.trim().takeIf { s -> s.isNotBlank() } }
@@ -5247,7 +5248,8 @@ cardCurrentReport.setOnClickListener {
                         if (line.isBlank()) return@forEachIndexed
 
                         var clientEntryKey: String? = null
-                        var nodeKey: String? = null
+                        var lineNodeKey: String? = null
+                        var lineOrtId: Long? = null
                         var explicitFirmaId: String? = null
                         var forcedGeneral = false
                         var kmVon: Double? = null
@@ -5262,29 +5264,56 @@ cardCurrentReport.setOnClickListener {
                                 markerGefunden = true
                             }
                             if (markerGefunden) continue
+
                             reNode.matchEntire(line)?.let {
-                                nodeKey = it.groupValues[1].trim().takeIf(String::isNotBlank)
-                                currentNodeKey = nodeKey
-                                nodeKey?.let { key ->
-                                    btbLocalIdByNodeKey[key]?.let { currentOrtId = it }
+                                val markerNodeKey = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                                val rest = it.groupValues[2].trim()
+                                if (rest.isBlank()) {
+                                    currentNodeKey = markerNodeKey
+                                    currentOrtId = markerNodeKey
+                                        ?.let { key -> btbLocalIdByNodeKey[key] }
+                                        ?: 0L
+                                    currentOrtIstStandaloneMarker = true
+                                    line = ""
+                                } else {
+                                    lineNodeKey = markerNodeKey
+                                    markerNodeKey
+                                        ?.let { key -> btbLocalIdByNodeKey[key] }
+                                        ?.let { lineOrtId = it }
+                                    currentOrtIstStandaloneMarker = false
+                                    line = rest
                                 }
-                                line = it.groupValues[2].trim()
                                 markerGefunden = true
                             }
                             if (markerGefunden) continue
+
                             reFirmaId.matchEntire(line)?.let {
                                 explicitFirmaId = it.groupValues[1].trim().takeIf(String::isNotBlank)
                                 line = it.groupValues[2].trim()
                                 markerGefunden = true
                             }
                             if (markerGefunden) continue
+
                             reOrt.matchEntire(line)?.let {
-                                currentOrtId = it.groupValues[1].toLongOrNull() ?: 0L
-                                currentNodeKey = btbNodeKeyByLocalId[currentOrtId]
-                                line = it.groupValues[2].trim()
+                                val markerOrtId = it.groupValues[1].toLongOrNull() ?: 0L
+                                val rest = it.groupValues[2].trim()
+                                if (rest.isBlank()) {
+                                    currentOrtId = markerOrtId
+                                    currentNodeKey = btbNodeKeyByLocalId[currentOrtId]
+                                    currentOrtIstStandaloneMarker = true
+                                    line = ""
+                                } else {
+                                    lineOrtId = markerOrtId
+                                    if (lineNodeKey == null) {
+                                        lineNodeKey = btbNodeKeyByLocalId[markerOrtId]
+                                    }
+                                    currentOrtIstStandaloneMarker = false
+                                    line = rest
+                                }
                                 markerGefunden = true
                             }
                             if (markerGefunden) continue
+
                             reGeneral.matchEntire(line)?.let {
                                 forcedGeneral = true
                                 explicitFirmaId = null
@@ -5292,6 +5321,7 @@ cardCurrentReport.setOnClickListener {
                                 markerGefunden = true
                             }
                             if (markerGefunden) continue
+
                             reKm.matchEntire(line)?.let {
                                 kmVon = parseKmValue(it.groupValues[1])
                                 kmBis = parseKmValue(it.groupValues.getOrNull(2))
@@ -5338,7 +5368,11 @@ cardCurrentReport.setOnClickListener {
                         val firmaId = if (forcedGeneral) null else (
                             explicitFirmaId ?: firma?.lowercase(java.util.Locale.ROOT)?.let { firmIdByName[it] }
                         )
-                        val effectiveNodeKey = nodeKey ?: currentNodeKey ?: btbNodeKeyByLocalId[currentOrtId]
+                        val effectiveOrtId = lineOrtId
+                            ?: if (currentOrtIstStandaloneMarker) currentOrtId else 0L
+                        val effectiveNodeKey = lineNodeKey
+                            ?: if (currentOrtIstStandaloneMarker) currentNodeKey
+                            else btbNodeKeyByLocalId[effectiveOrtId]
 
                         out.add(
                             ManualItem(
@@ -5347,7 +5381,7 @@ cardCurrentReport.setOnClickListener {
                                 firmaId = firmaId,
                                 time = timeStr,
                                 timeMin = timeMin,
-                                ortId = currentOrtId,
+                                ortId = effectiveOrtId,
                                 worksiteNodeKey = effectiveNodeKey,
                                 clientEntryKey = clientEntryKey,
                                 text = text2,
@@ -5387,7 +5421,9 @@ cardCurrentReport.setOnClickListener {
                     return buildString {
                         append("@ENTRY=").append(stableEntry).append(" ")
                         stableNode?.let { append("@NODE=").append(it).append(" ") }
-                        if (ortId > 0L) append("@ORT=").append(ortId).append(" ")
+                        // Lokale UI-ID wird immer explizit geschrieben; Hauptbaustelle = @ORT=0.
+                        // Geräteübergreifende Identität bleibt ausschließlich @NODE/clientNodeKey.
+                        append("@ORT=").append(ortId).append(" ")
                         if (stableFirmaId != null) append("@FIRMAID=").append(stableFirmaId).append(" ")
                         else append("@ALLGEMEIN ")
                         kmMarker(kmVon, kmBis)?.let { append(it).append(" ") }

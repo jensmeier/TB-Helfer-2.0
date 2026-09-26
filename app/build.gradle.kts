@@ -148,69 +148,11 @@ abstract class GenerateBtb200043Sources : DefaultTask() {
         var patched = source.replace(anchor, anchor + "\n\n" + photoActions)
         check(patched != source) { "Android 200043: BTB-Quelldatei wurde nicht erweitert." }
 
-        // Android 200047: Firmen-Eintraege in der Hauptbaustelle brauchen ebenfalls einen
-        // expliziten Ortsmarker. Ohne @ORT=0 konnte ein vorheriger Unterbaustellenmarker
-        // (z. B. Schacht 1) auf die folgende Hauptbaustellen-Zeile durchrutschen.
-        val mainSiteMarkerOld = "if (effectiveOrtId != 0L) append(\"@ORT=\").append(effectiveOrtId).append(\" \")"
-        val mainSiteMarkerNew = "if (f != null) append(\"@ORT=\").append(effectiveOrtId).append(\" \")"
-        check(patched.contains(mainSiteMarkerOld)) {
-            "Android 200047: Hauptbaustellen-Ortsmarker-Anker wurde nicht gefunden."
-        }
-        patched = patched.replace(mainSiteMarkerOld, mainSiteMarkerNew)
-
-        // Bestehende Daten reparieren, ohne alte Standalone-@ORT-Gruppen zu zerstoeren:
-        // ein moderner Inline-@ORT gilt nur fuer diese eine Zeile; nur ein eigener
-        // @ORT=<id>-Datensatz bleibt als historischer Gruppenmarker kleben.
-        val ortStateOld = "var currentOrtId: Long = 0L"
-        val ortStateNew = "var currentOrtId: Long = 0L\n                    var currentOrtIstStandaloneMarker: Boolean = false"
-        check(patched.contains(ortStateOld)) {
-            "Android 200047: Ortsparser-Statusanker wurde nicht gefunden."
-        }
-        patched = patched.replace(ortStateOld, ortStateNew, ignoreCase = false)
-
-        val ortLineOld = """
-                        var line = line0.trim()
-                        if (line.isBlank()) return@forEachIndexed
-
-                        // Ort-Marker: entweder eigene Zeile oder Inline-Prefix
-                        val mo = reOrt.matchEntire(line)
-                        if (mo != null) {
-                            currentOrtId = mo.groupValues[1].toLongOrNull() ?: 0L
-                            line = mo.groupValues.getOrNull(2).orEmpty().trim()
-                            if (line.isBlank()) return@forEachIndexed
-                        }
-""".trim('\n')
-        val ortLineNew = """
-                        var line = line0.trim()
-                        if (line.isBlank()) return@forEachIndexed
-                        var lineOrtId: Long? = null
-
-                        // Ort-Marker: entweder eigene Legacy-Gruppenzeile oder moderner Inline-Prefix.
-                        // Inline darf nicht auf die naechste Zeile weiterwirken.
-                        val mo = reOrt.matchEntire(line)
-                        if (mo != null) {
-                            val markerOrtId = mo.groupValues[1].toLongOrNull() ?: 0L
-                            line = mo.groupValues.getOrNull(2).orEmpty().trim()
-                            if (line.isBlank()) {
-                                currentOrtId = markerOrtId
-                                currentOrtIstStandaloneMarker = true
-                                return@forEachIndexed
-                            }
-                            lineOrtId = markerOrtId
-                            currentOrtIstStandaloneMarker = false
-                        }
-""".trim('\n')
-        check(patched.contains(ortLineOld)) {
-            "Android 200047: Ortsparser-Inlineanker wurde nicht gefunden."
-        }
-        patched = patched.replace(ortLineOld, ortLineNew)
-
-        val effectiveOrtOld = "val effectiveOrtId = if (forcedGeneral || firma == null) 0L else currentOrtId"
-        val effectiveOrtNew = "val effectiveOrtId = if (forcedGeneral || firma == null) 0L else lineOrtId ?: if (currentOrtIstStandaloneMarker) currentOrtId else 0L"
-        check(patched.contains(effectiveOrtOld)) {
-            "Android 200047: effektiver Ortsparser-Anker wurde nicht gefunden."
-        }
-        patched = patched.replace(effectiveOrtOld, effectiveOrtNew)
+        // Android 200047 / BTB-EDIT-001:
+        // Ortsmarker-Semantik liegt jetzt kanonisch in BautagebuchFragment.kt.
+        // Kein Build-time-Source-Patch mehr: neue Zeilen tragen immer @ORT=<lokale UI-ID>,
+        // waehrend @NODE=<clientNodeKey> die geräteübergreifende Sync-Identität ist.
+        // Legacy-Standalone-@ORT-Gruppen werden direkt im Parser kompatibel behandelt.
 
         // Android 200063: Die aktive-btbId-Ladelogik ist jetzt kanonisch in
         // BautagebuchFragment.kt umgesetzt. Kein Build-time-Patch mehr fuer diesen Pfad,
