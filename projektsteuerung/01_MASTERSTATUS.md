@@ -185,3 +185,29 @@ Status: **BESTÄTIGT**
 
 Separat offen:
 - `PORTAL-BTB-UI-001`: BTB im Portal fachlich/optisch nacharbeiten.
+
+
+## BTB-EDIT-001 – Integrationsstand
+Status: **SERVER QUELLSTAND FERTIG / ANDROID ENTRY-UMSETZUNG LÄUFT / GEMEINSAMER E2E OFFEN**
+
+SERVER:
+- Entry-Abschnitt 4–8 versioniert änderbar;
+- stabile `worksiteNodeKey`-Validierung;
+- versionierte BTB-Foto-Link-Metadaten + Foto-PATCH;
+- Portal-Unterbaustellen-/Firmen-/Punkt-Editor umgesetzt;
+- Migration 016 neu;
+- Source-Assertions + Portal-JS-Syntax PASS.
+
+ANDROID live geprüft:
+- HEAD `da0806fe29f34363247463bc4fb599778ee42a53`;
+- `SectionItem` erweitert um `clientEntryKey`, `firmaId/firmaName`, `worksiteNodeKey`;
+- stabile Node-Key-Auflösung und Abschnittsidentität werden source-seitig umgesetzt;
+- Foto-Umhängepfad ist noch nicht vollständig auf den neuen Server-Foto-PATCH gehoben.
+
+Gemeinsam offen:
+1. Android Foto-Zuordnung fertigstellen;
+2. Server Migration 016 + neuer Quellstand deployen;
+3. Android passenden Build installieren;
+4. Eintrag 4→5, Firmawechsel, BÜ-Wechsel sowie Foto-Umhängen in beide Richtungen E2E prüfen;
+5. GPS/Aufnahmezeit müssen unverändert bleiben;
+6. Live-Refresh weiterhin ohne F5 bestätigen.
