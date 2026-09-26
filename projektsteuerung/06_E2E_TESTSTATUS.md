@@ -4,6 +4,9 @@ Stand: 2026-09-26
 
 | Bereich | Status | Nächster Test |
 |---|---|---|
+| Android 1.3.23 / 200073 Build | SOURCE-FIX UMGESETZT / BUILD OFFEN | Android Studio/CI Build 200073 |
+| Android 1.3.23 / 200073 Installation | OFFEN | zuerst Pixel, danach Poco |
+| BTB-SYNC-002 Pixel→Portal Datenverlust | SOURCE-URSACHE BESTÄTIGT / ANDROID-FIX UMGESETZT / E2E OFFEN | Pixel ABC → Portal ABC; Parallel-Autosave schützen |
 | Android 1.3.21 / 200071 Build | VERSION + SOURCE-FIX FERTIG / BUILD OFFEN | Android Studio Build 200070 |
 | Android 1.3.22 / 200072 Build | SOURCE-CHECK PASST / BUILD OFFEN | Android Studio Build 200072 |
 | Android 1.3.22 / 200072 Installation | OFFEN | Pixel + Poco nach Build |
@@ -82,3 +85,20 @@ Nachtest: beide öffentlichen Seiten sind auf demselben Hauptgerät im Browser e
 - Poco: 26.09 kurz sichtbar, danach kein BTB vorhanden.
 - Ergebnis: **NICHT BESTANDEN**.
 - Update-E2E bleibt separat BESTÄTIGT.
+
+
+### BTB-SYNC-002 Source-Fix 1.3.23
+- Dirty-BTB wird jetzt vor jedem Server-Snapshot-Apply zuerst in Pending/Outbox exportiert.
+- Vorgelagertes Snapshot-Apply im `SelectiveSyncWorker` entfernt.
+- `CollabLocalBridge` blockiert BTB-Datei-Apply bei Pending oder Dirty.
+- Lokaler Save und Server-Apply sind pro BTB serialisiert.
+- Neuer Autosave während Upload bleibt dirty und erzwingt einen Folgelauf.
+- Version **1.3.23 / 200073**.
+- Status: **SOURCE-FIX UMGESETZT / BUILD OFFEN / INSTALLATION OFFEN / E2E OFFEN**.
+
+Pflichttest:
+1. Pixel speichert eindeutigen Text `ABC`;
+2. Portal erhält `ABC`;
+3. Portal ändert auf `XYZ`;
+4. Pixel erhält `XYZ`;
+5. zusätzlicher Pixel-Autosave während laufendem Upload darf nicht still verschwinden.
