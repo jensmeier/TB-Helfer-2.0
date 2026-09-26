@@ -4,7 +4,8 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| IMG-PORTAL-001 | P0 | SERVER | Beim aktiven BTB 26.09 liegen 4 Bilder auf Server/NAS, Portal zeigt nur 1 | Attachment-Zuordnung → BTB-API → Portal-Renderpfad prüfen |
+| PORTAL-LIVE-001 | P0 | SERVER | Portal benötigt aktuell F5 für neue BTBs/Bilder/Fachdaten | vorhandenen Change-Feed/SSE für gezielten Live-Refresh anbinden |
+| IMG-PORTAL-001 | P0 | SERVER | Bilder sind nach F5 vollständig sichtbar; offene Portalansicht aktualisiert neue Daten nicht automatisch | PORTAL-LIVE-001: Change-Feed/SSE nutzen, relevante Bereiche live nachladen |
 | DEV-META-001 | P2 | SERVER | `tb.devices.app_version/app_build` bleiben nach App-Update ohne Neuaktivierung auf altem Aktivierungsstand | später Runtime-Metadaten-Updatevertrag definieren; kein Blocker für BTB-SYNC-001 |
 | BTB-SYNC-001 | P0 | ANDROID | Source-Ursache eingegrenzt: BtbActiveContext kann server-active Pointer wegen lokalem ABGESCHLOSSEN lösen | Android-Fix auf feature/tb-android-2.0, Build/Install, Poco-E2E |
 | NET-001 | P1 | GEMEINSAM | Pixel synchronisiert wieder; Ursache des vorherigen App-DNS-Fehlers ungeklärt | nur bei erneuter Reproduktion vertiefen; jetzt Fach-E2E fortsetzen |

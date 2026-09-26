@@ -204,3 +204,17 @@ Diagnose vor Änderung:
 3. prüfen, welche Fotos der BTB-Detail/API tatsächlich zurückliefert;
 4. Portal-Template/-JS nur ändern, wenn API alle 4 liefert, UI aber filtert;
 5. keine Dateien oder DB-Zuordnungen auf Verdacht ändern.
+
+## PORTAL-LIVE-001 – Portal ohne F5 automatisch aktualisieren
+Status: **NEUE ANFORDERUNG / SOURCE-UMSETZUNG OFFEN**
+
+- Nach manuellem Browser-Reload (F5) erscheinen die zuvor fehlenden BTB-Bilder vollständig im Portal.
+- Damit ist die Bildzuordnung/Serverablage grundsätzlich vorhanden; der aktuelle Praxisfehler ist **fehlende Live-Aktualisierung der offenen Portalansicht**.
+- Benutzeranforderung: Neue BTBs/Bilder/Fachdaten sollen in einer offenen Portalansicht automatisch sichtbar werden; F5 darf für normalen Betrieb nicht nötig sein.
+- Bestehende Architekturregel gilt: offene Portalansichten dürfen live aktualisieren, aber nicht über 2-Sekunden-DB-Polling pro Browser. Vorhandener Change-Feed/SSE-/Long-Poll-Pfad ist zu verwenden.
+
+Umfang zuerst:
+1. offene Baustellen-/BTB-Portalansicht an Change-Feed anbinden;
+2. bei relevanten Änderungen nur die betroffenen Portalbereiche nachladen (Teams/BTBs, Medien, Mängel, Abnahmen);
+3. keine vollständige Seitennavigation und kein permanentes Kurzintervall-Polling;
+4. Reconnect/Fehler robust behandeln; F5 bleibt nur Recovery.
