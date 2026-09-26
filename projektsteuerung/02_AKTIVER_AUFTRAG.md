@@ -292,3 +292,19 @@ Neue getrennte Anforderung:
 - Der BTB im Portal muss fachlich/optisch noch nachgearbeitet werden.
 - Diese Nacharbeit wird als `PORTAL-BTB-UI-001` getrennt vom bestätigten Live-Sync geführt.
 - Noch keine UI-/Fachänderung auf Verdacht; konkrete gewünschte Portal-BTB-Anpassungen werden separat festgelegt.
+
+
+## BTB-EDIT-001 – Einträge/Fotos vollständig nachträglich umhängen
+Status: **NEUE FACHANFORDERUNG / VOR UMSETZUNG**
+
+Benutzeranforderung:
+- Jeder noch bearbeitbare BTB-Eintrag und jedes Foto muss nachträglich fachlich korrigierbar sein, ohne Löschen/Neuanlegen zu erzwingen.
+- Änderbar sein müssen mindestens: BTB-Punkt 4–8, Firma, Unterbaustelle/Bauobjekt (z. B. freie Strecke oder BÜ), Text, Zeit/KM und Foto-Zuordnung.
+- Beispiel: Ein Eintrag wurde versehentlich dem falschen BÜ, der falschen Firma oder Punkt 4 statt Punkt 5 „Abnahmen“ zugeordnet; diese Zuordnung muss später geändert werden können.
+- Dasselbe gilt für Fotos: Foto muss zwischen Punkt 4–8 und zwischen Unterbaustellen/Bauobjekten umgehängt werden können.
+- Portal und Android müssen dasselbe strukturierte Schema verwenden; keine voneinander abweichenden Freitext-Sonderwege.
+- Unterbaustellen/Bauobjekte müssen im Portal sichtbar und auswählbar sein wie auf Android (Hauptbaustelle, freie Strecke, BÜ usw.), soweit sie im Baustellenbaum vorhanden sind.
+- FINALIZED/historische BTBs bleiben gemäß bestehendem Vertrag geschützt/read-only; die Anforderung gilt für bearbeitbare Zustände.
+- Bestehender bestätigter Live-Sync bleibt geschützt.
+
+Vor Implementierung zuerst Istvergleich Android↔Portal/API/DB durchführen und fehlende strukturierte Felder/Mutationsendpunkte bestimmen.
