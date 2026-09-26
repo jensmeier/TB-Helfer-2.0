@@ -62,3 +62,10 @@ Für servergebundene BTBs gilt verbindlich:
 - Ein HELPER mit Teilnehmerstatus `WORKING` bleibt im aktiven BTB.
 - Pointer lösen erst bei kanonischem Serverzustand `FINALIZED` + nicht aktiv bzw. bei explizitem zulässigem Lifecycle-Übergang.
 - Lokale/stale Abschlussartefakte dürfen den Server-Lifecycle nicht überstimmen.
+
+
+## App-Release-/Updateversionierung
+- Für Android-Updates ist der `versionCode` strikt monoton steigend.
+- Ein neuer APK-/Updatekatalog-Eintrag darf keinen bereits verwendeten `versionCode` wiederverwenden.
+- Der auf 1.3.19 / 200069 folgende BTB-SYNC-001-Build ist **1.3.20 / 200070**.
+- Diese Nummernregel ändert keinen BTB-/Sync-API-Vertrag; sie stellt nur sicher, dass Server-Updatekatalog und Android einen neuen Build eindeutig erkennen.

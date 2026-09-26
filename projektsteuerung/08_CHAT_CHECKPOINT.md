@@ -150,3 +150,10 @@ Neuer Chat: direkt `projektsteuerung/00_START_HIER.md` lesen und Live-HEADs prü
 - Version bleibt 1.3.19 / 200069.
 - Build: **OFFEN**. GitHub Actions erzeugte für den aktuellen HEAD keinen Run; kein Buildnachweis.
 - Nächster Nutzer-/Geräteblock: Android Studio bauen, APK auf Pixel + Poco installieren, denselben BTB 26.09 erneut prüfen.
+
+
+## REL-001 – Version hochgezählt
+- Benutzerhinweis bestätigt: erneute Verwendung von 1.3.19 / 200069 für eine neue APK würde den Updatepfad nicht sauber unterscheiden.
+- Verbindlicher nächster Android-Zielstand: **1.3.20 / 200070**.
+- 1.3.19 / 200069 bleibt historischer vorheriger Stand.
+- Erst nach Dokumentationscommit werden Builddateien/Release-MD angepasst.

@@ -199,3 +199,12 @@ Benötigte Android-Anpassung: `BtbActiveContext` muss bei vorhandenem ServerStat
 - Pointerlösung durch diesen Leseweg nur bei `FINALIZED + !active`; ohne Server-Snapshot bleibt Legacy-Verhalten erhalten.
 - Keine Poco-Daten gelöscht, keine Neuaktivierung, keine NAS-/Serveränderung.
 - Nächster Schritt: Android Studio Build 1.3.19 / 200069 → Pixel/Poco installieren → denselben BTB vom 26.09 erneut prüfen.
+
+
+## REL-001 – Nächster Android-Build
+Status: **VERBINDLICHE BENUTZERENTSCHEIDUNG**
+
+- Der nach BTB-SYNC-001 erzeugte APK-Stand wird **1.3.20 / 200070**.
+- `1.3.19 / 200069` bleibt der vorherige Stand und wird nicht für eine neue APK wiederverwendet.
+- Für jeden weiteren auslieferbaren Test-/Release-Build muss der `versionCode` erneut steigen.
+- Nächster Schritt nach dieser Sicherung: Android-Quellstand und Release-MD auf 1.3.20 / 200070 anheben, dann bauen.

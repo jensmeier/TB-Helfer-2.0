@@ -6,7 +6,7 @@ Stand: 2026-09-26
 
 - ANDROID: `feature/tb-android-2.0`, Fach-HEAD `d272f8a7586cce3ea1eda29100473f7af5d540bb`, Draft-PR #7
 - SERVER: `feature/tb-server-1.0`, Fach-HEAD `c1204501fd2147452f2eb5e47e1c2b9c871b8ecd`, Draft-PR #6
-- Android: **1.3.19 / 200069**
+- Android nächster Build: **1.3.20 / 200070**
 - Server: **1.0.0-dev**
 - Server-Quellmigrationen: **001–015**
 
@@ -18,7 +18,7 @@ Rollen-/Schichtvertrag und FINALIZED-Schutz verbindlich. Migration 014 praktisch
 
 ## Integrationsrisiken
 1. Poco-Sync.
-2. Android 200069 Build/Installation/E2E.
+2. Android 200070 Build/Installation/E2E.
 3. IMG-001: Bildvertrag ist fest, tatsächlicher Android-Uploadpfad muss dagegen geprüft werden.
 4. Frühere gemischte Tracker sind nur noch Archiv; ab jetzt getrennte Android-/Server-Statusdateien plus Masterstatus.
 
@@ -136,3 +136,13 @@ Status: **SOURCE-FIX COMMITTED / BUILD + INSTALLATION + E2E OFFEN**
 - Keine `server/**`-Datei geändert.
 - Version bleibt `1.3.19 / 200069`.
 - GitHub-CI konnte für den aktuellen HEAD nicht als Buildnachweis gestartet werden; regulärer PR #7 und temporärer Build-PR waren nicht mergebar, daher kein Workflow-Run. Lokaler Android-Studio-Build bleibt erforderlich.
+
+
+## REL-001 – Buildnummern strikt fortlaufend
+Status: **VERBINDLICH**
+
+- Ein neuer installierbarer/testbarer Android-Stand erhält immer einen höheren `versionCode` als der vorherige Build.
+- Der BTB-SYNC-001-Fix wird daher **nicht** erneut als 1.3.19 / 200069 ausgeliefert.
+- Neuer Zielstand: **1.3.20 / 200070**.
+- Bereits verwendete/veröffentlichte Buildnummern werden nicht wiederverwendet.
+- Hintergrund: Updatekatalog und Android-Updateerkennung müssen einen eindeutig neueren Build erkennen können.

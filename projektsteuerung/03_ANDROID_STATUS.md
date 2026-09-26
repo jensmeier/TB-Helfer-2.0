@@ -4,7 +4,7 @@ Stand: 2026-09-26
 Branch: `feature/tb-android-2.0`
 Fach-HEAD vor Projektsteuerungscommit: `d272f8a7586cce3ea1eda29100473f7af5d540bb`
 Draft-PR: #7
-Version: **1.3.19 / 200069**
+Version: **1.3.20 / 200070**
 
 - Server/Android-Vertrag 25.09 im Quellstand berücksichtigt.
 - Pixel ACTIVE↔PDF-Flackern source-seitig korrigiert.
@@ -86,3 +86,9 @@ Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
 - Kein Servercode geändert.
 - GitHub Actions: kein Workflow-Run für aktuellen HEAD entstanden, weil die verfügbaren PR-Basen aktuell nicht mergebar sind. Das ist **kein Buildnachweis**.
 - Nächster Schritt: lokal in Android Studio bauen, danach Pixel und Poco installieren und BTB 26.09 erneut testen.
+
+
+## Versionierung – nächster Build 1.3.20 / 200070
+- Benutzerentscheidung 26.09.2026: neue APKs dürfen nicht erneut mit bereits verwendeter Buildnummer 200069 erzeugt/hochgeladen werden.
+- BTB-SYNC-001 wird als **1.3.20 / 200070** gebaut.
+- Build/Installation/E2E bleiben bis zum tatsächlichen Build offen.
