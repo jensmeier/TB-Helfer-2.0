@@ -221,3 +221,12 @@
 - Delta-Loadtest um Portal-Session-Modus erweitert. Standard-Serverlasttest kann damit intern ohne Extraktion des Android-Keystore-Tokens laufen; Device-Bearer bleibt optional und wird im Pixel/Poco-E2E bestätigt.
 - Nächster Schritt: aktualisierten `sync_wait_loadtest.py` auf NAS übernehmen und 32-Client-Lauf intern mit Portal-Auth ausführen; danach bei Erfolg 255 Clients.
 - `STATUS.xlsx` weiterhin nicht blind überschrieben.
+
+
+## Integrationsnachtrag 26.09.2026 – Delta 32 Clients bestanden
+
+- Interner Portal-Session-Lasttest für `/api/v1/sync/changes/wait` praktisch **BESTANDEN**.
+- 32 Clients: `success=32`, `failure=0`, Wall 26.06 s, Median 14.13 s, Max 26.00 s.
+- Startcursor `279`; Auth-Preflight erfolgreich.
+- Nächster Schritt: 255-Client-Staging-Lasttest ausführen. Mobile Device-Bearer-/Delta-Funktion bleibt separat im Pixel/Poco-E2E offen.
+- `STATUS.xlsx` weiterhin nicht blind überschrieben.
