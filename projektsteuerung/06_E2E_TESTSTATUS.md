@@ -129,3 +129,13 @@ Damit ist der normale bidirektionale Datenweg des BTB-SYNC-002-Fixes praktisch b
 - Parallel-Autosave-/Dirty-Schutz: **BESTANDEN**.
 - Gesamtstatus BTB-SYNC-002: **BESTÄTIGT**.
 - Nächster E2E: Poco/HELPER.
+
+## Integrationsaudit 27.09.2026 – neue Pflichttests
+| Bereich | Status | Nächster Test |
+|---|---|---|
+| Foto Android→Server | SOURCE-ABWEICHUNG BESTÄTIGT | nach Android-Fix Originalgröße vs. hochgeladene Sync-JPEG-Größe/Abmessungen vergleichen |
+| Foto Server→Android/Handy→Handy | SOURCE-ABWEICHUNG BESTÄTIGT | nach Android-Fix nachweisen, dass `preview/thumb` statt `/content` geladen wird |
+| BTB Finalize Android→Portal/anderes Handy | SOURCE-PFAD PASST / E2E OFFEN | Haupt-TB auf Android abschließen; offenes Portal + zweites Gerät müssen automatisch FINALIZED sehen; PDF prüfen |
+| BTB Finalize Portal→Android/anderes Handy | SOURCE-PFAD PASST / E2E OFFEN | im Portal finalisieren; Android + zweites Gerät müssen automatisch FINALIZED/read-only sehen; PDF prüfen |
+| Wetter 0 mm | ANDROID-FEHLER SOURCE-SEITIG BESTÄTIGT | nach Fix automatisches Wetter mit 0.0 mm speichern → Android/Portal/PDF müssen 0 mm zeigen |
+| Wetter Temperatur | SOURCE-TRANSPORT PASST / RUNTIME-PROBE OFFEN | denselben BTB-Header auf Android/API/Portal mit identischem `tempC` vergleichen |
