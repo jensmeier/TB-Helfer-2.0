@@ -5,7 +5,7 @@ Stand: 2026-09-27
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
 | AND-BUILD-200076 | P0 | ANDROID | `Locale`-Compilefehler reproduziert und source-seitig behoben; Generatoranker 14/14 PASS; noch kein erfolgreicher APK-Build | Git Pull → Android Studio Build 200076 erneut; danach Pixel installieren |
-| AND-VER-001 | P1 | ANDROID | sichtbare Versions-/Buildanzeige auf Startseite fehlt | dynamisch aus BuildConfig anzeigen; Wartungsformat angleichen |
+| AND-VER-001 | P1 | ANDROID | sichtbare Versions-/Buildanzeige source-seitig umgesetzt; erwartet `TB-Helfer 1.3.26 / Build 200076` | nach erfolgreichem Build/Pixel-Installation Sichtprüfung durchführen |
 | BTB-FINAL-001 | P0 | GEMEINSAM | Android/Portal teilen denselben kanonischen Finalize-Lifecycle; Source-Pfad passend | E2E Android→Portal/Poco und Portal→Android/Poco inkl. Abschluss-PDF |
 | E2E-HELPER-001 | P0 | ANDROID | HELPER/Poco mit aktuellem erfolgreichen Build noch nicht abschließend geprüft | 200076 auf Poco installieren und Lifecycle-/Daten-Sync testen |
 | BTB-EDIT-001 | P1 | GEMEINSAM | Server Source + Migration016 vorhanden; Android Entry/Node + Foto-Metadaten-PATCH source-seitig integriert | Build 200076 → gemeinsamer Portal/Pixel-E2E für Entry- und Foto-Umhängen |
