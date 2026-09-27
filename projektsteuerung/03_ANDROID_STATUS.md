@@ -336,3 +336,12 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
   - alte Standalone-`@ORT`-Gruppen bleiben kompatibel.
 - Source-Check bestätigt: alter Fehlertext/alte Patch-Anker sind aus `app/build.gradle.kts` entfernt; 1.3.25 / 200075 bleibt unverändert.
 - **Noch kein neuer Buildnachweis.** Nächster Schritt: Git Pull → Android-Studio-Build 200075 erneut starten.
+
+## Integrationsaudit 27.09.2026 – Bilder / Abschluss / Wetter
+Status: **SOURCE-AUDIT PASS / ANDROID-ARBEITSPUNKTE IDENTIFIZIERT / KEIN CODE IN DIESEM BLOCK**
+
+- Foto-Sync weicht vom Vertrag ab: Original wird hochgeladen, Serverbilder werden über `/content` statt Renditions geholt. Nächster Android-Block: kleine Sync-JPEG-Datei erzeugen + `preview/thumb` konsumieren.
+- BTB-Finalisierung ist source-seitig bidirektional korrekt an den kanonischen Server-Lifecycle angebunden. Kein Umbau auf Verdacht; gezielter E2E beider Richtungen erforderlich.
+- Wettermodell transportiert `tempC` und `niederschlagMm`; Android verwirft bei automatischem Wetter jedoch 0.0 mm über `takeIf { it > 0.0 }` und rendert mm weder in der App-Wetterzeile noch vollständig im Android-PDF.
+- BTB-EDIT-001 Foto-PATCH bleibt zusätzlicher Android-Restpunkt.
+- 1.3.25 / 200075 Buildstatus bleibt unverändert: **BUILD OFFEN**.
