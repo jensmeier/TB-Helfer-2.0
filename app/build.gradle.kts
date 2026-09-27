@@ -450,10 +450,11 @@ android {
         applicationId = "de.tbhelfer"
         minSdk = 23
         targetSdk = 36
-        // Android 200075: BTB-EDIT-001 – stabile Entry-/Node-Identität und Umhängen Punkt 4–8.
+        // Android 200076: kleiner Foto-Sync, mobile Renditions, Foto-Metadaten-PATCH
+        // und Wetter-Niederschlagsmenge inkl. bekanntem 0,0-mm-Wert.
         // Jeder auslieferbare Test-/Release-Build erhält einen strikt höheren versionCode.
-        versionCode = 200075
-        versionName = "1.3.25"
+        versionCode = 200076
+        versionName = "1.3.26"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
