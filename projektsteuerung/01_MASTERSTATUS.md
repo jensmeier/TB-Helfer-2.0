@@ -389,3 +389,11 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - **BTB-Abschluss:** Android und Portal verwenden denselben Server-Finalize-Lifecycle; Change-Feed/SSE/Delta-Kette ist source-seitig geschlossen. Spezifischer bidirektionaler Finalize-E2E bleibt offen.
 - **Wetter:** Portal/Server unterstützen `tempC` + `niederschlagMm` inkl. 0 mm. Android macht automatische 0.0 mm derzeit zu null und zeigt mm nicht vollständig an. Android-Fix erforderlich.
 - Bestätigter `PORTAL-LIVE-001`-SSE-Pfad bleibt geschützt.
+
+## Android 1.3.26 / 200076 – Integrationsblock 27.09.2026
+- **Foto-Transport source-seitig umgesetzt:** Handyoriginal bleibt lokal; Android erzeugt max. 1920-px/JPEG82-Syncdatei. Gilt für BTB-, Mängel-, Abnahmebilder und Bild-Anlagen. Server→Android verwendet `preview`.
+- **BTB-Foto-PATCH source-seitig umgesetzt:** bestehende Foto-ID bleibt, Link-Metadaten werden versioniert gepatcht; GPS/Aufnahmezeit/Datei werden nicht durch den Patch geändert.
+- **Wetter source-seitig umgesetzt:** 0,0 mm bleibt bekanntes 0,0; mm wird in Android-UI und PDF/Druckmodell angezeigt.
+- **BTB-Abschluss:** Source-Vertrag bereits passend und in diesem Block nicht geändert; bidirektionaler Praxis-E2E bleibt offen.
+- Zielstand Android: **1.3.26 / 200076**.
+- Status: **QUELLSTAND UMGESETZT / SOURCE-CHECK PASS / BUILD OFFEN / INSTALLATION OFFEN / E2E OFFEN**.
