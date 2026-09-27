@@ -377,3 +377,19 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Wetter: Android/Server/Portal führen `tempC` und `niederschlagMm`. Portal zeigt 0 mm korrekt. Android macht automatisches 0.0 mm an zwei Stellen zu null und zeigt mm in UI/Android-PDF nicht vollständig. Android-Fix nötig.
 - Kein `app/**`- oder `server/**`-Code in diesem Audit geändert.
 - Android Build 1.3.25/200075 bleibt **OFFEN**.
+
+## Checkpoint 27.09.2026 – Android 1.3.26 / 200076
+- Anforderungen Bilder/BTB-Abschluss/Wetter vor Implementierung in Projektsteuerung gesichert.
+- Android-Fachcode umgesetzt:
+  - kleine Sync-JPEGs max. 1920 px / Qualität 82; Handyoriginal unverändert;
+  - BTB-, Mängel-, Abnahmebilder + bildbasierte Abnahme-Anlagen klein zum Server;
+  - mobile Serverbilder über `preview`, nicht automatisches `/content`;
+  - BTB-Foto-Link-Metadaten per versioniertem PATCH;
+  - 0,0-mm-Wetterwert erhalten und mm in App/PDF/Druckmodell sichtbar.
+- BTB-Finalize-Lifecycle **nicht verändert**; Android/Portal verwenden weiterhin denselben Server-Endpunkt.
+- Version: **1.3.26 / 200076**, Release-MD vorhanden.
+- Sourcechecks: gezielte Prüfungen PASS; Generatoranker 14/14 PASS; Diff ohne `server/**`.
+- Fachcode-HEAD vor Statuscommits: `17b42917c0439d6fc9540c11fe4a2a9ec2f57914`.
+- Build: **OFFEN**; kein Workflow-Run für diesen Code-HEAD, lokaler Checkout/Gradle hier nicht verfügbar.
+- ADB/Emulator: nicht verfügbar; kein realer Android-Test.
+- Nächster praktischer Schritt: Git Pull → Android Studio Build 200076 → Pixel → E2E Foto/Wetter/Finalize → Poco.
