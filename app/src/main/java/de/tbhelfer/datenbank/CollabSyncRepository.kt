@@ -382,6 +382,10 @@ class CollabSyncRepository(
 
             for (item in files) {
                 val existing = dao.collabAttachment(item.fileId)
+                val existingPathUsable = existing?.isDownloaded == true &&
+                    existing.localPath?.let { File(it).isFile } == true &&
+                    (!isImageMime(item.mimeType ?: existing.mimeType) ||
+                        isMobilePreviewPath(existing.localPath))
                 dao.upsertCollabAttachments(
                     listOf(
                         SyncCollabAttachmentEntity(
@@ -393,9 +397,8 @@ class CollabSyncRepository(
                             mimeType = item.mimeType ?: existing?.mimeType,
                             sizeBytes = item.sizeBytes,
                             sha256 = item.sha256 ?: existing?.sha256,
-                            localPath = existing?.localPath,
-                            isDownloaded = existing?.isDownloaded == true &&
-                                existing.localPath?.let { File(it).isFile } == true,
+                            localPath = if (existingPathUsable) existing?.localPath else null,
+                            isDownloaded = existingPathUsable,
                             isDeleted = false,
                             updatedAtEpochMs = System.currentTimeMillis()
                         )
@@ -405,17 +408,25 @@ class CollabSyncRepository(
 
                 val cached = dao.collabAttachment(item.fileId) ?: continue
                 if (cached.isDownloaded && cached.localPath?.let { File(it).isFile } == true) continue
-                when (val content = api.downloadContent(token, item.fileId)) {
+                val downloadResult = if (isImageMime(item.mimeType)) {
+                    api.downloadRendition(token, item.fileId, "preview")
+                } else {
+                    api.downloadContent(token, item.fileId)
+                }
+                when (val content = downloadResult) {
                     Server1FileApi.ContentResult.Unsupported -> return Server1AttachmentSyncResult.Unsupported
                     Server1FileApi.ContentResult.SessionInvalid -> return Server1AttachmentSyncResult.SessionInvalid
                     is Server1FileApi.ContentResult.Error -> return Server1AttachmentSyncResult.Error(content.message)
                     is Server1FileApi.ContentResult.Success -> {
-                        val safeName = safeFilename(item.filename ?: "datei")
                         val dir = File(appContext.filesDir, "server_sync/collab/$worksiteId")
                         if (!dir.exists() && !dir.mkdirs()) {
                             return Server1AttachmentSyncResult.Error("Lokaler Sync-Ordner konnte nicht erstellt werden.")
                         }
-                        val target = File(dir, "${item.fileId}_$safeName")
+                        val target = File(
+                            dir,
+                            mobileCacheFilename(item.fileId, item.filename, item.mimeType)
+                        )
+                        val previousPath = existing?.localPath
                         val stored = runCatching {
                             val temp = File(target.absolutePath + ".tmp")
                             temp.writeBytes(content.file.bytes)
@@ -429,6 +440,7 @@ class CollabSyncRepository(
                                 localPath = target.absolutePath,
                                 mimeType = content.file.mimeType ?: item.mimeType
                             )
+                            deleteOldServerCacheFile(previousPath, target)
                         }
                         if (stored.isFailure) {
                             return Server1AttachmentSyncResult.Error(
@@ -482,7 +494,8 @@ class CollabSyncRepository(
             old?.parentEntityId == item.parentEntityId
         val oldPathValid = sameParent &&
             old?.isDownloaded == true &&
-            old?.localPath?.let { File(it).isFile } == true
+            old?.localPath?.let { File(it).isFile } == true &&
+            (!isImageMime(item.mimeType ?: old.mimeType) || isMobilePreviewPath(old.localPath))
 
         dao.upsertCollabAttachments(
             listOf(
@@ -504,7 +517,12 @@ class CollabSyncRepository(
         )
 
         if (!oldPathValid) {
-            when (val content = api.downloadContent(token, item.fileId)) {
+            val downloadResult = if (isImageMime(item.mimeType ?: old?.mimeType)) {
+                api.downloadRendition(token, item.fileId, "preview")
+            } else {
+                api.downloadContent(token, item.fileId)
+            }
+            when (val content = downloadResult) {
                 Server1FileApi.ContentResult.Unsupported ->
                     return Server1FileRefreshResult.Error("Server-Datei ist nicht mehr verfügbar.")
                 Server1FileApi.ContentResult.SessionInvalid ->
@@ -512,12 +530,15 @@ class CollabSyncRepository(
                 is Server1FileApi.ContentResult.Error ->
                     return Server1FileRefreshResult.Error(content.message)
                 is Server1FileApi.ContentResult.Success -> {
-                    val safeName = safeFilename(item.filename ?: "datei")
                     val dir = File(appContext.filesDir, "server_sync/collab/$worksiteId")
                     if (!dir.exists() && !dir.mkdirs()) {
                         return Server1FileRefreshResult.Error("Lokaler Sync-Ordner konnte nicht erstellt werden.")
                     }
-                    val target = File(dir, item.fileId + "_" + safeName)
+                    val target = File(
+                        dir,
+                        mobileCacheFilename(item.fileId, item.filename, item.mimeType ?: old?.mimeType)
+                    )
+                    val previousPath = old?.localPath
                     val stored = runCatching {
                         val temp = File(target.absolutePath + ".tmp")
                         temp.writeBytes(content.file.bytes)
@@ -531,6 +552,7 @@ class CollabSyncRepository(
                             localPath = target.absolutePath,
                             mimeType = content.file.mimeType ?: item.mimeType
                         )
+                        deleteOldServerCacheFile(previousPath, target)
                     }
                     if (stored.isFailure) {
                         return Server1FileRefreshResult.Error(
@@ -1316,6 +1338,34 @@ class CollabSyncRepository(
             }
         }
         return DownloadOutcome.Success(count)
+    }
+
+    private fun isImageMime(mimeType: String?): Boolean =
+        mimeType?.startsWith("image/", ignoreCase = true) == true
+
+    private fun isMobilePreviewPath(path: String?): Boolean =
+        path?.endsWith(MOBILE_IMAGE_SUFFIX, ignoreCase = true) == true
+
+    private fun mobileCacheFilename(
+        fileId: String,
+        originalName: String?,
+        mimeType: String?
+    ): String =
+        if (isImageMime(mimeType)) {
+            fileId + MOBILE_IMAGE_SUFFIX
+        } else {
+            fileId + "_" + safeFilename(originalName ?: "datei")
+        }
+
+    private fun deleteOldServerCacheFile(previousPath: String?, target: File) {
+        val old = previousPath?.let(::File) ?: return
+        if (!old.isFile) return
+        val serverSyncRoot = File(appContext.filesDir, "server_sync").absolutePath
+        val oldCanonical = runCatching { old.canonicalPath }.getOrDefault(old.absolutePath)
+        val targetCanonical = runCatching { target.canonicalPath }.getOrDefault(target.absolutePath)
+        if (oldCanonical != targetCanonical && oldCanonical.startsWith(serverSyncRoot)) {
+            runCatching { old.delete() }
+        }
     }
 
     private fun sha256(file: File): String {
