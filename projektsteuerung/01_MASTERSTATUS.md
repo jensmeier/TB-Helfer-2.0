@@ -383,3 +383,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
   - alte Standalone-`@ORT`-Gruppen bleiben kompatibel.
 - Source-Check bestätigt: alter Fehlertext/alte Patch-Anker sind aus `app/build.gradle.kts` entfernt; 1.3.25 / 200075 bleibt unverändert.
 - **Noch kein neuer Buildnachweis.** Nächster Schritt: Git Pull → Android-Studio-Build 200075 erneut starten.
+
+## Integrationsaudit 27.09.2026
+- **Bilder:** Server-Renditions sind vorhanden; Android verletzt den Zielvertrag noch durch Originalupload und `/content`-Download. Android-Fix erforderlich.
+- **BTB-Abschluss:** Android und Portal verwenden denselben Server-Finalize-Lifecycle; Change-Feed/SSE/Delta-Kette ist source-seitig geschlossen. Spezifischer bidirektionaler Finalize-E2E bleibt offen.
+- **Wetter:** Portal/Server unterstützen `tempC` + `niederschlagMm` inkl. 0 mm. Android macht automatische 0.0 mm derzeit zu null und zeigt mm nicht vollständig an. Android-Fix erforderlich.
+- Bestätigter `PORTAL-LIVE-001`-SSE-Pfad bleibt geschützt.
