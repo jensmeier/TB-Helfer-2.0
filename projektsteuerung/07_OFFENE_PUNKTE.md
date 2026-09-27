@@ -4,8 +4,8 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| AND-BUILD-200075 | P0 | ANDROID | Sourcegenerator-Fix 606aa3a committed; alter 200047-Anker entfernt | 200075 erneut lokal bauen; nächsten Fehler nur reproduzierbar weiterverfolgen |
-| BTB-EDIT-001 | P1 | ANDROID | Diagnose abgeschlossen; Server section-/photo-PATCH source-seitig vorhanden; Android-Modell festgelegt | SectionItem + Node-Key + Foto-Metadaten + Editpfad implementieren; Identität erhalten |
+| AND-BUILD-200075 | P2 | ANDROID | historischer 1.3.25/200075-Stand: Generatorfix vorhanden, aber kein erfolgreicher APK-Build; durch neuen Fachcode nicht mehr aktueller Zielbuild | nicht erneut ausliefern; aktueller Zielbuild ist 200076 |
+| BTB-EDIT-001 | P1 | GEMEINSAM | SERVER Source+Migration016 vorhanden; Android Entry/Node + Foto-Metadaten-PATCH source-seitig integriert | Build 200076 → Portal/Pixel gemeinsamer E2E für Entry- und Foto-Umhängen |
 | PORTAL-WEATHER-001 | P1 | GEMEINSAM | Android 0-mm→null-Fehler bestätigt; tempC wird source-seitig serialisiert, Runtime-Verluststelle offen | Android 0-mm erhalten; Server-Header/Portal-Payload für tempC separat vergleichen |
 | PORTAL-LIVE-001 | P0 | SERVER | SSE/Change-Feed Source-Fix vorhanden; laufendes NAS braucht noch F5 | SERVER deployen + Portal ohne F5 E2E; Android nicht ändern |
 | REL-001 | P0 | ANDROID | 200070 wurde bereits für Updateversuch verwendet | nächster Build 1.3.21 / 200071; weitere Builds strikt hochzählen |
@@ -20,8 +20,10 @@ Stand: 2026-09-26
 | SYNC-001 | P2 | GEMEINSAM | vollständiger 15×15 Last-/Delta-E2E offen; Delta-Wait 255/255 als Teiltest bestanden | Gesamtlast nach Hauptgerät-/Helfer-E2E und nach RAM-/NAS-Ausbau wiederholen |
 | DOC-001 | P1 | STEUERUNG | neue Struktur lokal nach Pull verifizieren | alte Top-Level-Ordner müssen weg sein |
 
-| INT-PHOTO-001 | P1 | ANDROID | Server-Renditions vorhanden; Android lädt Original hoch und fremde Bilder über /content | kleine Sync-JPEG-Datei erzeugen; Server1FileApi um rendition URLs/Download erweitern; preview/thumb nutzen; danach Größen-E2E |
-| BTB-FINAL-001 | P0 | GEMEINSAM | Source-Pfad Android↔Server↔Portal für FINALIZED passt; kein Vertragsbruch gefunden | gezielter Finalize-E2E in beide Richtungen inkl. zweitem Gerät + Abschluss-PDF; keinen Lifecycle-Umbau auf Verdacht |
-| WEATHER-001 | P1 | ANDROID | Portal/Server unterstützen tempC+niederschlagMm; Android macht auto 0.0 mm zu null und zeigt mm nicht vollständig | 0.0 erhalten; mm in Android-UI + PDF/Druckmodell anzeigen; danach Android/API/Portal-Roundtrip testen |
+| INT-PHOTO-001 | P1 | ANDROID | kleine Sync-JPEGs + preview-Download source-seitig für BTB/Mangel/Abnahme umgesetzt | Build 200076 → Original-/Sync-/Preview-Größe und keine Dubletten praktisch prüfen |
+| BTB-FINAL-001 | P0 | GEMEINSAM | Android/Portal teilen denselben Finalize-Lifecycle; Code in 200076 nicht verändert | E2E Android→Portal/Poco und Portal→Android/Poco inkl. Abschluss-PDF |
+| WEATHER-001 | P1 | ANDROID | 0,0-mm-Erhalt + mm-Anzeige App/PDF/Druckmodell source-seitig umgesetzt | Build 200076 → Android/API/Portal/PDF Roundtrip mit 0,0 mm und Temperatur |
+
+| AND-BUILD-200076 | P0 | ANDROID | 1.3.26/200076 Quellstand umgesetzt; Sourcechecks + Generatoranker PASS; kein Buildnachweis | Android Studio Build ausführen; danach Pixel installieren und E2E-Matrix abarbeiten |
 
 Keine bestätigten Punkte wieder als offen anlegen.
