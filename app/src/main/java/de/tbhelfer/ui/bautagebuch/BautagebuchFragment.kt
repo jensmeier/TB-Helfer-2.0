@@ -37,6 +37,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import android.content.res.ColorStateList
 import android.graphics.Color
 import androidx.core.view.ViewCompat
