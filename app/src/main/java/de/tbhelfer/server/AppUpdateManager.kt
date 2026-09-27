@@ -116,7 +116,7 @@ object AppUpdateManager {
     }
 
     fun currentVersionLabel(): String =
-        "TB-Helfer ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+        "TB-Helfer ${BuildConfig.VERSION_NAME} / Build ${BuildConfig.VERSION_CODE}"
 
     fun ensureInstallPermission(activity: Activity): Boolean {
         if (
