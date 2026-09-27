@@ -418,3 +418,12 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Version bleibt **1.3.26 / 200076**.
 - Buildstatus: **ERNEUT OFFEN**; keine Installation/E2E-Bestätigung.
 - Nächster Schritt lokal: Git Pull → Build 200076 erneut.
+
+## Checkpoint 27.09.2026 – AND-VER-001
+- Benutzer meldet: sichtbare **1.3.26 / Build 200076**-Anzeige fehlt noch.
+- Anforderung vor Codeänderung gesichert.
+- Startseite um dynamische Versionszeile ergänzt.
+- `AppUpdateManager.currentVersionLabel()` zentral auf **TB-Helfer <versionName> / Build <versionCode>** umgestellt.
+- Keine hartcodierte Versionsnummer in der UI; Werte stammen aus BuildConfig.
+- Sourcechecks PASS; Generatoranker 14/14 PASS.
+- Build 200076 nach Locale-Fix + Versionsanzeige weiterhin real erneut auszuführen.
