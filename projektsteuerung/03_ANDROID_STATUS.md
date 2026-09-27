@@ -381,3 +381,10 @@ Prüfung:
 - Fachcode-HEAD vor Statussicherung: `17b42917c0439d6fc9540c11fe4a2a9ec2f57914`;
 - GitHub Actions für diesen HEAD: kein Run;
 - **kein echter Gradle-Build / keine Installation / kein Android-Geräte-E2E**.
+
+## Android 1.3.26 / 200076 – Locale-Compilefix 27.09.2026
+- Android-Studio-Build reproduzierbar in `:app:compileDebugKotlin` gescheitert: `Unresolved reference 'Locale'`.
+- Ursache: fehlender `java.util.Locale`-Import für die neue mm-Formatierung.
+- Source-Fix: `import java.util.Locale` ergänzt.
+- Sourcecheck: `Locale.GERMANY` auflösbar; Generatoranker **14/14 PASS**.
+- Status: **SOURCE-FIX UMGESETZT / BUILD ERNEUT OFFEN / INSTALLATION OFFEN / E2E OFFEN**.
