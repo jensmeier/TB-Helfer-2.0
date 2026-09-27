@@ -1407,6 +1407,7 @@ class CollabSyncRepository(
     }
 
     companion object {
+        private const val MOBILE_IMAGE_SUFFIX = "_mobile_preview.jpg"
         private val ENTITY_TYPES = setOf("BTB", "DEFECT", "ACCEPTANCE")
         private val NOTIFY_TYPES = ENTITY_TYPES
 
