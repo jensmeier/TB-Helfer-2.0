@@ -645,28 +645,6 @@ Status: **SOURCE-FIX UMGESETZT / BUILD ERNEUT OFFEN**
 - Version bleibt **1.3.26 / 200076**, weil der vorherige Versuch keinen erfolgreichen APK-Build erzeugt hat.
 - Nächster Schritt: Git Pull → Android Studio → Build 200076 erneut.
 
-## AND-VER-001 – sichtbare Versions-/Buildanzeige
-Status: **NEUE ANFORDERUNG GESICHERT / UMSETZUNG JETZT**
-
-Benutzeranforderung 27.09.2026:
-- Auf dem Android-Startbildschirm muss die aktuell installierte App-Version sichtbar sein.
-- Format: **TB-Helfer <versionName> / Build <versionCode>**, aktuell also **TB-Helfer 1.3.26 / Build 200076**.
-- Der Text darf nicht hartcodiert pro Release gepflegt werden, sondern muss aus `BuildConfig.VERSION_NAME` und `BuildConfig.VERSION_CODE` kommen.
-- Wartung/Updateanzeige soll dasselbe zentrale Format verwenden.
-- Keine Änderung an Serververtrag, Sync, BTB-Finalize oder Fachlogik.
-
-## AND-VER-001 – Source umgesetzt
-Status: **SOURCE UMGESETZT / BUILD 200076 ERNEUT OFFEN**
-
-- Startseite zeigt die installierte Version unter dem Entwicklerhinweis.
-- Anzeigeformat zentral: **TB-Helfer <versionName> / Build <versionCode>**.
-- Werte kommen aus `BuildConfig.VERSION_NAME` und `BuildConfig.VERSION_CODE`; keine hartcodierte Releasepflege.
-- Wartung/Update nutzt dasselbe zentrale Format über `AppUpdateManager.currentVersionLabel()`.
-- Für den aktuellen Zielbuild ergibt das **TB-Helfer 1.3.26 / Build 200076**.
-- Sourcecheck: Anzeige/Binding/Layout PASS; Generatoranker 14/14 PASS.
-- Kein Server-/Sync-/Finalize-Umbau.
-
-
 ## AND-VER-001 – Benutzerkorrektur
 Status: **ZURÜCKZUNEHMEN / NICHT GEWÜNSCHT**
 
