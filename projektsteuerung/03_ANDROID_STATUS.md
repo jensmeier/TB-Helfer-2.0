@@ -348,3 +348,22 @@ Status: **SOURCE-AUDIT PASS / ANDROID-ARBEITSPUNKTE IDENTIFIZIERT / KEIN CODE IN
 
 ## Zielbuild 1.3.26 / 200076
 Neuer Android-Codeblock Bilder/Wetter/Foto-PATCH. Buildnummer 200075 wird nicht wiederverwendet. Ziel: **1.3.26 / 200076**. BTB-Finalize-Lifecycle bleibt unverändert; separater E2E danach.
+
+## Android 1.3.26 / 200076 – Bilder / Foto-PATCH / Wetter
+Status: **QUELLSTAND UMGESETZT / SOURCE-CHECK PASS / BUILD OFFEN**
+
+- `MobileImageSync`: separate JPEG-Syncdatei im Cache, max. 1920 px, JPEG 82, EXIF-orientiert; Aufnahmeoriginal bleibt unangetastet.
+- Kleine Uploads jetzt für BTB-Fotos, Mängelfotos, Abnahmefotos und bildbasierte Abnahme-Anlagen; PDF-/Nichtbild-Anlagen bleiben Originaldateien.
+- Server→Android lädt bei Bild-MIME die vorhandene `preview`-Rendition; alte App-Cache-Vollbilder werden bei Bedarf durch mobile Previews ersetzt.
+- BTB-Foto-Metadaten-PATCH ist Android-seitig angebunden und versioniert über `link_version`; Parallelkonflikte werden gemeldet.
+- Wetter: 0,0 mm wird nicht mehr zu null; bekannte mm-Menge zählt als Wetterwert und wird pro Slot, im Android-PDF und im Druckmodell angezeigt.
+- `versionName=1.3.26`, `versionCode=200076`; Release-MD vorhanden.
+- BTB-FINAL-001 wurde **nicht** umgebaut; bestehender kanonischer Finalize-Pfad bleibt geschützt.
+
+Prüfung:
+- gezielte Source-Checks: PASS;
+- Build-Sourcegenerator 14/14 Anker: PASS;
+- Diff ohne `server/**`;
+- Fachcode-HEAD vor Statussicherung: `17b42917c0439d6fc9540c11fe4a2a9ec2f57914`;
+- GitHub Actions für diesen HEAD: kein Run;
+- **kein echter Gradle-Build / keine Installation / kein Android-Geräte-E2E**.
