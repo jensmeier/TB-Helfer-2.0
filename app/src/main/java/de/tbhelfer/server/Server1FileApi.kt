@@ -217,6 +217,44 @@ class Server1FileApi(
         }
     }
 
+    fun downloadRendition(
+        token: String,
+        fileId: String,
+        kind: String = "preview"
+    ): ContentResult {
+        val normalized = kind.trim().lowercase()
+        if (normalized !in setOf("preview", "thumb")) {
+            return ContentResult.Error("Unbekannte Bild-Rendition: $kind")
+        }
+        val connection = openConnection(
+            "/api/v1/files/${encode(fileId)}/rendition/${encode(normalized)}"
+        )
+        return try {
+            authorize(connection, token)
+            val code = connection.responseCode
+            when (code) {
+                HttpURLConnection.HTTP_OK -> ContentResult.Success(
+                    DownloadedFile(
+                        bytes = connection.inputStream.use { it.readBytes() },
+                        mimeType = connection.contentType ?: "image/jpeg"
+                    )
+                )
+                HttpURLConnection.HTTP_NOT_FOUND -> ContentResult.Unsupported
+                HttpURLConnection.HTTP_UNAUTHORIZED -> ContentResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN -> {
+                    val body = readBody(connection, code)
+                    if (isInvalidDevice(body)) ContentResult.SessionInvalid
+                    else ContentResult.Error(errorMessage(body, code))
+                }
+                else -> ContentResult.Error(errorMessage(readBody(connection, code), code))
+            }
+        } catch (error: Exception) {
+            ContentResult.Error(error.message ?: "Server-Bildvorschau konnte nicht geladen werden.")
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     fun uploadLinkedFile(
         token: String,
         worksiteId: String,
