@@ -405,7 +405,9 @@ object BtbDruckModellBuilder {
                 s.uhrzeit.takeIf { it.isNotBlank() },
                 s.tempC?.let { "$it°C" },
                 s.bewoelkung?.takeIf { it.isNotBlank() },
-                s.niederschlag?.takeIf { it.isNotBlank() }?.replace("(", "")?.replace(")", "")
+                s.niederschlag?.takeIf { it.isNotBlank() }?.replace("(", "")?.replace(")", ""),
+                s.niederschlagMm?.takeIf { it.isFinite() && it >= 0.0 }
+                    ?.let { String.format(Locale.GERMANY, "%.1f mm", it) }
             ).joinToString(" ")
         }
     }
