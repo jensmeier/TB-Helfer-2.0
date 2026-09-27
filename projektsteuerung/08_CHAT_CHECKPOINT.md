@@ -407,3 +407,14 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Installation: **OFFEN**.
 - E2E: **OFFEN** für Bildgrößen/Renditions, Foto-PATCH, Wetter 0,0 mm/tempC, Finalize beide Richtungen und Poco/HELPER.
 - Nächster praktischer Schritt: Git Pull → Android Studio Build 200076 → Pixel installieren → E2E-Matrix → Poco.
+
+## Checkpoint 27.09.2026 – Build 200076 Locale-Fix
+- Benutzer-Build in Android Studio: `:app:compileDebugKotlin` fehlgeschlagen, `Unresolved reference 'Locale'`.
+- Ursache: `BautagebuchFragment.kt` nutzte `Locale.GERMANY` ohne `java.util.Locale`-Import.
+- Neue Fehlerfeststellung vor Codeänderung in Projektsteuerung gesichert.
+- Fixcommit: `199df4b149e210194b22b1c84cc1700ac54435c2`.
+- Codeänderung: genau ein Import; keine Fachlogik, kein Server, kein Finalize-/Sync-Umbau.
+- Generatoranker nach Fix 14/14 PASS.
+- Version bleibt **1.3.26 / 200076**.
+- Buildstatus: **ERNEUT OFFEN**; keine Installation/E2E-Bestätigung.
+- Nächster Schritt lokal: Git Pull → Build 200076 erneut.
