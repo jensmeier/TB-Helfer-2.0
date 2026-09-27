@@ -388,3 +388,10 @@ Prüfung:
 - Source-Fix: `import java.util.Locale` ergänzt.
 - Sourcecheck: `Locale.GERMANY` auflösbar; Generatoranker **14/14 PASS**.
 - Status: **SOURCE-FIX UMGESETZT / BUILD ERNEUT OFFEN / INSTALLATION OFFEN / E2E OFFEN**.
+
+## AND-VER-001 – sichtbare Version
+- Startbildschirm zeigt dynamisch **TB-Helfer <versionName> / Build <versionCode>**.
+- Aktueller Zielwert: **TB-Helfer 1.3.26 / Build 200076**.
+- Zentrale Quelle: `BuildConfig` über `AppUpdateManager.currentVersionLabel()`.
+- Wartungs-/Updateanzeige verwendet dasselbe Format.
+- Status: **SOURCE UMGESETZT / BUILD OFFEN / INSTALLATION OFFEN / SICHTPRÜFUNG OFFEN**.
