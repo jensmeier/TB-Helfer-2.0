@@ -369,3 +369,11 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
   - alte Standalone-`@ORT`-Gruppen bleiben kompatibel.
 - Source-Check bestätigt: alter Fehlertext/alte Patch-Anker sind aus `app/build.gradle.kts` entfernt; 1.3.25 / 200075 bleibt unverändert.
 - **Noch kein neuer Buildnachweis.** Nächster Schritt: Git Pull → Android-Studio-Build 200075 erneut starten.
+
+## Checkpoint 27.09.2026 – Integrationsaudit Bilder / BTB-Abschluss / Wetter
+- Neue Anforderungen vor Prüfung in 02/05/07 gesichert.
+- Foto-Ist: Android lädt lokales Original hoch; Server speichert es unverändert. Server hat `preview` 1280/JPEG82 und `thumb` 320/JPEG72; Android lädt bislang `/content`. Android-Fix nötig.
+- BTB-Finalisierung: Android und Portal benutzen denselben Server-Endpunkt. Server FINALIZED + active_btb_id=NULL + BTB/FILE-Change; Portal SSE und Android Delta übernehmen. Source-Pfad beidseitig passend, gezielter Finalize-E2E offen.
+- Wetter: Android/Server/Portal führen `tempC` und `niederschlagMm`. Portal zeigt 0 mm korrekt. Android macht automatisches 0.0 mm an zwei Stellen zu null und zeigt mm in UI/Android-PDF nicht vollständig. Android-Fix nötig.
+- Kein `app/**`- oder `server/**`-Code in diesem Audit geändert.
+- Android Build 1.3.25/200075 bleibt **OFFEN**.
