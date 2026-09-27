@@ -44,8 +44,6 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
 
         val title = view.findViewById<TextView>(R.id.titleText)
         title.text = "TB-Helfer"
-        view.findViewById<TextView>(R.id.versionText).text =
-            AppUpdateManager.currentVersionLabel()
 
         updateButton = view.findViewById<MaterialButton>(R.id.btnUpdateAvailable).also { button ->
             button.visibility = View.GONE
