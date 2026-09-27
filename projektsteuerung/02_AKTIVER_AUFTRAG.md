@@ -589,3 +589,35 @@ Status: **ZIELVERSION GESICHERT / IMPLEMENTIERUNG JETZT**
 - Vorheriger Zielbuild 1.3.25 / 200075 hatte keinen erfolgreichen Buildnachweis und bleibt historisch offen/fehlgeschlagen; er wird nicht erneut verwendet.
 - Nächster eindeutiger Android-Build ist **1.3.26 / 200076**.
 - BTB-FINAL-001 Lifecycle-Code bleibt in diesem Block unverändert; Abschluss wird anschließend gezielt E2E getestet.
+
+
+## ANDROID 1.3.26 / 200076 – Implementierungsstand 27.09.2026
+Status: **QUELLSTAND UMGESETZT / SOURCE-CHECK PASS / BUILD OFFEN**
+
+Umgesetzt:
+- gemeinsamer Android-Bildencoder: separate Sync-JPEGs, max. 1920 px, JPEG 82; lokale Originale bleiben unverändert;
+- kleine Uploads für BTB-, Mängel- und Abnahmefotos sowie bildbasierte Abnahme-Anlagen; PDF-/Nichtbild-Anlagen unverändert;
+- Server→Android-Bildsync verwendet `preview` statt automatischem `/content`-Vollbild;
+- bestehende Foto-Mappings schützen beim Umstieg gegen unnötige Dubletten;
+- Android-BTB-Foto-PATCH gegen `link_version` implementiert; Konflikt wird nicht still überschrieben;
+- Wetter: bekannter Wert 0,0 mm bleibt numerisch erhalten; mm-Anzeige in Android-Wetterzeilen sowie PDF/Druckmodell;
+- Version auf **1.3.26 / 200076** angehoben; Release-MD vorhanden.
+
+Nicht geändert:
+- BTB-FINAL-001 Lifecycle-Code; Android und Portal bleiben am selben kanonischen Server-Finalize-Pfad;
+- keine `server/**`-Datei.
+
+Source-Prüfung:
+- 19 gezielte Bild-/Wetter-/Versionsprüfungen: PASS;
+- Build-Sourcegenerator-Anker: 14/14 PASS;
+- Diff ab Audit-Basis enthält nur erwartete `app/**`- und Projektsteuerungsdateien;
+- aktueller Fachcode-HEAD vor Statussicherung: `17b42917c0439d6fc9540c11fe4a2a9ec2f57914`;
+- für diesen HEAD existiert kein GitHub-Actions-Run;
+- kein echter Gradle-Build, keine Installation, kein Geräte-E2E in diesem Chat.
+
+Nächster Schritt:
+1. Git Pull;
+2. Android Studio: Build 1.3.26 / 200076;
+3. APK auf Pixel installieren;
+4. Foto-Größe/Rendition, Wetter 0 mm, Foto-PATCH und BTB-Finalize Android→Portal sowie Portal→Android praktisch testen;
+5. danach Poco/HELPER.
