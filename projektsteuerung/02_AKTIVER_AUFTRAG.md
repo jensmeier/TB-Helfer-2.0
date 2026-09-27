@@ -632,3 +632,15 @@ Status: **REPRODUZIERT / URSACHE EINDEUTIG**
 - Kein Server-/API-/DB-Fehler.
 - Fixziel: ausschließlich fehlenden Kotlin-Import ergänzen; Wetterlogik und geschützte Sync-/Finalize-Pfade nicht verändern.
 - Version bleibt **1.3.26 / 200076**, da kein erfolgreicher APK-Build/keine Installation vorliegt.
+
+## AND-BUILD-200076 – Locale-Compilefix
+Status: **SOURCE-FIX UMGESETZT / BUILD ERNEUT OFFEN**
+
+- Fixcommit: `199df4b149e210194b22b1c84cc1700ac54435c2`.
+- Ausschließliche Codeänderung: `import java.util.Locale` in `BautagebuchFragment.kt`.
+- `Locale.GERMANY` ist damit im kanonischen Quelltext auflösbar; der Buildgenerator übernimmt den Import beim Kopieren in `build/generated/source/btb200043`.
+- Build-Sourcegenerator-Anker nach Fix: **14/14 PASS**.
+- Diff gegen vorherigen Checkpoint enthält im App-Code nur diese eine Importzeile.
+- Kein `server/**`, kein Sync-/Finalize-/Wetter-Fachverhalten geändert.
+- Version bleibt **1.3.26 / 200076**, weil der vorherige Versuch keinen erfolgreichen APK-Build erzeugt hat.
+- Nächster Schritt: Git Pull → Android Studio → Build 200076 erneut.
