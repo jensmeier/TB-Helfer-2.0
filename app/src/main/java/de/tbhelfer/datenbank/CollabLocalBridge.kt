@@ -17,6 +17,7 @@ import de.tbhelfer.ui.bautagebuch.BtbActivePointerControl
 import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.SchichtTyp
+import de.tbhelfer.util.MobileImageSync
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -366,15 +367,34 @@ class CollabLocalBridge(
                 for (mf in defect.fotos) {
                     val file = File(mf.foto.dateipfad)
                     if (!file.exists() || !file.isFile) continue
-                    val uploadName = semanticFilename("DEFECT", mf.art.name, file.name)
+                    val knownServerId = serverAttachmentForLocalPhoto(serverEntity.serverId, mf.foto.id)
+                    if (knownServerId != null) {
+                        present++
+                        continue
+                    }
+                    val syncFile = MobileImageSync.prepare(
+                        appContext,
+                        file,
+                        "defect_${mf.foto.id}"
+                    ) ?: return AttachmentUploadResult.Error(
+                        "Mängelfoto konnte nicht für den Server verkleinert werden: ${file.name}"
+                    )
+                    val uploadName = semanticFilename(
+                        "DEFECT",
+                        mf.art.name,
+                        MobileImageSync.syncFilename(file.name)
+                    )
                     when (val result = collabRepository.uploadAttachment(
                         token = token,
                         worksiteServerId = server.worksiteServerId,
                         parentEntityType = SyncCollabPendingChangeEntity.TYPE_DEFECT,
                         parentEntityId = serverEntity.serverId,
-                        file = file,
+                        file = syncFile,
                         uploadFilename = uploadName,
-                        mimeType = CollabSyncRepository.mimeTypeFor(file),
+                        mimeType = "image/jpeg",
+                        capturedAtEpochMs = mf.foto.erstelltAmEpochMs,
+                        gpsLat = mf.foto.gpsLat,
+                        gpsLon = mf.foto.gpsLon,
                         api = api,
                         server1Api = server1Api
                     )) {
@@ -398,15 +418,34 @@ class CollabLocalBridge(
                     val foto = fotoEntities[ref.fotoId] ?: continue
                     val file = File(foto.dateipfad)
                     if (!file.exists() || !file.isFile) continue
-                    val uploadName = semanticFilename("ACCEPTANCE_FOTO", ref.bildArt.name, file.name)
+                    val knownServerId = serverAttachmentForLocalPhoto(serverEntity.serverId, foto.id)
+                    if (knownServerId != null) {
+                        present++
+                        continue
+                    }
+                    val syncFile = MobileImageSync.prepare(
+                        appContext,
+                        file,
+                        "acceptance_foto_${foto.id}"
+                    ) ?: return AttachmentUploadResult.Error(
+                        "Abnahmefoto konnte nicht für den Server verkleinert werden: ${file.name}"
+                    )
+                    val uploadName = semanticFilename(
+                        "ACCEPTANCE_FOTO",
+                        ref.bildArt.name,
+                        MobileImageSync.syncFilename(file.name)
+                    )
                     when (val result = collabRepository.uploadAttachment(
                         token = token,
                         worksiteServerId = server.worksiteServerId,
                         parentEntityType = SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
                         parentEntityId = serverEntity.serverId,
-                        file = file,
+                        file = syncFile,
                         uploadFilename = uploadName,
-                        mimeType = CollabSyncRepository.mimeTypeFor(file),
+                        mimeType = "image/jpeg",
+                        capturedAtEpochMs = foto.erstelltAmEpochMs,
+                        gpsLat = foto.gpsLat,
+                        gpsLon = foto.gpsLon,
                         api = api,
                         server1Api = server1Api
                     )) {
@@ -421,19 +460,60 @@ class CollabLocalBridge(
                 }
                 for (anlage in acceptance.anlagen) {
                     val file = when {
-                        anlage.typ == AbnahmeSpeicher.AnlageTyp.BILD && !anlage.ausschnittPfad.isNullOrBlank() && File(anlage.ausschnittPfad).exists() -> File(anlage.ausschnittPfad)
+                        anlage.typ == AbnahmeSpeicher.AnlageTyp.BILD &&
+                            !anlage.ausschnittPfad.isNullOrBlank() &&
+                            File(anlage.ausschnittPfad).exists() -> File(anlage.ausschnittPfad)
                         else -> File(anlage.originalPfad)
                     }
                     if (!file.exists() || !file.isFile) continue
-                    val uploadName = semanticFilename("ACCEPTANCE_ANLAGE", anlage.typ.name, file.name)
+
+                    val legacyUploadName = semanticFilename(
+                        "ACCEPTANCE_ANLAGE",
+                        anlage.typ.name,
+                        file.name
+                    )
+                    val uploadFile = if (anlage.typ == AbnahmeSpeicher.AnlageTyp.BILD) {
+                        MobileImageSync.prepare(
+                            appContext,
+                            file,
+                            "acceptance_anlage_${acceptance.id}_${anlage.id}"
+                        ) ?: return AttachmentUploadResult.Error(
+                            "Abnahme-Anlagenbild konnte nicht für den Server verkleinert werden: ${file.name}"
+                        )
+                    } else {
+                        file
+                    }
+                    val uploadName = if (anlage.typ == AbnahmeSpeicher.AnlageTyp.BILD) {
+                        semanticFilename(
+                            "ACCEPTANCE_ANLAGE",
+                            anlage.typ.name,
+                            MobileImageSync.syncFilename(file.name)
+                        )
+                    } else {
+                        legacyUploadName
+                    }
+                    if (
+                        serverLinkedAttachmentByFilename(
+                            serverEntity.serverId,
+                            setOf(legacyUploadName, uploadName)
+                        ) != null
+                    ) {
+                        present++
+                        continue
+                    }
+
                     when (val result = collabRepository.uploadAttachment(
                         token = token,
                         worksiteServerId = server.worksiteServerId,
                         parentEntityType = SyncCollabPendingChangeEntity.TYPE_ACCEPTANCE,
                         parentEntityId = serverEntity.serverId,
-                        file = file,
+                        file = uploadFile,
                         uploadFilename = uploadName,
-                        mimeType = CollabSyncRepository.mimeTypeFor(file),
+                        mimeType = if (anlage.typ == AbnahmeSpeicher.AnlageTyp.BILD) {
+                            "image/jpeg"
+                        } else {
+                            CollabSyncRepository.mimeTypeFor(uploadFile)
+                        },
                         api = api,
                         server1Api = server1Api
                     )) {
@@ -1038,6 +1118,33 @@ class CollabLocalBridge(
     private fun isImageFile(path: String): Boolean = when (File(path).extension.lowercase()) {
         "jpg", "jpeg", "png", "webp" -> true
         else -> false
+    }
+
+    private suspend fun serverAttachmentForLocalPhoto(
+        parentEntityId: String,
+        localFotoId: Long
+    ): String? {
+        for (attachment in collabRepository.attachments(parentEntityId)) {
+            val state = dao.state(attachmentImportKey(attachment.serverId))
+            if (state?.longValue == localFotoId && !attachment.isDeleted) {
+                return attachment.serverId
+            }
+        }
+        return null
+    }
+
+    private suspend fun serverLinkedAttachmentByFilename(
+        parentEntityId: String,
+        filenames: Set<String>
+    ): String? {
+        val expected = filenames.filter { it.isNotBlank() }.toSet()
+        if (expected.isEmpty()) return null
+        for (attachment in collabRepository.attachments(parentEntityId)) {
+            if (attachment.isDeleted || attachment.filename !in expected) continue
+            val state = dao.state(attachmentImportKey(attachment.serverId))
+            if (state?.textValue == "linked") return attachment.serverId
+        }
+        return null
     }
 
     private suspend fun rememberAttachmentPhoto(serverAttachmentId: String, localFotoId: Long) {
