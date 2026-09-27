@@ -1,26 +1,44 @@
 # TB-HELFER 2.0 – MASTERSTATUS
 
-Stand: 2026-09-26
+Stand: 2026-09-27
 
-> Live-HEADs immer zuerst direkt in GitHub prüfen. Die SHAs unten sind der Fachstand vor diesem reinen Projektsteuerungs-Umbau.
+> Live-HEADs immer zuerst direkt in GitHub prüfen. GitHub-Code und Branches haben Vorrang vor historischen Abschnitten weiter unten.
 
-- ANDROID: `feature/tb-android-2.0`, Fach-HEAD `d272f8a7586cce3ea1eda29100473f7af5d540bb`, Draft-PR #7
-- SERVER: `feature/tb-server-1.0`, Fach-HEAD `c1204501fd2147452f2eb5e47e1c2b9c871b8ecd`, Draft-PR #6
-- Android nächster Build: **1.3.20 / 200070**
+- ANDROID: `feature/tb-android-2.0`, Fachcode-HEAD vor aktueller Statussicherung `17b42917c0439d6fc9540c11fe4a2a9ec2f57914`, aktuell kein offener Android-Draft-PR
+- SERVER: `feature/tb-server-1.0`, zuletzt geprüft `069d371b4b5a151dd32b400b1896dd249dbe3afc`, Draft-PR #6
+- Android Zielbuild: **1.3.26 / 200076**
 - Server: **1.0.0-dev**
-- Server-Quellmigrationen: **001–015**
+- Server-Migration 016: **praktisch angewendet/bestätigt**
 
-## Android
-Pixel-UI-Flackern ACTIVE↔PDF source-seitig korrigiert. Build 200070, Installation und Pixel/Poco/Server-E2E offen. Poco ist serverseitig HELPER im richtigen Team, bekommt auf dem Gerät aber weiterhin keine Daten.
+## Android – aktueller Arbeitsstand
+- 1.3.26 / 200076: Bildtransport, BTB-Foto-PATCH und Wetter-mm source-seitig umgesetzt.
+- Handy-Volloriginal bleibt lokal; mobile Sync-JPEGs max. 1920 px/JPEG82.
+- Server→Android-Bilder verwenden `preview`; BTB-/Mangel-/Abnahmebilder und Bild-Anlagen sind im kleinen Uploadpfad.
+- Wetter erhält bekannten 0,0-mm-Wert und zeigt mm in App/PDF/Druckmodell.
+- Sourcechecks + 14/14 Generatoranker PASS.
+- **BUILD OFFEN / INSTALLATION OFFEN / E2E OFFEN.**
 
-## Server
-Rollen-/Schichtvertrag und FINALIZED-Schutz verbindlich. Migration 014 praktisch bestätigt. Migration 015/Foto-Metadaten Deployment/Runtime-E2E offen. Delta-Wait/15×15-Last-E2E offen. Finalize-OOM/502-Fix praktisch bestätigt und geschützt.
+## Server – aktueller Arbeitsstand
+- Rollen-/Schichtvertrag, FINALIZED-read-only und Teamlead-Finalize verbindlich.
+- Migration 016 für BTB-Foto-Link-Metadaten praktisch bestätigt.
+- PORTAL-LIVE-001 ist **BESTÄTIGT** und geschützt; kein F5 im bestätigten Livepfad.
+- Server-Renditions vorhanden: preview 1280/JPEG82, thumb 320/JPEG72.
+- Kein Serverumbau für Android-Bildkompression nötig.
 
-## Integrationsrisiken
-1. Poco-Sync.
-2. Android 200070 Build/Installation/E2E.
-3. IMG-001: Bildvertrag ist fest, tatsächlicher Android-Uploadpfad muss dagegen geprüft werden.
-4. Frühere gemischte Tracker sind nur noch Archiv; ab jetzt getrennte Android-/Server-Statusdateien plus Masterstatus.
+## Geschützt / bestätigt
+- **BTB-SYNC-002 BESTÄTIGT**: Pixel↔Portal bidirektional inkl. Parallel-Autosave-/Dirty-Schutz.
+- **BTB-UI-001 BESTÄTIGT**: stabile Haupt-TB-Abschlussleiste.
+- **PORTAL-LIVE-001 BESTÄTIGT**: offene Portalansichten aktualisieren ohne F5.
+- **UPD-001 BESTÄTIGT**: Updatepfad/Versionsschutz.
+- Diese Punkte nicht ohne reproduzierbaren neuen Fehler wieder öffnen.
+
+## Aktuelle Integrationsrisiken
+1. Build/Installation 1.3.26 / 200076.
+2. HELPER/Poco-E2E mit aktuellem Build.
+3. Foto-E2E: kleine Uploaddatei, preview auf anderem Handy, Foto-Metadaten-PATCH.
+4. Wetter-E2E: tempC + 0,0 mm Android↔Server↔Portal↔PDF.
+5. BTB-Finalize-E2E in beide Richtungen Android↔Portal/zweites Handy.
+6. vollständiger 15×15-Gesamtlasttest bleibt nach funktionalem E2E bzw. Hardwareausbau offen.
 
 Alles mit `☑`, `BESTÄTIGT`, `ERLEDIGT`, `PASST`, `FUNKTIONIERT` oder `Nicht ohne Grund ändern = JA` bleibt geschützt.
 
