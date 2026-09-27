@@ -2801,12 +2801,14 @@ cardCurrentReport.setOnClickListener {
         private fun entryHasNoWeather(entry: BautagebuchEintrag): Boolean {
             val hasWeatherBlockSlots = entry.weather?.slots?.any { s ->
                 s.tempC != null ||
+                    s.niederschlagMm != null ||
                     (s.bewoelkung != null && s.bewoelkung != DEFAULT_BEWOELKUNG) ||
                     (s.niederschlag != null && s.niederschlag != DEFAULT_NIEDERSCHLAG)
             } == true
 
             val hasLegacySlots = entry.weatherSlots.any { s ->
                 s.tempC != null ||
+                    s.niederschlagMm != null ||
                     (s.bewoelkung != null && s.bewoelkung != DEFAULT_BEWOELKUNG) ||
                     (s.niederschlag != null && s.niederschlag != DEFAULT_NIEDERSCHLAG)
             }
