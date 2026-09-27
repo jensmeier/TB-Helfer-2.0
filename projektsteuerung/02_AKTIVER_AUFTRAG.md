@@ -654,3 +654,14 @@ Benutzeranforderung 27.09.2026:
 - Der Text darf nicht hartcodiert pro Release gepflegt werden, sondern muss aus `BuildConfig.VERSION_NAME` und `BuildConfig.VERSION_CODE` kommen.
 - Wartung/Updateanzeige soll dasselbe zentrale Format verwenden.
 - Keine Änderung an Serververtrag, Sync, BTB-Finalize oder Fachlogik.
+
+## AND-VER-001 – Source umgesetzt
+Status: **SOURCE UMGESETZT / BUILD 200076 ERNEUT OFFEN**
+
+- Startseite zeigt die installierte Version unter dem Entwicklerhinweis.
+- Anzeigeformat zentral: **TB-Helfer <versionName> / Build <versionCode>**.
+- Werte kommen aus `BuildConfig.VERSION_NAME` und `BuildConfig.VERSION_CODE`; keine hartcodierte Releasepflege.
+- Wartung/Update nutzt dasselbe zentrale Format über `AppUpdateManager.currentVersionLabel()`.
+- Für den aktuellen Zielbuild ergibt das **TB-Helfer 1.3.26 / Build 200076**.
+- Sourcecheck: Anzeige/Binding/Layout PASS; Generatoranker 14/14 PASS.
+- Kein Server-/Sync-/Finalize-Umbau.
