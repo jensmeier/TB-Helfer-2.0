@@ -1,8 +1,6 @@
 package de.tbhelfer.datenbank
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.util.Base64
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.server.BtbServerStateStore
@@ -21,21 +19,18 @@ import de.tbhelfer.ui.bautagebuch.BtbPhotoKmOverrideStore
 import de.tbhelfer.ui.bautagebuch.BtbPhotoTextOverrideStore
 import de.tbhelfer.ui.bautagebuch.SchichtTyp
 import de.tbhelfer.ui.suche.BtbSpeicher
-import de.tbhelfer.util.ImageExifUtil
+import de.tbhelfer.util.MobileImageSync
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
-import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import kotlin.math.max
-import kotlin.math.roundToInt
 
 /**
  * Medienbrücke für den gemeinsamen BTB eines verantwortlichen TB-Teams.
@@ -239,11 +234,11 @@ class BtbTeamMediaSync(context: Context) {
 
                     // Das Volloriginal bleibt ausschließlich auf dem Aufnahmegerät.
                     // Zum Server geht eine separate, EXIF-orientierte JPEG-Sync-Version.
-                    val syncFile = syncImageFile(foto.id, original)
+                    val syncFile = MobileImageSync.prepare(appContext, original, "btb_${foto.id}")
                         ?: return Result.Error("Foto konnte nicht für den Server verkleinert werden: ${original.name}")
                     val uploadName = encodedPhotoFilename(
                         effectiveForFilename,
-                        syncUploadFilename(original.name)
+                        MobileImageSync.syncFilename(original.name)
                     )
                     when (
                         val result = collab.uploadAttachment(
@@ -702,87 +697,6 @@ class BtbTeamMediaSync(context: Context) {
             .firstOrNull { (_, mappedLocalId) -> mappedLocalId == localFotoId }
             ?.first
 
-    private fun syncUploadFilename(originalName: String): String {
-        val clean = originalName.substringBeforeLast('.', originalName)
-            .replace(Regex("[^A-Za-z0-9._()-]+"), "_")
-            .trim('_', '.', ' ')
-            .ifBlank { "foto" }
-            .take(40)
-        return "${clean}_sync.jpg"
-    }
-
-    private fun syncImageFile(localFotoId: Long, original: File): File? = runCatching {
-        val dir = File(appContext.cacheDir, SYNC_IMAGE_DIR).apply {
-            if (!exists() && !mkdirs()) error("Sync-Bildordner konnte nicht erstellt werden.")
-        }
-        val target = File(dir, "foto_${localFotoId}.jpg")
-        if (
-            target.isFile &&
-            target.length() > 0L &&
-            target.lastModified() >= original.lastModified()
-        ) {
-            return@runCatching target
-        }
-
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(original.absolutePath, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
-            error("Bildabmessungen konnten nicht gelesen werden.")
-        }
-
-        var sample = 1
-        while (max(bounds.outWidth / sample, bounds.outHeight / sample) > SYNC_DECODE_MAX_DIM) {
-            sample *= 2
-        }
-        val decoded = BitmapFactory.decodeFile(
-            original.absolutePath,
-            BitmapFactory.Options().apply {
-                inSampleSize = sample.coerceAtLeast(1)
-                inPreferredConfig = Bitmap.Config.RGB_565
-            }
-        ) ?: error("Bild konnte nicht dekodiert werden.")
-
-        val oriented = ImageExifUtil.applyExifOrientation(decoded, original.absolutePath)
-        var scaled: Bitmap? = null
-        try {
-            val maxDim = max(oriented.width, oriented.height)
-            val output = if (maxDim > SYNC_IMAGE_MAX_DIM) {
-                val factor = SYNC_IMAGE_MAX_DIM.toDouble() / maxDim.toDouble()
-                Bitmap.createScaledBitmap(
-                    oriented,
-                    (oriented.width * factor).roundToInt().coerceAtLeast(1),
-                    (oriented.height * factor).roundToInt().coerceAtLeast(1),
-                    true
-                ).also { scaled = it }
-            } else {
-                oriented
-            }
-
-            val temp = File(target.parentFile, target.name + ".tmp")
-            FileOutputStream(temp).use { out ->
-                check(output.compress(Bitmap.CompressFormat.JPEG, SYNC_IMAGE_JPEG_QUALITY, out)) {
-                    "JPEG-Komprimierung fehlgeschlagen."
-                }
-            }
-            if (target.exists()) target.delete()
-            if (!temp.renameTo(target)) {
-                temp.copyTo(target, overwrite = true)
-                temp.delete()
-            }
-            target
-        } finally {
-            if (scaled != null && scaled !== oriented && scaled?.isRecycled == false) {
-                scaled?.recycle()
-            }
-            if (!oriented.isRecycled) {
-                oriented.recycle()
-            }
-            if (decoded !== oriented && !decoded.isRecycled) {
-                decoded.recycle()
-            }
-        }
-    }.getOrNull()
-
     private fun structuredPhotoMetadata(
         foto: FotoEntity,
         firmaId: String?,
@@ -874,9 +788,5 @@ class BtbTeamMediaSync(context: Context) {
         private const val PHOTO_PREFIX_V1 = "BTBP1__"
         private const val PHOTO_PREFIX_LEGACY = "BTBPHOTO__"
         private const val MAX_ATTACHMENT_FILENAME_LENGTH = 160
-        private const val SYNC_IMAGE_DIR = "btb_sync_images"
-        private const val SYNC_IMAGE_MAX_DIM = 1920
-        private const val SYNC_DECODE_MAX_DIM = 2560
-        private const val SYNC_IMAGE_JPEG_QUALITY = 82
     }
 }
