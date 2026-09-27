@@ -64,7 +64,3 @@ BUILD-FIX:
 - Android-Studio-Compilefehler `Unresolved reference 'Locale'` in der neuen Wetter-mm-Formatierung behoben.
 - Fehlenden `java.util.Locale`-Import ergänzt; Fachlogik unverändert.
 - Build 200076 muss danach erneut real ausgeführt werden.
-
-ANZEIGE:
-- Startbildschirm zeigt die installierte Version dynamisch als **TB-Helfer 1.3.26 / Build 200076**.
-- Wartung/Update verwendet dasselbe BuildConfig-basierte Format.
