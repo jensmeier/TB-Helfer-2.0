@@ -1,34 +1,28 @@
 # TB-HELFER 2.0 – E2E TESTSTATUS
 
-Stand: 2026-09-26
+Stand: 2026-09-27
 
 | Bereich | Status | Nächster Test |
 |---|---|---|
-| Android 1.3.25 / 200075 Build | SOURCE-FIX PASST / BUILD ERNEUT OFFEN | Git Pull → Android-Studio-Build 200075 erneut starten |
-| Android 1.3.24 / 200074 Build | ERFOLGREICH / PRAXIS NACHGEWIESEN | installiert auf Pixel |
-| Android 1.3.24 / 200074 Installation | PIXEL BESTÄTIGT | Poco/HELPER separat |
-| BTB-UI-001 Abschlussleiste | SOURCE-FIX UMGESETZT / BUILD OFFEN | 1.3.24/200074 bauen/installieren; Haupt-TB 2 Buttons stabil prüfen |
-| Android 1.3.23 / 200073 Build | SOURCE-FIX UMGESETZT / BUILD OFFEN | Android Studio/CI Build 200073 |
-| Android 1.3.23 / 200073 Installation | OFFEN | zuerst Pixel, danach Poco |
-| BTB-SYNC-002 Pixel↔Portal Datenverlust | BESTÄTIGT | Bidirektional + Parallel-Autosave bestanden; geschützt |
-| Android 1.3.21 / 200071 Build | VERSION + SOURCE-FIX FERTIG / BUILD OFFEN | Android Studio Build 200070 |
-| Android 1.3.22 / 200072 Build | SOURCE-CHECK PASST / BUILD OFFEN | Android Studio Build 200072 |
-| Android 1.3.22 / 200072 Installation | OFFEN | Pixel + Poco nach Build |
-| Android 1.3.21 / 200071 Installation | BESTÄTIGT | installiert / Updateweg funktioniert |
-| UPD-001 Updateprüfung 1.3.21 / 200071 | BESTÄTIGT | geschlossen; nur bei neuer Reproduktion wieder öffnen |
-| Pixel/Poco Versionsgleichstand | BENUTZER BESTÄTIGT: BEIDE 1.3.19 | Server-DB-Appversion ist Aktivierungs-Snapshot und kein Runtime-Nachweis |
-| Pixel ACTIVE↔PDF-Flackern | 1.3.21 FEHLER REPRODUZIERT / 1.3.22 SOURCE-FIX | 200072 bauen/installieren/praktisch prüfen |
-| Haupt-TB-Handy ↔ Server/Portal | PRIORITÄT / E2E OFFEN | echte Fachkette zuerst sauber bestätigen |
-| BTB 26.09 Pixel → Server/Portal/Poco | PIXEL→SERVER→PORTAL BESTÄTIGT / POCO FEHLER OFFEN | Portal nach Reload korrekt; Poco Active-Pointer/UI-Apply prüfen |
-| Haupt-TB-Handy DNS/API-Erreichbarkeit | PIXEL SYNCHRONISIERT WIEDER / URSACHE ALTFEHLER OFFEN | Fachkette Pixel↔Server↔Portal weiterprüfen; DNS-Altfehler nur bei Wiederholung vertiefen |
-| Poco Team-/BTB-Daten | ZWEITER POINTER-GUARD ALS URSACHE BESTÄTIGT / 1.3.22 SOURCE-FIX | 200072 bauen/installieren, BTB 26.09 erneut prüfen |
-| Helfer Schicht Ende → Server FINISHED → Pixel | E2E OFFEN | echter Geräte-/Server-Lauf |
-| Haupt-TB Finalize + PDF | TEILWEISE BESTÄTIGT | Android-Gesamtkette offen |
-| IMG-001 Handyfoto → Server | QUELLAUDIT FEHLER BESTÄTIGT / FIX SPÄTER | Nach E2E-PRIO-001 Android-Fix; dann Original- vs Sync-Dateigröße messen |
-| IMG-001 Portal → Handy | QUELLAUDIT FEHLER BESTÄTIGT / FIX SPÄTER | Nach E2E-PRIO-001 Android auf preview/thumb; dann Quelle/Rendition/Gerät vergleichen |
-| IMG-001 Handy → anderes Handy | QUELLAUDIT FEHLER BESTÄTIGT / FIX SPÄTER | Nach E2E-PRIO-001 Pixel/Poco Abmessungen/Größe vergleichen |
-| Migration 015 | DEPLOY/E2E OFFEN | Runtime-Probe |
-| 15×15 Delta-/Lasttest | KAPAZITÄTSTEILTEST 255/255 BESTANDEN / GESAMT-E2E OFFEN | Erst Hauptgerät↔Portal, dann HELPER/Poco; Gesamtlast nach RAM-/NAS-Ausbau wiederholen |
+| Android 1.3.26 / 200076 Build | SOURCE-CHECK PASS / BUILD OFFEN | Git Pull → Android Studio Build 200076 |
+| Android 1.3.26 / 200076 Installation | OFFEN | nach erfolgreichem Build zuerst Pixel |
+| Build-Sourcegenerator | 14/14 ANKER PASS | beim echten Build erneut praktisch bestätigen |
+| BTB-SYNC-002 Pixel↔Portal | **BESTÄTIGT** | geschützt; nur bei neuer Reproduktion öffnen |
+| BTB-UI-001 Abschlussleiste | **BESTÄTIGT** | geschützt |
+| UPD-001 Updatepfad | **BESTÄTIGT** | geschützt |
+| PORTAL-LIVE-001 | **BESTÄTIGT** | geschützt; Portal aktualisiert ohne F5 |
+| Haupt-TB-Handy ↔ Server/Portal Kernsync | **BESTÄTIGT** | Finalize/Medien als eigene E2Es |
+| HELPER/Poco | OFFEN | 200076 installieren und aktuellen Lifecycle-/Daten-Sync prüfen |
+| Foto Handy→Server | SOURCE UMGESETZT / E2E OFFEN | Original unverändert; Sync-JPEG max. 1920 px/JPEG82 messen |
+| Foto Server→Handy/Handy→Handy | SOURCE UMGESETZT / E2E OFFEN | preview statt Vollinhalt auf zweitem Gerät nachweisen |
+| Mangel-/Abnahmebilder | SOURCE UMGESETZT / E2E OFFEN | Größe + Metadaten prüfen; PDF-/Nichtbild-Anlage unverändert |
+| BTB-Foto-Metadaten-PATCH | SOURCE UMGESETZT / E2E OFFEN | Punkt/Firma/Unterbaustelle/Text/KM ändern; ID/GPS/Aufnahmezeit erhalten |
+| Wetter 0,0 mm | SOURCE UMGESETZT / E2E OFFEN | Android/Portal/PDF müssen 0,0 mm erhalten und anzeigen |
+| Wetter tempC | SOURCE-TRANSPORT VORHANDEN / RUNTIME-PROBE OFFEN | identischen Wert Android/API/Portal vergleichen |
+| BTB Finalize Android→Portal/Poco | SOURCE-PFAD PASSEND / E2E OFFEN | Android abschließen → beide Gegenstellen FINALIZED/read-only + PDF |
+| BTB Finalize Portal→Android/Poco | SOURCE-PFAD PASSEND / E2E OFFEN | Portal abschließen → beide Gegenstellen FINALIZED/read-only + PDF |
+| Migration 016 | **BESTÄTIGT ANGEWENDET** | gemeinsamer BTB-EDIT-Geräte-E2E |
+| 15×15 Delta-/Lasttest | KAPAZITÄTSTEILTEST 255/255 BESTANDEN / GESAMT-E2E OFFEN | nach funktionalem Geräte-E2E und Hardwareausbau wiederholen |
 
 Source-Check ≠ Build ≠ Installation ≠ E2E.
 
