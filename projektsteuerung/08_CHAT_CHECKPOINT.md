@@ -1,6 +1,6 @@
 # TB-HELFER 2.0 – CHAT CHECKPOINT
 
-Stand: 2026-09-26
+Stand: 2026-09-27
 
 Letzter gesicherter Arbeitsblock: **Projektsteuerung vereinheitlicht und verifiziert**.
 
@@ -393,3 +393,17 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Build: **OFFEN**; kein Workflow-Run für diesen Code-HEAD, lokaler Checkout/Gradle hier nicht verfügbar.
 - ADB/Emulator: nicht verfügbar; kein realer Android-Test.
 - Nächster praktischer Schritt: Git Pull → Android Studio Build 200076 → Pixel → E2E Foto/Wetter/Finalize → Poco.
+
+
+## Abschluss Arbeitsblock 27.09.2026 – 1.3.26 / 200076
+- Android-Fachcode für kleinen Bildsync, mobile preview-Renditions, BTB-Foto-PATCH und Wetter-mm umgesetzt.
+- Kleine Bilduploads gelten jetzt auch für Mängel-/Abnahmefotos und bildbasierte Abnahme-Anlagen; PDF-/Nichtbild-Anlagen bleiben unverändert.
+- BTB-Finalize-Lifecycle wurde nicht geändert.
+- Quellprüfung: gezielte Sourcechecks PASS; Generatoranker 14/14 PASS; Diff ohne `server/**`.
+- Fachcode-HEAD: `17b42917c0439d6fc9540c11fe4a2a9ec2f57914`.
+- Projektsteuerungs-Kopfstände 01/03/06/07 auf 27.09. und Zielbuild 1.3.26/200076 bereinigt; alte bestätigte Punkte werden nicht mehr als offen geführt.
+- PORTAL-LIVE-001, BTB-SYNC-002, BTB-UI-001 und UPD-001 bleiben **BESTÄTIGT/geschützt**.
+- Build 200076: **OFFEN**. Kein Workflow-Run für den Fachcode-HEAD; in dieser Chatumgebung kein lokaler Git-Checkout/Gradle und kein ADB/Emulator.
+- Installation: **OFFEN**.
+- E2E: **OFFEN** für Bildgrößen/Renditions, Foto-PATCH, Wetter 0,0 mm/tempC, Finalize beide Richtungen und Poco/HELPER.
+- Nächster praktischer Schritt: Git Pull → Android Studio Build 200076 → Pixel installieren → E2E-Matrix → Poco.
