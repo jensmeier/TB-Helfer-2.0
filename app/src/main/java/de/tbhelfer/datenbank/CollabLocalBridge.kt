@@ -492,10 +492,15 @@ class CollabLocalBridge(
                     } else {
                         legacyUploadName
                     }
+                    // Nur alte Bild-Anlagen mit dem bisherigen Original-Dateinamen beim
+                    // Umstieg auf *_sync.jpg erkennen. PDF-/sonstige Anlagen bleiben weiterhin
+                    // hashbasiert und können bei geänderten Bytes normal neu hochgeladen werden.
                     if (
+                        anlage.typ == AbnahmeSpeicher.AnlageTyp.BILD &&
+                        legacyUploadName != uploadName &&
                         serverLinkedAttachmentByFilename(
                             serverEntity.serverId,
-                            setOf(legacyUploadName, uploadName)
+                            setOf(legacyUploadName)
                         ) != null
                     ) {
                         present++
