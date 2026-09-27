@@ -140,6 +140,33 @@ object BtbServerStateStore {
         return null
     }
 
+    fun rememberPhotoUpdate(
+        context: Context,
+        clientBtbId: String?,
+        fileId: String,
+        linkVersion: Long,
+        photoMetadata: JSONObject
+    ) {
+        val id = clientBtbId?.trim().orEmpty()
+        if (id.isBlank() || fileId.isBlank() || linkVersion <= 0L) return
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val raw = prefs.getString(key(id), null) ?: return
+        val root = runCatching { JSONObject(raw) }.getOrNull() ?: return
+        val photos = root.optJSONArray("photos") ?: return
+        var changed = false
+        for (index in 0 until photos.length()) {
+            val item = photos.optJSONObject(index) ?: continue
+            if (item.optString("id").trim() != fileId) continue
+            item.put("link_version", linkVersion)
+            item.put("photo_metadata", JSONObject(photoMetadata.toString()))
+            changed = true
+            break
+        }
+        if (!changed) return
+        root.put("updated_at_epoch_ms", System.currentTimeMillis())
+        prefs.edit().putString(key(id), root.toString()).apply()
+    }
+
     fun remove(context: Context, clientBtbId: String?) {
         val id = clientBtbId?.trim().orEmpty()
         if (id.isBlank()) return
