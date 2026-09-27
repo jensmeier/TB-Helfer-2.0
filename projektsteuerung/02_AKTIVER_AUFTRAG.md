@@ -581,3 +581,11 @@ Status: **AUDIT ABGESCHLOSSEN / ANDROID-ABWEICHUNGEN BESTÄTIGT / FINALIZE-VERTR
 - Android-PDF/BtbDruckModell lässt `niederschlagMm` ebenfalls aus der Wetterdarstellung weg.
 - Zuständigkeit: **ANDROID** muss 0.0 erhalten und mm sichtbar machen. Server/Portal-Vertrag benötigt dafür source-seitig keine neue Felddefinition.
 - Alter Praxispunkt `tempC` im Portal bleibt Runtime-Probe: Quellseitig ist keine Verluststelle zwischen Android-Serialisierung und Portalrenderer sichtbar.
+
+## ANDROID 1.3.26 / 200076 – Integrationsfix Bilder/Wetter
+Status: **ZIELVERSION GESICHERT / IMPLEMENTIERUNG JETZT**
+
+- Neuer Android-Codeblock für INT-PHOTO-001, BTB-EDIT-001 Foto-PATCH und WEATHER-001.
+- Vorheriger Zielbuild 1.3.25 / 200075 hatte keinen erfolgreichen Buildnachweis und bleibt historisch offen/fehlgeschlagen; er wird nicht erneut verwendet.
+- Nächster eindeutiger Android-Build ist **1.3.26 / 200076**.
+- BTB-FINAL-001 Lifecycle-Code bleibt in diesem Block unverändert; Abschluss wird anschließend gezielt E2E getestet.
