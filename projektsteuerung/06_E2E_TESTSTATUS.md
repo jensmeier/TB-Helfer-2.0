@@ -147,3 +147,10 @@ Damit ist der normale bidirektionale Datenweg des BTB-SYNC-002-Fixes praktisch b
 | Wetter Temperatur | SOURCE-TRANSPORT UNVERÄNDERT | Android/API/Portal denselben tempC-Wert vergleichen |
 | BTB Finalize Android→Portal/Poco | SOURCE-PFAD UNVERÄNDERT PASSEND / E2E OFFEN | Android abschließen → Portal + Poco automatisch FINALIZED/read-only + PDF |
 | BTB Finalize Portal→Android/Poco | SOURCE-PFAD UNVERÄNDERT PASSEND / E2E OFFEN | Portal abschließen → Android + Poco automatisch FINALIZED/read-only + PDF |
+
+### Build 200076 – lokaler Compilefehler 27.09.2026
+- Android Studio: `:app:compileDebugKotlin` **FEHLGESCHLAGEN**.
+- Fehler: `Unresolved reference 'Locale'` in generiertem `BautagebuchFragment.kt` Zeile 1214.
+- Ursache auf kanonischen Quellstand zurückgeführt: fehlender `java.util.Locale`-Import.
+- Kein Buildnachweis, keine Installation, kein E2E.
+- Nach Import-Fix Build **200076 erneut ausführen**.
