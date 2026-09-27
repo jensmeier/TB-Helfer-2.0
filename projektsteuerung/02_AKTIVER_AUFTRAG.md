@@ -548,3 +548,36 @@ Prüfauftrag vor jeder Codeänderung:
 - Finalize-/Change-Feed-/Delta-Apply-Pfade Android→Server→Portal sowie Portal→Server→Android prüfen;
 - Wetterfelder Header/Payload/Portal-Renderer/Android-Renderer einschließlich 0-mm-Semantik vergleichen;
 - Abweichungen dokumentieren; danach Zuständigkeit ANDROID bzw. SERVER getrennt festlegen.
+
+## INTEGRATION-AUDIT-001 – Quellvergleich 27.09.2026
+Status: **AUDIT ABGESCHLOSSEN / ANDROID-ABWEICHUNGEN BESTÄTIGT / FINALIZE-VERTRAG SOURCE-SEITIG PASSEND**
+
+### INT-PHOTO-001
+- Server besitzt bereits Bildrenditions: `thumb` 320 px/JPEG72 und `preview` 1280 px/JPEG82.
+- Server speichert APP-Uploadbytes unverändert; deshalb muss Android selbst eine kleine Sync-Datei liefern.
+- Android lädt aktuell `FotoEntity.dateipfad` direkt hoch; das ist das lokale Original.
+- Android lädt fremde Serverbilder aktuell über `/api/v1/files/{id}/content`; `preview/thumb` werden nicht verwendet.
+- `Server1FileApi.LinkedFile` übernimmt die vom Server angebotenen Rendition-URLs derzeit nicht.
+- Lokales 512-px-Thumbnail existiert, ist aber nur UI-Performanceartefakt und keine geeignete alleinige Sync-Version.
+- Zuständigkeit: **ANDROID** erzeugt separate kleine Sync-Datei (Zielvertrag ca. 1920 px, JPEG 80–82 %, keine Hochskalierung) und nutzt für Server→Handy bevorzugt `preview`, für Listen `thumb`.
+- Kein Server-Ersatzdownscale für falsch hochgeladene Handy-Originale bauen.
+- Separat bleibt BTB-EDIT-001 Foto-Metadaten-PATCH: Server-Endpunkt existiert, Android muss ihn noch verwenden.
+
+### BTB-FINAL-001
+- Android-Haupt-TB finalisiert über `POST /api/v1/btbs/{id}/finalize`.
+- Portal finalisiert über **denselben** Server-Endpunkt.
+- Server setzt `FINALIZED`, löscht `teams.active_btb_id`, erzeugt Abschluss-PDF und emittiert BTB-/FILE-Changes.
+- Portal hört auf den bestätigten SSE-Change-Feed und lädt bei BTB/FILE-Changes neu.
+- Android hört über Server1-Delta/Worker/Poller; ein BTB-FINALIZE-Event lädt genau den BTB neu, übernimmt `FINALIZED && !active` und macht ihn lokal read-only/inaktiv.
+- **Kein Source-Vertragsbruch gefunden.** PORTAL-LIVE-001 bleibt geschützt.
+- Offen: gezielter Praxis-E2E A) Android-Abschluss → offenes Portal + anderes Handy, B) Portal-Abschluss → Android + anderes Handy, jeweils inkl. Abschluss-PDF.
+
+### WEATHER-001
+- Android-Datenmodell/JSON enthält `tempC`, `niederschlag` und `niederschlagMm`; Deserialisierung erhält vorhandenes numerisches 0.0 korrekt.
+- Android→Server transportiert `weather` und `weatherSlots` im BTB-Header.
+- Portal liest dieselben Felder, kann Temperatur + `Menge mm` bearbeiten und zeigt bekannte `0 mm` korrekt an.
+- Android-Fehler bestätigt: automatische Wetterübernahme verwendet an zwei Stellen `precipMm.takeIf { it > 0.0 }`; damit wird bekannter Wert 0.0 zu `null`.
+- Android-Wetter-UI zeigt aktuell nur Zeit/Temperatur/Bewölkung/Niederschlagsart, nicht die numerische mm-Menge.
+- Android-PDF/BtbDruckModell lässt `niederschlagMm` ebenfalls aus der Wetterdarstellung weg.
+- Zuständigkeit: **ANDROID** muss 0.0 erhalten und mm sichtbar machen. Server/Portal-Vertrag benötigt dafür source-seitig keine neue Felddefinition.
+- Alter Praxispunkt `tempC` im Portal bleibt Runtime-Probe: Quellseitig ist keine Verluststelle zwischen Android-Serialisierung und Portalrenderer sichtbar.
