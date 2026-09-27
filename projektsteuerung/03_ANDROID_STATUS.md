@@ -345,3 +345,6 @@ Status: **SOURCE-AUDIT PASS / ANDROID-ARBEITSPUNKTE IDENTIFIZIERT / KEIN CODE IN
 - Wettermodell transportiert `tempC` und `niederschlagMm`; Android verwirft bei automatischem Wetter jedoch 0.0 mm über `takeIf { it > 0.0 }` und rendert mm weder in der App-Wetterzeile noch vollständig im Android-PDF.
 - BTB-EDIT-001 Foto-PATCH bleibt zusätzlicher Android-Restpunkt.
 - 1.3.25 / 200075 Buildstatus bleibt unverändert: **BUILD OFFEN**.
+
+## Zielbuild 1.3.26 / 200076
+Neuer Android-Codeblock Bilder/Wetter/Foto-PATCH. Buildnummer 200075 wird nicht wiederverwendet. Ziel: **1.3.26 / 200076**. BTB-Finalize-Lifecycle bleibt unverändert; separater E2E danach.
