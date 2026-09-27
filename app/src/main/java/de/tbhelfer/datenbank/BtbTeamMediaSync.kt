@@ -742,10 +742,9 @@ class BtbTeamMediaSync(context: Context) {
             }
         ) ?: error("Bild konnte nicht dekodiert werden.")
 
-        var oriented: Bitmap? = null
+        val oriented = ImageExifUtil.applyExifOrientation(decoded, original.absolutePath)
         var scaled: Bitmap? = null
         try {
-            oriented = ImageExifUtil.applyExifOrientation(decoded, original.absolutePath)
             val maxDim = max(oriented.width, oriented.height)
             val output = if (maxDim > SYNC_IMAGE_MAX_DIM) {
                 val factor = SYNC_IMAGE_MAX_DIM.toDouble() / maxDim.toDouble()
@@ -775,8 +774,8 @@ class BtbTeamMediaSync(context: Context) {
             if (scaled != null && scaled !== oriented && scaled?.isRecycled == false) {
                 scaled?.recycle()
             }
-            if (oriented?.isRecycled == false) {
-                oriented?.recycle()
+            if (!oriented.isRecycled) {
+                oriented.recycle()
             }
             if (decoded !== oriented && !decoded.isRecycled) {
                 decoded.recycle()
