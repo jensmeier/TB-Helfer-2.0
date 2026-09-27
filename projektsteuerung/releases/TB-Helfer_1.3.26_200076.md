@@ -8,6 +8,7 @@ DOWNLOAD_URL:
 
 NEU:
 - Foto-Sync: Handy-Volloriginal bleibt auf dem Aufnahmegerät; zum Server wird eine separate JPEG-Syncversion mit maximal 1920 px langer Kante und Qualität 82 übertragen.
+- Dieselbe kleine Syncbild-Regel gilt für BTB-Fotos, Mängelfotos, Abnahmefotos und bildbasierte Abnahme-Anlagen; PDF-/Nichtbild-Anlagen bleiben unverändert.
 - Server→Android nutzt für Bilder die vorhandene mobile preview-Rendition statt des automatischen Vollinhalts.
 - BTB-Foto-Metadatenänderungen werden über den versionierten Server-PATCH am bestehenden Foto-Link synchronisiert.
 - Wetter zeigt die numerische Niederschlagsmenge in mm an.
@@ -42,7 +43,7 @@ SERVERVERTRAG:
 TESTSTATUS:
 - QUELLSTAND IMPLEMENTIERT
 - SOURCEGENERATOR-ANKER: geprüft, 14/14 passend
-- BUILD OFFEN
+- BUILD OFFEN – aktueller Code-HEAD 17b42917c0439d6fc9540c11fe4a2a9ec2f57914 hat keinen GitHub-Actions-Run; lokaler Gradle-Checkout ist in diesem Chat nicht verfügbar
 - INSTALLATION OFFEN
 - FOTO-SYNC-/FOTO-PATCH-E2E OFFEN
 - WETTER-0-MM-RUNDTRIP OFFEN
