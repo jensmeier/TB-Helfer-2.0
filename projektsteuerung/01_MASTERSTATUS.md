@@ -415,3 +415,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - **BTB-Abschluss:** Source-Vertrag bereits passend und in diesem Block nicht geändert; bidirektionaler Praxis-E2E bleibt offen.
 - Zielstand Android: **1.3.26 / 200076**.
 - Status: **QUELLSTAND UMGESETZT / SOURCE-CHECK PASS / BUILD OFFEN / INSTALLATION OFFEN / E2E OFFEN**.
+
+## Build 200076 – Compilefix
+- Lokaler Android-Studio-Build scheiterte an fehlendem `java.util.Locale`-Import in `BautagebuchFragment.kt`.
+- Ursache eindeutig Android-Compilefehler, kein Server-/API-/DB-Thema.
+- Import-Fix source-seitig umgesetzt; Fachlogik unverändert.
+- **1.3.26 / 200076 bleibt Zielbuild**, da der fehlgeschlagene Versuch keine auslieferbare APK erzeugte.
+- Nächster Statusschritt erst nach erneutem echtem Android-Studio-Build.
