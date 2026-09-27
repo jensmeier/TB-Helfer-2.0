@@ -665,3 +665,14 @@ Status: **SOURCE UMGESETZT / BUILD 200076 ERNEUT OFFEN**
 - Für den aktuellen Zielbuild ergibt das **TB-Helfer 1.3.26 / Build 200076**.
 - Sourcecheck: Anzeige/Binding/Layout PASS; Generatoranker 14/14 PASS.
 - Kein Server-/Sync-/Finalize-Umbau.
+
+
+## AND-VER-001 – Benutzerkorrektur
+Status: **ZURÜCKZUNEHMEN / NICHT GEWÜNSCHT**
+
+Benutzerentscheidung 27.09.2026:
+- Die zusätzliche sichtbare Versions-/Buildzeile auf dem Android-Startbildschirm war **keine Benutzeranforderung** und soll **nicht** eingebaut werden.
+- AND-VER-001 wurde vom Assistenten eigenständig ergänzt und wird vollständig zurückgenommen.
+- Auch die dabei geänderte Formatierung von `AppUpdateManager.currentVersionLabel()` wird auf den vorherigen Stand zurückgesetzt.
+- Die technische App-Version bleibt unverändert **versionName 1.3.26 / versionCode 200076**.
+- Release-/Buildnummern bleiben intern für Build, Updateprüfung und Release-MD erhalten; daraus folgt **keine zusätzliche Startseitenanzeige**.
