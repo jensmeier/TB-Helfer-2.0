@@ -88,6 +88,17 @@ class Server1BtbApi(
         data class Error(val message: String) : LifecycleResult
     }
 
+    sealed interface PhotoUpdateResult {
+        data class Success(
+            val linkVersion: Long,
+            val photoMetadata: JSONObject
+        ) : PhotoUpdateResult
+        data class Conflict(val currentVersion: Long?, val detail: String) : PhotoUpdateResult
+        data object Unsupported : PhotoUpdateResult
+        data object SessionInvalid : PhotoUpdateResult
+        data class Error(val message: String) : PhotoUpdateResult
+    }
+
     private data class ManagedEntry(
         val id: String,
         val section: String,
@@ -238,6 +249,49 @@ class Server1BtbApi(
         path = "/api/v1/btbs/${encode(serverBtbId)}/finalize",
         body = JSONObject().put("allow_unfinished", allowUnfinished)
     )
+
+    fun updatePhotoMetadata(
+        token: String,
+        serverBtbId: String,
+        fileId: String,
+        baseVersion: Long,
+        photoMetadata: JSONObject
+    ): PhotoUpdateResult {
+        if (serverBtbId.isBlank() || fileId.isBlank() || baseVersion <= 0L || photoMetadata.length() == 0) {
+            return PhotoUpdateResult.Error("BTB-Fotoänderung ist unvollständig.")
+        }
+        val body = JSONObject()
+            .put("base_version", baseVersion)
+            .put("photo_metadata", JSONObject(photoMetadata.toString()))
+        return when (
+            val result = jsonMutation(
+                token = token,
+                path = "/api/v1/btbs/${encode(serverBtbId)}/photos/${encode(fileId)}",
+                method = "PATCH",
+                clientChangeId = "android-btb-photo-${UUID.randomUUID()}".take(200),
+                body = body
+            )
+        ) {
+            JsonMutationResult.Unsupported -> PhotoUpdateResult.Unsupported
+            JsonMutationResult.SessionInvalid -> PhotoUpdateResult.SessionInvalid
+            is JsonMutationResult.Error -> PhotoUpdateResult.Error(result.message)
+            is JsonMutationResult.Conflict ->
+                PhotoUpdateResult.Conflict(result.currentVersion, result.detail)
+            is JsonMutationResult.Success -> {
+                val version = result.body.optLong("link_version", 0L)
+                if (version <= 0L) {
+                    PhotoUpdateResult.Error("Server lieferte keine gültige Foto-Link-Version.")
+                } else {
+                    PhotoUpdateResult.Success(
+                        linkVersion = version,
+                        photoMetadata = result.body.optJSONObject("photo_metadata")
+                            ?.let { JSONObject(it.toString()) }
+                            ?: JSONObject()
+                    )
+                }
+            }
+        }
+    }
 
     fun applyPending(
         token: String,
