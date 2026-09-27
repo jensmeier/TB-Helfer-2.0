@@ -1,6 +1,8 @@
 package de.tbhelfer.datenbank
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Base64
 import de.tbhelfer.ServiceLocator
 import de.tbhelfer.server.BtbServerStateStore
@@ -14,19 +16,26 @@ import de.tbhelfer.ui.bautagebuch.BtbAbschlussPdfFinder
 import de.tbhelfer.ui.bautagebuch.BtbAbschlussStatus
 import de.tbhelfer.ui.bautagebuch.BtbDokumentVersionierung
 import de.tbhelfer.ui.bautagebuch.BtbFotoZuordnungSpeicher
+import de.tbhelfer.ui.bautagebuch.BtbPhotoContextOverrideStore
+import de.tbhelfer.ui.bautagebuch.BtbPhotoKmOverrideStore
+import de.tbhelfer.ui.bautagebuch.BtbPhotoTextOverrideStore
 import de.tbhelfer.ui.bautagebuch.SchichtTyp
 import de.tbhelfer.ui.suche.BtbSpeicher
+import de.tbhelfer.util.ImageExifUtil
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
+import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 /**
  * Medienbrücke für den gemeinsamen BTB eines verantwortlichen TB-Teams.
@@ -40,6 +49,7 @@ class BtbTeamMediaSync(context: Context) {
     private val bindings get() = ServiceLocator.worksiteBindingRepository
     private val collab get() = ServiceLocator.collabSyncRepository
     private val fotos get() = ServiceLocator.fotoRepository
+    private val btbApi = Server1BtbApi()
     private val importedPrefs = appContext.getSharedPreferences(PREF_IMPORTED, Context.MODE_PRIVATE)
 
     data class Summary(
@@ -118,24 +128,137 @@ class BtbTeamMediaSync(context: Context) {
                             BtbFotoZuordnungSpeicher.btbId(appContext, foto.id) == null
                     }
                 }
+
+                val contextOverrides = if (stableBtbId != null) {
+                    BtbPhotoContextOverrideStore.load(appContext, stableBtbId)
+                } else {
+                    emptyMap()
+                }
+                val textOverrides = BtbPhotoTextOverrideStore.loadOverrides(
+                    appContext,
+                    v.entry.baustelleId,
+                    v.entry.datumIso,
+                    v.entry.startUhrzeit,
+                    v.entry.endeUhrzeit,
+                    v.entry.schicht
+                )
+                val kmOverrides = BtbPhotoKmOverrideStore.loadOverrides(
+                    appContext,
+                    v.entry.baustelleId,
+                    v.entry.datumIso,
+                    v.entry.startUhrzeit,
+                    v.entry.endeUhrzeit,
+                    v.entry.schicht
+                )
+
                 for (foto in btbFotos) {
-                    val file = File(foto.dateipfad)
-                    if (!file.exists() || !file.isFile) continue
-                    val uploadName = encodedPhotoFilename(foto, file.name)
+                    val original = File(foto.dateipfad)
+                    if (!original.exists() || !original.isFile) continue
+
+                    val contextOverride = contextOverrides[foto.id]
+                    val effectiveFoto = applyContextOverride(foto, contextOverride)
+                    val worksiteNodeKey = contextOverride?.worksiteNodeKey
+                        ?.trim()
+                        ?.takeIf { it.isNotBlank() }
+                        ?: effectiveFoto.baustellenKnotenId?.let { localNodeId ->
+                            ServiceLocator.worksiteStructureSync.ensureClientNodeKey(
+                                localRootKnotenId = local.id,
+                                localKnotenId = localNodeId
+                            )
+                        }
+                    val textOverride = textOverrides[foto.id]?.trim()?.takeIf { it.isNotBlank() }
+                    val kmOverride = kmOverrides[foto.id]
+                    val effectiveText = textOverride ?: effectiveFoto.kurztext
+                    val effectiveKm = kmOverride?.kmVon ?: effectiveFoto.km
+                    val effectiveForFilename = effectiveFoto.copy(
+                        kurztext = effectiveText,
+                        km = effectiveKm
+                    )
+                    val metadata = structuredPhotoMetadata(
+                        foto = effectiveFoto,
+                        firmaId = contextOverride?.firmaId,
+                        worksiteNodeKey = worksiteNodeKey,
+                        kurztext = effectiveText,
+                        km = effectiveKm
+                    )
+
+                    // Bereits bekannte Server-Fotos niemals wegen der neuen kleinen Sync-Datei
+                    // nochmals hochladen. So entstehen beim Umstieg keine Duplikate.
+                    val mappedServerId = serverAttachmentIdForLocalPhoto(foto.id, key)
+                    if (mappedServerId != null) {
+                        val serverPhoto = BtbServerStateStore.photoMetadata(
+                            appContext,
+                            key,
+                            mappedServerId
+                        )
+                        if (serverPhoto != null && server1Api != null) {
+                            val desiredPatch = localPhotoOverridePatch(
+                                foto = effectiveFoto,
+                                contextOverride = contextOverride,
+                                worksiteNodeKey = worksiteNodeKey,
+                                textOverride = textOverride,
+                                kmOverride = kmOverride
+                            )
+                            val patch = changedPhotoPatch(serverPhoto, desiredPatch)
+                            if (patch.length() > 0) {
+                                val baseVersion = serverPhoto.optLong("link_version", 0L)
+                                if (baseVersion <= 0L) {
+                                    return Result.Error("Server-Foto besitzt keine gültige Link-Version.")
+                                }
+                                when (
+                                    val patched = btbApi.updatePhotoMetadata(
+                                        token = token,
+                                        serverBtbId = parent.serverId,
+                                        fileId = mappedServerId,
+                                        baseVersion = baseVersion,
+                                        photoMetadata = patch
+                                    )
+                                ) {
+                                    Server1BtbApi.PhotoUpdateResult.Unsupported -> return Result.Unsupported
+                                    Server1BtbApi.PhotoUpdateResult.SessionInvalid -> return Result.SessionInvalid
+                                    is Server1BtbApi.PhotoUpdateResult.Error ->
+                                        return Result.Error(patched.message)
+                                    is Server1BtbApi.PhotoUpdateResult.Conflict ->
+                                        return Result.Error(
+                                            "BTB-Foto wurde parallel geändert. Bitte synchronisieren und erneut versuchen."
+                                        )
+                                    is Server1BtbApi.PhotoUpdateResult.Success ->
+                                        BtbServerStateStore.rememberPhotoUpdate(
+                                            appContext,
+                                            key,
+                                            mappedServerId,
+                                            patched.linkVersion,
+                                            patched.photoMetadata
+                                        )
+                                }
+                            }
+                        }
+                        present++
+                        continue
+                    }
+
+                    // Das Volloriginal bleibt ausschließlich auf dem Aufnahmegerät.
+                    // Zum Server geht eine separate, EXIF-orientierte JPEG-Sync-Version.
+                    val syncFile = syncImageFile(foto.id, original)
+                        ?: return Result.Error("Foto konnte nicht für den Server verkleinert werden: ${original.name}")
+                    val uploadName = encodedPhotoFilename(
+                        effectiveForFilename,
+                        syncUploadFilename(original.name)
+                    )
                     when (
                         val result = collab.uploadAttachment(
                             token = token,
                             worksiteServerId = server.worksiteServerId,
                             parentEntityType = SyncCollabPendingChangeEntity.TYPE_BTB,
                             parentEntityId = parent.serverId,
-                            file = file,
+                            file = syncFile,
                             uploadFilename = uploadName,
-                            mimeType = CollabSyncRepository.mimeTypeFor(file),
+                            mimeType = "image/jpeg",
                             capturedAtEpochMs = foto.erstelltAmEpochMs,
                             gpsLat = foto.gpsLat,
                             gpsLon = foto.gpsLon,
                             gpsAccuracyM = null,
-                            photoMetadata = structuredPhotoMetadata(foto),
+                            photoMetadata = metadata,
                             api = api,
                             server1Api = server1Api
                         )
@@ -495,19 +618,193 @@ class BtbTeamMediaSync(context: Context) {
             .apply()
     }
 
-    private fun structuredPhotoMetadata(foto: FotoEntity): JSONObject = JSONObject()
+    private fun applyContextOverride(
+        foto: FotoEntity,
+        value: BtbPhotoContextOverrideStore.ContextOverride?
+    ): FotoEntity {
+        value ?: return foto
+        val nodeId = if (value.ortId != null) {
+            value.ortId.takeIf { it > 0L }
+        } else {
+            foto.baustellenKnotenId
+        }
+        return foto.copy(
+            baustellenKnotenId = nodeId,
+            firma = value.firma.trim(),
+            bildtyp = value.bildtyp ?: foto.bildtyp,
+            objektKennung = value.objektKennung?.trim()?.takeIf { it.isNotBlank() },
+            objektBereich = value.objektBereich?.trim()?.takeIf { it.isNotBlank() }
+        )
+    }
+
+    private fun localPhotoOverridePatch(
+        foto: FotoEntity,
+        contextOverride: BtbPhotoContextOverrideStore.ContextOverride?,
+        worksiteNodeKey: String?,
+        textOverride: String?,
+        kmOverride: BtbPhotoKmOverrideStore.KmOverride?
+    ): JSONObject {
+        val patch = JSONObject()
+        if (contextOverride != null) {
+            patch.putNullable("firma", contextOverride.firma.trim().takeIf { it.isNotBlank() })
+            patch.putNullable("firmaId", contextOverride.firmaId?.trim()?.takeIf { it.isNotBlank() })
+            patch.putNullable(
+                "worksiteNodeKey",
+                worksiteNodeKey?.trim()?.takeIf { it.isNotBlank() }
+            )
+            patch.put("typ", (contextOverride.bildtyp ?: foto.bildtyp).name)
+            patch.putNullable(
+                "objektKennung",
+                contextOverride.objektKennung?.trim()?.takeIf { it.isNotBlank() }
+            )
+            patch.putNullable(
+                "objektBereich",
+                contextOverride.objektBereich?.trim()?.takeIf { it.isNotBlank() }
+            )
+        }
+        textOverride?.trim()?.takeIf { it.isNotBlank() }?.let { patch.put("kurztext", it) }
+        kmOverride?.kmVon?.takeIf { it.isFinite() }?.let { patch.put("km", it) }
+        return patch
+    }
+
+    private fun changedPhotoPatch(serverPhoto: JSONObject, desired: JSONObject): JSONObject {
+        if (desired.length() == 0) return JSONObject()
+        val current = serverPhoto.optJSONObject("photo_metadata") ?: JSONObject()
+        val patch = JSONObject()
+        val keys = desired.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            val wanted = desired.opt(key)
+            val existing = if (current.has(key) && !current.isNull(key)) {
+                current.opt(key)
+            } else {
+                JSONObject.NULL
+            }
+            if (!jsonScalarEquivalent(existing, wanted)) {
+                patch.put(key, wanted)
+            }
+        }
+        return patch
+    }
+
+    private fun jsonScalarEquivalent(left: Any?, right: Any?): Boolean {
+        val leftNull = left == null || left === JSONObject.NULL
+        val rightNull = right == null || right === JSONObject.NULL
+        if (leftNull || rightNull) return leftNull && rightNull
+        if (left is Number && right is Number) {
+            return kotlin.math.abs(left.toDouble() - right.toDouble()) < 0.000001
+        }
+        return left.toString().trim() == right.toString().trim()
+    }
+
+    private fun serverAttachmentIdForLocalPhoto(localFotoId: Long, btbId: String): String? =
+        importedMappingsForBtb(btbId)
+            .firstOrNull { (_, mappedLocalId) -> mappedLocalId == localFotoId }
+            ?.first
+
+    private fun syncUploadFilename(originalName: String): String {
+        val clean = originalName.substringBeforeLast('.', originalName)
+            .replace(Regex("[^A-Za-z0-9._()-]+"), "_")
+            .trim('_', '.', ' ')
+            .ifBlank { "foto" }
+            .take(40)
+        return "${clean}_sync.jpg"
+    }
+
+    private fun syncImageFile(localFotoId: Long, original: File): File? = runCatching {
+        val dir = File(appContext.cacheDir, SYNC_IMAGE_DIR).apply {
+            if (!exists() && !mkdirs()) error("Sync-Bildordner konnte nicht erstellt werden.")
+        }
+        val target = File(dir, "foto_${localFotoId}.jpg")
+        if (
+            target.isFile &&
+            target.length() > 0L &&
+            target.lastModified() >= original.lastModified()
+        ) {
+            return@runCatching target
+        }
+
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(original.absolutePath, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+            error("Bildabmessungen konnten nicht gelesen werden.")
+        }
+
+        var sample = 1
+        while (max(bounds.outWidth / sample, bounds.outHeight / sample) > SYNC_DECODE_MAX_DIM) {
+            sample *= 2
+        }
+        val decoded = BitmapFactory.decodeFile(
+            original.absolutePath,
+            BitmapFactory.Options().apply {
+                inSampleSize = sample.coerceAtLeast(1)
+                inPreferredConfig = Bitmap.Config.RGB_565
+            }
+        ) ?: error("Bild konnte nicht dekodiert werden.")
+
+        var oriented: Bitmap? = null
+        var scaled: Bitmap? = null
+        try {
+            oriented = ImageExifUtil.applyExifOrientation(decoded, original.absolutePath)
+            val maxDim = max(oriented.width, oriented.height)
+            val output = if (maxDim > SYNC_IMAGE_MAX_DIM) {
+                val factor = SYNC_IMAGE_MAX_DIM.toDouble() / maxDim.toDouble()
+                Bitmap.createScaledBitmap(
+                    oriented,
+                    (oriented.width * factor).roundToInt().coerceAtLeast(1),
+                    (oriented.height * factor).roundToInt().coerceAtLeast(1),
+                    true
+                ).also { scaled = it }
+            } else {
+                oriented
+            }
+
+            val temp = File(target.parentFile, target.name + ".tmp")
+            FileOutputStream(temp).use { out ->
+                check(output.compress(Bitmap.CompressFormat.JPEG, SYNC_IMAGE_JPEG_QUALITY, out)) {
+                    "JPEG-Komprimierung fehlgeschlagen."
+                }
+            }
+            if (target.exists()) target.delete()
+            if (!temp.renameTo(target)) {
+                temp.copyTo(target, overwrite = true)
+                temp.delete()
+            }
+            target
+        } finally {
+            if (scaled != null && scaled !== oriented && scaled?.isRecycled == false) {
+                scaled?.recycle()
+            }
+            if (oriented?.isRecycled == false) {
+                oriented?.recycle()
+            }
+            if (decoded !== oriented && !decoded.isRecycled) {
+                decoded.recycle()
+            }
+        }
+    }.getOrNull()
+
+    private fun structuredPhotoMetadata(
+        foto: FotoEntity,
+        firmaId: String?,
+        worksiteNodeKey: String?,
+        kurztext: String,
+        km: Double?
+    ): JSONObject = JSONObject()
         .put("epoch", foto.erstelltAmEpochMs)
         .put("lat", foto.gpsLat)
         .put("lon", foto.gpsLon)
         .putNullable("alt", foto.gpsAltM)
-        .putNullable("km", foto.km)
+        .putNullable("km", km)
         .putNullable("achsabstand", foto.achsabstandM)
         .put("kmSuffix", foto.kmSuffix)
         .put("kmManuell", foto.kmManuell)
         .put("typ", foto.bildtyp.name)
         .put("indikator", foto.indikator?.name ?: "")
         .put("firma", foto.firma)
-        .put("kurztext", foto.kurztext)
+        .putNullable("firmaId", firmaId?.trim()?.takeIf { it.isNotBlank() })
+        .putNullable("worksiteNodeKey", worksiteNodeKey?.trim()?.takeIf { it.isNotBlank() })
+        .put("kurztext", kurztext)
         .put("objektKennung", foto.objektKennung ?: "")
         .put("objektBereich", foto.objektBereich ?: "")
         .put("notiz", foto.notiz ?: "")
