@@ -20,4 +20,8 @@ Stand: 2026-09-26
 | SYNC-001 | P2 | GEMEINSAM | vollständiger 15×15 Last-/Delta-E2E offen; Delta-Wait 255/255 als Teiltest bestanden | Gesamtlast nach Hauptgerät-/Helfer-E2E und nach RAM-/NAS-Ausbau wiederholen |
 | DOC-001 | P1 | STEUERUNG | neue Struktur lokal nach Pull verifizieren | alte Top-Level-Ordner müssen weg sein |
 
+| INT-PHOTO-001 | P1 | GEMEINSAM | Handy-Volloriginal muss lokal bleiben; normaler Sync nur kleine Bildversion/Renditions | Android Upload/Download gegen Server preview/thumb prüfen; Abweichung je Zuständigkeit trennen |
+| BTB-FINAL-001 | P0 | GEMEINSAM | BTB-Abschluss muss Android↔Server↔Portal automatisch in beide Richtungen konvergieren | Finalize-, Change-Feed- und Delta-Apply-Pfade beider Richtungen source-seitig vergleichen, dann E2E festlegen |
+| WEATHER-001 | P1 | GEMEINSAM | Temperatur + Regenmenge in mm müssen verlustfrei und sichtbar sein; 0.0 mm ≠ null | Android Wetter-Slots/Header gegen Server-Payload und Portal-Renderer vergleichen |
+
 Keine bestätigten Punkte wieder als offen anlegen.
