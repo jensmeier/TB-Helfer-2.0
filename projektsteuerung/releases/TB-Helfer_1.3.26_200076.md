@@ -59,3 +59,8 @@ NÄCHSTER TEST:
 - automatisches Wetter mit 0,0 mm prüfen: Android, Portal und PDF müssen den bekannten 0-mm-Wert behalten.
 - Android-BTB abschließen: Portal + zweites Handy müssen automatisch FINALIZED/read-only übernehmen und Abschluss-PDF sehen.
 - separaten Test-BTB im Portal abschließen: Android + zweites Handy müssen denselben FINALIZED-Zustand automatisch übernehmen.
+
+BUILD-FIX:
+- Android-Studio-Compilefehler `Unresolved reference 'Locale'` in der neuen Wetter-mm-Formatierung behoben.
+- Fehlenden `java.util.Locale`-Import ergänzt; Fachlogik unverändert.
+- Build 200076 muss danach erneut real ausgeführt werden.
