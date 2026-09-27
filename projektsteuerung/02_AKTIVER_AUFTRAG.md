@@ -1,6 +1,6 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
-Stand: 2026-09-26
+Stand: 2026-09-27
 
 ## PS-001 – Projektsteuerung zentralisieren
 Status: **UMGESETZT IM QUELLSTAND DIESER STEUERUNGSÄNDERUNG**
@@ -654,3 +654,20 @@ Benutzerentscheidung 27.09.2026:
 - Auch die dabei geänderte Formatierung von `AppUpdateManager.currentVersionLabel()` wird auf den vorherigen Stand zurückgesetzt.
 - Die technische App-Version bleibt unverändert **versionName 1.3.26 / versionCode 200076**.
 - Release-/Buildnummern bleiben intern für Build, Updateprüfung und Release-MD erhalten; daraus folgt **keine zusätzliche Startseitenanzeige**.
+
+
+## BRANCH-CLEANUP-001 – GitHub-Branches bereinigen
+Status: **BENUTZER BEAUFTRAGT / SICHERHEITSPRÜFUNG ABGESCHLOSSEN**
+
+Benutzerentscheidung 27.09.2026:
+- Die laufende Repository-Struktur soll auf die aktiven Arbeitszweige reduziert werden.
+- Dauerhaft benötigt werden als Branches:
+  - `main` als Default-/Basisbranch;
+  - `feature/tb-android-2.0` für Android;
+  - `feature/tb-server-1.0` für Server.
+- Veraltete Entwicklungsbranches sollen entfernt werden, sobald keine aktive PR-/Basisabhängigkeit mehr besteht.
+- Alter Draft-PR #1 (`kilometrierung-v1`) und alter Draft-PR #5 (`feature/admin-offline-sync`) werden geschlossen.
+- Server-Draft-PR #6 wird vor Entfernung von `feature/admin-offline-sync` auf `main` als Basis umgestellt.
+- Vollständig überholte Branches: `feature/admin-offline-sync`, `feature/btb-pdf-identity`, `feature/cloudflare-api`, `feature/server-sync-catalog`, `ci/android-1.3.25-base-200075`.
+- `feature/device-activation` und `kilometrierung-v1` besitzen historisch eigene Commits; ihre heutigen Funktionen sind im aktuellen Projektstand abgelöst/weiterentwickelt. Vor Branchlöschung bleiben die bekannten Head-SHAs in der GitHub-/PR-Historie nachvollziehbar.
+- Keine Android-/Server-Fachcodeänderung durch diesen Aufräumblock.
