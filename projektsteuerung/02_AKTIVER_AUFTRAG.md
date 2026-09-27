@@ -532,3 +532,19 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
   - alte Standalone-`@ORT`-Gruppen bleiben kompatibel.
 - Source-Check bestätigt: alter Fehlertext/alte Patch-Anker sind aus `app/build.gradle.kts` entfernt; 1.3.25 / 200075 bleibt unverändert.
 - **Noch kein neuer Buildnachweis.** Nächster Schritt: Git Pull → Android-Studio-Build 200075 erneut starten.
+
+
+## INTEGRATION-AUDIT-001 – Bilder, BTB-Abschluss, Wetter
+Status: **NEUE ANFORDERUNG GESICHERT / QUELLVERGLEICH ANDROID↔SERVER↔PORTAL AUSSTEHEND**
+
+Benutzeranforderung 27.09.2026:
+1. **Fotos:** Das Aufnahme-Original bleibt auf dem jeweiligen Handy. Für Server/Portal und andere Handys wird nur eine verkleinerte/komprimierte Sync-Version übertragen; andere Handys laden ebenfalls nur kleine Versionen/Renditions.
+2. **BTB-Abschluss bidirektional:** Wird ein bearbeitbarer BTB am verantwortlichen Handy abgeschlossen/finalisiert, muss der kanonische Abschluss automatisch im Portal und auf den anderen Teamgeräten ankommen. Wird der BTB zulässig im Portal abgeschlossen/finalisiert, muss derselbe kanonische Lifecycle automatisch auf Android übernommen werden. Keine voneinander abweichenden lokalen Abschlusszustände.
+3. **Wetter:** Im BTB müssen Temperatur **und Regen-/Niederschlagsmenge in mm** erhalten und angezeigt werden. Ein bekannter Wert von **0,0 mm** bleibt 0,0 mm und darf nicht als unbekannt/null verschwinden.
+
+Prüfauftrag vor jeder Codeänderung:
+- Server-/Portal-API und Datenmodell gegen Android-Erwartung vergleichen;
+- tatsächlichen Foto-Upload/Download und Rendition-Pfad prüfen;
+- Finalize-/Change-Feed-/Delta-Apply-Pfade Android→Server→Portal sowie Portal→Server→Android prüfen;
+- Wetterfelder Header/Payload/Portal-Renderer/Android-Renderer einschließlich 0-mm-Semantik vergleichen;
+- Abweichungen dokumentieren; danach Zuständigkeit ANDROID bzw. SERVER getrennt festlegen.
