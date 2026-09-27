@@ -312,6 +312,14 @@ class BautagebuchPdf(
                 t = t.replace(Regex("\\s+"), " ").trim()
                 return t
             }
+            fun rainText(raw: String?, mm: Double?): String {
+                val type = normalizeNiedForPdf(raw ?: "-")
+                val amount = mm?.takeIf { it.isFinite() && it >= 0.0 }
+                    ?.let { String.format(java.util.Locale.GERMANY, "%.1f mm", it) }
+                return listOfNotNull(type.takeIf { it.isNotBlank() }, amount)
+                    .joinToString(" · ")
+                    .ifBlank { "-" }
+            }
             val wb = e.weather
             val slots = if (wb != null && wb.slots.isNotEmpty()) {
                 wb.slots
@@ -321,7 +329,7 @@ class BautagebuchPdf(
                 val time = wsNorm(s.uhrzeit).take(5)
                 val temp = s.tempC?.let { "${it}°C" } ?: "-"
                 val bew = wsNorm(s.bewoelkung ?: "-")
-                val nied = normalizeNiedForPdf(s.niederschlag ?: "-")
+                val nied = rainText(s.niederschlag, s.niederschlagMm)
                 "$time|$temp|$bew|$nied"
             }.toSet()
         }
@@ -1266,6 +1274,15 @@ fun renderWeather() {
         return t
     }
 
+    fun rainText(raw: String?, mm: Double?): String {
+        val type = normalizeNiedForPdf(raw ?: "-")
+        val amount = mm?.takeIf { it.isFinite() && it >= 0.0 }
+            ?.let { String.format(java.util.Locale.GERMANY, "%.1f mm", it) }
+        return listOfNotNull(type.takeIf { it.isNotBlank() }, amount)
+            .joinToString(" · ")
+            .ifBlank { "-" }
+    }
+
     fun drawCell(text: String, x: Float, y: Float, paint: Paint, maxW: Float) {
         w.canvas.drawText(ellipsize(text, paint, maxW), x, y, paint)
     }
@@ -1299,7 +1316,7 @@ fun renderWeather() {
             Triple(
                 s.uhrzeit.take(10),
                 s.tempC?.let { "${it}°C" } ?: "-",
-                (s.bewoelkung ?: "-") to normalizeNiedForPdf(s.niederschlag ?: "-")
+                (s.bewoelkung ?: "-") to rainText(s.niederschlag, s.niederschlagMm)
             )
         }
     } else if (entry.weatherSlots.isNotEmpty()) {
@@ -1307,7 +1324,7 @@ fun renderWeather() {
             Triple(
                 s.uhrzeit.take(10),
                 s.tempC?.let { "${it}°C" } ?: "-",
-                (s.bewoelkung ?: "-") to normalizeNiedForPdf(s.niederschlag ?: "-")
+                (s.bewoelkung ?: "-") to rainText(s.niederschlag, s.niederschlagMm)
             )
         }
     } else emptyList()
