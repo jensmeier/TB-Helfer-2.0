@@ -425,3 +425,13 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Benutzer hat ausdrücklich entschieden, dass diese Anzeige **nicht** gewünscht ist.
 - Startseitenzeile und die damit verbundene Formatänderung wurden vollständig zurückgenommen.
 - Technische Version bleibt **1.3.26 / 200076**; Build 200076 bleibt nach Locale-Fix erneut zu bauen.
+
+
+## Checkpoint 27.09.2026 – Branchbereinigung
+- Benutzerziel: Branchliste auf `main`, `feature/tb-android-2.0`, `feature/tb-server-1.0` reduzieren.
+- Sicherheitsvergleich gegen aktive Android-/Serverbranches durchgeführt.
+- PR #1 und #5 geschlossen.
+- Server-Draft-PR #6 auf Basis `main` umgestellt; bleibt offen.
+- Altbranches sind fachlich überholt; `feature/device-activation` und `kilometrierung-v1` haben eigene historische Commits, ihre Funktionen sind im aktuellen Projektstand weiterentwickelt/ersetzt.
+- Branch-Refs konnten über die verfügbare GitHub-Schnittstelle nicht direkt gelöscht werden; manuelle Löschung der sieben dokumentierten Altbranches bleibt offen.
+- Keine Android-/Server-Fachcodeänderung.
