@@ -1,21 +1,35 @@
 # TB-HELFER 2.0 – ANDROID STATUS
 
-Stand: 2026-09-26
+Stand: 2026-09-27
 Branch: `feature/tb-android-2.0`
-Fach-HEAD vor Projektsteuerungscommit: `d272f8a7586cce3ea1eda29100473f7af5d540bb`
-Draft-PR: #7
-Version: **1.3.23 / 200073**
+Fachcode-HEAD vor aktueller Statussicherung: `17b42917c0439d6fc9540c11fe4a2a9ec2f57914`
+Draft-PR: **kein offener Android-Draft-PR**
+Version/Zielbuild: **1.3.26 / 200076**
 
-- Server/Android-Vertrag 25.09 im Quellstand berücksichtigt.
-- Pixel ACTIVE↔PDF-Flackern source-seitig korrigiert.
-- Build-Wiederholung 200069: **OFFEN**
-- Installation 200069: **OFFEN**
-- Pixel/Poco-/Server-E2E: **OFFEN**
-- Poco: korrekte HELPER-/Teamzuordnung serverseitig, aber keine Daten auf Gerät.
+## Aktuell
+- Bildtransport source-seitig umgesetzt: Original bleibt lokal; Sync-JPEG max. 1920 px/JPEG82.
+- Kleine Uploads: BTB, Mängel, Abnahmen, bildbasierte Abnahme-Anlagen; PDF-/Nichtbild-Anlagen unverändert.
+- Mobile Serverbilder: `preview` statt automatischem `/content`.
+- BTB-Foto-Metadaten-PATCH via `link_version` source-seitig integriert.
+- Wetter: 0,0 mm bleibt numerisch erhalten; mm sichtbar in App/PDF/Druckmodell.
+- Version/Release-MD: 1.3.26 / 200076.
+- Sourcechecks: PASS; Build-Sourcegenerator 14/14 Anker PASS; Diff ohne `server/**`.
+- **BUILD OFFEN / INSTALLATION OFFEN / E2E OFFEN.**
 
-Geschützt: bestätigter BTB-Lifecycle-Fix 200063, bestätigter Server-App-Updateweg mit Datenerhalt, Geräteaktivierung, kein breiter Vollsync als normaler Autosave-Pfad.
+## Geschützt
+- BTB-SYNC-002: **BESTÄTIGT**.
+- BTB-UI-001: **BESTÄTIGT**.
+- UPD-001: **BESTÄTIGT**.
+- PORTAL-LIVE-001 ist serverseitig **BESTÄTIGT** und darf Android-seitig nicht als offener F5-Fehler behandelt werden.
+- bestätigten Active-Pointer-/Dirty-/Update-Schutz nicht zurückbauen.
 
-Nächste Schritte: NET-001 klären → Haupt-TB-Handy ↔ Server/Portal E2E → Poco/HELPER E2E → danach IMG-001 implementieren → Build/Regression.
+## Nächste Schritte
+1. Git Pull.
+2. Android Studio Build **1.3.26 / 200076**.
+3. Pixel installieren.
+4. E2E: kleine Bilder + preview, BTB-Foto-PATCH, Wetter 0,0 mm/tempC, Finalize Android→Portal sowie Portal→Android.
+5. Poco/HELPER mit demselben erfolgreichen Build.
+6. erst danach Gesamtlast/weitere offene Punkte.
 
 Historischer Tracker: `projektsteuerung/archiv/ANDROID_STATUS_ALT_2026-09-26.md`
 
