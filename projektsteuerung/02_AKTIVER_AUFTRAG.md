@@ -621,3 +621,14 @@ Nächster Schritt:
 3. APK auf Pixel installieren;
 4. Foto-Größe/Rendition, Wetter 0 mm, Foto-PATCH und BTB-Finalize Android→Portal sowie Portal→Android praktisch testen;
 5. danach Poco/HELPER.
+
+## AND-BUILD-200076 – lokaler Compilefehler Locale
+Status: **REPRODUZIERT / URSACHE EINDEUTIG**
+
+- Benutzer-Build in Android Studio am 27.09.2026 scheitert in `:app:compileDebugKotlin`.
+- Fehler: `BautagebuchFragment.kt:1214 Unresolved reference 'Locale'`.
+- Betroffen ist die neue Wetter-mm-Formatierung `String.format(Locale.GERMANY, "%.1f mm", it)`.
+- Ursache: im kanonischen `BautagebuchFragment.kt` fehlt `import java.util.Locale`; der Buildgenerator kopiert diesen Quellstand korrekt in `build/generated/source/btb200043`, daher erscheint der Fehler dort ebenfalls.
+- Kein Server-/API-/DB-Fehler.
+- Fixziel: ausschließlich fehlenden Kotlin-Import ergänzen; Wetterlogik und geschützte Sync-/Finalize-Pfade nicht verändern.
+- Version bleibt **1.3.26 / 200076**, da kein erfolgreicher APK-Build/keine Installation vorliegt.
