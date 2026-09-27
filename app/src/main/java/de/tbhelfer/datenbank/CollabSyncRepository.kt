@@ -384,8 +384,8 @@ class CollabSyncRepository(
                 val existing = dao.collabAttachment(item.fileId)
                 val existingPathUsable = existing?.isDownloaded == true &&
                     existing.localPath?.let { File(it).isFile } == true &&
-                    (!isImageMime(item.mimeType ?: existing.mimeType) ||
-                        isMobilePreviewPath(existing.localPath))
+                    (!isImageMime(item.mimeType ?: existing?.mimeType) ||
+                        isMobilePreviewPath(existing?.localPath))
                 dao.upsertCollabAttachments(
                     listOf(
                         SyncCollabAttachmentEntity(
@@ -495,7 +495,7 @@ class CollabSyncRepository(
         val oldPathValid = sameParent &&
             old?.isDownloaded == true &&
             old?.localPath?.let { File(it).isFile } == true &&
-            (!isImageMime(item.mimeType ?: old.mimeType) || isMobilePreviewPath(old.localPath))
+            (!isImageMime(item.mimeType ?: old?.mimeType) || isMobilePreviewPath(old?.localPath))
 
         dao.upsertCollabAttachments(
             listOf(
