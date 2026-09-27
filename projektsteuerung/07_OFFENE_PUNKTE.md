@@ -20,8 +20,8 @@ Stand: 2026-09-26
 | SYNC-001 | P2 | GEMEINSAM | vollständiger 15×15 Last-/Delta-E2E offen; Delta-Wait 255/255 als Teiltest bestanden | Gesamtlast nach Hauptgerät-/Helfer-E2E und nach RAM-/NAS-Ausbau wiederholen |
 | DOC-001 | P1 | STEUERUNG | neue Struktur lokal nach Pull verifizieren | alte Top-Level-Ordner müssen weg sein |
 
-| INT-PHOTO-001 | P1 | GEMEINSAM | Handy-Volloriginal muss lokal bleiben; normaler Sync nur kleine Bildversion/Renditions | Android Upload/Download gegen Server preview/thumb prüfen; Abweichung je Zuständigkeit trennen |
-| BTB-FINAL-001 | P0 | GEMEINSAM | BTB-Abschluss muss Android↔Server↔Portal automatisch in beide Richtungen konvergieren | Finalize-, Change-Feed- und Delta-Apply-Pfade beider Richtungen source-seitig vergleichen, dann E2E festlegen |
-| WEATHER-001 | P1 | GEMEINSAM | Temperatur + Regenmenge in mm müssen verlustfrei und sichtbar sein; 0.0 mm ≠ null | Android Wetter-Slots/Header gegen Server-Payload und Portal-Renderer vergleichen |
+| INT-PHOTO-001 | P1 | ANDROID | Server-Renditions vorhanden; Android lädt Original hoch und fremde Bilder über /content | kleine Sync-JPEG-Datei erzeugen; Server1FileApi um rendition URLs/Download erweitern; preview/thumb nutzen; danach Größen-E2E |
+| BTB-FINAL-001 | P0 | GEMEINSAM | Source-Pfad Android↔Server↔Portal für FINALIZED passt; kein Vertragsbruch gefunden | gezielter Finalize-E2E in beide Richtungen inkl. zweitem Gerät + Abschluss-PDF; keinen Lifecycle-Umbau auf Verdacht |
+| WEATHER-001 | P1 | ANDROID | Portal/Server unterstützen tempC+niederschlagMm; Android macht auto 0.0 mm zu null und zeigt mm nicht vollständig | 0.0 erhalten; mm in Android-UI + PDF/Druckmodell anzeigen; danach Android/API/Portal-Roundtrip testen |
 
 Keine bestätigten Punkte wieder als offen anlegen.
