@@ -139,3 +139,17 @@ Damit ist der normale bidirektionale Datenweg des BTB-SYNC-002-Fixes praktisch b
 | BTB Finalize Portal→Android/anderes Handy | SOURCE-PFAD PASST / E2E OFFEN | im Portal finalisieren; Android + zweites Gerät müssen automatisch FINALIZED/read-only sehen; PDF prüfen |
 | Wetter 0 mm | ANDROID-FEHLER SOURCE-SEITIG BESTÄTIGT | nach Fix automatisches Wetter mit 0.0 mm speichern → Android/Portal/PDF müssen 0 mm zeigen |
 | Wetter Temperatur | SOURCE-TRANSPORT PASST / RUNTIME-PROBE OFFEN | denselben BTB-Header auf Android/API/Portal mit identischem `tempC` vergleichen |
+
+
+## Android 1.3.26 / 200076 – Teststatus
+| Bereich | Status | Nächster Test |
+|---|---|---|
+| Build 1.3.26 / 200076 | SOURCE-CHECK PASS / BUILD OFFEN | Git Pull → Android Studio: testDebugUnitTest + assembleDebug/Release |
+| Foto Handy→Server | SOURCE UMGESETZT / E2E OFFEN | neues Foto: lokales Original unverändert; Server-Syncdatei max. 1920 px/JPEG82 und deutlich kleiner prüfen |
+| Foto Server→Handy | SOURCE UMGESETZT / E2E OFFEN | zweites Handy: mobile Datei muss aus serverseitiger preview-Rendition kommen, nicht aus Vollinhalt |
+| Mangel-/Abnahmebilder | SOURCE UMGESETZT / E2E OFFEN | je ein neues Mangel-/Abnahmefoto übertragen und Größen/Metadaten prüfen; PDF-Anlage unverändert prüfen |
+| BTB-Foto-Metadaten-PATCH | SOURCE UMGESETZT / E2E OFFEN | Punkt/Firma/Unterbaustelle/Kurztext/KM ändern; Foto-ID/GPS/Aufnahmezeit müssen erhalten bleiben |
+| Wetter 0,0 mm | SOURCE UMGESETZT / E2E OFFEN | automatisches trockenes Wetter: Android + Portal + PDF müssen 0,0 mm erhalten/anzeigen |
+| Wetter Temperatur | SOURCE-TRANSPORT UNVERÄNDERT | Android/API/Portal denselben tempC-Wert vergleichen |
+| BTB Finalize Android→Portal/Poco | SOURCE-PFAD UNVERÄNDERT PASSEND / E2E OFFEN | Android abschließen → Portal + Poco automatisch FINALIZED/read-only + PDF |
+| BTB Finalize Portal→Android/Poco | SOURCE-PFAD UNVERÄNDERT PASSEND / E2E OFFEN | Portal abschließen → Android + Poco automatisch FINALIZED/read-only + PDF |
