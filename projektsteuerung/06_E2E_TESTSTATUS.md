@@ -155,7 +155,3 @@ Damit ist der normale bidirektionale Datenweg des BTB-SYNC-002-Fixes praktisch b
 - Kein Buildnachweis, keine Installation, kein E2E.
 - Import-Fix source-seitig umgesetzt; Generatoranker 14/14 PASS. Build **200076 erneut ausführen**.
 
-### AND-VER-001 – Sichtprüfung
-- Source umgesetzt: Startseite bindet zentrale BuildConfig-basierte Versionsanzeige.
-- Erwarteter Text nach erfolgreicher Installation: **TB-Helfer 1.3.26 / Build 200076**.
-- E2E/Sichtprüfung: **OFFEN** bis Build 200076 erfolgreich installiert ist.
