@@ -423,8 +423,7 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - **1.3.26 / 200076 bleibt Zielbuild**, da der fehlgeschlagene Versuch keine auslieferbare APK erzeugte.
 - Nächster Statusschritt erst nach erneutem echtem Android-Studio-Build.
 
-## Android Versionsanzeige
-- AND-VER-001 source-seitig umgesetzt.
-- Startseite + Wartung zeigen künftig dynamisch **TB-Helfer <versionName> / Build <versionCode>**.
-- Aktueller Zielbuild bleibt **1.3.26 / 200076**.
-- Build-/Installationsnachweis steht weiterhin aus.
+
+## Korrektur AND-VER-001
+- Die zusätzliche sichtbare Versions-/Buildzeile auf der Startseite war nicht beauftragt und wurde vollständig zurückgenommen.
+- Technischer Zielbuild bleibt **1.3.26 / 200076**; keine zusätzliche Startseitenanzeige daraus ableiten.
