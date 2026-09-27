@@ -875,5 +875,9 @@ class BtbTeamMediaSync(context: Context) {
         private const val PHOTO_PREFIX_V1 = "BTBP1__"
         private const val PHOTO_PREFIX_LEGACY = "BTBPHOTO__"
         private const val MAX_ATTACHMENT_FILENAME_LENGTH = 160
+        private const val SYNC_IMAGE_DIR = "btb_sync_images"
+        private const val SYNC_IMAGE_MAX_DIM = 1920
+        private const val SYNC_DECODE_MAX_DIM = 2560
+        private const val SYNC_IMAGE_JPEG_QUALITY = 82
     }
 }
