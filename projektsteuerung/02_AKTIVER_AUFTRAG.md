@@ -657,7 +657,7 @@ Benutzerentscheidung 27.09.2026:
 
 
 ## BRANCH-CLEANUP-001 – GitHub-Branches bereinigen
-Status: **BENUTZER BEAUFTRAGT / SICHERHEITSPRÜFUNG ABGESCHLOSSEN**
+Status: **PR-BEREINIGUNG ERLEDIGT / BRANCHLÖSCHUNG OFFEN**
 
 Benutzerentscheidung 27.09.2026:
 - Die laufende Repository-Struktur soll auf die aktiven Arbeitszweige reduziert werden.
@@ -671,3 +671,20 @@ Benutzerentscheidung 27.09.2026:
 - Vollständig überholte Branches: `feature/admin-offline-sync`, `feature/btb-pdf-identity`, `feature/cloudflare-api`, `feature/server-sync-catalog`, `ci/android-1.3.25-base-200075`.
 - `feature/device-activation` und `kilometrierung-v1` besitzen historisch eigene Commits; ihre heutigen Funktionen sind im aktuellen Projektstand abgelöst/weiterentwickelt. Vor Branchlöschung bleiben die bekannten Head-SHAs in der GitHub-/PR-Historie nachvollziehbar.
 - Keine Android-/Server-Fachcodeänderung durch diesen Aufräumblock.
+
+
+### BRANCH-CLEANUP-001 Ergebnis 27.09.2026
+- Draft-PR #1 (`kilometrierung-v1`) geschlossen.
+- Draft-PR #5 (`feature/admin-offline-sync`) geschlossen.
+- Server-Draft-PR #6 von `feature/admin-offline-sync` auf `main` umgestellt; bleibt Draft/offen.
+- Aktuell einziger offener PR: #6 SERVER.
+- Zu löschende Altbranches nach Sicherheitsprüfung:
+  - `ci/android-1.3.25-base-200075`
+  - `feature/admin-offline-sync`
+  - `feature/btb-pdf-identity`
+  - `feature/cloudflare-api`
+  - `feature/device-activation`
+  - `feature/server-sync-catalog`
+  - `kilometrierung-v1`
+- Sollzustand Branchliste: `main`, `feature/tb-android-2.0`, `feature/tb-server-1.0`.
+- Die verfügbare GitHub-Connector-Schnittstelle kann Branch-Refs nicht löschen; die Branchlöschung selbst ist daher noch manuell in GitHub/GitHub Desktop auszuführen.
