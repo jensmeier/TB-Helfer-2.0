@@ -99,17 +99,6 @@
     android:alpha="0.85"
     android:gravity="center" />
 
-        <TextView
-            android:id="@+id/versionText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="TB-Helfer"
-            style="@style/TextAppearance.TBHelfer.Caption"
-            android:textColor="?attr/colorOnSurface"
-            android:alpha="0.72"
-            android:gravity="center" />
-
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
