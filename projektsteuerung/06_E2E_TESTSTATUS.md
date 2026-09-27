@@ -153,4 +153,4 @@ Damit ist der normale bidirektionale Datenweg des BTB-SYNC-002-Fixes praktisch b
 - Fehler: `Unresolved reference 'Locale'` in generiertem `BautagebuchFragment.kt` Zeile 1214.
 - Ursache auf kanonischen Quellstand zurückgeführt: fehlender `java.util.Locale`-Import.
 - Kein Buildnachweis, keine Installation, kein E2E.
-- Nach Import-Fix Build **200076 erneut ausführen**.
+- Import-Fix source-seitig umgesetzt; Generatoranker 14/14 PASS. Build **200076 erneut ausführen**.
