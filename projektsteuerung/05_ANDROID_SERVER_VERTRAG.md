@@ -203,3 +203,29 @@ Serverexport:
 Legacy:
 - `@ORT=<Long>` darf nur zur Migration/Editor-Abwärtskompatibilität gelesen werden.
 - Für neue/gespeicherte strukturierte Daten ist `worksiteNodeKey` die dauerhafte Identität.
+
+
+## Integrationsvertrag 27.09.2026 – Fotos / BTB-Abschluss / Wetter
+
+### Foto-Sync
+- Das **Volloriginal einer Handyaufnahme bleibt ausschließlich auf dem Aufnahme-Handy** als lokales Original.
+- Android→Server überträgt für normalen Sync nur eine separate verkleinerte/komprimierte Sync-Version plus strukturierte Metadaten; kein Upload des Handy-Volloriginals.
+- Server/Portal dürfen aus der empfangenen Sync-Version preview/thumb erzeugen.
+- Server→Android und Handy→anderes Handy verwenden preview/thumb bzw. eine kleine Sync-Version; automatischer Volloriginal-Download ist unzulässig.
+- Portal-Uploads dürfen serverseitig ihre empfangene Quelldatei behalten; mobile Clients erhalten weiterhin kleine Renditions.
+- Foto-Metadatenänderungen (Firma, BTB-Punkt, worksiteNodeKey usw.) ändern **nicht** Originaldatei, Aufnahmezeit oder GPS.
+
+### BTB-Abschluss / Finalisierung
+- Der **Server-Lifecycle ist kanonisch**.
+- Abschluss am verantwortlichen Android-Hauptgerät muss den Server finalisieren; Portal und andere Teamgeräte müssen den resultierenden FINALIZED-/nicht-aktiven Zustand automatisch über normalen Live-/Delta-Sync übernehmen.
+- Zulässiger Abschluss im Portal muss denselben Serverzustand erzeugen; Android übernimmt ihn automatisch über Change-Feed/Delta und darf keinen widersprechenden lokalen Active-/Abschlusszustand behalten.
+- FINALIZED ist anschließend read-only gemäß Rollenvertrag.
+- Lokale PDF-/Baseline-Marker sind niemals eine zweite kanonische Abschlussquelle.
+
+### Wetter
+- BTB-Wetterdaten führen mindestens Temperatur und Niederschlagsmenge.
+- tempC und niederschlagMm/äquivalentes kanonisches Feld müssen Android→Server→Portal und Portal/Server→Android verlustfrei über den BTB-Header bzw. Wetter-Slots laufen.
+- Bekannter Niederschlag 0.0 mm bedeutet **kein Niederschlag** und bleibt numerisch 0.0; null bedeutet **unbekannt/nicht vorhanden**.
+- Portal und Android sollen die Regen-/Niederschlagsmenge mit Einheit mm anzeigen, wenn der Wert bekannt ist.
+
+Status: **VERTRAG GESICHERT / QUELL- UND RUNTIME-ABGLEICH OFFEN**.
