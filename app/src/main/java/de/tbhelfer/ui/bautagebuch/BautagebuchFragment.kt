@@ -140,6 +140,9 @@ class BautagebuchFragment : Fragment(R.layout.fragment_bautagebuch) {
     private lateinit var acNied1: MaterialAutoCompleteTextView
     private lateinit var acNied2: MaterialAutoCompleteTextView
     private lateinit var acNied3: MaterialAutoCompleteTextView
+    private lateinit var tvWetterMm1: android.widget.TextView
+    private lateinit var tvWetterMm2: android.widget.TextView
+    private lateinit var tvWetterMm3: android.widget.TextView
 
     private lateinit var btnWetterAuto: MaterialButton
     private lateinit var btnWetterReset: MaterialButton
@@ -423,6 +426,9 @@ private var pmDirtySinceMs: Long? = null
         acNied1 = view.requireViewByIdCompat(R.id.etNied1)
         acNied2 = view.requireViewByIdCompat(R.id.etNied2)
         acNied3 = view.requireViewByIdCompat(R.id.etNied3)
+        tvWetterMm1 = view.requireViewByIdCompat(R.id.tvWetterMm1)
+        tvWetterMm2 = view.requireViewByIdCompat(R.id.tvWetterMm2)
+        tvWetterMm3 = view.requireViewByIdCompat(R.id.tvWetterMm3)
 
         btnWetterAuto = view.requireViewByIdCompat(R.id.btnWetterAuto)
         btnWetterReset = view.requireViewByIdCompat(R.id.btnWetterReset)
@@ -1203,11 +1209,25 @@ cardCurrentReport.setOnClickListener {
             return willExpand
         }
 
+        private fun formatRainMm(value: Double?): String =
+            value?.takeIf { it.isFinite() && it >= 0.0 }
+                ?.let { String.format(Locale.GERMANY, "%.1f mm", it) }
+                ?: "– mm"
+
+        private fun updateWeatherMmLabels() {
+            tvWetterMm1.text = formatRainMm(wetterMm1)
+            tvWetterMm2.text = formatRainMm(wetterMm2)
+            tvWetterMm3.text = formatRainMm(wetterMm3)
+        }
+
         private fun updateWeatherPreview() {
+            updateWeatherMmLabels()
             val slots = collectWeatherSlots()
-            // Standardwerte zählen nicht als "eingetragen" (sonst wäre immer OK)
+            // Standardwerte zählen nicht als "eingetragen" (sonst wäre immer OK).
+            // Ein bekannter 0,0-mm-Wert ist echte Wetterinformation und darf nicht wie null wirken.
             val hasAnyData = slots.any {
                 it.tempC != null ||
+                    it.niederschlagMm != null ||
                     (it.bewoelkung != null && it.bewoelkung != DEFAULT_BEWOELKUNG) ||
                     (it.niederschlag != null && it.niederschlag != DEFAULT_NIEDERSCHLAG)
             }
@@ -1997,7 +2017,7 @@ cardCurrentReport.setOnClickListener {
                         tempC = kotlin.math.round(h.tempC).toInt(),
                         bewoelkung = mapCloudToBew(h.cloudCoverPct),
                         niederschlag = mapCodeToNied(h.weatherCode, h.precipMm),
-                        niederschlagMm = h.precipMm.takeIf { it > 0.0 }
+                        niederschlagMm = h.precipMm.takeIf { it.isFinite() && it >= 0.0 }
                     )
                 }
                 newBtbPreparedWeatherSlots = slots
@@ -3816,7 +3836,7 @@ cardCurrentReport.setOnClickListener {
                         val target = LocalDateTime.of(dateForTime, time)
                         val h = hourly.closestTo(target) ?: return
 
-                        val mmVal = h.precipMm.takeIf { it > 0.0 }
+                        val mmVal = h.precipMm.takeIf { it.isFinite() && it >= 0.0 }
                         when (idx) {
                             0 -> wetterMm1 = mmVal
                             1 -> wetterMm2 = mmVal
