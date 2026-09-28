@@ -609,3 +609,12 @@ Noch offen:
 - Runtime-/Browser-Retest des neuen Firmenworkspaces;
 - separater MIB/Bahnhof-Autofill-Fix;
 - globaler Referenzdaten-/Streckendaten-Umbau danach.
+
+## ADMIN-COMPANY-005 – Firmenworkspace Nacharbeit
+Status: **SOURCE FERTIG / DEPLOY OFFEN**
+- Aktivierungskarte bleibt jetzt im firmenzentrierten Adminfluss;
+- Gültigkeit wird mit Datum und verbleibender Zeit angezeigt;
+- alte globale Organisationslisten werden nicht mehr als eigene Verwaltung geöffnet;
+- Geräteversionen werden bis zum Android-Vertragsupdate nicht mehr als sicher aktuelle Installation dargestellt;
+- veröffentlichter Android-Release und vom Gerät zuletzt gemeldeter Stand werden getrennt angezeigt;
+- SERVER ist für laufende Versionsmeldungen vorbereitet; Android-Clientanpassung DEVICE-INFO-001 bleibt separat offen.
