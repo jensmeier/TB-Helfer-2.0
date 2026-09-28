@@ -480,22 +480,34 @@ def admin_company_branding_page(
 
         cur.execute(
             """
-            SELECT id, display_name, login_name, company_role, status,
-                   personal_email, personal_phone, access_valid_until
-            FROM tb.users
-            WHERE company_id = %s
-              AND deleted_at IS NULL
-              AND company_role <> 'ADMIN'
-            ORDER BY lower(display_name)
+            SELECT u.id, u.display_name, u.first_name, u.last_name, u.login_name,
+                   u.company_role, u.status, u.personal_email, u.personal_phone,
+                   u.access_valid_until, u.profile_version,
+                   pc.activated_at, pc.last_login_at
+            FROM tb.users u
+            LEFT JOIN tb.portal_credentials pc ON pc.user_id = u.id
+            WHERE u.company_id = %s
+              AND u.deleted_at IS NULL
+              AND u.company_role <> 'ADMIN'
+            ORDER BY lower(u.display_name)
             """,
             (company_id,),
         )
         company_users = [dict(item) for item in cur.fetchall()]
+        for item in company_users:
+            valid_until = item.get("access_valid_until")
+            item["access_valid_through"] = (
+                (valid_until - timedelta(minutes=1)).date()
+                if valid_until is not None
+                else None
+            )
 
         cur.execute(
             """
-            SELECT d.id, d.device_uid, d.device_name, d.platform, d.status,
-                   d.last_seen_at, d.revoked_at, u.display_name
+            SELECT d.id, d.user_id, d.device_uid, d.device_name, d.platform, d.os_version,
+                   d.app_version, d.app_build, d.status, d.bound_at, d.last_seen_at,
+                   d.last_sync_at, d.last_sync_error, d.revoked_at,
+                   u.display_name, u.login_name
             FROM tb.devices d
             JOIN tb.users u ON u.id = d.user_id
             WHERE u.company_id = %s
@@ -508,7 +520,8 @@ def admin_company_branding_page(
 
         cur.execute(
             """
-            SELECT id, name, status, created_at, updated_at
+            SELECT id, name, designation, route_number, station_code, station_name,
+                   status, version, created_at, updated_at
             FROM tb.worksites
             WHERE company_id = %s AND deleted_at IS NULL
             ORDER BY lower(name)
