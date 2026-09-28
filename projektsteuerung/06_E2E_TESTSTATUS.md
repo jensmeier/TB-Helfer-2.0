@@ -272,3 +272,16 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
 - Status: **SOURCE FERTIG / DEPLOY-RECREATE OFFEN / E2E OFFEN**.
 
 - GitHub Actions auf HEAD `bf6bc9f4...`: TB-Server Run `36480722916` und Android Run `36480722938` jeweils `failure`, Jobs jeweils `steps = null`; damit weiterhin **kein Testnachweis**.
+
+
+### ADMIN-DASH-006 – Bahnhof Runtime-Retest
+- Benutzer bestätigt am 28.09.2026 nach Synology-Recreate: **Bahnhofssuche FUNKTIONIERT**.
+- `MIH` füllt `Ingolstadt Hbf`; Vorschlagsliste wird praktisch angezeigt.
+- Dieser Bahnhof-/Datenmount-Teil ist damit **BESTANDEN**.
+
+### ADMIN-PDF-007 – PDF-Logo Runtime
+- Vor Fix praktisch **NICHT BESTANDEN**: Breite/X/Y im Admin veränderbar, PDF-Vorschau optisch unverändert.
+- Source-Ursachen behoben: aktuelle Reglerwerte gehen in Draft-Vorschau; Firmenkopf hat größere Android-nahe Logo-Zone.
+- Source-JavaScript/Assertions: **PASS**.
+- Runtime nach Deploy offen: Breite 40→250, X -120→+120, Y bei kleiner/mittlerer Breite, Draft-Vorschau ohne Speichern, Persistenz nach Speichern und Großansicht prüfen.
+- Status: **SOURCE FERTIG / DEPLOY-RETEST OFFEN**.
