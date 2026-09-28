@@ -24,6 +24,7 @@
 
 <div class="card">
   <h2>Vorhandene Firmen</h2>
+  <p class="muted">Über „Firma verwalten“ sind Stammdaten, Benutzer, Geräte, Baustellen, Speicher sowie Logo/PDF zusammengefasst.</p>
   <div class="scroll">
     <table>
       <thead><tr><th>Firma</th><th>Ort</th><th>Nutzer</th><th>Status</th><th>Logo</th><th></th></tr></thead>
@@ -33,10 +34,10 @@
           <td><b>{{ c.name }}</b><div class="muted"><code>{{ c.id }}</code></div></td>
           <td>{{ c.postal_code or '' }} {{ c.city or '' }}</td>
           <td>{{ c.user_count }}</td>
-          <td><span class="pill">{{ c.status }}</span></td>
+          <td><span class="pill">{% if c.status == 'ACTIVE' %}Aktiv{% elif c.status == 'DISABLED' %}Deaktiviert{% else %}{{ c.status }}{% endif %}</span></td>
           <td>{% if c.logo_file_id %}vorhanden{% else %}—{% endif %}</td>
           <td class="right"><div class="actions">
-            <a class="btn" href="/admin/v1/companies/{{ c.id }}/branding">Profil / Logo / PDF</a>
+            <a class="btn" href="/admin/v1/companies/{{ c.id }}/branding">Firma verwalten</a>
             <button type="button" class="danger purge-company"
                     data-company-id="{{ c.id }}" data-company-name="{{ c.name }}">Komplett löschen</button>
           </div></td>
