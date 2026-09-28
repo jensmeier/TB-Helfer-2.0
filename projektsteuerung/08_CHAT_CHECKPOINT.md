@@ -576,3 +576,24 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Ursache eindeutig in Firmen-Speicherquery mit `LIKE 'image/%'` + `%s`.
 - Source-Fix in Commit `6cdccc9267302f8442819d02a884406ad00163a7`.
 - Nächster praktischer Schritt: nur `server/tbserver/admin_web.py` auf NAS ersetzen, API neu starten, Firmenverwaltung erneut testen.
+
+## ADMIN-STRUCTURE-004 – Checkpoint 28.09.2026
+- Benutzer bestätigt firmenzentrierte Struktur vollständig:
+  - Benutzer, Geräte und Baustellen aus globaler Hauptnavigation;
+  - Geräte ausdrücklich vollständig in die Firma;
+  - Firmenliste zuerst;
+  - `Firma verwalten` mit linker Seitennavigation.
+- Source umgesetzt:
+  - `v1_base.html` Navigation verdichtet;
+  - `v1_admin_dashboard.html` Schnellzugriff angepasst und sichtbaren 5-Sekunden-Hinweis entfernt;
+  - `v1_admin_companies.html` moderne Firmenkarten + `+ Firma anlegen`;
+  - `v1_company_branding.html` neuer Firmenworkspace mit Übersicht/Stammdaten/Benutzer/Geräte/Baustellen/Speicher/Logo-PDF;
+  - `admin_web.py` liefert erweiterte firmenbezogene Daten;
+  - `admin.py` enthält Admin-Baustellenanlage mit Membership/Team/Change/Audit.
+- Benutzer können im Firmenworkspace angelegt/bearbeitet/aktiviert/gelöscht werden.
+- Gebundene Geräte können dort blockiert, gelöst oder komplett gelöscht werden.
+- Baustellen können dort direkt mit verantwortlichem TB angelegt werden.
+- Source-JavaScript PASS; keine `app/**`-Änderung.
+- CI erneut `steps = null`; kein Testnachweis.
+- Nächster Schritt: geänderte Serverdateien auf Synology → API neu starten → Browser-Retest.
+- MIB/Bahnhof-Autofill bleibt danach der nächste getrennte Fehlerblock.
