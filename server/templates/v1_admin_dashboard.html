@@ -10,26 +10,29 @@
   .status-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;background:#98a2b3}.status-dot.ok{background:#32d583}.status-dot.warn{background:#fdb022}.status-dot.bad{background:#f97066}
   .live-pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:rgba(255,255,255,.16);font-size:12px;font-weight:800}
   .top-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:14px 0}
-  .metric{background:#fff;border:1px solid #e4e7ec;border-radius:14px;padding:14px 15px;box-shadow:0 2px 10px rgba(16,24,40,.045);min-width:0}
+  .metric{position:relative;overflow:hidden;background:#fff;border:1px solid #e4e7ec;border-radius:15px;padding:15px 16px;box-shadow:0 4px 16px rgba(16,24,40,.055);min-width:0;transition:transform .15s,box-shadow .15s,border-color .15s}
+  .metric:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(16,24,40,.075);border-color:#d0d5dd}.metric:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:#d0d5dd}
+  .metric:nth-child(1):before{background:#2e90fa}.metric:nth-child(2):before{background:#7a5af8}.metric:nth-child(3):before{background:#12b76a}.metric:nth-child(4):before{background:#0ba5ec}.metric:nth-child(5):before{background:#1570ef}.metric:nth-child(6):before{background:#f79009}
   .metric .eyebrow{font-size:11px;font-weight:850;letter-spacing:.045em;text-transform:uppercase;color:#667085}
   .metric .value{font-size:23px;font-weight:850;margin:4px 0 1px;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .metric .sub{font-size:11px;color:#667085;min-height:17px}.metric.warn{background:#fffcf5;border-color:#fedf89}.metric.bad{background:#fff8f7;border-color:#fecdca}
   .overview-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(330px,.85fr);gap:14px}
-  .card.compact{padding:16px}.headline{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+  .card.compact{padding:18px;border-radius:15px;box-shadow:0 5px 18px rgba(16,24,40,.05)}.headline{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
   .headline h2{margin-bottom:3px}.chart-wrap{height:245px;margin-top:8px}.chart-wrap svg{width:100%;height:100%;display:block}
   .legend{display:flex;gap:17px;flex-wrap:wrap;font-size:11px;color:#475467;margin-top:5px}.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}
-  .mini-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.mini-kpi{border:1px solid #eaecf0;border-radius:11px;padding:10px;background:#fbfcfe}
+  .mini-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.mini-kpi{position:relative;border:1px solid #e4e7ec;border-radius:12px;padding:12px;background:linear-gradient(180deg,#fff,#f8fafc)}
   .mini-kpi .n{font-size:20px;font-weight:850}.mini-kpi .l{font-size:11px;color:#667085;margin-top:1px}
   .bars{display:grid;gap:10px}.bar-label{display:flex;justify-content:space-between;gap:10px;font-size:12px}.bar{height:8px;background:#edf1f5;border-radius:999px;overflow:hidden}.bar>div{height:100%;background:linear-gradient(90deg,#1167d8,#53a0ff)}
   .system-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.system-box{border:1px solid #eaecf0;border-radius:11px;padding:10px;background:#fff}
   .system-box .k{font-size:11px;color:#667085}.system-box .v{font-size:15px;font-weight:800;margin-top:2px;overflow-wrap:anywhere}
   .issue{border:1px solid #eaecf0;border-left-width:4px;border-radius:10px;padding:9px 10px;margin:7px 0}.issue.ok{border-left-color:#12b76a;background:#f6fef9}.issue.warning{border-left-color:#f79009;background:#fffcf5}.issue.critical{border-left-color:#d92d20;background:#fff8f7}
   .issue b{display:block;font-size:13px}.issue small{color:#667085;line-height:1.35}
-  .company-storage{display:grid;gap:8px;max-height:260px;overflow:auto;padding-right:3px}.company-row{border:1px solid #eaecf0;border-radius:11px;padding:10px}
-  .company-title{display:flex;justify-content:space-between;gap:10px;font-size:13px}.company-parts{display:flex;gap:9px;flex-wrap:wrap;margin-top:5px;color:#667085;font-size:11px}
-  .quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.quick a{border:1px solid #e4e7ec;border-radius:11px;padding:11px;background:#fff;color:#344054;font-weight:750;text-decoration:none}
-  .quick a:hover{border-color:#84adff;background:#f5f8ff}.quick small{display:block;color:#667085;font-weight:500;margin-top:2px;font-size:11px}
-  .activity p{margin:8px 0;font-size:12px}.tiny{font-size:11px;color:#667085}
+  .company-storage{display:grid;gap:9px;max-height:280px;overflow:auto;padding-right:3px}.company-row{border:1px solid #eaecf0;border-radius:12px;padding:11px 12px;background:#fff}
+  .company-title{display:flex;justify-content:space-between;gap:10px;font-size:13px}.company-parts{display:flex;gap:9px;flex-wrap:wrap;margin-top:5px;color:#667085;font-size:11px}.company-meter{height:5px;background:#edf1f5;border-radius:999px;overflow:hidden;margin-top:9px}.company-meter>div{height:100%;background:linear-gradient(90deg,#1167d8,#53a0ff);border-radius:999px}
+  .quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.quick a{display:grid;grid-template-columns:34px minmax(0,1fr);column-gap:10px;align-items:center;border:1px solid #e4e7ec;border-radius:12px;padding:11px 12px;background:linear-gradient(180deg,#fff,#fbfcfe);color:#344054;font-weight:750;text-decoration:none;min-height:62px;transition:.15s}
+  .quick a:hover{transform:translateY(-1px);border-color:#84adff;background:#f5f8ff;box-shadow:0 6px 18px rgba(16,24,40,.07)}.quick small{display:block;color:#667085;font-weight:500;margin-top:2px;font-size:11px}.qmark{grid-row:1 / span 2;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#eaf2ff;color:#175cd3;font-weight:900;font-size:13px}
+  .activity p{position:relative;margin:0;padding:0 0 14px 18px;font-size:12px;border-left:2px solid #e4e7ec}.activity p:last-child{padding-bottom:0;border-left-color:transparent}.activity p:before{content:"";position:absolute;left:-5px;top:3px;width:8px;height:8px;border-radius:50%;background:#84adff;box-shadow:0 0 0 3px #eff4ff}.tiny{font-size:11px;color:#667085}
+  .issue-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.issue-actions button{padding:7px 10px;font-size:12px}.section-note{font-size:11px;color:#667085}
   @media(max-width:1180px){.top-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
   @media(max-width:900px){.overview-grid{grid-template-columns:1fr}.mini-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.quick{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:620px){.top-kpis,.mini-kpis,.quick,.system-grid{grid-template-columns:1fr 1fr}.metric .value{font-size:21px}}
@@ -71,7 +74,7 @@
     </div>
 
     <div class="card compact">
-      <div class="headline"><h2>Bestand</h2><span class="tiny">automatisch aktualisiert</span></div>
+      <div class="headline"><div><h2>Bestand</h2><div class="section-note">Aktueller zentraler Serverbestand.</div></div></div>
       <div class="mini-kpis" id="stockKpis"></div>
     </div>
 
@@ -83,12 +86,12 @@
     <div class="card compact">
       <h2>Schnellzugriff</h2>
       <div class="quick">
-        <a href="/admin/v1/companies">Firmen<small>Benutzer, Geräte, Baustellen, Speicher und PDF</small></a>
-        <a href="/admin/v1/routes">Streckendaten<small>Strecken und gemeinsamer Fachkatalog</small></a>
-        <a href="/admin/v1/stations">Bahnhöfe<small>Betriebsstellen, Kürzel und Objekte</small></a>
-        <a href="/admin/v1/survey-import">Trassierungsdaten<small>Originale, Import und Referenzdaten</small></a>
-        <a href="/admin/v1/releases">App-Versionen<small>Releases verwalten</small></a>
-        <a href="/admin/v1/system">Systemstatus<small>Backups, Jobs und technische Details</small></a>
+        <a href="/admin/v1/companies"><span class="qmark">FI</span><span>Firmen<small>Benutzer, Geräte, Baustellen, Speicher und PDF</small></span></a>
+        <a href="/admin/v1/routes"><span class="qmark">ST</span><span>Streckendaten<small>Strecken und gemeinsamer Fachkatalog</small></span></a>
+        <a href="/admin/v1/stations"><span class="qmark">BF</span><span>Bahnhöfe<small>Betriebsstellen, Kürzel und Objekte</small></span></a>
+        <a href="/admin/v1/survey-import"><span class="qmark">TR</span><span>Trassierungsdaten<small>Originale, Import und Referenzdaten</small></span></a>
+        <a href="/admin/v1/releases"><span class="qmark">AP</span><span>App-Versionen<small>Releases verwalten</small></span></a>
+        <a href="/admin/v1/system"><span class="qmark">SY</span><span>Systemstatus<small>Backups, Jobs und technische Details</small></span></a>
       </div>
     </div>
   </div>
@@ -101,7 +104,7 @@
         <div class="system-box"><div class="k">Laufzeit</div><div class="v" id="uptime">—</div></div>
         <div class="system-box"><div class="k">Server-Version</div><div class="v" id="serverVersion">—</div></div>
         <div class="system-box"><div class="k">Umgebung</div><div class="v" id="environment">—</div></div>
-        <div class="system-box"><div class="k">Systemtemperatur</div><div class="v" id="temperature">nicht verfügbar</div></div>
+        <div class="system-box"><div class="k">Systemtemperatur</div><div class="v" id="temperature">Nicht verfügbar</div></div>
         <div class="system-box"><div class="k">CPU-Kerne / Last</div><div class="v" id="cpuLoad">—</div></div>
       </div>
       <div class="bars" style="margin-top:12px">
@@ -112,7 +115,7 @@
     </div>
 
     <div class="card compact">
-      <div class="headline"><h2>Probleme & Warnungen</h2><a href="/admin/v1/system">Details</a></div>
+      <div class="headline"><div><h2>Probleme & Warnungen</h2><div class="section-note">Aktuelle oder seit der letzten Prüfung aufgelaufene Hinweise.</div></div><div class="issue-actions"><button id="ackWarnings" class="secondary" type="button" style="display:none">Geprüft / quittieren</button><a href="/admin/v1/system">Details</a></div></div>
       <div id="issues"></div>
     </div>
 
@@ -162,11 +165,13 @@ function renderChart(series){
   svg.innerHTML=html;
 }
 function renderCompanies(companies,total){
+  const grand=Math.max(1,Number(total)||0);
   $('tbStorageTotal').textContent='TB-Helfer: '+size(total||0);
   $('companyStorage').innerHTML=(companies||[]).map(c=>{
-    const totalBytes=Number(c.total_storage_bytes)||0;
+    const totalBytes=Number(c.total_storage_bytes)||0,share=Math.max(0,Math.min(100,totalBytes/grand*100));
     return '<div class="company-row"><div class="company-title"><b>'+esc(c.name)+'</b><b>'+esc(size(totalBytes))+'</b></div>'+
-      '<div class="company-parts"><span>Fotos '+esc(size(c.photo_bytes||0))+'</span><span>PDFs '+esc(size(c.pdf_bytes||0))+'</span><span>Trassierungsdaten '+esc(size(c.survey_bytes||0))+'</span><span>Sonstiges '+esc(size(c.other_file_bytes||0))+'</span></div></div>';
+      '<div class="company-parts"><span>Fotos '+esc(size(c.photo_bytes||0))+'</span><span>PDFs '+esc(size(c.pdf_bytes||0))+'</span><span>Trassierungsdaten '+esc(size(c.survey_bytes||0))+'</span><span>Sonstiges '+esc(size(c.other_file_bytes||0))+'</span></div>'+
+      '<div class="company-meter"><div style="width:'+share.toFixed(1)+'%"></div></div></div>';
   }).join('')||'<div class="muted">Noch keine Firmendaten vorhanden.</div>';
 }
 let loading=false;
@@ -183,19 +188,28 @@ async function loadDashboard(){
     $('healthPill').textContent=critical?'Handlungsbedarf':problems.length?'Warnungen vorhanden':'System OK';$('heroDot').className='status-dot '+(critical?'bad':problems.length?'warn':'ok');
     $('stockKpis').innerHTML=[mini((c.active_users||0)+' / '+(c.users||0),'aktive / alle Benutzer'),mini(c.active_devices||0,'aktive Geräte'),mini(c.companies||0,'Firmen'),mini(c.worksites||0,'Baustellen'),mini(c.files||0,'Dateien'),mini(c.releases||0,'App-Versionen'),mini(c.survey_originals||0,'Trassierungsoriginale'),mini(c.trash_items||0,'Papierkorb / gelöscht')].join('');
     $('startedAt').textContent=dt(p.started_at);$('uptime').textContent=duration(p.uptime_seconds);$('serverVersion').textContent=x.server_version||'—';$('environment').textContent=envLabel(x.environment);$('publicServer').textContent=x.public_base_url||'nicht konfiguriert';
-    $('temperature').textContent=host.temperature_c==null?'nicht vom System gemeldet':Number(host.temperature_c).toFixed(1).replace('.',',')+' °C';$('cpuLoad').textContent=(host.cpu_count||'—')+' Kerne · '+(host.load_1==null?'—':String(host.load_1).replace('.',','));
+    $('temperature').textContent=host.temperature_c==null?'Nicht verfügbar':Number(host.temperature_c).toFixed(1).replace('.',',')+' °C';$('cpuLoad').textContent=(host.cpu_count||'—')+' Kerne · '+(host.load_1==null?'—':String(host.load_1).replace('.',','));
     $('nasState').textContent=st.available&&!critical?'Erreichbar':'Prüfen';
     $('storagePct').textContent=st.percent_used==null?'—':Number(st.percent_used).toFixed(1).replace('.',',')+' %';$('storageBar').style.width=pct(st.percent_used)+'%';
     $('ramPct').textContent=ram.percent_used==null?'—':Number(ram.percent_used).toFixed(1).replace('.',',')+' %';$('ramBar').style.width=pct(ram.percent_used)+'%';
     $('storageDetail').textContent=st.available?(size(st.used_bytes)+' belegt · '+size(st.free_bytes)+' frei · TB-Helfer erfasst '+size(c.tracked_storage_bytes||0)):'Datenspeicher nicht verfügbar.';
     $('issues').innerHTML=issues.map(i=>'<div class="issue '+esc(i.severity)+'"><b>'+esc(i.title)+'</b><small>'+esc(i.detail)+'</small></div>').join('')||'<div class="issue ok"><b>Keine Probleme</b><small>Keine Warnungen gemeldet.</small></div>';
+    $('ackWarnings').style.display=problems.length?'inline-block':'none';
     const expiring=x.expiring_users||[];$('expiringCard').style.display=expiring.length?'block':'none';$('expiringUsers').innerHTML=expiring.map(u=>'<div class="issue warning"><b>'+esc(u.display_name)+'</b><small>'+esc(u.login_name)+' · gültig bis '+esc(dt(u.access_valid_until))+'</small></div>').join('');
-    $('lastDevice').textContent=dt(c.last_device_seen);$('lastSync').textContent=dt(c.last_sync);const b=x.last_successful_backup;$('lastBackup').textContent=b?(dt(b.finished_at||b.started_at)+' · '+String(b.kind||'')):'noch kein erfolgreiches Backup';
+    $('lastDevice').textContent=c.last_device_seen?dt(c.last_device_seen):'Noch kein Gerätekontakt gemeldet';$('lastSync').textContent=c.last_sync?dt(c.last_sync):'Noch keine Synchronisierung gemeldet';const b=x.last_successful_backup;$('lastBackup').textContent=b?(dt(b.finished_at||b.started_at)+' · '+String(b.kind||'')):'noch kein erfolgreiches Backup';
     renderChart(x.traffic_series||[]);renderCompanies(x.companies||[],c.tracked_storage_bytes||0);$('lastUpdated').textContent='Stand '+new Date().toLocaleTimeString('de-DE');
   }catch(error){$('dashboardError').textContent=error.message||String(error);$('dashboardError').style.display='block';$('healthPill').textContent='Status konnte nicht geladen werden';$('heroDot').className='status-dot bad';}
   finally{$('refreshDashboard').disabled=false;loading=false;}
 }
-$('refreshDashboard').addEventListener('click',loadDashboard);loadDashboard();
+$('refreshDashboard').addEventListener('click',loadDashboard);
+$('ackWarnings').addEventListener('click',async()=>{
+  if(!confirm('Die aktuell angezeigten Warnungen als geprüft markieren? Neue Fehler werden danach weiterhin sofort angezeigt.'))return;
+  $('ackWarnings').disabled=true;
+  try{await tbApi('/api/v1/admin/system/warnings/acknowledge',{method:'POST'});await loadDashboard();}
+  catch(error){$('dashboardError').textContent=error.message||String(error);$('dashboardError').style.display='block';}
+  finally{$('ackWarnings').disabled=false;}
+});
+loadDashboard();
 setInterval(()=>{if(!document.hidden)loadDashboard();},5000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashboard();});
 </script>
