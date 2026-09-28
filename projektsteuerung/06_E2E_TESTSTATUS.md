@@ -285,3 +285,8 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
 - Source-JavaScript/Assertions: **PASS**.
 - Runtime nach Deploy offen: Breite 40→250, X -120→+120, Y bei kleiner/mittlerer Breite, Draft-Vorschau ohne Speichern, Persistenz nach Speichern und Großansicht prüfen.
 - Status: **SOURCE FERTIG / DEPLOY-RETEST OFFEN**.
+
+- ADMIN-PDF-007 CI auf Code-/Vertrags-HEAD `379c869d...`:
+  - TB-Server Run `36487263863`: failure, Job `foundation`, `steps = null`;
+  - Android Run `36487263880`: failure, Job `build`, `steps = null`;
+  - gemäß Projektregel **kein Testnachweis und kein Sourcefehler-Nachweis**.
