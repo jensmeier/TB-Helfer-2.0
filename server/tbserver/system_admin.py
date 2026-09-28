@@ -300,6 +300,42 @@ def _system_temperature_c() -> float | None:
     return round(max(values), 1) if values else None
 
 
+def _synology_disk_temperatures() -> list[dict[str, Any]]:
+    root_value = os.getenv(
+        "TB_SYNO_DISK_TEMPERATURE_ROOT",
+        "/host/synostorage/disks",
+    ).strip()
+    root = Path(root_value or "/host/synostorage/disks")
+    if not root.is_dir():
+        return []
+
+    try:
+        disk_dirs = sorted(
+            (path for path in root.iterdir() if path.is_dir()),
+            key=lambda path: (len(path.name), path.name),
+        )
+    except OSError:
+        return []
+
+    result: list[dict[str, Any]] = []
+    for disk_dir in disk_dirs:
+        try:
+            raw = float((disk_dir / "temperature").read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            continue
+        value = raw / 1000.0 if raw > 200 else raw
+        if not 0.0 < value < 120.0:
+            continue
+        result.append(
+            {
+                "label": f"Laufwerk {len(result) + 1}",
+                "device": disk_dir.name,
+                "temperature_c": round(value, 1),
+            }
+        )
+    return result
+
+
 def _host_snapshot() -> dict[str, Any]:
     memory = _memory_snapshot()
     try:
@@ -311,6 +347,7 @@ def _host_snapshot() -> dict[str, Any]:
         "cpu_count": os.cpu_count(),
         "ram": memory,
         "temperature_c": _system_temperature_c(),
+        "disk_temperatures": _synology_disk_temperatures(),
         "load_1": round(load_1, 2) if load_1 is not None else None,
         "load_5": round(load_5, 2) if load_5 is not None else None,
         "load_15": round(load_15, 2) if load_15 is not None else None,

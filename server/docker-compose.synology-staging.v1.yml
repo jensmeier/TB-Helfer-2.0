@@ -108,6 +108,7 @@ services:
       - ${TB_V1_SOURCE_MIGRATIONS_DIR:-./v1_migrations}:/app/v1_migrations:ro
       - ${TB_V1_SOURCE_TOOLS_DIR:-./tools}:/app/tools:ro
       - ${TB_V1_SOURCE_DATA_DIR:-./data}:/app/data:ro
+      - ${TB_V1_SYNO_DISK_TEMP_DIR:-/run/synostorage/disks}:/host/synostorage/disks:ro
       - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1
       - ${TB_V1_BACKUP_DIR:-./backups-v1}:/tb/backups-v1
       - ${TB_V1_DIAGNOSTICS_DIR:-./diagnostics-v1}:/tb/diagnostics-v1

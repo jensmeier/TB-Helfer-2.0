@@ -107,6 +107,7 @@
         <div class="system-box"><div class="k">Server-Version</div><div class="v" id="serverVersion">—</div></div>
         <div class="system-box"><div class="k">Umgebung</div><div class="v" id="environment">—</div></div>
         <div class="system-box"><div class="k">Systemtemperatur</div><div class="v" id="temperature">Nicht verfügbar</div></div>
+        <div class="system-box"><div class="k">Festplatten-Temperaturen</div><div class="v" id="diskTemperatures">Nicht verfügbar</div></div>
         <div class="system-box"><div class="k">CPU-Kerne / Last</div><div class="v" id="cpuLoad">—</div></div>
       </div>
       <div class="bars" style="margin-top:12px">
@@ -153,6 +154,11 @@ function size(value){
 function dt(value){if(!value)return '—';try{return new Date(value).toLocaleString('de-DE');}catch(_){return String(value);}}
 function duration(seconds){let s=Math.max(0,Number(seconds)||0),d=Math.floor(s/86400);s%=86400;let h=Math.floor(s/3600);s%=3600;let m=Math.floor(s/60);return d?d+' T '+h+' Std':h?h+' Std '+m+' Min':m+' Min';}
 function envLabel(v){return ({production:'Produktion',staging:'Test / Staging',development:'Entwicklung',dev:'Entwicklung'})[String(v||'').toLowerCase()]||v||'—';}
+function diskTemperatureLabel(disks){
+  const list=(disks||[]).filter(d=>Number.isFinite(Number(d.temperature_c)));
+  if(!list.length)return 'Nicht verfügbar';
+  return list.map((d,i)=>(d.label||('Laufwerk '+(i+1)))+': '+Math.round(Number(d.temperature_c))+' °C').join(' · ');
+}
 function mini(n,l){return '<div class="mini-kpi"><div class="n">'+esc(n)+'</div><div class="l">'+esc(l)+'</div></div>';}
 function pct(v){const n=Number(v);return Number.isFinite(n)?Math.max(0,Math.min(100,n)):0;}
 function renderChart(series){
@@ -190,7 +196,7 @@ async function loadDashboard(){
     $('healthPill').textContent=critical?'Handlungsbedarf':problems.length?'Warnungen vorhanden':'System OK';$('heroDot').className='status-dot '+(critical?'bad':problems.length?'warn':'ok');
     $('stockKpis').innerHTML=[mini((c.active_users||0)+' / '+(c.users||0),'aktive / alle Benutzer'),mini(c.active_devices||0,'aktive Geräte'),mini(c.companies||0,'Firmen'),mini(c.worksites||0,'Baustellen'),mini(c.files||0,'Dateien'),mini(c.releases||0,'App-Versionen'),mini(c.survey_originals||0,'Trassierungsoriginale'),mini(c.trash_items||0,'Papierkorb / gelöscht')].join('');
     $('startedAt').textContent=dt(p.started_at);$('uptime').textContent=duration(p.uptime_seconds);$('serverVersion').textContent=x.server_version||'—';$('environment').textContent=envLabel(x.environment);$('publicServer').textContent=x.public_base_url||'nicht konfiguriert';
-    $('temperature').textContent=host.temperature_c==null?'Nicht verfügbar':Number(host.temperature_c).toFixed(1).replace('.',',')+' °C';$('cpuLoad').textContent=(host.cpu_count||'—')+' Kerne · '+(host.load_1==null?'—':String(host.load_1).replace('.',','));
+    $('temperature').textContent=host.temperature_c==null?'Nicht verfügbar':Number(host.temperature_c).toFixed(1).replace('.',',')+' °C';$('diskTemperatures').textContent=diskTemperatureLabel(host.disk_temperatures);$('cpuLoad').textContent=(host.cpu_count||'—')+' Kerne · '+(host.load_1==null?'—':String(host.load_1).replace('.',','));
     $('nasState').textContent=st.available&&!critical?'Erreichbar':'Prüfen';
     $('storagePct').textContent=st.percent_used==null?'—':Number(st.percent_used).toFixed(1).replace('.',',')+' %';$('storageBar').style.width=pct(st.percent_used)+'%';
     $('ramPct').textContent=ram.percent_used==null?'—':Number(ram.percent_used).toFixed(1).replace('.',',')+' %';$('ramBar').style.width=pct(ram.percent_used)+'%';

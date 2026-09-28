@@ -72,6 +72,7 @@ services:
       TB_SMTP_SSL: ${TB_V1_SMTP_SSL:-false}
       TZ: ${TZ:-Europe/Berlin}
     volumes:
+      - ${TB_V1_SYNO_DISK_TEMP_DIR:-/run/synostorage/disks}:/host/synostorage/disks:ro
       - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1
       - ${TB_V1_BACKUP_DIR:-./backups-v1}:/tb/backups-v1
       - ${TB_V1_DIAGNOSTICS_DIR:-./diagnostics-v1}:/tb/diagnostics-v1

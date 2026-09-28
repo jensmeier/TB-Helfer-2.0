@@ -20,6 +20,7 @@ def main() -> None:
     system = read("server/tbserver/system_admin.py")
     web = read("server/tbserver/admin_web.py")
     dashboard = read("server/templates/v1_admin_dashboard.html")
+    synology_compose = read("server/docker-compose.synology-staging.v1.yml")
     base = read("server/templates/v1_base.html")
     baseline = read("server/v1_migrations/001_server_1_0_base.sql")
     workflow = read(".github/workflows/tb-server-v1.yml")
@@ -41,6 +42,8 @@ def main() -> None:
         ('"issues"', system),
         ('"last_successful_backup"', system),
         ('"public_base_url"', system),
+        ("def _synology_disk_temperatures", system),
+        ('"disk_temperatures"', system),
         ('"releases"', system),
         ('"survey_originals"', system),
         ('"trash_items"', system),
@@ -50,7 +53,11 @@ def main() -> None:
         ("Download · 24 h", dashboard),
         ("Datenverkehr · letzte 24 Stunden", dashboard),
         ("Probleme & Warnungen", dashboard),
+        ("Festplatten-Temperaturen", dashboard),
+        ("diskTemperatures", dashboard),
         ("renderChart", dashboard),
+        ("/run/synostorage/disks", synology_compose),
+        ("/host/synostorage/disks:ro", synology_compose),
         ('href="/admin/v1">Übersicht</a>', base),
         ("CREATE TABLE tb.system_metrics_hourly", baseline),
         ("86_verify_tb_server_1_admin_overview_source.py", workflow),
