@@ -1,15 +1,43 @@
 {% extends "v1_base.html" %}
 {% block title %}TB-Helfer · Firmen{% endblock %}
+{% block head %}
+<style>
+  .companies-hero{background:linear-gradient(120deg,#0b4fad,#1167d8 58%,#3b82e6);color:#fff;border:0;padding:22px 24px;overflow:hidden;position:relative}
+  .companies-hero:after{content:"";position:absolute;width:290px;height:290px;border-radius:50%;right:-95px;top:-175px;background:rgba(255,255,255,.11)}
+  .companies-head{position:relative;z-index:1;display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap}
+  .companies-hero h1{color:#fff;margin:0 0 5px}.companies-hero p{margin:0;color:#dbeafe}
+  .create-panel{display:none}.create-panel.open{display:block}
+  .company-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px}
+  .company-card{background:#fff;border:1px solid #e4e7ec;border-radius:16px;padding:18px;box-shadow:0 3px 12px rgba(16,24,40,.045);transition:.16s}
+  .company-card:hover{border-color:#b2ccff;box-shadow:0 8px 24px rgba(16,24,40,.08);transform:translateY(-1px)}
+  .company-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.company-title h2{margin:0 0 4px;font-size:21px}
+  .company-meta{font-size:13px;color:#667085;min-height:36px}
+  .company-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
+  .company-kpi{border:1px solid #eaecf0;border-radius:10px;padding:9px 10px;background:#f8fafc}.company-kpi b{display:block;font-size:18px}.company-kpi span{font-size:11px;color:#667085}
+  .company-actions{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid #eaecf0;padding-top:13px}
+  .empty-state{text-align:center;padding:42px 20px}.empty-state h2{margin-bottom:6px}
+  .status-active{background:#ecfdf3;color:#067647}.status-disabled{background:#f2f4f7;color:#475467}
+  @media(max-width:600px){.company-grid{grid-template-columns:1fr}.company-kpis{grid-template-columns:1fr 1fr 1fr}}
+</style>
+{% endblock %}
 {% block content %}
-<div class="card">
-  <h1>Firmen</h1>
-  <p class="muted">Zentrale Firmenstammdaten für Geräte, Portal und BTB/PDF.</p>
+<div class="card companies-hero">
+  <div class="companies-head">
+    <div>
+      <h1>Firmen</h1>
+      <p>Eine Firma anlegen und anschließend Benutzer, Geräte, Baustellen, Speicher sowie Logo/PDF zentral verwalten.</p>
+    </div>
+    <button id="toggleCreate" type="button">+ Firma anlegen</button>
+  </div>
   <div id="msg"></div>
 </div>
 
-<div class="card">
-  <h2>Firma anlegen</h2>
-  <form id="createCompany">
+<div id="createPanel" class="card create-panel {% if not companies %}open{% endif %}">
+  <div class="actions" style="justify-content:space-between">
+    <div><h2 style="margin-bottom:4px">Neue Firma</h2><div class="muted">Grunddaten anlegen. Alles Weitere wird danach direkt in der Firma eingerichtet.</div></div>
+    <button id="closeCreate" type="button" class="secondary">Schließen</button>
+  </div>
+  <form id="createCompany" style="margin-top:16px">
     <div class="grid">
       <div><label for="name">Firmenname</label><input id="name" required maxlength="200"></div>
       <div><label for="street">Straße / Hausnummer</label><input id="street" maxlength="300"></div>
@@ -22,38 +50,51 @@
   </form>
 </div>
 
-<div class="card">
-  <h2>Vorhandene Firmen</h2>
-  <p class="muted">Über „Firma verwalten“ sind Stammdaten, Benutzer, Geräte, Baustellen, Speicher sowie Logo/PDF zusammengefasst.</p>
-  <div class="scroll">
-    <table>
-      <thead><tr><th>Firma</th><th>Ort</th><th>Nutzer</th><th>Status</th><th>Logo</th><th></th></tr></thead>
-      <tbody>
-      {% for c in companies %}
-        <tr>
-          <td><b>{{ c.name }}</b><div class="muted"><code>{{ c.id }}</code></div></td>
-          <td>{{ c.postal_code or '' }} {{ c.city or '' }}</td>
-          <td>{{ c.user_count }}</td>
-          <td><span class="pill">{% if c.status == 'ACTIVE' %}Aktiv{% elif c.status == 'DISABLED' %}Deaktiviert{% else %}{{ c.status }}{% endif %}</span></td>
-          <td>{% if c.logo_file_id %}vorhanden{% else %}—{% endif %}</td>
-          <td class="right"><div class="actions">
-            <a class="btn" href="/admin/v1/companies/{{ c.id }}/branding">Firma verwalten</a>
-            <button type="button" class="danger purge-company"
-                    data-company-id="{{ c.id }}" data-company-name="{{ c.name }}">Komplett löschen</button>
-          </div></td>
-        </tr>
-      {% else %}
-        <tr><td colspan="6" class="muted">Noch keine Firmen vorhanden.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
+{% if companies %}
+<div class="company-grid">
+  {% for c in companies %}
+  <article class="company-card">
+    <div class="company-title">
+      <div>
+        <h2>{{ c.name }}</h2>
+        <div class="company-meta">
+          {% if c.postal_code or c.city %}{{ c.postal_code or '' }} {{ c.city or '' }}{% else %}Ort noch nicht hinterlegt{% endif %}
+          {% if c.email %}<br>{{ c.email }}{% endif %}
+        </div>
+      </div>
+      <span class="pill {% if c.status == 'ACTIVE' %}status-active{% else %}status-disabled{% endif %}">
+        {% if c.status == 'ACTIVE' %}Aktiv{% elif c.status == 'DISABLED' %}Deaktiviert{% else %}{{ c.status }}{% endif %}
+      </span>
+    </div>
+    <div class="company-kpis">
+      <div class="company-kpi"><b>{{ c.user_count }}</b><span>Benutzer</span></div>
+      <div class="company-kpi"><b>{{ c.device_count }}</b><span>Geräte</span></div>
+      <div class="company-kpi"><b>{{ c.worksite_count }}</b><span>Baustellen</span></div>
+    </div>
+    <div class="company-actions">
+      <div class="muted" style="font-size:12px">{% if c.logo_file_id %}Logo hinterlegt{% else %}Noch kein Logo{% endif %}</div>
+      <div class="actions">
+        <a class="btn" href="/admin/v1/companies/{{ c.id }}/branding">Firma verwalten</a>
+        <button type="button" class="danger purge-company" data-company-id="{{ c.id }}" data-company-name="{{ c.name }}">Komplett löschen</button>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
 </div>
+{% else %}
+<div class="card empty-state">
+  <h2>Noch keine Firma vorhanden</h2>
+  <p class="muted">Lege zuerst eine Firma an. Danach werden Benutzer, Geräte, Baustellen und PDF-Einstellungen direkt dort verwaltet.</p>
+</div>
+{% endif %}
 {% endblock %}
 {% block scripts %}
 <script>
-const form=document.getElementById('createCompany'), msg=document.getElementById('msg');
+const form=document.getElementById('createCompany'),msg=document.getElementById('msg'),panel=document.getElementById('createPanel');
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+function setCreate(open){panel.classList.toggle('open',!!open);if(open)setTimeout(()=>document.getElementById('name').focus(),50);}
+document.getElementById('toggleCreate').addEventListener('click',()=>setCreate(!panel.classList.contains('open')));
+document.getElementById('closeCreate').addEventListener('click',()=>setCreate(false));
 form.addEventListener('submit',async ev=>{
   ev.preventDefault();
   try{
@@ -74,11 +115,10 @@ form.addEventListener('submit',async ev=>{
 });
 document.querySelectorAll('.purge-company').forEach(button=>{
   button.addEventListener('click',async ()=>{
-    const id=button.dataset.companyId, name=button.dataset.companyName||'diese Firma';
+    const id=button.dataset.companyId,name=button.dataset.companyName||'diese Firma';
     const typed=prompt(
       'Firma "'+name+'" KOMPLETT löschen?\n\n'+
-      'Dabei werden die Firma sowie ihre Benutzer, Geräte, Baustellen, BTBs, Mängel, Abnahmen und Dateien endgültig entfernt. '+
-      'In staging/test werden auch Firmen-Vermessungsoriginale entfernt. In production blockiert der Server diesen Schritt, sobald geschützte Originale vorhanden sind.\n\n'+
+      'Dabei werden die Firma sowie ihre Benutzer, Geräte, Baustellen, BTBs, Mängel, Abnahmen und Dateien endgültig entfernt.\n\n'+
       'Zum Bestätigen ENDGUELTIG LOESCHEN eingeben.'
     );
     if(typed!=='ENDGUELTIG LOESCHEN')return;
