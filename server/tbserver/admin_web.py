@@ -423,8 +423,71 @@ def admin_company_branding_page(
 ):
     with transaction() as conn, conn.cursor() as cur:
         row = _company_row(cur, company_id)
-    profile = _profile_payload(row)
-    layout = normalize_pdf_logo_layout(row.get("pdf_layout"))
+        profile = _profile_payload(row)
+        layout = normalize_pdf_logo_layout(row.get("pdf_layout"))
+
+        cur.execute(
+            """
+            SELECT id, display_name, login_name, company_role, status,
+                   personal_email, personal_phone, access_valid_until
+            FROM tb.users
+            WHERE company_id = %s
+              AND deleted_at IS NULL
+              AND company_role <> 'ADMIN'
+            ORDER BY lower(display_name)
+            """,
+            (company_id,),
+        )
+        company_users = [dict(item) for item in cur.fetchall()]
+
+        cur.execute(
+            """
+            SELECT d.id, d.device_uid, d.device_name, d.platform, d.status,
+                   d.last_seen_at, d.revoked_at, u.display_name
+            FROM tb.devices d
+            JOIN tb.users u ON u.id = d.user_id
+            WHERE u.company_id = %s
+              AND u.deleted_at IS NULL
+            ORDER BY lower(u.display_name), d.bound_at DESC
+            """,
+            (company_id,),
+        )
+        company_devices = [dict(item) for item in cur.fetchall()]
+
+        cur.execute(
+            """
+            SELECT id, name, status, created_at, updated_at
+            FROM tb.worksites
+            WHERE company_id = %s AND deleted_at IS NULL
+            ORDER BY lower(name)
+            """,
+            (company_id,),
+        )
+        company_worksites = [dict(item) for item in cur.fetchall()]
+
+        cur.execute(
+            """
+            SELECT
+              coalesce(sum(byte_size) FILTER (WHERE lower(mime_type) LIKE 'image/%'),0) AS photo_bytes,
+              coalesce(sum(byte_size) FILTER (WHERE lower(mime_type) = 'application/pdf'),0) AS pdf_bytes,
+              coalesce(sum(byte_size) FILTER (
+                WHERE lower(mime_type) NOT LIKE 'image/%'
+                  AND lower(mime_type) <> 'application/pdf'
+              ),0) AS other_file_bytes,
+              coalesce(sum(byte_size),0) AS file_bytes
+            FROM tb.files
+            WHERE company_id = %s AND deleted_at IS NULL
+            """,
+            (company_id,),
+        )
+        storage = dict(cur.fetchone())
+        cur.execute(
+            "SELECT coalesce(sum(byte_size),0) AS survey_bytes FROM tb.survey_originals WHERE company_id = %s",
+            (company_id,),
+        )
+        storage["survey_bytes"] = int(cur.fetchone()["survey_bytes"] or 0)
+        storage["total_bytes"] = int(storage.get("file_bytes") or 0) + int(storage["survey_bytes"])
+
     return templates.TemplateResponse(
         "v1_company_branding.html",
         {
@@ -433,5 +496,9 @@ def admin_company_branding_page(
             "company_id": str(company_id),
             "profile": profile,
             "layout": layout,
+            "company_users": company_users,
+            "company_devices": company_devices,
+            "company_worksites": company_worksites,
+            "storage": storage,
         },
     )
