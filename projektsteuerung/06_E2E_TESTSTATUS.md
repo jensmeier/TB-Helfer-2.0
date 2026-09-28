@@ -253,3 +253,20 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
 - Neuer Nachtrag `Zugriff gültig` im Benutzer-Bearbeitungsformular ist source-seitig umgesetzt.
 - Nach Upload noch prüfen: Kein Ablauf, 3 Monate, 6 Monate, 1 Jahr und Manuell speichern korrekt.
 - Status Nachtrag: **SOURCE PASS / DEPLOY-RETEST OFFEN**.
+
+
+### ADMIN-DASH-006 – Source-Status 28.09.2026
+- Dashboard-/Bahnhof-Source-Block: **PASS**.
+- Offizieller Referenzdatentest:
+  - `MIH` liefert exakt `Ingolstadt Hbf`;
+  - `MIB` ist kein exakter Referenzcode und wird nicht automatisch gespeichert.
+- API-Data-Mount source-seitig vorhanden.
+- Runtime noch offen, da Compose-Volume erst nach Container-Recreate aktiv wird.
+- Pflichttest nach Deploy:
+  1. Übersicht lädt und aktualisiert sich;
+  2. Warnung `Bahnhof-Referenzdaten fehlen` darf bei korrektem Mount nicht erscheinen;
+  3. `MIH` füllt `Ingolstadt Hbf`;
+  4. `MIB` zeigt ähnliche offizielle Vorschläge, darunter `MIH – Ingolstadt Hbf`;
+  5. Namenssuche `Ingolstadt` liefert passende Betriebsstellen;
+  6. Warnungsquittierung im Dashboard funktioniert.
+- Status: **SOURCE FERTIG / DEPLOY-RECREATE OFFEN / E2E OFFEN**.
