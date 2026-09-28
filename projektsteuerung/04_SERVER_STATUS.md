@@ -248,3 +248,9 @@ Status: **DEPLOYT / ÜBERSICHT + IMPORT LAUFEN / TEILFEHLER OFFEN**
 - keine Datenbank-/Bestandsänderung;
 - Source-Check: alte LIKE-Muster entfernt, neue Prüfung vorhanden;
 - Status: **SOURCE-FIX VORHANDEN / SYNLOGY-UPLOAD + RUNTIME-RETEST OFFEN**.
+
+### ADMIN-RUNTIME-002 – Firmenverwaltung Retest 28.09.2026
+- Benutzer-Screenshot zeigt `Firma verwalten` erfolgreich geladen.
+- Firmenübersicht sowie Reiter Benutzer/Geräte/Baustellen/Speicher/Logo-PDF sind erreichbar.
+- Der zuvor reproduzierte HTTP-500-Fehler ist damit praktisch **BEHOBEN**.
+- Nächste Nacharbeit: firmenzentrierte Admin-Struktur gemäß `ADMIN-STRUCTURE-004` planen; noch keine Navigation umbauen.
