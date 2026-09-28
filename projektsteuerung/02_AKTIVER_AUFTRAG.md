@@ -852,7 +852,7 @@ Reihenfolge:
 
 
 ## ADMIN-STORAGE-001 – Legacy-Vermessungsoriginale dürfen nicht doppelt zählen
-Status: **FEHLER BESTÄTIGT / KORREKTUR JETZT**
+Status: **SOURCE-FIX UMGESETZT / DEPLOY + RUNTIME-PRÜFUNG OFFEN**
 
 Befund vom 28.09.2026 bei der Admin-Speicherprüfung:
 - Der bestehende ältere Importpfad `survey_originals/from-file` verschiebt den physischen Inhalt auf einen `reference/survey-originals/...`-Speicherpfad.
@@ -872,3 +872,13 @@ Zielstatus dieses Blocks:
 - Quellstand korrigieren;
 - Source-Prüfung;
 - noch **kein** Runtime-/E2E-Nachweis ohne Deployment.
+
+### ADMIN-STORAGE-001 – Source-Fix 28.09.2026
+- `system_admin.py`: physische TB-Helfer-Gesamtbelegung dedupliziert nach `storage_key`.
+- `system_admin.py`: Firmenkategorien Fotos/PDF/Sonstiges schließen `tb.files`-Zeilen aus, deren `storage_key` bereits als Vermessungsoriginal geführt wird.
+- `admin_web.py`: Firmen-Detailansicht verwendet dieselbe Deduplizierung.
+- `tb.survey_originals` bleibt bei gemeinsamem Speicherpfad die fachliche Kategorie **Trassierungsdaten**.
+- Keine Datenmigration, kein Löschen, kein Verschieben von Altbeständen.
+- Source-Assertions: PASS.
+- GitHub Actions auf HEAD: Server/Android `failure`, aber `steps = null`; deshalb **kein Testnachweis**.
+- Status: **QUELLSTAND FERTIG / NICHT DEPLOYT / RUNTIME-E2E OFFEN**.
