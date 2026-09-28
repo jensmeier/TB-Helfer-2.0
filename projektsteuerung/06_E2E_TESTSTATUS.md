@@ -246,3 +246,10 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
 - GitHub Actions ohne Runner-Steps (`steps = null`): **kein Testnachweis**.
 - Status: **SOURCE FERTIG / DEPLOY OFFEN / RETEST OFFEN**.
 - Retest nach Deploy: Aktivierungskarte öffnen → zurück → Firmen-Benutzer; Gültigkeitslabel prüfen; Geräteansicht mit Server-Release 1.3.25 prüfen.
+
+### ADMIN-COMPANY-005 – Praxis + Gültigkeitsnachtrag
+- Benutzer bestätigt Firmen-/Geräteansicht: **PASST**.
+- Anzeige `zuletzt vom Gerät gemeldet` + `Server-Release 1.3.25 / 200075` praktisch sichtbar.
+- Neuer Nachtrag `Zugriff gültig` im Benutzer-Bearbeitungsformular ist source-seitig umgesetzt.
+- Nach Upload noch prüfen: Kein Ablauf, 3 Monate, 6 Monate, 1 Jahr und Manuell speichern korrekt.
+- Status Nachtrag: **SOURCE PASS / DEPLOY-RETEST OFFEN**.
