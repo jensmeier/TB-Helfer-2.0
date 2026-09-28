@@ -270,3 +270,5 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   5. Namenssuche `Ingolstadt` liefert passende Betriebsstellen;
   6. Warnungsquittierung im Dashboard funktioniert.
 - Status: **SOURCE FERTIG / DEPLOY-RECREATE OFFEN / E2E OFFEN**.
+
+- GitHub Actions auf HEAD `bf6bc9f4...`: TB-Server Run `36480722916` und Android Run `36480722938` jeweils `failure`, Jobs jeweils `steps = null`; damit weiterhin **kein Testnachweis**.
