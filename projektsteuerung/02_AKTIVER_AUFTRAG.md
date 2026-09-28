@@ -849,3 +849,26 @@ Reihenfolge:
 - Für die Admin-Fertigstellung ist deshalb **keine Android-Codeänderung nötig**.
 - Server-Admin bekommt auf derselben Datenbasis eine echte PDF-Vorschau/kleinen Viewer.
 - Nächster Schritt: Admin-UI und Systemdaten implementieren.
+
+
+## ADMIN-STORAGE-001 – Legacy-Vermessungsoriginale dürfen nicht doppelt zählen
+Status: **FEHLER BESTÄTIGT / KORREKTUR JETZT**
+
+Befund vom 28.09.2026 bei der Admin-Speicherprüfung:
+- Der bestehende ältere Importpfad `survey_originals/from-file` verschiebt den physischen Inhalt auf einen `reference/survey-originals/...`-Speicherpfad.
+- Der ursprüngliche Datensatz in `tb.files` bleibt dabei bestehen und erhält denselben neuen `storage_key`.
+- Zusätzlich wird für dasselbe physische Original ein Datensatz in `tb.survey_originals` angelegt.
+- Damit können `tb.files` und `tb.survey_originals` auf **denselben physischen Speicherpfad** zeigen.
+- Die neue Admin-Speicheranzeige darf diese Altbestände nicht als zwei Dateien bzw. doppelte Bytes zählen.
+
+Verbindliche Korrektur:
+1. physischer TB-Helfer-Speicher wird nach eindeutigem `storage_key` gezählt;
+2. ein `tb.files`-Datensatz, dessen `storage_key` bereits als `tb.survey_originals.storage_key` geführt wird, wird in der normalen Datei-/Foto-/PDF-/Sonstiges-Summe nicht erneut gezählt;
+3. derselbe Inhalt erscheint fachlich ausschließlich unter **Trassierungsdaten/Vermessungsoriginale**;
+4. keine Altbestandsdaten löschen, verschieben oder migrieren nur für die Statistik;
+5. DB-/Originalschutz bleibt unverändert.
+
+Zielstatus dieses Blocks:
+- Quellstand korrigieren;
+- Source-Prüfung;
+- noch **kein** Runtime-/E2E-Nachweis ohne Deployment.
