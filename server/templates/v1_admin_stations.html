@@ -1,19 +1,33 @@
 {% extends "v1_base.html" %}
 {% block title %}TB-Helfer · Bahnhöfe{% endblock %}
+{% block head %}
+<style>
+  .station-hint{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 14px}
+  .suggest-wrap{position:relative}.suggestions{display:none;position:absolute;z-index:30;left:0;right:0;top:100%;margin-top:5px;background:#fff;border:1px solid #d0d5dd;border-radius:10px;box-shadow:0 12px 28px rgba(16,24,40,.14);max-height:310px;overflow:auto}
+  .suggestions.show{display:block}.suggestion{width:100%;border:0;border-bottom:1px solid #f2f4f7;border-radius:0;background:#fff;color:#101828;text-align:left;padding:10px 12px}
+  .suggestion:hover{background:#f5f8ff}.suggestion:last-child{border-bottom:0}.suggestion b{display:block}.suggestion small{color:#667085}
+  .catalog-item{border:1px solid #eaecf0;border-radius:12px;padding:12px;margin-bottom:10px;background:#fff}
+</style>
+{% endblock %}
 {% block content %}
 <div class="card">
   <h1>Bahnhöfe / Betriebsstellen</h1>
-  <p class="muted">Gemeinsamer Katalog für Bahnhof/Betriebsstelle und die zugehörigen Gleise, Weichen und weiteren Objekte. Änderungen bleiben versioniert in der Katalog-Historie.</p>
+  <p class="muted">Gemeinsamer Katalog für Bahnhof/Betriebsstelle sowie Gleise, Weichen und weitere Objekte. Die Suche verwendet dieselben Referenzdaten und dieselbe Suchlogik wie Android.</p>
   <div id="msg"></div>
 </div>
 
 <div class="card">
   <h2>Bahnhof / Betriebsstelle ergänzen oder korrigieren</h2>
+  <div class="station-hint"><span class="pill">Beispiel</span><span class="muted"><b>MIB</b> findet <b>MIB – Ingolstadt Hbf</b>; die Suche funktioniert genauso über Namensfragmente.</span></div>
   <form id="stationForm">
     <input id="stationId" type="hidden"><input id="stationVersion" type="hidden">
     <div class="grid">
-      <div><label for="stationCode">Kürzel</label><input id="stationCode" maxlength="50"></div>
-      <div><label for="stationName">Name</label><input id="stationName" required maxlength="200"></div>
+      <div class="suggest-wrap">
+        <label for="stationCode">Kürzel</label>
+        <input id="stationCode" maxlength="50" autocomplete="off" placeholder="z. B. MIB">
+        <div id="stationSuggestions" class="suggestions"></div>
+      </div>
+      <div><label for="stationName">Name</label><input id="stationName" required maxlength="200" autocomplete="off" placeholder="z. B. Ingolstadt Hbf"></div>
       <div><label for="stationShort">Kurzname</label><input id="stationShort" maxlength="100"></div>
       <div><label for="stationDescription">Beschreibung</label><input id="stationDescription" maxlength="1000"></div>
     </div>
@@ -50,20 +64,45 @@
 
 {% block scripts %}
 <script>
-const msg=document.getElementById('msg');let catalog={routes:[],stations:[]};let stationObjects={};
+const msg=document.getElementById('msg');let catalog={routes:[],stations:[]};let stationObjects={};let stationSearchTimer=null;
+const stationCode=document.getElementById('stationCode'),stationName=document.getElementById('stationName'),stationSuggestions=document.getElementById('stationSuggestions');
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;window.scrollTo({top:0,behavior:'smooth'});}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function norm(v){return String(v||'').trim().toLocaleLowerCase('de-DE').replace(/[^\p{L}\p{N}]/gu,'');}
 function changeId(prefix){return prefix+'-'+(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());}
 function parseKm(value){const t=String(value||'').trim().replace(',','.');if(!t)return null;if(t.includes('+')){const p=t.split('+');const a=Number(p[0]),b=Number(p[1]);return Number.isFinite(a)&&Number.isFinite(b)?a*1000+b:null;}const n=Number(t);return Number.isFinite(n)?n*1000:null;}
 function formatKm(m){if(m===null||m===undefined||m==='')return '—';const n=Number(m);if(!Number.isFinite(n))return '—';return Math.floor(n/1000)+'+'+(n%1000).toFixed(3).padStart(7,'0');}
-function mutation(kind,id,version,payload){return tbApi('/api/v1/catalog/mutations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_change_id:changeId('admin-catalog'),entity_type:kind,operation:'UPSERT',entity_id:id||null,base_version:version?Number(version):null,payload})});}
-async function loadCatalog(){const {data}=await tbApi('/api/v1/catalog');catalog=data;stationObjectStation.innerHTML=['<option value="">Bahnhof wählen …</option>'].concat(catalog.stations.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.station_code||'—')+' · '+esc(s.name)+'</option>')).join('');renderStations();}
-function renderStations(){const root=document.getElementById('stations');if(!catalog.stations.length){root.innerHTML='<p class="muted">Noch keine Bahnhöfe/Betriebsstellen im gemeinsamen Katalog.</p>';return;}root.innerHTML=catalog.stations.map(s=>'<div class="item" style="margin-bottom:10px"><b>'+esc(s.name)+'</b>'+(s.station_code?' · '+esc(s.station_code):'')+'<div class="muted">Version '+esc(s.current_version)+' · '+esc(s.object_count)+' Objekte'+(s.short_name?' · '+esc(s.short_name):'')+'</div>'+(s.description?'<div>'+esc(s.description)+'</div>':'')+'<div class="actions" style="margin-top:8px"><button type="button" onclick="editStation(\''+esc(s.id)+'\')">Bearbeiten</button><button class="secondary" type="button" onclick="loadStationObjects(\''+esc(s.id)+'\')">Gleise / Weichen / Objekte</button></div><div id="objects-'+esc(s.id)+'" style="margin-top:10px"></div></div>').join('');}
+function typeLabel(v){return ({TRACK:'Gleis',SWITCH:'Weiche',CROSSING:'Kreuzung',PLATFORM:'Bahnsteig',SIGNAL:'Signal',OTHER:'Sonstiges'})[v]||v||'—';}
+function mutation(kind,id,version,payload){return tbApi('/api/v1/catalog/mutations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_change_id:changeId('admin-katalog'),entity_type:kind,operation:'UPSERT',entity_id:id||null,base_version:version?Number(version):null,payload})});}
+
+function hideSuggestions(){stationSuggestions.classList.remove('show');}
+function chooseReference(code,name){stationCode.value=code||'';stationName.value=name||'';if(!stationShort.value.trim())stationShort.value=(code||'').toLowerCase();hideSuggestions();stationName.focus();}
+async function searchReference(query,source){
+  const q=String(query||'').trim();if(!q){hideSuggestions();return;}
+  try{
+    const {data}=await tbApi('/api/v1/admin/station-reference?q='+encodeURIComponent(q)+'&limit=14');
+    const rows=data.results||[];
+    if(source==='code'){
+      const exact=rows.find(r=>norm(r.code)===norm(q));
+      if(exact){stationName.value=exact.name;if(!stationShort.value.trim())stationShort.value=exact.code.toLowerCase();}
+    }
+    stationSuggestions.innerHTML=rows.map(r=>'<button type="button" class="suggestion" data-code="'+esc(r.code)+'" data-name="'+esc(r.name)+'"><b>'+esc(r.display)+'</b><small>'+esc(r.source||'Referenzdaten')+'</small></button>').join('')||'<div class="muted" style="padding:10px 12px">Kein Treffer in den Referenzdaten.</div>';
+    stationSuggestions.classList.add('show');
+    stationSuggestions.querySelectorAll('.suggestion').forEach(b=>b.addEventListener('click',()=>chooseReference(b.dataset.code,b.dataset.name)));
+  }catch(e){hideSuggestions();}
+}
+function queueReference(source){clearTimeout(stationSearchTimer);const field=source==='code'?stationCode:stationName;stationSearchTimer=setTimeout(()=>searchReference(field.value,source),170);}
+stationCode.addEventListener('input',()=>queueReference('code'));stationName.addEventListener('input',()=>queueReference('name'));
+stationCode.addEventListener('focus',()=>{if(stationCode.value.trim())queueReference('code');});stationName.addEventListener('focus',()=>{if(stationName.value.trim())queueReference('name');});
+document.addEventListener('click',ev=>{if(!ev.target.closest('.suggest-wrap')&&ev.target!==stationName)hideSuggestions();});
+
+async function loadCatalog(){const {data}=await tbApi('/api/v1/catalog');catalog=data;stationObjectStation.innerHTML=['<option value="">Bahnhof wählen …</option>'].concat(catalog.stations.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.station_code||'—')+' – '+esc(s.name)+'</option>')).join('');renderStations();}
+function renderStations(){const root=document.getElementById('stations');if(!catalog.stations.length){root.innerHTML='<p class="muted">Noch keine Bahnhöfe/Betriebsstellen im gemeinsamen Katalog.</p>';return;}root.innerHTML=catalog.stations.map(s=>'<div class="catalog-item"><b>'+esc(s.station_code?s.station_code+' – '+s.name:s.name)+'</b><div class="muted">Version '+esc(s.current_version)+' · '+esc(s.object_count)+' Objekte'+(s.short_name?' · Kurzname '+esc(s.short_name):'')+'</div>'+(s.description?'<div style="margin-top:4px">'+esc(s.description)+'</div>':'')+'<div class="actions" style="margin-top:8px"><button type="button" onclick="editStation(\''+esc(s.id)+'\')">Bearbeiten</button><button class="secondary" type="button" onclick="loadStationObjects(\''+esc(s.id)+'\')">Gleise / Weichen / Objekte</button></div><div id="objects-'+esc(s.id)+'" style="margin-top:10px"></div></div>').join('');}
 function editStation(id){const s=catalog.stations.find(x=>x.id===id);if(!s)return;stationId.value=s.id;stationVersion.value=s.current_version;stationCode.value=s.station_code||'';stationName.value=s.name||'';stationShort.value=s.short_name||'';stationDescription.value=s.description||'';stationCancel.style.display='inline-block';stationName.focus();}
-function clearStation(){stationId.value='';stationVersion.value='';stationCode.value='';stationName.value='';stationShort.value='';stationDescription.value='';stationCancel.style.display='none';}
+function clearStation(){stationId.value='';stationVersion.value='';stationCode.value='';stationName.value='';stationShort.value='';stationDescription.value='';stationCancel.style.display='none';hideSuggestions();}
 stationCancel.addEventListener('click',clearStation);
 stationForm.addEventListener('submit',async ev=>{ev.preventDefault();try{await mutation('STATION',stationId.value,stationVersion.value,{station_code:stationCode.value.trim()||null,name:stationName.value.trim(),short_name:stationShort.value.trim()||null,description:stationDescription.value.trim()||null});show('ok','Bahnhof/Betriebsstelle gespeichert.');clearStation();await loadCatalog();}catch(e){show('err',e.message||String(e));}});
-async function loadStationObjects(id){const target=document.getElementById('objects-'+id);target.textContent='wird geladen …';try{const {data}=await tbApi('/api/v1/catalog/stations/'+encodeURIComponent(id)+'/objects');const items=data.objects||[];stationObjects[id]=items;target.innerHTML=items.length?items.map(x=>'<div class="item">'+esc(x.object_type)+' · '+esc(x.designation||'')+' · '+formatKm(x.km_m)+' · V'+esc(x.current_version)+' <button type="button" class="secondary" onclick="editStationObject(\''+esc(id)+'\',\''+esc(x.id)+'\')">Bearbeiten</button></div>').join(''):'<p class="muted">Keine Objekte.</p>';}catch(e){target.innerHTML='<div class="notice err">'+esc(e.message||String(e))+'</div>';}}
+async function loadStationObjects(id){const target=document.getElementById('objects-'+id);target.textContent='wird geladen …';try{const {data}=await tbApi('/api/v1/catalog/stations/'+encodeURIComponent(id)+'/objects');const items=data.objects||[];stationObjects[id]=items;target.innerHTML=items.length?items.map(x=>'<div class="catalog-item" style="padding:8px 10px">'+esc(typeLabel(x.object_type))+' · '+esc(x.designation||'')+' · '+formatKm(x.km_m)+' · Version '+esc(x.current_version)+' <button type="button" class="secondary" onclick="editStationObject(\''+esc(id)+'\',\''+esc(x.id)+'\')">Bearbeiten</button></div>').join(''):'<p class="muted">Keine Objekte.</p>';}catch(e){target.innerHTML='<div class="notice err">'+esc(e.message||String(e))+'</div>';}}
 function editStationObject(stationIdValue,itemId){const x=(stationObjects[stationIdValue]||[]).find(v=>v.id===itemId);if(!x)return;stationObjectId.value=x.id;stationObjectVersion.value=x.current_version;stationObjectStation.value=stationIdValue;stationObjectType.value=x.object_type||'OTHER';stationObjectName.value=x.designation||'';stationObjectKm.value=x.km_m==null?'':formatKm(x.km_m);stationObjectStatus.value=x.data_status||'';stationObjectCancel.style.display='inline-block';stationObjectName.focus();}
 function clearStationObject(){stationObjectId.value='';stationObjectVersion.value='';stationObjectName.value='';stationObjectKm.value='';stationObjectStatus.value='';stationObjectType.value='TRACK';stationObjectCancel.style.display='none';}
 stationObjectCancel.addEventListener('click',clearStationObject);
