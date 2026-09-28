@@ -307,3 +307,21 @@ Folgerung für SERVER:
 4. Logo/Layout-Änderungen sollen nach Speichern dieselben Werte liefern, die Android beim nächsten Firmenprofil-Sync erhält.
 5. Android-`app/**` benötigt für diesen Admin-Block aktuell **keine Änderung**.
 6. Noch offen bleibt visuelle Pixel-/Layout-Parität der beiden Renderer; fachliche Datenfelder und Layoutparameter sind bereits gemeinsam.
+
+## REF-DATA-001 – Android↔Server globaler Strecken-/Vermessungsdatenbestand
+Status: **FACHANFORDERUNG BESTÄTIGT / TECHNISCHER VERTRAG NOCH FESTZULEGEN**
+
+Benutzerentscheidung vom 28.09.2026:
+- serverseitig hochgeladene Trassierungs-/Vermessungs-/Festpunktdaten sind künftig nicht grundsätzlich Firmeneigentum, sondern können **globale TB-Helfer-Referenzdaten** sein;
+- Upload durch einen berechtigten Nutzer macht diese globalen Daten allen berechtigten Firmen/Nutzern verfügbar;
+- Android und Server/Portal sollen denselben zentralen Referenzbestand sehen;
+- Darstellung soll fachlich dieselben Quellen/Trassen/Festpunkte wie die vorhandene Android-Streckendatenansicht abbilden;
+- Originaldateien bleiben unverändert; bearbeitbare Katalog-/Arbeitsdaten werden getrennt versioniert;
+- firmen-/baustellenspezifische Projektdateien bleiben davon getrennt und behalten ihren bestehenden Berechtigungsrahmen.
+
+Vor Umsetzung festzulegen:
+- Kennzeichnung `GLOBAL_REFERENCE` vs. `COMPANY/WORKSITE_DATA`;
+- Sync-/Downloadvertrag für Android;
+- Versionierung und Konfliktschutz bearbeitbarer globaler Katalogdaten;
+- Rechte: wer global hochladen, bearbeiten und löschen darf;
+- keine Änderung an Android `app/**` durch SERVER; nötige Android-Anpassung wird nur vertraglich beschrieben.
