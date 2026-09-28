@@ -141,7 +141,14 @@
             <td><b>{{ u.display_name }}</b><div class="muted"><code>{{ u.login_name }}</code></div></td>
             <td>{% if u.company_role == 'CHEF' %}<span class="pill">Chef</span>{% else %}<span class="pill">Benutzer</span>{% endif %}</td>
             <td>{% if u.activated_at %}<span class="pill status-ok">Aktiv</span>{% else %}<span class="pill status-warn">Noch nicht aktiviert</span>{% endif %}</td>
-            <td>{% if u.access_valid_through %}{{ u.access_valid_through.strftime('%d.%m.%Y') }}{% else %}ohne Ablauf{% endif %}</td>
+            <td>
+              {% if u.access_valid_through %}
+                {{ u.access_valid_through.strftime('%d.%m.%Y') }}
+                <div class="device-detail {% if u.access_expired %}state-bad{% endif %}">{{ u.access_remaining_label }}</div>
+              {% else %}
+                ohne Ablauf
+              {% endif %}
+            </td>
             <td>
               <div class="row-actions">
                 <button type="button" class="secondary toggle-user-edit" data-user-id="{{ u.id }}">Bearbeiten</button>
@@ -173,7 +180,16 @@
     <section class="company-panel" data-panel="devices">
       <div class="card">
         <div class="panel-title">
-          <div><h2>Gebundene Geräte</h2><div class="muted">Geräte bleiben technisch an Benutzer gebunden und werden hier vollständig firmenbezogen verwaltet.</div></div>
+          <div>
+            <h2>Gebundene Geräte</h2>
+            <div class="muted">Geräte bleiben technisch an Benutzer gebunden und werden hier vollständig firmenbezogen verwaltet.</div>
+            {% if latest_android_release %}
+            <div class="device-detail" style="margin-top:5px">
+              Aktuell veröffentlicht: <b>{{ latest_android_release.version_name }}</b>{% if latest_android_release.build_number %} · Build {{ latest_android_release.build_number }}{% endif %}.
+              Die Gerätezeile zeigt bis zum Android-Vertragsupdate ausdrücklich den <b>zuletzt gemeldeten</b> Stand.
+            </div>
+            {% endif %}
+          </div>
         </div>
         {% if company_devices %}
         <div class="scroll"><table class="company-table">
@@ -183,7 +199,18 @@
           <tr>
             <td><b>{{ d.display_name }}</b><div class="muted"><code>{{ d.login_name }}</code></div></td>
             <td><b>{{ d.device_name or d.platform or '—' }}</b><div class="device-detail">{{ d.platform or '—' }}{% if d.os_version %} · {{ d.os_version }}{% endif %}</div><div class="device-detail"><code>{{ d.device_uid }}</code></div></td>
-            <td>{% if d.app_version %}{{ d.app_version }}{% if d.app_build is not none %} / {{ d.app_build }}{% endif %}{% else %}—{% endif %}</td>
+            <td>
+              {% if d.reported_app_version %}
+                <b>{{ d.reported_app_version }}</b>{% if d.app_build is not none %} · Build {{ d.app_build }}{% endif %}
+                <div class="device-detail">zuletzt vom Gerät gemeldet</div>
+              {% else %}
+                —
+                <div class="device-detail">noch keine Version gemeldet</div>
+              {% endif %}
+              {% if latest_android_release %}
+                <div class="device-detail">Server-Release: {{ latest_android_release.version_name }}{% if latest_android_release.build_number %} · {{ latest_android_release.build_number }}{% endif %}</div>
+              {% endif %}
+            </td>
             <td>
               {% if d.status == 'ACTIVE' and not d.revoked_at %}<span class="pill status-ok">Aktiv</span>
               {% elif d.status == 'BLOCKED' and not d.revoked_at %}<span class="pill status-warn">Blockiert</span>
