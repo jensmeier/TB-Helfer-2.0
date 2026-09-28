@@ -162,7 +162,8 @@
                   <div><label>Vorname</label><input class="edit-first" value="{{ u.first_name or '' }}" maxlength="120"></div>
                   <div><label>Nachname</label><input class="edit-last" value="{{ u.last_name or '' }}" maxlength="120"></div>
                   <div><label>Rolle</label><select class="edit-role"><option value="USER" {% if u.company_role == 'USER' %}selected{% endif %}>Benutzer</option><option value="CHEF" {% if u.company_role == 'CHEF' %}selected{% endif %}>Chef</option></select></div>
-                  <div><label>Letzter gültiger Tag</label><input class="edit-valid-date" type="date" value="{% if u.access_valid_through %}{{ u.access_valid_through.isoformat() }}{% endif %}"></div>
+                  <div><label>Zugriff gültig</label><select class="edit-valid-preset"><option value="" {% if not u.access_valid_through %}selected{% endif %}>Kein Ablauf</option><option value="3">3 Monate</option><option value="6">6 Monate</option><option value="12">1 Jahr</option><option value="manual" {% if u.access_valid_through %}selected{% endif %}>Manuell</option></select></div>
+                  <div><label>Letzter gültiger Tag</label><input class="edit-valid-date" type="date" value="{% if u.access_valid_through %}{{ u.access_valid_through.isoformat() }}{% endif %}" {% if not u.access_valid_through %}disabled{% endif %}></div>
                 </div>
                 <div class="actions" style="margin-top:10px"><button type="button" class="save-user" data-user-id="{{ u.id }}">Änderungen speichern</button></div>
               </div>
@@ -373,6 +374,17 @@ function addCalendarMonths(months){const now=new Date(),day=now.getDate(),target
 const validPreset=document.getElementById('u_valid_preset'),validDate=document.getElementById('u_valid_date');
 validPreset.addEventListener('change',()=>{const p=validPreset.value;if(!p){validDate.value='';validDate.disabled=true;return;}validDate.disabled=false;if(p==='manual'){if(!validDate.value)validDate.focus();return;}validDate.value=addCalendarMonths(Number(p));});
 
+document.querySelectorAll('.edit-valid-preset').forEach(select=>{
+  const panel=select.closest('.edit-panel'),dateInput=panel.querySelector('.edit-valid-date');
+  select.addEventListener('change',()=>{
+    const preset=select.value;
+    if(!preset){dateInput.value='';dateInput.disabled=true;return;}
+    dateInput.disabled=false;
+    if(preset==='manual'){if(!dateInput.value)dateInput.focus();return;}
+    dateInput.value=addCalendarMonths(Number(preset));
+  });
+});
+
 document.getElementById('createUser').addEventListener('submit',async ev=>{
   ev.preventDefault();
   if(validPreset.value==='manual'&&!validDate.value){show('err','Bitte den letzten gültigen Tag auswählen.');validDate.focus();return;}
@@ -385,10 +397,12 @@ document.getElementById('createUser').addEventListener('submit',async ev=>{
 });
 document.querySelectorAll('.toggle-user-edit').forEach(b=>b.addEventListener('click',()=>{const p=document.getElementById('edit-user-'+b.dataset.userId);p.style.display=p.style.display==='block'?'none':'block';}));
 document.querySelectorAll('.save-user').forEach(b=>b.addEventListener('click',async()=>{
-  const p=document.getElementById('edit-user-'+b.dataset.userId);b.disabled=true;
+  const p=document.getElementById('edit-user-'+b.dataset.userId),preset=p.querySelector('.edit-valid-preset'),dateInput=p.querySelector('.edit-valid-date');
+  if(preset.value==='manual'&&!dateInput.value){show('err','Bitte den letzten gültigen Tag auswählen.');dateInput.focus();return;}
+  b.disabled=true;
   try{
     await tbApi('/api/v1/admin/users/'+b.dataset.userId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      first_name:p.querySelector('.edit-first').value.trim(),last_name:p.querySelector('.edit-last').value.trim(),company_role:p.querySelector('.edit-role').value,access_valid_through:p.querySelector('.edit-valid-date').value||null
+      first_name:p.querySelector('.edit-first').value.trim(),last_name:p.querySelector('.edit-last').value.trim(),company_role:p.querySelector('.edit-role').value,access_valid_through:dateInput.value||null
     })});
     show('ok','Benutzerdaten gespeichert.');reloadSection('users',450);
   }catch(e){show('err',e.message||String(e));b.disabled=false;}
