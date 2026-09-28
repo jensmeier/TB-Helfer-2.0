@@ -80,6 +80,7 @@ function parseKm(value){
   const n=Number(t);return Number.isFinite(n)?n*1000:null;
 }
 function formatKm(m){if(m===null||m===undefined||m==='')return '—';const n=Number(m);if(!Number.isFinite(n))return '—';return Math.floor(n/1000)+'+'+(n%1000).toFixed(3).padStart(7,'0');}
+function objectTypeLabel(v){return ({TRACK:'Gleis',SWITCH:'Weiche',CROSSING:'Kreuzung',PLATFORM:'Bahnsteig',SIGNAL:'Signal',OTHER:'Sonstiges'})[v]||v||'—';}
 function mutation(kind,id,version,payload){
   return tbApi('/api/v1/catalog/mutations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
     client_change_id:changeId('admin-catalog'),entity_type:kind,operation:'UPSERT',
@@ -115,7 +116,7 @@ async function loadRouteDetails(id){
     const sections=s.data.sections||[],objects=o.data.objects||[];
     routeDetails[id]={sections,objects};
     target.innerHTML='<h3>Abschnitte</h3>'+(sections.length?sections.map(x=>'<div class="item">'+esc(x.designation||'Abschnitt')+' · '+formatKm(x.km_from_m)+' bis '+formatKm(x.km_to_m)+' · V'+esc(x.current_version)+' <button type="button" class="secondary" onclick="editSection(\''+esc(id)+'\',\''+esc(x.id)+'\')">Bearbeiten</button></div>').join(''):'<p class="muted">Keine Abschnitte.</p>')+
-      '<h3 style="margin-top:12px">Objekte</h3>'+(objects.length?objects.map(x=>'<div class="item">'+esc(x.object_type)+' · '+esc(x.designation||'')+' · '+formatKm(x.km_m)+' · V'+esc(x.current_version)+' <button type="button" class="secondary" onclick="editObject(\''+esc(id)+'\',\''+esc(x.id)+'\')">Bearbeiten</button></div>').join(''):'<p class="muted">Keine Objekte.</p>');
+      '<h3 style="margin-top:12px">Objekte</h3>'+(objects.length?objects.map(x=>'<div class="item">'+esc(objectTypeLabel(x.object_type))+' · '+esc(x.designation||'')+' · '+formatKm(x.km_m)+' · V'+esc(x.current_version)+' <button type="button" class="secondary" onclick="editObject(\''+esc(id)+'\',\''+esc(x.id)+'\')">Bearbeiten</button></div>').join(''):'<p class="muted">Keine Objekte.</p>');
   }catch(e){target.innerHTML='<div class="notice err">'+esc(e.message||String(e))+'</div>';}
 }
 function editSection(routeIdValue,itemId){const x=(routeDetails[routeIdValue]?.sections||[]).find(v=>v.id===itemId);if(!x)return;sectionId.value=x.id;sectionVersion.value=x.current_version;sectionRoute.value=routeIdValue;sectionName.value=x.designation||'';sectionFrom.value=x.km_from_m==null?'':formatKm(x.km_from_m);sectionTo.value=x.km_to_m==null?'':formatKm(x.km_to_m);sectionStatus.value=x.data_status||'';sectionCancel.style.display='inline-block';sectionName.focus();}
