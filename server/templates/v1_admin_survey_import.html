@@ -1,0 +1,166 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Trassierungsdaten{% endblock %}
+{% block head %}
+<style>
+  .import-hero{background:linear-gradient(120deg,#0b4fad,#176fdc);color:#fff;border:0}.import-hero h1{color:#fff;margin-bottom:5px}.import-hero .muted{color:#dbeafe}
+  .format-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}.format-box{border:1px solid #e4e7ec;border-radius:11px;padding:11px;background:#fbfcfe}.format-box b{display:block}.format-box small{color:#667085}
+  .drop-zone{border:2px dashed #b2c9e8;border-radius:14px;padding:24px;text-align:center;background:#f8fbff;transition:.15s}.drop-zone.drag{border-color:#1167d8;background:#eef5ff}.drop-zone input{max-width:560px;margin:12px auto 0}
+  .queue{display:grid;gap:8px;margin-top:12px}.queue-row{display:grid;grid-template-columns:minmax(0,1fr) 120px 160px;gap:10px;align-items:center;border:1px solid #eaecf0;border-radius:10px;padding:10px 12px;background:#fff}.queue-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.queue-status{text-align:right;font-size:12px;font-weight:750}
+  .state-ok{color:#067647}.state-warn{color:#b54708}.state-bad{color:#b42318}.state-wait{color:#475467}
+  .result{border:1px solid #eaecf0;border-left-width:4px;border-radius:11px;padding:10px 12px;margin-top:8px}.result.ok{border-left-color:#12b76a;background:#f6fef9}.result.warn{border-left-color:#f79009;background:#fffcf5}.result.bad{border-left-color:#d92d20;background:#fff8f7}
+  .result-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.result small{color:#667085}.warnings{margin:6px 0 0;padding-left:18px;font-size:12px;color:#667085}
+  .history-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.history-controls>div{min-width:230px;flex:1}
+  @media(max-width:900px){.format-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.queue-row{grid-template-columns:1fr 100px}.queue-status{grid-column:1/-1;text-align:left}}
+  @media(max-width:560px){.format-grid{grid-template-columns:1fr}.queue-row{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card import-hero">
+  <h1>Trassierungsdaten importieren</h1>
+  <p class="muted">Unveränderte Originaldateien zentral sichern und mit demselben fachlichen Datenmodell wie auf Android auswerten.</p>
+  <div id="msg"></div>
+</div>
+
+<div class="card">
+  <h2>Importziel</h2>
+  {% if worksites %}
+  <div class="grid">
+    <div>
+      <label for="worksite">Firma / Baustelle</label>
+      <select id="worksite">
+        {% for w in worksites %}
+        <option value="{{ w.id }}" data-route="{{ w.route_number or '' }}" data-company="{{ w.company_name }}">
+          {{ w.company_name }} · {{ w.name }}{% if w.route_number %} · Strecke {{ w.route_number }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div><label for="routeNumber">Strecke (optional)</label><input id="routeNumber" maxlength="80" placeholder="wird möglichst aus Baustelle/Datei übernommen"></div>
+    <div><label for="trackKey">Gleis / Achse (optional)</label><input id="trackKey" maxlength="160" placeholder="z. B. 28"></div>
+  </div>
+  <div class="notice info" style="margin-top:12px">
+    Originaldateien werden <b>nicht überschrieben</b>. Identische Originale derselben Firma werden als Duplikat erkannt. Bearbeitete/berechnete Daten bleiben getrennt vom Original.
+  </div>
+  {% else %}
+  <div class="notice err">Es ist noch keine Baustelle vorhanden. Trassierungsdaten werden einer Firma über eine Baustelle zugeordnet.</div>
+  {% endif %}
+</div>
+
+{% if worksites %}
+<div class="card">
+  <h2>Dateien auswählen</h2>
+  <p class="muted">Mehrere Dateien oder ein ZIP können gemeinsam gewählt werden. ZIP-Inhalte werden einzeln geprüft und als unveränderte Originale gespeichert.</p>
+  <div class="format-grid">
+    <div class="format-box"><b>TRA / GRA</b><small>Trassenachse und Höhen-/Kilometrierungsdaten</small></div>
+    <div class="format-box"><b>KF / KF.TXT / KV / GVP</b><small>Festpunkte und Koordinatenverzeichnisse</small></div>
+    <div class="format-box"><b>KOR / KOR.TXT / CSV</b><small>Absteckpunkte; CSV nur bei erkanntem Punkt-/GK-Schema</small></div>
+    <div class="format-box"><b>ZIP</b><small>Wie am Handy: erkannte Dateien werden einzeln importiert; TRG/TXT/PDF nur gemeldet</small></div>
+  </div>
+
+  <div id="dropZone" class="drop-zone" style="margin-top:14px">
+    <b>Dateien hier ablegen oder auswählen</b>
+    <div class="muted" style="margin-top:4px">Maximal ca. 512 MB je Upload · keine automatische Überschreibung</div>
+    <input id="files" type="file" multiple accept=".tra,.gra,.gvp,.kv,.kf,.kor,.csv,.zip,.txt,.trg,.pdf">
+  </div>
+
+  <div id="queue" class="queue"></div>
+  <div class="actions" style="margin-top:14px">
+    <button id="startImport" type="button" disabled>Import starten</button>
+    <button id="clearFiles" type="button" class="secondary" disabled>Auswahl leeren</button>
+  </div>
+</div>
+
+<div class="card" id="resultCard" style="display:none">
+  <div class="headline">
+    <div><h2 style="margin-bottom:4px">Importergebnis</h2><div id="resultSummary" class="muted"></div></div>
+    <button id="reloadPage" type="button" class="secondary">Liste aktualisieren</button>
+  </div>
+  <div id="results" style="margin-top:10px"></div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="headline">
+    <div><h2 style="margin-bottom:4px">Zuletzt gespeicherte Originale</h2><div class="muted">Die letzten 100 unveränderten Trassierungs-/Vermessungsoriginale.</div></div>
+  </div>
+  <div class="scroll" style="margin-top:12px">
+    <table>
+      <thead><tr><th>Firma</th><th>Datei</th><th>Typ</th><th>Strecke / Gleis</th><th>Größe</th><th>Auswertung</th><th>Importiert</th></tr></thead>
+      <tbody>
+      {% for o in originals %}
+      <tr>
+        <td>{{ o.company_name or '—' }}</td>
+        <td><b>{{ o.original_name }}</b><div class="muted"><code>{{ o.id }}</code></div></td>
+        <td>{{ o.data_kind }}</td>
+        <td>{{ o.route_number or '—' }}{% if o.track_key %} / {{ o.track_key }}{% endif %}</td>
+        <td class="file-size" data-bytes="{{ o.byte_size }}">—</td>
+        <td>
+          {% if o.parse_status == 'PARSED' %}<span class="pill">Ausgewertet</span>
+          {% elif o.parse_status == 'UNSUPPORTED' %}<span class="pill">Noch nicht auswertbar</span>
+          {% elif o.parse_status == 'ERROR' %}<span class="pill">Auswertungsfehler</span>
+          {% else %}<span class="pill">Nicht ausgewertet</span>{% endif %}
+          {% if o.detected_format %}<div class="muted">{{ o.detected_format }}</div>{% endif %}
+        </td>
+        <td>{{ o.imported_at }}</td>
+      </tr>
+      {% else %}<tr><td colspan="7" class="muted">Noch keine Trassierungsoriginale gespeichert.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const worksite=document.getElementById('worksite'),routeNumber=document.getElementById('routeNumber'),trackKey=document.getElementById('trackKey');
+const filesInput=document.getElementById('files'),dropZone=document.getElementById('dropZone'),queue=document.getElementById('queue'),startImport=document.getElementById('startImport'),clearFiles=document.getElementById('clearFiles'),results=document.getElementById('results'),resultCard=document.getElementById('resultCard'),resultSummary=document.getElementById('resultSummary'),msg=document.getElementById('msg');
+let selectedFiles=[];
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function size(value){const n=Number(value)||0,a=Math.abs(n);if(a>=1e12)return(n/1e12).toFixed(a>=1e14?0:1)+' TB';if(a>=1e9)return(n/1e9).toFixed(a>=1e11?0:1)+' GB';if(a>=1e6)return(n/1e6).toFixed(a>=1e8?0:1)+' MB';if(a>=1e3)return(n/1e3).toFixed(a>=1e5?0:1)+' kB';return Math.round(n)+' B';}
+document.querySelectorAll('.file-size').forEach(e=>e.textContent=size(e.dataset.bytes));
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+function updateRoute(){if(!routeNumber||!worksite)return;const option=worksite.selectedOptions[0];if(!routeNumber.dataset.manual)routeNumber.value=(option&&option.dataset.route)||'';}
+if(routeNumber){routeNumber.addEventListener('input',()=>routeNumber.dataset.manual='1');worksite.addEventListener('change',()=>{routeNumber.dataset.manual='';updateRoute();});updateRoute();}
+function fileKind(name){const n=name.toLowerCase();if(n.endsWith('.zip'))return 'ZIP';if(n.endsWith('.tra'))return 'TRA';if(n.endsWith('.gra'))return 'GRA';if(n.endsWith('.kf')||n.endsWith('.kf.txt')||n.endsWith('.kv')||n.endsWith('.gvp'))return 'Festpunkte';if(n.endsWith('.kor')||n.endsWith('.kor.txt'))return 'KOR';if(n.endsWith('.csv'))return 'CSV';if(n.endsWith('.trg'))return 'TRG · nur Meldung';if(n.endsWith('.pdf'))return 'PDF · nur Meldung';if(n.endsWith('.txt'))return 'TXT · nur Meldung';return 'nicht erkannt';}
+function setFiles(list){selectedFiles=Array.from(list||[]);renderQueue();}
+function renderQueue(){queue.innerHTML=selectedFiles.map((f,i)=>'<div class="queue-row" id="queue-'+i+'"><div class="queue-name"><b>'+esc(f.name)+'</b><div class="muted">'+esc(size(f.size))+'</div></div><div>'+esc(fileKind(f.name))+'</div><div class="queue-status state-wait">Wartet</div></div>').join('');startImport.disabled=!selectedFiles.length;clearFiles.disabled=!selectedFiles.length;}
+filesInput.addEventListener('change',()=>setFiles(filesInput.files));
+['dragenter','dragover'].forEach(ev=>dropZone.addEventListener(ev,e=>{e.preventDefault();dropZone.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dropZone.addEventListener(ev,e=>{e.preventDefault();dropZone.classList.remove('drag');}));
+dropZone.addEventListener('drop',e=>setFiles(e.dataTransfer.files));
+clearFiles.addEventListener('click',()=>{filesInput.value='';setFiles([]);});
+function qStatus(index,text,kind){const e=document.querySelector('#queue-'+index+' .queue-status');if(e){e.textContent=text;e.className='queue-status '+kind;}}
+function resultHtml(r){
+  const state=r.status==='IMPORTIERT'?(r.parse_status==='PARSED'?'ok':'warn'):r.status==='DUPLIKAT'||r.status==='ÜBERSPRUNGEN'?'warn':'bad';
+  const parse=r.parse_status==='PARSED'?' · fachlich ausgewertet':r.parse_status==='UNSUPPORTED'?' · noch nicht auswertbar':r.parse_status==='ERROR'?' · Auswertungsfehler':'';
+  const warnings=(r.warnings||[]).length?'<ul class="warnings">'+r.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul>':'';
+  const error=r.error_detail?'<div class="small state-bad" style="margin-top:5px">'+esc(r.error_detail)+'</div>':'';
+  return '<div class="result '+state+'"><div class="result-head"><div><b>'+esc(r.name||'Datei')+'</b><div><small>'+esc(r.message||'')+esc(parse)+'</small></div></div><span class="pill">'+esc(r.kind||r.status||'')+'</span></div>'+warnings+error+'</div>';
+}
+async function importOne(file,index){
+  qStatus(index,'Wird übertragen …','state-warn');
+  const params=new URLSearchParams({worksite_id:worksite.value,filename:file.name});
+  if(routeNumber.value.trim())params.set('route_number',routeNumber.value.trim());
+  if(trackKey.value.trim())params.set('track_key',trackKey.value.trim());
+  try{
+    const {data}=await tbApi('/api/v1/admin/survey-import/file?'+params.toString(),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file});
+    const rows=data.results||[];
+    const bad=rows.some(r=>r.status==='FEHLER'||r.parse_status==='ERROR');
+    const warn=rows.some(r=>r.status==='DUPLIKAT'||r.status==='ÜBERSPRUNGEN'||r.parse_status==='UNSUPPORTED');
+    qStatus(index,bad?'Mit Fehler beendet':warn?'Geprüft / Hinweise':'Importiert',bad?'state-bad':warn?'state-warn':'state-ok');
+    return rows;
+  }catch(e){qStatus(index,'Fehler','state-bad');return [{name:file.name,status:'FEHLER',message:e.message||String(e)}];}
+}
+startImport.addEventListener('click',async()=>{
+  if(!selectedFiles.length||!worksite.value)return;
+  startImport.disabled=true;clearFiles.disabled=true;filesInput.disabled=true;worksite.disabled=true;routeNumber.disabled=true;trackKey.disabled=true;resultCard.style.display='block';results.innerHTML='';show('info','Import läuft. Die ausgewählten Originaldateien werden nacheinander geprüft.');
+  const all=[];
+  for(let i=0;i<selectedFiles.length;i++){const rows=await importOne(selectedFiles[i],i);all.push(...rows);results.insertAdjacentHTML('beforeend',rows.map(resultHtml).join(''));}
+  const imported=all.filter(r=>r.status==='IMPORTIERT').length,duplicates=all.filter(r=>r.status==='DUPLIKAT').length,skipped=all.filter(r=>r.status==='ÜBERSPRUNGEN').length,errors=all.filter(r=>r.status==='FEHLER'||r.parse_status==='ERROR').length;
+  resultSummary.textContent=imported+' importiert · '+duplicates+' Duplikate · '+skipped+' übersprungen · '+errors+' Fehler';
+  show(errors?'err':'ok',errors?'Import abgeschlossen. Mindestens eine Datei benötigt Prüfung.':'Import abgeschlossen. Originale wurden ohne Überschreiben verarbeitet.');
+  startImport.disabled=false;clearFiles.disabled=false;filesInput.disabled=false;worksite.disabled=false;routeNumber.disabled=false;trackKey.disabled=false;
+});
+document.getElementById('reloadPage')?.addEventListener('click',()=>location.reload());
+</script>
+{% endblock %}
