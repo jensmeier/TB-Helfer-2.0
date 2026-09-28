@@ -319,7 +319,7 @@ document.getElementById('createRelease').addEventListener('submit',async functio
     const binary=binaryInput&&binaryInput.files?binaryInput.files[0]:null;
     if(binary&&external)throw new Error('Bitte entweder APK/Binärdatei oder externe Download-URL verwenden, nicht beides.');
 
-    createProgress.textContent='Draft wird angelegt …';
+    createProgress.textContent='Entwurf wird angelegt …';
     const response=await tbApi('/api/v1/admin/releases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       platform:document.getElementById('platform').value,
       version_name:document.getElementById('versionName').value.trim(),
@@ -339,11 +339,11 @@ document.getElementById('createRelease').addEventListener('submit',async functio
     document.getElementById('releaseManifestFile').value='';
     document.getElementById('releaseBinaryFile').value='';
     createProgress.textContent='';
-    show('ok',binary?'Release-Draft angelegt und Datei hochgeladen. Vor Veröffentlichung bitte prüfen.':'Release-Draft angelegt. Vor Veröffentlichung bitte prüfen.');
+    show('ok',binary?'Release-Entwurf angelegt und Datei hochgeladen. Vor Veröffentlichung bitte prüfen.':'Release-Entwurf angelegt. Vor Veröffentlichung bitte prüfen.');
     await loadReleases();
   }catch(error){
     createProgress.textContent='';
-    show('err',(created?'Draft wurde angelegt, aber die Datei konnte nicht vollständig übernommen werden: ':'')+(error.message||String(error)));
+    show('err',(created?'Entwurf wurde angelegt, aber die Datei konnte nicht vollständig übernommen werden: ':'')+(error.message||String(error)));
     await loadReleases();
   }
 });
@@ -359,7 +359,7 @@ async function readManifestIntoDraft(id){
     document.getElementById('draft-new-'+id).value=data.neu||'';
     document.getElementById('draft-improved-'+id).value=data.verbessert||'';
     document.getElementById('draft-fixed-'+id).value=data.behoben||'';
-    show('ok','Release-Datei in den Draft übernommen. Zum Speichern „Änderungen speichern“ drücken.');
+    show('ok','Release-Datei in den Entwurf übernommen. Zum Speichern „Änderungen speichern“ drücken.');
   }catch(error){show('err',error.message||String(error));}
 }
 window.readManifestIntoDraft=readManifestIntoDraft;
@@ -383,7 +383,7 @@ async function saveDraft(id){
         })||null
       })
     });
-    show('ok','Draft gespeichert.');await loadReleases();
+    show('ok','Entwurf gespeichert.');await loadReleases();
   }catch(error){show('err',error.message||String(error));}
 }
 window.saveDraft=saveDraft;
@@ -411,7 +411,7 @@ function downloadReleaseManifest(id){
 window.downloadReleaseManifest=downloadReleaseManifest;
 
 async function deleteBinary(id){
-  if(!confirm('Serverseitige Binärdatei dieses Drafts entfernen?'))return;
+  if(!confirm('Serverseitige Binärdatei dieses Entwurfs entfernen?'))return;
   try{await tbApi('/api/v1/admin/releases/'+encodeURIComponent(id)+'/binary',{method:'DELETE'});show('ok','Binärdatei entfernt.');await loadReleases();}
   catch(error){show('err',error.message||String(error));}
 }
@@ -421,8 +421,8 @@ async function purgeDraft(id){
   const r=releaseCache[id];
   const label=r?(r.platform+' · '+r.version_name):id;
   const typed=prompt(
-    'Draft "'+label+'" wirklich komplett löschen?\n\n'+
-    'Der Draft-Datensatz und eine bereits hochgeladene APK/Binärdatei werden endgültig entfernt.\n\n'+
+    'Entwurf "'+label+'" wirklich komplett löschen?\n\n'+
+    'Der Entwurfsdatensatz und eine bereits hochgeladene APK/Binärdatei werden endgültig entfernt.\n\n'+
     'Zum Bestätigen ENDGUELTIG LOESCHEN eingeben.'
   );
   if(typed!=='ENDGUELTIG LOESCHEN')return;
@@ -431,7 +431,7 @@ async function purgeDraft(id){
       method:'DELETE',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({confirm_id:id,confirm_text:typed})
     });
-    show('ok','Draft wurde vollständig gelöscht.');await loadReleases();
+    show('ok','Entwurf wurde vollständig gelöscht.');await loadReleases();
   }catch(error){show('err',error.message||String(error));}
 }
 window.purgeDraft=purgeDraft;
