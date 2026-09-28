@@ -254,3 +254,10 @@ Status: **DEPLOYT / ÜBERSICHT + IMPORT LAUFEN / TEILFEHLER OFFEN**
 - Firmenübersicht sowie Reiter Benutzer/Geräte/Baustellen/Speicher/Logo-PDF sind erreichbar.
 - Der zuvor reproduzierte HTTP-500-Fehler ist damit praktisch **BEHOBEN**.
 - Nächste Nacharbeit: firmenzentrierte Admin-Struktur gemäß `ADMIN-STRUCTURE-004` planen; noch keine Navigation umbauen.
+
+
+### ADMIN-RUNTIME-002 – Firmenverwaltung Retest 28.09.2026
+- Benutzer-Screenshot zeigt `Firma verwalten` erfolgreich geladen.
+- Firmenübersicht sowie Reiter Benutzer/Geräte/Baustellen/Speicher/Logo-PDF sind erreichbar.
+- Der zuvor reproduzierte HTTP-500-Fehler ist damit praktisch behoben.
+- Nächste Nacharbeit: firmenzentrierte Admin-Struktur gemäß `ADMIN-STRUCTURE-004` planen; noch keine Navigation umbauen.
