@@ -533,12 +533,14 @@ def admin_company_branding_page(
             (company_id,),
         )
         storage = dict(cur.fetchone())
+        for key in ("photo_bytes", "pdf_bytes", "other_file_bytes", "file_bytes"):
+            storage[key] = int(storage.get(key) or 0)
         cur.execute(
             "SELECT coalesce(sum(byte_size),0) AS survey_bytes FROM tb.survey_originals WHERE company_id = %s",
             (company_id,),
         )
         storage["survey_bytes"] = int(cur.fetchone()["survey_bytes"] or 0)
-        storage["total_bytes"] = int(storage.get("file_bytes") or 0) + int(storage["survey_bytes"])
+        storage["total_bytes"] = storage["file_bytes"] + storage["survey_bytes"]
 
     return templates.TemplateResponse(
         "v1_company_branding.html",
