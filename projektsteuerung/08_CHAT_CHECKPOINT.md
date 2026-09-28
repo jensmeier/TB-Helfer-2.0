@@ -642,3 +642,5 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
   - `Streckendaten` konsistent benannt.
 - Source-JS-Checks PASS.
 - Wichtig: Compose-Volume erfordert Synology-Container-Recreate, nicht nur Restart.
+
+- CI-Nachtrag auf HEAD `bf6bc9f4...`: Server `36480722916` + Android `36480722938`, beide failure ohne Runner-Steps; nicht als Sourcefehler werten.
