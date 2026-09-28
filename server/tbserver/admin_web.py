@@ -343,11 +343,20 @@ def admin_companies_page(
             """
             SELECT c.id, c.name, c.street, c.postal_code, c.city, c.phone, c.email,
                    c.status, c.logo_file_id, c.updated_at,
-                   count(u.id) FILTER (WHERE u.deleted_at IS NULL) AS user_count
+                   (SELECT count(*) FROM tb.users u
+                    WHERE u.company_id = c.id
+                      AND u.deleted_at IS NULL
+                      AND u.company_role <> 'ADMIN') AS user_count,
+                   (SELECT count(*) FROM tb.devices d
+                    JOIN tb.users u ON u.id = d.user_id
+                    WHERE u.company_id = c.id
+                      AND u.deleted_at IS NULL
+                      AND d.revoked_at IS NULL) AS device_count,
+                   (SELECT count(*) FROM tb.worksites w
+                    WHERE w.company_id = c.id
+                      AND w.deleted_at IS NULL) AS worksite_count
             FROM tb.companies c
-            LEFT JOIN tb.users u ON u.company_id = c.id
             WHERE c.deleted_at IS NULL
-            GROUP BY c.id
             ORDER BY lower(c.name)
             """
         )
