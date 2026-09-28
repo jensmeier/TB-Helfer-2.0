@@ -286,3 +286,20 @@ Offen:
 - API neu starten;
 - Firmenliste, Benutzeranlage, Geräteaktionen, Baustellenanlage und PDF-Bereich praktisch testen;
 - MIB/Bahnhof-Autofill bleibt separater offener Fehler.
+
+## ADMIN-COMPANY-005 – Aktivierungskarte/Gültigkeit/Geräteversion
+Status: **SOURCE-FIX FERTIG / DEPLOY + RUNTIME-RETEST OFFEN**
+- Aktivierungskarte kehrt jetzt direkt zu `Firma verwalten → Benutzer` zurück;
+- alte globale Listenpfade `/admin/v1/users`, `/admin/v1/devices`, `/admin/v1/worksites` leiten auf `Firmen` um und öffnen nicht mehr die alte Doppelverwaltung;
+- Benutzer-Gültigkeit wird in Europe/Berlin berechnet und als Datum + Restdauer/abgelaufen angezeigt;
+- Aktivierungskarte zeigt dieselbe Gültigkeitsinformation;
+- Geräteansicht bezeichnet gespeicherte App-Version ausdrücklich als `zuletzt vom Gerät gemeldet`;
+- aktuell veröffentlichter Android-Release wird daneben aus `tb.releases` angezeigt;
+- Server ist für `X-TB-App-Version` und `X-TB-App-Build` bei authentifizierten Gerätekontakten vorbereitet;
+- bestehendes Android sendet diese Angaben nach Aktivierung noch nicht; deshalb ist für dauerhaft aktuelle Geräteversion DEVICE-INFO-001 im Android-Projekt offen;
+- keine `app/**`-Änderung durch SERVER.
+
+Source-Checks:
+- JavaScript Firmenworkspace + Aktivierungskarte: PASS;
+- Rücksprung/Redirects/Gültigkeitshelper/Releaseanzeige/App-Header-Vertrag source-seitig vorhanden;
+- GitHub Actions: `failure` mit `steps = null` → kein Testnachweis.
