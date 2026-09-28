@@ -969,3 +969,25 @@ Vor Umsetzung fachlich zu klären:
 - Soll `Firma verwalten` Tabs oder eine linke Seitennavigation verwenden?
 - Soll das Anlegen eines Benutzers direkt innerhalb der Firma erfolgen und die Firma automatisch vorausgewählt/fest sein?
 - Geräte werden nicht manuell einer Firma zugewiesen, sondern bleiben über den Benutzer gebunden; die Firmenansicht zeigt/verwaltert diese Bindungen.
+
+### ADMIN-STRUCTURE-004 – Benutzerentscheidungen bestätigt
+Status: **STRUKTUR FESTGELEGT / UMSETZUNG FREIGEGEBEN**
+
+Bestätigung vom 28.09.2026:
+- `Benutzer`, `Geräte` und `Baustellen` werden aus der globalen Hauptnavigation entfernt.
+- `Geräte` gehören vollständig in die Firmenverwaltung; keine gleichrangige globale Geräte-Hauptseite im normalen Admin-Menü.
+- Firmenverwaltung erhält eine **linke Seitennavigation** statt der bisherigen horizontalen Reiter.
+- Klick auf `Firmen` öffnet zuerst die Firmenliste; dort `+ Firma anlegen` und `Firma verwalten`.
+- Innerhalb `Firma verwalten` werden mindestens gebündelt:
+  - Übersicht;
+  - Stammdaten;
+  - Benutzer;
+  - gebundene Geräte;
+  - Baustellen;
+  - Speicher;
+  - Logo / PDF.
+- Benutzer werden innerhalb der geöffneten Firma angelegt; Firma ist dabei fest vorausgewählt und muss nicht nochmals gewählt werden.
+- Geräte bleiben technisch an Benutzer gebunden, werden administrativ aber vollständig im Firmenbereich angezeigt und verwaltet.
+- Ziel-Hauptnavigation: Übersicht | Streckendaten | Bahnhöfe | Firmen | Trassierungs-/Referenzdaten bzw. später zusammengeführte Streckendaten | Katalog-Historie | App-Versionen | Systemstatus.
+
+Keine Änderung an Android `app/**` erforderlich.
