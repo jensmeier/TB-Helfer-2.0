@@ -338,3 +338,13 @@ Prüfung:
 Deployment-Hinweis:
 - Wegen neuem Volume-Mount genügt kein einfacher API-Restart;
 - Synology-Projekt/API muss mit aktualisiertem Compose neu erstellt/recreated werden.
+
+
+## ADMIN-PDF-007 – PDF-Logo-Layout
+Status: **SOURCE FERTIG / DEPLOY-RETEST OFFEN**
+- Runtime-Fehler bestätigt: Sliderwerte sichtbar, PDF-Vorschau reagierte nicht zuverlässig.
+- Ursachen: Preview ignorierte ungespeicherte Werte; Server-Headerhöhe begrenzte quadratische Logos stark.
+- Fix: Draft-/Live-Vorschau über aktuelle Reglerwerte; explizites Speichern bleibt firmenweite Persistenz; 62-mm-Firmenkopf / Android-nahe 174-pt-Logo-Zone; Renderer `tb-server-btb-pdf-4`.
+- finaler serverseitiger BTB-PDF nutzt denselben korrigierten Header.
+- zusätzlicher Synology-Fix: Restore-Test-Healthcheck erzeugt keine falschen POSTGRES_USER/POSTGRES_DB-Interpolation-Warnungen mehr.
+- keine Migration, keine Android-Änderung.
