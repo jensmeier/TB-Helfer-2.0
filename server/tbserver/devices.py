@@ -48,6 +48,22 @@ def _bearer_token(request: Request) -> str | None:
     return token.strip()
 
 
+def _reported_app_info(request: Request) -> tuple[str | None, int | None]:
+    version = (request.headers.get("X-TB-App-Version") or "").strip()
+    if len(version) > 255:
+        version = version[:255]
+    raw_build = (request.headers.get("X-TB-App-Build") or "").strip()
+    build: int | None = None
+    if raw_build:
+        try:
+            candidate = int(raw_build)
+            if 0 <= candidate <= 2_147_483_647:
+                build = candidate
+        except ValueError:
+            build = None
+    return (version or None, build)
+
+
 def current_device_user(request: Request) -> dict[str, Any]:
     raw = _bearer_token(request)
     if not raw:
@@ -77,8 +93,23 @@ def current_device_user(request: Request) -> dict[str, Any]:
             raise HTTPException(403, "USER_DISABLED")
         if row["access_valid_until"] is not None and row["access_valid_until"] <= now:
             raise HTTPException(403, "USER_EXPIRED")
-        cur.execute("UPDATE tb.devices SET last_seen_at = now() WHERE id = %s", (row["device_id"],))
+        reported_version, reported_build = _reported_app_info(request)
+        cur.execute(
+            """
+            UPDATE tb.devices
+            SET last_seen_at = now(),
+                app_version = COALESCE(%s, app_version),
+                app_build = COALESCE(%s, app_build),
+                updated_at = now()
+            WHERE id = %s
+            """,
+            (reported_version, reported_build, row["device_id"]),
+        )
         result = dict(row)
+        if reported_version is not None:
+            result["app_version"] = reported_version
+        if reported_build is not None:
+            result["app_build"] = reported_build
         result["auth_kind"] = "DEVICE"
         return result
 
