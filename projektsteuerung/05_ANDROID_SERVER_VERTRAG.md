@@ -325,3 +325,20 @@ Vor Umsetzung festzulegen:
 - Versionierung und Konfliktschutz bearbeitbarer globaler Katalogdaten;
 - Rechte: wer global hochladen, bearbeiten und löschen darf;
 - keine Änderung an Android `app/**` durch SERVER; nötige Android-Anpassung wird nur vertraglich beschrieben.
+
+## DEVICE-INFO-001 – Laufende Android-App-Version am Server
+Status: **VERTRAGSERGÄNZUNG ERFORDERLICH / SERVER BEREITEN**
+
+Problem:
+- `tb.devices.app_version/app_build` werden heute nur bei der Geräteaktivierung geschrieben;
+- nach einem normalen App-Update bleibt der alte Aktivierungsstand in der Admin-Anzeige bestehen;
+- `last_seen_at` allein reicht nicht zur Aussage über die aktuell installierte App-Version.
+
+Zielvertrag:
+- Android meldet bei normalen authentifizierten Serverkontakten die aktuelle `app_version` und `app_build`;
+- SERVER aktualisiert diese Werte atomar zusammen mit `last_seen_at`;
+- Geräteübersicht darf erst dann wieder `Installierte Version` behaupten;
+- bis Android angepasst ist, kennzeichnet SERVER vorhandene Werte als `zuletzt gemeldet`;
+- Server-Releasekatalog (`veröffentlicht`) und vom Gerät gemeldete Installation sind zwei getrennte Zustände.
+
+SERVER ändert kein `app/**`. Benötigte Android-Anpassung bleibt beim ANDROID-Projekt.
