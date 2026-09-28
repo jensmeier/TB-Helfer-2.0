@@ -4,6 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
+| DEVICE-INFO-001 | P1 | ANDROID | Geräte-App-Version wird nach App-Update serverseitig nicht neu gemeldet | Android soll bei normalen authentifizierten Kontakten `X-TB-App-Version` + `X-TB-App-Build` mitsenden; SERVER ist vorbereitet |
 | ADMIN-STRUCTURE-004 | P1 | SERVER | Firmenzentrierte Admin-Struktur source-seitig fertig | geänderte Serverdateien auf Synology übernehmen → API neu starten → Firmenworkspace praktisch testen |
 | ADMIN-FINISH-001 | P1 | SERVER | Admin-Quellblock inkl. Storage-Deduplizierung fertig, aber noch nicht deployed/runtime-geprüft | Synology deployen → API neu starten → Übersicht/Firma/PDF/Bahnhof/Trassierungsimport smoke-testen |
 | AND-BUILD-200075 | P0 | ANDROID | Generatorfehler source-seitig mit 606aa3ad korrigiert; erfolgreicher Build 1.3.25/200075 noch nicht nachgewiesen | lokalen/Android-Studio-Build erneut ausführen; APK erst nach Erfolg freigeben |
