@@ -11,8 +11,8 @@
 {% endblock %}
 {% block content %}
 <div class="card">
-  <h1>Client-Releases</h1>
-  <p class="muted">APK/Binärdatei und Release-Informationen gemeinsam vorbereiten, als Draft prüfen und erst danach veröffentlichen. Android zeigt normale Updates blau und Pflichtupdates rot.</p>
+  <h1>App-Versionen</h1>
+  <p class="muted">APK/Binärdatei und Release-Informationen gemeinsam vorbereiten, als Entwurf prüfen und erst danach veröffentlichen. Android zeigt normale Updates blau und Pflichtupdates rot.</p>
   <div id="msg"></div>
 </div>
 
@@ -55,7 +55,7 @@
     </div>
     <p class="muted">Diese Angaben werden als Release Notes gespeichert und auf Android unter „Wartung &amp; Diagnose“ bzw. beim Update-Hinweis angezeigt.</p>
     <div id="createProgress" class="muted"></div>
-    <div class="actions" style="margin-top:12px"><button type="submit">Draft anlegen + ausgewählte Datei hochladen</button></div>
+    <div class="actions" style="margin-top:12px"><button type="submit">Entwurf anlegen + ausgewählte Datei hochladen</button></div>
   </form>
 </div>
 
@@ -67,7 +67,7 @@
       <button id="refresh" type="button" class="secondary">Aktualisieren</button>
     </div>
   </div>
-  <p class="muted">Zurückgezogene/veröffentlichte Releases bleiben aus Nachvollziehbarkeitsgründen erhalten. Zurückgezogene Releases werden standardmäßig ausgeblendet; Drafts können weiterhin vollständig gelöscht werden.</p>
+  <p class="muted">Zurückgezogene/veröffentlichte Releases bleiben aus Nachvollziehbarkeitsgründen erhalten. Zurückgezogene Releases werden standardmäßig ausgeblendet; Entwürfe können weiterhin vollständig gelöscht werden.</p>
   <div id="releases">wird geladen …</div>
 </div>
 {% endblock %}
@@ -80,7 +80,7 @@ let showRetired=false;
 
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-function bytes(value){const n=Number(value);if(!Number.isFinite(n))return '—';const u=['B','KiB','MiB','GiB'];let x=n,i=0;while(x>=1024&&i<u.length-1){x/=1024;i++;}return (i?x.toFixed(x>=100?0:x>=10?1:2):Math.round(x))+' '+u[i];}
+function bytes(value){const n=Number(value);if(!Number.isFinite(n))return '—';const a=Math.abs(n);if(a>=1e12)return(n/1e12).toFixed(a>=1e14?0:1)+' TB';if(a>=1e9)return(n/1e9).toFixed(a>=1e11?0:1)+' GB';if(a>=1e6)return(n/1e6).toFixed(a>=1e8?0:1)+' MB';if(a>=1e3)return(n/1e3).toFixed(a>=1e5?0:1)+' kB';return Math.round(n)+' B';}
 function sha256Hex(file){return file.arrayBuffer().then(function(buf){return crypto.subtle.digest('SHA-256',buf);}).then(function(d){return Array.from(new Uint8Array(d)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');});}
 
 function normalizeBulletText(value){
@@ -240,7 +240,7 @@ async function uploadBinaryFile(id,file,progress){
 function draftEditor(r){
   const n=splitReleaseNotes(r.release_notes||'');
   const binary=r.binary||{};
-  return '<details class="draft-editor"><summary>Draft bearbeiten / Dateien</summary>'+
+  return '<details class="draft-editor"><summary>Entwurf bearbeiten / Dateien</summary>'+
     '<div class="grid" style="margin-top:12px">'+
       '<div><label>Version</label><input id="draft-version-'+esc(r.id)+'" maxlength="80" value="'+esc(r.version_name||'')+'"></div>'+
       '<div><label>Buildnummer</label><input id="draft-build-'+esc(r.id)+'" type="number" min="1" value="'+esc(r.build_number??'')+'"></div>'+
@@ -267,7 +267,7 @@ function draftEditor(r){
       '<button type="button" onclick="saveDraft(\''+esc(r.id)+'\')">Änderungen speichern</button>'+
       '<button class="secondary" type="button" onclick="downloadReleaseManifest(\''+esc(r.id)+'\')">Release-Datei herunterladen</button>'+
       (binary.configured?'<button class="danger" type="button" onclick="deleteBinary(\''+esc(r.id)+'\')">Binärdatei entfernen</button>':'')+
-      '<button class="danger" type="button" onclick="purgeDraft(\''+esc(r.id)+'\')">Draft komplett löschen</button>'+
+      '<button class="danger" type="button" onclick="purgeDraft(\''+esc(r.id)+'\')">Entwurf komplett löschen</button>'+
       '<button type="button" onclick="publishRelease(\''+esc(r.id)+'\')">Veröffentlichen</button>'+
     '</div>'+
     '<div id="progress-'+esc(r.id)+'" class="muted" style="margin-top:8px"></div>'+
@@ -294,7 +294,7 @@ async function loadReleases(){
         ? '/api/v1/admin/releases/'+encodeURIComponent(r.id)+'/binary'
         : r.download_url;
       const download=verifyUrl?'<a class="btn" href="'+esc(verifyUrl)+'" target="_blank" rel="noopener">Download prüfen</a>':'';
-      const statusLabel=r.status==='RETIRED'?'ARCHIVIERT':r.status;
+      const statusLabel=({DRAFT:'Entwurf',PUBLISHED:'Veröffentlicht',RETIRED:'Archiviert'})[r.status]||r.status;
       return '<div class="release-card">'+
         '<div class="actions" style="justify-content:space-between"><div><b>'+esc(r.platform)+' · '+esc(r.version_name)+'</b> <span class="pill">'+esc(statusLabel)+'</span>'+
         '<div class="muted">Build '+esc(r.build_number??'—')+' · Minimum '+esc(r.minimum_supported_build??'—')+(r.mandatory?' · Pflichtupdate':'')+'</div></div>'+
