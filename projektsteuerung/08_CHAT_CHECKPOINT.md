@@ -597,3 +597,17 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - CI erneut `steps = null`; kein Testnachweis.
 - Nächster Schritt: geänderte Serverdateien auf Synology → API neu starten → Browser-Retest.
 - MIB/Bahnhof-Autofill bleibt danach der nächste getrennte Fehlerblock.
+
+## ADMIN-COMPANY-005 – Checkpoint 28.09.2026
+- Praxisbefund: Aktivierungskarte führte über `Zurück zu Benutzer` auf die alte globale Benutzerseite.
+- Benutzer wünscht sichtbare Restgültigkeit.
+- Geräte zeigten 1.3.19/1.3.4, während Release 1.3.25 veröffentlicht ist.
+- Source-Ursache Geräteversion bestätigt: Android meldet Version aktuell nur bei Geräteaktivierung; spätere `/device/me`-Checks senden keine Versionsdaten; Server aktualisierte bisher nur `last_seen_at`.
+- SERVER-Fix:
+  - Rücksprung in den Firmenworkspace;
+  - globale Listenpfade redirecten zu Firmen;
+  - Gültigkeit mit Restdauer;
+  - Gerätewert als `zuletzt gemeldet` kennzeichnen und veröffentlichten Release daneben anzeigen;
+  - Server akzeptiert künftig `X-TB-App-Version`/`X-TB-App-Build` bei Gerätekontakten.
+- Android-Anpassung als DEVICE-INFO-001 in `05_ANDROID_SERVER_VERTRAG.md` dokumentiert; kein `app/**` geändert.
+- Nächster Schritt: vier Serverdateien auf Synology ersetzen → API neu starten → Browser-Retest.
