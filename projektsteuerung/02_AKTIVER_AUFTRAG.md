@@ -1074,3 +1074,11 @@ Zusätzliche sichtbare Nacharbeit:
 - Synology-/Containerpfad für Bahnhofsdaten explizit und read-only anbinden.
 
 Keine Android-Codeänderung.
+
+### ADMIN-DASH-006 – Bahnhofsdaten exakt geprüft
+- Server- und Android-Referenzdateien sind blob-identisch.
+- offizieller Eintrag: `MIH` = `Ingolstadt Hbf`.
+- ein exakter Code `MIB` existiert in beiden Referenzdateien **nicht**.
+- daher kein hart codierter falscher Alias `MIB` speichern.
+- UI soll bei Tippfehlern/ähnlichen Kürzeln passende offizielle Vorschläge liefern; Auswahl übernimmt immer den offiziellen Code.
+- gültiger Code `MIH` soll weiterhin sofort den Namen `Ingolstadt Hbf` füllen.
