@@ -634,3 +634,11 @@ Nächster Schritt:
 - geänderte Serverdateien + Compose auf Synology übernehmen;
 - API-Service/Projekt recreaten;
 - Dashboard und Bahnhofssuche praktisch testen.
+
+
+## ADMIN-PDF-007 – PDF-Logo-Layout Nacharbeit
+Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
+- Bahnhofsdaten-Mount/MIH-Suche praktisch bestätigt.
+- PDF-Logo-Vorschaufehler source-seitig korrigiert: Live-/Draft-Vorschau mit aktuellen Reglerwerten, größerer Android-naher Firmenkopf, Renderer v4 für Vorschau und finalen BTB-PDF.
+- Synology Restore-Test-Compose-Warnung zu POSTGRES_USER/POSTGRES_DB ebenfalls korrigiert.
+- keine DB-/Android-Änderung.
