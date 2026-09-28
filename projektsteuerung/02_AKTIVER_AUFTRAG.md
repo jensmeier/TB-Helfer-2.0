@@ -1032,3 +1032,15 @@ Verbindlicher Fix:
 3. Geräteansicht kennzeichnet den vorhandenen DB-Wert bis zum Android-Vertragsupdate ausdrücklich als `zuletzt gemeldet`, statt ihn als sicher aktuelle installierte Version darzustellen;
 4. aktuelle veröffentlichte Android-Version wird daneben als Server-Release angezeigt;
 5. Android↔Server-Vertrag erweitern: aktuelle `app_version/app_build` müssen bei normalen Geräte-Kontakten aktualisiert werden; SERVER ändert dafür kein `app/**`.
+
+### ADMIN-COMPANY-005 – Benutzerbearbeitung Gültigkeit
+Status: **ANFORDERUNG BESTÄTIGT / UMSETZUNG JETZT**
+
+Benutzerbestätigung 28.09.2026:
+- neue Firmen-/Geräteansicht passt;
+- im Benutzerbereich fehlt beim **Bearbeiten** noch dieselbe komfortable Gültigkeitsauswahl wie beim Anlegen;
+- ergänzen: `Zugriff gültig` mit `Kein Ablauf`, `3 Monate`, `6 Monate`, `1 Jahr`, `Manuell`;
+- `Letzter gültiger Tag` bleibt sichtbar; bei 3/6/12 Monaten wird das Datum automatisch gesetzt, bei `Manuell` frei gewählt, bei `Kein Ablauf` geleert;
+- bestehende Gültigkeit wird beim Öffnen der Bearbeitung korrekt vorbefüllt.
+
+Nur Server-Template/JavaScript; keine API-/DB-/Android-Vertragsänderung nötig.
