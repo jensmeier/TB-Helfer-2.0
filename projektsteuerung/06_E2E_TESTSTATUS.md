@@ -199,3 +199,11 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   4. Legacy-Vermessungsoriginal mit gemeinsamem `storage_key` zählt nicht doppelt;
   5. PDF-Vorschau öffnet;
   6. Bahnhofssuche und Trassierungsimport smoke-testen.
+
+### ADMIN-RUNTIME-002 – Praxis 28.09.2026
+- Deployment des neuen Admin-Stands praktisch sichtbar: **JA**.
+- Übersicht/Auto-Refresh: **LÄUFT**.
+- Trassierungsdaten-Upload: **LÄUFT**; Originale werden angezeigt/ausgewertet.
+- Bahnhof `MIB`-Autofill: **NICHT BESTANDEN**.
+- `Firma verwalten`: **NICHT BESTANDEN**.
+- Gesamtstatus: **DEPLOYT / TEIL-E2E / NACHARBEIT OFFEN**.
