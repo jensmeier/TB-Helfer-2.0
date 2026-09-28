@@ -1055,7 +1055,7 @@ Source-Umsetzung:
 - Status: **SOURCE-FIX FERTIG / SYNLOGY-UPLOAD + RETEST OFFEN**.
 
 ## ADMIN-DASH-006 – Übersicht verfeinern + Bahnhof/MIB reparieren
-Status: **NEUE ANFORDERUNG / FEHLER BESTÄTIGT / UMSETZUNG JETZT**
+Status: **SOURCE FERTIG / SYNLOGY-DEPLOY + RUNTIME-RETEST OFFEN**
 
 Benutzerauftrag vom 28.09.2026:
 - Admin-Übersicht optisch weiter verbessern: moderner, ruhiger, informationsstärker und besser gegliedert;
@@ -1082,3 +1082,23 @@ Keine Android-Codeänderung.
 - daher kein hart codierter falscher Alias `MIB` speichern.
 - UI soll bei Tippfehlern/ähnlichen Kürzeln passende offizielle Vorschläge liefern; Auswahl übernimmt immer den offiziellen Code.
 - gültiger Code `MIH` soll weiterhin sofort den Namen `Ingolstadt Hbf` füllen.
+
+
+### ADMIN-DASH-006 – Source-Umsetzung
+- Synology-API bindet `./data` künftig read-only als `/app/data` ein.
+- Systemstatus erkennt fehlende Bahnhof-Referenzdateien selbst und meldet sie als Warnung.
+- Bahnhofsuche:
+  - offizielles `MIH` = `Ingolstadt Hbf` wird exakt priorisiert;
+  - ungültiges `MIB` wird nicht gespeichert;
+  - ähnliche offizielle Kürzel mit passendem Präfix werden als Tippfehlerhilfe vorgeschlagen;
+  - Referenzdatenfehler werden im Browser sichtbar statt still verschluckt.
+- Übersicht:
+  - Bestand + Firmenspeicher auf breiten Displays nebeneinander;
+  - modernere KPI-Karten, Schnellzugriff und Speicherbalken;
+  - historische Warnungen können nach Prüfung direkt quittiert werden;
+  - verbliebene sichtbare Auto-Refresh-Beschriftung entfernt;
+  - fehlende Synchronisierung/Temperatur verständlicher beschriftet;
+  - Hauptnavigation verwendet konsistent `Streckendaten`.
+- JavaScript Source-Checks Dashboard + Bahnhof: PASS.
+- Keine Android-Codeänderung.
+- Compose-Änderung benötigt auf Synology **Container-Neuerstellung/Recreate**, ein reiner Restart reicht für den neuen `/app/data`-Mount nicht.
