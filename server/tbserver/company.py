@@ -7,11 +7,12 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from psycopg.types.json import Jsonb
 
 from .admin import require_admin, require_admin_csrf
+from .btb_pdf import render_company_preview_pdf
 from .config import settings
 from .database import transaction
 from .events import audit
@@ -308,6 +309,32 @@ def admin_company_logo(
         media_type=row["logo_mime_type"] or "application/octet-stream",
         filename="firmenlogo",
         headers={"ETag": f'"{row["logo_sha256"] or ""}"'},
+    )
+
+
+@router.get("/admin/companies/{company_id}/pdf-preview")
+def admin_company_pdf_preview(
+    company_id: UUID,
+    _: dict[str, Any] = Depends(require_admin),
+):
+    with transaction() as conn, conn.cursor() as cur:
+        branding = load_company_branding(cur, company_id)
+    content = render_company_preview_pdf(
+        context={
+            "company_name": branding.get("name"),
+            "company_email": branding.get("email"),
+            "company_phone": branding.get("phone"),
+            "company_logo_path": branding.get("logo_path"),
+            "pdf_logo_layout": branding.get("pdf_layout"),
+        }
+    )
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": 'inline; filename="TB-Helfer_PDF_Vorschau.pdf"',
+            "Cache-Control": "no-store",
+        },
     )
 
 
