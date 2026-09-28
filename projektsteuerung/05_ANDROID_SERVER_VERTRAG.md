@@ -342,3 +342,14 @@ Zielvertrag:
 - Server-Releasekatalog (`veröffentlicht`) und vom Gerät gemeldete Installation sind zwei getrennte Zustände.
 
 SERVER ändert kein `app/**`. Benötigte Android-Anpassung bleibt beim ANDROID-Projekt.
+
+### ADMIN-PDF-007 – PDF-Renderer-Parität geprüft
+- Android `BtbPdfHeaderRenderer` und Server-`CompanyHeaderFlowable` verwenden weiterhin denselben bestehenden Layoutvertrag:
+  - `logo_width_pt` 40..250;
+  - `offset_x_pt` -120..120;
+  - `offset_y_pt` -60..180;
+  - Firmenname/E-Mail/Telefon/Kontaktdaten-im-Logo.
+- Android reserviert eine Logo-Zone bis etwa 174 pt von oben.
+- Server war mit 48 mm Headerhöhe deutlich enger und hat besonders quadratische Logos trotz großer Breite wieder verkleinert.
+- SERVER wurde auf eine 62-mm-/ca.-174-pt-Zone angepasst; keine Feld-/API-Vertragsänderung und keine Android-Codeänderung.
+- Admin-Draft-Vorschau ist rein serverseitige Bedienhilfe; gespeichert und an Android synchronisiert werden weiterhin ausschließlich die bestehenden zentralen Layoutfelder.
