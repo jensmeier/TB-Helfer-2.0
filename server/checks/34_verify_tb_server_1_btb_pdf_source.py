@@ -81,7 +81,7 @@ def render_smoke() -> None:
         data = target.read_bytes()
         assert data.startswith(b"%PDF-"), data[:16]
         assert len(data) > 1000, len(data)
-        assert PDF_RENDERER_VERSION == "tb-server-btb-pdf-3"
+        assert PDF_RENDERER_VERSION == "tb-server-btb-pdf-4"
 
         large_source = Path(temp_dir) / "large-phone-photo.jpg"
         bounded_target = Path(temp_dir) / "bounded-photo.jpg"
@@ -118,7 +118,7 @@ def main() -> None:
         ('raise HTTPException(409, "BTB_NOT_ACTIVE")', documents),
         ('def install_pdf_atomically', documents),
         ('def rollback_pdf_install', documents),
-        ('PDF_RENDERER_VERSION = "tb-server-btb-pdf-3"', pdf),
+        ('PDF_RENDERER_VERSION = "tb-server-btb-pdf-4"', pdf),
         ('PDF_PHOTO_MAX_SIZE_PX = (1600, 1200)', pdf),
         ('def _prepare_pdf_photo', pdf),
         ('source.draft("RGB", PDF_PHOTO_MAX_SIZE_PX)', pdf),
