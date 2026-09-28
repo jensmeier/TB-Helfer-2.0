@@ -16,7 +16,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.platypus import Flowable, Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
-PDF_RENDERER_VERSION = "tb-server-btb-pdf-3"
+PDF_RENDERER_VERSION = "tb-server-btb-pdf-4"
 PDF_PHOTO_MAX_SIZE_PX = (1600, 1200)
 PDF_PHOTO_JPEG_QUALITY = 82
 
@@ -28,7 +28,11 @@ class CompanyHeaderFlowable(Flowable):
     def __init__(self, context: dict[str, Any]):
         super().__init__()
         self.context = context
-        self.height = 48 * mm
+        # Android reserviert fuer den Firmenkopf eine Logo-Zone bis etwa 174 pt
+        # von der Seitenoberkante. 62 mm (~176 pt) bildet denselben nutzbaren
+        # Bereich ab und verhindert, dass breite/quadratische Logos trotz
+        # grosser logo_width_pt-Einstellung wieder auf ~80 pt schrumpfen.
+        self.height = 62 * mm
 
     def wrap(self, availWidth, availHeight):
         self.width = availWidth
@@ -54,9 +58,12 @@ class CompanyHeaderFlowable(Flowable):
             box_left = max(0.51 * self.width, 84 * mm)
             box_right = self.width
             box_width = max(80, box_right - box_left)
-            logo_top = self.height - 3 * mm
-            logo_bottom = 17 * mm
-            logo_height_available = max(28 * mm, logo_top - logo_bottom)
+            # Android-Koordinaten sind von oben nach unten orientiert:
+            # logoAreaTop >= 18 pt, logoAreaBottom = 174 pt. ReportLab zeichnet
+            # von unten nach oben; deshalb spiegeln wir dieselbe Zone hier.
+            logo_top = self.height - 18
+            logo_bottom = max(2.0, self.height - 174)
+            logo_height_available = max(70.0, logo_top - logo_bottom)
             logo_bottom_drawn = logo_top
 
             logo_path = self.context.get("company_logo_path")
@@ -76,7 +83,7 @@ class CompanyHeaderFlowable(Flowable):
                     left = max(box_left, min(box_right - draw_width, desired_left))
                     centered_bottom = logo_bottom + (logo_height_available - draw_height) / 2.0
                     desired_bottom = centered_bottom - offset_y
-                    bottom = max(2 * mm, min(logo_top - draw_height, desired_bottom))
+                    bottom = max(logo_bottom, min(logo_top - draw_height, desired_bottom))
 
                     canvas.setFillColor(colors.white)
                     canvas.rect(left, bottom, draw_width, draw_height, fill=1, stroke=0)
