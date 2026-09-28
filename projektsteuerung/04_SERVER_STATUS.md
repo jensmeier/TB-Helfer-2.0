@@ -205,3 +205,27 @@ Status: **MIGRATION BESTÄTIGT**
 - DB-Schema für versionierte BTB-Foto-Link-Metadaten ist damit vorhanden.
 - API/Worker liefen beim Anwenden noch als bestehende Prozesse; daher müssen sie jetzt neu gestartet werden, damit der hochgeladene Python-Quellstand sicher aktiv ist.
 - Kein DB-/Storage-/Backup-Reset erforderlich.
+
+## ADMIN-FINISH-001 / ADMIN-STORAGE-001 – Admin-Quellblock 28.09.2026
+Status: **QUELLSTAND FERTIG / NICHT DEPLOYT / E2E OFFEN**
+
+Neu im Server-Admin:
+- moderne automatisch aktualisierte Übersicht mit NAS-Speicher, CPU/RAM, HTTP-Datenverkehr, Problemen und Firmen-Speicher;
+- Firmenverwaltung gebündelt für Stammdaten, Benutzer, Geräte, Baustellen, Speicher und Logo/PDF;
+- echte PDF-Vorschau über denselben `CompanyHeaderFlowable` wie serverseitige BTB-PDFs;
+- Benutzer nach Firma gruppiert;
+- Bahnhof/Betriebsstelle mit Android-ausgerichteter Kürzel-/Namenssuche;
+- geschützter Trassierungsdaten-Import für TRA/GRA/KF/KF.TXT/KV/GVP/KOR/CSV/ZIP;
+- sichtbare Speicherangaben primär in MB/GB;
+- keine Änderungen unter `app/**`.
+
+ADMIN-STORAGE-001:
+- ältere `survey_originals/from-file`-Importe können denselben `storage_key` zugleich in `tb.files` und `tb.survey_originals` führen;
+- Speicherstatistik dedupliziert diesen Altbestand jetzt nach `storage_key`;
+- gemeinsam referenzierte Inhalte werden nur als Trassierungs-/Vermessungsoriginal gezählt;
+- keine Altbestandsmigration oder Datenlöschung.
+
+Prüfung:
+- Source-Assertions der Deduplizierung: PASS.
+- GitHub Actions auf aktuellem HEAD ohne Runner-Steps (`steps = null`) → kein CI-Testnachweis.
+- Deployment auf Synology und Runtime-/Browser-E2E für diesen Admin-Block offen.
