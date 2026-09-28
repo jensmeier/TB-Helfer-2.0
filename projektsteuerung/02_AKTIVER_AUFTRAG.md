@@ -1102,3 +1102,18 @@ Keine Android-Codeänderung.
 - JavaScript Source-Checks Dashboard + Bahnhof: PASS.
 - Keine Android-Codeänderung.
 - Compose-Änderung benötigt auf Synology **Container-Neuerstellung/Recreate**, ein reiner Restart reicht für den neuen `/app/data`-Mount nicht.
+
+
+## ADMIN-PDF-007 – PDF-Logo-Layout reagiert nicht
+Status: **RUNTIME-FEHLER BESTÄTIGT / URSACHENPRÜFUNG JETZT**
+
+Praxisstand 28.09.2026:
+- Bahnhof-/Betriebsstellensuche nach Synology-Recreate praktisch bestätigt: **FUNKTIONIERT**; `MIH` füllt `Ingolstadt Hbf` und Vorschläge werden angezeigt.
+- PDF-Logo-Layout dagegen **NICHT BESTANDEN**:
+  - Logo-Breite lässt sich im Formular verändern;
+  - X-Versatz lässt sich verändern;
+  - Y-Versatz lässt sich verändern;
+  - die echte PDF-Vorschau bleibt optisch unverändert.
+- Fehler betrifft damit nicht den Slider selbst, sondern Speichern/Laden oder die Übergabe der Layoutwerte an den serverseitigen PDF-Renderer.
+- Keine Änderung auf Verdacht: zuerst Request/Persistenz/Renderer-Pfad und Android↔Server-PDF-Vertrag prüfen.
+- Geschützte funktionierende Bahnhofssuche nicht wieder ändern.
