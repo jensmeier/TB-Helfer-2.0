@@ -1034,7 +1034,7 @@ Verbindlicher Fix:
 5. Android↔Server-Vertrag erweitern: aktuelle `app_version/app_build` müssen bei normalen Geräte-Kontakten aktualisiert werden; SERVER ändert dafür kein `app/**`.
 
 ### ADMIN-COMPANY-005 – Benutzerbearbeitung Gültigkeit
-Status: **ANFORDERUNG BESTÄTIGT / UMSETZUNG JETZT**
+Status: **SOURCE-FIX FERTIG / DEPLOY-RETEST OFFEN**
 
 Benutzerbestätigung 28.09.2026:
 - neue Firmen-/Geräteansicht passt;
@@ -1044,3 +1044,12 @@ Benutzerbestätigung 28.09.2026:
 - bestehende Gültigkeit wird beim Öffnen der Bearbeitung korrekt vorbefüllt.
 
 Nur Server-Template/JavaScript; keine API-/DB-/Android-Vertragsänderung nötig.
+
+Source-Umsetzung:
+- Bearbeitungsformular enthält jetzt dieselbe Auswahl `Kein Ablauf / 3 Monate / 6 Monate / 1 Jahr / Manuell`;
+- bestehende befristete Zugänge öffnen als `Manuell` mit vorhandenem Datum; unbefristete als `Kein Ablauf`;
+- 3/6/12 Monate setzen den letzten gültigen Tag automatisch;
+- `Kein Ablauf` leert und deaktiviert das Datum;
+- `Manuell` verlangt einen gewählten letzten gültigen Tag;
+- Template-JavaScript-Check: PASS.
+- Status: **SOURCE-FIX FERTIG / SYNLOGY-UPLOAD + RETEST OFFEN**.
