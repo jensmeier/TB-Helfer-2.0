@@ -520,10 +520,10 @@ def admin_company_branding_page(
         cur.execute(
             """
             SELECT
-              coalesce(sum(f.byte_size) FILTER (WHERE lower(f.mime_type) LIKE 'image/%'),0) AS photo_bytes,
+              coalesce(sum(f.byte_size) FILTER (WHERE left(lower(f.mime_type), 6) = 'image/'),0) AS photo_bytes,
               coalesce(sum(f.byte_size) FILTER (WHERE lower(f.mime_type) = 'application/pdf'),0) AS pdf_bytes,
               coalesce(sum(f.byte_size) FILTER (
-                WHERE lower(f.mime_type) NOT LIKE 'image/%'
+                WHERE left(lower(f.mime_type), 6) <> 'image/'
                   AND lower(f.mime_type) <> 'application/pdf'
               ),0) AS other_file_bytes,
               coalesce(sum(f.byte_size),0) AS file_bytes
