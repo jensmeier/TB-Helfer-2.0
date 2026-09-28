@@ -618,3 +618,19 @@ Status: **SOURCE FERTIG / DEPLOY OFFEN**
 - Geräteversionen werden bis zum Android-Vertragsupdate nicht mehr als sicher aktuelle Installation dargestellt;
 - veröffentlichter Android-Release und vom Gerät zuletzt gemeldeter Stand werden getrennt angezeigt;
 - SERVER ist für laufende Versionsmeldungen vorbereitet; Android-Clientanpassung DEVICE-INFO-001 bleibt separat offen.
+
+
+## ADMIN-DASH-006 – Dashboard/Bahnhof Nacharbeit
+Status: **SOURCE FERTIG / SYNLOGY-RECREATE OFFEN**
+- Übersicht weiter modernisiert und auf großen Monitoren kompakter angeordnet;
+- Warnungsquittierung direkt im Dashboard;
+- Bahnhof-Referenzdaten werden im API-Container explizit read-only gemountet;
+- Systemstatus erkennt fehlende Bahnhofsdaten;
+- MIH/Ingolstadt-Hbf-Vertrag gegen die identischen Android-/Server-Referenzdateien geprüft;
+- MIB wird als ungültiger Code nicht gespeichert, ähnliche offizielle Codes werden vorgeschlagen;
+- keine Android-Codeänderung.
+
+Nächster Schritt:
+- geänderte Serverdateien + Compose auf Synology übernehmen;
+- API-Service/Projekt recreaten;
+- Dashboard und Bahnhofssuche praktisch testen.
