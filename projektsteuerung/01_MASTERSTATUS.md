@@ -651,3 +651,10 @@ Status: **SOURCE FERTIG / SYNOLOGY-RECREATE + RUNTIME-RETEST OFFEN**
 - Bestehende generische Systemtemperatur bleibt getrennt erhalten.
 - Keine DB-Migration und keine Android-Änderung.
 - Wegen neuem Host-Volume-Mount ist auf Synology ein **Recreate** des API-Service/Projekts erforderlich; danach Werte gegen DSM Laufwerk 1/2 vergleichen.
+
+### ADMIN-DASH-008 – CI-Nachtrag
+- GitHub Actions auf Code-HEAD `051c7d87b3b5cc849bb4faff54259d9ffee639ca`:
+  - TB-Server Runs `36488381133` und `36488374650`: `failure`, Job `foundation`, `runner_name = ""`, `steps = []`;
+  - Android Run `36488381240`: `failure`, Job `build`, `runner_name = ""`, `steps = []`.
+- Bewertung gemäß Projektregel: **keine Runner-Steps ausgeführt → kein Build-/Testnachweis und kein Sourcefehler-Nachweis**.
+- ADMIN-DASH-008 bleibt **SOURCE FERTIG / NICHT DEPLOYT / RUNTIME-E2E OFFEN**.
