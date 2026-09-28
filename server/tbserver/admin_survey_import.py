@@ -160,10 +160,9 @@ def _install_original(
                 WHERE company_id = %s
                   AND sha256 = %s
                   AND byte_size = %s
-                  AND data_kind = %s
                 LIMIT 1
                 """,
-                (worksite["company_id"], sha256, size, normalized_kind),
+                (worksite["company_id"], sha256, size),
             )
             duplicate = cur.fetchone()
             if duplicate:
