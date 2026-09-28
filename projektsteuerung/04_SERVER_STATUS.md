@@ -261,3 +261,28 @@ Status: **DEPLOYT / ÜBERSICHT + IMPORT LAUFEN / TEILFEHLER OFFEN**
 - Firmenübersicht sowie Reiter Benutzer/Geräte/Baustellen/Speicher/Logo-PDF sind erreichbar.
 - Der zuvor reproduzierte HTTP-500-Fehler ist damit praktisch behoben.
 - Nächste Nacharbeit: firmenzentrierte Admin-Struktur gemäß `ADMIN-STRUCTURE-004` planen; noch keine Navigation umbauen.
+
+## ADMIN-STRUCTURE-004 – Firmenzentrierte Admin-Verwaltung
+Status: **SOURCE FERTIG / DEPLOY OFFEN**
+- Hauptnavigation auf Firmen als Organisations-Einstieg verdichtet;
+- Benutzer/Geräte/Baustellen aus der globalen Hauptnavigation entfernt;
+- Firmenliste als Kartenansicht mit Benutzer-/Geräte-/Baustellen-Kennzahlen;
+- Firmenworkspace mit linker Navigation statt horizontaler Tabs;
+- Benutzeranlage/-bearbeitung, Portalaktivierung und Löschpfade in der Firma;
+- gebundene Geräte inkl. Blockieren/Bindung lösen/Komplett löschen in der Firma;
+- Admin-Baustellenanlage innerhalb der Firma mit verantwortlichem TB;
+- Speicher und Logo/PDF bleiben im Firmenworkspace;
+- Dashboard-Schnellzugriff an die neue Struktur angepasst;
+- sichtbarer 5-Sekunden-Auto-Refresh-Hinweis entfernt, Funktion bleibt aktiv;
+- keine Android-Dateien geändert.
+
+Source-Checks:
+- Template-JavaScript: PASS;
+- Admin-Worksite-Route/Team/Membership/Change/Audit: vorhanden;
+- CI ohne Runner-Steps: kein Testnachweis.
+
+Offen:
+- geänderte Serverdateien auf Synology übernehmen;
+- API neu starten;
+- Firmenliste, Benutzeranlage, Geräteaktionen, Baustellenanlage und PDF-Bereich praktisch testen;
+- MIB/Bahnhof-Autofill bleibt separater offener Fehler.
