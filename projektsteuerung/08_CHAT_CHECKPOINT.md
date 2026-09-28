@@ -618,3 +618,27 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - umgesetzt in `server/templates/v1_company_branding.html`: Kein Ablauf / 3 Monate / 6 Monate / 1 Jahr / Manuell + letzter gültiger Tag.
 - JavaScript-Sourcecheck PASS.
 - Nächster Schritt: nur das Template auf Synology ersetzen → API neu starten → Benutzerbearbeitung kurz testen.
+
+
+## ADMIN-DASH-006 – Checkpoint 28.09.2026
+- Benutzerauftrag: Übersicht schöner machen, MIB-/Bahnhof-Fehler reparieren, sichtbare Restfehler erkennen.
+- GitHub zuerst geprüft: SERVER/ANDROID HEAD + PRs + Projektsteuerung.
+- Exakte Referenzprüfung:
+  - Android- und Server-Bahnhofsdaten sind identische Blobs;
+  - `MIH` = `Ingolstadt Hbf`;
+  - `MIB` existiert nicht als exakter Code.
+- Ursache des bisherigen leeren Bahnhofsfelds: Synology-API hatte keinen `/app/data`-Mount.
+- Source-Fix:
+  - `./data:/app/data:ro` im API-Service;
+  - Tippfehler-/Ähnlichkeitssuche mit offiziellem Code;
+  - sichtbare Referenzdatenfehler;
+  - Systemwarnung bei fehlenden Referenzdateien.
+- Dashboard verfeinert:
+  - Bestand + Firmenspeicher nebeneinander;
+  - modernere KPI-/Quicklink-Karten;
+  - Firmen-Speicherbalken;
+  - Warnungen direkt quittierbar;
+  - alte Auto-Refresh-Beschriftung entfernt;
+  - `Streckendaten` konsistent benannt.
+- Source-JS-Checks PASS.
+- Wichtig: Compose-Volume erfordert Synology-Container-Recreate, nicht nur Restart.
