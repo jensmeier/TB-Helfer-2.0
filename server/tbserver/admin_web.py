@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -19,6 +20,36 @@ router = APIRouter(tags=["portal-web"])
 templates = Jinja2Templates(
     directory=str(Path(__file__).resolve().parent.parent / "templates")
 )
+
+_BERLIN_TZ = ZoneInfo("Europe/Berlin")
+
+def _access_validity(valid_until):
+    if valid_until is None:
+        return {
+            "access_valid_through": None,
+            "access_remaining_label": "ohne Ablauf",
+            "access_expired": False,
+        }
+    if valid_until.tzinfo is None:
+        valid_until = valid_until.replace(tzinfo=timezone.utc)
+    local_until = valid_until.astimezone(_BERLIN_TZ)
+    through = (local_until - timedelta(minutes=1)).date()
+    today = datetime.now(_BERLIN_TZ).date()
+    days = (through - today).days
+    if days < 0:
+        ago = abs(days)
+        label = "abgelaufen seit 1 Tag" if ago == 1 else f"abgelaufen seit {ago} Tagen"
+    elif days == 0:
+        label = "läuft heute ab"
+    elif days == 1:
+        label = "noch 1 Tag"
+    else:
+        label = f"noch {days} Tage"
+    return {
+        "access_valid_through": through,
+        "access_remaining_label": label,
+        "access_expired": days < 0,
+    }
 
 def require_web_admin(
     user: dict[str, Any] = Depends(current_admin_session_user),
@@ -201,62 +232,7 @@ def admin_users_page(
     request: Request,
     user: dict[str, Any] = Depends(require_web_admin),
 ):
-    with transaction() as conn, conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT id, name
-            FROM tb.companies
-            WHERE deleted_at IS NULL AND status = 'ACTIVE'
-            ORDER BY lower(name)
-            """
-        )
-        companies = [dict(row) for row in cur.fetchall()]
-        cur.execute(
-            """
-            SELECT u.id, u.company_id, c.name AS company_name, u.display_name,
-                   u.first_name, u.last_name, u.login_name, u.personal_email,
-                   u.personal_phone, u.company_role, u.status, u.access_valid_until,
-                   u.profile_version, pc.activated_at, pc.last_login_at,
-                   d.id AS device_id, d.device_name, d.platform, d.status AS device_status,
-                   d.bound_at, d.last_seen_at
-            FROM tb.users u
-            LEFT JOIN tb.companies c ON c.id = u.company_id
-            LEFT JOIN tb.portal_credentials pc ON pc.user_id = u.id
-            LEFT JOIN tb.devices d
-              ON d.user_id = u.id
-             AND d.status = 'ACTIVE'
-             AND d.revoked_at IS NULL
-            WHERE u.deleted_at IS NULL
-              AND u.company_role <> 'ADMIN'
-            ORDER BY lower(coalesce(c.name,'')), lower(u.display_name)
-            """
-        )
-        users = [dict(row) for row in cur.fetchall()]
-        for item in users:
-            valid_until = item.get("access_valid_until")
-            item["access_valid_through"] = (
-                (valid_until - timedelta(minutes=1)).date()
-                if valid_until is not None
-                else None
-            )
-
-    user_groups: list[dict[str, Any]] = []
-    for item in users:
-        company_name = item.get("company_name") or "Ohne Firma"
-        if not user_groups or user_groups[-1]["company_name"] != company_name:
-            user_groups.append({"company_name": company_name, "users": []})
-        user_groups[-1]["users"].append(item)
-
-    return templates.TemplateResponse(
-        "v1_admin_users.html",
-        {
-            "request": request,
-            "user": user,
-            "companies": companies,
-            "users": users,
-            "user_groups": user_groups,
-        },
-    )
+    return RedirectResponse(url="/admin/v1/companies", status_code=302)
 
 
 @router.get("/admin/v1/users/{user_id}/activation-card")
@@ -268,7 +244,7 @@ def admin_user_activation_card_page(
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT u.id, u.display_name, u.login_name, u.status, u.access_valid_until,
+            SELECT u.id, u.company_id, u.display_name, u.login_name, u.status, u.access_valid_until,
                    c.name AS company_name,
                    EXISTS (
                      SELECT 1 FROM tb.devices d
@@ -288,12 +264,14 @@ def admin_user_activation_card_page(
     if not target:
         from fastapi import HTTPException
         raise HTTPException(404, "USER_NOT_FOUND")
+    target = dict(target)
+    target.update(_access_validity(target.get("access_valid_until")))
     return templates.TemplateResponse(
         "v1_device_activation_card.html",
         {
             "request": request,
             "user": user,
-            "target": dict(target),
+            "target": target,
         },
     )
 
@@ -303,34 +281,7 @@ def admin_devices_page(
     request: Request,
     user: dict[str, Any] = Depends(require_web_admin),
 ):
-    with transaction() as conn, conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT d.id, d.user_id, u.display_name, c.name AS company_name,
-                   d.device_uid, d.device_name, d.platform, d.status,
-                   d.bound_at, d.last_seen_at, d.revoked_at
-            FROM tb.devices d
-            JOIN tb.users u ON u.id = d.user_id
-            LEFT JOIN tb.companies c ON c.id = u.company_id
-            ORDER BY lower(coalesce(c.name,'')), lower(u.display_name), d.bound_at DESC
-            """
-        )
-        devices = [dict(row) for row in cur.fetchall()]
-    device_groups: list[dict[str, Any]] = []
-    for device in devices:
-        company_name = device.get("company_name") or "Ohne Firma"
-        if not device_groups or device_groups[-1]["company_name"] != company_name:
-            device_groups.append({"company_name": company_name, "devices": []})
-        device_groups[-1]["devices"].append(device)
-    return templates.TemplateResponse(
-        "v1_admin_devices.html",
-        {
-            "request": request,
-            "user": user,
-            "devices": devices,
-            "device_groups": device_groups,
-        },
-    )
+    return RedirectResponse(url="/admin/v1/companies", status_code=302)
 
 
 @router.get("/admin/v1/companies")
@@ -436,10 +387,7 @@ def admin_worksites_page(
     request: Request,
     user: dict[str, Any] = Depends(require_web_admin),
 ):
-    return templates.TemplateResponse(
-        "v1_worksites.html",
-        {"request": request, "user": user, "page_prefix": "/admin/v1"},
-    )
+    return RedirectResponse(url="/admin/v1/companies", status_code=302)
 
 
 @router.get("/admin/v1/worksites/{worksite_id}")
@@ -504,12 +452,7 @@ def admin_company_branding_page(
         )
         company_users = [dict(item) for item in cur.fetchall()]
         for item in company_users:
-            valid_until = item.get("access_valid_until")
-            item["access_valid_through"] = (
-                (valid_until - timedelta(minutes=1)).date()
-                if valid_until is not None
-                else None
-            )
+            item.update(_access_validity(item.get("access_valid_until")))
 
         cur.execute(
             """
@@ -527,6 +470,24 @@ def admin_company_branding_page(
             (company_id,),
         )
         company_devices = [dict(item) for item in cur.fetchall()]
+        for item in company_devices:
+            reported = (item.get("app_version") or "").strip()
+            if reported.lower().startswith("tb-helfer "):
+                reported = reported[len("TB-Helfer "):].strip()
+            item["reported_app_version"] = reported or None
+
+        cur.execute(
+            """
+            SELECT version_name, build_number, mandatory, published_at
+            FROM tb.releases
+            WHERE upper(platform) = 'ANDROID'
+              AND status = 'PUBLISHED'
+            ORDER BY build_number DESC NULLS LAST, published_at DESC NULLS LAST
+            LIMIT 1
+            """
+        )
+        latest_android_release_row = cur.fetchone()
+        latest_android_release = dict(latest_android_release_row) if latest_android_release_row else None
 
         cur.execute(
             """
@@ -582,6 +543,7 @@ def admin_company_branding_page(
             "company_users": company_users,
             "company_devices": company_devices,
             "company_worksites": company_worksites,
+            "latest_android_release": latest_android_release,
             "storage": storage,
         },
     )
