@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import os
 import shutil
+import threading
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -27,6 +30,8 @@ router = APIRouter(prefix="/api/v1/admin/system", tags=["admin-system"])
 
 _PROCESS_STARTED_AT = datetime.now(timezone.utc)
 _PROCESS_STARTED_MONOTONIC = time.monotonic()
+_CPU_SAMPLE_LOCK = threading.Lock()
+_CPU_SAMPLE: tuple[int, int] | None = None
 _SAFE_SETTING_KEYS = {
     "schema_baseline",
     "trash_retention_days",
@@ -188,6 +193,107 @@ def _storage_snapshot() -> dict[str, Any]:
     }
 
 
+def _read_cpu_sample() -> tuple[int, int] | None:
+    try:
+        first = Path("/proc/stat").read_text(encoding="utf-8").splitlines()[0]
+        parts = [int(value) for value in first.split()[1:]]
+        if len(parts) < 4:
+            return None
+        idle = parts[3] + (parts[4] if len(parts) > 4 else 0)
+        return sum(parts), idle
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def _cpu_percent() -> float | None:
+    global _CPU_SAMPLE
+    sample = _read_cpu_sample()
+    if sample is None:
+        return None
+    with _CPU_SAMPLE_LOCK:
+        previous = _CPU_SAMPLE
+        _CPU_SAMPLE = sample
+    if previous is not None:
+        total_delta = sample[0] - previous[0]
+        idle_delta = sample[1] - previous[1]
+        if total_delta > 0:
+            return round(max(0.0, min(100.0, (1.0 - idle_delta / total_delta) * 100.0)), 1)
+    try:
+        load_1 = os.getloadavg()[0]
+        cpus = max(1, os.cpu_count() or 1)
+        return round(max(0.0, min(100.0, load_1 / cpus * 100.0)), 1)
+    except (AttributeError, OSError):
+        return None
+
+
+def _memory_snapshot() -> dict[str, Any]:
+    values: dict[str, int] = {}
+    try:
+        for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
+            key, _, rest = line.partition(":")
+            if key in {"MemTotal", "MemAvailable"}:
+                values[key] = int(rest.strip().split()[0]) * 1024
+    except (OSError, ValueError, IndexError):
+        return {
+            "available": False,
+            "total_bytes": None,
+            "used_bytes": None,
+            "free_bytes": None,
+            "percent_used": None,
+        }
+    total = values.get("MemTotal")
+    free = values.get("MemAvailable")
+    if not total or free is None:
+        return {
+            "available": False,
+            "total_bytes": total,
+            "used_bytes": None,
+            "free_bytes": free,
+            "percent_used": None,
+        }
+    used = max(0, total - free)
+    return {
+        "available": True,
+        "total_bytes": total,
+        "used_bytes": used,
+        "free_bytes": free,
+        "percent_used": round(used / total * 100.0, 1),
+    }
+
+
+def _system_temperature_c() -> float | None:
+    values: list[float] = []
+    try:
+        for path in Path("/sys/class/thermal").glob("thermal_zone*/temp"):
+            try:
+                raw = float(path.read_text(encoding="utf-8").strip())
+            except (OSError, ValueError):
+                continue
+            value = raw / 1000.0 if raw > 200 else raw
+            if 0.0 < value < 120.0:
+                values.append(value)
+    except OSError:
+        return None
+    return round(max(values), 1) if values else None
+
+
+def _host_snapshot() -> dict[str, Any]:
+    memory = _memory_snapshot()
+    try:
+        load_1, load_5, load_15 = os.getloadavg()
+    except (AttributeError, OSError):
+        load_1 = load_5 = load_15 = None
+    return {
+        "cpu_percent": _cpu_percent(),
+        "cpu_count": os.cpu_count(),
+        "ram": memory,
+        "temperature_c": _system_temperature_c(),
+        "load_1": round(load_1, 2) if load_1 is not None else None,
+        "load_5": round(load_5, 2) if load_5 is not None else None,
+        "load_15": round(load_15, 2) if load_15 is not None else None,
+    }
+
+
 @router.get("/status")
 def admin_system_status(
     _: dict[str, Any] = Depends(require_admin),
@@ -198,6 +304,7 @@ def admin_system_status(
     automation = load_automation_policy()
     smtp = smtp_status()
     monitor = read_monitor_snapshot()
+    host = _host_snapshot()
     status_now = datetime.now(timezone.utc)
     warning_until = status_now + timedelta(days=int(automation["user_expiry_warning_days"]))
 
@@ -222,6 +329,7 @@ def admin_system_status(
               (SELECT count(*) FROM tb.btbs WHERE status <> 'DELETED') AS btbs,
               (SELECT count(*) FROM tb.files WHERE deleted_at IS NULL) AS files,
               (SELECT coalesce(sum(byte_size),0) FROM tb.files WHERE deleted_at IS NULL) AS tracked_file_bytes,
+              (SELECT coalesce(sum(byte_size),0) FROM tb.survey_originals) AS survey_original_bytes,
               (SELECT count(*) FROM tb.releases WHERE status <> 'RETIRED') AS releases,
               (SELECT count(*) FROM tb.survey_originals) AS survey_originals,
               (
@@ -244,6 +352,7 @@ def admin_system_status(
             """
         )
         counts = dict(cur.fetchone())
+        counts["tracked_storage_bytes"] = int(counts.get("tracked_file_bytes") or 0) + int(counts.get("survey_original_bytes") or 0)
 
         cur.execute(
             """
@@ -351,13 +460,27 @@ def admin_system_status(
                    (SELECT count(*) FROM tb.files f
                     WHERE f.company_id = c.id AND f.deleted_at IS NULL) AS file_count,
                    (SELECT coalesce(sum(f.byte_size),0) FROM tb.files f
-                    WHERE f.company_id = c.id AND f.deleted_at IS NULL) AS file_bytes
+                    WHERE f.company_id = c.id AND f.deleted_at IS NULL) AS file_bytes,
+                   (SELECT coalesce(sum(f.byte_size),0) FROM tb.files f
+                    WHERE f.company_id = c.id AND f.deleted_at IS NULL
+                      AND lower(f.mime_type) LIKE 'image/%') AS photo_bytes,
+                   (SELECT coalesce(sum(f.byte_size),0) FROM tb.files f
+                    WHERE f.company_id = c.id AND f.deleted_at IS NULL
+                      AND lower(f.mime_type) = 'application/pdf') AS pdf_bytes,
+                   (SELECT coalesce(sum(f.byte_size),0) FROM tb.files f
+                    WHERE f.company_id = c.id AND f.deleted_at IS NULL
+                      AND lower(f.mime_type) NOT LIKE 'image/%'
+                      AND lower(f.mime_type) <> 'application/pdf') AS other_file_bytes,
+                   (SELECT coalesce(sum(s.byte_size),0) FROM tb.survey_originals s
+                    WHERE s.company_id = c.id) AS survey_bytes
             FROM tb.companies c
             WHERE c.deleted_at IS NULL
             ORDER BY lower(c.name)
             """
         )
         companies = [dict(row) for row in cur.fetchall()]
+        for company in companies:
+            company["total_storage_bytes"] = int(company.get("file_bytes") or 0) + int(company.get("survey_bytes") or 0)
 
         cur.execute(
             """
@@ -527,6 +650,7 @@ def admin_system_status(
         "automation": automation,
         "smtp": smtp,
         "monitor": monitor,
+        "host": host,
         "counts": counts,
         "traffic_24h": traffic_24h,
         "traffic_series": traffic_series,
