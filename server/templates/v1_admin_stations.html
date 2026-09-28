@@ -18,7 +18,7 @@
 
 <div class="card">
   <h2>Bahnhof / Betriebsstelle ergänzen oder korrigieren</h2>
-  <div class="station-hint"><span class="pill">Beispiel</span><span class="muted"><b>MIB</b> findet <b>MIB – Ingolstadt Hbf</b>; die Suche funktioniert genauso über Namensfragmente.</span></div>
+  <div class="station-hint"><span class="pill">Beispiel</span><span class="muted"><b>MIH</b> findet <b>MIH – Ingolstadt Hbf</b>. Bei einem ähnlichen, aber ungültigen Kürzel wie <b>MIB</b> wird der passende offizielle Code vorgeschlagen. Die Rückwärtssuche über Namensfragmente funktioniert ebenfalls.</span></div>
   <form id="stationForm">
     <input id="stationId" type="hidden"><input id="stationVersion" type="hidden">
     <div class="grid">
@@ -86,10 +86,13 @@ async function searchReference(query,source){
       const exact=rows.find(r=>norm(r.code)===norm(q));
       if(exact){stationName.value=exact.name;if(!stationShort.value.trim())stationShort.value=exact.code.toLowerCase();}
     }
-    stationSuggestions.innerHTML=rows.map(r=>'<button type="button" class="suggestion" data-code="'+esc(r.code)+'" data-name="'+esc(r.name)+'"><b>'+esc(r.display)+'</b><small>'+esc(r.source||'Referenzdaten')+'</small></button>').join('')||'<div class="muted" style="padding:10px 12px">Kein Treffer in den Referenzdaten.</div>';
+    stationSuggestions.innerHTML=rows.map(r=>'<button type="button" class="suggestion" data-code="'+esc(r.code)+'" data-name="'+esc(r.name)+'"><b>'+esc(r.display)+'</b><small>'+(r.match_type==='SIMILAR_CODE'?'Ähnlicher offizieller Code · ':'')+esc(r.source||'Referenzdaten')+'</small></button>').join('')||'<div class="muted" style="padding:10px 12px">Kein Treffer in den Referenzdaten.</div>';
     stationSuggestions.classList.add('show');
     stationSuggestions.querySelectorAll('.suggestion').forEach(b=>b.addEventListener('click',()=>chooseReference(b.dataset.code,b.dataset.name)));
-  }catch(e){hideSuggestions();}
+  }catch(e){
+    stationSuggestions.innerHTML='<div style="padding:10px 12px;color:#b42318"><b>Referenzdaten nicht verfügbar.</b><div style="margin-top:3px;font-size:12px">'+esc(e.message||String(e))+'</div></div>';
+    stationSuggestions.classList.add('show');
+  }
 }
 function queueReference(source){clearTimeout(stationSearchTimer);const field=source==='code'?stationCode:stationName;stationSearchTimer=setTimeout(()=>searchReference(field.value,source),170);}
 stationCode.addEventListener('input',()=>queueReference('code'));stationName.addEventListener('input',()=>queueReference('name'));
