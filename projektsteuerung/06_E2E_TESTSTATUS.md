@@ -207,3 +207,10 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
 - Bahnhof `MIB`-Autofill: **NICHT BESTANDEN**.
 - `Firma verwalten`: **NICHT BESTANDEN**.
 - Gesamtstatus: **DEPLOYT / TEIL-E2E / NACHARBEIT OFFEN**.
+
+### ADMIN-RUNTIME-002 – Firmenverwaltung 500
+- Laufzeitfehler praktisch reproduziert: `psycopg.ProgrammingError` wegen `%` in parametrierter LIKE-Query.
+- Source-Fix Commit `6cdccc9267302f8442819d02a884406ad00163a7` vorhanden.
+- Source-Assertion: PASS.
+- Noch offen: korrigierte `server/tbserver/admin_web.py` auf Synology übernehmen, API neu laden und `Firma verwalten` erneut öffnen.
+- Status: **RUNTIME-FEHLER REPRODUZIERT / SOURCE-FIX FERTIG / RETEST OFFEN**.
