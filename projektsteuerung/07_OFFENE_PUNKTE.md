@@ -4,7 +4,8 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| ADMIN-DASH-006 | P1 | SERVER | Dashboard/Bahnhof Source-Fix fertig; neuer API-Data-Mount noch nicht runtime-geprüft | Serverdateien + Compose auf Synology übernehmen → API/Projekt recreaten → MIH/MIB/Namenssuche + Dashboard testen |
+| ADMIN-PDF-007 | P1 | SERVER | PDF-Logo-Regler wirkten in Runtime nicht auf Vorschau; Source-Fix mit Live-Draft-Vorschau + Renderer v4 fertig | 3 Serverdateien deployen → API neu starten → Breite/X/Y + Speichern + Großansicht testen |
+| ADMIN-DASH-006 | P1 | SERVER | Bahnhofsdaten-Mount und MIH-Suche praktisch bestätigt; Dashboard-Gesamtretest noch offen | Übersicht/Warnungsquittierung noch praktisch prüfen |
 | DEVICE-INFO-001 | P1 | ANDROID | Geräte-App-Version wird nach App-Update serverseitig nicht neu gemeldet | Android soll bei normalen authentifizierten Kontakten `X-TB-App-Version` + `X-TB-App-Build` mitsenden; SERVER ist vorbereitet |
 | ADMIN-STRUCTURE-004 | P1 | SERVER | Firmenzentrierte Admin-Struktur source-seitig fertig | geänderte Serverdateien auf Synology übernehmen → API neu starten → Firmenworkspace praktisch testen |
 | ADMIN-FINISH-001 | P1 | SERVER | Admin-Quellblock inkl. Storage-Deduplizierung fertig, aber noch nicht deployed/runtime-geprüft | Synology deployen → API neu starten → Übersicht/Firma/PDF/Bahnhof/Trassierungsimport smoke-testen |
