@@ -277,3 +277,33 @@ Offen bis zum Quellaudit:
 - ob Android PDF selbst lokal rendert oder serverseitige PDFs konsumiert;
 - ob PDF-Kopf/Fuß/Layout bereits zentral konfigurierbar sind;
 - welche serverseitige Vorschau technisch denselben Datenpfad am zuverlässigsten abbildet.
+
+
+### ADMIN-PDF-001 – Android-Quellaudit 28.09.2026
+Status: **VERTRAG BESTÄTIGT / SERVER DARF DARAUF AUFBAUEN**
+
+Geprüfter Android-HEAD: `423f37892915cb3308a4b1ea9e4d196faa872326`.
+
+Ergebnis:
+- `CompanyProfileSync` lädt das zentrale Firmenprofil und das zentrale Firmenlogo vom Server und spiegelt beides in den lokalen, offlinefähigen PDF-Bestand.
+- `CompanyPdfLogoApi` verwendet bereits den gemeinsamen Endpunkt `/api/v1/company/profile/pdf-logo-layout`.
+- Android und Server verwenden bereits dieselben PDF-Logo-Felder:
+  - `logo_width_pt`;
+  - `offset_x_pt`;
+  - `offset_y_pt`;
+  - `show_company_name`;
+  - `show_company_email`;
+  - `show_company_phone`;
+  - `contacts_in_image`;
+  - versioniertes `layout_version`.
+- `BtbPdfHeaderRenderer` ist Android-seitig die gemeinsame reale Firmenkopf-Renderlogik für PDF/Vorschau.
+- Android besitzt mit `BtbPdfLayoutVorschau` bereits eine **echte A4-PDF-Vorschau** und mit `BtbPdfViewerActivity` einen **einfachen internen PDF-Viewer** mit Seiten vor/zurück.
+- Server 1.0 hat bereits denselben zentralen Firmenprofil-/Logo-/PDF-Layout-Vertrag und rendert den Firmenkopf beim serverseitigen BTB-Abschluss aus denselben Firmendaten.
+
+Folgerung für SERVER:
+1. Admin-Firmenbearbeitung nutzt ausschließlich diese bestehenden zentralen Firmendaten/Logo-/Layoutfelder.
+2. Admin-PDF-Vorschau soll ein **echtes PDF** aus dem serverseitigen Renderer bzw. einem dedizierten Vorschau-Renderer erzeugen, nicht nur eine abweichende HTML-Mockup-Grafik.
+3. Die Vorschau darf im Browser klein eingebettet/angezeigt werden und optional in einer größeren Ansicht geöffnet werden.
+4. Logo/Layout-Änderungen sollen nach Speichern dieselben Werte liefern, die Android beim nächsten Firmenprofil-Sync erhält.
+5. Android-`app/**` benötigt für diesen Admin-Block aktuell **keine Änderung**.
+6. Noch offen bleibt visuelle Pixel-/Layout-Parität der beiden Renderer; fachliche Datenfelder und Layoutparameter sind bereits gemeinsam.
