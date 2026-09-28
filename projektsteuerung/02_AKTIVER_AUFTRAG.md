@@ -804,3 +804,39 @@ Damit ist der DB-Schritt abgeschlossen. Nächster praktischer Ablauf:
 2. Worker-Container neu starten;
 3. API-Health/Portal prüfen;
 4. BTB-EDIT-001 Smoke-Test im Portal.
+
+
+## ADMIN-FINISH-001 – Admin-Seite fertigstellen vor Portal
+Status: **ANFORDERUNG GESICHERT / IMPLEMENTIERUNG NOCH NICHT GESTARTET**
+
+Benutzerentscheidungen vom 28.09.2026:
+- gesamte Admin-Oberfläche und alle sichtbaren Systembegriffe auf **Deutsch**;
+- verständliche Speicher-/Datenmengen primär als **MB / GB** anzeigen; technische MiB/GiB-Bezeichnungen nicht als normale Hauptanzeige verwenden;
+- Admin-Übersicht aktualisiert sich automatisch im Zielrhythmus **ca. alle 5 Sekunden**; fachliche Live-Ereignisse dürfen weiterhin den vorhandenen Change-/Live-Pfad nutzen;
+- Speicherübersicht zeigt getrennt:
+  - NAS gesamt/belegt/frei;
+  - TB-Helfer-Gesamtbelegung;
+  - Belegung pro Firma;
+  - je Firma zusätzlich Aufteilung nach **Fotos / PDFs / Vermessungs- bzw. Trassierungsdaten / sonstige Dateien**, soweit serverseitig eindeutig klassifizierbar;
+- NAS-Hardware zunächst nur als **Gesamtstatus**; keine Pflicht für einzelne HDD-Temperaturen;
+- Firmen bleiben eigener Hauptmenüpunkt; eine Firmenansicht bündelt mindestens **Übersicht / Benutzer / Geräte / Baustellen / Speicher / Logo-PDF**;
+- Benutzerliste standardmäßig **nach Firma gruppieren**, innerhalb der Firma alphabetisch;
+- Bahnhof/Betriebsstelle: bidirektionale Suche nach Kürzel oder Name; Auswahl übernimmt automatisch **Kürzel + vollständigen Namen**;
+- Admin-Datenimport zunächst für **Trassierungs-/Vermessungsdaten** und fachlich so nah wie möglich am vorhandenen Android-Importablauf; keine blinde Überschreibung von Originaldaten;
+- bestehender TB-Helfer-Dunkelblau/Hellblau-Stil bleibt, wird aber moderner, kompakter und informativer mit Statuspunkten, Karten, kleinen Diagrammen und besserer Flächennutzung;
+- wichtige Admin-Inhalte sollen auf üblichen Laptop-Auflösungen möglichst ohne unnötige lange Scrollstrecken erfassbar sein; Detailbereiche dürfen einklappbar bzw. per Drill-down erreichbar sein.
+
+### Firma / Logo / PDF
+- Firmenstammdaten müssen administrativ bearbeitbar sein.
+- Firmenlogo muss hochladbar/ersetzbar sein.
+- PDF-Darstellung darf nicht separat vom Android-PDF-Vertrag erfunden werden.
+- Vor Server-PDF-/Branding-Änderung wird der aktuelle Android-PDF-/Logo-Pfad geprüft und der gemeinsame Vertrag in `05_ANDROID_SERVER_VERTRAG.md` festgelegt.
+- Gewünscht ist zusätzlich ein **kleiner PDF-Viewer / eine PDF-Vorschau** im Admin, damit Logo und PDF-Ausgabe vor Verwendung sichtbar geprüft werden können.
+- SERVER ändert `app/**` nicht nebenbei; falls Android-Anpassung nötig ist, wird sie nur als Vertrag dokumentiert und dem ANDROID-Arbeitsbereich überlassen.
+
+Reihenfolge:
+1. Projektvertrag sichern;
+2. Android-PDF-/Logo-Bestand prüfen;
+3. Admin-UI/Statusdaten gezielt planen;
+4. Admin fertigstellen;
+5. danach erst Portal-Nacharbeit.
