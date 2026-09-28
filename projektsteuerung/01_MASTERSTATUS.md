@@ -568,3 +568,27 @@ Noch offen:
 - Runtime/Health prüfen;
 - Portal-BTB Smoke-Test durchführen;
 - Geräte-E2E bleibt separat offen.
+
+## ADMIN-FINISH-001 – Server-Admin Quellstand 28.09.2026
+Status: **QUELLSTAND FERTIG / DEPLOY + E2E OFFEN**
+
+SERVER HEAD enthält jetzt:
+- modernisierte Admin-Übersicht mit automatischer 5-Sekunden-Aktualisierung;
+- reale NAS-/Host-/HTTP-Metriken und Firmen-Speicheraufschlüsselung;
+- Firmenverwaltung mit Stammdaten, Benutzern, Geräten, Baustellen, Speicher und Logo/PDF;
+- echte serverseitige PDF-Vorschau auf gemeinsamem Android/Server-Brandingvertrag;
+- gruppierte Benutzerverwaltung;
+- Bahnhof-/Betriebsstellen-Autofill auf vorhandener Android-Datenbasis;
+- geschützten Trassierungsdaten-Adminimport;
+- deutsch lokalisierte Hauptanzeigen und MB/GB-Speicherdarstellung.
+
+ADMIN-STORAGE-001:
+- Legacy-Doppelzählung gleicher physischer Vermessungsoriginale über `tb.files` + `tb.survey_originals` source-seitig behoben;
+- Deduplizierung über gemeinsamen `storage_key`;
+- keine produktiven Originaldaten verändert.
+
+Noch offen:
+- Synology-Deployment dieses neuen Admin-Blocks;
+- API-Runtime/Browser-Smoke;
+- tatsächliche Speicherwerte gegen NAS/DB prüfen;
+- erst danach E2E-Status anheben.
