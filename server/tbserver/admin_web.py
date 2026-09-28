@@ -142,6 +142,49 @@ def admin_releases_page(
     )
 
 
+@router.get("/admin/v1/survey-import")
+def admin_survey_import_page(
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
+):
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT w.id, w.company_id, c.name AS company_name, w.name, w.designation,
+                   w.route_number, w.station_code, w.station_name, w.status
+            FROM tb.worksites w
+            JOIN tb.companies c ON c.id = w.company_id
+            WHERE w.deleted_at IS NULL
+              AND c.deleted_at IS NULL
+            ORDER BY lower(c.name), lower(w.name)
+            """
+        )
+        worksites = [dict(row) for row in cur.fetchall()]
+        cur.execute(
+            """
+            SELECT s.id, s.company_id, c.name AS company_name, s.route_number,
+                   s.track_key, s.data_kind, s.original_name, s.byte_size,
+                   s.imported_at, p.status AS parse_status,
+                   p.detected_format, p.warnings, p.error_detail
+            FROM tb.survey_originals s
+            LEFT JOIN tb.companies c ON c.id = s.company_id
+            LEFT JOIN tb.survey_parse_catalog p ON p.original_id = s.id
+            ORDER BY s.imported_at DESC
+            LIMIT 100
+            """
+        )
+        originals = [dict(row) for row in cur.fetchall()]
+    return templates.TemplateResponse(
+        "v1_admin_survey_import.html",
+        {
+            "request": request,
+            "user": user,
+            "worksites": worksites,
+            "originals": originals,
+        },
+    )
+
+
 @router.get("/admin/v1/system")
 def admin_system_page(
     request: Request,
