@@ -1053,3 +1053,24 @@ Source-Umsetzung:
 - `Manuell` verlangt einen gewählten letzten gültigen Tag;
 - Template-JavaScript-Check: PASS.
 - Status: **SOURCE-FIX FERTIG / SYNLOGY-UPLOAD + RETEST OFFEN**.
+
+## ADMIN-DASH-006 – Übersicht verfeinern + Bahnhof/MIB reparieren
+Status: **NEUE ANFORDERUNG / FEHLER BESTÄTIGT / UMSETZUNG JETZT**
+
+Benutzerauftrag vom 28.09.2026:
+- Admin-Übersicht optisch weiter verbessern: moderner, ruhiger, informationsstärker und besser gegliedert;
+- MIB-/Bahnhof-Autofill reparieren;
+- weitere sichtbare Admin-Unstimmigkeiten aus dem aktuellen Praxisstand erkennen und bereinigen, ohne geschützte funktionierende Bereiche unnötig umzubauen.
+
+Bereits eingegrenzter MIB-Fehler:
+- `station_reference.py` erwartet standardmäßig `/app/data/...`;
+- auf der Synology existiert der NAS-Ordner `data`, aber der aktuelle API-Service bindet diesen Ordner nicht in den Container ein;
+- damit kann der Bahnhof-Referenzendpunkt die vorhandenen JSON-Dateien im Container nicht lesen.
+
+Zusätzliche sichtbare Nacharbeit:
+- verbliebene sichtbare Auto-Refresh-Beschriftung `automatisch aktualisiert` in der Bestandskarte entfernen; Hintergrundaktualisierung bleibt;
+- Dashboard-Warnungs-/Statusdarstellung klarer machen, ohne historische Fehler still zu löschen;
+- Bahnhofssuche soll einen echten Lade-/Datenfehler sichtbar melden statt ihn im Browser still zu verschlucken;
+- Synology-/Containerpfad für Bahnhofsdaten explizit und read-only anbinden.
+
+Keine Android-Codeänderung.
