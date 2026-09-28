@@ -23,7 +23,7 @@
 {% block content %}
 <div class="activation-toolbar">
   <button type="button" onclick="window.print()">Drucken / als PDF speichern</button>
-  <a class="btn secondary" href="/admin/v1/users">Zurück zu Benutzer</a>
+  <a class="btn secondary" href="/admin/v1/companies/{{ target.company_id }}/branding#users">Zurück zu {{ target.company_name or 'Firma' }} · Benutzer</a>
   <a class="btn secondary" id="downloadPdf" download style="display:none">PDF herunterladen</a>
   <button type="button" class="secondary" id="sharePdf" style="display:none">PDF teilen / versenden</button>
 </div>
@@ -36,10 +36,11 @@
   <div style="margin-top:5px"><b>Vorläufiger Portal-Login:</b> <code>{{ target.login_name }}</code></div>
   <div style="margin-top:5px">
     <b>Zugriff:</b>
-    {% if target.access_valid_until %}
-      bis {{ target.access_valid_until }}
+    {% if target.access_valid_through %}
+      bis {{ target.access_valid_through.strftime('%d.%m.%Y') }}
+      · <b>{% if target.access_expired %}<span style="color:#b42318">{{ target.access_remaining_label }}</span>{% else %}{{ target.access_remaining_label }}{% endif %}</b>
     {% else %}
-      unbegrenzt
+      ohne Ablauf
     {% endif %}
   </div>
 
@@ -60,11 +61,11 @@
     Eine neu erzeugte Aktivierungskarte macht bereits ausgegebene, noch unbenutzte Keys nicht automatisch ungültig.
     Nach der ersten erfolgreichen Gerätebindung werden alle noch offenen Aktivierungs-Keys dieses Benutzers ungültig.
     {% if target.has_active_device %}
-      Ein bereits gebundenes Gerät bleibt dabei aktiv, bis es im Admin unter
-      <b>Geräte</b> freigegeben wird.
+      Ein bereits gebundenes Gerät bleibt dabei aktiv, bis es unter
+      <b>Firma → Geräte</b> freigegeben wird.
     {% else %}
-      Ein später gebundenes Gerät bleibt aktiv, bis es im Admin unter
-      <b>Geräte</b> freigegeben wird.
+      Ein später gebundenes Gerät bleibt aktiv, bis es unter
+      <b>Firma → Geräte</b> freigegeben wird.
     {% endif %}
   </div>
 
