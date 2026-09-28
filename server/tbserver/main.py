@@ -11,6 +11,7 @@ from .admin import router as admin_router
 from .admin_purge import router as admin_purge_router
 from .admin_session import router as admin_session_router
 from .admin_web import router as admin_web_router
+from .admin_survey_import import router as admin_survey_import_router
 from .btb import router as btb_router
 from .catalog import router as catalog_router
 from .capabilities import router as capabilities_router
@@ -58,6 +59,7 @@ app.include_router(admin_session_router)
 app.include_router(profile_router)
 app.include_router(catalog_router)
 app.include_router(admin_web_router)
+app.include_router(admin_survey_import_router)
 app.include_router(admin_router)
 app.include_router(admin_purge_router)
 app.include_router(admin_devices_router)
