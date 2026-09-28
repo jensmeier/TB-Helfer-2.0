@@ -229,3 +229,14 @@ Prüfung:
 - Source-Assertions der Deduplizierung: PASS.
 - GitHub Actions auf aktuellem HEAD ohne Runner-Steps (`steps = null`) → kein CI-Testnachweis.
 - Deployment auf Synology und Runtime-/Browser-E2E für diesen Admin-Block offen.
+
+## ADMIN-RUNTIME-002 – Deployment/Praxisbefund 28.09.2026
+Status: **DEPLOYT / ÜBERSICHT + IMPORT LAUFEN / TEILFEHLER OFFEN**
+- neue Admin-Übersicht ist auf Synology sichtbar und aktualisiert sich automatisch;
+- reale Werte für NAS, CPU/RAM, Verkehr und Firmen-Speicher werden angezeigt;
+- Trassierungsdaten-Upload hat praktisch Dateien gespeichert und ausgewertet;
+- Bahnhof-Autofill `MIB` funktioniert praktisch nicht;
+- `Firma verwalten` funktioniert praktisch nicht;
+- derzeitiger Trassierungsimport ist technisch firmen-/baustellengebunden; neue Fachanforderung verlangt einen gemeinsamen Referenzdatenbestand für alle Firmen/berechtigten Nutzer;
+- Datenverwaltung/Import-UI soll als nächster UX-Block moderner und zweispaltiger werden;
+- keine Fehlerbehebung auf Verdacht: MIB-API/Datenpfad und Firmenroute zuerst gezielt prüfen.
