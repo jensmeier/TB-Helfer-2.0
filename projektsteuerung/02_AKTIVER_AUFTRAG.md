@@ -1143,3 +1143,18 @@ Umgesetzt:
 - Synology-`restore-test-db`-Healthcheck wertet POSTGRES_USER/POSTGRES_DB jetzt im Container aus.
 - keine Migration, keine DB-Datenänderung, keine Android-Codeänderung.
 - Template-JavaScript-Check und Source-Assertions: PASS.
+
+## ADMIN-DASH-008 – Festplatten-Temperaturen in °C
+Status: **ANFORDERUNG GESICHERT / SOURCE-DIAGNOSE VOR UMSETZUNG**
+
+Benutzeranforderung vom 28.09.2026:
+- die Admin-Übersicht/Systemanzeige soll die Temperaturen der physischen Synology-Festplatten deutlich sichtbar anzeigen;
+- Anzeige primär in **°C**, je erkanntem Laufwerk getrennt (z. B. Laufwerk 1 / Laufwerk 2);
+- die Werte müssen aus realen Host-/NAS-Metriken stammen, keine statischen Demo-Werte;
+- bestehende funktionierende Dashboard-/Bahnhof-/PDF-Pfade nicht auf Verdacht ändern.
+
+Vor Implementierung prüfen:
+1. aktuellen Systemmetrik-Pfad und vorhandene Disk-/SMART-Datenquelle im Server-HEAD;
+2. Verhalten wenn Temperaturdaten auf einem Host/Container nicht verfügbar sind;
+3. Synology-Runtime nach Deployment gegen die DSM-Laufwerkswerte vergleichen.
+
