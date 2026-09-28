@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 import math
 import re
 import struct
@@ -435,8 +437,6 @@ def _parse_gvp_family(name: str, data: bytes) -> tuple[str, dict, list[str]]:
 
 
 def _parse_kor_text(name: str, data: bytes) -> tuple[str, dict, list[str]]:
-    if not name.lower().endswith(".kor.txt"):
-        raise UnsupportedSurveyFormat("KOR_RAW_NO_TEXT_PARSER")
     route = _route_from_name(name)
     points: list[dict[str, Any]] = []
     warnings: list[str] = []
@@ -466,6 +466,81 @@ def _parse_kor_text(name: str, data: bytes) -> tuple[str, dict, list[str]]:
     return "KOR_TEXT", {"source_name": name, "points": points}, warnings
 
 
+def _normalize_csv_header(value: str) -> str:
+    return (
+        value.strip().strip('"').lower()
+        .replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+    )
+
+
+def _compact_csv_header(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", _normalize_csv_header(value))
+
+
+def _parse_csv_absteck(name: str, data: bytes) -> tuple[str, dict, list[str]]:
+    text = _decode_text(data)
+    lines = [line for line in text.splitlines() if line.strip()]
+    if not lines:
+        raise ValueError("CSV_IST_LEER")
+
+    header_line = lines[0]
+    separator = max((",", ";", "\t"), key=header_line.count)
+    reader = csv.reader(io.StringIO(text), delimiter=separator)
+    rows = list(reader)
+    if not rows:
+        raise ValueError("CSV_IST_LEER")
+    headers = [_compact_csv_header(value) for value in rows[0]]
+
+    def index_of(*names: str) -> int:
+        wanted = set(names)
+        return next((index for index, value in enumerate(headers) if value in wanted), -1)
+
+    idx_point = index_of("pktnr", "punktnr", "punktnummer")
+    idx_y = index_of("gkym", "gky", "y", "rechtswert")
+    idx_x = index_of("gkxm", "gkx", "x", "hochwert")
+    idx_z = index_of("gkzm", "gkz", "z", "hoehe")
+    idx_code = index_of("pkterll", "pkterllage", "erllage", "code", "typ")
+    if idx_point < 0 or idx_y < 0 or idx_x < 0:
+        raise UnsupportedSurveyFormat("CSV_KEINE_ABSTECKPUNKTDATEN")
+
+    route = _route_from_name(name)
+    points: list[dict[str, Any]] = []
+    warnings: list[str] = []
+
+    for row_index, cols in enumerate(rows[1:], start=2):
+        def value(index: int) -> str | None:
+            if index < 0 or index >= len(cols):
+                return None
+            result = cols[index].strip().strip('"')
+            return result or None
+
+        point_name = value(idx_point)
+        x = _float_de(value(idx_y) or "")
+        y = _float_de(value(idx_x) or "")
+        if not point_name:
+            continue
+        if x is None or y is None or not _plausible_xy(x, y):
+            warnings.append(f"Zeile {row_index}: ungueltige DB_REF-Koordinate")
+            continue
+        height = _float_de(value(idx_z) or "") if idx_z >= 0 else None
+        code = value(idx_code)
+        points.append({
+            "point_name": point_name,
+            "route": route,
+            "track": None,
+            "km_meter": None,
+            "x_dbref": x,
+            "y_dbref": y,
+            "height_m": height,
+            "type": f"CSV-{code}" if code else "CSV",
+            "coordinate_system": "DB_REF2016_4",
+        })
+
+    if not points:
+        raise ValueError("CSV_KEINE_ABSTECKPUNKTE")
+    return "CSV_ABSTECKPUNKTE", {"source_name": name, "points": points}, list(dict.fromkeys(warnings))
+
+
 def parse_survey_original(data_kind: str, name: str, data: bytes, source_sha256: str) -> tuple[str, str, dict, list[str]]:
     kind, lower = (data_kind or "").strip().upper(), name.lower()
     if kind == "TRA" or lower.endswith(".tra"):
@@ -480,6 +555,9 @@ def parse_survey_original(data_kind: str, name: str, data: bytes, source_sha256:
     if kind in {"KOR", "KOR.TXT"} or lower.endswith((".kor", ".kor.txt")):
         detected, payload, warnings = _parse_kor_text(name, data)
         return "KOR", detected, payload, warnings
+    if kind in {"CSV", "ABSTECK_CSV"} or lower.endswith(".csv"):
+        detected, payload, warnings = _parse_csv_absteck(name, data)
+        return "CSV_ABSTECKPUNKT", detected, payload, warnings
     raise UnsupportedSurveyFormat(f"UNSUPPORTED_DATA_KIND:{kind or 'UNKNOWN'}")
 
 
