@@ -903,3 +903,34 @@ Vor weiterer Codeänderung fachlich zu klären:
 4. Laufzeitfehler `MIB` und `Firma verwalten` zuerst reproduzieren/diagnostizieren, nicht auf Verdacht umbauen.
 
 Bis zur Klärung keine weitere Admin-Codeänderung.
+
+## ADMIN-DATA-003 – Globaler Referenzdatenbestand + moderner Dateneditor
+Status: **ANFORDERUNG BESTÄTIGT / VOR UMSETZUNG FEHLERDIAGNOSE**
+
+Benutzerentscheidung vom 28.09.2026:
+- Trassierungs-/Vermessungsdaten, die ein Administrator bzw. später ein berechtigter Nutzer hochlädt, sollen als **globaler gemeinsamer TB-Helfer-Referenzdatenbestand** allen Firmen/berechtigten Nutzern zur Verfügung stehen.
+- Das gilt insbesondere für TRA/GRA/KF/KF.TXT/KV/GVP/KOR/CSV und daraus abgeleitete Strecken-/Festpunktdaten.
+- Upload durch Firma A darf nicht zu einer privaten Kopie für Firma A führen; Firma B soll denselben zentralen Datenbestand verwenden können.
+- Unveränderte Originaldatei bleibt geschützt und nachvollziehbar.
+- Korrekturen/Bearbeitung erfolgen daneben an einer **bearbeitbaren Arbeits-/Katalogebene**, nicht durch stilles Umschreiben des Originals.
+- Darstellung und Bedienung sollen sich fachlich an der bestehenden Android-Streckendatenansicht orientieren:
+  - grafische Streckenübersicht;
+  - ein-/ausblendbare Trassen/Quellen;
+  - Festpunkte/Masten;
+  - Zoom/Detailansicht;
+  - Datei-/Quellinformationen;
+  - bearbeitbare Zuordnung/Katalogdaten, soweit fachlich erlaubt.
+- Admin-Datenverwaltung soll deutlich moderner werden: ca. 30–35 % links für Suche/Filter/Import/Quellen und 65–70 % rechts für grafische Übersicht, Details und Bearbeitung.
+- Lange Formularstapel sollen reduziert werden.
+- sichtbare `Auto-Aktualisierung · 5 Sek.`-Anzeige auf der Übersicht entfernen; automatische Aktualisierung bleibt aktiv.
+
+Zusätzliche bestätigte Runtimefehler:
+- `Firma verwalten` liefert HTTP 500 / `Internal Server Error`.
+- Bahnhof-Autofill: Eingabe `MIB` zeigt keine Vorschläge und übernimmt keinen Namen.
+
+Reihenfolge:
+1. 500-Fehler Firmenverwaltung diagnostizieren und beheben;
+2. MIB-/Bahnhofsdatenpfad diagnostizieren und beheben;
+3. globalen Referenzdatenvertrag + DB-/API-Zielmodell festlegen;
+4. Datenverwaltung zweispaltig/grafisch neu gestalten;
+5. danach Runtime-/E2E prüfen.
