@@ -882,3 +882,24 @@ Zielstatus dieses Blocks:
 - Source-Assertions: PASS.
 - GitHub Actions auf HEAD: Server/Android `failure`, aber `steps = null`; deshalb **kein Testnachweis**.
 - Status: **QUELLSTAND FERTIG / NICHT DEPLOYT / RUNTIME-E2E OFFEN**.
+
+## ADMIN-RUNTIME-002 – Praxistest 28.09.2026 / nächste Nacharbeit
+Status: **DEPLOYT / TEILWEISE FUNKTIONIERT / FEHLER + UX-NACHARBEIT OFFEN**
+
+Benutzerbefund nach Synology-Deployment des Admin-Blocks:
+- neue Admin-Übersicht läuft praktisch und aktualisiert sich;
+- sichtbare Anzeige `Auto-Aktualisierung · 5 Sek.` soll entfernt werden; die Funktion selbst soll weiter automatisch arbeiten;
+- Bahnhof/Betriebsstelle: Eingabe `MIB` füllt den Namen nicht automatisch / Suche funktioniert im Praxistest nicht;
+- `Firma verwalten` funktioniert im Praxistest nicht; Ursache vor Änderung gezielt eingrenzen;
+- Trassierungs-/Vermessungsdaten wurden erfolgreich hochgeladen und erscheinen im Bestand;
+- aktueller Import ist an Firma/Baustelle gebunden; Benutzer fordert, dass solche gemeinsamen Referenz-/Trassierungsdaten **allen Firmen bzw. berechtigten Nutzern** zur Verfügung stehen und nicht nur GTU Mobility;
+- es fehlt eine klare Ansicht, wo hochgeladene Trassierungs-/Referenzdaten vollständig angesehen, gefiltert, verwaltet und – soweit fachlich erlaubt – korrigiert/zugeordnet werden können;
+- Import-/Datenverwaltung soll moderner und besser flächenausgenutzt werden, insbesondere mit sinnvoller linker/rechter Aufteilung statt langer Einspalten-Seite.
+
+Vor weiterer Codeänderung fachlich zu klären:
+1. gemeinsamer globaler Referenzdatenbestand vs. firmen-/baustellenspezifische Projektdateien sauber trennen;
+2. welche Daten global editierbar sind und welche Originale unveränderlich bleiben;
+3. gewünschte Detailansicht für hochgeladene Dateien/ausgelesene Punkte/Trassen;
+4. Laufzeitfehler `MIB` und `Firma verwalten` zuerst reproduzieren/diagnostizieren, nicht auf Verdacht umbauen.
+
+Bis zur Klärung keine weitere Admin-Codeänderung.
