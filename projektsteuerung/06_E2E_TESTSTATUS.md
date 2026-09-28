@@ -184,3 +184,18 @@ Dies ist **kein Build-/Installations-/Geräte-E2E-Nachweis**. Android 1.3.25/200
 **BESTÄTIGT:** Synology/API-Terminal meldet `APPLIED 016_btb_photo_link_metadata.sql`.
 
 Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime und Portal-/Geräte-E2E sind noch getrennt zu prüfen.
+
+### ADMIN-FINISH-001 / ADMIN-STORAGE-001 – 28.09.2026
+- Admin-Quellstand inkl. Speicher-Deduplizierung vorhanden.
+- Legacy-Fall `tb.files.storage_key == tb.survey_originals.storage_key` wird source-seitig nur einmal als physischer Speicher gezählt.
+- Source-Assertions: **PASS**.
+- GitHub Actions Server Run `36408724428` und Android Run `36408724459`: `failure`, Jobs mit `steps = null`.
+- Bewertung nach Projektregel: **kein Build-/Testnachweis**.
+- Status: **SOURCE FERTIG / DEPLOY OFFEN / RUNTIME-SMOKE OFFEN / E2E OFFEN**.
+- Pflichttest nach Deploy:
+  1. Übersicht lädt ohne Fehler;
+  2. TB-Helfer-Gesamtspeicher plausibel;
+  3. Firma zeigt Fotos/PDF/Trassierungsdaten/Sonstiges;
+  4. Legacy-Vermessungsoriginal mit gemeinsamem `storage_key` zählt nicht doppelt;
+  5. PDF-Vorschau öffnet;
+  6. Bahnhofssuche und Trassierungsimport smoke-testen.
