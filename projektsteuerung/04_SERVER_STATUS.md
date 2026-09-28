@@ -303,3 +303,11 @@ Source-Checks:
 - JavaScript Firmenworkspace + Aktivierungskarte: PASS;
 - Rücksprung/Redirects/Gültigkeitshelper/Releaseanzeige/App-Header-Vertrag source-seitig vorhanden;
 - GitHub Actions: `failure` mit `steps = null` → kein Testnachweis.
+
+### ADMIN-COMPANY-005 – Benutzer-Gültigkeit beim Bearbeiten
+- Benutzer bestätigt die neue Firmen-/Geräteansicht praktisch als passend.
+- In `Firma → Benutzer → Bearbeiten` ist jetzt zusätzlich die komfortable Auswahl `Kein Ablauf / 3 Monate / 6 Monate / 1 Jahr / Manuell` vorhanden.
+- `Letzter gültiger Tag` wird passend automatisch gesetzt/geleert bzw. manuell gewählt.
+- keine API-/DB-/Android-Änderung.
+- Source-JavaScript: PASS.
+- Status dieses Nachtrags: **SOURCE FERTIG / DEPLOY-RETEST OFFEN**.
