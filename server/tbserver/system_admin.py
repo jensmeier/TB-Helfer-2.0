@@ -330,6 +330,22 @@ def admin_system_status(
               (SELECT count(*) FROM tb.files WHERE deleted_at IS NULL) AS files,
               (SELECT coalesce(sum(byte_size),0) FROM tb.files WHERE deleted_at IS NULL) AS tracked_file_bytes,
               (SELECT coalesce(sum(byte_size),0) FROM tb.survey_originals) AS survey_original_bytes,
+              (
+                SELECT coalesce(sum(item.byte_size),0)
+                FROM (
+                  SELECT f.byte_size
+                  FROM tb.files f
+                  WHERE f.deleted_at IS NULL
+                    AND NOT EXISTS (
+                      SELECT 1
+                      FROM tb.survey_originals s
+                      WHERE s.storage_key = f.storage_key
+                    )
+                  UNION ALL
+                  SELECT s.byte_size
+                  FROM tb.survey_originals s
+                ) item
+              ) AS tracked_storage_bytes,
               (SELECT count(*) FROM tb.releases WHERE status <> 'RETIRED') AS releases,
               (SELECT count(*) FROM tb.survey_originals) AS survey_originals,
               (
@@ -352,7 +368,8 @@ def admin_system_status(
             """
         )
         counts = dict(cur.fetchone())
-        counts["tracked_storage_bytes"] = int(counts.get("tracked_file_bytes") or 0) + int(counts.get("survey_original_bytes") or 0)
+        for key in ("tracked_file_bytes", "survey_original_bytes", "tracked_storage_bytes"):
+            counts[key] = int(counts.get(key) or 0)
 
         cur.execute(
             """
@@ -460,17 +477,33 @@ def admin_system_status(
                    (SELECT count(*) FROM tb.files f
                     WHERE f.company_id = c.id AND f.deleted_at IS NULL) AS file_count,
                    (SELECT coalesce(sum(f.byte_size),0) FROM tb.files f
-                    WHERE f.company_id = c.id AND f.deleted_at IS NULL) AS file_bytes,
+                    WHERE f.company_id = c.id AND f.deleted_at IS NULL
+                      AND NOT EXISTS (
+                        SELECT 1 FROM tb.survey_originals s
+                        WHERE s.storage_key = f.storage_key
+                      )) AS file_bytes,
                    (SELECT coalesce(sum(f.byte_size),0) FROM tb.files f
                     WHERE f.company_id = c.id AND f.deleted_at IS NULL
-                      AND lower(f.mime_type) LIKE 'image/%') AS photo_bytes,
+                      AND lower(f.mime_type) LIKE 'image/%'
+                      AND NOT EXISTS (
+                        SELECT 1 FROM tb.survey_originals s
+                        WHERE s.storage_key = f.storage_key
+                      )) AS photo_bytes,
                    (SELECT coalesce(sum(f.byte_size),0) FROM tb.files f
                     WHERE f.company_id = c.id AND f.deleted_at IS NULL
-                      AND lower(f.mime_type) = 'application/pdf') AS pdf_bytes,
+                      AND lower(f.mime_type) = 'application/pdf'
+                      AND NOT EXISTS (
+                        SELECT 1 FROM tb.survey_originals s
+                        WHERE s.storage_key = f.storage_key
+                      )) AS pdf_bytes,
                    (SELECT coalesce(sum(f.byte_size),0) FROM tb.files f
                     WHERE f.company_id = c.id AND f.deleted_at IS NULL
                       AND lower(f.mime_type) NOT LIKE 'image/%'
-                      AND lower(f.mime_type) <> 'application/pdf') AS other_file_bytes,
+                      AND lower(f.mime_type) <> 'application/pdf'
+                      AND NOT EXISTS (
+                        SELECT 1 FROM tb.survey_originals s
+                        WHERE s.storage_key = f.storage_key
+                      )) AS other_file_bytes,
                    (SELECT coalesce(sum(s.byte_size),0) FROM tb.survey_originals s
                     WHERE s.company_id = c.id) AS survey_bytes
             FROM tb.companies c
@@ -480,7 +513,9 @@ def admin_system_status(
         )
         companies = [dict(row) for row in cur.fetchall()]
         for company in companies:
-            company["total_storage_bytes"] = int(company.get("file_bytes") or 0) + int(company.get("survey_bytes") or 0)
+            for key in ("file_bytes", "photo_bytes", "pdf_bytes", "other_file_bytes", "survey_bytes"):
+                company[key] = int(company.get(key) or 0)
+            company["total_storage_bytes"] = company["file_bytes"] + company["survey_bytes"]
 
         cur.execute(
             """
