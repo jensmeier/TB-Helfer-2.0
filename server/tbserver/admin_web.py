@@ -196,6 +196,14 @@ def admin_users_page(
                 if valid_until is not None
                 else None
             )
+
+    user_groups: list[dict[str, Any]] = []
+    for item in users:
+        company_name = item.get("company_name") or "Ohne Firma"
+        if not user_groups or user_groups[-1]["company_name"] != company_name:
+            user_groups.append({"company_name": company_name, "users": []})
+        user_groups[-1]["users"].append(item)
+
     return templates.TemplateResponse(
         "v1_admin_users.html",
         {
@@ -203,6 +211,7 @@ def admin_users_page(
             "user": user,
             "companies": companies,
             "users": users,
+            "user_groups": user_groups,
         },
     )
 
