@@ -317,6 +317,7 @@ function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function val(id){const v=document.getElementById(id).value.trim();return v||null;}
 function clamp(n,min,max){return Math.max(min,Math.min(max,Number(n)||0));}
 function size(value){const n=Number(value)||0,a=Math.abs(n);if(a>=1e12)return(n/1e12).toFixed(a>=1e14?0:1)+' TB';if(a>=1e9)return(n/1e9).toFixed(a>=1e11?0:1)+' GB';if(a>=1e6)return(n/1e6).toFixed(a>=1e8?0:1)+' MB';if(a>=1e3)return(n/1e3).toFixed(a>=1e5?0:1)+' kB';return Math.round(n)+' B';}
+function reloadSection(name,delay){setTimeout(()=>{location.href=location.pathname+'?r='+Date.now()+'#'+name;},delay||0);}
 function openSection(name){document.querySelectorAll('.side-btn').forEach(b=>b.classList.toggle('active',b.dataset.section===name));document.querySelectorAll('.company-panel').forEach(p=>p.classList.toggle('active',p.dataset.panel===name));history.replaceState(null,'','#'+name);window.scrollTo({top:Math.max(0,document.querySelector('.company-shell').offsetTop-78),behavior:'smooth'});}
 document.querySelectorAll('.side-btn').forEach(b=>b.addEventListener('click',()=>openSection(b.dataset.section)));
 const initial=location.hash.slice(1);if(initial&&document.querySelector('[data-panel="'+initial+'"]'))openSection(initial);
@@ -352,7 +353,7 @@ document.getElementById('createUser').addEventListener('submit',async ev=>{
     const {data}=await tbApi('/api/v1/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       company_id:companyId,first_name:document.getElementById('u_first').value.trim(),last_name:document.getElementById('u_last').value.trim(),company_role:document.getElementById('u_role').value,access_valid_through:validDate.value||null
     })});
-    show('ok','Benutzer wurde angelegt. Vorläufiger Login: '+data.login_name);setTimeout(()=>location.href=location.pathname+'#users',550);
+    show('ok','Benutzer wurde angelegt. Vorläufiger Login: '+data.login_name);reloadSection('users',550);
   }catch(e){show('err',e.message||String(e));}
 });
 document.querySelectorAll('.toggle-user-edit').forEach(b=>b.addEventListener('click',()=>{const p=document.getElementById('edit-user-'+b.dataset.userId);p.style.display=p.style.display==='block'?'none':'block';}));
@@ -362,7 +363,7 @@ document.querySelectorAll('.save-user').forEach(b=>b.addEventListener('click',as
     await tbApi('/api/v1/admin/users/'+b.dataset.userId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       first_name:p.querySelector('.edit-first').value.trim(),last_name:p.querySelector('.edit-last').value.trim(),company_role:p.querySelector('.edit-role').value,access_valid_through:p.querySelector('.edit-valid-date').value||null
     })});
-    show('ok','Benutzerdaten gespeichert.');setTimeout(()=>location.href=location.pathname+'#users',450);
+    show('ok','Benutzerdaten gespeichert.');reloadSection('users',450);
   }catch(e){show('err',e.message||String(e));b.disabled=false;}
 }));
 document.querySelectorAll('.portal-activation').forEach(b=>b.addEventListener('click',async()=>{
@@ -370,24 +371,24 @@ document.querySelectorAll('.portal-activation').forEach(b=>b.addEventListener('c
 }));
 document.querySelectorAll('.delete-user').forEach(b=>b.addEventListener('click',async()=>{
   if(!confirm('Benutzer "'+(b.dataset.userName||'')+'" sicher löschen? Gerätezugänge und offene Aktivierungen werden ungültig; Historie bleibt erhalten.'))return;
-  b.disabled=true;try{await tbApi('/api/v1/admin/users/'+b.dataset.userId,{method:'DELETE'});show('ok','Benutzer wurde sicher gelöscht.');setTimeout(()=>location.href=location.pathname+'#users',450);}catch(e){show('err',e.message||String(e));b.disabled=false;}
+  b.disabled=true;try{await tbApi('/api/v1/admin/users/'+b.dataset.userId,{method:'DELETE'});show('ok','Benutzer wurde sicher gelöscht.');reloadSection('users',450);}catch(e){show('err',e.message||String(e));b.disabled=false;}
 }));
 document.querySelectorAll('.purge-user').forEach(b=>b.addEventListener('click',async()=>{
   const id=b.dataset.userId,typed=prompt('Benutzer "'+(b.dataset.userName||'')+'" ENDGÜLTIG löschen?\n\nZum Bestätigen ENDGUELTIG LOESCHEN eingeben.');if(typed!=='ENDGUELTIG LOESCHEN')return;b.disabled=true;
-  try{await tbApi('/api/v1/admin/purge/users/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm_id:id,confirm_text:typed})});show('ok','Benutzer vollständig gelöscht.');setTimeout(()=>location.href=location.pathname+'#users',450);}catch(e){show('err',e.message||String(e));b.disabled=false;}
+  try{await tbApi('/api/v1/admin/purge/users/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm_id:id,confirm_text:typed})});show('ok','Benutzer vollständig gelöscht.');reloadSection('users',450);}catch(e){show('err',e.message||String(e));b.disabled=false;}
 }));
 
 document.querySelectorAll('.block-device').forEach(b=>b.addEventListener('click',async()=>{
   if(!confirm('Gerät "'+(b.dataset.deviceName||'')+'" blockieren? Der aktuelle Gerätezugang wird sofort ungültig.'))return;
-  b.disabled=true;try{await tbApi('/api/v1/admin/devices/'+b.dataset.deviceId+'/block',{method:'POST'});show('ok','Gerät wurde blockiert.');setTimeout(()=>location.href=location.pathname+'#devices',400);}catch(e){show('err',e.message||String(e));b.disabled=false;}
+  b.disabled=true;try{await tbApi('/api/v1/admin/devices/'+b.dataset.deviceId+'/block',{method:'POST'});show('ok','Gerät wurde blockiert.');reloadSection('devices',400);}catch(e){show('err',e.message||String(e));b.disabled=false;}
 }));
 document.querySelectorAll('.release-device').forEach(b=>b.addEventListener('click',async()=>{
   if(!confirm('Gerätebindung "'+(b.dataset.deviceName||'')+'" lösen? Der Gerätezugang wird sofort ungültig.'))return;
-  b.disabled=true;try{await tbApi('/api/v1/admin/devices/'+b.dataset.deviceId+'/release',{method:'POST'});show('ok','Gerätebindung wurde gelöst.');setTimeout(()=>location.href=location.pathname+'#devices',400);}catch(e){show('err',e.message||String(e));b.disabled=false;}
+  b.disabled=true;try{await tbApi('/api/v1/admin/devices/'+b.dataset.deviceId+'/release',{method:'POST'});show('ok','Gerätebindung wurde gelöst.');reloadSection('devices',400);}catch(e){show('err',e.message||String(e));b.disabled=false;}
 }));
 document.querySelectorAll('.purge-device').forEach(b=>b.addEventListener('click',async()=>{
   const id=b.dataset.deviceId,typed=prompt('Gerät "'+(b.dataset.deviceName||'')+'" vollständig löschen?\n\nZum Bestätigen ENDGUELTIG LOESCHEN eingeben.');if(typed!=='ENDGUELTIG LOESCHEN')return;b.disabled=true;
-  try{await tbApi('/api/v1/admin/purge/devices/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm_id:id,confirm_text:typed})});show('ok','Gerät vollständig gelöscht.');setTimeout(()=>location.href=location.pathname+'#devices',400);}catch(e){show('err',e.message||String(e));b.disabled=false;}
+  try{await tbApi('/api/v1/admin/purge/devices/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm_id:id,confirm_text:typed})});show('ok','Gerät vollständig gelöscht.');reloadSection('devices',400);}catch(e){show('err',e.message||String(e));b.disabled=false;}
 }));
 
 const worksiteForm=document.getElementById('createWorksite');
@@ -397,15 +398,15 @@ if(worksiteForm)worksiteForm.addEventListener('submit',async ev=>{
     await tbApi('/api/v1/admin/worksites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       company_id:companyId,responsible_tb_user_id:document.getElementById('w_responsible').value,name:document.getElementById('w_name').value.trim(),designation:val('w_designation'),route_number:val('w_route'),station_code:val('w_station_code'),station_name:val('w_station_name')
     })});
-    show('ok','Baustelle wurde angelegt.');setTimeout(()=>location.href=location.pathname+'#worksites',500);
+    show('ok','Baustelle wurde angelegt.');reloadSection('worksites',500);
   }catch(e){show('err',e.message||String(e));}
 });
 
 function pair(rid,nid,min,max){const r=document.getElementById(rid),n=document.getElementById(nid);r.addEventListener('input',()=>n.value=r.value);n.addEventListener('input',()=>{const v=clamp(n.value,min,max);n.value=v;r.value=v;});}
 pair('logoWidth','logoWidthNumber',40,250);pair('offsetX','offsetXNumber',-120,120);pair('offsetY','offsetYNumber',-60,180);
 function refreshPdf(){const frame=document.getElementById('pdfPreview');frame.src='/api/v1/admin/companies/'+companyId+'/pdf-preview?v='+Date.now();}
-document.getElementById('uploadLogo').addEventListener('click',async()=>{const file=document.getElementById('logoFile').files[0];if(!file){show('err','Bitte zuerst eine Logo-Datei auswählen.');return;}if(file.size>5*1024*1024){show('err','Das Logo ist größer als die zulässige Grenze von ca. 5 MB.');return;}try{await tbApi('/api/v1/admin/companies/'+companyId+'/logo',{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});show('ok','Firmenlogo gespeichert.');setTimeout(()=>location.href=location.pathname+'#pdf',350);}catch(e){show('err',e.message||String(e));}});
-document.getElementById('deleteLogo').addEventListener('click',async()=>{if(!confirm('Firmenlogo wirklich entfernen?'))return;try{await tbApi('/api/v1/admin/companies/'+companyId+'/logo',{method:'DELETE'});show('ok','Firmenlogo entfernt.');setTimeout(()=>location.href=location.pathname+'#pdf',350);}catch(e){show('err',e.message||String(e));}});
+document.getElementById('uploadLogo').addEventListener('click',async()=>{const file=document.getElementById('logoFile').files[0];if(!file){show('err','Bitte zuerst eine Logo-Datei auswählen.');return;}if(file.size>5*1024*1024){show('err','Das Logo ist größer als die zulässige Grenze von ca. 5 MB.');return;}try{await tbApi('/api/v1/admin/companies/'+companyId+'/logo',{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});show('ok','Firmenlogo gespeichert.');reloadSection('pdf',350);}catch(e){show('err',e.message||String(e));}});
+document.getElementById('deleteLogo').addEventListener('click',async()=>{if(!confirm('Firmenlogo wirklich entfernen?'))return;try{await tbApi('/api/v1/admin/companies/'+companyId+'/logo',{method:'DELETE'});show('ok','Firmenlogo entfernt.');reloadSection('pdf',350);}catch(e){show('err',e.message||String(e));}});
 document.getElementById('saveLayout').addEventListener('click',async()=>{const payload={logo_width_pt:clamp(document.getElementById('logoWidthNumber').value,40,250),offset_x_pt:clamp(document.getElementById('offsetXNumber').value,-120,120),offset_y_pt:clamp(document.getElementById('offsetYNumber').value,-60,180),show_company_name:document.getElementById('showName').checked,show_company_email:document.getElementById('showEmail').checked,show_company_phone:document.getElementById('showPhone').checked,contacts_in_image:document.getElementById('contactsInImage').checked};try{const result=await tbApi('/api/v1/admin/companies/'+companyId+'/pdf-logo-layout',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});document.getElementById('layoutVersion').textContent=result.data.layout.layout_version;document.getElementById('layoutVersionTop').textContent=result.data.layout.layout_version;show('ok','PDF-Layout firmenweit gespeichert.');refreshPdf();}catch(e){show('err',e.message||String(e));}});
 document.getElementById('resetLayout').addEventListener('click',()=>{document.getElementById('logoWidth').value=document.getElementById('logoWidthNumber').value=90;document.getElementById('offsetX').value=document.getElementById('offsetXNumber').value=0;document.getElementById('offsetY').value=document.getElementById('offsetYNumber').value=0;document.getElementById('showName').checked=true;document.getElementById('showEmail').checked=true;document.getElementById('showPhone').checked=true;document.getElementById('contactsInImage').checked=false;});
 document.getElementById('refreshPdf').addEventListener('click',refreshPdf);
