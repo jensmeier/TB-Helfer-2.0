@@ -257,3 +257,23 @@ Für den gemeinsamen strukturierten BTB-Edit-Pfad gilt ab dieser Umsetzung:
 - GPS/Aufnahmezeit/Dateiinhalt werden durch fachliches Umhängen nicht verändert.
 
 Server validiert einen gesetzten `worksiteNodeKey` gegen die aktive Baustellenstruktur derselben Baustelle.
+
+
+## ADMIN-PDF-001 – Firmenlogo/PDF-Vertrag für Admin und Android
+Status: **VERTRAGSAUDIT ANGEFORDERT / ANDROID-BESTAND VOR ÄNDERUNG PRÜFEN**
+
+Verbindliche Benutzeranforderung vom 28.09.2026:
+- Firmenlogo, Firmenstammdaten und PDF-Ausgabe müssen zwischen Server/Admin und Android fachlich zusammenpassen.
+- SERVER darf für Admin-/Portal-PDFs keine zweite, abweichende Firmenlogo-/PDF-Logik erfinden.
+- Zentrale Firmenstammdaten bleiben Server-Source-of-Truth; Android lädt/cacht die für seine PDF-Ausgabe benötigten Firmendaten.
+- Vor Anpassung von PDF-Branding oder PDF-Layout im Server ist der aktuelle Android-PDF-Code zu prüfen.
+- Wenn Android zusätzliche Brandingfelder benötigt, werden diese zuerst hier vertraglich festgelegt; Änderungen an `app/**` bleiben Aufgabe des ANDROID-Projekts.
+- Admin erhält eine kleine **PDF-Vorschau / PDF-Viewer-Funktion**, die mit denselben zentralen Firmen-/Brandingdaten arbeitet wie die tatsächliche PDF-Erzeugung.
+- Logo-Änderungen müssen in Vorschau und erzeugten PDFs nachvollziehbar aktualisiert werden; keine separate manuelle Logoablage nur für die Vorschau.
+- Bestehende BTB-/Abnahme-/sonstige PDF-Fachlogik und bereits geschützte bestätigte Abläufe dürfen durch die Admin-Vorschau nicht stillschweigend verändert werden.
+
+Offen bis zum Quellaudit:
+- welche Firmen-/Logo-Felder Android aktuell tatsächlich für PDF verwendet;
+- ob Android PDF selbst lokal rendert oder serverseitige PDFs konsumiert;
+- ob PDF-Kopf/Fuß/Layout bereits zentral konfigurierbar sind;
+- welche serverseitige Vorschau technisch denselben Datenpfad am zuverlässigsten abbildet.
