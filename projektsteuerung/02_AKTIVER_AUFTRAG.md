@@ -948,3 +948,24 @@ Fixziel:
 - LIKE-Prüfung ohne literales `%` in der parametrisierten Query formulieren;
 - keine DB-/Datenänderung;
 - danach denselben direkten Container-Test wiederholen.
+
+## ADMIN-STRUCTURE-004 – Firmenzentrierte Admin-Verwaltung
+Status: **NEUE STRUKTURANFORDERUNG GESICHERT / NOCH NICHT UMGESETZT**
+
+Benutzerwunsch vom 28.09.2026 nach erfolgreichem Retest der Firmenverwaltung:
+- Doppelungen in der Admin-Navigation reduzieren.
+- Primärer Verwaltungsablauf soll firmenzentriert sein:
+  1. Firma anlegen;
+  2. `Firma verwalten` öffnen;
+  3. innerhalb der Firma Benutzer hinzufügen/bearbeiten;
+  4. innerhalb der Firma gebundene Geräte sehen/verwalten;
+  5. innerhalb der Firma Baustellen, Speicher und Logo/PDF verwalten.
+- Nutzer, Geräte, Baustellen und Speicher sollen damit nicht parallel als gleichrangige globale Hauptverwaltung und zusätzlich nochmals innerhalb einer Firma auftreten.
+- Ziel: deutlich übersichtlichere Firmenverwaltung als zentraler Einstiegspunkt.
+
+Vor Umsetzung fachlich zu klären:
+- Welche globalen Hauptmenüpunkte bleiben zusätzlich bestehen (z. B. Übersicht, Strecken/Bahnhöfe, Trassierungsdaten, Katalog-Historie, App-Versionen, Systemstatus)?
+- Sollen `Benutzer`, `Geräte`, `Baustellen` aus der Hauptnavigation komplett verschwinden oder als globale Such-/Gesamtübersicht unter `Firmen` erreichbar bleiben?
+- Soll `Firma verwalten` Tabs oder eine linke Seitennavigation verwenden?
+- Soll das Anlegen eines Benutzers direkt innerhalb der Firma erfolgen und die Firma automatisch vorausgewählt/fest sein?
+- Geräte werden nicht manuell einer Firma zugewiesen, sondern bleiben über den Benutzer gebunden; die Firmenansicht zeigt/verwaltert diese Bindungen.
