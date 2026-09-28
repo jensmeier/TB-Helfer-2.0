@@ -1105,7 +1105,7 @@ Keine Android-Codeänderung.
 
 
 ## ADMIN-PDF-007 – PDF-Logo-Layout reagiert nicht
-Status: **RUNTIME-FEHLER BESTÄTIGT / URSACHENPRÜFUNG JETZT**
+Status: **RUNTIME-FEHLER BESTÄTIGT / SOURCE-FIX FERTIG / RETEST OFFEN**
 
 Praxisstand 28.09.2026:
 - Bahnhof-/Betriebsstellensuche nach Synology-Recreate praktisch bestätigt: **FUNKTIONIERT**; `MIH` füllt `Ingolstadt Hbf` und Vorschläge werden angezeigt.
@@ -1123,3 +1123,23 @@ Praxisbefund 28.09.2026:
 - beim Synology-Recreate erscheinen Warnungen: `POSTGRES_USER variable is not set` und `POSTGRES_DB variable is not set`;
 - Ursache im Quellstand bestätigt: Healthcheck von `restore-test-db` verwendet `${POSTGRES_USER}` / `${POSTGRES_DB}` statt der innerhalb des Containers auszuwertenden Form `$${POSTGRES_USER}` / `$${POSTGRES_DB}`;
 - Korrektur ist rein Compose-seitig und ändert keine Zugangsdaten oder produktiven DB-Werte.
+
+
+### ADMIN-PDF-007 – Source-Fix
+Status: **SOURCE-FIX FERTIG / SYNLOGY-RETEST OFFEN**
+
+Ursachen bestätigt:
+1. `Vorschau aktualisieren` renderte ausschließlich den bereits gespeicherten DB-Stand; aktuelle, noch nicht gespeicherte Reglerwerte wurden nicht an den Preview-Endpunkt übergeben.
+2. Der Server-Firmenkopf reservierte nur 48 mm Höhe. Besonders quadratische Logos wurden deshalb selbst bei großer `logo_width_pt`-Einstellung wieder stark verkleinert.
+
+Umgesetzt:
+- Admin-PDF-Vorschau akzeptiert aktuelle, nicht gespeicherte Layoutwerte als reine GET-Vorschau; Persistenz bleibt ausschließlich beim bewussten `PDF-Layout speichern`.
+- Regler/Nummernfelder aktualisieren die Vorschau nach kurzer Verzögerung automatisch.
+- `Vorschau aktualisieren` und `Groß öffnen` verwenden die aktuellen Reglerwerte.
+- negative X/Y-Werte können im Zahlenfeld sauber eingegeben werden.
+- Server-`CompanyHeaderFlowable` verwendet jetzt 62 mm Headerhöhe und eine Android-nahe Logo-Zone bis ca. 174 pt.
+- PDF-Renderer-Version auf `tb-server-btb-pdf-4` angehoben.
+- finaler BTB-PDF-Pfad nutzt denselben korrigierten Firmenkopf.
+- Synology-`restore-test-db`-Healthcheck wertet POSTGRES_USER/POSTGRES_DB jetzt im Container aus.
+- keine Migration, keine DB-Datenänderung, keine Android-Codeänderung.
+- Template-JavaScript-Check und Source-Assertions: PASS.
