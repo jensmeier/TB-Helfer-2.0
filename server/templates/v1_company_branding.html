@@ -329,7 +329,7 @@
       <div class="card">
         <div class="panel-title">
           <div><h2>PDF-Vorschau</h2><div class="small">Echte A4-Vorschau mit demselben serverseitigen Firmenkopf wie beim BTB-Abschluss.</div></div>
-          <div class="actions"><button id="refreshPdf" type="button" class="secondary">Vorschau aktualisieren</button><a class="btn" target="_blank" href="/api/v1/admin/companies/{{ company_id }}/pdf-preview">Groß öffnen</a></div>
+          <div class="actions"><button id="refreshPdf" type="button" class="secondary">Vorschau aktualisieren</button><a id="openPdfLarge" class="btn" target="_blank" href="/api/v1/admin/companies/{{ company_id }}/pdf-preview">Groß öffnen</a></div>
         </div>
         <div class="pdf-shell"><iframe id="pdfPreview" class="pdf-view" title="PDF-Vorschau" src="/api/v1/admin/companies/{{ company_id }}/pdf-preview?v={{ layout.layout_version }}-{{ profile.logo_version }}"></iframe></div>
       </div>
@@ -443,13 +443,44 @@ if(worksiteForm)worksiteForm.addEventListener('submit',async ev=>{
   }catch(e){show('err',e.message||String(e));}
 });
 
-function pair(rid,nid,min,max){const r=document.getElementById(rid),n=document.getElementById(nid);r.addEventListener('input',()=>n.value=r.value);n.addEventListener('input',()=>{const v=clamp(n.value,min,max);n.value=v;r.value=v;});}
+let pdfPreviewTimer=null;
+function currentPdfPreviewUrl(){
+  const p=new URLSearchParams({
+    logo_width_pt:String(clamp(document.getElementById('logoWidthNumber').value,40,250)),
+    offset_x_pt:String(clamp(document.getElementById('offsetXNumber').value,-120,120)),
+    offset_y_pt:String(clamp(document.getElementById('offsetYNumber').value,-60,180)),
+    show_company_name:String(document.getElementById('showName').checked),
+    show_company_email:String(document.getElementById('showEmail').checked),
+    show_company_phone:String(document.getElementById('showPhone').checked),
+    contacts_in_image:String(document.getElementById('contactsInImage').checked),
+    v:String(Date.now())
+  });
+  return '/api/v1/admin/companies/'+companyId+'/pdf-preview?'+p.toString();
+}
+function refreshPdf(){
+  const url=currentPdfPreviewUrl();
+  document.getElementById('pdfPreview').src=url;
+  document.getElementById('openPdfLarge').href=url;
+}
+function schedulePdfPreview(){
+  clearTimeout(pdfPreviewTimer);
+  pdfPreviewTimer=setTimeout(refreshPdf,350);
+}
+function pair(rid,nid,min,max){
+  const r=document.getElementById(rid),n=document.getElementById(nid);
+  r.addEventListener('input',()=>{n.value=r.value;schedulePdfPreview();});
+  n.addEventListener('input',()=>{
+    const raw=n.value.trim(),num=Number(raw);
+    if(raw!==''&&Number.isFinite(num)){r.value=clamp(num,min,max);schedulePdfPreview();}
+  });
+  n.addEventListener('change',()=>{const v=clamp(n.value,min,max);n.value=v;r.value=v;schedulePdfPreview();});
+}
 pair('logoWidth','logoWidthNumber',40,250);pair('offsetX','offsetXNumber',-120,120);pair('offsetY','offsetYNumber',-60,180);
-function refreshPdf(){const frame=document.getElementById('pdfPreview');frame.src='/api/v1/admin/companies/'+companyId+'/pdf-preview?v='+Date.now();}
+['showName','showEmail','showPhone','contactsInImage'].forEach(id=>document.getElementById(id).addEventListener('change',schedulePdfPreview));
 document.getElementById('uploadLogo').addEventListener('click',async()=>{const file=document.getElementById('logoFile').files[0];if(!file){show('err','Bitte zuerst eine Logo-Datei auswählen.');return;}if(file.size>5*1024*1024){show('err','Das Logo ist größer als die zulässige Grenze von ca. 5 MB.');return;}try{await tbApi('/api/v1/admin/companies/'+companyId+'/logo',{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});show('ok','Firmenlogo gespeichert.');reloadSection('pdf',350);}catch(e){show('err',e.message||String(e));}});
 document.getElementById('deleteLogo').addEventListener('click',async()=>{if(!confirm('Firmenlogo wirklich entfernen?'))return;try{await tbApi('/api/v1/admin/companies/'+companyId+'/logo',{method:'DELETE'});show('ok','Firmenlogo entfernt.');reloadSection('pdf',350);}catch(e){show('err',e.message||String(e));}});
 document.getElementById('saveLayout').addEventListener('click',async()=>{const payload={logo_width_pt:clamp(document.getElementById('logoWidthNumber').value,40,250),offset_x_pt:clamp(document.getElementById('offsetXNumber').value,-120,120),offset_y_pt:clamp(document.getElementById('offsetYNumber').value,-60,180),show_company_name:document.getElementById('showName').checked,show_company_email:document.getElementById('showEmail').checked,show_company_phone:document.getElementById('showPhone').checked,contacts_in_image:document.getElementById('contactsInImage').checked};try{const result=await tbApi('/api/v1/admin/companies/'+companyId+'/pdf-logo-layout',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});document.getElementById('layoutVersion').textContent=result.data.layout.layout_version;document.getElementById('layoutVersionTop').textContent=result.data.layout.layout_version;show('ok','PDF-Layout firmenweit gespeichert.');refreshPdf();}catch(e){show('err',e.message||String(e));}});
-document.getElementById('resetLayout').addEventListener('click',()=>{document.getElementById('logoWidth').value=document.getElementById('logoWidthNumber').value=90;document.getElementById('offsetX').value=document.getElementById('offsetXNumber').value=0;document.getElementById('offsetY').value=document.getElementById('offsetYNumber').value=0;document.getElementById('showName').checked=true;document.getElementById('showEmail').checked=true;document.getElementById('showPhone').checked=true;document.getElementById('contactsInImage').checked=false;});
+document.getElementById('resetLayout').addEventListener('click',()=>{document.getElementById('logoWidth').value=document.getElementById('logoWidthNumber').value=90;document.getElementById('offsetX').value=document.getElementById('offsetXNumber').value=0;document.getElementById('offsetY').value=document.getElementById('offsetYNumber').value=0;document.getElementById('showName').checked=true;document.getElementById('showEmail').checked=true;document.getElementById('showPhone').checked=true;document.getElementById('contactsInImage').checked=false;refreshPdf();});
 document.getElementById('refreshPdf').addEventListener('click',refreshPdf);
 </script>
 {% endblock %}
