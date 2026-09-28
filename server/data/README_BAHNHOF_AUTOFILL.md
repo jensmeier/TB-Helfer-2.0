@@ -40,3 +40,17 @@ Standardmäßig erwartet der Server die Dateien unter `server/data/` bzw. im Con
 - `STATION_OPERATING_PATH`
 
 Die Dateien selbst bleiben fachlich identisch mit den Android-Assets; es wird kein externer Datenbestand dazugemischt.
+
+
+## Praxisbeispiel Ingolstadt
+
+Der offizielle Code in beiden vorhandenen Android-/Server-Referenzdateien lautet:
+
+- `MIH` = `Ingolstadt Hbf`
+
+Ein exakter Code `MIB` existiert in diesen Daten nicht. Die Admin-Suche darf deshalb kein falsches `MIB` speichern. Bei ähnlichen Kürzeln werden stattdessen passende offizielle Codes vorgeschlagen; der Benutzer übernimmt den gewünschten Treffer.
+
+## Synology-Container
+
+Der API-Container benötigt den vorhandenen Serverordner `data/` read-only unter `/app/data`.
+Im Synology-Compose wird dafür `${TB_V1_SOURCE_DATA_DIR:-./data}:/app/data:ro` verwendet.
