@@ -47,10 +47,7 @@
         <a class="{% if request.url.path == '/admin/v1' %}active{% endif %}" href="/admin/v1">Übersicht</a>
         <a class="{% if request.url.path.startswith('/admin/v1/routes') %}active{% endif %}" href="/admin/v1/routes">Strecken</a>
         <a class="{% if request.url.path.startswith('/admin/v1/stations') %}active{% endif %}" href="/admin/v1/stations">Bahnhöfe</a>
-        <a class="{% if request.url.path.startswith('/admin/v1/users') %}active{% endif %}" href="/admin/v1/users">Benutzer</a>
-        <a class="{% if request.url.path.startswith('/admin/v1/companies') %}active{% endif %}" href="/admin/v1/companies">Firmen</a>
-        <a class="{% if request.url.path.startswith('/admin/v1/devices') %}active{% endif %}" href="/admin/v1/devices">Geräte</a>
-        <a class="{% if request.url.path.startswith('/admin/v1/worksites') %}active{% endif %}" href="/admin/v1/worksites">Baustellen</a>
+        <a class="{% if request.url.path.startswith('/admin/v1/companies') or request.url.path.startswith('/admin/v1/users') or request.url.path.startswith('/admin/v1/devices') or request.url.path.startswith('/admin/v1/worksites') %}active{% endif %}" href="/admin/v1/companies">Firmen</a>
         <a class="{% if request.url.path.startswith('/admin/v1/survey-import') %}active{% endif %}" href="/admin/v1/survey-import">Trassierungsdaten</a>
         <a class="{% if request.url.path.startswith('/admin/v1/catalog-history') %}active{% endif %}" href="/admin/v1/catalog-history">Katalog-Historie</a>
         <a class="{% if request.url.path.startswith('/admin/v1/releases') %}active{% endif %}" href="/admin/v1/releases">App-Versionen</a>
