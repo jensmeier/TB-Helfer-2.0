@@ -569,3 +569,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Source-Assertions PASS.
 - CI erneut ohne Runner-Steps; kein Testnachweis.
 - Nächster praktischer Schritt: neuen Serverstand per GitHub Desktop/File Station auf Synology übernehmen, API neu starten, danach Admin-Smoke/E2E.
+
+### ADMIN-RUNTIME-002 – Firmenverwaltung 500
+- Benutzer hat direkten API-Container-Test ausgeführt.
+- Traceback: `psycopg.ProgrammingError: only '%s', '%b', '%t' are allowed as placeholders, got '%'`.
+- Ursache eindeutig in Firmen-Speicherquery mit `LIKE 'image/%'` + `%s`.
+- Source-Fix in Commit `6cdccc9267302f8442819d02a884406ad00163a7`.
+- Nächster praktischer Schritt: nur `server/tbserver/admin_web.py` auf NAS ersetzen, API neu starten, Firmenverwaltung erneut testen.
