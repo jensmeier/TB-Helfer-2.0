@@ -840,3 +840,12 @@ Reihenfolge:
 3. Admin-UI/Statusdaten gezielt planen;
 4. Admin fertigstellen;
 5. danach erst Portal-Nacharbeit.
+
+
+### ADMIN-FINISH-001 – PDF/Android-Abgleich abgeschlossen
+- Android-HEAD `423f3789...` geprüft.
+- Zentrale Firmenstammdaten, Firmenlogo und PDF-Logo-Layout werden bereits gemeinsam mit Server 1.0 verwendet.
+- Android besitzt bereits echte PDF-Vorschau + internen PDF-Viewer.
+- Für die Admin-Fertigstellung ist deshalb **keine Android-Codeänderung nötig**.
+- Server-Admin bekommt auf derselben Datenbasis eine echte PDF-Vorschau/kleinen Viewer.
+- Nächster Schritt: Admin-UI und Systemdaten implementieren.
