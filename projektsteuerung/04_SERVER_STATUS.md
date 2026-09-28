@@ -311,3 +311,30 @@ Source-Checks:
 - keine API-/DB-/Android-Änderung.
 - Source-JavaScript: PASS.
 - Status dieses Nachtrags: **SOURCE FERTIG / DEPLOY-RETEST OFFEN**.
+
+
+## ADMIN-DASH-006 – Übersicht + Bahnhof/MIB
+Status: **SOURCE FERTIG / DEPLOY OFFEN**
+
+Umgesetzt:
+- Dashboard optisch verdichtet und breitere Bildschirmnutzung verbessert;
+- Bestand und Firmenspeicher auf Desktop nebeneinander;
+- KPI-/Schnellzugriff-/Speicher-Darstellung verfeinert;
+- Warnungen können direkt nach Prüfung quittiert werden;
+- Restbeschriftung `automatisch aktualisiert` entfernt, Auto-Refresh bleibt;
+- Navigation konsistent `Streckendaten`;
+- Synology-API erhält read-only Mount `./data:/app/data`;
+- Systemstatus warnt künftig, wenn die Bahnhof-Referenzdateien im API-Container fehlen;
+- Bahnhofsuche zeigt Referenzfehler sichtbar;
+- offizieller Bahnhofscode geprüft: `MIH = Ingolstadt Hbf`; `MIB` existiert nicht als exakter Referenzcode;
+- Tippfehlerhilfe liefert ähnliche offizielle Kürzel, speichert aber keinen erfundenen Alias.
+
+Prüfung:
+- Dashboard-JavaScript: PASS;
+- Bahnhof-JavaScript: PASS;
+- Source-Assertions für Data-Mount, Station-Fuzzy-Ranking und Systemwarnung: PASS;
+- keine Android-Dateien geändert.
+
+Deployment-Hinweis:
+- Wegen neuem Volume-Mount genügt kein einfacher API-Restart;
+- Synology-Projekt/API muss mit aktualisiertem Compose neu erstellt/recreated werden.
