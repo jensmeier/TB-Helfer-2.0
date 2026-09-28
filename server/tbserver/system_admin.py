@@ -193,6 +193,29 @@ def _storage_snapshot() -> dict[str, Any]:
     }
 
 
+def _station_reference_snapshot() -> dict[str, Any]:
+    base = Path(__file__).resolve().parent.parent / "data"
+    active = Path(
+        os.getenv("STATION_ACTIVE_PATH", "").strip()
+        or base / "TB-Helfer_DB_Bahnhoefe_aktiv_2026-03-14.json"
+    )
+    operating = Path(
+        os.getenv("STATION_OPERATING_PATH", "").strip()
+        or base / "TB-Helfer_DB_Betriebsstellen_aktuell_2026-03-14.json"
+    )
+    missing = [
+        path.name
+        for path in (active, operating)
+        if not path.is_file()
+    ]
+    return {
+        "available": not missing,
+        "active_path": str(active),
+        "operating_path": str(operating),
+        "missing": missing,
+    }
+
+
 def _read_cpu_sample() -> tuple[int, int] | None:
     try:
         first = Path("/proc/stat").read_text(encoding="utf-8").splitlines()[0]
@@ -305,6 +328,7 @@ def admin_system_status(
     smtp = smtp_status()
     monitor = read_monitor_snapshot()
     host = _host_snapshot()
+    station_reference = _station_reference_snapshot()
     status_now = datetime.now(timezone.utc)
     warning_until = status_now + timedelta(days=int(automation["user_expiry_warning_days"]))
 
@@ -616,6 +640,15 @@ def admin_system_status(
             "Serverfehler seit der letzten Quittierung",
             f'{traffic_24h["unacknowledged_error_count"]} HTTP-Antwort(en) mit Status 5xx sind seit der letzten Quittierung hinzugekommen.',
         )
+    if not station_reference["available"]:
+        add_issue(
+            "warning",
+            "Bahnhof-Referenzdaten fehlen",
+            "Im API-Container fehlen: "
+            + ", ".join(station_reference["missing"])
+            + ". Die Kürzel-/Namenssuche ist dadurch nicht vollständig verfügbar.",
+        )
+
     if not settings.public_base_url:
         add_issue(
             "warning",
@@ -686,6 +719,7 @@ def admin_system_status(
         "smtp": smtp,
         "monitor": monitor,
         "host": host,
+        "station_reference": station_reference,
         "counts": counts,
         "traffic_24h": traffic_24h,
         "traffic_series": traffic_series,
