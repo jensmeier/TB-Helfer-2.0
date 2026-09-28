@@ -214,3 +214,9 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
 - Source-Assertion: PASS.
 - Noch offen: korrigierte `server/tbserver/admin_web.py` auf Synology übernehmen, API neu laden und `Firma verwalten` erneut öffnen.
 - Status: **RUNTIME-FEHLER REPRODUZIERT / SOURCE-FIX FERTIG / RETEST OFFEN**.
+
+
+### ADMIN-RUNTIME-002 – Firmenverwaltung Retest
+- `Firma verwalten` nach Source-Fix praktisch geöffnet: **BESTANDEN**.
+- HTTP-500 aus der Speicherabfrage für diesen Pfad nicht mehr reproduziert.
+- Andere Admin-Teilpfade (MIB, globale Referenzdaten, neuer UX-Aufbau) bleiben separat offen.
