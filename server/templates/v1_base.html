@@ -45,7 +45,7 @@
     <div class="nav">
       {% if request.url.path.startswith('/admin/v1') and user and user.company_role == 'ADMIN' %}
         <a class="{% if request.url.path == '/admin/v1' %}active{% endif %}" href="/admin/v1">Übersicht</a>
-        <a class="{% if request.url.path.startswith('/admin/v1/routes') %}active{% endif %}" href="/admin/v1/routes">Strecken</a>
+        <a class="{% if request.url.path.startswith('/admin/v1/routes') %}active{% endif %}" href="/admin/v1/routes">Streckendaten</a>
         <a class="{% if request.url.path.startswith('/admin/v1/stations') %}active{% endif %}" href="/admin/v1/stations">Bahnhöfe</a>
         <a class="{% if request.url.path.startswith('/admin/v1/companies') or request.url.path.startswith('/admin/v1/users') or request.url.path.startswith('/admin/v1/devices') or request.url.path.startswith('/admin/v1/worksites') %}active{% endif %}" href="/admin/v1/companies">Firmen</a>
         <a class="{% if request.url.path.startswith('/admin/v1/survey-import') %}active{% endif %}" href="/admin/v1/survey-import">Trassierungsdaten</a>
