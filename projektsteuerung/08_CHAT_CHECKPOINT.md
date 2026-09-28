@@ -611,3 +611,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
   - Server akzeptiert künftig `X-TB-App-Version`/`X-TB-App-Build` bei Gerätekontakten.
 - Android-Anpassung als DEVICE-INFO-001 in `05_ANDROID_SERVER_VERTRAG.md` dokumentiert; kein `app/**` geändert.
 - Nächster Schritt: vier Serverdateien auf Synology ersetzen → API neu starten → Browser-Retest.
+
+### ADMIN-COMPANY-005 – Gültigkeitsauswahl Benutzer
+- Benutzer bestätigt den aktuellen Firmen-/Gerätebereich als passend.
+- Letzte gewünschte Ergänzung: bei Benutzerbearbeitung dieselbe Gültigkeitsauswahl wie beim Anlegen.
+- umgesetzt in `server/templates/v1_company_branding.html`: Kein Ablauf / 3 Monate / 6 Monate / 1 Jahr / Manuell + letzter gültiger Tag.
+- JavaScript-Sourcecheck PASS.
+- Nächster Schritt: nur das Template auf Synology ersetzen → API neu starten → Benutzerbearbeitung kurz testen.
