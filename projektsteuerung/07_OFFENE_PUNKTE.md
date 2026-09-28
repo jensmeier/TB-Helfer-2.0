@@ -4,6 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
+| ADMIN-DASH-008 | P1 | SERVER | Physische Synology-Laufwerkstemperaturen in °C source-seitig umgesetzt; Runtime noch nicht geprüft | Serverdateien + Compose auf Synology übernehmen → API/Projekt recreaten → Laufwerk 1/2 gegen DSM-Werte vergleichen |
 | ADMIN-PDF-007 | P1 | SERVER | PDF-Logo-Regler wirkten in Runtime nicht auf Vorschau; Source-Fix mit Live-Draft-Vorschau + Renderer v4 fertig | 3 Serverdateien deployen → API neu starten → Breite/X/Y + Speichern + Großansicht testen |
 | ADMIN-DASH-006 | P1 | SERVER | Bahnhofsdaten-Mount und MIH-Suche praktisch bestätigt; Dashboard-Gesamtretest noch offen | Übersicht/Warnungsquittierung noch praktisch prüfen |
 | DEVICE-INFO-001 | P1 | ANDROID | Geräte-App-Version wird nach App-Update serverseitig nicht neu gemeldet | Android soll bei normalen authentifizierten Kontakten `X-TB-App-Version` + `X-TB-App-Build` mitsenden; SERVER ist vorbereitet |

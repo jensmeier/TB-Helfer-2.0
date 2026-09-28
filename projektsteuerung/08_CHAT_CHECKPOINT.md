@@ -653,3 +653,20 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Source-Fix: aktuelle Reglerwerte als nicht persistente Preview-Query; 350-ms-Debounce-Livevorschau; Großansicht mit denselben Draft-Werten; explizites Speichern bleibt getrennt; Header 62 mm / Logo-Zone Android-nah bis 174 pt; Renderer `tb-server-btb-pdf-4`.
 - Synology-Screenshot zeigte zusätzlich Compose-Warnung für POSTGRES_USER/POSTGRES_DB; Restore-Test-Healthcheck auf Container-Auswertung korrigiert.
 - Source-Checks PASS; Runtime-Retest auf Synology offen.
+
+## ADMIN-DASH-008 – Checkpoint 28.09.2026
+- Benutzer fordert deutlich sichtbare Festplatten-Temperaturen in **°C** und verweist auf DSM mit getrennten Werten für Laufwerk 1/2.
+- GitHub vor Arbeitsblock geprüft: SERVER-HEAD `b944273006d7f5b16055328986e61a0f021e8c4a`, ANDROID-HEAD `423f37892915cb3308a4b1ea9e4d196faa872326`, Draft-PR #6/#11.
+- Anforderung vor Code in `02_AKTIVER_AUFTRAG.md` gesichert, Commit `6ab985b6ba78f001e65ae4a47b48d14bd7c355e7`.
+- Diagnose: bisher nur generische `/sys/class/thermal`-Systemtemperatur, keine physische Disktemperatur.
+- Source-Fix Commit `051c7d87b3b5cc849bb4faff54259d9ffee639ca`:
+  - reale Synology-Disktemperaturen aus `/run/synostorage/disks/*/temperature`;
+  - read-only Host-Mount in API;
+  - `host.disk_temperatures[]` im Systemstatus;
+  - Dashboard zeigt `Laufwerk N: <Wert> °C`;
+  - sauberes `Nicht verfügbar` bei fehlender Hostquelle;
+  - Sourcecheck erweitert.
+- Keine DB-Migration, keine Android-Änderung.
+- Source-Marker und Commit-Diff nach Branch-Update geprüft.
+- Status: **SOURCE FERTIG / NICHT DEPLOYT / RUNTIME-E2E OFFEN**.
+- Nächster praktischer Schritt: GitHub Desktop → File Station → aktualisiertes Compose → Container Manager Recreate → Dashboardwerte gegen DSM prüfen.

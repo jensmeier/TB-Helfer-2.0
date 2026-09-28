@@ -1145,7 +1145,7 @@ Umgesetzt:
 - Template-JavaScript-Check und Source-Assertions: PASS.
 
 ## ADMIN-DASH-008 – Festplatten-Temperaturen in °C
-Status: **ANFORDERUNG GESICHERT / SOURCE-DIAGNOSE VOR UMSETZUNG**
+Status: **SOURCE FERTIG / SYNOLOGY-RECREATE + RUNTIME-RETEST OFFEN**
 
 Benutzeranforderung vom 28.09.2026:
 - die Admin-Übersicht/Systemanzeige soll die Temperaturen der physischen Synology-Festplatten deutlich sichtbar anzeigen;
@@ -1158,3 +1158,11 @@ Vor Implementierung prüfen:
 2. Verhalten wenn Temperaturdaten auf einem Host/Container nicht verfügbar sind;
 3. Synology-Runtime nach Deployment gegen die DSM-Laufwerkswerte vergleichen.
 
+### ADMIN-DASH-008 – Source-Umsetzung
+- Bestehender Serverstand hatte nur eine generische Systemtemperatur aus `/sys/class/thermal`; keine Laufwerkstemperaturen.
+- SERVER liest jetzt je Synology-Disk die reale Temperaturdatei unter dem read-only Hostpfad `/run/synostorage/disks/<device>/temperature`.
+- Compose bindet diese Quelle ausschließlich read-only nach `/host/synostorage/disks` in den API-Container ein.
+- API-Status liefert `host.disk_temperatures[]` mit Laufwerkslabel, technischer Device-Bezeichnung und `temperature_c`.
+- Dashboard zeigt z. B. `Laufwerk 1: 36 °C · Laufwerk 2: 37 °C`; ohne Hostdaten `Nicht verfügbar`.
+- Source-Marker/Commit-Diff geprüft; keine DB-/Android-Änderung.
+- Runtime/E2E noch offen: Synology-Projekt/API mit aktualisiertem Compose recreaten und Werte direkt gegen DSM vergleichen.

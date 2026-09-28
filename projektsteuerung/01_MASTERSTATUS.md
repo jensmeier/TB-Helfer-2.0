@@ -642,3 +642,12 @@ Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
 - PDF-Logo-Vorschaufehler source-seitig korrigiert: Live-/Draft-Vorschau mit aktuellen Reglerwerten, größerer Android-naher Firmenkopf, Renderer v4 für Vorschau und finalen BTB-PDF.
 - Synology Restore-Test-Compose-Warnung zu POSTGRES_USER/POSTGRES_DB ebenfalls korrigiert.
 - keine DB-/Android-Änderung.
+
+## ADMIN-DASH-008 – Festplatten-Temperaturen in °C
+Status: **SOURCE FERTIG / SYNOLOGY-RECREATE + RUNTIME-RETEST OFFEN**
+- Admin-Übersicht zeigt künftig echte Synology-Laufwerkstemperaturen getrennt je erkanntem physischem Laufwerk und primär in °C.
+- Server liest die read-only eingebundene Synology-Laufwerksstatusquelle `/run/synostorage/disks/*/temperature` über `/host/synostorage/disks`.
+- Fehlende/nicht lesbare Hostdaten führen sauber zu `Nicht verfügbar`; keine Demo-/Fallbacktemperatur wird erfunden.
+- Bestehende generische Systemtemperatur bleibt getrennt erhalten.
+- Keine DB-Migration und keine Android-Änderung.
+- Wegen neuem Host-Volume-Mount ist auf Synology ein **Recreate** des API-Service/Projekts erforderlich; danach Werte gegen DSM Laufwerk 1/2 vergleichen.

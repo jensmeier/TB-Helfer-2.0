@@ -348,3 +348,17 @@ Status: **SOURCE FERTIG / DEPLOY-RETEST OFFEN**
 - finaler serverseitiger BTB-PDF nutzt denselben korrigierten Header.
 - zusätzlicher Synology-Fix: Restore-Test-Healthcheck erzeugt keine falschen POSTGRES_USER/POSTGRES_DB-Interpolation-Warnungen mehr.
 - keine Migration, keine Android-Änderung.
+
+## ADMIN-DASH-008 – Festplatten-Temperaturen
+Status: **SOURCE FERTIG / DEPLOY-RECREATE + RUNTIME-RETEST OFFEN**
+- vorhandene generische `Systemtemperatur` bleibt unverändert;
+- zusätzlich echte physische Laufwerkstemperaturen je erkannter Synology-Disk in °C;
+- neue Hostquelle: `/run/synostorage/disks/*/temperature`, im API-Container read-only als `/host/synostorage/disks`;
+- API liefert `host.disk_temperatures`; Dashboard zeigt getrennte Werte als `Laufwerk 1`, `Laufwerk 2`, …;
+- keine statischen Werte; bei fehlender Hostquelle erscheint `Nicht verfügbar`;
+- Compose + Sourcecheck angepasst; keine Migration, keine Android-Änderung.
+
+Deployment:
+- aktualisierte Serverdateien + Compose auf Synology übernehmen;
+- wegen neuem Volume-Mount API/Projekt **recreaten**, Restart allein reicht nicht;
+- danach Dashboardwerte gegen DSM-Speicher-Manager vergleichen.

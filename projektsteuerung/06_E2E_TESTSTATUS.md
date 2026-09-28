@@ -290,3 +290,14 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   - TB-Server Run `36487263863`: failure, Job `foundation`, `steps = null`;
   - Android Run `36487263880`: failure, Job `build`, `steps = null`;
   - gemäß Projektregel **kein Testnachweis und kein Sourcefehler-Nachweis**.
+
+### ADMIN-DASH-008 – Festplatten-Temperaturen Source-Status
+- Source-Implementierung vorhanden: `host.disk_temperatures[]` + Dashboardanzeige je Laufwerk in °C.
+- Synology-Compose enthält read-only Mount `/run/synostorage/disks -> /host/synostorage/disks`.
+- Commit-Diff/Source-Marker geprüft: Reader, API-Payload, Dashboard-DOM/Renderer und Compose-Mount vorhanden.
+- Das ist **kein Runtime-/E2E-Nachweis**.
+- Pflichttest nach Recreate:
+  1. Dashboard zeigt je physischem Laufwerk einen °C-Wert;
+  2. Werte plausibel gegen DSM Speicher-Manager vergleichen;
+  3. bei nicht verfügbarer Hostquelle muss die UI sauber `Nicht verfügbar` statt eines erfundenen Werts zeigen.
+- Status: **SOURCE FERTIG / DEPLOY-RECREATE OFFEN / E2E OFFEN**.
