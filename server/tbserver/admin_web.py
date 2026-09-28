@@ -520,15 +520,21 @@ def admin_company_branding_page(
         cur.execute(
             """
             SELECT
-              coalesce(sum(byte_size) FILTER (WHERE lower(mime_type) LIKE 'image/%'),0) AS photo_bytes,
-              coalesce(sum(byte_size) FILTER (WHERE lower(mime_type) = 'application/pdf'),0) AS pdf_bytes,
-              coalesce(sum(byte_size) FILTER (
-                WHERE lower(mime_type) NOT LIKE 'image/%'
-                  AND lower(mime_type) <> 'application/pdf'
+              coalesce(sum(f.byte_size) FILTER (WHERE lower(f.mime_type) LIKE 'image/%'),0) AS photo_bytes,
+              coalesce(sum(f.byte_size) FILTER (WHERE lower(f.mime_type) = 'application/pdf'),0) AS pdf_bytes,
+              coalesce(sum(f.byte_size) FILTER (
+                WHERE lower(f.mime_type) NOT LIKE 'image/%'
+                  AND lower(f.mime_type) <> 'application/pdf'
               ),0) AS other_file_bytes,
-              coalesce(sum(byte_size),0) AS file_bytes
-            FROM tb.files
-            WHERE company_id = %s AND deleted_at IS NULL
+              coalesce(sum(f.byte_size),0) AS file_bytes
+            FROM tb.files f
+            WHERE f.company_id = %s
+              AND f.deleted_at IS NULL
+              AND NOT EXISTS (
+                SELECT 1
+                FROM tb.survey_originals s
+                WHERE s.storage_key = f.storage_key
+              )
             """,
             (company_id,),
         )
