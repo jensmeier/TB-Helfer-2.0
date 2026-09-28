@@ -1012,3 +1012,23 @@ Source-Prüfung:
 - neue Admin-Worksite-Route genau einmal vorhanden; Membership/Team/Change/Audit-Pfad vorhanden;
 - keine Änderungen unter `app/**`;
 - GitHub Actions erneut ohne Runner-Schritte (`steps = null`) → kein Testnachweis.
+
+## ADMIN-COMPANY-005 – Aktivierungskarte/Gültigkeit/Geräteversion
+Status: **FEHLER BESTÄTIGT / SOURCE-FIX JETZT**
+
+Praxisbefund 28.09.2026:
+- aus `Firma verwalten → Benutzer → Aktivierungskarte` führt `Zurück zu Benutzer` noch auf die alte globale `/admin/v1/users`-Seite;
+- Aktivierungskarte/Firmen-Benutzeransicht soll die Zugriffs-Gültigkeit klar anzeigen, inklusive verbleibender Zeit bzw. `ohne Ablauf`;
+- Firmen-Geräteansicht zeigt z. B. `1.3.19`/`1.3.4`, obwohl Release 1.3.25 veröffentlicht ist.
+
+Ursache Geräteversion:
+- `tb.devices.app_version/app_build` werden beim Geräte-Login/Aktivierung geschrieben;
+- der normale authentifizierte Gerätepfad aktualisiert danach nur `last_seen_at`;
+- nach App-Update bleibt deshalb die bei Aktivierung gemeldete Version als veralteter Stand stehen.
+
+Verbindlicher Fix:
+1. Aktivierungskarte erhält Firmenkontext und führt zurück zu `/admin/v1/companies/{company_id}/branding#users`;
+2. Gültigkeit wird als Datum plus Restdauer (`noch X Tage`, `läuft heute ab`, `abgelaufen`, `ohne Ablauf`) sichtbar;
+3. Geräteansicht kennzeichnet den vorhandenen DB-Wert bis zum Android-Vertragsupdate ausdrücklich als `zuletzt gemeldet`, statt ihn als sicher aktuelle installierte Version darzustellen;
+4. aktuelle veröffentlichte Android-Version wird daneben als Server-Release angezeigt;
+5. Android↔Server-Vertrag erweitern: aktuelle `app_version/app_build` müssen bei normalen Geräte-Kontakten aktualisiert werden; SERVER ändert dafür kein `app/**`.
