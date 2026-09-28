@@ -521,6 +521,7 @@ def admin_company_branding_page(
             JOIN tb.users u ON u.id = d.user_id
             WHERE u.company_id = %s
               AND u.deleted_at IS NULL
+              AND d.revoked_at IS NULL
             ORDER BY lower(u.display_name), d.bound_at DESC
             """,
             (company_id,),
