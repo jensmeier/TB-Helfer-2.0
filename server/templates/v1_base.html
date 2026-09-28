@@ -14,12 +14,12 @@
     *{box-sizing:border-box}html{min-height:100%}body{margin:0;min-height:100vh;background:linear-gradient(180deg,#eef4fb 0,#f6f8fb 180px,#f6f8fb 100%);color:#1d2939}
     a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
     header{position:sticky;top:0;z-index:50;background:rgba(11,23,48,.97);color:#fff;box-shadow:0 6px 24px rgba(16,24,40,.13)}
-    .topbar{max-width:1440px;margin:0 auto;padding:12px 22px;display:flex;gap:20px;justify-content:space-between;align-items:center}
+    .topbar{max-width:1540px;margin:0 auto;padding:12px 22px;display:flex;gap:20px;justify-content:space-between;align-items:center}
     .brand-wrap{display:flex;align-items:center;gap:11px;white-space:nowrap}.brand-mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#2e90fa,#1167d8);display:grid;place-items:center;font-weight:900;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
     .brand{font-weight:850;letter-spacing:-.01em}.brand small{display:block;font-size:10px;color:#b9c7df;font-weight:650;letter-spacing:.04em;text-transform:uppercase;margin-top:1px}
     .nav{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.nav a{color:#dce6f5;padding:8px 10px;border-radius:8px;font-size:14px;font-weight:650;text-decoration:none}.nav a:hover{color:#fff;background:rgba(255,255,255,.09)}.nav a.active{color:#fff;background:#1167d8}
     .user-chip{display:flex;align-items:center;gap:8px;margin-left:6px;padding-left:10px;border-left:1px solid rgba(255,255,255,.16)}.user-chip span{font-size:13px;color:#dce6f5}
-    main{max-width:1320px;margin:0 auto;padding:26px 22px 48px}
+    main{max-width:1500px;margin:0 auto;padding:26px 22px 48px}
     .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 3px 12px rgba(16,24,40,.045)}
     h1,h2,h3{margin-top:0;color:#101828;letter-spacing:-.02em}h1{font-size:30px}h2{font-size:21px}h3{font-size:17px}.muted{color:var(--muted)}
     .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
@@ -49,8 +49,10 @@
         <a class="{% if request.url.path.startswith('/admin/v1/stations') %}active{% endif %}" href="/admin/v1/stations">Bahnhöfe</a>
         <a class="{% if request.url.path.startswith('/admin/v1/users') %}active{% endif %}" href="/admin/v1/users">Benutzer</a>
         <a class="{% if request.url.path.startswith('/admin/v1/companies') %}active{% endif %}" href="/admin/v1/companies">Firmen</a>
-        <a class="{% if request.url.path.startswith('/admin/v1/catalog-history') %}active{% endif %}" href="/admin/v1/catalog-history">Katalog-Historie</a>
         <a class="{% if request.url.path.startswith('/admin/v1/devices') %}active{% endif %}" href="/admin/v1/devices">Geräte</a>
+        <a class="{% if request.url.path.startswith('/admin/v1/worksites') %}active{% endif %}" href="/admin/v1/worksites">Baustellen</a>
+        <a class="{% if request.url.path.startswith('/admin/v1/survey-import') %}active{% endif %}" href="/admin/v1/survey-import">Trassierungsdaten</a>
+        <a class="{% if request.url.path.startswith('/admin/v1/catalog-history') %}active{% endif %}" href="/admin/v1/catalog-history">Katalog-Historie</a>
         <a class="{% if request.url.path.startswith('/admin/v1/releases') %}active{% endif %}" href="/admin/v1/releases">App-Versionen</a>
         <a class="{% if request.url.path.startswith('/admin/v1/system') %}active{% endif %}" href="/admin/v1/system">Systemstatus</a>
       {% else %}
