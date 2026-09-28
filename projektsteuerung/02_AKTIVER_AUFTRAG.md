@@ -1117,3 +1117,9 @@ Praxisstand 28.09.2026:
 - Fehler betrifft damit nicht den Slider selbst, sondern Speichern/Laden oder die Übergabe der Layoutwerte an den serverseitigen PDF-Renderer.
 - Keine Änderung auf Verdacht: zuerst Request/Persistenz/Renderer-Pfad und Android↔Server-PDF-Vertrag prüfen.
 - Geschützte funktionierende Bahnhofssuche nicht wieder ändern.
+
+### ADMIN-PDF-007 – Synology-Compose-Warnung mit erkannt
+Praxisbefund 28.09.2026:
+- beim Synology-Recreate erscheinen Warnungen: `POSTGRES_USER variable is not set` und `POSTGRES_DB variable is not set`;
+- Ursache im Quellstand bestätigt: Healthcheck von `restore-test-db` verwendet `${POSTGRES_USER}` / `${POSTGRES_DB}` statt der innerhalb des Containers auszuwertenden Form `$${POSTGRES_USER}` / `$${POSTGRES_DB}`;
+- Korrektur ist rein Compose-seitig und ändert keine Zugangsdaten oder produktiven DB-Werte.
