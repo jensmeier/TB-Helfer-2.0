@@ -235,3 +235,14 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   5. gebundenes Gerät anzeigen und eine ungefährliche Statusaktion prüfen;
   6. Baustelle innerhalb Firma anlegen;
   7. Speicher + Logo/PDF-Vorschau öffnen.
+
+### ADMIN-COMPANY-005 – Source-Status 28.09.2026
+- Aktivierungskarte-Rücksprung: Source-Fix vorhanden.
+- Gültigkeitsanzeige Datum + Restdauer: Source-Fix vorhanden.
+- alte globale Benutzer/Geräte/Baustellen-Listen: Redirect zur Firmenverwaltung vorhanden.
+- Geräteversion: UI trennt jetzt `zuletzt gemeldet` von `veröffentlichtem Server-Release`.
+- Server kann neue Versionsheader bei Gerätekontakt speichern; Android sendet sie noch nicht.
+- Template-JavaScript: **PASS**.
+- GitHub Actions ohne Runner-Steps (`steps = null`): **kein Testnachweis**.
+- Status: **SOURCE FERTIG / DEPLOY OFFEN / RETEST OFFEN**.
+- Retest nach Deploy: Aktivierungskarte öffnen → zurück → Firmen-Benutzer; Gültigkeitslabel prüfen; Geräteansicht mit Server-Release 1.3.25 prüfen.
