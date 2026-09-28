@@ -556,3 +556,16 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
   - `APPLIED 016_btb_photo_link_metadata.sql`
 - Migration 016 damit praktisch **BESTÄTIGT**.
 - Nächster Schritt: API + Worker neu starten; danach Health und Portal-BTB Smoke.
+
+## ADMIN-FINISH-001 – Checkpoint 28.09.2026
+- SERVER-HEAD vor Wiederaufnahme: `724badfa1e8fbff8264c63ad4b5941249c28d867`.
+- Android-HEAD geprüft: `423f37892915cb3308a4b1ea9e4d196faa872326`.
+- Draft-PR #6 SERVER offen; Draft-PR #11 ANDROID offen.
+- Timeout-Vorgängerblock wieder aufgenommen.
+- Altbestand-Fall bestätigt: älterer `survey_originals/from-file`-Import lässt `tb.files` und `tb.survey_originals` auf denselben physischen `storage_key` zeigen.
+- Fehler vor Codeänderung als `ADMIN-STORAGE-001` gesichert.
+- Fix: globale Speicherbelegung zählt gemeinsamen Speicherpfad nur einmal; Firmen-Foto/PDF/Sonstiges schließen solche Legacy-Dateizeilen aus; Vermessungsoriginal bleibt unter Trassierungsdaten sichtbar.
+- Keine Daten gelöscht oder migriert.
+- Source-Assertions PASS.
+- CI erneut ohne Runner-Steps; kein Testnachweis.
+- Nächster praktischer Schritt: neuen Serverstand per GitHub Desktop/File Station auf Synology übernehmen, API neu starten, danach Admin-Smoke/E2E.
