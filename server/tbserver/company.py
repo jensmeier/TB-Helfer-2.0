@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from psycopg.types.json import Jsonb
@@ -315,17 +315,42 @@ def admin_company_logo(
 @router.get("/admin/companies/{company_id}/pdf-preview")
 def admin_company_pdf_preview(
     company_id: UUID,
+    logo_width_pt: int | None = Query(default=None, ge=40, le=250),
+    offset_x_pt: int | None = Query(default=None, ge=-120, le=120),
+    offset_y_pt: int | None = Query(default=None, ge=-60, le=180),
+    show_company_name: bool | None = Query(default=None),
+    show_company_email: bool | None = Query(default=None),
+    show_company_phone: bool | None = Query(default=None),
+    contacts_in_image: bool | None = Query(default=None),
     _: dict[str, Any] = Depends(require_admin),
 ):
     with transaction() as conn, conn.cursor() as cur:
         branding = load_company_branding(cur, company_id)
+
+    # Die Admin-Vorschau darf mit noch nicht gespeicherten Reglerwerten
+    # gerendert werden. Erst PUT /pdf-logo-layout uebernimmt sie firmenweit.
+    preview_layout = dict(branding.get("pdf_layout") or {})
+    draft_values = {
+        "logo_width_pt": logo_width_pt,
+        "offset_x_pt": offset_x_pt,
+        "offset_y_pt": offset_y_pt,
+        "show_company_name": show_company_name,
+        "show_company_email": show_company_email,
+        "show_company_phone": show_company_phone,
+        "contacts_in_image": contacts_in_image,
+    }
+    preview_layout.update(
+        {key: value for key, value in draft_values.items() if value is not None}
+    )
+    preview_layout = normalize_pdf_logo_layout(preview_layout)
+
     content = render_company_preview_pdf(
         context={
             "company_name": branding.get("name"),
             "company_email": branding.get("email"),
             "company_phone": branding.get("phone"),
             "company_logo_path": branding.get("logo_path"),
-            "pdf_logo_layout": branding.get("pdf_layout"),
+            "pdf_logo_layout": preview_layout,
         }
     )
     return Response(
