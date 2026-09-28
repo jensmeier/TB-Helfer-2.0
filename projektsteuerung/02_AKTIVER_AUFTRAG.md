@@ -991,3 +991,24 @@ Bestätigung vom 28.09.2026:
 - Ziel-Hauptnavigation: Übersicht | Streckendaten | Bahnhöfe | Firmen | Trassierungs-/Referenzdaten bzw. später zusammengeführte Streckendaten | Katalog-Historie | App-Versionen | Systemstatus.
 
 Keine Änderung an Android `app/**` erforderlich.
+
+### ADMIN-STRUCTURE-004 – Source-Umsetzung 28.09.2026
+Status: **QUELLSTAND FERTIG / SYNLOGY-UPLOAD + RUNTIME-RETEST OFFEN**
+
+Umgesetzt:
+- globale Hauptnavigation ohne separate Punkte `Benutzer`, `Geräte`, `Baustellen`;
+- Dashboard-Schnellzugriff ebenfalls ohne diese Doppelpfade;
+- `Firmen` ist der zentrale Organisations-Einstieg;
+- Firmenliste modernisiert mit Firmenkarten und Kennzahlen Benutzer/Geräte/Baustellen;
+- `Firma verwalten` verwendet linke Seitennavigation statt horizontaler Tabs;
+- innerhalb der Firma: Übersicht, Stammdaten, Benutzer, Geräte, Baustellen, Speicher, Logo/PDF;
+- Benutzer direkt in der geöffneten Firma anlegen/bearbeiten/aktivieren/löschen;
+- gebundene Geräte direkt in der Firma blockieren, Bindung lösen oder komplett löschen;
+- Baustellen direkt in der Firma anlegen; verantwortlicher TB wird aus den Firmenbenutzern gewählt;
+- Auto-Aktualisierungs-Hinweis `5 Sek.` entfernt; automatische Aktualisierung bleibt aktiv.
+
+Source-Prüfung:
+- JavaScript-Blöcke Firmenworkspace/Firmenliste/Dashboard: PASS;
+- neue Admin-Worksite-Route genau einmal vorhanden; Membership/Team/Change/Audit-Pfad vorhanden;
+- keine Änderungen unter `app/**`;
+- GitHub Actions erneut ohne Runner-Schritte (`steps = null`) → kein Testnachweis.
