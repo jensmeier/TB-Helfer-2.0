@@ -240,3 +240,11 @@ Status: **DEPLOYT / ÜBERSICHT + IMPORT LAUFEN / TEILFEHLER OFFEN**
 - derzeitiger Trassierungsimport ist technisch firmen-/baustellengebunden; neue Fachanforderung verlangt einen gemeinsamen Referenzdatenbestand für alle Firmen/berechtigten Nutzer;
 - Datenverwaltung/Import-UI soll als nächster UX-Block moderner und zweispaltiger werden;
 - keine Fehlerbehebung auf Verdacht: MIB-API/Datenpfad und Firmenroute zuerst gezielt prüfen.
+
+### ADMIN-RUNTIME-002 – Firmenverwaltung 500 Source-Fix
+- reproduzierter Psycopg-Fehler in `admin_web.py` behoben;
+- Ursache: literales `%` in `LIKE 'image/%'` innerhalb einer parametrisierten `%s`-Query;
+- Fix: Bildklassifizierung verwendet jetzt `left(lower(mime_type), 6) = 'image/'` bzw. `<> 'image/'`;
+- keine Datenbank-/Bestandsänderung;
+- Source-Check: alte LIKE-Muster entfernt, neue Prüfung vorhanden;
+- Status: **SOURCE-FIX VORHANDEN / SYNLOGY-UPLOAD + RUNTIME-RETEST OFFEN**.
