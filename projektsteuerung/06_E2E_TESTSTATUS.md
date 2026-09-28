@@ -220,3 +220,18 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
 - `Firma verwalten` nach Source-Fix praktisch geöffnet: **BESTANDEN**.
 - HTTP-500 aus der Speicherabfrage für diesen Pfad nicht mehr reproduziert.
 - Andere Admin-Teilpfade (MIB, globale Referenzdaten, neuer UX-Aufbau) bleiben separat offen.
+
+### ADMIN-STRUCTURE-004 – Source-Status 28.09.2026
+- Firmenzentrierte Admin-Struktur source-seitig umgesetzt.
+- Template-JavaScript für Firmenworkspace, Firmenliste und Dashboard: **PASS**.
+- Keine Android-Codeänderung.
+- GitHub Actions auf HEAD: Server/Android `failure`, jeweils `steps = null` → **kein Testnachweis**.
+- Status: **SOURCE FERTIG / DEPLOY OFFEN / RUNTIME-E2E OFFEN**.
+- Retest nach Deploy:
+  1. Firmenliste öffnen und neue Firma anlegen;
+  2. Firma verwalten mit linker Navigation;
+  3. Benutzer innerhalb Firma anlegen/bearbeiten;
+  4. Aktivierungskarte/Portalaktivierung prüfen;
+  5. gebundenes Gerät anzeigen und eine ungefährliche Statusaktion prüfen;
+  6. Baustelle innerhalb Firma anlegen;
+  7. Speicher + Logo/PDF-Vorschau öffnen.
