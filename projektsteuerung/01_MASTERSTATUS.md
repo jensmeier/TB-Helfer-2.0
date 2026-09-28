@@ -592,3 +592,20 @@ Noch offen:
 - API-Runtime/Browser-Smoke;
 - tatsächliche Speicherwerte gegen NAS/DB prüfen;
 - erst danach E2E-Status anheben.
+
+## ADMIN-STRUCTURE-004 – Firmenzentrierter Admin
+Status: **QUELLSTAND FERTIG / DEPLOY OFFEN**
+- Firma ist künftig der zentrale Organisationscontainer im Admin;
+- Benutzer, Geräte und Baustellen werden nicht mehr als gleichrangige globale Hauptnavigation geführt;
+- Verwaltung liegt gesammelt in `Firma verwalten` mit linker Navigation;
+- Firmenliste und Dashboard-Schnellzugriff wurden an diese Struktur angepasst;
+- Geräteverwaltung ist ausdrücklich Bestandteil der Firma;
+- Benutzer und Baustellen können dort direkt angelegt werden;
+- Speicher sowie Logo/PDF bleiben im selben Firmenworkspace;
+- sichtbarer Auto-Refresh-Hinweis entfernt, Hintergrundaktualisierung bleibt.
+
+Noch offen:
+- Synology-Upload + API-Restart;
+- Runtime-/Browser-Retest des neuen Firmenworkspaces;
+- separater MIB/Bahnhof-Autofill-Fix;
+- globaler Referenzdaten-/Streckendaten-Umbau danach.
