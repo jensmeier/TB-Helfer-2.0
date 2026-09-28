@@ -20,6 +20,49 @@ def _normalize(value: Any) -> str:
     return _NON_ALNUM.sub("", str(value or "").strip().casefold())
 
 
+def _edit_distance_at_most_one(left: str, right: str) -> bool:
+    if left == right:
+        return True
+    if abs(len(left) - len(right)) > 1:
+        return False
+    if len(left) > len(right):
+        left, right = right, left
+    i = j = differences = 0
+    while i < len(left) and j < len(right):
+        if left[i] == right[j]:
+            i += 1
+            j += 1
+            continue
+        differences += 1
+        if differences > 1:
+            return False
+        if len(left) == len(right):
+            i += 1
+        j += 1
+    if j < len(right) or i < len(left):
+        differences += 1
+    return differences <= 1
+
+
+def _match_rank(query: str, item: dict[str, str]) -> tuple[int, str, str] | None:
+    code = _normalize(item["code"])
+    name = _normalize(item["name"])
+    display = _normalize(item["display"])
+    if code == query:
+        return (0, name, code)
+    if code.startswith(query):
+        return (1, name, code)
+    if len(query) >= 2 and len(code) == len(query) and _edit_distance_at_most_one(query, code):
+        return (2, name, code)
+    if query in code:
+        return (3, name, code)
+    if name.startswith(query):
+        return (4, name, code)
+    if query in name or query in display:
+        return (5, name, code)
+    return None
+
+
 def _data_path(env_name: str, filename: str) -> Path:
     configured = os.getenv(env_name, "").strip()
     if configured:
@@ -101,11 +144,21 @@ def search_station_reference(
     if not query:
         matches = list(entries[:limit])
     else:
-        matches = [
-            item
-            for item in entries
-            if query in _normalize(item["code"])
-            or query in _normalize(item["name"])
-            or query in _normalize(item["display"])
-        ][:limit]
+        ranked: list[tuple[tuple[int, str, str], dict[str, str]]] = []
+        for item in entries:
+            rank = _match_rank(query, item)
+            if rank is not None:
+                ranked.append((rank, item))
+        ranked.sort(key=lambda pair: pair[0])
+        matches = []
+        for rank, item in ranked[:limit]:
+            result = dict(item)
+            result["match_type"] = (
+                "EXACT"
+                if rank[0] == 0
+                else "SIMILAR_CODE"
+                if rank[0] == 2
+                else "SEARCH"
+            )
+            matches.append(result)
     return {"results": matches, "count": len(matches)}
