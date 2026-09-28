@@ -52,7 +52,12 @@ def _match_rank(query: str, item: dict[str, str]) -> tuple[int, str, str] | None
         return (0, name, code)
     if code.startswith(query):
         return (1, name, code)
-    if len(query) >= 2 and len(code) == len(query) and _edit_distance_at_most_one(query, code):
+    if (
+        len(query) >= 3
+        and len(code) == len(query)
+        and code[:2] == query[:2]
+        and _edit_distance_at_most_one(query, code)
+    ):
         return (2, name, code)
     if query in code:
         return (3, name, code)
@@ -60,6 +65,8 @@ def _match_rank(query: str, item: dict[str, str]) -> tuple[int, str, str] | None
         return (4, name, code)
     if query in name or query in display:
         return (5, name, code)
+    if len(query) >= 3 and len(code) == len(query) and _edit_distance_at_most_one(query, code):
+        return (6, name, code)
     return None
 
 
