@@ -934,3 +934,17 @@ Reihenfolge:
 3. globalen Referenzdatenvertrag + DB-/API-Zielmodell festlegen;
 4. Datenverwaltung zweispaltig/grafisch neu gestalten;
 5. danach Runtime-/E2E prüfen.
+
+### ADMIN-RUNTIME-002 – Firmenverwaltung 500 reproduziert
+Status: **URSACHE EINGEGRENZT / FIX JETZT**
+
+Praxisnachweis 28.09.2026 im laufenden API-Container:
+- direkter Aufruf von `admin_company_branding_page(...)` reproduziert den Fehler;
+- Traceback endet in `psycopg.ProgrammingError: only '%s', '%b', '%t' are allowed as placeholders, got '%'`;
+- betroffene Abfrage in `server/tbserver/admin_web.py` enthält parametriertes SQL mit `LIKE 'image/%'` bzw. `NOT LIKE 'image/%'` und gleichzeitig `%s` für `company_id`;
+- Psycopg interpretiert das literale `%` im LIKE-Muster als Platzhalter-Syntax.
+
+Fixziel:
+- LIKE-Prüfung ohne literales `%` in der parametrisierten Query formulieren;
+- keine DB-/Datenänderung;
+- danach denselben direkten Container-Test wiederholen.
