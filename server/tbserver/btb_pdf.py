@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from io import BytesIO
 from html import escape
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -115,6 +116,74 @@ class CompanyHeaderFlowable(Flowable):
                 text_y -= 10
         finally:
             canvas.restoreState()
+
+def render_company_preview_pdf(*, context: dict[str, Any]) -> bytes:
+    """Render an A4 admin preview with the exact company header flowable used by BTB PDFs."""
+    buffer = BytesIO()
+    styles = getSampleStyleSheet()
+    body = ParagraphStyle(
+        "CompanyPreviewBody",
+        parent=styles["BodyText"],
+        fontSize=9,
+        leading=12,
+        spaceAfter=4,
+    )
+    heading = ParagraphStyle(
+        "CompanyPreviewHeading",
+        parent=styles["Heading2"],
+        fontSize=12,
+        leading=15,
+        spaceBefore=6,
+        spaceAfter=5,
+    )
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=16 * mm,
+        rightMargin=16 * mm,
+        topMargin=14 * mm,
+        bottomMargin=14 * mm,
+        title="TB-Helfer PDF-Vorschau",
+        author=context.get("company_name") or "TB-Helfer",
+    )
+    story: list[Any] = [
+        CompanyHeaderFlowable(context),
+        Spacer(1, 5 * mm),
+        Paragraph("PDF-Vorschau", heading),
+        Paragraph("Baustelle: Beispielbaustelle", body),
+        Paragraph("Strecke: 5362 · km 70,000 – 81,500", body),
+        Paragraph("Verantwortlicher TB: Beispiel", body),
+        Paragraph("Datum: 28.09.2026 · Schicht: Tag", body),
+        Spacer(1, 5 * mm),
+        Paragraph(
+            "Diese Vorschau verwendet denselben Firmenkopf, dasselbe Firmenlogo "
+            "und dieselben PDF-Logo-Layoutwerte wie der serverseitige BTB-Abschluss.",
+            body,
+        ),
+        Spacer(1, 4 * mm),
+        Table(
+            [
+                ["Punkt", "Beispielinhalt"],
+                ["4. Ausgeführte Arbeiten", "Beispieltext für die PDF-Darstellung"],
+                ["5. Abnahmen", "Keine Einträge"],
+            ],
+            colWidths=[55 * mm, 110 * mm],
+            style=[
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.lightgrey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ],
+        ),
+    ]
+    doc.build(story)
+    return buffer.getvalue()
+
 
 def _fmt(value: Any) -> str:
     if value is None:
