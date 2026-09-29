@@ -912,17 +912,17 @@ def _draw_people_machines(
     column_width = (CONTENT_W - gap) / 2.0
     personal = _personnel_groups(entries, firms, machine=False)
     machines = _personnel_groups(entries, firms, machine=True)
-    height = max(
-        _measure_group_lines(personal, column_width),
-        _measure_group_lines(machines, column_width),
-    )
-    writer.ensure(height)
+    personal_height = _measure_group_lines(personal, column_width)
+    machine_height = _measure_group_lines(machines, column_width)
+    max_height = max(personal_height, machine_height)
+    writer.ensure(max_height)
     top = writer.y
 
     def draw_box(
         title: str,
         x: float,
         groups: list[tuple[str, list[str]]],
+        height: float,
     ) -> None:
         writer.draw_box_header(title, x=x, width=column_width, top=top)
         y = top + 31.0
@@ -956,9 +956,14 @@ def _draw_people_machines(
             y += 2.0
         writer.draw_frame(x, top, column_width, top + height)
 
-    draw_box("Personal", MARGIN_L, personal)
-    draw_box("Maschinen/Geräte", MARGIN_L + column_width + gap, machines)
-    writer.y = top + height + 10.0
+    draw_box("Personal", MARGIN_L, personal, personal_height)
+    draw_box(
+        "Maschinen/Geräte",
+        MARGIN_L + column_width + gap,
+        machines,
+        machine_height,
+    )
+    writer.y = top + max_height + 10.0
 
 
 def _section_render_rows(
