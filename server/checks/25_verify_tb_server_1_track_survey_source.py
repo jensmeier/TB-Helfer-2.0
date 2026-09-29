@@ -14,6 +14,7 @@ def read(rel: str) -> str:
 def main() -> None:
     survey = read("server/tbserver/survey_originals.py")
     admin_survey = read("server/tbserver/admin_survey_import.py")
+    survey_preview = read("server/tbserver/survey_preview.py")
     admin_template = read("server/templates/v1_admin_survey_import.html")
     track = read("server/tbserver/track_data.py")
     sections = read("server/tbserver/survey_sections.py")
@@ -23,6 +24,7 @@ def main() -> None:
 
     ast.parse(survey, filename="server/tbserver/survey_originals.py")
     ast.parse(admin_survey, filename="server/tbserver/admin_survey_import.py")
+    ast.parse(survey_preview, filename="server/tbserver/survey_preview.py")
     ast.parse(track, filename="server/tbserver/track_data.py")
     ast.parse(sections, filename="server/tbserver/survey_sections.py")
 
@@ -47,6 +49,11 @@ def main() -> None:
         ('"track_data_v1": True', caps),
         ('"survey_originals_v1": True', caps),
         ('"global_survey_reference_v1": True', caps),
+        ('"survey_import_preview_v1": True', caps),
+        ('/analyze', admin_survey),
+        ('/analysis/{analysis_id}/import', admin_survey),
+        ('class SurveyImportPlan', admin_survey),
+        ('build_survey_preview', survey_preview),
         ('/reference/survey-originals', survey),
         ('GLOBAL_SURVEY_REFERENCE_NOT_FOUND', survey),
         ('GLOBAL_REFERENCE', admin_survey),

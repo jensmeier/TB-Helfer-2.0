@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
+import shutil
 import struct
+import time
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -11,6 +14,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from psycopg.types.json import Jsonb
+from pydantic import BaseModel, Field
 
 from .admin import require_admin_csrf
 from .config import settings
@@ -18,6 +22,7 @@ from .database import transaction
 from .events import audit, emit_change
 from .files import _absolute_storage_path, _safe_name
 from .survey_parser import PARSER_VERSION, UnsupportedSurveyFormat, parse_survey_original
+from .survey_preview import build_survey_preview
 
 
 router = APIRouter(prefix="/api/v1/admin/survey-import", tags=["admin-survey-import"])
@@ -30,6 +35,21 @@ _KIND_RE = re.compile(r"^[A-Z0-9._-]{1,40}$")
 _SCOPE_GLOBAL = "GLOBAL_REFERENCE"
 _SCOPE_WORKSITE = "COMPANY_WORKSITE_DATA"
 _ALLOWED_SCOPES = {_SCOPE_GLOBAL, _SCOPE_WORKSITE}
+_ANALYSIS_TTL_SECONDS = 6 * 60 * 60
+
+
+class SurveyImportDecision(BaseModel):
+    item_id: str = Field(min_length=1, max_length=80)
+    import_item: bool = True
+    scope: str = Field(default=_SCOPE_GLOBAL, max_length=40)
+    worksite_id: UUID | None = None
+    data_kind: str | None = Field(default=None, max_length=40)
+    route_number: str | None = Field(default=None, max_length=80)
+    track_key: str | None = Field(default=None, max_length=160)
+
+
+class SurveyImportPlan(BaseModel):
+    decisions: list[SurveyImportDecision] = Field(min_length=1, max_length=_MAX_ZIP_ENTRIES)
 
 
 def _normalize_scope(value: str | None) -> str:
@@ -55,6 +75,84 @@ def _parsed_route_track(parsed: dict[str, Any]) -> tuple[str | None, str | None]
             if route is not None and track is not None:
                 break
     return route, track
+
+
+def _analysis_root() -> Path:
+    root = settings.storage_root / ".admin-survey-analysis"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _cleanup_analysis_sessions() -> None:
+    root = _analysis_root()
+    cutoff = time.time() - _ANALYSIS_TTL_SECONDS
+    try:
+        entries = list(root.iterdir())
+    except OSError:
+        return
+    for entry in entries:
+        try:
+            if entry.is_dir() and entry.stat().st_mtime < cutoff:
+                shutil.rmtree(entry, ignore_errors=True)
+        except OSError:
+            continue
+
+
+def _analysis_dir(analysis_id: UUID) -> Path:
+    return _analysis_root() / str(analysis_id)
+
+
+def _load_analysis_meta(analysis_id: UUID) -> tuple[Path, dict[str, Any]]:
+    root = _analysis_dir(analysis_id)
+    meta_path = root / "meta.json"
+    source_path = root / "source.bin"
+    if not meta_path.is_file() or not source_path.is_file():
+        raise HTTPException(404, "SURVEY_ANALYSIS_NOT_FOUND")
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise HTTPException(409, "SURVEY_ANALYSIS_INVALID") from exc
+    if time.time() - float(meta.get("created_at_epoch") or 0.0) > _ANALYSIS_TTL_SECONDS:
+        shutil.rmtree(root, ignore_errors=True)
+        raise HTTPException(410, "SURVEY_ANALYSIS_EXPIRED")
+    return source_path, meta
+
+
+def _analysis_item(
+    *,
+    item_id: str,
+    path: Path,
+    original_name: str,
+    kind: str,
+    archive_index: int | None = None,
+) -> dict[str, Any]:
+    size, sha256 = _hash_path(path)
+    parsed = _parse_result(kind, original_name, path, sha256)
+    route, track = _parsed_route_track(parsed)
+    preview = build_survey_preview(parsed)
+    missing: list[str] = []
+    if not route:
+        missing.append("route_number")
+    return {
+        "item_id": item_id,
+        "archive_index": archive_index,
+        "name": original_name,
+        "kind": kind,
+        "byte_size": size,
+        "sha256": sha256,
+        "parse_status": parsed["status"],
+        "parser_family": parsed["parser_family"],
+        "detected_format": parsed["detected_format"],
+        "route_number": route,
+        "track_key": track,
+        "default_scope": _SCOPE_GLOBAL,
+        "missing_fields": missing,
+        "warnings": parsed["warnings"],
+        "error_code": parsed["error_code"],
+        "error_detail": parsed["error_detail"],
+        "preview": preview,
+        "can_import": parsed["status"] in {"PARSED", "UNSUPPORTED", "ERROR"},
+    }
 
 
 def _infer_kind(name: str) -> str | None:
@@ -429,6 +527,231 @@ def _extract_zip_entry(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> Path:
         return temp_path
     except Exception:
         temp_path.unlink(missing_ok=True)
+        raise
+
+
+@router.post("/analyze")
+async def analyze_survey_file(
+    request: Request,
+    filename: str = Query(..., min_length=1, max_length=255),
+    _: dict[str, Any] = Depends(require_admin_csrf),
+) -> dict:
+    _cleanup_analysis_sessions()
+    temp_path = await _stream_request_to_temp(request)
+    analysis_id = uuid4()
+    session_dir = _analysis_dir(analysis_id)
+    session_dir.mkdir(parents=True, exist_ok=False)
+    source_path = session_dir / "source.bin"
+    safe_name = _safe_name(filename)
+    try:
+        os.replace(temp_path, source_path)
+        meta = {
+            "filename": safe_name,
+            "created_at_epoch": time.time(),
+            "is_zip": safe_name.lower().endswith(".zip"),
+        }
+        (session_dir / "meta.json").write_text(
+            json.dumps(meta, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        items: list[dict[str, Any]] = []
+        if meta["is_zip"]:
+            try:
+                with zipfile.ZipFile(source_path, "r") as archive:
+                    infos = [info for info in archive.infolist() if not info.is_dir()]
+                    if len(infos) > _MAX_ZIP_ENTRIES:
+                        raise HTTPException(413, "SURVEY_IMPORT_ZIP_TOO_MANY_FILES")
+                    if sum(max(0, info.file_size) for info in infos) > _MAX_ZIP_TOTAL_BYTES:
+                        raise HTTPException(413, "SURVEY_IMPORT_ZIP_UNPACKED_TOO_LARGE")
+                    for index, info in enumerate(infos):
+                        entry_name = _safe_name(Path(info.filename).name)
+                        kind = _infer_kind(entry_name)
+                        if kind is None:
+                            reason = _skip_reason(entry_name)
+                            if reason:
+                                items.append(
+                                    {
+                                        "item_id": f"zip:{index}",
+                                        "archive_index": index,
+                                        "name": entry_name,
+                                        "kind": None,
+                                        "can_import": False,
+                                        "parse_status": "SKIPPED",
+                                        "message": reason,
+                                        "default_scope": _SCOPE_GLOBAL,
+                                        "preview": {},
+                                    }
+                                )
+                            continue
+                        entry_path = _extract_zip_entry(archive, info)
+                        try:
+                            items.append(
+                                _analysis_item(
+                                    item_id=f"zip:{index}",
+                                    path=entry_path,
+                                    original_name=entry_name,
+                                    kind=kind,
+                                    archive_index=index,
+                                )
+                            )
+                        finally:
+                            entry_path.unlink(missing_ok=True)
+            except zipfile.BadZipFile as exc:
+                raise HTTPException(400, "SURVEY_IMPORT_ZIP_INVALID") from exc
+        else:
+            kind = _infer_kind(safe_name)
+            if kind is None:
+                reason = _skip_reason(safe_name)
+                if reason:
+                    items.append(
+                        {
+                            "item_id": "file",
+                            "name": safe_name,
+                            "kind": None,
+                            "can_import": False,
+                            "parse_status": "SKIPPED",
+                            "message": reason,
+                            "default_scope": _SCOPE_GLOBAL,
+                            "preview": {},
+                        }
+                    )
+                else:
+                    raise HTTPException(400, "SURVEY_IMPORT_FILE_TYPE_NOT_SUPPORTED")
+            else:
+                items.append(
+                    _analysis_item(
+                        item_id="file",
+                        path=source_path,
+                        original_name=safe_name,
+                        kind=kind,
+                    )
+                )
+        if not items:
+            raise HTTPException(400, "SURVEY_ANALYSIS_NO_RECOGNIZED_FILES")
+        return {
+            "analysis_id": str(analysis_id),
+            "source_name": safe_name,
+            "expires_in_seconds": _ANALYSIS_TTL_SECONDS,
+            "items": items,
+        }
+    except Exception:
+        shutil.rmtree(session_dir, ignore_errors=True)
+        raise
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
+@router.post("/analysis/{analysis_id}/import")
+def import_analyzed_survey(
+    analysis_id: UUID,
+    plan: SurveyImportPlan,
+    user: dict[str, Any] = Depends(require_admin_csrf),
+) -> dict:
+    _cleanup_analysis_sessions()
+    source_path, meta = _load_analysis_meta(analysis_id)
+    session_dir = source_path.parent
+    results: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    decisions = []
+    for decision in plan.decisions:
+        if decision.item_id in seen:
+            raise HTTPException(400, "SURVEY_IMPORT_DUPLICATE_DECISION")
+        seen.add(decision.item_id)
+        decisions.append(decision)
+
+    try:
+        if bool(meta.get("is_zip")):
+            try:
+                with zipfile.ZipFile(source_path, "r") as archive:
+                    infos = [info for info in archive.infolist() if not info.is_dir()]
+                    for decision in decisions:
+                        if not decision.import_item:
+                            results.append(
+                                {
+                                    "name": decision.item_id,
+                                    "status": "ÜBERSPRUNGEN",
+                                    "message": "Nicht zur Übernahme ausgewählt.",
+                                }
+                            )
+                            continue
+                        match = re.fullmatch(r"zip:(\d+)", decision.item_id)
+                        if not match:
+                            raise HTTPException(400, "SURVEY_IMPORT_DECISION_ITEM_INVALID")
+                        index = int(match.group(1))
+                        if index < 0 or index >= len(infos):
+                            raise HTTPException(400, "SURVEY_IMPORT_DECISION_ITEM_INVALID")
+                        info = infos[index]
+                        entry_name = _safe_name(Path(info.filename).name)
+                        kind = (decision.data_kind or _infer_kind(entry_name) or "").strip().upper()
+                        if not kind:
+                            raise HTTPException(400, "SURVEY_IMPORT_FILE_TYPE_NOT_SUPPORTED")
+                        normalized_scope = _normalize_scope(decision.scope)
+                        if normalized_scope == _SCOPE_WORKSITE and decision.worksite_id is None:
+                            raise HTTPException(400, "SURVEY_IMPORT_WORKSITE_REQUIRED")
+                        entry_path = _extract_zip_entry(archive, info)
+                        try:
+                            results.append(
+                                _install_original(
+                                    path=entry_path,
+                                    original_name=entry_name,
+                                    kind=kind,
+                                    worksite_id=decision.worksite_id,
+                                    scope=normalized_scope,
+                                    route_number=decision.route_number,
+                                    track_key=decision.track_key,
+                                    user=user,
+                                )
+                            )
+                        finally:
+                            entry_path.unlink(missing_ok=True)
+            except zipfile.BadZipFile as exc:
+                raise HTTPException(400, "SURVEY_IMPORT_ZIP_INVALID") from exc
+        else:
+            decision = next(
+                (item for item in decisions if item.item_id == "file"),
+                None,
+            )
+            if decision is None:
+                raise HTTPException(400, "SURVEY_IMPORT_FILE_DECISION_REQUIRED")
+            if not decision.import_item:
+                results.append(
+                    {
+                        "name": str(meta.get("filename") or "Datei"),
+                        "status": "ÜBERSPRUNGEN",
+                        "message": "Nicht zur Übernahme ausgewählt.",
+                    }
+                )
+            else:
+                name = _safe_name(str(meta.get("filename") or "survey.dat"))
+                kind = (decision.data_kind or _infer_kind(name) or "").strip().upper()
+                if not kind:
+                    raise HTTPException(400, "SURVEY_IMPORT_FILE_TYPE_NOT_SUPPORTED")
+                normalized_scope = _normalize_scope(decision.scope)
+                if normalized_scope == _SCOPE_WORKSITE and decision.worksite_id is None:
+                    raise HTTPException(400, "SURVEY_IMPORT_WORKSITE_REQUIRED")
+                results.append(
+                    _install_original(
+                        path=source_path,
+                        original_name=name,
+                        kind=kind,
+                        worksite_id=decision.worksite_id,
+                        scope=normalized_scope,
+                        route_number=decision.route_number,
+                        track_key=decision.track_key,
+                        user=user,
+                    )
+                )
+        shutil.rmtree(session_dir, ignore_errors=True)
+        return {
+            "analysis_id": str(analysis_id),
+            "source_name": meta.get("filename"),
+            "results": results,
+        }
+    except Exception:
+        try:
+            os.utime(session_dir, None)
+        except OSError:
+            pass
         raise
 
 
