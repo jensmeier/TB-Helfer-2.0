@@ -639,3 +639,8 @@ Status: **SOURCE-ABSCHLUSSAUDIT**
 - Upload-/Cursorblock ist mit `34c93c1...` umgesetzt.
 - Migration 017 muss noch in den bestehenden Firmen-Purge integriert werden, damit erlaubte Staging/Test-Purges nicht an neuen Katalog-Fremdschlüsseln scheitern.
 - Produktionsschutz bleibt unverändert.
+
+## REF-DATA-003 – Check 112 Nachlauf
+Status: **SOURCE-CHECK-KORREKTUR OFFEN**
+- Lifecycle-Code dbcb5be9... ist geschrieben.
+- Check 112 enthält noch eine alte Signatur-Assertion vor Einführung von source_date; diese wird jetzt an den aktuellen Vertrag angepasst.

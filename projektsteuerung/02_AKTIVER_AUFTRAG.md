@@ -1783,3 +1783,9 @@ Fehlerfeststellung 29.09.2026:
 - Ein zulässiger Staging/Test-Firmen-Purge darf nicht durch Katalogreferenzen auf Firmen-Originale oder COMPANY-Katalogobjekte scheitern.
 - Der bestehende Produktionsschutz für Firmen mit Vermessungsoriginalen bleibt unverändert.
 - Vor Sourceabschluss wird der Firmen-Purge deshalb um eine gezielte Katalogbereinigung der tatsächlich betroffenen Referenzen ergänzt; unabhängige globale Beiträge bleiben erhalten.
+
+#### REF-DATA-003 – Check-112-Nachlauf
+Fehlerfeststellung 29.09.2026 nach Lifecycle-Integration:
+- Die alte Check-112-Assertion auf die _install_original-Signatur erwartet station_name direkt vor user.
+- Seit dem dokumentierten source_date-Vertrag steht source_date dazwischen; die alte Assertion ist damit veraltet und würde auf einem echten Runner falsch fehlschlagen.
+- Nur den Source-Check an die aktuelle verpflichtende Signatur anpassen; Fachcode unverändert lassen.
