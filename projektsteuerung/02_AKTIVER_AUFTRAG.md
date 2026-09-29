@@ -1498,3 +1498,20 @@ Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
 - Finales Browser-JavaScript via V8 kompiliert: **PASS**.
 - GitHub Action `36586687636`: `runner_name=""`, `steps=[]` → **kein Testnachweis**.
 - Für Synology-Retest müssen nur `survey_preview.py` und `v1_admin_survey_import.html` ersetzt werden; `admin_survey_import.py` aus vorigem Fix bleibt gültig.
+### REF-DATA-002 – Zoommodell muss Android entsprechen
+Status: **RUNTIME-FEHLER BESTÄTIGT / KONZEPTKORREKTUR VOR WEITEREM CODE**
+- Benutzer-Runtime-Test zeigt: Großansicht ist vorhanden, aber tiefes Hineinzoomen ist noch unbrauchbar.
+- Fehlerbild:
+  - Punktkreise wachsen beim SVG-Zoom mit und werden zu groß;
+  - Punkt-/Achsenbeschriftungen verdecken Geometrie;
+  - Benutzer kann nicht bis auf einzelne Linien/Details hineinzoomen wie in Android;
+  - rechte `KM / Station`-Spalte ist in diesem Grafikmodus nicht hilfreich und soll die eigentliche Grafik nicht einengen.
+- Verbindliches Ziel:
+  - Weltgeometrie (TRA/Gleislinien) skaliert mit dem Zoom;
+  - UI-Symbole/Punktmarker bleiben bildschirmbezogen klein bzw. werden relativ zur vergrößerten Geometrie kleiner;
+  - Schrift bleibt bildschirmbezogen lesbar und darf bei sehr tiefem Zoom zusätzlich reduziert/ausgedünnt werden;
+  - Labels werden nur im sichtbaren Viewport und kollisionsarm gezeichnet;
+  - tiefes Zoomen bis auf einzelne Linien/Anschlussdetails muss möglich sein;
+  - Punktdetail primär per Klick/Tap, nicht durch dauerhafte Textwolke;
+  - Android-`TrassenGrafikView` ist Referenz für dieses Zoom-/LOD-Verhalten.
+- Vor weiterer Änderung zuerst Zoom-/LOD-Konzept sauber festlegen und Benutzer erklären; kein weiterer Code auf Verdacht.

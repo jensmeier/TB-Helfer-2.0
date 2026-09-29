@@ -445,3 +445,13 @@ Status: **FESTGELEGT**
 - Labels werden aus normalisierten Achsmetadaten erzeugt, nicht aus kompletter Dateiliste.
 - Anzeigeauswahl/filterbare Objektgruppen sind Bestandteil des gemeinsamen UX-Vertrags.
 - SERVER darf dafür keine Android-Datei ändern; die Android-Implementierung dient als Referenz für Server/API/Visualisierung.
+### REF-DATA-002 – Zoom/LOD-Vertrag
+Status: **KORREKTURBEDARF FESTGELEGT**
+- Darstellung trennt künftig strikt:
+  1. **Weltkoordinaten**: Achs-/TRA-Geometrie, die mit Zoom skaliert;
+  2. **Screen-Space-Symbole**: Punktmarker, Endsymbole, Auswahl-/Klickziele;
+  3. **Screen-Space-Labels**: Achs-/Punkttexte mit Zoomstufen und Kollisionsfilter.
+- Marker dürfen beim Hineinzoomen nicht proportional mit der Weltgeometrie anwachsen.
+- Labels dürfen Geometrie nicht verdecken; tiefes Zoomen priorisiert Linie/Punkt vor Text.
+- Detailinformationen eines Vermessungspunktes werden bei Auswahl vollständig gezeigt; permanente Punktlabels bleiben zoom-/dichteabhängig begrenzt.
+- SERVER/Admin und Android sollen dieselbe fachliche LOD-Semantik verwenden, auch wenn Renderingtechnik unterschiedlich ist.
