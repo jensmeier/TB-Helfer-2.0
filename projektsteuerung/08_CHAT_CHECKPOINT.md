@@ -814,3 +814,13 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Finales JS syntaktisch geprüft: PASS.
 - GitHub CI ohne Runner-Schritte; kein Testnachweis.
 - Status: **SOURCE FERTIG / SYNLOGY-RUNTIME-RETEST OFFEN**.
+
+## REF-DATA-002 – Screen-Space-Checkpoint 29.09.2026
+- Benutzer bestätigt Hover/Klick-Punktinteraktion als nächsten Umbau.
+- Vor Code Freigabe in Projektsteuerung gesichert.
+- Code `c217e4ea...`: Punkte/Labels aus SVG-Weltkoordinaten in HTML-Screen-Space-Overlay verschoben.
+- Hover, strukturierter Klickdetail, 24-px-Trefferzone und Mehrfachtrefferliste umgesetzt.
+- Großansicht erhält schwebende Auswahlkarte.
+- Finales Browser-JS V8: PASS.
+- GitHub Actions ohne Runner/Steps; kein Testnachweis.
+- Status: **SOURCE FERTIG / SYNLOGY-RUNTIME-RETEST OFFEN**.

@@ -788,3 +788,14 @@ Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
   - Station wird nur getrennt als technischer Ersatz angezeigt;
   - fehlende KM-Bereiche werden kompakt gezählt statt mit wertlosen Nullbalken gefüllt.
 - keine DB-/Compose-/Android-Änderung.
+
+## REF-DATA-002 – Screen-Space-Punktinteraktion
+Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
+- Vermessungspunkte und Beschriftungen werden nicht mehr als SVG-Weltobjekte skaliert, sondern in einem echten Screen-Space-Overlay gerendert.
+- Sichtbare Marker bleiben beim Tiefzoom in stabiler Bildschirmgröße; Geometrie kann unabhängig bis ca. 30x gezoomt werden.
+- Hover zeigt eine kurze Punktinfo.
+- Klick zeigt strukturierte Punktdetails im Bereich `Auswahl`; in Großansicht zusätzlich als schwebende Detailkarte.
+- Klick-/Trefferlogik nutzt eine ca. 24-px-Trefferzone nach Android-Prinzip.
+- Bei mehreren Punkten im Trefferbereich wird eine Auswahlliste angeboten.
+- Permanente Punktlabels werden bei tiefem Zoom stark reduziert; oberhalb hoher Zoomstufe stehen Geometrie + Hover/Klick vor Text.
+- keine DB-/Compose-/Android-Änderung.

@@ -458,3 +458,17 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   6. 5300: echter Bereich `54+354.296–60+855.530` bleibt sichtbar;
   7. `0+000–0+000` darf nicht als gültiger Balken erscheinen.
 - Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**.
+
+### REF-DATA-002 – Screen-Space-Punktinteraktion Retest
+- Sourceprüfung: finales Admin-JavaScript V8 = PASS.
+- GitHub Actions ohne Runner/Steps → kein CI-Testnachweis.
+- Synology-Pflichttest mit Pasing:
+  1. ZIP analysieren, Großansicht öffnen;
+  2. bis an einzelne Gleislinie tief hineinzoomen;
+  3. gelbe Vermessungspunkte müssen sichtbar klein/stabil bleiben;
+  4. bei sehr tiefem Zoom darf keine Textwolke die Linien verdecken;
+  5. Maus über gelben Punkt → Kurztooltip;
+  6. Klick auf Punkt → strukturierte Detaildaten;
+  7. nahe/überlagerte Punkte → Auswahlliste;
+  8. Punktdetail in Großansicht als schwebende Karte sichtbar.
+- Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**.

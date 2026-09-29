@@ -1564,7 +1564,7 @@ Status: **RUNTIME-FEHLER BESTÄTIGT / VOR NÄCHSTEM CODE GESICHERT**
   - sichtbarer Marker und Klick-/Hover-Trefferzone bleiben getrennt.
 - Nächster Codeblock soll diesen Punktinteraktions-/LOD-Ansatz umsetzen; kein weiterer Versuch mit schrumpfenden Markern auf Verdacht.
 ### REF-DATA-002 – Hover/Klick-Punktinteraktion freigegeben
-Status: **SERVER-UMSETZUNG FREIGEGEBEN**
+Status: **SOURCE-UMSETZUNG FERTIG / SYNLOGY-RETEST OFFEN**
 - Benutzer bestätigt den beschriebenen nächsten Umbau mit `okay`.
 - Umsetzung jetzt verbindlich:
   - Geometrie bleibt im SVG/Weltkoordinatenraum;
@@ -1575,3 +1575,18 @@ Status: **SERVER-UMSETZUNG FREIGEGEBEN**
   - permanente Punkt-/Achsenlabels werden bei tiefem Zoom stark ausgedünnt;
   - Grafik bleibt bis auf einzelne Linien hineinzoombar.
 - Keine Android-Datei ändern; Android bleibt fachliche Referenz.
+
+### REF-DATA-002 – Screen-Space-Overlay Source-Fix
+- Freigabe vor Code gesichert: `287093c1ab3f41c9f4d05d370d88133b215d2034`.
+- Code-Fix: `c217e4ea26ac93e6b7106ac31b92671a6083fa14`.
+- `v1_admin_survey_import.html` trennt nun:
+  - SVG = Weltgeometrie/Raster/TRA-Linien;
+  - HTML-Overlay = Vermessungspunktmarker, Hovertooltip, Achsen-/Punktlabels, Auswahl.
+- Punktmarker sind echte CSS-Pixel-Elemente und können dadurch beim ViewBox-Tiefzoom nicht mehr riesig werden oder verschwinden.
+- Hover: Kurzinfo aus Punktlabel/ID + KM.
+- Klick: strukturierte Detailkarte mit ID, Art, Strecke, Gleis, KM, Höhe, X/Y, System, Quelle.
+- Mehrfachtreffer: Auswahl bis zu 12 nahe Punkten innerhalb 24 px.
+- Klick nahe eines Punkts hat Vorrang vor Achsenklick; Drag wird von Klick unterschieden.
+- Overlay-Rendering wird per `requestAnimationFrame` gedrosselt und per `ResizeObserver` bei Großansicht/Resize neu berechnet.
+- Finales Browser-JavaScript über V8 kompiliert: **PASS**.
+- GitHub Actions `36595173582`, `36595165137`, `36595173431`: `runner_name=""`, `steps=[]` → **kein Testnachweis**.

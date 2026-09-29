@@ -520,3 +520,17 @@ Synology:
 - nur `server/templates/v1_admin_survey_import.html` ersetzen;
 - API-Container neu starten;
 - `survey_preview.py` und `admin_survey_import.py` bleiben vom vorigen Stand unverändert.
+
+## REF-DATA-002 – Punkt-Hover/Klick + Tiefzoom
+Status: **SOURCE FERTIG / RUNTIME-RETEST OFFEN**
+- Alte SVG-Punktmarker/-labels entfernt.
+- Neue Screen-Space-Ebene hält Punktmarker unabhängig vom Zoom sichtbar.
+- Hover zeigt Kurztooltip; Klick öffnet Detaildaten.
+- Mehrere nahe Punkte werden auswählbar statt zufällig geöffnet.
+- In Großansicht erscheint ausgewählte Punkt-/Achseninfo als schwebende Karte.
+- Tiefer Zoom priorisiert Linien; permanente Punktlabels werden ab sehr hohem Zoom praktisch abgeschaltet.
+
+Synology:
+- nur `server/templates/v1_admin_survey_import.html` ersetzen;
+- API-Container neu starten;
+- keine Migration / kein Recreate.
