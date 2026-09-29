@@ -13,8 +13,9 @@ ADMIN_IMPORT = ROOT / "server" / "tbserver" / "admin_survey_import.py"
 PARSER = ROOT / "server" / "tbserver" / "survey_parser.py"
 SURVEY_ORIGINALS = ROOT / "server" / "tbserver" / "survey_originals.py"
 ADMIN_PURGE = ROOT / "server" / "tbserver" / "admin_purge.py"
+CAPABILITIES = ROOT / "server" / "tbserver" / "capabilities.py"
 
-for path in (CATALOG, MAIN, JOBS, NOTIFICATIONS, ADMIN_IMPORT, PARSER, SURVEY_ORIGINALS, ADMIN_PURGE):
+for path in (CATALOG, MAIN, JOBS, NOTIFICATIONS, ADMIN_IMPORT, PARSER, SURVEY_ORIGINALS, ADMIN_PURGE, CAPABILITIES):
     ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
 catalog = CATALOG.read_text(encoding="utf-8")
@@ -96,5 +97,12 @@ segment_delete = admin_purge.index("DELETE FROM tb.survey_catalog_segments")
 asset_delete = admin_purge.index("DELETE FROM tb.survey_catalog_assets")
 original_delete = admin_purge.index("DELETE FROM tb.survey_originals WHERE company_id")
 assert conflict_delete < segment_delete < asset_delete < original_delete
+capabilities = CAPABILITIES.read_text(encoding="utf-8")
+for capability in (
+    "survey_reference_catalog_v1",
+    "survey_reference_contributions_v1",
+    "survey_reference_change_feed_v1",
+):
+    assert f'"{capability}": True' in capabilities, capability
 
 print("PASS survey reference catalog source")
