@@ -1374,3 +1374,18 @@ Phase-1-Umsetzung:
 - Sourcecode/Template nach Commit-Diff erneut geprüft; Sourcecheck ist erweitert, aber auf GitHub nicht ausgeführt worden.
 - GitHub Actions auf Code-HEAD `a0701329...`: Server Runs `36561890727` und `36561884228`, Android Run `36561890760`; jeweils `runner_name=""`, `steps=[]` → **kein Testnachweis**.
 - Nächster Schritt: vier Runtime-Dateien auf Synology übernehmen, API neu starten und Global-/Worksite-Import + Manifest praktisch prüfen.
+
+### REF-DATA-001 – Importablauf korrigiert: Datei zuerst
+Status: **NEUE FACHANFORDERUNG GESICHERT / NOCH NICHT UMGESETZT**
+- Benutzer lehnt den aktuellen Ablauf `Importziel/Scope + Firma/Baustelle + Strecke/Gleis zuerst` als fachlich verkehrt ab.
+- Verbindlicher Zielablauf für ADMIN und später normalen Nutzerupload:
+  1. zuerst Datei(en) auswählen bzw. ablegen;
+  2. Server analysiert Dateityp und fachlich erkennbare Inhalte vor dem eigentlichen Import;
+  3. pro Datei werden erkannte Angaben angezeigt, insbesondere Format/Typ sowie soweit vorhanden Strecke, Gleis/Achse und weitere fachliche Zuordnung;
+  4. bereits in Datei/Inhalt eindeutig vorhandene Angaben werden automatisch übernommen und nicht unnötig erneut abgefragt;
+  5. nur fehlende oder mehrdeutige Pflichtangaben werden vom Benutzer ergänzt/korrigiert;
+  6. erst danach `Import starten`;
+  7. nach Import zeigt die Oberfläche eindeutig, was erkannt, ergänzt, importiert, übersprungen oder als Duplikat erkannt wurde.
+- Mehrfach-/ZIP-Upload muss dateibezogen funktionieren: jede erkannte Datei kann eigene erkannte/fehlende Metadaten haben.
+- Der gleiche Grundablauf soll später auch für normale Nutzer gelten; SERVER ändert Android `app/**` nicht.
+- Noch fachlich zu klären: wie `GLOBAL_REFERENCE` gegenüber `COMPANY_WORKSITE_DATA` im neuen Datei-zuerst-Ablauf entschieden/angezeigt wird. Diese Entscheidung wird vor Umbau der Importlogik bestätigt.
