@@ -1329,7 +1329,7 @@ Status: **BESTÄTIGT / ABGENOMMEN**
 - ADMIN-PDF-011: SERVER **ERLEDIGT/BESTÄTIGT**, Android-Clamp 250→400 bleibt als separater Android-Vertragspunkt offen.
 - PDF-RUNTIME-009 bleibt fachlich getrennt: finaler serverseitiger Tagesabschluss-PDF-E2E noch nicht durch diese Admin-Abnahme ersetzt.
 ## REF-DATA-001 – SERVER-Umsetzung globaler Strecken-/Vermessungsreferenzen
-Status: **TECHNISCHER SERVERVERTRAG FESTGELEGT / PHASE 1 FREIGEGEBEN**
+Status: **PHASE 1 SOURCE FERTIG / SYNLOGY-DEPLOY + RUNTIME-TEST OFFEN**
 
 Grundlage ist die bereits bestätigte Fachanforderung REF-DATA-001.
 
@@ -1357,3 +1357,20 @@ Phase-1-Umsetzung:
 3. Scope in bestehender Original-Liste sichtbar machen;
 4. Capabilities/Sourcechecks ergänzen;
 5. anschließend Sourceprüfung und Synology-Runtime-Test vorbereiten.
+
+### REF-DATA-001 – Phase-1-Sourceblock
+- Vertragscommit: `498b5a8b0fae3ce137cc3bc297daa1566088735c`.
+- Hauptimplementierung: `6440f538268f28857b4d9557a19a03e8d287ed72`.
+- Templatekorrektur: `d69b71e0a86d46f7dfb789907881cb4324318506`.
+- Manifest-/Scope-Nachschärfung: `a0701329b8b09c25efc67ac5a0f679abe822903a`.
+- Geändert:
+  - `server/tbserver/admin_survey_import.py`;
+  - `server/tbserver/survey_originals.py`;
+  - `server/templates/v1_admin_survey_import.html`;
+  - `server/tbserver/capabilities.py`;
+  - Sourcecheck `25_verify_tb_server_1_track_survey_source.py`.
+- Keine Migration erforderlich: vorhandenes nullable `survey_originals.company_id` ist bewusst nutzbar und bestehende Source-Validierung erlaubt globale (`NULL`) Originale.
+- Globale Importe erzeugen absichtlich keinen firmenbezogenen `change_feed`; Android-Nachladen läuft später über das neue globale Manifest.
+- Sourcecode/Template nach Commit-Diff erneut geprüft; Sourcecheck ist erweitert, aber auf GitHub nicht ausgeführt worden.
+- GitHub Actions auf Code-HEAD `a0701329...`: Server Runs `36561890727` und `36561884228`, Android Run `36561890760`; jeweils `runner_name=""`, `steps=[]` → **kein Testnachweis**.
+- Nächster Schritt: vier Runtime-Dateien auf Synology übernehmen, API neu starten und Global-/Worksite-Import + Manifest praktisch prüfen.

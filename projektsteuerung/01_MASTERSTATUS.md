@@ -716,3 +716,19 @@ Status: **BESTÄTIGT / SERVER-ADMIN-PDF ABGENOMMEN**
 - ADMIN-PDF-007, ADMIN-PDF-010, ADMIN-PDF-012 und ADMIN-PDF-013 sind SERVER-seitig **BESTÄTIGT / ERLEDIGT**.
 - ADMIN-PDF-011 ist SERVER-seitig **BESTÄTIGT**; offen bleibt ausschließlich die bereits dokumentierte Android-Anpassung 250→400 pt.
 - PDF-RUNTIME-009 bleibt separat offen, solange kein neuer echter serverseitiger BTB-Finalize-Abschluss im vollständigen Praxisablauf bestätigt wurde.
+
+## REF-DATA-001 – Globale Referenzdaten Phase 1
+Status: **SOURCE FERTIG / NICHT DEPLOYT / RUNTIME-E2E OFFEN**
+- Globaler Survey-Scope ist source-seitig umgesetzt ohne DB-Migration:
+  - `company_id IS NULL` = `GLOBAL_REFERENCE`;
+  - `company_id IS NOT NULL` = `COMPANY_WORKSITE_DATA`.
+- Admin-Trassierungsimport kann jetzt ausdrücklich `GLOBAL_REFERENCE` oder Firma/Baustelle wählen.
+- Globale Originale werden serverweit nach unveränderter Dateiidentität dedupliziert und bleiben immutable.
+- Neue read-only Geräte/Portal-API:
+  - `GET /api/v1/reference/survey-originals` = Manifest;
+  - `GET /api/v1/reference/survey-originals/{id}/parsed` = fachlich geparster Einzelbestand;
+  - bestehender `/api/v1/survey-originals/{id}/content` = Originalbytes.
+- Manifest liefert `sha256`, Parser-Version, `parsed_at` und `cache_revision` für späteres Android-Caching.
+- Bestehende `survey-sections` akzeptieren globale Originalquellen bereits, weil nur fremde nicht-null `company_id` abgewiesen werden.
+- Capabilities ergänzt: `global_survey_reference_v1`.
+- Keine Android-Codeänderung und keine DB-Migration.

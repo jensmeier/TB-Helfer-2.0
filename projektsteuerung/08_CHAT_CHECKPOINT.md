@@ -755,3 +755,20 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - ADMIN-PDF-011 nur noch ANDROID-seitig offen (aktueller Clamp 250 pt).
 - PDF-RUNTIME-009 bleibt getrennt offen bis zum echten neuen serverseitigen BTB-Finalize-/Download-Praxistest.
 - Diese Abnahme ist gemäß Schutzregel nicht ohne Grund zurückzubauen.
+
+## REF-DATA-001 – Checkpoint 29.09.2026
+- Nach abgenommenem PDF-Adminblock neuen Arbeitsblock vorschriftsgemäß mit Live-GitHub gestartet.
+- SERVER-HEAD zu Beginn: `ab1817aad1bfcc54f849a9458a10b06d3f43683e`; ANDROID-HEAD `423f37892915cb3308a4b1ea9e4d196faa872326`; PR #6 Draft, PR #11 offen.
+- Vor Code technischen Phase-1-Vertrag für globale Referenzdaten in `02_AKTIVER_AUFTRAG.md` + `05_ANDROID_SERVER_VERTRAG.md` gesichert.
+- Phase 1 umgesetzt ohne Schemaänderung:
+  - `NULL company_id` als `GLOBAL_REFERENCE`;
+  - Admin-Scope-Auswahl global vs. Firma/Baustelle;
+  - globale Duplikaterkennung;
+  - read-only Manifest + Parsed-API;
+  - Cache-Revision aus SHA/Parser-Version/parsed_at;
+  - bestehende Worksite-Quellenkompatibilität bestätigt.
+- Codecommits: `6440f538...`, Templatefix `d69b71e0...`, Nachschärfung `a0701329...`.
+- Keine DB-Migration, kein Compose, kein Android-Code.
+- GitHub CI erneut ohne Runner-Schritte; kein Testnachweis.
+- Status: **SOURCE FERTIG / NICHT DEPLOYT / SYNLOGY-E2E OFFEN**.
+- Nächster praktischer Schritt: 4 Runtime-Dateien via File Station übernehmen → API neu starten → Globalimport testen.

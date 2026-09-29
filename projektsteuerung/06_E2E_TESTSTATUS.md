@@ -384,3 +384,18 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
 - ADMIN-PDF-007 / -010 / -012 / -013: **BESTÄTIGT / ERLEDIGT**.
 - ADMIN-PDF-011 SERVER-Anteil: **BESTÄTIGT**; Android 250→400 bleibt offen.
 - Dieser Nachweis gilt für Admin-PDF/Preview/Logo-Layout; er ist **nicht** automatisch ein vollständiger Finalize-/Download-E2E für PDF-RUNTIME-009.
+
+### REF-DATA-001 – Phase-1 Source-/E2E-Status
+- Source vorhanden: Global-/Worksite-Scope, globaler Admin-Import, Manifest, Parsed-Endpoint, Capability.
+- DB-Migration nicht erforderlich; bestehende nullable Company-ID wird als Scope benutzt.
+- Sourcecheck wurde erweitert, aber mangels tatsächlich ausgeführtem Runner nicht als bestanden gewertet.
+- GitHub Actions `36561890727` / `36561884228` / `36561890760`: `failure` mit `runner_name=""`, `steps=[]` → **kein Testnachweis**.
+- Runtime-Pflichttest nach Deployment:
+  1. Admin → Trassierungsdaten: Scope-Auswahl sichtbar;
+  2. kleine TRA/KF-Testdatei als `GLOBAL_REFERENCE` importieren;
+  3. Liste zeigt `GLOBAL`, Parserstatus plausibel;
+  4. derselbe unveränderte Upload wird als globales Duplikat erkannt;
+  5. Firma/Baustelle-Import bleibt weiterhin firmenspezifisch;
+  6. `GET /api/v1/reference/survey-originals` liefert das globale Manifest;
+  7. `/parsed` liefert Parserpayload; fremde firmenspezifische Originale bleiben geschützt.
+- Status: **SOURCE FERTIG / SYNLOGY-RUNTIME-E2E OFFEN**.

@@ -441,3 +441,20 @@ Status: **DEPLOYT / BESTÄTIGT / ABGENOMMEN**
 Geschützt:
 - ADMIN-PDF-007, ADMIN-PDF-010, ADMIN-PDF-012, ADMIN-PDF-013 nicht ohne Grund ändern.
 - ADMIN-PDF-011 SERVER-Anteil ebenfalls bestätigt; nur Android 400-pt-Parität bleibt offen.
+
+## REF-DATA-001 – Globaler Referenzbestand Phase 1
+Status: **SOURCE FERTIG / DEPLOY OFFEN / E2E OFFEN**
+- Admin-Importziel `GLOBAL_REFERENCE` vs. `COMPANY_WORKSITE_DATA` umgesetzt.
+- Global = `survey_originals.company_id NULL`; Worksite/Firma = bestehende company_id.
+- Global-Duplikate: `sha256 + byte_size`, keine Überschreibung.
+- Globaler Manifest-/Parsed-Readpfad für Portal/Android ergänzt.
+- `survey-sections` können globale Originale bereits als Quellen verwenden.
+- Globaler bearbeitbarer Katalog `tb.catalog_*` bleibt getrennt/versioniert; keine Rechteänderung in diesem Block.
+- Keine Migration / kein Compose / keine Android-Datei.
+
+Synology-Deployment:
+- `server/tbserver/admin_survey_import.py`;
+- `server/tbserver/survey_originals.py`;
+- `server/tbserver/capabilities.py`;
+- `server/templates/v1_admin_survey_import.html`;
+- danach nur API-Container neu starten.
