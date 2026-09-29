@@ -308,3 +308,11 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   - Android Run `36488381240`: `failure`, Job `build`, `runner_name = ""`, `steps = []`.
 - Bewertung gemäß Projektregel: **keine Runner-Steps ausgeführt → kein Build-/Testnachweis und kein Sourcefehler-Nachweis**.
 - ADMIN-DASH-008 bleibt **SOURCE FERTIG / NICHT DEPLOYT / RUNTIME-E2E OFFEN**.
+
+### PDF-RUNTIME-009 – Vergleich 22/25/26
+- 22.09: Android/Skia-PDF, optisches BTB-Layout korrekt.
+- 25.09: ReportLab Server-PDF, `tb-server-btb-pdf-3`, optisch abweichend.
+- 26.09: ReportLab Server-PDF, `tb-server-btb-pdf-3`, optisch abweichend.
+- Damit ist die Regression reproduzierbar auf den Wechsel des PDF-Renderpfads eingegrenzt.
+- Aktueller Android-Entwurf laut Benutzer weiterhin korrekt.
+- Status: **URSACHE BESTÄTIGT / SERVER-FIX + RUNTIME-VISUAL-E2E OFFEN**.

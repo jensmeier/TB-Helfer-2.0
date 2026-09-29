@@ -1167,7 +1167,7 @@ Vor Implementierung prüfen:
 - Source-Marker/Commit-Diff geprüft; keine DB-/Android-Änderung.
 - Runtime/E2E noch offen: Synology-Projekt/API mit aktualisiertem Compose recreaten und Werte direkt gegen DSM vergleichen.
 ## PDF-RUNTIME-009 – Server-PDF seit 22.09. sichtbar verschoben
-Status: **NEUER RUNTIME-FEHLER / DIAGNOSE VOR CODEÄNDERUNG**
+Status: **URSACHE BESTÄTIGT / SERVER-RENDERER WEICHT VOM ANDROID-RENDERER AB / FIX OFFEN**
 
 Benutzerbefund 29.09.2026:
 - PDF vom **22.09.** war noch optisch in Ordnung.
@@ -1183,3 +1183,18 @@ Verbindliche Diagnose vor Fix:
 4. feststellen, ob nur Firmenkopf/Logo oder das gesamte PDF-Layout verschoben ist;
 5. keine Android-Änderung, solange der aktuelle Android-PDF-Entwurf korrekt bleibt;
 6. erst nach reproduzierbarer Serverursache gezielt korrigieren und mit den historischen PDFs visuell gegenprüfen.
+
+### PDF-RUNTIME-009 – Diagnose 29.09.2026
+- Drei vom Benutzer bereitgestellte Tagesexporte wurden direkt verglichen: 22.09., 25.09. und 26.09.
+- 22.09-BTB-PDF:
+  - Producer: `Skia/PDF m148`;
+  - 595 × 842 pt A4;
+  - entspricht dem Android-`PdfDocument`-/`BautagebuchPdf`-Layout mit Wetterbox, Personal/Maschinen zweispaltig, gerahmten Punkten 4–8 und Android-Fotoanhang.
+- 25.09- und 26.09-BTB-PDF:
+  - Producer: `ReportLab PDF Library`;
+  - Footer: `PDF-Renderer: tb-server-btb-pdf-3`;
+  - enthalten den generischen Server-Renderer mit Meta-/Kopfdaten-Tabellen, flach ausgegebenen Payloads und einfachem Fotoanhang.
+- Der aktuelle Handy-`PDF Entwurf` wird weiterhin mit dem Android-Renderer erzeugt und sieht laut Benutzer korrekt aus.
+- Damit ist der sichtbare Layoutsprung **nicht** durch die Android-PDF-Logik verursacht. Der Serverabschluss verwendet einen zweiten, optisch nicht paritätischen Renderer.
+- Der aktuelle Server-`btb_pdf.py` ist auch in Renderer v4 fachlich weiterhin ein eigenständiges ReportLab-Layout; die Änderung v4 betrifft Firmenkopf/Logo, nicht die fehlende Android-Layoutparität des Hauptdokuments.
+- Korrekturziel: serverseitigen Abschluss-PDF-Renderer an das bestehende Android-PDF-Zielbild angleichen; Android nicht ändern, solange der aktuelle Entwurf korrekt bleibt.

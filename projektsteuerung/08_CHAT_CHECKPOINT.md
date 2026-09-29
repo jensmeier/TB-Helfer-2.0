@@ -677,3 +677,14 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
   - Android Run `36488381240`: `failure`, Job `build`, `runner_name = ""`, `steps = []`.
 - Bewertung gemäß Projektregel: **keine Runner-Steps ausgeführt → kein Build-/Testnachweis und kein Sourcefehler-Nachweis**.
 - ADMIN-DASH-008 bleibt **SOURCE FERTIG / NICHT DEPLOYT / RUNTIME-E2E OFFEN**.
+
+## PDF-RUNTIME-009 – Diagnosecheckpoint 29.09.2026
+- Benutzer meldet: 22.09-PDF war noch in Ordnung; spätere PDFs sind verschoben/anders; aktueller Handy-`PDF Entwurf` sieht gut aus.
+- Vergleichs-ZIPs 22.09/25.09/26.09 geöffnet und BTB-PDFs gerendert.
+- Harte technische Trennung bestätigt:
+  - 22.09 Producer `Skia/PDF m148` = Android-Renderer;
+  - 25.09/26.09 Producer `ReportLab PDF Library`, Footer `tb-server-btb-pdf-3` = Server-Renderer.
+- 25/26 zeigen nicht nur einen Logo-Offset, sondern ein vollständig anderes generisches Layout (Meta-/Kopfdaten, flache Facheinträge, anderer Fotoanhang).
+- Aktueller Servercode `server/tbserver/btb_pdf.py` bestätigt diese Ursache; Renderer v4 hat nur Header/Logo verbessert, nicht die Dokumentparität.
+- Android-`app/**` bleibt unverändert.
+- Nächster Schritt: SERVER-Renderer gegen Android-`BautagebuchPdf.kt`/22.09-Referenz angleichen und danach visuell + auf Synology testen.

@@ -369,3 +369,11 @@ Deployment:
   - Android Run `36488381240`: `failure`, Job `build`, `runner_name = ""`, `steps = []`.
 - Bewertung gemäß Projektregel: **keine Runner-Steps ausgeführt → kein Build-/Testnachweis und kein Sourcefehler-Nachweis**.
 - ADMIN-DASH-008 bleibt **SOURCE FERTIG / NICHT DEPLOYT / RUNTIME-E2E OFFEN**.
+
+## PDF-RUNTIME-009 – Server-PDF-Renderer
+Status: **URSACHE BESTÄTIGT / SERVER-FIX OFFEN**
+- Historischer 22.09-Export enthält ein Android/Skia-PDF und ist optisch korrekt.
+- 25.09/26.09 enthalten serverseitige ReportLab-Abschluss-PDFs (`tb-server-btb-pdf-3`) und zeigen das abweichende generische Serverlayout.
+- Aktueller Android-`PDF Entwurf` bleibt korrekt; deshalb kein Android-Fix.
+- Server-`render_btb_pdf()` rendert derzeit bewusst anders als `BautagebuchPdf.kt`: generische Meta-/Kopfdaten-Tabellen statt Android-Boxlayout.
+- Nächster Serverblock: Android-Layout als Referenz nehmen und den serverseitigen Abschlussrenderer auf dieselbe visuelle Struktur bringen; danach 22.09 als Referenz visuell gegen Server-PDF testen.
