@@ -26,6 +26,7 @@ class SurveyOriginalFromFile(BaseModel):
     route_number: str | None = Field(default=None, max_length=80)
     track_key: str | None = Field(default=None, max_length=160)
     data_kind: str = Field(min_length=1, max_length=40)
+    catalog_scope: str = Field(default="COMPANY", max_length=20)
     metadata: dict = Field(default_factory=dict)
 
 
@@ -197,6 +198,11 @@ def import_survey_original_from_file(
     kind = payload.data_kind.strip().upper()
     if not _DATA_KIND_RE.fullmatch(kind):
         raise HTTPException(400, "INVALID_SURVEY_DATA_KIND")
+    catalog_scope = payload.catalog_scope.strip().upper()
+    if catalog_scope not in {"COMPANY", "GLOBAL"}:
+        raise HTTPException(400, "SURVEY_CATALOG_SCOPE_INVALID")
+    metadata = dict(payload.metadata)
+    metadata["catalog_scope"] = catalog_scope
 
     old_path = None
     new_path = None
@@ -272,7 +278,7 @@ def import_survey_original_from_file(
                     file_row["original_name"] or safe_name,
                     actual_sha256,
                     actual_size,
-                    Jsonb(payload.metadata),
+                    Jsonb(metadata),
                     user["user_id"],
                 ),
             )
@@ -295,7 +301,13 @@ def import_survey_original_from_file(
                 worksite_id=file_row["worksite_id"],
                 entity_type="SURVEY_ORIGINAL",
                 entity_id=original_id,
-                details={"data_kind": kind, "sha256": actual_sha256, "byte_size": actual_size, "source_file_id": str(payload.file_id)},
+                details={
+                    "data_kind": kind,
+                    "sha256": actual_sha256,
+                    "byte_size": actual_size,
+                    "source_file_id": str(payload.file_id),
+                    "catalog_scope": catalog_scope,
+                },
             )
         return row
     except Exception:

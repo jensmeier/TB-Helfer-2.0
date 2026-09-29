@@ -11,8 +11,9 @@ JOBS = ROOT / "server" / "tbserver" / "jobs.py"
 NOTIFICATIONS = ROOT / "server" / "tbserver" / "notifications.py"
 ADMIN_IMPORT = ROOT / "server" / "tbserver" / "admin_survey_import.py"
 PARSER = ROOT / "server" / "tbserver" / "survey_parser.py"
+SURVEY_ORIGINALS = ROOT / "server" / "tbserver" / "survey_originals.py"
 
-for path in (CATALOG, MAIN, JOBS, NOTIFICATIONS, ADMIN_IMPORT, PARSER):
+for path in (CATALOG, MAIN, JOBS, NOTIFICATIONS, ADMIN_IMPORT, PARSER, SURVEY_ORIGINALS):
     ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
 catalog = CATALOG.read_text(encoding="utf-8")
@@ -57,5 +58,9 @@ assert "index_original_in_tx(cur, original_id" in parser
 assert "station_code" in admin_import and "station_name" in admin_import
 assert 'SURVEY_CATALOG_COMPANY_SCOPE_FORBIDDEN' in catalog
 assert 'station_code: str | None,\n    station_name: str | None,\n    user: dict[str, Any],' in admin_import
+assert '@router.delete("/manual-segments/{segment_id}")' in catalog
+assert 'GVP_MAX_AXIS_DISTANCE_M = 120.0' in catalog
+assert 'GVP_OFFSET_OUTLIER_M = 80.0' in catalog
+assert '"catalog_scope"' in (ROOT / "server" / "tbserver" / "survey_originals.py").read_text(encoding="utf-8")
 
 print("PASS survey reference catalog source")

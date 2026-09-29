@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 import math
 import re
+import statistics
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -31,6 +32,11 @@ OVERLAP_NEAR_DISTANCE_M = 20.0
 ENDPOINT_GAP_M = 5.0
 ENDPOINT_HEADING_DEG = 20.0
 SPATIAL_TRACK_CLUSTER_M = 1000.0
+GVP_MAX_AXIS_DISTANCE_M = 120.0
+GVP_OFFSET_OUTLIER_M = 80.0
+GVP_MIN_ROBUST_MATCHES = 4
+_EXPLICIT_KM_GRA_RE = re.compile(r"(?:^|[_-])KM\d{4}(?:[_\.-]|$)", re.IGNORECASE)
+_GVP_DATA_KINDS = {"GVP", "KF", "KV", "KF.TXT", "FESTPUNKT"}
 
 
 class ManualPoint(BaseModel):
@@ -79,6 +85,11 @@ class ManualSegmentUpdate(BaseModel):
     km_to_m: float | None = None
     geometry: list[ManualPoint] | None = Field(default=None, max_length=20000)
     metadata: dict | None = None
+
+
+class ManualSegmentDeactivate(BaseModel):
+    client_change_id: str = Field(min_length=1, max_length=160)
+    base_version: int = Field(ge=1)
 
 
 class ConflictResolution(BaseModel):
@@ -176,6 +187,14 @@ def _station_meta(original: dict[str, Any]) -> tuple[str | None, str | None]:
 
 def _scope_for_original(original: dict[str, Any]) -> tuple[str, UUID | None]:
     company_id = original.get("company_id")
+    metadata = original.get("metadata") if isinstance(original.get("metadata"), dict) else {}
+    requested = str(metadata.get("catalog_scope") or "").strip().upper()
+    if requested == _SCOPE_GLOBAL:
+        # The raw original can remain company-private while its derived/reference
+        # geometry is deliberately published into the shared catalog.
+        return _SCOPE_GLOBAL, None
+    if requested == _SCOPE_COMPANY and company_id is not None:
+        return _SCOPE_COMPANY, company_id
     return (_SCOPE_COMPANY, company_id) if company_id is not None else (_SCOPE_GLOBAL, None)
 
 
@@ -189,6 +208,17 @@ def _normalize_scope(scope: str, user: dict[str, Any]) -> tuple[str, UUID | None
     if company_id is None:
         raise HTTPException(400, "SURVEY_CATALOG_COMPANY_SCOPE_REQUIRES_COMPANY")
     return normalized, company_id
+
+
+def _assert_segment_write_access(user: dict[str, Any], segment: dict[str, Any]) -> None:
+    if user.get("company_role") == "ADMIN":
+        return
+    scope = str(segment.get("scope") or "").upper()
+    if scope == _SCOPE_GLOBAL:
+        return
+    if scope == _SCOPE_COMPANY and segment.get("company_id") == user.get("company_id"):
+        return
+    raise HTTPException(403, "SURVEY_CATALOG_COMPANY_SCOPE_FORBIDDEN")
 
 
 def _visible_sql(user: dict[str, Any], alias: str = "") -> tuple[str, list[Any]]:
@@ -361,6 +391,11 @@ def _asset_upsert(cur, original: dict[str, Any], parsed: dict[str, Any], actor_u
         "parser_version": parsed.get("parser_version"),
         "original_name": original.get("original_name"),
         "sha256": original.get("sha256"),
+        "route_from_name": payload.get("route_from_name"),
+        "track_from_name": payload.get("track_from_name"),
+        "direction_from_name": payload.get("direction_from_name"),
+        "source_direction_from_name": payload.get("source_direction_from_name"),
+        "axis_type_from_name": payload.get("axis_type_from_name"),
     }
     cur.execute("SELECT * FROM tb.survey_catalog_assets WHERE original_id = %s FOR UPDATE", (original["id"],))
     existing = cur.fetchone()
@@ -537,6 +572,238 @@ def _relation(existing: list[dict[str, Any]], candidate: list[dict[str, Any]]) -
             "nearest_distance_m": minimum,
         }
     return "INDEPENDENT", {"bbox_gap_m": bbox_gap}
+
+
+
+def _project_xy_station(
+    x: float,
+    y: float,
+    samples: list[dict[str, Any]],
+) -> dict[str, float] | None:
+    best: dict[str, float] | None = None
+    for first, second in zip(samples, samples[1:]):
+        ax, ay = _num(first.get("x_dbref")), _num(first.get("y_dbref"))
+        bx, by = _num(second.get("x_dbref")), _num(second.get("y_dbref"))
+        sa, sb = _num(first.get("station_m")), _num(second.get("station_m"))
+        if None in (ax, ay, bx, by, sa, sb):
+            continue
+        assert ax is not None and ay is not None and bx is not None and by is not None
+        assert sa is not None and sb is not None
+        vx, vy = bx - ax, by - ay
+        length2 = vx * vx + vy * vy
+        if length2 <= 1e-9:
+            continue
+        t = max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / length2))
+        px, py = ax + t * vx, ay + t * vy
+        distance = math.hypot(x - px, y - py)
+        if best is None or distance < best["distance_m"]:
+            best = {"distance_m": distance, "station_m": sa + (sb - sa) * t}
+    return best
+
+
+def _explicit_km_gra(name: str) -> bool:
+    upper = str(name or "").replace("\\\\", "/").rsplit("/", 1)[-1].upper()
+    return bool(_EXPLICIT_KM_GRA_RE.search(upper) or "KMLINIE" in upper or "KM_LINIE" in upper)
+
+
+def _asset_identity_matches_axis(axis: dict[str, Any], asset: dict[str, Any], payload: dict[str, Any]) -> bool:
+    axis_route = _clean(axis.get("route_number"))
+    asset_route = _clean(asset.get("route_number")) or _clean(payload.get("route_from_name"))
+    if axis_route and asset_route and axis_route != asset_route:
+        return False
+    axis_track = _clean(axis.get("track_key"))
+    asset_track = _clean(asset.get("track_key")) or _clean(payload.get("track_from_name"))
+    if axis_track and asset_track:
+        return axis_track.casefold() == asset_track.casefold()
+    axis_direction = _clean(axis.get("direction"))
+    asset_direction = _clean(payload.get("direction_from_name"))
+    if axis_direction and asset_direction:
+        return axis_direction.casefold() == asset_direction.casefold()
+    return str(axis.get("axis_type") or "") == "STRECKE" and bool(axis_route and asset_route)
+
+
+def _axis_km_context(cur, axis: dict[str, Any]) -> dict[str, Any]:
+    route = _clean(axis.get("route_number"))
+    if not route:
+        return {"data_kinds": [], "explicit_gra": [], "gvp_points": []}
+    params: list[Any] = [axis["scope"]]
+    company_sql = "x.company_id IS NULL"
+    if axis["scope"] == _SCOPE_COMPANY:
+        company_sql = "x.company_id = %s"
+        params.append(axis.get("company_id"))
+    params.append(route)
+    cur.execute(
+        f"""
+        SELECT x.data_kind,x.route_number,x.track_key,x.metadata,
+               o.original_name,p.payload,p.status AS parse_status
+        FROM tb.survey_catalog_assets x
+        JOIN tb.survey_originals o ON o.id=x.original_id
+        JOIN tb.survey_parse_catalog p ON p.original_id=x.original_id
+        WHERE x.scope=%s AND {company_sql}
+          AND x.route_number=%s AND x.data_status='ACTIVE' AND p.status='PARSED'
+        ORDER BY x.source_date DESC NULLS LAST,x.created_at DESC
+        """,
+        tuple(params),
+    )
+    rows = [dict(row) for row in cur.fetchall()]
+    kinds: set[str] = set()
+    explicit_gra: list[dict[str, Any]] = []
+    gvp_points: list[dict[str, Any]] = []
+    for asset in rows:
+        kind = str(asset.get("data_kind") or "").upper()
+        kinds.add(kind)
+        payload = asset.get("payload") if isinstance(asset.get("payload"), dict) else {}
+        if kind == "GRA" and _explicit_km_gra(str(asset.get("original_name") or "")):
+            if _asset_identity_matches_axis(axis, asset, payload):
+                values = [
+                    _num(point.get("km_meter"))
+                    for point in (payload.get("points") or [])
+                    if isinstance(point, dict)
+                ]
+                values = [value for value in values if value is not None]
+                if len(values) >= 2:
+                    explicit_gra.append(
+                        {
+                            "original_name": asset.get("original_name"),
+                            "km_from_m": min(values),
+                            "km_to_m": max(values),
+                        }
+                    )
+        if kind in _GVP_DATA_KINDS:
+            for point in payload.get("points") or []:
+                if not isinstance(point, dict):
+                    continue
+                point_route = _clean(point.get("route")) or _clean(asset.get("route_number"))
+                if point_route != route:
+                    continue
+                x, y = _num(point.get("x_dbref")), _num(point.get("y_dbref"))
+                km = _num(point.get("km_meter"))
+                if None not in (x, y, km):
+                    gvp_points.append({"x_dbref": x, "y_dbref": y, "km_meter": km})
+    return {
+        "data_kinds": sorted(kinds),
+        "explicit_gra": explicit_gra,
+        "gvp_points": gvp_points,
+    }
+
+
+def _segment_km_quality(
+    cur,
+    axis: dict[str, Any],
+    segment: dict[str, Any],
+    context: dict[str, Any],
+    points: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    if segment.get("source_kind") in _MANUAL_KINDS:
+        km_a, km_b = _num(segment.get("km_from_m")), _num(segment.get("km_to_m"))
+        if km_a is not None and km_b is not None:
+            return {
+                "status": "MANUELL",
+                "color": "ORANGE",
+                "source": "MANUAL",
+                "km_from_m": min(km_a, km_b),
+                "km_to_m": max(km_a, km_b),
+                "reason": None,
+            }
+
+    if context.get("explicit_gra"):
+        gra = context["explicit_gra"][0]
+        return {
+            "status": "AUTOMATISCH",
+            "color": "GRUEN",
+            "source": "GRA_KM",
+            "km_from_m": gra["km_from_m"],
+            "km_to_m": gra["km_to_m"],
+            "reason": None,
+        }
+
+    samples = points if points is not None else _segment_points(cur, segment)
+    gvp = context.get("gvp_points") or []
+    if len(samples) >= 4 and len(gvp) >= GVP_MIN_ROBUST_MATCHES:
+        offsets: list[float] = []
+        for point in gvp:
+            projection = _project_xy_station(
+                float(point["x_dbref"]),
+                float(point["y_dbref"]),
+                samples,
+            )
+            if projection is None or projection["distance_m"] > GVP_MAX_AXIS_DISTANCE_M:
+                continue
+            offsets.append(float(point["km_meter"]) - projection["station_m"])
+        if len(offsets) >= GVP_MIN_ROBUST_MATCHES:
+            median_offset = float(statistics.median(offsets))
+            robust = [
+                value
+                for value in offsets
+                if abs(value - median_offset) <= GVP_OFFSET_OUTLIER_M
+            ]
+            if len(robust) >= GVP_MIN_ROBUST_MATCHES:
+                offset = float(statistics.median(robust))
+                stations = [_num(point.get("station_m")) for point in samples]
+                stations = [value for value in stations if value is not None]
+                if stations:
+                    return {
+                        "status": "AUTOMATISCH",
+                        "color": "GRUEN",
+                        "source": "GVP",
+                        "km_from_m": min(stations) + offset,
+                        "km_to_m": max(stations) + offset,
+                        "matched_gvp": len(robust),
+                        "median_offset_m": offset,
+                        "reason": None,
+                    }
+    if gvp:
+        return {
+            "status": "UNPLAUSIBEL",
+            "color": "GRAU",
+            "source": "GVP",
+            "km_from_m": None,
+            "km_to_m": None,
+            "matched_gvp": 0,
+            "reason": "GVP vorhanden, aber keine robuste Kalibrierung (>=4 Treffer / <=120 m / +/-80 m Offsetfilter).",
+        }
+    return {
+        "status": "FEHLT",
+        "color": "ROT",
+        "source": None,
+        "km_from_m": None,
+        "km_to_m": None,
+        "reason": "Keine belastbare automatische oder manuelle KM-Quelle für dieses Segment.",
+    }
+
+
+def _axis_km_summary(cur, axis: dict[str, Any], segments: list[dict[str, Any]]) -> dict[str, Any]:
+    context = _axis_km_context(cur, axis)
+    qualities = [
+        {"segment_id": str(segment["id"]), **_segment_km_quality(cur, axis, segment, context)}
+        for segment in segments
+    ]
+    if not qualities:
+        return {
+            "status": "KEINE_GEOMETRIE",
+            "color": "GRAU",
+            "data_kinds": context["data_kinds"],
+            "segments": [],
+        }
+    statuses = [row["status"] for row in qualities]
+    if all(value == "AUTOMATISCH" for value in statuses):
+        status, color = "AUTOMATISCH", "GRUEN"
+    elif all(value == "MANUELL" for value in statuses):
+        status, color = "MANUELL", "ORANGE"
+    elif all(value in {"AUTOMATISCH", "MANUELL"} for value in statuses):
+        status, color = "GEMISCHT", "GRAU"
+    elif any(value in {"AUTOMATISCH", "MANUELL"} for value in statuses):
+        status, color = "TEILWEISE", "GRAU"
+    elif any(value == "UNPLAUSIBEL" for value in statuses):
+        status, color = "UNPLAUSIBEL", "GRAU"
+    else:
+        status, color = "FEHLT", "ROT"
+    return {
+        "status": status,
+        "color": color,
+        "data_kinds": context["data_kinds"],
+        "segments": qualities,
+    }
 
 
 def _load_original_with_parse(cur, original_id: UUID) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -1139,11 +1406,7 @@ def update_manual_segment(segment_id: UUID, payload: ManualSegmentUpdate,
         if not row:
             raise HTTPException(404, "SURVEY_MANUAL_SEGMENT_NOT_FOUND")
         segment = dict(row)
-        if user.get("company_role") != "ADMIN":
-            if segment.get("scope") == _SCOPE_COMPANY and segment.get("company_id") != user.get("company_id"):
-                raise HTTPException(403, "SURVEY_CATALOG_COMPANY_SCOPE_FORBIDDEN")
-            if segment.get("scope") not in _ALLOWED_SCOPES:
-                raise HTTPException(403, "SURVEY_CATALOG_SCOPE_FORBIDDEN")
+        _assert_segment_write_access(user, segment)
         if segment["source_kind"] not in _MANUAL_KINDS:
             raise HTTPException(400, "SURVEY_SEGMENT_NOT_MANUAL")
         if int(segment["current_version"]) != payload.base_version:
@@ -1220,6 +1483,101 @@ def update_manual_segment(segment_id: UUID, payload: ManualSegmentUpdate,
             actor_device_id=user.get("device_id"),company_id=user.get("company_id"),
             entity_type="SURVEY_CATALOG_SEGMENT",entity_id=segment_id,
             details={"axis_id":str(axis["id"]),"status":response["status"]},
+        )
+        return response
+
+
+
+@router.delete("/manual-segments/{segment_id}")
+def deactivate_manual_segment(
+    segment_id: UUID,
+    payload: ManualSegmentDeactivate,
+    user: dict[str, Any] = Depends(require_csrf),
+) -> dict[str, Any]:
+    with transaction() as conn, conn.cursor() as cur:
+        replay = _receipt(cur, user, payload.client_change_id)
+        if replay is not None:
+            return replay
+        cur.execute(
+            """
+            SELECT s.*,a.scope,a.company_id
+            FROM tb.survey_catalog_segments s
+            JOIN tb.survey_catalog_axes a ON a.id=s.axis_id
+            WHERE s.id=%s FOR UPDATE
+            """,
+            (segment_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "SURVEY_MANUAL_SEGMENT_NOT_FOUND")
+        segment = dict(row)
+        _assert_segment_write_access(user, segment)
+        if segment["source_kind"] not in _MANUAL_KINDS:
+            raise HTTPException(400, "SURVEY_SEGMENT_NOT_MANUAL")
+        if int(segment["current_version"]) != payload.base_version:
+            raise HTTPException(
+                409,
+                {"code": "VERSION_CONFLICT", "current_version": segment["current_version"]},
+            )
+        updated = _mark_segment_status(cur, segment, "INACTIVE", user["user_id"])
+        cur.execute(
+            """
+            SELECT * FROM tb.survey_catalog_conflicts
+            WHERE candidate_segment_id=%s AND status='OPEN'
+            FOR UPDATE
+            """,
+            (segment_id,),
+        )
+        for raw_conflict in cur.fetchall():
+            conflict = dict(raw_conflict)
+            before_conflict = dict(conflict)
+            conflict_version = int(conflict["current_version"]) + 1
+            cur.execute(
+                """
+                UPDATE tb.survey_catalog_conflicts
+                SET status='RESOLVED',resolution='USER_WITHDREW',
+                    resolution_note='Manueller Beitrag wurde vom Nutzer deaktiviert.',
+                    current_version=%s,resolved_by_user_id=%s,resolved_at=now()
+                WHERE id=%s RETURNING *
+                """,
+                (conflict_version, user["user_id"], conflict["id"]),
+            )
+            resolved = dict(cur.fetchone())
+            _history(
+                cur,
+                entity_type="CONFLICT",
+                entity_id=conflict["id"],
+                version=conflict_version,
+                operation="RESOLVE",
+                before=before_conflict,
+                after=resolved,
+                actor_user_id=user["user_id"],
+                actor_company_id=user.get("company_id"),
+            )
+        _axis_extent_refresh(cur, segment["axis_id"], user["user_id"])
+        response = {
+            "segment_id": str(segment_id),
+            "axis_id": str(segment["axis_id"]),
+            "entity_version": int(updated["current_version"]),
+            "status": "DEACTIVATED",
+        }
+        _save_receipt(
+            cur,
+            user,
+            payload.client_change_id,
+            segment_id,
+            int(updated["current_version"]),
+            response,
+        )
+        audit(
+            cur,
+            action="SURVEY_CATALOG_MANUAL_DEACTIVATE",
+            actor_user_id=user["user_id"],
+            actor_device_id=user.get("device_id"),
+            company_id=user.get("company_id"),
+            entity_type="SURVEY_CATALOG_SEGMENT",
+            entity_id=segment_id,
+            details={"axis_id": str(segment["axis_id"])},
         )
         return response
 
@@ -1312,6 +1670,20 @@ def availability(route_number: str | None = Query(default=None,max_length=80),
             tuple(params),
         )
         axes = [dict(row) for row in cur.fetchall()]
+        all_quality_rows: list[dict[str, Any]] = []
+        for axis in axes:
+            cur.execute(
+                """
+                SELECT * FROM tb.survey_catalog_segments
+                WHERE axis_id=%s AND segment_status='ACTIVE'
+                ORDER BY created_at,id
+                """,
+                (axis["id"],),
+            )
+            active_segments = [dict(row) for row in cur.fetchall()]
+            quality = _axis_km_summary(cur, axis, active_segments)
+            axis["km_quality"] = quality
+            all_quality_rows.extend(quality["segments"])
         asset_visible, asset_params = _visible_sql(user,"x")
         asset_where = [asset_visible,"x.data_status='ACTIVE'"]
         if route:
@@ -1353,12 +1725,17 @@ def availability(route_number: str | None = Query(default=None,max_length=80),
     status = "AVAILABLE" if active else "PARTIAL" if axes or data_kinds else "MISSING"
     if review:
         status = "PARTIAL"
+    quality_counts: dict[str, int] = {}
+    for item in all_quality_rows:
+        key = str(item.get("status") or "UNBEKANNT")
+        quality_counts[key] = quality_counts.get(key, 0) + 1
     return {
         "status":status,"route_number":route,
         "station_code":station.upper() if station else None,
         "axis_count":len(axes),"active_segment_count":active,
         "review_segment_count":review,"data_kinds":data_kinds,
-        "source_kinds":source_kinds,"axes":[_plain(row) for row in axes],
+        "source_kinds":source_kinds,"km_quality_counts":quality_counts,
+        "axes":[_plain(row) for row in axes],
     }
 
 
@@ -1394,7 +1771,7 @@ def geometry(route_number: str | None = Query(default=None,max_length=80),
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
             f"""
-            SELECT s.*,a.route_number,a.station_code,a.station_name,a.track_key,
+            SELECT s.*,a.scope,a.company_id,a.route_number,a.station_code,a.station_name,a.track_key,
                    a.direction,a.axis_type,a.display_name,a.current_version axis_version
             FROM tb.survey_catalog_segments s
             JOIN tb.survey_catalog_axes a ON a.id=s.axis_id
@@ -1406,9 +1783,29 @@ def geometry(route_number: str | None = Query(default=None,max_length=80),
         )
         rows = [dict(row) for row in cur.fetchall()]
         result = []
+        context_cache: dict[str, dict[str, Any]] = {}
         for row in rows:
+            axis_key = str(row["axis_id"])
+            axis = {
+                "id": row["axis_id"],
+                "scope": row["scope"],
+                "company_id": row["company_id"],
+                "route_number": row.get("route_number"),
+                "station_code": row.get("station_code"),
+                "station_name": row.get("station_name"),
+                "track_key": row.get("track_key"),
+                "direction": row.get("direction"),
+                "axis_type": row.get("axis_type"),
+                "display_name": row.get("display_name"),
+            }
+            if axis_key not in context_cache:
+                context_cache[axis_key] = _axis_km_context(cur, axis)
+            full_points = _segment_points(cur,row)
             item = _plain(row)
-            item["points"] = _plain(_decimate(_segment_points(cur,row),max_points_per_segment))
+            item["km_quality"] = _plain(
+                _segment_km_quality(cur, axis, row, context_cache[axis_key], full_points)
+            )
+            item["points"] = _plain(_decimate(full_points,max_points_per_segment))
             item.pop("geometry",None)
             result.append(item)
     return {"segments":result,"count":len(result)}
