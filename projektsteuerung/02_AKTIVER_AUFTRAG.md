@@ -1684,3 +1684,17 @@ Benutzeranforderung 29.09.2026:
 3. Nutzer-Upload soll fachlich in denselben Serverkatalog einfließen, aber nicht unkontrolliert den globalen Referenzbestand verändern.
    - Vorschläge für Rollen/Freigabe, Duplikate, Projekt-/Firmenbestand vs. globaler Referenzbestand und Übernahmeprozess gewünscht.
 4. Vor Umsetzung zuerst vorhandenes Server-Schema/API und Android-Verbrauchsweg prüfen und einen belastbaren Zielvorschlag vorlegen.
+
+#### REF-DATA-003 – Zoomverbund, wachsende Abdeckung und manuelle GPS-Ergänzungen
+Ergänzung Benutzeranforderung 29.09.2026:
+- Die grafische `Trassendatenübersicht` soll mehrere Maßstabsebenen unterstützen:
+  - im Detail einzelne Achsen/Gleise/Punkte;
+  - beim Herauszoomen zusammenhängende Streckenabschnitte;
+  - weiter außen erkennbare Betriebsstellen/Bahnhofsbereiche wie z. B. Pasing.
+- Die Übersicht benötigt eine Suche mindestens nach **Streckennummer** und **Bahnhof/Betriebsstelle**.
+- Ein Bahnhof/Betriebsstellenbereich ist kein statischer einmaliger Import. Wenn später zusätzliche passende Gleise/Achsen/Abschnitte hinzukommen, soll der fachliche Bereich automatisch mitwachsen.
+- Streckenabdeckung wird abschnittsweise zusammengesetzt. Beispiel: vorhandener Bestand Strecke 1234 km 3,000–5,000 plus neuer Bestand km 6,000–9,000 wird unter derselben Strecke als gemeinsame, ggf. noch lückenhafte Abdeckung angezeigt; Originalquellen bleiben getrennt nachvollziehbar.
+- Manuell auf dem Handy erzeugte Geometrie darf fehlende Originaldaten ergänzen. Beispiel Pasing: Gleis 28 fehlt in den Originaldaten; ein berechtigter Nutzer erfasst Start/Verlauf/Ende per GPS. Diese Geometrie wird als **manuelle/abgeleitete Ergänzung** hochgeladen und kann nach Freigabe von anderen Nutzern verwendet werden.
+- Manuelle GPS-Ergänzungen überschreiben **niemals** TRA/GRA/KF/KOR-Originaldateien. Quelle, Ersteller, Version, Qualitätsstatus und Herkunft müssen getrennt nachvollziehbar bleiben.
+- Wenn später neue Originaldaten für einen bislang manuell ergänzten Bereich eintreffen, werden beide Quellen zunächst getrennt gehalten und vergleichbar gemacht; keine automatische destruktive Ersetzung.
+- Ziel ist ein fachlicher Verbund: Strecke ↔ Abschnitt/KM-Bereich ↔ Betriebsstelle ↔ Gleis/Achse. Neue passende Daten erweitern diesen Verbund automatisch, ohne Dateinamen zur Identität zu machen.

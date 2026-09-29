@@ -480,3 +480,12 @@ Status: **KONZEPT OFFEN**
 - Android benötigt read-only Verfügbarkeitsinformationen: vorhanden/teilweise/fehlt, Datenarten, KM-Qualität, Version/Aktualität sowie stabile IDs für spätere Detail-/Downloadaufrufe.
 - Nutzerupload darf erst nach serverseitiger Analyse/Klassifikation und definierter Freigabe in einen gemeinsam sichtbaren Referenzbestand gelangen.
 - Bestehende Android-Vermessungslogik bleibt fachliche Referenz für Achsen-/KM-/GVP-Status; Android-Code wird im SERVER-Projekt nicht geändert.
+
+#### REF-DATA-003 – Katalogverbund und manuelle Ergänzungen
+- Verfügbarkeits- und Grafikdaten werden nach stabilen fachlichen Schlüsseln verknüpft: Strecke, Betriebsstelle, Gleis/Achse und KM-/Raumabdeckung.
+- Mehrere Quellen derselben Strecke werden nicht als konkurrierende Komplettpakete behandelt, sondern können unterschiedliche KM-Teilbereiche beitragen.
+- Android darf fehlende Vermessungsgeometrie als **manuelle GPS-Ergänzung** erzeugen und zum Server übertragen; dafür ist ein eigener Ursprung/Status gegenüber Originaldaten erforderlich.
+- Solche Ergänzungen dürfen nach serverseitiger Freigabe für weitere berechtigte Nutzer als gemeinsamer Referenz-/Ergänzungsbestand verfügbar werden.
+- Geschützte Originale bleiben unverändert. Neue Originaldaten und vorhandene manuelle Ergänzungen werden versioniert nebeneinander geführt, bis fachlich entschieden ist, welche Geometrie für welchen Bereich bevorzugt wird.
+- Eine Betriebsstelle/Bahnhofsdarstellung darf dynamisch wachsen, wenn neue zuordenbare Gleise/Achsen/Abschnitte hinzukommen.
+- Die spätere Android-Suche soll mindestens über Streckennummer und Betriebsstelle die vorhandenen, teilweisen und manuell ergänzten Abdeckungen erkennen können.
