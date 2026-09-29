@@ -93,7 +93,7 @@ def list_global_reference_originals(
     route_number: str | None = Query(default=None, max_length=80),
     track_key: str | None = Query(default=None, max_length=160),
     data_kind: str | None = Query(default=None, max_length=40),
-    limit: int = Query(default=500, ge=1, le=2000),
+    limit: int = Query(default=1000, ge=1, le=5000),
     _: dict[str, Any] = Depends(current_portal_user),
 ) -> dict:
     where = ["o.company_id IS NULL"]
@@ -143,9 +143,20 @@ def list_global_reference_originals(
 
     for row in rows:
         row["scope"] = "GLOBAL_REFERENCE"
+        parsed_at = row.get("parsed_at")
+        row["cache_revision"] = "|".join(
+            (
+                str(row.get("sha256") or ""),
+                str(row.get("parser_version") or ""),
+                parsed_at.isoformat() if hasattr(parsed_at, "isoformat") else str(parsed_at or ""),
+            )
+        )
+    item_count = int(revision.get("item_count") or 0)
     return {
         "scope": "GLOBAL_REFERENCE",
-        "item_count": int(revision.get("item_count") or 0),
+        "item_count": item_count,
+        "returned_count": len(rows),
+        "has_more": item_count > len(rows),
         "latest_changed_at": revision.get("latest_changed_at"),
         "survey_originals": rows,
     }
@@ -302,6 +313,7 @@ def get_survey_original(
     with transaction() as conn, conn.cursor() as cur:
         row = _load_original(cur, original_id)
         _assert_original_access(user, row)
+    row["scope"] = "GLOBAL_REFERENCE" if row["company_id"] is None else "COMPANY_WORKSITE_DATA"
     row.pop("storage_key", None)
     return row
 

@@ -129,7 +129,11 @@ function updateScope(){
   const global=isGlobal();
   if(worksite){worksite.disabled=global;}
   if(worksiteWrap){worksiteWrap.style.opacity=global?'.55':'1';}
-  if(!global)updateRoute();
+  if(global){
+    if(routeNumber&&!routeNumber.dataset.manual)routeNumber.value='';
+  }else{
+    updateRoute();
+  }
 }
 function updateRoute(){if(!routeNumber||!worksite||isGlobal())return;const option=worksite.selectedOptions[0];if(!routeNumber.dataset.manual)routeNumber.value=(option&&option.dataset.route)||'';}
 if(routeNumber){
@@ -152,7 +156,8 @@ function resultHtml(r){
   const parse=r.parse_status==='PARSED'?' · fachlich ausgewertet':r.parse_status==='UNSUPPORTED'?' · noch nicht auswertbar':r.parse_status==='ERROR'?' · Auswertungsfehler':'';
   const warnings=(r.warnings||[]).length?'<ul class="warnings">'+r.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul>':'';
   const error=r.error_detail?'<div class="small state-bad" style="margin-top:5px">'+esc(r.error_detail)+'</div>':'';
-  return '<div class="result '+state+'"><div class="result-head"><div><b>'+esc(r.name||'Datei')+'</b><div><small>'+esc(r.message||'')+esc(parse)+'</small></div></div><span class="pill">'+esc(r.kind||r.status||'')+'</span></div>'+warnings+error+'</div>';
+  const scopeLabel=r.scope==='GLOBAL_REFERENCE'?'GLOBAL':'Firma/Baustelle';
+  return '<div class="result '+state+'"><div class="result-head"><div><b>'+esc(r.name||'Datei')+'</b><div><small>'+esc(scopeLabel)+' · '+esc(r.message||'')+esc(parse)+'</small></div></div><span class="pill">'+esc(r.kind||r.status||'')+'</span></div>'+warnings+error+'</div>';
 }
 async function importOne(file,index){
   qStatus(index,'Wird übertragen …','state-warn');

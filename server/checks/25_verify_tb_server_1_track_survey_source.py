@@ -16,6 +16,7 @@ def main() -> None:
     admin_survey = read("server/tbserver/admin_survey_import.py")
     admin_template = read("server/templates/v1_admin_survey_import.html")
     track = read("server/tbserver/track_data.py")
+    sections = read("server/tbserver/survey_sections.py")
     main_source = read("server/tbserver/main.py")
     caps = read("server/tbserver/capabilities.py")
     baseline = read("server/v1_migrations/001_server_1_0_base.sql")
@@ -23,6 +24,7 @@ def main() -> None:
     ast.parse(survey, filename="server/tbserver/survey_originals.py")
     ast.parse(admin_survey, filename="server/tbserver/admin_survey_import.py")
     ast.parse(track, filename="server/tbserver/track_data.py")
+    ast.parse(sections, filename="server/tbserver/survey_sections.py")
 
     assertions = [
         ("CREATE TABLE tb.survey_originals", baseline),
@@ -51,6 +53,8 @@ def main() -> None:
         ('COMPANY_WORKSITE_DATA', admin_survey),
         ('company_id IS NULL', admin_survey),
         ('id="scope"', admin_template),
+        ('cache_revision', survey),
+        ('row["company_id"] is not None and row["company_id"] != company_id', sections),
     ]
     missing = [needle for needle, source in assertions if needle not in source]
     if missing:
