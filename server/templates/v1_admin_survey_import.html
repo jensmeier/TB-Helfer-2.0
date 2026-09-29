@@ -598,6 +598,10 @@ function medianNumber(values){
   return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;
 }
 function normalizedRoute(value){return String(value||'').trim();}
+function isExplicitKmGraRow(row){
+  const name=String(row?.item?.name||'').split('/').pop().split('\\').pop().toUpperCase();
+  return /(?:^|[_-])KM\d{4}(?:[_\.-]|$)/.test(name)||name.includes('KMLINIE')||name.includes('KM_LINIE');
+}
 function collectGvpByRoute(rows){
   const byRoute=new Map();
   const seen=new Set();
@@ -676,7 +680,7 @@ function buildAxisKmStatus(rows){
   const gvpByRoute=collectGvpByRoute(rows);
   const graRowsByKey=new Map();
   rows.forEach(row=>{
-    if(row.item.kind!=='GRA'||!row.item.semantic_key)return;
+    if(row.item.kind!=='GRA'||!row.item.semantic_key||!isExplicitKmGraRow(row))return;
     if(!graRowsByKey.has(row.item.semantic_key))graRowsByKey.set(row.item.semantic_key,[]);
     graRowsByKey.get(row.item.semantic_key).push(row);
   });
@@ -763,6 +767,7 @@ function firstValidRange(rows,kind){
   });
   for(const row of ordered){
     const p=row.item.preview||{};
+    if(kind==='KM'&&row.item.kind==='GRA'&&!isExplicitKmGraRow(row))continue;
     if(kind==='KM'&&validRange(p.km_from_m,p.km_to_m))return {from:Number(p.km_from_m),to:Number(p.km_to_m),source:row.item.kind};
     if(kind==='STATION'&&validRange(p.station_from_m,p.station_to_m))return {from:Number(p.station_from_m),to:Number(p.station_to_m),source:row.item.kind};
   }
