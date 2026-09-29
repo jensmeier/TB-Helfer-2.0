@@ -732,3 +732,16 @@ Status: **SOURCE FERTIG / NICHT DEPLOYT / RUNTIME-E2E OFFEN**
 - Bestehende `survey-sections` akzeptieren globale Originalquellen bereits, weil nur fremde nicht-null `company_id` abgewiesen werden.
 - Capabilities ergänzt: `global_survey_reference_v1`.
 - Keine Android-Codeänderung und keine DB-Migration.
+
+## REF-DATA-001/002 – Datei-zuerst-Analyse + Grafik Phase A
+Status: **SOURCE FERTIG / NICHT DEPLOYT / SYNLOGY-RETEST OFFEN**
+- Admin-Import fragt vor Dateianalyse keine Strecke/Gleis/Scope mehr ab.
+- Upload wird zunächst nur in einer zeitlich begrenzten Analyse-Session (6 h) abgelegt; noch kein DB-Import.
+- TRA/GRA/KF/KV/GVP/KOR/CSV sowie ZIP-Inhalte werden dateibezogen analysiert.
+- Erkannte Strecke/Gleis/Achse, Parserformat, Punktzahl, KM-/Stationsbereiche und Warnungen werden vor Import angezeigt.
+- Grafische Lagevorschau zeigt TRA-Geometrie und XY-Punkte gemeinsam; Zoom/Pan und Elementdetails sind vorgesehen.
+- KM-/Stationsbereiche werden zusätzlich als Bereichsübersicht dargestellt.
+- Erst nach Analyse bestätigt der Benutzer je Datei `GLOBAL_REFERENCE` oder Firma/Baustelle sowie ggf. fehlende Angaben.
+- Bestätigungsimport arbeitet mit der zuvor analysierten Originaldatei; Originale bleiben immutable.
+- Capability: `survey_import_preview_v1`.
+- Keine DB-Migration, kein Compose und keine Android-Datei.

@@ -418,3 +418,16 @@ Status: **ANFORDERUNG GESICHERT / DETAILVERTRAG NOCH ZU DEFINIEREN**
 - Rohdateien werden nicht direkt in der UI interpretiert; UI arbeitet auf serverseitig normalisierten/geparsten Daten.
 - Visualisierung ist read-only gegenüber Originaldaten.
 - API-Details (Bounding-Box/Viewport, Filter, vereinfachte Geometrie/LOD, Objekt-Detail) werden vor Implementierung festgelegt.
+
+### REF-DATA-002 – normalisiertes Preview-Schema Phase A
+Status: **SERVER-SCHEMA SOURCE-SEITIG FESTGELEGT / ANDROID-NUTZUNG SPÄTER**
+- Parser-/UI-Grenze für die grafische Vorschau:
+  - `preview.line[]`: `x`, `y`, optional `station_m` für TRA/Achslinien;
+  - `preview.points[]`: `x`, `y`, `label`, `type`, optional `km_meter`, `route`, `track`;
+  - `preview.profile[]`: `km_meter`, `height_m` für späteres Höhen-/Gradientenprofil;
+  - `preview.bounds`: min/max X/Y;
+  - `km_from_m`/`km_to_m` bzw. `station_from_m`/`station_to_m`;
+  - `point_types[]` mit Typzählung.
+- Preview wird bewusst begrenzt/gesampelt, damit große Originaldateien nicht vollständig in die UI-Antwort kopiert werden.
+- Admin rendert dieses Schema aktuell als SVG; Android soll später dasselbe normalisierte Schema verwenden statt Rohdateien selbst anders zu interpretieren.
+- ADMIN-Analyse-/Importendpunkte sind kein Android-Endvertrag; der gemeinsame read-only Viewport-/Referenz-API-Pfad folgt im dauerhaften REF-DATA-002-Block.

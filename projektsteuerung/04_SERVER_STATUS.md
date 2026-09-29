@@ -458,3 +458,20 @@ Synology-Deployment:
 - `server/tbserver/capabilities.py`;
 - `server/templates/v1_admin_survey_import.html`;
 - danach nur API-Container neu starten.
+
+## REF-DATA-001/002 – Datei-zuerst-Importvorschau
+Status: **SOURCE FERTIG / DEPLOY + RUNTIME-TEST OFFEN**
+- Analyse und endgültiger Import sind jetzt getrennte Schritte.
+- Voranalyse persistiert noch kein `survey_originals`-Objekt.
+- Server normalisiert TRA-Linien und Punktdaten für eine kompakte Vorschau.
+- Admin-Seite zeigt erkannte Inhalte grafisch und fragt Ziel/Zuweisung erst danach.
+- ZIP-Import ist dateibezogen.
+- 6-h-TTL für nicht bestätigte Analyse-Sessions.
+- Capability `survey_import_preview_v1`.
+
+Synology-Deployment:
+- `server/tbserver/admin_survey_import.py` ersetzen;
+- `server/tbserver/survey_preview.py` **neu**;
+- `server/tbserver/capabilities.py` ersetzen;
+- `server/templates/v1_admin_survey_import.html` ersetzen;
+- danach nur API-Container neu starten.

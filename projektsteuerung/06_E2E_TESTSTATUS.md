@@ -399,3 +399,18 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   6. `GET /api/v1/reference/survey-originals` liefert das globale Manifest;
   7. `/parsed` liefert Parserpayload; fremde firmenspezifische Originale bleiben geschützt.
 - Status: **SOURCE FERTIG / SYNLOGY-RUNTIME-E2E OFFEN**.
+
+### REF-DATA-001/002 – Phase-A Source-/E2E-Status
+- Source vorhanden: staged Analyze-API, Confirm-Import, normalisierte Geometrie, SVG-Vorschau, KM-/Stationsbereiche, per-Datei-Zielzuweisung.
+- Sourcecheck enthält AST-Prüfung für `admin_survey_import.py` und `survey_preview.py` sowie UI/API-Marker.
+- GitHub Actions `36576031521` / `36576022515` / `36576031503`: failure ohne Runner (`runner_name=""`, `steps=[]`) → **kein CI-Testnachweis**.
+- Runtime-Pflichttest:
+  1. Admin → Trassierungsdaten: Seite beginnt mit `Dateien auswählen`, kein Importziel davor;
+  2. TRA auswählen → `Dateien analysieren` → Linie muss grafisch erscheinen;
+  3. KF/KOR/CSV mit XY → Punkte müssen in derselben Grafik erscheinen;
+  4. Strecke/KM/Punktzahl/Warnungen plausibel prüfen;
+  5. vor Import Scope auf Global/Firma wechselbar und Baustelle erst dann relevant;
+  6. Import starten → Ergebnis + Liste prüfen;
+  7. ZIP-Test: Einträge getrennt analysiert und getrennt bestätigbar;
+  8. Analyse ohne Import darf kein Original in DB/Liste erzeugen.
+- Status: **SOURCE FERTIG / SYNLOGY-RUNTIME-E2E OFFEN**.

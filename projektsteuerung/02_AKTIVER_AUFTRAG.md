@@ -1408,7 +1408,7 @@ Status: **NEUE FACHANFORDERUNG GESICHERT / KONZEPTION VOR CODE**
 - SERVER baut zunächst Datenmodell/API/Admin-Visualisierung; Android-Visualisierung bleibt eigener ANDROID-Arbeitsblock.
 
 ### REF-DATA-002 – Benutzerfreigabe Datei-zuerst + Grafik
-Status: **SERVER-UMSETZUNG FREIGEGEBEN**
+Status: **PHASE A SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
 - Benutzer bestätigt am 29.09.2026 den kombinierten Zielablauf aus Datei-zuerst-Analyse und grafischer Übersicht mit `okay`.
 - Für die erste Serverumsetzung gilt:
   - Datei auswählen/ablegen;
@@ -1419,3 +1419,21 @@ Status: **SERVER-UMSETZUNG FREIGEGEBEN**
 - Für echte Strecken-/Vermessungsreferenzformate darf die UI nach der Analyse `GLOBAL_REFERENCE` als Vorschlag vorbelegen; der Benutzer kann vor dem Import bewusst auf Firma/Baustelle umstellen.
 - Die grafische Importvorschau muss read-only sein und aus denselben normalisierten Parserdaten stammen, die später auch der dauerhaften Referenzübersicht/Android dienen.
 - Phase A jetzt: Admin-Dateianalyse + Vorschaugrafik + Importbestätigung. Dauerhafte Gesamtübersicht folgt als nächster REF-DATA-002-Block.
+
+### REF-DATA-001/002 – Phase-A-Sourceblock
+- Freigabecommit: `0acbbe72c516c11e2a784776bad5f326d0281f15`.
+- Analyse-/Preview-API: `fc4d001bcc5c681fbcdf11ae4165ff86481ccc1d`.
+- Datei-zuerst-UI-Grundaufbau: `430c427d5fd4187d6702deb66f32e98850dd533c`.
+- Grafik-/Bestätigungsworkflow: `7da65428c781e5e0a9e86771401b1a4a6ca97251`.
+- Sourcecheck-Nachschärfung: `b7dcca937692ff96b08cd3391b5f977a7b3f61cc`.
+- Neu: `server/tbserver/survey_preview.py` normalisiert Parserdaten für Lagegrafik, Punktdarstellung und KM-/Stationsbereiche.
+- Neue ADMIN-Endpoints:
+  - `POST /api/v1/admin/survey-import/analyze` = Voranalyse/staging ohne DB-Import;
+  - `POST /api/v1/admin/survey-import/analysis/{analysis_id}/import` = bestätigter Import mit Entscheidungen je Datei/ZIP-Eintrag.
+- Analyse-Sessions liegen nur temporär unter Server-Storage und werden nach 6 h verworfen; erfolgreicher Import entfernt die Session sofort.
+- ZIP wird pro enthaltenem Original analysiert; Importentscheidung/Metadaten sind pro erkanntem ZIP-Eintrag getrennt.
+- UI-Vorschau: native SVG-Lageansicht, Zoom/Pan, Klickdetails, TRA-Polylinie, KF/KOR/CSV-Punkte und KM-/Stationsbereichsbalken.
+- Default nach Analyse ist `GLOBAL_REFERENCE`; bewusstes Umschalten auf Firma/Baustelle bleibt möglich.
+- Keine DB-/Compose-/Android-Änderung.
+- GitHub Actions auf Code-HEAD: Server Runs `36576031521` und `36576022515`, Android Run `36576031503`; `runner_name=""`, `steps=[]` → **kein Testnachweis**.
+- Nächster Schritt: 4 Runtime-Dateien auf Synology übernehmen, API neu starten und echte TRA/KF-Testanalyse vor Import durchführen.

@@ -772,3 +772,17 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - GitHub CI erneut ohne Runner-Schritte; kein Testnachweis.
 - Status: **SOURCE FERTIG / NICHT DEPLOYT / SYNLOGY-E2E OFFEN**.
 - Nächster praktischer Schritt: 4 Runtime-Dateien via File Station übernehmen → API neu starten → Globalimport testen.
+
+## REF-DATA-001/002 – Phase-A Checkpoint 29.09.2026
+- Benutzer bestätigt Datei-zuerst + grafische Importvorschau als nächsten Bauweg.
+- Vor Code Freigabe in `02_AKTIVER_AUFTRAG.md` gesichert.
+- Neuer Serverpfad trennt Analyse und Import vollständig.
+- Voranalyse liefert erkannte Dateimetadaten und kompaktes normalisiertes Grafikmodell.
+- Admin rendert TRA-Linien + XY-Punkte gemeinsam, unterstützt Zoom/Pan/Klickdetails und KM-/Stationsbänder.
+- Importziel erscheint erst nach Analyse und ist je Datei/ZIP-Eintrag änderbar; Default Global.
+- Sessions verfallen nach 6 h und werden bei erfolgreichem Import entfernt.
+- Sourcecommits: `fc4d001b...`, `430c427d...`, `7da65428...`, `b7dcca93...`.
+- Keine DB-Migration, kein Compose, kein Android-Code.
+- CI ohne Runner-Schritte; kein Testnachweis.
+- Status: **SOURCE FERTIG / NICHT DEPLOYT / SYNLOGY-E2E OFFEN**.
+- Nächster Schritt: vier Runtime-Dateien auf NAS → API neu starten → echte TRA/KF-Voranalyse testen.
