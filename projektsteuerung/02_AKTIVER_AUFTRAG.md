@@ -1198,3 +1198,24 @@ Verbindliche Diagnose vor Fix:
 - Damit ist der sichtbare Layoutsprung **nicht** durch die Android-PDF-Logik verursacht. Der Serverabschluss verwendet einen zweiten, optisch nicht paritätischen Renderer.
 - Der aktuelle Server-`btb_pdf.py` ist auch in Renderer v4 fachlich weiterhin ein eigenständiges ReportLab-Layout; die Änderung v4 betrifft Firmenkopf/Logo, nicht die fehlende Android-Layoutparität des Hauptdokuments.
 - Korrekturziel: serverseitigen Abschluss-PDF-Renderer an das bestehende Android-PDF-Zielbild angleichen; Android nicht ändern, solange der aktuelle Entwurf korrekt bleibt.
+
+## TOOLING-001 – Verbindliche Entwicklungs-Plugins SERVER
+Status: **VERBINDLICHE ARBEITSWEISE**
+
+Für das SERVER-/Integrationsprojekt sind aktuell verbunden und freigegeben:
+- **GitHub** – verbindliche Quelle für Repository, Branches, HEAD, PRs, Commits, CI und Projektdateien.
+- **Context7** – für aktuelle Framework-/Bibliotheksdokumentation, insbesondere FastAPI/Python/Pydantic/PostgreSQL/Psycopg und weitere verwendete Abhängigkeiten.
+- **Postman** – für API-Discovery, API-Tests, Dokumentation, Mocking, Monitoring, Performance- und CI-nahe API-Prüfungen.
+
+Regeln:
+1. GitHub bleibt Projektgedächtnis und Wahrheit. Context7/Postman ersetzen niemals den vorgeschriebenen GitHub-Einstieg oder die Projektsteuerung.
+2. Context7 wird bei versionsabhängigen Framework-/Bibliotheksfragen bevorzugt für aktuelle Hersteller-/Bibliotheksdokumentation genutzt. Repository-Code und dokumentierter TB-Helfer-Vertrag haben bei projektspezifischen Entscheidungen Vorrang.
+3. Postman darf zur reproduzierbaren Prüfung der TB-Helfer-API genutzt werden, insbesondere für Health, Auth/Geräte, Firmen/Benutzer, Baustellen/Teams, BTB, Dateien/Bilder, Sync/Change-Feed, Mängel, Abnahmen und Releases.
+4. Postman-Source-/API-Tests sind nur dann ein Runtime-/E2E-Nachweis, wenn sie tatsächlich gegen den maßgeblichen deployten Server mit dokumentiertem Testablauf ausgeführt wurden. Collection-/Mock-/Schema-Erfolg allein ist kein Synology-E2E.
+5. Keine produktiven Secrets, Geräte-Tokens, Passwörter oder sonstigen Zugangsdaten in Collections, Doku, Repository oder Chat fest eintragen. Für Tests Platzhalter/Umgebungsvariablen und wenn möglich Staging-/Testdaten verwenden.
+6. Schreibende oder sicherheitsrelevante Aktionen gegen produktive Daten/Server nur mit ausdrücklichem Benutzerauftrag. Keine DB-, Release-, Benutzer-, Geräte-, Datei- oder Deployment-Änderung auf Verdacht.
+7. Plugins ersetzen den festgelegten Synology-Arbeitsweg nicht. File Station + Container Manager + Container-Terminal bleiben Standard; NAS-SSH nur auf ausdrücklichen Benutzerwunsch.
+8. Weitere Plugins gelten erst nach ausdrücklicher Entscheidung/Verbindung als Teil der verbindlichen SERVER-Werkzeugkette.
+
+Aktive SERVER-Werkzeugkette: **GitHub + Context7 + Postman**.
+
