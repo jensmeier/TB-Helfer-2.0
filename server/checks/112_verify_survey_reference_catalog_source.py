@@ -74,5 +74,11 @@ assert '_assert_segment_write_access(user, axis)' in catalog
 survey_originals = SURVEY_ORIGINALS.read_text(encoding="utf-8")
 assert 'Active worksite membership is sufficient for survey contribution.' in survey_originals
 assert 'Every active worksite member may contribute/re-parse survey data.' in parser
+assert 'def _geometry_fully_covers(' in catalog
+assert 'coverage >= 0.8' not in catalog
+assert 'coverage >= 0.9' not in catalog
+assert 'def _sanitize_catalog_value(' in catalog
+assert '_catalog_response(user, item)' in catalog
+assert '_catalog_response(user, row)' in catalog
 
 print("PASS survey reference catalog source")

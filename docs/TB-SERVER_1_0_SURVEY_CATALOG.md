@@ -30,6 +30,8 @@ Katalog-Sicht:
 
 Eine Firmen-Rohdatei darf mit `catalog_scope=GLOBAL` abgeleitete Geometrie in den gemeinsamen Katalog liefern. Dadurch wird die Rohdatei selbst **nicht** firmenübergreifend freigegeben.
 
+Normale Nutzer erhalten bei GLOBAL-Antworten keine fremden Bearbeiter-/Firmenidentitäten. Technische Herkunft, Quelltyp, Version und Qualitätsstatus bleiben sichtbar; vollständige Bearbeiter-/Auditdaten sind Admin-Sicht.
+
 ## Originalupload
 
 `POST /api/v1/survey-originals/from-file`
@@ -104,7 +106,7 @@ Aktuelle Grenzwerte im Serververtrag:
 - Richtungsfehler am Anschluss: <= 20°;
 - nahe aber nicht passende Geometrie bis 20 m erzeugt Prüffall statt stiller Verbindung.
 
-Neue Quelle und alte Quelle bleiben getrennte Segmente. Eine neuere Quelle darf einen älteren Abschnitt nur dann als bevorzugt ablösen, wenn die Entsprechung ausreichend vollständig nachgewiesen ist. Teilverlängerungen lassen den nicht ersetzten Altbereich bestehen.
+Neue Quelle und alte Quelle bleiben getrennte Segmente. Eine neuere Quelle darf einen älteren Abschnitt nur dann als bevorzugt ablösen, wenn **der komplette bestehende Abschnitt** geometrisch innerhalb der Merge-Toleranz von der neuen Quelle abgedeckt ist. Eine bloße hohe Teilüberdeckung (z. B. 80/90 %) genügt ausdrücklich nicht. Teilverlängerungen lassen den nicht ersetzten Alt-/Manuellbereich aktiv bestehen.
 
 ## Nutzerbeiträge
 

@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import date
 
 from tbserver.survey_catalog import (
+    _catalog_response,
     _explicit_km_gra,
+    _geometry_fully_covers,
     _project_xy_station,
     _relation,
     _source_date_from_name,
@@ -70,5 +72,45 @@ assert _source_date_from_name("31.03.2026_5302_L.tra") == date(2026, 3, 31)
 assert _explicit_km_gra("5300_KM5300_R.GRA")
 assert _explicit_km_gra("Pasing_KMLINIE.GRA")
 assert not _explicit_km_gra("Pasing_O00.GRA")
+
+partial_cover = [
+    point(4_000_020.0, 5_000_000.0, 20.0),
+    point(4_000_040.0, 5_000_000.0, 40.0),
+    point(4_000_060.0, 5_000_000.0, 60.0),
+    point(4_000_080.0, 5_000_000.0, 80.0),
+    point(4_000_100.0, 5_000_000.0, 100.0),
+    point(4_000_120.0, 5_000_000.0, 120.0),
+]
+fully_covered, coverage = _geometry_fully_covers(base, partial_cover)
+assert not fully_covered, coverage
+assert coverage["coverage_ratio"] < 1.0
+
+full_cover = [
+    point(3_999_980.2, 5_000_000.1, -20.0),
+    point(4_000_000.2, 5_000_000.1, 0.0),
+    point(4_000_020.2, 5_000_000.1, 20.0),
+    point(4_000_040.2, 5_000_000.1, 40.0),
+    point(4_000_060.2, 5_000_000.1, 60.0),
+    point(4_000_080.2, 5_000_000.1, 80.0),
+    point(4_000_100.2, 5_000_000.1, 100.0),
+    point(4_000_120.2, 5_000_000.1, 120.0),
+]
+fully_covered, coverage = _geometry_fully_covers(base, full_cover)
+assert fully_covered, coverage
+assert coverage["coverage_ratio"] == 1.0
+
+private_payload = {
+    "display_name": "Gl 28",
+    "created_by_user_id": "user-secret-id",
+    "created_by_company_id": "company-secret-id",
+    "metadata": {"resolved_by": "admin-secret-id", "source": "MANUAL"},
+}
+public_payload = _catalog_response({"company_role": "USER"}, private_payload)
+assert public_payload["display_name"] == "Gl 28"
+assert "created_by_user_id" not in public_payload
+assert "created_by_company_id" not in public_payload
+assert "resolved_by" not in public_payload["metadata"]
+admin_payload = _catalog_response({"company_role": "ADMIN"}, private_payload)
+assert admin_payload["created_by_user_id"] == "user-secret-id"
 
 print("PASS survey catalog merge logic")

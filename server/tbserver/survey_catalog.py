@@ -137,6 +137,38 @@ def _plain(value: Any) -> Any:
     return value
 
 
+_PRIVATE_CATALOG_RESPONSE_KEYS = {
+    "created_by_user_id",
+    "created_by_company_id",
+    "changed_by_user_id",
+    "changed_by_company_id",
+    "resolved_by_user_id",
+    "actor_user_id",
+    "actor_device_id",
+    "imported_by",
+    "resolved_by",
+}
+
+
+def _sanitize_catalog_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            str(key): _sanitize_catalog_value(item)
+            for key, item in value.items()
+            if str(key) not in _PRIVATE_CATALOG_RESPONSE_KEYS
+        }
+    if isinstance(value, list):
+        return [_sanitize_catalog_value(item) for item in value]
+    return value
+
+
+def _catalog_response(user: dict[str, Any], value: Any) -> Any:
+    plain = _plain(value)
+    if user.get("company_role") == "ADMIN":
+        return plain
+    return _sanitize_catalog_value(plain)
+
+
 def _source_date_from_name(name: str) -> date | None:
     text = str(name or "")
     patterns = (
@@ -1002,13 +1034,40 @@ def _source_is_newer(candidate: dict[str, Any], existing: dict[str, Any]) -> boo
     return left is not None and (right is None or left > right)
 
 
-def _coverage_ratio(existing: list[dict[str, Any]], diagnostics: dict[str, Any]) -> float:
-    span = _num(diagnostics.get("overlap_span_m")) or 0.0
-    if len(existing) < 2:
-        return 0.0
-    start, end = _num(existing[0].get("station_m")), _num(existing[-1].get("station_m"))
-    length = abs(end - start) if start is not None and end is not None else float(len(existing) * 2)
-    return 0.0 if length <= 0.001 else min(1.0, span / length)
+def _geometry_fully_covers(
+    existing: list[dict[str, Any]],
+    candidate: list[dict[str, Any]],
+    *,
+    max_distance_m: float = OVERLAP_DISTANCE_M,
+) -> tuple[bool, dict[str, Any]]:
+    if len(existing) < 2 or len(candidate) < 2:
+        return False, {"reason": "GEOMETRY_TOO_SHORT"}
+
+    step = max(1, len(existing) // 500)
+    sampled = list(existing[::step])
+    if sampled[-1] is not existing[-1]:
+        sampled.append(existing[-1])
+
+    distances: list[float] = []
+    for point in sampled:
+        x, y = _num(point.get("x_dbref")), _num(point.get("y_dbref"))
+        if x is None or y is None:
+            return False, {"reason": "EXISTING_GEOMETRY_INVALID"}
+        distance = _project_xy(x, y, candidate)
+        if distance is None:
+            return False, {"reason": "CANDIDATE_GEOMETRY_INVALID"}
+        distances.append(distance)
+
+    max_distance = max(distances)
+    covered_count = sum(1 for distance in distances if distance <= max_distance_m)
+    fully_covered = covered_count == len(distances)
+    return fully_covered, {
+        "sample_count": len(distances),
+        "covered_sample_count": covered_count,
+        "coverage_ratio": covered_count / len(distances),
+        "max_distance_m": max_distance,
+        "distance_limit_m": max_distance_m,
+    }
 
 
 def _conflict_create(cur, *, axis_id: UUID, candidate_segment_id: UUID,
@@ -1225,12 +1284,25 @@ def index_original_in_tx(cur, original_id: UUID, actor_user_id: UUID | None = No
             details=diagnostics,actor_user_id=actor_user_id,actor_company_id=company_id)
     elif relation == "OVERLAP_CONFIRMED" and existing_segment is not None:
         existing_points = _segment_points(cur, existing_segment)
-        coverage = _coverage_ratio(existing_points, diagnostics)
-        original_beats_manual = existing_segment.get("source_kind") in _MANUAL_KINDS and coverage >= 0.8
+        fully_covered, coverage_details = _geometry_fully_covers(existing_points, points)
+        metadata = dict(segment.get("metadata") or {})
+        metadata["existing_full_coverage"] = {
+            "confirmed": fully_covered,
+            **coverage_details,
+        }
+        cur.execute(
+            "UPDATE tb.survey_catalog_segments SET metadata=%s WHERE id=%s",
+            (Jsonb(metadata), segment["id"]),
+        )
+        segment["metadata"] = metadata
+        original_beats_manual = (
+            existing_segment.get("source_kind") in _MANUAL_KINDS
+            and fully_covered
+        )
         newer_full = (
             existing_segment.get("source_kind") == "ORIGINAL_TRA"
             and _source_is_newer(segment, existing_segment)
-            and coverage >= 0.9
+            and fully_covered
         )
         if original_beats_manual or newer_full:
             _mark_segment_status(cur, existing_segment, "SUPERSEDED", actor_user_id)
@@ -1637,7 +1709,7 @@ def search_catalog(q: str = Query(default="", max_length=160),
             """,
             tuple(params[:-1]+[query,params[-1]]),
         )
-        axes = [_plain(dict(row)) for row in cur.fetchall()]
+        axes = [_catalog_response(user, dict(row)) for row in cur.fetchall()]
         asset_visible, asset_params = _visible_sql(user,"x")
         cur.execute(
             f"""
@@ -1759,7 +1831,7 @@ def availability(route_number: str | None = Query(default=None,max_length=80),
         "axis_count":len(axes),"active_segment_count":active,
         "review_segment_count":review,"data_kinds":data_kinds,
         "source_kinds":source_kinds,"km_quality_counts":quality_counts,
-        "axes":[_plain(row) for row in axes],
+        "axes":[_catalog_response(user, row) for row in axes],
     }
 
 
@@ -1831,7 +1903,7 @@ def geometry(route_number: str | None = Query(default=None,max_length=80),
             )
             item["points"] = _plain(_decimate(full_points,max_points_per_segment))
             item.pop("geometry",None)
-            result.append(item)
+            result.append(_catalog_response(user, item))
     return {"segments":result,"count":len(result)}
 
 
@@ -1871,7 +1943,7 @@ def changes(after: int = Query(default=0,ge=0),
                     vis = cur.fetchone()
                     if vis and vis["scope"] == _SCOPE_COMPANY and vis["company_id"] != user.get("company_id"):
                         continue
-            visible_changes.append(_plain(row))
+            visible_changes.append(_catalog_response(user, row))
             if len(visible_changes) >= limit:
                 break
         cur.execute("SELECT coalesce(max(change_id),0) latest FROM tb.survey_catalog_history")
@@ -2021,7 +2093,7 @@ def update_axis(axis_id: UUID,payload: AxisAdminUpdate,
             entity_id=axis_id,
             details={"version":version},
         )
-        return _plain(updated)
+        return _catalog_response(user, updated)
 
 
 def reindex_all_originals() -> dict[str,Any]:
