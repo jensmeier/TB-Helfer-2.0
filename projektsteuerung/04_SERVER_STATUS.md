@@ -644,3 +644,9 @@ Status: **SOURCE-ABSCHLUSSAUDIT**
 Status: **SOURCE-CHECK-KORREKTUR OFFEN**
 - Lifecycle-Code dbcb5be9... ist geschrieben.
 - Check 112 enthält noch eine alte Signatur-Assertion vor Einführung von source_date; diese wird jetzt an den aktuellen Vertrag angepasst.
+
+## REF-DATA-003 – letzter Merge-Audit
+Status: **SOURCE-ABSCHLUSSKORREKTUR OFFEN**
+- Capability-Flags sind mit 065cd1d2 ergänzt.
+- Noch zu korrigieren: Geometrievergleich muss bei fehlender Gleis-/Richtungskennung möglich sein, sofern Strecke/Betriebsstelle kompatibel und X/Y räumlich eng sind.
+- Mehrdeutigkeit bleibt Reviewfall; keine Lockerung bei widersprüchlichen Identitäten.

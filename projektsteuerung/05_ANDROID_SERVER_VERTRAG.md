@@ -575,3 +575,8 @@ Status: **SERVERVERTRAG NACHGESCHÄRFT**
 #### REF-DATA-003 – Capability-Erkennung
 - Android prüft vor Nutzung des neuen Vertrags mindestens survey_reference_catalog_v1, survey_reference_contributions_v1 und survey_reference_change_feed_v1.
 - Fehlt eine Capability, darf der Client den betreffenden neuen Pfad nicht auf Verdacht verwenden; bestehende ältere Streckendatenpfade bleiben davon getrennt.
+
+#### REF-DATA-003 – schwache Identität, starke Geometrie
+- Ein Upload muss nicht zwingend eine Gleisnummer/Richtung liefern, wenn diese in der Quelle nicht belastbar enthalten ist.
+- Server darf bei gleicher/kompatibler Strecke oder Betriebsstelle und räumlich engem X/Y-Kandidaten die Geometrie zur Zuordnung verwenden.
+- Eindeutiger Match -> MERGED/ADDED; mehrere plausible Matches -> REVIEW_REQUIRED.

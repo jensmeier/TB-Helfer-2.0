@@ -1795,3 +1795,11 @@ Abschlussprüfung 29.09.2026:
 - Der neue Survey-Referenzkatalog muss im bestehenden /api/v1/capabilities-Vertrag explizit erkennbar sein.
 - Separate Capability-Flags für Katalog-Lesen, versionierte Nutzerbeiträge und Survey-Katalog-Change-Feed ergänzen.
 - Android soll später diese Flags prüfen statt Endpunkte auf Verdacht aufzurufen.
+
+#### REF-DATA-003 – Geometrische Zuordnung bei unvollständiger Achskennung
+Abschlussaudit 29.09.2026:
+- Neue TRA-Dateien können Strecke/Betriebsstelle besitzen, aber keine belastbare Gleis-/Richtungskennung im Dateinamen.
+- Solche Quellen dürfen nicht allein wegen fehlender Kennung von einem X/Y-Merge ausgeschlossen werden.
+- Wenn Strecke/Betriebsstelle nicht widersprechen und die Bounding-Box räumlich eng an einer vorhandenen Achse liegt, darf der Server die echte Geometrie auf Überlappung/Endpunkt/Tangente prüfen.
+- Genau eine eindeutige geometrische Achse darf automatisch verbunden werden; mehrere gleich plausible Achsen erzeugen REVIEW_REQUIRED.
+- Widersprechende Strecke/Gleis/Richtung bleiben harte Ausschlussgründe.
