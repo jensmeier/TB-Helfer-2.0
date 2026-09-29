@@ -1246,3 +1246,11 @@ Status: **ADMIN-PREVIEW UND ANDROID-NAHES BTB-PDF SICHTBAR UNTERSCHIEDLICH / QUE
 - Falls Bild 2 der Handy-Entwurf ist, ist für Renderer v5 noch kein visueller Synology-Nachweis erbracht.
 - Rote Überschriften/Inhalte und `Änderungen (entfernt)` können zum bestehenden Rework-/Original-Snapshot-Diff gehören; nicht ohne bestätigten Testfall entfernen.
 - Nächste Diagnose nach Quellenbestätigung: Preview-/Final-Header-Parität und ggf. Rework-Diff gezielt prüfen.
+### PDF-RUNTIME-009 – Zielbild bestätigt
+Status: **ZIELBILD VERBINDLICH / ADMIN-PREVIEW MUSS ANGEPASST WERDEN**
+- Benutzer bestätigt am 29.09.2026 ausdrücklich:
+  - **Bild 2 ist das gewünschte PDF-Zielbild**;
+  - **Bild 1 ist die aktuelle Admin-PDF-Vorschau**.
+- Damit ist die Admin-Vorschau aktuell fachlich/optisch irreführend und muss denselben Android-nahen BTB-Aufbau zeigen wie das bestätigte Zielbild.
+- Ziel für die Admin-Vorschau: gleicher Firmenkopf/Logo-Mechanismus und gleiche Hauptstruktur wie der serverseitige Abschlussrenderer v5; Beispielinhalt darf synthetisch sein, die Seitenstruktur darf nicht mehr das alte generische Tabellenlayout verwenden.
+- Android `app/**` bleibt unverändert.
