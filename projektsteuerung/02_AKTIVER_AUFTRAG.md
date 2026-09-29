@@ -1768,3 +1768,11 @@ Fehlerfeststellung auf aktuellem SERVER-HEAD `7d1441c092becbeefb3a00bc46993bed32
 - Korrekturziel: automatisches vollständiges Supersede nur, wenn die neue Geometrie den bestehenden Abschnitt tatsächlich vollständig bzw. mit enger geometrischer Vollabdeckung abdeckt. Sonst bleiben beide Quellsegmente aktiv und bilden gemeinsam die sichtbare Achse.
 - **Datenschutzfehler:** globale Search-/Availability-/Geometry-/Changes-Antworten dürfen normalen Nutzern keine `created_by_user_id`/`created_by_company_id` bzw. fremde Bearbeiter-/Firmenidentität offenlegen. Admin darf die vollständigen Auditdaten weiterhin sehen.
 - Rohdatei-Zugriffsschutz und geschützte Originale bleiben unverändert.
+
+#### REF-DATA-003 – Upload-/Cursor-Audit 29.09.2026
+Fehler-/Vollständigkeitsprüfung nach Teilabdeckungs-/Datenschutzfix:
+- Handy-/Portal-Upload eines Vermessungsoriginals hängt fachlich an einer Baustelle. Wenn `route_number`, `station_code` oder `station_name` im Upload fehlen, soll der Server vorhandene Baustellenwerte als Fallback übernehmen. Der Client muss dieselben Stammdaten nicht fehleranfällig doppelt senden.
+- Ein Firmen-Upload muss ein bytegleiches bereits vorhandenes **GLOBAL_REFERENCE**-Original (SHA-256 + Größe + Datenart) als vorhandenen Bestand erkennen. Private Originale anderer Firmen dürfen dabei weder sichtbar noch als Treffer offengelegt werden.
+- Der neue Survey-Katalog-Change-Feed darf bei vielen für den Nutzer unsichtbaren COMPANY-Änderungen nicht stehenbleiben. Antwort benötigt einen fortschreitenden `next_after`/Scan-Cursor auch dann, wenn im Scanfenster keine sichtbaren Änderungen liegen.
+- Für die Priorisierung „neuer Bestand“ braucht der Admin-Import zusätzlich ein explizites optionales `source_date`; Dateinamenerkennung bleibt Fallback.
+- Diese Punkte sind SERVER-Vertrag; Portal/Android sollen später nur den stabilen Vertrag konsumieren.

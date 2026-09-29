@@ -623,3 +623,13 @@ Status: **SERVER-SOURCE WEIT FORTGESCHRITTEN / 2 KORREKTUREN OFFEN**
   1. Teilüberdeckung darf vorhandenen Rest nicht komplett superseden;
   2. normale globale Katalogantworten müssen Bearbeiter/Firma redigieren.
 - Vor `SOURCE FERTIG`: beide Punkte korrigieren, Source-Checks nachziehen und Status erneut sichern.
+
+## REF-DATA-003 – Upload-/Cursor-Audit offen
+Status: **SERVER-SOURCE NOCH IM ABSCHLUSSAUDIT**
+- Teilabdeckung und Antwort-Datenschutz wurden mit `c8910871...` korrigiert.
+- Vor Server-Sourceabschluss zusätzlich:
+  - Worksite-Fallback für Strecke/Betriebsstelle beim Originalupload;
+  - GLOBAL-SHA-Duplikaterkennung ohne Fremdfirmen-Leak;
+  - Survey-Change-Feed mit `next_after`, damit unsichtbare COMPANY-Änderungen den Cursor nicht blockieren;
+  - optionales `source_date` auch im Admin-Importvertrag.
+- Kein Portal-/Android-Code in diesem Block.

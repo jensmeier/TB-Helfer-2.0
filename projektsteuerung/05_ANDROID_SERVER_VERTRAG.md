@@ -563,3 +563,11 @@ Status: **VERTRAG NACHGESCHÄRFT 29.09.2026**
 - Ein neuer Originalabschnitt darf ein vorhandenes manuelles/älteres Segment nicht allein wegen hoher Teilüberdeckung komplett deaktivieren.
 - Solange ein alter/manueller Rest räumlich nicht durch die neue Quelle abgedeckt ist, bleibt dieser Rest fachlich erhalten. Vollständiges automatisches Supersede ist nur bei nachgewiesener Vollabdeckung desselben Abschnitts zulässig.
 - Android/Portal konsumieren die zusammengesetzte aktive Sicht und müssen keine Rohdateien physisch zusammenführen.
+
+#### REF-DATA-003 – Upload-Fallback und Change-Cursor
+Status: **SERVERVERTRAG NACHGESCHÄRFT**
+- Beim mobilen Originalupload sind Strecke/Betriebsstelle optional übertragbar; fehlen sie, übernimmt der Server soweit vorhanden die Werte der zugehörigen Baustelle.
+- Bytegleiche globale Originale werden als bereits verfügbar gemeldet; ein Nutzer erfährt dabei nichts über private Originale anderer Firmen.
+- `GET /api/v1/survey-catalog/changes` liefert zusätzlich `next_after`. Android muss diesen Cursor verwenden, auch wenn `changes=[]`, damit nicht sichtbare Firmenänderungen übersprungen werden können.
+- `latest` bleibt Diagnose-/Standinformation; der nächste Request basiert auf `next_after`, nicht auf der letzten sichtbaren Entity-ID.
+- `source_date` ist das fachliche Bestandsdatum; Upload-/Importzeit bleibt davon getrennt.
