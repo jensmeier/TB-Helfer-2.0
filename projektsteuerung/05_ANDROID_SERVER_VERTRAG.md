@@ -405,3 +405,16 @@ Status: **ANFORDERUNG GESICHERT / SCOPE-ENTSCHEIDUNG OFFEN**
 - ZIP/Mehrfachupload wird pro enthaltenem Original bewertet.
 - Android soll später denselben fachlichen Ablauf nutzen; konkrete Android-UI bleibt Zuständigkeit ANDROID.
 - Vor Implementierung noch bestätigen: Scope-Regel `GLOBAL_REFERENCE` vs. `COMPANY_WORKSITE_DATA` (automatisch/default/manuelle Auswahl nach Analyse).
+
+### REF-DATA-002 – Vertrag grafische Referenzdatenübersicht
+Status: **ANFORDERUNG GESICHERT / DETAILVERTRAG NOCH ZU DEFINIEREN**
+- SERVER muss Android/Admin dieselben normalisierten Geometriedaten bereitstellen, damit beide dieselbe fachliche Darstellung erzeugen können.
+- Zielobjekte der Visualisierung:
+  - Linien/Polylinien für TRA/Gleisachsen;
+  - Punkte für KF/Fest-/Absteckpunkte;
+  - Kilometeranker/-bereiche;
+  - Stations-/Bahnhofs-/Gleis-/Weichen-/Objektinformationen soweit aus Referenzdaten verfügbar;
+  - Herkunft/Qualität/Status pro Element.
+- Rohdateien werden nicht direkt in der UI interpretiert; UI arbeitet auf serverseitig normalisierten/geparsten Daten.
+- Visualisierung ist read-only gegenüber Originaldaten.
+- API-Details (Bounding-Box/Viewport, Filter, vereinfachte Geometrie/LOD, Objekt-Detail) werden vor Implementierung festgelegt.

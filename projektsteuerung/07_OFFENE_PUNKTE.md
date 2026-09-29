@@ -4,6 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
+| REF-DATA-002 | P0 | SERVER/ANDROID | Grafische Übersicht für Import-Vorschau und dauerhaften Referenzdatenbestand erforderlich | Daten-/Viewport-Vertrag definieren → Admin-Grafik bauen → später Android-Visualisierung |
 | REF-DATA-001 | P0 | SERVER/ANDROID | Globaler Survey-Referenzbestand Phase 1 source-seitig fertig; Android-Consumer + Synology-E2E offen | 4 Serverdateien deployen → API neu starten → Globalimport/Manifest testen → danach Android-Verbrauchsvertrag umsetzen |
 | ADMIN-PDF-011 | P1 | ANDROID | SERVER/Admin 40..400 pt + X/Y + Preview am 29.09.2026 abgenommen; Android clamp aktuell noch 250 | ANDROID-Projekt: Clamp/Vertrag auf 40..400 übernehmen und Geräte-PDF praktisch prüfen |
 | PDF-RUNTIME-009 | P0 | SERVER | Ursache bestätigt; Android-naher Serverrenderer v5 source-seitig fertig, Runtime noch nicht bestätigt | 4 Serverdateien übernehmen → API neu starten → neuen Serverabschluss gegen 22.09 + Handy-Entwurf visuell prüfen |

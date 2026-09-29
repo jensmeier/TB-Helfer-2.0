@@ -1389,3 +1389,20 @@ Status: **NEUE FACHANFORDERUNG GESICHERT / NOCH NICHT UMGESETZT**
 - Mehrfach-/ZIP-Upload muss dateibezogen funktionieren: jede erkannte Datei kann eigene erkannte/fehlende Metadaten haben.
 - Der gleiche Grundablauf soll später auch für normale Nutzer gelten; SERVER ändert Android `app/**` nicht.
 - Noch fachlich zu klären: wie `GLOBAL_REFERENCE` gegenüber `COMPANY_WORKSITE_DATA` im neuen Datei-zuerst-Ablauf entschieden/angezeigt wird. Diese Entscheidung wird vor Umbau der Importlogik bestätigt.
+
+### REF-DATA-002 – Grafische Übersicht der Strecken-/Vermessungsdaten
+Status: **NEUE FACHANFORDERUNG GESICHERT / KONZEPTION VOR CODE**
+- Zusätzlich zum Datei-zuerst-Import braucht TB-Helfer eine **grafische Übersicht der erkannten und importierten Daten**.
+- Die Grafik ist kein dekoratives Extra, sondern Teil der fachlichen Prüfung:
+  - vorhandene TRA-/Gleisgeometrie sichtbar machen;
+  - erkannte Kilometerbereiche und Kilometeranker anzeigen;
+  - KF-/Fest-/Absteckpunkte mit Punktart und Position darstellen;
+  - Bahnhöfe, Gleise, Weichen/Kreuzungen und weitere Referenzobjekte soweit vorhanden einblenden;
+  - Datenherkunft je Element unterscheidbar machen (Original/Referenz vs. manuell/bearbeitet);
+  - fehlende, widersprüchliche oder nicht zuordenbare Daten sichtbar markieren.
+- Es werden zwei Ansichten benötigt:
+  1. **Import-Vorschau vor dem Import** direkt nach der Dateianalyse, damit der Benutzer erkennt, was der Server aus den Dateien gelesen hat;
+  2. **dauerhafte Referenzdaten-Übersicht nach dem Import** für den gesamten vorhandenen Bestand mit Filtern nach Strecke, Gleis/Achse, Datenart, Quelle und Kilometerbereich.
+- Die Übersicht muss Zoom/Pan und Auswahl einzelner Elemente unterstützen; Klick auf ein Element zeigt Metadaten/Quelle, ändert aber keine Originaldaten.
+- Originaldaten bleiben immutable. Bearbeitung erfolgt nur in getrennten Arbeits-/Katalogdaten.
+- SERVER baut zunächst Datenmodell/API/Admin-Visualisierung; Android-Visualisierung bleibt eigener ANDROID-Arbeitsblock.
