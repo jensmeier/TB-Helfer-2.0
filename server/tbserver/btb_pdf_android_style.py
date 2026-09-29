@@ -679,7 +679,7 @@ class AndroidStyleWriter:
         self.c.setStrokeColor(colors.black)
 
 
-def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) -> float:
+def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) -> None:
     canvas = writer.c
     canvas.setFillColor(colors.black)
     canvas.setFont("Helvetica-Bold", 18)
@@ -704,7 +704,6 @@ def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) ->
     page_right = PAGE_W - 8.0
     logo_path = context.get("company_logo_path")
     text_top = MARGIN_TOP + 12.0
-    content_bottom = MARGIN_TOP + 12.0
 
     if isinstance(logo_path, Path) and logo_path.is_file():
         try:
@@ -750,7 +749,6 @@ def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) ->
                 mask="auto",
             )
             text_top = top_y + draw_height + 8.0
-            content_bottom = max(content_bottom, text_top)
         except Exception:
             pass
 
@@ -775,9 +773,7 @@ def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) ->
             line[:80],
         )
         text_top += 9.5
-        content_bottom = max(content_bottom, text_top)
 
-    return content_bottom
 
 
 def _draw_document_header(
@@ -785,7 +781,9 @@ def _draw_document_header(
     snapshot: dict[str, Any],
     context: dict[str, Any],
 ) -> None:
-    company_header_bottom = _draw_company_header(writer, context)
+    # Firmenlogo und Fachlayout sind absichtlich entkoppelt:
+    # Breite/X/Y des Logos dürfen Wetter/Personal/Fachpunkte nicht verschieben.
+    _draw_company_header(writer, context)
     btb = snapshot.get("btb") or {}
     meta = _android_meta(btb.get("header"))
     writer.y = MARGIN_TOP + 48.0
@@ -808,7 +806,7 @@ def _draw_document_header(
         f"Zeit: {_time_hm(btb.get('started_at'))} - {_time_hm(btb.get('ended_at'))}",
         size=9.0,
     )
-    writer.y = max(writer.y + 6.0, company_header_bottom + 6.0)
+    writer.y += 6.0
 
 
 def _weather_rows(meta: dict[str, Any]) -> tuple[str, list[tuple[str, str, str, str]]]:
