@@ -1563,3 +1563,15 @@ Status: **RUNTIME-FEHLER BESTÄTIGT / VOR NÄCHSTEM CODE GESICHERT**
   - liegen mehrere Punkte in der Trefferzone, Auswahl der Treffer statt willkürlich nur einen zu öffnen;
   - sichtbarer Marker und Klick-/Hover-Trefferzone bleiben getrennt.
 - Nächster Codeblock soll diesen Punktinteraktions-/LOD-Ansatz umsetzen; kein weiterer Versuch mit schrumpfenden Markern auf Verdacht.
+### REF-DATA-002 – Hover/Klick-Punktinteraktion freigegeben
+Status: **SERVER-UMSETZUNG FREIGEGEBEN**
+- Benutzer bestätigt den beschriebenen nächsten Umbau mit `okay`.
+- Umsetzung jetzt verbindlich:
+  - Geometrie bleibt im SVG/Weltkoordinatenraum;
+  - sichtbare Vermessungspunkte und Texte werden als echte Screen-Space-Overlayelemente gerendert, damit sie beim Tiefzoom weder explodieren noch verschwinden;
+  - Hover: Punkt hervorheben + kompaktes Tooltip;
+  - Klick: Punkt fixieren und strukturierte Detaildaten im Feld `Auswahl` anzeigen;
+  - mehrere Punkte innerhalb der Trefferzone: Trefferliste statt zufälliger Einzelwahl;
+  - permanente Punkt-/Achsenlabels werden bei tiefem Zoom stark ausgedünnt;
+  - Grafik bleibt bis auf einzelne Linien hineinzoombar.
+- Keine Android-Datei ändern; Android bleibt fachliche Referenz.
