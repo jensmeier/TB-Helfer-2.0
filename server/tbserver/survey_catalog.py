@@ -900,17 +900,35 @@ def _axis_compatible(axis: dict[str, Any], fields: dict[str, Any], candidate_bbo
     track = _clean(fields.get("track_key"))
     route = _clean(fields.get("route_number"))
     direction = _clean(fields.get("direction"))
+    axis_station = _clean(axis.get("station_code"))
+    axis_route = _clean(axis.get("route_number"))
+    axis_bbox = None
+    if all(axis.get(key) is not None for key in ("bbox_min_x","bbox_min_y","bbox_max_x","bbox_max_y")):
+        axis_bbox = (
+            float(axis["bbox_min_x"]),
+            float(axis["bbox_min_y"]),
+            float(axis["bbox_max_x"]),
+            float(axis["bbox_max_y"]),
+        )
+    bbox_distance = _bbox_distance(axis_bbox, candidate_bbox)
+
     if station and track:
         return True
     if right_type == "STRECKE" and route and (direction or _clean(axis.get("direction"))):
         return True
     if route and track:
-        axis_bbox = None
-        if all(axis.get(key) is not None for key in ("bbox_min_x","bbox_min_y","bbox_max_x","bbox_max_y")):
-            axis_bbox = (float(axis["bbox_min_x"]),float(axis["bbox_min_y"]),
-                         float(axis["bbox_max_x"]),float(axis["bbox_max_y"]))
-        distance = _bbox_distance(axis_bbox, candidate_bbox)
-        return distance is not None and distance <= SPATIAL_TRACK_CLUSTER_M
+        return bbox_distance is not None and bbox_distance <= SPATIAL_TRACK_CLUSTER_M
+
+    # Weak source identity is allowed to enter the expensive geometry comparison
+    # only when route/station already gives a non-conflicting fachlicher hint and
+    # the candidate lies spatially close. _relation() then decides overlap,
+    # endpoint continuation or REVIEW_REQUIRED; this function never merges alone.
+    same_route_hint = bool(route and axis_route and route.casefold() == axis_route.casefold())
+    same_station_hint = bool(
+        station and axis_station and station.casefold() == axis_station.casefold()
+    )
+    if (same_route_hint or same_station_hint) and bbox_distance is not None:
+        return bbox_distance <= OVERLAP_NEAR_DISTANCE_M
     return False
 
 

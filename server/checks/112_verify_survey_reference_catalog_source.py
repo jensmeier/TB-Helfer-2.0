@@ -104,5 +104,8 @@ for capability in (
     "survey_reference_change_feed_v1",
 ):
     assert f'"{capability}": True' in capabilities, capability
+assert "same_route_hint" in catalog
+assert "same_station_hint" in catalog
+assert "bbox_distance <= OVERLAP_NEAR_DISTANCE_M" in catalog
 
 print("PASS survey reference catalog source")

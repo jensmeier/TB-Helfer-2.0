@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 from tbserver.survey_catalog import (
+    _axis_compatible,
     _catalog_response,
     _explicit_km_gra,
     _geometry_fully_covers,
@@ -112,5 +113,39 @@ assert "created_by_company_id" not in public_payload
 assert "resolved_by" not in public_payload["metadata"]
 admin_payload = _catalog_response({"company_role": "ADMIN"}, private_payload)
 assert admin_payload["created_by_user_id"] == "user-secret-id"
+
+existing_axis = {
+    "route_number": "5524",
+    "station_code": "MP",
+    "track_key": "28",
+    "direction": None,
+    "axis_type": "GLEIS",
+    "bbox_min_x": 4_000_000.0,
+    "bbox_min_y": 5_000_000.0,
+    "bbox_max_x": 4_000_100.0,
+    "bbox_max_y": 5_000_010.0,
+}
+weak_fields = {
+    "route_number": "5524",
+    "station_code": "MP",
+    "track_key": None,
+    "direction": None,
+    "axis_type": "GLEIS",
+}
+assert _axis_compatible(
+    existing_axis,
+    weak_fields,
+    (4_000_050.0, 5_000_001.0, 4_000_140.0, 5_000_011.0),
+)
+assert not _axis_compatible(
+    existing_axis,
+    {**weak_fields, "route_number": "9999"},
+    (4_000_050.0, 5_000_001.0, 4_000_140.0, 5_000_011.0),
+)
+assert not _axis_compatible(
+    existing_axis,
+    weak_fields,
+    (4_001_000.0, 5_001_000.0, 4_001_100.0, 5_001_010.0),
+)
 
 print("PASS survey catalog merge logic")

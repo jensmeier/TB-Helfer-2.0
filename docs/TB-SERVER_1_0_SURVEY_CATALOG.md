@@ -100,6 +100,7 @@ Berücksichtigt werden insbesondere:
 - Tangente/Richtung am Anschluss;
 - Quell-/Bestandsdatum;
 - KM/Station soweit belastbar.
+- Fehlt Gleis/Richtung, darf bei nicht widersprechender Strecke/Betriebsstelle ein räumlich enger X/Y-Kandidat in den Geometrievergleich aufgenommen werden. Der Geometrievergleich – nicht die Nähe allein – entscheidet; mehrere gleich plausible Achsen bleiben Prüffall.
 
 Aktuelle Grenzwerte im Serververtrag:
 
