@@ -15,6 +15,7 @@ def main() -> None:
     survey = read("server/tbserver/survey_originals.py")
     admin_survey = read("server/tbserver/admin_survey_import.py")
     survey_preview = read("server/tbserver/survey_preview.py")
+    survey_parser = read("server/tbserver/survey_parser.py")
     admin_template = read("server/templates/v1_admin_survey_import.html")
     track = read("server/tbserver/track_data.py")
     sections = read("server/tbserver/survey_sections.py")
@@ -25,6 +26,7 @@ def main() -> None:
     ast.parse(survey, filename="server/tbserver/survey_originals.py")
     ast.parse(admin_survey, filename="server/tbserver/admin_survey_import.py")
     ast.parse(survey_preview, filename="server/tbserver/survey_preview.py")
+    ast.parse(survey_parser, filename="server/tbserver/survey_parser.py")
     ast.parse(track, filename="server/tbserver/track_data.py")
     ast.parse(sections, filename="server/tbserver/survey_sections.py")
 
@@ -54,6 +56,9 @@ def main() -> None:
         ('/analysis/{analysis_id}/import', admin_survey),
         ('class SurveyImportPlan', admin_survey),
         ('build_survey_preview', survey_preview),
+        ('PARSER_VERSION = "tb-survey-parser-3"', survey_parser),
+        ('_kor_metadata_line', survey_parser),
+        ('unvollständige KOR-Datenzeile', survey_parser),
         ('"height_m"', survey_preview),
         ('"point_id"', survey_preview),
         ('"source_name"', survey_preview),
@@ -65,13 +70,14 @@ def main() -> None:
         ('id="startAnalysis"', admin_template),
         ('id="surveyMap"', admin_template),
         ('id="toggleFullscreen"', admin_template),
-        ('renderDynamicLabels', admin_template),
-        ('pointDetailText', admin_template),
         ('axisLabelCandidates', admin_template),
         ('pointLabelCandidates', admin_template),
         ('id="mapOverlay"', admin_template),
         ('screen-point', admin_template),
         ('showHoverTooltip', admin_template),
+        ('showAxisHoverTooltip', admin_template),
+        ('axis-hit', admin_template),
+        ('Math.max(0.5', admin_template),
         ('nearbyPointCandidates', admin_template),
         ('collectGvpByRoute', admin_template),
         ('calibrateAxisFromGvp', admin_template),
@@ -80,8 +86,6 @@ def main() -> None:
         ('axis-unplausible', admin_template),
         ('KM aus Datei', admin_template),
         ('buildAxisKmStatus', admin_template),
-        ('Math.max(6.25', admin_template),
-        ('KM aus Datei', admin_template),
         ('GVP/Festpunkte', admin_template),
         ('showPointChoices', admin_template),
         ('pointDetailRows', admin_template),

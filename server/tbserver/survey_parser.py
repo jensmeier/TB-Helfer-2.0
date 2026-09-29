@@ -20,7 +20,7 @@ from .survey_originals import _assert_original_access, _load_original
 
 
 router = APIRouter(prefix="/api/v1", tags=["survey-parser"])
-PARSER_VERSION = "tb-survey-parser-2"
+PARSER_VERSION = "tb-survey-parser-3"
 KF_RECORD_SIZE = 102
 _DATE_TOKEN_RE = re.compile(r"(?<!\d)(?:19|20)\d{2}[-_.]\d{2}[-_.]\d{2}(?!\d)")
 
@@ -436,6 +436,49 @@ def _parse_gvp_family(name: str, data: bytes) -> tuple[str, dict, list[str]]:
     return detected, payload, warnings
 
 
+def _kor_metadata_line(line: str, tokens: list[str]) -> bool:
+    stripped = line.strip()
+    if not stripped:
+        return True
+    if re.fullmatch(r"[-_=.;:\s]+", stripped):
+        return True
+
+    lower = stripped.casefold()
+    header_words = (
+        "messcode",
+        "punktname",
+        "punkt name",
+        "pkt-nr",
+        "pkt.nr",
+        "punktnr",
+        "rechtswert",
+        "hochwert",
+        "koordinaten",
+    )
+    if any(word in lower for word in header_words):
+        return True
+    if lower.startswith(("name ", "name\t", "projekt ", "datei ", "system ", "lage ")):
+        return True
+
+    numeric = [_float_de(token) for token in tokens]
+    numeric_count = sum(value is not None for value in numeric)
+    coordinate_like = sum(
+        value is not None and 3_000_000.0 <= abs(value) <= 6_500_000.0
+        for value in numeric
+    )
+    # Freier Text / Abschnittsbezeichnungen ohne Koordinaten sind Metadaten.
+    # Eine potenziell beschädigte Datenzeile mit Zahlen oder Koordinaten bleibt
+    # dagegen sichtbar als Warnung.
+    return numeric_count <= 1 and coordinate_like == 0
+
+
+def _kor_warning_line(line: str, max_length: int = 90) -> str:
+    compact = re.sub(r"\s+", " ", line.strip())
+    if len(compact) > max_length:
+        compact = compact[: max_length - 1] + "…"
+    return compact
+
+
 def _parse_kor_text(name: str, data: bytes) -> tuple[str, dict, list[str]]:
     route = _route_from_name(name)
     points: list[dict[str, Any]] = []
@@ -445,12 +488,18 @@ def _parse_kor_text(name: str, data: bytes) -> tuple[str, dict, list[str]]:
         if not line or line.startswith("#") or line.startswith("//"):
             continue
         tokens = [token for token in re.split(r"\s+", line) if token]
+        if _kor_metadata_line(line, tokens):
+            continue
         if len(tokens) < 4:
-            warnings.append(f"Zeile {index}: zu wenig Spalten")
+            warnings.append(
+                f'Zeile {index}: unvollständige KOR-Datenzeile "{_kor_warning_line(line)}"'
+            )
             continue
         x, y, height = _float_de(tokens[1]), _float_de(tokens[2]), _float_de(tokens[3])
         if not tokens[0] or x is None or y is None:
-            warnings.append(f"Zeile {index}: Pflichtwerte fehlen")
+            warnings.append(
+                f'Zeile {index}: KOR-Pflichtwerte fehlen "{_kor_warning_line(line)}"'
+            )
             continue
         if not _plausible_xy(x, y):
             warnings.append(f"Zeile {index}: unplausible DB_REF-Koordinate")
