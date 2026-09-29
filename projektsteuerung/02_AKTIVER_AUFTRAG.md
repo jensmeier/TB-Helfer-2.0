@@ -1515,3 +1515,18 @@ Status: **RUNTIME-FEHLER BESTÄTIGT / KONZEPTKORREKTUR VOR WEITEREM CODE**
   - Punktdetail primär per Klick/Tap, nicht durch dauerhafte Textwolke;
   - Android-`TrassenGrafikView` ist Referenz für dieses Zoom-/LOD-Verhalten.
 - Vor weiterer Änderung zuerst Zoom-/LOD-Konzept sauber festlegen und Benutzer erklären; kein weiterer Code auf Verdacht.
+### REF-DATA-002 – KM/Station nur bei belastbarem Bereich anzeigen
+Status: **RUNTIME-BEFUND GESICHERT / KONZEPT PRÄZISIERT**
+- Neuer Screenshot mit Strecke 5300 zeigt: der rechte KM-/Stationsbereich ist **grundsätzlich fachlich sinnvoll**, wenn ein echter Bereich erkannt wurde.
+- Beispiel bestätigt:
+  - `Str 5300-2 · Quelle R` besitzt einen plausiblen Bereich `54+354.296 – 60+855.530`;
+  - `Str 5300-0 · Quelle S` zeigt dagegen `0+000.000 – 0+000.000` und liefert damit keinen sinnvollen Informationswert.
+- Korrektur zur vorherigen Annahme: KM/Station nicht pauschal entfernen.
+- Ziel:
+  - nur Achsen/Objekte mit belastbarem KM-/Stationsbereich als Balken darstellen;
+  - `0+000 – 0+000`, fehlende oder offensichtlich nicht belastbare Bereiche nicht als normal gültigen Balken zeigen;
+  - stattdessen bei Bedarf `kein KM-Bereich erkannt`/`KM fehlt` kennzeichnen;
+  - reale Bereiche aus GRA/KM-Quelle bevorzugen;
+  - Station nur als separaten technischen Ersatz anzeigen, wenn kein echter KM-Bezug vorhanden ist;
+  - in Großansicht darf dieser Bereich einklappbar sein, damit die Grafik maximalen Platz bekommt.
+- Diese Präzisierung betrifft nur Darstellung/Qualitätsstatus, nicht die Originaldaten.
