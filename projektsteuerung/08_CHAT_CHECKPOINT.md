@@ -732,3 +732,12 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Nur Serverrenderer + Sourcecheck geändert; Android/DB/Compose unverändert.
 - CI Run `36557039970` ohne Runner-Schritte; kein Testnachweis.
 - Nächster Schritt: eine Runtime-Datei auf Synology, API neu starten, Tabellenposition bei mehreren Logo-Werten vergleichen.
+
+## ADMIN-PDF-013 – Checkpoint 29.09.2026
+- Benutzer meldet nach ADMIN-PDF-012: `99% fertig`; Tabellen bleiben stehen, aber `BAUTAGEBUCH` ist abgeschnitten.
+- Screenshot zeigt, dass das sehr große Logo bzw. dessen weißer Hintergrund den rechten Titelteil überdeckt.
+- Anforderung zuerst in `02_AKTIVER_AUFTRAG.md` gesichert.
+- Fix Commit `42de28d2422506d4fb594b19c38f8e404d598a22`: Titel wird als oberste Ebene mit weißem Schutzfeld nach dem Logo gezeichnet.
+- Keine Android-/DB-/Compose-Änderung.
+- CI Run `36558072863` ohne Runner-Schritte; kein Testnachweis.
+- Nächster Schritt: eine Runtime-Datei auf Synology, API neu starten, identischen Logo-Test wiederholen.

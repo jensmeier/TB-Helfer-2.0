@@ -695,3 +695,11 @@ Status: **SERVER SOURCE-FIX FERTIG / SYNLOGY-RETEST OFFEN**
 - Wetter, Personal/Maschinen und Punkte 4–8 starten unabhängig von Logo-Größe/-Position an ihren festen Zielpositionen.
 - Extrem große Logos dürfen optisch in den Inhaltsbereich hineinragen; der Renderer verschiebt dafür aber keine Tabellen.
 - keine Android-/DB-/Compose-Änderung.
+
+## ADMIN-PDF-013 – BAUTAGEBUCH-Titel über Logo
+Status: **SERVER SOURCE-FIX FERTIG / SYNLOGY-RETEST OFFEN**
+- Nutzer bestätigt Layout nach 400-pt-/Y-/Tabellenfix als fast fertig; Restfehler: `BAUTAGEBUCH` wird bei sehr großem/verschobenem Logo abgeschnitten.
+- Ursache: Titel wurde vor dem Logo gezeichnet; der weiße Logo-Hintergrund konnte den rechten Titelteil überdecken.
+- Fix: Firmenlogo/Kontaktblock zuerst, danach Titel als oberste Ebene mit eigenem weißen Hintergrund rendern.
+- Tabellen/Fachlayout bleiben unverändert/fest.
+- keine Android-/DB-/Compose-Änderung.

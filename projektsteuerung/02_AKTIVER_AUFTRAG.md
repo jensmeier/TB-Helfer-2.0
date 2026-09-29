@@ -1309,3 +1309,13 @@ Status: **RUNTIME-FEHLER BESTÄTIGT / SERVER-FIX FREIGEGEBEN**
 - Fachlayout/Tabellenposition darf dabei unverändert bleiben.
 - SERVER-Lösung: Firmenlogo zuerst zeichnen; den linken Titelbereich anschließend als eigene oberste Ebene mit weißem Hintergrund + Titeltext rendern.
 - Android `app/**` nicht ändern.
+
+### ADMIN-PDF-013 – Source-Fix
+- Anforderung vor Code gesichert.
+- Code-Commit `42de28d2422506d4fb594b19c38f8e404d598a22`.
+- `btb_pdf_android_style.py`: `BAUTAGEBUCH` wird nicht mehr vor dem Logo gezeichnet, sondern nach Logo + Firmenkontakt als oberste Ebene.
+- Hinter dem Titel wird ein kleiner weißer Schutzbereich gezeichnet; dadurch kann der transparente/weiße Logo-Hintergrund keine Buchstaben mehr abschneiden.
+- Keine Änderung an festen Wetter-/Tabellenpositionen.
+- Sourcecheck um Titel-Layer-Marker ergänzt.
+- GitHub Actions Run `36558072863`: `failure`, `runner_name=""`, `steps=[]` → kein Testnachweis.
+- Nächster Schritt: nur `btb_pdf_android_style.py` auf Synology ersetzen, API neu starten, denselben 400-pt-/X/Y-Test erneut öffnen.

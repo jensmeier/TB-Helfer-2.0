@@ -365,3 +365,14 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   3. Wetteroberkante und Tabellenposition müssen unverändert bleiben;
   4. finalen BTB-Abschluss ebenfalls prüfen.
 - Status: **SOURCE-FIX FERTIG / SYNLOGY-E2E OFFEN**.
+
+### ADMIN-PDF-013 – Source-Status
+- Source-Diff bestätigt: Titel-Layer wird nach Logo gerendert.
+- Sourcecheck enthält Marker `Der Dokumenttitel liegt absichtlich als oberste Ebene`.
+- GitHub Actions `36558072863` ohne Runner/Steps → **kein CI-Testnachweis**.
+- Runtime-Pflichttest:
+  1. Logo 400 pt;
+  2. X/Y so einstellen, dass Logo in Titelbereich hineinragt;
+  3. `BAUTAGEBUCH` muss vollständig sichtbar bleiben;
+  4. Wetter/Tabellenposition muss unverändert bleiben.
+- Status: **SOURCE-FIX FERTIG / SYNLOGY-E2E OFFEN**.

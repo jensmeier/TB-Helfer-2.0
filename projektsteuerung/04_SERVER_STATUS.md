@@ -420,3 +420,10 @@ Status: **SOURCE-FIX FERTIG / RUNTIME-RETEST OFFEN**
 - Wetter, Personal/Maschinen und Punkte 4–8 bleiben auf festen Positionen.
 - Admin-Vorschau und finaler BTB-Abschluss teilen dieselbe Logik.
 - keine Migration, kein Compose, keine Android-Änderung.
+
+## ADMIN-PDF-013 – Titel-Schutzlayer
+Status: **SOURCE-FIX FERTIG / RUNTIME-RETEST OFFEN**
+- `BAUTAGEBUCH` bleibt jetzt unabhängig von Logo-Breite/X/Y vollständig sichtbar.
+- Titel wird zuletzt gezeichnet und erhält einen eigenen weißen Hintergrundbereich.
+- Tabellenpositionen bleiben durch ADMIN-PDF-012 unverändert.
+- keine Migration, kein Compose, keine Android-Änderung.
