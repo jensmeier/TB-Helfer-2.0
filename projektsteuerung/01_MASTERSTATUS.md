@@ -677,3 +677,13 @@ Status: **SOURCE-FIX FERTIG / SYNLOGY-RETEST OFFEN**
 - Personal- und Maschinenbox dürfen wieder unterschiedlich hoch sein wie im bestätigten Zielbild.
 - keine DB-/Compose-/Android-Änderung.
 - Synology-Retest nach Dateiübernahme + API-Neustart offen.
+
+## ADMIN-PDF-011 – Logo 400 pt / Y-Versatz
+Status: **SERVER SOURCE-FIX FERTIG / SYNLOGY-RETEST OFFEN / ANDROID-ANPASSUNG SEPARAT**
+- Admin-/Serververtrag akzeptiert `logo_width_pt` jetzt 40..400 statt 40..250.
+- Y-Versatzfehler im Android-nahen Serverrenderer behoben: bisher kollabierten die oberen/unteren Grenzen bei hohen/quadratischen Logos praktisch auf denselben Y-Wert.
+- Neuer Renderer verwendet einen echten Y-Anker plus `offset_y_pt`; nur A4-Seitengrenzen begrenzen.
+- Große Logos dürfen tatsächlich breiter als die frühere rechte 250-pt-Zone werden; Dokumentinhalt beginnt bei Bedarf unter dem Firmenkopf, damit keine vertikale Überlagerung entsteht.
+- Admin-Slider/Nummer/Preview/Save auf 400 erweitert.
+- Android bleibt unverändert und begrenzt aktuell weiterhin auf 250; Vertragsbedarf ist in `05_ANDROID_SERVER_VERTRAG.md` dokumentiert.
+- keine DB-Migration, kein Compose.

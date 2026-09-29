@@ -4,6 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
+| ADMIN-PDF-011 | P0 | SERVER/ANDROID | Server/Admin bis 400 pt + Y-Fix source-seitig fertig; Android clamp aktuell noch 250 | 4 Serverdateien deployen → API neu starten → 250/400 + Y -60/0/+60 testen; Android-Vertrag separat umsetzen |
 | ADMIN-PDF-010 | P0 | SERVER | Admin-PDF-Vorschau zeigte falsches generisches Layout; Source jetzt auf Android-nahes Zielbild umgestellt | 2 Python-Dateien deployen → API neu starten → Admin-Vorschau/Logo-Regler gegen Bild 2 prüfen |
 | PDF-RUNTIME-009 | P0 | SERVER | Ursache bestätigt; Android-naher Serverrenderer v5 source-seitig fertig, Runtime noch nicht bestätigt | 4 Serverdateien übernehmen → API neu starten → neuen Serverabschluss gegen 22.09 + Handy-Entwurf visuell prüfen |
 | ADMIN-DASH-008 | P1 | SERVER | Physische Synology-Laufwerkstemperaturen in °C source-seitig umgesetzt; Runtime noch nicht geprüft | Serverdateien + Compose auf Synology übernehmen → API/Projekt recreaten → Laufwerk 1/2 gegen DSM-Werte vergleichen |

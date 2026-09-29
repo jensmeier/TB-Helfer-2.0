@@ -342,3 +342,15 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   3. Logo-Breite/X/Y ändern und Vorschau beobachten;
   4. Speichern, Großansicht und finalen BTB-Abschluss vergleichen.
 - Status: **SOURCE-FIX FERTIG / RUNTIME OFFEN**.
+
+### ADMIN-PDF-011 – Source-Status
+- Screenshotfehler `Y-Versatz wirkt nicht` source-seitig auf die alte Geometrie-Klemmung eingegrenzt und korrigiert.
+- Server/API/Admin-Maxwert 400 pt source-seitig vorhanden.
+- GitHub Actions ohne Runner-Steps → **kein CI-Testnachweis**.
+- Runtime-Pflichttest:
+  1. Breite 250 und 400 vergleichen;
+  2. bei identischer Breite Y = -60, 0, +60 prüfen;
+  3. X weiterhin prüfen;
+  4. `PDF-Layout speichern`, Seite neu laden und Persistenz prüfen;
+  5. Großansicht und serverseitigen Abschluss prüfen.
+- Status: **SOURCE-FIX FERTIG / SYNLOGY-E2E OFFEN**.

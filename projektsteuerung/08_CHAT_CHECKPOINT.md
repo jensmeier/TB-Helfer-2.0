@@ -713,3 +713,13 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Keine Android-/DB-/Compose-Änderung.
 - CI erneut ohne Runner/Steps; kein Testnachweis.
 - Nächster Schritt: zwei Python-Dateien auf Synology → API neu starten → Screenshot der neuen Admin-Vorschau.
+
+## ADMIN-PDF-011 – Checkpoint 29.09.2026
+- Benutzer-Screenshot: Admin-Zielbild nun strukturell passend; bei `250 / X=70 / Y=-60` bleibt Logo-Y sichtbar unverändert.
+- Neue Anforderung: Breite bis 400 pt und funktionierender Y-Versatz.
+- Vor Code in `02_AKTIVER_AUFTRAG.md` + `05_ANDROID_SERVER_VERTRAG.md` gesichert.
+- Ursache: v5-Renderer setzte max. Logo-Höhe 88 pt und klemmte `top_y` anschließend so, dass bei hohen/quadratischen Logos kein nutzbarer Y-Bereich übrig blieb.
+- Fix `de7374dc392959131326815c30ebdb2733eea705`: Server/API/UI 400 pt; echter Y-Anker; A4-Schutzgrenzen; nachfolgender Inhalt berücksichtigt Logo-Unterkante.
+- Android nicht geändert; aktueller Android-Clamp 250 bleibt separates Vertrags-To-do.
+- CI erneut ohne Runner/Steps; kein Testnachweis.
+- Nächster Schritt: 4 Runtime-Dateien auf Synology, API neu starten, Regler praktisch prüfen.

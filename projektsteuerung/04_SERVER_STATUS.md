@@ -399,3 +399,16 @@ Deployment:
 - `server/tbserver/btb_pdf.py` und `server/tbserver/btb_pdf_android_style.py` ersetzen;
 - API-Container neu starten;
 - kein Recreate und keine Migration erforderlich.
+
+## ADMIN-PDF-011 – Breite/Y-Regler
+Status: **SOURCE-FIX FERTIG / RUNTIME-RETEST OFFEN**
+- `logo_width_pt` serverseitig 40..400;
+- Admin-UI/Preview/Persistenz auf 400;
+- Y-Versatz im v5-Renderer repariert;
+- A4-Seitengrenzen bleiben Schutzgrenze;
+- nachfolgender Inhalt berücksichtigt tatsächliche Firmenkopfhöhe;
+- keine Migration/Compose.
+
+Android-Hinweis:
+- aktueller Android-Branch clamp`t weiterhin 40..250;
+- notwendige Android-Anpassung ist nur dokumentiert, nicht vom SERVER geändert.

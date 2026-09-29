@@ -1273,3 +1273,14 @@ Status: **ANFORDERUNG GESICHERT / URSACHE EINGEGRENZT**
 - Source-Diagnose: der v5-Serverrenderer begrenzt quadratische/hohe Logos aktuell auf `max_height=88 pt`; anschließend wird `top_y` so geklemmt, dass bei einem auf diese Maximalhöhe skalierten Logo der Y-Spielraum praktisch auf einen festen Wert zusammenfällt. Das erklärt den nicht wirksamen Y-Regler.
 - SERVER-Ziel: `logo_width_pt` 40..400 akzeptieren/speichern/rendern und Y-Versatz sichtbar anwenden, jeweils mit sicheren Seitengrenzen.
 - Weil `logo_width_pt` ein gemeinsames Android↔Server-Feld ist, muss die Erweiterung 250→400 im Vertrag dokumentiert werden; SERVER ändert kein `app/**`.
+
+### ADMIN-PDF-011 – Source-Fix
+- Commit `de7374dc392959131326815c30ebdb2733eea705`.
+- `company.py`: Pydantic-/Preview-/Normalisierungsgrenze auf 400 pt.
+- `v1_company_branding.html`: Slider, Zahlenfeld, Live-Preview und Speichern auf 40..400.
+- `btb_pdf_android_style.py`: 400-pt-Renderbereich; Y wird aus `base_top + offset_y_pt` berechnet und nur an realen A4-Grenzen geklemmt.
+- Bei sehr großem Logo wird der nachfolgende BTB-Inhalt unter den tatsächlichen Firmenkopf geschoben statt ihn vertikal zu überdecken.
+- `btb_pdf.py` Legacy-Clamp ebenfalls auf 400 angehoben.
+- Source-Marker geprüft: alle Server-Clamps/HTML-Maxwerte auf 400 vorhanden.
+- GitHub Actions auf Code-HEAD: Server `36555229698`/`36555222572`, Android `36555229687`; alle ohne Runner (`runner_name=""`, `steps=[]`) → kein Testnachweis.
+- Synology-Retest: 4 Runtime-Dateien übernehmen, API neu starten, Breite 250→400 und Y -60/0/+60 sichtbar vergleichen.
