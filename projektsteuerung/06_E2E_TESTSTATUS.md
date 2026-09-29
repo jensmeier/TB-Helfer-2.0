@@ -445,3 +445,16 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   6. weiterhin keine gefüllten Flächen.
 - GitHub CI `36586687636` ohne Runner/Steps → **kein Testnachweis**.
 - Status: **SOURCE KORRIGIERT / SYNLOGY-RETEST OFFEN**.
+
+### REF-DATA-002 – Tiefzoom/KM-Retest
+- Sourceprüfung: Browser-JavaScript V8 = PASS.
+- GitHub Actions auf Code-HEAD ohne Runner/Steps → **kein CI-Testnachweis**.
+- Synology-Pflichttest:
+  1. Pasing oder 5300 analysieren;
+  2. Großansicht öffnen und bis nahe an einzelne Gleislinie hineinzoomen;
+  3. gelbe Marker dürfen nicht größer werden; bei tiefem Zoom müssen sie kleiner/ruhiger wirken;
+  4. Punkttexte dürfen Geometrie nicht als Textwolke verdecken;
+  5. Punkt anklicken → Detailanzeige bleibt nutzbar;
+  6. 5300: echter Bereich `54+354.296–60+855.530` bleibt sichtbar;
+  7. `0+000–0+000` darf nicht als gültiger Balken erscheinen.
+- Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**.

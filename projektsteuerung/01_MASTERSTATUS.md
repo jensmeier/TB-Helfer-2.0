@@ -773,3 +773,18 @@ Status: **SOURCE KORRIGIERT / SYNLOGY-RETEST OFFEN**
 - Preview-Schema liefert dafür zusätzlich `height_m`, `point_id`, `point_code`, `coordinate_system`, `source_name`.
 - Achsenlabels werden verkleinert, zoomabhängig kurz/lang dargestellt und kollisionsarm begrenzt.
 - keine DB-/Compose-/Android-Änderung.
+
+## REF-DATA-002 – Android-ähnliches Tiefzoom/LOD
+Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
+- Admin-Grafik trennt nun Weltgeometrie von Screen-Space-Punktmarkern/Labels.
+- Tiefzoom bis ca. 30x statt bisher ca. 12,5x.
+- Punktmarker behalten bildschirmbezogene Größe und werden bei starkem Zoom zusätzlich kleiner statt mitzuwachsen.
+- Punkt-Klickziel bleibt separat größer, obwohl sichtbarer Marker klein wird.
+- Achsen- und Punktlabels werden bei tiefem Zoom kleiner und stärker begrenzt; Geometrie hat Vorrang vor Text.
+- KM/Station rechts wurde fachlich nachgeschärft:
+  - nur belastbare Bereiche werden als Balken dargestellt;
+  - GRA/KM-Quelle wird für KM bevorzugt;
+  - 0+000–0+000 / Nullspanne gilt nicht als belastbarer Bereich;
+  - Station wird nur getrennt als technischer Ersatz angezeigt;
+  - fehlende KM-Bereiche werden kompakt gezählt statt mit wertlosen Nullbalken gefüllt.
+- keine DB-/Compose-/Android-Änderung.

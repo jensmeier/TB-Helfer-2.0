@@ -1499,7 +1499,7 @@ Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
 - GitHub Action `36586687636`: `runner_name=""`, `steps=[]` → **kein Testnachweis**.
 - Für Synology-Retest müssen nur `survey_preview.py` und `v1_admin_survey_import.html` ersetzt werden; `admin_survey_import.py` aus vorigem Fix bleibt gültig.
 ### REF-DATA-002 – Zoommodell muss Android entsprechen
-Status: **RUNTIME-FEHLER BESTÄTIGT / KONZEPTKORREKTUR VOR WEITEREM CODE**
+Status: **SOURCE-KORREKTUR FERTIG / SYNLOGY-RETEST OFFEN**
 - Benutzer-Runtime-Test zeigt: Großansicht ist vorhanden, aber tiefes Hineinzoomen ist noch unbrauchbar.
 - Fehlerbild:
   - Punktkreise wachsen beim SVG-Zoom mit und werden zu groß;
@@ -1530,3 +1530,15 @@ Status: **RUNTIME-BEFUND GESICHERT / KONZEPT PRÄZISIERT**
   - Station nur als separaten technischen Ersatz anzeigen, wenn kein echter KM-Bezug vorhanden ist;
   - in Großansicht darf dieser Bereich einklappbar sein, damit die Grafik maximalen Platz bekommt.
 - Diese Präzisierung betrifft nur Darstellung/Qualitätsstatus, nicht die Originaldaten.
+
+### REF-DATA-002 – Tiefzoom/LOD Source-Fix
+- Code-Commit `69096bd7e615c3fd049b50d0a290e5941400e3da`.
+- `v1_admin_survey_import.html`: sichtbare Punktmarker werden bei jedem ViewBox-Zoom auf Screen-Space-Größe zurückgerechnet.
+- Separates unsichtbares Klickziel bleibt ausreichend groß, damit Punktdetails trotz kleiner Marker anklickbar bleiben.
+- Zoomgrenze von `view.w >= 80` auf `view.w >= 33.333` erweitert → ungefähr 30x Tiefzoom analog zur Android-Referenz.
+- LOD angepasst: bei sehr tiefem Zoom werden sichtbare Punkt-/Achsentexte kleiner und die maximale Labelanzahl reduziert.
+- KM/Station-Renderer validiert Bereiche und bevorzugt GRA für echten KM-Bezug; Nullspannen erscheinen nicht mehr als normale Balken.
+- Finales Browser-JavaScript über V8 kompiliert: **PASS**.
+- Sourcecheck ergänzt.
+- GitHub Actions `36590313120`, `36590306663`, `36590313016`: jeweils `runner_name=""`, `steps=[]` → kein Testnachweis.
+- Synology-Retest benötigt nur das Admin-Template; keine Migration und kein Recreate.

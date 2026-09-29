@@ -506,3 +506,17 @@ Status: **SOURCE FERTIG / RUNTIME OFFEN**
   - `server/tbserver/survey_preview.py`;
   - `server/templates/v1_admin_survey_import.html`.
 - API neu starten, keine Migration/kein Recreate.
+
+## REF-DATA-002 – Tiefzoom + belastbare KM-Bereiche
+Status: **SOURCE FERTIG / RUNTIME-RETEST OFFEN**
+- Weltgeometrie skaliert; Punktmarker/Labels werden dynamisch in Screen-Space-Größe gehalten.
+- Tiefzoom bis ca. 30x.
+- Sichtbare Punktmarker werden bei starkem Zoom kleiner; Klickfläche bleibt separat erhalten.
+- Punkt-/Achsenlabels reduzieren Größe und Dichte bei tiefem Zoom.
+- `KM / Station` zeigt keine Nullspanne mehr als gültigen Bereich.
+- GRA-basierter KM-Bereich wird bevorzugt; technische Station separat gekennzeichnet.
+
+Synology:
+- nur `server/templates/v1_admin_survey_import.html` ersetzen;
+- API-Container neu starten;
+- `survey_preview.py` und `admin_survey_import.py` bleiben vom vorigen Stand unverändert.

@@ -806,3 +806,11 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Browser-JS via V8: PASS.
 - GitHub Actions ohne Runner-Schritte; kein Testnachweis.
 - Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**.
+
+## REF-DATA-002 – Tiefzoom/KM-Checkpoint 29.09.2026
+- Nach Benutzererklärung Zoom-/LOD-Konzept umgesetzt.
+- Fix `69096bd7e615c3fd049b50d0a290e5941400e3da`: Screen-Space-Punktmarker, separates Klickziel, ca. 30x Tiefzoom, reduzierte Labeldichte/-größe.
+- Rechter KM/Stationsbereich präzisiert: echte KM-Spannen bleiben, Nullspannen werden verworfen, GRA wird bevorzugt, technische Station getrennt.
+- Finales JS syntaktisch geprüft: PASS.
+- GitHub CI ohne Runner-Schritte; kein Testnachweis.
+- Status: **SOURCE FERTIG / SYNLOGY-RUNTIME-RETEST OFFEN**.
