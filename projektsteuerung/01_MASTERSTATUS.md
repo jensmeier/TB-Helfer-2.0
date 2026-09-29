@@ -668,3 +668,12 @@ Status: **SOURCE-FIX FERTIG / SYNLOGY-UPLOAD + VISUAL-RETEST OFFEN**
 - Keine DB-Migration, keine API-Vertragsänderung und keine Android-`app/**`-Änderung.
 - Lokaler synthetischer Visual-Smoke der Rendererlogik erzeugte ein gültiges A4-PDF im 22.09-/Android-Zielbild; produktiver Synology-Retest ist noch offen.
 - GitHub Actions auf Code-HEAD `d2c3ca9e...` liefen erneut ohne Runner-Steps (`runner_name=""`, `steps=[]`) und sind deshalb kein Testnachweis.
+
+## ADMIN-PDF-010 – Admin-Vorschau auf BTB-Zielbild
+Status: **SOURCE-FIX FERTIG / SYNLOGY-RETEST OFFEN**
+- Benutzer bestätigt Bild 2 als verbindliches BTB-PDF-Zielbild und Bild 1 als falsche/irreführende Admin-Vorschau.
+- Admin-PDF-Vorschau verwendet jetzt denselben Android-nahen Renderer wie der serverseitige BTB-Abschluss statt des alten generischen Vorschau-Layouts.
+- Beispielinhalt bleibt synthetisch, aber Seitenstruktur, Firmenkopf/Logo, Wetter, Personal/Maschinen und Punkte 4–8 folgen nun dem finalen Renderer.
+- Personal- und Maschinenbox dürfen wieder unterschiedlich hoch sein wie im bestätigten Zielbild.
+- keine DB-/Compose-/Android-Änderung.
+- Synology-Retest nach Dateiübernahme + API-Neustart offen.

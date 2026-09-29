@@ -386,3 +386,16 @@ Status: **SOURCE-FIX FERTIG / DEPLOY + VISUAL-RETEST OFFEN**
 - keine DB-/Compose-/Android-Änderung.
 - Für Synology-Staging reicht nach Dateiübernahme ein **API-Neustart**; für diesen PDF-Fix ist kein neues Volume und kein Image-Rebuild erforderlich.
 - Bestehende bereits finalisierte PDFs werden nicht still neu geschrieben. Visual-Retest mit neuem Test-/Tagesabschluss durchführen.
+
+## ADMIN-PDF-010 – Admin-Vorschau-Parität
+Status: **SOURCE-FIX FERTIG / DEPLOY-RETEST OFFEN**
+- alte generische Admin-Vorschau entfernt;
+- Vorschau rendert jetzt über `tb-server-btb-pdf-5`-Layoutpfad;
+- dieselbe Logo-/Offset-Logik wie im Abschluss-PDF;
+- synthetische Vorschau enthält Wetter, Personal, Maschine, Hauptbaustelle, freie Strecke/KM sowie Punkte 4–8;
+- Personal/Maschinenboxen folgen dem bestätigten Zielbild mit eigener Höhe.
+
+Deployment:
+- `server/tbserver/btb_pdf.py` und `server/tbserver/btb_pdf_android_style.py` ersetzen;
+- API-Container neu starten;
+- kein Recreate und keine Migration erforderlich.

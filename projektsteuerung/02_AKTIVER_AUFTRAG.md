@@ -1254,3 +1254,13 @@ Status: **ZIELBILD VERBINDLICH / ADMIN-PREVIEW MUSS ANGEPASST WERDEN**
 - Damit ist die Admin-Vorschau aktuell fachlich/optisch irreführend und muss denselben Android-nahen BTB-Aufbau zeigen wie das bestätigte Zielbild.
 - Ziel für die Admin-Vorschau: gleicher Firmenkopf/Logo-Mechanismus und gleiche Hauptstruktur wie der serverseitige Abschlussrenderer v5; Beispielinhalt darf synthetisch sein, die Seitenstruktur darf nicht mehr das alte generische Tabellenlayout verwenden.
 - Android `app/**` bleibt unverändert.
+
+### PDF-RUNTIME-009 – Admin-Preview Source-Fix
+- Benutzer hat Bild 2 als Zielbild und Bild 1 als Admin-Vorschau bestätigt.
+- Commit `972017bf893c1dc348a7f52d39863c4c9fbeda02` stellt die Admin-Vorschau auf denselben Android-nahen Renderer wie den finalen BTB-Abschluss um.
+- `render_company_preview_pdf()` erzeugt nun ein synthetisches BTB-Snapshot und rendert es über `render_android_style_btb_pdf()`.
+- Logo-Reglerwerte und Firmenkopf laufen dadurch in Preview und Final durch dieselbe Zeichenlogik.
+- Personal/Maschinen werden mit unabhängigen Boxhöhen gerendert; nächster Abschnitt startet unter der höheren der beiden Boxen.
+- Android `app/**` unverändert; keine Migration, kein Compose.
+- GitHub Actions auf Code-HEAD `972017bf...`: Server Runs `36554111617`/`36554106396`, Android `36554111626`, jeweils ohne Runner (`runner_name=""`, `steps=[]`) → kein Testnachweis.
+- Nächster Schritt: `btb_pdf.py` + `btb_pdf_android_style.py` auf Synology übernehmen, API neu starten und Admin-PDF-Vorschau erneut öffnen.

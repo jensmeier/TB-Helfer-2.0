@@ -702,3 +702,14 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - GitHub Actions Code-HEAD: Server `36551663700`/`36551656529`, Android `36551663628`, alle ohne Runner-Steps; kein Testnachweis.
 - Nächster praktischer Schritt: GitHub-Stand auf NAS übernehmen, API neu starten, neuen BTB serverseitig finalisieren und PDF visuell mit 22.09 + Handy-Entwurf vergleichen.
 - Status: **SOURCE-FIX FERTIG / NICHT DEPLOYT / VISUAL-RUNTIME-RETEST OFFEN**.
+
+## ADMIN-PDF-010 – Checkpoint 29.09.2026
+- Benutzer klärt: Bild 2 = verbindliches PDF-Zielbild; Bild 1 = aktuelle Admin-Vorschau.
+- Neue Anforderung vor Code in `02_AKTIVER_AUFTRAG.md` gesichert.
+- Source-Fix Commit `972017bf893c1dc348a7f52d39863c4c9fbeda02`.
+- Admin-Vorschau benutzt nun denselben `render_android_style_btb_pdf()`-Pfad wie der Serverabschluss.
+- Beispielvorschau bildet Wetter, Personal/Maschinen, Unterbaustelle/KM und Punkte 4–8 im Zielaufbau ab.
+- Personal und Maschinen wieder mit unabhängiger Boxhöhe.
+- Keine Android-/DB-/Compose-Änderung.
+- CI erneut ohne Runner/Steps; kein Testnachweis.
+- Nächster Schritt: zwei Python-Dateien auf Synology → API neu starten → Screenshot der neuen Admin-Vorschau.

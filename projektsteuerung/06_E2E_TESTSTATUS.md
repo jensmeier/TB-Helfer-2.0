@@ -330,3 +330,15 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   5. Logo-Größe/X/Y sowie Speichern/Großansicht zusammen mit ADMIN-PDF-007 prüfen;
   6. erst nach sichtbarer Praxisbestätigung auf BESTÄTIGT/ERLEDIGT anheben.
 - Status: **SOURCE-FIX FERTIG / DEPLOY + VISUAL-E2E OFFEN**.
+
+### ADMIN-PDF-010 – Source-Status
+- Admin-Preview und Finalrenderer teilen jetzt denselben Android-nahen Renderpfad.
+- Source-Diff geprüft: Preview erzeugt `preview_snapshot` und ruft `render_android_style_btb_pdf()` auf.
+- Personal/Maschinen-Höhen getrennt source-seitig umgesetzt.
+- GitHub Actions auf `972017bf...` ohne Runner-Schritte → **kein CI-Testnachweis**.
+- Pflichttest auf Synology:
+  1. Admin → Firma → Logo/PDF öffnen;
+  2. Vorschau muss strukturell Bild 2 entsprechen;
+  3. Logo-Breite/X/Y ändern und Vorschau beobachten;
+  4. Speichern, Großansicht und finalen BTB-Abschluss vergleichen.
+- Status: **SOURCE-FIX FERTIG / RUNTIME OFFEN**.
