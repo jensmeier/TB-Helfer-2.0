@@ -786,3 +786,13 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - CI ohne Runner-Schritte; kein Testnachweis.
 - Status: **SOURCE FERTIG / NICHT DEPLOYT / SYNLOGY-E2E OFFEN**.
 - Nächster Schritt: vier Runtime-Dateien auf NAS → API neu starten → echte TRA/KF-Voranalyse testen.
+
+## REF-DATA-002 – Pasing-Korrekturcheckpoint 29.09.2026
+- Benutzer zeigt Serverpreview und mehrere Android-Screenshots und beanstandet Serverdarstellung als unlogisch.
+- Fehler bestätigt; Android-Darstellung ist fachliche Referenz.
+- Pasing-ZIP direkt geprüft: 41 Dateien; TRA 21; GRA 17; KF 1; KF.TXT 1; PDF 1; Strecken 5524/5528/5529; Bahnhofsgleise 10; WVB 3.
+- Hauptfehler der Servergrafik: SVG-Linien wurden durch spätere Farbklasse gefüllt und dadurch zu großen Dreiecksflächen.
+- Zusätzlich Konzept korrigiert: keine Dateifarben-Legende mehr, sondern fachliche Achsen/Objektgruppen wie Android.
+- Sourcefixes `364f412c...`, `2c36c106...`, `a51cd9a2...`.
+- Finales Browser-JS syntaktisch via V8 geprüft: PASS.
+- Kein Synology-Retest nach Korrektur; Status bleibt **SOURCE KORRIGIERT / RUNTIME OFFEN**.

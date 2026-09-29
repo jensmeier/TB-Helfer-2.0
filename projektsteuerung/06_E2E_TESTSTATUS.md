@@ -414,3 +414,18 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   7. ZIP-Test: Einträge getrennt analysiert und getrennt bestätigbar;
   8. Analyse ohne Import darf kein Original in DB/Liste erzeugen.
 - Status: **SOURCE FERTIG / SYNLOGY-RUNTIME-E2E OFFEN**.
+
+### REF-DATA-002 – Pasing-Reteststatus
+- Erster Phase-A-Runtime-Test: **FEHLER BESTÄTIGT**; Darstellung mit gefüllten Flächen/unstrukturierter Dateifarben-Legende verworfen.
+- Ursache source-seitig bestimmt und korrigiert.
+- V8-Syntaxprüfung des finalen Admin-JavaScripts: **PASS** (Sourceprüfung, kein Synology-E2E).
+- Neuer Runtime-Pflichttest mit `Pasing (1).zip`:
+  1. ZIP analysieren, noch nicht importieren;
+  2. Summary muss Strecken 5524/5528/5529 zeigen;
+  3. Bahnhofsgleise 12/21/23/25/26/27/713/714/715/725 logisch gruppiert;
+  4. WVB 10-11/14-22/19-20 logisch gruppiert;
+  5. Grafik darf keine gefüllten Dreiecke/Flächen enthalten;
+  6. Achsen sind dünne Linien mit Labels; TRA+GRA grün, TRA ohne GRA rot, WVB blau gestrichelt;
+  7. Festpunkte klein separat; über `Anzeige` ein-/ausblendbar;
+  8. TRA+GRA derselben Achse erscheinen als eine Importgruppe.
+- Status: **SOURCE KORRIGIERT / SYNLOGY-RETEST OFFEN**.

@@ -745,3 +745,21 @@ Status: **SOURCE FERTIG / NICHT DEPLOYT / SYNLOGY-RETEST OFFEN**
 - Bestätigungsimport arbeitet mit der zuvor analysierten Originaldatei; Originale bleiben immutable.
 - Capability: `survey_import_preview_v1`.
 - Keine DB-Migration, kein Compose und keine Android-Datei.
+
+## REF-DATA-002 – Android-nahe Servergrafik Korrektur
+Status: **SOURCE KORRIGIERT / SYNLOGY-RETEST OFFEN**
+- Erste Servergrafik wurde im Runtime-Test vom Benutzer zu Recht verworfen.
+- Konkreter SVG-Fehler behoben: Polylinien können nicht mehr durch Farbklassen gefüllt werden (`fill:none!important`).
+- Serverpreview folgt jetzt der vorhandenen Android-Semantik statt beliebiger Dateifarben:
+  - Strecke/Streckengleis;
+  - Bahnhofsgleis;
+  - Weichenverbindung;
+  - Festpunkte/KF;
+  - Absteck-/Weichenpunkte.
+- TRA + passende GRA werden grün dargestellt; TRA ohne passende GRA rot; WVB blau/gestrichelt; Vermessungspunkte klein separat.
+- Achsen erhalten fachliche Labels wie `Gl 21 · Str 5528`, `Str 5524-1 · Quelle L`, `WVB 10-11`.
+- Neue Anzeigeauswahl blendet Achsen/Punktgruppen gezielt ein/aus; Raster, Zoom/Pan und Klickdetails bleiben.
+- Importkarten werden nach fachlicher Achse/Objektgruppe zusammengefasst: TRA+GRA derselben Achse erscheinen als eine Gruppe.
+- ZIP-Zusammenfassung zeigt Strecken, Dateitypen, Bahnhofsgleise und WVB vor dem Import.
+- Pasing-Testbestand: 41 Dateien, TRA 21, GRA 17, KF/KF.TXT 1/1, PDF 1, Strecken 5524/5528/5529, 10 Bahnhofsgleise, 3 WVB.
+- keine DB-Migration / kein Compose / keine Android-Änderung.

@@ -475,3 +475,22 @@ Synology-Deployment:
 - `server/tbserver/capabilities.py` ersetzen;
 - `server/templates/v1_admin_survey_import.html` ersetzen;
 - danach nur API-Container neu starten.
+
+## REF-DATA-002 – Pasing-Grafik Runtime-Korrektur
+Status: **SOURCE FERTIG / DEPLOY + RETEST OFFEN**
+- Ursache der farbigen Dreiecke: `.geom-*` setzte SVG-`fill` auf dieselben Polylinien; CSS-Reihenfolge übersteuerte `fill:none`.
+- Fix: Linien und Punktmarker haben getrennte Semantik/Styles.
+- Fachliche Gruppierung aus Android übernommen:
+  - Streckenachsen/Richtungen;
+  - Bahnhofsgleise;
+  - WVB;
+  - Fest-/Absteckpunkte.
+- TRA/GRA derselben Achse werden in Importauswahl zusammengeführt.
+- Pasing-ZIP bekommt logisch dieselben Kerninformationen wie Android: Strecken 5524/5528/5529, 10 Bahnhofsgleise, WVB 10-11/14-22/19-20.
+- JavaScript-Syntaxprüfung des finalen Templates: PASS.
+
+Synology für diesen Retest:
+- `server/tbserver/admin_survey_import.py` ersetzen;
+- `server/templates/v1_admin_survey_import.html` ersetzen;
+- `server/tbserver/survey_preview.py` muss weiterhin vorhanden sein;
+- API-Container neu starten.

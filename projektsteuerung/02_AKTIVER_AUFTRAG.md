@@ -1460,3 +1460,17 @@ Status: **RUNTIME-FEHLER BESTÄTIGT / KORREKTUR FREIGEGEBEN**
   - 10 Bahnhofsgleise: 12, 21, 23, 25, 26, 27, 713, 714, 715, 725;
   - 3 Weichenverbindungen: WVB 10-11, 14-22, 19-20.
 - SERVER-Korrekturziel: Android-Semantik im Admin nachbilden, ohne Android-Code zu ändern oder zwei unterschiedliche Fachmodelle zu erfinden.
+
+### REF-DATA-002 – Korrekturblock nach Pasing-Runtime-Test
+Status: **SOURCE-KORREKTUR FERTIG / SYNLOGY-RETEST OFFEN**
+- Fehlerfeststellung vor Code in Projektsteuerung gesichert, Commit `0f042b9682582f2ec702518a53ce4981118c45df`.
+- Android-Branch `feature/tb-android-2.0` als Referenz geprüft:
+  - `TrassenGrafikView.kt` zeichnet Achsen als STROKE, Raster, KM-Statusfarben, Labels und Punktgruppen;
+  - `ImportExportFragment.kt` gruppiert ZIP fachlich nach Strecken, Gleisen, WVB und Anzeigeauswahl.
+- Hochgeladene `Pasing (1).zip` direkt geprüft: Struktur/Anzahlen entsprechen den Android-Screenshots.
+- Backend-Semantik ergänzt, Commit `364f412cb728c784e0b063b4c8c9466514325363`.
+- Adminvisualisierung/-Gruppierung korrigiert, Commit `2c36c106008ce2f04625c994707628b6af683a8e`.
+- Richtungsachsen werden vor Bahnhofsgleislogik klassifiziert, Commit `a51cd9a2f6053365dd43f5ba7369404f72380b1a`.
+- Browser-JavaScript aus dem finalen Template in V8 kompiliert: **PASS**.
+- Marker geprüft: alter Vorab-Scope entfernt; Datei-zuerst, ZIP-Summary, Anzeigeauswahl, Raster, `fill:none!important` und Semantik vorhanden.
+- Nächster Schritt: `admin_survey_import.py` + `v1_admin_survey_import.html` auf Synology ersetzen; vorhandene `survey_preview.py` bleibt aus Phase A; API neu starten; Pasing-ZIP erneut nur analysieren.
