@@ -17,6 +17,7 @@ from .files import _absolute_storage_path, _hash_file
 from .permissions import require_permission, worksite_context
 from .portal import current_portal_user
 from .survey_originals import _assert_original_access, _load_original
+from .survey_catalog import index_original_in_tx
 
 
 router = APIRouter(prefix="/api/v1", tags=["survey-parser"])
@@ -676,6 +677,8 @@ def parse_original(worksite_id: UUID, original_id: UUID, user: dict[str, Any] = 
              Jsonb(payload), Jsonb(warnings), error_code, error_detail, user["user_id"]),
         )
         row = dict(cur.fetchone())
+        catalog_result = index_original_in_tx(cur, original_id, user["user_id"])
+        row["survey_catalog"] = catalog_result
         emit_change(cur, company_id=context["company_id"], worksite_id=worksite_id,
                     entity_type="SURVEY_PARSE_CATALOG", entity_id=original_id, operation="UPSERT",
                     entity_version=None, actor_user_id=user["user_id"])
@@ -683,5 +686,7 @@ def parse_original(worksite_id: UUID, original_id: UUID, user: dict[str, Any] = 
               company_id=context["company_id"], worksite_id=worksite_id,
               entity_type="SURVEY_ORIGINAL", entity_id=original_id,
               details={"parser_family": parser_family, "parser_version": PARSER_VERSION,
-                       "status": status, "detected_format": detected_format, "source_sha256": actual_sha256})
+                       "status": status, "detected_format": detected_format,
+                       "source_sha256": actual_sha256,
+                       "catalog_status": catalog_result.get("status")})
     return row

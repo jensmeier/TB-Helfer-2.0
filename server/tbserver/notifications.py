@@ -5,6 +5,7 @@ import ssl
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from typing import Any
+from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from .config import settings
@@ -199,3 +200,84 @@ def run_system_email_report(*, test: bool = False) -> dict[str, Any]:
             details={"recipient_count": len(recipients), "test": test},
         )
     return {"sent": True, "recipient_count": len(recipients), "test": test}
+
+
+def run_survey_conflict_email(conflict_id: UUID) -> dict[str, Any]:
+    policy = load_automation_policy()
+    if not policy.get("alert_email_enabled"):
+        return {"sent": False, "skipped": "ALERT_EMAIL_DISABLED", "conflict_id": str(conflict_id)}
+    recipients = list(policy.get("email_recipients") or [])
+    if not recipients:
+        return {"sent": False, "skipped": "EMAIL_RECIPIENTS_EMPTY", "conflict_id": str(conflict_id)}
+
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT c.id, c.status, c.conflict_type, c.details, c.created_at, c.notified_at,
+                   a.route_number, a.station_code, a.station_name, a.track_key,
+                   a.direction, a.axis_type, a.display_name
+            FROM tb.survey_catalog_conflicts c
+            JOIN tb.survey_catalog_axes a ON a.id = c.axis_id
+            WHERE c.id = %s
+            """,
+            (conflict_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return {"sent": False, "skipped": "SURVEY_CONFLICT_NOT_FOUND", "conflict_id": str(conflict_id)}
+        conflict = dict(row)
+        if conflict["status"] != "OPEN":
+            return {"sent": False, "skipped": "SURVEY_CONFLICT_NOT_OPEN", "conflict_id": str(conflict_id)}
+        if conflict["notified_at"] is not None:
+            return {"sent": False, "skipped": "SURVEY_CONFLICT_ALREADY_NOTIFIED", "conflict_id": str(conflict_id)}
+
+    location = " / ".join(
+        value
+        for value in (
+            f"Str {conflict['route_number']}" if conflict.get("route_number") else None,
+            (
+                f"{conflict.get('station_code')} – {conflict.get('station_name')}"
+                if conflict.get("station_code") and conflict.get("station_name")
+                else conflict.get("station_name") or conflict.get("station_code")
+            ),
+            f"Gl {conflict['track_key']}" if conflict.get("track_key") else None,
+        )
+        if value
+    ) or "ohne eindeutige Strecken-/Betriebsstellenzuordnung"
+    subject = f"TB-Helfer: Trassendaten-Prüffall {location}"[:240]
+    body = "\n".join(
+        [
+            "TB-Helfer hat einen Trassendaten-Prüffall erkannt.",
+            "",
+            f"Bereich: {location}",
+            f"Achse: {conflict.get('display_name') or '-'}",
+            f"Konfliktart: {conflict.get('conflict_type') or '-'}",
+            f"Prüffall-ID: {conflict_id}",
+            f"Erstellt: {conflict.get('created_at')}",
+            "",
+            "Die bestehende aktive Geometrie wurde nicht still überschrieben.",
+            "Bitte den Prüffall später in der Admin-Trassendatenübersicht entscheiden.",
+            "",
+            "Diese Nachricht enthält keine Passwörter, Tokens oder Aktivierungs-Keys.",
+        ]
+    )
+    _send(subject, body, recipients)
+
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE tb.survey_catalog_conflicts
+            SET notified_at = now()
+            WHERE id = %s AND status = 'OPEN' AND notified_at IS NULL
+            """,
+            (conflict_id,),
+        )
+        audit(
+            cur,
+            action="SURVEY_CATALOG_CONFLICT_EMAIL_SENT",
+            actor_user_id=None,
+            entity_type="SURVEY_CATALOG_CONFLICT",
+            entity_id=conflict_id,
+            details={"recipient_count": len(recipients)},
+        )
+    return {"sent": True, "recipient_count": len(recipients), "conflict_id": str(conflict_id)}

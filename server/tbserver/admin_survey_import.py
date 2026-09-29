@@ -22,6 +22,7 @@ from .database import transaction
 from .events import audit, emit_change
 from .files import _absolute_storage_path, _safe_name
 from .survey_parser import PARSER_VERSION, UnsupportedSurveyFormat, parse_survey_original
+from .survey_catalog import index_original_in_tx
 from .survey_preview import build_survey_preview
 
 
@@ -46,6 +47,8 @@ class SurveyImportDecision(BaseModel):
     data_kind: str | None = Field(default=None, max_length=40)
     route_number: str | None = Field(default=None, max_length=80)
     track_key: str | None = Field(default=None, max_length=160)
+    station_code: str | None = Field(default=None, max_length=50)
+    station_name: str | None = Field(default=None, max_length=240)
 
 
 class SurveyImportPlan(BaseModel):
@@ -252,7 +255,8 @@ def _skip_reason(name: str) -> str | None:
 def _load_worksite(cur, worksite_id: UUID) -> dict[str, Any]:
     cur.execute(
         """
-        SELECT w.id, w.company_id, w.name, w.route_number, c.name AS company_name
+        SELECT w.id, w.company_id, w.name, w.route_number, w.station_code, w.station_name,
+               c.name AS company_name
         FROM tb.worksites w
         JOIN tb.companies c ON c.id = w.company_id
         WHERE w.id = %s
@@ -325,6 +329,8 @@ def _install_original(
     scope: str,
     route_number: str | None,
     track_key: str | None,
+    station_code: str | None = None,
+    station_name: str | None = None,
     user: dict[str, Any],
 ) -> dict[str, Any]:
     normalized_kind = kind.strip().upper()
@@ -346,6 +352,8 @@ def _install_original(
         with transaction() as conn, conn.cursor() as cur:
             normalized_scope = _normalize_scope(scope)
             inferred_route, inferred_track = _parsed_route_track(parsed)
+            effective_station_code = (station_code or "").strip().upper() or None
+            effective_station_name = (station_name or "").strip() or None
             worksite: dict[str, Any] | None = None
             if normalized_scope == _SCOPE_WORKSITE:
                 if worksite_id is None:
@@ -359,6 +367,8 @@ def _install_original(
                     or ""
                 ).strip() or None
                 effective_track = (track_key or inferred_track or "").strip() or None
+                effective_station_code = effective_station_code or (str(worksite.get("station_code") or "").strip().upper() or None)
+                effective_station_name = effective_station_name or (str(worksite.get("station_name") or "").strip() or None)
                 cur.execute(
                     """
                     SELECT id, original_name, imported_at
@@ -412,6 +422,10 @@ def _install_original(
                 "source": "ADMIN_WEB",
                 "scope": normalized_scope,
             }
+            if effective_station_code:
+                metadata["station_code"] = effective_station_code
+            if effective_station_name:
+                metadata["station_name"] = effective_station_name
             if worksite is not None and worksite_id is not None:
                 metadata.update(
                     {
@@ -478,6 +492,8 @@ def _install_original(
                 ),
             )
 
+            catalog_result = index_original_in_tx(cur, original_id, user["user_id"])
+
             if worksite is not None and worksite_id is not None:
                 emit_change(
                     cur,
@@ -515,6 +531,9 @@ def _install_original(
                     "parse_status": parsed["status"],
                     "route_number": effective_route,
                     "track_key": effective_track,
+                    "station_code": effective_station_code,
+                    "station_name": effective_station_name,
+                    "catalog_status": catalog_result.get("status"),
                     "source": "ADMIN_WEB",
                 },
             )
@@ -531,6 +550,9 @@ def _install_original(
             "scope": normalized_scope,
             "route_number": effective_route,
             "track_key": effective_track,
+            "station_code": effective_station_code,
+            "station_name": effective_station_name,
+            "catalog": catalog_result,
             "status": "IMPORTIERT",
             "message": message,
             "original_id": str(original_id),
@@ -767,6 +789,8 @@ def import_analyzed_survey(
                                     scope=normalized_scope,
                                     route_number=decision.route_number,
                                     track_key=decision.track_key,
+                                    station_code=decision.station_code,
+                                    station_name=decision.station_name,
                                     user=user,
                                 )
                             )
@@ -806,6 +830,8 @@ def import_analyzed_survey(
                         scope=normalized_scope,
                         route_number=decision.route_number,
                         track_key=decision.track_key,
+                        station_code=decision.station_code,
+                        station_name=decision.station_name,
                         user=user,
                     )
                 )
@@ -832,6 +858,8 @@ async def import_survey_file(
     data_kind: str | None = Query(default=None, max_length=40),
     route_number: str | None = Query(default=None, max_length=80),
     track_key: str | None = Query(default=None, max_length=160),
+    station_code: str | None = Query(default=None, max_length=50),
+    station_name: str | None = Query(default=None, max_length=240),
     user: dict[str, Any] = Depends(require_admin_csrf),
 ) -> dict:
     normalized_scope = _normalize_scope(scope)
@@ -872,6 +900,8 @@ async def import_survey_file(
                                 scope=normalized_scope,
                                 route_number=route_number,
                                 track_key=track_key,
+                                station_code=station_code,
+                                station_name=station_name,
                                 user=user,
                             )
                             results.append(result)
@@ -895,6 +925,8 @@ async def import_survey_file(
             scope=normalized_scope,
             route_number=route_number,
             track_key=track_key,
+            station_code=station_code,
+            station_name=station_name,
             user=user,
         )
         return {"results": [result]}

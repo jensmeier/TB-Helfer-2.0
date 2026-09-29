@@ -32,6 +32,7 @@ from .survey_originals import router as survey_originals_router
 from .survey_parser import router as survey_parser_router
 from .survey_projection import router as survey_projection_router
 from .survey_sections import router as survey_sections_router
+from .survey_catalog import router as survey_catalog_router
 from .sync import router as sync_router
 from .system_admin import router as system_admin_router
 from .station_reference import router as station_reference_router
@@ -79,6 +80,7 @@ app.include_router(survey_parser_router)
 app.include_router(survey_projection_router)
 app.include_router(survey_gra_jumps_router)
 app.include_router(survey_sections_router)
+app.include_router(survey_catalog_router)
 app.include_router(track_data_router)
 
 

@@ -12,7 +12,7 @@ from psycopg.types.json import Jsonb
 from .automation import schedule_due_automation
 from .backup import run_backup, run_retention
 from .database import transaction
-from .notifications import NotificationError, run_system_email_report
+from .notifications import NotificationError, run_survey_conflict_email, run_system_email_report
 from .restore import RestoreTestError, run_restore_test
 from .monitor import write_worker_heartbeat
 
@@ -48,6 +48,8 @@ SUPPORTED_JOB_TYPES = {
     "BACKUP_RETENTION",
     "RESTORE_TEST",
     "SYSTEM_EMAIL_REPORT",
+    "SURVEY_CONFLICT_EMAIL",
+    "SURVEY_CATALOG_REINDEX",
 }
 
 
@@ -143,6 +145,26 @@ def _execute(job: dict[str, Any]) -> dict[str, Any]:
             return result
         except NotificationError as exc:
             raise JobError(str(exc)) from exc
+    if job_type == "SURVEY_CONFLICT_EMAIL":
+        raw_conflict_id = (job.get("payload") or {}).get("conflict_id")
+        try:
+            conflict_id = UUID(str(raw_conflict_id))
+        except (TypeError, ValueError) as exc:
+            raise JobError("SURVEY_CONFLICT_ID_INVALID") from exc
+        progress(30, "Trassendaten-Prüffall wird für E-Mail vorbereitet")
+        try:
+            result = run_survey_conflict_email(conflict_id)
+            progress(90, "Trassendaten-Prüffall wurde verarbeitet")
+            return result
+        except NotificationError as exc:
+            raise JobError(str(exc)) from exc
+    if job_type == "SURVEY_CATALOG_REINDEX":
+        progress(20, "Trassendaten-Katalog wird neu aufgebaut")
+        from .survey_catalog import reindex_all_originals
+
+        result = reindex_all_originals()
+        progress(95, "Trassendaten-Katalog wurde neu aufgebaut")
+        return result
     if job_type == "RESTORE_TEST":
         raw_run_id = (job.get("payload") or {}).get("backup_run_id")
         try:
