@@ -723,3 +723,12 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Android nicht geändert; aktueller Android-Clamp 250 bleibt separates Vertrags-To-do.
 - CI erneut ohne Runner/Steps; kein Testnachweis.
 - Nächster Schritt: 4 Runtime-Dateien auf Synology, API neu starten, Regler praktisch prüfen.
+
+## ADMIN-PDF-012 – Checkpoint 29.09.2026
+- Benutzer bestätigt 400-pt-/Y-Funktion praktisch, meldet aber neues Verhalten: Tabellen wandern mit großem/verschobenem Logo nach unten.
+- Benutzer fordert ausdrücklich zuerst Antwort, dann Umsetzung; Vorgabe bestätigt und danach Arbeit gestartet.
+- Neue Anforderung vor Code in `02_AKTIVER_AUFTRAG.md` gesichert, Commit `e2b373e51c4320ba9134ff06c9358f65c5937ceb`.
+- Source-Fix Commit `be196108f77192bc4ea676d6dcb32092076f1151`: dynamische Header-Unterkante beeinflusst Fachlayout nicht mehr.
+- Nur Serverrenderer + Sourcecheck geändert; Android/DB/Compose unverändert.
+- CI Run `36557039970` ohne Runner-Schritte; kein Testnachweis.
+- Nächster Schritt: eine Runtime-Datei auf Synology, API neu starten, Tabellenposition bei mehreren Logo-Werten vergleichen.

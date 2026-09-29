@@ -354,3 +354,14 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   4. `PDF-Layout speichern`, Seite neu laden und Persistenz prüfen;
   5. Großansicht und serverseitigen Abschluss prüfen.
 - Status: **SOURCE-FIX FERTIG / SYNLOGY-E2E OFFEN**.
+
+### ADMIN-PDF-012 – Source-Status
+- Source-Diff bestätigt: dynamisches Nach-unten-Schieben über `company_header_bottom` entfernt.
+- Sourcecheck enthält Marker `Firmenlogo und Fachlayout sind absichtlich entkoppelt`.
+- GitHub Actions `36557039970` ohne Runner/Steps → **kein CI-Testnachweis**.
+- Runtime-Pflichttest auf Synology:
+  1. Vorschau mit Breite 90/250/400 öffnen;
+  2. jeweils Y -60/0/+60 testen;
+  3. Wetteroberkante und Tabellenposition müssen unverändert bleiben;
+  4. finalen BTB-Abschluss ebenfalls prüfen.
+- Status: **SOURCE-FIX FERTIG / SYNLOGY-E2E OFFEN**.

@@ -687,3 +687,11 @@ Status: **SERVER SOURCE-FIX FERTIG / SYNLOGY-RETEST OFFEN / ANDROID-ANPASSUNG SE
 - Admin-Slider/Nummer/Preview/Save auf 400 erweitert.
 - Android bleibt unverändert und begrenzt aktuell weiterhin auf 250; Vertragsbedarf ist in `05_ANDROID_SERVER_VERTRAG.md` dokumentiert.
 - keine DB-Migration, kein Compose.
+
+## ADMIN-PDF-012 – Tabellenposition unabhängig vom Logo
+Status: **SERVER SOURCE-FIX FERTIG / SYNLOGY-RETEST OFFEN**
+- Logo-Breite sowie X/Y dürfen das BTB-Fachlayout nicht nach unten verschieben.
+- Serverrenderer entkoppelt Firmenlogo und Fachlayout wieder vollständig.
+- Wetter, Personal/Maschinen und Punkte 4–8 starten unabhängig von Logo-Größe/-Position an ihren festen Zielpositionen.
+- Extrem große Logos dürfen optisch in den Inhaltsbereich hineinragen; der Renderer verschiebt dafür aber keine Tabellen.
+- keine Android-/DB-/Compose-Änderung.

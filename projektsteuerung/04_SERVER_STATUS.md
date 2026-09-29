@@ -412,3 +412,11 @@ Status: **SOURCE-FIX FERTIG / RUNTIME-RETEST OFFEN**
 Android-Hinweis:
 - aktueller Android-Branch clamp`t weiterhin 40..250;
 - notwendige Android-Anpassung ist nur dokumentiert, nicht vom SERVER geändert.
+
+## ADMIN-PDF-012 – Feste Fachlayout-Position
+Status: **SOURCE-FIX FERTIG / RUNTIME-RETEST OFFEN**
+- Firmenlogo ist nur noch ein unabhängig positionierter Zeichen-Layer.
+- Logo-Breite/X/Y verändern nicht mehr `writer.y` des Fachlayouts.
+- Wetter, Personal/Maschinen und Punkte 4–8 bleiben auf festen Positionen.
+- Admin-Vorschau und finaler BTB-Abschluss teilen dieselbe Logik.
+- keine Migration, kein Compose, keine Android-Änderung.

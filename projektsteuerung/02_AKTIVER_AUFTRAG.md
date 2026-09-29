@@ -1291,3 +1291,13 @@ Status: **ANFORDERUNG GESICHERT / SERVER-FIX FREIGEGEBEN**
 - Wetter, Personal/Maschinen sowie Punkte 4–8 müssen auf ihrer festen Zielposition bleiben, auch wenn das Logo vergrößert oder verschoben wird.
 - Das Logo bleibt ein unabhängig positionierter Firmenkopf-Layer. Bei extremen Einstellungen darf es optisch in den Inhaltsbereich hineinragen; der Renderer darf dafür aber nicht das gesamte Fachlayout nach unten schieben.
 - Android `app/**` nicht ändern; Korrektur nur im Serverrenderer/der Admin-Vorschau.
+
+### ADMIN-PDF-012 – Source-Fix
+- Benutzer bestätigt: 400-pt-Breite/Y-Versatz funktionieren, aber Tabellen dürfen beim Vergrößern/Verschieben des Logos nicht nach unten rutschen.
+- Code-Commit `be196108f77192bc4ea676d6dcb32092076f1151`.
+- `btb_pdf_android_style.py`: Rückkopplung `company_header_bottom -> writer.y` entfernt.
+- Dokumentkopf beginnt wieder fest bei `MARGIN_TOP + 48.0`; danach folgt der normale feste Abstand.
+- Admin-Vorschau und finaler Serverabschluss verwenden denselben korrigierten Renderer.
+- Sourcecheck erweitert um Marker für entkoppeltes Firmenlogo/Fachlayout.
+- GitHub Actions Run `36557039970`: `failure`, `runner_name=""`, `steps=[]` → kein Testnachweis.
+- Synology-Retest: nur `btb_pdf_android_style.py` übernehmen, API neu starten, Logo-Breite/Y ändern und prüfen, dass Wetter/Tabellen pixelgleich stehen bleiben.
