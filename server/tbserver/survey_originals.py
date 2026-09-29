@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+from datetime import date
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -25,6 +26,9 @@ class SurveyOriginalFromFile(BaseModel):
     file_id: UUID
     route_number: str | None = Field(default=None, max_length=80)
     track_key: str | None = Field(default=None, max_length=160)
+    station_code: str | None = Field(default=None, max_length=50)
+    station_name: str | None = Field(default=None, max_length=240)
+    source_date: date | None = None
     data_kind: str = Field(min_length=1, max_length=40)
     catalog_scope: str = Field(default="COMPANY", max_length=20)
     metadata: dict = Field(default_factory=dict)
@@ -203,6 +207,12 @@ def import_survey_original_from_file(
         raise HTTPException(400, "SURVEY_CATALOG_SCOPE_INVALID")
     metadata = dict(payload.metadata)
     metadata["catalog_scope"] = catalog_scope
+    if payload.station_code:
+        metadata["station_code"] = payload.station_code.strip().upper()
+    if payload.station_name:
+        metadata["station_name"] = payload.station_name.strip()
+    if payload.source_date is not None:
+        metadata["source_date"] = payload.source_date.isoformat()
 
     old_path = None
     new_path = None
@@ -307,6 +317,9 @@ def import_survey_original_from_file(
                     "byte_size": actual_size,
                     "source_file_id": str(payload.file_id),
                     "catalog_scope": catalog_scope,
+                    "station_code": metadata.get("station_code"),
+                    "station_name": metadata.get("station_name"),
+                    "source_date": metadata.get("source_date"),
                 },
             )
         return row

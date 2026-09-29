@@ -625,7 +625,12 @@ def _asset_identity_matches_axis(axis: dict[str, Any], asset: dict[str, Any], pa
 def _axis_km_context(cur, axis: dict[str, Any]) -> dict[str, Any]:
     route = _clean(axis.get("route_number"))
     if not route:
-        return {"data_kinds": [], "explicit_gra": [], "gvp_points": []}
+        return {
+            "data_kinds": [],
+            "explicit_gra": [],
+            "gvp_points": [],
+            "active_segment_count": 0,
+        }
     params: list[Any] = [axis["scope"]]
     company_sql = "x.company_id IS NULL"
     if axis["scope"] == _SCOPE_COMPANY:
@@ -634,7 +639,7 @@ def _axis_km_context(cur, axis: dict[str, Any]) -> dict[str, Any]:
     params.append(route)
     cur.execute(
         f"""
-        SELECT x.data_kind,x.route_number,x.track_key,x.metadata,
+        SELECT x.data_kind,x.route_number,x.track_key,x.source_date,x.metadata,
                o.original_name,p.payload,p.status AS parse_status
         FROM tb.survey_catalog_assets x
         JOIN tb.survey_originals o ON o.id=x.original_id
@@ -665,6 +670,7 @@ def _axis_km_context(cur, axis: dict[str, Any]) -> dict[str, Any]:
                     explicit_gra.append(
                         {
                             "original_name": asset.get("original_name"),
+                            "source_date": asset.get("source_date"),
                             "km_from_m": min(values),
                             "km_to_m": max(values),
                         }
@@ -680,10 +686,17 @@ def _axis_km_context(cur, axis: dict[str, Any]) -> dict[str, Any]:
                 km = _num(point.get("km_meter"))
                 if None not in (x, y, km):
                     gvp_points.append({"x_dbref": x, "y_dbref": y, "km_meter": km})
+    cur.execute(
+        "SELECT count(*) AS item_count FROM tb.survey_catalog_segments "
+        "WHERE axis_id=%s AND segment_status='ACTIVE'",
+        (axis["id"],),
+    )
+    active_segment_count = int(cur.fetchone()["item_count"])
     return {
         "data_kinds": sorted(kinds),
         "explicit_gra": explicit_gra,
         "gvp_points": gvp_points,
+        "active_segment_count": active_segment_count,
     }
 
 
@@ -706,8 +719,19 @@ def _segment_km_quality(
                 "reason": None,
             }
 
-    if context.get("explicit_gra"):
-        gra = context["explicit_gra"][0]
+    segment_source_date = segment.get("source_date")
+    gra_candidates = [
+        gra
+        for gra in (context.get("explicit_gra") or [])
+        if context.get("active_segment_count") == 1
+        or (
+            segment_source_date is not None
+            and gra.get("source_date") is not None
+            and gra.get("source_date") == segment_source_date
+        )
+    ]
+    if gra_candidates:
+        gra = gra_candidates[0]
         return {
             "status": "AUTOMATISCH",
             "color": "GRUEN",

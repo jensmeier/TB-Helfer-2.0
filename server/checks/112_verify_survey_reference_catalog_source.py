@@ -61,6 +61,12 @@ assert 'station_code: str | None,\n    station_name: str | None,\n    user: dict
 assert '@router.delete("/manual-segments/{segment_id}")' in catalog
 assert 'GVP_MAX_AXIS_DISTANCE_M = 120.0' in catalog
 assert 'GVP_OFFSET_OUTLIER_M = 80.0' in catalog
-assert '"catalog_scope"' in (ROOT / "server" / "tbserver" / "survey_originals.py").read_text(encoding="utf-8")
+survey_originals = (ROOT / "server" / "tbserver" / "survey_originals.py").read_text(encoding="utf-8")
+assert '"catalog_scope"' in survey_originals
+assert "station_code: str | None" in survey_originals
+assert "station_name: str | None" in survey_originals
+assert "source_date: date | None" in survey_originals
+assert '"active_segment_count"' in catalog
+assert 'gra.get("source_date") == segment_source_date' in catalog
 
 print("PASS survey reference catalog source")
