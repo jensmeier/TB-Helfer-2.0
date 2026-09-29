@@ -1167,7 +1167,7 @@ Vor Implementierung prüfen:
 - Source-Marker/Commit-Diff geprüft; keine DB-/Android-Änderung.
 - Runtime/E2E noch offen: Synology-Projekt/API mit aktualisiertem Compose recreaten und Werte direkt gegen DSM vergleichen.
 ## PDF-RUNTIME-009 – Server-PDF seit 22.09. sichtbar verschoben
-Status: **URSACHE BESTÄTIGT / SERVER-RENDERER WEICHT VOM ANDROID-RENDERER AB / FIX OFFEN**
+Status: **SOURCE-FIX FERTIG / SYNLOGY-UPLOAD + VISUAL-RETEST OFFEN**
 
 Benutzerbefund 29.09.2026:
 - PDF vom **22.09.** war noch optisch in Ordnung.
@@ -1223,3 +1223,16 @@ Status: **SERVER-UMSETZUNG FREIGEGEBEN**
 - Benutzer bestätigt am 29.09.2026 mit `okay`, dass der eingegrenzte Server-PDF-Renderer-Fehler jetzt behoben werden soll.
 - Referenz bleibt das optisch korrekte Android/Skia-PDF vom 22.09. sowie der aktuell korrekte Handy-PDF-Entwurf.
 - Android `app/**` nicht ändern; Fix ausschließlich im Server-PDF-Pfad, anschließend Source- und Visual-Regressionstest.
+
+### PDF-RUNTIME-009 – Source-Umsetzung v5
+- Code-Commit: `d2c3ca9e046abdc3f176e16a96148dfda2260dca` (`fix(pdf): align server BTB PDF with Android layout`).
+- Neuer Renderer: `server/tbserver/btb_pdf_android_style.py`.
+- `server/tbserver/btb_pdf.py` verwendet für den autoritativen Abschluss jetzt `tb-server-btb-pdf-5`; der alte generische ReportLab-Renderer bleibt nur als Legacy-Implementierung im Quelltext und wird nicht mehr vom normalen `render_btb_pdf()`-Pfad aufgerufen.
+- Layoutziel aus `BautagebuchPdf.kt`/22.09 übernommen: A4 595×842, Android-nahe Ränder, Firmenkopf rechts, Wetter kompakt, Personal/Maschinen zweispaltig, Punkte 4–8 als Rahmen, Signatur, Fotoanhang.
+- Fachliche Serverdaten werden Android-nah aufbereitet: FIRMA/PERSONAL/GERAET/ARBEIT/ABNAHME/EINWEISUNG/BESONDERHEIT/MANGEL, `worksiteNodeKey`, KM, Foto-Metadaten und Bildnummern.
+- Nachbearbeitungsmodell bleibt erhalten: neue/geänderte bzw. entfernte Inhalte werden weiterhin kenntlich gemacht; Original-Snapshot wird nicht verändert.
+- `_pdf_context()` liefert zusätzlich Lead-E-Mail/Mobil und die vorhandenen Worksite-Nodes read-only; keine Migration.
+- Android `app/**` unverändert.
+- Lokaler synthetischer Renderer-Smoke: gültiges A4-PDF erzeugt und visuell gegen das 22.09-Zielbild geprüft.
+- CI auf Code-HEAD: TB-Server Runs `36551663700` und `36551656529`, Android Run `36551663628`; jeweils `failure` ohne Runner (`runner_name=""`, `steps=[]`) → **kein Testnachweis / kein Sourcefehler-Nachweis**.
+- Praktischer nächster Schritt: neue/änderte Server-Python-Dateien auf Synology übernehmen, API neu starten und einen neuen Test-/Tagesabschluss erzeugen; das erzeugte Server-PDF direkt mit Handy-Entwurf und 22.09-Referenz vergleichen.

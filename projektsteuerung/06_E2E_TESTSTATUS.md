@@ -316,3 +316,17 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
 - Damit ist die Regression reproduzierbar auf den Wechsel des PDF-Renderpfads eingegrenzt.
 - Aktueller Android-Entwurf laut Benutzer weiterhin korrekt.
 - Status: **URSACHE BESTÄTIGT / SERVER-FIX + RUNTIME-VISUAL-E2E OFFEN**.
+
+### PDF-RUNTIME-009 – Source-Fix v5
+- Code-HEAD `d2c3ca9e046abdc3f176e16a96148dfda2260dca` enthält den Android-nahen Serverrenderer `tb-server-btb-pdf-5`.
+- Lokaler synthetischer Visual-Smoke der Rendererlogik: gültiges A4-PDF, Android-nahe Hauptstruktur sichtbar.
+- GitHub Actions: TB-Server `36551663700`/`36551656529` und Android `36551663628` jeweils ohne Runner-Schritte (`steps=[]`) → **kein CI-Testnachweis**.
+- Kein Synology-Runtime-/E2E-Nachweis für Renderer v5 vorhanden.
+- Pflichttest nach Upload/API-Neustart:
+  1. neuen Test-/Tages-BTB serverseitig abschließen;
+  2. Seite 1 gegen 22.09 und aktuellen Handy-Entwurf vergleichen;
+  3. Wetter, Personal/Maschinen, Punkte 4–8 und Unterbaustellen/KM prüfen;
+  4. Fotoanhang und Bildnummern prüfen;
+  5. Logo-Größe/X/Y sowie Speichern/Großansicht zusammen mit ADMIN-PDF-007 prüfen;
+  6. erst nach sichtbarer Praxisbestätigung auf BESTÄTIGT/ERLEDIGT anheben.
+- Status: **SOURCE-FIX FERTIG / DEPLOY + VISUAL-E2E OFFEN**.

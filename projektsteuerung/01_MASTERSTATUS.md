@@ -658,3 +658,13 @@ Status: **SOURCE FERTIG / SYNOLOGY-RECREATE + RUNTIME-RETEST OFFEN**
   - Android Run `36488381240`: `failure`, Job `build`, `runner_name = ""`, `steps = []`.
 - Bewertung gemäß Projektregel: **keine Runner-Steps ausgeführt → kein Build-/Testnachweis und kein Sourcefehler-Nachweis**.
 - ADMIN-DASH-008 bleibt **SOURCE FERTIG / NICHT DEPLOYT / RUNTIME-E2E OFFEN**.
+
+## PDF-RUNTIME-009 – Android-naher Server-Abschlussrenderer
+Status: **SOURCE-FIX FERTIG / SYNLOGY-UPLOAD + VISUAL-RETEST OFFEN**
+- Ursache des PDF-Layoutsprungs bestätigt: 22.09 Android/Skia korrekt, 25./26.09 generischer Server/ReportLab-Renderer abweichend.
+- Neuer Server-Renderer `tb-server-btb-pdf-5` bildet die etablierte Android-BTB-Struktur nach: A4/Margen, Firmenkopf, Wetter, Personal/Maschinen zweispaltig, Punkte 4–8 gerahmt, Unterbaustellen/KM, Signatur und Fotoanhang.
+- Bestehender Finalize-/Original-/Rework-Vertrag bleibt erhalten; geänderte/entfernte Einträge und Fotos bleiben im Nachbearbeitungsfall markiert.
+- Server-PDF-Kontext enthält jetzt zusätzlich verantwortlichen TB mit E-Mail/Mobil sowie den aktuellen Baustellenknotenbaum für die Android-nahe Abschnittsdarstellung.
+- Keine DB-Migration, keine API-Vertragsänderung und keine Android-`app/**`-Änderung.
+- Lokaler synthetischer Visual-Smoke der Rendererlogik erzeugte ein gültiges A4-PDF im 22.09-/Android-Zielbild; produktiver Synology-Retest ist noch offen.
+- GitHub Actions auf Code-HEAD `d2c3ca9e...` liefen erneut ohne Runner-Steps (`runner_name=""`, `steps=[]`) und sind deshalb kein Testnachweis.

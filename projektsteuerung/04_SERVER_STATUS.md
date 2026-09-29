@@ -371,9 +371,18 @@ Deployment:
 - ADMIN-DASH-008 bleibt **SOURCE FERTIG / NICHT DEPLOYT / RUNTIME-E2E OFFEN**.
 
 ## PDF-RUNTIME-009 – Server-PDF-Renderer
-Status: **URSACHE BESTÄTIGT / SERVER-FIX OFFEN**
+Status: **SOURCE-FIX FERTIG / DEPLOY + VISUAL-RETEST OFFEN**
 - Historischer 22.09-Export enthält ein Android/Skia-PDF und ist optisch korrekt.
 - 25.09/26.09 enthalten serverseitige ReportLab-Abschluss-PDFs (`tb-server-btb-pdf-3`) und zeigen das abweichende generische Serverlayout.
 - Aktueller Android-`PDF Entwurf` bleibt korrekt; deshalb kein Android-Fix.
 - Server-`render_btb_pdf()` rendert derzeit bewusst anders als `BautagebuchPdf.kt`: generische Meta-/Kopfdaten-Tabellen statt Android-Boxlayout.
 - Nächster Serverblock: Android-Layout als Referenz nehmen und den serverseitigen Abschlussrenderer auf dieselbe visuelle Struktur bringen; danach 22.09 als Referenz visuell gegen Server-PDF testen.
+
+### PDF-RUNTIME-009 – Renderer v5
+- Autoritativer Abschluss-PDF-Pfad wurde von der generischen Tabellenansicht auf einen Android-nahen festen A4-Renderer umgestellt.
+- Neuer Quellbaustein `btb_pdf_android_style.py`; `btb_pdf.py` delegiert `render_btb_pdf()` an Renderer `tb-server-btb-pdf-5`.
+- Serverdaten bleiben die Quelle; es wird kein Android-PDF hochgeladen oder als Fremdartefakt übernommen.
+- Worksite-Nodes und Lead-Kontaktdaten werden nur lesend in den PDF-Kontext aufgenommen.
+- keine DB-/Compose-/Android-Änderung.
+- Für Synology-Staging reicht nach Dateiübernahme ein **API-Neustart**; für diesen PDF-Fix ist kein neues Volume und kein Image-Rebuild erforderlich.
+- Bestehende bereits finalisierte PDFs werden nicht still neu geschrieben. Visual-Retest mit neuem Test-/Tagesabschluss durchführen.

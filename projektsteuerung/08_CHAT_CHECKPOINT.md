@@ -688,3 +688,17 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Aktueller Servercode `server/tbserver/btb_pdf.py` bestätigt diese Ursache; Renderer v4 hat nur Header/Logo verbessert, nicht die Dokumentparität.
 - Android-`app/**` bleibt unverändert.
 - Nächster Schritt: SERVER-Renderer gegen Android-`BautagebuchPdf.kt`/22.09-Referenz angleichen und danach visuell + auf Synology testen.
+
+## PDF-RUNTIME-009 – Source-Checkpoint 29.09.2026
+- Benutzer hat nach bestätigter Ursache die SERVER-Umsetzung freigegeben.
+- Arbeitsblock startete nach erneutem GitHub-Check; vor Code wurde die Freigabe in `02_AKTIVER_AUFTRAG.md` gesichert.
+- Source-Fix Commit `d2c3ca9e046abdc3f176e16a96148dfda2260dca`.
+- Neu: `server/tbserver/btb_pdf_android_style.py` als Android-naher A4-Abschlussrenderer.
+- `server/tbserver/btb_pdf.py`: Renderer v5 delegiert normalen Abschluss an den neuen Pfad; alter generischer Renderer nicht mehr autoritativ.
+- `server/tbserver/btb.py`: PDF-Kontext um Lead-E-Mail/Mobil und vorhandene Worksite-Nodes ergänzt.
+- `server/checks/34_verify_tb_server_1_btb_pdf_source.py`: v5-/Android-Layout-Marker ergänzt.
+- Keine Android-Datei, keine DB-Migration, kein Compose geändert.
+- Lokaler synthetischer Visual-Smoke der Rendererlogik gegen das 22.09-/Android-Zielbild sah strukturell passend aus; dies ist **kein Synology-E2E**.
+- GitHub Actions Code-HEAD: Server `36551663700`/`36551656529`, Android `36551663628`, alle ohne Runner-Steps; kein Testnachweis.
+- Nächster praktischer Schritt: GitHub-Stand auf NAS übernehmen, API neu starten, neuen BTB serverseitig finalisieren und PDF visuell mit 22.09 + Handy-Entwurf vergleichen.
+- Status: **SOURCE-FIX FERTIG / NICHT DEPLOYT / VISUAL-RUNTIME-RETEST OFFEN**.
