@@ -519,3 +519,39 @@ Status: **ANDROID-ANPASSUNG ERFORDERLICH / SERVER dokumentiert**
 - Konflikte werden serverseitig mit `REVIEW_REQUIRED` beantwortet; Android zeigt den Status, entscheidet ihn aber nicht.
 - Der jetzige Android-Abschnittseditor ist **kein freier GPS-TRA-Recorder**. Wenn künftig eine Achse ohne vorhandene Roh-TRA vollständig per GPS aufgenommen werden soll, braucht Android dafür einen eigenen Geometrie-Aufnahmepfad und einen eigenen Serverdatentyp/Vertrag.
 - SERVER stellt dafür den API-/Versions-/Konfliktvertrag bereit; `app/**` bleibt Aufgabe des ANDROID-Projekts.
+
+
+#### REF-DATA-003 – finaler Server-API-Vertrag für Portal/Android
+Status: **SERVER-QUELLVERTRAG IMPLEMENTIERT / RUNTIME-NACHWEIS OFFEN**
+Dokument: `docs/TB-SERVER_1_0_SURVEY_CATALOG.md`.
+
+Read:
+- `GET /api/v1/survey-catalog/search?q=...`
+- `GET /api/v1/survey-catalog/availability?route_number=...&station_code=...`
+- `GET /api/v1/survey-catalog/geometry`
+- `GET /api/v1/survey-catalog/changes?after=...`
+
+Nutzerbeitrag/Änderung:
+- `POST /api/v1/survey-catalog/manual-segments`
+- `PATCH /api/v1/survey-catalog/manual-segments/{id}`
+- `DELETE /api/v1/survey-catalog/manual-segments/{id}` = Deaktivieren, keine physische Löschung
+- `PATCH /api/v1/survey-catalog/axes/{id}`
+
+Admin nur für echte Prüffälle:
+- `GET /api/v1/survey-catalog/conflicts`
+- `POST /api/v1/survey-catalog/conflicts/{id}/resolve`
+- `POST /api/v1/survey-catalog/reindex`
+
+Originalupload:
+- `POST /api/v1/survey-originals/from-file` unterstützt `catalog_scope`, `station_code`, `station_name`, `source_date`.
+- `catalog_scope=GLOBAL` teilt die abgeleitete Geometrie; company-private Rohdatei bleibt company-private.
+- Aktive Baustellenmitgliedschaft genügt für Vermessungsbeitrag/Reparse.
+
+Statuswerte:
+- `ADDED`, `MERGED`, `REVIEW_REQUIRED`, `DEACTIVATED`.
+- KM: `AUTOMATISCH/GRUEN`, `MANUELL/ORANGE`, `UNPLAUSIBEL/GRAU`, `FEHLT/ROT`.
+
+Android bleibt danach anzupassen:
+- heutiges `memberRole == LEAD`-Upload-Gate passt noch nicht;
+- `TrassenManuellerAbschnittEntity` wird heute noch nicht als eigener Datentyp synchronisiert;
+- Android soll später diesen Serververtrag konsumieren; `app/**` wurde im SERVER-Block nicht geändert.
