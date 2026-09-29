@@ -851,3 +851,18 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Bestätigte Inhalte: Achsen-Hover/Klick, breite unsichtbare Trefferzone, erweiterter Tiefzoom, KOR-Parser v3.
 - Schutzregel: nicht ohne Grund ändern.
 - Übrige REF-DATA-002-Themen bleiben davon getrennt.
+
+## REF-DATA-003 – SERVER-Sourcecheckpoint 29.09.2026
+- Verbindliche Reihenfolge bleibt **SERVER → Portal → Android**.
+- SERVER-HEAD: `782e72e18790570066b40da08a80471fa14d759e`.
+- Sourceblock ist nach wiederholtem GitHub-Audit **SOURCE FERTIG**.
+- Kern: Migration 017, Katalog Assets/Achsen/Segmente/Konflikte/History, Suche/Availability/Geometry, versionierter `next_after`-Feed, Beiträge/Korrekturen, Reindex, Konfliktmail.
+- Teilüberdeckung löscht keinen nicht abgedeckten Alt-/Manuellrest; Vollsupersede nur bei geometrischer Vollabdeckung.
+- Schwache Achskennung darf über kompatible Strecke/Betriebsstelle + engen X/Y-Kandidaten geometrisch geprüft werden; Mehrdeutigkeit = REVIEW_REQUIRED.
+- Rohoriginale bleiben unverändert; globale abgeleitete Sicht kann von privater Rohdatei getrennt sein.
+- Normale Nutzer sehen keine fremden Bearbeiter-/Firmenidentitäten im globalen Katalog.
+- Worksite-Fallback, GLOBAL-Duplikaterkennung, source_date, Lifecycle/Purge und Capability-Flags abgeschlossen.
+- Finaler GitHub-Source-Audit: 25/25 Marker PASS.
+- Actions `36621416472`, `36621409361`: `steps=[]`, also kein CI-Testbeweis.
+- Status ausdrücklich: **SOURCE FERTIG / NICHT DEPLOYT / SYNLOGY-E2E OFFEN**.
+- Nächster Arbeitsblock: Synology-Deployment + Migration017 + API/Worker + Reindex + dokumentierter Runtime-/Postman-E2E. Portal erst danach.

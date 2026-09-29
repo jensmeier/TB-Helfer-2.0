@@ -853,3 +853,19 @@ Status: **QUELLSTAND IMPLEMENTIERT / NICHT DEPLOYT / E2E OFFEN**
 - Portal und Android wurden nicht geändert.
 - GitHub Runs `36618626903` + `36618619207`: `steps=[]` → **kein Testnachweis**.
 - Nächster Schritt: Synology Migration 017 + API/Worker deployen → Reindex → Runtime/Postman-E2E. Erst danach Portal.
+
+## REF-DATA-003 – SERVER-Sourceabschluss 29.09.2026
+Status: **SOURCE FERTIG / NICHT DEPLOYT / SYNLOGY-E2E OFFEN**
+- Maßgeblicher SERVER-HEAD: `782e72e18790570066b40da08a80471fa14d759e`.
+- Persistenter Survey-Katalog mit Migration 017 ist source-seitig abgeschlossen: Assets, fachliche Achsen, Quellsegmente, Konflikte und versionierte Historie.
+- Serververtrag umfasst Suche nach Strecke/Betriebsstelle, Availability, ausgedünnte Geometrie, KM-Qualität, versionierte Nutzerbeiträge, Achskorrekturen, Change-Feed mit `next_after`, Reindex und Konfliktentscheidung.
+- Auto-Merge schützt Teilabdeckungen: alte/manuelle Restgeometrie bleibt aktiv; vollständiges Supersede nur bei nachgewiesener geometrischer Vollabdeckung.
+- TRA mit unvollständiger Gleis-/Richtungskennung darf bei kompatibler Strecke/Betriebsstelle und engem X/Y-Kandidaten in den Geometrievergleich; Mehrdeutigkeit bleibt `REVIEW_REQUIRED`.
+- Normale Nutzer erhalten keine fremden Bearbeiter-/Firmenidentitäten aus globalen Katalogantworten; Admin-Audit bleibt vollständig.
+- Mobile Originaluploads erben bei Bedarf Strecke/Betriebsstelle aus der Baustelle; globale SHA-Duplikate werden erkannt, private Fremdfirmendaten nicht offengelegt.
+- Firmen-Lifecycle/Purge berücksichtigt Migration-017-Abhängigkeiten; bestätigter Produktionsschutz für Vermessungsoriginale bleibt bestehen.
+- Capability-Flags: `survey_reference_catalog_v1`, `survey_reference_contributions_v1`, `survey_reference_change_feed_v1`.
+- Abschließender GitHub-Source-Audit gegen HEAD: alle 25 geprüften Vertrags-/Integrationsmarker **PASS**.
+- GitHub Actions Runs `36621416472` und `36621409361`: Foundation-Job jeweils `steps=[]`; daher ausdrücklich **kein CI-Testnachweis**.
+- Portal und Android wurden in diesem Serverblock nicht geändert.
+- Nächster Pflichtschritt vor Portal: Synology deployen, Migration 017 anwenden, API+Worker neu starten/recreaten, Reindex und Runtime-/Postman-E2E durchführen.

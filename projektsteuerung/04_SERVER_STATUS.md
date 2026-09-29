@@ -650,3 +650,41 @@ Status: **SOURCE-ABSCHLUSSKORREKTUR OFFEN**
 - Capability-Flags sind mit 065cd1d2 ergänzt.
 - Noch zu korrigieren: Geometrievergleich muss bei fehlender Gleis-/Richtungskennung möglich sein, sofern Strecke/Betriebsstelle kompatibel und X/Y räumlich eng sind.
 - Mehrdeutigkeit bleibt Reviewfall; keine Lockerung bei widersprüchlichen Identitäten.
+
+## REF-DATA-003 – SERVER-Sourceabschluss 29.09.2026
+Status: **SOURCE FERTIG / NICHT DEPLOYT / E2E OFFEN**
+Maßgeblicher HEAD: `782e72e18790570066b40da08a80471fa14d759e`
+
+Abgeschlossen:
+- Migration `017_survey_reference_catalog.sql`;
+- gemeinsamer versionierter Survey-Katalog in `survey_catalog.py`;
+- Search / Availability / Geometry / Changes(`next_after`);
+- Original- und manuelle Quellsegmente ohne Überschreiben der Rohoriginale;
+- Auto-Merge für Überlappung/Endpunkt sowie X/Y-Fallback bei schwacher Achskennung;
+- Vollabdeckungs-Guard gegen Verlust von Alt-/Manuell-Restsegmenten;
+- `REVIEW_REQUIRED` + Konfliktdatensatz + Background-Mailjob;
+- Admin-Konfliktentscheidungen;
+- versionierte Nutzerbeiträge und Achskorrekturen;
+- GLOBAL/COMPANY-Sicht + Antwort-Redaktion fremder Bearbeiter-/Firmenidentitäten;
+- KM-Qualitätsvertrag GRA/GVP/manuell;
+- Worksite-Fallback und globale Duplikaterkennung beim mobilen Originalimport;
+- `source_date` als fachliches Bestandsdatum;
+- Reindex für vorhandene Originale;
+- Firmen-Purge/Lifecycle-Kompatibilität für Migration 017 bei unverändertem Produktionsschutz;
+- Capability-Flags für späteren Portal-/Android-Consumer.
+
+Source-Nachweis:
+- GitHub-Reread/Audit gegen HEAD mit 25/25 Vertrags-/Integrationsmarkern PASS.
+- Check 112/113 decken Sourcevertrag, Merge, Teil-/Vollabdeckung, Datenschutz und schwache Achsidentität ab.
+- GitHub Actions `36621416472` (PR) und `36621409361` (Push) hatten jeweils `steps=[]`; daher **kein Runner-/CI-Testnachweis**.
+
+Noch offen:
+- Migration 017 auf Synology;
+- API-/Worker-Runtime;
+- Reindex auf echtem Serverbestand;
+- Runtimeprüfung Search/Availability/Geometry/Changes;
+- echte Imports mit Erweiterung/Überlappung/Review;
+- Konfliktmail und Adminentscheidung;
+- Postman/Synology-E2E.
+
+Portal/Android bleiben bis zu diesem Runtime-Gate unangetastet.

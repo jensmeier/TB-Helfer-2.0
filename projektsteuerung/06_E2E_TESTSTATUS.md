@@ -505,3 +505,33 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
 - Status des Teilblocks: **BESTÄTIGT**.
 - Sourcecheck bleibt zusätzlich PASS; GitHub-Actions ohne Runner/Steps bleiben weiterhin kein eigener Testnachweis.
 - Kein Anspruch, dass damit sämtliche übrigen REF-DATA-002-E2E-Fälle abgeschlossen sind.
+
+### REF-DATA-003 – Survey-Katalog Server-E2E
+Source-Stand: **FERTIG** auf `782e72e18790570066b40da08a80471fa14d759e`.  
+Deployment: **OFFEN**.  
+Synology-E2E: **OFFEN**.
+
+Sourceprüfung:
+- abschließender GitHub-Strukturaudit: 25/25 geprüfte Vertrags-/Integrationsmarker PASS;
+- Check 112/113 sind im Quellstand verdrahtet;
+- Actions Runs `36621416472` + `36621409361`: `steps=[]` → **kein Testnachweis**.
+
+Pflicht-Runtimefälle vor Portal:
+1. Migration 017 erfolgreich angewendet und Migrationsstatus sauber.
+2. API + Worker starten mit neuem Katalogmodul/Capabilities.
+3. Reindex vorhandener geparster Originale läuft ohne Fehler.
+4. Suche nach Strecke und Betriebsstelle liefert Katalogbestand.
+5. Availability zeigt Datenarten, Teilbestand und KM-Qualität korrekt.
+6. Geometry liefert aktive zusammengesetzte Segmente und redigiert fremde Bearbeiter/Firma für Normalnutzer.
+7. Neue TRA mit eindeutiger Überlappung verlängert/ergänzt vorhandene Achse.
+8. Teilüberdeckung lässt nicht abgedeckten Alt-/Manuellbereich aktiv.
+9. TRA ohne sichere Gleis-/Richtungskennung kann bei eindeutigem X/Y-Match zugeordnet werden.
+10. Mehrdeutige/abweichende Geometrie erzeugt `REVIEW_REQUIRED`, bestehende aktive Geometrie bleibt nutzbar.
+11. Konflikt erzeugt Background-Mailjob; Mailweg bzw. definierter Skip-Status wird dokumentiert.
+12. Adminentscheidung `KEEP_EXISTING / ACCEPT_CANDIDATE / KEEP_BOTH / CONNECT` versioniert den Katalog nachvollziehbar.
+13. Mobile/Portal-ähnlicher Originalupload übernimmt fehlende Strecke/Betriebsstelle aus Baustelle.
+14. Bytegleiches GLOBAL-Original wird als bereits verfügbar erkannt, ohne Fremdfirmen-Leak.
+15. Change-Feed-`next_after` schreitet auch über unsichtbare COMPANY-Änderungen fort.
+16. Staging/Test-Firmen-Purge bleibt mit Migration 017 lauffähig; Produktionsschutz für Originale bleibt bestehen.
+
+Erst nach diesen Runtimefällen darf REF-DATA-003 als **DEPLOYT/E2E BESTÄTIGT** hochgestuft und der Portalblock begonnen werden.
