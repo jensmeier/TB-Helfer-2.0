@@ -59,7 +59,11 @@ def main() -> None:
         ('GLOBAL_REFERENCE', admin_survey),
         ('COMPANY_WORKSITE_DATA', admin_survey),
         ('company_id IS NULL', admin_survey),
-        ('id="scope"', admin_template),
+        ('id="startAnalysis"', admin_template),
+        ('id="surveyMap"', admin_template),
+        ('decision-scope', admin_template),
+        ('/survey-import/analyze', admin_template),
+        ('/analysis/', admin_template),
         ('cache_revision', survey),
         ('row["company_id"] is not None and row["company_id"] != company_id', sections),
     ]
@@ -78,7 +82,7 @@ def main() -> None:
     if present:
         raise SystemExit("Vermessungsoriginale duerfen nicht mutierbar sein: " + ", ".join(present))
 
-    print("OK: TB-Server 1.0 immutable survey originals + versioned track data")
+    print("OK: TB-Server 1.0 immutable survey originals + file-first graphical preview + versioned track data")
 
 
 if __name__ == "__main__":
