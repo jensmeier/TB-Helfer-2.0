@@ -1218,4 +1218,8 @@ Regeln:
 8. Weitere Plugins gelten erst nach ausdrücklicher Entscheidung/Verbindung als Teil der verbindlichen SERVER-Werkzeugkette.
 
 Aktive SERVER-Werkzeugkette: **GitHub + Context7 + Postman**.
-
+### PDF-RUNTIME-009 – Benutzerfreigabe Umsetzung
+Status: **SERVER-UMSETZUNG FREIGEGEBEN**
+- Benutzer bestätigt am 29.09.2026 mit `okay`, dass der eingegrenzte Server-PDF-Renderer-Fehler jetzt behoben werden soll.
+- Referenz bleibt das optisch korrekte Android/Skia-PDF vom 22.09. sowie der aktuell korrekte Handy-PDF-Entwurf.
+- Android `app/**` nicht ändern; Fix ausschließlich im Server-PDF-Pfad, anschließend Source- und Visual-Regressionstest.
