@@ -679,14 +679,14 @@ class AndroidStyleWriter:
         self.c.setStrokeColor(colors.black)
 
 
-def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) -> None:
+def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) -> float:
     canvas = writer.c
     canvas.setFillColor(colors.black)
     canvas.setFont("Helvetica-Bold", 18)
     canvas.drawString(MARGIN_L, writer.pdf_y(MARGIN_TOP + 10), "BAUTAGEBUCH")
 
     layout = context.get("pdf_logo_layout") if isinstance(context.get("pdf_logo_layout"), dict) else {}
-    width_pt = max(40.0, min(250.0, _number(layout.get("logo_width_pt")) or 90.0))
+    width_pt = max(40.0, min(400.0, _number(layout.get("logo_width_pt")) or 90.0))
     offset_x = max(-120.0, min(120.0, _number(layout.get("offset_x_pt")) or 0.0))
     offset_y = max(-60.0, min(180.0, _number(layout.get("offset_y_pt")) or 0.0))
     show_name = _bool(layout.get("show_company_name"), True)
@@ -694,26 +694,52 @@ def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) ->
     show_phone = _bool(layout.get("show_company_phone"), True)
     contacts_in_image = _bool(layout.get("contacts_in_image"), False)
 
+    # Der Anker bleibt im rechten Kopfbereich, große Logos dürfen aber bis 400 pt
+    # in die Seite hineinragen. Nur die tatsächlichen A4-Seitenränder begrenzen
+    # die Position. So bleibt 400 pt ein echter Regelbereich statt nur ein UI-Wert.
     left = MARGIN_L + CONTENT_W * 0.53
     right = PAGE_W - MARGIN_R
     box_width = right - left
+    page_left = 8.0
+    page_right = PAGE_W - 8.0
     logo_path = context.get("company_logo_path")
     text_top = MARGIN_TOP + 12.0
+    content_bottom = MARGIN_TOP + 12.0
+
     if isinstance(logo_path, Path) and logo_path.is_file():
         try:
             image = ImageReader(str(logo_path))
             image_width, image_height = image.getSize()
-            draw_width = min(width_pt, box_width)
+            draw_width = min(width_pt, page_right - page_left)
             draw_height = draw_width * image_height / image_width
-            max_height = 88.0
+
+            # A4-Sicherheitsgrenze: das Logo darf nie die Seite verlassen.
+            max_height = PAGE_H - 16.0
             if draw_height > max_height:
                 scale = max_height / draw_height
                 draw_width *= scale
                 draw_height *= scale
-            x = left + (box_width - draw_width) / 2.0 + offset_x
-            x = min(max(left, x), right - draw_width)
-            top_y = max(MARGIN_TOP + 4.0, MARGIN_TOP + 12.0 + offset_y)
-            top_y = min(top_y, MARGIN_TOP + 92.0 - draw_height)
+
+            center_x = left + box_width / 2.0 + offset_x
+            x = center_x - draw_width / 2.0
+            x = min(max(page_left, x), page_right - draw_width)
+
+            # Y ist bewusst ein echter Versatz vom bisherigen Kopfanker.
+            # Der alte Code klemmte bei hohen/quadratischen Logos beide Grenzen
+            # auf denselben Wert und machte den Regler dadurch wirkungslos.
+            base_top = MARGIN_TOP + 4.0
+            top_y = base_top + offset_y
+            top_y = min(max(8.0, top_y), PAGE_H - 8.0 - draw_height)
+
+            canvas.setFillColor(colors.white)
+            canvas.rect(
+                x,
+                writer.pdf_y(top_y + draw_height),
+                draw_width,
+                draw_height,
+                fill=1,
+                stroke=0,
+            )
             canvas.drawImage(
                 image,
                 x,
@@ -724,6 +750,7 @@ def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) ->
                 mask="auto",
             )
             text_top = top_y + draw_height + 8.0
+            content_bottom = max(content_bottom, text_top)
         except Exception:
             pass
 
@@ -737,13 +764,20 @@ def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) ->
             lines.append(_text(context.get("company_phone")))
 
     canvas.setFont("Helvetica", 8.2)
+    text_center_x = min(
+        max(page_left + 20.0, left + box_width / 2.0 + offset_x),
+        page_right - 20.0,
+    )
     for line in lines[:3]:
         canvas.drawCentredString(
-            left + box_width / 2.0 + offset_x,
+            text_center_x,
             writer.pdf_y(text_top),
             line[:80],
         )
         text_top += 9.5
+        content_bottom = max(content_bottom, text_top)
+
+    return content_bottom
 
 
 def _draw_document_header(
@@ -751,7 +785,7 @@ def _draw_document_header(
     snapshot: dict[str, Any],
     context: dict[str, Any],
 ) -> None:
-    _draw_company_header(writer, context)
+    company_header_bottom = _draw_company_header(writer, context)
     btb = snapshot.get("btb") or {}
     meta = _android_meta(btb.get("header"))
     writer.y = MARGIN_TOP + 48.0
@@ -774,7 +808,7 @@ def _draw_document_header(
         f"Zeit: {_time_hm(btb.get('started_at'))} - {_time_hm(btb.get('ended_at'))}",
         size=9.0,
     )
-    writer.y += 6.0
+    writer.y = max(writer.y + 6.0, company_header_bottom + 6.0)
 
 
 def _weather_rows(meta: dict[str, Any]) -> tuple[str, list[tuple[str, str, str, str]]]:

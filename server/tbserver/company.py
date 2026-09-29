@@ -47,7 +47,7 @@ class CompanyProfileUpdate(BaseModel):
 
 
 class PdfLogoLayoutUpdate(BaseModel):
-    logo_width_pt: int = Field(default=90, ge=40, le=250)
+    logo_width_pt: int = Field(default=90, ge=40, le=400)
     offset_x_pt: int = Field(default=0, ge=-120, le=120)
     offset_y_pt: int = Field(default=0, ge=-60, le=180)
     show_company_name: bool = True
@@ -72,7 +72,7 @@ def normalize_pdf_logo_layout(value: Any) -> dict[str, Any]:
     layout = dict(PDF_LOGO_LAYOUT_DEFAULTS)
     layout.update(
         {
-            "logo_width_pt": max(40, min(250, int(source.get("logo_width_pt", 90)))),
+            "logo_width_pt": max(40, min(400, int(source.get("logo_width_pt", 90)))),
             "offset_x_pt": max(-120, min(120, int(source.get("offset_x_pt", 0)))),
             "offset_y_pt": max(-60, min(180, int(source.get("offset_y_pt", 0)))),
             "show_company_name": bool(source.get("show_company_name", True)),
@@ -315,7 +315,7 @@ def admin_company_logo(
 @router.get("/admin/companies/{company_id}/pdf-preview")
 def admin_company_pdf_preview(
     company_id: UUID,
-    logo_width_pt: int | None = Query(default=None, ge=40, le=250),
+    logo_width_pt: int | None = Query(default=None, ge=40, le=400),
     offset_x_pt: int | None = Query(default=None, ge=-120, le=120),
     offset_y_pt: int | None = Query(default=None, ge=-60, le=180),
     show_company_name: bool | None = Query(default=None),

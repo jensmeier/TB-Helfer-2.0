@@ -41,7 +41,7 @@ class CompanyHeaderFlowable(Flowable):
     def draw(self):
         canvas = self.canv
         layout = self.context.get("pdf_logo_layout") or {}
-        width_pt = max(40, min(250, int(layout.get("logo_width_pt", 90))))
+        width_pt = max(40, min(400, int(layout.get("logo_width_pt", 90))))
         offset_x = max(-120, min(120, int(layout.get("offset_x_pt", 0))))
         offset_y = max(-60, min(180, int(layout.get("offset_y_pt", 0))))
         show_name = bool(layout.get("show_company_name", True))
