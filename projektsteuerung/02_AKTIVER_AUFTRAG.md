@@ -1166,3 +1166,20 @@ Vor Implementierung prüfen:
 - Dashboard zeigt z. B. `Laufwerk 1: 36 °C · Laufwerk 2: 37 °C`; ohne Hostdaten `Nicht verfügbar`.
 - Source-Marker/Commit-Diff geprüft; keine DB-/Android-Änderung.
 - Runtime/E2E noch offen: Synology-Projekt/API mit aktualisiertem Compose recreaten und Werte direkt gegen DSM vergleichen.
+## PDF-RUNTIME-009 – Server-PDF seit 22.09. sichtbar verschoben
+Status: **NEUER RUNTIME-FEHLER / DIAGNOSE VOR CODEÄNDERUNG**
+
+Benutzerbefund 29.09.2026:
+- PDF vom **22.09.** war noch optisch in Ordnung.
+- spätere serverseitig erzeugte/ausgegebene PDFs sind sichtbar verschoben bzw. im Layout verändert.
+- der aktuelle **Android-PDF-Entwurf auf dem Handy** sieht dagegen korrekt aus.
+- Verdacht liegt damit auf dem **serverseitigen PDF-Render-/Exportpfad**, ist aber noch nicht als Ursache bestätigt.
+- Benutzer hat Vergleichsarchive für 22.09., 25.09. und 26.09. bereitgestellt.
+
+Verbindliche Diagnose vor Fix:
+1. Vergleichsarchive vollständig öffnen und enthaltene PDFs/Metadaten gegenüberstellen;
+2. 22.09-Serverstand bzw. relevante PDF-Renderer-Änderungen bis heute in GitHub nachvollziehen;
+3. Android-Renderer und Server-Renderer auf Seitengröße, Ränder, Headerhöhe, Skalierung, Tabellen-/Flowable-Breiten und Logo-Offsets vergleichen;
+4. feststellen, ob nur Firmenkopf/Logo oder das gesamte PDF-Layout verschoben ist;
+5. keine Android-Änderung, solange der aktuelle Android-PDF-Entwurf korrekt bleibt;
+6. erst nach reproduzierbarer Serverursache gezielt korrigieren und mit den historischen PDFs visuell gegenprüfen.
