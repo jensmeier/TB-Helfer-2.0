@@ -233,8 +233,9 @@ def import_survey_original_from_file(
             if file_row["worksite_id"] is None:
                 raise HTTPException(409, "SURVEY_IMPORT_REQUIRES_WORKSITE_FILE")
 
+            # Active worksite membership is sufficient for survey contribution.
+            # The raw file still has to belong to the same company/worksite context.
             context = worksite_context(cur, user, file_row["worksite_id"])
-            require_permission(context, "track.edit")
             if file_row["company_id"] != context["company_id"]:
                 raise HTTPException(403, "FILE_COMPANY_MISMATCH")
 

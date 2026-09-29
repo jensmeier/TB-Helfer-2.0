@@ -633,8 +633,9 @@ def parse_original(worksite_id: UUID, original_id: UUID, user: dict[str, Any] = 
     with transaction() as conn, conn.cursor() as cur:
         original = _load_original(cur, original_id)
         _assert_original_access(user, original)
+        # Every active worksite member may contribute/re-parse survey data.
+        # Company isolation is still enforced below.
         context = worksite_context(cur, user, worksite_id)
-        require_permission(context, "track.edit")
         if original["company_id"] is not None and original["company_id"] != context["company_id"]:
             raise HTTPException(403, "SURVEY_ORIGINAL_COMPANY_MISMATCH")
 

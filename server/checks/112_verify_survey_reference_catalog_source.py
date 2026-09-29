@@ -71,5 +71,8 @@ assert 'gra.get("source_date") == segment_source_date' in catalog
 assert 'def update_axis(' in catalog
 assert 'user: dict[str,Any] = Depends(require_csrf)' in catalog
 assert '_assert_segment_write_access(user, axis)' in catalog
+survey_originals = SURVEY_ORIGINALS.read_text(encoding="utf-8")
+assert 'Active worksite membership is sufficient for survey contribution.' in survey_originals
+assert 'Every active worksite member may contribute/re-parse survey data.' in parser
 
 print("PASS survey reference catalog source")
