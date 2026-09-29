@@ -10,8 +10,20 @@
   .result{border:1px solid #eaecf0;border-left-width:4px;border-radius:11px;padding:10px 12px;margin-top:8px}.result.ok{border-left-color:#12b76a;background:#f6fef9}.result.warn{border-left-color:#f79009;background:#fffcf5}.result.bad{border-left-color:#d92d20;background:#fff8f7}
   .result-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.result small{color:#667085}.warnings{margin:6px 0 0;padding-left:18px;font-size:12px;color:#667085}
   .history-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.history-controls>div{min-width:230px;flex:1}
-  @media(max-width:900px){.format-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.queue-row{grid-template-columns:1fr 100px}.queue-status{grid-column:1/-1;text-align:left}}
-  @media(max-width:560px){.format-grid{grid-template-columns:1fr}.queue-row{grid-template-columns:1fr}}
+  .step-badge{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#eaf2ff;color:#0b4fad;font-weight:850;margin-right:7px}
+  .analysis-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,.7fr);gap:14px;align-items:start}
+  .graphic-shell{border:1px solid #d0d5dd;border-radius:12px;background:#fff;overflow:hidden;position:relative;min-height:420px}
+  #surveyMap{width:100%;height:420px;display:block;touch-action:none;cursor:grab}#surveyMap.dragging{cursor:grabbing}
+  .map-hint{position:absolute;left:10px;bottom:10px;background:rgba(255,255,255,.92);border:1px solid #eaecf0;border-radius:8px;padding:5px 8px;font-size:11px;color:#667085}
+  .graphic-side{display:grid;gap:10px}.info-box{border:1px solid #eaecf0;border-radius:10px;padding:11px;background:#fff}.info-box h3{margin:0 0 5px;font-size:14px}
+  .analysis-items{display:grid;gap:11px;margin-top:14px}.analysis-item{border:1px solid #d0d5dd;border-radius:12px;padding:12px;background:#fff}.analysis-item.skip{background:#f8fafc;color:#667085}
+  .analysis-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.facts{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.fact{font-size:11px;border:1px solid #e4e7ec;background:#f9fafb;border-radius:999px;padding:3px 7px}.fact.warn{border-color:#f7c56d;background:#fffbeb;color:#8a4b08}
+  .decision-grid{display:grid;grid-template-columns:1.1fr 1.4fr 1fr 1fr;gap:9px;margin-top:11px}.worksite-cell.disabled{opacity:.45}.import-toggle{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px}
+  .range-list{display:grid;gap:8px}.range-row{display:grid;grid-template-columns:minmax(120px,180px) 1fr;gap:8px;align-items:center}.range-track{height:18px;background:#eef2f6;border-radius:9px;position:relative;overflow:hidden}.range-fill{height:100%;position:absolute;border-radius:9px;background:#4e8fe5;min-width:3px}.range-label{font-size:11px;color:#667085}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.legend-item{display:inline-flex;align-items:center;gap:5px;font-size:11px}.legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .geom-line{fill:none;stroke-width:2.2;vector-effect:non-scaling-stroke}.geom-point{stroke:#fff;stroke-width:1.2;vector-effect:non-scaling-stroke;cursor:pointer}.geom-0{stroke:#0b4fad;fill:#0b4fad}.geom-1{stroke:#8b5cf6;fill:#8b5cf6}.geom-2{stroke:#0f9d7a;fill:#0f9d7a}.geom-3{stroke:#d97706;fill:#d97706}.geom-4{stroke:#b42318;fill:#b42318}.geom-5{stroke:#475467;fill:#475467}
+  @media(max-width:1050px){.analysis-layout{grid-template-columns:1fr}.decision-grid{grid-template-columns:1fr 1fr}.format-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:700px){.queue-row{grid-template-columns:1fr 100px}.queue-status{grid-column:1/-1;text-align:left}.decision-grid{grid-template-columns:1fr}.format-grid{grid-template-columns:1fr}.range-row{grid-template-columns:1fr}}
 </style>
 {% endblock %}
 {% block content %}
@@ -22,40 +34,8 @@
 </div>
 
 <div class="card">
-  <h2>Importziel</h2>
-  <div class="grid">
-    <div>
-      <label for="scope">Datenbereich</label>
-      <select id="scope">
-        <option value="GLOBAL_REFERENCE">Globaler TB-Helfer-Referenzbestand</option>
-        <option value="COMPANY_WORKSITE_DATA">Firma / Baustelle</option>
-      </select>
-    </div>
-    {% if worksites %}
-    <div id="worksiteWrap">
-      <label for="worksite">Firma / Baustelle</label>
-      <select id="worksite">
-        {% for w in worksites %}
-        <option value="{{ w.id }}" data-route="{{ w.route_number or '' }}" data-company="{{ w.company_name }}">
-          {{ w.company_name }} · {{ w.name }}{% if w.route_number %} · Strecke {{ w.route_number }}{% endif %}
-        </option>
-        {% endfor %}
-      </select>
-    </div>
-    {% endif %}
-    <div><label for="routeNumber">Strecke (optional)</label><input id="routeNumber" maxlength="80" placeholder="wird möglichst aus Baustelle/Datei übernommen"></div>
-    <div><label for="trackKey">Gleis / Achse (optional)</label><input id="trackKey" maxlength="160" placeholder="z. B. 28"></div>
-  </div>
-  <div class="notice info" style="margin-top:12px">
-    <b>Global:</b> unveränderte Originale stehen allen berechtigten TB-Helfer-Nutzern als Referenz zur Verfügung.
-    <b>Firma/Baustelle:</b> bestehender geschützter Projektbestand. Originale werden niemals überschrieben.
-  </div>
-</div>
-
-
-<div class="card">
-  <h2>Dateien auswählen</h2>
-  <p class="muted">Mehrere Dateien oder ein ZIP können gemeinsam gewählt werden. ZIP-Inhalte werden einzeln geprüft und als unveränderte Originale gespeichert.</p>
+  <h2><span class="step-badge">1</span>Dateien auswählen</h2>
+  <p class="muted">Noch kein Importziel und keine Strecke vorgeben. Erst lesen und grafisch prüfen, dann fehlende Angaben ergänzen.</p>
   <div class="format-grid">
     <div class="format-box"><b>TRA / GRA</b><small>Trassenachse und Höhen-/Kilometrierungsdaten</small></div>
     <div class="format-box"><b>KF / KF.TXT / KV / GVP</b><small>Festpunkte und Koordinatenverzeichnisse</small></div>
@@ -65,14 +45,49 @@
 
   <div id="dropZone" class="drop-zone" style="margin-top:14px">
     <b>Dateien hier ablegen oder auswählen</b>
-    <div class="muted" style="margin-top:4px">Maximal ca. 512 MB je Upload · keine automatische Überschreibung</div>
+    <div class="muted" style="margin-top:4px">Die Analyse verändert noch keine Datenbank und kein Original.</div>
     <input id="files" type="file" multiple accept=".tra,.gra,.gvp,.kv,.kf,.kor,.csv,.zip,.txt,.trg,.pdf">
   </div>
 
   <div id="queue" class="queue"></div>
   <div class="actions" style="margin-top:14px">
-    <button id="startImport" type="button" disabled>Import starten</button>
+    <button id="startAnalysis" type="button" disabled>Dateien analysieren</button>
     <button id="clearFiles" type="button" class="secondary" disabled>Auswahl leeren</button>
+  </div>
+
+</div>
+
+{% if worksites %}
+<select id="worksiteTemplate" style="display:none">
+  {% for w in worksites %}
+  <option value="{{ w.id }}" data-route="{{ w.route_number or '' }}" data-company="{{ w.company_name }}">{{ w.company_name }} · {{ w.name }}{% if w.route_number %} · Strecke {{ w.route_number }}{% endif %}</option>
+  {% endfor %}
+</select>
+{% endif %}
+
+<div class="card" id="analysisCard" style="display:none">
+  <div class="headline">
+    <div><h2 style="margin-bottom:4px"><span class="step-badge">2</span>Erkannt · prüfen · grafisch kontrollieren</h2><div id="analysisSummary" class="muted"></div></div>
+    <button id="resetView" type="button" class="secondary">Grafik einpassen</button>
+  </div>
+  <div class="analysis-layout" style="margin-top:12px">
+    <div>
+      <div class="graphic-shell">
+        <svg id="surveyMap" viewBox="0 0 1000 500" aria-label="Grafische Vermessungsdaten-Vorschau"><g id="surveyLayer"></g></svg>
+        <div class="map-hint">Mausrad: Zoom · Ziehen: Verschieben · Element anklicken: Details</div>
+      </div>
+      <div id="legend" class="legend"></div>
+    </div>
+    <div class="graphic-side">
+      <div class="info-box"><h3>Auswahl</h3><div id="graphicInfo" class="muted">Linie oder Punkt anklicken.</div></div>
+      <div class="info-box"><h3>KM / Station</h3><div id="rangeOverview" class="range-list muted">Noch keine Bereiche erkannt.</div></div>
+      <div class="info-box"><h3>Prüfregel</h3><div class="muted">Erkannte Angaben werden übernommen. Nur fehlende oder falsche Angaben korrigieren; das Original bleibt unverändert.</div></div>
+    </div>
+  </div>
+  <div id="analysisItems" class="analysis-items"></div>
+  <div class="actions" style="margin-top:14px">
+    <button id="startImport" type="button" disabled><span class="step-badge" style="background:rgba(255,255,255,.2);color:inherit">3</span>Import starten</button>
+    <button id="reanalyze" type="button" class="secondary">Neu analysieren</button>
   </div>
 </div>
 
