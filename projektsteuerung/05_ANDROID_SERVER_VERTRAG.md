@@ -389,3 +389,19 @@ Status: **FESTGELEGT**
   - Android lädt im Normalbetrieb geparste Referenzdaten gezielt nach und **keine Roharchive automatisch**;
   - Worksite-`track_data` bleibt getrennte, versionierte Arbeitskopie und darf globale Original-IDs als Quelle referenzieren.
 - SERVER darf zur Umsetzung keine Android-Dateien ändern.
+
+### REF-DATA-001 – gemeinsamer Import-UX-Vertrag: Datei zuerst
+Status: **ANFORDERUNG GESICHERT / SCOPE-ENTSCHEIDUNG OFFEN**
+- ADMIN und normaler Nutzer sollen nicht vor Dateianalyse Strecke/Gleis/Scope blind vorgeben.
+- Gemeinsamer Zielablauf:
+  - Datei wählen;
+  - Voranalyse/Erkennung;
+  - erkannte Metadaten anzeigen;
+  - nur fehlende/mehrdeutige Angaben ergänzen;
+  - danach Import bestätigen;
+  - Ergebnis mit erkannter und tatsächlich gespeicherter Zuordnung anzeigen.
+- Parserdaten haben Vorrang vor manueller Doppelerfassung, sofern sie eindeutig/plausibel sind.
+- Manuelle Eingaben ergänzen fehlende Daten oder korrigieren bewusst erkannte Werte; Originaldatei bleibt unverändert.
+- ZIP/Mehrfachupload wird pro enthaltenem Original bewertet.
+- Android soll später denselben fachlichen Ablauf nutzen; konkrete Android-UI bleibt Zuständigkeit ANDROID.
+- Vor Implementierung noch bestätigen: Scope-Regel `GLOBAL_REFERENCE` vs. `COMPANY_WORKSITE_DATA` (automatisch/default/manuelle Auswahl nach Analyse).
