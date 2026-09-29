@@ -1659,3 +1659,13 @@ Status: **SOURCE-UMSETZUNG FERTIG / SYNLOGY-RETEST OFFEN**
 - Sourcecheck parst jetzt zusätzlich `survey_parser.py` per AST, sobald er tatsächlich auf einem Runner ausgeführt wird.
 - GitHub Actions `36604836141`, `36604829585`, `36604836135`: `runner_name=""`, `steps=[]` → **kein Testnachweis**.
 - Synology-Retest benötigt Admin-Template + `survey_parser.py`; API neu starten.
+
+### REF-DATA-002 – Achsen/KOR/Tiefzoom abgenommen
+Status: **BESTÄTIGT**
+- Benutzer bestätigt den Synology-Runtime-Stand mit `okay,passt`.
+- Bestätigt ist der zuletzt gebaute Teilblock aus Commit `6299fca8232ce59dd65873ff733ad988b5db54da`:
+  - Achsen-Hover/Klick;
+  - 16-px-Achsen-Trefferzone;
+  - stark erweiterter Tiefzoom;
+  - KOR-Parser v3 mit Metadaten-/Headerfilter und diagnostischen Restwarnungen.
+- Keine weitere Änderung an diesem Teilblock ohne neuen Grund.

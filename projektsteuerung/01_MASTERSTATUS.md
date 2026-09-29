@@ -827,3 +827,10 @@ Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
 - Potenziell echte, aber unvollständige KOR-Datenzeilen bleiben als Warnung sichtbar und enthalten jetzt einen Textausschnitt zur Diagnose.
 - Original `2026031_Gessertshausen_5302_Koordinaten.kor` war in Projekt/Library nicht als Rohdatei verfügbar; deshalb keine formatspezifische Sonderregel auf Verdacht.
 - keine DB-/Compose-/Android-Änderung.
+
+## REF-DATA-002 – Achsen/KOR/Tiefzoom praktisch bestätigt
+Status: **BESTÄTIGT**
+- Benutzer bestätigt den zuletzt deployten Achsen-/KOR-/Tiefzoom-Stand mit `okay,passt`.
+- Damit ist der Teilblock `Achsen-Hover/Klick + ca. 2000x Tiefzoom + KOR-Parser v3` praktisch auf der Synology bestätigt.
+- Schutzregel greift: diesen bestätigten Teilblock nicht ohne reproduzierbaren Fehler, neue Fachanforderung oder ausdrücklichen Auftrag verändern.
+- Diese Bestätigung schließt nicht automatisch alle übrigen REF-DATA-002-Import-/Android-E2E-Punkte.

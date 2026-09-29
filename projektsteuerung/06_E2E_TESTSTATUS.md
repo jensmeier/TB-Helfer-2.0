@@ -499,3 +499,9 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   6. KOR-Warnungen prüfen: reine Header-/Steuerzeilen dürfen nicht mehr als Datenfehler erscheinen;
   7. verbleibende KOR-Warnung muss jetzt den betreffenden Zeilentext zeigen und darf nicht blind unterdrückt werden.
 - Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**.
+
+### REF-DATA-002 – Achsen/KOR-Retest bestätigt
+- Synology-Runtime vom Benutzer am 29.09.2026 mit `okay,passt` bestätigt.
+- Status des Teilblocks: **BESTÄTIGT**.
+- Sourcecheck bleibt zusätzlich PASS; GitHub-Actions ohne Runner/Steps bleiben weiterhin kein eigener Testnachweis.
+- Kein Anspruch, dass damit sämtliche übrigen REF-DATA-002-E2E-Fälle abgeschlossen sind.

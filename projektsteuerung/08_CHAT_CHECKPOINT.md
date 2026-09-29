@@ -844,3 +844,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Browser-JS V8 PASS.
 - CI ohne Runner-Schritte; kein Testnachweis.
 - Status: **SOURCE FERTIG / SYNLOGY-RUNTIME-RETEST OFFEN**.
+
+## REF-DATA-002 – Bestätigung Achsen/KOR/Tiefzoom 29.09.2026
+- Benutzerantwort nach Synology-Retest: `okay,passt`.
+- Der Teilblock aus Codecommit `6299fca8232ce59dd65873ff733ad988b5db54da` gilt damit als **BESTÄTIGT**.
+- Bestätigte Inhalte: Achsen-Hover/Klick, breite unsichtbare Trefferzone, erweiterter Tiefzoom, KOR-Parser v3.
+- Schutzregel: nicht ohne Grund ändern.
+- Übrige REF-DATA-002-Themen bleiben davon getrennt.
