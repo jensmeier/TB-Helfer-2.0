@@ -1625,7 +1625,7 @@ Status: **SOURCE-UMSETZUNG FERTIG / SYNLOGY-RETEST OFFEN**
 - GitHub Actions auf Code-HEAD ohne Runner/Steps → kein Testnachweis.
 - Synology-Retest: nur Admin-Template aktualisieren, API neu starten.
 ### REF-DATA-002 – Restpunkte Achseninteraktion / Tiefzoom / KOR-Warnungen
-Status: **NEUER RUNTIME-BEFUND GESICHERT / ERST ERKLÄREN, NOCH KEIN CODE**
+Status: **SERVER-UMSETZUNG FREIGEGEBEN**
 - Benutzer-Retest nach GVP-Kalibrierung zeigt drei neue/präzisierte Punkte:
   1. Tiefzoom reicht trotz ca. 160x noch nicht für gewünschte Detailkontrolle; weitere Zoomreserve gewünscht.
   2. Achsen sollen wie Vermessungspunkte interaktiv werden: Hover zeigt Kurzinfo, Klick zeigt strukturierte Achsendetails.
@@ -1634,3 +1634,8 @@ Status: **NEUER RUNTIME-BEFUND GESICHERT / ERST ERKLÄREN, NOCH KEIN CODE**
 - Jede nichtleere/nicht kommentierte Zeile mit weniger als 4 Tokens wird derzeit als `zu wenig Spalten` gewarnt, auch wenn die Datei Header-, Abschnitts-, Leer-/Steuer- oder Metazeilen enthält.
 - Parseränderung erst nach Prüfung des tatsächlichen KOR-Zeilenformats; keine Warnungen auf Verdacht unterdrücken.
 - Achsen-Hover/Klick soll dieselbe Auswahlstruktur nutzen wie Punkte und zusätzlich KM-Status/-Quelle, GVP-Diagnose und Quelldatei zeigen.
+- Benutzerauftrag `bauen` bestätigt:
+  - weiteren Tiefzoom über den bisherigen ca. 160x-Bereich hinaus;
+  - breite unsichtbare Achsen-Trefferzone mit Hover-Kurzinfo und Klick-Detailkarte;
+  - KOR-Parser nur nach tatsächlicher Formatprüfung anpassen; gültige Punkte dürfen nicht verworfen und reine Steuer-/Headerzeilen sollen nicht als Fehler gemeldet werden.
+- Vor Code zuerst nach einer verfügbaren Original-`2026031_Gessertshausen_5302_Koordinaten.kor` suchen und deren beanstandete Zeilen prüfen.
