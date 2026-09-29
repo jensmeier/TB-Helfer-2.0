@@ -1669,3 +1669,18 @@ Status: **BESTÄTIGT**
   - stark erweiterter Tiefzoom;
   - KOR-Parser v3 mit Metadaten-/Headerfilter und diagnostischen Restwarnungen.
 - Keine weitere Änderung an diesem Teilblock ohne neuen Grund.
+
+### REF-DATA-003 – Trassendatenübersicht + serverseitiger Datenkatalog
+Status: **NEUE ANFORDERUNG / KONZEPTVORSCHLÄGE GEWÜNSCHT / NOCH KEIN CODE**
+Benutzeranforderung 29.09.2026:
+1. Neben `Trassierungsdaten` soll eine eigene Admin-Navigation `Trassendatenübersicht` entstehen.
+   - Dort zentrale grafische Übersicht über alle auf dem Server vorhandenen Vermessungs-/Trassierungsbestände, z. B. Pasing, Gessertshausen, freie Strecken.
+   - Gesamtansicht soll nach Strecke, Bahnhof/Betriebsstelle und Datenstatus filterbar werden.
+2. Serverseitige Ablage/Indexierung muss so strukturiert sein, dass Android bei Eingabe/Suche einer Betriebsstelle oder Streckennummer erkennen kann:
+   - Daten vorhanden / teilweise vorhanden / keine Daten;
+   - welche Strecken/Bahnhöfe/Gleise/Achsen vorhanden sind;
+   - welche Datenarten vorliegen (TRA, GRA/KM, GVP/KF, KOR usw.);
+   - welcher Qualitäts-/KM-Status gilt.
+3. Nutzer-Upload soll fachlich in denselben Serverkatalog einfließen, aber nicht unkontrolliert den globalen Referenzbestand verändern.
+   - Vorschläge für Rollen/Freigabe, Duplikate, Projekt-/Firmenbestand vs. globaler Referenzbestand und Übernahmeprozess gewünscht.
+4. Vor Umsetzung zuerst vorhandenes Server-Schema/API und Android-Verbrauchsweg prüfen und einen belastbaren Zielvorschlag vorlegen.

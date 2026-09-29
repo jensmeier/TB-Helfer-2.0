@@ -472,3 +472,11 @@ Status: **FESTGELEGT**
 - Hover liefert nur Kurzinfo; Klick persistiert vollständige Detaildaten in `Auswahl`.
 - Sichtbare Geometrie und Trefferzone sind getrennt: dünne Fachlinie, breitere unsichtbare Bedienzone.
 - Achsendetail enthält mindestens Objektname, Strecke/Gleis, Achstyp, KM-Status, KM-Quelle, KM-Bereich, GVP-Diagnose/Grund und Quelldatei soweit vorhanden.
+
+### REF-DATA-003 – Verfügbarkeitsvertrag Android ↔ Server
+Status: **KONZEPT OFFEN**
+- Android soll künftig nicht nach Rohdateinamen entscheiden, sondern über einen serverseitigen normalisierten Datenkatalog.
+- Katalog-Schlüssel sollen mindestens Strecke + Betriebsstelle/Bahnhof + optional Gleis/Achse unterstützen.
+- Android benötigt read-only Verfügbarkeitsinformationen: vorhanden/teilweise/fehlt, Datenarten, KM-Qualität, Version/Aktualität sowie stabile IDs für spätere Detail-/Downloadaufrufe.
+- Nutzerupload darf erst nach serverseitiger Analyse/Klassifikation und definierter Freigabe in einen gemeinsam sichtbaren Referenzbestand gelangen.
+- Bestehende Android-Vermessungslogik bleibt fachliche Referenz für Achsen-/KM-/GVP-Status; Android-Code wird im SERVER-Projekt nicht geändert.
