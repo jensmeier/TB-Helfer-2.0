@@ -1750,3 +1750,13 @@ Fehlerfeststellung 29.09.2026 nach GitHub-Reread von Commit `0097a24b843d8c0610a
 - `admin_survey_import._install_original(...)` enthält durch die Integrationsänderung einen Python-Syntaxfehler: Pflichtparameter `user` steht hinter optionalen Default-Parametern `station_code/station_name`.
 - `PATCH /api/v1/survey-catalog/manual-segments/{segment_id}` prüft im ersten Stand noch nicht, ob ein Nicht-Admin den Globalbestand bzw. nur den Bestand seiner eigenen Firma bearbeiten darf. Fremde COMPANY-Segmente müssen serverseitig verboten werden.
 - Beide Punkte sind vor jeglichem `SOURCE FERTIG` zu korrigieren und durch den neuen Source-Check abzudecken.
+
+
+#### REF-DATA-003 – SERVER-Quellblock umgesetzt
+Status: **QUELLSTAND IMPLEMENTIERT / SYNLOGY-DEPLOYMENT + E2E OFFEN**
+- Serverbasis liegt bis Code-HEAD `a1ef0d991e2ccc06578feced7e9b5a89bdf5f611` vor.
+- Enthalten: Migration 017, persistenter Katalog, Auto-Merge/Reviewfälle, versionierte Nutzerbeiträge/Achskorrekturen, Search/Availability/Geometry/Changes, Reindex, Konfliktmail und KM-Qualitätsvertrag.
+- Zwischenfehler Python-Signatur + COMPANY-Scope-Sperre wurden reproduzierbar gefunden und in `a37d4003...` korrigiert.
+- Sourcechecks 112/113 sind vorhanden, aber wegen `steps=[]` nicht ausgeführt; kein Testnachweis.
+- Aktiver nächster Block bleibt SERVER-Runtime: Synology deployen, Migration 017 anwenden, API/Worker neu starten, Reindex und echte Requests testen.
+- Portal und Android erst danach.
