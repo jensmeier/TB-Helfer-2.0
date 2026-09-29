@@ -391,6 +391,99 @@ def purge_company(
             (company_id,),
         )
 
+        # Migration 017 lifecycle cleanup. Production companies with survey
+        # originals are rejected above; this path therefore only changes allowed
+        # staging/test purges or catalog-only company data.
+        cur.execute(
+            """
+            DELETE FROM tb.survey_catalog_conflicts c
+            WHERE c.axis_id IN (
+                SELECT a.id FROM tb.survey_catalog_axes a
+                WHERE a.scope = 'COMPANY' AND a.company_id = %s
+            )
+               OR c.candidate_segment_id IN (
+                    SELECT s.id
+                    FROM tb.survey_catalog_segments s
+                    LEFT JOIN tb.survey_catalog_assets a ON a.id = s.asset_id
+                    WHERE s.axis_id IN (
+                              SELECT ax.id FROM tb.survey_catalog_axes ax
+                              WHERE ax.scope = 'COMPANY' AND ax.company_id = %s
+                          )
+                       OR s.source_original_id IN (
+                              SELECT o.id FROM tb.survey_originals o WHERE o.company_id = %s
+                          )
+                       OR a.original_id IN (
+                              SELECT o.id FROM tb.survey_originals o WHERE o.company_id = %s
+                          )
+               )
+               OR c.existing_segment_id IN (
+                    SELECT s.id
+                    FROM tb.survey_catalog_segments s
+                    LEFT JOIN tb.survey_catalog_assets a ON a.id = s.asset_id
+                    WHERE s.axis_id IN (
+                              SELECT ax.id FROM tb.survey_catalog_axes ax
+                              WHERE ax.scope = 'COMPANY' AND ax.company_id = %s
+                          )
+                       OR s.source_original_id IN (
+                              SELECT o.id FROM tb.survey_originals o WHERE o.company_id = %s
+                          )
+                       OR a.original_id IN (
+                              SELECT o.id FROM tb.survey_originals o WHERE o.company_id = %s
+                          )
+               )
+            """,
+            (
+                company_id,
+                company_id, company_id, company_id,
+                company_id, company_id, company_id,
+            ),
+        )
+        cur.execute(
+            """
+            DELETE FROM tb.survey_catalog_segments s
+            USING tb.survey_catalog_axes ax
+            WHERE s.axis_id = ax.id
+              AND (
+                    (ax.scope = 'COMPANY' AND ax.company_id = %s)
+                 OR s.source_original_id IN (
+                        SELECT o.id FROM tb.survey_originals o WHERE o.company_id = %s
+                    )
+                 OR s.asset_id IN (
+                        SELECT a.id
+                        FROM tb.survey_catalog_assets a
+                        JOIN tb.survey_originals o ON o.id = a.original_id
+                        WHERE o.company_id = %s
+                    )
+              )
+            """,
+            (company_id, company_id, company_id),
+        )
+        cur.execute(
+            """
+            DELETE FROM tb.survey_catalog_assets a
+            WHERE a.company_id = %s
+               OR a.original_id IN (
+                    SELECT o.id FROM tb.survey_originals o WHERE o.company_id = %s
+               )
+            """,
+            (company_id, company_id),
+        )
+        cur.execute(
+            """
+            DELETE FROM tb.survey_catalog_axes a
+            WHERE (a.scope = 'COMPANY' AND a.company_id = %s)
+               OR (
+                    NOT EXISTS (
+                        SELECT 1 FROM tb.survey_catalog_segments s WHERE s.axis_id = a.id
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1 FROM tb.survey_catalog_conflicts c WHERE c.axis_id = a.id
+                    )
+               )
+            """,
+            (company_id,),
+        )
+
         cur.execute(
             "DELETE FROM tb.track_data_sources WHERE original_id IN (SELECT id FROM tb.survey_originals WHERE company_id = %s)",
             (company_id,),

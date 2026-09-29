@@ -169,6 +169,10 @@ Die Antwort enthält `next_after`. Dieser Scan-Cursor läuft auch über für den
 
 `POST /api/v1/survey-catalog/reindex` (Admin) legt den Background-Job `SURVEY_CATALOG_REINDEX` an. Damit werden bereits vorhandene geparste Originale nach Migration 017 in den Katalog eingelesen.
 
+## Lifecycle / Firmen-Purge
+
+Der bestehende Produktionsschutz bleibt unverändert: Firmen mit geschützten Vermessungsoriginalen werden vom normalen produktiven Firmen-Purge blockiert. Für zulässige Staging/Test-Purges werden Migration-017-Katalogreferenzen vor den Firmen-Originalen in FK-sicherer Reihenfolge bereinigt. COMPANY-Katalogobjekte der Firma und von deren Rohoriginalen abhängige Katalogsegmente/-assets werden entfernt; unabhängige globale Beiträge ohne Rohoriginal-Abhängigkeit bleiben bestehen.
+
 ## Nachgelagerte Stufen
 
 Dieser Vertrag ist die Serverbasis.

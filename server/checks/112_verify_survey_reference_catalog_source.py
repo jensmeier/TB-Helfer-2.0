@@ -12,8 +12,9 @@ NOTIFICATIONS = ROOT / "server" / "tbserver" / "notifications.py"
 ADMIN_IMPORT = ROOT / "server" / "tbserver" / "admin_survey_import.py"
 PARSER = ROOT / "server" / "tbserver" / "survey_parser.py"
 SURVEY_ORIGINALS = ROOT / "server" / "tbserver" / "survey_originals.py"
+ADMIN_PURGE = ROOT / "server" / "tbserver" / "admin_purge.py"
 
-for path in (CATALOG, MAIN, JOBS, NOTIFICATIONS, ADMIN_IMPORT, PARSER, SURVEY_ORIGINALS):
+for path in (CATALOG, MAIN, JOBS, NOTIFICATIONS, ADMIN_IMPORT, PARSER, SURVEY_ORIGINALS, ADMIN_PURGE):
     ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
 catalog = CATALOG.read_text(encoding="utf-8")
@@ -88,5 +89,12 @@ assert 'effective_route' in survey_originals
 assert 'source_date: date | None = None' in admin_import
 assert 'source_date=decision.source_date' in admin_import
 assert 'source_date=source_date' in admin_import
+admin_purge = ADMIN_PURGE.read_text(encoding="utf-8")
+assert "Migration 017 lifecycle cleanup" in admin_purge
+conflict_delete = admin_purge.index("DELETE FROM tb.survey_catalog_conflicts")
+segment_delete = admin_purge.index("DELETE FROM tb.survey_catalog_segments")
+asset_delete = admin_purge.index("DELETE FROM tb.survey_catalog_assets")
+original_delete = admin_purge.index("DELETE FROM tb.survey_originals WHERE company_id")
+assert conflict_delete < segment_delete < asset_delete < original_delete
 
 print("PASS survey reference catalog source")
