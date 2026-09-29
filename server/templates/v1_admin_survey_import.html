@@ -18,7 +18,18 @@
   .graphic-shell.fullscreen #surveyMap{height:100%;min-height:0}
   .fullscreen-close{display:none;position:absolute;right:12px;top:12px;z-index:3}
   .graphic-shell.fullscreen .fullscreen-close{display:inline-flex}
-  .map-hint{position:absolute;left:10px;bottom:10px;background:rgba(255,255,255,.92);border:1px solid #eaecf0;border-radius:8px;padding:5px 8px;font-size:11px;color:#667085}
+  .map-overlay{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:2}
+  .screen-point{position:absolute;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%);border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.12);pointer-events:auto;cursor:pointer;padding:0}
+  .screen-point.gvp{background:#b88b00}.screen-point.ap{background:#d97706}.screen-point.switch{background:#1976d2}
+  .screen-point:hover,.screen-point.hovered{box-shadow:0 0 0 3px rgba(17,103,216,.32),0 0 0 1px rgba(0,0,0,.16);z-index:8}
+  .screen-point.selected{box-shadow:0 0 0 4px rgba(17,103,216,.38),0 0 0 1px #0b4fad;z-index:9}
+  .screen-label{position:absolute;transform:translate(6px,-50%);white-space:nowrap;background:rgba(255,255,255,.88);border-radius:4px;padding:1px 3px;color:#202124;line-height:1.15;pointer-events:none;box-shadow:0 0 0 1px rgba(255,255,255,.65)}
+  .screen-axis-label{font-size:11px;font-weight:760}.screen-point-label{font-size:10px;font-weight:620}
+  .screen-tooltip{position:absolute;transform:translate(12px,-50%);max-width:260px;white-space:nowrap;background:#101828;color:#fff;border-radius:6px;padding:5px 7px;font-size:11px;font-weight:650;box-shadow:0 5px 18px rgba(0,0,0,.22);pointer-events:none;z-index:20}
+  .fullscreen-info{display:none;position:absolute;top:58px;right:12px;width:min(360px,calc(100% - 24px));max-height:45%;overflow:auto;background:rgba(255,255,255,.97);border:1px solid #d0d5dd;border-radius:10px;padding:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);z-index:5}
+  .graphic-shell.fullscreen .fullscreen-info.active{display:block}
+  .point-detail{display:grid;gap:5px}.point-detail-title{font-weight:850;font-size:15px}.point-detail-row{display:grid;grid-template-columns:92px 1fr;gap:8px;font-size:12px}.point-detail-row span:first-child{color:#667085}.point-hit-list{display:grid;gap:6px}.point-hit-button{width:100%;text-align:left;background:#fff;color:#101828;border:1px solid #d0d5dd;border-radius:7px;padding:7px 8px}.point-hit-button:hover{border-color:#1167d8;background:#f5f9ff}
+  .map-hint{position:absolute;left:10px;bottom:10px;background:rgba(255,255,255,.92);border:1px solid #eaecf0;border-radius:8px;padding:5px 8px;font-size:11px;color:#667085;z-index:4}
   .graphic-side{display:grid;gap:10px}.info-box{border:1px solid #eaecf0;border-radius:10px;padding:11px;background:#fff}.info-box h3{margin:0 0 5px;font-size:14px}
   .analysis-items{display:grid;gap:11px;margin-top:14px}.analysis-item{border:1px solid #d0d5dd;border-radius:12px;padding:12px;background:#fff}.analysis-item.skip{background:#f8fafc;color:#667085}
   .analysis-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.facts{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.fact{font-size:11px;border:1px solid #e4e7ec;background:#f9fafb;border-radius:999px;padding:3px 7px}.fact.warn{border-color:#f7c56d;background:#fffbeb;color:#8a4b08}
@@ -80,8 +91,10 @@
     <div>
       <div class="graphic-shell" id="graphicShell">
         <button id="closeFullscreen" type="button" class="secondary fullscreen-close">Großansicht schließen</button>
-        <svg id="surveyMap" viewBox="0 0 1000 500" aria-label="Grafische Vermessungsdaten-Vorschau"><g id="surveyGrid" class="graph-grid"></g><g id="surveyLayer"></g><g id="surveyAxisLabels"></g><g id="surveyPointLabels"></g></svg>
-        <div class="map-hint">Mausrad: Zoom · Ziehen: Verschieben · Punkt/Achse anklicken: Details</div>
+        <svg id="surveyMap" viewBox="0 0 1000 500" aria-label="Grafische Vermessungsdaten-Vorschau"><g id="surveyGrid" class="graph-grid"></g><g id="surveyLayer"></g></svg>
+        <div id="mapOverlay" class="map-overlay"></div>
+        <div id="fullscreenInfo" class="fullscreen-info"></div>
+        <div class="map-hint">Mausrad: Zoom · Ziehen: Verschieben · Hover: Kurzinfo · Klick: Details</div>
       </div>
       <div id="legend" class="legend"></div>
     </div>
@@ -157,8 +170,8 @@ const worksiteTemplate=document.getElementById('worksiteTemplate');
 const surveyMap=document.getElementById('surveyMap');
 const surveyGrid=document.getElementById('surveyGrid');
 const surveyLayer=document.getElementById('surveyLayer');
-const surveyAxisLabels=document.getElementById('surveyAxisLabels');
-const surveyPointLabels=document.getElementById('surveyPointLabels');
+const mapOverlay=document.getElementById('mapOverlay');
+const fullscreenInfo=document.getElementById('fullscreenInfo');
 const graphicShell=document.getElementById('graphicShell');
 const toggleFullscreen=document.getElementById('toggleFullscreen');
 const closeFullscreen=document.getElementById('closeFullscreen');
@@ -178,9 +191,11 @@ let visibleAxisKeys=new Set();
 let visiblePointGroups=new Set();
 let axisLabelCandidates=[];
 let pointLabelCandidates=[];
-let pointMarkerCandidates=[];
+let selectedPointKey=null;
+let overlayFrame=0;
 let view={x:0,y:0,w:1000,h:500};
 let drag=null;
+let dragMoved=false;
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function size(value){const n=Number(value)||0,a=Math.abs(n);if(a>=1e12)return(n/1e12).toFixed(a>=1e14?0:1)+' TB';if(a>=1e9)return(n/1e9).toFixed(a>=1e11?0:1)+' GB';if(a>=1e6)return(n/1e6).toFixed(a>=1e8?0:1)+' MB';if(a>=1e3)return(n/1e3).toFixed(a>=1e5?0:1)+' kB';return Math.round(n)+' B';}
@@ -358,22 +373,69 @@ function geometryTransform(entries){
   const dx=Math.max(maxX-minX,1),dy=Math.max(maxY-minY,1),scale=Math.min(900/dx,420/dy),ox=(1000-dx*scale)/2,oy=(500-dy*scale)/2;
   return p=>[ox+(Number(p.x)-minX)*scale,500-(oy+(Number(p.y)-minY)*scale)];
 }
-function pointDetailText(point){
+function pointDetailRows(point,row){
+  const source=point.source_name||row.item.name||null;
   return [
-    point.label||point.type||'Vermessungspunkt',
-    point.type&&point.type!==point.label?'Art '+point.type:null,
-    point.km_meter!=null?'KM '+kmLabel(point.km_meter):null,
-    point.route?'Strecke '+point.route:null,
-    point.track?'Gleis '+point.track:null,
-    point.height_m!=null?'Höhe '+Number(point.height_m).toFixed(3)+' m':null,
-    point.point_id?'ID '+point.point_id:null,
-    point.coordinate_system||null,
-    point.source_name?'Quelle '+point.source_name:null
-  ].filter(Boolean).join(' · ');
+    ['Bezeichnung',point.label||point.point_id||point.type||'Vermessungspunkt'],
+    ['Punkt-ID',point.point_id||null],
+    ['Punktart',point.type||point.point_code||null],
+    ['Strecke',point.route||row.item.route_number||null],
+    ['Gleis',point.track||row.item.track_key||null],
+    ['KM',point.km_meter!=null?kmLabel(point.km_meter):null],
+    ['Höhe',point.height_m!=null?Number(point.height_m).toFixed(3)+' m':null],
+    ['X',Number.isFinite(Number(point.x))?Number(point.x).toFixed(4):null],
+    ['Y',Number.isFinite(Number(point.y))?Number(point.y).toFixed(4):null],
+    ['System',point.coordinate_system||null],
+    ['Quelle',source]
+  ].filter(row=>row[1]!==null&&row[1]!==undefined&&String(row[1]).trim()!=='');
+}
+function pointShortText(candidate){
+  const point=candidate.point;
+  const basis=point.label||point.point_id||point.type||'Vermessungspunkt';
+  return basis+(point.km_meter!=null?' · '+kmLabel(point.km_meter):'');
+}
+function setDetailHtml(html){
+  graphicInfo.innerHTML=html;
+  fullscreenInfo.innerHTML=html;
+  fullscreenInfo.classList.toggle('active',Boolean(html));
 }
 function setGraphicInfo(row,detail){
-  const i=row.item,bits=[i.display_label||i.name,i.route_number?'Strecke '+i.route_number:null,i.track_key?'Gleis '+i.track_key:null,detail].filter(Boolean);
-  graphicInfo.textContent=bits.join(' · ');
+  const i=row.item;
+  const title=i.display_label||i.name||'Achse';
+  const rows=[
+    ['Objekt',title],
+    ['Strecke',i.route_number||null],
+    ['Gleis / Achse',i.track_key||null],
+    ['Typ',String(i.object_group||'').replaceAll('_',' ')||null],
+    ['Detail',detail||null],
+    ['Quelle',i.name||null]
+  ].filter(item=>item[1]);
+  setDetailHtml('<div class="point-detail"><div class="point-detail-title">'+esc(title)+'</div>'+rows.map(item=>'<div class="point-detail-row"><span>'+esc(item[0])+'</span><span>'+esc(item[1])+'</span></div>').join('')+'</div>');
+}
+function pointCandidateKey(candidate){
+  const p=candidate.point,r=candidate.row;
+  return [r.item.name,p.x,p.y,p.point_id||p.label||p.type||''].join('|');
+}
+function showPointDetail(candidate){
+  selectedPointKey=pointCandidateKey(candidate);
+  const rows=pointDetailRows(candidate.point,candidate.row);
+  const title=candidate.point.label||candidate.point.point_id||candidate.point.type||'Vermessungspunkt';
+  setDetailHtml('<div class="point-detail"><div class="point-detail-title">'+esc(title)+'</div>'+rows.map(item=>'<div class="point-detail-row"><span>'+esc(item[0])+'</span><span>'+esc(item[1])+'</span></div>').join('')+'</div>');
+  scheduleOverlayRender();
+}
+function showPointChoices(candidates){
+  const unique=[];
+  const seen=new Set();
+  candidates.forEach(candidate=>{
+    const key=pointCandidateKey(candidate);
+    if(!seen.has(key)){seen.add(key);unique.push(candidate);}
+  });
+  if(unique.length===1){showPointDetail(unique[0]);return;}
+  const buttons=unique.slice(0,12).map((candidate,index)=>'<button type="button" class="point-hit-button" data-point-choice="'+index+'">'+esc(pointShortText(candidate))+'</button>').join('');
+  setDetailHtml('<div class="point-detail"><div class="point-detail-title">'+unique.length+' Punkte im Trefferbereich</div><div class="muted" style="margin-bottom:7px">Gewünschten Vermessungspunkt auswählen.</div><div class="point-hit-list">'+buttons+'</div></div>');
+  [...graphicInfo.querySelectorAll('[data-point-choice]'),...fullscreenInfo.querySelectorAll('[data-point-choice]')].forEach(button=>{
+    button.addEventListener('click',()=>showPointDetail(unique[Number(button.dataset.pointChoice)]));
+  });
 }
 function zoomFactor(){return 1000/view.w;}
 function shortAxisLabel(item){
@@ -383,81 +445,120 @@ function shortAxisLabel(item){
   if(item.route_number)return 'Str '+item.route_number;
   return item.display_label||item.name;
 }
-function svgFontSize(screenPx){
-  return Math.max(3,screenPx*(view.w/1000));
-}
 function overlaps(a,b){
   return !(a.r<b.l||a.l>b.r||a.b<b.t||a.t>b.b);
 }
-function markerScreenRadius(z){
-  if(z>=22)return 1.6;
-  if(z>=14)return 1.9;
-  if(z>=8)return 2.2;
-  if(z>=4)return 2.5;
-  return 2.8;
+function candidateScreen(candidate,rect){
+  return {
+    x:(candidate.x-view.x)/view.w*rect.width,
+    y:(candidate.y-view.y)/view.h*rect.height
+  };
 }
-function updatePointMarkers(){
+function pointMarkerPx(z){
+  if(z>=18)return 9;
+  if(z>=8)return 10;
+  if(z>=3)return 9;
+  return 7;
+}
+function nearbyPointCandidates(screenX,screenY,radiusPx){
+  const rect=surveyMap.getBoundingClientRect();
+  return pointLabelCandidates
+    .map(candidate=>{
+      const p=candidateScreen(candidate,rect);
+      return {candidate,distance:Math.hypot(screenX-p.x,screenY-p.y)};
+    })
+    .filter(item=>item.distance<=radiusPx)
+    .sort((a,b)=>a.distance-b.distance)
+    .map(item=>item.candidate);
+}
+function addOverlayLabel(className,text,x,y,fontPx,occupied){
+  const width=Math.max(26,text.length*fontPx*.56+7),height=fontPx+7;
+  const rect={l:x+7,t:y-height/2,r:x+7+width,b:y+height/2};
+  if(occupied.some(item=>overlaps(rect,item)))return false;
+  occupied.push(rect);
+  const label=document.createElement('div');
+  label.className='screen-label '+className;
+  label.textContent=text;
+  label.style.left=x+'px';
+  label.style.top=y+'px';
+  label.style.fontSize=fontPx+'px';
+  mapOverlay.appendChild(label);
+  return true;
+}
+function showHoverTooltip(candidate,x,y){
+  mapOverlay.querySelectorAll('.screen-tooltip').forEach(node=>node.remove());
+  const tip=document.createElement('div');
+  tip.className='screen-tooltip';
+  tip.textContent=pointShortText(candidate);
+  tip.style.left=Math.min(x+2,Math.max(0,surveyMap.clientWidth-250))+'px';
+  tip.style.top=Math.max(18,Math.min(y,surveyMap.clientHeight-18))+'px';
+  mapOverlay.appendChild(tip);
+}
+function clearHoverTooltip(){
+  mapOverlay.querySelectorAll('.screen-tooltip').forEach(node=>node.remove());
+}
+function renderScreenOverlay(){
+  overlayFrame=0;
+  mapOverlay.innerHTML='';
+  const rect=surveyMap.getBoundingClientRect();
+  if(rect.width<20||rect.height<20)return;
   const z=zoomFactor();
-  const visiblePx=markerScreenRadius(z);
-  const hitPx=z>=12?6:7;
-  const visibleWorld=Math.max(.08,visiblePx*(view.w/1000));
-  const hitWorld=Math.max(visibleWorld,hitPx*(view.w/1000));
-  pointMarkerCandidates.forEach(candidate=>{
-    candidate.circle.setAttribute('r',visibleWorld);
-    candidate.hit.setAttribute('r',hitWorld);
-  });
-}
-function renderDynamicLabels(){
-  surveyAxisLabels.innerHTML='';
-  surveyPointLabels.innerHTML='';
-  updatePointMarkers();
+  const occupied=[];
 
-  const z=zoomFactor(),occupied=[];
-  const axisMax=z>=22?8:z>=14?12:z>=9?16:z>=5?22:z>=2.5?20:10;
-  const axisPx=z>=22?8:z>=14?9:z>=9?10:z>=5?10.5:z>=2.5?11:10;
+  const axisMax=z>=18?3:z>=10?5:z>=5?9:z>=2.5?14:10;
+  const axisFont=z>=18?9:z>=10?10:11;
   let axisCount=0;
   axisLabelCandidates.forEach(candidate=>{
     if(axisCount>=axisMax)return;
-    const sx=(candidate.x-view.x)/view.w*1000,sy=(candidate.y-view.y)/view.h*500;
-    if(sx<-30||sx>1030||sy<-30||sy>530)return;
-    const text=z<2.5?shortAxisLabel(candidate.item):(candidate.item.display_label||candidate.item.name);
-    const w=Math.max(28,text.length*axisPx*.54),h=axisPx+4;
-    const rect={l:sx+5,t:sy-h,r:sx+5+w,b:sy+4};
-    if(occupied.some(o=>overlaps(rect,o)))return;
-    occupied.push(rect);axisCount++;
-    const label=document.createElementNS('http://www.w3.org/2000/svg','text');
-    label.setAttribute('x',candidate.x+svgFontSize(5));
-    label.setAttribute('y',candidate.y-svgFontSize(5));
-    label.setAttribute('font-size',svgFontSize(axisPx));
-    label.setAttribute('class','axis-label');
-    label.textContent=text;
-    surveyAxisLabels.appendChild(label);
+    const p=candidateScreen(candidate,rect);
+    if(p.x<-30||p.x>rect.width+30||p.y<-20||p.y>rect.height+20)return;
+    const text=z<2.5?shortAxisLabel(candidate.item):(z>=10?shortAxisLabel(candidate.item):(candidate.item.display_label||candidate.item.name));
+    if(addOverlayLabel('screen-axis-label',text,p.x,p.y,axisFont,occupied))axisCount++;
   });
 
-  const pointMax=z>=22?24:z>=14?36:z>=9?52:z>=6?70:z>=3.5?55:z>=2.2?28:0;
-  if(!pointMax)return;
-  const pointPx=z>=22?8:z>=14?9:z>=9?10:z>=6?10.5:z>=3.5?11:10;
-  let pointCount=0;
+  const markerPx=pointMarkerPx(z);
   pointLabelCandidates.forEach(candidate=>{
-    if(pointCount>=pointMax)return;
-    const sx=(candidate.x-view.x)/view.w*1000,sy=(candidate.y-view.y)/view.h*500;
-    if(sx<-25||sx>1025||sy<-25||sy>525)return;
-    const point=candidate.point;
-    const basis=point.label||point.point_id||point.type||'Punkt';
-    const withKm=z>=5.5&&point.km_meter!=null;
-    const text=basis+(withKm?' · km '+(Number(point.km_meter)/1000).toLocaleString('de-DE',{minimumFractionDigits:3,maximumFractionDigits:3}):'');
-    const w=Math.max(24,text.length*pointPx*.52),h=pointPx+4;
-    const rect={l:sx+7,t:sy-h/2,r:sx+8+w,b:sy+h/2};
-    if(occupied.some(o=>overlaps(rect,o)))return;
-    occupied.push(rect);pointCount++;
-    const label=document.createElementNS('http://www.w3.org/2000/svg','text');
-    label.setAttribute('x',candidate.x+svgFontSize(7));
-    label.setAttribute('y',candidate.y+svgFontSize(pointPx*.30));
-    label.setAttribute('font-size',svgFontSize(pointPx));
-    label.setAttribute('class','point-label');
-    label.textContent=text;
-    surveyPointLabels.appendChild(label);
+    const p=candidateScreen(candidate,rect);
+    if(p.x<-28||p.x>rect.width+28||p.y<-28||p.y>rect.height+28)return;
+    const marker=document.createElement('button');
+    marker.type='button';
+    const type=String(candidate.point.type||'').toUpperCase();
+    const kind=type.includes('WEICH')?'switch':(type.startsWith('KOR')||type.startsWith('CSV')?'ap':'gvp');
+    marker.className='screen-point '+kind+(pointCandidateKey(candidate)===selectedPointKey?' selected':'');
+    marker.setAttribute('aria-label',pointShortText(candidate));
+    marker.style.left=p.x+'px';
+    marker.style.top=p.y+'px';
+    marker.style.width=markerPx+'px';
+    marker.style.height=markerPx+'px';
+    marker.addEventListener('mouseenter',()=>{marker.classList.add('hovered');showHoverTooltip(candidate,p.x,p.y);});
+    marker.addEventListener('mouseleave',()=>{marker.classList.remove('hovered');clearHoverTooltip();});
+    marker.addEventListener('click',event=>{
+      event.preventDefault();event.stopPropagation();
+      const hits=nearbyPointCandidates(p.x,p.y,24);
+      showPointChoices(hits.length?hits:[candidate]);
+    });
+    marker.addEventListener('wheel',event=>{event.preventDefault();event.stopPropagation();zoomAt(event.clientX,event.clientY,event.deltaY);},{passive:false});
+    mapOverlay.appendChild(marker);
   });
+
+  const labelMax=z>=18?0:z>=12?5:z>=8?10:z>=5?18:z>=3.5?22:z>=2.2?16:0;
+  const pointFont=z>=12?9:z>=6?10:11;
+  let labelCount=0;
+  if(labelMax>0){
+    pointLabelCandidates.forEach(candidate=>{
+      if(labelCount>=labelMax)return;
+      const p=candidateScreen(candidate,rect);
+      if(p.x<-20||p.x>rect.width+20||p.y<-20||p.y>rect.height+20)return;
+      const point=candidate.point;
+      const basis=point.label||point.point_id||point.type||'Punkt';
+      const text=basis+(z>=5.5&&point.km_meter!=null?' · km '+(Number(point.km_meter)/1000).toLocaleString('de-DE',{minimumFractionDigits:3,maximumFractionDigits:3}):'');
+      if(addOverlayLabel('screen-point-label',text,p.x,p.y,pointFont,occupied))labelCount++;
+    });
+  }
+}
+function scheduleOverlayRender(){
+  if(overlayFrame)return;
+  overlayFrame=requestAnimationFrame(renderScreenOverlay);
 }
 function renderGrid(){
   let html='';
@@ -476,8 +577,8 @@ function pointClass(point){
 }
 function renderGraphic(rows){
   renderGrid();
-  surveyLayer.innerHTML='';surveyAxisLabels.innerHTML='';surveyPointLabels.innerHTML='';
-  axisLabelCandidates=[];pointLabelCandidates=[];pointMarkerCandidates=[];
+  surveyLayer.innerHTML='';mapOverlay.innerHTML='';
+  axisLabelCandidates=[];pointLabelCandidates=[];
   const entries=geometryEntries(rows),transform=geometryTransform(entries);
   const kmKeys=new Set(rows.filter(r=>r.item.kind==='GRA'&&r.item.semantic_key).map(r=>r.item.semantic_key));
   legend.innerHTML='<span class="legend-item"><span class="legend-dot" style="background:#009141"></span>TRA + passende GRA/KM-Quelle</span><span class="legend-item"><span class="legend-dot" style="background:#cd232d"></span>TRA ohne passende GRA</span><span class="legend-item"><span class="legend-dot" style="background:#1976d2"></span>Weichenverbindung</span><span class="legend-item"><span class="legend-dot" style="background:#b88b00"></span>Vermessungspunkte</span>';
@@ -505,19 +606,11 @@ function renderGraphic(rows){
         const key=[Math.round(Number(p.x)*100),Math.round(Number(p.y)*100),String(p.label||''),String(p.type||'')].join('|');
         if(seenPoints.has(key))return;seenPoints.add(key);
         const pos=transform(p);
-        const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
-        circle.setAttribute('cx',pos[0]);circle.setAttribute('cy',pos[1]);circle.setAttribute('class','geom-point '+pointClass(p));
-        const hit=document.createElementNS('http://www.w3.org/2000/svg','circle');
-        hit.setAttribute('cx',pos[0]);hit.setAttribute('cy',pos[1]);hit.setAttribute('class','geom-point-hit');
-        const selectPoint=ev=>{ev.stopPropagation();setGraphicInfo(entry.row,pointDetailText(p));};
-        circle.addEventListener('click',selectPoint);hit.addEventListener('click',selectPoint);
-        surveyLayer.appendChild(circle);surveyLayer.appendChild(hit);
-        pointMarkerCandidates.push({circle,hit});
         pointLabelCandidates.push({x:pos[0],y:pos[1],point:p,row:entry.row});
       });
     }
   });
-  graphicInfo.textContent='Grafik eingepasst. Achse oder Punkt anklicken; Punktdaten erscheinen beim Hineinzoomen.';
+  setDetailHtml('<div class="muted">Achse anklicken oder über einen Vermessungspunkt fahren. Klick auf einen Punkt zeigt alle verfügbaren Daten.</div>');
   resetViewBox();
 }
 function validRange(from,to){
@@ -578,22 +671,48 @@ function renderRanges(groups){
 
 function applyView(){
   surveyMap.setAttribute('viewBox',[view.x,view.y,view.w,view.h].join(' '));
-  renderDynamicLabels();
+  scheduleOverlayRender();
 }
 function resetViewBox(){view={x:0,y:0,w:1000,h:500};applyView();}
 document.getElementById('resetView').addEventListener('click',resetViewBox);
 function setFullscreen(active){
   graphicShell.classList.toggle('fullscreen',active);
   document.body.style.overflow=active?'hidden':'';
-  if(active)requestAnimationFrame(()=>renderDynamicLabels());
+  requestAnimationFrame(()=>scheduleOverlayRender());
 }
 toggleFullscreen.addEventListener('click',()=>setFullscreen(true));
 closeFullscreen.addEventListener('click',()=>setFullscreen(false));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&graphicShell.classList.contains('fullscreen'))setFullscreen(false);});
-surveyMap.addEventListener('wheel',e=>{e.preventDefault();const rect=surveyMap.getBoundingClientRect(),px=view.x+(e.clientX-rect.left)/rect.width*view.w,py=view.y+(e.clientY-rect.top)/rect.height*view.h,f=e.deltaY>0?1.14:.86,nw=Math.min(4000,Math.max(33.333,view.w*f)),nh=nw/2;view.x=px-(px-view.x)*(nw/view.w);view.y=py-(py-view.y)*(nh/view.h);view.w=nw;view.h=nh;applyView();},{passive:false});
-surveyMap.addEventListener('pointerdown',e=>{surveyMap.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};surveyMap.classList.add('dragging');});
-surveyMap.addEventListener('pointermove',e=>{if(!drag)return;const r=surveyMap.getBoundingClientRect();view.x=drag.vx-(e.clientX-drag.x)/r.width*view.w;view.y=drag.vy-(e.clientY-drag.y)/r.height*view.h;applyView();});
+function zoomAt(clientX,clientY,deltaY){
+  const rect=surveyMap.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  const px=view.x+(clientX-rect.left)/rect.width*view.w;
+  const py=view.y+(clientY-rect.top)/rect.height*view.h;
+  const factor=deltaY>0?1.14:.86;
+  const nw=Math.min(4000,Math.max(33.333,view.w*factor));
+  const nh=nw/2;
+  view.x=px-(px-view.x)*(nw/view.w);
+  view.y=py-(py-view.y)*(nh/view.h);
+  view.w=nw;view.h=nh;applyView();
+}
+surveyMap.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,e.deltaY);},{passive:false});
+surveyMap.addEventListener('pointerdown',e=>{surveyMap.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};dragMoved=false;surveyMap.classList.add('dragging');});
+surveyMap.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>4)dragMoved=true;
+  const r=surveyMap.getBoundingClientRect();
+  view.x=drag.vx-(e.clientX-drag.x)/r.width*view.w;
+  view.y=drag.vy-(e.clientY-drag.y)/r.height*view.h;
+  applyView();
+});
 ['pointerup','pointercancel'].forEach(ev=>surveyMap.addEventListener(ev,()=>{drag=null;surveyMap.classList.remove('dragging');}));
+surveyMap.addEventListener('click',e=>{
+  if(dragMoved){dragMoved=false;e.stopPropagation();return;}
+  const rect=surveyMap.getBoundingClientRect();
+  const hits=nearbyPointCandidates(e.clientX-rect.left,e.clientY-rect.top,24);
+  if(hits.length){e.preventDefault();e.stopPropagation();showPointChoices(hits);}
+},true);
+new ResizeObserver(()=>scheduleOverlayRender()).observe(graphicShell);
 
 function groupSettings(card){
   const scope=card.querySelector('.decision-scope').value,ws=card.querySelector('.decision-worksite');
