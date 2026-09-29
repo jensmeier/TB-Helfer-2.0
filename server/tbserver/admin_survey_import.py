@@ -8,6 +8,7 @@ import shutil
 import struct
 import time
 import zipfile
+from datetime import date
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
@@ -49,6 +50,7 @@ class SurveyImportDecision(BaseModel):
     track_key: str | None = Field(default=None, max_length=160)
     station_code: str | None = Field(default=None, max_length=50)
     station_name: str | None = Field(default=None, max_length=240)
+    source_date: date | None = None
 
 
 class SurveyImportPlan(BaseModel):
@@ -331,6 +333,7 @@ def _install_original(
     track_key: str | None,
     station_code: str | None,
     station_name: str | None,
+    source_date: date | None,
     user: dict[str, Any],
 ) -> dict[str, Any]:
     normalized_kind = kind.strip().upper()
@@ -426,6 +429,8 @@ def _install_original(
                 metadata["station_code"] = effective_station_code
             if effective_station_name:
                 metadata["station_name"] = effective_station_name
+            if source_date is not None:
+                metadata["source_date"] = source_date.isoformat()
             if worksite is not None and worksite_id is not None:
                 metadata.update(
                     {
@@ -533,6 +538,7 @@ def _install_original(
                     "track_key": effective_track,
                     "station_code": effective_station_code,
                     "station_name": effective_station_name,
+                    "source_date": metadata.get("source_date"),
                     "catalog_status": catalog_result.get("status"),
                     "source": "ADMIN_WEB",
                 },
@@ -552,6 +558,7 @@ def _install_original(
             "track_key": effective_track,
             "station_code": effective_station_code,
             "station_name": effective_station_name,
+            "source_date": metadata.get("source_date"),
             "catalog": catalog_result,
             "status": "IMPORTIERT",
             "message": message,
@@ -791,6 +798,7 @@ def import_analyzed_survey(
                                     track_key=decision.track_key,
                                     station_code=decision.station_code,
                                     station_name=decision.station_name,
+                                    source_date=decision.source_date,
                                     user=user,
                                 )
                             )
@@ -832,6 +840,7 @@ def import_analyzed_survey(
                         track_key=decision.track_key,
                         station_code=decision.station_code,
                         station_name=decision.station_name,
+                        source_date=decision.source_date,
                         user=user,
                     )
                 )
@@ -860,6 +869,7 @@ async def import_survey_file(
     track_key: str | None = Query(default=None, max_length=160),
     station_code: str | None = Query(default=None, max_length=50),
     station_name: str | None = Query(default=None, max_length=240),
+    source_date: date | None = Query(default=None),
     user: dict[str, Any] = Depends(require_admin_csrf),
 ) -> dict:
     normalized_scope = _normalize_scope(scope)
@@ -902,6 +912,7 @@ async def import_survey_file(
                                 track_key=track_key,
                                 station_code=station_code,
                                 station_name=station_name,
+                                source_date=source_date,
                                 user=user,
                             )
                             results.append(result)
@@ -927,6 +938,7 @@ async def import_survey_file(
             track_key=track_key,
             station_code=station_code,
             station_name=station_name,
+            source_date=source_date,
             user=user,
         )
         return {"results": [result]}

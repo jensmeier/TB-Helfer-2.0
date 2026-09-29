@@ -1922,7 +1922,9 @@ def changes(after: int = Query(default=0,ge=0),
         )
         raw = [dict(row) for row in cur.fetchall()]
         visible_changes = []
+        next_after = after
         for row in raw:
+            next_after = int(row["change_id"])
             data = row.get("after_data") or {}
             scope = data.get("scope")
             company_id = data.get("company_id") or data.get("created_by_company_id")
@@ -1949,8 +1951,10 @@ def changes(after: int = Query(default=0,ge=0),
         cur.execute("SELECT coalesce(max(change_id),0) latest FROM tb.survey_catalog_history")
         latest = int(cur.fetchone()["latest"])
     return {
-        "after":after,"latest":latest,
-        "has_more":bool(visible_changes and int(visible_changes[-1]["change_id"]) < latest),
+        "after":after,
+        "next_after":next_after,
+        "latest":latest,
+        "has_more":next_after < latest,
         "changes":visible_changes,
     }
 

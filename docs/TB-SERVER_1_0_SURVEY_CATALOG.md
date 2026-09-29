@@ -43,7 +43,9 @@ Zusätzliche Felder:
 - `station_name`;
 - `source_date`.
 
-Aktive Baustellenmitgliedschaft genügt für den Vermessungsbeitrag; die bestehende Datei-/Firmenzuordnung bleibt zwingend. Der Parser darf von jedem aktiven Baustellenmitglied ausgeführt werden.
+Fehlen Strecke/Betriebsstelle im mobilen Request, übernimmt der Server vorhandene `route_number`/`station_code`/`station_name` der zugehörigen Baustelle als Fallback. Ein bytegleiches bereits vorhandenes GLOBAL-Original wird als bereits verfügbar gemeldet; private Originale anderer Firmen werden weder gesucht noch offengelegt.
+
+Aktive Baustellenmitgliedschaft genügt für den Vermessungsbeitrag; die bestehende Datei-/Firmenzuordnung bleibt zwingend. Der Parser darf von jedem aktiven Baustellenmitglied ausgeführt werden. `source_date` ist das fachliche Bestandsdatum und bleibt von `imported_at` getrennt; der Admin-Import akzeptiert es ebenfalls explizit.
 
 ## Suche / Verfügbarkeit
 
@@ -160,6 +162,8 @@ Mögliche Entscheidungen:
 `GET /api/v1/survey-catalog/changes?after=...`
 
 liefert versionierte Änderungen an Asset/Achse/Segment/Konflikt. COMPANY-Daten werden firmenisoliert; GLOBAL ist gemeinsam sichtbar.
+
+Die Antwort enthält `next_after`. Dieser Scan-Cursor läuft auch über für den aktuellen Nutzer unsichtbare COMPANY-Änderungen weiter. Clients verwenden für den Folgerequest immer `next_after` – auch wenn `changes=[]` – damit spätere globale/eigene Änderungen nicht hinter fremden privaten Änderungen verhungern.
 
 ## Backfill
 

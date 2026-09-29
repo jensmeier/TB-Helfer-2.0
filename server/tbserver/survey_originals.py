@@ -207,10 +207,6 @@ def import_survey_original_from_file(
         raise HTTPException(400, "SURVEY_CATALOG_SCOPE_INVALID")
     metadata = dict(payload.metadata)
     metadata["catalog_scope"] = catalog_scope
-    if payload.station_code:
-        metadata["station_code"] = payload.station_code.strip().upper()
-    if payload.station_name:
-        metadata["station_name"] = payload.station_name.strip()
     if payload.source_date is not None:
         metadata["source_date"] = payload.source_date.isoformat()
 
@@ -239,6 +235,35 @@ def import_survey_original_from_file(
             if file_row["company_id"] != context["company_id"]:
                 raise HTTPException(403, "FILE_COMPANY_MISMATCH")
 
+            cur.execute(
+                """
+                SELECT route_number, station_code, station_name
+                FROM tb.worksites
+                WHERE id = %s
+                """,
+                (file_row["worksite_id"],),
+            )
+            worksite_defaults = dict(cur.fetchone() or {})
+            effective_route = (
+                (payload.route_number or "").strip()
+                or (str(worksite_defaults.get("route_number") or "").strip())
+                or None
+            )
+            effective_station_code = (
+                (payload.station_code or "").strip().upper()
+                or (str(worksite_defaults.get("station_code") or "").strip().upper())
+                or None
+            )
+            effective_station_name = (
+                (payload.station_name or "").strip()
+                or (str(worksite_defaults.get("station_name") or "").strip())
+                or None
+            )
+            if effective_station_code:
+                metadata["station_code"] = effective_station_code
+            if effective_station_name:
+                metadata["station_name"] = effective_station_name
+
             old_path = _absolute_storage_path(file_row["storage_key"])
             if not old_path.is_file():
                 raise HTTPException(404, "FILE_CONTENT_MISSING")
@@ -249,15 +274,29 @@ def import_survey_original_from_file(
 
             cur.execute(
                 """
-                SELECT id FROM tb.survey_originals
-                WHERE company_id = %s AND sha256 = %s AND byte_size = %s AND data_kind = %s
+                SELECT id, company_id FROM tb.survey_originals
+                WHERE (company_id = %s OR company_id IS NULL)
+                  AND sha256 = %s AND byte_size = %s AND data_kind = %s
+                ORDER BY CASE WHEN company_id IS NULL THEN 0 ELSE 1 END
                 LIMIT 1
                 """,
                 (context["company_id"], actual_sha256, actual_size, kind),
             )
             duplicate = cur.fetchone()
             if duplicate:
-                raise HTTPException(409, {"code": "SURVEY_ORIGINAL_ALREADY_IMPORTED", "original_id": duplicate["id"]})
+                global_duplicate = duplicate["company_id"] is None
+                raise HTTPException(
+                    409,
+                    {
+                        "code": (
+                            "SURVEY_ORIGINAL_GLOBAL_ALREADY_AVAILABLE"
+                            if global_duplicate
+                            else "SURVEY_ORIGINAL_ALREADY_IMPORTED"
+                        ),
+                        "original_id": duplicate["id"],
+                        "scope": "GLOBAL" if global_duplicate else "COMPANY",
+                    },
+                )
 
             original_id = uuid4()
             safe_name = _safe_name(file_row["original_name"])
@@ -282,7 +321,7 @@ def import_survey_original_from_file(
                 (
                     original_id,
                     context["company_id"],
-                    payload.route_number,
+                    effective_route,
                     payload.track_key,
                     kind,
                     storage_key,
@@ -318,8 +357,9 @@ def import_survey_original_from_file(
                     "byte_size": actual_size,
                     "source_file_id": str(payload.file_id),
                     "catalog_scope": catalog_scope,
-                    "station_code": metadata.get("station_code"),
-                    "station_name": metadata.get("station_name"),
+                    "route_number": effective_route,
+                    "station_code": effective_station_code,
+                    "station_name": effective_station_name,
                     "source_date": metadata.get("source_date"),
                 },
             )

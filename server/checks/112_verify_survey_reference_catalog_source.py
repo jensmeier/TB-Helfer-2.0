@@ -80,5 +80,13 @@ assert 'coverage >= 0.9' not in catalog
 assert 'def _sanitize_catalog_value(' in catalog
 assert '_catalog_response(user, item)' in catalog
 assert '_catalog_response(user, row)' in catalog
+assert '"next_after":next_after' in catalog
+assert 'next_after = int(row["change_id"])' in catalog
+assert 'SURVEY_ORIGINAL_GLOBAL_ALREADY_AVAILABLE' in survey_originals
+assert 'SELECT route_number, station_code, station_name' in survey_originals
+assert 'effective_route' in survey_originals
+assert 'source_date: date | None = None' in admin_import
+assert 'source_date=decision.source_date' in admin_import
+assert 'source_date=source_date' in admin_import
 
 print("PASS survey reference catalog source")
