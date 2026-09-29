@@ -572,3 +572,44 @@ Status: **SOURCE NOCH NICHT FERTIG**
 - GitHub-Reread von `0097a24b...` zeigt einen reproduzierbaren Python-Signaturfehler in `admin_survey_import.py`.
 - Zusätzlich fehlt im Manual-Segment-PATCH die Fremdfirmen-Scope-Sperre.
 - Keine Deployment-/E2E-Freigabe bis beide Fehler korrigiert und Source-Checks nachgewiesen sind.
+
+
+## REF-DATA-003 – Server-Katalog Quellblock umgesetzt
+Status: **QUELLSTAND IMPLEMENTIERT / NICHT DEPLOYT / SYNLOGY-E2E OFFEN**
+Code-HEAD des Quellblocks: `a1ef0d991e2ccc06578feced7e9b5a89bdf5f611`.
+
+Umgesetzt:
+- Migration `017_survey_reference_catalog.sql`: Assets, Achsen, Segmente, Konflikte, Historie.
+- `survey_catalog.py`: Search, Availability, Geometry, Changes, manuelle TRA-/GPS-Segmente, versionierte Achskorrekturen, Konflikte, Reindex.
+- Auto-Merge nutzt Fachidentität + X/Y-Überlappung bzw. Endpunkt + Tangente; unsichere Fälle werden `REVIEW_REQUIRED`.
+- Grenzwerte: Überlappung <=1 m; Endpunkt <=5 m; Tangentenfehler <=20°; nahe Nichtübereinstimmung bis 20 m wird Prüffall.
+- Originale bleiben unverändert/SHA-gebunden. Private Firmen-Rohdatei kann abgeleitete Geometrie ausdrücklich GLOBAL veröffentlichen.
+- `source_date`, Betriebsstelle und Katalogscope sind typisiert; „neuer“ bedeutet nicht bloß spätere Uploadzeit.
+- Aktive Baustellenmitglieder dürfen Survey-Originalimport/Reparse; Firmen-/Dateizugehörigkeit bleibt geprüft.
+- KM-Vertrag: GRÜN automatisch (KM-GRA/GVP), ORANGE manuell, GRAU unplausibel/teilweise, ROT fehlt; GVP >=4 Treffer, <=120 m, Medianoffset, ±80 m.
+- Konfliktmail nutzt vorhandenen SMTP-Alertweg; DB-Konflikt bleibt unabhängig vom Mailversand bestehen.
+- API-Vertrag: `docs/TB-SERVER_1_0_SURVEY_CATALOG.md`.
+
+Runtime-Dateien mindestens:
+- `server/v1_migrations/017_survey_reference_catalog.sql`
+- `server/tbserver/survey_catalog.py`
+- `server/tbserver/main.py`
+- `server/tbserver/jobs.py`
+- `server/tbserver/notifications.py`
+- `server/tbserver/admin_survey_import.py`
+- `server/tbserver/survey_parser.py`
+- `server/tbserver/survey_originals.py`
+
+Teststatus:
+- Sourcechecks 112/113 vorhanden.
+- GitHub Runs `36618626903` und `36618619207`: `steps=[]` → **kein CI-Testnachweis**.
+- Migration 017, API/Worker, Reindex, Merge/Review und SMTP sind auf Synology **noch nicht bestätigt**.
+
+Nächster Schritt vor Portal:
+1. Serverstand über File Station übernehmen.
+2. API/Worker per Container Manager aktualisieren/recreaten; Migration 017 anwenden.
+3. Migrationsstand prüfen.
+4. `POST /api/v1/survey-catalog/reindex`.
+5. Search/Availability/Geometry/Changes gegen die Runtime prüfen.
+6. Originalimport + Auto-Merge + `REVIEW_REQUIRED` + Konfliktmail mit Testdaten prüfen.
+7. Erst nach Runtime-Bestätigung Portal beginnen.
