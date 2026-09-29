@@ -681,9 +681,6 @@ class AndroidStyleWriter:
 
 def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) -> None:
     canvas = writer.c
-    canvas.setFillColor(colors.black)
-    canvas.setFont("Helvetica-Bold", 18)
-    canvas.drawString(MARGIN_L, writer.pdf_y(MARGIN_TOP + 10), "BAUTAGEBUCH")
 
     layout = context.get("pdf_logo_layout") if isinstance(context.get("pdf_logo_layout"), dict) else {}
     width_pt = max(40.0, min(400.0, _number(layout.get("logo_width_pt")) or 90.0))
@@ -774,6 +771,27 @@ def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) ->
         )
         text_top += 9.5
 
+    # Der Dokumenttitel liegt absichtlich als oberste Ebene über dem frei
+    # positionierbaren Firmenlogo. So kann ein 400-pt-Logo den Titel weder
+    # überdecken noch durch seinen weißen Bildhintergrund abschneiden.
+    title = "BAUTAGEBUCH"
+    title_font = "Helvetica-Bold"
+    title_size = 18.0
+    title_x = MARGIN_L
+    title_baseline = writer.pdf_y(MARGIN_TOP + 10.0)
+    title_width = stringWidth(title, title_font, title_size)
+    canvas.setFillColor(colors.white)
+    canvas.rect(
+        title_x - 4.0,
+        title_baseline - 5.0,
+        title_width + 8.0,
+        25.0,
+        fill=1,
+        stroke=0,
+    )
+    canvas.setFillColor(colors.black)
+    canvas.setFont(title_font, title_size)
+    canvas.drawString(title_x, title_baseline, title)
 
 
 def _draw_document_header(
