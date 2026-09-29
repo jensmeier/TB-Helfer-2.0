@@ -1789,3 +1789,9 @@ Fehlerfeststellung 29.09.2026 nach Lifecycle-Integration:
 - Die alte Check-112-Assertion auf die _install_original-Signatur erwartet station_name direkt vor user.
 - Seit dem dokumentierten source_date-Vertrag steht source_date dazwischen; die alte Assertion ist damit veraltet und würde auf einem echten Runner falsch fehlschlagen.
 - Nur den Source-Check an die aktuelle verpflichtende Signatur anpassen; Fachcode unverändert lassen.
+
+#### REF-DATA-003 – Capability-Vertrag
+Abschlussprüfung 29.09.2026:
+- Der neue Survey-Referenzkatalog muss im bestehenden /api/v1/capabilities-Vertrag explizit erkennbar sein.
+- Separate Capability-Flags für Katalog-Lesen, versionierte Nutzerbeiträge und Survey-Katalog-Change-Feed ergänzen.
+- Android soll später diese Flags prüfen statt Endpunkte auf Verdacht aufzurufen.

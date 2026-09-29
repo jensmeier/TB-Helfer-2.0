@@ -571,3 +571,7 @@ Status: **SERVERVERTRAG NACHGESCHÄRFT**
 - `GET /api/v1/survey-catalog/changes` liefert zusätzlich `next_after`. Android muss diesen Cursor verwenden, auch wenn `changes=[]`, damit nicht sichtbare Firmenänderungen übersprungen werden können.
 - `latest` bleibt Diagnose-/Standinformation; der nächste Request basiert auf `next_after`, nicht auf der letzten sichtbaren Entity-ID.
 - `source_date` ist das fachliche Bestandsdatum; Upload-/Importzeit bleibt davon getrennt.
+
+#### REF-DATA-003 – Capability-Erkennung
+- Android prüft vor Nutzung des neuen Vertrags mindestens survey_reference_catalog_v1, survey_reference_contributions_v1 und survey_reference_change_feed_v1.
+- Fehlt eine Capability, darf der Client den betreffenden neuen Pfad nicht auf Verdacht verwenden; bestehende ältere Streckendatenpfade bleiben davon getrennt.
