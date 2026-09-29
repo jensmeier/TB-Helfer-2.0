@@ -836,3 +836,11 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Codecommits `34090632...`, `0292ca9f...`, `13b2a0be...`.
 - Browser-JS PASS; GitHub Actions ohne Runner/Steps.
 - Status: **SOURCE FERTIG / SYNLOGY-RUNTIME-RETEST OFFEN**.
+
+## REF-DATA-002 – Achsen/KOR-Checkpoint 29.09.2026
+- Benutzerauftrag `bauen` nach Erklärung bestätigt.
+- Sourcefix `6299fca8...`: Achsen-Hover/Klick, 16-px-Hitline, ca. 2000x Zoom, KOR-Metadatenfilter + diagnostische Restwarnungen.
+- Original Gessertshausen-KOR nicht als Rohdatei in Conversation/Library gefunden; keine erfundene Spezialbehandlung.
+- Browser-JS V8 PASS.
+- CI ohne Runner-Schritte; kein Testnachweis.
+- Status: **SOURCE FERTIG / SYNLOGY-RUNTIME-RETEST OFFEN**.

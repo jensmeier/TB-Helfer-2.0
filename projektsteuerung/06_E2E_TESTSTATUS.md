@@ -486,3 +486,16 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   7. Punkt anklicken → `KM aus Datei` wie Android + Bahn-KM;
   8. bis ca. 160x hineinzoomen und einzelne Linien weiter kontrollieren.
 - Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**.
+
+### REF-DATA-002 – Achsen/KOR-Retest
+- Source: Browser-JS V8 = PASS.
+- GitHub Actions ohne Runner/Steps → kein CI-Testnachweis.
+- Synology-Pflichttest:
+  1. Gessertshausen analysieren;
+  2. Maus über rote/grüne/blaue Achse → Kurztooltip + sichtbare Hervorhebung;
+  3. Achse anklicken → strukturierte Achsendetails;
+  4. bis weit über 160x hineinzoomen und einzelne Parallelachsen trennen;
+  5. Punkte bleiben Screen-Space-stabil;
+  6. KOR-Warnungen prüfen: reine Header-/Steuerzeilen dürfen nicht mehr als Datenfehler erscheinen;
+  7. verbleibende KOR-Warnung muss jetzt den betreffenden Zeilentext zeigen und darf nicht blind unterdrückt werden.
+- Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**.

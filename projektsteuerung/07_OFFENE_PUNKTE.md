@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| REF-DATA-002 | P0 | SERVER/ANDROID | GVP-Kalibrierung freier Strecken/Gleise + GRA/GVP-Farbstatus + ca. 160x Zoom source-seitig fertig | nur Admin-Template aktualisieren → Pasing/5300/Gessertshausen analysieren → GVP-grün + Achsdiagnose + Tiefzoom prüfen |
+| REF-DATA-002 | P0 | SERVER/ANDROID | Achsen-Hover/Klick + ca. 2000x Tiefzoom + KOR-Parser-v3 source-seitig fertig; Synology-Retest offen | Admin-Template + survey_parser.py aktualisieren → API neu starten → Gessertshausen Achsen/KOR-Warnungen praktisch prüfen |
 | REF-DATA-001 | P0 | SERVER/ANDROID | Datei-zuerst-Analyse + bestätigter Global/Firma-Import source-seitig fertig; Synology-E2E/Android offen | 4 Runtime-Dateien deployen → echte TRA/KF-Analyse + Import testen → danach Android-Consumer |
 | ADMIN-PDF-011 | P1 | ANDROID | SERVER/Admin 40..400 pt + X/Y + Preview am 29.09.2026 abgenommen; Android clamp aktuell noch 250 | ANDROID-Projekt: Clamp/Vertrag auf 40..400 übernehmen und Geräte-PDF praktisch prüfen |
 | PDF-RUNTIME-009 | P0 | SERVER | Ursache bestätigt; Android-naher Serverrenderer v5 source-seitig fertig, Runtime noch nicht bestätigt | 4 Serverdateien übernehmen → API neu starten → neuen Serverabschluss gegen 22.09 + Handy-Entwurf visuell prüfen |

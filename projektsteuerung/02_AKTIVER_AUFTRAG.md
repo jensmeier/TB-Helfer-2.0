@@ -1625,7 +1625,7 @@ Status: **SOURCE-UMSETZUNG FERTIG / SYNLOGY-RETEST OFFEN**
 - GitHub Actions auf Code-HEAD ohne Runner/Steps → kein Testnachweis.
 - Synology-Retest: nur Admin-Template aktualisieren, API neu starten.
 ### REF-DATA-002 – Restpunkte Achseninteraktion / Tiefzoom / KOR-Warnungen
-Status: **SERVER-UMSETZUNG FREIGEGEBEN**
+Status: **SOURCE-UMSETZUNG FERTIG / SYNLOGY-RETEST OFFEN**
 - Benutzer-Retest nach GVP-Kalibrierung zeigt drei neue/präzisierte Punkte:
   1. Tiefzoom reicht trotz ca. 160x noch nicht für gewünschte Detailkontrolle; weitere Zoomreserve gewünscht.
   2. Achsen sollen wie Vermessungspunkte interaktiv werden: Hover zeigt Kurzinfo, Klick zeigt strukturierte Achsendetails.
@@ -1639,3 +1639,23 @@ Status: **SERVER-UMSETZUNG FREIGEGEBEN**
   - breite unsichtbare Achsen-Trefferzone mit Hover-Kurzinfo und Klick-Detailkarte;
   - KOR-Parser nur nach tatsächlicher Formatprüfung anpassen; gültige Punkte dürfen nicht verworfen und reine Steuer-/Headerzeilen sollen nicht als Fehler gemeldet werden.
 - Vor Code zuerst nach einer verfügbaren Original-`2026031_Gessertshausen_5302_Koordinaten.kor` suchen und deren beanstandete Zeilen prüfen.
+
+### REF-DATA-002 – Achsen-/KOR Source-Fix
+- Freigabecommit: `7bc47955ff0ceee4a1146da93834e11533ff517f`.
+- Codecommit: `6299fca8232ce59dd65873ff733ad988b5db54da`.
+- Admin-Grafik:
+  - sichtbare Achslinie `pointer-events:none`;
+  - separate transparente `axis-hit`-Polyline mit 16 px Trefferbreite;
+  - Hover = Hervorhebung + Kurztooltip;
+  - Klick = strukturierte Achsendetails inklusive GVP/GRA-KM-Diagnose;
+  - Tiefzoomlimit `view.w=0.5` → theoretisch ca. 2000x.
+- KOR-Parser:
+  - Parser-Version 3;
+  - bekannte Header/Metadaten/Trennzeilen werden ignoriert;
+  - echte numerisch wirkende unvollständige Zeilen bleiben Warnungen;
+  - Warnung zeigt Zeilenausschnitt, damit unbekannte KOR-Varianten reproduzierbar nachgerüstet werden können.
+- Rohdateisuche in Conversation/Library fand keinen Original-Gessertshausen-KOR; nur Vermessungs-Prüfbericht und andere Referenzdateien. Daher keine spekulative Sonderbehandlung der beanstandeten Zeilennummern.
+- Browser-JavaScript final via V8 kompiliert: **PASS**.
+- Sourcecheck parst jetzt zusätzlich `survey_parser.py` per AST, sobald er tatsächlich auf einem Runner ausgeführt wird.
+- GitHub Actions `36604836141`, `36604829585`, `36604836135`: `runner_name=""`, `steps=[]` → **kein Testnachweis**.
+- Synology-Retest benötigt Admin-Template + `survey_parser.py`; API neu starten.

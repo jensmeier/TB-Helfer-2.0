@@ -465,3 +465,10 @@ Status: **FESTGELEGT**
 - ROT/FEHLT = Geometrie vorhanden, aber keine belastbare automatische/manuelle KM.
 - ORANGE/MANUELL bleibt für bewusst manuell kalibrierte/geänderte KM reserviert.
 - SERVER und Android müssen bei gleicher Datenlage dieselbe fachliche Farbbedeutung verwenden.
+
+### REF-DATA-002 – Achseninteraktion Vertrag
+Status: **FESTGELEGT**
+- Achse und Vermessungspunkt sind beide interaktive Grafikobjekte.
+- Hover liefert nur Kurzinfo; Klick persistiert vollständige Detaildaten in `Auswahl`.
+- Sichtbare Geometrie und Trefferzone sind getrennt: dünne Fachlinie, breitere unsichtbare Bedienzone.
+- Achsendetail enthält mindestens Objektname, Strecke/Gleis, Achstyp, KM-Status, KM-Quelle, KM-Bereich, GVP-Diagnose/Grund und Quelldatei soweit vorhanden.

@@ -546,3 +546,14 @@ Status: **SOURCE FERTIG / RUNTIME-RETEST OFFEN**
 - Tiefzoom ca. 160x.
 - Runtime-Datei: `server/templates/v1_admin_survey_import.html`.
 - API neu starten; keine Migration/kein Recreate.
+
+## REF-DATA-002 – Achseninteraktion + KOR-Parser v3
+Status: **SOURCE FERTIG / RUNTIME OFFEN**
+- Achsen-Hover und Achsen-Klick analog zur Punktinteraktion.
+- Unsichtbare 16-px-Trefferzone verbessert Bedienbarkeit ohne optische Linienbreite zu verändern.
+- Tiefzoom ca. 2000x.
+- `survey_parser.py`: KOR-Metadaten/Header werden erkannt; verdächtige unvollständige Datenzeilen bleiben mit Textausschnitt sichtbar.
+- Runtime-Dateien:
+  - `server/templates/v1_admin_survey_import.html`;
+  - `server/tbserver/survey_parser.py`.
+- API neu starten; keine Migration/kein Recreate.

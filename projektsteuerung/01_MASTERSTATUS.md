@@ -816,3 +816,14 @@ Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
 - Tiefzoom auf Android-Maximum ca. 160x erweitert.
 - Punktdetail zeigt `KM aus Datei` (Dezimal-km) plus `Bahn-KM`; doppelte KF/KF.TXT-Punkte werden in der Preview konservativ zusammengeführt.
 - keine DB-/Compose-/Android-Änderung.
+
+## REF-DATA-002 – Achsen-Hover/Tiefzoom/KOR-Metadaten
+Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
+- Achsen haben jetzt eine unsichtbare 16-px-Trefferlinie; sichtbare Linie bleibt dünn.
+- Hover hebt die Achse hervor und zeigt Kurzinfo mit Objekt, KM-Status und Quelle; Klick öffnet die bereits strukturierte Achsendetailkarte.
+- Tiefzoom von ca. 160x auf bis zu ca. 2000x erweitert; Screen-Space-Punkte bleiben unabhängig davon stabil.
+- KOR-Parser auf Version `tb-survey-parser-3` angehoben.
+- Offensichtliche KOR-Metadaten/Header/Trennzeilen werden nicht mehr als fehlerhafte Datenzeile gemeldet.
+- Potenziell echte, aber unvollständige KOR-Datenzeilen bleiben als Warnung sichtbar und enthalten jetzt einen Textausschnitt zur Diagnose.
+- Original `2026031_Gessertshausen_5302_Koordinaten.kor` war in Projekt/Library nicht als Rohdatei verfügbar; deshalb keine formatspezifische Sonderregel auf Verdacht.
+- keine DB-/Compose-/Android-Änderung.
