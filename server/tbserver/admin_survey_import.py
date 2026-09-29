@@ -141,10 +141,6 @@ def _analysis_semantics(
             display_label = re.sub(r"[_]+", " ", Path(basename).stem).split("_ER0", 1)[0].strip()
             semantic_key = f"WVB:{display_label.upper()}"
         object_group = "WEICHENVERBINDUNG"
-    elif axis_type == "GLEIS" and track:
-        display_label = f"Gl {track}" + (f" · Str {route}" if route else "")
-        semantic_key = f"GLEIS:{route or ''}:{track}"
-        object_group = "BAHNHOFS_GLEIS"
     elif route and source_direction:
         direction_label = direction or source_direction
         display_label = f"Str {route}-{direction_label}"
@@ -152,6 +148,10 @@ def _analysis_semantics(
             display_label += f" · Quelle {source_direction}"
         semantic_key = f"STRECKE:{route}:{source_direction}"
         object_group = "STRECKENACHSE"
+    elif axis_type == "GLEIS" and track:
+        display_label = f"Gl {track}" + (f" · Str {route}" if route else "")
+        semantic_key = f"GLEIS:{route or ''}:{track}"
+        object_group = "BAHNHOFS_GLEIS"
     elif route:
         display_label = f"Str {route}"
         semantic_key = f"STRECKE:{route}:{axis_type or 'UNBEKANNT'}"
