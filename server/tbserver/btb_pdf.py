@@ -16,7 +16,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.platypus import Flowable, Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
-PDF_RENDERER_VERSION = "tb-server-btb-pdf-4"
+PDF_RENDERER_VERSION = "tb-server-btb-pdf-5"
 PDF_PHOTO_MAX_SIZE_PX = (1600, 1200)
 PDF_PHOTO_JPEG_QUALITY = 82
 
@@ -291,7 +291,7 @@ def _prepare_pdf_photo(source_path: Path, target_path: Path) -> Path:
     return target_path
 
 
-def render_btb_pdf(
+def _render_btb_pdf_legacy(
     output_path: Path,
     *,
     snapshot: dict[str, Any],
@@ -530,3 +530,23 @@ def render_btb_pdf(
         doc.build(story)
     finally:
         photo_temp_dir.cleanup()
+
+def render_btb_pdf(
+    output_path: Path,
+    *,
+    snapshot: dict[str, Any],
+    original_snapshot: dict[str, Any] | None,
+    context: dict[str, Any],
+    photo_files: list[dict[str, Any]],
+) -> None:
+    """Authoritative Server PDF, visually aligned to the established Android BTB PDF."""
+    from .btb_pdf_android_style import render_android_style_btb_pdf
+
+    render_android_style_btb_pdf(
+        output_path,
+        snapshot=snapshot,
+        original_snapshot=original_snapshot,
+        context=context,
+        photo_files=photo_files,
+        renderer_version=PDF_RENDERER_VERSION,
+    )

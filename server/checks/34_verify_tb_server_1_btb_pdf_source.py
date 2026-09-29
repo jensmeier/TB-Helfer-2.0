@@ -81,7 +81,7 @@ def render_smoke() -> None:
         data = target.read_bytes()
         assert data.startswith(b"%PDF-"), data[:16]
         assert len(data) > 1000, len(data)
-        assert PDF_RENDERER_VERSION == "tb-server-btb-pdf-4"
+        assert PDF_RENDERER_VERSION == "tb-server-btb-pdf-5"
 
         large_source = Path(temp_dir) / "large-phone-photo.jpg"
         bounded_target = Path(temp_dir) / "bounded-photo.jpg"
@@ -98,6 +98,7 @@ def main() -> None:
     btb = read("server/tbserver/btb.py")
     documents = read("server/tbserver/btb_documents.py")
     pdf = read("server/tbserver/btb_pdf.py")
+    android_style_pdf = read("server/tbserver/btb_pdf_android_style.py")
     files = read("server/tbserver/files.py")
     caps = read("server/tbserver/capabilities.py")
     requirements = read("server/requirements.txt")
@@ -118,7 +119,13 @@ def main() -> None:
         ('raise HTTPException(409, "BTB_NOT_ACTIVE")', documents),
         ('def install_pdf_atomically', documents),
         ('def rollback_pdf_install', documents),
-        ('PDF_RENDERER_VERSION = "tb-server-btb-pdf-4"', pdf),
+        ('PDF_RENDERER_VERSION = "tb-server-btb-pdf-5"', pdf),
+        ("def render_android_style_btb_pdf", android_style_pdf),
+        ("BAUTAGEBUCH", android_style_pdf),
+        ("4. Ausgeführte Arbeiten", android_style_pdf),
+        ("Personal", android_style_pdf),
+        ("Maschinen/Geräte", android_style_pdf),
+        ("worksiteNodeKey", android_style_pdf),
         ('PDF_PHOTO_MAX_SIZE_PX = (1600, 1200)', pdf),
         ('def _prepare_pdf_photo', pdf),
         ('source.draft("RGB", PDF_PHOTO_MAX_SIZE_PX)', pdf),

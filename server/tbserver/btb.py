@@ -217,7 +217,9 @@ def _pdf_context(cur, btb: dict[str, Any]) -> dict[str, Any]:
         """
         SELECT w.name AS worksite_name, w.designation AS worksite_designation,
                w.route_number, t.name AS team_name,
-               lead.display_name AS lead_name
+               lead.display_name AS lead_name,
+               lead.personal_email AS lead_email,
+               lead.personal_phone AS lead_phone
         FROM tb.worksites w
         JOIN tb.teams t ON t.id = %s AND t.worksite_id = w.id
         LEFT JOIN tb.users lead ON lead.id = t.lead_user_id
@@ -230,6 +232,17 @@ def _pdf_context(cur, btb: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(409, "BTB_PDF_CONTEXT_MISSING")
     row = dict(row)
     branding = load_company_branding(cur, btb["company_id"])
+    cur.execute(
+        """
+        SELECT id, parent_id, node_kind, name, route_number, track_key,
+               external_key, sort_order, payload
+        FROM tb.worksite_nodes
+        WHERE worksite_id = %s AND deleted_at IS NULL
+        ORDER BY parent_id NULLS FIRST, sort_order, lower(name), id
+        """,
+        (btb["worksite_id"],),
+    )
+    worksite_nodes = [dict(item) for item in cur.fetchall()]
     address = " ".join(
         part
         for part in (
@@ -243,6 +256,7 @@ def _pdf_context(cur, btb: dict[str, Any]) -> dict[str, Any]:
     return {
         "company_name": branding.get("name"),
         "company_address": address or None,
+        "company_address_line1": branding.get("address_line1"),
         "company_email": branding.get("email"),
         "company_phone": branding.get("phone"),
         "company_website": branding.get("website"),
@@ -255,6 +269,9 @@ def _pdf_context(cur, btb: dict[str, Any]) -> dict[str, Any]:
         "route_number": row.get("route_number"),
         "team_name": row.get("team_name"),
         "lead_name": row.get("lead_name"),
+        "lead_email": row.get("lead_email"),
+        "lead_phone": row.get("lead_phone"),
+        "worksite_nodes": worksite_nodes,
     }
 
 
