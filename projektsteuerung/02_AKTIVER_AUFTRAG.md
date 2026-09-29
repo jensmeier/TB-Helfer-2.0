@@ -1542,3 +1542,24 @@ Status: **RUNTIME-BEFUND GESICHERT / KONZEPT PRÄZISIERT**
 - Sourcecheck ergänzt.
 - GitHub Actions `36590313120`, `36590306663`, `36590313016`: jeweils `runner_name=""`, `steps=[]` → kein Testnachweis.
 - Synology-Retest benötigt nur das Admin-Template; keine Migration und kein Recreate.
+### REF-DATA-002 – Tiefzoom weiterhin unbrauchbar / Punktinteraktion präzisiert
+Status: **RUNTIME-FEHLER BESTÄTIGT / VOR NÄCHSTEM CODE GESICHERT**
+- Benutzer-Retest nach Commit `69096bd7...` zeigt: Tiefzoom ist weiterhin nicht brauchbar.
+- Sichtbarer Fehler:
+  - Achs-/Punkttexte werden im tiefen Zoom weiterhin viel zu dominant und verdecken die Geometrie;
+  - gelbe Vermessungs-/Festpunktmarker werden im tiefen Zoom zu klein bzw. praktisch unsichtbar;
+  - einzelne Gleislinien können dadurch nicht sauber kontrolliert werden.
+- Android-Referenz erneut geprüft:
+  - Punktmarker bleiben bildschirmbezogen sichtbar (ca. 3.5–6 dp je Zoomstufe);
+  - ein Tap sucht Punkte in einer bildschirmbezogenen Trefferzone (24 dp);
+  - bei einem Treffer wird Punktinfo angefordert; bei mehreren Treffern kann eine Mehrfachauswahl angezeigt werden;
+  - Labels werden zoomabhängig begrenzt, Punktdetail ist aber nicht von permanent sichtbarer Beschriftung abhängig.
+- Verbindliches SERVER-Ziel für Desktop/Admin:
+  - Punktmarker bleiben im Screen-Space deutlich sichtbar; sie dürfen bei Tiefzoom nicht verschwinden;
+  - permanente Textlabels im Tiefzoom stark reduzieren: Geometrie zuerst, nur wenige lokale Labels;
+  - Hover über einen Punkt: Punkt hervorheben + kleines Kurz-Tooltip (Bezeichnung, optional KM);
+  - Klick auf einen Punkt: Auswahl fixieren und rechts strukturierte Punktdetails zeigen;
+  - Punktdetail soweit vorhanden: Bezeichnung/ID, Punktart, Strecke, Gleis, KM, Höhe, X/Y, Koordinatensystem, Quelldatei;
+  - liegen mehrere Punkte in der Trefferzone, Auswahl der Treffer statt willkürlich nur einen zu öffnen;
+  - sichtbarer Marker und Klick-/Hover-Trefferzone bleiben getrennt.
+- Nächster Codeblock soll diesen Punktinteraktions-/LOD-Ansatz umsetzen; kein weiterer Versuch mit schrumpfenden Markern auf Verdacht.
