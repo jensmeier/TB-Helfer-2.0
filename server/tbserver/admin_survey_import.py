@@ -118,6 +118,72 @@ def _load_analysis_meta(analysis_id: UUID) -> tuple[Path, dict[str, Any]]:
     return source_path, meta
 
 
+def _analysis_semantics(
+    parsed: dict[str, Any],
+    original_name: str,
+    kind: str,
+) -> dict[str, Any]:
+    payload = parsed.get("payload") if isinstance(parsed.get("payload"), dict) else {}
+    route = str(payload.get("route_from_name") or "").strip() or None
+    track = str(payload.get("track_from_name") or "").strip() or None
+    direction = str(payload.get("direction_from_name") or "").strip() or None
+    source_direction = str(payload.get("source_direction_from_name") or "").strip() or None
+    axis_type = str(payload.get("axis_type_from_name") or "").strip().upper() or None
+    basename = Path(original_name).name
+    upper = basename.upper()
+
+    if axis_type == "WEICHENVERBINDUNG":
+        match = re.search(r"\bWVB?[_\s-]*(\d+[A-Z]?)[_\s-]+(\d+[A-Z]?)\b", upper)
+        if match:
+            display_label = f"WVB {match.group(1)}-{match.group(2)}"
+            semantic_key = f"WVB:{match.group(1)}-{match.group(2)}"
+        else:
+            display_label = re.sub(r"[_]+", " ", Path(basename).stem).split("_ER0", 1)[0].strip()
+            semantic_key = f"WVB:{display_label.upper()}"
+        object_group = "WEICHENVERBINDUNG"
+    elif axis_type == "GLEIS" and track:
+        display_label = f"Gl {track}" + (f" · Str {route}" if route else "")
+        semantic_key = f"GLEIS:{route or ''}:{track}"
+        object_group = "BAHNHOFS_GLEIS"
+    elif route and source_direction:
+        direction_label = direction or source_direction
+        display_label = f"Str {route}-{direction_label}"
+        if source_direction and source_direction != direction_label:
+            display_label += f" · Quelle {source_direction}"
+        semantic_key = f"STRECKE:{route}:{source_direction}"
+        object_group = "STRECKENACHSE"
+    elif route:
+        display_label = f"Str {route}"
+        semantic_key = f"STRECKE:{route}:{axis_type or 'UNBEKANNT'}"
+        object_group = "STRECKENACHSE"
+    elif kind == "GVP":
+        normalized = basename.lower()
+        if normalized.endswith(".kf.txt"):
+            normalized = normalized[:-7]
+        elif "." in normalized:
+            normalized = normalized.rsplit(".", 1)[0]
+        display_label = "Festpunkte / KF"
+        semantic_key = f"POINT:GVP:{normalized}"
+        object_group = "FESTPUNKTE"
+    elif kind in {"KOR", "CSV"}:
+        display_label = "Absteckpunkte"
+        semantic_key = f"POINT:{kind}:{Path(basename).stem.lower()}"
+        object_group = "ABSTECKPUNKTE"
+    else:
+        display_label = Path(basename).stem
+        semantic_key = f"FILE:{basename.lower()}"
+        object_group = "DATEI"
+
+    return {
+        "axis_type": axis_type,
+        "direction": direction,
+        "source_direction": source_direction,
+        "object_group": object_group,
+        "display_label": display_label,
+        "semantic_key": semantic_key,
+    }
+
+
 def _analysis_item(
     *,
     item_id: str,
@@ -129,6 +195,7 @@ def _analysis_item(
     size, sha256 = _hash_path(path)
     parsed = _parse_result(kind, original_name, path, sha256)
     route, track = _parsed_route_track(parsed)
+    semantics = _analysis_semantics(parsed, original_name, kind)
     preview = build_survey_preview(parsed)
     missing: list[str] = []
     if not route:
@@ -145,6 +212,7 @@ def _analysis_item(
         "detected_format": parsed["detected_format"],
         "route_number": route,
         "track_key": track,
+        **semantics,
         "default_scope": _SCOPE_GLOBAL,
         "missing_fields": missing,
         "warnings": parsed["warnings"],
