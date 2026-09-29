@@ -1744,3 +1744,9 @@ Entscheidung Benutzer 29.09.2026:
 3. **Danach Android**: fertigen Serververtrag konsumieren; Verfügbarkeit/Download, Upload aller Berechtigten, manuelle Abschnitte und spätere freie GPS-Geometrie anbinden.
 - Während SERVER-Block keine Portal-UI und kein `app/**` nebenbei ändern.
 - SERVER-APIs werden so fertiggestellt, dass Portal und Android anschließend auf denselben stabilen Vertrag aufsetzen.
+
+#### REF-DATA-003 – Source-Review nach erstem Serverbau
+Fehlerfeststellung 29.09.2026 nach GitHub-Reread von Commit `0097a24b843d8c0610a9bee8971a782e9a5f4340`:
+- `admin_survey_import._install_original(...)` enthält durch die Integrationsänderung einen Python-Syntaxfehler: Pflichtparameter `user` steht hinter optionalen Default-Parametern `station_code/station_name`.
+- `PATCH /api/v1/survey-catalog/manual-segments/{segment_id}` prüft im ersten Stand noch nicht, ob ein Nicht-Admin den Globalbestand bzw. nur den Bestand seiner eigenen Firma bearbeiten darf. Fremde COMPANY-Segmente müssen serverseitig verboten werden.
+- Beide Punkte sind vor jeglichem `SOURCE FERTIG` zu korrigieren und durch den neuen Source-Check abzudecken.

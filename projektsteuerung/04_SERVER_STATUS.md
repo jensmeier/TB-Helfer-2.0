@@ -565,3 +565,10 @@ Status: **UMSETZUNG FREIGEGEBEN / SERVER ZUERST**
 - Aktueller SERVER-Scope: persistenter Trassendaten-Katalog, Quellen-/Segmentmodell, automatischer achsenweiser Merge, Review-Konflikte, Maileskalation, Such-/Verfügbarkeits-/Geometrie-API und Versionierung.
 - Kein Portal-UI-Bau und keine Android-Codeänderung in diesem Block.
 - Bestehende bestätigte REF-DATA-002-Achsen/KOR/Tiefzoom-Funktion bleibt geschützt.
+
+## REF-DATA-003 – erster Serverbau: Reviewfehler offen
+Status: **SOURCE NOCH NICHT FERTIG**
+- Migration 017 + Survey-Katalogdienst + Router/Worker/Mail-/Importverdrahtung sind im Branch vorhanden.
+- GitHub-Reread von `0097a24b...` zeigt einen reproduzierbaren Python-Signaturfehler in `admin_survey_import.py`.
+- Zusätzlich fehlt im Manual-Segment-PATCH die Fremdfirmen-Scope-Sperre.
+- Keine Deployment-/E2E-Freigabe bis beide Fehler korrigiert und Source-Checks nachgewiesen sind.
