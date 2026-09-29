@@ -1328,3 +1328,32 @@ Status: **BESTÄTIGT / ABGENOMMEN**
 - ADMIN-PDF-007 / -010 / -012 / -013: **ERLEDIGT**.
 - ADMIN-PDF-011: SERVER **ERLEDIGT/BESTÄTIGT**, Android-Clamp 250→400 bleibt als separater Android-Vertragspunkt offen.
 - PDF-RUNTIME-009 bleibt fachlich getrennt: finaler serverseitiger Tagesabschluss-PDF-E2E noch nicht durch diese Admin-Abnahme ersetzt.
+## REF-DATA-001 – SERVER-Umsetzung globaler Strecken-/Vermessungsreferenzen
+Status: **TECHNISCHER SERVERVERTRAG FESTGELEGT / PHASE 1 FREIGEGEBEN**
+
+Grundlage ist die bereits bestätigte Fachanforderung REF-DATA-001.
+
+Phase-1-Vertrag SERVER:
+- bestehende `tb.survey_originals` werden ohne Schema-Bruch genutzt:
+  - `company_id IS NULL` = `GLOBAL_REFERENCE`;
+  - `company_id IS NOT NULL` = `COMPANY_WORKSITE_DATA`;
+- globale Originale bleiben **unveränderbar**; kein PATCH/PUT/DELETE und keine stille Überschreibung;
+- globale Duplikaterkennung erfolgt über unveränderte Dateiidentität (`sha256` + Bytegröße);
+- globaler Upload erfolgt zunächst ausschließlich über den bestehenden ADMIN-Bereich und benötigt keinen Firmen-/Baustellenbesitz;
+- firmen-/baustellenbezogener Import bleibt unverändert getrennt und benötigt weiterhin Baustellenkontext;
+- alle authentifizierten Nutzer dürfen globale Referenzoriginale lesen; fremde firmenbezogene Originale bleiben gesperrt;
+- globaler Manifest-/Syncvertrag:
+  - `GET /api/v1/reference/survey-originals` liefert nur Metadaten + Parserstatus, keine großen Parserpayloads;
+  - `GET /api/v1/reference/survey-originals/{id}/parsed` liefert den fachlich geparsten Inhalt;
+  - unveränderte Originalbytes bleiben über den bestehenden Content-Endpunkt abrufbar;
+  - Manifest enthält Datei-SHA, Parser-Version und `parsed_at`, damit Android später gezielt nachladen/cachen kann;
+- bestehende Worksite-`track_data`/`survey-sections` bleiben projektbezogene Arbeitsdaten; sie dürfen globale Originale bereits als Quelle referenzieren;
+- der globale bearbeitbare Strecken-/Bahnhofs-/Objektkatalog bleibt separat in `tb.catalog_*` mit Versionen/History; diese Phase ändert dessen Schreibrechte nicht und globales Löschen bleibt verboten;
+- SERVER ändert kein Android-`app/**`; Android-Nachlade-/Cachepfad wird nur im Vertrag beschrieben.
+
+Phase-1-Umsetzung:
+1. Admin-Trassierungsimport um Ziel `GLOBAL_REFERENCE` vs. `COMPANY_WORKSITE_DATA` erweitern;
+2. globale Referenzmanifest-/Parsed-API ergänzen;
+3. Scope in bestehender Original-Liste sichtbar machen;
+4. Capabilities/Sourcechecks ergänzen;
+5. anschließend Sourceprüfung und Synology-Runtime-Test vorbereiten.

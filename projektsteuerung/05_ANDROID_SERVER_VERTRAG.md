@@ -368,3 +368,24 @@ Status: **SERVER BESTÄTIGT / ANDROID-ANPASSUNG OFFEN**
 - X/Y und 400-pt-Preview wurden auf Synology vom Benutzer abgenommen.
 - Android-Branch begrenzt weiterhin auf 250 pt; nur dieser Android-Anteil bleibt offen.
 - Kein Anlass, den bestätigten SERVER-Renderer zurückzubauen.
+### REF-DATA-001 – technischer Sync-/Downloadvertrag Phase 1
+Status: **FESTGELEGT**
+- Scope:
+  - `GLOBAL_REFERENCE`: serverweit, `survey_originals.company_id = NULL`;
+  - `COMPANY_WORKSITE_DATA`: bestehender firmen-/baustellenbezogener Bestand, `company_id != NULL`.
+- Leserechte:
+  - `GLOBAL_REFERENCE` ist für jeden authentifizierten aktiven Nutzer lesbar;
+  - `COMPANY_WORKSITE_DATA` nur eigene Firma bzw. System-ADMIN.
+- Schreibrechte Phase 1:
+  - globale Originale nur System-ADMIN über Admin-Import;
+  - globale Originale sind immutable und nicht löschbar;
+  - bestehende Worksite-/Firmenimporte und `track.edit` bleiben unverändert;
+  - globale `catalog_*`-Mutationsrechte werden in dieser Phase nicht verändert; globales DELETE bleibt verboten.
+- Android-Zielvertrag:
+  - Manifest `GET /api/v1/reference/survey-originals`;
+  - geparster Einzelbestand `GET /api/v1/reference/survey-originals/{id}/parsed`;
+  - Rohoriginal nur bei ausdrücklichem Bedarf über `/api/v1/survey-originals/{id}/content`;
+  - Cache-/Änderungsidentität: `id` + `sha256` + `parser_version` + `parsed_at`;
+  - Android lädt im Normalbetrieb geparste Referenzdaten gezielt nach und **keine Roharchive automatisch**;
+  - Worksite-`track_data` bleibt getrennte, versionierte Arbeitskopie und darf globale Original-IDs als Quelle referenzieren.
+- SERVER darf zur Umsetzung keine Android-Dateien ändern.
