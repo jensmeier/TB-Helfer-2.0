@@ -1301,3 +1301,11 @@ Status: **ANFORDERUNG GESICHERT / SERVER-FIX FREIGEGEBEN**
 - Sourcecheck erweitert um Marker für entkoppeltes Firmenlogo/Fachlayout.
 - GitHub Actions Run `36557039970`: `failure`, `runner_name=""`, `steps=[]` → kein Testnachweis.
 - Synology-Retest: nur `btb_pdf_android_style.py` übernehmen, API neu starten, Logo-Breite/Y ändern und prüfen, dass Wetter/Tabellen pixelgleich stehen bleiben.
+### ADMIN-PDF-013 – BAUTAGEBUCH-Titel bleibt sichtbar
+Status: **RUNTIME-FEHLER BESTÄTIGT / SERVER-FIX FREIGEGEBEN**
+- Benutzer bestätigt ADMIN-PDF-012 praktisch weitgehend: Tabellen/Fachblöcke bleiben nun fest.
+- Neuer sichtbarer Restfehler bei sehr großem/verschobenem Logo: der Titel **`BAUTAGEBUCH` wird vom Logo bzw. dessen weißem Hintergrund überdeckt/abgeschnitten**.
+- Ziel: `BAUTAGEBUCH` muss unabhängig von Logo-Breite/X/Y vollständig lesbar bleiben.
+- Fachlayout/Tabellenposition darf dabei unverändert bleiben.
+- SERVER-Lösung: Firmenlogo zuerst zeichnen; den linken Titelbereich anschließend als eigene oberste Ebene mit weißem Hintergrund + Titeltext rendern.
+- Android `app/**` nicht ändern.
