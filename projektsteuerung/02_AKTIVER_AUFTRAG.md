@@ -1694,7 +1694,24 @@ Ergänzung Benutzeranforderung 29.09.2026:
 - Die Übersicht benötigt eine Suche mindestens nach **Streckennummer** und **Bahnhof/Betriebsstelle**.
 - Ein Bahnhof/Betriebsstellenbereich ist kein statischer einmaliger Import. Wenn später zusätzliche passende Gleise/Achsen/Abschnitte hinzukommen, soll der fachliche Bereich automatisch mitwachsen.
 - Streckenabdeckung wird abschnittsweise zusammengesetzt. Beispiel: vorhandener Bestand Strecke 1234 km 3,000–5,000 plus neuer Bestand km 6,000–9,000 wird unter derselben Strecke als gemeinsame, ggf. noch lückenhafte Abdeckung angezeigt; Originalquellen bleiben getrennt nachvollziehbar.
-- Manuell auf dem Handy erzeugte Geometrie darf fehlende Originaldaten ergänzen. Beispiel Pasing: Gleis 28 fehlt in den Originaldaten; ein berechtigter Nutzer erfasst Start/Verlauf/Ende per GPS. Diese Geometrie wird als **manuelle/abgeleitete Ergänzung** hochgeladen und kann nach Freigabe von anderen Nutzern verwendet werden.
+- Manuell auf dem Handy erzeugte Geometrie darf fehlende Originaldaten ergänzen. Beispiel Pasing: Gleis 28 fehlt in den Originaldaten; ein Nutzer erfasst Start/Verlauf/Ende per GPS. Diese Geometrie wird als **manuelle/abgeleitete Ergänzung** hochgeladen und steht ohne Admin-Freigabeschlange als gemeinsamer Katalogbeitrag für andere Nutzer zur Verfügung.
 - Manuelle GPS-Ergänzungen überschreiben **niemals** TRA/GRA/KF/KOR-Originaldateien. Quelle, Ersteller, Version, Qualitätsstatus und Herkunft müssen getrennt nachvollziehbar bleiben.
 - Wenn später neue Originaldaten für einen bislang manuell ergänzten Bereich eintreffen, werden beide Quellen zunächst getrennt gehalten und vergleichbar gemacht; keine automatische destruktive Ersetzung.
 - Ziel ist ein fachlicher Verbund: Strecke ↔ Abschnitt/KM-Bereich ↔ Betriebsstelle ↔ Gleis/Achse. Neue passende Daten erweitern diesen Verbund automatisch, ohne Dateinamen zur Identität zu machen.
+
+#### REF-DATA-003 – Automatischer Versionsverbund statt Admin-Freigabe
+Entscheidung Benutzer 29.09.2026:
+- **Keine Admin-Freigabe** für normale Katalog-/Geometrieergänzungen. Nutzer dürfen den gemeinsamen Fachbestand direkt ergänzen und korrigieren; Änderungen bleiben versioniert/auditiert.
+- Bei neu hochgeladenen Vermessungs-/Absteckungsdaten prüft der Server automatisch, ob sie fachlich zu einem vorhandenen Bereich gehören.
+- Hauptkriterien für automatische Zuordnung/Erweiterung:
+  - gleiche/kompatible Strecke und Betriebsstelle, soweit vorhanden;
+  - räumliche Übereinstimmung bzw. Anschluss über X/Y-Geometrie mit definierter Toleranz;
+  - gleiche Gleis-/Achsenidentität, wenn diese belastbar aus den Daten hervorgeht;
+  - KM-/Stationsüberdeckung bzw. anschließender KM-Bereich;
+  - Aktualität/Version der Quelle.
+- Sind neue Originaldaten räumlich plausibel und aktueller, erweitern/aktualisieren sie den fachlichen Verbund achsenweise. Es wird **nicht** der gesamte bisherige Bahnhof/Datensatz blind ersetzt.
+- Beispiel Pasing: existiert ein manuell per GPS ergänztes `Gl 28` und ein späterer aktueller Originalbestand enthält dieses Gleis weiterhin nicht, bleibt `Gl 28` erhalten. Andere vorhandene Gleise/Achsen dürfen durch passendere/neue Originaldaten erweitert oder aktualisiert werden.
+- Neue Originale ersetzen manuelle Ergänzungen nur dort, wo eine belastbare fachliche Entsprechung derselben Achse/Geometrie festgestellt wird. Fehlt diese Entsprechung, bleibt die manuelle Achse als eigener Ursprung erhalten.
+- TRA-Achsen können bei passendem X/Y-Anschluss abschnittsweise erweitert werden. Ein neuer Teil kann an eine vorhandene Achse angefügt werden, ohne den vorhandenen Teil oder andere Quellen zu löschen.
+- Überlappende, aber deutlich widersprüchliche Geometrien werden nicht still überschrieben; sie bleiben als Konflikt/Alternative nachvollziehbar.
+- Originaldateien bleiben unverändert. Der sichtbare Gesamtbestand ist eine **zusammengesetzte fachliche Sicht** aus versionierten Original- und manuellen Quellen.

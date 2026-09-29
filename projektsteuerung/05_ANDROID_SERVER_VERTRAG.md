@@ -478,14 +478,25 @@ Status: **KONZEPT OFFEN**
 - Android soll künftig nicht nach Rohdateinamen entscheiden, sondern über einen serverseitigen normalisierten Datenkatalog.
 - Katalog-Schlüssel sollen mindestens Strecke + Betriebsstelle/Bahnhof + optional Gleis/Achse unterstützen.
 - Android benötigt read-only Verfügbarkeitsinformationen: vorhanden/teilweise/fehlt, Datenarten, KM-Qualität, Version/Aktualität sowie stabile IDs für spätere Detail-/Downloadaufrufe.
-- Nutzerupload darf erst nach serverseitiger Analyse/Klassifikation und definierter Freigabe in einen gemeinsam sichtbaren Referenzbestand gelangen.
+- Nutzerbeiträge gelangen nach serverseitiger Analyse/Klassifikation direkt versioniert in den gemeinsam sichtbaren Fachbestand; eine normale Admin-Freigabeschlange ist ausdrücklich nicht vorgesehen.
 - Bestehende Android-Vermessungslogik bleibt fachliche Referenz für Achsen-/KM-/GVP-Status; Android-Code wird im SERVER-Projekt nicht geändert.
 
 #### REF-DATA-003 – Katalogverbund und manuelle Ergänzungen
 - Verfügbarkeits- und Grafikdaten werden nach stabilen fachlichen Schlüsseln verknüpft: Strecke, Betriebsstelle, Gleis/Achse und KM-/Raumabdeckung.
 - Mehrere Quellen derselben Strecke werden nicht als konkurrierende Komplettpakete behandelt, sondern können unterschiedliche KM-Teilbereiche beitragen.
 - Android darf fehlende Vermessungsgeometrie als **manuelle GPS-Ergänzung** erzeugen und zum Server übertragen; dafür ist ein eigener Ursprung/Status gegenüber Originaldaten erforderlich.
-- Solche Ergänzungen dürfen nach serverseitiger Freigabe für weitere berechtigte Nutzer als gemeinsamer Referenz-/Ergänzungsbestand verfügbar werden.
+- Solche Ergänzungen werden nach serverseitiger Plausibilisierung direkt als gemeinsamer Ergänzungsbestand für andere Nutzer verfügbar; Herkunft und Version bleiben sichtbar/nachvollziehbar.
 - Geschützte Originale bleiben unverändert. Neue Originaldaten und vorhandene manuelle Ergänzungen werden versioniert nebeneinander geführt, bis fachlich entschieden ist, welche Geometrie für welchen Bereich bevorzugt wird.
 - Eine Betriebsstelle/Bahnhofsdarstellung darf dynamisch wachsen, wenn neue zuordenbare Gleise/Achsen/Abschnitte hinzukommen.
 - Die spätere Android-Suche soll mindestens über Streckennummer und Betriebsstelle die vorhandenen, teilweisen und manuell ergänzten Abdeckungen erkennen können.
+
+#### REF-DATA-003 – Merge-/Prioritätsvertrag für neue Originaldaten
+Status: **FESTGELEGT**
+- Der Server bildet keinen monolithischen „Pasing-Datensatz“, der bei jedem Upload komplett ersetzt wird, sondern einen achsen-/abschnittsweisen Verbund.
+- Neue Originaldaten werden automatisch gegen vorhandene Geometrie geprüft. X/Y-Nähe/Anschluss, Strecke/Betriebsstelle, Gleis-/Achsenkennung und KM-/Stationsbereich bestimmen, ob dieselbe Achse erweitert/aktualisiert oder eine neue Achse ergänzt wird.
+- Neuere passende Originalsegmente dürfen vorhandene ältere Originalsegmente derselben fachlichen Achse bevorzugen; alte Quellen bleiben historisch erhalten.
+- Manuelle GPS-Achsen bleiben erhalten, solange ein neuer Originalbestand keine belastbare Entsprechung für genau diese Achse liefert.
+- Beispiel: manuelles `Gl 28` in Pasing bleibt bestehen, wenn ein neuer aktueller Pasing-Originalbestand weiterhin kein passendes Gl 28 enthält.
+- Passt eine neue TRA geometrisch an eine vorhandene TRA-Achse, darf der Server die sichtbare Achse abschnittsweise verlängern/ergänzen. Die zugrunde liegenden Originalquellen bleiben getrennt.
+- Bei widersprüchlicher Überlappung erfolgt keine destruktive automatische Überschreibung; beide Varianten bleiben versioniert und als Konflikt prüfbar.
+- Android darf diese zusammengesetzte Sicht laden; Originalquelle und manuelle Herkunft müssen maschinenlesbar unterscheidbar bleiben.
