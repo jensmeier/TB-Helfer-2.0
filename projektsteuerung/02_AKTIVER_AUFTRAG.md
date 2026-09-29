@@ -1591,7 +1591,7 @@ Status: **SOURCE-UMSETZUNG FERTIG / SYNLOGY-RETEST OFFEN**
 - Finales Browser-JavaScript über V8 kompiliert: **PASS**.
 - GitHub Actions `36595173582`, `36595165137`, `36595173431`: `runner_name=""`, `steps=[]` → **kein Testnachweis**.
 ### REF-DATA-002 – GVP muss freie Strecken/Gleise grün kalibrieren
-Status: **NEUER RUNTIME-BEFUND + ANDROID-REFERENZ GEPRÜFT / ERST VORSCHLÄGE, NOCH KEIN CODE**
+Status: **SERVER-UMSETZUNG FREIGEGEBEN**
 - Benutzer meldet: Bahnhofsgleise/Strecken mit Vermarkung/GVP sollen wie in Android grün werden; bei freien Strecken klappt das im Server-Preview noch nicht.
 - Android-Referenz `TrassenRepository.graMitAchspunktenVerknuepfen()` + `kmMitGvpFestpunktenKalibrieren()` geprüft:
   - GVP/Festpunkte sind eine eigenständige automatische KM-Quelle; fehlende GRA darf GVP-Kalibrierung nicht verhindern;
@@ -1605,3 +1605,7 @@ Status: **NEUER RUNTIME-BEFUND + ANDROID-REFERENZ GEPRÜFT / ERST VORSCHLÄGE, N
 - Ursache im aktuellen Server-Preview: Grün wird bislang im Wesentlichen über `TRA + passende GRA` bestimmt; GVP-Kalibrierung der freien Strecke wird noch nicht fachlich nach Android nachgebildet.
 - Wichtig: nicht `irgendein GVP vorhanden = grün`; grün erst bei belastbarer achsbezogener GVP-Kalibrierung. Sonst ROT/ggf. GRAU mit Grund.
 - Benutzer verlangt vor Implementierung zunächst Vorschläge für die Serverübernahme dieser Android-Logik und zusätzlichen Tiefzoom.
+- Benutzerauftrag `baue` bestätigt die Umsetzung der vorgeschlagenen Android-nahen GVP-Kalibrierung + erweiterten Tiefzoom.
+- Umsetzung soll die Android-Kriterien nachbilden: passende Strecke, >=4 GVP mit KM, >=4 Achssamples, max. 120 m Achsabstand, robuster Medianoffset mit ±80 m Ausreißerfilter.
+- Grün darf nur bei erfolgreicher GRA- oder GVP-Kalibrierung gesetzt werden; Diagnosegrund sichtbar machen.
+- Zoomgrenze über ca. 30x hinaus erweitern; Screen-Space-Marker/Labels beibehalten.
