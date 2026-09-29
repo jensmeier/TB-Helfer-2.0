@@ -1727,3 +1727,12 @@ Entscheidung/Anforderung Benutzer 29.09.2026:
 - Im Admin-Prüfbereich soll eine Entscheidung möglich sein, z. B. `neue Quelle bevorzugen`, `bestehende Quelle behalten`, `als zusätzliche Achse führen` oder `Segmente bewusst verbinden`.
 - Jede Adminentscheidung wird versioniert/auditiert und darf geschützte Originaldateien nicht verändern.
 - Mobile Nutzer sollen beim Upload eine verständliche Rückmeldung bekommen: automatisch übernommen, als Ergänzung hinzugefügt oder wegen unklarer Zuordnung zur Prüfung vorgemerkt.
+
+#### REF-DATA-003 – Bestandslücken Android-Sync festgestellt
+Bestandsprüfung 29.09.2026:
+- Aktueller Android-`WorksiteTrackDataSync` lädt lokale `track_data` nur für `memberRole == LEAD` zum Server. Andere Rollen laden den Serverstand lediglich herunter.
+- Das widerspricht der neuen Fachanforderung, dass **jeder berechtigte Nutzer** Strecken-/Bahnhofs-/Geometrieergänzungen beitragen und korrigieren darf.
+- Aktuelle `TrassenManuellerAbschnittEntity`-Daten werden im kanonischen Worksite-Track-Sync nicht als eigener Datensatz übertragen.
+- Damit würde z. B. ein auf einer freien Roh-TRA manuell angelegtes `Gl 28` aktuell nicht als eigener versionierter Fachbeitrag serverweit verteilt.
+- SERVER darf Android-Code nicht im SERVER-Projekt ändern. Erforderliche Android-Anpassung wird im Vertrag festgehalten.
+- Zusätzlich fachlich wichtig: die heutige manuelle Abschnittsfunktion erzeugt **keine vollständig freie neue TRA-Geometrie aus einer GPS-Fahrt**, sondern legt einen fachlichen Abschnitt auf einer bereits vorhandenen Roh-TRA fest. Ein zukünftiger freier GPS-Geometrie-Recorder wäre eine getrennte neue Funktion.

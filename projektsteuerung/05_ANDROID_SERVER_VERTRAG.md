@@ -509,3 +509,13 @@ Status: **FESTGELEGT**
 - Bestehende aktive Geometrie bleibt für andere Geräte nutzbar, bis der Konflikt entschieden ist.
 - Eine spätere Adminentscheidung erzeugt eine neue Katalog-/Geometrieversion und wird über normalen Server-Change-Feed/Verfügbarkeitsindex an Geräte verteilt.
 - Konfliktbenachrichtigung per E-Mail ist serverintern; keine E-Mail-Adresse/SMTP-Geheimnisse werden an Android übertragen.
+
+#### REF-DATA-003 – Erforderliche Android-Sync-Erweiterung
+Status: **ANDROID-ANPASSUNG ERFORDERLICH / SERVER dokumentiert**
+- Der bisherige Upload-Gate `memberRole == LEAD` für Streckendaten passt nicht mehr zum Zielvertrag.
+- Künftig dürfen alle **berechtigten** Nutzer gemeinsame Katalog-/Geometrieänderungen senden; Berechtigung muss serverseitig geprüft werden und darf nicht nur aus einer Clientrolle abgeleitet werden.
+- `TrassenManuellerAbschnittEntity` benötigt einen expliziten synchronisierbaren Datentyp mit stabiler ID, Version, Ursprung und mindestens Achsreferenz, Strecke/Gleis/Richtung, station_start/-ende, KM-Anker/-Richtung, GPS-Messmetadaten, Bearbeitungsstatus und Zeitstempeln.
+- Ein manuell auf vorhandener Roh-TRA angelegtes Gleis/Teilstück muss serverseitig als eigene fachliche Ebene gespeichert werden und darf die Roh-TRA nicht verändern.
+- Konflikte werden serverseitig mit `REVIEW_REQUIRED` beantwortet; Android zeigt den Status, entscheidet ihn aber nicht.
+- Der jetzige Android-Abschnittseditor ist **kein freier GPS-TRA-Recorder**. Wenn künftig eine Achse ohne vorhandene Roh-TRA vollständig per GPS aufgenommen werden soll, braucht Android dafür einen eigenen Geometrie-Aufnahmepfad und einen eigenen Serverdatentyp/Vertrag.
+- SERVER stellt dafür den API-/Versions-/Konfliktvertrag bereit; `app/**` bleibt Aufgabe des ANDROID-Projekts.

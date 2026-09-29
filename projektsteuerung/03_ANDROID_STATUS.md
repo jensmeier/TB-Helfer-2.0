@@ -399,3 +399,12 @@ Einordnung:
 - Generatorfix 606aa3ad ist enthalten und source-seitig geprüft.
 - Build 1.3.25/200075 muss erneut tatsächlich ausgeführt werden.
 - Versionierter Server-Foto-PATCH/`link_version` bleibt im Android-Client offen.
+
+## REF-DATA-003 – SERVER-Audit Android-Streckendaten 29.09.2026
+Status: **ANPASSUNGSBEDARF DOKUMENTIERT / KEIN ANDROID-CODE IM SERVER-PROJEKT**
+- `WorksiteTrackDataSync.synchronize()`: Upload derzeit nur bei `memberRole == LEAD`; andere Mitglieder beziehen nur den Serverstand.
+- `buildLocalDatasets()`: synchronisiert aktuell `AXIS` + `STRECKENPUNKTE`; `TrassenManuellerAbschnittEntity` ist kein eigener synchronisierter Datensatz.
+- Manueller Abschnitt im Import/Trassen-UI arbeitet auf vorhandener Roh-TRA-Geometrie; Start/Ende/KM können per GPS/Grafik festgelegt werden.
+- Neue Fachanforderung: alle berechtigten Nutzer dürfen gemeinsame Ergänzungen senden; manuelle Abschnitte müssen versioniert serverweit synchronisiert werden.
+- Freie komplett neue Achsgeometrie nur aus GPS ist davon getrennt und im aktuellen geprüften Pfad nicht vorhanden.
+- Umsetzung bleibt Aufgabe des ANDROID-Projekts nach festem Serververtrag.
