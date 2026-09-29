@@ -8,7 +8,7 @@ Stand: 2026-09-26
 - SERVER: `feature/tb-server-1.0`, Fach-HEAD `c1204501fd2147452f2eb5e47e1c2b9c871b8ecd`, Draft-PR #6
 - Android nächster Build: **1.3.20 / 200070**
 - Server: **1.0.0-dev**
-- Server-Quellmigrationen: **001–015**
+- Server-Quellmigrationen: **001–017** (017 Quellstand; Synology-Runtime offen)
 
 ## Android
 Pixel-UI-Flackern ACTIVE↔PDF source-seitig korrigiert. Build 200070, Installation und Pixel/Poco/Server-E2E offen. Poco ist serverseitig HELPER im richtigen Team, bekommt auf dem Gerät aber weiterhin keine Daten.
@@ -840,3 +840,16 @@ Status: **SERVER AKTIV**
 - Umsetzung erfolgt verbindlich in drei Stufen: **SERVER → Portal → Android**.
 - Serververtrag und Datenmodell werden zuerst vollständig und versionierbar abgeschlossen.
 - Portal und Android werden erst danach gegen diesen stabilen Vertrag gebaut.
+
+
+## REF-DATA-003 – Server-Katalog Quellblock 29.09.2026
+Status: **QUELLSTAND IMPLEMENTIERT / NICHT DEPLOYT / E2E OFFEN**
+- Code-HEAD des Blocks: `a1ef0d991e2ccc06578feced7e9b5a89bdf5f611`.
+- Migration 017 + versionierter Survey-Katalog für Assets/Achsen/Segmente/Konflikte/Historie sind source-seitig vorhanden.
+- Search/Availability/Geometry/Changes, Nutzerbeiträge, Achskorrekturen, Auto-Merge/REVIEW_REQUIRED, Konfliktmail und Reindex sind serverseitig implementiert.
+- Originaldateien bleiben unverändert; private Firmen-Rohdatei kann nur abgeleitete Geometrie ausdrücklich GLOBAL teilen.
+- KM-Semantik bleibt GRÜN automatisch / ORANGE manuell / GRAU unplausibel / ROT fehlt.
+- Aktive Baustellenmitglieder dürfen Survey-Beiträge senden; Firmen-/Baustellenisolation bleibt erhalten.
+- Portal und Android wurden nicht geändert.
+- GitHub Runs `36618626903` + `36618619207`: `steps=[]` → **kein Testnachweis**.
+- Nächster Schritt: Synology Migration 017 + API/Worker deployen → Reindex → Runtime/Postman-E2E. Erst danach Portal.
