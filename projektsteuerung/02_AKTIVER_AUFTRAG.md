@@ -1624,3 +1624,13 @@ Status: **SOURCE-UMSETZUNG FERTIG / SYNLOGY-RETEST OFFEN**
 - Browser-JavaScript nach finalem Source-Fix: **PASS**.
 - GitHub Actions auf Code-HEAD ohne Runner/Steps → kein Testnachweis.
 - Synology-Retest: nur Admin-Template aktualisieren, API neu starten.
+### REF-DATA-002 – Restpunkte Achseninteraktion / Tiefzoom / KOR-Warnungen
+Status: **NEUER RUNTIME-BEFUND GESICHERT / ERST ERKLÄREN, NOCH KEIN CODE**
+- Benutzer-Retest nach GVP-Kalibrierung zeigt drei neue/präzisierte Punkte:
+  1. Tiefzoom reicht trotz ca. 160x noch nicht für gewünschte Detailkontrolle; weitere Zoomreserve gewünscht.
+  2. Achsen sollen wie Vermessungspunkte interaktiv werden: Hover zeigt Kurzinfo, Klick zeigt strukturierte Achsendetails.
+  3. KOR-Datei `2026031_Gessertshausen_5302_Koordinaten.kor` erzeugt Warnungen `Zeile N: zu wenig Spalten`; Ursache vor Parseränderung klären.
+- Aktueller Server-KOR-Parser erwartet je Datenzeile mindestens 4 whitespace-getrennte Felder: `Punktname X Y Höhe`, optional 5. Feld Code.
+- Jede nichtleere/nicht kommentierte Zeile mit weniger als 4 Tokens wird derzeit als `zu wenig Spalten` gewarnt, auch wenn die Datei Header-, Abschnitts-, Leer-/Steuer- oder Metazeilen enthält.
+- Parseränderung erst nach Prüfung des tatsächlichen KOR-Zeilenformats; keine Warnungen auf Verdacht unterdrücken.
+- Achsen-Hover/Klick soll dieselbe Auswahlstruktur nutzen wie Punkte und zusätzlich KM-Status/-Quelle, GVP-Diagnose und Quelldatei zeigen.
