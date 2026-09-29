@@ -68,5 +68,8 @@ assert "station_name: str | None" in survey_originals
 assert "source_date: date | None" in survey_originals
 assert '"active_segment_count"' in catalog
 assert 'gra.get("source_date") == segment_source_date' in catalog
+assert 'def update_axis(' in catalog
+assert 'user: dict[str,Any] = Depends(require_csrf)' in catalog
+assert '_assert_segment_write_access(user, axis)' in catalog
 
 print("PASS survey reference catalog source")

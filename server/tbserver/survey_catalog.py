@@ -1969,13 +1969,14 @@ def resolve_conflict(conflict_id: UUID,payload: ConflictResolution,
 
 
 @router.patch("/axes/{axis_id}")
-def admin_update_axis(axis_id: UUID,payload: AxisAdminUpdate,
-                      user: dict[str,Any] = Depends(require_admin_csrf)) -> dict[str,Any]:
+def update_axis(axis_id: UUID,payload: AxisAdminUpdate,
+                user: dict[str,Any] = Depends(require_csrf)) -> dict[str,Any]:
     changes = payload.model_dump(exclude={"base_version"},exclude_unset=True)
     if not changes:
         raise HTTPException(400, "NO_CHANGES")
     with transaction() as conn, conn.cursor() as cur:
         axis = _row(cur,"survey_catalog_axes",axis_id)
+        _assert_segment_write_access(user, axis)
         if int(axis["current_version"]) != payload.base_version:
             raise HTTPException(409, {"code":"VERSION_CONFLICT","current_version":axis["current_version"]})
         fields = {
@@ -2010,8 +2011,16 @@ def admin_update_axis(axis_id: UUID,payload: AxisAdminUpdate,
         _history(cur,entity_type="AXIS",entity_id=axis_id,version=version,
                  operation="UPDATE",before=before,after=updated,
                  actor_user_id=user["user_id"],actor_company_id=axis.get("company_id"))
-        audit(cur,action="SURVEY_CATALOG_AXIS_ADMIN_UPDATE",actor_user_id=user["user_id"],
-              entity_type="SURVEY_CATALOG_AXIS",entity_id=axis_id,details={"version":version})
+        audit(
+            cur,
+            action="SURVEY_CATALOG_AXIS_UPDATE",
+            actor_user_id=user["user_id"],
+            actor_device_id=user.get("device_id"),
+            company_id=user.get("company_id"),
+            entity_type="SURVEY_CATALOG_AXIS",
+            entity_id=axis_id,
+            details={"version":version},
+        )
         return _plain(updated)
 
 
