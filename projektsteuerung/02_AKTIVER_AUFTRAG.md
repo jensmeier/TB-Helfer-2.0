@@ -1406,3 +1406,16 @@ Status: **NEUE FACHANFORDERUNG GESICHERT / KONZEPTION VOR CODE**
 - Die Übersicht muss Zoom/Pan und Auswahl einzelner Elemente unterstützen; Klick auf ein Element zeigt Metadaten/Quelle, ändert aber keine Originaldaten.
 - Originaldaten bleiben immutable. Bearbeitung erfolgt nur in getrennten Arbeits-/Katalogdaten.
 - SERVER baut zunächst Datenmodell/API/Admin-Visualisierung; Android-Visualisierung bleibt eigener ANDROID-Arbeitsblock.
+
+### REF-DATA-002 – Benutzerfreigabe Datei-zuerst + Grafik
+Status: **SERVER-UMSETZUNG FREIGEGEBEN**
+- Benutzer bestätigt am 29.09.2026 den kombinierten Zielablauf aus Datei-zuerst-Analyse und grafischer Übersicht mit `okay`.
+- Für die erste Serverumsetzung gilt:
+  - Datei auswählen/ablegen;
+  - Voranalyse ohne Datenbankimport;
+  - erkannte Metadaten + grafische Lage-/Punktvorschau anzeigen;
+  - Importziel und nur fehlende/unklare Angaben **nach** der Analyse bestätigen;
+  - erst danach endgültig importieren.
+- Für echte Strecken-/Vermessungsreferenzformate darf die UI nach der Analyse `GLOBAL_REFERENCE` als Vorschlag vorbelegen; der Benutzer kann vor dem Import bewusst auf Firma/Baustelle umstellen.
+- Die grafische Importvorschau muss read-only sein und aus denselben normalisierten Parserdaten stammen, die später auch der dauerhaften Referenzübersicht/Android dienen.
+- Phase A jetzt: Admin-Dateianalyse + Vorschaugrafik + Importbestätigung. Dauerhafte Gesamtübersicht folgt als nächster REF-DATA-002-Block.
