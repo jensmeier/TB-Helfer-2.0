@@ -1474,3 +1474,17 @@ Status: **SOURCE-KORREKTUR FERTIG / SYNLOGY-RETEST OFFEN**
 - Browser-JavaScript aus dem finalen Template in V8 kompiliert: **PASS**.
 - Marker geprüft: alter Vorab-Scope entfernt; Datei-zuerst, ZIP-Summary, Anzeigeauswahl, Raster, `fill:none!important` und Semantik vorhanden.
 - Nächster Schritt: `admin_survey_import.py` + `v1_admin_survey_import.html` auf Synology ersetzen; vorhandene `survey_preview.py` bleibt aus Phase A; API neu starten; Pasing-ZIP erneut nur analysieren.
+
+### REF-DATA-002 – Großansicht + Punktdatenlabels
+Status: **NEUER RUNTIME-BEFUND GESICHERT / SERVER-KORREKTUR FREIGEGEBEN**
+- Benutzer bestätigt den korrigierten Linienaufbau grundsätzlich, meldet aber zwei Restpunkte:
+  1. grafische Übersicht braucht eine echte **Großansicht**;
+  2. die gelben Fest-/Vermessungspunkte zeigen im Server nicht die fachlichen Daten/Labels wie Android.
+- Android-Referenz geprüft: `TrassenGrafikView.zeichneFestpunkte()` blendet Punktlabels zoomabhängig ein und ergänzt bei höherem Zoom `· km x,xxx`; Labelanzahl wird je Zoom begrenzt, damit die Grafik lesbar bleibt.
+- SERVER-Ziel:
+  - Button `Großansicht` für die Grafik;
+  - Punktlabels erst ab sinnvoller Zoomstufe, mit Begrenzung/Entzerrung wie Android;
+  - sichtbarer Punkttext mindestens Punktbezeichnung/-klasse und bei höherem Zoom KM;
+  - Klickdetail zusätzlich Strecke, Gleis, Höhe, Punktart/ID und Quelldatei soweit Parserdaten vorhanden;
+  - Achsenlabels verkleinern/entzerren, damit sie sich nicht massiv überlagern.
+- Originaldaten/Importlogik unverändert; nur Previewdaten + Admin-Rendering korrigieren.
