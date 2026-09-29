@@ -132,73 +132,272 @@
 
 {% block scripts %}
 <script>
-const scope=document.getElementById('scope'),worksite=document.getElementById('worksite'),worksiteWrap=document.getElementById('worksiteWrap'),routeNumber=document.getElementById('routeNumber'),trackKey=document.getElementById('trackKey');
-const filesInput=document.getElementById('files'),dropZone=document.getElementById('dropZone'),queue=document.getElementById('queue'),startImport=document.getElementById('startImport'),clearFiles=document.getElementById('clearFiles'),results=document.getElementById('results'),resultCard=document.getElementById('resultCard'),resultSummary=document.getElementById('resultSummary'),msg=document.getElementById('msg');
+const filesInput=document.getElementById('files');
+const dropZone=document.getElementById('dropZone');
+const queue=document.getElementById('queue');
+const startAnalysis=document.getElementById('startAnalysis');
+const clearFiles=document.getElementById('clearFiles');
+const analysisCard=document.getElementById('analysisCard');
+const analysisSummary=document.getElementById('analysisSummary');
+const analysisItems=document.getElementById('analysisItems');
+const startImport=document.getElementById('startImport');
+const reanalyze=document.getElementById('reanalyze');
+const resultCard=document.getElementById('resultCard');
+const results=document.getElementById('results');
+const resultSummary=document.getElementById('resultSummary');
+const msg=document.getElementById('msg');
+const worksiteTemplate=document.getElementById('worksiteTemplate');
+const surveyMap=document.getElementById('surveyMap');
+const surveyLayer=document.getElementById('surveyLayer');
+const graphicInfo=document.getElementById('graphicInfo');
+const legend=document.getElementById('legend');
+const rangeOverview=document.getElementById('rangeOverview');
+
 let selectedFiles=[];
+let analysisSessions=[];
+let view={x:0,y:0,w:1000,h:500};
+let drag=null;
+
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function size(value){const n=Number(value)||0,a=Math.abs(n);if(a>=1e12)return(n/1e12).toFixed(a>=1e14?0:1)+' TB';if(a>=1e9)return(n/1e9).toFixed(a>=1e11?0:1)+' GB';if(a>=1e6)return(n/1e6).toFixed(a>=1e8?0:1)+' MB';if(a>=1e3)return(n/1e3).toFixed(a>=1e5?0:1)+' kB';return Math.round(n)+' B';}
-document.querySelectorAll('.file-size').forEach(e=>e.textContent=size(e.dataset.bytes));
+function kmLabel(value){const n=Number(value);if(!Number.isFinite(n))return '—';const sign=n<0?'-':'';const a=Math.abs(n),km=Math.floor(a/1000),rest=a-km*1000;return sign+km+'+'+rest.toFixed(3).padStart(7,'0');}
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
-function isGlobal(){return !scope||scope.value==='GLOBAL_REFERENCE';}
-function updateScope(){
-  const global=isGlobal();
-  if(worksite){worksite.disabled=global;}
-  if(worksiteWrap){worksiteWrap.style.opacity=global?'.55':'1';}
-  if(global){
-    if(routeNumber&&!routeNumber.dataset.manual)routeNumber.value='';
-  }else{
-    updateRoute();
-  }
+function fileKind(name){const n=name.toLowerCase();if(n.endsWith('.zip'))return 'ZIP';if(n.endsWith('.tra'))return 'TRA';if(n.endsWith('.gra'))return 'GRA';if(n.endsWith('.kf')||n.endsWith('.kf.txt')||n.endsWith('.kv')||n.endsWith('.gvp'))return 'Festpunkte';if(n.endsWith('.kor')||n.endsWith('.kor.txt'))return 'KOR';if(n.endsWith('.csv'))return 'CSV';if(n.endsWith('.trg'))return 'TRG';if(n.endsWith('.pdf'))return 'PDF';if(n.endsWith('.txt'))return 'TXT';return 'nicht erkannt';}
+function qStatus(index,text,kind){const e=document.querySelector('#queue-'+index+' .queue-status');if(e){e.textContent=text;e.className='queue-status '+kind;}}
+function worksiteOptions(){return worksiteTemplate?worksiteTemplate.innerHTML:'<option value="">Keine Baustelle vorhanden</option>';}
+
+function setFiles(list){
+  selectedFiles=Array.from(list||[]);
+  analysisSessions=[];
+  analysisCard.style.display='none';
+  resultCard.style.display='none';
+  renderQueue();
 }
-function updateRoute(){if(!routeNumber||!worksite||isGlobal())return;const option=worksite.selectedOptions[0];if(!routeNumber.dataset.manual)routeNumber.value=(option&&option.dataset.route)||'';}
-if(routeNumber){
-  routeNumber.addEventListener('input',()=>routeNumber.dataset.manual='1');
-  worksite?.addEventListener('change',()=>{routeNumber.dataset.manual='';updateRoute();});
-  scope?.addEventListener('change',()=>{if(!isGlobal()){routeNumber.dataset.manual='';updateRoute();}updateScope();});
-  updateScope();
+function renderQueue(){
+  queue.innerHTML=selectedFiles.map((f,i)=>'<div class="queue-row" id="queue-'+i+'"><div class="queue-name"><b>'+esc(f.name)+'</b><div class="muted">'+esc(size(f.size))+'</div></div><div>'+esc(fileKind(f.name))+'</div><div class="queue-status state-wait">Noch nicht analysiert</div></div>').join('');
+  startAnalysis.disabled=!selectedFiles.length;
+  clearFiles.disabled=!selectedFiles.length;
 }
-function fileKind(name){const n=name.toLowerCase();if(n.endsWith('.zip'))return 'ZIP';if(n.endsWith('.tra'))return 'TRA';if(n.endsWith('.gra'))return 'GRA';if(n.endsWith('.kf')||n.endsWith('.kf.txt')||n.endsWith('.kv')||n.endsWith('.gvp'))return 'Festpunkte';if(n.endsWith('.kor')||n.endsWith('.kor.txt'))return 'KOR';if(n.endsWith('.csv'))return 'CSV';if(n.endsWith('.trg'))return 'TRG · nur Meldung';if(n.endsWith('.pdf'))return 'PDF · nur Meldung';if(n.endsWith('.txt'))return 'TXT · nur Meldung';return 'nicht erkannt';}
-function setFiles(list){selectedFiles=Array.from(list||[]);renderQueue();}
-function renderQueue(){queue.innerHTML=selectedFiles.map((f,i)=>'<div class="queue-row" id="queue-'+i+'"><div class="queue-name"><b>'+esc(f.name)+'</b><div class="muted">'+esc(size(f.size))+'</div></div><div>'+esc(fileKind(f.name))+'</div><div class="queue-status state-wait">Wartet</div></div>').join('');startImport.disabled=!selectedFiles.length;clearFiles.disabled=!selectedFiles.length;}
 filesInput.addEventListener('change',()=>setFiles(filesInput.files));
 ['dragenter','dragover'].forEach(ev=>dropZone.addEventListener(ev,e=>{e.preventDefault();dropZone.classList.add('drag');}));
 ['dragleave','drop'].forEach(ev=>dropZone.addEventListener(ev,e=>{e.preventDefault();dropZone.classList.remove('drag');}));
 dropZone.addEventListener('drop',e=>setFiles(e.dataTransfer.files));
-clearFiles.addEventListener('click',()=>{filesInput.value='';setFiles([]);});
-function qStatus(index,text,kind){const e=document.querySelector('#queue-'+index+' .queue-status');if(e){e.textContent=text;e.className='queue-status '+kind;}}
+clearFiles.addEventListener('click',()=>{filesInput.value='';setFiles([]);show('info','Auswahl geleert.');});
+
+async function analyzeOne(file,index){
+  qStatus(index,'Analyse läuft …','state-warn');
+  const params=new URLSearchParams({filename:file.name});
+  try{
+    const response=await tbApi('/api/v1/admin/survey-import/analyze?'+params.toString(),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file});
+    qStatus(index,'Analysiert','state-ok');
+    return {fileIndex:index,fileName:file.name,data:response.data};
+  }catch(e){
+    qStatus(index,'Analysefehler','state-bad');
+    return {fileIndex:index,fileName:file.name,error:e.message||String(e)};
+  }
+}
+startAnalysis.addEventListener('click',async()=>{
+  if(!selectedFiles.length)return;
+  startAnalysis.disabled=true;
+  clearFiles.disabled=true;
+  filesInput.disabled=true;
+  analysisSessions=[];
+  show('info','Dateien werden gelesen und grafisch aufbereitet. Noch kein Import.');
+  for(let i=0;i<selectedFiles.length;i++)analysisSessions.push(await analyzeOne(selectedFiles[i],i));
+  filesInput.disabled=false;
+  clearFiles.disabled=false;
+  startAnalysis.disabled=false;
+  renderAnalysis();
+});
+reanalyze.addEventListener('click',()=>startAnalysis.click());
+
+function flattenItems(){
+  const rows=[];
+  analysisSessions.forEach((session,sessionIndex)=>{
+    if(session.error||!session.data)return;
+    (session.data.items||[]).forEach((item,itemIndex)=>rows.push({session,sessionIndex,item,itemIndex}));
+  });
+  return rows;
+}
+function fact(text,warn){return '<span class="fact'+(warn?' warn':'')+'">'+esc(text)+'</span>';}
+function itemHtml(row){
+  const i=row.item,p=i.preview||{};
+  if(!i.can_import){
+    return '<div class="analysis-item skip"><div class="analysis-head"><div><b>'+esc(i.name)+'</b><div class="muted">'+esc(i.message||'Nicht importierbar')+'</div></div><span class="pill">'+esc(i.parse_status||'Hinweis')+'</span></div></div>';
+  }
+  const facts=[];
+  facts.push(fact(i.detected_format||i.parse_status,i.parse_status!=='PARSED'));
+  if(p.point_count)facts.push(fact(p.point_count+' Punkt(e)',false));
+  if(p.line_point_count)facts.push(fact('TRA-Geometrie erkannt',false));
+  if(Number.isFinite(Number(p.km_from_m)))facts.push(fact('KM '+kmLabel(p.km_from_m)+' – '+kmLabel(p.km_to_m),false));
+  else if(Number.isFinite(Number(p.station_from_m)))facts.push(fact('Station '+Number(p.station_from_m).toFixed(1)+' – '+Number(p.station_to_m).toFixed(1)+' m',false));
+  if((i.missing_fields||[]).length)facts.push(fact('Fehlt: '+i.missing_fields.join(', '),true));
+  const warnings=(i.warnings||[]).length?'<ul class="warnings">'+i.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul>':'';
+  const error=i.error_detail?'<div class="small state-bad">'+esc(i.error_detail)+'</div>':'';
+  return '<div class="analysis-item" data-analysis-id="'+esc(row.session.data.analysis_id)+'" data-item-id="'+esc(i.item_id)+'" data-kind="'+esc(i.kind||'')+'">'+
+    '<div class="analysis-head"><div><b>'+esc(i.name)+'</b><div class="muted">'+esc(i.kind||'')+' · '+esc(size(i.byte_size))+'</div></div><span class="pill">'+esc(i.parse_status||'')+'</span></div>'+
+    '<div class="facts">'+facts.join('')+'</div>'+warnings+error+
+    '<div class="decision-grid">'+
+      '<div><label>Ziel nach Analyse</label><select class="decision-scope"><option value="GLOBAL_REFERENCE">Globaler Referenzbestand</option><option value="COMPANY_WORKSITE_DATA">Firma / Baustelle</option></select></div>'+
+      '<div class="worksite-cell disabled"><label>Firma / Baustelle</label><select class="decision-worksite" disabled>'+worksiteOptions()+'</select></div>'+
+      '<div><label>Strecke</label><input class="decision-route" maxlength="80" value="'+esc(i.route_number||'')+'" placeholder="z. B. 5362"></div>'+
+      '<div><label>Gleis / Achse</label><input class="decision-track" maxlength="160" value="'+esc(i.track_key||'')+'" placeholder="optional"></div>'+
+    '</div>'+
+    '<label class="import-toggle"><input class="decision-enabled" type="checkbox" checked> Diese Datei übernehmen</label>'+
+  '</div>';
+}
+function wireDecisionControls(){
+  document.querySelectorAll('.analysis-item[data-analysis-id]').forEach(card=>{
+    const scope=card.querySelector('.decision-scope');
+    const ws=card.querySelector('.decision-worksite');
+    const cell=card.querySelector('.worksite-cell');
+    const route=card.querySelector('.decision-route');
+    const sync=()=>{
+      const global=scope.value==='GLOBAL_REFERENCE';
+      ws.disabled=global;
+      cell.classList.toggle('disabled',global);
+      if(!global&&!route.value&&ws.selectedOptions[0]&&ws.selectedOptions[0].dataset.route)route.value=ws.selectedOptions[0].dataset.route;
+    };
+    scope.addEventListener('change',sync);
+    ws.addEventListener('change',()=>{if(scope.value!=='GLOBAL_REFERENCE'&&!route.value)route.value=ws.selectedOptions[0]?.dataset.route||'';});
+    sync();
+  });
+}
+function renderAnalysis(){
+  const rows=flattenItems();
+  const importable=rows.filter(r=>r.item.can_import);
+  analysisCard.style.display='block';
+  analysisSummary.textContent=rows.length+' erkannte Datei(en) · '+importable.length+' für Import auswählbar. Erst jetzt Ziel und fehlende Angaben bestätigen.';
+  analysisItems.innerHTML=rows.map(itemHtml).join('')||'<div class="notice err">Keine verwertbaren Dateien erkannt.</div>';
+  wireDecisionControls();
+  startImport.disabled=!importable.length;
+  renderGraphic(rows);
+  renderRanges(rows);
+  const failed=analysisSessions.filter(s=>s.error).length;
+  show(failed?'err':'ok',failed?failed+' Upload(s) konnten nicht analysiert werden. Die übrigen Ergebnisse können geprüft werden.':'Analyse abgeschlossen. Grafik und erkannte Angaben prüfen; erst danach importieren.');
+  analysisCard.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function geometryEntries(rows){
+  return rows.map((row,index)=>({row,index,line:Array.isArray(row.item.preview?.line)?row.item.preview.line:[],points:Array.isArray(row.item.preview?.points)?row.item.preview.points:[]})).filter(e=>e.line.length||e.points.length);
+}
+function geometryTransform(entries){
+  const xy=[];
+  entries.forEach(e=>{e.line.forEach(p=>xy.push([Number(p.x),Number(p.y)]));e.points.forEach(p=>xy.push([Number(p.x),Number(p.y)]));});
+  const valid=xy.filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));
+  if(!valid.length)return null;
+  const xs=valid.map(p=>p[0]),ys=valid.map(p=>p[1]);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const dx=Math.max(maxX-minX,1),dy=Math.max(maxY-minY,1),scale=Math.min(900/dx,420/dy),ox=(1000-dx*scale)/2,oy=(500-dy*scale)/2;
+  return p=>[ox+(Number(p.x)-minX)*scale,500-(oy+(Number(p.y)-minY)*scale)];
+}
+function setGraphicInfo(row,detail){
+  const i=row.item,bits=[i.name,i.kind,i.route_number?'Strecke '+i.route_number:null,i.track_key?'Gleis/Achse '+i.track_key:null,detail].filter(Boolean);
+  graphicInfo.textContent=bits.join(' · ');
+}
+function renderGraphic(rows){
+  const entries=geometryEntries(rows),transform=geometryTransform(entries);
+  surveyLayer.innerHTML='';
+  legend.innerHTML='';
+  if(!transform){
+    surveyLayer.innerHTML='<text x="500" y="245" text-anchor="middle" fill="#667085" font-size="18">Keine XY-Geometrie in dieser Auswahl</text><text x="500" y="275" text-anchor="middle" fill="#98a2b3" font-size="13">KM-/Gradienteinformationen stehen rechts.</text>';
+    graphicInfo.textContent='Für diese Auswahl wurden keine darstellbaren XY-Koordinaten erkannt.';
+    resetViewBox();
+    return;
+  }
+  entries.forEach((entry,colorIndex)=>{
+    const cls='geom-'+(colorIndex%6);
+    if(entry.line.length){
+      const points=entry.line.map(p=>transform(p).map(v=>v.toFixed(2)).join(',')).join(' ');
+      const poly=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+      poly.setAttribute('points',points);poly.setAttribute('class','geom-line '+cls);
+      poly.addEventListener('click',()=>setGraphicInfo(entry.row,'TRA-/Achslinie'));
+      surveyLayer.appendChild(poly);
+    }
+    entry.points.forEach(p=>{
+      const pos=transform(p),circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      circle.setAttribute('cx',pos[0]);circle.setAttribute('cy',pos[1]);circle.setAttribute('r',4);circle.setAttribute('class','geom-point '+cls);
+      circle.addEventListener('click',ev=>{ev.stopPropagation();setGraphicInfo(entry.row,[p.type,p.label,p.km_meter!=null?'KM '+kmLabel(p.km_meter):null].filter(Boolean).join(' · '));});
+      surveyLayer.appendChild(circle);
+    });
+    legend.insertAdjacentHTML('beforeend','<span class="legend-item"><span class="legend-dot '+cls+'"></span>'+esc(entry.row.item.name)+' · '+esc(entry.row.item.kind||'')+'</span>');
+  });
+  graphicInfo.textContent='Grafik eingepasst. Linie oder Punkt anklicken.';
+  resetViewBox();
+}
+function renderRanges(rows){
+  const data=rows.map(row=>{
+    const p=row.item.preview||{};
+    if(Number.isFinite(Number(p.km_from_m)))return {row,kind:'KM',from:Number(p.km_from_m),to:Number(p.km_to_m)};
+    if(Number.isFinite(Number(p.station_from_m)))return {row,kind:'STATION',from:Number(p.station_from_m),to:Number(p.station_to_m)};
+    return null;
+  }).filter(Boolean);
+  if(!data.length){rangeOverview.textContent='Keine KM-/Stationsbereiche erkannt.';return;}
+  const groups={};
+  data.forEach(d=>{if(!groups[d.kind])groups[d.kind]=[];groups[d.kind].push(d);});
+  rangeOverview.innerHTML=Object.keys(groups).map(kind=>{
+    const items=groups[kind],min=Math.min(...items.map(i=>i.from)),max=Math.max(...items.map(i=>i.to)),span=Math.max(max-min,1);
+    const html=items.map(d=>{
+      const left=(d.from-min)/span*100,width=Math.max((d.to-d.from)/span*100,1);
+      const range=kind==='KM'?kmLabel(d.from)+' – '+kmLabel(d.to):d.from.toFixed(1)+' – '+d.to.toFixed(1)+' m';
+      return '<div class="range-row"><div><b>'+esc(d.row.item.name)+'</b><div class="range-label">'+esc(kind+' '+range)+'</div></div><div class="range-track"><div class="range-fill" style="left:'+left.toFixed(2)+'%;width:'+Math.min(width,100-left).toFixed(2)+'%"></div></div></div>';
+    }).join('');
+    return '<div><div class="small" style="font-weight:800;margin-bottom:5px">'+esc(kind==='KM'?'Kilometerbereiche':'Stationsbereiche')+'</div>'+html+'</div>';
+  }).join('');
+}
+
+function applyView(){surveyMap.setAttribute('viewBox',[view.x,view.y,view.w,view.h].join(' '));}
+function resetViewBox(){view={x:0,y:0,w:1000,h:500};applyView();}
+document.getElementById('resetView').addEventListener('click',resetViewBox);
+surveyMap.addEventListener('wheel',e=>{e.preventDefault();const rect=surveyMap.getBoundingClientRect(),px=view.x+(e.clientX-rect.left)/rect.width*view.w,py=view.y+(e.clientY-rect.top)/rect.height*view.h,f=e.deltaY>0?1.14:.86,nw=Math.min(4000,Math.max(80,view.w*f)),nh=nw/2;view.x=px-(px-view.x)*(nw/view.w);view.y=py-(py-view.y)*(nh/view.h);view.w=nw;view.h=nh;applyView();},{passive:false});
+surveyMap.addEventListener('pointerdown',e=>{surveyMap.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};surveyMap.classList.add('dragging');});
+surveyMap.addEventListener('pointermove',e=>{if(!drag)return;const r=surveyMap.getBoundingClientRect();view.x=drag.vx-(e.clientX-drag.x)/r.width*view.w;view.y=drag.vy-(e.clientY-drag.y)/r.height*view.h;applyView();});
+['pointerup','pointercancel'].forEach(ev=>surveyMap.addEventListener(ev,()=>{drag=null;surveyMap.classList.remove('dragging');}));
+
+function decisionFromCard(card){
+  const scope=card.querySelector('.decision-scope').value,ws=card.querySelector('.decision-worksite');
+  return {item_id:card.dataset.itemId,import_item:card.querySelector('.decision-enabled').checked,scope,worksite_id:scope==='COMPANY_WORKSITE_DATA'?(ws?.value||null):null,data_kind:card.dataset.kind||null,route_number:card.querySelector('.decision-route').value.trim()||null,track_key:card.querySelector('.decision-track').value.trim()||null};
+}
+function validateDecisions(){
+  let error='';
+  document.querySelectorAll('.analysis-item[data-analysis-id]').forEach(card=>{
+    if(error||!card.querySelector('.decision-enabled').checked)return;
+    const d=decisionFromCard(card);
+    if(d.scope==='COMPANY_WORKSITE_DATA'&&!d.worksite_id)error='Für Firma/Baustelle muss eine Baustelle gewählt werden.';
+  });
+  return error;
+}
 function resultHtml(r){
   const state=r.status==='IMPORTIERT'?(r.parse_status==='PARSED'?'ok':'warn'):r.status==='DUPLIKAT'||r.status==='ÜBERSPRUNGEN'?'warn':'bad';
   const parse=r.parse_status==='PARSED'?' · fachlich ausgewertet':r.parse_status==='UNSUPPORTED'?' · noch nicht auswertbar':r.parse_status==='ERROR'?' · Auswertungsfehler':'';
   const warnings=(r.warnings||[]).length?'<ul class="warnings">'+r.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul>':'';
   const error=r.error_detail?'<div class="small state-bad" style="margin-top:5px">'+esc(r.error_detail)+'</div>':'';
-  const scopeLabel=r.scope==='GLOBAL_REFERENCE'?'GLOBAL':'Firma/Baustelle';
-  return '<div class="result '+state+'"><div class="result-head"><div><b>'+esc(r.name||'Datei')+'</b><div><small>'+esc(scopeLabel)+' · '+esc(r.message||'')+esc(parse)+'</small></div></div><span class="pill">'+esc(r.kind||r.status||'')+'</span></div>'+warnings+error+'</div>';
-}
-async function importOne(file,index){
-  qStatus(index,'Wird übertragen …','state-warn');
-  const params=new URLSearchParams({scope:scope?.value||'GLOBAL_REFERENCE',filename:file.name});
-  if(!isGlobal()&&worksite?.value)params.set('worksite_id',worksite.value);
-  if(routeNumber.value.trim())params.set('route_number',routeNumber.value.trim());
-  if(trackKey.value.trim())params.set('track_key',trackKey.value.trim());
-  try{
-    const {data}=await tbApi('/api/v1/admin/survey-import/file?'+params.toString(),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file});
-    const rows=data.results||[];
-    const bad=rows.some(r=>r.status==='FEHLER'||r.parse_status==='ERROR');
-    const warn=rows.some(r=>r.status==='DUPLIKAT'||r.status==='ÜBERSPRUNGEN'||r.parse_status==='UNSUPPORTED');
-    qStatus(index,bad?'Mit Fehler beendet':warn?'Geprüft / Hinweise':'Importiert',bad?'state-bad':warn?'state-warn':'state-ok');
-    return rows;
-  }catch(e){qStatus(index,'Fehler','state-bad');return [{name:file.name,status:'FEHLER',message:e.message||String(e)}];}
+  const scopeLabel=r.scope==='GLOBAL_REFERENCE'?'GLOBAL':r.scope==='COMPANY_WORKSITE_DATA'?'Firma/Baustelle':'';
+  return '<div class="result '+state+'"><div class="result-head"><div><b>'+esc(r.name||'Datei')+'</b><div><small>'+esc((scopeLabel?scopeLabel+' · ':'')+(r.message||''))+esc(parse)+'</small></div></div><span class="pill">'+esc(r.kind||r.status||'')+'</span></div>'+warnings+error+'</div>';
 }
 startImport.addEventListener('click',async()=>{
-  if(!selectedFiles.length)return;
-  if(!isGlobal()&&!worksite?.value){show('err','Für Firma/Baustelle muss eine Baustelle gewählt werden.');return;}
-  startImport.disabled=true;clearFiles.disabled=true;filesInput.disabled=true;if(scope)scope.disabled=true;if(worksite)worksite.disabled=true;routeNumber.disabled=true;trackKey.disabled=true;resultCard.style.display='block';results.innerHTML='';show('info',isGlobal()?'Globaler Referenzimport läuft.':'Import für Firma/Baustelle läuft.');
+  const validation=validateDecisions();
+  if(validation){show('err',validation);return;}
+  const cards=Array.from(document.querySelectorAll('.analysis-item[data-analysis-id]'));
+  const groups={};
+  cards.forEach(card=>{const id=card.dataset.analysisId;if(!groups[id])groups[id]=[];groups[id].push(decisionFromCard(card));});
+  const ids=Object.keys(groups);
+  if(!ids.length)return;
+  startImport.disabled=true;reanalyze.disabled=true;resultCard.style.display='block';results.innerHTML='';show('info','Bestätigte Daten werden jetzt importiert. Originale bleiben unverändert.');
   const all=[];
-  for(let i=0;i<selectedFiles.length;i++){const rows=await importOne(selectedFiles[i],i);all.push(...rows);results.insertAdjacentHTML('beforeend',rows.map(resultHtml).join(''));}
+  for(const analysisId of ids){
+    try{
+      const response=await tbApi('/api/v1/admin/survey-import/analysis/'+encodeURIComponent(analysisId)+'/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({decisions:groups[analysisId]})});
+      const rows=response.data.results||[];all.push(...rows);results.insertAdjacentHTML('beforeend',rows.map(resultHtml).join(''));
+    }catch(e){
+      const row={name:'Analyse '+analysisId,status:'FEHLER',message:e.message||String(e)};all.push(row);results.insertAdjacentHTML('beforeend',resultHtml(row));
+    }
+  }
   const imported=all.filter(r=>r.status==='IMPORTIERT').length,duplicates=all.filter(r=>r.status==='DUPLIKAT').length,skipped=all.filter(r=>r.status==='ÜBERSPRUNGEN').length,errors=all.filter(r=>r.status==='FEHLER'||r.parse_status==='ERROR').length;
   resultSummary.textContent=imported+' importiert · '+duplicates+' Duplikate · '+skipped+' übersprungen · '+errors+' Fehler';
-  show(errors?'err':'ok',errors?'Import abgeschlossen. Mindestens eine Datei benötigt Prüfung.':'Import abgeschlossen. Originale wurden ohne Überschreiben verarbeitet.');
-  startImport.disabled=false;clearFiles.disabled=false;filesInput.disabled=false;if(scope)scope.disabled=false;routeNumber.disabled=false;trackKey.disabled=false;updateScope();
+  show(errors?'err':'ok',errors?'Import abgeschlossen. Mindestens eine Datei benötigt Prüfung.':'Import abgeschlossen. Die bestätigten Originale wurden gespeichert.');
+  reanalyze.disabled=false;
+  resultCard.scrollIntoView({behavior:'smooth',block:'start'});
 });
 document.getElementById('reloadPage')?.addEventListener('click',()=>location.reload());
 </script>
