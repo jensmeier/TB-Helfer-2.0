@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| REF-DATA-002 | P0 | SERVER/ANDROID | Import-Vorschaugrafik Phase A source-seitig fertig; dauerhafte Gesamtübersicht + Android noch offen | Phase A auf Synology testen → danach dauerhafte Strecken-/Referenzübersicht mit Filtern/Viewport bauen |
+| REF-DATA-002 | P0 | SERVER/ANDROID | Server-Preview Runtime verworfen: gefüllte SVG-Flächen + unstrukturierte Dateidarstellung; Android-Semantik ist verbindliche Referenz | SVG-Linienfehler beheben → Strecken/Gleise/WVB/Punkte logisch gruppieren + Anzeigeauswahl → Pasing erneut testen |
 | REF-DATA-001 | P0 | SERVER/ANDROID | Datei-zuerst-Analyse + bestätigter Global/Firma-Import source-seitig fertig; Synology-E2E/Android offen | 4 Runtime-Dateien deployen → echte TRA/KF-Analyse + Import testen → danach Android-Consumer |
 | ADMIN-PDF-011 | P1 | ANDROID | SERVER/Admin 40..400 pt + X/Y + Preview am 29.09.2026 abgenommen; Android clamp aktuell noch 250 | ANDROID-Projekt: Clamp/Vertrag auf 40..400 übernehmen und Geräte-PDF praktisch prüfen |
 | PDF-RUNTIME-009 | P0 | SERVER | Ursache bestätigt; Android-naher Serverrenderer v5 source-seitig fertig, Runtime noch nicht bestätigt | 4 Serverdateien übernehmen → API neu starten → neuen Serverabschluss gegen 22.09 + Handy-Entwurf visuell prüfen |

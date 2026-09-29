@@ -1437,3 +1437,26 @@ Status: **PHASE A SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
 - Keine DB-/Compose-/Android-Änderung.
 - GitHub Actions auf Code-HEAD: Server Runs `36576031521` und `36576022515`, Android Run `36576031503`; `runner_name=""`, `steps=[]` → **kein Testnachweis**.
 - Nächster Schritt: 4 Runtime-Dateien auf Synology übernehmen, API neu starten und echte TRA/KF-Testanalyse vor Import durchführen.
+
+### REF-DATA-002 – Servergrafik Phase A verworfen, Android-Fachlogik ist Referenz
+Status: **RUNTIME-FEHLER BESTÄTIGT / KORREKTUR FREIGEGEBEN**
+- Benutzer-Runtime-Screenshot zeigt: aktuelle Servergrafik ist fachlich/unübersichtlich und wird **nicht** als Zielbild akzeptiert.
+- Vergleich mit dem bestätigten Android-Bestand zeigt den richtigen Aufbau:
+  - Achsen/Gleise als dünne Linien statt gefüllter Flächen;
+  - fachliche Labels wie `Gl 21`, `Gl 713`, Strecke/Richtung, WVB;
+  - Fest-/Vermessungspunkte separat und klein;
+  - Raster + Zoom/Pan;
+  - Anzeigeauswahl zum Ein-/Ausblenden von Achsen und Punktarten;
+  - ZIP-Vorschau fasst zuerst logisch zusammen: gefundene Strecken, Streckenachsen/Richtungen, Dateizahlen und Bahnhofsobjekte;
+  - Auswahl/Zuordnung geschieht fachlich nach Gleis/WVB/Objekt, nicht als unstrukturierte Dateifarben-Legende.
+- Konkreter Darstellungsfehler im Server: gemeinsame CSS-Farbklasse setzt bei SVG-Polylinien `fill`, dadurch entstehen große farbige Dreiecke/Flächen zwischen Linienpunkten. Linien müssen immer `fill:none` behalten.
+- Hochgeladener Pasing-Testbestand bestätigt die Android-Zusammenfassung:
+  - 41 Dateien gesamt;
+  - TRA 21;
+  - GRA 17;
+  - rohe KF 1 + KF.TXT 1;
+  - PDF 1;
+  - Strecken 5524, 5528, 5529;
+  - 10 Bahnhofsgleise: 12, 21, 23, 25, 26, 27, 713, 714, 715, 725;
+  - 3 Weichenverbindungen: WVB 10-11, 14-22, 19-20.
+- SERVER-Korrekturziel: Android-Semantik im Admin nachbilden, ohne Android-Code zu ändern oder zwei unterschiedliche Fachmodelle zu erfinden.

@@ -431,3 +431,17 @@ Status: **SERVER-SCHEMA SOURCE-SEITIG FESTGELEGT / ANDROID-NUTZUNG SPÄTER**
 - Preview wird bewusst begrenzt/gesampelt, damit große Originaldateien nicht vollständig in die UI-Antwort kopiert werden.
 - Admin rendert dieses Schema aktuell als SVG; Android soll später dasselbe normalisierte Schema verwenden statt Rohdateien selbst anders zu interpretieren.
 - ADMIN-Analyse-/Importendpunkte sind kein Android-Endvertrag; der gemeinsame read-only Viewport-/Referenz-API-Pfad folgt im dauerhaften REF-DATA-002-Block.
+
+### REF-DATA-002 – Darstellungsvertrag: Android-Semantik als gemeinsame Referenz
+Status: **FESTGELEGT**
+- Die bestehende Android-`TrassenGrafikView` und ZIP-Vorschau definieren die fachliche Bedeutung der Darstellung.
+- SERVER/Admin soll nicht jede Quelldatei beliebig einfärben, sondern dieselben Objektgruppen verwenden:
+  - Strecke/Streckengleis;
+  - Bahnhofsgleis;
+  - Weiche/Weichenverbindung;
+  - GVP/Festpunkte;
+  - Absteck-/Weichenpunkte.
+- Linien bleiben Linien (`fill:none`); Punktmarker bleiben eigene Symbole.
+- Labels werden aus normalisierten Achsmetadaten erzeugt, nicht aus kompletter Dateiliste.
+- Anzeigeauswahl/filterbare Objektgruppen sind Bestandteil des gemeinsamen UX-Vertrags.
+- SERVER darf dafür keine Android-Datei ändern; die Android-Implementierung dient als Referenz für Server/API/Visualisierung.
