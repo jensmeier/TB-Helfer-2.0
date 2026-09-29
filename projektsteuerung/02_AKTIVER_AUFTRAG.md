@@ -1776,3 +1776,10 @@ Fehler-/Vollständigkeitsprüfung nach Teilabdeckungs-/Datenschutzfix:
 - Der neue Survey-Katalog-Change-Feed darf bei vielen für den Nutzer unsichtbaren COMPANY-Änderungen nicht stehenbleiben. Antwort benötigt einen fortschreitenden `next_after`/Scan-Cursor auch dann, wenn im Scanfenster keine sichtbaren Änderungen liegen.
 - Für die Priorisierung „neuer Bestand“ braucht der Admin-Import zusätzlich ein explizites optionales `source_date`; Dateinamenerkennung bleibt Fallback.
 - Diese Punkte sind SERVER-Vertrag; Portal/Android sollen später nur den stabilen Vertrag konsumieren.
+
+#### REF-DATA-003 – Lifecycle-Kompatibilität Migration 017
+Fehlerfeststellung 29.09.2026:
+- Die neuen Katalog-Fremdschlüssel aus Migration 017 müssen mit dem bereits bestätigten Firmen-Lifecycle kompatibel bleiben.
+- Ein zulässiger Staging/Test-Firmen-Purge darf nicht durch Katalogreferenzen auf Firmen-Originale oder COMPANY-Katalogobjekte scheitern.
+- Der bestehende Produktionsschutz für Firmen mit Vermessungsoriginalen bleibt unverändert.
+- Vor Sourceabschluss wird der Firmen-Purge deshalb um eine gezielte Katalogbereinigung der tatsächlich betroffenen Referenzen ergänzt; unabhängige globale Beiträge bleiben erhalten.

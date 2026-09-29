@@ -633,3 +633,9 @@ Status: **SERVER-SOURCE NOCH IM ABSCHLUSSAUDIT**
   - Survey-Change-Feed mit `next_after`, damit unsichtbare COMPANY-Änderungen den Cursor nicht blockieren;
   - optionales `source_date` auch im Admin-Importvertrag.
 - Kein Portal-/Android-Code in diesem Block.
+
+## REF-DATA-003 – Lifecycle-Kompatibilität offen
+Status: **SOURCE-ABSCHLUSSAUDIT**
+- Upload-/Cursorblock ist mit `34c93c1...` umgesetzt.
+- Migration 017 muss noch in den bestehenden Firmen-Purge integriert werden, damit erlaubte Staging/Test-Purges nicht an neuen Katalog-Fremdschlüsseln scheitern.
+- Produktionsschutz bleibt unverändert.
