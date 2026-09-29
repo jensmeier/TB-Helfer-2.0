@@ -500,3 +500,12 @@ Status: **FESTGELEGT**
 - Passt eine neue TRA geometrisch an eine vorhandene TRA-Achse, darf der Server die sichtbare Achse abschnittsweise verlängern/ergänzen. Die zugrunde liegenden Originalquellen bleiben getrennt.
 - Bei widersprüchlicher Überlappung erfolgt keine destruktive automatische Überschreibung; beide Varianten bleiben versioniert und als Konflikt prüfbar.
 - Android darf diese zusammengesetzte Sicht laden; Originalquelle und manuelle Herkunft müssen maschinenlesbar unterscheidbar bleiben.
+
+#### REF-DATA-003 – Konfliktstatus Server ↔ Android
+Status: **FESTGELEGT**
+- Android-Uploads erhalten einen serverseitigen Zuordnungsstatus, mindestens sinngemäß `MERGED`, `ADDED` oder `REVIEW_REQUIRED`.
+- `REVIEW_REQUIRED` bedeutet: Original/Beitrag ist gespeichert und nachvollziehbar, aber der Server hat die neue Geometrie wegen uneindeutiger Zuordnung nicht automatisch als bevorzugte gemeinsame Geometrie aktiviert.
+- Android muss in diesem Fall keine Adminentscheidung durchführen; es zeigt dem Nutzer nur den Prüfstatus an.
+- Bestehende aktive Geometrie bleibt für andere Geräte nutzbar, bis der Konflikt entschieden ist.
+- Eine spätere Adminentscheidung erzeugt eine neue Katalog-/Geometrieversion und wird über normalen Server-Change-Feed/Verfügbarkeitsindex an Geräte verteilt.
+- Konfliktbenachrichtigung per E-Mail ist serverintern; keine E-Mail-Adresse/SMTP-Geheimnisse werden an Android übertragen.

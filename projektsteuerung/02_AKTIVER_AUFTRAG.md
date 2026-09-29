@@ -1715,3 +1715,15 @@ Entscheidung Benutzer 29.09.2026:
 - TRA-Achsen können bei passendem X/Y-Anschluss abschnittsweise erweitert werden. Ein neuer Teil kann an eine vorhandene Achse angefügt werden, ohne den vorhandenen Teil oder andere Quellen zu löschen.
 - Überlappende, aber deutlich widersprüchliche Geometrien werden nicht still überschrieben; sie bleiben als Konflikt/Alternative nachvollziehbar.
 - Originaldateien bleiben unverändert. Der sichtbare Gesamtbestand ist eine **zusammengesetzte fachliche Sicht** aus versionierten Original- und manuellen Quellen.
+
+#### REF-DATA-003 – Konflikteskalation bei unsicherem Auto-Merge
+Entscheidung/Anforderung Benutzer 29.09.2026:
+- Normalfall bleibt **vollautomatische** Zuordnung, Erweiterung und Versionierung ohne Admin-Freigabe.
+- Eine neue TRA darf eine vorhandene Achse abschnittsweise verlängern, wenn Anschluss/Überlappung fachlich eindeutig genug ist. Ein bloß nahe liegendes Ende allein genügt nicht; zusätzlich werden Richtung/Tangente, Strecke/Betriebsstelle, Gleis-/Achsenkennung, Stations-/KM-Bezug und Überlappungsfehler berücksichtigt.
+- Der Server führt Originaldateien niemals physisch zusammen und überschreibt sie nicht; er erzeugt eine zusammengesetzte fachliche Sicht aus Quellsegmenten.
+- Wenn die Zuordnung/Überlappung nicht eindeutig ist oder zwei Quellen widersprüchliche Geometrie für denselben Bereich liefern, darf der Server **nicht raten**.
+- Solche Fälle werden als Konflikt/Prüffall gespeichert. Bestehende funktionierende Daten bleiben aktiv; der unsichere neue Anteil wird nicht still als bevorzugte Geometrie übernommen.
+- Für einen neuen Konflikt/Prüffall wird der Administrator über den bestehenden Server-Mailweg informiert. Die E-Mail enthält keine Secrets, sondern mindestens Bereich/Strecke/Betriebsstelle, Konfliktart und einen Link/Hinweis auf den Admin-Prüfbereich.
+- Im Admin-Prüfbereich soll eine Entscheidung möglich sein, z. B. `neue Quelle bevorzugen`, `bestehende Quelle behalten`, `als zusätzliche Achse führen` oder `Segmente bewusst verbinden`.
+- Jede Adminentscheidung wird versioniert/auditiert und darf geschützte Originaldateien nicht verändern.
+- Mobile Nutzer sollen beim Upload eine verständliche Rückmeldung bekommen: automatisch übernommen, als Ergänzung hinzugefügt oder wegen unklarer Zuordnung zur Prüfung vorgemerkt.
