@@ -81,11 +81,27 @@ def build_survey_preview(parsed: dict[str, Any]) -> dict[str, Any]:
             {
                 "x": x,
                 "y": y,
-                "label": str(raw.get("point_name") or raw.get("class") or "").strip(),
+                "label": str(
+                    raw.get("point_name")
+                    or raw.get("class")
+                    or raw.get("point_code")
+                    or ""
+                ).strip(),
                 "type": point_type,
                 "km_meter": _finite(raw.get("km_meter")),
+                "height_m": _finite(raw.get("height_m")),
                 "route": str(raw.get("route") or "").strip() or None,
                 "track": str(raw.get("track") or "").strip() or None,
+                "point_id": str(
+                    raw.get("class")
+                    or raw.get("point_code")
+                    or raw.get("point_name")
+                    or ""
+                ).strip()
+                or None,
+                "point_code": str(raw.get("point_code") or "").strip() or None,
+                "coordinate_system": str(raw.get("coordinate_system") or "").strip() or None,
+                "source_name": str(payload.get("source_name") or "").strip() or None,
             }
         )
     markers = _sample(marker_source, _MAX_POINT_MARKERS)
