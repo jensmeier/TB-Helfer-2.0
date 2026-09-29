@@ -82,7 +82,100 @@ def list_survey_originals(
             tuple(params),
         )
         rows = [dict(row) for row in cur.fetchall()]
+    for row in rows:
+        row["scope"] = "GLOBAL_REFERENCE" if row["company_id"] is None else "COMPANY_WORKSITE_DATA"
     return {"survey_originals": rows}
+
+
+
+@router.get("/reference/survey-originals")
+def list_global_reference_originals(
+    route_number: str | None = Query(default=None, max_length=80),
+    track_key: str | None = Query(default=None, max_length=160),
+    data_kind: str | None = Query(default=None, max_length=40),
+    limit: int = Query(default=500, ge=1, le=2000),
+    _: dict[str, Any] = Depends(current_portal_user),
+) -> dict:
+    where = ["o.company_id IS NULL"]
+    params: list[Any] = []
+    if route_number:
+        where.append("o.route_number = %s")
+        params.append(route_number)
+    if track_key:
+        where.append("o.track_key = %s")
+        params.append(track_key)
+    if data_kind:
+        where.append("o.data_kind = %s")
+        params.append(data_kind.strip().upper())
+
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            f"""
+            SELECT count(*) AS item_count,
+                   max(greatest(o.imported_at, coalesce(p.parsed_at, o.imported_at))) AS latest_changed_at
+            FROM tb.survey_originals o
+            LEFT JOIN tb.survey_parse_catalog p ON p.original_id = o.id
+            WHERE {' AND '.join(where)}
+            """,
+            tuple(params),
+        )
+        revision = dict(cur.fetchone())
+        cur.execute(
+            f"""
+            SELECT o.id, o.route_number, o.track_key, o.data_kind, o.original_name,
+                   o.sha256, o.byte_size, o.metadata, o.imported_at,
+                   p.status AS parse_status, p.parser_family, p.parser_version,
+                   p.detected_format, p.parsed_at,
+                   CASE
+                     WHEN p.warnings IS NULL THEN 0
+                     WHEN jsonb_typeof(p.warnings) = 'array' THEN jsonb_array_length(p.warnings)
+                     ELSE 0
+                   END AS warning_count
+            FROM tb.survey_originals o
+            LEFT JOIN tb.survey_parse_catalog p ON p.original_id = o.id
+            WHERE {' AND '.join(where)}
+            ORDER BY greatest(o.imported_at, coalesce(p.parsed_at, o.imported_at)) DESC, o.id
+            LIMIT %s
+            """,
+            tuple(params + [limit]),
+        )
+        rows = [dict(row) for row in cur.fetchall()]
+
+    for row in rows:
+        row["scope"] = "GLOBAL_REFERENCE"
+    return {
+        "scope": "GLOBAL_REFERENCE",
+        "item_count": int(revision.get("item_count") or 0),
+        "latest_changed_at": revision.get("latest_changed_at"),
+        "survey_originals": rows,
+    }
+
+
+@router.get("/reference/survey-originals/{original_id}/parsed")
+def get_global_reference_parsed(
+    original_id: UUID,
+    _: dict[str, Any] = Depends(current_portal_user),
+) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT o.id, o.route_number, o.track_key, o.data_kind, o.original_name,
+                   o.sha256, o.byte_size, o.metadata, o.imported_at,
+                   p.status AS parse_status, p.parser_family, p.parser_version,
+                   p.detected_format, p.payload, p.warnings, p.error_code,
+                   p.error_detail, p.parsed_at
+            FROM tb.survey_originals o
+            LEFT JOIN tb.survey_parse_catalog p ON p.original_id = o.id
+            WHERE o.id = %s AND o.company_id IS NULL
+            """,
+            (original_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "GLOBAL_SURVEY_REFERENCE_NOT_FOUND")
+        result = dict(row)
+    result["scope"] = "GLOBAL_REFERENCE"
+    return result
 
 
 @router.post("/survey-originals/from-file", status_code=201)

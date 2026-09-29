@@ -47,6 +47,7 @@ CAPABILITIES: dict[str, bool] = {
     "acceptance_delete_v1": True,
     "track_data_v1": True,
     "survey_originals_v1": True,
+    "global_survey_reference_v1": True,
     "survey_parser_catalog_v1": True,
     "survey_section_calibration_v1": True,
     "survey_projection_v1": True,

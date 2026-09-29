@@ -27,6 +27,34 @@ _MAX_ZIP_ENTRY_BYTES = 512 * 1024 * 1024
 _MAX_ZIP_TOTAL_BYTES = 1024 * 1024 * 1024
 _MAX_ZIP_ENTRIES = 1000
 _KIND_RE = re.compile(r"^[A-Z0-9._-]{1,40}$")
+_SCOPE_GLOBAL = "GLOBAL_REFERENCE"
+_SCOPE_WORKSITE = "COMPANY_WORKSITE_DATA"
+_ALLOWED_SCOPES = {_SCOPE_GLOBAL, _SCOPE_WORKSITE}
+
+
+def _normalize_scope(value: str | None) -> str:
+    scope = (value or _SCOPE_WORKSITE).strip().upper()
+    if scope not in _ALLOWED_SCOPES:
+        raise HTTPException(400, "SURVEY_REFERENCE_SCOPE_INVALID")
+    return scope
+
+
+def _parsed_route_track(parsed: dict[str, Any]) -> tuple[str | None, str | None]:
+    payload = parsed.get("payload") if isinstance(parsed.get("payload"), dict) else {}
+    route = str(payload.get("route_from_name") or "").strip() or None
+    track = str(payload.get("track_from_name") or "").strip() or None
+    points = payload.get("points")
+    if isinstance(points, list):
+        for raw in points:
+            if not isinstance(raw, dict):
+                continue
+            if route is None:
+                route = str(raw.get("route") or "").strip() or None
+            if track is None:
+                track = str(raw.get("track") or "").strip() or None
+            if route is not None and track is not None:
+                break
+    return route, track
 
 
 def _infer_kind(name: str) -> str | None:
@@ -127,7 +155,8 @@ def _install_original(
     path: Path,
     original_name: str,
     kind: str,
-    worksite_id: UUID,
+    worksite_id: UUID | None,
+    scope: str,
     route_number: str | None,
     track_key: str | None,
     user: dict[str, Any],
@@ -149,28 +178,58 @@ def _install_original(
     moved = False
     try:
         with transaction() as conn, conn.cursor() as cur:
-            worksite = _load_worksite(cur, worksite_id)
-            effective_route = (route_number or worksite.get("route_number") or "").strip() or None
-            effective_track = (track_key or "").strip() or None
+            normalized_scope = _normalize_scope(scope)
+            inferred_route, inferred_track = _parsed_route_track(parsed)
+            worksite: dict[str, Any] | None = None
+            if normalized_scope == _SCOPE_WORKSITE:
+                if worksite_id is None:
+                    raise HTTPException(400, "SURVEY_IMPORT_WORKSITE_REQUIRED")
+                worksite = _load_worksite(cur, worksite_id)
+                company_id = worksite["company_id"]
+                effective_route = (
+                    route_number
+                    or worksite.get("route_number")
+                    or inferred_route
+                    or ""
+                ).strip() or None
+                effective_track = (track_key or inferred_track or "").strip() or None
+                cur.execute(
+                    """
+                    SELECT id, original_name, imported_at
+                    FROM tb.survey_originals
+                    WHERE company_id = %s
+                      AND sha256 = %s
+                      AND byte_size = %s
+                    LIMIT 1
+                    """,
+                    (company_id, sha256, size),
+                )
+                duplicate_message = "Dieses unveränderte Original ist für die Firma bereits vorhanden."
+            else:
+                company_id = None
+                effective_route = (route_number or inferred_route or "").strip() or None
+                effective_track = (track_key or inferred_track or "").strip() or None
+                cur.execute(
+                    """
+                    SELECT id, original_name, imported_at
+                    FROM tb.survey_originals
+                    WHERE company_id IS NULL
+                      AND sha256 = %s
+                      AND byte_size = %s
+                    LIMIT 1
+                    """,
+                    (sha256, size),
+                )
+                duplicate_message = "Dieses unveränderte Original ist im globalen Referenzbestand bereits vorhanden."
 
-            cur.execute(
-                """
-                SELECT id, original_name, imported_at
-                FROM tb.survey_originals
-                WHERE company_id = %s
-                  AND sha256 = %s
-                  AND byte_size = %s
-                LIMIT 1
-                """,
-                (worksite["company_id"], sha256, size),
-            )
             duplicate = cur.fetchone()
             if duplicate:
                 return {
                     "name": original_name,
                     "kind": normalized_kind,
+                    "scope": normalized_scope,
                     "status": "DUPLIKAT",
-                    "message": "Dieses unveränderte Original ist für die Firma bereits vorhanden.",
+                    "message": duplicate_message,
                     "original_id": str(duplicate["id"]),
                     "parse_status": None,
                 }
@@ -185,9 +244,15 @@ def _install_original(
 
             metadata = {
                 "source": "ADMIN_WEB",
-                "worksite_id": str(worksite_id),
-                "worksite_name": worksite["name"],
+                "scope": normalized_scope,
             }
+            if worksite is not None and worksite_id is not None:
+                metadata.update(
+                    {
+                        "worksite_id": str(worksite_id),
+                        "worksite_name": worksite["name"],
+                    }
+                )
             cur.execute(
                 """
                 INSERT INTO tb.survey_originals(
@@ -198,7 +263,7 @@ def _install_original(
                 """,
                 (
                     original_id,
-                    worksite["company_id"],
+                    company_id,
                     effective_route,
                     effective_track,
                     normalized_kind,
@@ -247,39 +312,43 @@ def _install_original(
                 ),
             )
 
-            emit_change(
-                cur,
-                company_id=worksite["company_id"],
-                worksite_id=worksite_id,
-                entity_type="SURVEY_ORIGINAL",
-                entity_id=original_id,
-                operation="IMPORT",
-                entity_version=None,
-                actor_user_id=user["user_id"],
-            )
-            emit_change(
-                cur,
-                company_id=worksite["company_id"],
-                worksite_id=worksite_id,
-                entity_type="SURVEY_PARSE_CATALOG",
-                entity_id=original_id,
-                operation="UPSERT",
-                entity_version=None,
-                actor_user_id=user["user_id"],
-            )
+            if worksite is not None and worksite_id is not None:
+                emit_change(
+                    cur,
+                    company_id=worksite["company_id"],
+                    worksite_id=worksite_id,
+                    entity_type="SURVEY_ORIGINAL",
+                    entity_id=original_id,
+                    operation="IMPORT",
+                    entity_version=None,
+                    actor_user_id=user["user_id"],
+                )
+                emit_change(
+                    cur,
+                    company_id=worksite["company_id"],
+                    worksite_id=worksite_id,
+                    entity_type="SURVEY_PARSE_CATALOG",
+                    entity_id=original_id,
+                    operation="UPSERT",
+                    entity_version=None,
+                    actor_user_id=user["user_id"],
+                )
             audit(
                 cur,
                 action="ADMIN_SURVEY_ORIGINAL_IMPORT",
                 actor_user_id=user["user_id"],
-                company_id=worksite["company_id"],
-                worksite_id=worksite_id,
+                company_id=company_id or user.get("company_id"),
+                worksite_id=worksite_id if worksite is not None else None,
                 entity_type="SURVEY_ORIGINAL",
                 entity_id=original_id,
                 details={
+                    "scope": normalized_scope,
                     "data_kind": normalized_kind,
                     "sha256": sha256,
                     "byte_size": size,
                     "parse_status": parsed["status"],
+                    "route_number": effective_route,
+                    "track_key": effective_track,
                     "source": "ADMIN_WEB",
                 },
             )
@@ -293,6 +362,9 @@ def _install_original(
         return {
             "name": original_name,
             "kind": normalized_kind,
+            "scope": normalized_scope,
+            "route_number": effective_route,
+            "track_key": effective_track,
             "status": "IMPORTIERT",
             "message": message,
             "original_id": str(original_id),
@@ -363,13 +435,17 @@ def _extract_zip_entry(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> Path:
 @router.post("/file")
 async def import_survey_file(
     request: Request,
-    worksite_id: UUID = Query(...),
+    worksite_id: UUID | None = Query(default=None),
+    scope: str = Query(default=_SCOPE_WORKSITE, max_length=40),
     filename: str = Query(..., min_length=1, max_length=255),
     data_kind: str | None = Query(default=None, max_length=40),
     route_number: str | None = Query(default=None, max_length=80),
     track_key: str | None = Query(default=None, max_length=160),
     user: dict[str, Any] = Depends(require_admin_csrf),
 ) -> dict:
+    normalized_scope = _normalize_scope(scope)
+    if normalized_scope == _SCOPE_WORKSITE and worksite_id is None:
+        raise HTTPException(400, "SURVEY_IMPORT_WORKSITE_REQUIRED")
     temp_path = await _stream_request_to_temp(request)
     try:
         safe_name = _safe_name(filename)
@@ -402,6 +478,7 @@ async def import_survey_file(
                                 original_name=entry_name,
                                 kind=kind,
                                 worksite_id=worksite_id,
+                                scope=normalized_scope,
                                 route_number=route_number,
                                 track_key=track_key,
                                 user=user,
@@ -424,6 +501,7 @@ async def import_survey_file(
             original_name=safe_name,
             kind=kind,
             worksite_id=worksite_id,
+            scope=normalized_scope,
             route_number=route_number,
             track_key=track_key,
             user=user,
