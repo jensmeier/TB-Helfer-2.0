@@ -1590,3 +1590,18 @@ Status: **SOURCE-UMSETZUNG FERTIG / SYNLOGY-RETEST OFFEN**
 - Overlay-Rendering wird per `requestAnimationFrame` gedrosselt und per `ResizeObserver` bei Großansicht/Resize neu berechnet.
 - Finales Browser-JavaScript über V8 kompiliert: **PASS**.
 - GitHub Actions `36595173582`, `36595165137`, `36595173431`: `runner_name=""`, `steps=[]` → **kein Testnachweis**.
+### REF-DATA-002 – GVP muss freie Strecken/Gleise grün kalibrieren
+Status: **NEUER RUNTIME-BEFUND + ANDROID-REFERENZ GEPRÜFT / ERST VORSCHLÄGE, NOCH KEIN CODE**
+- Benutzer meldet: Bahnhofsgleise/Strecken mit Vermarkung/GVP sollen wie in Android grün werden; bei freien Strecken klappt das im Server-Preview noch nicht.
+- Android-Referenz `TrassenRepository.graMitAchspunktenVerknuepfen()` + `kmMitGvpFestpunktenKalibrieren()` geprüft:
+  - GVP/Festpunkte sind eine eigenständige automatische KM-Quelle; fehlende GRA darf GVP-Kalibrierung nicht verhindern;
+  - berücksichtigt werden Achstyp `GLEIS` und `STRECKE`;
+  - GVP müssen einen KM-Wert und eine passende Strecke besitzen;
+  - mindestens 4 GVP derselben Strecke und mindestens 4 Achssamplepunkte;
+  - nächster Achspunkt je GVP max. 120 m entfernt;
+  - robuste Offset-Kalibrierung: Median `km - station`, nur Offsets innerhalb ±80 m vom Median, mindestens 4 robuste Treffer;
+  - bei Erfolg: alle Samples der Achse erhalten `kmMeter = station + offset`, `kmQuelle = GVP`;
+  - `TrassenKmStatusLogik` bewertet diese automatische, plausible KM-Kalibrierung als GRÜN.
+- Ursache im aktuellen Server-Preview: Grün wird bislang im Wesentlichen über `TRA + passende GRA` bestimmt; GVP-Kalibrierung der freien Strecke wird noch nicht fachlich nach Android nachgebildet.
+- Wichtig: nicht `irgendein GVP vorhanden = grün`; grün erst bei belastbarer achsbezogener GVP-Kalibrierung. Sonst ROT/ggf. GRAU mit Grund.
+- Benutzer verlangt vor Implementierung zunächst Vorschläge für die Serverübernahme dieser Android-Logik und zusätzlichen Tiefzoom.
