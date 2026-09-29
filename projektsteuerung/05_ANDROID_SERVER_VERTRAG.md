@@ -361,3 +361,10 @@ Status: **VERTRAGSÄNDERUNG DOKUMENTIERT / SERVER-UMSETZUNG / ANDROID-ANPASSUNG 
 - SERVER darf Werte bis 400 speichern und im Admin-/Abschluss-PDF verwenden.
 - Aktueller Android-Stand `BtbPdfLogoLayoutSpeicher.normalize()` begrenzt weiterhin auf 250 pt. ANDROID muss deshalb in seinem Projekt den Clamp 40..400 übernehmen, bevor vollständige geräteübergreifende Layoutparität wieder behauptet werden darf.
 - SERVER ändert `app/**` nicht.
+
+### ADMIN-PDF-011 – Server-Abnahme
+Status: **SERVER BESTÄTIGT / ANDROID-ANPASSUNG OFFEN**
+- SERVER/Admin akzeptiert und rendert 40..400 pt praktisch bestätigt.
+- X/Y und 400-pt-Preview wurden auf Synology vom Benutzer abgenommen.
+- Android-Branch begrenzt weiterhin auf 250 pt; nur dieser Android-Anteil bleibt offen.
+- Kein Anlass, den bestätigten SERVER-Renderer zurückzubauen.

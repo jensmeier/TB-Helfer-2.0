@@ -703,3 +703,16 @@ Status: **SERVER SOURCE-FIX FERTIG / SYNLOGY-RETEST OFFEN**
 - Fix: Firmenlogo/Kontaktblock zuerst, danach Titel als oberste Ebene mit eigenem weißen Hintergrund rendern.
 - Tabellen/Fachlayout bleiben unverändert/fest.
 - keine Android-/DB-/Compose-Änderung.
+
+## PDF-ADMIN-Abnahme 29.09.2026
+Status: **BESTÄTIGT / SERVER-ADMIN-PDF ABGENOMMEN**
+- Benutzer bestätigt nach dem letzten Synology-Runtime-Test ausdrücklich: **`passt und abgenommen`**.
+- Damit sind für den SERVER-Admin-PDF-Pfad praktisch bestätigt:
+  - Android-nahes Admin-PDF-Zielbild;
+  - Logo-Breite bis 400 pt;
+  - wirksamer X-/Y-Versatz;
+  - feste Wetter-/Tabellenposition unabhängig von Logo-Größe/-Position;
+  - vollständig sichtbarer `BAUTAGEBUCH`-Titel auch bei großem Logo.
+- ADMIN-PDF-007, ADMIN-PDF-010, ADMIN-PDF-012 und ADMIN-PDF-013 sind SERVER-seitig **BESTÄTIGT / ERLEDIGT**.
+- ADMIN-PDF-011 ist SERVER-seitig **BESTÄTIGT**; offen bleibt ausschließlich die bereits dokumentierte Android-Anpassung 250→400 pt.
+- PDF-RUNTIME-009 bleibt separat offen, solange kein neuer echter serverseitiger BTB-Finalize-Abschluss im vollständigen Praxisablauf bestätigt wurde.

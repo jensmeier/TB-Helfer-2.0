@@ -427,3 +427,17 @@ Status: **SOURCE-FIX FERTIG / RUNTIME-RETEST OFFEN**
 - Titel wird zuletzt gezeichnet und erhält einen eigenen weißen Hintergrundbereich.
 - Tabellenpositionen bleiben durch ADMIN-PDF-012 unverändert.
 - keine Migration, kein Compose, keine Android-Änderung.
+
+## PDF-ADMIN – Runtime-Abnahme 29.09.2026
+Status: **DEPLOYT / BESTÄTIGT / ABGENOMMEN**
+- Synology-Runtime durch Benutzer praktisch geprüft.
+- Admin-PDF-Vorschau entspricht dem bestätigten Zielbild.
+- Logo-Breite bis 400 pt funktioniert.
+- X-/Y-Versatz funktioniert.
+- Logo verschiebt Wetter/Tabellen/Fachblöcke nicht mehr.
+- `BAUTAGEBUCH` bleibt bei großem/verschobenem Logo vollständig sichtbar.
+- Benutzerabschluss: **`passt und abgenommen`**.
+
+Geschützt:
+- ADMIN-PDF-007, ADMIN-PDF-010, ADMIN-PDF-012, ADMIN-PDF-013 nicht ohne Grund ändern.
+- ADMIN-PDF-011 SERVER-Anteil ebenfalls bestätigt; nur Android 400-pt-Parität bleibt offen.

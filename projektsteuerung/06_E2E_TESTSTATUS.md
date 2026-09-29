@@ -376,3 +376,11 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   3. `BAUTAGEBUCH` muss vollständig sichtbar bleiben;
   4. Wetter/Tabellenposition muss unverändert bleiben.
 - Status: **SOURCE-FIX FERTIG / SYNLOGY-E2E OFFEN**.
+
+### PDF-ADMIN – Synology-Abnahme 29.09.2026
+- Tatsächlicher Runtime-Test im Synology-Admin-PDF-Pfad wurde durch Benutzer durchgeführt.
+- Praktisch bestätigt: Android-nahe Vorschau, 400-pt-Logo, X/Y, feste Tabellenposition, Titel-Schutzlayer.
+- Benutzerurteil: **`passt und abgenommen`**.
+- ADMIN-PDF-007 / -010 / -012 / -013: **BESTÄTIGT / ERLEDIGT**.
+- ADMIN-PDF-011 SERVER-Anteil: **BESTÄTIGT**; Android 250→400 bleibt offen.
+- Dieser Nachweis gilt für Admin-PDF/Preview/Logo-Layout; er ist **nicht** automatisch ein vollständiger Finalize-/Download-E2E für PDF-RUNTIME-009.

@@ -741,3 +741,17 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Keine Android-/DB-/Compose-Änderung.
 - CI Run `36558072863` ohne Runner-Schritte; kein Testnachweis.
 - Nächster Schritt: eine Runtime-Datei auf Synology, API neu starten, identischen Logo-Test wiederholen.
+
+## PDF-ADMIN – Abnahmecheckpoint 29.09.2026 13:08
+- Nach ADMIN-PDF-013 wurde die letzte Runtime-Datei auf Synology übernommen und der API-Container neu gestartet.
+- Benutzer bestätigt den sichtbaren Endstand ausdrücklich mit **`passt und abgenommen`**.
+- Damit SERVER-seitig geschützt/bestätigt:
+  - Admin-Vorschau im Android-nahen BTB-Zielbild;
+  - Logo 40..400 pt;
+  - X-/Y-Versatz;
+  - Tabellen/Fachlayout bleiben bei Logoänderungen fest;
+  - `BAUTAGEBUCH` bleibt vollständig sichtbar.
+- ADMIN-PDF-007 / -010 / -012 / -013 geschlossen.
+- ADMIN-PDF-011 nur noch ANDROID-seitig offen (aktueller Clamp 250 pt).
+- PDF-RUNTIME-009 bleibt getrennt offen bis zum echten neuen serverseitigen BTB-Finalize-/Download-Praxistest.
+- Diese Abnahme ist gemäß Schutzregel nicht ohne Grund zurückzubauen.

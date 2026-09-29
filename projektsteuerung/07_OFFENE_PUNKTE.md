@@ -4,13 +4,9 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| ADMIN-PDF-013 | P0 | SERVER | `BAUTAGEBUCH` wurde bei großem Logo überdeckt; Titel-Schutzlayer source-seitig fertig | `btb_pdf_android_style.py` deployen → API neu starten → 400-pt-/X/Y-Test wiederholen |
-| ADMIN-PDF-012 | P0 | SERVER | Logo darf Tabellen/Fachblöcke nicht verschieben; Source-Fix entkoppelt Logo und Layout | `btb_pdf_android_style.py` deployen → API neu starten → Breite/Y variieren, Tabellenposition vergleichen |
-| ADMIN-PDF-011 | P0 | SERVER/ANDROID | Server/Admin bis 400 pt + Y-Fix source-seitig fertig; Android clamp aktuell noch 250 | 4 Serverdateien deployen → API neu starten → 250/400 + Y -60/0/+60 testen; Android-Vertrag separat umsetzen |
-| ADMIN-PDF-010 | P0 | SERVER | Admin-PDF-Vorschau zeigte falsches generisches Layout; Source jetzt auf Android-nahes Zielbild umgestellt | 2 Python-Dateien deployen → API neu starten → Admin-Vorschau/Logo-Regler gegen Bild 2 prüfen |
+| ADMIN-PDF-011 | P1 | ANDROID | SERVER/Admin 40..400 pt + X/Y + Preview am 29.09.2026 abgenommen; Android clamp aktuell noch 250 | ANDROID-Projekt: Clamp/Vertrag auf 40..400 übernehmen und Geräte-PDF praktisch prüfen |
 | PDF-RUNTIME-009 | P0 | SERVER | Ursache bestätigt; Android-naher Serverrenderer v5 source-seitig fertig, Runtime noch nicht bestätigt | 4 Serverdateien übernehmen → API neu starten → neuen Serverabschluss gegen 22.09 + Handy-Entwurf visuell prüfen |
 | ADMIN-DASH-008 | P1 | SERVER | Physische Synology-Laufwerkstemperaturen in °C source-seitig umgesetzt; Runtime noch nicht geprüft | Serverdateien + Compose auf Synology übernehmen → API/Projekt recreaten → Laufwerk 1/2 gegen DSM-Werte vergleichen |
-| ADMIN-PDF-007 | P1 | SERVER | PDF-Logo-Regler wirkten in Runtime nicht auf Vorschau; Source-Fix mit Live-Draft-Vorschau + Renderer v4 fertig | 3 Serverdateien deployen → API neu starten → Breite/X/Y + Speichern + Großansicht testen |
 | ADMIN-DASH-006 | P1 | SERVER | Bahnhofsdaten-Mount und MIH-Suche praktisch bestätigt; Dashboard-Gesamtretest noch offen | Übersicht/Warnungsquittierung noch praktisch prüfen |
 | DEVICE-INFO-001 | P1 | ANDROID | Geräte-App-Version wird nach App-Update serverseitig nicht neu gemeldet | Android soll bei normalen authentifizierten Kontakten `X-TB-App-Version` + `X-TB-App-Build` mitsenden; SERVER ist vorbereitet |
 | ADMIN-STRUCTURE-004 | P1 | SERVER | Firmenzentrierte Admin-Struktur source-seitig fertig | geänderte Serverdateien auf Synology übernehmen → API neu starten → Firmenworkspace praktisch testen |

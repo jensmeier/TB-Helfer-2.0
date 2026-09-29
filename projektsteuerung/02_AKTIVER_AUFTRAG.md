@@ -1319,3 +1319,12 @@ Status: **RUNTIME-FEHLER BESTÄTIGT / SERVER-FIX FREIGEGEBEN**
 - Sourcecheck um Titel-Layer-Marker ergänzt.
 - GitHub Actions Run `36558072863`: `failure`, `runner_name=""`, `steps=[]` → kein Testnachweis.
 - Nächster Schritt: nur `btb_pdf_android_style.py` auf Synology ersetzen, API neu starten, denselben 400-pt-/X/Y-Test erneut öffnen.
+
+### PDF-ADMIN – Benutzerabnahme 29.09.2026
+Status: **BESTÄTIGT / ABGENOMMEN**
+- Benutzer meldet nach Upload/API-Neustart und praktischem Sichttest: **`passt und abgenommen`**.
+- Abgenommen ist der aktuelle SERVER-Admin-PDF-/Logo-Layoutpfad inklusive 400 pt, X/Y, fester Tabellenposition und Titel-Schutzlayer.
+- Geschützte Punkte: diese bestätigten SERVER-PDF-Anpassungen nicht ohne ausdrücklichen Auftrag, reproduzierbaren Fehler oder zwingende neue Fachanforderung ändern.
+- ADMIN-PDF-007 / -010 / -012 / -013: **ERLEDIGT**.
+- ADMIN-PDF-011: SERVER **ERLEDIGT/BESTÄTIGT**, Android-Clamp 250→400 bleibt als separater Android-Vertragspunkt offen.
+- PDF-RUNTIME-009 bleibt fachlich getrennt: finaler serverseitiger Tagesabschluss-PDF-E2E noch nicht durch diese Admin-Abnahme ersetzt.
