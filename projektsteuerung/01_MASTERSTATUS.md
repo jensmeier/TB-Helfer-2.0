@@ -799,3 +799,20 @@ Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
 - Bei mehreren Punkten im Trefferbereich wird eine Auswahlliste angeboten.
 - Permanente Punktlabels werden bei tiefem Zoom stark reduziert; oberhalb hoher Zoomstufe stehen Geometrie + Hover/Klick vor Text.
 - keine DB-/Compose-/Android-Änderung.
+
+## REF-DATA-002 – GVP-Kalibrierung freie Strecken/Gleise
+Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
+- Server-Preview übernimmt jetzt die Android-Semantik: GVP/Festpunkte sind eine eigenständige automatische KM-Quelle.
+- Grün bedeutet nicht mehr nur passende GRA, sondern belastbare automatische KM aus **GRA oder GVP**.
+- GVP-Kalibrierung je TRA-Achse:
+  - gleiche Strecke;
+  - mindestens 4 GVP mit KM;
+  - mindestens 4 Achssamplepunkte;
+  - GVP maximal 120 m von der Achse;
+  - Median von `KM - Station`, Ausreißerfilter ±80 m;
+  - mindestens 4 robuste Treffer.
+- Erfolgreiche GVP-Kalibrierung → GRÜN; widersprüchliche GVP → GRAU; keine belastbare KM → ROT.
+- Explizite KM-GRA wird wie Android anhand `KM####`, `KMLINIE`, `KM_LINIE` erkannt; normale Höhen-GRA ist keine automatische KM-Quelle.
+- Tiefzoom auf Android-Maximum ca. 160x erweitert.
+- Punktdetail zeigt `KM aus Datei` (Dezimal-km) plus `Bahn-KM`; doppelte KF/KF.TXT-Punkte werden in der Preview konservativ zusammengeführt.
+- keine DB-/Compose-/Android-Änderung.

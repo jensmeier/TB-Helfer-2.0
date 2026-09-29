@@ -534,3 +534,15 @@ Synology:
 - nur `server/templates/v1_admin_survey_import.html` ersetzen;
 - API-Container neu starten;
 - keine Migration / kein Recreate.
+
+## REF-DATA-002 – GVP-Achskalibrierung + 160x Zoom
+Status: **SOURCE FERTIG / RUNTIME-RETEST OFFEN**
+- Admin-Preview bildet Android-`kmMitGvpFestpunktenKalibrieren()` fachlich nach.
+- GVP/Festpunkte können freie Strecken- und Gleisachsen ohne KM-GRA automatisch grün kalibrieren.
+- Kriterien: Strecke gleich, >=4 GVP mit KM, >=4 Achssamples, ≤120 m, robuster Medianoffset ±80 m, >=4 robuste Treffer.
+- Grau bei widersprüchlicher GVP-Kalibrierung; rot wenn keine belastbare Quelle.
+- Explizite KM-GRA nur bei Android-Namensregel `KM####`/`KMLINIE`/`KM_LINIE`.
+- GVP-kalibrierte KM-Bereiche erscheinen in `KM / Station` als `GVP/Festpunkte`.
+- Tiefzoom ca. 160x.
+- Runtime-Datei: `server/templates/v1_admin_survey_import.html`.
+- API neu starten; keine Migration/kein Recreate.

@@ -824,3 +824,15 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Finales Browser-JS V8: PASS.
 - GitHub Actions ohne Runner/Steps; kein Testnachweis.
 - Status: **SOURCE FERTIG / SYNLOGY-RUNTIME-RETEST OFFEN**.
+
+## REF-DATA-002 – GVP-Kalibrierungscheckpoint 29.09.2026
+- Benutzer fordert nach Vergleich Server/Android: alle fachlich vermarkten Strecken/Gleise sollen bei belastbarer GVP-KM automatisch grün werden; freie Strecke war im Server noch rot.
+- Android-Repository geprüft: `TrassenRepository.graMitAchspunktenVerknuepfen()` und `kmMitGvpFestpunktenKalibrieren()` sind Referenz.
+- Serverpreview übernimmt Kriterien: gleiche Strecke, >=4 GVP mit KM, >=4 Samples, ≤120 m, Medianoffset, ±80 m robust, >=4 Treffer.
+- Normale Höhen-GRA wird nicht mehr automatisch als KM-GRA gewertet; Android-Namensregel für explizite KM-GRA übernommen.
+- GVP-Achse → grün + GVP-KM-Bereich + Diagnose; unplausibel → grau; keine Quelle → rot.
+- Punktdetail: `KM aus Datei` + Bahn-KM; KF/KF.TXT-Dubletten in Preview reduziert.
+- Zoom auf ca. 160x erhöht.
+- Codecommits `34090632...`, `0292ca9f...`, `13b2a0be...`.
+- Browser-JS PASS; GitHub Actions ohne Runner/Steps.
+- Status: **SOURCE FERTIG / SYNLOGY-RUNTIME-RETEST OFFEN**.

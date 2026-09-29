@@ -472,3 +472,17 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   7. nahe/überlagerte Punkte → Auswahlliste;
   8. Punktdetail in Großansicht als schwebende Karte sichtbar.
 - Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**.
+
+### REF-DATA-002 – GVP-Freistrecke Retest
+- Source: finales Admin-JavaScript kompiliert in V8 = PASS.
+- GitHub Actions `36599344826`, `36599336974`, `36599344887`: `runner_name=""`, `steps=[]` → **kein CI-Testnachweis**.
+- Synology-Pflichttest:
+  1. Pasing/5300/Gessertshausen analysieren;
+  2. freie TRA-Achse mit ausreichenden GVP derselben Strecke muss GRÜN werden, auch ohne explizite KM-GRA;
+  3. Achse anklicken → `KM-Quelle: GVP/Festpunkte` + Trefferdiagnose prüfen;
+  4. unzureichende GVP (<4 oder >120 m) bleiben ROT;
+  5. widersprüchliche Offsets (<4 robust nach ±80 m) werden GRAU;
+  6. explizite KM-GRA bleibt GRÜN und hat Vorrang;
+  7. Punkt anklicken → `KM aus Datei` wie Android + Bahn-KM;
+  8. bis ca. 160x hineinzoomen und einzelne Linien weiter kontrollieren.
+- Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**.

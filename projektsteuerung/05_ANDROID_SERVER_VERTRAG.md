@@ -455,3 +455,13 @@ Status: **KORREKTURBEDARF FESTGELEGT**
 - Labels dürfen Geometrie nicht verdecken; tiefes Zoomen priorisiert Linie/Punkt vor Text.
 - Detailinformationen eines Vermessungspunktes werden bei Auswahl vollständig gezeigt; permanente Punktlabels bleiben zoom-/dichteabhängig begrenzt.
 - SERVER/Admin und Android sollen dieselbe fachliche LOD-Semantik verwenden, auch wenn Renderingtechnik unterschiedlich ist.
+
+### REF-DATA-002 – KM-Statusvertrag GRA/GVP
+Status: **FESTGELEGT**
+- GRÜN/AUTOMATISCH = belastbare automatische KM-Kalibrierung aus expliziter KM-GRA **oder** robuster GVP/Festpunkt-Kalibrierung.
+- GVP/Festpunkte sind eine eigenständige KM-Quelle; fehlende GRA allein darf eine Achse nicht rot machen.
+- GVP-Automatik folgt Android: gleiche Strecke, >=4 GVP mit KM, >=4 Achssamples, max. 120 m Abstand, Medianoffset, ±80 m Ausreißerfilter, >=4 robuste Treffer.
+- GRAU/UNPLAUSIBEL = KM/GVP vorhanden, aber automatische Kalibrierung widersprüchlich.
+- ROT/FEHLT = Geometrie vorhanden, aber keine belastbare automatische/manuelle KM.
+- ORANGE/MANUELL bleibt für bewusst manuell kalibrierte/geänderte KM reserviert.
+- SERVER und Android müssen bei gleicher Datenlage dieselbe fachliche Farbbedeutung verwenden.

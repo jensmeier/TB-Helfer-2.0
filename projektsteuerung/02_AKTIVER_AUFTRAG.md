@@ -1591,7 +1591,7 @@ Status: **SOURCE-UMSETZUNG FERTIG / SYNLOGY-RETEST OFFEN**
 - Finales Browser-JavaScript über V8 kompiliert: **PASS**.
 - GitHub Actions `36595173582`, `36595165137`, `36595173431`: `runner_name=""`, `steps=[]` → **kein Testnachweis**.
 ### REF-DATA-002 – GVP muss freie Strecken/Gleise grün kalibrieren
-Status: **SERVER-UMSETZUNG FREIGEGEBEN**
+Status: **SOURCE-UMSETZUNG FERTIG / SYNLOGY-RETEST OFFEN**
 - Benutzer meldet: Bahnhofsgleise/Strecken mit Vermarkung/GVP sollen wie in Android grün werden; bei freien Strecken klappt das im Server-Preview noch nicht.
 - Android-Referenz `TrassenRepository.graMitAchspunktenVerknuepfen()` + `kmMitGvpFestpunktenKalibrieren()` geprüft:
   - GVP/Festpunkte sind eine eigenständige automatische KM-Quelle; fehlende GRA darf GVP-Kalibrierung nicht verhindern;
@@ -1609,3 +1609,18 @@ Status: **SERVER-UMSETZUNG FREIGEGEBEN**
 - Umsetzung soll die Android-Kriterien nachbilden: passende Strecke, >=4 GVP mit KM, >=4 Achssamples, max. 120 m Achsabstand, robuster Medianoffset mit ±80 m Ausreißerfilter.
 - Grün darf nur bei erfolgreicher GRA- oder GVP-Kalibrierung gesetzt werden; Diagnosegrund sichtbar machen.
 - Zoomgrenze über ca. 30x hinaus erweitern; Screen-Space-Marker/Labels beibehalten.
+
+### REF-DATA-002 – GVP-Kalibrierung Source-Fix
+- Freigabecommit: `b5b26d1e82e3a014b32246bbbfc5e636c27e4709`.
+- Hauptfix: `340906324ac85321c80d681c4bd03b1fd967720a`.
+- Android-nahe Unterscheidung explizite KM-GRA vs. normale GRA: `0292ca9f3179eeb386e3d2b2403edc34687cb46a`.
+- Sourcecheck erweitert: `13b2a0be86161489b9b8d0ead4aad46a52ff8473`.
+- Preview berechnet pro sichtbarer TRA-Achse einen KM-Status aus GRA oder GVP/Festpunkten.
+- GVP-Diagnose erscheint beim Achsenklick: GVP mit KM, Treffer ≤120 m, robuste Treffer, Quelle und Grund.
+- Aus GVP kalibrierte Achsen liefern auch rechts einen belastbaren KM-Bereich statt nur technische Station.
+- Zoomminimum `view.w=6.25` entspricht ca. 160x und damit dem Android-MaxScale.
+- Punktinfo zeigt Android-konform `KM aus Datei: x,xxx` und zusätzlich Bahnformat `x+xxx.xxx`.
+- Preview-Dubletten zwischen roher KF und KF.TXT werden über Punkt-ID + cm-Koordinate konservativ unterdrückt.
+- Browser-JavaScript nach finalem Source-Fix: **PASS**.
+- GitHub Actions auf Code-HEAD ohne Runner/Steps → kein Testnachweis.
+- Synology-Retest: nur Admin-Template aktualisieren, API neu starten.
