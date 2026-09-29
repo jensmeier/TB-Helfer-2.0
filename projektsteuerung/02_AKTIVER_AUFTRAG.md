@@ -1264,3 +1264,12 @@ Status: **ZIELBILD VERBINDLICH / ADMIN-PREVIEW MUSS ANGEPASST WERDEN**
 - Android `app/**` unverändert; keine Migration, kein Compose.
 - GitHub Actions auf Code-HEAD `972017bf...`: Server Runs `36554111617`/`36554106396`, Android `36554111626`, jeweils ohne Runner (`runner_name=""`, `steps=[]`) → kein Testnachweis.
 - Nächster Schritt: `btb_pdf.py` + `btb_pdf_android_style.py` auf Synology übernehmen, API neu starten und Admin-PDF-Vorschau erneut öffnen.
+### ADMIN-PDF-011 – Logo bis 400 pt + Y-Versatz Runtimefehler
+Status: **ANFORDERUNG GESICHERT / URSACHE EINGEGRENZT**
+- Benutzer bestätigt in der aktuellen Synology-Admin-Vorschau:
+  - Logo-Breite soll von bisher maximal **250 pt auf 400 pt** erweitert werden;
+  - **Y-Versatz wirkt aktuell nicht sichtbar** und muss funktionieren.
+- Screenshot-Teststand: `logo_width_pt=250`, `offset_x_pt=70`, `offset_y_pt=-60`.
+- Source-Diagnose: der v5-Serverrenderer begrenzt quadratische/hohe Logos aktuell auf `max_height=88 pt`; anschließend wird `top_y` so geklemmt, dass bei einem auf diese Maximalhöhe skalierten Logo der Y-Spielraum praktisch auf einen festen Wert zusammenfällt. Das erklärt den nicht wirksamen Y-Regler.
+- SERVER-Ziel: `logo_width_pt` 40..400 akzeptieren/speichern/rendern und Y-Versatz sichtbar anwenden, jeweils mit sicheren Seitengrenzen.
+- Weil `logo_width_pt` ein gemeinsames Android↔Server-Feld ist, muss die Erweiterung 250→400 im Vertrag dokumentiert werden; SERVER ändert kein `app/**`.

@@ -353,3 +353,11 @@ SERVER ändert kein `app/**`. Benötigte Android-Anpassung bleibt beim ANDROID-P
 - Server war mit 48 mm Headerhöhe deutlich enger und hat besonders quadratische Logos trotz großer Breite wieder verkleinert.
 - SERVER wurde auf eine 62-mm-/ca.-174-pt-Zone angepasst; keine Feld-/API-Vertragsänderung und keine Android-Codeänderung.
 - Admin-Draft-Vorschau ist rein serverseitige Bedienhilfe; gespeichert und an Android synchronisiert werden weiterhin ausschließlich die bestehenden zentralen Layoutfelder.
+### ADMIN-PDF-011 – Logo-Breite 400 pt / Y-Offset
+Status: **VERTRAGSÄNDERUNG DOKUMENTIERT / SERVER-UMSETZUNG / ANDROID-ANPASSUNG SEPARAT**
+- Neuer gemeinsamer Zielbereich für `logo_width_pt`: **40..400 pt** statt 40..250 pt.
+- `offset_x_pt` bleibt vorerst -120..120.
+- `offset_y_pt` bleibt vorerst -60..180, muss aber im Renderer tatsächlich eine sichtbare vertikale Verschiebung bewirken.
+- SERVER darf Werte bis 400 speichern und im Admin-/Abschluss-PDF verwenden.
+- Aktueller Android-Stand `BtbPdfLogoLayoutSpeicher.normalize()` begrenzt weiterhin auf 250 pt. ANDROID muss deshalb in seinem Projekt den Clamp 40..400 übernehmen, bevor vollständige geräteübergreifende Layoutparität wieder behauptet werden darf.
+- SERVER ändert `app/**` nicht.
