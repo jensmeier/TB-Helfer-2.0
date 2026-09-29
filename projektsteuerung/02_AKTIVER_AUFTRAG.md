@@ -1236,11 +1236,13 @@ Status: **SERVER-UMSETZUNG FREIGEGEBEN**
 - Lokaler synthetischer Renderer-Smoke: gültiges A4-PDF erzeugt und visuell gegen das 22.09-Zielbild geprüft.
 - CI auf Code-HEAD: TB-Server Runs `36551663700` und `36551656529`, Android Run `36551663628`; jeweils `failure` ohne Runner (`runner_name=""`, `steps=[]`) → **kein Testnachweis / kein Sourcefehler-Nachweis**.
 - Praktischer nächster Schritt: neue/änderte Server-Python-Dateien auf Synology übernehmen, API neu starten und einen neuen Test-/Tagesabschluss erzeugen; das erzeugte Server-PDF direkt mit Handy-Entwurf und 22.09-Referenz vergleichen.
-### PDF-RUNTIME-009 – Synology-Runtime 29.09.2026
-Status: **HAUPTLAYOUT DEUTLICH VERBESSERT / HEADER-PARITÄT + REWORK-FARBE PRÜFEN**
-- Benutzer zeigt nach Synology-Upload einen neuen serverseitigen BTB-Abschluss mit Renderer-v5-Layout.
-- Hauptstruktur ist jetzt wieder Android-nah: Wetterbox, Personal/Maschinen zweispaltig, gerahmte Punkte 4–8 und Unterbaustellen/KM sind sichtbar.
-- Gleichzeitig zeigt der Admin-PDF-Vorschaubereich ein sehr großes Firmenlogo, während der tatsächliche v5-Abschluss rechts oben nur eine sehr kleine Firmen-/Logo-Darstellung zeigt.
-- Damit ist die Aussage der Admin-Vorschau `derselbe Firmenkopf / dasselbe Firmenlogo / dieselben Layoutwerte wie der serverseitige BTB-Abschluss` aktuell praktisch nicht erfüllt.
-- Im Abschluss-PDF erscheinen rote Überschriften/Inhalte und `Änderungen (entfernt)`; vor Änderung klären, ob dies korrektes Rework-/Original-Snapshot-Diff ist oder bei einem frischen Abschluss fälschlich aktiv wird.
-- Nächste Diagnose: Admin-Preview-Renderer und v5-Firmenkopf auf gemeinsame Größen-/Offsetlogik vergleichen; Rework-Status des getesteten BTB gegen Original-Snapshot prüfen.
+### PDF-RUNTIME-009 – Screenshot-Runtime 29.09.2026
+Status: **ADMIN-PREVIEW UND ANDROID-NAHES BTB-PDF SICHTBAR UNTERSCHIEDLICH / QUELLE DES ZWEITEN BILDS NOCH BESTÄTIGEN**
+- Benutzer zeigt zwei aktuelle Screenshots.
+- Bild 1 ist eindeutig die serverseitige Admin-`PDF-Vorschau`: sehr großes Firmenlogo und generische Beispielinhalte.
+- Bild 2 zeigt das Android-nahe BTB-Zielbild mit Wetterbox, Personal/Maschinen zweispaltig, Punkten 4–8 und Unterbaustellen/KM.
+- Noch **nicht bestätigt** ist, ob Bild 2 bereits der neue serverseitige Renderer-v5-Abschluss oder der weiterhin korrekte Handy-`PDF Entwurf` ist. Vor weiterer Codeänderung diese Herkunft klären.
+- Falls Bild 2 der Serverabschluss ist, ist das Hauptlayout deutlich verbessert; Firmenkopf/Logo weichen aber sichtbar von der Admin-Vorschau ab.
+- Falls Bild 2 der Handy-Entwurf ist, ist für Renderer v5 noch kein visueller Synology-Nachweis erbracht.
+- Rote Überschriften/Inhalte und `Änderungen (entfernt)` können zum bestehenden Rework-/Original-Snapshot-Diff gehören; nicht ohne bestätigten Testfall entfernen.
+- Nächste Diagnose nach Quellenbestätigung: Preview-/Final-Header-Parität und ggf. Rework-Diff gezielt prüfen.
