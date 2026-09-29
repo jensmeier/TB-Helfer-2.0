@@ -558,3 +558,10 @@ Status: **BESTÄTIGT**
   - `server/templates/v1_admin_survey_import.html`;
   - `server/tbserver/survey_parser.py`.
 - API neu starten; keine Migration/kein Recreate.
+
+## REF-DATA-003 – SERVER ist jetzt aktiver Bauabschnitt
+Status: **UMSETZUNG FREIGEGEBEN / SERVER ZUERST**
+- Benutzer hat Reihenfolge festgelegt: SERVER vollständig → Portal → Android.
+- Aktueller SERVER-Scope: persistenter Trassendaten-Katalog, Quellen-/Segmentmodell, automatischer achsenweiser Merge, Review-Konflikte, Maileskalation, Such-/Verfügbarkeits-/Geometrie-API und Versionierung.
+- Kein Portal-UI-Bau und keine Android-Codeänderung in diesem Block.
+- Bestehende bestätigte REF-DATA-002-Achsen/KOR/Tiefzoom-Funktion bleibt geschützt.

@@ -834,3 +834,9 @@ Status: **BESTÄTIGT**
 - Damit ist der Teilblock `Achsen-Hover/Klick + ca. 2000x Tiefzoom + KOR-Parser v3` praktisch auf der Synology bestätigt.
 - Schutzregel greift: diesen bestätigten Teilblock nicht ohne reproduzierbaren Fehler, neue Fachanforderung oder ausdrücklichen Auftrag verändern.
 - Diese Bestätigung schließt nicht automatisch alle übrigen REF-DATA-002-Import-/Android-E2E-Punkte.
+
+## REF-DATA-003 – Reihenfolge festgelegt 29.09.2026
+Status: **SERVER AKTIV**
+- Umsetzung erfolgt verbindlich in drei Stufen: **SERVER → Portal → Android**.
+- Serververtrag und Datenmodell werden zuerst vollständig und versionierbar abgeschlossen.
+- Portal und Android werden erst danach gegen diesen stabilen Vertrag gebaut.

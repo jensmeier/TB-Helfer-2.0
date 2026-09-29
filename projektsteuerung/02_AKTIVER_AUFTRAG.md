@@ -1736,3 +1736,11 @@ Bestandsprüfung 29.09.2026:
 - Damit würde z. B. ein auf einer freien Roh-TRA manuell angelegtes `Gl 28` aktuell nicht als eigener versionierter Fachbeitrag serverweit verteilt.
 - SERVER darf Android-Code nicht im SERVER-Projekt ändern. Erforderliche Android-Anpassung wird im Vertrag festgehalten.
 - Zusätzlich fachlich wichtig: die heutige manuelle Abschnittsfunktion erzeugt **keine vollständig freie neue TRA-Geometrie aus einer GPS-Fahrt**, sondern legt einen fachlichen Abschnitt auf einer bereits vorhandenen Roh-TRA fest. Ein zukünftiger freier GPS-Geometrie-Recorder wäre eine getrennte neue Funktion.
+
+#### REF-DATA-003 – verbindliche Umsetzungsreihenfolge
+Entscheidung Benutzer 29.09.2026:
+1. **SERVER zuerst fertigstellen**: Datenmodell/Migrationen, Katalog-/Verfügbarkeits-API, Segment-/Quellenmodell, automatische Zuordnung/Merge, Konflikt-/Reviewstatus, Admin-Maileskalation sowie stabile Änderungs-/Versionssemantik.
+2. **Danach Portal**: `Trassendatenübersicht` mit Suche Strecke/Bahnhof, Zoom-/LOD-Gesamtansicht, Konflikt-/Quellenanzeige und Adminentscheidung für echte Prüffälle.
+3. **Danach Android**: fertigen Serververtrag konsumieren; Verfügbarkeit/Download, Upload aller Berechtigten, manuelle Abschnitte und spätere freie GPS-Geometrie anbinden.
+- Während SERVER-Block keine Portal-UI und kein `app/**` nebenbei ändern.
+- SERVER-APIs werden so fertiggestellt, dass Portal und Android anschließend auf denselben stabilen Vertrag aufsetzen.
