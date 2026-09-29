@@ -494,3 +494,15 @@ Synology für diesen Retest:
 - `server/templates/v1_admin_survey_import.html` ersetzen;
 - `server/tbserver/survey_preview.py` muss weiterhin vorhanden sein;
 - API-Container neu starten.
+
+## REF-DATA-002 – Punktdaten/Großansicht
+Status: **SOURCE FERTIG / RUNTIME OFFEN**
+- Normalansicht auf 520 px erhöht.
+- Button `Großansicht` öffnet die Vermessungsgrafik bildschirmfüllend; ESC/Schließen beendet.
+- Achsenlabels werden nicht mehr ungefiltert alle gleichzeitig in voller Länge gezeichnet.
+- Punktlabels folgen Android-Zoomlogik: bei kleinem Zoom keine Textwolke; ab näherem Zoom begrenzt sichtbar; ab höherem Zoom mit KM.
+- Punkt-Klickdetail nutzt vollständigeres normalisiertes Preview-Schema.
+- Runtime-Dateien dieses Fixes:
+  - `server/tbserver/survey_preview.py`;
+  - `server/templates/v1_admin_survey_import.html`.
+- API neu starten, keine Migration/kein Recreate.

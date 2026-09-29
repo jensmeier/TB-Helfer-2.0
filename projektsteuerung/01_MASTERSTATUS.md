@@ -763,3 +763,13 @@ Status: **SOURCE KORRIGIERT / SYNLOGY-RETEST OFFEN**
 - ZIP-Zusammenfassung zeigt Strecken, Dateitypen, Bahnhofsgleise und WVB vor dem Import.
 - Pasing-Testbestand: 41 Dateien, TRA 21, GRA 17, KF/KF.TXT 1/1, PDF 1, Strecken 5524/5528/5529, 10 Bahnhofsgleise, 3 WVB.
 - keine DB-Migration / kein Compose / keine Android-Änderung.
+
+## REF-DATA-002 – Großansicht/Punktlabels
+Status: **SOURCE KORRIGIERT / SYNLOGY-RETEST OFFEN**
+- Zweiter Pasing-Runtime-Screenshot: Linienstruktur ist deutlich besser, aber Achsenlabels überlagern sich stark; gelbe Fest-/Vermessungspunkte zeigen im Server keine sichtbaren Punktdaten wie Android.
+- Servergrafik erweitert um echte Großansicht sowie zoomabhängige Achsen-/Punktlabels nach Android-Prinzip.
+- Punktlabels: ab Zoomstufe sichtbar, begrenzte Labelanzahl je Zoom; bei höherem Zoom zusätzlich KM.
+- Punkt-Klickdetail enthält soweit vorhanden Bezeichnung, Art, KM, Strecke, Gleis, Höhe, Punkt-ID, Koordinatensystem und Quelldatei.
+- Preview-Schema liefert dafür zusätzlich `height_m`, `point_id`, `point_code`, `coordinate_system`, `source_name`.
+- Achsenlabels werden verkleinert, zoomabhängig kurz/lang dargestellt und kollisionsarm begrenzt.
+- keine DB-/Compose-/Android-Änderung.

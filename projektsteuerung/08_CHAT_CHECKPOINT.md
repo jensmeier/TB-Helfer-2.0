@@ -796,3 +796,13 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Sourcefixes `364f412c...`, `2c36c106...`, `a51cd9a2...`.
 - Finales Browser-JS syntaktisch via V8 geprüft: PASS.
 - Kein Synology-Retest nach Korrektur; Status bleibt **SOURCE KORRIGIERT / RUNTIME OFFEN**.
+
+## REF-DATA-002 – Punktlabel-Checkpoint 29.09.2026
+- Benutzer liefert zweiten Server-Screenshot plus Android-Referenz: gelbe Vermessungspunkte sind sichtbar, aber deren fachliche Beschriftung fehlt; Server-Achsenlabels überlagern sich massiv.
+- Android-Code erneut gezielt geprüft: `zeichneFestpunkte()` blendet Punktlabels ab Zoom 2.2 begrenzt ein und ergänzt ab Zoom 5.5 KM; Detailmodell enthält Strecke/Gleis/Höhe/Typ/Quelle.
+- Anforderung vor Code dokumentiert.
+- Serverfix: Preview-Metadaten erweitert, Großansicht, zoomabhängige Punktlabels, kollisionsarme Achsenlabels, vollständigeres Klickdetail.
+- Commits `54de23bc...`, `00d56f54...`, `1363c285...`.
+- Browser-JS via V8: PASS.
+- GitHub Actions ohne Runner-Schritte; kein Testnachweis.
+- Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**.

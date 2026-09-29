@@ -429,3 +429,19 @@ Dies bestätigt ausschließlich den DB-Migrationsschritt. API-/Worker-Runtime un
   7. Festpunkte klein separat; über `Anzeige` ein-/ausblendbar;
   8. TRA+GRA derselben Achse erscheinen als eine Importgruppe.
 - Status: **SOURCE KORRIGIERT / SYNLOGY-RETEST OFFEN**.
+
+### REF-DATA-002 – Großansicht/Punktlabel Retest
+- Vorheriger Pasing-Retest bestätigt:
+  - Linien/Objektgruppen grundsätzlich richtig;
+  - Achsenlabels zu groß/überlagert;
+  - gelbe Punktmarker ohne sichtbare Punktdaten.
+- Sourcefix vorhanden; Browser-JS Syntaxprüfung PASS.
+- Synology-Pflichttest:
+  1. Pasing.zip analysieren;
+  2. `Großansicht` öffnen;
+  3. bei Gesamtansicht nur begrenzte, lesbare Achsenlabels;
+  4. hineinzoomen: gelbe Punkte erhalten Punktbezeichnung; stärker hineinzoomen: zusätzlich KM;
+  5. Punkt anklicken: Strecke/Gleis/Höhe/ID/Quelle soweit vorhanden prüfen;
+  6. weiterhin keine gefüllten Flächen.
+- GitHub CI `36586687636` ohne Runner/Steps → **kein Testnachweis**.
+- Status: **SOURCE KORRIGIERT / SYNLOGY-RETEST OFFEN**.

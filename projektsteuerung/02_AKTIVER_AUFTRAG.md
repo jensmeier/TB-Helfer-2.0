@@ -1488,3 +1488,13 @@ Status: **NEUER RUNTIME-BEFUND GESICHERT / SERVER-KORREKTUR FREIGEGEBEN**
   - Klickdetail zusätzlich Strecke, Gleis, Höhe, Punktart/ID und Quelldatei soweit Parserdaten vorhanden;
   - Achsenlabels verkleinern/entzerren, damit sie sich nicht massiv überlagern.
 - Originaldaten/Importlogik unverändert; nur Previewdaten + Admin-Rendering korrigieren.
+
+### REF-DATA-002 – Großansicht/Punktlabel Source-Fix
+Status: **SOURCE FERTIG / SYNLOGY-RETEST OFFEN**
+- Anforderung vor Code gesichert: Commit `8ba3960706386ae15f4e1852527b0c4f75a4fc30`.
+- Preview-Metadaten erweitert: Commit `54de23bc7ed84c06b9340c0a762e5ae94818d0d0`.
+- Großansicht + zoomabhängige Achsen-/Punktlabels + Punktdetails: Commit `00d56f54c84e459a512e426f2c3eda88081fffd6`.
+- Sourcecheck erweitert: Commit `1363c2850a64cb54848cb57d4a0dfa4826686166`.
+- Finales Browser-JavaScript via V8 kompiliert: **PASS**.
+- GitHub Action `36586687636`: `runner_name=""`, `steps=[]` → **kein Testnachweis**.
+- Für Synology-Retest müssen nur `survey_preview.py` und `v1_admin_survey_import.html` ersetzt werden; `admin_survey_import.py` aus vorigem Fix bleibt gültig.
