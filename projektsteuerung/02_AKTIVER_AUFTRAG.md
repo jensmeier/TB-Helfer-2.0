@@ -1284,3 +1284,10 @@ Status: **ANFORDERUNG GESICHERT / URSACHE EINGEGRENZT**
 - Source-Marker geprüft: alle Server-Clamps/HTML-Maxwerte auf 400 vorhanden.
 - GitHub Actions auf Code-HEAD: Server `36555229698`/`36555222572`, Android `36555229687`; alle ohne Runner (`runner_name=""`, `steps=[]`) → kein Testnachweis.
 - Synology-Retest: 4 Runtime-Dateien übernehmen, API neu starten, Breite 250→400 und Y -60/0/+60 sichtbar vergleichen.
+### ADMIN-PDF-012 – Logo unabhängig vom Tabellenlayout
+Status: **ANFORDERUNG GESICHERT / SERVER-FIX FREIGEGEBEN**
+- Benutzer bestätigt den 400-pt-/Y-Fix praktisch als funktionierend.
+- Neue verbindliche Vorgabe: **Logo-Größe sowie X/Y-Verschiebung dürfen die Position der BTB-Tabellen/Fachblöcke nicht verändern.**
+- Wetter, Personal/Maschinen sowie Punkte 4–8 müssen auf ihrer festen Zielposition bleiben, auch wenn das Logo vergrößert oder verschoben wird.
+- Das Logo bleibt ein unabhängig positionierter Firmenkopf-Layer. Bei extremen Einstellungen darf es optisch in den Inhaltsbereich hineinragen; der Renderer darf dafür aber nicht das gesamte Fachlayout nach unten schieben.
+- Android `app/**` nicht ändern; Korrektur nur im Serverrenderer/der Admin-Vorschau.
