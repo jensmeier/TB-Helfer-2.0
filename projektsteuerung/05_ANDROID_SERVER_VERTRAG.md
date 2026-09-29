@@ -555,3 +555,11 @@ Android bleibt danach anzupassen:
 - heutiges `memberRole == LEAD`-Upload-Gate passt noch nicht;
 - `TrassenManuellerAbschnittEntity` wird heute noch nicht als eigener Datentyp synchronisiert;
 - Android soll später diesen Serververtrag konsumieren; `app/**` wurde im SERVER-Block nicht geändert.
+
+#### REF-DATA-003 – Datenschutz + Teilsegment-Priorisierung
+Status: **VERTRAG NACHGESCHÄRFT 29.09.2026**
+- Server→Android/Portal liefert bei globalen Beiträgen für normale Nutzer keine fremden Bearbeiter-/Firmenidentitäten; Herkunftstyp, Version, Qualitätsstatus und neutrale Änderungsinformation bleiben sichtbar.
+- Admin darf vollständige Audit-/Bearbeiterinformationen abrufen.
+- Ein neuer Originalabschnitt darf ein vorhandenes manuelles/älteres Segment nicht allein wegen hoher Teilüberdeckung komplett deaktivieren.
+- Solange ein alter/manueller Rest räumlich nicht durch die neue Quelle abgedeckt ist, bleibt dieser Rest fachlich erhalten. Vollständiges automatisches Supersede ist nur bei nachgewiesener Vollabdeckung desselben Abschnitts zulässig.
+- Android/Portal konsumieren die zusammengesetzte aktive Sicht und müssen keine Rohdateien physisch zusammenführen.

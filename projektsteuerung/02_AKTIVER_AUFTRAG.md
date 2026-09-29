@@ -1760,3 +1760,11 @@ Status: **QUELLSTAND IMPLEMENTIERT / SYNLOGY-DEPLOYMENT + E2E OFFEN**
 - Sourcechecks 112/113 sind vorhanden, aber wegen `steps=[]` nicht ausgeführt; kein Testnachweis.
 - Aktiver nächster Block bleibt SERVER-Runtime: Synology deployen, Migration 017 anwenden, API/Worker neu starten, Reindex und echte Requests testen.
 - Portal und Android erst danach.
+
+#### REF-DATA-003 – Source-Audit Teilabdeckung + Datenschutz 29.09.2026
+Fehlerfeststellung auf aktuellem SERVER-HEAD `7d1441c092becbeefb3a00bc46993bed3255b441`:
+- Der Katalogvertrag ist source-seitig weit fortgeschritten (Migration 017, Suche/Verfügbarkeit/Geometrie, manuelle Beiträge, Konflikte, Mailjob, versionierte Achskorrekturen, Check 112/113).
+- **Teilabdeckungsfehler:** aktuelle Auto-Priorisierung kann ein bestehendes manuelles Segment bereits bei ca. 80 % und ein älteres Originalsegment bei ca. 90 % geometrischer Überdeckung komplett auf `SUPERSEDED` setzen. Dadurch könnte ein nicht vom neuen Bestand abgedeckter Rest verschwinden. Das widerspricht der festgelegten Regel „Teilverlängerung ergänzt/ersetzt nur den belegten Teil; fehlende Alt-/Manuell-Geometrie bleibt erhalten“.
+- Korrekturziel: automatisches vollständiges Supersede nur, wenn die neue Geometrie den bestehenden Abschnitt tatsächlich vollständig bzw. mit enger geometrischer Vollabdeckung abdeckt. Sonst bleiben beide Quellsegmente aktiv und bilden gemeinsam die sichtbare Achse.
+- **Datenschutzfehler:** globale Search-/Availability-/Geometry-/Changes-Antworten dürfen normalen Nutzern keine `created_by_user_id`/`created_by_company_id` bzw. fremde Bearbeiter-/Firmenidentität offenlegen. Admin darf die vollständigen Auditdaten weiterhin sehen.
+- Rohdatei-Zugriffsschutz und geschützte Originale bleiben unverändert.

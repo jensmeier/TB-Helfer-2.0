@@ -613,3 +613,13 @@ Nächster Schritt vor Portal:
 5. Search/Availability/Geometry/Changes gegen die Runtime prüfen.
 6. Originalimport + Auto-Merge + `REVIEW_REQUIRED` + Konfliktmail mit Testdaten prüfen.
 7. Erst nach Runtime-Bestätigung Portal beginnen.
+
+## REF-DATA-003 – aktueller Source-Audit 7d1441c0
+Status: **SERVER-SOURCE WEIT FORTGESCHRITTEN / 2 KORREKTUREN OFFEN**
+- Vorherige Syntax-/COMPANY-Scope-Fehler aus `0097a24b...` sind im aktuellen Stand bereits korrigiert.
+- Seitdem umgesetzt: Sharing + KM-Qualität, quellensichere GRA-Zuordnung, versionierte gemeinsame Achskorrekturen, Beiträge aller aktiven Baustellenmitglieder und Merge-Check 113.
+- GitHub Actions auf HEAD liefern weiterhin `steps=[]`; damit kein CI-Testnachweis.
+- Neuer Audit findet:
+  1. Teilüberdeckung darf vorhandenen Rest nicht komplett superseden;
+  2. normale globale Katalogantworten müssen Bearbeiter/Firma redigieren.
+- Vor `SOURCE FERTIG`: beide Punkte korrigieren, Source-Checks nachziehen und Status erneut sichern.
