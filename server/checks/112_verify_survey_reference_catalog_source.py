@@ -55,5 +55,7 @@ assert "run_survey_conflict_email" in notifications
 assert "index_original_in_tx(cur, original_id" in admin_import
 assert "index_original_in_tx(cur, original_id" in parser
 assert "station_code" in admin_import and "station_name" in admin_import
+assert 'SURVEY_CATALOG_COMPANY_SCOPE_FORBIDDEN' in catalog
+assert 'station_code: str | None,\n    station_name: str | None,\n    user: dict[str, Any],' in admin_import
 
 print("PASS survey reference catalog source")

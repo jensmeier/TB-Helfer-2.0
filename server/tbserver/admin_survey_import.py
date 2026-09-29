@@ -329,8 +329,8 @@ def _install_original(
     scope: str,
     route_number: str | None,
     track_key: str | None,
-    station_code: str | None = None,
-    station_name: str | None = None,
+    station_code: str | None,
+    station_name: str | None,
     user: dict[str, Any],
 ) -> dict[str, Any]:
     normalized_kind = kind.strip().upper()

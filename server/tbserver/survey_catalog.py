@@ -1139,6 +1139,11 @@ def update_manual_segment(segment_id: UUID, payload: ManualSegmentUpdate,
         if not row:
             raise HTTPException(404, "SURVEY_MANUAL_SEGMENT_NOT_FOUND")
         segment = dict(row)
+        if user.get("company_role") != "ADMIN":
+            if segment.get("scope") == _SCOPE_COMPANY and segment.get("company_id") != user.get("company_id"):
+                raise HTTPException(403, "SURVEY_CATALOG_COMPANY_SCOPE_FORBIDDEN")
+            if segment.get("scope") not in _ALLOWED_SCOPES:
+                raise HTTPException(403, "SURVEY_CATALOG_SCOPE_FORBIDDEN")
         if segment["source_kind"] not in _MANUAL_KINDS:
             raise HTTPException(400, "SURVEY_SEGMENT_NOT_MANUAL")
         if int(segment["current_version"]) != payload.base_version:
