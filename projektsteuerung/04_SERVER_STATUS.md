@@ -1009,3 +1009,12 @@ Status: **SOURCE FERTIG / SYNLOGY-RUNTIME OFFEN**
 - Terminal-Reset nutzt denselben geschützten Kern wie der Admin-API-Reset; keine direkte freie SQL-Löschung nötig.
 - Preview-Terminalaufruf und Reset-Terminalaufruf stehen nach Deploy von `admin_purge.py` zur Verfügung.
 - Source-Commits: `0dc17765...` Adminimport, `45ed6d90...` Dashboard, `04c6630f...` Terminal-Helper, Checks `a37dcc6f...` / `4bd7fb04...` / `38cb0fa4...`.
+
+## REF-DATA-003 – Terminal-Reset auf Synology BESTÄTIGT 30.09.2026
+Status: **DEPLOYT / RESET ERFOLGREICH / NEUIMPORT OFFEN**
+- Preview im laufenden API-Container bestätigte `environment=staging` und 64 Survey-Originale.
+- Vorher-Zähler: originals=64, parse_catalog=64, assets=64, axes=36, segments=37, conflicts=1, history=325, survey_sections=0, track_source_links=0, import_file_rows=0.
+- `reset_survey_test_data_from_terminal('VERMESSUNG TESTDATEN LOESCHEN')` lieferte `status=RESET`, `removed_storage_keys=64`.
+- `after` im Reset sowie separate Preview danach: sämtliche Survey-Zähler = 0.
+- Der geschützte Terminal-Resetpfad ist damit praktisch bestätigt. Keine weitere Löschaktion nötig.
+- Nächster Runtimeblock: frischer Pasing/MPB-Upload über die zentrale Admin-Seite; danach Prefill, W/WVB-Identität, Multi-Hit, Prüffälle und Search/Availability/Geometry prüfen.
