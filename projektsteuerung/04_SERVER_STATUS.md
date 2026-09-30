@@ -876,3 +876,8 @@ Runtime offen:
 - Multi-Hit bei überlagerten Achsen;
 - Problemfenster inkl. Geometrievergleich und Resolution;
 - Pasing Search/Availability/Geometry danach erneut.
+
+## REF-DATA-003 – Parser v4 vor Deployment erforderlich
+Status: **SOURCE-NACHKORREKTUR OFFEN**
+- object_key erweitert das Parser-Payload-Schema; v3 darf dafür nicht unverändert weiterverwendet werden.
+- Parser-Version wird auf `tb-survey-parser-4` angehoben, damit bereits vorhandene Pasing-v3-Caches nicht fälschlich als aktuell gelten.

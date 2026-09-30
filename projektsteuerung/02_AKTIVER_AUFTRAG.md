@@ -1927,3 +1927,10 @@ Status: **SOURCE FERTIG / DEPLOYMENT OFFEN**
 - Migration 018 ist neu und muss vor Runtimeprüfung angewendet werden.
 - Kein Android-Code geändert.
 - Nächster Auftragsschritt gemäß Freigabe: Synology/Pasing-E2E; erst nach Bestätigung die eigenständige Trassendatenübersicht bauen.
+
+#### REF-DATA-003 – Parser-Cache-Version nach object_key
+Fehlerfeststellung im Deployment-Audit 30.09.2026:
+- Der neue Quellstand ergänzt Parser-Payloadfelder `object_key_from_name`, `switch_a_from_name`, `switch_b_from_name`.
+- `PARSER_VERSION` steht noch auf `tb-survey-parser-3`.
+- Bereits mit dem alten v3-Code ausgewertete Pasing-Originale könnten dadurch als „Parserstand aktuell“ gelten, obwohl die neuen Objektfelder im gespeicherten Parse-Payload fehlen.
+- Zwingende Korrektur vor Deployment: Parser-Version auf v4 erhöhen und Source-Checks entsprechend nachziehen. Dadurch kann der Server bestehende Parse-Caches eindeutig als alt erkennen/reparsen.

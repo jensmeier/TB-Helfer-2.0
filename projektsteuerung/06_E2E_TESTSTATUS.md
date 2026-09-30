@@ -652,3 +652,6 @@ Pflichttests nach Deployment:
 10. Danach Search/Availability/Geometry für MPB erneut prüfen.
 
 Erst nach diesem Gate: eigenständige `Trassendatenübersicht` bauen.
+
+### REF-DATA-003 – Parser-Cache-Gate
+Vor Runtime-E2E muss der deployte Parser `tb-survey-parser-4` melden. Bestehende v3-Parse-Caches mit gleichem SHA gelten für object_key als Altbestand und müssen neu ausgewertet/reindiziert werden.
