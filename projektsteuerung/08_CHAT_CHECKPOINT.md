@@ -909,3 +909,11 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Bestehende bestätigte Grafik/Zoom/KOR/GVP-Funktion nicht verändert.
 - Noch nichts auf Synology gelöscht.
 - Nächster Schritt: deployen, UI prüfen, Preview-Zählwerte kontrollieren; erst danach Reset ausführen.
+
+## REF-DATA-003 – Runtimecheckpoint Bahnhofsauswahl 30.09.2026
+- Synology-UI findet MPB – München-Pasing Bbf aus Referenzdaten.
+- Bulk „Auf alle Gruppen anwenden“ funktioniert; Gruppen zeigen MPB-Zuordnung.
+- Importergebnis: 6 importiert, 34 Duplikate, 0 übersprungen, 0 Fehler.
+- Neu importierte Dateien zeigen MPB; alte Duplikate bleiben immutable und behalten alte Metadaten.
+- BlueMail zeigt Trassendaten-Prüffall MPB – Pasing Bbf: Konflikt-Mailweg praktisch bestätigt.
+- Deshalb jetzt nicht weiter über Duplikate importieren, sondern freigegebenen Staging-Reset durchführen und anschließend vollständigen Pasing-Neuimport.

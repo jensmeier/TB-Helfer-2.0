@@ -774,3 +774,11 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 - Check 114/115 ergänzt und im Workflow verdrahtet.
 - Source-Nachprüfung: Reset-Schutz/Löschreihenfolge sowie Import-Station-Payload/geschützte Vorschau-Marker PASS.
 - Nächster Schritt: neuen Stand auf Synology deployen, Importseite prüfen, Reset-Vorschau ansehen, erst dann ausdrücklich freigegebenen Staging-Reset ausführen und Pasing neu importieren.
+
+## REF-DATA-003 – Importstation + Konfliktmail Runtime 30.09.2026
+Status: **BESTÄTIGT TEILBLOCK**
+- Admin-Importstation MPB praktisch getestet: Referenzsuche, Bulk-Anwendung und Anzeige je Gruppe funktionieren.
+- Neuimport speichert/zeigt MPB; Lauf 6 IMPORTIERT / 34 DUPLIKATE / 0 FEHLER.
+- Duplikatverhalten korrekt: bestehende immutable Originale werden nicht wegen neuer Metadaten umgeschrieben.
+- Sichtbarer Mail-Eingang zum Trassendaten-Prüffall MPB bestätigt Background-/SMTP-Pfad für mindestens einen echten Konfliktfall.
+- Noch offen vor konsistentem Pasing-E2E: Staging-Testbestand resetten und vollständig neu importieren.

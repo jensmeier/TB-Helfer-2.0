@@ -604,3 +604,20 @@ Pflichttest nach Deployment:
 6. Nach explizitem Reset sind Survey-Original/Katalog/Parserbestände leer, andere Fachbestände unverändert.
 7. Neuimport Pasing speichert station_code/name in Originalmetadaten und Katalog.
 8. Search/Availability nach Bahnhof liefert Pasing-Bestand.
+
+### REF-DATA-003 – Runtimefälle Bahnhofsauswahl + Mail BESTÄTIGT
+Praktischer UI-Nachweis:
+1. Bahnhof/RL100-Suche: **BESTÄTIGT** mit `MPB – München-Pasing Bbf`.
+2. Bulk-Zuordnung auf Fachgruppen: **BESTÄTIGT**.
+3. station_code/name bei neu importierten Originalen: **BESTÄTIGT**.
+4. Importlauf: **6 importiert, 34 Duplikate, 0 Fehler**.
+5. Konflikt-Mailweg: **BESTÄTIGT** durch sichtbaren Eingang `TB-Helfer: Trassendaten-Prüffall MPB – Pasing Bbf`.
+
+Nicht als Fehler zu werten:
+- Die 34 Duplikate behalten ihre alten Metadaten, weil Originale unverändert bleiben.
+
+Nächster E2E-Schritt:
+- Reset-Preview;
+- Staging-Survey-Testreset;
+- vollständiger Neuimport Pasing mit MPB;
+- danach Search / Availability / Geometry / Changes erneut prüfen.

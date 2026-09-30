@@ -941,3 +941,17 @@ Status: **SOURCE FERTIG / DEPLOYMENT OFFEN**
 - Source-Audit der neuen UI-/Vertragsmarker: 10/10 PASS.
 - Maßgebliche Commits: `45bc19bf...` Reset, `085d134a...` Bahnhofsauswahl.
 - Noch nicht deployt/runtimegetestet.
+
+## REF-DATA-003 – Bahnhofsauswahl Runtime bestätigt 30.09.2026
+Status: **IMPORT-STATION RUNTIME BESTÄTIGT / RESET NOCH OFFEN**
+Benutzernachweis per Synology-Admin-UI:
+- Referenzsuche findet `MPB – München-Pasing Bbf`;
+- Auswahl kann mit „Auf alle Gruppen anwenden“ auf die analysierten Fachgruppen übertragen werden;
+- Gruppen zeigen danach `Zugeordnet: MPB – München-Pasing Bbf`;
+- neu gespeicherte Originale zeigen im Importergebnis die Betriebsstelle;
+- Importlauf: **6 importiert · 34 Duplikate · 0 übersprungen · 0 Fehler**.
+Bewertung:
+- station_code/name-Payload funktioniert für neue Importe;
+- die 34 Duplikate stammen aus dem bereits vorhandenen unveränderten Testbestand und werden bewusst nicht nachträglich umgeschrieben;
+- für einen konsistenten Pasing-Bestand ist der bereits freigegebene Staging-Reset mit anschließendem Komplett-Neuimport jetzt der richtige Weg.
+Zusätzlich sichtbar: BlueMail-Eingang `TB-Helfer: Trassendaten-Prüffall MPB – Pasing Bbf`; damit ist der Konflikt-Mailversand praktisch nachgewiesen.
