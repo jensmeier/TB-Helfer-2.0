@@ -1124,3 +1124,14 @@ Status: **API-FUNKTIONSPFADE ERREICHBAR / KM-QUALITÄT NOCH NICHT VOLLSTÄNDIG**
 - Neuer Zielvertrag: gleicher Dateiinhalt + gleiche Zuordnung = Duplikat ohne Änderung; gleicher Dateiinhalt + abweichende fachliche Zuordnung = Warnung mit bewusster Aktion **vorhandene Zuordnung aktualisieren**.
 - Dabei keine neue Rohdatei anlegen. Bestehendes Original bleibt erhalten; nur Route/Gleis/Betriebsstelle/object_key/source_date und der abgeleitete Survey-Katalog werden kontrolliert aktualisiert.
 - Aktueller Testbestand darf auf ausdrücklichen Benutzerwunsch nochmals vollständig per geschütztem staging-Terminalreset geleert werden.
+
+## REF-DATA-005 – Duplicate-Korrekturworkflow SOURCE 30.09.2026
+Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
+- Admin-Import erkennt jetzt bei identischem SHA256/Dateigröße den Unterschied zwischen echter identischer Zuordnung und abweichender fachlicher Zuordnung.
+- Identisch + gleiche Zuordnung bleibt `DUPLIKAT` ohne Änderung.
+- Identisch + abweichende Strecke/Gleis/Betriebsstelle/object_key liefert zunächst `VORHANDEN_ABWEICHEND` mit Vorher→Nachher-Anzeige; Analyse-Session bleibt für die bewusste zweite Bestätigung erhalten.
+- UI-Schalter: `Vorhandene identische Dateien bei abweichender Zuordnung aktualisieren`; zusätzlich Browser-Sicherheitsabfrage.
+- Bestätigte Korrektur behält Original-ID, SHA256 und Raw-Datei unverändert; aktualisiert Original-Metadaten + Asset/Achsen-Zuordnung und liefert `AKTUALISIERT`.
+- Katalogkorrektur schützt offene Konflikte, Mehrfach-Source-Segmente, Identity-Kollisionen und destruktive Änderung geteilter Achsen; einfache Fill-ins wie fehlende station_code sind auch auf geteilter Achse möglich.
+- Audit: `ADMIN_SURVEY_ORIGINAL_ASSIGNMENT_UPDATE` + `SURVEY_CATALOG_ASSIGNMENT_UPDATE`; Axis-History wird versioniert als UPDATE geschrieben.
+- Keine Migration erforderlich.
