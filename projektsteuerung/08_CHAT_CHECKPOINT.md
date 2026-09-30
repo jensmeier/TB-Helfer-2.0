@@ -1014,3 +1014,15 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Der vorliegende Screenshot zeigt nicht den Systemstatus `19/19`; Migration 019 deshalb in der Dokumentation erst nach separatem Systemstatus-/Migrationstabellen-Nachweis als 19/19 bestätigen.
 - Nächster Runtime-Schritt: WVB 10-11 / 14-22 / 19-20 mit Originalname, Achse, `object_key` und Segmentzahl gegenüberstellen; danach Pasing-Prefill, Multi-Hit und „Problem ansehen“ praktisch testen.
 
+
+## REF-DATA-003 – Legacy-WVB-Reparatur Checkpoint 30.09.2026
+- Live-GitHub zu Beginn geprüft: SERVER-PR #6 Draft; ANDROID-PR #11 offen; Android-HEAD unverändert `423f3789...`.
+- Synology-Nachweis: Migration 019 = 19/19, pending=[]; Reindex failures=0.
+- WVB-Read-only-Nachweis: 10-11 und 14-22 korrekt, WVB 19-20 fälschlich auf der WVB-14-22-Achse mit `axis_segment_count=2`.
+- Ursache: Legacy-Merge vor object_key-Einführung; aktuelle neue-Merge-Kompatibilität ist für unterschiedliche bekannte object_keys bereits korrekt.
+- Vor Code Fehlerstatus in `04_SERVER_STATUS.md` gesichert (Commit `253c7486...`).
+- Sourcefix: bestehendes Segment wird nur bei eindeutig belegtem Legacy-Mismatch auf passende object_key-Achse umgehängt; Raw-Original und Segment-ID bleiben erhalten; offene Konflikte blockieren Auto-Reparatur.
+- Code-/Check-Commits: `a7149047...`, `523450f8...`, `fcd2c024...`.
+- Workflow Run 36728982421: conclusion=failure, Foundation jedoch `steps=[]`; kein CI-Testnachweis.
+- Status: **SOURCE KORRIGIERT / NICHT DEPLOYT / SYNLOGY-RUNTIME-RETEST OFFEN**.
+- Nächster Schritt: nur `server/tbserver/survey_catalog.py` auf NAS ersetzen, API neu erstellen/starten, Reindex ausführen, danach dieselbe WVB-read-only-Abfrage wiederholen.
