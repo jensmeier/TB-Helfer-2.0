@@ -5,6 +5,7 @@ from datetime import date
 from tbserver.survey_catalog import (
     _axis_compatible,
     _axis_identity_enrichment_patch,
+    _should_reassign_existing_segment_identity,
     _catalog_response,
     _explicit_km_gra,
     _geometry_fully_covers,
@@ -180,6 +181,39 @@ assert _axis_identity_enrichment_patch(
     wrong_type_axis,
     {"object_key": "WVB:14-22", "axis_type": "WEICHENVERBINDUNG"},
 ) == {}
+
+assert _should_reassign_existing_segment_identity(
+    wvb_axis,
+    {
+        "object_key": "WVB:19-20",
+        "axis_type": "WEICHENVERBINDUNG",
+    },
+    ["WVB:14-22"],
+)
+assert not _should_reassign_existing_segment_identity(
+    wvb_axis,
+    {
+        "object_key": "WVB:19-20",
+        "axis_type": "WEICHENVERBINDUNG",
+    },
+    [],
+)
+assert not _should_reassign_existing_segment_identity(
+    wvb_axis,
+    {
+        "object_key": "WVB:14-22",
+        "axis_type": "WEICHENVERBINDUNG",
+    },
+    ["WVB:14-22"],
+)
+assert not _should_reassign_existing_segment_identity(
+    admin_corrected_axis,
+    {
+        "object_key": "WVB:14-22",
+        "axis_type": "WEICHENVERBINDUNG",
+    },
+    ["WVB:14-22"],
+)
 
 existing_axis = {
     "route_number": "5524",
