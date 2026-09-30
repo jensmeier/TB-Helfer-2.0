@@ -820,3 +820,9 @@ Noch offen:
 - KM-Qualität: 17 Segmente `FEHLT`, nur 4 `AUTOMATISCH`.
 - 20 Achsen / 21 Segmente: mindestens eine Achse besitzt zwei aktive Segmente; zunächst read-only Ursache/Quellen prüfen.
 - Portal-Multi-Hit nach frischem Import noch praktisch offen.
+
+### REF-DATA-003 – Pasing-KM-Gate fachlich angepasst 30.09.2026
+- `km_quality=FEHLT` bei Pasing ist **erwartet**, solange der Benutzer noch keinen manuellen Start-/Endabschnitt mit KM-Ankern gesetzt hat.
+- Ein grüner Automatikstatus ist für diese Daten **kein Pflichtkriterium**.
+- E2E für Pasing-KM wird erst nach Android-Manuellabschnitt geprüft: Abschnitt anlegen → synchronisieren → serverseitig als MANUELL/ORANGE sichtbar → auf anderem Gerät abrufbar.
+- Aktueller Search/Availability/Geometry-Test bleibt deshalb trotz 17× FEHLT gültig; der KM-Teil ist fachlich offen, nicht technisch fehlgeschlagen.
