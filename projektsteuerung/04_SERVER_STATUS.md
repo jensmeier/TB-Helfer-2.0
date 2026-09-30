@@ -934,3 +934,12 @@ Status: **SOURCE FERTIG / RUNTIME OFFEN**
 - Der vorliegende Screenshot zeigt nicht den Systemstatus `19/19`; Migration 019 deshalb in der Dokumentation erst nach separatem Systemstatus-/Migrationstabellen-Nachweis als 19/19 bestätigen.
 - Nächster Runtime-Schritt: WVB 10-11 / 14-22 / 19-20 mit Originalname, Achse, `object_key` und Segmentzahl gegenüberstellen; danach Pasing-Prefill, Multi-Hit und „Problem ansehen“ praktisch testen.
 
+
+## REF-DATA-003 – Migration019 bestätigt, WVB 19-20 Fehlzuordnung reproduziert 30.09.2026
+Status: **MIGRATION 19/19 BESTÄTIGT / REINDEX FEHLERFREI / WVB-FACHFEHLER REPRODUZIERT**
+- Synology/API-Terminal bestätigt Migrationen: known=19, applied=19, pending=[], latest_known=19, latest_applied=19.
+- Reindex bleibt fehlerfrei: 40 Originale vollständig bilanziert, failures=0.
+- Read-only-WVB-Abfrage zeigt WVB 10-11 korrekt auf `object_key=WVB:10-11` und WVB 14-22 korrekt auf `object_key=WVB:14-22`.
+- Reproduzierter Fehler: `WVB_19-20_ER0_GGP2026_02_16.TRA` ist fälschlich derselben Katalogachse wie WVB 14-22 zugeordnet; die Zeile zeigt `display_name=WVB_14-22_ER0_GGP2026_02_16.TRA`, `object_key=WVB:14-22`, `axis_segment_count=2`.
+- Damit erklärt sich die Verteilung 2× ALREADY_INDEXED_ENRICHED + 1× ALREADY_INDEXED: WVB 19-20 besitzt kein getrenntes Achsenobjekt, sondern wurde bereits vor dem Enrichment mit 14-22 zusammengeführt.
+- Keine Android-Änderung. Nächster SERVER-Schritt: Merge-/Kandidatenlogik für bestehende WVB-Segmente anhand object_key rückwirkend sicher trennen/reparieren, ohne Raw-Originale zu verändern; danach WVB-Abfrage und Pasing-Prefill/Multi-Hit/Problemfenster erneut runtime-prüfen.
