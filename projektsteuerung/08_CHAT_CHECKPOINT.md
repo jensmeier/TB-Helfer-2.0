@@ -1073,3 +1073,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - WVB 10-11, 14-22 und 19-20 sind enthalten; keine offenen Prüffälle.
 - Originaltabelle zeigt Daten nach `Liste aktualisieren`; unmittelbare Leerdarstellung nach Import ist nur noch als UI-Refresh-Beobachtung offen.
 - Nächster Schritt: im API-Terminal WVB-object_key/axis_id/Segmentzahl des frischen Imports read-only prüfen; danach API-Suche/Verfügbarkeit/Geometrie.
+
+## REF-DATA-003 – Frischer WVB-Readback Checkpoint 30.09.2026
+- Read-only-Abfrage nach frischem 40/40-Import bestätigt 10-11 und 14-22 direkt korrekt getrennt (je eigene Achse, passender object_key, MPB, Segmentzahl 1).
+- 19-20 ist im Screenshot nicht sichtbar; daher bewusst noch nicht als bestätigt markieren.
+- Nächster Terminalschritt: kompakte Query nur auf WVB-TRA, damit alle drei Fälle in drei Zeilen sichtbar sind.
