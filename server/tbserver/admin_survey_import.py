@@ -23,7 +23,7 @@ from .database import transaction
 from .events import audit, emit_change
 from .files import _absolute_storage_path, _safe_name
 from .survey_parser import PARSER_VERSION, UnsupportedSurveyFormat, parse_survey_original
-from .survey_catalog import index_original_in_tx
+from .survey_catalog import index_original_in_tx, refresh_original_assignment_in_tx
 from .survey_preview import build_survey_preview
 
 
@@ -52,6 +52,7 @@ class SurveyImportDecision(BaseModel):
     station_code: str | None = Field(default=None, max_length=50)
     station_name: str | None = Field(default=None, max_length=240)
     source_date: date | None = None
+    overwrite_existing: bool = False
 
 
 class SurveyImportPlan(BaseModel):
@@ -345,6 +346,7 @@ def _install_original(
     station_code: str | None,
     station_name: str | None,
     source_date: date | None,
+    overwrite_existing: bool = False,
     user: dict[str, Any],
 ) -> dict[str, Any]:
     normalized_kind = kind.strip().upper()
@@ -368,6 +370,11 @@ def _install_original(
             inferred_route, inferred_track = _parsed_route_track(parsed)
             effective_station_code = (station_code or "").strip().upper() or None
             effective_station_name = (station_name or "").strip() or None
+            effective_object_key = (
+                (object_key or "").strip().upper()
+                or str(parsed.get("payload", {}).get("object_key_from_name") or "").strip().upper()
+                or None
+            )
             worksite: dict[str, Any] | None = None
             if normalized_scope == _SCOPE_WORKSITE:
                 if worksite_id is None:
@@ -385,7 +392,7 @@ def _install_original(
                 effective_station_name = effective_station_name or (str(worksite.get("station_name") or "").strip() or None)
                 cur.execute(
                     """
-                    SELECT id, original_name, imported_at
+                    SELECT id, original_name, imported_at, route_number, track_key, data_kind, metadata
                     FROM tb.survey_originals
                     WHERE company_id = %s
                       AND sha256 = %s
@@ -401,7 +408,7 @@ def _install_original(
                 effective_track = (track_key or inferred_track or "").strip() or None
                 cur.execute(
                     """
-                    SELECT id, original_name, imported_at
+                    SELECT id, original_name, imported_at, route_number, track_key, data_kind, metadata
                     FROM tb.survey_originals
                     WHERE company_id IS NULL
                       AND sha256 = %s
@@ -414,14 +421,137 @@ def _install_original(
 
             duplicate = cur.fetchone()
             if duplicate:
+                duplicate = dict(duplicate)
+                existing_metadata = (
+                    dict(duplicate.get("metadata"))
+                    if isinstance(duplicate.get("metadata"), dict)
+                    else {}
+                )
+                existing_assignment = {
+                    "route_number": (str(duplicate.get("route_number") or "").strip() or None),
+                    "track_key": (str(duplicate.get("track_key") or "").strip() or None),
+                    "object_key": (str(existing_metadata.get("object_key") or "").strip().upper() or None),
+                    "station_code": (str(existing_metadata.get("station_code") or "").strip().upper() or None),
+                    "station_name": (str(existing_metadata.get("station_name") or "").strip() or None),
+                    "source_date": existing_metadata.get("source_date"),
+                }
+                requested_assignment = {
+                    "route_number": effective_route,
+                    "track_key": effective_track,
+                    "object_key": effective_object_key,
+                    "station_code": effective_station_code,
+                    "station_name": effective_station_name,
+                    "source_date": (
+                        source_date.isoformat()
+                        if source_date is not None
+                        else existing_assignment.get("source_date")
+                    ),
+                }
+                changes = {
+                    key: {"before": existing_assignment.get(key), "after": value}
+                    for key, value in requested_assignment.items()
+                    if existing_assignment.get(key) != value
+                }
+                if not changes:
+                    return {
+                        "name": original_name,
+                        "kind": normalized_kind,
+                        "scope": normalized_scope,
+                        "status": "DUPLIKAT",
+                        "message": duplicate_message,
+                        "original_id": str(duplicate["id"]),
+                        "parse_status": None,
+                    }
+                if not overwrite_existing:
+                    return {
+                        "name": original_name,
+                        "kind": normalized_kind,
+                        "scope": normalized_scope,
+                        "status": "VORHANDEN_ABWEICHEND",
+                        "message": (
+                            "Datei ist bereits vorhanden, aber die fachliche Zuordnung weicht ab. "
+                            "Vorhandene Zuordnung nur nach ausdrücklicher Bestätigung aktualisieren."
+                        ),
+                        "original_id": str(duplicate["id"]),
+                        "parse_status": None,
+                        "can_overwrite": True,
+                        "changes": changes,
+                        "station_code": effective_station_code,
+                        "station_name": effective_station_name,
+                    }
+
+                updated_metadata = dict(existing_metadata)
+                updated_metadata["source"] = updated_metadata.get("source") or "ADMIN_WEB"
+                updated_metadata["scope"] = normalized_scope
+                for key in ("object_key", "station_code", "station_name"):
+                    value = requested_assignment.get(key)
+                    if value is None:
+                        updated_metadata.pop(key, None)
+                    else:
+                        updated_metadata[key] = value
+                if requested_assignment.get("source_date") is None:
+                    updated_metadata.pop("source_date", None)
+                else:
+                    updated_metadata["source_date"] = requested_assignment["source_date"]
+
+                cur.execute(
+                    """
+                    UPDATE tb.survey_originals
+                    SET route_number=%s,track_key=%s,metadata=%s
+                    WHERE id=%s
+                    RETURNING *
+                    """,
+                    (
+                        requested_assignment["route_number"],
+                        requested_assignment["track_key"],
+                        Jsonb(updated_metadata),
+                        duplicate["id"],
+                    ),
+                )
+                updated_original = dict(cur.fetchone())
+                catalog_result = refresh_original_assignment_in_tx(
+                    cur,
+                    duplicate["id"],
+                    user["user_id"],
+                )
+                audit(
+                    cur,
+                    action="ADMIN_SURVEY_ORIGINAL_ASSIGNMENT_UPDATE",
+                    actor_user_id=user["user_id"],
+                    company_id=company_id or user.get("company_id"),
+                    worksite_id=worksite_id if worksite is not None else None,
+                    entity_type="SURVEY_ORIGINAL",
+                    entity_id=duplicate["id"],
+                    details={
+                        "changes": changes,
+                        "sha256": sha256,
+                        "byte_size": size,
+                        "catalog_status": catalog_result.get("status"),
+                        "source": "ADMIN_WEB_DUPLICATE_CORRECTION",
+                    },
+                )
                 return {
                     "name": original_name,
                     "kind": normalized_kind,
                     "scope": normalized_scope,
-                    "status": "DUPLIKAT",
-                    "message": duplicate_message,
+                    "route_number": updated_original.get("route_number"),
+                    "track_key": updated_original.get("track_key"),
+                    "object_key": requested_assignment.get("object_key"),
+                    "station_code": requested_assignment.get("station_code"),
+                    "station_name": requested_assignment.get("station_name"),
+                    "source_date": requested_assignment.get("source_date"),
+                    "catalog": catalog_result,
+                    "status": "AKTUALISIERT",
+                    "message": "Vorhandenes Original beibehalten; fachliche Zuordnung wurde aktualisiert.",
                     "original_id": str(duplicate["id"]),
-                    "parse_status": None,
+                    "imported_at": duplicate.get("imported_at"),
+                    "byte_size": size,
+                    "sha256": sha256,
+                    "parse_status": parsed["status"],
+                    "detected_format": parsed["detected_format"],
+                    "warnings": parsed["warnings"],
+                    "error_detail": parsed["error_detail"],
+                    "changes": changes,
                 }
 
             original_id = uuid4()
@@ -436,11 +566,6 @@ def _install_original(
                 "source": "ADMIN_WEB",
                 "scope": normalized_scope,
             }
-            effective_object_key = (
-                (object_key or "").strip().upper()
-                or str(parsed.get("payload", {}).get("object_key_from_name") or "").strip().upper()
-                or None
-            )
             if effective_object_key:
                 metadata["object_key"] = effective_object_key
             if effective_station_code:
@@ -820,6 +945,7 @@ def import_analyzed_survey(
                                     station_code=decision.station_code,
                                     station_name=decision.station_name,
                                     source_date=decision.source_date,
+                                    overwrite_existing=decision.overwrite_existing,
                                     user=user,
                                 )
                             )
@@ -863,14 +989,21 @@ def import_analyzed_survey(
                         station_code=decision.station_code,
                         station_name=decision.station_name,
                         source_date=decision.source_date,
+                        overwrite_existing=decision.overwrite_existing,
                         user=user,
                     )
                 )
-        shutil.rmtree(session_dir, ignore_errors=True)
+        needs_confirmation = any(
+            str(item.get("status") or "") == "VORHANDEN_ABWEICHEND"
+            for item in results
+        )
+        if not needs_confirmation:
+            shutil.rmtree(session_dir, ignore_errors=True)
         return {
             "analysis_id": str(analysis_id),
             "source_name": meta.get("filename"),
             "results": results,
+            "needs_confirmation": needs_confirmation,
         }
     except Exception:
         try:
@@ -893,6 +1026,7 @@ async def import_survey_file(
     station_code: str | None = Query(default=None, max_length=50),
     station_name: str | None = Query(default=None, max_length=240),
     source_date: date | None = Query(default=None),
+    overwrite_existing: bool = Query(default=False),
     user: dict[str, Any] = Depends(require_admin_csrf),
 ) -> dict:
     normalized_scope = _normalize_scope(scope)
@@ -937,6 +1071,7 @@ async def import_survey_file(
                                 station_code=station_code,
                                 station_name=station_name,
                                 source_date=source_date,
+                                overwrite_existing=overwrite_existing,
                                 user=user,
                             )
                             results.append(result)
@@ -964,6 +1099,7 @@ async def import_survey_file(
             station_code=station_code,
             station_name=station_name,
             source_date=source_date,
+            overwrite_existing=overwrite_existing,
             user=user,
         )
         return {"results": [result]}
