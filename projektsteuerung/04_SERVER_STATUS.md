@@ -819,3 +819,10 @@ Status: **RESET ERFOLGREICH**
 - Survey-Originale, Parserkatalog, Katalog-Assets/Achsen/Segmente/Konflikte/History danach 0.
 - Resetpfad damit praktisch bestätigt.
 - Nächster Fachschritt: Pasing vollständig mit MPB neu importieren.
+
+## REF-DATA-003 – Strecke/Gleis/WVB/Überlagerung Audit offen
+Status: **RUNTIMEBEFUNDE DOKUMENTIERT / URSACHE NOCH ZU PRÜFEN**
+- Strecke wird in manchen Gruppen erkannt (Titel/Badge), aber nicht in das Decision-Feld übernommen.
+- WVB ist klassifiziert, aber Strecke/Achsidentität teilweise leer; echter Prüffall `NEARBY_GEOMETRY_NOT_MATCHING` auf WVB_14-22 vorhanden.
+- Admin-Grafik muss nahe/überlagerte Trassen mindestens so eindeutig vergleichbar machen wie die Android-Grafik.
+- Noch kein Code geändert; zuerst Parser/Grouping/Decision-Prefill + Katalog-Merge sowie Android-Suche prüfen.

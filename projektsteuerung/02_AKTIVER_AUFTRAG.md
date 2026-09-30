@@ -1850,3 +1850,15 @@ Neue Anforderung 30.09.2026:
 - Physisches endgültiges Löschen von Original + Katalog ist ein gesonderter Admin-/Testvorgang mit Schutzprüfung; Staging-Komplettreset bleibt davon getrennt.
 - Die spätere Trassendatenübersicht braucht pro Datensatz/Achse klare Aktionen: `Ändern`, `Deaktivieren/Ausblenden`, `Ersetzen/Neuimport`, sowie für zulässige Adminfälle `Endgültig löschen`.
 - Nutzerbeiträge vom Handy folgen demselben versionierten Katalogprinzip; Originalquellen werden nicht überschrieben.
+
+#### REF-DATA-003 – Runtimebefunde Strecke/Gleis/WVB/Überlagerung 30.09.2026
+Neue Benutzerbeobachtungen nach sauberem Staging-Reset und Pasing-Neuimport:
+- Gruppenüberschrift/Badges erkennen teils Strecke korrekt, aber das editierbare Feld `Strecke` bleibt leer. Sichtbare Beispiele:
+  - `Gl 12 · Str 5529` / Badge `Strecke 5529`, Eingabefeld Strecke leer;
+  - `Gl 714 · Str 5528` / Badge `Strecke 5528`, Eingabefeld Strecke leer.
+- Andere Gruppen wie `Gl 21 · Str 5528` übernehmen die Strecke korrekt. Ursache daher nicht pauschal „Parser erkennt Strecke nicht“, sondern Inkonsistenz zwischen Analyse-/Gruppenerkennung und Decision-Vorbelegung.
+- Android-Verhalten für Suche `Betriebsstelle MPB + Gleis 27` muss gegen aktuellen Quellstand geprüft werden. Fachziel: Bahnhof/Gleis darf nicht allein wegen fehlender/abweichender Streckennummer unsichtbar werden, sofern die Betriebsstellen-/Gleisidentität eindeutig ist.
+- WVB/Weichenverbindungen werden als `WEICHENVERBINDUNG` erkannt, besitzen im gezeigten Fall aber keine Strecke und keine Gleis-/Achseingabe. Zusätzlich meldet Server für `WVB_14-22_ER0_GGP2026_02_16.TRA` einen Prüffall `NEARBY_GEOMETRY_NOT_MATCHING`.
+- Zu klären: ob WVB aus Dateiname/Geometrie mit den beteiligten Weichen bzw. Anschlussachsen fachlich verknüpft werden kann und ob WVB ohne eigene Streckennummer trotzdem korrekt Bahnhof MPB zugeordnet und auffindbar bleibt.
+- Android-Grafik zeigt zwei nahe/teilweise übereinanderliegende Trassen/Achsen gleichzeitig. Die Admin-Analyse muss diese Gesamtüberlagerung ebenfalls sichtbar machen, damit falsche Doppelachsen/Parallelachsen vor Import/Entscheidung erkannt werden können.
+- Vor Änderungen Ursache in SERVER-Analyse/Decision-Vorbelegung und ANDROID-Such-/Darstellungslogik prüfen.

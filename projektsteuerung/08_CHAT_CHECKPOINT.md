@@ -931,3 +931,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Testbestand ist damit sauber leer.
 - Nächster Schritt: kompletter Neuimport Pasing mit MPB.
 - Für späteren Normalbetrieb gilt nicht Komplettreset, sondern versioniertes Ändern/Deaktivieren/Ersetzen und geschütztes Einzel-Löschen.
+
+## REF-DATA-003 – Auditcheckpoint Strecke/Gleis/WVB/Überlagerung 30.09.2026
+- Sichtbare Beispiele: Gl 12 / Str 5529 und Gl 714 / Str 5528 werden erkannt, aber Streckenfeld bleibt leer; Gl 21/23 übernehmen 5528 korrekt.
+- WVB 10-11/14-22 sind als Weichenverbindung erkannt, aber Strecke/Gleis fehlen; Mail-Prüffall WVB_14-22 = NEARBY_GEOMETRY_NOT_MATCHING.
+- Android zeigt nahe/überlagerte Trassen gleichzeitig; Admin-Analyse soll das ebenfalls eindeutig zeigen.
+- Android-Suche MPB + Gl 27 wird gegen Live-Quellstand geprüft; keine Android-Änderung im SERVER-Block ohne dokumentierten Bedarf.

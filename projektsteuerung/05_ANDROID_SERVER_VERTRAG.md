@@ -593,3 +593,10 @@ Status: **SERVERVERTRAG NACHGESCHÄRFT**
 - Wird ein falscher Beitrag deaktiviert, verschwindet er aus der aktiven zusammengesetzten Sicht, bleibt aber in Historie/Audit nachvollziehbar.
 - Neuere Originaldaten ergänzen/ersetzen nur belegte Bereiche nach den Server-Merge-Regeln.
 - Physisches Löschen von globalen Originalen bleibt Admin-/Serveraufgabe.
+
+#### REF-DATA-003 – Suchidentität Bahnhof/Gleis/Strecke + WVB
+Status: **AUDIT OFFEN**
+- Android-Suche muss für Betriebsstellenbestand prüfen, ob `station_code + track_key` als eindeutige Suchidentität genügt und `route_number` nur zusätzlich filtert, statt zwingend zu sein.
+- Bei mehreren gleichnamigen Gleisen an derselben Betriebsstelle bzw. mehreren Strecken bleibt eine eindeutige Auflösung notwendig; dann darf Strecke als Disambiguierung verlangt werden.
+- WVB/Weichenverbindungen sind als eigene fachliche Objekte zu behandeln; fehlende eigene Streckennummer darf eine Betriebsstellenzuordnung nicht verhindern.
+- SERVER-Projekt ändert hierfür kein `app/**`; Android-Quellstand wird nur gelesen/auditiert.
