@@ -809,3 +809,14 @@ Noch offen:
 - Alle drei Achsen-IDs sind verschieden.
 - Nachweis direkt nach frischem Import, ohne Reindex/Reassign.
 - WVB-Neuimport-Gate damit abgeschlossen. Offen bleiben Search/Availability/Geometry und Portal-Multi-Hit; Problemfenster nur bei realem REVIEW_REQUIRED-Fall.
+
+### REF-DATA-003 – MPB Catalog API Gate 30.09.2026
+**BESTANDEN:**
+- Search MPB: 20 Achsen, Station MPB, 40 Assets, WVB sichtbar.
+- Availability MPB: AVAILABLE, 20 Achsen, 21 aktive Segmente, 0 Review.
+- Geometry MPB: 21 Segmente mit Punktgeometrie, einschließlich WVB 10-11/14-22/19-20.
+
+**NICHT ALS FACHLICH FERTIG WERTEN:**
+- KM-Qualität: 17 Segmente `FEHLT`, nur 4 `AUTOMATISCH`.
+- 20 Achsen / 21 Segmente: mindestens eine Achse besitzt zwei aktive Segmente; zunächst read-only Ursache/Quellen prüfen.
+- Portal-Multi-Hit nach frischem Import noch praktisch offen.
