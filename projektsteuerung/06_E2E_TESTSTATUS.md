@@ -835,3 +835,14 @@ Noch offen. Soll nach Umsetzung bestätigen:
 - Raw-Datei/sha256 bleiben unverändert;
 - Audit/History nachvollziehbar;
 - Search/Availability/Geometry zeigen danach nur die neue fachliche Zuordnung.
+
+### REF-DATA-005 – Duplicate-Korrektur Runtime-Gate
+Source: **FERTIG**, Runtime: **OFFEN**.
+Pflichttest nach Deploy:
+1. sauberen Testbestand importieren;
+2. dieselbe ZIP unverändert mit identischer Zuordnung erneut senden → nur DUPLIKAT, keine Änderung;
+3. dieselbe ZIP mit geänderter/ergänzter Betriebsstelle erneut senden → zuerst VORHANDEN_ABWEICHEND + Vorher→Nachher, noch keine DB-Änderung;
+4. Checkbox setzen + Sicherheitsdialog bestätigen → AKTUALISIERT;
+5. Original-ID, SHA256 und Raw-Datei bleiben gleich; kein zweites Original;
+6. Originaltabelle + Search/Availability/Geometry zeigen die neue Zuordnung;
+7. History/Audit vorhanden; keine offenen Konflikte erzeugt.
