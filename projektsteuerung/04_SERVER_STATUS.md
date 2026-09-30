@@ -974,3 +974,12 @@ Status: **RUNTIME BESTÄTIGT**
   - 19-20 → eigener axis_id, `WVB:19-20`, Segmentzahl 1.
 - Der alte gemeinsame 14-22/19-20-Achsbestand ist damit fachlich getrennt.
 - Keine weitere Serveränderung für diesen Fehler nötig. Nächster Runtimeblock: Pasing-Prefill, Multi-Hit, Konfliktfenster, danach Search/Availability/Geometry.
+
+## REF-DATA-003 – UI-Nacharbeit + erneuter Staging-Neuimport gewünscht 30.09.2026
+Status: **ANFORDERUNG / FEHLERFESTSTELLUNG DOKUMENTIERT**
+- Begriff `Ziel nach Analyse` ist für den Benutzer nicht verständlich genug; Bezeichnung soll fachlich klarer werden (z. B. `Speicherziel` / `Datenbestand`).
+- Bei `Globaler Referenzbestand` soll das deaktivierte Feld `Firma / Baustelle` nicht weiter sichtbar bleiben; es wirkt wie eine weiterhin relevante Auswahl und soll im Global-Fall ausgeblendet werden.
+- Admin-Dashboard zeigt pro Firma weiterhin die feste Speicher-Kategorie `Trassierungsdaten` auch bei `0 B`; klären/erläutern, dass dies nur eine Speicher-Kategorie ist und nicht bedeutet, dass globale Referenzdaten der Firma gehören.
+- Benutzer möchte den aktuellen Staging-Streckendaten-/Vermessungsbestand erneut vollständig löschen und anschließend dieselben Daten frisch hochladen, um den Gesamtpfad erneut zu testen.
+- Löschung ausschließlich über den vorhandenen geschützten Survey-Testdaten-Reset (Preview + Bestätigungstext, nur staging/dev/test); keine manuelle DB-/Dateisystem-Löschung.
+- Vor Codeänderung zuerst vorhandene Reset-UI/-Endpunkte und Dashboard-/Import-Template prüfen; anschließend gezielt UI-Bezeichnungen/Sichtbarkeit nacharbeiten.
