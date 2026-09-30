@@ -1102,3 +1102,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - 5302L/302 und 5302R/303 sind sichtbar vorbelegt.
 - Bestehender fehlzugeordneter Import bleibt vorerst unangetastet; kein erneuter Duplikatimport.
 - Nächster Schritt: read-only Null-Station-Bestand im API-Terminal auflisten, danach gezielte Korrektur nur für Gessertshausen planen.
+
+## REF-DATA-005 – Entscheidung Vollreset + Korrekturworkflow 30.09.2026
+- Nutzer möchte jetzt nochmals alle Survey-Testdaten löschen.
+- Für die Zukunft soll ein vergessenes Importfeld nicht mehr zum globalen Reset zwingen.
+- Ziel: vorhandene identische Datei erkennen, fachliche Abweichung anzeigen und nach ausdrücklicher Bestätigung die vorhandene Zuordnung aktualisieren statt ein zweites Original anzulegen.
