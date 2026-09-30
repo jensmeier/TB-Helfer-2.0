@@ -963,3 +963,14 @@ Status: **SOURCE KORRIGIERT / NICHT DEPLOYT / E2E OFFEN**
 ### Source-Check Legacy-WVB-Guard 30.09.2026
 - Isolierter Logiktest der aus GitHub gelesenen Guard-Funktion: **4/4 PASS** (Legacy-Mismatch mit bestätigendem Geschwister-Original = reparierbar; ohne Beleg = nein; gleicher object_key = nein; abweichender/manuell wirkender Achs-key = nein).
 - Das ist **nur ein Source-/Logikcheck**, kein Test des DB-Umhängens und kein Synology-E2E.
+
+## REF-DATA-003 – Legacy-WVB-Reparatur Runtime BESTÄTIGT 30.09.2026
+Status: **RUNTIME BESTÄTIGT**
+- Reindex im API-Container: 64 Originale, Parser v4, reparsed=0, 36 ALREADY_INDEXED, 27 INDEXED_ASSET, 1 ALREADY_INDEXED_REASSIGNED, failures=0.
+- Der Reparaturfall ist genau einmal angesprungen; das entspricht dem zuvor nachgewiesenen Altfehler WVB 19-20.
+- WVB-Zielzustand nach read-only-Abfrage:
+  - 10-11 → eigener axis_id, `WVB:10-11`, Segmentzahl 1;
+  - 14-22 → eigener axis_id, `WVB:14-22`, Segmentzahl 1;
+  - 19-20 → eigener axis_id, `WVB:19-20`, Segmentzahl 1.
+- Der alte gemeinsame 14-22/19-20-Achsbestand ist damit fachlich getrennt.
+- Keine weitere Serveränderung für diesen Fehler nötig. Nächster Runtimeblock: Pasing-Prefill, Multi-Hit, Konfliktfenster, danach Search/Availability/Geometry.
