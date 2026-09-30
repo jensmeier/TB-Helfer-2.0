@@ -781,3 +781,17 @@ Pflichttest:
 - MPB/Betriebsstelle auf die Pasing-Gruppen anwenden.
 - Import tatsächlich ausführen und Resultate prüfen.
 - Danach W/WVB object_key, Multi-Hit, ggf. Prüffälle/Problemfenster sowie Search/Availability/Geometry E2E prüfen.
+
+### REF-DATA-003 – Frischer Pasing/MPB-Import Gate BESTANDEN 30.09.2026
+- Vorbedingung: Survey-Testbestand vollständig 0.
+- Danach frischer Import derselben Pasing-Daten: **40/40 importiert, 0 Duplikate, 0 übersprungen, 0 Fehler**.
+- GLOBAL + MPB-Zuordnung sichtbar bestätigt.
+- WVB 10-11 / 14-22 / 19-20 im Import enthalten.
+- Aktuell 0 offene Trassendaten-Prüffälle.
+- Originaltabelle zeigt die neuen Datensätze nach Listenaktualisierung.
+
+Noch offen:
+1. WVB 10-11 / 14-22 / 19-20 nach frischem Import read-only auf getrennte axis_id + passenden object_key + segment_count=1 prüfen.
+2. Search nach MPB/5528/WVB und Availability für MPB/Route testen.
+3. Geometry für MPB/5528 laden und Multi-Hit praktisch prüfen.
+4. Problemfenster nur dann E2E testen, wenn ein echter REVIEW_REQUIRED-Fall entsteht; aktuell kein offener Prüffall vorhanden.
