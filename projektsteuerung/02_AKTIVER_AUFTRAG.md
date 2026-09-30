@@ -1954,3 +1954,9 @@ Status: **SOURCE FERTIG**
 - Admin-Korrekturen werden nicht überschrieben.
 - Damit ist der zuvor dokumentierte Parser-v4-/Upgradebedarf source-seitig geschlossen.
 - Noch offen: Synology-Deployment 18/18 + Pasing-Runtime-Gate.
+
+#### REF-DATA-003 – Runtimefehler Reindex 3/40
+- Synology 18/18 und Parser v4 sind bestätigt.
+- Alle 40 Originale wurden im Lauf als stale erkannt und reparst.
+- 18 bereits katalogisierte TRA: `ALREADY_INDEXED`; 19 Nicht-TRA/Assets: `INDEXED_ASSET`; 3 Exceptions.
+- Keine Änderung auf Verdacht. Nächster Schritt: exakte Dateinamen/Original-IDs + Exceptiontypen der drei Fehler ermitteln.

@@ -1009,3 +1009,13 @@ GitHub Actions zu diesem HEAD: Jobs erneut mit `steps=[]` → **kein CI-Testnach
 
 Nächster Runtime-Gate:
 Synology aktualisieren → Migration 18/18 → Reindex ausführen → `reparsed`/`ALREADY_INDEXED_ENRICHED` prüfen → Pasing/MPB-Prefill, W/WVB object_key, Multi-Hit und Problemfenster praktisch testen.
+
+## REF-DATA-003 – Migration18/Parser-v4 Runtimebasis bestätigt 30.09.2026
+Status: **DEPLOYT / RUNTIMEBASIS TEILBESTÄTIGT / REINDEX FEHLERHAFT**
+- Systemstatus Synology: Migrationen **18 / 18**, latest **18 / 18**, ausstehend: keine.
+- API staging läuft; Datenbank, interne API, Worker und öffentliche API zeigen OK.
+- Containerprüfung: `PARSER_VERSION = tb-survey-parser-4`.
+- Reindex-Lauf: `original_count=40`, `reparsed=40`, `statuses={ALREADY_INDEXED:18, INDEXED_ASSET:19}`, `failures=3`.
+- Damit sind Migration 018 und Parser-v4-Deployment praktisch bestätigt.
+- Das Reindex-/Upgrade-Gate ist **nicht bestanden**, weil 3 Originale mit Exception ausfallen.
+- Vor Codeänderung müssen die drei betroffenen Originale und exakten Exceptions ermittelt werden.

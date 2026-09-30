@@ -669,3 +669,11 @@ Zusätzlich zu den bestehenden 10 Pasing-Fällen prüfen:
 6. Reindex endet mit `failures = 0`.
 
 Diese Punkte sind Source-verifiziert, aber erst nach Synology-Lauf ein Runtime-/E2E-Nachweis.
+
+### REF-DATA-003 – Runtimebasis 18/18 + v4 bestätigt, Reindex noch ROT
+- Migration 18/18: **BESTÄTIGT**.
+- Parser `tb-survey-parser-4`: **BESTÄTIGT**.
+- Reparse alter Bestände: **BESTÄTIGT** (`reparsed=40`).
+- Reindex `failures=0`: **NICHT BESTÄTIGT**; aktuell `failures=3`.
+- Deshalb noch keine Freigabe für Pasing-Fach-E2E/Trassendatenübersicht.
+- Nächster Test: drei fehlgeschlagene Originale mit konkreter Exception identifizieren.

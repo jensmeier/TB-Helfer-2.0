@@ -982,3 +982,11 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Source-Audit: 23/23 PASS.
 - Actions erneut ohne Runner-Steps (`steps=[]`) → kein Testnachweis.
 - Nächster Schritt bleibt Synology: deployen, 18/18, Reindex, Pasing-Gate; keine Trassendatenübersicht vor diesem Runtime-Gate.
+
+## REF-DATA-003 – Synology Runtime 18/18 + Reindexfehler 30.09.2026
+- User-Screenshot bestätigt Systemstatus 18/18, keine ausstehenden Migrationen.
+- API staging/DB/interne API/Worker/öffentliche API OK.
+- Terminal bestätigt Parser `tb-survey-parser-4`.
+- Reindex-Ausgabe: `original_count=40`, `reparsed=40`, `ALREADY_INDEXED=18`, `INDEXED_ASSET=19`, `failures=3`.
+- Runtimebasis damit teilweise bestätigt; Upgrade-E2E bleibt wegen 3 Fehlern offen.
+- Keine Spekulation/Codeänderung, bis Dateinamen und Exceptiontexte der drei Fehler vorliegen.

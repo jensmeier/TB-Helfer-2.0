@@ -902,3 +902,11 @@ Schutzregeln:
 Audit: 23/23 Source-Marker PASS.
 Actions: `steps=[]`, kein CI-Nachweis.
 Runtime offen: Migration 018, v4-Reparse/Reindex und Pasing-Fach-E2E.
+
+## REF-DATA-003 – Runtimebefund Reindex failures=3
+Status: **MIGRATION 18 BESTÄTIGT / PARSER v4 BESTÄTIGT / REINDEX FEHLER OFFEN**
+- Synology-Systemstatus: 18/18, pending leer.
+- Parser im API-Container: `tb-survey-parser-4`.
+- Reindex: 40 Originale, 40 reparsed, 18 ALREADY_INDEXED, 19 INDEXED_ASSET, 3 failures.
+- Die drei Exceptions werden im aktuellen Reindex-Ergebnis nur gezählt; Ursache ist noch nicht bekannt.
+- Vor Fix: betroffene Originale einzeln identifizieren und Exceptiontext erfassen.
