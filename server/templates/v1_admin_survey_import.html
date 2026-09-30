@@ -33,7 +33,7 @@
   .graphic-side{display:grid;gap:10px}.info-box{border:1px solid #eaecf0;border-radius:10px;padding:11px;background:#fff}.info-box h3{margin:0 0 5px;font-size:14px}
   .analysis-items{display:grid;gap:11px;margin-top:14px}.analysis-item{border:1px solid #d0d5dd;border-radius:12px;padding:12px;background:#fff}.analysis-item.skip{background:#f8fafc;color:#667085}
   .analysis-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.facts{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.fact{font-size:11px;border:1px solid #e4e7ec;background:#f9fafb;border-radius:999px;padding:3px 7px}.fact.warn{border-color:#f7c56d;background:#fffbeb;color:#8a4b08}
-  .decision-grid{display:grid;grid-template-columns:1fr 1.25fr 1.35fr .8fr .8fr;gap:9px;margin-top:11px}.analysis-item.global-target .decision-grid{grid-template-columns:1fr 1.35fr .8fr .8fr}.worksite-cell.disabled{opacity:.45}.import-toggle{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px}
+  .decision-grid{display:grid;grid-template-columns:1.6fr .8fr .8fr;gap:9px;margin-top:11px}.import-toggle{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px}
   .station-default-box{margin:10px 0 12px}.station-picker{position:relative}.station-suggestions{display:none;position:absolute;z-index:40;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #d0d5dd;border-radius:10px;box-shadow:0 12px 28px rgba(16,24,40,.14);max-height:280px;overflow:auto}.station-suggestions.show{display:block}.station-suggestion{display:block;width:100%;border:0;border-bottom:1px solid #f2f4f7;border-radius:0;background:#fff;color:#101828;text-align:left;padding:9px 11px}.station-suggestion:hover{background:#f5f8ff}.station-suggestion:last-child{border-bottom:0}.station-suggestion b{display:block}.station-suggestion small{color:#667085}.station-selected{margin-top:4px;font-size:11px;color:#667085}.station-selected.ok{color:#067647;font-weight:700}
   .range-list{display:grid;gap:8px}.range-row{display:grid;grid-template-columns:minmax(120px,180px) 1fr;gap:8px;align-items:center}.range-track{height:18px;background:#eef2f6;border-radius:9px;position:relative;overflow:hidden}.range-fill{height:100%;position:absolute;border-radius:9px;background:#4e8fe5;min-width:3px}.range-fill.station{background:#98a2b3}.range-label{font-size:11px;color:#667085}.range-section{display:grid;gap:7px}.range-section-title{font-size:11px;font-weight:850;color:#344054}.range-missing{font-size:11px;color:#b54708;border-top:1px solid #eaecf0;padding-top:7px}
   .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.legend-item{display:inline-flex;align-items:center;gap:5px;font-size:11px}.legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
@@ -147,25 +147,6 @@
     <button id="reloadConflicts" type="button" class="secondary">Prüffälle aktualisieren</button>
   </div>
   <div id="conflictList" class="conflict-list" style="margin-top:10px"></div>
-</div>
-
-<div class="card" id="surveyResetCard" style="display:none;border-left:4px solid #f79009">
-  <div class="headline">
-    <div>
-      <h2 style="margin-bottom:4px">Vermessungs-/Trassierungs-Testbestand zurücksetzen</h2>
-      <div class="muted">Nur Test/Staging. Löscht Vermessungsoriginale und den daraus erzeugten Survey-Katalog für einen sauberen Neuimport. Firmen, Benutzer, Baustellen und BTB bleiben erhalten.</div>
-    </div>
-    <button id="reloadSurveyResetPreview" type="button" class="secondary">Bestand prüfen</button>
-  </div>
-  <div id="surveyResetCounts" class="info-box" style="margin-top:10px">Bestand wird geprüft.</div>
-  <div style="margin-top:10px;max-width:620px">
-    <label for="surveyResetConfirm"><b>Bestätigung</b></label>
-    <input id="surveyResetConfirm" autocomplete="off" placeholder="VERMESSUNG TESTDATEN LOESCHEN">
-    <div class="muted" style="margin-top:4px">Zum Freischalten exakt <code>VERMESSUNG TESTDATEN LOESCHEN</code> eingeben.</div>
-  </div>
-  <div class="actions" style="margin-top:10px">
-    <button id="surveyResetButton" type="button" class="danger" disabled>Testbestand vollständig löschen</button>
-  </div>
 </div>
 
 <div id="conflictBackdrop" class="conflict-backdrop" aria-hidden="true">
@@ -439,8 +420,6 @@ function groupHtml(group,index){
     '<div class="muted" style="margin-top:7px;word-break:break-word">'+esc(files)+'</div>'+
     (warnings.length?'<ul class="warnings">'+warnings.slice(0,6).map(w=>'<li>'+esc(w)+'</li>').join('')+(warnings.length>6?'<li>… '+(warnings.length-6)+' weitere</li>':'')+'</ul>':'')+
     '<div class="decision-grid">'+
-      '<div><label>Speicherziel</label><select class="decision-scope"><option value="GLOBAL_REFERENCE">Gemeinsamer Referenzbestand</option><option value="COMPANY_WORKSITE_DATA">Firma / Baustelle</option></select></div>'+
-      '<div class="worksite-cell disabled"><label>Firma / Baustelle</label><select class="decision-worksite" disabled>'+worksiteOptions()+'</select></div>'+
       '<div class="station-picker decision-station-picker"><label>Bahnhof / Betriebsstelle</label><input class="station-search decision-station-search" autocomplete="off" placeholder="optional · z. B. Pasing"><input class="station-code decision-station-code" type="hidden"><input class="station-name decision-station-name" type="hidden"><div class="station-suggestions"></div><div class="station-selected">Keine Betriebsstelle zugeordnet.</div></div>'+
       '<div><label>Strecke</label><input class="decision-route" maxlength="80" value="'+esc(route)+'" placeholder="z. B. 5528"></div>'+
       lastField+
@@ -450,30 +429,11 @@ function groupHtml(group,index){
 }
 function wireDecisionControls(){
   document.querySelectorAll('.analysis-item[data-group-index]').forEach(card=>{
-    const scope=card.querySelector('.decision-scope'),ws=card.querySelector('.decision-worksite'),cell=card.querySelector('.worksite-cell'),route=card.querySelector('.decision-route'),track=card.querySelector('.decision-track'),objectField=card.querySelector('.decision-object'),station=card.querySelector('.decision-station-picker');
+    const route=card.querySelector('.decision-route'),track=card.querySelector('.decision-track'),objectField=card.querySelector('.decision-object'),station=card.querySelector('.decision-station-picker');
     wireStationPicker(station);
     if(route&&!route.value&&card.dataset.inferredRoute)route.value=card.dataset.inferredRoute;
     if(track&&!track.value&&card.dataset.inferredTrack)track.value=card.dataset.inferredTrack;
     if(objectField&&!objectField.value&&card.dataset.inferredObject)objectField.value=card.dataset.inferredObject;
-    const applyWorksiteDefaults=()=>{
-      if(scope.value==='GLOBAL_REFERENCE')return;
-      const option=ws.selectedOptions[0];
-      if(!option)return;
-      if(route&&!route.value&&option.dataset.route)route.value=option.dataset.route;
-      const current=stationPickerValue(station);
-      if(!current.code&&option.dataset.stationCode)setStationPicker(station,option.dataset.stationCode,option.dataset.stationName||'');
-    };
-    const sync=()=>{
-      const global=scope.value==='GLOBAL_REFERENCE';
-      ws.disabled=global;
-      cell.hidden=global;
-      cell.classList.toggle('disabled',global);
-      card.classList.toggle('global-target',global);
-      applyWorksiteDefaults();
-    };
-    scope.addEventListener('change',sync);
-    ws.addEventListener('change',applyWorksiteDefaults);
-    sync();
   });
 }
 function renderScanSummary(rows){
@@ -1109,17 +1069,16 @@ applyDefaultStation.addEventListener('click',()=>{
 clearDefaultStation.addEventListener('click',()=>setStationPicker(defaultStationPicker,'',''));
 
 function groupSettings(card){
-  const scope=card.querySelector('.decision-scope').value,ws=card.querySelector('.decision-worksite'),station=stationPickerValue(card.querySelector('.decision-station-picker'));
+  const station=stationPickerValue(card.querySelector('.decision-station-picker'));
   const track=card.querySelector('.decision-track');
   const objectField=card.querySelector('.decision-object');
-  return {enabled:card.querySelector('.decision-enabled').checked,scope,worksite_id:scope==='COMPANY_WORKSITE_DATA'?(ws?.value||null):null,route_number:card.querySelector('.decision-route').value.trim()||null,track_key:track?.value.trim()||null,object_key:(objectField?.value.trim().toUpperCase()||card.dataset.inferredObject||null),station_code:station.code,station_name:station.name,station_query:station.query};
+  return {enabled:card.querySelector('.decision-enabled').checked,scope:'GLOBAL_REFERENCE',worksite_id:null,route_number:card.querySelector('.decision-route').value.trim()||null,track_key:track?.value.trim()||null,object_key:(objectField?.value.trim().toUpperCase()||card.dataset.inferredObject||null),station_code:station.code,station_name:station.name,station_query:station.query};
 }
 function validateGroups(){
   let error='';
   document.querySelectorAll('.analysis-item[data-group-index]').forEach(card=>{
     if(error)return;
     const s=groupSettings(card);
-    if(s.enabled&&s.scope==='COMPANY_WORKSITE_DATA'&&!s.worksite_id)error='Für Firma/Baustelle muss eine Baustelle gewählt werden.';
     if(s.enabled&&s.station_query&&!s.station_code)error='Bahnhof/Betriebsstelle bitte aus der Referenzliste auswählen oder das Feld leer lassen.';
   });
   return error;
@@ -1175,64 +1134,6 @@ function renderConflictGeometry(data){
     conflictGraph.appendChild(poly);
   });
 }
-const surveyResetCard=document.getElementById('surveyResetCard');
-const surveyResetCounts=document.getElementById('surveyResetCounts');
-const surveyResetConfirm=document.getElementById('surveyResetConfirm');
-const surveyResetButton=document.getElementById('surveyResetButton');
-const reloadSurveyResetPreview=document.getElementById('reloadSurveyResetPreview');
-const SURVEY_RESET_TEXT='VERMESSUNG TESTDATEN LOESCHEN';
-
-function surveyResetCountRows(counts){
-  const labels={
-    survey_originals:'Originale',
-    survey_parse_catalog:'Parser-Auswertungen',
-    catalog_assets:'Katalog-Dateien',
-    catalog_axes:'Achsen',
-    catalog_segments:'Segmente',
-    catalog_conflicts:'Prüffälle',
-    catalog_history:'Historie',
-    survey_sections:'Survey-Streckenabschnitte',
-    track_source_links:'Quellverknüpfungen',
-    import_file_rows:'Import-Dateizeilen'
-  };
-  return Object.entries(labels).map(([key,label])=>'<div class="conflict-meta-row"><span>'+esc(label)+'</span><b>'+esc(Number(counts?.[key]||0).toLocaleString('de-DE'))+'</b></div>').join('');
-}
-async function loadSurveyResetPreview(){
-  try{
-    const {data}=await tbApi('/api/v1/admin/purge/survey-test-data');
-    surveyResetCard.style.display='block';
-    surveyResetCounts.innerHTML='<div><b>Umgebung: '+esc(data.environment||'Test')+'</b></div><div class="conflict-meta" style="margin-top:7px">'+surveyResetCountRows(data.counts||{})+'</div>';
-  }catch(_){
-    surveyResetCard.style.display='none';
-  }
-}
-function syncSurveyResetButton(){
-  surveyResetButton.disabled=surveyResetConfirm.value.trim().toUpperCase()!==SURVEY_RESET_TEXT;
-}
-surveyResetConfirm.addEventListener('input',syncSurveyResetButton);
-reloadSurveyResetPreview.addEventListener('click',loadSurveyResetPreview);
-surveyResetButton.addEventListener('click',async()=>{
-  if(surveyResetConfirm.value.trim().toUpperCase()!==SURVEY_RESET_TEXT)return;
-  if(!window.confirm('Vermessungs-/Trassierungs-Testbestand wirklich vollständig zurücksetzen?'))return;
-  surveyResetButton.disabled=true;
-  try{
-    const {data}=await tbApi('/api/v1/admin/purge/survey-test-data',{
-      method:'DELETE',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({confirm_text:SURVEY_RESET_TEXT})
-    });
-    show('ok','Testbestand zurückgesetzt · '+Number(data.removed_storage_keys||0).toLocaleString('de-DE')+' Originaldatei(en) entfernt.');
-    surveyResetConfirm.value='';
-    syncSurveyResetButton();
-    await loadSurveyResetPreview();
-    setTimeout(()=>location.reload(),700);
-  }catch(e){
-    show('err','Reset fehlgeschlagen: '+(e.message||String(e)));
-    syncSurveyResetButton();
-  }
-});
-loadSurveyResetPreview();
-
 async function loadConflicts(){
   try{
     const {data}=await tbApi('/api/v1/survey-catalog/conflicts?status=OPEN&limit=100');
