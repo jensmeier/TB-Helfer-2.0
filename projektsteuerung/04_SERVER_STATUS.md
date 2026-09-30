@@ -1000,3 +1000,12 @@ Status: **NEUE FACHENTSCHEIDUNG DOKUMENTIERT**
 - Das Feld/Segment `Trassierungsdaten` unter `Speicher nach Firma` soll aus der Dashboard-Firmenaufteilung entfernt werden; globale Referenzdaten gehören keiner Firma.
 - Benutzer möchte den aktuellen Survey-/Trassierungs-Testbestand jetzt ausdrücklich **im API-Container-Terminal** vollständig löschen und danach neu hochladen.
 - Dafür keinen freien SQL-Löschblock verwenden, sondern den vorhandenen FK-/Storage-sicheren Resetpfad als explizite Terminal-Funktion nutzbar machen; weiterhin nur dev/test/staging und nur mit exaktem Bestätigungstext.
+
+## REF-DATA-003 – Zentralimport/Terminal-Reset Sourceabschluss 30.09.2026
+Status: **SOURCE FERTIG / SYNLOGY-RUNTIME OFFEN**
+- Importkarte zeigt nur noch fachliche Zuordnungen Bahnhof/Betriebsstelle, Strecke und Gleis/Achse bzw. Objekt/Weiche/WVB. Kein `Speicherziel`, keine `Firma/Baustelle` mehr.
+- Der Admin-Import ist fest `GLOBAL_REFERENCE`; damit entfällt die unklare Frage, warum dieselben zentralen Referenzdaten unterschiedlich gespeichert werden sollten.
+- Dashboard-Firmenkarte zeigt keine `Trassierungsdaten 0 B`-Kategorie mehr.
+- Terminal-Reset nutzt denselben geschützten Kern wie der Admin-API-Reset; keine direkte freie SQL-Löschung nötig.
+- Preview-Terminalaufruf und Reset-Terminalaufruf stehen nach Deploy von `admin_purge.py` zur Verfügung.
+- Source-Commits: `0dc17765...` Adminimport, `45ed6d90...` Dashboard, `04c6630f...` Terminal-Helper, Checks `a37dcc6f...` / `4bd7fb04...` / `38cb0fa4...`.
