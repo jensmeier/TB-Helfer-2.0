@@ -1083,3 +1083,12 @@ Status: **ZUORDNUNG BESTÄTIGT / BESTEHENDER IMPORT NOCH UNKORRIGIERT**
 - Sichtbare Gruppen: Strecke 5302, Gleis/Achse 302 bzw. 303; Betriebsstelle jeweils korrekt als MGHN zugeordnet.
 - Noch **nicht erneut importieren**, weil der bereits gespeicherte Bestand ohne Betriebsstelle über Hash/Größe als Duplikat erkannt würde und dadurch nicht automatisch nachkorrigiert wird.
 - Nächster Schritt vor jeder Änderung: read-only feststellen, wie viele aktuell gespeicherte Survey-Originale noch keine station_code-Metadaten haben und welche Dateinamen betroffen sind. Pasing/MPB bleibt geschützt.
+
+## REF-DATA-005 – Vollreset + sichere Korrektur bei vergessenem Importfeld 30.09.2026
+Status: **NEUE FACHENTSCHEIDUNG / UMSETZUNG OFFEN**
+- Benutzer möchte den aktuellen Survey-/Trassierungs-Testbestand erneut vollständig löschen und anschließend sauber neu importieren.
+- Zusätzlich soll der Admin-Import künftig vergessene/falsch gesetzte fachliche Zuordnungen (z. B. Bahnhof/Betriebsstelle) ohne globalen Reset korrigieren können.
+- Gewünschtes Bedienprinzip: Wenn dieselbe Originaldatei bereits vorhanden ist, darf nicht nur stumpf `DUPLIKAT` erscheinen. Bei abweichender neuer Zuordnung soll eine klare Warnung erscheinen: **Daten bereits vorhanden – vorhandene Zuordnung aktualisieren/überschreiben?**
+- Rohdatei bleibt unverändert; überschrieben werden nur fachliche Zuordnung/Metadaten und daraus abgeleitete Katalogzuordnung. Vorgang muss bewusst bestätigt und auditierbar sein.
+- Identischer Reimport mit identischer Zuordnung bleibt ein normales Duplikat und erzeugt keine Änderung.
+- Pasing-/WVB-Schutzregeln bleiben fachlich gültig; der jetzt gewünschte Vollreset ist eine ausdrückliche Testdatenentscheidung des Benutzers.
