@@ -195,6 +195,8 @@ def admin_survey_import_page(
             """
             SELECT s.id, s.company_id, c.name AS company_name, s.route_number,
                    s.track_key, s.data_kind, s.original_name, s.byte_size,
+                   nullif(s.metadata->>'station_code','') AS station_code,
+                   nullif(s.metadata->>'station_name','') AS station_name,
                    s.imported_at, p.status AS parse_status,
                    p.detected_format, p.warnings, p.error_detail
             FROM tb.survey_originals s
