@@ -677,3 +677,11 @@ Diese Punkte sind Source-verifiziert, aber erst nach Synology-Lauf ein Runtime-/
 - Reindex `failures=0`: **NICHT BESTÄTIGT**; aktuell `failures=3`.
 - Deshalb noch keine Freigabe für Pasing-Fach-E2E/Trassendatenübersicht.
 - Nächster Test: drei fehlgeschlagene Originale mit konkreter Exception identifizieren.
+
+### REF-DATA-003 – Reindex failure Ursache BESTÄTIGT
+- 3/3 Fehler reproduziert und identisch.
+- Exception: `CheckViolation`.
+- Constraint: `survey_catalog_history_operation_check`.
+- Auslöser: History-Operation `ENRICH`.
+- Betroffene Dateien: WVB 10-11, WVB 14-22, WVB 19-20.
+- Damit ist die Ursache **BESTÄTIGT**; Runtime-Fix noch offen.

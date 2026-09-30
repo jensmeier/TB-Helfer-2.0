@@ -990,3 +990,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Reindex-Ausgabe: `original_count=40`, `reparsed=40`, `ALREADY_INDEXED=18`, `INDEXED_ASSET=19`, `failures=3`.
 - Runtimebasis damit teilweise bestätigt; Upgrade-E2E bleibt wegen 3 Fehlern offen.
 - Keine Spekulation/Codeänderung, bis Dateinamen und Exceptiontexte der drei Fehler vorliegen.
+
+## REF-DATA-003 – Reindexfehler Diagnoseabschluss 30.09.2026
+- Drei Fehler exakt identifiziert: WVB 10-11, 14-22, 19-20.
+- Alle: CheckViolation auf `survey_catalog_history_operation_check` bei Operation `ENRICH`.
+- Kein Daten-/Geometriefehler.
+- Nächster Codefix ist ausschließlich eine DB-Migration zur Erweiterung der erlaubten History-Operationen.

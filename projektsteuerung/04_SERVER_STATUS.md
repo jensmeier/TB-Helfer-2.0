@@ -910,3 +910,8 @@ Status: **MIGRATION 18 BESTÄTIGT / PARSER v4 BESTÄTIGT / REINDEX FEHLER OFFEN*
 - Reindex: 40 Originale, 40 reparsed, 18 ALREADY_INDEXED, 19 INDEXED_ASSET, 3 failures.
 - Die drei Exceptions werden im aktuellen Reindex-Ergebnis nur gezählt; Ursache ist noch nicht bekannt.
 - Vor Fix: betroffene Originale einzeln identifizieren und Exceptiontext erfassen.
+
+## REF-DATA-003 – Reindexfehler Ursache eindeutig
+- WVB 10-11, 14-22 und 19-20 scheitern identisch an `survey_catalog_history_operation_check`.
+- `ENRICH` ist im neuen Sourcepfad fachlich vorgesehen, aber in der deployten DB-Constraint noch nicht erlaubt.
+- Ziel: neue Migration erweitert erlaubte History-Operationen um `ENRICH`; sonstige Kataloglogik unverändert.

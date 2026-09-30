@@ -1960,3 +1960,14 @@ Status: **SOURCE FERTIG**
 - Alle 40 Originale wurden im Lauf als stale erkannt und reparst.
 - 18 bereits katalogisierte TRA: `ALREADY_INDEXED`; 19 Nicht-TRA/Assets: `INDEXED_ASSET`; 3 Exceptions.
 - Keine Änderung auf Verdacht. Nächster Schritt: exakte Dateinamen/Original-IDs + Exceptiontypen der drei Fehler ermitteln.
+
+#### REF-DATA-003 – Ursache Reindex failures=3 bestätigt
+Runtime-Diagnose 30.09.2026:
+- Alle drei Fehler sind `psycopg.errors.CheckViolation` auf `survey_catalog_history_operation_check`.
+- Betroffene TRA:
+  - `WVB_10-11_ER0_GGP2026_02_16.TRA`;
+  - `WVB_14-22_ER0_GGP2026_02_16.TRA`;
+  - `WVB_19-20_ER0_GGP2026_02_16.TRA`.
+- Der neue Fill-only-Upgradepfad schreibt History-Operation `ENRICH`; die bestehende DB-Check-Constraint erlaubt diese Operation noch nicht.
+- Ursache ist damit eindeutig DB-Vertrag/Migration, nicht Geometrie, Parser oder die drei WVB-Dateien.
+- Fix nur an der History-Operation-Constraint; keine WVB-Geometrie oder Merge-Regel ändern.

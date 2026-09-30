@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| REF-DATA-003 | P0 | SERVER/PORTAL/ANDROID | Synology Migration 18/18 + Parser v4 + reparsed=40 bestätigt, aber Reindex endet mit failures=3 (18 ALREADY_INDEXED, 19 INDEXED_ASSET) | Drei betroffene Originale + Exception ermitteln; erst Ursache beheben, dann Reindex failures=0 und Pasing-Gate |
+| REF-DATA-003 | P0 | SERVER/PORTAL/ANDROID | Reindex failures=3 Ursache bestätigt: WVB 10-11/14-22/19-20 scheitern nur an DB-Check `survey_catalog_history_operation_check`, weil neue History-Operation ENRICH noch nicht erlaubt ist | Neue Migration nur für History-Constraint → deployen → Reindex erneut, Ziel failures=0/ALREADY_INDEXED_ENRICHED |
 | REF-DATA-002 | P0 | SERVER/ANDROID | Achsen-Hover/Klick + ca. 2000x Tiefzoom + KOR-Parser-v3 auf Synology praktisch bestätigt; übrige REF-DATA-002-Gesamtpunkte separat weiterführen | bestätigten Teilblock schützen; nur verbleibende Import-/Android-E2E-Punkte weiterbearbeiten |
 | REF-DATA-001 | P0 | SERVER/ANDROID | Datei-zuerst-Analyse + bestätigter Global/Firma-Import source-seitig fertig; Synology-E2E/Android offen | 4 Runtime-Dateien deployen → echte TRA/KF-Analyse + Import testen → danach Android-Consumer |
 | ADMIN-PDF-011 | P1 | ANDROID | SERVER/Admin 40..400 pt + X/Y + Preview am 29.09.2026 abgenommen; Android clamp aktuell noch 250 | ANDROID-Projekt: Clamp/Vertrag auf 40..400 übernehmen und Geräte-PDF praktisch prüfen |
