@@ -1045,3 +1045,11 @@ Status: **TEILWEISE BESTÄTIGT / 19-20 NOCH NICHT IM BILD**
 - Zugehörige GRA-Dateien haben erwartungsgemäß kein ORIGINAL_TRA-Segment/Achsenobjekt in dieser Abfrage.
 - WVB 19-20 ist im übermittelten Screenshot abgeschnitten und daher **noch nicht bestätigt**; keine Schlussfolgerung aus dem nicht sichtbaren Teil.
 - Nächster Schritt: gezielte 3-Zeilen-Abfrage nur für WVB-TRA, damit 19-20 sichtbar verifiziert wird; danach Search/Availability/Geometry.
+
+## REF-DATA-003 – WVB-Neuimportfehler GESCHLOSSEN 30.09.2026
+Status: **BESTÄTIGT BEHOBEN**
+- Frischer Import nach vollständigem Survey-Reset erzeugt WVB 10-11, 14-22 und 19-20 jeweils direkt auf einer eigenen Achse.
+- Passende object_keys: `WVB:10-11`, `WVB:14-22`, `WVB:19-20`; alle `station_code=MPB`; jede Achse hat genau 1 Segment.
+- 19-20 teilt keine axis_id mehr mit 14-22.
+- Kein Reindex-/Legacy-Reassign war nötig. Damit ist sowohl der Upgradefall als auch der saubere Neuimportfall praktisch bestätigt.
+- Schutzregel: diesen WVB-Fix nicht ohne neuen reproduzierbaren Fehler verändern.
