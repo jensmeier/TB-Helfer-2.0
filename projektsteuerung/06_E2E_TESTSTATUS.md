@@ -758,3 +758,15 @@ Pflichttest:
 5. Admin-Trassierungsanalyse zeigt keine Speicherziel-/Firma-Auswahl mehr.
 6. Dashboard zeigt unter `Speicher nach Firma` keine Trassierungsdaten-Kategorie mehr.
 7. Pasing/MPB vollständig frisch hochladen; danach Prefill, W/WVB object_key, Multi-Hit, Prüffallfenster sowie Search/Availability/Geometry erneut prüfen.
+
+### REF-DATA-003 – Zentralimport + Terminal-Reset Runtime-Gate TEILWEISE BESTANDEN 30.09.2026
+**Bestanden:**
+- Terminal-Helper läuft in `staging`.
+- Preview vor Reset zeigte den aktuellen Bestand vollständig.
+- Reset mit exaktem Bestätigungstext erfolgreich: `status=RESET`, 64 Storage-Originale entfernt.
+- Alle Survey-Zähler nach Reset = 0, durch zweite Preview separat bestätigt.
+
+**Noch offen:**
+- Admin-Trassierungsseite visuell prüfen: keine Speicherziel-/Firma-Auswahl mehr.
+- Dashboard visuell prüfen: keine Trassierungsdaten-Kategorie unter `Speicher nach Firma` mehr.
+- Pasing/MPB vollständig frisch importieren und danach Prefill, W/WVB object_key, Multi-Hit, Prüffallfenster sowie Search/Availability/Geometry erneut E2E prüfen.
