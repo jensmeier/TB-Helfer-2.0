@@ -655,3 +655,6 @@ Erst nach diesem Gate: eigenständige `Trassendatenübersicht` bauen.
 
 ### REF-DATA-003 – Parser-Cache-Gate
 Vor Runtime-E2E muss der deployte Parser `tb-survey-parser-4` melden. Bestehende v3-Parse-Caches mit gleichem SHA gelten für object_key als Altbestand und müssen neu ausgewertet/reindiziert werden.
+
+### REF-DATA-003 – Upgrade-E2E zusätzlich
+Nach Deployment muss ein bereits vor v4 importiertes WVB-Original durch Reindex auf Parser v4 gebracht werden und seine bestehende Achse den passenden `object_key` erhalten, **ohne** ein zweites Segment zu erzeugen.

@@ -1934,3 +1934,14 @@ Fehlerfeststellung im Deployment-Audit 30.09.2026:
 - `PARSER_VERSION` steht noch auf `tb-survey-parser-3`.
 - Bereits mit dem alten v3-Code ausgewertete Pasing-Originale könnten dadurch als „Parserstand aktuell“ gelten, obwohl die neuen Objektfelder im gespeicherten Parse-Payload fehlen.
 - Zwingende Korrektur vor Deployment: Parser-Version auf v4 erhöhen und Source-Checks entsprechend nachziehen. Dadurch kann der Server bestehende Parse-Caches eindeutig als alt erkennen/reparsen.
+
+#### REF-DATA-003 – Reindex muss bestehende Achsen anreichern
+Fehlerfeststellung im Upgrade-Audit 30.09.2026:
+- `index_original_in_tx()` beendet bereits katalogisierte TRA aktuell mit `ALREADY_INDEXED`.
+- Nach Parser-v4-Reparse würde dadurch ein neu erkannter `object_key` bei bereits vorhandenem Pasing-/WVB-Bestand nicht auf die bestehende Achse übernommen.
+- Korrekturziel vor Deployment:
+  - Reindex reparst fehlende/veraltete Parserstände;
+  - bereits vorhandene Original-TRA-Segmente bleiben geometrisch unverändert;
+  - deren vorhandene Achse wird **nur fehlende fachliche Identität** (insbesondere `object_key`) aus dem neu geparsten Original anreichern;
+  - keine Admin-Korrektur überschreiben und keine Geometrie duplizieren.
+- So funktioniert Migration 018 auch als Upgrade bestehender Bestände und nicht nur bei Neuimporten.

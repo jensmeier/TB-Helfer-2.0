@@ -881,3 +881,7 @@ Runtime offen:
 Status: **SOURCE-NACHKORREKTUR OFFEN**
 - object_key erweitert das Parser-Payload-Schema; v3 darf dafür nicht unverändert weiterverwendet werden.
 - Parser-Version wird auf `tb-survey-parser-4` angehoben, damit bereits vorhandene Pasing-v3-Caches nicht fälschlich als aktuell gelten.
+
+## REF-DATA-003 – Existing-index Upgradepfad offen
+- v4-Reparse allein reicht nicht: bestehende TRA-Segmente springen aktuell über `ALREADY_INDEXED` aus.
+- Reindex wird deshalb um Fill-only-Achsanreicherung für neue object_key-Identität erweitert; Geometrie bleibt unverändert.
