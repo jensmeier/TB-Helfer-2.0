@@ -625,3 +625,16 @@ Status: **SERVERVERTRAG SOURCE FEST**
 - Eine Firma/Baustelle wird auf dieser Admin-Seite nicht als Speicherziel gewählt.
 - Firmen-/Baustellenbeiträge bleiben fachlich möglich, laufen aber über getrennte Contribution-/Android-/spätere Importpfade und ändern diese Admin-UI-Regel nicht.
 - Bahnhof/Betriebsstelle, Strecke, Gleis und object_key bleiben fachliche Zuordnungen innerhalb des globalen Referenzbestands und sind keine Speicherbesitzer-Zuordnung.
+
+#### REF-DATA-003 – Pasing ohne belastbare Kilometrierung: Handy setzt Start/Ende 30.09.2026
+Status: **FACHVERTRAG FESTGELEGT**
+- Für den aktuellen Pasing/MPB-Bestand liegt **keine belastbare vollständige Kilometrierung** vor.
+- Deshalb ist `km_quality=FEHLT` für betroffene Achsen **kein Fehler**, sondern der korrekte Ausgangszustand.
+- Der Benutzer setzt in Android auf der vorhandenen TRA-Geometrie manuell:
+  - Startpunkt des gültigen Abschnitts;
+  - Endpunkt des gültigen Abschnitts;
+  - zugehörige KM-Werte/Anker.
+- Daraus entsteht ein versionierter manueller KM-Abschnitt; dieser muss serverweit synchronisierbar sein und darf die unveränderte Roh-TRA nicht überschreiben.
+- Farblogik bleibt verbindlich: automatisch belastbar = GRÜN, manuell festgelegt = ORANGE, TRA ohne belastbare KM = ROT.
+- SERVER darf fehlende Pasing-KM nicht künstlich aus GVP/GRA erzwingen, wenn keine belastbare Zuordnung vorliegt.
+- Android-Umsetzung bleibt im ANDROID-Projekt; SERVER hält API/Sync/Versionierung für manuelle Abschnitte bereit bzw. dokumentiert den Bedarf.
