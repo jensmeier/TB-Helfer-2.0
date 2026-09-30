@@ -1071,3 +1071,13 @@ Status: **SOURCE FERTIG / DEPLOYMENT OFFEN**
 - Reset löscht nur Vermessungs-/Trassierungs-Testbestand und daraus abgeleiteten Survey-Katalog; Firmen, Benutzer, Baustellen und BTB bleiben erhalten.
 - Code: `server/templates/v1_admin_survey_import.html`; Check 115 um die neuen UI-/Reset-Marker erweitert.
 - Commits: `321be671...`, `0069fd0f...`, `6eb60ecb...`, `5735fa31...`.
+
+## REF-DATA-003 – Zentraler Admin-Import + Terminal-Reset SOURCE 30.09.2026
+Status: **SOURCE FERTIG / DEPLOYMENT + RESET OFFEN**
+- Admin-`Trassierungsdaten` ist jetzt source-seitig eindeutig **zentral/global**: keine Speicherziel-Auswahl und keine Firma/Baustelle-Auswahl mehr; Importentscheidungen senden fest `scope=GLOBAL_REFERENCE`, `worksite_id=null`.
+- Firmen-/Baustellenbeiträge bleiben ein separater Contribution-/Android-Fachpfad und werden auf dieser Admin-Seite nicht mehr angeboten.
+- Dashboard `Speicher nach Firma`: feste Kategorie `Trassierungsdaten` entfernt; angezeigt werden nur Fotos, PDFs und sonstige firmeneigene Dateien.
+- Geschützter Survey-Testreset ist zusätzlich als explizite API-Container-Terminalfunktion verfügbar: `survey_test_data_preview_from_terminal()` und `reset_survey_test_data_from_terminal(confirm_text)`.
+- Schutz bleibt erhalten: nur dev/test/staging, exakter Bestätigungstext, FK-sichere DB-Reihenfolge, Storage-Dateien erst nach Commit entfernen, Audit source=`API_CONTAINER_TERMINAL`.
+- Keine Migration. Runtime-Dateien für diesen Block: `server/templates/v1_admin_survey_import.html`, `server/templates/v1_admin_dashboard.html`, `server/tbserver/admin_purge.py`.
+- Checks 86/114/115 an den neuen Vertrag angepasst.
