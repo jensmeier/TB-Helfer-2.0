@@ -21,7 +21,7 @@ from .survey_catalog import index_original_in_tx
 
 
 router = APIRouter(prefix="/api/v1", tags=["survey-parser"])
-PARSER_VERSION = "tb-survey-parser-3"
+PARSER_VERSION = "tb-survey-parser-4"
 KF_RECORD_SIZE = 102
 _DATE_TOKEN_RE = re.compile(r"(?<!\d)(?:19|20)\d{2}[-_.]\d{2}[-_.]\d{2}(?!\d)")
 
@@ -634,6 +634,74 @@ def _load_catalog(cur, original_id: UUID) -> dict | None:
     row = cur.fetchone()
     return dict(row) if row else None
 
+
+
+
+def reparse_original_for_catalog(original_id: UUID) -> dict[str, Any]:
+    """Internal worker path: refresh a stale/missing parse catalog without mutating the raw original."""
+    with transaction() as conn, conn.cursor() as cur:
+        original = _load_original(cur, original_id)
+
+    path = _absolute_storage_path(original["storage_key"])
+    if not path.is_file():
+        raise RuntimeError("SURVEY_ORIGINAL_CONTENT_MISSING")
+    actual_size, actual_sha256 = path.stat().st_size, _hash_file(path)
+    if actual_size != original["byte_size"] or actual_sha256 != original["sha256"]:
+        raise RuntimeError("SURVEY_ORIGINAL_INTEGRITY_MISMATCH")
+    data = path.read_bytes()
+
+    parser_family, detected_format, payload, warnings = "UNSUPPORTED", None, {}, []
+    error_code = error_detail = None
+    try:
+        parser_family, detected_format, payload, warnings = parse_survey_original(
+            original["data_kind"], original["original_name"], data, actual_sha256
+        )
+        status = "PARSED"
+    except UnsupportedSurveyFormat as exc:
+        status, error_detail = "UNSUPPORTED", str(exc)
+        error_code = error_detail.split(":", 1)[0]
+    except (ValueError, struct.error, UnicodeError) as exc:
+        status, error_detail = "ERROR", str(exc)[:2000]
+        error_code = (str(exc).split(":", 1)[0] or "PARSE_ERROR")[:120]
+
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO tb.survey_parse_catalog(
+                original_id, parser_family, parser_version, source_sha256, status,
+                detected_format, payload, warnings, error_code, error_detail, parsed_by, parsed_at
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NULL,now())
+            ON CONFLICT (original_id) DO UPDATE SET
+                parser_family=EXCLUDED.parser_family, parser_version=EXCLUDED.parser_version,
+                source_sha256=EXCLUDED.source_sha256, status=EXCLUDED.status,
+                detected_format=EXCLUDED.detected_format, payload=EXCLUDED.payload,
+                warnings=EXCLUDED.warnings, error_code=EXCLUDED.error_code,
+                error_detail=EXCLUDED.error_detail, parsed_by=NULL, parsed_at=now()
+            RETURNING *
+            """,
+            (
+                original_id, parser_family, PARSER_VERSION, actual_sha256, status, detected_format,
+                Jsonb(payload), Jsonb(warnings), error_code, error_detail,
+            ),
+        )
+        row = dict(cur.fetchone())
+        audit(
+            cur,
+            action="SURVEY_ORIGINAL_REPARSE_FOR_CATALOG",
+            actor_user_id=None,
+            company_id=original.get("company_id"),
+            worksite_id=original.get("worksite_id"),
+            entity_type="SURVEY_ORIGINAL",
+            entity_id=original_id,
+            details={
+                "parser_family": parser_family,
+                "parser_version": PARSER_VERSION,
+                "status": status,
+                "detected_format": detected_format,
+                "source_sha256": actual_sha256,
+            },
+        )
+    return row
 
 @router.get("/survey-originals/{original_id}/parse-catalog")
 def get_parse_catalog(original_id: UUID, user: dict[str, Any] = Depends(current_portal_user)) -> dict:
