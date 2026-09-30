@@ -1090,3 +1090,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Geometry MPB: 21 Segmente erfolgreich, inklusive aller WVB.
 - Str 5524-1 erscheint in Geometry zweimal mit derselben axis_id und erklärt mindestens einen Teil der Achse/Segment-Differenz; erst Quellen read-only prüfen, nicht umbauen.
 - Nächster Schritt: kompakte KM-Qualitätsausgabe pro Achse + Mehrsegment-Quellen; danach Portal-Multi-Hit.
+
+## REF-DATA-003 – Pasing-KM-Fachentscheidung 30.09.2026
+- Nutzer stellt klar: Pasing besitzt keine richtige/belastbare Kilometrierung.
+- Deshalb sind rote/FEHLT-KM-Segmente dort korrekt, bis das Handy den gültigen Start-/Endbereich und die KM-Werte manuell festlegt.
+- Keine automatische Server-KM-Reparatur für diesen Bestand bauen.
+- Nächster Server-/Portal-Schritt bleibt Multi-Hit; manueller KM-Sync ist danach ein Android↔Server-Folgeschritt.
