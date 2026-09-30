@@ -48,6 +48,7 @@ class SurveyImportDecision(BaseModel):
     data_kind: str | None = Field(default=None, max_length=40)
     route_number: str | None = Field(default=None, max_length=80)
     track_key: str | None = Field(default=None, max_length=160)
+    object_key: str | None = Field(default=None, max_length=160)
     station_code: str | None = Field(default=None, max_length=50)
     station_name: str | None = Field(default=None, max_length=240)
     source_date: date | None = None
@@ -134,18 +135,24 @@ def _analysis_semantics(
     direction = str(payload.get("direction_from_name") or "").strip() or None
     source_direction = str(payload.get("source_direction_from_name") or "").strip() or None
     axis_type = str(payload.get("axis_type_from_name") or "").strip().upper() or None
+    object_key = str(payload.get("object_key_from_name") or "").strip().upper() or None
+    switch_a = str(payload.get("switch_a_from_name") or "").strip().upper() or None
+    switch_b = str(payload.get("switch_b_from_name") or "").strip().upper() or None
     basename = Path(original_name).name
     upper = basename.upper()
 
     if axis_type == "WEICHENVERBINDUNG":
-        match = re.search(r"\bWVB?[_\s-]*(\d+[A-Z]?)[_\s-]+(\d+[A-Z]?)\b", upper)
-        if match:
-            display_label = f"WVB {match.group(1)}-{match.group(2)}"
-            semantic_key = f"WVB:{match.group(1)}-{match.group(2)}"
+        if object_key and object_key.startswith("WVB:"):
+            display_label = "WVB " + object_key.split(":", 1)[1]
+            semantic_key = object_key
         else:
             display_label = re.sub(r"[_]+", " ", Path(basename).stem).split("_ER0", 1)[0].strip()
             semantic_key = f"WVB:{display_label.upper()}"
         object_group = "WEICHENVERBINDUNG"
+    elif axis_type == "WEICHE":
+        display_label = f"W {switch_a}" if switch_a else re.sub(r"[_]+", " ", Path(basename).stem).split("_ER0", 1)[0].strip()
+        semantic_key = object_key or f"WEICHE:{display_label.upper()}"
+        object_group = "WEICHE"
     elif route and source_direction:
         direction_label = direction or source_direction
         display_label = f"Str {route}-{direction_label}"
@@ -186,6 +193,9 @@ def _analysis_semantics(
         "object_group": object_group,
         "display_label": display_label,
         "semantic_key": semantic_key,
+        "object_key": object_key,
+        "switch_a": switch_a,
+        "switch_b": switch_b,
     }
 
 
@@ -331,6 +341,7 @@ def _install_original(
     scope: str,
     route_number: str | None,
     track_key: str | None,
+    object_key: str | None,
     station_code: str | None,
     station_name: str | None,
     source_date: date | None,
@@ -425,6 +436,13 @@ def _install_original(
                 "source": "ADMIN_WEB",
                 "scope": normalized_scope,
             }
+            effective_object_key = (
+                (object_key or "").strip().upper()
+                or str(parsed.get("payload", {}).get("object_key_from_name") or "").strip().upper()
+                or None
+            )
+            if effective_object_key:
+                metadata["object_key"] = effective_object_key
             if effective_station_code:
                 metadata["station_code"] = effective_station_code
             if effective_station_name:
@@ -536,6 +554,7 @@ def _install_original(
                     "parse_status": parsed["status"],
                     "route_number": effective_route,
                     "track_key": effective_track,
+                    "object_key": effective_object_key,
                     "station_code": effective_station_code,
                     "station_name": effective_station_name,
                     "source_date": metadata.get("source_date"),
@@ -556,6 +575,7 @@ def _install_original(
             "scope": normalized_scope,
             "route_number": effective_route,
             "track_key": effective_track,
+            "object_key": effective_object_key,
             "station_code": effective_station_code,
             "station_name": effective_station_name,
             "source_date": metadata.get("source_date"),
@@ -796,6 +816,7 @@ def import_analyzed_survey(
                                     scope=normalized_scope,
                                     route_number=decision.route_number,
                                     track_key=decision.track_key,
+                                    object_key=decision.object_key,
                                     station_code=decision.station_code,
                                     station_name=decision.station_name,
                                     source_date=decision.source_date,
@@ -838,6 +859,7 @@ def import_analyzed_survey(
                         scope=normalized_scope,
                         route_number=decision.route_number,
                         track_key=decision.track_key,
+                        object_key=decision.object_key,
                         station_code=decision.station_code,
                         station_name=decision.station_name,
                         source_date=decision.source_date,
@@ -867,6 +889,7 @@ async def import_survey_file(
     data_kind: str | None = Query(default=None, max_length=40),
     route_number: str | None = Query(default=None, max_length=80),
     track_key: str | None = Query(default=None, max_length=160),
+    object_key: str | None = Query(default=None, max_length=160),
     station_code: str | None = Query(default=None, max_length=50),
     station_name: str | None = Query(default=None, max_length=240),
     source_date: date | None = Query(default=None),
@@ -910,6 +933,7 @@ async def import_survey_file(
                                 scope=normalized_scope,
                                 route_number=route_number,
                                 track_key=track_key,
+                                object_key=object_key,
                                 station_code=station_code,
                                 station_name=station_name,
                                 source_date=source_date,
@@ -936,6 +960,7 @@ async def import_survey_file(
             scope=normalized_scope,
             route_number=route_number,
             track_key=track_key,
+            object_key=object_key,
             station_code=station_code,
             station_name=station_name,
             source_date=source_date,

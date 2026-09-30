@@ -48,6 +48,7 @@ for token in (
     '@router.get("/changes")',
     '@router.post("/manual-segments"',
     '@router.patch("/manual-segments/{segment_id}")',
+    '@router.get("/conflicts/{conflict_id}")',
     '@router.post("/conflicts/{conflict_id}/resolve")',
     'index_original_in_tx',
 ):
@@ -90,6 +91,9 @@ assert 'SURVEY_ORIGINAL_GLOBAL_ALREADY_AVAILABLE' in survey_originals
 assert 'SELECT route_number, station_code, station_name' in survey_originals
 assert 'effective_route' in survey_originals
 assert 'source_date: date | None = None' in admin_import
+assert 'object_key: str | None = Field(default=None, max_length=160)' in admin_import
+assert 'metadata["object_key"] = effective_object_key' in admin_import
+assert 'object_key=decision.object_key' in admin_import
 assert 'source_date=decision.source_date' in admin_import
 assert 'source_date=source_date' in admin_import
 admin_purge = ADMIN_PURGE.read_text(encoding="utf-8")

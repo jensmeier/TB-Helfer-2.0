@@ -2018,6 +2018,58 @@ def changes(after: int = Query(default=0,ge=0),
     }
 
 
+
+_CONFLICT_EXPLANATIONS = {
+    "NEARBY_GEOMETRY_NOT_MATCHING": (
+        "Geometrien liegen nahe beieinander, passen aber nicht ausreichend zusammen.",
+        "Der Server hat eine vorhandene Achse in der Nähe gefunden. Überlappung oder Anschluss reichen nicht für eine automatische Verbindung."
+    ),
+    "ENDPOINT_HEADING_MISMATCH": (
+        "Endpunkte liegen nahe zusammen, aber die Richtungen passen nicht.",
+        "Eine automatische Fortsetzung wäre geometrisch unsicher. Bitte beide Achsen im Detail vergleichen."
+    ),
+    "MULTIPLE_AXIS_CANDIDATES": (
+        "Mehrere vorhandene Achsen kommen als Zuordnung infrage.",
+        "Der Server kann nicht eindeutig entscheiden, zu welcher Achse die neue Quelle gehört."
+    ),
+    "GEOMETRY_TOO_SHORT": (
+        "Die Geometrie ist für einen sicheren Vergleich zu kurz.",
+        "Es liegen zu wenige Geometriepunkte für eine automatische Entscheidung vor."
+    ),
+    "GEOMETRY_CONFLICT": (
+        "Die neue Geometrie konnte nicht automatisch zugeordnet werden.",
+        "Bitte Quellen und Geometrien vergleichen und die fachliche Zuordnung festlegen."
+    ),
+}
+
+
+def _conflict_explanation(conflict_type: str) -> dict[str, str]:
+    title, text = _CONFLICT_EXPLANATIONS.get(
+        str(conflict_type or "GEOMETRY_CONFLICT").upper(),
+        _CONFLICT_EXPLANATIONS["GEOMETRY_CONFLICT"],
+    )
+    return {"title": title, "text": text}
+
+
+def _conflict_segment_detail(cur, segment: dict[str, Any] | None) -> dict[str, Any] | None:
+    if segment is None:
+        return None
+    source_name = None
+    original_id = segment.get("source_original_id")
+    if original_id is not None:
+        cur.execute("SELECT original_name FROM tb.survey_originals WHERE id=%s", (original_id,))
+        source = cur.fetchone()
+        if source:
+            source_name = source["original_name"]
+    points = _segment_points(cur, segment)
+    item = _plain(segment)
+    item["source_name"] = source_name or (segment.get("metadata") or {}).get("original_name")
+    item["points"] = _plain(_decimate(points, 1800))
+    item["point_count"] = len(points)
+    item.pop("geometry", None)
+    return item
+
+
 @router.get("/conflicts")
 def list_conflicts(status: str = Query(default="OPEN",max_length=20),
                    limit: int = Query(default=200,ge=1,le=1000),
@@ -2038,6 +2090,27 @@ def list_conflicts(status: str = Query(default="OPEN",max_length=20),
         )
         rows = [_plain(dict(row)) for row in cur.fetchall()]
     return {"conflicts":rows,"count":len(rows)}
+
+
+
+@router.get("/conflicts/{conflict_id}")
+def conflict_detail(conflict_id: UUID,
+                    _: dict[str,Any] = Depends(require_admin)) -> dict[str,Any]:
+    with transaction() as conn, conn.cursor() as cur:
+        conflict = _row(cur, "survey_catalog_conflicts", conflict_id)
+        axis = _row(cur, "survey_catalog_axes", conflict["axis_id"])
+        candidate = _row(cur, "survey_catalog_segments", conflict["candidate_segment_id"])
+        existing = (
+            _row(cur, "survey_catalog_segments", conflict["existing_segment_id"])
+            if conflict.get("existing_segment_id") else None
+        )
+        return {
+            "conflict": _plain(conflict),
+            "explanation": _conflict_explanation(conflict["conflict_type"]),
+            "axis": _plain(axis),
+            "candidate": _conflict_segment_detail(cur, candidate),
+            "existing": _conflict_segment_detail(cur, existing),
+        }
 
 
 @router.post("/conflicts/{conflict_id}/resolve")
