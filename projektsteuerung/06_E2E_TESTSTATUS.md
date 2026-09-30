@@ -658,3 +658,14 @@ Vor Runtime-E2E muss der deployte Parser `tb-survey-parser-4` melden. Bestehende
 
 ### REF-DATA-003 – Upgrade-E2E zusätzlich
 Nach Deployment muss ein bereits vor v4 importiertes WVB-Original durch Reindex auf Parser v4 gebracht werden und seine bestehende Achse den passenden `object_key` erhalten, **ohne** ein zweites Segment zu erzeugen.
+
+### REF-DATA-003 – Parser-v4-/Upgrade-Gate nach Deployment
+Zusätzlich zu den bestehenden 10 Pasing-Fällen prüfen:
+1. deployter Parser meldet `tb-survey-parser-4`;
+2. ein alter v3-Parsebestand wird beim Reindex tatsächlich neu ausgewertet (`reparsed > 0`, sofern Altbestand vorhanden);
+3. ein bereits katalogisiertes WVB-Original erzeugt **kein zweites Segment**;
+4. die bestehende Achse erhält bei fehlender Identität `object_key`, Ergebnis `ALREADY_INDEXED_ENRICHED`;
+5. vorhandener object_key/Admin-Korrektur bleibt unverändert;
+6. Reindex endet mit `failures = 0`.
+
+Diese Punkte sind Source-verifiziert, aber erst nach Synology-Lauf ein Runtime-/E2E-Nachweis.

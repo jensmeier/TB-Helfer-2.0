@@ -215,3 +215,18 @@ Die eigenständige `Trassendatenübersicht` folgt erst nach erfolgreichem Synolo
 3. Android – Verfügbarkeitsindex, Download, Beiträge/Änderungen und manueller GPS-Pfad.
 
 `app/**` wird im SERVER-Projekt nicht geändert.
+
+## Upgradepfad Parser v4 / bestehender Katalog
+
+Mit der Weichen-/WVB-Objektidentität ändert sich das Parser-Payload-Schema. Deshalb gilt ab diesem Stand:
+
+- `PARSER_VERSION = tb-survey-parser-4`;
+- ein fehlender Parse-Cache, eine ältere Parser-Version oder ein abweichender `source_sha256` gilt beim Katalog-Reindex als veraltet;
+- `reindex_all_originals()` reparst solche Originale intern aus der unveränderten Raw-Datei und aktualisiert nur `survey_parse_catalog`;
+- bereits vorhandene `ORIGINAL_TRA`-Segmente werden **nicht** erneut angelegt;
+- bei `ALREADY_INDEXED` darf ausschließlich fehlende fachliche Identität fill-only ergänzt werden;
+- vorhandene `object_key`-Werte, z. B. nach Admin-Korrektur, werden nicht überschrieben;
+- bei Achstyp-Konflikt wird keine automatische Identitätsanreicherung vorgenommen;
+- eine erfolgreiche Anreicherung wird mit `ALREADY_INDEXED_ENRICHED`, History-Operation `ENRICH` und Audit `SURVEY_CATALOG_AXIS_IDENTITY_ENRICH` dokumentiert.
+
+Damit kann ein bereits vor Parser v4 importierter WVB-Bestand nach Migration 018 per Reindex auf die neue Objektidentität gebracht werden, ohne Geometrie zu duplizieren.

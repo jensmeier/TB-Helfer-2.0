@@ -970,3 +970,15 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Actions: `steps=[]`, kein CI-Testnachweis.
 - Status: **SOURCE FERTIG / MIGRATION018 NICHT DEPLOYT / RUNTIME-E2E OFFEN**.
 - Nächster Schritt: Synology deployen, 18/18 prüfen, Pasing Gate testen; danach Trassendatenübersicht.
+
+## REF-DATA-003 – Parser-v4-/Upgrade-Checkpoint 30.09.2026
+- Code-HEAD vor Statuscommit: `31c1c6f6a066a76b694aef56de7719457750a146`.
+- Parser jetzt `tb-survey-parser-4`.
+- Reindex erkennt missing/stale Parse-Caches über Parser-Version + source_sha256 und reparst Raw-Originale intern.
+- Bereits vorhandenes ORIGINAL_TRA-Segment bleibt bestehen.
+- Fehlender object_key wird auf bestehender Achse fill-only ergänzt (`ALREADY_INDEXED_ENRICHED`).
+- Vorhandener object_key und Achstyp-Konflikte werden nicht überschrieben.
+- History/Audit für Enrichment vorhanden.
+- Source-Audit: 23/23 PASS.
+- Actions erneut ohne Runner-Steps (`steps=[]`) → kein Testnachweis.
+- Nächster Schritt bleibt Synology: deployen, 18/18, Reindex, Pasing-Gate; keine Trassendatenübersicht vor diesem Runtime-Gate.

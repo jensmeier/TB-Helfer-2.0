@@ -988,3 +988,24 @@ Source-Nachweis:
 
 Nächster Gate:
 Synology auf Migration 18/18 bringen → Pasing/MPB neu testen → Prefill, W/WVB object_key, Multi-Hit und Problemfenster praktisch bestätigen. Erst danach eigenständige Trassendatenübersicht.
+
+## REF-DATA-003 – Parser-v4-/Reindex-Upgrade SOURCE FERTIG 30.09.2026
+Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME-E2E OFFEN**
+Maßgeblicher Code-HEAD vor Statuscommit: `31c1c6f6a066a76b694aef56de7719457750a146`.
+
+Nach Deployment-Audit zusätzlich umgesetzt:
+- Parser-Cache-Version auf `tb-survey-parser-4` erhöht;
+- interner Reparse-Pfad für fehlende/veraltete Parse-Caches;
+- Reindex arbeitet über `LEFT JOIN` auch bei fehlendem Parse-Catalog;
+- Parser-Version und `source_sha256` bestimmen, ob neu geparst werden muss;
+- bestehende `ORIGINAL_TRA`-Segmente werden bei Reindex nicht dupliziert;
+- bestehende Achse erhält fehlenden `object_key` ausschließlich fill-only;
+- vorhandene Admin-/Objektidentität wird nicht überschrieben;
+- Achstyp-Widerspruch verhindert automatische Anreicherung;
+- Status `ALREADY_INDEXED_ENRICHED` + History/Audit dokumentieren den Upgradefall.
+
+Source-Audit auf Code-HEAD: **23/23 PASS**.
+GitHub Actions zu diesem HEAD: Jobs erneut mit `steps=[]` → **kein CI-Testnachweis**.
+
+Nächster Runtime-Gate:
+Synology aktualisieren → Migration 18/18 → Reindex ausführen → `reparsed`/`ALREADY_INDEXED_ENRICHED` prüfen → Pasing/MPB-Prefill, W/WVB object_key, Multi-Hit und Problemfenster praktisch testen.

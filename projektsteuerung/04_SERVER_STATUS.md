@@ -885,3 +885,20 @@ Status: **SOURCE-NACHKORREKTUR OFFEN**
 ## REF-DATA-003 – Existing-index Upgradepfad offen
 - v4-Reparse allein reicht nicht: bestehende TRA-Segmente springen aktuell über `ALREADY_INDEXED` aus.
 - Reindex wird deshalb um Fill-only-Achsanreicherung für neue object_key-Identität erweitert; Geometrie bleibt unverändert.
+
+## REF-DATA-003 – Parser-v4-/Existing-Index-Upgrade umgesetzt
+Status: **SOURCE FERTIG / NICHT RUNTIME-BESTÄTIGT**
+Commits:
+- `fdba907c...` Parsercache v4 + interner Reparse-Pfad;
+- `31c1c6f6...` Reindex stale detection + fill-only Axis-Enrichment.
+
+Schutzregeln:
+- Raw-Originale bleiben unverändert.
+- Reparse aktualisiert nur den Parserkatalog.
+- Vorhandenes ORIGINAL_TRA-Segment bleibt dasselbe Segment.
+- `object_key` wird nur ergänzt, wenn die bestehende Achse dort leer ist und kein Achstyp-Widerspruch vorliegt.
+- vorhandene Admin-Korrektur bleibt geschützt.
+
+Audit: 23/23 Source-Marker PASS.
+Actions: `steps=[]`, kein CI-Nachweis.
+Runtime offen: Migration 018, v4-Reparse/Reindex und Pasing-Fach-E2E.

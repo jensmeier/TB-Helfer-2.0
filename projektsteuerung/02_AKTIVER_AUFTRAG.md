@@ -1945,3 +1945,12 @@ Fehlerfeststellung im Upgrade-Audit 30.09.2026:
   - deren vorhandene Achse wird **nur fehlende fachliche Identität** (insbesondere `object_key`) aus dem neu geparsten Original anreichern;
   - keine Admin-Korrektur überschreiben und keine Geometrie duplizieren.
 - So funktioniert Migration 018 auch als Upgrade bestehender Bestände und nicht nur bei Neuimporten.
+
+#### REF-DATA-003 – Deployment-Audit-Lücke geschlossen
+Status: **SOURCE FERTIG**
+- Parser v4 ist umgesetzt.
+- Reindex reparst stale/missing Parse-Caches automatisch.
+- Bereits katalogisierte Original-TRA werden nicht dupliziert; fehlender `object_key` wird fill-only auf der bestehenden Achse ergänzt.
+- Admin-Korrekturen werden nicht überschrieben.
+- Damit ist der zuvor dokumentierte Parser-v4-/Upgradebedarf source-seitig geschlossen.
+- Noch offen: Synology-Deployment 18/18 + Pasing-Runtime-Gate.
