@@ -1044,3 +1044,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Geschützter bestehender Survey-Testreset direkt in Trassierungsdaten-Seite eingebaut; keine neue Backend-Löschlogik.
 - Dashboard `Trassierungsdaten 0 B`: nur feste Firmen-Speicherkategorie; 0 B = keine Firmendaten, globale Referenzoriginale zählen dort nicht hinein.
 - Nächster Schritt: Template auf Synology deployen → Reset über neue UI → Zähler 0 bestätigen → Pasing frisch importieren.
+
+## REF-DATA-003 – Zentralimport/Terminal-Reset Checkpoint 30.09.2026
+- Benutzerentscheidung: Auf der zentralen Admin-Trassierungsseite sollen Daten nicht zwischen GLOBAL und Firma/Baustelle unterschiedlich gespeichert werden. Diese Seite ist ausschließlich gemeinsamer Referenzimport.
+- Umsetzung: Speicherziel-/Firma-Auswahl entfernt; fest `GLOBAL_REFERENCE`.
+- `Trassierungsdaten` aus `Speicher nach Firma` entfernt.
+- Benutzer möchte Reset ausdrücklich im API-Container-Terminal. Dafür geschützte Terminal-Helfer auf Basis desselben Resetkerns gebaut; keine freie SQL-Löschung.
+- Nach Deploy zuerst Preview, dann Reset mit `VERMESSUNG TESTDATEN LOESCHEN`, danach Zähler 0 prüfen und Daten frisch hochladen.
