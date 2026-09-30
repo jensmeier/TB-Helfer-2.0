@@ -834,3 +834,10 @@ Status: **URSACHEN EINGEGRENZT / NOCH KEIN CODE**
 - WVB-Reviewmails können aktuell durch fehlenden stabilen WVB-Objektschlüssel zwischen unterschiedlichen nahen WVB entstehen.
 - Admin-Grafik braucht Multi-Hit/Overlap-Auswahl analog Android.
 - Nächster gezielter SERVER-Block: Route-Prefill stabilisieren, WVB/Weiche-Objektidentität im Katalog ergänzen, Admin-Multi-Hit/Overlap-Darstellung.
+
+## REF-DATA-003 – Konflikt-Diagnose-UI gefordert
+Status: **ANFORDERUNG DOKUMENTIERT / NOCH KEIN CODE**
+- Open-Conflict/Warnmeldungen müssen im Portal anklickbar sein.
+- Detailansicht soll Quellen, fachliche Identität, Konfliktgrund, Messwerte und beide Geometrien gemeinsam zeigen.
+- Entscheidungen erfolgen aus diesem Prüffall heraus und bleiben versioniert/auditierbar.
+- Mail ist nur Hinweis, nicht die eigentliche Diagnoseoberfläche.

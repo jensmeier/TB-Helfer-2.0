@@ -945,3 +945,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - WVB 14-22: Parser/Analyse erkennt WVB, Katalog hat aber keinen stabilen WVB object_key; nahe andere WVB können dadurch Reviewmail erzeugen.
 - Android-Grafik kann überlagerte Achsen per Multi-Hit/Long-Press unterscheiden; Admin derzeit nicht.
 - Noch kein Code nach diesem Audit; auf Benutzerfreigabe warten.
+
+## REF-DATA-003 – Konflikt-UI Anforderung 30.09.2026
+- Warnung allein ist nicht ausreichend.
+- Portal braucht „Problem ansehen“ pro Prüffall.
+- Detail muss beide betroffenen Geometrien/Quellen, verständliche Ursache, Messwerte und mögliche fachliche Aktionen zeigen.
+- E-Mail bleibt nur Benachrichtigung.
+- Noch kein Code; zuerst vorhandene Conflict-API/-Daten prüfen.

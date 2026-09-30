@@ -1882,3 +1882,23 @@ Quellprüfung SERVER + ANDROID 30.09.2026:
   - Android-`TrassenGrafikView` unterstützt Mehrfachtreffer bei überlagerten Achsen; Long-Press liefert mehrere Achsen und Dialog `Welche Roh-TRA?`.
   - Admin-SVG besitzt derzeit je Polyline einen einzelnen Hit-Layer. Bei deckungsgleichen/nahen Linien kann die oben gezeichnete Achse die andere verdecken bzw. allein den Klick erhalten.
   - Ziel Admin: Mehrfachtreffer/Overlap-Liste wie Android, plus klare visuelle Hervorhebung/Wechselmöglichkeit ohne Veränderung der bestätigten Zoom-/Hover-Grundfunktion.
+
+#### REF-DATA-003 – Admin-Prüffall muss erklärbar und anklickbar sein
+Neue Bedienanforderung 30.09.2026:
+- Eine reine Warnung/E-Mail wie `NEARBY_GEOMETRY_NOT_MATCHING` reicht für den Admin nicht aus.
+- Jeder offene Trassendaten-Prüffall braucht in der Admin-/Trassendatenoberfläche eine verständliche Aktion **„Problem ansehen“**.
+- Beim Öffnen muss der Admin mindestens sehen:
+  - betroffene neue Quelle/Datei;
+  - vorhandene Vergleichsachse bzw. Vergleichsquelle;
+  - Bahnhof/Betriebsstelle, Strecke, Gleis/Objekt/WVB soweit vorhanden;
+  - konkreter maschinenlesbarer Konfliktgrund plus verständliche deutsche Erklärung;
+  - relevante Messwerte wie nächster Abstand, Überlappung, Endpunktabstand, Richtungsabweichung;
+  - beide Geometrien gemeinsam in einer Detailgrafik, unterschiedlich hervorgehoben;
+  - problematische Stelle/Überlappungsbereich soweit ermittelbar.
+- Von dort sollen die fachlich zulässigen Entscheidungen erreichbar sein, z. B.:
+  - getrennt lassen / „sind verschiedene Achsen“;
+  - derselben Achse zuordnen/verbinden, nur wenn fachlich zulässig;
+  - Metadaten korrigieren (Bahnhof, Strecke, Gleis/Objekt);
+  - Datensatz deaktivieren bzw. Import nicht übernehmen.
+- Keine automatische Freigabe nur wegen Admin-Klick; Entscheidung muss versioniert/auditierbar gespeichert werden.
+- E-Mail bleibt Benachrichtigung, verweist fachlich aber auf den konkreten Prüffall; die eigentliche Diagnose erfolgt im Portal.
