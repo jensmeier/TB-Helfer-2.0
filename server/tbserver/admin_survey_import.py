@@ -346,8 +346,8 @@ def _install_original(
     station_code: str | None,
     station_name: str | None,
     source_date: date | None,
-    overwrite_existing: bool = False,
     user: dict[str, Any],
+    overwrite_existing: bool = False,
 ) -> dict[str, Any]:
     normalized_kind = kind.strip().upper()
     if not _KIND_RE.fullmatch(normalized_kind):
