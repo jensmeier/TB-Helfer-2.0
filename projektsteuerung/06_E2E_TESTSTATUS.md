@@ -729,3 +729,10 @@ GitHub Actions zum Code-HEAD: Foundation-Job mit `steps=[]`; damit **kein Testna
 ### REF-DATA-003 – Source-Check Reparaturguard
 - Isolierter Guard-Logiktest: **4/4 PASS**.
 - Einstufung: **SOURCE-CHECK**, ausdrücklich **kein Runtime-/DB-/Synology-E2E**. Das oben definierte Runtime-Gate bleibt vollständig offen.
+
+### REF-DATA-003 – Legacy-WVB-Identitätsreparatur Runtime-Gate BESTANDEN 30.09.2026
+- Reindex: `original_count=64`, Parser v4, `reparsed=0`, `ALREADY_INDEXED_REASSIGNED=1`, `failures=0`.
+- WVB 10-11 / 14-22 / 19-20 besitzen danach getrennte Achsen und jeweils den passenden object_key; jede der drei TRA-Achsen hat `axis_segment_count=1`.
+- Der konkrete Legacy-Mergefehler gilt damit als **BESTÄTIGT BEHOBEN**.
+- Hinweis: aktueller Runtimebestand umfasst 64 Originale statt 40; die Bilanz ist vollständig und fehlerfrei. Keine Rückstufung des Gates.
+- Offen im REF-DATA-003-Gesamtgate: Browser-Prefill, Multi-Hit, „Problem ansehen“/Resolution sowie Search/Availability/Geometry für MPB/Pasing.
