@@ -1913,3 +1913,10 @@ Verbindlicher nächster SERVER/PORTAL-Block:
 5. Danach Pasing auf Synology erneut importieren/testen.
 6. Erst nach diesem Runtime-Gate die neue `Trassendatenübersicht` darauf aufbauen.
 - In diesem Block kein Android-`app/**` ändern.
+
+#### REF-DATA-003 – Source-Check-Nachlauf Parser-Version
+Fehlerfeststellung 30.09.2026:
+- Live-`survey_parser.py` verwendet bereits `PARSER_VERSION = "tb-survey-parser-3"`.
+- `server/checks/30_verify_tb_server_1_survey_parser_source.py` erwartet noch den alten Marker `tb-survey-parser-2`.
+- Ein echter Runner würde dadurch trotz aktuellem Parser falsch fehlschlagen.
+- Nur den veralteten Check auf Parser v3 nachziehen; Parsercode selbst bleibt unverändert.

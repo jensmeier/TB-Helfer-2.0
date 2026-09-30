@@ -848,3 +848,7 @@ Status: **IMPLEMENTIERUNG FREIGEGEBEN**
 - Danach Synology/Pasing-E2E.
 - Trassendatenübersicht erst auf dem bestätigten Unterbau.
 - Android bleibt unverändert.
+
+## REF-DATA-003 – Parser-Check-Drift offen
+- Abschlussaudit findet veraltete Check-30-Erwartung `tb-survey-parser-2` bei Live-Parser v3.
+- Fachcode unverändert; Source-Check wird auf v3 synchronisiert.
