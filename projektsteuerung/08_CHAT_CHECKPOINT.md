@@ -1107,3 +1107,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Nutzer möchte jetzt nochmals alle Survey-Testdaten löschen.
 - Für die Zukunft soll ein vergessenes Importfeld nicht mehr zum globalen Reset zwingen.
 - Ziel: vorhandene identische Datei erkennen, fachliche Abweichung anzeigen und nach ausdrücklicher Bestätigung die vorhandene Zuordnung aktualisieren statt ein zweites Original anzulegen.
+
+## REF-DATA-005 – Duplicate-Korrektur Sourcecheckpoint 30.09.2026
+- Fachentscheidung zuerst dokumentiert: aktueller Bestand darf komplett resettiert werden; künftig kein globaler Reset nur wegen vergessenem Bahnhof.
+- Umsetzung gebaut: Warnung bei gleicher Raw-Datei + anderer Zuordnung; bewusster Checkbox-/Bestätigungsweg aktualisiert bestehendes Original in-place.
+- Raw-Datei/SHA/Original-ID bleiben unverändert; Katalogachse/Asset werden versioniert nachgezogen.
+- Runtime noch offen. Nach Deploy gezielt erst Warnlauf ohne Haken, danach bestätigten Korrekturlauf testen.
