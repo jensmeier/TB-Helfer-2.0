@@ -1083,3 +1083,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Kompakte 3-Zeilen-Abfrage zeigt 10-11, 14-22 und 19-20 jeweils mit unterschiedlicher axis_id, passendem object_key, MPB und axis_segment_count=1.
 - Frischer Neuimport ist damit ohne Nachreparatur WVB-sauber.
 - Nächster Schritt: Search/Availability/Geometry kompakt im API-Container testen; danach Multi-Hit im Portal.
+
+## REF-DATA-003 – MPB API-Runtime Checkpoint 30.09.2026
+- Search MPB: 20 Achsen, 40 Assets, GRA/GVP/TRA; WVB korrekt sichtbar.
+- Availability MPB: AVAILABLE, 20 Achsen, 21 aktive Segmente, 0 Review; KM-Qualität 17 FEHLT / 4 AUTOMATISCH.
+- Geometry MPB: 21 Segmente erfolgreich, inklusive aller WVB.
+- Str 5524-1 erscheint in Geometry zweimal mit derselben axis_id und erklärt mindestens einen Teil der Achse/Segment-Differenz; erst Quellen read-only prüfen, nicht umbauen.
+- Nächster Schritt: kompakte KM-Qualitätsausgabe pro Achse + Mehrsegment-Quellen; danach Portal-Multi-Hit.
