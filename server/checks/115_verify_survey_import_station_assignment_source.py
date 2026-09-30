@@ -21,19 +21,15 @@ for token in (
     "Bahnhof/Betriebsstelle bitte aus der Referenzliste auswählen",
     "data-station-code",
     "data-station-name",
-    "<label>Speicherziel</label>",
-    "Gemeinsamer Referenzbestand",
-    "cell.hidden=global;",
-    "card.classList.toggle('global-target',global)",
-    'id="surveyResetCard"',
-    "/api/v1/admin/purge/survey-test-data",
-    "VERMESSUNG TESTDATEN LOESCHEN",
-    "Testbestand vollständig löschen",
+    "scope:'GLOBAL_REFERENCE'",
+    "worksite_id:null",
 ):
     assert token in template, token
 
 assert "metadata->>'station_code'" in admin_web
 assert "metadata->>'station_name'" in admin_web
 assert "Bahnhof / Betriebsstelle</th>" in template
+assert "decision-scope" not in template
+assert "decision-worksite" not in template
 
 print("PASS survey import station assignment source")
