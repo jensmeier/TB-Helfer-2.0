@@ -1036,3 +1036,12 @@ Status: **RUNTIME IMPORT BESTANDEN**
 - `Zuletzt gespeicherte Originale` war im unmittelbaren Importzustand zunächst noch leer; nach `Liste aktualisieren` zeigt die Tabelle die neuen Datensätze. Das ist aktuell nur ein UI-Aktualisierungsverhalten, kein Datenverlust.
 - WVB-Einträge in der Originaltabelle: GLOBAL, MPB, Strecke/Gleis leer bei WVB – passend zum Vertrag, da object_key die Primäridentität ist und route_number fehlen darf.
 - Noch nicht als abgeschlossen werten: frischen Katalogzustand read-only prüfen (object_key/axis_id/segment_count), anschließend API Search/Availability/Geometry und Multi-Hit testen.
+
+## REF-DATA-003 – Frischer WVB-Katalog Read-only 30.09.2026
+Status: **TEILWEISE BESTÄTIGT / 19-20 NOCH NICHT IM BILD**
+- Direkt nach dem sauberen Neuimport, ohne Reindex/Reparatur, zeigt die read-only-Abfrage:
+  - `WVB_10-11_ER0_GGP2026_02_16.TRA` → eigene Achse `e91193d2-c26b-4cf5-b367-720774f90bf6`, `object_key=WVB:10-11`, `station_code=MPB`, `axis_segment_count=1`.
+  - `WVB_14-22_ER0_GGP2026_02_16.TRA` → eigene Achse `d2a4a7c9-eebc-44d8-8a08-5ad85f67d764`, `object_key=WVB:14-22`, `station_code=MPB`, `axis_segment_count=1`.
+- Zugehörige GRA-Dateien haben erwartungsgemäß kein ORIGINAL_TRA-Segment/Achsenobjekt in dieser Abfrage.
+- WVB 19-20 ist im übermittelten Screenshot abgeschnitten und daher **noch nicht bestätigt**; keine Schlussfolgerung aus dem nicht sichtbaren Teil.
+- Nächster Schritt: gezielte 3-Zeilen-Abfrage nur für WVB-TRA, damit 19-20 sichtbar verifiziert wird; danach Search/Availability/Geometry.
