@@ -1053,3 +1053,11 @@ Status: **BESTÄTIGT BEHOBEN**
 - 19-20 teilt keine axis_id mehr mit 14-22.
 - Kein Reindex-/Legacy-Reassign war nötig. Damit ist sowohl der Upgradefall als auch der saubere Neuimportfall praktisch bestätigt.
 - Schutzregel: diesen WVB-Fix nicht ohne neuen reproduzierbaren Fehler verändern.
+
+## REF-DATA-003 – MPB Search/Availability/Geometry Runtime 30.09.2026
+Status: **API OK / KM-GATE NOCH OFFEN**
+- Search: 20 sichtbare MPB-Achsen, Station MPB mit 40 Assets (GRA/GVP/TRA), WVB-object_keys korrekt enthalten.
+- Availability: AVAILABLE, 20 Achsen, 21 aktive Segmente, 0 Review-Segmente; GRA 17 / GVP 2 / TRA 21; ORIGINAL_TRA 21.
+- KM-Qualität aus demselben Runtimebestand: `FEHLT=17`, `AUTOMATISCH=4`. Das ist der nächste fachliche Befund und passt zu der noch offenen Anforderung, vorhandene belastbare KM-/GVP-Daten korrekt als grün abzubilden. Keine Änderung auf Verdacht.
+- Geometry: 21 Segmente erfolgreich geliefert; Bahnhofsgleise, freie Strecken und WVB 10-11/14-22/19-20 vorhanden.
+- Die Differenz 20 Achsen / 21 Segmente kommt sichtbar von mindestens einer Mehrsegment-Achse (`Str 5524-1` erscheint mit identischer axis_id zweimal). Vor Bewertung erst Quellsegmente/KM-Kontext read-only auflösen.
