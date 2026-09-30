@@ -770,3 +770,14 @@ Pflichttest:
 - Admin-Trassierungsseite visuell prüfen: keine Speicherziel-/Firma-Auswahl mehr.
 - Dashboard visuell prüfen: keine Trassierungsdaten-Kategorie unter `Speicher nach Firma` mehr.
 - Pasing/MPB vollständig frisch importieren und danach Prefill, W/WVB object_key, Multi-Hit, Prüffallfenster sowie Search/Availability/Geometry erneut E2E prüfen.
+
+### REF-DATA-003 – Zentralimport UI-Runtime 30.09.2026
+**BESTANDEN:**
+- Speicherziel/Firma-Auswahl auf der zentralen Admin-Trassierungsseite nicht mehr vorhanden.
+- Frische Analyse nach Reset zeigt erkannte Strecke/Gleis-Vorbelegung (u. a. 5528/714, 5528/715, 5528/725).
+- `Zuletzt gespeicherte Originale` ist vor dem Neuimport leer.
+
+**Noch offen:**
+- MPB/Betriebsstelle auf die Pasing-Gruppen anwenden.
+- Import tatsächlich ausführen und Resultate prüfen.
+- Danach W/WVB object_key, Multi-Hit, ggf. Prüffälle/Problemfenster sowie Search/Availability/Geometry E2E prüfen.
