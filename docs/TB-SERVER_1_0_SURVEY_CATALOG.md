@@ -11,15 +11,25 @@ Originaldateien werden nicht überschrieben oder physisch zusammenkopiert. Die g
 
 ## Persistenz
 
-Migration `017_survey_reference_catalog.sql` ergänzt:
+Migration `017_survey_reference_catalog.sql` ergänzt den versionierten Katalog; Migration `018_survey_object_identity.sql` erweitert die Achsen um eine stabile fachliche Objektidentität.
 
 - `survey_catalog_assets`: ausgewertete Originalquellen/Dateiarten;
-- `survey_catalog_axes`: stabile fachliche Achsen (Strecke/Betriebsstelle/Gleis/Richtung);
+- `survey_catalog_axes`: stabile fachliche Achsen (Strecke/Betriebsstelle/Gleis/Richtung/Objekt-ID);
 - `survey_catalog_segments`: Original- oder manuelle Geometrieanteile;
 - `survey_catalog_conflicts`: nur uneindeutige Auto-Merge-Fälle;
 - `survey_catalog_history`: versionierter Change-Cursor.
 
 Rohdateien bleiben in `survey_originals` mit SHA-256 und bestehendem Zugriffsschutz.
+
+### Weiche / Weichenverbindung
+
+Für Bahnhofsobjekte wird nicht mehr nur räumliche Nähe verwendet:
+
+- einzelne Weiche: `object_key = W:<Nummer>`, z. B. `W:27`;
+- Weichenverbindung: `object_key = WVB:<A>-<B>`, z. B. `WVB:14-22`;
+- WVB-Endpunkte werden kanonisch sortiert, damit `14-22` und `22-14` dieselbe fachliche Identität ergeben;
+- verschiedene bekannte `object_key` werden nicht allein wegen räumlicher Nähe als dieselbe Achse behandelt;
+- bei Bahnhofsdaten ist `station_code + object_key` eine starke Identität. Eine eigene Streckennummer ist für Weiche/WVB nicht zwingend erforderlich.
 
 ## Scope
 
@@ -149,7 +159,10 @@ Server erzeugt einen Konfliktdatensatz und einen Background-Job `SURVEY_CONFLICT
 Admin-API:
 
 - `GET /api/v1/survey-catalog/conflicts`;
+- `GET /api/v1/survey-catalog/conflicts/{id}`: verständliche Diagnose inklusive beiden Segmenten, Quellen, Messwerten und ausgedünnter Vergleichsgeometrie;
 - `POST /api/v1/survey-catalog/conflicts/{id}/resolve`.
+
+Die Admin-Oberfläche zeigt offene Prüffälle mit **„Problem ansehen“**. Das Detailfenster legt neue und vorhandene Geometrie gemeinsam übereinander, erklärt den technischen Konfliktgrund auf Deutsch und zeigt die relevanten Messwerte. Entscheidungen bleiben versioniert/auditierbar.
 
 Mögliche Entscheidungen:
 
@@ -168,7 +181,7 @@ Die Antwort enthält `next_after`. Dieser Scan-Cursor läuft auch über für den
 
 ## Backfill
 
-`POST /api/v1/survey-catalog/reindex` (Admin) legt den Background-Job `SURVEY_CATALOG_REINDEX` an. Damit werden bereits vorhandene geparste Originale nach Migration 017 in den Katalog eingelesen.
+`POST /api/v1/survey-catalog/reindex` (Admin) legt den Background-Job `SURVEY_CATALOG_REINDEX` an. Damit werden bereits vorhandene geparste Originale nach Migration 017/018 in den Katalog eingelesen. Migration 018 enthält zusätzlich einen konservativen Best-Effort-Backfill für bereits vorhandene eindeutige Weichen-/WVB-Anzeigenamen.
 
 ## Lifecycle / Firmen-Purge
 
@@ -184,12 +197,21 @@ Der bestehende `GET /api/v1/capabilities` kündigt den Vertrag explizit an:
 
 Clients verwenden diese Flags, bevor sie die neuen Survey-Katalogpfade aktivieren.
 
+## Portal-Unterbau vor der Trassendatenübersicht
+
+Der bestehende Admin-Import enthält jetzt den notwendigen Unterbau für die spätere `Trassendatenübersicht`:
+
+- erkannte Strecke/Gleis/Objekt-ID werden nach dem Rendern erneut als sichtbares Decision-Prefill abgesichert;
+- Weiche/WVB besitzen ein eigenes Objektfeld statt das Gleisfeld zu missbrauchen;
+- bei deckungsgleichen/nahen TRA-Achsen wird ein Mehrfachtreffer angeboten, analog zum bestehenden Android-Prinzip;
+- offene Konflikte sind anklickbar und werden im Diagnosefenster geometrisch verglichen.
+
+Die eigenständige `Trassendatenübersicht` folgt erst nach erfolgreichem Synology-/Pasing-Runtime-Gate dieses Unterbaus.
+
 ## Nachgelagerte Stufen
 
-Dieser Vertrag ist die Serverbasis.
-
-1. SERVER – dieser Block.
-2. Portal – Trassendatenübersicht, Suche/Zoom/Prüffälle.
+1. SERVER/Import-Portal-Unterbau – source-seitig umgesetzt, Runtime Migration 018 noch offen.
+2. Portal – eigenständige Trassendatenübersicht, Suche/Zoom/Bestandsverwaltung.
 3. Android – Verfügbarkeitsindex, Download, Beiträge/Änderungen und manueller GPS-Pfad.
 
-Portal-Templates und `app/**` gehören ausdrücklich nicht zu diesem Serverblock.
+`app/**` wird im SERVER-Projekt nicht geändert.

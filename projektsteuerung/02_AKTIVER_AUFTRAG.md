@@ -1920,3 +1920,10 @@ Fehlerfeststellung 30.09.2026:
 - `server/checks/30_verify_tb_server_1_survey_parser_source.py` erwartet noch den alten Marker `tb-survey-parser-2`.
 - Ein echter Runner würde dadurch trotz aktuellem Parser falsch fehlschlagen.
 - Nur den veralteten Check auf Parser v3 nachziehen; Parsercode selbst bleibt unverändert.
+
+#### REF-DATA-003 – Buildblock Sourceabschluss 30.09.2026
+Status: **SOURCE FERTIG / DEPLOYMENT OFFEN**
+- Freigegebener Block Prefill + Weiche/WVB object_key + Multi-Hit + Problem-ansehen ist im SERVER/Portal-Quellstand umgesetzt.
+- Migration 018 ist neu und muss vor Runtimeprüfung angewendet werden.
+- Kein Android-Code geändert.
+- Nächster Auftragsschritt gemäß Freigabe: Synology/Pasing-E2E; erst nach Bestätigung die eigenständige Trassendatenübersicht bauen.

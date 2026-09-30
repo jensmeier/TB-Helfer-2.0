@@ -635,3 +635,20 @@ Praktischer Synology-Nachweis:
 - alle Survey-Zähler unter `after` = 0.
 
 Damit ist der geschützte Staging-Reset-Endpunkt **BESTÄTIGT**.
+
+### REF-DATA-003 – Prefill/WVB/Multi-Hit/Problemfenster Runtime-Gate
+Source: **FERTIG** auf `5604ece1...`. Deployment/E2E: **OFFEN**.
+
+Pflichttests nach Deployment:
+1. Systemstatus zeigt Migration **18/18**, keine ausstehenden Migrationen.
+2. Pasing-Analyse: erkannte Strecke/Gleis bleiben sichtbar im Decision-Feld.
+3. W 27 wird als `W:27`, WVB 14-22 als `WVB:14-22` erkannt.
+4. WVB 10-11, 14-22, 19-20 bleiben bei gleichem Bahnhof fachlich getrennte Objekte; keine falsche Conflict-Mail nur wegen Nähe.
+5. Echte widersprüchliche Daten desselben object_key erzeugen weiterhin REVIEW_REQUIRED.
+6. Zwei überlagerte TRA an derselben Klickstelle erzeugen Multi-Hit-Auswahl und beide Achsen sind auswählbar.
+7. Offener Prüffall erscheint in „Offene Trassendaten-Prüffälle“.
+8. „Problem ansehen“ zeigt neue/vorhandene Quelle, Erklärung, Messwerte und beide Geometrien.
+9. Eine Test-Resolution wird versioniert gespeichert und der offene Prüffall verschwindet entsprechend.
+10. Danach Search/Availability/Geometry für MPB erneut prüfen.
+
+Erst nach diesem Gate: eigenständige `Trassendatenübersicht` bauen.

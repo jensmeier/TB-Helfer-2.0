@@ -852,3 +852,27 @@ Status: **IMPLEMENTIERUNG FREIGEGEBEN**
 ## REF-DATA-003 – Parser-Check-Drift offen
 - Abschlussaudit findet veraltete Check-30-Erwartung `tb-survey-parser-2` bei Live-Parser v3.
 - Fachcode unverändert; Source-Check wird auf v3 synchronisiert.
+
+## REF-DATA-003 – Prefill/WVB/Multi-Hit/Problemfenster Sourceabschluss
+Status: **SOURCE FERTIG / NICHT DEPLOYT / E2E OFFEN**
+HEAD: `5604ece1bcedf1c055933cfe11f2f62a084677a3`
+
+Code:
+- `survey_parser.py`: Parser v3 mit `object_key_from_name` für WEICHE/WVB;
+- `018_survey_object_identity.sql`: object_key-Spalte + Index + konservativer Backfill;
+- `survey_catalog.py`: object_key in Identität/Kandidatenvergleich/Strong-Identity, Conflict-Detail-API;
+- `admin_survey_import.py`: object_key im Analyse-/Importvertrag;
+- `v1_admin_survey_import.html`: stabile Prefills, W/WVB-Objektfeld, Achsen-Multi-Hit, offene Prüffälle + Problemfenster;
+- Checks 30/112/113/115 erweitert, Check 116 neu; Workflow auf Migration 18 nachgezogen.
+
+Finaler GitHub-Audit: 25/25 Marker PASS.
+GitHub Actions auf aktuellem HEAD: Foundation-Jobs ohne Runner-Steps (`steps=[]`) → kein Testnachweis.
+
+Runtime offen:
+- Migration 018;
+- Parser/Import auf Synology;
+- WVB 10-11/14-22/19-20 als getrennte object_keys;
+- Route/Gleis-Prefill im Browser;
+- Multi-Hit bei überlagerten Achsen;
+- Problemfenster inkl. Geometrievergleich und Resolution;
+- Pasing Search/Availability/Geometry danach erneut.

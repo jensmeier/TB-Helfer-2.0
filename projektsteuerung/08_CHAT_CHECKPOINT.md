@@ -958,3 +958,15 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Arbeitsreihenfolge: Route/Gleis-Prefill → Weiche/WVB object_key → Admin Multi-Hit → Konflikt-Detailfenster.
 - Danach Pasing Runtime-E2E; Trassendatenübersicht folgt erst anschließend.
 - Android app/** bleibt unberührt.
+
+## REF-DATA-003 – Diagnoseblock Sourcecheckpoint 30.09.2026
+- HEAD `5604ece1bcedf1c055933cfe11f2f62a084677a3`.
+- Source fertig: Route/Gleis/Objekt-Prefill, Weiche/WVB object_key, Migration018, Achsen-Multi-Hit, Conflict-Detail-API und „Problem ansehen“-Dialog.
+- Weiche: `W:<Nr>`; WVB: `WVB:<A>-<B>`.
+- Verschiedene bekannte WVB-object_keys werden nicht mehr nur aufgrund räumlicher Nähe als dieselbe Achse behandelt.
+- Problemfenster zeigt beide Geometrien, Quellen, verständliche Ursache, Messwerte und vier versionierte Entscheidungen.
+- Protected REF-DATA-002 Zoom/Hover/KOR/GVP-Grundfunktion bleibt vorhanden.
+- Finaler Source-Audit: 25/25 PASS.
+- Actions: `steps=[]`, kein CI-Testnachweis.
+- Status: **SOURCE FERTIG / MIGRATION018 NICHT DEPLOYT / RUNTIME-E2E OFFEN**.
+- Nächster Schritt: Synology deployen, 18/18 prüfen, Pasing Gate testen; danach Trassendatenübersicht.

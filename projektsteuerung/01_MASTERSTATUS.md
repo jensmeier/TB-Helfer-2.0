@@ -963,3 +963,28 @@ Zusätzlich sichtbar: BlueMail-Eingang `TB-Helfer: Trassendaten-Prüffall MPB �
 - Nachher: alle ausgewiesenen Survey-Zähler = 0.
 - Damit ist der Staging-Vermessungs-Testbestand vollständig und konsistent zurückgesetzt.
 - Andere Fachbereiche waren nicht Teil dieses Resetpfads.
+
+## REF-DATA-003 – Diagnose-/Objektidentitätsblock SOURCE FERTIG 30.09.2026
+Status: **SOURCE FERTIG / MIGRATION 018 NICHT DEPLOYT / RUNTIME-E2E OFFEN**
+Maßgeblicher HEAD: `5604ece1bcedf1c055933cfe11f2f62a084677a3`.
+
+Umgesetzt:
+- Migration `018_survey_object_identity.sql` mit `survey_catalog_axes.object_key`;
+- stabile Weichenidentität `W:<Nr>` und WVB-Identität `WVB:<A>-<B>`;
+- unterschiedliche bekannte WVB werden nicht mehr allein wegen räumlicher Nähe gegeneinander gemerged/geprüft;
+- Admin-Import transportiert `object_key` bis in Originalmetadaten/Katalog;
+- sichtbares Route/Gleis/Objekt-Prefill wird nach DOM-Aufbau aus den erkannten Analysewerten abgesichert;
+- Admin-Grafik bietet Mehrfachtreffer bei überlagerten/nahen Achsen und hebt die gewählte Achse hervor;
+- offene Prüffälle erscheinen mit `Problem ansehen`;
+- Konflikt-Detail-API liefert verständliche Erklärung, Quellen, Messwerte und beide Vergleichsgeometrien;
+- Entscheidungen `KEEP_BOTH / KEEP_EXISTING / ACCEPT_CANDIDATE / CONNECT` bleiben versioniert/auditierbar;
+- bestätigter REF-DATA-002-Tiefzoom/Hover/KOR/GVP-Grundblock blieb erhalten;
+- Android-`app/**` unverändert.
+
+Source-Nachweis:
+- finaler GitHub-Strukturaudit auf HEAD: **25/25 PASS**;
+- Parser-Check-Drift auf v3 korrigiert;
+- Actions Runs zum HEAD liefern erneut `steps=[]`; daher **kein CI-Testnachweis**.
+
+Nächster Gate:
+Synology auf Migration 18/18 bringen → Pasing/MPB neu testen → Prefill, W/WVB object_key, Multi-Hit und Problemfenster praktisch bestätigen. Erst danach eigenständige Trassendatenübersicht.

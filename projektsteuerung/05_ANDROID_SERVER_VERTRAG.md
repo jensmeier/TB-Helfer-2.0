@@ -608,3 +608,14 @@ Status: **AUDIT OFFEN**
   - Bahnhof + Gleis/Weiche/WVB ist Primärkontext;
   - Strecke ergänzt nur bei Mehrdeutigkeit oder freier Strecke.
 - Android besitzt bereits Multi-Hit-Unterstützung für überlagerte Roh-TRA in der Grafik. SERVER/Portal soll dieses Bedienprinzip übernehmen; keine Android-Änderung dafür im SERVER-Projekt.
+
+#### REF-DATA-003 – Weiche/WVB-Objektidentität v1
+Status: **SERVERVERTRAG SOURCE FEST**
+- Für Weichen/WVB wird ein separates `object_key` verwendet:
+  - `W:<Nummer>`;
+  - `WVB:<WeicheA>-<WeicheB>` in kanonischer Reihenfolge.
+- Bahnhof + Gleis bleibt für Gleise Primäridentität; Bahnhof + object_key ist Primäridentität für Weiche/WVB.
+- `route_number` ist bei Bahnhofsobjekten Zusatz-/Disambiguierungsinformation und darf für W/WVB fehlen.
+- Unterschiedliche bekannte object_keys dürfen nicht wegen bloßer räumlicher Nähe als dieselbe Achse behandelt werden.
+- Conflict-Detail ist Admin-/Portaldiagnose; Android erhält dadurch keine neue Pflicht in diesem SERVER-Block.
+- Android-`app/**` bleibt unverändert; spätere Android-Katalogintegration soll object_key übernehmen.
