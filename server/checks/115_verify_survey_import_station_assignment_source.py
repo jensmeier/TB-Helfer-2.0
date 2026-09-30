@@ -25,6 +25,10 @@ for token in (
     "Gemeinsamer Referenzbestand",
     "cell.hidden=global;",
     "card.classList.toggle('global-target',global)",
+    'id="surveyResetCard"',
+    "/api/v1/admin/purge/survey-test-data",
+    "VERMESSUNG TESTDATEN LOESCHEN",
+    "Testbestand vollständig löschen",
 ):
     assert token in template, token
 
