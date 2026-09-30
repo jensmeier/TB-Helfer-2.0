@@ -959,3 +959,7 @@ Status: **SOURCE KORRIGIERT / NICHT DEPLOYT / E2E OFFEN**
 - Maßgebliche Code-/Check-Commits: `a7149047790eed6cffe785cc427d81fba74f0b28`, `523450f8c544587e19e083aea0cb89414e2bb0ab`, `fcd2c02423ac42098cdd63465ca4445db5aca627`.
 - Keine Migration 020, kein Compose, kein Android-Code.
 - Runtime offen: Synology-Deploy dieses Sourcefixes, Reindex mit failures=0 und genau getrennten object_keys/Achsen für WVB 10-11, 14-22, 19-20.
+
+### Source-Check Legacy-WVB-Guard 30.09.2026
+- Isolierter Logiktest der aus GitHub gelesenen Guard-Funktion: **4/4 PASS** (Legacy-Mismatch mit bestätigendem Geschwister-Original = reparierbar; ohne Beleg = nein; gleicher object_key = nein; abweichender/manuell wirkender Achs-key = nein).
+- Das ist **nur ein Source-/Logikcheck**, kein Test des DB-Umhängens und kein Synology-E2E.
