@@ -584,3 +584,8 @@ Synology-Gegenvergleich der beiden Segmente derselben Achse:
 Bewertung: Der konkrete Auto-Merge `Str 5524-1` ist geometrisch eindeutig plausibel und gilt für den Merge-Mechanismus als **BESTÄTIGT**. Das bestätigt nicht automatisch alle zukünftigen Mergefälle; Mehrdeutigkeit/Review bleibt separat zu testen.
 
 Zusätzlicher Befund: Bahnhofssuche kann für den aktuellen Pasing-Bestand noch nicht bestätigt werden, weil Admin-Import bisher keine Betriebsstellenzuordnung übermittelt.
+
+### REF-DATA-003 – Testdaten-Neuimport vorgesehen
+- Aktueller Reindex-/Merge-Nachweis bleibt als technischer Runtimebeleg dokumentiert.
+- Für den abschließenden Fach-E2E darf der aktuelle Staging-Vermessungsbestand zurückgesetzt und mit korrekter Bahnhof/Betriebsstellen-Zuordnung neu importiert werden.
+- Reset selbst ist noch nicht ausgeführt.

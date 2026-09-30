@@ -894,3 +894,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Android-Grundprinzip bleibt Referenz: Importeur ordnet Bahnhof/Betriebsstelle fachlich zu.
 - Ziel Admin: Referenzsuche RL100/Name, Default für Upload/ZIP, Override je Gruppe; freie Strecke darf ohne Betriebsstelle bleiben.
 - Bereits importierte Katalogachsen müssen nachträglich zuordenbar sein, ohne Originale anzufassen.
+
+## REF-DATA-003 – Testdaten-Resetentscheidung 30.09.2026
+- Benutzer erlaubt ausdrücklich den vollständigen Reset des aktuellen Vermessungs-/Trassendaten-Testbestands auf Staging.
+- Quelldaten sind weiterhin vorhanden und können danach neu importiert werden.
+- Noch nicht löschen, bevor der sichere Server-Löschpfad geprüft und die Bahnhof/Betriebsstellen-Eingabe im Import ergänzt ist.
+- Produktionsdaten/-schutz sind von dieser Erlaubnis nicht umfasst.

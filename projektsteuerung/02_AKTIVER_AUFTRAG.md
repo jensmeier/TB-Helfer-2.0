@@ -1825,3 +1825,14 @@ Benutzerklärung und Quellbestätigung 30.09.2026:
   - bei freier Strecke zwischen Betriebsstellen darf die Betriebsstelle bewusst leer bleiben;
   - keine automatische Bahnhofserfindung allein aus Dateiname oder räumlicher Nähe.
 - Bereits importierte Bestände benötigen eine nachträgliche Zuordnungsmöglichkeit, ohne Originaldateien neu schreiben zu müssen.
+
+#### REF-DATA-003 – Staging-Testbestand darf zurückgesetzt werden
+Entscheidung Benutzer 30.09.2026:
+- Die aktuell auf dem Staging-Server vorhandenen Trassierungs-/Vermessungsdaten sind Testbestand und dürfen für REF-DATA-003 vollständig gelöscht und anschließend aus den weiterhin vorhandenen Quelldateien neu importiert werden.
+- Das gilt ausdrücklich nur für den aktuellen Staging/Testbestand, nicht als allgemeine Produktions-Löschregel.
+- Reihenfolge:
+  1. Admin-Import muss Bahnhof/Betriebsstelle korrekt erfassen können;
+  2. bestehenden Vermessungs-Testbestand konsistent zurücksetzen;
+  3. Daten neu einlesen und dabei Bahnhof/Betriebsstelle korrekt zuordnen;
+  4. Reindex und Search/Availability/Geometry erneut testen.
+- Löschung muss Original-Datenbankeinträge, Parserkatalog, Survey-Katalogreferenzen und gespeicherte Originaldateien konsistent behandeln; keine SQL-/Dateilöschung auf Verdacht.

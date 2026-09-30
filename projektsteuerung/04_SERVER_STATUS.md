@@ -757,3 +757,9 @@ Status: **URSACHE BESTÄTIGT / BACKEND VORBEREITET / ADMIN-UI FEHLT**
 - Das erklärt die leeren station-Felder des Pasing-Bestands.
 - Nötig: Bahnhofsauswahl über bestehende Station-Reference-Suche, Bulk-Default + Gruppenoverride; freie Strecke darf ohne Bahnhof bleiben.
 - Zusätzlich muss ein bestehender Katalogbestand nachträglich einer Betriebsstelle zugeordnet werden können, ohne Rohoriginale zu verändern.
+
+## REF-DATA-003 – Staging-Reset freigegeben
+Status: **TESTDATEN-RESET ERLAUBT / NOCH NICHT AUSGEFÜHRT**
+- Benutzer bestätigt, dass der aktuelle Vermessungsbestand auf Staging Testdaten ist und erneut eingelesen werden kann.
+- Reset erst nach sicherem Löschpfad und nach Ergänzung der Betriebsstellenzuordnung im Import.
+- Produktionsschutz bleibt unverändert.
