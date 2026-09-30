@@ -1003,3 +1003,14 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Drei reproduzierte WVB-Fehler werden damit an der tatsächlichen DB-Ursache behoben.
 - Source-Audit 7/7 PASS.
 - Status: SOURCE FERTIG / SYNLOGY 019 OFFEN.
+
+## REF-DATA-003 – Reindex nach ENRICH-Fix runtime-grün 30.09.2026
+- Synology/API-Terminal: `reindex_all_originals()` erneut ausgeführt.
+- Ergebnis: `original_count=40`, `parser_version=tb-survey-parser-4`, `reparsed=0`.
+- Statusverteilung: `ALREADY_INDEXED=19`, `INDEXED_ASSET=19`, `ALREADY_INDEXED_ENRICHED=2`.
+- `failures=0`: der zuvor reproduzierte ENRICH-Constraint-Fehler ist im laufenden DB-Pfad behoben.
+- Die 40 Originale sind vollständig bilanziert; kein Reindex-Fehler mehr offen.
+- Abweichung zur Voraberwartung: nur 2 statt 3 WVB wurden in diesem Lauf als `ALREADY_INDEXED_ENRICHED` gemeldet. Vor weiterer Fachfreigabe read-only feststellen, welcher der drei WVB-Fälle bereits als `ALREADY_INDEXED` läuft und welche `object_key` die drei vorhandenen Achsen tatsächlich tragen.
+- Der vorliegende Screenshot zeigt nicht den Systemstatus `19/19`; Migration 019 deshalb in der Dokumentation erst nach separatem Systemstatus-/Migrationstabellen-Nachweis als 19/19 bestätigen.
+- Nächster Runtime-Schritt: WVB 10-11 / 14-22 / 19-20 mit Originalname, Achse, `object_key` und Segmentzahl gegenüberstellen; danach Pasing-Prefill, Multi-Hit und „Problem ansehen“ praktisch testen.
+
