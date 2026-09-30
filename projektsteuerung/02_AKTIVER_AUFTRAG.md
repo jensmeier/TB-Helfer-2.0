@@ -1971,3 +1971,8 @@ Runtime-Diagnose 30.09.2026:
 - Der neue Fill-only-Upgradepfad schreibt History-Operation `ENRICH`; die bestehende DB-Check-Constraint erlaubt diese Operation noch nicht.
 - Ursache ist damit eindeutig DB-Vertrag/Migration, nicht Geometrie, Parser oder die drei WVB-Dateien.
 - Fix nur an der History-Operation-Constraint; keine WVB-Geometrie oder Merge-Regel ändern.
+
+#### REF-DATA-003 – ENRICH-Constraint Fix gebaut
+- Migration 019 ist source-seitig fertig.
+- Sie ändert ausschließlich die Check-Constraint der Survey-History und erlaubt zusätzlich `ENRICH`.
+- Runtime noch offen: deployen/anwenden und Reindex wiederholen.

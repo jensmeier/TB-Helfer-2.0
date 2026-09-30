@@ -915,3 +915,11 @@ Status: **MIGRATION 18 BESTÄTIGT / PARSER v4 BESTÄTIGT / REINDEX FEHLER OFFEN*
 - WVB 10-11, 14-22 und 19-20 scheitern identisch an `survey_catalog_history_operation_check`.
 - `ENRICH` ist im neuen Sourcepfad fachlich vorgesehen, aber in der deployten DB-Constraint noch nicht erlaubt.
 - Ziel: neue Migration erweitert erlaubte History-Operationen um `ENRICH`; sonstige Kataloglogik unverändert.
+
+## REF-DATA-003 – Migration 019 Survey-History ENRICH
+Status: **SOURCE FERTIG / RUNTIME OFFEN**
+- Datei: `server/v1_migrations/019_survey_catalog_history_enrich.sql`.
+- Drop/Recreate derselben Constraint mit erlaubten Operationen: CREATE, UPDATE, RESOLVE, STATUS, ENRICH.
+- Workflow-Migrationsziel auf 19/19 nachgezogen.
+- Check 112 prüft Migration 019 und ENRICH.
+- Keine Fachlogik außer DB-Vertrag geändert.

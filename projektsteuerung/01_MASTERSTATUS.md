@@ -1019,3 +1019,12 @@ Status: **DEPLOYT / RUNTIMEBASIS TEILBESTÄTIGT / REINDEX FEHLERHAFT**
 - Damit sind Migration 018 und Parser-v4-Deployment praktisch bestätigt.
 - Das Reindex-/Upgrade-Gate ist **nicht bestanden**, weil 3 Originale mit Exception ausfallen.
 - Vor Codeänderung müssen die drei betroffenen Originale und exakten Exceptions ermittelt werden.
+
+## REF-DATA-003 – History-ENRICH-Constraint Fix SOURCE FERTIG 30.09.2026
+Status: **SOURCE FERTIG / MIGRATION 019 NICHT DEPLOYT**
+- Reindex failures=3 waren eindeutig die drei WVB 10-11, 14-22, 19-20.
+- Ursache: `survey_catalog_history_operation_check` erlaubte die neue versionierte History-Operation `ENRICH` nicht.
+- Neue Migration `019_survey_catalog_history_enrich.sql` erweitert die erlaubte Liste um `ENRICH`; bestehende Operationen bleiben erhalten.
+- Keine Änderung an WVB-Geometrie, Parser, Merge oder object_key-Logik.
+- Source-Audit des Fixes: 7/7 PASS.
+- Nächster Schritt: Migration 019 auf Synology anwenden → Systemstatus 19/19 → Reindex erneut, Ziel `failures=0` und 3x `ALREADY_INDEXED_ENRICHED`.

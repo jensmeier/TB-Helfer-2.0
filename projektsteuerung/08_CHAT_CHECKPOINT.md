@@ -996,3 +996,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Alle: CheckViolation auf `survey_catalog_history_operation_check` bei Operation `ENRICH`.
 - Kein Daten-/Geometriefehler.
 - Nächster Codefix ist ausschließlich eine DB-Migration zur Erweiterung der erlaubten History-Operationen.
+
+## REF-DATA-003 – ENRICH-Constraint Fix Checkpoint 30.09.2026
+- Commit `56969e788f6e4266d017505f965321c1c9afb167`.
+- Migration 019 erweitert `survey_catalog_history_operation_check` um ENRICH.
+- Drei reproduzierte WVB-Fehler werden damit an der tatsächlichen DB-Ursache behoben.
+- Source-Audit 7/7 PASS.
+- Status: SOURCE FERTIG / SYNLOGY 019 OFFEN.

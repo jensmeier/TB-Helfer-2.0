@@ -685,3 +685,11 @@ Diese Punkte sind Source-verifiziert, aber erst nach Synology-Lauf ein Runtime-/
 - Auslöser: History-Operation `ENRICH`.
 - Betroffene Dateien: WVB 10-11, WVB 14-22, WVB 19-20.
 - Damit ist die Ursache **BESTÄTIGT**; Runtime-Fix noch offen.
+
+### REF-DATA-003 – Migration019 Runtime-Gate
+Nach Deployment prüfen:
+1. Systemstatus Migrationen **19 / 19**, pending leer;
+2. Reindex erneut ausführen;
+3. Ziel: `failures = 0`;
+4. für die drei alten WVB-Achsen erwartbar: `ALREADY_INDEXED_ENRICHED`;
+5. danach WVB object_keys und Pasing-Fachtests fortsetzen.
