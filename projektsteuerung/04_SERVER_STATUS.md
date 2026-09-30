@@ -743,3 +743,9 @@ Read-only-Katalogabfrage auf der Synology:
 Bewertung:
 - Auto-Merge läuft praktisch;
 - fachliche Korrektheit des 5524-1-Merges ist noch nicht bestätigt, weil das zweite Segment derselben Achse und deren Anschluss-/Überlappungsgeometrie noch gegenübergestellt werden müssen.
+
+## REF-DATA-003 – Betriebsstellenzuordnung Runtime-Lücke
+Status: **SERVER-NACHARBEIT VOR PORTAL**
+- Reindex funktioniert, aber Runtimeabfrage zeigt für alle gelisteten Achsgruppen leere `station_code/station_name`.
+- Streckensuche wäre nutzbar; Bahnhofssuche (z. B. Pasing) noch nicht belastbar.
+- Ursache/Backfill aus vorhandenen Import-/Referenzdaten jetzt serverseitig prüfen.

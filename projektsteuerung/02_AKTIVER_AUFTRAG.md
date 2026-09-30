@@ -1803,3 +1803,11 @@ Abschlussaudit 29.09.2026:
 - Wenn Strecke/Betriebsstelle nicht widersprechen und die Bounding-Box räumlich eng an einer vorhandenen Achse liegt, darf der Server die echte Geometrie auf Überlappung/Endpunkt/Tangente prüfen.
 - Genau eine eindeutige geometrische Achse darf automatisch verbunden werden; mehrere gleich plausible Achsen erzeugen REVIEW_REQUIRED.
 - Widersprechende Strecke/Gleis/Richtung bleiben harte Ausschlussgründe.
+
+#### REF-DATA-003 – Runtimefund fehlende Betriebsstellenzuordnung 30.09.2026
+Fehlerfeststellung aus Synology-Katalogabfrage:
+- Strecken/Achsen wurden erkannt (u. a. 5302, 5340, 5524, 5528, 5529), aber alle ausgegebenen Gruppen haben aktuell `station_code/station = NULL`.
+- Damit wäre die geforderte Suche nach Bahnhof/Betriebsstelle für den bereits reindizierten Bestand nicht zuverlässig möglich.
+- Das ist vor dem Portalblock serverseitig zu lösen; das Portal darf fehlende Betriebsstellenidentität nicht aus Dateinamen raten.
+- Zuerst vorhandene Importmetadaten/Archivkontext und Bahnhof-/Betriebsstellenreferenz prüfen. Wenn daraus eine belastbare Zuordnung möglich ist, Server-Reindex/Backfill entsprechend ergänzen.
+- Falls eine Zuordnung nicht eindeutig ableitbar ist, Daten weiter nach Strecke verfügbar halten und die fehlende Betriebsstellenzuordnung als fachlichen Prüf-/Ergänzungsbedarf kennzeichnen.
