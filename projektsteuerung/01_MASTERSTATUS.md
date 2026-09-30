@@ -1039,3 +1039,15 @@ Status: **SOURCE FERTIG / MIGRATION 019 NICHT DEPLOYT**
 - Der vorliegende Screenshot zeigt nicht den Systemstatus `19/19`; Migration 019 deshalb in der Dokumentation erst nach separatem Systemstatus-/Migrationstabellen-Nachweis als 19/19 bestätigen.
 - Nächster Runtime-Schritt: WVB 10-11 / 14-22 / 19-20 mit Originalname, Achse, `object_key` und Segmentzahl gegenüberstellen; danach Pasing-Prefill, Multi-Hit und „Problem ansehen“ praktisch testen.
 
+
+## REF-DATA-003 – Legacy-WVB-Identitätsreparatur SOURCE 30.09.2026
+Status: **SOURCE KORRIGIERT / NICHT DEPLOYT / RUNTIME-RETEST OFFEN**
+- Migration 019 ist auf Synology mit **19/19** und pending=[] bestätigt; Reindex vor diesem Fix lief mit failures=0.
+- Read-only-Nachweis hat den verbliebenen Altfehler eindeutig gezeigt: `WVB_19-20...` hing noch an derselben Achse wie `WVB_14-22...` und erbte dadurch fälschlich `object_key=WVB:14-22`.
+- Ursache ist ein Legacy-Merge aus der Zeit vor stabiler WVB-object_key-Identität; die aktuelle Kandidatenlogik verhindert neue Merges unterschiedlicher bekannter object_keys bereits.
+- Sourcefix in `server/tbserver/survey_catalog.py`: bestehende ORIGINAL_TRA-Segmente dürfen beim Reindex nur dann auf eine getrennte object_key-Achse umgesetzt werden, wenn ein zweites Original auf der alten Achse deren bisherigen object_key unabhängig bestätigt. Offene Konflikte blockieren die automatische Reparatur.
+- Segment-ID und Raw-Original bleiben unverändert; Umhängen wird versioniert als SEGMENT-UPDATE historisiert und mit `SURVEY_CATALOG_SEGMENT_IDENTITY_REASSIGN` auditiert.
+- Neuer Reindex-Status für diesen Altfall: `ALREADY_INDEXED_REASSIGNED`.
+- Code-/Check-Commits: `a7149047...`, `523450f8...`, `fcd2c024...`.
+- GitHub-Workflow zum Code-HEAD meldet failure, der Foundation-Job liefert aber erneut `steps=[]`; deshalb **kein ausführbarer CI-Testnachweis** und keine Aussage über einen fachlichen Testfehler.
+- Nächster Gate: nur `survey_catalog.py` auf Synology übernehmen → API neu erstellen/starten → Reindex → WVB 10-11/14-22/19-20 read-only prüfen. Erst danach Prefill/Multi-Hit/„Problem ansehen“ und Search/Availability/Geometry.
