@@ -1058,3 +1058,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Reset-`after` und separate Preview danach zeigen überall 0.
 - Survey-/Trassierungs-Testbestand ist damit sauber leer. Geschützten Resetpfad nicht weiter ändern.
 - Nächster Schritt: Daten frisch hochladen; dabei zuerst neue zentrale Admin-UI visuell prüfen, dann Pasing/MPB-Import und Fach-E2E durchführen.
+
+## REF-DATA-003 – Frische Analyse nach Reset 30.09.2026
+- Screenshots bestätigen den neuen zentralen UI-Vertrag praktisch: keine Speicherziel-/Firma-Auswahl mehr.
+- Frischer Analysezustand erkennt u. a. 5528/714, 5528/715 und 5528/725 korrekt vor.
+- Originaltabelle bleibt vor Import leer.
+- GVP/KF zeigt 5524 auf Gruppenebene und 259 punktbezogene Hinweise ohne eigenen Strecken-/Stationsbezug; beim Import/anschließenden Katalogtest gezielt beobachten, nicht vorab als Fehler umbauen.
+- Nächster Klickpfad: MPB setzen → auf Gruppen übernehmen → Import starten → Ergebnis-Screenshots sichern.
