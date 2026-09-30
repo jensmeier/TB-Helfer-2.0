@@ -763,3 +763,14 @@ Status: **TESTDATEN-RESET ERLAUBT / NOCH NICHT AUSGEFÜHRT**
 - Benutzer bestätigt, dass der aktuelle Vermessungsbestand auf Staging Testdaten ist und erneut eingelesen werden kann.
 - Reset erst nach sicherem Löschpfad und nach Ergänzung der Betriebsstellenzuordnung im Import.
 - Produktionsschutz bleibt unverändert.
+
+## REF-DATA-003 – Reset-/Importergänzung 30.09.2026
+Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
+- `GET /api/v1/admin/purge/survey-test-data`: staging-geschützte Vorschau.
+- `DELETE /api/v1/admin/purge/survey-test-data`: staging-geschützter Survey-Testreset mit Bestätigungstext.
+- Reset entfernt ausschließlich Vermessungs-/Trassendatenabhängigkeiten und zugehörige Raw-Originaldateien; andere Fachbereiche bleiben bestehen.
+- `v1_admin_survey_import.html`: Betriebsstellenreferenzsuche ergänzt, Bulk-Default + Gruppenoverride, Payload station_code/name.
+- `admin_web.py`: gespeicherte Originale zeigen station_code/name aus Metadaten.
+- Check 114/115 ergänzt und im Workflow verdrahtet.
+- Source-Nachprüfung: Reset-Schutz/Löschreihenfolge sowie Import-Station-Payload/geschützte Vorschau-Marker PASS.
+- Nächster Schritt: neuen Stand auf Synology deployen, Importseite prüfen, Reset-Vorschau ansehen, erst dann ausdrücklich freigegebenen Staging-Reset ausführen und Pasing neu importieren.

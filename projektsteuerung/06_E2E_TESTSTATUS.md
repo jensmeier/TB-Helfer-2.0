@@ -589,3 +589,18 @@ Zusätzlicher Befund: Bahnhofssuche kann für den aktuellen Pasing-Bestand noch 
 - Aktueller Reindex-/Merge-Nachweis bleibt als technischer Runtimebeleg dokumentiert.
 - Für den abschließenden Fach-E2E darf der aktuelle Staging-Vermessungsbestand zurückgesetzt und mit korrekter Bahnhof/Betriebsstellen-Zuordnung neu importiert werden.
 - Reset selbst ist noch nicht ausgeführt.
+
+### REF-DATA-003 – Reset/Station-Import Runtime offen
+Neue Sourcepfade:
+- Survey-Testreset Preview/Delete;
+- Admin-Bahnhofsauswahl und station_code/name-Payload.
+
+Pflichttest nach Deployment:
+1. Importseite zeigt Referenzsuche nach Bahnhof/RL100.
+2. Auswahl Pasing liefert offiziellen Code + Namen und kann auf alle Gruppen angewendet werden.
+3. Einzelgruppe kann abweichend zugeordnet bzw. bewusst ohne Bahnhof gelassen werden.
+4. Reset-Preview zeigt erwartete Survey-Zählwerte, ohne etwas zu löschen.
+5. Reset ist auf staging erlaubt und in production gesperrt.
+6. Nach explizitem Reset sind Survey-Original/Katalog/Parserbestände leer, andere Fachbestände unverändert.
+7. Neuimport Pasing speichert station_code/name in Originalmetadaten und Katalog.
+8. Search/Availability nach Bahnhof liefert Pasing-Bestand.

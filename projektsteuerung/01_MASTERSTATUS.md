@@ -919,3 +919,25 @@ Read-only-Katalogabfrage auf der Synology:
 Bewertung:
 - Auto-Merge läuft praktisch;
 - fachliche Korrektheit des 5524-1-Merges ist noch nicht bestätigt, weil das zweite Segment derselben Achse und deren Anschluss-/Überlappungsgeometrie noch gegenübergestellt werden müssen.
+
+## REF-DATA-003 – Staging-Reset + Bahnhofsauswahl source-seitig fertig 30.09.2026
+Status: **SOURCE FERTIG / DEPLOYMENT OFFEN**
+- Sicherer Survey-Testdaten-Reset ergänzt:
+  - nur development/dev/test/testing/staging;
+  - Produktion hart gesperrt;
+  - Preview-Endpunkt;
+  - expliziter Bestätigungstext `VERMESSUNG TESTDATEN LOESCHEN`;
+  - FK-sichere Bereinigung von Survey-Katalog, Parserkatalog, Survey-Sections und Originalen;
+  - zugehörige Originaldateien erst nach DB-Commit entfernt;
+  - andere Firmen-/Baustellen-/BTB-Daten bleiben unangetastet.
+- Bestehender Admin-Trassierungsimport ergänzt:
+  - Bahnhof/Betriebsstelle über vorhandene Referenzsuche/RL100;
+  - stabiler `station_code + station_name`-Payload;
+  - Default für gesamten Import + Override je Gruppe;
+  - freie Strecke darf bewusst ohne Betriebsstelle bleiben;
+  - Worksite-Bahnhof kann als Default übernommen werden;
+  - letzte Originale zeigen Betriebsstellenzuordnung.
+- Protected REF-DATA-002-Grafik/Zoom/GVP/KOR bleibt unverändert.
+- Source-Audit der neuen UI-/Vertragsmarker: 10/10 PASS.
+- Maßgebliche Commits: `45bc19bf...` Reset, `085d134a...` Bahnhofsauswahl.
+- Noch nicht deployt/runtimegetestet.

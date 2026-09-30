@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| REF-DATA-003 | P0 | SERVER/PORTAL/ANDROID | Staging-Testdaten dürfen vollständig zurückgesetzt und neu importiert werden; aktueller Merge-Nachweis bleibt dokumentiert. Import benötigt vorher Bahnhof/Betriebsstellen-Zuordnung | Sicheren Survey-Testdaten-Reset prüfen → Import-Betriebsstelle ergänzen → Staging-Bestand löschen → neu importieren → Reindex/Search/Availability/Geometry erneut testen |
+| REF-DATA-003 | P0 | SERVER/PORTAL/ANDROID | Sicherer Staging-Survey-Reset + Bahnhof/RL100-Auswahl im bestehenden Admin-Import source-seitig fertig (45bc19bf / 085d134a); noch nicht deployt | Neuen Stand deployen → Import-Bahnhof prüfen → Reset-Preview → Testbestand löschen → Pasing mit Bahnhof neu importieren → Reindex/Search/Availability/Geometry E2E |
 | REF-DATA-002 | P0 | SERVER/ANDROID | Achsen-Hover/Klick + ca. 2000x Tiefzoom + KOR-Parser-v3 auf Synology praktisch bestätigt; übrige REF-DATA-002-Gesamtpunkte separat weiterführen | bestätigten Teilblock schützen; nur verbleibende Import-/Android-E2E-Punkte weiterbearbeiten |
 | REF-DATA-001 | P0 | SERVER/ANDROID | Datei-zuerst-Analyse + bestätigter Global/Firma-Import source-seitig fertig; Synology-E2E/Android offen | 4 Runtime-Dateien deployen → echte TRA/KF-Analyse + Import testen → danach Android-Consumer |
 | ADMIN-PDF-011 | P1 | ANDROID | SERVER/Admin 40..400 pt + X/Y + Preview am 29.09.2026 abgenommen; Android clamp aktuell noch 250 | ANDROID-Projekt: Clamp/Vertrag auf 40..400 übernehmen und Geräte-PDF praktisch prüfen |

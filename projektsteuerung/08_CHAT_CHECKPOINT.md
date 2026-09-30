@@ -900,3 +900,12 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Quelldaten sind weiterhin vorhanden und können danach neu importiert werden.
 - Noch nicht löschen, bevor der sichere Server-Löschpfad geprüft und die Bahnhof/Betriebsstellen-Eingabe im Import ergänzt ist.
 - Produktionsdaten/-schutz sind von dieser Erlaubnis nicht umfasst.
+
+## REF-DATA-003 – Reset/Import-Checkpoint 30.09.2026
+- Benutzer erlaubt Reset des aktuellen Staging-Vermessungsbestands.
+- Sicherer Reset-Endpunkt ist source-seitig vorhanden und produktionsgesperrt.
+- Admin-Import kann source-seitig jetzt Bahnhof/Betriebsstelle über Referenzsuche auswählen und station_code/name senden.
+- Bulk-Default + Gruppenoverride; freie Strecke kann leer bleiben.
+- Bestehende bestätigte Grafik/Zoom/KOR/GVP-Funktion nicht verändert.
+- Noch nichts auf Synology gelöscht.
+- Nächster Schritt: deployen, UI prüfen, Preview-Zählwerte kontrollieren; erst danach Reset ausführen.
