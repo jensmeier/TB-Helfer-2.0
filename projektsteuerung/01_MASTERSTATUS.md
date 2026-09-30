@@ -883,3 +883,25 @@ Benutzernachweis per Admin-Systemstatus:
 - Damit ist Migration 017 praktisch angewendet und API/Worker laufen auf der Synology.
 - Noch **nicht** bestätigt: Reindex, Survey-Katalog-Endpunkte, Merge-/Reviewfälle, Konfliktmail, Change-Feed und Lifecycle-E2E.
 - Nächster Schritt bleibt Runtime-/Postman-E2E des Survey-Katalogs; Portal erst danach.
+
+## REF-DATA-003 – Reindex Runtime bestätigt 30.09.2026
+Status: **REINDEX BESTÄTIGT / FACH-E2E TEILWEISE**
+Synology-API-Container, direkter Runtime-Aufruf:
+`python -c "from tbserver.survey_catalog import reindex_all_originals; print(reindex_all_originals())"`
+
+Ergebnis:
+- `original_count = 54`
+- `ADDED = 31`
+- `INDEXED_ASSET = 22`
+- `MERGED = 1`
+- `failures = 0`
+
+Damit ist bestätigt:
+- vorhandene geparste Vermessungsoriginale lassen sich auf der laufenden Synology in Migration-017-Katalogdaten überführen;
+- mindestens ein automatischer Merge wurde im echten Bestand erkannt;
+- Reindex lief ohne Fehler.
+
+Noch nicht bestätigt:
+- fachliche Richtigkeit des einen MERGED-Falls;
+- Search / Availability / Geometry / Changes;
+- Teilüberdeckung, Weak-ID-X/Y, REVIEW_REQUIRED, Konfliktmail/Adminentscheidung, Upload-Fallback/Duplikat und Lifecycle-Purge.

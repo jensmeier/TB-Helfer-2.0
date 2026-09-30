@@ -707,3 +707,25 @@ Nächste Runtimeprüfungen:
 2. Search / Availability / Geometry / Changes gegen die laufende Synology prüfen.
 3. Danach Originalimport, Merge/Teilabdeckung, REVIEW_REQUIRED und Konfliktmail mit Testdaten.
 4. Erst nach bestandenem Runtime-Gate den Portal-HTML-Block beginnen.
+
+## REF-DATA-003 – Reindex Runtime bestätigt 30.09.2026
+Status: **REINDEX BESTÄTIGT / FACH-E2E TEILWEISE**
+Synology-API-Container, direkter Runtime-Aufruf:
+`python -c "from tbserver.survey_catalog import reindex_all_originals; print(reindex_all_originals())"`
+
+Ergebnis:
+- `original_count = 54`
+- `ADDED = 31`
+- `INDEXED_ASSET = 22`
+- `MERGED = 1`
+- `failures = 0`
+
+Damit ist bestätigt:
+- vorhandene geparste Vermessungsoriginale lassen sich auf der laufenden Synology in Migration-017-Katalogdaten überführen;
+- mindestens ein automatischer Merge wurde im echten Bestand erkannt;
+- Reindex lief ohne Fehler.
+
+Noch nicht bestätigt:
+- fachliche Richtigkeit des einen MERGED-Falls;
+- Search / Availability / Geometry / Changes;
+- Teilüberdeckung, Weak-ID-X/Y, REVIEW_REQUIRED, Konfliktmail/Adminentscheidung, Upload-Fallback/Duplikat und Lifecycle-Purge.

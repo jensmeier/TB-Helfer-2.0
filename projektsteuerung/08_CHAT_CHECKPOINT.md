@@ -873,3 +873,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Damit Status: **DEPLOYT / RUNTIMEBASIS BESTÄTIGT / SURVEY-FACH-E2E OFFEN**.
 - Keine neue HTML-Seite war beim Deployment zu übernehmen; Portalblock wurde bewusst noch nicht gebaut.
 - Nächster Schritt: Survey-Katalog reindexen und Runtime-Endpunkte/Fachfälle prüfen. Erst danach Portal `Trassendatenübersicht`.
+
+## REF-DATA-003 – Reindex-Checkpoint 30.09.2026
+- Synology API-Container: `reindex_all_originals()` erfolgreich.
+- Ergebnis: 54 Originale, 31 ADDED, 22 INDEXED_ASSET, 1 MERGED, 0 failures.
+- Runtimefall Reindex ist praktisch bestätigt.
+- Als Nächstes den Katalogbestand und speziell den einen MERGED-Fall fachlich prüfen.
+- Portal bleibt bis zum Server-Fach-E2E zurückgestellt.

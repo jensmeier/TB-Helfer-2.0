@@ -548,3 +548,16 @@ Status:
 - **DEPLOYT: JA** für Serverbasis/Migration017/API/Worker.
 - **E2E BESTÄTIGT: NEIN** für Survey-Katalogfachpfade.
 - Noch offen: Reindex + Runtimefälle 4–16 aus dem REF-DATA-003-Pflichttest.
+
+### REF-DATA-003 – Runtimefall 3 Reindex BESTÄTIGT
+Ausgabe auf Synology:
+`{'original_count': 54, 'statuses': {'ADDED': 31, 'INDEXED_ASSET': 22, 'MERGED': 1}, 'failures': 0}`
+
+Bewertung:
+- Runtimefall 3 **BESTÄTIGT**;
+- 54 Bestandsoriginale verarbeitet;
+- 0 Fehler;
+- 31 hinzugefügt, 22 als Asset katalogisiert, 1 automatisch gemerged.
+- Der einzelne Merge ist noch inhaltlich zu identifizieren und fachlich zu plausibilisieren.
+
+Offen bleiben Runtimefälle 4–16.
