@@ -627,3 +627,11 @@ Staging-Vorschau praktisch ausgeführt:
 `allowed=True`, Bestätigungstext korrekt.
 Zähler: 60 Originale / 60 Parser / 60 Assets / 33 Achsen / 35 Segmente / 1 Konflikt / 164 History / 0 Survey-Sections / 0 Track-Source-Links / 0 Import-File-Rows.
 Status: Preview **BESTÄTIGT**, eigentlicher Reset **NOCH NICHT AUSGEFÜHRT**.
+
+### REF-DATA-003 – Reset Runtime BESTÄTIGT
+Praktischer Synology-Nachweis:
+- `status=RESET`
+- `removed_storage_keys=60`
+- alle Survey-Zähler unter `after` = 0.
+
+Damit ist der geschützte Staging-Reset-Endpunkt **BESTÄTIGT**.

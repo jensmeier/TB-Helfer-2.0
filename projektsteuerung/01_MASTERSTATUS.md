@@ -955,3 +955,11 @@ Bewertung:
 - die 34 Duplikate stammen aus dem bereits vorhandenen unveränderten Testbestand und werden bewusst nicht nachträglich umgeschrieben;
 - für einen konsistenten Pasing-Bestand ist der bereits freigegebene Staging-Reset mit anschließendem Komplett-Neuimport jetzt der richtige Weg.
 Zusätzlich sichtbar: BlueMail-Eingang `TB-Helfer: Trassendaten-Prüffall MPB – Pasing Bbf`; damit ist der Konflikt-Mailversand praktisch nachgewiesen.
+
+## REF-DATA-003 – Staging-Survey-Reset BESTÄTIGT 30.09.2026
+- Geschützter Survey-Testreset wurde auf `staging` tatsächlich ausgeführt.
+- Ergebnis: `status = RESET`, `removed_storage_keys = 60`.
+- Vorher: 60 Originale / 60 Parser / 60 Assets / 33 Achsen / 35 Segmente / 1 Konflikt / 164 History.
+- Nachher: alle ausgewiesenen Survey-Zähler = 0.
+- Damit ist der Staging-Vermessungs-Testbestand vollständig und konsistent zurückgesetzt.
+- Andere Fachbereiche waren nicht Teil dieses Resetpfads.

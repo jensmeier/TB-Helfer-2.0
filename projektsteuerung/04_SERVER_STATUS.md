@@ -811,3 +811,11 @@ Status: **VERTRAG FESTGELEGT / PORTAL-UI NOCH OFFEN**
   - ältere vollständig abgedeckte Segmente auf `SUPERSEDED` setzen.
 - Es gibt noch keinen normalen Einzel-Delete-Endpunkt für Vermessungsoriginale; der Staging-Survey-Reset ist bewusst nur Testwerkzeug.
 - Nächster Portalblock muss diese Serverfähigkeiten als verständliche Aktionen sichtbar machen und für zulässige Einzel-Löschfälle einen geschützten Adminpfad definieren.
+
+## REF-DATA-003 – Survey-Testreset Runtime BESTÄTIGT
+Status: **RESET ERFOLGREICH**
+- Staging-Reset ausgeführt.
+- 60 gespeicherte Survey-Originaldateien entfernt.
+- Survey-Originale, Parserkatalog, Katalog-Assets/Achsen/Segmente/Konflikte/History danach 0.
+- Resetpfad damit praktisch bestätigt.
+- Nächster Fachschritt: Pasing vollständig mit MPB neu importieren.

@@ -924,3 +924,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - 0 Survey-Sections, 0 Track-Source-Links, 0 Import-File-Rows.
 - Noch keine Löschung ausgeführt.
 - Physische Originale liegen unter storage-v1/reference/survey-originals/...; direkte manuelle Datei-/DB-Löschung bleibt verboten, weil DB/Katalog/Dateisystem gemeinsam konsistent entfernt werden müssen.
+
+## REF-DATA-003 – Reset-BESTÄTIGT-Checkpoint 30.09.2026
+- Geschützter Staging-Survey-Reset tatsächlich ausgeführt.
+- Vorher 60 Originale; nachher alle Survey-Zähler 0; 60 Storage-Keys entfernt.
+- Testbestand ist damit sauber leer.
+- Nächster Schritt: kompletter Neuimport Pasing mit MPB.
+- Für späteren Normalbetrieb gilt nicht Komplettreset, sondern versioniertes Ändern/Deaktivieren/Ersetzen und geschütztes Einzel-Löschen.
