@@ -1027,3 +1027,12 @@ Status: **UI DEPLOYT / ANALYSE VOR IMPORT GEPRÜFT**
 - Tabelle `Zuletzt gespeicherte Originale` ist vor Import leer und zeigt `Noch keine Trassierungsoriginale gespeichert.`; der vorher bestätigte Reset ist damit auch im Portal sichtbar.
 - GVP/KF-Gruppe zeigt Strecke 5524 auf Gruppenebene, gleichzeitig Warnungen für 259 Roh-/KF.TXT-Punkte ohne eigenen Strecken-/Stationsbezug. Das ist vorerst als Analysehinweis zu behandeln; noch kein Fehlernachweis für den Import.
 - Nächster Schritt: Pasing/MPB-Betriebsstelle setzen und Import starten; danach Importergebnis, Originaltabelle, Katalogachsen/WVB, Multi-Hit und API-Suche prüfen.
+
+## REF-DATA-003 – Frischer Pasing-Import nach Reset BESTÄTIGT 30.09.2026
+Status: **RUNTIME IMPORT BESTANDEN**
+- Browser-Importergebnis: 40 importiert, 0 Duplikate, 0 übersprungen, 0 Fehler.
+- Alle sichtbaren Ergebnisse sind GLOBAL und MPB – München-Pasing Bbf zugeordnet und fachlich ausgewertet.
+- WVB 10-11 / 14-22 / 19-20 sind im frischen Import enthalten; aktuell keine offenen Trassendaten-Prüffälle.
+- `Zuletzt gespeicherte Originale` war im unmittelbaren Importzustand zunächst noch leer; nach `Liste aktualisieren` zeigt die Tabelle die neuen Datensätze. Das ist aktuell nur ein UI-Aktualisierungsverhalten, kein Datenverlust.
+- WVB-Einträge in der Originaltabelle: GLOBAL, MPB, Strecke/Gleis leer bei WVB – passend zum Vertrag, da object_key die Primäridentität ist und route_number fehlen darf.
+- Noch nicht als abgeschlossen werten: frischen Katalogzustand read-only prüfen (object_key/axis_id/segment_count), anschließend API Search/Availability/Geometry und Multi-Hit testen.
