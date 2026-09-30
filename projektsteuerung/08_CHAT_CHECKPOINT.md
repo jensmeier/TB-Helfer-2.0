@@ -1030,3 +1030,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 ### Sourcecheck vor Übergabe an Synology
 - Reparaturguard isoliert gegen 4 Schutzfälle ausgeführt: **4/4 PASS**.
 - Kein DB-/Runtime-Nachweis; Synology-Reindex bleibt nächster maßgeblicher Test.
+
+## REF-DATA-003 – WVB-Runtime-Gate bestanden 30.09.2026
+- Nutzer-Screenshots zeigen nach Deploy des Reparaturpfads: `original_count=64`, `reparsed=0`, `ALREADY_INDEXED=36`, `INDEXED_ASSET=27`, `ALREADY_INDEXED_REASSIGNED=1`, `failures=0`.
+- WVB-Abfrage danach: 10-11, 14-22 und 19-20 jeweils auf eigener Achse, jeweils korrekter object_key und `axis_segment_count=1`.
+- Legacy-WVB-Mergeproblem ist damit praktisch geschlossen und nach Schutzregel nicht ohne neuen reproduzierbaren Grund wieder anzufassen.
+- Nächster Block: Pasing-UI- und API-Gate (Prefill, Multi-Hit, Problemfenster/Resolution, Search/Availability/Geometry).
