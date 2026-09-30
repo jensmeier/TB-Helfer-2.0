@@ -80,7 +80,7 @@
       </div>
 
       <div class="card compact">
-        <div class="headline"><div><h2>Speicher nach Firma</h2><div class="muted">Fotos, PDFs, Trassierungsdaten und sonstige Dateien.</div></div><b id="tbStorageTotal">—</b></div>
+        <div class="headline"><div><h2>Speicher nach Firma</h2><div class="muted">Fotos, PDFs und sonstige firmeneigene Dateien.</div></div><b id="tbStorageTotal">—</b></div>
         <div id="companyStorage" class="company-storage" style="margin-top:10px"></div>
       </div>
     </div>
@@ -178,7 +178,7 @@ function renderCompanies(companies,total){
   $('companyStorage').innerHTML=(companies||[]).map(c=>{
     const totalBytes=Number(c.total_storage_bytes)||0,share=Math.max(0,Math.min(100,totalBytes/grand*100));
     return '<div class="company-row"><div class="company-title"><b>'+esc(c.name)+'</b><b>'+esc(size(totalBytes))+'</b></div>'+
-      '<div class="company-parts"><span>Fotos '+esc(size(c.photo_bytes||0))+'</span><span>PDFs '+esc(size(c.pdf_bytes||0))+'</span><span>Trassierungsdaten '+esc(size(c.survey_bytes||0))+'</span><span>Sonstiges '+esc(size(c.other_file_bytes||0))+'</span></div>'+
+      '<div class="company-parts"><span>Fotos '+esc(size(c.photo_bytes||0))+'</span><span>PDFs '+esc(size(c.pdf_bytes||0))+'</span><span>Sonstiges '+esc(size(c.other_file_bytes||0))+'</span></div>'+
       '<div class="company-meter"><div style="width:'+share.toFixed(1)+'%"></div></div></div>';
   }).join('')||'<div class="muted">Noch keine Firmendaten vorhanden.</div>';
 }
