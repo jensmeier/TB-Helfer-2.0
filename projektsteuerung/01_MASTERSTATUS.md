@@ -1109,3 +1109,13 @@ Status: **BESTÄTIGT / KEINE NACHREPARATUR ERFORDERLICH**
 - Alle drei axis_id sind verschieden. Der frühere 14-22/19-20-Legacy-Merge tritt beim Neuimport nicht mehr auf.
 - Dieser Nachweis erfolgte **ohne Reindex-/Reassign-Nachreparatur**. Der neue Importpfad erzeugt WVB-Identitäten direkt korrekt.
 - Nächster Gate: Runtime-Funktionspfade Search / Availability / Geometry für MPB/5528 sowie Portal-Multi-Hit.
+
+## REF-DATA-003 – Search/Availability/Geometry MPB RUNTIME 30.09.2026
+Status: **API-FUNKTIONSPFADE ERREICHBAR / KM-QUALITÄT NOCH NICHT VOLLSTÄNDIG**
+- `search_catalog(q='MPB')`: 20 Achsen; Station MPB = München-Pasing Bbf; `asset_count=40`; Datenarten GRA/GVP/TRA. Die Achsenliste enthält Bahnhofsgleise, Streckenachsen und WVB 10-11/14-22/19-20 mit korrektem object_key.
+- `availability(station_code='MPB')`: `status=AVAILABLE`, `axis_count=20`, `active_segment_count=21`, `review_segment_count=0`.
+- Verfügbare Assets: GRA=17, GVP=2, TRA=21; Source-Kind ORIGINAL_TRA=21.
+- KM-Qualität: **17 FEHLT / 4 AUTOMATISCH**. Damit ist die API selbst funktionsfähig, aber die fachliche KM-/Grün-Abdeckung ist noch nicht vollständig und bleibt ein offener Diagnosepunkt.
+- `geometry(station_code='MPB')`: `count=21`; Geometrien für Bahnhofsgleise, Streckenachsen und alle drei WVB werden geliefert. WVB-Geometrien tragen passende object_keys und Punktlisten.
+- 20 Achsen vs. 21 aktive Segmente ist erklärbar durch mindestens eine Achse mit zwei aktiven Segmenten; im Geometry-Output erscheint `Str 5524-1` mit derselben axis_id zweimal. Das ist zunächst Beobachtung, kein Fehlernachweis.
+- Nächster Gate: KM-Qualität pro Achse auflösen (welche 4 grün / welche 17 rot und warum) und danach Portal-Multi-Hit praktisch prüfen.
