@@ -1051,3 +1051,13 @@ Status: **SOURCE KORRIGIERT / NICHT DEPLOYT / RUNTIME-RETEST OFFEN**
 - Code-/Check-Commits: `a7149047...`, `523450f8...`, `fcd2c024...`.
 - GitHub-Workflow zum Code-HEAD meldet failure, der Foundation-Job liefert aber erneut `steps=[]`; deshalb **kein ausführbarer CI-Testnachweis** und keine Aussage über einen fachlichen Testfehler.
 - Nächster Gate: nur `survey_catalog.py` auf Synology übernehmen → API neu erstellen/starten → Reindex → WVB 10-11/14-22/19-20 read-only prüfen. Erst danach Prefill/Multi-Hit/„Problem ansehen“ und Search/Availability/Geometry.
+
+## REF-DATA-003 – Legacy-WVB-Identitätsreparatur RUNTIME BESTÄTIGT 30.09.2026
+Status: **DEPLOYT / REINDEX GRÜN / WVB-IDENTITÄT BESTÄTIGT**
+- Synology-Reindex nach Deploy des Reparaturpfads: `original_count=64`, `parser_version=tb-survey-parser-4`, `reparsed=0`, `ALREADY_INDEXED=36`, `INDEXED_ASSET=27`, `ALREADY_INDEXED_REASSIGNED=1`, `failures=0`.
+- Die 64 Originale sind vollständig bilanziert (36 + 27 + 1 = 64); gegenüber dem vorherigen 40er Lauf ist der Runtimebestand inzwischen größer. Das wird als Bestandsänderung dokumentiert, nicht als Fehler gewertet.
+- WVB 10-11: eigene Achse, `object_key=WVB:10-11`, `axis_segment_count=1`.
+- WVB 14-22: eigene Achse, `object_key=WVB:14-22`, `axis_segment_count=1`.
+- WVB 19-20: nach Reparatur eigene Achse, `object_key=WVB:19-20`, `axis_segment_count=1`.
+- Damit ist der zuvor reproduzierte Legacy-Merge WVB 19-20 → WVB 14-22 praktisch behoben. Raw-Originale blieben unangetastet; keine Segmentduplikation sichtbar.
+- Nächster Pasing-Gate: Browser-Prefill Strecke/Gleis/Objekt → Multi-Hit bei überlagerten Achsen → „Problem ansehen“ → anschließend Search/Availability/Geometry.
