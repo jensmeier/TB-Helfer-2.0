@@ -1089,3 +1089,13 @@ Status: **RESET BESTÄTIGT / SAUBERER NEUIMPORT BEREIT**
 - Terminal-Reset mit exaktem Bestätigungstext ausgeführt: `status=RESET`, `removed_storage_keys=64`.
 - Direkt danach meldet der Reset selbst alle Survey-Zähler 0; separate Preview bestätigt nochmals alle Survey-Zähler 0.
 - Damit ist der Vermessungs-/Trassierungs-Testbestand vollständig aus DB/Katalog und Storage entfernt. Nächster Schritt: Pasing/MPB vollständig frisch hochladen und den Gesamtpfad erneut prüfen.
+
+## REF-DATA-003 – Frischer Pasing/MPB-Neuimport RUNTIME BESTÄTIGT 30.09.2026
+Status: **IMPORT GRÜN / 40 VON 40 / KEINE FEHLER**
+- Nach vollständig leerem Survey-Testbestand wurden die Pasing/MPB-Daten frisch über die zentrale Admin-Seite importiert.
+- Importergebnis im Browser: **40 importiert · 0 Duplikate · 0 übersprungen · 0 Fehler**.
+- Importzeilen zeigen durchgehend `GLOBAL`, `MPB – München-Pasing Bbf` und `fachlich ausgewertet`.
+- WVB 19-20 TRA/GRA sowie WVB 14-22 und WVB 10-11 sind im Importergebnis enthalten; keine offenen Trassendaten-Prüffälle nach dem Import.
+- GVP/KF wurde ebenfalls importiert; Hinweise zu 259 Punkten ohne eigenen Strecken-/Stationsbezug bleiben Analysehinweise, der Import selbst ist fehlerfrei.
+- Nach Listenaktualisierung erscheinen die frisch gespeicherten Originale im Portal; WVB-Originale stehen GLOBAL + MPB, Strecke bei WVB leer wie fachlich vorgesehen.
+- Nächster Gate: read-only Katalogcheck der drei WVB-object_keys/Achsen nach **frischem** Import sowie anschließend Search/Availability/Geometry und Multi-Hit.
