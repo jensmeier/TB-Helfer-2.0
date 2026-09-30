@@ -21,6 +21,10 @@ for token in (
     "Bahnhof/Betriebsstelle bitte aus der Referenzliste auswählen",
     "data-station-code",
     "data-station-name",
+    "<label>Speicherziel</label>",
+    "Gemeinsamer Referenzbestand",
+    "cell.hidden=global;",
+    "card.classList.toggle('global-target',global)",
 ):
     assert token in template, token
 
