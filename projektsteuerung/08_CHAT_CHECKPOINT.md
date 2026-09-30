@@ -1096,3 +1096,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Deshalb sind rote/FEHLT-KM-Segmente dort korrekt, bis das Handy den gültigen Start-/Endbereich und die KM-Werte manuell festlegt.
 - Keine automatische Server-KM-Reparatur für diesen Bestand bauen.
 - Nächster Server-/Portal-Schritt bleibt Multi-Hit; manueller KM-Sync ist danach ein Android↔Server-Folgeschritt.
+
+## REF-DATA-004 – MGHN in Analyse gesetzt 30.09.2026
+- Screenshot bestätigt `MGHN – Gessertshausen` korrekt in den Analysegruppen.
+- 5302L/302 und 5302R/303 sind sichtbar vorbelegt.
+- Bestehender fehlzugeordneter Import bleibt vorerst unangetastet; kein erneuter Duplikatimport.
+- Nächster Schritt: read-only Null-Station-Bestand im API-Terminal auflisten, danach gezielte Korrektur nur für Gessertshausen planen.
