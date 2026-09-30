@@ -586,3 +586,10 @@ Status: **SERVERVERTRAG NACHGESCHÄRFT**
 - Freie Streckenabschnitte dürfen ohne Betriebsstelle bleiben.
 - Mehrere Gruppen in einem Upload dürfen unterschiedliche Betriebsstellen haben; ein Upload-/ZIP-Default ist nur Komfort und darf gruppenweise überschrieben werden.
 - Server speichert die Zuordnung im Katalog; Rohoriginal bleibt unverändert.
+
+#### REF-DATA-003 – Ändern/Löschen über Android
+- Android darf globale Referenzoriginale nicht physisch überschreiben.
+- Eigene/manuelle Beiträge werden versioniert geändert oder deaktiviert.
+- Wird ein falscher Beitrag deaktiviert, verschwindet er aus der aktiven zusammengesetzten Sicht, bleibt aber in Historie/Audit nachvollziehbar.
+- Neuere Originaldaten ergänzen/ersetzen nur belegte Bereiche nach den Server-Merge-Regeln.
+- Physisches Löschen von globalen Originalen bleibt Admin-/Serveraufgabe.

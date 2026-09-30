@@ -800,3 +800,14 @@ Synology API-Container:
 - track_source_links: 0
 - import_file_rows: 0
 Bewertung: der geschützte Resetpfad erkennt den erwarteten Survey-Testbestand und keine abhängigen Survey-Section/Track-Source-Reste. Noch keine Löschung ausgeführt.
+
+## REF-DATA-003 – Änderungs-/Löschbedienung festgelegt
+Status: **VERTRAG FESTGELEGT / PORTAL-UI NOCH OFFEN**
+- Server kann bereits:
+  - manuelle Segmente versioniert ändern;
+  - manuelle Segmente auf `INACTIVE` setzen;
+  - Achsmetadaten versioniert ändern;
+  - Konflikte auflösen;
+  - ältere vollständig abgedeckte Segmente auf `SUPERSEDED` setzen.
+- Es gibt noch keinen normalen Einzel-Delete-Endpunkt für Vermessungsoriginale; der Staging-Survey-Reset ist bewusst nur Testwerkzeug.
+- Nächster Portalblock muss diese Serverfähigkeiten als verständliche Aktionen sichtbar machen und für zulässige Einzel-Löschfälle einen geschützten Adminpfad definieren.

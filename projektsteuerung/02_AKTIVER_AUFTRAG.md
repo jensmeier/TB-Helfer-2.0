@@ -1836,3 +1836,17 @@ Entscheidung Benutzer 30.09.2026:
   3. Daten neu einlesen und dabei Bahnhof/Betriebsstelle korrekt zuordnen;
   4. Reindex und Search/Availability/Geometry erneut testen.
 - Löschung muss Original-Datenbankeinträge, Parserkatalog, Survey-Katalogreferenzen und gespeicherte Originaldateien konsistent behandeln; keine SQL-/Dateilöschung auf Verdacht.
+
+#### REF-DATA-003 – Bedienvertrag Ändern/Löschen von Trassendaten
+Neue Anforderung 30.09.2026:
+- Im normalen Betrieb müssen einzelne Trassendaten im Portal gezielt geändert, deaktiviert oder – in zulässigen Fällen – gelöscht werden können. Ein kompletter Staging-Reset ist nur Testwerkzeug.
+- Unveränderte Rohoriginale bleiben grundsätzlich unverändert und revisionssicher.
+- Fachliche Korrekturen erfolgen auf Katalogebene versioniert:
+  - Bahnhof/Betriebsstelle, Strecke, Gleis/Achse und Anzeigezuordnung ändern;
+  - manuell erzeugte Geometrie ändern;
+  - falsche/alte Segmente deaktivieren statt still überschreiben;
+  - neue Originaldaten können ältere vollständig abgedeckte Bereiche automatisch superseden.
+- Normales „Löschen“ bedeutet für produktiv genutzte Referenzdaten zunächst **deaktivieren/ausblenden** mit Historie und Rückholbarkeit.
+- Physisches endgültiges Löschen von Original + Katalog ist ein gesonderter Admin-/Testvorgang mit Schutzprüfung; Staging-Komplettreset bleibt davon getrennt.
+- Die spätere Trassendatenübersicht braucht pro Datensatz/Achse klare Aktionen: `Ändern`, `Deaktivieren/Ausblenden`, `Ersetzen/Neuimport`, sowie für zulässige Adminfälle `Endgültig löschen`.
+- Nutzerbeiträge vom Handy folgen demselben versionierten Katalogprinzip; Originalquellen werden nicht überschrieben.
