@@ -1076,3 +1076,10 @@ Status: **FEHLBEDIENUNG REPRODUZIERT / KORREKTUR OFFEN**
 - In der Originaltabelle stehen die neuen GLOBAL-Daten ohne Bahnhof/Betriebsstelle; Strecke 5302 ist bei KOR/GVP vorhanden, mehrere TRA ebenfalls ohne Stationszuordnung.
 - Pasing/MPB darf bei der Korrektur nicht verändert werden.
 - Vor Änderung prüfen, ob eine gezielte nachträgliche Stationszuordnung für diesen Importbestand vorhanden ist. Falls nicht, nur den Gessertshausen-Bestand gezielt bereinigen und neu importieren; kein globaler Reset.
+
+## REF-DATA-004 – Gessertshausen Betriebsstelle in Analyse bestätigt 30.09.2026
+Status: **ZUORDNUNG BESTÄTIGT / BESTEHENDER IMPORT NOCH UNKORRIGIERT**
+- Nutzer-Screenshot bestätigt die richtige Referenzzuordnung in der Analyse: `MGHN – Gessertshausen`.
+- Sichtbare Gruppen: Strecke 5302, Gleis/Achse 302 bzw. 303; Betriebsstelle jeweils korrekt als MGHN zugeordnet.
+- Noch **nicht erneut importieren**, weil der bereits gespeicherte Bestand ohne Betriebsstelle über Hash/Größe als Duplikat erkannt würde und dadurch nicht automatisch nachkorrigiert wird.
+- Nächster Schritt vor jeder Änderung: read-only feststellen, wie viele aktuell gespeicherte Survey-Originale noch keine station_code-Metadaten haben und welche Dateinamen betroffen sind. Pasing/MPB bleibt geschützt.
