@@ -1119,3 +1119,8 @@ Status: **API-FUNKTIONSPFADE ERREICHBAR / KM-QUALITÄT NOCH NICHT VOLLSTÄNDIG**
 - `geometry(station_code='MPB')`: `count=21`; Geometrien für Bahnhofsgleise, Streckenachsen und alle drei WVB werden geliefert. WVB-Geometrien tragen passende object_keys und Punktlisten.
 - 20 Achsen vs. 21 aktive Segmente ist erklärbar durch mindestens eine Achse mit zwei aktiven Segmenten; im Geometry-Output erscheint `Str 5524-1` mit derselben axis_id zweimal. Das ist zunächst Beobachtung, kein Fehlernachweis.
 - Nächster Gate: KM-Qualität pro Achse auflösen (welche 4 grün / welche 17 rot und warum) und danach Portal-Multi-Hit praktisch prüfen.
+
+## REF-DATA-005 – Importkorrektur statt Reset bei vergessener Zuordnung 30.09.2026
+- Neuer Zielvertrag: gleicher Dateiinhalt + gleiche Zuordnung = Duplikat ohne Änderung; gleicher Dateiinhalt + abweichende fachliche Zuordnung = Warnung mit bewusster Aktion **vorhandene Zuordnung aktualisieren**.
+- Dabei keine neue Rohdatei anlegen. Bestehendes Original bleibt erhalten; nur Route/Gleis/Betriebsstelle/object_key/source_date und der abgeleitete Survey-Katalog werden kontrolliert aktualisiert.
+- Aktueller Testbestand darf auf ausdrücklichen Benutzerwunsch nochmals vollständig per geschütztem staging-Terminalreset geleert werden.
