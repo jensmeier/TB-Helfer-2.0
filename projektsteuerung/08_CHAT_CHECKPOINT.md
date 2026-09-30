@@ -1051,3 +1051,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - `Trassierungsdaten` aus `Speicher nach Firma` entfernt.
 - Benutzer möchte Reset ausdrücklich im API-Container-Terminal. Dafür geschützte Terminal-Helfer auf Basis desselben Resetkerns gebaut; keine freie SQL-Löschung.
 - Nach Deploy zuerst Preview, dann Reset mit `VERMESSUNG TESTDATEN LOESCHEN`, danach Zähler 0 prüfen und Daten frisch hochladen.
+
+## REF-DATA-003 – Sauberer Staging-Reset Checkpoint 30.09.2026
+- Nutzer-Screenshot bestätigt Preview vor Reset: staging, 64 Originale, 64 Parse-Einträge, 64 Assets, 36 Achsen, 37 Segmente, 1 Konflikt, 325 History-Einträge.
+- Terminal-Reset erfolgreich: `status=RESET`, `removed_storage_keys=64`.
+- Reset-`after` und separate Preview danach zeigen überall 0.
+- Survey-/Trassierungs-Testbestand ist damit sauber leer. Geschützten Resetpfad nicht weiter ändern.
+- Nächster Schritt: Daten frisch hochladen; dabei zuerst neue zentrale Admin-UI visuell prüfen, dann Pasing/MPB-Import und Fach-E2E durchführen.
