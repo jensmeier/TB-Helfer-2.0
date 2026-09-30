@@ -983,3 +983,12 @@ Status: **ANFORDERUNG / FEHLERFESTSTELLUNG DOKUMENTIERT**
 - Benutzer möchte den aktuellen Staging-Streckendaten-/Vermessungsbestand erneut vollständig löschen und anschließend dieselben Daten frisch hochladen, um den Gesamtpfad erneut zu testen.
 - Löschung ausschließlich über den vorhandenen geschützten Survey-Testdaten-Reset (Preview + Bestätigungstext, nur staging/dev/test); keine manuelle DB-/Dateisystem-Löschung.
 - Vor Codeänderung zuerst vorhandene Reset-UI/-Endpunkte und Dashboard-/Import-Template prüfen; anschließend gezielt UI-Bezeichnungen/Sichtbarkeit nacharbeiten.
+
+## REF-DATA-003 – Import-UI-Nacharbeit + Reset-Bedienung SOURCE 30.09.2026
+Status: **SOURCE FERTIG / RUNTIME OFFEN**
+- Importanalyse: verständliche Bezeichnung `Speicherziel`; GLOBAL = `Gemeinsamer Referenzbestand`.
+- `Firma / Baustelle` wird bei GLOBAL nicht mehr grau angezeigt, sondern ausgeblendet; nur bei `Firma / Baustelle` als Speicherziel sichtbar.
+- Vorhandener sicherer Survey-Testreset ist nun direkt in der Admin-Trassierungsdaten-Seite bedienbar. Der Backend-Schutz bleibt unverändert: nur dev/test/staging, exakter Bestätigungstext, Admin+CSRF.
+- Keine neue Löschlogik und keine neue Migration; UI ruft ausschließlich `/api/v1/admin/purge/survey-test-data` auf.
+- Dashboard-Hinweis `Trassierungsdaten 0 B` ist weiterhin nur eine feste Firmen-Speicherkategorie. `0 B` bedeutet: keine firmeneigenen Trassierungsdateien; globale Referenzoriginale werden dort nicht einer Firma zugerechnet.
+- Runtimeprüfung nach Template-Deploy: Global-Firma-Feld verborgen, Reset-Preview zeigt aktuellen Bestand, Reset auf staging erfolgreich, danach Neuimport.
