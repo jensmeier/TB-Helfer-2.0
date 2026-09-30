@@ -1105,7 +1105,7 @@ Status: **BESTÄTIGT / KEINE NACHREPARATUR ERFORDERLICH**
 - Kompakte read-only-Abfrage direkt nach dem sauberen 40/40-Neuimport zeigt genau drei WVB-TRA-Achsen.
 - WVB 10-11 → `object_key=WVB:10-11`, `station_code=MPB`, eigene `axis_id=e91193d2-c26b-4cf5-b367-720774f90bf6`, `axis_segment_count=1`.
 - WVB 14-22 → `object_key=WVB:14-22`, `station_code=MPB`, eigene `axis_id=d2a4a7c9-eebc-44d8-8a08-5ad85f67d764`, `axis_segment_count=1`.
-- WVB 19-20 → `object_key=WVB:19-20`, `station_code=MPB`, eigene `axis_id=86f6282f-29c1-a4f91-01cbea316488300`, `axis_segment_count=1`.
+- WVB 19-20 → `object_key=WVB:19-20`, `station_code=MPB`, eigene `axis_id=86f6282f-29ca-4f91-901c-bea316488300`, `axis_segment_count=1`.
 - Alle drei axis_id sind verschieden. Der frühere 14-22/19-20-Legacy-Merge tritt beim Neuimport nicht mehr auf.
 - Dieser Nachweis erfolgte **ohne Reindex-/Reassign-Nachreparatur**. Der neue Importpfad erzeugt WVB-Identitäten direkt korrekt.
 - Nächster Gate: Runtime-Funktionspfade Search / Availability / Geometry für MPB/5528 sowie Portal-Multi-Hit.
