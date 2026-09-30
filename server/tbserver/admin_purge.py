@@ -98,13 +98,27 @@ def survey_test_data_preview(
     }
 
 
-@router.delete("/survey-test-data")
-def purge_survey_test_data(
-    payload: SurveyTestResetConfirmation,
-    admin: dict[str, Any] = Depends(require_admin_csrf),
+def survey_test_data_preview_from_terminal() -> dict[str, Any]:
+    """Read-only survey reset preview for the API-container terminal."""
+    _require_survey_test_reset_environment()
+    with transaction() as conn, conn.cursor() as cur:
+        counts = _survey_test_reset_counts(cur)
+    return {
+        "environment": settings.environment,
+        "allowed": True,
+        "confirm_text": _SURVEY_TEST_RESET_TEXT,
+        "counts": counts,
+    }
+
+
+def _reset_survey_test_data(
+    *,
+    confirm_text: str,
+    actor_user_id: UUID | str | None,
+    source: str,
 ) -> dict[str, Any]:
     _require_survey_test_reset_environment()
-    if payload.confirm_text.strip().upper() != _SURVEY_TEST_RESET_TEXT:
+    if confirm_text.strip().upper() != _SURVEY_TEST_RESET_TEXT:
         raise HTTPException(400, "SURVEY_TEST_RESET_CONFIRMATION_REQUIRED")
 
     storage_keys: list[str] = []
@@ -117,11 +131,12 @@ def purge_survey_test_data(
         audit(
             cur,
             action="SURVEY_TEST_DATA_RESET",
-            actor_user_id=admin["user_id"],
+            actor_user_id=actor_user_id,
             entity_type="SYSTEM",
             details={
                 "environment": settings.environment,
                 "before": before,
+                "source": source,
             },
         )
 
@@ -176,6 +191,27 @@ def purge_survey_test_data(
         "before": before,
         "after": after,
     }
+
+
+def reset_survey_test_data_from_terminal(confirm_text: str) -> dict[str, Any]:
+    """Explicit staging/dev/test reset for an interactive API-container terminal."""
+    return _reset_survey_test_data(
+        confirm_text=confirm_text,
+        actor_user_id=None,
+        source="API_CONTAINER_TERMINAL",
+    )
+
+
+@router.delete("/survey-test-data")
+def purge_survey_test_data(
+    payload: SurveyTestResetConfirmation,
+    admin: dict[str, Any] = Depends(require_admin_csrf),
+) -> dict[str, Any]:
+    return _reset_survey_test_data(
+        confirm_text=payload.confirm_text,
+        actor_user_id=admin["user_id"],
+        source="ADMIN_API",
+    )
 
 
 @router.delete("/releases/{release_id}", status_code=204)
