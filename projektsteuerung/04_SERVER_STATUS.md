@@ -1092,3 +1092,12 @@ Status: **NEUE FACHENTSCHEIDUNG / UMSETZUNG OFFEN**
 - Rohdatei bleibt unverändert; überschrieben werden nur fachliche Zuordnung/Metadaten und daraus abgeleitete Katalogzuordnung. Vorgang muss bewusst bestätigt und auditierbar sein.
 - Identischer Reimport mit identischer Zuordnung bleibt ein normales Duplikat und erzeugt keine Änderung.
 - Pasing-/WVB-Schutzregeln bleiben fachlich gültig; der jetzt gewünschte Vollreset ist eine ausdrückliche Testdatenentscheidung des Benutzers.
+
+## REF-DATA-005 – Vorhandene Daten korrigieren statt Reset SOURCE 30.09.2026
+Status: **SOURCE FERTIG / SYNLOGY-RUNTIME OFFEN**
+- Backend `admin_survey_import.py`: `overwrite_existing` ergänzt; abweichende Zuordnung wird erst gewarnt und nur nach ausdrücklicher Bestätigung geändert.
+- Backend `survey_catalog.py`: `refresh_original_assignment_in_tx()` aktualisiert abgeleitete Asset-/Achsenidentität ohne Raw-Datei oder Segment-ID neu anzulegen.
+- Portal `v1_admin_survey_import.html`: Warnbox/Checkbox + Vorher→Nachher-Darstellung + zweiter Importlauf aus derselben Analyse-Session.
+- Schutz: bei OPEN-Conflict, mehrfachen Source-Segmenten, Axis-Identity-Kollision oder destruktiver Änderung einer geteilten Achse wird 409 geliefert statt automatisch umgebaut.
+- Sourcechecks 112/115 auf neue Marker erweitert; GitHub Actions liefern weiterhin keinen brauchbaren Runner-Nachweis, daher Runtime-Test auf Synology Pflicht.
+- Für den aktuellen Testbestand bleibt der ausdrücklich gewünschte komplette staging-Reset erlaubt; danach Pasing + Gessertshausen frisch importieren und den neuen Korrekturfall absichtlich testen.
