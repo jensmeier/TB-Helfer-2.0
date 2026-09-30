@@ -704,3 +704,24 @@ Nach Deployment prüfen:
 - Der vorliegende Screenshot zeigt nicht den Systemstatus `19/19`; Migration 019 deshalb in der Dokumentation erst nach separatem Systemstatus-/Migrationstabellen-Nachweis als 19/19 bestätigen.
 - Nächster Runtime-Schritt: WVB 10-11 / 14-22 / 19-20 mit Originalname, Achse, `object_key` und Segmentzahl gegenüberstellen; danach Pasing-Prefill, Multi-Hit und „Problem ansehen“ praktisch testen.
 
+
+### REF-DATA-003 – Legacy-WVB-Identitätsreparatur Runtime-Gate 30.09.2026
+Sourcefix: **VORHANDEN**, Runtime/E2E: **OFFEN**.
+
+Bereits praktisch bestätigt:
+- Migration 019: **19/19**, pending=[];
+- Reindex vor Reparatur: failures=0;
+- WVB 10-11 = `WVB:10-11`;
+- WVB 14-22 = `WVB:14-22`;
+- Altfehler reproduziert: WVB 19-20-Segment liegt fälschlich auf derselben Achse wie WVB 14-22.
+
+Pflichttest nach Source-Deploy:
+1. Reindex endet mit `original_count=40`, Parser v4 und `failures=0`.
+2. Erwarteter Reparaturstatus enthält für den Altfall `ALREADY_INDEXED_REASSIGNED`.
+3. WVB 10-11, 14-22 und 19-20 haben anschließend jeweils ihren passenden `object_key` und getrennte Achsen-IDs.
+4. Für WVB 19-20 bleibt die bestehende Segment-ID erhalten; kein zweites ORIGINAL_TRA-Segment entsteht.
+5. Raw-Originale bleiben unverändert.
+6. Falls die Reparatur wegen eines OPEN-Conflicts bewusst nicht ausführt, zuerst diesen Konflikt read-only nachweisen; Schutz nicht auf Verdacht lockern.
+7. Erst nach erfolgreichem WVB-Gate Pasing-Prefill, Multi-Hit, „Problem ansehen“ sowie Search/Availability/Geometry weiterprüfen.
+
+GitHub Actions zum Code-HEAD: Foundation-Job mit `steps=[]`; damit **kein Testnachweis** trotz Workflow-conclusion=failure.
