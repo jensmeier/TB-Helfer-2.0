@@ -619,3 +619,9 @@ Status: **SERVERVERTRAG SOURCE FEST**
 - Unterschiedliche bekannte object_keys dürfen nicht wegen bloßer räumlicher Nähe als dieselbe Achse behandelt werden.
 - Conflict-Detail ist Admin-/Portaldiagnose; Android erhält dadurch keine neue Pflicht in diesem SERVER-Block.
 - Android-`app/**` bleibt unverändert; spätere Android-Katalogintegration soll object_key übernehmen.
+
+#### REF-DATA-003 – Admin-Zentralimport vs. Firmenbeitrag 30.09.2026
+- Die SERVER-Admin-Seite `Trassierungsdaten` ist der zentrale Importweg für den **gemeinsamen Referenzbestand** und sendet dort immer `scope=GLOBAL_REFERENCE`.
+- Eine Firma/Baustelle wird auf dieser Admin-Seite nicht als Speicherziel gewählt.
+- Firmen-/Baustellenbeiträge bleiben fachlich möglich, laufen aber über getrennte Contribution-/Android-/spätere Importpfade und ändern diese Admin-UI-Regel nicht.
+- Bahnhof/Betriebsstelle, Strecke, Gleis und object_key bleiben fachliche Zuordnungen innerhalb des globalen Referenzbestands und sind keine Speicherbesitzer-Zuordnung.
