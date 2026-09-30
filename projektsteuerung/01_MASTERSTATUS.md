@@ -1081,3 +1081,11 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RESET OFFEN**
 - Schutz bleibt erhalten: nur dev/test/staging, exakter Bestätigungstext, FK-sichere DB-Reihenfolge, Storage-Dateien erst nach Commit entfernen, Audit source=`API_CONTAINER_TERMINAL`.
 - Keine Migration. Runtime-Dateien für diesen Block: `server/templates/v1_admin_survey_import.html`, `server/templates/v1_admin_dashboard.html`, `server/tbserver/admin_purge.py`.
 - Checks 86/114/115 an den neuen Vertrag angepasst.
+
+## REF-DATA-003 – Survey-Staging-Reset RUNTIME BESTÄTIGT 30.09.2026
+Status: **RESET BESTÄTIGT / SAUBERER NEUIMPORT BEREIT**
+- API-Container-Terminal Preview vor Reset: environment=`staging`, allowed=true.
+- Bestand vor Reset: 64 Survey-Originale, 64 Parser-Auswertungen, 64 Katalog-Assets, 36 Achsen, 37 Segmente, 1 Prüffall, 325 History-Einträge; Survey-Sections/Track-Source-Links/Import-File-Rows jeweils 0.
+- Terminal-Reset mit exaktem Bestätigungstext ausgeführt: `status=RESET`, `removed_storage_keys=64`.
+- Direkt danach meldet der Reset selbst alle Survey-Zähler 0; separate Preview bestätigt nochmals alle Survey-Zähler 0.
+- Damit ist der Vermessungs-/Trassierungs-Testbestand vollständig aus DB/Katalog und Storage entfernt. Nächster Schritt: Pasing/MPB vollständig frisch hochladen und den Gesamtpfad erneut prüfen.
