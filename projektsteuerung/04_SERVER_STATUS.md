@@ -1018,3 +1018,12 @@ Status: **DEPLOYT / RESET ERFOLGREICH / NEUIMPORT OFFEN**
 - `after` im Reset sowie separate Preview danach: sämtliche Survey-Zähler = 0.
 - Der geschützte Terminal-Resetpfad ist damit praktisch bestätigt. Keine weitere Löschaktion nötig.
 - Nächster Runtimeblock: frischer Pasing/MPB-Upload über die zentrale Admin-Seite; danach Prefill, W/WVB-Identität, Multi-Hit, Prüffälle und Search/Availability/Geometry prüfen.
+
+## REF-DATA-003 – Zentraler Admin-Import UI RUNTIME BESTÄTIGT 30.09.2026
+Status: **UI DEPLOYT / ANALYSE VOR IMPORT GEPRÜFT**
+- Nutzer-Screenshots nach Reset/Reload bestätigen: in den Analysegruppen gibt es **kein Speicherziel** und **keine Firma/Baustelle-Auswahl** mehr.
+- Zentrale Admin-Seite zeigt nur die fachlichen Felder Bahnhof/Betriebsstelle, Strecke und Gleis/Achse bzw. Objektidentität.
+- Prefill ist im frischen Analysezustand sichtbar: z. B. Gl 714 → Strecke 5528 / Gleis 714, Gl 715 → 5528 / 715, Gl 725 → 5528 / 725.
+- Tabelle `Zuletzt gespeicherte Originale` ist vor Import leer und zeigt `Noch keine Trassierungsoriginale gespeichert.`; der vorher bestätigte Reset ist damit auch im Portal sichtbar.
+- GVP/KF-Gruppe zeigt Strecke 5524 auf Gruppenebene, gleichzeitig Warnungen für 259 Roh-/KF.TXT-Punkte ohne eigenen Strecken-/Stationsbezug. Das ist vorerst als Analysehinweis zu behandeln; noch kein Fehlernachweis für den Import.
+- Nächster Schritt: Pasing/MPB-Betriebsstelle setzen und Import starten; danach Importergebnis, Originaltabelle, Katalogachsen/WVB, Multi-Hit und API-Suche prüfen.
