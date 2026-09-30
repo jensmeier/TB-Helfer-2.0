@@ -880,3 +880,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Runtimefall Reindex ist praktisch bestätigt.
 - Als Nächstes den Katalogbestand und speziell den einen MERGED-Fall fachlich prüfen.
 - Portal bleibt bis zum Server-Fach-E2E zurückgestellt.
+
+## REF-DATA-003 – Merge-Runtimecheckpoint 30.09.2026
+- Katalogabfrage: Strecken 5302/5340/5524/5528/5529 erkannt; zusätzlich 10 Achsen ohne Streckenzuordnung.
+- Genau ein Merge: `Str 5524-1`, `ORIGINAL_TRA`, `OVERLAP_CONFIRMED`, `ACTIVE`, Quelle `5524_SL_ER0_Gp2026_02_16.TRA`.
+- Segmentstatus gesamt: 31 PRIMARY/ACTIVE + 1 OVERLAP_CONFIRMED/ACTIVE.
+- Nächster Test: alle Segmente der Achse 5524-1 mit Quellnamen, Station und X/Y-Endpunkten gegenüberstellen.
+- Keine Fachbestätigung des Merges, bevor diese Gegenprüfung erfolgt.

@@ -729,3 +729,17 @@ Noch nicht bestätigt:
 - fachliche Richtigkeit des einen MERGED-Falls;
 - Search / Availability / Geometry / Changes;
 - Teilüberdeckung, Weak-ID-X/Y, REVIEW_REQUIRED, Konfliktmail/Adminentscheidung, Upload-Fallback/Duplikat und Lifecycle-Purge.
+
+## REF-DATA-003 – Merge-Runtimefund 30.09.2026
+Status: **MERGE-FALL IDENTIFIZIERT / FACHLICHE PLAUSIBILISIERUNG OFFEN**
+Read-only-Katalogabfrage auf der Synology:
+- erkannte Achsgruppen nach Strecke: 5302 = 3, 5340 = 1, 5524 = 3, 5528 = 11, 5529 = 3, ohne Strecke = 10;
+- genau ein automatisch verbundener Segmentfall;
+- Achse: `Str 5524-1`, Strecke `5524`, Richtung `1`;
+- neues/verbundenes Segment: `ORIGINAL_TRA`, `OVERLAP_CONFIRMED`, `ACTIVE`;
+- technische TRA-Station: ca. `1400.0 .. 6121.93415`;
+- Quelle: `5524_SL_ER0_Gp2026_02_16.TRA`;
+- Gesamtstatus Segmente: `PRIMARY/ACTIVE = 31`, `OVERLAP_CONFIRMED/ACTIVE = 1`.
+Bewertung:
+- Auto-Merge läuft praktisch;
+- fachliche Korrektheit des 5524-1-Merges ist noch nicht bestätigt, weil das zweite Segment derselben Achse und deren Anschluss-/Überlappungsgeometrie noch gegenübergestellt werden müssen.

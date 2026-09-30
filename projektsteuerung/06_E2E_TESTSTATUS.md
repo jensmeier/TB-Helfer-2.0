@@ -561,3 +561,12 @@ Bewertung:
 - Der einzelne Merge ist noch inhaltlich zu identifizieren und fachlich zu plausibilisieren.
 
 Offen bleiben Runtimefälle 4–16.
+
+### REF-DATA-003 – Auto-Merge Runtimefund
+Read-only-DB-Abfrage:
+- 31 `PRIMARY/ACTIVE`;
+- 1 `OVERLAP_CONFIRMED/ACTIVE`;
+- Merge betrifft `Str 5524-1`, Quelle `5524_SL_ER0_Gp2026_02_16.TRA`, Station ca. 1400.0–6121.93415.
+Status:
+- technische Merge-Funktion in Runtime **nachgewiesen**;
+- fachliche Merge-Richtigkeit **noch offen**, bis alle Segmente derselben Achse inkl. X/Y-End-/Überlappungspunkten verglichen sind.
