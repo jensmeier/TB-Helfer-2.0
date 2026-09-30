@@ -1065,3 +1065,11 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Originaltabelle bleibt vor Import leer.
 - GVP/KF zeigt 5524 auf Gruppenebene und 259 punktbezogene Hinweise ohne eigenen Strecken-/Stationsbezug; beim Import/anschließenden Katalogtest gezielt beobachten, nicht vorab als Fehler umbauen.
 - Nächster Klickpfad: MPB setzen → auf Gruppen übernehmen → Import starten → Ergebnis-Screenshots sichern.
+
+## REF-DATA-003 – Frischer Pasing/MPB-Import Checkpoint 30.09.2026
+- Nach komplettem Survey-Reset wurden die Daten frisch importiert.
+- Ergebnis: 40 importiert, 0 Duplikate, 0 übersprungen, 0 Fehler.
+- GLOBAL + MPB – München-Pasing Bbf ist in den Importergebnissen sichtbar.
+- WVB 10-11, 14-22 und 19-20 sind enthalten; keine offenen Prüffälle.
+- Originaltabelle zeigt Daten nach `Liste aktualisieren`; unmittelbare Leerdarstellung nach Import ist nur noch als UI-Refresh-Beobachtung offen.
+- Nächster Schritt: im API-Terminal WVB-object_key/axis_id/Segmentzahl des frischen Imports read-only prüfen; danach API-Suche/Verfügbarkeit/Geometrie.
