@@ -23,6 +23,10 @@ for token in (
     "data-station-name",
     "scope:'GLOBAL_REFERENCE'",
     "worksite_id:null",
+    'id="overwriteExisting"',
+    "overwrite_existing:overwrite",
+    "VORHANDEN_ABWEICHEND",
+    "Vorhandene identische Dateien bei abweichender Zuordnung aktualisieren",
 ):
     assert token in template, token
 
