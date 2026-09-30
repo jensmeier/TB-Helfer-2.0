@@ -33,7 +33,7 @@
   .graphic-side{display:grid;gap:10px}.info-box{border:1px solid #eaecf0;border-radius:10px;padding:11px;background:#fff}.info-box h3{margin:0 0 5px;font-size:14px}
   .analysis-items{display:grid;gap:11px;margin-top:14px}.analysis-item{border:1px solid #d0d5dd;border-radius:12px;padding:12px;background:#fff}.analysis-item.skip{background:#f8fafc;color:#667085}
   .analysis-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.facts{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.fact{font-size:11px;border:1px solid #e4e7ec;background:#f9fafb;border-radius:999px;padding:3px 7px}.fact.warn{border-color:#f7c56d;background:#fffbeb;color:#8a4b08}
-  .decision-grid{display:grid;grid-template-columns:1fr 1.25fr 1.35fr .8fr .8fr;gap:9px;margin-top:11px}.worksite-cell.disabled{opacity:.45}.import-toggle{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px}
+  .decision-grid{display:grid;grid-template-columns:1fr 1.25fr 1.35fr .8fr .8fr;gap:9px;margin-top:11px}.analysis-item.global-target .decision-grid{grid-template-columns:1fr 1.35fr .8fr .8fr}.worksite-cell.disabled{opacity:.45}.import-toggle{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px}
   .station-default-box{margin:10px 0 12px}.station-picker{position:relative}.station-suggestions{display:none;position:absolute;z-index:40;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #d0d5dd;border-radius:10px;box-shadow:0 12px 28px rgba(16,24,40,.14);max-height:280px;overflow:auto}.station-suggestions.show{display:block}.station-suggestion{display:block;width:100%;border:0;border-bottom:1px solid #f2f4f7;border-radius:0;background:#fff;color:#101828;text-align:left;padding:9px 11px}.station-suggestion:hover{background:#f5f8ff}.station-suggestion:last-child{border-bottom:0}.station-suggestion b{display:block}.station-suggestion small{color:#667085}.station-selected{margin-top:4px;font-size:11px;color:#667085}.station-selected.ok{color:#067647;font-weight:700}
   .range-list{display:grid;gap:8px}.range-row{display:grid;grid-template-columns:minmax(120px,180px) 1fr;gap:8px;align-items:center}.range-track{height:18px;background:#eef2f6;border-radius:9px;position:relative;overflow:hidden}.range-fill{height:100%;position:absolute;border-radius:9px;background:#4e8fe5;min-width:3px}.range-fill.station{background:#98a2b3}.range-label{font-size:11px;color:#667085}.range-section{display:grid;gap:7px}.range-section-title{font-size:11px;font-weight:850;color:#344054}.range-missing{font-size:11px;color:#b54708;border-top:1px solid #eaecf0;padding-top:7px}
   .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.legend-item{display:inline-flex;align-items:center;gap:5px;font-size:11px}.legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
@@ -420,7 +420,7 @@ function groupHtml(group,index){
     '<div class="muted" style="margin-top:7px;word-break:break-word">'+esc(files)+'</div>'+
     (warnings.length?'<ul class="warnings">'+warnings.slice(0,6).map(w=>'<li>'+esc(w)+'</li>').join('')+(warnings.length>6?'<li>… '+(warnings.length-6)+' weitere</li>':'')+'</ul>':'')+
     '<div class="decision-grid">'+
-      '<div><label>Ziel nach Analyse</label><select class="decision-scope"><option value="GLOBAL_REFERENCE">Globaler Referenzbestand</option><option value="COMPANY_WORKSITE_DATA">Firma / Baustelle</option></select></div>'+
+      '<div><label>Speicherziel</label><select class="decision-scope"><option value="GLOBAL_REFERENCE">Gemeinsamer Referenzbestand</option><option value="COMPANY_WORKSITE_DATA">Firma / Baustelle</option></select></div>'+
       '<div class="worksite-cell disabled"><label>Firma / Baustelle</label><select class="decision-worksite" disabled>'+worksiteOptions()+'</select></div>'+
       '<div class="station-picker decision-station-picker"><label>Bahnhof / Betriebsstelle</label><input class="station-search decision-station-search" autocomplete="off" placeholder="optional · z. B. Pasing"><input class="station-code decision-station-code" type="hidden"><input class="station-name decision-station-name" type="hidden"><div class="station-suggestions"></div><div class="station-selected">Keine Betriebsstelle zugeordnet.</div></div>'+
       '<div><label>Strecke</label><input class="decision-route" maxlength="80" value="'+esc(route)+'" placeholder="z. B. 5528"></div>'+
@@ -446,7 +446,10 @@ function wireDecisionControls(){
     };
     const sync=()=>{
       const global=scope.value==='GLOBAL_REFERENCE';
-      ws.disabled=global;cell.classList.toggle('disabled',global);
+      ws.disabled=global;
+      cell.hidden=global;
+      cell.classList.toggle('disabled',global);
+      card.classList.toggle('global-target',global);
       applyWorksiteDefaults();
     };
     scope.addEventListener('change',sync);
