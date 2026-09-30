@@ -153,7 +153,7 @@ jobs:
           python server/checks/115_verify_survey_import_station_assignment_source.py
           python server/checks/116_verify_survey_diagnostics_portal_source.py
 
-      # Migrations through 018_survey_object_identity.sql are included by the normal migration runner.
+      # Migrations through 019_survey_catalog_history_enrich.sql are included by the normal migration runner.
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
         run: python -m tbserver.migrations up
@@ -165,8 +165,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 18, current
-          assert current["latest_applied"] == 18, current
+          assert current["latest_known"] == 19, current
+          assert current["latest_applied"] == 19, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
