@@ -1078,3 +1078,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Read-only-Abfrage nach frischem 40/40-Import bestätigt 10-11 und 14-22 direkt korrekt getrennt (je eigene Achse, passender object_key, MPB, Segmentzahl 1).
 - 19-20 ist im Screenshot nicht sichtbar; daher bewusst noch nicht als bestätigt markieren.
 - Nächster Terminalschritt: kompakte Query nur auf WVB-TRA, damit alle drei Fälle in drei Zeilen sichtbar sind.
+
+## REF-DATA-003 – WVB-Neuimport vollständig bestätigt 30.09.2026
+- Kompakte 3-Zeilen-Abfrage zeigt 10-11, 14-22 und 19-20 jeweils mit unterschiedlicher axis_id, passendem object_key, MPB und axis_segment_count=1.
+- Frischer Neuimport ist damit ohne Nachreparatur WVB-sauber.
+- Nächster Schritt: Search/Availability/Geometry kompakt im API-Container testen; danach Multi-Hit im Portal.
