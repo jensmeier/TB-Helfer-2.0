@@ -736,3 +736,14 @@ GitHub Actions zum Code-HEAD: Foundation-Job mit `steps=[]`; damit **kein Testna
 - Der konkrete Legacy-Mergefehler gilt damit als **BESTÄTIGT BEHOBEN**.
 - Hinweis: aktueller Runtimebestand umfasst 64 Originale statt 40; die Bilanz ist vollständig und fehlerfrei. Keine Rückstufung des Gates.
 - Offen im REF-DATA-003-Gesamtgate: Browser-Prefill, Multi-Hit, „Problem ansehen“/Resolution sowie Search/Availability/Geometry für MPB/Pasing.
+
+### REF-DATA-003 – Import-UI/Reset Runtime-Gate
+Source: **FERTIG**, Runtime: **OFFEN**.
+Nach Deploy von `v1_admin_survey_import.html` prüfen:
+1. Label heißt `Speicherziel` und GLOBAL heißt `Gemeinsamer Referenzbestand`.
+2. Bei GLOBAL ist `Firma / Baustelle` nicht sichtbar; beim Umschalten auf Firmenziel erscheint das Feld wieder.
+3. Auf staging erscheint die Reset-Karte mit aktuellen Survey-Zählwerten.
+4. Ohne exakten Bestätigungstext bleibt Löschen gesperrt.
+5. Reset liefert `status=RESET`; danach alle Survey-Reset-Zähler 0.
+6. Firmen, Benutzer, Baustellen und BTB bleiben unverändert.
+7. Anschließend Pasing-Daten frisch hochladen und den kompletten Analyse-/Import-/Katalogpfad erneut testen.
