@@ -1026,3 +1026,7 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Workflow Run 36728982421: conclusion=failure, Foundation jedoch `steps=[]`; kein CI-Testnachweis.
 - Status: **SOURCE KORRIGIERT / NICHT DEPLOYT / SYNLOGY-RUNTIME-RETEST OFFEN**.
 - Nächster Schritt: nur `server/tbserver/survey_catalog.py` auf NAS ersetzen, API neu erstellen/starten, Reindex ausführen, danach dieselbe WVB-read-only-Abfrage wiederholen.
+
+### Sourcecheck vor Übergabe an Synology
+- Reparaturguard isoliert gegen 4 Schutzfälle ausgeführt: **4/4 PASS**.
+- Kein DB-/Runtime-Nachweis; Synology-Reindex bleibt nächster maßgeblicher Test.
