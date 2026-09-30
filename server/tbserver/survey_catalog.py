@@ -1556,6 +1556,237 @@ def _enrich_existing_axis_identity(
     )
     return updated, True
 
+def refresh_original_assignment_in_tx(
+    cur,
+    original_id: UUID,
+    actor_user_id: UUID | None = None,
+) -> dict[str, Any]:
+    """Refresh derived catalog identity after an explicit admin assignment correction.
+
+    The raw original and its geometry stay unchanged. Existing TRA segments keep
+    their segment id; only the catalog asset/axis identity is updated.
+    """
+    original, parsed = _load_original_with_parse(cur, original_id)
+    asset = _asset_upsert(cur, original, parsed, actor_user_id)
+    if str(parsed.get("status") or "").upper() != "PARSED":
+        return {"asset_id": str(asset["id"]), "status": "ERROR"}
+    if str(parsed.get("detected_format") or "") != "TRA_ER0_BINARY":
+        return {"asset_id": str(asset["id"]), "status": "ASSIGNMENT_UPDATED_ASSET"}
+
+    payload = parsed.get("payload") if isinstance(parsed.get("payload"), dict) else {}
+    fields = _axis_fields(original, payload)
+    cur.execute(
+        """
+        SELECT *
+        FROM tb.survey_catalog_segments
+        WHERE source_original_id=%s AND source_kind='ORIGINAL_TRA'
+        ORDER BY created_at,id
+        LIMIT 2
+        """,
+        (original_id,),
+    )
+    rows = [dict(row) for row in cur.fetchall()]
+    if not rows:
+        return index_original_in_tx(cur, original_id, actor_user_id)
+    if len(rows) != 1:
+        raise HTTPException(
+            409,
+            {"code": "SURVEY_ASSIGNMENT_UPDATE_MULTIPLE_SOURCE_SEGMENTS", "count": len(rows)},
+        )
+    segment = rows[0]
+
+    cur.execute(
+        """
+        SELECT id
+        FROM tb.survey_catalog_conflicts
+        WHERE status='OPEN'
+          AND (candidate_segment_id=%s OR existing_segment_id=%s)
+        LIMIT 1
+        """,
+        (segment["id"], segment["id"]),
+    )
+    conflict = cur.fetchone()
+    if conflict:
+        raise HTTPException(
+            409,
+            {
+                "code": "SURVEY_ASSIGNMENT_UPDATE_OPEN_CONFLICT",
+                "conflict_id": str(conflict["id"]),
+            },
+        )
+
+    axis = _row(cur, "survey_catalog_axes", segment["axis_id"])
+    scope, company_id = _scope_for_original(original)
+    if str(axis.get("scope") or "") != scope or axis.get("company_id") != company_id:
+        raise HTTPException(409, "SURVEY_ASSIGNMENT_UPDATE_SCOPE_CHANGE_NOT_SUPPORTED")
+
+    cur.execute(
+        """
+        SELECT count(*)::int AS item_count
+        FROM tb.survey_catalog_segments
+        WHERE axis_id=%s AND id<>%s AND segment_status<>'INACTIVE'
+        """,
+        (axis["id"], segment["id"]),
+    )
+    other_segment_count = int(cur.fetchone()["item_count"])
+
+    identity_keys = (
+        "route_number",
+        "station_code",
+        "track_key",
+        "object_key",
+        "direction",
+        "axis_type",
+    )
+    destructive_identity_change = False
+    for key in identity_keys:
+        before_value = _clean(axis.get(key))
+        after_value = _clean(fields.get(key))
+        if key == "axis_type":
+            before_value = str(axis.get(key) or "UNBEKANNT").upper()
+            after_value = str(fields.get(key) or "UNBEKANNT").upper()
+        if before_value and after_value != before_value:
+            destructive_identity_change = True
+            break
+    if other_segment_count and destructive_identity_change:
+        raise HTTPException(
+            409,
+            {
+                "code": "SURVEY_ASSIGNMENT_UPDATE_SHARED_AXIS_REQUIRES_REVIEW",
+                "axis_id": str(axis["id"]),
+                "other_segment_count": other_segment_count,
+            },
+        )
+
+    target_identity = _identity_key(scope, company_id, fields, str(original_id))
+    if target_identity != str(axis.get("identity_key") or ""):
+        cur.execute(
+            """
+            SELECT id
+            FROM tb.survey_catalog_axes
+            WHERE identity_key=%s AND id<>%s AND status<>'ARCHIVED'
+            LIMIT 1
+            """,
+            (target_identity, axis["id"]),
+        )
+        collision = cur.fetchone()
+        if collision:
+            raise HTTPException(
+                409,
+                {
+                    "code": "SURVEY_ASSIGNMENT_UPDATE_AXIS_COLLISION",
+                    "axis_id": str(axis["id"]),
+                    "target_axis_id": str(collision["id"]),
+                },
+            )
+
+    desired = {
+        "identity_key": target_identity,
+        "route_number": fields.get("route_number"),
+        "station_code": fields.get("station_code"),
+        "station_name": fields.get("station_name"),
+        "track_key": fields.get("track_key"),
+        "object_key": fields.get("object_key"),
+        "direction": fields.get("direction"),
+        "axis_type": fields.get("axis_type"),
+        "display_name": fields.get("display_name"),
+    }
+    changed = any(axis.get(key) != value for key, value in desired.items())
+    if not changed:
+        return {
+            "asset_id": str(asset["id"]),
+            "segment_id": str(segment["id"]),
+            "axis_id": str(axis["id"]),
+            "status": "ASSIGNMENT_UNCHANGED",
+            "object_key": axis.get("object_key"),
+        }
+
+    before = dict(axis)
+    version = int(axis["current_version"]) + 1
+    cur.execute(
+        """
+        UPDATE tb.survey_catalog_axes
+        SET identity_key=%s,route_number=%s,station_code=%s,station_name=%s,
+            track_key=%s,object_key=%s,direction=%s,axis_type=%s,display_name=%s,
+            current_version=%s
+        WHERE id=%s
+        RETURNING *
+        """,
+        (
+            desired["identity_key"],
+            desired["route_number"],
+            desired["station_code"],
+            desired["station_name"],
+            desired["track_key"],
+            desired["object_key"],
+            desired["direction"],
+            desired["axis_type"],
+            desired["display_name"],
+            version,
+            axis["id"],
+        ),
+    )
+    updated = dict(cur.fetchone())
+    _history(
+        cur,
+        entity_type="AXIS",
+        entity_id=updated["id"],
+        version=version,
+        operation="UPDATE",
+        before=before,
+        after=updated,
+        actor_user_id=actor_user_id,
+        actor_company_id=company_id,
+    )
+    audit(
+        cur,
+        action="SURVEY_CATALOG_ASSIGNMENT_UPDATE",
+        actor_user_id=actor_user_id,
+        company_id=company_id,
+        entity_type="SURVEY_CATALOG_AXIS",
+        entity_id=updated["id"],
+        details={
+            "original_id": str(original_id),
+            "segment_id": str(segment["id"]),
+            "other_segment_count": other_segment_count,
+            "before": {
+                key: before.get(key)
+                for key in (
+                    "route_number",
+                    "station_code",
+                    "station_name",
+                    "track_key",
+                    "object_key",
+                    "direction",
+                    "axis_type",
+                    "display_name",
+                )
+            },
+            "after": {
+                key: updated.get(key)
+                for key in (
+                    "route_number",
+                    "station_code",
+                    "station_name",
+                    "track_key",
+                    "object_key",
+                    "direction",
+                    "axis_type",
+                    "display_name",
+                )
+            },
+        },
+    )
+    return {
+        "asset_id": str(asset["id"]),
+        "segment_id": str(segment["id"]),
+        "axis_id": str(updated["id"]),
+        "status": "ASSIGNMENT_UPDATED",
+        "axis_version": version,
+        "object_key": updated.get("object_key"),
+    }
+
+
 def index_original_in_tx(cur, original_id: UUID, actor_user_id: UUID | None = None) -> dict[str,Any]:
     original, parsed = _load_original_with_parse(cur, original_id)
     asset = _asset_upsert(cur, original, parsed, actor_user_id)
