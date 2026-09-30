@@ -688,3 +688,22 @@ Noch offen:
 - Postman/Synology-E2E.
 
 Portal/Android bleiben bis zu diesem Runtime-Gate unangetastet.
+
+## REF-DATA-003 – Synology Runtimebasis 30.09.2026
+Status: **DEPLOYT / BASIS LAUFEND / FACH-E2E OFFEN**
+Screenshot-Nachweis vom Admin-Systemstatus:
+- `Migrationen: 17 / 17 · latest 17 / 17`;
+- `Ausstehend: keine`;
+- Datenbank OK;
+- interne API OK;
+- Worker OK;
+- Cloudflare/öffentliche API OK;
+- Umgebung staging, API 1.0.0-dev.
+
+Damit gelten Migration 017 sowie laufende API-/Worker-Basis als praktisch bestätigt. Nicht daraus abgeleitet werden dürfen erfolgreiche Reindex-/Katalog-/Merge-/Mailtests.
+
+Nächste Runtimeprüfungen:
+1. Survey-Katalog-Reindex starten und Ergebnis prüfen.
+2. Search / Availability / Geometry / Changes gegen die laufende Synology prüfen.
+3. Danach Originalimport, Merge/Teilabdeckung, REVIEW_REQUIRED und Konfliktmail mit Testdaten.
+4. Erst nach bestandenem Runtime-Gate den Portal-HTML-Block beginnen.

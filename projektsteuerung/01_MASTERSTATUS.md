@@ -869,3 +869,17 @@ Status: **SOURCE FERTIG / NICHT DEPLOYT / SYNLOGY-E2E OFFEN**
 - GitHub Actions Runs `36621416472` und `36621409361`: Foundation-Job jeweils `steps=[]`; daher ausdrücklich **kein CI-Testnachweis**.
 - Portal und Android wurden in diesem Serverblock nicht geändert.
 - Nächster Pflichtschritt vor Portal: Synology deployen, Migration 017 anwenden, API+Worker neu starten/recreaten, Reindex und Runtime-/Postman-E2E durchführen.
+
+## REF-DATA-003 – Synology Runtimebasis 30.09.2026
+Status: **DEPLOYT / RUNTIMEBASIS BESTÄTIGT / E2E OFFEN**
+Benutzernachweis per Admin-Systemstatus:
+- API: `1.0.0-dev`, Umgebung `staging`;
+- Migrationen: **17 / 17**, `latest 17 / 17`;
+- Ausstehend: **keine**;
+- Datenbank: **OK**;
+- interne API: **OK**;
+- Worker: **OK**;
+- Cloudflare / öffentliche API: **OK**.
+- Damit ist Migration 017 praktisch angewendet und API/Worker laufen auf der Synology.
+- Noch **nicht** bestätigt: Reindex, Survey-Katalog-Endpunkte, Merge-/Reviewfälle, Konfliktmail, Change-Feed und Lifecycle-E2E.
+- Nächster Schritt bleibt Runtime-/Postman-E2E des Survey-Katalogs; Portal erst danach.

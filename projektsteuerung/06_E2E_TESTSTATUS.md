@@ -535,3 +535,16 @@ Pflicht-Runtimefälle vor Portal:
 16. Staging/Test-Firmen-Purge bleibt mit Migration 017 lauffähig; Produktionsschutz für Originale bleibt bestehen.
 
 Erst nach diesen Runtimefällen darf REF-DATA-003 als **DEPLOYT/E2E BESTÄTIGT** hochgestuft und der Portalblock begonnen werden.
+
+### REF-DATA-003 – Runtimebasis bestätigt 30.09.2026
+Benutzer liefert Admin-Systemstatus als Synology-Runtimebeleg:
+- Migration 017 angewendet: **17/17**, keine ausstehenden Migrationen;
+- DB OK;
+- interne API OK;
+- Worker OK;
+- öffentliche API/Cloudflare OK.
+
+Status:
+- **DEPLOYT: JA** für Serverbasis/Migration017/API/Worker.
+- **E2E BESTÄTIGT: NEIN** für Survey-Katalogfachpfade.
+- Noch offen: Reindex + Runtimefälle 4–16 aus dem REF-DATA-003-Pflichttest.

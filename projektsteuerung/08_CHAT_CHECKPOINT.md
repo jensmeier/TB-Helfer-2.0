@@ -866,3 +866,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Actions `36621416472`, `36621409361`: `steps=[]`, also kein CI-Testbeweis.
 - Status ausdrücklich: **SOURCE FERTIG / NICHT DEPLOYT / SYNLOGY-E2E OFFEN**.
 - Nächster Arbeitsblock: Synology-Deployment + Migration017 + API/Worker + Reindex + dokumentierter Runtime-/Postman-E2E. Portal erst danach.
+
+## REF-DATA-003 – Synology-Runtimecheckpoint 30.09.2026
+- Benutzer hat den neuen Serverstand auf Synology übernommen.
+- Admin-Systemstatus zeigt: API 1.0.0-dev staging, Migrationen 17/17, keine ausstehenden Migrationen, DB OK, interne API OK, Worker OK, Cloudflare/öffentliche API OK.
+- Damit Status: **DEPLOYT / RUNTIMEBASIS BESTÄTIGT / SURVEY-FACH-E2E OFFEN**.
+- Keine neue HTML-Seite war beim Deployment zu übernehmen; Portalblock wurde bewusst noch nicht gebaut.
+- Nächster Schritt: Survey-Katalog reindexen und Runtime-Endpunkte/Fachfälle prüfen. Erst danach Portal `Trassendatenübersicht`.
