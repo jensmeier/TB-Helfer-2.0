@@ -795,3 +795,9 @@ Noch offen:
 2. Search nach MPB/5528/WVB und Availability für MPB/Route testen.
 3. Geometry für MPB/5528 laden und Multi-Hit praktisch prüfen.
 4. Problemfenster nur dann E2E testen, wenn ein echter REVIEW_REQUIRED-Fall entsteht; aktuell kein offener Prüffall vorhanden.
+
+### REF-DATA-003 – Frischer WVB-Identitätscheck 30.09.2026
+- WVB 10-11: **BESTANDEN** – eigener axis_id, `WVB:10-11`, MPB, Segmentzahl 1.
+- WVB 14-22: **BESTANDEN** – eigener axis_id, `WVB:14-22`, MPB, Segmentzahl 1.
+- WVB 19-20: **NOCH OFFEN**, weil die betreffende Zeile im Screenshot nicht sichtbar ist.
+- Wichtig: Dieser Nachweis stammt direkt aus dem frischen Importzustand, ohne Reindex-Nachreparatur.
