@@ -56,6 +56,7 @@ class ManualSegmentCreate(BaseModel):
     station_code: str | None = Field(default=None, max_length=50)
     station_name: str | None = Field(default=None, max_length=240)
     track_key: str | None = Field(default=None, max_length=160)
+    object_key: str | None = Field(default=None, max_length=160)
     direction: str | None = Field(default=None, max_length=40)
     axis_type: str = Field(default="GLEIS", max_length=40)
     display_name: str = Field(min_length=1, max_length=300)
@@ -76,6 +77,7 @@ class ManualSegmentUpdate(BaseModel):
     station_code: str | None = Field(default=None, max_length=50)
     station_name: str | None = Field(default=None, max_length=240)
     track_key: str | None = Field(default=None, max_length=160)
+    object_key: str | None = Field(default=None, max_length=160)
     direction: str | None = Field(default=None, max_length=40)
     axis_type: str | None = Field(default=None, max_length=40)
     display_name: str | None = Field(default=None, min_length=1, max_length=300)
@@ -103,6 +105,7 @@ class AxisAdminUpdate(BaseModel):
     station_code: str | None = Field(default=None, max_length=50)
     station_name: str | None = Field(default=None, max_length=240)
     track_key: str | None = Field(default=None, max_length=160)
+    object_key: str | None = Field(default=None, max_length=160)
     direction: str | None = Field(default=None, max_length=40)
     axis_type: str | None = Field(default=None, max_length=40)
     display_name: str | None = Field(default=None, min_length=1, max_length=300)
@@ -323,13 +326,24 @@ def _station_extent(payload: dict[str, Any]) -> tuple[float | None, float | None
 
 def _axis_fields(original: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     station_code, station_name = _station_meta(original)
+    metadata = original.get("metadata") if isinstance(original.get("metadata"), dict) else {}
     route = _clean(original.get("route_number")) or _clean(payload.get("route_from_name"))
     track = _clean(original.get("track_key")) or _clean(payload.get("track_from_name"))
+    object_key = _clean(metadata.get("object_key")) or _clean(payload.get("object_key_from_name"))
+    object_key = object_key.upper() if object_key else None
     direction = _clean(payload.get("direction_from_name"))
     axis_type = (_clean(payload.get("axis_type_from_name")) or "UNBEKANNT").upper()
     if axis_type not in _AXIS_TYPES:
         axis_type = "UNBEKANNT"
-    if axis_type == "GLEIS" and track:
+    if axis_type == "WEICHENVERBINDUNG" and object_key and object_key.startswith("WVB:"):
+        display = "WVB " + object_key.split(":", 1)[1]
+        if station_name:
+            display += f" · {station_name}"
+    elif axis_type == "WEICHE" and object_key and object_key.startswith("W:"):
+        display = "W " + object_key.split(":", 1)[1]
+        if station_name:
+            display += f" · {station_name}"
+    elif axis_type == "GLEIS" and track:
         display = f"Gl {track}" + (f" · {station_name}" if station_name else f" · Str {route}" if route else "")
     elif route and direction:
         display = f"Str {route}-{direction}"
@@ -342,6 +356,7 @@ def _axis_fields(original: dict[str, Any], payload: dict[str, Any]) -> dict[str,
         "station_code": station_code,
         "station_name": station_name,
         "track_key": track,
+        "object_key": object_key,
         "direction": direction,
         "axis_type": axis_type,
         "display_name": display,
@@ -353,8 +368,13 @@ def _identity_key(scope: str, company_id: UUID | None, fields: dict[str, Any], f
     station = _clean(fields.get("station_code"))
     route = _clean(fields.get("route_number"))
     track = _clean(fields.get("track_key"))
+    object_key = _clean(fields.get("object_key"))
     direction = _clean(fields.get("direction"))
     axis_type = str(fields.get("axis_type") or "UNBEKANNT").upper()
+    if station and object_key:
+        return f"{prefix}:S:{station.upper()}:O:{object_key.upper()}"
+    if route and object_key:
+        return f"{prefix}:R:{route}:O:{object_key.upper()}"
     if station and track:
         return f"{prefix}:S:{station.upper()}:T:{track.upper()}"
     if axis_type == "STRECKE" and route and direction:
@@ -895,6 +915,10 @@ def _axis_compatible(axis: dict[str, Any], fields: dict[str, Any], candidate_bbo
     right_type = str(fields.get("axis_type") or "UNBEKANNT")
     if left_type != "UNBEKANNT" and right_type != "UNBEKANNT" and left_type != right_type:
         return False
+    object_key = _clean(fields.get("object_key"))
+    axis_object_key = _clean(axis.get("object_key"))
+    if object_key and axis_object_key and object_key.casefold() != axis_object_key.casefold():
+        return False
 
     station = _clean(fields.get("station_code"))
     track = _clean(fields.get("track_key"))
@@ -912,6 +936,10 @@ def _axis_compatible(axis: dict[str, Any], fields: dict[str, Any], candidate_bbo
         )
     bbox_distance = _bbox_distance(axis_bbox, candidate_bbox)
 
+    if object_key and axis_object_key and object_key.casefold() == axis_object_key.casefold():
+        same_station = not station or not axis_station or station.casefold() == axis_station.casefold()
+        same_route = not route or not axis_route or route.casefold() == axis_route.casefold()
+        return same_station and same_route
     if station and track:
         return True
     if right_type == "STRECKE" and route and (direction or _clean(axis.get("direction"))):
@@ -943,6 +971,7 @@ def _candidate_axes(cur, *, scope: str, company_id: UUID | None,
     route = _clean(fields.get("route_number"))
     station = _clean(fields.get("station_code"))
     track = _clean(fields.get("track_key"))
+    object_key = _clean(fields.get("object_key"))
     filters: list[str] = []
     if station:
         filters.append("station_code = %s"); params.append(station)
@@ -950,6 +979,8 @@ def _candidate_axes(cur, *, scope: str, company_id: UUID | None,
         filters.append("route_number = %s"); params.append(route)
     if track:
         filters.append("track_key = %s"); params.append(track)
+    if object_key:
+        filters.append("object_key = %s"); params.append(object_key)
     if not filters:
         return []
     cur.execute(
@@ -973,9 +1004,17 @@ def _candidate_axes(cur, *, scope: str, company_id: UUID | None,
 
 def _strong_identity(axis: dict[str, Any], fields: dict[str, Any]) -> bool:
     station, track = _clean(fields.get("station_code")), _clean(fields.get("track_key"))
+    route, object_key = _clean(fields.get("route_number")), _clean(fields.get("object_key"))
+    if object_key:
+        axis_object_key = _clean(axis.get("object_key"))
+        same_object = bool(axis_object_key and axis_object_key.casefold() == object_key.casefold())
+        if same_object and station:
+            return _clean(axis.get("station_code")) == station
+        if same_object and route:
+            return _clean(axis.get("route_number")) == route
     if station and track:
         return _clean(axis.get("station_code")) == station and _clean(axis.get("track_key")) == track
-    route, direction = _clean(fields.get("route_number")), _clean(fields.get("direction"))
+    direction = _clean(fields.get("direction"))
     if str(fields.get("axis_type") or "") == "STRECKE" and route:
         return _clean(axis.get("route_number")) == route and (
             not direction or not _clean(axis.get("direction")) or _clean(axis.get("direction")) == direction
@@ -994,12 +1033,12 @@ def _axis_create(cur, *, scope: str, company_id: UUID | None, fields: dict[str, 
         """
         INSERT INTO tb.survey_catalog_axes(
             scope,company_id,identity_key,route_number,station_code,station_name,
-            track_key,direction,axis_type,display_name,created_by_user_id,created_by_company_id
-        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            track_key,object_key,direction,axis_type,display_name,created_by_user_id,created_by_company_id
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         RETURNING *
         """,
         (scope,company_id,identity,fields.get("route_number"),fields.get("station_code"),
-         fields.get("station_name"),fields.get("track_key"),fields.get("direction"),
+         fields.get("station_name"),fields.get("track_key"),fields.get("object_key"),fields.get("direction"),
          fields.get("axis_type"),fields.get("display_name"),actor_user_id,company_id),
     )
     axis = dict(cur.fetchone())
@@ -1417,6 +1456,7 @@ def _manual_fields(payload: ManualSegmentCreate | ManualSegmentUpdate,
         "station_code":station_code.upper() if station_code else None,
         "station_name":_clean(value("station_name")),
         "track_key":_clean(value("track_key")),
+        "object_key":(_clean(value("object_key")) or "").upper() or None,
         "direction":_clean(value("direction")),
         "axis_type":axis_type,
         "display_name":display_name,
@@ -1885,7 +1925,7 @@ def geometry(route_number: str | None = Query(default=None,max_length=80),
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
             f"""
-            SELECT s.*,a.scope,a.company_id,a.route_number,a.station_code,a.station_name,a.track_key,
+            SELECT s.*,a.scope,a.company_id,a.route_number,a.station_code,a.station_name,a.track_key,a.object_key,
                    a.direction,a.axis_type,a.display_name,a.current_version axis_version
             FROM tb.survey_catalog_segments s
             JOIN tb.survey_catalog_axes a ON a.id=s.axis_id
@@ -1908,6 +1948,7 @@ def geometry(route_number: str | None = Query(default=None,max_length=80),
                 "station_code": row.get("station_code"),
                 "station_name": row.get("station_name"),
                 "track_key": row.get("track_key"),
+                "object_key": row.get("object_key"),
                 "direction": row.get("direction"),
                 "axis_type": row.get("axis_type"),
                 "display_name": row.get("display_name"),
@@ -1987,7 +2028,7 @@ def list_conflicts(status: str = Query(default="OPEN",max_length=20),
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT c.*,a.route_number,a.station_code,a.station_name,a.track_key,
+            SELECT c.*,a.route_number,a.station_code,a.station_name,a.track_key,a.object_key,
                    a.direction,a.axis_type,a.display_name
             FROM tb.survey_catalog_conflicts c
             JOIN tb.survey_catalog_axes a ON a.id=c.axis_id
@@ -2078,6 +2119,7 @@ def update_axis(axis_id: UUID,payload: AxisAdminUpdate,
             "station_code":changes.get("station_code",axis.get("station_code")),
             "station_name":changes.get("station_name",axis.get("station_name")),
             "track_key":changes.get("track_key",axis.get("track_key")),
+            "object_key":changes.get("object_key",axis.get("object_key")),
             "direction":changes.get("direction",axis.get("direction")),
             "axis_type":changes.get("axis_type",axis.get("axis_type")),
             "display_name":changes.get("display_name",axis.get("display_name")),
@@ -2085,6 +2127,9 @@ def update_axis(axis_id: UUID,payload: AxisAdminUpdate,
         fields["station_code"] = _clean(fields["station_code"])
         if fields["station_code"]:
             fields["station_code"] = fields["station_code"].upper()
+        fields["object_key"] = _clean(fields["object_key"])
+        if fields["object_key"]:
+            fields["object_key"] = fields["object_key"].upper()
         fields["axis_type"] = str(fields["axis_type"] or "UNBEKANNT").upper()
         if fields["axis_type"] not in _AXIS_TYPES:
             raise HTTPException(400, "SURVEY_AXIS_TYPE_INVALID")
@@ -2093,12 +2138,12 @@ def update_axis(axis_id: UUID,payload: AxisAdminUpdate,
         cur.execute(
             """
             UPDATE tb.survey_catalog_axes
-            SET route_number=%s,station_code=%s,station_name=%s,track_key=%s,direction=%s,
+            SET route_number=%s,station_code=%s,station_name=%s,track_key=%s,object_key=%s,direction=%s,
                 axis_type=%s,display_name=%s,current_version=%s
             WHERE id=%s RETURNING *
             """,
             (_clean(fields["route_number"]),fields["station_code"],_clean(fields["station_name"]),
-             _clean(fields["track_key"]),_clean(fields["direction"]),fields["axis_type"],
+             _clean(fields["track_key"]),fields["object_key"],_clean(fields["direction"]),fields["axis_type"],
              _clean(fields["display_name"]) or axis["display_name"],version,axis_id),
         )
         updated = dict(cur.fetchone())

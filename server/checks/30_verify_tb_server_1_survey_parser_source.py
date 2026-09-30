@@ -172,6 +172,16 @@ def verify_filename_metadata() -> None:
     assert meta["track_from_name"] == "303", meta
     assert meta["direction_from_name"] == "2", meta
 
+    meta = _axis_meta_from_name("WVB_14-22_ER0_GGP2026_02_16.TRA")
+    assert meta["axis_type_from_name"] == "WEICHENVERBINDUNG", meta
+    assert meta["object_key_from_name"] == "WVB:14-22", meta
+    assert meta["switch_a_from_name"] == "14", meta
+    assert meta["switch_b_from_name"] == "22", meta
+
+    meta = _axis_meta_from_name("W_27_ER0_GGP2026_02_16.TRA")
+    assert meta["axis_type_from_name"] == "WEICHE", meta
+    assert meta["object_key_from_name"] == "W:27", meta
+
 
 def main() -> None:
     parser = read("server/tbserver/survey_parser.py")

@@ -105,6 +105,11 @@ def _route_direction_from_name(name: str) -> tuple[str | None, str | None]:
     return route_matches[-1].group(1), direction_match.group(1)
 
 
+def _switch_sort_key(value: str) -> tuple[int, str]:
+    match = re.fullmatch(r"(\d+)([A-Z]*)", value.upper())
+    return (int(match.group(1)), match.group(2)) if match else (10**9, value.upper())
+
+
 def _axis_meta_from_name(name: str) -> dict[str, str | None]:
     upper = _name_stem(name).upper()
     route = _route_from_name(name)
@@ -112,11 +117,21 @@ def _axis_meta_from_name(name: str) -> dict[str, str | None]:
     direction: str | None = None
     source_direction: str | None = None
     axis_type = "UNBEKANNT"
+    object_key: str | None = None
+    switch_a: str | None = None
+    switch_b: str | None = None
 
-    if upper.startswith("SW_") or re.search(r"^W[_-]?\d+[A-Z]?", upper):
-        axis_type = "WEICHE"
-    elif upper.startswith("WV_") or upper.startswith("WVB_"):
+    wvb = re.search(r"^(?:WVB|WV)[_\s-]*(\d+[A-Z]?)[_\s-]+(\d+[A-Z]?)", upper)
+    single_switch = re.search(r"^(?:SW|WEICHE|W)[_\s-]?(\d+[A-Z]?)", upper)
+    if wvb:
         axis_type = "WEICHENVERBINDUNG"
+        raw_pair = [wvb.group(1).upper(), wvb.group(2).upper()]
+        switch_a, switch_b = sorted(raw_pair, key=_switch_sort_key)
+        object_key = f"WVB:{switch_a}-{switch_b}"
+    elif single_switch:
+        axis_type = "WEICHE"
+        switch_a = single_switch.group(1).upper()
+        object_key = f"W:{switch_a}"
     else:
         track_with_route = re.search(
             r"(?<!\d)([1-9]\d{3})[_-]?(?:GL|GLEIS)[_\s-]*(\d+[A-Z]?)(?:[_\s.-]|$)",
@@ -149,6 +164,9 @@ def _axis_meta_from_name(name: str) -> dict[str, str | None]:
         "direction_from_name": direction,
         "source_direction_from_name": source_direction,
         "axis_type_from_name": axis_type,
+        "object_key_from_name": object_key,
+        "switch_a_from_name": switch_a,
+        "switch_b_from_name": switch_b,
     }
 
 

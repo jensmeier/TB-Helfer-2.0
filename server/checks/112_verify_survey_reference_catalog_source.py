@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "server" / "tbserver" / "survey_catalog.py"
 MIGRATION = ROOT / "server" / "v1_migrations" / "017_survey_reference_catalog.sql"
+OBJECT_MIGRATION = ROOT / "server" / "v1_migrations" / "018_survey_object_identity.sql"
 MAIN = ROOT / "server" / "tbserver" / "main.py"
 JOBS = ROOT / "server" / "tbserver" / "jobs.py"
 NOTIFICATIONS = ROOT / "server" / "tbserver" / "notifications.py"
@@ -20,6 +21,7 @@ for path in (CATALOG, MAIN, JOBS, NOTIFICATIONS, ADMIN_IMPORT, PARSER, SURVEY_OR
 
 catalog = CATALOG.read_text(encoding="utf-8")
 migration = MIGRATION.read_text(encoding="utf-8")
+object_migration = OBJECT_MIGRATION.read_text(encoding="utf-8")
 main = MAIN.read_text(encoding="utf-8")
 jobs = JOBS.read_text(encoding="utf-8")
 notifications = NOTIFICATIONS.read_text(encoding="utf-8")
@@ -114,5 +116,10 @@ for capability in (
 assert "same_route_hint" in catalog
 assert "same_station_hint" in catalog
 assert "bbox_distance <= OVERLAP_NEAR_DISTANCE_M" in catalog
+assert "ADD COLUMN object_key text" in object_migration
+assert "survey_catalog_axes_object_idx" in object_migration
+assert "object_key_from_name" in parser
+assert 'fields.get("object_key")' in catalog
+assert 'filters.append("object_key = %s")' in catalog
 
 print("PASS survey reference catalog source")

@@ -152,7 +152,7 @@ jobs:
           python server/checks/114_verify_survey_staging_reset_source.py
           python server/checks/115_verify_survey_import_station_assignment_source.py
 
-      # Migrations through 015_file_photo_metadata.sql are included by the normal migration runner.
+      # Migrations through 018_survey_object_identity.sql are included by the normal migration runner.
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
         run: python -m tbserver.migrations up
@@ -164,8 +164,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 15, current
-          assert current["latest_applied"] == 15, current
+          assert current["latest_known"] == 18, current
+          assert current["latest_applied"] == 18, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
@@ -185,6 +185,8 @@ jobs:
               "system_metrics_hourly", "catalog_routes", "catalog_stations",
               "catalog_sections", "catalog_objects", "catalog_history",
               "system_schedule_runs", "btb_participant_states",
+              "survey_catalog_assets", "survey_catalog_axes", "survey_catalog_segments",
+              "survey_catalog_conflicts", "survey_catalog_history",
           }
           with connect() as conn, conn.cursor() as cur:
               cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='tb'")

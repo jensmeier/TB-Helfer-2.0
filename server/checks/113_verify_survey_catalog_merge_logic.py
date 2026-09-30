@@ -114,6 +114,43 @@ assert "resolved_by" not in public_payload["metadata"]
 admin_payload = _catalog_response({"company_role": "ADMIN"}, private_payload)
 assert admin_payload["created_by_user_id"] == "user-secret-id"
 
+wvb_axis = {
+    "route_number": None,
+    "station_code": "MPB",
+    "track_key": None,
+    "object_key": "WVB:14-22",
+    "direction": None,
+    "axis_type": "WEICHENVERBINDUNG",
+    "bbox_min_x": 4_000_000.0,
+    "bbox_min_y": 5_000_000.0,
+    "bbox_max_x": 4_000_100.0,
+    "bbox_max_y": 5_000_010.0,
+}
+assert _axis_compatible(
+    wvb_axis,
+    {
+        "route_number": None,
+        "station_code": "MPB",
+        "track_key": None,
+        "object_key": "WVB:14-22",
+        "direction": None,
+        "axis_type": "WEICHENVERBINDUNG",
+    },
+    (4_000_020.0, 5_000_000.0, 4_000_080.0, 5_000_010.0),
+)
+assert not _axis_compatible(
+    wvb_axis,
+    {
+        "route_number": None,
+        "station_code": "MPB",
+        "track_key": None,
+        "object_key": "WVB:10-11",
+        "direction": None,
+        "axis_type": "WEICHENVERBINDUNG",
+    },
+    (4_000_020.0, 5_000_000.0, 4_000_080.0, 5_000_010.0),
+)
+
 existing_axis = {
     "route_number": "5524",
     "station_code": "MP",
