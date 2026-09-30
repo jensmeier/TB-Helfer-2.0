@@ -943,3 +943,19 @@ Status: **MIGRATION 19/19 BESTÄTIGT / REINDEX FEHLERFREI / WVB-FACHFEHLER REPRO
 - Reproduzierter Fehler: `WVB_19-20_ER0_GGP2026_02_16.TRA` ist fälschlich derselben Katalogachse wie WVB 14-22 zugeordnet; die Zeile zeigt `display_name=WVB_14-22_ER0_GGP2026_02_16.TRA`, `object_key=WVB:14-22`, `axis_segment_count=2`.
 - Damit erklärt sich die Verteilung 2× ALREADY_INDEXED_ENRICHED + 1× ALREADY_INDEXED: WVB 19-20 besitzt kein getrenntes Achsenobjekt, sondern wurde bereits vor dem Enrichment mit 14-22 zusammengeführt.
 - Keine Android-Änderung. Nächster SERVER-Schritt: Merge-/Kandidatenlogik für bestehende WVB-Segmente anhand object_key rückwirkend sicher trennen/reparieren, ohne Raw-Originale zu verändern; danach WVB-Abfrage und Pasing-Prefill/Multi-Hit/Problemfenster erneut runtime-prüfen.
+
+## REF-DATA-003 – Legacy-WVB-Identitätsreparatur Sourcecheckpoint 30.09.2026
+Status: **SOURCE KORRIGIERT / NICHT DEPLOYT / E2E OFFEN**
+- Reproduzierter Altfehler: WVB 19-20-Segment lag auf WVB 14-22-Achse; keine neue Parser-/Dateiursache.
+- `survey_catalog.py` repariert diesen Legacyfall beim Reindex konservativ:
+  - nur wenn aktueller Parser-object_key vom Achs-object_key abweicht;
+  - nur wenn ein anderes ORIGINAL_TRA auf derselben Achse den bisherigen Achs-object_key bestätigt;
+  - kein automatisches Umhängen bei offenem Prüffall;
+  - gleiche Segment-ID, gleiche Raw-Datei; nur Katalogzuordnung/Version/History/Audit werden geändert;
+  - Zielachse wird weiterhin über die bestehende object_key-kompatible Kandidaten-/Geometrielogik gewählt bzw. neu angelegt.
+- Neuer Status `ALREADY_INDEXED_REASSIGNED`; Audit `SURVEY_CATALOG_SEGMENT_IDENTITY_REASSIGN`.
+- Checks 112/113 wurden auf Reparaturpfad und Schutzfälle erweitert.
+- GitHub-Dateien nach den Commits erneut gelesen: Reparaturpfad + Guard-Assertions vorhanden. Workflow Run 36728982421 hat conclusion=failure, aber Foundation `steps=[]`; **kein CI-Testnachweis**.
+- Maßgebliche Code-/Check-Commits: `a7149047790eed6cffe785cc427d81fba74f0b28`, `523450f8c544587e19e083aea0cb89414e2bb0ab`, `fcd2c02423ac42098cdd63465ca4445db5aca627`.
+- Keine Migration 020, kein Compose, kein Android-Code.
+- Runtime offen: Synology-Deploy dieses Sourcefixes, Reindex mit failures=0 und genau getrennten object_keys/Achsen für WVB 10-11, 14-22, 19-20.
