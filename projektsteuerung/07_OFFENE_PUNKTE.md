@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| REF-DATA-003 | P0 | SERVER/PORTAL/ANDROID | Zusätzlich gefordert: Open-Conflict/Warnungen müssen per „Problem ansehen“ eine verständliche Diagnose mit beiden Geometrien, Quellen, Messwerten und Entscheidungsaktionen öffnen | Bestehende Conflict-Daten/API prüfen; Diagnose-Detailansicht in Portalentwurf aufnehmen, zusammen mit WVB-object_key und Admin-Multi-Hit |
+| REF-DATA-003 | P0 | SERVER/PORTAL/ANDROID | Benutzer hat Implementierung freigegeben: Prefill stabilisieren, Weiche/WVB object identity, Admin-Multi-Hit, „Problem ansehen“-Diagnose | Jetzt SERVER/Portal bauen und Source-Checks; danach Synology/Pasing-E2E; erst dann Trassendatenübersicht |
 | REF-DATA-002 | P0 | SERVER/ANDROID | Achsen-Hover/Klick + ca. 2000x Tiefzoom + KOR-Parser-v3 auf Synology praktisch bestätigt; übrige REF-DATA-002-Gesamtpunkte separat weiterführen | bestätigten Teilblock schützen; nur verbleibende Import-/Android-E2E-Punkte weiterbearbeiten |
 | REF-DATA-001 | P0 | SERVER/ANDROID | Datei-zuerst-Analyse + bestätigter Global/Firma-Import source-seitig fertig; Synology-E2E/Android offen | 4 Runtime-Dateien deployen → echte TRA/KF-Analyse + Import testen → danach Android-Consumer |
 | ADMIN-PDF-011 | P1 | ANDROID | SERVER/Admin 40..400 pt + X/Y + Preview am 29.09.2026 abgenommen; Android clamp aktuell noch 250 | ANDROID-Projekt: Clamp/Vertrag auf 40..400 übernehmen und Geräte-PDF praktisch prüfen |

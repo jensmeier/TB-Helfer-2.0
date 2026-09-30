@@ -952,3 +952,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Detail muss beide betroffenen Geometrien/Quellen, verständliche Ursache, Messwerte und mögliche fachliche Aktionen zeigen.
 - E-Mail bleibt nur Benachrichtigung.
 - Noch kein Code; zuerst vorhandene Conflict-API/-Daten prüfen.
+
+## REF-DATA-003 – Build-Start 30.09.2026
+- Explizite Benutzerfreigabe zum Bauen.
+- Arbeitsreihenfolge: Route/Gleis-Prefill → Weiche/WVB object_key → Admin Multi-Hit → Konflikt-Detailfenster.
+- Danach Pasing Runtime-E2E; Trassendatenübersicht folgt erst anschließend.
+- Android app/** bleibt unberührt.

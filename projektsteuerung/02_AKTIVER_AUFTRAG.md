@@ -1902,3 +1902,14 @@ Neue Bedienanforderung 30.09.2026:
   - Datensatz deaktivieren bzw. Import nicht übernehmen.
 - Keine automatische Freigabe nur wegen Admin-Klick; Entscheidung muss versioniert/auditierbar gespeichert werden.
 - E-Mail bleibt Benachrichtigung, verweist fachlich aber auf den konkreten Prüffall; die eigentliche Diagnose erfolgt im Portal.
+
+#### REF-DATA-003 – Bauauftrag freigegeben 30.09.2026
+Benutzerfreigabe: **BAUEN**.
+Verbindlicher nächster SERVER/PORTAL-Block:
+1. Strecke/Gleis-Vorbelegung stabilisieren, damit erkannte Werte sichtbar und zuverlässig im Decision-Feld stehen.
+2. Weiche/WVB als echte fachliche Objektidentität ergänzen; keine Identifizierung nur über Gleisfeld oder räumliche Nähe.
+3. Admin-Grafik mit Mehrfachtreffer/Overlap-Auswahl analog Android ergänzen, ohne bestätigten Tiefzoom/Hover/KOR-Grundblock zu verschlechtern.
+4. Open-Conflict-Warnungen erhalten **„Problem ansehen“** mit verständlicher Diagnose, Quellen, Messwerten, gemeinsamer Geometriegrafik und versionierten Entscheidungsaktionen.
+5. Danach Pasing auf Synology erneut importieren/testen.
+6. Erst nach diesem Runtime-Gate die neue `Trassendatenübersicht` darauf aufbauen.
+- In diesem Block kein Android-`app/**` ändern.

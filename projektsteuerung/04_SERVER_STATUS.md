@@ -841,3 +841,10 @@ Status: **ANFORDERUNG DOKUMENTIERT / NOCH KEIN CODE**
 - Detailansicht soll Quellen, fachliche Identität, Konfliktgrund, Messwerte und beide Geometrien gemeinsam zeigen.
 - Entscheidungen erfolgen aus diesem Prüffall heraus und bleiben versioniert/auditierbar.
 - Mail ist nur Hinweis, nicht die eigentliche Diagnoseoberfläche.
+
+## REF-DATA-003 – Bauauftrag aktiv
+Status: **IMPLEMENTIERUNG FREIGEGEBEN**
+- Reihenfolge: Prefill → Weiche/WVB-Objektidentität → Multi-Hit → Konflikt-Diagnosefenster.
+- Danach Synology/Pasing-E2E.
+- Trassendatenübersicht erst auf dem bestätigten Unterbau.
+- Android bleibt unverändert.
