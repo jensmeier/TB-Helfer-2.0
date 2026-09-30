@@ -1069,3 +1069,10 @@ Status: **FACHLICH GEKLÄRT / KEIN SERVERFEHLER**
 - Zielablauf: Android markiert auf vorhandener TRA Start/Ende und setzt die KM-Anker manuell; daraus entsteht ein versionierter manueller Abschnitt (ORANGE).
 - SERVER-seitig keine künstliche automatische KM-Erzeugung auf Verdacht.
 - Nächster Pasing-Test konzentriert sich deshalb auf Geometrie/Multi-Hit und darauf, ob manuelle Abschnitte später korrekt synchronisiert/gespeichert werden.
+
+## REF-DATA-004 – Gessertshausen ohne Betriebsstelle 30.09.2026
+Status: **FEHLBEDIENUNG REPRODUZIERT / KORREKTUR OFFEN**
+- Gessertshausen wurde bereits importiert, ohne vorher Bahnhof/Betriebsstelle auszuwählen.
+- In der Originaltabelle stehen die neuen GLOBAL-Daten ohne Bahnhof/Betriebsstelle; Strecke 5302 ist bei KOR/GVP vorhanden, mehrere TRA ebenfalls ohne Stationszuordnung.
+- Pasing/MPB darf bei der Korrektur nicht verändert werden.
+- Vor Änderung prüfen, ob eine gezielte nachträgliche Stationszuordnung für diesen Importbestand vorhanden ist. Falls nicht, nur den Gessertshausen-Bestand gezielt bereinigen und neu importieren; kein globaler Reset.
