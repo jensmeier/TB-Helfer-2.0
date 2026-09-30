@@ -747,3 +747,14 @@ Nach Deploy von `v1_admin_survey_import.html` prüfen:
 5. Reset liefert `status=RESET`; danach alle Survey-Reset-Zähler 0.
 6. Firmen, Benutzer, Baustellen und BTB bleiben unverändert.
 7. Anschließend Pasing-Daten frisch hochladen und den kompletten Analyse-/Import-/Katalogpfad erneut testen.
+
+### REF-DATA-003 – Zentralimport + Terminal-Reset Runtime-Gate
+Source: **FERTIG**. Runtime: **OFFEN**.
+Pflichttest:
+1. Drei Runtime-Dateien deployen und API neu erstellen/starten.
+2. Terminal-Preview zeigt staging/test und aktuellen Survey-Bestand.
+3. Terminal-Reset mit exaktem Text liefert `status=RESET`; danach alle Survey-Zähler 0.
+4. Separater Strecken-/Bahnhofs-Referenzkatalog, Firmen, Benutzer, Geräte, Baustellen und BTB bleiben bestehen.
+5. Admin-Trassierungsanalyse zeigt keine Speicherziel-/Firma-Auswahl mehr.
+6. Dashboard zeigt unter `Speicher nach Firma` keine Trassierungsdaten-Kategorie mehr.
+7. Pasing/MPB vollständig frisch hochladen; danach Prefill, W/WVB object_key, Multi-Hit, Prüffallfenster sowie Search/Availability/Geometry erneut prüfen.
