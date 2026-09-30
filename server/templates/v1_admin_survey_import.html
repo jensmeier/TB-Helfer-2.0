@@ -127,6 +127,17 @@
     </div>
   </div>
   <div id="analysisItems" class="analysis-items"></div>
+  <div class="info-box" style="margin-top:12px">
+    <label style="display:flex;gap:9px;align-items:flex-start;font-weight:800">
+      <input id="overwriteExisting" type="checkbox" style="margin-top:3px">
+      <span>Vorhandene identische Dateien bei abweichender Zuordnung aktualisieren</span>
+    </label>
+    <div class="muted" style="margin-top:5px">
+      Standardmäßig wird nichts überschrieben. Ist dieselbe Rohdatei schon vorhanden, zeigt der Import zuerst eine Warnung.
+      Mit diesem Haken werden nur Strecke/Gleis/Bahnhof/Objekt-Zuordnung und der daraus abgeleitete Katalog aktualisiert;
+      die unveränderte Originaldatei bleibt bestehen.
+    </div>
+  </div>
   <div class="actions" style="margin-top:14px">
     <button id="startImport" type="button" disabled><span class="step-badge" style="background:rgba(255,255,255,.2);color:inherit">3</span>Import starten</button>
     <button id="reanalyze" type="button" class="secondary">Neu analysieren</button>
@@ -226,6 +237,7 @@ const analysisSummary=document.getElementById('analysisSummary');
 const analysisItems=document.getElementById('analysisItems');
 const startImport=document.getElementById('startImport');
 const reanalyze=document.getElementById('reanalyze');
+const overwriteExisting=document.getElementById('overwriteExisting');
 const resultCard=document.getElementById('resultCard');
 const results=document.getElementById('results');
 const resultSummary=document.getElementById('resultSummary');
@@ -1084,7 +1096,7 @@ function validateGroups(){
   return error;
 }
 function resultHtml(r){
-  const state=r.status==='IMPORTIERT'?(r.parse_status==='PARSED'?'ok':'warn'):r.status==='DUPLIKAT'||r.status==='ÜBERSPRUNGEN'?'warn':'bad';
+  const state=(r.status==='IMPORTIERT'||r.status==='AKTUALISIERT')?(r.parse_status==='ERROR'?'warn':'ok'):r.status==='DUPLIKAT'||r.status==='ÜBERSPRUNGEN'||r.status==='VORHANDEN_ABWEICHEND'?'warn':'bad';
   const parse=r.parse_status==='PARSED'?' · fachlich ausgewertet':r.parse_status==='UNSUPPORTED'?' · noch nicht auswertbar':r.parse_status==='ERROR'?' · Auswertungsfehler':'';
   const warnings=(r.warnings||[]).length?'<ul class="warnings">'+r.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul>':'';
   const error=r.error_detail?'<div class="small state-bad" style="margin-top:5px">'+esc(r.error_detail)+'</div>':'';
@@ -1092,7 +1104,9 @@ function resultHtml(r){
   const stationLabel=r.station_code||r.station_name?(' · '+stationDisplay(r.station_code,r.station_name)):'';
   const conflictId=r.catalog?.conflict_id;
   const problem=conflictId?'<div class="actions" style="margin-top:8px"><button type="button" class="secondary" data-conflict-open="'+esc(conflictId)+'">Problem ansehen</button></div>':'';
-  return '<div class="result '+state+'"><div class="result-head"><div><b>'+esc(r.name||'Datei')+'</b><div><small>'+esc((scopeLabel?scopeLabel+' · ':'')+(r.message||'')+stationLabel)+esc(parse)+'</small></div></div><span class="pill">'+esc(r.kind||r.status||'')+'</span></div>'+warnings+error+problem+'</div>';
+  const labels={route_number:'Strecke',track_key:'Gleis/Achse',object_key:'Objekt',station_code:'Betriebsstelle',station_name:'Bahnhof',source_date:'Quelldatum'};
+  const changes=r.changes?'<div class="info-box" style="margin-top:8px"><b>Abweichende Zuordnung</b>'+Object.entries(r.changes).map(([key,value])=>'<div class="small">'+esc(labels[key]||key)+': '+esc(value?.before??'—')+' → <b>'+esc(value?.after??'—')+'</b></div>').join('')+'</div>':'';
+  return '<div class="result '+state+'"><div class="result-head"><div><b>'+esc(r.name||'Datei')+'</b><div><small>'+esc((scopeLabel?scopeLabel+' · ':'')+(r.message||'')+stationLabel)+esc(parse)+'</small></div></div><span class="pill">'+esc(r.status||r.kind||'')+'</span></div>'+changes+warnings+error+problem+'</div>';
 }
 
 function conflictReasonLabel(type){
@@ -1190,13 +1204,15 @@ loadConflicts();
 
 startImport.addEventListener('click',async()=>{
   const validation=validateGroups();if(validation){show('err',validation);return;}
+  const overwrite=Boolean(overwriteExisting?.checked);
+  if(overwrite&&!window.confirm('Achtung: Bereits vorhandene identische Dateien mit abweichender Zuordnung werden aktualisiert. Die Rohdatei bleibt unverändert. Wirklich fortfahren?'))return;
   const plans={};
   document.querySelectorAll('.analysis-item[data-group-index]').forEach(card=>{
     const group=currentGroups[Number(card.dataset.groupIndex)],settings=groupSettings(card);
     group.rows.forEach(row=>{
       const id=row.session.data.analysis_id;
       if(!plans[id])plans[id]=[];
-      plans[id].push({item_id:row.item.item_id,import_item:settings.enabled,scope:settings.scope,worksite_id:settings.worksite_id,data_kind:row.item.kind||null,route_number:settings.route_number,track_key:settings.track_key,object_key:settings.object_key,station_code:settings.station_code,station_name:settings.station_name});
+      plans[id].push({item_id:row.item.item_id,import_item:settings.enabled,scope:settings.scope,worksite_id:settings.worksite_id,data_kind:row.item.kind||null,route_number:settings.route_number,track_key:settings.track_key,object_key:settings.object_key,station_code:settings.station_code,station_name:settings.station_name,overwrite_existing:overwrite});
     });
   });
   const ids=Object.keys(plans);if(!ids.length)return;
@@ -1210,9 +1226,15 @@ startImport.addEventListener('click',async()=>{
       const row={name:'Analyse '+analysisId,status:'FEHLER',message:e.message||String(e)};all.push(row);results.insertAdjacentHTML('beforeend',resultHtml(row));
     }
   }
-  const imported=all.filter(r=>r.status==='IMPORTIERT').length,duplicates=all.filter(r=>r.status==='DUPLIKAT').length,skipped=all.filter(r=>r.status==='ÜBERSPRUNGEN').length,errors=all.filter(r=>r.status==='FEHLER'||r.parse_status==='ERROR').length;
-  resultSummary.textContent=imported+' importiert · '+duplicates+' Duplikate · '+skipped+' übersprungen · '+errors+' Fehler';
-  show(errors?'err':'ok',errors?'Import abgeschlossen. Mindestens eine Datei benötigt Prüfung.':'Import abgeschlossen. Die bestätigten Gruppen wurden gespeichert.');
+  const imported=all.filter(r=>r.status==='IMPORTIERT').length,updated=all.filter(r=>r.status==='AKTUALISIERT').length,duplicates=all.filter(r=>r.status==='DUPLIKAT').length,pending=all.filter(r=>r.status==='VORHANDEN_ABWEICHEND').length,skipped=all.filter(r=>r.status==='ÜBERSPRUNGEN').length,errors=all.filter(r=>r.status==='FEHLER'||r.parse_status==='ERROR').length;
+  resultSummary.textContent=imported+' importiert · '+updated+' aktualisiert · '+duplicates+' Duplikate · '+pending+' abweichend vorhanden · '+skipped+' übersprungen · '+errors+' Fehler';
+  if(pending){
+    show('warn','Achtung: Daten sind bereits vorhanden, aber anders zugeordnet. Prüfe die Änderungen. Wenn sie stimmen, Haken bei „Vorhandene identische Dateien … aktualisieren“ setzen und Import erneut starten.');
+    startImport.disabled=false;
+  }else{
+    show(errors?'err':'ok',errors?'Import abgeschlossen. Mindestens eine Datei benötigt Prüfung.':'Import abgeschlossen. Die bestätigten Gruppen wurden gespeichert bzw. aktualisiert.');
+    startImport.disabled=true;
+  }
   await loadConflicts();
   reanalyze.disabled=false;resultCard.scrollIntoView({behavior:'smooth',block:'start'});
 });
