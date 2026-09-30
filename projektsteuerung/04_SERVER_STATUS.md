@@ -1061,3 +1061,11 @@ Status: **API OK / KM-GATE NOCH OFFEN**
 - KM-Qualität aus demselben Runtimebestand: `FEHLT=17`, `AUTOMATISCH=4`. Das ist der nächste fachliche Befund und passt zu der noch offenen Anforderung, vorhandene belastbare KM-/GVP-Daten korrekt als grün abzubilden. Keine Änderung auf Verdacht.
 - Geometry: 21 Segmente erfolgreich geliefert; Bahnhofsgleise, freie Strecken und WVB 10-11/14-22/19-20 vorhanden.
 - Die Differenz 20 Achsen / 21 Segmente kommt sichtbar von mindestens einer Mehrsegment-Achse (`Str 5524-1` erscheint mit identischer axis_id zweimal). Vor Bewertung erst Quellsegmente/KM-Kontext read-only auflösen.
+
+## REF-DATA-003 – Pasing-KM-Einordnung 30.09.2026
+Status: **FACHLICH GEKLÄRT / KEIN SERVERFEHLER**
+- Nutzer bestätigt: Für Pasing gibt es keine belastbare vollständige Kilometrierung.
+- Daher sind die aktuell gemeldeten `km_quality=FEHLT`-Segmente bei Pasing erwartbar und dürfen nicht als Parser-/Import-/API-Fehler behandelt werden.
+- Zielablauf: Android markiert auf vorhandener TRA Start/Ende und setzt die KM-Anker manuell; daraus entsteht ein versionierter manueller Abschnitt (ORANGE).
+- SERVER-seitig keine künstliche automatische KM-Erzeugung auf Verdacht.
+- Nächster Pasing-Test konzentriert sich deshalb auf Geometrie/Multi-Hit und darauf, ob manuelle Abschnitte später korrekt synchronisiert/gespeichert werden.
