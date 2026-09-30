@@ -1028,3 +1028,14 @@ Status: **SOURCE FERTIG / MIGRATION 019 NICHT DEPLOYT**
 - Keine Änderung an WVB-Geometrie, Parser, Merge oder object_key-Logik.
 - Source-Audit des Fixes: 7/7 PASS.
 - Nächster Schritt: Migration 019 auf Synology anwenden → Systemstatus 19/19 → Reindex erneut, Ziel `failures=0` und 3x `ALREADY_INDEXED_ENRICHED`.
+
+## REF-DATA-003 – Reindex nach ENRICH-Fix runtime-grün 30.09.2026
+- Synology/API-Terminal: `reindex_all_originals()` erneut ausgeführt.
+- Ergebnis: `original_count=40`, `parser_version=tb-survey-parser-4`, `reparsed=0`.
+- Statusverteilung: `ALREADY_INDEXED=19`, `INDEXED_ASSET=19`, `ALREADY_INDEXED_ENRICHED=2`.
+- `failures=0`: der zuvor reproduzierte ENRICH-Constraint-Fehler ist im laufenden DB-Pfad behoben.
+- Die 40 Originale sind vollständig bilanziert; kein Reindex-Fehler mehr offen.
+- Abweichung zur Voraberwartung: nur 2 statt 3 WVB wurden in diesem Lauf als `ALREADY_INDEXED_ENRICHED` gemeldet. Vor weiterer Fachfreigabe read-only feststellen, welcher der drei WVB-Fälle bereits als `ALREADY_INDEXED` läuft und welche `object_key` die drei vorhandenen Achsen tatsächlich tragen.
+- Der vorliegende Screenshot zeigt nicht den Systemstatus `19/19`; Migration 019 deshalb in der Dokumentation erst nach separatem Systemstatus-/Migrationstabellen-Nachweis als 19/19 bestätigen.
+- Nächster Runtime-Schritt: WVB 10-11 / 14-22 / 19-20 mit Originalname, Achse, `object_key` und Segmentzahl gegenüberstellen; danach Pasing-Prefill, Multi-Hit und „Problem ansehen“ praktisch testen.
+
