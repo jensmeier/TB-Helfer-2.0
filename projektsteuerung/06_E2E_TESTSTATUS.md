@@ -826,3 +826,12 @@ Noch offen:
 - Ein grüner Automatikstatus ist für diese Daten **kein Pflichtkriterium**.
 - E2E für Pasing-KM wird erst nach Android-Manuellabschnitt geprüft: Abschnitt anlegen → synchronisieren → serverseitig als MANUELL/ORANGE sichtbar → auf anderem Gerät abrufbar.
 - Aktueller Search/Availability/Geometry-Test bleibt deshalb trotz 17× FEHLT gültig; der KM-Teil ist fachlich offen, nicht technisch fehlgeschlagen.
+
+### REF-DATA-005 – Korrektur-Reimport E2E-Gate
+Noch offen. Soll nach Umsetzung bestätigen:
+- identische Datei + identische Zuordnung → `DUPLIKAT`, keine Änderung;
+- identische Datei + geänderte Betriebsstelle/Strecke/Gleis/object_key → deutliche Warnung, keine automatische Änderung;
+- bestätigte Aktualisierung ändert genau das bestehende Original, erzeugt kein zweites Original und baut die abgeleitete Katalogzuordnung konsistent neu auf;
+- Raw-Datei/sha256 bleiben unverändert;
+- Audit/History nachvollziehbar;
+- Search/Availability/Geometry zeigen danach nur die neue fachliche Zuordnung.
