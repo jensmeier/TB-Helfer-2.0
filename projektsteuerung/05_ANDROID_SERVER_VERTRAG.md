@@ -580,3 +580,9 @@ Status: **SERVERVERTRAG NACHGESCHÄRFT**
 - Ein Upload muss nicht zwingend eine Gleisnummer/Richtung liefern, wenn diese in der Quelle nicht belastbar enthalten ist.
 - Server darf bei gleicher/kompatibler Strecke oder Betriebsstelle und räumlich engem X/Y-Kandidaten die Geometrie zur Zuordnung verwenden.
 - Eindeutiger Match -> MERGED/ADDED; mehrere plausible Matches -> REVIEW_REQUIRED.
+
+#### REF-DATA-003 – Betriebsstellenzuordnung Import
+- Android- und Admin-Import sollen denselben fachlichen Grundsatz verwenden: Bahnhof/Betriebsstelle wird als stabile Referenz (`station_code` + `station_name`) mitgegeben, wenn der Datensatz zu einer Betriebsstelle gehört.
+- Freie Streckenabschnitte dürfen ohne Betriebsstelle bleiben.
+- Mehrere Gruppen in einem Upload dürfen unterschiedliche Betriebsstellen haben; ein Upload-/ZIP-Default ist nur Komfort und darf gruppenweise überschrieben werden.
+- Server speichert die Zuordnung im Katalog; Rohoriginal bleibt unverändert.

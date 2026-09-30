@@ -749,3 +749,11 @@ Status: **SERVER-NACHARBEIT VOR PORTAL**
 - Reindex funktioniert, aber Runtimeabfrage zeigt für alle gelisteten Achsgruppen leere `station_code/station_name`.
 - Streckensuche wäre nutzbar; Bahnhofssuche (z. B. Pasing) noch nicht belastbar.
 - Ursache/Backfill aus vorhandenen Import-/Referenzdaten jetzt serverseitig prüfen.
+
+## REF-DATA-003 – Betriebsstellenursache bestätigt 30.09.2026
+Status: **URSACHE BESTÄTIGT / BACKEND VORBEREITET / ADMIN-UI FEHLT**
+- `SurveyImportDecision` besitzt bereits `station_code` und `station_name`.
+- `v1_admin_survey_import.html` bietet aktuell nur Strecke + Gleis/Achse und sendet keine Betriebsstelle im Decision-Payload.
+- Das erklärt die leeren station-Felder des Pasing-Bestands.
+- Nötig: Bahnhofsauswahl über bestehende Station-Reference-Suche, Bulk-Default + Gruppenoverride; freie Strecke darf ohne Bahnhof bleiben.
+- Zusätzlich muss ein bestehender Katalogbestand nachträglich einer Betriebsstelle zugeordnet werden können, ohne Rohoriginale zu verändern.

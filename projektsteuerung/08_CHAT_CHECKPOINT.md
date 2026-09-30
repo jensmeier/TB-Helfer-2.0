@@ -887,3 +887,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Segmentstatus gesamt: 31 PRIMARY/ACTIVE + 1 OVERLAP_CONFIRMED/ACTIVE.
 - Nächster Test: alle Segmente der Achse 5524-1 mit Quellnamen, Station und X/Y-Endpunkten gegenüberstellen.
 - Keine Fachbestätigung des Merges, bevor diese Gegenprüfung erfolgt.
+
+## REF-DATA-003 – Betriebsstellen-/Merge-Checkpoint 30.09.2026
+- 5524-1-Gegenvergleich: 1111 Geometrietreffer, ca. 1958.686 m Überlappung, Medianabstand ca. 0.0135 m, max. ca. 0.728 m → konkreter Auto-Merge praktisch bestätigt.
+- Ursache der leeren Betriebsstelle ist bestätigt: Admin-Backend kann station_code/name, aktuelle Admin-HTML bietet/sendet diese Felder aber nicht.
+- Android-Grundprinzip bleibt Referenz: Importeur ordnet Bahnhof/Betriebsstelle fachlich zu.
+- Ziel Admin: Referenzsuche RL100/Name, Default für Upload/ZIP, Override je Gruppe; freie Strecke darf ohne Betriebsstelle bleiben.
+- Bereits importierte Katalogachsen müssen nachträglich zuordenbar sein, ohne Originale anzufassen.

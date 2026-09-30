@@ -4,7 +4,7 @@ Stand: 2026-09-26
 
 | ID | Prio | Bereich | Punkt | Nächster Schritt |
 |---|---:|---|---|---|
-| REF-DATA-003 | P0 | SERVER/PORTAL/ANDROID | Reindex/Merge laufen; Runtime zeigt jedoch station_code/station_name für gelistete Achsen leer – Bahnhofssuche wäre noch nicht belastbar | Merge 5524-1 fachlich prüfen + Ursache/Backfill der Betriebsstellenzuordnung lösen; danach Search/Availability/Geometry/Changes |
+| REF-DATA-003 | P0 | SERVER/PORTAL/ANDROID | Reindex läuft; Merge Str 5524-1 geometrisch bestätigt (1111 Treffer, ~1.96 km Überlappung, Median ~1.35 cm). Leere Betriebsstelle erklärt: Admin-HTML sendet station_code/name bisher nicht | Admin-Import um Bahnhofsauswahl (Bulk + Gruppenoverride) und nachträgliche Katalogzuordnung ergänzen; danach Bahnhof-Search/Availability E2E |
 | REF-DATA-002 | P0 | SERVER/ANDROID | Achsen-Hover/Klick + ca. 2000x Tiefzoom + KOR-Parser-v3 auf Synology praktisch bestätigt; übrige REF-DATA-002-Gesamtpunkte separat weiterführen | bestätigten Teilblock schützen; nur verbleibende Import-/Android-E2E-Punkte weiterbearbeiten |
 | REF-DATA-001 | P0 | SERVER/ANDROID | Datei-zuerst-Analyse + bestätigter Global/Firma-Import source-seitig fertig; Synology-E2E/Android offen | 4 Runtime-Dateien deployen → echte TRA/KF-Analyse + Import testen → danach Android-Consumer |
 | ADMIN-PDF-011 | P1 | ANDROID | SERVER/Admin 40..400 pt + X/Y + Preview am 29.09.2026 abgenommen; Android clamp aktuell noch 250 | ANDROID-Projekt: Clamp/Vertrag auf 40..400 übernehmen und Geräte-PDF praktisch prüfen |

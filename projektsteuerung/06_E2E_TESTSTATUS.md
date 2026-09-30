@@ -570,3 +570,17 @@ Read-only-DB-Abfrage:
 Status:
 - technische Merge-Funktion in Runtime **nachgewiesen**;
 - fachliche Merge-Richtigkeit **noch offen**, bis alle Segmente derselben Achse inkl. X/Y-End-/Überlappungspunkten verglichen sind.
+
+### REF-DATA-003 – Mergefall 5524-1 geometrisch bestätigt
+Synology-Gegenvergleich der beiden Segmente derselben Achse:
+- Quelle A: `5524_L_ER0_GGP2026_02_16.TRA`, PRIMARY/ACTIVE;
+- Quelle B: `5524_SL_ER0_GGP2026_02_16.TRA`, OVERLAP_CONFIRMED/ACTIVE;
+- beide Bestandsdatum 16.02.2026;
+- `match_count = 1111`;
+- Überlappung ca. `1958.686 m`;
+- Medianabstand ca. `0.0135 m`;
+- maximaler Abstand ca. `0.728 m`.
+
+Bewertung: Der konkrete Auto-Merge `Str 5524-1` ist geometrisch eindeutig plausibel und gilt für den Merge-Mechanismus als **BESTÄTIGT**. Das bestätigt nicht automatisch alle zukünftigen Mergefälle; Mehrdeutigkeit/Review bleibt separat zu testen.
+
+Zusätzlicher Befund: Bahnhofssuche kann für den aktuellen Pasing-Bestand noch nicht bestätigt werden, weil Admin-Import bisher keine Betriebsstellenzuordnung übermittelt.

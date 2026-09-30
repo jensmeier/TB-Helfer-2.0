@@ -1811,3 +1811,17 @@ Fehlerfeststellung aus Synology-Katalogabfrage:
 - Das ist vor dem Portalblock serverseitig zu lösen; das Portal darf fehlende Betriebsstellenidentität nicht aus Dateinamen raten.
 - Zuerst vorhandene Importmetadaten/Archivkontext und Bahnhof-/Betriebsstellenreferenz prüfen. Wenn daraus eine belastbare Zuordnung möglich ist, Server-Reindex/Backfill entsprechend ergänzen.
 - Falls eine Zuordnung nicht eindeutig ableitbar ist, Daten weiter nach Strecke verfügbar halten und die fehlende Betriebsstellenzuordnung als fachlichen Prüf-/Ergänzungsbedarf kennzeichnen.
+
+#### REF-DATA-003 – Ursache leere Betriebsstelle + Importregel
+Benutzerklärung und Quellbestätigung 30.09.2026:
+- Beim Android-Import wird fachlich angegeben, zu welchem Bahnhof/Betriebsstelle ein Datensatz gehört.
+- Beim aktuellen Admin-Import existiert diese Eingabe in der HTML-Oberfläche nicht.
+- Backend-`SurveyImportDecision` unterstützt `station_code`/`station_name` bereits; die Admin-HTML sammelt/sendet aktuell nur Scope, Baustelle, Strecke und Gleis/Achse.
+- Daher sind die vorhandenen globalen Pasing-Achsen nach Reindex ohne Betriebsstellenzuordnung.
+- Verbindliche UI-Regel:
+  - Admin-Import erhält eine Betriebsstellen-/Bahnhofsauswahl auf Basis der vorhandenen Referenzsuche (RL100/Name);
+  - ausgewählt werden stabil `station_code` + `station_name`, nicht nur Freitext;
+  - bei Bahnhofsdaten kann ein Default für die gesamte Analyse/ZIP gesetzt und je fachlicher Gruppe überschrieben werden;
+  - bei freier Strecke zwischen Betriebsstellen darf die Betriebsstelle bewusst leer bleiben;
+  - keine automatische Bahnhofserfindung allein aus Dateiname oder räumlicher Nähe.
+- Bereits importierte Bestände benötigen eine nachträgliche Zuordnungsmöglichkeit, ohne Originaldateien neu schreiben zu müssen.
