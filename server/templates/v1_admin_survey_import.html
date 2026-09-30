@@ -149,6 +149,25 @@
   <div id="conflictList" class="conflict-list" style="margin-top:10px"></div>
 </div>
 
+<div class="card" id="surveyResetCard" style="display:none;border-left:4px solid #f79009">
+  <div class="headline">
+    <div>
+      <h2 style="margin-bottom:4px">Vermessungs-/Trassierungs-Testbestand zurücksetzen</h2>
+      <div class="muted">Nur Test/Staging. Löscht Vermessungsoriginale und den daraus erzeugten Survey-Katalog für einen sauberen Neuimport. Firmen, Benutzer, Baustellen und BTB bleiben erhalten.</div>
+    </div>
+    <button id="reloadSurveyResetPreview" type="button" class="secondary">Bestand prüfen</button>
+  </div>
+  <div id="surveyResetCounts" class="info-box" style="margin-top:10px">Bestand wird geprüft.</div>
+  <div style="margin-top:10px;max-width:620px">
+    <label for="surveyResetConfirm"><b>Bestätigung</b></label>
+    <input id="surveyResetConfirm" autocomplete="off" placeholder="VERMESSUNG TESTDATEN LOESCHEN">
+    <div class="muted" style="margin-top:4px">Zum Freischalten exakt <code>VERMESSUNG TESTDATEN LOESCHEN</code> eingeben.</div>
+  </div>
+  <div class="actions" style="margin-top:10px">
+    <button id="surveyResetButton" type="button" class="danger" disabled>Testbestand vollständig löschen</button>
+  </div>
+</div>
+
 <div id="conflictBackdrop" class="conflict-backdrop" aria-hidden="true">
   <div class="conflict-modal" role="dialog" aria-modal="true" aria-labelledby="conflictTitle">
     <div class="headline">
@@ -1156,6 +1175,64 @@ function renderConflictGeometry(data){
     conflictGraph.appendChild(poly);
   });
 }
+const surveyResetCard=document.getElementById('surveyResetCard');
+const surveyResetCounts=document.getElementById('surveyResetCounts');
+const surveyResetConfirm=document.getElementById('surveyResetConfirm');
+const surveyResetButton=document.getElementById('surveyResetButton');
+const reloadSurveyResetPreview=document.getElementById('reloadSurveyResetPreview');
+const SURVEY_RESET_TEXT='VERMESSUNG TESTDATEN LOESCHEN';
+
+function surveyResetCountRows(counts){
+  const labels={
+    survey_originals:'Originale',
+    survey_parse_catalog:'Parser-Auswertungen',
+    catalog_assets:'Katalog-Dateien',
+    catalog_axes:'Achsen',
+    catalog_segments:'Segmente',
+    catalog_conflicts:'Prüffälle',
+    catalog_history:'Historie',
+    survey_sections:'Survey-Streckenabschnitte',
+    track_source_links:'Quellverknüpfungen',
+    import_file_rows:'Import-Dateizeilen'
+  };
+  return Object.entries(labels).map(([key,label])=>'<div class="conflict-meta-row"><span>'+esc(label)+'</span><b>'+esc(Number(counts?.[key]||0).toLocaleString('de-DE'))+'</b></div>').join('');
+}
+async function loadSurveyResetPreview(){
+  try{
+    const {data}=await tbApi('/api/v1/admin/purge/survey-test-data');
+    surveyResetCard.style.display='block';
+    surveyResetCounts.innerHTML='<div><b>Umgebung: '+esc(data.environment||'Test')+'</b></div><div class="conflict-meta" style="margin-top:7px">'+surveyResetCountRows(data.counts||{})+'</div>';
+  }catch(_){
+    surveyResetCard.style.display='none';
+  }
+}
+function syncSurveyResetButton(){
+  surveyResetButton.disabled=surveyResetConfirm.value.trim().toUpperCase()!==SURVEY_RESET_TEXT;
+}
+surveyResetConfirm.addEventListener('input',syncSurveyResetButton);
+reloadSurveyResetPreview.addEventListener('click',loadSurveyResetPreview);
+surveyResetButton.addEventListener('click',async()=>{
+  if(surveyResetConfirm.value.trim().toUpperCase()!==SURVEY_RESET_TEXT)return;
+  if(!window.confirm('Vermessungs-/Trassierungs-Testbestand wirklich vollständig zurücksetzen?'))return;
+  surveyResetButton.disabled=true;
+  try{
+    const {data}=await tbApi('/api/v1/admin/purge/survey-test-data',{
+      method:'DELETE',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({confirm_text:SURVEY_RESET_TEXT})
+    });
+    show('ok','Testbestand zurückgesetzt · '+Number(data.removed_storage_keys||0).toLocaleString('de-DE')+' Originaldatei(en) entfernt.');
+    surveyResetConfirm.value='';
+    syncSurveyResetButton();
+    await loadSurveyResetPreview();
+    setTimeout(()=>location.reload(),700);
+  }catch(e){
+    show('err','Reset fehlgeschlagen: '+(e.message||String(e)));
+    syncSurveyResetButton();
+  }
+});
+loadSurveyResetPreview();
+
 async function loadConflicts(){
   try{
     const {data}=await tbApi('/api/v1/survey-catalog/conflicts?status=OPEN&limit=100');
