@@ -14,6 +14,9 @@ assert '@router.delete("/survey-test-data")' in source
 assert '_SURVEY_TEST_RESET_ENVIRONMENTS' in source
 assert 'SURVEY_TEST_RESET_ENVIRONMENT_FORBIDDEN' in source
 assert 'VERMESSUNG TESTDATEN LOESCHEN' in source
+assert 'def survey_test_data_preview_from_terminal()' in source
+assert 'def reset_survey_test_data_from_terminal(confirm_text: str)' in source
+assert 'source="API_CONTAINER_TERMINAL"' in source
 
 required_order = [
     "DELETE FROM tb.survey_catalog_conflicts",
