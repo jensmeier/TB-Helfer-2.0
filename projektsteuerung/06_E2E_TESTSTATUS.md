@@ -725,3 +725,7 @@ Pflichttest nach Source-Deploy:
 7. Erst nach erfolgreichem WVB-Gate Pasing-Prefill, Multi-Hit, „Problem ansehen“ sowie Search/Availability/Geometry weiterprüfen.
 
 GitHub Actions zum Code-HEAD: Foundation-Job mit `steps=[]`; damit **kein Testnachweis** trotz Workflow-conclusion=failure.
+
+### REF-DATA-003 – Source-Check Reparaturguard
+- Isolierter Guard-Logiktest: **4/4 PASS**.
+- Einstufung: **SOURCE-CHECK**, ausdrücklich **kein Runtime-/DB-/Synology-E2E**. Das oben definierte Runtime-Gate bleibt vollständig offen.
