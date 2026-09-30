@@ -4,6 +4,7 @@ from datetime import date
 
 from tbserver.survey_catalog import (
     _axis_compatible,
+    _axis_identity_enrichment_patch,
     _catalog_response,
     _explicit_km_gra,
     _geometry_fully_covers,
@@ -150,6 +151,35 @@ assert not _axis_compatible(
     },
     (4_000_020.0, 5_000_000.0, 4_000_080.0, 5_000_010.0),
 )
+
+
+
+missing_object_axis = {
+    "object_key": None,
+    "axis_type": "WEICHENVERBINDUNG",
+}
+assert _axis_identity_enrichment_patch(
+    missing_object_axis,
+    {"object_key": "WVB:14-22", "axis_type": "WEICHENVERBINDUNG"},
+) == {"object_key": "WVB:14-22"}
+
+admin_corrected_axis = {
+    "object_key": "WVB:14-22-MANUELL",
+    "axis_type": "WEICHENVERBINDUNG",
+}
+assert _axis_identity_enrichment_patch(
+    admin_corrected_axis,
+    {"object_key": "WVB:14-22", "axis_type": "WEICHENVERBINDUNG"},
+) == {}
+
+wrong_type_axis = {
+    "object_key": None,
+    "axis_type": "GLEIS",
+}
+assert _axis_identity_enrichment_patch(
+    wrong_type_axis,
+    {"object_key": "WVB:14-22", "axis_type": "WEICHENVERBINDUNG"},
+) == {}
 
 existing_axis = {
     "route_number": "5524",

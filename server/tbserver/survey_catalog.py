@@ -1294,6 +1294,72 @@ def _axis_review(cur, axis: dict[str,Any], actor_user_id: UUID | None) -> dict[s
     return updated
 
 
+
+
+def _axis_identity_enrichment_patch(
+    axis: dict[str, Any],
+    fields: dict[str, Any],
+) -> dict[str, Any]:
+    """Return fill-only identity fields inferred from the same already-indexed original."""
+    inferred_object_key = _clean(fields.get("object_key"))
+    if not inferred_object_key or _clean(axis.get("object_key")):
+        return {}
+    axis_type = str(axis.get("axis_type") or "UNBEKANNT").upper()
+    inferred_type = str(fields.get("axis_type") or "UNBEKANNT").upper()
+    if axis_type != "UNBEKANNT" and inferred_type != "UNBEKANNT" and axis_type != inferred_type:
+        return {}
+    return {"object_key": inferred_object_key.upper()}
+
+
+def _enrich_existing_axis_identity(
+    cur,
+    *,
+    axis_id: UUID,
+    fields: dict[str, Any],
+    actor_user_id: UUID | None,
+) -> tuple[dict[str, Any], bool]:
+    axis = _row(cur, "survey_catalog_axes", axis_id)
+    patch = _axis_identity_enrichment_patch(axis, fields)
+    if not patch:
+        return axis, False
+    before = dict(axis)
+    version = int(axis["current_version"]) + 1
+    cur.execute(
+        """
+        UPDATE tb.survey_catalog_axes
+        SET object_key=%s,current_version=%s
+        WHERE id=%s
+        RETURNING *
+        """,
+        (patch["object_key"], version, axis_id),
+    )
+    updated = dict(cur.fetchone())
+    _history(
+        cur,
+        entity_type="AXIS",
+        entity_id=axis_id,
+        version=version,
+        operation="ENRICH",
+        before=before,
+        after=updated,
+        actor_user_id=actor_user_id,
+        actor_company_id=updated.get("company_id"),
+    )
+    audit(
+        cur,
+        action="SURVEY_CATALOG_AXIS_IDENTITY_ENRICH",
+        actor_user_id=actor_user_id,
+        company_id=updated.get("company_id"),
+        entity_type="SURVEY_CATALOG_AXIS",
+        entity_id=axis_id,
+        details={
+            "version": version,
+            "filled_fields": sorted(patch),
+            "object_key": patch.get("object_key"),
+        },
+    )
+    return updated, True
+
 def index_original_in_tx(cur, original_id: UUID, actor_user_id: UUID | None = None) -> dict[str,Any]:
     original, parsed = _load_original_with_parse(cur, original_id)
     asset = _asset_upsert(cur, original, parsed, actor_user_id)
@@ -1302,22 +1368,32 @@ def index_original_in_tx(cur, original_id: UUID, actor_user_id: UUID | None = No
     if str(parsed.get("detected_format") or "") != "TRA_ER0_BINARY":
         return {"asset_id":str(asset["id"]),"status":"INDEXED_ASSET"}
 
+    payload = parsed.get("payload") if isinstance(parsed.get("payload"), dict) else {}
+    fields = _axis_fields(original, payload)
     cur.execute(
         "SELECT * FROM tb.survey_catalog_segments WHERE source_original_id=%s AND source_kind='ORIGINAL_TRA'",
         (original_id,),
     )
     existing_index = cur.fetchone()
     if existing_index:
+        axis, enriched = _enrich_existing_axis_identity(
+            cur,
+            axis_id=existing_index["axis_id"],
+            fields=fields,
+            actor_user_id=actor_user_id,
+        )
         return {
-            "asset_id":str(asset["id"]),"segment_id":str(existing_index["id"]),
-            "axis_id":str(existing_index["axis_id"]),"status":"ALREADY_INDEXED",
+            "asset_id":str(asset["id"]),
+            "segment_id":str(existing_index["id"]),
+            "axis_id":str(axis["id"]),
+            "status":"ALREADY_INDEXED_ENRICHED" if enriched else "ALREADY_INDEXED",
+            "axis_enriched":enriched,
+            "object_key":axis.get("object_key"),
         }
 
-    payload = parsed.get("payload") if isinstance(parsed.get("payload"), dict) else {}
     points = _dense_payload(payload)
     if len(points) < 2:
         return {"asset_id":str(asset["id"]),"status":"GEOMETRY_UNUSABLE"}
-    fields = _axis_fields(original, payload)
     scope, company_id = _scope_for_original(original)
     axis, relation, diagnostics, existing_segment = _choose_axis_and_relation(
         cur,scope=scope,company_id=company_id,fields=fields,points=points,
@@ -2237,26 +2313,45 @@ def update_axis(axis_id: UUID,payload: AxisAdminUpdate,
 
 
 def reindex_all_originals() -> dict[str,Any]:
+    # Local import avoids the survey_parser -> survey_catalog module cycle.
+    from .survey_parser import PARSER_VERSION, reparse_original_for_catalog
+
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT o.id FROM tb.survey_originals o
-            JOIN tb.survey_parse_catalog p ON p.original_id=o.id
+            SELECT o.id,o.sha256,p.parser_version,p.source_sha256
+            FROM tb.survey_originals o
+            LEFT JOIN tb.survey_parse_catalog p ON p.original_id=o.id
             ORDER BY o.imported_at,o.id
             """
         )
-        ids = [row["id"] for row in cur.fetchall()]
+        originals = [dict(row) for row in cur.fetchall()]
     counts: dict[str,int] = {}
     failures = 0
-    for original_id in ids:
+    reparsed = 0
+    for item in originals:
+        original_id = item["id"]
         try:
+            parser_stale = (
+                str(item.get("parser_version") or "") != PARSER_VERSION
+                or str(item.get("source_sha256") or "") != str(item.get("sha256") or "")
+            )
+            if parser_stale:
+                reparse_original_for_catalog(original_id)
+                reparsed += 1
             with transaction() as conn, conn.cursor() as cur:
                 result = index_original_in_tx(cur,original_id,None)
             key = str(result.get("status") or "UNKNOWN")
             counts[key] = counts.get(key,0) + 1
         except Exception:
             failures += 1
-    return {"original_count":len(ids),"statuses":counts,"failures":failures}
+    return {
+        "original_count":len(originals),
+        "parser_version":PARSER_VERSION,
+        "reparsed":reparsed,
+        "statuses":counts,
+        "failures":failures,
+    }
 
 
 @router.post("/reindex")

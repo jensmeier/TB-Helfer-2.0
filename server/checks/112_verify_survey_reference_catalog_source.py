@@ -125,5 +125,12 @@ assert "survey_catalog_axes_object_idx" in object_migration
 assert "object_key_from_name" in parser
 assert 'fields.get("object_key")' in catalog
 assert 'filters.append("object_key = %s")' in catalog
+assert 'def _axis_identity_enrichment_patch(' in catalog
+assert 'SURVEY_CATALOG_AXIS_IDENTITY_ENRICH' in catalog
+assert '"status":"ALREADY_INDEXED_ENRICHED" if enriched else "ALREADY_INDEXED"' in catalog
+assert 'from .survey_parser import PARSER_VERSION, reparse_original_for_catalog' in catalog
+assert 'LEFT JOIN tb.survey_parse_catalog p ON p.original_id=o.id' in catalog
+assert 'parser_stale = (' in catalog
+assert '"reparsed":reparsed' in catalog
 
 print("PASS survey reference catalog source")
