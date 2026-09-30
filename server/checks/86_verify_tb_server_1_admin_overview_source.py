@@ -73,6 +73,9 @@ def main() -> None:
         "cdnjs.cloudflare.com",
         "unpkg.com",
     ]
+    if "<span>Trassierungsdaten '+esc(size(c.survey_bytes||0))" in dashboard:
+        raise SystemExit("Globale Trassierungsdaten dürfen nicht als Firmen-Speicherkategorie angezeigt werden")
+
     external = [needle for needle in forbidden_dashboard if needle in dashboard]
     if external:
         raise SystemExit(
