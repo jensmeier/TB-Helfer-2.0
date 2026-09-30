@@ -992,3 +992,11 @@ Status: **SOURCE FERTIG / RUNTIME OFFEN**
 - Keine neue Löschlogik und keine neue Migration; UI ruft ausschließlich `/api/v1/admin/purge/survey-test-data` auf.
 - Dashboard-Hinweis `Trassierungsdaten 0 B` ist weiterhin nur eine feste Firmen-Speicherkategorie. `0 B` bedeutet: keine firmeneigenen Trassierungsdateien; globale Referenzoriginale werden dort nicht einer Firma zugerechnet.
 - Runtimeprüfung nach Template-Deploy: Global-Firma-Feld verborgen, Reset-Preview zeigt aktuellen Bestand, Reset auf staging erfolgreich, danach Neuimport.
+
+## REF-DATA-003 – Speicherziel vereinfacht + Terminal-Reset gewünscht 30.09.2026
+Status: **NEUE FACHENTSCHEIDUNG DOKUMENTIERT**
+- Benutzerentscheidung: Die Admin-Seite `Trassierungsdaten` dient dem zentralen gemeinsamen Referenzbestand. Dort soll **keine Auswahl GLOBAL vs. Firma/Baustelle** mehr angeboten werden; Admin-Uploads dieser Seite werden immer als `GLOBAL_REFERENCE` importiert.
+- Firmen-/Baustellenbeiträge bleiben ein eigener Fachpfad für spätere Benutzer-/Android-Beiträge und werden nicht über diese zentrale Admin-Importseite gewählt.
+- Das Feld/Segment `Trassierungsdaten` unter `Speicher nach Firma` soll aus der Dashboard-Firmenaufteilung entfernt werden; globale Referenzdaten gehören keiner Firma.
+- Benutzer möchte den aktuellen Survey-/Trassierungs-Testbestand jetzt ausdrücklich **im API-Container-Terminal** vollständig löschen und danach neu hochladen.
+- Dafür keinen freien SQL-Löschblock verwenden, sondern den vorhandenen FK-/Storage-sicheren Resetpfad als explizite Terminal-Funktion nutzbar machen; weiterhin nur dev/test/staging und nur mit exaktem Bestätigungstext.
