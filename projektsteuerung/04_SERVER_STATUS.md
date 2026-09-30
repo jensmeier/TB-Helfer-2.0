@@ -782,3 +782,21 @@ Status: **BESTÄTIGT TEILBLOCK**
 - Duplikatverhalten korrekt: bestehende immutable Originale werden nicht wegen neuer Metadaten umgeschrieben.
 - Sichtbarer Mail-Eingang zum Trassendaten-Prüffall MPB bestätigt Background-/SMTP-Pfad für mindestens einen echten Konfliktfall.
 - Noch offen vor konsistentem Pasing-E2E: Staging-Testbestand resetten und vollständig neu importieren.
+
+## REF-DATA-003 – Survey-Reset-Vorschau Runtime bestätigt 30.09.2026
+Status: **PREVIEW BESTÄTIGT / RESET NOCH NICHT AUSGEFÜHRT**
+Synology API-Container:
+- environment: `staging`
+- allowed: `True`
+- confirm_text: `VERMESSUNG TESTDATEN LOESCHEN`
+- survey_originals: 60
+- survey_parse_catalog: 60
+- catalog_assets: 60
+- catalog_axes: 33
+- catalog_segments: 35
+- catalog_conflicts: 1
+- catalog_history: 164
+- survey_sections: 0
+- track_source_links: 0
+- import_file_rows: 0
+Bewertung: der geschützte Resetpfad erkennt den erwarteten Survey-Testbestand und keine abhängigen Survey-Section/Track-Source-Reste. Noch keine Löschung ausgeführt.

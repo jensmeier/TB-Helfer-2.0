@@ -917,3 +917,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Neu importierte Dateien zeigen MPB; alte Duplikate bleiben immutable und behalten alte Metadaten.
 - BlueMail zeigt Trassendaten-Prüffall MPB – Pasing Bbf: Konflikt-Mailweg praktisch bestätigt.
 - Deshalb jetzt nicht weiter über Duplikate importieren, sondern freigegebenen Staging-Reset durchführen und anschließend vollständigen Pasing-Neuimport.
+
+## REF-DATA-003 – Reset-Preview-Checkpoint 30.09.2026
+- Synology staging: Reset-Preview allowed=True.
+- Bestand vor Reset: 60 Originale, 60 Parser, 60 Assets, 33 Achsen, 35 Segmente, 1 Konflikt, 164 History.
+- 0 Survey-Sections, 0 Track-Source-Links, 0 Import-File-Rows.
+- Noch keine Löschung ausgeführt.
+- Physische Originale liegen unter storage-v1/reference/survey-originals/...; direkte manuelle Datei-/DB-Löschung bleibt verboten, weil DB/Katalog/Dateisystem gemeinsam konsistent entfernt werden müssen.

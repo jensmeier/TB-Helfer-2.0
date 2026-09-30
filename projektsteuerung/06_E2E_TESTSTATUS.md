@@ -621,3 +621,9 @@ Nächster E2E-Schritt:
 - Staging-Survey-Testreset;
 - vollständiger Neuimport Pasing mit MPB;
 - danach Search / Availability / Geometry / Changes erneut prüfen.
+
+### REF-DATA-003 – Reset-Preview BESTÄTIGT
+Staging-Vorschau praktisch ausgeführt:
+`allowed=True`, Bestätigungstext korrekt.
+Zähler: 60 Originale / 60 Parser / 60 Assets / 33 Achsen / 35 Segmente / 1 Konflikt / 164 History / 0 Survey-Sections / 0 Track-Source-Links / 0 Import-File-Rows.
+Status: Preview **BESTÄTIGT**, eigentlicher Reset **NOCH NICHT AUSGEFÜHRT**.
