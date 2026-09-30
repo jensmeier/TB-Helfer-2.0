@@ -1311,6 +1311,202 @@ def _axis_identity_enrichment_patch(
     return {"object_key": inferred_object_key.upper()}
 
 
+def _should_reassign_existing_segment_identity(
+    axis: dict[str, Any],
+    fields: dict[str, Any],
+    sibling_object_keys: list[str],
+) -> bool:
+    """Conservatively detect a legacy mixed axis that can be split by strong object identity."""
+    inferred_object_key = _clean(fields.get("object_key"))
+    axis_object_key = _clean(axis.get("object_key"))
+    if not inferred_object_key or not axis_object_key:
+        return False
+    if inferred_object_key.casefold() == axis_object_key.casefold():
+        return False
+    axis_type = str(axis.get("axis_type") or "UNBEKANNT").upper()
+    inferred_type = str(fields.get("axis_type") or "UNBEKANNT").upper()
+    if axis_type != "UNBEKANNT" and inferred_type != "UNBEKANNT" and axis_type != inferred_type:
+        return False
+    normalized_siblings = {
+        value.casefold()
+        for value in (_clean(item) for item in sibling_object_keys)
+        if value
+    }
+    # Only split automatically when another ORIGINAL_TRA on the current axis
+    # independently proves that the current axis object_key belongs to that sibling.
+    # This protects deliberate/admin-corrected object_key values from automatic moves.
+    return axis_object_key.casefold() in normalized_siblings
+
+
+def _sibling_original_object_keys(
+    cur,
+    *,
+    axis_id: UUID,
+    segment_id: UUID,
+) -> list[str]:
+    cur.execute(
+        """
+        SELECT source_original_id
+        FROM tb.survey_catalog_segments
+        WHERE axis_id=%s
+          AND id<>%s
+          AND source_kind='ORIGINAL_TRA'
+          AND source_original_id IS NOT NULL
+        """,
+        (axis_id, segment_id),
+    )
+    keys: list[str] = []
+    for row in cur.fetchall():
+        original, parsed = _load_original_with_parse(cur, row["source_original_id"])
+        payload = parsed.get("payload") if isinstance(parsed.get("payload"), dict) else {}
+        sibling_fields = _axis_fields(original, payload)
+        object_key = _clean(sibling_fields.get("object_key"))
+        if object_key:
+            keys.append(object_key.upper())
+    return keys
+
+
+def _reassign_existing_segment_identity(
+    cur,
+    *,
+    existing_index: dict[str, Any],
+    original: dict[str, Any],
+    payload: dict[str, Any],
+    fields: dict[str, Any],
+    actor_user_id: UUID | None,
+) -> dict[str, Any] | None:
+    old_axis = _row(cur, "survey_catalog_axes", existing_index["axis_id"])
+    sibling_keys = _sibling_original_object_keys(
+        cur,
+        axis_id=old_axis["id"],
+        segment_id=existing_index["id"],
+    )
+    if not _should_reassign_existing_segment_identity(old_axis, fields, sibling_keys):
+        return None
+
+    # Do not silently rewrite a segment that is already part of an unresolved
+    # human-review case. Such a case must remain explicit and auditable.
+    cur.execute(
+        """
+        SELECT 1
+        FROM tb.survey_catalog_conflicts
+        WHERE status='OPEN'
+          AND (candidate_segment_id=%s OR existing_segment_id=%s)
+        LIMIT 1
+        """,
+        (existing_index["id"], existing_index["id"]),
+    )
+    if cur.fetchone():
+        return None
+
+    points = _dense_payload(payload)
+    if len(points) < 2:
+        return None
+
+    scope, company_id = _scope_for_original(original)
+    target_axis, relation, diagnostics, target_existing = _choose_axis_and_relation(
+        cur,
+        scope=scope,
+        company_id=company_id,
+        fields=fields,
+        points=points,
+        actor_user_id=actor_user_id,
+        fallback_key=str(original["id"]),
+    )
+    if target_axis["id"] == old_axis["id"]:
+        return None
+
+    before = dict(existing_index)
+    version = int(existing_index["current_version"]) + 1
+    merge_status = relation if relation in {
+        "PRIMARY", "OVERLAP_CONFIRMED", "ENDPOINT_CONFIRMED", "INDEPENDENT"
+    } else "REVIEW_REQUIRED"
+    old_status = str(existing_index.get("segment_status") or "ACTIVE").upper()
+    if old_status in {"INACTIVE", "SUPERSEDED"}:
+        segment_status = old_status
+    else:
+        segment_status = "REVIEW" if relation == "REVIEW_REQUIRED" else "ACTIVE"
+
+    metadata = dict(existing_index.get("metadata") or {})
+    metadata["merge_diagnostics"] = diagnostics
+    metadata["identity_repair"] = {
+        "reason": "LEGACY_OBJECT_KEY_MISMATCH",
+        "from_axis_id": str(old_axis["id"]),
+        "from_object_key": old_axis.get("object_key"),
+        "to_axis_id": str(target_axis["id"]),
+        "to_object_key": target_axis.get("object_key"),
+        "source_original_id": str(original["id"]),
+    }
+    cur.execute(
+        """
+        UPDATE tb.survey_catalog_segments
+        SET axis_id=%s,segment_status=%s,merge_status=%s,metadata=%s,current_version=%s
+        WHERE id=%s
+        RETURNING *
+        """,
+        (
+            target_axis["id"],
+            segment_status,
+            merge_status,
+            Jsonb(metadata),
+            version,
+            existing_index["id"],
+        ),
+    )
+    updated_segment = dict(cur.fetchone())
+    _history(
+        cur,
+        entity_type="SEGMENT",
+        entity_id=updated_segment["id"],
+        version=version,
+        operation="UPDATE",
+        before=before,
+        after=updated_segment,
+        actor_user_id=actor_user_id,
+        actor_company_id=company_id,
+    )
+
+    conflict = None
+    if relation == "REVIEW_REQUIRED":
+        target_axis = _axis_review(cur, target_axis, actor_user_id)
+        conflict = _conflict_create(
+            cur,
+            axis_id=target_axis["id"],
+            candidate_segment_id=updated_segment["id"],
+            existing_segment_id=target_existing["id"] if target_existing else None,
+            conflict_type=str(diagnostics.get("reason") or "GEOMETRY_CONFLICT"),
+            details=diagnostics,
+            actor_user_id=actor_user_id,
+            actor_company_id=company_id,
+        )
+
+    _axis_extent_refresh(cur, old_axis["id"], actor_user_id)
+    target_axis = _axis_extent_refresh(cur, target_axis["id"], actor_user_id)
+    audit(
+        cur,
+        action="SURVEY_CATALOG_SEGMENT_IDENTITY_REASSIGN",
+        actor_user_id=actor_user_id,
+        company_id=company_id,
+        entity_type="SURVEY_CATALOG_SEGMENT",
+        entity_id=updated_segment["id"],
+        details={
+            "original_id": str(original["id"]),
+            "from_axis_id": str(old_axis["id"]),
+            "to_axis_id": str(target_axis["id"]),
+            "from_object_key": old_axis.get("object_key"),
+            "to_object_key": target_axis.get("object_key"),
+            "merge_status": merge_status,
+            "conflict_id": str(conflict["id"]) if conflict else None,
+        },
+    )
+    return {
+        "axis": target_axis,
+        "segment": updated_segment,
+        "relation": relation,
+        "conflict": conflict,
+    }
+
+
 def _enrich_existing_axis_identity(
     cur,
     *,
@@ -1376,6 +1572,28 @@ def index_original_in_tx(cur, original_id: UUID, actor_user_id: UUID | None = No
     )
     existing_index = cur.fetchone()
     if existing_index:
+        existing_index = dict(existing_index)
+        reassigned = _reassign_existing_segment_identity(
+            cur,
+            existing_index=existing_index,
+            original=original,
+            payload=payload,
+            fields=fields,
+            actor_user_id=actor_user_id,
+        )
+        if reassigned is not None:
+            axis = reassigned["axis"]
+            segment = reassigned["segment"]
+            return {
+                "asset_id":str(asset["id"]),
+                "segment_id":str(segment["id"]),
+                "axis_id":str(axis["id"]),
+                "status":"ALREADY_INDEXED_REASSIGNED",
+                "axis_enriched":False,
+                "axis_reassigned":True,
+                "merge_status":segment.get("merge_status"),
+                "object_key":axis.get("object_key"),
+            }
         axis, enriched = _enrich_existing_axis_identity(
             cur,
             axis_id=existing_index["axis_id"],
@@ -1388,6 +1606,7 @@ def index_original_in_tx(cur, original_id: UUID, actor_user_id: UUID | None = No
             "axis_id":str(axis["id"]),
             "status":"ALREADY_INDEXED_ENRICHED" if enriched else "ALREADY_INDEXED",
             "axis_enriched":enriched,
+            "axis_reassigned":False,
             "object_key":axis.get("object_key"),
         }
 
