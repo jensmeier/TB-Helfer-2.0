@@ -801,3 +801,11 @@ Noch offen:
 - WVB 14-22: **BESTANDEN** – eigener axis_id, `WVB:14-22`, MPB, Segmentzahl 1.
 - WVB 19-20: **NOCH OFFEN**, weil die betreffende Zeile im Screenshot nicht sichtbar ist.
 - Wichtig: Dieser Nachweis stammt direkt aus dem frischen Importzustand, ohne Reindex-Nachreparatur.
+
+### REF-DATA-003 – Frischer WVB-Identitätscheck VOLLSTÄNDIG BESTANDEN 30.09.2026
+- WVB 10-11: PASS – eigener axis_id, `WVB:10-11`, MPB, Segmentzahl 1.
+- WVB 14-22: PASS – eigener axis_id, `WVB:14-22`, MPB, Segmentzahl 1.
+- WVB 19-20: PASS – eigener axis_id, `WVB:19-20`, MPB, Segmentzahl 1.
+- Alle drei Achsen-IDs sind verschieden.
+- Nachweis direkt nach frischem Import, ohne Reindex/Reassign.
+- WVB-Neuimport-Gate damit abgeschlossen. Offen bleiben Search/Availability/Geometry und Portal-Multi-Hit; Problemfenster nur bei realem REVIEW_REQUIRED-Fall.
