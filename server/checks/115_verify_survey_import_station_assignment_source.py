@@ -17,6 +17,7 @@ for token in (
     "function wireStationPicker(root)",
     "station_code:settings.station_code",
     "station_name:settings.station_name",
+    "object_key:settings.object_key",
     "Bahnhof/Betriebsstelle bitte aus der Referenzliste auswählen",
     "data-station-code",
     "data-station-name",

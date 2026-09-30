@@ -151,6 +151,7 @@ jobs:
           python server/checks/113_verify_survey_catalog_merge_logic.py
           python server/checks/114_verify_survey_staging_reset_source.py
           python server/checks/115_verify_survey_import_station_assignment_source.py
+          python server/checks/116_verify_survey_diagnostics_portal_source.py
 
       # Migrations through 018_survey_object_identity.sql are included by the normal migration runner.
       - name: Apply fresh TB-Server 1.0 baseline
