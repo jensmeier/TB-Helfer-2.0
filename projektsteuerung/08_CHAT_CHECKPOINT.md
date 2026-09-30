@@ -1036,3 +1036,11 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - WVB-Abfrage danach: 10-11, 14-22 und 19-20 jeweils auf eigener Achse, jeweils korrekter object_key und `axis_segment_count=1`.
 - Legacy-WVB-Mergeproblem ist damit praktisch geschlossen und nach Schutzregel nicht ohne neuen reproduzierbaren Grund wieder anzufassen.
 - Nächster Block: Pasing-UI- und API-Gate (Prefill, Multi-Hit, Problemfenster/Resolution, Search/Availability/Geometry).
+
+## REF-DATA-003 – UI/Reset-Nacharbeit Checkpoint 30.09.2026
+- Nutzer meldet: `Ziel nach Analyse` unverständlich; deaktiviertes Firma/Baustelle-Feld bei GLOBAL weiterhin störend; erneuter kompletter Staging-Neuimport gewünscht.
+- Anforderung vor Code in SERVER_STATUS gesichert (Commit `5b2ea155...`).
+- Template angepasst: `Speicherziel`, `Gemeinsamer Referenzbestand`, Firmenfeld bei GLOBAL verborgen.
+- Geschützter bestehender Survey-Testreset direkt in Trassierungsdaten-Seite eingebaut; keine neue Backend-Löschlogik.
+- Dashboard `Trassierungsdaten 0 B`: nur feste Firmen-Speicherkategorie; 0 B = keine Firmendaten, globale Referenzoriginale zählen dort nicht hinein.
+- Nächster Schritt: Template auf Synology deployen → Reset über neue UI → Zähler 0 bestätigen → Pasing frisch importieren.
