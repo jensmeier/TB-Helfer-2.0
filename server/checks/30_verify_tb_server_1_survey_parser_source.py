@@ -194,7 +194,7 @@ def main() -> None:
     assertions = [
         ("CREATE TABLE tb.survey_parse_catalog", migration),
         ("REFERENCES tb.survey_originals(id) ON DELETE RESTRICT", migration),
-        ("PARSER_VERSION = \"tb-survey-parser-2\"", parser),
+        ("PARSER_VERSION = \"tb-survey-parser-3\"", parser),
         ("TRA_ER0_BINARY", parser),
         ("GRA_BINARY", parser),
         ("KF_7_BINARY", parser),
@@ -230,7 +230,7 @@ def main() -> None:
 
     verify_raw_kf_parity()
     verify_filename_metadata()
-    print("OK: TB-Server 1.0 survey parser v2 + Raw-KF parity + date-safe filename metadata")
+    print("OK: TB-Server 1.0 survey parser v3 + Raw-KF parity + object identity + date-safe filename metadata")
 
 
 if __name__ == "__main__":
