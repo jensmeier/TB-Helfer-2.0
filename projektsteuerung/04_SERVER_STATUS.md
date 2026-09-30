@@ -826,3 +826,11 @@ Status: **RUNTIMEBEFUNDE DOKUMENTIERT / URSACHE NOCH ZU PRÜFEN**
 - WVB ist klassifiziert, aber Strecke/Achsidentität teilweise leer; echter Prüffall `NEARBY_GEOMETRY_NOT_MATCHING` auf WVB_14-22 vorhanden.
 - Admin-Grafik muss nahe/überlagerte Trassen mindestens so eindeutig vergleichbar machen wie die Android-Grafik.
 - Noch kein Code geändert; zuerst Parser/Grouping/Decision-Prefill + Katalog-Merge sowie Android-Suche prüfen.
+
+## REF-DATA-003 – Audit Strecke/Gleis/WVB/Überlagerung abgeschlossen
+Status: **URSACHEN EINGEGRENZT / NOCH KEIN CODE**
+- Bahnhof+Gleis benötigt serverseitig keine zwingende Strecke; Android-Streckenpunkte-Kontext arbeitet bereits so.
+- Leeres Route-Feld bei gleichzeitig erkanntem Route-Badge ist UI-Zustandsfehler, nicht Parser-/Backendverlust.
+- WVB-Reviewmails können aktuell durch fehlenden stabilen WVB-Objektschlüssel zwischen unterschiedlichen nahen WVB entstehen.
+- Admin-Grafik braucht Multi-Hit/Overlap-Auswahl analog Android.
+- Nächster gezielter SERVER-Block: Route-Prefill stabilisieren, WVB/Weiche-Objektidentität im Katalog ergänzen, Admin-Multi-Hit/Overlap-Darstellung.

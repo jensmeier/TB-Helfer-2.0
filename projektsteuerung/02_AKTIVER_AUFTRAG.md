@@ -1862,3 +1862,23 @@ Neue Benutzerbeobachtungen nach sauberem Staging-Reset und Pasing-Neuimport:
 - Zu klären: ob WVB aus Dateiname/Geometrie mit den beteiligten Weichen bzw. Anschlussachsen fachlich verknüpft werden kann und ob WVB ohne eigene Streckennummer trotzdem korrekt Bahnhof MPB zugeordnet und auffindbar bleibt.
 - Android-Grafik zeigt zwei nahe/teilweise übereinanderliegende Trassen/Achsen gleichzeitig. Die Admin-Analyse muss diese Gesamtüberlagerung ebenfalls sichtbar machen, damit falsche Doppelachsen/Parallelachsen vor Import/Entscheidung erkannt werden können.
 - Vor Änderungen Ursache in SERVER-Analyse/Decision-Vorbelegung und ANDROID-Such-/Darstellungslogik prüfen.
+
+#### REF-DATA-003 – Audit-Ergebnis Strecke/Gleis/WVB/Überlagerung
+Quellprüfung SERVER + ANDROID 30.09.2026:
+- Android `TrassenKontextFilter` filtert `BAHNHOF_GLEIS` mit Bahnhof + Gleis; die Streckennummer ist in diesem bestehenden Kontext **keine Pflichtbedingung**.
+- SERVER-Katalog verwendet `station_code + track_key` bereits als starke Achsidentität; `route_number` ist bei Bahnhofsgleisen zusätzlicher Kontext/Disambiguierung.
+- Für die spätere Android-Survey-Katalogsuche ist derselbe Grundsatz verbindlich: `station_code + object/track key` zuerst; Strecke nur dann zusätzlich verlangen, wenn sonst Mehrdeutigkeit besteht.
+- Sichtbarer UI-Widerspruch „Badge Strecke vorhanden, Eingabefeld leer“ ist kein Parserverlust:
+  - aktuelles Template erzeugt Badge und Eingabewert aus demselben `route`;
+  - Backend-`_install_original` fällt bei leerem Decision-Feld zusätzlich auf `inferred_route` aus dem Parser zurück.
+  - Ursache liegt daher in nachgelagertem UI/Browserzustand und muss dort reproduziert/behoben werden.
+- WEICHE/WVB:
+  - Parser erkennt `WEICHE` bzw. `WEICHENVERBINDUNG`;
+  - Analyse erkennt z. B. `WVB 14-22`;
+  - Katalogmodell besitzt aktuell aber keinen stabilen `object_key` für Weiche/WVB. `track_key` ist dafür fachlich ungeeignet.
+  - Folge: WVB derselben Betriebsstelle werden bei räumlicher Nähe als mögliche Kandidaten verglichen; unterschiedliche nahe WVB können dadurch `REVIEW_REQUIRED / NEARBY_GEOMETRY_NOT_MATCHING` auslösen.
+  - Ziel: stabile Objektidentität, z. B. `object_type=WEICHENVERBINDUNG`, `object_key=WVB:14-22`; gleiche Objektidentität vergleichen, unterschiedliche WVB nicht als Konflikt behandeln.
+- Überlagerte Achsen:
+  - Android-`TrassenGrafikView` unterstützt Mehrfachtreffer bei überlagerten Achsen; Long-Press liefert mehrere Achsen und Dialog `Welche Roh-TRA?`.
+  - Admin-SVG besitzt derzeit je Polyline einen einzelnen Hit-Layer. Bei deckungsgleichen/nahen Linien kann die oben gezeichnete Achse die andere verdecken bzw. allein den Klick erhalten.
+  - Ziel Admin: Mehrfachtreffer/Overlap-Liste wie Android, plus klare visuelle Hervorhebung/Wechselmöglichkeit ohne Veränderung der bestätigten Zoom-/Hover-Grundfunktion.

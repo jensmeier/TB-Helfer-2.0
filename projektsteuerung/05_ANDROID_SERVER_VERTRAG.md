@@ -600,3 +600,11 @@ Status: **AUDIT OFFEN**
 - Bei mehreren gleichnamigen Gleisen an derselben Betriebsstelle bzw. mehreren Strecken bleibt eine eindeutige Auflösung notwendig; dann darf Strecke als Disambiguierung verlangt werden.
 - WVB/Weichenverbindungen sind als eigene fachliche Objekte zu behandeln; fehlende eigene Streckennummer darf eine Betriebsstellenzuordnung nicht verhindern.
 - SERVER-Projekt ändert hierfür kein `app/**`; Android-Quellstand wird nur gelesen/auditiert.
+
+#### REF-DATA-003 – Audit-Ergebnis Android-Suchlogik
+- Bestehender Android-`BAHNHOF_GLEIS`-Kontext matcht Bahnhof + Gleis und verlangt keine Streckennummer.
+- Bestehender Android-`BAHNHOF_WEICHE`-Kontext matcht Bahnhof + Weiche.
+- Die künftige Survey-Katalogintegration soll dieses Verhalten beibehalten:
+  - Bahnhof + Gleis/Weiche/WVB ist Primärkontext;
+  - Strecke ergänzt nur bei Mehrdeutigkeit oder freier Strecke.
+- Android besitzt bereits Multi-Hit-Unterstützung für überlagerte Roh-TRA in der Grafik. SERVER/Portal soll dieses Bedienprinzip übernehmen; keine Android-Änderung dafür im SERVER-Projekt.

@@ -937,3 +937,11 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - WVB 10-11/14-22 sind als Weichenverbindung erkannt, aber Strecke/Gleis fehlen; Mail-Prüffall WVB_14-22 = NEARBY_GEOMETRY_NOT_MATCHING.
 - Android zeigt nahe/überlagerte Trassen gleichzeitig; Admin-Analyse soll das ebenfalls eindeutig zeigen.
 - Android-Suche MPB + Gl 27 wird gegen Live-Quellstand geprüft; keine Android-Änderung im SERVER-Block ohne dokumentierten Bedarf.
+
+## REF-DATA-003 – Auditabschluss 30.09.2026
+- Android live geprüft: Bahnhof/Gleis-Filter ohne Streckenpflicht; Bahnhof/Weiche analog.
+- Server strong identity: station_code + track_key bereits vor route/direction.
+- Route-Badge und Route-Input stammen im Template aus demselben Wert; Backend hat zusätzlich inferred_route-Fallback. Sichtbares leeres Input = UI-State-Problem.
+- WVB 14-22: Parser/Analyse erkennt WVB, Katalog hat aber keinen stabilen WVB object_key; nahe andere WVB können dadurch Reviewmail erzeugen.
+- Android-Grafik kann überlagerte Achsen per Multi-Hit/Long-Press unterscheiden; Admin derzeit nicht.
+- Noch kein Code nach diesem Audit; auf Benutzerfreigabe warten.
