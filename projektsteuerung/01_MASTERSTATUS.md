@@ -1061,3 +1061,13 @@ Status: **DEPLOYT / REINDEX GRÜN / WVB-IDENTITÄT BESTÄTIGT**
 - WVB 19-20: nach Reparatur eigene Achse, `object_key=WVB:19-20`, `axis_segment_count=1`.
 - Damit ist der zuvor reproduzierte Legacy-Merge WVB 19-20 → WVB 14-22 praktisch behoben. Raw-Originale blieben unangetastet; keine Segmentduplikation sichtbar.
 - Nächster Pasing-Gate: Browser-Prefill Strecke/Gleis/Objekt → Multi-Hit bei überlagerten Achsen → „Problem ansehen“ → anschließend Search/Availability/Geometry.
+
+## REF-DATA-003 – Import-UI verständlicher + geschützter Reset im Portal SOURCE 30.09.2026
+Status: **SOURCE FERTIG / DEPLOYMENT OFFEN**
+- `Ziel nach Analyse` wurde in der Importanalyse zu `Speicherziel` umbenannt; GLOBAL heißt sichtbar jetzt `Gemeinsamer Referenzbestand`.
+- Bei GLOBAL wird das Feld `Firma / Baustelle` vollständig ausgeblendet statt nur deaktiviert. Bei Firmen-/Baustellenziel erscheint es weiterhin.
+- Auf der Trassierungsdaten-Seite ist der bereits vorhandene geschützte Survey-Testreset jetzt als Admin-UI verfügbar: Preview/Zählwerte, exakter Bestätigungstext `VERMESSUNG TESTDATEN LOESCHEN`, zweite Browserbestätigung, danach DELETE über den bestehenden CSRF-geschützten Endpunkt.
+- Reset-Karte erscheint nur, wenn der Backend-Endpunkt in der aktuellen Umgebung erlaubt ist; Produktion bleibt serverseitig hart gesperrt.
+- Reset löscht nur Vermessungs-/Trassierungs-Testbestand und daraus abgeleiteten Survey-Katalog; Firmen, Benutzer, Baustellen und BTB bleiben erhalten.
+- Code: `server/templates/v1_admin_survey_import.html`; Check 115 um die neuen UI-/Reset-Marker erweitert.
+- Commits: `321be671...`, `0069fd0f...`, `6eb60ecb...`, `5735fa31...`.
