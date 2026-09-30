@@ -64,7 +64,7 @@ assert "index_original_in_tx(cur, original_id" in admin_import
 assert "index_original_in_tx(cur, original_id" in parser
 assert "station_code" in admin_import and "station_name" in admin_import
 assert 'SURVEY_CATALOG_COMPANY_SCOPE_FORBIDDEN' in catalog
-assert 'station_code: str | None,\n    station_name: str | None,\n    source_date: date | None,\n    user: dict[str, Any],' in admin_import
+assert 'station_code: str | None,\n    station_name: str | None,\n    source_date: date | None,\n    overwrite_existing: bool = False,\n    user: dict[str, Any],' in admin_import
 assert '@router.delete("/manual-segments/{segment_id}")' in catalog
 assert 'GVP_MAX_AXIS_DISTANCE_M = 120.0' in catalog
 assert 'GVP_OFFSET_OUTLIER_M = 80.0' in catalog
@@ -139,5 +139,13 @@ assert 'from .survey_parser import PARSER_VERSION, reparse_original_for_catalog'
 assert 'LEFT JOIN tb.survey_parse_catalog p ON p.original_id=o.id' in catalog
 assert 'parser_stale = (' in catalog
 assert '"reparsed":reparsed' in catalog
+assert 'def refresh_original_assignment_in_tx(' in catalog
+assert 'SURVEY_CATALOG_ASSIGNMENT_UPDATE' in catalog
+assert 'SURVEY_ASSIGNMENT_UPDATE_SHARED_AXIS_REQUIRES_REVIEW' in catalog
+assert 'overwrite_existing: bool = False' in admin_import
+assert '"status": "VORHANDEN_ABWEICHEND"' in admin_import
+assert '"status": "AKTUALISIERT"' in admin_import
+assert 'ADMIN_SURVEY_ORIGINAL_ASSIGNMENT_UPDATE' in admin_import
+assert 'refresh_original_assignment_in_tx(' in admin_import
 
 print("PASS survey reference catalog source")
