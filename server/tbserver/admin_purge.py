@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
-from .admin import require_admin_csrf
+from .admin import require_admin, require_admin_csrf
 from .btb_documents import remove_storage_keys
 from .config import settings
 from .database import transaction
@@ -17,11 +17,17 @@ router = APIRouter(prefix="/api/v1/admin/purge", tags=["admin-purge"])
 
 _CONFIRM_TEXT = "ENDGUELTIG LOESCHEN"
 _PRODUCTION_ENVIRONMENTS = {"prod", "production"}
+_SURVEY_TEST_RESET_ENVIRONMENTS = {"development", "dev", "test", "testing", "staging"}
+_SURVEY_TEST_RESET_TEXT = "VERMESSUNG TESTDATEN LOESCHEN"
 
 
 class PurgeConfirmation(BaseModel):
     confirm_id: UUID
     confirm_text: str = Field(min_length=1, max_length=80)
+
+
+class SurveyTestResetConfirmation(BaseModel):
+    confirm_text: str = Field(min_length=1, max_length=100)
 
 
 def _confirm(payload: PurgeConfirmation, entity_id: UUID) -> None:
@@ -37,6 +43,139 @@ def _storage_keys(cur, query: str, params: tuple[Any, ...]) -> list[str]:
 def _remove_keys_after_commit(storage_keys: list[str]) -> None:
     if storage_keys:
         remove_storage_keys(storage_keys)
+
+
+def _require_survey_test_reset_environment() -> None:
+    if settings.environment not in _SURVEY_TEST_RESET_ENVIRONMENTS:
+        raise HTTPException(
+            409,
+            {
+                "code": "SURVEY_TEST_RESET_ENVIRONMENT_FORBIDDEN",
+                "environment": settings.environment,
+            },
+        )
+
+
+def _survey_test_reset_counts(cur) -> dict[str, int]:
+    queries = {
+        "survey_originals": "SELECT count(*)::int AS count FROM tb.survey_originals",
+        "survey_parse_catalog": "SELECT count(*)::int AS count FROM tb.survey_parse_catalog",
+        "catalog_assets": "SELECT count(*)::int AS count FROM tb.survey_catalog_assets",
+        "catalog_axes": "SELECT count(*)::int AS count FROM tb.survey_catalog_axes",
+        "catalog_segments": "SELECT count(*)::int AS count FROM tb.survey_catalog_segments",
+        "catalog_conflicts": "SELECT count(*)::int AS count FROM tb.survey_catalog_conflicts",
+        "catalog_history": "SELECT count(*)::int AS count FROM tb.survey_catalog_history",
+        "survey_sections": (
+            "SELECT count(*)::int AS count FROM tb.track_data "
+            "WHERE dataset_kind = 'SURVEY_SECTION'"
+        ),
+        "track_source_links": "SELECT count(*)::int AS count FROM tb.track_data_sources",
+        "import_file_rows": (
+            "SELECT count(*)::int AS count FROM tb.files f "
+            "WHERE f.source = 'IMPORT' "
+            "AND EXISTS (SELECT 1 FROM tb.survey_originals o WHERE o.storage_key = f.storage_key)"
+        ),
+    }
+    result: dict[str, int] = {}
+    for key, query in queries.items():
+        cur.execute(query)
+        result[key] = int(cur.fetchone()["count"])
+    return result
+
+
+@router.get("/survey-test-data")
+def survey_test_data_preview(
+    _: dict[str, Any] = Depends(require_admin),
+) -> dict[str, Any]:
+    _require_survey_test_reset_environment()
+    with transaction() as conn, conn.cursor() as cur:
+        counts = _survey_test_reset_counts(cur)
+    return {
+        "environment": settings.environment,
+        "allowed": True,
+        "confirm_text": _SURVEY_TEST_RESET_TEXT,
+        "counts": counts,
+    }
+
+
+@router.delete("/survey-test-data")
+def purge_survey_test_data(
+    payload: SurveyTestResetConfirmation,
+    admin: dict[str, Any] = Depends(require_admin_csrf),
+) -> dict[str, Any]:
+    _require_survey_test_reset_environment()
+    if payload.confirm_text.strip().upper() != _SURVEY_TEST_RESET_TEXT:
+        raise HTTPException(400, "SURVEY_TEST_RESET_CONFIRMATION_REQUIRED")
+
+    storage_keys: list[str] = []
+    with transaction() as conn, conn.cursor() as cur:
+        before = _survey_test_reset_counts(cur)
+        storage_keys.extend(
+            _storage_keys(cur, "SELECT storage_key FROM tb.survey_originals", ())
+        )
+
+        audit(
+            cur,
+            action="SURVEY_TEST_DATA_RESET",
+            actor_user_id=admin["user_id"],
+            entity_type="SYSTEM",
+            details={
+                "environment": settings.environment,
+                "before": before,
+            },
+        )
+
+        # The catalog is derived from survey originals; remove it in FK-safe order.
+        cur.execute("DELETE FROM tb.survey_catalog_conflicts")
+        cur.execute("DELETE FROM tb.survey_catalog_segments")
+        cur.execute("DELETE FROM tb.survey_catalog_assets")
+        cur.execute("DELETE FROM tb.survey_catalog_axes")
+        cur.execute("DELETE FROM tb.survey_catalog_history")
+
+        # Dedicated survey sections are derived survey data and are reset as a unit.
+        # Other track_data rows are preserved; their optional direct original link
+        # is detached before the originals disappear.
+        cur.execute("DELETE FROM tb.track_data WHERE dataset_kind = 'SURVEY_SECTION'")
+        cur.execute("DELETE FROM tb.track_data_sources")
+        cur.execute(
+            "UPDATE tb.track_data SET source_original_id = NULL "
+            "WHERE source_original_id IS NOT NULL"
+        )
+        cur.execute(
+            "UPDATE tb.track_data_km_points SET source_original_id = NULL "
+            "WHERE source_original_id IS NOT NULL"
+        )
+
+        # Mobile imports can have a tb.files row pointing to the same moved raw file.
+        # Remove only those import rows whose storage key belongs to a survey original.
+        cur.execute(
+            """
+            DELETE FROM tb.files f
+            WHERE f.source = 'IMPORT'
+              AND EXISTS (
+                    SELECT 1 FROM tb.survey_originals o
+                    WHERE o.storage_key = f.storage_key
+              )
+            """
+        )
+
+        cur.execute("DELETE FROM tb.survey_parse_catalog")
+        cur.execute("DELETE FROM tb.survey_originals")
+        cur.execute(
+            "DELETE FROM tb.mutation_receipts "
+            "WHERE entity_type = 'SURVEY_CATALOG_SEGMENT'"
+        )
+
+        after = _survey_test_reset_counts(cur)
+
+    _remove_keys_after_commit(sorted(set(storage_keys)))
+    return {
+        "environment": settings.environment,
+        "status": "RESET",
+        "removed_storage_keys": len(set(storage_keys)),
+        "before": before,
+        "after": after,
+    }
 
 
 @router.delete("/releases/{release_id}", status_code=204)

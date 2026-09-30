@@ -92,6 +92,13 @@ assert 'source_date=decision.source_date' in admin_import
 assert 'source_date=source_date' in admin_import
 admin_purge = ADMIN_PURGE.read_text(encoding="utf-8")
 assert "Migration 017 lifecycle cleanup" in admin_purge
+assert '@router.get("/survey-test-data")' in admin_purge
+assert '@router.delete("/survey-test-data")' in admin_purge
+assert 'SURVEY_TEST_RESET_ENVIRONMENT_FORBIDDEN' in admin_purge
+assert '_SURVEY_TEST_RESET_TEXT = "VERMESSUNG TESTDATEN LOESCHEN"' in admin_purge
+assert "DELETE FROM tb.track_data WHERE dataset_kind = 'SURVEY_SECTION'" in admin_purge
+assert "DELETE FROM tb.survey_parse_catalog" in admin_purge
+assert "DELETE FROM tb.survey_originals" in admin_purge
 conflict_delete = admin_purge.index("DELETE FROM tb.survey_catalog_conflicts")
 segment_delete = admin_purge.index("DELETE FROM tb.survey_catalog_segments")
 asset_delete = admin_purge.index("DELETE FROM tb.survey_catalog_assets")
