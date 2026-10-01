@@ -1,3 +1,17 @@
+# SERVER-GESAMTPRÜFUNG 2026-10-01
+
+Status: **PRÜFUNG LÄUFT / KEINE CODEÄNDERUNG BEAUFTRAGT**
+
+Benutzerauftrag: „wie ist der aktuelle Stand, wenn du das dann weißt prüfe mal alles vom Server“.
+- Ausgangsstand SERVER: `0c6b381619cf149b5f6d0cb0d427f25a768e0c25`, Draft-PR #6.
+- ANDROID: `423f37892915cb3308a4b1ea9e4d196faa872326`, offener PR #11 (kein Draft).
+- Umfang: Projektstatus gegen Live-Code abgleichen; Servermodule, API-/Android-Verträge, Migrationen, Auth/Berechtigungen, Sync/BTB/Dateien, Survey-Import, Backup/Restore, Deployment und bestehende Checks prüfen.
+- Lokale/source-basierte Nachweise getrennt von dokumentierten Synology-Praxisbestätigungen und noch offenen Runtime-/Geräte-E2E berichten.
+- Keine fachlichen Codeänderungen, produktiven Mutationen, Testdaten-Resets oder Deployments aus diesem Prüfauftrag ableiten.
+- Gefundene Probleme mit konkretem Beleg dokumentieren; Abschlussstatus/Checkpoint sichern.
+
+---
+
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
 Stand: 2026-09-26
