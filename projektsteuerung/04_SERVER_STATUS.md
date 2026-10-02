@@ -1293,3 +1293,10 @@ Status: **POSTGIS-ARCHITEKTUR GEWÄHLT / RUNTIME-PROBE VOR BAU**
 - Kein pyproj-Neuversuch.
 - Bereits vorhandenes PostGIS soll die CRS-Transformation serverseitig/read-only übernehmen; Python bleibt bei den bestehenden Abhängigkeiten.
 - Nächster Gate: SRID-/ST_Transform-Probe auf der laufenden Synology. Bei Erfolg folgt Implementierung der Coverage-API und Admin-Gesamtansicht.
+
+## REF-DATA-006 – PostGIS-Transformation Runtime BESTÄTIGT 02.10.2026
+Status: **BAU FREIGEGEBEN**
+- PostGIS 3.5.2 aktiv; SRIDs 4326/5682/5683/5684/5685 vorhanden.
+- ST_Transform liefert für MGHN ca. lon=10.699081, lat=48.333140 und für MPB ca. lon=11.431539, lat=48.153690.
+- Keine neue Dependency, kein requirements-/Image-Umbau nötig.
+- Nächster Schritt: Coverage-API + Admin-Seite mit Deutschlandübersicht, Suche und Detail-Nachladen implementieren.
