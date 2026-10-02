@@ -1132,3 +1132,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Runtimequery: 16 Korrekturupdates; IDs existieren weiter, SHA gleich, Rohoriginal eindeutig, station_code überall MGHN.
 - MGHN Geometry liefert 12 Segmente; Availability sichtbar mit 0 Review und 10 FEHLT / 2 AUTOMATISCH.
 - Search-/Availability-Gesamtkopf im Screenshot abgeschnitten; nur noch kompakte Abschlussabfrage nötig.
+
+## REF-DATA-005 – MGHN API-Abschluss 02.10.2026
+- Search MGHN: 12 Achsen, Station Gessertshausen, 16 Assets (GRA/TRA).
+- Availability: AVAILABLE, 12 aktive von 12 Achsen, 0 Review, KM 10 FEHLT / 2 AUTOMATISCH.
+- Geometry zuvor 12 Segmente.
+- Funktionaler Korrekturworkflow damit bestätigt; nur Warnrahmen-Sichtbarkeit als kosmetischer Restpunkt offen.
