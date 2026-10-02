@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from functools import lru_cache
 import math
 import re
 import statistics
@@ -11,7 +10,6 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
-from pyproj import Transformer
 
 from .admin import require_admin, require_admin_csrf
 from .database import transaction
@@ -2429,149 +2427,6 @@ def _decimate(points: list[dict[str,Any]], max_points: int) -> list[dict[str,Any
     if result[-1] is not points[-1]:
         result.append(points[-1])
     return result[:max_points]
-
-
-def _dbref_zone_epsg(x: float) -> int | None:
-    # DB_REF uses the million digit of the easting for the 3-degree GK zone.
-    zone = int(abs(float(x)) // 1_000_000)
-    return {2: 5682, 3: 5683, 4: 5684, 5: 5685}.get(zone)
-
-
-@lru_cache(maxsize=4)
-def _dbref_transformer(epsg: int) -> Transformer:
-    return Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
-
-
-def _dbref_point_to_wgs84(point: dict[str, Any]) -> tuple[float, float] | None:
-    x = _num(point.get("x_dbref"))
-    y = _num(point.get("y_dbref"))
-    if x is None or y is None:
-        return None
-    epsg = _dbref_zone_epsg(x)
-    if epsg is None:
-        return None
-    try:
-        lon, lat = _dbref_transformer(epsg).transform(x, y)
-    except Exception:
-        return None
-    if not (math.isfinite(lon) and math.isfinite(lat)):
-        return None
-    if not (5.0 <= lon <= 16.5 and 46.5 <= lat <= 56.0):
-        return None
-    return float(lon), float(lat)
-
-
-@router.get("/coverage")
-def coverage(
-    max_points_per_segment: int = Query(default=90, ge=8, le=400),
-    segment_limit: int = Query(default=5000, ge=1, le=10000),
-    _: dict[str, Any] = Depends(require_admin),
-) -> dict[str, Any]:
-    """Germany-wide admin coverage view in WGS84.
-
-    Raw survey geometry remains in DB_REF. Only this read-only overview response
-    is transformed to longitude/latitude for the national map.
-    """
-    with transaction() as conn, conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT s.*,a.scope,a.company_id,a.route_number,a.station_code,a.station_name,
-                   a.track_key,a.object_key,a.direction,a.axis_type,a.display_name,
-                   a.current_version axis_version
-            FROM tb.survey_catalog_segments s
-            JOIN tb.survey_catalog_axes a ON a.id=s.axis_id
-            WHERE a.scope='GLOBAL'
-              AND a.status<>'ARCHIVED'
-              AND s.segment_status='ACTIVE'
-            ORDER BY coalesce(a.station_name,''),coalesce(a.route_number,''),
-                     a.display_name,s.created_at,s.id
-            LIMIT %s
-            """,
-            (segment_limit,),
-        )
-        rows = [dict(row) for row in cur.fetchall()]
-        result: list[dict[str, Any]] = []
-        context_cache: dict[str, dict[str, Any]] = {}
-        unsupported = 0
-        quality_counts: dict[str, int] = {}
-        station_keys: set[str] = set()
-        route_keys: set[str] = set()
-
-        for row in rows:
-            axis_key = str(row["axis_id"])
-            axis = {
-                "id": row["axis_id"],
-                "scope": row["scope"],
-                "company_id": row["company_id"],
-                "route_number": row.get("route_number"),
-                "station_code": row.get("station_code"),
-                "station_name": row.get("station_name"),
-                "track_key": row.get("track_key"),
-                "object_key": row.get("object_key"),
-                "direction": row.get("direction"),
-                "axis_type": row.get("axis_type"),
-                "display_name": row.get("display_name"),
-            }
-            if axis_key not in context_cache:
-                context_cache[axis_key] = _axis_km_context(cur, axis)
-            full_points = _segment_points(cur, row)
-            quality = _segment_km_quality(
-                cur, axis, row, context_cache[axis_key], full_points
-            )
-            transformed: list[list[float]] = []
-            for point in _decimate(full_points, max_points_per_segment):
-                pair = _dbref_point_to_wgs84(point)
-                if pair is not None:
-                    transformed.append([round(pair[0], 7), round(pair[1], 7)])
-            if len(transformed) < 2:
-                unsupported += 1
-                continue
-
-            status = str(quality.get("status") or "UNBEKANNT")
-            quality_counts[status] = quality_counts.get(status, 0) + 1
-            station_code = _clean(row.get("station_code"))
-            station_name = _clean(row.get("station_name"))
-            route_number = _clean(row.get("route_number"))
-            if station_code or station_name:
-                station_keys.add(f"{station_code or ''}|{station_name or ''}")
-            if route_number:
-                route_keys.add(route_number)
-
-            lons = [point[0] for point in transformed]
-            lats = [point[1] for point in transformed]
-            result.append(
-                {
-                    "segment_id": str(row["id"]),
-                    "axis_id": str(row["axis_id"]),
-                    "display_name": row.get("display_name"),
-                    "route_number": route_number,
-                    "station_code": station_code,
-                    "station_name": station_name,
-                    "track_key": _clean(row.get("track_key")),
-                    "object_key": _clean(row.get("object_key")),
-                    "axis_type": row.get("axis_type"),
-                    "source_kind": row.get("source_kind"),
-                    "km_quality": _plain(quality),
-                    "coordinates": transformed,
-                    "bbox_wgs84": {
-                        "min_lon": min(lons),
-                        "min_lat": min(lats),
-                        "max_lon": max(lons),
-                        "max_lat": max(lats),
-                    },
-                }
-            )
-
-    return {
-        "crs": "EPSG:4326",
-        "source_crs": "DB_REF / 3-degree Gauss-Kruger zones 2-5",
-        "segments": result,
-        "count": len(result),
-        "unsupported_coordinate_count": unsupported,
-        "quality_counts": quality_counts,
-        "station_count": len(station_keys),
-        "route_count": len(route_keys),
-    }
 
 
 @router.get("/geometry")
