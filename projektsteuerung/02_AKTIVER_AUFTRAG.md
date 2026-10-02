@@ -2014,3 +2014,10 @@ Runtime-Diagnose 30.09.2026:
 - Original- und Katalogdaten bleiben unverändert. Transformation erfolgt ausschließlich read-only für die Übersicht/API-Ausgabe.
 - Umsetzung bleibt zweistufig: deutschlandweite kompakte Abdeckung/Suche zuerst; Detailgeometrie erst bei Treffer/Zoom nachladen, damit der Pfad bei wachsendem Bestand skalierbar bleibt.
 - Vor Codeänderung ist ein read-only Runtime-Probe auf der Synology Pflicht: PostGIS-Version, vorhandene SRIDs 5682–5685/4326 und reale Transformation eines MGHN/MPB-Koordinatenpunkts prüfen. Erst bei plausibler Ausgabe bauen.
+
+## REF-DATA-006 – PostGIS Runtime-Gate BESTANDEN 02.10.2026
+- Variante A ist technisch freigegeben.
+- Synology-Read-only-Probe bestätigt PostGIS 3.5.2; spatial_ref_sys enthält 4326 sowie DB_REF/GK-Zonen 5682, 5683, 5684 und 5685.
+- Reale Transformationen sind plausibel: MGHN → ca. 10.69908 / 48.33314, MPB → ca. 11.43154 / 48.15369.
+- Damit kann die Deutschlandübersicht ohne neue Python-/Image-Abhängigkeit gebaut werden. Originaldaten bleiben unverändert; ST_Transform wird nur read-only für die Anzeige verwendet.
+- Umsetzung jetzt freigegeben: zweistufige Coverage-Zusammenfassung + Suche, Detailgeometrie erst bei Auswahl.
