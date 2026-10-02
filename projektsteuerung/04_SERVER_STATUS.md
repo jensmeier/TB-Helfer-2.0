@@ -1260,3 +1260,10 @@ Status: **RUNTIME TEILWEISE WIEDERHERGESTELLT**
 - Ergebnis: `known=19`, `applied=19`, `pending=[]`, `latest_known=19`, `latest_applied=19`.
 - Damit ist bestätigt: API-Container läuft wieder soweit, dass Python/tbserver importierbar ist und DB/Migrationen konsistent 19/19 sind.
 - Noch offen vor vollständiger Stabilitätsfreigabe: `/health/ready`, Worker/Monitor-Laufstatus und kurzer Admin/Portal-Aufruf.
+
+## REF-DATA-006 – Runtime nach Rollback wieder gestartet / Migrationen 19/19 02.10.2026
+Status: **RUNTIME TEILWEISE WIEDERHERGESTELLT**
+- API-Terminal ist nach Rückkehr auf pre-pyproj Source + altem Image wieder erreichbar.
+- Migrationsstatus bestätigt: known=19, applied=19, pending=[], latest_known=19, latest_applied=19.
+- Damit sind Quellstand und DB-Migrationen wieder konsistent.
+- Offen vor vollständiger Stabilitätsfreigabe: /health/ready, Worker/Monitor-Laufstatus und kurzer Admin/Portal-Aufruf.
