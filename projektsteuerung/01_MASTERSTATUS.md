@@ -1192,3 +1192,11 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 - Original-/Katalogkoordinaten bleiben unverändert; ST_Transform arbeitet nur read-only in der Ausgabe.
 - requirements.txt bleibt unverändert und enthält kein pyproj.
 - Runtime/Synology-Test noch offen.
+
+
+## 02.10.2026 – REF-DATA-007 Trassenkennzahlen / Lazy-Übersicht
+- SOURCE: neuer Survey-Summary-Pfad + Dashboard-/Übersicht-Kennzahlen fertig.
+- Zielwerte: Gesamt-Trassenlänge, KM bekannt, automatisch, manuell, Handy-manuell, KM fehlt, Bahnhöfe, Gleise, Strecken.
+- Deutschlandübersicht lädt Details künftig achsweise statt vollständige Linien/KM beim Einstieg.
+- Android-Vertrag für fertige manuelle KM-Abschnitte ist fest; Android-Implementierung bleibt eigener späterer Arbeitsblock.
+- Status: **SOURCE FERTIG / DEPLOYMENT + SYNLOGY-RUNTIME OFFEN**.
