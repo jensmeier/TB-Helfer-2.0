@@ -1113,3 +1113,11 @@ Status: **SOURCE FERTIG / RUNTIME OFFEN**
 - Checkbox-Bereich `Vorhandene identische Dateien bei abweichender Zuordnung aktualisieren` erhält jetzt einen deutlich roten Warnrahmen, hellroten Hintergrund und rote Checkbox-Akzentfarbe.
 - Funktion und Schutzlogik unverändert: standardmäßig aus, zusätzlicher Browser-Bestätigungsdialog bleibt Pflicht.
 - Datei: `server/templates/v1_admin_survey_import.html`; Sourcecheck 115 um Warnbox-Styling ergänzt.
+
+## REF-DATA-005 – Duplicate-Korrektur Runtime teilweise BESTÄTIGT 02.10.2026
+Status: **WARNUNG + BESTÄTIGTE AKTUALISIERUNG PRAKTISCH NACHGEWIESEN**
+- Vorheriger Browserlauf zeigte bei identischen vorhandenen Dateien mit nachgetragener Betriebsstelle korrekt `VORHANDEN_ABWEICHEND` und Vorher→Nachher (`— → MGHN`, `— → Gessertshausen`).
+- Nach Setzen des Bestätigungshakens und erneutem Import zeigt der Runtime-Screenshot mehrere Dateien mit `AKTUALISIERT`, u. a. `250919_5302R_ER0.TRA`, `250919_5302R_O00_kmLinie.GRA`, `250919_Gl1_MGHN_ER0.TRA`, `250919_Gl1_MGHN_O00.GRA`.
+- Ergebnistext bestätigt: vorhandenes Original wurde beibehalten, fachliche Zuordnung aktualisiert, MGHN – Gessertshausen.
+- Gleichzeitig blieb mindestens `5340S_ER0.TRA` als `DUPLIKAT`; damit ist auch der unveränderte-Duplikatpfad im selben Lauf sichtbar.
+- Noch offen für vollständigen Gate-Abschluss: Original-ID/SHA vor/nachher unverändert nachweisen, Originaltabelle + Search/Availability/Geometry auf MGHN prüfen und Audit/History read-only verifizieren.
