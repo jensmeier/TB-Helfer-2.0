@@ -1193,3 +1193,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - REF-DATA-006-Code in GitHub vollständig auf Commit aef0624 (pre-pyproj) zurückgesetzt; neue Overview-Datei/Check entfernt.
 - DB und Survey-Daten nicht verändert.
 - Jetzt Synology-Source aktualisieren + gesichertes Alt-Image verwenden und zuerst Server-Runtime stabilisieren.
+
+## REF-DATA-006 – Rollback-Runtime Teilwiederherstellung 02.10.2026
+- API-Terminal wieder erreichbar.
+- Migrationen 19/19, pending=[] bestätigt.
+- Nächste Checks: health/ready, Worker/Monitor, Admin/Portal.
