@@ -1101,3 +1101,9 @@ Status: **SOURCE FERTIG / SYNLOGY-RUNTIME OFFEN**
 - Schutz: bei OPEN-Conflict, mehrfachen Source-Segmenten, Axis-Identity-Kollision oder destruktiver Änderung einer geteilten Achse wird 409 geliefert statt automatisch umgebaut.
 - Sourcechecks 112/115 auf neue Marker erweitert; GitHub Actions liefern weiterhin keinen brauchbaren Runner-Nachweis, daher Runtime-Test auf Synology Pflicht.
 - Für den aktuellen Testbestand bleibt der ausdrücklich gewünschte komplette staging-Reset erlaubt; danach Pasing + Gessertshausen frisch importieren und den neuen Korrekturfall absichtlich testen.
+
+## REF-DATA-005 – Überschreib-Warnung optisch stärker hervorheben 02.10.2026
+Status: **NEUE UI-ANFORDERUNG DOKUMENTIERT**
+- Nutzer bestätigt den neuen Korrekturworkflow, findet die Checkbox `Vorhandene identische Dateien bei abweichender Zuordnung aktualisieren` aber optisch zu unauffällig.
+- Die Bestätigungsbox soll deutlich als Warn-/Gefahrenbereich erkennbar sein, bevorzugt mit **rotem Rahmen** und klarer Warnwirkung, damit sie beim Scrollen nicht übersehen wird.
+- Funktionalität und Sicherheitslogik bleiben unverändert: standardmäßig aus, zusätzliche Browserbestätigung vor der Aktualisierung.
