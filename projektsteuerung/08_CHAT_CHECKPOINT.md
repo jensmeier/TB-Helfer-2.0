@@ -1163,3 +1163,7 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - requirements auf NAS korrekt mit pyproj 3.7.2.
 - Stop + Projekt Erstellen reicht nicht; API startet kurz und endet erneut mit fehlendem pyproj.
 - Nächster Weg im Container Manager: Projekt stoppen → lokales Image `tb-helfer-server-v1:local` entfernen → Projekt Erstellen, damit Image wirklich neu gebaut wird.
+
+## REF-DATA-006 – Synology-Projekt nach Bereinigung 02.10.2026
+- Sichtbar sind nur cloudflared, db und restore-test; api/worker/migrate/monitor fehlen.
+- GitHub-Compose passt dazu nicht. Nächster sicherer Schritt: Tab `YAML-Konfigurationen` öffnen und aktive Projekt-YAML prüfen, bevor noch etwas gelöscht/geändert wird.
