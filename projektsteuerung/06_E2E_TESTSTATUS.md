@@ -977,3 +977,11 @@ Status: **SOURCE-CHECK PASS / SYNLOGY-E2E OFFEN**
 - Kein Browser-E2E der neuen Ladezeit/Kennzahlen vorhanden.
 - Kein Handy→Server-E2E für `MANUAL_TRA_SECTION` vorhanden; Android setzt den neuen Vertrag noch nicht als First-Class-Sync um.
 - E2E-Gate: Summary read-only gegen laufende Synology → Dashboard/Übersicht → später Android FERTIG-Abschnitt → Server orange/Handy-KM → zweites Gerät.
+
+
+## REF-DATA-007 – Summary-Runtime PASS 02.10.2026
+- Synology/API-Terminal read-only: **PASS**.
+- `_coverage_summary_data()` liefert 39 Achsen / 40 aktive Segmente / 2 Betriebsstellen / 7 Strecken.
+- Längen: 128.911 km gesamt, 116.579 km belastbar/automatisch, 12.332 km ohne belastbare KM, 0 km manuell/Handy.
+- Segmentqualität: 12 AUTOMATISCH / 28 FEHLT / 0 UNPLAUSIBEL.
+- Dies bestätigt den Summary-Runtimepfad, aber noch **nicht** Dashboard-/Browser-E2E und noch **nicht** Android→Server-`MANUAL_TRA_SECTION`.
