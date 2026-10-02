@@ -897,3 +897,8 @@ Nach Image-Neubau/Deploy prüfen:
 6. Deutschland-Gesamtbutton setzt Zoom zurück;
 7. keine Original-/Katalogdaten werden durch die Übersicht verändert;
 8. unsupported_coordinate_count wird bei nicht transformierbaren Koordinaten sichtbar gemeldet.
+
+### REF-DATA-006 – Deployment BLOCKIERT 02.10.2026
+- API startet nach aktuellem Synology-Versuch nicht: `ModuleNotFoundError: pyproj`.
+- Quellstand/Dockerfile sind korrekt auf `pyproj==3.7.2` vorbereitet; Runtime-Image wurde noch nicht mit der neuen requirements-Datei gebaut.
+- Deutschlandübersicht-E2E bleibt **OFFEN**. Kein Testnachweis, solange API nicht mit neu gebautem Image läuft.
