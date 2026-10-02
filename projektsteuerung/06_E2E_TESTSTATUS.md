@@ -902,3 +902,9 @@ Nach Image-Neubau/Deploy prüfen:
 - API startet nach aktuellem Synology-Versuch nicht: `ModuleNotFoundError: pyproj`.
 - Quellstand/Dockerfile sind korrekt auf `pyproj==3.7.2` vorbereitet; Runtime-Image wurde noch nicht mit der neuen requirements-Datei gebaut.
 - Deutschlandübersicht-E2E bleibt **OFFEN**. Kein Testnachweis, solange API nicht mit neu gebautem Image läuft.
+
+### REF-DATA-006 – Zweiter Deploymentversuch weiterhin BLOCKIERT 02.10.2026
+- NAS requirements enthält `pyproj==3.7.2`.
+- Projekt Stop → Erstellen beendet Compose mit Exit Code 0, API stirbt dennoch wieder an `ModuleNotFoundError: pyproj`.
+- Schlussfolgerung: vorhandenes lokales Image wurde wiederverwendet; noch kein echter Image-Neubau.
+- E2E bleibt offen bis Image `tb-helfer-server-v1:local` gelöscht/neu gebaut und `import pyproj` im API-Container erfolgreich ist.
