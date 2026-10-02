@@ -968,3 +968,12 @@ Sourcecheck ist kein Runtime-/E2E-Nachweis.
 - Admin-Seite lädt, Coverage-Request endet im Browser mit NetworkError; KPI bleiben leer.
 - Runtime-Gate ist **NICHT BESTANDEN**.
 - Vor Patch direkte read-only Coverage-Ausführung im API-Terminal nötig, um Trace/Ursache zu sichern.
+
+
+## REF-DATA-007 – Trassenkennzahlen / Lazy-Übersicht
+Status: **SOURCE-CHECK PASS / SYNLOGY-E2E OFFEN**
+- GitHub-Source-Markercheck: 16/16 PASS für Summary-Endpunkt, Lazy-Flags, Detailgeometrie, neue KPIs und Dashboard-Loader.
+- Kein Synology-Runtime-Nachweis für `/api/v1/survey-catalog/coverage/summary` vorhanden.
+- Kein Browser-E2E der neuen Ladezeit/Kennzahlen vorhanden.
+- Kein Handy→Server-E2E für `MANUAL_TRA_SECTION` vorhanden; Android setzt den neuen Vertrag noch nicht als First-Class-Sync um.
+- E2E-Gate: Summary read-only gegen laufende Synology → Dashboard/Übersicht → später Android FERTIG-Abschnitt → Server orange/Handy-KM → zweites Gerät.
