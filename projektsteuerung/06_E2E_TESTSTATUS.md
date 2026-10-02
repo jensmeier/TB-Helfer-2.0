@@ -921,3 +921,9 @@ Nach Image-Neubau/Deploy prüfen:
 ### REF-DATA-006 – Rollback-Quellstand hergestellt / Runtime offen
 - pyproj-abhängiger Source entfernt; kein Runtime-Testnachweis daraus ableiten.
 - Jetzt Synology mit pre-pyproj Source + gesichertem Alt-Image starten und zuerst Health, Migrationen, Admin/Portal und Survey-Bestand prüfen.
+
+### REF-DATA-006 – Rollback-Recovery Teiltest BESTANDEN 02.10.2026
+- API-Terminal wieder erreichbar.
+- Migrationsstatus: 19/19, keine ausstehenden Migrationen.
+- Das bestätigt Quellstand/DB-Konsistenz, ist aber noch kein vollständiger Runtime-/E2E-Nachweis.
+- Offen: health/ready + Worker/Monitor + Admin/Portal-Kurztest.
