@@ -866,3 +866,13 @@ Pflichttest nach Deploy:
 - Änderungen auf `MGHN / Gessertshausen` im Audit nachvollziehbar.
 - `SURVEY_CATALOG_ASSIGNMENT_UPDATE` ebenfalls sichtbar.
 - Offen bleiben nur: gleiche Original-ID/SHA + keine zweite Rohdatei nachweisen sowie MGHN Search/Availability/Geometry.
+
+### REF-DATA-005 – Originalidentität/Eindeutigkeit BESTANDEN 02.10.2026
+- `updates=16`
+- `ids_exist=true`
+- `sha_same=true`
+- `raw_unique=true`
+- `station_mghn=true`
+Damit ist bestätigt: keine zweite Rohdatei/Originalzeile, bestehende IDs bleiben gültig und SHA256 bleibt unverändert.
+
+MGHN-Geometrie liefert 12 Segmente; Availability zeigt 0 Review-Segmente sowie KM-Qualität 10× FEHLT / 2× AUTOMATISCH. Vollständige Search-/Availability-Kopfwerte noch kompakt nachreichen.
