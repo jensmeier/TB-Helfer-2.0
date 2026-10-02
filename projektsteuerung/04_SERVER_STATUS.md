@@ -1180,3 +1180,10 @@ Status: **SOURCE FERTIG / SYNLOGY-RUNTIME OFFEN**
 - `server/requirements.txt`: `pyproj==3.7.2`.
 - Sourcecheck 117 ergänzt und die erwarteten Source-Marker gegen GitHub geprüft. Das ist kein Runtime-/Synology-E2E.
 - Keine DB-Migration erforderlich.
+
+## REF-DATA-006 – Synology-Startfehler pyproj 02.10.2026
+Status: **DEPLOYMENTFEHLER REPRODUZIERT / URSACHE EINGEGRENZT**
+- Synology Container Manager/API-Protokoll zeigt beim Start von `tb-helfer-v1-api-1`: `ModuleNotFoundError: No module named 'pyproj'` beim Import von `tbserver.survey_catalog`.
+- GitHub-Quellstand enthält `pyproj==3.7.2` in `server/requirements.txt`; `Dockerfile.v1` kopiert `requirements.txt` und führt `pip install --no-cache-dir -r requirements.txt` beim **Image-Build** aus.
+- Der Fehler beweist damit: der laufende/gestartete Container verwendet noch ein Image ohne die neue Abhängigkeit. Ein bloßer Container-Neustart kann `pyproj` nicht nachinstallieren.
+- Keine Code-/DB-Ursache und keine Migration erforderlich. Nächster Schritt: auf der Synology zuerst prüfen, dass die neue `server/requirements.txt` wirklich liegt, dann das Projekt/Image über Container Manager **neu bauen/erstellen**, nicht nur neu starten.
