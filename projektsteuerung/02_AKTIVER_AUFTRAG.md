@@ -2087,3 +2087,13 @@ Status: **KONZEPT PRÄZISIERT / WEITER VORSCHLAGSPHASE / KEINE BAUFREIGABE**
 - Klick auf Strecke oder Bahnhof soll ein überlagertes Fenster mit zugehörigen Daten und ggf. Bearbeitungsmöglichkeit öffnen. Benutzer bittet ausdrücklich um Einschätzung/weitere Vorschläge vor Umsetzung.
 - Zur Diskussion vorzulegen: breite Bestandsgrafik mit kompakter Suche; „Gesamter Bestand“ und „Auswahl einpassen“; gestufte Details nach Zoom; Mehrfachtreffer-Auswahl; großes Detailfenster mit Übersicht/Objekten/Originalen/Problemen/Historie und bewusstem Bearbeitungsmodus; manuelle KM über Auswahl von Abschnittsgrenzen auf vorhandener TRA plus Eingabe der KM-Anker/Richtung.
 - Vorschläge in voriger Zeile sind noch keine bestätigten Zusatzanforderungen. Keine Code-/NAS-/Android-Änderung; kein neuer Runtime-Test in diesem Abstimmungsblock.
+
+
+### SERVER-OPT-001 – Ablauf bestätigt; echtes Laden und Ladezeit Pflicht 02.10.2026
+- Benutzer bestätigt den zuletzt vorgeschlagenen Bedienablauf mit „okay“: bestandsbegrenzte Gesamtansicht, Zoomdetails, Auswahlfenster mit Bearbeitungsmodus und manuelle KM auf vorhandener Geometrie ohne GPS-Aufnahme.
+- Zusätzliche verbindliche Anforderung: prüfen, dass die Daten tatsächlich geladen/angezeigt werden und nicht unangemessen lange brauchen. Ein Source-Markercheck oder erfolgreicher Helper-Aufruf genügt nicht.
+- Erster Arbeitsblock: offenen Coverage-/Summary-HTTP-Pfad diagnostizieren; keine Fehlerursache erfinden. Danach bestätigtes Konzept schrittweise umsetzen, bestehende Schutz- und Zuständigkeitsregeln bleiben gültig.
+- Abnahme muss Gesamtansicht, sichtbare Übersichtslinien, Zoomdetails und Detailfenster umfassen. Erstaufruf und erneuten Aufruf getrennt messen; HTTP-Dauer, Antwortgröße und Zeit bis zur nutzbaren Darstellung dokumentieren. Zielwerte sind noch keine gemessenen Ergebnisse.
+- Fehler/Timeout/Sessionablauf müssen erkennbar sein; kein unbegrenztes Ladezeichen und keine scheinbar erfolgreiche leere Ansicht. Filter-/Auswahlwechsel dürfen keine veraltete Antwort anzeigen.
+- Prüfen mit aktuellem realen Bestand; größere synthetische Bestände nur isoliert/lokal. Kein produktiver Lasttest durch diese Bestätigung autorisiert.
+- Maßgeblicher Nachweis bleibt Synology plus Browser. Ohne authentifizierten Zugriff oder Messdaten bleibt dieser Teil ausdrücklich offen.
