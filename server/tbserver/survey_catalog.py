@@ -2429,6 +2429,288 @@ def _decimate(points: list[dict[str,Any]], max_points: int) -> list[dict[str,Any
     return result[:max_points]
 
 
+_DBREF_ZONE_SRIDS = {2: 5682, 3: 5683, 4: 5684, 5: 5685}
+
+
+def _dbref_srid_for_x(value: Any) -> int | None:
+    x = _num(value)
+    if x is None:
+        return None
+    zone = int(abs(x) // 1_000_000)
+    return _DBREF_ZONE_SRIDS.get(zone)
+
+
+def _postgis_transform_points(
+    cur,
+    points: list[tuple[float, float]],
+) -> list[tuple[float, float] | None]:
+    prepared: list[tuple[int, float, float, int]] = []
+    for index, (x, y) in enumerate(points):
+        srid = _dbref_srid_for_x(x)
+        if srid is not None:
+            prepared.append((index, float(x), float(y), srid))
+    result: list[tuple[float, float] | None] = [None] * len(points)
+    if not prepared:
+        return result
+
+    placeholders = ",".join(["(%s,%s,%s,%s)"] * len(prepared))
+    params: list[Any] = []
+    for row in prepared:
+        params.extend(row)
+    cur.execute(
+        f"""
+        SELECT ord,
+               ST_X(wgs84) AS lon,
+               ST_Y(wgs84) AS lat
+        FROM (
+            SELECT ord,
+                   ST_Transform(
+                       ST_SetSRID(ST_MakePoint(x_dbref,y_dbref),source_srid),
+                       4326
+                   ) AS wgs84
+            FROM (VALUES {placeholders}) AS v(ord,x_dbref,y_dbref,source_srid)
+        ) transformed
+        ORDER BY ord
+        """,
+        tuple(params),
+    )
+    for row in cur.fetchall():
+        lon, lat = _num(row["lon"]), _num(row["lat"])
+        if lon is None or lat is None:
+            continue
+        if not (5.0 <= lon <= 16.5 and 46.5 <= lat <= 56.0):
+            continue
+        result[int(row["ord"])] = (lon, lat)
+    return result
+
+
+def _postgis_transform_bbox(
+    cur,
+    bbox: tuple[float, float, float, float] | None,
+) -> dict[str, float] | None:
+    if bbox is None:
+        return None
+    min_x, min_y, max_x, max_y = bbox
+    transformed = _postgis_transform_points(
+        cur,
+        [
+            (min_x, min_y),
+            (min_x, max_y),
+            (max_x, min_y),
+            (max_x, max_y),
+            ((min_x + max_x) / 2.0, (min_y + max_y) / 2.0),
+        ],
+    )
+    corners = [row for row in transformed[:4] if row is not None]
+    center = transformed[4]
+    if not corners or center is None:
+        return None
+    return {
+        "min_lon": min(row[0] for row in corners),
+        "min_lat": min(row[1] for row in corners),
+        "max_lon": max(row[0] for row in corners),
+        "max_lat": max(row[1] for row in corners),
+        "center_lon": center[0],
+        "center_lat": center[1],
+    }
+
+
+@router.get("/coverage")
+def coverage(
+    _: dict[str, Any] = Depends(require_admin),
+) -> dict[str, Any]:
+    """Read-only Germany-wide summary for the admin survey overview.
+
+    DB_REF coordinates stay untouched in the catalog. PostGIS transforms only
+    the returned overview coordinates to WGS84.
+    """
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT a.*,
+                   (SELECT count(*)
+                    FROM tb.survey_catalog_segments s
+                    WHERE s.axis_id=a.id AND s.segment_status='ACTIVE') AS active_segment_count,
+                   (SELECT min(s.bbox_min_x)
+                    FROM tb.survey_catalog_segments s
+                    WHERE s.axis_id=a.id AND s.segment_status='ACTIVE') AS seg_min_x,
+                   (SELECT min(s.bbox_min_y)
+                    FROM tb.survey_catalog_segments s
+                    WHERE s.axis_id=a.id AND s.segment_status='ACTIVE') AS seg_min_y,
+                   (SELECT max(s.bbox_max_x)
+                    FROM tb.survey_catalog_segments s
+                    WHERE s.axis_id=a.id AND s.segment_status='ACTIVE') AS seg_max_x,
+                   (SELECT max(s.bbox_max_y)
+                    FROM tb.survey_catalog_segments s
+                    WHERE s.axis_id=a.id AND s.segment_status='ACTIVE') AS seg_max_y
+            FROM tb.survey_catalog_axes a
+            WHERE a.scope='GLOBAL'
+              AND a.status <> 'ARCHIVED'
+              AND EXISTS (
+                  SELECT 1
+                  FROM tb.survey_catalog_segments s
+                  WHERE s.axis_id=a.id AND s.segment_status='ACTIVE'
+              )
+            ORDER BY lower(a.station_name) NULLS LAST,
+                     a.route_number NULLS LAST,
+                     lower(a.display_name),
+                     a.id
+            """
+        )
+        axes = [dict(row) for row in cur.fetchall()]
+        items: list[dict[str, Any]] = []
+        quality_counts: dict[str, int] = {}
+        station_keys: set[str] = set()
+        route_keys: set[str] = set()
+        unsupported = 0
+
+        for axis in axes:
+            cur.execute(
+                """
+                SELECT *
+                FROM tb.survey_catalog_segments
+                WHERE axis_id=%s AND segment_status='ACTIVE'
+                ORDER BY created_at,id
+                """,
+                (axis["id"],),
+            )
+            segments = [dict(row) for row in cur.fetchall()]
+            quality = _axis_km_summary(cur, axis, segments)
+            status = str(quality.get("status") or "UNBEKANNT")
+            quality_counts[status] = quality_counts.get(status, 0) + 1
+
+            bbox_values = (
+                _num(axis.get("seg_min_x")),
+                _num(axis.get("seg_min_y")),
+                _num(axis.get("seg_max_x")),
+                _num(axis.get("seg_max_y")),
+            )
+            bbox = (
+                tuple(float(value) for value in bbox_values)
+                if all(value is not None for value in bbox_values)
+                else None
+            )
+            wgs84 = _postgis_transform_bbox(cur, bbox)
+            if wgs84 is None:
+                unsupported += 1
+
+            station_code = _clean(axis.get("station_code"))
+            station_name = _clean(axis.get("station_name"))
+            route_number = _clean(axis.get("route_number"))
+            if station_code or station_name:
+                station_keys.add(f"{station_code or ''}|{station_name or ''}")
+            if route_number:
+                route_keys.add(route_number)
+
+            items.append(
+                {
+                    "axis_id": str(axis["id"]),
+                    "display_name": axis.get("display_name"),
+                    "route_number": route_number,
+                    "station_code": station_code,
+                    "station_name": station_name,
+                    "track_key": _clean(axis.get("track_key")),
+                    "object_key": _clean(axis.get("object_key")),
+                    "axis_type": axis.get("axis_type"),
+                    "active_segment_count": int(axis.get("active_segment_count") or 0),
+                    "km_quality": _plain(quality),
+                    "wgs84": wgs84,
+                }
+            )
+
+    return {
+        "crs": "EPSG:4326",
+        "source_crs": "DB_REF / 3-degree Gauss-Kruger zones 2-5",
+        "axis_count": len(items),
+        "station_count": len(station_keys),
+        "route_count": len(route_keys),
+        "unsupported_axis_count": unsupported,
+        "quality_counts": quality_counts,
+        "axes": items,
+    }
+
+
+@router.get("/coverage/{axis_id}/geometry")
+def coverage_axis_geometry(
+    axis_id: UUID,
+    max_points_per_segment: int = Query(default=320, ge=40, le=1500),
+    _: dict[str, Any] = Depends(require_admin),
+) -> dict[str, Any]:
+    """Return one selected GLOBAL axis as WGS84 detail geometry."""
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT *
+            FROM tb.survey_catalog_axes
+            WHERE id=%s AND scope='GLOBAL' AND status <> 'ARCHIVED'
+            """,
+            (axis_id,),
+        )
+        found = cur.fetchone()
+        if not found:
+            raise HTTPException(404, "SURVEY_COVERAGE_AXIS_NOT_FOUND")
+        axis = dict(found)
+
+        cur.execute(
+            """
+            SELECT *
+            FROM tb.survey_catalog_segments
+            WHERE axis_id=%s AND segment_status='ACTIVE'
+            ORDER BY created_at,id
+            """,
+            (axis_id,),
+        )
+        segments = [dict(row) for row in cur.fetchall()]
+        context = _axis_km_context(cur, axis)
+        result: list[dict[str, Any]] = []
+        unsupported_points = 0
+
+        for segment in segments:
+            full_points = _segment_points(cur, segment)
+            decimated = _decimate(full_points, max_points_per_segment)
+            xy: list[tuple[float, float]] = []
+            for point in decimated:
+                x, y = _num(point.get("x_dbref")), _num(point.get("y_dbref"))
+                if x is not None and y is not None:
+                    xy.append((x, y))
+            transformed = _postgis_transform_points(cur, xy)
+            coords = [
+                [round(row[0], 7), round(row[1], 7)]
+                for row in transformed
+                if row is not None
+            ]
+            unsupported_points += len(transformed) - len(coords)
+            if len(coords) < 2:
+                continue
+            result.append(
+                {
+                    "segment_id": str(segment["id"]),
+                    "source_kind": segment.get("source_kind"),
+                    "km_quality": _plain(
+                        _segment_km_quality(cur, axis, segment, context, full_points)
+                    ),
+                    "coordinates": coords,
+                }
+            )
+
+    return {
+        "axis": {
+            "axis_id": str(axis["id"]),
+            "display_name": axis.get("display_name"),
+            "route_number": _clean(axis.get("route_number")),
+            "station_code": _clean(axis.get("station_code")),
+            "station_name": _clean(axis.get("station_name")),
+            "track_key": _clean(axis.get("track_key")),
+            "object_key": _clean(axis.get("object_key")),
+            "axis_type": axis.get("axis_type"),
+        },
+        "segments": result,
+        "segment_count": len(result),
+        "unsupported_point_count": unsupported_points,
+        "crs": "EPSG:4326",
+    }
+
+
 @router.get("/geometry")
 def geometry(route_number: str | None = Query(default=None,max_length=80),
              station_code: str | None = Query(default=None,max_length=50),
