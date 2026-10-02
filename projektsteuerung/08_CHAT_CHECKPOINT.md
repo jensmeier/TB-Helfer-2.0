@@ -1172,3 +1172,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Synology-Projekt nutzt eine erweiterte Compose-Datei mit restore-test-db, cloudflared, Live-Source-Mounts und API-Memory-Limit.
 - Diese Erweiterungen fehlen im aktuellen GitHub-Compose; nicht überschreiben.
 - Nur db/cloudflared/restore-test-db wurden nach Erstellen angelegt. Nächster sicherer Schritt: Build-/Projektprotokoll des Erstellvorgangs lesen; keine weiteren Löschungen.
+
+## REF-DATA-006 – Buildfenster nach Image-Löschung 02.10.2026
+- worker/monitor/migrate/api: Pulling → Warning sichtbar.
+- Noch kein echter Buildfehler; bei lokalem Image ist Pull-Warnung plausibel. Erst weitere Zeilen/Endstatus auswerten.
+- Vorgang laufen lassen, nichts weiter löschen.
