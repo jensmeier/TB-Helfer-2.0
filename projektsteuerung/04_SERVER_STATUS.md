@@ -1195,3 +1195,9 @@ Status: **RUNTIMEFEHLER BESTÄTIGT / NÄCHSTER SCHRITT IMAGE ERZWUNGEN NEU BAUEN
 - API beendet sich danach erneut mit `ModuleNotFoundError: No module named 'pyproj'`.
 - Damit ist ausgeschlossen, dass nur die requirements-Datei auf der NAS fehlt. Der Projekt-Neuerstellen-Vorgang hat das vorhandene Image `tb-helfer-server-v1:local` wiederverwendet statt die Dependency-Schicht neu zu bauen.
 - Kein Code-/DB-Umbau. Nächster Synology-Schritt: Projekt stoppen, vorhandenes lokales Server-Image im Container Manager entfernen und anschließend Projekt erneut Erstellen, damit Dockerfile.v1 + requirements.txt zwingend neu gebaut werden.
+
+## REF-DATA-006 – Lokales Image noch von gestoppten Containern referenziert 02.10.2026
+Status: **DEPLOYMENTBLOCKER WEITER EINGEGRENZT**
+- Container Manager verhindert das Löschen von `tb-helfer-server-v1:local`, weil es noch von `tb-helfer-v1-worker-1`, `tb-helfer-v1-api-1`, `tb-helfer-v1-migrate-1` und `tb-helfer-v1-monitor-1` referenziert wird.
+- Das Python-Basisimage `python:3.12-slim` ist bereits vorhanden; Python muss auf der Synology **nicht separat installiert** werden.
+- Nächster Schritt: die alten Projektcontainer entfernen/bereinigen, ohne DB-Volume/Projektdateien zu löschen; danach lokales Server-Image löschen und Projekt neu erstellen, damit Dockerfile.v1 die neue requirements-Datei wirklich installiert.
