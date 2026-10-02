@@ -1187,3 +1187,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Log bestätigt erneut `ModuleNotFoundError: pyproj` aus live gemountetem `survey_catalog.py`.
 - Alt-Image allein reicht wegen Live-Source-Mounts nicht.
 - Nächster Schritt: nur REF-DATA-006-Source auf pre-pyproj zurückrollen, DB unangetastet lassen, dann Runtime wieder hochfahren.
+
+## REF-DATA-006 – Rollback-Checkpoint 02.10.2026
+- API-Crash durch live gemounteten pyproj-Import bestätigt.
+- REF-DATA-006-Code in GitHub vollständig auf Commit aef0624 (pre-pyproj) zurückgesetzt; neue Overview-Datei/Check entfernt.
+- DB und Survey-Daten nicht verändert.
+- Jetzt Synology-Source aktualisieren + gesichertes Alt-Image verwenden und zuerst Server-Runtime stabilisieren.
