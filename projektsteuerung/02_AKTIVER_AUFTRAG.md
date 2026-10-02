@@ -2007,3 +2007,10 @@ Runtime-Diagnose 30.09.2026:
 - Ziel bleibt: grafische Deutschland-Gesamtansicht des vorhandenen Trassendatenbestands mit Suche nach Strecke, Bahnhof/Betriebsstelle, Gleis/Achse und W/WVB/Objekt.
 - Harte Randbedingung nach Rollback: keine neue ungetestete Runtime-Abhängigkeit in den laufenden Python-Server einführen; bestehende stabile Server-Runtime bleibt geschützt.
 - Zu prüfen: (A) vorhandenes PostGIS für DB_REF→WGS84 verwenden, (B) clientseitige lokale Projektion ohne Python-Abhängigkeit, (C) zunächst schematische Übersicht ohne echte Georeferenz. Empfehlung erst nach technischer Prüfung, noch keine Codeänderung.
+
+## REF-DATA-006 – Architekturentscheidung A / PostGIS 02.10.2026
+- Benutzer hat Variante **A** bestätigt.
+- Deutschlandübersicht soll die bereits laufende PostGIS-Datenbank für DB_REF→WGS84 verwenden; keine neue Python-/Image-Abhängigkeit wie pyproj.
+- Original- und Katalogdaten bleiben unverändert. Transformation erfolgt ausschließlich read-only für die Übersicht/API-Ausgabe.
+- Umsetzung bleibt zweistufig: deutschlandweite kompakte Abdeckung/Suche zuerst; Detailgeometrie erst bei Treffer/Zoom nachladen, damit der Pfad bei wachsendem Bestand skalierbar bleibt.
+- Vor Codeänderung ist ein read-only Runtime-Probe auf der Synology Pflicht: PostGIS-Version, vorhandene SRIDs 5682–5685/4326 und reale Transformation eines MGHN/MPB-Koordinatenpunkts prüfen. Erst bei plausibler Ausgabe bauen.
