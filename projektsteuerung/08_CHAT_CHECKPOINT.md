@@ -1290,3 +1290,11 @@ Die 30-Sekunden-Grenze beendet nur den separat gestarteten Diagnose-Pythonprozes
 - Lokal elf Tests PASS; Benchmark 20.001 Samples/200 GVP: 4,876853 s → 0,053314 s inkl. Aufbau, exakt gleiche Ergebnisse. Syntax und AST-Abgrenzung PASS.
 - Noch nicht auf Synology deployed. Nur survey_catalog.py per GitHub Desktop/File Station übernehmen, API neu starten; denselben begrenzten Helper-Test wiederholen, dann HTTP-/Browserprüfung. Kein erneutes httpx-/pyproj-Installieren.
 - Restlicher UI-/Bearbeiten-/Archiv-Umbau noch offen. Server→Portal→Android-Reihenfolge bleibt maßgeblich.
+
+
+## REF-DATA-007 – Benutzerrückmeldung zum Deployment 02.10.2026, 18:19 Europe/Berlin
+- Benutzer meldet nach der Anleitung für GitHub-Pull, Dateiübernahme, API-Neustart und Diagnosenachtest: „okay erledigt“.
+- Als Rückmeldung zur Durchführung gesichert; konkrete Schritte nicht einzeln belegt. Keine Terminalausgabe/Laufzeit und keine Browserantwort mitgeliefert.
+- Quellfix 687f77a33daaa100e10556300761e91ac717480f bleibt maßgeblich. Runtime-Datei: server/tbserver/survey_catalog.py.
+- Status: Durchführung vom Benutzer gemeldet / Runtime-Messwerte und HTTP-/Browser-Abnahme weiter OFFEN; kein Leistungs-PASS allein aus „erledigt“ ableiten.
+- Als Nächstes Ausgabe des bereits bereitgestellten Diagnosebefehls (SUMMARY_SEKUNDEN und Kennzahlen) sowie authentifizierten /coverage/summary-Aufruf prüfen.
