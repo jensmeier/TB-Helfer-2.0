@@ -1107,3 +1107,9 @@ Status: **NEUE UI-ANFORDERUNG DOKUMENTIERT**
 - Nutzer bestätigt den neuen Korrekturworkflow, findet die Checkbox `Vorhandene identische Dateien bei abweichender Zuordnung aktualisieren` aber optisch zu unauffällig.
 - Die Bestätigungsbox soll deutlich als Warn-/Gefahrenbereich erkennbar sein, bevorzugt mit **rotem Rahmen** und klarer Warnwirkung, damit sie beim Scrollen nicht übersehen wird.
 - Funktionalität und Sicherheitslogik bleiben unverändert: standardmäßig aus, zusätzliche Browserbestätigung vor der Aktualisierung.
+
+## REF-DATA-005 – Überschreib-Warnbox optisch hervorgehoben 02.10.2026
+Status: **SOURCE FERTIG / RUNTIME OFFEN**
+- Checkbox-Bereich `Vorhandene identische Dateien bei abweichender Zuordnung aktualisieren` erhält jetzt einen deutlich roten Warnrahmen, hellroten Hintergrund und rote Checkbox-Akzentfarbe.
+- Funktion und Schutzlogik unverändert: standardmäßig aus, zusätzlicher Browser-Bestätigungsdialog bleibt Pflicht.
+- Datei: `server/templates/v1_admin_survey_import.html`; Sourcecheck 115 um Warnbox-Styling ergänzt.
