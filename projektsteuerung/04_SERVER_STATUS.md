@@ -1339,9 +1339,11 @@ Status: **REPRODUZIERBARER FEHLER / NOCH KEINE CODEÄNDERUNG**
 - Keine weitere Änderung auf Verdacht. Nächster Schritt: Coverage-Funktion im API-Terminal direkt read-only ausführen und Trace/Ergebnis erfassen; erst danach gezielt korrigieren.
 
 
-## REF-DATA-006 – Coverage Traceback / Runtime↔GitHub-Mismatch 02.10.2026
-Status: **URSACHE WEITER EINGEGRENZT / NOCH KEINE CODEÄNDERUNG**
-- Direkte read-only Ausführung von `coverage({})` im API-Container bricht reproduzierbar mit `NameError: _normalize_object_type is not defined` ab.
-- Gleichzeitig enthält der aktuelle GitHub-HEAD `04f0117369426f6e16f294a1fde578e79e82be38` in `server/tbserver/survey_catalog.py` weder eine Definition noch einen Aufruf von `_normalize_object_type`.
-- Damit stimmt die aktuell laufende/gemountete Synology-`survey_catalog.py` nicht exakt mit dem GitHub-HEAD überein.
-- Schutzregel: keinen fehlenden Helper auf Verdacht in GitHub ergänzen. Zuerst den tatsächlich laufenden Source-Ausschnitt im API-Container mit GitHub abgleichen; danach nur die nachgewiesene Abweichung korrigieren.
+## REF-DATA-006 – Coverage Direktlauf erfolgreich / HTTP-Pfad weiter offen 02.10.2026
+Status: **PYTHON-FUNKTION BESTÄTIGT / HTTP-BROWSERPFAD NOCH FEHLERHAFT**
+- Direkte read-only Ausführung von `coverage({})` im API-Container läuft erfolgreich und liefert: `axis_count=39`, `station_count=2`, `route_count=7`, `unsupported_axis_count=0`.
+- Damit ist ein Fehler in der eigentlichen Coverage-Berechnung für diesen Lauf nicht reproduzierbar.
+- Der zuvor dokumentierte `NameError: _normalize_object_type is not defined` war für den aktuellen Nutzerlauf falsch und wird hiermit korrigiert.
+- Die Admin-Seite lädt weiterhin, während der Browser beim Coverage-Fetch `NetworkError when attempting to fetch resource` meldet.
+- Fehlerzone ist deshalb jetzt auf den HTTP-/Routing-/Response-/Browserpfad von `GET /api/v1/survey-catalog/coverage` eingegrenzt.
+- Schutzregel: noch keine Codeänderung. Nächster Schritt ist ein direkter HTTP-Aufruf des Coverage-Endpunkts aus dem API-Container bzw. gegen die laufende API, um Statuscode, Response und eventuellen Server-Trace zu erfassen.
