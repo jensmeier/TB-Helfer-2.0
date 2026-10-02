@@ -1370,3 +1370,26 @@ Status: **SOURCE FERTIG / NICHT DEPLOYT / SYNLOGY-RUNTIME OFFEN**
 - Source-Markercheck gegen aktuellen GitHub-Stand: 16/16 PASS. Das ist kein Runtime-/E2E-Nachweis.
 - Bestehender `manual-segments`-Merge enthält einen auffälligen SUPERSEDED-Pfad bei OVERLAP mit ORIGINAL_TRA; mangels Runtime-Reproduktion **nicht** auf Verdacht geändert. Vor Android-E2E gezielt testen.
 - Nächster Gate: drei Runtime-Dateien auf Synology übernehmen, API neu starten, `coverage/summary` bzw. Helper read-only prüfen und Dashboard/Trassendatenübersicht im Browser testen.
+
+
+## REF-DATA-007 – Synology-Runtime Summary bestätigt 02.10.2026
+Status: **DEPLOYT / SUMMARY-RUNTIME BESTÄTIGT / BROWSER-E2E OFFEN**
+- Read-only Lauf direkt im API-Container mit `_coverage_summary_data()` erfolgreich.
+- Runtime-Werte:
+  - Achsen: 39
+  - aktive Segmente: 40
+  - Betriebsstellen: 2
+  - Strecken: 7
+  - Gleise: 14
+  - Weichen: 4
+  - WVB: 7
+  - Trassenlänge gesamt: 128911.129 m
+  - belastbare KM: 116578.85 m
+  - automatisch: 116578.85 m
+  - manuell: 0 m
+  - davon Handy: 0 m
+  - ohne belastbare KM: 12332.28 m
+  - unplausibel: 0 m
+  - Segmentqualität: 12 AUTOMATISCH, 28 FEHLT
+- Ergebnis: Summary-Helper läuft auf Synology ohne Exception. Kein Hinweis auf DB-/PostGIS-/Migrationsfehler.
+- Noch offen: Browserprüfung Dashboard + Trassendatenübersicht inkl. Ladezeit/Lazy-Detail.
