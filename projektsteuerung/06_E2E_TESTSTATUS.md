@@ -954,3 +954,8 @@ Nach Deploy der Source-Dateien prüfen:
 7. Zoom/Pan und Deutschland-Reset funktionieren;
 8. keine Original-/Katalogdaten werden verändert.
 Sourcecheck ist kein Runtime-/E2E-Nachweis.
+
+### REF-DATA-006 – Korrektur „alle Achsen sichtbar“ Runtime offen
+- Source korrigiert: Gesamtansicht zeigt nicht mehr nur Center-/Stationspunkte, sondern vereinfachte Linien aller aktiven Achsen.
+- Nach Deploy prüfen: Pasing/MGHN-Achsen sind bereits ohne Einzelklick als Linien vorhanden; beim Zoomen trennen sich überlagerte Gleise/W/WVB soweit geometrisch möglich.
+- Detail-Lazy-Load bei Klick bleibt separat zu prüfen.
