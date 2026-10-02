@@ -1153,3 +1153,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Neue Admin-Gesamtansicht implementiert: lokale Deutschland-SVG, Coverage-API, DB_REF-Zonen 2–5 → WGS84, Suche und Qualitätsfarben.
 - Neue Python-Abhängigkeit pyproj; deshalb Synology-Image neu bauen, nicht nur Template kopieren.
 - Runtime/E2E noch offen.
+
+## REF-DATA-006 – Deploymentfehler pyproj 02.10.2026
+- API-Protokoll reproduziert `ModuleNotFoundError: No module named 'pyproj'`.
+- GitHub requirements + Dockerfile sind korrekt; Runtime läuft noch mit altem Image.
+- Nichts am Code/DB ändern. Auf Synology requirements prüfen und Image/Projekt neu bauen, nicht nur Container neu starten.
