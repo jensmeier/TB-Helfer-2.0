@@ -1324,3 +1324,9 @@ Status: **KORREKTUR SOURCE FERTIG / RUNTIME OFFEN**
 - Übersicht verwendet max. 28 Punkte pro Segment; vollständige Detailgeometrie bleibt Lazy-Load bei Auswahl.
 - Fallback-Punkt bleibt nur für Achsen, deren Übersichtslinie nicht erzeugt werden kann.
 - Keine neue Dependency, keine Migration, kein Image-Neubau.
+
+## REF-DATA-006 – Runtime nach „alle Achsen“-Korrektur nur teilweise passend 02.10.2026
+Status: **RUNTIME TEILWEISE FUNKTIONAL / DARSTELLUNG NOCH NICHT BESTÄTIGT**
+- Benutzer meldet nach Deploy der vereinfachten Achslinien: „funktioniert irgendwie, aber nicht so richtig“.
+- Damit ist bestätigt: der neue Pfad läuft grundsätzlich, die Darstellung/Bedienung entspricht aber noch nicht zuverlässig der gewünschten Gesamtübersicht.
+- Keine weitere Codeänderung auf Verdacht. Vor dem nächsten Patch müssen Screenshot/Gesamtansicht und die konkret falschen Punkte (Linien, Deutschlandumriss, Zoom, Beschriftung, Suche, Farben oder Auswahl) eingegrenzt werden.
