@@ -941,3 +941,16 @@ Nach Image-Neubau/Deploy prüfen:
 - Nutzer bestätigt übrige Dienste/Portal als laufend.
 - Ergebnis: **Server-Runtime nach Rollback BESTÄTIGT**.
 - Nicht getestet/noch offen: die zurückgerollte Deutschlandübersicht selbst; sie ist derzeit nicht Teil des aktiven Source.
+
+### REF-DATA-006 – PostGIS-Deutschlandübersicht Runtime-Gate
+Source: **FERTIG**, Runtime: **OFFEN**.
+Nach Deploy der Source-Dateien prüfen:
+1. /health/ready bleibt status=ok/database=up/migrations=ok;
+2. /admin/v1/survey-overview öffnet ohne Fehler;
+3. Coverage-API zeigt MPB/Pasing und MGHN/Gessertshausen geografisch plausibel;
+4. Suche nach 5302, Gessertshausen, MPB, 302 und WVB 14-22 findet passende Achsen;
+5. Auswahl lädt erst dann Detailgeometrie nach;
+6. Gl 302/303 MGHN erscheinen GRÜN, W/WVB ohne KM ROT; manuelle KM später ORANGE;
+7. Zoom/Pan und Deutschland-Reset funktionieren;
+8. keine Original-/Katalogdaten werden verändert.
+Sourcecheck ist kein Runtime-/E2E-Nachweis.
