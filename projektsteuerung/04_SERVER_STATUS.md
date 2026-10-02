@@ -1152,3 +1152,10 @@ Status: **NEUE FACHANFORDERUNG DOKUMENTIERT / ANALYSE VOR UMSETZUNG**
 - Darstellung soll vorhandene Datenbestände und deren Qualität unterscheiden (automatisch belastbare KM = grün, manuell ergänzt = orange, Geometrie ohne belastbare KM = rot, Objekt ohne Geometrie = grau; bestehende Projektfarbregeln bleiben verbindlich).
 - Vor Implementierung prüfen, welche belastbaren geographischen Koordinaten/Referenzpunkte im aktuellen Serverbestand für eine echte Deutschlandkarte vorhanden sind. Keine scheinpräzise Deutschlandkarte aus lokalen/unklaren Vermessungskoordinaten ableiten.
 - Bestehende Import-/Katalog-Detailgrafik bleibt erhalten; die Gesamtansicht ist eine zusätzliche Admin-Übersicht.
+
+## REF-DATA-006 – MGHN KM-Qualität sichtbarer Teil 02.10.2026
+Status: **TEILNACHWEIS / AUTOMATISCH-2 NOCH NICHT IM BILD**
+- Nutzer-Screenshot der achsweisen Geometry/KM-Ausgabe zeigt für die sichtbaren W/WVB-Achsen in Gessertshausen durchgehend `status=FEHLT`, `color=ROT`, Quelle leer und Begründung `Keine belastbare automatische oder manuelle KM-Quelle für dieses Segment.`.
+- Das passt fachlich für W/WVB ohne eigene belastbare KM-Quelle und ist kein Fehler.
+- Die zuvor von Availability bestätigten zwei `AUTOMATISCH`-Segmente sind im Screenshot nicht sichtbar; daher ihre Identität noch nicht fest behaupten.
+- Nächster Schritt: Ausgabe auf `km_quality.status=AUTOMATISCH` filtern und anschließend Koordinaten-/BBox-Werte MPB vs. MGHN read-only prüfen, bevor die Deutschland-Gesamtansicht kartografisch umgesetzt wird.
