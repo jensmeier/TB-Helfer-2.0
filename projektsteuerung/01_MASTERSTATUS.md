@@ -1157,3 +1157,8 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 - UI: Deutschlandumriss, Farblogik GRÜN/ORANGE/ROT/GRAU, Suche nach Strecke/Bahnhof/Gleis/Objekt, Trefferliste, Klick-Fokus/Zoom, Betriebsstellenmarker und Detailbox.
 - Deutschlandumriss wird lokal als SVG gerendert; kein externer Kartendienst zur Laufzeit erforderlich.
 - Neue Abhängigkeit `pyproj==3.7.2`; Container-Image muss deshalb neu gebaut werden.
+
+## REF-DATA-006 – Deutschlandübersicht vorerst zurückgerollt 02.10.2026
+- Wegen reproduzierbarem API-Startabbruch durch fehlendes pyproj wurde die neue Deutschlandübersicht vollständig aus dem aktiven Runtime-Source zurückgenommen.
+- Server-Source steht wieder auf dem bestätigten pre-pyproj-Stand; Datenbank/Migrationen/Survey-Daten wurden nicht verändert.
+- REF-DATA-006 bleibt fachlich gewünscht, aber Umsetzung erst nach stabiler Server-Runtime und neuem Deploy-Konzept.
