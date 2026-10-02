@@ -1177,3 +1177,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - worker/monitor/migrate/api: Pulling → Warning sichtbar.
 - Noch kein echter Buildfehler; bei lokalem Image ist Pull-Warnung plausibel. Erst weitere Zeilen/Endstatus auswerten.
 - Vorgang laufen lassen, nichts weiter löschen.
+
+## REF-DATA-006 – Rollbackreserve vorhanden 02.10.2026
+- Nutzer hat das alte funktionierende Server-Image gesichert.
+- Wegen Live-Source-Mounts ist für echten Rollback zusätzlich der passende alte Server-Source nötig; altes Image allein würde mit aktuellem pyproj-importierenden Source erneut scheitern.
+- Alt-Image unbedingt unverändert aufbewahren.
