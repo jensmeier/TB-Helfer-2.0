@@ -1159,3 +1159,13 @@ Status: **TEILNACHWEIS / AUTOMATISCH-2 NOCH NICHT IM BILD**
 - Das passt fachlich für W/WVB ohne eigene belastbare KM-Quelle und ist kein Fehler.
 - Die zuvor von Availability bestätigten zwei `AUTOMATISCH`-Segmente sind im Screenshot nicht sichtbar; daher ihre Identität noch nicht fest behaupten.
 - Nächster Schritt: Ausgabe auf `km_quality.status=AUTOMATISCH` filtern und anschließend Koordinaten-/BBox-Werte MPB vs. MGHN read-only prüfen, bevor die Deutschland-Gesamtansicht kartografisch umgesetzt wird.
+
+## REF-DATA-006 – MGHN KM + Koordinatenbasis bestätigt 02.10.2026
+Status: **VORBEDINGUNGEN FÜR GESAMTANSICHT BESTÄTIGT**
+- Gefilterter Runtime-Nachweis zeigt exakt die zwei automatischen Gessertshausen-Segmente:
+  - `Gl 302 · Gessertshausen`, Strecke 5302, Gleis 302 → `AUTOMATISCH / GRUEN / GRA_KM`, ca. km 14.800–19.057.
+  - `Gl 303 · Gessertshausen`, Strecke 5302, Gleis 303 → `AUTOMATISCH / GRUEN / GRA_KM`, ca. km 14.641–19.145.
+- Runtime-BBox: MGHN ca. X 4,403,653–4,409,717 / Y 5,355,846–5,358,574 (12 Achsen); MPB ca. X 4,457,812–4,458,912 / Y 5,335,231–5,336,086 (13 Achsen).
+- Parservertrag kennzeichnet TRA/GRA als `DB_REF2016_4`. Die X-Werte liegen konsistent im 4-Millionen-Meridianstreifen.
+- Öffentliche DB/EPSG-Referenz bestätigt horizontal DB_REF / 3-degree Gauß-Krüger Zone 4 = EPSG:5684; DB_REF2016 compound Zone 4 = EPSG:9934. Damit kann für die Deutschlandübersicht serverseitig belastbar nach WGS84 transformiert werden.
+- Umsetzung darf jetzt beginnen; für künftige deutschlandweite Daten müssen DB_REF-Zonen 2–5 unterstützt werden, nicht nur Zone 4.
