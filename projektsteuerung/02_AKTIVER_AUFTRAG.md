@@ -2175,3 +2175,9 @@ Status: **30-S-TIMEOUT IM DIREKTEN HELPER REPRODUZIERT / GEZIELTER PERFORMANCEFI
 - Benutzer fragt nach W:107W, Speicherung/Android-Transport, realem Weichenanfang/-ende und Stammgleis/Abzweig; Auftrag: Erklärung und weiter.
 - Zuerst aktuellen Import-/Objektidentitäts-/Geometrie-/Android-Vertrag lesen; Quellachsenlänge nicht als nachgewiesene physische Weichenlänge darstellen. Keine Nummernkürzung oder Stamm-/Abzweigzuordnung ohne belastbare Originaldaten.
 - Anschließend beauftragte Kartenverwaltung fortführen; Server/Portal zuerst, Android bleibt unverändert.
+
+
+## REF-DATA-008 – Originaldialog belegt / Verwaltung fortsetzen (02.10.2026 20:48 Europe/Berlin)
+- Benutzer liefert Übersicht, Abschnitte, Originaldateien und Historie für W:107W / MGHN. Quelle sichtbar: SW_107W_GGP_x1_ER0.TRA, TRA, 624 Bytes; ein aktiver Originalabschnitt, Achsposition 0 bis 55.840975 m, Achsversion 3. Historie zeigt Abschnittsanlage und spätere MGHN-/Gessertshausen-Zuordnung. Kein Rohdateiinhalt übergeben, keine Stamm-/Abzweig- oder baulichen Grenzbelege.
+- Diese lesenden Detailtabs funktionieren im gezeigten Benutzerfall. Screenshot zeigt noch den Stand ohne neue Weichenhinweise; deren Deployment nicht behaupten.
+- Benutzer „weiter“: vorhandenen freigegebenen Bearbeitungs-/Archivweg prüfen und weiter umsetzen. Originale, Geometrie und bestätigte Karte bleiben geschützt; Änderungen nur bewusst, mit Versionsschutz/Historie und ohne stilles Mitlöschen.
