@@ -933,3 +933,11 @@ Nach Image-Neubau/Deploy prüfen:
 - Migrationsstatus: 19/19, keine ausstehenden Migrationen.
 - Das bestätigt Quellstand/DB-Konsistenz, ist aber noch kein vollständiger Runtime-/E2E-Nachweis.
 - Offen: health/ready + Worker/Monitor + Admin/Portal-Kurztest.
+
+### REF-DATA-006 – Rollback-Recovery BESTÄTIGT 02.10.2026
+- API-Terminal erreichbar.
+- Migrationen 19/19, pending=[].
+- Health-Check: status=ok, database=up, migrations=ok, server_version=1.0.0-dev.
+- Nutzer bestätigt übrige Dienste/Portal als laufend.
+- Ergebnis: **Server-Runtime nach Rollback BESTÄTIGT**.
+- Nicht getestet/noch offen: die zurückgerollte Deutschlandübersicht selbst; sie ist derzeit nicht Teil des aktiven Source.
