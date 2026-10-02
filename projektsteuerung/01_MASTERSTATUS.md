@@ -1148,3 +1148,12 @@ Status: **ANFORDERUNG GESICHERT / NACH MGHN-KM-GATE**
 - Gessertshausen: die 2 automatischen KM-Achsen sind Gl 302 und Gl 303, Quelle jeweils `GRA_KM`.
 - MPB/MGHN liegen in DB_REF2016 Zone 4; EPSG:5684 ist als horizontales Projektionssystem verifiziert.
 - Deutschlandübersicht kann nun als echte WGS84-basierte Übersicht umgesetzt werden. Für bundesweite Zukunftsdaten Zonen 2/3/4/5 berücksichtigen.
+
+## REF-DATA-006 – Deutschlandweite Trassendatenübersicht SOURCE 02.10.2026
+Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
+- Neue Admin-Seite `/admin/v1/survey-overview` und Navigation `Trassendatenübersicht` gebaut.
+- Neue read-only API `GET /api/v1/survey-catalog/coverage` liefert aktive GLOBAL-Segmente, Suchmetadaten, KM-Qualität und für die Übersicht nach WGS84 transformierte Linien.
+- DB_REF-Zonen 2–5 werden anhand des Rechtswert-Millionenstreifens auf EPSG 5682/5683/5684/5685 abgebildet; Originalkoordinaten in DB/Katalog bleiben unverändert.
+- UI: Deutschlandumriss, Farblogik GRÜN/ORANGE/ROT/GRAU, Suche nach Strecke/Bahnhof/Gleis/Objekt, Trefferliste, Klick-Fokus/Zoom, Betriebsstellenmarker und Detailbox.
+- Deutschlandumriss wird lokal als SVG gerendert; kein externer Kartendienst zur Laufzeit erforderlich.
+- Neue Abhängigkeit `pyproj==3.7.2`; Container-Image muss deshalb neu gebaut werden.
