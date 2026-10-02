@@ -31,5 +31,5 @@ Stand: 2026-09-26
 | DOC-001 | P1 | STEUERUNG | neue Struktur lokal nach Pull verifizieren | alte Top-Level-Ordner müssen weg sein |
 
 | REF-DATA-005 | P2 | SERVER/PORTAL | Fachlicher Korrekturworkflow BESTÄTIGT: Warnung→Bestätigung→AKTUALISIERT, IDs/SHA/Raw eindeutig, Audit vorhanden, Search/Availability/Geometry MGHN korrekt (12 Achsen/12 Segmente/0 Review) | Nur roten Warnrahmen nach letztem Template-Deploy visuell bestätigen; danach Punkt vollständig schließen |
-| REF-DATA-006 | P1 | SERVER/PORTAL | Deutschlandübersicht fachlich gewünscht, aber pyproj-Implementierung nach API-Crash vollständig aus aktivem Source zurückgerollt | Synology auf pre-pyproj Source + gesichertem Alt-Image stabilisieren und Runtime prüfen; danach neue deployment-sichere Deutschlandübersicht planen |
+| REF-DATA-006 | P1 | SERVER/PORTAL | pyproj-Implementierung zurückgerollt; API-Terminal läuft wieder und Migrationen sind 19/19 ohne pending | health/ready + Worker/Monitor + Admin/Portal kurz prüfen; danach Runtime als stabil markieren und Deutschlandübersicht später deployment-sicher neu planen |
 Keine bestätigten Punkte wieder als offen anlegen.
