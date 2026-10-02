@@ -2515,8 +2515,202 @@ def _postgis_transform_bbox(
     }
 
 
+def _segment_physical_length_m(
+    cur,
+    segment: dict[str, Any],
+    points: list[dict[str, Any]] | None = None,
+) -> float:
+    """Return the best available physical segment length in metres."""
+    start = _num(segment.get("station_from_m"))
+    end = _num(segment.get("station_to_m"))
+    if start is not None and end is not None and abs(end - start) > 0.0001:
+        return abs(end - start)
+
+    rows = points if points is not None else _segment_points(cur, segment)
+    total = 0.0
+    previous: tuple[float, float] | None = None
+    for row in rows:
+        x = _num(row.get("x_dbref"))
+        y = _num(row.get("y_dbref"))
+        if x is None or y is None:
+            continue
+        current = (x, y)
+        if previous is not None:
+            total += math.hypot(current[0] - previous[0], current[1] - previous[1])
+        previous = current
+    return total
+
+
+def _coverage_summary_data() -> dict[str, Any]:
+    """Global admin summary without WGS84 overview geometry."""
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT a.*
+            FROM tb.survey_catalog_axes a
+            WHERE a.scope='GLOBAL'
+              AND a.status <> 'ARCHIVED'
+              AND EXISTS (
+                  SELECT 1
+                  FROM tb.survey_catalog_segments s
+                  WHERE s.axis_id=a.id AND s.segment_status='ACTIVE'
+              )
+            ORDER BY a.id
+            """
+        )
+        axes = [dict(row) for row in cur.fetchall()]
+
+        station_keys: set[str] = set()
+        route_keys: set[str] = set()
+        track_count = 0
+        switch_count = 0
+        wvb_count = 0
+        active_segment_count = 0
+        quality_counts: dict[str, int] = {}
+        lengths = {
+            "AUTOMATISCH": 0.0,
+            "MANUELL": 0.0,
+            "FEHLT": 0.0,
+            "UNPLAUSIBEL": 0.0,
+            "SONSTIG": 0.0,
+        }
+        manual_mobile_length_m = 0.0
+        total_length_m = 0.0
+
+        for axis in axes:
+            station_code = _clean(axis.get("station_code"))
+            station_name = _clean(axis.get("station_name"))
+            route_number = _clean(axis.get("route_number"))
+            axis_type = str(axis.get("axis_type") or "").upper()
+            if station_code or station_name:
+                station_keys.add(f"{station_code or ''}|{station_name or ''}")
+            if route_number:
+                route_keys.add(route_number)
+            if axis_type == "GLEIS":
+                track_count += 1
+            elif axis_type == "WEICHE":
+                switch_count += 1
+            elif axis_type == "WEICHENVERBINDUNG":
+                wvb_count += 1
+
+            cur.execute(
+                """
+                SELECT *
+                FROM tb.survey_catalog_segments
+                WHERE axis_id=%s AND segment_status='ACTIVE'
+                ORDER BY created_at,id
+                """,
+                (axis["id"],),
+            )
+            segments = [dict(row) for row in cur.fetchall()]
+            active_segment_count += len(segments)
+            if not segments:
+                continue
+
+            context = _axis_km_context(cur, axis)
+            rows: list[dict[str, Any]] = []
+            for segment in segments:
+                length_m = _segment_physical_length_m(cur, segment)
+                quality = _segment_km_quality(cur, axis, segment, context)
+                status = str(quality.get("status") or "SONSTIG").upper()
+                rows.append(
+                    {
+                        "segment": segment,
+                        "length_m": max(0.0, float(length_m)),
+                        "status": status,
+                    }
+                )
+                quality_counts[status] = quality_counts.get(status, 0) + 1
+
+            base_rows = [
+                row for row in rows
+                if row["segment"].get("source_kind") != "MANUAL_TRA_SECTION"
+            ]
+            manual_rows = [
+                row for row in rows
+                if row["segment"].get("source_kind") == "MANUAL_TRA_SECTION"
+            ]
+            remaining_by_segment: dict[str, float] = {}
+            status_by_segment: dict[str, str] = {}
+
+            for row in base_rows:
+                segment = row["segment"]
+                key = str(segment["id"])
+                length_m = row["length_m"]
+                status = row["status"] if row["status"] in lengths else "SONSTIG"
+                total_length_m += length_m
+                lengths[status] += length_m
+                remaining_by_segment[key] = length_m
+                status_by_segment[key] = status
+
+            for row in manual_rows:
+                segment = row["segment"]
+                manual_length = row["length_m"]
+                matched_key: str | None = None
+                source_original_id = segment.get("source_original_id")
+                if source_original_id is not None:
+                    for base in base_rows:
+                        if base["segment"].get("source_original_id") == source_original_id:
+                            matched_key = str(base["segment"]["id"])
+                            break
+
+                overlay_length = manual_length
+                if matched_key is not None:
+                    available = remaining_by_segment.get(matched_key, 0.0)
+                    overlay_length = min(manual_length, available)
+                    previous_status = status_by_segment.get(matched_key, "SONSTIG")
+                    lengths[previous_status] = max(
+                        0.0, lengths[previous_status] - overlay_length
+                    )
+                    remaining_by_segment[matched_key] = max(0.0, available - overlay_length)
+                else:
+                    total_length_m += manual_length
+
+                lengths["MANUELL"] += overlay_length
+                metadata = (
+                    segment.get("metadata")
+                    if isinstance(segment.get("metadata"), dict)
+                    else {}
+                )
+                if str(metadata.get("origin") or "").upper() == "ANDROID":
+                    manual_mobile_length_m += overlay_length
+
+        known_length_m = lengths["AUTOMATISCH"] + lengths["MANUELL"]
+        without_km_length_m = (
+            lengths["FEHLT"] + lengths["UNPLAUSIBEL"] + lengths["SONSTIG"]
+        )
+        return {
+            "axis_count": len(axes),
+            "active_segment_count": active_segment_count,
+            "station_count": len(station_keys),
+            "route_count": len(route_keys),
+            "track_count": track_count,
+            "switch_count": switch_count,
+            "wvb_count": wvb_count,
+            "total_length_m": round(total_length_m, 3),
+            "known_km_length_m": round(known_length_m, 3),
+            "automatic_km_length_m": round(lengths["AUTOMATISCH"], 3),
+            "manual_km_length_m": round(lengths["MANUELL"], 3),
+            "manual_mobile_length_m": round(manual_mobile_length_m, 3),
+            "without_km_length_m": round(without_km_length_m, 3),
+            "unplausible_length_m": round(lengths["UNPLAUSIBEL"], 3),
+            "quality_counts": quality_counts,
+            "length_method": "ACTIVE_SEGMENT_STATION_OR_GEOMETRY",
+            "parallel_tracks_count_separately": True,
+        }
+
+
+@router.get("/coverage/summary")
+def coverage_summary(
+    _: dict[str, Any] = Depends(require_admin),
+) -> dict[str, Any]:
+    return _coverage_summary_data()
+
+
 @router.get("/coverage")
 def coverage(
+    include_overview: bool = Query(default=False),
+    include_quality: bool = Query(default=False),
     _: dict[str, Any] = Depends(require_admin),
 ) -> dict[str, Any]:
     """Read-only Germany-wide summary for the admin survey overview.
@@ -2575,45 +2769,54 @@ def coverage(
                 (axis["id"],),
             )
             segments = [dict(row) for row in cur.fetchall()]
-            quality = _axis_km_summary(cur, axis, segments)
-            status = str(quality.get("status") or "UNBEKANNT")
-            quality_counts[status] = quality_counts.get(status, 0) + 1
+            if include_quality or include_overview:
+                quality = _axis_km_summary(cur, axis, segments)
+                status = str(quality.get("status") or "UNBEKANNT")
+                quality_counts[status] = quality_counts.get(status, 0) + 1
+            else:
+                quality = {
+                    "status": "DETAIL_BEI_AUSWAHL",
+                    "color": "GRAU",
+                    "data_kinds": [],
+                    "segments": [],
+                }
+                status = "DETAIL_BEI_AUSWAHL"
 
-            # Germany overview: keep every active axis visible as a lightweight
-            # line. Only a few points per segment are transformed here; the
-            # full detail geometry is still loaded lazily after selection.
-            segment_quality = {
-                str(row.get("segment_id")): row
-                for row in (quality.get("segments") or [])
-                if row.get("segment_id")
-            }
+            # Default coverage stays light. Simplified lines are optional;
+            # complete geometry is always loaded only after an axis selection.
             overview_segments: list[dict[str, Any]] = []
-            for segment in segments:
-                full_points = _segment_points(cur, segment)
-                simplified = _decimate(full_points, 28)
-                xy: list[tuple[float, float]] = []
-                for point in simplified:
-                    x = _num(point.get("x_dbref"))
-                    y = _num(point.get("y_dbref"))
-                    if x is not None and y is not None:
-                        xy.append((x, y))
-                transformed = _postgis_transform_points(cur, xy)
-                coords = [
-                    [round(point[0], 7), round(point[1], 7)]
-                    for point in transformed
-                    if point is not None
-                ]
-                if len(coords) >= 2:
-                    overview_segments.append(
-                        {
-                            "segment_id": str(segment["id"]),
-                            "coordinates": coords,
-                            "km_quality": _plain(
-                                segment_quality.get(str(segment["id"]))
-                                or {"status": status, "color": quality.get("color")}
-                            ),
-                        }
-                    )
+            if include_overview:
+                segment_quality = {
+                    str(row.get("segment_id")): row
+                    for row in (quality.get("segments") or [])
+                    if row.get("segment_id")
+                }
+                for segment in segments:
+                    full_points = _segment_points(cur, segment)
+                    simplified = _decimate(full_points, 28)
+                    xy: list[tuple[float, float]] = []
+                    for point in simplified:
+                        x = _num(point.get("x_dbref"))
+                        y = _num(point.get("y_dbref"))
+                        if x is not None and y is not None:
+                            xy.append((x, y))
+                    transformed = _postgis_transform_points(cur, xy)
+                    coords = [
+                        [round(point[0], 7), round(point[1], 7)]
+                        for point in transformed
+                        if point is not None
+                    ]
+                    if len(coords) >= 2:
+                        overview_segments.append(
+                            {
+                                "segment_id": str(segment["id"]),
+                                "coordinates": coords,
+                                "km_quality": _plain(
+                                    segment_quality.get(str(segment["id"]))
+                                    or {"status": status, "color": quality.get("color")}
+                                ),
+                            }
+                        )
 
             bbox_values = (
                 _num(axis.get("seg_min_x")),
@@ -2663,6 +2866,8 @@ def coverage(
         "route_count": len(route_keys),
         "unsupported_axis_count": unsupported,
         "quality_counts": quality_counts,
+        "overview_included": include_overview,
+        "quality_included": include_quality or include_overview,
         "axes": items,
     }
 
