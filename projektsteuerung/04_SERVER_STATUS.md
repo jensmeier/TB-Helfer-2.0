@@ -1330,3 +1330,10 @@ Status: **RUNTIME TEILWEISE FUNKTIONAL / DARSTELLUNG NOCH NICHT BESTÄTIGT**
 - Benutzer meldet nach Deploy der vereinfachten Achslinien: „funktioniert irgendwie, aber nicht so richtig“.
 - Damit ist bestätigt: der neue Pfad läuft grundsätzlich, die Darstellung/Bedienung entspricht aber noch nicht zuverlässig der gewünschten Gesamtübersicht.
 - Keine weitere Codeänderung auf Verdacht. Vor dem nächsten Patch müssen Screenshot/Gesamtansicht und die konkret falschen Punkte (Linien, Deutschlandumriss, Zoom, Beschriftung, Suche, Farben oder Auswahl) eingegrenzt werden.
+
+## REF-DATA-006 – Coverage-API Runtimefehler nach Linien-Patch 02.10.2026
+Status: **REPRODUZIERBARER FEHLER / NOCH KEINE CODEÄNDERUNG**
+- Neuer Screenshot zeigt auf /admin/v1/survey-overview: `Gesamtansicht konnte nicht geladen werden: NetworkError when attempting to fetch resource.`
+- KPI-Kacheln bleiben leer; damit kommt die Summary-Response von `GET /api/v1/survey-catalog/coverage` nicht beim Browser an.
+- HTML/Admin-Seite selbst lädt, daher ist die Fehlerzone auf Coverage-Request/API-Runtime eingegrenzt.
+- Keine weitere Änderung auf Verdacht. Nächster Schritt: Coverage-Funktion im API-Terminal direkt read-only ausführen und Trace/Ergebnis erfassen; erst danach gezielt korrigieren.
