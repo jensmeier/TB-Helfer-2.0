@@ -27,6 +27,8 @@ for token in (
     "overwrite_existing:overwrite",
     "VORHANDEN_ABWEICHEND",
     "Vorhandene identische Dateien bei abweichender Zuordnung aktualisieren",
+    'class="info-box overwrite-warning"',
+    ".overwrite-warning{border:2px solid #d92d20",
 ):
     assert token in template, token
 
