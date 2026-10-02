@@ -885,3 +885,15 @@ MGHN-Geometrie liefert 12 Segmente; Availability zeigt 0 Review-Segmente sowie K
 - Audit/History: Original- und Katalog-Aktualisierung nachgewiesen.
 - Fachfunktion damit **BESTANDEN**.
 - Nur kosmetischer Runtime-Nachweis des roten Warnrahmens bleibt offen; keine fachliche Blockade.
+
+### REF-DATA-006 – Deutschlandübersicht Runtime-Gate
+Source: **FERTIG**, Runtime: **OFFEN**.
+Nach Image-Neubau/Deploy prüfen:
+1. `/admin/v1/survey-overview` öffnet ohne Fehler;
+2. Coverage-API liefert MPB und MGHN als WGS84-Geometrie;
+3. Pasing und Gessertshausen erscheinen geografisch plausibel an unterschiedlichen Positionen in Bayern;
+4. Suche nach `5302`, `Gessertshausen`, `MPB`, `302`, `WVB 14-22` findet/fokussiert Treffer;
+5. Gl 302/303 in Gessertshausen erscheinen GRÜN, W/WVB ohne KM ROT; Pasing-TRA ohne belastbare KM ROT;
+6. Deutschland-Gesamtbutton setzt Zoom zurück;
+7. keine Original-/Katalogdaten werden durch die Übersicht verändert;
+8. unsupported_coordinate_count wird bei nicht transformierbaren Koordinaten sichtbar gemeldet.
