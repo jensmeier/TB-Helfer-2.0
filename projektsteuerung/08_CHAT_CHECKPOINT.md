@@ -1158,3 +1158,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - API-Protokoll reproduziert `ModuleNotFoundError: No module named 'pyproj'`.
 - GitHub requirements + Dockerfile sind korrekt; Runtime läuft noch mit altem Image.
 - Nichts am Code/DB ändern. Auf Synology requirements prüfen und Image/Projekt neu bauen, nicht nur Container neu starten.
+
+## REF-DATA-006 – Synology Image-Reuse bestätigt 02.10.2026
+- requirements auf NAS korrekt mit pyproj 3.7.2.
+- Stop + Projekt Erstellen reicht nicht; API startet kurz und endet erneut mit fehlendem pyproj.
+- Nächster Weg im Container Manager: Projekt stoppen → lokales Image `tb-helfer-server-v1:local` entfernen → Projekt Erstellen, damit Image wirklich neu gebaut wird.
