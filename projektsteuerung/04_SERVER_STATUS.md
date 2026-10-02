@@ -1127,3 +1127,10 @@ Status: **AUDIT BESTÄTIGT / ORIGINAL-EINZIGARTIGKEIT NOCH OFFEN**
 - Nutzer-Screenshot aus dem API-Terminal bestätigt `ADMIN_SURVEY_ORIGINAL_ASSIGNMENT_UPDATE` mit `source=ADMIN_WEB_DUPLICATE_CORRECTION` und Änderungen `station_code: None → MGHN`, `station_name: None → Gessertshausen`.
 - Zusätzlich sind `SURVEY_CATALOG_ASSIGNMENT_UPDATE`-Einträge vorhanden; damit ist die abgeleitete Katalogaktualisierung auditierbar nachgewiesen.
 - Noch nicht aus dem sichtbaren Screenshot bestätigt: `same_raw_count=1`, Original-ID/SHA unverändert bzw. keine zweite Originalzeile. Dieser Teil bleibt offen, bis die kompakte Originalabfrage sichtbar vorliegt.
+
+## REF-DATA-005 – Original-ID/SHA/Eindeutigkeit Runtime BESTÄTIGT 02.10.2026
+Status: **IN-PLACE-KORREKTUR BESTÄTIGT**
+- Kompakte API-Terminalprüfung nach dem bestätigten Korrekturlauf: `updates=16`, `ids_exist=true`, `sha_same=true`, `raw_unique=true`, `station_mghn=true`.
+- Damit ist praktisch bestätigt: die aktualisierten Original-IDs existieren weiter, der SHA256 blieb unverändert, es wurde pro Rohdatei keine zweite Originalzeile erzeugt und die korrigierten Originale tragen MGHN.
+- Zweiter Runtime-Screenshot zeigt für MGHN Geometry `count=12`; enthalten sind u. a. Gleis 1, Gleis 302/303, Gleis 4 sowie W/WVB-Objekte. Availability-Ausgabe zeigt `review_segment_count=0` und KM-Qualität `FEHLT=10`, `AUTOMATISCH=2`.
+- Search-/Availability-Kopfzeilen sind im Screenshot teilweise abgeschnitten; deshalb vollständigen MGHN-API-Gate noch mit einer kompakten Kurzabfrage abschließen, statt Werte zu raten.
