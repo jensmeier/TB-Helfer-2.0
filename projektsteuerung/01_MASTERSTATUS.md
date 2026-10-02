@@ -1215,3 +1215,10 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 - Bisheriger Summary-Helper-PASS bleibt Funktionsnachweis, ist ohne Zeitmessung kein Performance-PASS.
 - Nächster Nachweis: read-only Summary im API-Container mit perf_counter und faulthandler (30-Sekunden-Grenze für separaten Diagnoseprozess). Danach Befund-abhängig Berechnung/DB-Wartezeit oder HTTP/Auth/Proxy weiter eingrenzen.
 - Keine Code-/NAS-/Cloudflare-/Android-Änderung und keine neue erfolgreiche Laufzeitmessung in diesem Chatblock.
+
+
+## REF-DATA-007 – GVP-Performancefix SOURCE 02.10.2026
+- Synology-Diagnose: direkter Summary-Aufruf nach 30 s noch in _project_xy_station → _segment_km_quality; Browser vorher Cloudflare 524.
+- Gezielter Fix: exakter räumlicher Segmentindex für GVP-Zuordnung, ohne Geometrievereinfachung/neue Abhängigkeit/Migration. Alte KM-/Farbregeln bleiben bestehen.
+- Lokal: 11/11 Tests PASS; synthetisch 20.001 Samples / 200 GVP: 4,876853 s → 0,053314 s inklusive Indexaufbau, exakt gleiche Ergebnisse. Keine NAS-Leistung daraus ableiten.
+- Status: **QUELLSTAND FERTIG / NICHT DEPLOYT / SYNOLOGY-HTTP-BROWSER-E2E OFFEN**. NAS: nur server/tbserver/survey_catalog.py übernehmen und API neu starten; dann Laufzeit und unveränderte Kennzahlen sowie Browseranzeige prüfen.

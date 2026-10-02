@@ -1000,3 +1000,13 @@ Status: **SOURCE-CHECK PASS / SYNLOGY-E2E OFFEN**
 - Bisheriger Summary-Helper-PASS bleibt Funktionsnachweis, ist ohne Zeitmessung kein Performance-PASS.
 - Nächster Nachweis: read-only Summary im API-Container mit perf_counter und faulthandler (30-Sekunden-Grenze für separaten Diagnoseprozess). Danach Befund-abhängig Berechnung/DB-Wartezeit oder HTTP/Auth/Proxy weiter eingrenzen.
 - Keine Code-/NAS-/Cloudflare-/Android-Änderung und keine neue erfolgreiche Laufzeitmessung in diesem Chatblock.
+
+
+## REF-DATA-007 – GVP-Performance Regressionstest 02.10.2026
+- **Synology VOR Fix: FAIL** – 30-s-Diagnoseprozess endet in _project_xy_station / _segment_km_quality / _coverage_summary_data. Summary-HTTP zuvor 524.
+- **Lokal NACH Fix: PASS** – Python 3.12.14, python server/checks/118_verify_gvp_projection_performance.py --benchmark: 11/11 Tests, Exit 0. Tests führen die echten reinen Produktionshelfer via AST aus, ohne Router-/DB-Import; kein kompletter API-Integrationstest.
+- Vergleich gegen unveränderten vollständigen Projektionsscan: leere/ungültige/degenerierte Geometrie, Datenlücken, positive/negative/GK-Koordinaten, Zell- und 120-m-Grenzen, Überlagerungen/erste Treffer, lange Diagonalen, fallende Stationierung/Sprünge, 1.200 reproduzierbare Zufallsabfragen.
+- Fachtests: GVP-Median/Ausreißer, Mindesttreffer, GRÜN/GRAU/ROT/ORANGE, GRA-/manuelle Priorität und unnötige Geometrieladung. Exakte Ergebnisgleichheit statt nur Source-Marker geprüft.
+- Benchmark: 40-km-Polylinie mit 20.001 Samples und 200 GVP; alt 4,876853 s, neu inklusive Aufbau 0,053314 s (ca. 91,5x). Dieser Messwert gilt nur für diesen lokalen synthetischen Test.
+- **Nach Deployment OFFEN:** realer Helper mit Zeit/Kennzahlen; authentifiziertes Summary-HTTP; sichtbare Kennzahlen im Browser; Trassendetail/Ladezeit; keine verdeckte Qualitäts-/KM-Änderung.
+- Kein Synology-PASS, kein Postman-/HTTP-PASS und keine Gesamtfreigabe behaupten.

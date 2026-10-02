@@ -2117,3 +2117,9 @@ Status: **30-S-TIMEOUT IM DIREKTEN HELPER REPRODUZIERT / GEZIELTER PERFORMANCEFI
 - Gezielt optimieren: GVP-zu-Polylinie-Projektion ohne wiederholten Vollscan aller Liniensegmente; keine Geometrieausdünnung und keine Änderung der KM-/Qualitätsregeln (>=4 robuste Treffer, <=120 m, Median/±80 m).
 - Neue Implementierung gegen bestehenden Vollscan auf identischen synthetischen Geometrien vergleichen (Grenzfälle, Überlagerung/Tie-Break, Stationierung, GRA-/manuelle Priorität, Farben/KM); lokalen Lastfall mit Zeitvergleich ausführen.
 - Kein neues Runtime-Paket, keine Migration, keine Änderung von Cloudflare-Timeout, Container-RAM oder app/**. Reale Synology-/HTTP-/Browser-Abnahme nach Deployment bleibt Pflicht.
+
+
+### REF-DATA-007 – gezielter Fix implementiert, Runtime-Gate ausstehend
+- _GvpProjectionIndex im bestehenden survey_catalog.py gebaut; nur _segment_km_quality fachlich angebunden. Alle übrigen vorhandenen Funktionen AST-identisch.
+- Check 118 enthält elf ausführbare Algorithmus-/Qualitätstests und optionalen lokalen Benchmark gegen den unveränderten Vollscan. PASS, Benchmark ca. 91,5-fach schneller im synthetischen lokalen Fall.
+- Nächster Schritt ist das Synology-Runtime-Gate (Helper-Laufzeit/Kennzahlen + authentifizierter Summary-HTTP-Aufruf + Dashboard). Der restliche bestätigte Bestands-/Detailfenster-Umbau bleibt danach offen; nicht als fertig ausweisen.

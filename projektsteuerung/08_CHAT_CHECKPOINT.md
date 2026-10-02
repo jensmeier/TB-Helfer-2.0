@@ -1280,3 +1280,13 @@ PY
 ```
 
 Die 30-Sekunden-Grenze beendet nur den separat gestarteten Diagnose-Pythonprozess, nicht den laufenden API-Dienst. Bei erfolgreichem schnellen Helper weiterhin HTTP-Pfad separat untersuchen; dieser Aufruf ist selbst kein HTTP-/Browser-E2E.
+
+
+## REF-DATA-007 – GVP-Index fertig im Quellstand / Deploy als Nächstes 02.10.2026
+- Ausgangs-SERVER 16ebdcc5fe8371f4aaf96bb05b74941025d71434; Android 423f37892915cb3308a4b1ea9e4d196faa872326, unverändert.
+- Runtime-Befund vor Implementierung in 5847bcc3440c029e1e57c24e7a383c093b975617 gesichert: 30-s-Abbruch direkt in GVP-Projektion.
+- Runtime-Datei geändert: server/tbserver/survey_catalog.py. Neuer Test: server/checks/118_verify_gvp_projection_performance.py.
+- Index erhält exakte Projektion/KM-/Farblogik und beschleunigt Kandidatensuche; kein Cache veralteter Geometrie, keine neue Abhängigkeit/Migration.
+- Lokal elf Tests PASS; Benchmark 20.001 Samples/200 GVP: 4,876853 s → 0,053314 s inkl. Aufbau, exakt gleiche Ergebnisse. Syntax und AST-Abgrenzung PASS.
+- Noch nicht auf Synology deployed. Nur survey_catalog.py per GitHub Desktop/File Station übernehmen, API neu starten; denselben begrenzten Helper-Test wiederholen, dann HTTP-/Browserprüfung. Kein erneutes httpx-/pyproj-Installieren.
+- Restlicher UI-/Bearbeiten-/Archiv-Umbau noch offen. Server→Portal→Android-Reihenfolge bleibt maßgeblich.

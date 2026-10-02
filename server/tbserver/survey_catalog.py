@@ -653,6 +653,75 @@ def _project_xy_station(
     return best
 
 
+class _GvpProjectionIndex:
+    """Exact projection within the GVP radius, indexed once per catalog segment.
+
+    The grid only prunes impossible candidates; it does not simplify geometry.
+    Segment order is retained so equal-distance hits use the same first segment
+    as _project_xy_station. Long segment boxes use a bounded-memory fallback.
+    This index is request-local: edited geometry cannot leave a stale cache.
+    """
+
+    def __init__(self, samples: list[dict[str, Any]]) -> None:
+        self._cell_size = GVP_MAX_AXIS_DISTANCE_M
+        self._segments: list[tuple[float, ...]] = []
+        self._cells: dict[tuple[int, int], list[int]] = {}
+        self._wide_segments: list[int] = []
+        vertices = [
+            (_num(p.get("x_dbref")), _num(p.get("y_dbref")), _num(p.get("station_m")))
+            for p in samples
+        ]
+        for first, second in zip(vertices, vertices[1:]):
+            ax, ay, sa = first
+            bx, by, sb = second
+            if None in (ax, ay, bx, by, sa, sb):
+                continue
+            assert ax is not None and ay is not None and sa is not None
+            assert bx is not None and by is not None and sb is not None
+            vx, vy = bx - ax, by - ay
+            length2 = vx * vx + vy * vy
+            if length2 <= 1e-9:
+                continue
+            segment_id = len(self._segments)
+            self._segments.append((ax, ay, vx, vy, length2, sa, sb))
+            ix0 = math.floor(min(ax, bx) / self._cell_size)
+            ix1 = math.floor(max(ax, bx) / self._cell_size)
+            iy0 = math.floor(min(ay, by) / self._cell_size)
+            iy1 = math.floor(max(ay, by) / self._cell_size)
+            # A very long or diagonal edge must not allocate a huge grid.
+            if (ix1 - ix0 + 1) * (iy1 - iy0 + 1) > 256:
+                self._wide_segments.append(segment_id)
+                continue
+            for ix in range(ix0, ix1 + 1):
+                for iy in range(iy0, iy1 + 1):
+                    self._cells.setdefault((ix, iy), []).append(segment_id)
+
+    def project(self, x: float, y: float) -> dict[str, float] | None:
+        # Tiny padding is only for cell lookup at floating-point boundaries.
+        # The actual 120 m acceptance test below remains exact and unchanged.
+        radius = GVP_MAX_AXIS_DISTANCE_M
+        padding = 1e-7
+        ix0 = math.floor((x - radius - padding) / self._cell_size)
+        ix1 = math.floor((x + radius + padding) / self._cell_size)
+        iy0 = math.floor((y - radius - padding) / self._cell_size)
+        iy1 = math.floor((y + radius + padding) / self._cell_size)
+        candidates = set(self._wide_segments)
+        for ix in range(ix0, ix1 + 1):
+            for iy in range(iy0, iy1 + 1):
+                candidates.update(self._cells.get((ix, iy), ()))
+        best: dict[str, float] | None = None
+        for segment_id in sorted(candidates):
+            ax, ay, vx, vy, length2, sa, sb = self._segments[segment_id]
+            t = max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / length2))
+            px, py = ax + t * vx, ay + t * vy
+            distance = math.hypot(x - px, y - py)
+            if distance > radius:
+                continue
+            if best is None or distance < best["distance_m"]:
+                best = {"distance_m": distance, "station_m": sa + (sb - sa) * t}
+        return best
+
+
 def _explicit_km_gra(name: str) -> bool:
     upper = str(name or "").replace("\\\\", "/").rsplit("/", 1)[-1].upper()
     return bool(_EXPLICIT_KM_GRA_RE.search(upper) or "KMLINIE" in upper or "KM_LINIE" in upper)
@@ -793,15 +862,19 @@ def _segment_km_quality(
             "reason": None,
         }
 
-    samples = points if points is not None else _segment_points(cur, segment)
     gvp = context.get("gvp_points") or []
+    # Fewer than four reference points cannot calibrate an axis. Avoid loading
+    # and densifying its geometry when the established result cannot use it.
+    samples = (
+        points if points is not None else _segment_points(cur, segment)
+    ) if len(gvp) >= GVP_MIN_ROBUST_MATCHES else []
     if len(samples) >= 4 and len(gvp) >= GVP_MIN_ROBUST_MATCHES:
+        projection_index = _GvpProjectionIndex(samples)
         offsets: list[float] = []
         for point in gvp:
-            projection = _project_xy_station(
+            projection = projection_index.project(
                 float(point["x_dbref"]),
                 float(point["y_dbref"]),
-                samples,
             )
             if projection is None or projection["distance_m"] > GVP_MAX_AXIS_DISTANCE_M:
                 continue

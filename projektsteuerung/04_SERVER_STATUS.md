@@ -1418,3 +1418,16 @@ Status: **SUMMARY-HELPER PASS / TESTCLIENT NICHT AUSFÜHRBAR / HTTP-FEHLER WEITE
 - Bisheriger Summary-Helper-PASS bleibt Funktionsnachweis, ist ohne Zeitmessung kein Performance-PASS.
 - Nächster Nachweis: read-only Summary im API-Container mit perf_counter und faulthandler (30-Sekunden-Grenze für separaten Diagnoseprozess). Danach Befund-abhängig Berechnung/DB-Wartezeit oder HTTP/Auth/Proxy weiter eingrenzen.
 - Keine Code-/NAS-/Cloudflare-/Android-Änderung und keine neue erfolgreiche Laufzeitmessung in diesem Chatblock.
+
+
+## REF-DATA-007 – GVP-Projektionsengpass behoben im Quellstand 02.10.2026
+Status: **QUELLSTAND FERTIG / NICHT DEPLOYT / E2E OFFEN**
+- Nutzer-Synology-Stack bei 30-s-Abbruch: survey_catalog.py:638 _project_xy_station → :801 _segment_km_quality → :2614 _coverage_summary_data. Langsame GVP-Zuordnung im direkten Helper reproduziert; nicht bloß Browserfehler.
+- Implementierung in server/tbserver/survey_catalog.py: einmaliger request-lokaler Grid-Index je Katalogsegment; Kandidaten nach räumlichem 120-m-Suchfenster; exakte Projektion auf unveränderte Liniensegmente. Vorverarbeitung numerischer Koordinaten einmalig statt bei jedem GVP.
+- Erhält erste Segmentwahl bei Abstandsgleichheit, Stationierung, GRA-/manuelle Priorität, >=4 robuste Treffer, 120-m-Grenze, Median/±80-m-Filter und Qualitätsfarben. Sehr lange/diagonale Segmente erhalten einen speicherbegrenzten Fallback statt unbeschränkter Grid-Belegung.
+- Bei weniger als vier GVP entfällt unnötiges Laden/Verdichten der Geometrie; Ergebnis bleibt FEHLT bzw. UNPLAUSIBEL gemäß bisherigen Regeln.
+- Kein langlebiger Cache, keine Migration, keine neue Runtime-Abhängigkeit, keine RAM-/Cloudflare-Änderung und kein app/** geändert.
+- Tests: server/checks/118_verify_gvp_projection_performance.py; elf Tests PASS, 1.200 deterministische Zufallsabfragen plus Grenz-/Prioritätsfälle. AST-/Syntaxprüfung PASS; übrige vorhandene Funktionen unverändert.
+- Lokaler Benchmark inklusive Indexaufbau: 20.001 Achspunkte, 200 GVP; Vollscan 4,876853 s, Index 0,053314 s, ca. 91,5x; Ergebnisse exakt gleich. Synthetischer lokaler Nachweis, kein NAS-/API-/Browsernachweis.
+- Deployment: GitHub Desktop → server/tbserver/survey_catalog.py per File Station nach /volume1/docker/tb-helfer-v1/tbserver/survey_catalog.py → API-Container neu starten. Kein Image-Rebuild; keine .env-/DB-/Originaldateiänderung.
+- Danach bestehenden begrenzten Helper-Test wiederholen: Laufzeit muss ausgegeben werden, Kennzahlen gegen bisherigen Bestand vergleichen (39 Achsen/40 Segmente, 128911,129 m gesamt, 116578,85 m automatisch, 12332,28 m ohne KM, 0 m manuell bei unverändertem Bestand). Danach /coverage/summary und Dashboard/Übersicht mit Admin-Session prüfen.

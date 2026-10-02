@@ -58,3 +58,10 @@ Keine bestätigten Punkte wieder als offen anlegen.
 - Bisheriger Summary-Helper-PASS bleibt Funktionsnachweis, ist ohne Zeitmessung kein Performance-PASS.
 - Nächster Nachweis: read-only Summary im API-Container mit perf_counter und faulthandler (30-Sekunden-Grenze für separaten Diagnoseprozess). Danach Befund-abhängig Berechnung/DB-Wartezeit oder HTTP/Auth/Proxy weiter eingrenzen.
 - Keine Code-/NAS-/Cloudflare-/Android-Änderung und keine neue erfolgreiche Laufzeitmessung in diesem Chatblock.
+
+
+## REF-DATA-007 – nächstes Gate nach GVP-Quellfix
+- GVP-Index lokal getestet; server/tbserver/survey_catalog.py noch auf NAS übernehmen und API neu starten.
+- Helper-Laufzeit und unveränderte Kennzahlen bestätigen, anschließend Summary-HTTP/Dashboard/Trassenübersicht authentifiziert testen.
+- Bei verbleibender Verzögerung erst Restprofil/DB-Abfragen messen. Lokaler 91,5x-Algorithmusvergleich ersetzt keinen Synology-Test.
+- Bestandsbegrenzter Zoom, Detailfenster, Bearbeiten/Archiv und übrige Server-Gesamtprüfung bleiben separate offene Blöcke; Android unverändert.
