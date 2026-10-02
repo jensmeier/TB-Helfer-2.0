@@ -1200,3 +1200,10 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 - Deutschlandübersicht lädt Details künftig achsweise statt vollständige Linien/KM beim Einstieg.
 - Android-Vertrag für fertige manuelle KM-Abschnitte ist fest; Android-Implementierung bleibt eigener späterer Arbeitsblock.
 - Status: **SOURCE FERTIG / DEPLOYMENT + SYNLOGY-RUNTIME OFFEN**.
+
+
+## 02.10.2026 – REF-DATA-007 Runtime-Gate 1 bestanden
+- Synology-Summary läuft: 39 Achsen, 40 aktive Segmente, 128.911 km Trassenlänge.
+- Davon 116.579 km mit belastbarer automatischer KM; 12.332 km ohne belastbare KM.
+- Manuelle/Handy-KM aktuell 0 km – erwartbar, da Android-First-Class-Sync noch nicht umgesetzt ist.
+- Status jetzt: **DEPLOYT + SUMMARY-RUNTIME BESTÄTIGT / BROWSER-E2E OFFEN**.
