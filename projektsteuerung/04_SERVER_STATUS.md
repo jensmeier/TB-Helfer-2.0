@@ -1134,3 +1134,12 @@ Status: **IN-PLACE-KORREKTUR BESTÄTIGT**
 - Damit ist praktisch bestätigt: die aktualisierten Original-IDs existieren weiter, der SHA256 blieb unverändert, es wurde pro Rohdatei keine zweite Originalzeile erzeugt und die korrigierten Originale tragen MGHN.
 - Zweiter Runtime-Screenshot zeigt für MGHN Geometry `count=12`; enthalten sind u. a. Gleis 1, Gleis 302/303, Gleis 4 sowie W/WVB-Objekte. Availability-Ausgabe zeigt `review_segment_count=0` und KM-Qualität `FEHLT=10`, `AUTOMATISCH=2`.
 - Search-/Availability-Kopfzeilen sind im Screenshot teilweise abgeschnitten; deshalb vollständigen MGHN-API-Gate noch mit einer kompakten Kurzabfrage abschließen, statt Werte zu raten.
+
+## REF-DATA-005 – MGHN Search/Availability Runtime BESTÄTIGT 02.10.2026
+Status: **FACHLICHER KORREKTURWORKFLOW BESTÄTIGT**
+- Kompakte Runtimeabfrage nach der In-place-Korrektur:
+  - Search MGHN: `axes=12`; Station `MGHN – Gessertshausen`; `asset_count=16`; Datenarten `GRA` und `TRA`.
+  - Availability MGHN: `status=AVAILABLE`, `axis_count=12`, `active_segment_count=12`, `review_segment_count=0`.
+  - KM-Qualität: `FEHLT=10`, `AUTOMATISCH=2`.
+- Zusammen mit dem bereits bestätigten Geometry-`count=12`, Audit und In-place-Nachweis ist der fachliche Duplicate-Korrekturworkflow funktional geschlossen.
+- Noch rein visuell offen: roten Warnrahmen der Bestätigungsbox nach letztem Template-Deploy einmal im Browser bestätigen. Das ist nur UI-Sichtbarkeit, kein Daten-/API-Restfehler.
