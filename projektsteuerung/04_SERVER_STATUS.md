@@ -1187,3 +1187,11 @@ Status: **DEPLOYMENTFEHLER REPRODUZIERT / URSACHE EINGEGRENZT**
 - GitHub-Quellstand enthält `pyproj==3.7.2` in `server/requirements.txt`; `Dockerfile.v1` kopiert `requirements.txt` und führt `pip install --no-cache-dir -r requirements.txt` beim **Image-Build** aus.
 - Der Fehler beweist damit: der laufende/gestartete Container verwendet noch ein Image ohne die neue Abhängigkeit. Ein bloßer Container-Neustart kann `pyproj` nicht nachinstallieren.
 - Keine Code-/DB-Ursache und keine Migration erforderlich. Nächster Schritt: auf der Synology zuerst prüfen, dass die neue `server/requirements.txt` wirklich liegt, dann das Projekt/Image über Container Manager **neu bauen/erstellen**, nicht nur neu starten.
+
+## REF-DATA-006 – Synology Projekt „Neu erstellen“ verwendet weiterhin altes Image 02.10.2026
+Status: **RUNTIMEFEHLER BESTÄTIGT / NÄCHSTER SCHRITT IMAGE ERZWUNGEN NEU BAUEN**
+- Nutzer hat `server/requirements.txt` auf der Synology geprüft; `pyproj==3.7.2` ist dort vorhanden.
+- Projekt `tb-helfer-v1` wurde gestoppt und über Container Manager erneut **Erstellen** ausgeführt; Compose-Lauf endet mit Exit Code 0 und startet migrate/worker/api.
+- API beendet sich danach erneut mit `ModuleNotFoundError: No module named 'pyproj'`.
+- Damit ist ausgeschlossen, dass nur die requirements-Datei auf der NAS fehlt. Der Projekt-Neuerstellen-Vorgang hat das vorhandene Image `tb-helfer-server-v1:local` wiederverwendet statt die Dependency-Schicht neu zu bauen.
+- Kein Code-/DB-Umbau. Nächster Synology-Schritt: Projekt stoppen, vorhandenes lokales Server-Image im Container Manager entfernen und anschließend Projekt erneut Erstellen, damit Dockerfile.v1 + requirements.txt zwingend neu gebaut werden.
