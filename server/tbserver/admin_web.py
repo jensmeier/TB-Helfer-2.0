@@ -173,6 +173,17 @@ def admin_releases_page(
     )
 
 
+@router.get("/admin/v1/survey-overview")
+def admin_survey_overview_page(
+    request: Request,
+    user: dict[str, Any] = Depends(require_web_admin),
+):
+    return templates.TemplateResponse(
+        "v1_admin_survey_overview.html",
+        {"request": request, "user": user},
+    )
+
+
 @router.get("/admin/v1/survey-import")
 def admin_survey_import_page(
     request: Request,
