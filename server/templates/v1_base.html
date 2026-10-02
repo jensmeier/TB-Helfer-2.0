@@ -49,6 +49,7 @@
         <a class="{% if request.url.path.startswith('/admin/v1/stations') %}active{% endif %}" href="/admin/v1/stations">Bahnhöfe</a>
         <a class="{% if request.url.path.startswith('/admin/v1/companies') or request.url.path.startswith('/admin/v1/users') or request.url.path.startswith('/admin/v1/devices') or request.url.path.startswith('/admin/v1/worksites') %}active{% endif %}" href="/admin/v1/companies">Firmen</a>
         <a class="{% if request.url.path.startswith('/admin/v1/survey-import') %}active{% endif %}" href="/admin/v1/survey-import">Trassierungsdaten</a>
+        <a class="{% if request.url.path.startswith('/admin/v1/survey-overview') %}active{% endif %}" href="/admin/v1/survey-overview">Trassendatenübersicht</a>
         <a class="{% if request.url.path.startswith('/admin/v1/catalog-history') %}active{% endif %}" href="/admin/v1/catalog-history">Katalog-Historie</a>
         <a class="{% if request.url.path.startswith('/admin/v1/releases') %}active{% endif %}" href="/admin/v1/releases">App-Versionen</a>
         <a class="{% if request.url.path.startswith('/admin/v1/system') %}active{% endif %}" href="/admin/v1/system">Systemstatus</a>
