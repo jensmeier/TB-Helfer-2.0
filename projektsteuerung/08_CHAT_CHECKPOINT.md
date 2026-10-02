@@ -1241,3 +1241,12 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Read-only Helper erfolgreich: 39 Achsen, 40 aktive Segmente, 2 Betriebsstellen, 7 Strecken, 14 Gleise, 4 Weichen, 7 WVB.
 - 128.911 km Gesamt-Trassenlänge; 116.579 km belastbar/automatisch; 12.332 km ohne belastbare KM; manuell/Handy 0 km.
 - Nächster Schritt: Browser-E2E Dashboard + Trassendatenübersicht und Ladezeit prüfen.
+
+
+## SERVER-OPT-001 – Ladeprüfung verbindlich / Diagnose begonnen 02.10.2026
+- Benutzer bestätigt Bestandsansicht/Detailfenster/Bearbeiten und fordert ausdrücklich tatsächliches Laden ohne lange Wartezeit. Auftrag gesichert in Commit c79733e7cfe9d0cd9fa489fc36f6dbbd5921b147.
+- Read-only Quellprüfung: Summary-Route steht vor Coverage-Detailroute; require_admin verwendet separate Admin-Session; tbApi sendet same-origin-Credentials und Admin-Scope. Kein belegter Routing-/Cookie-Fix aus diesen Befunden ableitbar.
+- _coverage_summary_data berechnet Kennzahlen pro Anfrage über Achsen/Segmente; tbApi enthält keinen eigenen Abort-/Timeout-Mechanismus. Das sind Optimierungs-/Robustheitsprüfpunkte, keine nachgewiesene Ursache des Browserfehlers.
+- Keine Code-/NAS-/Android-Änderung. Keine neue authentifizierte HTTP-Messung oder Synology-/Browser-Abnahme.
+- Lokales Postman-CLI nicht vorhanden; npm-Installationsversuch ohne Abschluss abgebrochen. Kein API-Request ausgeführt, keine Postman-Testergebnisse behaupten.
+- Nächster notwendiger Runtime-Nachweis: /api/v1/survey-catalog/coverage/summary im Browser mit bestehender Admin-Anmeldung auf www.tb-helfer.de aufrufen; Status/Response/Ladezeit und bei Fehler korrespondierenden Serverlog erfassen. Keine Passwörter/Cookies/Tokens in den Chat kopieren.
