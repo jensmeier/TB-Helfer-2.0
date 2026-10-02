@@ -1162,3 +1162,7 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 - Wegen reproduzierbarem API-Startabbruch durch fehlendes pyproj wurde die neue Deutschlandübersicht vollständig aus dem aktiven Runtime-Source zurückgenommen.
 - Server-Source steht wieder auf dem bestätigten pre-pyproj-Stand; Datenbank/Migrationen/Survey-Daten wurden nicht verändert.
 - REF-DATA-006 bleibt fachlich gewünscht, aber Umsetzung erst nach stabiler Server-Runtime und neuem Deploy-Konzept.
+
+## Server-Runtime nach REF-DATA-006-Rollback 02.10.2026
+- API-Terminal wieder funktionsfähig; Migrationen 19/19, keine pending Migrationen.
+- Vollständige Stabilitätsfreigabe folgt nach Health-/Worker-/Monitor-/Portal-Kurztest.
