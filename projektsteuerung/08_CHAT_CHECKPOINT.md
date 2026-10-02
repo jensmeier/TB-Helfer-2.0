@@ -1167,3 +1167,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 ## REF-DATA-006 – Synology-Projekt nach Bereinigung 02.10.2026
 - Sichtbar sind nur cloudflared, db und restore-test; api/worker/migrate/monitor fehlen.
 - GitHub-Compose passt dazu nicht. Nächster sicherer Schritt: Tab `YAML-Konfigurationen` öffnen und aktive Projekt-YAML prüfen, bevor noch etwas gelöscht/geändert wird.
+
+## REF-DATA-006 – Aktive Synology-YAML bekannt 02.10.2026
+- Synology-Projekt nutzt eine erweiterte Compose-Datei mit restore-test-db, cloudflared, Live-Source-Mounts und API-Memory-Limit.
+- Diese Erweiterungen fehlen im aktuellen GitHub-Compose; nicht überschreiben.
+- Nur db/cloudflared/restore-test-db wurden nach Erstellen angelegt. Nächster sicherer Schritt: Build-/Projektprotokoll des Erstellvorgangs lesen; keine weiteren Löschungen.
