@@ -1143,3 +1143,8 @@ Status: **ANFORDERUNG GESICHERT / NACH MGHN-KM-GATE**
 - Treffer sollen die Gesamtgrafik fokussieren und in eine vorhandene Detail-/Katalogansicht führen.
 - Farbregeln bleiben fachlich verbindlich: GRÜN automatisch belastbare KM, ORANGE manuell ergänzt, ROT Geometrie ohne belastbare KM, GRAU Objekt/Bestand ohne nutzbare Geometrie bzw. unplausibel.
 - Technische Vorprüfung: Survey-Katalog speichert Bounding-Box/Geometrie in X/Y, aber aktuell keinen expliziten EPSG-/Lat/Lon-Vertrag. Vor echter Deutschlandkarte Koordinatenreferenz anhand realer MPB/MGHN-Daten prüfen; keine scheinpräzise Karte aus unbekanntem CRS bauen.
+
+## REF-DATA-006 – Gesamtansicht Deutschland Umsetzung freigegeben 02.10.2026
+- Gessertshausen: die 2 automatischen KM-Achsen sind Gl 302 und Gl 303, Quelle jeweils `GRA_KM`.
+- MPB/MGHN liegen in DB_REF2016 Zone 4; EPSG:5684 ist als horizontales Projektionssystem verifiziert.
+- Deutschlandübersicht kann nun als echte WGS84-basierte Übersicht umgesetzt werden. Für bundesweite Zukunftsdaten Zonen 2/3/4/5 berücksichtigen.
