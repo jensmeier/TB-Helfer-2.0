@@ -1210,3 +1210,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Variante A jetzt source-seitig gebaut: Summary-Coverage + Suche + Detail-Lazy-Load, lokale Deutschlandgrafik, Qualitätsfarben.
 - Keine requirements-/Image-/Migrationsänderung, kein pyproj.
 - Runtime auf Synology noch offen; zuerst Health schützen, dann Übersicht testen.
+
+## REF-DATA-006 – Gesamtansicht „alles zeigen“ 02.10.2026
+- Nutzer meldete: Deutschlandansicht zeigte nur wenige Punkte statt des gesamten vorhandenen Bestands.
+- Ursache: Summary lieferte nur Achsen-Center/BBox, Detailgeometrie erst nach Klick.
+- Korrigiert: alle aktiven Achsen bekommen vereinfachte `overview_segments` und werden als Linien gerendert; Detail bleibt lazy.
+- Runtime-Bestätigung noch offen.
