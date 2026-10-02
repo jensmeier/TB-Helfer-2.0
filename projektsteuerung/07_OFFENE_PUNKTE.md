@@ -42,3 +42,11 @@ Keine bestätigten Punkte wieder als offen anlegen.
 - Android muss später `TrassenManuellerAbschnittEntity` im Status FERTIG auf `MANUAL_TRA_SECTION` abbilden; SERVER ändert kein `app/**`.
 - Danach Detailverwaltung: Bahnhof/Strecke/Achse/Original ansehen, Zuordnung/Bezeichnung korrigieren und Fachkatalog mit Survey-Bestand verknüpfen.
 - `Katalog-Historie` später als verständliche `Änderungshistorie` statt primär rohem JSON darstellen.
+
+
+## REF-DATA-007 – nach Summary-Runtime noch offen
+- Dashboard `Bestand` im Browser prüfen: neue Trassenkennzahlen sichtbar und plausibel.
+- `Trassendatenübersicht` im Browser prüfen: schneller Einstieg, Auswahl einer Achse lädt Detailgeometrie nach.
+- Werte 128.911 km gesamt / 116.579 km automatisch / 12.332 km ohne KM fachlich an konkreten Achsen plausibilisieren.
+- Danach Detailverwaltung für Bahnhof/Strecke/Achse/Originaldatei weiterbauen.
+- Android→Server `MANUAL_TRA_SECTION` bleibt späterer eigener E2E-Block.
