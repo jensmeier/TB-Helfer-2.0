@@ -1337,3 +1337,11 @@ Status: **REPRODUZIERBARER FEHLER / NOCH KEINE CODEÄNDERUNG**
 - KPI-Kacheln bleiben leer; damit kommt die Summary-Response von `GET /api/v1/survey-catalog/coverage` nicht beim Browser an.
 - HTML/Admin-Seite selbst lädt, daher ist die Fehlerzone auf Coverage-Request/API-Runtime eingegrenzt.
 - Keine weitere Änderung auf Verdacht. Nächster Schritt: Coverage-Funktion im API-Terminal direkt read-only ausführen und Trace/Ergebnis erfassen; erst danach gezielt korrigieren.
+
+
+## REF-DATA-006 – Coverage Traceback / Runtime↔GitHub-Mismatch 02.10.2026
+Status: **URSACHE WEITER EINGEGRENZT / NOCH KEINE CODEÄNDERUNG**
+- Direkte read-only Ausführung von `coverage({})` im API-Container bricht reproduzierbar mit `NameError: _normalize_object_type is not defined` ab.
+- Gleichzeitig enthält der aktuelle GitHub-HEAD `04f0117369426f6e16f294a1fde578e79e82be38` in `server/tbserver/survey_catalog.py` weder eine Definition noch einen Aufruf von `_normalize_object_type`.
+- Damit stimmt die aktuell laufende/gemountete Synology-`survey_catalog.py` nicht exakt mit dem GitHub-HEAD überein.
+- Schutzregel: keinen fehlenden Helper auf Verdacht in GitHub ergänzen. Zuerst den tatsächlich laufenden Source-Ausschnitt im API-Container mit GitHub abgleichen; danach nur die nachgewiesene Abweichung korrigieren.
