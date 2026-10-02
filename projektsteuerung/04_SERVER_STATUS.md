@@ -1401,3 +1401,12 @@ Status: **HELPER-RUNTIME PASS / DASHBOARD-HTTP FEHLER OFFEN / NOCH KEIN CODE-FIX
 - Browser-Dashboard zeigt im neuen Bereich `Trassenbestand`: **„Trassenkennzahlen konnten nicht geladen werden.“**
 - Damit ist Berechnung/DB nicht der aktuell sichtbare Fehler; offen ist der Pfad `GET /api/v1/survey-catalog/coverage/summary` über FastAPI/Admin-Session/HTTP-Browser.
 - Keine Änderung auf Verdacht. Nächster Schritt: exakten HTTP-Endpunkt im API-Container via TestClient prüfen und Status/Body ausgeben.
+
+
+## REF-DATA-007 – HTTP-Diagnose TestClient blockiert 02.10.2026
+Status: **SUMMARY-HELPER PASS / TESTCLIENT NICHT AUSFÜHRBAR / HTTP-FEHLER WEITER OFFEN**
+- Versuch, den neuen Summary-Endpunkt im API-Container mit FastAPI/Starlette `TestClient` zu prüfen, ist **vor dem Request** abgebrochen.
+- Ursache: Runtime-Image enthält kein Python-Paket `httpx`; Starlette meldet `RuntimeError: The starlette.testclient module requires the httpx package to be installed`.
+- Dieser Befund ist **kein Fehlernachweis des Endpunkts** und kein Grund, `httpx` produktiv nachzuinstallieren.
+- Keine Container-/Requirements-Änderung auf Verdacht.
+- Nächster Diagnoseweg: Route/Router-Reihenfolge im aktuellen GitHub-Stand prüfen und HTTP-Pfad mit vorhandenen Runtime-Mitteln bzw. ASGI ohne Zusatzabhängigkeit testen.
