@@ -1138,3 +1138,7 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Availability: AVAILABLE, 12 aktive von 12 Achsen, 0 Review, KM 10 FEHLT / 2 AUTOMATISCH.
 - Geometry zuvor 12 Segmente.
 - Funktionaler Korrekturworkflow damit bestätigt; nur Warnrahmen-Sichtbarkeit als kosmetischer Restpunkt offen.
+
+## REF-DATA-006 – Gesamtansicht Deutschland 02.10.2026
+- Nutzerwunsch gesichert: nach dem aktuellen Gessertshausen-KM-Test eine grafische Gesamtansicht mit Suche bauen, damit sichtbar wird, welche Strecken/Bahnhöfe in Deutschland bereits Daten haben.
+- Vor echter Kartenpositionierung zuerst Koordinatenreferenz der vorhandenen Survey-X/Y-Werte verifizieren.
