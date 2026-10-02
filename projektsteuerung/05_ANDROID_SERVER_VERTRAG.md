@@ -672,3 +672,11 @@ Status: **VERTRAG FEST / ANDROID-UMSETZUNG SPÄTER / SERVER-SUMMARY DARF DARAUF 
 - SERVER stellt/erhält den kanonischen `manual-segments`-Vertrag, Summary-/Detailanzeige und Historie.
 - ANDROID muss später seine neuere `TrassenManuellerAbschnittEntity`-Logik auf diesen Vertrag abbilden. SERVER ändert dafür kein `app/**`.
 - Bestehender AXIS-Sync mit Sample-`km_meter`/`km_quelle` bleibt für Kompatibilität bestehen, ist aber nicht die kanonische Identität eines neuen manuellen Abschnitts.
+
+
+## REF-DATA-008 – Android-Transportaudit zur Weichenklärung (02.10.2026)
+- Read-only geprüft: Android-HEAD 423f37892915cb3308a4b1ea9e4d196faa872326, PR #11 offen, nicht Draft; SERVER-Ausgang d1399a4e5bdd143b5373e25253692407e5eb044e, Draft-PR #6.
+- WorksiteTrackDataSync: LEAD baut AXIS-/STRECKENPUNKTE-Datensätze aus lokalen Fachdaten, Helfer lesen baustellenbezogenen Server-Snapshot. AXIS enthält name, achs_typ, quelle_datei, datei_signatur, station_von/bis, Samples mit station/km_meter/km_quelle/x_db_ref/y_db_ref/lat/lon/hoehe_m/richtung_deg. Kein eigener object_key in diesem AXIS-Serializer und kein Stamm-/Abzweig-/Weichengrenzenmodell in TrassenAchseEntity.
+- WorksiteTrackDataApi: GET/POST /api/v1/worksites/{id}/track-data und PATCH/DELETE /api/v1/track-data/{id}, mit Versions-/Mutation-ID-Abgleich. Dieser Pfad überträgt abgeleitete Daten, keine Roh-TRA.
+- Der neue globale Survey-Katalog mit object_key/axis_id/Segmentversionen ist ein gesonderter Vertrag und durch die neue Admin-Karte nicht automatisch als Android-Integration fertig. Globaler Manifest-/Parsed-/Such-/Geometry-/Changes-Vertrag bereits serverseitig vorhanden; vollständige mobile Kataloganbindung bleibt ANDROID-Aufgabe. Keine neue Geräte-E2E-Bestätigung.
+- Bestehender manueller Abschnittsvertrag MANUAL_TRA_SECTION bleibt unverändert. Für eine spätere Weichentopologie wären explizite, belegte Stamm-/Abzweigzuordnung und Grenzen erforderlich; kein neuer API-Vertrag oder Migration in diesem Block festgelegt.
