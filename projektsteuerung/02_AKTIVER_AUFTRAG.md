@@ -2001,3 +2001,9 @@ Runtime-Diagnose 30.09.2026:
 - Der vorliegende Screenshot zeigt nicht den Systemstatus `19/19`; Migration 019 deshalb in der Dokumentation erst nach separatem Systemstatus-/Migrationstabellen-Nachweis als 19/19 bestätigen.
 - Nächster Runtime-Schritt: WVB 10-11 / 14-22 / 19-20 mit Originalname, Achse, `object_key` und Segmentzahl gegenüberstellen; danach Pasing-Prefill, Multi-Hit und „Problem ansehen“ praktisch testen.
 
+
+## REF-DATA-006 – Deutschlandübersicht: erst Architektur entscheiden, dann bauen 02.10.2026
+- Benutzerentscheidung: vor einem erneuten Implementierungsversuch zuerst Lösungsvorschläge/Architektur vergleichen; erst nach Auswahl wird gebaut.
+- Ziel bleibt: grafische Deutschland-Gesamtansicht des vorhandenen Trassendatenbestands mit Suche nach Strecke, Bahnhof/Betriebsstelle, Gleis/Achse und W/WVB/Objekt.
+- Harte Randbedingung nach Rollback: keine neue ungetestete Runtime-Abhängigkeit in den laufenden Python-Server einführen; bestehende stabile Server-Runtime bleibt geschützt.
+- Zu prüfen: (A) vorhandenes PostGIS für DB_REF→WGS84 verwenden, (B) clientseitige lokale Projektion ohne Python-Abhängigkeit, (C) zunächst schematische Übersicht ohne echte Georeferenz. Empfehlung erst nach technischer Prüfung, noch keine Codeänderung.
