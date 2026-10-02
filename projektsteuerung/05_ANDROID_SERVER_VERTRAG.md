@@ -638,3 +638,37 @@ Status: **FACHVERTRAG FESTGELEGT**
 - Farblogik bleibt verbindlich: automatisch belastbar = GRÜN, manuell festgelegt = ORANGE, TRA ohne belastbare KM = ROT.
 - SERVER darf fehlende Pasing-KM nicht künstlich aus GVP/GRA erzwingen, wenn keine belastbare Zuordnung vorliegt.
 - Android-Umsetzung bleibt im ANDROID-Projekt; SERVER hält API/Sync/Versionierung für manuelle Abschnitte bereit bzw. dokumentiert den Bedarf.
+
+
+## REF-DATA-007 – Manueller KM-Abschnitt Android ↔ Server 02.10.2026
+Status: **VERTRAG FEST / ANDROID-UMSETZUNG SPÄTER / SERVER-SUMMARY DARF DARAUF AUFBAUEN**
+
+### Kanonischer Zielpfad
+- Fertige manuelle KM-Ergänzungen auf vorhandener TRA-Geometrie werden **nicht** als zweiter `track_data`-Sonderdatensatz erfunden.
+- Kanonischer Serverpfad ist der vorhandene Survey-Endpunkt `POST /api/v1/survey-catalog/manual-segments` mit `source_kind=MANUAL_TRA_SECTION`.
+- Das unveränderte TRA-Original bleibt geschützt. Der manuelle Abschnitt ist eine getrennte, versionierte Katalogergänzung.
+- Android identifiziert das zugrunde liegende TRA über `source_signature`. Die vorhandene Android-`dateiSignatur` ist der SHA-256-Präfix mit 24 Hex-Zeichen und ist mit der serverseitigen Präfixauflösung kompatibel.
+
+### Übertragungsinhalt eines fertigen Abschnitts
+- stabile mobile Abschnittsidentität in `metadata.mobile_section_id`;
+- `route_number`, `station_code`/`station_name` soweit bekannt, `track_key`, `axis_type`, `display_name`, Richtung;
+- `station_from_m` und `station_to_m` als Grenzen auf der TRA-Achse;
+- daraus belastbar bestimmte `km_from_m` und `km_to_m`;
+- `source_signature` der TRA-Datei;
+- Metadaten zur Herkunft: mindestens `origin=ANDROID`, `km_source=MANUELL_ABSCHNITT` oder `MANUELL_2PUNKT`, KM-Richtung sowie – soweit vorhanden – Ankerstation, Anker-KM, GPS Lat/Lon, GPS-Genauigkeit, Achsabstand, Erstell-/Änderungszeit und Notiz.
+
+### OFFEN vs. FERTIG
+- Ein lokaler Android-Entwurf mit noch fehlender Abschnittsgrenze oder noch nicht belastbarer KM-Berechnung bleibt zunächst lokaler `OFFEN`-Stand und darf nicht als scheinbar vollständige globale Kilometerierung veröffentlicht werden.
+- Erst ein fachlich `FERTIG` bestimmbarer Abschnitt mit Grenzen und belastbaren KM-Endwerten wird als aktiver manueller Survey-Abschnitt zum Server synchronisiert.
+- Ein später gewünschter geräteübergreifender Draft-Sync wäre ein eigener Vertrag; er wird nicht durch missbräuchliche Vollachsen-Segmente simuliert.
+
+### Anzeige / Kennzahlen
+- `MANUAL_TRA_SECTION` mit gültigen KM-Endwerten zählt in Server-/Admin-Kennzahlen als **MANUELL / HANDY / ORANGE**.
+- Automatische Original-/GRA-/GVP-Kilometrierung bleibt **AUTOMATISCH / GRÜN**.
+- Abschnitte ohne belastbare KM bleiben **FEHLT / ROT**; unplausible Fälle bleiben getrennt grau/Prüfung nötig.
+- Gesamt-km beziehen sich auf geometrische/Stationslänge der aktiven Achssegmente, nicht auf `max(km)-min(km)` über mehrere parallele Gleise.
+
+### Zuständigkeit
+- SERVER stellt/erhält den kanonischen `manual-segments`-Vertrag, Summary-/Detailanzeige und Historie.
+- ANDROID muss später seine neuere `TrassenManuellerAbschnittEntity`-Logik auf diesen Vertrag abbilden. SERVER ändert dafür kein `app/**`.
+- Bestehender AXIS-Sync mit Sample-`km_meter`/`km_quelle` bleibt für Kompatibilität bestehen, ist aber nicht die kanonische Identität eines neuen manuellen Abschnitts.
