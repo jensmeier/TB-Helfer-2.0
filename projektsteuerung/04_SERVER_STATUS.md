@@ -1253,3 +1253,10 @@ Status: **QUELLSTAND STABILISIERT / SYNLOGY-DEPLOYMENT OFFEN**
 - Damit enthält der aktive GitHub-Source keinen `pyproj`-Import mehr. REF-DATA-005 und vorherige Survey-Funktionen bleiben erhalten, weil der Rücksprung genau auf den bereits bestätigten Stand unmittelbar vor REF-DATA-006 erfolgt.
 - Nächster Schritt auf Synology: diese fünf Runtime-Dateien bzw. vollständigen Server-Source aus GitHub übernehmen und das gesicherte alte Image verwenden; danach API/Worker/Migrate/Monitor starten und Health/Migrationen prüfen.
 - Deutschlandübersicht ist bewusst zurückgestellt und wird erst nach stabiler Runtime mit einer deployment-sicheren Lösung neu gebaut.
+
+## REF-DATA-006 – Runtime nach Rollback wieder gestartet / Migrationen 19/19 02.10.2026
+Status: **RUNTIME TEILWEISE WIEDERHERGESTELLT**
+- Nutzer-Screenshot aus dem API-Terminal zeigt erfolgreich ausgeführten Migrationsstatus nach Rückkehr auf pre-pyproj Source + altem Image.
+- Ergebnis: `known=19`, `applied=19`, `pending=[]`, `latest_known=19`, `latest_applied=19`.
+- Damit ist bestätigt: API-Container läuft wieder soweit, dass Python/tbserver importierbar ist und DB/Migrationen konsistent 19/19 sind.
+- Noch offen vor vollständiger Stabilitätsfreigabe: `/health/ready`, Worker/Monitor-Laufstatus und kurzer Admin/Portal-Aufruf.
