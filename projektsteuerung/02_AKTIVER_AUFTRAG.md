@@ -2097,3 +2097,14 @@ Status: **KONZEPT PRÄZISIERT / WEITER VORSCHLAGSPHASE / KEINE BAUFREIGABE**
 - Fehler/Timeout/Sessionablauf müssen erkennbar sein; kein unbegrenztes Ladezeichen und keine scheinbar erfolgreiche leere Ansicht. Filter-/Auswahlwechsel dürfen keine veraltete Antwort anzeigen.
 - Prüfen mit aktuellem realen Bestand; größere synthetische Bestände nur isoliert/lokal. Kein produktiver Lasttest durch diese Bestätigung autorisiert.
 - Maßgeblicher Nachweis bleibt Synology plus Browser. Ohne authentifizierten Zugriff oder Messdaten bleibt dieser Teil ausdrücklich offen.
+
+
+### REF-DATA-007 / SERVER-OPT-001 – Coverage Summary HTTP 524 reproduziert 02.10.2026
+Status: **BROWSER-HTTP FAIL BELEGT / URSACHE INNERHALB ORIGIN-PFAD NOCH OFFEN**
+- Benutzer-Screenshot: GET https://www.tb-helfer.de/api/v1/survey-catalog/coverage/summary endet mit Cloudflare „A timeout occurred“, Error code 524; Zeit im Screenshot 2026-10-02 15:54:39 UTC (=17:54:39 Europe/Berlin).
+- Cloudflare zeigt Browser Working / Cloudflare Working / Host Error. Keine JSON-Antwort im Screenshot. Exakte Requestdauer nicht gemessen.
+- HTTP-Pfad erreicht Cloudflares Origin-Verbindung, erhält aber nicht rechtzeitig eine Antwort. Das beweist weder eine bestimmte langsame SQL-Abfrage noch zu wenig RAM, defekte Authentifizierung oder eine konkrete Helper-Laufzeit.
+- Vorheriger erfolgreicher direkter Summary-Helper-Aufruf bleibt gültiger Funktionsnachweis, ist ohne Zeitmessung aber kein Leistungsnachweis.
+- Quellprüfung: Summary berechnet KM-Kontext pro Achse und Qualität pro Segment; GVP-Projektion kann sämtliche Samples je GVP durchlaufen. Datenbank/Auth/Request-Warteschlange und Geometrieberechnung bleiben zu unterscheiden.
+- Nächster gezielter read-only Runtime-Schritt: Summary-Helper mit Laufzeit, begrenzter Ausführungsdauer, Stack-/Profiling-Ausgabe prüfen; dabei keine Zusatzpakete, keine DB-/Datenmutation, keine Änderung von Cloudflare-Timeout oder Container-RAM auf Verdacht.
+- Weiterhin kein Codefix und kein erfolgreicher HTTP-/Browser-E2E behaupten.
