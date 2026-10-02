@@ -1300,3 +1300,13 @@ Status: **BAU FREIGEGEBEN**
 - ST_Transform liefert für MGHN ca. lon=10.699081, lat=48.333140 und für MPB ca. lon=11.431539, lat=48.153690.
 - Keine neue Dependency, kein requirements-/Image-Umbau nötig.
 - Nächster Schritt: Coverage-API + Admin-Seite mit Deutschlandübersicht, Suche und Detail-Nachladen implementieren.
+
+## REF-DATA-006 – PostGIS-Gesamtansicht SOURCE FERTIG 02.10.2026
+Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
+- server/tbserver/survey_catalog.py: neue read-only Endpunkte GET /api/v1/survey-catalog/coverage und GET /api/v1/survey-catalog/coverage/{axis_id}/geometry.
+- DB_REF-Zonen 2–5 werden über vorhandenes PostGIS (EPSG 5682–5685) nach EPSG:4326 transformiert; keine neue Python-Abhängigkeit.
+- server/tbserver/admin_web.py: Admin-Seite /admin/v1/survey-overview.
+- server/templates/v1_admin_survey_overview.html: Deutschlandansicht mit Suche, Betriebsstellenmarkern, Achstreffern, Qualitätsfarben, Mausrad-Zoom, Verschieben und Detail-Nachladen.
+- v1_base.html + v1_admin_dashboard.html: Navigation/Schnellzugriff ergänzt.
+- Sourcecheck 117 neu aufgebaut; aktueller GitHub-Quellstand statisch geprüft: kein pyproj in requirements/imports, PostGIS-Endpunkte/Route/UI/Navigation vorhanden.
+- Kein DB-Schema-/Migrationswechsel und kein Image-Neubau nötig.
