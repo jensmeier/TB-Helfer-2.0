@@ -876,3 +876,12 @@ Pflichttest nach Deploy:
 Damit ist bestätigt: keine zweite Rohdatei/Originalzeile, bestehende IDs bleiben gültig und SHA256 bleibt unverändert.
 
 MGHN-Geometrie liefert 12 Segmente; Availability zeigt 0 Review-Segmente sowie KM-Qualität 10× FEHLT / 2× AUTOMATISCH. Vollständige Search-/Availability-Kopfwerte noch kompakt nachreichen.
+
+### REF-DATA-005 – Funktionales Runtime-Gate BESTANDEN 02.10.2026
+- Search: 12 MGHN-Achsen, Station Gessertshausen, 16 Assets.
+- Availability: AVAILABLE, 12 Achsen, 12 aktive Segmente, 0 Review.
+- Geometry: 12 Segmente.
+- In-place: IDs gültig, SHA gleich, Rohdatei eindeutig, station_mghn=true.
+- Audit/History: Original- und Katalog-Aktualisierung nachgewiesen.
+- Fachfunktion damit **BESTANDEN**.
+- Nur kosmetischer Runtime-Nachweis des roten Warnrahmens bleibt offen; keine fachliche Blockade.
