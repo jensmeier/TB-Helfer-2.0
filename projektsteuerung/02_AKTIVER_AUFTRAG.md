@@ -2047,3 +2047,13 @@ Neue Benutzeranforderung:
 - Keine Android-Codeänderung durch SERVER. Falls Android-Anpassung nötig wird, Bedarf zuerst in Projektsteuerung/Vertrag dokumentieren und an ANDROID geben.
 - Performanceziel: Übersicht darf bei kleinem Bestand nicht lange laden; Summary/Kennzahlen und Geometrie sollen gestuft/lazy geladen werden statt vollständige Detailgeometrie beim Einstieg zu berechnen.
 - Benutzer wünscht ausdrücklich: zuerst Vorschläge/Skizze und Datenfluss klären, erst danach bauen.
+
+
+### REF-DATA-007 – Android-Streckendaten-Audit vor Design 02.10.2026
+- Android `WorksiteTrackDataSync` synchronisiert für LEAD aktuell abgeleitete `AXIS`-Datensätze und `STRECKENPUNKTE`; Rohdateien werden ausdrücklich nicht hochgeladen.
+- AXIS-Payload enthält pro Sample u. a. `station`, `km_meter`, `km_quelle`, DB_REF/GPS und Achsmetadaten.
+- Die ältere manuelle 2-Punkt-Kalibrierung schreibt berechnete Sample-KM mit `kmQuelle=MANUELL_2PUNKT`; diese Werte können damit über den bestehenden AXIS-Payload zum Server gelangen.
+- Die neuere lokale `TrassenManuellerAbschnittEntity` hält darüber hinaus Start/Ende, KM-Richtung, KM-Anker, GPS-/Qualitätsangaben und Status; `ManuelleAbschnittKmLogik` kann daraus `MANUELL_ABSCHNITT` berechnen.
+- Diese manuellen Abschnitts-/Anker-Datensätze werden im aktuellen `WorksiteTrackDataSync` nicht als eigene Datensätze übertragen. Die Kamera-/Nähelogik kann `MANUELL_ABSCHNITT` lokal zur Laufzeit anwenden, ohne dass dadurch zwingend die persistierten Achs-Samples aktualisiert werden.
+- Deshalb vor Kennzahlen/Serverübernahme nicht davon ausgehen, dass alle neueren manuellen Handy-KM vollständig auf dem Server vorliegen. Android↔Server-Vertrag für manuelle Abschnitts-KM muss vor Implementierung explizit festgelegt und anschließend auf beiden Seiten getrennt umgesetzt/getestet werden.
+- SERVER ändert `app/**` nicht.
