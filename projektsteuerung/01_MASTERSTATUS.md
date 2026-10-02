@@ -1182,3 +1182,13 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 - Health: status=ok, database=up, migrations=ok, server_version=1.0.0-dev.
 - Migrationen 19/19 ohne pending; Nutzer bestätigt die übrigen Dienste/Portal als laufend.
 - REF-DATA-006 bleibt als fachlicher Wunsch offen und wird später deployment-sicher neu umgesetzt.
+
+## REF-DATA-006 – Deutschlandübersicht Variante A SOURCE FERTIG 02.10.2026
+- PostGIS-Variante ist source-seitig umgesetzt, ohne neue Python-/Image-Abhängigkeit.
+- Neue Admin-Seite: /admin/v1/survey-overview.
+- Coverage-API liefert zunächst nur kompakte Achsen-/Betriebsstellenübersicht in WGS84; Detailgeometrie wird erst bei Auswahl nachgeladen.
+- Suche: Strecke, Bahnhof/Betriebsstelle, Gleis/Achse und W/WVB/Objekt.
+- Darstellung: Deutschlandübersicht, Marker, Zoom/Pan, Trefferliste und Qualitätsfarben GRÜN/ORANGE/ROT/GRAU.
+- Original-/Katalogkoordinaten bleiben unverändert; ST_Transform arbeitet nur read-only in der Ausgabe.
+- requirements.txt bleibt unverändert und enthält kein pyproj.
+- Runtime/Synology-Test noch offen.
