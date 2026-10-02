@@ -1410,3 +1410,11 @@ Status: **SUMMARY-HELPER PASS / TESTCLIENT NICHT AUSFÜHRBAR / HTTP-FEHLER WEITE
 - Dieser Befund ist **kein Fehlernachweis des Endpunkts** und kein Grund, `httpx` produktiv nachzuinstallieren.
 - Keine Container-/Requirements-Änderung auf Verdacht.
 - Nächster Diagnoseweg: Route/Router-Reihenfolge im aktuellen GitHub-Stand prüfen und HTTP-Pfad mit vorhandenen Runtime-Mitteln bzw. ASGI ohne Zusatzabhängigkeit testen.
+
+
+## REF-DATA-007 – Browser-Timeout 524 am 02.10.2026
+- Benutzerbeleg: /api/v1/survey-catalog/coverage/summary zeigt Cloudflare 524, Zeit 15:54:39 UTC / 17:54:39 Europe/Berlin.
+- Status: **HTTP-/BROWSER-E2E FAIL / ROOT CAUSE OFFEN**. Browser und Cloudflare laut Fehlerseite erreichbar; Origin-Antwort nicht rechtzeitig erhalten. Tatsächliche Requestdauer nicht gemessen.
+- Bisheriger Summary-Helper-PASS bleibt Funktionsnachweis, ist ohne Zeitmessung kein Performance-PASS.
+- Nächster Nachweis: read-only Summary im API-Container mit perf_counter und faulthandler (30-Sekunden-Grenze für separaten Diagnoseprozess). Danach Befund-abhängig Berechnung/DB-Wartezeit oder HTTP/Auth/Proxy weiter eingrenzen.
+- Keine Code-/NAS-/Cloudflare-/Android-Änderung und keine neue erfolgreiche Laufzeitmessung in diesem Chatblock.

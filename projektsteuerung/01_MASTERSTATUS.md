@@ -1207,3 +1207,11 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 - Davon 116.579 km mit belastbarer automatischer KM; 12.332 km ohne belastbare KM.
 - Manuelle/Handy-KM aktuell 0 km – erwartbar, da Android-First-Class-Sync noch nicht umgesetzt ist.
 - Status jetzt: **DEPLOYT + SUMMARY-RUNTIME BESTÄTIGT / BROWSER-E2E OFFEN**.
+
+
+## REF-DATA-007 – Browser-Timeout 524 am 02.10.2026
+- Benutzerbeleg: /api/v1/survey-catalog/coverage/summary zeigt Cloudflare 524, Zeit 15:54:39 UTC / 17:54:39 Europe/Berlin.
+- Status: **HTTP-/BROWSER-E2E FAIL / ROOT CAUSE OFFEN**. Browser und Cloudflare laut Fehlerseite erreichbar; Origin-Antwort nicht rechtzeitig erhalten. Tatsächliche Requestdauer nicht gemessen.
+- Bisheriger Summary-Helper-PASS bleibt Funktionsnachweis, ist ohne Zeitmessung kein Performance-PASS.
+- Nächster Nachweis: read-only Summary im API-Container mit perf_counter und faulthandler (30-Sekunden-Grenze für separaten Diagnoseprozess). Danach Befund-abhängig Berechnung/DB-Wartezeit oder HTTP/Auth/Proxy weiter eingrenzen.
+- Keine Code-/NAS-/Cloudflare-/Android-Änderung und keine neue erfolgreiche Laufzeitmessung in diesem Chatblock.

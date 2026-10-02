@@ -992,3 +992,11 @@ Status: **SOURCE-CHECK PASS / SYNLOGY-E2E OFFEN**
 - Es wurde dadurch **kein HTTP-Request** gegen `/api/v1/survey-catalog/coverage/summary` ausgeführt.
 - Ergebnis daher weder PASS noch FAIL für den Endpunkt.
 - Keine produktive Abhängigkeit nur für Diagnose nachinstallieren.
+
+
+## REF-DATA-007 – Browser-Timeout 524 am 02.10.2026
+- Benutzerbeleg: /api/v1/survey-catalog/coverage/summary zeigt Cloudflare 524, Zeit 15:54:39 UTC / 17:54:39 Europe/Berlin.
+- Status: **HTTP-/BROWSER-E2E FAIL / ROOT CAUSE OFFEN**. Browser und Cloudflare laut Fehlerseite erreichbar; Origin-Antwort nicht rechtzeitig erhalten. Tatsächliche Requestdauer nicht gemessen.
+- Bisheriger Summary-Helper-PASS bleibt Funktionsnachweis, ist ohne Zeitmessung kein Performance-PASS.
+- Nächster Nachweis: read-only Summary im API-Container mit perf_counter und faulthandler (30-Sekunden-Grenze für separaten Diagnoseprozess). Danach Befund-abhängig Berechnung/DB-Wartezeit oder HTTP/Auth/Proxy weiter eingrenzen.
+- Keine Code-/NAS-/Cloudflare-/Android-Änderung und keine neue erfolgreiche Laufzeitmessung in diesem Chatblock.

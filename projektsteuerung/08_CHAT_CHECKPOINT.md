@@ -1250,3 +1250,33 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Keine Code-/NAS-/Android-Änderung. Keine neue authentifizierte HTTP-Messung oder Synology-/Browser-Abnahme.
 - Lokales Postman-CLI nicht vorhanden; npm-Installationsversuch ohne Abschluss abgebrochen. Kein API-Request ausgeführt, keine Postman-Testergebnisse behaupten.
 - Nächster notwendiger Runtime-Nachweis: /api/v1/survey-catalog/coverage/summary im Browser mit bestehender Admin-Anmeldung auf www.tb-helfer.de aufrufen; Status/Response/Ladezeit und bei Fehler korrespondierenden Serverlog erfassen. Keine Passwörter/Cookies/Tokens in den Chat kopieren.
+
+
+## REF-DATA-007 – Browser-Timeout 524 am 02.10.2026
+- Benutzerbeleg: /api/v1/survey-catalog/coverage/summary zeigt Cloudflare 524, Zeit 15:54:39 UTC / 17:54:39 Europe/Berlin.
+- Status: **HTTP-/BROWSER-E2E FAIL / ROOT CAUSE OFFEN**. Browser und Cloudflare laut Fehlerseite erreichbar; Origin-Antwort nicht rechtzeitig erhalten. Tatsächliche Requestdauer nicht gemessen.
+- Bisheriger Summary-Helper-PASS bleibt Funktionsnachweis, ist ohne Zeitmessung kein Performance-PASS.
+- Nächster Nachweis: read-only Summary im API-Container mit perf_counter und faulthandler (30-Sekunden-Grenze für separaten Diagnoseprozess). Danach Befund-abhängig Berechnung/DB-Wartezeit oder HTTP/Auth/Proxy weiter eingrenzen.
+- Keine Code-/NAS-/Cloudflare-/Android-Änderung und keine neue erfolgreiche Laufzeitmessung in diesem Chatblock.
+
+Diagnoseaufruf im API-Container (keine Zusatzpakete, keine Datenänderung):
+
+```bash
+python -u - <<'PY'
+import faulthandler
+from time import perf_counter
+
+faulthandler.dump_traceback_later(30, exit=True)
+print("Diagnose startet; nach 30 Sekunden ggf. Stack und Abbruch.", flush=True)
+from tbserver.survey_catalog import _coverage_summary_data
+start = perf_counter()
+try:
+    result = _coverage_summary_data()
+    print("SUMMARY_SEKUNDEN:", round(perf_counter() - start, 3))
+    print({k: result.get(k) for k in ("axis_count", "active_segment_count", "total_length_m")})
+finally:
+    faulthandler.cancel_dump_traceback_later()
+PY
+```
+
+Die 30-Sekunden-Grenze beendet nur den separat gestarteten Diagnose-Pythonprozess, nicht den laufenden API-Dienst. Bei erfolgreichem schnellen Helper weiterhin HTTP-Pfad separat untersuchen; dieser Aufruf ist selbst kein HTTP-/Browser-E2E.
