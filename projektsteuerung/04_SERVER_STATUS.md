@@ -1207,3 +1207,11 @@ Status: **RUNTIME WEITER BLOCKIERT / KEINE NEUE CODEURSACHE**
 - Exportiertes Container-Protokoll `tb-helfer-v1-api-1(3).html` zeigt zwischen 12:29:59 und 12:30:45 wiederholt denselben Startabbruch: `ModuleNotFoundError: No module named 'pyproj'` beim Import von `tbserver.survey_catalog`.
 - Fehler tritt in wiederholten Neustartversuchen auf; die API erreicht keinen betriebsbereiten Zustand.
 - Befund passt zum bereits eingegrenzten alten lokalen Image. Nächster notwendiger Schritt bleibt: referenzierende Servercontainer löschen, dann `tb-helfer-server-v1:local` entfernen und Projekt neu erstellen, damit das Image aus aktueller `requirements.txt` neu gebaut wird.
+
+## REF-DATA-006 – Nach Image-/Container-Bereinigung fehlen App-Services im Synology-Projekt 02.10.2026
+Status: **DEPLOYMENTBLOCKER / URSACHE NOCH ZU PRÜFEN**
+- Nach dem Löschen der alten Servercontainer und des lokalen Server-Images zeigt das Synology-Projekt `tb-helfer-v1` nach `Erstellen` nur noch `cloudflared`, `db` und `restore-test`.
+- `api`, `worker`, `migrate` und `monitor` sind in der Projektansicht nicht vorhanden.
+- GitHub-Compose `server/docker-compose.v1.yml` definiert dagegen `db`, `migrate`, `api`, `worker`, `monitor`; `cloudflared` und `restore-test` kommen dort nicht vor.
+- Damit ist jetzt zuerst die tatsächlich auf der Synology verwendete Projekt-YAML zu prüfen. Keine weiteren Container/Image-/DB-Löschungen, bis die YAML-Konfiguration verglichen ist.
+- DB-Container ist weiterhin vorhanden; kein Hinweis auf gelöschte Datenbankdaten aus dem Screenshot.
