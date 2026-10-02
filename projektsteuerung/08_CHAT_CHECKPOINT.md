@@ -1198,3 +1198,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - API-Terminal wieder erreichbar.
 - Migrationen 19/19, pending=[] bestätigt.
 - Nächste Checks: health/ready, Worker/Monitor, Admin/Portal.
+
+## REF-DATA-006 – Rollback abgeschlossen / Server wieder stabil 02.10.2026
+- Health ready: status ok, database up, migrations ok, Server 1.0.0-dev.
+- Migrationen 19/19, pending=[].
+- Nutzer bestätigt: alles läuft wieder.
+- Deutschlandübersicht bleibt bewusst zurückgerollt und wird später neu angegangen.
