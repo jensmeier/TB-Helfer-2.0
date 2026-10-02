@@ -2579,6 +2579,42 @@ def coverage(
             status = str(quality.get("status") or "UNBEKANNT")
             quality_counts[status] = quality_counts.get(status, 0) + 1
 
+            # Germany overview: keep every active axis visible as a lightweight
+            # line. Only a few points per segment are transformed here; the
+            # full detail geometry is still loaded lazily after selection.
+            segment_quality = {
+                str(row.get("segment_id")): row
+                for row in (quality.get("segments") or [])
+                if row.get("segment_id")
+            }
+            overview_segments: list[dict[str, Any]] = []
+            for segment in segments:
+                full_points = _segment_points(cur, segment)
+                simplified = _decimate(full_points, 28)
+                xy: list[tuple[float, float]] = []
+                for point in simplified:
+                    x = _num(point.get("x_dbref"))
+                    y = _num(point.get("y_dbref"))
+                    if x is not None and y is not None:
+                        xy.append((x, y))
+                transformed = _postgis_transform_points(cur, xy)
+                coords = [
+                    [round(point[0], 7), round(point[1], 7)]
+                    for point in transformed
+                    if point is not None
+                ]
+                if len(coords) >= 2:
+                    overview_segments.append(
+                        {
+                            "segment_id": str(segment["id"]),
+                            "coordinates": coords,
+                            "km_quality": _plain(
+                                segment_quality.get(str(segment["id"]))
+                                or {"status": status, "color": quality.get("color")}
+                            ),
+                        }
+                    )
+
             bbox_values = (
                 _num(axis.get("seg_min_x")),
                 _num(axis.get("seg_min_y")),
@@ -2615,6 +2651,7 @@ def coverage(
                     "active_segment_count": int(axis.get("active_segment_count") or 0),
                     "km_quality": _plain(quality),
                     "wgs84": wgs84,
+                    "overview_segments": overview_segments,
                 }
             )
 
