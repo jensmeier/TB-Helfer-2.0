@@ -1166,3 +1166,7 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 ## Server-Runtime nach REF-DATA-006-Rollback 02.10.2026
 - API-Terminal wieder funktionsfähig; Migrationen 19/19, keine pending Migrationen.
 - Vollständige Stabilitätsfreigabe folgt nach Health-/Worker-/Monitor-/Portal-Kurztest.
+
+## Server-Runtime nach REF-DATA-006-Rollback 02.10.2026
+- API-Terminal wieder funktionsfähig; Migrationen 19/19, keine pending Migrationen.
+- Vollständige Stabilitätsfreigabe folgt nach Health-/Worker-/Monitor-/Portal-Kurztest.
