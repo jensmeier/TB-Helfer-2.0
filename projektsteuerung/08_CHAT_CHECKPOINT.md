@@ -1225,3 +1225,12 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Seite selbst lädt, aber Gesamtansicht/KPI nicht: Browser meldet NetworkError beim Coverage-Fetch.
 - Fehler jetzt auf /api/v1/survey-catalog/coverage bzw. dessen Runtime eingegrenzt.
 - Nächster Schritt: direkte read-only Funktionsausführung im API-Terminal, keine weitere Änderung auf Verdacht.
+
+
+## Chat-Checkpoint 02.10.2026 – REF-DATA-007
+- Benutzer hat Zielbild bestätigt: Trassendatenübersicht als Zentrale; Dashboard mit Gesamt-km/KM-Abdeckung/Bahnhöfen/Gleisen; Handy-KM ausdrücklich berücksichtigen.
+- Android-Quellaudit: AXIS-Sync enthält Sample-`km_meter/km_quelle`; alte `MANUELL_2PUNKT`-Werte können darin laufen. Neuere manuelle Abschnittsobjekte werden bisher nicht als First-Class-Objekte synchronisiert.
+- Vertrag fest: fertige mobile Abschnitte → bestehender Survey-`manual-segments`-Pfad, Raw-Original unverändert.
+- Server SOURCE gebaut: Summary-Endpunkt, neue Dashboard-/Übersicht-KPIs, Lazy-Initialload; Source-Markercheck 16/16 PASS.
+- Noch nicht deployt, keine neuen Synology-/Browser-/Handy-E2Es.
+- Für nächsten Chat/Block zuerst GitHub prüfen. Dann Synology-Gate dieses Blocks durchführen, bevor Detailverwaltung weitergebaut wird.
