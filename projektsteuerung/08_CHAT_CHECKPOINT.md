@@ -1182,3 +1182,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Nutzer hat das alte funktionierende Server-Image gesichert.
 - Wegen Live-Source-Mounts ist für echten Rollback zusätzlich der passende alte Server-Source nötig; altes Image allein würde mit aktuellem pyproj-importierenden Source erneut scheitern.
 - Alt-Image unbedingt unverändert aufbewahren.
+
+## REF-DATA-006 – API stürzt erneut ab 02.10.2026
+- Log bestätigt erneut `ModuleNotFoundError: pyproj` aus live gemountetem `survey_catalog.py`.
+- Alt-Image allein reicht wegen Live-Source-Mounts nicht.
+- Nächster Schritt: nur REF-DATA-006-Source auf pre-pyproj zurückrollen, DB unangetastet lassen, dann Runtime wieder hochfahren.
