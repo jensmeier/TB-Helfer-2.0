@@ -31,5 +31,5 @@ Stand: 2026-09-26
 | DOC-001 | P1 | STEUERUNG | neue Struktur lokal nach Pull verifizieren | alte Top-Level-Ordner müssen weg sein |
 
 | REF-DATA-005 | P2 | SERVER/PORTAL | Fachlicher Korrekturworkflow BESTÄTIGT: Warnung→Bestätigung→AKTUALISIERT, IDs/SHA/Raw eindeutig, Audit vorhanden, Search/Availability/Geometry MGHN korrekt (12 Achsen/12 Segmente/0 Review) | Nur roten Warnrahmen nach letztem Template-Deploy visuell bestätigen; danach Punkt vollständig schließen |
-| REF-DATA-006 | P1 | SERVER/PORTAL | Deutschlandweite Gesamtansicht source-seitig gebaut; Synology-API startet aktuell mit ModuleNotFoundError: pyproj, weil Runtime-Image noch ohne neue Dependency läuft | Synology server/requirements.txt auf pyproj==3.7.2 prüfen → Projekt/Image in Container Manager neu bauen/erstellen (nicht nur Neustart) → import pyproj prüfen → Overview-E2E fortsetzen |
+| REF-DATA-006 | P1 | SERVER/PORTAL | Deutschlandübersicht source-seitig gebaut; Synology-Compose weicht vom GitHub-Compose ab (restore-test-db/cloudflared/live source mounts). Nach Image-Löschung werden nur db/cloudflared/restore-test-db angelegt | Keine weitere Änderung. Projekt-/Build-Protokoll des letzten Erstellvorgangs auslesen und konkrete Build-Ursache beheben; danach GitHub↔Synology-Compose kontrolliert angleichen |
 Keine bestätigten Punkte wieder als offen anlegen.
