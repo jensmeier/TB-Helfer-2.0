@@ -1223,3 +1223,10 @@ Status: **DEPLOYMENTBLOCKER WEITER EINGEGRENZT / GITHUB↔SYNOLOGY-COMPOSE ABWEI
 - Diese Inhalte sind im aktuellen GitHub-Stand `server/docker-compose.v1.yml` nicht enthalten; GitHub-Suche nach `restore-test-db`, `TB_V1_SOURCE_TBSERVER_DIR`, `TB_V1_CLOUDFLARE_TUNNEL_TOKEN` und `Synology-Staging` liefert keine Treffer.
 - Damit besteht eine reale Konfigurationsabweichung zwischen GitHub-Compose und der tatsächlich laufenden Synology-Projektdefinition. GitHub bleibt Source of Truth, die Synology-YAML darf aber nicht auf Verdacht überschrieben werden, weil sie produktions-/stagingrelevante Zusatzdienste und Mounts enthält.
 - Der aktuelle Zustand (nur cloudflared/db/restore-test-db sichtbar) spricht dafür, dass der Build/Erstellvorgang der gemeinsamen Server-Services vor deren Containeranlage abgebrochen ist. Nächster Schritt ist ausschließlich das Projekt-/Build-Protokoll des letzten Erstellvorgangs auszulesen; keine weitere Container-, Image-, YAML- oder DB-Änderung bis zur konkreten Build-Ursache.
+
+## REF-DATA-006 – Synology-Erstellen erreicht Pull/Warning-Phase 02.10.2026
+Status: **BUILDVORGANG LÄUFT / NOCH KEIN FEHLERNACHWEIS**
+- Neuer Screenshot beim `Erstellen` zeigt für `worker`, `monitor`, `migrate`, `api` zunächst `Pulling` und danach jeweils `Warning`.
+- Das ist nach bewusst entferntem lokalen Image erwartbar: Compose versucht zuerst das benannte Image `tb-helfer-server-v1:local` zu ziehen; für ein rein lokales Image kann dieser Pull scheitern/warnen. Entscheidend ist, ob anschließend der lokale Dockerfile-Build startet.
+- Noch **keine** belastbare Fehlermeldung im Screenshot. Projektanzeige zeigt laufenden Zustand; daher Vorgang nicht abbrechen und auf weitere Build-Zeilen/Abschluss warten.
+- Keine weitere Löschung/YAML-/DB-Änderung vor finalem Build-Output.
