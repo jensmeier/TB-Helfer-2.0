@@ -985,3 +985,10 @@ Status: **SOURCE-CHECK PASS / SYNLOGY-E2E OFFEN**
 - Längen: 128.911 km gesamt, 116.579 km belastbar/automatisch, 12.332 km ohne belastbare KM, 0 km manuell/Handy.
 - Segmentqualität: 12 AUTOMATISCH / 28 FEHLT / 0 UNPLAUSIBEL.
 - Dies bestätigt den Summary-Runtimepfad, aber noch **nicht** Dashboard-/Browser-E2E und noch **nicht** Android→Server-`MANUAL_TRA_SECTION`.
+
+
+## REF-DATA-007 – HTTP-Test mit TestClient: NICHT AUSGEFÜHRT
+- FastAPI/Starlette `TestClient` konnte im Synology-API-Container nicht gestartet werden, weil `httpx` im Runtime-Image nicht installiert ist.
+- Es wurde dadurch **kein HTTP-Request** gegen `/api/v1/survey-catalog/coverage/summary` ausgeführt.
+- Ergebnis daher weder PASS noch FAIL für den Endpunkt.
+- Keine produktive Abhängigkeit nur für Diagnose nachinstallieren.
