@@ -1135,3 +1135,11 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 - Katalogkorrektur schützt offene Konflikte, Mehrfach-Source-Segmente, Identity-Kollisionen und destruktive Änderung geteilter Achsen; einfache Fill-ins wie fehlende station_code sind auch auf geteilter Achse möglich.
 - Audit: `ADMIN_SURVEY_ORIGINAL_ASSIGNMENT_UPDATE` + `SURVEY_CATALOG_ASSIGNMENT_UPDATE`; Axis-History wird versioniert als UPDATE geschrieben.
 - Keine Migration erforderlich.
+
+## REF-DATA-006 – Deutschlandweite Trassendaten-Gesamtansicht geplant 02.10.2026
+Status: **ANFORDERUNG GESICHERT / NACH MGHN-KM-GATE**
+- Neue Admin-Übersicht soll deutschlandweit zeigen, wo bereits gemeinsame Trassierungs-/Vermessungsdaten vorhanden sind.
+- Suche mindestens nach Strecke, Bahnhof/Betriebsstelle, Gleis/Achse und Weiche/WVB/Objekt.
+- Treffer sollen die Gesamtgrafik fokussieren und in eine vorhandene Detail-/Katalogansicht führen.
+- Farbregeln bleiben fachlich verbindlich: GRÜN automatisch belastbare KM, ORANGE manuell ergänzt, ROT Geometrie ohne belastbare KM, GRAU Objekt/Bestand ohne nutzbare Geometrie bzw. unplausibel.
+- Technische Vorprüfung: Survey-Katalog speichert Bounding-Box/Geometrie in X/Y, aber aktuell keinen expliziten EPSG-/Lat/Lon-Vertrag. Vor echter Deutschlandkarte Koordinatenreferenz anhand realer MPB/MGHN-Daten prüfen; keine scheinpräzise Karte aus unbekanntem CRS bauen.
