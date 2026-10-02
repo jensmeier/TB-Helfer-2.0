@@ -846,3 +846,17 @@ Pflichttest nach Deploy:
 5. Original-ID, SHA256 und Raw-Datei bleiben gleich; kein zweites Original;
 6. Originaltabelle + Search/Availability/Geometry zeigen die neue Zuordnung;
 7. History/Audit vorhanden; keine offenen Konflikte erzeugt.
+
+### REF-DATA-005 – Duplicate-Korrektur Runtime TEILBESTANDEN 02.10.2026
+**Bestanden:**
+- Abweichende vorhandene Zuordnung wird zuerst als `VORHANDEN_ABWEICHEND` angezeigt; noch keine stille Überschreibung.
+- Nach bewusst gesetztem Haken + Bestätigung werden betroffene Dateien als `AKTUALISIERT` gemeldet.
+- Vorher→Nachher zeigt fehlende Betriebsstelle/Bahnhof → `MGHN / Gessertshausen`.
+- Mindestens eine unverändert passende Datei (`5340S_ER0.TRA`) bleibt im selben Lauf `DUPLIKAT`.
+
+**Noch offen:**
+- dieselbe Original-ID und SHA256 vor/nachher nachweisen;
+- kein zweites Original erzeugt;
+- Originaltabelle + Search/Availability/Geometry zeigen nur die neue Stationszuordnung;
+- Audit/History für die Korrektur vorhanden;
+- Warnbox-Rotrahmen nach letztem Template-Deploy visuell bestätigen.
