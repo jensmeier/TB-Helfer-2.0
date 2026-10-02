@@ -1127,3 +1127,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 ## REF-DATA-005 – Auditnachweis Checkpoint 02.10.2026
 - API-Terminal-Screenshot bestätigt Original- und Katalog-Audit der Korrektur (None → MGHN/Gessertshausen, source ADMIN_WEB_DUPLICATE_CORRECTION).
 - Einzigartigkeitsaussage noch nicht aus sichtbarem Screenshot ableiten; dazu folgt eine kompakte Originalabfrage.
+
+## REF-DATA-005 – In-place-Korrektur technisch bestätigt 02.10.2026
+- Runtimequery: 16 Korrekturupdates; IDs existieren weiter, SHA gleich, Rohoriginal eindeutig, station_code überall MGHN.
+- MGHN Geometry liefert 12 Segmente; Availability sichtbar mit 0 Review und 10 FEHLT / 2 AUTOMATISCH.
+- Search-/Availability-Gesamtkopf im Screenshot abgeschnitten; nur noch kompakte Abschlussabfrage nötig.
