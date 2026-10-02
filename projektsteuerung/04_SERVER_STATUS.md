@@ -1201,3 +1201,9 @@ Status: **DEPLOYMENTBLOCKER WEITER EINGEGRENZT**
 - Container Manager verhindert das Löschen von `tb-helfer-server-v1:local`, weil es noch von `tb-helfer-v1-worker-1`, `tb-helfer-v1-api-1`, `tb-helfer-v1-migrate-1` und `tb-helfer-v1-monitor-1` referenziert wird.
 - Das Python-Basisimage `python:3.12-slim` ist bereits vorhanden; Python muss auf der Synology **nicht separat installiert** werden.
 - Nächster Schritt: die alten Projektcontainer entfernen/bereinigen, ohne DB-Volume/Projektdateien zu löschen; danach lokales Server-Image löschen und Projekt neu erstellen, damit Dockerfile.v1 die neue requirements-Datei wirklich installiert.
+
+## REF-DATA-006 – Exportiertes API-Protokoll bestätigt pyproj-Fehlerloop 02.10.2026
+Status: **RUNTIME WEITER BLOCKIERT / KEINE NEUE CODEURSACHE**
+- Exportiertes Container-Protokoll `tb-helfer-v1-api-1(3).html` zeigt zwischen 12:29:59 und 12:30:45 wiederholt denselben Startabbruch: `ModuleNotFoundError: No module named 'pyproj'` beim Import von `tbserver.survey_catalog`.
+- Fehler tritt in wiederholten Neustartversuchen auf; die API erreicht keinen betriebsbereiten Zustand.
+- Befund passt zum bereits eingegrenzten alten lokalen Image. Nächster notwendiger Schritt bleibt: referenzierende Servercontainer löschen, dann `tb-helfer-server-v1:local` entfernen und Projekt neu erstellen, damit das Image aus aktueller `requirements.txt` neu gebaut wird.
