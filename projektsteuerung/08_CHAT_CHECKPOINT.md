@@ -1142,3 +1142,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 ## REF-DATA-006 – Gesamtansicht Deutschland 02.10.2026
 - Nutzerwunsch gesichert: nach dem aktuellen Gessertshausen-KM-Test eine grafische Gesamtansicht mit Suche bauen, damit sichtbar wird, welche Strecken/Bahnhöfe in Deutschland bereits Daten haben.
 - Vor echter Kartenpositionierung zuerst Koordinatenreferenz der vorhandenen Survey-X/Y-Werte verifizieren.
+
+## REF-DATA-006 – MGHN KM-Teilcheck 02.10.2026
+- Sichtbare W/WVB-Zeilen sind erwartungsgemäß ROT/FEHLT ohne KM-Quelle.
+- Die 2 AUTOMATISCH-Zeilen sind im Screenshot abgeschnitten; nächste Query filtert nur diese beiden.
+- Danach CRS/BBox MPB↔MGHN prüfen und erst dann Deutschland-Gesamtgrafik bauen.
