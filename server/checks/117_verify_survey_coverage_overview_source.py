@@ -14,12 +14,19 @@ assert "from pyproj" not in catalog
 for token in (
     "_DBREF_ZONE_SRIDS = {2: 5682, 3: 5683, 4: 5684, 5: 5685}",
     "ST_Transform",
+    'def _segment_physical_length_m(',
+    'def _coverage_summary_data()',
+    '@router.get("/coverage/summary")',
     '@router.get("/coverage")',
+    'include_overview: bool = Query(default=False)',
+    'include_quality: bool = Query(default=False)',
     '@router.get("/coverage/{axis_id}/geometry")',
+    '"manual_mobile_length_m"',
+    '"parallel_tracks_count_separately": True',
     '"EPSG:4326"',
     "unsupported_axis_count",
     '"overview_segments": overview_segments',
-    "_decimate(full_points, 28)",
+    '"overview_included": include_overview',
 ):
     assert token in catalog, token
 
@@ -36,14 +43,24 @@ for token in (
     "Trassendatenübersicht Deutschland",
     'id="coverageSearch"',
     'id="germanyMap"',
+    'id="kpiTotalKm"',
+    'id="kpiMobileKm"',
+    "/api/v1/survey-catalog/coverage/summary",
     "/api/v1/survey-catalog/coverage",
     "PostGIS · DB_REF → WGS84",
     "Deutschland gesamt",
     "Mausrad = Zoom",
-    "overview_segments",
-    "overview-line",
-    "Alle vorhandenen Achsen sind als vereinfachte Linien sichtbar",
+    "geometryQuality(data)",
+    "Geometrie wird erst nach Auswahl einer Achse geladen.",
 ):
     assert token in overview, token
 
-print("OK: PostGIS Germany survey coverage overview source")
+for token in (
+    'id="surveyStockKpis"',
+    "loadSurveySummary()",
+    "/api/v1/survey-catalog/coverage/summary",
+    "manuell vom Handy",
+):
+    assert token in dashboard, token
+
+print("OK: PostGIS survey summary + lazy coverage overview source")
