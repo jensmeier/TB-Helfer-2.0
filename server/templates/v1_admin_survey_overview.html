@@ -1,0 +1,268 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Trassendatenübersicht{% endblock %}
+{% block head %}
+<style>
+  .coverage-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap}
+  .coverage-hero h1{margin-bottom:5px}.coverage-hero p{margin:0;max-width:900px}
+  .coverage-tools{display:grid;grid-template-columns:minmax(280px,1fr) auto auto;gap:9px;align-items:end;margin-top:16px}
+  .coverage-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:14px 0}
+  .coverage-kpi{border:1px solid #e4e7ec;border-radius:12px;padding:11px 12px;background:#fff}
+  .coverage-kpi .n{font-size:21px;font-weight:850;color:#101828}.coverage-kpi .l{font-size:11px;color:#667085;margin-top:2px}
+  .coverage-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(310px,.7fr);gap:14px;align-items:start}
+  .map-card{padding:0;overflow:hidden}.map-head{padding:15px 17px;border-bottom:1px solid #e4e7ec;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+  .map-shell{position:relative;background:linear-gradient(180deg,#eef4f8,#f8fafc);min-height:680px;overflow:hidden}
+  #germanyMap{width:100%;height:680px;display:block}
+  .country-fill{fill:#f8fafc;stroke:#98a2b3;stroke-width:1.4;vector-effect:non-scaling-stroke}
+  .map-grid{stroke:#dbe3ec;stroke-width:.7;vector-effect:non-scaling-stroke}.map-grid-label{font-size:11px;fill:#98a2b3}
+  .coverage-line{fill:none;stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round;opacity:.9;vector-effect:non-scaling-stroke;cursor:pointer}
+  .coverage-line:hover{stroke-width:5;opacity:1}.coverage-line.selected{stroke-width:6;opacity:1;filter:url(#selectedGlow)}
+  .station-dot{stroke:#fff;stroke-width:2;vector-effect:non-scaling-stroke;cursor:pointer}.station-halo{fill:none;stroke:#1167d8;stroke-width:1;opacity:.23;vector-effect:non-scaling-stroke}
+  .station-label{font-size:12px;font-weight:800;fill:#344054;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round}
+  .map-hint{position:absolute;left:12px;bottom:10px;background:rgba(255,255,255,.94);border:1px solid #d0d5dd;border-radius:8px;padding:6px 9px;font-size:11px;color:#475467}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#475467}.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .side-card{position:sticky;top:84px}.result-list{display:grid;gap:7px;max-height:520px;overflow:auto;padding-right:3px}
+  .result-item{width:100%;text-align:left;background:#fff;color:#1d2939;border:1px solid #e4e7ec;padding:10px 11px;border-radius:10px}
+  .result-item:hover{background:#f5f8ff;border-color:#84adff}.result-item.active{background:#eff8ff;border-color:#53a0fd;box-shadow:0 0 0 2px #d1e9ff}
+  .result-item b{display:block;font-size:13px}.result-item small{display:block;color:#667085;margin-top:3px;line-height:1.35}
+  .quality-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+  .detail-box{border:1px solid #e4e7ec;border-radius:11px;padding:12px;background:#fbfcfe;margin-bottom:12px;min-height:88px}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:8px;font-size:12px}.detail-grid span{color:#667085}.detail-grid b{display:block;color:#101828;margin-top:1px}
+  .warning-note{border-left:4px solid #f79009;background:#fffcf5;padding:9px 11px;border-radius:8px;font-size:12px;color:#7a2e0e;margin-top:10px}
+  @media(max-width:1180px){.coverage-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.coverage-layout{grid-template-columns:1fr}.side-card{position:static}.result-list{max-height:360px}}
+  @media(max-width:720px){.coverage-tools{grid-template-columns:1fr}.coverage-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.map-shell,#germanyMap{height:560px;min-height:560px}.detail-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="coverage-hero">
+    <div>
+      <h1>Trassendatenübersicht Deutschland</h1>
+      <p class="muted">Gemeinsamer Referenzbestand auf einer deutschlandweiten Übersicht. Suche nach Strecke, Bahnhof/Betriebsstelle, Gleis/Achse oder Weiche/WVB und springe direkt zum vorhandenen Datenbereich.</p>
+    </div>
+    <span class="pill">DB_REF → WGS84</span>
+  </div>
+  <div class="coverage-tools">
+    <div>
+      <label for="coverageSearch">Suche</label>
+      <input id="coverageSearch" autocomplete="off" placeholder="z. B. 5302, Gessertshausen, MPB, Gleis 302, WVB 14-22">
+    </div>
+    <button id="resetView" type="button" class="secondary">Deutschland gesamt</button>
+    <button id="reloadCoverage" type="button">Aktualisieren</button>
+  </div>
+  <div id="coverageStatus" class="notice info" style="display:none"></div>
+</div>
+
+<div class="coverage-kpis">
+  <div class="coverage-kpi"><div class="n" id="kpiSegments">—</div><div class="l">aktive Segmente</div></div>
+  <div class="coverage-kpi"><div class="n" id="kpiStations">—</div><div class="l">Bahnhöfe/Betriebsstellen</div></div>
+  <div class="coverage-kpi"><div class="n" id="kpiRoutes">—</div><div class="l">Strecken</div></div>
+  <div class="coverage-kpi"><div class="n" id="kpiGreen">—</div><div class="l">automatisch / grün</div></div>
+  <div class="coverage-kpi"><div class="n" id="kpiOrange">—</div><div class="l">manuell / orange</div></div>
+  <div class="coverage-kpi"><div class="n" id="kpiRed">—</div><div class="l">ohne belastbare KM / rot</div></div>
+</div>
+
+<div class="coverage-layout">
+  <div class="card map-card">
+    <div class="map-head">
+      <div>
+        <h2 style="margin:0 0 3px">Abdeckung</h2>
+        <div class="muted" id="mapSubtitle">Deutschland · gemeinsamer Referenzbestand</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#12b76a"></i>automatisch</span>
+        <span><i style="background:#f79009"></i>manuell</span>
+        <span><i style="background:#d92d20"></i>KM fehlt</span>
+        <span><i style="background:#98a2b3"></i>unplausibel/sonstig</span>
+      </div>
+    </div>
+    <div class="map-shell">
+      <svg id="germanyMap" viewBox="0 0 900 920" aria-label="Deutschlandweite Trassendatenübersicht">
+        <defs>
+          <filter id="selectedGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <g id="gridLayer"></g>
+        <path id="countryOutline" class="country-fill"></path>
+        <g id="coverageLayer"></g>
+        <g id="stationLayer"></g>
+      </svg>
+      <div class="map-hint">Linie/Punkt anklicken · Suchtreffer fokussieren · „Deutschland gesamt“ zum Zurücksetzen</div>
+    </div>
+    <div style="padding:11px 16px;border-top:1px solid #e4e7ec" class="muted">
+      Übersichtskarte ohne externen Kartendienst. Deutschlandumriss: Natural Earth, Public Domain. Vermessungsdaten werden nur für diese Ansicht aus DB_REF Gauß-Krüger nach WGS84 transformiert; Originaldaten bleiben unverändert.
+    </div>
+  </div>
+
+  <div class="card side-card">
+    <h2>Treffer & Auswahl</h2>
+    <div id="selectionDetail" class="detail-box muted">Linie, Bahnhof oder Suchtreffer auswählen.</div>
+    <div class="headline" style="margin-bottom:8px">
+      <b id="resultCount">—</b>
+      <span class="muted" style="font-size:12px">max. 100 Treffer angezeigt</span>
+    </div>
+    <div id="coverageResults" class="result-list"></div>
+    <div id="unsupportedNote" class="warning-note" style="display:none"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const MAP={w:900,h:920};
+const DE_BOUNDS={minLon:5.7,maxLon:15.25,minLat:47.15,maxLat:55.15};
+const GERMANY=[
+[14.119686,53.757029],[14.353315,53.248171],[14.074521,52.981263],[14.4376,52.62485],[14.685026,52.089947],[14.607098,51.745188],[15.016996,51.106674],[14.570718,51.002339],[14.307013,51.117268],[14.056228,50.926918],[13.338132,50.733234],[12.966837,50.484076],[12.240111,50.266338],[12.415191,49.969121],[12.521024,49.547415],[13.031329,49.307068],[13.595946,48.877172],[13.243357,48.416115],[12.884103,48.289146],[13.025851,47.637584],[12.932627,47.467646],[12.62076,47.672388],[12.141357,47.703083],[11.426414,47.523766],[10.544504,47.566399],[10.402084,47.302488],[9.896068,47.580197],[9.594226,47.525058],[8.522612,47.830828],[8.317301,47.61358],[7.466759,47.620582],[7.593676,48.333019],[8.099279,49.017784],[6.65823,49.201958],[6.18632,49.463803],[6.242751,49.902226],[6.043073,50.128052],[6.156658,50.803721],[5.988658,51.851616],[6.589397,51.852029],[6.84287,52.22844],[7.092053,53.144043],[6.90514,53.482162],[7.100425,53.693932],[7.936239,53.748296],[8.121706,53.527792],[8.800734,54.020786],[8.572118,54.395646],[8.526229,54.962744],[9.282049,54.830865],[9.921906,54.983104],[9.93958,54.596642],[10.950112,54.363607],[10.939467,54.008693],[11.956252,54.196486],[12.51844,54.470371],[13.647467,54.075511],[14.119686,53.757029]
+];
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let coverage=null,currentBounds={...DE_BOUNDS},selectedId=null,query='';
+
+function project(lon,lat,b=currentBounds){
+  return [
+    (Number(lon)-b.minLon)/(b.maxLon-b.minLon)*MAP.w,
+    (b.maxLat-Number(lat))/(b.maxLat-b.minLat)*MAP.h
+  ];
+}
+function qualityColor(item){
+  const c=String(item?.km_quality?.color||'GRAU').toUpperCase();
+  return c==='GRUEN'?'#12b76a':c==='ORANGE'?'#f79009':c==='ROT'?'#d92d20':'#98a2b3';
+}
+function qualityLabel(item){
+  return String(item?.km_quality?.status||'UNBEKANNT').replaceAll('_',' ');
+}
+function pathFor(coords){
+  return (coords||[]).map((p,i)=>{const q=project(p[0],p[1]);return (i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)}).join(' ');
+}
+function countryPath(){
+  return GERMANY.map((p,i)=>{const q=project(p[0],p[1]);return (i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)}).join(' ')+' Z';
+}
+function segmentCenter(s){
+  const b=s.bbox_wgs84||{};
+  return [(Number(b.min_lon)+Number(b.max_lon))/2,(Number(b.min_lat)+Number(b.max_lat))/2];
+}
+function inView(lon,lat){
+  return lon>=currentBounds.minLon&&lon<=currentBounds.maxLon&&lat>=currentBounds.minLat&&lat<=currentBounds.maxLat;
+}
+function renderGrid(){
+  const g=$('gridLayer');let html='';
+  for(let lon=6;lon<=15;lon+=1){
+    const [x]=project(lon,currentBounds.minLat);
+    if(x>=0&&x<=MAP.w)html+='<line class="map-grid" x1="'+x+'" y1="0" x2="'+x+'" y2="'+MAP.h+'"></line><text class="map-grid-label" x="'+(x+4)+'" y="17">'+lon+'°E</text>';
+  }
+  for(let lat=48;lat<=55;lat+=1){
+    const [,y]=project(currentBounds.minLon,lat);
+    if(y>=0&&y<=MAP.h)html+='<line class="map-grid" x1="0" y1="'+y+'" x2="'+MAP.w+'" y2="'+y+'"></line><text class="map-grid-label" x="5" y="'+(y-5)+'">'+lat+'°N</text>';
+  }
+  g.innerHTML=html;
+}
+function stationGroups(){
+  const map=new Map();
+  for(const s of coverage?.segments||[]){
+    if(!s.station_code&&!s.station_name)continue;
+    const key=(s.station_code||'')+'|'+(s.station_name||'');
+    if(!map.has(key))map.set(key,{code:s.station_code,name:s.station_name,segments:[],sumLon:0,sumLat:0});
+    const v=map.get(key),c=segmentCenter(s);v.segments.push(s);v.sumLon+=c[0];v.sumLat+=c[1];
+  }
+  return [...map.values()].map(v=>({...v,lon:v.sumLon/v.segments.length,lat:v.sumLat/v.segments.length}));
+}
+function renderMap(){
+  renderGrid();$('countryOutline').setAttribute('d',countryPath());
+  const lines=(coverage?.segments||[]).map(s=>{
+    const cls='coverage-line'+(s.segment_id===selectedId?' selected':'');
+    return '<path class="'+cls+'" data-id="'+esc(s.segment_id)+'" d="'+pathFor(s.coordinates)+'" stroke="'+qualityColor(s)+'"><title>'+esc(s.display_name)+' · '+esc(qualityLabel(s))+'</title></path>';
+  }).join('');
+  $('coverageLayer').innerHTML=lines;
+  $('coverageLayer').querySelectorAll('[data-id]').forEach(el=>el.addEventListener('click',()=>selectSegment(el.dataset.id,true)));
+  $('stationLayer').innerHTML=stationGroups().filter(s=>inView(s.lon,s.lat)).map(s=>{
+    const p=project(s.lon,s.lat),label=(s.code?s.code+' – ':'')+(s.name||'');
+    return '<g class="station-marker" data-station="'+esc(s.code||s.name||'')+'"><circle class="station-halo" cx="'+p[0]+'" cy="'+p[1]+'" r="13"></circle><circle class="station-dot" cx="'+p[0]+'" cy="'+p[1]+'" r="6" fill="#1167d8"></circle><text class="station-label" x="'+(p[0]+9)+'" y="'+(p[1]-8)+'">'+esc(label)+'</text></g>';
+  }).join('');
+  $('stationLayer').querySelectorAll('.station-marker').forEach(el=>el.addEventListener('click',()=>focusStation(el.dataset.station)));
+}
+function hay(s){
+  return [s.display_name,s.route_number,s.station_code,s.station_name,s.track_key,s.object_key,s.axis_type].filter(Boolean).join(' ').toLocaleLowerCase('de-DE');
+}
+function filtered(){
+  const q=query.trim().toLocaleLowerCase('de-DE');
+  const rows=[...(coverage?.segments||[])];
+  if(!q)return rows;
+  return rows.filter(s=>hay(s).includes(q));
+}
+function resultSubtitle(s){
+  const parts=[];
+  if(s.station_code||s.station_name)parts.push((s.station_code||'')+(s.station_name?' · '+s.station_name:''));
+  if(s.route_number)parts.push('Strecke '+s.route_number);
+  if(s.track_key)parts.push('Gleis '+s.track_key);
+  if(s.object_key)parts.push(s.object_key);
+  return parts.join(' · ')||s.axis_type||'Achse';
+}
+function renderResults(){
+  const rows=filtered();$('resultCount').textContent=rows.length+' Treffer';
+  const shown=rows.slice(0,100);
+  $('coverageResults').innerHTML=shown.map(s=>'<button type="button" class="result-item '+(s.segment_id===selectedId?'active':'')+'" data-id="'+esc(s.segment_id)+'"><b><span class="quality-dot" style="background:'+qualityColor(s)+'"></span>'+esc(s.display_name||'Achse')+'</b><small>'+esc(resultSubtitle(s))+' · '+esc(qualityLabel(s))+'</small></button>').join('')||'<div class="muted">Keine Treffer.</div>';
+  $('coverageResults').querySelectorAll('[data-id]').forEach(el=>el.addEventListener('click',()=>selectSegment(el.dataset.id,true)));
+}
+function detail(s){
+  if(!s){$('selectionDetail').className='detail-box muted';$('selectionDetail').textContent='Linie, Bahnhof oder Suchtreffer auswählen.';return;}
+  const q=s.km_quality||{},km=(q.km_from_m!=null&&q.km_to_m!=null)?(Number(q.km_from_m)/1000).toFixed(3)+' – '+(Number(q.km_to_m)/1000).toFixed(3)+' km':'—';
+  $('selectionDetail').className='detail-box';
+  $('selectionDetail').innerHTML='<b><span class="quality-dot" style="background:'+qualityColor(s)+'"></span>'+esc(s.display_name||'Achse')+'</b><div class="detail-grid">'+
+    '<div><span>Betriebsstelle</span><b>'+esc((s.station_code||'—')+(s.station_name?' – '+s.station_name:''))+'</b></div>'+
+    '<div><span>Strecke / Gleis</span><b>'+esc((s.route_number||'—')+' / '+(s.track_key||'—'))+'</b></div>'+
+    '<div><span>Objekt</span><b>'+esc(s.object_key||'—')+'</b></div>'+
+    '<div><span>KM-Qualität</span><b>'+esc(qualityLabel(s))+'</b></div>'+
+    '<div><span>KM-Bereich</span><b>'+esc(km)+'</b></div>'+
+    '<div><span>Quelle</span><b>'+esc(q.source||s.source_kind||'—')+'</b></div>'+
+    '</div>';
+}
+function setBounds(b,label){
+  currentBounds=b;$('mapSubtitle').textContent=label||'Deutschland · gemeinsamer Referenzbestand';renderMap();
+}
+function focusBBox(b,label){
+  if(!b)return;
+  let dx=Math.max(.04,Number(b.max_lon)-Number(b.min_lon)),dy=Math.max(.035,Number(b.max_lat)-Number(b.min_lat));
+  const cx=(Number(b.min_lon)+Number(b.max_lon))/2,cy=(Number(b.min_lat)+Number(b.max_lat))/2;
+  dx=Math.max(dx*1.8,.12);dy=Math.max(dy*1.8,.09);
+  const aspect=MAP.w/MAP.h;
+  if(dx/dy<aspect)dx=dy*aspect;else dy=dx/aspect;
+  setBounds({minLon:cx-dx/2,maxLon:cx+dx/2,minLat:cy-dy/2,maxLat:cy+dy/2},label);
+}
+function selectSegment(id,zoom){
+  const s=(coverage?.segments||[]).find(x=>x.segment_id===id);if(!s)return;
+  selectedId=id;detail(s);renderResults();
+  if(zoom)focusBBox(s.bbox_wgs84,s.display_name||'Auswahl');else renderMap();
+}
+function focusStation(key){
+  const g=stationGroups().find(x=>x.code===key||x.name===key);if(!g)return;
+  const minLon=Math.min(...g.segments.map(x=>x.bbox_wgs84.min_lon)),maxLon=Math.max(...g.segments.map(x=>x.bbox_wgs84.max_lon));
+  const minLat=Math.min(...g.segments.map(x=>x.bbox_wgs84.min_lat)),maxLat=Math.max(...g.segments.map(x=>x.bbox_wgs84.max_lat));
+  query=g.code||g.name||'';$('coverageSearch').value=query;renderResults();focusBBox({minLon,minLat,maxLon,maxLat},(g.code?g.code+' – ':'')+(g.name||''));
+}
+function resetView(){
+  selectedId=null;detail(null);setBounds({...DE_BOUNDS},'Deutschland · gemeinsamer Referenzbestand');renderResults();
+}
+function setKpis(data){
+  $('kpiSegments').textContent=data.count??0;$('kpiStations').textContent=data.station_count??0;$('kpiRoutes').textContent=data.route_count??0;
+  $('kpiGreen').textContent=data.quality_counts?.AUTOMATISCH??0;$('kpiOrange').textContent=data.quality_counts?.MANUELL??0;$('kpiRed').textContent=data.quality_counts?.FEHLT??0;
+}
+async function loadCoverage(){
+  $('reloadCoverage').disabled=true;$('coverageStatus').style.display='block';$('coverageStatus').className='notice info';$('coverageStatus').textContent='Trassendaten werden geladen und für die Übersicht transformiert …';
+  try{
+    const {data}=await tbApi('/api/v1/survey-catalog/coverage?max_points_per_segment=100&segment_limit=5000');
+    coverage=data;setKpis(data);resetView();
+    $('coverageStatus').className='notice ok';$('coverageStatus').textContent=(data.count||0)+' Segmente geladen · '+(data.station_count||0)+' Betriebsstellen · '+(data.route_count||0)+' Strecken.';
+    const unsupported=Number(data.unsupported_coordinate_count||0);
+    $('unsupportedNote').style.display=unsupported?'block':'none';
+    $('unsupportedNote').textContent=unsupported?unsupported+' aktive Segmente konnten wegen fehlender/noch nicht unterstützter DB_REF-Koordinate nicht auf der Deutschlandübersicht positioniert werden. Die Originaldaten bleiben davon unberührt.':'';
+  }catch(e){
+    $('coverageStatus').className='notice err';$('coverageStatus').textContent='Gesamtansicht konnte nicht geladen werden: '+(e.message||String(e));
+  }finally{$('reloadCoverage').disabled=false;}
+}
+let searchTimer=null;
+$('coverageSearch').addEventListener('input',ev=>{query=ev.target.value;clearTimeout(searchTimer);searchTimer=setTimeout(()=>{renderResults();const rows=filtered();if(rows.length===1)selectSegment(rows[0].segment_id,true);},120);});
+$('resetView').addEventListener('click',resetView);
+$('reloadCoverage').addEventListener('click',loadCoverage);
+loadCoverage();
+</script>
+{% endblock %}
