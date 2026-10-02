@@ -959,3 +959,7 @@ Sourcecheck ist kein Runtime-/E2E-Nachweis.
 - Source korrigiert: Gesamtansicht zeigt nicht mehr nur Center-/Stationspunkte, sondern vereinfachte Linien aller aktiven Achsen.
 - Nach Deploy prüfen: Pasing/MGHN-Achsen sind bereits ohne Einzelklick als Linien vorhanden; beim Zoomen trennen sich überlagerte Gleise/W/WVB soweit geometrisch möglich.
 - Detail-Lazy-Load bei Klick bleibt separat zu prüfen.
+
+### REF-DATA-006 – Runtime-Status nach Linien-Patch: TEILWEISE
+- Nutzer bestätigt grundsätzlich funktionierende Darstellung, aber noch nicht korrekt/genügend.
+- Kein PASS. Nächster Schritt ist visuelle/bedienseitige Fehlerabgrenzung; erst danach gezielter Patch.
