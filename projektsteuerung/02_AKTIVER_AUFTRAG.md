@@ -2057,3 +2057,22 @@ Neue Benutzeranforderung:
 - Diese manuellen Abschnitts-/Anker-Datensätze werden im aktuellen `WorksiteTrackDataSync` nicht als eigene Datensätze übertragen. Die Kamera-/Nähelogik kann `MANUELL_ABSCHNITT` lokal zur Laufzeit anwenden, ohne dass dadurch zwingend die persistierten Achs-Samples aktualisiert werden.
 - Deshalb vor Kennzahlen/Serverübernahme nicht davon ausgehen, dass alle neueren manuellen Handy-KM vollständig auf dem Server vorliegen. Android↔Server-Vertrag für manuelle Abschnitts-KM muss vor Implementierung explizit festgelegt und anschließend auf beiden Seiten getrennt umgesetzt/getestet werden.
 - SERVER ändert `app/**` nicht.
+
+
+## SERVER-OPT-001 – Gesamtprüfung und Optimierung DS220+ / Vorschlagsphase 02.10.2026
+Status: **ANFORDERUNG GESICHERT / ERST VORSCHLÄGE UND RÜCKFRAGEN / IMPLEMENTIERUNG NICHT FREIGEGEBEN**
+
+- Neuer Benutzerauftrag: Server vollständig und bereichsübergreifend prüfen, für Synology DS220+ mit laut Benutzer 10 GB RAM optimieren, Administration optisch verbessern und Strecken-/Bahnhofs-/Gleis-/Weichen-/WVB-Daten verständlicher darstellen sowie Bearbeiten/Löschen ermöglichen.
+- Verbindliche Reihenfolge: zuerst SERVER einschließlich Administration und Datenmodell, danach Benutzer-PORTAL, danach ANDROID. Android jetzt ausschließlich read-only mit Serverdaten/API/Verträgen vergleichen; kein app/** ändern.
+- Vor Bauen konkrete Vorschläge und Fragen vorlegen. Diese Anforderungssicherung ist keine Freigabe für Code-, Runtime- oder Datenänderungen.
+- Übergabe: Benutzeranhang „Eingefügter Text(10).txt“ / WORK-GESAMTAUFTRAG vom 02.10.2026. Seine Umsetzungsschritte werden durch die aktuelle ausdrückliche Vorschlagsphase begrenzt.
+- Ausgangsstand live geprüft: SERVER d2cd589161ad6f3b6185c4bc5cc58ef397e27ef6 / PR #6 offen, Draft; ANDROID 423f37892915cb3308a4b1ea9e4d196faa872326 / PR #11 offen, kein Draft.
+- Bestehende Regeln schützen Originaldateien und sehen im gemeinsamen Fachkatalog kein normales globales Löschen vor. Neue Löschanforderung daher vor Implementierung klären: Deaktivierung/Archiv mit Wiederherstellung, Umfang abhängiger Objekte, Berechtigung und ggf. getrenntes endgültiges Entfernen. Keine bestehende Schutzregel still aufheben.
+- Prüfprogramm: API/Auth/Firmentrennung; DB/Migrationen/Transaktionen; Worker/Jobs/Backup/Restore; Ressourcen/Abfragen/Geometrie; Dateien/Bilder/PDF; BTB/Mängel/Abnahmen; Sync/Versionen/Löschweitergabe; Fachkatalog↔Survey↔Android-Zuordnung. Quellbefunde, lokale Tests und Synology-E2E strikt getrennt berichten.
+- Erste read-only Quellbeobachtungen für Vorschläge, kein Runtime-Fehlernachweis:
+  - Synology-Staging-Compose setzt API mem_limit über TB_V1_API_MEMORY_LIMIT mit Default 512m; tatsächliche NAS-Konfiguration unbekannt. Mehr Host-RAM hebt Containerlimit nicht automatisch an. Keine pauschalen RAM-/Worker-Einstellungen ohne Messung.
+  - Survey-API enthält versioniertes PATCH axes sowie DELETE manual-segments als Deaktivierung; allgemeine vollständige Objektverwaltung ist damit noch nicht nachgewiesen.
+  - Coverage-Standardantwort lädt weiterhin Achsmetadaten und je Achse aktive Segmente; Linien/Qualität sind standardmäßig aus. Übersichtstemplate ruft /coverage ohne include_overview auf. Darstellung aller vereinfachten Linien und Ladebudget gemeinsam klären.
+  - Android WorksiteTrackDataSync (aktueller Android-HEAD) überträgt AXIS/STRECKENPUNKTE per LEAD-Snapshot; eigener TrassenManuellerAbschnittEntity-Datensatz fehlt in diesem Pfad. Kanonischen Survey-Vertrag und späteren Clientbedarf abgleichen.
+- Bekannter erster Diagnosepunkt bleibt /api/v1/survey-catalog/coverage/summary: Helper laut gesichertem Runtime-Nachweis erfolgreich, Browser-/HTTP-Pfad offen. In dieser Sitzung kein neuer Synology-/HTTP-/E2E-Test ausgeführt.
+- Nächster Schritt: Benutzer entscheidet Löschumfang, Bearbeitungsumfang und gewünschte Verwaltungsdarstellung; anschließend konkreten freigegebenen Arbeitsblock festhalten.
