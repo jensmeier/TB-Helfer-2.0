@@ -40,18 +40,18 @@ assert 'href="/admin/v1/survey-overview">Trassendatenübersicht</a>' in base
 assert 'href="/admin/v1/survey-overview"' in dashboard
 
 for token in (
-    "Trassendatenübersicht Deutschland",
+    "Trassendatenübersicht",
     'id="coverageSearch"',
-    'id="germanyMap"',
+    'id="coverageMap"',
     'id="kpiTotalKm"',
     'id="kpiMobileKm"',
     "/api/v1/survey-catalog/coverage/summary",
     "/api/v1/survey-catalog/coverage",
-    "PostGIS · DB_REF → WGS84",
-    "Deutschland gesamt",
+    "Auswahl einpassen",
+    "Gesamter Bestand",
     "Mausrad = Zoom",
     "geometryQuality(data)",
-    "Geometrie wird erst nach Auswahl einer Achse geladen.",
+    "include_overview=true&fast_overview=true",
 ):
     assert token in overview, token
 
@@ -64,3 +64,4 @@ for token in (
     assert token in dashboard, token
 
 print("OK: PostGIS survey summary + lazy coverage overview source")
+

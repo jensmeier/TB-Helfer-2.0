@@ -2784,6 +2784,7 @@ def coverage_summary(
 def coverage(
     include_overview: bool = Query(default=False),
     include_quality: bool = Query(default=False),
+    fast_overview: bool = Query(default=False),
     _: dict[str, Any] = Depends(require_admin),
 ) -> dict[str, Any]:
     """Read-only Germany-wide summary for the admin survey overview.
@@ -2842,7 +2843,7 @@ def coverage(
                 (axis["id"],),
             )
             segments = [dict(row) for row in cur.fetchall()]
-            if include_quality or include_overview:
+            if include_quality or (include_overview and not fast_overview):
                 quality = _axis_km_summary(cur, axis, segments)
                 status = str(quality.get("status") or "UNBEKANNT")
                 quality_counts[status] = quality_counts.get(status, 0) + 1
@@ -2940,9 +2941,94 @@ def coverage(
         "unsupported_axis_count": unsupported,
         "quality_counts": quality_counts,
         "overview_included": include_overview,
-        "quality_included": include_quality or include_overview,
+        "quality_included": include_quality or (include_overview and not fast_overview),
         "axes": items,
     }
+
+
+@router.get("/coverage/{axis_id}/details")
+def coverage_axis_details(
+    axis_id: UUID,
+    history_before: int | None = Query(default=None, ge=1),
+    _: dict[str, Any] = Depends(require_admin),
+) -> dict[str, Any]:
+    """Small, read-only admin detail payload; no geometry/parse files loaded."""
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id,display_name,route_number,station_code,station_name,
+                   track_key,object_key,axis_type,direction,status,current_version,
+                   created_at,updated_at
+            FROM tb.survey_catalog_axes
+            WHERE id=%s AND scope='GLOBAL' AND status <> 'ARCHIVED'
+            """, (axis_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "SURVEY_COVERAGE_AXIS_NOT_FOUND")
+        axis = dict(row)
+        cur.execute(
+            """
+            SELECT s.id,s.source_kind,s.segment_status,s.merge_status,
+                   s.station_from_m,s.station_to_m,s.km_from_m,s.km_to_m,
+                   s.source_original_id,s.current_version,s.updated_at,
+                   o.original_name,o.data_kind,o.byte_size,o.sha256
+            FROM tb.survey_catalog_segments s
+            LEFT JOIN tb.survey_originals o ON o.id=s.source_original_id
+            WHERE s.axis_id=%s
+            ORDER BY (s.segment_status='ACTIVE') DESC,s.created_at,s.id
+            """, (axis_id,),
+        )
+        segments = [dict(row) for row in cur.fetchall()]
+        cur.execute(
+            """
+            WITH entities AS (
+                SELECT 'AXIS'::text AS kind,%s::uuid AS id
+                UNION
+                SELECT 'SEGMENT',id FROM tb.survey_catalog_segments WHERE axis_id=%s
+                UNION
+                SELECT 'ASSET',asset_id FROM tb.survey_catalog_segments
+                    WHERE axis_id=%s AND asset_id IS NOT NULL
+                UNION
+                SELECT 'CONFLICT',id FROM tb.survey_catalog_conflicts WHERE axis_id=%s
+            )
+            SELECT h.change_id,h.entity_type,h.entity_id,h.entity_version,
+                   h.operation,h.changed_at,h.before_data,h.after_data
+            FROM entities e
+            JOIN tb.survey_catalog_history h ON h.entity_type=e.kind AND h.entity_id=e.id
+            WHERE (%s::bigint IS NULL OR h.change_id<%s)
+            ORDER BY h.change_id DESC LIMIT 51
+            """, (axis_id,axis_id,axis_id,axis_id,history_before,history_before),
+        )
+        raw_history = [dict(row) for row in cur.fetchall()]
+        # Never send geometry, raw payloads, storage paths or user metadata to
+        # this display. A small field diff is enough for a readable history.
+        fields = ("display_name","station_code","station_name","route_number",
+                  "track_key","object_key","direction","status","segment_status",
+                  "merge_status","km_from_m","km_to_m","station_from_m",
+                  "station_to_m","resolution","resolution_note")
+        history = []
+        for row in raw_history[:50]:
+            before = row.pop("before_data") or {}
+            after = row.pop("after_data") or {}
+            row["fields"] = [
+                {"field": key, "before": before.get(key), "after": after.get(key)}
+                for key in fields if before.get(key) != after.get(key)
+            ]
+            history.append(row)
+        cur.execute(
+            """
+            SELECT id,conflict_type,status,created_at
+            FROM tb.survey_catalog_conflicts
+            WHERE axis_id=%s AND status='OPEN' ORDER BY created_at,id
+            """, (axis_id,),
+        )
+        conflicts = [dict(row) for row in cur.fetchall()]
+    return _plain({
+        "axis": axis, "segments": segments, "history": history,
+        "history_next_before": history[-1]["change_id"] if len(raw_history)>50 else None,
+        "conflicts": conflicts,
+    })
 
 
 @router.get("/coverage/{axis_id}/geometry")

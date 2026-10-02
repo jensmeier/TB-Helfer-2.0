@@ -2,320 +2,188 @@
 {% block title %}TB-Helfer · Trassendatenübersicht{% endblock %}
 {% block head %}
 <style>
-.coverage-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap}
-.coverage-hero h1{margin-bottom:5px}.coverage-hero p{margin:0;max-width:920px}
-.coverage-tools{display:grid;grid-template-columns:minmax(300px,1fr) auto auto;gap:9px;align-items:end;margin-top:16px}
-.coverage-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
-.coverage-kpi{border:1px solid #e4e7ec;border-radius:12px;padding:11px 12px;background:#fff}
-.coverage-kpi .n{font-size:21px;font-weight:850;color:#101828}.coverage-kpi .l{font-size:11px;color:#667085;margin-top:2px}
-.coverage-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(320px,.7fr);gap:14px;align-items:start}
-.map-card{padding:0;overflow:hidden}.map-head{padding:15px 17px;border-bottom:1px solid #e4e7ec;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}
-.map-shell{position:relative;background:linear-gradient(180deg,#eef4f8,#f8fafc);min-height:680px;overflow:hidden;touch-action:none}
-#germanyMap{width:100%;height:680px;display:block;cursor:grab}#germanyMap.dragging{cursor:grabbing}
-.country-fill{fill:#f8fafc;stroke:#98a2b3;stroke-width:1.4;vector-effect:non-scaling-stroke}
-.map-grid{stroke:#dbe3ec;stroke-width:.7;vector-effect:non-scaling-stroke}.map-grid-label{font-size:11px;fill:#98a2b3}
-.overview-line{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;opacity:.9;vector-effect:non-scaling-stroke;cursor:pointer}
-.overview-line:hover{stroke-width:5;opacity:1}
-.overview-line.selected{stroke-width:5.5;opacity:1}
-.detail-line{fill:none;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;opacity:1;vector-effect:non-scaling-stroke;cursor:pointer}
-.detail-line:hover{stroke-width:5.5}
-.station-dot{stroke:#fff;stroke-width:2;vector-effect:non-scaling-stroke;cursor:pointer}
-.station-halo{fill:none;stroke:#1167d8;stroke-width:1.2;opacity:.24;vector-effect:non-scaling-stroke}
-.station-label{font-size:12px;font-weight:800;fill:#344054;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round;pointer-events:none}
-.axis-dot{stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke;cursor:pointer}
-.map-hint{position:absolute;left:12px;bottom:10px;background:rgba(255,255,255,.94);border:1px solid #d0d5dd;border-radius:8px;padding:6px 9px;font-size:11px;color:#475467}
-.map-zoom{position:absolute;right:12px;top:12px;display:grid;gap:6px}.map-zoom button{width:38px;height:38px;padding:0;font-size:20px;box-shadow:0 1px 4px rgba(16,24,40,.16)}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#475467}.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-.side-card{position:sticky;top:84px}.result-list{display:grid;gap:7px;max-height:520px;overflow:auto;padding-right:3px}
-.result-item{width:100%;text-align:left;background:#fff;color:#1d2939;border:1px solid #e4e7ec;padding:10px 11px;border-radius:10px}
-.result-item:hover{background:#f5f8ff;border-color:#84adff}.result-item.active{background:#eff8ff;border-color:#53a0fd;box-shadow:0 0 0 2px #d1e9ff}
-.result-item b{display:block;font-size:13px}.result-item small{display:block;color:#667085;margin-top:3px;line-height:1.35}
-.quality-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
-.detail-box{border:1px solid #e4e7ec;border-radius:11px;padding:12px;background:#fbfcfe;margin-bottom:12px;min-height:88px}
-.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:8px;font-size:12px}.detail-grid span{color:#667085}.detail-grid b{display:block;color:#101828;margin-top:1px}
-.warning-note{border-left:4px solid #f79009;background:#fffcf5;padding:9px 11px;border-radius:8px;font-size:12px;color:#7a2e0e;margin-top:10px}
-@media(max-width:1180px){.coverage-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.coverage-layout{grid-template-columns:1fr}.side-card{position:static}.result-list{max-height:360px}}
-@media(max-width:720px){.coverage-tools{grid-template-columns:1fr}.coverage-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.map-shell,#germanyMap{height:560px;min-height:560px}.detail-grid{grid-template-columns:1fr}}
+.coverage-heading,.coverage-toolbar,.map-heading,.dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.coverage-heading h1{margin:0 0 6px}
+.coverage-heading p{margin:0}
+.coverage-toolbar{margin:18px 0 12px;justify-content:flex-start}
+.coverage-toolbar .search{flex:1;min-width:240px}
+.coverage-toolbar button{white-space:nowrap}
+.coverage-toolbar .quiet,.coverage-dialog .quiet,.map-controls .quiet{background:#fff;color:#344054;border:1px solid #d0d5dd}
+.quiet:hover{background:#eff6ff!important}
+.coverage-kpis{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin:16px 0}
+.coverage-kpi{padding:13px 11px;border:1px solid #e4e7ec;border-radius:12px;background:#fff}
+.coverage-kpi strong{display:block;font-size:19px;white-space:nowrap;color:#101828}
+.coverage-kpi small{display:block;color:#667085;line-height:1.4;margin-top:5px;font-size:11px}
+.coverage-workspace{display:grid;grid-template-columns:270px minmax(0,1fr);border:1px solid #dce4ed;border-radius:16px;background:white;overflow:hidden;box-shadow:0 5px 20px #16345408}
+.coverage-sidebar{border-right:1px solid #e4e7ec;min-width:0;display:flex;flex-direction:column}
+.result-tabs{display:flex;gap:3px;padding:10px;border-bottom:1px solid #e4e7ec}
+.result-tabs button{font-size:12px;padding:9px 7px;background:#f2f4f7;color:#475467;flex:1}
+.result-tabs button[aria-pressed=true]{background:#e8f1ff;color:#175cd3}
+.result-caption{padding:12px;font-size:12px;color:#667085;display:flex;justify-content:space-between;gap:8px}
+.result-list{overflow:auto;max-height:620px;padding:0 8px 12px;display:grid;align-content:start;gap:5px}
+.result-item{width:100%;text-align:left;padding:11px 10px;background:white;border:1px solid transparent;color:#344054;border-radius:9px;overflow-wrap:anywhere}
+.result-item:hover{background:#f5f8ff;border-color:#d1e0ff}
+.result-item.active{background:#edf4ff;border-color:#84adff}
+.result-item b{font-size:13px;display:block}
+.result-item small{display:block;font-size:11px;line-height:1.5;color:#667085;margin-top:4px}
+.quality-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.coverage-map{min-width:0;position:relative}
+.map-heading{padding:14px 18px;border-bottom:1px solid #e4e7ec}
+.map-heading h2{margin:0;font-size:16px}
+.map-heading small{color:#667085}
+.map-shell{position:relative;background:#f5f8fa;overflow:hidden}#coverageMap{display:block;width:100%;height:clamp(440px,64vh,740px);touch-action:none;cursor:grab;outline-offset:-3px}#coverageMap.dragging{cursor:grabbing}
+.map-controls{position:absolute;right:14px;top:14px;display:grid;gap:6px}
+.map-controls button{width:38px;height:38px;padding:0;font-size:21px;box-shadow:0 2px 5px #172b4d14}
+.map-note{position:absolute;bottom:12px;left:14px;max-width:calc(100% - 100px);font-size:11px;color:#475467;background:#ffffffeb;border:1px solid #dce4ed;border-radius:7px;padding:6px 9px;pointer-events:none}
+.map-scale{position:absolute;bottom:14px;right:14px;font-size:10px;color:#475467;text-align:center;pointer-events:none}
+.map-scale div{border:1px solid #475467;border-top:0;height:5px}
+.map-grid{stroke:#dfe7ed;stroke-width:1}
+.axis-line{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.axis-line.detail{stroke-width:3}
+.axis-line.selected{stroke:#1167d8;stroke-width:5;opacity:.6}
+.axis-point{stroke:#fff;stroke-width:1.5}
+.map-label{font-size:11px;fill:#344054;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round;pointer-events:none}
+.station-label{font-weight:700;font-size:12px}
+.map-legend{display:flex;gap:12px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid #e4e7ec;font-size:11px;color:#667085}
+.map-legend i{display:inline-block;width:9px;height:9px;margin-right:4px;border-radius:3px}
+.load-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0;font-size:12px;color:#475467;min-height:22px}
+.load-status.error{color:#b42318}
+.load-status button{padding:5px 9px;font-size:12px}
+.load-status[hidden],button[hidden]{display:none}
+.map-progress{padding:0 16px 8px;font-size:11px;color:#667085}
+.coverage-dialog{border:1px solid #d0d5dd;border-radius:18px;width:min(1050px,calc(100vw - 32px));max-height:88vh;padding:0;color:#1d2939;box-shadow:0 24px 80px #0b17304d}
+.coverage-dialog::backdrop{background:#0b173066;backdrop-filter:blur(2px)}
+.dialog-heading{padding:20px 24px 16px;flex-wrap:nowrap;align-items:flex-start;border-bottom:1px solid #e4e7ec}
+.dialog-heading h2{margin:4px 0 6px;font-size:23px;overflow-wrap:anywhere}
+.dialog-heading small{color:#667085}
+.dialog-heading .close{flex-shrink:0;width:34px;height:34px;padding:0;font-size:24px}
+.dialog-kind{color:#175cd3;font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.06em}
+.dialog-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 24px;background:#f8fafc}
+.dialog-actions button{font-size:13px}
+.dialog-tabs{display:flex;gap:5px;padding:0 20px;border-bottom:1px solid #e4e7ec;overflow:auto}
+.dialog-tabs button{border-radius:0;background:white;color:#667085;font-size:13px;padding:15px 10px;border-bottom:2px solid transparent;white-space:nowrap}
+.dialog-tabs button[aria-selected=true]{border-color:#1167d8;color:#175cd3}
+.dialog-body{padding:22px 24px;min-height:230px;max-height:55vh;overflow:auto;overflow-wrap:anywhere}
+.detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:8px 0 22px}
+.detail-grid dt{font-size:12px;color:#667085;margin-bottom:5px}
+.detail-grid dd{margin:0;font-weight:650;font-size:14px}
+.detail-panel{border:1px solid #e4e7ec;border-radius:12px;padding:14px;margin-bottom:10px}
+.detail-panel h3{font-size:14px;margin:0 0 9px}
+.detail-panel p{font-size:13px;line-height:1.5;margin:6px 0}
+.detail-panel small{color:#667085}
+.dialog-object-list{display:grid;gap:7px}
+.dialog-object-list button{border:1px solid #e4e7ec}
+.source-hash{font-family:monospace;font-size:11px;word-break:break-all}
+.history-item{border-left:2px solid #d1e0ff;padding:0 0 16px 14px;margin-left:4px}
+.history-item p{font-size:12px;margin:7px 0}
+.empty-state{padding:25px 5px;color:#667085;font-size:14px;line-height:1.6}
+.detail-warning{background:#fffaeb;border:1px solid #fedf89;border-radius:9px;padding:10px;font-size:12px;margin-top:12px}
+.coverage-dialog a{font-size:13px}
+.field-value{white-space:pre-wrap}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:1200px){.coverage-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+.coverage-workspace{grid-template-columns:230px minmax(0,1fr)}}
+@media(max-width:800px){.coverage-heading h1{font-size:25px}
+.coverage-workspace{display:flex;flex-direction:column}
+.coverage-sidebar{order:2;border-right:0;border-top:1px solid #e4e7ec}
+.result-list{max-height:240px}
+.coverage-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+.coverage-kpi strong{font-size:15px}
+.coverage-kpi{padding:9px 7px}
+.detail-grid{grid-template-columns:1fr 1fr}
+.dialog-body{padding:16px}
+.dialog-heading{padding:16px}
+.coverage-toolbar button{flex:1}
+.map-note{max-width:65%;font-size:10px}
+.coverage-dialog{width:calc(100vw - 16px);max-height:94vh}
+.dialog-body{max-height:56vh}}
+@media(prefers-reduced-motion:no-preference){.coverage-dialog[open]{animation:dialog-in .14s ease-out}
+@keyframes dialog-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}}
 </style>
 {% endblock %}
 {% block content %}
-<div class="card">
-  <div class="coverage-hero">
-    <div>
-      <h1>Trassendatenübersicht Deutschland</h1>
-      <p class="muted">Zeigt, wo im gemeinsamen Referenzbestand bereits Trassierungs- und Vermessungsdaten vorhanden sind. Suche nach Strecke, Bahnhof/Betriebsstelle, Gleis/Achse oder Weiche/WVB.</p>
-    </div>
-    <span class="pill">PostGIS · DB_REF → WGS84</span>
-  </div>
-  <div class="coverage-tools">
-    <div>
-      <label for="coverageSearch">Suche</label>
-      <input id="coverageSearch" autocomplete="off" placeholder="z. B. 5302, Gessertshausen, MPB, Gleis 302, WVB 14-22">
-    </div>
-    <button id="resetView" type="button" class="secondary">Deutschland gesamt</button>
-    <button id="reloadCoverage" type="button">Aktualisieren</button>
-  </div>
-  <div id="coverageStatus" class="notice info" style="display:none"></div>
-</div>
-
+<div class="coverage-heading"><div><h1>Trassendatenübersicht</h1><p class="muted">Dein Referenzbestand – Strecken, Bahnhöfe, Gleise und Weichen auf einen Blick.</p></div><a href="/admin/v1/survey-import">Trassierungsdaten öffnen →</a></div>
 <div class="coverage-kpis">
-  <div class="coverage-kpi"><div class="n" id="kpiTotalKm">—</div><div class="l">Trassenlänge gesamt</div></div>
-  <div class="coverage-kpi"><div class="n" id="kpiKnownKm">—</div><div class="l">davon mit belastbarer KM</div></div>
-  <div class="coverage-kpi"><div class="n" id="kpiAutoKm">—</div><div class="l">automatisch / grün</div></div>
-  <div class="coverage-kpi"><div class="n" id="kpiMobileKm">—</div><div class="l">manuell vom Handy / orange</div></div>
-  <div class="coverage-kpi"><div class="n" id="kpiMissingKm">—</div><div class="l">ohne belastbare KM</div></div>
-  <div class="coverage-kpi"><div class="n" id="kpiStations">—</div><div class="l">Bahnhöfe/Betriebsstellen</div></div>
-  <div class="coverage-kpi"><div class="n" id="kpiTracks">—</div><div class="l">Gleise im Bestand</div></div>
-  <div class="coverage-kpi"><div class="n" id="kpiRoutes">—</div><div class="l">Strecken</div></div>
+<div class="coverage-kpi"><strong id="kpiTotalKm">—</strong><small>Trassenlänge gesamt</small></div><div class="coverage-kpi"><strong id="kpiKnownKm">—</strong><small>mit belastbarer KM</small></div><div class="coverage-kpi"><strong id="kpiAutoKm">—</strong><small>automatisch</small></div><div class="coverage-kpi"><strong id="kpiMobileKm">—</strong><small>manuell vom Handy</small></div><div class="coverage-kpi"><strong id="kpiMissingKm">—</strong><small>ohne belastbare KM</small></div><div class="coverage-kpi"><strong id="kpiStations">—</strong><small>Bahnhöfe / Betriebsstellen</small></div><div class="coverage-kpi"><strong id="kpiTracks">—</strong><small>Gleise</small></div><div class="coverage-kpi"><strong id="kpiRoutes">—</strong><small>Strecken</small></div>
 </div>
-
-<div class="coverage-layout">
-  <div class="card map-card">
-    <div class="map-head">
-      <div>
-        <h2 style="margin:0 0 3px">Vorhandene Daten in Deutschland</h2>
-        <div class="muted" id="mapSubtitle">Deutschland · gemeinsamer Referenzbestand</div>
-      </div>
-      <div class="legend">
-        <span><i style="background:#12b76a"></i>automatisch</span>
-        <span><i style="background:#f79009"></i>manuell</span>
-        <span><i style="background:#d92d20"></i>KM fehlt</span>
-        <span><i style="background:#98a2b3"></i>gemischt/unplausibel</span>
-        <span><i style="background:#1167d8"></i>Auswahl</span>
-      </div>
-    </div>
-    <div class="map-shell">
-      <svg id="germanyMap" viewBox="0 0 900 920" aria-label="Deutschlandweite Trassendatenübersicht">
-        <g id="gridLayer"></g>
-        <path id="countryOutline" class="country-fill"></path>
-        <g id="overviewLayer"></g>
-        <g id="detailLayer"></g>
-        <g id="stationLayer"></g>
-      </svg>
-      <div class="map-zoom">
-        <button type="button" id="zoomIn" class="secondary" title="Hineinzoomen">+</button>
-        <button type="button" id="zoomOut" class="secondary" title="Herauszoomen">−</button>
-      </div>
-      <div class="map-hint">Schnelle Übersichtspunkte · Mausrad = Zoom · Ziehen = Verschieben · Achse anklicken = vollständige Geometrie und KM-Details</div>
-    </div>
-    <div style="padding:11px 16px;border-top:1px solid #e4e7ec" class="muted">
-      Die Übersicht verändert keine Vermessungsdaten. PostGIS transformiert DB_REF-Koordinaten nur für diese Anzeige nach WGS84.
-    </div>
-  </div>
-
-  <div class="card side-card">
-    <h2>Treffer & Auswahl</h2>
-    <div id="selectionDetail" class="detail-box muted">Bahnhof, Achse oder Suchtreffer auswählen.</div>
-    <div class="headline" style="margin-bottom:8px">
-      <b id="resultCount">—</b>
-      <span class="muted" style="font-size:12px">max. 100 Treffer angezeigt</span>
-    </div>
-    <div id="coverageResults" class="result-list"></div>
-    <div id="unsupportedNote" class="warning-note" style="display:none"></div>
-  </div>
+<div id="summaryStatus" class="load-status" role="status" hidden></div>
+<div class="coverage-toolbar"><div class="search"><label for="coverageSearch" class="sr-only">Bestand durchsuchen</label><input id="coverageSearch" type="search" autocomplete="off" placeholder="Bahnhof, Strecke, Gleis oder Weiche suchen …"></div><button id="resetView" class="quiet" type="button">Gesamter Bestand</button><button id="fitSelection" class="quiet" type="button" disabled>Auswahl einpassen</button><button id="reloadCoverage" type="button">Aktualisieren</button></div>
+<div id="coverageStatus" class="load-status" role="status"></div>
+<div class="coverage-workspace">
+<aside class="coverage-sidebar" aria-label="Objektauswahl"><div class="result-tabs" aria-label="Objekttyp"><button type="button" data-list="axes" aria-pressed="true">Achsen</button><button type="button" data-list="stations" aria-pressed="false">Bahnhöfe</button><button type="button" data-list="routes" aria-pressed="false">Strecken</button></div><div class="result-caption"><span id="resultCount">Bestand wird geladen …</span><span id="resultLimit"></span></div><div id="coverageResults" class="result-list"></div></aside>
+<section class="coverage-map" aria-label="Kartenansicht"><div class="map-heading"><h2 id="mapSubtitle">Gesamter Bestand</h2><small id="mapZoomLabel">Ausdehnung der vorhandenen Daten</small></div><div class="map-shell"><svg id="coverageMap" tabindex="0" role="img" aria-label="Trassendatenkarte. Plus und Minus zum Zoomen, Pfeiltasten zum Verschieben. Objekte über die Trefferliste öffnen."><g id="gridLayer"></g><g id="overviewLayer"></g><g id="stationLayer"></g><g id="labelLayer"></g></svg><div class="map-controls"><button id="zoomIn" type="button" class="quiet" aria-label="Hineinzoomen">+</button><button id="zoomOut" type="button" class="quiet" aria-label="Herauszoomen">−</button></div><div class="map-note">Mausrad = Zoom · Ziehen = Verschieben · Antippen = Details</div><div class="map-scale"><span id="scaleText"></span><div id="scaleBar"></div></div></div><div class="map-legend"><span><i style="background:#12b76a"></i>automatisch</span><span><i style="background:#f79009"></i>manuell</span><span><i style="background:#d92d20"></i>KM fehlt</span><span><i style="background:#98a2b3"></i>gemischt / unplausibel</span><span><i style="background:#64748b"></i>noch nicht geprüft</span><span><i style="background:#1167d8"></i>Auswahl</span></div><div id="geometryStatus" class="map-progress" role="status"></div><button id="moreGeometry" type="button" class="quiet" style="margin:0 16px 10px;font-size:12px" hidden>Weitere sichtbare Details laden</button></section>
 </div>
+<div id="shapeStatus" class="load-status" role="status" hidden></div><div id="detailStatus" class="load-status" role="status" hidden></div><div id="unsupportedNote" class="load-status" hidden></div>
+<dialog id="coverageDialog" class="coverage-dialog" aria-labelledby="dialogTitle"><div class="dialog-heading"><div><div id="dialogKind" class="dialog-kind"></div><h2 id="dialogTitle"></h2><small id="dialogSubtitle"></small></div><button id="closeDialog" type="button" class="quiet close" aria-label="Detailfenster schließen" autofocus>×</button></div><div class="dialog-actions"><button id="dialogBack" class="quiet" type="button" hidden>← Zur Auswahl</button><button id="dialogFit" type="button">Auf Karte zeigen</button><span id="dialogLoad" class="muted" role="status" style="font-size:12px"></span></div><div class="dialog-tabs" role="tablist" aria-label="Detailbereiche"><button id="tab-overview" role="tab" aria-controls="dialogBody" aria-selected="true" data-tab="overview">Übersicht</button><button id="tab-objects" role="tab" aria-controls="dialogBody" aria-selected="false" data-tab="objects">Zugeordnete Objekte</button><button id="tab-originals" role="tab" aria-controls="dialogBody" aria-selected="false" data-tab="originals">Originaldateien</button><button id="tab-history" role="tab" aria-controls="dialogBody" aria-selected="false" data-tab="history">Änderungshistorie</button></div><div id="dialogBody" class="dialog-body" role="tabpanel" aria-labelledby="tab-overview" tabindex="0"></div></dialog>
 {% endblock %}
 {% block scripts %}
 <script>
-const MAP={w:900,h:920};
-const DE_BOUNDS={minLon:5.5,maxLon:15.5,minLat:47.0,maxLat:55.3};
-const GERMANY=[
-[14.1197,53.7570],[14.3533,53.2482],[14.0745,52.9813],[14.4376,52.6249],[14.6850,52.0899],[14.6071,51.7452],[15.0170,51.1067],[14.5707,51.0023],[14.3070,51.1173],[14.0562,50.9269],[13.3381,50.7332],[12.9668,50.4841],[12.2401,50.2663],[12.4152,49.9691],[12.5210,49.5474],[13.0313,49.3071],[13.5959,48.8772],[13.2434,48.4161],[12.8841,48.2891],[13.0259,47.6376],[12.9326,47.4676],[12.6208,47.6724],[12.1414,47.7031],[11.4264,47.5238],[10.5445,47.5664],[10.4021,47.3025],[9.8961,47.5802],[9.5942,47.5251],[8.5226,47.8308],[8.3173,47.6136],[7.4668,47.6206],[7.5937,48.3330],[8.0993,49.0178],[6.6582,49.2020],[6.1863,49.4638],[6.2428,49.9022],[6.0431,50.1281],[6.1567,50.8037],[5.9887,51.8516],[6.5894,51.8520],[6.8429,52.2284],[7.0921,53.1440],[6.9051,53.4822],[7.1004,53.6939],[7.9362,53.7483],[8.1217,53.5278],[8.8007,54.0208],[8.5721,54.3956],[8.5262,54.9627],[9.2820,54.8309],[9.9219,54.9831],[9.9396,54.5966],[10.9501,54.3636],[10.9395,54.0087],[11.9563,54.1965],[12.5184,54.4704],[13.6475,54.0755],[14.1197,53.7570]
-];
-const $=id=>document.getElementById(id);
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let coverage=null,currentBounds={...DE_BOUNDS},selectedId=null,selectedGeometry=null,query='';
-let drag=null;
-
-function project(lon,lat,b=currentBounds){
-  return [(Number(lon)-b.minLon)/(b.maxLon-b.minLon)*MAP.w,(b.maxLat-Number(lat))/(b.maxLat-b.minLat)*MAP.h];
-}
-function qualityColor(item){
-  const c=String(item?.km_quality?.color||'GRAU').toUpperCase();
-  return c==='GRUEN'?'#12b76a':c==='ORANGE'?'#f79009':c==='ROT'?'#d92d20':'#98a2b3';
-}
-function qualityLabel(item){
-  const status=String(item?.km_quality?.status||'UNBEKANNT').toUpperCase();
-  if(status==='DETAIL_BEI_AUSWAHL')return 'Details bei Auswahl';
-  return status.replaceAll('_',' ');
-}
-function kmLength(value){
-  const n=Number(value);if(!Number.isFinite(n))return '—';
-  return (n/1000).toLocaleString('de-DE',{minimumFractionDigits:n<10000?2:1,maximumFractionDigits:2})+' km';
-}
-function geometryQuality(data){
-  const segments=data?.segments||[];
-  const statuses=segments.map(s=>String(s?.km_quality?.status||'').toUpperCase()).filter(Boolean);
-  let status='FEHLT',color='ROT';
-  if(statuses.length&&statuses.every(x=>x==='AUTOMATISCH')){status='AUTOMATISCH';color='GRUEN';}
-  else if(statuses.length&&statuses.every(x=>x==='MANUELL')){status='MANUELL';color='ORANGE';}
-  else if(statuses.length&&statuses.every(x=>x==='AUTOMATISCH'||x==='MANUELL')){status='GEMISCHT';color='GRAU';}
-  else if(statuses.some(x=>x==='AUTOMATISCH'||x==='MANUELL')){status='TEILWEISE';color='GRAU';}
-  else if(statuses.some(x=>x==='UNPLAUSIBEL')){status='UNPLAUSIBEL';color='GRAU';}
-  return {status,color,segments:segments.map(s=>({segment_id:s.segment_id,...(s.km_quality||{})}))};
-}
-function countryPath(){return GERMANY.map((p,i)=>{const q=project(p[0],p[1]);return (i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)}).join(' ')+' Z';}
-function pathFor(coords){return (coords||[]).map((p,i)=>{const q=project(p[0],p[1]);return (i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)}).join(' ');}
-function inView(lon,lat){return lon>=currentBounds.minLon&&lon<=currentBounds.maxLon&&lat>=currentBounds.minLat&&lat<=currentBounds.maxLat;}
-
-function renderGrid(){
-  const g=$('gridLayer');let html='';
-  const lonStep=(currentBounds.maxLon-currentBounds.minLon)>4?1:.25;
-  const latStep=(currentBounds.maxLat-currentBounds.minLat)>4?1:.25;
-  const lonStart=Math.ceil(currentBounds.minLon/lonStep)*lonStep;
-  const latStart=Math.ceil(currentBounds.minLat/latStep)*latStep;
-  for(let lon=lonStart;lon<=currentBounds.maxLon;lon+=lonStep){
-    const [x]=project(lon,currentBounds.minLat);
-    html+='<line class="map-grid" x1="'+x+'" y1="0" x2="'+x+'" y2="'+MAP.h+'"></line>';
-    if(lonStep>=1)html+='<text class="map-grid-label" x="'+(x+4)+'" y="17">'+lon.toFixed(0)+'°E</text>';
-  }
-  for(let lat=latStart;lat<=currentBounds.maxLat;lat+=latStep){
-    const [,y]=project(currentBounds.minLon,lat);
-    html+='<line class="map-grid" x1="0" y1="'+y+'" x2="'+MAP.w+'" y2="'+y+'"></line>';
-    if(latStep>=1)html+='<text class="map-grid-label" x="5" y="'+(y-5)+'">'+lat.toFixed(0)+'°N</text>';
-  }
-  g.innerHTML=html;
-}
-function stationGroups(){
-  const map=new Map();
-  for(const a of coverage?.axes||[]){
-    const w=a.wgs84;if(!w||( !a.station_code&&!a.station_name))continue;
-    const key=(a.station_code||'')+'|'+(a.station_name||'');
-    if(!map.has(key))map.set(key,{key,code:a.station_code,name:a.station_name,axes:[],sumLon:0,sumLat:0});
-    const v=map.get(key);v.axes.push(a);v.sumLon+=Number(w.center_lon);v.sumLat+=Number(w.center_lat);
-  }
-  return [...map.values()].map(v=>({...v,lon:v.sumLon/v.axes.length,lat:v.sumLat/v.axes.length}));
-}
-function renderMap(){
-  renderGrid();$('countryOutline').setAttribute('d',countryPath());
-
-  // Always draw every active axis as a simplified overview line. Station
-  // markers are only labels/navigation and no longer replace the geometry.
-  $('overviewLayer').innerHTML=(coverage?.axes||[]).flatMap(a=>{
-    const segments=a.overview_segments||[];
-    if(segments.length){
-      return segments.map(s=>'<path class="overview-line '+(a.axis_id===selectedId?'selected':'')+'" data-axis="'+esc(a.axis_id)+'" d="'+pathFor(s.coordinates)+'" stroke="'+qualityColor(s)+'"><title>'+esc(a.display_name)+' · '+esc(qualityLabel(s))+'</title></path>');
-    }
-    if(a.wgs84){
-      const p=project(a.wgs84.center_lon,a.wgs84.center_lat);
-      return ['<circle class="axis-dot" data-axis="'+esc(a.axis_id)+'" cx="'+p[0]+'" cy="'+p[1]+'" r="4.5" fill="'+qualityColor(a)+'"><title>'+esc(a.display_name)+' · '+esc(qualityLabel(a))+'</title></circle>'];
-    }
-    return [];
-  }).join('');
-  $('overviewLayer').querySelectorAll('[data-axis]').forEach(el=>el.addEventListener('click',ev=>{ev.stopPropagation();selectAxis(el.dataset.axis,true);}));
-
-  if(selectedGeometry){
-    $('detailLayer').innerHTML=(selectedGeometry.segments||[]).map(s=>'<path class="detail-line" d="'+pathFor(s.coordinates)+'" stroke="'+qualityColor(s)+'"><title>'+esc(qualityLabel(s))+'</title></path>').join('');
-  }else $('detailLayer').innerHTML='';
-
-  $('stationLayer').innerHTML=stationGroups().filter(s=>inView(s.lon,s.lat)).map(s=>{
-    const p=project(s.lon,s.lat),label=(s.code?s.code+' – ':'')+(s.name||'');
-    return '<g class="station-marker" data-station="'+esc(s.key)+'"><circle class="station-halo" cx="'+p[0]+'" cy="'+p[1]+'" r="15"></circle><circle class="station-dot" cx="'+p[0]+'" cy="'+p[1]+'" r="7" fill="#1167d8"><title>'+esc(label)+' · '+s.axes.length+' Achsen</title></circle><text class="station-label" x="'+(p[0]+10)+'" y="'+(p[1]-9)+'">'+esc(label)+'</text></g>';
-  }).join('');
-  $('stationLayer').querySelectorAll('.station-marker').forEach(el=>el.addEventListener('click',()=>focusStation(el.dataset.station)));
-}
-function hay(a){return [a.display_name,a.route_number,a.station_code,a.station_name,a.track_key,a.object_key,a.axis_type].filter(Boolean).join(' ').toLocaleLowerCase('de-DE');}
-function filtered(){const q=query.trim().toLocaleLowerCase('de-DE');return q?(coverage?.axes||[]).filter(a=>hay(a).includes(q)):[...(coverage?.axes||[])];}
-function resultSubtitle(a){
-  const parts=[];if(a.station_code||a.station_name)parts.push((a.station_code||'')+(a.station_name?' · '+a.station_name:''));
-  if(a.route_number)parts.push('Strecke '+a.route_number);if(a.track_key)parts.push('Gleis '+a.track_key);if(a.object_key)parts.push(a.object_key);
-  return parts.join(' · ')||a.axis_type||'Achse';
-}
-function renderResults(){
-  const rows=filtered();$('resultCount').textContent=rows.length+' Treffer';
-  $('coverageResults').innerHTML=rows.slice(0,100).map(a=>'<button type="button" class="result-item '+(a.axis_id===selectedId?'active':'')+'" data-id="'+esc(a.axis_id)+'"><b><span class="quality-dot" style="background:'+qualityColor(a)+'"></span>'+esc(a.display_name||'Achse')+'</b><small>'+esc(resultSubtitle(a))+' · '+esc(qualityLabel(a))+'</small></button>').join('')||'<div class="muted">Keine Treffer.</div>';
-  $('coverageResults').querySelectorAll('[data-id]').forEach(el=>el.addEventListener('click',()=>selectAxis(el.dataset.id,true)));
-}
-function detail(a){
-  if(!a){$('selectionDetail').className='detail-box muted';$('selectionDetail').textContent='Bahnhof, Achse oder Suchtreffer auswählen.';return;}
-  const q=a.km_quality||{},seg=q.segments||[];
-  let km='—';const nums=seg.flatMap(s=>[Number(s.km_from_m),Number(s.km_to_m)]).filter(Number.isFinite);if(nums.length)km=(Math.min(...nums)/1000).toFixed(3)+' – '+(Math.max(...nums)/1000).toFixed(3)+' km';
-  $('selectionDetail').className='detail-box';
-  $('selectionDetail').innerHTML='<b><span class="quality-dot" style="background:'+qualityColor(a)+'"></span>'+esc(a.display_name||'Achse')+'</b><div class="detail-grid">'+
-  '<div><span>Betriebsstelle</span><b>'+esc((a.station_code||'—')+(a.station_name?' – '+a.station_name:''))+'</b></div>'+
-  '<div><span>Strecke / Gleis</span><b>'+esc((a.route_number||'—')+' / '+(a.track_key||'—'))+'</b></div>'+
-  '<div><span>Objekt</span><b>'+esc(a.object_key||'—')+'</b></div>'+
-  '<div><span>KM-Qualität</span><b>'+esc(qualityLabel(a))+'</b></div>'+
-  '<div><span>KM-Bereich</span><b>'+esc(km)+'</b></div>'+
-  '<div><span>Segmente</span><b>'+esc(a.active_segment_count||0)+'</b></div></div>'+
-  '<div style="margin-top:10px"><a href="/admin/v1/survey-import">Trassierungsdaten öffnen</a></div>';
-}
-function setBounds(b,label){currentBounds=b;$('mapSubtitle').textContent=label||'Deutschland · gemeinsamer Referenzbestand';renderMap();}
-function focusBBox(w,label){
-  if(!w)return;
-  let dx=Math.max(.03,Number(w.max_lon)-Number(w.min_lon)),dy=Math.max(.025,Number(w.max_lat)-Number(w.min_lat));
-  const cx=(Number(w.min_lon)+Number(w.max_lon))/2,cy=(Number(w.min_lat)+Number(w.max_lat))/2;dx=Math.max(dx*2.2,.13);dy=Math.max(dy*2.2,.10);
-  const aspect=MAP.w/MAP.h;if(dx/dy<aspect)dx=dy*aspect;else dy=dx/aspect;
-  setBounds({minLon:cx-dx/2,maxLon:cx+dx/2,minLat:cy-dy/2,maxLat:cy+dy/2},label);
-}
-async function selectAxis(id,zoom){
-  const a=(coverage?.axes||[]).find(x=>x.axis_id===id);if(!a)return;
-  selectedId=id;selectedGeometry=null;detail(a);renderResults();
-  if(zoom&&a.wgs84)focusBBox(a.wgs84,a.display_name||'Auswahl');else renderMap();
-  try{
-    const {data}=await tbApi('/api/v1/survey-catalog/coverage/'+encodeURIComponent(id)+'/geometry?max_points_per_segment=420');
-    if(selectedId!==id)return;
-    selectedGeometry=data;
-    a.km_quality=geometryQuality(data);
-    detail(a);
-    renderResults();
-    renderMap();
-  }catch(e){
-    $('coverageStatus').style.display='block';$('coverageStatus').className='notice err';$('coverageStatus').textContent='Detailgeometrie konnte nicht geladen werden: '+(e.message||String(e));
-  }
-}
-function focusStation(key){
-  const g=stationGroups().find(x=>x.key===key);if(!g)return;
-  query=g.code||g.name||'';$('coverageSearch').value=query;renderResults();
-  const boxes=g.axes.map(a=>a.wgs84).filter(Boolean);if(!boxes.length)return;
-  focusBBox({min_lon:Math.min(...boxes.map(x=>x.min_lon)),min_lat:Math.min(...boxes.map(x=>x.min_lat)),max_lon:Math.max(...boxes.map(x=>x.max_lon)),max_lat:Math.max(...boxes.map(x=>x.max_lat))},(g.code?g.code+' – ':'')+(g.name||''));
-}
-function resetView(){
-  selectedId=null;selectedGeometry=null;detail(null);setBounds({...DE_BOUNDS},'Deutschland · gemeinsamer Referenzbestand');renderResults();
-}
-function zoomMap(factor,cx=(currentBounds.minLon+currentBounds.maxLon)/2,cy=(currentBounds.minLat+currentBounds.maxLat)/2){
-  const w=(currentBounds.maxLon-currentBounds.minLon)*factor,h=(currentBounds.maxLat-currentBounds.minLat)*factor;
-  setBounds({minLon:cx-w/2,maxLon:cx+w/2,minLat:cy-h/2,maxLat:cy+h/2},$('mapSubtitle').textContent);
-}
-function setKpis(data){
-  $('kpiTotalKm').textContent=kmLength(data.total_length_m);
-  $('kpiKnownKm').textContent=kmLength(data.known_km_length_m);
-  $('kpiAutoKm').textContent=kmLength(data.automatic_km_length_m);
-  $('kpiMobileKm').textContent=kmLength(data.manual_mobile_length_m);
-  $('kpiMissingKm').textContent=kmLength(data.without_km_length_m);
-  $('kpiStations').textContent=data.station_count??0;
-  $('kpiTracks').textContent=data.track_count??0;
-  $('kpiRoutes').textContent=data.route_count??0;
-}
-async function loadCoverageSummary(){
-  try{
-    const {data}=await tbApi('/api/v1/survey-catalog/coverage/summary');
-    setKpis(data);
-  }catch(e){
-    $('kpiTotalKm').textContent='—';
-    console.warn('Coverage-Summary nicht verfügbar',e);
-  }
-}
-async function loadCoverage(){
-  $('reloadCoverage').disabled=true;$('coverageStatus').style.display='block';$('coverageStatus').className='notice info';$('coverageStatus').textContent='Schnelle Deutschlandübersicht wird geladen …';
-  loadCoverageSummary();
-  try{
-    const {data}=await tbApi('/api/v1/survey-catalog/coverage');coverage=data;resetView();
-    $('coverageStatus').className='notice ok';$('coverageStatus').textContent=(data.axis_count||0)+' Achsen · '+(data.station_count||0)+' Betriebsstellen · '+(data.route_count||0)+' Strecken. Geometrie wird erst nach Auswahl einer Achse geladen.';
-    const unsupported=Number(data.unsupported_axis_count||0);$('unsupportedNote').style.display=unsupported?'block':'none';$('unsupportedNote').textContent=unsupported?unsupported+' Achsen besitzen noch keine für die Deutschlandübersicht transformierbare DB_REF-Geometrie.':'';
-  }catch(e){$('coverageStatus').className='notice err';$('coverageStatus').textContent='Gesamtansicht konnte nicht geladen werden: '+(e.message||String(e));}
-  finally{$('reloadCoverage').disabled=false;}
-}
-let searchTimer=null;
-$('coverageSearch').addEventListener('input',ev=>{query=ev.target.value;clearTimeout(searchTimer);searchTimer=setTimeout(()=>{renderResults();const rows=filtered();if(rows.length===1)selectAxis(rows[0].axis_id,true);},120);});
-$('resetView').addEventListener('click',resetView);$('reloadCoverage').addEventListener('click',loadCoverage);
-$('zoomIn').addEventListener('click',()=>zoomMap(.62));$('zoomOut').addEventListener('click',()=>zoomMap(1.6));
-const svg=$('germanyMap');
-svg.addEventListener('wheel',ev=>{ev.preventDefault();const rect=svg.getBoundingClientRect(),px=(ev.clientX-rect.left)/rect.width,py=(ev.clientY-rect.top)/rect.height;const cx=currentBounds.minLon+px*(currentBounds.maxLon-currentBounds.minLon),cy=currentBounds.maxLat-py*(currentBounds.maxLat-currentBounds.minLat);zoomMap(ev.deltaY<0?.75:1.33,cx,cy);},{passive:false});
-svg.addEventListener('pointerdown',ev=>{svg.setPointerCapture(ev.pointerId);drag={x:ev.clientX,y:ev.clientY,b:{...currentBounds}};svg.classList.add('dragging');});
-svg.addEventListener('pointermove',ev=>{if(!drag)return;const rect=svg.getBoundingClientRect(),dx=(ev.clientX-drag.x)/rect.width*(drag.b.maxLon-drag.b.minLon),dy=(ev.clientY-drag.y)/rect.height*(drag.b.maxLat-drag.b.minLat);currentBounds={minLon:drag.b.minLon-dx,maxLon:drag.b.maxLon-dx,minLat:drag.b.minLat+dy,maxLat:drag.b.maxLat+dy};renderMap();});
-function endDrag(){drag=null;svg.classList.remove('dragging');}
-svg.addEventListener('pointerup',endDrag);svg.addEventListener('pointercancel',endDrag);
-loadCoverage();
+'use strict';
+const $=id=>document.getElementById(id),svg=$('coverageMap'),dialog=$('coverageDialog');
+const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const finite=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
+const km=v=>finite(v)?(Number(v)/1000).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' km':'—';
+const chainage=v=>finite(v)?(Number(v)/1000).toLocaleString('de-DE',{minimumFractionDigits:3,maximumFractionDigits:3})+' km':'—';
+const dateText=v=>v&&!Number.isNaN(Date.parse(v))?new Date(v).toLocaleString('de-DE'):'—';
+const words={STRECKE:'Strecke',GLEIS:'Gleis',WEICHE:'Weiche',WEICHENVERBINDUNG:'Weichenverbindung',UNBEKANNT:'Achse',NICHT_DARSTELLBAR:'Geometrie nicht vollständig darstellbar',AUTOMATISCH:'Automatisch',MANUELL:'Manuell',FEHLT:'KM fehlt',UNPLAUSIBEL:'Unplausibel',TEILWEISE:'Teilweise kilometeriert',GEMISCHT:'Gemischt',DETAIL_BEI_AUSWAHL:'KM-Details noch nicht geladen',ACTIVE:'Aktiv',REVIEW:'Prüfung nötig',SUPERSEDED:'Ersetzt',INACTIVE:'Inaktiv',ORIGINAL_TRA:'Originaltrassierung',MANUAL_TRA_SECTION:'Manueller Trassenabschnitt',MANUAL_GPS:'Manuelle Geometrie',CREATE:'Angelegt',UPDATE:'Bearbeitet',RESOLVE:'Konflikt geklärt',STATUS:'Status geändert',ENRICH:'Zuordnung ergänzt',AXIS:'Achse',SEGMENT:'Abschnitt',ASSET:'Quelldatei',CONFLICT:'Konflikt'};
+const label=v=>words[v]||v||'—';
+const fieldNames={display_name:'Name',station_code:'Betriebsstellenkennung',station_name:'Bahnhof',route_number:'Strecke',track_key:'Gleis',object_key:'Objektkennung',direction:'Richtung',status:'Status',segment_status:'Abschnittsstatus',merge_status:'Zuordnung',km_from_m:'KM von',km_to_m:'KM bis',station_from_m:'Achsposition von (m)',station_to_m:'Achsposition bis (m)',resolution:'Klärung',resolution_note:'Notiz'};
+let coverage=null,axes=new Map(),stationItems=[],routeItems=[],rawBounds=null,fullBounds=null,view=null,cosLat=1,W=900,H=600;
+let epoch=0,selectedIds=new Set(),listKind='axes',query='',modal=null,modalParent=null,modalTab='overview',modalVersion=0,modalError='',historyBusy=false,modalRetryOlder=false;
+let drag=null,frame=null,detailTimer=null,detailFailures=new Set(),geometryQueue=[],geometryActive=0;
+const geometryCache=new Map(),metadataCache=new Map(),requests=new Map();
+function cachePut(cache,key,value){cache.delete(key);cache.set(key,value);while(cache.size>64)cache.delete(cache.keys().next().value);}
+function color(item){const q=item?.km_quality;if(!q||q.status==='DETAIL_BEI_AUSWAHL')return '#64748b';return {GRUEN:'#12b76a',ORANGE:'#f79009',ROT:'#d92d20'}[q.color]||'#98a2b3';}
+function subtitle(a){return [(a.station_code||a.station_name)?[a.station_code,a.station_name].filter(Boolean).join(' – '):'',a.route_number?'Strecke '+a.route_number:'',a.track_key?'Gleis '+a.track_key:'',a.object_key].filter(Boolean).join(' · ');}
+function geometryQuality(data){if(!data.segments?.length||data.unsupported_point_count)return {status:'NICHT_DARSTELLBAR',color:'GRAU',segments:[]};const ss=(data.segments||[]).map(s=>s.km_quality?.status);let status='FEHLT',color='ROT';if(ss.length&&ss.every(s=>s==='AUTOMATISCH')){status='AUTOMATISCH';color='GRUEN';}else if(ss.length&&ss.every(s=>s==='MANUELL')){status='MANUELL';color='ORANGE';}else if(ss.some(s=>s==='AUTOMATISCH'||s==='MANUELL')){status=ss.every(s=>s==='AUTOMATISCH'||s==='MANUELL')?'GEMISCHT':'TEILWEISE';color='GRAU';}else if(ss.includes('UNPLAUSIBEL')){status='UNPLAUSIBEL';color='GRAU';}return {status,color,segments:(data.segments||[]).map(s=>s.km_quality||{})};}
+function statusAt(id,message,retry=null,error=false){const el=$(id);el.hidden=!message;el.classList.toggle('error',error);el.replaceChildren();if(message){const span=document.createElement('span');span.textContent=message;el.append(span);}if(retry){const b=document.createElement('button');b.type='button';b.textContent='Erneut versuchen';b.addEventListener('click',retry);el.append(b);}}
+function userError(e){return e?.message==='TIMEOUT'?'Der Abruf dauert länger als 12 Sekunden. Bitte erneut versuchen.':'Daten konnten nicht geladen werden. Bitte Verbindung und Anmeldung prüfen.';}
+async function api(key,url){requests.get(key)?.abort();const controller=new AbortController();requests.set(key,controller);let timedOut=false;const timer=setTimeout(()=>{timedOut=true;controller.abort();},12000);try{const {data}=await tbApi(url,{signal:controller.signal});if(!data||typeof data!=='object')throw Error('INVALID_RESPONSE');return data;}catch(e){if(timedOut)throw Error('TIMEOUT');throw e;}finally{clearTimeout(timer);if(requests.get(key)===controller)requests.delete(key);}}
+function validBox(a){const b=a?.wgs84;return b&&['min_lon','max_lon','min_lat','max_lat'].every(k=>finite(b[k]))&&b.max_lon>=b.min_lon&&b.max_lat>=b.min_lat&&Math.abs(b.min_lon)<=180&&Math.abs(b.max_lon)<=180&&Math.abs(b.min_lat)<=90&&Math.abs(b.max_lat)<=90;}
+function world(lon,lat){return [Number(lon)*111320*cosLat,-Number(lat)*111320];}
+function axisBox(a){if(!validBox(a))return null;const b=a.wgs84,p=world(b.min_lon,b.max_lat),q=world(b.max_lon,b.min_lat);return {x:p[0],y:p[1],w:q[0]-p[0],h:q[1]-p[1]};}
+function unionBoxes(items){const bs=items.map(axisBox).filter(Boolean);if(!bs.length)return null;const x=Math.min(...bs.map(b=>b.x)),y=Math.min(...bs.map(b=>b.y));return {x,y,w:Math.max(...bs.map(b=>b.x+b.w))-x,h:Math.max(...bs.map(b=>b.y+b.h))-y};}
+function fitted(b,padding=1.12){const h=Math.max(b.h,b.w*H/W,30)*padding,w=h*W/H;return {x:b.x+b.w/2-w/2,y:b.y+b.h/2-h/2,w,h};}
+function bounded(b){if(!fullBounds)return b;const h=Math.min(fullBounds.h,Math.max(Math.min(5,fullBounds.h),b.h)),w=h*W/H;const cx=b.x+b.w/2,cy=b.y+b.h/2;return {x:Math.max(fullBounds.x,Math.min(fullBounds.x+fullBounds.w-w,cx-w/2)),y:Math.max(fullBounds.y,Math.min(fullBounds.y+fullBounds.h-h,cy-h/2)),w,h};}
+function screen(p){return [(p[0]-view.x)*W/view.w,(p[1]-view.y)*H/view.h];}
+function coordScreen(p){return screen(world(p[0],p[1]));}
+function visible(a){const b=axisBox(a);return b&&view&&b.x+b.w>=view.x&&b.x<=view.x+view.w&&b.y+b.h>=view.y&&b.y<=view.y+view.h;}
+function pathFor(coords){return (coords||[]).filter(p=>finite(p[0])&&finite(p[1])).map((p,i)=>{const q=coordScreen(p);return (i?'L':'M')+q[0].toFixed(2)+' '+q[1].toFixed(2);}).join(' ');}
+function groups(){const stations=new Map(),routes=new Map();for(const a of axes.values()){if(a.station_code||a.station_name){const key=JSON.stringify([a.station_code||'',a.station_name||'']);if(!stations.has(key))stations.set(key,{kind:'station',key,title:[a.station_code,a.station_name].filter(Boolean).join(' – '),ids:[]});stations.get(key).ids.push(a.axis_id);}if(a.route_number){const key=a.route_number;if(!routes.has(key))routes.set(key,{kind:'route',key,title:'Strecke '+key,ids:[]});routes.get(key).ids.push(a.axis_id);}}stationItems=[...stations.values()];routeItems=[...routes.values()];}
+function dataFor(ids){return ids.map(id=>axes.get(id)).filter(Boolean);}
+function fitIds(ids,title){const b=unionBoxes(dataFor(ids));if(!b)return;view=bounded(fitted(b));$('mapSubtitle').textContent=title||'Auswahl';scheduleMap();scheduleDetails();}
+function resetView(){if(fullBounds){view={...fullBounds};$('mapSubtitle').textContent='Gesamter Bestand';scheduleMap();scheduleDetails();}}
+function zoomMap(factor,px=.5,py=.5){if(!view)return;const h=Math.max(5,Math.min(fullBounds.h,view.h*factor)),w=h*W/H;view=bounded({x:view.x+px*(view.w-w),y:view.y+py*(view.h-h),w,h});scheduleMap();scheduleDetails();}
+function resizeMap(){const rect=svg.getBoundingClientRect();if(!rect.width||!rect.height)return;const old=view,wasFull=!old||Math.abs(old.h-(fullBounds?.h||0))<.01;W=rect.width;H=rect.height;svg.setAttribute('viewBox',`0 0 ${W} ${H}`);if(rawBounds){fullBounds=fitted(rawBounds);view=wasFull?{...fullBounds}:bounded({x:old.x+old.w/2-old.h*W/H/2,y:old.y,w:old.h*W/H,h:old.h});}scheduleMap();}
+function scheduleMap(){if(frame)return;frame=requestAnimationFrame(()=>{frame=null;renderMap();});}
+function niceStep(n){const p=Math.pow(10,Math.floor(Math.log10(Math.max(n,.0001))));return [1,2,5,10].find(v=>v*p>=n)*p;}
+function renderMap(){if(!view){$('moreGeometry').hidden=true;$('geometryStatus').textContent='';$('mapZoomLabel').textContent='Ausdehnung der vorhandenen Daten';$('scaleText').textContent='';$('scaleBar').style.width='0px';$('overviewLayer').innerHTML='';$('stationLayer').innerHTML='';$('labelLayer').innerHTML='';$('gridLayer').innerHTML='';return;}const step=niceStep(view.w/8);let grid='';for(let x=Math.ceil(view.x/step)*step;x<view.x+view.w;x+=step){const p=screen([x,view.y]);grid+=`<line class="map-grid" x1="${p[0]}" y1="0" x2="${p[0]}" y2="${H}"/>`;}for(let y=Math.ceil(view.y/step)*step;y<view.y+view.h;y+=step){const p=screen([view.x,y]);grid+=`<line class="map-grid" x1="0" y1="${p[1]}" x2="${W}" y2="${p[1]}"/>`;}$('gridLayer').innerHTML=grid;let lines='',labels='',count=0;const candidates=[...axes.values()].filter(visible);for(const a of candidates){const detail=geometryCache.get(a.axis_id),segments=detail?.segments||a.overview_segments||[];if(detail)count++;const selected=selectedIds.has(a.axis_id);if(segments.length){for(const s of segments){const d=pathFor(s.coordinates);if(selected)lines+=`<path class="axis-line selected" d="${d}"/>`;lines+=`<path class="axis-line ${detail?'detail':''}" d="${d}" stroke="${color(s)}"><title>${esc(a.display_name)} · ${esc(label(s.km_quality?.status||'DETAIL_BEI_AUSWAHL'))}</title></path>`;}}else{const b=axisBox(a),p=screen([b.x+b.w/2,b.y+b.h/2]);lines+=`<circle class="axis-point" cx="${p[0]}" cy="${p[1]}" r="${selected?6:4}" fill="${selected?'#1167d8':color(a)}"/>`;}if(view.w<2500&&candidates.length<=30){const b=axisBox(a),p=screen([b.x+b.w/2,b.y+b.h/2]);labels+=`<text class="map-label" x="${p[0]+7}" y="${p[1]-7}">${esc(a.object_key|| (a.track_key?'Gl '+a.track_key:a.display_name))}</text>`;}}
+$('overviewLayer').innerHTML=lines;$('labelLayer').innerHTML=labels;let stations='';if(view.w>600){for(const s of stationItems){const b=unionBoxes(dataFor(s.ids));if(!b)continue;const p=screen([b.x+b.w/2,b.y+b.h/2]);if(p[0]<0||p[0]>W||p[1]<0||p[1]>H)continue;stations+=`<circle cx="${p[0]}" cy="${p[1]}" r="7" fill="#fff" stroke="#1167d8" stroke-width="2"/><text class="map-label station-label" x="${p[0]+11}" y="${p[1]-9}">${esc(s.title)}</text>`;}}$('stationLayer').innerHTML=stations;const length=niceStep(view.w/W*65),pixels=length/view.w*W;$('scaleBar').style.width=pixels+'px';$('scaleText').textContent='≈ '+(length>=1000?(length/1000)+' km':length+' m');$('mapZoomLabel').textContent=candidates.length+' sichtbare Achsen';$('zoomOut').disabled=view.h>=fullBounds.h-.01;$('zoomIn').disabled=view.h<=5.001;$('moreGeometry').hidden=view.w>=2500||!candidates.some(a=>!geometryCache.has(a.axis_id)&&!detailFailures.has(a.axis_id));$('geometryStatus').textContent=!axes.size?'Noch keine Trassierungen vorhanden.':(view.w<2500?count+' / '+candidates.length+' sichtbare Achsen mit Detailgeometrie. ':'')+'Die Übersichtslinien sind vereinfacht; KM-Farben erscheinen nach der Detailprüfung.';}
+function filteredRows(){const q=query.trim().toLocaleLowerCase('de-DE');if(listKind==='axes')return [...axes.values()].filter(a=>!q||[a.display_name,subtitle(a),a.axis_type].join(' ').toLocaleLowerCase('de-DE').includes(q)).map(a=>({kind:'axis',key:a.axis_id,title:a.display_name,ids:[a.axis_id],sub:subtitle(a),axis:a}));return (listKind==='stations'?stationItems:routeItems).filter(g=>!q||[g.title,...dataFor(g.ids).map(subtitle)].join(' ').toLocaleLowerCase('de-DE').includes(q));}
+function objectButtons(items){return items.map(a=>`<button type="button" class="result-item" data-axis="${esc(a.axis_id)}"><b><span class="quality-dot" style="background:${color(a)}"></span>${esc(a.display_name)}</b><small>${esc(subtitle(a))} · ${esc(label(a.km_quality?.status||'DETAIL_BEI_AUSWAHL'))}</small></button>`).join('');}
+function renderResults(){const rows=filteredRows();$('resultCount').textContent=rows.length+' '+({axes:'Achsen',stations:'Bahnhöfe',routes:'Strecken'}[listKind]);$('resultLimit').textContent=rows.length>100?'erste 100':'';$('coverageResults').innerHTML=rows.slice(0,100).map((r,i)=>`<button type="button" class="result-item ${r.ids.some(id=>selectedIds.has(id))?'active':''}" data-row="${i}"><b>${r.axis?`<span class="quality-dot" style="background:${color(r.axis)}"></span>`:''}${esc(r.title)}</b><small>${esc(r.sub||r.ids.length+' zugeordnete Achsen')}</small></button>`).join('')||'<div class="empty-state">Keine passenden Objekte gefunden.</div>';$('coverageResults').querySelectorAll('[data-row]').forEach(el=>el.addEventListener('click',()=>openItem(rows[Number(el.dataset.row)])));}
+function openItem(item,parent=null){if(!item)return;modal=item;modalParent=parent;modalTab='overview';modalVersion++;modalError='';historyBusy=false;modalRetryOlder=false;selectedIds=new Set(item.ids);$('fitSelection').disabled=!unionBoxes(dataFor(item.ids));renderResults();scheduleMap();if(!dialog.open)dialog.showModal();renderDialog();if(item.kind==='axis'){requestGeometry(item.key,true);loadMetadata(item.key,modalVersion);} }
+function grid(fields){return '<dl class="detail-grid">'+fields.map(([name,value])=>`<div><dt>${esc(name)}</dt><dd>${esc(value??'—')}</dd></div>`).join('')+'</dl>';}
+function rangeText(segments){const values=segments.flatMap(s=>[s.km_quality?.km_from_m,s.km_quality?.km_to_m]).filter(finite).map(Number);return values.length?chainage(Math.min(...values))+' – '+chainage(Math.max(...values)):'Keine belastbaren KM verfügbar';}
+function renderDialog(){if(!modal||!dialog.open)return;const a=modal.kind==='axis'?axes.get(modal.key):null,info=a?metadataCache.get(a.axis_id):null,geom=a?geometryCache.get(a.axis_id):null;const items=dataFor(modal.ids);$('dialogKind').textContent=a?label(a.axis_type):({station:'Bahnhof / Betriebsstelle',route:'Strecke',hits:'Mehrere Treffer'}[modal.kind]||'Auswahl');$('dialogTitle').textContent=modal.title;$('dialogSubtitle').textContent=a?subtitle(a):items.length+' zugeordnete Achsen';$('dialogBack').hidden=!modalParent;$('dialogFit').disabled=!unionBoxes(items);$('dialogLoad').textContent=a&&!info&&!modalError?'Detailinformationen werden geladen …':'';document.querySelectorAll('[data-tab]').forEach(el=>{const active=el.dataset.tab===modalTab;el.setAttribute('aria-selected',active);el.tabIndex=active?0:-1;});$('dialogBody').setAttribute('aria-labelledby','tab-'+modalTab);let html='';if(a&&detailFailures.has(a.axis_id))html+='<div class="detail-warning">Die Geometrie konnte nicht geladen werden. <button type="button" class="quiet" id="retryGeometry">Erneut versuchen</button></div>';if(modalError)html+=`<div class="detail-warning">${esc(modalError)} <button type="button" class="quiet" id="retryMetadata">Erneut versuchen</button></div>`;
+if(!a){if(modalTab==='overview')html+=grid([['Achsen',items.length],['Aktive Abschnitte',items.reduce((n,x)=>n+x.active_segment_count,0)],['Strecken',[...new Set(items.map(x=>x.route_number).filter(Boolean))].join(', ')||'—']]);if(modalTab==='originals'||modalTab==='history')html+='<p class="muted">Wähle eine Achse, um ihre Abschnittsquellen und Änderungshistorie zu öffnen.</p>';html+='<div class="dialog-object-list">'+objectButtons(items)+'</div>';}
+else if(modalTab==='overview'){html+=grid([['Bahnhof / Betriebsstelle',[a.station_code,a.station_name].filter(Boolean).join(' – ')||'—'],['Strecke',a.route_number],['Gleis',a.track_key],['Objektkennung',a.object_key],['Objekttyp',label(a.axis_type)],['KM-Qualität',label(a.km_quality?.status||'DETAIL_BEI_AUSWAHL')],['KM-Bereich',geom?rangeText(geom.segments):detailFailures.has(a.axis_id)?'Geometrieabruf fehlgeschlagen':'Wird mit der Geometrie geladen …'],['Aktive Abschnitte',a.active_segment_count],['Version',info?.axis.current_version??'—']]);if(info?.conflicts.length)html+=`<div class="detail-warning">${info.conflicts.length} offene Zuordnungskonflikte. Bitte unter „Trassierungsdaten“ prüfen.</div>`;if(geom?.unsupported_point_count)html+=`<div class="detail-warning">${geom.unsupported_point_count} Geometriepunkte sind für diese Karte nicht darstellbar.</div>`;if(geom&&!geom.segments.length)html+='<div class="detail-warning">Für diese Achse ist keine darstellbare Liniengeometrie verfügbar.</div>';html+='<p class="muted" style="font-size:12px">Originalgeometrie und Quelldateien bleiben unverändert. Parallele Gleise zählen als eigene Trassenlänge.</p><a href="/admin/v1/survey-import">Trassierungsdaten öffnen →</a>';}
+else if(modalTab==='objects'){if(a.route_number)html+=`<button type="button" class="quiet" id="openRoute">Strecke ${esc(a.route_number)} öffnen</button> `;const station=stationItems.find(s=>s.ids.includes(a.axis_id));if(station)html+='<button type="button" class="quiet" id="openStation">Bahnhof öffnen</button>';html+='<h3 style="margin:22px 0 12px">Abschnitte dieser Achse</h3>';if(info)html+=info.segments.map(s=>`<div class="detail-panel"><h3>${esc(label(s.source_kind))} · ${esc(label(s.segment_status))}</h3><p>${esc(s.original_name||'Manueller Abschnitt')}</p><small>Achsposition ${esc(s.station_from_m??'—')} bis ${esc(s.station_to_m??'—')} m · Version ${esc(s.current_version)}</small></div>`).join('')||'<div class="empty-state">Keine Abschnitte vorhanden.</div>';else if(!modalError)html+='<p class="muted">Abschnitte werden geladen …</p>';}
+else if(modalTab==='originals'){if(info){const originals=[...new Map(info.segments.filter(s=>s.source_original_id).map(s=>[s.source_original_id,s])).values()];html+='<p class="muted" style="font-size:12px">Originaldateien, aus denen die Abschnitte dieser Achse stammen.</p>'+originals.map(s=>`<div class="detail-panel"><h3>${esc(s.original_name)}</h3><p>${esc(s.data_kind||'Original')} · ${finite(s.byte_size)?Number(s.byte_size).toLocaleString('de-DE')+' Bytes':'Größe unbekannt'}</p><small>SHA-256</small><div class="source-hash">${esc(s.sha256||'—')}</div></div>`).join('');if(!originals.length)html+='<div class="empty-state">Keine Originaldatei als Abschnittsquelle hinterlegt.</div>';}else if(!modalError)html+='<p class="muted">Originaldateiangaben werden geladen …</p>';}
+else if(modalTab==='history'){if(info){html+=info.history.map(h=>`<div class="history-item"><b>${esc(label(h.operation))} · ${esc(label(h.entity_type))}</b><p class="muted">${esc(dateText(h.changed_at))} · Version ${esc(h.entity_version)}</p>${h.fields.map(f=>`<p><b>${esc(fieldNames[f.field]||f.field)}:</b> <span class="field-value">${esc(f.before??'—')} → ${esc(f.after??'—')}</span></p>`).join('')}</div>`).join('')||'<div class="empty-state">Noch keine Änderungen protokolliert.</div>';if(info.history_next_before)html+=`<button type="button" id="olderHistory" class="quiet" ${historyBusy?'disabled':''}>${historyBusy?'Wird geladen …':'Ältere Änderungen laden'}</button>`;}else if(!modalError)html+='<p class="muted">Historie wird geladen …</p>';}
+$('dialogBody').innerHTML=html;$('dialogBody').querySelectorAll('[data-axis]').forEach(el=>el.addEventListener('click',()=>{const target=axes.get(el.dataset.axis);openItem({kind:'axis',key:target.axis_id,title:target.display_name,ids:[target.axis_id]},modal);}));$('retryGeometry')?.addEventListener('click',()=>{detailFailures.delete(a.axis_id);requestGeometry(a.axis_id,true);renderDialog();});$('retryMetadata')?.addEventListener('click',()=>loadMetadata(a.axis_id,modalVersion,modalRetryOlder));$('olderHistory')?.addEventListener('click',()=>loadMetadata(a.axis_id,modalVersion,true));$('openRoute')?.addEventListener('click',()=>openItem(routeItems.find(r=>r.key===a.route_number),modal));$('openStation')?.addEventListener('click',()=>openItem(stationItems.find(s=>s.ids.includes(a.axis_id)),modal));}
+async function loadMetadata(id,version,older=false){if(metadataCache.has(id)&&!older){renderDialog();return;}const generation=epoch;modalError='';historyBusy=older;renderDialog();const previous=metadataCache.get(id),before=older?previous?.history_next_before:null;try{const data=await api('metadata','/api/v1/survey-catalog/coverage/'+encodeURIComponent(id)+'/details'+(before?'?history_before='+before:''));if(generation!==epoch||version!==modalVersion)return;if(!Array.isArray(data.segments)||!Array.isArray(data.history))throw Error('INVALID_RESPONSE');if(older)data.history=[...previous.history,...data.history];cachePut(metadataCache,id,data);modalRetryOlder=false;}catch(e){if(e.name!=='AbortError'&&generation===epoch&&version===modalVersion){modalError=userError(e);modalRetryOlder=older;}}finally{if(generation===epoch&&version===modalVersion){historyBusy=false;renderDialog();}}}
+function queueStatus(){if(detailFailures.size)statusAt('detailStatus',detailFailures.size+' Detailabrufe fehlgeschlagen.',()=>{const ids=[...detailFailures];detailFailures.clear();statusAt('detailStatus','');for(const id of ids)requestGeometry(id,true);},true);}
+function requestGeometry(id,priority=false){if(geometryCache.has(id)){if(modal?.key===id)renderDialog();return;}if(requests.has('geometry:'+id)||geometryQueue.some(j=>j.id===id))return;const job={id,generation:epoch};priority?geometryQueue.unshift(job):geometryQueue.push(job);pumpGeometry();}
+async function pumpGeometry(){while(geometryActive<2&&geometryQueue.length){const job=geometryQueue.shift();if(job.generation!==epoch)continue;geometryActive++;(async()=>{try{const data=await api('geometry:'+job.id,'/api/v1/survey-catalog/coverage/'+encodeURIComponent(job.id)+'/geometry?max_points_per_segment=1500');if(job.generation!==epoch)return;if(!Array.isArray(data.segments))throw Error('INVALID_RESPONSE');cachePut(geometryCache,job.id,data);const a=axes.get(job.id);if(a)a.km_quality=geometryQuality(data);detailFailures.delete(job.id);if(!detailFailures.size)statusAt('detailStatus','');renderResults();scheduleMap();if(modal?.key===job.id)renderDialog();}catch(e){if(job.generation===epoch&&e.name!=='AbortError'){detailFailures.add(job.id);queueStatus();if(modal?.key===job.id)renderDialog();}}finally{geometryActive--;pumpGeometry();}})();}}
+function scheduleDetails(){clearTimeout(detailTimer);detailTimer=setTimeout(()=>{if(!view||view.w>2500)return;const visibleAxes=[...axes.values()].filter(visible);geometryQueue=geometryQueue.filter(j=>selectedIds.has(j.id)||visibleAxes.some(a=>a.axis_id===j.id));const pending=visibleAxes.filter(a=>!geometryCache.has(a.axis_id)&&!detailFailures.has(a.axis_id)).sort((a,b)=>Number(selectedIds.has(b.axis_id))-Number(selectedIds.has(a.axis_id)));for(const a of pending.slice(0,12))requestGeometry(a.axis_id);},250);}
+function pointDistance(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],d=dx*dx+dy*dy,t=d?Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/d)):0;return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy);}
+function hitTest(px,py){const result=[];for(const a of axes.values()){if(!visible(a))continue;const segments=geometryCache.get(a.axis_id)?.segments||a.overview_segments||[];let distance=Infinity;for(const s of segments){const coords=s.coordinates||[];for(let i=1;i<coords.length;i++)distance=Math.min(distance,pointDistance([px,py],coordScreen(coords[i-1]),coordScreen(coords[i])));}if(!segments.length){const b=axisBox(a),p=screen([b.x+b.w/2,b.y+b.h/2]);distance=Math.hypot(px-p[0],py-p[1]);}if(distance<=10)result.push({a,distance});}return result.sort((a,b)=>a.distance-b.distance).map(r=>r.a);}
+function mapClick(x,y){if(!view)return;if(view.w>600){const station=stationItems.find(s=>{const b=unionBoxes(dataFor(s.ids));if(!b)return false;const p=screen([b.x+b.w/2,b.y+b.h/2]);return Math.hypot(x-p[0],y-p[1])<11;});if(station){openItem(station);return;}}const hits=hitTest(x,y);if(hits.length===1){const a=hits[0];openItem({kind:'axis',key:a.axis_id,title:a.display_name,ids:[a.axis_id]});}else if(hits.length>1)openItem({kind:'hits',title:'Objekt auswählen',ids:hits.map(a=>a.axis_id)});}
+async function loadSummary(generation){statusAt('summaryStatus','Kennzahlen werden geladen …');try{const data=await api('summary','/api/v1/survey-catalog/coverage/summary');if(generation!==epoch)return;for(const [id,key] of Object.entries({kpiTotalKm:'total_length_m',kpiKnownKm:'known_km_length_m',kpiAutoKm:'automatic_km_length_m',kpiMobileKm:'manual_mobile_length_m',kpiMissingKm:'without_km_length_m'}))$(id).textContent=km(data[key]);for(const [id,key] of Object.entries({kpiStations:'station_count',kpiTracks:'track_count',kpiRoutes:'route_count'}))$(id).textContent=data[key]??'—';statusAt('summaryStatus','');}catch(e){if(generation===epoch&&e.name!=='AbortError')statusAt('summaryStatus',userError(e),()=>loadSummary(epoch),true);}}
+async function loadShapes(generation){statusAt('shapeStatus','Übersichtslinien werden ergänzt …');try{const data=await api('shapes','/api/v1/survey-catalog/coverage?include_overview=true&fast_overview=true');if(generation!==epoch)return;if(!Array.isArray(data.axes))throw Error('INVALID_RESPONSE');for(const a of data.axes){const target=axes.get(a.axis_id);if(target)target.overview_segments=a.overview_segments||[];}statusAt('shapeStatus','');scheduleMap();}catch(e){if(generation===epoch&&e.name!=='AbortError')statusAt('shapeStatus',userError(e)+' Die Übersichtspunkte bleiben verfügbar.',()=>loadShapes(epoch),true);}}
+async function loadCoverage(){const generation=++epoch;modalVersion++;if(dialog.open)dialog.close();modal=null;for(const c of requests.values())c.abort();requests.clear();geometryQueue=[];clearTimeout(detailTimer);geometryCache.clear();metadataCache.clear();detailFailures.clear();selectedIds.clear();axes.clear();stationItems=[];routeItems=[];coverage=null;rawBounds=fullBounds=view=null;$('fitSelection').disabled=true;document.querySelectorAll('.coverage-kpi strong').forEach(el=>el.textContent='—');statusAt('coverageStatus','Bestand wird geladen …');statusAt('shapeStatus','');statusAt('detailStatus','');statusAt('unsupportedNote','');$('reloadCoverage').disabled=true;renderResults();scheduleMap();loadSummary(generation);try{const data=await api('coverage','/api/v1/survey-catalog/coverage');if(generation!==epoch)return;if(!Array.isArray(data.axes))throw Error('INVALID_RESPONSE');coverage=data;axes=new Map(data.axes.map(a=>[a.axis_id,a]));const boxes=data.axes.filter(validBox).map(a=>a.wgs84);if(boxes.length){const mean=(Math.min(...boxes.map(b=>Number(b.min_lat)))+Math.max(...boxes.map(b=>Number(b.max_lat))))/2;cosLat=Math.max(.01,Math.cos(mean*Math.PI/180));rawBounds=unionBoxes(data.axes);resizeMap();resetView();}groups();renderResults();scheduleMap();statusAt('coverageStatus',data.axis_count+' Achsen · '+data.station_count+' Betriebsstellen · '+data.route_count+' Strecken');statusAt('unsupportedNote',data.unsupported_axis_count?data.unsupported_axis_count+' Achsen haben keine darstellbare Kartenposition. Ihre Daten sind über die Trefferliste erreichbar.':'');if(generation===epoch&&axes.size)loadShapes(generation);}catch(e){if(generation===epoch&&e.name!=='AbortError')statusAt('coverageStatus',userError(e),loadCoverage,true);}finally{if(generation===epoch)$('reloadCoverage').disabled=false;}}
+$('moreGeometry').addEventListener('click',()=>scheduleDetails());$('coverageSearch').addEventListener('input',e=>{query=e.target.value;renderResults();});document.querySelectorAll('[data-list]').forEach(el=>el.addEventListener('click',()=>{listKind=el.dataset.list;document.querySelectorAll('[data-list]').forEach(b=>b.setAttribute('aria-pressed',b===el));renderResults();}));$('resetView').addEventListener('click',resetView);$('fitSelection').addEventListener('click',()=>fitIds([...selectedIds],'Auswahl'));$('reloadCoverage').addEventListener('click',loadCoverage);$('zoomIn').addEventListener('click',()=>zoomMap(.65));$('zoomOut').addEventListener('click',()=>zoomMap(1/.65));$('closeDialog').addEventListener('click',()=>dialog.close());dialog.addEventListener('close',()=>{modalVersion++;requests.get('metadata')?.abort();});dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}});$('dialogFit').addEventListener('click',()=>{fitIds(modal.ids,modal.title);dialog.close();});$('dialogBack').addEventListener('click',()=>openItem(modalParent));document.querySelectorAll('[data-tab]').forEach(el=>{el.addEventListener('click',()=>{modalTab=el.dataset.tab;renderDialog();});el.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=[...document.querySelectorAll('[data-tab]')],i=tabs.indexOf(el),n=e.key==='Home'?0:e.key==='End'?tabs.length-1:(i+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[n].click();tabs[n].focus();});});
+svg.addEventListener('wheel',e=>{e.preventDefault();const r=svg.getBoundingClientRect();zoomMap(e.deltaY<0?.8:1.25,(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height);},{passive:false});svg.addEventListener('pointerdown',e=>{if(!view||!e.isPrimary||e.button!==0)return;svg.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY,b:{...view},moved:false};});svg.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>4)drag.moved=true;if(!drag.moved)return;svg.classList.add('dragging');view=bounded({...drag.b,x:drag.b.x-dx/W*drag.b.w,y:drag.b.y-dy/H*drag.b.h});scheduleMap();});svg.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;const moved=drag.moved;drag=null;svg.classList.remove('dragging');if(svg.hasPointerCapture(e.pointerId))svg.releasePointerCapture(e.pointerId);if(!moved){const r=svg.getBoundingClientRect();mapClick(e.clientX-r.left,e.clientY-r.top);}else scheduleDetails();});function cancelDrag(){drag=null;svg.classList.remove('dragging');}svg.addEventListener('pointercancel',cancelDrag);svg.addEventListener('lostpointercapture',cancelDrag);svg.addEventListener('keydown',e=>{if(!view)return;if(['+','=','-','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))e.preventDefault();if(e.key==='+'||e.key==='=')zoomMap(.65);else if(e.key==='-')zoomMap(1/.65);else if(e.key.startsWith('Arrow')){const dx=e.key==='ArrowLeft'?-.15:e.key==='ArrowRight'?.15:0,dy=e.key==='ArrowUp'?-.15:e.key==='ArrowDown'?.15:0;view=bounded({...view,x:view.x+view.w*dx,y:view.y+view.h*dy});scheduleMap();scheduleDetails();}});new ResizeObserver(resizeMap).observe(svg);loadCoverage();
 </script>
 {% endblock %}
