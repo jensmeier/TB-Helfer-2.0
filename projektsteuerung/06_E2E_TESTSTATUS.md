@@ -963,3 +963,8 @@ Sourcecheck ist kein Runtime-/E2E-Nachweis.
 ### REF-DATA-006 – Runtime-Status nach Linien-Patch: TEILWEISE
 - Nutzer bestätigt grundsätzlich funktionierende Darstellung, aber noch nicht korrekt/genügend.
 - Kein PASS. Nächster Schritt ist visuelle/bedienseitige Fehlerabgrenzung; erst danach gezielter Patch.
+
+### REF-DATA-006 – Coverage Runtime FAIL 02.10.2026
+- Admin-Seite lädt, Coverage-Request endet im Browser mit NetworkError; KPI bleiben leer.
+- Runtime-Gate ist **NICHT BESTANDEN**.
+- Vor Patch direkte read-only Coverage-Ausführung im API-Terminal nötig, um Trace/Ursache zu sichern.
