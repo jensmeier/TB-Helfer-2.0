@@ -1230,3 +1230,10 @@ Status: **BUILDVORGANG LÄUFT / NOCH KEIN FEHLERNACHWEIS**
 - Das ist nach bewusst entferntem lokalen Image erwartbar: Compose versucht zuerst das benannte Image `tb-helfer-server-v1:local` zu ziehen; für ein rein lokales Image kann dieser Pull scheitern/warnen. Entscheidend ist, ob anschließend der lokale Dockerfile-Build startet.
 - Noch **keine** belastbare Fehlermeldung im Screenshot. Projektanzeige zeigt laufenden Zustand; daher Vorgang nicht abbrechen und auf weitere Build-Zeilen/Abschluss warten.
 - Keine weitere Löschung/YAML-/DB-Änderung vor finalem Build-Output.
+
+## REF-DATA-006 – Altes Server-Image als Rollback gesichert 02.10.2026
+Status: **ROLLBACK-MÖGLICHKEIT VORHANDEN**
+- Nutzer hat das alte funktionierende Server-Image vor dem pyproj-Umbau separat gesichert.
+- Wichtig: Die aktive Synology-Compose bindet `tbserver`/Templates/Migrationen live vom NAS read-only in den Container ein. Das alte Image allein reicht daher nicht als vollständiger Rollback, solange auf dem NAS der neue Source mit `from pyproj import Transformer` liegt.
+- Für einen sicheren Rücksprung müssen Image **und** der dazu passende Source-Stand vor REF-DATA-006 zusammen verwendet werden; danach Runtime zuerst wieder stabilisieren, bevor die Deutschlandübersicht erneut angegangen wird.
+- Gesichertes Alt-Image nicht überschreiben oder löschen.
