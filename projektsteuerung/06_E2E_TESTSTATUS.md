@@ -913,3 +913,7 @@ Nach Image-Neubau/Deploy prüfen:
 - Nach Bereinigung fehlen api/worker/migrate/monitor vollständig aus der Synology-Projektansicht.
 - Vor jedem weiteren Build muss die aktive Synology-YAML gegen GitHub `server/docker-compose.v1.yml` geprüft werden.
 - Keine Runtime-/E2E-Wertung möglich.
+
+### REF-DATA-006 – Rollback jetzt erforderlich 02.10.2026
+- API-Crash erneut reproduziert: `survey_catalog.py` importiert pyproj, Runtime-Image enthält pyproj nicht.
+- Deutschlandübersicht-E2E abgebrochen. Vor weiteren Arbeiten muss der Server auf den letzten pyproj-freien Source-Stand zurück und erneut gestartet werden.
