@@ -1215,3 +1215,11 @@ Status: **DEPLOYMENTBLOCKER / URSACHE NOCH ZU PRÜFEN**
 - GitHub-Compose `server/docker-compose.v1.yml` definiert dagegen `db`, `migrate`, `api`, `worker`, `monitor`; `cloudflared` und `restore-test` kommen dort nicht vor.
 - Damit ist jetzt zuerst die tatsächlich auf der Synology verwendete Projekt-YAML zu prüfen. Keine weiteren Container/Image-/DB-Löschungen, bis die YAML-Konfiguration verglichen ist.
 - DB-Container ist weiterhin vorhanden; kein Hinweis auf gelöschte Datenbankdaten aus dem Screenshot.
+
+## REF-DATA-006 – Aktive Synology-Projekt-YAML geprüft 02.10.2026
+Status: **DEPLOYMENTBLOCKER WEITER EINGEGRENZT / GITHUB↔SYNOLOGY-COMPOSE ABWEICHUNG FESTGESTELLT**
+- Nutzer hat die aktive YAML des Synology-Projekts `tb-helfer-v1` vollständig geliefert.
+- Diese Synology-YAML enthält zusätzlich zu db/migrate/api/worker/monitor auch `restore-test-db` und `cloudflared`, Live-Source-Mounts (`TB_V1_SOURCE_TBSERVER_DIR`, Templates/Migrations/Tools/Data), API-`mem_limit` und Restore-Test-DB-Variablen.
+- Diese Inhalte sind im aktuellen GitHub-Stand `server/docker-compose.v1.yml` nicht enthalten; GitHub-Suche nach `restore-test-db`, `TB_V1_SOURCE_TBSERVER_DIR`, `TB_V1_CLOUDFLARE_TUNNEL_TOKEN` und `Synology-Staging` liefert keine Treffer.
+- Damit besteht eine reale Konfigurationsabweichung zwischen GitHub-Compose und der tatsächlich laufenden Synology-Projektdefinition. GitHub bleibt Source of Truth, die Synology-YAML darf aber nicht auf Verdacht überschrieben werden, weil sie produktions-/stagingrelevante Zusatzdienste und Mounts enthält.
+- Der aktuelle Zustand (nur cloudflared/db/restore-test-db sichtbar) spricht dafür, dass der Build/Erstellvorgang der gemeinsamen Server-Services vor deren Containeranlage abgebrochen ist. Nächster Schritt ist ausschließlich das Projekt-/Build-Protokoll des letzten Erstellvorgangs auszulesen; keine weitere Container-, Image-, YAML- oder DB-Änderung bis zur konkreten Build-Ursache.
