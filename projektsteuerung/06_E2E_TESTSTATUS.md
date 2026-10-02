@@ -917,3 +917,7 @@ Nach Image-Neubau/Deploy prüfen:
 ### REF-DATA-006 – Rollback jetzt erforderlich 02.10.2026
 - API-Crash erneut reproduziert: `survey_catalog.py` importiert pyproj, Runtime-Image enthält pyproj nicht.
 - Deutschlandübersicht-E2E abgebrochen. Vor weiteren Arbeiten muss der Server auf den letzten pyproj-freien Source-Stand zurück und erneut gestartet werden.
+
+### REF-DATA-006 – Rollback-Quellstand hergestellt / Runtime offen
+- pyproj-abhängiger Source entfernt; kein Runtime-Testnachweis daraus ableiten.
+- Jetzt Synology mit pre-pyproj Source + gesichertem Alt-Image starten und zuerst Health, Migrationen, Admin/Portal und Survey-Bestand prüfen.
