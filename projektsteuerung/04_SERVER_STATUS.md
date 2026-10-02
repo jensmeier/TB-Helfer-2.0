@@ -1316,3 +1316,11 @@ Status: **FEHLER/ANFORDERUNG BESTÄTIGT – KORREKTUR SOURCE NÖTIG**
 - Screenshot der neuen Deutschlandübersicht zeigt im Gesamtzoom nur wenige Punkte (u. a. MPB), obwohl deutlich mehr Trassen/Achsen im Bestand vorhanden sind.
 - Ursache im aktuellen Source: Coverage liefert pro Achse nur WGS84-BBox/Center; UI rendert in der Übersicht überwiegend Center-/Stationsmarker. Die tatsächlichen Achslinien werden erst nach Einzel-Auswahl geladen.
 - Gewünschtes Verhalten: alle aktiven Trassen in der Deutschlandansicht als vereinfachte Linien zeigen; Details weiterhin lazy-load.
+
+## REF-DATA-006 – Gesamtansicht rendert jetzt alle aktiven Achsen SOURCE 02.10.2026
+Status: **KORREKTUR SOURCE FERTIG / RUNTIME OFFEN**
+- Nach Benutzer-Sichtprüfung wurde die Punktdarstellung korrigiert: Coverage liefert nun pro aktivem Segment eine stark vereinfachte WGS84-Linie (`overview_segments`) zusätzlich zur BBox.
+- Admin-UI zeichnet diese vereinfachten Linien für **alle aktiven GLOBAL-Achsen** bereits in der Deutschlandübersicht. Bahnhofsmarker bleiben nur als Beschriftung/Navigation und ersetzen die Geometrie nicht mehr.
+- Übersicht verwendet max. 28 Punkte pro Segment; vollständige Detailgeometrie bleibt Lazy-Load bei Auswahl.
+- Fallback-Punkt bleibt nur für Achsen, deren Übersichtslinie nicht erzeugt werden kann.
+- Keine neue Dependency, keine Migration, kein Image-Neubau.
