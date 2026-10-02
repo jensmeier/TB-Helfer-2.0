@@ -1143,3 +1143,12 @@ Status: **FACHLICHER KORREKTURWORKFLOW BESTÄTIGT**
   - KM-Qualität: `FEHLT=10`, `AUTOMATISCH=2`.
 - Zusammen mit dem bereits bestätigten Geometry-`count=12`, Audit und In-place-Nachweis ist der fachliche Duplicate-Korrekturworkflow funktional geschlossen.
 - Noch rein visuell offen: roten Warnrahmen der Bestätigungsbox nach letztem Template-Deploy einmal im Browser bestätigen. Das ist nur UI-Sichtbarkeit, kein Daten-/API-Restfehler.
+
+## REF-DATA-006 – Deutschlandweite Trassendaten-Gesamtansicht mit Suche 02.10.2026
+Status: **NEUE FACHANFORDERUNG DOKUMENTIERT / ANALYSE VOR UMSETZUNG**
+- Nach Abschluss der Gessertshausen-KM-Prüfung soll im Admin eine **grafische Gesamtansicht des vorhandenen Referenzbestands für Deutschland** entstehen.
+- Ziel: auf einen Blick sehen, für welche Bereiche/Bahnhöfe/Strecken bereits Trassierungs-/Vermessungsdaten vorhanden sind.
+- Die Ansicht braucht mindestens eine **Suche** nach Strecke, Bahnhof/Betriebsstelle und vorhandenen Objekt-/Achsnamen; Auswahl soll auf den Treffer fokussieren und in die Detailansicht führen können.
+- Darstellung soll vorhandene Datenbestände und deren Qualität unterscheiden (automatisch belastbare KM = grün, manuell ergänzt = orange, Geometrie ohne belastbare KM = rot, Objekt ohne Geometrie = grau; bestehende Projektfarbregeln bleiben verbindlich).
+- Vor Implementierung prüfen, welche belastbaren geographischen Koordinaten/Referenzpunkte im aktuellen Serverbestand für eine echte Deutschlandkarte vorhanden sind. Keine scheinpräzise Deutschlandkarte aus lokalen/unklaren Vermessungskoordinaten ableiten.
+- Bestehende Import-/Katalog-Detailgrafik bleibt erhalten; die Gesamtansicht ist eine zusätzliche Admin-Übersicht.
