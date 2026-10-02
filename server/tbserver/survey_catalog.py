@@ -811,7 +811,8 @@ def _axis_km_context(cur, axis: dict[str, Any]) -> dict[str, Any]:
                     gvp_points.append({"x_dbref": x, "y_dbref": y, "km_meter": km})
     cur.execute(
         "SELECT count(*) AS item_count FROM tb.survey_catalog_segments "
-        "WHERE axis_id=%s AND segment_status='ACTIVE'",
+        "WHERE axis_id=%s AND segment_status='ACTIVE' "
+        "AND source_kind <> 'MANUAL_TRA_SECTION'",
         (axis["id"],),
     )
     active_segment_count = int(cur.fetchone()["item_count"])
@@ -1955,7 +1956,9 @@ def index_original_in_tx(cur, original_id: UUID, actor_user_id: UUID | None = No
         )
         segment["metadata"] = metadata
         original_beats_manual = (
-            existing_segment.get("source_kind") in _MANUAL_KINDS
+            # A TRA section contributes KM anchors, not replacement geometry.
+            # Importing an original must not discard that independent overlay.
+            existing_segment.get("source_kind") == "MANUAL_GPS"
             and fully_covered
         )
         newer_full = (
@@ -2116,7 +2119,8 @@ def create_manual_segment(payload: ManualSegmentCreate,
                 conflict_type=str(diagnostics.get("reason") or "MANUAL_GEOMETRY_CONFLICT"),
                 details=diagnostics,actor_user_id=user["user_id"],
                 actor_company_id=user.get("company_id"))
-        elif relation == "OVERLAP_CONFIRMED" and existing_segment is not None and existing_segment.get("source_kind") == "ORIGINAL_TRA":
+        elif (source_kind == "MANUAL_GPS" and relation == "OVERLAP_CONFIRMED"
+              and existing_segment is not None and existing_segment.get("source_kind") == "ORIGINAL_TRA"):
             segment = _mark_segment_status(cur,segment,"SUPERSEDED",user["user_id"])
         _axis_extent_refresh(cur,axis["id"],user["user_id"])
         response = {
@@ -2617,6 +2621,29 @@ def _segment_physical_length_m(
     return total
 
 
+def _coverage_interval(segment: dict[str, Any]) -> tuple[float, float] | None:
+    start, end = _num(segment.get("station_from_m")), _num(segment.get("station_to_m"))
+    if start is None or end is None or start == end:
+        return None
+    return min(start, end), max(start, end)
+
+
+def _claim_coverage_interval(covered: list[tuple[float, float]],
+                             start: float, end: float) -> float:
+    """Claim a station interval, returning only previously unclaimed metres."""
+    fresh = end - start
+    for left, right in covered:
+        fresh -= max(0.0, min(end, right) - max(start, left))
+    merged: list[tuple[float, float]] = []
+    for left, right in sorted([*covered, (start, end)]):
+        if merged and left <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(right, merged[-1][1]))
+        else:
+            merged.append((left, right))
+    covered[:] = merged
+    return max(0.0, fresh)
+
+
 def _coverage_summary_data() -> dict[str, Any]:
     """Global admin summary without WGS84 overview geometry."""
     with transaction() as conn, conn.cursor() as cur:
@@ -2708,6 +2735,7 @@ def _coverage_summary_data() -> dict[str, Any]:
             ]
             remaining_by_segment: dict[str, float] = {}
             status_by_segment: dict[str, str] = {}
+            claimed_by_segment: dict[str, list[tuple[float, float]]] = {}
 
             for row in base_rows:
                 segment = row["segment"]
@@ -2723,17 +2751,32 @@ def _coverage_summary_data() -> dict[str, Any]:
                 segment = row["segment"]
                 manual_length = row["length_m"]
                 matched_key: str | None = None
+                matched_base: dict[str, Any] | None = None
                 source_original_id = segment.get("source_original_id")
                 if source_original_id is not None:
                     for base in base_rows:
                         if base["segment"].get("source_original_id") == source_original_id:
                             matched_key = str(base["segment"]["id"])
+                            matched_base = base["segment"]
                             break
 
                 overlay_length = manual_length
                 if matched_key is not None:
+                    # An uncalibrated TRA overlay adds neither geometry nor KM.
+                    if row["status"] != "MANUELL":
+                        continue
+                    bounds = _coverage_interval(segment)
+                    base_bounds = _coverage_interval(matched_base)
+                    if bounds is None or base_bounds is None:
+                        continue  # No defensible station overlap to reclassify.
+                    start, end = max(bounds[0], base_bounds[0]), min(bounds[1], base_bounds[1])
+                    if end <= start:
+                        continue
+                    overlay_length = _claim_coverage_interval(
+                        claimed_by_segment.setdefault(matched_key, []), start, end
+                    )
                     available = remaining_by_segment.get(matched_key, 0.0)
-                    overlay_length = min(manual_length, available)
+                    overlay_length = min(overlay_length, available)
                     previous_status = status_by_segment.get(matched_key, "SONSTIG")
                     lengths[previous_status] = max(
                         0.0, lengths[previous_status] - overlay_length
@@ -2742,13 +2785,14 @@ def _coverage_summary_data() -> dict[str, Any]:
                 else:
                     total_length_m += manual_length
 
-                lengths["MANUELL"] += overlay_length
+                overlay_status = row["status"] if row["status"] in lengths else "SONSTIG"
+                lengths[overlay_status] += overlay_length
                 metadata = (
                     segment.get("metadata")
                     if isinstance(segment.get("metadata"), dict)
                     else {}
                 )
-                if str(metadata.get("origin") or "").upper() == "ANDROID":
+                if overlay_status == "MANUELL" and str(metadata.get("origin") or "").upper() == "ANDROID":
                     manual_mobile_length_m += overlay_length
 
         known_length_m = lengths["AUTOMATISCH"] + lengths["MANUELL"]
@@ -3632,4 +3676,3 @@ def enqueue_reindex(user: dict[str,Any] = Depends(require_admin_csrf)) -> dict[s
         audit(cur,action="SURVEY_CATALOG_REINDEX_ENQUEUE",actor_user_id=user["user_id"],
               entity_type="SYSTEM",details={"job_id":str(job["id"])})
     return {"job":_plain(job)}
-
