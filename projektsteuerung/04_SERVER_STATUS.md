@@ -1287,3 +1287,9 @@ Status: **ARCHITEKTURVORSCHLÄGE / NOCH NICHT BAUEN**
 - Server-Runtime ist wieder stabil und geschützt.
 - Vor Neuimplementierung der Deutschlandübersicht werden Alternativen verglichen; bevorzugt wird eine Lösung ohne neue Python-/Image-Abhängigkeit.
 - Bestehendes PostGIS 17-3.5 ist als möglicher Transformationspfad zu prüfen, da es bereits Teil der laufenden DB-Runtime ist.
+
+## REF-DATA-006 – Variante A bestätigt 02.10.2026
+Status: **POSTGIS-ARCHITEKTUR GEWÄHLT / RUNTIME-PROBE VOR BAU**
+- Kein pyproj-Neuversuch.
+- Bereits vorhandenes PostGIS soll die CRS-Transformation serverseitig/read-only übernehmen; Python bleibt bei den bestehenden Abhängigkeiten.
+- Nächster Gate: SRID-/ST_Transform-Probe auf der laufenden Synology. Bei Erfolg folgt Implementierung der Coverage-API und Admin-Gesamtansicht.
