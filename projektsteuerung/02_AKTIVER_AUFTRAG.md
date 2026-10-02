@@ -2076,3 +2076,14 @@ Status: **ANFORDERUNG GESICHERT / ERST VORSCHLÄGE UND RÜCKFRAGEN / IMPLEMENTIE
   - Android WorksiteTrackDataSync (aktueller Android-HEAD) überträgt AXIS/STRECKENPUNKTE per LEAD-Snapshot; eigener TrassenManuellerAbschnittEntity-Datensatz fehlt in diesem Pfad. Kanonischen Survey-Vertrag und späteren Clientbedarf abgleichen.
 - Bekannter erster Diagnosepunkt bleibt /api/v1/survey-catalog/coverage/summary: Helper laut gesichertem Runtime-Nachweis erfolgreich, Browser-/HTTP-Pfad offen. In dieser Sitzung kein neuer Synology-/HTTP-/E2E-Test ausgeführt.
 - Nächster Schritt: Benutzer entscheidet Löschumfang, Bearbeitungsumfang und gewünschte Verwaltungsdarstellung; anschließend konkreten freigegebenen Arbeitsblock festhalten.
+
+
+### SERVER-OPT-001 – Benutzerpräzisierung Bestandsansicht / Bearbeiten 02.10.2026
+Status: **KONZEPT PRÄZISIERT / WEITER VORSCHLAGSPHASE / KEINE BAUFREIGABE**
+- Benutzer stimmt Punkt 1 (Archiv/Papierkorb mit Wiederherstellung) mit „okay“ zu. Daraus keine ausdrückliche Freigabe für unwiderrufliches Löschen geschützter Originale ableiten; konkrete Löschoperationen sind nicht beauftragt.
+- Bearbeiten gewünscht: Name, Bahnhof, Strecke, Gleis, Weichenkennung, Zuordnung und manuelle KM, fachlich wie Android, aber ohne GPS-Aufnahme am PC. Kein Auftrag zum freien Verschieben/Neuzeichnen der Originalgeometrie.
+- Grafik muss Deutschland nicht wiedergeben. Gesamtansicht/Auszoomgrenze orientiert sich an den äußersten Punkten der vorhandenen Trassierung; sinnvollen Darstellungsrand berücksichtigen. Vorheriger Wunsch einer festen Deutschland-Gesamtansicht ist insoweit ersetzt.
+- Beim Hineinzoomen sollen alle vorhandenen fachlichen Details erkennbar werden. Qualitätsfarben, Tiefzoom und eindeutige Auswahl überlagerter Achsen bleiben relevant.
+- Klick auf Strecke oder Bahnhof soll ein überlagertes Fenster mit zugehörigen Daten und ggf. Bearbeitungsmöglichkeit öffnen. Benutzer bittet ausdrücklich um Einschätzung/weitere Vorschläge vor Umsetzung.
+- Zur Diskussion vorzulegen: breite Bestandsgrafik mit kompakter Suche; „Gesamter Bestand“ und „Auswahl einpassen“; gestufte Details nach Zoom; Mehrfachtreffer-Auswahl; großes Detailfenster mit Übersicht/Objekten/Originalen/Problemen/Historie und bewusstem Bearbeitungsmodus; manuelle KM über Auswahl von Abschnittsgrenzen auf vorhandener TRA plus Eingabe der KM-Anker/Richtung.
+- Vorschläge in voriger Zeile sind noch keine bestätigten Zusatzanforderungen. Keine Code-/NAS-/Android-Änderung; kein neuer Runtime-Test in diesem Abstimmungsblock.
