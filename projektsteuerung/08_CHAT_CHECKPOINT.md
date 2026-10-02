@@ -1216,3 +1216,7 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Ursache: Summary lieferte nur Achsen-Center/BBox, Detailgeometrie erst nach Klick.
 - Korrigiert: alle aktiven Achsen bekommen vereinfachte `overview_segments` und werden als Linien gerendert; Detail bleibt lazy.
 - Runtime-Bestätigung noch offen.
+
+## REF-DATA-006 – Runtime nur teilweise passend 02.10.2026
+- Alle-Achsen-Patch läuft grundsätzlich, Ergebnis laut Nutzer aber „nicht so richtig“.
+- Nichts weiter umbauen, bis die konkrete visuelle/UX-Abweichung per Screenshot eingegrenzt ist.
