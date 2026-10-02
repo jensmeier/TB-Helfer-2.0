@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from psycopg.types.json import Jsonb
+from psycopg.errors import UniqueViolation
 from pydantic import BaseModel, Field
 
 from .admin import require_admin, require_admin_csrf
@@ -419,7 +420,8 @@ def _history(
 
 
 def _row(cur, table: str, entity_id: UUID) -> dict[str, Any]:
-    cur.execute(f"SELECT * FROM tb.{table} WHERE id = %s", (entity_id,))
+    lock = " FOR UPDATE" if table == "survey_catalog_axes" else ""
+    cur.execute(f"SELECT * FROM tb.{table} WHERE id = %s{lock}", (entity_id,))
     found = cur.fetchone()
     if not found:
         raise HTTPException(404, "SURVEY_CATALOG_ENTITY_NOT_FOUND")
@@ -1352,7 +1354,8 @@ def _mark_segment_status(cur, segment: dict[str,Any], status: str,
 
 
 def _axis_review(cur, axis: dict[str,Any], actor_user_id: UUID | None) -> dict[str,Any]:
-    if axis["status"] == "REVIEW":
+    axis = _row(cur, "survey_catalog_axes", axis["id"])
+    if axis["status"] in {"REVIEW", "ARCHIVED"}:
         return axis
     before = dict(axis)
     version = int(axis["current_version"]) + 1
@@ -2946,6 +2949,141 @@ def coverage(
     }
 
 
+class AxisStatusUpdate(BaseModel):
+    base_version: int = Field(ge=1)
+
+
+@router.get("/management/axes")
+def management_axes(
+    archived: bool = Query(default=True),
+    q: str = Query(default="", max_length=160),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    _: dict[str, Any] = Depends(require_admin),
+) -> dict[str, Any]:
+    query = q.strip()
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT a.id,a.display_name,a.station_code,a.station_name,a.route_number,
+                   a.track_key,a.object_key,a.direction,a.axis_type,a.status,a.current_version,
+                   (SELECT count(*) FROM tb.survey_catalog_segments s WHERE s.axis_id=a.id) segment_count
+            FROM tb.survey_catalog_axes a
+            WHERE a.scope='GLOBAL' AND (a.status='ARCHIVED')=%s
+              AND (%s='' OR concat_ws(' ',a.display_name,a.station_code,a.station_name,
+                   a.route_number,a.track_key,a.object_key) ILIKE %s)
+            ORDER BY lower(a.display_name),a.id LIMIT %s OFFSET %s
+            """, (archived,query,f"%{query}%",limit+1,offset),
+        )
+        rows = [dict(row) for row in cur.fetchall()]
+    return {"axes":_plain(rows[:limit]),"has_more":len(rows)>limit,"offset":offset,"limit":limit}
+
+
+def _management_axis(cur, axis_id: UUID, base_version: int) -> dict[str, Any]:
+    cur.execute("SELECT * FROM tb.survey_catalog_axes WHERE id=%s AND scope='GLOBAL' FOR UPDATE", (axis_id,))
+    row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "SURVEY_COVERAGE_AXIS_NOT_FOUND")
+    axis = dict(row)
+    if int(axis["current_version"]) != base_version:
+        raise HTTPException(409, {"code":"VERSION_CONFLICT","current_version":axis["current_version"]})
+    return axis
+
+
+@router.patch("/management/axes/{axis_id}")
+def management_update_axis(axis_id: UUID, payload: AxisAdminUpdate,
+                           user: dict[str, Any] = Depends(require_admin_csrf)) -> dict[str, Any]:
+    changes = payload.model_dump(exclude={"base_version"}, exclude_unset=True)
+    if not changes:
+        raise HTTPException(400, "NO_CHANGES")
+    try:
+        with transaction() as conn, conn.cursor() as cur:
+            axis = _management_axis(cur, axis_id, payload.base_version)
+            if axis["status"] == "ARCHIVED":
+                raise HTTPException(409, "SURVEY_AXIS_ARCHIVED")
+            fields = {key:_clean(changes.get(key,axis.get(key))) for key in (
+                "display_name","station_code","station_name","route_number","track_key",
+                "object_key","direction","axis_type")}
+            for key in ("station_code","object_key","axis_type"):
+                if fields[key]:
+                    fields[key] = fields[key].upper()
+            if not fields["display_name"]:
+                raise HTTPException(400, "SURVEY_AXIS_NAME_REQUIRED")
+            if fields["axis_type"] not in _AXIS_TYPES:
+                raise HTTPException(400, "SURVEY_AXIS_TYPE_INVALID")
+            identity_fields = ("station_code","route_number","track_key","object_key","direction","axis_type")
+            identity = axis["identity_key"]
+            if any(fields[key] != axis.get(key) for key in identity_fields):
+                identity = _identity_key(axis["scope"],axis.get("company_id"),fields,str(axis_id))
+            cur.execute("SELECT id FROM tb.survey_catalog_axes WHERE identity_key=%s AND id<>%s", (identity,axis_id))
+            if cur.fetchone():
+                raise HTTPException(409, "SURVEY_AXIS_IDENTITY_EXISTS")
+            version = int(axis["current_version"]) + 1
+            cur.execute(
+                """UPDATE tb.survey_catalog_axes
+                SET display_name=%s,station_code=%s,station_name=%s,route_number=%s,track_key=%s,
+                    object_key=%s,direction=%s,axis_type=%s,identity_key=%s,current_version=%s
+                WHERE id=%s AND current_version=%s RETURNING *""",
+                tuple(fields[key] for key in ("display_name","station_code","station_name","route_number",
+                    "track_key","object_key","direction","axis_type"))+(identity,version,axis_id,payload.base_version),
+            )
+            updated = cur.fetchone()
+            if not updated:
+                raise HTTPException(409, "VERSION_CONFLICT")
+            updated = dict(updated)
+            _history(cur,entity_type="AXIS",entity_id=axis_id,version=version,operation="UPDATE",
+                     before=axis,after=updated,actor_user_id=user["user_id"],actor_company_id=axis.get("company_id"))
+            audit(cur,action="SURVEY_CATALOG_AXIS_UPDATE",actor_user_id=user["user_id"],
+                  company_id=user.get("company_id"),entity_type="SURVEY_CATALOG_AXIS",entity_id=axis_id,
+                  details={"version":version,"fields":list(changes)})
+            return _plain(updated)
+    except UniqueViolation as exc:
+        raise HTTPException(409, "SURVEY_AXIS_IDENTITY_EXISTS") from exc
+
+
+def _management_axis_status(axis_id: UUID, payload: AxisStatusUpdate,
+                            user: dict[str, Any], archive: bool) -> dict[str, Any]:
+    with transaction() as conn, conn.cursor() as cur:
+        axis = _management_axis(cur,axis_id,payload.base_version)
+        if (axis["status"] == "ARCHIVED") == archive:
+            return _plain(axis)
+        metadata = dict(axis.get("metadata") or {})
+        if archive:
+            metadata["admin_archive_previous_status"] = axis["status"]
+            status = "ARCHIVED"
+        else:
+            cur.execute("SELECT count(*) n FROM tb.survey_catalog_conflicts WHERE axis_id=%s AND status='OPEN'", (axis_id,))
+            needs_review = int(cur.fetchone()["n"]) > 0 or metadata.get("admin_archive_previous_status") == "REVIEW"
+            status = "REVIEW" if needs_review else "ACTIVE"
+            metadata.pop("admin_archive_previous_status",None)
+        version = int(axis["current_version"]) + 1
+        cur.execute("""UPDATE tb.survey_catalog_axes SET status=%s,metadata=%s,current_version=%s
+                       WHERE id=%s AND current_version=%s RETURNING *""",
+                    (status,Jsonb(metadata),version,axis_id,payload.base_version))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(409, "VERSION_CONFLICT")
+        updated = dict(row)
+        _history(cur,entity_type="AXIS",entity_id=axis_id,version=version,operation="STATUS",
+                 before=axis,after=updated,actor_user_id=user["user_id"],actor_company_id=axis.get("company_id"))
+        audit(cur,action="SURVEY_CATALOG_AXIS_ARCHIVE" if archive else "SURVEY_CATALOG_AXIS_RESTORE",
+              actor_user_id=user["user_id"],company_id=user.get("company_id"),
+              entity_type="SURVEY_CATALOG_AXIS",entity_id=axis_id,details={"version":version})
+        return _plain(updated)
+
+
+@router.post("/management/axes/{axis_id}/archive")
+def management_archive_axis(axis_id: UUID,payload: AxisStatusUpdate,
+                            user: dict[str, Any] = Depends(require_admin_csrf)) -> dict[str, Any]:
+    return _management_axis_status(axis_id,payload,user,True)
+
+
+@router.post("/management/axes/{axis_id}/restore")
+def management_restore_axis(axis_id: UUID,payload: AxisStatusUpdate,
+                            user: dict[str, Any] = Depends(require_admin_csrf)) -> dict[str, Any]:
+    return _management_axis_status(axis_id,payload,user,False)
+
+
 @router.get("/coverage/{axis_id}/details")
 def coverage_axis_details(
     axis_id: UUID,
@@ -2960,7 +3098,7 @@ def coverage_axis_details(
                    track_key,object_key,axis_type,direction,status,current_version,
                    created_at,updated_at
             FROM tb.survey_catalog_axes
-            WHERE id=%s AND scope='GLOBAL' AND status <> 'ARCHIVED'
+            WHERE id=%s AND scope='GLOBAL'
             """, (axis_id,),
         )
         row = cur.fetchone()
@@ -3494,3 +3632,4 @@ def enqueue_reindex(user: dict[str,Any] = Depends(require_admin_csrf)) -> dict[s
         audit(cur,action="SURVEY_CATALOG_REINDEX_ENQUEUE",actor_user_id=user["user_id"],
               entity_type="SYSTEM",details={"job_id":str(job["id"])})
     return {"job":_plain(job)}
+

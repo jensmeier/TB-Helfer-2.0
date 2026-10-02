@@ -57,7 +57,7 @@ def production_functions(cur, **overrides):
 
 
 class CoverageDetailsTests(unittest.TestCase):
-    def test_unknown_or_archived_axis_stops_before_related_data(self):
+    def test_unknown_axis_stops_before_related_data(self):
         cur = Cursor([None])
         f = production_functions(cur)['coverage_axis_details']
         with self.assertRaises(HTTPError) as e:
@@ -65,7 +65,12 @@ class CoverageDetailsTests(unittest.TestCase):
         self.assertEqual(e.exception.status_code, 404)
         self.assertEqual(len(cur.statements), 1)
         self.assertIn("scope='GLOBAL'", cur.statements[0][0])
-        self.assertIn("status <> 'ARCHIVED'", cur.statements[0][0])
+        self.assertNotIn("status <> 'ARCHIVED'", cur.statements[0][0])
+
+    def test_admin_can_read_archived_axis_details(self):
+        cur = Cursor([{'id':AXIS,'status':'ARCHIVED'}, [], [], []])
+        result = production_functions(cur)['coverage_axis_details'](AXIS)
+        self.assertEqual(result['axis']['status'], 'ARCHIVED')
 
     def test_history_paging_and_safe_field_diff(self):
         history = [dict(change_id=i, entity_type='AXIS', entity_id=AXIS,
@@ -129,3 +134,4 @@ class CoverageDetailsTests(unittest.TestCase):
 
 if __name__=='__main__':
     unittest.main(verbosity=2)
+

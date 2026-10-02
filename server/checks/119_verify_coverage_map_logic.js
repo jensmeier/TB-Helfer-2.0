@@ -48,7 +48,7 @@ async function harness() {
   const tabs = ['overview','objects','originals','history'].map(x=>{const e=get('tab-'+x);e.dataset.tab=x;return e;});
   const lists = ['axes','stations','routes'].map(x=>{const e=get('list-'+x);e.dataset.list=x;return e;});
   const kpis = ['TotalKm','KnownKm','AutoKm','MobileKm','MissingKm','Stations','Tracks','Routes'].map(x=>get('kpi'+x));
-  const document = {cookie:'',getElementById:get,createElement:tag=>new Element(tag),querySelectorAll:q=>q==='[data-tab]'?tabs:q==='[data-list]'?lists:q==='.coverage-kpi strong'?kpis:[]};
+  const document = {cookie:'tb_admin_csrf=test-admin-csrf',getElementById:get,createElement:tag=>new Element(tag),querySelectorAll:q=>q==='[data-tab]'?tabs:q==='[data-list]'?lists:q==='.coverage-kpi strong'?kpis:[]};
   function response(url) {
     if (url.includes('/summary')) return {total_length_m:128911.129,known_km_length_m:116578.85,automatic_km_length_m:116578.85,manual_mobile_length_m:0,without_km_length_m:12332.28,station_count:1,track_count:3,route_count:1};
     if (url.includes('/geometry')) return f.geometry(url.split('/').at(-2));
@@ -121,9 +121,39 @@ async function harness() {
   // A reload clears old KPI/cache state and rejects delayed results from older epochs.
   controls.handler=url=>url.includes('/summary')?{status:500}:{};await run('loadCoverage()');await delay(20);
   assert.equal(get('kpiTotalKm').textContent,'—');assert.equal(get('summaryStatus').hidden,false);assert.equal(run('axes.size'),3);
+  // Admin management uses scoped CSRF writes, explicit confirmation and no retry after an uncertain write.
+  controls.handler=null;controls.timeoutMs=500;
+  await run("readManagementAxis('a1')");assert.equal(get('axisManager').open,true);
+  assert(get('managementBody').innerHTML.includes('axisEditForm'));
+  run("confirmAxisStatus({axis:{id:'a1',display_name:'<b>Weiche</b>',status:'ACTIVE',current_version:2},segments:[{}]})");
+  assert(get('managementBody').innerHTML.includes('&lt;b&gt;Weiche'));
+  assert(get('managementBody').innerHTML.includes('Jetzt archivieren'));
+  assert(get('managementBody').innerHTML.includes('Originaldateien'));
+  const beforeWrites=calls.filter(c=>c.opts.method==='POST').length;
+  controls.handler=url=>url.includes('/management/axes/a1/archive')?{delay:20,body:{status:'ARCHIVED'}}:{};
+  const saving=run("writeManagement('a1','POST','/archive',{base_version:2})");
+  assert.equal(run('managementBusy'),true);
+  await run("writeManagement('a1','POST','/archive',{base_version:2})");await saving;
+  const writes=calls.filter(c=>c.opts.method==='POST');assert.equal(writes.length,beforeWrites+1);
+  assert.equal(writes.at(-1).opts.headers['X-CSRF-Token'],'test-admin-csrf');
+  assert.deepEqual(JSON.parse(writes.at(-1).opts.body),{base_version:2});assert.equal(run('managementBusy'),false);
+  controls.handler=url=>url.includes('/management/axes/')?{status:409,body:{detail:{code:'VERSION_CONFLICT'}}}:{};
+  await run("writeManagement('a1','PATCH','',{base_version:2,display_name:'Neu'})");
+  assert(get('managementMessage').textContent.includes('Zwischenzeitlich geändert'));
+  assert(get('managementBody').innerHTML.includes('reloadAfterWrite'));
+  controls.timeoutMs=10;controls.handler=url=>url.includes('/management/axes/')?{hang:true}:{};
+  const beforeTimeout=calls.length;await run("writeManagement('a1','POST','/archive',{base_version:2})");
+  assert.equal(calls.length,beforeTimeout+1);assert.equal(run('managementBusy'),false);
+  assert(get('managementMessage').textContent.includes('Speichern nicht bestätigt'));
+  controls.handler=url=>url.includes('/management/axes?')?{body:{axes:[{id:'arc',display_name:'<img>',segment_count:1}],has_more:true}}:{};
+  await run('showArchive()');assert(get('managementBody').innerHTML.includes('&lt;img&gt;'));assert.equal(get('managementTitle').textContent,'Archivierte Achsen');
+  run("archiveOffset=50;archiveQuery='107W'");await run('showArchive(false)');
+  assert(calls.at(-1).url.includes('offset=50&q=107W'));
+  controls.timeoutMs=500;controls.handler=null;
   // Empty stock and unsupported coordinates must never produce NaN or Germany fallback.
   h.f.coverage={axes:[],axis_count:0,station_count:0,route_count:0,unsupported_axis_count:0};controls.handler=null;await run('loadCoverage()');await delay(10);
   assert.equal(run('view'),null);assert.equal(get('overviewLayer').innerHTML,'');assert(!get('overviewLayer').innerHTML.includes('NaN'));
   run('clearTimeout(detailTimer)');
-  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock; NOT a visual browser test.');
+  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive CSRF and write timeout; NOT a visual browser test.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
