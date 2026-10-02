@@ -1118,3 +1118,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Nutzerwunsch umgesetzt: Bestätigungsbereich für vorhandene/abweichende Daten jetzt mit deutlich rotem Rahmen und Warnhintergrund.
 - Keine Änderung an Overwrite-Logik; nur Sichtbarkeit/Bedienbarkeit verbessert.
 - Runtime nach Template-Deploy noch offen.
+
+## REF-DATA-005 – Korrekturlauf Runtime 02.10.2026
+- Screenshot nach Bestätigung zeigt mehrere `AKTUALISIERT`-Ergebnisse; vorhandenes Original beibehalten, Zuordnung auf MGHN – Gessertshausen aktualisiert.
+- Im selben Lauf bleibt `5340S_ER0.TRA` `DUPLIKAT`, also keine unnötige Änderung bei identischer Zuordnung.
+- Vollständiger Nachweis noch offen: ID/SHA unverändert, keine zweite Originalzeile, MGHN in Search/Availability/Geometry, Audit/History.
