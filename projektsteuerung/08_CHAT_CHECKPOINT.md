@@ -1220,3 +1220,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 ## REF-DATA-006 – Runtime nur teilweise passend 02.10.2026
 - Alle-Achsen-Patch läuft grundsätzlich, Ergebnis laut Nutzer aber „nicht so richtig“.
 - Nichts weiter umbauen, bis die konkrete visuelle/UX-Abweichung per Screenshot eingegrenzt ist.
+
+## REF-DATA-006 – Coverage NetworkError 02.10.2026
+- Seite selbst lädt, aber Gesamtansicht/KPI nicht: Browser meldet NetworkError beim Coverage-Fetch.
+- Fehler jetzt auf /api/v1/survey-catalog/coverage bzw. dessen Runtime eingegrenzt.
+- Nächster Schritt: direkte read-only Funktionsausführung im API-Terminal, keine weitere Änderung auf Verdacht.
