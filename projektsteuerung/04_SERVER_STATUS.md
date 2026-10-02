@@ -1393,3 +1393,11 @@ Status: **DEPLOYT / SUMMARY-RUNTIME BESTÄTIGT / BROWSER-E2E OFFEN**
   - Segmentqualität: 12 AUTOMATISCH, 28 FEHLT
 - Ergebnis: Summary-Helper läuft auf Synology ohne Exception. Kein Hinweis auf DB-/PostGIS-/Migrationsfehler.
 - Noch offen: Browserprüfung Dashboard + Trassendatenübersicht inkl. Ladezeit/Lazy-Detail.
+
+
+## REF-DATA-007 – Dashboard Summary HTTP-Fehler 02.10.2026
+Status: **HELPER-RUNTIME PASS / DASHBOARD-HTTP FEHLER OFFEN / NOCH KEIN CODE-FIX**
+- Synology-Helper `_coverage_summary_data()` liefert gültige Werte.
+- Browser-Dashboard zeigt im neuen Bereich `Trassenbestand`: **„Trassenkennzahlen konnten nicht geladen werden.“**
+- Damit ist Berechnung/DB nicht der aktuell sichtbare Fehler; offen ist der Pfad `GET /api/v1/survey-catalog/coverage/summary` über FastAPI/Admin-Session/HTTP-Browser.
+- Keine Änderung auf Verdacht. Nächster Schritt: exakten HTTP-Endpunkt im API-Container via TestClient prüfen und Status/Body ausgeben.
