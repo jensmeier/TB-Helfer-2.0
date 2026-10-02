@@ -1347,3 +1347,12 @@ Status: **PYTHON-FUNKTION BESTÄTIGT / HTTP-BROWSERPFAD NOCH FEHLERHAFT**
 - Die Admin-Seite lädt weiterhin, während der Browser beim Coverage-Fetch `NetworkError when attempting to fetch resource` meldet.
 - Fehlerzone ist deshalb jetzt auf den HTTP-/Routing-/Response-/Browserpfad von `GET /api/v1/survey-catalog/coverage` eingegrenzt.
 - Schutzregel: noch keine Codeänderung. Nächster Schritt ist ein direkter HTTP-Aufruf des Coverage-Endpunkts aus dem API-Container bzw. gegen die laufende API, um Statuscode, Response und eventuellen Server-Trace zu erfassen.
+
+
+## REF-DATA-006 – Coverage JSON-Serialisierung Runtime bestätigt 02.10.2026
+Status: **PYTHON + JSON-SERIALISIERUNG BESTÄTIGT / HTTP-BROWSERPFAD NOCH OFFEN**
+- Direkter Runtime-Test im API-Container mit FastAPI `jsonable_encoder` und `json.dumps(..., allow_nan=False)` erfolgreich.
+- Ergebnis: `JSON_OK`, Response-Größe `15795` Bytes, `AXES 39`.
+- Damit ist für den aktuellen Coverage-Datensatz auch ein Fehler zwischen Python-Rückgabewert und normaler JSON-Serialisierung ausgeschlossen.
+- Keine Codeänderung auf Verdacht.
+- Nächster Diagnose-Schritt: echten HTTP-Endpunkt gegen die laufende API aufrufen und Statuscode/Header/Body prüfen; danach Browser-/Proxy-/Sessionpfad eingrenzen.
