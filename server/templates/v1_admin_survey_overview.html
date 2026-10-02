@@ -14,8 +14,11 @@
 #germanyMap{width:100%;height:680px;display:block;cursor:grab}#germanyMap.dragging{cursor:grabbing}
 .country-fill{fill:#f8fafc;stroke:#98a2b3;stroke-width:1.4;vector-effect:non-scaling-stroke}
 .map-grid{stroke:#dbe3ec;stroke-width:.7;vector-effect:non-scaling-stroke}.map-grid-label{font-size:11px;fill:#98a2b3}
-.detail-line{fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;opacity:.96;vector-effect:non-scaling-stroke;cursor:pointer}
-.detail-line:hover{stroke-width:5}
+.overview-line{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;opacity:.9;vector-effect:non-scaling-stroke;cursor:pointer}
+.overview-line:hover{stroke-width:5;opacity:1}
+.overview-line.selected{stroke-width:5.5;opacity:1}
+.detail-line{fill:none;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;opacity:1;vector-effect:non-scaling-stroke;cursor:pointer}
+.detail-line:hover{stroke-width:5.5}
 .station-dot{stroke:#fff;stroke-width:2;vector-effect:non-scaling-stroke;cursor:pointer}
 .station-halo{fill:none;stroke:#1167d8;stroke-width:1.2;opacity:.24;vector-effect:non-scaling-stroke}
 .station-label{font-size:12px;font-weight:800;fill:#344054;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round;pointer-events:none}
@@ -91,7 +94,7 @@
         <button type="button" id="zoomIn" class="secondary" title="Hineinzoomen">+</button>
         <button type="button" id="zoomOut" class="secondary" title="Herauszoomen">−</button>
       </div>
-      <div class="map-hint">Mausrad = Zoom · Ziehen = Verschieben · Bahnhof/Achse anklicken = Details</div>
+      <div class="map-hint">Alle vorhandenen Achsen sind als vereinfachte Linien sichtbar · Mausrad = Zoom · Ziehen = Verschieben · Achse anklicken = Details</div>
     </div>
     <div style="padding:11px 16px;border-top:1px solid #e4e7ec" class="muted">
       Die Übersicht verändert keine Vermessungsdaten. PostGIS transformiert DB_REF-Koordinaten nur für diese Anzeige nach WGS84.
@@ -164,12 +167,21 @@ function stationGroups(){
 }
 function renderMap(){
   renderGrid();$('countryOutline').setAttribute('d',countryPath());
-  const stationAxisIds=new Set(stationGroups().flatMap(g=>g.axes.map(a=>a.axis_id)));
-  $('overviewLayer').innerHTML=(coverage?.axes||[]).filter(a=>a.wgs84&&!stationAxisIds.has(a.axis_id)).map(a=>{
-    const p=project(a.wgs84.center_lon,a.wgs84.center_lat);
-    return '<circle class="axis-dot" data-axis="'+esc(a.axis_id)+'" cx="'+p[0]+'" cy="'+p[1]+'" r="5" fill="'+qualityColor(a)+'"><title>'+esc(a.display_name)+' · '+esc(qualityLabel(a))+'</title></circle>';
+
+  // Always draw every active axis as a simplified overview line. Station
+  // markers are only labels/navigation and no longer replace the geometry.
+  $('overviewLayer').innerHTML=(coverage?.axes||[]).flatMap(a=>{
+    const segments=a.overview_segments||[];
+    if(segments.length){
+      return segments.map(s=>'<path class="overview-line '+(a.axis_id===selectedId?'selected':'')+'" data-axis="'+esc(a.axis_id)+'" d="'+pathFor(s.coordinates)+'" stroke="'+qualityColor(s)+'"><title>'+esc(a.display_name)+' · '+esc(qualityLabel(s))+'</title></path>');
+    }
+    if(a.wgs84){
+      const p=project(a.wgs84.center_lon,a.wgs84.center_lat);
+      return ['<circle class="axis-dot" data-axis="'+esc(a.axis_id)+'" cx="'+p[0]+'" cy="'+p[1]+'" r="4.5" fill="'+qualityColor(a)+'"><title>'+esc(a.display_name)+' · '+esc(qualityLabel(a))+'</title></circle>'];
+    }
+    return [];
   }).join('');
-  $('overviewLayer').querySelectorAll('[data-axis]').forEach(el=>el.addEventListener('click',()=>selectAxis(el.dataset.axis,true)));
+  $('overviewLayer').querySelectorAll('[data-axis]').forEach(el=>el.addEventListener('click',ev=>{ev.stopPropagation();selectAxis(el.dataset.axis,true);}));
 
   if(selectedGeometry){
     $('detailLayer').innerHTML=(selectedGeometry.segments||[]).map(s=>'<path class="detail-line" d="'+pathFor(s.coordinates)+'" stroke="'+qualityColor(s)+'"><title>'+esc(qualityLabel(s))+'</title></path>').join('');
