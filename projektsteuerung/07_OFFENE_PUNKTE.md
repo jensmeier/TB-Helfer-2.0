@@ -30,5 +30,5 @@ Stand: 2026-09-26
 | SYNC-001 | P2 | GEMEINSAM | vollständiger 15×15 Last-/Delta-E2E offen; Delta-Wait 255/255 als Teiltest bestanden | Gesamtlast nach Hauptgerät-/Helfer-E2E und nach RAM-/NAS-Ausbau wiederholen |
 | DOC-001 | P1 | STEUERUNG | neue Struktur lokal nach Pull verifizieren | alte Top-Level-Ordner müssen weg sein |
 
-| REF-DATA-005 | P0 | SERVER/PORTAL | Korrekturworkflow inkl. Audit und In-place-Nachweis praktisch bestätigt: updates=16, ids_exist/sha_same/raw_unique/station_mghn=true; MGHN Geometry count=12 | Search/Availability-Kopfwerte kompakt bestätigen + Originaltabelle visuell MGHN prüfen + roten Warnrahmen nach Template-Deploy bestätigen → dann Gate schließen |
+| REF-DATA-005 | P2 | SERVER/PORTAL | Fachlicher Korrekturworkflow BESTÄTIGT: Warnung→Bestätigung→AKTUALISIERT, IDs/SHA/Raw eindeutig, Audit vorhanden, Search/Availability/Geometry MGHN korrekt (12 Achsen/12 Segmente/0 Review) | Nur roten Warnrahmen nach letztem Template-Deploy visuell bestätigen; danach Punkt vollständig schließen |
 Keine bestätigten Punkte wieder als offen anlegen.
