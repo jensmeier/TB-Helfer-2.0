@@ -2021,3 +2021,9 @@ Runtime-Diagnose 30.09.2026:
 - Reale Transformationen sind plausibel: MGHN → ca. 10.69908 / 48.33314, MPB → ca. 11.43154 / 48.15369.
 - Damit kann die Deutschlandübersicht ohne neue Python-/Image-Abhängigkeit gebaut werden. Originaldaten bleiben unverändert; ST_Transform wird nur read-only für die Anzeige verwendet.
 - Umsetzung jetzt freigegeben: zweistufige Coverage-Zusammenfassung + Suche, Detailgeometrie erst bei Auswahl.
+
+## REF-DATA-006 – Deutschlandübersicht soll ALLE vorhandenen Trassen zeigen 02.10.2026
+- Neue Benutzeranforderung nach Runtime-Sichtprüfung: Die Deutschlandübersicht darf nicht nur wenige Punktmarker/Betriebsstellen zeigen. In der Gesamtansicht sollen **alle vorhandenen aktiven Achsen/Trassen** bereits als vereinfachte Linien sichtbar sein.
+- Punkte/Bahnhofsmarker bleiben ergänzend; die eigentliche vorhandene Geometrie muss deutschlandweit erkennbar sein.
+- Performance-Regel: Übersicht lädt pro Achse nur stark vereinfachte/decimierte Linien; vollständige Detailgeometrie weiterhin erst bei Auswahl/Zoom.
+- Keine neue Python-/Image-Abhängigkeit; PostGIS-Variante A bleibt unverändert.
