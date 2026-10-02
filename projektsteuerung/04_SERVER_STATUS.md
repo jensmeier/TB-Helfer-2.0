@@ -1121,3 +1121,9 @@ Status: **WARNUNG + BESTÄTIGTE AKTUALISIERUNG PRAKTISCH NACHGEWIESEN**
 - Ergebnistext bestätigt: vorhandenes Original wurde beibehalten, fachliche Zuordnung aktualisiert, MGHN – Gessertshausen.
 - Gleichzeitig blieb mindestens `5340S_ER0.TRA` als `DUPLIKAT`; damit ist auch der unveränderte-Duplikatpfad im selben Lauf sichtbar.
 - Noch offen für vollständigen Gate-Abschluss: Original-ID/SHA vor/nachher unverändert nachweisen, Originaltabelle + Search/Availability/Geometry auf MGHN prüfen und Audit/History read-only verifizieren.
+
+## REF-DATA-005 – Audit/History-Nachweis Runtime 02.10.2026
+Status: **AUDIT BESTÄTIGT / ORIGINAL-EINZIGARTIGKEIT NOCH OFFEN**
+- Nutzer-Screenshot aus dem API-Terminal bestätigt `ADMIN_SURVEY_ORIGINAL_ASSIGNMENT_UPDATE` mit `source=ADMIN_WEB_DUPLICATE_CORRECTION` und Änderungen `station_code: None → MGHN`, `station_name: None → Gessertshausen`.
+- Zusätzlich sind `SURVEY_CATALOG_ASSIGNMENT_UPDATE`-Einträge vorhanden; damit ist die abgeleitete Katalogaktualisierung auditierbar nachgewiesen.
+- Noch nicht aus dem sichtbaren Screenshot bestätigt: `same_raw_count=1`, Original-ID/SHA unverändert bzw. keine zweite Originalzeile. Dieser Teil bleibt offen, bis die kompakte Originalabfrage sichtbar vorliegt.
