@@ -2027,3 +2027,23 @@ Runtime-Diagnose 30.09.2026:
 - Punkte/Bahnhofsmarker bleiben ergänzend; die eigentliche vorhandene Geometrie muss deutschlandweit erkennbar sein.
 - Performance-Regel: Übersicht lädt pro Achse nur stark vereinfachte/decimierte Linien; vollständige Detailgeometrie weiterhin erst bei Auswahl/Zoom.
 - Keine neue Python-/Image-Abhängigkeit; PostGIS-Variante A bleibt unverändert.
+
+
+## REF-DATA-007 – Trassendaten-Zentrale, Kennzahlen und Android-Abgleich 02.10.2026
+Status: **ANFORDERUNG GESICHERT / VORSCHLAGSPHASE / NOCH NICHT BAUEN**
+
+Neue Benutzeranforderung:
+- Trassendatenübersicht soll zur zentralen verständlichen Verwaltungsansicht für vorhandene Vermessungs-/Trassendaten werden.
+- Dashboard/Übersicht soll zusätzlich fachliche Gesamtkennzahlen zeigen, insbesondere:
+  - gesamte abgedeckte Streckenlänge in km;
+  - davon Länge mit belastbarer KM-Angabe;
+  - davon manuell am Handy ergänzte KM-Angaben getrennt sichtbar;
+  - Anzahl Bahnhöfe/Betriebsstellen im vorhandenen Survey-Bestand;
+  - Anzahl Gleise/Achsen im Gesamtbestand.
+- Detailansichten sollen vorhandene Daten, Quelle/Originaldatei, Achse/Gleis/Weiche/WVB, KM-Qualität und Zuordnung nachvollziehbar machen sowie gezielte Korrektur/Umbenennung erlauben, ohne Originaldateien zu verändern.
+- Bestehenden allgemeinen Fachkatalog (Streckendaten/Bahnhöfe) und Survey-Katalog nicht weiter als unverbundene Parallelwelten ausbauen; Verknüpfung/Verantwortung vor Implementierung festlegen.
+- Katalog-Historie soll verständlich erklärt und nur dort prominent bleiben, wo sie für Nachvollziehbarkeit/Korrekturen sinnvoll ist.
+- Vor Server-Umbau zwingend aktuelles Android-Verhalten prüfen: welche Strecken-/Bahnhofs-/Gleis-/Survey-/KM-Daten das Handy tatsächlich hochlädt, welche manuellen KM-Korrekturen/Anker synchronisiert werden und über welche API/Entity-Pfade.
+- Keine Android-Codeänderung durch SERVER. Falls Android-Anpassung nötig wird, Bedarf zuerst in Projektsteuerung/Vertrag dokumentieren und an ANDROID geben.
+- Performanceziel: Übersicht darf bei kleinem Bestand nicht lange laden; Summary/Kennzahlen und Geometrie sollen gestuft/lazy geladen werden statt vollständige Detailgeometrie beim Einstieg zu berechnen.
+- Benutzer wünscht ausdrücklich: zuerst Vorschläge/Skizze und Datenfluss klären, erst danach bauen.
