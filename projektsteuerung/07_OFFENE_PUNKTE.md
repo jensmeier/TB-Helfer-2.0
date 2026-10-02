@@ -31,5 +31,5 @@ Stand: 2026-09-26
 | DOC-001 | P1 | STEUERUNG | neue Struktur lokal nach Pull verifizieren | alte Top-Level-Ordner müssen weg sein |
 
 | REF-DATA-005 | P2 | SERVER/PORTAL | Fachlicher Korrekturworkflow BESTÄTIGT: Warnung→Bestätigung→AKTUALISIERT, IDs/SHA/Raw eindeutig, Audit vorhanden, Search/Availability/Geometry MGHN korrekt (12 Achsen/12 Segmente/0 Review) | Nur roten Warnrahmen nach letztem Template-Deploy visuell bestätigen; danach Punkt vollständig schließen |
-| REF-DATA-006 | P1 | SERVER/PORTAL | Variante A/PostGIS source-seitig gebaut: kompakte Deutschland-Coverage + Suche + Detail-Nachladen, ohne pyproj/requirements/Image-Änderung | 5 Runtime-Dateien + neues Template deployen, API/Health prüfen, dann MPB/MGHN Positionen, Suche, Farben, Zoom und Detail-Lazy-Load praktisch testen |
+| REF-DATA-006 | P1 | SERVER/PORTAL | PostGIS-Übersicht source-seitig nachgebessert: alle aktiven Achsen werden als vereinfachte Linien geladen; Stationen sind nur Zusatzmarker, Detailgeometrie bleibt Lazy-Load | survey_catalog.py + v1_admin_survey_overview.html deployen, Syntax/Import prüfen, API neu starten und Gesamtansicht/Zoom praktisch bestätigen |
 Keine bestätigten Punkte wieder als offen anlegen.
