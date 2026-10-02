@@ -1244,3 +1244,12 @@ Status: **RUNTIME DEFEKT / URSACHE BESTÄTIGT**
 - Der Trace endet in `/app/tbserver/survey_catalog.py`, Zeile 14, bei `from pyproj import Transformer`.
 - Damit ist bestätigt: das gesicherte alte Image wird von der aktuell live vom NAS gemounteten neuen Source-Datei `survey_catalog.py` überlagert. Das alte Image allein kann den Server nicht stabilisieren.
 - Sofortmaßnahme: REF-DATA-006-Source auf den letzten Stand vor pyproj/Deutschlandübersicht zurücksetzen; keine DB-/Migration-/Datenänderung. Danach Alt-Image + alter Source gemeinsam starten und Runtime zuerst stabilisieren.
+
+## REF-DATA-006 – Source-Rollback auf pre-pyproj abgeschlossen 02.10.2026
+Status: **QUELLSTAND STABILISIERT / SYNLOGY-DEPLOYMENT OFFEN**
+- Zur Wiederherstellung der Server-Runtime wurde ausschließlich der REF-DATA-006-Code auf den letzten Stand vor der pyproj/Deutschlandübersicht zurückgesetzt.
+- Wiederhergestellt aus Commit `aef0624f848ec3b5a6fca5cbc747b5004597fcd8`: `server/requirements.txt`, `server/tbserver/survey_catalog.py`, `server/tbserver/admin_web.py`, `server/templates/v1_base.html`, `server/templates/v1_admin_dashboard.html`.
+- Neu eingeführte Dateien `server/templates/v1_admin_survey_overview.html` und `server/checks/117_verify_survey_coverage_overview_source.py` wurden entfernt.
+- Damit enthält der aktive GitHub-Source keinen `pyproj`-Import mehr. REF-DATA-005 und vorherige Survey-Funktionen bleiben erhalten, weil der Rücksprung genau auf den bereits bestätigten Stand unmittelbar vor REF-DATA-006 erfolgt.
+- Nächster Schritt auf Synology: diese fünf Runtime-Dateien bzw. vollständigen Server-Source aus GitHub übernehmen und das gesicherte alte Image verwenden; danach API/Worker/Migrate/Monitor starten und Health/Migrationen prüfen.
+- Deutschlandübersicht ist bewusst zurückgestellt und wird erst nach stabiler Runtime mit einer deployment-sicheren Lösung neu gebaut.
