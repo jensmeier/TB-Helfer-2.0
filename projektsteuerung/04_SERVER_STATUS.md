@@ -1169,3 +1169,14 @@ Status: **VORBEDINGUNGEN FÜR GESAMTANSICHT BESTÄTIGT**
 - Parservertrag kennzeichnet TRA/GRA als `DB_REF2016_4`. Die X-Werte liegen konsistent im 4-Millionen-Meridianstreifen.
 - Öffentliche DB/EPSG-Referenz bestätigt horizontal DB_REF / 3-degree Gauß-Krüger Zone 4 = EPSG:5684; DB_REF2016 compound Zone 4 = EPSG:9934. Damit kann für die Deutschlandübersicht serverseitig belastbar nach WGS84 transformiert werden.
 - Umsetzung darf jetzt beginnen; für künftige deutschlandweite Daten müssen DB_REF-Zonen 2–5 unterstützt werden, nicht nur Zone 4.
+
+## REF-DATA-006 – Gesamtansicht Deutschland SOURCE FERTIG 02.10.2026
+Status: **SOURCE FERTIG / SYNLOGY-RUNTIME OFFEN**
+- `server/tbserver/survey_catalog.py`: `/coverage` + DB_REF→WGS84-Transformation für Zonen 2–5.
+- `server/templates/v1_admin_survey_overview.html`: eigenständige Deutschland-Gesamtgrafik mit Suche/Fokus/Qualitätsfarben ohne externen Tile-Dienst.
+- `server/tbserver/admin_web.py`: Admin-Seitenroute ergänzt.
+- `server/templates/v1_base.html`: Navigation `Trassendatenübersicht` direkt neben Trassierungsdaten.
+- `server/templates/v1_admin_dashboard.html`: Schnellzugriff ergänzt.
+- `server/requirements.txt`: `pyproj==3.7.2`.
+- Sourcecheck 117 ergänzt und die erwarteten Source-Marker gegen GitHub geprüft. Das ist kein Runtime-/Synology-E2E.
+- Keine DB-Migration erforderlich.
