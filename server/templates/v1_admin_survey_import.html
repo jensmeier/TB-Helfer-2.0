@@ -30,7 +30,7 @@
   .graphic-shell.fullscreen .fullscreen-info.active{display:block}
   .point-detail{display:grid;gap:5px}.point-detail-title{font-weight:850;font-size:15px}.point-detail-row{display:grid;grid-template-columns:92px 1fr;gap:8px;font-size:12px}.point-detail-row span:first-child{color:#667085}.point-hit-list{display:grid;gap:6px}.point-hit-button{width:100%;text-align:left;background:#fff;color:#101828;border:1px solid #d0d5dd;border-radius:7px;padding:7px 8px}.point-hit-button:hover{border-color:#1167d8;background:#f5f9ff}
   .map-hint{position:absolute;left:10px;bottom:10px;background:rgba(255,255,255,.92);border:1px solid #eaecf0;border-radius:8px;padding:5px 8px;font-size:11px;color:#667085;z-index:4}
-  .graphic-side{display:grid;gap:10px}.info-box{border:1px solid #eaecf0;border-radius:10px;padding:11px;background:#fff}.info-box h3{margin:0 0 5px;font-size:14px}
+  .graphic-side{display:grid;gap:10px}.info-box{border:1px solid #eaecf0;border-radius:10px;padding:11px;background:#fff}.info-box h3{margin:0 0 5px;font-size:14px}.overwrite-warning{border:2px solid #d92d20!important;border-left-width:5px!important;background:#fff5f4!important;box-shadow:0 0 0 1px rgba(217,45,32,.05)}.overwrite-warning label{color:#b42318}.overwrite-warning input[type=checkbox]{accent-color:#d92d20;transform:scale(1.15)}
   .analysis-items{display:grid;gap:11px;margin-top:14px}.analysis-item{border:1px solid #d0d5dd;border-radius:12px;padding:12px;background:#fff}.analysis-item.skip{background:#f8fafc;color:#667085}
   .analysis-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.facts{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.fact{font-size:11px;border:1px solid #e4e7ec;background:#f9fafb;border-radius:999px;padding:3px 7px}.fact.warn{border-color:#f7c56d;background:#fffbeb;color:#8a4b08}
   .decision-grid{display:grid;grid-template-columns:1.6fr .8fr .8fr;gap:9px;margin-top:11px}.import-toggle{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px}
@@ -127,7 +127,7 @@
     </div>
   </div>
   <div id="analysisItems" class="analysis-items"></div>
-  <div class="info-box" style="margin-top:12px">
+  <div class="info-box overwrite-warning" style="margin-top:12px">
     <label style="display:flex;gap:9px;align-items:flex-start;font-weight:800">
       <input id="overwriteExisting" type="checkbox" style="margin-top:3px">
       <span>Vorhandene identische Dateien bei abweichender Zuordnung aktualisieren</span>
