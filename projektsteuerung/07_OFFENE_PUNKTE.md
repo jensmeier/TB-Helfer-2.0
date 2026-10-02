@@ -31,5 +31,5 @@ Stand: 2026-09-26
 | DOC-001 | P1 | STEUERUNG | neue Struktur lokal nach Pull verifizieren | alte Top-Level-Ordner müssen weg sein |
 
 | REF-DATA-005 | P2 | SERVER/PORTAL | Fachlicher Korrekturworkflow BESTÄTIGT: Warnung→Bestätigung→AKTUALISIERT, IDs/SHA/Raw eindeutig, Audit vorhanden, Search/Availability/Geometry MGHN korrekt (12 Achsen/12 Segmente/0 Review) | Nur roten Warnrahmen nach letztem Template-Deploy visuell bestätigen; danach Punkt vollständig schließen |
-| REF-DATA-006 | P1 | SERVER/PORTAL | Deutschlandweite grafische Trassendaten-Gesamtansicht mit Suche angefordert; fachliche Farben fest, Koordinatenreferenz noch zu verifizieren | Nach MGHN-KM-Achsencheck CRS/BBox MPB↔MGHN prüfen → Gesamtansicht + Suche Strecke/Bahnhof/Gleis/Objekt bauen → Runtime testen |
+| REF-DATA-006 | P1 | SERVER/PORTAL | Deutschlandweite Gesamtansicht source-seitig gebaut: DB_REF Zonen 2–5 → WGS84, Deutschland-SVG, Suche Strecke/Bahnhof/Gleis/Objekt, Farblogik und Fokus | requirements + Server/API/Templates deployen, Image neu bauen → /admin/v1/survey-overview Runtime prüfen → Suche/Farben/Positionen MPB+MGHN E2E bestätigen |
 Keine bestätigten Punkte wieder als offen anlegen.
