@@ -927,3 +927,9 @@ Nach Image-Neubau/Deploy prüfen:
 - Migrationsstatus: 19/19, keine ausstehenden Migrationen.
 - Das bestätigt Quellstand/DB-Konsistenz, ist aber noch kein vollständiger Runtime-/E2E-Nachweis.
 - Offen: health/ready + Worker/Monitor + Admin/Portal-Kurztest.
+
+### REF-DATA-006 – Rollback-Recovery Teiltest BESTANDEN 02.10.2026
+- API-Terminal wieder erreichbar.
+- Migrationsstatus: 19/19, keine ausstehenden Migrationen.
+- Das bestätigt Quellstand/DB-Konsistenz, ist aber noch kein vollständiger Runtime-/E2E-Nachweis.
+- Offen: health/ready + Worker/Monitor + Admin/Portal-Kurztest.
