@@ -1204,3 +1204,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Migrationen 19/19, pending=[].
 - Nutzer bestätigt: alles läuft wieder.
 - Deutschlandübersicht bleibt bewusst zurückgerollt und wird später neu angegangen.
+
+## REF-DATA-006 – PostGIS-Deutschlandübersicht Sourcecheckpoint 02.10.2026
+- Runtime-Probe PostGIS/SRIDs/Transformation war grün.
+- Variante A jetzt source-seitig gebaut: Summary-Coverage + Suche + Detail-Lazy-Load, lokale Deutschlandgrafik, Qualitätsfarben.
+- Keine requirements-/Image-/Migrationsänderung, kein pyproj.
+- Runtime auf Synology noch offen; zuerst Health schützen, dann Übersicht testen.
