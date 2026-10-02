@@ -1237,3 +1237,10 @@ Status: **ROLLBACK-MÖGLICHKEIT VORHANDEN**
 - Wichtig: Die aktive Synology-Compose bindet `tbserver`/Templates/Migrationen live vom NAS read-only in den Container ein. Das alte Image allein reicht daher nicht als vollständiger Rollback, solange auf dem NAS der neue Source mit `from pyproj import Transformer` liegt.
 - Für einen sicheren Rücksprung müssen Image **und** der dazu passende Source-Stand vor REF-DATA-006 zusammen verwendet werden; danach Runtime zuerst wieder stabilisieren, bevor die Deutschlandübersicht erneut angegangen wird.
 - Gesichertes Alt-Image nicht überschreiben oder löschen.
+
+## REF-DATA-006 – API-Crash nach Alt-Image-Rückweg erneut reproduziert 02.10.2026
+Status: **RUNTIME DEFEKT / URSACHE BESTÄTIGT**
+- Exportiertes API-Protokoll vom 02.10.2026 zeigt weiterhin wiederholt `ModuleNotFoundError: No module named 'pyproj'`.
+- Der Trace endet in `/app/tbserver/survey_catalog.py`, Zeile 14, bei `from pyproj import Transformer`.
+- Damit ist bestätigt: das gesicherte alte Image wird von der aktuell live vom NAS gemounteten neuen Source-Datei `survey_catalog.py` überlagert. Das alte Image allein kann den Server nicht stabilisieren.
+- Sofortmaßnahme: REF-DATA-006-Source auf den letzten Stand vor pyproj/Deutschlandübersicht zurücksetzen; keine DB-/Migration-/Datenänderung. Danach Alt-Image + alter Source gemeinsam starten und Runtime zuerst stabilisieren.
