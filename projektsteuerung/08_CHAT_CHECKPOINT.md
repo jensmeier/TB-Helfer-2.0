@@ -1234,3 +1234,10 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Server SOURCE gebaut: Summary-Endpunkt, neue Dashboard-/Übersicht-KPIs, Lazy-Initialload; Source-Markercheck 16/16 PASS.
 - Noch nicht deployt, keine neuen Synology-/Browser-/Handy-E2Es.
 - Für nächsten Chat/Block zuerst GitHub prüfen. Dann Synology-Gate dieses Blocks durchführen, bevor Detailverwaltung weitergebaut wird.
+
+
+## Chat-Checkpoint 02.10.2026 – Summary-Runtime
+- Synology/API-Container läuft mit neuem Summary-Quellstand.
+- Read-only Helper erfolgreich: 39 Achsen, 40 aktive Segmente, 2 Betriebsstellen, 7 Strecken, 14 Gleise, 4 Weichen, 7 WVB.
+- 128.911 km Gesamt-Trassenlänge; 116.579 km belastbar/automatisch; 12.332 km ohne belastbare KM; manuell/Handy 0 km.
+- Nächster Schritt: Browser-E2E Dashboard + Trassendatenübersicht und Ladezeit prüfen.
