@@ -1310,3 +1310,9 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 - v1_base.html + v1_admin_dashboard.html: Navigation/Schnellzugriff ergänzt.
 - Sourcecheck 117 neu aufgebaut; aktueller GitHub-Quellstand statisch geprüft: kein pyproj in requirements/imports, PostGIS-Endpunkte/Route/UI/Navigation vorhanden.
 - Kein DB-Schema-/Migrationswechsel und kein Image-Neubau nötig.
+
+## REF-DATA-006 – Runtime-Sichtprüfung: Gesamtansicht zeigt zu wenig 02.10.2026
+Status: **FEHLER/ANFORDERUNG BESTÄTIGT – KORREKTUR SOURCE NÖTIG**
+- Screenshot der neuen Deutschlandübersicht zeigt im Gesamtzoom nur wenige Punkte (u. a. MPB), obwohl deutlich mehr Trassen/Achsen im Bestand vorhanden sind.
+- Ursache im aktuellen Source: Coverage liefert pro Achse nur WGS84-BBox/Center; UI rendert in der Übersicht überwiegend Center-/Stationsmarker. Die tatsächlichen Achslinien werden erst nach Einzel-Auswahl geladen.
+- Gewünschtes Verhalten: alle aktiven Trassen in der Deutschlandansicht als vereinfachte Linien zeigen; Details weiterhin lazy-load.
