@@ -680,3 +680,11 @@ Status: **VERTRAG FEST / ANDROID-UMSETZUNG SPÄTER / SERVER-SUMMARY DARF DARAUF 
 - WorksiteTrackDataApi: GET/POST /api/v1/worksites/{id}/track-data und PATCH/DELETE /api/v1/track-data/{id}, mit Versions-/Mutation-ID-Abgleich. Dieser Pfad überträgt abgeleitete Daten, keine Roh-TRA.
 - Der neue globale Survey-Katalog mit object_key/axis_id/Segmentversionen ist ein gesonderter Vertrag und durch die neue Admin-Karte nicht automatisch als Android-Integration fertig. Globaler Manifest-/Parsed-/Such-/Geometry-/Changes-Vertrag bereits serverseitig vorhanden; vollständige mobile Kataloganbindung bleibt ANDROID-Aufgabe. Keine neue Geräte-E2E-Bestätigung.
 - Bestehender manueller Abschnittsvertrag MANUAL_TRA_SECTION bleibt unverändert. Für eine spätere Weichentopologie wären explizite, belegte Stamm-/Abzweigzuordnung und Grenzen erforderlich; kein neuer API-Vertrag oder Migration in diesem Block festgelegt.
+
+
+## REF-DATA-009 – Admin-Achsverwaltung, additiver Vertrag (02.10.2026)
+- GET /api/v1/survey-catalog/management/axes?archived=true&q=...&limit=...&offset=...: nur Admin, paginierte Liste globaler Achsen für Archiv/Wiederherstellung; keine Geometrie laden.
+- PATCH /api/v1/survey-catalog/management/axes/{id}: nur Admin + Admin-CSRF, bestehende AxisAdminUpdate-Felder/base_version; bewusstes Ändern der Katalogzuordnung, Rohoriginal bleibt gleich. Fachliche identity_key muss konsistent aktualisiert werden; Kollisionen als 409 statt Merge. Versionskonflikt 409, keine stille Überschreibung.
+- POST /api/v1/survey-catalog/management/axes/{id}/archive und /restore: nur Admin + Admin-CSRF, base_version; nur Achsstatus ändern, Originale/Assets/Abschnitte nicht löschen/deaktivieren. Archivierte Achsen bleiben aus aktiver Karte ausgeblendet. Vorheriger REVIEW-Status/offene Konflikte bleiben beim Wiederherstellen berücksichtigt. Audit/History STATUS + Version.
+- Admin-Detail-GET coverage/{id}/details darf auch archivierte globale Achsen für lesenden Nachweis liefern. Aktive Coverage/Geometry-Verträge bleiben unverändert.
+- Kein Android-Code und kein neuer mobiler Pflichtvertrag. Künftige Katalogclients müssen AXIS-Statusänderungen über bestehenden Changes-Vertrag beachten. Keine automatische Löschung zugeordneter Bahnhof-/Streckenobjekte.
