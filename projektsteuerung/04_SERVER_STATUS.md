@@ -1356,3 +1356,17 @@ Status: **PYTHON + JSON-SERIALISIERUNG BESTÄTIGT / HTTP-BROWSERPFAD NOCH OFFEN*
 - Damit ist für den aktuellen Coverage-Datensatz auch ein Fehler zwischen Python-Rückgabewert und normaler JSON-Serialisierung ausgeschlossen.
 - Keine Codeänderung auf Verdacht.
 - Nächster Diagnose-Schritt: echten HTTP-Endpunkt gegen die laufende API aufrufen und Statuscode/Header/Body prüfen; danach Browser-/Proxy-/Sessionpfad eingrenzen.
+
+
+## REF-DATA-007 – Trassenkennzahlen + Lazy-Übersicht SOURCE 02.10.2026
+Status: **SOURCE FERTIG / NICHT DEPLOYT / SYNLOGY-RUNTIME OFFEN**
+- Android↔Server-Vertrag für fertige manuelle KM-Abschnitte ist in `05_ANDROID_SERVER_VERTRAG.md` festgelegt: kanonischer Pfad = vorhandenes `POST /api/v1/survey-catalog/manual-segments` mit `MANUAL_TRA_SECTION`; Roh-TRA bleibt unverändert.
+- Neuer read-only Admin-Endpunkt `GET /api/v1/survey-catalog/coverage/summary`.
+- Summary liefert: gesamte aktive Trassen-/Gleislänge, belastbar kilometrierte Länge, automatisch/grün, manuell/orange, davon ausdrücklich `origin=ANDROID`, Länge ohne belastbare KM, Bahnhöfe/Betriebsstellen, Strecken, Gleise, Weichen und WVB.
+- Längenbasis ist aktive Segment-/Stations-/Geometrielänge; parallele Gleise zählen als eigene physische Gleislänge. `MANUAL_TRA_SECTION` ist als KM-Overlay auf seinem TRA-Original vorgesehen und soll die physische Länge nicht doppelt addieren.
+- `GET /coverage` ist standardmäßig leichter: keine vereinfachten Linien und keine komplette KM-Qualitätsberechnung beim Einstieg; vollständige Geometrie + KM-Details werden erst nach Achsauswahl über `/coverage/{axis_id}/geometry` geladen. Alte optionale Übersichtslinien bleiben über `include_overview=true` verfügbar.
+- Trassendatenübersicht zeigt neue Fach-KPIs; Dashboard `Bestand` zeigt zusätzlich Trassenlänge, KM-Abdeckung, Handy-KM, Bahnhöfe, Gleise und Strecken.
+- Keine Migration, keine neue Python-Abhängigkeit, kein Image-Rebuild.
+- Source-Markercheck gegen aktuellen GitHub-Stand: 16/16 PASS. Das ist kein Runtime-/E2E-Nachweis.
+- Bestehender `manual-segments`-Merge enthält einen auffälligen SUPERSEDED-Pfad bei OVERLAP mit ORIGINAL_TRA; mangels Runtime-Reproduktion **nicht** auf Verdacht geändert. Vor Android-E2E gezielt testen.
+- Nächster Gate: drei Runtime-Dateien auf Synology übernehmen, API neu starten, `coverage/summary` bzw. Helper read-only prüfen und Dashboard/Trassendatenübersicht im Browser testen.
