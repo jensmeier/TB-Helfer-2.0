@@ -2168,3 +2168,10 @@ Status: **30-S-TIMEOUT IM DIREKTEN HELPER REPRODUZIERT / GEZIELTER PERFORMANCEFI
 - Status: neue UI auf Synology noch NICHT bestätigt. Ursache für alte ausgelieferte Darstellung offen (Dateiübernahme/Mount/laufender Container/Browser- oder Proxycache); keine Ursache ohne Runtime-Nachweis festlegen und keinen spekulativen Grafikpatch erstellen.
 - Quellprüfung Deployment: admin_web lädt Templates relativ zu tbserver unter /app/templates. Synology-staging-Compose bindet ./templates bzw. TB_V1_SOURCE_TEMPLATES_DIR nach /app/templates; reguläres docker-compose.v1.yml bindet Templates nicht separat und verwendet die im Image kopierten Dateien. Tatsächliche laufende Konfiguration unbekannt; daher nicht pauschal weiteren Neustart oder Neubau behaupten.
 - Nächster Schritt: kurzer read-only Dateimarkercheck im API-Terminal für /app/templates/v1_admin_survey_overview.html (coverageMap, coverageDialog, alte Überschrift) und /app/tbserver/survey_catalog.py (coverage_axis_details). Erst anhand des Ergebnisses aktive Dateien/Cache/Mount gezielt korrigieren. Neue Karten-/Detailfenster-Abnahme sowie Bearbeiten/Archiv-Folgeblock bleiben offen.
+
+
+## REF-DATA-008 – Neue Kartenansicht bestätigt / Weichenklärung (02.10.2026 20:35 Europe/Berlin)
+- Nach Dateimarkercheck zunächst False/False/True/True, nach Templateübernahme True/True/False/True. Neue Ansicht jetzt in drei Screenshots sichtbar; Benutzer: „top, sieht super aus und lädt schnell“. Darstellung und subjektive Ladezeit des gezeigten Kartenablaufs BESTÄTIGT; keine pauschale Abnahme aller Dialoge/Historiendetails/Lastfälle.
+- Benutzer fragt nach W:107W, Speicherung/Android-Transport, realem Weichenanfang/-ende und Stammgleis/Abzweig; Auftrag: Erklärung und weiter.
+- Zuerst aktuellen Import-/Objektidentitäts-/Geometrie-/Android-Vertrag lesen; Quellachsenlänge nicht als nachgewiesene physische Weichenlänge darstellen. Keine Nummernkürzung oder Stamm-/Abzweigzuordnung ohne belastbare Originaldaten.
+- Anschließend beauftragte Kartenverwaltung fortführen; Server/Portal zuerst, Android bleibt unverändert.
