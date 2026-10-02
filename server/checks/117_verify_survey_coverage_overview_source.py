@@ -18,6 +18,8 @@ for token in (
     '@router.get("/coverage/{axis_id}/geometry")',
     '"EPSG:4326"',
     "unsupported_axis_count",
+    '"overview_segments": overview_segments',
+    "_decimate(full_points, 28)",
 ):
     assert token in catalog, token
 
@@ -38,6 +40,9 @@ for token in (
     "PostGIS · DB_REF → WGS84",
     "Deutschland gesamt",
     "Mausrad = Zoom",
+    "overview_segments",
+    "overview-line",
+    "Alle vorhandenen Achsen sind als vereinfachte Linien sichtbar",
 ):
     assert token in overview, token
 
