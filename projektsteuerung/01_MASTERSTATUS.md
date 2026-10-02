@@ -1176,3 +1176,9 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 - Health: status=ok, database=up, migrations=ok, server_version=1.0.0-dev.
 - Migrationen 19/19 ohne pending; Nutzer bestätigt die übrigen Dienste/Portal als laufend.
 - REF-DATA-006 bleibt als fachlicher Wunsch offen und wird später deployment-sicher neu umgesetzt.
+
+## Server-Runtime wieder stabil 02.10.2026
+- Nach Rücknahme der pyproj-Deutschlandübersicht läuft der Server wieder.
+- Health: status=ok, database=up, migrations=ok, server_version=1.0.0-dev.
+- Migrationen 19/19 ohne pending; Nutzer bestätigt die übrigen Dienste/Portal als laufend.
+- REF-DATA-006 bleibt als fachlicher Wunsch offen und wird später deployment-sicher neu umgesetzt.
