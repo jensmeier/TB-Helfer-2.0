@@ -908,3 +908,8 @@ Nach Image-Neubau/Deploy prüfen:
 - Projekt Stop → Erstellen beendet Compose mit Exit Code 0, API stirbt dennoch wieder an `ModuleNotFoundError: pyproj`.
 - Schlussfolgerung: vorhandenes lokales Image wurde wiederverwendet; noch kein echter Image-Neubau.
 - E2E bleibt offen bis Image `tb-helfer-server-v1:local` gelöscht/neu gebaut und `import pyproj` im API-Container erfolgreich ist.
+
+### REF-DATA-006 – Deployment weiterhin BLOCKIERT: Projektdefinition prüfen
+- Nach Bereinigung fehlen api/worker/migrate/monitor vollständig aus der Synology-Projektansicht.
+- Vor jedem weiteren Build muss die aktive Synology-YAML gegen GitHub `server/docker-compose.v1.yml` geprüft werden.
+- Keine Runtime-/E2E-Wertung möglich.
