@@ -1113,3 +1113,8 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Umsetzung gebaut: Warnung bei gleicher Raw-Datei + anderer Zuordnung; bewusster Checkbox-/Bestätigungsweg aktualisiert bestehendes Original in-place.
 - Raw-Datei/SHA/Original-ID bleiben unverändert; Katalogachse/Asset werden versioniert nachgezogen.
 - Runtime noch offen. Nach Deploy gezielt erst Warnlauf ohne Haken, danach bestätigten Korrekturlauf testen.
+
+## REF-DATA-005 – Warnbox-Sichtbarkeit verbessert 02.10.2026
+- Nutzerwunsch umgesetzt: Bestätigungsbereich für vorhandene/abweichende Daten jetzt mit deutlich rotem Rahmen und Warnhintergrund.
+- Keine Änderung an Overwrite-Logik; nur Sichtbarkeit/Bedienbarkeit verbessert.
+- Runtime nach Template-Deploy noch offen.
