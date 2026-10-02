@@ -1281,3 +1281,9 @@ Status: **RUNTIME WIEDER STABIL / DEUTSCHLANDÜBERSICHT ZURÜCKGESTELLT**
 - Zuvor bereits bestätigt: Migrationen 19/19, pending=[] und API-Terminal erreichbar.
 - Nutzer bestätigt zusätzlich, dass die übrigen Serverdienste/Portal-Funktionen wieder laufen.
 - Damit ist die Rollback-Recovery praktisch bestätigt. Kein vollständiger REF-DATA-006-E2E, da die Deutschlandübersicht bewusst aus dem aktiven Source entfernt wurde.
+
+## REF-DATA-006 – Designphase nach Rollback 02.10.2026
+Status: **ARCHITEKTURVORSCHLÄGE / NOCH NICHT BAUEN**
+- Server-Runtime ist wieder stabil und geschützt.
+- Vor Neuimplementierung der Deutschlandübersicht werden Alternativen verglichen; bevorzugt wird eine Lösung ohne neue Python-/Image-Abhängigkeit.
+- Bestehendes PostGIS 17-3.5 ist als möglicher Transformationspfad zu prüfen, da es bereits Teil der laufenden DB-Runtime ist.
