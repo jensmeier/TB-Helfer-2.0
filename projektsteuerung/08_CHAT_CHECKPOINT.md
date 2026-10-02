@@ -1123,3 +1123,7 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Screenshot nach Bestätigung zeigt mehrere `AKTUALISIERT`-Ergebnisse; vorhandenes Original beibehalten, Zuordnung auf MGHN – Gessertshausen aktualisiert.
 - Im selben Lauf bleibt `5340S_ER0.TRA` `DUPLIKAT`, also keine unnötige Änderung bei identischer Zuordnung.
 - Vollständiger Nachweis noch offen: ID/SHA unverändert, keine zweite Originalzeile, MGHN in Search/Availability/Geometry, Audit/History.
+
+## REF-DATA-005 – Auditnachweis Checkpoint 02.10.2026
+- API-Terminal-Screenshot bestätigt Original- und Katalog-Audit der Korrektur (None → MGHN/Gessertshausen, source ADMIN_WEB_DUPLICATE_CORRECTION).
+- Einzigartigkeitsaussage noch nicht aus sichtbarem Screenshot ableiten; dazu folgt eine kompakte Originalabfrage.
