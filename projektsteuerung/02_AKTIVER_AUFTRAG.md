@@ -2108,3 +2108,12 @@ Status: **BROWSER-HTTP FAIL BELEGT / URSACHE INNERHALB ORIGIN-PFAD NOCH OFFEN**
 - Quellprüfung: Summary berechnet KM-Kontext pro Achse und Qualität pro Segment; GVP-Projektion kann sämtliche Samples je GVP durchlaufen. Datenbank/Auth/Request-Warteschlange und Geometrieberechnung bleiben zu unterscheiden.
 - Nächster gezielter read-only Runtime-Schritt: Summary-Helper mit Laufzeit, begrenzter Ausführungsdauer, Stack-/Profiling-Ausgabe prüfen; dabei keine Zusatzpakete, keine DB-/Datenmutation, keine Änderung von Cloudflare-Timeout oder Container-RAM auf Verdacht.
 - Weiterhin kein Codefix und kein erfolgreicher HTTP-/Browser-E2E behaupten.
+
+
+### REF-DATA-007 – Runtime-Stack lokalisiert GVP-Projektion 02.10.2026
+Status: **30-S-TIMEOUT IM DIREKTEN HELPER REPRODUZIERT / GEZIELTER PERFORMANCEFIX**
+- Nutzer führt den begrenzten Diagnoseaufruf im Synology-API-Container aus. Nach 30 Sekunden Abbruch mit Stack: survey_catalog.py:638 _project_xy_station → :801 _segment_km_quality → :2614 _coverage_summary_data.
+- Damit ist lange Berechnung im direkten Summary-Pfad reproduziert, unabhängig vom Browser/Cloudflare. Der Stack ist eine Stichprobe, kein vollständiges CPU-Profil; weitere Engpässe bleiben nach dem Fix zu messen.
+- Gezielt optimieren: GVP-zu-Polylinie-Projektion ohne wiederholten Vollscan aller Liniensegmente; keine Geometrieausdünnung und keine Änderung der KM-/Qualitätsregeln (>=4 robuste Treffer, <=120 m, Median/±80 m).
+- Neue Implementierung gegen bestehenden Vollscan auf identischen synthetischen Geometrien vergleichen (Grenzfälle, Überlagerung/Tie-Break, Stationierung, GRA-/manuelle Priorität, Farben/KM); lokalen Lastfall mit Zeitvergleich ausführen.
+- Kein neues Runtime-Paket, keine Migration, keine Änderung von Cloudflare-Timeout, Container-RAM oder app/**. Reale Synology-/HTTP-/Browser-Abnahme nach Deployment bleibt Pflicht.
