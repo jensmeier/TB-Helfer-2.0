@@ -860,3 +860,9 @@ Pflichttest nach Deploy:
 - Originaltabelle + Search/Availability/Geometry zeigen nur die neue Stationszuordnung;
 - Audit/History für die Korrektur vorhanden;
 - Warnbox-Rotrahmen nach letztem Template-Deploy visuell bestätigen.
+
+### REF-DATA-005 – Audit-Subgate BESTANDEN 02.10.2026
+- `ADMIN_SURVEY_ORIGINAL_ASSIGNMENT_UPDATE` mit Quelle `ADMIN_WEB_DUPLICATE_CORRECTION` sichtbar.
+- Änderungen auf `MGHN / Gessertshausen` im Audit nachvollziehbar.
+- `SURVEY_CATALOG_ASSIGNMENT_UPDATE` ebenfalls sichtbar.
+- Offen bleiben nur: gleiche Original-ID/SHA + keine zweite Rohdatei nachweisen sowie MGHN Search/Availability/Geometry.
