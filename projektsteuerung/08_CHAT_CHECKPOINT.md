@@ -1147,3 +1147,9 @@ Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
 - Sichtbare W/WVB-Zeilen sind erwartungsgemäß ROT/FEHLT ohne KM-Quelle.
 - Die 2 AUTOMATISCH-Zeilen sind im Screenshot abgeschnitten; nächste Query filtert nur diese beiden.
 - Danach CRS/BBox MPB↔MGHN prüfen und erst dann Deutschland-Gesamtgrafik bauen.
+
+## REF-DATA-006 – Deutschland-Gesamtansicht Sourcecheckpoint 02.10.2026
+- MGHN Gl 302/303 als AUTOMATISCH/GRÜN/GRA_KM bestätigt; MPB/MGHN DB_REF2016 Zone 4 bestätigt.
+- Neue Admin-Gesamtansicht implementiert: lokale Deutschland-SVG, Coverage-API, DB_REF-Zonen 2–5 → WGS84, Suche und Qualitätsfarben.
+- Neue Python-Abhängigkeit pyproj; deshalb Synology-Image neu bauen, nicht nur Template kopieren.
+- Runtime/E2E noch offen.
