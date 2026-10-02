@@ -33,3 +33,12 @@ Stand: 2026-09-26
 | REF-DATA-005 | P2 | SERVER/PORTAL | Fachlicher Korrekturworkflow BESTÄTIGT: Warnung→Bestätigung→AKTUALISIERT, IDs/SHA/Raw eindeutig, Audit vorhanden, Search/Availability/Geometry MGHN korrekt (12 Achsen/12 Segmente/0 Review) | Nur roten Warnrahmen nach letztem Template-Deploy visuell bestätigen; danach Punkt vollständig schließen |
 | REF-DATA-006 | P1 | SERVER/PORTAL | /admin/v1/survey-overview lädt, aber Coverage-Request endet mit Browser-NetworkError; KPI leer, Gesamtansicht nicht geladen | Coverage-Funktion direkt im API-Terminal read-only ausführen, Trace/Ursache feststellen; erst danach gezielt patchen |
 Keine bestätigten Punkte wieder als offen anlegen.
+
+
+## REF-DATA-007 – offen
+- Neue Summary-/Lazy-Dateien auf Synology deployen und Runtime prüfen.
+- Echte Längen-/KM-Zahlen des aktuellen 39-Achsen-Bestands gegen Runtime ausgeben und plausibilisieren.
+- Auffälligen `manual-segments` OVERLAP→SUPERSEDED-Pfad vor produktiver Handy-KM-Nutzung reproduzierbar testen; kein Vorab-Fix.
+- Android muss später `TrassenManuellerAbschnittEntity` im Status FERTIG auf `MANUAL_TRA_SECTION` abbilden; SERVER ändert kein `app/**`.
+- Danach Detailverwaltung: Bahnhof/Strecke/Achse/Original ansehen, Zuordnung/Bezeichnung korrigieren und Fachkatalog mit Survey-Bestand verknüpfen.
+- `Katalog-Historie` später als verständliche `Änderungshistorie` statt primär rohem JSON darstellen.
