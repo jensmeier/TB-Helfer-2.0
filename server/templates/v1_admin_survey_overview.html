@@ -5,7 +5,7 @@
 .coverage-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap}
 .coverage-hero h1{margin-bottom:5px}.coverage-hero p{margin:0;max-width:920px}
 .coverage-tools{display:grid;grid-template-columns:minmax(300px,1fr) auto auto;gap:9px;align-items:end;margin-top:16px}
-.coverage-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:14px 0}
+.coverage-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
 .coverage-kpi{border:1px solid #e4e7ec;border-radius:12px;padding:11px 12px;background:#fff}
 .coverage-kpi .n{font-size:21px;font-weight:850;color:#101828}.coverage-kpi .l{font-size:11px;color:#667085;margin-top:2px}
 .coverage-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(320px,.7fr);gap:14px;align-items:start}
@@ -59,12 +59,14 @@
 </div>
 
 <div class="coverage-kpis">
-  <div class="coverage-kpi"><div class="n" id="kpiAxes">—</div><div class="l">Achsen mit Geometrie</div></div>
+  <div class="coverage-kpi"><div class="n" id="kpiTotalKm">—</div><div class="l">Trassenlänge gesamt</div></div>
+  <div class="coverage-kpi"><div class="n" id="kpiKnownKm">—</div><div class="l">davon mit belastbarer KM</div></div>
+  <div class="coverage-kpi"><div class="n" id="kpiAutoKm">—</div><div class="l">automatisch / grün</div></div>
+  <div class="coverage-kpi"><div class="n" id="kpiMobileKm">—</div><div class="l">manuell vom Handy / orange</div></div>
+  <div class="coverage-kpi"><div class="n" id="kpiMissingKm">—</div><div class="l">ohne belastbare KM</div></div>
   <div class="coverage-kpi"><div class="n" id="kpiStations">—</div><div class="l">Bahnhöfe/Betriebsstellen</div></div>
+  <div class="coverage-kpi"><div class="n" id="kpiTracks">—</div><div class="l">Gleise im Bestand</div></div>
   <div class="coverage-kpi"><div class="n" id="kpiRoutes">—</div><div class="l">Strecken</div></div>
-  <div class="coverage-kpi"><div class="n" id="kpiGreen">—</div><div class="l">automatisch / grün</div></div>
-  <div class="coverage-kpi"><div class="n" id="kpiOrange">—</div><div class="l">manuell / orange</div></div>
-  <div class="coverage-kpi"><div class="n" id="kpiRed">—</div><div class="l">KM fehlt / rot</div></div>
 </div>
 
 <div class="coverage-layout">
@@ -94,7 +96,7 @@
         <button type="button" id="zoomIn" class="secondary" title="Hineinzoomen">+</button>
         <button type="button" id="zoomOut" class="secondary" title="Herauszoomen">−</button>
       </div>
-      <div class="map-hint">Alle vorhandenen Achsen sind als vereinfachte Linien sichtbar · Mausrad = Zoom · Ziehen = Verschieben · Achse anklicken = Details</div>
+      <div class="map-hint">Schnelle Übersichtspunkte · Mausrad = Zoom · Ziehen = Verschieben · Achse anklicken = vollständige Geometrie und KM-Details</div>
     </div>
     <div style="padding:11px 16px;border-top:1px solid #e4e7ec" class="muted">
       Die Übersicht verändert keine Vermessungsdaten. PostGIS transformiert DB_REF-Koordinaten nur für diese Anzeige nach WGS84.
@@ -132,7 +134,26 @@ function qualityColor(item){
   const c=String(item?.km_quality?.color||'GRAU').toUpperCase();
   return c==='GRUEN'?'#12b76a':c==='ORANGE'?'#f79009':c==='ROT'?'#d92d20':'#98a2b3';
 }
-function qualityLabel(item){return String(item?.km_quality?.status||'UNBEKANNT').replaceAll('_',' ');}
+function qualityLabel(item){
+  const status=String(item?.km_quality?.status||'UNBEKANNT').toUpperCase();
+  if(status==='DETAIL_BEI_AUSWAHL')return 'Details bei Auswahl';
+  return status.replaceAll('_',' ');
+}
+function kmLength(value){
+  const n=Number(value);if(!Number.isFinite(n))return '—';
+  return (n/1000).toLocaleString('de-DE',{minimumFractionDigits:n<10000?2:1,maximumFractionDigits:2})+' km';
+}
+function geometryQuality(data){
+  const segments=data?.segments||[];
+  const statuses=segments.map(s=>String(s?.km_quality?.status||'').toUpperCase()).filter(Boolean);
+  let status='FEHLT',color='ROT';
+  if(statuses.length&&statuses.every(x=>x==='AUTOMATISCH')){status='AUTOMATISCH';color='GRUEN';}
+  else if(statuses.length&&statuses.every(x=>x==='MANUELL')){status='MANUELL';color='ORANGE';}
+  else if(statuses.length&&statuses.every(x=>x==='AUTOMATISCH'||x==='MANUELL')){status='GEMISCHT';color='GRAU';}
+  else if(statuses.some(x=>x==='AUTOMATISCH'||x==='MANUELL')){status='TEILWEISE';color='GRAU';}
+  else if(statuses.some(x=>x==='UNPLAUSIBEL')){status='UNPLAUSIBEL';color='GRAU';}
+  return {status,color,segments:segments.map(s=>({segment_id:s.segment_id,...(s.km_quality||{})}))};
+}
 function countryPath(){return GERMANY.map((p,i)=>{const q=project(p[0],p[1]);return (i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)}).join(' ')+' Z';}
 function pathFor(coords){return (coords||[]).map((p,i)=>{const q=project(p[0],p[1]);return (i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)}).join(' ');}
 function inView(lon,lat){return lon>=currentBounds.minLon&&lon<=currentBounds.maxLon&&lat>=currentBounds.minLat&&lat<=currentBounds.maxLat;}
@@ -233,7 +254,12 @@ async function selectAxis(id,zoom){
   if(zoom&&a.wgs84)focusBBox(a.wgs84,a.display_name||'Auswahl');else renderMap();
   try{
     const {data}=await tbApi('/api/v1/survey-catalog/coverage/'+encodeURIComponent(id)+'/geometry?max_points_per_segment=420');
-    if(selectedId!==id)return;selectedGeometry=data;renderMap();
+    if(selectedId!==id)return;
+    selectedGeometry=data;
+    a.km_quality=geometryQuality(data);
+    detail(a);
+    renderResults();
+    renderMap();
   }catch(e){
     $('coverageStatus').style.display='block';$('coverageStatus').className='notice err';$('coverageStatus').textContent='Detailgeometrie konnte nicht geladen werden: '+(e.message||String(e));
   }
@@ -252,14 +278,30 @@ function zoomMap(factor,cx=(currentBounds.minLon+currentBounds.maxLon)/2,cy=(cur
   setBounds({minLon:cx-w/2,maxLon:cx+w/2,minLat:cy-h/2,maxLat:cy+h/2},$('mapSubtitle').textContent);
 }
 function setKpis(data){
-  $('kpiAxes').textContent=data.axis_count??0;$('kpiStations').textContent=data.station_count??0;$('kpiRoutes').textContent=data.route_count??0;
-  $('kpiGreen').textContent=data.quality_counts?.AUTOMATISCH??0;$('kpiOrange').textContent=data.quality_counts?.MANUELL??0;$('kpiRed').textContent=data.quality_counts?.FEHLT??0;
+  $('kpiTotalKm').textContent=kmLength(data.total_length_m);
+  $('kpiKnownKm').textContent=kmLength(data.known_km_length_m);
+  $('kpiAutoKm').textContent=kmLength(data.automatic_km_length_m);
+  $('kpiMobileKm').textContent=kmLength(data.manual_mobile_length_m);
+  $('kpiMissingKm').textContent=kmLength(data.without_km_length_m);
+  $('kpiStations').textContent=data.station_count??0;
+  $('kpiTracks').textContent=data.track_count??0;
+  $('kpiRoutes').textContent=data.route_count??0;
+}
+async function loadCoverageSummary(){
+  try{
+    const {data}=await tbApi('/api/v1/survey-catalog/coverage/summary');
+    setKpis(data);
+  }catch(e){
+    $('kpiTotalKm').textContent='—';
+    console.warn('Coverage-Summary nicht verfügbar',e);
+  }
 }
 async function loadCoverage(){
-  $('reloadCoverage').disabled=true;$('coverageStatus').style.display='block';$('coverageStatus').className='notice info';$('coverageStatus').textContent='Deutschlandübersicht wird aus dem Referenzbestand geladen …';
+  $('reloadCoverage').disabled=true;$('coverageStatus').style.display='block';$('coverageStatus').className='notice info';$('coverageStatus').textContent='Schnelle Deutschlandübersicht wird geladen …';
+  loadCoverageSummary();
   try{
-    const {data}=await tbApi('/api/v1/survey-catalog/coverage');coverage=data;setKpis(data);resetView();
-    $('coverageStatus').className='notice ok';$('coverageStatus').textContent=(data.axis_count||0)+' Achsen · '+(data.station_count||0)+' Betriebsstellen · '+(data.route_count||0)+' Strecken.';
+    const {data}=await tbApi('/api/v1/survey-catalog/coverage');coverage=data;resetView();
+    $('coverageStatus').className='notice ok';$('coverageStatus').textContent=(data.axis_count||0)+' Achsen · '+(data.station_count||0)+' Betriebsstellen · '+(data.route_count||0)+' Strecken. Geometrie wird erst nach Auswahl einer Achse geladen.';
     const unsupported=Number(data.unsupported_axis_count||0);$('unsupportedNote').style.display=unsupported?'block':'none';$('unsupportedNote').textContent=unsupported?unsupported+' Achsen besitzen noch keine für die Deutschlandübersicht transformierbare DB_REF-Geometrie.':'';
   }catch(e){$('coverageStatus').className='notice err';$('coverageStatus').textContent='Gesamtansicht konnte nicht geladen werden: '+(e.message||String(e));}
   finally{$('reloadCoverage').disabled=false;}
