@@ -1475,3 +1475,9 @@ Details, API-Vertrag, Quellen, Übernahme und Abnahmefälle: [REF-DATA-015_LUFTB
 - Weiter: GitHub Desktop→File Station sieben Runtime-Dateien übernehmen, Migration21/21, API/Worker-Neustart, StrgF5; gemeinsamer Punkt/umgekehrte Weiche/Gl303→freie Strecke und unveränderte GVP-KM auf NAS prüfen. Android-Outbox/Anzeige/Roundtrip erst im nachfolgenden Android-Block. Vollständiger Serveraudit/Last-/BTB-/Backup-E2E nicht durch diese gezielte Prüfung ersetzt.
 
 Vertrag/Übernahme: [REF-DATA-016_ANSCHLUSSNETZ_SYNC.md](uebergaben/REF-DATA-016_ANSCHLUSSNETZ_SYNC.md). Anbieter: [REF-DATA-016_LUFTBILD_PRUEFSTAND.md](uebergaben/REF-DATA-016_LUFTBILD_PRUEFSTAND.md). Serverprüfung: [REF-DATA-016_SERVERPRUEFUNG.md](uebergaben/REF-DATA-016_SERVERPRUEFUNG.md).
+
+
+### REF-DATA-016 GitHub-Sicherung verifiziert
+- Runtime-/Dokumentationscommit: `356a876f41e2e48256ed73d468f25f8686a34674`. Neue Netzdatei, Template und Migration021 remote byteinhaltlich mit geprüftem lokalen Stand verglichen: identisch.
+- PR6 weiterhin offen/Draft, kein Merge. Android HEAD423f37892915cb3308a4b1ea9e4d196faa872326 und PR11 unverändert. Keine NAS-Änderung, keine behauptete Geräte-/DB-/Browser-E2E.
+- Dieser anschließende Commit ergänzt ausschließlich den Checkpoint. Übergabe umfasst sieben Runtime-Dateien und Migration21; siehe REF-DATA-016_ANSCHLUSSNETZ_SYNC.md.
