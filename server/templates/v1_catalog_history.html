@@ -7,7 +7,7 @@
 </div>
 <div class="card">
   <div class="scroll"><table>
-    <thead><tr><th>Zeit</th><th>Objekt</th><th>Version</th><th>Bearbeiter</th><th>Vorher</th><th>Nachher</th></tr></thead>
+    <thead><tr><th>Zeit</th><th>Objekt</th><th>Version</th><th>Bearbeiter</th><th>Änderungen</th></tr></thead>
     <tbody>
     {% for h in history %}
       <tr>
@@ -15,11 +15,21 @@
         <td><b>{{ h.entity_type }}</b><div class="muted"><code>{{ h.entity_id }}</code></div><span class="pill">{{ h.operation }}</span></td>
         <td>{{ h.entity_version }}</td>
         <td>{{ h.actor_display_name or '—' }}<div class="muted">{{ h.actor_company_name or '—' }}</div></td>
-        <td><pre style="white-space:pre-wrap;max-width:360px;margin:0">{{ h.before_data | tojson(indent=2) if h.before_data else '—' }}</pre></td>
-        <td><pre style="white-space:pre-wrap;max-width:360px;margin:0">{{ h.after_data | tojson(indent=2) }}</pre></td>
+        <td>
+          {% set before = h.before_data or {} %}
+          {% set after = h.after_data or {} %}
+          {% set labels = {'name':'Name','designation':'Bezeichnung','station_code':'Betriebsstellenkürzel','route_number':'Streckennummer','description':'Beschreibung','short_name':'Kurzname','km_m':'Kilometerwert (m)','km_from_m':'Von (m)','km_to_m':'Bis (m)','object_type':'Objekttyp','station_id':'Bahnhofszuordnung','route_id':'Streckenzuordnung','data_status':'Datenstatus','properties':'Weitere Angaben','geometry':'Geometrie'} %}
+          {% for key, value in after.items() %}
+            {% if key not in ['id','current_version','updated_at','created_at'] and value != before.get(key) %}
+            <p><b>{{ labels.get(key,key) }}</b>: {{ before.get(key) if before.get(key) is not none else '—' }} → {{ value if value is not none else '—' }}</p>
+            {% endif %}
+          {% endfor %}
+          {% for key,value in before.items() %}{% if key not in after %}<p><b>{{ labels.get(key,key) }}</b>: {{ value }} → entfernt</p>{% endif %}{% endfor %}
+          <details><summary>Technische Details</summary><pre style="white-space:pre-wrap;max-width:600px">{{ {'vorher':h.before_data,'nachher':h.after_data}|tojson(indent=2) }}</pre></details>
+        </td>
       </tr>
     {% else %}
-      <tr><td colspan="6" class="muted">Noch keine manuellen Katalogänderungen vorhanden.</td></tr>
+      <tr><td colspan="5" class="muted">Noch keine manuellen Katalogänderungen vorhanden.</td></tr>
     {% endfor %}
     </tbody>
   </table></div>

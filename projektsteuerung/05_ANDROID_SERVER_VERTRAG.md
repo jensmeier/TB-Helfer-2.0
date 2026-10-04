@@ -808,3 +808,11 @@ Vertrag/Übernahme: [REF-DATA-016_ANSCHLUSSNETZ_SYNC.md](uebergaben/REF-DATA-016
 - Innerhalb belegbarer Originalgeometrie binding mit Achs-/Quellenversion/Station; freie Kartenpunkte und ausdrücklich berechnete tangentiale Hilfspunkte vor/nach Quellen werden als position.method=MAP ohne binding synchronisiert. Keine Station außerhalb vorhandener Quelle, keine automatische Bahnkilometer-Extrapolation, keine Änderung von Original-/GVP-/manueller Kalibrierung.
 - Hilfspunkt speichert Abstand/Seite/Quellenversion und Hinweis „Näherung“ als Herkunft im vorhandenen note-Feld ([TRA-HILFSPUNKT]); eingefrorene manuelle Position, keine aktive Quellbindung und keine automatische Nachführung. Spätere Verschiebung/Neubindung entfernt diesen veralteten Hinweis; sonstige Notizen/IDs/Basisversionen/KM-Beobachtungen bleiben. Android soll die kanonische Position und Notiz erhalten; neue Netz-Anbindung bleibt gesonderter Android-Auftrag.
 - Kein API-/DB-Schemawechsel, keine neue Migration, keine Android-Datei geändert. Vergleich: Android ImportExportFragment GPS-Punkte unabhängig von TRA; TrassenGrafikView Mehrfachtreffer pro Achse/Station. Echter Geräte-Roundtrip weiterhin offen.
+
+
+## REF-DATA-019 – additive Netz-/Katalogverknüpfung
+- schema_version1 ergänzt optionales NetworkObject.catalog_link={id:Katalogobjekt-UUID,version:Katalogbasisversion}. Typ/Betriebsstelle/Version und exklusive Verknüpfung werden beim Preview/Mutate geprüft. Keine Namens-/KM-/Geometrie-Autokopie. Beim Weglassen bleibt bestehender Link erhalten, explizites null entfernt ihn. Andere Clients sollen unbekannte optionale Lesefelder tolerieren und Verknüpfung erhalten.
+- GET /network/entities: station_code optional, ohne Filter globaler gemeinsamer Netzbestand, weiterhin UUID-Paging mit has_more/next_id. Stationsbezogener Deltafeed unverändert.
+- GET /network/entities/{id}/history: neutrale Feldänderungen einschließlich Punktrollen, neueste50/has_more, keine Actor-/Company-Daten.
+- Admin-only GET /coverage/overview-lines?axis_ids=UUID: max8 Achsen, vereinfachte Übersicht + timing_ms. Kein mobiler Vollabgleich daraus ableiten.
+- Android bleibt423f378, keine Appänderung/kein Build. Netz-/manuelle Abschnitts-/KM-Anbindung und echter Zwei-Geräte-Roundtrip weiter offen.

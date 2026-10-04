@@ -62,6 +62,10 @@ class Endpoint(StrictModel):
     node_id: UUID
     node_version: int = Field(ge=1)
 
+class CatalogLink(StrictModel):
+    id: UUID
+    version: int = Field(ge=1)
+
 class NetworkObject(StrictModel):
     id: UUID
     base_version: int = Field(ge=0)
@@ -73,6 +77,7 @@ class NetworkObject(StrictModel):
     route_number: str | None = Field(default=None,max_length=80)
     track_key: str | None = Field(default=None,max_length=80)
     owner_axis_id: UUID | None = None
+    catalog_link: CatalogLink | None = None
     endpoints: list[Endpoint] = Field(min_length=2,max_length=3)
     note: str = Field(default='',max_length=1000)
 
@@ -114,7 +119,13 @@ def _hash(value):
 
 
 def _payload_hash(payload):
-    return _hash(payload.model_dump(mode='json',exclude={'preview_token'}))
+    data=payload.model_dump(mode='json',exclude={'preview_token'})
+    # Preserve receipt fingerprints for retries created before the additive link field.
+    # Omitted means preserve; explicit null means unlink and must hash differently.
+    for item,row in zip(payload.objects,data['objects']):
+        if 'catalog_link' not in item.model_fields_set:
+            row.pop('catalog_link',None)
+    return _hash(data)
 
 
 def _load(cur, ids):
@@ -221,6 +232,25 @@ def _prepare(cur,payload):
         data=item.model_dump(mode='json',exclude={'base_version'})
         data.update(version=item.base_version+1,station_code=item.station_code.strip().upper(),name=item.name.strip())
         if not data['station_code']: raise HTTPException(400,'NETWORK_STATION_REQUIRED')
+        # Older clients omit this additive field: preserve an existing explicit identity link.
+        if 'catalog_link' not in item.model_fields_set:
+            data['catalog_link'] = old.get(str(item.id), {}).get('catalog_link')
+        link = data.get('catalog_link')
+        if link:
+            cur.execute("""SELECT o.id,o.current_version,o.object_type,s.station_code
+              FROM tb.catalog_objects o LEFT JOIN tb.catalog_stations s ON s.id=o.station_id
+              WHERE o.id=%s FOR SHARE OF o""", (link['id'],))
+            ref = cur.fetchone()
+            if not ref or ref['current_version'] != link['version']:
+                raise HTTPException(409,'NETWORK_CATALOG_CHANGED')
+            if ref['object_type'] != {'TRACK':'TRACK','SWITCH':'SWITCH','LINE':'OTHER'}[item.kind]:
+                raise HTTPException(400,'NETWORK_CATALOG_TYPE_MISMATCH')
+            if ref['station_code'] and ref['station_code'] != data['station_code']:
+                raise HTTPException(400,'NETWORK_CATALOG_STATION_MISMATCH')
+            cur.execute("""SELECT id FROM tb.survey_network_entities
+              WHERE data->'catalog_link'->>'id'=%s AND id<>%s LIMIT 1""", (str(link['id']), item.id))
+            if cur.fetchone() or any(r.get('catalog_link',{}).get('id') == link['id'] for r in resolved.values() if r.get('catalog_link')):
+                raise HTTPException(409,'NETWORK_CATALOG_ALREADY_LINKED')
         if item.owner_axis_id:
             cur.execute("SELECT id FROM tb.survey_catalog_axes WHERE id=%s AND scope='GLOBAL' AND status<>'ARCHIVED' FOR SHARE",(item.owner_axis_id,))
             if not cur.fetchone(): raise HTTPException(409,'NETWORK_SOURCE_CHANGED')
@@ -304,12 +334,13 @@ def _source_review(cur, records):
 
 
 @router.get('/network/entities')
-def entities(station_code:str=Query(min_length=1,max_length=50),after_id:UUID|None=None,
+def entities(station_code:str|None=Query(default=None,min_length=1,max_length=50),after_id:UUID|None=None,
              limit:int=Query(default=200,ge=1,le=500),user:dict=Depends(current_portal_user)):
     with transaction() as conn,conn.cursor() as cur:
-        cur.execute("""SELECT data FROM tb.survey_network_entities WHERE station_code=%s
+        cur.execute("""SELECT data FROM tb.survey_network_entities WHERE (%s::text IS NULL OR station_code=%s)
           AND (%s::uuid IS NULL OR id>%s::uuid) ORDER BY id LIMIT %s""",
-          (station_code.strip().upper(),after_id,after_id,limit+1))
+          (station_code.strip().upper() if station_code else None,
+           station_code.strip().upper() if station_code else None,after_id,after_id,limit+1))
         rows=[r['data'] for r in cur.fetchall()]
         return dict(schema_version=1,entities=_source_review(cur,rows[:limit]),has_more=len(rows)>limit,
                     next_id=rows[limit-1]['id'] if len(rows)>limit else None)
@@ -325,6 +356,39 @@ def entity(entity_id:UUID,user:dict=Depends(current_portal_user)):
           AND EXISTS (SELECT 1 FROM jsonb_array_elements(data->'endpoints') p WHERE p->>'node_id'=%s) ORDER BY id""",(str(entity_id),))
         attached=[r['data'] for r in cur.fetchall()]
         return dict(schema_version=1,entity=_source_review(cur,[row['data']])[0],attached_objects=attached)
+
+
+@router.get('/network/entities/{entity_id}/history')
+def entity_history(entity_id:UUID,user:dict=Depends(current_portal_user)):
+    """Neutral field changes; actor/company details never leak into the shared feed."""
+    with transaction() as conn,conn.cursor() as cur:
+        cur.execute("SELECT data FROM tb.survey_network_entities WHERE id=%s", (entity_id,))
+        current=cur.fetchone()
+        if not current: raise HTTPException(404,'NETWORK_NOT_FOUND')
+        cur.execute("""WITH snapshots AS (
+          SELECT c.change_id,c.changed_at,e.value AS snapshot,
+            lag(e.value) OVER (PARTITION BY e.value->>'id' ORDER BY c.change_id) AS previous
+          FROM tb.survey_network_changes c
+          CROSS JOIN LATERAL jsonb_array_elements(c.data->'entities') e(value)
+          WHERE c.station_codes @> %s::text[]
+            AND (e.value->>'id'=%s OR e.value->>'id' IN (
+              SELECT p.value->>'node_id' FROM tb.survey_network_changes h
+              CROSS JOIN LATERAL jsonb_array_elements(h.data->'entities') o(value)
+              CROSS JOIN LATERAL jsonb_array_elements(coalesce(o.value->'endpoints','[]'::jsonb)) p(value)
+              WHERE h.station_codes @> %s::text[] AND o.value->>'id'=%s)))
+          SELECT * FROM snapshots ORDER BY change_id DESC,snapshot->>'id' LIMIT 51""",
+          ([current['data']['station_code']],str(entity_id),[current['data']['station_code']],str(entity_id)))
+        rows=cur.fetchall();history=[]
+        roles={p['node_id']:p['role'] for p in current['data'].get('endpoints',[])}
+        for row in rows:
+            for endpoint in row['snapshot'].get('endpoints',[]):
+                roles.setdefault(endpoint['node_id'],endpoint['role'])
+        fields=('name','active','station_code','route_number','track_key','position','binding','endpoints','catalog_link','km_observations','note')
+        for row in rows[:50]:
+            after=row['snapshot'];before=row['previous'] or {}
+            history.append(dict(entity_type=after['entity_type'],point_role=roles.get(after.get('id')),version=after['version'],changed_at=row['changed_at'],
+                fields=[dict(field=k,before=before.get(k),after=after.get(k)) for k in fields if before.get(k)!=after.get(k)]))
+        return dict(history=history,has_more=len(rows)>50)
 
 
 @router.get('/network/changes')

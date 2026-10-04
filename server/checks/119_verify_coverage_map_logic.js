@@ -54,6 +54,8 @@ async function harness() {
   const kpis = ['TotalKm','KnownKm','AutoKm','MobileKm','MissingKm','Stations','Tracks','Routes'].map(x=>get('kpi'+x));
   const document = {cookie:'tb_admin_csrf=test-admin-csrf',getElementById:get,createElement:tag=>new Element(tag),querySelectorAll:q=>q==='[data-tab]'?tabs:q==='[data-list]'?lists:q==='.coverage-kpi strong'?kpis:[]};
   function response(url) {
+    if(url.includes('/network/entities'))return {entities:[],has_more:false};
+    if(url==='/api/v1/catalog')return {stations:[],routes:[]};
     if (url.includes('/management/workspace/axes/')) return {axis:f.details(url.split('/').at(-1).split('?')[0]).axis,sources:[],records:[]};
     if (url.includes('/summary')) return {total_length_m:128911.129,known_km_length_m:116578.85,automatic_km_length_m:116578.85,manual_mobile_length_m:0,without_km_length_m:12332.28,station_count:1,track_count:3,route_count:1};
     if (url.includes('/geometry')) return f.geometry(url.split('/').at(-2));
@@ -82,7 +84,7 @@ async function harness() {
 (async()=>{
   const h=await harness();const {run,get,controls,calls}=h;
   assert.equal(get('kpiTotalKm').textContent,'128,91 km');
-  assert(calls.some(c=>c.url.endsWith('include_overview=true&fast_overview=true')));
+  assert(calls.some(c=>c.url.includes('/coverage/overview-lines?include_overview=true&axis_ids=')));
   assert.equal(run('axes.size'),3);assert.equal(run('stationItems.length'),1);
   // Overall extent uses actual data, preserves metric aspect, and clamps pan/zoom.
   assert(run('fullBounds.w < 2000 && fullBounds.h < 2000'));
@@ -151,7 +153,7 @@ async function harness() {
   assert.equal(calls.length,beforeTimeout+1);assert.equal(run('managementBusy'),false);
   assert(get('managementMessage').textContent.includes('Speichern nicht bestätigt'));
   controls.handler=url=>url.includes('/management/axes?')?{body:{axes:[{id:'arc',display_name:'<img>',segment_count:1}],has_more:true}}:{};
-  await run('showArchive()');assert(get('managementBody').innerHTML.includes('&lt;img&gt;'));assert.equal(get('managementTitle').textContent,'Archivierte Achsen');
+  await run('showArchive()');assert(get('managementBody').innerHTML.includes('&lt;img&gt;'));assert.equal(get('managementTitle').textContent,'Archiv · Achsen und Netzobjekte');
   run("archiveOffset=50;archiveQuery='107W'");await run('showArchive(false)');
   assert(calls.at(-1).url.includes('offset=50&q=107W'));
   controls.timeoutMs=500;controls.handler=null;
@@ -394,5 +396,26 @@ async function harness() {
   n.controls.handler=url=>url.endsWith('/network/mutations')?{delay:15,status:409,body:{detail:'NETWORK_VERSION_CONFLICT'}}:{};
   await Promise.all([n.run('netSave()'),n.run('netSave()')]);
   const netWrites=n.calls.filter(c=>c.url.endsWith('/network/mutations'));assert.equal(netWrites.length,1);assert.equal(netWrites[0].opts.headers['X-CSRF-Token'],'test-admin-csrf');assert.equal(n.run('netPreview'),null);
-  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; workspace preview/save/reset guards, network point/reuse/save/CSRF, REF017 endpoint-clamp regression, independent WA/WE/WEZ sources, drag/pointer-cancel/invalid-drop and KM retention; REF018 W107W/main-line multi-hit, source failure/cancel, free and measured outside points, schema1 re-open; WMS 1.1/1.3; NOT a visual browser test.');
+  // REF019: a network-only track is searchable and present in its station without a TRA axis.
+  const unified=await harness();
+  unified.run("netEntities=new Map([['n999',{id:'n999',entity_type:'OBJECT',active:true,version:2,kind:'TRACK',name:'999',station_code:'MGHN',route_number:'5340',endpoints:[],paths:[{coordinates:[[10.72,48.32],[10.73,48.321]]}]}]]);groups();listKind='axes';query='999';");
+  assert.equal(unified.run('filteredRows()[0].key'),'n999');
+  unified.run("modal=stationItems.find(s=>s.title.includes('MGHN'));dialog.showModal();modalTab='overview';renderDialog();");
+  assert.match(unified.get('dialogBody').innerHTML,/Gl 999/);
+  unified.run("displayOptions.tracks=false");assert.equal(unified.run('renderNetwork()'),'');
+  unified.run("displayOptions.tracks=true;displayOptions.labels=false;displayOptions.connections=false");
+  assert.match(unified.run('renderNetwork()'),/<path/);assert.doesNotMatch(unified.run('renderNetwork()'),/<text|<circle/);
+  unified.run("displayOptions.originals=false");assert.equal(unified.run('hitTest(500,300).length'),0);
+  unified.run("$('networkPanel').hidden=true;netEdited=false;netBusy=false");
+  unified.controls.handler=url=>url.includes('/network/entities')?{status:500}:{};
+  await unified.run('refreshNetwork()');assert.equal(unified.run("netEntities.has('n999')"),true);
+  assert.match(unified.get('networkLoadStatus').children[0].textContent,/bisheriger Stand/);
+  unified.controls.handler=url=>url==='/api/v1/survey-catalog/coverage'?{status:500,delay:20}:{};
+  const reload=unified.run('loadCoverage()');assert.equal(unified.run('axes.size'),3);assert.equal(unified.run("netEntities.has('n999')"),true);
+  await reload;assert.equal(unified.run('axes.size'),3);
+  unified.run("netObject={catalog_link:{id:'catalog1',version:7}};$('netCatalogLink').value='catalog1';netCatalogCandidates.clear();");
+  assert.equal(unified.run('netSelectedCatalogLink().version'),7);
+  unified.run("netEntities.set('outside',{id:'outside',entity_type:'OBJECT',active:true,kind:'TRACK',name:'7',station_code:'NEW',endpoints:[],paths:[]});groups();");
+  assert.equal(unified.run("stationItems.some(s=>s.station_code==='NEW')"),true);
+  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; workspace preview/save/reset guards, network point/reuse/save/CSRF, REF017 endpoint-clamp regression, independent WA/WE/WEZ sources, drag/pointer-cancel/invalid-drop and KM retention; REF018 W107W/main-line multi-hit, source failure/cancel, free and measured outside points, schema1 re-open; WMS 1.1/1.3; REF019 network-only search/station, display filters, failed reload snapshot retention, explicit link preservation; NOT a visual browser test.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

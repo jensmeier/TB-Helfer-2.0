@@ -34,6 +34,7 @@
     @media(max-width:700px){main{padding:14px}.topbar{padding:12px 14px}.nav a{padding:7px 8px;font-size:13px}}
   </style>
   {% block head %}{% endblock %}
+{% if request.query_params.get('embedded') == '1' %}<style>body>header{display:none}main{padding:10px}</style>{% endif %}
 </head>
 <body>
 <header>
@@ -45,12 +46,8 @@
     <div class="nav">
       {% if request.url.path.startswith('/admin/v1') and user and user.company_role == 'ADMIN' %}
         <a class="{% if request.url.path == '/admin/v1' %}active{% endif %}" href="/admin/v1">Übersicht</a>
-        <a class="{% if request.url.path.startswith('/admin/v1/routes') %}active{% endif %}" href="/admin/v1/routes">Streckendaten</a>
-        <a class="{% if request.url.path.startswith('/admin/v1/stations') %}active{% endif %}" href="/admin/v1/stations">Bahnhöfe</a>
         <a class="{% if request.url.path.startswith('/admin/v1/companies') or request.url.path.startswith('/admin/v1/users') or request.url.path.startswith('/admin/v1/devices') or request.url.path.startswith('/admin/v1/worksites') %}active{% endif %}" href="/admin/v1/companies">Firmen</a>
-        <a class="{% if request.url.path.startswith('/admin/v1/survey-import') %}active{% endif %}" href="/admin/v1/survey-import">Trassierungsdaten</a>
-        <a class="{% if request.url.path.startswith('/admin/v1/survey-overview') %}active{% endif %}" href="/admin/v1/survey-overview">Trassendatenübersicht</a>
-        <a class="{% if request.url.path.startswith('/admin/v1/catalog-history') %}active{% endif %}" href="/admin/v1/catalog-history">Katalog-Historie</a>
+        <a class="{% if request.url.path in ['/admin/v1/routes','/admin/v1/stations','/admin/v1/survey-import','/admin/v1/survey-overview','/admin/v1/catalog-history'] %}active{% endif %}" href="/admin/v1/survey-overview">Streckennetz</a>
         <a class="{% if request.url.path.startswith('/admin/v1/releases') %}active{% endif %}" href="/admin/v1/releases">App-Versionen</a>
         <a class="{% if request.url.path.startswith('/admin/v1/system') %}active{% endif %}" href="/admin/v1/system">Systemstatus</a>
       {% else %}
@@ -64,7 +61,17 @@
     </div>
   </div>
 </header>
-<main>{% block content %}{% endblock %}</main>
+<main>
+{% if request.url.path in ['/admin/v1/routes','/admin/v1/stations','/admin/v1/survey-import','/admin/v1/survey-overview','/admin/v1/catalog-history'] and request.query_params.get('embedded') != '1' %}
+<nav class="actions card" aria-label="Streckennetz">
+<a href="/admin/v1/survey-overview">Karte und Bestand</a>
+<a href="/admin/v1/stations">Bahnhof-Stammdaten</a>
+<a href="/admin/v1/routes">Strecken-Stammdaten</a>
+<a href="/admin/v1/survey-import">Import / Originale / Prüffälle</a>
+<a href="/admin/v1/catalog-history">Änderungen</a>
+</nav>
+{% endif %}
+{% block content %}{% endblock %}</main>
 <script>
 function tbCookie(name){
   const found=document.cookie.split(';').map(v=>v.trim()).find(v=>v.startsWith(name+'='));
@@ -107,3 +114,4 @@ async function tbLogout(){
 {% block scripts %}{% endblock %}
 </body>
 </html>
+

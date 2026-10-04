@@ -2898,6 +2898,32 @@ def coverage_summary(
     return _coverage_summary_data()
 
 
+@router.get("/coverage/overview-lines")
+def coverage_overview_lines(
+    axis_ids: list[UUID] = Query(min_length=1,max_length=8),
+    _: dict[str, Any] = Depends(require_admin),
+) -> dict[str, Any]:
+    """Bound overview work to explicitly requested axes; measure rather than guess."""
+    from time import perf_counter
+    started=perf_counter()
+    with transaction() as conn,conn.cursor() as cur:
+        cur.execute("""SELECT s.* FROM tb.survey_catalog_segments s
+          JOIN tb.survey_catalog_axes a ON a.id=s.axis_id
+          WHERE a.id=ANY(%s) AND a.scope='GLOBAL' AND a.status<>'ARCHIVED'
+            AND s.segment_status='ACTIVE' ORDER BY s.axis_id,s.created_at,s.id""", (axis_ids,))
+        segments=[dict(r) for r in cur.fetchall()]
+        queried=perf_counter();items={str(k):dict(axis_id=str(k),overview_segments=[]) for k in axis_ids}
+        timings={}
+        for segment in segments:
+            t=perf_counter();points=_decimate(_segment_points(cur,segment),28)
+            xy=[(_num(p.get('x_dbref')),_num(p.get('y_dbref'))) for p in points]
+            coords=[[round(p[0],7),round(p[1],7)] for p in _postgis_transform_points(cur,[(x,y) for x,y in xy if x is not None and y is not None]) if p is not None]
+            key=str(segment['axis_id'])
+            if len(coords)>=2:items[key]['overview_segments'].append(dict(segment_id=str(segment['id']),coordinates=coords,km_quality=dict(status='DETAIL_BEI_AUSWAHL',color='GRAU')))
+            timings[key]=timings.get(key,0)+round((perf_counter()-t)*1000,1)
+    return dict(axes=list(items.values()),timing_ms=dict(total=round((perf_counter()-started)*1000,1),query=round((queried-started)*1000,1),axes=timings))
+
+
 @router.get("/coverage")
 def coverage(
     include_overview: bool = Query(default=False),
@@ -4121,3 +4147,4 @@ router.include_router(workspace_router)
 
 from .survey_network import router as network_router
 router.include_router(network_router)
+

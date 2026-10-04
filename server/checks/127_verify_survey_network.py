@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 class Error(Exception):
  def __init__(self,status,detail):self.status_code=status;self.detail=detail
 class DB:
- def __init__(self):self.entities={};self.receipts={};self.changes=[];self.rows=[];self.sources={};self.source_writes=0
+ def __init__(self):self.entities={};self.receipts={};self.changes=[];self.rows=[];self.sources={};self.source_writes=0;self.catalog={}
  def cursor(self):return self
  def __enter__(self):return self
  def __exit__(self,*a):pass
@@ -23,8 +23,8 @@ class DB:
   elif q.startswith('SELECT data FROM tb.survey_network_entities WHERE entity_type='):
    ids=set(p[0]) if isinstance(p[0],list) else {p[0]}
    self.rows=[dict(data=deepcopy(v)) for v in self.entities.values() if v['entity_type']=='OBJECT' and v['active'] and any(e['node_id'] in ids for e in v['endpoints'])]
-  elif q.startswith('SELECT data FROM tb.survey_network_entities WHERE station_code='):
-   vals=sorted((v for v in self.entities.values() if v['station_code']==p[0] and (p[1] is None or v['id']>str(p[1]))),key=lambda x:x['id']);self.rows=[dict(data=deepcopy(v)) for v in vals[:p[3]]]
+  elif q.startswith('SELECT data FROM tb.survey_network_entities WHERE (%s::text'):
+   vals=sorted((v for v in self.entities.values() if (p[0] is None or v['station_code']==p[1]) and (p[2] is None or v['id']>str(p[2]))),key=lambda x:x['id']);self.rows=[dict(data=deepcopy(v)) for v in vals[:p[4]]]
   elif q.startswith('SELECT data FROM tb.survey_network_entities WHERE id='):self.rows=[dict(data=deepcopy(self.entities[str(p[0])]))] if str(p[0]) in self.entities else []
   elif q.startswith('SELECT fingerprint,response'):self.rows=[self.receipts[(p[0],p[1])]] if (p[0],p[1]) in self.receipts else []
   elif q.startswith('INSERT INTO tb.survey_network_entities'):self.entities[str(p[0])]=deepcopy(p[-1])
@@ -37,6 +37,10 @@ class DB:
    row=self.sources.get(str(p[0]));self.rows=[dict(current_version=row['current_version'])] if row and row.get('active',True) and row.get('scope','GLOBAL')=='GLOBAL' else []
   elif q.startswith('SELECT s.*,a.current_version'):
    row=self.sources.get(str(p[0]));self.rows=[deepcopy(row)] if row and str(row['axis_id'])==str(p[1]) and row.get('active',True) and row.get('scope','GLOBAL')=='GLOBAL' else []
+  elif q.startswith('SELECT o.id,o.current_version'):
+   ref=self.catalog.get(str(p[0]));self.rows=[deepcopy(ref)] if ref else []
+  elif q.startswith("SELECT id FROM tb.survey_network_entities WHERE data->'catalog_link'"):
+   self.rows=[dict(id=v['id']) for v in self.entities.values() if (v.get('catalog_link') or {}).get('id')==str(p[0]) and v['id']!=str(p[1])] if any(v.get('catalog_link') for v in self.entities.values()) else []
   elif q.startswith('SELECT id FROM tb.survey_catalog_axes'):self.rows=[dict(id=p[0])]
   else:raise AssertionError(q)
  def fetchall(self):return deepcopy(self.rows)
@@ -150,10 +154,41 @@ class NetworkTests(unittest.TestCase):
   with self.assertRaises(Error) as cm:e['_assert_no_network_source_dependencies'](cur)
   self.assertEqual(cm.exception.detail,'SURVEY_TEST_RESET_NETWORK_REFERENCES_ACTIVE');self.assertFalse(any('DELETE' in q for q in sql))
   cur.fetchone=lambda:None;e['_assert_no_network_source_dependencies'](cur)
+ def test_legacy_receipt_fingerprint_and_explicit_unlink(self):
+  n=[self.node(),self.node(10.001)];p=self.payload(n,[self.obj(n)])
+  legacy=p.model_dump(mode='json',exclude={'preview_token'})
+  for row in legacy['objects']:row.pop('catalog_link')
+  self.assertEqual(self.e['_payload_hash'](p),self.e['_hash'](legacy))
+  with_null=self.payload(n,[{**self.obj(n),'id':p.objects[0].id,'catalog_link':None}])
+  with_null.client_change_id=p.client_change_id
+  self.assertNotEqual(self.e['_payload_hash'](p),self.e['_payload_hash'](with_null))
+ def test_global_inventory_paginates_network_only_station(self):
+  n=[self.node(),self.node(10.001)];self.save(self.payload(n,[self.obj(n,name='999')]))
+  first=self.e['entities'](None,None,2,self.user);self.assertTrue(first['has_more'])
+  second=self.e['entities'](None,UUID(first['next_id']),2,self.user)
+  self.assertEqual(len(first['entities'])+len(second['entities']),3)
+ def test_catalog_link_version_identity_and_old_client_preservation(self):
+  key=uuid4();self.db.catalog[str(key)]=dict(id=key,current_version=2,object_type='TRACK',station_code='MGHN')
+  n=[self.node(),self.node(10.001)];o=self.obj(n,catalog_link=dict(id=key,version=2));self.save(self.payload(n,[o]))
+  updated={**o,'base_version':1,'name':'999'};updated.pop('catalog_link')
+  self.save(self.payload([],[updated]));self.assertEqual(self.db.entities[str(o['id'])]['catalog_link']['id'],str(key))
+  duplicate=self.obj(n,catalog_link=dict(id=key,version=2))
+  with self.assertRaises(Error) as cm:self.save(self.payload([],[duplicate]))
+  self.assertEqual(cm.exception.detail,'NETWORK_CATALOG_ALREADY_LINKED')
+  self.db.catalog[str(key)]['current_version']=3
+  with self.assertRaises(Error) as cm:self.save(self.payload([],[{**updated,'base_version':2}]))
+  self.assertEqual(cm.exception.detail,'NETWORK_CATALOG_CHANGED')
+ def test_archive_restore_preserves_nodes_and_link(self):
+  n=[self.node(),self.node(10.001)];o=self.obj(n);self.save(self.payload(n,[o]));before=deepcopy(self.db.entities[str(n[0]['id'])])
+  self.save(self.payload([],[{**o,'base_version':1,'active':False}]))
+  self.save(self.payload([],[{**o,'base_version':2,'active':True}]))
+  self.assertEqual(self.db.entities[str(n[0]['id'])],before);self.assertTrue(self.db.entities[str(o['id'])]['active'])
+  self.assertEqual(self.db.source_writes,0)
  def test_route_auth_dependencies(self):
   tree=ast.parse((ROOT/'tbserver/survey_network.py').read_text())
   for n in tree.body:
-   if isinstance(n,ast.FunctionDef) and n.name in ['preview','mutate','entities','entity','changes']:
+   if isinstance(n,ast.FunctionDef) and n.name in ['preview','mutate','entities','entity','entity_history','changes']:
     text=ast.unparse(n.args);self.assertIn('require_csrf' if n.name in ['preview','mutate'] else 'current_portal_user',text)
 
 if __name__=='__main__':unittest.main()
+

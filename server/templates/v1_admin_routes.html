@@ -97,7 +97,7 @@ async function loadCatalog(){
 }
 function renderRoutes(){
   const root=document.getElementById('routes');
-  if(!catalog.routes.length){root.innerHTML='<p class="muted">Noch keine Strecken im gemeinsamen Katalog.</p>';return;}
+  if(!catalog.routes.length){root.innerHTML='<p class="muted">Noch keine manuell gepflegten Strecken-Stammdaten. Importierte Strecken findest du unter Karte und Bestand.</p>';return;}
   root.innerHTML=catalog.routes.map(r=>'<div class="item" style="margin-bottom:10px">'+
     '<b>'+esc(r.route_number)+'</b>'+(r.name?' · '+esc(r.name):'')+
     '<div class="muted">Version '+esc(r.current_version)+' · '+esc(r.section_count)+' Abschnitte · '+esc(r.object_count)+' Objekte</div>'+
@@ -128,6 +128,7 @@ function clearObject(){objectId.value='';objectVersion.value='';objectName.value
 objectCancel.addEventListener('click',clearObject);
 objectForm.addEventListener('submit',async ev=>{ev.preventDefault();try{await mutation('OBJECT',objectId.value,objectVersion.value,{route_id:objectRoute.value,station_id:null,object_type:objectType.value,designation:objectName.value.trim(),km_m:parseKm(objectKm.value),data_status:objectStatus.value.trim()||null,properties:{}});show('ok','Streckenobjekt gespeichert.');clearObject();await loadCatalog();}catch(e){show('err',e.message||String(e));}});
 window.editRoute=editRoute;window.loadRouteDetails=loadRouteDetails;window.editSection=editSection;window.editObject=editObject;
-loadCatalog().catch(e=>show('err',e.message||String(e)));
+loadCatalog().then(async()=>{const q=new URLSearchParams(location.search),code=q.get('code');const cid=q.get('catalog_id'),oid=q.get('object_id');if(cid&&catalog.routes.some(r=>r.id===cid)){editRoute(cid);if(oid){await loadRouteDetails(cid);editObject(cid,oid);}return;}if(code){const matches=catalog.routes.filter(r=>r.route_number===code);if(matches.length===1)editRoute(matches[0].id);else{routeNumber.value=code;show('ok','Stammdaten prüfen und bewusst speichern. Es wurde noch kein Katalogeintrag angelegt.');}}}).catch(e=>show('err',e.message||String(e)));
 </script>
 {% endblock %}
+
