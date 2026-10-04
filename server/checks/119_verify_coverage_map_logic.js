@@ -28,6 +28,9 @@ class Element {
   close() { this.open = false; this.dispatch('close'); }
   focus() {}
   scrollIntoView() {}
+  setPointerCapture(id) { this.pointerId=id; }
+  hasPointerCapture(id) { return this.pointerId===id; }
+  releasePointerCapture() { this.pointerId=null; }
 }
 function fixtures() {
   const a = (id, track, extra = {}) => ({
@@ -251,7 +254,7 @@ async function harness() {
   run('clearTimeout(detailTimer)');
   // REF016: real editor payloads, reuse, independent manual points and shared moves.
   const n=await harness();
-  n.run("netAxis={id:'a1',track_key:'4',route_number:'5302'}; $('networkPanel').hidden=false; $('netStation').value='MGHN'; netNew('SWITCH'); $('netName').value='108'; $('netMode').value='MAP';");
+  n.run("netAxis={id:'a1',track_key:'4',route_number:'5302'}; netSources.set('a1',{axis:netAxis,sources:[]}); $('networkPanel').hidden=false; $('netStation').value='MGHN'; netNew('SWITCH'); $('netName').value='108'; $('netMode').value='MAP';");
   for(const [role,x] of [['WA',100],['WE',300],['WEZ',400]]) n.run(`netPick='${role}';networkMapClick(${x},250)`);
   let payload=JSON.parse(JSON.stringify(await n.run('netPayload()')));
   assert.equal(payload.nodes.length,3);assert.equal(payload.objects[0].endpoints[2].role,'WEZ');
@@ -265,6 +268,54 @@ async function harness() {
   // Original source choice can differ for each point; manual input never borrows KM.
   n.run("netNodes={};netSources.set('a2',{axis:{id:'a2',current_version:2},sources:[{segment_id:'s2',segment_version:1,station_from_m:0,station_to_m:100,stations:[0,100],coordinates:[[10.72,48.32],[10.73,48.321]]}]});$('netAxis').value='a2';$('netSource').value='s2';$('netMode').value='AXIS';netPick='START';");
   n.run('networkMapClick(...coordScreen([10.725,48.3205]))');assert.equal(n.run('netNodes.START.binding.axis_id'),'a2');
+  // REF017 regression: the old picker silently clamps a click before a source to 0.
+  // A 100 px source gives a deterministic reproduction independent of zoom.
+  const q=await harness();
+  q.run("view={x:0,y:0,w:1000,h:600};W=1000;H=600;cosLat=1;netSources.clear();netEntities.clear();netAxis={id:'a1'};$('networkPanel').hidden=false;$('netStation').value='MGHN';");
+  q.run("netSources.set('a1',{axis:{id:'a1',current_version:1,display_name:'Gleis 1'},sources:[{segment_id:'s1',segment_version:1,original_name:'1.TRA',station_from_m:0,station_to_m:100,stations:[0,100],coordinates:[[100/111320,-100/111320],[200/111320,-100/111320]]}]});netSources.set('a2',{axis:{id:'a2',current_version:1,display_name:'Abzweig'},sources:[{segment_id:'s2',segment_version:1,original_name:'2.TRA',station_from_m:200,station_to_m:400,stations:[200,400],coordinates:[[100/111320,-200/111320],[300/111320,-200/111320]]}]});netNew('SWITCH');");
+  assert.equal(q.run("nearestWorkspaceStation(netSources.get('a1').sources[0],95,100).station"),0);
+  assert.equal(q.run("nearestNetworkStation(netSources.get('a1').sources[0],95,100)"),null);
+  assert.equal(q.run("nearestNetworkStation(netSources.get('a1').sources[0],205,100)"),null);
+  assert.equal(q.run("nearestNetworkStation(netSources.get('a1').sources[0],150,140)"),null);
+  assert.equal(q.run("nearestNetworkStation({coordinates:[[0,0],[1,0]],stations:[null,100]},10,0)"),null);
+  assert.equal(q.run("nearestNetworkStation(netSources.get('a1').sources[0],100,100).station"),0);
+  // Three independent interior positions, same source for WA/WE and different WEZ.
+  await q.run("netSelectRole('WA')");q.run('networkMapClick(125,100)');
+  await q.run("netSelectRole('WE')");q.run('networkMapClick(175,100)');
+  await q.run("netSelectRole('WEZ')");
+  q.run("$('netAxis').value='a2';$('netSource').value='s2';netRemember();networkMapClick(250,200)");
+  assert.equal(q.run('netNodes.WA.binding.station_m'),25);
+  assert.equal(q.run('netNodes.WE.binding.station_m'),75);
+  assert.equal(q.run('netNodes.WEZ.binding.station_m'),350);
+  await q.run("netSelectRole('WA')");assert.equal(q.get('netAxis').value,'a1');assert.equal(q.get('netSource').value,'s1');
+  await q.run("netSelectRole('WEZ')");assert.equal(q.get('netAxis').value,'a2');
+  const originalWA=q.run('JSON.stringify(netNodes.WA)'),originalWEZ=q.run('JSON.stringify(netNodes.WEZ)');
+  // Drag uses the node's own source even if another role was previously selected.
+  assert(q.run("netStartDrag('WA')"));assert.equal(q.get('netAxis').value,'a1');
+  q.run("netPlacePoint('WA',160,100);netFinishDrag()");
+  assert.equal(q.run('netNodes.WA.binding.station_m'),60);assert.equal(q.run('netNodes.WA.id'),JSON.parse(originalWA).id);
+  assert.equal(q.run('JSON.stringify(netNodes.WEZ)'),originalWEZ);
+  const beforeCancel=q.run('JSON.stringify(netNodes.WA)');
+  q.run("netStartDrag('WA');netPlacePoint('WA',130,100);netFinishDrag(true)");assert.equal(q.run('JSON.stringify(netNodes.WA)'),beforeCancel);
+  await q.run("netSelectRole('WA')");q.run('networkMapClick(95,100)');assert.equal(q.run('JSON.stringify(netNodes.WA)'),beforeCancel);
+  // Setting a source for WEZ never mutates the point or KM observations before click.
+  q.run("netNodes.WA.km_observations=[{id:'km-observation',route_number:'5302',km_m:12345}]");
+  await q.run("netSelectRole('WA')");q.run('networkMapClick(140,100)');assert.equal(q.run('netNodes.WA.km_observations[0].km_m'),12345);
+  assert(q.get('netRoleTabs').innerHTML.includes('aria-pressed="true"'));
+  assert(q.get('netPoints').innerHTML.includes('Hier anschließen'));
+  // Exercise actual pointer handlers, not just helper functions: dragging a point
+  // must keep the viewport fixed; cancellation restores both point and preview.
+  const qsvg=q.get('coverageMap'),ev=(x,y)=>({isPrimary:true,button:0,pointerId:7,clientX:x,clientY:y});
+  const oldView=q.run('JSON.stringify(view)');
+  qsvg.dispatch('pointerdown',ev(140,100));qsvg.dispatch('pointermove',ev(155,100));qsvg.dispatch('pointerup',ev(155,100));
+  assert(Math.abs(q.run('netNodes.WA.binding.station_m')-55)<1e-9);assert.equal(q.run('JSON.stringify(view)'),oldView);
+  q.run("netPreview={payload:{},result:{entities:[]}};netEdited=false;$('netPreviewInfo').textContent='Geprüfter Stand';$('netSave').hidden=false;");
+  qsvg.dispatch('pointerdown',ev(155,100));qsvg.dispatch('pointermove',ev(165,100));qsvg.dispatch('pointercancel',ev(165,100));
+  assert(Math.abs(q.run('netNodes.WA.binding.station_m')-55)<1e-9);assert.equal(q.get('netSave').hidden,false);assert.equal(q.get('netPreviewInfo').textContent,'Geprüfter Stand');
+  qsvg.dispatch('pointerdown',ev(155,100));qsvg.dispatch('pointermove',ev(165,100));qsvg.dispatch('pointermove',ev(210,100));qsvg.dispatch('pointerup',ev(210,100));
+  assert(Math.abs(q.run('netNodes.WA.binding.station_m')-55)<1e-9);
+  // Ambiguous self-overlap never silently selects one of two chainages.
+  assert.equal(q.run("nearestNetworkStation({stations:[0,100,200,300],coordinates:[[100/111320,-100/111320],[200/111320,-100/111320],[100/111320,-100/111320],[200/111320,-100/111320]]},150,100)"),null);
   // WMS 1.3.0 EPSG4326 has latitude/longitude BBOX order, existing 1.1.1 stays unchanged.
   const bb=new URL(n.run("aerialRequest('BB',view)"));const b=JSON.parse(n.run('JSON.stringify(aerialBBox(view))'));
   assert.equal(bb.searchParams.get('CRS'),'EPSG:4326');assert.equal(bb.searchParams.get('BBOX'),[b[1],b[0],b[3],b[2]].join(','));assert(!bb.searchParams.has('SRS'));
@@ -276,6 +327,5 @@ async function harness() {
   n.controls.handler=url=>url.endsWith('/network/mutations')?{delay:15,status:409,body:{detail:'NETWORK_VERSION_CONFLICT'}}:{};
   await Promise.all([n.run('netSave()'),n.run('netSave()')]);
   const netWrites=n.calls.filter(c=>c.url.endsWith('/network/mutations'));assert.equal(netWrites.length,1);assert.equal(netWrites[0].opts.headers['X-CSRF-Token'],'test-admin-csrf');assert.equal(n.run('netPreview'),null);
-  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; workspace preview/save/reset guards, network point/reuse/save/CSRF and WMS 1.1/1.3; NOT a visual browser test.');
+  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; workspace preview/save/reset guards, network point/reuse/save/CSRF, REF017 endpoint-clamp regression, independent WA/WE/WEZ sources, drag/pointer-cancel/invalid-drop and KM retention; WMS 1.1/1.3; NOT a visual browser test.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
-
