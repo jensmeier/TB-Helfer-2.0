@@ -67,7 +67,7 @@ async function harness() {
       opts.signal.addEventListener('abort',abort,{once:true});if(opts.signal.aborted)abort();
     });
   };
-  const context=vm.createContext({document,location:{pathname:'/admin/v1/survey-overview'},window:{},console,fetch,AbortController,URL,Map,Set,Date,Math,Number,String,Array,JSON,Promise,ResizeObserver:class{observe(){}},setTimeout:(fn,ms)=>setTimeout(fn,ms===12000?controls.timeoutMs:ms),clearTimeout,requestAnimationFrame:fn=>setTimeout(fn,0)});
+  const context=vm.createContext({crypto:require("node:crypto").webcrypto,document,location:{pathname:'/admin/v1/survey-overview'},window:{},console,fetch,AbortController,URL,Map,Set,Date,Math,Number,String,Array,JSON,Promise,ResizeObserver:class{observe(){}},setTimeout:(fn,ms)=>setTimeout(fn,ms===12000?controls.timeoutMs:ms),clearTimeout,requestAnimationFrame:fn=>setTimeout(fn,0)});
   vm.runInContext(baseScript,context);vm.runInContext(script,context);
   const run=code=>vm.runInContext(code,context);
   for(let i=0;i<100&&!calls.some(c=>c.url.includes('include_overview'));i++)await delay(2);
@@ -150,10 +150,35 @@ async function harness() {
   run("archiveOffset=50;archiveQuery='107W'");await run('showArchive(false)');
   assert(calls.at(-1).url.includes('offset=50&q=107W'));
   controls.timeoutMs=500;controls.handler=null;
+  // Manual KM editor: actual production functions, with transport/DOM doubles.
+  assert.equal(run("kmNumber('16,294948')"),16.294948);
+  for(const value of ['', '1.234,56','NaN','Infinity','16+294'])assert.throws(()=>run(`kmNumber(${JSON.stringify(value)})`));
+  h.f.details=id=>({axis:{id,display_name:'<Gleis 4>',status:'ACTIVE',current_version:3},segments:[{id:'source',source_original_id:'o1',source_kind:'ORIGINAL_TRA',segment_status:'ACTIVE',current_version:1,station_from_m:0,station_to_m:100,original_name:'<original>.TRA'}],history:[],conflicts:[]});
+  await run("readKmEditor('a1')");assert(get('managementBody').innerHTML.includes('&lt;original&gt;'));
+  get('kmSource').value='source';get('kmStart').value='5';get('kmEnd').value='25';get('kmFrom').value='16,005';get('kmTo').value='16,025';get('kmNote').value='<note>';
+  assert.equal(run('collectKmPayload().km_from_m'),16005);assert.equal(run('collectKmPayload().km_to_m'),16025);
+  get('kmEnd').value='101';assert.throws(()=>run('collectKmPayload()'));get('kmEnd').value='25';
+  controls.handler=url=>url.endsWith('/preview')?{body:{length_m:20,km_difference_m:20,length_warning:false,direction:'STEIGEND',points:[[0,0],[20,2]]}}:{};
+  await run('previewKm()');assert(run('kmPreviewPayload!==null'));assert(get('kmPreview').innerHTML.includes('<svg'));assert(!get('kmPreview').innerHTML.includes('NaN'));
+  const previewCall=calls.filter(c=>c.url.endsWith('/preview')).at(-1);assert.equal(previewCall.opts.headers['X-CSRF-Token'],'test-admin-csrf');
+  get('kmStart').dispatch('input');assert.equal(run('kmPreviewPayload'),null);assert.equal(get('kmPreview').innerHTML,'');
+  await run('previewKm()');controls.handler=url=>url.endsWith('/manual-km')?{delay:20,body:{status:'ACTIVE'}}:{};
+  const beforeSave=calls.filter(c=>c.url.endsWith('/manual-km')).length;
+  await Promise.all([run("writeKm('',kmPreviewPayload)"),run("writeKm('',kmPreviewPayload)")]);
+  assert.equal(calls.filter(c=>c.url.endsWith('/manual-km')).length,beforeSave+1);
+  assert(get('managementMessage').textContent.includes('gespeichert'));
+  controls.handler=url=>url.endsWith('/manual-km')?{status:409,body:{detail:'SURVEY_KM_OVERLAP_CONFLICT'}}:{};
+  await run("writeKm('',{client_change_id:'conflict'})");assert(get('managementMessage').textContent.includes('widersprechen'));assert(get('managementBody').innerHTML.includes('reloadKmAfterWrite'));
+  controls.handler=null;await run("readKmEditor('a1')");controls.timeoutMs=10;
+  controls.handler=url=>url.endsWith('/manual-km')?{hang:true}:{};const beforeKmTimeout=calls.length;
+  await run("writeKm('',{client_change_id:'timeout'})");assert.equal(calls.length,beforeKmTimeout+1);assert.equal(run('managementBusy'),false);
+  assert(get('managementBody').innerHTML.includes('nicht automatisch'));
+
+  controls.handler=null;controls.timeoutMs=500;
   // Empty stock and unsupported coordinates must never produce NaN or Germany fallback.
   h.f.coverage={axes:[],axis_count:0,station_count:0,route_count:0,unsupported_axis_count:0};controls.handler=null;await run('loadCoverage()');await delay(10);
   assert.equal(run('view'),null);assert.equal(get('overviewLayer').innerHTML,'');assert(!get('overviewLayer').innerHTML.includes('NaN'));
   run('clearTimeout(detailTimer)');
-  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive CSRF and write timeout; NOT a visual browser test.');
+  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout; NOT a visual browser test.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
 

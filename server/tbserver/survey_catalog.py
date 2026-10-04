@@ -498,8 +498,46 @@ def _asset_upsert(cur, original: dict[str, Any], parsed: dict[str, Any], actor_u
     return asset
 
 
+def _clip_station_points(points: list[dict[str, Any]], start: float, end: float) -> list[dict[str, float]]:
+    """Clip the densified source; never substitute the whole axis for an empty cut."""
+    if not math.isfinite(start) or not math.isfinite(end) or start == end:
+        return []
+    low, high = min(start,end), max(start,end)
+    rows = []
+    for point in points:
+        values = {k:_num(point.get(k)) for k in ('station_m','x_dbref','y_dbref')}
+        if any(v is None for v in values.values()):
+            return []
+        if rows and values['station_m'] < rows[-1]['station_m']:
+            return []
+        if rows and values['station_m'] == rows[-1]['station_m']:
+            continue
+        rows.append({**point, **values})
+    if len(rows)<2 or low<rows[0]['station_m'] or high>rows[-1]['station_m']:
+        return []
+    def boundary(station):
+        for a,b in zip(rows,rows[1:]):
+            if a['station_m'] <= station <= b['station_m']:
+                if station == a['station_m']:
+                    return dict(a)
+                if station == b['station_m']:
+                    return dict(b)
+                t=(station-a['station_m'])/(b['station_m']-a['station_m'])
+                result={'station_m':station}
+                for k in ('x_dbref','y_dbref','km_meter','direction_deg'):
+                    av,bv=_num(a.get(k)),_num(b.get(k))
+                    if av is not None and bv is not None:
+                        delta=(bv-av+180)%360-180 if k=='direction_deg' else bv-av
+                        result[k]=(av+t*delta)%360 if k=='direction_deg' else av+t*delta
+                return result
+        return None
+    return [boundary(low), *[p for p in rows if low<p['station_m']<high], boundary(high)]
+
+
 def _dense_payload(payload: dict[str, Any], station_from: float | None = None, station_to: float | None = None) -> list[dict[str, float]]:
     dense = densify_tra_chainage_payload(payload)
+    if station_from is not None and station_to is not None:
+        return _clip_station_points(dense,station_from,station_to)
     if station_from is None and station_to is None:
         return dense
     values = [value for value in (station_from, station_to) if value is not None]
@@ -3128,6 +3166,195 @@ def management_restore_axis(axis_id: UUID,payload: AxisStatusUpdate,
     return _management_axis_status(axis_id,payload,user,False)
 
 
+class AdminKmSection(BaseModel):
+    base_version: int = Field(ge=1)
+    source_segment_id: UUID
+    source_version: int = Field(ge=1)
+    station_from_m: float = Field(allow_inf_nan=False)
+    station_to_m: float = Field(allow_inf_nan=False)
+    km_from_m: float = Field(allow_inf_nan=False)
+    km_to_m: float = Field(allow_inf_nan=False)
+    segment_id: UUID | None = None
+    segment_version: int | None = Field(default=None, ge=1)
+    note: str = Field(default='', max_length=1000)
+    client_change_id: str = Field(min_length=1, max_length=160)
+    confirm_length_difference: bool = False
+
+
+class AdminKmDeactivate(BaseModel):
+    base_version: int = Field(ge=1)
+    segment_version: int = Field(ge=1)
+    client_change_id: str = Field(min_length=1, max_length=160)
+
+
+def _km_editor_replay(cur, user, change_id, fingerprint):
+    replay = _receipt(cur, user, change_id)
+    if replay is not None and replay.get('request_fingerprint') != fingerprint:
+        raise HTTPException(409, 'SURVEY_KM_MUTATION_REUSED')
+    return replay
+
+
+def _km_editor_fingerprint(axis_id, payload, action):
+    import hashlib
+    import json
+    value = [str(axis_id), action, payload.model_dump(mode='json')]
+    return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+
+
+def _km_editor_rows(cur, axis_id):
+    cur.execute('SELECT * FROM tb.survey_catalog_segments WHERE axis_id=%s ORDER BY id FOR UPDATE', (axis_id,))
+    return [dict(row) for row in cur.fetchall()]
+
+
+def _km_editor_validate(payload, rows):
+    source = next((s for s in rows if s['id'] == payload.source_segment_id), None)
+    if not source or source['source_kind'] != 'ORIGINAL_TRA' or source['segment_status'] != 'ACTIVE':
+        raise HTTPException(400, 'SURVEY_KM_SOURCE_NOT_ACTIVE')
+    if int(source['current_version']) != payload.source_version:
+        raise HTTPException(409, 'VERSION_CONFLICT')
+    bounds = _coverage_interval(source)
+    start, end = payload.station_from_m, payload.station_to_m
+    if (not all(math.isfinite(v) for v in (start, end, payload.km_from_m, payload.km_to_m))
+            or not bounds or end <= start or start < bounds[0] or end > bounds[1]):
+        raise HTTPException(400, 'SURVEY_KM_SECTION_OUTSIDE_SOURCE')
+    if payload.km_from_m == payload.km_to_m:
+        raise HTTPException(400, 'SURVEY_KM_VALUES_IDENTICAL')
+    existing = None
+    if payload.segment_id is not None:
+        existing = next((s for s in rows if s['id'] == payload.segment_id), None)
+        if (not existing or existing['source_kind'] != 'MANUAL_TRA_SECTION'
+                or existing['source_original_id'] != source['source_original_id']
+                or existing['segment_status'] != 'ACTIVE'):
+            raise HTTPException(400, 'SURVEY_KM_SECTION_NOT_EDITABLE')
+        if int(existing['current_version']) != payload.segment_version:
+            raise HTTPException(409, 'VERSION_CONFLICT')
+    def at(s, pos):
+        a, b = float(s['station_from_m']), float(s['station_to_m'])
+        return float(s['km_from_m']) + (pos-a)/(b-a)*(float(s['km_to_m'])-float(s['km_from_m']))
+    candidate = payload.model_dump()
+    for other in rows:
+        if (other['id'] == payload.segment_id or other['source_kind'] != 'MANUAL_TRA_SECTION'
+                or other['segment_status'] != 'ACTIVE'
+                or other['source_original_id'] != source['source_original_id']):
+            continue
+        span = _coverage_interval(other)
+        if not span or max(start,span[0]) > min(end,span[1]):
+            continue
+        # Incomplete existing anchors cannot be silently reconciled.
+        if any(_num(other.get(k)) is None for k in ('km_from_m','km_to_m')):
+            raise HTTPException(409, 'SURVEY_KM_OVERLAP_CONFLICT')
+        if any(abs(at(candidate,p)-at(other,p)) > 0.01 for p in (max(start,span[0]),min(end,span[1]))):
+            raise HTTPException(409, 'SURVEY_KM_OVERLAP_CONFLICT')
+    length = end-start
+    km_span = abs(payload.km_to_m-payload.km_from_m)
+    warning = abs(length-km_span) > max(5.0, length*0.05)
+    return source, existing, {'length_m':length, 'km_difference_m':km_span,
+                              'length_warning':warning, 'direction':'FALLEND' if payload.km_to_m < payload.km_from_m else 'STEIGEND'}
+
+
+def _km_editor_prepare(cur, axis_id, payload):
+    axis = _management_axis(cur, axis_id, payload.base_version)
+    if axis['status'] == 'ARCHIVED':
+        raise HTTPException(409, 'SURVEY_AXIS_ARCHIVED')
+    source, existing, info = _km_editor_validate(payload, _km_editor_rows(cur, axis_id))
+    points = _clip_station_points(_segment_points(cur, source), payload.station_from_m, payload.station_to_m)
+    if len(points) < 2:
+        raise HTTPException(400, 'SURVEY_KM_GEOMETRY_INVALID')
+    return axis, source, existing, points, info
+
+
+@router.post('/management/axes/{axis_id}/manual-km/preview')
+def management_preview_km(axis_id: UUID, payload: AdminKmSection,
+                          user: dict[str, Any] = Depends(require_admin_csrf)) -> dict[str, Any]:
+    with transaction() as conn, conn.cursor() as cur:
+        _, source, _, points, info = _km_editor_prepare(cur, axis_id, payload)
+    return {**info, 'source_name':str(source.get('source_signature') or ''),
+            'points': [[p['x_dbref'],p['y_dbref']] for p in _decimate(points,300)]}
+
+
+@router.post('/management/axes/{axis_id}/manual-km')
+def management_save_km(axis_id: UUID, payload: AdminKmSection,
+                       user: dict[str, Any] = Depends(require_admin_csrf)) -> dict[str, Any]:
+    fingerprint = _km_editor_fingerprint(axis_id, payload, 'SAVE')
+    try:
+        with transaction() as conn, conn.cursor() as cur:
+            # Serialize repeated admin writes on this axis before receipt lookup.
+            _row(cur, 'survey_catalog_axes', axis_id)
+            replay = _km_editor_replay(cur,user,payload.client_change_id,fingerprint)
+            if replay is not None:
+                return replay
+            axis, source, existing, points, info = _km_editor_prepare(cur,axis_id,payload)
+            if info['length_warning'] and not payload.confirm_length_difference:
+                raise HTTPException(400, 'SURVEY_KM_LENGTH_CONFIRM_REQUIRED')
+            metadata = dict((existing or {}).get('metadata') or {})
+            metadata.setdefault('origin', 'ADMIN')
+            metadata.update(last_edited_via='ADMIN', note=payload.note.strip(), km_source='MANUELL_ABSCHNITT',
+                            length_difference_confirmed=payload.confirm_length_difference,
+                            source_segment_id=str(source['id']))
+            if existing is None:
+                segment = _segment_insert(cur,axis=axis,asset_id=None,source_kind='MANUAL_TRA_SECTION',
+                    source_original_id=source['source_original_id'],source_signature=source.get('source_signature'),
+                    source_date=None,station_from_m=payload.station_from_m,station_to_m=payload.station_to_m,
+                    km_from_m=payload.km_from_m,km_to_m=payload.km_to_m,points=points,
+                    relation='OVERLAP_CONFIRMED',diagnostics={'reason':'ADMIN_SOURCE_SECTION'},
+                    actor_user_id=user['user_id'],metadata=metadata)
+            else:
+                bbox = _bbox(points)
+                cur.execute('''UPDATE tb.survey_catalog_segments
+                    SET station_from_m=%s,station_to_m=%s,km_from_m=%s,km_to_m=%s,
+                        bbox_min_x=%s,bbox_min_y=%s,bbox_max_x=%s,bbox_max_y=%s,
+                        geometry=NULL,metadata=%s,current_version=current_version+1
+                    WHERE id=%s AND current_version=%s RETURNING *''',
+                    (payload.station_from_m,payload.station_to_m,payload.km_from_m,payload.km_to_m,
+                     *bbox,Jsonb(metadata),existing['id'],payload.segment_version))
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(409,'VERSION_CONFLICT')
+                segment = dict(row)
+                _history(cur,entity_type='SEGMENT',entity_id=segment['id'],version=segment['current_version'],
+                    operation='UPDATE',before=existing,after=segment,actor_user_id=user['user_id'],actor_company_id=None)
+            _axis_extent_refresh(cur,axis_id,user['user_id'])
+            response = {'axis_id':str(axis_id),'segment_id':str(segment['id']),
+                        'entity_version':int(segment['current_version']),'status':'ACTIVE',
+                        'request_fingerprint':fingerprint}
+            _save_receipt(cur,user,payload.client_change_id,segment['id'],int(segment['current_version']),response)
+            audit(cur,action='SURVEY_CATALOG_ADMIN_KM_SAVE',actor_user_id=user['user_id'],
+                  entity_type='SURVEY_CATALOG_SEGMENT',entity_id=segment['id'],details={'axis_id':str(axis_id)})
+            return response
+    except UniqueViolation as exc:
+        raise HTTPException(409,'SURVEY_KM_MUTATION_REUSED') from exc
+
+
+@router.post('/management/axes/{axis_id}/manual-km/{segment_id}/deactivate')
+def management_deactivate_km(axis_id: UUID, segment_id: UUID, payload: AdminKmDeactivate,
+                             user: dict[str, Any] = Depends(require_admin_csrf)) -> dict[str, Any]:
+    fingerprint = _km_editor_fingerprint(axis_id,payload,'DEACTIVATE:'+str(segment_id))
+    try:
+        with transaction() as conn, conn.cursor() as cur:
+            _row(cur,'survey_catalog_axes',axis_id)
+            replay = _km_editor_replay(cur,user,payload.client_change_id,fingerprint)
+            if replay is not None:
+                return replay
+            axis = _management_axis(cur,axis_id,payload.base_version)
+            if axis['status'] == 'ARCHIVED':
+                raise HTTPException(409,'SURVEY_AXIS_ARCHIVED')
+            segment = next((s for s in _km_editor_rows(cur,axis_id) if s['id']==segment_id),None)
+            if not segment or segment['source_kind'] != 'MANUAL_TRA_SECTION' or segment['segment_status'] != 'ACTIVE':
+                raise HTTPException(400,'SURVEY_KM_SECTION_NOT_EDITABLE')
+            if int(segment['current_version']) != payload.segment_version:
+                raise HTTPException(409,'VERSION_CONFLICT')
+            segment = _mark_segment_status(cur,segment,'INACTIVE',user['user_id'])
+            _axis_extent_refresh(cur,axis_id,user['user_id'])
+            response = {'axis_id':str(axis_id),'segment_id':str(segment_id),'status':'INACTIVE',
+                        'entity_version':int(segment['current_version']),'request_fingerprint':fingerprint}
+            _save_receipt(cur,user,payload.client_change_id,segment_id,int(segment['current_version']),response)
+            audit(cur,action='SURVEY_CATALOG_ADMIN_KM_DEACTIVATE',actor_user_id=user['user_id'],
+                  entity_type='SURVEY_CATALOG_SEGMENT',entity_id=segment_id,details={'axis_id':str(axis_id)})
+            return response
+    except UniqueViolation as exc:
+        raise HTTPException(409,'SURVEY_KM_MUTATION_REUSED') from exc
+
+
 @router.get("/coverage/{axis_id}/details")
 def coverage_axis_details(
     axis_id: UUID,
@@ -3154,6 +3381,7 @@ def coverage_axis_details(
             SELECT s.id,s.source_kind,s.segment_status,s.merge_status,
                    s.station_from_m,s.station_to_m,s.km_from_m,s.km_to_m,
                    s.source_original_id,s.current_version,s.updated_at,
+                   s.metadata->>'note' AS note,
                    o.original_name,o.data_kind,o.byte_size,o.sha256
             FROM tb.survey_catalog_segments s
             LEFT JOIN tb.survey_originals o ON o.id=s.source_original_id
