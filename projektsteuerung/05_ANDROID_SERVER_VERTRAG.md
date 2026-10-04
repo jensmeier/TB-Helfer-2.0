@@ -777,3 +777,13 @@ Status: **VERTRAG FEST / ANDROID-UMSETZUNG SPÄTER / SERVER-SUMMARY DARF DARAUF 
 
 Details, API-Vertrag, Quellen, Übernahme und Abnahmefälle: [REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md](uebergaben/REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md).
 
+
+
+## REF-DATA-016 – Freigegeben: Anschlussnetz, bidirektionaler Austausch und Serverprüfung (04.10.2026)
+- Benutzer bestätigt Gl4→WA→WE→Gl4, Gl4→WE→WA→freie Strecke und Ketten aus mehreren Gleisen/Weichen einschließlich WEZ→WA. Punktrollen gehören zur jeweiligen Weiche; Betrachtungsrichtung ändert sie nicht. Ein gemeinsamer Anschlusspunkt kann mehrere Objektrollen tragen; physische Nähe allein verbindet nichts.
+- WA/WE/WEZ unabhängig setzen: Originalachsenreferenz oder ausdrücklich manueller WGS84-Punkt. Gemeinsame stabile Knoten-IDs; versionierte Gleis-/Streckenabschnitte und Weichen; Anschluss wiederverwenden statt Koordinatenduplikat. Gleisabschnittsgrenze ist keine automatisch bestätigte Bahnhofsgrenze. Originale unverändert. Manuelle Verbindung ist eine Näherung, keine erfundene exakte Trassierung.
+- KM getrennt von Topologie: Original-/GVP-/manuelle KM-Kalibrierung nie durch Namen, Richtung, Anschluss oder Abschnittsgrenze verändern. Achsposition ist nicht Bahnkilometer. Mehrere streckenbezogene Kilometerreferenzen an demselben Ort zulässig; ohne belegbare Referenz KM unbekannt. Stamm/Abzweig unabhängig.
+- PC: kompakte Seitenleiste direkt an der Karte, Punktwahl und Prüfen/Speichern ohne Seitenscrollen; bestehende schnelle Übersicht, GVP-Kalibrierung, Farben und Originalquellen schützen.
+- Handy→Server→Handy muss dasselbe versionierte Schema verwenden: clientseitig stabile UUIDs, client_change_id, erwartete Versionen, atomare Änderungen, Idempotenz und Cursor/Deltas einschließlich Deaktivierungen. Keine vollständigen Bestände aus altem Offline-Stand überschreiben. Server und Portal zuerst; keine app/**-Änderung in diesem Block. Android-Implementierung und echter Zwei-Geräte-Roundtrip ausdrücklich separat offen.
+- Weitere Bundesländer: offizielle Luftbildanbieter einschließlich Nutzungsbedingungen prüfen; nur verifizierte Dienste anbieten, keine pauschale kostenlose/flächendeckende Zusage. Servercode zusätzlich gezielt auf Fehler prüfen; lokalen Test, echten DB-/HTTP-Test und NAS-Abnahme sauber unterscheiden.
+- Benutzerbelege REF015: Migration20/20 ohne ausstehende Migrationen; Bayern-Luftbild sichtbar; Gl4-Anfang/Ende funktioniert. WE/WEZ-Bedienung bisher zu restriktiv. Kein vollständiger Geräte-/Reset-E2E dadurch nachgewiesen.
