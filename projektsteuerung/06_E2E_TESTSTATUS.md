@@ -1131,3 +1131,13 @@ Status: **SOURCE-CHECK PASS / SYNLOGY-E2E OFFEN**
 - Paket-/Planprüfung: TRA/GRA-Enden belegen keine Bahnhofsgrenzen. In textlicher Suche und Übersichtssichtung der äußeren Trassierungsplanblätter keine eindeutigen beidseitigen Bahnhofsgrenzen verifiziert. Pläne enthalten Umbauanfang/-ende; diese nicht als betriebliche Grenzen übernehmen. Keine vollständige vermessungstechnische/planerische Abnahme behaupten.
 - Vorschlag, noch keine neue Implementierungsfreigabe: durchgehende Originalachse behalten, gesonderte bestätigte Abschnittszuordnung mit Betriebsstelle/Gleisname/Quelle/KM bzw. eindeutiger Achsposition. Innerhalb z.B. Gessertshausen Gl302/303, außerhalb Strecke5302 und bestätigte Richtung/Gleisbezeichnung. Fachliche Bahnhofsgrenze getrennt von frei gewähltem Arbeits-/Anzeigebereich führen, Grenzen je Achse/Zufahrt statt pauschaler Kartenbox.
 - Priorität als Vorschlag: zuerst Stationssprung-/Zuschnittregression von5302-0 korrigieren und Originalfixture regressionsprüfen; dann Abschnittszuordnung/Bahnhofsbereich; danach bereits offene Weichenneuanlage WA/WE/WEZ→Nummer/Bahnhof. Archiv/Wiederherstellung und weitergehende E2E offen. Server/Portal zuerst, Android danach. In diesem Block ausschließlich Analyse/Dokumentation, keine Runtime-Datei geändert.
+
+
+## REF-DATA-015 – Implementierter Serverblock, Live-Abnahme offen (04.10.2026)
+- Checks120–124:58 vorhandene Produktionsfunktions-/Pydantic-Tests PASS. Neu125:16 Workspace-/Reset-/Versions-/Idempotenz-/Rechte-Tests PASS; neu126:6 Originalgrenzen-/Stationssprung-/Reindex-Tests PASS. Zusammen80. Storage-Doubles, keine echte DB.
+- Node119 erweitert PASS: WMS-BBOX/Opt-in/Retry, Workspace-Quellen/Anker/Vorschau/Invalidierung/CSRF/Doppelklickschutz, Resetvorschau ohne Mutation/409. DOM/Transport/Image-Doubles, keine visuellen Screenshots. Python-Syntax PASS.
+- Original-ZIP read-only:5302S16497 Punkte,5302L3470,5302R3545,5340S444. 5302S war vorher leer. Keine Originale im Commit.
+- Noch offen: Migration020 auf NAS; reales FastAPI/PostgreSQL/PostGIS, echte Bilder BY/SN/BW, visueller Zoom/Pan, Schreiben/Ändern/Deaktivieren mit zweitem Browser, gezieltes Reset/Restore bei unverändertem Originalhash. Chromium fehlte; Direktabrufe Landesdienste Timeout/403. Nicht als live bestätigt markieren.
+
+Details, API-Vertrag, Quellen, Übernahme und Abnahmefälle: [REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md](uebergaben/REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md).
+

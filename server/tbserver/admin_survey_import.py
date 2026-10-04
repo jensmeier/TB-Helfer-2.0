@@ -213,6 +213,21 @@ def _analysis_item(
     route, track = _parsed_route_track(parsed)
     semantics = _analysis_semantics(parsed, original_name, kind)
     preview = build_survey_preview(parsed)
+    if kind == 'TRA' and parsed.get('status') == 'PARSED':
+        from .survey_tra_chainage import tra_station_discontinuities, normalize_tra_station_payload
+        source = parsed.get('payload') or {}
+        jumps = tra_station_discontinuities(source)
+        normalized = normalize_tra_station_payload(source)
+        parsed['warnings'] = list(parsed.get('warnings') or [])
+        if jumps:
+            parsed['warnings'].append(f"{len(jumps)} Stationssprünge: Quellstation {source.get('station_from_m')} bis {source.get('station_to_m')} m; geometrische Achsposition {normalized['nodes'][0]['station_m']:.3f} bis {normalized['nodes'][-1]['station_m']:.3f} m. Die Originalgeometrie bleibt vollständig erhalten.")
+        if track:
+            parsed['warnings'].append("Gleisbezeichnung aus Quelldaten: Anfang und Ende des Bahnhofsgleises bitte auf der Karte bestätigen. Die Datei legt keine Bahnhofsgrenze fest.")
+        preview['source_station_from_m'] = source.get('station_from_m')
+        preview['source_station_to_m'] = source.get('station_to_m')
+        preview['geometric_station_from_m'] = (normalized.get('nodes') or [{}])[0].get('station_m')
+        preview['geometric_station_to_m'] = (normalized.get('nodes') or [{}])[-1].get('station_m')
+        preview['station_jump_count'] = len(jumps)
     missing: list[str] = []
     if not route:
         missing.append("route_number")
@@ -348,6 +363,8 @@ def _install_original(
     source_date: date | None,
     user: dict[str, Any],
     overwrite_existing: bool = False,
+    import_batch_id: str | None = None,
+    import_bundle_name: str | None = None,
 ) -> dict[str, Any]:
     normalized_kind = kind.strip().upper()
     if not _KIND_RE.fullmatch(normalized_kind):
@@ -566,6 +583,9 @@ def _install_original(
                 "source": "ADMIN_WEB",
                 "scope": normalized_scope,
             }
+            if import_batch_id:
+                metadata["import_batch_id"] = import_batch_id
+                metadata["import_bundle_name"] = import_bundle_name
             if effective_object_key:
                 metadata["object_key"] = effective_object_key
             if effective_station_code:
@@ -947,6 +967,8 @@ def import_analyzed_survey(
                                     source_date=decision.source_date,
                                     overwrite_existing=decision.overwrite_existing,
                                     user=user,
+                                    import_batch_id=str(analysis_id),
+                                    import_bundle_name=str(meta.get("filename") or ""),
                                 )
                             )
                         finally:
@@ -991,6 +1013,8 @@ def import_analyzed_survey(
                         source_date=decision.source_date,
                         overwrite_existing=decision.overwrite_existing,
                         user=user,
+                                    import_batch_id=str(analysis_id),
+                                    import_bundle_name=str(meta.get("filename") or ""),
                     )
                 )
         needs_confirmation = any(
@@ -1032,6 +1056,7 @@ async def import_survey_file(
     normalized_scope = _normalize_scope(scope)
     if normalized_scope == _SCOPE_WORKSITE and worksite_id is None:
         raise HTTPException(400, "SURVEY_IMPORT_WORKSITE_REQUIRED")
+    import_batch_id = str(uuid4())
     temp_path = await _stream_request_to_temp(request)
     try:
         safe_name = _safe_name(filename)
@@ -1073,6 +1098,8 @@ async def import_survey_file(
                                 source_date=source_date,
                                 overwrite_existing=overwrite_existing,
                                 user=user,
+                                import_batch_id=import_batch_id,
+                                import_bundle_name=safe_name,
                             )
                             results.append(result)
                         finally:
@@ -1101,7 +1128,10 @@ async def import_survey_file(
             source_date=source_date,
             overwrite_existing=overwrite_existing,
             user=user,
+                                import_batch_id=import_batch_id,
+                                import_bundle_name=safe_name,
         )
         return {"results": [result]}
     finally:
         temp_path.unlink(missing_ok=True)
+

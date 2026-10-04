@@ -186,3 +186,12 @@ Keine bestätigten Punkte wieder als offen anlegen.
 - Paket-/Planprüfung: TRA/GRA-Enden belegen keine Bahnhofsgrenzen. In textlicher Suche und Übersichtssichtung der äußeren Trassierungsplanblätter keine eindeutigen beidseitigen Bahnhofsgrenzen verifiziert. Pläne enthalten Umbauanfang/-ende; diese nicht als betriebliche Grenzen übernehmen. Keine vollständige vermessungstechnische/planerische Abnahme behaupten.
 - Vorschlag, noch keine neue Implementierungsfreigabe: durchgehende Originalachse behalten, gesonderte bestätigte Abschnittszuordnung mit Betriebsstelle/Gleisname/Quelle/KM bzw. eindeutiger Achsposition. Innerhalb z.B. Gessertshausen Gl302/303, außerhalb Strecke5302 und bestätigte Richtung/Gleisbezeichnung. Fachliche Bahnhofsgrenze getrennt von frei gewähltem Arbeits-/Anzeigebereich führen, Grenzen je Achse/Zufahrt statt pauschaler Kartenbox.
 - Priorität als Vorschlag: zuerst Stationssprung-/Zuschnittregression von5302-0 korrigieren und Originalfixture regressionsprüfen; dann Abschnittszuordnung/Bahnhofsbereich; danach bereits offene Weichenneuanlage WA/WE/WEZ→Nummer/Bahnhof. Archiv/Wiederherstellung und weitergehende E2E offen. Server/Portal zuerst, Android danach. In diesem Block ausschließlich Analyse/Dokumentation, keine Runtime-Datei geändert.
+
+
+## REF-DATA-015 – Implementierter Serverblock, Live-Abnahme offen (04.10.2026)
+- REF-DATA-014-Vorschläge inzwischen ausdrücklich freigegeben und im Servercode umgesetzt:5302-0, Abschnittszuordnung, WA/WE/WEZ, Luftbild BY/SN/BW, quellselektives reversibles Testreset. Diese Punkte sind nicht mehr unimplementiert, ihre Live-Abnahme bleibt offen.
+- Nächster praktischer Block: fünf Laufzeitdateien übernehmen, Migration020 ausführen, API/Worker neu starten; dokumentierte Abnahmefälle prüfen. Keine Quellen im Auftrag dieses Chats zurückgesetzt.
+- Weiter offen: tatsächliche Android-Auswertung workspace_records/Offline-/Delta-Verarbeitung und GPS-Neuerfassung ohne vorhandene passende Achsen; echte betriebliche Bahnhofsgrenzen aus belastbaren Unterlagen; weitere Bundesländer; übergreifender E2E/Lasttest. Kennzahlen zählen weiterhin Originalachsen, nicht zusätzliche Arbeitszuordnungen.
+
+Details, API-Vertrag, Quellen, Übernahme und Abnahmefälle: [REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md](uebergaben/REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md).
+

@@ -1446,3 +1446,13 @@ Die 30-Sekunden-Grenze beendet nur den separat gestarteten Diagnose-Pythonprozes
 - Paket-/Planprüfung: TRA/GRA-Enden belegen keine Bahnhofsgrenzen. In textlicher Suche und Übersichtssichtung der äußeren Trassierungsplanblätter keine eindeutigen beidseitigen Bahnhofsgrenzen verifiziert. Pläne enthalten Umbauanfang/-ende; diese nicht als betriebliche Grenzen übernehmen. Keine vollständige vermessungstechnische/planerische Abnahme behaupten.
 - Vorschlag, noch keine neue Implementierungsfreigabe: durchgehende Originalachse behalten, gesonderte bestätigte Abschnittszuordnung mit Betriebsstelle/Gleisname/Quelle/KM bzw. eindeutiger Achsposition. Innerhalb z.B. Gessertshausen Gl302/303, außerhalb Strecke5302 und bestätigte Richtung/Gleisbezeichnung. Fachliche Bahnhofsgrenze getrennt von frei gewähltem Arbeits-/Anzeigebereich führen, Grenzen je Achse/Zufahrt statt pauschaler Kartenbox.
 - Priorität als Vorschlag: zuerst Stationssprung-/Zuschnittregression von5302-0 korrigieren und Originalfixture regressionsprüfen; dann Abschnittszuordnung/Bahnhofsbereich; danach bereits offene Weichenneuanlage WA/WE/WEZ→Nummer/Bahnhof. Archiv/Wiederherstellung und weitergehende E2E offen. Server/Portal zuerst, Android danach. In diesem Block ausschließlich Analyse/Dokumentation, keine Runtime-Datei geändert.
+
+
+## REF-DATA-015 – Implementierter Serverblock, Live-Abnahme offen (04.10.2026)
+- Rolle SERVER. Livebasis vor Umsetzung: SERVERc4e7524 (vertraglicher Vorabcommit, PR6 offen/draft); ANDROID423f378 (PR11 offen/nicht draft). Keine app/**-Änderung, kein Merge/Deployment/NAS-Zugriff.
+- REF-DATA-015-Gesamtauftrag im vorliegenden Runtime-/Dokumentationscommit umgesetzt. Neu: survey_workspace.py, Migration020, Checks125/126, Übergabedokument. Geändert: survey_catalog.py, admin_survey_import.py, Übersichtstemplate, Node119 und Projektsteuerung01/02/04/05/06/07/08.
+- 80 Backend-Tests + Node119 + Syntax PASS. Original5302S zeigt16497 Punkte, kein vollständiges Wegfallen mehr. Runtime nicht auf NAS installiert, keine echten Landesdienstbilder/Browser-/DB-E2E. Bestehende Benutzerabnahmen schützen.
+- Nächster Arbeitsschritt nach GitHub Desktop/File Station: Migration020 im API-Container, API/Worker-Neustart, Strg+F5 und dokumentierter Praxistest. Originaldateien, .env und Datenverzeichnisse nicht überschreiben. Keine Wiederholung des allgemeinen Testdaten-Löschers.
+
+Details, API-Vertrag, Quellen, Übernahme und Abnahmefälle: [REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md](uebergaben/REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md).
+

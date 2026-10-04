@@ -453,6 +453,8 @@ def _asset_upsert(cur, original: dict[str, Any], parsed: dict[str, Any], actor_u
     }
     cur.execute("SELECT * FROM tb.survey_catalog_assets WHERE original_id = %s FOR UPDATE", (original["id"],))
     existing = cur.fetchone()
+    if existing and (existing.get("metadata") or {}).get("workspace_reset"):
+        return dict(existing)
     values = (
         scope, company_id, route, station_code, station_name, track,
         str(original.get("data_kind") or "UNKNOWN").upper(), _source_date(original),
@@ -1009,6 +1011,8 @@ def _load_original_with_parse(cur, original_id: UUID) -> tuple[dict[str, Any], d
 
 
 def _segment_points(cur, segment: dict[str, Any]) -> list[dict[str, Any]]:
+    if segment.get("_original_bounds"):
+        segment = {**segment, "station_from_m":segment["_original_bounds"][0], "station_to_m":segment["_original_bounds"][1]}
     geometry = segment.get("geometry")
     if isinstance(geometry, list) and len(geometry) >= 2:
         return [dict(row) for row in geometry if isinstance(row, dict)]
@@ -1017,6 +1021,14 @@ def _segment_points(cur, segment: dict[str, Any]) -> list[dict[str, Any]]:
         return []
     _, parsed = _load_original_with_parse(cur, original_id)
     payload = parsed.get("payload") if isinstance(parsed.get("payload"), dict) else {}
+    # ORIGINAL_TRA bounds are source stations, while densification removes verified
+    # zero-distance station jumps. A complete original must keep its full geometry.
+    if (segment.get("source_kind") == "ORIGINAL_TRA"
+            and _num(payload.get("station_from_m")) is not None
+            and _num(payload.get("station_to_m")) is not None
+            and _num(segment.get("station_from_m")) == _num(payload.get("station_from_m"))
+            and _num(segment.get("station_to_m")) == _num(payload.get("station_to_m"))):
+        return _dense_payload(payload)
     return _dense_payload(payload, segment.get("station_from_m"), segment.get("station_to_m"))
 
 
@@ -1681,8 +1693,15 @@ def refresh_original_assignment_in_tx(
     The raw original and its geometry stay unchanged. Existing TRA segments keep
     their segment id; only the catalog asset/axis identity is updated.
     """
+    cur.execute("SELECT pg_advisory_xact_lock(751502015)")
+    cur.execute("SELECT id,metadata FROM tb.survey_catalog_assets WHERE original_id=%s", (original_id,))
+    reset_asset = cur.fetchone()
+    if reset_asset and (reset_asset.get('metadata') or {}).get('workspace_reset'):
+        return {"asset_id":str(reset_asset['id']),"status":"INACTIVE_RESET"}
     original, parsed = _load_original_with_parse(cur, original_id)
     asset = _asset_upsert(cur, original, parsed, actor_user_id)
+    if (asset.get("metadata") or {}).get("workspace_reset"):
+        return {"asset_id":str(asset["id"]),"status":"INACTIVE_RESET"}
     if str(parsed.get("status") or "").upper() != "PARSED":
         return {"asset_id": str(asset["id"]), "status": "ERROR"}
     if str(parsed.get("detected_format") or "") != "TRA_ER0_BINARY":
@@ -1903,8 +1922,15 @@ def refresh_original_assignment_in_tx(
 
 
 def index_original_in_tx(cur, original_id: UUID, actor_user_id: UUID | None = None) -> dict[str,Any]:
+    cur.execute("SELECT pg_advisory_xact_lock(751502015)")
+    cur.execute("SELECT id,metadata FROM tb.survey_catalog_assets WHERE original_id=%s", (original_id,))
+    reset_asset = cur.fetchone()
+    if reset_asset and (reset_asset.get('metadata') or {}).get('workspace_reset'):
+        return {"asset_id":str(reset_asset['id']),"status":"INACTIVE_RESET"}
     original, parsed = _load_original_with_parse(cur, original_id)
     asset = _asset_upsert(cur, original, parsed, actor_user_id)
+    if (asset.get("metadata") or {}).get("workspace_reset"):
+        return {"asset_id":str(asset["id"]),"status":"INACTIVE_RESET"}
     if str(parsed.get("status") or "").upper() != "PARSED":
         return {"asset_id":str(asset["id"]),"status":"ERROR"}
     if str(parsed.get("detected_format") or "") != "TRA_ER0_BINARY":
@@ -2639,6 +2665,12 @@ def _segment_physical_length_m(
     points: list[dict[str, Any]] | None = None,
 ) -> float:
     """Return the best available physical segment length in metres."""
+    if segment.get('source_kind') == 'ORIGINAL_TRA':
+        source_points = points if points is not None else _segment_points(cur,segment)
+        if len(source_points)>1:
+            start,end=_num(source_points[0].get('station_m')),_num(source_points[-1].get('station_m'))
+            if start is not None and end is not None and end>start:
+                return end-start
     start = _num(segment.get("station_from_m"))
     end = _num(segment.get("station_to_m"))
     if start is not None and end is not None and abs(end - start) > 0.0001:
@@ -3352,7 +3384,14 @@ def _km_editor_fingerprint(axis_id, payload, action):
 
 def _km_editor_rows(cur, axis_id):
     cur.execute('SELECT * FROM tb.survey_catalog_segments WHERE axis_id=%s ORDER BY id FOR UPDATE', (axis_id,))
-    return [dict(row) for row in cur.fetchall()]
+    rows = [dict(row) for row in cur.fetchall()]
+    for row in rows:
+        if row['source_kind'] == 'ORIGINAL_TRA' and row['segment_status'] == 'ACTIVE':
+            pts = _segment_points(cur,row)
+            if len(pts)>1:
+                row['_original_bounds'] = (row['station_from_m'],row['station_to_m'])
+                row['station_from_m'],row['station_to_m'] = pts[0]['station_m'],pts[-1]['station_m']
+    return rows
 
 
 def _km_editor_validate(payload, rows):
@@ -3575,11 +3614,16 @@ def coverage_axis_details(
         fields = ("display_name","station_code","station_name","route_number",
                   "track_key","object_key","direction","status","segment_status",
                   "merge_status","km_from_m","km_to_m","station_from_m",
-                  "station_to_m","resolution","resolution_note")
+                  "station_to_m","resolution","resolution_note","workspace_assignments")
         history = []
         for row in raw_history[:50]:
             before = row.pop("before_data") or {}
             after = row.pop("after_data") or {}
+            for snapshot in (before,after):
+                records=(snapshot.get('metadata') or {}).get('workspace_records') or []
+                snapshot['workspace_assignments']='; '.join(
+                    f"{r.get('kind')} {r.get('name')} · {r.get('station_code')} · V{r.get('version')} · {'aktiv' if r.get('active') else 'inaktiv'}"
+                    for r in records)
             row["fields"] = [
                 {"field": key, "before": before.get(key), "after": after.get(key)}
                 for key in fields if before.get(key) != after.get(key)
@@ -3632,6 +3676,8 @@ def coverage_axis_geometry(
         )
         segments = [dict(row) for row in cur.fetchall()]
         context = _axis_km_context(cur, axis)
+        from .survey_workspace import assignment_geometry
+        assignments = assignment_geometry(cur, axis)
         result: list[dict[str, Any]] = []
         unsupported_points = 0
 
@@ -3639,10 +3685,12 @@ def coverage_axis_geometry(
             full_points = _segment_points(cur, segment)
             decimated = _decimate(full_points, max_points_per_segment)
             xy: list[tuple[float, float]] = []
+            point_stations = []
             for point in decimated:
                 x, y = _num(point.get("x_dbref")), _num(point.get("y_dbref"))
                 if x is not None and y is not None:
                     xy.append((x, y))
+                    point_stations.append(_num(point.get("station_m")))
             transformed = _postgis_transform_points(cur, xy)
             coords = [
                 [round(row[0], 7), round(row[1], 7)]
@@ -3660,6 +3708,7 @@ def coverage_axis_geometry(
                         _segment_km_quality(cur, axis, segment, context, full_points)
                     ),
                     "coordinates": coords,
+                    "stations": [s for s,p in zip(point_stations,transformed) if p is not None],
                 }
             )
 
@@ -3674,6 +3723,7 @@ def coverage_axis_geometry(
             "object_key": _clean(axis.get("object_key")),
             "axis_type": axis.get("axis_type"),
         },
+        "assignments": assignments,
         "segments": result,
         "segment_count": len(result),
         "unsupported_point_count": unsupported_points,
@@ -4063,3 +4113,7 @@ def enqueue_reindex(user: dict[str,Any] = Depends(require_admin_csrf)) -> dict[s
         audit(cur,action="SURVEY_CATALOG_REINDEX_ENQUEUE",actor_user_id=user["user_id"],
               entity_type="SYSTEM",details={"job_id":str(job["id"])})
     return {"job":_plain(job)}
+
+
+from .survey_workspace import router as workspace_router
+router.include_router(workspace_router)

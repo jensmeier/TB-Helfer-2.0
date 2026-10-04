@@ -1552,3 +1552,13 @@ Status: **QUELLSTAND FERTIG / NICHT DEPLOYT / E2E OFFEN**
 - Paket-/Planprüfung: TRA/GRA-Enden belegen keine Bahnhofsgrenzen. In textlicher Suche und Übersichtssichtung der äußeren Trassierungsplanblätter keine eindeutigen beidseitigen Bahnhofsgrenzen verifiziert. Pläne enthalten Umbauanfang/-ende; diese nicht als betriebliche Grenzen übernehmen. Keine vollständige vermessungstechnische/planerische Abnahme behaupten.
 - Vorschlag, noch keine neue Implementierungsfreigabe: durchgehende Originalachse behalten, gesonderte bestätigte Abschnittszuordnung mit Betriebsstelle/Gleisname/Quelle/KM bzw. eindeutiger Achsposition. Innerhalb z.B. Gessertshausen Gl302/303, außerhalb Strecke5302 und bestätigte Richtung/Gleisbezeichnung. Fachliche Bahnhofsgrenze getrennt von frei gewähltem Arbeits-/Anzeigebereich führen, Grenzen je Achse/Zufahrt statt pauschaler Kartenbox.
 - Priorität als Vorschlag: zuerst Stationssprung-/Zuschnittregression von5302-0 korrigieren und Originalfixture regressionsprüfen; dann Abschnittszuordnung/Bahnhofsbereich; danach bereits offene Weichenneuanlage WA/WE/WEZ→Nummer/Bahnhof. Archiv/Wiederherstellung und weitergehende E2E offen. Server/Portal zuerst, Android danach. In diesem Block ausschließlich Analyse/Dokumentation, keine Runtime-Datei geändert.
+
+
+## REF-DATA-015 – Implementierter Serverblock, Live-Abnahme offen (04.10.2026)
+- Implementiert in survey_catalog.py / neu survey_workspace.py / admin_survey_import.py / Übersichtstemplate / Migration020. Workspace-Records auf versionierter AXIS-Metadatenbasis; Admin+CSRF, explizite Quellversionen, Preview, Idempotenz und Historie.
+- Quellgeometrie/Stationsgrenzen getrennt von ursprünglichen Rohgrenzen; komplette ORIGINAL_TRA wird bei Stationssprüngen vollständig dargestellt. Physische Originallänge normalisiert. Importwarnungen und Erstimport-Paketkennung für neue Originale.
+- Optionaler WMS-Hintergrund BY/SN/BW, Anbieterwahl/Deckkraft/Attribution/Fehleranzeige. Keine Google-Kostenstelle. Reversibles quellselektives RESET/RESTORE; Neuindex respektiert Resetmarker, aktive Zuordnungen blockieren Reset. Ungewählte Quellen bleiben bestehen.
+- 80 Backend-Tests + Node119 + Syntaxprüfung PASS; kein echter DB-/HTTP-/Browser-/NAS-E2E. API/Worker-Neustart nach Migration020 erforderlich.
+
+Details, API-Vertrag, Quellen, Übernahme und Abnahmefälle: [REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md](uebergaben/REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md).
+

@@ -2288,3 +2288,12 @@ Status: **30-S-TIMEOUT IM DIREKTEN HELPER REPRODUZIERT / GEZIELTER PERFORMANCEFI
 - Testreset: ausdrücklich ausgewählte GLOBAL-Originalquellen, vorab serverseitige Bestands-/Abhängigkeitsvorschau und Fingerprint; Bestätigung vor Mutation. Katalog-Assets/Abschnitte inaktiv, leere Achsen archivieren; keine Rohoriginale/Dateien/BTB löschen. Gemeinsam verwendete Daten und referenzierende Arbeitsobjekte nicht still löschen. Alte Importe ohne Paket-ID über bewusste Quelldateiauswahl. Reimport-Verhalten ausdrücklich rücksetzbar statt verborgenem Löschzustand. Additive Migration für Assetstatus INACTIVE falls benötigt.
 - Luftbild: Anbieterregistrierung und explizites Einschalten mit Attribution, Netzfehler sichtbar, kein Google-API-Konto/Abrechnung. BY/SN/BW-Dienste anhand amtlicher Capabilities/Lizenz prüfen. Automatische Auswahl anhand abgedeckter Kartenposition; bei Grenz-/Mehrfachtreffern Auswahl ermöglichen. Dienstabhängigkeit und Aufnahmealter anzeigen, Offline nicht pauschal versprechen.
 - Koordinaten: Stationssprünge nicht durch pauschales Clamping kaschieren. Originale mit vollständigen Rohstationsgrenzen gegen normalisierte Geometrie korrekt darstellen; manuelle geometrische Ausschnitte bleiben streng geprüft. Importdiagnose nennt Sprünge und Grenzen. Regression am bereitgestellten Originalpaket, keine Rohoriginale ins öffentliche Repo.
+
+
+## REF-DATA-015 – Implementierter Serverblock, Live-Abnahme offen (04.10.2026)
+- Freigegebener Server/Portal-Umfang als Code umgesetzt. Originale und NAS-Bestand in dieser Sitzung nicht geändert. Keine automatische Neuvermessung/Google-Einbindung.
+- Gleisgrenzen sind bestätigte Arbeitszuordnungen, keine aus Dateiende/Luftbild abgeleiteten amtlichen Bahnhofsgrenzen. Weichen brauchen zwei passende bestehende Achsen, Stamm und Zweig besitzen eigene Längen.
+- Für die Live-Übernahme sind fünf Laufzeitdateien einschließlich neuem survey_workspace.py und Migration020 nötig. Nicht nur das Template kopieren. Danach Admin-Workspace, Quellenreset/Restore und BY/SN/BW-Bilder live prüfen.
+
+Details, API-Vertrag, Quellen, Übernahme und Abnahmefälle: [REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md](uebergaben/REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md).
+

@@ -43,13 +43,14 @@ function fixtures() {
   return {coverage,geometry,details};
 }
 async function harness() {
-  const f = fixtures(), elements = new Map(), calls = [], controls = {timeoutMs:12000,handler:null};
+  const f = fixtures(), elements = new Map(), calls = [], images = [], controls = {timeoutMs:12000,handler:null};
   const get = id => { if (!elements.has(id)) elements.set(id,new Element(id)); return elements.get(id); };
   const tabs = ['overview','objects','originals','history'].map(x=>{const e=get('tab-'+x);e.dataset.tab=x;return e;});
   const lists = ['axes','stations','routes'].map(x=>{const e=get('list-'+x);e.dataset.list=x;return e;});
   const kpis = ['TotalKm','KnownKm','AutoKm','MobileKm','MissingKm','Stations','Tracks','Routes'].map(x=>get('kpi'+x));
   const document = {cookie:'tb_admin_csrf=test-admin-csrf',getElementById:get,createElement:tag=>new Element(tag),querySelectorAll:q=>q==='[data-tab]'?tabs:q==='[data-list]'?lists:q==='.coverage-kpi strong'?kpis:[]};
   function response(url) {
+    if (url.includes('/management/workspace/axes/')) return {axis:f.details(url.split('/').at(-1).split('?')[0]).axis,sources:[],records:[]};
     if (url.includes('/summary')) return {total_length_m:128911.129,known_km_length_m:116578.85,automatic_km_length_m:116578.85,manual_mobile_length_m:0,without_km_length_m:12332.28,station_count:1,track_count:3,route_count:1};
     if (url.includes('/geometry')) return f.geometry(url.split('/').at(-2));
     if (url.includes('/details')) { const d=f.details(url.split('/').at(-2));if(url.includes('history_before')){d.history=[{...d.history[0],change_id:5}];d.history_next_before=null;}return d; }
@@ -67,12 +68,12 @@ async function harness() {
       opts.signal.addEventListener('abort',abort,{once:true});if(opts.signal.aborted)abort();
     });
   };
-  const context=vm.createContext({crypto:require("node:crypto").webcrypto,document,location:{pathname:'/admin/v1/survey-overview'},window:{},console,fetch,AbortController,URL,Map,Set,Date,Math,Number,String,Array,JSON,Promise,ResizeObserver:class{observe(){}},setTimeout:(fn,ms)=>setTimeout(fn,ms===12000?controls.timeoutMs:ms),clearTimeout,requestAnimationFrame:fn=>setTimeout(fn,0)});
+  const context=vm.createContext({crypto:require("node:crypto").webcrypto,document,location:{pathname:'/admin/v1/survey-overview'},window:{},Image:class{set src(url){this.url=url;images.push(this);}},console,fetch,AbortController,URL,Map,Set,Date,Math,Number,String,Array,JSON,Promise,ResizeObserver:class{observe(){}},setTimeout:(fn,ms)=>setTimeout(fn,ms===12000?controls.timeoutMs:ms===350?5:ms),clearTimeout,requestAnimationFrame:fn=>setTimeout(fn,0)});
   vm.runInContext(baseScript,context);vm.runInContext(script,context);
   const run=code=>vm.runInContext(code,context);
   for(let i=0;i<100&&!calls.some(c=>c.url.includes('include_overview'));i++)await delay(2);
   await delay(10);
-  return {f,get,calls,controls,run};
+  return {f,get,calls,controls,run,images};
 }
 (async()=>{
   const h=await harness();const {run,get,controls,calls}=h;
@@ -203,10 +204,50 @@ async function harness() {
   run('invalidateGvp();drawGvp()');assert.equal(run('kmPreviewPayload'),null);assert(!get('gvpMap').innerHTML.includes('stroke-dasharray'));
   assert.throws(()=>run('collectKmPayload()'));
 
+  // Official imagery is opt-in; WMS 1.1.1 uses lon/lat bbox and preserves coordinates.
+  assert.equal(h.images.length,0);
+  run("cosLat=1;W=1000;H=600;view={x:10*111320,y:-49*111320,w:1000,h:600}");
+  const url=new URL(run("aerialRequest('BY',view)"));
+  assert.equal(url.searchParams.get('SRS'),'EPSG:4326');assert.equal(url.searchParams.get('LAYERS'),'by_dop20c');
+  const bbox=url.searchParams.get('BBOX').split(',').map(Number);assert.equal(bbox[0],10);assert.equal(bbox[3],49);assert(bbox[1]<bbox[3]);
+  get('aerialProvider').value='BY';run('setAerial();renderAerial()');await delay(15);
+  assert.equal(h.images.length,1);h.images[0].onerror();assert(get('aerialStatus').textContent.includes('nicht erreichbar'));
+  get('aerialRetry').dispatch('click');await delay(15);assert.equal(h.images.length,2);h.images[1].onload();await delay(5);
+  assert(get('aerialLayer').innerHTML.includes('<image'));assert(get('aerialCredit').innerHTML.includes('CC BY'));
+  get('aerialProvider').value='';run('setAerial();renderAerial()');assert.equal(get('aerialLayer').innerHTML,'');
+  // Assignment editor loads originals, catches incomplete points, previews before write.
+  const wsFixture={axis:{id:'a1',display_name:'<Gleis>',current_version:3,station_code:'MGHN',station_name:'Gessertshausen'},sources:[{segment_id:'source',segment_version:1,original_name:'<original>.TRA',station_from_m:0,station_to_m:100,coordinates:[[10,49],[10.001,49]],stations:[0,100]}],records:[]};
+  controls.handler=url=>url.includes('/management/workspace/axes/')?{body:wsFixture}:{};
+  await run("openWorkspace('a1')");assert.equal(get('workspacePanel').hidden,false);assert(get('wsSource').innerHTML.includes('&lt;original&gt;'));
+  get('wsSource').value='source';get('wsKind').value='TRACK';get('wsName').value='303';get('wsStationCode').value='MGHN';get('wsStationName').value='Gessertshausen';
+  run('wsSetAnchor(1,80)');assert.throws(()=>run('wsPayload()'));
+  run('wsSetAnchor(0,10)');assert.equal(run('wsPayload().anchors[1].station_m'),80);
+  assert.throws(()=>run('wsSetAnchor(0,101)'));
+  const wsResult={preview_token:'checked',record:{branch_gap_m:null},paths:[{role:'TRACK',length_m:70,coordinates:[[10,49],[10.001,49]]}]};
+  controls.handler=url=>url.endsWith('/preview')?{body:wsResult}:url.includes('/management/workspace/axes/')?{body:wsFixture}:{};
+  await run('wsCheck()');assert.equal(get('wsSave').hidden,false);assert.equal(run('wsPreview.payload.preview_token'),'checked');
+  get('wsName').dispatch('input');assert.equal(run('wsPreview'),null);assert.equal(get('wsSave').hidden,true);
+  await run('wsCheck()');const beforeWorkspace=calls.filter(c=>c.url=== '/api/v1/survey-catalog/management/workspace/axes/a1'&&c.opts.method==='POST').length;
+  await Promise.all([run('wsSave()'),run('wsSave()')]);
+  const workspaceWrites=calls.filter(c=>c.url==='/api/v1/survey-catalog/management/workspace/axes/a1'&&c.opts.method==='POST');
+  assert.equal(workspaceWrites.length,beforeWorkspace+1);assert.equal(workspaceWrites.at(-1).opts.headers['X-CSRF-Token'],'test-admin-csrf');
+  // A confirmed track interval removes the old whole-axis label from that interval.
+  run("geometryCache.set('label-axis',{segments:[{segment_id:'s',source_kind:'ORIGINAL_TRA',coordinates:[[0,0],[1,0]],stations:[0,100]}],assignments:[{record:{kind:'TRACK',active:true,anchors:[{segment_id:'s',station_m:20},{segment_id:'s',station_m:80}]}}]})");
+  const outside=JSON.parse(run("JSON.stringify(workspaceLabelSegments({axis_id:'label-axis'}))"));
+  assert.equal(outside.length,2);assert.equal(outside[0].coordinates.at(-1)[0],.2);assert.equal(outside[1].coordinates[0][0],.8);
+  // Reset never writes from list or preview; changed data/HTTP errors expose reload.
+  controls.handler=url=>url.includes('/workspace/sources')?{body:{sources:[{original_id:'o1',original_name:'<test>.TRA',data_status:'ACTIVE',sha256:'abc'}],has_more:false}}:url.endsWith('/reset/preview')?{body:{preview_token:'reset-preview',source_count:1,segment_count:1,axis_count:1,axes:['<Gleis>'],blockers:[]}}:{};
+  await run('openSourceReset()');assert(get('managementBody').innerHTML.includes('&lt;test&gt;'));
+  run("resetSelection.set('o1',{original_name:'<test>.TRA'})");await run("checkSourceReset('RESET')");assert(get('managementBody').innerHTML.includes('resetConfirm'));assert(get('managementMessage').textContent.includes('Noch nichts'));
+  assert(!calls.some(c=>c.url.endsWith('/workspace/reset')));
+  controls.handler=url=>url.endsWith('/workspace/reset')?{status:409,body:{detail:'WORKSPACE_PREVIEW_CHANGED'}}:{};
+  await run("applySourceReset({mode:'RESET',original_ids:['o1'],client_change_id:'reset1',preview_token:'old'})");assert(get('managementMessage').textContent.includes('neue Vorschau'));assert(get('managementBody').innerHTML.includes('nicht automatisch'));
+  get('wsClose').dispatch('click');
+
   // Empty stock and unsupported coordinates must never produce NaN or Germany fallback.
   h.f.coverage={axes:[],axis_count:0,station_count:0,route_count:0,unsupported_axis_count:0};controls.handler=null;await run('loadCoverage()');await delay(10);
   assert.equal(run('view'),null);assert.equal(get('overviewLayer').innerHTML,'');assert(!get('overviewLayer').innerHTML.includes('NaN'));
   run('clearTimeout(detailTimer)');
-  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; NOT a visual browser test.');
+  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; workspace preview/save/reset guards and opt-in WMS; NOT a visual browser test.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
 

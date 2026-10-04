@@ -767,3 +767,13 @@ Status: **VERTRAG FEST / ANDROID-UMSETZUNG SPÄTER / SERVER-SUMMARY DARF DARAUF 
 - Testreset: ausdrücklich ausgewählte GLOBAL-Originalquellen, vorab serverseitige Bestands-/Abhängigkeitsvorschau und Fingerprint; Bestätigung vor Mutation. Katalog-Assets/Abschnitte inaktiv, leere Achsen archivieren; keine Rohoriginale/Dateien/BTB löschen. Gemeinsam verwendete Daten und referenzierende Arbeitsobjekte nicht still löschen. Alte Importe ohne Paket-ID über bewusste Quelldateiauswahl. Reimport-Verhalten ausdrücklich rücksetzbar statt verborgenem Löschzustand. Additive Migration für Assetstatus INACTIVE falls benötigt.
 - Luftbild: Anbieterregistrierung und explizites Einschalten mit Attribution, Netzfehler sichtbar, kein Google-API-Konto/Abrechnung. BY/SN/BW-Dienste anhand amtlicher Capabilities/Lizenz prüfen. Automatische Auswahl anhand abgedeckter Kartenposition; bei Grenz-/Mehrfachtreffern Auswahl ermöglichen. Dienstabhängigkeit und Aufnahmealter anzeigen, Offline nicht pauschal versprechen.
 - Koordinaten: Stationssprünge nicht durch pauschales Clamping kaschieren. Originale mit vollständigen Rohstationsgrenzen gegen normalisierte Geometrie korrekt darstellen; manuelle geometrische Ausschnitte bleiben streng geprüft. Importdiagnose nennt Sprünge und Grenzen. Regression am bereitgestellten Originalpaket, keine Rohoriginale ins öffentliche Repo.
+
+
+## REF-DATA-015 – Implementierter Serverblock, Live-Abnahme offen (04.10.2026)
+- Konkreter additiver Vertrag steht im verlinkten Übergabedokument. Neue Admin-Routen unter /api/v1/survey-catalog/management/workspace; kind TRACK/SWITCH; Ankerreihenfolge [Anfang,Ende] bzw. [WA,WE,WEZ], geometrische station_m mit axis_id/axis_version/segment_id/segment_version. Ein/aus über active, stable Record-ID und Record-Version; Schreiben benötigt geprüften Input und Basisversion.
+- metadata.workspace_records auf Anfangs-/WA-Achse; boundary_type USER_ASSIGNMENT, provenance ADMIN_EXISTING_AXIS. Bestehender AXIS-History/Changes-Pfad; keine neue Android-Berechtigung. coverage/{axis_id}/geometry erhält additiv assignments und parallele stations pro Segment. Quellgeometrie unverändert.
+- Migration020: Assetdata_status INACTIVE ergänzend; Workspace-Reset deaktiviert ausgewählte Katalogquellen/Abschnitte, Originale bleiben. Wiederherstellung ausdrücklich, kein verstecktes Wiederaktivieren durch Reimport.
+- Android unverändert bei HEAD423f378. Ein bestehendes Handy wertet diese neuen Arbeitszuordnungen noch nicht automatisch aus; App-Verarbeitung/Anzeige/GPS-Erfassung bleiben separater nächster Block.
+
+Details, API-Vertrag, Quellen, Übernahme und Abnahmefälle: [REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md](uebergaben/REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md).
+

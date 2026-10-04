@@ -1343,3 +1343,13 @@ Status: **SOURCE FERTIG / DEPLOYMENT + RUNTIME OFFEN**
 - Paket-/Planprüfung: TRA/GRA-Enden belegen keine Bahnhofsgrenzen. In textlicher Suche und Übersichtssichtung der äußeren Trassierungsplanblätter keine eindeutigen beidseitigen Bahnhofsgrenzen verifiziert. Pläne enthalten Umbauanfang/-ende; diese nicht als betriebliche Grenzen übernehmen. Keine vollständige vermessungstechnische/planerische Abnahme behaupten.
 - Vorschlag, noch keine neue Implementierungsfreigabe: durchgehende Originalachse behalten, gesonderte bestätigte Abschnittszuordnung mit Betriebsstelle/Gleisname/Quelle/KM bzw. eindeutiger Achsposition. Innerhalb z.B. Gessertshausen Gl302/303, außerhalb Strecke5302 und bestätigte Richtung/Gleisbezeichnung. Fachliche Bahnhofsgrenze getrennt von frei gewähltem Arbeits-/Anzeigebereich führen, Grenzen je Achse/Zufahrt statt pauschaler Kartenbox.
 - Priorität als Vorschlag: zuerst Stationssprung-/Zuschnittregression von5302-0 korrigieren und Originalfixture regressionsprüfen; dann Abschnittszuordnung/Bahnhofsbereich; danach bereits offene Weichenneuanlage WA/WE/WEZ→Nummer/Bahnhof. Archiv/Wiederherstellung und weitergehende E2E offen. Server/Portal zuerst, Android danach. In diesem Block ausschließlich Analyse/Dokumentation, keine Runtime-Datei geändert.
+
+
+## REF-DATA-015 – Implementierter Serverblock, Live-Abnahme offen (04.10.2026)
+- Auf Grundlage der Nutzer-Gesamtfreigabe und Vertragscommit c4e7524 umgesetzt: vollständige5302-0 trotz Stationssprüngen; verständliche Importwarnungen/Erstimport-Provenienz; opt-in amtliche Luftbilder BY/SN/BW; bestätigte Gleisabschnitte und WA/WE/WEZ auf vorhandenen Achsen; Bearbeiten/Deaktivieren; reversibles Testquellen-Reset mit serverseitiger Vorschau.
+- Originale bleiben unverändert. Migration020 erweitert Assetstatus um INACTIVE. Keine NAS-Mutation, kein Android-Code. Vorige Benutzerbestätigungen bleiben geschützt.
+- 80 Backend-Funktionstests/Pydantic mit Storage-Doubles, Node119 mit DOM/Transport/Image-Doubles und Syntaxprüfung PASS. Privat-ZIP5302S jetzt16497 Punkte. Echter HTTP/DB/PostGIS-/visueller Browser-/Luftbild-/NAS-E2E bleibt offen.
+- Nächster Schritt: dokumentierte Dateiübernahme, Migration020, API/Worker-Neustart und gezielte Live-Abnahme. Android konsumiert workspace_records erst nach eigener Umsetzung.
+
+Details, API-Vertrag, Quellen, Übernahme und Abnahmefälle: [REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md](uebergaben/REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md).
+
