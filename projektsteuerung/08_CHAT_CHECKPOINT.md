@@ -1456,3 +1456,8 @@ Die 30-Sekunden-Grenze beendet nur den separat gestarteten Diagnose-Pythonprozes
 
 Details, API-Vertrag, Quellen, Übernahme und Abnahmefälle: [REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md](uebergaben/REF-DATA-015_LUFTBILD_ZUORDNUNG_TESTRESET.md).
 
+
+### GitHub-Sicherung REF-DATA-015 verifiziert
+- Runtime-/Dokumentationscommit: `11eb92076c21d422723d8d9c58d110202f822d18` auf `feature/tb-server-1.0`; PR6 weiterhin offen und Draft, nicht gemergt.
+- Neu geladenes survey_workspace.py, Übersichtstemplate und Migration020 stimmen byteinhaltlich mit dem geprüften lokalen Stand überein. ANDROID bleibt `423f37892915cb3308a4b1ea9e4d196faa872326`, PR11 offen/nicht Draft.
+- Diese nachfolgende Ergänzung ist nur ein Checkpoint. Keine neue NAS-/DB-/Browser-Abnahme, keine weitere Runtime-Änderung.
