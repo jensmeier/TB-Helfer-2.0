@@ -280,15 +280,15 @@ async function harness() {
   assert.equal(q.run("nearestNetworkStation({coordinates:[[0,0],[1,0]],stations:[null,100]},10,0)"),null);
   assert.equal(q.run("nearestNetworkStation(netSources.get('a1').sources[0],100,100).station"),0);
   // Three independent interior positions, same source for WA/WE and different WEZ.
-  await q.run("netSelectRole('WA')");q.run('networkMapClick(125,100)');
-  await q.run("netSelectRole('WE')");q.run('networkMapClick(175,100)');
-  await q.run("netSelectRole('WEZ')");
+  await q.run("netSelectRole('WA')");q.run("$('netMode').value='AXIS';netRemember()");q.run('networkMapClick(125,100)');
+  await q.run("netSelectRole('WE')");q.run("$('netMode').value='AXIS';netRemember()");q.run('networkMapClick(175,100)');
+  await q.run("netSelectRole('WEZ')");q.run("$('netMode').value='AXIS';netRemember()");
   q.run("$('netAxis').value='a2';$('netSource').value='s2';netRemember();networkMapClick(250,200)");
   assert.equal(q.run('netNodes.WA.binding.station_m'),25);
   assert.equal(q.run('netNodes.WE.binding.station_m'),75);
   assert.equal(q.run('netNodes.WEZ.binding.station_m'),350);
-  await q.run("netSelectRole('WA')");assert.equal(q.get('netAxis').value,'a1');assert.equal(q.get('netSource').value,'s1');
-  await q.run("netSelectRole('WEZ')");assert.equal(q.get('netAxis').value,'a2');
+  await q.run("netSelectRole('WA')");q.run("$('netMode').value='AXIS';netRemember()");assert.equal(q.get('netAxis').value,'a1');assert.equal(q.get('netSource').value,'s1');
+  await q.run("netSelectRole('WEZ')");q.run("$('netMode').value='AXIS';netRemember()");assert.equal(q.get('netAxis').value,'a2');
   const originalWA=q.run('JSON.stringify(netNodes.WA)'),originalWEZ=q.run('JSON.stringify(netNodes.WEZ)');
   // Drag uses the node's own source even if another role was previously selected.
   assert(q.run("netStartDrag('WA')"));assert.equal(q.get('netAxis').value,'a1');
@@ -297,10 +297,10 @@ async function harness() {
   assert.equal(q.run('JSON.stringify(netNodes.WEZ)'),originalWEZ);
   const beforeCancel=q.run('JSON.stringify(netNodes.WA)');
   q.run("netStartDrag('WA');netPlacePoint('WA',130,100);netFinishDrag(true)");assert.equal(q.run('JSON.stringify(netNodes.WA)'),beforeCancel);
-  await q.run("netSelectRole('WA')");q.run('networkMapClick(95,100)');assert.equal(q.run('JSON.stringify(netNodes.WA)'),beforeCancel);
+  await q.run("netSelectRole('WA')");q.run("$('netMode').value='AXIS';netRemember()");q.run('networkMapClick(95,100)');assert.equal(q.run('JSON.stringify(netNodes.WA)'),beforeCancel);
   // Setting a source for WEZ never mutates the point or KM observations before click.
   q.run("netNodes.WA.km_observations=[{id:'km-observation',route_number:'5302',km_m:12345}]");
-  await q.run("netSelectRole('WA')");q.run('networkMapClick(140,100)');assert.equal(q.run('netNodes.WA.km_observations[0].km_m'),12345);
+  await q.run("netSelectRole('WA')");q.run("$('netMode').value='AXIS';netRemember()");q.run('networkMapClick(140,100)');assert.equal(q.run('netNodes.WA.km_observations[0].km_m'),12345);
   assert(q.get('netRoleTabs').innerHTML.includes('aria-pressed="true"'));
   assert(q.get('netPoints').innerHTML.includes('Hier anschließen'));
   // Exercise actual pointer handlers, not just helper functions: dragging a point
@@ -316,6 +316,73 @@ async function harness() {
   assert(Math.abs(q.run('netNodes.WA.binding.station_m')-55)<1e-9);
   // Ambiguous self-overlap never silently selects one of two chainages.
   assert.equal(q.run("nearestNetworkStation({stations:[0,100,200,300],coordinates:[[100/111320,-100/111320],[200/111320,-100/111320],[100/111320,-100/111320],[200/111320,-100/111320]]},150,100)"),null);
+  // REF018: reproduce the user's W107W editor with Gl1 / Str5340 overlapping.
+  // WE must pick the clicked main line without first changing W107W's source dropdown.
+  const r=await harness();
+  r.run(`view={x:0,y:0,w:1000,h:600};W=1000;H=600;cosLat=1;axes.clear();geometryCache.clear();netSources.clear();netEntities.clear();
+    for(const [id,name,coords,stations] of [
+      ['gl1','Gl 1',[[100,-100],[300,-100]],[1000,1200]],
+      ['route','Str 5340-0',[[100,-100],[300,-100]],[2000,2200]],
+      ['branch','W 107W',[[140,-100],[240,-180]],[0,100]]]){
+      const coordinates=coords.map(p=>p.map(v=>v/111320));
+      const source={segment_id:'src-'+id,segment_version:2,original_name:id+'.TRA',stations,coordinates,station_from_m:stations[0],station_to_m:stations.at(-1)};
+      axes.set(id,{axis_id:id,display_name:name,wgs84:{min_lon:100/111320,max_lon:300/111320,min_lat:-180/111320,max_lat:-100/111320},overview_segments:[{...source,source_kind:'ORIGINAL_TRA'}]});
+      netSources.set(id,{axis:{id,current_version:3,display_name:name},sources:[source]});
+    }
+    netAxis=netSources.get('branch').axis;$('networkPanel').hidden=false;$('netStation').value='MGHN';netNew('SWITCH');$('netName').value='107';`);
+  assert.equal(r.get('netMode').value,'AUTO');assert.equal(r.get('netAxis').value,'branch');
+  await r.run('netPickAt(80,100)');assert.equal(r.run('netPendingPick.candidates.length'),0);assert.equal(r.run('netNodes.WA'),undefined);
+  r.run('netAcceptFree()');assert.equal(r.run('netNodes.WA.position.method'),'MAP');assert.equal(r.run('netNodes.WA.binding'),undefined);
+  const freeWA=r.run('JSON.stringify(netNodes.WA)');
+  await r.run("netSelectRole('WE')");await r.run('netPickAt(220,100)');
+  assert.equal(r.run('netPendingPick.candidates.length'),2);assert.equal(r.run('netNodes.WE'),undefined);
+  assert(r.get('netCandidates').innerHTML.includes('Gl 1'));assert(r.get('netCandidates').innerHTML.includes('Str 5340-0'));
+  r.run("netAcceptCandidate(netPendingPick.candidates.findIndex(c=>c.data.axis.id==='route'))");
+  assert.equal(r.run('netNodes.WE.binding.axis_id'),'route');assert(Math.abs(r.run('netNodes.WE.binding.station_m')-2120)<1e-8);
+  assert.equal(r.run('JSON.stringify(netNodes.WA)'),freeWA);const mainWE=r.run('JSON.stringify(netNodes.WE)');
+  await r.run("netSelectRole('WEZ')");await r.run('netPickAt(230,172)');
+  assert.equal(r.run('netNodes.WEZ.binding.axis_id'),'branch');assert.equal(r.run('netPendingPick'),null);
+  assert.equal(r.run('JSON.stringify(netNodes.WE)'),mainWE);
+  // Point before W107W but inside both continuing main-line sources: choose Gl1.
+  await r.run("netSelectRole('WA');netSetMode('AUTO')");await r.run('netPickAt(120,100)');
+  assert.equal(r.run('netPendingPick.candidates.length'),2);
+  r.run("netAcceptCandidate(netPendingPick.candidates.findIndex(c=>c.data.axis.id==='gl1'))");
+  assert.equal(r.run('netNodes.WA.id'),JSON.parse(freeWA).id);assert.equal(r.run('netNodes.WA.binding.axis_id'),'gl1');
+  assert(Math.abs(r.run('netNodes.WA.binding.station_m')-1020)<1e-8);
+  // Explicit distance outside TRA is manual, retaining ID/version and existing KM observations.
+  r.run("netNodes.WA.km_observations=[{id:'observation',route_number:'5340',km_m:17025}];netNodes.WA.note='Eigene Notiz';");
+  await r.run("netSetMode('OFFSET')");r.run("$('netAxis').value='branch';$('netSource').value='src-branch';$('netOffsetSide').value='BEFORE';$('netOffsetMeters').value='20,0';netApplyOffset()");
+  assert.equal(r.run('netNodes.WA.binding'),undefined);assert.equal(r.run('netNodes.WA.position.method'),'MAP');
+  assert.equal(r.run('netNodes.WA.id'),JSON.parse(freeWA).id);assert.equal(r.run('netNodes.WA.km_observations[0].km_m'),17025);
+  assert(r.run("netNodes.WA.note.includes('20 m vor Anfang') && netNodes.WA.note.includes('Eigene Notiz')"));
+  const haversine=(p,q)=>{const rad=Math.PI/180,a=Math.sin((p.lat-q.lat)*rad/2)**2+Math.cos(p.lat*rad)*Math.cos(q.lat*rad)*Math.sin((p.lon-q.lon)*rad/2)**2;return 2*6371008.8*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));};
+  const offset=JSON.parse(r.run('JSON.stringify(netNodes.WA.position)'));
+  assert(Math.abs(haversine(offset,{lon:140/111320,lat:-100/111320})-20)<1e-6);
+  assert(offset.lon<140/111320&&offset.lat> -100/111320);
+  const after=JSON.parse(r.run("JSON.stringify(netOffsetPosition(netSources.get('branch').sources[0],'AFTER',30))"));
+  assert(Math.abs(haversine(after,{lon:240/111320,lat:-180/111320})-30)<1e-6);
+  assert(after.lon>240/111320&&after.lat< -180/111320);
+  for(const bad of ['0','-1','NaN','10001'])assert.throws(()=>r.run("netOffsetPosition(netSources.get('branch').sources[0],'BEFORE',"+bad+")"));
+  const offsetNote=r.run('netNodes.WA.note');
+  // An unresolved multi-hit does not allow Check or Save to commit an old preview.
+  await r.run("netSelectRole('WE');netSetMode('AUTO')");await r.run('netPickAt(220,100)');
+  const requestCount=r.calls.length;await r.run('netCheck()');assert.equal(r.calls.length,requestCount);
+  r.run('netCancelCandidates()');
+  // One failed overlapping source must not silently choose the remaining source.
+  r.run("netSources.delete('route');netPick='WE'");
+  r.controls.handler=url=>url.endsWith('/axes/route')?{status:503,body:{detail:'Unavailable'}}:{};
+  await r.run('netPickAt(220,100)');assert.equal(r.run('netPendingPick.candidates.length'),1);assert.equal(r.run('netPendingPick.failed.length'),1);
+  assert.equal(r.run('JSON.stringify(netNodes.WE)'),mainWE);r.run('netCancelCandidates()');
+  // Cancel a pending source request; its later response cannot change any point.
+  r.controls.handler=url=>url.endsWith('/axes/route')?{delay:25,body:{axis:{id:'route',current_version:3},sources:[]}}:{};
+  r.run("netPick='WE'");const pending=r.run('netPickAt(220,100)');r.run('netCancelCandidates()');await pending;
+  assert.equal(r.run('netPendingPick'),null);assert.equal(r.run('JSON.stringify(netNodes.WE)'),mainWE);
+  // Schema1 payload and re-open preserve the outside node and independent endpoint bindings.
+  r.controls.handler=null;const roundtrip=JSON.parse(JSON.stringify(await r.run('netPayload()')));
+  assert.equal(roundtrip.nodes.length,3);assert.equal(roundtrip.nodes.find(n=>n.id===JSON.parse(freeWA).id).note,offsetNote);
+  r.run(`netEntities=new Map(${JSON.stringify([...roundtrip.nodes,...roundtrip.objects].map(e=>[e.id,{...e,version:1}]))});`);
+  await r.run(`netEdit('${roundtrip.objects[0].id}')`);
+  assert.equal(r.run('netNodes.WA.note'),offsetNote);assert.equal(r.run('netNodes.WE.binding.axis_id'),'route');assert.equal(r.run('netNodes.WEZ.binding.axis_id'),'branch');
   // WMS 1.3.0 EPSG4326 has latitude/longitude BBOX order, existing 1.1.1 stays unchanged.
   const bb=new URL(n.run("aerialRequest('BB',view)"));const b=JSON.parse(n.run('JSON.stringify(aerialBBox(view))'));
   assert.equal(bb.searchParams.get('CRS'),'EPSG:4326');assert.equal(bb.searchParams.get('BBOX'),[b[1],b[0],b[3],b[2]].join(','));assert(!bb.searchParams.has('SRS'));
@@ -327,5 +394,5 @@ async function harness() {
   n.controls.handler=url=>url.endsWith('/network/mutations')?{delay:15,status:409,body:{detail:'NETWORK_VERSION_CONFLICT'}}:{};
   await Promise.all([n.run('netSave()'),n.run('netSave()')]);
   const netWrites=n.calls.filter(c=>c.url.endsWith('/network/mutations'));assert.equal(netWrites.length,1);assert.equal(netWrites[0].opts.headers['X-CSRF-Token'],'test-admin-csrf');assert.equal(n.run('netPreview'),null);
-  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; workspace preview/save/reset guards, network point/reuse/save/CSRF, REF017 endpoint-clamp regression, independent WA/WE/WEZ sources, drag/pointer-cancel/invalid-drop and KM retention; WMS 1.1/1.3; NOT a visual browser test.');
+  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; workspace preview/save/reset guards, network point/reuse/save/CSRF, REF017 endpoint-clamp regression, independent WA/WE/WEZ sources, drag/pointer-cancel/invalid-drop and KM retention; REF018 W107W/main-line multi-hit, source failure/cancel, free and measured outside points, schema1 re-open; WMS 1.1/1.3; NOT a visual browser test.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

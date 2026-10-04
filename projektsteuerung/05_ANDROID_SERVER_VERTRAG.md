@@ -801,3 +801,10 @@ Details, API-Vertrag, Quellen, Übernahme und Abnahmefälle: [REF-DATA-015_LUFTB
 - Weiter: GitHub Desktop→File Station sieben Runtime-Dateien übernehmen, Migration21/21, API/Worker-Neustart, StrgF5; gemeinsamer Punkt/umgekehrte Weiche/Gl303→freie Strecke und unveränderte GVP-KM auf NAS prüfen. Android-Outbox/Anzeige/Roundtrip erst im nachfolgenden Android-Block. Vollständiger Serveraudit/Last-/BTB-/Backup-E2E nicht durch diese gezielte Prüfung ersetzt.
 
 Vertrag/Übernahme: [REF-DATA-016_ANSCHLUSSNETZ_SYNC.md](uebergaben/REF-DATA-016_ANSCHLUSSNETZ_SYNC.md). Anbieter: [REF-DATA-016_LUFTBILD_PRUEFSTAND.md](uebergaben/REF-DATA-016_LUFTBILD_PRUEFSTAND.md). Serverprüfung: [REF-DATA-016_SERVERPRUEFUNG.md](uebergaben/REF-DATA-016_SERVERPRUEFUNG.md).
+
+
+## REF-DATA-018 – Punktposition außerhalb der Quelle, Schema1 unverändert
+- Editor wählt WA/WE/WEZ unabhängig anhand des Kartenklicks; überlagerte Achsen benötigen ausdrückliche Auswahl. Keine fachliche Gleichsetzung von Gl1 und Strecke5340 allein durch Deckungsgleichheit.
+- Innerhalb belegbarer Originalgeometrie binding mit Achs-/Quellenversion/Station; freie Kartenpunkte und ausdrücklich berechnete tangentiale Hilfspunkte vor/nach Quellen werden als position.method=MAP ohne binding synchronisiert. Keine Station außerhalb vorhandener Quelle, keine automatische Bahnkilometer-Extrapolation, keine Änderung von Original-/GVP-/manueller Kalibrierung.
+- Hilfspunkt speichert Abstand/Seite/Quellenversion und Hinweis „Näherung“ als Herkunft im vorhandenen note-Feld ([TRA-HILFSPUNKT]); eingefrorene manuelle Position, keine aktive Quellbindung und keine automatische Nachführung. Spätere Verschiebung/Neubindung entfernt diesen veralteten Hinweis; sonstige Notizen/IDs/Basisversionen/KM-Beobachtungen bleiben. Android soll die kanonische Position und Notiz erhalten; neue Netz-Anbindung bleibt gesonderter Android-Auftrag.
+- Kein API-/DB-Schemawechsel, keine neue Migration, keine Android-Datei geändert. Vergleich: Android ImportExportFragment GPS-Punkte unabhängig von TRA; TrassenGrafikView Mehrfachtreffer pro Achse/Station. Echter Geräte-Roundtrip weiterhin offen.
