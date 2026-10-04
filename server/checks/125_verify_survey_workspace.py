@@ -34,6 +34,7 @@ class DB:
  def execute(self,sql,params=()):
   q=' '.join(sql.split());self.result=[]
   if q.startswith('SELECT pg_advisory'):pass
+  elif q.startswith('SELECT DISTINCT o.data FROM tb.survey_network_entities'):self.result=[]
   elif q.startswith('SELECT DISTINCT axis_id'):self.result=[dict(axis_id=s['axis_id']) for s in self.segments.values() if s['source_original_id'] in params[0]]
   elif q.startswith('SELECT * FROM tb.survey_catalog_axes WHERE id=ANY'):self.result=[a for a in self.axes.values() if a['id'] in params[0] and ("scope='GLOBAL'" not in q or a['scope']=='GLOBAL')]
   elif q.startswith('SELECT * FROM tb.survey_catalog_segments WHERE id='):self.result=next((s for s in self.segments.values() if s['id']==params[0] and s['axis_id']==params[1]),None)
@@ -70,7 +71,7 @@ def environment(db):
  c.audit=lambda cur,**kw:db.audit.append(kw)
  c._axis_extent_refresh=lambda *a:None
  c._receipt=lambda cur,user,key:db.receipts.get(key)
- c._save_receipt=lambda cur,user,key,id,version,r:db.receipts.update({key:r})
+ c._save_receipt=lambda cur,user,key,id,version,r,**kw:db.receipts.update({key:r})
  e['_catalog']=lambda:c
  return e
 

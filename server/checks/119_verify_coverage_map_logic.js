@@ -27,6 +27,7 @@ class Element {
   showModal() { this.open = true; }
   close() { this.open = false; this.dispatch('close'); }
   focus() {}
+  scrollIntoView() {}
 }
 function fixtures() {
   const a = (id, track, extra = {}) => ({
@@ -68,7 +69,7 @@ async function harness() {
       opts.signal.addEventListener('abort',abort,{once:true});if(opts.signal.aborted)abort();
     });
   };
-  const context=vm.createContext({crypto:require("node:crypto").webcrypto,document,location:{pathname:'/admin/v1/survey-overview'},window:{},Image:class{set src(url){this.url=url;images.push(this);}},console,fetch,AbortController,URL,Map,Set,Date,Math,Number,String,Array,JSON,Promise,ResizeObserver:class{observe(){}},setTimeout:(fn,ms)=>setTimeout(fn,ms===12000?controls.timeoutMs:ms===350?5:ms),clearTimeout,requestAnimationFrame:fn=>setTimeout(fn,0)});
+  const context=vm.createContext({crypto:require("node:crypto").webcrypto,document,location:{pathname:'/admin/v1/survey-overview'},window:{},Image:class{set src(url){this.url=url;images.push(this);}},console,fetch,structuredClone,AbortController,URL,Map,Set,Date,Math,Number,String,Array,JSON,Promise,ResizeObserver:class{observe(){}},setTimeout:(fn,ms)=>setTimeout(fn,ms===12000?controls.timeoutMs:ms===350?5:ms),clearTimeout,requestAnimationFrame:fn=>setTimeout(fn,0)});
   vm.runInContext(baseScript,context);vm.runInContext(script,context);
   const run=code=>vm.runInContext(code,context);
   for(let i=0;i<100&&!calls.some(c=>c.url.includes('include_overview'));i++)await delay(2);
@@ -248,6 +249,33 @@ async function harness() {
   h.f.coverage={axes:[],axis_count:0,station_count:0,route_count:0,unsupported_axis_count:0};controls.handler=null;await run('loadCoverage()');await delay(10);
   assert.equal(run('view'),null);assert.equal(get('overviewLayer').innerHTML,'');assert(!get('overviewLayer').innerHTML.includes('NaN'));
   run('clearTimeout(detailTimer)');
-  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; workspace preview/save/reset guards and opt-in WMS; NOT a visual browser test.');
+  // REF016: real editor payloads, reuse, independent manual points and shared moves.
+  const n=await harness();
+  n.run("netAxis={id:'a1',track_key:'4',route_number:'5302'}; $('networkPanel').hidden=false; $('netStation').value='MGHN'; netNew('SWITCH'); $('netName').value='108'; $('netMode').value='MAP';");
+  for(const [role,x] of [['WA',100],['WE',300],['WEZ',400]]) n.run(`netPick='${role}';networkMapClick(${x},250)`);
+  let payload=JSON.parse(JSON.stringify(await n.run('netPayload()')));
+  assert.equal(payload.nodes.length,3);assert.equal(payload.objects[0].endpoints[2].role,'WEZ');
+  assert(payload.nodes.every(x=>x.position.method==='MAP'&&!('km_meter' in x)));
+  assert.equal(new Set(payload.objects[0].endpoints.map(x=>x.node_id)).size,3);
+  n.run("netNodes.WEZ=netNodes.WA");await assert.rejects(n.run('netPayload()'));
+  const first=payload.nodes[0], end=payload.nodes[1];
+  const savedNode=x=>({...x,version:1,base_version:undefined});
+  n.run(`netEntities=new Map(${JSON.stringify([first,end].map(x=>[x.id,savedNode(x)]))});netNew('TRACK',netNodeInput(netEntities.get('${first.id}')));$('netName').value='45';netNodes.END=netNodeInput(netEntities.get('${end.id}'));`);
+  payload=JSON.parse(JSON.stringify(await n.run('netPayload()')));assert.equal(payload.nodes.length,0);assert.equal(payload.objects[0].endpoints[0].node_id,first.id);
+  // Original source choice can differ for each point; manual input never borrows KM.
+  n.run("netNodes={};netSources.set('a2',{axis:{id:'a2',current_version:2},sources:[{segment_id:'s2',segment_version:1,station_from_m:0,station_to_m:100,stations:[0,100],coordinates:[[10.72,48.32],[10.73,48.321]]}]});$('netAxis').value='a2';$('netSource').value='s2';$('netMode').value='AXIS';netPick='START';");
+  n.run('networkMapClick(...coordScreen([10.725,48.3205]))');assert.equal(n.run('netNodes.START.binding.axis_id'),'a2');
+  // WMS 1.3.0 EPSG4326 has latitude/longitude BBOX order, existing 1.1.1 stays unchanged.
+  const bb=new URL(n.run("aerialRequest('BB',view)"));const b=JSON.parse(n.run('JSON.stringify(aerialBBox(view))'));
+  assert.equal(bb.searchParams.get('CRS'),'EPSG:4326');assert.equal(bb.searchParams.get('BBOX'),[b[1],b[0],b[3],b[2]].join(','));assert(!bb.searchParams.has('SRS'));
+  // Network preview failure invalidates save, save double-click has only one POST and CSRF.
+  n.run("netNodes={START:{id:'p1',base_version:0,station_code:'MGHN',active:true,position:{lon:10,lat:48,method:'MAP'}},END:{id:'p2',base_version:0,station_code:'MGHN',active:true,position:{lon:10.001,lat:48,method:'MAP'}}};$('netKind').value='TRACK';$('netName').value='4';netPreview=null;");
+  n.controls.handler=url=>url.endsWith('/network/preview')?{status:409,body:{detail:'NETWORK_SOURCE_CHANGED'}}:{};
+  await n.run('netCheck()');assert.equal(n.run('netPreview'),null);assert.equal(n.get('netSave').hidden,true);
+  n.run("netPreview={payload:{client_change_id:'net-save',objects:[{id:'object1'}]},result:{entities:[]}};");
+  n.controls.handler=url=>url.endsWith('/network/mutations')?{delay:15,status:409,body:{detail:'NETWORK_VERSION_CONFLICT'}}:{};
+  await Promise.all([n.run('netSave()'),n.run('netSave()')]);
+  const netWrites=n.calls.filter(c=>c.url.endsWith('/network/mutations'));assert.equal(netWrites.length,1);assert.equal(netWrites[0].opts.headers['X-CSRF-Token'],'test-admin-csrf');assert.equal(n.run('netPreview'),null);
+  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; workspace preview/save/reset guards, network point/reuse/save/CSRF and WMS 1.1/1.3; NOT a visual browser test.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
 

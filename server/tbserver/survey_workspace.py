@@ -228,7 +228,7 @@ def workspace_save(axis_id: UUID,payload:Assignment,user:dict=Depends(require_ad
         records=[r for r in _records(axis) if r['id']!=record['id']]+[record]
         updated=_update_axis(cur,axis,{**(axis.get('metadata') or {}),'workspace_records':records},user)
         response.update(axis_version=updated['current_version'],workspace_fingerprint=fingerprint)
-        c._save_receipt(cur,user,payload.client_change_id,axis_id,updated['current_version'],c._plain(response))
+        c._save_receipt(cur,user,payload.client_change_id,axis_id,updated['current_version'],c._plain(response),entity_type='SURVEY_CATALOG_AXIS')
         return c._plain(response)
 
 class ResetRequest(BaseModel):
@@ -273,6 +273,12 @@ def _reset_prepare(cur,payload):
         for r in _records(a):
             if payload.mode=='RESET' and r.get('active') and any(p['segment_id'] in selected for p in r['anchors']):
                 blockers.append(r['name'])
+    if payload.mode=='RESET':
+        cur.execute("""SELECT DISTINCT o.data FROM tb.survey_network_entities o
+          JOIN tb.survey_network_entities n ON EXISTS (SELECT 1 FROM jsonb_array_elements(o.data->'endpoints') p WHERE p->>'node_id'=n.id::text)
+          WHERE o.entity_type='OBJECT' AND o.active AND n.entity_type='NODE'
+          AND n.data->'binding'->>'segment_id'=ANY(%s)""",(list(selected),))
+        blockers.extend('Netzobjekt '+r['data']['name'] for r in cur.fetchall())
     if payload.mode=='RESET' and any((a.get('metadata') or {}).get('workspace_reset') for a in assets):
         raise HTTPException(409,'WORKSPACE_ALREADY_RESET')
     if payload.mode=='RESTORE' and any(not (a.get('metadata') or {}).get('workspace_reset') for a in assets):
@@ -332,7 +338,7 @@ def reset_apply(payload:ResetRequest,user:dict=Depends(require_admin_csrf)):
             _update_axis(cur,axis,metadata,user,status)
             c._axis_extent_refresh(cur,axis['id'],user['user_id'])
         result={**_reset_response(assets,segments,axes,[],token),'mode':payload.mode,'reset_fingerprint':fp}
-        c._save_receipt(cur,user,payload.client_change_id,assets[0]['id'],assets[0]['current_version']+1,result)
+        c._save_receipt(cur,user,payload.client_change_id,assets[0]['id'],assets[0]['current_version']+1,result,entity_type='SURVEY_CATALOG_ASSET')
         return result
 
 

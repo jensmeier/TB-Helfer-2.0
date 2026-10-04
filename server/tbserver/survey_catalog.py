@@ -2061,14 +2061,15 @@ def _receipt(cur, user: dict[str,Any], client_change_id: str) -> dict[str,Any] |
 
 
 def _save_receipt(cur, user: dict[str,Any], client_change_id: str,
-                  entity_id: UUID, version: int, response: dict[str,Any]) -> None:
+                  entity_id: UUID, version: int, response: dict[str,Any],
+                  entity_type: str = "SURVEY_CATALOG_SEGMENT") -> None:
     cur.execute(
         """
         INSERT INTO tb.mutation_receipts(
             device_id,user_id,client_change_id,entity_type,entity_id,result_version,response_payload
-        ) VALUES (%s,%s,%s,'SURVEY_CATALOG_SEGMENT',%s,%s,%s)
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s)
         """,
-        (user.get("device_id"),user["user_id"],client_change_id,entity_id,version,Jsonb(response)),
+        (user.get("device_id"),user["user_id"],client_change_id,entity_type,entity_id,version,Jsonb(response)),
     )
 
 
@@ -4117,3 +4118,6 @@ def enqueue_reindex(user: dict[str,Any] = Depends(require_admin_csrf)) -> dict[s
 
 from .survey_workspace import router as workspace_router
 router.include_router(workspace_router)
+
+from .survey_network import router as network_router
+router.include_router(network_router)

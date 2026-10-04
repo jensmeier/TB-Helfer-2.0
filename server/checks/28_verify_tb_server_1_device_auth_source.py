@@ -25,7 +25,7 @@ def main() -> None:
         ('@router.post("/login")', devices),
         ('@router.get("/me")', devices),
         ('Authorization', devices),
-        ('Bearer', devices),
+        ('scheme.lower() != "bearer"', devices),
         ('hash_token(raw_device_token)', devices),
         ('DEVICE_ALREADY_BOUND', devices),
         ('DEVICE_IN_USE', devices),
@@ -62,3 +62,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

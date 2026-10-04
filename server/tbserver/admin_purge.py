@@ -89,6 +89,7 @@ def survey_test_data_preview(
 ) -> dict[str, Any]:
     _require_survey_test_reset_environment()
     with transaction() as conn, conn.cursor() as cur:
+        _assert_no_network_source_dependencies(cur)
         counts = _survey_test_reset_counts(cur)
     return {
         "environment": settings.environment,
@@ -102,6 +103,7 @@ def survey_test_data_preview_from_terminal() -> dict[str, Any]:
     """Read-only survey reset preview for the API-container terminal."""
     _require_survey_test_reset_environment()
     with transaction() as conn, conn.cursor() as cur:
+        _assert_no_network_source_dependencies(cur)
         counts = _survey_test_reset_counts(cur)
     return {
         "environment": settings.environment,
@@ -109,6 +111,17 @@ def survey_test_data_preview_from_terminal() -> dict[str, Any]:
         "confirm_text": _SURVEY_TEST_RESET_TEXT,
         "counts": counts,
     }
+
+
+def _assert_no_network_source_dependencies(cur) -> None:
+    # The general test reset must not erase originals used by an active working network.
+    cur.execute("""SELECT 1 FROM tb.survey_network_entities o
+        JOIN tb.survey_network_entities n ON EXISTS (
+          SELECT 1 FROM jsonb_array_elements(o.data->'endpoints') p WHERE p->>'node_id'=n.id::text)
+        WHERE o.entity_type='OBJECT' AND o.active AND n.entity_type='NODE'
+          AND n.data->'binding'->>'segment_id' IS NOT NULL LIMIT 1""")
+    if cur.fetchone():
+        raise HTTPException(409, 'SURVEY_TEST_RESET_NETWORK_REFERENCES_ACTIVE')
 
 
 def _reset_survey_test_data(
@@ -123,6 +136,8 @@ def _reset_survey_test_data(
 
     storage_keys: list[str] = []
     with transaction() as conn, conn.cursor() as cur:
+        cur.execute("SELECT pg_advisory_xact_lock(751502015)")
+        _assert_no_network_source_dependencies(cur)
         before = _survey_test_reset_counts(cur)
         storage_keys.extend(
             _storage_keys(cur, "SELECT storage_key FROM tb.survey_originals", ())
@@ -682,3 +697,4 @@ def purge_company(
 
     _remove_keys_after_commit(storage_keys)
     return Response(status_code=204)
+

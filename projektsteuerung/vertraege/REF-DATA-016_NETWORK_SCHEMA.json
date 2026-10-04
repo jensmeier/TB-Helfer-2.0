@@ -1,0 +1,439 @@
+{
+  "$defs": {
+    "AxisBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "axis_id": {
+          "format": "uuid",
+          "title": "Axis Id",
+          "type": "string"
+        },
+        "axis_version": {
+          "minimum": 1,
+          "title": "Axis Version",
+          "type": "integer"
+        },
+        "segment_id": {
+          "format": "uuid",
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "segment_version": {
+          "minimum": 1,
+          "title": "Segment Version",
+          "type": "integer"
+        },
+        "station_m": {
+          "title": "Station M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "axis_id",
+        "axis_version",
+        "segment_id",
+        "segment_version",
+        "station_m"
+      ],
+      "title": "AxisBinding",
+      "type": "object"
+    },
+    "Endpoint": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "enum": [
+            "START",
+            "END",
+            "WA",
+            "WE",
+            "WEZ"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "node_id": {
+          "format": "uuid",
+          "title": "Node Id",
+          "type": "string"
+        },
+        "node_version": {
+          "minimum": 1,
+          "title": "Node Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "role",
+        "node_id",
+        "node_version"
+      ],
+      "title": "Endpoint",
+      "type": "object"
+    },
+    "KilometerObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "route_number": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Route Number",
+          "type": "string"
+        },
+        "km_m": {
+          "title": "Km M",
+          "type": "number"
+        },
+        "method": {
+          "const": "MANUAL_READING",
+          "default": "MANUAL_READING",
+          "title": "Method",
+          "type": "string"
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed At"
+        }
+      },
+      "required": [
+        "id",
+        "route_number",
+        "km_m"
+      ],
+      "title": "KilometerObservation",
+      "type": "object"
+    },
+    "NetworkObject": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "base_version": {
+          "minimum": 0,
+          "title": "Base Version",
+          "type": "integer"
+        },
+        "entity_type": {
+          "const": "OBJECT",
+          "default": "OBJECT",
+          "title": "Entity Type",
+          "type": "string"
+        },
+        "station_code": {
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Station Code",
+          "type": "string"
+        },
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "kind": {
+          "enum": [
+            "TRACK",
+            "LINE",
+            "SWITCH"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "route_number": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Route Number"
+        },
+        "track_key": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Track Key"
+        },
+        "owner_axis_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Owner Axis Id"
+        },
+        "endpoints": {
+          "items": {
+            "$ref": "#/$defs/Endpoint"
+          },
+          "maxItems": 3,
+          "minItems": 2,
+          "title": "Endpoints",
+          "type": "array"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "base_version",
+        "station_code",
+        "kind",
+        "name",
+        "endpoints"
+      ],
+      "title": "NetworkObject",
+      "type": "object"
+    },
+    "Node": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "base_version": {
+          "minimum": 0,
+          "title": "Base Version",
+          "type": "integer"
+        },
+        "entity_type": {
+          "const": "NODE",
+          "default": "NODE",
+          "title": "Entity Type",
+          "type": "string"
+        },
+        "station_code": {
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Station Code",
+          "type": "string"
+        },
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Position"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "binding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AxisBinding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "km_observations": {
+          "items": {
+            "$ref": "#/$defs/KilometerObservation"
+          },
+          "maxItems": 8,
+          "title": "Km Observations",
+          "type": "array"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "base_version",
+        "station_code"
+      ],
+      "title": "Node",
+      "type": "object"
+    },
+    "Position": {
+      "additionalProperties": false,
+      "properties": {
+        "lon": {
+          "maximum": 180,
+          "minimum": -180,
+          "title": "Lon",
+          "type": "number"
+        },
+        "lat": {
+          "maximum": 90,
+          "minimum": -90,
+          "title": "Lat",
+          "type": "number"
+        },
+        "accuracy_m": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accuracy M"
+        },
+        "altitude_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Altitude M"
+        },
+        "captured_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Captured At"
+        },
+        "method": {
+          "default": "MAP",
+          "enum": [
+            "MAP",
+            "GPS"
+          ],
+          "title": "Method",
+          "type": "string"
+        }
+      },
+      "required": [
+        "lon",
+        "lat"
+      ],
+      "title": "Position",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "client_change_id": {
+      "maxLength": 160,
+      "minLength": 1,
+      "title": "Client Change Id",
+      "type": "string"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/Node"
+      },
+      "maxItems": 32,
+      "title": "Nodes",
+      "type": "array"
+    },
+    "objects": {
+      "items": {
+        "$ref": "#/$defs/NetworkObject"
+      },
+      "maxItems": 32,
+      "title": "Objects",
+      "type": "array"
+    },
+    "affected_objects": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "maxProperties": 200,
+      "propertyNames": {
+        "format": "uuid"
+      },
+      "title": "Affected Objects",
+      "type": "object"
+    },
+    "preview_token": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Preview Token"
+    }
+  },
+  "required": [
+    "client_change_id"
+  ],
+  "title": "Mutation",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "REF-DATA-016 schema_version 1 input for preview and mutations; generated from production Pydantic models."
+}
