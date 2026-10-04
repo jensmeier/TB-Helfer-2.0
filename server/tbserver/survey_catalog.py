@@ -3166,6 +3166,154 @@ def management_restore_axis(axis_id: UUID,payload: AxisStatusUpdate,
     return _management_axis_status(axis_id,payload,user,False)
 
 
+class AdminGvpAnchor(BaseModel):
+    asset_id: UUID
+    asset_version: int = Field(ge=1)
+    point_index: int = Field(ge=0)
+    km_meter: float = Field(allow_inf_nan=False)
+
+
+class AdminGvpCalculate(BaseModel):
+    base_version: int = Field(ge=1)
+    source_segment_id: UUID
+    source_version: int = Field(ge=1)
+    gvp_anchors: list[AdminGvpAnchor] = Field(min_length=2, max_length=2)
+
+
+def _gvp_source(cur, axis_id, source_id, version=None):
+    cur.execute("SELECT * FROM tb.survey_catalog_segments WHERE id=%s AND axis_id=%s", (source_id, axis_id))
+    row = cur.fetchone()
+    if not row or row['source_kind'] != 'ORIGINAL_TRA' or row['segment_status'] != 'ACTIVE':
+        raise HTTPException(400, 'SURVEY_KM_SOURCE_NOT_ACTIVE')
+    source = dict(row)
+    if version is not None and int(source['current_version']) != version:
+        raise HTTPException(409, 'VERSION_CONFLICT')
+    points = _segment_points(cur, source)
+    if len(points) < 2 or any(_num(p.get(k)) is None for p in points for k in ('x_dbref','y_dbref','station_m')):
+        raise HTTPException(400, 'SURVEY_KM_GEOMETRY_INVALID')
+    return source, points
+
+
+def _gvp_projection(point, points):
+    """Lot on source's densified DBREF polyline, never clamp past its ends."""
+    x, y = float(point['x_dbref']), float(point['y_dbref'])
+    candidates = []
+    for a, b in zip(points, points[1:]):
+        dx, dy = b['x_dbref']-a['x_dbref'], b['y_dbref']-a['y_dbref']
+        norm = dx*dx+dy*dy
+        if norm <= 1e-12 or b['station_m'] <= a['station_m']:
+            continue
+        t = ((x-a['x_dbref'])*dx+(y-a['y_dbref'])*dy)/norm
+        if not -1e-10 <= t <= 1+1e-10:
+            continue
+        t = max(0., min(1., t))  # floating-point tolerance only
+        fx, fy = a['x_dbref']+t*dx, a['y_dbref']+t*dy
+        candidates.append(dict(station_m=a['station_m']+t*(b['station_m']-a['station_m']),
+                               x_dbref=fx, y_dbref=fy, distance_m=math.hypot(x-fx,y-fy)))
+    candidates.sort(key=lambda p:p['distance_m'])
+    if not candidates or candidates[0]['distance_m'] > 100:
+        raise HTTPException(400, 'SURVEY_GVP_NO_LOT')
+    best = candidates[0]
+    if any(abs(p['station_m']-best['station_m']) > 1 and p['distance_m']-best['distance_m'] < .2 for p in candidates[1:]):
+        raise HTTPException(400, 'SURVEY_GVP_AMBIGUOUS')
+    return best
+
+
+def _gvp_resolve(cur, ref):
+    cur.execute('''SELECT x.id,x.current_version,x.original_id,x.route_number,
+                          o.original_name,o.sha256,p.payload
+                   FROM tb.survey_catalog_assets x
+                   JOIN tb.survey_originals o ON o.id=x.original_id
+                   JOIN tb.survey_parse_catalog p ON p.original_id=x.original_id
+                   WHERE x.id=%s AND x.scope='GLOBAL' AND x.company_id IS NULL
+                     AND x.data_status='ACTIVE' AND x.data_kind=ANY(%s) AND p.status='PARSED'
+                   FOR SHARE OF x''', (ref.asset_id, sorted(_GVP_DATA_KINDS)))
+    row = cur.fetchone()
+    if not row or int(row['current_version']) != ref.asset_version:
+        raise HTTPException(409, 'SURVEY_GVP_SOURCE_CHANGED')
+    points = (row.get('payload') or {}).get('points') or []
+    if ref.point_index >= len(points):
+        raise HTTPException(400, 'SURVEY_GVP_POINT_INVALID')
+    p = points[ref.point_index]
+    if not isinstance(p, dict) or any(_num(p.get(k)) is None for k in ('x_dbref','y_dbref')):
+        raise HTTPException(400, 'SURVEY_GVP_POINT_INVALID')
+    return {**ref.model_dump(mode='json'), 'point_name':str(p.get('point_name') or ref.point_index),
+            'x_dbref':float(p['x_dbref']), 'y_dbref':float(p['y_dbref']),
+            'original_km_meter':_num(p.get('km_meter')), 'route':str(p.get('route') or row.get('route_number') or ''),
+            'original_id':str(row['original_id']), 'original_name':row['original_name'], 'sha256':row['sha256']}
+
+
+def _gvp_calibration(cur, refs, points):
+    if len(refs) != 2 or (refs[0].asset_id,refs[0].point_index) == (refs[1].asset_id,refs[1].point_index):
+        raise HTTPException(400, 'SURVEY_GVP_TWO_POINTS_REQUIRED')
+    anchors = []
+    for ref in refs:
+        p = _gvp_resolve(cur,ref)
+        anchors.append({**p, 'foot':_gvp_projection(p,points)})
+    anchors.sort(key=lambda p:p['foot']['station_m'])
+    a,b = anchors
+    s1,s2 = a['foot']['station_m'],b['foot']['station_m']
+    k1,k2 = a['km_meter'],b['km_meter']
+    if s2-s1 < 20 or abs(k2-k1) < 1 or not .5 <= abs((k2-k1)/(s2-s1)) <= 1.5:
+        raise HTTPException(400, 'SURVEY_GVP_CALIBRATION_IMPLAUSIBLE')
+    return dict(station_from_m=s1,station_to_m=s2,km_from_m=k1,km_to_m=k2), anchors
+
+
+@router.get('/management/axes/{axis_id}/gvp')
+def management_gvp_points(axis_id: UUID, source_segment_id: UUID,
+                          _: dict[str, Any] = Depends(require_admin)) -> dict[str, Any]:
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute("SELECT id,status,current_version FROM tb.survey_catalog_axes WHERE id=%s AND scope='GLOBAL'", (axis_id,))
+        axis = cur.fetchone()
+        if not axis:
+            raise HTTPException(404, 'SURVEY_COVERAGE_AXIS_NOT_FOUND')
+        if axis['status'] == 'ARCHIVED':
+            raise HTTPException(409, 'SURVEY_AXIS_ARCHIVED')
+        source, points = _gvp_source(cur,axis_id,source_segment_id)
+        xmin,ymin,xmax,ymax = _bbox(points)
+        cur.execute('''SELECT x.id,x.current_version,x.route_number,o.original_name,p.payload
+                       FROM tb.survey_catalog_assets x
+                       JOIN tb.survey_originals o ON o.id=x.original_id
+                       JOIN tb.survey_parse_catalog p ON p.original_id=x.original_id
+                       WHERE x.scope='GLOBAL' AND x.company_id IS NULL AND x.data_status='ACTIVE'
+                         AND x.data_kind=ANY(%s) AND p.status='PARSED'
+                         AND x.bbox_max_x >= %s AND x.bbox_min_x <= %s
+                         AND x.bbox_max_y >= %s AND x.bbox_min_y <= %s
+                       ORDER BY x.id LIMIT 101''',
+                    (sorted(_GVP_DATA_KINDS),xmin-100,xmax+100,ymin-100,ymax+100))
+        rows = cur.fetchall()
+        result = []
+        truncated = len(rows)>100
+        for row in rows[:100]:
+            for index,p in enumerate((row.get('payload') or {}).get('points') or []):
+                if not isinstance(p,dict):
+                    continue
+                x,y = _num(p.get('x_dbref')),_num(p.get('y_dbref'))
+                if x is None or y is None or not (xmin-100<=x<=xmax+100 and ymin-100<=y<=ymax+100):
+                    continue
+                if len(result)>=2000:
+                    truncated=True
+                    break
+                result.append(dict(asset_id=str(row['id']),asset_version=int(row['current_version']),point_index=index,
+                    point_name=str(p.get('point_name') or index),x_dbref=x,y_dbref=y,km_meter=_num(p.get('km_meter')),
+                    route=str(p.get('route') or row.get('route_number') or ''),original_name=row['original_name']))
+        return dict(base_version=int(axis['current_version']),source_version=int(source['current_version']),
+                    points=result,geometry=[{k:p[k] for k in ('x_dbref','y_dbref','station_m')} for p in _decimate(points,1500)],
+                    truncated=truncated)
+
+
+@router.post('/management/axes/{axis_id}/manual-km/gvp-calculate')
+def management_gvp_calculate(axis_id: UUID, payload: AdminGvpCalculate,
+                             user: dict[str, Any] = Depends(require_admin_csrf)) -> dict[str, Any]:
+    with transaction() as conn, conn.cursor() as cur:
+        axis = _management_axis(cur,axis_id,payload.base_version)
+        if axis['status']=='ARCHIVED':
+            raise HTTPException(409,'SURVEY_AXIS_ARCHIVED')
+        _,points = _gvp_source(cur,axis_id,payload.source_segment_id,payload.source_version)
+        values,anchors = _gvp_calibration(cur,payload.gvp_anchors,points)
+        return {**values,'anchors':anchors}
+
+
 class AdminKmSection(BaseModel):
     base_version: int = Field(ge=1)
     source_segment_id: UUID
@@ -3179,6 +3327,7 @@ class AdminKmSection(BaseModel):
     note: str = Field(default='', max_length=1000)
     client_change_id: str = Field(min_length=1, max_length=160)
     confirm_length_difference: bool = False
+    gvp_anchors: list[AdminGvpAnchor] | None = Field(default=None, min_length=2, max_length=2)
 
 
 class AdminKmDeactivate(BaseModel):
@@ -3257,7 +3406,13 @@ def _km_editor_prepare(cur, axis_id, payload):
     if axis['status'] == 'ARCHIVED':
         raise HTTPException(409, 'SURVEY_AXIS_ARCHIVED')
     source, existing, info = _km_editor_validate(payload, _km_editor_rows(cur, axis_id))
-    points = _clip_station_points(_segment_points(cur, source), payload.station_from_m, payload.station_to_m)
+    source_points = _segment_points(cur, source)
+    if payload.gvp_anchors is not None:
+        values, anchors = _gvp_calibration(cur, payload.gvp_anchors, source_points)
+        if any(abs(getattr(payload,k)-v)>0.00001 for k,v in values.items()):
+            raise HTTPException(400,'SURVEY_GVP_CALCULATION_CHANGED')
+        info['gvp_anchors'] = anchors
+    points = _clip_station_points(source_points, payload.station_from_m, payload.station_to_m)
     if len(points) < 2:
         raise HTTPException(400, 'SURVEY_KM_GEOMETRY_INVALID')
     return axis, source, existing, points, info
@@ -3291,6 +3446,10 @@ def management_save_km(axis_id: UUID, payload: AdminKmSection,
             metadata.update(last_edited_via='ADMIN', note=payload.note.strip(), km_source='MANUELL_ABSCHNITT',
                             length_difference_confirmed=payload.confirm_length_difference,
                             source_segment_id=str(source['id']))
+            if payload.gvp_anchors is not None:
+                metadata['gvp_anchors'] = info['gvp_anchors']
+            else:
+                metadata.pop('gvp_anchors', None)
             if existing is None:
                 segment = _segment_insert(cur,axis=axis,asset_id=None,source_kind='MANUAL_TRA_SECTION',
                     source_original_id=source['source_original_id'],source_signature=source.get('source_signature'),

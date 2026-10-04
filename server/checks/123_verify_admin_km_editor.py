@@ -46,7 +46,7 @@ def env(store):
     def mark(cur,row,status,actor):
         target=next(s for s in store.rows if s['id']==row['id']);target.update(segment_status=status,current_version=row['current_version']+1)
         store.history.append({'operation':'STATUS'});return target
-    names={'AdminKmSection','AdminKmDeactivate','_km_editor_replay','_km_editor_fingerprint','_km_editor_rows',
+    names={'AdminGvpAnchor','AdminKmSection','AdminKmDeactivate','_km_editor_replay','_km_editor_fingerprint','_km_editor_rows',
            '_km_editor_validate','_km_editor_prepare','management_preview_km','management_save_km',
            'management_deactivate_km','_management_axis','_coverage_interval','_clip_station_points','_num','_bbox','_decimate','_dense_payload'}
     nodes=deepcopy([n for n in TREE.body if isinstance(n,(ast.ClassDef,ast.FunctionDef)) and n.name in names])

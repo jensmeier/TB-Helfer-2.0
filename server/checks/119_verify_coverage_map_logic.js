@@ -155,7 +155,7 @@ async function harness() {
   for(const value of ['', '1.234,56','NaN','Infinity','16+294'])assert.throws(()=>run(`kmNumber(${JSON.stringify(value)})`));
   h.f.details=id=>({axis:{id,display_name:'<Gleis 4>',status:'ACTIVE',current_version:3},segments:[{id:'source',source_original_id:'o1',source_kind:'ORIGINAL_TRA',segment_status:'ACTIVE',current_version:1,station_from_m:0,station_to_m:100,original_name:'<original>.TRA'}],history:[],conflicts:[]});
   await run("readKmEditor('a1')");assert(get('managementBody').innerHTML.includes('&lt;original&gt;'));
-  get('kmSource').value='source';get('kmStart').value='5';get('kmEnd').value='25';get('kmFrom').value='16,005';get('kmTo').value='16,025';get('kmNote').value='<note>';
+  run('gvpMode=false');get('kmSource').value='source';get('kmStart').value='5';get('kmEnd').value='25';get('kmFrom').value='16,005';get('kmTo').value='16,025';get('kmNote').value='<note>';
   assert.equal(run('collectKmPayload().km_from_m'),16005);assert.equal(run('collectKmPayload().km_to_m'),16025);
   get('kmEnd').value='101';assert.throws(()=>run('collectKmPayload()'));get('kmEnd').value='25';
   controls.handler=url=>url.endsWith('/preview')?{body:{length_m:20,km_difference_m:20,length_warning:false,direction:'STEIGEND',points:[[0,0],[20,2]]}}:{};
@@ -175,10 +175,38 @@ async function harness() {
   assert(get('managementBody').innerHTML.includes('nicht automatisch'));
 
   controls.handler=null;controls.timeoutMs=500;
+  // Labels anchor on the visible curve, not the bounding-box centre; no 30-axis cutoff.
+  run('cosLat=1;W=1000;H=600;view={x:0,y:0,w:1000,h:600};geometryCache.clear()');
+  run('globalThis.curve=[{coordinates:[[0,-500/111320],[500/111320,-300/111320],[1000/111320,-500/111320]]}]');
+  const anchor=JSON.parse(run('JSON.stringify(visibleAxisAnchor(curve))'));
+  assert(Math.abs(anchor[0]-500)<.001&&Math.abs(anchor[1]-300)<.001);
+  assert.equal(run('clippedLine([-5,-5],[-1,-1])'),null);
+  run('globalThis.many=Array.from({length:35},(_,i)=>({axis_id:"label"+i,track_key:String(i+1),overview_segments:curve}));selectedIds=new Set(["label0"])');
+  const labels=run('mapAxisLabels(many)');assert(labels.includes('Gl 1'));assert(labels.includes('<line'));assert(!labels.includes('NaN'));
+  run('view={x:600,y:320,w:200,h:120}');
+  const moved=JSON.parse(run('JSON.stringify(visibleAxisAnchor(curve))'));
+  assert(moved&&moved[0]>=18&&moved[0]<=982&&moved[1]>=18&&moved[1]<=582);
+  assert(run('mapAxisLabels(many)').includes('→'));
+  // GVP mode requires calculation, preserves refs, converts units and invalidates on edits.
+  controls.handler=null;await run("readKmEditor('a1')");get('kmSource').value='source';
+  assert.equal(run('gvpMode'),true);assert.equal(get('kmFields').hidden,true);
+  assert.throws(()=>run('collectKmPayload()'));
+  const gp=[{asset_id:'asset',asset_version:1,point_index:0,point_name:'<P1>',x_dbref:20,y_dbref:5,km_meter:16020,original_name:'<a.KF>'},{asset_id:'asset',asset_version:1,point_index:1,point_name:'P2',x_dbref:80,y_dbref:5,km_meter:16080,original_name:'a.KF'}];
+  controls.handler=url=>url.includes('/gvp?')?{body:{base_version:3,source_version:1,points:gp,geometry:[{x_dbref:0,y_dbref:0,station_m:0},{x_dbref:100,y_dbref:0,station_m:100}],truncated:false}}:{};
+  await run('loadGvp()');assert(get('gvpPick0').innerHTML.includes('&lt;P1&gt;'));
+  run('pickGvp(0,"0");pickGvp(1,"1")');assert.equal(get('gvpKm0').value,16.02);
+  controls.handler=url=>url.endsWith('/gvp-calculate')?{body:{station_from_m:20,station_to_m:80,km_from_m:16020,km_to_m:16080,anchors:gp.map((p,i)=>({...p,foot:{x_dbref:p.x_dbref,y_dbref:0,station_m:i?80:20,distance_m:5}}))}}:url.endsWith('/preview')?{body:{length_m:60,km_difference_m:60,length_warning:false,direction:'STEIGEND',points:[[20,0],[80,0]]}}:{};
+  get('gvpNote').value='';await run('calculateGvp()');assert.equal(run('kmPreviewPayload.gvp_anchors.length'),2);
+  assert(get('gvpMap').innerHTML.includes('stroke-dasharray'));assert(!get('gvpMap').innerHTML.includes('<P1>'));
+  const gvpCall=calls.filter(c=>c.url.endsWith('/gvp-calculate')).at(-1);assert.equal(gvpCall.opts.headers['X-CSRF-Token'],'test-admin-csrf');
+  assert.equal(JSON.parse(gvpCall.opts.body).gvp_anchors[0].km_meter,16020);
+  run('invalidateGvp();drawGvp()');assert.equal(run('kmPreviewPayload'),null);assert(!get('gvpMap').innerHTML.includes('stroke-dasharray'));
+  assert.throws(()=>run('collectKmPayload()'));
+
   // Empty stock and unsupported coordinates must never produce NaN or Germany fallback.
   h.f.coverage={axes:[],axis_count:0,station_count:0,route_count:0,unsupported_axis_count:0};controls.handler=null;await run('loadCoverage()');await delay(10);
   assert.equal(run('view'),null);assert.equal(get('overviewLayer').innerHTML,'');assert(!get('overviewLayer').innerHTML.includes('NaN'));
   run('clearTimeout(detailTimer)');
-  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout; NOT a visual browser test.');
+  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; NOT a visual browser test.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
 
