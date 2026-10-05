@@ -2509,3 +2509,7 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 - Nutzer bestätigt RIGHTS-002 nach Übernahme mit passt (17:56): reduzierte Adminansicht/Portalzugriff; reale Komplettlöschung nicht bestätigt.
 - Auftrag18:29: bestehende Portal-/Gerätezugänge bei Sperre/Ablauf überprüfen; keine echten Nutzer sperren, kein Livezugriff vorhanden.
 - Quellbefund vor weiterem Test: normale Portal-/Admin-/Geräteauth lädt Benutzerstatus/Gültigkeit je Anfrage aus DB und verweigert disabled/deleted/expired. sync.live_events prüft nur beim Start und verwendet anschließend unbegrenzt _changes_for_worksite ohne erneute Benutzer-/Session-/Mitgliedschaftsprüfung. wait_changes verwendet nach bis25s Wartezeit den zuvor geladenen Benutzer. Gezielte lokale Nachweise folgen; noch kein Runtimefix.
+
+
+## RIGHTS-003 – Fix freigegeben (05.10.2026 18:41)
+- Benutzerauftrag dann bauen. SSE und Longpoll authentifizieren nach dem Warten und vor Ausgabe erneut über bestehende Portal-/Geräteauth, einschließlich aktueller Baustellenrechte. SSE endet bei Auth-/Zugriffsfehler ohne weitere Fachdaten; Longpoll liefert normalen Fehler. Keine Clientvertrags-/Androidänderung; bestehende Hub-Wartefunktion erhalten. Lokale Regressionen statt echter Benutzersperren.
