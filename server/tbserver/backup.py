@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -19,11 +20,15 @@ from .database import transaction
 
 BACKUP_KINDS = {"DATABASE", "FILES", "FULL"}
 ProgressCallback = Callable[[int, str], None]
+logger = logging.getLogger(__name__)
 
 
 def _progress(callback: ProgressCallback | None, percent: int, text: str) -> None:
     if callback is not None:
-        callback(percent, text)
+        try:
+            callback(percent, text)
+        except Exception as exc:
+            logger.warning("Backup progress update failed: %s", type(exc).__name__)
 
 
 class BackupError(RuntimeError):
@@ -111,25 +116,23 @@ def _storage_backup_filter(info: tarfile.TarInfo) -> tarfile.TarInfo | None:
     # backups avoids duplicating thumbnail/preview caches in every backup.
     if ".renditions" in Path(info.name).parts:
         return None
+    if not (info.isfile() or info.isdir()):
+        raise BackupError("BACKUP_STORAGE_ENTRY_UNSUPPORTED")
     return info
 
 
 def _archive_storage(target: Path) -> None:
     root = settings.storage_root
+    if root.is_symlink() or not root.is_dir():
+        raise BackupError("BACKUP_STORAGE_ROOT_UNAVAILABLE")
     target.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(target, "w:gz", dereference=False) as archive:
-        if root.exists():
-            archive.add(
-                root,
-                arcname="storage",
-                recursive=True,
-                filter=_storage_backup_filter,
-            )
-        else:
-            info = tarfile.TarInfo("storage/")
-            info.type = tarfile.DIRTYPE
-            info.mode = 0o750
-            archive.addfile(info)
+        archive.add(
+            root,
+            arcname="storage",
+            recursive=True,
+            filter=_storage_backup_filter,
+        )
     if not target.is_file() or target.stat().st_size <= 0:
         raise BackupError("FILES_BACKUP_EMPTY")
 
@@ -285,8 +288,9 @@ def run_backup(
         _progress(progress, 98, "Backup ist gespeichert")
         return result
     except Exception as exc:
-        if final_path is not None:
-            final_path.unlink(missing_ok=True)
+        # A completed artifact is still useful if database registration fails.
+        # Keep it for recovery; only unfinished temporary files are removed by
+        # the individual backup writers.
         code = str(exc) if isinstance(exc, BackupError) else type(exc).__name__
         _finish_run_failed(run_id, code)
         raise
@@ -448,4 +452,3 @@ def run_retention() -> dict[str, Any]:
         "missing_file_run_ids": missing_files,
         "delete_error_run_ids": delete_errors,
     }
-

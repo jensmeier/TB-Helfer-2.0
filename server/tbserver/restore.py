@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -21,11 +22,15 @@ from .database import transaction
 
 FULL_BACKUP_FORMAT = "tb-server-1.0-full-backup-v1"
 ProgressCallback = Callable[[int, str], None]
+logger = logging.getLogger(__name__)
 
 
 def _progress(callback: ProgressCallback | None, percent: int, text: str) -> None:
     if callback is not None:
-        callback(percent, text)
+        try:
+            callback(percent, text)
+        except Exception as exc:
+            logger.warning("Restore progress update failed: %s", type(exc).__name__)
 
 
 class RestoreTestError(RuntimeError):
@@ -302,8 +307,8 @@ def run_restore_test(
         "source_kind": source["kind"],
     }
     scratch_root = settings.backup_root / ".restore-tests"
-    scratch_root.mkdir(parents=True, exist_ok=True)
     try:
+        scratch_root.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(
             prefix=f"{source_run_id}-",
             dir=scratch_root,
