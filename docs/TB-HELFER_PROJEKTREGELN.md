@@ -308,3 +308,10 @@ Verbindliche Konsistenz:
 - Vor Upload/Veröffentlichung immer APK + Release-MD desselben Builds verwenden.
 
 Diese Datei ist Teil jeder Build-/Release-Übergabe und darf künftig nicht vergessen werden.
+
+
+## RIGHTS-002 – Admin ohne Baustellen-Fachverwaltung (05.10.2026)
+- Benutzerfreigabe 17:33/17:35: Baustellen werden von Firma/Nutzern über Portal bzw. App geführt und bleiben auf dem Server. Systemadmin legt keine Baustellen an, öffnet/bearbeitet keine Fachinhalte. Nur reduzierte Firmenliste zur vollständigen ausdrücklichen Löschung einer Baustelle bleibt.
+- UI und direkte Admin-/Fach-API-Pfade entsprechend begrenzen; Portal-/Geräterechte berechtigter Firmenbenutzer und gemeinsamer Fachkatalog bleiben erhalten. Bestehende Daten werden durch den Umbau nicht gelöscht. Destruktive Ausführung nur nach Vorschau und ausdrücklicher Bestätigung, bestehende Purge-Infrastruktur prüfen.
+- RIGHTS-001: Benutzer meldet 17:24 funktioniert. Keine zusätzliche Bestätigung für gesperrte/abgelaufene Sessions oder vollständige Endpunktmatrix daraus ableiten.
+- Umsetzung/Tests/Deployment für RIGHTS-002 noch offen; Android bleibt unverändert.
