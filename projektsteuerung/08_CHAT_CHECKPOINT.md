@@ -1612,3 +1612,9 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 - Screenshots: Vollbackup05.10.16:07:10 mit848MB OK; Restore-Test05.10.16:45:42 OK, Job16:45:39 Fertig. Getrennte restore-test-db sichtbar. Dieser konkrete NAS-Prüflauf ist bestätigt; keine produktive Rücksetzung und kein vollständiger Einzeldatei-/Snapshotkonsistenznachweis.
 - Benutzerfreigabe16:52 „okay weiter“: UI nennt bisherige Restore-Test-Funktion „Backup prüfen“. Prüfung stellt in getrennte Testumgebung wieder her, laufender Bestand bleibt erhalten. Kein Live-Restore durch Umbenennung.
 - Button, Vorgangs-/Historienbezeichnung und Bestätigungsdialog entsprechend ändern; RESTORE_TEST und API-Pfade unverändert. Servere423c8b, Android423f378. Originale/DB unverändert.
+
+
+## OPS-BACKUP-002 – UI umgesetzt
+- Systemstatus: Button „Backup prüfen“, Backup-/Jobhistorie „Backup-Prüfung“, Dialog erklärt Wiederherstellung in getrennter Testumgebung ohne Änderung des laufenden Serverbestands. Vorhandene Backendbezeichnungen werden für RESTORE_TEST auch in der Jobliste übersetzt.
+- Nur server/templates/v1_system_status.html geändert. Technische Typen/API/Funktion bleiben unverändert. JavaScript-Syntax PASS; keine neuen Backendtests für Textänderung. NAS-Abnahme des vorherigen Prüfablaufs oben dokumentiert; neue Beschriftung noch nicht auf NAS geprüft.
+- Übernahme nach /volume1/docker/tb-helfer-v1/templates/v1_system_status.html; API neu starten, StrgF5. Kein Worker-/DB-Neustart erforderlich. Nächster eigener Serverblock: Firmen-/Benutzerrechte. Vollständige Backupkonsistenz und echter Produktiv-Restore bleiben getrennte offene Punkte.

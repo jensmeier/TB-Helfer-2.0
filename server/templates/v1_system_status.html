@@ -190,7 +190,7 @@ function setTime(id,hour,minute){document.getElementById(id).value=String(Number
 function timeParts(id){const raw=document.getElementById(id).value||'00:00',p=raw.split(':');return {hour:Number(p[0]||0),minute:Number(p[1]||0)};}
 function fillSchedule(prefix,s){const x=s||{};checked(prefix+'Enabled',x.enabled);val(prefix+'Frequency',x.frequency||'DAILY');val(prefix+'Weekday',x.weekday??6);val(prefix+'Monthday',x.monthday??1);setTime(prefix+'Time',x.hour??0,x.minute??0);}
 function scheduleValue(prefix){const t=timeParts(prefix+'Time');return {enabled:document.getElementById(prefix+'Enabled').checked,frequency:document.getElementById(prefix+'Frequency').value,hour:t.hour,minute:t.minute,weekday:numberValue(prefix+'Weekday'),monthday:numberValue(prefix+'Monthday')};}
-function backupKindLabel(kind){return ({DATABASE:'Datenbank-Backup',FILES:'Datei-Backup',FULL:'Vollbackup',RESTORE_TEST:'Restore-Test',RESTORE_TARGET:'Restore ins getrennte Ziel'})[kind]||kind;}
+function backupKindLabel(kind){return ({DATABASE:'Datenbank-Backup',FILES:'Datei-Backup',FULL:'Vollbackup',RESTORE_TEST:'Backup-Prüfung',RESTORE_TARGET:'Restore ins getrennte Ziel'})[kind]||kind;}
 function backupStatusLabel(status){return ({OK:'OK',FAILED:'Fehlgeschlagen',RUNNING:'Läuft',PURGED:'Bereinigt'})[status]||status;}
 function statusClass(status){return status==='FAILED'?'bad':status==='DONE'?'good':status==='RUNNING'?'running':'';}
 function pollAgain(active){clearTimeout(pollTimer);pollTimer=setTimeout(function(){load(false);},active?1500:8000);}
@@ -248,7 +248,7 @@ function renderJobs(jobs){
       '<div class="bar" style="margin-top:8px"><div style="width:'+pct+'%"></div></div><div class="small" style="margin-top:4px">'+esc(pct)+' % · '+esc(j.progress_text||j.status_label||j.status)+'</div>':'';
     const error=j.error_description?'<div class="job-error">'+esc(j.error_description)+'</div>':'';
     const del=(j.status==='DONE'||j.status==='FAILED')?'<button type="button" class="secondary" onclick="deleteJob(\''+esc(j.id)+'\')">Eintrag löschen</button>':'';
-    return '<div class="item '+statusClass(j.status)+'"><div class="job-head"><div><div class="job-title">'+esc(j.job_label||j.job_type)+' · '+esc(j.status_label||j.status)+'</div><div class="job-meta">Versuch '+esc(j.attempts)+' · '+esc(dt(j.created_at))+'</div></div><div>'+del+'</div></div>'+progress+error+'</div>';
+    return '<div class="item '+statusClass(j.status)+'"><div class="job-head"><div><div class="job-title">'+esc(j.job_type==='RESTORE_TEST'?'Backup-Prüfung':(j.job_label||j.job_type))+' · '+esc(j.status_label||j.status)+'</div><div class="job-meta">Versuch '+esc(j.attempts)+' · '+esc(dt(j.created_at))+'</div></div><div>'+del+'</div></div>'+progress+error+'</div>';
   }).join('')||'<p class="muted">Keine Vorgänge protokolliert.</p>';
   return active;
 }
@@ -299,7 +299,7 @@ async function load(hydrateForm=true){
 
     document.getElementById('backups').innerHTML=(x.backups||[]).map(function(b){
       const restore=(b.status==='OK'&&['DATABASE','FILES','FULL'].includes(b.kind))?
-        '<div class="compact-actions" style="margin-top:7px"><button type="button" class="secondary" onclick="startRestoreTest(\''+esc(b.id)+'\')">Restore-Test</button></div>':'';
+        '<div class="compact-actions" style="margin-top:7px"><button type="button" class="secondary" onclick="startRestoreTest(\''+esc(b.id)+'\')">Backup prüfen</button></div>':'';
       return '<div class="item"><b>'+esc(backupKindLabel(b.kind))+'</b> <span class="pill">'+esc(backupStatusLabel(b.status))+'</span><div class="small">'+esc(dt(b.started_at))+' · '+esc(bytes(b.byte_size))+'</div>'+restore+'</div>';
     }).join('')||'<p class="muted">Noch keine Backup-Läufe protokolliert.</p>';
 
@@ -372,8 +372,8 @@ async function startRetention(){
 }
 window.startRetention=startRetention;
 async function startRestoreTest(id){
-  if(!confirm('Restore-Test dieses Backups gegen die getrennte Testumgebung starten?'))return;
-  try{await tbApi('/api/v1/admin/system/backups/'+encodeURIComponent(id)+'/restore-test',{method:'POST'});show('ok','Restore-Test wurde gestartet.');await load(false);}
+  if(!confirm('Backup in der getrennten Testumgebung wiederherstellen und prüfen? Der laufende Serverbestand wird nicht verändert.'))return;
+  try{await tbApi('/api/v1/admin/system/backups/'+encodeURIComponent(id)+'/restore-test',{method:'POST'});show('ok','Backup-Prüfung wurde gestartet.');await load(false);}
   catch(error){show('err',error.message||String(error));}
 }
 window.startRestoreTest=startRestoreTest;
