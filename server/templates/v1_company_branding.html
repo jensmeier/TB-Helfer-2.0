@@ -40,7 +40,7 @@
   <div class="company-head">
     <div>
       <h1>{{ profile.name }}</h1>
-      <div class="muted">Zentrale Verwaltung für Firma, Benutzer, Geräte, Baustellen, Speicher und PDF.</div>
+      <div class="muted">Zentrale Verwaltung für Firma, Benutzer, Geräte, Speicher und PDF.</div>
     </div>
     <div class="company-stats">
       <span class="pill">{{ company_users|length }} Benutzer</span>
@@ -237,37 +237,16 @@
 
     <section class="company-panel" data-panel="worksites">
       <div class="card">
-        <div class="panel-title"><div><h2>Baustellen</h2><div class="muted">Baustellen dieser Firma anlegen und öffnen.</div></div></div>
-        {% if company_users %}
-        <div class="inline-form">
-          <h3>+ Baustelle anlegen</h3>
-          <form id="createWorksite">
-            <div class="grid">
-              <div><label for="w_name">Name</label><input id="w_name" required maxlength="240"></div>
-              <div><label for="w_designation">Bezeichnung</label><input id="w_designation" maxlength="300"></div>
-              <div><label for="w_route">Strecke</label><input id="w_route" maxlength="40"></div>
-              <div><label for="w_station_code">Bahnhofskürzel</label><input id="w_station_code" maxlength="40" placeholder="z. B. MIB"></div>
-              <div><label for="w_station_name">Bahnhof / Betriebsstelle</label><input id="w_station_name" maxlength="240"></div>
-              <div><label for="w_responsible">Verantwortlicher TB</label><select id="w_responsible" required><option value="">Bitte wählen …</option>{% for u in company_users %}<option value="{{ u.id }}">{{ u.display_name }} · {% if u.company_role == 'CHEF' %}Chef{% else %}Benutzer{% endif %}</option>{% endfor %}</select></div>
-            </div>
-            <div class="actions" style="margin-top:10px"><button type="submit">Baustelle anlegen</button></div>
-          </form>
-        </div>
-        {% else %}
-        <div class="notice info">Vor einer Baustelle muss mindestens ein Firmenbenutzer angelegt werden, der als verantwortlicher TB zugeordnet werden kann.</div>
-        {% endif %}
-
+        <div class="panel-title"><div><h2>Baustellen</h2><div class="muted">Inhalte und Bearbeitung sind im Portal verfügbar. Hier können vollständige Baustellen dieser Firma endgültig gelöscht werden.</div></div></div>
         {% if company_worksites %}
         <div class="scroll"><table class="company-table">
-          <thead><tr><th>Baustelle</th><th>Strecke / Bahnhof</th><th>Status</th><th>Aktualisiert</th><th></th></tr></thead>
+          <thead><tr><th>Baustelle</th><th>Status</th><th></th></tr></thead>
           <tbody>
           {% for w in company_worksites %}
           <tr>
-            <td><b>{{ w.name }}</b>{% if w.designation %}<div class="muted">{{ w.designation }}</div>{% endif %}</td>
-            <td>{% if w.route_number %}Strecke {{ w.route_number }}{% else %}—{% endif %}{% if w.station_code or w.station_name %}<div class="muted">{{ w.station_code or '' }}{% if w.station_code and w.station_name %} – {% endif %}{{ w.station_name or '' }}</div>{% endif %}</td>
-            <td>{% if w.status == 'ACTIVE' %}<span class="pill status-ok">Aktiv</span>{% else %}<span class="pill">{{ w.status }}</span>{% endif %}</td>
-            <td>{{ w.updated_at }}</td>
-            <td class="right"><a class="btn" href="/admin/v1/worksites/{{ w.id }}">Öffnen</a></td>
+            <td><b>{{ w.name }}</b></td>
+            <td>{{ w.status }}</td>
+            <td class="right"><button type="button" class="danger purge-worksite" data-worksite-id="{{ w.id }}" data-worksite-name="{{ w.name }}">Komplett löschen</button></td>
           </tr>
           {% endfor %}
           </tbody>
@@ -432,16 +411,16 @@ document.querySelectorAll('.purge-device').forEach(b=>b.addEventListener('click'
   try{await tbApi('/api/v1/admin/purge/devices/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm_id:id,confirm_text:typed})});show('ok','Gerät vollständig gelöscht.');reloadSection('devices',400);}catch(e){show('err',e.message||String(e));b.disabled=false;}
 }));
 
-const worksiteForm=document.getElementById('createWorksite');
-if(worksiteForm)worksiteForm.addEventListener('submit',async ev=>{
-  ev.preventDefault();
+document.querySelectorAll('.purge-worksite').forEach(b=>b.addEventListener('click',async()=>{
+  const id=b.dataset.worksiteId;
+  const typed=prompt('Baustelle "'+b.dataset.worksiteName+'" komplett löschen?\n\nAlle zugehörigen Unterbaustellen, Teams, BTBs, Fotos, Dateien, Mängel und Abnahmen werden endgültig entfernt. Dies betrifft auch den Zugriff der Firmenbenutzer.\n\nZum Bestätigen ENDGUELTIG LOESCHEN eingeben.');
+  if(typed!=='ENDGUELTIG LOESCHEN')return;
+  b.disabled=true;
   try{
-    await tbApi('/api/v1/admin/worksites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      company_id:companyId,responsible_tb_user_id:document.getElementById('w_responsible').value,name:document.getElementById('w_name').value.trim(),designation:val('w_designation'),route_number:val('w_route'),station_code:val('w_station_code'),station_name:val('w_station_name')
-    })});
-    show('ok','Baustelle wurde angelegt.');reloadSection('worksites',500);
-  }catch(e){show('err',e.message||String(e));}
-});
+    await tbApi('/api/v1/admin/purge/worksites/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm_id:id,confirm_text:typed})});
+    show('ok','Baustelle vollständig gelöscht.');reloadSection('worksites',400);
+  }catch(e){show('err',e.message||String(e));b.disabled=false;}
+}));
 
 let pdfPreviewTimer=null;
 function currentPdfPreviewUrl(){
@@ -484,3 +463,4 @@ document.getElementById('resetLayout').addEventListener('click',()=>{document.ge
 document.getElementById('refreshPdf').addEventListener('click',refreshPdf);
 </script>
 {% endblock %}
+

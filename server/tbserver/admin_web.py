@@ -409,15 +409,7 @@ def admin_worksite_page(
     request: Request,
     user: dict[str, Any] = Depends(require_web_admin),
 ):
-    return templates.TemplateResponse(
-        "v1_worksite.html",
-        {
-            "request": request,
-            "user": user,
-            "worksite_id": str(worksite_id),
-            "page_prefix": "/admin/v1",
-        },
-    )
+    return RedirectResponse(url="/admin/v1/companies", status_code=302)
 
 
 @router.get("/admin/v1/btbs/{btb_id}")
@@ -426,15 +418,7 @@ def admin_btb_page(
     request: Request,
     user: dict[str, Any] = Depends(require_web_admin),
 ):
-    return templates.TemplateResponse(
-        "v1_btb.html",
-        {
-            "request": request,
-            "user": user,
-            "btb_id": str(btb_id),
-            "page_prefix": "/admin/v1",
-        },
-    )
+    return RedirectResponse(url="/admin/v1/companies", status_code=302)
 
 
 @router.get("/admin/v1/companies/{company_id}/branding")
@@ -504,8 +488,7 @@ def admin_company_branding_page(
 
         cur.execute(
             """
-            SELECT id, name, designation, route_number, station_code, station_name,
-                   status, version, created_at, updated_at
+            SELECT id, name, status
             FROM tb.worksites
             WHERE company_id = %s AND deleted_at IS NULL
             ORDER BY lower(name)
@@ -560,3 +543,4 @@ def admin_company_branding_page(
             "storage": storage,
         },
     )
+

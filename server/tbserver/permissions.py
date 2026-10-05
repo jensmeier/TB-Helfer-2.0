@@ -7,13 +7,7 @@ from uuid import UUID
 from fastapi import HTTPException
 
 
-ADMIN_PERMISSIONS = {
-    "worksite.view": True,
-    "btb.view": True,
-    "files.view": True,
-    "acceptance.view": True,
-    "defect.view": True,
-}
+ADMIN_PERMISSIONS = {}
 CHEF_DEFAULT_PERMISSIONS = {
     "worksite.view": True,
     "btb.view": True,
@@ -141,6 +135,8 @@ def require_area_scope(context: dict[str, Any], entity_scope: Any) -> None:
 
 
 def worksite_context(cur, user: dict[str, Any], worksite_id: UUID | str) -> dict[str, Any]:
+    if user["company_role"] == "ADMIN":
+        raise HTTPException(403, "ADMIN_WORKSITE_ACCESS_FORBIDDEN")
     cur.execute(
         """
         SELECT w.id, w.company_id, w.name, w.status, w.deleted_at,
@@ -165,11 +161,7 @@ def worksite_context(cur, user: dict[str, Any], worksite_id: UUID | str) -> dict
         or str(user["company_id"]) != str(row["company_id"])
     ):
         raise HTTPException(403, "WORKSITE_ACCESS_DENIED")
-    if role == "ADMIN":
-        permissions = ADMIN_PERMISSIONS.copy()
-        access = True
-        area_scope = {"all": True}
-    elif role == "CHEF" and user["company_id"] == row["company_id"]:
+    if role == "CHEF" and user["company_id"] == row["company_id"]:
         if row["membership_id"] and row["membership_status"] == "ACTIVE":
             permissions = _merge_permissions(row["profile_permissions"], row["permissions_override"])
         else:

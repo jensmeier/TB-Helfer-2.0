@@ -25,7 +25,7 @@
   <div class="companies-head">
     <div>
       <h1>Firmen</h1>
-      <p>Eine Firma anlegen und anschließend Benutzer, Geräte, Baustellen, Speicher sowie Logo/PDF zentral verwalten.</p>
+      <p>Eine Firma anlegen und anschließend Benutzer, Geräte, Speicher sowie Logo/PDF zentral verwalten.</p>
     </div>
     <button id="toggleCreate" type="button">+ Firma anlegen</button>
   </div>
@@ -84,7 +84,7 @@
 {% else %}
 <div class="card empty-state">
   <h2>Noch keine Firma vorhanden</h2>
-  <p class="muted">Lege zuerst eine Firma an. Danach werden Benutzer, Geräte, Baustellen und PDF-Einstellungen direkt dort verwaltet.</p>
+  <p class="muted">Lege zuerst eine Firma an. Danach werden Benutzer, Geräte und PDF-Einstellungen direkt dort verwaltet.</p>
 </div>
 {% endif %}
 {% endblock %}
@@ -135,3 +135,4 @@ document.querySelectorAll('.purge-company').forEach(button=>{
 });
 </script>
 {% endblock %}
+

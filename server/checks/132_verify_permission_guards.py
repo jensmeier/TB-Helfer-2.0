@@ -68,11 +68,10 @@ class Guards(unittest.TestCase):
         self.user['company_id'] = None
         with self.assertRaises(HTTPException): self.context()
 
-    def test_admin_read_access_unchanged(self):
+    def test_admin_worksite_access_denied(self):
         self.user.update(company_role='ADMIN', company_id=None)
-        result = self.context()
-        self.assertTrue(result['effective_permissions']['files.view'])
-        self.assertNotIn('members.manage', result['effective_permissions'])
+        with self.assertRaises(HTTPException) as error: self.context()
+        self.assertEqual(error.exception.status_code, 403)
 
     def test_own_company_chef_without_membership(self):
         self.user['company_role'] = 'CHEF'

@@ -235,91 +235,7 @@ def admin_create_worksite(
     payload: AdminWorksiteCreate,
     admin: dict[str, Any] = Depends(require_admin_csrf),
 ) -> dict[str, Any]:
-    name = _required_text(payload.name, "WORKSITE_NAME_REQUIRED")
-    with transaction() as conn, conn.cursor() as cur:
-        _assert_company(cur, payload.company_id)
-        cur.execute(
-            """
-            SELECT id, company_id, display_name, company_role, status, deleted_at
-            FROM tb.users
-            WHERE id = %s
-            FOR SHARE
-            """,
-            (payload.responsible_tb_user_id,),
-        )
-        responsible = cur.fetchone()
-        if (
-            not responsible
-            or responsible["deleted_at"] is not None
-            or responsible["status"] != "ACTIVE"
-            or responsible["company_role"] == "ADMIN"
-        ):
-            raise HTTPException(404, "RESPONSIBLE_TB_USER_NOT_FOUND")
-        if responsible["company_id"] != payload.company_id:
-            raise HTTPException(409, "RESPONSIBLE_TB_COMPANY_MISMATCH")
-
-        cur.execute(
-            """
-            INSERT INTO tb.worksites(
-                company_id, name, designation, route_number, station_code, station_name, created_by
-            ) VALUES (%s,%s,%s,%s,%s,%s,%s)
-            RETURNING id, company_id, name, designation, route_number, station_code, station_name,
-                      status, version, created_at, updated_at
-            """,
-            (
-                payload.company_id,
-                name,
-                _optional_text(payload.designation),
-                _optional_text(payload.route_number),
-                _optional_text(payload.station_code),
-                _optional_text(payload.station_name),
-                admin["user_id"],
-            ),
-        )
-        worksite = dict(cur.fetchone())
-
-        cur.execute(
-            """
-            INSERT INTO tb.worksite_memberships(
-                worksite_id, user_id, worksite_role, permission_profile, area_scope, invited_by
-            ) VALUES (%s,%s,'RESPONSIBLE_TB','RESPONSIBLE_TB','{"all":true}'::jsonb,%s)
-            """,
-            (worksite["id"], responsible["id"], admin["user_id"]),
-        )
-        cur.execute(
-            """
-            INSERT INTO tb.teams(worksite_id, lead_user_id, name)
-            VALUES (%s,%s,%s)
-            RETURNING id
-            """,
-            (worksite["id"], responsible["id"], responsible["display_name"]),
-        )
-        team = cur.fetchone()
-        cur.execute(
-            "INSERT INTO tb.team_members(team_id, user_id, role) VALUES (%s,%s,'LEAD')",
-            (team["id"], responsible["id"]),
-        )
-        emit_change(
-            cur,
-            company_id=payload.company_id,
-            worksite_id=worksite["id"],
-            entity_type="WORKSITE",
-            entity_id=worksite["id"],
-            operation="CREATE",
-            entity_version=worksite["version"],
-            actor_user_id=admin["user_id"],
-        )
-        audit(
-            cur,
-            action="ADMIN_WORKSITE_CREATE",
-            actor_user_id=admin["user_id"],
-            company_id=payload.company_id,
-            worksite_id=worksite["id"],
-            entity_type="WORKSITE",
-            entity_id=worksite["id"],
-            details={"responsible_tb_user_id": str(responsible["id"])},
-        )
-    return worksite
+    raise HTTPException(403, "ADMIN_WORKSITE_ACCESS_FORBIDDEN")
 
 
 @router.get("/users")
@@ -740,3 +656,4 @@ def delete_user(
         )
 
     return Response(status_code=204)
+

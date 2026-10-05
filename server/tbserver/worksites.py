@@ -136,15 +136,7 @@ def _responsible_tb_for_create(
 def list_worksites(user: dict[str, Any] = Depends(current_portal_user)) -> dict:
     with transaction() as conn, conn.cursor() as cur:
         if user["company_role"] == "ADMIN":
-            cur.execute(
-                """
-                SELECT w.id, w.company_id, c.name AS company_name, w.name, w.designation,
-                       w.route_number, w.station_code, w.station_name, w.status, w.updated_at
-                FROM tb.worksites w JOIN tb.companies c ON c.id = w.company_id
-                WHERE w.deleted_at IS NULL
-                ORDER BY w.updated_at DESC
-                """
-            )
+            raise HTTPException(403, "ADMIN_WORKSITE_ACCESS_FORBIDDEN")
         elif user["company_role"] == "CHEF":
             cur.execute(
                 """
