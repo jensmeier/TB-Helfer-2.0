@@ -1587,3 +1587,12 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 - DB-Export02.–05.10. zeigt weitere geordnete Shutdown/Startfolgen; kein PANIC/Crash-Recovery/Datenträger-voll/OOM-Beleg im vorliegenden Text. Ein Broken pipe / connection to client lost am04.10.13:53:59 zeigt verlorene Clientverbindung, nicht selbst einen DB-Absturz. logical replication launcher exited code1 steht im geordneten DB-Shutdown und bezeichnet keinen TB-Helfer-Worker.
 - Einordnung: unmittelbare Ursache dieser Verbindungsfehler ist angeforderter DB-Stopp/Neustart. Auslöser (manueller Container-Manager-Projektneustart, NAS/Systemaktion etc.) aus diesen Logs nicht feststellbar. Ältere ursprüngliche Warnung nur bei gleicher Ereigniszeit damit erklärt; keine pauschale Stabilitäts-/Datenintegritätsabnahme.
 - Keine weitere Runtimeänderung aus diesen Belegen nötig. Bei reinem Template-/Pythonupdate nur benötigte API/Worker/Monitor-Container neu starten, nicht DB/gesamtes Projekt, sofern keine andere Deploymentanforderung besteht. Für ungeplante Stopps DSM/Container-Manager-Ereignisse genau zu obigen Zeiten prüfen. Backup/Restore und Firmenrechte bleiben nächste offene Blöcke. Serverbasisdd1f935, Android423f378 unverändert.
+
+
+## OPS-BACKUP-001 – Befunde vor Umsetzung (05.10.2026)
+- Auftrag Benutzer „okay weiter“15:45: Backup-/Restoreprüfung; Basisfb59d3c, Android423f378 unverändert.
+- _archive_storage erzeugt bei fehlendem STORAGE_ROOT ein leeres gültiges Archiv: fehlender Mount kann als erfolgreich erscheinen. Künftig fehlenden/nicht-Verzeichnis-Root ablehnen, tatsächlich leeres vorhandenes Verzeichnis zulassen.
+- run_backup löscht im Fehlerhandler final_path auch bei Fehler nach _finish_run_ok (z.B.Fortschritts-DB-Ausfall). Fertiges Backup darf durch nachgelagerte Fortschrittsanzeige nicht verloren gehen. Fortschritt in Backup/Restore best effort; bereits fertig veröffentlichte Artefakte bei Registrierungsfehler erhalten (ggf.unregistrierte Datei statt Verlust).
+- Backupfilter nimmt Links/Spezialdateien an, Restore lehnt sie ab. Künftig nicht unterstützte Einträge beim Sichern explizit ablehnen; .renditions weiterhin ausschließen.
+- Restore-Test scratch-mkdir bisher vor try, kann RUNNING ohne Fehlerabschluss hinterlassen; in Fehlerbehandlung einbeziehen.
+- Gezielte Tests mit echten temporären Archiven/Produktionsfunktionen und DB-/Fortschritts-Doubles. Keine Live-Restoreausführung. DB+Dateien werden sequenziell gesichert; vollständiger konsistenter Live-Snapshot und physische Restore-/Firmenrechte-Abnahme dadurch nicht behauptet.
