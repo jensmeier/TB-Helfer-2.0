@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 from uuid import UUID
 
@@ -24,9 +25,9 @@ CHEF_DEFAULT_PERMISSIONS = {
 
 
 def _merge_permissions(base: dict, override: dict) -> dict[str, bool]:
-    merged = {str(k): bool(v) for k, v in (base or {}).items()}
+    merged = {str(k): v is True for k, v in (base or {}).items()}
     for key, value in (override or {}).items():
-        merged[str(key)] = bool(value)
+        merged[str(key)] = value is True
     return merged
 
 
@@ -46,8 +47,9 @@ def _scope_number(scope: dict[str, Any], key: str) -> float | None:
     if value is None:
         return None
     try:
-        return float(value)
-    except (TypeError, ValueError):
+        number = float(value)
+        return number if math.isfinite(number) and not isinstance(value, bool) else None
+    except (TypeError, ValueError, OverflowError):
         return None
 
 
@@ -60,6 +62,11 @@ def normalized_area_scope(scope: Any, *, empty_means_all: bool = False) -> dict[
     empty_means_all-Fall darf die gesamte Baustelle freigeben.
     """
     source = scope if isinstance(scope, dict) else {}
+    if source.get("invalid") is True or any(
+        source.get(key) is not None and _scope_number(source, key) is None
+        for key in ("km_from_m", "km_to_m")
+    ):
+        return {"all": False, "invalid": True}
     if source.get("all") is True:
         return {"all": True}
 
@@ -90,6 +97,8 @@ def area_scope_allows(user_scope: Any, entity_scope: Any) -> bool:
     """
     user = normalized_area_scope(user_scope)
     entity = normalized_area_scope(entity_scope, empty_means_all=True)
+    if user.get("invalid") or entity.get("invalid"):
+        return False
     if user.get("all") is True:
         return True
     if entity.get("all") is True:
@@ -151,6 +160,11 @@ def worksite_context(cur, user: dict[str, Any], worksite_id: UUID | str) -> dict
         raise HTTPException(404, "WORKSITE_NOT_FOUND")
 
     role = user["company_role"]
+    if role != "ADMIN" and (
+        user.get("company_id") is None
+        or str(user["company_id"]) != str(row["company_id"])
+    ):
+        raise HTTPException(403, "WORKSITE_ACCESS_DENIED")
     if role == "ADMIN":
         permissions = ADMIN_PERMISSIONS.copy()
         access = True

@@ -165,9 +165,10 @@ def list_worksites(user: dict[str, Any] = Depends(current_portal_user)) -> dict:
                 JOIN tb.companies c ON c.id = w.company_id
                 JOIN tb.worksite_memberships m ON m.worksite_id = w.id
                 WHERE m.user_id = %s AND m.status = 'ACTIVE' AND w.deleted_at IS NULL
+                  AND w.company_id = %s
                 ORDER BY w.updated_at DESC
                 """,
-                (user["user_id"],),
+                (user["user_id"], user["company_id"]),
             )
         rows = cur.fetchall()
     return {"worksites": rows}
@@ -1552,4 +1553,3 @@ def redeem_worksite_invitation(
             response_payload=response,
         )
     return response
-
