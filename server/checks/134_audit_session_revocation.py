@@ -1,5 +1,5 @@
-"""Audit existing auth and reproduce stream limitation; no live users/DB.
-The stream test documents a known defect, not a security acceptance gate.
+"""Audit existing auth boundaries; no live users/DB.
+Stream revocation regression is covered by check 135.
 """
 import ast, asyncio, importlib.util, json, unittest
 from pathlib import Path
@@ -58,27 +58,5 @@ class Audit(unittest.TestCase):
             expiry=env['_valid_until_from_through'](day).astimezone(ZoneInfo('Europe/Berlin'))
             self.assertEqual(expiry.date(),day+timedelta(days=1))
             self.assertEqual((expiry.hour,expiry.minute),(0,1))
-
-    def test_reproduce_open_stream_continues_after_revocation(self):
-        state={'allowed':True,'checks':0}
-        def context(*args):
-            state['checks']+=1
-            if not state['allowed']:raise g.HTTPException(403,'USER_DISABLED')
-        class Hub:
-            async def wait_for_head(self,*args):return 1
-        async def query(*args):return [{'change_id':1,'entity_id':'example'}]
-        env=g.load('sync',['live_events'],dict(Query=lambda **kw:kw.get('default'),
-            transaction=lambda:g.Cursor(None),worksite_context=context,_CHANGE_HUB=Hub(),
-            _run_sync_query=query,_changes_for_worksite=object(),json=json,
-            StreamingResponse=lambda stream,**kw:stream))
-        stream=env['live_events'](uuid4(),0,{'company_role':'USER'})
-        state['allowed']=False
-        async def run():
-            event=await anext(stream)
-            await stream.aclose()
-            return event
-        event=asyncio.run(run())
-        self.assertIn('event: change',event)
-        self.assertEqual(state['checks'],1)
 
 if __name__=='__main__':unittest.main()

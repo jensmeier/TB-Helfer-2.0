@@ -6,7 +6,7 @@ import time
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from .database import connect, transaction
@@ -241,8 +241,18 @@ def changes(
     return {"changes": rows, "next_after": rows[-1]["change_id"] if rows else after}
 
 
+def _refresh_sync_user(request: Request, worksite_id: UUID | None) -> dict[str, Any]:
+    """Recheck the original credentials and current access after an async wait."""
+    user = current_portal_user(request)
+    if worksite_id is not None:
+        with transaction() as conn, conn.cursor() as cur:
+            worksite_context(cur, user, worksite_id)
+    return user
+
+
 @router.get("/changes/wait")
 async def wait_changes(
+    request: Request,
     after: int = Query(default=0, ge=0),
     limit: int = Query(default=200, ge=1, le=1000),
     worksite_id: UUID | None = None,
@@ -261,8 +271,8 @@ async def wait_changes(
     if observed_head <= after and wait_seconds > 0:
         observed_head = await _CHANGE_HUB.wait_for_head(after, wait_seconds)
 
-    # A quiet long-poll timeout needs no caller-specific DB query at all. The shared
-    # hub already proved that the global feed head did not move beyond this cursor.
+    # Even an empty timeout must respect credentials revoked during the wait.
+    user = await _run_sync_query(_refresh_sync_user, request, worksite_id)
     if observed_head <= after:
         return {
             "changes": [],
@@ -280,6 +290,7 @@ async def wait_changes(
         worksite_id=worksite_id,
         entity_types=types,
     )
+    await _run_sync_query(_refresh_sync_user, request, worksite_id)
     has_more = len(rows) > limit
     visible = rows[:limit]
     next_after = visible[-1]["change_id"] if has_more and visible else observed_head
@@ -295,6 +306,7 @@ async def wait_changes(
 
 @router.get("/events")
 def live_events(
+    request: Request,
     worksite_id: UUID,
     after: int = Query(default=0, ge=0),
     user: dict[str, Any] = Depends(current_portal_user),
@@ -306,17 +318,30 @@ def live_events(
         cursor = after
         while True:
             head = await _CHANGE_HUB.wait_for_head(cursor, 15.0)
-            if head <= cursor:
-                yield ": keepalive\n\n"
-                continue
-            rows = await _run_sync_query(_changes_for_worksite, worksite_id, cursor, head, 200)
+            try:
+                fresh_user = await _run_sync_query(_refresh_sync_user, request, worksite_id)
+                if head <= cursor:
+                    yield ": keepalive\n\n"
+                    continue
+                rows = await _run_sync_query(
+                    _visible_changes, fresh_user, after=cursor, through=head,
+                    limit=200, worksite_id=worksite_id,
+                )
+                await _run_sync_query(_refresh_sync_user, request, worksite_id)
+            except HTTPException as exc:
+                if exc.status_code in {401, 403, 404}:
+                    return
+                raise
             if rows:
+                # One bounded batch avoids pausing between individual checked events.
+                events = []
                 for row in rows:
                     cursor = row["change_id"]
                     payload = json.dumps(row, ensure_ascii=False, separators=(",", ":"))
-                    yield f"id: {cursor}\nevent: change\ndata: {payload}\n\n"
+                    events.append(f"id: {cursor}\nevent: change\ndata: {payload}\n\n")
                 if len(rows) < 200:
                     cursor = max(cursor, head)
+                yield "".join(events)
             else:
                 cursor = head
                 yield ": keepalive\n\n"
@@ -326,3 +351,4 @@ def live_events(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
