@@ -144,8 +144,8 @@
 <label>Objekt<select id="netKind"><option value="TRACK">Gleisabschnitt</option><option value="LINE">Freie Strecke</option><option value="SWITCH">Weiche</option></select></label>
 <label>Bezeichnung / Nummer<input id="netName" maxlength="160"></label><label>Betriebsstellenkürzel<input id="netStation" maxlength="50"></label><label id="netRouteLabel" hidden>Streckennummer<input id="netRoute" maxlength="80"></label>
 <label>Positionsstatus<select id="netPositionStatus"><option value="PROVISIONAL">Position vorläufig</option><option value="CONFIRMED">Position bestätigt</option></select></label>
-<details open><summary>Kilometerbezug</summary><p>Die Geometrie und die Kilometer dürfen unterschiedliche Achsen verwenden. Ohne eigene Auswahl gelten die Quellen der Anschlusspunkte.</p><label>Referenzachse<select id="netKmAxis"></select></label><label>Referenzquelle<select id="netKmSource"></select></label><p id="netKmInfo" role="status"></p><button type="button" class="quiet" id="netKmRefresh">Referenz erneut laden</button></details>
-<details><summary>Verlauf über mehrere Originalabschnitte</summary><p>Nur bei Bedarf: Abschnitte in Laufrichtung hinzufügen. Der erste beginnt am Anfang/WA, der letzte endet am Ende/WE/WEZ. Ohne Einträge wird der Verlauf aus den Punktquellen ermittelt.</p><label>Weg<select id="netPathRole"><option value="TRACK">Gleis</option></select></label><label>Achse<select id="netPathAxis"></select></label><label>Quelle<select id="netPathSource"></select></label><label>Achsposition von (m)<input id="netPathFrom" inputmode="decimal"></label><label>Achsposition bis (m)<input id="netPathTo" inputmode="decimal"></label><button type="button" id="netPathAdd" class="quiet">Abschnitt hinzufügen</button><div id="netPathList"></div></details>
+<details open><summary>Kilometerbezug</summary><p>Die Geometrie und die Kilometer dürfen unterschiedliche Achsen verwenden. Ohne eigene Auswahl gelten die Quellen der Anschlusspunkte.</p><label>Referenz suchen<input id="netKmSearch" type="search" placeholder="z. B. 5340 oder Gl 1"></label><label style="display:flex;gap:8px;align-items:center"><input id="netKmAll" type="checkbox" style="width:auto">Auch andere Bahnhöfe / Strecken suchen</label><small id="netKmScope"></small><label>Referenzachse<select id="netKmAxis"></select></label><label>Referenzquelle<select id="netKmSource"></select></label><p id="netKmInfo" role="status"></p><button type="button" class="quiet" id="netKmRefresh">Referenz erneut laden</button></details>
+<details><summary>Verlauf über mehrere Originalabschnitte</summary><p>Nur bei Bedarf: Abschnitte in Laufrichtung hinzufügen. Der erste beginnt am Anfang/WA, der letzte endet am Ende/WE/WEZ. Ohne Einträge wird der Verlauf aus den Punktquellen ermittelt.</p><label>Weg<select id="netPathRole"><option value="TRACK">Gleis</option></select></label><label>Verlaufsachse suchen<input id="netPathSearch" type="search" placeholder="Strecke oder Gleis"></label><label style="display:flex;gap:8px;align-items:center"><input id="netPathAll" type="checkbox" style="width:auto">Auch andere Bahnhöfe / Strecken suchen</label><small id="netPathScope"></small><label>Achse<select id="netPathAxis"></select></label><label>Quelle<select id="netPathSource"></select></label><label>Achsposition von (m)<input id="netPathFrom" inputmode="decimal"></label><label>Achsposition bis (m)<input id="netPathTo" inputmode="decimal"></label><button type="button" id="netPathAdd" class="quiet">Abschnitt hinzufügen</button><div id="netPathList"></div></details>
 <details><summary>Katalogverknüpfung</summary><p>Nur dasselbe fachliche Objekt ausdrücklich auswählen. Namen und Kilometer werden nicht automatisch überschrieben.</p><button type="button" id="netCatalogLoad" class="quiet">Katalogobjekte dieser Betriebsstelle laden</button><label>Vorhandenes Katalogobjekt<select id="netCatalogLink"><option value="">Keine Verknüpfung</option></select></label></details><button type="button" id="netHistory" class="quiet">Änderungen dieses Objekts</button>
 <p id="netActiveLabel"></p><label>Position für diesen Punkt<select id="netMode"><option value="AUTO">Linie direkt auf Karte wählen</option><option value="MAP">Frei setzen – auch außerhalb der TRA</option><option value="AXIS">Nur auf fest gewählter Originalachse</option><option value="OFFSET">Abstand vor / nach Originalquelle</option></select></label>
 <div id="netAxisFields"><label>Achse für diesen Punkt<select id="netAxis"></select></label><label>Originalquelle<select id="netSource"></select></label></div>
@@ -430,7 +430,7 @@ function netPointDescription(n){if(!n)return 'Noch kein Punkt';if(!n.binding)ret
  return name+' · Achsposition '+b.station_m.toFixed(3)+' m (kein Bahn-km)';
 }
 function netRender(){
- netRenderPathSections();const roles=netRoles();if(!roles.includes(netActiveRole))netActiveRole=roles[0];
+ netRenderPathSections();for(const which of ['netKm','netPath'])netRefreshReferenceOptions(which);const roles=netRoles();if(!roles.includes(netActiveRole))netActiveRole=roles[0];
  $('netRouteLabel').hidden=false;
  $('netRoleTabs').innerHTML=roles.map(role=>`<button type="button" class="quiet" data-net-role="${role}" aria-pressed="${role===netActiveRole}">${netRoleLabel(role)}<small>${netNodes[role]?'gesetzt':'offen'}</small></button>`).join('');
  $('netRoleTabs').querySelectorAll('[data-net-role]').forEach(b=>b.addEventListener('click',()=>netSelectRole(b.dataset.netRole)));
@@ -624,18 +624,43 @@ function networkEndpointKm(o,role){if(netEdited&&netObject?.id===o.id&&!netPrevi
 function networkKmSummary(o){const vals=o.kilometers?.endpoints||[],known=vals.filter(v=>Number.isFinite(v.km_m));return known.length?known.map(v=>netRoleLabel(v.role)+' '+v.route_number+' km '+chainage(v.km_m)).join(' / ')+(known.length<vals.length?' · teilweise ohne Kilometer':''):(vals.length?networkKmReason(vals[0]):'Kilometer noch nicht geprüft');}
 function networkKmDetails(o){if(!o)return '';return (o.position_status==='CONFIRMED'?'Position bestätigt':'Position vorläufig')+' · '+(o.kilometers?.endpoints||[]).map(v=>netRoleLabel(v.role)+': '+(Number.isFinite(v.km_m)?'Strecke '+v.route_number+' · km '+chainage(v.km_m)+' · '+(v.status==='MANUAL'?'manuelle Kalibrierung':'GVP-Kalibrierung')+(v.projection_distance_m?' · '+v.projection_distance_m.toFixed(2)+' m seitlicher Abstand':''):networkKmReason(v))).join(' / ');}
 function networkHit(o,x,y){const ring=o.selection_area?.coordinates?.[0];if(ring?.length){const p=ring.map(coordScreen);let inside=false;for(let i=0,j=p.length-1;i<p.length;j=i++){if(((p[i][1]>y)!==(p[j][1]>y))&&(x<(p[j][0]-p[i][0])*(y-p[i][1])/(p[j][1]-p[i][1])+p[i][0]))inside=!inside;}if(inside)return true;}return (o.paths||[]).some(p=>(p.coordinates||[]).slice(1).some((b,i)=>pointDistance([x,y],coordScreen(p.coordinates[i]),coordScreen(b))<=8));}
-function netReferenceOptions(){return [...axes.values()].map(a=>`<option value="${esc(a.axis_id)}">${esc(a.display_name)}${a.route_number?' · Strecke '+esc(a.route_number):''}</option>`).join('');}
-function netInitReferences(){netReferencePending=false;
- $('netKmAxis').innerHTML='<option value="">Quellen der Anschlusspunkte verwenden</option>'+netReferenceOptions();$('netKmAxis').value=netKmReference?.axis_id||'';
- $('netKmSource').innerHTML=netKmReference?`<option value="${esc(netKmReference.segment_id)}">Gespeicherte Referenz · V${netKmReference.segment_version}</option>`:'<option value="">Keine zusätzliche Referenz</option>';
- if(netKmReference&&!axes.has(netKmReference.axis_id)){$('netKmAxis').innerHTML+=`<option value="${esc(netKmReference.axis_id)}">Gespeicherte Referenz · Quelle prüfen</option>`;$('netKmAxis').value=netKmReference.axis_id;}
- $('netPathAxis').innerHTML='<option value="">Achse wählen …</option>'+netReferenceOptions();$('netPathSource').innerHTML='';netRenderPathSections();
+function netReferenceProbes(){
+ const live=Object.values(netNodes).map(netNodePosition).filter(Boolean);
+ if(live.length)return live.map(worldPoint=>world(...worldPoint));
+ const paths=netObject?.paths||[];if(paths.some(p=>p.coordinates?.length))return paths.flatMap(p=>p.coordinates.length?[p.coordinates[0],p.coordinates[Math.floor(p.coordinates.length/2)],p.coordinates.at(-1)]:[]).map(p=>world(...p));
+ const code=($('netStation').value||'').trim().toUpperCase(),related=[...axes.values()].filter(a=>(code&&a.station_code===code)||a.axis_id===netAxis?.id);
+ return related.flatMap(a=>{const lines=geometryCache.get(a.axis_id)?.segments||a.overview_segments||[];const points=lines.flatMap(p=>p.coordinates?.length?[p.coordinates[0],p.coordinates[Math.floor(p.coordinates.length/2)],p.coordinates.at(-1)]:[]);if(points.length)return points.map(p=>world(...p));const b=axisBox(a);return b?[[b.x+b.w/2,b.y+b.h/2]]:[];});
 }
+function netNearbyReference(a,probes){
+ if(!probes.length)return false;
+ const b=axisBox(a);if(b&&!probes.some(p=>p[0]>=b.x-200&&p[0]<=b.x+b.w+200&&p[1]>=b.y-200&&p[1]<=b.y+b.h+200))return false;
+ const lines=geometryCache.get(a.axis_id)?.segments||a.overview_segments||[];
+ if(lines.length)return lines.some(l=>(l.coordinates||[]).slice(1).some((p,i)=>probes.some(q=>pointDistance(q,world(...l.coordinates[i]),world(...p))<=200)));
+ // A coarse overview box is only a suggestion, never a binding or station association.
+ return !!b;
+}
+function netReferenceCandidates(which){
+ const code=($('netStation').value||'').trim().toUpperCase(),q=($(which+'Search').value||'').trim().toLocaleLowerCase('de-DE'),all=!!$(which+'All').checked,probes=netReferenceProbes();
+ const candidates=[...axes.values()].map(a=>{const station=!!code&&a.station_code===code,route=a.axis_type==='STRECKE'||(!a.station_code&&a.route_number);return {a,station,near:!!route&&netNearbyReference(a,probes)};}).filter(c=>(all||c.station||c.near)&&(!q||[c.a.display_name,c.a.station_code,c.a.station_name,c.a.route_number,c.a.track_key].filter(Boolean).join(' ').toLocaleLowerCase('de-DE').includes(q)));
+ return candidates.sort((a,b)=>(which==='netKm'?Number(b.near)-Number(a.near):Number(b.station)-Number(a.station))||(a.a.display_name||'').localeCompare(b.a.display_name||'','de-DE',{numeric:true}));
+}
+function netRefreshReferenceOptions(which){
+ const el=$(which+'Axis'),selected=el.value||(which==='netKm'?netKmReference?.axis_id:'')||'',list=netReferenceCandidates(which),page=list.slice(0,60),found=axes.get(selected);
+ if(selected&&!page.some(c=>c.a.axis_id===selected))page.unshift({a:found||{axis_id:selected,display_name:'Gespeicherte Referenz · Quelle prüfen'},selected:true});
+ el.innerHTML=(which==='netKm'?'<option value="">Quellen der Anschlusspunkte verwenden</option>':'<option value="">Achse wählen …</option>')+page.map(c=>`<option value="${esc(c.a.axis_id)}">${esc(c.a.display_name)}${c.a.route_number?' · Strecke '+esc(c.a.route_number):''}${c.selected?' · ausgewählt':c.near?' · im Umfeld':''}</option>`).join('');el.value=selected;
+ $(which+'Scope').textContent=($(which+'All').checked?'Gesamter Bestand':'Bahnhof '+(($('netStation').value||'').trim()||'noch wählen')+' und Strecken im Objektumfeld')+' · '+list.length+' Treffer'+(list.length>60?' (erste 60; Suche eingrenzen)':'')+'. Bestehende Auswahl bleibt erhalten.';
+}
+function netInitReferences(){netReferencePending=false;
+ for(const which of ['netKm','netPath']){$(which+'Search').value='';$(which+'All').checked=false;$(which+'Axis').value=which==='netKm'?(netKmReference?.axis_id||''):'';netRefreshReferenceOptions(which);}
+ $('netKmSource').innerHTML=netKmReference?`<option value="${esc(netKmReference.segment_id)}">Gespeicherte Referenz · V${netKmReference.segment_version}</option>`:'<option value="">Keine zusätzliche Referenz</option>';
+ $('netPathSource').innerHTML='';netRenderPathSections();
+}
+function netAcceptKmReference(){netKmReference=netChosenReference('netKm');netReferencePending=false;const route=netSources.get(netKmReference.axis_id)?.axis.route_number;if(route)$('netRoute').value=route;netInvalidate();}
 async function netLoadReference(which){
  if(netBusy)return;const id=$(which+'Axis').value,generation=++netReferenceGeneration;
  if(which==='netKm'&&!id){netReferencePending=false;netKmReference=null;$(which+'Source').innerHTML='';netInvalidate();return;}
  if(!id)return;if(which==='netKm'){netReferencePending=true;netInvalidate();}netLock(true);
- try{const d=await wsApi('/axes/'+encodeURIComponent(id));if(generation!==netReferenceGeneration)return;netSources.set(id,d);$(which+'Source').innerHTML='<option value="">Quelle ausdrücklich auswählen …</option>'+wsSourceOptions(d);$(which+'Source').value='';if(which==='netKm'){netMessage('Kilometerquelle auswählen. Der bisherige Bezug bleibt bis zur Auswahl erhalten.');}else netMessage('Verlaufsquelle auswählen und Achspositionen eingeben.');}
+ try{const d=await wsApi('/axes/'+encodeURIComponent(id));if(generation!==netReferenceGeneration)return;netSources.set(id,d);$(which+'Source').innerHTML='<option value="">Quelle ausdrücklich auswählen …</option>'+wsSourceOptions(d);$(which+'Source').value='';if(d.sources.length===1){$(which+'Source').value=d.sources[0].segment_id;if(which==='netKm')netAcceptKmReference();else{$('netPathFrom').value=d.sources[0].station_from_m;$('netPathTo').value=d.sources[0].station_to_m;}netMessage('Einzige Originalquelle übernommen: '+d.sources[0].original_name+'. '+(which==='netKm'?'Jetzt Prüfen und Speichern.':'Achspositionen prüfen und Abschnitt hinzufügen.'));}else if(!d.sources.length){netMessage('Diese Achse hat keine verfügbare Originalquelle. Bitte eine andere Achse wählen.');}else if(which==='netKm'){netMessage(d.sources.length+' Originalquellen: passende Quelle ausdrücklich auswählen.');}else netMessage('Verlaufsquelle auswählen und Achspositionen eingeben.');}
  catch(e){netMessage(netError(e));}finally{netLock(false);}
 }
 function netChosenReference(which){const d=netSources.get($(which+'Axis').value),source=d?.sources.find(s=>s.segment_id===$(which+'Source').value);if(!source)throw Error('Bitte eine geladene Originalquelle auswählen.');return {axis_id:d.axis.id,axis_version:d.axis.current_version,segment_id:source.segment_id,segment_version:source.segment_version};}
@@ -643,10 +668,12 @@ function netRenderPathSections(){const kind=$('netKind').value,role=$('netPathRo
 $('netKmAxis').addEventListener('change',()=>netLoadReference('netKm'));
 $('netKmRefresh').addEventListener('click',()=>netLoadReference('netKm'));
 $('netPathAxis').addEventListener('change',()=>netLoadReference('netPath'));
-$('netKmSource').addEventListener('change',()=>{try{netKmReference=netChosenReference('netKm');netReferencePending=false;const route=netSources.get(netKmReference.axis_id)?.axis.route_number;if(route)$('netRoute').value=route;netInvalidate();}catch(e){netMessage(e.message);}});
+$('netKmSource').addEventListener('change',()=>{try{netAcceptKmReference();}catch(e){netMessage(e.message);}});
 $('netPathSource').addEventListener('change',()=>{const d=netSources.get($('netPathAxis').value),src=d?.sources.find(s=>s.segment_id===$('netPathSource').value);if(src){$('netPathFrom').value=src.station_from_m;$('netPathTo').value=src.station_to_m;}});
 $('netPathAdd').addEventListener('click',()=>{try{const ref=netChosenReference('netPath'),a=$('netPathFrom').value.trim(),b=$('netPathTo').value.trim(),from=Number(a.replace(',','.')),to=Number(b.replace(',','.'));if(!a||!b||!Number.isFinite(from)||!Number.isFinite(to)||from===to)throw Error('Bitte zwei unterschiedliche Achspositionen eingeben.');netPathSections.push({...ref,role:$('netPathRole').value,station_from_m:from,station_to_m:to});netInvalidate();netRenderPathSections();}catch(e){netMessage(e.message);}});
 $('netPositionStatus').addEventListener('change',netInvalidate);
+for(const which of ['netKm','netPath']){$(which+'Search').addEventListener('input',()=>netRefreshReferenceOptions(which));$(which+'All').addEventListener('change',()=>netRefreshReferenceOptions(which));}
+$('netStation').addEventListener('input',()=>{for(const which of ['netKm','netPath'])netRefreshReferenceOptions(which);});
 
 initNetworkDisplay();
 loadCoverage();
