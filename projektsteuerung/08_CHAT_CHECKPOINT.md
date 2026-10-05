@@ -1563,3 +1563,10 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 - Netzwerk-Deaktivieren/Wiederherstellen einschließlich Anschlüssen/Kilometerbezug nach vorgeschlagenem Test: Benutzer bestätigt am 05.10.2026 14:59 „funktioniert“. Benutzerbericht, kein eigener DB-/HTTP-Nachweis; kein vollständiger Backup-Restore daraus ableiten.
 - Folgeauftrag 15:07 „okay“: offene Server-Betriebspunkte prüfen, zuerst Worker-/DB-Stabilität, dann Backup/Wiederherstellung und Firmen-/Benutzerrechte; Portal vor Android. Bestehende Abnahmen schützen.
 - Ausgang: Server8e43e1007a66064aaa6e615b55fd861d0a0319e7 / PR6 offen Draft; Android423f37892915cb3308a4b1ea9e4d196faa872326 / PR11 offen. Keine app/**-Änderung, kein NAS-Zugriff vorausgesetzt. Historische Fehlermeldungen benötigen reale Logs zur Ursachenbestimmung.
+
+
+## OPS-MONITOR-001 – Befund und begrenzter Korrekturauftrag (05.10.2026)
+- Source-Audit auf9712fc6: jobs.py enthält bereits Startup-/Loop-/Status-Retries bei DB-Ausfällen. Historischer NAS-Worker-Abbruch weiterhin ohne Laufzeitlogs nicht ursächlich geklärt.
+- Reproduzierbarer Monitor-Befund: _record_transitions erkennt Neustart nur an geänderter PID; Container können dieselbe PID wiederverwenden, obwohl started_at wechselt. read_monitor_snapshot bewertet das Alter seines gespeicherten Zustands nicht und kann bei stehendem Monitor altes OK anzeigen.
+- Korrektur: Startzeitwechsel als Neustart erkennen, PID-Fallback für alte Heartbeats behalten; veraltete/ungültig datierte Snapshots ausdrücklich als Überwachungsausfall kennzeichnen, Rohprüfwerte erhalten. Keine automatischen Neustarts, keine Datenänderung, keine neue E-Mail-Konfiguration.
+- Gezielte verhaltensbasierte Tests mit echten isolierten Monitorfunktionen und Datei-/Zeit-Doubles; NAS-Nachweis getrennt. Backup/Restore und vollständige Rechteabnahme bleiben weitere Blöcke.
