@@ -116,10 +116,12 @@ def survey_test_data_preview_from_terminal() -> dict[str, Any]:
 def _assert_no_network_source_dependencies(cur) -> None:
     # The general test reset must not erase originals used by an active working network.
     cur.execute("""SELECT 1 FROM tb.survey_network_entities o
-        JOIN tb.survey_network_entities n ON EXISTS (
-          SELECT 1 FROM jsonb_array_elements(o.data->'endpoints') p WHERE p->>'node_id'=n.id::text)
-        WHERE o.entity_type='OBJECT' AND o.active AND n.entity_type='NODE'
-          AND n.data->'binding'->>'segment_id' IS NOT NULL LIMIT 1""")
+        WHERE o.entity_type='OBJECT' AND o.active AND (
+          EXISTS (SELECT 1 FROM tb.survey_network_entities n WHERE n.entity_type='NODE'
+            AND EXISTS (SELECT 1 FROM jsonb_array_elements(o.data->'endpoints') p WHERE p->>'node_id'=n.id::text)
+            AND n.data->'binding'->>'segment_id' IS NOT NULL)
+          OR o.data->'km_reference'->>'segment_id' IS NOT NULL
+          OR jsonb_array_length(coalesce(o.data->'path_sections','[]'::jsonb))>0) LIMIT 1""")
     if cur.fetchone():
         raise HTTPException(409, 'SURVEY_TEST_RESET_NETWORK_REFERENCES_ACTIVE')
 
@@ -697,4 +699,3 @@ def purge_company(
 
     _remove_keys_after_commit(storage_keys)
     return Response(status_code=204)
-

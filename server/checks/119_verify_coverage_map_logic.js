@@ -46,7 +46,7 @@ function fixtures() {
   const details = id => ({axis:{id,current_version:2},segments:[{id:'s'+id,source_original_id:'o'+id,original_name:'<img src=x onerror=alert(1)>.TRA',source_kind:'ORIGINAL_TRA',data_kind:'TRA',sha256:'abc',byte_size:1024,current_version:1,segment_status:'ACTIVE'}],history:[{change_id:10,entity_type:'AXIS',entity_version:2,operation:'UPDATE',changed_at:'2026-10-02T16:00:00Z',fields:[{field:'display_name',before:'Alt',after:'<script>bad</script>'}]}],history_next_before:10,conflicts:[]});
   return {coverage,geometry,details};
 }
-async function harness() {
+async function harness(savedDisplay={originals:true}) {
   const f = fixtures(), elements = new Map(), calls = [], images = [], controls = {timeoutMs:12000,handler:null};
   const get = id => { if (!elements.has(id)) elements.set(id,new Element(id)); return elements.get(id); };
   const tabs = ['overview','objects','originals','history'].map(x=>{const e=get('tab-'+x);e.dataset.tab=x;return e;});
@@ -74,7 +74,8 @@ async function harness() {
       opts.signal.addEventListener('abort',abort,{once:true});if(opts.signal.aborted)abort();
     });
   };
-  const context=vm.createContext({crypto:require("node:crypto").webcrypto,document,location:{pathname:'/admin/v1/survey-overview'},window:{},Image:class{set src(url){this.url=url;images.push(this);}},console,fetch,structuredClone,AbortController,URL,Map,Set,Date,Math,Number,String,Array,JSON,Promise,ResizeObserver:class{observe(){}},setTimeout:(fn,ms)=>setTimeout(fn,ms===12000?controls.timeoutMs:ms===350?5:ms),clearTimeout,requestAnimationFrame:fn=>setTimeout(fn,0)});
+  const storage=new Map(savedDisplay?[['tb.network.display.v1',JSON.stringify(savedDisplay)]]:[]);
+  const context=vm.createContext({localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},crypto:require("node:crypto").webcrypto,document,location:{pathname:'/admin/v1/survey-overview'},window:{},Image:class{set src(url){this.url=url;images.push(this);}},console,fetch,structuredClone,AbortController,URL,Map,Set,Date,Math,Number,String,Array,JSON,Promise,ResizeObserver:class{observe(){}},setTimeout:(fn,ms)=>setTimeout(fn,ms===12000?controls.timeoutMs:ms===350?5:ms),clearTimeout,requestAnimationFrame:fn=>setTimeout(fn,0)});
   vm.runInContext(baseScript,context);vm.runInContext(script,context);
   const run=code=>vm.runInContext(code,context);
   for(let i=0;i<100&&!calls.some(c=>c.url.includes('include_overview'));i++)await delay(2);
@@ -417,5 +418,28 @@ async function harness() {
   assert.equal(unified.run('netSelectedCatalogLink().version'),7);
   unified.run("netEntities.set('outside',{id:'outside',entity_type:'OBJECT',active:true,kind:'TRACK',name:'7',station_code:'NEW',endpoints:[],paths:[]});groups();");
   assert.equal(unified.run("stationItems.some(s=>s.station_code==='NEW')"),true);
-  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; workspace preview/save/reset guards, network point/reuse/save/CSRF, REF017 endpoint-clamp regression, independent WA/WE/WEZ sources, drag/pointer-cancel/invalid-drop and KM retention; REF018 W107W/main-line multi-hit, source failure/cancel, free and measured outside points, schema1 re-open; WMS 1.1/1.3; REF019 network-only search/station, display filters, failed reload snapshot retention, explicit link preservation; NOT a visual browser test.');
+  // REF020: current inventory by default, explicitly reusable original layer and source picker.
+  const current=await harness(null);
+  assert.equal(current.run('displayOptions.originals'),false);
+  assert.equal(current.run("listKind='axes';query='';filteredRows().length"),0);
+  current.run('setNetworkView(true)');assert.equal(current.run('filteredRows().length'),3);
+  current.run("setNetworkView(false);$('networkPanel').hidden=false;netPick='START';$('netMode').value='AUTO'");
+  assert.equal(current.run("displayAxis(axes.get('a1'))"),true);
+  current.run("netPick=null;$('networkPanel').hidden=true");
+  assert.equal(current.run("displayAxis(axes.get('a1'))"),false);
+  current.run("globalThis.ko={id:'ko',entity_type:'OBJECT',active:true,kind:'TRACK',name:'1',station_code:'MGHN',version:1,endpoints:[],paths:[],km_reference:{axis_id:'a1',axis_version:2,segment_id:'s1',segment_version:3},path_sections:[],position_status:'CONFIRMED',kilometers:{endpoints:[{role:'START',route_number:'5340',km_m:10020,status:'MANUAL'},{role:'END',km_m:null,reason:'OUTSIDE_REFERENCE'}]}};netEntities.set(ko.id,ko)");
+  assert.match(current.run('networkKmSummary(ko)'),/5340.*teilweise/);
+  assert.match(current.run('networkKmDetails(ko)'),/Außerhalb der Referenz/);
+  assert.equal(current.run('netObjectInput(ko).km_reference.segment_version'),3);
+  await current.run("netEdit('ko')");
+  assert.match(current.get('netKmInfo').textContent,/Position bestätigt/);
+  assert.equal(current.run('netKmReference.segment_id'),'s1');
+  current.run('netInvalidate()');assert.match(current.get('netKmInfo').textContent,/neu berechnet/);
+  assert.equal(current.run("networkEndpointKm(ko,'START')"),'');
+  current.run("netReferencePending=true");await assert.rejects(current.run('netPayload()'),/Kilometerquelle bestätigen/);
+  // Polygon interior is selectable even far from both path centerlines.
+  current.run("coordScreen=p=>p;globalThis.areaObject={selection_area:{coordinates:[[[0,0],[100,0],[100,80],[0,3],[0,0]]]},paths:[]}");
+  assert.equal(current.run('networkHit(areaObject,90,35)'),true);
+  assert.equal(current.run('networkHit(areaObject,90,90)'),false);
+  console.log('PASS: actual template logic — bounds/deep zoom/aspect, multi-hit, escaping, history paging, null KM, stale selection, abort/timeout/retry, independent failures, empty stock, admin edit/archive and manual KM preview/save/conflict/CSRF/write timeout, viewport curve labels and GVP selection/calculation/invalidation; workspace preview/save/reset guards, network point/reuse/save/CSRF, REF017 endpoint-clamp regression, independent WA/WE/WEZ sources, drag/pointer-cancel/invalid-drop and KM retention; REF018 W107W/main-line multi-hit, source failure/cancel, free and measured outside points, schema1 re-open; WMS 1.1/1.3; REF019 network-only search/station, display filters, failed reload snapshot retention, explicit link preservation; REF020 current/source view, KM reasons, reopen/preservation/invalidation, pending reference guard and switch-area hit; NOT a visual browser test.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

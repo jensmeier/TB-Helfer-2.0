@@ -66,6 +66,17 @@ class CatalogLink(StrictModel):
     id: UUID
     version: int = Field(ge=1)
 
+class SourceReference(StrictModel):
+    axis_id: UUID
+    axis_version: int = Field(ge=1)
+    segment_id: UUID
+    segment_version: int = Field(ge=1)
+
+class PathSection(SourceReference):
+    role: Literal['TRACK','LINE','MAIN','BRANCH']
+    station_from_m: float = Field(allow_inf_nan=False)
+    station_to_m: float = Field(allow_inf_nan=False)
+
 class NetworkObject(StrictModel):
     id: UUID
     base_version: int = Field(ge=0)
@@ -78,6 +89,9 @@ class NetworkObject(StrictModel):
     track_key: str | None = Field(default=None,max_length=80)
     owner_axis_id: UUID | None = None
     catalog_link: CatalogLink | None = None
+    km_reference: SourceReference | None = None
+    path_sections: list[PathSection] = Field(default_factory=list,max_length=32)
+    position_status: Literal['PROVISIONAL','CONFIRMED'] = 'PROVISIONAL'
     endpoints: list[Endpoint] = Field(min_length=2,max_length=3)
     note: str = Field(default='',max_length=1000)
 
@@ -123,8 +137,9 @@ def _payload_hash(payload):
     # Preserve receipt fingerprints for retries created before the additive link field.
     # Omitted means preserve; explicit null means unlink and must hash differently.
     for item,row in zip(payload.objects,data['objects']):
-        if 'catalog_link' not in item.model_fields_set:
-            row.pop('catalog_link',None)
+        for field in ('catalog_link','km_reference','path_sections','position_status'):
+            if field not in item.model_fields_set:
+                row.pop(field,None)
     return _hash(data)
 
 
@@ -142,7 +157,7 @@ def _source(cur, binding):
       AND s.segment_status='ACTIVE' AND s.source_kind='ORIGINAL_TRA' FOR SHARE OF a,s""",
       (binding['segment_id'],binding['axis_id']))
     row=cur.fetchone()
-    if not row or row['current_version']!=binding['segment_version']:
+    if not row or row['current_version']!=binding['segment_version'] or row['axis_version']!=binding['axis_version']:
         raise HTTPException(409,'NETWORK_SOURCE_CHANGED')
     return dict(row),c._segment_points(cur,dict(row))
 
@@ -199,13 +214,167 @@ def _path(cur, start, end, role):
 def _paths(cur, obj, nodes):
     byrole={e['role']:nodes[e['node_id']] for e in obj['endpoints']}
     pairs=[('WA','WE','MAIN'),('WA','WEZ','BRANCH')] if obj['kind']=='SWITCH' else [('START','END',obj['kind'])]
-    return [_path(cur,byrole[a],byrole[b],role) for a,b,role in pairs]
+    allowed={role for _,_,role in pairs}
+    if any(s['role'] not in allowed for s in obj.get('path_sections',[])):
+        raise HTTPException(400,'NETWORK_PATH_ROLE_INVALID')
+    return [_section_path(cur,byrole[a],byrole[b],role,[s for s in obj.get('path_sections',[]) if s['role']==role])
+            if any(s['role']==role for s in obj.get('path_sections',[])) else _path(cur,byrole[a],byrole[b],role)
+            for a,b,role in pairs]
+
+
+def _section_path(cur, start, end, role, sections):
+    c=_catalog();coords=[];length=0
+    for section in sections:
+        _,points=_source(cur,section)
+        a,b=section['station_from_m'],section['station_to_m']
+        clipped=c._clip_station_points(points,*sorted([a,b]))
+        if len(clipped)<2 or abs(a-b)<.1: raise HTTPException(400,'NETWORK_PATH_SECTION_INVALID')
+        if a>b: clipped=list(reversed(clipped))
+        xy=c._decimate(clipped,1500)
+        part=c._postgis_transform_points(cur,[(p['x_dbref'],p['y_dbref']) for p in xy])
+        if not part or any(p is None for p in part): raise HTTPException(400,'NETWORK_CRS_UNSUPPORTED')
+        if coords and _line_distance(dict(lon=coords[-1][0],lat=coords[-1][1]),dict(lon=part[0][0],lat=part[0][1]))>.5:
+            raise HTTPException(400,'NETWORK_PATH_GAP')
+        coords.extend(part);length+=abs(b-a)
+    if any(_line_distance(node['position'],dict(lon=p[0],lat=p[1]))>.5 for node,p in [(start,coords[0]),(end,coords[-1])]):
+        raise HTTPException(400,'NETWORK_PATH_ENDPOINT_MISMATCH')
+    return dict(role=role,coordinates=coords,length_m=length,geometry_quality='ORIGINAL_AXIS',km_status='REFERENCE_ONLY')
+
+
+def _project_reference(position, coordinates, points):
+    """Explicit reference only; no endpoint extrapolation or ambiguous loop snap."""
+    hits=[];scale=111320*math.cos(math.radians(position['lat']))
+    for i in range(1,len(coordinates)):
+        a,b=coordinates[i-1],coordinates[i]
+        if a is None or b is None: continue
+        ax=(a[0]-position['lon'])*scale;ay=(a[1]-position['lat'])*111320
+        dx=(b[0]-a[0])*scale;dy=(b[1]-a[1])*111320;length=dx*dx+dy*dy
+        if length<1e-12: continue
+        t=-(ax*dx+ay*dy)/length
+        if t<0 or t>1: continue
+        distance=math.hypot(ax+t*dx,ay+t*dy)
+        if distance<=30:
+            hits.append((distance,points[i-1]['station_m']+t*(points[i]['station_m']-points[i-1]['station_m'])))
+    hits.sort()
+    if not hits:return None,'OUTSIDE_REFERENCE'
+    if any(d-hits[0][0]<.1 and abs(s-hits[0][1])>1 for d,s in hits):return None,'AMBIGUOUS_POSITION'
+    return dict(station_m=hits[0][1],distance_m=hits[0][0]),None
+
+
+def _km_context(cur, ref, cache):
+    key=(ref['axis_id'],ref['axis_version'],ref['segment_id'],ref['segment_version'])
+    if key in cache:return cache[key]
+    row,points=_source(cur,ref);c=_catalog()
+    cur.execute("SELECT * FROM tb.survey_catalog_axes WHERE id=%s AND scope='GLOBAL' AND status<>'ARCHIVED'",(ref['axis_id'],))
+    axis=cur.fetchone()
+    if not axis:raise HTTPException(409,'NETWORK_SOURCE_CHANGED')
+    cur.execute("""SELECT * FROM tb.survey_catalog_segments WHERE axis_id=%s AND source_original_id=%s
+      AND source_kind='MANUAL_TRA_SECTION' AND segment_status='ACTIVE' ORDER BY id""",(ref['axis_id'],row['source_original_id']))
+    calibrations=[dict(r) for r in cur.fetchall()]
+    # Manual interval lookup is cheap; do not project all GVPs unless needed.
+    result=dict(row=row,points=points,axis=dict(axis),calibrations=calibrations)
+    cache[key]=result;return result
+
+
+def _kilometers(cur,obj,nodes,cache=None):
+    cache={} if cache is None else cache;values=[]
+    for endpoint in obj['endpoints']:
+        node=nodes[endpoint['node_id']];ref=obj.get('km_reference') or node.get('binding')
+        value=dict(role=endpoint['role'],node_id=node['id'],node_version=node['version'],km_m=None,status='UNKNOWN',reason='NO_REFERENCE')
+        if not ref:values.append(value);continue
+        try:ctx=_km_context(cur,ref,cache)
+        except HTTPException as e:
+            if e.status_code!=409:raise
+            value['reason']='SOURCE_CHANGED';values.append(value);continue
+        route=ctx['axis'].get('route_number')
+        value['route_number']=route
+        value['reference']={k:str(ref[k]) if k.endswith('_id') else ref[k] for k in ('axis_id','axis_version','segment_id','segment_version')}
+        if not route or (obj.get('route_number') and obj['route_number']!=route):
+            value['reason']='ROUTE_MISMATCH' if route else 'ROUTE_MISSING';values.append(value);continue
+        binding=node.get('binding')
+        if binding and binding['segment_id']==ref['segment_id']:
+            station=binding['station_m'];distance=0
+        else:
+            if 'coordinates' not in ctx:
+                ctx['coordinates']=_catalog()._postgis_transform_points(cur,[(p['x_dbref'],p['y_dbref']) for p in ctx['points']])
+            projection,reason=_project_reference(node['position'],ctx['coordinates'],ctx['points'])
+            if not projection:value['reason']=reason;values.append(value);continue
+            station=projection['station_m'];distance=projection['distance_m']
+        value.update(station_m=station,projection_distance_m=round(distance,3))
+        candidates=[]
+        for s in ctx['calibrations']:
+            a,b=s.get('station_from_m'),s.get('station_to_m');ka,kb=s.get('km_from_m'),s.get('km_to_m')
+            if None in (a,b,ka,kb) or a==b or not min(a,b)<=station<=max(a,b):continue
+            candidates.append((ka+(station-a)/(b-a)*(kb-ka),s))
+        if candidates:
+            if max(k for k,_ in candidates)-min(k for k,_ in candidates)>.01:
+                value['reason']='AMBIGUOUS_CALIBRATION'
+            else:
+                km,s=candidates[0];value.update(km_m=km,status='MANUAL',reason=None,method='MANUAL_SECTION',calibration={ 'id':str(s['id']),'version':s['current_version']})
+        else:
+            if 'quality' not in ctx:
+                c=_catalog();context_key=('axis_context',ref['axis_id'],ref['axis_version'])
+                if context_key not in cache:cache[context_key]=c._axis_km_context(cur,ctx['axis'])
+                # GRA min/max is not a pointwise station-to-KM mapping.
+                ctx['quality']=c._segment_km_quality(cur,ctx['axis'],ctx['row'],{**cache[context_key],'explicit_gra':[]},ctx['points'])
+            q=ctx['quality']
+            if q.get('source')=='GVP' and q.get('median_offset_m') is not None:
+                value.update(km_m=station+q['median_offset_m'],status='AUTOMATIC',reason=None,method='GVP',matched_gvp=q.get('matched_gvp'))
+            else:value['reason']='NO_CALIBRATION'
+        values.append(value)
+    routes={v.get('route_number') for v in values if v['km_m'] is not None}
+    known=sum(v['km_m'] is not None for v in values)
+    return dict(status='COMPLETE' if known==len(values) and len(routes)==1 else 'PARTIAL' if known else 'UNKNOWN',endpoints=values)
+
+
+def _switch_area(paths):
+    """Convex outer envelope of both 3m corridors, flat at WA/WE/WEZ."""
+    coords=[p for path in paths for p in path['coordinates']]
+    if not coords:return None
+    lon,lat=coords[0];sx=111320*math.cos(math.radians(lat));cloud=[]
+    if abs(sx)<1:return None
+    for path in paths:
+        pts=[((p[0]-lon)*sx,(p[1]-lat)*111320) for p in path['coordinates']]
+        for i,(x,y) in enumerate(pts):
+            for j in (i-1,i+1):
+                if j<0 or j>=len(pts):continue
+                dx=pts[j][0]-x;dy=pts[j][1]-y;length=math.hypot(dx,dy)
+                if length:
+                    cloud.extend([(x-dy/length*1.5,y+dx/length*1.5),(x+dy/length*1.5,y-dx/length*1.5)])
+    points=sorted(set(cloud))
+    def cross(a,b,c):return (b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0])
+    def half(seq):
+        out=[]
+        for p in seq:
+            while len(out)>1 and cross(out[-2],out[-1],p)<=0:out.pop()
+            out.append(p)
+        return out
+    hull=half(points)[:-1]+half(list(reversed(points)))[:-1]
+    if len(hull)<3:return None
+    ring=[[lon+x/sx,lat+y/111320] for x,y in hull];ring.append(ring[0])
+    return dict(type='Polygon',coordinates=[ring],half_width_m=1.5,purpose='SELECTION')
+
+
+def _follow_section_endpoints(data, previous, nodes):
+    """Follow a moved bound endpoint on the same explicitly selected source only."""
+    if not previous or data.get('path_sections')!=previous.get('path_sections'):return
+    old_versions={e['node_id']:e['node_version'] for e in previous['endpoints']}
+    roles={e['role']:nodes[e['node_id']] for e in data['endpoints']}
+    pairs=[('WA','WE','MAIN'),('WA','WEZ','BRANCH')] if data['kind']=='SWITCH' else [('START','END',data['kind'])]
+    for a,b,role in pairs:
+        sections=[s for s in data.get('path_sections',[]) if s['role']==role]
+        if not sections:continue
+        for point,section,field in [(roles[a],sections[0],'station_from_m'),(roles[b],sections[-1],'station_to_m')]:
+            binding=point.get('binding')
+            if old_versions.get(point['id'])==point['version'] or not binding:continue
+            if all(section[k]==binding[k] for k in ('axis_id','axis_version','segment_id','segment_version')):
+                section[field]=binding['station_m']
 
 
 def _prepare(cur,payload):
     ids={r.id for r in [*payload.nodes,*payload.objects]}
     ids.update(p.node_id for o in payload.objects for p in o.endpoints)
-    old=_load(cur,ids);resolved={};affected={}
+    old=_load(cur,ids);resolved={};affected={};km_cache={}
     for item in [*payload.nodes,*payload.objects]:
         prev=old.get(str(item.id))
         if (prev['version'] if prev else 0)!=item.base_version:
@@ -233,8 +402,9 @@ def _prepare(cur,payload):
         data.update(version=item.base_version+1,station_code=item.station_code.strip().upper(),name=item.name.strip())
         if not data['station_code']: raise HTTPException(400,'NETWORK_STATION_REQUIRED')
         # Older clients omit this additive field: preserve an existing explicit identity link.
-        if 'catalog_link' not in item.model_fields_set:
-            data['catalog_link'] = old.get(str(item.id), {}).get('catalog_link')
+        for field,default in [('catalog_link',None),('km_reference',None),('path_sections',[]),('position_status','PROVISIONAL')]:
+            if field not in item.model_fields_set:
+                data[field] = json.loads(json.dumps(old.get(str(item.id), {}).get(field,default)))
         link = data.get('catalog_link')
         if link:
             cur.execute("""SELECT o.id,o.current_version,o.object_type,s.station_code
@@ -259,7 +429,12 @@ def _prepare(cur,payload):
             if not node or node['entity_type']!='NODE' or (item.active and not node['active']):
                 raise HTTPException(409,'NETWORK_NODE_UNAVAILABLE')
             if endpoint.node_version!=node['version']: raise HTTPException(409,'NETWORK_NODE_CHANGED')
+        _follow_section_endpoints(data,old.get(str(item.id)),available)
         data['paths']=_paths(cur,data,available) if item.active else []
+        if data.get('km_reference') and item.active:
+            _source(cur,data['km_reference'])
+        data['kilometers']=_kilometers(cur,data,available,km_cache) if item.active else {'status':'INACTIVE','endpoints':[]}
+        data['selection_area']=_switch_area(data['paths']) if item.kind=='SWITCH' and item.active else None
         resolved[str(item.id)]=data
     # All linked objects must be updated atomically when their point is changed.
     if set(affected)-{str(o.id) for o in payload.objects}:
@@ -270,7 +445,7 @@ def _prepare(cur,payload):
 def _result(resolved):
     records=list(resolved.values())
     return {'schema_version':1,'entities':records,'warnings':[
-        'Manuelle Verbindung: Verlauf und Länge sind nur eine Näherung. Bahnkilometer bleiben unverändert.'
+        'Manuelle Verbindung: Verlauf und Länge sind nur eine Näherung. Kilometer werden getrennt ausgewertet; Kalibrierungen bleiben unverändert.'
     ] if any(p['geometry_quality']=='MANUAL_APPROXIMATION' for r in records for p in r.get('paths',[])) else []}
 
 
@@ -321,15 +496,27 @@ def _source_review(cur, records):
     for key,node in nodes.items():
         binding=node.get('binding')
         if not binding: continue
-        cur.execute("""SELECT s.current_version FROM tb.survey_catalog_segments s
+        cur.execute("""SELECT s.current_version,a.current_version axis_version FROM tb.survey_catalog_segments s
           JOIN tb.survey_catalog_axes a ON a.id=s.axis_id WHERE s.id=%s AND a.id=%s
           AND a.scope='GLOBAL' AND a.status<>'ARCHIVED' AND s.segment_status='ACTIVE'""",
           (binding['segment_id'],binding['axis_id']))
         row=cur.fetchone()
-        if not row or row['current_version']!=binding['segment_version']: stale.add(key)
+        if not row or row['current_version']!=binding['segment_version'] or row['axis_version']!=binding['axis_version']: stale.add(key)
+    km_cache={}
     for record in copies:
         record['needs_review']=record['id'] in stale if record['entity_type']=='NODE' else any(e['node_id'] in stale for e in record['endpoints'])
-        if record['entity_type']=='OBJECT' and record['needs_review']: record['paths']=[]
+        if record['entity_type']=='OBJECT':
+            for section in record.get('path_sections',[]):
+                try:_source(cur,section)
+                except HTTPException as e:
+                    if e.status_code!=409:raise
+                    record['needs_review']=True
+            if record['needs_review']:
+                record['paths']=[];record['selection_area']=None
+            elif record.get('kind')=='SWITCH':
+                record['selection_area']=_switch_area(record.get('paths',[]))
+            # Re-evaluate against current calibration; old snapshots never pin obsolete KM.
+            record['kilometers']=_kilometers(cur,record,nodes,km_cache) if record['active'] else {'status':'INACTIVE','endpoints':[]}
     return copies
 
 
@@ -383,7 +570,7 @@ def entity_history(entity_id:UUID,user:dict=Depends(current_portal_user)):
         for row in rows:
             for endpoint in row['snapshot'].get('endpoints',[]):
                 roles.setdefault(endpoint['node_id'],endpoint['role'])
-        fields=('name','active','station_code','route_number','track_key','position','binding','endpoints','catalog_link','km_observations','note')
+        fields=('name','active','station_code','route_number','track_key','position','binding','endpoints','catalog_link','km_reference','path_sections','position_status','km_observations','note')
         for row in rows[:50]:
             after=row['snapshot'];before=row['previous'] or {}
             history.append(dict(entity_type=after['entity_type'],point_role=roles.get(after.get('id')),version=after['version'],changed_at=row['changed_at'],

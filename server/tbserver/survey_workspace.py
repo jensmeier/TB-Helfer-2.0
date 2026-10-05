@@ -275,9 +275,13 @@ def _reset_prepare(cur,payload):
                 blockers.append(r['name'])
     if payload.mode=='RESET':
         cur.execute("""SELECT DISTINCT o.data FROM tb.survey_network_entities o
-          JOIN tb.survey_network_entities n ON EXISTS (SELECT 1 FROM jsonb_array_elements(o.data->'endpoints') p WHERE p->>'node_id'=n.id::text)
-          WHERE o.entity_type='OBJECT' AND o.active AND n.entity_type='NODE'
-          AND n.data->'binding'->>'segment_id'=ANY(%s)""",(list(selected),))
+          WHERE o.entity_type='OBJECT' AND o.active AND (
+            EXISTS (SELECT 1 FROM tb.survey_network_entities n WHERE n.entity_type='NODE'
+              AND EXISTS (SELECT 1 FROM jsonb_array_elements(o.data->'endpoints') p WHERE p->>'node_id'=n.id::text)
+              AND n.data->'binding'->>'segment_id'=ANY(%s))
+            OR o.data->'km_reference'->>'segment_id'=ANY(%s)
+            OR EXISTS (SELECT 1 FROM jsonb_array_elements(coalesce(o.data->'path_sections','[]'::jsonb)) s
+              WHERE s->>'segment_id'=ANY(%s)))""",(list(selected),list(selected),list(selected)))
         blockers.extend('Netzobjekt '+r['data']['name'] for r in cur.fetchall())
     if payload.mode=='RESET' and any((a.get('metadata') or {}).get('workspace_reset') for a in assets):
         raise HTTPException(409,'WORKSPACE_ALREADY_RESET')

@@ -34,13 +34,16 @@ class DB:
   elif q.startswith('SELECT change_id,data'):self.rows=[deepcopy(r) for r in self.changes if r['change_id']>p[0] and p[1][0] in r['station_codes']][:p[2]]
   elif q.startswith('SELECT coalesce(max(change_id)'):self.rows=[dict(latest=len(self.changes))]
   elif q.startswith('SELECT s.current_version'):
-   row=self.sources.get(str(p[0]));self.rows=[dict(current_version=row['current_version'])] if row and row.get('active',True) and row.get('scope','GLOBAL')=='GLOBAL' else []
+   row=self.sources.get(str(p[0]));self.rows=[dict(current_version=row['current_version'],axis_version=row['axis_version'])] if row and row.get('active',True) and row.get('scope','GLOBAL')=='GLOBAL' else []
   elif q.startswith('SELECT s.*,a.current_version'):
    row=self.sources.get(str(p[0]));self.rows=[deepcopy(row)] if row and str(row['axis_id'])==str(p[1]) and row.get('active',True) and row.get('scope','GLOBAL')=='GLOBAL' else []
   elif q.startswith('SELECT o.id,o.current_version'):
    ref=self.catalog.get(str(p[0]));self.rows=[deepcopy(ref)] if ref else []
   elif q.startswith("SELECT id FROM tb.survey_network_entities WHERE data->'catalog_link'"):
    self.rows=[dict(id=v['id']) for v in self.entities.values() if (v.get('catalog_link') or {}).get('id')==str(p[0]) and v['id']!=str(p[1])] if any(v.get('catalog_link') for v in self.entities.values()) else []
+  elif q.startswith('SELECT * FROM tb.survey_catalog_axes'):
+   source=next((r for r in self.sources.values() if str(r['axis_id'])==str(p[0])),None);self.rows=[dict(id=p[0],current_version=source['axis_version'],route_number='5340',scope='GLOBAL')] if source else []
+  elif q.startswith('SELECT * FROM tb.survey_catalog_segments'):self.rows=[]
   elif q.startswith('SELECT id FROM tb.survey_catalog_axes'):self.rows=[dict(id=p[0])]
   else:raise AssertionError(q)
  def fetchall(self):return deepcopy(self.rows)
@@ -61,7 +64,7 @@ def env(db):
    if isinstance(n,ast.FunctionDef):n.decorator_list=[]
   exec(compile(ast.Module(body=nodes,type_ignores=[]),file,'exec'),e)
  def clip(points,lo,hi):return [e['_point'](points,lo),e['_point'](points,hi)] if hi>lo else []
- c=SimpleNamespace(_segment_points=lambda cur,row:row['points'],_postgis_transform_points=lambda cur,xy:xy,_decimate=lambda x,n:x,_clip_station_points=clip)
+ c=SimpleNamespace(_segment_points=lambda cur,row:row['points'],_postgis_transform_points=lambda cur,xy:xy,_decimate=lambda x,n:x,_clip_station_points=clip,_axis_km_context=lambda cur,axis:{},_segment_km_quality=lambda *a:{})
  e['_catalog']=lambda:c
  return e
 
@@ -157,7 +160,8 @@ class NetworkTests(unittest.TestCase):
  def test_legacy_receipt_fingerprint_and_explicit_unlink(self):
   n=[self.node(),self.node(10.001)];p=self.payload(n,[self.obj(n)])
   legacy=p.model_dump(mode='json',exclude={'preview_token'})
-  for row in legacy['objects']:row.pop('catalog_link')
+  for row in legacy['objects']:
+   for field in ('catalog_link','km_reference','path_sections','position_status'):row.pop(field)
   self.assertEqual(self.e['_payload_hash'](p),self.e['_hash'](legacy))
   with_null=self.payload(n,[{**self.obj(n),'id':p.objects[0].id,'catalog_link':None}])
   with_null.client_change_id=p.client_change_id
