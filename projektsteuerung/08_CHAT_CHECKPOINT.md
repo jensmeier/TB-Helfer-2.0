@@ -1618,3 +1618,11 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 - Systemstatus: Button „Backup prüfen“, Backup-/Jobhistorie „Backup-Prüfung“, Dialog erklärt Wiederherstellung in getrennter Testumgebung ohne Änderung des laufenden Serverbestands. Vorhandene Backendbezeichnungen werden für RESTORE_TEST auch in der Jobliste übersetzt.
 - Nur server/templates/v1_system_status.html geändert. Technische Typen/API/Funktion bleiben unverändert. JavaScript-Syntax PASS; keine neuen Backendtests für Textänderung. NAS-Abnahme des vorherigen Prüfablaufs oben dokumentiert; neue Beschriftung noch nicht auf NAS geprüft.
 - Übernahme nach /volume1/docker/tb-helfer-v1/templates/v1_system_status.html; API neu starten, StrgF5. Kein Worker-/DB-Neustart erforderlich. Nächster eigener Serverblock: Firmen-/Benutzerrechte. Vollständige Backupkonsistenz und echter Produktiv-Restore bleiben getrennte offene Punkte.
+
+
+## RIGHTS-001 – Firmen-/Benutzerprüfung, Befunde vor Code (05.10.2026)
+- Freigabe Benutzer16:56, Basis SERVERf6025af / PR6 Draft, Android423f378 / PR11 unverändert. Bestehende Rollen-/Firmentrennung erhalten, API-Engineer-Vertrag-zuerst angewandt; keine Postman-Cloudaktion.
+- Reproduziert: _merge_permissions({}, {'files.view':'false'}) gibt True. Nur echtes bool True darf ein Recht erteilen; ungültige Overridewerte sperren statt Profilgrant zu übernehmen.
+- Reproduziert: NaN-Endpunkte passieren area_scope_allows gegen begrenzten KM-Bereich. Ungültige/nichtendliche KM-Scopewerte führen zur Ablehnung, keine Wildcard durch Wegfall ungültiger Dimension.
+- worksite_context sowie normale Benutzer-Baustellenliste vertrauen aktiver Mitgliedschaft ohne ausdrücklichen Firmengleichheitscheck. Normale Einladung prüft Firma und Admin-Firmenwechsel mit Historie ist bereits blockiert; zusätzliche zentrale Absicherung gegen inkonsistente Alt-/DB-Zuordnung, keine behauptete normale Cross-Firma-Einladungslücke.
+- Umsetzung nur permissions.py/worksites.py mit gezielten Verhaltensfällen für Firmen/Rollen, bool-Rechte, Scope und bestehende Authsperren. Benutzer-Sperre/Expiry bei Portal/Gerät/Admin im Quellpfad vorhanden, vollständiger HTTP-/DB-/NAS-Rechtetest separat.

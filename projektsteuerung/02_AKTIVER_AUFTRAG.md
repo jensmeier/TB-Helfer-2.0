@@ -2471,3 +2471,11 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 - Screenshots: Vollbackup05.10.16:07:10 mit848MB OK; Restore-Test05.10.16:45:42 OK, Job16:45:39 Fertig. Getrennte restore-test-db sichtbar. Dieser konkrete NAS-Prüflauf ist bestätigt; keine produktive Rücksetzung und kein vollständiger Einzeldatei-/Snapshotkonsistenznachweis.
 - Benutzerfreigabe16:52 „okay weiter“: UI nennt bisherige Restore-Test-Funktion „Backup prüfen“. Prüfung stellt in getrennte Testumgebung wieder her, laufender Bestand bleibt erhalten. Kein Live-Restore durch Umbenennung.
 - Button, Vorgangs-/Historienbezeichnung und Bestätigungsdialog entsprechend ändern; RESTORE_TEST und API-Pfade unverändert. Servere423c8b, Android423f378. Originale/DB unverändert.
+
+
+## RIGHTS-001 – Firmen-/Benutzerprüfung, Befunde vor Code (05.10.2026)
+- Freigabe Benutzer16:56, Basis SERVERf6025af / PR6 Draft, Android423f378 / PR11 unverändert. Bestehende Rollen-/Firmentrennung erhalten, API-Engineer-Vertrag-zuerst angewandt; keine Postman-Cloudaktion.
+- Reproduziert: _merge_permissions({}, {'files.view':'false'}) gibt True. Nur echtes bool True darf ein Recht erteilen; ungültige Overridewerte sperren statt Profilgrant zu übernehmen.
+- Reproduziert: NaN-Endpunkte passieren area_scope_allows gegen begrenzten KM-Bereich. Ungültige/nichtendliche KM-Scopewerte führen zur Ablehnung, keine Wildcard durch Wegfall ungültiger Dimension.
+- worksite_context sowie normale Benutzer-Baustellenliste vertrauen aktiver Mitgliedschaft ohne ausdrücklichen Firmengleichheitscheck. Normale Einladung prüft Firma und Admin-Firmenwechsel mit Historie ist bereits blockiert; zusätzliche zentrale Absicherung gegen inkonsistente Alt-/DB-Zuordnung, keine behauptete normale Cross-Firma-Einladungslücke.
+- Umsetzung nur permissions.py/worksites.py mit gezielten Verhaltensfällen für Firmen/Rollen, bool-Rechte, Scope und bestehende Authsperren. Benutzer-Sperre/Expiry bei Portal/Gerät/Admin im Quellpfad vorhanden, vollständiger HTTP-/DB-/NAS-Rechtetest separat.
