@@ -213,8 +213,10 @@ function renderMonitor(mon){
   const overall=String(mon.overall||'UNKNOWN').toUpperCase(),ch=mon.checks||{},ev=mon.events_24h||{};
   const stateClass=overall==='ERROR'?'status-bad':overall==='WARN'?'status-warn':'status-good';
   state.innerHTML='<span class="'+stateClass+'">● '+esc(monitorStatusLabel(overall))+'</span><span> · '+esc(dt(mon.updated_at))+'</span>';
+  if(mon.stale)state.innerHTML+='<span class="status-bad"> · Überwachung veraltet – Einzelwerte zeigen den letzten bekannten Stand.</span>';
   const db=ch.database||{},api=ch.api||{},pub=ch.public||{},worker=ch.worker||{},io=ch.io||{},mem=ch.memory||{},cur=mon.current||{};
   summary.innerHTML=[
+    monitorBox('Überwachung',ch.monitor||{},mon.stale?'Kein aktueller Stand':monitorStatusLabel((ch.monitor||{}).status)),
     monitorBox('Datenbank',db,monitorStatusLabel(db.status)+(db.latency_ms!=null?' · '+db.latency_ms+' ms':'')),
     monitorBox('Interne API',api,monitorStatusLabel(api.status)+(api.latency_ms!=null?' · '+api.latency_ms+' ms':'')),
     monitorBox('Worker',worker,monitorStatusLabel(worker.status)+(worker.age_seconds!=null?' · '+worker.age_seconds+' s':'')),

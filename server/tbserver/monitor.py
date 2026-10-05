@@ -22,6 +22,7 @@ EVENTS_PATH = DIAGNOSTICS_ROOT / "server-monitor.jsonl"
 WORKER_HEARTBEAT_PATH = DIAGNOSTICS_ROOT / "worker-heartbeat.json"
 
 MONITOR_INTERVAL_SECONDS = max(2.0, float(os.getenv("TB_MONITOR_INTERVAL_SECONDS", "5")))
+MONITOR_STALE_SECONDS = max(120.0, MONITOR_INTERVAL_SECONDS * 3.0)
 DB_WARN_MS = max(100.0, float(os.getenv("TB_MONITOR_DB_WARN_MS", "1000")))
 API_WARN_MS = max(100.0, float(os.getenv("TB_MONITOR_API_WARN_MS", "1500")))
 WORKER_STALE_SECONDS = max(20.0, float(os.getenv("TB_MONITOR_WORKER_STALE_SECONDS", "35")))
@@ -520,10 +521,18 @@ def _record_transitions(
     new_worker = checks.get("worker") or {}
     old_pid = old_worker.get("pid")
     new_pid = new_worker.get("pid")
-    if old_pid and new_pid and old_pid != new_pid:
+    old_started = _parse_iso(old_worker.get("started_at"))
+    new_started = _parse_iso(new_worker.get("started_at"))
+    restarted = (
+        old_started != new_started
+        if old_started is not None and new_started is not None
+        else bool(old_pid and new_pid and old_pid != new_pid)
+    )
+    if restarted:
         data = {
             "previous_pid": old_pid,
             "new_pid": new_pid,
+            "previous_started_at": old_worker.get("started_at"),
             "started_at": new_worker.get("started_at"),
         }
         _append_event(
@@ -600,12 +609,25 @@ def read_monitor_snapshot(*, event_limit: int = 30) -> dict[str, Any]:
         if (_parse_iso(event.get("timestamp")) or datetime.min.replace(tzinfo=timezone.utc))
         >= cutoff
     ]
-    checks = state.get("checks") or {}
+    # Keep the persisted observations, but never present an old healthy sample
+    # as evidence that monitoring is still running.
+    updated = _parse_iso(state.get("updated_at"))
+    age = (_now() - updated).total_seconds() if updated is not None else None
+    stale = age is None or age < -MONITOR_STALE_SECONDS or age > MONITOR_STALE_SECONDS
+    checks = dict(state.get("checks") or {})
+    checks["monitor"] = {
+        "status": "ERROR" if stale else "OK",
+        "age_seconds": round(age, 1) if age is not None else None,
+        "detail": "Überwachung liefert keinen aktuellen Stand" if stale else "Überwachung aktuell",
+    }
     current_statuses = [str(item.get("status", "UNKNOWN")).upper() for item in checks.values()]
     result = dict(state)
     result.update(
         {
             "available": True,
+            "stale": stale,
+            "checks": checks,
+            "overall": "ERROR" if stale else state.get("overall", "UNKNOWN"),
             "current": {
                 "error": sum(1 for status in current_statuses if status == "ERROR"),
                 "warn": sum(1 for status in current_statuses if status == "WARN"),
