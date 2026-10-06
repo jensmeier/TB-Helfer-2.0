@@ -47,6 +47,7 @@ SUPPORTED_JOB_TYPES = {
     "BACKUP_FULL",
     "BACKUP_RETENTION",
     "RESTORE_TEST",
+    "RECOVERY_PREPARE",
     "SYSTEM_EMAIL_REPORT",
     "SURVEY_CONFLICT_EMAIL",
     "SURVEY_CATALOG_REINDEX",
@@ -62,15 +63,15 @@ def recover_stale_jobs() -> int:
         cur.execute(
             """
             UPDATE tb.background_jobs
-            SET status = CASE WHEN attempts >= %s THEN 'FAILED' ELSE 'PENDING' END,
-                progress_percent = CASE WHEN attempts >= %s THEN progress_percent ELSE 0 END,
-                progress_text = CASE WHEN attempts >= %s THEN 'Fehlgeschlagen' ELSE 'Neuer Versuch geplant' END,
+            SET status = CASE WHEN attempts >= %s OR job_type='RECOVERY_PREPARE' THEN 'FAILED' ELSE 'PENDING' END,
+                progress_percent = CASE WHEN attempts >= %s OR job_type='RECOVERY_PREPARE' THEN progress_percent ELSE 0 END,
+                progress_text = CASE WHEN attempts >= %s OR job_type='RECOVERY_PREPARE' THEN 'Fehlgeschlagen' ELSE 'Neuer Versuch geplant' END,
                 run_after = CASE
-                    WHEN attempts >= %s THEN run_after
+                    WHEN attempts >= %s OR job_type='RECOVERY_PREPARE' THEN run_after
                     ELSE now() + interval '1 minute'
                 END,
                 last_error = 'STALE_WORKER_RECOVERED',
-                finished_at = CASE WHEN attempts >= %s THEN now() ELSE NULL END,
+                finished_at = CASE WHEN attempts >= %s OR job_type='RECOVERY_PREPARE' THEN now() ELSE NULL END,
                 updated_at = now()
             WHERE status = 'RUNNING'
               AND updated_at < now() - (%s * interval '1 minute')
@@ -127,6 +128,9 @@ def _execute(job: dict[str, Any]) -> dict[str, Any]:
     job_type = str(job["job_type"]).upper()
     job_id = UUID(str(job["id"]))
     progress = lambda percent, text: _set_progress(job_id, percent, text)
+    if job_type == "RECOVERY_PREPARE":
+        from .recovery import prepare_recovery
+        return prepare_recovery(job, progress)
     if job_type == "BACKUP_DATABASE":
         return run_backup("DATABASE", progress=progress)
     if job_type == "BACKUP_FILES":
@@ -239,6 +243,7 @@ def _mark_failed_or_retry(job: dict[str, Any], exc: Exception) -> None:
     attempts = int(job["attempts"])
     permanent = (
         attempts >= MAX_JOB_ATTEMPTS
+        or job.get("job_type") == "RECOVERY_PREPARE"
         or isinstance(exc, JobError)
         and str(exc) == "JOB_TYPE_NOT_SUPPORTED"
     )

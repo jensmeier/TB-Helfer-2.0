@@ -100,6 +100,39 @@
   </div>
 </div>
 
+<details class="panel" id="recoveryPanel">
+  <summary>Server wiederherstellen</summary>
+  <div class="panel-body">
+    <p>Hier bereitest du einen älteren Serverstand zur Wiederherstellung vor. Der laufende Server wird erst durch die anschließende Umschaltung im Synology Container Manager ersetzt.</p>
+    <div id="recoveryState" class="notice info">Wiederherstellungsstatus wird geladen …</div>
+    <div id="recoveryForm">
+      <label for="recoveryBackup">1. Vollbackup auswählen (neueste 100)</label>
+      <select id="recoveryBackup" onchange="recoverySelectionChanged()"><option value="">Bitte wählen …</option></select>
+      <p id="recoverySource"></p>
+      <p><b>Nach der Umschaltung fehlen Änderungen nach diesem Backupdatum.</b> Vorher lokale, noch nicht synchronisierte Änderungen auf den Handys sichern. Alle bisherigen Gerätezugänge und Sitzungen werden im Ziel gesperrt. Nur dein Administratorkonto bleibt freigegeben; dort gilt das Passwort aus dem Backup. Andere Benutzer nach Prüfung gezielt freigeben, Geräte neu aktivieren und den Serverbestand neu laden.</p>
+      <p>2. Zuerst wird automatisch ein zusätzliches Sicherheitsvollbackup erstellt. Danach werden Datenbank und Dateien im getrennten Ziel wiederhergestellt und geprüft. Der bisherige Serverbestand bleibt erhalten.</p>
+      <p class="small">Einmalige Einrichtung: getrennte Ziel-Datenbank und Zielspeicher im Worker konfigurieren und freigeben. Anleitung: server/checks/OPS_RESTORE_003.md. Ein bereits belegtes Ziel wird nicht überschrieben.</p>
+      <label for="recoveryConfirm">Zur Bestätigung genau eingeben:</label>
+      <p><code id="recoveryPhrase">Zuerst Vollbackup wählen</code></p>
+      <input id="recoveryConfirm" autocomplete="off" oninput="recoverySelectionChanged(false)">
+      <button type="button" id="recoveryPrepare" disabled onclick="prepareRecovery()">Wiederherstellung vorbereiten</button>
+    </div>
+    <div id="recoveryNext" hidden>
+      <h3>3. Kontrolliert umschalten</h3>
+      <p>Das Ziel ist vorbereitet. Der laufende Server verwendet weiterhin den bisherigen Bestand.</p>
+      <ol>
+        <li>Wartungszeit vereinbaren. Aktuelle Compose-Konfiguration und .env als Rückweg sichern; laufende Aufträge abschließen lassen.</li>
+        <li>Im Container Manager API, Worker und Monitor stoppen. Beide Datenbanken und ihre Datenordner behalten.</li>
+        <li>Die vorbereitete <code>docker-compose.synology-recovery.v1.yml</code> mit den bestehenden Einstellungen verwenden. Die unten angezeigte Wiederherstellungs-ID zusätzlich in .env setzen. Individuelle Anpassungen der bisherigen Compose-Datei übernehmen.</li>
+        <li>Projekt mit dieser Konfiguration neu erstellen/starten. Datenbank und Speicher werden gemeinsam auf das geprüfte Ziel umgeschaltet. „Neu starten“ allein übernimmt keine geänderte Konfiguration.</li>
+        <li>Als Admin mit dem Passwort aus dem Backup anmelden. Systemstatus, Firmen, Streckennetz und Dateien prüfen. Danach benötigte Benutzer freigeben, Geräte neu aktivieren und Automatik bewusst wieder einschalten.</li>
+      </ol>
+      <pre id="recoveryCutoverId" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
+      <p>Rückweg: API, Worker und Monitor wieder stoppen und die gesicherte bisherige Compose-Konfiguration verwenden. Der alte Bestand wurde nicht überschrieben. Änderungen, die bereits im wiederhergestellten Ziel entstanden sind, werden dabei nicht automatisch übernommen.</p>
+    </div>
+  </div>
+</details>
+
 <details class="panel">
   <summary>Automatik, Backups &amp; E-Mail</summary>
   <div class="panel-body">
@@ -192,6 +225,43 @@ function fillSchedule(prefix,s){const x=s||{};checked(prefix+'Enabled',x.enabled
 function scheduleValue(prefix){const t=timeParts(prefix+'Time');return {enabled:document.getElementById(prefix+'Enabled').checked,frequency:document.getElementById(prefix+'Frequency').value,hour:t.hour,minute:t.minute,weekday:numberValue(prefix+'Weekday'),monthday:numberValue(prefix+'Monthday')};}
 function backupKindLabel(kind){return ({DATABASE:'Datenbank-Backup',FILES:'Datei-Backup',FULL:'Vollbackup',RESTORE_TEST:'Backup-Prüfung',RESTORE_TARGET:'Restore ins getrennte Ziel'})[kind]||kind;}
 function backupStatusLabel(status){return ({OK:'OK',FAILED:'Fehlgeschlagen',RUNNING:'Läuft',PURGED:'Bereinigt'})[status]||status;}
+
+let recoveryBackups=[];
+let recoveryBusy=false;
+function recoverySelectionChanged(clear=true){
+  const id=document.getElementById('recoveryBackup').value;
+  const b=recoveryBackups.find(b=>b.id===id);
+  if(clear)document.getElementById('recoveryConfirm').value='';
+  const phrase=b?'WIEDERHERSTELLEN '+id:'';
+  document.getElementById('recoveryPhrase').textContent=phrase||'Zuerst Vollbackup wählen';
+  document.getElementById('recoverySource').textContent=b?'Gewählter Stand: '+dt(b.started_at)+' · '+bytes(b.byte_size):'';
+  document.getElementById('recoveryPrepare').disabled=recoveryBusy||!b||document.getElementById('recoveryConfirm').value!==phrase;
+}
+async function loadRecovery(){
+  try{
+    const result=await tbApi('/api/v1/admin/system/recovery');
+    const x=result.data,s=x.state||{},phase=s.phase||'NONE';
+    recoveryBackups=x.backups||[];
+    const select=document.getElementById('recoveryBackup'),selected=select.value;
+    select.innerHTML='<option value="">Bitte wählen …</option>'+recoveryBackups.map(b=>'<option value="'+esc(b.id)+'">'+esc(dt(b.started_at))+' · '+esc(bytes(b.byte_size))+'</option>').join('');
+    if(recoveryBackups.some(b=>b.id===selected))select.value=selected;
+    const labels={NONE:'Noch keine Wiederherstellung vorbereitet.',QUEUED:'Vorbereitung wartet auf den Worker.',RUNNING:'Vorbereitung läuft. Fortschritt steht unter Vorgänge.',READY:'Ziel geprüft und bereit – noch nicht umgeschaltet.',FAILED:'Vorbereitung fehlgeschlagen. Der laufende Bestand bleibt unverändert.',REVIEW_REQUIRED:'Vorbereitung unterbrochen. Ziel vor einem weiteren Versuch prüfen.'};
+    document.getElementById('recoveryState').textContent=(x.active?'Wiederhergestellter Serverstand ist aktiv. Benutzer und Automatik nach Prüfung freigeben.':labels[phase]||phase)+(s.source_date?' Backupstand: '+dt(s.source_date):'')+(s.safety_backup_id?' · Sicherheitsbackup: '+s.safety_backup_id:'')+(s.error?' · '+s.error:'');
+    document.getElementById('recoveryForm').hidden=x.active||['QUEUED','RUNNING','READY','REVIEW_REQUIRED'].includes(phase);
+    document.getElementById('recoveryNext').hidden=x.active||phase!=='READY';
+    document.getElementById('recoveryCutoverId').textContent=s.recovery_id?'TB_V1_RECOVERY_ID='+s.recovery_id+'\nZieldatenbank: '+(s.target_db_host||'')+' / '+(s.target_db_name||'')+'\nZielspeicher: '+(s.target_storage_root||''):'';
+    recoverySelectionChanged(false);
+  }catch(e){document.getElementById('recoveryState').textContent='Wiederherstellungsstatus konnte nicht geladen werden: '+(e.message||e);}
+}
+async function prepareRecovery(){
+  if(recoveryBusy)return;
+  recoveryBusy=true;recoverySelectionChanged(false);
+  try{
+    await tbApi('/api/v1/admin/system/recovery/prepare',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({backup_run_id:document.getElementById('recoveryBackup').value,confirmation:document.getElementById('recoveryConfirm').value})});
+    await loadRecovery();await load(false);
+  }catch(e){show('error','Vorbereitung konnte nicht gestartet werden: '+(e.message||e));}
+  finally{recoveryBusy=false;recoverySelectionChanged(false);}
+}
 function statusClass(status){return status==='FAILED'?'bad':status==='DONE'?'good':status==='RUNNING'?'running':'';}
 function pollAgain(active){clearTimeout(pollTimer);pollTimer=setTimeout(function(){load(false);},active?1500:8000);}
 
@@ -304,6 +374,7 @@ async function load(hydrateForm=true){
     }).join('')||'<p class="muted">Noch keine Backup-Läufe protokolliert.</p>';
 
     const active=renderJobs(x.jobs||[]);
+    loadRecovery();
 
     document.getElementById('auditEvents').innerHTML=(x.audit_events||[]).map(function(e){
       return '<div class="audit-row '+(e.is_failure?'bad':'')+'"><div class="small">'+esc(dt(e.created_at))+'</div><div><b>'+esc(e.action_label||e.action)+'</b><div class="small">'+esc(e.actor_display_name||'System')+(e.entity_type?' · '+esc(e.entity_type):'')+'</div></div></div>';

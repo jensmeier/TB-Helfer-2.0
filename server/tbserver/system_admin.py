@@ -43,6 +43,58 @@ class BackupJobCreate(BaseModel):
     kind: str = Field(min_length=1, max_length=20)
 
 
+class RecoveryPrepare(BaseModel):
+    backup_run_id: UUID
+    confirmation: str = Field(max_length=100)
+
+
+@router.get("/recovery")
+def recovery_status(_: dict[str, Any] = Depends(require_admin)) -> dict:
+    from .recovery import read_state
+    with transaction() as conn, conn.cursor() as cur:
+        state = read_state(cur)
+        cur.execute("""SELECT id,started_at,byte_size FROM tb.backup_runs
+                       WHERE kind='FULL' AND status='OK' ORDER BY started_at DESC LIMIT 100""")
+        backups = [dict(row) for row in cur.fetchall()]
+        if state.get("job_id") and state.get("phase") in {"QUEUED", "RUNNING"}:
+            cur.execute("SELECT status,last_error FROM tb.background_jobs WHERE id=%s", (state["job_id"],))
+            job = cur.fetchone()
+            if not job or job["status"] in {"DONE", "FAILED"}:
+                state = dict(state, phase="REVIEW_REQUIRED", error="Vorbereitung unterbrochen; Ziel prüfen.")
+    return {"state":state, "backups":backups,
+            "active":bool(os.getenv("TB_RECOVERY_ID")) and state.get("recovery_id")==os.getenv("TB_RECOVERY_ID")}
+
+
+@router.post("/recovery/prepare", status_code=202)
+def enqueue_recovery(payload: RecoveryPrepare,
+                     user: dict[str, Any] = Depends(require_admin_csrf)) -> dict:
+    from uuid import uuid4
+    from .recovery import LOCK, read_state, write_state
+    if os.getenv("TB_RECOVERY_ID"):
+        raise HTTPException(409, "RECOVERY_ALREADY_ON_TARGET")
+    if payload.confirmation != f"WIEDERHERSTELLEN {payload.backup_run_id}":
+        raise HTTPException(400, "RECOVERY_CONFIRMATION_MISMATCH")
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute("SELECT pg_try_advisory_xact_lock(%s) AS locked", (LOCK,))
+        if not cur.fetchone()["locked"]:
+            raise HTTPException(409, "RECOVERY_BUSY")
+        state = read_state(cur)
+        if state.get("phase") in {"QUEUED", "RUNNING", "READY"}:
+            raise HTTPException(409, "RECOVERY_ALREADY_PREPARED_OR_RUNNING")
+        cur.execute("SELECT id,kind,status,started_at FROM tb.backup_runs WHERE id=%s", (payload.backup_run_id,))
+        source = cur.fetchone()
+        if not source or source["kind"] != "FULL" or source["status"] != "OK":
+            raise HTTPException(409, "RECOVERY_REQUIRES_FULL_BACKUP")
+        job = enqueue_in_tx(cur, "RECOVERY_PREPARE", {"backup_run_id":str(payload.backup_run_id)})
+        state = {"recovery_id":str(uuid4()), "phase":"QUEUED", "job_id":str(job["id"]),
+                 "source_backup_id":str(payload.backup_run_id), "admin_id":str(user["user_id"]),
+                 "source_date":source["started_at"].isoformat()}
+        write_state(cur, state)
+        audit(cur, action="SERVER_RECOVERY_REQUESTED", actor_user_id=user["user_id"],
+              entity_type="BACKGROUND_JOB", entity_id=job["id"], details=state)
+    return {"job":job, "state":state}
+
+
 class AutomationSettingsUpdate(BaseModel):
     email_enabled: bool = False
     email_frequency: str = Field(default="WEEKLY", min_length=1, max_length=20)
@@ -78,6 +130,7 @@ _JOB_LABELS = {
     "BACKUP_FULL": "Vollbackup",
     "BACKUP_RETENTION": "Backup-Aufbewahrung",
     "RESTORE_TEST": "Restore-Test",
+    "RECOVERY_PREPARE": "Wiederherstellung vorbereiten",
     "SYSTEM_EMAIL_REPORT": "Systembericht per E-Mail",
 }
 _JOB_STATUS_LABELS = {
@@ -1108,4 +1161,3 @@ def enqueue_restore_test(
             response_payload=response,
         )
     return response
-

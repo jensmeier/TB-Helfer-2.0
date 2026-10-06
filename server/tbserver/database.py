@@ -11,7 +11,7 @@ from .config import settings
 
 
 def connect(*, autocommit: bool = False) -> Connection:
-    return psycopg.connect(
+    conn = psycopg.connect(
         host=settings.db_host,
         port=settings.db_port,
         dbname=settings.db_name,
@@ -21,6 +21,13 @@ def connect(*, autocommit: bool = False) -> Connection:
         autocommit=autocommit,
         connect_timeout=5,
     )
+    try:
+        from .recovery_guard import verify_cutover
+        verify_cutover(conn, settings.storage_root)
+        return conn
+    except Exception:
+        conn.close()
+        raise
 
 
 @contextmanager
