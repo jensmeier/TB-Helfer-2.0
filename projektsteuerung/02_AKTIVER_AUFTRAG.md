@@ -2550,3 +2550,7 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 
 ### SERVER-GATE-001 – zusätzlicher Rechtebefund vor Fix
 - Portal-/Geräteauth prüfen Benutzer- und Gerätesperre, bisher jedoch nicht den Status der zugehörigen Firma. Firmenstatus DISABLED bzw. deleted_at muss neue Anmeldung/Aktivierung und vorhandene Firmen-Sessions/Gerätetokens sperren. Firmenstatus per JOIN in bestehenden Authabfragen laden; zentral fail-closed prüfen. Systemadmin ohne Firmenbindung bleibt für Systemverwaltung verfügbar. Laufende Syncs übernehmen Prüfung durch vorhandene Reauthentifizierung. Keine reale Firmensperre zum Test.
+
+
+### SERVER-GATE-001 – zusätzliche echte CI-Abnahme
+- GitHub-Workflow TB-Server 1.0 besitzt bereits eine isolierte PostgreSQL/PostGIS-17-Testumgebung. Ergänzter unabhängiger Gate-Job soll das bestehende Server-Dockerimage bauen und neue Checks plus echten Snapshot-Dump/Restore und HTTP-Rechte-/255-Client-Syncprüfungen mit ausschließlich erzeugten Testdaten ausführen. Veraltete feste Migrationsprüfung19 auf vorhandenen Stand21 anpassen. Kein NAS-Deployment/Produktivlasttest. Ausführung und Erfolg erst anhand Workflow-Ergebnis bestätigen.
