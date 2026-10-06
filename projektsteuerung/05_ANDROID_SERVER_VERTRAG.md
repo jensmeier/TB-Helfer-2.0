@@ -839,3 +839,10 @@ Vertrag/Übernahme: [REF-DATA-016_ANSCHLUSSNETZ_SYNC.md](uebergaben/REF-DATA-016
 - Nächste NAS-Abnahme: Gl1→Kilometerbezug Str5340-0→Originalquelle ausdrücklich wählen→Prüfen→Werte/Grund bewerten→Speichern/Wiederöffnen→Anfang versetzen. Weichenfläche und mehrteilige/shared Verläufe prüfen. Gesamt-Admin/Backup/Worker/Rechte/Last und Android bleiben eigene offene Blöcke.
 
 Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BESTAND_KILOMETER_WEICHENFLAECHE.md](uebergaben/REF-DATA-020_BESTAND_KILOMETER_WEICHENFLAECHE.md).
+
+
+## SERVER-GATE-001 – Rechte-/Restorevertrag (06.10.2026)
+- Aktive Geräte-/Portalsessions und neue Anmeldung/Aktivierung prüfen zusätzlich Firmenstatus. Gesperrte/gelöschte/fehlende Firma:403 COMPANY_DISABLED. Laufende Syncs übernehmen dies über erneute Authentifizierung. Systemadmin bleibt für Systemverwaltung verfügbar, ohne Baustellen-Fachzugriff.
+- Baustellen-Dateiliste/Medien/Metadaten/Inhalt/Vorschau verlangen files.view. Fremde Uploadsession:403 UPLOAD_OWNER_REQUIRED; nur Ersteller liest/ändert/abschließt/bricht ab, Schreiben weiter mit files.add. Keine neuen erfolgreichen Antwortfelder oder Androidänderung.
+- Nach Restore eines neuen konsistenten Vollbackups sind zum Snapshotzeitpunkt offene Uploadsessions EXPIRED und müssen neu begonnen werden; bereits vollständig gespeicherte Dateien werden geprüft wiederhergestellt. Live-Uploads werden vom Backup nicht zurückgesetzt.
+- Echte FastAPI-/PostgreSQL-CI für diese Grenzen und3x255 HTTP-Longpoll PASS, keine Androidgeräte-/NAS-/Cloudflare-/Fotolastfreigabe. Details server/checks/SERVER_GATE_001.md.

@@ -74,7 +74,7 @@ SQL/Auth-Doubles; echte lokale Dateien/Tararchive, echte asyncio-Hub-/Semaphorel
 und ein lokaler HTTP-Testserver für das Lastwerkzeug. Keine echte FastAPI-/PostgreSQL-
 oder NAS-Lastmessung. Der 255-Client-Koordinationstest ist kein Durchsatzbenchmark.
 
-## Echter PostgreSQL-Gate (noch nicht ausgeführt)
+## Echter PostgreSQL-Gate (CI bestanden; NAS offen)
 
 `server/tools/backup_snapshot_gate.py` benötigt die installierten Serverabhängigkeiten,
 `pg_dump` und `pg_restore`, zwei leere eigens bereitgestellte Testdatenbanken mit
@@ -97,7 +97,7 @@ Die eigens angelegten tb-Schemata werden anschließend entfernt. Ein vollständi
 Restore aller realen Migrationen/PostGIS-Daten ist zusätzlich über „Backup prüfen“
 in der bestehenden isolierten Restore-Umgebung abzunehmen.
 
-## Echter 255-Client-Gate (noch nicht ausgeführt)
+## Echter 255-Client-Gate (CI bestanden; NAS offen)
 
 `server/tools/sync_mixed_loadtest.py` läuft gegen eine ausdrücklich bestätigte
 isolierte Testinstanz. Er schreibt keine Fachdaten, erzeugt aber 15 Portal-Sessions
@@ -153,6 +153,44 @@ danach wieder aktivieren. Für Nutzer-/Geräte-/Mitgliedschaftssperren jeweils e
 wartende Longpoll-/SSE-Verbindung öffnen, sperren und prüfen, dass bei der nächsten
 Authentifizierung keine weiteren Fachdaten ausgegeben werden. Dies ist kein
 garantierter sofortiger Abbruch bereits ausgelieferter/gepufferter Daten.
+
+## Bestätigtes CI-Ergebnis vom 06.10.2026
+
+Codecommit `6d9fc82b6a9dc5fb0b8da55f5f2a37ebdd268ba9`,
+[Gate-Job 112386875101](https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/37497843193/job/112386875101)
+erfolgreich: Server-Dockerimage gebaut, alle 78 lokalen Regressionen auch in CI
+bestanden, echte Migrationen angewendet, echter PostgreSQL-17-Snapshot/Dump/Restore
+mit parallelem Commit und beschädigten/fehlenden Dateireferenzen bestanden.
+
+`server_http_gate.py` hat auf einer selbst gestarteten FastAPI-Instanz und PostGIS
+eigene/fremde Firmenzugriffe, Systemadmin-Abweisung, Bereichsfilter bei Mängeln und
+Abnahmen, files.view, fremde Uploadsession (Status/Chunk/Abschluss/Abbruch), erlaubten
+Upload, Cookie-CSRF und Firmensperre über Portal/Gerät geprüft. Vier echte während
+des Wartens gesperrte Longpolls (Nutzer, Firma, Mitgliedschaft, Gerät) wurden abgewiesen;
+ein SSE-Stream nach Mitgliedschaftsentzug lieferte keine Daten mehr.
+
+HTTP-Lastmessung: 15 TB +225 Helfer mit eigenen Gerätetokens +15 eigene Portalnutzer,
+jeweils drei Runden mit 2 Sekunden Longpoll-Wartezeit:
+
+| Runde | Anfragen | Fehler | Median | p95 | Maximum |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 255 | 0 | 5,05 s | 7,11 s | 7,31 s |
+| 2 | 255 | 0 | 5,10 s | 7,21 s | 7,35 s |
+| 3 | 255 | 0 | 5,03 s | 7,17 s | 7,35 s |
+
+15/15 Portal-Lasttestsitzungen abgemeldet; nach Testende keine offene Testsitzung.
+CI verwendet ausdrücklich 10 Sekunden zulässigen Overhead auf gemeinsam genutzter
+Runnerhardware. Das strengere Beispielkriterium von 5 Sekunden ist mit diesen
+Messwerten **nicht** bestanden (p95 minus 2 s bis 5,21 s). Keine Aussage zu NAS-/Cloudflare-
+Leistung oder gleichzeitigen Foto-/BTB-Schreiblasten. Diese Abnahmen bleiben offen.
+
+Gesamtes CI nicht grün: Der bestehende `foundation`-Job scheitert im älteren Check23
+am erwarteten Marker `FILE_LINK_TARGET_NOT_FOUND`; der Runtimecode verwendet bereits
+vor diesem Auftrag `FILE_LINK_TARGET_NOT_VISIBLE` (Baseline 4cc7fef geprüft).
+Android-CI scheitert separat am Schema10-Quellmarker
+`BtbVerlaufFragment.kt:MergeSafeBaustellenExport.normalisieren`.
+Keine Android-Datei wurde verändert. Die älteren Prüfungen wurden nicht zur
+Erzeugung eines grünen Gesamtergebnisses abgeschaltet oder abgeschwächt.
 
 ## Übernahme
 
