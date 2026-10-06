@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 """Execute production authorization paths with SQL/request doubles (not HTTP)."""
 import importlib.util
 from pathlib import Path
@@ -171,3 +174,4 @@ class EndpointRights(unittest.TestCase):
 
 
 if __name__ == '__main__': unittest.main()
+

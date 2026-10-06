@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 """Audit existing auth boundaries; no live users/DB.
 Stream revocation regression is covered by check 135.
 """
@@ -61,3 +64,4 @@ class Audit(unittest.TestCase):
             self.assertEqual((expiry.hour,expiry.minute),(0,1))
 
 if __name__=='__main__':unittest.main()
+

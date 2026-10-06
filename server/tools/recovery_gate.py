@@ -177,6 +177,14 @@ def main():
         try: _execute(job)
         except recovery.RecoveryError: pass
         else: raise AssertionError('RECOVERY_REPLAY_OVERWROTE_TARGET')
+        if mode == 'SECURITY':
+            legacy = dict(ready)
+            legacy.pop('mode', None)
+            recovery._seal_target(target, legacy, str(admin_id))
+            # Persisted pre-004 state stays SECURITY; it is never promoted to UPDATE.
+            with _connect_restore_test(target) as legacy_conn, legacy_conn.cursor() as legacy_cur:
+                legacy_cur.execute('SELECT status FROM tb.users WHERE id=%s', (user_id,))
+                assert legacy_cur.fetchone()['status'] == 'DISABLED'
         bundle=settings.backup_root/'.recovery'/ready['recovery_id']
         assert all((bundle/f).is_file() for f in ('selected.tar.gz','safety.tar.gz','recovery.json'))
         # Actually restart the API against the replacement and exercise the guard.
