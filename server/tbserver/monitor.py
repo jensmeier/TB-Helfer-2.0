@@ -478,6 +478,43 @@ def _event_body(name: str, current: dict[str, Any], code: str) -> str:
     return "\n".join(values)
 
 
+def _record_public_check(current: dict, old: dict, checks: dict, policy) -> None:
+    """Persist consecutive failures without hiding the raw check status."""
+    status = str(current.get("status", "UNKNOWN")).upper()
+    old_status = str(old.get("status", "")).upper()
+    count = int(old.get("consecutive_errors", 0)) if old_status == "ERROR" else 0
+    count = min(3, count + 1) if status == "ERROR" else 0
+    confirmed = bool(old.get("incident_confirmed", False))
+    current["consecutive_errors"] = count
+    current["incident_confirmed"] = confirmed or count >= 3
+    if old_status != status and (old_status or status in {"ERROR", "WARN"}):
+        level, code, message = _transition_code("public", current)
+        _append_event(level, code, message, data=dict(current))
+    newly_confirmed = count >= 3 and not confirmed
+    recovered = status == "OK" and confirmed
+    if newly_confirmed or recovered:
+        code = "PUBLIC_API_RECOVERED" if recovered else "PUBLIC_API_ERROR"
+        body = _event_body("public", current, code)
+        if newly_confirmed:
+            body += "\nBestätigung: 3 aufeinanderfolgende Fehlversuche"
+        for name, label in (("api", "Interne API"), ("database", "Datenbank")):
+            item = checks.get(name) or {}
+            body += f"\n{label}: {item.get('status', 'UNKNOWN')}"
+            if item.get("latency_ms") is not None:
+                body += f" · {item['latency_ms']} ms"
+            if item.get("detail"):
+                body += f" · {item['detail']}"
+        _send_alert(
+            policy, alert_type="public_api",
+            key="public_api:recovery" if recovered else "public_api:problem",
+            subject=("TB-Helfer wieder OK – Öffentliche API wieder erreichbar" if recovered
+                     else "TB-Helfer Serverwarnung – Öffentliche API: 3 Fehlversuche in Folge"),
+            body=body, recovery=recovered,
+        )
+    if status in {"OK", "SKIP"}:
+        current["incident_confirmed"] = False
+
+
 def _record_transitions(
     checks: dict[str, dict[str, Any]],
     previous: dict[str, Any] | None,
@@ -486,6 +523,9 @@ def _record_transitions(
     previous_checks = (previous or {}).get("checks") or {}
     for name, current in checks.items():
         old = previous_checks.get(name) or {}
+        if name == "public":
+            _record_public_check(current, old, checks, policy)
+            continue
         old_status = str(old.get("status", "")).upper()
         new_status = str(current.get("status", "UNKNOWN")).upper()
         if old_status and old_status == new_status:
@@ -664,3 +704,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
