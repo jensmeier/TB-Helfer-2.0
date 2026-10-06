@@ -37,6 +37,8 @@ nach `/volume1/docker/tb-helfer-v1/` übernehmen:
 | `tbserver/database.py` | `tbserver/database.py` |
 | `tbserver/jobs.py` | `tbserver/jobs.py` |
 | `tbserver/system_admin.py` | `tbserver/system_admin.py` |
+| `tbserver/restore.py` | `tbserver/restore.py` |
+| `tbserver/restore_target.py` | `tbserver/restore_target.py` |
 | `templates/v1_system_status.html` | `templates/v1_system_status.html` |
 | `docker-compose.synology-recovery-prepare.v1.yml` (neu) | gleichnamige Datei |
 | `docker-compose.synology-recovery.v1.yml` (neu) | gleichnamige Datei |
@@ -44,7 +46,7 @@ nach `/volume1/docker/tb-helfer-v1/` übernehmen:
 Voraussetzung ist der vorherige SERVER-GATE-001-Stand inklusive
 `backup_inventory.py`, `backup.py`, `restore.py` und `restore_target.py`.
 Keine neue Migration (weiterhin21). Für die UI und den bestehenden Betrieb reichen
-die sechs Python-/Templatedateien, danach API und Worker neu starten und Strg+F5.
+die acht Python-/Templatedateien, danach API und Worker neu starten und Strg+F5.
 Die bisherige Compose-Datei bleibt unverändert.
 
 **Vor einer tatsächlichen Vorbereitung** die zusätzliche Zielumgebung einrichten:
@@ -148,6 +150,9 @@ einen bewusst neu eingerichteten Zielordner/DB erfordern.
   Migration21, Dateiabgleich, unveränderte Live-Daten, gesperrte Zielzugänge und
   Jobs/Automatik; tatsächlicher API-Neustart auf Ziel, Admin-Login, abgewiesener
   alter Nutzer, falsche Speicherpaarung und ID.
+- Gemeinsamer Ziel-Lock mit dem bisherigen CLI-Restore; identische Test-/Ziel-DB
+  wird abgewiesen. Belegtes Ziel sowie Wiederholung und automatische Wiederholung
+  nach Fehler/Worker-Unterbrechung werden geprüft.
 - Gate ist nur unter `CI=true`, `TB_ENVIRONMENT=test`, DB `tb_gate_recovery`
   zulässig. Es wird in der bestehenden isolierten CI zusätzlich ausgeführt.
 - Konkretes CI-Ergebnis wird nach Lauf ergänzt. Kein NAS-Cutover und kein

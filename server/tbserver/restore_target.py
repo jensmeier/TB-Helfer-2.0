@@ -43,6 +43,8 @@ def _target_db_config() -> dict[str, Any]:
         raise RestoreTargetError("TB_RESTORE_TARGET_DB_PORT_INVALID") from exc
     if name == settings.db_name:
         raise RestoreTargetError("RESTORE_TARGET_DATABASE_MUST_DIFFER_FROM_LIVE")
+    if name == (os.getenv("TB_RESTORE_TEST_DB_NAME") or "").strip():
+        raise RestoreTargetError("RESTORE_TARGET_DATABASE_MUST_DIFFER_FROM_TEST")
     return {
         "host": host,
         "port": port,
@@ -178,7 +180,7 @@ def _finish_restore_target(
     return row
 
 
-def run_restore_target(
+def _run_restore_target_unlocked(
     *,
     source_run_id: UUID,
     confirm: str,
@@ -275,6 +277,17 @@ def run_restore_target(
         )
         _finish_restore_target(run_id, ok=False, detail=code)
         raise
+
+
+def run_restore_target(*, source_run_id: UUID, confirm: str) -> dict[str, Any]:
+    _assert_restore_target_enabled()
+    config = _target_db_config()
+    with _connect_restore_test(config) as conn, conn.cursor() as cur:
+        # Same session lock as the admin recovery preparation, across sources.
+        cur.execute("SELECT pg_try_advisory_lock(%s) AS locked", (731019303,))
+        if not cur.fetchone()["locked"]:
+            raise RestoreTargetError("RECOVERY_TARGET_BUSY")
+        return _run_restore_target_unlocked(source_run_id=source_run_id, confirm=confirm)
 
 
 def main() -> None:

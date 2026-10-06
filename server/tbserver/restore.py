@@ -62,6 +62,8 @@ def _restore_db_config() -> dict[str, Any]:
         raise RestoreTestError("TB_RESTORE_TEST_DB_PORT_INVALID") from exc
     if name == settings.db_name:
         raise RestoreTestError("RESTORE_TEST_DATABASE_MUST_DIFFER_FROM_LIVE")
+    if name == (os.getenv("TB_RESTORE_TARGET_DB_NAME") or "").strip():
+        raise RestoreTestError("RESTORE_TEST_DATABASE_MUST_DIFFER_FROM_TARGET")
     return {
         "host": host,
         "port": port,

@@ -90,6 +90,40 @@ def main():
         assert ready['references']['verified_files']==1
         target=recovery._target_db_config()
         target_root=recovery._target_storage_root()
+        from tbserver import restore, restore_target
+        # Existing CLI and new UI use the same target lock; no overwrite race.
+        with _connect_restore_test(target) as lock_conn, lock_conn.cursor() as lock_cur:
+            lock_cur.execute('SELECT pg_advisory_lock(%s)',(recovery.LOCK,))
+            try: restore_target.run_restore_target(source_run_id=selected['id'],confirm='not reached')
+            except restore_target.RestoreTargetError as exc: assert str(exc)=='RECOVERY_TARGET_BUSY'
+            else: raise AssertionError('CONCURRENT_CLI_RESTORE_ACCEPTED')
+        os.environ['TB_RESTORE_TEST_DB_NAME']=target['dbname']
+        os.environ['TB_RESTORE_TEST_DB_PASSWORD']='ci-test'
+        try:
+            try: restore._restore_db_config()
+            except restore.RestoreTestError as exc: assert str(exc)=='RESTORE_TEST_DATABASE_MUST_DIFFER_FROM_TARGET'
+            else: raise AssertionError('TEST_WOULD_ERASE_TARGET')
+            try: restore_target._target_db_config()
+            except restore_target.RestoreTargetError as exc: assert str(exc)=='RESTORE_TARGET_DATABASE_MUST_DIFFER_FROM_TEST'
+            else: raise AssertionError('TARGET_EQUALS_TEST')
+        finally:
+            os.environ.pop('TB_RESTORE_TEST_DB_NAME')
+            os.environ.pop('TB_RESTORE_TEST_DB_PASSWORD')
+        try: restore_target._assert_fresh_target_database(target)
+        except restore_target.RestoreTargetError: pass
+        else: raise AssertionError('OCCUPIED_TARGET_ACCEPTED')
+        # Neither an ordinary failure nor stale-worker recovery may replay this job.
+        from tbserver.jobs import _mark_failed_or_retry, recover_stale_jobs
+        with transaction() as conn, conn.cursor() as cur:
+            cur.execute("INSERT INTO tb.background_jobs(job_type,status,attempts,updated_at) VALUES ('RECOVERY_PREPARE','RUNNING',1,now()-interval '1 hour') RETURNING id")
+            stale_id=cur.fetchone()['id']
+            cur.execute("INSERT INTO tb.background_jobs(job_type,status,attempts) VALUES ('RECOVERY_PREPARE','RUNNING',1) RETURNING id")
+            failed_id=cur.fetchone()['id']
+        _mark_failed_or_retry({'id':failed_id,'job_type':'RECOVERY_PREPARE','attempts':1},RuntimeError('CI_ONLY'))
+        recover_stale_jobs()
+        with transaction() as conn, conn.cursor() as cur:
+            cur.execute('SELECT status FROM tb.background_jobs WHERE id=ANY(%s)',([failed_id,stale_id],))
+            assert [r['status'] for r in cur.fetchall()]==['FAILED','FAILED']
         assert (target_root/'fixture.bin').read_bytes()==b'backup bytes'
         with transaction() as conn, conn.cursor() as cur:
             cur.execute('SELECT name FROM tb.companies WHERE id=%s',(company,))
