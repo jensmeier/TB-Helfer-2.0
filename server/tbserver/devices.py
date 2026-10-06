@@ -96,6 +96,8 @@ def current_device_user(request: Request) -> dict[str, Any]:
         if row["access_valid_until"] is not None and row["access_valid_until"] <= now:
             raise HTTPException(403, "USER_EXPIRED")
         require_active_company(row)
+        from tbserver.recovery_guard import require_recovery_epoch
+        require_recovery_epoch(request)
         reported_version, reported_build = _reported_app_info(request)
         cur.execute(
             """
@@ -424,3 +426,4 @@ def block_device(
             details={"user_id": str(device["user_id"])},
         )
     return None
+

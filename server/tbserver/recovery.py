@@ -78,26 +78,31 @@ def _seal_target(config: dict, state: dict, admin_id: str) -> None:
         if not cur.fetchone():
             raise RecoveryError("RECOVERY_ADMIN_NOT_IN_BACKUP")
         cur.execute("UPDATE tb.portal_sessions SET revoked_at=now() WHERE revoked_at IS NULL")
-        cur.execute("UPDATE tb.devices SET status='REVOKED',revoked_at=now(),auth_token_hash=NULL,auth_token_hint=NULL")
-        cur.execute("UPDATE tb.device_activation_tokens SET revoked_at=now() WHERE revoked_at IS NULL")
-        cur.execute("UPDATE tb.worksite_invitations SET revoked_at=now() WHERE revoked_at IS NULL")
-        cur.execute("UPDATE tb.portal_credentials SET activation_token_hash=NULL,activation_expires_at=NULL")
-        cur.execute("UPDATE tb.users SET status='DISABLED' WHERE id <> %s AND deleted_at IS NULL", (admin_id,))
+        mode = state.get("mode", "SECURITY")
+        if mode not in {"UPDATE", "SECURITY"}:
+            raise RecoveryError("RECOVERY_MODE_INVALID")
+        if mode == "SECURITY":
+            cur.execute("UPDATE tb.devices SET status='REVOKED',revoked_at=now(),auth_token_hash=NULL,auth_token_hint=NULL")
+            cur.execute("UPDATE tb.device_activation_tokens SET revoked_at=now() WHERE revoked_at IS NULL")
+            cur.execute("UPDATE tb.worksite_invitations SET revoked_at=now() WHERE revoked_at IS NULL")
+            cur.execute("UPDATE tb.portal_credentials SET activation_token_hash=NULL,activation_expires_at=NULL")
+            cur.execute("UPDATE tb.users SET status='DISABLED' WHERE id <> %s AND deleted_at IS NULL", (admin_id,))
         cur.execute("UPDATE tb.upload_sessions SET status='EXPIRED' WHERE status='OPEN'")
         cur.execute("""UPDATE tb.background_jobs SET status='FAILED',last_error='CANCELLED_AFTER_RECOVERY',
                        finished_at=now(),updated_at=now() WHERE status IN ('PENDING','RUNNING')""")
-        from .system_settings import load_automation_policy, save_automation_policy
-        policy = load_automation_policy(cur)
-        policy.update(email_enabled=False, alert_email_enabled=False, automatic_backup_enabled=False,
-                      automatic_retention_enabled=False)
-        for schedule in policy["backup_schedules"].values():
-            schedule["enabled"] = False
-        policy["retention_schedule"]["enabled"] = False
-        save_automation_policy(cur, policy)
+        if mode == "SECURITY":
+            from .system_settings import load_automation_policy, save_automation_policy
+            policy = load_automation_policy(cur)
+            policy.update(email_enabled=False, alert_email_enabled=False, automatic_backup_enabled=False,
+                          automatic_retention_enabled=False)
+            for schedule in policy["backup_schedules"].values():
+                schedule["enabled"] = False
+            policy["retention_schedule"]["enabled"] = False
+            save_automation_policy(cur, policy)
         write_state(cur, state)
         audit(cur, action="SERVER_RECOVERY_PREPARED", actor_user_id=admin_id,
               entity_type="BACKUP_RUN", entity_id=UUID(state["source_backup_id"]),
-              details={"recovery_id":state["recovery_id"], "source_sha256":state["source_sha256"]})
+              details={"recovery_id":state["recovery_id"], "source_sha256":state["source_sha256"], "mode":mode})
 
 
 def prepare_recovery(job: dict, progress) -> dict:
@@ -141,6 +146,12 @@ def prepare_recovery(job: dict, progress) -> dict:
                 progress(45, "Ausgewähltes Backup wird im getrennten Ziel wiederhergestellt")
                 scratch = bundle / "unpacked"
                 dump, archive, manifest = _extract_full_backup(bundle / "selected.tar.gz", scratch)
+                if state.get("mode", "SECURITY") == "UPDATE":
+                    from .recovery_version import check_update_version
+                    try:
+                        state["runtime"] = check_update_version(manifest)
+                    except ValueError as exc:
+                        raise RecoveryError(str(exc)) from exc
                 _run_pg_restore(dump, config, clean=True)
                 state["database"] = _verify_restored_database(config)
                 progress(65, "Dateien werden wiederhergestellt und vollständig geprüft")
@@ -166,3 +177,4 @@ def prepare_recovery(job: dict, progress) -> dict:
                          else type(exc).__name__)
             _save(state)
             raise
+

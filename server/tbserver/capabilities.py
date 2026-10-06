@@ -80,14 +80,18 @@ CAPABILITIES: dict[str, bool] = {
     "restore_test_v1": True,
     "test_data_reset_v1": True,
     "restore_target_v1": True,
+    "recovery_epoch_v1": True,
 }
 
 
 @router.get("/capabilities")
 def get_capabilities() -> dict:
+    from .recovery_guard import recovery_epoch
     return {
+        "recovery_id": recovery_epoch(),
         "server_version": SERVER_VERSION,
         "api_version": API_VERSION,
         "capabilities": CAPABILITIES,
     }
+
 

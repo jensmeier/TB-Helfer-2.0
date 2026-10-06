@@ -385,6 +385,7 @@ jobs:
               python -m compileall -q tbserver tools
               for check in checks/13[0-9]_*.py; do python "$check"; done
               python checks/140_verify_recovery_guard.py
+              python checks/141_verify_recovery_modes.py
               python -m tbserver.migrations up
               python -c "from tbserver.database import connect; c=connect(autocommit=True); c.execute(\"CREATE DATABASE tb_gate_source\"); c.execute(\"CREATE DATABASE tb_gate_target\"); c.close()"
               python tools/backup_snapshot_gate.py --confirm-isolated tb_gate_source:tb_gate_target
@@ -395,4 +396,11 @@ jobs:
               TB_RESTORE_TARGET_DB_NAME=tb_gate_recovery_target TB_RESTORE_TARGET_DB_USER=tb_gate \
               TB_RESTORE_TARGET_DB_PASSWORD=ci-only-gate-password TB_RESTORE_TARGET_STORAGE_ROOT=/tmp/tb-recovery-target \
               python tools/recovery_gate.py
+              python -c "from tbserver.database import connect; c=connect(autocommit=True); c.execute(\"DROP DATABASE tb_gate_recovery WITH (FORCE)\"); c.execute(\"DROP DATABASE tb_gate_recovery_target WITH (FORCE)\"); c.execute(\"CREATE DATABASE tb_gate_recovery\"); c.execute(\"CREATE DATABASE tb_gate_recovery_target\"); c.close()"
+              DB_NAME=tb_gate_recovery STORAGE_ROOT=/tmp/tb-security-source TB_BACKUP_ROOT=/tmp/tb-security-backups \
+              TB_ALLOW_RESTORE_TARGET=YES TB_RESTORE_TARGET_DB_HOST=127.0.0.1 \
+              TB_RESTORE_TARGET_DB_NAME=tb_gate_recovery_target TB_RESTORE_TARGET_DB_USER=tb_gate \
+              TB_RESTORE_TARGET_DB_PASSWORD=ci-only-gate-password TB_RESTORE_TARGET_STORAGE_ROOT=/tmp/tb-security-target \
+              TB_GATE_RECOVERY_MODE=SECURITY python tools/recovery_gate.py
             '
+

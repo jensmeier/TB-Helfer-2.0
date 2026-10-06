@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .recovery_version import runtime_identity
+
 import hashlib
 import json
 import logging
@@ -253,6 +255,7 @@ def _full_backup(
             archive_inventory(settings.storage_root, files_archive, entries)
         except InventoryError as exc:
             raise BackupError(str(exc)) from exc
+        runtime = runtime_identity()
         _progress(progress, 75, "Prüfsummen und Manifest werden erstellt")
         manifest.write_text(
             json.dumps(
@@ -266,6 +269,7 @@ def _full_backup(
                     "consistency": "snapshot-reference-v1",
                     "referenced_files": len(entries),
                     "open_uploads": "restart",
+                    "runtime": runtime,
                 },
                 ensure_ascii=False,
                 sort_keys=True,
@@ -473,3 +477,4 @@ def run_retention() -> dict[str, Any]:
         "missing_file_run_ids": missing_files,
         "delete_error_run_ids": delete_errors,
     }
+

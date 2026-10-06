@@ -28,7 +28,10 @@ def main():
     from tbserver.jobs import claim_job, _execute, _mark_done
     from tbserver.migrations import migrate
     migrate()
+    mode = os.getenv("TB_GATE_RECOVERY_MODE", "UPDATE")
+    assert mode in {"UPDATE", "SECURITY"}
     admin_id, user_id, company = uuid4(), uuid4(), uuid4()
+    disabled_id = uuid4()
     password = "CI-Recovery-only-Password-927!"
     settings.storage_root.mkdir(parents=True, exist_ok=True)
     (settings.storage_root / "fixture.bin").write_bytes(b"backup bytes")
@@ -45,6 +48,12 @@ def main():
         cur.execute("INSERT INTO tb.files(storage_key,mime_type,byte_size,sha256,source) VALUES ('fixture.bin','application/octet-stream',12,%s,'SERVER')", (hashlib.sha256(b'backup bytes').hexdigest(),))
         cur.execute("INSERT INTO tb.upload_sessions(target_kind,temp_storage_key,expires_at) VALUES ('FILE','unfinished',now()+interval '1 day')")
         cur.execute("INSERT INTO tb.background_jobs(job_type) VALUES ('BACKUP_FULL')")
+        cur.execute("INSERT INTO tb.users(id,company_id,display_name,login_name,company_role,status) VALUES (%s,%s,'blocked','recover-blocked','USER','DISABLED')", (disabled_id,company))
+        from tbserver.system_settings import load_automation_policy, save_automation_policy
+        policy = load_automation_policy(cur)
+        policy['automatic_backup_enabled'] = True
+        policy['backup_schedules']['FULL']['enabled'] = True
+        save_automation_policy(cur, policy)
     selected = run_backup("FULL")
     # Changed AFTER chosen backup. The safety copy must retain this, target must not.
     with transaction() as conn, conn.cursor() as cur:
@@ -76,10 +85,13 @@ def main():
         jar=dict(c.split(';')[0].split('=',1) for c in cookies)
         auth={'Cookie':'; '.join(k+'='+v for k,v in jar.items())}
         payload={'backup_run_id':str(selected['id']),'confirmation':'WIEDERHERSTELLEN '+str(selected['id'])}
+        if mode == 'SECURITY': payload['mode'] = mode
         request('/api/v1/admin/system/recovery/prepare',payload,auth,403)
         auth['X-CSRF-Token']=jar['tb_admin_csrf']
         request('/api/v1/admin/system/recovery/prepare',dict(payload,confirmation='wrong'),auth,400)
+        request('/api/v1/admin/system/recovery/prepare',dict(payload,mode='INVALID'),auth,422)
         response,_=request('/api/v1/admin/system/recovery/prepare',payload,auth,202)
+        assert response['state']['mode'] == mode
         request('/api/v1/admin/system/recovery/prepare',payload,auth,409)
         job=claim_job()
         assert str(job['id']) == response['state']['job_id']
@@ -136,14 +148,22 @@ def main():
             cur.execute('SELECT name FROM tb.companies WHERE id=%s',(company,))
             assert cur.fetchone()['name']=='Recovery fixture'
             cur.execute('SELECT status FROM tb.users WHERE id=%s',(user_id,))
-            assert cur.fetchone()['status']=='DISABLED'
+            assert cur.fetchone()['status']==('DISABLED' if mode=='SECURITY' else 'ACTIVE')
             cur.execute("SELECT count(*) AS n FROM tb.devices WHERE auth_token_hash IS NOT NULL OR status='ACTIVE'")
-            assert cur.fetchone()['n']==0
+            assert cur.fetchone()['n']==(0 if mode=='SECURITY' else 1)
             cur.execute("SELECT count(*) AS n FROM tb.background_jobs WHERE status IN ('PENDING','RUNNING')")
             assert cur.fetchone()['n']==0
             cur.execute("SELECT value FROM tb.server_settings WHERE setting_key='admin_automation'")
-            policy=cur.fetchone()['value']
-            assert not policy['retention_schedule']['enabled'] and not any(s['enabled'] for s in policy['backup_schedules'].values())
+            row=cur.fetchone()
+            policy=row['value']
+            if mode=='SECURITY':
+                assert not policy['retention_schedule']['enabled'] and not any(s['enabled'] for s in policy['backup_schedules'].values())
+            else:
+                assert policy['automatic_backup_enabled'] and policy['backup_schedules']['FULL']['enabled']
+            cur.execute('SELECT status FROM tb.users WHERE id=%s',(disabled_id,))
+            assert cur.fetchone()['status']=='DISABLED'
+            cur.execute("SELECT count(*) AS n FROM tb.upload_sessions WHERE status='OPEN'")
+            assert cur.fetchone()['n']==0
             os.environ['TB_RECOVERY_ID']=ready['recovery_id']
             verify_cutover(conn,target_root)
             try: verify_cutover(conn,settings.storage_root)
@@ -174,8 +194,15 @@ def main():
         restored_auth={'Cookie':'; '.join(k+'='+v for k,v in jar.items())}
         status,_=request('/api/v1/admin/system/recovery',headers=restored_auth)
         assert status['active'] is True
-        request('/api/v1/portal/login',{'login':'recover-user','password':password},expected=403)
-        print(json.dumps({'recovery_passed':True,'real_http_admin_csrf':True,'source_preserved':True,
+        request('/api/v1/portal/login',{'login':'recover-user','password':password},expected=403 if mode=='SECURITY' else 200)
+        caps,_=request('/api/v1/capabilities')
+        assert caps['recovery_id']==ready['recovery_id']
+        device={'Authorization':'Bearer old-device-token'}
+        request('/api/v1/device/me',headers=device,expected=401 if mode=='SECURITY' else 409)
+        if mode=='UPDATE':
+            request('/api/v1/device/me',headers=dict(device,**{'X-TB-Recovery-ID':str(uuid4())}),expected=409)
+            request('/api/v1/device/me',headers=dict(device,**{'X-TB-Recovery-ID':ready['recovery_id']}))
+        print(json.dumps({'recovery_passed':True,'mode':mode,'real_http_admin_csrf':True,'source_preserved':True,
                           'target_access_sealed':True,'cutover_http_ready':True,'mismatched_storage_blocked':True}))
     finally:
         os.environ.pop('TB_RECOVERY_ID',None)
@@ -183,3 +210,4 @@ def main():
 
 
 if __name__=='__main__': main()
+

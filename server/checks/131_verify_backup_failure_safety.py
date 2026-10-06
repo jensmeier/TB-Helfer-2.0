@@ -35,7 +35,7 @@ class BackupSafety(unittest.TestCase):
         self.settings = SimpleNamespace(storage_root=root / 'storage', backup_root=root / 'backups')
         self.settings.storage_root.mkdir()
         self.settings.backup_root.mkdir()
-        self.backup = load_module('backup', {'settings': self.settings})
+        self.backup = load_module('backup', {'settings': self.settings, 'runtime_identity': lambda: {'format': 'test-provenance'}})
         self.backup.update(InventoryError=InventoryError, archive_inventory=archive_inventory)
         def snapshot(path):
             self.backup['_run_pg_dump'](path)
@@ -165,3 +165,4 @@ class BackupSafety(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

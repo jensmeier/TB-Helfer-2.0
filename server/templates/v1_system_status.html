@@ -106,12 +106,16 @@
     <p>Hier bereitest du einen älteren Serverstand zur Wiederherstellung vor. Der laufende Server wird erst durch die anschließende Umschaltung im Synology Container Manager ersetzt.</p>
     <div id="recoveryState" class="notice info">Wiederherstellungsstatus wird geladen …</div>
     <div id="recoveryForm">
+      <label for="recoveryMode">Art der Wiederherstellung</label>
+      <select id="recoveryMode" onchange="recoverySelectionChanged()"><option value="UPDATE">Stand vor Update wiederherstellen</option><option value="SECURITY">Nach Sicherheitsvorfall wiederherstellen</option></select>
+      <p id="recoveryModeHint"></p>
       <label for="recoveryBackup">1. Vollbackup auswählen (neueste 100)</label>
       <select id="recoveryBackup" onchange="recoverySelectionChanged()"><option value="">Bitte wählen …</option></select>
       <p id="recoverySource"></p>
-      <p><b>Nach der Umschaltung fehlen Änderungen nach diesem Backupdatum.</b> Vorher lokale, noch nicht synchronisierte Änderungen auf den Handys sichern. Alle bisherigen Gerätezugänge und Sitzungen werden im Ziel gesperrt. Nur dein Administratorkonto bleibt freigegeben; dort gilt das Passwort aus dem Backup. Andere Benutzer nach Prüfung gezielt freigeben, Geräte neu aktivieren und den Serverbestand neu laden.</p>
+      <p><b>Nach der Umschaltung fehlen Änderungen nach diesem Backupdatum.</b> Vorher lokale, noch nicht synchronisierte Arbeiten auf den Handys sichern. Im Portal erneut mit dem Passwort aus dem Backup anmelden.</p>
+      <p>Vor jedem Update ein Vollbackup erstellen und das dazugehörige Serverpaket bzw. Container-Image sowie Compose und .env geschützt aufbewahren. Neue Vollbackups enthalten einen Programm- und Schemafingerabdruck. Beim Update-Rückweg muss der passende Programmstand laufen; ein Datenbackup allein installiert keine alte Software.</p>
       <p>2. Zuerst wird automatisch ein zusätzliches Sicherheitsvollbackup erstellt. Danach werden Datenbank und Dateien im getrennten Ziel wiederhergestellt und geprüft. Der bisherige Serverbestand bleibt erhalten.</p>
-      <p class="small">Einmalige Einrichtung: getrennte Ziel-Datenbank und Zielspeicher im Worker konfigurieren und freigeben. Anleitung: server/checks/OPS_RESTORE_003.md. Ein bereits belegtes Ziel wird nicht überschrieben.</p>
+      <p class="small">Einmalige Einrichtung: die leeren Ordner restore-target-database-v1 und restore-target-storage-v1 in File Station anlegen; getrennte Ziel-Datenbank und Zielspeicher im Worker konfigurieren und freigeben. Anleitung: server/checks/OPS_RESTORE_003.md. Ein bereits belegtes Ziel wird nicht überschrieben.</p>
       <label for="recoveryConfirm">Zur Bestätigung genau eingeben:</label>
       <p><code id="recoveryPhrase">Zuerst Vollbackup wählen</code></p>
       <input id="recoveryConfirm" autocomplete="off" oninput="recoverySelectionChanged(false)">
@@ -125,7 +129,7 @@
         <li>Im Container Manager API, Worker und Monitor stoppen. Beide Datenbanken und ihre Datenordner behalten.</li>
         <li>Die vorbereitete <code>docker-compose.synology-recovery.v1.yml</code> mit den bestehenden Einstellungen verwenden. Die unten angezeigte Wiederherstellungs-ID zusätzlich in .env setzen. Individuelle Anpassungen der bisherigen Compose-Datei übernehmen.</li>
         <li>Projekt mit dieser Konfiguration neu erstellen/starten. Datenbank und Speicher werden gemeinsam auf das geprüfte Ziel umgeschaltet. „Neu starten“ allein übernimmt keine geänderte Konfiguration.</li>
-        <li>Als Admin mit dem Passwort aus dem Backup anmelden. Systemstatus, Firmen, Streckennetz und Dateien prüfen. Danach benötigte Benutzer freigeben, Geräte neu aktivieren und Automatik bewusst wieder einschalten.</li>
+        <li id="recoveryAccessNext"></li>
       </ol>
       <pre id="recoveryCutoverId" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
       <p>Rückweg: API, Worker und Monitor wieder stoppen und die gesicherte bisherige Compose-Konfiguration verwenden. Der alte Bestand wurde nicht überschrieben. Änderungen, die bereits im wiederhergestellten Ziel entstanden sind, werden dabei nicht automatisch übernommen.</p>
@@ -229,6 +233,8 @@ function backupStatusLabel(status){return ({OK:'OK',FAILED:'Fehlgeschlagen',RUNN
 let recoveryBackups=[];
 let recoveryBusy=false;
 function recoverySelectionChanged(clear=true){
+  const mode=document.getElementById('recoveryMode').value;
+  document.getElementById('recoveryModeHint').textContent=mode==='UPDATE'?'Firmen, Benutzerrechte, Sperren, Geräteaktivierungen und Automatik bleiben wie im Backup. Portal-Anmeldung erneut erforderlich. Handys benötigen die Recovery-Anpassung: lokale Arbeiten sichern und Serverstand neu abgleichen. Ältere Apps bleiben bis dahin beim Datenzugriff gesperrt. Alte Backups ohne Programmfingerabdruck sind für diesen Modus nicht geeignet.':'Andere Benutzer werden deaktiviert, Geräte und offene Einladungen widerrufen, Automatik ausgeschaltet. Anschließend Zugänge einzeln prüfen und freigeben.';
   const id=document.getElementById('recoveryBackup').value;
   const b=recoveryBackups.find(b=>b.id===id);
   if(clear)document.getElementById('recoveryConfirm').value='';
@@ -246,10 +252,11 @@ async function loadRecovery(){
     select.innerHTML='<option value="">Bitte wählen …</option>'+recoveryBackups.map(b=>'<option value="'+esc(b.id)+'">'+esc(dt(b.started_at))+' · '+esc(bytes(b.byte_size))+'</option>').join('');
     if(recoveryBackups.some(b=>b.id===selected))select.value=selected;
     const labels={NONE:'Noch keine Wiederherstellung vorbereitet.',QUEUED:'Vorbereitung wartet auf den Worker.',RUNNING:'Vorbereitung läuft. Fortschritt steht unter Vorgänge.',READY:'Ziel geprüft und bereit – noch nicht umgeschaltet.',FAILED:'Vorbereitung fehlgeschlagen. Der laufende Bestand bleibt unverändert.',REVIEW_REQUIRED:'Vorbereitung unterbrochen. Ziel vor einem weiteren Versuch prüfen.'};
-    document.getElementById('recoveryState').textContent=(x.active?'Wiederhergestellter Serverstand ist aktiv. Benutzer und Automatik nach Prüfung freigeben.':labels[phase]||phase)+(s.source_date?' Backupstand: '+dt(s.source_date):'')+(s.safety_backup_id?' · Sicherheitsbackup: '+s.safety_backup_id:'')+(s.error?' · '+s.error:'');
+    document.getElementById('recoveryState').textContent=(x.active?'Wiederhergestellter Serverstand ist aktiv.':labels[phase]||phase)+(s.recovery_id?' Modus: '+(s.mode==='UPDATE'?'Stand vor Update':'Sicherheitsvorfall')+'.':'')+(s.source_date?' Backupstand: '+dt(s.source_date):'')+(s.safety_backup_id?' · Sicherheitsbackup: '+s.safety_backup_id:'')+(s.error?' · '+s.error:'');
     document.getElementById('recoveryForm').hidden=x.active||['QUEUED','RUNNING','READY','REVIEW_REQUIRED'].includes(phase);
     document.getElementById('recoveryNext').hidden=x.active||phase!=='READY';
     document.getElementById('recoveryCutoverId').textContent=s.recovery_id?'TB_V1_RECOVERY_ID='+s.recovery_id+'\nZieldatenbank: '+(s.target_db_host||'')+' / '+(s.target_db_name||'')+'\nZielspeicher: '+(s.target_storage_root||''):'';
+    document.getElementById('recoveryAccessNext').textContent=s.mode==='UPDATE'?'Im Portal erneut anmelden. Firmen, Benutzerrechte und Geräteaktivierungen entsprechen dem Backup. Automatik läuft mit gesicherten Einstellungen. Handys müssen mit angepasster App ihren lokalen Stand sicher abgleichen; keine erneute Geräteaktivierung nötig.':'Als Admin mit dem Passwort aus dem Backup anmelden. Bestand prüfen, benötigte Benutzer freigeben, Geräte neu aktivieren und Automatik bewusst einschalten.';
     recoverySelectionChanged(false);
   }catch(e){document.getElementById('recoveryState').textContent='Wiederherstellungsstatus konnte nicht geladen werden: '+(e.message||e);}
 }
@@ -257,7 +264,7 @@ async function prepareRecovery(){
   if(recoveryBusy)return;
   recoveryBusy=true;recoverySelectionChanged(false);
   try{
-    await tbApi('/api/v1/admin/system/recovery/prepare',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({backup_run_id:document.getElementById('recoveryBackup').value,confirmation:document.getElementById('recoveryConfirm').value})});
+    await tbApi('/api/v1/admin/system/recovery/prepare',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:document.getElementById('recoveryMode').value,backup_run_id:document.getElementById('recoveryBackup').value,confirmation:document.getElementById('recoveryConfirm').value})});
     await loadRecovery();await load(false);
   }catch(e){show('error','Vorbereitung konnte nicht gestartet werden: '+(e.message||e));}
   finally{recoveryBusy=false;recoverySelectionChanged(false);}
@@ -477,3 +484,4 @@ document.getElementById('ackWarnings').addEventListener('click',acknowledgeWarni
 load(true);
 </script>
 {% endblock %}
+

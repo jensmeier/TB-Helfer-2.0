@@ -6,7 +6,7 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -44,6 +44,7 @@ class BackupJobCreate(BaseModel):
 
 
 class RecoveryPrepare(BaseModel):
+    mode: Literal["UPDATE", "SECURITY"] = "UPDATE"
     backup_run_id: UUID
     confirmation: str = Field(max_length=100)
 
@@ -88,7 +89,7 @@ def enqueue_recovery(payload: RecoveryPrepare,
         job = enqueue_in_tx(cur, "RECOVERY_PREPARE", {"backup_run_id":str(payload.backup_run_id)})
         state = {"recovery_id":str(uuid4()), "phase":"QUEUED", "job_id":str(job["id"]),
                  "source_backup_id":str(payload.backup_run_id), "admin_id":str(user["user_id"]),
-                 "source_date":source["started_at"].isoformat()}
+                 "source_date":source["started_at"].isoformat(), "mode":payload.mode}
         write_state(cur, state)
         audit(cur, action="SERVER_RECOVERY_REQUESTED", actor_user_id=user["user_id"],
               entity_type="BACKGROUND_JOB", entity_id=job["id"], details=state)
@@ -1163,3 +1164,4 @@ def enqueue_restore_test(
             response_payload=response,
         )
     return response
+
