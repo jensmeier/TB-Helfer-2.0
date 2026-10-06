@@ -29,7 +29,7 @@ def main():
     from tbserver.migrations import migrate
     migrate()
     admin_id, user_id, company = uuid4(), uuid4(), uuid4()
-    password = "ci-recovery-only-password"
+    password = "CI-Recovery-only-Password-927!"
     settings.storage_root.mkdir(parents=True, exist_ok=True)
     (settings.storage_root / "fixture.bin").write_bytes(b"backup bytes")
     with transaction() as conn, conn.cursor() as cur:

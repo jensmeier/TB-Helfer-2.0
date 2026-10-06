@@ -155,6 +155,8 @@ _ERROR_MESSAGES = {
     "BACKUP_SIZE_MISMATCH": "Die Größe der Sicherungsdatei stimmt nicht mit dem gespeicherten Backup-Eintrag überein.",
 }
 _AUDIT_LABELS = {
+    "SERVER_RECOVERY_REQUESTED": "Wiederherstellung angefordert",
+    "SERVER_RECOVERY_PREPARED": "Wiederherstellungsziel geprüft",
     "RESTORE_TARGET_START": "Restore ins getrennte Ziel gestartet",
     "RESTORE_TARGET_OK": "Restore ins getrennte Ziel erfolgreich",
     "RESTORE_TARGET_FAILED": "Restore ins getrennte Ziel fehlgeschlagen",
