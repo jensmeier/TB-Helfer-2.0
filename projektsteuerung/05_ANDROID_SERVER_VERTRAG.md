@@ -846,3 +846,9 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 - Baustellen-Dateiliste/Medien/Metadaten/Inhalt/Vorschau verlangen files.view. Fremde Uploadsession:403 UPLOAD_OWNER_REQUIRED; nur Ersteller liest/ändert/abschließt/bricht ab, Schreiben weiter mit files.add. Keine neuen erfolgreichen Antwortfelder oder Androidänderung.
 - Nach Restore eines neuen konsistenten Vollbackups sind zum Snapshotzeitpunkt offene Uploadsessions EXPIRED und müssen neu begonnen werden; bereits vollständig gespeicherte Dateien werden geprüft wiederhergestellt. Live-Uploads werden vom Backup nicht zurückgesetzt.
 - Echte FastAPI-/PostgreSQL-CI für diese Grenzen und3x255 HTTP-Longpoll PASS, keine Androidgeräte-/NAS-/Cloudflare-/Fotolastfreigabe. Details server/checks/SERVER_GATE_001.md.
+
+
+## OPS-RESTORE-003 – bewusster Server-Rollback (06.10.2026)
+- Beim administrativ vorbereiteten Zielrestore werden alte Geräte-Tokens und Browser-Sessions ungültig, offene Aktivierungen/Einladungen widerrufen. Außer dem anfordernden Admin bleiben Nutzer im Ziel bis zur Rechteprüfung deaktiviert. Offene Uploads müssen neu begonnen werden. Dies betrifft ausschließlich das Ziel, nicht die laufende Quellinstanz.
+- Nach tatsächlichem Cutover Geräte bewusst neu aktivieren und Serverbestand neu laden. Noch lokale ungesendete Daten vorher sichern; kein stilles automatisches Replay einer alten Outbox gegen den zurückgesetzten Server. Android-Code unverändert, Geräteablauf noch nicht abgenommen. Stabile Fach-IDs des Backups bleiben erhalten; keine neue erfolgreiche normale API-Antwortstruktur.
+- Vollständiger Ablauf und Grenzen: server/checks/OPS_RESTORE_003.md. Echte CI-API-Umschaltung bestanden, keine NAS-/Android-Abnahme.

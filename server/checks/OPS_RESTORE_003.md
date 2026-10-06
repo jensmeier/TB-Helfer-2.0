@@ -155,6 +155,14 @@ einen bewusst neu eingerichteten Zielordner/DB erfordern.
   nach Fehler/Worker-Unterbrechung werden geprüft.
 - Gate ist nur unter `CI=true`, `TB_ENVIRONMENT=test`, DB `tb_gate_recovery`
   zulässig. Es wird in der bestehenden isolierten CI zusätzlich ausgeführt.
-- Konkretes CI-Ergebnis wird nach Lauf ergänzt. Kein NAS-Cutover und kein
+- CI auf Runtimecommit `14d199222b7d5bc957b688e3f653471ce9505ad7` bestanden:
+  [Prüflauf37510603840 / Job112430437826](https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/37510603840/job/112430437826).
+  85 Verhaltenstests130–140 PASS; echter Snapshot-/Rechte-/Restore-Cutover-Gate
+  PASS, inklusive Ziel-Lock und Test-/Zieltrennung, Fehler-/Stale-Job ohne Retry.
+  3x255 HTTP-Syncclients ohne Fehler, p95 6,23–6,37s inklusive2s Wartezeit
+  (CI-Kriterium10s zusätzlicher Overhead). Kein NAS-Lastnachweis.
+  Ältere foundation-Prüfung bleibt rot wegen FILE_LINK_TARGET_NOT_FOUND;
+  Android-CI bleibt gesondert offen. Keine pauschale Gesamt-CI-Freigabe.
+- Kein NAS-Cutover und kein
   Android-Reaktivierungs-E2E ausgeführt. Die NAS-Bestätigung vom06.10.2026 betrifft
   ausschließlich das bereits vorhandene Vollbackup851MB und Backup-Prüfung OK.
