@@ -18,6 +18,15 @@ CHEF_DEFAULT_PERMISSIONS = {
 }
 
 
+def require_active_company(user: dict[str, Any]) -> None:
+    """Auth rows include current company state; missing company fails closed."""
+    if user.get("company_role") == "ADMIN":
+        return
+    if (user.get("company_id") is None or user.get("company_status") != "ACTIVE"
+            or user.get("company_deleted_at") is not None):
+        raise HTTPException(403, "COMPANY_DISABLED")
+
+
 def _merge_permissions(base: dict, override: dict) -> dict[str, bool]:
     merged = {str(k): v is True for k, v in (base or {}).items()}
     for key, value in (override or {}).items():

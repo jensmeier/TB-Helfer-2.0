@@ -19,6 +19,7 @@ from .restore import (
     _extract_storage_archive,
     _run_pg_restore,
     _verify_restored_database,
+    _verify_restored_files,
 )
 
 
@@ -250,6 +251,7 @@ def run_restore_target(
                 symlinks=False,
                 dirs_exist_ok=True,
             )
+            detail["references"] = _verify_restored_files(config, target, manifest)
 
         row = _finish_restore_target(run_id, ok=True, detail=detail)
         return {

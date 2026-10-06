@@ -15,7 +15,8 @@ from uuid import UUID
 
 from .config import settings
 from .system_settings import retention_policy
-from .database import transaction
+from .database import connect, transaction
+from .backup_inventory import InventoryError, archive_inventory, read_inventory
 
 
 BACKUP_KINDS = {"DATABASE", "FILES", "FULL"}
@@ -70,7 +71,7 @@ def _pg_env() -> dict[str, str]:
     return env
 
 
-def _run_pg_dump(target: Path) -> None:
+def _run_pg_dump(target: Path, *, snapshot: str | None = None) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     command = [
         "pg_dump",
@@ -88,6 +89,8 @@ def _run_pg_dump(target: Path) -> None:
         "--file",
         str(target),
     ]
+    if snapshot is not None:
+        command.extend(["--snapshot", snapshot])
     try:
         result = subprocess.run(
             command,
@@ -135,6 +138,18 @@ def _archive_storage(target: Path) -> None:
         )
     if not target.is_file() or target.stat().st_size <= 0:
         raise BackupError("FILES_BACKUP_EMPTY")
+
+
+def _capture_full_database(target: Path) -> list[dict]:
+    # Keep the exporting transaction alive until pg_dump has finished importing
+    # and reading its snapshot. This connection must not use autocommit.
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+        cur.execute("SELECT pg_export_snapshot() AS snapshot")
+        snapshot = cur.fetchone()["snapshot"]
+        entries = read_inventory(cur)
+        _run_pg_dump(target, snapshot=snapshot)
+    return entries
 
 
 def _begin_run(kind: str) -> UUID:
@@ -232,9 +247,12 @@ def _full_backup(
         files_archive = scratch / "files.tar.gz"
         manifest = scratch / "manifest.json"
         _progress(progress, 15, "Datenbankteil wird gesichert")
-        _run_pg_dump(database_dump)
-        _progress(progress, 45, "Dateien werden für das Vollbackup gepackt")
-        _archive_storage(files_archive)
+        try:
+            entries = _capture_full_database(database_dump)
+            _progress(progress, 45, "Dateien des Datenbankstands werden geprüft und gesichert")
+            archive_inventory(settings.storage_root, files_archive, entries)
+        except InventoryError as exc:
+            raise BackupError(str(exc)) from exc
         _progress(progress, 75, "Prüfsummen und Manifest werden erstellt")
         manifest.write_text(
             json.dumps(
@@ -245,6 +263,9 @@ def _full_backup(
                     "files_archive": "files.tar.gz",
                     "database_sha256": _hash_file(database_dump),
                     "files_sha256": _hash_file(files_archive),
+                    "consistency": "snapshot-reference-v1",
+                    "referenced_files": len(entries),
+                    "open_uploads": "restart",
                 },
                 ensure_ascii=False,
                 sort_keys=True,

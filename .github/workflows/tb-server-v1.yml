@@ -153,7 +153,7 @@ jobs:
           python server/checks/115_verify_survey_import_station_assignment_source.py
           python server/checks/116_verify_survey_diagnostics_portal_source.py
 
-      # Migrations through 019_survey_catalog_history_enrich.sql are included by the normal migration runner.
+      # The normal migration runner includes the current 021 baseline.
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
         run: python -m tbserver.migrations up
@@ -165,8 +165,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 19, current
-          assert current["latest_applied"] == 19, current
+          assert current["latest_known"] == 21, current
+          assert current["latest_applied"] == 21, current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
@@ -347,3 +347,46 @@ jobs:
       - name: API log on failure
         if: failure()
         run: cat /tmp/tbserver-v1.log || true
+
+  server-gate:
+    name: Snapshot, rights and 255-client HTTP gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: tb_gate_http
+          POSTGRES_USER: tb_gate
+          POSTGRES_PASSWORD: ci-only-gate-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tb_gate -d tb_gate_http"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the existing server image with PostgreSQL 17 clients
+        run: docker build -t tb-server-gate -f server/Dockerfile.v1 server
+      - name: Run local regressions, real snapshot restore and HTTP gates
+        run: |
+          docker run --rm --network host \
+            -e CI=true -e TB_ENVIRONMENT=test \
+            -e DB_HOST=127.0.0.1 -e DB_PORT=5432 -e DB_NAME=tb_gate_http \
+            -e DB_USER=tb_gate -e DB_PASSWORD=ci-only-gate-password \
+            -e STORAGE_ROOT=/tmp/tb-gate-storage -e TB_BACKUP_ROOT=/tmp/tb-gate-backups \
+            -e TB_GATE_SOURCE_DSN="host=127.0.0.1 dbname=tb_gate_source user=tb_gate password=ci-only-gate-password" \
+            -e TB_GATE_TARGET_DSN="host=127.0.0.1 dbname=tb_gate_target user=tb_gate password=ci-only-gate-password" \
+            -v "$GITHUB_WORKSPACE/server:/app" tb-server-gate sh -ec '
+              python -m compileall -q tbserver tools
+              for check in checks/13[0-9]_*.py; do python "$check"; done
+              python -m tbserver.migrations up
+              python -c "from tbserver.database import connect; c=connect(autocommit=True); c.execute(\"CREATE DATABASE tb_gate_source\"); c.execute(\"CREATE DATABASE tb_gate_target\"); c.close()"
+              python tools/backup_snapshot_gate.py --confirm-isolated tb_gate_source:tb_gate_target
+              python tools/server_http_gate.py
+            '
+

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from .admin import require_admin, require_admin_csrf
 from .config import settings
 from .database import transaction
+from .permissions import require_active_company
 from .device_activation_links import device_activation_app_uri, device_activation_qr_svg_data_url
 from .device_activation_pdf import device_activation_pdf_data_url
 from .events import audit
@@ -76,9 +77,10 @@ def current_device_user(request: Request) -> dict[str, Any]:
                    d.app_version, d.app_build, d.status AS device_status, d.revoked_at,
                    u.company_id, u.display_name, u.login_name, u.personal_email,
                    u.personal_phone, u.company_role, u.status, u.access_valid_until,
-                   u.deleted_at
+                   u.deleted_at, co.status AS company_status, co.deleted_at AS company_deleted_at
             FROM tb.devices d
             JOIN tb.users u ON u.id = d.user_id
+            LEFT JOIN tb.companies co ON co.id = u.company_id
             WHERE d.auth_token_hash = %s
             """,
             (token_hash,),
@@ -93,6 +95,7 @@ def current_device_user(request: Request) -> dict[str, Any]:
             raise HTTPException(403, "USER_DISABLED")
         if row["access_valid_until"] is not None and row["access_valid_until"] <= now:
             raise HTTPException(403, "USER_EXPIRED")
+        require_active_company(row)
         reported_version, reported_build = _reported_app_info(request)
         cur.execute(
             """
@@ -130,11 +133,12 @@ def device_login(payload: DeviceLoginRequest) -> dict:
             SELECT t.id, t.user_id, t.expires_at, t.used_at, t.revoked_at,
                    u.company_id, u.display_name, u.login_name, u.personal_email,
                    u.personal_phone, u.company_role, u.status, u.access_valid_until,
-                   u.deleted_at
+                   u.deleted_at, co.status AS company_status, co.deleted_at AS company_deleted_at
             FROM tb.device_activation_tokens t
             JOIN tb.users u ON u.id = t.user_id
+            LEFT JOIN tb.companies co ON co.id = u.company_id
             WHERE t.token_hash = %s
-            FOR UPDATE
+            FOR UPDATE OF t, u
             """,
             (activation_hash,),
         )
@@ -148,6 +152,7 @@ def device_login(payload: DeviceLoginRequest) -> dict:
             raise HTTPException(403, "USER_DISABLED")
         if activation["access_valid_until"] is not None and activation["access_valid_until"] <= now:
             raise HTTPException(403, "USER_EXPIRED")
+        require_active_company(activation)
 
         # Serialize all activations for the same user before checking device ownership.
         cur.execute("SELECT id FROM tb.users WHERE id = %s FOR UPDATE", (activation["user_id"],))

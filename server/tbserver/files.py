@@ -102,6 +102,8 @@ def _authorize_upload(cur, user: dict[str, Any], upload: dict, *, write: bool) -
     context = worksite_context(cur, user, upload["worksite_id"])
     if context["company_id"] != upload["company_id"]:
         raise HTTPException(403, "UPLOAD_COMPANY_MISMATCH")
+    if upload.get("user_id") != user["user_id"]:
+        raise HTTPException(403, "UPLOAD_OWNER_REQUIRED")
     if write:
         require_permission(context, "files.add")
     return context
@@ -405,6 +407,7 @@ def _load_file_for_user(
             raise HTTPException(403, "FILE_ACCESS_DENIED")
     else:
         context = worksite_context(cur, user, result["worksite_id"])
+        require_permission(context, "files.view")
         if not _file_visible_for_context(
             cur,
             user,
@@ -751,6 +754,7 @@ def list_worksite_media(
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
         context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "files.view")
         cur.execute(
             """
             SELECT f.id,
@@ -933,6 +937,7 @@ def list_files(
     with transaction() as conn, conn.cursor() as cur:
         context = worksite_context(cur, user, worksite_id)
         scan_after = after
+        require_permission(context, "files.view")
         scan_limit = min(max(limit + 1, 200), 1001)
 
         while True:

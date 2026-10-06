@@ -18,6 +18,7 @@ from psycopg.rows import dict_row
 from .backup import BackupError, backup_path_for_run
 from .config import settings
 from .database import transaction
+from .backup_inventory import InventoryError, read_inventory, verify_inventory
 
 
 FULL_BACKUP_FORMAT = "tb-server-1.0-full-backup-v1"
@@ -193,6 +194,27 @@ def _validate_tar_member(member: tarfile.TarInfo) -> None:
         raise RestoreTestError("RESTORE_TEST_ARCHIVE_LINK_NOT_ALLOWED")
 
 
+def _verify_restored_files(config: dict[str, Any], root: Path, manifest: dict) -> dict:
+    """Check real restored references; only mutate the isolated restore database."""
+    try:
+        with _connect_restore_test(config) as conn, conn.cursor() as cur:
+            entries = read_inventory(cur)
+            result = verify_inventory(root, entries)
+            if manifest.get("consistency") == "snapshot-reference-v1":
+                if manifest.get("referenced_files") != len(entries):
+                    raise RestoreTestError("RESTORE_REFERENCE_COUNT_MISMATCH")
+                if manifest.get("open_uploads") != "restart":
+                    raise RestoreTestError("RESTORE_UPLOAD_POLICY_INVALID")
+                cur.execute("""
+                    UPDATE tb.upload_sessions SET status = 'EXPIRED', updated_at = now()
+                    WHERE status = 'OPEN'
+                """)
+                result["expired_upload_sessions"] = cur.rowcount
+            return result
+    except InventoryError as exc:
+        raise RestoreTestError(str(exc)) from exc
+
+
 def _extract_storage_archive(archive_path: Path, target: Path) -> dict[str, Any]:
     target.mkdir(parents=True, exist_ok=True)
     file_count = 0
@@ -348,6 +370,9 @@ def run_restore_test(
                 detail["files"] = _extract_storage_archive(
                     files_archive,
                     temp / "restored-files",
+                )
+                detail["references"] = _verify_restored_files(
+                    config, temp / "restored-files" / "storage", manifest,
                 )
                 _progress(progress, 94, "Restore-Test wird abgeschlossen")
             else:

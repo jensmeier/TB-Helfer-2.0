@@ -1,5 +1,7 @@
 """Real archive/file checks with isolated production code; no live DB or NAS."""
 import ast
+import hashlib
+import sys
 import logging
 import io
 import tarfile
@@ -11,6 +13,8 @@ from unittest.mock import patch
 from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from tbserver.backup_inventory import InventoryError, archive_inventory
 
 
 def load_module(name, extra):
@@ -32,6 +36,14 @@ class BackupSafety(unittest.TestCase):
         self.settings.storage_root.mkdir()
         self.settings.backup_root.mkdir()
         self.backup = load_module('backup', {'settings': self.settings})
+        self.backup.update(InventoryError=InventoryError, archive_inventory=archive_inventory)
+        def snapshot(path):
+            self.backup['_run_pg_dump'](path)
+            return [dict(storage_key=str(p.relative_to(self.settings.storage_root)),
+                         byte_size=p.stat().st_size, sha256=hashlib.sha256(p.read_bytes()).hexdigest())
+                    for p in self.settings.storage_root.rglob('*')
+                    if p.is_file() and '.renditions' not in p.parts]
+        self.backup['_capture_full_database'] = snapshot
         self.restore = load_module('restore', {
             'settings': self.settings, 'BackupError': self.backup['BackupError'],
             'backup_path_for_run': lambda _: None})

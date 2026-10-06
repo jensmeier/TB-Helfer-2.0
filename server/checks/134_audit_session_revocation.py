@@ -22,6 +22,7 @@ class Audit(unittest.TestCase):
                 revoked_at=None,device_status='ACTIVE')
             cur=g.Cursor(row)
             env=g.load(module,[fn],dict(transaction=lambda:cur,_now=lambda:now,hash_token=lambda x:x,
+                require_active_company=g.load('permissions')['require_active_company'],
                 _bearer_token=lambda r:'same-token',_reported_app_info=lambda r:(None,None),
                 SESSION_COOKIE='tb_portal_session',ADMIN_SESSION_COOKIE='tb_admin_session'))
             for expiry in (None,now+timedelta(microseconds=1)):

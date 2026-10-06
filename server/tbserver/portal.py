@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from .config import settings
 from .database import transaction
+from .permissions import require_active_company
 from .events import audit
 from .security import hash_password, hash_token, random_token, validate_password, verify_password
 
@@ -79,9 +80,10 @@ def _load_session(request: Request) -> dict[str, Any]:
             SELECT s.id AS session_id, s.user_id, s.csrf_secret_hash, s.expires_at,
                    u.company_id, u.display_name, u.login_name, u.personal_email,
                    u.personal_phone, u.company_role, u.status, u.access_valid_until,
-                   u.deleted_at
+                   u.deleted_at, co.status AS company_status, co.deleted_at AS company_deleted_at
             FROM tb.portal_sessions s
             JOIN tb.users u ON u.id = s.user_id
+            LEFT JOIN tb.companies co ON co.id = u.company_id
             WHERE s.session_token_hash = %s
               AND s.revoked_at IS NULL
             """,
@@ -97,6 +99,7 @@ def _load_session(request: Request) -> dict[str, Any]:
             raise HTTPException(403, "USER_DISABLED")
         if row["access_valid_until"] is not None and row["access_valid_until"] <= now:
             raise HTTPException(403, "USER_EXPIRED")
+        require_active_company(row)
         cur.execute(
             "UPDATE tb.portal_sessions SET last_seen_at = now() WHERE id = %s",
             (row["session_id"],),
@@ -171,9 +174,11 @@ def activate(payload: ActivateRequest) -> Response:
         cur.execute(
             """
             SELECT u.id, u.company_id, u.login_name, u.display_name, u.status, u.deleted_at,
-                   c.activation_expires_at, c.activated_at
+                   c.activation_expires_at, c.activated_at, u.company_role,
+                   co.status AS company_status, co.deleted_at AS company_deleted_at
             FROM tb.portal_credentials c
             JOIN tb.users u ON u.id = c.user_id
+            LEFT JOIN tb.companies co ON co.id = u.company_id
             WHERE c.activation_token_hash = %s
             FOR UPDATE OF c, u
             """,
@@ -184,6 +189,7 @@ def activate(payload: ActivateRequest) -> Response:
             raise HTTPException(400, "ACTIVATION_INVALID")
         if row["status"] != "ACTIVE" or row["deleted_at"] is not None:
             raise HTTPException(403, "USER_DISABLED")
+        require_active_company(row)
         if row["activated_at"] is not None:
             raise HTTPException(409, "ALREADY_ACTIVATED")
         if row["activation_expires_at"] is None or row["activation_expires_at"] <= _now():
@@ -253,9 +259,11 @@ def _find_login(cur, login: str):
         """
         SELECT u.id, u.company_id, u.display_name, u.login_name, u.personal_email,
                u.personal_phone, u.company_role, u.status, u.access_valid_until,
-               u.deleted_at, c.password_hash, c.failed_login_count, c.locked_until
+               u.deleted_at, c.password_hash, c.failed_login_count, c.locked_until,
+               co.status AS company_status, co.deleted_at AS company_deleted_at
         FROM tb.users u
         JOIN tb.portal_credentials c ON c.user_id = u.id
+        LEFT JOIN tb.companies co ON co.id = u.company_id
         WHERE lower(u.login_name) = lower(%s)
           AND u.deleted_at IS NULL
         """,
@@ -268,9 +276,11 @@ def _find_login(cur, login: str):
         """
         SELECT u.id, u.company_id, u.display_name, u.login_name, u.personal_email,
                u.personal_phone, u.company_role, u.status, u.access_valid_until,
-               u.deleted_at, c.password_hash, c.failed_login_count, c.locked_until
+               u.deleted_at, c.password_hash, c.failed_login_count, c.locked_until,
+               co.status AS company_status, co.deleted_at AS company_deleted_at
         FROM tb.users u
         JOIN tb.portal_credentials c ON c.user_id = u.id
+        LEFT JOIN tb.companies co ON co.id = u.company_id
         WHERE lower(u.personal_email) = lower(%s)
           AND u.deleted_at IS NULL
         ORDER BY u.created_at
@@ -301,6 +311,7 @@ def login(payload: LoginRequest, request: Request, response: Response) -> dict:
             raise HTTPException(403, "USER_DISABLED")
         if user["access_valid_until"] is not None and user["access_valid_until"] <= now:
             raise HTTPException(403, "USER_EXPIRED")
+        require_active_company(user)
         if user["locked_until"] is not None and user["locked_until"] > now:
             raise HTTPException(429, "LOGIN_LOCKED")
 

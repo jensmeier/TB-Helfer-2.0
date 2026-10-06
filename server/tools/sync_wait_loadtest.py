@@ -126,11 +126,16 @@ def _prepare_portal_sessions(
     target = 1 if mode == "shared" else count
     print(f"preparing_portal_sessions={target} mode={mode}", flush=True)
     sessions: list[PortalSession] = []
-    for index in range(target):
-        sessions.append(_portal_session(base_url, login, password, timeout))
-        completed = index + 1
-        if target >= 50 and (completed % 50 == 0 or completed == target):
-            print(f"portal_sessions_ready={completed}/{target}", flush=True)
+    try:
+        for index in range(target):
+            sessions.append(_portal_session(base_url, login, password, timeout))
+            completed = index + 1
+            if target >= 50 and (completed % 50 == 0 or completed == target):
+                print(f"portal_sessions_ready={completed}/{target}", flush=True)
+    except Exception:
+        for session in sessions:
+            _logout_portal_session(base_url, session, timeout)
+        raise
     if mode == "shared":
         return [sessions[0]] * count
     return sessions
@@ -296,7 +301,7 @@ def main() -> int:
 
         elapsed = time.monotonic() - started
         latencies = [item[1] for item in results]
-        failures = [item for item in results if item[0] != 200]
+        failures = [item for item in results if item[0] != 200 or item[2]]
         print(
             f"clients={args.clients} wall={elapsed:.2f}s "
             f"success={len(results)-len(failures)} failure={len(failures)}"
