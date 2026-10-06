@@ -2533,3 +2533,8 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 - Öffentliche Problem-/Erholungsmail enthält aktuellen internen API-/DB-Status, Latenz und Detail. Netzwerkursache weiterhin offen; keine Heilung des öffentlichen Zugangs behauptet.
 - Test136 sechs Gruppen PASS: kurze Störung ohne Mail, dritte Fehlmessung/einmalige Erholung, Reset durch WARN, persistierter/Legacy-Zähler, neuer Incident. Test130 acht Regressionen PASS; Python-Syntax PASS. Produktionsfunktionen mit Doubles, kein SMTP-/NAS-/Live-E2E. Runtime nur server/tbserver/monitor.py. Nach File-Station-Übernahme /volume1/docker/tb-helfer-v1/tbserver/monitor.py Monitor neu starten; für konsistent geladenen Stand auch API/Worker (importieren Monitor). DB nicht neu starten, keine Migration.
 - Nächster Plan:1 Vollbackup-Konsistenz DB+Dateien und vollständige Dateireferenzprüfung;2 verbleibende Rechte-Endpunktmatrix und NAS-Abnahme Live-Sperre;3 Portal-BTB/Unterbaustellen/Einträge+Fotos umhängen/Wetter und tatsächliche Bildgrößen;4 Lastabnahme15x15;5 Androidanbindung gegen fertigen Serververtrag. Bestätigte Gleis-/Weichen-/Adminabläufe bleiben geschützt. Aktuelle Änderung noch nicht auf NAS abgenommen.
+
+
+## SERVER-GATE-001 – Punkte1+2+4 freigegeben (06.10.2026 18:12)
+- Benutzer beauftragt Backup-Konsistenz, verbleibende Rechteprüfung und Lasttest15x15 bauen und testen. Portal-UI/Android bleiben außerhalb dieses Blocks.
+- Aktuellen Backup-/Dateischreib-/Rechte-/Syncpfad prüfen; konkrete Befunde und gewählten Konsistenzvertrag vor Laufzeitänderungen sichern. Isolierte Tests bevorzugt; echte NAS-/255-Clientlastabnahme nicht ohne passende Testumgebung behaupten. Keine produktiven Daten/Benutzer löschen oder sperren.
