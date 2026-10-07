@@ -24,6 +24,7 @@ from .devices import router as devices_router
 from .files import router as files_router
 from .migrations import status as migration_status
 from .metrics import SystemMetricsMiddleware
+from .recovery_runtime import RuntimeMaintenanceMiddleware
 from .portal import router as portal_router
 from .profile import router as profile_router
 from .releases import router as releases_router
@@ -53,6 +54,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.add_middleware(SystemMetricsMiddleware)
+# Last registered middleware is outermost: maintenance must not invoke metrics
+# or any protected route before the selected generation has been released.
+app.add_middleware(RuntimeMaintenanceMiddleware)
 app.include_router(capabilities_router)
 app.include_router(company_router)
 app.include_router(portal_router)
@@ -129,3 +133,4 @@ def health_ready():
         "migrations": "ok",
         "server_version": SERVER_VERSION,
     }
+

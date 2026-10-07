@@ -21,7 +21,7 @@ from .database import connect, transaction
 from .backup_inventory import InventoryError, archive_inventory, read_inventory
 
 
-BACKUP_KINDS = {"DATABASE", "FILES", "FULL"}
+BACKUP_KINDS = {"DATABASE", "FILES", "FULL", "USER", "TRACK"}
 ProgressCallback = Callable[[int, str], None]
 logger = logging.getLogger(__name__)
 
@@ -236,9 +236,11 @@ def _files_backup(
 def _full_backup(
     run_id: UUID,
     progress: ProgressCallback | None = None,
+    *,
+    destination: Path | None = None,
 ) -> tuple[str, Path]:
     key = f"full/{_timestamp()}_{run_id}.tar.gz"
-    final_path = _absolute_backup_path(key)
+    final_path = destination if destination is not None else _absolute_backup_path(key)
     final_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = final_path.with_suffix(final_path.suffix + ".tmp")
     scratch_root = settings.backup_root / ".tmp"
@@ -283,10 +285,31 @@ def _full_backup(
                 archive.add(database_dump, arcname="database.dump", recursive=False)
                 archive.add(files_archive, arcname="files.tar.gz", recursive=False)
                 archive.add(manifest, arcname="manifest.json", recursive=False)
-            os.replace(temp_path, final_path)
+            os.chmod(temp_path, 0o600)
+            with temp_path.open('rb') as handle:
+                os.fsync(handle.fileno())
+            os.link(temp_path, final_path)
+            directory = os.open(final_path.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
         finally:
             temp_path.unlink(missing_ok=True)
     return key, final_path
+
+
+def _scoped_backup(run_id: UUID, kind: str, progress=None) -> tuple[str, Path]:
+    from .backup_domain_snapshot import capture_domains
+    from .scoped_backup import write_archive
+    key = f"{kind.lower()}/{_timestamp()}_{run_id}.tar"
+    path = _absolute_backup_path(key)
+    _progress(progress, 20, "Datenbereich wird konsistent gelesen")
+    with connect(autocommit=True) as conn:
+        snapshot, _, sequences = capture_domains(conn, include_sequences=True)
+    _progress(progress, 45, "Zugehörige Dateien werden geprüft und gesichert")
+    write_archive(snapshot, kind, settings.storage_root, path, runtime_identity(), sequences=sequences)
+    return key, path
 
 
 def run_backup(
@@ -306,6 +329,8 @@ def run_backup(
             key, final_path = _database_backup(run_id, progress)
         elif normalized == "FILES":
             key, final_path = _files_backup(run_id, progress)
+        elif normalized in {"USER", "TRACK"}:
+            key, final_path = _scoped_backup(run_id, normalized, progress)
         else:
             key, final_path = _full_backup(run_id, progress)
         _progress(progress, 94, "Prüfsumme wird kontrolliert")
@@ -477,4 +502,5 @@ def run_retention() -> dict[str, Any]:
         "missing_file_run_ids": missing_files,
         "delete_error_run_ids": delete_errors,
     }
+
 

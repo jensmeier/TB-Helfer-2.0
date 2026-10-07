@@ -8,6 +8,11 @@ on:
       - server/tbserver/backup_domains.py
       - server/tbserver/backup_domain_snapshot.py
       - server/tbserver/scoped_*.py
+      - server/tbserver/recovery_*.py
+      - server/tbserver/main.py
+      - server/tbserver/backup.py
+      - server/checks/145_verify_recovery_runtime.py
+      - server/tools/automatic_recovery_gate.py
       - server/checks/144_verify_scoped_archives.py
       - server/tools/scoped_restore_gate.py
       - server/checks/142_verify_recovery_control.py
@@ -21,6 +26,11 @@ on:
       - server/tbserver/backup_domains.py
       - server/tbserver/backup_domain_snapshot.py
       - server/tbserver/scoped_*.py
+      - server/tbserver/recovery_*.py
+      - server/tbserver/main.py
+      - server/tbserver/backup.py
+      - server/checks/145_verify_recovery_runtime.py
+      - server/tools/automatic_recovery_gate.py
       - server/checks/144_verify_scoped_archives.py
       - server/tools/scoped_restore_gate.py
       - server/checks/142_verify_recovery_control.py
@@ -73,6 +83,8 @@ jobs:
         run: python server/tools/backup_domain_gate.py
       - name: Scoped archive and hostile-input tests
         run: python server/checks/144_verify_scoped_archives.py
+      - name: Real process supervision and maintenance middleware
+        run: python server/checks/145_verify_recovery_runtime.py
       - name: Build runtime with PostgreSQL 17 client
         run: docker build -f server/Dockerfile.v1 -t tb-scoped-gate server
       - name: PostgreSQL 17 actual partial archive restores and failures
@@ -82,3 +94,10 @@ jobs:
           -e DB_NAME=tb_gate_scoped -e DB_USER -e DB_PASSWORD
           -v "${{ github.workspace }}/server:/app:ro"
           tb-scoped-gate python /app/tools/scoped_restore_gate.py
+      - name: Actual automatic data cutover and rollback
+        run: >-
+          docker run --rm --network host
+          -e CI=true -e TB_ENVIRONMENT=test -e DB_HOST -e DB_PORT
+          -e DB_NAME=tb_gate_auto -e DB_USER -e DB_PASSWORD
+          -v "${{ github.workspace }}/server:/app:ro"
+          tb-scoped-gate python /app/tools/automatic_recovery_gate.py
