@@ -2612,3 +2612,25 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 
 - Nachweis:89 Verhaltenstests130–141 PASS; Python/JavaScript/YAML-Syntax PASS. Echter PostgreSQL17/FastAPI-Gate zweimal SUCCESS; letzter Run37524540497 Job112478085754: https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/37524540497/job/112478085754 . UPDATE und SECURITY jeweils echte Sicherung/Wiederherstellung/API-Neustart mit Portal-/Geräteprüfungen PASS; zusätzlicher Altzustand ohne mode bleibt SECURITY. Quellbestand erhalten, Zielfehler/Lock/Retry-Guards unverändert geprüft. 3x255Clients0Fehler,p95 6,13–6,16s inkl2sWait; keine NAS-/Android-/Foto-/BTB-Schreiblastabnahme.
 - Gesamt-CI weiterhin nicht grün: foundation alter FILE_LINK_TARGET_NOT_FOUND-Marker, Android-CI alter Sourcevertrag. Nicht umgangen/abgeschaltet. Weitere Server-/Portal-Arbeit und Android-Recoveryintegration bleiben offen.
+
+
+## OPS-RESTORE-005 – verbindlicher Folgeauftrag und Bestandsabgleich (07.10.2026)
+Status: ANFORDERUNG GESICHERT / IMPLEMENTIERUNG OFFEN.
+Benutzer hat den letzten Auftrag nach Chatlängenabbruch erneut übergeben und verlangt zuerst Abgleich mit GitHub statt Neubeginn.
+Geprüfte Basis: SERVER af983f0e7fcc5ef79aec926ddbe837e0c24518be, PR #6 offen/Draft; ANDROID 423f37892915cb3308a4b1ea9e4d196faa872326, PR #11 offen, kein Draft.
+Vorhandene Grundlage OPS-RESTORE-003/004 weiterverwenden: Sicherheitsvollbackup, getrenntes Restoreziel, Schema-/Dateireferenzprüfung, UPDATE/SECURITY und Recovery-Kennung. Code recovery.py erlaubt bisher nur FULL und endet bei READY; Umschaltung laut Template/Compose manuell. backup.py kennt DATABASE/FILES/FULL, bisherige Retention nach Tagen/Mindestanzahl. Vier neue fachliche Arten und automatische Umschaltung sind in diesem geprüften Stand noch nicht umgesetzt.
+
+Verbindliches Ziel (ersetzt die normale manuelle Umschaltung aus OPS-RESTORE-003/004):
+- Webseite: Backup einspielen → Nutzerbackup, Streckenbackup oder Vollbackup → eines der letzten vier erfolgreichen Backups → Datum und betroffenen Bereich prüfen/bestätigen → Einspielen.
+- Nutzerbackup stellt Firmen-/Benutzer-/Baustellenbereich wieder her; gemeinsamer Streckenbestand bleibt erhalten. Streckenbackup stellt gemeinsamen Streckenbestand wieder her; Nutzerbereich bleibt erhalten. Vollbackup umfasst beide Datenbereiche. Exakte Tabellen-/Dateigrenzen und Querverweise vor Implementierung anhand Bestand bestimmen und prüfen.
+- Prüfung, zusätzliche Sicherung des aktuellen Bestands, erforderliche Wartungspause, Wiederherstellung und tatsächliche Umschaltung automatisch. Keine Compose-Umbenennung und keine einzelnen Containerstopps durch den Nutzer im normalen Ablauf. Bei Fehler bisherigen Bestand erhalten bzw. wieder aktivieren; Wiederanlauf/Unterbrechung ausdrücklich testen.
+- Begrenzten Wiederherstellungsdienst auf Basis der vorhandenen Containerkonfiguration entwerfen. Kein bloßes READY als erfolgreiche Wiederherstellung ausgeben.
+- Image-/Systembackup: Erstellung und Zeitplan auf Webseite; Wiederherstellung ausschließlich über NAS/Container Manager. Kein Einspielbereich und keine Systemrestore-Anleitung in der normalen Webseite.
+- Vier unabhängige Backuparten, standardmäßig jeweils letzte vier erfolgreiche Sicherungen. Erst nach erfolgreicher neuer Sicherung älteste derselben Art entfernen. Fehlgeschlagene Sicherung darf keine erfolgreiche verdrängen.
+- Systembackup und Vollbackup strikt unabhängig: Systembackup erzeugt kein automatisches Vollbackup und hält kein zusätzliches Vollbackup fest. Software-/Schemainformationen im Vollbackup weiterhin zur Kompatibilitätsprüfung; keine Kopplung der Aufbewahrung.
+- Sicherheitskopie eines laufenden Restorevorgangs gesondert gegen vorzeitiges Löschen schützen; Lebenszyklus beim Entwurf ausdrücklich festlegen, nicht als System-/Vollbackup-Kopplung verwenden.
+- Langen technischen Rückwegtext in Notfallanleitung verschieben. Alte Restore-Bereiche erst nach Umsetzung und Tests der drei Datenarten einschließlich absichtlich fehlschlagender Wiederherstellungen aufräumen.
+- Abschließend konkrete NAS-Dateiliste: neu hochladen/ersetzen, Zielpfade und tatsächlich entbehrliche Altdateien; keine Daten-/Backup-/Zielordner auf Verdacht löschen.
+- Android app/** unverändert lassen. Bestehende offene Recovery-ID-/Outbox-Rebase-Anpassung bleibt gesonderte Android-Abhängigkeit; automatische Serverumschaltung ist kein Android-E2E-Nachweis.
+
+Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode und bestätigt kein NAS-Deployment. Vor Fortsetzung GitHub erneut prüfen; anschließend Container-/Datenbereichsanalyse, Implementierung, reale isolierte Positiv-/Fehler-/Wiederholungsprüfungen, Statussicherung und NAS-Übernahmeliste. NAS-Abnahme getrennt offen halten.
