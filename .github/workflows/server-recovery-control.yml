@@ -7,6 +7,9 @@ on:
       - server/tbserver/recovery_control.py
       - server/tbserver/backup_domains.py
       - server/tbserver/backup_domain_snapshot.py
+      - server/tbserver/scoped_*.py
+      - server/checks/144_verify_scoped_archives.py
+      - server/tools/scoped_restore_gate.py
       - server/checks/142_verify_recovery_control.py
       - server/checks/143_verify_backup_domains.py
       - server/tools/backup_domain_gate.py
@@ -17,6 +20,9 @@ on:
       - server/tbserver/recovery_control.py
       - server/tbserver/backup_domains.py
       - server/tbserver/backup_domain_snapshot.py
+      - server/tbserver/scoped_*.py
+      - server/checks/144_verify_scoped_archives.py
+      - server/tools/scoped_restore_gate.py
       - server/checks/142_verify_recovery_control.py
       - server/checks/143_verify_backup_domains.py
       - server/tools/backup_domain_gate.py
@@ -29,7 +35,7 @@ permissions:
 jobs:
   recovery-core:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     services:
       postgres:
         image: postgis/postgis:17-3.5
@@ -65,3 +71,14 @@ jobs:
         run: python server/checks/143_verify_backup_domains.py
       - name: PostgreSQL 17 read-only domain gate
         run: python server/tools/backup_domain_gate.py
+      - name: Scoped archive and hostile-input tests
+        run: python server/checks/144_verify_scoped_archives.py
+      - name: Build runtime with PostgreSQL 17 client
+        run: docker build -f server/Dockerfile.v1 -t tb-scoped-gate server
+      - name: PostgreSQL 17 actual partial archive restores and failures
+        run: >-
+          docker run --rm --network host
+          -e CI=true -e TB_ENVIRONMENT=test -e DB_HOST -e DB_PORT
+          -e DB_NAME=tb_gate_scoped -e DB_USER -e DB_PASSWORD
+          -v "${{ github.workspace }}/server:/app:ro"
+          tb-scoped-gate python /app/tools/scoped_restore_gate.py

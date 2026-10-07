@@ -10,7 +10,7 @@ import json
 from .backup_domains import TABLES, PRIMARY_KEYS, DomainError, DomainSnapshot, ForeignKey
 
 
-def capture_domains(conn, *, max_bytes: int = 64 * 1024 * 1024):
+def capture_domains(conn, *, max_bytes: int = 64 * 1024 * 1024, include_sequences=False, schema_path=None):
     from psycopg import sql
     from psycopg.pq import TransactionStatus
     if conn.info.transaction_status != TransactionStatus.IDLE:
@@ -69,4 +69,32 @@ def capture_domains(conn, *, max_bytes: int = 64 * 1024 * 1024):
         snapshot = DomainSnapshot(rows)
         # Force classification inside the same transaction before returning.
         snapshot.partition()
+        if schema_path is not None:
+            from .scoped_restore import dump_schema
+            cur.execute('SELECT pg_export_snapshot() AS snapshot')
+            dump_schema(conn, schema_path, cur.fetchone()['snapshot'])
+        if include_sequences:
+            # Sequence reads are not MVCC snapshots. Carry the observed upper
+            # bound; restoration also takes the current counter and row maximum.
+            cur.execute("""SELECT table_name,column_name,
+                           pg_get_serial_sequence(format('%I.%I',table_schema,table_name),column_name) AS sequence
+                           FROM information_schema.columns WHERE table_schema='tb'
+                           AND column_default LIKE 'nextval(%'""")
+            sequences = {}
+            for item in cur.fetchall():
+                table, column = item['table_name'], item['column_name']
+                if table not in TABLES or PRIMARY_KEYS[table] != (column,):
+                    raise DomainError('BACKUP_SEQUENCE_SCHEMA_CHANGED', table)
+                # Names come from PostgreSQL, never from archive SQL.
+                cur.execute("SELECT schemaname,sequencename,last_value FROM pg_sequences WHERE schemaname='tb'")
+                available = {f"{r['schemaname']}.{r['sequencename']}": r['last_value'] for r in cur.fetchall()}
+                value = available.get(item['sequence'])
+                if value is None:
+                    # NULL means either unused or unreadable. Read the sequence
+                    # directly so insufficient privileges fail explicitly.
+                    name = item['sequence'].removeprefix('tb.')
+                    cur.execute(sql.SQL('SELECT last_value FROM tb.{}').format(sql.Identifier(name)))
+                    value = cur.fetchone()['last_value']
+                sequences[table] = {'column': column, 'value': int(value)}
+            return snapshot, tuple(foreign_keys), sequences
         return snapshot, tuple(foreign_keys)
