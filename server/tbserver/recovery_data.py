@@ -154,7 +154,17 @@ def main():
     raw=sys.stdin.buffer.read(16385)
     if len(raw)>16384:
         raise RuntimeError('RECOVERY_DATA_REQUEST_TOO_LARGE')
-    execute(sys.argv[1],json.loads(raw))
+    try:
+        execute(sys.argv[1],json.loads(raw))
+    except Exception as exc:
+        # Keep SQL values, credentials and tracebacks out of shared job/API
+        # output. Known uppercase error codes and SQLSTATE are sufficient to
+        # locate a failing phase without leaking restored row contents.
+        import re
+        detail=str(exc)
+        code=detail if re.fullmatch(r'[A-Z][A-Z0-9_]{1,120}',detail) else type(exc).__name__
+        print(json.dumps({'error':code,'sqlstate':getattr(exc,'sqlstate',None)}))
+        raise SystemExit(1)
 
 
 if __name__=='__main__':

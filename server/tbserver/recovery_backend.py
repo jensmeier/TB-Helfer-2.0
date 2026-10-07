@@ -57,7 +57,16 @@ class ProcessBackend:
         result = subprocess.run([sys.executable,'-m','tbserver.recovery_data',action],
             input=json.dumps(state).encode(), env=env, capture_output=True, timeout=8*3600)
         if result.returncode:
-            raise RecoveryControlError('RECOVERY_DATA_ACTION_FAILED_' + action.upper())
+            import re
+            try:
+                detail=json.loads(result.stdout)['error']
+            except (ValueError,KeyError,TypeError):
+                detail='UNKNOWN'
+            if not isinstance(detail,str) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{0,120}',detail):
+                detail='UNKNOWN'
+            write_json(self.deployment.root / 'action-error.json',
+                       {'operation_id':state['operation_id'],'phase':state['phase'],'action':action,'code':detail})
+            raise RecoveryControlError('RECOVERY_DATA_ACTION_FAILED_' + action.upper() + ':' + detail)
 
     def preflight(self, state):
         self._action('preflight', state)

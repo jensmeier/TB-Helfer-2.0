@@ -1785,3 +1785,9 @@ Status: STEUERUNGS-/DATENBEREICHSBAUSTEINE IMPLEMENTIERT / GESAMTINTEGRATION OFF
 - Migration022 erlaubt neue USER/TRACK/SYSTEM-Arten zusätzlich zu alten Datensätzen. run_backup kann USER/TRACK-Archive tatsächlich registrieren; SYSTEM-Erstellung und neue Aufbewahrung/Zeitpläne noch offen. FULL-Publikation jetzt fsync und ohne Überschreiben; Sicherheitskopie direkt im geschützten Operationsordner.
 - Lokal145 fünf Tests PASS mit echten Supervisor-/Kindprozessen und ASGI-Aufrufen: Pause, API-only-Probe, gesamtes DB/Storage/ID-Paar, Restart auf Ziel, korrupt/fehlend fail-closed, Fachzugriff/WebSocket gesperrt.144 neun und143 vierzehn Tests weiterhin PASS, Syntax PASS. Neuer echter PostgreSQL/API/Worker/Monitor-Gate für USER/TRACK/FULL-Umschaltung und Fehler-Rückweg angelegt; CI zu diesem Commit noch OFFEN.
 - Weiter kein NAS-fertiges Paket. Insbesondere Auftragseingang, unabhängige Aufbewahrung, Systemimagepfad, Compose-Übernahme, neue Adminbedienung und Crash-Nachweis mit echtem Gesamtadapter offen; Android-Rebase separat unverändert.
+
+
+### OPS-RESTORE-005 – Wiederholungsfehler korrigiert, erweiterter Realtest (07.10.2026)
+- a29a72f-CI: erster automatischer USER-Restore tatsächlich PASS; nachfolgender TRACK korrekt zurückgerollt wegen zu spät gesetzter Snapshot-Isolation in Sicherheitskopie. Keine Gesamtfreigabe aus erstem Lauf.
+- _capture_full_database prüft Recovery-ID nun im Autocommit und startet danach eigene REPEATABLE READ/READ ONLY-Snapshottransaktion. Weitere Guardprüfung bleibt erhalten. Nicht geheime Datenaktions-Fehlercodes werden privat zur Diagnose gespeichert.
+- Echter CI-Gate erweitert: Fehler nach realer Zielprobe für USER/TRACK/FULL; neue Backups auf bereits restauriertem Stand; harte Controller-Prozessabbrüche nach Zielauswahl und nach Schreibfreigabe, einschließlich Erhalt einer danach angenommenen Änderung. Ausführung zum Fixcommit noch OFFEN.

@@ -144,8 +144,10 @@ def _archive_storage(target: Path) -> None:
 
 def _capture_full_database(target: Path) -> list[dict]:
     # Keep the exporting transaction alive until pg_dump has finished importing
-    # and reading its snapshot. This connection must not use autocommit.
-    with connect() as conn, conn.cursor() as cur:
+    # and reading its snapshot. The dump runs inside the explicit transaction.
+    # The recovery guard queries the database during connect(). Run that guard
+    # in autocommit, then start our own snapshot transaction before any query.
+    with connect(autocommit=True) as conn, conn.transaction(), conn.cursor() as cur:
         cur.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
         cur.execute("SELECT pg_export_snapshot() AS snapshot")
         snapshot = cur.fetchone()["snapshot"]

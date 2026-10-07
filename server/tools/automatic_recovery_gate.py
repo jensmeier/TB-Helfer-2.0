@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 import urllib.request
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 
@@ -94,7 +94,7 @@ def main():
             previous='initial'
             for kind in ('USER','TRACK','FULL'):
                 result=controller.run(backup_id=str(selected[kind]['id']),admin_id=str(admin),kind=kind)
-                assert result['phase']=='DONE',result
+                assert result['phase']=='DONE',(result,(control/'action-error.json').read_text() if (control/'action-error.json').exists() else 'no data error')
                 assert deployment.read()['generation']==result['target'] and deployment.read()['mode']=='OPEN'
                 env=generation_environment(result['target'])
                 with connection(env['DB_NAME']) as conn:
@@ -124,11 +124,19 @@ def main():
                         raise RuntimeError('INJECTED_AFTER_REAL_TARGET_PROBE')
                     return super().probe(state,generation)
             failed=RecoveryController(Journal(control),FailTargetProbe(control,acks,timeout=45,probe_url='http://127.0.0.1:8080/health/ready'))
-            result=failed.run(backup_id=str(selected['USER']['id']),admin_id=str(admin),kind='USER')
-            assert result['phase']=='ROLLED_BACK',result
-            assert deployment.read()['generation']==previous and deployment.read()['mode']=='OPEN'
-            with connection(env['DB_NAME']) as conn:
-                assert conn.execute('SELECT name FROM tb.companies WHERE id=%s',(company,)).fetchone()['name']=='keep after failed restore'
+            for kind in ('USER','TRACK','FULL'):
+                # A new archive in the active generation also exercises backup
+                # creation after a previous recovery, including its guard.
+                created=subprocess.run([sys.executable,'-c',
+                    'from tbserver.backup import run_backup; print(run_backup('+repr(kind)+')["id"])'],
+                    env=env,capture_output=True,text=True,check=True)
+                backup_id=str(UUID(created.stdout.strip()))
+                result=failed.run(backup_id=backup_id,admin_id=str(admin),kind=kind)
+                assert result['phase']=='ROLLED_BACK',result
+                assert deployment.read()['generation']==previous and deployment.read()['mode']=='OPEN'
+                with connection(env['DB_NAME']) as conn:
+                    assert conn.execute('SELECT name FROM tb.companies WHERE id=%s',(company,)).fetchone()['name']=='keep after failed restore'
+                print('PASS: injected failure after real '+kind+' target probe reactivates previous data',flush=True)
             # Restart supervised services and controller recovery: keep the
             # committed/rolled-back generation, never fall back to initial.
             for process in processes:
@@ -142,6 +150,41 @@ def main():
             wait(health)
             assert deployment.read()['generation']==previous
             print('PASS: real target-probe failure reactivates previous data; service/controller restart preserves selection',flush=True)
+            for stage in ('selected','released'):
+                # Kill the actual coordinator process at each side of its
+                # durable decision. Supervisors and PostgreSQL remain running.
+                runner='''
+import os
+from tbserver.recovery_backend import ProcessBackend
+from tbserver.recovery_control import RecoveryController,Journal
+class Crash(ProcessBackend):
+    def select(self,state,generation):
+        super().select(state,generation)
+        if STAGE=='selected' and generation==state['target']:
+            os._exit(77)
+    def release(self,state,generation):
+        super().release(state,generation)
+        if STAGE=='released':
+            os._exit(77)
+controller=RecoveryController(Journal(CONTROL),Crash(CONTROL,ACKS,timeout=45,probe_url='http://127.0.0.1:8080/health/ready'))
+controller.run(backup_id=BACKUP,admin_id=ADMIN,kind='USER')
+'''
+                constants={'STAGE':stage,'CONTROL':str(control),'ACKS':str(acks),'BACKUP':str(selected['USER']['id']),'ADMIN':str(admin)}
+                runner='\n'.join(k+'='+repr(v) for k,v in constants.items())+'\n'+runner
+                crashed=subprocess.run([sys.executable,'-c',runner],env=os.environ,capture_output=True,timeout=180)
+                assert crashed.returncode==77,(stage,crashed.returncode)
+                decision=Journal(control).read()
+                if stage=='released':
+                    active=generation_environment(decision['target'])
+                    with connection(active['DB_NAME']) as conn:
+                        conn.execute("UPDATE tb.companies SET name='write after durable commit' WHERE id=%s",(company,))
+                recovered=controller.recover()
+                assert recovered['phase']==('ROLLED_BACK' if stage=='selected' else 'DONE'),recovered
+                assert deployment.read()['generation']==(previous if stage=='selected' else decision['target'])
+                if stage=='released':
+                    with connection(active['DB_NAME']) as conn:
+                        assert conn.execute('SELECT name FROM tb.companies WHERE id=%s',(company,)).fetchone()['name']=='write after durable commit'
+                print('PASS: actual controller process crash '+stage+' respects durable decision and preserves accepted writes',flush=True)
         finally:
             for process in processes:
                 if process.poll() is None:
