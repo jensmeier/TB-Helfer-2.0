@@ -1,0 +1,67 @@
+name: Restore controller and data boundaries
+
+on:
+  push:
+    branches: [feature/tb-server-1.0]
+    paths:
+      - server/tbserver/recovery_control.py
+      - server/tbserver/backup_domains.py
+      - server/tbserver/backup_domain_snapshot.py
+      - server/checks/142_verify_recovery_control.py
+      - server/checks/143_verify_backup_domains.py
+      - server/tools/backup_domain_gate.py
+      - server/v1_migrations/**
+      - .github/workflows/server-recovery-control.yml
+  pull_request:
+    paths:
+      - server/tbserver/recovery_control.py
+      - server/tbserver/backup_domains.py
+      - server/tbserver/backup_domain_snapshot.py
+      - server/checks/142_verify_recovery_control.py
+      - server/checks/143_verify_backup_domains.py
+      - server/tools/backup_domain_gate.py
+      - server/v1_migrations/**
+      - .github/workflows/server-recovery-control.yml
+
+permissions:
+  contents: read
+
+jobs:
+  recovery-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: tb_gate_domains
+          POSTGRES_USER: tb_gate
+          POSTGRES_PASSWORD: disposable-ci-only
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U tb_gate -d tb_gate_domains"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_NAME: tb_gate_domains
+      DB_USER: tb_gate
+      DB_PASSWORD: disposable-ci-only
+      TB_ENVIRONMENT: test
+      STORAGE_ROOT: /tmp/tb-domain-storage
+      TB_BACKUP_ROOT: /tmp/tb-domain-backups
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install database driver
+        run: pip install 'psycopg[binary]==3.2.9'
+      - name: Durable controller crash and rollback tests
+        run: python server/checks/142_verify_recovery_control.py
+      - name: Domain planning and reference tests
+        run: python server/checks/143_verify_backup_domains.py
+      - name: PostgreSQL 17 read-only domain gate
+        run: python server/tools/backup_domain_gate.py
