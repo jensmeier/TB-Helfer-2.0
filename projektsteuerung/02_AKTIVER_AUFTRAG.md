@@ -2634,3 +2634,9 @@ Verbindliches Ziel (ersetzt die normale manuelle Umschaltung aus OPS-RESTORE-003
 - Android app/** unverändert lassen. Bestehende offene Recovery-ID-/Outbox-Rebase-Anpassung bleibt gesonderte Android-Abhängigkeit; automatische Serverumschaltung ist kein Android-E2E-Nachweis.
 
 Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode und bestätigt kein NAS-Deployment. Vor Fortsetzung GitHub erneut prüfen; anschließend Container-/Datenbereichsanalyse, Implementierung, reale isolierte Positiv-/Fehler-/Wiederholungsprüfungen, Statussicherung und NAS-Übernahmeliste. NAS-Abnahme getrennt offen halten.
+
+
+### OPS-RESTORE-005 – Daten- und Betriebsgrenzen vor Implementierung
+- Gemeinsame catalog_* / survey_network_* und GLOBAL-Originale/-Kataloge gehören zum Streckenbereich; worksite track_data einschließlich Quellen-/KM-Zuordnung sowie COMPANY-Originale/-Kataloge zum Nutzerbereich. Quellenverweise über die Grenze müssen im kombinierten Ziel weiter auflösbar sein; andernfalls Abbruch ohne Liveänderung. Nullable historische Autorzuordnungen benötigen explizite Behandlung, fachliche Fremdschlüssel werden niemals still entfernt.
+- Vollbackup enthält vollständigen konsistenten Datenbank- und Dateistand. Systembackup enthält ausführbare Images und gebundene Software/Konfiguration, keine Fachdaten und keine automatische Vollbackup-Kopplung. Wiederaufbau benötigt Systembackup plus separat gewählten kompatiblen Datenstand.
+- Entwicklung/Tests erfolgen isoliert; keine aktuelle NAS-Compose oder .env als hochgeladenes Original vorhanden. Abschließende Übernahme muss individuelle Pfade/Ports beibehalten; alte DB-/Storage-Verzeichnisse erst nach Nachweis ihrer Nichtverwendung entfernen.
