@@ -2714,3 +2714,7 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 - Neue Backup-Jobs USER/TRACK/SYSTEM müssen in der vorhandenen Monitor-Fehlererkennung berücksichtigt werden; bisherige Abfrage enthielt nur DATABASE/FILES/FULL/RETENTION. Bestehende Alarmsemantik beibehalten, Arten ergänzen.
 - Vorhandene TB-HELFER_STATUS.xlsx ist bereits binär beschädigt: exakt heruntergeladene14998Bytes entsprechen Git-Blob a56c44ccbd85ebe1499a27c4777bc77409eb9479, ZIP-Validierung BadZipFile und Artifact-Import FileContainsCorruptedData. Archiv SERVER_STATUS_ALT_2026-09-21.xlsx ist derselbe Blob; keine intakte Vorgängerversion unter aktuellem Pfad. Nicht durch erfundene Tabelle ersetzen; MD-Status bleibt verbindlich, Excel-Aktualisierung bis zu intakter Vorlage blockiert.
 - NAS-Anleitung als überprüfbare Datei vorbereiten. Individuelle laufende Compose und tatsächlicher Tunnel-Origin weiterhin für letzten Abgleich erforderlich; keine aktuelle Installation oder Löschung.
+
+
+### OPS-RESTORE-005 – echter Gateway-Startbefund (09.10.2026)
+- Compose-Gate Run37921366147/Job113789810250: Migrationen001–022 und API starten tatsächlich; Gateway startet nicht, nginx meldet unknown directive 36}$. Regulärer Ausdruck der Fortschrittsroute enthält unquotierte geschweifte Klammern. Regex als nginx-String quotieren; der echte Compose-Gate bleibt Pflicht. Kein Fehler an produktiver NAS, keine Freigabe allein aus bisherigen Prozess-/Browserfixturetests.
