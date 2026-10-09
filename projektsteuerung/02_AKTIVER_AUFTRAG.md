@@ -2697,3 +2697,9 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 
 ### OPS-RESTORE-005 – Legacy-Datentypvertrag aus CI (09.10.2026)
 - Integrationslauf dc2e653: Systemimage Export/Load und Teilrestore PASS; zusätzlicher bestehender Restoregate erreicht prepare_recovery und scheitert an source.started_at.isoformat(), weil unabhängiger Katalog JSON-Zeitstempel liefert. backup_path_for_run muss seinen bestehenden Python-Vertrag (UUID/Datetime) auch für katalogbasierte Treffer erhalten; JSON-Katalog selbst bleibt serialisierbar. Korrektur im Lookup mit gezieltem Regressionstest, keine Abschaltung des alten Restoregates.
+
+
+### OPS-RESTORE-005 – Fortsetzung und HTTP-Bereitschaft (09.10.2026)
+- Nutzer bestätigt Fortsetzung, keine Löschung. SERVER28c89609 / PR6 Draft, Android423f3789 unverändert geprüft.
+- Run37918799711/Job113781441070: echter USER-Auftrag mit Admin/CSRF, Doppelauftragsschutz, separatem Fortschritt und erfolgreicher Umschaltung PASS. Nächster TRACK-HTTP-Aufruf trifft direkt nach dauerhafter Freigabe auf noch startende API (ConnectionRefused). Test muss vor jedem neuen Auftrag tatsächliche HTTP-Bereitschaft abwarten; keine Wiederholung mutierender Requests. DONE bedeutet dauerhafte Freigabeentscheidung; Betrieb wird danach von Supervisoren gestartet.
+- Bereits dokumentierten Katalog-Datentypvertrag reparieren. Bedienoberfläche zusätzlich mit isoliertem Browserfixture prüfen; das ersetzt kein NAS-/Browser-Backend-E2E. Katalogliste auch nach Datenrestore aus unabhängigem Index anzeigen und Auswahl bei Aktualisierung erhalten.
