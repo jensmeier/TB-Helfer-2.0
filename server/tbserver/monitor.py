@@ -275,7 +275,8 @@ def _check_backup(database: dict[str, Any]) -> dict[str, Any]:
                 """
                 SELECT id, job_type, status, updated_at, last_error
                 FROM tb.background_jobs
-                WHERE job_type IN ('BACKUP_DATABASE','BACKUP_FILES','BACKUP_FULL','BACKUP_RETENTION')
+                WHERE job_type IN ('BACKUP_DATABASE','BACKUP_FILES','BACKUP_FULL',
+                                   'BACKUP_USER','BACKUP_TRACK','BACKUP_SYSTEM','BACKUP_RETENTION')
                 ORDER BY updated_at DESC
                 LIMIT 1
                 """
