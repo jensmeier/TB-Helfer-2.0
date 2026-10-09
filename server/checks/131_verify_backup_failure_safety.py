@@ -15,6 +15,7 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tbserver.backup_inventory import InventoryError, archive_inventory
+from tbserver.backup_catalog import ArchiveCatalog, CatalogError, KINDS as CATALOG_KINDS
 
 
 def load_module(name, extra):
@@ -37,6 +38,7 @@ class BackupSafety(unittest.TestCase):
         self.settings.backup_root.mkdir()
         self.backup = load_module('backup', {'settings': self.settings, 'runtime_identity': lambda: {'format': 'test-provenance'}})
         self.backup.update(InventoryError=InventoryError, archive_inventory=archive_inventory)
+        self.backup.update(ArchiveCatalog=ArchiveCatalog, CatalogError=CatalogError, CATALOG_KINDS=CATALOG_KINDS)
         def snapshot(path):
             self.backup['_run_pg_dump'](path)
             return [dict(storage_key=str(p.relative_to(self.settings.storage_root)),
@@ -50,7 +52,13 @@ class BackupSafety(unittest.TestCase):
         self.failures = []
         self.backup['_begin_run'] = lambda _: uuid4()
         self.backup['_finish_run_failed'] = lambda *args: self.failures.append(args)
-        self.backup['_finish_run_ok'] = lambda *args: {'status': 'OK', 'path': args[2]}
+        def finished(run_id, key, path):
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            return dict(id=run_id, kind=key.split('/')[0].upper(), status='OK', path=path,
+                        storage_key=key, byte_size=path.stat().st_size,
+                        sha256=hashlib.sha256(path.read_bytes()).hexdigest(), started_at=now, finished_at=now)
+        self.backup['_finish_run_ok'] = finished
 
     def test_missing_root_fails_instead_of_empty_success(self):
         self.settings.storage_root.rmdir()

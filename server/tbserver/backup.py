@@ -19,6 +19,7 @@ from .config import settings
 from .system_settings import retention_policy
 from .database import connect, transaction
 from .backup_inventory import InventoryError, archive_inventory, read_inventory
+from .backup_catalog import ArchiveCatalog, CatalogError, KINDS as CATALOG_KINDS
 
 
 BACKUP_KINDS = {"DATABASE", "FILES", "FULL", "USER", "TRACK"}
@@ -337,6 +338,15 @@ def run_backup(
             key, final_path = _full_backup(run_id, progress)
         _progress(progress, 94, "Prüfsumme wird kontrolliert")
         result = _finish_run_ok(run_id, key, final_path)
+        if normalized in CATALOG_KINDS:
+            try:
+                result['retention'] = ArchiveCatalog(settings.backup_root).register(result, prune=True)
+            except (CatalogError, OSError) as exc:
+                # Preserve the successful DB entry and artifact. A catalog
+                # failure cannot justify deleting older backups or relabeling
+                # the verified artifact as a failed dump.
+                result['catalog_error'] = type(exc).__name__
+                logger.error('Backup catalog publication failed: %s', type(exc).__name__)
         _progress(progress, 98, "Backup ist gespeichert")
         return result
     except Exception as exc:
@@ -349,6 +359,12 @@ def run_backup(
 
 
 def backup_path_for_run(run_id: UUID) -> tuple[dict[str, Any], Path]:
+    try:
+        indexed = ArchiveCatalog(settings.backup_root).get(run_id)
+        if indexed is not None:
+            return indexed
+    except (CatalogError, OSError) as exc:
+        raise BackupError('BACKUP_CATALOG_UNAVAILABLE') from exc
     with transaction() as conn, conn.cursor() as cur:
         cur.execute(
             """
@@ -372,7 +388,31 @@ def backup_path_for_run(run_id: UUID) -> tuple[dict[str, Any], Path]:
         raise BackupError("BACKUP_SIZE_MISMATCH")
     if result.get("sha256") and _hash_file(path) != result["sha256"]:
         raise BackupError("BACKUP_SHA256_MISMATCH")
+    if result['kind'] in CATALOG_KINDS:
+        try:
+            ArchiveCatalog(settings.backup_root).register(result)
+        except (CatalogError, OSError) as exc:
+            raise BackupError('BACKUP_CATALOG_IMPORT_FAILED') from exc
     return result, path
+
+
+def independent_backup_list() -> list[dict[str, Any]]:
+    """Import legacy successful rows without pruning; prefer the durable index."""
+    catalog = ArchiveCatalog(settings.backup_root)
+    existing = {row['id'] for row in catalog.list()}
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute("""SELECT id, kind, status, storage_key, byte_size, sha256,
+                       started_at, finished_at FROM tb.backup_runs
+                       WHERE status='OK' AND kind IN ('USER','TRACK','FULL','SYSTEM')
+                       AND storage_key IS NOT NULL""")
+        rows = [dict(row) for row in cur.fetchall()]
+    for row in rows:
+        if str(row['id']) not in existing:
+            try:
+                catalog.register(row)
+            except (CatalogError, OSError):
+                logger.warning('Backup catalog import unavailable for %s', row['id'])
+    return catalog.list()
 
 
 def backup_storage_snapshot() -> dict[str, Any]:
@@ -421,7 +461,7 @@ def run_retention() -> dict[str, Any]:
                            ORDER BY finished_at DESC NULLS LAST, started_at DESC, id DESC
                        ) AS keep_rank
                 FROM tb.backup_runs
-                WHERE kind IN ('DATABASE','FILES','FULL')
+                WHERE kind IN ('DATABASE','FILES')
                   AND status = 'OK'
                   AND storage_key IS NOT NULL
             )

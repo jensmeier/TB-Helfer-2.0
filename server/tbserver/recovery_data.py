@@ -20,6 +20,7 @@ def execute(action, state):
     from psycopg.rows import dict_row
     from .config import settings
     from .backup import backup_path_for_run, _full_backup, _hash_file
+    from .backup_catalog import ArchiveCatalog
     from .backup_domain_snapshot import capture_domains
     from .backup_domains import validate_foreign_keys, validate_domain_references
     from .backup_inventory import read_inventory, verify_inventory
@@ -61,11 +62,9 @@ def execute(action, state):
         row, path = backup_path_for_run(UUID(state['backup_id']))
         if row['kind'] != state['kind']:
             raise RuntimeError('RECOVERY_BACKUP_KIND_MISMATCH')
-        with path.open('rb') as source, (bundle/'selected.archive').open('xb') as output:
-            os.fchmod(output.fileno(),0o600)
-            shutil.copyfileobj(source,output,1024*1024)
-            output.flush()
-            os.fsync(output.fileno())
+        # Lookup imports old successful records without retention. Copy under
+        # the catalog lock so a concurrent new backup cannot remove selection.
+        row = ArchiveCatalog(settings.backup_root).copy(state['backup_id'], bundle/'selected.archive')
         if ((bundle/'selected.archive').stat().st_size != row['byte_size']
                 or _hash_file(bundle/'selected.archive') != row['sha256']):
             raise RuntimeError('RECOVERY_SELECTED_BACKUP_CHANGED')

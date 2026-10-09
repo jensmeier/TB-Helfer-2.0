@@ -11,6 +11,8 @@ on:
       - server/tbserver/recovery_*.py
       - server/tbserver/main.py
       - server/tbserver/backup.py
+      - server/tbserver/backup_catalog.py
+      - server/checks/146_verify_backup_catalog.py
       - server/checks/145_verify_recovery_runtime.py
       - server/tools/automatic_recovery_gate.py
       - server/checks/144_verify_scoped_archives.py
@@ -29,6 +31,8 @@ on:
       - server/tbserver/recovery_*.py
       - server/tbserver/main.py
       - server/tbserver/backup.py
+      - server/tbserver/backup_catalog.py
+      - server/checks/146_verify_backup_catalog.py
       - server/checks/145_verify_recovery_runtime.py
       - server/tools/automatic_recovery_gate.py
       - server/checks/144_verify_scoped_archives.py
@@ -77,6 +81,8 @@ jobs:
         run: pip install 'psycopg[binary]==3.2.9'
       - name: Durable controller crash and rollback tests
         run: python server/checks/142_verify_recovery_control.py
+      - name: Independent archive catalog and retention
+        run: python server/checks/146_verify_backup_catalog.py
       - name: Domain planning and reference tests
         run: python server/checks/143_verify_backup_domains.py
       - name: PostgreSQL 17 read-only domain gate
