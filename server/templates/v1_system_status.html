@@ -555,7 +555,12 @@ async function pollAutomaticRecovery(id){
 }
 async function startAutomaticRecovery(){
   if(automaticBusy)return;
-  const id=crypto.randomUUID();automaticBusy=true;automaticSelectionChanged(false);
+  // LAN HTTP may lack randomUUID; getRandomValues still supplies secure bytes.
+  const random=new Uint8Array(16);crypto.getRandomValues(random);
+  random[6]=(random[6]&15)|64;random[8]=(random[8]&63)|128;
+  const hex=Array.from(random,b=>b.toString(16).padStart(2,'0')).join('');
+  const id=[hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),hex.slice(16,20),hex.slice(20)].join('-');
+  automaticBusy=true;automaticSelectionChanged(false);
   sessionStorage.setItem('tbRecoveryRequest',id);
   try{
     await tbApi('/api/v1/admin/system/recovery/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request_id:id,backup_run_id:document.getElementById('automaticRecoveryBackup').value,kind:document.getElementById('automaticRecoveryKind').value,confirmation:document.getElementById('automaticRecoveryConfirm').value})});

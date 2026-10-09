@@ -20,6 +20,7 @@ on:
       - server/checks/150_verify_restore_ui.cjs
       - server/templates/v1_system_status.html
       - server/tools/system_backup_gate.py
+      - server/tools/compose_recovery_gate.py
       - server/checks/146_verify_backup_catalog.py
       - server/checks/145_verify_recovery_runtime.py
       - server/tools/automatic_recovery_gate.py
@@ -48,6 +49,7 @@ on:
       - server/checks/150_verify_restore_ui.cjs
       - server/templates/v1_system_status.html
       - server/tools/system_backup_gate.py
+      - server/tools/compose_recovery_gate.py
       - server/checks/146_verify_backup_catalog.py
       - server/checks/145_verify_recovery_runtime.py
       - server/tools/automatic_recovery_gate.py
@@ -131,6 +133,11 @@ jobs:
           -e DB_NAME=tb_gate_auto -e DB_USER -e DB_PASSWORD
           -v "${{ github.workspace }}/server:/app:ro"
           tb-scoped-gate python /app/tools/automatic_recovery_gate.py
+
+      - name: Actual Compose gateway and independent service integration
+        env:
+          CI: 'true'
+        run: python server/tools/compose_recovery_gate.py
 
   restore-ui:
     runs-on: ubuntu-latest
