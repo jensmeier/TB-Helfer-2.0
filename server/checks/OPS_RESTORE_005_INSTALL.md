@@ -1,6 +1,8 @@
 # OPS-RESTORE-005 – automatische Wiederherstellung / NAS-Übernahme
 
-Stand: 09.10.2026. Geprüfter Code: `d8d28e2a9dd5fad6c271b345abc9f2dd789d29bf`; [Restore-/Compose-/Browserprüflauf bestanden](https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/37922416404). **Übernahme vorbereitet, individuelle NAS-Konfiguration noch abzugleichen. Nicht allein anhand dieser Vorlage das laufende Projekt ersetzen.**
+Stand: 09.10.2026. **Übernahme vorbereitet, individuelle NAS-Konfiguration noch abzugleichen. Nicht allein anhand dieser Vorlage das laufende Projekt ersetzen.**
+
+Für die am09.10.2026 hochgeladene `compose.yml` gilt die konkret abgeglichene Anleitung [OPS_RESTORE_005_NAS_COMPOSE.md](OPS_RESTORE_005_NAS_COMPOSE.md) mit `server/compose.synology-reviewed.v1.yml`. Der Compose-Dateiabgleich ist abgeschlossen; der tatsächliche Cloudflare-Origin bleibt vor Neustart zu prüfen.
 
 ## Bedienung nach abgeschlossener Übernahme
 
@@ -55,7 +57,7 @@ Vorhandene `storage-v1/`, `backups-v1/`, `database-v1/`, `restore-test-database-
 
 ### Geplante Übernahme nach Abgleich
 
-Über File Station Software hochladen. Über Container Manager das betroffene Projekt stoppen, die geprüfte Compose übernehmen und das Serverimage neu bauen/Projekt neu erstellen. Keine Volumes oder Datenverzeichnisse löschen. `recovery-init` muss erfolgreich enden, danach `migrate`; API/Worker/Monitor, Recovery, Gateway und Systemexport müssen starten. Keine NAS-SSH-Befehle erforderlich.
+Über Container Manager zuerst das betroffene Projekt stoppen. Erst dann über File Station Software hochladen, die geprüfte Compose übernehmen und das Serverimage neu bauen/Projekt neu erstellen. So laufen keine gemischten alten/neuen gebundenen Softwaredateien. Keine Volumes oder Datenverzeichnisse löschen. `recovery-init` muss erfolgreich enden, danach `migrate`; API/Worker/Monitor, Recovery, Gateway und Systemexport müssen starten. Keine NAS-SSH-Befehle erforderlich.
 
 Erst wenn das Projekt gesund ist: Systemstatus öffnen, Migrationen022 prüfen, vier Backuparten sichtbar prüfen, je eine Testsicherung erstellen. Neue SYSTEM-Datei muss unabhängig von FULL entstehen. Wiederherstellung auf der NAS erst in einem vereinbarten Testfenster mit nachvollziehbarem Ausgangsstand durchführen; Browseranzeige, Login, Datenbereiche, Dateien und Geräteverhalten danach gesondert abnehmen.
 
