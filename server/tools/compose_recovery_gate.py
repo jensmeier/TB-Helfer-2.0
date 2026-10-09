@@ -124,6 +124,12 @@ print(json.dumps({kind:str(run_backup(kind)['id']) for kind in ('USER','TRACK','
             raise
         finally:
             compose('down', '--volumes', '--remove-orphans')
+            # Containers create root-owned 0700 targets. Return ownership only
+            # inside this freshly generated CI directory for normal cleanup.
+            if root.parent != Path(tempfile.gettempdir()) or not root.name.startswith(project):
+                raise RuntimeError('CI_CLEANUP_PATH_INVALID')
+            subprocess.run(['sudo', 'chown', '-R', '--no-dereference',
+                            f'{os.getuid()}:{os.getgid()}', str(root)], check=True)
 
 
 if __name__ == '__main__':
