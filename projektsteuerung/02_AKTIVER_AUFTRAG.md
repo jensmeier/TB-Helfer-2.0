@@ -2703,3 +2703,8 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 - Nutzer bestätigt Fortsetzung, keine Löschung. SERVER28c89609 / PR6 Draft, Android423f3789 unverändert geprüft.
 - Run37918799711/Job113781441070: echter USER-Auftrag mit Admin/CSRF, Doppelauftragsschutz, separatem Fortschritt und erfolgreicher Umschaltung PASS. Nächster TRACK-HTTP-Aufruf trifft direkt nach dauerhafter Freigabe auf noch startende API (ConnectionRefused). Test muss vor jedem neuen Auftrag tatsächliche HTTP-Bereitschaft abwarten; keine Wiederholung mutierender Requests. DONE bedeutet dauerhafte Freigabeentscheidung; Betrieb wird danach von Supervisoren gestartet.
 - Bereits dokumentierten Katalog-Datentypvertrag reparieren. Bedienoberfläche zusätzlich mit isoliertem Browserfixture prüfen; das ersetzt kein NAS-/Browser-Backend-E2E. Katalogliste auch nach Datenrestore aus unabhängigem Index anzeigen und Auswahl bei Aktualisierung erhalten.
+
+
+### OPS-RESTORE-005 – Browserbefund und Containerprüfung (09.10.2026)
+- Erster echter Chromium-Fixturetest erreicht Auswahl/Bestätigung, scheitert beim Start über nicht als sicher geltende HTTP-Origin: crypto.randomUUID ist dort nicht verfügbar. NAS-LAN-HTTP muss ohne unsichere Zufallszahlen funktionieren; UUID aus crypto.getRandomValues als kompatiblen Fallback ergänzen. Test behält absichtlich HTTP-Origin.
+- Zusätzlich tatsächliche Compose-Topologie in eindeutigem temporären CI-Projekt mit isolierten Verzeichnissen/DB/Netzen prüfen: Initialisierung/Migration, vier Erzeuger, drei Restoreaufträge durch Gateway und Neustart auf gewähltem Stand. Kein Cloudflare-Tunnel, keine NAS-/Bestandsdaten. Temporäre CI-Ressourcen am Ende ausschließlich über den eindeutigen Test-Projektnamen abbauen.
