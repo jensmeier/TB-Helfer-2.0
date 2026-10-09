@@ -1,5 +1,6 @@
 """Real files/archives and production snapshot orchestration with DB doubles."""
 import hashlib
+from contextlib import contextmanager
 import importlib.util
 from pathlib import Path
 import sys
@@ -86,15 +87,30 @@ class SnapshotTests(unittest.TestCase):
 
     def test_snapshot_export_is_alive_during_dump(self):
         cur = Cursor([self.entry])
+        events = []
+        @contextmanager
+        def explicit_transaction():
+            events.append('begin')
+            try:
+                yield
+            finally:
+                events.append('end')
+        cur.transaction = explicit_transaction
+        def connect(*, autocommit):
+            self.assertIs(autocommit, True)
+            events.append('guard-autocommit')
+            return cur
         def dump(path, *, snapshot):
             self.assertTrue(cur.active)
+            self.assertEqual(events, ['guard-autocommit', 'begin'])
             self.assertEqual(snapshot, 'snapshot-test')
             self.assertIn('REPEATABLE READ, READ ONLY', cur.calls[0])
             self.assertIn('pg_export_snapshot', cur.calls[1])
-        env = checks.load_module('backup', {'connect': lambda: cur, 'read_inventory': inv.read_inventory})
+        env = checks.load_module('backup', {'connect': connect, 'read_inventory': inv.read_inventory})
         env['_run_pg_dump'] = dump
         self.assertEqual(env['_capture_full_database'](self.target), [self.entry])
         self.assertFalse(cur.active)
+        self.assertEqual(events, ['guard-autocommit', 'begin', 'end'])
 
     def test_restore_checks_bytes_before_expiring_uploads(self):
         cur = Cursor([self.entry])
