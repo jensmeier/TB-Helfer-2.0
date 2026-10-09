@@ -270,6 +270,11 @@ def _job_view(row: dict[str, Any]) -> dict[str, Any]:
     result["job_label"] = _JOB_LABELS.get(job_type, job_type.replace("_", " ").title())
     result["status_label"] = _JOB_STATUS_LABELS.get(status, status)
     result["error_description"] = _friendly_error(raw_error)
+    result["cancelled_after_recovery"] = status == "FAILED" and raw_error == "CANCELLED_AFTER_RECOVERY"
+    if result["cancelled_after_recovery"]:
+        result["status_label"] = "Durch Wiederherstellung beendet"
+        result["error_description"] = None
+        result["status_description"] = "Alter offener Auftrag wurde nach der Wiederherstellung nicht erneut ausgeführt."
     return result
 
 
@@ -1240,4 +1245,5 @@ def enqueue_restore_test(
             response_payload=response,
         )
     return response
+
 

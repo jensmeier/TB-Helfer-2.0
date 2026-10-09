@@ -137,9 +137,11 @@ def _http_check(url: str, *, timeout: float = 4.5) -> dict[str, Any]:
     if not url:
         return {"status": "SKIP", "detail": "nicht konfiguriert"}
     started = time.monotonic()
+    phase = "connect_or_headers"
     try:
         request = Request(url, headers={"User-Agent": "TB-Helfer-Monitor/1.1"})
         with urlopen(request, timeout=timeout) as response:
+            phase = "response_body"
             body = response.read(4096)
             status_code = int(getattr(response, "status", 200))
         latency_ms = round((time.monotonic() - started) * 1000.0, 1)
@@ -171,6 +173,8 @@ def _http_check(url: str, *, timeout: float = 4.5) -> dict[str, Any]:
             "latency_ms": round((time.monotonic() - started) * 1000.0, 1),
             "http_status": int(exc.code),
             "error_type": type(exc).__name__,
+            "failure_phase": phase,
+            "timeout_seconds": timeout,
             "detail": _safe_message(exc),
         }
     except Exception as exc:
@@ -178,6 +182,8 @@ def _http_check(url: str, *, timeout: float = 4.5) -> dict[str, Any]:
             "status": "ERROR",
             "latency_ms": round((time.monotonic() - started) * 1000.0, 1),
             "error_type": type(exc).__name__,
+            "failure_phase": phase,
+            "timeout_seconds": timeout,
             "detail": _safe_message(exc),
         }
 
@@ -277,6 +283,7 @@ def _check_backup(database: dict[str, Any]) -> dict[str, Any]:
                 FROM tb.background_jobs
                 WHERE job_type IN ('BACKUP_DATABASE','BACKUP_FILES','BACKUP_FULL',
                                    'BACKUP_USER','BACKUP_TRACK','BACKUP_SYSTEM','BACKUP_RETENTION')
+                  AND NOT (status='FAILED' AND COALESCE(last_error,'')='CANCELLED_AFTER_RECOVERY')
                 ORDER BY updated_at DESC
                 LIMIT 1
                 """
@@ -489,6 +496,8 @@ def _record_public_check(current: dict, old: dict, checks: dict, policy) -> None
     current["consecutive_errors"] = count
     current["incident_confirmed"] = confirmed or count >= 3
     if old_status != status and (old_status or status in {"ERROR", "WARN"}):
+        current["internal_api_status"] = (checks.get("api") or {}).get("status", "UNKNOWN")
+        current["database_status"] = (checks.get("database") or {}).get("status", "UNKNOWN")
         level, code, message = _transition_code("public", current)
         _append_event(level, code, message, data=dict(current))
     newly_confirmed = count >= 3 and not confirmed
@@ -705,4 +714,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 

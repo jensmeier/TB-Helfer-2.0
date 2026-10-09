@@ -1853,3 +1853,10 @@ Status: STEUERUNGS-/DATENBEREICHSBAUSTEINE IMPLEMENTIERT / GESAMTINTEGRATION OFF
 - Diagnoseupload diagnostics-v1(1).zip: monitor-state 21:49:54 zeigt BACKUP_FULL FAILED / CANCELLED_AFTER_RECOVERY als einzigen aktuellen ERROR, interne/öffentliche API, DB und Worker OK. Vermutung: eigener laufender Backupauftrag im Snapshot wird beim Restore storniert. Codeprüfung und korrekte neutrale Darstellung erforderlich, echte Fehler dürfen nicht verborgen werden.
 - Öffentliche API-Timeouts bestehen vor Restore (375 Ereignisse am 09.10. vor 21:35); Ursache nicht als Cloudflarefehler bewiesen. Codepfad/Timeoutdiagnose prüfen; keine blinde Timeout-Erhöhung oder NAS-Neuinstallation.
 - Nutzerauftrag 21:58: beide Punkte untersuchen/korrigieren, Tests und Dokumentation. Keine NAS-/Cloudflare-/Androidänderung in diesem Block.
+
+
+### OPS-RESTORE-006 – Korrektur und Diagnoseergänzung
+- Ursache source-bestätigt: recovery._seal_target beendet restaurierte PENDING/RUNNING-Jobs mit FAILED/CANCELLED_AFTER_RECOVERY. DB-Status bleibt sicher terminal; Oberfläche zeigt diesen exakten Sonderfall neutral als durch Wiederherstellung beendet. Monitor überspringt ausschließlich diesen Sonderfall und bewertet weiterhin echte Fehler einschließlich NULL-last_error.
+- Öffentliche HTTP-Diagnose ergänzt failure_phase (connect_or_headers/response_body), Timeoutbudget sowie zeitnahen internen API-/DB-Status. Keine Änderung an Timeout, Alarmgrenzen, Cloudflare oder NAS. Netzwerkursache weiterhin offen; ZIP enthält keine Gateway-/Tunnel-Requestlogs.
+- Drei lokale Regressionstests PASS: UI-Abgrenzung, tatsächliche Monitor-SQL gegen SQLite-Testdaten, beide HTTP-Timeoutphasen. Keine vollständige PostgreSQL/Compose-CI oder NAS-Installation dieser Korrektur behauptet.
+- NAS-Übernahme: nur tbserver/monitor.py, tbserver/system_admin.py, templates/v1_system_status.html; API und Monitor anschließend über Container Manager neu starten. Keine Compose/.env/Daten-/Backupänderung. Danach neutralen alten Job und Systemstatus prüfen; bei fortbestehendem Timeout neue Diagnose erfassen.
