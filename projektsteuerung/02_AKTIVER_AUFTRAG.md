@@ -2727,3 +2727,10 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 ### OPS-RESTORE-005 – Arbeitsabschluss vor NAS-Abgleich
 - Umsetzung und isolierte Gesamtprüfung auf d8d28e2a abgeschlossen: Restoreworkflow37922416404 vollständig SUCCESS, einschließlich echter Compose-Topologie und Browserfixture. Nachweise in06/08.
 - Nächster benötigter Nutzerinput ist die aktuell verwendete NAS-Compose ohne Secrets, nicht .env. Erst danach individuelle Installationsanleitung finalisieren. Weiter keine NAS-Änderung/Löschung; bestehende Android-Abhängigkeit bleibt offen.
+
+
+### OPS-RESTORE-005 – reale Compose zum NAS-Abgleich eingegangen (09.10.2026, Abend)
+- Nutzer lädt aktive compose.yml hoch. SERVERbb756f7a/PR6 Draft und Android423f3789 unverändert geprüft. Datei enthält Platzhalter, keine mitgelieferten Passwort-/Tokenwerte; .env nicht angefordert.
+- Projektname tb-helfer-v1; DB/Restore-Test-DB verwenden postgis17-3.5. Zusätzlicher bisheriger restore-target-db samt eigenem Datenverzeichnis vorhanden, Worker bindet restore-target-storage-v1 und nutzt alte manuelle Zielparameter. API-Port über TB_V1_API_BIND/TB_V1_API_PORT (Default127.0.0.1:8081). Cloudflared ist tokenverwaltet, tatsächliche öffentlichen Hostname-Origins stehen nicht in der Datei.
+- Angepasste Compose auf geprüftem automatischen Aufbau vorbereiten: vorhandene DB-/Backup-/Storage-/SMTP-/Domain-Variablen und Speicherlimit erhalten; alten restore-target-db unverändert als Bestandsdienst behalten, keine Zielordner löschen; automatischer Worker verwendet neue Generationsziele und benötigt alte Zielparameter/Mount/Abhängigkeit nicht mehr. Gateway übernimmt identische Portbindung. Aktive hochzuladende Datei bleibt compose.yml; Systemexport bindet genau diese Datei unter kanonischem Archivnamen.
+- Angepasste Variante im Repository sichern und separaten echten CI-Compose-Test ausführen. Nutzerdatei als neue Version zurückgeben, vorherige Version bleibt erhalten. Installationsablauf konkretisieren; vor tatsächlichem Projektneustart weiterhin Cloudflare-Origin für Portal/API abgleichen. Auf NAS nichts ausführen, keine .env verändern.
