@@ -32,11 +32,11 @@ Tunnel `tb-helfer-nas` zeigt **Fehlerfrei**. Die Meldung über eine neue cloudfl
 
 **Die zwei V1-Ziele bleiben unverändert.** Das Gateway übernimmt den bisher veröffentlichten API-Port. Die beiden anderen Routen bleiben ebenfalls unangetastet; ihre Funktion wurde hier nicht geprüft.
 
-### Vor dem Stoppen: tatsächlich verwendete Portbindung erhalten
+### Portbindung bestätigt – 09.10.2026, 20:18 Berlin
 
-Im Container Manager beim laufenden API-Container unter Details/Port-Einstellungen die veröffentlichte Zuordnung für Containerport8080 ablesen. Erwartet ist NAS-Port8081, erreichbar über192.168.178.3. Vorhandene Projektvariablen und die lokale `.env` beim Neuaufbau beibehalten.
+Der Nutzer hat `TB_V1_API_BIND=0.0.0.0` ausdrücklich bestätigt; `TB_V1_API_PORT=8081` ist im Screenshot sichtbar. Container Manager bestätigt Containerport8080/tcp auf NAS-Port8081,512MB API-Speicherlimit und die Bindungen unter `/volume1/docker/tb-helfer-v1`.
 
-Die Compose enthält `${TB_V1_API_BIND:-127.0.0.1}:${TB_V1_API_PORT:-8081}:8080`. Ohne gesetzte Variablen bindet sie nur an127.0.0.1. Für das bestätigte Cloudflare-Ziel muss die wirksame Bindung192.168.178.3 bedienen, etwa durch den bereits vorhandenen Wert192.168.178.3 oder0.0.0.0. Die Werte nicht raten und keine vollständige `.env` weitergeben. Falls die laufende Portzuordnung davon abweicht oder die Anzeige unklar ist, zuerst einen Screenshot nur der Port-Einstellungen prüfen, bevor das Projekt gestoppt wird.
+**Die vorhandene `.env` unverändert behalten. Der Konfigurationsabgleich ist abgeschlossen; keine weitere Nachfrage zur Bind-Adresse erforderlich.** Beim Neuaufbau dieselben Projektvariablen verwenden. Die vorbereitete Compose übernimmt0.0.0.0:8081 für das Gateway; Cloudflare-Ziele bleiben unverändert.
 
 Der Cloudflare-Screenshot bestätigt die **Konfiguration**, nicht die Erreichbarkeit des neuen Gateways. Nach dem Umbau zuerst `http://192.168.178.3:8081/health/ready` im lokalen Netz und anschließend `https://api-v1.tb-helfer.de/health/ready` sowie das Portal prüfen. Erwartet ist bei den Health-URLs HTTP200 mit Status `ok`; bei einem Fehler keinen Datenrestore starten.
 
