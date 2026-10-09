@@ -2708,3 +2708,9 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 ### OPS-RESTORE-005 – Browserbefund und Containerprüfung (09.10.2026)
 - Erster echter Chromium-Fixturetest erreicht Auswahl/Bestätigung, scheitert beim Start über nicht als sicher geltende HTTP-Origin: crypto.randomUUID ist dort nicht verfügbar. NAS-LAN-HTTP muss ohne unsichere Zufallszahlen funktionieren; UUID aus crypto.getRandomValues als kompatiblen Fallback ergänzen. Test behält absichtlich HTTP-Origin.
 - Zusätzlich tatsächliche Compose-Topologie in eindeutigem temporären CI-Projekt mit isolierten Verzeichnissen/DB/Netzen prüfen: Initialisierung/Migration, vier Erzeuger, drei Restoreaufträge durch Gateway und Neustart auf gewähltem Stand. Kein Cloudflare-Tunnel, keine NAS-/Bestandsdaten. Temporäre CI-Ressourcen am Ende ausschließlich über den eindeutigen Test-Projektnamen abbauen.
+
+
+### OPS-RESTORE-005 – Status-/Dokumentationsabschluss (09.10.2026)
+- Neue Backup-Jobs USER/TRACK/SYSTEM müssen in der vorhandenen Monitor-Fehlererkennung berücksichtigt werden; bisherige Abfrage enthielt nur DATABASE/FILES/FULL/RETENTION. Bestehende Alarmsemantik beibehalten, Arten ergänzen.
+- Vorhandene TB-HELFER_STATUS.xlsx ist bereits binär beschädigt: exakt heruntergeladene14998Bytes entsprechen Git-Blob a56c44ccbd85ebe1499a27c4777bc77409eb9479, ZIP-Validierung BadZipFile und Artifact-Import FileContainsCorruptedData. Archiv SERVER_STATUS_ALT_2026-09-21.xlsx ist derselbe Blob; keine intakte Vorgängerversion unter aktuellem Pfad. Nicht durch erfundene Tabelle ersetzen; MD-Status bleibt verbindlich, Excel-Aktualisierung bis zu intakter Vorlage blockiert.
+- NAS-Anleitung als überprüfbare Datei vorbereiten. Individuelle laufende Compose und tatsächlicher Tunnel-Origin weiterhin für letzten Abgleich erforderlich; keine aktuelle Installation oder Löschung.
