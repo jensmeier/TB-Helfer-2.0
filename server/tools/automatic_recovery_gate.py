@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import urllib.error
 from uuid import UUID, uuid4
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -93,7 +94,6 @@ def main():
             backend=ProcessBackend(control,acks,timeout=45,probe_url='http://127.0.0.1:8080/health/ready')
             controller=RecoveryController(Journal(control),backend)
             previous='initial'
-            import urllib.error
             def http(path, payload=None, headers=None, expected=200):
                 headers = dict(headers or {})
                 data = None if payload is None else json.dumps(payload).encode()
