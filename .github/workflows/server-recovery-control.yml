@@ -16,6 +16,7 @@ on:
       - server/tbserver/system_admin.py
       - server/tbserver/system_settings.py
       - server/docker-compose.synology-automatic.v1.yml
+      - server/compose.synology-reviewed.v1.yml
       - server/checks/14[7-9]_*.py
       - server/checks/150_verify_restore_ui.cjs
       - server/templates/v1_system_status.html
@@ -45,6 +46,7 @@ on:
       - server/tbserver/system_admin.py
       - server/tbserver/system_settings.py
       - server/docker-compose.synology-automatic.v1.yml
+      - server/compose.synology-reviewed.v1.yml
       - server/checks/14[7-9]_*.py
       - server/checks/150_verify_restore_ui.cjs
       - server/templates/v1_system_status.html
@@ -138,6 +140,11 @@ jobs:
         env:
           CI: 'true'
         run: python server/tools/compose_recovery_gate.py
+
+      - name: Uploaded NAS Compose preservation and restore integration
+        env:
+          CI: 'true'
+        run: python server/tools/compose_recovery_gate.py --reviewed
 
   restore-ui:
     runs-on: ubuntu-latest

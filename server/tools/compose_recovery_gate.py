@@ -3,6 +3,7 @@
 No NAS paths, host database, cloud tunnel or real credentials are used.
 """
 from pathlib import Path
+import argparse
 import json
 import os
 import subprocess
@@ -17,15 +18,20 @@ def main():
     if os.getenv('CI') != 'true':
         raise RuntimeError('CI_ONLY')
     source = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--reviewed', action='store_true')
+    reviewed = parser.parse_args().reviewed
+    composefile = source / ('compose.synology-reviewed.v1.yml' if reviewed else 'docker-compose.synology-automatic.v1.yml')
     project = 'tb-restore-ci-' + uuid4().hex[:10]
     with tempfile.TemporaryDirectory(prefix=project) as directory:
         root = Path(directory)
         envfile = root / 'compose.env'
-        envfile.write_text('TB_V1_DB_PASSWORD=disposable-ci-only\nTB_V1_RESTORE_TEST_DB_PASSWORD=disposable-ci-only\nTB_V1_CLOUDFLARE_TUNNEL_TOKEN=unused-ci-only\n')
+        envfile.write_text('TB_V1_DB_PASSWORD=disposable-ci-only\nTB_V1_RESTORE_TEST_DB_PASSWORD=disposable-ci-only\nTB_V1_RESTORE_TARGET_DB_PASSWORD=disposable-ci-only\nTB_V1_CLOUDFLARE_TUNNEL_TOKEN=unused-ci-only\n')
         env = {k: v for k, v in os.environ.items() if not k.startswith('TB_V1_')}
         env.update(TB_V1_DB_NAME='tb_gate_compose', TB_V1_ENVIRONMENT='test', TB_V1_API_PORT='18081')
+        env['TB_V1_ACTIVE_COMPOSE_FILE'] = str(composefile)
         for key, name in {
-            'DB_DATA':'database', 'RESTORE_TEST_DB_DATA':'test-database',
+            'DB_DATA':'database', 'RESTORE_TEST_DB_DATA':'test-database', 'RESTORE_TARGET_DB_DATA':'legacy-target-database',
             'STORAGE':'storage', 'BACKUP':'backups', 'DIAGNOSTICS':'diagnostics',
             'RECOVERY_CONTROL':'control', 'RECOVERY_JOURNAL':'journal', 'RECOVERY_QUEUE':'queue',
             'RECOVERY_STORAGE':'targets', 'RECOVERY_ACK':'acks', 'SYNO_DISK_TEMP':'disks',
@@ -42,7 +48,7 @@ def main():
         override.write_text(json.dumps({'services': {'system-export': {'environment': {
             'TB_SYSTEM_IMAGE_REFS': '["tb-helfer-server-v1:local"]'}}}}))
         base = ['docker', 'compose', '--project-name', project, '--env-file', str(envfile),
-                '-f', str(source / 'docker-compose.synology-automatic.v1.yml'), '-f', str(override)]
+                '-f', str(composefile), '-f', str(override)]
         def compose(*args, input=None):
             return subprocess.check_output(base + list(args), input=input, env=env, text=True, stderr=subprocess.STDOUT)
         def python(role, code):
@@ -75,8 +81,15 @@ def main():
             return http('/health/ready')[0]['status'] == 'ok'
         try:
             subprocess.run(['docker', 'tag', 'tb-scoped-gate', 'tb-helfer-server-v1:local'], check=True)
-            compose('up', '-d', '--no-build', 'gateway', 'worker', 'monitor', 'system-export')
+            extras = ['restore-target-db', 'restore-test-db'] if reviewed else []
+            compose('up', '-d', '--no-build', 'gateway', 'worker', 'monitor', 'system-export', *extras)
             wait(ready)
+            if reviewed:
+                def legacy_sql(sql):
+                    return compose('exec', '-T', 'restore-target-db', 'psql', '-U', 'tb_helfer_restore_target',
+                                   '-d', 'tb_helfer_v1_restore_target', '-At', '-c', sql).strip()
+                wait(lambda: legacy_sql('SELECT 1') == '1')
+                legacy_sql("CREATE TABLE public.legacy_ci_marker(value text); INSERT INTO public.legacy_ci_marker VALUES ('retained')")
             seed = '''
 import hashlib,json
 from uuid import uuid4
@@ -94,6 +107,11 @@ print(json.dumps({kind:str(run_backup(kind)['id']) for kind in ('USER','TRACK','
 '''
             # Worker can reach the private image exporter; API cannot.
             selected = json.loads(python('worker', seed).strip().splitlines()[-1])
+            if reviewed:
+                python('system-export', "import io,tarfile;from pathlib import Path;" +
+                       "a=tarfile.open('/tb/backups-v1/system/"+selected['SYSTEM']+".tar');" +
+                       "s=tarfile.open(fileobj=io.BytesIO(a.extractfile('source.tar.gz').read()));" +
+                       "assert s.extractfile('docker-compose.synology-automatic.v1.yml').read()==Path('/system-source/docker-compose.synology-automatic.v1.yml').read_bytes()")
             print('PASS: actual Compose init/migration, gateway health and four independent backup creators', flush=True)
             for kind in ('USER', 'TRACK', 'FULL'):
                 wait(ready)
@@ -117,6 +135,9 @@ print(json.dumps({kind:str(run_backup(kind)['id']) for kind in ('USER','TRACK','
             compose('restart', 'api', 'worker', 'monitor', 'recovery', 'gateway')
             wait(ready)
             assert http('/health/ready')[1]['x-tb-runtime-generation'] == before
+            if reviewed:
+                assert legacy_sql('SELECT value FROM public.legacy_ci_marker') == 'retained'
+                print('PASS: reviewed NAS Compose preserves legacy target database and exports its actual configuration', flush=True)
             print('PASS: Compose service restart retains selected restored generation', flush=True)
         except Exception:
             # Isolated test services only; no real credentials/data in this project.
