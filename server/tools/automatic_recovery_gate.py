@@ -32,7 +32,8 @@ def main():
         for path in (source,backups,control,acks,targets):
             path.mkdir(mode=0o700)
         os.environ.update(STORAGE_ROOT=str(source),TB_BACKUP_ROOT=str(backups),
-                          TB_RECOVERY_STORAGE_ROOT=str(targets),TB_DIAGNOSTICS_ROOT=str(root/'diagnostics'))
+                          TB_RECOVERY_STORAGE_ROOT=str(targets),TB_DIAGNOSTICS_ROOT=str(root/'diagnostics'),
+                          TB_RECOVERY_QUEUE_ROOT=str(root/'queue'),TB_RECOVERY_JOURNAL_ROOT=str(control))
         from tbserver.config import settings
         from tbserver.migrations import migrate
         from tbserver.backup import run_backup
@@ -92,8 +93,48 @@ def main():
             backend=ProcessBackend(control,acks,timeout=45,probe_url='http://127.0.0.1:8080/health/ready')
             controller=RecoveryController(Journal(control),backend)
             previous='initial'
+            import urllib.error
+            def http(path, payload=None, headers=None, expected=200):
+                headers = dict(headers or {})
+                data = None if payload is None else json.dumps(payload).encode()
+                if data is not None: headers['Content-Type'] = 'application/json'
+                request = urllib.request.Request('http://127.0.0.1:8080'+path, data=data, headers=headers)
+                try:
+                    with urllib.request.urlopen(request, timeout=15) as response:
+                        status, body, cookies = response.status, response.read(), response.headers.get_all('Set-Cookie', [])
+                except urllib.error.HTTPError as exc:
+                    status, body, cookies = exc.code, exc.read(), []
+                assert status == expected, (path, status, body[:300])
+                return json.loads(body), cookies
             for kind in ('USER','TRACK','FULL'):
-                result=controller.run(backup_id=str(selected[kind]['id']),admin_id=str(admin),kind=kind)
+                http('/api/v1/admin/system/recovery/automatic', expected=401)
+                _, cookies = http('/api/v1/admin/session/login', {'login':'auto-admin','password':'Disposable-Test-Password-827!'})
+                jar = dict(c.split(';')[0].split('=',1) for c in cookies)
+                auth = {'Cookie':'; '.join(k+'='+v for k,v in jar.items())}
+                payload = dict(request_id=str(uuid4()), backup_run_id=str(selected[kind]['id']), kind=kind,
+                               confirmation='WIEDERHERSTELLEN '+str(selected[kind]['id']))
+                http('/api/v1/admin/system/recovery/execute', payload, auth, 403)
+                auth['X-CSRF-Token'] = jar['tb_admin_csrf']
+                http('/api/v1/admin/system/recovery/execute', dict(payload, confirmation='wrong'), auth, 400)
+                http('/api/v1/admin/system/recovery/execute', dict(payload, kind='SYSTEM'), auth, 422)
+                http('/api/v1/admin/system/recovery/execute', payload, auth, 202)
+                http('/api/v1/admin/system/recovery/execute', payload, auth, 202)
+                http('/api/v1/admin/system/recovery/execute', dict(payload,request_id=str(uuid4())), auth, 409)
+                service_env = dict(os.environ, TB_RECOVERY_CONTROL_ROOT=str(control), TB_RECOVERY_ACK_ROOT=str(acks),
+                                   TB_RECOVERY_PROBE_URL='http://127.0.0.1:8080/health/ready')
+                service = subprocess.Popen([sys.executable,'-m','tbserver.recovery_service'],env=service_env,
+                                           stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+                processes.append(service)
+                def completed():
+                    state=controller.journal.read()
+                    return state and state['operation_id']==payload['request_id'] and state['phase'] in {'DONE','ROLLED_BACK','NEEDS_ATTENTION'}
+                wait(completed)
+                result=controller.journal.read()
+                with urllib.request.urlopen('http://127.0.0.1:8090/recovery-progress/'+payload['request_id']) as response:
+                    progress=json.load(response)
+                    assert set(progress)=={'phase','error','complete'} and progress['complete']
+                service.terminate();service.wait(timeout=10);processes.remove(service)
+                print('PASS: authenticated/CSRF bounded '+kind+' request, duplicate protection and independent progress service',flush=True)
                 assert result['phase']=='DONE',(result,(control/'action-error.json').read_text() if (control/'action-error.json').exists() else 'no data error')
                 assert deployment.read()['generation']==result['target'] and deployment.read()['mode']=='OPEN'
                 env=generation_environment(result['target'])

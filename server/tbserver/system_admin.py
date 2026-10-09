@@ -49,6 +49,63 @@ class RecoveryPrepare(BaseModel):
     confirmation: str = Field(max_length=100)
 
 
+class AutomaticRecoveryRequest(BaseModel):
+    request_id: UUID
+    backup_run_id: UUID
+    kind: Literal['USER', 'TRACK', 'FULL']
+    confirmation: str = Field(max_length=100)
+
+
+@router.get('/recovery/automatic')
+def automatic_recovery_status(_: dict[str, Any] = Depends(require_admin)) -> dict:
+    from .backup import independent_backup_list
+    from .recovery_control import Journal
+    enabled = bool(os.getenv('TB_RECOVERY_QUEUE_ROOT') and os.getenv('TB_RECOVERY_JOURNAL_ROOT'))
+    if not enabled:
+        return {'enabled': False, 'backups': [], 'state': None,
+                'system_export_enabled': bool(os.getenv('TB_SYSTEM_EXPORT_ENABLED'))}
+    try:
+        backups, counts = [], {}
+        for row in independent_backup_list():
+            kind = row['kind']
+            if kind in {'USER', 'TRACK', 'FULL'} and row['available'] and counts.get(kind, 0) < 4:
+                backups.append(row)
+                counts[kind] = counts.get(kind, 0) + 1
+        state = Journal(os.environ['TB_RECOVERY_JOURNAL_ROOT']).read()
+        return {'enabled': True, 'backups': backups, 'state': state,
+                'system_export_enabled': bool(os.getenv('TB_SYSTEM_EXPORT_ENABLED'))}
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise HTTPException(503, 'RECOVERY_CATALOG_OR_STATUS_UNAVAILABLE') from exc
+
+
+@router.post('/recovery/execute', status_code=202)
+def execute_automatic_recovery(payload: AutomaticRecoveryRequest,
+                               user: dict[str, Any] = Depends(require_admin_csrf)) -> dict:
+    from .recovery_control import Journal
+    from .recovery_runtime import Deployment
+    from .recovery_service import RequestQueue, RequestError
+    if not all(os.getenv(key) for key in ('TB_RECOVERY_QUEUE_ROOT', 'TB_RECOVERY_JOURNAL_ROOT', 'TB_RECOVERY_CONTROL_ROOT')):
+        raise HTTPException(503, 'RECOVERY_SERVICE_NOT_CONFIGURED')
+    if payload.confirmation != f'WIEDERHERSTELLEN {payload.backup_run_id}':
+        raise HTTPException(400, 'RECOVERY_CONFIRMATION_MISMATCH')
+    try:
+        selected = Deployment(os.environ['TB_RECOVERY_CONTROL_ROOT']).read()
+        if selected['mode'] != 'OPEN':
+            raise HTTPException(409, 'RECOVERY_BUSY')
+        choices = automatic_recovery_status(user)['backups']
+        if not any(row['id'] == str(payload.backup_run_id) and row['kind'] == payload.kind for row in choices):
+            raise HTTPException(409, 'RECOVERY_BACKUP_NOT_AVAILABLE')
+        state = Journal(os.environ['TB_RECOVERY_JOURNAL_ROOT']).read()
+        request = dict(request_id=str(payload.request_id), backup_id=str(payload.backup_run_id),
+                       admin_id=str(user['user_id']), kind=payload.kind, generation=selected['generation'])
+        RequestQueue(os.environ['TB_RECOVERY_QUEUE_ROOT']).submit(request, state)
+    except RequestError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise HTTPException(503, 'RECOVERY_REQUEST_UNAVAILABLE') from exc
+    return {'request_id': request['request_id'], 'progress_url': '/recovery-progress/' + request['request_id']}
+
+
 @router.get("/recovery")
 def recovery_status(_: dict[str, Any] = Depends(require_admin)) -> dict:
     from .recovery import read_state
@@ -73,6 +130,8 @@ def enqueue_recovery(payload: RecoveryPrepare,
     from .recovery import LOCK, read_state, write_state
     if os.getenv("TB_RECOVERY_ID"):
         raise HTTPException(409, "RECOVERY_ALREADY_ON_TARGET")
+    if os.getenv('TB_RECOVERY_QUEUE_ROOT'):
+        raise HTTPException(409, 'RECOVERY_USE_AUTOMATIC_FLOW')
     if payload.confirmation != f"WIEDERHERSTELLEN {payload.backup_run_id}":
         raise HTTPException(400, "RECOVERY_CONFIRMATION_MISMATCH")
     with transaction() as conn, conn.cursor() as cur:
@@ -1021,6 +1080,9 @@ def enqueue_backup(
         "DATABASE": "BACKUP_DATABASE",
         "FILES": "BACKUP_FILES",
         "FULL": "BACKUP_FULL",
+        "USER": "BACKUP_USER",
+        "TRACK": "BACKUP_TRACK",
+        "SYSTEM": "BACKUP_SYSTEM",
     }
     job_type = mapping.get(kind)
     if job_type is None:

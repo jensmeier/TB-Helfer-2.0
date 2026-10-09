@@ -84,11 +84,12 @@ class ArchiveCatalog:
             os.close(fd)
 
     def _sync(self):
-        fd = os.open(self.index, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
+        for directory in (self.index, self.root):
+            fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            try:
+                os.fsync(fd)
+            finally:
+                os.close(fd)
 
     def _rows(self):
         rows = []
@@ -184,6 +185,8 @@ class ArchiveCatalog:
             purged, errors = [], []
             for old in same[keep:]:
                 try:
+                    with self._file(old):
+                        pass
                     with self._parent(old) as (fd, name):
                         info = os.stat(name, dir_fd=fd, follow_symlinks=False)
                         if not stat.S_ISREG(info.st_mode):

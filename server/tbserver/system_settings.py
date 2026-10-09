@@ -11,8 +11,8 @@ from .database import transaction
 
 AUTOMATION_SETTING_KEY = "admin_automation"
 _EMAIL_FREQUENCIES = {"DAILY", "WEEKLY", "MONTHLY"}
-_BACKUP_KINDS = {"DATABASE", "FILES", "FULL"}
-POLICY_REVISION = 2
+_BACKUP_KINDS = {"USER", "TRACK", "FULL", "SYSTEM"}
+POLICY_REVISION = 3
 
 
 def _schedule_defaults(
@@ -59,14 +59,17 @@ def default_automation_policy() -> dict[str, Any]:
         "user_expiry_warning_days": 30,
         "storage_warning_percent": 85.0,
         "backup_schedules": {
-            "DATABASE": _schedule_defaults(
+            "USER": _schedule_defaults(
                 enabled=True, frequency="DAILY", hour=1, minute=30
             ),
-            "FILES": _schedule_defaults(
+            "TRACK": _schedule_defaults(
                 enabled=True, frequency="DAILY", hour=3, minute=30
             ),
             "FULL": _schedule_defaults(
                 enabled=True, frequency="WEEKLY", weekday=6, hour=5, minute=0
+            ),
+            "SYSTEM": _schedule_defaults(
+                enabled=False, frequency="WEEKLY", weekday=6, hour=7, minute=0
             ),
         },
         "retention_schedule": _schedule_defaults(
@@ -175,12 +178,12 @@ def normalize_automation_policy(raw: dict[str, Any] | None) -> dict[str, Any]:
 
     previous_revision = 0
     if raw:
-        inferred_revision = POLICY_REVISION if "backup_schedules" in raw else 1
+        inferred_revision = 2 if "backup_schedules" in raw else 1
         try:
             previous_revision = int(raw.get("policy_revision", inferred_revision))
         except (TypeError, ValueError):
             previous_revision = inferred_revision
-    if raw and previous_revision < POLICY_REVISION:
+    if raw and previous_revision < 2:
         # Server-1.0 policy v2 introduces the user-approved split schedule.
         merged["backup_schedules"] = defaults["backup_schedules"]
         merged["retention_schedule"] = defaults["retention_schedule"]
@@ -198,6 +201,11 @@ def normalize_automation_policy(raw: dict[str, Any] | None) -> dict[str, Any]:
     schedules_raw = merged.get("backup_schedules")
     if not isinstance(schedules_raw, dict):
         schedules_raw = {}
+    schedules_raw = dict(schedules_raw)
+    # Preserve existing times/enabled flags, including deliberate disabling.
+    for old, new in (("DATABASE", "USER"), ("FILES", "TRACK")):
+        if new not in schedules_raw and old in schedules_raw:
+            schedules_raw[new] = schedules_raw[old]
     backup_schedules = {
         kind: _normalize_schedule(
             schedules_raw.get(kind),
@@ -254,7 +262,7 @@ def normalize_automation_policy(raw: dict[str, Any] | None) -> dict[str, Any]:
                 schedule["enabled"] for schedule in backup_schedules.values()
             ),
             "backup_kind": "DATABASE",
-            "backup_hour": int(backup_schedules["DATABASE"]["hour"]),
+            "backup_hour": int(backup_schedules["USER"]["hour"]),
             "automatic_retention_enabled": bool(retention_schedule["enabled"]),
             "retention_hour": int(retention_schedule["hour"]),
         }

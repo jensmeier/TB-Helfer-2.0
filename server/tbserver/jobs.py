@@ -45,6 +45,9 @@ SUPPORTED_JOB_TYPES = {
     "BACKUP_DATABASE",
     "BACKUP_FILES",
     "BACKUP_FULL",
+    "BACKUP_USER",
+    "BACKUP_TRACK",
+    "BACKUP_SYSTEM",
     "BACKUP_RETENTION",
     "RESTORE_TEST",
     "RECOVERY_PREPARE",
@@ -137,6 +140,8 @@ def _execute(job: dict[str, Any]) -> dict[str, Any]:
         return run_backup("FILES", progress=progress)
     if job_type == "BACKUP_FULL":
         return run_backup("FULL", progress=progress)
+    if job_type in {"BACKUP_USER", "BACKUP_TRACK", "BACKUP_SYSTEM"}:
+        return run_backup(job_type.removeprefix('BACKUP_'), progress=progress)
     if job_type == "BACKUP_RETENTION":
         progress(35, "Backup-Aufbewahrung wird geprüft")
         return run_retention()

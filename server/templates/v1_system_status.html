@@ -79,10 +79,10 @@
     <div>
       <h3>Backups</h3>
       <div class="compact-actions" style="margin-bottom:9px">
-        <button type="button" onclick="startBackup('DATABASE')">Datenbank</button>
-        <button type="button" onclick="startBackup('FILES')">Dateien</button>
+        <button type="button" onclick="startBackup('USER')">Nutzerbackup</button>
+        <button type="button" onclick="startBackup('TRACK')">Streckenbackup</button>
         <button type="button" onclick="startBackup('FULL')">Vollbackup</button>
-        <button type="button" class="secondary" onclick="startRetention()">Aufbewahrung prüfen</button>
+        <button type="button" id="systemBackupButton" onclick="startBackup('SYSTEM')">Systembackup</button>
       </div>
       <div id="backupStorage" class="small"></div>
       <div id="backupRetention" class="small"></div>
@@ -99,6 +99,27 @@
     </div>
   </div>
 </div>
+
+<details class="panel" id="automaticRecoveryPanel" hidden>
+  <summary>Backup einspielen</summary>
+  <div class="panel-body">
+    <p>Bereich und Sicherung auswählen. Prüfung, zusätzliche Sicherheitskopie und Umschaltung erfolgen automatisch. Währenddessen ist der Server kurz nicht verfügbar.</p>
+    <div id="automaticRecoveryState" class="notice info" role="status" aria-live="polite">Bereit.</div>
+    <div id="automaticRecoveryForm">
+      <label for="automaticRecoveryKind">Bereich</label>
+      <select id="automaticRecoveryKind" onchange="fillAutomaticBackups()"><option value="USER">Nutzerbackup</option><option value="TRACK">Streckenbackup</option><option value="FULL">Vollbackup</option></select>
+      <p id="automaticRecoveryScope"></p>
+      <label for="automaticRecoveryBackup">Sicherung – letzte vier je Art</label>
+      <select id="automaticRecoveryBackup" onchange="automaticSelectionChanged()"></select>
+      <p id="automaticRecoveryDate"></p>
+      <p><b>Änderungen nach diesem Datum gehen im gewählten Bereich verloren.</b> Noch nicht synchronisierte Arbeiten auf den Handys vorher sichern.</p>
+      <label for="automaticRecoveryConfirm">Zur Bestätigung genau eingeben:</label>
+      <p><code id="automaticRecoveryPhrase"></code></p>
+      <input id="automaticRecoveryConfirm" autocomplete="off" oninput="automaticSelectionChanged(false)">
+      <button id="automaticRecoveryStart" disabled type="button" onclick="startAutomaticRecovery()">Backup einspielen</button>
+    </div>
+  </div>
+</details>
 
 <details class="panel" id="recoveryPanel">
   <summary>Server wiederherstellen</summary>
@@ -175,20 +196,22 @@
     </div>
 
     <div class="section-title">Automatische Backups</div>
-    <p class="small">Standard: Datenbank täglich 01:30 · Dateien täglich 03:30 · Vollbackup sonntags 05:00. Jeder Plan kann unabhängig geändert oder deaktiviert werden.</p>
+    <p class="small">Standard: Nutzerbackup täglich 01:30 · Streckenbackup täglich 03:30 · Vollbackup sonntags 05:00. Systembackup ist zunächst deaktiviert. Jeder Plan kann unabhängig geändert oder deaktiviert werden.</p>
     <div class="scroll">
       <table>
         <thead><tr><th>Backup</th><th>Aktiv</th><th>Häufigkeit</th><th>Wochentag</th><th>Monatstag</th><th>Uhrzeit</th></tr></thead>
         <tbody>
-          <tr><td><b>Datenbank</b></td><td><input id="dbEnabled" type="checkbox"></td><td><select id="dbFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></td><td><select id="dbWeekday"><option value="0">Mo</option><option value="1">Di</option><option value="2">Mi</option><option value="3">Do</option><option value="4">Fr</option><option value="5">Sa</option><option value="6">So</option></select></td><td><input id="dbMonthday" type="number" min="1" max="28"></td><td><input id="dbTime" type="time"></td></tr>
-          <tr><td><b>Dateien</b></td><td><input id="filesEnabled" type="checkbox"></td><td><select id="filesFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></td><td><select id="filesWeekday"><option value="0">Mo</option><option value="1">Di</option><option value="2">Mi</option><option value="3">Do</option><option value="4">Fr</option><option value="5">Sa</option><option value="6">So</option></select></td><td><input id="filesMonthday" type="number" min="1" max="28"></td><td><input id="filesTime" type="time"></td></tr>
+          <tr><td><b>Nutzerbackup</b></td><td><input id="dbEnabled" type="checkbox"></td><td><select id="dbFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></td><td><select id="dbWeekday"><option value="0">Mo</option><option value="1">Di</option><option value="2">Mi</option><option value="3">Do</option><option value="4">Fr</option><option value="5">Sa</option><option value="6">So</option></select></td><td><input id="dbMonthday" type="number" min="1" max="28"></td><td><input id="dbTime" type="time"></td></tr>
+          <tr><td><b>Streckenbackup</b></td><td><input id="filesEnabled" type="checkbox"></td><td><select id="filesFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></td><td><select id="filesWeekday"><option value="0">Mo</option><option value="1">Di</option><option value="2">Mi</option><option value="3">Do</option><option value="4">Fr</option><option value="5">Sa</option><option value="6">So</option></select></td><td><input id="filesMonthday" type="number" min="1" max="28"></td><td><input id="filesTime" type="time"></td></tr>
           <tr><td><b>Vollbackup</b></td><td><input id="fullEnabled" type="checkbox"></td><td><select id="fullFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></td><td><select id="fullWeekday"><option value="0">Mo</option><option value="1">Di</option><option value="2">Mi</option><option value="3">Do</option><option value="4">Fr</option><option value="5">Sa</option><option value="6">So</option></select></td><td><input id="fullMonthday" type="number" min="1" max="28"></td><td><input id="fullTime" type="time"></td></tr>
+          <tr><td><b>Systembackup</b></td><td><input id="systemEnabled" type="checkbox"></td><td><select id="systemFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></td><td><select id="systemWeekday"><option value="0">Mo</option><option value="1">Di</option><option value="2">Mi</option><option value="3">Do</option><option value="4">Fr</option><option value="5">Sa</option><option value="6">So</option></select></td><td><input id="systemMonthday" type="number" min="1" max="28"></td><td><input id="systemTime" type="time"></td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="section-title">Aufbewahrung</div>
-    <div class="form-grid">
+    <p>Je Art bleiben die letzten vier erfolgreichen Sicherungen erhalten. Erst eine neue erfolgreiche Sicherung räumt ältere derselben Art auf. Systembackup und Vollbackup bleiben unabhängig.</p>
+    <details><summary>Aufbewahrung alter Datenbank-/Dateibackups</summary><div class="form-grid">
       <div class="inline-check"><input id="retentionEnabled" type="checkbox"><label for="retentionEnabled">automatisch bereinigen</label></div>
       <div><label for="retentionFrequency">Häufigkeit</label><select id="retentionFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></div>
       <div><label for="retentionWeekday">Wochentag</label><select id="retentionWeekday"><option value="0">Montag</option><option value="1">Dienstag</option><option value="2">Mittwoch</option><option value="3">Donnerstag</option><option value="4">Freitag</option><option value="5">Samstag</option><option value="6">Sonntag</option></select></div>
@@ -198,6 +221,7 @@
       <div><label for="retentionMin">Mindestens je Backupart</label><input id="retentionMin" type="number" min="1" max="50"></div>
     </div>
 
+    </details>
     <div class="actions" style="margin-top:16px">
       <button id="saveAutomation" type="button">Automatik speichern</button>
       <button id="testEmail" class="secondary" type="button">Testbericht senden</button>
@@ -227,7 +251,7 @@ function setTime(id,hour,minute){document.getElementById(id).value=String(Number
 function timeParts(id){const raw=document.getElementById(id).value||'00:00',p=raw.split(':');return {hour:Number(p[0]||0),minute:Number(p[1]||0)};}
 function fillSchedule(prefix,s){const x=s||{};checked(prefix+'Enabled',x.enabled);val(prefix+'Frequency',x.frequency||'DAILY');val(prefix+'Weekday',x.weekday??6);val(prefix+'Monthday',x.monthday??1);setTime(prefix+'Time',x.hour??0,x.minute??0);}
 function scheduleValue(prefix){const t=timeParts(prefix+'Time');return {enabled:document.getElementById(prefix+'Enabled').checked,frequency:document.getElementById(prefix+'Frequency').value,hour:t.hour,minute:t.minute,weekday:numberValue(prefix+'Weekday'),monthday:numberValue(prefix+'Monthday')};}
-function backupKindLabel(kind){return ({DATABASE:'Datenbank-Backup',FILES:'Datei-Backup',FULL:'Vollbackup',RESTORE_TEST:'Backup-Prüfung',RESTORE_TARGET:'Restore ins getrennte Ziel'})[kind]||kind;}
+function backupKindLabel(kind){return ({USER:'Nutzerbackup',TRACK:'Streckenbackup',SYSTEM:'Systembackup',DATABASE:'Datenbank-Backup',FILES:'Datei-Backup',FULL:'Vollbackup',RESTORE_TEST:'Backup-Prüfung',RESTORE_TARGET:'Restore ins getrennte Ziel'})[kind]||kind;}
 function backupStatusLabel(status){return ({OK:'OK',FAILED:'Fehlgeschlagen',RUNNING:'Läuft',PURGED:'Bereinigt'})[status]||status;}
 
 let recoveryBackups=[];
@@ -244,6 +268,7 @@ function recoverySelectionChanged(clear=true){
   document.getElementById('recoveryPrepare').disabled=recoveryBusy||!b||document.getElementById('recoveryConfirm').value!==phrase;
 }
 async function loadRecovery(){
+  if(automaticEnabled)return;
   try{
     const result=await tbApi('/api/v1/admin/system/recovery');
     const x=result.data,s=x.state||{},phase=s.phase||'NONE';
@@ -331,6 +356,7 @@ function renderJobs(jobs){
 }
 
 async function load(hydrateForm=true){
+  if(automaticBusy)return;
   try{
     const result=await tbApi('/api/v1/admin/system/status');
     const x=result.data,c=x.counts||{},m=x.migration||{},st=x.storage||{},bst=x.backup_storage||{},br=x.backup_retention||{},a=x.automation||{},smtp=x.smtp||{},mon=x.monitor||{};
@@ -372,7 +398,7 @@ async function load(hydrateForm=true){
       ('Backup-Speicher: '+bytes(bst.used_bytes)+' belegt · '+bytes(bst.free_bytes)+' frei · '+Number(bst.percent_used||0).toFixed(2)+' %'):
       'Backup-Speicher ist noch nicht angelegt.';
     document.getElementById('backupRetention').textContent=
-      'Aufbewahrung: älter als '+esc(br.days||'—')+' Tage, mindestens '+esc(br.minimum_kept_per_kind||'—')+' je Backupart behalten.';
+      'Aufbewahrung: vier erfolgreiche Sicherungen je Art, unabhängig voneinander.';
 
     document.getElementById('backups').innerHTML=(x.backups||[]).map(function(b){
       const restore=(b.status==='OK'&&['DATABASE','FILES','FULL'].includes(b.kind))?
@@ -381,7 +407,7 @@ async function load(hydrateForm=true){
     }).join('')||'<p class="muted">Noch keine Backup-Läufe protokolliert.</p>';
 
     const active=renderJobs(x.jobs||[]);
-    loadRecovery();
+    loadRecovery();loadAutomaticRecovery();
 
     document.getElementById('auditEvents').innerHTML=(x.audit_events||[]).map(function(e){
       return '<div class="audit-row '+(e.is_failure?'bad':'')+'"><div class="small">'+esc(dt(e.created_at))+'</div><div><b>'+esc(e.action_label||e.action)+'</b><div class="small">'+esc(e.actor_display_name||'System')+(e.entity_type?' · '+esc(e.entity_type):'')+'</div></div></div>';
@@ -399,7 +425,8 @@ async function load(hydrateForm=true){
       val('emailRecipients',(a.email_recipients||[]).join('\n'));
       checked('alertEmailEnabled',a.alert_email_enabled);checked('alertRecoveryEnabled',a.alert_recovery_enabled);val('alertCooldown',a.alert_cooldown_minutes??30);
       const at=a.alert_types||{};checked('alertDatabase',at.database!==false);checked('alertInternalApi',at.internal_api!==false);checked('alertWorker',at.worker!==false);checked('alertBackup',at.backup!==false);checked('alertPublicApi',at.public_api!==false);checked('alertStorage',at.storage!==false);
-      const bs=a.backup_schedules||{};fillSchedule('db',bs.DATABASE||{enabled:true,frequency:'DAILY',hour:1,minute:30});fillSchedule('files',bs.FILES||{enabled:true,frequency:'DAILY',hour:3,minute:30});fillSchedule('full',bs.FULL||{enabled:true,frequency:'WEEKLY',weekday:6,hour:5,minute:0});
+      const bs=a.backup_schedules||{};fillSchedule('db',bs.USER||bs.DATABASE||{enabled:true,frequency:'DAILY',hour:1,minute:30});fillSchedule('files',bs.TRACK||bs.FILES||{enabled:true,frequency:'DAILY',hour:3,minute:30});fillSchedule('full',bs.FULL||{enabled:true,frequency:'WEEKLY',weekday:6,hour:5,minute:0});
+      fillSchedule('system',bs.SYSTEM||{enabled:false,frequency:'WEEKLY',weekday:6,hour:7,minute:0});
       fillSchedule('retention',a.retention_schedule||{enabled:true,frequency:'WEEKLY',weekday:6,hour:6,minute:30});val('retentionDays',a.backup_retention_days??90);val('retentionMin',a.backup_retention_min_per_kind??3);
     }
     firstLoad=false;
@@ -421,13 +448,14 @@ async function saveAutomation(){
     alert_types:{database:document.getElementById('alertDatabase').checked,internal_api:document.getElementById('alertInternalApi').checked,worker:document.getElementById('alertWorker').checked,backup:document.getElementById('alertBackup').checked,public_api:document.getElementById('alertPublicApi').checked,storage:document.getElementById('alertStorage').checked},
     timezone:document.getElementById('timezone').value.trim(),
     user_expiry_warning_days:numberValue('expiryWarning'),storage_warning_percent:numberValue('storageWarning'),
-    backup_schedules:{DATABASE:scheduleValue('db'),FILES:scheduleValue('files'),FULL:scheduleValue('full')},
+    backup_schedules:{USER:scheduleValue('db'),TRACK:scheduleValue('files'),FULL:scheduleValue('full'),SYSTEM:scheduleValue('system')},
     retention_schedule:scheduleValue('retention'),
     backup_retention_days:numberValue('retentionDays'),backup_retention_min_per_kind:numberValue('retentionMin')
   };
   try{
     await tbApi('/api/v1/admin/system/automation',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    formDirty=false;show('ok','Systemeinstellungen gespeichert.');await load(true);
+    formDirty=false;show('ok','Systemeinstellungen gespeichert.');await 
+load(true);
   }catch(error){show('err',error.message||String(error));}
 }
 
@@ -481,6 +509,71 @@ document.getElementById('saveAutomation').addEventListener('click',saveAutomatio
 document.getElementById('testEmail').addEventListener('click',testEmail);
 document.getElementById('cleanupJobs').addEventListener('click',cleanupJobs);
 document.getElementById('ackWarnings').addEventListener('click',acknowledgeWarnings);
+
+let automaticEnabled=false,automaticBackups=[],automaticBusy=false,automaticPoll=null;
+const automaticPhases={QUEUED:'Auftrag wartet',PREFLIGHT:'Sicherung wird geprüft',PAUSING:'Server wird pausiert',SAFETY:'Aktueller Bestand wird zusätzlich gesichert',RESTORING:'Sicherung wird eingespielt',VERIFYING:'Wiederhergestellte Daten werden geprüft',SWITCHING:'Serverstand wird umgeschaltet',PROBING:'Serverstart wird geprüft',COMMITTED:'Umschaltung wird abgeschlossen',DONE:'Wiederherstellung erfolgreich. Bitte erneut anmelden.',ROLLING_BACK:'Bisheriger Bestand wird wieder aktiviert',ROLLED_BACK:'Wiederherstellung fehlgeschlagen. Der bisherige Bestand ist wieder aktiv.',NEEDS_ATTENTION:'Wiederherstellung angehalten. Bitte den Serverstatus prüfen.'};
+async function loadAutomaticRecovery(){
+  if(automaticBusy)return;
+  try{
+    const r=await tbApi('/api/v1/admin/system/recovery/automatic'),x=r.data;
+    automaticEnabled=x.enabled;
+    document.getElementById('automaticRecoveryPanel').hidden=!x.enabled;
+    document.getElementById('recoveryPanel').hidden=x.enabled;
+    document.getElementById('systemBackupButton').disabled=!x.system_export_enabled;
+    if(!x.enabled)return;
+    const old=document.getElementById('automaticRecoveryBackup').value;
+    automaticBackups=x.backups||[];fillAutomaticBackups(old);
+    if(x.state){document.getElementById('automaticRecoveryState').textContent=automaticPhases[x.state.phase]||x.state.phase;}
+  }catch(e){document.getElementById('automaticRecoveryState').textContent='Wiederherstellungsstatus konnte nicht geladen werden.';}
+}
+function fillAutomaticBackups(selected=''){
+  const kind=document.getElementById('automaticRecoveryKind').value;
+  document.getElementById('automaticRecoveryScope').textContent={USER:'Firmen, Benutzer und Baustellen werden zurückgesetzt. Der gemeinsame Streckenbestand bleibt erhalten.',TRACK:'Der gemeinsame Streckenbestand wird zurückgesetzt. Firmen, Benutzer und Baustellen bleiben erhalten.',FULL:'Nutzerbereich und gemeinsamer Streckenbestand werden zurückgesetzt.'}[kind];
+  const options=automaticBackups.filter(b=>b.kind===kind),select=document.getElementById('automaticRecoveryBackup');
+  select.innerHTML='<option value="">Bitte wählen …</option>'+options.map(b=>'<option value="'+esc(b.id)+'">'+esc(dt(b.started_at))+' · '+esc(bytes(b.byte_size))+'</option>').join('');
+  if(options.some(b=>b.id===selected))select.value=selected;
+  automaticSelectionChanged(!selected);
+}
+function automaticSelectionChanged(reset=true){
+  const id=document.getElementById('automaticRecoveryBackup').value;
+  const backup=automaticBackups.find(b=>b.id===id),phrase=backup?'WIEDERHERSTELLEN '+id:'';
+  if(reset)document.getElementById('automaticRecoveryConfirm').value='';
+  document.getElementById('automaticRecoveryPhrase').textContent=phrase||'Zuerst eine Sicherung auswählen';
+  document.getElementById('automaticRecoveryDate').textContent=backup?'Gewählter Stand: '+dt(backup.started_at):'';
+  document.getElementById('automaticRecoveryStart').disabled=automaticBusy||!backup||document.getElementById('automaticRecoveryConfirm').value!==phrase;
+}
+async function pollAutomaticRecovery(id){
+  clearTimeout(automaticPoll);
+  try{
+    const response=await fetch('/recovery-progress/'+encodeURIComponent(id),{cache:'no-store'});
+    if(!response.ok)throw new Error();
+    const x=await response.json();
+    document.getElementById('automaticRecoveryState').textContent=x.error==='RELEASE_FAILED'?'Serverfreigabe noch nicht abgeschlossen. Status wird weiter geprüft.':(automaticPhases[x.phase]||x.phase);
+    if(x.complete){automaticBusy=false;sessionStorage.removeItem('tbRecoveryRequest');document.getElementById('automaticRecoveryForm').hidden=true;return;}
+  }catch(e){document.getElementById('automaticRecoveryState').textContent='Verbindung zum Wiederherstellungsdienst wird erneut versucht. Der Auftrag wird nicht nochmals gestartet.';}
+  automaticPoll=setTimeout(()=>pollAutomaticRecovery(id),2000);
+}
+async function startAutomaticRecovery(){
+  if(automaticBusy)return;
+  const id=crypto.randomUUID();automaticBusy=true;automaticSelectionChanged(false);
+  sessionStorage.setItem('tbRecoveryRequest',id);
+  try{
+    await tbApi('/api/v1/admin/system/recovery/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request_id:id,backup_run_id:document.getElementById('automaticRecoveryBackup').value,kind:document.getElementById('automaticRecoveryKind').value,confirmation:document.getElementById('automaticRecoveryConfirm').value})});
+    document.getElementById('automaticRecoveryForm').hidden=true;
+    pollAutomaticRecovery(id);
+  }catch(e){
+    if(/RECOVERY_(CONFIRMATION_MISMATCH|BACKUP_NOT_AVAILABLE|SERVICE_NOT_CONFIGURED|BUSY|REVIEW_REQUIRED)/.test(e.message||'')){automaticBusy=false;sessionStorage.removeItem('tbRecoveryRequest');document.getElementById('automaticRecoveryState').textContent=e.message;automaticSelectionChanged(false);return;}
+    // The API may have stopped after durably accepting the request. Probe the
+    // independent progress endpoint before permitting any new request.
+    try{const response=await fetch('/recovery-progress/'+id,{cache:'no-store'});if(response.ok){document.getElementById('automaticRecoveryForm').hidden=true;pollAutomaticRecovery(id);return;}}catch(ignore){}
+    document.getElementById('automaticRecoveryState').textContent='Auftragsannahme unklar: '+(e.message||'Verbindungsfehler')+'. Status wird weiter geprüft; keinen zweiten Auftrag starten.';
+    pollAutomaticRecovery(id);
+  }
+}
+const pendingAutomatic=sessionStorage.getItem('tbRecoveryRequest');
+if(pendingAutomatic&&/^[a-f0-9-]{36}$/.test(pendingAutomatic)){automaticBusy=true;document.getElementById('automaticRecoveryPanel').hidden=false;document.getElementById('automaticRecoveryPanel').open=true;document.getElementById('automaticRecoveryForm').hidden=true;pollAutomaticRecovery(pendingAutomatic);}
+loadAutomaticRecovery();
+
 load(true);
 </script>
 {% endblock %}

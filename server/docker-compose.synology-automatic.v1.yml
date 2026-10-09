@@ -1,0 +1,386 @@
+# Opt-in automatic recovery. Compare NAS paths; Cloudflare origin gateway:8080.
+name: tb-helfer-v1
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TB_V1_DB_NAME:-tb_helfer_v1}
+      POSTGRES_USER: ${TB_V1_DB_USER:-tb_helfer}
+      POSTGRES_PASSWORD: ${TB_V1_DB_PASSWORD:?TB_V1_DB_PASSWORD fehlt}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+    - ${TB_V1_DB_DATA_DIR:-./database-v1}:/var/lib/postgresql/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+  restore-test-db:
+    image: postgis/postgis:17-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TB_V1_RESTORE_TEST_DB_NAME:-tb_helfer_v1_restore_test}
+      POSTGRES_USER: ${TB_V1_RESTORE_TEST_DB_USER:-tb_helfer_restore_test}
+      POSTGRES_PASSWORD: ${TB_V1_RESTORE_TEST_DB_PASSWORD:?TB_V1_RESTORE_TEST_DB_PASSWORD
+        fehlt}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+    - ${TB_V1_RESTORE_TEST_DB_DATA_DIR:-./restore-test-database-v1}:/var/lib/postgresql/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.v1
+    image: tb-helfer-server-v1:local
+    restart: on-failure:5
+    environment:
+      DB_HOST: db
+      DB_PORT: '5432'
+      DB_NAME: ${TB_V1_DB_NAME:-tb_helfer_v1}
+      DB_USER: ${TB_V1_DB_USER:-tb_helfer}
+      DB_PASSWORD: ${TB_V1_DB_PASSWORD:?TB_V1_DB_PASSWORD fehlt}
+      STORAGE_ROOT: /tb/storage-v1
+      TB_BACKUP_ROOT: /tb/backups-v1
+      TB_MIGRATIONS_ROOT: /app/v1_migrations
+      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:-staging}
+      TZ: ${TZ:-Europe/Berlin}
+      TB_RECOVERY_CONTROL_ROOT: /tb/recovery-control
+      TB_RECOVERY_STORAGE_ROOT: /tb/recovery-storage
+    volumes:
+    - ${TB_V1_SOURCE_TBSERVER_DIR:-./tbserver}:/app/tbserver:ro
+    - ${TB_V1_SOURCE_MIGRATIONS_DIR:-./v1_migrations}:/app/v1_migrations:ro
+    - ${TB_V1_RECOVERY_CONTROL_DIR:-./recovery-control-v1}:/tb/recovery-control:ro
+    - ${TB_V1_RECOVERY_STORAGE_DIR:-./recovery-storage-v1}:/tb/recovery-storage
+    - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1
+    command:
+    - python
+    - -m
+    - tbserver.recovery_runtime
+    - migrate
+    depends_on:
+      db:
+        condition: service_healthy
+      recovery-init:
+        condition: service_completed_successfully
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.v1
+    image: tb-helfer-server-v1:local
+    restart: unless-stopped
+    mem_limit: ${TB_V1_API_MEMORY_LIMIT:-512m}
+    environment:
+      DB_HOST: db
+      DB_PORT: '5432'
+      DB_NAME: ${TB_V1_DB_NAME:-tb_helfer_v1}
+      DB_USER: ${TB_V1_DB_USER:-tb_helfer}
+      DB_PASSWORD: ${TB_V1_DB_PASSWORD:?TB_V1_DB_PASSWORD fehlt}
+      STORAGE_ROOT: /tb/storage-v1
+      TB_BACKUP_ROOT: /tb/backups-v1
+      TB_MIGRATIONS_ROOT: /app/v1_migrations
+      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:-staging}
+      TB_PUBLIC_BASE_URL: ${TB_V1_PUBLIC_BASE_URL:-}
+      TB_PORTAL_PUBLIC_BASE_URL: ${TB_V1_PORTAL_PUBLIC_BASE_URL:-}
+      TB_PORTAL_SESSION_HOURS: ${TB_V1_PORTAL_SESSION_HOURS:-12}
+      LOG_LEVEL: ${TB_V1_LOG_LEVEL:-INFO}
+      TB_BACKUP_RETENTION_DAYS: ${TB_V1_BACKUP_RETENTION_DAYS:-90}
+      TB_BACKUP_RETENTION_MIN_PER_KIND: ${TB_V1_BACKUP_RETENTION_MIN_PER_KIND:-3}
+      TB_SMTP_HOST: ${TB_V1_SMTP_HOST:-}
+      TB_SMTP_PORT: ${TB_V1_SMTP_PORT:-587}
+      TB_SMTP_USER: ${TB_V1_SMTP_USER:-}
+      TB_SMTP_PASSWORD: ${TB_V1_SMTP_PASSWORD:-}
+      TB_SMTP_SENDER: ${TB_V1_SMTP_SENDER:-}
+      TB_SMTP_STARTTLS: ${TB_V1_SMTP_STARTTLS:-true}
+      TB_SMTP_SSL: ${TB_V1_SMTP_SSL:-false}
+      TZ: ${TZ:-Europe/Berlin}
+      TB_RECOVERY_CONTROL_ROOT: /tb/recovery-control
+      TB_RECOVERY_STORAGE_ROOT: /tb/recovery-storage
+      TB_RUNTIME_ACK_ROOT: /tb/runtime-ack
+      TB_RECOVERY_QUEUE_ROOT: /tb/recovery-queue
+      TB_RECOVERY_JOURNAL_ROOT: /tb/recovery-journal
+      TB_SYSTEM_EXPORT_ENABLED: 'true'
+    volumes:
+    - ${TB_V1_SYNO_DISK_TEMP_DIR:-/run/synostorage/disks}:/host/synostorage/disks:ro
+    - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1
+    - ${TB_V1_BACKUP_DIR:-./backups-v1}:/tb/backups-v1
+    - ${TB_V1_DIAGNOSTICS_DIR:-./diagnostics-v1}:/tb/diagnostics-v1
+    - ${TB_V1_SOURCE_TBSERVER_DIR:-./tbserver}:/app/tbserver:ro
+    - ${TB_V1_SOURCE_TEMPLATES_DIR:-./templates}:/app/templates:ro
+    - ${TB_V1_SOURCE_MIGRATIONS_DIR:-./v1_migrations}:/app/v1_migrations:ro
+    - ${TB_V1_SOURCE_TOOLS_DIR:-./tools}:/app/tools:ro
+    - ${TB_V1_SOURCE_DATA_DIR:-./data}:/app/data:ro
+    - ${TB_V1_RECOVERY_CONTROL_DIR:-./recovery-control-v1}:/tb/recovery-control:ro
+    - ${TB_V1_RECOVERY_STORAGE_DIR:-./recovery-storage-v1}:/tb/recovery-storage
+    - ${TB_V1_RECOVERY_ACK_DIR:-./recovery-acks-v1}/api:/tb/runtime-ack
+    - ${TB_V1_RECOVERY_QUEUE_DIR:-./recovery-queue-v1}:/tb/recovery-queue
+    - ${TB_V1_RECOVERY_JOURNAL_DIR:-./recovery-journal-v1}:/tb/recovery-journal:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - --fail
+      - --silent
+      - http://127.0.0.1:8080/health/ready
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    command:
+    - python
+    - -m
+    - tbserver.recovery_runtime
+    - api
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.v1
+    image: tb-helfer-server-v1:local
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: '5432'
+      DB_NAME: ${TB_V1_DB_NAME:-tb_helfer_v1}
+      DB_USER: ${TB_V1_DB_USER:-tb_helfer}
+      DB_PASSWORD: ${TB_V1_DB_PASSWORD:?TB_V1_DB_PASSWORD fehlt}
+      STORAGE_ROOT: /tb/storage-v1
+      TB_BACKUP_ROOT: /tb/backups-v1
+      TB_MIGRATIONS_ROOT: /app/v1_migrations
+      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:-staging}
+      LOG_LEVEL: ${TB_V1_LOG_LEVEL:-INFO}
+      TB_BACKUP_RETENTION_DAYS: ${TB_V1_BACKUP_RETENTION_DAYS:-90}
+      TB_BACKUP_RETENTION_MIN_PER_KIND: ${TB_V1_BACKUP_RETENTION_MIN_PER_KIND:-3}
+      TB_SMTP_HOST: ${TB_V1_SMTP_HOST:-}
+      TB_SMTP_PORT: ${TB_V1_SMTP_PORT:-587}
+      TB_SMTP_USER: ${TB_V1_SMTP_USER:-}
+      TB_SMTP_PASSWORD: ${TB_V1_SMTP_PASSWORD:-}
+      TB_SMTP_SENDER: ${TB_V1_SMTP_SENDER:-}
+      TB_SMTP_STARTTLS: ${TB_V1_SMTP_STARTTLS:-true}
+      TB_SMTP_SSL: ${TB_V1_SMTP_SSL:-false}
+      TB_RESTORE_TEST_DB_HOST: ${TB_V1_RESTORE_TEST_DB_HOST:-restore-test-db}
+      TB_RESTORE_TEST_DB_PORT: ${TB_V1_RESTORE_TEST_DB_PORT:-5432}
+      TB_RESTORE_TEST_DB_NAME: ${TB_V1_RESTORE_TEST_DB_NAME:-tb_helfer_v1_restore_test}
+      TB_RESTORE_TEST_DB_USER: ${TB_V1_RESTORE_TEST_DB_USER:-tb_helfer_restore_test}
+      TB_RESTORE_TEST_DB_PASSWORD: ${TB_V1_RESTORE_TEST_DB_PASSWORD:-}
+      TZ: ${TZ:-Europe/Berlin}
+      TB_RECOVERY_CONTROL_ROOT: /tb/recovery-control
+      TB_RECOVERY_STORAGE_ROOT: /tb/recovery-storage
+      TB_RUNTIME_ACK_ROOT: /tb/runtime-ack
+      TB_SYSTEM_EXPORT_URL: http://system-export:8091/export
+    volumes:
+    - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1
+    - ${TB_V1_BACKUP_DIR:-./backups-v1}:/tb/backups-v1
+    - ${TB_V1_DIAGNOSTICS_DIR:-./diagnostics-v1}:/tb/diagnostics-v1
+    - ${TB_V1_SOURCE_TBSERVER_DIR:-./tbserver}:/app/tbserver:ro
+    - ${TB_V1_SOURCE_TEMPLATES_DIR:-./templates}:/app/templates:ro
+    - ${TB_V1_SOURCE_MIGRATIONS_DIR:-./v1_migrations}:/app/v1_migrations:ro
+    - ${TB_V1_SOURCE_TOOLS_DIR:-./tools}:/app/tools:ro
+    - ${TB_V1_SOURCE_DATA_DIR:-./data}:/app/data:ro
+    - ${TB_V1_RECOVERY_CONTROL_DIR:-./recovery-control-v1}:/tb/recovery-control:ro
+    - ${TB_V1_RECOVERY_STORAGE_DIR:-./recovery-storage-v1}:/tb/recovery-storage
+    - ${TB_V1_RECOVERY_ACK_DIR:-./recovery-acks-v1}/worker:/tb/runtime-ack
+    command:
+    - python
+    - -m
+    - tbserver.recovery_runtime
+    - worker
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+    - default
+    - system-export
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile.v1
+    image: tb-helfer-server-v1:local
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: '5432'
+      DB_NAME: ${TB_V1_DB_NAME:-tb_helfer_v1}
+      DB_USER: ${TB_V1_DB_USER:-tb_helfer}
+      DB_PASSWORD: ${TB_V1_DB_PASSWORD:?TB_V1_DB_PASSWORD fehlt}
+      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:-staging}
+      TB_DIAGNOSTICS_ROOT: /tb/diagnostics-v1
+      TB_MONITOR_API_URL: http://api:8080/health/ready
+      TB_MONITOR_PUBLIC_URL: ${TB_V1_PUBLIC_BASE_URL:-}
+      TB_MONITOR_INTERVAL_SECONDS: ${TB_V1_MONITOR_INTERVAL_SECONDS:-5}
+      TB_SMTP_HOST: ${TB_V1_SMTP_HOST:-}
+      TB_SMTP_PORT: ${TB_V1_SMTP_PORT:-587}
+      TB_SMTP_USER: ${TB_V1_SMTP_USER:-}
+      TB_SMTP_PASSWORD: ${TB_V1_SMTP_PASSWORD:-}
+      TB_SMTP_SENDER: ${TB_V1_SMTP_SENDER:-}
+      TB_SMTP_STARTTLS: ${TB_V1_SMTP_STARTTLS:-true}
+      TB_SMTP_SSL: ${TB_V1_SMTP_SSL:-false}
+      TZ: ${TZ:-Europe/Berlin}
+      TB_RECOVERY_CONTROL_ROOT: /tb/recovery-control
+      TB_RECOVERY_STORAGE_ROOT: /tb/recovery-storage
+      TB_RUNTIME_ACK_ROOT: /tb/runtime-ack
+      STORAGE_ROOT: /tb/storage-v1
+    volumes:
+    - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1
+    - ${TB_V1_DIAGNOSTICS_DIR:-./diagnostics-v1}:/tb/diagnostics-v1
+    - ${TB_V1_SOURCE_TBSERVER_DIR:-./tbserver}:/app/tbserver:ro
+    - ${TB_V1_SOURCE_TEMPLATES_DIR:-./templates}:/app/templates:ro
+    - ${TB_V1_SOURCE_MIGRATIONS_DIR:-./v1_migrations}:/app/v1_migrations:ro
+    - ${TB_V1_SOURCE_TOOLS_DIR:-./tools}:/app/tools:ro
+    - ${TB_V1_SOURCE_DATA_DIR:-./data}:/app/data:ro
+    - ${TB_V1_RECOVERY_CONTROL_DIR:-./recovery-control-v1}:/tb/recovery-control:ro
+    - ${TB_V1_RECOVERY_STORAGE_DIR:-./recovery-storage-v1}:/tb/recovery-storage
+    - ${TB_V1_RECOVERY_ACK_DIR:-./recovery-acks-v1}/monitor:/tb/runtime-ack
+    command:
+    - python
+    - -m
+    - tbserver.recovery_runtime
+    - monitor
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: always
+    environment:
+      TUNNEL_TOKEN: ${TB_V1_CLOUDFLARE_TUNNEL_TOKEN:?TB_V1_CLOUDFLARE_TUNNEL_TOKEN
+        fehlt}
+      TZ: ${TZ:-Europe/Berlin}
+    command:
+    - tunnel
+    - --no-autoupdate
+    - run
+  recovery-init:
+    image: tb-helfer-server-v1:local
+    build:
+      context: .
+      dockerfile: Dockerfile.v1
+    restart: 'no'
+    environment: &id001
+      DB_HOST: db
+      DB_PORT: '5432'
+      DB_NAME: ${TB_V1_DB_NAME:-tb_helfer_v1}
+      DB_USER: ${TB_V1_DB_USER:-tb_helfer}
+      DB_PASSWORD: ${TB_V1_DB_PASSWORD:?TB_V1_DB_PASSWORD fehlt}
+      STORAGE_ROOT: /tb/storage-v1
+      TB_BACKUP_ROOT: /tb/backups-v1
+      TB_MIGRATIONS_ROOT: /app/v1_migrations
+      TB_ENVIRONMENT: ${TB_V1_ENVIRONMENT:-staging}
+      LOG_LEVEL: ${TB_V1_LOG_LEVEL:-INFO}
+      TB_BACKUP_RETENTION_DAYS: ${TB_V1_BACKUP_RETENTION_DAYS:-90}
+      TB_BACKUP_RETENTION_MIN_PER_KIND: ${TB_V1_BACKUP_RETENTION_MIN_PER_KIND:-3}
+      TB_SMTP_HOST: ${TB_V1_SMTP_HOST:-}
+      TB_SMTP_PORT: ${TB_V1_SMTP_PORT:-587}
+      TB_SMTP_USER: ${TB_V1_SMTP_USER:-}
+      TB_SMTP_PASSWORD: ${TB_V1_SMTP_PASSWORD:-}
+      TB_SMTP_SENDER: ${TB_V1_SMTP_SENDER:-}
+      TB_SMTP_STARTTLS: ${TB_V1_SMTP_STARTTLS:-true}
+      TB_SMTP_SSL: ${TB_V1_SMTP_SSL:-false}
+      TB_RESTORE_TEST_DB_HOST: ${TB_V1_RESTORE_TEST_DB_HOST:-restore-test-db}
+      TB_RESTORE_TEST_DB_PORT: ${TB_V1_RESTORE_TEST_DB_PORT:-5432}
+      TB_RESTORE_TEST_DB_NAME: ${TB_V1_RESTORE_TEST_DB_NAME:-tb_helfer_v1_restore_test}
+      TB_RESTORE_TEST_DB_USER: ${TB_V1_RESTORE_TEST_DB_USER:-tb_helfer_restore_test}
+      TB_RESTORE_TEST_DB_PASSWORD: ${TB_V1_RESTORE_TEST_DB_PASSWORD:-}
+      TZ: ${TZ:-Europe/Berlin}
+      TB_RECOVERY_CONTROL_ROOT: /tb/recovery-control
+      TB_RECOVERY_JOURNAL_ROOT: /tb/recovery-journal
+      TB_RECOVERY_QUEUE_ROOT: /tb/recovery-queue
+      TB_RECOVERY_STORAGE_ROOT: /tb/recovery-storage
+      TB_RECOVERY_ACK_ROOT: /tb/recovery-acks
+    volumes:
+    - ${TB_V1_SOURCE_TBSERVER_DIR:-./tbserver}:/app/tbserver:ro
+    - ${TB_V1_SOURCE_TEMPLATES_DIR:-./templates}:/app/templates:ro
+    - ${TB_V1_SOURCE_MIGRATIONS_DIR:-./v1_migrations}:/app/v1_migrations:ro
+    - ${TB_V1_SOURCE_TOOLS_DIR:-./tools}:/app/tools:ro
+    - ${TB_V1_SOURCE_DATA_DIR:-./data}:/app/data:ro
+    - ${TB_V1_RECOVERY_CONTROL_DIR:-./recovery-control-v1}:/tb/recovery-control
+    - ${TB_V1_RECOVERY_JOURNAL_DIR:-./recovery-journal-v1}:/tb/recovery-journal
+    command:
+    - python
+    - -m
+    - tbserver.recovery_service
+    - --initialize
+  recovery:
+    image: tb-helfer-server-v1:local
+    restart: on-failure:3
+    environment: *id001
+    volumes:
+    - ${TB_V1_SOURCE_TBSERVER_DIR:-./tbserver}:/app/tbserver:ro
+    - ${TB_V1_SOURCE_TEMPLATES_DIR:-./templates}:/app/templates:ro
+    - ${TB_V1_SOURCE_MIGRATIONS_DIR:-./v1_migrations}:/app/v1_migrations:ro
+    - ${TB_V1_SOURCE_TOOLS_DIR:-./tools}:/app/tools:ro
+    - ${TB_V1_SOURCE_DATA_DIR:-./data}:/app/data:ro
+    - ${TB_V1_STORAGE_DIR:-./storage-v1}:/tb/storage-v1
+    - ${TB_V1_BACKUP_DIR:-./backups-v1}:/tb/backups-v1
+    - ${TB_V1_RECOVERY_STORAGE_DIR:-./recovery-storage-v1}:/tb/recovery-storage
+    - ${TB_V1_RECOVERY_CONTROL_DIR:-./recovery-control-v1}:/tb/recovery-control
+    - ${TB_V1_RECOVERY_JOURNAL_DIR:-./recovery-journal-v1}:/tb/recovery-journal
+    - ${TB_V1_RECOVERY_QUEUE_DIR:-./recovery-queue-v1}:/tb/recovery-queue
+    - ${TB_V1_RECOVERY_ACK_DIR:-./recovery-acks-v1}:/tb/recovery-acks:ro
+    command:
+    - python
+    - -m
+    - tbserver.recovery_service
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  gateway:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
+    - ${TB_V1_API_BIND:-127.0.0.1}:${TB_V1_API_PORT:-8081}:8080
+    volumes:
+    - ./recovery-gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api:
+        condition: service_started
+      recovery:
+        condition: service_started
+  system-export:
+    image: tb-helfer-server-v1:local
+    restart: unless-stopped
+    environment:
+      TB_BACKUP_ROOT: /tb/backups-v1
+      TB_SYSTEM_IMAGE_REFS: '["tb-helfer-server-v1:local","postgis/postgis:17-3.5","nginx:stable-alpine","cloudflare/cloudflared:latest"]'
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - ${TB_V1_BACKUP_DIR:-./backups-v1}:/tb/backups-v1
+    - ${TB_V1_SOURCE_TBSERVER_DIR:-./tbserver}:/app/tbserver:ro
+    - ${TB_V1_SOURCE_TEMPLATES_DIR:-./templates}:/app/templates:ro
+    - ${TB_V1_SOURCE_MIGRATIONS_DIR:-./v1_migrations}:/app/v1_migrations:ro
+    - ${TB_V1_SOURCE_TOOLS_DIR:-./tools}:/app/tools:ro
+    - ${TB_V1_SOURCE_DATA_DIR:-./data}:/app/data:ro
+    - ${TB_V1_SOURCE_TBSERVER_DIR:-./tbserver}:/system-source/tbserver:ro
+    - ${TB_V1_SOURCE_TEMPLATES_DIR:-./templates}:/system-source/templates:ro
+    - ${TB_V1_SOURCE_MIGRATIONS_DIR:-./v1_migrations}:/system-source/v1_migrations:ro
+    - ${TB_V1_SOURCE_TOOLS_DIR:-./tools}:/system-source/tools:ro
+    - ${TB_V1_SOURCE_DATA_DIR:-./data}:/system-source/data:ro
+    - ./requirements.txt:/system-source/requirements.txt:ro
+    - ./Dockerfile.v1:/system-source/Dockerfile.v1:ro
+    - ./docker-compose.synology-automatic.v1.yml:/system-source/docker-compose.synology-automatic.v1.yml:ro
+    - ./recovery-gateway.conf:/system-source/recovery-gateway.conf:ro
+    networks:
+    - system-export
+    command:
+    - python
+    - -m
+    - tbserver.system_backup
+networks:
+  system-export:
+    internal: true

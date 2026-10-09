@@ -22,7 +22,7 @@ from .backup_inventory import InventoryError, archive_inventory, read_inventory
 from .backup_catalog import ArchiveCatalog, CatalogError, KINDS as CATALOG_KINDS
 
 
-BACKUP_KINDS = {"DATABASE", "FILES", "FULL", "USER", "TRACK"}
+BACKUP_KINDS = {"DATABASE", "FILES", "FULL", "USER", "TRACK", "SYSTEM"}
 ProgressCallback = Callable[[int, str], None]
 logger = logging.getLogger(__name__)
 
@@ -315,6 +315,24 @@ def _scoped_backup(run_id: UUID, kind: str, progress=None) -> tuple[str, Path]:
     return key, path
 
 
+def _system_backup(run_id: UUID, progress=None) -> tuple[str, Path]:
+    import urllib.request
+    url = os.getenv('TB_SYSTEM_EXPORT_URL')
+    if not url:
+        raise BackupError('SYSTEM_EXPORT_NOT_CONFIGURED')
+    _progress(progress, 20, 'Programmstand und Serverimages werden gesichert')
+    request = urllib.request.Request(url, data=json.dumps({'run_id': str(run_id)}).encode(),
+                                     headers={'Content-Type': 'application/json'}, method='POST')
+    with urllib.request.urlopen(request, timeout=6 * 3600) as response:
+        metadata = json.loads(response.read(16384))
+    key = f'system/{run_id}.tar'
+    path = _absolute_backup_path(key)
+    if (metadata.get('storage_key') != key or path.is_symlink() or not path.is_file()
+            or path.stat().st_size != metadata.get('byte_size') or _hash_file(path) != metadata.get('sha256')):
+        raise BackupError('SYSTEM_EXPORT_VERIFICATION_FAILED')
+    return key, path
+
+
 def run_backup(
     kind: str,
     progress: ProgressCallback | None = None,
@@ -334,6 +352,8 @@ def run_backup(
             key, final_path = _files_backup(run_id, progress)
         elif normalized in {"USER", "TRACK"}:
             key, final_path = _scoped_backup(run_id, normalized, progress)
+        elif normalized == 'SYSTEM':
+            key, final_path = _system_backup(run_id, progress)
         else:
             key, final_path = _full_backup(run_id, progress)
         _progress(progress, 94, "Prüfsumme wird kontrolliert")

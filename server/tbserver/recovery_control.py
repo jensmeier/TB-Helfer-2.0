@@ -226,12 +226,14 @@ class RecoveryController:
                 return self._release(state, state["previous"])
             return self._rollback(state)
 
-    def run(self, *, backup_id: str, admin_id: str, kind: str) -> dict:
+    def run(self, *, backup_id: str, admin_id: str, kind: str, operation_id: str | None = None) -> dict:
         if kind not in DATA_KINDS:
             raise RecoveryControlError("RECOVERY_KIND_NOT_SUPPORTED")
         try:
             _uuid(backup_id)
             _uuid(admin_id)
+            if operation_id is not None:
+                _uuid(operation_id)
         except (ValueError, TypeError, AttributeError) as exc:
             raise RecoveryControlError("RECOVERY_ID_INVALID") from exc
         with self.journal.locked():
@@ -240,7 +242,7 @@ class RecoveryController:
                                    previous_state["error"] == "RELEASE_FAILED"):
                 raise RecoveryControlError("RECOVERY_RESTART_REVIEW_REQUIRED")
             generation = _generation(self.backend.active_generation())
-            operation = str(uuid4())
+            operation = operation_id or str(uuid4())
             state = self.journal.write({
                 "format": "tb-recovery-control-v1", "operation_id": operation,
                 "backup_id": backup_id, "admin_id": admin_id, "kind": kind,

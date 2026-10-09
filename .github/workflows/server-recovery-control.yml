@@ -12,6 +12,12 @@ on:
       - server/tbserver/main.py
       - server/tbserver/backup.py
       - server/tbserver/backup_catalog.py
+      - server/tbserver/system_backup.py
+      - server/tbserver/system_admin.py
+      - server/tbserver/system_settings.py
+      - server/docker-compose.synology-automatic.v1.yml
+      - server/checks/14[7-9]_*.py
+      - server/tools/system_backup_gate.py
       - server/checks/146_verify_backup_catalog.py
       - server/checks/145_verify_recovery_runtime.py
       - server/tools/automatic_recovery_gate.py
@@ -32,6 +38,12 @@ on:
       - server/tbserver/main.py
       - server/tbserver/backup.py
       - server/tbserver/backup_catalog.py
+      - server/tbserver/system_backup.py
+      - server/tbserver/system_admin.py
+      - server/tbserver/system_settings.py
+      - server/docker-compose.synology-automatic.v1.yml
+      - server/checks/14[7-9]_*.py
+      - server/tools/system_backup_gate.py
       - server/checks/146_verify_backup_catalog.py
       - server/checks/145_verify_recovery_runtime.py
       - server/tools/automatic_recovery_gate.py
@@ -78,11 +90,17 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install database driver
-        run: pip install 'psycopg[binary]==3.2.9'
+        run: pip install 'psycopg[binary]==3.2.9' 'PyYAML==6.0.3'
       - name: Durable controller crash and rollback tests
         run: python server/checks/142_verify_recovery_control.py
       - name: Independent archive catalog and retention
         run: python server/checks/146_verify_backup_catalog.py
+      - name: Request replay, system source export and deployment boundaries
+        run: |
+          python server/checks/147_verify_recovery_service.py
+          python server/checks/148_verify_system_backup.py
+          python server/checks/149_verify_automatic_deployment.py
+          TB_V1_DB_PASSWORD=disposable TB_V1_RESTORE_TEST_DB_PASSWORD=disposable TB_V1_CLOUDFLARE_TUNNEL_TOKEN=disposable docker compose -f server/docker-compose.synology-automatic.v1.yml config --quiet
       - name: Domain planning and reference tests
         run: python server/checks/143_verify_backup_domains.py
       - name: PostgreSQL 17 read-only domain gate
@@ -93,6 +111,8 @@ jobs:
         run: python server/checks/145_verify_recovery_runtime.py
       - name: Build runtime with PostgreSQL 17 client
         run: docker build -f server/Dockerfile.v1 -t tb-scoped-gate server
+      - name: Real system image export and load roundtrip
+        run: python server/tools/system_backup_gate.py
       - name: PostgreSQL 17 actual partial archive restores and failures
         run: >-
           docker run --rm --network host

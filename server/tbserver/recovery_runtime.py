@@ -226,8 +226,16 @@ class RuntimeMaintenanceMiddleware:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('role', choices=ROLES)
+    parser.add_argument('role', choices=(*ROLES, 'migrate'))
     args = parser.parse_args()
+    if args.role == 'migrate':
+        selection = Deployment(os.environ['TB_RECOVERY_CONTROL_ROOT']).read()
+        if selection['mode'] != 'OPEN':
+            # Let the independent controller complete/roll back an interrupted
+            # operation first. Never migrate either half of an unfinished swap.
+            return
+        env = generation_environment(selection['generation'])
+        os.execve(sys.executable, [sys.executable, '-m', 'tbserver.migrations', 'up'], env)
     supervise(args.role, Deployment(os.environ['TB_RECOVERY_CONTROL_ROOT']), os.environ['TB_RUNTIME_ACK_ROOT'])
 
 
