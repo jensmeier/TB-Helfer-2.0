@@ -19,15 +19,26 @@ Stand: 09.10.2026. Ausgang: vom Nutzer gelieferte `compose.yml`, Projekt `tb-hel
 
 Die tatsächlichen Werte aus `.env` wurden nicht gelesen. Weil dieselben Variablen beibehalten werden, gelten vorhandene eigene Pfade/Ports weiter. Die Verzeichnisnamen hier sind die Defaults, keine Behauptung über davon abweichende NAS-Werte.
 
-## Noch vor Neustart prüfen: Cloudflare-Ziele
+## Cloudflare-Ziele bestätigt – 09.10.2026, Screenshot 19:52 Berlin
 
-Im verwendeten Tunnel die Service-/Zieladressen für **www.tb-helfer.de** und **api-v1.tb-helfer.de** prüfen:
+Tunnel `tb-helfer-nas` zeigt **Fehlerfrei**. Die Meldung über eine neue cloudflared-Version ist ein Updatehinweis; in diesem Arbeitsblock wurde kein Update ausgeführt.
 
-- Zeigt ein Ziel direkt auf `http://api:8080`, muss es für den neuen Aufbau `http://gateway:8080` heißen.
-- Zeigt es bereits auf den veröffentlichten NAS-Port8081 oder auf einen vorgeschalteten Reverse-Proxy, prüfen, ob dieser weiterhin den unveränderten veröffentlichten Port erreicht. Dann ist nicht automatisch eine Änderung erforderlich.
-- Andere individuelle Ziele zuerst zuordnen. Aus dem Tunnel-Token allein lassen sie sich nicht ableiten.
+| Hostname | Pfad | Konfigurierter Service |
+| --- | --- | --- |
+| www.tb-helfer.de | * | http://192.168.178.3:8081 |
+| api-v1.tb-helfer.de | * | http://192.168.178.3:8081 |
+| admin.tb-helfer.de | * | http://tb-helfer-api:8080 |
+| api.tb-helfer.de | ^/api/ | http://tb-helfer-api:8080 |
 
-Benötigt wird nur ein Screenshot dieser Hostnamen/Ziele oder deren Text. **Keine Tokens, Passwörter oder `.env`.** Solange das unbekannt ist, das laufende NAS-Projekt noch nicht ersetzen/neustarten. Die Dateien können bereits auf den PC geladen werden.
+**Die zwei V1-Ziele bleiben unverändert.** Das Gateway übernimmt den bisher veröffentlichten API-Port. Die beiden anderen Routen bleiben ebenfalls unangetastet; ihre Funktion wurde hier nicht geprüft.
+
+### Vor dem Stoppen: tatsächlich verwendete Portbindung erhalten
+
+Im Container Manager beim laufenden API-Container unter Details/Port-Einstellungen die veröffentlichte Zuordnung für Containerport8080 ablesen. Erwartet ist NAS-Port8081, erreichbar über192.168.178.3. Vorhandene Projektvariablen und die lokale `.env` beim Neuaufbau beibehalten.
+
+Die Compose enthält `${TB_V1_API_BIND:-127.0.0.1}:${TB_V1_API_PORT:-8081}:8080`. Ohne gesetzte Variablen bindet sie nur an127.0.0.1. Für das bestätigte Cloudflare-Ziel muss die wirksame Bindung192.168.178.3 bedienen, etwa durch den bereits vorhandenen Wert192.168.178.3 oder0.0.0.0. Die Werte nicht raten und keine vollständige `.env` weitergeben. Falls die laufende Portzuordnung davon abweicht oder die Anzeige unklar ist, zuerst einen Screenshot nur der Port-Einstellungen prüfen, bevor das Projekt gestoppt wird.
+
+Der Cloudflare-Screenshot bestätigt die **Konfiguration**, nicht die Erreichbarkeit des neuen Gateways. Nach dem Umbau zuerst `http://192.168.178.3:8081/health/ready` im lokalen Netz und anschließend `https://api-v1.tb-helfer.de/health/ready` sowie das Portal prüfen. Erwartet ist bei den Health-URLs HTTP200 mit Status `ok`; bei einem Fehler keinen Datenrestore starten.
 
 ## Übernahme nach dem Zielabgleich
 
@@ -49,7 +60,7 @@ Benötigt wird nur ein Screenshot dieser Hostnamen/Ziele oder deren Text. **Kein
 | `server/compose.synology-reviewed.v1.yml` | **compose.yml** |
 
 5. Neue persistente Ordner anlegen, sofern noch nicht vorhanden: `recovery-control-v1`, `recovery-journal-v1`, `recovery-queue-v1`, `recovery-storage-v1` sowie `recovery-acks-v1/api`, `recovery-acks-v1/worker`, `recovery-acks-v1/monitor`. Bereits vorhandene Inhalte nicht leeren. Falls die entsprechenden neuen `TB_V1_RECOVERY_*_DIR`-Variablen vor Ort bereits gesetzt sind, deren Verzeichnisse benutzen.
-6. Erforderliche Cloudflare-Zieländerungen entsprechend obigem Abgleich vornehmen. Projekt mit der angepassten **compose.yml** im Container Manager neu erstellen und dabei das Serverimage neu bauen. Bestehendes Projekt beibehalten; keine Volumes/Datenverzeichnisse löschen.
+6. Cloudflare-Ziele unverändert lassen und die oben geprüfte vorhandene Portbindung übernehmen. Projekt mit der angepassten **compose.yml** im Container Manager neu erstellen und dabei das Serverimage neu bauen. Bestehendes Projekt beibehalten; keine Volumes/Datenverzeichnisse löschen.
 7. Erwarteter Start: `recovery-init` endet erfolgreich, danach `migrate`; anschließend API, Worker, Monitor, Recovery, Gateway und Systemexport. Ein erfolgreich beendeter Initialisierungs-/Migrationscontainer muss nicht dauerhaft laufen. Bestehende DB-/Hilfsdienste bleiben erhalten.
 8. Systemstatus mit Strg+F5 neu laden. Migrationen001–022 müssen angewendet sein. Nutzer-, Strecken-, Voll- und Systembackup prüfen; „Backup einspielen“ muss die automatische Oberfläche zeigen. Normale Anmeldung/Portal-/API-Erreichbarkeit zunächst ohne Restore prüfen.
 9. Erst danach einen ausdrücklich vereinbarten NAS-Restoretest mit nachvollziehbarem Ausgangsbestand durchführen. Android-Recovery-ID/Outbox-Abgleich ist weiterhin nicht umgesetzt/abgenommen; ein echter Datenrestore ist deshalb noch keine Freigabe für den vollständigen Mehrgerätebetrieb.
