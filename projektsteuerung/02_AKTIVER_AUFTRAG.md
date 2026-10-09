@@ -2722,3 +2722,8 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 
 ### OPS-RESTORE-005 – Compose-Funktion bestanden, CI-Aufräumrecht (09.10.2026)
 - Run37921968708/Job113791786445: tatsächliche Compose-Initialisierung/Migration/Gateway, alle4Backup-Erzeuger, USER/TRACK/FULL-Restore über Gateway und Neustart auf gewählter Generation PASS (Logs gelesen). Job wird erst beim temporären Testverzeichnis-Abbau rot: root-eigene Container-Zieldateien können vom Runner nicht entfernt werden. Nur isoliertes CI-Tempverzeichnis nach Compose-down an Runner-UID/GID zurückgeben; keine Produktionsrechte ändern, keine Tests abschalten.
+
+
+### OPS-RESTORE-005 – Arbeitsabschluss vor NAS-Abgleich
+- Umsetzung und isolierte Gesamtprüfung auf d8d28e2a abgeschlossen: Restoreworkflow37922416404 vollständig SUCCESS, einschließlich echter Compose-Topologie und Browserfixture. Nachweise in06/08.
+- Nächster benötigter Nutzerinput ist die aktuell verwendete NAS-Compose ohne Secrets, nicht .env. Erst danach individuelle Installationsanleitung finalisieren. Weiter keine NAS-Änderung/Löschung; bestehende Android-Abhängigkeit bleibt offen.

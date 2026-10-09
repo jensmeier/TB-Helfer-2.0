@@ -1,12 +1,12 @@
 # OPS-RESTORE-005 – automatische Wiederherstellung / NAS-Übernahme
 
-Stand: 09.10.2026. **Übernahme vorbereitet, individuelle NAS-Konfiguration noch abzugleichen. Nicht allein anhand dieser Vorlage das laufende Projekt ersetzen.**
+Stand: 09.10.2026. Geprüfter Code: `d8d28e2a9dd5fad6c271b345abc9f2dd789d29bf`; [Restore-/Compose-/Browserprüflauf bestanden](https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/37922416404). **Übernahme vorbereitet, individuelle NAS-Konfiguration noch abzugleichen. Nicht allein anhand dieser Vorlage das laufende Projekt ersetzen.**
 
 ## Bedienung nach abgeschlossener Übernahme
 
 Im Systemstatus stehen vier unabhängige Erzeuger und Zeitpläne: Nutzerbackup (USER), Streckenbackup (TRACK), Vollbackup (FULL) und Systembackup (SYSTEM). Jede Art bewahrt die letzten vier neu erfolgreich veröffentlichten Sicherungen auf. Eine fehlgeschlagene Sicherung verdrängt keine erfolgreiche. Importierte Altsicherungen werden beim bloßen Lesen nicht gelöscht; die nächste neue Sicherung bereinigt nur ihre eigene Art. Systembackup erzeugt kein Vollbackup und hält keines zusätzlich fest.
 
-„Daten wiederherstellen“ zeigt für USER/TRACK/FULL die letzten vier verfügbaren Sicherungen mit Datum. Bereich wählen, Sicherung wählen, angezeigte Bestätigung eingeben und „Einspielen“ drücken. Danach übernimmt der unabhängige Wiederherstellungsdienst: Vorprüfung, Wartung, zusätzliche geschützte Sicherheitskopie, frisches Ziel, Prüfung, Umschaltung, API-Probe und Freigabe. Die Fortschrittsanzeige läuft über das Gateway auch während der API-Pause. Abschließend erneut anmelden. Wiederholtes Klicken startet keinen zweiten Auftrag.
+„Backup einspielen“ zeigt für USER/TRACK/FULL die letzten vier verfügbaren Sicherungen mit Datum. Bereich wählen, Sicherung wählen, angezeigte Bestätigung eingeben und „Einspielen“ drücken. Danach übernimmt der unabhängige Wiederherstellungsdienst: Vorprüfung, Wartung, zusätzliche geschützte Sicherheitskopie, frisches Ziel, Prüfung, Umschaltung, API-Probe und Freigabe. Die Fortschrittsanzeige läuft über das Gateway auch während der API-Pause. Abschließend erneut anmelden. Wiederholtes Klicken startet keinen zweiten Auftrag.
 
 USER setzt Firmen/Benutzer/Baustellen zurück und erhält den gemeinsamen Streckenbereich; TRACK setzt den gemeinsamen Streckenbereich zurück und erhält Firmen/Benutzer/Baustellen. Nicht auflösbare Quellen-/Historienverweise blockieren den Vorgang. FULL setzt beide Datenbereiche zurück. Geschützte Vermessungsoriginale werden nicht überschrieben; das Wiederherstellungsziel ist getrennt.
 
