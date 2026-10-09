@@ -2718,3 +2718,7 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 
 ### OPS-RESTORE-005 – echter Gateway-Startbefund (09.10.2026)
 - Compose-Gate Run37921366147/Job113789810250: Migrationen001–022 und API starten tatsächlich; Gateway startet nicht, nginx meldet unknown directive 36}$. Regulärer Ausdruck der Fortschrittsroute enthält unquotierte geschweifte Klammern. Regex als nginx-String quotieren; der echte Compose-Gate bleibt Pflicht. Kein Fehler an produktiver NAS, keine Freigabe allein aus bisherigen Prozess-/Browserfixturetests.
+
+
+### OPS-RESTORE-005 – Compose-Funktion bestanden, CI-Aufräumrecht (09.10.2026)
+- Run37921968708/Job113791786445: tatsächliche Compose-Initialisierung/Migration/Gateway, alle4Backup-Erzeuger, USER/TRACK/FULL-Restore über Gateway und Neustart auf gewählter Generation PASS (Logs gelesen). Job wird erst beim temporären Testverzeichnis-Abbau rot: root-eigene Container-Zieldateien können vom Runner nicht entfernt werden. Nur isoliertes CI-Tempverzeichnis nach Compose-down an Runner-UID/GID zurückgeben; keine Produktionsrechte ändern, keine Tests abschalten.
