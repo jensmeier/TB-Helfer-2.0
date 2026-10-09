@@ -72,7 +72,7 @@ def main() -> int:
                     db_host=source.info.host, db_port=source.info.port, db_name=source_name,
                     db_user=source.info.user, db_password=source.info.password,
                     storage_root=storage, backup_root=backups)
-                backup.connect = lambda: psycopg.connect(source_dsn, row_factory=dict_row)
+                backup.connect = lambda **kwargs: psycopg.connect(source_dsn, row_factory=dict_row, **kwargs)
                 real_dump = backup._run_pg_dump
                 def concurrent_dump(path, *, snapshot=None):
                     # Commit AFTER inventory/export and BEFORE pg_dump imports it.
