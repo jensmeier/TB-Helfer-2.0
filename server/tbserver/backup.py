@@ -382,7 +382,12 @@ def backup_path_for_run(run_id: UUID) -> tuple[dict[str, Any], Path]:
     try:
         indexed = ArchiveCatalog(settings.backup_root).get(run_id)
         if indexed is not None:
-            return indexed
+            row, path = indexed
+            # Preserve the database-backed Python contract for restore callers.
+            result = dict(row, id=UUID(row['id']))
+            for field in ('started_at', 'finished_at'):
+                result[field] = datetime.fromisoformat(row[field]) if row.get(field) else None
+            return result, path
     except (CatalogError, OSError) as exc:
         raise BackupError('BACKUP_CATALOG_UNAVAILABLE') from exc
     with transaction() as conn, conn.cursor() as cur:

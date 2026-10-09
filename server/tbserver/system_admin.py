@@ -188,6 +188,9 @@ _JOB_LABELS = {
     "BACKUP_DATABASE": "Datenbank-Backup",
     "BACKUP_FILES": "Datei-Backup",
     "BACKUP_FULL": "Vollbackup",
+    "BACKUP_USER": "Nutzerbackup",
+    "BACKUP_TRACK": "Streckenbackup",
+    "BACKUP_SYSTEM": "Systembackup",
     "BACKUP_RETENTION": "Backup-Aufbewahrung",
     "RESTORE_TEST": "Restore-Test",
     "RECOVERY_PREPARE": "Wiederherstellung vorbereiten",
@@ -844,6 +847,17 @@ def admin_system_status(
                 "Backup älter als 36 Stunden",
                 "Der letzte erfolgreiche Backup-Lauf ist älter als der vorgesehene Tagesrhythmus.",
             )
+
+    try:
+        from .backup import independent_backup_list
+        indexed = independent_backup_list()
+        backups = indexed + [row for row in backups if row['kind'] not in {'USER', 'TRACK', 'FULL', 'SYSTEM'}]
+        if any(not row['available'] for row in indexed):
+            add_issue('warning', 'Sicherungsdatei nicht verfügbar',
+                      'Mindestens ein Eintrag im Backupkatalog hat keine passende Sicherungsdatei.')
+    except (OSError, RuntimeError, ValueError):
+        add_issue('warning', 'Backupkatalog nicht verfügbar',
+                  'Die unabhängige Sicherungsliste konnte nicht gelesen werden. Wiederherstellung vorerst nicht starten.')
 
     if not issues:
         add_issue(

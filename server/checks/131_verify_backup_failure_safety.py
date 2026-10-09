@@ -67,6 +67,21 @@ class BackupSafety(unittest.TestCase):
         self.assertEqual(len(self.failures), 1)
         self.assertEqual(list(self.settings.backup_root.rglob('*.tar.gz')), [])
 
+    def test_catalog_lookup_preserves_legacy_types_without_database(self):
+        from datetime import datetime
+        from uuid import UUID
+        self.backup['_run_pg_dump'] = lambda path: path.write_bytes(b'simulated DB dump')
+        result = self.backup['run_backup']('FULL')
+        def forbidden():
+            raise AssertionError('Catalog lookup unexpectedly accessed restored database')
+        self.backup['transaction'] = forbidden
+        row, path = self.backup['backup_path_for_run'](result['id'])
+        self.assertIsInstance(row['id'], UUID)
+        for field in ('started_at', 'finished_at'):
+            self.assertIsInstance(row[field], datetime)
+            self.assertEqual(row[field].isoformat(), result[field].isoformat())
+        self.assertEqual(path, result['path'])
+
     def test_empty_existing_root_roundtrip(self):
         result = self.backup['run_backup']('FILES')
         counts = self.restore['_extract_storage_archive'](result['path'], Path(self.temp.name) / 'out')

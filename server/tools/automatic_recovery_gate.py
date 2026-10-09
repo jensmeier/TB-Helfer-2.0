@@ -107,6 +107,8 @@ def main():
                 assert status == expected, (path, status, body[:300])
                 return json.loads(body), cookies
             for kind in ('USER','TRACK','FULL'):
+                # OPEN is durable before the supervisors finish starting API.
+                wait(health)
                 http('/api/v1/admin/system/recovery/automatic', expected=401)
                 _, cookies = http('/api/v1/admin/session/login', {'login':'auto-admin','password':'Disposable-Test-Password-827!'})
                 jar = dict(c.split(';')[0].split('=',1) for c in cookies)

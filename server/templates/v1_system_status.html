@@ -401,9 +401,9 @@ async function load(hydrateForm=true){
       'Aufbewahrung: vier erfolgreiche Sicherungen je Art, unabhängig voneinander.';
 
     document.getElementById('backups').innerHTML=(x.backups||[]).map(function(b){
-      const restore=(b.status==='OK'&&['DATABASE','FILES','FULL'].includes(b.kind))?
+      const restore=(b.status==='OK'&&b.available!==false&&['DATABASE','FILES','FULL'].includes(b.kind))?
         '<div class="compact-actions" style="margin-top:7px"><button type="button" class="secondary" onclick="startRestoreTest(\''+esc(b.id)+'\')">Backup prüfen</button></div>':'';
-      return '<div class="item"><b>'+esc(backupKindLabel(b.kind))+'</b> <span class="pill">'+esc(backupStatusLabel(b.status))+'</span><div class="small">'+esc(dt(b.started_at))+' · '+esc(bytes(b.byte_size))+'</div>'+restore+'</div>';
+      return '<div class="item"><b>'+esc(backupKindLabel(b.kind))+'</b> <span class="pill">'+esc(b.available===false?'Datei nicht verfügbar':backupStatusLabel(b.status))+'</span><div class="small">'+esc(dt(b.started_at))+' · '+esc(bytes(b.byte_size))+'</div>'+restore+'</div>';
     }).join('')||'<p class="muted">Noch keine Backup-Läufe protokolliert.</p>';
 
     const active=renderJobs(x.jobs||[]);
