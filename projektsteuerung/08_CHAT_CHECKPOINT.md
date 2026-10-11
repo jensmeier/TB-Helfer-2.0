@@ -1897,3 +1897,11 @@ Status: STEUERUNGS-/DATENBEREICHSBAUSTEINE IMPLEMENTIERT / GESAMTINTEGRATION OFF
 - Migration023: fehlendes files.view nur im eingebauten RESPONSIBLE_TB-Profil ergänzen, individuelle false-Overrides bleiben; gehashte einmalige Accounttokens und Rate Limits; E-Mail-Änderung invalidiert Bestätigung/Links.
 - Passwort-/E-Mail-Endpunkte und UI implementiert, Admin-Ersatzlink, fest konfigurierte HTTPS-Portalbasis, 30 Minuten, keine Geräteänderung. Kein echter Mailversand durch Agent. SMTP-Liveabnahme steht aus.
 - Lokaler Python-AST-/JavaScript-Syntaxcheck PASS. Lokale Jinja/FastAPI/PostgreSQL-Abhängigkeiten fehlen; pip ohne verfügbare Distribution, Chromium-Binary fehlt. Separater PostgreSQL17-/Jinja-CI-Gate hinzugefügt und noch nicht ausgewertet. Keine NAS-Installation/Fertigabnahme behauptet.
+
+
+### PORTAL-005 – geprüft und zur NAS-Übernahme vorbereitet (11.10.2026)
+- Programmstand424b5d4701b603e35c51b38d5b32b55f707cf2c7. Portal-Neustrukturierung, Einstellungen/Kontowiederherstellung, öffentliche Aggregate inkl. Testbaustellen und Helfersperre implementiert. Migration023; neue Kontotabellen in Backup-Domänen erfasst, offene Kontolinks nach Restore entwertet.
+- Echte Portal-CI38153731624 PASS: PostgreSQL/PostGIS17, Migration und Wiederholung, Passwort/E-Mail/Session-/Adminpfade, echte Helferentfernung/Rechte/Receipt-Replay, historischer Teilnehmerbestand, Schema-/Backupvertrag, Jinja; Chromium1440/390 mit simulierten Fach-API-Antworten PASS. Screenshots visuell geprüft. Kein NAS-E2E/Mailversand daraus ableiten.
+- Snapshot/Rechte/255-Client-HTTP-Job38153731635 PASS. Restoreworkflow38153279846 beide Jobs PASS mit neuem Backupvertrag; spätere Änderungen nur Portalvorlagen/Browsercheck. Gesamtsuite nicht vollständig grün: Foundation stoppt an unverändertem FILE_LINK_TARGET_NOT_FOUND-Vertragsmarker, Android-CI ebenfalls nicht bestanden.
+- Sichere Übernahme und genaue Ordnerliste: [PORTAL-005_NAS_UEBERNAHME.md](uebergaben/PORTAL-005_NAS_UEBERNAHME.md). Noch keine NAS-Installation und keine echte SMTP-Abnahme. Bereits bestätigte Backup-Praxisabnahme bleibt geschützt.
+- Androidbranch423f37892915cb3308a4b1ea9e4d196faa872326/PR11 unverändert. ZIP-Original-/Kleinbildregel geschützt. PR6 offen/Draft; keine Merge-/Produktivfreigabe behauptet.
