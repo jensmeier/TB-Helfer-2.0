@@ -26,7 +26,7 @@ from tbserver import portal_recovery as r
 from tbserver.portal import require_csrf,current_portal_session_user
 from tbserver.security import hash_password, hash_token, verify_password
 from tbserver.btb_participants import set_own_status, set_lead_managed_status, ensure_participants
-from tbserver.public_overview import aggregate_segments,public_counts
+from tbserver.public_overview import public_counts
 
 company,lead,helper,site,team,btb=[uuid4() for _ in range(6)]
 password='OriginalPass12345'
@@ -95,7 +95,22 @@ with conn.cursor() as c:
     c.execute("UPDATE tb.users SET status='DISABLED' WHERE id=%s",(helper,))
 assert client.post('/api/v1/portal/password/reset',json={'token':raw,'password':'AnotherPass1234'}).status_code==400
 assert public_counts()['worksites']==1, 'Test site excluded'
-assert aggregate_segments([{'route_number':'1','km_from_m':0.,'km_to_m':1000.},{'route_number':'1','km_from_m':500.,'km_to_m':2000.},{'route_number':'1','km_from_m':3000.,'km_to_m':4000.}])['kilometres']==3
+# Reproduce the reported public/admin mismatch without private NAS data.
+# Public totals must project canonical physical lengths, not sparse km boundaries.
+from unittest.mock import patch
+from tbserver import public_overview
+public_overview._cached = None
+with patch.object(public_overview, '_coverage_summary_data', return_value={
+    'total_length_m': 195520, 'known_km_length_m': 123980,
+    'without_km_length_m': 71540, 'station_count': 4, 'route_count': 9,
+    'private_details': ['must not escape'],
+}) as summary:
+    totals = public_counts()
+    assert totals == {'kilometres': 195.52, 'stations': 4, 'routes': 9, 'worksites': 1}
+    totals['kilometres'] = -1
+    assert public_counts()['kilometres'] == 195.52
+    assert summary.call_count == 1, 'Repeated anonymous requests bypassed cache'
+public_overview._cached = None
 
 # Exercise real membership permissions, removal and receipt replay.
 from tbserver import worksites
