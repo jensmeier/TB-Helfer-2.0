@@ -1875,3 +1875,8 @@ Status: STEUERUNGS-/DATENBEREICHSBAUSTEINE IMPLEMENTIERT / GESAMTINTEGRATION OFF
 - Nutzer zeigt PERMISSION_REQUIRED:files.view auf Baustellenseite und markiert Admin-Link bei USER; bestätigt Korrektur mit okay.
 - Quellbefund: v1_worksite.html lädt Medien bedingungslos vor weiteren Bereichen/Live-Aktualisierung. Fehlendes files.view unterbricht Initialisierung. Medien nur mit vorhandenem Recht laden; Backendprüfung unverändert, keine Rechte pauschal erteilen. Admin-Login-Link nicht für angemeldete USER/CHEF anzeigen.
 - Android SERVER_RECOVERY_REBASE_REQUIRED separat dokumentiert: lokale Daten/Outbox erhalten, kein Reset/Neuaktivierung anweisen; Android-Implementierung außerhalb dieses Blocks.
+
+### Umsetzung PORTAL-RIGHTS-004
+- v1_worksite.html: Medienzustand vor Abruf leeren, ohne files.view keinen Medienrequest senden; verständlicher Hinweis statt Medienaktionen. Backendrechte unverändert. v1_base.html: Admin-Link für angemeldete USER/CHEF ausgeblendet, separater Adminlogin bleibt erreichbar.
+- Lokaler Node-Verhaltenstest mit extrahierter Produktionsfunktion PASS: kein Request ohne Recht, Laden mit Recht, alte Mediendaten löschen, echte Netzwerkfehler weiterwerfen. Jinja-Render-/Browserprüfung nicht ausgeführt: Jinja2 lokal nicht verfügbar, Installationsversuch ohne verfügbare Distribution. Keine NAS-Abnahme behauptet.
+- Übernahme nur server/templates/v1_base.html und server/templates/v1_worksite.html nach templates/; API neu starten, Browser aktualisieren. Keine Migration/DB-/Rechte-/Android-/Backupänderung.

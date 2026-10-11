@@ -518,6 +518,8 @@ async function createBtb(teamId){
 }
 window.createBtb=createBtb;
 async function loadWorksiteMedia(){
+  mediaData=[];
+  if(!can('files.view'))return;
   try{
     const result=await tbApi('/api/v1/worksites/'+worksiteId+'/media');
     mediaData=result.data.media||[];
@@ -532,6 +534,7 @@ function fachMedia(type,id){
   });
 }
 function renderFachMedia(type,id){
+  if(!can('files.view'))return '<p class="muted">Keine Berechtigung zum Anzeigen von Dateien.</p>';
   const files=fachMedia(type,id);
   const images=files.length?files.map(function(file){
     const original=tbScopedUrl('/api/v1/files/'+encodeURIComponent(file.attachment_id)+'/content');
