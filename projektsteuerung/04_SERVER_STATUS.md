@@ -1901,3 +1901,8 @@ Status: STEUERUNGS-/DATENBEREICHSBAUSTEINE IMPLEMENTIERT / GESAMTINTEGRATION OFF
 - Runtime 3146c4dff297a26d68afdbab9a8c86e58f5b1824: dynamische Projektion known_km_length_m/1000, zwei Nachkommastellen, fünfte responsive Kachel, Erklärung entfernt. Testbaustellenregel erhalten.
 - Portal-CI38178439695/Job114585681360 SUCCESS mit tatsächlich ausgeführten Integrations- und Chromium1440/390-Schritten. Bestehender Aggregat-/Datenschutztest um123,98 ergänzt. Keine komplette grüne Gesamt-CI behauptet.
 - NAS-Übernahme dieser Änderung noch offen; Anleitung projektsteuerung/uebergaben/PORTAL-007_NAS_UEBERNAHME.md. Nur zwei Runtime-Dateien, keine Migration; Android/ZIP/Backup unverändert. PR6 bleibt Draft.
+
+
+### PORTAL-007 – Nutzerbestätigung (12.10.2026, 00:03 Berlin)
+- Nutzer bestätigt die öffentliche Seite mit „passt“. Änderung als nutzerseitig abgenommen festgehalten; keine unabhängige NAS-Installationsprüfung durch Agent behauptet.
+- Bestätigte Darstellung schützen. Keine weiteren Runtime-Änderungen in diesem Bestätigungsblock.
