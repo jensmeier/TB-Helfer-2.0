@@ -74,7 +74,9 @@
           <div><label for="inviteProfile">Rechteprofil</label><select id="inviteProfile"><option value="HELPER_STANDARD">Helfer Standard</option><option value="HELPER_EXTENDED">Helfer erweitert</option><option value="RESPONSIBLE_TB">Verantwortlicher TB</option><option value="READ_ONLY">Nur Lesen</option></select></div>
           <div><label for="inviteDays">Gültig (Tage)</label><input id="inviteDays" type="number" min="1" max="30" value="7"></div>
         </div>
-        <input id="inviteArea" type="hidden" value="{}">
+        <label for="inviteAreaMode">Freigegebener Bereich</label>
+        <select id="inviteAreaMode" required><option value="">Bitte auswählen</option><option value="all">Ganze Baustelle</option><option value="limited">Begrenzter Bereich</option></select>
+        <div id="inviteAreaFields" hidden class="grid" style="margin-top:10px"><div><label for="inviteAreaLabels">Bereiche (mit Semikolon trennen)</label><input id="inviteAreaLabels" placeholder="z. B. Schwerbau"></div><div><label for="inviteKmFrom">km von</label><input id="inviteKmFrom" inputmode="decimal"></div><div><label for="inviteKmTo">km bis</label><input id="inviteKmTo" inputmode="decimal"></div></div>
         <button type="submit">Einladung erzeugen</button>
       </form>
       <div id="inviteSecret"></div>
@@ -434,6 +436,7 @@ async function revokeInvitation(id){
   }catch(error){show('err',error.message||String(error));}
 }
 window.revokeInvitation=revokeInvitation;
+document.getElementById('inviteAreaMode').onchange=function(){document.getElementById('inviteAreaFields').hidden=this.value!=='limited';};
 document.getElementById('inviteRole').addEventListener('change',function(){
   const map={HELPER:'HELPER_STANDARD',TB:'RESPONSIBLE_TB',RESPONSIBLE_TB:'RESPONSIBLE_TB',READ_ONLY:'READ_ONLY'};
   document.getElementById('inviteProfile').value=map[this.value]||'HELPER_STANDARD';
@@ -441,7 +444,15 @@ document.getElementById('inviteRole').addEventListener('change',function(){
 document.getElementById('inviteForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
   try{
-    const area=JSON.parse(document.getElementById('inviteArea').value.trim()||'{}');
+    const mode=document.getElementById('inviteAreaMode').value;
+    if(!mode)throw new Error('Bitte einen freigegebenen Bereich auswählen.');
+    const area={all:mode==='all'};
+    if(mode==='limited'){
+      const labels=document.getElementById('inviteAreaLabels').value.split(';').map(v=>v.trim()).filter(Boolean);
+      if(labels.length)area.labels=labels;
+      for(const [id,key] of [['inviteKmFrom','km_from_m'],['inviteKmTo','km_to_m']]){const raw=document.getElementById(id).value.trim();if(raw){const n=Number(raw.replace(',','.'));if(!Number.isFinite(n))throw new Error('Kilometerangabe ist ungültig.');area[key]=n*1000;}}
+      if(Object.keys(area).length===1)throw new Error('Bitte einen Bereich oder Kilometergrenzen angeben.');
+    }
     const result=await tbApi('/api/v1/worksites/'+worksiteId+'/invitations',{
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         invited_user_id:document.getElementById('inviteUser').value,
@@ -916,7 +927,7 @@ filters.oninput=filterReports;
 const pictures=document.createElement('a');pictures.className='btn secondary';pictures.textContent='Bilder';pictures.href='/portal/v1/pictures?worksite='+encodeURIComponent(worksiteId);nav.append(pictures);
 for(const [id,label] of [['nodeForm','Unterbaustelle anlegen'],['defectForm','Mangel anlegen / bearbeiten'],['acceptanceForm','Abnahme anlegen / bearbeiten'],['inviteForm','Person einladen']]){const form=document.getElementById(id);if(!form)continue;const d=document.createElement('details'),summary=document.createElement('summary');summary.textContent=label;form.before(d);d.append(summary,form);}
 document.querySelectorAll('textarea.json').forEach(el=>{const details=el.closest('details');if(details)details.hidden=true;});
-function refresh(){filterReports();document.querySelectorAll('.pill').forEach(el=>{const translated=labels[el.textContent.trim()];if(translated&&translated!==el.textContent)el.textContent=translated;});const target=document.getElementById('overviewCounts');target.replaceChildren();[['reports','Berichte',document.querySelectorAll('#teams a').length],['issues','Mängel',document.querySelectorAll('#defects .item').length],['issues','Abnahmen',document.querySelectorAll('#acceptances .item').length],['team','Mitglieder',document.querySelectorAll('#members .item').length]].forEach(([id,label,count])=>{const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent=count+' '+label;b.onclick=()=>select(id);target.append(b);});}
+function refresh(){filterReports();document.querySelectorAll('.pill').forEach(el=>{const translated=labels[el.textContent.trim()];if(translated&&translated!==el.textContent)el.textContent=translated;});const target=document.getElementById('overviewCounts');target.replaceChildren();[['reports','Berichte',document.querySelectorAll('#teams .report-row').length],['issues','Mängel',document.querySelectorAll('#defects .item').length],['issues','Abnahmen',document.querySelectorAll('#acceptances .item').length],['team','Mitglieder',document.querySelectorAll('#members .item').length]].forEach(([id,label,count])=>{const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent=count+' '+label;b.onclick=()=>select(id);target.append(b);});}
 const observer=new MutationObserver(refresh);['teams','members','defects','acceptances','invitations'].forEach(id=>observer.observe(document.getElementById(id),{childList:true,subtree:true}));
 select(panels.some(p=>p[0]===location.hash.slice(1))?location.hash.slice(1):'overview');refresh();
 })();

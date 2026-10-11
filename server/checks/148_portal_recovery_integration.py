@@ -95,6 +95,50 @@ assert client.post('/api/v1/portal/password/reset',json={'token':raw,'password':
 assert public_counts()['worksites']==1, 'Test site excluded'
 assert aggregate_segments([{'route_number':'1','km_from_m':0.,'km_to_m':1000.},{'route_number':'1','km_from_m':500.,'km_to_m':2000.},{'route_number':'1','km_from_m':3000.,'km_to_m':4000.}])['kilometres']==3
 
+# Exercise real membership permissions, removal and receipt replay.
+from tbserver import worksites
+from tbserver.permissions import worksite_context
+from tbserver.backup_domains import TABLES, DomainSnapshot
+from tbserver import main as runtime_main
+assert runtime_main.app
+app.include_router(worksites.router)
+user['company_status']='ACTIVE';user['company_deleted_at']=None
+with conn.cursor() as c:
+    c.execute("UPDATE tb.users SET status='ACTIVE' WHERE id=%s",(helper,))
+    for uid,role,profile in [(lead,'RESPONSIBLE_TB','RESPONSIBLE_TB'),(helper,'HELPER','HELPER_STANDARD')]:
+        c.execute('INSERT INTO tb.worksite_memberships(worksite_id,user_id,worksite_role,permission_profile) VALUES (%s,%s,%s,%s)',(site,uid,role,profile))
+    c.execute("UPDATE tb.btbs SET status='ACTIVE' WHERE id=%s",(btb,))
+    ensure_participants(c,btb_id=btb,team_id=team)
+    c.execute("INSERT INTO tb.worksite_invitations(worksite_id,invited_user_id,token_hash,worksite_role,permission_profile,invited_by,expires_at) VALUES (%s,%s,'test-invite','HELPER','HELPER_STANDARD',%s,now()+interval '1 day')",(site,helper,lead))
+assert client.delete(f'/api/v1/worksites/{site}/members/{lead}').status_code==409
+headers={'X-Client-Change-Id':'remove-helper-once'}
+res=client.delete(f'/api/v1/worksites/{site}/members/{helper}',headers=headers)
+assert res.status_code==200,res.text
+assert client.delete(f'/api/v1/worksites/{site}/members/{helper}',headers=headers).json()==res.json()
+with conn.cursor() as c:
+    c.execute('SELECT status FROM tb.worksite_memberships WHERE worksite_id=%s AND user_id=%s',(site,helper));assert c.fetchone()['status']=='REMOVED'
+    c.execute('SELECT removed_at FROM tb.team_members WHERE team_id=%s AND user_id=%s',(team,helper));assert c.fetchone()['removed_at']
+    c.execute('SELECT status FROM tb.btb_participant_states WHERE btb_id=%s AND user_id=%s',(btb,helper));assert c.fetchone()['status']=='NOT_PARTICIPATING'
+    c.execute("SELECT revoked_at FROM tb.worksite_invitations WHERE token_hash='test-invite'");assert c.fetchone()['revoked_at']
+    try: worksite_context(c,{**user,'user_id':helper},site)
+    except HTTPException as e: assert e.status_code==403
+    else: raise AssertionError('Removed helper retains worksite access')
+    c.execute("SELECT tablename FROM pg_tables WHERE schemaname='tb'")
+    assert {row['tablename'] for row in c.fetchall()}==TABLES, 'Backup table contract differs from schema'
+    rows={}
+    for table in TABLES:
+        c.execute('SELECT * FROM tb.'+table);rows[table]=c.fetchall()
+    DomainSnapshot(rows)
+# Admin fallback requires an active existing portal account, not a device-only user.
+app.dependency_overrides[r.require_admin_session_csrf]=lambda:{'company_role':'ADMIN','user_id':lead}
+response=client.post(f'/api/v1/admin/users/{helper}/password-reset')
+assert response.status_code==200,response.text
+fallback=response.json()['url'].split('=')[-1]
+assert client.post('/api/v1/portal/password/reset',json={'token':fallback,'password':'AdminFallback12345'}).status_code==200
+with conn.cursor() as c:
+    c.execute('DELETE FROM tb.portal_credentials WHERE user_id=%s',(helper,))
+assert client.post(f'/api/v1/admin/users/{helper}/password-reset').status_code==409
+
 root=Path(__file__).resolve().parents[1]/'templates'
 env=Environment(loader=FileSystemLoader(str(root)),autoescape=select_autoescape())
 request=Request({'type':'http','method':'GET','path':'/portal/v1/worksites','headers':[],'scheme':'https','server':('example.invalid',443),'query_string':b''})

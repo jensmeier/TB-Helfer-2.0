@@ -2,7 +2,7 @@ name: Portal 005 integration
 on:
   push:
     branches: [feature/tb-server-1.0]
-    paths: ['server/tbserver/portal_recovery.py', 'server/tbserver/public_overview.py', 'server/tbserver/btb_participants.py', 'server/tbserver/worksites.py', 'server/templates/**', 'server/v1_migrations/023*', 'server/checks/148*', '.github/workflows/portal-005.yml']
+    paths: ['server/tbserver/portal_recovery.py', 'server/tbserver/public_overview.py', 'server/tbserver/btb_participants.py', 'server/tbserver/worksites.py', 'server/templates/**', 'server/v1_migrations/023*', 'server/checks/148*', 'server/checks/149*', 'server/tbserver/backup_domains.py', 'server/tbserver/recovery.py', '.github/workflows/portal-005.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -32,8 +32,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r server/requirements.txt httpx pillow
+      - run: pip install -r server/requirements.txt httpx pillow playwright
       - run: python server/checks/148_portal_recovery_integration.py
+      - run: python -m playwright install --with-deps chromium
+      - run: python server/checks/149_portal_browser.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

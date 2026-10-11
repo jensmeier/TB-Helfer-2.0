@@ -192,7 +192,7 @@ def admin_reset(user_id: UUID, admin=Depends(require_admin_session_csrf)):
     base=_base()
     with transaction() as conn, conn.cursor() as cur:
         cur.execute('''SELECT u.*,co.status AS company_status,co.deleted_at AS company_deleted_at
-          FROM tb.users u LEFT JOIN tb.companies co ON co.id=u.company_id WHERE u.id=%s FOR UPDATE OF u''',(user_id,))
+          FROM tb.users u JOIN tb.portal_credentials c ON c.user_id=u.id LEFT JOIN tb.companies co ON co.id=u.company_id WHERE u.id=%s AND c.activated_at IS NOT NULL FOR UPDATE OF u,c''',(user_id,))
         if not _active(cur.fetchone()):
             raise HTTPException(409,'USER_NOT_ACTIVE')
         raw=_issue(cur,user_id,'RESET_PASSWORD')
