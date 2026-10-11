@@ -21,6 +21,7 @@ def public_counts():
         coverage = _coverage_summary_data()
         result = {
             'kilometres': round(coverage['total_length_m'] / 1000, 2),
+            'known_kilometres': round(coverage['known_km_length_m'] / 1000, 2),
             'stations': coverage['station_count'],
             'routes': coverage['route_count'],
         }

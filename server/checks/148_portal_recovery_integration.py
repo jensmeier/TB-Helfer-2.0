@@ -106,7 +106,7 @@ with patch.object(public_overview, '_coverage_summary_data', return_value={
     'private_details': ['must not escape'],
 }) as summary:
     totals = public_counts()
-    assert totals == {'kilometres': 195.52, 'stations': 4, 'routes': 9, 'worksites': 1}
+    assert totals == {'kilometres': 195.52, 'known_kilometres': 123.98, 'stations': 4, 'routes': 9, 'worksites': 1}
     totals['kilometres'] = -1
     assert public_counts()['kilometres'] == 195.52
     assert summary.call_count == 1, 'Repeated anonymous requests bypassed cache'
