@@ -1,10 +1,106 @@
-{% extends "v1_base.html" %}{% block title %}TB-Helfer · Bilderübersicht{% endblock %}{% block head %}<style>.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}.photo{margin:0;background:white;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden}.photo img{width:100%;height:180px;object-fit:cover}.photo figcaption{padding:12px;overflow-wrap:anywhere}</style>{% endblock %}{% block content %}
-<div class="card"><h1>Bilderübersicht</h1><p class="muted">Alle für dich freigegebenen Bilder der ausgewählten Baustelle.</p><div class="grid"><div><label for="site">Baustelle</label><select id="site"><option value="">Bitte wählen …</option></select></div><div><label for="date">Aufnahmedatum</label><input id="date" type="date"></div><div><label for="kind">Bereich</label><select id="kind"><option value="">Alle</option><option value="BTB">Bautagesberichte</option><option value="DEFECT">Mängel</option><option value="ACCEPTANCE">Abnahmen</option></select></div><div><label for="search">Suche</label><input id="search" type="search" placeholder="Name, Aufnahmequelle, Bericht …"></div></div><button type="button" class="secondary" id="refreshPictures">Aktualisieren</button><p id="notice" role="status"></p></div><div id="gallery" class="gallery"></div>
-{% endblock %}{% block scripts %}<script>
-const site=document.getElementById('site'),notice=document.getElementById('notice'),gallery=document.getElementById('gallery');let media=[],generation=0,events=null,refreshTimer=null;
-function render(){gallery.replaceChildren();const seen=new Set(),date=document.getElementById('date').value,kind=document.getElementById('kind').value,term=document.getElementById('search').value.toLocaleLowerCase();const selected=media.filter(m=>{if(!m.renditions?.thumb||seen.has(m.attachment_id))return false;if(date&&!String(m.captured_at||m.created_at).startsWith(date))return false;if(kind&&m.entity_type!==kind)return false;if(term&&!JSON.stringify([m.filename,m.source,m.uploaded_by_name,m.photo_metadata,m.parent_entity_id]).toLocaleLowerCase().includes(term))return false;seen.add(m.attachment_id);return true;});selected.forEach(m=>{const figure=document.createElement('figure');figure.className='photo';const link=document.createElement('a');link.href=tbScopedUrl(m.renditions.preview);link.target='_blank';link.rel='noopener';const img=document.createElement('img');img.src=tbScopedUrl(m.renditions.thumb);img.loading='lazy';img.alt=m.photo_metadata?.short_text||m.filename||'Baustellenfoto';link.append(img);const caption=document.createElement('figcaption');caption.textContent=[m.photo_metadata?.short_text||m.filename,m.captured_at?new Date(m.captured_at).toLocaleString('de-DE'):'',m.source].filter(Boolean).join(' · ');figure.append(link,caption);gallery.append(figure);});notice.textContent=selected.length+' Bilder';}
-async function load(){const turn=++generation;media=[];gallery.replaceChildren();if(!site.value){notice.textContent='Bitte eine Baustelle auswählen.';return;}notice.textContent='Bilder werden geladen …';try{const r=await tbApi('/api/v1/worksites/'+encodeURIComponent(site.value)+'/media');if(turn!==generation)return;media=r.data.media||[];render();}catch(e){if(turn!==generation)return;notice.textContent=String(e.message).includes('files.view')?'Für diese Baustelle fehlt dir die Berechtigung zum Anzeigen von Bildern.':'Bilder konnten nicht geladen werden. Bitte erneut versuchen.';}}
-function watchSite(){if(events){events.close();events=null;}if(refreshTimer)clearTimeout(refreshTimer);if(!site.value||!window.EventSource)return;const selected=site.value;events=new EventSource(tbScopedUrl('/api/v1/sync/events?worksite_id='+encodeURIComponent(selected)));events.addEventListener('change',event=>{try{const change=JSON.parse(event.data||'{}');if(String(change.worksite_id)!==selected||!['FILE','WORKSITE_MEMBERSHIP'].includes(change.entity_type))return;if(refreshTimer)clearTimeout(refreshTimer);refreshTimer=setTimeout(load,350);}catch(_){}});}
-site.onchange=()=>{watchSite();load();};document.getElementById('refreshPictures').onclick=load;window.addEventListener('beforeunload',()=>{if(events)events.close();if(refreshTimer)clearTimeout(refreshTimer);});['date','kind','search'].forEach(id=>document.getElementById(id).oninput=render);
-(async()=>{try{const r=await tbApi('/api/v1/worksites');(r.data.worksites||[]).forEach(w=>{const o=document.createElement('option');o.value=w.id;o.textContent=w.name;site.append(o);});const chosen=new URLSearchParams(location.search).get('worksite');if(chosen&&Array.from(site.options).some(o=>o.value===chosen)){site.value=chosen;watchSite();await load();}}catch(e){notice.textContent='Baustellen konnten nicht geladen werden.';}})();
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Bilderübersicht{% endblock %}
+{% block head %}<style>
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr));gap:16px}
+.photo{margin:0;background:white;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden}
+.photo img{width:100%;height:180px;object-fit:cover}.photo figcaption{padding:12px;overflow-wrap:anywhere}
+.pager{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:20px 0}
+#updates{margin-top:12px}#search{max-width:100%}
+</style>{% endblock %}
+{% block content %}
+<div class="card"><h1>Bilderübersicht</h1>
+<p class="muted">Bilder der ausgewählten Baustelle. Neueste Uploads zuerst, bis zu 60 Bilder pro Seite.</p>
+<div class="grid">
+<div><label for="site">Baustelle</label><select id="site"><option value="">Bitte wählen …</option></select></div>
+<div><label for="date">Aufnahmedatum (Deutschland)</label><input id="date" type="date"></div>
+<div><label for="kind">Bereich</label><select id="kind"><option value="">Alle</option><option value="BTB">Bautagesberichte</option><option value="DEFECT">Mängel</option><option value="ACCEPTANCE">Abnahmen</option></select></div>
+<div><label for="search">Suche</label><input id="search" type="search" maxlength="160" placeholder="Dateiname, Beschreibung, Ersteller …"></div>
+</div>
+<button type="button" class="secondary" id="refreshPictures">Aktualisieren</button>
+<div id="updates" hidden role="status">Der Bilderbestand hat sich geändert. <button type="button" id="showUpdates">Neue Ansicht laden</button></div>
+<p id="notice" role="status" aria-live="polite"></p>
+</div>
+<div id="gallery" class="gallery" aria-busy="false"></div>
+<nav class="pager" aria-label="Bilderseiten">
+<button type="button" class="secondary" id="previousPictures" disabled>Zurück</button>
+<span id="pageNumber"></span>
+<button type="button" id="nextPictures" disabled>Weitere Bilder</button>
+</nav>
+{% endblock %}
+{% block scripts %}<script>
+const site=document.getElementById('site'),notice=document.getElementById('notice'),gallery=document.getElementById('gallery');
+const previous=document.getElementById('previousPictures'),next=document.getElementById('nextPictures'),updates=document.getElementById('updates');
+let generation=0,controller=null,events=null,searchTimer=null,nextCursor=null,pageIndex=0,history=[null],busy=false;
+function buttons(){previous.disabled=busy||pageIndex===0;next.disabled=busy||!nextCursor;}
+function cancel(){generation++;if(controller)controller.abort();controller=null;}
+function clearView(){gallery.replaceChildren();nextCursor=null;pageIndex=0;history=[null];document.getElementById('pageNumber').textContent='';buttons();}
+function draw(items){
+  const fragment=document.createDocumentFragment(),seen=new Set();
+  for(const m of items.slice(0,60)){
+    if(!m.renditions?.thumb||seen.has(m.attachment_id))continue;seen.add(m.attachment_id);
+    const figure=document.createElement('figure');figure.className='photo';
+    const link=document.createElement('a');link.href=tbScopedUrl(m.renditions.preview);link.target='_blank';link.rel='noopener';
+    const img=document.createElement('img');img.src=tbScopedUrl(m.renditions.thumb);img.loading='lazy';img.decoding='async';img.width=320;img.height=180;
+    img.alt=m.photo_metadata?.short_text||m.filename||'Baustellenfoto';link.append(img);
+    const caption=document.createElement('figcaption'),stamp=m.captured_at||m.created_at;
+    caption.textContent=[m.photo_metadata?.short_text||m.filename,stamp?new Date(stamp).toLocaleString('de-DE',{timeZone:'Europe/Berlin'}):'',m.source].filter(Boolean).join(' · ');
+    figure.append(link,caption);fragment.append(figure);
+  }
+  gallery.replaceChildren(fragment);
+  return seen.size;
+}
+async function load(cursor=null,index=0){
+  cancel();const turn=generation;
+  if(!site.value){busy=false;clearView();notice.textContent='Bitte eine Baustelle auswählen.';gallery.setAttribute('aria-busy','false');return;}
+  controller=new AbortController();busy=true;buttons();gallery.setAttribute('aria-busy','true');notice.textContent='Bilder werden geladen …';
+  const params=new URLSearchParams({limit:'60'}),day=document.getElementById('date').value,kind=document.getElementById('kind').value,search=document.getElementById('search').value.trim();
+  if(cursor)params.set('cursor',cursor);if(day)params.set('day',day);if(kind)params.set('kind',kind);if(search)params.set('search',search);
+  try{
+    const r=await tbApi('/api/v1/worksites/'+encodeURIComponent(site.value)+'/media/page?'+params,{signal:controller.signal});
+    if(turn!==generation)return;
+    const count=draw(r.data.media||[]);pageIndex=index;history[index]=cursor;history.length=index+1;nextCursor=r.data.next_cursor||null;
+    document.getElementById('pageNumber').textContent='Seite '+(index+1);
+    notice.textContent=count?count+' Bilder auf dieser Seite.':(nextCursor?'Weitere Bereiche können durchsucht werden.':'Keine weiteren passenden Bilder gefunden.');
+  }catch(e){
+    if(turn!==generation||e.name==='AbortError')return;
+    const denied=/PERMISSION_REQUIRED|ACCESS_DENIED|COMPANY_DISABLED|SESSION|WORKSITE_NOT_FOUND/.test(String(e.message));
+    if(denied)clearView();
+    notice.textContent=denied?'Für diese Baustelle fehlt dir die Berechtigung oder deine Anmeldung ist abgelaufen.':'Bilder konnten nicht geladen werden. Bitte erneut versuchen.';
+  }finally{
+    if(turn===generation){busy=false;buttons();gallery.setAttribute('aria-busy','false');}
+  }
+}
+function reset(delay=0){
+  clearTimeout(searchTimer);cancel();busy=true;clearView();updates.hidden=true;
+  notice.textContent='Bilder werden geladen …';
+  if(delay)searchTimer=setTimeout(()=>load(),delay);else load();
+}
+function mediaChanged(change){
+  if(String(change.worksite_id)!==site.value)return;
+  if(change.entity_type==='WORKSITE_MEMBERSHIP'){reset();return;}
+  if(['FILE','BTB','DEFECT','ACCEPTANCE'].includes(change.entity_type))updates.hidden=false;
+}
+function watchSite(){
+  if(events){events.close();events=null;}
+  if(!site.value||!window.EventSource)return;
+  events=new EventSource(tbScopedUrl('/api/v1/sync/events?worksite_id='+encodeURIComponent(site.value)));
+  events.addEventListener('change',event=>{try{mediaChanged(JSON.parse(event.data||'{}'));}catch(_){}});
+}
+site.onchange=()=>{watchSite();reset();};
+document.getElementById('refreshPictures').onclick=()=>reset();
+document.getElementById('showUpdates').onclick=()=>reset();
+previous.onclick=()=>{if(!busy&&pageIndex>0)load(history[pageIndex-1],pageIndex-1);};
+next.onclick=()=>{if(!busy&&nextCursor)load(nextCursor,pageIndex+1);};
+['date','kind'].forEach(id=>document.getElementById(id).onchange=()=>reset());
+document.getElementById('search').oninput=()=>reset(300);
+window.addEventListener('beforeunload',()=>{cancel();clearTimeout(searchTimer);if(events)events.close();});
+(async()=>{
+  try{
+    const r=await tbApi('/api/v1/worksites');
+    (r.data.worksites||[]).forEach(w=>{const o=document.createElement('option');o.value=w.id;o.textContent=w.name;site.append(o);});
+    const chosen=new URLSearchParams(location.search).get('worksite');
+    if(chosen&&Array.from(site.options).some(o=>o.value===chosen)){site.value=chosen;watchSite();await load();}
+    else notice.textContent='Bitte eine Baustelle auswählen.';
+  }catch(e){notice.textContent='Baustellen konnten nicht geladen werden.';}
+})();
 </script>{% endblock %}

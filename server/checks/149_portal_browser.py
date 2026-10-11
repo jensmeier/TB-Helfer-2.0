@@ -1,7 +1,7 @@
 """Rendered production templates in Chromium, mocked API only; no live service."""
 import json
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
 from playwright.sync_api import sync_playwright, expect
 
 root=Path('/tmp/portal-rendered')
@@ -23,6 +23,14 @@ def handle(route):
     elif path.endswith('/nodes'):data={'nodes':[]}
     elif path.endswith('/teams'):data={'teams':[{'id':'team1','name':'Team','member_count':1}]}
     elif path.endswith('/btbs'):data={'btbs':reports}
+    elif path.endswith('/media/page'):
+        query=parse_qs(urlsplit(route.request.url).query)
+        assert query.get('limit')==['60']
+        offset=int(query.get('cursor',['0'])[0])
+        term=query.get('search',[''])[0]
+        indices=[] if term=='no-match' else ([9999] if term=='last-photo' else range(offset,min(offset+60,10000)))
+        items=[{**photo,'attachment_id':'p'+str(i),'filename':'Foto_'+str(i)+'.jpg'} for i in indices]
+        data={'media':items,'next_cursor':str(offset+60) if not term and offset+60<10000 else None}
     elif path.endswith('/media'):data={'media':[photo,photo]}
     elif path.endswith('/members'):data={'members':[{'user_id':'helper','display_name':'Helfer','worksite_role':'HELPER','permission_profile':'HELPER_STANDARD'}]}
     elif path.endswith('/invite-candidates'):data={'candidates':[]}
@@ -52,9 +60,25 @@ with sync_playwright() as p:
         expect(page.locator('textarea.json:visible')).to_have_count(0)
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),'Horizontal overflow in worksite'
         page.screenshot(path=str(root/f'worksite-{width}.png'),full_page=True)
-        page.goto('https://portal.test/pictures?worksite=site1');expect(page.locator('#gallery figure')).to_have_count(1)
-        expect(page.locator('#gallery a')).to_have_attribute('href','/preview')
+        page.goto('https://portal.test/pictures?worksite=site1');expect(page.locator('#gallery figure')).to_have_count(60)
+        expect(page.locator('#gallery a').first).to_have_attribute('href','/preview')
+        expect(page.locator('#gallery img').first).to_have_attribute('loading','lazy')
+        expect(page.locator('#previousPictures')).to_be_disabled()
+        page.locator('#nextPictures').click();expect(page.locator('#pageNumber')).to_have_text('Seite 2')
+        expect(page.locator('#gallery figure')).to_have_count(60)
+        expect(page.locator('#gallery figcaption').first).to_contain_text('Foto_60.jpg')
+        page.locator('#previousPictures').click();expect(page.locator('#pageNumber')).to_have_text('Seite 1')
+        count_before=len([r for r in requests if r.endswith('/media/page')])
+        page.evaluate("mediaChanged({worksite_id:'site1',entity_type:'FILE'})")
+        expect(page.locator('#updates')).to_be_visible()
+        assert len([r for r in requests if r.endswith('/media/page')])==count_before,'Live change reloaded gallery'
+        expect(page.locator('#gallery figure')).to_have_count(60)
         page.locator('#search').fill('no-match');expect(page.locator('#gallery figure')).to_have_count(0)
+        expect(page.locator('#nextPictures')).to_be_disabled()
+        page.locator('#search').fill('last-photo');expect(page.locator('#gallery figure')).to_have_count(1)
+        expect(page.locator('#gallery figcaption')).to_contain_text('Foto_9999.jpg')
+        assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),'Horizontal overflow in gallery'
+        page.screenshot(path=str(root/f'gallery-{width}.png'),full_page=True)
         page.goto('https://portal.test/settings');expect(page.locator('#emailState')).to_contain_text('bestätigt')
         page.goto('https://portal.test/');expect(page.get_by_text('Baustellen insgesamt',exact=False)).to_be_visible()
         page.screenshot(path=str(root/f'public-{width}.png'),full_page=True)

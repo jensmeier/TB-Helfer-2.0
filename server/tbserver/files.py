@@ -1100,3 +1100,8 @@ def download_image_rendition(
             "ETag": f'"{row["sha256"]}-{kind}-{RENDITION_VERSION}"',
         },
     )
+
+
+# Portal pagination is separate from the full Android/export catalog above.
+from .media_gallery import router as gallery_router
+router.include_router(gallery_router)
