@@ -2811,3 +2811,9 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 - Screenshots: Systemstatus OK, Migration23/23 ohne ausstehende Migration; öffentliche Seite sichtbar mit0,8km,4Bahnhöfen,9Strecken,1Baustelle. Adminbestand195,52km, davon123,98km mit belastbarerKM und71,54km ohne. Installation sichtbar; Mail-/Helfer-E2E nicht daraus ableiten.
 - Sourcebefund: öffentliche Neuberechnung verwendet nur km_from_m/km_to_m und vereinigt Streckenintervalle. Kanonische Adminberechnung nutzt Stations-/Geometrielängen, Originale und manuelle Überlagerungen; parallele Gleise zählen getrennt. Somit ungeeignete unterschiedliche Metriken, kein nachgewiesener Faktor1000-Fehler und kein Datenverlust.
 - Korrektur im bestehenden Portalauftrag: öffentliche Gesamtzahl aus derselben globalen Bestandsberechnung ableiten, als Kilometer Trassenbestand mit Erklärung paralleler Gleise kennzeichnen. Nur vier erlaubte Aggregate projizieren; keine Admin-/Personendaten ausgeben. Testbaustellenregel, Cache15min und geschützte Backup-/Android-/ZIP-Pfade erhalten. Keine Migration oder Reindexierung nötig. Vor Umsetzung dokumentiert.
+
+
+## PORTAL-007 – öffentliche Zusatzkennzahl (11.10.2026)
+- Nutzer bestätigt: durchgestrichenen Erklärungstext unter öffentlichen Kacheln entfernen; zusätzliche öffentliche Kachel „km mit belastbarer KM“ wie Admin (Screenshot123,98km). Admin-Kacheln unverändert.
+- Öffentliche Gesamtzahl195,52km im neuen NAS-Screenshot bestätigt. Neue Kennzahl aus kanonischem known_km_length_m, dynamisch und zwei Nachkommastellen; keine fest eingetragenen Screenshotwerte. Bestehende Testbaustellenzählung erhalten.
+- Umsetzung beschränkt auf öffentliche Projektion/Template und vorhandene Prüfungen. Keine Migration, Android-, Backup- oder ZIP-Änderung.
