@@ -2805,3 +2805,9 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 - Migration023: fehlendes files.view nur im eingebauten RESPONSIBLE_TB-Profil ergänzen, individuelle false-Overrides bleiben; gehashte einmalige Accounttokens und Rate Limits; E-Mail-Änderung invalidiert Bestätigung/Links.
 - Passwort-/E-Mail-Endpunkte und UI implementiert, Admin-Ersatzlink, fest konfigurierte HTTPS-Portalbasis, 30 Minuten, keine Geräteänderung. Kein echter Mailversand durch Agent. SMTP-Liveabnahme steht aus.
 - Lokaler Python-AST-/JavaScript-Syntaxcheck PASS. Lokale Jinja/FastAPI/PostgreSQL-Abhängigkeiten fehlen; pip ohne verfügbare Distribution, Chromium-Binary fehlt. Separater PostgreSQL17-/Jinja-CI-Gate hinzugefügt und noch nicht ausgewertet. Keine NAS-Installation/Fertigabnahme behauptet.
+
+
+## PORTAL-006 – NAS-Nachweis und öffentliche Bestandszahl (11.10.2026, 23:36 Berlin)
+- Screenshots: Systemstatus OK, Migration23/23 ohne ausstehende Migration; öffentliche Seite sichtbar mit0,8km,4Bahnhöfen,9Strecken,1Baustelle. Adminbestand195,52km, davon123,98km mit belastbarerKM und71,54km ohne. Installation sichtbar; Mail-/Helfer-E2E nicht daraus ableiten.
+- Sourcebefund: öffentliche Neuberechnung verwendet nur km_from_m/km_to_m und vereinigt Streckenintervalle. Kanonische Adminberechnung nutzt Stations-/Geometrielängen, Originale und manuelle Überlagerungen; parallele Gleise zählen getrennt. Somit ungeeignete unterschiedliche Metriken, kein nachgewiesener Faktor1000-Fehler und kein Datenverlust.
+- Korrektur im bestehenden Portalauftrag: öffentliche Gesamtzahl aus derselben globalen Bestandsberechnung ableiten, als Kilometer Trassenbestand mit Erklärung paralleler Gleise kennzeichnen. Nur vier erlaubte Aggregate projizieren; keine Admin-/Personendaten ausgeben. Testbaustellenregel, Cache15min und geschützte Backup-/Android-/ZIP-Pfade erhalten. Keine Migration oder Reindexierung nötig. Vor Umsetzung dokumentiert.
