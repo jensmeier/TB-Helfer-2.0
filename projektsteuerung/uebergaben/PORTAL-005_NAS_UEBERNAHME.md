@@ -1,4 +1,6 @@
 # PORTAL-005 – Portalumbau und Synology-Übernahme
+
+> Nachtrag PORTAL-006, 11.10.2026: NAS-Installation23/23 sichtbar. Öffentliche Kilometerzahl im Programmstand bcee8df79a6c657f40f41ef705a464fe77970569 korrigiert: dieselbe physische Trassenlänge wie Admin, parallele Gleise getrennt. Die alte Streckenintervall-Vereinigung weiter unten ist überholt. Für diese Korrektur nur `server/tbserver/public_overview.py` und `server/templates/v1_public_home.html` in die entsprechenden NAS-Unterordner übernehmen; API dabei über Container Manager stoppen/starten, danach StrgF5. Keine Migration/Reindexierung. [Portal-/Browser-CI PASS](https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/38177184786).
 Stand: 11.10.2026. Geprüfter Programmstand: `424b5d4701b603e35c51b38d5b32b55f707cf2c7`.
 Branch: `feature/tb-server-1.0`, PR #6 bleibt Draft.
 
