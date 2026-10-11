@@ -55,7 +55,7 @@ with sync_playwright() as p:
         expect(page.locator('#gallery a')).to_have_attribute('href','/preview')
         page.locator('#search').fill('no-match');expect(page.locator('#gallery figure')).to_have_count(0)
         page.goto('https://portal.test/settings');expect(page.locator('#emailState')).to_contain_text('bestätigt')
-        page.goto('https://portal.test/');expect(page.get_by_text('Baustellen',exact=True)).to_be_visible()
+        page.goto('https://portal.test/');expect(page.get_by_text('Baustellen insgesamt',exact=False)).to_be_visible()
         assert not errors,errors
         context.close()
     browser.close()

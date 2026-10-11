@@ -17,8 +17,10 @@ conn=psycopg.connect(host=os.environ['DB_HOST'],dbname=os.environ['DB_NAME'],use
 with conn.cursor() as cur:
     cur.execute("SELECT to_regclass('tb.users') AS existing")
     assert cur.fetchone()['existing'] is None, 'Refusing nonempty schema'
-    for path in sorted((Path(__file__).resolve().parents[1]/'v1_migrations').glob('*.sql')):
-        cur.execute(path.read_text())
+os.environ['TB_MIGRATIONS_ROOT']=str(Path(__file__).resolve().parents[1]/'v1_migrations')
+from tbserver.migrations import migrate
+assert len(migrate())==23
+assert migrate()==[], 'Migration replay must be a no-op'
 
 from tbserver import portal_recovery as r
 from tbserver.portal import require_csrf,current_portal_session_user
@@ -124,7 +126,8 @@ with conn.cursor() as c:
     except HTTPException as e: assert e.status_code==403
     else: raise AssertionError('Removed helper retains worksite access')
     c.execute("SELECT tablename FROM pg_tables WHERE schemaname='tb'")
-    assert {row['tablename'] for row in c.fetchall()}==TABLES, 'Backup table contract differs from schema'
+    actual_tables={row['tablename'] for row in c.fetchall()}
+    assert actual_tables==TABLES, f'Backup schema mismatch: {actual_tables ^ TABLES}'
     rows={}
     for table in TABLES:
         c.execute('SELECT * FROM tb.'+table);rows[table]=c.fetchall()
