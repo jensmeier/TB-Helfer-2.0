@@ -23,9 +23,10 @@ def ensure_participants(cur, *, btb_id: UUID, team_id: UUID) -> None:
         FROM tb.team_members tm
         WHERE tm.team_id = %s
           AND tm.removed_at IS NULL
+          AND EXISTS (SELECT 1 FROM tb.btbs b WHERE b.id = %s AND b.status IN ('ACTIVE','REWORK'))
         ON CONFLICT (btb_id, user_id) DO NOTHING
         """,
-        (btb_id, team_id),
+        (btb_id, team_id, btb_id),
     )
     # Defensive: the lead should normally also be in team_members, but the BTB
     # contract must not depend on that historical invariant.
@@ -36,9 +37,10 @@ def ensure_participants(cur, *, btb_id: UUID, team_id: UUID) -> None:
         FROM tb.teams t
         WHERE t.id = %s
           AND t.status = 'ACTIVE'
+          AND EXISTS (SELECT 1 FROM tb.btbs b WHERE b.id = %s AND b.status IN ('ACTIVE','REWORK'))
         ON CONFLICT (btb_id, user_id) DO NOTHING
         """,
-        (btb_id, team_id),
+        (btb_id, team_id, btb_id),
     )
 
 
@@ -119,7 +121,13 @@ def set_own_status(
 ) -> dict[str, Any]:
     if status not in {WORKING, FINISHED}:
         raise ValueError("unsupported own participant status")
-    ensure_participants(cur, btb_id=btb_id, team_id=team_id)
+    current = participant_status(
+        cur, btb_id=btb_id, team_id=team_id, user_id=user_id, for_update=True
+    )
+    if current is None:
+        raise HTTPException(403, "TEAM_ACCESS_DENIED")
+    if current["status"] == NOT_PARTICIPATING:
+        raise HTTPException(409, "BTB_PARTICIPANT_NOT_ACTIVE")
     cur.execute(
         """
         UPDATE tb.btb_participant_states
@@ -208,3 +216,4 @@ def unfinished_participants(
         if row["status"] == WORKING
         and (exclude_user_id is None or row["user_id"] != exclude_user_id)
     ]
+

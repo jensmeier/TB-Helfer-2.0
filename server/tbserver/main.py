@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from . import SERVER_VERSION
@@ -59,6 +59,8 @@ app.add_middleware(SystemMetricsMiddleware)
 app.add_middleware(RuntimeMaintenanceMiddleware)
 app.include_router(capabilities_router)
 app.include_router(company_router)
+from .portal_recovery import router as portal_recovery_router
+app.include_router(portal_recovery_router)
 app.include_router(portal_router)
 app.include_router(admin_session_router)
 app.include_router(profile_router)
@@ -89,8 +91,14 @@ app.include_router(track_data_router)
 
 
 @app.get("/", include_in_schema=False)
-def portal_entry():
-    return RedirectResponse(url="/portal/v1/login", status_code=307)
+def portal_entry(request: Request):
+    from .admin_web import templates
+    from .public_overview import public_counts
+    try:
+        counts = public_counts()
+    except Exception:
+        counts = None
+    return templates.TemplateResponse("v1_public_home.html", {"request": request, "counts": counts})
 
 
 @app.get("/health/live", tags=["system"])
@@ -133,4 +141,5 @@ def health_ready():
         "migrations": "ok",
         "server_version": SERVER_VERSION,
     }
+
 

@@ -2,7 +2,7 @@
 {% block title %}TB-Helfer · Portal{% endblock %}
 {% block content %}
 <div class="card">
-  <h1>Portal</h1>
+  <h1>Einstellungen</h1>
   <p>Angemeldet als <b>{{ user.display_name }}</b> · Rolle <span class="pill">{{ user.company_role }}</span></p>
   <p class="muted">Baustellen bleiben firmengetrennt. Persönliche Kontaktdaten und dein Anzeigename gehören zu deinem eigenen Profil.</p>
   <div class="actions">
@@ -36,14 +36,13 @@
   </table></div>
 </div>
 
-<div class="card">
-  <h3>Eigene Serveridentität</h3>
-  <table>
-    <tr><th>Benutzer</th><td>{{ user.display_name }}</td></tr>
-    <tr><th>Login</th><td>{{ user.login_name }}</td></tr>
-    <tr><th>Firma-ID</th><td><code>{{ user.company_id or 'keine' }}</code></td></tr>
-  </table>
-</div>
+<div class="card"><h3>Anmeldung und Sicherheit</h3>
+<p id="emailState">E-Mail-Status wird geladen …</p><button type="button" id="verifyEmail">E-Mail bestätigen</button>
+<p id="securityMsg" role="status"></p>
+<details><summary>Passwort ändern</summary><form id="passwordForm">
+<label for="oldPassword">Aktuelles Passwort</label><input id="oldPassword" type="password" autocomplete="current-password" required>
+<label for="newPassword">Neues Passwort (mindestens 12 Zeichen)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="200" required>
+<button>Passwort speichern</button></form></details></div>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -65,6 +64,10 @@ async function loadDirectory(){
   }catch(error){rows.innerHTML='<tr><td colspan="4" class="muted">Firmenkontakte konnten nicht geladen werden.</td></tr>';}
 }
 loadDirectory();
+tbApi('/api/v1/portal/email/status').then(r=>{document.getElementById('emailState').textContent=r.data.verified?'E-Mail bestätigt – Passwortwiederherstellung verfügbar.':'E-Mail noch nicht bestätigt.';}).catch(()=>{document.getElementById('emailState').textContent='E-Mail-Status nicht verfügbar.';});
+document.getElementById('verifyEmail').onclick=async()=>{try{const r=await tbApi('/api/v1/portal/email/verify-request',{method:'POST'});document.getElementById('securityMsg').textContent=r.data.message;}catch(e){document.getElementById('securityMsg').textContent=e.message;}};
+document.getElementById('passwordForm').onsubmit=async e=>{e.preventDefault();try{const r=await tbApi('/api/v1/portal/password/change',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:document.getElementById('oldPassword').value,password:document.getElementById('newPassword').value})});document.getElementById('securityMsg').textContent=r.data.message;if(r.data.changed)location.href='/portal/v1/login';}catch(e){document.getElementById('securityMsg').textContent=e.message;}};
+
 
 document.getElementById('profileForm').addEventListener('submit',async ev=>{
   ev.preventDefault();

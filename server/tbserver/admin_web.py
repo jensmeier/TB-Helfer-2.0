@@ -86,7 +86,7 @@ def portal_activate_page(request: Request):
     )
 
 
-@router.get("/portal/v1")
+@router.get("/portal/v1/settings")
 def portal_home(
     request: Request,
     user: dict[str, Any] = Depends(current_portal_session_user),
@@ -544,3 +544,18 @@ def admin_company_branding_page(
         },
     )
 
+
+
+
+@router.get("/portal/v1")
+def portal_start(user: dict[str, Any] = Depends(current_portal_session_user)):
+    return RedirectResponse("/portal/v1/worksites", status_code=303)
+
+@router.get("/portal/v1/account")
+def portal_account_page(request: Request):
+    return templates.TemplateResponse("v1_portal_account.html", {"request":request},
+        headers={"Cache-Control":"no-store", "Referrer-Policy":"no-referrer"})
+
+@router.get("/portal/v1/pictures")
+def portal_pictures_page(request: Request, user: dict[str, Any] = Depends(current_portal_session_user)):
+    return templates.TemplateResponse("v1_portal_pictures.html", {"request":request,"user":user})

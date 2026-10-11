@@ -2,8 +2,8 @@
 {% block title %}TB-Helfer · Baustellen{% endblock %}
 {% block content %}
 <div class="card">
-  <h1>Baustellen</h1>
-  <p class="muted">Server-1.0-Fachoberfläche auf denselben Baustellen-/Team-/BTB-Verträgen wie die Geräte.</p>
+  <h1>Meine Baustellen</h1>
+  <p class="muted">Öffne eine Baustelle und arbeite an deinen Berichten weiter.</p>
   <div id="msg"></div>
 </div>
 
@@ -14,7 +14,7 @@
 </div>
 {% else %}
 <div class="card">
-  <h2>Baustelle anlegen</h2>
+  <details><summary>Neue Baustelle anlegen</summary>
   <form id="createWorksite">
     <div class="grid">
       <div><label for="name">Name</label><input id="name" required maxlength="240"></div>
@@ -35,7 +35,7 @@
       {% endif %}
     </div>
     <div class="actions" style="margin-top:14px"><button type="submit">Baustelle anlegen</button></div>
-  </form>
+  </form></details>
 </div>
 
 {% endif %}
@@ -225,3 +225,4 @@ if(worksiteSearch)worksiteSearch.addEventListener('input',renderAdminWorksites);
 loadResponsibleTbCandidates();loadWorksites();
 </script>
 {% endblock %}
+

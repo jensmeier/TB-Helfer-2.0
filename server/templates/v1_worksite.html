@@ -2,7 +2,7 @@
 {% block title %}TB-Helfer · Baustelle{% endblock %}
 {% block head %}
 <style>
-  .section-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+  [hidden]{display:none!important}summary{cursor:pointer;font-weight:700;padding:12px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
   .item{border:1px solid #eaecf0;border-radius:10px;padding:11px;margin:8px 0}
   .item h4{margin:0 0 5px}.json{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
   .compact input,.compact select,.compact textarea{margin-bottom:8px}.status-open{background:#eff8ff}.status-done{background:#ecfdf3}
@@ -28,7 +28,7 @@
 
 <div class="section-grid">
   <div class="card">
-    <h2>Struktur</h2>
+    <h2>Unterbaustellen</h2>
     <div id="nodes"></div>
     <form id="nodeForm" class="compact">
       <label for="nodeKind">Art</label>
@@ -74,7 +74,7 @@
           <div><label for="inviteProfile">Rechteprofil</label><select id="inviteProfile"><option value="HELPER_STANDARD">Helfer Standard</option><option value="HELPER_EXTENDED">Helfer erweitert</option><option value="RESPONSIBLE_TB">Verantwortlicher TB</option><option value="READ_ONLY">Nur Lesen</option></select></div>
           <div><label for="inviteDays">Gültig (Tage)</label><input id="inviteDays" type="number" min="1" max="30" value="7"></div>
         </div>
-        <label for="inviteArea">Bereich (JSON)</label><textarea id="inviteArea" class="json" rows="3">{}</textarea>
+        <input id="inviteArea" type="hidden" value="{}">
         <button type="submit">Einladung erzeugen</button>
       </form>
       <div id="inviteSecret"></div>
@@ -104,8 +104,8 @@
       </div>
       <label for="defectNode">Strukturelement (optional)</label><select id="defectNode"><option value="">ohne Zuordnung</option></select>
       <label for="defectComment">Kommentar</label><textarea id="defectComment" rows="2"></textarea>
-      <details>
-        <summary>Zusatzdaten (JSON)</summary>
+      <details hidden>
+        <summary>Zusatzdaten</summary>
         <p class="muted">Nur für zusätzliche Felder. Die Fachfelder oben bleiben maßgeblich.</p>
         <textarea id="defectPayload" class="json" rows="4">{}</textarea>
       </details>
@@ -153,7 +153,7 @@
     <label for="acceptanceComment">Kommentar</label><textarea id="acceptanceComment" rows="2"></textarea>
     <label for="acceptanceRemaining">Restpunkte</label><textarea id="acceptanceRemaining" rows="2"></textarea>
     <details>
-      <summary>Zusatzdaten (JSON)</summary>
+      <summary>Zusatzdaten</summary>
       <p class="muted">Nur für zusätzliche Felder. Die Fachfelder oben bleiben maßgeblich.</p>
       <textarea id="acceptancePayload" class="json" rows="4">{}</textarea>
     </details>
@@ -288,7 +288,8 @@ async function loadNodes(){
   const target=document.getElementById('nodes');
   target.innerHTML=nodeData.length?nodeData.map(function(n){
     const actions=can('worksite.structure.edit')?'<div class="actions" style="margin-top:7px"><button type="button" onclick="editNode(\''+esc(n.id)+'\')">Bearbeiten</button><button class="danger" type="button" onclick="deleteNode(\''+esc(n.id)+'\')">Löschen</button></div>':'';
-    return '<div class="item"><b>'+esc(nodeTypeLabel(n.node_kind))+'</b> · '+esc(n.name)+
+    let depth=0,parent=n.parent_id;const visited=new Set([n.id]);while(parent&&!visited.has(parent)&&depth<8){visited.add(parent);depth++;const ancestor=nodeData.find(x=>x.id===parent);parent=ancestor?ancestor.parent_id:null;}
+    return '<div class="item" style="margin-left:'+Math.min(depth*18,100)+'px"><b>'+esc(nodeTypeLabel(n.node_kind))+'</b> · '+esc(n.name)+
       (n.route_number?'<div class="muted">Strecke '+esc(n.route_number)+'</div>':'')+
       (n.track_key?'<div class="muted">Gleis '+esc(n.track_key)+'</div>':'')+actions+'</div>';
   }).join(''):'<p class="muted">Noch keine Struktur angelegt.</p>';
@@ -360,7 +361,8 @@ async function loadMembers(){
       transfer='<select id="'+esc(selectId)+'" style="max-width:320px">'+options+'</select>'+
         '<button type="button" onclick="transferHelperTeam(\''+esc(m.user_id)+'\')">Team wechseln</button>';
     }
-    const actions=(permissionButton||transfer)?'<div class="actions" style="margin-top:7px">'+permissionButton+transfer+'</div>':'';
+    const remove=can('members.manage')&&m.worksite_role==='HELPER'?'<button class="danger" type="button" onclick="removeHelper(\''+esc(m.user_id)+'\')">Aus Baustellenteam entfernen</button>':'';
+    const actions=(permissionButton||transfer||remove)?'<div class="actions" style="margin-top:7px">'+permissionButton+transfer+remove+'</div>':'';
     return '<div class="item"><b>'+esc(m.display_name)+'</b> <span class="pill">'+esc(m.worksite_role)+'</span>'+
       '<div class="muted">'+esc(m.permission_profile)+(m.team_name?' · Team '+esc(m.team_name)+' · TB '+esc(m.lead_name||'—'):'')+'</div>'+
       (m.personal_email?'<div>'+esc(m.personal_email)+'</div>':'')+
@@ -371,8 +373,8 @@ async function loadMembers(){
 async function editMemberPermissions(userId){
   const result=await tbApi('/api/v1/worksites/'+worksiteId+'/members');
   const m=(result.data.members||[]).find(function(item){return item.user_id===userId;});if(!m)return;
-  const profile=prompt('Berechtigungsprofil',m.permission_profile||'HELPER_STANDARD');if(profile===null||!profile.trim())return;
-  const areaRaw=prompt('Bereich (JSON)',JSON.stringify(m.area_scope||{}));if(areaRaw===null)return;
+  const choices=['HELPER_STANDARD','HELPER_EXTENDED','RESPONSIBLE_TB','READ_ONLY'];const choice=prompt('Rechteprofil auswählen: 1 = Helfer Standard, 2 = Helfer erweitert, 3 = Verantwortlicher TB, 4 = Nur Lesen',String(choices.indexOf(m.permission_profile)+1));if(choice===null)return;const profile=choices[Number(choice)-1];if(!profile){show('err','Bitte eine Zahl von 1 bis 4 wählen.');return;}
+  const areaRaw=JSON.stringify(m.area_scope||{});
   try{
     const area=JSON.parse(areaRaw||'{}');
     await tbApi('/api/v1/worksites/'+worksiteId+'/members/'+encodeURIComponent(userId)+'/permissions',{
@@ -383,6 +385,8 @@ async function editMemberPermissions(userId){
   }catch(error){show('err',error.message||String(error));}
 }
 window.editMemberPermissions=editMemberPermissions;
+window.removeHelper=async function(id){if(!confirm('Helfer aus dem Baustellenteam entfernen? Weitere Zugriffe werden gesperrt. Bereits gespeicherte Beiträge bleiben erhalten.'))return;try{await tbApi('/api/v1/worksites/'+worksiteId+'/members/'+encodeURIComponent(id),{method:'DELETE'});await loadMembers();await loadTeams();show('ok','Helfer aus dem Baustellenteam entfernt.');}catch(e){show('err',e.message);}};
+
 
 async function transferHelperTeam(userId){
   const select=document.getElementById('member-team-'+userId);
@@ -491,17 +495,17 @@ async function loadTeams(){
     let btbs=[];
     try{
       const b=await tbApi('/api/v1/worksites/'+worksiteId+'/teams/'+encodeURIComponent(t.id)+'/btbs');
-      btbs=b.data.btbs||[];
+      btbs=(b.data.btbs||[]).sort((a,b)=>String(b.work_date).localeCompare(String(a.work_date)));
     }catch(_){}
     const btbHtml=btbs.length?btbs.map(function(b){
-      return '<div class="item"><span class="pill">'+esc(b.status)+'</span> '+
-        esc(b.work_date||'ohne Datum')+
+      return '<div class="item report-row" data-status="'+esc(b.status)+'" data-date="'+esc(b.work_date)+'"><span class="pill">'+esc(b.status)+'</span> '+
+        esc(b.work_date?String(b.work_date).split('-').reverse().join('.'):'ohne Datum')+
         '<div class="actions" style="margin-top:7px"><a class="btn" href="'+pagePrefix+'/btbs/'+encodeURIComponent(b.id)+'">BTB öffnen</a></div></div>';
     }).join(''):'<p class="muted">Noch kein BTB.</p>';
     const createButton=can('btb.create')&&!t.active_btb_id?'<button type="button" onclick="createBtb(\''+esc(t.id)+'\')">Neuen BTB starten</button>':'';
     return '<div class="item"><h4>'+esc(t.name||t.lead_name||'Team')+'</h4>'+
       '<div class="muted">Verantwortlicher TB: '+esc(t.lead_name||'—')+' · '+esc(t.member_count)+' Mitglieder</div>'+
-      (t.active_btb_id?'<div class="notice info">Aktiver BTB: <a href="'+pagePrefix+'/btbs/'+encodeURIComponent(t.active_btb_id)+'">'+esc(t.active_btb_id)+'</a></div>':'')+
+      (t.active_btb_id?'<div class="notice info">Aktiver BTB: <a href="'+pagePrefix+'/btbs/'+encodeURIComponent(t.active_btb_id)+'">Weiterarbeiten</a></div>':'')+
       btbHtml+'<div class="actions">'+createButton+'</div></div>';
   }));
   target.innerHTML=blocks.join('');
@@ -610,7 +614,7 @@ async function loadDefects(){
       '<div>'+esc((d.payload||{}).beschreibung||'')+'</div>'+
       '<div class="muted">'+[d.payload?.bereich,d.payload?.km,d.payload?.firma].filter(Boolean).map(esc).join(' · ')+'</div>'+
       ((d.payload||{}).kommentar?'<div class="muted">Kommentar: '+esc(d.payload.kommentar)+'</div>':'')+
-      '<details><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(d.payload||{},null,2))+'</pre></details>'+
+      '<details hidden><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(d.payload||{},null,2))+'</pre></details>'+
       '<div class="muted" style="margin-top:8px">Mangel-Fotos</div>'+renderFachMedia('DEFECT',d.id)+
       '<div class="actions">'+edit+close+'</div></div>';
   }).join(''):'<p class="muted">Keine Mängel.</p>';
@@ -633,7 +637,7 @@ async function editDefect(id,version){
     document.getElementById('defectFormTitle').textContent='Mangel bearbeiten';
     document.getElementById('defectSubmit').textContent='Mangel speichern';
     document.getElementById('defectCancel').style.display='inline-block';
-    document.getElementById('defectForm').scrollIntoView({behavior:'smooth',block:'start'});
+    document.getElementById('defectForm').closest('details').open=true;document.getElementById('defectForm').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){show('err',error.message||String(error));}
 }
 function resetDefectForm(){
@@ -674,7 +678,7 @@ async function loadAcceptances(){
         ((a.payload||{}).kmVon!=null?'km '+esc(a.payload.kmVon):null),
         ((a.payload||{}).kmBis!=null?'bis '+esc(a.payload.kmBis):null)].filter(Boolean).join(' · ')+'</div>'+
       ((a.payload||{}).restpunkte?'<div class="muted">Restpunkte: '+esc(a.payload.restpunkte)+'</div>':'')+
-      '<details><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(a.payload||{},null,2))+'</pre></details>'+
+      '<details hidden><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(a.payload||{},null,2))+'</pre></details>'+
       '<div class="muted" style="margin-top:8px">Abnahme-Fotos</div>'+renderFachMedia('ACCEPTANCE',a.id)+
       '<div class="actions">'+edit+finalize+remove+'</div></div>';
   }).join(''):'<p class="muted">Keine Abnahmen.</p>';
@@ -702,7 +706,7 @@ async function editAcceptance(id,version){
     document.getElementById('acceptanceFormTitle').textContent='Abnahme bearbeiten';
     document.getElementById('acceptanceSubmit').textContent='Abnahme speichern';
     document.getElementById('acceptanceCancel').style.display='inline-block';
-    document.getElementById('acceptanceForm').scrollIntoView({behavior:'smooth',block:'start'});
+    document.getElementById('acceptanceForm').closest('details').open=true;document.getElementById('acceptanceForm').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){show('err',error.message||String(error));}
 }
 function resetAcceptanceForm(){
@@ -895,4 +899,27 @@ function startWorksiteLiveUpdates(){
   }catch(error){show('err',error.message||String(error));}
 })();
 </script>
+
+<script>
+(function(){
+const labels={ACTIVE:'Aktiv',FINALIZED:'Abgeschlossen',REWORK:'Nachbearbeitung',HELPER:'Helfer',HELPER_STANDARD:'Helfer Standard',HELPER_EXTENDED:'Helfer erweitert',RESPONSIBLE_TB:'Verantwortlicher TB',READ_ONLY:'Nur Lesen',TB:'TB',REVOKED:'Widerrufen',ACCEPTED:'Angenommen',OPEN:'Offen',CLOSED:'Erledigt',IN_PROGRESS:'In Arbeit',EXPIRED:'Abgelaufen'};
+const nav=document.createElement('nav');nav.className='card actions';nav.setAttribute('aria-label','Baustellenbereiche');
+const header=document.getElementById('title').closest('.card');header.after(nav);
+const overview=document.createElement('section');overview.className='card';overview.innerHTML='<h2>Übersicht</h2><p>Berichte, Bilder und offene Aufgaben dieser Baustelle.</p><div id="overviewCounts" class="actions"></div>';nav.after(overview);
+const panels=[['overview','Übersicht',[overview]],['reports','Bautagesberichte',[document.getElementById('teams').closest('.card')]],['structure','Unterbaustellen',[document.getElementById('nodes').closest('.card')]],['issues','Mängel & Abnahmen',[document.getElementById('defects').closest('.card'),document.getElementById('acceptances').closest('.card')]],['team','Team & Einladungen',[document.getElementById('members').closest('.card')]]];
+const host=document.createElement('div');overview.after(host);panels.slice(1).forEach(p=>p[2].forEach(el=>host.append(el)));document.querySelectorAll('.section-grid').forEach(g=>{if(!g.children.length)g.remove();});
+function select(key){panels.forEach(([id,label,els])=>{els.forEach(el=>el.hidden=id!==key);const b=nav.querySelector('[data-panel="'+id+'"]');b.classList.toggle('secondary',id!==key);b.setAttribute('aria-current',id===key?'page':'false');});history.replaceState(null,'','#'+key);}
+panels.forEach(([id,label])=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.dataset.panel=id;b.onclick=()=>select(id);nav.append(b);});
+const filters=document.createElement('div');filters.className='grid';filters.innerHTML='<div><label for="reportDate">Datum</label><input id="reportDate" type="date"></div><div><label for="reportStatus">Status</label><select id="reportStatus"><option value="">Alle</option><option value="ACTIVE">Aktiv</option><option value="REWORK">Nachbearbeitung</option><option value="FINALIZED">Abgeschlossen</option></select></div>';document.getElementById('teams').before(filters);
+function filterReports(){const date=document.getElementById('reportDate').value,status=document.getElementById('reportStatus').value;document.querySelectorAll('.report-row').forEach(el=>el.hidden=!!((date&&el.dataset.date!==date)||(status&&el.dataset.status!==status)));}
+filters.oninput=filterReports;
+const pictures=document.createElement('a');pictures.className='btn secondary';pictures.textContent='Bilder';pictures.href='/portal/v1/pictures?worksite='+encodeURIComponent(worksiteId);nav.append(pictures);
+for(const [id,label] of [['nodeForm','Unterbaustelle anlegen'],['defectForm','Mangel anlegen / bearbeiten'],['acceptanceForm','Abnahme anlegen / bearbeiten'],['inviteForm','Person einladen']]){const form=document.getElementById(id);if(!form)continue;const d=document.createElement('details'),summary=document.createElement('summary');summary.textContent=label;form.before(d);d.append(summary,form);}
+document.querySelectorAll('textarea.json').forEach(el=>{const details=el.closest('details');if(details)details.hidden=true;});
+function refresh(){filterReports();document.querySelectorAll('.pill').forEach(el=>{const translated=labels[el.textContent.trim()];if(translated&&translated!==el.textContent)el.textContent=translated;});const target=document.getElementById('overviewCounts');target.replaceChildren();[['reports','Berichte',document.querySelectorAll('#teams a').length],['issues','Mängel',document.querySelectorAll('#defects .item').length],['issues','Abnahmen',document.querySelectorAll('#acceptances .item').length],['team','Mitglieder',document.querySelectorAll('#members .item').length]].forEach(([id,label,count])=>{const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent=count+' '+label;b.onclick=()=>select(id);target.append(b);});}
+const observer=new MutationObserver(refresh);['teams','members','defects','acceptances','invitations'].forEach(id=>observer.observe(document.getElementById(id),{childList:true,subtree:true}));
+select(panels.some(p=>p[0]===location.hash.slice(1))?location.hash.slice(1):'overview');refresh();
+})();
+</script>
 {% endblock %}
+

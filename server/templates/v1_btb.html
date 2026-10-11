@@ -227,6 +227,7 @@ function canEditCurrentBtb(){
   return !ownShiftFinished()&&!ownShiftNotParticipating();
 }
 function participantLabel(status){
+  if(current&&current.status==='FINALIZED'&&status==='WORKING')return 'Schicht damals nicht beendet';
   return status==='FINISHED'?'FERTIG':status==='NOT_PARTICIPATING'?'NICHT BETEILIGT':'ARBEITET';
 }
 function friendlyBtbStatus(status){
@@ -1231,7 +1232,7 @@ function renderParticipants(){
   const finished=participants.filter(p=>p.status==='FINISHED').length;
   const notPart=participants.filter(p=>p.status==='NOT_PARTICIPATING').length;
   document.getElementById('participantSummary').textContent=
-    finished+' fertig · '+working+' arbeitet'+(notPart?' · '+notPart+' nicht beteiligt':'');
+    finished+' fertig · '+working+(current&&current.status==='FINALIZED'?' damals nicht beendet':' arbeitet')+(notPart?' · '+notPart+' nicht beteiligt':'');
   target.innerHTML=participants.length?participants.map(function(p){
     const statusClass=p.status==='FINISHED'?'shift-finished':p.status==='NOT_PARTICIPATING'?'shift-na':'shift-working';
     const leadMark=p.is_team_lead?' · Haupt-TB':'';
@@ -1240,7 +1241,7 @@ function renderParticipants(){
       if(p.status==='NOT_PARTICIPATING'){
         actions='<button type="button" onclick="setParticipantStatus(\''+esc(p.user_id)+'\',\'WORKING\')">Als beteiligt markieren</button>';
       }else if(p.status==='WORKING'){
-        actions='<button class="secondary" type="button" onclick="setParticipantStatus(\''+esc(p.user_id)+'\',\'NOT_PARTICIPATING\')">Nicht beteiligt</button>';
+        actions='<button class="secondary" type="button" onclick="setParticipantStatus(\''+esc(p.user_id)+'\',\'NOT_PARTICIPATING\')">Aus diesem Bericht nehmen</button>';
       }
     }
     return '<div class="participant-row '+statusClass+'"><div><b>'+esc(p.display_name||p.user_id)+'</b><div class="muted">'+esc(participantLabel(p.status))+leadMark+'</div></div><div class="actions">'+actions+'</div></div>';
@@ -1471,3 +1472,4 @@ loadBtb()
   .catch(function(error){show('err',error.message||String(error));});
 </script>
 {% endblock %}
+

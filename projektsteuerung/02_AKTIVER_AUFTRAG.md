@@ -2797,3 +2797,11 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 - Helfer laut Nutzer vor Backup in Portal und Handy entlassen, dennoch Mitglied und WORKING sichtbar. Source-Lücke: set_own_status überschreibt NOT_PARTICIPATING bei resume und finish; Entlassung darf nur Teamleitung aufheben. Konkreter NAS-Ablauf unbewiesen. Teammitgliedschaft und einzelne BTB-Teilnahme getrennt behandeln; Fotorechte untersuchen, keine pauschalen Rechte vergeben.
 - ZIP-Regel BESTÄTIGT: auf exportierendem Handy vorhandene eigene Originale verwenden, Helfer-/Portalbilder verkleinert; Export vom Handy an PC. Vorhandene Implementierung schützen, keine Android-Änderungen in SERVER.
 - PORTAL-RIGHTS-004 NAS-Screenshots zeigen Adminlink und files.view-Abbruch behoben; fehlendes Fotorecht selbst bleibt offen. Backupabnahme geschützt. Umsetzung und Tests des neuen Auftrags noch offen.
+
+
+### PORTAL-005 – Implementierung zur Prüfung
+- Navigation mit Einstellungen/Bilderübersicht, Baustellenbereiche als Reiter, eingeklappte Formulare, übersetzte Statuswerte, BTB-Datums-/Statusfilter, Bildergalerie mit vorhandenen thumb/preview-Renditions. Öffentliche Startseite zählt nur aggregiert; Testbaustellen eingeschlossen, Streckenintervalle je Strecke vereinigt.
+- Helfer: eigene Statuswechsel aus NOT_PARTICIPATING gesperrt; abgeschlossene BTBs erhalten beim Lesen keine neuen Teamteilnehmer. Explizites Entfernen eines Helfers aus Baustelle mit Rechteprüfung, widerrufenen offenen Einladungen und Change Feed. Historische Beiträge erhalten.
+- Migration023: fehlendes files.view nur im eingebauten RESPONSIBLE_TB-Profil ergänzen, individuelle false-Overrides bleiben; gehashte einmalige Accounttokens und Rate Limits; E-Mail-Änderung invalidiert Bestätigung/Links.
+- Passwort-/E-Mail-Endpunkte und UI implementiert, Admin-Ersatzlink, fest konfigurierte HTTPS-Portalbasis, 30 Minuten, keine Geräteänderung. Kein echter Mailversand durch Agent. SMTP-Liveabnahme steht aus.
+- Lokaler Python-AST-/JavaScript-Syntaxcheck PASS. Lokale Jinja/FastAPI/PostgreSQL-Abhängigkeiten fehlen; pip ohne verfügbare Distribution, Chromium-Binary fehlt. Separater PostgreSQL17-/Jinja-CI-Gate hinzugefügt und noch nicht ausgewertet. Keine NAS-Installation/Fertigabnahme behauptet.

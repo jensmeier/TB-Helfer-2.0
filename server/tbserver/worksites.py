@@ -1545,3 +1545,49 @@ def redeem_worksite_invitation(
             response_payload=response,
         )
     return response
+
+
+
+@router.delete('/{worksite_id}/members/{member_user_id}')
+def remove_helper(worksite_id: UUID, member_user_id: UUID,
+                  user: dict[str, Any] = Depends(require_csrf),
+                  mutation: MutationContext = Depends(mutation_context)) -> dict:
+    with transaction() as conn, conn.cursor() as cur:
+        context = worksite_context(cur,user,worksite_id)
+        require_permission(context,'members.manage')
+        receipt=begin_mutation(cur,user=user,context=mutation,receipt_type='WORKSITE_HELPER_REMOVE')
+        if receipt:
+            return replay_payload(receipt)
+        cur.execute('''SELECT id,worksite_role,status FROM tb.worksite_memberships
+          WHERE worksite_id=%s AND user_id=%s FOR UPDATE''',(worksite_id,member_user_id))
+        member=cur.fetchone()
+        if not member or member['status']!='ACTIVE':
+            raise HTTPException(404,'MEMBERSHIP_NOT_FOUND')
+        if member['worksite_role']!='HELPER' or member_user_id==user['user_id']:
+            raise HTTPException(409,'REMOVE_HELPER_ONLY')
+        cur.execute('''SELECT t.lead_user_id FROM tb.teams t JOIN tb.team_members tm ON tm.team_id=t.id
+          WHERE t.worksite_id=%s AND tm.user_id=%s AND tm.removed_at IS NULL''',(worksite_id,member_user_id))
+        leads=cur.fetchall()
+        if user.get('company_role')!='CHEF' and (not leads or any(r['lead_user_id']!=user['user_id'] for r in leads)):
+            raise HTTPException(403,'TEAM_LEAD_REQUIRED')
+        cur.execute('''UPDATE tb.worksite_memberships SET status='REMOVED',removed_at=now(),updated_at=now(),
+          permissions_version=permissions_version+1 WHERE id=%s RETURNING permissions_version''',(member['id'],))
+        version=cur.fetchone()['permissions_version']
+        cur.execute('''UPDATE tb.team_members tm SET removed_at=now() FROM tb.teams t
+          WHERE tm.team_id=t.id AND t.worksite_id=%s AND tm.user_id=%s AND tm.removed_at IS NULL''',(worksite_id,member_user_id))
+        cur.execute("SELECT id FROM tb.btbs WHERE worksite_id=%s AND status IN ('ACTIVE','REWORK') ORDER BY id FOR UPDATE",(worksite_id,))
+        active_btbs=[r['id'] for r in cur.fetchall()]
+        for active_id in active_btbs:
+            cur.execute("UPDATE tb.btb_participant_states SET status='NOT_PARTICIPATING',version=version+1,updated_by=%s,updated_at=now() WHERE btb_id=%s AND user_id=%s RETURNING version",(user['user_id'],active_id,member_user_id))
+            if cur.fetchone():
+                emit_change(cur,company_id=context['company_id'],worksite_id=worksite_id,entity_type='BTB',entity_id=active_id,operation='UPDATE',entity_version=None,actor_user_id=user['user_id'])
+        # Old invitations must not silently restore the removed membership.
+        cur.execute('''UPDATE tb.worksite_invitations SET revoked_at=now()
+          WHERE worksite_id=%s AND invited_user_id=%s AND accepted_at IS NULL AND revoked_at IS NULL''',(worksite_id,member_user_id))
+        emit_change(cur,company_id=context['company_id'],worksite_id=worksite_id,
+            entity_type='WORKSITE_MEMBERSHIP',entity_id=member['id'],operation='UPDATE',entity_version=version,actor_user_id=user['user_id'])
+        audit(cur,action='WORKSITE_HELPER_REMOVED',actor_user_id=user['user_id'],company_id=context['company_id'],
+            worksite_id=worksite_id,entity_type='USER',entity_id=member_user_id)
+        result={'removed':True}
+        finish_mutation(cur,user=user,context=mutation,receipt_type='WORKSITE_HELPER_REMOVE',entity_id=member['id'],result_version=version,response_payload=result)
+    return result
