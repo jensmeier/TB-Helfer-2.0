@@ -25,17 +25,17 @@ def handle(route):
     elif path.endswith('/btbs'):data={'btbs':reports}
     elif path.endswith('/media/page'):
         query=parse_qs(urlsplit(route.request.url).query)
-        assert query.get('limit')==['60']
+        size=int(query.get('limit',['60'])[0]);assert size in (12,60)
         offset=int(query.get('cursor',['0'])[0])
         term=query.get('search',[''])[0]
-        indices=[] if term=='no-match' else ([9999] if term=='last-photo' else range(offset,min(offset+60,10000)))
+        indices=[] if term=='no-match' else ([9999] if term=='last-photo' else range(offset,min(offset+size,10000)))
         items=[{**photo,'attachment_id':'p'+str(i),'filename':'Foto_'+str(i)+'.jpg'} for i in indices]
         data={'media':items,'next_cursor':str(offset+60) if not term and offset+60<10000 else None}
     elif path.endswith('/media'):data={'media':[photo,photo]}
     elif path.endswith('/members'):data={'members':[{'user_id':'helper','display_name':'Helfer','worksite_role':'HELPER','permission_profile':'HELPER_STANDARD'}]}
     elif path.endswith('/invite-candidates'):data={'candidates':[]}
     elif path.endswith('/invitations'):data={'invitations':[]}
-    elif path.endswith('/defects'):data={'defects':[]}
+    elif path.endswith('/defects'):data={'defects':[{'id':'defect1','title':'Testmangel','status':'OPEN','version':1,'payload':{}}]}
     elif path.endswith('/acceptances'):data={'acceptances':[]}
     elif path.endswith('/email/status'):data={'verified':False}
     elif path.endswith('/directory'):data={'users':[]}
@@ -48,6 +48,7 @@ with sync_playwright() as p:
         context=browser.new_context(viewport={'width':width,'height':1000})
         context.route('**/*',handle)
         page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+        requests.clear()
         page.goto('https://portal.test/site');expect(page.locator('#title')).to_have_text('Testbaustelle')
         expect(page.locator('[data-panel="overview"]')).to_have_attribute('aria-current','page')
         page.locator('[data-panel="reports"]').click();expect(page.locator('.report-row:visible')).to_have_count(2)
@@ -59,6 +60,11 @@ with sync_playwright() as p:
         page.get_by_text('Person einladen',exact=True).click();page.locator('#inviteAreaMode').select_option('limited');expect(page.locator('#inviteKmFrom')).to_be_visible()
         expect(page.locator('textarea.json:visible')).to_have_count(0)
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),'Horizontal overflow in worksite'
+        assert not any(r.endswith('/media') or r.endswith('/media/page') for r in requests),'Worksite loaded media eagerly'
+        page.locator('[data-panel="issues"]').click()
+        page.get_by_text('Fotos anzeigen',exact=True).click()
+        expect(page.locator('.fach-images img')).to_have_count(12)
+        expect(page.get_by_text('Alle zugehörigen Fotos',exact=True)).to_have_attribute('href','/portal/v1/pictures?worksite=site1&kind=DEFECT&parent_id=defect1')
         page.screenshot(path=str(root/f'worksite-{width}.png'),full_page=True)
         page.goto('https://portal.test/pictures?worksite=site1');expect(page.locator('#gallery figure')).to_have_count(60)
         expect(page.locator('#gallery a').first).to_have_attribute('href','/preview')
