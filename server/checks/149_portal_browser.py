@@ -64,7 +64,7 @@ with sync_playwright() as p:
         page.locator('[data-panel="issues"]').click()
         page.get_by_text('Fotos anzeigen',exact=True).click()
         expect(page.locator('.fach-images img')).to_have_count(12)
-        expect(page.get_by_text('Alle zugehörigen Fotos',exact=True)).to_have_attribute('href','/portal/v1/pictures?worksite=site1&kind=DEFECT&parent_id=defect1')
+        expect(page.get_by_text('Alle zugehörigen Fotos',exact=True)).to_have_attribute('href','/portal/v1/pictures?worksite='+page.evaluate('worksiteId')+'&kind=DEFECT&parent_id=defect1')
         page.screenshot(path=str(root/f'worksite-{width}.png'),full_page=True)
         page.goto('https://portal.test/pictures?worksite=site1');expect(page.locator('#gallery figure')).to_have_count(60)
         expect(page.locator('#gallery a').first).to_have_attribute('href','/preview')
