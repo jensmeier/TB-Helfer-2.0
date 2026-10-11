@@ -1906,3 +1906,14 @@ Status: STEUERUNGS-/DATENBEREICHSBAUSTEINE IMPLEMENTIERT / GESAMTINTEGRATION OFF
 ### PORTAL-007 – Nutzerbestätigung (12.10.2026, 00:03 Berlin)
 - Nutzer bestätigt die öffentliche Seite mit „passt“. Änderung als nutzerseitig abgenommen festgehalten; keine unabhängige NAS-Installationsprüfung durch Agent behauptet.
 - Bestätigte Darstellung schützen. Keine weiteren Runtime-Änderungen in diesem Bestätigungsblock.
+
+
+### PORTAL-009 – begrenzte Galerie und Fotos auf Abruf (12.10.2026 Berlin)
+- Getesteter Stand 06d223581c905ec72cc47581868513923beb9bd5; Runtime seit3ef1c5c7057c81274e235af5b109c895793792be unverändert, danach Browsercheck ergänzt/korrigiert. PR6 bleibt Draft.
+- Neue separate GET /api/v1/worksites/{id}/media/page: 60 Standard/max100, Keysetcursor mit Filter-/Nutzerbindung, Berliner Aufnahmedatum, Art, Suchtext und optionale parent_id. Aktuelle Baustellen-/Team-/Bereichsrechte, deduplizierte Fotos, max960 Kandidaten pro Request, keine N+1-Rechteabfragen. Alter vollständiger /media-Vertrag unverändert.
+- Galerie ersetzt Seiten statt anzuhängen (max60 Kacheln), Lazy-Thumbs, Preview, Suchabbruch/Generationsschutz, Live-Hinweis statt Seitensprung. Baustellendetails laden keine vollständige Medienliste mehr; je Mangel/Abnahme auf Klick max12 Vorschauen plus Link zur gefilterten Galerie. Uploadbedienung erhalten.
+- Portal-CI38181633106/Job114595251272 SUCCESS, tatsächliche Steps148/150/149 ausgeführt. PostgreSQL10.000 Metadatensätze über167 Seiten ohne Lücke/Duplikat; erste Seite27701Bytes,2SQL-Abfragen,0,0579s, Gesamttraversierung4,447s auf CI. Tests für Mehrfachlinks, Filter/parent_id, Datum, Cursor, entzogenes Recht/Mitgliedschaft, fremdes Team/Firma, sparse Scanlimit. Keine NAS-Performancegarantie oder10.000 echte Bildtransfers daraus ableiten.
+- Chromium1440/390: Seitennavigation, Suche bisEintrag9999, Live-Hinweis ohne Reload, max60 DOM-Kacheln, kein Originalabruf, Baustelle ohne eager Medienrequest,12 Bilder auf Klick und korrekter Fachgalerie-Link. Galerie-Screenshots visuell geprüft (vorangegangener erfolgreicher Lauf38181435938, identische Runtime).
+- Snapshot/Rechte/255-Client-Gate38181469539 Job114594754607 PASS. Gesamt-CI weiterhin nicht vollständig grün: bestehender Foundation-Marker FILE_LINK_TARGET_NOT_FOUND und Android-CI offen. Keine Merge-/Produktivfreigabe behauptet.
+- Übernahme: [PORTAL-009_NAS_UEBERNAHME.md](uebergaben/PORTAL-009_NAS_UEBERNAHME.md), vier Runtime-Dateien, keine Migration. NAS-Installation/Praxistest offen. Öffentliche Seite und bestätigte Backups schützen; keine app/**-Änderungen.
+- Folgearbeiten: Foto-ID/Originalzuordnung/Manifest für ZIP und Excel im Android-Folgeauftrag; kein fertiger Originalabgleich oder nativer Excel-Test behauptet.
