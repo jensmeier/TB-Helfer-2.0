@@ -1894,3 +1894,10 @@ Status: STEUERUNGS-/DATENBEREICHSBAUSTEINE IMPLEMENTIERT / GESAMTINTEGRATION OFF
 - Runtime bcee8df79a6c657f40f41ef705a464fe77970569: öffentliche Zahl verwendet dieselbe globale _coverage_summary_data wie Admin, projiziert ausschließlich Kilometer/Bahnhöfe/Strecken und separat Baustellenzahl. Keine sparsamen km_from_m/km_to_m-Intervalle mehr. Anzeige „Kilometer Trassenbestand“, zwei Nachkommastellen und Erklärung paralleler Gleise. Gleichbleibender Screenshotbestand sollte195,52km statt0,8km ergeben; realer NAS-Wert nach Installation noch offen.
 - Portalworkflow38177184786 mit echten Steps PASS: Migration/PostgreSQL/API/Jinja und Chromium1440/390. Neuer Regressionstest:195520m→195,52km,4Stationen/9Strecken/1Testbaustelle, keine privaten Zusatzfelder und schreibgeschützter Rückgabecache; bestehende Tests bleiben grün.
 - Übernahme nur server/tbserver/public_overview.py→tbserver/public_overview.py und server/templates/v1_public_home.html→templates/v1_public_home.html unter /volume1/docker/tb-helfer-v1. API über Container Manager stoppen, beide Dateien per File Station ersetzen, API starten, StrgF5. Migration23/23 unverändert; keine Reindexierung, kein Daten-/Backup-/Android-/ZIP-Umbau. Keine vollständige grüne Alt-Gesamtsuite behauptet.
+
+
+### PORTAL-007 – öffentliche Zusatzkennzahl umgesetzt
+- Nutzer bestätigt öffentliche195,52km per Screenshot; fordert zusätzliche Kachel123,98km mit belastbarer KM und Entfernung des Erklärungstextes. Admin bleibt unverändert.
+- Runtime 3146c4dff297a26d68afdbab9a8c86e58f5b1824: dynamische Projektion known_km_length_m/1000, zwei Nachkommastellen, fünfte responsive Kachel, Erklärung entfernt. Testbaustellenregel erhalten.
+- Portal-CI38178439695/Job114585681360 SUCCESS mit tatsächlich ausgeführten Integrations- und Chromium1440/390-Schritten. Bestehender Aggregat-/Datenschutztest um123,98 ergänzt. Keine komplette grüne Gesamt-CI behauptet.
+- NAS-Übernahme dieser Änderung noch offen; Anleitung projektsteuerung/uebergaben/PORTAL-007_NAS_UEBERNAHME.md. Nur zwei Runtime-Dateien, keine Migration; Android/ZIP/Backup unverändert. PR6 bleibt Draft.
