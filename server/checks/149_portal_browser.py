@@ -51,11 +51,13 @@ with sync_playwright() as p:
         page.get_by_text('Person einladen',exact=True).click();page.locator('#inviteAreaMode').select_option('limited');expect(page.locator('#inviteKmFrom')).to_be_visible()
         expect(page.locator('textarea.json:visible')).to_have_count(0)
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),'Horizontal overflow in worksite'
+        page.screenshot(path=str(root/f'worksite-{width}.png'),full_page=True)
         page.goto('https://portal.test/pictures?worksite=site1');expect(page.locator('#gallery figure')).to_have_count(1)
         expect(page.locator('#gallery a')).to_have_attribute('href','/preview')
         page.locator('#search').fill('no-match');expect(page.locator('#gallery figure')).to_have_count(0)
         page.goto('https://portal.test/settings');expect(page.locator('#emailState')).to_contain_text('bestätigt')
         page.goto('https://portal.test/');expect(page.get_by_text('Baustellen insgesamt',exact=False)).to_be_visible()
+        page.screenshot(path=str(root/f'public-{width}.png'),full_page=True)
         assert not errors,errors
         context.close()
     browser.close()

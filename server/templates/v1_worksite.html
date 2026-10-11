@@ -39,7 +39,7 @@
       </select>
       <label for="nodeParent">Übergeordnetes Element (optional)</label>
       <select id="nodeParent"><option value="">direkt unter Hauptbaustelle</option></select>
-      <label for="nodeName">Name</label><input id="nodeName" required maxlength="300">
+      <label for="nodeDisplayName">Name</label><input id="nodeDisplayName" required maxlength="300">
       <div class="grid">
         <div><label for="nodeRoute">Strecke</label><input id="nodeRoute" maxlength="40"></div>
         <div><label for="nodeTrack">Gleis / Weiche</label><input id="nodeTrack" maxlength="200"></div>
@@ -178,6 +178,7 @@ const liveDirtyTypes=new Set();
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function can(name){if(adminReadOnly)return false;return permissions['*']===true||permissions[name]===true;}
+function profileLabel(key){return ({HELPER_STANDARD:'Helfer Standard',HELPER_EXTENDED:'Helfer erweitert',RESPONSIBLE_TB:'Verantwortlicher TB',READ_ONLY:'Nur Lesen'})[key]||key||'';}
 function jsonValue(id){
   const raw=document.getElementById(id).value.trim()||'{}';
   const parsed=JSON.parse(raw);
@@ -248,7 +249,7 @@ function numberOrNull(id){
 function canonicalNodePayload(source){
   const payload=Object.assign({},source||{});
   const kind=document.getElementById('nodeKind').value;
-  const name=document.getElementById('nodeName').value.trim();
+  const name=document.getElementById('nodeDisplayName').value.trim();
   const route=document.getElementById('nodeRoute').value.trim()||null;
   const track=document.getElementById('nodeTrack').value.trim()||null;
   const station=document.getElementById('nodeStation').value.trim()||null;
@@ -366,7 +367,7 @@ async function loadMembers(){
     const remove=can('members.manage')&&m.worksite_role==='HELPER'?'<button class="danger" type="button" onclick="removeHelper(\''+esc(m.user_id)+'\')">Aus Baustellenteam entfernen</button>':'';
     const actions=(permissionButton||transfer||remove)?'<div class="actions" style="margin-top:7px">'+permissionButton+transfer+remove+'</div>':'';
     return '<div class="item"><b>'+esc(m.display_name)+'</b> <span class="pill">'+esc(m.worksite_role)+'</span>'+
-      '<div class="muted">'+esc(m.permission_profile)+(m.team_name?' · Team '+esc(m.team_name)+' · TB '+esc(m.lead_name||'—'):'')+'</div>'+
+      '<div class="muted">'+esc(profileLabel(m.permission_profile))+(m.team_name?' · Team '+esc(m.team_name)+' · TB '+esc(m.lead_name||'—'):'')+'</div>'+
       (m.personal_email?'<div>'+esc(m.personal_email)+'</div>':'')+
       (m.personal_phone?'<div>'+esc(m.personal_phone)+'</div>':'')+actions+'</div>';
   }).join(''):'<p class="muted">Keine Mitglieder.</p>';
@@ -424,7 +425,7 @@ async function loadInviteData(){
     document.getElementById('invitations').innerHTML=invitations.length?invitations.map(function(inv){
       const revoke=inv.status==='OPEN'?'<button class="danger" type="button" data-invite-id="'+esc(inv.id)+'" onclick="revokeInvitation(this.dataset.inviteId)">Widerrufen</button>':'';
       return '<div class="item"><b>'+esc(inv.invited_name)+'</b> <span class="pill">'+esc(inv.worksite_role)+'</span> <span class="pill">'+esc(inv.status)+'</span>'+
-        '<div class="muted">Profil '+esc(inv.permission_profile)+' · gültig bis '+esc(new Date(inv.expires_at).toLocaleString('de-DE'))+'</div>'+
+        '<div class="muted">Profil '+esc(profileLabel(inv.permission_profile))+' · gültig bis '+esc(new Date(inv.expires_at).toLocaleString('de-DE'))+'</div>'+
         '<div class="actions" style="margin-top:7px">'+revoke+'</div></div>';
     }).join(''):'<p class="muted">Keine Einladungen.</p>';
   }catch(error){show('err',error.message||String(error));}
@@ -768,7 +769,7 @@ document.getElementById('nodeForm').addEventListener('submit',async function(ev)
   ev.preventDefault();
   try{
     const kind=document.getElementById('nodeKind').value;
-    const name=document.getElementById('nodeName').value.trim();
+    const name=document.getElementById('nodeDisplayName').value.trim();
     const route=document.getElementById('nodeRoute').value.trim()||null;
     const track=document.getElementById('nodeTrack').value.trim()||null;
     const payload=canonicalNodePayload({});
