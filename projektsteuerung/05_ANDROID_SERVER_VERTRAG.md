@@ -873,3 +873,12 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 
 - Nachweis:89 Verhaltenstests130–141 PASS; Python/JavaScript/YAML-Syntax PASS. Echter PostgreSQL17/FastAPI-Gate zweimal SUCCESS; letzter Run37524540497 Job112478085754: https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/37524540497/job/112478085754 . UPDATE und SECURITY jeweils echte Sicherung/Wiederherstellung/API-Neustart mit Portal-/Geräteprüfungen PASS; zusätzlicher Altzustand ohne mode bleibt SECURITY. Quellbestand erhalten, Zielfehler/Lock/Retry-Guards unverändert geprüft. 3x255Clients0Fehler,p95 6,13–6,16s inkl2sWait; keine NAS-/Android-/Foto-/BTB-Schreiblastabnahme.
 - Gesamt-CI weiterhin nicht grün: foundation alter FILE_LINK_TARGET_NOT_FOUND-Marker, Android-CI alter Sourcevertrag. Nicht umgangen/abgeschaltet. Weitere Server-/Portal-Arbeit und Android-Recoveryintegration bleiben offen.
+
+
+## PORTAL-005 – freigegebener Gesamtauftrag (11.10.2026, 17:34 Berlin)
+- Nutzerfreigabe: bauen. Portal nach Aufgaben mit Baustellen/Bilder/Einstellungen, Baustellenreitern Übersicht/BTB/Bilder/Unterbaustellen/Mängel und Abnahmen/Team, bedarfsweise Formularen, deutschen Statusnamen und ohne JSON-Bedienfelder umbauen.
+- Öffentliche Startseite: Erklärung und aggregierte Streckenkilometer, Bahnhöfe mit Daten, Strecken und Baustellen. Testbaustellen ausdrücklich mitzählen. Keine Firmen-/Nutzer-/Standortdetails oder technischen Speicher-/Serverdaten öffentlich.
+- Passwort vergessen mit bestätigter E-Mail, einmaligem befristetem Resetlink, neutraler Antwort und Missbrauchsbegrenzung; administrativer Ersatzweg ohne bestätigte E-Mail. Profil/E-Mail/Passwort in Einstellungen; Geräteaktivierung getrennt erhalten.
+- Helfer laut Nutzer vor Backup in Portal und Handy entlassen, dennoch Mitglied und WORKING sichtbar. Source-Lücke: set_own_status überschreibt NOT_PARTICIPATING bei resume und finish; Entlassung darf nur Teamleitung aufheben. Konkreter NAS-Ablauf unbewiesen. Teammitgliedschaft und einzelne BTB-Teilnahme getrennt behandeln; Fotorechte untersuchen, keine pauschalen Rechte vergeben.
+- ZIP-Regel BESTÄTIGT: auf exportierendem Handy vorhandene eigene Originale verwenden, Helfer-/Portalbilder verkleinert; Export vom Handy an PC. Vorhandene Implementierung schützen, keine Android-Änderungen in SERVER.
+- PORTAL-RIGHTS-004 NAS-Screenshots zeigen Adminlink und files.view-Abbruch behoben; fehlendes Fotorecht selbst bleibt offen. Backupabnahme geschützt. Umsetzung und Tests des neuen Auftrags noch offen.
