@@ -1923,3 +1923,9 @@ Status: STEUERUNGS-/DATENBEREICHSBAUSTEINE IMPLEMENTIERT / GESAMTINTEGRATION OFF
 ### PORTAL-007 – Nutzerbestätigung (12.10.2026, 00:03 Berlin)
 - Nutzer bestätigt die öffentliche Seite mit „passt“. Änderung als nutzerseitig abgenommen festgehalten; keine unabhängige NAS-Installationsprüfung durch Agent behauptet.
 - Bestätigte Darstellung schützen. Keine weiteren Runtime-Änderungen in diesem Bestätigungsblock.
+
+
+### EXPORT-008 – Anhang und Quellcode geprueft, Suchmodul vorbereitet
+- Upload Bilderliste_gesamt.xlsx read-only geprueft:27 eindeutige relative Links. Android423f3789 GesamtMedienArchiv erzeugt Namen aus Dateibyte-Hashes; Original/Kleinversion daher nicht sicher namensgleich. Gemeinsame photo_id/Manifest als Folgeauftrag im Vertrag dokumentiert.
+- Optionales Windows-Excel-VBA-Modul server/tools/excel/TBHelferBildsuche.bas mit Anleitung vorbereitet: exakte eindeutige Dateinamen, rekursiver Index, Mehrdeutigkeiten unveraendert, Protokoll, relative Links wo moeglich, kein automatisches Speichern/Bildersetzen. Spalte anhand Ueberschrift, kompatibel mit alter14-/neuer15-Spaltenliste.
+- Kein nativer Excel-Test moeglich, keine fertige eingebettete XLSM oder Originalzuordnung behauptet. Nutzerdatei unveraendert. Keine Android-/NAS-Installation. Galerie-Paginierung/10000er-Test bleibt offen.
