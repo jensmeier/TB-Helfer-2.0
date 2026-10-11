@@ -2777,3 +2777,9 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 - Öffentlich weiter offen: Ereigniszählung nach UTC-Kalendertag10.10.104 PUBLIC_API_ERROR,11.10.bisExport6; keine Ausfallquote aus Übergangsereignissen ableiten. 24erVergleich: intern0Fehler/max128ms, NASGateway0/max321ms, öffentlich1Timeout/max5040ms und5langsam. Laptop3/11Seiten leer; HandyMobilfunk14/14 erfolgreich, zeitlich getrennt. Ursache FRITZ!Box/Switch/Provider/Cloudflare nicht nachgewiesen.
 - Nutzer kann großes API-Protokoll wegen NAS-Belastung nicht exportieren; nicht erneut anfordern. Netzwerkursachensuche auf Nutzerwunsch zurückgestellt, kein Timeout-/Tunnelumbau auf Verdacht.
 - Nächster fachlicher Block gemäß bestehendem Plan: Portal-BTB/Unterbaustellen, Einträge und Fotos umhängen, Wetter und Bildgrößen. Bereits implementierte Rechte-/Last-CI nicht doppelt bauen; deren NAS-/Geräteabnahme bleibt separat. Zuerst bestehende Portalabläufe prüfen, bestätigte Funktionen schützen. Keine NAS-Datenmutation in diesem Dokumentationsblock.
+
+
+## PORTAL-RIGHTS-004 – Befund und freigegebene Korrektur (11.10.2026)
+- Nutzer zeigt PERMISSION_REQUIRED:files.view auf Baustellenseite und markiert Admin-Link bei USER; bestätigt Korrektur mit okay.
+- Quellbefund: v1_worksite.html lädt Medien bedingungslos vor weiteren Bereichen/Live-Aktualisierung. Fehlendes files.view unterbricht Initialisierung. Medien nur mit vorhandenem Recht laden; Backendprüfung unverändert, keine Rechte pauschal erteilen. Admin-Login-Link nicht für angemeldete USER/CHEF anzeigen.
+- Android SERVER_RECOVERY_REBASE_REQUIRED separat dokumentiert: lokale Daten/Outbox erhalten, kein Reset/Neuaktivierung anweisen; Android-Implementierung außerhalb dieses Blocks.
