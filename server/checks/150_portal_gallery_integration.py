@@ -107,6 +107,8 @@ while cursor:
 assert len(seen)==10000,len(seen)
 assert max_queries<=2,max_queries
 traversal_seconds=time.perf_counter()-started
+assert client.get(url,params={"kind":"DEFECT","parent_id":str(defect)}).json()["count"]==1
+assert client.get(url,params={"kind":"DEFECT","parent_id":str(btb)}).json()["count"]==0
 # Server filter finds a record far beyond the first page.
 found=client.get(url,params={"search":"needle-00001"}).json()
 assert len(found["media"])==1 and found["media"][0]["filename"]=="Foto_1.jpg"

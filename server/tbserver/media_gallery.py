@@ -22,9 +22,9 @@ _BATCH = 240
 _SCAN_BUDGET = 960
 
 
-def _fingerprint(worksite_id, user_id, day, kind, search):
+def _fingerprint(worksite_id, user_id, day, kind, search, parent_id):
     return hashlib.sha256(json.dumps(
-        [str(worksite_id), str(user_id), str(day), kind, search],
+        [str(worksite_id), str(user_id), str(day), kind, search, str(parent_id)],
         ensure_ascii=False, separators=(",", ":"),
     ).encode()).hexdigest()[:24]
 
@@ -72,13 +72,14 @@ def gallery_page(
     day: date | None = Query(default=None),
     kind: str = Query(default="", max_length=16),
     search: str = Query(default="", max_length=160),
+    parent_id: UUID | None = Query(default=None),
     user: dict[str, Any] = Depends(current_portal_user),
 ) -> dict:
     kind = kind.strip().upper()
     search = search.strip().lower()
     if kind not in {"", "BTB", "DEFECT", "ACCEPTANCE"}:
         raise HTTPException(400, "INVALID_MEDIA_KIND")
-    fingerprint = _fingerprint(worksite_id, user["user_id"], day, kind, search)
+    fingerprint = _fingerprint(worksite_id, user["user_id"], day, kind, search, parent_id)
     after = _after(cursor, fingerprint)
     clauses = ["f.worksite_id = %s", "f.deleted_at IS NULL",
                "lower(f.mime_type) LIKE 'image/%%'"]
@@ -101,6 +102,10 @@ def gallery_page(
           AND filter_link.entity_type IN ('BTB','DEFECT','ACCEPTANCE')
           AND (%s = '' OR filter_link.entity_type = %s))""")
     base_params.extend([kind, kind])
+
+    if parent_id is not None:
+        clauses.append("EXISTS (SELECT 1 FROM tb.file_links pl WHERE pl.file_id=f.id AND pl.entity_id=%s AND (%s=\'\' OR pl.entity_type=%s))")
+        base_params.extend([parent_id, kind, kind])
 
     media = []
     scanned = 0
@@ -159,13 +164,13 @@ def gallery_page(
                 scanned += 1
                 last = row
                 after = (row["created_at"], row["id"])
-                link = next((link for link in (row["links"] or []) if _visible(link, context, user)), None)
+                link = next((link for link in (row["links"] or []) if (parent_id is None or str(link["parent_id"]) == str(parent_id)) and _visible(link, context, user)), None)
                 if link is not None:
                     meta = canonical_photo_metadata(
                         filename=row["original_name"], captured_at=row["captured_at"],
                         gps_lat=row["gps_lat"], gps_lon=row["gps_lon"],
                         gps_accuracy_m=row["gps_accuracy_m"], photo_metadata=row["photo_metadata"],
-                    )["photo_metadata"]
+                    )["photo_metadata"] or {}
                     urls = image_rendition_urls(row["id"], row["mime_type"])
                     media.append({
                         "attachment_id": str(row["id"]), "entity_type": link["kind"],

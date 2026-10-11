@@ -534,31 +534,28 @@ async function createBtb(teamId){
 }
 window.createBtb=createBtb;
 async function loadWorksiteMedia(){
+  // Media are fetched only when a user opens a specific photo panel.
   mediaData=[];
-  if(!can('files.view'))return;
-  try{
-    const result=await tbApi('/api/v1/worksites/'+worksiteId+'/media');
-    mediaData=result.data.media||[];
-  }catch(error){
-    mediaData=[];
-    throw error;
-  }
 }
-function fachMedia(type,id){
-  return mediaData.filter(function(item){
-    return item.entity_type===type&&item.parent_entity_id===id;
-  });
+async function loadFachPhotos(type,id,button){
+  const target=button.parentElement.querySelector('.fach-images');
+  button.disabled=true;
+  try{
+    const result=await tbApi('/api/v1/worksites/'+worksiteId+'/media/page?limit=12&kind='+encodeURIComponent(type)+'&parent_id='+encodeURIComponent(id));
+    target.replaceChildren();
+    (result.data.media||[]).forEach(function(file){
+      const a=document.createElement('a');a.href=tbScopedUrl(file.renditions.preview);a.target='_blank';a.rel='noopener';
+      const img=document.createElement('img');img.src=tbScopedUrl(file.renditions.thumb);img.alt=file.filename||'Foto';img.loading='lazy';img.width=96;img.height=72;img.style.objectFit='cover';a.append(img);target.append(a);
+    });
+    if(!result.data.media.length)target.textContent='Keine Fotos in dieser Auswahl.';
+    button.textContent='Fotos aktualisieren';
+  }catch(error){target.textContent=error.message||String(error);}
+  finally{button.disabled=false;}
 }
 function renderFachMedia(type,id){
   if(!can('files.view'))return '<p class="muted">Keine Berechtigung zum Anzeigen von Dateien.</p>';
-  const files=fachMedia(type,id);
-  const images=files.length?files.map(function(file){
-    const preview=tbScopedUrl(file.renditions&&file.renditions.preview?file.renditions.preview:'/api/v1/files/'+encodeURIComponent(file.attachment_id)+'/rendition/preview');
-    const thumbPath=file.renditions&&file.renditions.thumb?file.renditions.thumb:'/api/v1/files/'+encodeURIComponent(file.attachment_id)+'/rendition/thumb';
-    const thumb=tbScopedUrl(thumbPath);
-    return '<a href="'+esc(preview)+'" target="_blank" rel="noopener" title="'+esc(file.filename||'Foto')+'">'+
-      '<img src="'+esc(thumb)+'" alt="'+esc(file.filename||'Foto')+'" style="width:96px;height:72px;object-fit:cover;border:1px solid #d0d5dd;border-radius:8px"></a>';
-  }).join(''):'<span class="muted">Noch keine Fotos.</span>';
+  const gallery='/portal/v1/pictures?worksite='+encodeURIComponent(worksiteId)+'&kind='+encodeURIComponent(type)+'&parent_id='+encodeURIComponent(id);
+  const images='<button type="button" class="secondary" onclick="loadFachPhotos(\''+type+'\',\''+esc(id)+'\',this)">Fotos anzeigen</button><a class="btn secondary" href="'+esc(gallery)+'">Alle zugehörigen Fotos</a><div class="fach-images" style="display:flex;gap:8px;flex-wrap:wrap"></div>';
   const canUpload=can('files.add');
   const inputId='fach-photo-'+type+'-'+id;
   const upload=canUpload?'<div class="invite-share-row" style="margin-top:8px">'+

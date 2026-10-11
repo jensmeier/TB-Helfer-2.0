@@ -54,7 +54,7 @@ async function load(cursor=null,index=0){
   if(!site.value){busy=false;clearView();notice.textContent='Bitte eine Baustelle auswählen.';gallery.setAttribute('aria-busy','false');return;}
   controller=new AbortController();busy=true;buttons();gallery.setAttribute('aria-busy','true');notice.textContent='Bilder werden geladen …';
   const params=new URLSearchParams({limit:'60'}),day=document.getElementById('date').value,kind=document.getElementById('kind').value,search=document.getElementById('search').value.trim();
-  if(cursor)params.set('cursor',cursor);if(day)params.set('day',day);if(kind)params.set('kind',kind);if(search)params.set('search',search);
+  if(cursor)params.set('cursor',cursor);if(day)params.set('day',day);if(kind)params.set('kind',kind);if(search)params.set('search',search);if(parentFilter)params.set('parent_id',parentFilter);
   try{
     const r=await tbApi('/api/v1/worksites/'+encodeURIComponent(site.value)+'/media/page?'+params,{signal:controller.signal});
     if(turn!==generation)return;
@@ -86,7 +86,8 @@ function watchSite(){
   events=new EventSource(tbScopedUrl('/api/v1/sync/events?worksite_id='+encodeURIComponent(site.value)));
   events.addEventListener('change',event=>{try{mediaChanged(JSON.parse(event.data||'{}'));}catch(_){}});
 }
-site.onchange=()=>{watchSite();reset();};
+let parentFilter=new URLSearchParams(location.search).get("parent_id")||"";
+site.onchange=()=>{parentFilter="";watchSite();reset();};
 document.getElementById('refreshPictures').onclick=()=>reset();
 document.getElementById('showUpdates').onclick=()=>reset();
 previous.onclick=()=>{if(!busy&&pageIndex>0)load(history[pageIndex-1],pageIndex-1);};
@@ -99,6 +100,7 @@ window.addEventListener('beforeunload',()=>{cancel();clearTimeout(searchTimer);i
     const r=await tbApi('/api/v1/worksites');
     (r.data.worksites||[]).forEach(w=>{const o=document.createElement('option');o.value=w.id;o.textContent=w.name;site.append(o);});
     const chosen=new URLSearchParams(location.search).get('worksite');
+    document.getElementById('kind').value=new URLSearchParams(location.search).get('kind')||'';
     if(chosen&&Array.from(site.options).some(o=>o.value===chosen)){site.value=chosen;watchSite();await load();}
     else notice.textContent='Bitte eine Baustelle auswählen.';
   }catch(e){notice.textContent='Baustellen konnten nicht geladen werden.';}
