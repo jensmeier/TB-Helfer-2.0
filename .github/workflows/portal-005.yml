@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17
+        image: postgis/postgis:17-3.5
         env:
           POSTGRES_PASSWORD: test-only
           POSTGRES_DB: portal_test

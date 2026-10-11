@@ -78,6 +78,7 @@ def _seal_target(config: dict, state: dict, admin_id: str) -> None:
         if not cur.fetchone():
             raise RecoveryError("RECOVERY_ADMIN_NOT_IN_BACKUP")
         cur.execute("UPDATE tb.portal_sessions SET revoked_at=now() WHERE revoked_at IS NULL")
+        cur.execute("UPDATE tb.portal_account_tokens SET used_at=now() WHERE used_at IS NULL")
         mode = state.get("mode", "SECURITY")
         if mode not in {"UPDATE", "SECURITY"}:
             raise RecoveryError("RECOVERY_MODE_INVALID")
@@ -177,4 +178,5 @@ def prepare_recovery(job: dict, progress) -> dict:
                          else type(exc).__name__)
             _save(state)
             raise
+
 

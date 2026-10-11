@@ -16,7 +16,7 @@ TRACK = "TRACK"
 CONTROL = "CONTROL"
 
 USER_TABLES = frozenset({
-    "companies", "users", "portal_credentials", "portal_sessions", "devices",
+    "companies", "users", "portal_credentials", "portal_sessions", "portal_account_tokens", "devices",
     "device_activation_tokens", "permission_profiles", "worksites", "worksite_nodes",
     "worksite_memberships", "worksite_invitations", "teams", "team_members", "btbs",
     "btb_entries", "btb_original_snapshots", "btb_participant_states", "upload_sessions",
@@ -28,7 +28,7 @@ TRACK_TABLES = frozenset({
     "catalog_history", "survey_network_entities", "survey_network_changes",
 })
 CONTROL_TABLES = frozenset({
-    "schema_migrations", "releases", "background_jobs", "backup_runs",
+    "schema_migrations", "releases", "background_jobs", "backup_runs", "portal_recovery_limits",
     "system_metrics_hourly", "server_settings", "system_schedule_runs",
     # Receipts are transient responses tied both to a user and a topology epoch.
     # The runtime adapter must explicitly reset them after a restore.
@@ -43,6 +43,7 @@ TABLES = USER_TABLES | TRACK_TABLES | CONTROL_TABLES | MIXED_TABLES
 PRIMARY_KEYS = {table: ("id",) for table in TABLES}
 PRIMARY_KEYS.update({
     "schema_migrations": ("version",), "permission_profiles": ("profile_key",),
+    "portal_account_tokens": ("token_hash",), "portal_recovery_limits": ("bucket",),
     "portal_credentials": ("user_id",), "team_members": ("team_id", "user_id"),
     "btb_original_snapshots": ("btb_id",), "btb_participant_states": ("btb_id", "user_id"),
     "file_links": ("file_id", "entity_type", "entity_id", "purpose"),
@@ -342,3 +343,4 @@ def validate_original_dependencies(current: DomainSnapshot, saved: DomainSnapsho
                 for column in ("sha256", "byte_size", "storage_key"):
                     if original.get(column) is None or original.get(column) != replacement.get(column):
                         raise DomainError("BACKUP_ORIGINAL_IDENTITY_CHANGED", table, field)
+
