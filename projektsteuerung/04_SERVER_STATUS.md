@@ -1917,3 +1917,13 @@ Status: STEUERUNGS-/DATENBEREICHSBAUSTEINE IMPLEMENTIERT / GESAMTINTEGRATION OFF
 - Snapshot/Rechte/255-Client-Gate38181469539 Job114594754607 PASS. Gesamt-CI weiterhin nicht vollständig grün: bestehender Foundation-Marker FILE_LINK_TARGET_NOT_FOUND und Android-CI offen. Keine Merge-/Produktivfreigabe behauptet.
 - Übernahme: [PORTAL-009_NAS_UEBERNAHME.md](uebergaben/PORTAL-009_NAS_UEBERNAHME.md), vier Runtime-Dateien, keine Migration. NAS-Installation/Praxistest offen. Öffentliche Seite und bestätigte Backups schützen; keine app/**-Änderungen.
 - Folgearbeiten: Foto-ID/Originalzuordnung/Manifest für ZIP und Excel im Android-Folgeauftrag; kein fertiger Originalabgleich oder nativer Excel-Test behauptet.
+
+
+### PORTAL-010 – Beschriftung/GPS implementiert und geprüft (12.10.2026)
+- Nutzer bestätigt PORTAL-009 mit „funktioniert“ und NAS-Screenshots; Galerie-Praxisfunktion damit nutzerseitig bestätigt. Ergänzende Forderung: verständliche/klickbare Beschriftungen und GPS.
+- Runtime c7c707aea7d59f5abbed75050d11b5165030a7a1, getesteter Stand 7b3c5be991a2d7220885616439f614531fe7d404. Ursache: Galerie las short_text statt kanonischem kurztext und verwarf aufgelöste GPS-/Aufnahmeangaben.
+- media_gallery liefert kanonischen kurztext und begrenzte Zusatzfelder, aufgelöste Aufnahmezeit/GPS; vorhandene BTBP1-/BTBPHOTO-Dekodierung wiederverwendet. Berechtigter Mangel-/Abnahmetitel als Fallback, keine BTB-Fachtexte. Kein Datenrewrite/Migration.
+- Galerie: Beschriftung als aufklappbare Details mit Objekt/Bereich/km/Notiz/Infos und technischem Dateinamen; validierte numerische GPS-Koordinaten als OpenStreetMap-Link, sonst klare Fehlanzeige. DOM-textContent, keine untrusted HTML-/URL-Ausführung. 60er-Seiten und Thumbnail-/Previewregeln erhalten.
+- Portal-CI38249400190, Job114811482912 SUCCESS mit tatsächlich ausgeführten Steps148/150/149. 10.000-Einträge-Pagination/Rechte plus gepackter Androidname, strukturierte Metadatenpriorität, GPS/Datum, title-Fallback, fehlendes GPS; Chromium1440/390 mit klickbaren Angaben/Kartenhref. Screenshots visuell geprüft. Erste Testfixture verwendete unzulässiges SQLNULL statt leerem JSON, korrigiert und vollständig erneut geprüft.
+- Übernahme nur tbserver/media_gallery.py und templates/v1_portal_pictures.html, Anleitung [PORTAL-010_NAS_UEBERNAHME.md](uebergaben/PORTAL-010_NAS_UEBERNAHME.md). PORTAL-010 noch nicht auf NAS installiert/geprüft.
+- Grenzen: nicht gespeicherte/decodierbare Angaben nicht rekonstruierbar. SQL-Text-/Datumsfilter indexieren nur gespeicherte Felder, keine neue Klartextsuche durch ausschließlich codierte Altmetadaten. Kein Android-/ZIP-/Backup-/Homepageumbau. Bestehende allgemeine Foundation-/Android-CI-Restfehler nicht durch Portaltest behoben.
