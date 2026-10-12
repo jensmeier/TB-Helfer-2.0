@@ -4,6 +4,7 @@
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr));gap:16px}
 .photo{margin:0;background:white;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden}
 .photo img{width:100%;height:180px;object-fit:cover}.photo figcaption{padding:12px;overflow-wrap:anywhere}
+.photo summary{cursor:pointer;font-weight:700}.photo details p{margin:8px 0;white-space:pre-wrap}.photo .photo-time{font-size:13px;color:#667085;margin:10px 0}.photo .photo-gps{display:block;margin-top:10px}.photo .photo-file{font-size:12px;color:#667085}
 .pager{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:20px 0}
 #updates{margin-top:12px}#search{max-width:100%}
 </style>{% endblock %}
@@ -41,9 +42,27 @@ function draw(items){
     const figure=document.createElement('figure');figure.className='photo';
     const link=document.createElement('a');link.href=tbScopedUrl(m.renditions.preview);link.target='_blank';link.rel='noopener';
     const img=document.createElement('img');img.src=tbScopedUrl(m.renditions.thumb);img.loading='lazy';img.decoding='async';img.width=320;img.height=180;
-    img.alt=m.photo_metadata?.short_text||m.filename||'Baustellenfoto';link.append(img);
+    const meta=m.photo_metadata||{},label=meta.kurztext||m.context_title||'Foto ohne Beschriftung';
+    img.alt=label;link.append(img);
     const caption=document.createElement('figcaption'),stamp=m.captured_at||m.created_at;
-    caption.textContent=[m.photo_metadata?.short_text||m.filename,stamp?new Date(stamp).toLocaleString('de-DE',{timeZone:'Europe/Berlin'}):'',m.source].filter(Boolean).join(' · ');
+    const details=document.createElement('details'),summary=document.createElement('summary');
+    summary.textContent=label;summary.title='Beschriftung und weitere Angaben anzeigen';details.append(summary);
+    function line(title,value){if(value===null||value===undefined||value==='')return;const p=document.createElement('p');p.textContent=title+': '+value;details.append(p);}
+    const types={ABNAHMEN:'Abnahme',EINWEISUNG_UNTERWEISUNG:'Einweisung / Unterweisung',BESONDERHEITEN:'Besonderheit',MAENGEL_SCHAEDEN:'Mangel / Schaden',FOTODOKUMENTATION:'Fotodokumentation'};
+    line('Zuordnung',m.context_title);line('Art',types[meta.typ]||meta.typ);
+    line('Objekt',meta.objektKennung);line('Bereich',meta.objektBereich);line('Kilometer',meta.km);
+    line('Notiz',meta.notiz);for(let n=1;n<=5;n++)line('Info '+n,meta['info'+n]);
+    const filename=document.createElement('p');filename.className='photo-file';filename.textContent='Datei: '+(m.filename||'—');details.append(filename);
+    caption.append(details);
+    const time=document.createElement('p');time.className='photo-time';
+    time.textContent=stamp?((m.captured_at?'Aufnahme: ':'Hochgeladen: ')+new Date(stamp).toLocaleString('de-DE',{timeZone:'Europe/Berlin'})):'Datum nicht vorhanden';caption.append(time);
+    const lat=m.gps_lat,lon=m.gps_lon;
+    if(typeof lat==='number'&&typeof lon==='number'&&Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180){
+      const gps=document.createElement('a');gps.className='photo-gps';gps.target='_blank';gps.rel='noopener noreferrer';
+      gps.href='https://www.openstreetmap.org/?mlat='+encodeURIComponent(lat)+'&mlon='+encodeURIComponent(lon)+'#map=18/'+encodeURIComponent(lat)+'/'+encodeURIComponent(lon);
+      gps.textContent='GPS auf Karte öffnen';gps.title=lat.toFixed(6)+', '+lon.toFixed(6);caption.append(gps);
+      const coords=document.createElement('small');coords.textContent=gps.title;caption.append(coords);
+    }else{const missing=document.createElement('span');missing.className='muted photo-gps';missing.textContent='Keine GPS-Daten vorhanden';caption.append(missing);}
     figure.append(link,caption);fragment.append(figure);
   }
   gallery.replaceChildren(fragment);

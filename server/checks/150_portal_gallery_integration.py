@@ -1,4 +1,6 @@
 """10k metadata integration test; isolated CI database only, no photo uploads."""
+import base64
+import struct
 import json
 import os
 import sys
@@ -160,6 +162,28 @@ assert client.get(url).status_code==403
 user.update(user_id=lead,company_id=company,company_role="ADMIN")
 assert client.get(url).status_code==403
 user["company_role"]="USER"
+# Real packed Android filename, canonical overrides, optional GPS and readable context.
+raw=struct.pack(">qfffffhBBB",1791288000000,48.1,11.5,500.0,75.765,1.5,0,0,4,0)
+for text in ("Firma","Schotter prüfen","Gleis 2","Schwerbau"):
+    encoded=text.encode("utf-8");raw+=bytes([len(encoded)])+encoded
+packed="BTBP1__"+base64.urlsafe_b64encode(raw).decode().rstrip("=")+"__foto.jpg"
+with conn.cursor() as c:
+    packed_id=photo(packed,"BTB",btb)
+    c.execute("UPDATE tb.files SET photo_metadata=%s WHERE id=%s",(Jsonb({"kurztext":"Strukturierte Beschriftung","notiz":"Prüfung vor Ort","info1":"Zusatzinfo"}),packed_id))
+data=client.get(url).json()["media"]
+item=next(m for m in data if m["attachment_id"]==str(packed_id))
+assert item["photo_metadata"]["kurztext"]=="Strukturierte Beschriftung"
+assert item["photo_metadata"]["objektKennung"]=="Gleis 2"
+assert item["photo_metadata"]["notiz"]=="Prüfung vor Ort"
+assert abs(item["gps_lat"]-48.1)<0.00001 and item["gps_lon"]==11.5
+assert item["captured_at"] is not None
+plain=next(m for m in data if m["attachment_id"]==str(allowed))
+assert plain["context_title"]=="Visible" and plain["gps_lat"] is None
+with conn.cursor() as c:
+    c.execute("UPDATE tb.files SET photo_metadata=NULL WHERE id=%s",(packed_id,))
+item=next(m for m in client.get(url).json()["media"] if m["attachment_id"]==str(packed_id))
+assert item["photo_metadata"]["kurztext"]=="Schotter prüfen"
+
 # Bounded sparse-area scan: no runaway scan or N+1 when almost nothing is visible.
 with conn.cursor() as c:
     c.execute("UPDATE tb.worksite_memberships SET worksite_role='HELPER', permissions_override=%s,area_scope=%s WHERE worksite_id=%s AND user_id=%s",

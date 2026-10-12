@@ -137,6 +137,7 @@ def gallery_page(
                 CROSS JOIN LATERAL (
                     SELECT jsonb_agg(jsonb_build_object(
                         'kind', l.entity_type, 'parent_id', l.entity_id,
+                        'title', CASE l.entity_type WHEN 'DEFECT' THEN left(d.title,500) WHEN 'ACCEPTANCE' THEN left(a.title,500) ELSE NULL END,
                         'active', CASE l.entity_type
                             WHEN 'BTB' THEN b.id IS NOT NULL AND b.status <> 'DELETED' AND b.deleted_at IS NULL
                             WHEN 'DEFECT' THEN d.id IS NOT NULL AND d.status <> 'DELETED' AND d.deleted_at IS NULL
@@ -166,18 +167,25 @@ def gallery_page(
                 after = (row["created_at"], row["id"])
                 link = next((link for link in (row["links"] or []) if (parent_id is None or str(link["parent_id"]) == str(parent_id)) and _visible(link, context, user)), None)
                 if link is not None:
-                    meta = canonical_photo_metadata(
+                    canonical = canonical_photo_metadata(
                         filename=row["original_name"], captured_at=row["captured_at"],
                         gps_lat=row["gps_lat"], gps_lon=row["gps_lon"],
                         gps_accuracy_m=row["gps_accuracy_m"], photo_metadata=row["photo_metadata"],
-                    )["photo_metadata"] or {}
+                    )
+                    meta = canonical["photo_metadata"] or {}
                     urls = image_rendition_urls(row["id"], row["mime_type"])
                     media.append({
                         "attachment_id": str(row["id"]), "entity_type": link["kind"],
                         "parent_entity_id": link["parent_id"], "filename": row["original_name"],
                         "source": row["source"], "created_at": row["created_at"],
-                        "captured_at": row["captured_at"],
-                        "photo_metadata": {"short_text": str(meta.get("short_text") or "")[:500]},
+                        "captured_at": canonical["captured_at"],
+                        "gps_lat": canonical["gps_lat"], "gps_lon": canonical["gps_lon"],
+                        "gps_accuracy_m": canonical["gps_accuracy_m"],
+                        "context_title": link.get("title"),
+                        "photo_metadata": {key: value for key, value in meta.items() if key in {
+                            "kurztext", "typ", "indikator", "objektKennung", "objektBereich",
+                            "km", "kmSuffix", "notiz", "info1", "info2", "info3", "info4", "info5",
+                        }},
                         "renditions": {key: urls[key] for key in ("thumb", "preview") if key in urls},
                     })
                 if len(media) == limit:

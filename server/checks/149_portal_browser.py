@@ -8,7 +8,7 @@ root=Path('/tmp/portal-rendered')
 pages={'/site':'v1_worksite.html','/pictures':'v1_portal_pictures.html','/settings':'v1_portal_home.html','/':'v1_public_home.html','/account':'v1_portal_account.html'}
 permissions={key:True for key in ['worksite.structure.edit','members.manage','files.view','defect.create','acceptance.create','btb.create']}
 reports=[{'id':'b1','work_date':'2026-10-06','status':'FINALIZED'},{'id':'b2','work_date':'2026-10-07','status':'ACTIVE'}]
-photo={'attachment_id':'p1','filename':'Foto.jpg','entity_type':'BTB','source':'ANDROID','captured_at':'2026-10-06T12:00:00Z','renditions':{'thumb':'/thumb','preview':'/preview'}}
+photo={'attachment_id':'p1','filename':'Foto.jpg','entity_type':'BTB','source':'ANDROID','captured_at':'2026-10-06T12:00:00Z','gps_lat':48.1,'gps_lon':11.5,'photo_metadata':{'kurztext':'Schotter prüfen','notiz':'Prüfung vor Ort','objektKennung':'Gleis 2'},'renditions':{'thumb':'/thumb','preview':'/preview'}}
 requests=[]
 def handle(route):
     path=urlsplit(route.request.url).path
@@ -29,7 +29,7 @@ def handle(route):
         offset=int(query.get('cursor',['0'])[0])
         term=query.get('search',[''])[0]
         indices=[] if term=='no-match' else ([9999] if term=='last-photo' else range(offset,min(offset+size,10000)))
-        items=[{**photo,'attachment_id':'p'+str(i),'filename':'Foto_'+str(i)+'.jpg'} for i in indices]
+        items=[{**photo,'attachment_id':'p'+str(i),'filename':'Foto_'+str(i)+'.jpg','gps_lat':None if i==9999 else 48.1} for i in indices]
         data={'media':items,'next_cursor':str(offset+60) if not term and offset+60<10000 else None}
     elif path.endswith('/media'):data={'media':[photo,photo]}
     elif path.endswith('/members'):data={'members':[{'user_id':'helper','display_name':'Helfer','worksite_role':'HELPER','permission_profile':'HELPER_STANDARD'}]}
@@ -69,6 +69,11 @@ with sync_playwright() as p:
         page.goto('https://portal.test/pictures?worksite=site1');expect(page.locator('#gallery figure')).to_have_count(60)
         expect(page.locator('#gallery a').first).to_have_attribute('href','/preview')
         expect(page.locator('#gallery img').first).to_have_attribute('loading','lazy')
+        expect(page.locator('#gallery summary').first).to_have_text('Schotter prüfen')
+        expect(page.locator('#gallery .photo-gps').first).to_have_attribute('href','https://www.openstreetmap.org/?mlat=48.1&mlon=11.5#map=18/48.1/11.5')
+        page.locator('#gallery summary').first.click()
+        expect(page.locator('#gallery details').first).to_contain_text('Prüfung vor Ort')
+        expect(page.locator('#gallery details').first).to_contain_text('Gleis 2')
         expect(page.locator('#previousPictures')).to_be_disabled()
         page.locator('#nextPictures').click();expect(page.locator('#pageNumber')).to_have_text('Seite 2')
         expect(page.locator('#gallery figure')).to_have_count(60)
@@ -83,6 +88,7 @@ with sync_playwright() as p:
         expect(page.locator('#nextPictures')).to_be_disabled()
         page.locator('#search').fill('last-photo');expect(page.locator('#gallery figure')).to_have_count(1)
         expect(page.locator('#gallery figcaption')).to_contain_text('Foto_9999.jpg')
+        expect(page.locator('#gallery .photo-gps')).to_have_text('Keine GPS-Daten vorhanden')
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),'Horizontal overflow in gallery'
         page.screenshot(path=str(root/f'gallery-{width}.png'),full_page=True)
         page.goto('https://portal.test/settings');expect(page.locator('#emailState')).to_contain_text('bestätigt')
