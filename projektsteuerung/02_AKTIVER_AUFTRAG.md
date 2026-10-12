@@ -2832,3 +2832,10 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 - Filter Datum (Europe/Berlin), Bereich und Text serverseitig. Rechte pro Anfrage mit Firmen-/Mitgliedschaft, files.view, BTB-Team-/verantwortlichem-TB-Sonderrecht und Mangel-/Abnahmebereich. Deduplikation nach Datei-ID; keine fremden BTB-Texte ausgeben.
 - Kandidaten werden begrenzt gelesen, keine N+1-Rechteabfragen pro Foto. Bei stark eingeschraenkten Bereichen begrenztes Weitersuchen per Cursor statt unbeschraenkter Serverarbeit. Browser zeigt maximal eine Seite mit60Kacheln, Vor/Zurueck; nur Thumbnails automatisch, Preview bei Klick. Livehinweis fuer neue Bilder, Mitgliedschaftsaenderung erneut pruefen.
 - Isolierter PostgreSQL-Test mit10000Bildmetadatensaetzen, Mehrfachlinks, Filter-/Rechtegrenzen, Cursorvollstaendigkeit, Datenmenge/Laufzeit; Chromium Desktop/Handy mit Seitenwechsel und Such-/Liveverhalten. Keine10000Originaluploads oder NAS-Lastprobe. Nutzerbestaetigte Homepage/Backups erhalten. Keine Android-/Excel-Arbeit in diesem Block.
+
+
+## PORTAL-010 – lesbare Bildbeschriftungen und GPS (12.10.2026)
+- Nutzer bestätigt PORTAL-009 auf NAS: funktioniert. Ergänzung: Bildbeschriftungen verständlich und anklickbar, GPS als Kartenlink; technische BTBP1-Dateinamen nicht als Hauptbeschriftung.
+- Ursache prüfen/beheben: kanonisches Metadatenfeld heißt kurztext; Galerie las short_text. Kanonische Dateinamen-Dekodierung für Altbilder, strukturierte Metadaten und Aufnahmezeit/GPS verwenden. Fachliche Mangel-/Abnahmebezeichnung nur nach bestehender Linkberechtigung als Fallback; keine fremden BTB-Texte.
+- Bildkarte mit lesbarer Beschriftung, aufklappbaren Angaben (Objekt, Bereich, km, Notiz/Infos soweit vorhanden) und validiertem GPS-Link. Fehlende Angaben ausdrücklich kennzeichnen, keine erfundenen Positionen. Technischer Dateiname nur in Details.
+- Seitenlimit60, Lazy-Vorschauen, Rechte, Exportgesamtbestand und bestätigte Homepage/Backups schützen. Keine Androidänderungen/Migration. Regression mit codiertem Altdateinamen, strukturierten Metadaten, fehlendem GPS und Browserlink.
