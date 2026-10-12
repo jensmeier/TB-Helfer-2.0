@@ -180,7 +180,7 @@ assert item["captured_at"] is not None
 plain=next(m for m in data if m["attachment_id"]==str(allowed))
 assert plain["context_title"]=="Visible" and plain["gps_lat"] is None
 with conn.cursor() as c:
-    c.execute("UPDATE tb.files SET photo_metadata=NULL WHERE id=%s",(packed_id,))
+    c.execute("UPDATE tb.files SET photo_metadata='{}'::jsonb WHERE id=%s",(packed_id,))
 item=next(m for m in client.get(url).json()["media"] if m["attachment_id"]==str(packed_id))
 assert item["photo_metadata"]["kurztext"]=="Schotter prüfen"
 
