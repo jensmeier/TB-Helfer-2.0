@@ -2839,3 +2839,11 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 - Ursache prüfen/beheben: kanonisches Metadatenfeld heißt kurztext; Galerie las short_text. Kanonische Dateinamen-Dekodierung für Altbilder, strukturierte Metadaten und Aufnahmezeit/GPS verwenden. Fachliche Mangel-/Abnahmebezeichnung nur nach bestehender Linkberechtigung als Fallback; keine fremden BTB-Texte.
 - Bildkarte mit lesbarer Beschriftung, aufklappbaren Angaben (Objekt, Bereich, km, Notiz/Infos soweit vorhanden) und validiertem GPS-Link. Fehlende Angaben ausdrücklich kennzeichnen, keine erfundenen Positionen. Technischer Dateiname nur in Details.
 - Seitenlimit60, Lazy-Vorschauen, Rechte, Exportgesamtbestand und bestätigte Homepage/Backups schützen. Keine Androidänderungen/Migration. Regression mit codiertem Altdateinamen, strukturierten Metadaten, fehlendem GPS und Browserlink.
+
+
+## PORTAL-011 – Bildkarten mit BTB-Angaben angleichen (12.10.2026)
+- Nutzer fordert Vergleich und bestätigt Angleichung. Trotz gemeldeter Dateiübernahme zeigen Screenshots weiterhin alte Galeriekarten; tatsächlichen NAS-Ladepfad nicht fernverifiziert. Kein Cache-/Deploymentfehler als nachgewiesen behaupten.
+- Galerie übernimmt BTB-Linkmetadaten über bestehende Mergefunktion inklusive expliziter Löschungen. Sichtbare Kernangaben: Kurztext, BTB-Fotonummer/Datum bei BTB-Verknüpfung, gespeicherte Dateigröße, Aufnahmezeit, Kilometer, Firma, Ort/Unterbaustelle/Objekt und Indikator, klickbares GPS. Zusatznotizen/Dateiname aufklappbar.
+- BTB-Fotonummer folgt bestehender Sortierung captured_at NULLS LAST,created_at,id und SHA-/Name-/ID-Deduplikation innerhalb des gewählten BTBs; keine erfundene baustellenweite Nummer. Nummern und benötigte Knoten gesammelt per SQL nachladen, keine N+1-Abfragen oder Vollkatalog im Browser.
+- 60er-Seiten, Rechte und kleine Renditions beibehalten. Versionskennung in HTML/API plus read-only NAS-Prüfanleitung, bei unterschiedlichem API/Template klare Aktualisierungsmeldung. Keine Änderung an bestätigtem BTB, Android, Export/ZIP, Daten/Backups oder Compose.
+- Prüfungen: Linkoverride/clear, Nummernparität mit BTB, Knoten, Mehrfachlinks, Rechte, 10000-Einträge-Abfragebudget und Browserdarstellung Desktop/Mobil.
