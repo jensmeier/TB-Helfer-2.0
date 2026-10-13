@@ -2847,3 +2847,6 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 - BTB-Fotonummer folgt bestehender Sortierung captured_at NULLS LAST,created_at,id und SHA-/Name-/ID-Deduplikation innerhalb des gewählten BTBs; keine erfundene baustellenweite Nummer. Nummern und benötigte Knoten gesammelt per SQL nachladen, keine N+1-Abfragen oder Vollkatalog im Browser.
 - 60er-Seiten, Rechte und kleine Renditions beibehalten. Versionskennung in HTML/API plus read-only NAS-Prüfanleitung, bei unterschiedlichem API/Template klare Aktualisierungsmeldung. Keine Änderung an bestätigtem BTB, Android, Export/ZIP, Daten/Backups oder Compose.
 - Prüfungen: Linkoverride/clear, Nummernparität mit BTB, Knoten, Mehrfachlinks, Rechte, 10000-Einträge-Abfragebudget und Browserdarstellung Desktop/Mobil.
+
+### PORTAL-011 – Umsetzung beauftragt (13.10.2026)
+- Nutzer fordert Umsetzung, Tests, GitHub-Sicherung und genaue NAS-Dateiliste vollständig abzuschließen. Bestehenden Auftrag unverändert umsetzen; Server/Portal zuerst, Android später. Synology-E2E bleibt bis Installation separat offen.
