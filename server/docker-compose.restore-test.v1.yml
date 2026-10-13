@@ -1,0 +1,60 @@
+services:
+  restore-test-db:
+    image: postgis/postgis:17-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TB_V1_RESTORE_TEST_DB_NAME:-tb_helfer_v1_restore_test}
+      POSTGRES_USER: ${TB_V1_RESTORE_TEST_DB_USER:-tb_helfer_restore_test}
+      POSTGRES_PASSWORD: ${TB_V1_RESTORE_TEST_DB_PASSWORD:?TB_V1_RESTORE_TEST_DB_PASSWORD fehlt}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - ${TB_V1_RESTORE_TEST_DB_DATA_DIR:-./restore-test-database-v1}:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  restore-target-db:
+    image: postgis/postgis:17-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TB_V1_RESTORE_TARGET_DB_NAME:-tb_helfer_v1_restore_target}
+      POSTGRES_USER: ${TB_V1_RESTORE_TARGET_DB_USER:-tb_helfer_restore_target}
+      POSTGRES_PASSWORD: ${TB_V1_RESTORE_TARGET_DB_PASSWORD:?TB_V1_RESTORE_TARGET_DB_PASSWORD fehlt}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - ${TB_V1_RESTORE_TARGET_DB_DATA_DIR:-./restore-target-database-v1}:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  worker:
+    environment:
+      TB_RESTORE_TEST_DB_HOST: restore-test-db
+      TB_RESTORE_TEST_DB_PORT: "5432"
+      TB_RESTORE_TEST_DB_NAME: ${TB_V1_RESTORE_TEST_DB_NAME:-tb_helfer_v1_restore_test}
+      TB_RESTORE_TEST_DB_USER: ${TB_V1_RESTORE_TEST_DB_USER:-tb_helfer_restore_test}
+      TB_RESTORE_TEST_DB_PASSWORD: ${TB_V1_RESTORE_TEST_DB_PASSWORD:?TB_V1_RESTORE_TEST_DB_PASSWORD fehlt}
+      TB_RESTORE_TARGET_DB_HOST: restore-target-db
+      TB_RESTORE_TARGET_DB_PORT: "5432"
+      TB_RESTORE_TARGET_DB_NAME: ${TB_V1_RESTORE_TARGET_DB_NAME:-tb_helfer_v1_restore_target}
+      TB_RESTORE_TARGET_DB_USER: ${TB_V1_RESTORE_TARGET_DB_USER:-tb_helfer_restore_target}
+      TB_RESTORE_TARGET_DB_PASSWORD: ${TB_V1_RESTORE_TARGET_DB_PASSWORD:?TB_V1_RESTORE_TARGET_DB_PASSWORD fehlt}
+      TB_RESTORE_TARGET_STORAGE_ROOT: /tb/restore-target-v1
+      TB_ALLOW_RESTORE_TARGET: ${TB_V1_ALLOW_RESTORE_TARGET:-NO}
+    volumes:
+      - ${TB_V1_RESTORE_TARGET_STORAGE_DIR:-./restore-target-storage-v1}:/tb/restore-target-v1
+    depends_on:
+      restore-test-db:
+        condition: service_healthy
+      restore-target-db:
+        condition: service_healthy

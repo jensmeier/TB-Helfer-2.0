@@ -1,0 +1,96 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Firmen{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Firmen</h1>
+  <p class="muted">Zentrale Firmenstammdaten für Geräte, Portal und BTB/PDF.</p>
+  <div id="msg"></div>
+</div>
+
+<div class="card">
+  <h2>Firma anlegen</h2>
+  <form id="createCompany">
+    <div class="grid">
+      <div><label for="name">Firmenname</label><input id="name" required maxlength="200"></div>
+      <div><label for="street">Straße / Hausnummer</label><input id="street" maxlength="300"></div>
+      <div><label for="postal">PLZ</label><input id="postal" maxlength="30"></div>
+      <div><label for="city">Ort</label><input id="city" maxlength="200"></div>
+      <div><label for="phone">Firmentelefon</label><input id="phone" maxlength="100"></div>
+      <div><label for="email">Firmen-E-Mail</label><input id="email" type="email" maxlength="320"></div>
+    </div>
+    <div class="actions" style="margin-top:14px"><button type="submit">Firma anlegen</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Vorhandene Firmen</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Firma</th><th>Ort</th><th>Nutzer</th><th>Status</th><th>Logo</th><th></th></tr></thead>
+      <tbody>
+      {% for c in companies %}
+        <tr>
+          <td><b>{{ c.name }}</b><div class="muted"><code>{{ c.id }}</code></div></td>
+          <td>{{ c.postal_code or '' }} {{ c.city or '' }}</td>
+          <td>{{ c.user_count }}</td>
+          <td><span class="pill">{{ c.status }}</span></td>
+          <td>{% if c.logo_file_id %}vorhanden{% else %}—{% endif %}</td>
+          <td class="right"><div class="actions">
+            <a class="btn" href="/admin/v1/companies/{{ c.id }}/branding">Profil / Logo / PDF</a>
+            <button type="button" class="danger purge-company"
+                    data-company-id="{{ c.id }}" data-company-name="{{ c.name }}">Komplett löschen</button>
+          </div></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="muted">Noch keine Firmen vorhanden.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const form=document.getElementById('createCompany'), msg=document.getElementById('msg');
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+form.addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  try{
+    await tbApi('/api/v1/admin/companies',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        name:document.getElementById('name').value,
+        street:document.getElementById('street').value||null,
+        postal_code:document.getElementById('postal').value||null,
+        city:document.getElementById('city').value||null,
+        phone:document.getElementById('phone').value||null,
+        email:document.getElementById('email').value||null,
+        country_code:'DE'
+      })
+    });
+    show('ok','Firma wurde angelegt.');setTimeout(()=>location.reload(),350);
+  }catch(error){show('err',error.message||String(error));}
+});
+document.querySelectorAll('.purge-company').forEach(button=>{
+  button.addEventListener('click',async ()=>{
+    const id=button.dataset.companyId, name=button.dataset.companyName||'diese Firma';
+    const typed=prompt(
+      'Firma "'+name+'" KOMPLETT löschen?\n\n'+
+      'Dabei werden die Firma sowie ihre Benutzer, Geräte, Baustellen, BTBs, Mängel, Abnahmen und Dateien endgültig entfernt. '+
+      'In staging/test werden auch Firmen-Vermessungsoriginale entfernt. In production blockiert der Server diesen Schritt, sobald geschützte Originale vorhanden sind.\n\n'+
+      'Zum Bestätigen ENDGUELTIG LOESCHEN eingeben.'
+    );
+    if(typed!=='ENDGUELTIG LOESCHEN')return;
+    button.disabled=true;
+    try{
+      await tbApi('/api/v1/admin/purge/companies/'+id,{
+        method:'DELETE',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({confirm_id:id,confirm_text:typed})
+      });
+      show('ok','Firma einschließlich zugehöriger Serverdaten wurde vollständig gelöscht.');
+      setTimeout(()=>location.reload(),500);
+    }catch(error){show('err',error.message||String(error));button.disabled=false;}
+  });
+});
+</script>
+{% endblock %}

@@ -8,24 +8,23 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 
 /**
- * Persistiert Foto-Auswahl pro BTB-Schicht als JSON-Datei.
+ * Persistiert Foto-Auswahl pro BTB als JSON-Datei.
+ *
+ * Neue Multi-BTB-Berichte verwenden automatisch die aktive stabile BTB-ID als zusätzlichen
+ * Dateischlüssel. Altbestände ohne BTB-ID bleiben über Datum/Schicht/Zeit rückwärtskompatibel.
  *
  * Robust-Strategie:
- *  - Default: alle Fotos innerhalb der Schicht sind ausgewählt.
- *  - Persistiert werden nur ABGEWÄHLTE Foto-IDs (excluded).
- *
- * Vorteil: neue Fotos (in derselben Schicht) sind automatisch ausgewählt,
- * und die UI-Zähler "springen" nicht durch Rekonstruktion der Auswahl.
+ * - Default: alle Fotos innerhalb des BTB-Zeitfensters sind ausgewählt.
+ * - Persistiert werden nur MANUELL abgewählte Foto-IDs.
+ * - Moderne Fotos, die einer anderen btbId gehören, werden beim Lesen automatisch ausgeschlossen,
+ *   aber nie als manuelle Abwahl gespeichert. Dadurch kann der historische UI-Code dieselbe
+ *   zentrale Auswahl weiterverwenden, ohne Fotos verschiedener BTBs zu vermischen.
  */
 object BtbPhotoSelectionStore {
 
     private const val DIR_NAME = "btb_photo_selection"
-    private const val VERSION = 1
+    private const val VERSION = 3
 
-    /**
-     * Lädt die excluded-Map:
-     *  key = Bildtyp.name, value = Set<FotoId>
-     */
     fun loadExcluded(
         context: Context,
         baustelleId: Long,
@@ -43,30 +42,40 @@ object BtbPhotoSelectionStore {
         shiftEnd: String?,
         schicht: SchichtTyp
     ): MutableMap<String, MutableSet<Long>> {
+        val out = mutableMapOf<String, MutableSet<Long>>()
         val f = fileForRead(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht)
-        if (!f.exists()) return mutableMapOf()
 
-        return try {
-            val txt = f.readText(StandardCharsets.UTF_8)
-            if (txt.isBlank()) return mutableMapOf()
-            val root = JSONObject(txt)
-            val out = mutableMapOf<String, MutableSet<Long>>()
-            val excluded = root.optJSONObject("excludedByType") ?: JSONObject()
-            val keys = excluded.keys()
-            while (keys.hasNext()) {
-                val k = keys.next()
-                val arr = excluded.optJSONArray(k) ?: JSONArray()
-                val set = linkedSetOf<Long>()
-                for (i in 0 until arr.length()) {
-                    val v = arr.optLong(i, Long.MIN_VALUE)
-                    if (v != Long.MIN_VALUE) set.add(v)
+        if (f.exists()) {
+            runCatching {
+                val txt = f.readText(StandardCharsets.UTF_8)
+                if (txt.isNotBlank()) {
+                    val root = JSONObject(txt)
+                    val excluded = root.optJSONObject("excludedByType") ?: JSONObject()
+                    val keys = excluded.keys()
+                    while (keys.hasNext()) {
+                        val k = keys.next()
+                        val arr = excluded.optJSONArray(k) ?: JSONArray()
+                        val set = linkedSetOf<Long>()
+                        for (i in 0 until arr.length()) {
+                            val v = arr.optLong(i, Long.MIN_VALUE)
+                            if (v != Long.MIN_VALUE) set.add(v)
+                        }
+                        out[k] = set
+                    }
                 }
-                out[k] = set
             }
-            out
-        } catch (_: Exception) {
-            mutableMapOf()
         }
+
+        // Zentrale Multi-BTB-Sperre: ein modern zugeordnetes Foto darf in keinem fremden BTB
+        // auftauchen – weder im 2/2-Zaehler noch im Auswahldialog noch im PDF.
+        val activeBtbId = BtbPhotoInstanzKey.activeBtbId(context, baustelleId, datumIso, schicht)
+        val foreignIds = BtbFotoZuordnungSpeicher.fotoIdsFremderBtbs(context, activeBtbId)
+        if (foreignIds.isNotEmpty()) {
+            Bildtyp.values().forEach { typ ->
+                out.getOrPut(typ.name) { linkedSetOf() }.addAll(foreignIds)
+            }
+        }
+        return out
     }
 
     fun saveExcluded(
@@ -90,11 +99,14 @@ object BtbPhotoSelectionStore {
         val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
         val f = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht)
         val tmp = File(dir, f.name + ".tmp")
+        val activeBtbId = BtbPhotoInstanzKey.activeBtbId(context, baustelleId, datumIso, schicht)
+        val foreignIds = BtbFotoZuordnungSpeicher.fotoIdsFremderBtbs(context, activeBtbId)
 
         val root = JSONObject()
         root.put("version", VERSION)
         root.put("updatedEpochMs", System.currentTimeMillis())
         root.put("baustelleId", baustelleId)
+        root.put("btbId", activeBtbId ?: JSONObject.NULL)
         root.put("datumIso", datumIso)
         root.put("schicht", schicht.name)
         root.put("shiftStart", shiftStart ?: JSONObject.NULL)
@@ -102,8 +114,12 @@ object BtbPhotoSelectionStore {
 
         val excludedObj = JSONObject()
         for ((k, ids) in excludedByType) {
+            // Automatische Fremd-BTB-Sperren nicht persistieren. Sonst bliebe ein Foto nach einer
+            // späteren bewussten Neu-Zuordnung fälschlich manuell abgewählt.
+            val manualIds = ids.filterNot { it in foreignIds }
+            if (manualIds.isEmpty()) continue
             val arr = JSONArray()
-            ids.forEach { arr.put(it) }
+            manualIds.forEach { arr.put(it) }
             excludedObj.put(k, arr)
         }
         root.put("excludedByType", excludedObj)
@@ -132,63 +148,80 @@ object BtbPhotoSelectionStore {
         runCatching { fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht).delete() }
     }
 
-    
-fun fileFor(
-    context: Context,
-    baustelleId: Long,
-    datumIso: String,
-    shiftStart: String?,
-    shiftEnd: String?
-): File = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, SchichtTyp.TAG)
+    fun fileFor(
+        context: Context,
+        baustelleId: Long,
+        datumIso: String,
+        shiftStart: String?,
+        shiftEnd: String?
+    ): File = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, SchichtTyp.TAG)
 
-fun fileForWrite(
-    context: Context,
-    baustelleId: Long,
-    datumIso: String,
-    shiftStart: String?,
-    shiftEnd: String?,
-    schicht: SchichtTyp
-): File {
-    val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
-    val s = safeTimeKey(shiftStart)
-    val e = safeTimeKey(shiftEnd)
-    val st = schicht.name.lowercase()
-    val name = "sel_${baustelleId}_${datumIso}_${st}_${s}_${e}.json"
-    return File(dir, name)
-}
+    fun fileForWrite(
+        context: Context,
+        baustelleId: Long,
+        datumIso: String,
+        shiftStart: String?,
+        shiftEnd: String?,
+        schicht: SchichtTyp
+    ): File {
+        val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
+        val s = safeTimeKey(shiftStart)
+        val e = safeTimeKey(shiftEnd)
+        val st = schicht.name.lowercase()
+        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
+        val name = if (token != null) {
+            "sel_${baustelleId}_btb_${token}_${datumIso}_${st}_${s}_${e}.json"
+        } else {
+            "sel_${baustelleId}_${datumIso}_${st}_${s}_${e}.json"
+        }
+        return File(dir, name)
+    }
 
-/** Neu bevorzugt; wenn nicht vorhanden: Legacy-Datei ohne schichtKey lesen (TAG-Fallback). */
-fun fileForRead(
-    context: Context,
-    baustelleId: Long,
-    datumIso: String,
-    shiftStart: String?,
-    shiftEnd: String?,
-    schicht: SchichtTyp
-): File {
-    val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
-    val newF = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht)
-    if (newF.exists()) return newF
-    val s = safeTimeKey(shiftStart)
-    val e = safeTimeKey(shiftEnd)
-    val legacy = File(dir, "sel_${baustelleId}_${datumIso}_${s}_${e}.json")
-    return legacy
-}
+    /**
+     * Neue BTBs mit stabiler ID dürfen niemals in eine alte datum-/schichtbasierte Auswahl
+     * zurückfallen. Nur echte Altbestände ohne aktive BTB-ID nutzen den Legacy-Fallback.
+     */
+    fun fileForRead(
+        context: Context,
+        baustelleId: Long,
+        datumIso: String,
+        shiftStart: String?,
+        shiftEnd: String?,
+        schicht: SchichtTyp
+    ): File {
+        val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
+        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
+        val newF = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht)
+        if (token != null || newF.exists()) return newF
+        val s = safeTimeKey(shiftStart)
+        val e = safeTimeKey(shiftEnd)
+        return File(dir, "sel_${baustelleId}_${datumIso}_${s}_${e}.json")
+    }
 
     fun excludedForType(excludedByType: Map<String, Set<Long>>, typ: Bildtyp): Set<Long> =
         excludedByType[typ.name] ?: emptySet()
 
-    
-    /** Löscht alle gespeicherten Auswahlen für dieses Datum+Schicht (alle Zeiten). */
+    /**
+     * Löscht beim Start eines neuen BTB nur dessen eigenen Zustand. Altlogik nach Datum+Schicht
+     * wird nur verwendet, wenn keine stabile aktive BTB-ID vorhanden ist.
+     */
     fun deleteAllFor(context: Context, baustelleId: Long, datumIso: String, schicht: SchichtTyp) {
         val dir = File(context.filesDir, DIR_NAME)
         if (!dir.exists()) return
+        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
+        if (token != null) {
+            val prefix = "sel_${baustelleId}_btb_${token}_"
+            dir.listFiles()?.forEach { f ->
+                if (f.name.startsWith(prefix)) runCatching { f.delete() }
+            }
+            return
+        }
+
         val st = schicht.name.lowercase()
         val prefixNew = "sel_${baustelleId}_${datumIso}_${st}_"
         dir.listFiles()?.forEach { f ->
             if (f.name.startsWith(prefixNew)) runCatching { f.delete() }
         }
-        // Legacy nur für TAG (ohne schichtKey)
         if (schicht == SchichtTyp.TAG) {
             val prefixLegacy = "sel_${baustelleId}_${datumIso}_"
             dir.listFiles()?.forEach { f ->
@@ -199,11 +232,10 @@ fun fileForRead(
         }
     }
 
-fun safeTimeKey(time: String?): String {
+    fun safeTimeKey(time: String?): String {
         val t = time?.trim().orEmpty()
         if (t.isBlank()) return "-"
 
-        // Normalisiere H:mm -> HHmm, damit Dateinamen stabil bleiben (z.B. 0:15 vs 00:15)
         val m = Regex("""^(\d{1,2}):(\d{2})$""").matchEntire(t)
         if (m != null) {
             val hh = m.groupValues[1].toIntOrNull() ?: return "-"

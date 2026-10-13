@@ -51,13 +51,16 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            app:endIconMode="dropdown_menu"
+            app:endIconMode="none"
             app:hintEnabled="false">
 
             <com.google.android.material.textfield.MaterialAutoCompleteTextView
                 android:id="@+id/acDialogStart"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:hint="Start"
+                android:focusable="false"
+                android:clickable="true"
                 android:inputType="none"
                 android:singleLine="true"
                 android:maxLines="1"
@@ -70,13 +73,16 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            app:endIconMode="dropdown_menu"
+            app:endIconMode="none"
             app:hintEnabled="false">
 
             <com.google.android.material.textfield.MaterialAutoCompleteTextView
                 android:id="@+id/acDialogEnde"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:hint="Ende"
+                android:focusable="false"
+                android:clickable="true"
                 android:inputType="none"
                 android:singleLine="true"
                 android:maxLines="1"

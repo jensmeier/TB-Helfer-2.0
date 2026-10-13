@@ -1,0 +1,53 @@
+{% extends "base.html" %}{% block content %}
+<style>
+.activation-wrap{max-width:720px;margin:0 auto}
+.activation-card{background:#fff;border:2px solid #18202a;border-radius:14px;padding:28px}
+.activation-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.activation-name{font-size:28px;font-weight:800}
+.activation-key{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:20px;font-weight:700;letter-spacing:.04em;overflow-wrap:anywhere;background:#f4f6f8;padding:14px;border-radius:10px;margin:18px 0}
+.qr{display:flex;justify-content:center;margin:18px 0}
+.qr svg{width:260px;height:260px;max-width:100%}
+.notice{background:#fff8e6;border:1px solid #e8c46a;border-radius:10px;padding:12px;margin-top:18px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+@media print{
+  body{background:#fff}
+  .top,.actions{display:none!important}
+  .wrap{padding:0;max-width:none}
+  .activation-wrap{max-width:none}
+  .activation-card{border:1.5px solid #000;border-radius:0}
+}
+</style>
+
+<div class="activation-wrap">
+  <div class="actions">
+    <button type="button" onclick="window.print()">Drucken / als PDF speichern</button>
+    <a class="btn" href="/admin/users">Zurück zu Benutzer</a>
+  </div>
+
+  <div class="activation-card">
+    <div class="activation-head">
+      <div>
+        <div class="muted">TB-Helfer Geräteaktivierung</div>
+        <div class="activation-name">{{ user.full_name }}</div>
+        {% if user.company %}<div><b>{{ user.company }}</b></div>{% endif %}
+        {% if user.email %}<div>{{ user.email }}</div>{% endif %}
+        <div style="margin-top:6px"><b>Zugriff:</b> {% if user.access_valid_until %}bis {{ user.access_valid_until.strftime('%d.%m.%Y') }}{% else %}unbegrenzt{% endif %}</div>
+      </div>
+      <div><b>TB-Helfer</b></div>
+    </div>
+
+    <p>Aktivierungs-Key:</p>
+    <div class="activation-key">{{ activation_key }}</div>
+
+    <div class="qr">{{ qr_svg|safe }}</div>
+
+    <p><b>Am Android-Gerät:</b> TB-Helfer öffnen und den QR-Code scannen. Der Key wird nur für die erste Gerätebindung benötigt. Danach verwendet die App ein sicher gespeichertes Geräte-Token.</p>
+
+    <div class="notice">
+      <b>Wichtig:</b> Diese Karte zeigt den Key im Klartext. Sicher aufbewahren.
+      Wird später erneut auf <b>Aktivierungskarte</b> geklickt, wird ein neuer Key erzeugt und der vorherige Aktivierungs-Key ungültig.
+      Ein bereits gebundenes Gerät bleibt dabei aktiv, bis es im Admin unter „Geräte“ freigegeben wird.
+    </div>
+  </div>
+</div>
+{% endblock %}

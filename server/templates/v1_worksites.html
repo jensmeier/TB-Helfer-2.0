@@ -1,0 +1,111 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Baustellen{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Baustellen</h1>
+  <p class="muted">Server-1.0-Fachoberfläche auf denselben Baustellen-/Team-/BTB-Verträgen wie die Geräte.</p>
+  <div id="msg"></div>
+</div>
+
+<div class="card">
+  <h2>Baustelle anlegen</h2>
+  <form id="createWorksite">
+    <div class="grid">
+      {% if user.company_role == 'ADMIN' %}
+      <div>
+        <label for="companyId">Firma</label>
+        <select id="companyId" required><option value="">wird geladen …</option></select>
+      </div>
+      {% endif %}
+      <div><label for="name">Name</label><input id="name" required maxlength="240"></div>
+      <div><label for="designation">Bezeichnung</label><input id="designation" maxlength="300"></div>
+      <div><label for="route">Strecke</label><input id="route" maxlength="40"></div>
+      <div><label for="stationCode">Bahnhofscode</label><input id="stationCode" maxlength="40"></div>
+      <div><label for="stationName">Bahnhof</label><input id="stationName" maxlength="240"></div>
+    </div>
+    <div class="actions" style="margin-top:14px"><button type="submit">Baustelle anlegen</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Vorhandene Baustellen</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Baustelle</th><th>Firma</th><th>Strecke</th><th>Status</th><th>Aktualisiert</th><th></th></tr></thead>
+      <tbody id="rows"><tr><td colspan="6" class="muted">wird geladen …</td></tr></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const userRole={{ user.company_role|tojson }};
+const rows=document.getElementById('rows'), msg=document.getElementById('msg');
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function fmtDate(value){if(!value)return '—';try{return new Date(value).toLocaleString('de-DE');}catch(_){return value;}}
+async function loadCompanies(){
+  if(userRole!=='ADMIN') return;
+  const select=document.getElementById('companyId');
+  try{
+    const result=await tbApi('/api/v1/admin/companies');
+    select.innerHTML='<option value="">Firma wählen</option>'+result.data.companies.map(function(c){
+      return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';
+    }).join('');
+  }catch(error){select.innerHTML='<option value="">Fehler beim Laden</option>';show('err',error.message||String(error));}
+}
+async function loadWorksites(){
+  try{
+    const result=await tbApi('/api/v1/worksites');
+    const data=result.data.worksites||[];
+    rows.innerHTML=data.length?data.map(function(w){
+      return '<tr>'+
+        '<td><b>'+esc(w.name)+'</b><div class="muted">'+esc(w.designation||'')+'</div></td>'+
+        '<td>'+esc(w.company_name||'')+'</td>'+
+        '<td>'+esc(w.route_number||'—')+'</td>'+
+        '<td><span class="pill">'+esc(w.status)+'</span></td>'+
+        '<td>'+esc(fmtDate(w.updated_at))+'</td>'+
+        '<td class="right"><div class="actions"><a class="btn" href="/portal/v1/worksites/'+encodeURIComponent(w.id)+'">Öffnen</a>'+
+        (userRole==='ADMIN'?'<button type="button" class="danger purge-worksite" data-worksite-id="'+esc(w.id)+'" data-worksite-name="'+esc(w.name)+'">Komplett löschen</button>':'')+
+        '</div></td>'+
+      '</tr>';
+    }).join(''):'<tr><td colspan="6" class="muted">Noch keine Baustellen vorhanden.</td></tr>';
+    document.querySelectorAll('.purge-worksite').forEach(function(button){
+      button.addEventListener('click',async function(){
+        const id=button.dataset.worksiteId, name=button.dataset.worksiteName||'diese Baustelle';
+        const typed=prompt(
+          'Baustelle "'+name+'" KOMPLETT löschen?\n\n'+
+          'Baustellenstruktur, Teams, BTBs, Mängel, Abnahmen, mobile Streckendaten und alle dieser Baustelle zugeordneten Dateien werden endgültig entfernt.\n\n'+
+          'Zum Bestätigen ENDGUELTIG LOESCHEN eingeben.'
+        );
+        if(typed!=='ENDGUELTIG LOESCHEN')return;
+        button.disabled=true;
+        try{
+          await tbApi('/api/v1/admin/purge/worksites/'+id,{
+            method:'DELETE',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({confirm_id:id,confirm_text:typed})
+          });
+          show('ok','Baustelle wurde vollständig gelöscht.');await loadWorksites();
+        }catch(error){show('err',error.message||String(error));button.disabled=false;}
+      });
+    });
+  }catch(error){rows.innerHTML='<tr><td colspan="6"></td></tr>';show('err',error.message||String(error));}
+}
+document.getElementById('createWorksite').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  const payload={
+    name:document.getElementById('name').value.trim(),
+    designation:document.getElementById('designation').value.trim()||null,
+    route_number:document.getElementById('route').value.trim()||null,
+    station_code:document.getElementById('stationCode').value.trim()||null,
+    station_name:document.getElementById('stationName').value.trim()||null
+  };
+  if(userRole==='ADMIN') payload.company_id=document.getElementById('companyId').value||null;
+  try{
+    await tbApi('/api/v1/worksites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    show('ok','Baustelle angelegt.');ev.target.reset();await loadWorksites();
+  }catch(error){show('err',error.message||String(error));}
+});
+loadCompanies();loadWorksites();
+</script>
+{% endblock %}

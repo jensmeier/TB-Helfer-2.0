@@ -1,0 +1,249 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Systemstatus{% endblock %}
+{% block head %}
+<style>
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.kpi{border:1px solid #eaecf0;border-radius:12px;padding:13px;background:#fff}.kpi .n{font-size:24px;font-weight:800}.kpi .l{font-size:12px;color:#667085;margin-top:3px}
+  .bar{height:12px;background:#eef2f6;border-radius:999px;overflow:hidden}.bar>div{height:100%;background:#1167d8}
+  .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}.small{font-size:12px;color:#667085}.item{border:1px solid #eaecf0;border-radius:10px;padding:10px;margin:8px 0}
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end}.wide{grid-column:1/-1}.section-title{margin:18px 0 10px;font-weight:800;color:#101828}.inline-check{display:flex;gap:8px;align-items:center;min-height:42px}.inline-check input{width:auto}.inline-check label{margin:0}.status-good{color:#067647;font-weight:800}.status-warn{color:#b54708;font-weight:800}.audit-row{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f5}.issue-ok{border-left:4px solid #12b76a}.issue-warning{border-left:4px solid #f79009}.issue-critical{border-left:4px solid #f04438}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="actions" style="justify-content:space-between">
+    <div><h1 style="margin-bottom:4px">Systemstatus</h1><p class="muted">Server 1.0 · Datenbank, Speicher, Backups, Automatik, E-Mail-Berichte und Audit.</p></div>
+    <button id="refresh" type="button">Aktualisieren</button>
+  </div>
+  <div id="msg"></div>
+</div>
+
+<div id="summary" class="kpis"></div>
+
+<div class="two" style="margin-top:16px">
+  <div class="card">
+    <h2>Server / Datenbank</h2>
+    <div id="serverInfo">wird geladen …</div>
+  </div>
+  <div class="card">
+    <h2>Speicher</h2>
+    <div id="storageInfo">wird geladen …</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Probleme / Warnungen</h2>
+  <div id="issues"></div>
+</div>
+
+<div class="card">
+  <h2>Firmen</h2>
+  <div class="scroll"><table><thead><tr><th>Firma</th><th>Nutzer</th><th>aktive Geräte</th><th>Baustellen</th><th>Dateien</th><th>Dateigröße</th></tr></thead><tbody id="companies"></tbody></table></div>
+</div>
+
+<div class="two">
+  <div class="card">
+    <h2>Backups</h2>
+    <p class="muted">Backup-Aufträge laufen über den Background-Worker. Restore bleibt getrennt und verändert nie die laufende Datenbank.</p>
+    <div class="actions" style="margin-bottom:10px">
+      <button type="button" onclick="startBackup('DATABASE')">Datenbank-Backup</button>
+      <button type="button" onclick="startBackup('FILES')">Datei-Backup</button>
+      <button type="button" onclick="startBackup('FULL')">Vollbackup</button>
+      <button type="button" class="secondary" onclick="startRetention()">Aufbewahrung prüfen</button>
+    </div>
+    <div id="backupStorage" class="small"></div>
+    <div id="backupRetention" class="small"></div>
+    <div id="backups"></div>
+  </div>
+  <div class="card">
+    <h2>Background Jobs</h2>
+    <div id="jobs"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Automatik & E-Mail-Berichte</h2>
+  <p class="muted">Passwörter werden hier nie gespeichert oder angezeigt. SMTP-Geheimnisse bleiben ausschließlich in der Server-.env/Secret-Konfiguration.</p>
+  <div id="smtpState" class="notice info">SMTP-Status wird geladen …</div>
+
+  <div class="section-title">E-Mail-Bericht</div>
+  <div class="form-grid">
+    <div class="inline-check"><input id="emailEnabled" type="checkbox"><label for="emailEnabled">E-Mail-Berichte aktiv</label></div>
+    <div><label for="emailFrequency">Häufigkeit</label><select id="emailFrequency"><option value="DAILY">Täglich</option><option value="WEEKLY">Wöchentlich</option><option value="MONTHLY">Monatlich</option></select></div>
+    <div><label for="emailHour">Uhrzeit (0–23)</label><input id="emailHour" type="number" min="0" max="23"></div>
+    <div><label for="emailWeekday">Wochentag</label><select id="emailWeekday"><option value="0">Montag</option><option value="1">Dienstag</option><option value="2">Mittwoch</option><option value="3">Donnerstag</option><option value="4">Freitag</option><option value="5">Samstag</option><option value="6">Sonntag</option></select></div>
+    <div><label for="emailMonthday">Monatstag (1–28)</label><input id="emailMonthday" type="number" min="1" max="28"></div>
+    <div><label for="timezone">Zeitzone</label><input id="timezone" type="text" maxlength="100"></div>
+    <div><label for="expiryWarning">Warnung Ablauf (Tage)</label><input id="expiryWarning" type="number" min="1" max="365"></div>
+    <div><label for="storageWarning">Speicherwarnung ab %</label><input id="storageWarning" type="number" min="50" max="99.9" step="0.1"></div>
+    <div class="wide"><label for="emailRecipients">E-Mail-Empfänger (Komma oder Zeile)</label><textarea id="emailRecipients" rows="3" maxlength="4000"></textarea></div>
+  </div>
+
+  <div class="section-title">Backup-Automatik</div>
+  <div class="form-grid">
+    <div class="inline-check"><input id="autoBackup" type="checkbox"><label for="autoBackup">automatisches Backup aktiv</label></div>
+    <div><label for="backupKind">Backupart</label><select id="backupKind"><option value="DATABASE">Datenbank</option><option value="FILES">Dateien</option><option value="FULL">Vollbackup</option></select></div>
+    <div><label for="backupHour">Backup-Uhrzeit</label><input id="backupHour" type="number" min="0" max="23"></div>
+    <div class="inline-check"><input id="autoRetention" type="checkbox"><label for="autoRetention">Aufbewahrung automatisch prüfen</label></div>
+    <div><label for="retentionHour">Prüf-Uhrzeit</label><input id="retentionHour" type="number" min="0" max="23"></div>
+    <div><label for="retentionDays">Backups behalten (Tage)</label><input id="retentionDays" type="number" min="1" max="3650"></div>
+    <div><label for="retentionMin">Mindestens je Backupart</label><input id="retentionMin" type="number" min="1" max="50"></div>
+  </div>
+
+  <div class="actions" style="margin-top:16px">
+    <button id="saveAutomation" type="button">Systemeinstellungen speichern</button>
+    <button id="testEmail" class="secondary" type="button">Testbericht senden</button>
+  </div>
+</div>
+
+<div class="two">
+  <div class="card">
+    <h2>Bald ablaufende Nutzer</h2>
+    <div id="expiringUsers"></div>
+  </div>
+  <div class="card">
+    <h2>Sicherheit / Audit</h2>
+    <div id="auditEvents"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const msg=document.getElementById('msg');
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function bytes(value){const n=Number(value);if(!Number.isFinite(n))return '—';const u=['B','KiB','MiB','GiB','TiB'];let x=n,i=0;while(x>=1024&&i<u.length-1){x/=1024;i++;}return (i===0?Math.round(x):x.toFixed(x>=100?0:x>=10?1:2))+' '+u[i];}
+function dt(value){if(!value)return '—';try{return new Date(value).toLocaleString('de-DE');}catch(_){return String(value);}}
+function kpi(n,label){return '<div class="kpi"><div class="n">'+esc(n)+'</div><div class="l">'+esc(label)+'</div></div>';}
+function val(id,value){document.getElementById(id).value=value??'';}
+function checked(id,value){document.getElementById(id).checked=!!value;}
+function numberValue(id){return Number(document.getElementById(id).value);}
+function recipientsValue(){return document.getElementById('emailRecipients').value.split(/[\n,;]+/).map(v=>v.trim()).filter(Boolean);}
+
+async function load(){
+  try{
+    const result=await tbApi('/api/v1/admin/system/status');
+    const x=result.data,c=x.counts||{},m=x.migration||{},st=x.storage||{},bst=x.backup_storage||{},br=x.backup_retention||{},a=x.automation||{},smtp=x.smtp||{};
+    document.getElementById('summary').innerHTML=[
+      kpi(c.companies||0,'Firmen'),kpi((c.active_users||0)+' / '+(c.users||0),'aktive / alle Nutzer'),
+      kpi(c.active_devices||0,'aktive Geräte'),kpi(c.worksites||0,'Baustellen'),
+      kpi(c.btbs||0,'BTB'),kpi(c.open_defects||0,'offene Mängel'),kpi(c.open_acceptances||0,'offene Abnahmen'),
+      kpi(c.pending_jobs||0,'wartende Jobs')
+    ].join('');
+    document.getElementById('serverInfo').innerHTML=
+      '<p><b>API:</b> '+esc(x.server_version)+' · <span class="pill">'+esc(x.environment)+'</span></p>'+
+      '<p><b>Migrationen:</b> '+esc(m.applied)+' / '+esc(m.known)+' · latest '+esc(m.latest_applied)+' / '+esc(m.latest_known)+'</p>'+
+      '<p><b>Pending:</b> '+esc((m.pending||[]).join(', ')||'keine')+'</p>'+
+      '<p><b>Datenbankgröße:</b> '+esc(bytes(c.database_bytes))+'</p>'+
+      '<p><b>erfasste Dateigröße:</b> '+esc(bytes(c.tracked_file_bytes))+'</p>'+
+      '<p><b>letzter Gerätekontakt:</b> '+esc(dt(c.last_device_seen))+'</p>'+
+      '<p><b>letzter Sync:</b> '+esc(dt(c.last_sync))+'</p>';
+    if(st.available){
+      const pct=Number(st.percent_used||0);
+      document.getElementById('storageInfo').innerHTML=
+        '<p><b>'+esc(st.label)+'</b> · '+esc(pct.toFixed(2))+' % belegt</p>'+
+        '<div class="bar"><div style="width:'+Math.max(0,Math.min(100,pct))+'%"></div></div>'+
+        '<p>'+esc(bytes(st.used_bytes))+' belegt · '+esc(bytes(st.free_bytes))+' frei · '+esc(bytes(st.total_bytes))+' gesamt</p>';
+    }else{
+      document.getElementById('storageInfo').innerHTML='<div class="notice err">Storage nicht verfügbar.</div>';
+    }
+    document.getElementById('issues').innerHTML=(x.issues||[]).map(function(i){
+      return '<div class="item issue-'+esc(i.severity)+'"><b>'+esc(i.title)+'</b><div class="small">'+esc(i.detail)+'</div></div>';
+    }).join('')||'<p class="muted">Keine Meldungen.</p>';
+    document.getElementById('backupStorage').textContent=bst.available?
+      ('Backup-Speicher: '+bytes(bst.used_bytes)+' belegt · '+bytes(bst.free_bytes)+' frei · '+Number(bst.percent_used||0).toFixed(2)+' %'):
+      'Backup-Speicher ist noch nicht angelegt.';
+    document.getElementById('backupRetention').textContent=
+      'Aufbewahrung: älter als '+esc(br.days||'—')+' Tage, mindestens '+esc(br.minimum_kept_per_kind||'—')+' je Backupart behalten.';
+    document.getElementById('companies').innerHTML=(x.companies||[]).map(function(row){
+      return '<tr><td><b>'+esc(row.name)+'</b></td><td>'+esc(row.user_count)+'</td><td>'+esc(row.active_device_count)+'</td><td>'+esc(row.worksite_count)+'</td><td>'+esc(row.file_count)+'</td><td>'+esc(bytes(row.file_bytes))+'</td></tr>';
+    }).join('')||'<tr><td colspan="6" class="muted">Keine Firmen.</td></tr>';
+    document.getElementById('backups').innerHTML=(x.backups||[]).map(function(b){
+      const restore=(b.status==='OK'&&b.kind!=='RESTORE_TEST')?
+        '<div class="actions" style="margin-top:7px"><button type="button" class="secondary" onclick="startRestoreTest(\''+esc(b.id)+'\')">Restore-Test</button></div>':'';
+      return '<div class="item"><b>'+esc(b.kind)+'</b> <span class="pill">'+esc(b.status)+'</span><div class="small">'+esc(dt(b.started_at))+' · '+esc(bytes(b.byte_size))+'</div>'+restore+'</div>';
+    }).join('')||'<p class="muted">Noch keine Backup-Läufe protokolliert.</p>';
+    document.getElementById('jobs').innerHTML=(x.jobs||[]).map(function(j){
+      return '<div class="item"><b>'+esc(j.job_type)+'</b> <span class="pill">'+esc(j.status)+'</span><div class="small">Versuche '+esc(j.attempts)+' · geplant '+esc(dt(j.run_after))+'</div></div>';
+    }).join('')||'<p class="muted">Noch keine Background Jobs.</p>';
+
+    checked('emailEnabled',a.email_enabled);val('emailFrequency',a.email_frequency||'WEEKLY');val('emailHour',a.email_hour??8);val('emailWeekday',a.email_weekday??0);val('emailMonthday',a.email_monthday??1);
+    val('timezone',a.timezone||'Europe/Berlin');val('expiryWarning',a.user_expiry_warning_days??30);val('storageWarning',a.storage_warning_percent??85);
+    val('emailRecipients',(a.email_recipients||[]).join('\n'));
+    checked('autoBackup',a.automatic_backup_enabled);val('backupKind',a.backup_kind||'DATABASE');val('backupHour',a.backup_hour??4);
+    checked('autoRetention',a.automatic_retention_enabled);val('retentionHour',a.retention_hour??5);val('retentionDays',a.backup_retention_days??30);val('retentionMin',a.backup_retention_min_per_kind??3);
+
+    const smtpClass=smtp.configured?'status-good':'status-warn';
+    document.getElementById('smtpState').innerHTML=
+      '<span class="'+smtpClass+'">'+(smtp.configured?'SMTP vorbereitet':'SMTP noch nicht vollständig eingerichtet')+'</span>'+
+      '<div class="small" style="margin-top:5px">Host: '+esc(smtp.host||'—')+' · Port: '+esc(smtp.port||'—')+' · Absender: '+esc(smtp.sender||'—')+' · Passwort: '+(smtp.password_set?'gesetzt':'nicht gesetzt')+'</div>'+
+      '<div class="small">Letzter Bericht-Job: '+esc(x.last_email_job?(x.last_email_job.status+' · '+dt(x.last_email_job.finished_at||x.last_email_job.created_at)):'noch keiner')+'</div>';
+
+    document.getElementById('expiringUsers').innerHTML=(x.expiring_users||[]).map(function(u){
+      return '<div class="item"><b>'+esc(u.display_name)+'</b><div class="small">'+esc(u.login_name)+' · gültig bis '+esc(dt(u.access_valid_until))+'</div></div>';
+    }).join('')||'<p class="muted">Keine innerhalb des Warnzeitraums.</p>';
+
+    document.getElementById('auditEvents').innerHTML=(x.audit_events||[]).map(function(e){
+      return '<div class="audit-row"><div class="small">'+esc(dt(e.created_at))+'</div><div><b>'+esc(e.action)+'</b><div class="small">'+esc(e.actor_display_name||'System')+(e.entity_type?' · '+esc(e.entity_type):'')+'</div></div></div>';
+    }).join('')||'<p class="muted">Noch keine Audit-Ereignisse.</p>';
+    msg.className='';msg.textContent='';
+  }catch(error){show('err',error.message||String(error));}
+}
+
+async function saveAutomation(){
+  const body={
+    email_enabled:document.getElementById('emailEnabled').checked,
+    email_frequency:document.getElementById('emailFrequency').value,
+    email_hour:numberValue('emailHour'),email_weekday:numberValue('emailWeekday'),email_monthday:numberValue('emailMonthday'),
+    email_recipients:recipientsValue(),timezone:document.getElementById('timezone').value.trim(),
+    user_expiry_warning_days:numberValue('expiryWarning'),storage_warning_percent:numberValue('storageWarning'),
+    automatic_backup_enabled:document.getElementById('autoBackup').checked,backup_kind:document.getElementById('backupKind').value,backup_hour:numberValue('backupHour'),
+    automatic_retention_enabled:document.getElementById('autoRetention').checked,retention_hour:numberValue('retentionHour'),
+    backup_retention_days:numberValue('retentionDays'),backup_retention_min_per_kind:numberValue('retentionMin')
+  };
+  try{
+    await tbApi('/api/v1/admin/system/automation',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    show('ok','Systemeinstellungen gespeichert.');await load();
+  }catch(error){show('err',error.message||String(error));}
+}
+
+async function testEmail(){
+  if(!confirm('Testbericht an die hinterlegten Empfänger senden?'))return;
+  try{
+    const result=await tbApi('/api/v1/admin/system/email/test',{method:'POST'});
+    show('ok','Testbericht-Job '+result.data.job.id+' wurde eingereiht.');await load();
+  }catch(error){show('err',error.message||String(error));}
+}
+
+async function startBackup(kind){
+  if(!confirm(kind==='FULL'?'Vollbackup aus Datenbank und Dateispeicher starten?':kind+'-Backup starten?'))return;
+  try{
+    const result=await tbApi('/api/v1/admin/system/backups',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:kind})});
+    show('ok','Backup-Auftrag '+result.data.job.id+' wurde in die Warteschlange gestellt.');await load();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.startBackup=startBackup;
+
+async function startRetention(){
+  if(!confirm('Backup-Aufbewahrung jetzt prüfen und alte Backups nach der konfigurierten Regel freigeben?'))return;
+  try{
+    const result=await tbApi('/api/v1/admin/system/backups/retention',{method:'POST'});
+    show('ok','Aufbewahrungsauftrag '+result.data.job.id+' wurde in die Warteschlange gestellt.');await load();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.startRetention=startRetention;
+
+async function startRestoreTest(id){
+  if(!confirm('Restore-Test dieses Backups gegen die getrennte Testumgebung starten?'))return;
+  try{
+    const result=await tbApi('/api/v1/admin/system/backups/'+encodeURIComponent(id)+'/restore-test',{method:'POST'});
+    show('ok','Restore-Test-Auftrag '+result.data.job.id+' wurde in die Warteschlange gestellt.');await load();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.startRestoreTest=startRestoreTest;
+
+document.getElementById('refresh').addEventListener('click',load);
+document.getElementById('saveAutomation').addEventListener('click',saveAutomation);
+document.getElementById('testEmail').addEventListener('click',testEmail);
+load();
+</script>
+{% endblock %}

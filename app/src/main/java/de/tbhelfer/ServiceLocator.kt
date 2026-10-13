@@ -2,6 +2,14 @@ package de.tbhelfer
 
 import android.content.Context
 import de.tbhelfer.datenbank.TBDatenbank
+import de.tbhelfer.datenbank.SyncDatenbank
+import de.tbhelfer.datenbank.OfflineSyncRepository
+import de.tbhelfer.datenbank.CollabSyncRepository
+import de.tbhelfer.datenbank.CollabLocalBridge
+import de.tbhelfer.datenbank.WorksiteBindingRepository
+import de.tbhelfer.datenbank.WorksiteStructureSync
+import de.tbhelfer.datenbank.WorksiteTrackDataSync
+import de.tbhelfer.datenbank.SyncOfflineEditor
 import de.tbhelfer.einstellungen.AktuelleBaustelleSpeicher
 import de.tbhelfer.datenbank.StreckenpunkteRepository
 import de.tbhelfer.datenbank.BaustellenRepository
@@ -13,6 +21,7 @@ import de.tbhelfer.datenbank.FotoDao
 import de.tbhelfer.datenbank.FotoRepository
 import de.tbhelfer.datenbank.TrassenDao
 import de.tbhelfer.datenbank.TrassenRepository
+import de.tbhelfer.server.SofortSync
 import de.tbhelfer.ui.einstellungen.overlay.OverlayEinstellungenSpeicher
 import de.tbhelfer.einstellungen.AnsichtEinstellungenSpeicher
 import de.tbhelfer.einstellungen.KameraEinstellungenSpeicher
@@ -30,6 +39,30 @@ object ServiceLocator {
         TBDatenbank.erstellen(appContext)
     }
 
+    /**
+     * Eigene Datenbank für NAS-/Cloudflare-Cache und ausstehende Sync-Änderungen.
+     * Die bestehende Baustellen-/Vermessungsdatenbank bleibt dadurch unangetastet.
+     */
+    val syncDatenbank: SyncDatenbank by lazy {
+        SyncDatenbank.erstellen(appContext)
+    }
+
+    val syncDao by lazy {
+        syncDatenbank.syncDao()
+    }
+
+    val offlineSyncRepository: OfflineSyncRepository by lazy {
+        OfflineSyncRepository(syncDatenbank)
+    }
+
+    val collabSyncRepository: CollabSyncRepository by lazy {
+        CollabSyncRepository(appContext, syncDatenbank)
+    }
+
+    val syncOfflineEditor: SyncOfflineEditor by lazy {
+        SyncOfflineEditor(syncDao)
+    }
+
     val baustelleDao: BaustelleDao by lazy {
         datenbank.baustelleDao()
     }
@@ -38,7 +71,6 @@ object ServiceLocator {
         datenbank.baustellenKnotenDao()
     }
 
-    
     val streckenpunktDao: StreckenpunktDao by lazy {
         datenbank.streckenpunktDao()
     }
@@ -59,12 +91,52 @@ object ServiceLocator {
         BaustellenBaumRepository(baustellenKnotenDao, baustellenRepository)
     }
 
+    val worksiteBindingRepository: WorksiteBindingRepository by lazy {
+        WorksiteBindingRepository(
+            syncDatabase = syncDatenbank,
+            localWorksiteDao = baustellenKnotenDao,
+            localWorksiteTree = baustellenBaumRepository,
+            onBindingChanged = {
+                // Entprellter bestehender WorkManager-Pfad: nach Provisioning/QR-Beitritt nicht nur
+                // die Server-Hülle, sondern auch die Unterbaustellen zeitnah synchronisieren.
+                SofortSync.anstossen(appContext)
+            }
+        )
+    }
+
+    val worksiteStructureSync: WorksiteStructureSync by lazy {
+        WorksiteStructureSync(
+            syncDatabase = syncDatenbank,
+            localWorksiteDao = baustellenKnotenDao,
+            bindingRepository = worksiteBindingRepository,
+            collabRepository = collabSyncRepository
+        )
+    }
+
+    val worksiteTrackDataSync: WorksiteTrackDataSync by lazy {
+        WorksiteTrackDataSync(
+            trassenDao = trassenDao,
+            streckenpunktDao = streckenpunktDao,
+            bindingRepository = worksiteBindingRepository
+        )
+    }
+
     val streckenpunkteRepository: StreckenpunkteRepository by lazy {
         StreckenpunkteRepository(streckenpunktDao)
     }
 
     val fotoRepository: FotoRepository by lazy {
-        FotoRepository(fotoDao)
+        FotoRepository(fotoDao, appContext)
+    }
+
+    val collabLocalBridge: CollabLocalBridge by lazy {
+        CollabLocalBridge(
+            context = appContext,
+            syncDatabase = syncDatenbank,
+            bindingRepository = worksiteBindingRepository,
+            collabRepository = collabSyncRepository,
+            fotoRepository = fotoRepository
+        )
     }
 
     val trassenRepository: TrassenRepository by lazy {

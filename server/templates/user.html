@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% block content %}
+<div class="card" style="max-width:680px">
+  <h2>Benutzer bearbeiten</h2>
+  <p class="muted">Name und E-Mail können geändert werden. Der Gerätezugang und die bisherigen Daten bleiben dabei erhalten.</p>
+
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+  <form method="post" action="/admin/users/{{ user.id }}/edit">
+    <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+
+    <label for="full_name"><b>Name</b></label>
+    <input id="full_name" name="full_name" value="{{ user.full_name }}" required>
+
+    <label for="email"><b>E-Mail</b> <span class="muted">(optional)</span></label>
+    <input id="email" name="email" type="email" value="{{ user.email or '' }}">
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button type="submit">Speichern</button>
+      <a class="btn" style="background:#667085" href="/admin/users">Abbrechen</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

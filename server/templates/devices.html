@@ -1,0 +1,35 @@
+{% extends "base.html" %}{% block content %}
+<h2>Geräte</h2>
+<div class="card scroll">
+{% if rows %}
+<table>
+  <thead><tr><th>Benutzer</th><th>E-Mail</th><th>Gerät</th><th>Plattform</th><th>OS</th><th>App</th><th>Gebunden</th><th>Zuletzt</th><th>Status</th><th>Aktion</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td>{{ r.full_name }}</td>
+      <td>{{ r.email }}</td>
+      <td>{{ r.device_name or "" }}</td>
+      <td>{{ r.platform }}</td>
+      <td>{{ r.os_version or "" }}</td>
+      <td>{{ r.app_version or "" }}</td>
+      <td>{{ r.bound_at }}</td>
+      <td>{{ r.last_seen_at or "" }}</td>
+      <td>{{ "FREIGEGEBEN" if r.revoked_at else "AKTIV" }}</td>
+      <td>
+      {% if not r.revoked_at %}
+        <form method="post" action="/admin/devices/{{ r.id }}/revoke">
+          <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+          <button onclick="return confirm('Dieses Gerät wirklich freigeben?')">Gerät freigeben</button>
+        </form>
+      {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">Noch keine Geräte gebunden.</p>
+{% endif %}
+</div>
+{% endblock %}

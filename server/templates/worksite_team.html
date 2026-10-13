@@ -1,0 +1,43 @@
+{% extends "base.html" %}{% block content %}
+<h2>Baustellen-Team · {{ worksite.name or worksite.designation or 'Baustelle' }}</h2>
+<p><a href="/admin/worksites">← Baustellen</a></p>
+{% if notice %}<div class="notice">{{ notice }}</div>{% endif %}{% if error %}<div class="error">{{ error }}</div>{% endif %}
+<div class="card">
+  <h3>Grundzuordnung</h3>
+  <p><b>Firma:</b> {{ worksite.company_name or 'noch nicht zugeordnet' }} · <b>Status:</b> {{ worksite.status or '-' }}</p>
+  <p class="muted">Die Firma kann nur geändert werden, solange noch keine TB-Gruppe besteht. Damit entstehen keine firmenübergreifenden Teams.</p>
+  <form method="post" action="/admin/worksites/{{ worksite.id }}/company">
+    <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+    <label>Firma</label><select name="company_id"><option value="">-- keine Firma --</option>{% for c in companies %}<option value="{{ c.id }}" {% if c.id == worksite.company_id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select>
+    <button>Firma speichern</button>
+  </form>
+</div>
+{% if worksite.company_id %}
+<div class="card">
+  <h3>Neue TB-Gruppe</h3>
+  <form method="post" action="/admin/worksites/{{ worksite.id }}/groups">
+    <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+    <div class="two"><div><label>Bezeichnung</label><input name="label" placeholder="z. B. TB A" required></div><div><label>Verantwortlicher TB</label><select name="lead_user_id" required><option value="">-- auswählen --</option>{% for u in eligible %}<option value="{{ u.id }}">{{ u.full_name }}{% if u.email %} · {{ u.email }}{% endif %}</option>{% endfor %}</select></div></div>
+    <button>TB-Gruppe anlegen</button>
+  </form>
+</div>
+{% endif %}
+{% for g in groups %}
+<div class="card">
+  <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div><h3 style="margin:0">{{ g.label or 'TB-Gruppe' }}</h3><span class="muted">Verantwortlich: {{ g.lead_name_snapshot or '-' }} · {{ g.btb_count }} BTB-Datensätze</span></div>
+  {% if g.btb_count == 0 %}<form method="post" action="/admin/worksite-groups/{{ g.id }}/delete" onsubmit="return confirm('Leere TB-Gruppe wirklich löschen?')"><input type="hidden" name="csrf" value="{{ admin.csrf }}"><button class="danger small">Leere Gruppe löschen</button></form>{% endif %}</div>
+  <div class="scroll" style="margin-top:12px"><table><thead><tr><th>Nutzer</th><th>Rolle</th><th>Bereich</th><th></th></tr></thead><tbody>
+  {% for m in by_group.get(g.id,[]) %}<tr><td><b>{{ m.full_name }}</b>{% if m.email %}<br><span class="muted">{{ m.email }}</span>{% endif %}</td><td>{{ 'TB' if m.member_role == 'LEAD' else 'Hilfsnutzer' }}</td><td>{% if m.area_scope.all %}gesamte Baustelle{% else %}{% if m.area_scope.labels %}{{ m.area_scope.labels|join(', ') }}{% endif %}{% if m.area_scope.km_from_m is defined %}<br>km {{ format_km_m(m.area_scope.km_from_m) }} – {{ format_km_m(m.area_scope.km_to_m) }}{% endif %}{% endif %}</td><td>{% if m.member_role != 'LEAD' %}<form method="post" action="/admin/worksite-groups/{{ g.id }}/members/{{ m.user_id }}/remove"><input type="hidden" name="csrf" value="{{ admin.csrf }}"><button class="danger small">Entfernen</button></form>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% if eligible %}<hr style="border:0;border-top:1px solid #e6e9ee;margin:18px 0"><h4>Hilfsnutzer hinzufügen</h4>
+  <form method="post" action="/admin/worksite-groups/{{ g.id }}/members">
+    <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+    <label>Nutzer</label><select name="user_id" required><option value="">-- auswählen --</option>{% for u in eligible %}<option value="{{ u.id }}">{{ u.full_name }}{% if u.email %} · {{ u.email }}{% endif %}</option>{% endfor %}</select>
+    <label class="check" style="margin-bottom:12px"><input type="checkbox" name="scope_all" value="1">gesamte Baustelle freigeben</label>
+    <div class="two"><div><label>Bereich / Gleis / Weiche</label><input name="scope_labels" placeholder="z. B. Gleis 28, W13"></div><div><label>KM-Bereich</label><div class="two"><input name="scope_km_from" placeholder="von, z. B. 70+600"><input name="scope_km_to" placeholder="bis, z. B. 71+200"></div></div></div>
+    <p class="muted">Bei eingeschränkter Freigabe muss mindestens ein Bereich/Gleis/Weiche oder ein KM-Bereich angegeben werden.</p>
+    <button>Hilfsnutzer hinzufügen</button>
+  </form>{% endif %}
+</div>
+{% endfor %}
+{% endblock %}

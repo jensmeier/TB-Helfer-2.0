@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorBackground"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="18dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Benachrichtigungen"
+            android:textColor="?attr/colorOnBackground"
+            style="@style/TextAppearance.TBHelfer.Title" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Diese Einstellung gilt nur für dieses Gerät. Sie betrifft neue synchronisierte Mängel, Abnahmen und BTB-Einträge, die du sehen darfst."
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.78"
+            style="@style/TextAppearance.TBHelfer.Body" />
+
+        <RadioGroup
+            android:id="@+id/rgSyncBenachrichtigung"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp">
+
+            <RadioButton
+                android:id="@+id/rbSyncTextTon"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="52dp"
+                android:text="Text + Ton" />
+
+            <RadioButton
+                android:id="@+id/rbSyncNurTon"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="52dp"
+                android:text="Nur Ton" />
+
+            <RadioButton
+                android:id="@+id/rbSyncAus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="52dp"
+                android:text="Aus" />
+        </RadioGroup>
+
+        <TextView
+            android:id="@+id/txtSyncNotificationPermissionHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:padding="14dp"
+            android:background="?attr/colorSurface"
+            android:textColor="?attr/colorOnSurface"
+            android:alpha="0.9"
+            style="@style/TextAppearance.TBHelfer.Body" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Beispiele: „Neuer Mangel von Nutzer X“, „Neue Abnahme von Nutzer X“ oder „Neuer BTB-Eintrag von Nutzer X“."
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.72"
+            style="@style/TextAppearance.TBHelfer.Caption" />
+
+    </LinearLayout>
+</ScrollView>

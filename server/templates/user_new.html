@@ -1,0 +1,65 @@
+{% extends "base.html" %}{% block content %}
+<div class="card" style="max-width:720px">
+  <h2>Benutzer anlegen</h2>
+  <p class="muted">Nach dem Anlegen wird automatisch eine einmalig verwendbare Aktivierungskarte mit QR-Code erzeugt.</p>
+
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  {% set f = form_data or {} %}
+
+  <form method="post" action="/admin/users/new">
+    <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+
+    <label for="full_name"><b>Name</b></label>
+    <input id="full_name" name="full_name" value="{{ f.full_name or '' }}" required>
+
+    <label for="company"><b>Firma</b> <span class="muted">(optional)</span></label>
+    <input id="company" name="company" value="{{ f.company or '' }}" list="company-list" autocomplete="organization">
+    <datalist id="company-list">
+      {% for c in companies %}<option value="{{ c.name }}">{% endfor %}
+    </datalist>
+    <p class="muted" style="margin-top:-8px">Eine neue Firmenbezeichnung wird automatisch als Firma angelegt.</p>
+
+    <label for="email"><b>E-Mail</b> <span class="muted">(optional)</span></label>
+    <input id="email" name="email" type="email" value="{{ f.email or '' }}">
+
+    <h3>Server-Speicherung</h3>
+    <p class="muted">Nicht dauerhaft gespeicherte Daten dürfen für die Synchronisation vorübergehend auf dem Server liegen und werden erst nach bestätigter Verteilung bereinigt.</p>
+    <div class="checks">
+      <label class="check"><input type="checkbox" name="store_images" value="1" {% if f.store_images %}checked{% endif %}>Bilder speichern</label>
+      <label class="check"><input type="checkbox" name="store_btb" value="1" {% if f.store_btb %}checked{% endif %}>BTB speichern</label>
+      <label class="check"><input type="checkbox" name="store_defects" value="1" {% if f.store_defects %}checked{% endif %}>Mängel speichern</label>
+      <label class="check"><input type="checkbox" name="store_acceptances" value="1" {% if f.store_acceptances %}checked{% endif %}>Abnahmen speichern</label>
+      <label class="check"><input id="store_all" type="checkbox" name="store_all" value="1" {% if f.store_all %}checked{% endif %}><b>Alles speichern</b></label>
+    </div>
+
+    <label for="access_period"><b>Zugriffslaufzeit</b></label>
+    <select id="access_period" name="access_period" style="width:100%;box-sizing:border-box;padding:11px;margin:5px 0 14px;border:1px solid #ccd4de;border-radius:8px;font-size:16px;background:#fff">
+      <option value="UNLIMITED" {% if not f.access_period or f.access_period == 'UNLIMITED' %}selected{% endif %}>Unbegrenzt</option>
+      <option value="1M" {% if f.access_period == '1M' %}selected{% endif %}>1 Monat</option>
+      <option value="6M" {% if f.access_period == '6M' %}selected{% endif %}>6 Monate</option>
+      <option value="1Y" {% if f.access_period == '1Y' %}selected{% endif %}>1 Jahr</option>
+      <option value="CUSTOM" {% if f.access_period == 'CUSTOM' %}selected{% endif %}>Eigenes Ablaufdatum</option>
+    </select>
+
+    <div id="custom-date-wrap">
+      <label for="custom_access_date"><b>Eigenes Ablaufdatum</b></label>
+      <input id="custom_access_date" name="custom_access_date" type="date" value="{{ f.custom_access_date or '' }}">
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button type="submit">Benutzer anlegen</button>
+      <a class="btn" style="background:#667085" href="/admin/users">Abbrechen</a>
+    </div>
+  </form>
+</div>
+<script>
+(function(){
+  const sel=document.getElementById('access_period');
+  const wrap=document.getElementById('custom-date-wrap');
+  function update(){wrap.style.display=sel.value==='CUSTOM'?'block':'none';}
+  sel.addEventListener('change',update); update();
+  const all=document.getElementById('store_all');
+  if(all){all.addEventListener('change',()=>document.querySelectorAll('input[name^="store_"]').forEach(x=>{if(x!==all)x.checked=all.checked;}));}
+})();
+</script>
+{% endblock %}

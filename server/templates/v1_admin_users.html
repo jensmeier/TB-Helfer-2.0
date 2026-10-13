@@ -1,0 +1,142 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Benutzer{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Benutzer</h1>
+  <p class="muted">Die UUID ist die eigentliche Benutzeridentität. Gleiche Namen sind erlaubt. Login und Anzeigename werden beim Anlegen automatisch erzeugt; persönliche E-Mail/Telefon pflegt der Benutzer selbst.</p>
+  <div id="msg"></div>
+</div>
+
+<div class="card">
+  <h2>Nutzer anlegen</h2>
+  {% if companies %}
+  <form id="createUser"><div class="grid">
+    <div><label for="company">Firma</label><select id="company" required>{% for c in companies %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
+    <div><label for="firstName">Vorname</label><input id="firstName" required maxlength="120"></div>
+    <div><label for="lastName">Nachname</label><input id="lastName" required maxlength="120"></div>
+    <div><label for="role">Firmenrolle</label><select id="role"><option value="USER">USER</option><option value="CHEF">CHEF</option></select></div>
+    <div><label for="validUntil">Zugriff gültig bis (optional)</label><input id="validUntil" type="datetime-local"></div>
+  </div><div class="actions" style="margin-top:14px"><button type="submit">Nutzer anlegen</button></div></form>
+  {% else %}<div class="notice info">Zuerst muss eine aktive Firma angelegt werden.</div>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Vorhandene Nutzer</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Nutzer</th><th>Firma / Rolle</th><th>Persönlicher Kontakt</th><th>Portal / Gerät</th><th>Aktionen</th></tr></thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td>
+          <b>{{ u.display_name }}</b><div class="muted">{{ u.first_name }} {{ u.last_name }}</div>
+          <div class="muted">{% if u.activated_at %}Login{% else %}Vorläufiger Login{% endif %}: <code>{{ u.login_name }}</code></div>
+          <div class="muted"><code>{{ u.id }}</code></div>
+          {% if u.access_valid_until %}<div class="muted">gültig bis {{ u.access_valid_until }}</div>{% endif %}
+        </td>
+        <td><div>{{ u.company_name or '—' }}</div><span class="pill">{{ u.company_role }}</span></td>
+        <td><div>{{ u.personal_email or '—' }}</div><div>{{ u.personal_phone or '—' }}</div><div class="muted">nur Anzeige · Benutzer pflegt diese Daten selbst</div></td>
+        <td>
+          {% if u.activated_at %}Portal aktiviert{% if u.last_login_at %}<div class="muted">letzter Login: {{ u.last_login_at }}</div>{% endif %}{% else %}Portal noch nicht aktiviert{% endif %}
+          {% if u.device_id %}<div style="margin-top:7px"><b>{{ u.device_name or u.platform }}</b> · {{ u.device_status }}</div>{% if u.last_seen_at %}<div class="muted">zuletzt: {{ u.last_seen_at }}</div>{% endif %}{% endif %}
+        </td>
+        <td>
+          <div class="actions">
+            <button type="button" class="secondary toggle-edit" data-user-id="{{ u.id }}">Bearbeiten</button>
+            <a class="btn" href="/admin/v1/users/{{ u.id }}/activation-card">Aktivierungskarte</a>
+            {% if not u.activated_at %}<button type="button" class="secondary portal-activation" data-user-id="{{ u.id }}" data-login="{{ u.login_name }}">Portal aktivieren</button>{% endif %}
+            <button type="button" class="secondary delete-user" data-user-id="{{ u.id }}" data-user-name="{{ u.display_name }}">Sicher löschen</button>
+            <button type="button" class="danger purge-user" data-user-id="{{ u.id }}" data-user-name="{{ u.display_name }}">Komplett löschen</button>
+          </div>
+          <div id="edit-{{ u.id }}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid #eaecf0">
+            <div class="grid">
+              <div><label>Firma</label><select class="edit-company">{% for c in companies %}<option value="{{ c.id }}" {% if c.id == u.company_id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+              <div><label>Vorname</label><input class="edit-first" value="{{ u.first_name or '' }}" maxlength="120"></div>
+              <div><label>Nachname</label><input class="edit-last" value="{{ u.last_name or '' }}" maxlength="120"></div>
+              <div><label>Rolle</label><select class="edit-role"><option value="USER" {% if u.company_role == 'USER' %}selected{% endif %}>USER</option><option value="CHEF" {% if u.company_role == 'CHEF' %}selected{% endif %}>CHEF</option></select></div>
+              <div><label>Gültig bis</label><input class="edit-valid" type="datetime-local" value="{% if u.access_valid_until %}{{ u.access_valid_until.strftime('%Y-%m-%dT%H:%M') }}{% endif %}"></div>
+            </div>
+            <div class="actions" style="margin-top:10px"><button type="button" class="save-edit" data-user-id="{{ u.id }}">Änderungen speichern</button></div>
+            <div class="muted" style="margin-top:7px">Firmenwechsel wird blockiert, sobald Baustellen-/Teamhistorie existiert. Login, Anzeigename und persönliche Kontakte werden hier nicht überschrieben.</div>
+          </div>
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="5" class="muted">Noch keine Firmen-Nutzer vorhanden.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const msg=document.getElementById('msg');
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;window.scrollTo({top:0,behavior:'smooth'});}
+function localDateToIso(value){return value?new Date(value).toISOString():null;}
+
+const createUser=document.getElementById('createUser');
+if(createUser){createUser.addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  try{
+    const {data}=await tbApi('/api/v1/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      company_id:document.getElementById('company').value,
+      first_name:document.getElementById('firstName').value.trim(),
+      last_name:document.getElementById('lastName').value.trim(),
+      company_role:document.getElementById('role').value,
+      access_valid_until:localDateToIso(document.getElementById('validUntil').value)
+    })});
+    show('ok','Nutzer wurde angelegt. Vorläufiger Login: '+data.login_name);
+    setTimeout(()=>location.reload(),900);
+  }catch(error){show('err',error.message||String(error));}
+});}
+
+document.querySelectorAll('.toggle-edit').forEach(button=>button.addEventListener('click',()=>{
+  const panel=document.getElementById('edit-'+button.dataset.userId);
+  panel.style.display=panel.style.display==='none'?'block':'none';
+}));
+
+document.querySelectorAll('.save-edit').forEach(button=>button.addEventListener('click',async()=>{
+  const panel=document.getElementById('edit-'+button.dataset.userId);button.disabled=true;
+  try{
+    await tbApi('/api/v1/admin/users/'+button.dataset.userId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      company_id:panel.querySelector('.edit-company').value,
+      first_name:panel.querySelector('.edit-first').value.trim(),
+      last_name:panel.querySelector('.edit-last').value.trim(),
+      company_role:panel.querySelector('.edit-role').value,
+      access_valid_until:localDateToIso(panel.querySelector('.edit-valid').value)
+    })});
+    show('ok','Benutzerdaten wurden gespeichert.');setTimeout(()=>location.reload(),550);
+  }catch(error){show('err',error.message||String(error));button.disabled=false;}
+}));
+
+document.querySelectorAll('.portal-activation').forEach(button=>button.addEventListener('click',async()=>{
+  button.disabled=true;
+  try{
+    const {data}=await tbApi('/api/v1/admin/users/'+button.dataset.userId+'/portal-activation',{method:'POST'});
+    const url=location.origin+'/portal/v1/activate?token='+encodeURIComponent(data.activation_token)+'&login='+encodeURIComponent(data.login_name);
+    if(navigator.clipboard){try{await navigator.clipboard.writeText(url);}catch(_){}}
+    show('ok','Portal-Aktivierungslink wurde erzeugt und nach Möglichkeit kopiert: '+url);
+  }catch(error){show('err',error.message||String(error));}finally{button.disabled=false;}
+}));
+
+document.querySelectorAll('.delete-user').forEach(button=>button.addEventListener('click',async()=>{
+  const name=button.dataset.userName||'diesen Benutzer';
+  if(!confirm('Benutzer "'+name+'" wirklich löschen?\n\nDas Gerät wird freigegeben, offene Aktivierungs-Keys und Portalzugänge werden ungültig. Die technische Historie bleibt erhalten.')) return;
+  button.disabled=true;
+  try{
+    await tbApi('/api/v1/admin/users/'+button.dataset.userId,{method:'DELETE'});
+    show('ok','Benutzer wurde gelöscht und vorhandene Geräte wurden freigegeben.');
+    setTimeout(()=>location.reload(),450);
+  }catch(error){show('err',error.message||String(error));button.disabled=false;}
+}));
+
+document.querySelectorAll('.purge-user').forEach(button=>button.addEventListener('click',async()=>{
+  const id=button.dataset.userId,name=button.dataset.userName||'diesen Benutzer';
+  const typed=prompt('Benutzer "'+name+'" ENDGÜLTIG aus der Serverdatenbank löschen?\n\nGeräte, Portal-/Aktivierungsdaten und direkte Benutzerzuordnungen werden entfernt. Wenn der Benutzer eine BTB-Historie als Teamleitung besitzt, stoppt der Server den Vorgang.\n\nZum Bestätigen ENDGUELTIG LOESCHEN eingeben.');
+  if(typed!=='ENDGUELTIG LOESCHEN')return;
+  button.disabled=true;
+  try{
+    await tbApi('/api/v1/admin/purge/users/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm_id:id,confirm_text:typed})});
+    show('ok','Benutzer wurde vollständig gelöscht.');setTimeout(()=>location.reload(),450);
+  }catch(error){show('err',error.message||String(error));button.disabled=false;}
+}));
+</script>
+{% endblock %}

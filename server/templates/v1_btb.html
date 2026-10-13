@@ -1,0 +1,250 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Bautagesbericht{% endblock %}
+{% block head %}
+<style>
+  .entry{border:1px solid #eaecf0;border-radius:10px;padding:12px;margin:10px 0}.json{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+  .topline{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}.danger-zone{border-color:#fecdca}
+</style>
+{% endblock %}
+{% block content %}
+<div class="actions" style="margin-bottom:14px">
+  <a id="back" class="btn secondary" href="/portal/v1/worksites">← Baustelle</a>
+</div>
+<div class="card">
+  <div class="topline">
+    <div>
+      <h1>Bautagesbericht</h1>
+      <p id="meta" class="muted">wird geladen …</p>
+    </div>
+    <div id="status"></div>
+  </div>
+  <div id="msg"></div>
+  <div id="lifecycle" class="actions"></div>
+</div>
+
+<div class="card">
+  <h2>Kopfdaten</h2>
+  <form id="headerForm">
+    <div class="grid">
+      <div><label for="workDate">Arbeitstag</label><input id="workDate" type="date"></div>
+      <div><label for="startedAt">Beginn</label><input id="startedAt" type="datetime-local"></div>
+      <div><label for="endedAt">Ende</label><input id="endedAt" type="datetime-local"></div>
+    </div>
+    <label for="headerJson">Kopfdaten als JSON</label>
+    <textarea id="headerJson" class="json" rows="8">{}</textarea>
+    <div class="actions" style="margin-top:12px"><button id="saveHeader" type="submit">Kopfdaten speichern</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Fachliche Einträge</h2>
+  <div id="entries"></div>
+  <form id="entryForm">
+    <div class="grid">
+      <div><label for="entrySection">Abschnitt</label><input id="entrySection" required maxlength="80" placeholder="z. B. Arbeiten"></div>
+      <div><label for="entrySort">Sortierung</label><input id="entrySort" type="number" value="0"></div>
+    </div>
+    <label for="entryPayload">Inhalt als JSON</label>
+    <textarea id="entryPayload" class="json" rows="6">{}</textarea>
+    <div class="actions" style="margin-top:12px"><button id="addEntry" type="submit">Eintrag hinzufügen</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>BTB-Fotos</h2>
+  <div id="photos"></div>
+  <div id="photoUploadBox">
+    <label for="photoFile">Foto auswählen</label>
+    <input id="photoFile" type="file" accept="image/*">
+    <div class="actions" style="margin-top:10px"><button id="uploadPhoto" type="button">Foto hochladen</button><span id="photoProgress" class="muted"></span></div>
+  </div>
+</div>
+
+<div class="card danger-zone">
+  <h2>BTB löschen</h2>
+  <p class="muted">Löscht den BTB-Tombstone, seinen Original-Snapshot und das Abschluss-PDF. Echte Baustellenfotos bleiben erhalten.</p>
+  <button id="deleteBtb" class="danger" type="button">BTB löschen</button>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const btbId={{ btb_id|tojson }};
+const msg=document.getElementById('msg');
+let current=null, entries=[], photos=[], finalPdf=null, permissions={}, activeBtbId=null;
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function can(name){return permissions['*']===true||permissions[name]===true;}
+function jsonObject(raw){const x=JSON.parse(raw.trim()||'{}');if(x===null||Array.isArray(x)||typeof x!=='object')throw new Error('JSON muss ein Objekt sein.');return x;}
+function localInput(value){
+  if(!value)return '';
+  const d=new Date(value);if(Number.isNaN(d.getTime()))return String(value).slice(0,16);
+  const pad=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function lifecycle(){
+  const target=document.getElementById('lifecycle');const status=current.status;
+  const isActive=activeBtbId===btbId;
+  let html='';
+  if(status==='FINALIZED'&&finalPdf){
+    html+='<a class="btn" href="'+esc(finalPdf.content_url)+'" target="_blank" rel="noopener">Abschluss-PDF öffnen</a>';
+  }
+  if(status==='FINALIZED'&&!isActive&&can('btb.edit')){
+    html+='<button type="button" onclick="reopenBtb()">Nachbearbeitung öffnen</button>';
+  }
+  if((status==='ACTIVE'||status==='REWORK'||(status==='FINALIZED'&&isActive))&&can('btb.finalize')){
+    html+='<button type="button" onclick="finalizeBtb()">BTB abschließen</button>';
+  }
+  target.innerHTML=html||'<span class="muted">Keine Aktion verfügbar.</span>';
+  document.getElementById('headerForm').style.display=(can('btb.edit')&&isActive)?'block':'none';
+  document.getElementById('entryForm').style.display=(can('btb.edit')&&isActive)?'block':'none';
+  document.getElementById('deleteBtb').style.display=can('btb.delete')?'inline-block':'none';
+}
+function renderPhotos(){
+  const target=document.getElementById('photos');
+  const editable=can('btb.edit')&&activeBtbId===btbId;
+  target.innerHTML=photos.length?photos.map(function(p){
+    return '<div class="entry"><div class="topline"><div><b>'+esc(p.original_name||'Foto')+'</b><div class="muted">'+esc(p.mime_type||'')+' · '+esc(p.byte_size||0)+' Byte</div></div>'+
+      (editable?'<button class="danger" type="button" onclick="detachPhoto(\''+esc(p.id)+'\')">Aus BTB lösen</button>':'')+'</div>'+
+      '<div style="margin-top:8px"><a href="'+esc(p.content_url)+'" target="_blank" rel="noopener"><img src="'+esc(p.content_url)+'" alt="" style="max-width:100%;max-height:360px;object-fit:contain;border:1px solid #eaecf0;border-radius:8px"></a></div></div>';
+  }).join(''):'<p class="muted">Noch keine BTB-Fotos.</p>';
+  document.getElementById('photoUploadBox').style.display=(can('files.add')&&activeBtbId===btbId)?'block':'none';
+}
+async function detachPhoto(id){
+  if(!confirm('Foto nur aus diesem BTB lösen? Das Baustellenfoto bleibt erhalten.'))return;
+  try{
+    await tbApi('/api/v1/btbs/'+btbId+'/photos/'+encodeURIComponent(id),{method:'DELETE'});
+    show('ok','Foto aus BTB gelöst.');await loadBtb();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.detachPhoto=detachPhoto;
+function renderEntries(){
+  const target=document.getElementById('entries');
+  target.innerHTML=entries.length?entries.map(function(e){
+    const editable=can('btb.edit')&&activeBtbId===btbId;
+    return '<div class="entry" data-entry="'+esc(e.id)+'">'+
+      '<div class="topline"><div><b>'+esc(e.section)+'</b> <span class="pill">Version '+esc(e.version)+'</span></div>'+
+      (editable?'<button class="danger" type="button" onclick="deleteEntry(\''+esc(e.id)+'\')">Entfernen</button>':'')+'</div>'+
+      '<label>Sortierung</label><input id="sort-'+esc(e.id)+'" type="number" value="'+esc(e.sort_order)+'" '+(editable?'':'disabled')+'>'+
+      '<label>Inhalt</label><textarea id="payload-'+esc(e.id)+'" class="json" rows="6" '+(editable?'':'disabled')+'>'+esc(JSON.stringify(e.payload||{},null,2))+'</textarea>'+
+      (editable?'<div class="actions" style="margin-top:8px"><button type="button" onclick="saveEntry(\''+esc(e.id)+'\','+Number(e.version)+')">Eintrag speichern</button></div>':'')+
+      '</div>';
+  }).join(''):'<p class="muted">Noch keine Facheinträge.</p>';
+}
+async function loadBtb(){
+  const result=await tbApi('/api/v1/btbs/'+btbId);
+  current=result.data.btb;entries=result.data.entries||[];photos=result.data.photos||[];finalPdf=result.data.final_pdf;
+  const ws=await tbApi('/api/v1/worksites/'+encodeURIComponent(current.worksite_id));
+  permissions=ws.data.permissions||{};
+  const list=await tbApi('/api/v1/worksites/'+encodeURIComponent(current.worksite_id)+'/teams/'+encodeURIComponent(current.team_id)+'/btbs');
+  activeBtbId=list.data.active_btb_id;
+  document.getElementById('back').href='/portal/v1/worksites/'+encodeURIComponent(current.worksite_id);
+  document.getElementById('meta').textContent=(current.work_date||'ohne Datum')+' · BTB '+btbId;
+  document.getElementById('status').innerHTML='<span class="pill">'+esc(current.status)+'</span> <span class="pill">Version '+esc(current.version)+'</span>';
+  document.getElementById('workDate').value=current.work_date||'';
+  document.getElementById('startedAt').value=localInput(current.started_at);
+  document.getElementById('endedAt').value=localInput(current.ended_at);
+  document.getElementById('headerJson').value=JSON.stringify(current.header||{},null,2);
+  renderEntries();renderPhotos();lifecycle();
+}
+document.getElementById('headerForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  try{
+    await tbApi('/api/v1/btbs/'+btbId+'/header',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      base_version:current.version,
+      work_date:document.getElementById('workDate').value||null,
+      started_at:document.getElementById('startedAt').value||null,
+      ended_at:document.getElementById('endedAt').value||null,
+      header:jsonObject(document.getElementById('headerJson').value)
+    })});
+    show('ok','Kopfdaten gespeichert.');await loadBtb();
+  }catch(error){show('err',error.message||String(error));}
+});
+document.getElementById('entryForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  try{
+    await tbApi('/api/v1/btbs/'+btbId+'/entries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      section:document.getElementById('entrySection').value.trim(),
+      sort_order:Number(document.getElementById('entrySort').value)||0,
+      payload:jsonObject(document.getElementById('entryPayload').value)
+    })});
+    ev.target.reset();document.getElementById('entrySort').value='0';document.getElementById('entryPayload').value='{}';
+    show('ok','Eintrag hinzugefügt.');await loadBtb();
+  }catch(error){show('err',error.message||String(error));}
+});
+async function saveEntry(id,version){
+  try{
+    await tbApi('/api/v1/btbs/'+btbId+'/entries/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      base_version:version,
+      sort_order:Number(document.getElementById('sort-'+id).value)||0,
+      payload:jsonObject(document.getElementById('payload-'+id).value)
+    })});
+    show('ok','Eintrag gespeichert.');await loadBtb();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.saveEntry=saveEntry;
+async function deleteEntry(id){
+  if(!confirm('Eintrag wirklich aus dem BTB entfernen?'))return;
+  try{
+    await tbApi('/api/v1/btbs/'+btbId+'/entries/'+encodeURIComponent(id),{method:'DELETE'});
+    show('ok','Eintrag entfernt.');await loadBtb();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.deleteEntry=deleteEntry;
+async function reopenBtb(){
+  try{await tbApi('/api/v1/btbs/'+btbId+'/reopen',{method:'POST'});show('ok','BTB zur Nachbearbeitung geöffnet.');await loadBtb();}
+  catch(error){show('err',error.message||String(error));}
+}
+window.reopenBtb=reopenBtb;
+async function finalizeBtb(){
+  try{await tbApi('/api/v1/btbs/'+btbId+'/finalize',{method:'POST'});show('ok','BTB abgeschlossen.');await loadBtb();}
+  catch(error){show('err',error.message||String(error));}
+}
+window.finalizeBtb=finalizeBtb;
+
+async function sha256Hex(file){
+  const digest=await crypto.subtle.digest('SHA-256',await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+document.getElementById('uploadPhoto').addEventListener('click',async function(){
+  const file=document.getElementById('photoFile').files[0];
+  const progress=document.getElementById('photoProgress');
+  if(!file){show('err','Bitte zuerst ein Foto auswählen.');return;}
+  if(!(window.crypto&&crypto.subtle)){show('err','Dieser Browser unterstützt die sichere SHA-256-Prüfung nicht.');return;}
+  try{
+    progress.textContent='Prüfsumme wird berechnet …';
+    const sha=await sha256Hex(file);
+    const created=await tbApi('/api/v1/worksites/'+encodeURIComponent(current.worksite_id)+'/uploads',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        target_kind:'PHOTO',original_name:file.name,mime_type:file.type||'application/octet-stream',
+        expected_bytes:file.size,expected_sha256:sha
+      })
+    });
+    const upload=created.data;let offset=Number(upload.received_bytes||0);const chunkSize=Number(upload.chunk_size||8388608);
+    while(offset<file.size){
+      const chunk=file.slice(offset,Math.min(file.size,offset+chunkSize));
+      progress.textContent='Upload '+Math.round(offset/file.size*100)+' %';
+      const result=await tbApi('/api/v1/uploads/'+encodeURIComponent(upload.id)+'/chunk?offset='+offset,{
+        method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:chunk
+      });
+      offset=Number(result.data.received_bytes);
+    }
+    progress.textContent='Foto wird verknüpft …';
+    await tbApi('/api/v1/uploads/'+encodeURIComponent(upload.id)+'/complete',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        entity_type:'BTB',entity_id:btbId,purpose:'BTB_PHOTO'
+      })
+    });
+    document.getElementById('photoFile').value='';progress.textContent='';
+    show('ok','Foto hochgeladen und mit BTB verknüpft.');await loadBtb();
+  }catch(error){progress.textContent='';show('err',error.message||String(error));}
+});
+
+document.getElementById('deleteBtb').addEventListener('click',async function(){
+  if(!current||!confirm('Diesen BTB vollständig löschen?'))return;
+  const target='/portal/v1/worksites/'+encodeURIComponent(current.worksite_id);
+  try{await tbApi('/api/v1/btbs/'+btbId,{method:'DELETE'});location.href=target;}
+  catch(error){show('err',error.message||String(error));}
+});
+loadBtb().catch(function(error){show('err',error.message||String(error));});
+</script>
+{% endblock %}

@@ -17,24 +17,24 @@
         android:layout_width="1dp"
         android:layout_height="12dp" />
 
-    <com.google.android.material.button.MaterialButton
+    <de.tbhelfer.ui.bautagebuch.ExistingBtbShiftButton
         android:id="@+id/btnShiftTag"
         style="@style/TbButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Tag — Neu (leer)"
+        android:text="Tag"
         android:textAllCaps="false" />
 
     <Space
         android:layout_width="1dp"
         android:layout_height="8dp" />
 
-    <com.google.android.material.button.MaterialButton
+    <de.tbhelfer.ui.bautagebuch.ExistingBtbShiftButton
         android:id="@+id/btnShiftNacht"
         style="@style/TbButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Nacht (+1) — Neu (leer)"
+        android:text="Nacht (+1)"
         android:textAllCaps="false" />
 
 </LinearLayout>

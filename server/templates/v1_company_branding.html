@@ -1,0 +1,197 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Firmenprofil{% endblock %}
+{% block head %}
+<style>
+  .preview-sheet{position:relative;background:white;border:1px solid #d0d5dd;border-radius:10px;min-height:290px;padding:24px;overflow:hidden}
+  .preview-title{font-size:25px;font-weight:800;position:absolute;left:24px;top:26px}
+  .preview-brand{position:absolute;left:51%;right:22px;top:18px;height:190px;text-align:center;overflow:hidden}
+  .preview-logo-zone{height:135px;display:flex;align-items:center;justify-content:center;position:relative}
+  .preview-logo{max-height:130px;object-fit:contain;background:white;position:relative}
+  .preview-lines{font-size:12px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .preview-meta{position:absolute;left:24px;top:92px;font-size:13px;line-height:1.55;color:#344054}
+  .range-row{display:grid;grid-template-columns:1fr 90px;gap:10px;align-items:end}.small{font-size:12px;color:#667085}
+  .logo-current{max-width:320px;max-height:150px;object-fit:contain;border:1px solid #eaecf0;background:white;padding:8px;border-radius:10px}
+</style>
+{% endblock %}
+{% block content %}
+<div class="actions" style="margin-bottom:14px">
+  <a class="btn secondary" href="/admin/v1/companies">← Firmen</a>
+</div>
+
+<div class="card">
+  <h1>Firmenprofil · {{ profile.name }}</h1>
+  <p class="muted">Zentrale Daten für Gerätecache und BTB/PDF · Profil-Version <span id="profileVersion">{{ profile.profile_version }}</span> · Logo-Version <span id="logoVersion">{{ profile.logo_version }}</span>.</p>
+  <div id="msg"></div>
+</div>
+
+<div class="card">
+  <h2>Firmenstammdaten</h2>
+  <form id="profileForm">
+    <div class="grid">
+      <div><label for="p_name">Firmenname</label><input id="p_name" value="{{ profile.name or '' }}" required maxlength="200"></div>
+      <div><label for="p_address1">Anschrift 1</label><input id="p_address1" value="{{ profile.address_line1 or '' }}" maxlength="300"></div>
+      <div><label for="p_address2">Anschrift 2</label><input id="p_address2" value="{{ profile.address_line2 or '' }}" maxlength="300"></div>
+      <div><label for="p_postal">PLZ</label><input id="p_postal" value="{{ profile.postal_code or '' }}" maxlength="30"></div>
+      <div><label for="p_city">Ort</label><input id="p_city" value="{{ profile.city or '' }}" maxlength="200"></div>
+      <div><label for="p_phone">Firmentelefon</label><input id="p_phone" value="{{ profile.phone or '' }}" maxlength="100"></div>
+      <div><label for="p_email">Firmen-E-Mail</label><input id="p_email" type="email" value="{{ profile.email or '' }}" maxlength="320"></div>
+      <div><label for="p_website">Webseite</label><input id="p_website" value="{{ profile.website or '' }}" maxlength="500"></div>
+    </div>
+    <div class="actions" style="margin-top:14px"><button type="submit">Firmenprofil speichern</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Firmenlogo</h2>
+  <p class="muted">PNG, JPEG oder WEBP · maximal 5 MiB. Der Server erkennt den Typ aus den Bilddaten.</p>
+  <div class="grid">
+    <div>
+      {% if profile.has_logo %}
+        <img id="currentLogo" class="logo-current" src="/api/v1/admin/companies/{{ company_id }}/logo?v={{ profile.logo_version }}" alt="Firmenlogo">
+      {% else %}
+        <div id="noLogo" class="notice info">Noch kein Firmenlogo hinterlegt.</div>
+        <img id="currentLogo" class="logo-current" style="display:none" alt="Firmenlogo">
+      {% endif %}
+    </div>
+    <div>
+      <label for="logoFile">Neues Logo auswählen</label>
+      <input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp">
+      <div class="actions" style="margin-top:12px">
+        <button id="uploadLogo" type="button">Logo speichern</button>
+        <button id="deleteLogo" type="button" class="danger" {% if not profile.has_logo %}disabled{% endif %}>Logo entfernen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>BTB/PDF-Logo-Layout</h2>
+  <p class="muted">Firmenweiter Stand · Layout-Version <span id="layoutVersion">{{ layout.layout_version }}</span>. Dieselben Werte werden von Android geladen/gecached.</p>
+  <div class="grid">
+    <div class="range-row"><div><label for="logoWidth">Logo-Breite (pt)</label><input id="logoWidth" type="range" min="40" max="250" step="5" value="{{ layout.logo_width_pt }}"></div><input id="logoWidthNumber" type="number" min="40" max="250" value="{{ layout.logo_width_pt }}"></div>
+    <div class="range-row"><div><label for="offsetX">X-Versatz (pt)</label><input id="offsetX" type="range" min="-120" max="120" step="5" value="{{ layout.offset_x_pt }}"></div><input id="offsetXNumber" type="number" min="-120" max="120" value="{{ layout.offset_x_pt }}"></div>
+    <div class="range-row"><div><label for="offsetY">Y-Versatz (pt)</label><input id="offsetY" type="range" min="-60" max="180" step="5" value="{{ layout.offset_y_pt }}"></div><input id="offsetYNumber" type="number" min="-60" max="180" value="{{ layout.offset_y_pt }}"></div>
+  </div>
+  <div class="grid" style="margin-top:14px">
+    <div class="check"><input id="showName" type="checkbox" {% if layout.show_company_name %}checked{% endif %}><label for="showName">Firmenname anzeigen</label></div>
+    <div class="check"><input id="showEmail" type="checkbox" {% if layout.show_company_email %}checked{% endif %}><label for="showEmail">Firmen-E-Mail anzeigen</label></div>
+    <div class="check"><input id="showPhone" type="checkbox" {% if layout.show_company_phone %}checked{% endif %}><label for="showPhone">Firmentelefon anzeigen</label></div>
+    <div class="check"><input id="contactsInImage" type="checkbox" {% if layout.contacts_in_image %}checked{% endif %}><label for="contactsInImage">Kontaktdaten sind bereits im Logo</label></div>
+  </div>
+  <div class="actions" style="margin-top:14px">
+    <button id="saveLayout" type="button">PDF-Layout firmenweit speichern</button>
+    <button id="resetLayout" type="button" class="secondary">Standardwerte</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Vorschau Firmenkopf</h2>
+  <p class="small">Browser-Vorschau zur Positionierung. Der endgültige Abschluss wird serverseitig als PDF gerendert.</p>
+  <div class="preview-sheet">
+    <div class="preview-title">Bautagesbericht</div>
+    <div class="preview-meta">Baustelle: Beispiel<br>Strecke: 5362<br>Verantwortlicher TB: Beispiel</div>
+    <div class="preview-brand">
+      <div class="preview-logo-zone">
+        <img id="previewLogo" class="preview-logo" {% if profile.has_logo %}src="/api/v1/admin/companies/{{ company_id }}/logo?v={{ profile.logo_version }}"{% else %}style="display:none"{% endif %} alt="">
+      </div>
+      <div class="preview-lines">
+        <div id="previewName"></div>
+        <div id="previewEmail"></div>
+        <div id="previewPhone"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const companyId={{ company_id|tojson }};
+const initialProfile={{ profile|tojson }};
+const msg=document.getElementById('msg');
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;window.scrollTo({top:0,behavior:'smooth'});}
+function value(id){const v=document.getElementById(id).value.trim();return v||null;}
+function clamp(n,min,max){return Math.max(min,Math.min(max,Number(n)||0));}
+function pair(rangeId,numberId,min,max){
+  const r=document.getElementById(rangeId), n=document.getElementById(numberId);
+  const syncFromRange=()=>{n.value=r.value;renderPreview();};
+  const syncFromNumber=()=>{const v=clamp(n.value,min,max);n.value=v;r.value=v;renderPreview();};
+  r.addEventListener('input',syncFromRange);n.addEventListener('input',syncFromNumber);
+}
+pair('logoWidth','logoWidthNumber',40,250);pair('offsetX','offsetXNumber',-120,120);pair('offsetY','offsetYNumber',-60,180);
+['showName','showEmail','showPhone','contactsInImage'].forEach(id=>document.getElementById(id).addEventListener('change',renderPreview));
+
+function renderPreview(){
+  const width=clamp(document.getElementById('logoWidthNumber').value,40,250);
+  const x=clamp(document.getElementById('offsetXNumber').value,-120,120);
+  const y=clamp(document.getElementById('offsetYNumber').value,-60,180);
+  const logo=document.getElementById('previewLogo');
+  logo.style.width=(width*1.333)+'px';
+  logo.style.transform='translate('+(x*1.1)+'px,'+(y*0.55)+'px)';
+  const contactsInImage=document.getElementById('contactsInImage').checked;
+  document.getElementById('previewName').textContent=document.getElementById('showName').checked?(value('p_name')||''):'';
+  document.getElementById('previewEmail').textContent=!contactsInImage&&document.getElementById('showEmail').checked?(value('p_email')||''):'';
+  document.getElementById('previewPhone').textContent=!contactsInImage&&document.getElementById('showPhone').checked?(value('p_phone')||''):'';
+}
+['p_name','p_email','p_phone'].forEach(id=>document.getElementById(id).addEventListener('input',renderPreview));
+renderPreview();
+
+document.getElementById('profileForm').addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  try{
+    const result=await tbApi('/api/v1/admin/companies/'+companyId+'/profile',{
+      method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        name:value('p_name'),address_line1:value('p_address1'),address_line2:value('p_address2'),
+        postal_code:value('p_postal'),city:value('p_city'),phone:value('p_phone'),
+        email:value('p_email'),website:value('p_website')
+      })
+    });
+    document.getElementById('profileVersion').textContent=result.data.profile.profile_version;
+    show('ok','Firmenprofil gespeichert.');renderPreview();
+  }catch(error){show('err',error.message||String(error));}
+});
+
+document.getElementById('uploadLogo').addEventListener('click',async ()=>{
+  const file=document.getElementById('logoFile').files[0];
+  if(!file){show('err','Bitte zuerst eine Logo-Datei auswählen.');return;}
+  if(file.size>5*1024*1024){show('err','Logo darf höchstens 5 MiB groß sein.');return;}
+  try{
+    await tbApi('/api/v1/admin/companies/'+companyId+'/logo',{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});
+    show('ok','Firmenlogo gespeichert.');setTimeout(()=>location.reload(),350);
+  }catch(error){show('err',error.message||String(error));}
+});
+
+document.getElementById('deleteLogo').addEventListener('click',async ()=>{
+  if(!confirm('Firmenlogo wirklich entfernen?')) return;
+  try{
+    await tbApi('/api/v1/admin/companies/'+companyId+'/logo',{method:'DELETE'});
+    show('ok','Firmenlogo entfernt.');setTimeout(()=>location.reload(),350);
+  }catch(error){show('err',error.message||String(error));}
+});
+
+document.getElementById('saveLayout').addEventListener('click',async ()=>{
+  const payload={
+    logo_width_pt:clamp(document.getElementById('logoWidthNumber').value,40,250),
+    offset_x_pt:clamp(document.getElementById('offsetXNumber').value,-120,120),
+    offset_y_pt:clamp(document.getElementById('offsetYNumber').value,-60,180),
+    show_company_name:document.getElementById('showName').checked,
+    show_company_email:document.getElementById('showEmail').checked,
+    show_company_phone:document.getElementById('showPhone').checked,
+    contacts_in_image:document.getElementById('contactsInImage').checked
+  };
+  try{
+    const result=await tbApi('/api/v1/admin/companies/'+companyId+'/pdf-logo-layout',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    document.getElementById('layoutVersion').textContent=result.data.layout.layout_version;
+    show('ok','PDF-Logo-Layout firmenweit gespeichert.');
+  }catch(error){show('err',error.message||String(error));}
+});
+
+document.getElementById('resetLayout').addEventListener('click',()=>{
+  document.getElementById('logoWidthNumber').value=90;document.getElementById('logoWidth').value=90;
+  document.getElementById('offsetXNumber').value=0;document.getElementById('offsetX').value=0;
+  document.getElementById('offsetYNumber').value=0;document.getElementById('offsetY').value=0;
+  document.getElementById('showName').checked=true;document.getElementById('showEmail').checked=true;
+  document.getElementById('showPhone').checked=true;document.getElementById('contactsInImage').checked=false;renderPreview();
+});
+</script>
+{% endblock %}

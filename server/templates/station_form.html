@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% block content %}
+<h2>{% if mode=="new" %}Bahnhof anlegen{% else %}Bahnhof bearbeiten{% endif %}</h2>{% if error %}<div class="error">{{ error }}</div>{% endif %}
+<div class="card"><form method="post"><input type="hidden" name="csrf" value="{{ admin.csrf }}">
+<label>Bahnhofscode</label><input id="station_code" name="station_code" value="{{ station.station_code or '' }}" placeholder="z. B. MP" autocomplete="off">
+<label>Name</label><input id="station_name" name="name" required value="{{ station.name or '' }}" placeholder="z. B. München-Pasing" autocomplete="off">
+<div id="station_suggestions" style="display:none;border:1px solid #dfe4ea;border-radius:8px;margin:-7px 0 14px;overflow:hidden"></div>
+<p class="muted" style="margin-top:-6px">Code oder Name eingeben: Die Vorschläge kommen ausschließlich aus den bereits vorhandenen TB-Helfer-Bahnhofs-/Betriebsstellendaten.</p>
+<label>Kurzname</label><input name="short_name" value="{{ station.short_name or '' }}" placeholder="optional">
+<label>Beschreibung</label><textarea name="description">{{ station.description or '' }}</textarea>
+<label>Zugeordnete Strecken</label><div class="checks">{% for r in routes %}<label class="check"><input type="checkbox" name="route_{{ r.id }}" value="1" {% if r.id|string in selected_routes %}checked{% endif %}>{{ r.route_number }}{% if r.name %} · {{ r.name }}{% endif %}</label>{% endfor %}</div>
+<div class="actions"><button>Speichern</button><a class="btn secondary" href="/admin/stations">Abbrechen</a></div></form></div>
+<script>
+(function(){
+  const code=document.getElementById('station_code'), name=document.getElementById('station_name'), box=document.getElementById('station_suggestions');
+  let timer=null, seq=0;
+  function hide(){box.style.display='none';box.innerHTML='';}
+  async function search(value){
+    value=(value||'').trim(); if(value.length<2){hide();return;} const my=++seq;
+    try{
+      const r=await fetch('/admin/api/stations/search?q='+encodeURIComponent(value),{headers:{'Accept':'application/json'}});
+      if(!r.ok||my!==seq){hide();return;} const data=await r.json(); const items=data.items||[];
+      box.innerHTML=''; if(!items.length){hide();return;}
+      items.slice(0,12).forEach(it=>{const b=document.createElement('button');b.type='button';b.className='secondary';b.style='display:block;width:100%;border-radius:0;text-align:left;background:#fff;color:#18202a;border-bottom:1px solid #eef2f6';b.textContent=it.name+' ('+it.code+')';b.addEventListener('click',()=>{code.value=it.code;name.value=it.name;hide();});box.appendChild(b);});
+      box.style.display='block';
+    }catch(e){hide();}
+  }
+  function queue(ev){clearTimeout(timer);timer=setTimeout(()=>search(ev.target.value),180);}
+  code.addEventListener('input',queue); name.addEventListener('input',queue);
+  document.addEventListener('click',ev=>{if(ev.target!==code&&ev.target!==name&&!box.contains(ev.target))hide();});
+})();
+</script>
+{% endblock %}

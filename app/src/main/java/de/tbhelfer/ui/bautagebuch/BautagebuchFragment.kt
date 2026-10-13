@@ -37,6 +37,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import android.content.res.ColorStateList
 import android.graphics.Color
 import androidx.core.view.ViewCompat
@@ -140,6 +141,9 @@ class BautagebuchFragment : Fragment(R.layout.fragment_bautagebuch) {
     private lateinit var acNied1: MaterialAutoCompleteTextView
     private lateinit var acNied2: MaterialAutoCompleteTextView
     private lateinit var acNied3: MaterialAutoCompleteTextView
+    private lateinit var tvWetterMm1: android.widget.TextView
+    private lateinit var tvWetterMm2: android.widget.TextView
+    private lateinit var tvWetterMm3: android.widget.TextView
 
     private lateinit var btnWetterAuto: MaterialButton
     private lateinit var btnWetterReset: MaterialButton
@@ -166,6 +170,11 @@ class BautagebuchFragment : Fragment(R.layout.fragment_bautagebuch) {
     private var rawEinweisung: String = ""
     private var rawBesonderheiten: String = ""
     private var rawMaengel: String = ""
+
+    // BTB-EDIT-001: lokale Room-IDs sind nur UI-Hilfe. Synchronisiert wird ausschließlich
+    // der stabile clientNodeKey/worksiteNodeKey.
+    private val btbNodeKeyByLocalId = linkedMapOf<Long, String>()
+    private val btbLocalIdByNodeKey = linkedMapOf<String, Long>()
 
     // Für Bild-Nummerierung (Bild 1–3) wie im PDF
     private var currentMaxFotosInPdf: Int = 60
@@ -217,6 +226,41 @@ class BautagebuchFragment : Fragment(R.layout.fragment_bautagebuch) {
     private lateinit var btnMaschinenSave: MaterialButton
 
     private enum class PmSection { PERSONAL, MASCHINEN }
+
+    private enum class BtbEditSection(
+        val point: Int,
+        val label: String,
+        val photoType: de.tbhelfer.datenbank.Bildtyp
+    ) {
+        ARBEIT(4, "Ausgeführte Arbeiten", de.tbhelfer.datenbank.Bildtyp.FOTODOKUMENTATION),
+        ABNAHME(5, "Abnahmen", de.tbhelfer.datenbank.Bildtyp.ABNAHMEN),
+        EINWEISUNG(6, "Einweisung/Unterweisung", de.tbhelfer.datenbank.Bildtyp.EINWEISUNG_UNTERWEISUNG),
+        BESONDERHEIT(7, "Besonderheiten", de.tbhelfer.datenbank.Bildtyp.BESONDERHEITEN),
+        MANGEL(8, "Mängel/Schäden", de.tbhelfer.datenbank.Bildtyp.MAENGEL_SCHAEDEN);
+
+        companion object {
+            fun fromPhotoType(type: de.tbhelfer.datenbank.Bildtyp?): BtbEditSection? =
+                values().firstOrNull { it.photoType == type }
+        }
+    }
+
+    private fun rawForEditSection(section: BtbEditSection): String = when (section) {
+        BtbEditSection.ARBEIT -> rawArbeiten
+        BtbEditSection.ABNAHME -> rawAbnahmen
+        BtbEditSection.EINWEISUNG -> rawEinweisung
+        BtbEditSection.BESONDERHEIT -> rawBesonderheiten
+        BtbEditSection.MANGEL -> rawMaengel
+    }
+
+    private fun setRawForEditSection(section: BtbEditSection, value: String) {
+        when (section) {
+            BtbEditSection.ARBEIT -> rawArbeiten = value
+            BtbEditSection.ABNAHME -> rawAbnahmen = value
+            BtbEditSection.EINWEISUNG -> rawEinweisung = value
+            BtbEditSection.BESONDERHEIT -> rawBesonderheiten = value
+            BtbEditSection.MANGEL -> rawMaengel = value
+        }
+    }
 
     private data class PairRowUi(
         val root: View,
@@ -323,6 +367,10 @@ private var lastKnownRevisionCount: Int? = null
 private var topFieldsCollapsed: Boolean = true
 private var widgetSectionRequest: Int? = null
 private var widgetOpenEditorRequest: Boolean = false
+private var requestedBtbId: String? = null
+private var loadedBtbId: String? = null
+private var loadedBtbChangedEpochMs: Long = Long.MIN_VALUE
+private var btbLoadInitialized: Boolean = false
 
 // Für Wechsel-Dialog: wenn der Nutzer gerade noch tippt, kurz nachfragen
 private var lastUserEditAtMs: Long = 0L
@@ -342,6 +390,7 @@ private var pmDirtySinceMs: Long? = null
         arguments?.getString("schichtTyp")?.takeIf { it.isNotBlank() }?.let { raw ->
             runCatching { selectedSchichtTyp = SchichtTyp.valueOf(raw) }
         }
+        requestedBtbId = arguments?.getString("btbId")?.trim()?.takeIf { it.isNotBlank() && !it.startsWith("legacy:") }
         widgetSectionRequest = arguments?.getInt("widgetSection", -1)?.takeIf { it in 4..8 }
         widgetOpenEditorRequest = arguments?.getBoolean("widgetOpenEditor", false) == true
 
@@ -378,6 +427,9 @@ private var pmDirtySinceMs: Long? = null
         acNied1 = view.requireViewByIdCompat(R.id.etNied1)
         acNied2 = view.requireViewByIdCompat(R.id.etNied2)
         acNied3 = view.requireViewByIdCompat(R.id.etNied3)
+        tvWetterMm1 = view.requireViewByIdCompat(R.id.tvWetterMm1)
+        tvWetterMm2 = view.requireViewByIdCompat(R.id.tvWetterMm2)
+        tvWetterMm3 = view.requireViewByIdCompat(R.id.tvWetterMm3)
 
         btnWetterAuto = view.requireViewByIdCompat(R.id.btnWetterAuto)
         btnWetterReset = view.requireViewByIdCompat(R.id.btnWetterReset)
@@ -674,6 +726,41 @@ cardCurrentReport.setOnClickListener {
     override fun onResume() {
         super.onResume()
         if (::chipBtbAbnahmeJa.isInitialized) refreshBtbStatusChips()
+        refreshActiveBtbAfterResume()
+    }
+
+    /**
+     * Nach PDF/Foto/Mangel/Sync-Rueckkehr kann derselbe Fragment-View weiterleben.
+     * Dann waren bisher Kopf/Pointer bereits aktuell, die Eingabefelder aber noch der alte Stand.
+     * Nur ohne ungespeicherte lokale Eingabe wird der kanonische aktive BTB neu eingelesen.
+     */
+    private fun refreshActiveBtbAfterResume() {
+        if (!btbLoadInitialized || isSwitchingContext || !isAdded) return
+        if (sectionsDirtySinceMs != null || pmDirtySinceMs != null || wetterDirtySinceMs != null) return
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val ctx = resolveAktuelleBaustelle() ?: return@launch
+            val active = withContext(Dispatchers.IO) {
+                BtbActiveContext.laden(requireContext().applicationContext, ctx.id)
+            }
+            val mussNeuLaden = when {
+                active == null -> loadedBtbId != null
+                active.btbId != loadedBtbId -> true
+                active.entry.geaendertAmEpochMs > loadedBtbChangedEpochMs -> true
+                else -> false
+            }
+            if (!mussNeuLaden) return@launch
+            if (isSwitchingContext || sectionsDirtySinceMs != null || pmDirtySinceMs != null || wetterDirtySinceMs != null) {
+                return@launch
+            }
+
+            beginContextSwitch()
+            try {
+                ladeEintragFallsVorhanden(autoPickSchichtForToday = true)
+            } finally {
+                endContextSwitch()
+            }
+        }
     }
 
     private fun refreshBtbStatusChips() {
@@ -919,7 +1006,12 @@ cardCurrentReport.setOnClickListener {
         count += pairAndCount(buildSection(current.einweisungUnterweisung), buildSection(baseline.einweisungUnterweisung))
         count += pairAndCount(buildSection(current.besonderheiten), buildSection(baseline.besonderheiten))
         count += pairAndCount(buildSection(current.maengelSchaeden), buildSection(baseline.maengelSchaeden))
-        count += pairAndCount(buildSection(sectionFromMultiline(stripOrtMarkers(rawArbeiten))), buildSection(sectionFromMultiline(stripOrtMarkers(baseline.notizen.orEmpty()))))
+        val baselineArbeiten = if (baseline.arbeiten.items.isNotEmpty()) {
+            baseline.arbeiten
+        } else {
+            sectionFromMultiline(stripOrtMarkers(baseline.notizen.orEmpty()))
+        }
+        count += pairAndCount(buildSection(sectionFromMultiline(stripOrtMarkers(rawArbeiten))), buildSection(baselineArbeiten))
         return count.coerceAtLeast(1)
     }
 
@@ -1118,11 +1210,25 @@ cardCurrentReport.setOnClickListener {
             return willExpand
         }
 
+        private fun formatRainMm(value: Double?): String =
+            value?.takeIf { it.isFinite() && it >= 0.0 }
+                ?.let { String.format(Locale.GERMANY, "%.1f mm", it) }
+                ?: "– mm"
+
+        private fun updateWeatherMmLabels() {
+            tvWetterMm1.text = formatRainMm(wetterMm1)
+            tvWetterMm2.text = formatRainMm(wetterMm2)
+            tvWetterMm3.text = formatRainMm(wetterMm3)
+        }
+
         private fun updateWeatherPreview() {
+            updateWeatherMmLabels()
             val slots = collectWeatherSlots()
-            // Standardwerte zählen nicht als "eingetragen" (sonst wäre immer OK)
+            // Standardwerte zählen nicht als "eingetragen" (sonst wäre immer OK).
+            // Ein bekannter 0,0-mm-Wert ist echte Wetterinformation und darf nicht wie null wirken.
             val hasAnyData = slots.any {
                 it.tempC != null ||
+                    it.niederschlagMm != null ||
                     (it.bewoelkung != null && it.bewoelkung != DEFAULT_BEWOELKUNG) ||
                     (it.niederschlag != null && it.niederschlag != DEFAULT_NIEDERSCHLAG)
             }
@@ -1161,7 +1267,7 @@ cardCurrentReport.setOnClickListener {
                     selectedDate = picked
                     selectedSchichtTyp = st
                     updateDateTimeButton()
-                    ladeEintragFallsVorhanden()
+                    ladeEintragFallsVorhanden(activateSelection = true)
                     endContextSwitch()
                     onPicked?.invoke()
                 }
@@ -1295,7 +1401,7 @@ cardCurrentReport.setOnClickListener {
                     selectedDate = date
                     selectedSchichtTyp = st
                     updateDateTimeButton()
-                    ladeEintragFallsVorhanden()
+                    ladeEintragFallsVorhanden(activateSelection = true)
                     endContextSwitch()
                 }
             }
@@ -1718,23 +1824,14 @@ cardCurrentReport.setOnClickListener {
                 etBis.setText(initialBis ?: (plusHours(etVon.text?.toString().orEmpty(), 10L) ?: ""))
 
                 etVon.setOnClickListener {
-                    showTimePopup(
-                        anchor = etVon,
-                        setValue = { etVon.setText(it) },
-                        currentValue = etVon.text?.toString().orEmpty(),
-                        items = times,
-                        suggestedWhenBlank = suggestedVon
-                    )
+                    showPmClockPicker(etVon, suggestedVon) {
+                        autoFillBisIfBlank(etVon, etBis, 10L)
+                    }
                 }
                 etBis.setOnClickListener {
+                    autoFillBisIfBlank(etVon, etBis, 10L)
                     val suggestedBis = plusHours(etVon.text?.toString().orEmpty(), 10L) ?: suggestedVon
-                    showTimePopup(
-                        anchor = etBis,
-                        setValue = { etBis.setText(it) },
-                        currentValue = etBis.text?.toString().orEmpty(),
-                        items = times,
-                        suggestedWhenBlank = suggestedBis
-                    )
+                    showPmClockPicker(etBis, suggestedBis)
                 }
 
                 val rows = if (section == PmSection.PERSONAL) {
@@ -1921,7 +2018,7 @@ cardCurrentReport.setOnClickListener {
                         tempC = kotlin.math.round(h.tempC).toInt(),
                         bewoelkung = mapCloudToBew(h.cloudCoverPct),
                         niederschlag = mapCodeToNied(h.weatherCode, h.precipMm),
-                        niederschlagMm = h.precipMm.takeIf { it > 0.0 }
+                        niederschlagMm = h.precipMm.takeIf { it.isFinite() && it >= 0.0 }
                     )
                 }
                 newBtbPreparedWeatherSlots = slots
@@ -1950,8 +2047,21 @@ cardCurrentReport.setOnClickListener {
                 val suggestion = plusHours(start, 10L) ?: return
                 acEnde.setText(suggestion, false)
             }
-            acStart.setOnClickListener { showTimePopup(acStart, times) }
-            acEnde.setOnClickListener { maybeAutoFillEndFromStart(); showTimePopup(acEnde, times) }
+            // Android 200036: Start/Ende werden wie die Wetterzeiten über die grafische Uhr gewählt.
+            fun showClockPicker(field: MaterialAutoCompleteTextView, autoFillEndBeforeOpen: Boolean = false) {
+                if (autoFillEndBeforeOpen) maybeAutoFillEndFromStart()
+                val raw = field.text?.toString().orEmpty().trim()
+                val initial = runCatching { LocalTime.parse(raw, timeFmt) }.getOrNull()
+                    ?: runCatching { LocalTime.parse(suggestedNowQuarter(), timeFmt) }.getOrNull()
+                    ?: LocalTime.now()
+                TimePickerDialog(requireContext(), { _, h, m ->
+                    val rounded = roundUpToQuarter(LocalTime.of(h, m))
+                    field.setText(rounded.format(timeFmt), false)
+                    if (field === acStart) maybeAutoFillEndFromStart()
+                }, initial.hour, initial.minute, true).show()
+            }
+            acStart.setOnClickListener { showClockPicker(acStart) }
+            acEnde.setOnClickListener { showClockPicker(acEnde, autoFillEndBeforeOpen = true) }
             acStart.setText(newBtbPreparedStart ?: newBtbProposal?.startUhrzeit ?: shiftStart.orEmpty(), false)
             acEnde.setText(newBtbPreparedEnd ?: newBtbProposal?.endeUhrzeit ?: shiftEnd.orEmpty(), false)
             maybeAutoFillEndFromStart()
@@ -2294,7 +2404,7 @@ cardCurrentReport.setOnClickListener {
 
                             // Ziel-Schicht laden/leer starten
                             setStatus("Lade ${if (newType == SchichtTyp.TAG) getString(R.string.btb_shift_tag) else getString(R.string.btb_shift_nacht)}…")
-                            ladeEintragFallsVorhanden()
+                            ladeEintragFallsVorhanden(activateSelection = true)
 
                             // gewählte Zeiten im Ziel-BTB beibehalten
                             shiftStart = newStart
@@ -2351,40 +2461,30 @@ cardCurrentReport.setOnClickListener {
                 else -> "–${b}"
             }
         }
-        /** Entfernt technische Marker wie '@ORT=123' und '@ALLGEMEIN' aus Textfeldern. */
+        /** Entfernt nur technische Editor-Marker aus sichtbaren Vorschauen. */
         private fun stripOrtMarkers(raw: String): String {
             if (raw.isBlank()) return raw
-            val reOrt = Regex("""^@ORT=(\d+)\s*(.*)$""")
-            val reGeneral = Regex("""^@ALLGEMEIN\b\s*(.*)$""", RegexOption.IGNORE_CASE)
-            val cleaned = raw.lines().mapNotNull { ln0 ->
-                var ln = ln0.trimEnd()
-                if (ln.isBlank()) return@mapNotNull ln
-
-                val trimmed = ln.trim()
-                val mOrt = reOrt.matchEntire(trimmed)
-                ln = if (mOrt != null) {
-                    mOrt.groupValues.getOrNull(2)?.trim().orEmpty()
-                } else if (trimmed.startsWith("@ORT=")) {
-                    trimmed.substringAfter(' ', missingDelimiterValue = "").trim()
-                } else {
-                    ln
-                }
-
-                if (ln.isBlank()) return@mapNotNull null
-
-                val trimmed2 = ln.trim()
-                val mGeneral = reGeneral.matchEntire(trimmed2)
-                ln = if (mGeneral != null) {
-                    mGeneral.groupValues.getOrNull(1)?.trim().orEmpty()
-                } else if (trimmed2.startsWith("@ALLGEMEIN", ignoreCase = true)) {
-                    trimmed2.substringAfter(' ', missingDelimiterValue = "").trim()
-                } else {
-                    ln
-                }
-
-                ln.takeIf { it.isNotBlank() }
-            }.joinToString("\n")
-            return cleaned.trimEnd()
+            val marker = Regex("""^@(ORT|NODE|ENTRY|FIRMAID)=[^\s]+\s*""", RegexOption.IGNORE_CASE)
+            val general = Regex("""^@ALLGEMEIN\b\s*""", RegexOption.IGNORE_CASE)
+            return raw.lines().mapNotNull { source ->
+                var line = source.trimEnd().trimStart()
+                if (line.isBlank()) return@mapNotNull null
+                var changed: Boolean
+                do {
+                    changed = false
+                    val next = marker.replaceFirst(line, "")
+                    if (next != line) {
+                        line = next.trimStart()
+                        changed = true
+                    }
+                    val generalNext = general.replaceFirst(line, "")
+                    if (generalNext != line) {
+                        line = generalNext.trimStart()
+                        changed = true
+                    }
+                } while (changed)
+                line.takeIf { it.isNotBlank() }
+            }.joinToString("\n").trimEnd()
         }
 
         private fun setupStartEndDropdowns() {
@@ -2423,7 +2523,37 @@ cardCurrentReport.setOnClickListener {
                 ?: streckeAusRoot(hauptKnotenId)
                 ?: entity.streckennummer
 
-            return BaustelleKontext(id = altId, name = entity.baustellenname, strecke = strecke)
+            return BaustelleKontext(
+                id = altId,
+                name = entity.baustellenname,
+                strecke = strecke,
+                rootKnotenId = hauptKnotenId
+            )
+        }
+
+        private suspend fun refreshBtbNodeBindingCache(rootKnotenId: Long?) {
+            btbNodeKeyByLocalId.clear()
+            btbLocalIdByNodeKey.clear()
+            val rootId = rootKnotenId ?: return
+            val binding = ServiceLocator.worksiteBindingRepository.bindingForLocalRoot(rootId) ?: return
+            val bindings = ServiceLocator.syncDatenbank.worksiteNodeSyncDao()
+                .forWorksite(binding.worksiteServerId)
+            bindings.filter { it.localRootKnotenId == rootId }.forEach { item ->
+                btbNodeKeyByLocalId[item.localKnotenId] = item.clientNodeKey
+                btbLocalIdByNodeKey[item.clientNodeKey] = item.localKnotenId
+            }
+        }
+
+        private suspend fun stableNodeKey(rootKnotenId: Long?, localNodeId: Long): String? {
+            if (localNodeId <= 0L) return null
+            btbNodeKeyByLocalId[localNodeId]?.let { return it }
+            val rootId = rootKnotenId ?: return null
+            return ServiceLocator.worksiteStructureSync
+                .ensureClientNodeKey(rootId, localNodeId)
+                ?.also { key ->
+                    btbNodeKeyByLocalId[localNodeId] = key
+                    btbLocalIdByNodeKey[key] = localNodeId
+                }
         }
 
         private fun filterFotosForBtbStart(
@@ -2436,7 +2566,10 @@ cardCurrentReport.setOnClickListener {
             return fotos
         }
 
-        private suspend fun ladeEintragFallsVorhanden(autoPickSchichtForToday: Boolean = false) {
+        private suspend fun ladeEintragFallsVorhanden(
+            autoPickSchichtForToday: Boolean = false,
+            activateSelection: Boolean = false
+        ) {
             val ctx = resolveAktuelleBaustelle()
             if (ctx == null) {
                 currentBtbStartEpochMs = null
@@ -2445,6 +2578,8 @@ cardCurrentReport.setOnClickListener {
                 setEnabledUi(false)
                 return
             }
+            refreshBtbNodeBindingCache(ctx.rootKnotenId)
+
             // Titel: aktuelle Baustelle ganz oben anzeigen
             tvTitleBaustelle.text = "Aktuelle Baustelle: ${ctx.name}"
             setEnabledUi(true)
@@ -2455,17 +2590,53 @@ cardCurrentReport.setOnClickListener {
             // Autocomplete Optionen aus Historie laden
             loadHistoryOptions(ctx.name)
 
+            val explicitBtbId = requestedBtbId
             val entry = withContext(Dispatchers.IO) {
-                if (!autoPickSchichtForToday) {
-                    BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, selectedSchichtTyp)
-                } else {
-                    // Heute: beide Schichten prüfen und den zuletzt geänderten Entwurf öffnen
-                    val tag = BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, SchichtTyp.TAG)
-                    val nacht = BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, SchichtTyp.NACHT)
-                    listOfNotNull(tag, nacht).maxByOrNull { it.geaendertAmEpochMs }
+                when {
+                    explicitBtbId != null -> {
+                        // Verlauf/Schnellwechsel: exakt dieselbe stabile btbId laden.
+                        BautagebuchSpeicher.ladenById(requireContext(), ctx.id, ctx.name, explicitBtbId)
+                    }
+                    autoPickSchichtForToday -> {
+                        // Normaler Einstieg: ausschliesslich der aktive Pointer entscheidet.
+                        // Datum/Schicht-Historienabfragen duerfen diesen Pointer nicht veraendern.
+                        BtbActiveContext.laden(requireContext(), ctx.id)?.entry
+                    }
+                    else -> {
+                        // Bewusster Datum-/Schichtwechsel im Editor. Der Leseweg selbst bleibt
+                        // side-effect-frei; erfolgreiche Auswahl wird unten explizit aktiviert.
+                        BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, selectedSchichtTyp)
+                    }
                 }
             }
+            requestedBtbId = null
+
+            if (entry != null && (explicitBtbId != null || activateSelection)) {
+                val id = entry.btbId?.trim()?.takeIf { it.isNotBlank() && !it.startsWith("legacy:") }
+                val entryDate = runCatching { LocalDate.parse(entry.datumIso, isoFmt) }.getOrNull()
+                if (id != null && entryDate != null) {
+                    withContext(Dispatchers.IO) {
+                        BautagebuchSpeicher.aktivierenBtb(
+                            requireContext(),
+                            ctx.id,
+                            ctx.name,
+                            id,
+                            entryDate,
+                            entry.schicht
+                        )
+                        BtbActivePointerControl.bewusstReaktivieren(
+                            requireContext(),
+                            ctx.id,
+                            ctx.name,
+                            id
+                        )
+                    }
+                }
+            }
+
             if (entry == null) {
+                loadedBtbId = null
+                loadedBtbChangedEpochMs = Long.MIN_VALUE
                 currentBtbStartEpochMs = System.currentTimeMillis()
                 // Felder leeren
                 shiftStart = null
@@ -2499,7 +2670,10 @@ cardCurrentReport.setOnClickListener {
                 lastSavedEpochMs = null
             } else {
                 currentBtbStartEpochMs = entry.erstelltAmEpochMs
+                runCatching { LocalDate.parse(entry.datumIso, isoFmt) }.getOrNull()?.let { selectedDate = it }
                 selectedSchichtTyp = entry.schicht
+                loadedBtbId = entry.btbId
+                loadedBtbChangedEpochMs = entry.geaendertAmEpochMs
                 shiftStart = entry.startUhrzeit
                 shiftEnd = entry.endeUhrzeit
                 etStart.setText(entry.startUhrzeit.orEmpty())
@@ -2544,16 +2718,23 @@ cardCurrentReport.setOnClickListener {
                 }
 
                 // Phase 3b: Standardabschnitte aus Entry übernehmen
-                rawArbeiten = entry.notizen.orEmpty()
-                rawAbnahmen = stripOrtMarkers(sectionToMultiline(entry.abnahmen))
-                rawEinweisung = stripOrtMarkers(sectionToMultiline(entry.einweisungUnterweisung))
-                rawBesonderheiten = stripOrtMarkers(sectionToMultiline(entry.besonderheiten))
-                rawMaengel = stripOrtMarkers(sectionToMultiline(entry.maengelSchaeden))
+                rawArbeiten = if (entry.arbeiten.items.isNotEmpty()) {
+                    sectionToMultiline(entry.arbeiten)
+                } else {
+                    // Historische Android-BTBs legten Punkt 4 als notizen ab.
+                    entry.notizen.orEmpty()
+                }
+                rawAbnahmen = sectionToMultiline(entry.abnahmen)
+                rawEinweisung = sectionToMultiline(entry.einweisungUnterweisung)
+                rawBesonderheiten = sectionToMultiline(entry.besonderheiten)
+                rawMaengel = sectionToMultiline(entry.maengelSchaeden)
                 currentMaxFotosInPdf = entry.maxFotosInPdf
                 lastSavedEpochMs = entry.geaendertAmEpochMs
                 renderSectionPreviews()
                 setStatus("Geladen")
             }
+
+            btbLoadInitialized = true
 
             // Foto-Chips: Zähler aktualisieren (Fotos in aktueller Schicht)
             val fotoCutoffEpochMs = currentBtbStartEpochMs ?: entry?.erstelltAmEpochMs
@@ -2621,12 +2802,14 @@ cardCurrentReport.setOnClickListener {
         private fun entryHasNoWeather(entry: BautagebuchEintrag): Boolean {
             val hasWeatherBlockSlots = entry.weather?.slots?.any { s ->
                 s.tempC != null ||
+                    s.niederschlagMm != null ||
                     (s.bewoelkung != null && s.bewoelkung != DEFAULT_BEWOELKUNG) ||
                     (s.niederschlag != null && s.niederschlag != DEFAULT_NIEDERSCHLAG)
             } == true
 
             val hasLegacySlots = entry.weatherSlots.any { s ->
                 s.tempC != null ||
+                    s.niederschlagMm != null ||
                     (s.bewoelkung != null && s.bewoelkung != DEFAULT_BEWOELKUNG) ||
                     (s.niederschlag != null && s.niederschlag != DEFAULT_NIEDERSCHLAG)
             }
@@ -2780,6 +2963,13 @@ cardCurrentReport.setOnClickListener {
             return if (hm.isNullOrBlank()) "Automatisch gespeichert" else "Automatisch gespeichert $hm"
         }
 
+        private fun existingLegacyNotesForBuild(): String? {
+            // Punkt 4 wurde bis 200068 in notizen gespeichert. Nach dem ersten Laden landet der
+            // Inhalt in rawArbeiten und wird fortan als arbeiten geschrieben. Neue Punkt-4-Texte
+            // duerfen nicht erneut einen NOTIZEN-Servereintrag erzeugen.
+            return null
+        }
+
         private fun buildEntry(ctx: BaustelleKontext): BautagebuchEintrag {
             // Phase 3: Personal/Geräte kommen aus PM-UI und werden als Firmenblöcke persistiert.
             // Für Abwärtskompatibilität erzeugen wir zusätzlich Legacy-Zeilen.
@@ -2810,11 +3000,13 @@ cardCurrentReport.setOnClickListener {
                 firmen = firmen,
                 personal = legacyPersonalLines(),
                 geraete = legacyGeraeteLines(),
-                abnahmen = sectionFromMultiline(stripOrtMarkers(rawAbnahmen)),
-                einweisungUnterweisung = sectionFromMultiline(stripOrtMarkers(rawEinweisung)),
-                besonderheiten = sectionFromMultiline(stripOrtMarkers(rawBesonderheiten)),
-                maengelSchaeden = sectionFromMultiline(stripOrtMarkers(rawMaengel)),
-                notizen = rawArbeiten.trim().takeUnless { it.isBlank() },
+                arbeiten = sectionFromMultiline(rawArbeiten),
+                abnahmen = sectionFromMultiline(rawAbnahmen),
+                einweisungUnterweisung = sectionFromMultiline(rawEinweisung),
+                besonderheiten = sectionFromMultiline(rawBesonderheiten),
+                maengelSchaeden = sectionFromMultiline(rawMaengel),
+                // Neue Punkt-4-Arbeiten sind echte ARBEIT-Eintraege; notizen bleibt Legacy/sonstige Notiz.
+                notizen = existingLegacyNotesForBuild(),
                 includeFotos = true,
                 includeBtbs = true,
                 erstelltAmEpochMs = currentBtbStartEpochMs ?: System.currentTimeMillis())
@@ -3144,7 +3336,7 @@ cardCurrentReport.setOnClickListener {
                 if (bi.exists) {
                     com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                         .setTitle("PDF Abschluss")
-                        .setMessage("Tagesabschluss ist bereits aktiv. Abschluss-PDF jetzt erstellen?")
+                        .setMessage("Dieser BTB besitzt bereits ein unveränderliches Original. Der neue Abschluss ersetzt nur das aktuelle PDF; fachliche Abweichungen zum ersten Original bleiben rot. Abschluss-PDF jetzt erstellen?")
                         .setNegativeButton("Nein", null)
                         .setPositiveButton("Ja") { _, _ ->
                             pdfErstellen(setBaseline = false, closeAfterSuccess = true, asDraft = false, deleteDraftOnFinal = false)
@@ -3155,7 +3347,7 @@ cardCurrentReport.setOnClickListener {
 
                 com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                     .setTitle("PDF Abschluss")
-                    .setMessage("PDF-Abschluss erstellen? Spätere Änderungen werden danach markiert und gezählt.")
+                    .setMessage("Erster Abschluss: Dieser Stand wird als unveränderliches Original festgeschrieben. Spätere fachliche Änderungen werden im Folge-PDF rot dargestellt. PDF-Abschluss jetzt erstellen?")
                     .setNegativeButton("Nein", null)
                     .setPositiveButton("Ja") { _, _ ->
                         val msg = buildFinishValidationMessage()
@@ -3647,7 +3839,7 @@ cardCurrentReport.setOnClickListener {
                         val target = LocalDateTime.of(dateForTime, time)
                         val h = hourly.closestTo(target) ?: return
 
-                        val mmVal = h.precipMm.takeIf { it > 0.0 }
+                        val mmVal = h.precipMm.takeIf { it.isFinite() && it >= 0.0 }
                         when (idx) {
                             0 -> wetterMm1 = mmVal
                             1 -> wetterMm2 = mmVal
@@ -3879,25 +4071,15 @@ cardCurrentReport.setOnClickListener {
             if (initBis.isNotBlank()) etBis.setText(initBis)
 
             etVon.setOnClickListener {
-                showTimePopup(
-                    anchor = etVon,
-                    setValue = { etVon.setText(it) },
-                    currentValue = etVon.text?.toString().orEmpty(),
-                    items = times,
-                    suggestedWhenBlank = suggestedVon
-                )
+                showPmClockPicker(etVon, suggestedVon) {
+                    autoFillBisIfBlank(etVon, etBis, 10L)
+                }
             }
 
             etBis.setOnClickListener {
                 autoFillBisIfBlank(etVon, etBis, 10L)
                 val suggestedBis = plusHours(etVon.text?.toString().orEmpty(), 10L) ?: suggestedVon
-                showTimePopup(
-                    anchor = etBis,
-                    setValue = { etBis.setText(it) },
-                    currentValue = etBis.text?.toString().orEmpty(),
-                    items = times,
-                    suggestedWhenBlank = suggestedBis
-                )
+                showPmClockPicker(etBis, suggestedBis)
             }
 
             prefillFirma?.let { acFirma.setText(it, false) }
@@ -4063,6 +4245,23 @@ cardCurrentReport.setOnClickListener {
 
         private fun suggestedNowQuarter(): String {
             return roundUpToQuarter(java.time.LocalTime.now()).format(timeFmt)
+        }
+
+        // Android 200037: Personal and machine times use the same 24h clock picker.
+        private fun showPmClockPicker(
+            field: com.google.android.material.textfield.TextInputEditText,
+            suggestedWhenBlank: String,
+            onChosen: (() -> Unit)? = null
+        ) {
+            val raw = field.text?.toString().orEmpty().trim()
+            val initial = runCatching { LocalTime.parse(raw, timeFmt) }.getOrNull()
+                ?: runCatching { LocalTime.parse(suggestedWhenBlank, timeFmt) }.getOrNull()
+                ?: LocalTime.now()
+            TimePickerDialog(requireContext(), { _, hour, minute ->
+                val rounded = roundUpToQuarter(LocalTime.of(hour, minute))
+                field.setText(rounded.format(timeFmt))
+                onChosen?.invoke()
+            }, initial.hour, initial.minute, true).show()
         }
 
         private fun showTimePopup(ac: MaterialAutoCompleteTextView, items: List<String>) {
@@ -4362,7 +4561,10 @@ cardCurrentReport.setOnClickListener {
             val timeIn = java.time.format.DateTimeFormatter.ofPattern("H:mm")
             val timeOut = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
             val reTime = Regex("""^(\d{1,2}:\d{2})(?:\s*[-–]\s*\(?\s*(\d{1,2}:\d{2})\s*\)?)?\s+(.+)$""")
-            val reOrt = Regex("""^@ORT=\d+\s*(.*)$""", RegexOption.IGNORE_CASE)
+            val reEntry = Regex("""^@ENTRY=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
+            val reNode = Regex("""^@NODE=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
+            val reFirmaId = Regex("""^@FIRMAID=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
+            val reOrt = Regex("""^@ORT=(\d+)\s*(.*)$""", RegexOption.IGNORE_CASE)
             val reGeneral = Regex("""^@ALLGEMEIN\b\s*(.*)$""", RegexOption.IGNORE_CASE)
             val reKm = Regex("""^@KM=([0-9]+(?:[.,][0-9]+)?)(?:\s*[-–]\s*([0-9]+(?:[.,][0-9]+)?))?\s*(.*)$""", RegexOption.IGNORE_CASE)
 
@@ -4375,38 +4577,95 @@ cardCurrentReport.setOnClickListener {
                 var line = source.trim().removePrefix("•").trim()
                 if (line.isBlank()) return@mapNotNull null
 
-                // Interne Editor-Marker in beliebiger sinnvoller Reihenfolge entfernen,
-                // den BTB-KM-Marker aber als echte SectionItem-Daten erhalten.
-                val mo = reOrt.matchEntire(line)
-                if (mo != null) line = mo.groupValues.getOrNull(1).orEmpty().trim()
-                val mg = reGeneral.matchEntire(line)
-                if (mg != null) line = mg.groupValues.getOrNull(1).orEmpty().trim()
+                var clientEntryKey: String? = null
+                var worksiteNodeKey: String? = null
+                var firmaId: String? = null
+                var legacyOrtId: Long? = null
+                var explicitGeneral = false
+
+                // Technische Editor-Marker dürfen in beliebiger Reihenfolge am Zeilenanfang stehen.
+                // Dauerhafte Sync-Identitäten sind ENTRY/NODE/FIRMAID; ORT ist nur Legacy/UI-Cache.
+                var markerConsumed: Boolean
+                do {
+                    markerConsumed = false
+                    reEntry.matchEntire(line)?.let {
+                        clientEntryKey = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                        line = it.groupValues[2].trim()
+                        markerConsumed = true
+                    }
+                    if (markerConsumed) continue
+                    reNode.matchEntire(line)?.let {
+                        worksiteNodeKey = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                        line = it.groupValues[2].trim()
+                        markerConsumed = true
+                    }
+                    if (markerConsumed) continue
+                    reFirmaId.matchEntire(line)?.let {
+                        firmaId = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                        line = it.groupValues[2].trim()
+                        markerConsumed = true
+                    }
+                    if (markerConsumed) continue
+                    reOrt.matchEntire(line)?.let {
+                        legacyOrtId = it.groupValues[1].toLongOrNull()
+                        line = it.groupValues[2].trim()
+                        markerConsumed = true
+                    }
+                    if (markerConsumed) continue
+                    reGeneral.matchEntire(line)?.let {
+                        explicitGeneral = true
+                        line = it.groupValues[1].trim()
+                        markerConsumed = true
+                    }
+                } while (markerConsumed && line.isNotBlank())
+
+                if (worksiteNodeKey == null) {
+                    worksiteNodeKey = legacyOrtId?.let { btbNodeKeyByLocalId[it] }
+                }
 
                 var kmVon: Double? = null
                 var kmBis: Double? = null
-                val mk = reKm.matchEntire(line)
-                if (mk != null) {
-                    kmVon = km(mk.groupValues.getOrNull(1))
-                    kmBis = km(mk.groupValues.getOrNull(2))
-                    line = mk.groupValues.getOrNull(3).orEmpty().trim()
-                }
-                if (line.startsWith("@ALLGEMEIN", ignoreCase = true)) {
-                    line = line.substringAfter(' ', "").trim()
+                reKm.matchEntire(line)?.let {
+                    kmVon = km(it.groupValues.getOrNull(1))
+                    kmBis = km(it.groupValues.getOrNull(2))
+                    line = it.groupValues.getOrNull(3).orEmpty().trim()
                 }
                 line = line.removePrefix("•").trim()
                 if (line.isBlank()) return@mapNotNull null
 
+                fun build(time: String?, rawText: String): SectionItem? {
+                    var text = rawText.trim()
+                    if (text.isBlank()) return null
+                    var firmaName: String? = null
+                    if (!explicitGeneral && firmaId != null) {
+                        val splitAt = text.indexOf(": ")
+                        if (splitAt > 0) {
+                            firmaName = text.substring(0, splitAt).trim().takeIf(String::isNotBlank)
+                            text = text.substring(splitAt + 2).trim()
+                        }
+                    }
+                    if (text.isBlank()) return null
+                    return SectionItem(
+                        clientEntryKey = clientEntryKey,
+                        uhrzeit = time,
+                        text = text,
+                        kmVon = kmVon,
+                        kmBis = kmBis,
+                        firmaId = if (explicitGeneral) null else firmaId,
+                        firmaName = if (explicitGeneral) null else firmaName,
+                        worksiteNodeKey = worksiteNodeKey
+                    )
+                }
+
                 val m = reTime.matchEntire(line)
                 if (m != null) {
-                    val startNorm = norm(m.groupValues[1])
+                    val startNorm = norm(m.groupValues[1]) ?: return@mapNotNull null
                     val endRaw = m.groupValues.getOrNull(2).orEmpty().trim()
                     val endNorm = endRaw.takeIf { it.isNotBlank() }?.let(::norm)
-                    val txt = m.groupValues[3].trim()
-                    if (txt.isBlank() || startNorm == null) return@mapNotNull null
                     val t = if (endNorm != null) "$startNorm–$endNorm" else startNorm
-                    SectionItem(uhrzeit = t, text = txt, kmVon = kmVon, kmBis = kmBis)
+                    build(t, m.groupValues[3])
                 } else {
-                    SectionItem(uhrzeit = null, text = line, kmVon = kmVon, kmBis = kmBis)
+                    build(null, line)
                 }
             }
             return if (items.isEmpty()) SectionBlock() else SectionBlock(items = items)
@@ -4414,14 +4673,23 @@ cardCurrentReport.setOnClickListener {
 
         private fun sectionToMultiline(sb: SectionBlock): String {
             return sb.items.filter { it.text.isNotBlank() }.joinToString("\n") { item ->
-                val kmMarker = item.kmVon?.let { von ->
-                    val a = String.format(java.util.Locale.US, "%.3f", von)
-                    val b = item.kmBis?.takeIf { kotlin.math.abs(it - von) > 0.0000001 }
-                        ?.let { String.format(java.util.Locale.US, "%.3f", it) }
-                    if (b != null) "@KM=$a-$b " else "@KM=$a "
-                }.orEmpty()
+                val markers = buildList {
+                    item.clientEntryKey?.trim()?.takeIf { it.isNotBlank() }?.let { add("@ENTRY=$it") }
+                    item.worksiteNodeKey?.trim()?.takeIf { it.isNotBlank() }?.let { add("@NODE=$it") }
+                    item.firmaId?.trim()?.takeIf { it.isNotBlank() }?.let { add("@FIRMAID=$it") }
+                        ?: add("@ALLGEMEIN")
+                    item.kmVon?.let { von ->
+                        val a = String.format(java.util.Locale.US, "%.3f", von)
+                        val b = item.kmBis?.takeIf { kotlin.math.abs(it - von) > 0.0000001 }
+                            ?.let { String.format(java.util.Locale.US, "%.3f", it) }
+                        add(if (b != null) "@KM=$a-$b" else "@KM=$a")
+                    }
+                }.joinToString(" ")
                 val time = item.uhrzeit?.takeIf { it.isNotBlank() }?.plus(" ").orEmpty()
-                "$kmMarker• $time${item.text}".trimEnd()
+                val firma = item.firmaName?.trim()?.takeIf { it.isNotBlank() }?.let { "$it: " }.orEmpty()
+                listOf(markers, "• $time$firma${item.text}".trimEnd())
+                    .filter { it.isNotBlank() }
+                    .joinToString(" ")
             }
         }
 
@@ -4739,7 +5007,7 @@ cardCurrentReport.setOnClickListener {
             val grouped = relevant.groupBy { f ->
                 val firm = f.firma.trim().takeIf { it.isNotBlank() }
                 val ov = overridesByFotoId[f.id]?.trim().orEmpty()
-                val txt = if (ov.isNotBlank()) ov else f.kurztext.trim()
+                val txt = if (ov.isNotBlank()) ov else (f.notiz?.trim()?.takeIf { it.isNotBlank() } ?: f.kurztext.trim())
                 firm to txt
             }
 
@@ -4801,7 +5069,8 @@ cardCurrentReport.setOnClickListener {
 
             // Abschnitte 4–8 nutzen den Firmen-/Pill-Editor (Einträge + Foto-Pills pro Bildtyp).
             val sectionNo = Regex("""^\s*(\d+)\.""").find(title)?.groupValues?.getOrNull(1)?.toIntOrNull()
-            val enableFotoPanel = (sectionNo != null && sectionNo in 4..8 && fotoType != null)
+            val currentEditSection = BtbEditSection.fromPhotoType(fotoType)
+            val enableFotoPanel = (sectionNo != null && sectionNo in 4..8 && currentEditSection != null)
 
             // Volltext anzeigen
             etFull.setText(initial)
@@ -4855,7 +5124,8 @@ cardCurrentReport.setOnClickListener {
                     return dt.toLocalTime().format(timeFmt)
                 }
 
-                fun effectiveText(f: de.tbhelfer.datenbank.FotoEntity): String = f.kurztext.trim()
+                fun effectiveText(f: de.tbhelfer.datenbank.FotoEntity): String =
+                    f.notiz?.trim()?.takeIf { it.isNotBlank() } ?: f.kurztext.trim()
 
                 fun bildLabel(numsIn: List<Int>): String {
                     if (numsIn.isEmpty()) return ""
@@ -4880,9 +5150,12 @@ cardCurrentReport.setOnClickListener {
                 data class ManualItem(
                     val lineIndex: Int,
                     val firma: String?,
+                    val firmaId: String?,
                     val time: String?,     // "HH:mm" oder "HH:mm–HH:mm" oder null
                     val timeMin: Int?,     // Minuten seit 00:00 oder null
-                    val ortId: Long,       // 0 = Nur Hauptbaustelle, sonst BaustellenKnotenId
+                    val ortId: Long,       // lokale UI-ID; nicht synchronisieren
+                    val worksiteNodeKey: String?,
+                    val clientEntryKey: String?,
                     val text: String,
                     val kmVon: Double? = null,
                     val kmBis: Double? = null
@@ -4976,14 +5249,20 @@ cardCurrentReport.setOnClickListener {
                     val out = ArrayList<ManualItem>()
                     val lines = raw.lines()
                     var currentOrtId: Long = 0L
+                    var currentNodeKey: String? = null
+                    var currentOrtIstStandaloneMarker = false
 
-                    // Firmen-Matching robust machen: Nutzer tippen oft 'BBG' vs 'bbg'.
-                    // Wir mappen daher case-insensitive auf die kanonische Schreibweise aus knownFirms.
                     val firmMap = knownFirms
                         .mapNotNull { it.trim().takeIf { s -> s.isNotBlank() } }
                         .associateBy { it.lowercase(java.util.Locale.ROOT) }
+                    val firmIdByName = lastFirmaBlocks
+                        .filter { !it.isDeleted && it.name.isNotBlank() }
+                        .associate { it.name.trim().lowercase(java.util.Locale.ROOT) to it.firmaId }
 
-                    val reOrt = Regex("""^@ORT=(\d+)\s*(.*)$""")
+                    val reEntry = Regex("""^@ENTRY=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
+                    val reNode = Regex("""^@NODE=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
+                    val reFirmaId = Regex("""^@FIRMAID=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
+                    val reOrt = Regex("""^@ORT=(\d+)\s*(.*)$""", RegexOption.IGNORE_CASE)
                     val reKm = Regex("""^@KM=([0-9]+(?:[.,][0-9]+)?)(?:\s*[-–]\s*([0-9]+(?:[.,][0-9]+)?))?\s*(.*)$""", RegexOption.IGNORE_CASE)
                     val reGeneral = Regex("""^@ALLGEMEIN\b\s*(.*)$""", RegexOption.IGNORE_CASE)
 
@@ -4991,92 +5270,143 @@ cardCurrentReport.setOnClickListener {
                         var line = line0.trim()
                         if (line.isBlank()) return@forEachIndexed
 
-                        // Ort-Marker: entweder eigene Zeile oder Inline-Prefix
-                        val mo = reOrt.matchEntire(line)
-                        if (mo != null) {
-                            currentOrtId = mo.groupValues[1].toLongOrNull() ?: 0L
-                            line = mo.groupValues.getOrNull(2).orEmpty().trim()
-                            if (line.isBlank()) return@forEachIndexed
-                        }
-
+                        var clientEntryKey: String? = null
+                        var lineNodeKey: String? = null
+                        var lineOrtId: Long? = null
+                        var explicitFirmaId: String? = null
+                        var forcedGeneral = false
                         var kmVon: Double? = null
                         var kmBis: Double? = null
-                        // Marker in beliebiger Reihenfolge akzeptieren, damit ältere und neue
-                        // gespeicherte BTB-Zeilen gleichermaßen bearbeitbar bleiben.
-                        var forcedGeneral = false
+
                         var markerGefunden: Boolean
                         do {
                             markerGefunden = false
-                            val mg = reGeneral.matchEntire(line)
-                            if (mg != null) {
-                                forcedGeneral = true
-                                line = mg.groupValues.getOrNull(1).orEmpty().trim()
+                            reEntry.matchEntire(line)?.let {
+                                clientEntryKey = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                                line = it.groupValues[2].trim()
                                 markerGefunden = true
-                                continue
                             }
-                            val mk = reKm.matchEntire(line)
-                            if (mk != null) {
-                                kmVon = parseKmValue(mk.groupValues[1])
-                                kmBis = parseKmValue(mk.groupValues.getOrNull(2))
-                                line = mk.groupValues.getOrNull(3).orEmpty().trim()
+                            if (markerGefunden) continue
+
+                            reNode.matchEntire(line)?.let {
+                                val markerNodeKey = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                                val rest = it.groupValues[2].trim()
+                                if (rest.isBlank()) {
+                                    currentNodeKey = markerNodeKey
+                                    currentOrtId = markerNodeKey
+                                        ?.let { key -> btbLocalIdByNodeKey[key] }
+                                        ?: 0L
+                                    currentOrtIstStandaloneMarker = true
+                                    line = ""
+                                } else {
+                                    lineNodeKey = markerNodeKey
+                                    markerNodeKey
+                                        ?.let { key -> btbLocalIdByNodeKey[key] }
+                                        ?.let { lineOrtId = it }
+                                    currentOrtIstStandaloneMarker = false
+                                    line = rest
+                                }
+                                markerGefunden = true
+                            }
+                            if (markerGefunden) continue
+
+                            reFirmaId.matchEntire(line)?.let {
+                                explicitFirmaId = it.groupValues[1].trim().takeIf(String::isNotBlank)
+                                line = it.groupValues[2].trim()
+                                markerGefunden = true
+                            }
+                            if (markerGefunden) continue
+
+                            reOrt.matchEntire(line)?.let {
+                                val markerOrtId = it.groupValues[1].toLongOrNull() ?: 0L
+                                val rest = it.groupValues[2].trim()
+                                if (rest.isBlank()) {
+                                    currentOrtId = markerOrtId
+                                    currentNodeKey = btbNodeKeyByLocalId[currentOrtId]
+                                    currentOrtIstStandaloneMarker = true
+                                    line = ""
+                                } else {
+                                    lineOrtId = markerOrtId
+                                    if (lineNodeKey == null) {
+                                        lineNodeKey = btbNodeKeyByLocalId[markerOrtId]
+                                    }
+                                    currentOrtIstStandaloneMarker = false
+                                    line = rest
+                                }
+                                markerGefunden = true
+                            }
+                            if (markerGefunden) continue
+
+                            reGeneral.matchEntire(line)?.let {
+                                forcedGeneral = true
+                                explicitFirmaId = null
+                                line = it.groupValues[1].trim()
+                                markerGefunden = true
+                            }
+                            if (markerGefunden) continue
+
+                            reKm.matchEntire(line)?.let {
+                                kmVon = parseKmValue(it.groupValues[1])
+                                kmBis = parseKmValue(it.groupValues.getOrNull(2))
+                                line = it.groupValues.getOrNull(3).orEmpty().trim()
                                 markerGefunden = true
                             }
                         } while (markerGefunden && line.isNotBlank())
                         if (line.isBlank()) return@forEachIndexed
 
-                        // Bullet entfernen fürs Parsing
                         if (line.startsWith("•")) line = line.removePrefix("•").trimStart()
                         if (line.isBlank()) return@forEachIndexed
 
-                        // Zeit optional am Anfang: 'HH:mm ...' oder 'HH:mm–HH:mm ...'
                         var timeStr: String? = null
                         var timeMin: Int? = null
                         var rest = line
-
-                        // Single time: "HH:mm Text"  | Span: "HH:mm–HH:mm Text"
                         val m = Regex("""^(\d{1,2}:\d{2})(?:\s*[-–]\s*\(?\s*(\d{1,2}:\d{2})\s*\)?\s*)?\s+(.*)$""").find(line)
                         if (m != null) {
                             val startNorm = normalizeHm(m.groupValues[1])
                             if (startNorm != null) {
                                 val endRaw = m.groupValues.getOrNull(2).orEmpty().trim()
                                 val endNorm = endRaw.takeIf { it.isNotBlank() }?.let { normalizeHm(it) }
-
                                 timeStr = if (endNorm != null) "$startNorm–$endNorm" else startNorm
                                 timeMin = hmToMin(startNorm)
                                 rest = m.groupValues[3].trim()
                             }
                         }
 
-                        // Firma-Prefix "Firma: Text" (nur wenn Firma bekannt ist)
                         var firma: String? = null
                         var text2 = rest
-
                         if (!forcedGeneral) {
                             val cIdx = rest.indexOf(':')
                             if (cIdx > 0) {
-                                val prefix = rest.substring(0, cIdx).trim()
+                                val prefixName = rest.substring(0, cIdx).trim()
                                 val tail = rest.substring(cIdx + 1).trim()
-                                if (prefix.isNotBlank()) {
-                                    val canon = firmMap[prefix.lowercase(java.util.Locale.ROOT)]
-                                    if (canon != null) {
-                                        firma = canon
-                                        text2 = tail
-                                    }
+                                val canon = firmMap[prefixName.lowercase(java.util.Locale.ROOT)]
+                                if (canon != null || explicitFirmaId != null) {
+                                    firma = canon ?: prefixName
+                                    text2 = tail
                                 }
                             }
                         }
-
                         if (text2.isBlank()) return@forEachIndexed
 
-                        val effectiveOrtId = if (forcedGeneral || firma == null) 0L else currentOrtId
+                        val firmaId = if (forcedGeneral) null else (
+                            explicitFirmaId ?: firma?.lowercase(java.util.Locale.ROOT)?.let { firmIdByName[it] }
+                        )
+                        val effectiveOrtId = lineOrtId
+                            ?: if (currentOrtIstStandaloneMarker) currentOrtId else 0L
+                        val effectiveNodeKey = lineNodeKey
+                            ?: if (currentOrtIstStandaloneMarker) currentNodeKey
+                            else btbNodeKeyByLocalId[effectiveOrtId]
 
                         out.add(
                             ManualItem(
                                 lineIndex = idxLine,
-                                firma = firma,
+                                firma = if (forcedGeneral) null else firma,
+                                firmaId = firmaId,
                                 time = timeStr,
                                 timeMin = timeMin,
                                 ortId = effectiveOrtId,
+                                worksiteNodeKey = effectiveNodeKey,
+                                clientEntryKey = clientEntryKey,
                                 text = text2,
                                 kmVon = kmVon,
                                 kmBis = kmBis
@@ -5086,16 +5416,39 @@ cardCurrentReport.setOnClickListener {
                     return out
                 }
 
-
-                fun buildManualLine(ortId: Long, firm: String?, time: String?, text2: String, kmVon: Double? = null, kmBis: Double? = null): String {
+                fun buildManualLine(
+                    ortId: Long,
+                    firm: String?,
+                    time: String?,
+                    text2: String,
+                    kmVon: Double? = null,
+                    kmBis: Double? = null,
+                    firmaId: String? = null,
+                    worksiteNodeKey: String? = null,
+                    clientEntryKey: String? = null
+                ): String {
                     val t = time?.trim().orEmpty().takeIf { it.isNotBlank() }
                     val f = firm?.trim().orEmpty().takeIf { it.isNotBlank() }
                     val txt = text2.trim()
-                    val effectiveOrtId = if (f == null) 0L else ortId
+                    val stableEntry = clientEntryKey?.trim()?.takeIf { it.isNotBlank() }
+                        ?: "bte-${java.util.UUID.randomUUID()}"
+                    val stableNode = worksiteNodeKey?.trim()?.takeIf { it.isNotBlank() }
+                        ?: btbNodeKeyByLocalId[ortId]
+                    val stableFirmaId = if (f == null) null else (
+                        firmaId?.trim()?.takeIf { it.isNotBlank() }
+                            ?: lastFirmaBlocks.firstOrNull {
+                                it.name.trim().equals(f, ignoreCase = true) && !it.isDeleted
+                            }?.firmaId
+                    )
 
                     return buildString {
-                        if (effectiveOrtId != 0L) append("@ORT=").append(effectiveOrtId).append(" ")
-                        if (f == null) append("@ALLGEMEIN ")
+                        append("@ENTRY=").append(stableEntry).append(" ")
+                        stableNode?.let { append("@NODE=").append(it).append(" ") }
+                        // Lokale UI-ID wird immer explizit geschrieben; Hauptbaustelle = @ORT=0.
+                        // Geräteübergreifende Identität bleibt ausschließlich @NODE/clientNodeKey.
+                        append("@ORT=").append(ortId).append(" ")
+                        if (stableFirmaId != null) append("@FIRMAID=").append(stableFirmaId).append(" ")
+                        else append("@ALLGEMEIN ")
                         kmMarker(kmVon, kmBis)?.let { append(it).append(" ") }
                         append("• ")
                         if (t != null) append(t).append(' ')
@@ -5103,6 +5456,7 @@ cardCurrentReport.setOnClickListener {
                         append(txt)
                     }.trimEnd()
                 }
+
 
                 fun setRawLines(lines: List<String>) {
                     // Wichtig: Ort-Marker im hidden Field behalten, sonst geht die Gruppierung verloren.
@@ -5218,11 +5572,285 @@ cardCurrentReport.setOnClickListener {
                     return listOfNotNull(mi.time, kmAnzeige(mi.kmVon, mi.kmBis), mi.text).joinToString(" ").trim()
                 }
 
+                fun matchingFotoIds(mi: ManualItem): List<Long> {
+                    fun sameFirma(a: String?, b: String?): Boolean =
+                        a.orEmpty().trim().equals(b.orEmpty().trim(), ignoreCase = true)
+
+                    return lastGroups.asSequence()
+                        .filter { g ->
+                            g.ortId == mi.ortId &&
+                                sameFirma(g.firma, mi.firma) &&
+                                g.text.trim().equals(mi.text.trim(), ignoreCase = true)
+                        }
+                        .flatMap { it.ids.asSequence() }
+                        .distinct()
+                        .toList()
+                }
+
+                fun showManualPhotoLarge(foto: de.tbhelfer.datenbank.FotoEntity, number: Int) {
+                    val ctx = requireContext()
+                    val image = android.widget.ImageView(ctx).apply {
+                        adjustViewBounds = true
+                        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                        layoutParams = android.widget.LinearLayout.LayoutParams(
+                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                            dp(380)
+                        )
+                    }
+                    de.tbhelfer.util.ThumbnailLoader.loadInto(
+                        imageView = image,
+                        filePath = foto.dateipfad,
+                        placeholderResId = android.R.drawable.ic_menu_report_image,
+                        reqW = 1600,
+                        reqH = 1600
+                    )
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+                        .setTitle("Bild $number")
+                        .setView(image)
+                        .setNegativeButton("Schließen", null)
+                        .show()
+                }
+
+                fun launchPhotoForManualItem(mi: ManualItem, source: String) {
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val ctx = resolveAktuelleBaustelle()
+                        if (ctx == null) {
+                            Snackbar.make(requireView(), "Bitte zuerst eine Baustelle auswählen", Snackbar.LENGTH_LONG).show()
+                            return@launch
+                        }
+                        val activeId = loadedBtbId?.trim()?.takeIf { it.isNotBlank() }
+                            ?: withContext(Dispatchers.IO) {
+                                BtbActiveContext.laden(requireContext(), ctx.id)?.btbId
+                            }
+                        if (activeId.isNullOrBlank()) {
+                            Snackbar.make(requireView(), "Kein aktiver BTB für Bilder", Snackbar.LENGTH_LONG).show()
+                            return@launch
+                        }
+
+                        // Vor dem Wechsel in Kamera/Galerie den kompletten aktuellen Abschnittsstand
+                        // persistieren. So gehen auch Änderungen an anderen manuellen Einträgen aus
+                        // demselben geöffneten Editor nicht verloren.
+                        onSave(etFull.text?.toString().orEmpty())
+                        val existing = withContext(Dispatchers.IO) {
+                            BautagebuchSpeicher.ladenById(requireContext(), ctx.id, ctx.name, activeId)
+                        }
+                        val draft = buildEntry(ctx)
+                        val snapshot = draft.copy(
+                            btbId = activeId,
+                            maxFotosInPdf = existing?.maxFotosInPdf ?: draft.maxFotosInPdf,
+                            pdfAuswahl = existing?.pdfAuswahl ?: draft.pdfAuswahl,
+                            erstelltAmEpochMs = existing?.erstelltAmEpochMs ?: draft.erstelltAmEpochMs,
+                            geaendertAmEpochMs = System.currentTimeMillis()
+                        )
+                        withContext(Dispatchers.IO) {
+                            BautagebuchSpeicher.speichern(requireContext(), snapshot)
+                        }
+
+                        val b = Bundle().apply {
+                            putLong("baustelleId", snapshot.baustelleId)
+                            putString("baustelleName", snapshot.baustelleName)
+                            putString("datumIso", snapshot.datumIso)
+                            putString("shiftStart", snapshot.startUhrzeit)
+                            putString("shiftEnd", snapshot.endeUhrzeit)
+                            putString("schichtTyp", snapshot.schicht.name)
+                            putString("filterBildtyp", fotoType?.name ?: de.tbhelfer.datenbank.Bildtyp.FOTODOKUMENTATION.name)
+                            putString("btbId", activeId)
+                            putString("autoPhotoSource", source)
+                            putString("autoPhotoFirma", mi.firma.orEmpty())
+                            putLong("autoPhotoOrtId", mi.ortId)
+                            putString("autoPhotoText", mi.text)
+                            mi.time?.let { putString("autoPhotoTime", it) }
+                            mi.kmVon?.let { putDouble("autoPhotoKmVon", it) }
+                            mi.kmBis?.let { putDouble("autoPhotoKmBis", it) }
+                        }
+                        dialog.dismiss()
+                        findNavController().navigate(R.id.btbPdfAuswahlFragment, b)
+                    }
+                }
+
+                fun moveManualItem(mi: ManualItem) {
+                    val firms = LinkedHashSet<String>().apply {
+                        lastFirmaBlocks.asSequence()
+                            .filter { !it.isDeleted }
+                            .map { it.name.trim() }
+                            .filter { it.isNotBlank() }
+                            .forEach { add(it) }
+                        lastGroups.asSequence()
+                            .mapNotNull { it.firma?.trim() }
+                            .filter { it.isNotBlank() }
+                            .forEach { add(it) }
+                    }.toList()
+
+                    val targets = (listOf<String?>(null) + firms).filterNot { target ->
+                        target.orEmpty().trim().equals(mi.firma.orEmpty().trim(), ignoreCase = true)
+                    }
+                    if (targets.isEmpty()) {
+                        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("Eintrag verschieben")
+                            .setMessage("Kein anderes Ziel vorhanden.")
+                            .setPositiveButton("OK", null)
+                            .show()
+                        return
+                    }
+
+                    val labels = targets.map { it ?: getString(R.string.btb_company_general) }.toTypedArray()
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("Eintrag verschieben – Ziel wählen")
+                        // AlertDialog zeigt Message und Listeninhalt nicht zuverlässig gemeinsam.
+                        // Deshalb hier nur die Zielliste; so bleiben Allgemein/Firmen immer sichtbar.
+                        .setItems(labels) { _, which ->
+                            val targetFirma = targets[which]
+                            val targetFirmaId = targetFirma?.let { name ->
+                                lastFirmaBlocks.firstOrNull {
+                                    !it.isDeleted && it.name.trim().equals(name.trim(), ignoreCase = true)
+                                }?.firmaId
+                            }
+
+                            val photoIds = matchingFotoIds(mi)
+                            val targetOrt = mi.ortId
+                            val lines = etFull.text?.toString().orEmpty().lines().toMutableList()
+                            if (mi.lineIndex in lines.indices) {
+                                lines[mi.lineIndex] = buildManualLine(
+                                    ortId = targetOrt,
+                                    firm = targetFirma,
+                                    time = mi.time,
+                                    text2 = mi.text,
+                                    kmVon = mi.kmVon,
+                                    kmBis = mi.kmBis,
+                                    firmaId = targetFirmaId,
+                                    worksiteNodeKey = mi.worksiteNodeKey,
+                                    clientEntryKey = mi.clientEntryKey
+                                )
+                                setRawLines(lines)
+                                onSave(etFull.text?.toString().orEmpty())
+                            }
+
+                            val btbId = loadedBtbId?.trim().orEmpty()
+                            viewLifecycleOwner.lifecycleScope.launch {
+                                if (photoIds.isNotEmpty() && btbId.isNotBlank()) {
+                                    val photos = withContext(Dispatchers.IO) {
+                                        ServiceLocator.fotoRepository.fotosMitIds(photoIds)
+                                    }
+                                    withContext(Dispatchers.IO) {
+                                        val currentOverrides = BtbPhotoContextOverrideStore.load(requireContext(), btbId)
+                                        photos.forEach { foto ->
+                                            val previous = currentOverrides[foto.id]
+                                            BtbPhotoContextOverrideStore.setOverride(
+                                                requireContext(),
+                                                btbId,
+                                                foto.id,
+                                                BtbPhotoContextOverrideStore.ContextOverride(
+                                                    firma = targetFirma.orEmpty(),
+                                                    firmaId = targetFirmaId,
+                                                    objektKennung = previous?.objektKennung ?: foto.objektKennung,
+                                                    objektBereich = previous?.objektBereich ?: foto.objektBereich,
+                                                    ortId = targetOrt,
+                                                    worksiteNodeKey = mi.worksiteNodeKey,
+                                                    bildtyp = previous?.bildtyp ?: foto.bildtyp
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                                saveAndReloadWholeBtbSilently()
+                                Snackbar.make(requireView(), "Firma / Allgemein geändert", Snackbar.LENGTH_SHORT).show()
+                            }
+                            dialog.dismiss()
+                        }
+                        .setNegativeButton("Abbrechen", null)
+                        .show()
+                }
+
+                fun moveManualItemToSection(mi: ManualItem) {
+                    val sourceSection = currentEditSection ?: return
+                    val targets = BtbEditSection.values().filter { it != sourceSection }
+                    val labels = targets.map { "${it.point}. ${it.label}" }.toTypedArray()
+
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("BTB-Punkt ändern")
+                        .setItems(labels) { _, which ->
+                            val targetSection = targets[which]
+                            val photoIds = matchingFotoIds(mi)
+
+                            // Quelle entfernen.
+                            val sourceLines = etFull.text?.toString().orEmpty().lines().toMutableList()
+                            if (mi.lineIndex !in sourceLines.indices) return@setItems
+                            sourceLines.removeAt(mi.lineIndex)
+                            setRawLines(sourceLines.filter { it.isNotBlank() })
+                            onSave(etFull.text?.toString().orEmpty())
+
+                            // Derselbe fachliche Eintrag wandert mit derselben clientEntryKey in
+                            // den Zielabschnitt. Das führt im Server1BtbApi zum section-PATCH,
+                            // nicht zu Delete/Create.
+                            val movedLine = buildManualLine(
+                                ortId = mi.ortId,
+                                firm = mi.firma,
+                                time = mi.time,
+                                text2 = mi.text,
+                                kmVon = mi.kmVon,
+                                kmBis = mi.kmBis,
+                                firmaId = mi.firmaId,
+                                worksiteNodeKey = mi.worksiteNodeKey,
+                                clientEntryKey = mi.clientEntryKey
+                            )
+                            val targetRaw = rawForEditSection(targetSection)
+                            val targetLines = targetRaw.lines()
+                                .filter { it.isNotBlank() }
+                                .toMutableList()
+                                .apply { add(movedLine) }
+                            setRawForEditSection(targetSection, targetLines.joinToString("\n"))
+                            renderSectionPreviews()
+                            scheduleSectionsAutosave(force = true)
+
+                            // Zugeordnete Fotos behalten Datei, Aufnahmezeit, GPS und Foto-ID.
+                            // Nur ihre BTB-Link-Metadaten/Punktzuordnung werden geändert.
+                            val btbId = loadedBtbId?.trim().orEmpty()
+                            viewLifecycleOwner.lifecycleScope.launch {
+                                if (photoIds.isNotEmpty() && btbId.isNotBlank()) {
+                                    val photos = withContext(Dispatchers.IO) {
+                                        ServiceLocator.fotoRepository.fotosMitIds(photoIds)
+                                    }
+                                    withContext(Dispatchers.IO) {
+                                        val currentOverrides =
+                                            BtbPhotoContextOverrideStore.load(requireContext(), btbId)
+                                        photos.forEach { foto ->
+                                            val previous = currentOverrides[foto.id]
+                                            BtbPhotoContextOverrideStore.setOverride(
+                                                requireContext(),
+                                                btbId,
+                                                foto.id,
+                                                BtbPhotoContextOverrideStore.ContextOverride(
+                                                    firma = mi.firma.orEmpty(),
+                                                    firmaId = mi.firmaId,
+                                                    objektKennung = previous?.objektKennung ?: foto.objektKennung,
+                                                    objektBereich = previous?.objektBereich ?: foto.objektBereich,
+                                                    ortId = mi.ortId,
+                                                    worksiteNodeKey = mi.worksiteNodeKey,
+                                                    bildtyp = targetSection.photoType
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                                saveAndReloadWholeBtbSilently()
+                                Snackbar.make(
+                                    requireView(),
+                                    "Eintrag nach Punkt ${targetSection.point} verschoben",
+                                    Snackbar.LENGTH_SHORT
+                                ).show()
+                            }
+                            dialog.dismiss()
+                        }
+                        .setNegativeButton("Abbrechen", null)
+                        .show()
+                }
+
                 fun addManualBullet(mi: ManualItem) {
                     val line = formatManual(mi)
+                    val relatedPhotoCount = matchingFotoIds(mi).size
 
                     val tv = android.widget.TextView(requireContext()).apply {
-                        text = "• $line"
+                        text = if (relatedPhotoCount > 0) "• $line   📷 $relatedPhotoCount" else "• $line"
                         setPadding(dp(10), dp(6), dp(10), dp(6))
                         textSize = 13f
                     }
@@ -5485,6 +6113,117 @@ cardCurrentReport.setOnClickListener {
                         tilText.addView(etText)
                         root.addView(tilText)
 
+                        val photoHeader = android.widget.TextView(requireContext()).apply {
+                            text = "Bilder zu diesem Eintrag"
+                            textSize = 13f
+                            setTypeface(typeface, android.graphics.Typeface.BOLD)
+                            setPadding(0, dp(12), 0, dp(4))
+                        }
+                        root.addView(photoHeader)
+
+                        val photoScroller = android.widget.HorizontalScrollView(requireContext()).apply {
+                            isFillViewport = false
+                            isHorizontalScrollBarEnabled = true
+                            overScrollMode = android.view.View.OVER_SCROLL_IF_CONTENT_SCROLLS
+                        }
+                        val photoRow = android.widget.LinearLayout(requireContext()).apply {
+                            orientation = android.widget.LinearLayout.HORIZONTAL
+                            setPadding(0, 0, dp(6), 0)
+                        }
+                        // HorizontalScrollView ist intern ein FrameLayout; addView erzeugt
+                        // hier die passenden Child-LayoutParams automatisch.
+                        photoScroller.addView(photoRow)
+                        root.addView(
+                            photoScroller,
+                            android.widget.LinearLayout.LayoutParams(
+                                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                            )
+                        )
+
+                        val relatedPhotoIds = matchingFotoIds(mi)
+                        val btnEntryPhotos = com.google.android.material.button.MaterialButton(requireContext()).apply {
+                            isAllCaps = false
+                            text = if (relatedPhotoIds.isEmpty()) "Bild hinzufügen" else "Bilder (${relatedPhotoIds.size}) · hinzufügen"
+                            setIconResource(R.drawable.ic_image_picker_24)
+                        }
+                        root.addView(
+                            btnEntryPhotos,
+                            android.widget.LinearLayout.LayoutParams(
+                                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                            ).apply {
+                                topMargin = dp(6)
+                                bottomMargin = dp(4)
+                            }
+                        )
+
+                        if (relatedPhotoIds.isEmpty()) {
+                            photoRow.addView(android.widget.TextView(requireContext()).apply {
+                                text = "Noch keine Bilder direkt zu diesem Eintrag."
+                                textSize = 12f
+                                alpha = 0.70f
+                                setPadding(dp(4), dp(2), dp(4), dp(6))
+                            })
+                        } else {
+                            root.addView(android.widget.TextView(requireContext()).apply {
+                                text = "← Bilder nach links / rechts wischen →"
+                                textSize = 11.5f
+                                alpha = 0.68f
+                                gravity = android.view.Gravity.CENTER
+                                setPadding(0, dp(2), 0, dp(2))
+                            }, root.indexOfChild(photoScroller) + 1)
+
+                            viewLifecycleOwner.lifecycleScope.launch {
+                                val photos = withContext(Dispatchers.IO) {
+                                    ServiceLocator.fotoRepository.fotosMitIds(relatedPhotoIds)
+                                }.associateBy { it.id }
+                                if (!isAdded) return@launch
+                                photoRow.removeAllViews()
+
+                                relatedPhotoIds.forEachIndexed { index, id ->
+                                    val foto = photos[id] ?: return@forEachIndexed
+                                    val cell = android.widget.LinearLayout(requireContext()).apply {
+                                        orientation = android.widget.LinearLayout.VERTICAL
+                                        gravity = android.view.Gravity.CENTER
+                                        setPadding(dp(4), dp(3), dp(4), dp(3))
+                                        layoutParams = android.widget.LinearLayout.LayoutParams(
+                                            dp(240),
+                                            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                                        ).apply {
+                                            marginEnd = dp(8)
+                                        }
+                                    }
+                                    val image = android.widget.ImageView(requireContext()).apply {
+                                        scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                                        adjustViewBounds = false
+                                        contentDescription = "Bild ${index + 1} öffnen"
+                                        layoutParams = android.widget.LinearLayout.LayoutParams(
+                                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                            dp(175)
+                                        )
+                                    }
+                                    de.tbhelfer.util.ThumbnailLoader.loadInto(
+                                        imageView = image,
+                                        filePath = foto.dateipfad,
+                                        placeholderResId = android.R.drawable.ic_menu_report_image,
+                                        reqW = 960,
+                                        reqH = 700
+                                    )
+                                    val number = index + 1
+                                    image.setOnClickListener { showManualPhotoLarge(foto, number) }
+                                    cell.addView(image)
+                                    cell.addView(android.widget.TextView(requireContext()).apply {
+                                        text = "Bild $number"
+                                        textSize = 12f
+                                        gravity = android.view.Gravity.CENTER
+                                        setPadding(0, dp(3), 0, 0)
+                                    })
+                                    photoRow.addView(cell)
+                                }
+                            }
+                        }
+
                         val firmTitle = mi.firma ?: getString(R.string.btb_company_general)
 
                         val dlg = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
@@ -5519,6 +6258,31 @@ cardCurrentReport.setOnClickListener {
                         })
                         updateTimeError()
 
+                        btnEntryPhotos.setOnClickListener {
+                            val textChanged = etText.text?.toString().orEmpty().trim() != mi.text.trim()
+                            val timeChanged = etTime.text?.toString().orEmpty().trim().replace('-', '–') != mi.time.orEmpty().trim().replace('-', '–')
+                            val kmVonChanged = parseKmValue(etKmVon.text?.toString()) != mi.kmVon
+                            val kmBisChanged = parseKmValue(etKmBis.text?.toString()) != mi.kmBis
+                            val ortChanged = selectedOrtMarkerId != mi.ortId
+                            if (textChanged || timeChanged || kmVonChanged || kmBisChanged || ortChanged) {
+                                Snackbar.make(
+                                    requireView(),
+                                    "Bitte Änderungen zuerst speichern und den Eintrag danach erneut öffnen.",
+                                    Snackbar.LENGTH_LONG
+                                ).show()
+                                return@setOnClickListener
+                            }
+
+                            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                                .setTitle("Bild hinzufügen")
+                                .setItems(arrayOf("Kamera", "Galerie & Dateien")) { _, which ->
+                                    dlg.dismiss()
+                                    launchPhotoForManualItem(mi, if (which == 0) "camera" else "gallery")
+                                }
+                                .setNegativeButton("Abbrechen", null)
+                                .show()
+                        }
+
                         dlg.setOnShowListener {
                             val btn = dlg.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
                             btn.setOnClickListener {
@@ -5548,13 +6312,72 @@ cardCurrentReport.setOnClickListener {
                                 tilKmVon.error = null
                                 tilKmBis.error = null
 
-                                val lines = etFull.text?.toString().orEmpty().lines().toMutableList()
-                                if (mi.lineIndex in lines.indices) {
-                                    lines[mi.lineIndex] = buildManualLine(selectedOrtMarkerId, mi.firma, tNorm, txt, kmVon, kmBis)
-                                    setRawLines(lines)
+                                viewLifecycleOwner.lifecycleScope.launch {
+                                    val rootId = cachedHauptKnotenId
+                                        ?: ServiceLocator.aktuelleBaustelleSpeicher.aktuelleHauptbaustelleKnotenId.first()
+                                    val nodeKey = if (selectedOrtMarkerId > 0L) {
+                                        stableNodeKey(rootId, selectedOrtMarkerId)
+                                    } else null
+                                    if (selectedOrtMarkerId > 0L && nodeKey == null) {
+                                        Snackbar.make(
+                                            requireView(),
+                                            "Unterbaustelle konnte nicht stabil zugeordnet werden.",
+                                            Snackbar.LENGTH_LONG
+                                        ).show()
+                                        return@launch
+                                    }
+
+                                    val lines = etFull.text?.toString().orEmpty().lines().toMutableList()
+                                    if (mi.lineIndex in lines.indices) {
+                                        lines[mi.lineIndex] = buildManualLine(
+                                            ortId = selectedOrtMarkerId,
+                                            firm = mi.firma,
+                                            time = tNorm,
+                                            text2 = txt,
+                                            kmVon = kmVon,
+                                            kmBis = kmBis,
+                                            firmaId = mi.firmaId,
+                                            worksiteNodeKey = nodeKey,
+                                            clientEntryKey = mi.clientEntryKey
+                                        )
+                                        setRawLines(lines)
+                                    }
+
+                                    // Eine geänderte Unterbaustelle am Eintrag wird für bereits
+                                    // direkt zugeordnete Fotos als BTB-Link-Kontext mitgeführt.
+                                    val btbId = loadedBtbId?.trim().orEmpty()
+                                    val photoIds = matchingFotoIds(mi)
+                                    if (photoIds.isNotEmpty() && btbId.isNotBlank()) {
+                                        val photos = withContext(Dispatchers.IO) {
+                                            ServiceLocator.fotoRepository.fotosMitIds(photoIds)
+                                        }
+                                        withContext(Dispatchers.IO) {
+                                            val currentOverrides =
+                                                BtbPhotoContextOverrideStore.load(requireContext(), btbId)
+                                            photos.forEach { foto ->
+                                                val previous = currentOverrides[foto.id]
+                                                BtbPhotoContextOverrideStore.setOverride(
+                                                    requireContext(),
+                                                    btbId,
+                                                    foto.id,
+                                                    BtbPhotoContextOverrideStore.ContextOverride(
+                                                        firma = mi.firma.orEmpty(),
+                                                        firmaId = mi.firmaId,
+                                                        objektKennung = previous?.objektKennung ?: foto.objektKennung,
+                                                        objektBereich = previous?.objektBereich ?: foto.objektBereich,
+                                                        ortId = selectedOrtMarkerId,
+                                                        worksiteNodeKey = nodeKey,
+                                                        bildtyp = previous?.bildtyp ?: foto.bildtyp
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    renderMerged?.invoke(lastGroups)
+                                    saveAndReloadWholeBtbSilently()
+                                    dlg.dismiss()
                                 }
-                                renderMerged?.invoke(lastGroups)
-                                dlg.dismiss()
                             }
                         }
 
@@ -5562,7 +6385,23 @@ cardCurrentReport.setOnClickListener {
                     }
 
                     tv.setOnLongClickListener {
-                        confirmDeleteManualItem(mi)
+                        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("Eintrag bearbeiten")
+                            .setItems(
+                                arrayOf(
+                                    "Firma / Allgemein ändern",
+                                    "Punkt 4–8 ändern",
+                                    "Löschen"
+                                )
+                            ) { _, which ->
+                                when (which) {
+                                    0 -> moveManualItem(mi)
+                                    1 -> moveManualItemToSection(mi)
+                                    2 -> confirmDeleteManualItem(mi)
+                                }
+                            }
+                            .setNegativeButton("Abbrechen", null)
+                            .show()
                         true
                     }
 
@@ -6384,15 +7223,44 @@ cardCurrentReport.setOnClickListener {
                                 tilKmVon.error = null
                                 tilKmBis.error = null
 
-                                val line = buildManualLine(selectedOrtMarkerId, firm, tNorm, txt, kmVon, kmBis)
+                                viewLifecycleOwner.lifecycleScope.launch {
+                                    val rootId = cachedHauptKnotenId
+                                        ?: ServiceLocator.aktuelleBaustelleSpeicher.aktuelleHauptbaustelleKnotenId.first()
+                                    val nodeKey = if (selectedOrtMarkerId > 0L) {
+                                        stableNodeKey(rootId, selectedOrtMarkerId)
+                                    } else null
+                                    if (selectedOrtMarkerId > 0L && nodeKey == null) {
+                                        Snackbar.make(
+                                            requireView(),
+                                            "Unterbaustelle konnte nicht stabil zugeordnet werden.",
+                                            Snackbar.LENGTH_LONG
+                                        ).show()
+                                        return@launch
+                                    }
+                                    val firmId = firm?.let { name ->
+                                        lastFirmaBlocks.firstOrNull {
+                                            !it.isDeleted && it.name.trim().equals(name.trim(), ignoreCase = true)
+                                        }?.firmaId
+                                    }
+                                    val line = buildManualLine(
+                                        ortId = selectedOrtMarkerId,
+                                        firm = firm,
+                                        time = tNorm,
+                                        text2 = txt,
+                                        kmVon = kmVon,
+                                        kmBis = kmBis,
+                                        firmaId = firmId,
+                                        worksiteNodeKey = nodeKey
+                                    )
 
-                                val curLines = etFull.text?.toString().orEmpty().lines().toMutableList()
-                                val base = if (curLines.size == 1 && curLines.first().isBlank()) mutableListOf<String>() else curLines
-                                val nextLines = (base + line).toMutableList()
-                                setRawLines(nextLines.filter { it.isNotBlank() })
+                                    val curLines = etFull.text?.toString().orEmpty().lines().toMutableList()
+                                    val base = if (curLines.size == 1 && curLines.first().isBlank()) mutableListOf<String>() else curLines
+                                    val nextLines = (base + line).toMutableList()
+                                    setRawLines(nextLines.filter { it.isNotBlank() })
 
-                                renderMerged?.invoke(lastGroups)
-                                dlg.dismiss()
+                                    renderMerged?.invoke(lastGroups)
+                                    dlg.dismiss()
+                                }
                             }
                         }
 
@@ -7144,5 +8012,6 @@ cardCurrentReport.setOnClickListener {
 private data class BaustelleKontext(
     val id: Long,
     val name: String,
-    val strecke: String?
+    val strecke: String?,
+    val rootKnotenId: Long? = null
 )

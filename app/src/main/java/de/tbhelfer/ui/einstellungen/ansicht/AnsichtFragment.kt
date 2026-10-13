@@ -19,6 +19,7 @@ class AnsichtFragment : Fragment(R.layout.fragment_ansicht) {
     private val speicher: AnsichtEinstellungenSpeicher by lazy { ServiceLocator.ansichtEinstellungenSpeicher }
 
     private var currentCfg: AnsichtEinstellungenSpeicher.Einstellungen? = null
+    private var controlsReady: Boolean = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -33,23 +34,6 @@ class AnsichtFragment : Fragment(R.layout.fragment_ansicht) {
         val rbNightLight = view.findViewById<RadioButton>(R.id.rbNightLight)
         val rbNightDark = view.findViewById<RadioButton>(R.id.rbNightDark)
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            val cfg = speicher.einstellungen.first()
-            currentCfg = cfg
-
-            when (cfg.sucheGridSpalten) {
-                1 -> rb1.isChecked = true
-                3 -> rb3.isChecked = true
-                else -> rb2.isChecked = true
-            }
-
-            when (cfg.nightMode) {
-                AnsichtEinstellungenSpeicher.NightMode.LIGHT -> rbNightLight.isChecked = true
-                AnsichtEinstellungenSpeicher.NightMode.DARK -> rbNightDark.isChecked = true
-                else -> rbNightSystem.isChecked = true
-            }
-        }
-
         fun applyNightMode(night: AnsichtEinstellungenSpeicher.NightMode) {
             val mode = when (night) {
                 AnsichtEinstellungenSpeicher.NightMode.LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
@@ -59,8 +43,8 @@ class AnsichtFragment : Fragment(R.layout.fragment_ansicht) {
             AppCompatDelegate.setDefaultNightMode(mode)
         }
 
-        fun applyAndSave() {
-            val prev = currentCfg
+        fun saveFromControls() {
+            if (!controlsReady) return
 
             val grid = when (rgGrid.checkedRadioButtonId) {
                 R.id.rbGrid1 -> 1
@@ -74,27 +58,45 @@ class AnsichtFragment : Fragment(R.layout.fragment_ansicht) {
                 else -> AnsichtEinstellungenSpeicher.NightMode.SYSTEM
             }
 
-            applyNightMode(night)
-
             viewLifecycleOwner.lifecycleScope.launch {
-                val base = prev ?: speicher.einstellungen.first()
-
+                val base = currentCfg ?: speicher.einstellungen.first()
                 val updated = base.copy(
                     // Farben sind fix: Buttons TB-Blau, normale Texte via Theme
                     menuButtonColor = Color.parseColor("#2F7BFF"),
-                    menuTextColor = Color.BLACK, // wird nicht mehr global angewendet
-                    menuTextSizeSp = 16,         // Slider entfernt -> Standard
+                    menuTextColor = Color.BLACK,
+                    menuTextSizeSp = 16,
                     sucheGridSpalten = grid,
                     nightMode = night
                 )
+
+                // Erst DataStore + Startup-Cache schreiben. Erst danach darf setDefaultNightMode
+                // die Activity neu erzeugen. Sonst startet die neue Ansicht wieder mit SYSTEM.
                 speicher.speichern(updated)
                 currentCfg = updated
+                applyNightMode(night)
             }
         }
 
-        rgGrid.setOnCheckedChangeListener { _, _ -> applyAndSave() }
-        rgNight.setOnCheckedChangeListener { _, _ -> applyAndSave() }
+        rgGrid.setOnCheckedChangeListener { _, _ -> saveFromControls() }
+        rgNight.setOnCheckedChangeListener { _, _ -> saveFromControls() }
 
-        applyAndSave()
+        viewLifecycleOwner.lifecycleScope.launch {
+            val cfg = speicher.einstellungen.first()
+            currentCfg = cfg
+
+            controlsReady = false
+            when (cfg.sucheGridSpalten) {
+                1 -> rb1.isChecked = true
+                3 -> rb3.isChecked = true
+                else -> rb2.isChecked = true
+            }
+
+            when (cfg.nightMode) {
+                AnsichtEinstellungenSpeicher.NightMode.LIGHT -> rbNightLight.isChecked = true
+                AnsichtEinstellungenSpeicher.NightMode.DARK -> rbNightDark.isChecked = true
+                AnsichtEinstellungenSpeicher.NightMode.SYSTEM -> rbNightSystem.isChecked = true
+            }
+            controlsReady = true
+        }
     }
 }

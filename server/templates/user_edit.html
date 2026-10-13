@@ -1,0 +1,66 @@
+{% extends "base.html" %}{% block content %}
+<style>
+.quick{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 18px}
+.quick form{margin:0}
+.btn-secondary{background:#667085}
+</style>
+<div class="card" style="max-width:720px">
+  <h2>Benutzer bearbeiten</h2>
+  <p class="muted">Name, Firma, E-Mail und Zugriffslaufzeit können geändert werden. Ein bereits gebundenes Gerät bleibt erhalten.</p>
+
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+  <form method="post" action="/admin/users/{{ user.id }}/edit">
+    <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+
+    <label for="full_name"><b>Name</b></label>
+    <input id="full_name" name="full_name" value="{{ user.full_name }}" required>
+
+    <label for="company"><b>Firma</b> <span class="muted">(optional)</span></label>
+    <input id="company" name="company" value="{{ user.company or '' }}" list="company-list" autocomplete="organization">
+    <datalist id="company-list">
+      {% for c in companies %}<option value="{{ c.name }}">{% endfor %}
+    </datalist>
+    <p class="muted" style="margin-top:-8px">Eine neue Firmenbezeichnung wird automatisch als Firma angelegt.</p>
+
+    <label for="email"><b>E-Mail</b> <span class="muted">(optional)</span></label>
+    <input id="email" name="email" type="email" value="{{ user.email or '' }}">
+
+    <h3>Server-Speicherung</h3>
+    <p class="muted">Nicht dauerhaft gespeicherte Daten dürfen für die Synchronisation vorübergehend auf dem Server liegen und werden erst nach bestätigter Verteilung bereinigt.</p>
+    <div class="checks">
+      <label class="check"><input type="checkbox" name="store_images" value="1" {% if storage.store_images %}checked{% endif %}>Bilder speichern</label>
+      <label class="check"><input type="checkbox" name="store_btb" value="1" {% if storage.store_btb %}checked{% endif %}>BTB speichern</label>
+      <label class="check"><input type="checkbox" name="store_defects" value="1" {% if storage.store_defects %}checked{% endif %}>Mängel speichern</label>
+      <label class="check"><input type="checkbox" name="store_acceptances" value="1" {% if storage.store_acceptances %}checked{% endif %}>Abnahmen speichern</label>
+      <label class="check"><input id="store_all" type="checkbox" name="store_all" value="1" {% if storage.store_all %}checked{% endif %}><b>Alles speichern</b></label>
+    </div>
+
+    <label for="access_valid_until"><b>Zugriff gültig bis</b> <span class="muted">(leer = unbegrenzt)</span></label>
+    <input id="access_valid_until" name="access_valid_until" type="date"
+           value="{{ user.access_valid_until.strftime('%Y-%m-%d') if user.access_valid_until else '' }}">
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button type="submit">Speichern</button>
+      <a class="btn btn-secondary" href="/admin/users">Abbrechen</a>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="max-width:720px">
+  <h3>Laufzeit schnell verlängern</h3>
+  <p class="muted">Ist der Zugang noch gültig, wird an das vorhandene Ablaufdatum angehängt. Ist er bereits abgelaufen, beginnt die neue Laufzeit ab heute.</p>
+  <div class="quick">
+    {% for period,label in [('1M','+ 1 Monat'),('6M','+ 6 Monate'),('1Y','+ 1 Jahr'),('UNLIMITED','Unbegrenzt')] %}
+    <form method="post" action="/admin/users/{{ user.id }}/extend">
+      <input type="hidden" name="csrf" value="{{ admin.csrf }}">
+      <input type="hidden" name="period" value="{{ period }}">
+      <button type="submit">{{ label }}</button>
+    </form>
+    {% endfor %}
+  </div>
+</div>
+<script>
+(function(){const all=document.getElementById('store_all');if(all){all.addEventListener('change',()=>document.querySelectorAll('input[name^="store_"]').forEach(x=>{if(x!==all)x.checked=all.checked;}));}})();
+</script>
+{% endblock %}

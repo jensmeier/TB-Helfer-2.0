@@ -27,7 +27,7 @@
                 android:layout_height="wrap_content"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnBackground"
-                android:text="09:38–13:25 Schotter abgeladen" />
+                android:text="Fotos / Arbeitseinträge" />
 
             <TextView
                 android:id="@+id/tvCounts"
@@ -44,7 +44,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:visibility="gone"
+        android:visibility="visible"
         android:paddingTop="4dp" />
 
 </LinearLayout>

@@ -24,7 +24,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:layout_marginBottom="16dp"
-            android:text="Seltene Funktionen für Geräteprüfung und Speicherpflege."
+            android:text="Geräteprüfung, Speicherpflege und App-Aktualisierung."
             android:textColor="?attr/colorOnBackground"
             android:alpha="0.8" />
 
@@ -56,6 +56,49 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:text="Entfernt fehlende DB-Einträge, verschiebt Bilder ohne Datenbank-Eintrag in den Orphans-Ordner und löscht Thumbnail-Leichen."
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.75" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWartungNachUpdates"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="24dp"
+            android:text="Nach Updates suchen"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/txtWartungUpdateStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="?attr/colorOnBackground"
+            android:textStyle="bold"
+            android:text="Aktuell: TB-Helfer" />
+
+        <TextView
+            android:id="@+id/txtWartungUpdateNotes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.85"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWartungUpdateInstallieren"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="Aktualisieren"
+            android:gravity="center"
+            android:visibility="gone" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Neue Versionen und die Hinweise zu Verbesserungen/Änderungen kommen direkt vom TB-Server. Ein normales App-Update behält Gerätebindung und lokale Daten."
             android:textColor="?attr/colorOnBackground"
             android:alpha="0.75" />
 

@@ -3,10 +3,34 @@ name: Android CI
 on:
   push:
     branches: [ "main", "master" ]
+    paths:
+      - "app/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - ".github/workflows/android.yml"
   pull_request:
+    paths:
+      - "app/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - ".github/workflows/android.yml"
+
+concurrency:
+  group: android-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    # Avoid charging Android CI for the long-running server PR against main.
+    if: github.event_name != 'pull_request' || github.head_ref != 'feature/tb-server-1.0'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -14,6 +38,64 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Verify server/source contracts
+        run: |
+          python3 server/checks/03_verify_schema10_source.py
+          python3 server/checks/04_test_team_btb_merge.py
+          python3 server/checks/12_verify_schema12_source.py
+          python3 server/checks/13_verify_android_btb_auto_sync_source.py
+          python3 server/checks/14_verify_android_btb_sections_logo_source.py
+          python3 server/checks/15_verify_android_btb_delete_lifecycle_source.py
+          python3 server/checks/17_verify_schema13_source.py
+          python3 server/checks/18_verify_android_worksite_structure_source.py
+          python3 server/checks/19_verify_schema13_track_delete_source.py
+          python3 server/checks/83_verify_android_staging_server_config_source.py
+          python3 server/checks/84_verify_device_activation_qr_source.py
+          python3 server/checks/85_verify_android_200052_compile_imports.py
+          python3 server/checks/86_verify_android_update_client_source.py
+
+      - name: Verify Android release companion file
+        id: release_meta
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          gradle = Path("app/build.gradle.kts").read_text(encoding="utf-8")
+          version_match = re.search(r'versionName\s*=\s*"([^"]+)"', gradle)
+          build_match = re.search(r'versionCode\s*=\s*(\d+)', gradle)
+          if not version_match or not build_match:
+              raise SystemExit("versionName/versionCode not found in app/build.gradle.kts")
+
+          version = version_match.group(1)
+          build = build_match.group(1)
+          release_path = Path(f"projektsteuerung/releases/TB-Helfer_{version}_{build}.md")
+          if not release_path.is_file():
+              raise SystemExit(f"Missing Android release companion file: {release_path}")
+
+          text = release_path.read_text(encoding="utf-8")
+          required = [
+              "TB-HELFER-RELEASE",
+              "PLATTFORM: ANDROID",
+              f"VERSION: {version}",
+              f"BUILD: {build}",
+              "MINIMUM_BUILD:",
+              "PFLICHTUPDATE:",
+              "DOWNLOAD_URL:",
+          ]
+          missing = [item for item in required if item not in text]
+          if missing:
+              raise SystemExit("Release companion file mismatch: " + ", ".join(missing))
+
+          output = Path(os.environ["GITHUB_OUTPUT"])
+          with output.open("a", encoding="utf-8") as out:
+              out.write(f"release_file={release_path.as_posix()}\n")
+              out.write(f"artifact_name=TB-Helfer-{version}-{build}\n")
+          print(f"OK {release_path} matches Android {version} / {build}")
+          PY
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -25,8 +107,19 @@ jobs:
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v2
 
-      - name: Build Debug + Release
-        run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
+      - name: Unit tests + Build Debug + Release
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease --stacktrace
 
       - name: Lint (Debug)
         run: ./gradlew :app:lintDebug --stacktrace
+
+      - name: Upload Android package + release companion
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.release_meta.outputs.artifact_name }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+            ${{ steps.release_meta.outputs.release_file }}

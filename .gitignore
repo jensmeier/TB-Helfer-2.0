@@ -19,6 +19,23 @@ Thumbs.db
 # Kotlin cache
 .kotlin/
 
+# Python runtime/cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Server/local secrets – niemals ins Repository
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+cloudflared.env
+**/cloudflared.env
+*.pem
+*.p12
+*.pfx
+
 # Signing / private keys
 *.jks
 *.keystore

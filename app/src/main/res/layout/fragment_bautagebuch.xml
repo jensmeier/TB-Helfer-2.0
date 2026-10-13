@@ -205,10 +205,10 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="10dp"
             android:visibility="gone"
-            app:cardBackgroundColor="#F4F7F4"
+            app:cardBackgroundColor="?attr/colorSurface"
             app:cardCornerRadius="14dp"
             app:cardElevation="0dp"
-            app:strokeColor="#C8E6C9"
+            app:strokeColor="?attr/colorPrimary"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -231,7 +231,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="Vorschläge nur für den neuen BTB. Aktueller BTB bleibt unverändert."
-                    android:textColor="#616161"
+                    android:textColor="?attr/colorOnBackground"
                     android:textSize="12sp" />
 
                 <LinearLayout
@@ -261,7 +261,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
                             android:text="Kein Vorschlag"
-                            android:textColor="#616161"
+                            android:textColor="?attr/colorOnBackground"
                             android:textSize="12sp" />
                     </LinearLayout>
 
@@ -302,7 +302,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
                             android:text="Kein Vorschlag"
-                            android:textColor="#616161"
+                            android:textColor="?attr/colorOnBackground"
                             android:textSize="12sp" />
                     </LinearLayout>
 
@@ -343,7 +343,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
                             android:text="Kein Vorschlag"
-                            android:textColor="#616161"
+                            android:textColor="?attr/colorOnBackground"
                             android:textSize="12sp" />
                     </LinearLayout>
 
@@ -384,7 +384,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
                             android:text="Nur Zeiten · kein Vorschlag"
-                            android:textColor="#616161"
+                            android:textColor="?attr/colorOnBackground"
                             android:textSize="12sp" />
                     </LinearLayout>
 
@@ -650,6 +650,20 @@
                         app:autoSizeMaxTextSize="14sp"
                         app:autoSizeStepGranularity="1sp"/>
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <Space
+                    android:layout_width="6dp"
+                    android:layout_height="1dp" />
+
+                <TextView
+                    android:id="@+id/tvWetterMm1"
+                    android:layout_width="60dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="– mm"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="11sp"
+                    android:maxLines="1" />
             </LinearLayout>
 
             <Space android:layout_width="1dp" android:layout_height="8dp"/>
@@ -728,6 +742,20 @@
                         app:autoSizeMaxTextSize="14sp"
                         app:autoSizeStepGranularity="1sp"/>
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <Space
+                    android:layout_width="6dp"
+                    android:layout_height="1dp" />
+
+                <TextView
+                    android:id="@+id/tvWetterMm2"
+                    android:layout_width="60dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="– mm"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="11sp"
+                    android:maxLines="1" />
             </LinearLayout>
 
             <Space android:layout_width="1dp" android:layout_height="8dp"/>
@@ -806,6 +834,20 @@
                         app:autoSizeMaxTextSize="14sp"
                         app:autoSizeStepGranularity="1sp"/>
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <Space
+                    android:layout_width="6dp"
+                    android:layout_height="1dp" />
+
+                <TextView
+                    android:id="@+id/tvWetterMm3"
+                    android:layout_width="60dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="– mm"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="11sp"
+                    android:maxLines="1" />
             </LinearLayout>
 
             <LinearLayout

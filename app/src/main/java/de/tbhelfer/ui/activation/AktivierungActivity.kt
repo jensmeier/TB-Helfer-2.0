@@ -16,12 +16,17 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import de.tbhelfer.R
 import de.tbhelfer.server.ActivationApi
+import de.tbhelfer.server.CompanyProfileSync
 import de.tbhelfer.server.DeviceIdentity
 import de.tbhelfer.server.SecureTokenStore
+import de.tbhelfer.server.ServerConfig
+import de.tbhelfer.server.TeamManagementApi
+import de.tbhelfer.server.UserDisplayCache
 import de.tbhelfer.ui.HauptActivity
 import de.tbhelfer.ui.KeyboardAutoScroll
 import de.tbhelfer.ui.SafeAreaInsets
 import de.tbhelfer.ui.style.UiStyleApplier
+import de.tbhelfer.ui.sync.WorksiteInvitationLink
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,16 +39,13 @@ class AktivierungActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
 
     private lateinit var tokenStore: SecureTokenStore
-    private val api = ActivationApi()
+    private var pendingInvitation: WorksiteInvitationLink.Credential? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         tokenStore = SecureTokenStore(this)
-        if (!tokenStore.load().isNullOrBlank()) {
-            openMainApp()
-            return
-        }
+        pendingInvitation = WorksiteInvitationLink.parse(intent?.data?.toString().orEmpty())
 
         SafeAreaInsets.install(this)
         setContentView(R.layout.activity_aktivierung)
@@ -58,12 +60,35 @@ class AktivierungActivity : AppCompatActivity() {
 
         scanButton.setOnClickListener { scanQrCode() }
         activateButton.setOnClickListener {
-            activateWithKey(keyInput.text?.toString().orEmpty())
+            activateWithCredential(
+                ActivationCredential(
+                    key = keyInput.text?.toString().orEmpty(),
+                    serverBaseUrl = null
+                )
+            )
         }
 
-        extractActivationKey(intent?.data?.toString().orEmpty())?.let { deepLinkKey ->
-            keyInput.setText(deepLinkKey)
-            activateWithKey(deepLinkKey)
+        val deepLinkActivation =
+            extractActivationCredential(intent?.data?.toString().orEmpty())
+        if (deepLinkActivation != null) {
+            keyInput.setText(deepLinkActivation.key)
+            activateWithCredential(deepLinkActivation)
+            return
+        }
+
+        val existingToken = tokenStore.load()
+        if (!existingToken.isNullOrBlank()) {
+            val invitation = pendingInvitation
+            if (invitation != null) {
+                redeemInvitation(existingToken, invitation)
+            } else {
+                openMainApp()
+            }
+            return
+        }
+
+        if (pendingInvitation != null) {
+            setStatus(getString(R.string.collab_invite_activation_required))
         }
     }
 
@@ -77,12 +102,12 @@ class AktivierungActivity : AppCompatActivity() {
         scanner.startScan()
             .addOnSuccessListener { barcode ->
                 val raw = barcode.rawValue.orEmpty()
-                val key = extractActivationKey(raw)
-                if (key == null) {
+                val credential = extractActivationCredential(raw)
+                if (credential == null) {
                     setStatus(getString(R.string.activation_invalid_qr), isError = true)
                 } else {
-                    keyInput.setText(key)
-                    activateWithKey(key)
+                    keyInput.setText(credential.key)
+                    activateWithCredential(credential)
                 }
             }
             .addOnCanceledListener {
@@ -93,8 +118,8 @@ class AktivierungActivity : AppCompatActivity() {
             }
     }
 
-    private fun activateWithKey(rawKey: String) {
-        val key = rawKey.trim()
+    private fun activateWithCredential(credential: ActivationCredential) {
+        val key = credential.key.trim()
         if (key.length < 16) {
             setStatus(getString(R.string.activation_key_too_short), isError = true)
             return
@@ -104,8 +129,14 @@ class AktivierungActivity : AppCompatActivity() {
         setStatus(getString(R.string.activation_connecting))
 
         lifecycleScope.launch {
+            val activationBaseUrl = credential.serverBaseUrl ?: ServerConfig.BASE_URL
+            val activationHost = runCatching { Uri.parse(activationBaseUrl).host }
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() }
+                ?: activationBaseUrl
+            setStatus(getString(R.string.activation_connecting_server, activationHost))
             val result = withContext(Dispatchers.IO) {
-                api.activate(
+                ActivationApi(activationBaseUrl).activate(
                     key = key,
                     deviceUid = DeviceIdentity.stableUid(this@AktivierungActivity),
                     deviceName = DeviceIdentity.deviceName(),
@@ -122,12 +153,47 @@ class AktivierungActivity : AppCompatActivity() {
                         setStatus(getString(R.string.activation_token_save_error), isError = true)
                         return@launch
                     }
+
+                    credential.serverBaseUrl?.let { serverBaseUrl ->
+                        ServerConfig.rememberActivatedServer(
+                            applicationContext,
+                            serverBaseUrl
+                        )
+                    }
+
+                    // Nur nicht geheime Anzeigedaten cachen. Technische Identität und Rechte bleiben
+                    // weiterhin ausschließlich beim Server-Token und den Server-UUIDs.
+                    UserDisplayCache.rememberName(applicationContext, result.userName)
+
+                    // Firmenstammdaten/Logo sofort nach erfolgreicher Aktivierung lokal cachen.
+                    // Ein Profilfehler blockiert die Aktivierung nicht: Offline-Betrieb und der
+                    // persönliche Geräte-Token bleiben gültig, späterer Baustellen-Sync versucht erneut.
+                    val profileResult = withContext(Dispatchers.IO) {
+                        CompanyProfileSync.synchronize(
+                            applicationContext,
+                            result.token,
+                            TeamManagementApi()
+                        )
+                    }
+                    if (profileResult is CompanyProfileSync.Result.Error) {
+                        Toast.makeText(
+                            this@AktivierungActivity,
+                            getString(R.string.collab_company_profile_error, profileResult.message),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+
                     Toast.makeText(
                         this@AktivierungActivity,
                         getString(R.string.activation_success, result.userName ?: ""),
                         Toast.LENGTH_LONG
                     ).show()
-                    openMainApp()
+                    val invitation = pendingInvitation
+                    if (invitation != null) {
+                        redeemInvitation(result.token, invitation)
+                    } else {
+                        openMainApp()
+                    }
                 }
 
                 ActivationApi.LoginResult.AlreadyBound -> {
@@ -137,7 +203,10 @@ class AktivierungActivity : AppCompatActivity() {
 
                 ActivationApi.LoginResult.InvalidKey -> {
                     setBusy(false)
-                    setStatus(getString(R.string.activation_invalid_key), isError = true)
+                    setStatus(
+                        getString(R.string.activation_invalid_key_server, activationHost),
+                        isError = true
+                    )
                 }
 
                 ActivationApi.LoginResult.UserDisabled -> {
@@ -161,14 +230,81 @@ class AktivierungActivity : AppCompatActivity() {
         }
     }
 
-    private fun extractActivationKey(raw: String): String? {
+    private fun redeemInvitation(
+        token: String,
+        invitation: WorksiteInvitationLink.Credential
+    ) {
+        setBusy(true)
+        setStatus(getString(R.string.collab_redeem_loading))
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                when (invitation) {
+                    is WorksiteInvitationLink.Credential.ServerToken ->
+                        TeamManagementApi().redeemServerInvitation(token, invitation.value)
+                    is WorksiteInvitationLink.Credential.LegacyCode ->
+                        TeamManagementApi().redeemInvitation(token, invitation.value)
+                }
+            }
+            when (result) {
+                is TeamManagementApi.RedeemResult.Success -> {
+                    pendingInvitation = null
+                    Toast.makeText(
+                        this@AktivierungActivity,
+                        R.string.collab_redeem_success,
+                        Toast.LENGTH_LONG
+                    ).show()
+                    openMainApp()
+                }
+                TeamManagementApi.RedeemResult.Unsupported -> {
+                    Toast.makeText(
+                        this@AktivierungActivity,
+                        R.string.collab_team_unavailable,
+                        Toast.LENGTH_LONG
+                    ).show()
+                    openMainApp()
+                }
+                TeamManagementApi.RedeemResult.SessionInvalid -> {
+                    tokenStore.clear()
+                    setBusy(false)
+                    setStatus(getString(R.string.collab_session_invalid), isError = true)
+                }
+                is TeamManagementApi.RedeemResult.Error -> {
+                    Toast.makeText(
+                        this@AktivierungActivity,
+                        getString(R.string.collab_invite_error, result.message),
+                        Toast.LENGTH_LONG
+                    ).show()
+                    openMainApp()
+                }
+            }
+        }
+    }
+
+    private data class ActivationCredential(
+        val key: String,
+        val serverBaseUrl: String?
+    )
+
+    private fun extractActivationCredential(raw: String): ActivationCredential? {
         val text = raw.trim()
-        if (text.startsWith("TBH-", ignoreCase = true)) return text.uppercase()
+        if (text.startsWith("TBH-", ignoreCase = true)) {
+            return ActivationCredential(text.uppercase(), null)
+        }
 
         val uri = runCatching { Uri.parse(text) }.getOrNull() ?: return null
         if (!uri.scheme.equals("tbhelfer", ignoreCase = true)) return null
         if (!uri.host.equals("activate", ignoreCase = true)) return null
-        return uri.getQueryParameter("key")?.trim()?.takeIf { it.isNotBlank() }
+
+        val key = uri.getQueryParameter("key")?.trim()?.takeIf { it.isNotBlank() }
+            ?: return null
+        val rawServer = uri.getQueryParameter("server")?.trim()?.takeIf { it.isNotBlank() }
+        val server = if (rawServer == null) {
+            null
+        } else {
+            runCatching { ServerConfig.activationServer(rawServer) }.getOrNull()
+                ?: return null
+        }
+        return ActivationCredential(key, server)
     }
 
     private fun setBusy(busy: Boolean) {

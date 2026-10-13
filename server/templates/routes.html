@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block content %}
+<div class="actions" style="justify-content:space-between"><h2>Strecken</h2><a class="btn" href="/admin/routes/new">+ Strecke anlegen</a></div>
+{% if notice %}<div class="notice">{{ notice }}</div>{% endif %}{% if error %}<div class="error">{{ error }}</div>{% endif %}
+<div class="card scroll">{% if rows %}<table><thead><tr><th>Strecke</th><th>Name</th><th>Abschnitte</th><th>Objekte</th><th>Bahnhöfe</th><th>Aktionen</th></tr></thead><tbody>
+{% for r in rows %}<tr><td><b>{{ r.route_number }}</b></td><td>{{ r.name or "" }}{% if r.description %}<div class="muted">{{ r.description }}</div>{% endif %}</td><td>{{ r.section_count }}</td><td>{{ r.object_count }}</td><td>{{ r.station_count }}</td><td><div class="actions"><a class="btn small" href="/admin/routes/{{ r.id }}">Details</a><a class="btn secondary small" href="/admin/routes/{{ r.id }}/edit">Bearbeiten</a><form method="post" action="/admin/routes/{{ r.id }}/delete" onsubmit="return confirm('Strecke wirklich in den Papierkorb verschieben?');"><input type="hidden" name="csrf" value="{{ admin.csrf }}"><button class="danger small">Löschen</button></form></div></td></tr>{% endfor %}
+</tbody></table>{% else %}<p class="muted">Noch keine Strecken vorhanden.</p>{% endif %}</div>{% endblock %}
