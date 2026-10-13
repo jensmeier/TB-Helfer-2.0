@@ -1,37 +1,6 @@
 name: Restore controller and data boundaries
 
 on:
-  push:
-    branches: [feature/tb-server-1.0]
-    paths:
-      - server/tbserver/recovery_control.py
-      - server/tbserver/backup_domains.py
-      - server/tbserver/backup_domain_snapshot.py
-      - server/tbserver/scoped_*.py
-      - server/tbserver/recovery_*.py
-      - server/tbserver/main.py
-      - server/tbserver/backup.py
-      - server/tbserver/backup_catalog.py
-      - server/tbserver/system_backup.py
-      - server/tbserver/system_admin.py
-      - server/tbserver/system_settings.py
-      - server/docker-compose.synology-automatic.v1.yml
-      - server/compose.synology-reviewed.v1.yml
-      - server/checks/14[7-9]_*.py
-      - server/checks/150_verify_restore_ui.cjs
-      - server/templates/v1_system_status.html
-      - server/tools/system_backup_gate.py
-      - server/tools/compose_recovery_gate.py
-      - server/checks/146_verify_backup_catalog.py
-      - server/checks/145_verify_recovery_runtime.py
-      - server/tools/automatic_recovery_gate.py
-      - server/checks/144_verify_scoped_archives.py
-      - server/tools/scoped_restore_gate.py
-      - server/checks/142_verify_recovery_control.py
-      - server/checks/143_verify_backup_domains.py
-      - server/tools/backup_domain_gate.py
-      - server/v1_migrations/**
-      - .github/workflows/server-recovery-control.yml
   pull_request:
     paths:
       - server/tbserver/recovery_control.py
@@ -62,6 +31,10 @@ on:
       - server/tools/backup_domain_gate.py
       - server/v1_migrations/**
       - .github/workflows/server-recovery-control.yml
+
+concurrency:
+  group: restore-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
