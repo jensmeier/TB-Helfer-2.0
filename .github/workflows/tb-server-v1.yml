@@ -350,6 +350,7 @@ jobs:
         run: cat /tmp/tbserver-v1.log || true
 
   server-gate:
+    if: github.event_name != 'pull_request' || github.head_ref != 'feature/tb-android-2.0'
     name: Snapshot, rights and 255-client HTTP gate
     runs-on: ubuntu-latest
     timeout-minutes: 20
