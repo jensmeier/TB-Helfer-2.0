@@ -56,12 +56,12 @@ if "return Ergebnis(deleted, detached, null)" not in local_delete:
     errors.append("Nach BTB-Loeschen wird weiterhin ein anderer Verlauf-BTB automatisch aktiviert.")
 
 # Abschluss: fertiger BTB wird aus dem aktiven Kontext geloest und sein Status sofort synchronisiert.
-if "val abgeschlossen = entry.istFertig || entry.dokumentVersion > 0" not in active:
+if "BtbDokumentVersionierung.status(appContext, entry) == BtbAbschlussStatus.ABGESCHLOSSEN" not in active:
     errors.append("BtbActiveContext erkennt einen lokal/remote abgeschlossenen BTB nicht.")
 if "BtbActivePointerControl.nachAbschlussInaktivMerken" not in active:
     errors.append("Abgeschlossener BTB wird nicht aus dem aktiven Pointer geloest.")
-if "SofortSync.anstossen(appContext)" not in active:
-    errors.append("Abschlussstatus stoesst keinen Team-SofortSync an.")
+if "Serververtrag 25.09.2026" not in active or "shift-finish/shift-resume/finalize" not in active:
+    errors.append("Abschluss-Leseweg darf keinen Vollsync anstossen; Lifecycle muss explizit sein.")
 
 # Nur die bewusste Verlauf-Aktion darf einen abgeschlossenen BTB mit derselben btbId reaktivieren.
 if "CONSCIOUS_REOPEN_FILE" not in pointer or "fun bewusstReaktivieren" not in pointer:
