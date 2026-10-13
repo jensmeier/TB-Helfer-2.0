@@ -100,8 +100,15 @@ def main() -> None:
         raise SystemExit("Fehlende Release-/Kompatibilitaetsmarker: " + ", ".join(missing))
 
     public_block = releases[releases.index("def _public_release"):releases.index("def _load_release")]
-    if '"storage_key"' in public_block or '"sha256"' in public_block:
-        raise SystemExit("Oeffentliche Release-Metadaten duerfen interne Storage-Details nicht leaken")
+    # SHA-256 und Dateigroesse sind oeffentliche Download-Integritaetsdaten.
+    # Der interne storage_key darf dagegen nur zur Erzeugung der API-Download-URL
+    # gelesen, niemals als Feld im oeffentlichen JSON ausgegeben werden.
+    if '"storage_key":' in public_block or '"storage_key", ' in public_block:
+        raise SystemExit("Oeffentliche Release-Metadaten duerfen interne Storage-Pfade nicht leaken")
+    if 'f"/api/v1/releases/{row[\'id\']}/download"' not in public_block:
+        raise SystemExit("Oeffentlicher Release-Download muss ueber die API laufen")
+    if '"sha256": row.get("sha256")' not in public_block or '"byte_size": row.get("byte_size")' not in public_block:
+        raise SystemExit("Download-Integritaetsmetadaten fehlen")
 
     verify_runtime()
     print("OK: TB-Server 1.0 release catalog + client compatibility contract")
