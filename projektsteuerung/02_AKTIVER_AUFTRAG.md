@@ -2880,3 +2880,9 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 - Nutzer entscheidet: Portal ebenfalls nur verkleinerte Bilder hochladen, Original bleibt bereits auf PC/Laptop. Verkleinerung vor Übertragung im Browser, serverseitige Prüfung ergänzend; kein normaler Originalupload/-speicher für neue Portalbaustellenfotos. Dies ersetzt die bisherige Erlaubnis, Portalquellen voll auf NAS aufzubewahren, für diesen neuen Standardpfad. Bestehende Dateien nicht ungefragt verändern/löschen. Konkrete Byte-/Qualitätsgrenzen weiterhin Vorschlag, keine pauschale Bestätigung von1MB daraus ableiten.
 - GPS-Frage: Quellprüfung bestätigt GalerieOpenStreetMap, BTBGoogleMaps. Unterschied stammt aus bisheriger Galerieimplementierung, keine technische Notwendigkeit. Einheitliches GoogleMaps als Vorschlag; Wechsel noch nicht ausdrücklich beauftragt.
 - Weiterhin Vorschlags-/Entscheidungsblock gemäß Nutzer; kein Programmcode geändert, noch keine Umsetzung/NAS-Abnahme behauptet.
+
+
+### PORTAL-012 / PDF-Prüfung – neue Nutzerentscheidung (13.10.2026, 14:56 Berlin)
+- Nutzer: Bildgrößen1MB bis2MB gut. Vorherigen Vorschlag max1MB damit ersetzen durch vorgeschlagenes Qualitätsziel1–2MB/max2MB; kleinere geeignete Bilder nicht aufblähen. Konkrete Byteeinheit/Qualitätsumsetzung noch prüfen, keine Implementierung in diesem Prüfblock.
+- Nutzer meldet: BTB.pdf vom22.09.2026 sieht super aus, spätere PDFs passen nicht. Drei Original-ZIPs22.09.,24.09.,05.10. bereitgestellt. Read-only Vergleich von Layout, Erzeuger, Quellen und Bildgrößen;22.09. als bestätigte Referenz schützen. Ursache erst eingrenzen, keine Server-/Android-PDFänderung auf Verdacht.
+- Weiterhin ausdrücklich erst Vorschläge und überprüfen, keine Codeänderung freigegeben.
