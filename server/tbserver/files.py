@@ -46,7 +46,7 @@ PHOTO_MAX_BYTES = 2_000_000
 
 
 def _is_photo_upload(upload):
-    return (str(upload.get('target_kind','')).upper() == 'PHOTO'
+    return (str(upload.get('target_kind','')).upper() in {'PHOTO','DEFECT_PHOTO','ACCEPTANCE_PHOTO'}
         or str(upload.get('mime_type','')).lower().startswith('image/')
         or Path(str(upload.get('original_name') or '')).suffix.lower() in
             {'.jpg','.jpeg','.png','.webp','.avif','.heic','.heif','.gif','.bmp','.tif','.tiff'})
