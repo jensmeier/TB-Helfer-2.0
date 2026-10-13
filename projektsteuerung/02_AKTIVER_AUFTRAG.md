@@ -2942,3 +2942,12 @@ Dieser Block sichert Anforderungen und Prüfergebnis, ändert keinen Runtimecode
 - Galeriebild27 zeigt jetzt kompakte Karte und „Unterbaustelle nicht zugeordnet“ statt Hauptbaustelle. Damit neue Darstellung sichtbar; keine pauschale vollständige NAS-/Migration-/Upload-/Suchabnahme aus diesen Screenshots ableiten.
 - Foto27 belegte Zielzuordnung zum bereits vorhandenen BÜ78,571, BeschriftungFertigstellungBü78,571 und FirmaPeterSchauerTiefbau; Aufnahme-KM78,577 separat erhalten. Weitere Fotos21–26 ebenfalls als unzugeordnet sichtbar; vorhandene Original-CSV bietet Prüfgrundlage, jede Fotoidentität einzeln abgleichen. Kein GPS-Nähe-Automatismus, keine Produktionsdatenänderung in diesem Bestätigungsblock.
 - Dropdownzusatz(KM0–0) an BÜ-Knoten separat prüfen; nicht als tatsächliche BÜ-Kilometrierung übernehmen. Fehlende Werte dürfen keine künstliche0–0-Anzeige erzeugen. Ohne aktuelle Knotenpayloads Ursache nicht als live bewiesen behaupten.
+
+
+## CI-COST-001 – GitHub Actions Budgetschutz (13.10.2026)
+Status: BENUTZER ENTSCHEIDET A + B + C / UMSETZUNG
+- GitHub Free: 1800/2000 enthaltene Actions-Minuten genutzt, Reset 01.11.2026, Actions-Zusatzbudget $0.
+- Ziel A: unnötige Android-CI-Läufe durch serverseitige PR-Änderungen vermeiden; doppelte Server-Push/PR-Läufe reduzieren; veraltete CI-Jobs abbrechen.
+- Ziel B: bestehende CI-Fehler anhand echter Logs diagnostizieren, Prüfungen nicht zur Verschleierung deaktivieren. Android-Check 03 scheitert an fehlendem alten Anker `MergeSafeBaustellenExport.normalisieren` in `BtbVerlaufFragment.kt`; Server Foundation Fehler benötigt gesonderte Aufklärung.
+- Ziel C: dateipfadbezogene CI-Steuerung unter Schutz von APK-/Release-MD-Paarung, Servermigrationen, Backups und Integrationsgates; keine NAS- oder Anwendungsänderungen.
+- Fachprüfungen bleiben erhalten, auch wenn der CI-Auslöser optimiert wird. Keine erfolgreichen Tests oder Builds behaupten, bevor Actions sie tatsächlich bestätigt.
