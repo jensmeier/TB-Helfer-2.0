@@ -281,6 +281,25 @@ assert client.post(f'/api/v1/uploads/{uid}/complete',json={}).status_code==413
 # Boundary is inclusive; ordinary PDF/file uploads retain their existing larger limit.
 assert client.post(upload_url,json={'target_kind':'PHOTO','mime_type':'image/jpeg','original_name':'boundary.jpg','expected_bytes':2000000}).status_code in (200,201)
 assert client.post(upload_url,json={'target_kind':'ATTACHMENT','mime_type':'application/pdf','original_name':'report.pdf','expected_bytes':3000000}).status_code in (200,201)
+# Upload and finish an actual JPEG at the inclusive limit, preserving its exact bytes.
+from PIL import Image
+from io import BytesIO
+jpeg=BytesIO();Image.new('RGB',(16,16),'green').save(jpeg,format='JPEG')
+content=jpeg.getvalue();content+=b'\0'*(2000000-len(content))
+created=client.post(upload_url,json={'target_kind':'PHOTO','mime_type':'image/jpeg','original_name':'actual-boundary.jpg','expected_bytes':len(content)})
+assert created.status_code==201,created.text
+uid=created.json()['id']
+response=client.put(f'/api/v1/uploads/{uid}/chunk',params={'offset':0},content=content)
+assert response.status_code==200,response.text
+response=client.post(f'/api/v1/uploads/{uid}/complete',json={'entity_type':'DEFECT','entity_id':str(defect)})
+assert response.status_code==200,response.text
+with conn.cursor() as c:
+    c.execute("SELECT byte_size,storage_key FROM tb.files WHERE original_name='actual-boundary.jpg' AND worksite_id=%s",(site,))
+    stored=c.fetchone()
+assert stored['byte_size']==2000000 and (settings.storage_root/stored['storage_key']).read_bytes()==content
+# Small photos remain accepted; there is no one-megabyte minimum.
+assert client.post(upload_url,json={'target_kind':'PHOTO','mime_type':'image/jpeg','original_name':'small.jpg','expected_bytes':20000}).status_code==201
+
 # A mislabeled photo extension cannot bypass the cap.
 assert client.post(upload_url,json={'target_kind':'ATTACHMENT','mime_type':'application/octet-stream','original_name':'disguised.JPG','expected_bytes':2000001}).status_code==413
 

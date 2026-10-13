@@ -102,7 +102,7 @@ async function tbApi(url, options){
   let data=null;try{data=text?JSON.parse(text):null;}catch(_){data=text;}
   if(!response.ok){
     const detail=data&&data.detail!==undefined?data.detail:data;
-    throw new Error(typeof detail==='string'?detail:JSON.stringify(detail||{status:response.status}));
+    throw new Error(detail&&detail.code==='PHOTO_TOO_LARGE'?detail.message:(typeof detail==='string'?detail:JSON.stringify(detail||{status:response.status})));
   }
   return {response,data};
 }
