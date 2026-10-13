@@ -7,7 +7,7 @@ DECLARE
     bits bigint; exponent integer; fraction bigint; km double precision;
 BEGIN
     BEGIN
-        IF filename LIKE 'BTBP1__%' THEN
+        IF left(filename,7)='BTBP1__' THEN
             raw := split_part(substr(filename, 8), '__', 1);
             data := decode(translate(raw, '-_', '+/') || repeat('=', (4-length(raw)%4)%4), 'base64');
             IF length(data) >= 33 THEN
@@ -31,7 +31,7 @@ BEGIN
                     base := base || jsonb_build_object('km',km);
                 END IF;
             END IF;
-        ELSIF filename LIKE 'BTBPHOTO__%' THEN
+        ELSIF left(filename,10)='BTBPHOTO__' THEN
             raw := split_part(substr(filename, 11), '__', 1);
             base := convert_from(decode(translate(raw,'-_','+/') || repeat('=',(4-length(raw)%4)%4),'base64'),'UTF8')::jsonb;
             IF jsonb_typeof(base) <> 'object' THEN base := '{}'::jsonb; END IF;

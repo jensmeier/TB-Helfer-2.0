@@ -264,6 +264,8 @@ with conn.cursor() as c:
     c.execute("UPDATE tb.worksite_memberships SET permissions_override=%s WHERE worksite_id=%s AND user_id=%s",
         (Jsonb({"files.view":True,"files.add":True,"btb.view":True,"defect.view":True,"acceptance.view":True}),site,lead))
 upload_url=f'/api/v1/worksites/{site}/uploads'
+for target in ['PHOTO','DEFECT_PHOTO','ACCEPTANCE_PHOTO']:
+    assert client.post(upload_url,json={'target_kind':target,'mime_type':'application/octet-stream','original_name':'opaque.bin','expected_bytes':2000001}).status_code==413
 assert client.post(upload_url,json={'target_kind':'PHOTO','mime_type':'image/jpeg','original_name':'too-large.jpg','expected_bytes':2000001}).status_code==413
 created=client.post(upload_url,json={'target_kind':'PHOTO','mime_type':'image/jpeg','original_name':'bounded.jpg'})
 assert created.status_code in (200,201),created.text
