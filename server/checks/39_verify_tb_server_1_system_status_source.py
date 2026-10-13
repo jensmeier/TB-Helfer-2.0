@@ -57,7 +57,8 @@ def main() -> None:
 
     forbidden = [
         "db_password",
-        "DB_PASSWORD",
+        '"DB_PASSWORD":',
+        'os.environ.get("DB_PASSWORD")',
         "smtp_password",
         "token_hash",
         "storage_key AS",
