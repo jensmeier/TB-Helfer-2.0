@@ -8,7 +8,7 @@ root=Path('/tmp/portal-rendered')
 pages={'/site':'v1_worksite.html','/pictures':'v1_portal_pictures.html','/settings':'v1_portal_home.html','/':'v1_public_home.html','/account':'v1_portal_account.html'}
 permissions={key:True for key in ['worksite.structure.edit','members.manage','files.view','defect.create','acceptance.create','btb.create']}
 reports=[{'id':'b1','work_date':'2026-10-06','status':'FINALIZED'},{'id':'b2','work_date':'2026-10-07','status':'ACTIVE'}]
-photo={'attachment_id':'p1','filename':'Foto.jpg','entity_type':'BTB','source':'ANDROID','captured_at':'2026-10-06T12:00:00Z','gps_lat':48.1,'gps_lon':11.5,'photo_metadata':{'kurztext':'Schotter prüfen','notiz':'Prüfung vor Ort','objektKennung':'Gleis 2'},'renditions':{'thumb':'/thumb','preview':'/preview'}}
+photo={'attachment_id':'p1','filename':'Foto.jpg','entity_type':'BTB','photo_number':7,'btb_date':'2026-10-06','byte_size':12000,'worksite_node':{'name':'Pasing','payload':{}},'source':'ANDROID','captured_at':'2026-10-06T12:00:00Z','gps_lat':48.1,'gps_lon':11.5,'photo_metadata':{'kurztext':'Schotter prüfen','notiz':'Prüfung vor Ort','objektKennung':'Gleis 2','firma':'Baufirma','km':12.345,'indikator':'ROT','worksiteNodeKey':'pasing'},'renditions':{'thumb':'/thumb','preview':'/preview'}}
 requests=[]
 def handle(route):
     path=urlsplit(route.request.url).path
@@ -30,7 +30,7 @@ def handle(route):
         term=query.get('search',[''])[0]
         indices=[] if term=='no-match' else ([9999] if term=='last-photo' else range(offset,min(offset+size,10000)))
         items=[{**photo,'attachment_id':'p'+str(i),'filename':'Foto_'+str(i)+'.jpg','gps_lat':None if i==9999 else 48.1} for i in indices]
-        data={'media':items,'next_cursor':str(offset+60) if not term and offset+60<10000 else None}
+        data={'gallery_version':'PORTAL-011','media':items,'next_cursor':str(offset+60) if not term and offset+60<10000 else None}
     elif path.endswith('/media'):data={'media':[photo,photo]}
     elif path.endswith('/members'):data={'members':[{'user_id':'helper','display_name':'Helfer','worksite_role':'HELPER','permission_profile':'HELPER_STANDARD'}]}
     elif path.endswith('/invite-candidates'):data={'candidates':[]}
@@ -70,6 +70,10 @@ with sync_playwright() as p:
         expect(page.locator('#gallery a').first).to_have_attribute('href','/preview')
         expect(page.locator('#gallery img').first).to_have_attribute('loading','lazy')
         expect(page.locator('#gallery summary').first).to_have_text('Schotter prüfen')
+        core=page.locator('#gallery .photo-core').first
+        for text in ['Foto: 7','BTB: 2026-10-06','Dateigröße: 12 KB','Kilometer: 12,345','Firma: Baufirma','Ort: Pasing · Gleis 2','Indikator: Rot']:
+            expect(core).to_contain_text(text)
+        expect(core).to_be_visible()
         expect(page.locator('#gallery .photo-gps').first).to_have_attribute('href','https://www.openstreetmap.org/?mlat=48.1&mlon=11.5#map=18/48.1/11.5')
         page.locator('#gallery summary').first.click()
         expect(page.locator('#gallery details').first).to_contain_text('Prüfung vor Ort')
@@ -99,3 +103,4 @@ with sync_playwright() as p:
     browser.close()
 assert not any('/content' in path for path in requests),'Original image was fetched automatically'
 print('PASS: Chromium desktop/mobile tabs, report filters, collapsed forms, invitation scope, gallery dedup/filter/preview, settings, public page, no original fetch')
+

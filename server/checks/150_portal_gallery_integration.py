@@ -88,8 +88,10 @@ started=time.perf_counter()
 r=client.get(url);assert r.status_code==200,r.text
 first_seconds=time.perf_counter()-started
 first=r.json()
+assert first["gallery_version"]=="PORTAL-011"
+assert all(m["photo_number"]==1 and m["byte_size"]==12000 and m["btb_date"]=="2026-10-06" for m in first["media"])
 assert len(first["media"])==60 and first["media"][0]["attachment_id"]==str(newest)
-assert query_count==2, query_count
+assert query_count==3, query_count
 assert len(r.content)<100000,len(r.content)
 assert all(set(m["renditions"])=={"thumb","preview"} and "parent_payload" not in m for m in first["media"])
 seen={m["attachment_id"] for m in first["media"]}
@@ -107,7 +109,7 @@ while cursor:
     seen.update(ids)
     cursor=data["next_cursor"]
 assert len(seen)==10000,len(seen)
-assert max_queries<=2,max_queries
+assert max_queries<=3,max_queries
 traversal_seconds=time.perf_counter()-started
 assert client.get(url,params={"kind":"DEFECT","parent_id":str(defect)}).json()["count"]==1
 assert client.get(url,params={"kind":"DEFECT","parent_id":str(btb)}).json()["count"]==0
@@ -184,6 +186,37 @@ with conn.cursor() as c:
 item=next(m for m in client.get(url).json()["media"] if m["attachment_id"]==str(packed_id))
 assert item["photo_metadata"]["kurztext"]=="Schotter prüfen"
 
+# BTB overrides replace base values and explicit clears do not resurrect them.
+with conn.cursor() as c:
+    c.execute("""INSERT INTO tb.worksite_nodes(worksite_id,node_kind,name,client_node_key,payload)
+        VALUES (%s,'BAHNHOF','Pasing','node-pasing',%s)""", (site,Jsonb({"node_name":"Pasing","km_from":10,"km_to":12})))
+    c.execute("UPDATE tb.file_links SET link_metadata=%s WHERE file_id=%s AND entity_type='BTB'",
+        (Jsonb({"kurztext":"BTB geändert","firma":"Baufirma","km":12.345,"indikator":"ROT","worksiteNodeKey":"node-pasing","objektKennung":None}),packed_id))
+query_count=0
+item=next(m for m in client.get(url).json()["media"] if m["attachment_id"]==str(packed_id))
+assert query_count<=4,query_count
+assert item["photo_metadata"]["kurztext"]=="BTB geändert"
+assert item["photo_metadata"]["firma"]=="Baufirma" and item["photo_metadata"]["km"]==12.345
+assert item["photo_metadata"]["indikator"]=="ROT" and "objektKennung" not in item["photo_metadata"]
+assert item["worksite_node"]["name"]=="Pasing"
+# Compare every selected number with the existing BTB loader and JS key rule.
+from tbserver.btb_documents import load_btb_photo_files
+with conn.cursor() as c:
+    ordered=load_btb_photo_files(c,btb)
+keys={};numbers={}
+for f in ordered:
+    key=f["sha256"] or f["original_name"] or str(f["id"])
+    if key not in keys:keys[key]=len(keys)+1
+    numbers[str(f["id"])]=keys[key]
+for m in client.get(url,params={"kind":"BTB","parent_id":str(btb)}).json()["media"]:
+    assert m["photo_number"]==numbers[m["attachment_id"]]
+with conn.cursor() as c:
+    c.execute("UPDATE tb.file_links SET link_metadata=%s WHERE file_id=%s AND entity_type='BTB'",
+        (Jsonb({"kurztext":None,"firma":None,"km":None,"indikator":None,"worksiteNodeKey":None}),packed_id))
+item=next(m for m in client.get(url).json()["media"] if m["attachment_id"]==str(packed_id))
+assert not set(item["photo_metadata"]) & {"kurztext","firma","km","indikator","worksiteNodeKey"}
+assert item["worksite_node"] is None
+
 # Bounded sparse-area scan: no runaway scan or N+1 when almost nothing is visible.
 with conn.cursor() as c:
     c.execute("UPDATE tb.worksite_memberships SET worksite_role='HELPER', permissions_override=%s,area_scope=%s WHERE worksite_id=%s AND user_id=%s",
@@ -194,8 +227,9 @@ assert sparse["media"]==[] and sparse["scan_limited"] and sparse["next_cursor"]
 assert query_count==5,query_count
 assert client.get(url,params={"cursor":sparse["next_cursor"]}).json()["next_cursor"]!=sparse["next_cursor"]
 metrics={"photos":10000,"pages":pages,"first_page_seconds":round(first_seconds,4),
-         "first_page_bytes":len(r.content),"first_page_sql_queries":2,
+         "first_page_bytes":len(r.content),"first_page_sql_queries":3,
          "traversal_seconds":round(traversal_seconds,3),"max_page_queries":max_queries}
 out=Path("/tmp/portal-rendered");out.mkdir(exist_ok=True)
 (out/"gallery-10000.json").write_text(json.dumps(metrics,indent=2))
 print("PASS: 10000 photos, full cursor traversal, bounded payload/queries, filters, duplicate links, permissions, sparse scopes",json.dumps(metrics))
+

@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from .btb_photo_meta import canonical_photo_metadata
+from .btb_photo_meta import canonical_photo_metadata, merge_btb_photo_metadata
 from .database import transaction
 from .image_renditions import image_rendition_urls
 from .permissions import area_scope_allows, has_permission, require_permission, worksite_context
@@ -20,6 +20,7 @@ from .portal import current_portal_user
 router = APIRouter()
 _BATCH = 240
 _SCAN_BUDGET = 960
+GALLERY_VERSION = "PORTAL-011"
 
 
 def _fingerprint(worksite_id, user_id, day, kind, search, parent_id):
@@ -125,7 +126,7 @@ def gallery_page(
             cur.execute(f"""
                 WITH page AS MATERIALIZED (
                     SELECT f.id, f.original_name, f.mime_type, f.created_at,
-                           f.captured_at, f.source, f.photo_metadata,
+                           f.captured_at, f.source, f.photo_metadata, f.byte_size,
                            f.gps_lat, f.gps_lon, f.gps_accuracy_m
                     FROM tb.files f
                     LEFT JOIN tb.users uploader ON uploader.id=f.created_by
@@ -137,6 +138,8 @@ def gallery_page(
                 CROSS JOIN LATERAL (
                     SELECT jsonb_agg(jsonb_build_object(
                         'kind', l.entity_type, 'parent_id', l.entity_id,
+                        'link_metadata', CASE WHEN l.entity_type='BTB' THEN l.link_metadata ELSE '{{}}'::jsonb END,
+                        'btb_date', b.work_date,
                         'title', CASE l.entity_type WHEN 'DEFECT' THEN left(d.title,500) WHEN 'ACCEPTANCE' THEN left(a.title,500) ELSE NULL END,
                         'active', CASE l.entity_type
                             WHEN 'BTB' THEN b.id IS NOT NULL AND b.status <> 'DELETED' AND b.deleted_at IS NULL
@@ -173,17 +176,20 @@ def gallery_page(
                         gps_accuracy_m=row["gps_accuracy_m"], photo_metadata=row["photo_metadata"],
                     )
                     meta = canonical["photo_metadata"] or {}
+                    if link["kind"] == "BTB":
+                        meta = merge_btb_photo_metadata(meta, link.get("link_metadata"))
                     urls = image_rendition_urls(row["id"], row["mime_type"])
                     media.append({
                         "attachment_id": str(row["id"]), "entity_type": link["kind"],
                         "parent_entity_id": link["parent_id"], "filename": row["original_name"],
-                        "source": row["source"], "created_at": row["created_at"],
+                        "source": row["source"], "byte_size": row["byte_size"],
+                        "btb_date": link.get("btb_date"), "photo_number": None, "created_at": row["created_at"],
                         "captured_at": canonical["captured_at"],
                         "gps_lat": canonical["gps_lat"], "gps_lon": canonical["gps_lon"],
                         "gps_accuracy_m": canonical["gps_accuracy_m"],
                         "context_title": link.get("title"),
                         "photo_metadata": {key: value for key, value in meta.items() if key in {
-                            "kurztext", "typ", "indikator", "objektKennung", "objektBereich",
+                            "firma", "firmaId", "worksiteNodeKey", "kurztext", "typ", "indikator", "objektKennung", "objektBereich",
                             "km", "kmSuffix", "notiz", "info1", "info2", "info3", "info4", "info5",
                         }},
                         "renditions": {key: urls[key] for key in ("thumb", "preview") if key in urls},
@@ -194,7 +200,44 @@ def gallery_page(
             if last is rows[-1] and len(rows) < size:
                 exhausted = True
                 break
+        # Only selected, authorized BTBs participate. Rank the same deduplication
+        # key as uniquePhotos(), using the first file in the existing BTB order.
+        btbs = list({UUID(str(m["parent_entity_id"])) for m in media if m["entity_type"] == "BTB"})
+        if btbs:
+            cur.execute("""
+                WITH originals AS (
+                    SELECT DISTINCT l.entity_id, f.id, f.captured_at, f.created_at,
+                        COALESCE(NULLIF(f.sha256,''),NULLIF(f.original_name,''),f.id::text) AS photo_key
+                    FROM tb.file_links l JOIN tb.files f ON f.id=l.file_id
+                    WHERE l.entity_type='BTB' AND l.entity_id=ANY(%s)
+                      AND l.purpose<>'BTB_FINAL_PDF' AND f.deleted_at IS NULL
+                      AND f.mime_type LIKE 'image/%%' AND f.worksite_id=%s
+                ), representatives AS (
+                    SELECT DISTINCT ON (entity_id, photo_key) * FROM originals
+                    ORDER BY entity_id, photo_key, captured_at NULLS LAST, created_at, id
+                ), numbered AS (
+                    SELECT entity_id, photo_key, row_number() OVER (
+                        PARTITION BY entity_id ORDER BY captured_at NULLS LAST, created_at, id
+                    ) AS photo_number FROM representatives
+                )
+                SELECT o.entity_id, o.id, n.photo_number FROM originals o
+                JOIN numbered n USING(entity_id,photo_key) WHERE o.id=ANY(%s)
+            """, (btbs, worksite_id, [UUID(m["attachment_id"]) for m in media if m["entity_type"] == "BTB"]))
+            numbers = {(str(r["entity_id"]),str(r["id"])):r["photo_number"] for r in cur.fetchall()}
+            for m in media:
+                m["photo_number"] = numbers.get((str(m["parent_entity_id"]),m["attachment_id"]))
+        keys = list({m["photo_metadata"]["worksiteNodeKey"] for m in media if m["photo_metadata"].get("worksiteNodeKey")})
+        nodes = {}
+        if keys:
+            cur.execute("""SELECT client_node_key, node_kind, name, route_number, track_key, payload
+                FROM tb.worksite_nodes WHERE worksite_id=%s AND deleted_at IS NULL
+                  AND client_node_key=ANY(%s)""", (worksite_id, keys))
+            nodes = {r["client_node_key"]: dict(r) for r in cur.fetchall()}
+        for m in media:
+            key = m["photo_metadata"].get("worksiteNodeKey")
+            m["worksite_node"] = nodes.get(key)
     next_cursor = _cursor(last, fingerprint) if last is not None and not exhausted else None
-    return {"media": media, "count": len(media), "next_cursor": next_cursor,
+    return {"gallery_version": GALLERY_VERSION, "media": media, "count": len(media), "next_cursor": next_cursor,
             "snapshot_complete": next_cursor is None,
             "scan_limited": not exhausted and len(media) < limit}
+
