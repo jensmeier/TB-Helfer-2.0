@@ -29,6 +29,8 @@ concurrency:
 
 jobs:
   build:
+    # Avoid charging Android CI for the long-running server PR against main.
+    if: github.event_name != 'pull_request' || github.head_ref != 'feature/tb-server-1.0'
     runs-on: ubuntu-latest
     permissions:
       contents: read
