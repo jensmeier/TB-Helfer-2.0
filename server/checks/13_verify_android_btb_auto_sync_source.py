@@ -17,16 +17,16 @@ errors: list[str] = []
 if "import de.tbhelfer.server.SofortSync" not in btb:
     errors.append("BautagebuchSpeicher imports SofortSync nicht.")
 
-helper = "private fun syncNachLokalemSpeichernAnstossen(context: Context)"
+helper = "private fun syncNachLokalemSpeichernAnstossen("
 if helper not in btb:
     errors.append("Zentraler BTB-Sync-Hook fehlt.")
 
-if "runCatching { SofortSync.anstossen(context.applicationContext) }" not in btb:
-    errors.append("SofortSync ist nicht fehlertolerant vom lokalen Speichern entkoppelt.")
+if "runCatching {" not in btb or "SofortSync.btbAnstossen(" not in btb or "SofortSync.anstossen(context.applicationContext)" not in btb:
+    errors.append("BTB-Sync muss fehlertolerant und BTB-spezifisch mit Legacy-Fallback sein.")
 
 modern_write = "f.writeText(toJson(normalized).toString(2), Charsets.UTF_8)"
 legacy_write = "legacy.writeText(toJson(entry).toString(2), Charsets.UTF_8)"
-sync_call = "syncNachLokalemSpeichernAnstossen(context)"
+sync_call = "syncNachLokalemSpeichernAnstossen(context,"
 
 modern_pos = btb.find(modern_write)
 legacy_pos = btb.find(legacy_write)
