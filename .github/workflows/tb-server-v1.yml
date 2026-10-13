@@ -154,7 +154,7 @@ jobs:
           python server/checks/115_verify_survey_import_station_assignment_source.py
           python server/checks/116_verify_survey_diagnostics_portal_source.py
 
-      # The normal migration runner includes the current 021 baseline.
+      # Apply and verify every migration currently shipped with the repository.
       - name: Apply fresh TB-Server 1.0 baseline
         working-directory: server
         run: python -m tbserver.migrations up
@@ -166,8 +166,8 @@ jobs:
           python - <<'PY'
           from tbserver.migrations import status
           current = status()
-          assert current["latest_known"] == 21, current
-          assert current["latest_applied"] == 21, current
+          assert current["latest_known"] >= 21, current
+          assert current["latest_applied"] == current["latest_known"], current
           assert current["pending"] == [], current
           print("OK: migration status", current)
           PY
