@@ -78,7 +78,7 @@ with sync_playwright() as p:
         expect(page.locator('#gallery .photo-gps').first).to_have_attribute('href','https://www.openstreetmap.org/?mlat=48.1&mlon=11.5#map=18/48.1/11.5')
         page.locator('#gallery summary').first.click()
         expect(page.locator('#gallery details').first).to_contain_text('Prüfung vor Ort')
-        expect(page.locator('#gallery details').first).to_contain_text('Gleis 2')
+        expect(page.locator('#gallery .photo-core').first).to_contain_text('Gleis 2')
         expect(page.locator('#previousPictures')).to_be_disabled()
         page.locator('#nextPictures').click();expect(page.locator('#pageNumber')).to_have_text('Seite 2')
         expect(page.locator('#gallery figure')).to_have_count(60)
