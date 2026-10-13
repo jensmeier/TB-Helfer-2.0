@@ -189,7 +189,7 @@ assert item["photo_metadata"]["kurztext"]=="Schotter prüfen"
 
 # BTB overrides replace base values and explicit clears do not resurrect them.
 with conn.cursor() as c:
-    c.execute("""INSERT INTO tb.worksite_nodes(worksite_id,node_kind,name,client_node_key,payload)
+    c.execute("""INSERT INTO tb.worksite_nodes(worksite_id,node_kind,name,external_key,payload)
         VALUES (%s,'BAHNHOF','Pasing','node-pasing',%s)""", (site,Jsonb({"node_name":"Pasing","km_from":10,"km_to":12})))
     c.execute("UPDATE tb.file_links SET link_metadata=%s WHERE file_id=%s AND entity_type='BTB'",
         (Jsonb({"kurztext":"BTB geändert","firma":"Baufirma","km":12.345,"indikator":"ROT","worksiteNodeKey":"node-pasing","objektKennung":None}),packed_id))

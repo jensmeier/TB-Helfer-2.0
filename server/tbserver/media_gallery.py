@@ -229,9 +229,9 @@ def gallery_page(
         keys = list({m["photo_metadata"]["worksiteNodeKey"] for m in media if m["photo_metadata"].get("worksiteNodeKey")})
         nodes = {}
         if keys:
-            cur.execute("""SELECT client_node_key, node_kind, name, route_number, track_key, payload
+            cur.execute("""SELECT coalesce(external_key, 'server-' || id::text) AS client_node_key, node_kind, name, route_number, track_key, payload
                 FROM tb.worksite_nodes WHERE worksite_id=%s AND deleted_at IS NULL
-                  AND client_node_key=ANY(%s)""", (worksite_id, keys))
+                  AND coalesce(external_key, 'server-' || id::text)=ANY(%s)""", (worksite_id, keys))
             nodes = {r["client_node_key"]: dict(r) for r in cur.fetchall()}
         for m in media:
             key = m["photo_metadata"].get("worksiteNodeKey")
