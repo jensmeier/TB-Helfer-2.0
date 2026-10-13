@@ -66,7 +66,7 @@ def main() -> None:
         releases.index("def _admin_release"):
         releases.index("def _release_storage_key")
     ]
-    if '"storage_key"' in admin_block:
+    if '"storage_key":' in admin_block:
         raise SystemExit("Admin-Release-Payload soll keinen internen Storage-Key ausgeben")
 
     public_block = releases[
