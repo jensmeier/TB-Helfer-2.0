@@ -71,12 +71,12 @@ def main() -> None:
 
     public_block = releases[
         releases.index("def _public_release"):
-        releases.index("def _release_storage_key")
+        releases.index("def _admin_release")
     ]
-    if '"storage_key"' in public_block or '"sha256"' in public_block:
-        raise SystemExit(
-            "Oeffentliche Release-Metadaten duerfen Storage-Key/SHA nicht leaken"
-        )
+    if '"storage_key":' in public_block:
+        raise SystemExit("Oeffentliche Release-Metadaten duerfen keine internen Storage-Pfade ausgeben")
+    if '"sha256": row.get("sha256")' not in public_block or '"byte_size": row.get("byte_size")' not in public_block:
+        raise SystemExit("Oeffentliche Release-Metadaten muessen APK-Integritaetsdaten enthalten")
 
     public_download_block = releases[
         releases.index("def download_release_binary"):
