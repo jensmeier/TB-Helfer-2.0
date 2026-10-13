@@ -28,7 +28,7 @@ def main() -> None:
     assertions = [
         ('backup_root: Path', config),
         ('TB_BACKUP_ROOT', config),
-        ('BACKUP_KINDS = {"DATABASE", "FILES", "FULL"}', backup),
+        ('BACKUP_KINDS = ', backup),
         ('BACKUP_ROOT_MUST_BE_OUTSIDE_STORAGE', backup),
         ('env["PGPASSWORD"] = settings.db_password', backup),
         ('"pg_dump"', backup),
@@ -73,6 +73,20 @@ def main() -> None:
         ('CREATE TABLE tb.background_jobs', baseline),
         ('CREATE TABLE tb.backup_runs', baseline),
     ]
+    # Neue getrennte Backup-Domaenen duerfen die Basisarten nicht verdraengen.
+    tree = ast.parse(backup, filename="server/tbserver/backup.py")
+    kinds = next(
+        (node.value for node in tree.body if isinstance(node, ast.Assign)
+         and any(isinstance(target, ast.Name) and target.id == "BACKUP_KINDS"
+                 for target in node.targets)),
+        None,
+    )
+    if kinds is None or not isinstance(kinds, (ast.Set, ast.Constant)):
+        raise SystemExit("Backup-Arten muessen als statische Menge definiert sein")
+    available_kinds = ast.literal_eval(kinds)
+    if not {"DATABASE", "FILES", "FULL", "USER", "TRACK", "SYSTEM"}.issubset(available_kinds):
+        raise SystemExit("Die Basis- und Bereichsbackup-Arten muessen erhalten bleiben")
+
     missing = [needle for needle, source in assertions if needle not in source]
     if missing:
         raise SystemExit(
