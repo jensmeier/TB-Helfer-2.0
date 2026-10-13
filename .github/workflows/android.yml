@@ -11,12 +11,6 @@ on:
       - "build.gradle.kts"
       - "settings.gradle.kts"
       - "gradle.properties"
-      - "server/checks/0*.py"
-      - "server/checks/1*.py"
-      - "server/checks/83_verify_android_staging_server_config_source.py"
-      - "server/checks/84_verify_device_activation_qr_source.py"
-      - "server/checks/85_verify_android_200052_compile_imports.py"
-      - "server/checks/86_verify_android_update_client_source.py"
       - ".github/workflows/android.yml"
   pull_request:
     paths:
@@ -27,9 +21,11 @@ on:
       - "build.gradle.kts"
       - "settings.gradle.kts"
       - "gradle.properties"
-      - "server/checks/0*.py"
-      - "server/checks/1*.py"
       - ".github/workflows/android.yml"
+
+concurrency:
+  group: android-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
