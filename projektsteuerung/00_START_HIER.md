@@ -51,7 +51,7 @@ Neu:
 Der Bildtransport ist im 15×15-Zielmodell bereits festgelegt:
 - Kameraoriginal bleibt auf dem Aufnahme-Handy;
 - Handy→Server: verkleinerte Sync-Version + Thumbnail + Metadaten;
-- Portal-Upload darf seine empfangene Quelldatei serverseitig behalten und Renditions erzeugen;
+- Neue Portal-Baustellenfotos werden vor Upload verkleinert; PC-Original bleibt lokal. Servergrenze seit PORTAL-012: maximal 2.000.000 Bytes pro neuem Foto. Bestehende größere Serverdateien bleiben unverändert;
 - Server→Handy und Handy→anderes Handy nutzen kleine Version/Thumbnail statt automatischem Volloriginal.
 
 Vor weiterem Bildumbau `02_AKTIVER_AUFTRAG.md` und `05_ANDROID_SERVER_VERTRAG.md` lesen.
