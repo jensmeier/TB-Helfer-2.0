@@ -1534,3 +1534,9 @@ Status: STEUERUNGS-/DATENBEREICHSBAUSTEINE IMPLEMENTIERT / GESAMTINTEGRATION OFF
 - Snapshot/Rechte/255Client-HTTP-Gate38391789515/Job115277108388 SUCCESS. Gesamt-CI nicht vollständig grün: bestehender Foundation-Marker FILE_LINK_TARGET_NOT_FOUND und Android-CI weiterhin rot. Keine Merge-/Produktivfreigabe behauptet; PR6 offen/Draft, Android423f37892915cb3308a4b1ea9e4d196faa872326/PR11 unverändert.
 - Anfänglicher Testfehler durch fälschlich als DB-Spalte verwendeten client_node_key auf bestehende berechnete Schlüsselregel korrigiert. Alte Browsererwartung für Ortsangabe aus Details auf jetzt dauerhaft sichtbaren Bereich angepasst; voller Testlauf anschließend grün.
 - NAS-Installation/Praxisabnahme offen. Genaue Zwei-Dateien-Übernahme mit Prüfsummen und read-only Ladepfadprüfung: [PORTAL-011_NAS_UEBERNAHME.md](uebergaben/PORTAL-011_NAS_UEBERNAHME.md). Keine Migration/Android-/ZIP-/Backup-/Homepage-/Composeänderung. Excel bleibt gemäß dokumentiertem binären Defekt blockiert; bestehende Datei nicht überschrieben.
+
+
+### PORTAL-011 – Nutzerbestätigung (13.10.2026)
+- Nutzer bestätigt mit „passt“ und Screenshots die sichtbaren Bildkarten. PORTAL-011 nutzerseitig bestätigt; kein unabhängiger NAS-Zugriff durch Agent. Bestehende Angaben schützen; kompaktere Abstände separat angefordert.
+
+- PORTAL-012: kompaktere Karten und vollständige Text-/KM-Suche angefordert. Bildgrößen-/Gesamtlistennummerierung zunächst erläutern und Vorschläge geben; Nutzer verlangt vor Umsetzung Vorschläge. Details in02_AKTIVER_AUFTRAG.md. Kein Programmcode in diesem Block geändert.
