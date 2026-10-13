@@ -31,7 +31,7 @@ def main() -> None:
         ("UPLOAD_SHA256_MISMATCH", files_source),
         ("os.fsync", files_source),
         ("os.replace", files_source),
-        ("FILE_LINK_TARGET_NOT_FOUND", files_source),
+        ("FILE_LINK_TARGET_NOT_VISIBLE", files_source),
         ('file_source = "APP" if user.get("auth_kind") == "DEVICE" else "PORTAL"', files_source),
         ('actor_device_id=user.get("device_id")', files_source),
         ('"source": file_source', files_source),
