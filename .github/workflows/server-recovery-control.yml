@@ -121,6 +121,7 @@ jobs:
         run: python server/tools/compose_recovery_gate.py --reviewed
 
   restore-ui:
+    if: github.event_name != 'pull_request' || github.head_ref != 'feature/tb-android-2.0'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
