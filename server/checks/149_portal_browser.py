@@ -10,6 +10,7 @@ permissions={key:True for key in ['worksite.structure.edit','members.manage','fi
 reports=[{'id':'b1','work_date':'2026-10-06','status':'FINALIZED'},{'id':'b2','work_date':'2026-10-07','status':'ACTIVE'}]
 photo={'attachment_id':'p1','filename':'Foto.jpg','entity_type':'BTB','photo_number':7,'btb_date':'2026-10-06','byte_size':12000,'worksite_node':{'name':'Pasing','payload':{}},'source':'ANDROID','captured_at':'2026-10-06T12:00:00Z','gps_lat':48.1,'gps_lon':11.5,'photo_metadata':{'kurztext':'Schotter prüfen','notiz':'Prüfung vor Ort','objektKennung':'Gleis 2','firma':'Baufirma','km':12.345,'indikator':'ROT','worksiteNodeKey':'pasing'},'renditions':{'thumb':'/thumb','preview':'/preview'}}
 requests=[]
+gallery_version="PORTAL-011"
 def handle(route):
     path=urlsplit(route.request.url).path
     if path in pages:
@@ -30,7 +31,7 @@ def handle(route):
         term=query.get('search',[''])[0]
         indices=[] if term=='no-match' else ([9999] if term=='last-photo' else range(offset,min(offset+size,10000)))
         items=[{**photo,'attachment_id':'p'+str(i),'filename':'Foto_'+str(i)+'.jpg','gps_lat':None if i==9999 else 48.1} for i in indices]
-        data={'gallery_version':'PORTAL-011','media':items,'next_cursor':str(offset+60) if not term and offset+60<10000 else None}
+        data={'gallery_version':gallery_version,'media':items,'next_cursor':str(offset+60) if not term and offset+60<10000 else None}
     elif path.endswith('/media'):data={'media':[photo,photo]}
     elif path.endswith('/members'):data={'members':[{'user_id':'helper','display_name':'Helfer','worksite_role':'HELPER','permission_profile':'HELPER_STANDARD'}]}
     elif path.endswith('/invite-candidates'):data={'candidates':[]}
@@ -95,6 +96,13 @@ with sync_playwright() as p:
         expect(page.locator('#gallery .photo-gps')).to_have_text('Keine GPS-Daten vorhanden')
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),'Horizontal overflow in gallery'
         page.screenshot(path=str(root/f'gallery-{width}.png'),full_page=True)
+        gallery_version='PORTAL-010'
+        page.locator('#refreshPictures').click()
+        expect(page.locator('#notice')).to_contain_text('unterschiedliche Versionen')
+        expect(page.locator('#gallery figure')).to_have_count(0)
+        gallery_version='PORTAL-011'
+        page.locator('#refreshPictures').click()
+        expect(page.locator('#gallery figure')).to_have_count(1)
         page.goto('https://portal.test/settings');expect(page.locator('#emailState')).to_contain_text('bestätigt')
         page.goto('https://portal.test/');expect(page.get_by_text('Baustellen insgesamt',exact=False)).to_be_visible()
         page.screenshot(path=str(root/f'public-{width}.png'),full_page=True)

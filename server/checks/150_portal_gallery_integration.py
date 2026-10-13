@@ -47,7 +47,7 @@ with conn.cursor() as c:
         WITH inserted AS (
             INSERT INTO tb.files(company_id,worksite_id,storage_key,original_name,mime_type,byte_size,sha256,created_by,created_at,captured_at,photo_metadata)
             SELECT %s,%s,'gallery-test/'||gen_random_uuid(),'Foto_'||g||'.jpg','image/jpeg',12000,
-                   repeat('a',64),%s,'2026-10-06 00:00:00+00'::timestamptz+g*interval '1 second',
+                   md5(g::text)||md5(g::text),%s,'2026-10-06 00:00:00+00'::timestamptz+g*interval '1 second',
                    '2026-10-06 00:00:00+00'::timestamptz+g*interval '1 second',
                    jsonb_build_object('short_text','needle-'||lpad(g::text,5,'0'))
             FROM generate_series(1,10000) g RETURNING id
@@ -89,7 +89,7 @@ r=client.get(url);assert r.status_code==200,r.text
 first_seconds=time.perf_counter()-started
 first=r.json()
 assert first["gallery_version"]=="PORTAL-011"
-assert all(m["photo_number"]==1 and m["byte_size"]==12000 and m["btb_date"]=="2026-10-06" for m in first["media"])
+assert all(m["photo_number"]==int(m["filename"][5:-4]) and m["byte_size"]==12000 and m["btb_date"]=="2026-10-06" for m in first["media"])
 assert len(first["media"])==60 and first["media"][0]["attachment_id"]==str(newest)
 assert query_count==3, query_count
 assert len(r.content)<100000,len(r.content)
@@ -105,6 +105,7 @@ while cursor:
     data=response.json();pages+=1;max_queries=max(max_queries,query_count)
     assert len(data["media"])<=60
     ids=[m["attachment_id"] for m in data["media"]]
+    assert all(m["photo_number"]==int(m["filename"][5:-4]) for m in data["media"])
     assert len(set(ids))==len(ids) and not (set(ids)&seen)
     seen.update(ids)
     cursor=data["next_cursor"]
