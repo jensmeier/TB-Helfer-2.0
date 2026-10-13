@@ -1,7 +1,8 @@
 name: Restore controller and data boundaries
 
 on:
-  pull_request:
+  push:
+    branches: [ "feature/tb-server-1.0" ]
     paths:
       - server/tbserver/recovery_control.py
       - server/tbserver/backup_domains.py
@@ -31,6 +32,7 @@ on:
       - server/tools/backup_domain_gate.py
       - server/v1_migrations/**
       - .github/workflows/server-recovery-control.yml
+  workflow_dispatch:
 
 concurrency:
   group: restore-ci-${{ github.event.pull_request.number || github.ref }}
@@ -41,7 +43,6 @@ permissions:
 
 jobs:
   recovery-core:
-    if: github.event_name != 'pull_request' || github.head_ref != 'feature/tb-android-2.0'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -121,7 +122,6 @@ jobs:
         run: python server/tools/compose_recovery_gate.py --reviewed
 
   restore-ui:
-    if: github.event_name != 'pull_request' || github.head_ref != 'feature/tb-android-2.0'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
