@@ -1,0 +1,228 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Baustellen{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Meine Baustellen</h1>
+  <p class="muted">Öffne eine Baustelle und arbeite an deinen Berichten weiter.</p>
+  <div id="msg"></div>
+</div>
+
+{% if user.company_role == 'ADMIN' %}
+<div class="card">
+  <h2>Admin-Kontrolle</h2>
+  <p class="muted">Baustellen werden fachlich durch einen verantwortlichen TB angelegt und über sichere Einladungen mit weiteren TBs/Helfern verbunden. Der Server-Admin kontrolliert den Bestand, greift aber nicht in die laufende Baustellen- oder Teamzuordnung ein.</p>
+</div>
+{% else %}
+<div class="card">
+  <details><summary>Neue Baustelle anlegen</summary>
+  <form id="createWorksite">
+    <div class="grid">
+      <div><label for="name">Name</label><input id="name" required maxlength="240"></div>
+      <div><label for="designation">Bezeichnung</label><input id="designation" maxlength="300"></div>
+      <div><label for="route">Strecke</label><input id="route" maxlength="40"></div>
+      <div><label for="stationCode">Bahnhofscode</label><input id="stationCode" maxlength="40"></div>
+      <div><label for="stationName">Bahnhof</label><input id="stationName" maxlength="240"></div>
+      {% if user.company_role == 'CHEF' %}
+      <div>
+        <label for="responsibleTb">Erster verantwortlicher TB</label>
+        <select id="responsibleTb" required><option value="">wird geladen …</option></select>
+      </div>
+      {% else %}
+      <div>
+        <label>Erster verantwortlicher TB</label>
+        <div class="muted" style="padding-top:10px">Du wirst beim Anlegen automatisch als erster verantwortlicher TB eingetragen.</div>
+      </div>
+      {% endif %}
+    </div>
+    <div class="actions" style="margin-top:14px"><button type="submit">Baustelle anlegen</button></div>
+  </form></details>
+</div>
+
+{% endif %}
+
+<div class="card">
+  <div class="headline">
+    <div>
+      <h2 style="margin-bottom:4px">Vorhandene Baustellen</h2>
+      <div id="worksiteCount" class="muted">wird geladen …</div>
+    </div>
+  </div>
+
+  {% if user.company_role == 'ADMIN' %}
+  <div class="grid" style="margin:14px 0">
+    <div>
+      <label for="companyFilter">Firma</label>
+      <select id="companyFilter"><option value="">Alle Firmen</option></select>
+    </div>
+    <div>
+      <label for="worksiteSearch">Suche</label>
+      <input id="worksiteSearch" type="search" placeholder="Firma oder Baustelle suchen …">
+    </div>
+  </div>
+  <div id="companyGroups"><p class="muted">wird geladen …</p></div>
+  {% else %}
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Baustelle</th><th>Strecke</th><th>Status</th><th>Aktualisiert</th><th></th></tr></thead>
+      <tbody id="rows"><tr><td colspan="5" class="muted">wird geladen …</td></tr></tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const pagePrefix={{ (page_prefix|default('/portal/v1'))|tojson }};
+const userRole={{ user.company_role|tojson }};
+const currentUserId={{ user.user_id|string|tojson }};
+const rows=document.getElementById('rows'), companyGroups=document.getElementById('companyGroups'), msg=document.getElementById('msg');
+let worksiteData=[];
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function fmtDate(value){if(!value)return '—';try{return new Date(value).toLocaleString('de-DE');}catch(_){return value;}}
+async function loadResponsibleTbCandidates(){
+  if(userRole!=='CHEF') return;
+  const select=document.getElementById('responsibleTb');
+  if(!select) return;
+  try{
+    const result=await tbApi('/api/v1/user/directory');
+    const users=(result.data&&result.data.users)||[];
+    select.innerHTML=users.length?users.map(function(u){
+      const role=u.company_role==='CHEF'?'Chef':'Nutzer';
+      return '<option value="'+esc(u.id)+'">'+esc(u.display_name||u.full_name||u.id)+' · '+role+'</option>';
+    }).join(''):'<option value="">Keine aktiven Nutzer gefunden</option>';
+    if(users.some(function(u){return String(u.id)===String(currentUserId);})){
+      select.value=String(currentUserId);
+    }
+  }catch(error){
+    select.innerHTML='<option value="">Fehler beim Laden</option>';
+    show('err',error.message||String(error));
+  }
+}
+function worksiteRow(w,adminMode){
+  return '<tr>'+
+    '<td><b>'+esc(w.name)+'</b><div class="muted">'+esc(w.designation||'')+'</div></td>'+
+    '<td>'+esc(w.route_number||'—')+'</td>'+
+    '<td><span class="pill">'+esc(w.status)+'</span></td>'+
+    '<td>'+esc(fmtDate(w.updated_at))+'</td>'+
+    '<td class="right"><div class="actions"><a class="btn" href="'+pagePrefix+'/worksites/'+encodeURIComponent(w.id)+'">Öffnen</a>'+
+    (adminMode?'<button type="button" class="danger purge-worksite" data-worksite-id="'+esc(w.id)+'" data-worksite-name="'+esc(w.name)+'">Komplett löschen</button>':'')+
+    '</div></td>'+
+  '</tr>';
+}
+
+function bindPurgeButtons(){
+  document.querySelectorAll('.purge-worksite').forEach(function(button){
+    button.addEventListener('click',async function(){
+      const id=button.dataset.worksiteId, name=button.dataset.worksiteName||'diese Baustelle';
+      const typed=prompt(
+        'Baustelle "'+name+'" KOMPLETT löschen?\n\n'+
+        'Baustellenstruktur, Teams, BTBs, Mängel, Abnahmen, mobile Streckendaten und alle dieser Baustelle zugeordneten Dateien werden endgültig entfernt.\n\n'+
+        'Zum Bestätigen ENDGUELTIG LOESCHEN eingeben.'
+      );
+      if(typed!=='ENDGUELTIG LOESCHEN')return;
+      button.disabled=true;
+      try{
+        await tbApi('/api/v1/admin/purge/worksites/'+id,{
+          method:'DELETE',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({confirm_id:id,confirm_text:typed})
+        });
+        show('ok','Baustelle wurde vollständig gelöscht.');await loadWorksites();
+      }catch(error){show('err',error.message||String(error));button.disabled=false;}
+    });
+  });
+}
+
+function renderAdminWorksites(){
+  if(!companyGroups)return;
+  const filter=document.getElementById('companyFilter');
+  const search=document.getElementById('worksiteSearch');
+  const selected=filter?filter.value:'';
+  const query=(search?search.value:'').trim().toLocaleLowerCase('de-DE');
+  const filtered=worksiteData.filter(function(w){
+    const company=String(w.company_name||'Ohne Firma');
+    const matchesCompany=!selected||company===selected;
+    const haystack=[company,w.name,w.designation,w.route_number,w.station_code,w.station_name].map(function(v){return String(v||'');}).join(' ').toLocaleLowerCase('de-DE');
+    return matchesCompany&&(!query||haystack.includes(query));
+  });
+
+  const groups=new Map();
+  filtered.forEach(function(w){
+    const company=String(w.company_name||'Ohne Firma');
+    if(!groups.has(company))groups.set(company,[]);
+    groups.get(company).push(w);
+  });
+  const companies=Array.from(groups.keys()).sort(function(a,b){return a.localeCompare(b,'de',{sensitivity:'base'});});
+  document.getElementById('worksiteCount').textContent=
+    companies.length+' '+(companies.length===1?'Firma':'Firmen')+' · '+filtered.length+' '+(filtered.length===1?'Baustelle':'Baustellen');
+
+  companyGroups.innerHTML=companies.length?companies.map(function(company){
+    const items=groups.get(company).slice().sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''),'de',{sensitivity:'base'});});
+    const open=(query||selected)?' open':'';
+    return '<details class="panel"'+open+' style="margin-bottom:10px">'+
+      '<summary><b>'+esc(company)+'</b> <span class="pill">'+items.length+' '+(items.length===1?'Baustelle':'Baustellen')+'</span></summary>'+
+      '<div class="panel-body"><div class="scroll"><table>'+
+      '<thead><tr><th>Baustelle</th><th>Strecke</th><th>Status</th><th>Aktualisiert</th><th></th></tr></thead>'+
+      '<tbody>'+items.map(function(w){return worksiteRow(w,true);}).join('')+'</tbody>'+
+      '</table></div></div></details>';
+  }).join(''):'<p class="muted">Keine passenden Baustellen gefunden.</p>';
+  bindPurgeButtons();
+}
+
+function refreshCompanyFilter(){
+  const filter=document.getElementById('companyFilter');
+  if(!filter)return;
+  const selected=filter.value;
+  const companies=Array.from(new Set(worksiteData.map(function(w){return String(w.company_name||'Ohne Firma');})))
+    .sort(function(a,b){return a.localeCompare(b,'de',{sensitivity:'base'});});
+  filter.innerHTML='<option value="">Alle Firmen</option>'+companies.map(function(company){
+    return '<option value="'+esc(company)+'">'+esc(company)+'</option>';
+  }).join('');
+  if(companies.includes(selected))filter.value=selected;
+}
+
+async function loadWorksites(){
+  try{
+    const result=await tbApi('/api/v1/worksites');
+    worksiteData=result.data.worksites||[];
+    if(userRole==='ADMIN'){
+      refreshCompanyFilter();
+      renderAdminWorksites();
+    }else{
+      document.getElementById('worksiteCount').textContent=worksiteData.length+' '+(worksiteData.length===1?'Baustelle':'Baustellen');
+      rows.innerHTML=worksiteData.length?worksiteData.map(function(w){return worksiteRow(w,false);}).join(''):'<tr><td colspan="5" class="muted">Noch keine Baustellen vorhanden.</td></tr>';
+    }
+  }catch(error){
+    if(companyGroups)companyGroups.innerHTML='<p class="muted">Baustellen konnten nicht geladen werden.</p>';
+    if(rows)rows.innerHTML='<tr><td colspan="5"></td></tr>';
+    show('err',error.message||String(error));
+  }
+}
+const createForm=document.getElementById('createWorksite');
+if(createForm){
+  createForm.addEventListener('submit',async function(ev){
+    ev.preventDefault();
+    const payload={
+      name:document.getElementById('name').value.trim(),
+      designation:document.getElementById('designation').value.trim()||null,
+      route_number:document.getElementById('route').value.trim()||null,
+      station_code:document.getElementById('stationCode').value.trim()||null,
+      station_name:document.getElementById('stationName').value.trim()||null
+    };
+    if(userRole==='CHEF'){
+      payload.responsible_tb_user_id=document.getElementById('responsibleTb').value||null;
+    }
+    try{
+      await tbApi('/api/v1/worksites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      show('ok','Baustelle angelegt.');ev.target.reset();await loadWorksites();
+    }catch(error){show('err',error.message||String(error));}
+  });
+}
+const companyFilter=document.getElementById('companyFilter');
+const worksiteSearch=document.getElementById('worksiteSearch');
+if(companyFilter)companyFilter.addEventListener('change',renderAdminWorksites);
+if(worksiteSearch)worksiteSearch.addEventListener('input',renderAdminWorksites);
+loadResponsibleTbCandidates();loadWorksites();
+</script>
+{% endblock %}
+

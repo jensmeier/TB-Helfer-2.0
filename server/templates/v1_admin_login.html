@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TB-Helfer · Admin-Anmeldung</title>
+  <style>
+    :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1d2939;background:#f6f8fb}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px}
+    .card{width:min(460px,100%);background:white;border:1px solid #e4e7ec;border-radius:16px;padding:24px;box-shadow:0 8px 30px rgba(16,24,40,.08)}
+    h1{margin:0 0 6px}.muted{color:#667085;margin-top:0}label{display:block;font-weight:700;font-size:13px;margin:14px 0 5px}
+    input{width:100%;padding:11px;border:1px solid #d0d5dd;border-radius:9px;font:inherit}button{margin-top:18px;width:100%;padding:11px;border:0;border-radius:9px;background:#1167d8;color:white;font:inherit;font-weight:750;cursor:pointer}
+    button:disabled{opacity:.55}.msg{margin-top:14px;padding:10px;border-radius:9px;background:#fef3f2;color:#b42318;display:none}.portal-link{display:block;text-align:center;margin-top:18px;color:#475467;font-weight:700;text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>TB-Helfer Admin</h1>
+    <p class="muted">Server 1.0 · Getrennte Administrator-Sitzung.</p>
+    <form id="loginForm">
+      <label for="login">Administrator</label>
+      <input id="login" autocomplete="username" required>
+      <label for="password">Passwort</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <button id="submit" type="submit">Als Admin anmelden</button>
+    </form>
+    <div id="msg" class="msg"></div>
+    <a class="portal-link" href="/portal/v1/login">Zum Benutzerportal</a>
+  </div>
+<script>
+const form=document.getElementById('loginForm'),button=document.getElementById('submit'),msg=document.getElementById('msg');
+const prefill=new URLSearchParams(location.search).get('login');
+if(prefill)document.getElementById('login').value=prefill;
+form.addEventListener('submit',async ev=>{
+  ev.preventDefault();msg.style.display='none';button.disabled=true;
+  try{
+    const response=await fetch('/api/v1/admin/session/login',{
+      method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({login:document.getElementById('login').value,password:document.getElementById('password').value})
+    });
+    const text=await response.text();let data={};try{data=text?JSON.parse(text):{};}catch(_){}
+    if(!response.ok)throw new Error((data&&data.detail)||'Admin-Anmeldung fehlgeschlagen.');
+    location.href='/admin/v1';
+  }catch(error){msg.textContent=error.message||String(error);msg.style.display='block';}
+  finally{button.disabled=false;}
+});
+</script>
+</body>
+</html>

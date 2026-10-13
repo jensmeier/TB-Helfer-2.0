@@ -59,11 +59,225 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Firmenlogo im BTB/PDF"
+            android:textStyle="bold"
+            android:textSize="17sp"
+            android:textColor="?attr/colorOnBackground" />
+
+        <TextView
+            android:id="@+id/tvLogoLayoutStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Logo: 90 pt · X +0 · Y +0"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Position und Größe wirken identisch in Vorschau und echtem BTB-PDF. Das Originallogo auf dem Server wird dabei nicht verändert."
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.75"
+            android:textSize="12sp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardLogoPreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            app:cardUseCompatPadding="true"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:padding="12dp">
+
+                <ImageView
+                    android:id="@+id/imgLogoPreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="96dp"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="Firmenlogo – PDF-Vorschau öffnen"
+                    android:scaleType="fitCenter" />
+
+                <TextView
+                    android:id="@+id/tvLogoPreviewHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center"
+                    android:text="Logo antippen → echte PDF-Vorschau"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="12sp"
+                    android:alpha="0.75" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogoLeft"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="← Links"
+                android:textAllCaps="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogoRight"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Rechts →"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogoUp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="↑ Hoch"
+                android:textAllCaps="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogoDown"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Runter ↓"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogoSmaller"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="− Kleiner"
+                android:textAllCaps="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogoLarger"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="+ Größer"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swLogoShowName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Firmenname unter dem Logo anzeigen" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swLogoShowEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Firmen-E-Mail unter dem Logo anzeigen" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swLogoShowPhone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Firmentelefon unter dem Logo anzeigen" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swLogoContactsInImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Kontaktdaten sind bereits im Logo enthalten" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogoReset"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Zurücksetzen"
+                android:textAllCaps="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogoServerSave"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Firmenweit speichern"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvLogoServerStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="PDF-Logo-Layout wird lokal geladen …"
+            android:textColor="?attr/colorOnBackground"
+            android:alpha="0.75"
+            android:textSize="12sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPdfVorschau"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="PDF-Vorschau öffnen"
+            android:textAllCaps="false"
+            app:icon="@android:drawable/ic_menu_view"
+            app:iconGravity="textStart" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:text="@string/ui_fragment_btb_pdf_einstellungen_meta"
             android:textStyle="bold"
             android:textSize="16sp"
             android:textColor="?attr/colorOnBackground"
-            android:paddingTop="16dp"
+            android:paddingTop="20dp"
             android:paddingBottom="8dp" />
 
         <com.google.android.material.switchmaterial.SwitchMaterial

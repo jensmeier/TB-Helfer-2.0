@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}TB-Helfer · Server 1.0{% endblock %}</title>
+  <style>
+    :root{
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:#1d2939;background:#f4f7fb;
+      --nav:#0b1730;--blue:#1167d8;--blue2:#0b4fad;--line:#e4e7ec;
+      --muted:#667085;--card:#fff;--danger:#b42318;
+    }
+    *{box-sizing:border-box}html{min-height:100%}body{margin:0;min-height:100vh;background:linear-gradient(180deg,#eef4fb 0,#f6f8fb 180px,#f6f8fb 100%);color:#1d2939}
+    a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+    header{position:sticky;top:0;z-index:50;background:rgba(11,23,48,.97);color:#fff;box-shadow:0 6px 24px rgba(16,24,40,.13)}
+    .topbar{max-width:1540px;margin:0 auto;padding:12px 22px;display:flex;gap:20px;justify-content:space-between;align-items:center}
+    .brand-wrap{display:flex;align-items:center;gap:11px;white-space:nowrap}.brand-mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#2e90fa,#1167d8);display:grid;place-items:center;font-weight:900;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+    .brand{font-weight:850;letter-spacing:-.01em}.brand small{display:block;font-size:10px;color:#b9c7df;font-weight:650;letter-spacing:.04em;text-transform:uppercase;margin-top:1px}
+    .nav{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.nav a{color:#dce6f5;padding:8px 10px;border-radius:8px;font-size:14px;font-weight:650;text-decoration:none}.nav a:hover{color:#fff;background:rgba(255,255,255,.09)}.nav a.active{color:#fff;background:#1167d8}
+    .user-chip{display:flex;align-items:center;gap:8px;margin-left:6px;padding-left:10px;border-left:1px solid rgba(255,255,255,.16)}.user-chip span{font-size:13px;color:#dce6f5}
+    main{max-width:1500px;margin:0 auto;padding:26px 22px 48px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 3px 12px rgba(16,24,40,.045)}
+    h1,h2,h3{margin-top:0;color:#101828;letter-spacing:-.02em}h1{font-size:30px}h2{font-size:21px}h3{font-size:17px}.muted{color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+    label{display:block;font-size:13px;font-weight:750;margin-bottom:5px;color:#344054}input,select,textarea{width:100%;padding:10px 11px;border:1px solid #d0d5dd;border-radius:9px;background:white;font:inherit;color:#101828;outline:none}input:focus,select:focus,textarea:focus{border-color:#84adff;box-shadow:0 0 0 3px #eaf2ff}
+    input[type=checkbox]{width:auto}.check{display:flex;gap:8px;align-items:center;font-weight:600}.check label{margin:0;font-weight:600}
+    button,.btn{display:inline-block;border:0;border-radius:9px;padding:10px 14px;background:var(--blue);color:white;font-weight:750;cursor:pointer;font:inherit;text-decoration:none}button:hover,.btn:hover{background:var(--blue2);text-decoration:none}button.secondary,.btn.secondary{background:#667085}button.secondary:hover,.btn.secondary:hover{background:#475467}button.danger,.btn.danger{background:var(--danger)}button:disabled{opacity:.55;cursor:not-allowed}
+    table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:11px 10px;border-bottom:1px solid #eaecf0;vertical-align:top}th{font-size:12px;color:#475467;text-transform:uppercase;letter-spacing:.03em}tbody tr:hover{background:#fbfcfe}
+    .notice{padding:11px 13px;border-radius:10px;margin:10px 0}.notice.ok{background:#ecfdf3;color:#067647}.notice.err{background:#fef3f2;color:#b42318}.notice.info{background:#eff8ff;color:#175cd3}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.pill{display:inline-block;border-radius:999px;padding:4px 9px;background:#f2f4f7;font-size:12px;font-weight:750}.right{text-align:right}
+    code{background:#f2f4f7;border-radius:5px;padding:2px 5px}.scroll{overflow-x:auto}
+    @media(max-width:980px){header{position:static}.topbar{align-items:flex-start;flex-direction:column}.nav{justify-content:flex-start}.user-chip{border-left:0;padding-left:0;margin-left:0}main{padding-top:18px}}
+    @media(max-width:700px){main{padding:14px}.topbar{padding:12px 14px}.nav a{padding:7px 8px;font-size:13px}}
+  </style>
+  {% block head %}{% endblock %}
+{% if request.query_params.get('embedded') == '1' %}<style>body>header{display:none}main{padding:10px}</style>{% endif %}
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <div class="brand-wrap">
+      <div class="brand-mark">TB</div>
+      <div class="brand">TB-Helfer<small>Server 1.0</small></div>
+    </div>
+    <div class="nav">
+      {% if request.url.path.startswith('/admin/v1') and user and user.company_role == 'ADMIN' %}
+        <a class="{% if request.url.path == '/admin/v1' %}active{% endif %}" href="/admin/v1">Übersicht</a>
+        <a class="{% if request.url.path.startswith('/admin/v1/companies') or request.url.path.startswith('/admin/v1/users') or request.url.path.startswith('/admin/v1/devices') or request.url.path.startswith('/admin/v1/worksites') %}active{% endif %}" href="/admin/v1/companies">Firmen</a>
+        <a class="{% if request.url.path in ['/admin/v1/routes','/admin/v1/stations','/admin/v1/survey-import','/admin/v1/survey-overview','/admin/v1/catalog-history'] %}active{% endif %}" href="/admin/v1/survey-overview">Streckennetz</a>
+        <a class="{% if request.url.path.startswith('/admin/v1/releases') %}active{% endif %}" href="/admin/v1/releases">App-Versionen</a>
+        <a class="{% if request.url.path.startswith('/admin/v1/system') %}active{% endif %}" href="/admin/v1/system">Systemstatus</a>
+      {% else %}
+        
+        {% if user %}<a class="{% if request.url.path.startswith('/portal/v1/worksites') %}active{% endif %}" href="/portal/v1/worksites">Baustellen</a>{% endif %}
+        {% if user %}<a href="/portal/v1/pictures">Bilderübersicht</a><a href="/portal/v1/settings">Einstellungen</a>{% endif %}
+        {% if not user or user.company_role == 'ADMIN' %}<a class="secondary" href="/admin/v1/login">Admin</a>{% endif %}
+      {% endif %}
+      {% if user %}
+        <div class="user-chip"><span>{{ user.display_name }}</span><button class="secondary" type="button" onclick="tbLogout()">Abmelden</button></div>
+      {% endif %}
+    </div>
+  </div>
+</header>
+<main>
+{% if request.url.path in ['/admin/v1/routes','/admin/v1/stations','/admin/v1/survey-import','/admin/v1/survey-overview','/admin/v1/catalog-history'] and request.query_params.get('embedded') != '1' %}
+<nav class="actions card" aria-label="Streckennetz">
+<a href="/admin/v1/survey-overview">Karte und Bestand</a>
+<a href="/admin/v1/stations">Bahnhof-Stammdaten</a>
+<a href="/admin/v1/routes">Strecken-Stammdaten</a>
+<a href="/admin/v1/survey-import">Import / Originale / Prüffälle</a>
+<a href="/admin/v1/catalog-history">Änderungen</a>
+</nav>
+{% endif %}
+{% block content %}{% endblock %}</main>
+<script>
+function tbCookie(name){
+  const found=document.cookie.split(';').map(v=>v.trim()).find(v=>v.startsWith(name+'='));
+  return found?decodeURIComponent(found.substring(name.length+1)):'';
+}
+const tbAdminScope=location.pathname.startsWith('/admin/v1');
+function tbScopedUrl(url){
+  if(!tbAdminScope)return url;
+  const sep=String(url).includes('?')?'&':'?';
+  return String(url)+sep+'_tb_session=admin';
+}
+async function tbApi(url, options){
+  const opts=Object.assign({credentials:'same-origin'}, options||{});
+  opts.headers=Object.assign({}, opts.headers||{});
+  if(tbAdminScope)opts.headers['X-TB-Session-Scope']='ADMIN';
+  if((opts.method||'GET').toUpperCase()!=='GET'){
+    opts.headers['X-CSRF-Token']=tbCookie(tbAdminScope?'tb_admin_csrf':'tb_portal_csrf');
+    opts.headers['X-Client-Change-Id']=opts.clientChangeId||(
+      window.crypto&&crypto.randomUUID?crypto.randomUUID():
+      'web-'+Date.now()+'-'+Math.random().toString(16).slice(2)
+    );
+    delete opts.clientChangeId;
+  }
+  const response=await fetch(url,opts);
+  if(response.status===204) return {response,data:null};
+  const text=await response.text();
+  let data=null;try{data=text?JSON.parse(text):null;}catch(_){data=text;}
+  if(!response.ok){
+    const detail=data&&data.detail!==undefined?data.detail:data;
+    throw new Error(detail&&detail.code==='PHOTO_TOO_LARGE'?detail.message:(typeof detail==='string'?detail:JSON.stringify(detail||{status:response.status})));
+  }
+  return {response,data};
+}
+async function tbLogout(){
+  const endpoint=tbAdminScope?'/api/v1/admin/session/logout':'/api/v1/portal/logout';
+  try{await tbApi(endpoint,{method:'POST'});}catch(_){}
+  location.href=tbAdminScope?'/admin/v1/login':'/portal/v1/login';
+}
+</script>
+{% include "v1_photo_upload.html" %}
+{% block scripts %}{% endblock %}
+</body>
+</html>
+
+
+

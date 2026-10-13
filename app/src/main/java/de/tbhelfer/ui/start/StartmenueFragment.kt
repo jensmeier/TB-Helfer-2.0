@@ -2,21 +2,30 @@
 
 package de.tbhelfer.ui.start
 
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import de.tbhelfer.R
 import de.tbhelfer.ServiceLocator
-import de.tbhelfer.einstellungen.AktiveBaustelleValidator
 import de.tbhelfer.datenbank.istStandaloneStreckenpunkteBaustelle
+import de.tbhelfer.einstellungen.AktiveBaustelleValidator
 import de.tbhelfer.einstellungen.AnsichtEinstellungenSpeicher
+import de.tbhelfer.server.AppUpdateManager
+import de.tbhelfer.server.SyncStatusSpeicher
+import de.tbhelfer.ui.bautagebuch.BtbActiveContext
+import de.tbhelfer.ui.bautagebuch.BtbPatch200034Installer
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -25,6 +34,10 @@ import kotlinx.coroutines.launch
 class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
 
     private var aktuelleAnzeige: String? = null
+    private var refreshMenu: (() -> Unit)? = null
+    private var updateButton: MaterialButton? = null
+    private var updateCandidate: AppUpdateManager.CheckResult.Available? = null
+    private var updateCheckRunning = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -32,13 +45,56 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
         val title = view.findViewById<TextView>(R.id.titleText)
         title.text = "TB-Helfer"
 
+        updateButton = view.findViewById<MaterialButton>(R.id.btnUpdateAvailable).also { button ->
+            button.visibility = View.GONE
+            button.setOnClickListener { zeigeUpdateDialog() }
+        }
+        pruefeAufUpdate(showError = false)
+
         val recycler = view.findViewById<RecyclerView>(R.id.recyclerMenu)
         val btnSettings = view.findViewById<Button>(R.id.btnSettingsShortcut)
 
+        fun openBtbWithAction(action: String) {
+            findNavController().navigate(
+                R.id.action_start_to_bautagebuch,
+                Bundle().apply { putString(BtbPatch200034Installer.ARG_AUTO_ACTION, action) }
+            )
+        }
+
+        fun openCameraFromOverview() {
+            viewLifecycleOwner.lifecycleScope.launch {
+                val active = BtbActiveContext.laden(requireContext().applicationContext)
+                if (active != null) {
+                    findNavController().navigate(R.id.action_start_to_kamera)
+                    return@launch
+                }
+
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Kein BTB aktiv")
+                    .setMessage("Wie soll das Foto gespeichert werden?")
+                    .setNegativeButton("Abbrechen", null)
+                    .setNeutralButton("Nur Baustellenfoto") { _, _ ->
+                        findNavController().navigate(R.id.action_start_to_kamera)
+                    }
+                    .setPositiveButton("BTB starten/öffnen") { _, _ ->
+                        MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("BTB auswählen")
+                            .setItems(arrayOf("Neuen BTB starten", "Vorhandenen BTB öffnen")) { _, which ->
+                                when (which) {
+                                    0 -> openBtbWithAction(BtbPatch200034Installer.AUTO_NEW)
+                                    else -> openBtbWithAction(BtbPatch200034Installer.AUTO_OPEN)
+                                }
+                            }
+                            .setNegativeButton("Abbrechen", null)
+                            .show()
+                    }
+                    .show()
+            }
+        }
+
         val adapter = StartmenueAdapter { ziel ->
             when (ziel) {
-                StartmenueZiel.KAMERA_AKTUELLE_BAUSTELLE ->
-                    findNavController().navigate(R.id.action_start_to_kamera)
+                StartmenueZiel.KAMERA_AKTUELLE_BAUSTELLE -> openCameraFromOverview()
 
                 StartmenueZiel.BAUSTELLEN ->
                     findNavController().navigate(R.id.action_start_to_baustellen)
@@ -75,6 +131,7 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
             } else {
                 "Aktuelle Baustelle\n(${aktuelleAnzeige})"
             }
+            val syncStatus = SyncStatusSpeicher.anzeige(requireContext())
 
             adapter.setzeItems(
                 listOf(
@@ -84,11 +141,12 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
                     StartmenueItem("Suche Bilder/BTB", StartmenueZiel.SUCHE),
                     StartmenueItem("Mein Ordner", StartmenueZiel.MEIN_ORDNER),
                     StartmenueItem("Streckendaten", StartmenueZiel.IMPORT_EXPORT),
-                    StartmenueItem("Daten vom NAS", StartmenueZiel.SERVER_SYNC)
+                    StartmenueItem("Mit NAS synchronisieren\n($syncStatus)", StartmenueZiel.SERVER_SYNC)
                 )
             )
         }
 
+        refreshMenu = ::applyMenuItems
         applyMenuItems()
 
         btnSettings.setOnClickListener {
@@ -181,5 +239,112 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
                     }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshMenu?.invoke()
+        if (updateButton != null) pruefeAufUpdate(showError = false)
+    }
+
+    private fun pruefeAufUpdate(showError: Boolean) {
+        if (updateCheckRunning) return
+        updateCheckRunning = true
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = AppUpdateManager.check()
+            updateCheckRunning = false
+            when (result) {
+                is AppUpdateManager.CheckResult.Available -> {
+                    updateCandidate = result
+                    updateButton?.apply {
+                        visibility = View.VISIBLE
+                        text = "↻"
+                        backgroundTintList = ColorStateList.valueOf(
+                            if (result.required) Color.rgb(211, 47, 47)
+                            else Color.rgb(47, 128, 237)
+                        )
+                        contentDescription = if (result.required) {
+                            "Wichtiges TB-Helfer-Update verfügbar"
+                        } else {
+                            "TB-Helfer-Update verfügbar"
+                        }
+                    }
+                }
+
+                is AppUpdateManager.CheckResult.Current -> {
+                    updateCandidate = null
+                    updateButton?.visibility = View.GONE
+                }
+
+                is AppUpdateManager.CheckResult.Error -> {
+                    updateCandidate = null
+                    updateButton?.visibility = View.GONE
+                    if (showError) {
+                        Toast.makeText(requireContext(), result.message, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun zeigeUpdateDialog() {
+        val candidate = updateCandidate ?: return
+        val release = candidate.release
+        val notes = release.releaseNotes?.trim().orEmpty()
+        val message = buildString {
+            append("Aktuell: ${AppUpdateManager.currentVersionLabel()}\n")
+            append("Neu: TB-Helfer ${release.versionName} (${release.buildNumber})")
+            if (candidate.required) append("\n\nDieses Update ist als wichtig markiert.")
+            append("\n\nWas ist neu?\n")
+            append(notes.ifBlank { "Keine zusätzlichen Hinweise." })
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(if (candidate.required) "Wichtiges Update" else "Update verfügbar")
+            .setMessage(message)
+            .setNegativeButton("Später", null)
+            .setPositiveButton("Aktualisieren") { _, _ ->
+                starteUpdate(candidate)
+            }
+            .show()
+    }
+
+    private fun starteUpdate(candidate: AppUpdateManager.CheckResult.Available) {
+        if (!AppUpdateManager.ensureInstallPermission(requireActivity())) {
+            Toast.makeText(
+                requireContext(),
+                "Bitte „Apps aus dieser Quelle installieren“ erlauben und danach erneut auf Aktualisieren tippen.",
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
+
+        updateButton?.isEnabled = false
+        Toast.makeText(requireContext(), "Update wird heruntergeladen …", Toast.LENGTH_SHORT).show()
+        viewLifecycleOwner.lifecycleScope.launch {
+            when (val result = AppUpdateManager.downloadApk(requireContext().applicationContext, candidate.release)) {
+                is AppUpdateManager.DownloadResult.Success -> {
+                    if (isAdded) AppUpdateManager.launchInstaller(requireActivity(), result.file)
+                }
+
+                is AppUpdateManager.DownloadResult.Error -> {
+                    if (isAdded) {
+                        MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("Update fehlgeschlagen")
+                            .setMessage(result.message)
+                            .setPositiveButton("OK", null)
+                            .show()
+                    }
+                }
+            }
+            updateButton?.isEnabled = true
+        }
+    }
+
+    override fun onDestroyView() {
+        refreshMenu = null
+        updateButton = null
+        updateCandidate = null
+        super.onDestroyView()
     }
 }

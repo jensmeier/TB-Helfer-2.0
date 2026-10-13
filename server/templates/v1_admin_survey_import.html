@@ -1,0 +1,1243 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Trassierungsdaten{% endblock %}
+{% block head %}
+<style>
+  .import-hero{background:linear-gradient(120deg,#0b4fad,#176fdc);color:#fff;border:0}.import-hero h1{color:#fff;margin-bottom:5px}.import-hero .muted{color:#dbeafe}
+  .format-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}.format-box{border:1px solid #e4e7ec;border-radius:11px;padding:11px;background:#fbfcfe}.format-box b{display:block}.format-box small{color:#667085}
+  .drop-zone{border:2px dashed #b2c9e8;border-radius:14px;padding:24px;text-align:center;background:#f8fbff;transition:.15s}.drop-zone.drag{border-color:#1167d8;background:#eef5ff}.drop-zone input{max-width:560px;margin:12px auto 0}
+  .queue{display:grid;gap:8px;margin-top:12px}.queue-row{display:grid;grid-template-columns:minmax(0,1fr) 120px 160px;gap:10px;align-items:center;border:1px solid #eaecf0;border-radius:10px;padding:10px 12px;background:#fff}.queue-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.queue-status{text-align:right;font-size:12px;font-weight:750}
+  .state-ok{color:#067647}.state-warn{color:#b54708}.state-bad{color:#b42318}.state-wait{color:#475467}
+  .result{border:1px solid #eaecf0;border-left-width:4px;border-radius:11px;padding:10px 12px;margin-top:8px}.result.ok{border-left-color:#12b76a;background:#f6fef9}.result.warn{border-left-color:#f79009;background:#fffcf5}.result.bad{border-left-color:#d92d20;background:#fff8f7}
+  .result-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.result small{color:#667085}.warnings{margin:6px 0 0;padding-left:18px;font-size:12px;color:#667085}
+  .history-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.history-controls>div{min-width:230px;flex:1}
+  .step-badge{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#eaf2ff;color:#0b4fad;font-weight:850;margin-right:7px}
+  .analysis-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,.7fr);gap:14px;align-items:start}
+  .graphic-shell{border:1px solid #d0d5dd;border-radius:12px;background:#fff;overflow:hidden;position:relative;min-height:520px}
+  #surveyMap{width:100%;height:520px;display:block;touch-action:none;cursor:grab}#surveyMap.dragging{cursor:grabbing}
+  .graphic-shell.fullscreen{position:fixed;inset:12px;z-index:2500;min-height:0;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.28)}
+  .graphic-shell.fullscreen #surveyMap{height:100%;min-height:0}
+  .fullscreen-close{display:none;position:absolute;right:12px;top:12px;z-index:3}
+  .graphic-shell.fullscreen .fullscreen-close{display:inline-flex}
+  .map-overlay{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:2}
+  .screen-point{position:absolute;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%);border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.12);pointer-events:auto;cursor:pointer;padding:0}
+  .screen-point.gvp{background:#b88b00}.screen-point.ap{background:#d97706}.screen-point.switch{background:#1976d2}
+  .screen-point:hover,.screen-point.hovered{box-shadow:0 0 0 3px rgba(17,103,216,.32),0 0 0 1px rgba(0,0,0,.16);z-index:8}
+  .screen-point.selected{box-shadow:0 0 0 4px rgba(17,103,216,.38),0 0 0 1px #0b4fad;z-index:9}
+  .screen-label{position:absolute;transform:translate(6px,-50%);white-space:nowrap;background:rgba(255,255,255,.88);border-radius:4px;padding:1px 3px;color:#202124;line-height:1.15;pointer-events:none;box-shadow:0 0 0 1px rgba(255,255,255,.65)}
+  .screen-axis-label{font-size:11px;font-weight:760}.screen-point-label{font-size:10px;font-weight:620}
+  .screen-tooltip{position:absolute;transform:translate(12px,-50%);max-width:260px;white-space:nowrap;background:#101828;color:#fff;border-radius:6px;padding:5px 7px;font-size:11px;font-weight:650;box-shadow:0 5px 18px rgba(0,0,0,.22);pointer-events:none;z-index:20}
+  .fullscreen-info{display:none;position:absolute;top:58px;right:12px;width:min(360px,calc(100% - 24px));max-height:45%;overflow:auto;background:rgba(255,255,255,.97);border:1px solid #d0d5dd;border-radius:10px;padding:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);z-index:5}
+  .graphic-shell.fullscreen .fullscreen-info.active{display:block}
+  .point-detail{display:grid;gap:5px}.point-detail-title{font-weight:850;font-size:15px}.point-detail-row{display:grid;grid-template-columns:92px 1fr;gap:8px;font-size:12px}.point-detail-row span:first-child{color:#667085}.point-hit-list{display:grid;gap:6px}.point-hit-button{width:100%;text-align:left;background:#fff;color:#101828;border:1px solid #d0d5dd;border-radius:7px;padding:7px 8px}.point-hit-button:hover{border-color:#1167d8;background:#f5f9ff}
+  .map-hint{position:absolute;left:10px;bottom:10px;background:rgba(255,255,255,.92);border:1px solid #eaecf0;border-radius:8px;padding:5px 8px;font-size:11px;color:#667085;z-index:4}
+  .graphic-side{display:grid;gap:10px}.info-box{border:1px solid #eaecf0;border-radius:10px;padding:11px;background:#fff}.info-box h3{margin:0 0 5px;font-size:14px}.overwrite-warning{border:2px solid #d92d20!important;border-left-width:5px!important;background:#fff5f4!important;box-shadow:0 0 0 1px rgba(217,45,32,.05)}.overwrite-warning label{color:#b42318}.overwrite-warning input[type=checkbox]{accent-color:#d92d20;transform:scale(1.15)}
+  .analysis-items{display:grid;gap:11px;margin-top:14px}.analysis-item{border:1px solid #d0d5dd;border-radius:12px;padding:12px;background:#fff}.analysis-item.skip{background:#f8fafc;color:#667085}
+  .analysis-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.facts{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.fact{font-size:11px;border:1px solid #e4e7ec;background:#f9fafb;border-radius:999px;padding:3px 7px}.fact.warn{border-color:#f7c56d;background:#fffbeb;color:#8a4b08}
+  .decision-grid{display:grid;grid-template-columns:1.6fr .8fr .8fr;gap:9px;margin-top:11px}.import-toggle{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px}
+  .station-default-box{margin:10px 0 12px}.station-picker{position:relative}.station-suggestions{display:none;position:absolute;z-index:40;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #d0d5dd;border-radius:10px;box-shadow:0 12px 28px rgba(16,24,40,.14);max-height:280px;overflow:auto}.station-suggestions.show{display:block}.station-suggestion{display:block;width:100%;border:0;border-bottom:1px solid #f2f4f7;border-radius:0;background:#fff;color:#101828;text-align:left;padding:9px 11px}.station-suggestion:hover{background:#f5f8ff}.station-suggestion:last-child{border-bottom:0}.station-suggestion b{display:block}.station-suggestion small{color:#667085}.station-selected{margin-top:4px;font-size:11px;color:#667085}.station-selected.ok{color:#067647;font-weight:700}
+  .range-list{display:grid;gap:8px}.range-row{display:grid;grid-template-columns:minmax(120px,180px) 1fr;gap:8px;align-items:center}.range-track{height:18px;background:#eef2f6;border-radius:9px;position:relative;overflow:hidden}.range-fill{height:100%;position:absolute;border-radius:9px;background:#4e8fe5;min-width:3px}.range-fill.station{background:#98a2b3}.range-label{font-size:11px;color:#667085}.range-section{display:grid;gap:7px}.range-section-title{font-size:11px;font-weight:850;color:#344054}.range-missing{font-size:11px;color:#b54708;border-top:1px solid #eaecf0;padding-top:7px}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.legend-item{display:inline-flex;align-items:center;gap:5px;font-size:11px}.legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .graph-grid line{stroke:#e7eaee;stroke-width:1;vector-effect:non-scaling-stroke}.geom-line{fill:none!important;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none;transition:stroke-width .08s}.geom-line.axis-hovered{stroke-width:4.6}.geom-line.axis-selected{stroke-width:5.8;filter:drop-shadow(0 0 2px rgba(17,103,216,.75))}.axis-hit{fill:none!important;stroke:transparent;stroke-width:16;vector-effect:non-scaling-stroke;pointer-events:stroke;cursor:pointer}.axis-auto{stroke:#009141}.axis-missing{stroke:#cd232d}.axis-unplausible{stroke:#696969}.axis-wvb{stroke:#1976d2;stroke-dasharray:10 7}.geom-point{stroke:#fff;stroke-width:1;vector-effect:non-scaling-stroke;cursor:pointer}.geom-point-hit{fill:transparent;stroke:none;cursor:pointer}.point-gvp{fill:#b88b00}.point-ap{fill:#d97706}.point-switch{fill:#1976d2}.axis-label{font-weight:750;fill:#1d2939;stroke:#fff;stroke-width:3px;paint-order:stroke;stroke-linejoin:round;pointer-events:none}.point-label{font-weight:600;fill:#202124;stroke:#fff;stroke-width:3px;paint-order:stroke;stroke-linejoin:round;pointer-events:none}.display-panel{display:none;border:1px solid #d0d5dd;border-radius:10px;background:#fff;padding:10px;margin:10px 0}.display-panel.open{display:block}.display-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 12px}.display-option{display:flex;gap:7px;align-items:flex-start;font-size:12px}.scan-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}.scan-summary .info-box{min-height:72px}
+  .conflict-list{display:grid;gap:9px}.conflict-row{border:1px solid #f0b7b1;border-left:4px solid #d92d20;border-radius:10px;padding:10px 12px;background:#fff8f7}.conflict-row .headline{align-items:center}.conflict-reason{font-size:12px;color:#667085;margin-top:4px}.conflict-backdrop{display:none;position:fixed;inset:0;z-index:3200;background:rgba(16,24,40,.55);padding:24px;overflow:auto}.conflict-backdrop.open{display:flex;align-items:flex-start;justify-content:center}.conflict-modal{width:min(1180px,100%);background:#fff;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.28);padding:18px}.conflict-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);gap:14px}.conflict-graph{width:100%;height:480px;border:1px solid #d0d5dd;border-radius:10px;background:#fbfcfe}.conflict-line-new{fill:none;stroke:#d92d20;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.conflict-line-old{fill:none;stroke:#1167d8;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:9 6}.conflict-meta{display:grid;gap:7px}.conflict-meta-row{display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:12px;border-bottom:1px solid #f2f4f7;padding-bottom:5px}.conflict-meta-row span:first-child{color:#667085}.conflict-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.conflict-actions button{min-height:44px}.conflict-note{min-height:74px}
+  @media(max-width:1050px){.analysis-layout{grid-template-columns:1fr}.decision-grid{grid-template-columns:1fr 1fr}.format-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.display-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:700px){.queue-row{grid-template-columns:1fr 100px}.queue-status{grid-column:1/-1;text-align:left}.decision-grid{grid-template-columns:1fr}.format-grid{grid-template-columns:1fr}.range-row{grid-template-columns:1fr}.scan-summary{grid-template-columns:1fr}.display-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card import-hero">
+  <h1>Trassierungsdaten importieren</h1>
+  <p class="muted">Unveränderte Originaldateien zentral sichern und mit demselben fachlichen Datenmodell wie auf Android auswerten.</p>
+  <div id="msg"></div>
+</div>
+
+<div class="card">
+  <h2><span class="step-badge">1</span>Dateien auswählen</h2>
+  <p class="muted">Noch kein Importziel und keine Strecke vorgeben. Erst lesen und grafisch prüfen, dann fehlende Angaben ergänzen.</p>
+  <div class="format-grid">
+    <div class="format-box"><b>TRA / GRA</b><small>Trassenachse und Höhen-/Kilometrierungsdaten</small></div>
+    <div class="format-box"><b>KF / KF.TXT / KV / GVP</b><small>Festpunkte und Koordinatenverzeichnisse</small></div>
+    <div class="format-box"><b>KOR / KOR.TXT / CSV</b><small>Absteckpunkte; CSV nur bei erkanntem Punkt-/GK-Schema</small></div>
+    <div class="format-box"><b>ZIP</b><small>Wie am Handy: erkannte Dateien werden einzeln importiert; TRG/TXT/PDF nur gemeldet</small></div>
+  </div>
+
+  <div id="dropZone" class="drop-zone" style="margin-top:14px">
+    <b>Dateien hier ablegen oder auswählen</b>
+    <div class="muted" style="margin-top:4px">Die Analyse verändert noch keine Datenbank und kein Original.</div>
+    <input id="files" type="file" multiple accept=".tra,.gra,.gvp,.kv,.kf,.kor,.csv,.zip,.txt,.trg,.pdf">
+  </div>
+
+  <div id="queue" class="queue"></div>
+  <div class="actions" style="margin-top:14px">
+    <button id="startAnalysis" type="button" disabled>Dateien analysieren</button>
+    <button id="clearFiles" type="button" class="secondary" disabled>Auswahl leeren</button>
+  </div>
+
+</div>
+
+{% if worksites %}
+<select id="worksiteTemplate" style="display:none">
+  {% for w in worksites %}
+  <option value="{{ w.id }}" data-route="{{ w.route_number or '' }}" data-company="{{ w.company_name }}" data-station-code="{{ w.station_code or '' }}" data-station-name="{{ w.station_name or '' }}">{{ w.company_name }} · {{ w.name }}{% if w.route_number %} · Strecke {{ w.route_number }}{% endif %}{% if w.station_name %} · {{ w.station_name }}{% endif %}</option>
+  {% endfor %}
+</select>
+{% endif %}
+
+<div class="card" id="analysisCard" style="display:none">
+  <div class="headline">
+    <div><h2 style="margin-bottom:4px"><span class="step-badge">2</span>Erkannt · prüfen · grafisch kontrollieren</h2><div id="analysisSummary" class="muted"></div></div>
+    <div class="actions"><button id="toggleDisplay" type="button" class="secondary">Anzeige</button><button id="toggleFullscreen" type="button" class="secondary">Großansicht</button><button id="resetView" type="button" class="secondary">Grafik einpassen</button></div>
+  </div>
+  <div class="info-box station-default-box">
+    <div class="headline">
+      <div>
+        <h3 style="margin-bottom:3px">Bahnhof / Betriebsstelle für diesen Import</h3>
+        <div class="muted">Optional. Bei Bahnhofsdaten einmal auswählen und auf die Gruppen übernehmen. Freie Strecke darf ohne Betriebsstelle bleiben.</div>
+      </div>
+      <div class="actions">
+        <button id="applyDefaultStation" type="button" class="secondary">Auf alle Gruppen anwenden</button>
+        <button id="clearDefaultStation" type="button" class="secondary">Auswahl leeren</button>
+      </div>
+    </div>
+    <div id="defaultStationPicker" class="station-picker" style="margin-top:9px">
+      <label for="defaultStationSearch">Bahnhof / RL100 suchen</label>
+      <input id="defaultStationSearch" class="station-search" autocomplete="off" placeholder="z. B. Pasing oder MP">
+      <input class="station-code" type="hidden">
+      <input class="station-name" type="hidden">
+      <div class="station-suggestions"></div>
+      <div class="station-selected">Keine Betriebsstelle zugeordnet.</div>
+    </div>
+  </div>
+  <div id="scanSummary" class="scan-summary"></div>
+  <div id="displayPanel" class="display-panel"><div class="small" style="font-weight:800;margin-bottom:7px">Anzeige auswählen</div><div id="displayOptions" class="display-grid"></div></div>
+  <div class="analysis-layout" style="margin-top:12px">
+    <div>
+      <div class="graphic-shell" id="graphicShell">
+        <button id="closeFullscreen" type="button" class="secondary fullscreen-close">Großansicht schließen</button>
+        <svg id="surveyMap" viewBox="0 0 1000 500" aria-label="Grafische Vermessungsdaten-Vorschau"><g id="surveyGrid" class="graph-grid"></g><g id="surveyLayer"></g></svg>
+        <div id="mapOverlay" class="map-overlay"></div>
+        <div id="fullscreenInfo" class="fullscreen-info"></div>
+        <div class="map-hint">Mausrad: Zoom · Ziehen: Verschieben · Hover: Kurzinfo · Klick: Details</div>
+      </div>
+      <div id="legend" class="legend"></div>
+    </div>
+    <div class="graphic-side">
+      <div class="info-box"><h3>Auswahl</h3><div id="graphicInfo" class="muted">Linie oder Punkt anklicken.</div></div>
+      <div class="info-box"><h3>KM / Station</h3><div id="rangeOverview" class="range-list muted">Noch keine Bereiche erkannt.</div></div>
+      <div class="info-box"><h3>Prüfregel</h3><div class="muted">Erkannte Angaben werden übernommen. Nur fehlende oder falsche Angaben korrigieren; das Original bleibt unverändert.</div></div>
+    </div>
+  </div>
+  <div id="analysisItems" class="analysis-items"></div>
+  <div class="info-box overwrite-warning" style="margin-top:12px">
+    <label style="display:flex;gap:9px;align-items:flex-start;font-weight:800">
+      <input id="overwriteExisting" type="checkbox" style="margin-top:3px">
+      <span>Vorhandene identische Dateien bei abweichender Zuordnung aktualisieren</span>
+    </label>
+    <div class="muted" style="margin-top:5px">
+      Standardmäßig wird nichts überschrieben. Ist dieselbe Rohdatei schon vorhanden, zeigt der Import zuerst eine Warnung.
+      Mit diesem Haken werden nur Strecke/Gleis/Bahnhof/Objekt-Zuordnung und der daraus abgeleitete Katalog aktualisiert;
+      die unveränderte Originaldatei bleibt bestehen.
+    </div>
+  </div>
+  <div class="actions" style="margin-top:14px">
+    <button id="startImport" type="button" disabled><span class="step-badge" style="background:rgba(255,255,255,.2);color:inherit">3</span>Import starten</button>
+    <button id="reanalyze" type="button" class="secondary">Neu analysieren</button>
+  </div>
+</div>
+
+<div class="card" id="resultCard" style="display:none">
+  <div class="headline">
+    <div><h2 style="margin-bottom:4px">Importergebnis</h2><div id="resultSummary" class="muted"></div></div>
+    <button id="reloadPage" type="button" class="secondary">Liste aktualisieren</button>
+  </div>
+  <div id="results" style="margin-top:10px"></div>
+</div>
+
+<div class="card" id="conflictCard">
+  <div class="headline">
+    <div><h2 style="margin-bottom:4px">Offene Trassendaten-Prüffälle</h2><div id="conflictSummary" class="muted">Prüffälle werden geladen.</div></div>
+    <button id="reloadConflicts" type="button" class="secondary">Prüffälle aktualisieren</button>
+  </div>
+  <div id="conflictList" class="conflict-list" style="margin-top:10px"></div>
+</div>
+
+<div id="conflictBackdrop" class="conflict-backdrop" aria-hidden="true">
+  <div class="conflict-modal" role="dialog" aria-modal="true" aria-labelledby="conflictTitle">
+    <div class="headline">
+      <div><h2 id="conflictTitle" style="margin-bottom:4px">Trassendaten-Prüffall</h2><div id="conflictLead" class="muted"></div></div>
+      <button id="closeConflict" type="button" class="secondary">Schließen</button>
+    </div>
+    <div class="conflict-grid" style="margin-top:12px">
+      <div>
+        <svg id="conflictGraph" class="conflict-graph" viewBox="0 0 1000 500" aria-label="Vergleich der beiden Konfliktgeometrien"></svg>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#d92d20"></span>Neue / zu prüfende Geometrie</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#1167d8"></span>Vorhandene Vergleichsgeometrie</span>
+        </div>
+      </div>
+      <div class="graphic-side">
+        <div class="info-box"><h3>Warum wird geprüft?</h3><div id="conflictExplanation"></div></div>
+        <div class="info-box"><h3>Fachliche Zuordnung</h3><div id="conflictMeta" class="conflict-meta"></div></div>
+        <div class="info-box"><h3>Messwerte</h3><div id="conflictMetrics" class="conflict-meta"></div></div>
+        <div class="info-box">
+          <h3>Entscheidung</h3>
+          <textarea id="conflictNote" class="conflict-note" placeholder="Notiz zur Entscheidung (optional)"></textarea>
+          <div class="conflict-actions" style="margin-top:8px">
+            <button type="button" class="secondary" data-conflict-resolution="KEEP_BOTH">Verschiedene Achsen · beide behalten</button>
+            <button type="button" class="secondary" data-conflict-resolution="KEEP_EXISTING">Neue Daten deaktivieren</button>
+            <button type="button" data-conflict-resolution="ACCEPT_CANDIDATE">Neue Daten ersetzen alte</button>
+            <button type="button" data-conflict-resolution="CONNECT">Gleiche Achse · verbinden</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="headline">
+    <div><h2 style="margin-bottom:4px">Zuletzt gespeicherte Originale</h2><div class="muted">Die letzten 100 unveränderten Trassierungs-/Vermessungsoriginale.</div></div>
+  </div>
+  <div class="scroll" style="margin-top:12px">
+    <table>
+      <thead><tr><th>Bereich / Firma</th><th>Datei</th><th>Typ</th><th>Strecke / Gleis</th><th>Bahnhof / Betriebsstelle</th><th>Größe</th><th>Auswertung</th><th>Importiert</th></tr></thead>
+      <tbody>
+      {% for o in originals %}
+      <tr>
+        <td>{% if o.company_id %}Firma · {{ o.company_name or '—' }}{% else %}<b>GLOBAL</b>{% endif %}</td>
+        <td><b>{{ o.original_name }}</b><div class="muted"><code>{{ o.id }}</code></div></td>
+        <td>{{ o.data_kind }}</td>
+        <td>{{ o.route_number or '—' }}{% if o.track_key %} / {{ o.track_key }}{% endif %}</td>
+        <td>{% if o.station_code or o.station_name %}<b>{{ o.station_code or '—' }}</b>{% if o.station_name %}<div class="muted">{{ o.station_name }}</div>{% endif %}{% else %}—{% endif %}</td>
+        <td class="file-size" data-bytes="{{ o.byte_size }}">—</td>
+        <td>
+          {% if o.parse_status == 'PARSED' %}<span class="pill">Ausgewertet</span>
+          {% elif o.parse_status == 'UNSUPPORTED' %}<span class="pill">Noch nicht auswertbar</span>
+          {% elif o.parse_status == 'ERROR' %}<span class="pill">Auswertungsfehler</span>
+          {% else %}<span class="pill">Nicht ausgewertet</span>{% endif %}
+          {% if o.detected_format %}<div class="muted">{{ o.detected_format }}</div>{% endif %}
+        </td>
+        <td>{{ o.imported_at }}</td>
+      </tr>
+      {% else %}<tr><td colspan="8" class="muted">Noch keine Trassierungsoriginale gespeichert.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const filesInput=document.getElementById('files');
+const dropZone=document.getElementById('dropZone');
+const queue=document.getElementById('queue');
+const startAnalysis=document.getElementById('startAnalysis');
+const clearFiles=document.getElementById('clearFiles');
+const analysisCard=document.getElementById('analysisCard');
+const analysisSummary=document.getElementById('analysisSummary');
+const analysisItems=document.getElementById('analysisItems');
+const startImport=document.getElementById('startImport');
+const reanalyze=document.getElementById('reanalyze');
+const overwriteExisting=document.getElementById('overwriteExisting');
+const resultCard=document.getElementById('resultCard');
+const results=document.getElementById('results');
+const resultSummary=document.getElementById('resultSummary');
+const msg=document.getElementById('msg');
+const worksiteTemplate=document.getElementById('worksiteTemplate');
+const surveyMap=document.getElementById('surveyMap');
+const surveyGrid=document.getElementById('surveyGrid');
+const surveyLayer=document.getElementById('surveyLayer');
+const mapOverlay=document.getElementById('mapOverlay');
+const fullscreenInfo=document.getElementById('fullscreenInfo');
+const graphicShell=document.getElementById('graphicShell');
+const toggleFullscreen=document.getElementById('toggleFullscreen');
+const closeFullscreen=document.getElementById('closeFullscreen');
+const graphicInfo=document.getElementById('graphicInfo');
+const legend=document.getElementById('legend');
+const rangeOverview=document.getElementById('rangeOverview');
+const scanSummary=document.getElementById('scanSummary');
+const displayPanel=document.getElementById('displayPanel');
+const displayOptions=document.getElementById('displayOptions');
+const toggleDisplay=document.getElementById('toggleDisplay');
+const defaultStationPicker=document.getElementById('defaultStationPicker');
+const applyDefaultStation=document.getElementById('applyDefaultStation');
+const clearDefaultStation=document.getElementById('clearDefaultStation');
+const conflictCard=document.getElementById('conflictCard');
+const conflictSummary=document.getElementById('conflictSummary');
+const conflictList=document.getElementById('conflictList');
+const reloadConflicts=document.getElementById('reloadConflicts');
+const conflictBackdrop=document.getElementById('conflictBackdrop');
+const closeConflict=document.getElementById('closeConflict');
+const conflictTitle=document.getElementById('conflictTitle');
+const conflictLead=document.getElementById('conflictLead');
+const conflictExplanation=document.getElementById('conflictExplanation');
+const conflictMeta=document.getElementById('conflictMeta');
+const conflictMetrics=document.getElementById('conflictMetrics');
+const conflictGraph=document.getElementById('conflictGraph');
+const conflictNote=document.getElementById('conflictNote');
+
+let selectedFiles=[];
+let analysisSessions=[];
+let currentRows=[];
+let currentGroups=[];
+let visibleAxisKeys=new Set();
+let visiblePointGroups=new Set();
+let axisLabelCandidates=[];
+let axisHitCandidates=[];
+let pointLabelCandidates=[];
+let selectedPointKey=null;
+let selectedAxisKey=null;
+let currentConflictId=null;
+let axisKmStatusByKey=new Map();
+let overlayFrame=0;
+let view={x:0,y:0,w:1000,h:500};
+let drag=null;
+let dragMoved=false;
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function size(value){const n=Number(value)||0,a=Math.abs(n);if(a>=1e12)return(n/1e12).toFixed(a>=1e14?0:1)+' TB';if(a>=1e9)return(n/1e9).toFixed(a>=1e11?0:1)+' GB';if(a>=1e6)return(n/1e6).toFixed(a>=1e8?0:1)+' MB';if(a>=1e3)return(n/1e3).toFixed(a>=1e5?0:1)+' kB';return Math.round(n)+' B';}
+function kmLabel(value){const n=Number(value);if(!Number.isFinite(n))return '—';const sign=n<0?'-':'';const a=Math.abs(n),km=Math.floor(a/1000),rest=a-km*1000;return sign+km+'+'+rest.toFixed(3).padStart(7,'0');}
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+function fileKind(name){const n=name.toLowerCase();if(n.endsWith('.zip'))return 'ZIP';if(n.endsWith('.tra'))return 'TRA';if(n.endsWith('.gra'))return 'GRA';if(n.endsWith('.kf')||n.endsWith('.kf.txt')||n.endsWith('.kv')||n.endsWith('.gvp'))return 'Festpunkte';if(n.endsWith('.kor')||n.endsWith('.kor.txt'))return 'KOR';if(n.endsWith('.csv'))return 'CSV';if(n.endsWith('.trg'))return 'TRG';if(n.endsWith('.pdf'))return 'PDF';if(n.endsWith('.txt'))return 'TXT';return 'nicht erkannt';}
+function qStatus(index,text,kind){const e=document.querySelector('#queue-'+index+' .queue-status');if(e){e.textContent=text;e.className='queue-status '+kind;}}
+function worksiteOptions(){return worksiteTemplate?worksiteTemplate.innerHTML:'<option value="">Keine Baustelle vorhanden</option>';}
+function stationDisplay(code,name){return [String(code||'').trim(),String(name||'').trim()].filter(Boolean).join(' – ');}
+function setStationPicker(root,code,name){
+  if(!root)return;
+  const input=root.querySelector('.station-search'),codeField=root.querySelector('.station-code'),nameField=root.querySelector('.station-name'),state=root.querySelector('.station-selected'),box=root.querySelector('.station-suggestions');
+  const c=String(code||'').trim().toUpperCase(),n=String(name||'').trim();
+  codeField.value=c;nameField.value=n;input.value=stationDisplay(c,n);
+  state.textContent=c||n?('Zugeordnet: '+stationDisplay(c,n)):'Keine Betriebsstelle zugeordnet.';
+  state.classList.toggle('ok',Boolean(c||n));box.classList.remove('show');
+}
+function stationPickerValue(root){
+  return {
+    code:String(root?.querySelector('.station-code')?.value||'').trim().toUpperCase()||null,
+    name:String(root?.querySelector('.station-name')?.value||'').trim()||null,
+    query:String(root?.querySelector('.station-search')?.value||'').trim()
+  };
+}
+async function loadStationSuggestions(root){
+  const input=root.querySelector('.station-search'),box=root.querySelector('.station-suggestions'),q=input.value.trim();
+  if(!q){box.classList.remove('show');box.innerHTML='';return;}
+  try{
+    const {data}=await tbApi('/api/v1/admin/station-reference?q='+encodeURIComponent(q)+'&limit=12');
+    const rows=data.results||[];
+    box.innerHTML=rows.map(r=>'<button type="button" class="station-suggestion" data-code="'+esc(r.code)+'" data-name="'+esc(r.name)+'"><b>'+esc(r.display)+'</b><small>'+esc(r.source||'Referenzdaten')+'</small></button>').join('')||'<div class="muted" style="padding:9px 11px">Kein Treffer in den Referenzdaten.</div>';
+    box.classList.add('show');
+    box.querySelectorAll('.station-suggestion').forEach(button=>button.addEventListener('click',()=>setStationPicker(root,button.dataset.code,button.dataset.name)));
+  }catch(e){
+    box.innerHTML='<div class="state-bad" style="padding:9px 11px">Bahnhofsreferenz nicht verfügbar: '+esc(e.message||String(e))+'</div>';
+    box.classList.add('show');
+  }
+}
+function wireStationPicker(root){
+  if(!root||root.dataset.stationWired==='1')return;
+  root.dataset.stationWired='1';
+  const input=root.querySelector('.station-search'),codeField=root.querySelector('.station-code'),nameField=root.querySelector('.station-name'),state=root.querySelector('.station-selected');
+  input.addEventListener('input',()=>{
+    codeField.value='';nameField.value='';
+    state.textContent=input.value.trim()?'Bitte Treffer aus der Referenzliste auswählen.':'Keine Betriebsstelle zugeordnet.';
+    state.classList.remove('ok');
+    clearTimeout(root._stationTimer);root._stationTimer=setTimeout(()=>loadStationSuggestions(root),170);
+  });
+  input.addEventListener('focus',()=>{if(input.value.trim())loadStationSuggestions(root);});
+}
+document.addEventListener('click',ev=>{document.querySelectorAll('.station-picker').forEach(root=>{if(!root.contains(ev.target))root.querySelector('.station-suggestions')?.classList.remove('show');});});
+
+function setFiles(list){
+  selectedFiles=Array.from(list||[]);
+  analysisSessions=[];
+  currentRows=[];
+  currentGroups=[];
+  visibleAxisKeys=new Set();
+  visiblePointGroups=new Set();
+  analysisCard.style.display='none';
+  resultCard.style.display='none';
+  renderQueue();
+}
+function renderQueue(){
+  queue.innerHTML=selectedFiles.map((f,i)=>'<div class="queue-row" id="queue-'+i+'"><div class="queue-name"><b>'+esc(f.name)+'</b><div class="muted">'+esc(size(f.size))+'</div></div><div>'+esc(fileKind(f.name))+'</div><div class="queue-status state-wait">Noch nicht analysiert</div></div>').join('');
+  startAnalysis.disabled=!selectedFiles.length;
+  clearFiles.disabled=!selectedFiles.length;
+}
+filesInput.addEventListener('change',()=>setFiles(filesInput.files));
+['dragenter','dragover'].forEach(ev=>dropZone.addEventListener(ev,e=>{e.preventDefault();dropZone.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dropZone.addEventListener(ev,e=>{e.preventDefault();dropZone.classList.remove('drag');}));
+dropZone.addEventListener('drop',e=>setFiles(e.dataTransfer.files));
+clearFiles.addEventListener('click',()=>{filesInput.value='';setFiles([]);show('info','Auswahl geleert.');});
+
+async function analyzeOne(file,index){
+  qStatus(index,'Analyse läuft …','state-warn');
+  const params=new URLSearchParams({filename:file.name});
+  try{
+    const response=await tbApi('/api/v1/admin/survey-import/analyze?'+params.toString(),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file});
+    qStatus(index,'Analysiert','state-ok');
+    return {fileIndex:index,fileName:file.name,data:response.data};
+  }catch(e){
+    qStatus(index,'Analysefehler','state-bad');
+    return {fileIndex:index,fileName:file.name,error:e.message||String(e)};
+  }
+}
+startAnalysis.addEventListener('click',async()=>{
+  if(!selectedFiles.length)return;
+  startAnalysis.disabled=true;clearFiles.disabled=true;filesInput.disabled=true;analysisSessions=[];
+  show('info','Dateien werden gelesen und fachlich gruppiert. Noch kein Import.');
+  for(let i=0;i<selectedFiles.length;i++)analysisSessions.push(await analyzeOne(selectedFiles[i],i));
+  filesInput.disabled=false;clearFiles.disabled=false;startAnalysis.disabled=false;
+  renderAnalysis();
+});
+reanalyze.addEventListener('click',()=>startAnalysis.click());
+
+function flattenItems(){
+  const rows=[];
+  analysisSessions.forEach((session,sessionIndex)=>{
+    if(session.error||!session.data)return;
+    (session.data.items||[]).forEach((item,itemIndex)=>rows.push({session,sessionIndex,item,itemIndex}));
+  });
+  return rows;
+}
+function isAxisGroup(item){return ['STRECKENACHSE','BAHNHOFS_GLEIS','WEICHE','WEICHENVERBINDUNG'].includes(item.object_group);}
+function isPointGroup(item){return ['FESTPUNKTE','ABSTECKPUNKTE'].includes(item.object_group);}
+function groupRows(rows){
+  const map=new Map();
+  rows.filter(r=>r.item.can_import).forEach(row=>{
+    const item=row.item;
+    const key=(item.semantic_key||('ROW:'+row.sessionIndex+':'+row.itemIndex));
+    if(!map.has(key))map.set(key,{key,label:item.display_label||item.name,objectGroup:item.object_group||'DATEI',rows:[]});
+    map.get(key).rows.push(row);
+  });
+  return Array.from(map.values()).sort((a,b)=>{
+    const order={STRECKENACHSE:0,BAHNHOFS_GLEIS:1,WEICHE:2,WEICHENVERBINDUNG:3,FESTPUNKTE:4,ABSTECKPUNKTE:5,DATEI:6};
+    return (order[a.objectGroup]??9)-(order[b.objectGroup]??9)||String(a.label).localeCompare(String(b.label),'de',{numeric:true});
+  });
+}
+function fact(text,warn){return '<span class="fact'+(warn?' warn':'')+'">'+esc(text)+'</span>';}
+function groupHtml(group,index){
+  const items=group.rows.map(r=>r.item);
+  const route=items.find(i=>i.route_number)?.route_number||'';
+  const track=items.find(i=>i.track_key)?.track_key||'';
+  const objectKey=items.find(i=>i.object_key)?.object_key||'';
+  const kinds=Array.from(new Set(items.map(i=>i.kind).filter(Boolean))).join(' + ');
+  const files=items.map(i=>i.name).join(' · ');
+  const warnings=items.flatMap(i=>i.warnings||[]);
+  const missing=!route&&group.objectGroup==='STRECKENACHSE';
+  const parseBad=items.some(i=>i.parse_status!=='PARSED');
+  const objectIdentity=['WEICHE','WEICHENVERBINDUNG'].includes(group.objectGroup);
+  const lastField=objectIdentity
+    ?'<div><label>Objekt / Weiche / WVB</label><input class="decision-object" maxlength="160" value="'+esc(objectKey)+'" placeholder="'+(group.objectGroup==='WEICHE'?'z. B. W:27':'z. B. WVB:14-22')+'"></div>'
+    :'<div><label>Gleis / Achse</label><input class="decision-track" maxlength="160" value="'+esc(track)+'" placeholder="optional"></div>';
+  return '<div class="analysis-item" data-group-index="'+index+'" data-inferred-route="'+esc(route)+'" data-inferred-track="'+esc(track)+'" data-inferred-object="'+esc(objectKey)+'">'+
+    '<div class="analysis-head"><div><b>'+esc(group.label)+'</b><div class="muted">'+esc(kinds)+' · '+items.length+' Datei(en)</div></div><span class="pill">'+esc(group.objectGroup.replaceAll('_',' '))+'</span></div>'+
+    '<div class="facts">'+fact(kinds||'Datei',parseBad)+(route?fact('Strecke '+route,false):'')+(track?fact('Gleis '+track,false):'')+(objectKey?fact(objectKey,false):'')+(missing?fact('Strecke fehlt',true):'')+'</div>'+
+    '<div class="muted" style="margin-top:7px;word-break:break-word">'+esc(files)+'</div>'+
+    (warnings.length?'<ul class="warnings">'+warnings.slice(0,6).map(w=>'<li>'+esc(w)+'</li>').join('')+(warnings.length>6?'<li>… '+(warnings.length-6)+' weitere</li>':'')+'</ul>':'')+
+    '<div class="decision-grid">'+
+      '<div class="station-picker decision-station-picker"><label>Bahnhof / Betriebsstelle</label><input class="station-search decision-station-search" autocomplete="off" placeholder="optional · z. B. Pasing"><input class="station-code decision-station-code" type="hidden"><input class="station-name decision-station-name" type="hidden"><div class="station-suggestions"></div><div class="station-selected">Keine Betriebsstelle zugeordnet.</div></div>'+
+      '<div><label>Strecke</label><input class="decision-route" maxlength="80" value="'+esc(route)+'" placeholder="z. B. 5528"></div>'+
+      lastField+
+    '</div>'+
+    '<label class="import-toggle"><input class="decision-enabled" type="checkbox" checked> Diese Gruppe übernehmen</label>'+
+  '</div>';
+}
+function wireDecisionControls(){
+  document.querySelectorAll('.analysis-item[data-group-index]').forEach(card=>{
+    const route=card.querySelector('.decision-route'),track=card.querySelector('.decision-track'),objectField=card.querySelector('.decision-object'),station=card.querySelector('.decision-station-picker');
+    wireStationPicker(station);
+    if(route&&!route.value&&card.dataset.inferredRoute)route.value=card.dataset.inferredRoute;
+    if(track&&!track.value&&card.dataset.inferredTrack)track.value=card.dataset.inferredTrack;
+    if(objectField&&!objectField.value&&card.dataset.inferredObject)objectField.value=card.dataset.inferredObject;
+  });
+}
+function renderScanSummary(rows){
+  const importable=rows.filter(r=>r.item.can_import);
+  const routes=Array.from(new Set(importable.map(r=>r.item.route_number).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'de',{numeric:true}));
+  const tracks=Array.from(new Set(importable.filter(r=>r.item.object_group==='BAHNHOFS_GLEIS').map(r=>r.item.display_label).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'de',{numeric:true}));
+  const switches=Array.from(new Set(importable.filter(r=>r.item.object_group==='WEICHE').map(r=>r.item.display_label).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'de',{numeric:true}));
+  const wv=Array.from(new Set(importable.filter(r=>r.item.object_group==='WEICHENVERBINDUNG').map(r=>r.item.display_label).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'de',{numeric:true}));
+  const count=kind=>importable.filter(r=>r.item.kind===kind).length;
+  const sourceNames=analysisSessions.filter(s=>s.data).map(s=>s.data.source_name).join(', ');
+  scanSummary.innerHTML=
+    '<div class="info-box"><h3>ZIP / Auswahl</h3><div><b>'+esc(sourceNames||'Dateiauswahl')+'</b></div><div class="muted">Gefundene Strecken: '+esc(routes.join(', ')||'nicht sicher erkannt')+'</div><div class="muted">TRA '+count('TRA')+' · GRA '+count('GRA')+' · GVP/KF '+count('GVP')+' · KOR '+count('KOR')+' · CSV '+count('CSV')+'</div></div>'+
+    '<div class="info-box"><h3>Bahnhofsobjekte</h3><div><b>Gleise: '+tracks.length+'</b> · '+esc(tracks.map(v=>v.split(' · ')[0]).join(', ')||'—')+'</div><div><b>Weichen: '+switches.length+'</b> · '+esc(switches.join(', ')||'—')+'</div><div><b>Weichenverbindungen: '+wv.length+'</b> · '+esc(wv.join(', ')||'—')+'</div></div>';
+}
+function initializeDisplay(groups){
+  visibleAxisKeys=new Set(groups.filter(g=>isAxisGroup(g.rows[0].item)).map(g=>g.key));
+  visiblePointGroups=new Set(groups.filter(g=>isPointGroup(g.rows[0].item)).map(g=>g.key));
+}
+function renderDisplayOptions(){
+  displayOptions.innerHTML=currentGroups.filter(g=>isAxisGroup(g.rows[0].item)||isPointGroup(g.rows[0].item)).map(g=>{
+    const axis=isAxisGroup(g.rows[0].item),checked=axis?visibleAxisKeys.has(g.key):visiblePointGroups.has(g.key);
+    return '<label class="display-option"><input type="checkbox" data-display-kind="'+(axis?'axis':'point')+'" data-display-key="'+esc(g.key)+'" '+(checked?'checked':'')+'> <span>'+esc(g.label)+'</span></label>';
+  }).join('');
+  displayOptions.querySelectorAll('input').forEach(input=>input.addEventListener('change',()=>{
+    const set=input.dataset.displayKind==='axis'?visibleAxisKeys:visiblePointGroups;
+    if(input.checked)set.add(input.dataset.displayKey);else set.delete(input.dataset.displayKey);
+    renderGraphic(currentRows);renderRanges(currentGroups);
+  }));
+}
+toggleDisplay.addEventListener('click',()=>displayPanel.classList.toggle('open'));
+
+function renderAnalysis(){
+  currentRows=flattenItems();
+  currentGroups=groupRows(currentRows);
+  initializeDisplay(currentGroups);
+  analysisCard.style.display='block';
+  analysisSummary.textContent=currentRows.length+' erkannte Datei(en) · '+currentGroups.length+' fachliche Gruppe(n). Erst jetzt Ziel und fehlende Angaben bestätigen.';
+  renderScanSummary(currentRows);
+  analysisItems.innerHTML=currentGroups.map(groupHtml).join('')||'<div class="notice err">Keine verwertbaren Dateien erkannt.</div>';
+  wireDecisionControls();
+  renderDisplayOptions();
+  startImport.disabled=!currentGroups.length;
+  renderGraphic(currentRows);
+  renderRanges(currentGroups);
+  const failed=analysisSessions.filter(s=>s.error).length;
+  show(failed?'err':'ok',failed?failed+' Upload(s) konnten nicht analysiert werden. Die übrigen Ergebnisse können geprüft werden.':'Analyse abgeschlossen. Darstellung, Gruppierung und erkannte Angaben prüfen; erst danach importieren.');
+  analysisCard.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function geometryEntries(rows){
+  const entries=[];
+  rows.forEach(row=>{
+    const item=row.item,p=item.preview||{};
+    if(item.kind==='TRA'&&isAxisGroup(item)&&visibleAxisKeys.has(item.semantic_key)&&Array.isArray(p.line)&&p.line.length)entries.push({kind:'axis',row,line:p.line,points:[]});
+    if(isPointGroup(item)&&visiblePointGroups.has(item.semantic_key)&&Array.isArray(p.points)&&p.points.length)entries.push({kind:'points',row,line:[],points:p.points});
+  });
+  return entries;
+}
+function geometryTransform(entries){
+  const xy=[];
+  entries.forEach(e=>{e.line.forEach(p=>xy.push([Number(p.x),Number(p.y)]));e.points.forEach(p=>xy.push([Number(p.x),Number(p.y)]));});
+  const valid=xy.filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));
+  if(!valid.length)return null;
+  const xs=valid.map(p=>p[0]),ys=valid.map(p=>p[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const dx=Math.max(maxX-minX,1),dy=Math.max(maxY-minY,1),scale=Math.min(900/dx,420/dy),ox=(1000-dx*scale)/2,oy=(500-dy*scale)/2;
+  return p=>[ox+(Number(p.x)-minX)*scale,500-(oy+(Number(p.y)-minY)*scale)];
+}
+function formatKmFromFile(value){
+  const n=Number(value);
+  if(!Number.isFinite(n))return null;
+  return (n/1000).toLocaleString('de-DE',{minimumFractionDigits:3,maximumFractionDigits:3});
+}
+function physicalPointKey(point){
+  const id=String(point.point_id||point.label||point.point_code||point.type||'PUNKT').trim().toUpperCase();
+  const route=String(point.route||'').trim();
+  const x=Number.isFinite(Number(point.x))?Math.round(Number(point.x)*100):'x';
+  const y=Number.isFinite(Number(point.y))?Math.round(Number(point.y)*100):'y';
+  return [route,id,x,y].join('|');
+}
+function pointDetailRows(point,row){
+  const source=point.source_name||row.item.name||null;
+  return [
+    ['Bezeichnung',point.label||point.point_id||point.type||'Vermessungspunkt'],
+    ['Punkt-ID',point.point_id||null],
+    ['Punktart',point.type||point.point_code||null],
+    ['Strecke',point.route||row.item.route_number||null],
+    ['Gleis',point.track||row.item.track_key||null],
+    ['KM aus Datei',point.km_meter!=null?formatKmFromFile(point.km_meter):null],
+    ['Bahn-KM',point.km_meter!=null?kmLabel(point.km_meter):null],
+    ['Höhe',point.height_m!=null?Number(point.height_m).toFixed(3)+' m':null],
+    ['X',Number.isFinite(Number(point.x))?Number(point.x).toFixed(4):null],
+    ['Y',Number.isFinite(Number(point.y))?Number(point.y).toFixed(4):null],
+    ['System',point.coordinate_system||null],
+    ['Quelle',source]
+  ].filter(row=>row[1]!==null&&row[1]!==undefined&&String(row[1]).trim()!=='');
+}
+function pointShortText(candidate){
+  const point=candidate.point;
+  const basis=point.label||point.point_id||point.type||'Vermessungspunkt';
+  return basis+(point.km_meter!=null?' · km '+formatKmFromFile(point.km_meter):'');
+}
+function setDetailHtml(html){
+  graphicInfo.innerHTML=html;
+  fullscreenInfo.innerHTML=html;
+  fullscreenInfo.classList.toggle('active',Boolean(html));
+}
+function setGraphicInfo(row,detail){
+  const i=row.item;
+  const title=i.display_label||i.name||'Achse';
+  const km=axisKmStatusByKey.get(i.semantic_key);
+  const statusText=km?.status==='AUTOMATISCH'?'GRÜN · automatisch und plausibel':km?.status==='UNPLAUSIBEL'?'GRAU · KM unplausibel':km?.status==='FEHLT'?'ROT · keine belastbare KM':null;
+  const sourceText=km?.source==='GVP'?'GVP/Festpunkte':km?.source==='GRA'?'GRA/KM-Quelle':null;
+  const gvpText=km?.gvp_total!=null
+    ?km.gvp_total+' GVP mit KM · '+(km.near_count||0)+' ≤120 m · '+(km.robust_count||0)+' robust'
+    :null;
+  const kmRange=km&&validRange(km.km_from_m,km.km_to_m)?kmLabel(km.km_from_m)+' – '+kmLabel(km.km_to_m):null;
+  const rows=[
+    ['Objekt',title],
+    ['Strecke',i.route_number||null],
+    ['Gleis / Achse',i.track_key||null],
+    ['Objekt-ID',i.object_key||null],
+    ['Typ',String(i.object_group||'').replaceAll('_',' ')||null],
+    ['KM-Status',statusText],
+    ['KM-Quelle',sourceText],
+    ['KM-Bereich',kmRange],
+    ['GVP-Prüfung',gvpText],
+    ['Grund',km?.reason||null],
+    ['Detail',detail||null],
+    ['Quelle',i.name||null]
+  ].filter(item=>item[1]);
+  setDetailHtml('<div class="point-detail"><div class="point-detail-title">'+esc(title)+'</div>'+rows.map(item=>'<div class="point-detail-row"><span>'+esc(item[0])+'</span><span>'+esc(item[1])+'</span></div>').join('')+'</div>');
+}
+function pointCandidateKey(candidate){
+  return physicalPointKey(candidate.point);
+}
+function showPointDetail(candidate){
+  selectedPointKey=pointCandidateKey(candidate);
+  const rows=pointDetailRows(candidate.point,candidate.row);
+  const title=candidate.point.label||candidate.point.point_id||candidate.point.type||'Vermessungspunkt';
+  setDetailHtml('<div class="point-detail"><div class="point-detail-title">'+esc(title)+'</div>'+rows.map(item=>'<div class="point-detail-row"><span>'+esc(item[0])+'</span><span>'+esc(item[1])+'</span></div>').join('')+'</div>');
+  scheduleOverlayRender();
+}
+function showPointChoices(candidates){
+  const unique=[];
+  const seen=new Set();
+  candidates.forEach(candidate=>{
+    const key=pointCandidateKey(candidate);
+    if(!seen.has(key)){seen.add(key);unique.push(candidate);}
+  });
+  if(unique.length===1){showPointDetail(unique[0]);return;}
+  const buttons=unique.slice(0,12).map((candidate,index)=>'<button type="button" class="point-hit-button" data-point-choice="'+index+'">'+esc(pointShortText(candidate))+'</button>').join('');
+  setDetailHtml('<div class="point-detail"><div class="point-detail-title">'+unique.length+' Punkte im Trefferbereich</div><div class="muted" style="margin-bottom:7px">Gewünschten Vermessungspunkt auswählen.</div><div class="point-hit-list">'+buttons+'</div></div>');
+  [...graphicInfo.querySelectorAll('[data-point-choice]'),...fullscreenInfo.querySelectorAll('[data-point-choice]')].forEach(button=>{
+    button.addEventListener('click',()=>showPointDetail(unique[Number(button.dataset.pointChoice)]));
+  });
+}
+
+function axisCandidateKey(candidate){return candidate.key||candidate.row.item.semantic_key||candidate.row.item.name;}
+function svgPointFromClient(clientX,clientY){
+  const point=surveyMap.createSVGPoint();point.x=clientX;point.y=clientY;
+  const matrix=surveyMap.getScreenCTM();return matrix?point.matrixTransform(matrix.inverse()):null;
+}
+function segmentDistance(px,py,ax,ay,bx,by){
+  const dx=bx-ax,dy=by-ay,len2=dx*dx+dy*dy;
+  if(len2<=1e-12)return Math.hypot(px-ax,py-ay);
+  const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/len2));
+  return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
+}
+function axisDistance(point,points){
+  let best=Infinity;
+  for(let i=1;i<points.length;i++)best=Math.min(best,segmentDistance(point.x,point.y,points[i-1][0],points[i-1][1],points[i][0],points[i][1]));
+  return best;
+}
+function nearbyAxisCandidates(clientX,clientY,radiusPx=20){
+  const point=svgPointFromClient(clientX,clientY);if(!point)return[];
+  const rect=surveyMap.getBoundingClientRect();
+  const tolerance=Math.max(.3,radiusPx*view.w/Math.max(rect.width,1));
+  return axisHitCandidates
+    .map(candidate=>({candidate,distance:axisDistance(point,candidate.points)}))
+    .filter(item=>item.distance<=tolerance)
+    .sort((a,b)=>a.distance-b.distance)
+    .map(item=>item.candidate);
+}
+function selectAxisCandidate(candidate){
+  selectedAxisKey=axisCandidateKey(candidate);
+  axisHitCandidates.forEach(item=>item.poly.classList.toggle('axis-selected',axisCandidateKey(item)===selectedAxisKey));
+  setGraphicInfo(candidate.row,'TRA-/Achslinie');
+}
+function showAxisChoices(candidates){
+  const unique=[];const seen=new Set();
+  candidates.forEach(candidate=>{const key=axisCandidateKey(candidate);if(!seen.has(key)){seen.add(key);unique.push(candidate);}});
+  if(unique.length===1){selectAxisCandidate(unique[0]);return;}
+  const buttons=unique.slice(0,12).map((candidate,index)=>'<button type="button" class="point-hit-button" data-axis-choice="'+index+'">'+esc(axisHoverText(candidate.row))+'</button>').join('');
+  setDetailHtml('<div class="point-detail"><div class="point-detail-title">'+unique.length+' Achsen im Trefferbereich</div><div class="muted" style="margin-bottom:7px">Die Linien liegen hier übereinander oder sehr nah. Gewünschte Achse auswählen.</div><div class="point-hit-list">'+buttons+'</div></div>');
+  [...graphicInfo.querySelectorAll('[data-axis-choice]'),...fullscreenInfo.querySelectorAll('[data-axis-choice]')].forEach(button=>button.addEventListener('click',()=>selectAxisCandidate(unique[Number(button.dataset.axisChoice)])));
+}
+
+function zoomFactor(){return 1000/view.w;}
+function shortAxisLabel(item){
+  if(item.object_group==='BAHNHOFS_GLEIS'&&item.track_key)return 'Gl '+item.track_key;
+  if(item.object_group==='WEICHENVERBINDUNG')return item.display_label||item.name;
+  if(item.route_number&&(item.direction||item.source_direction))return 'Str '+item.route_number+'-'+(item.direction||item.source_direction);
+  if(item.route_number)return 'Str '+item.route_number;
+  return item.display_label||item.name;
+}
+function overlaps(a,b){
+  return !(a.r<b.l||a.l>b.r||a.b<b.t||a.t>b.b);
+}
+function candidateScreen(candidate,rect){
+  return {
+    x:(candidate.x-view.x)/view.w*rect.width,
+    y:(candidate.y-view.y)/view.h*rect.height
+  };
+}
+function pointMarkerPx(z){
+  if(z>=18)return 9;
+  if(z>=8)return 10;
+  if(z>=3)return 9;
+  return 7;
+}
+function nearbyPointCandidates(screenX,screenY,radiusPx){
+  const rect=surveyMap.getBoundingClientRect();
+  return pointLabelCandidates
+    .map(candidate=>{
+      const p=candidateScreen(candidate,rect);
+      return {candidate,distance:Math.hypot(screenX-p.x,screenY-p.y)};
+    })
+    .filter(item=>item.distance<=radiusPx)
+    .sort((a,b)=>a.distance-b.distance)
+    .map(item=>item.candidate);
+}
+function addOverlayLabel(className,text,x,y,fontPx,occupied){
+  const width=Math.max(26,text.length*fontPx*.56+7),height=fontPx+7;
+  const rect={l:x+7,t:y-height/2,r:x+7+width,b:y+height/2};
+  if(occupied.some(item=>overlaps(rect,item)))return false;
+  occupied.push(rect);
+  const label=document.createElement('div');
+  label.className='screen-label '+className;
+  label.textContent=text;
+  label.style.left=x+'px';
+  label.style.top=y+'px';
+  label.style.fontSize=fontPx+'px';
+  mapOverlay.appendChild(label);
+  return true;
+}
+function showHoverTooltip(candidate,x,y){
+  mapOverlay.querySelectorAll('.screen-tooltip').forEach(node=>node.remove());
+  const tip=document.createElement('div');
+  tip.className='screen-tooltip';
+  tip.textContent=pointShortText(candidate);
+  tip.style.left=Math.min(x+2,Math.max(0,surveyMap.clientWidth-250))+'px';
+  tip.style.top=Math.max(18,Math.min(y,surveyMap.clientHeight-18))+'px';
+  mapOverlay.appendChild(tip);
+}
+function clearHoverTooltip(){
+  mapOverlay.querySelectorAll('.screen-tooltip').forEach(node=>node.remove());
+}
+function axisHoverText(row){
+  const item=row.item;
+  const km=axisKmStatusByKey.get(item.semantic_key);
+  const status=km?.status==='AUTOMATISCH'?'GRÜN':km?.status==='UNPLAUSIBEL'?'GRAU':item.object_group==='WEICHENVERBINDUNG'?'WVB':'ROT';
+  const source=km?.source==='GVP'?'GVP':km?.source==='GRA'?'GRA':null;
+  return [item.display_label||item.name,status,source].filter(Boolean).join(' · ');
+}
+function showAxisHoverTooltip(row,event){
+  clearHoverTooltip();
+  const rect=surveyMap.getBoundingClientRect();
+  const x=event.clientX-rect.left;
+  const y=event.clientY-rect.top;
+  const tip=document.createElement('div');
+  tip.className='screen-tooltip';
+  const hits=nearbyAxisCandidates(event.clientX,event.clientY,18);
+  tip.textContent=axisHoverText(row)+(hits.length>1?' · '+hits.length+' Achsen hier':'');
+  tip.style.left=Math.min(x+2,Math.max(0,rect.width-260))+'px';
+  tip.style.top=Math.max(18,Math.min(y,rect.height-18))+'px';
+  mapOverlay.appendChild(tip);
+}
+function renderScreenOverlay(){
+  overlayFrame=0;
+  mapOverlay.innerHTML='';
+  const rect=surveyMap.getBoundingClientRect();
+  if(rect.width<20||rect.height<20)return;
+  const z=zoomFactor();
+  const occupied=[];
+
+  const axisMax=z>=18?3:z>=10?5:z>=5?9:z>=2.5?14:10;
+  const axisFont=z>=18?9:z>=10?10:11;
+  let axisCount=0;
+  axisLabelCandidates.forEach(candidate=>{
+    if(axisCount>=axisMax)return;
+    const p=candidateScreen(candidate,rect);
+    if(p.x<-30||p.x>rect.width+30||p.y<-20||p.y>rect.height+20)return;
+    const text=z<2.5?shortAxisLabel(candidate.item):(z>=10?shortAxisLabel(candidate.item):(candidate.item.display_label||candidate.item.name));
+    if(addOverlayLabel('screen-axis-label',text,p.x,p.y,axisFont,occupied))axisCount++;
+  });
+
+  const markerPx=pointMarkerPx(z);
+  pointLabelCandidates.forEach(candidate=>{
+    const p=candidateScreen(candidate,rect);
+    if(p.x<-28||p.x>rect.width+28||p.y<-28||p.y>rect.height+28)return;
+    const marker=document.createElement('button');
+    marker.type='button';
+    const type=String(candidate.point.type||'').toUpperCase();
+    const kind=type.includes('WEICH')?'switch':(type.startsWith('KOR')||type.startsWith('CSV')?'ap':'gvp');
+    marker.className='screen-point '+kind+(pointCandidateKey(candidate)===selectedPointKey?' selected':'');
+    marker.setAttribute('aria-label',pointShortText(candidate));
+    marker.style.left=p.x+'px';
+    marker.style.top=p.y+'px';
+    marker.style.width=markerPx+'px';
+    marker.style.height=markerPx+'px';
+    marker.addEventListener('mouseenter',()=>{marker.classList.add('hovered');showHoverTooltip(candidate,p.x,p.y);});
+    marker.addEventListener('mouseleave',()=>{marker.classList.remove('hovered');clearHoverTooltip();});
+    marker.addEventListener('click',event=>{
+      event.preventDefault();event.stopPropagation();
+      const hits=nearbyPointCandidates(p.x,p.y,24);
+      showPointChoices(hits.length?hits:[candidate]);
+    });
+    marker.addEventListener('wheel',event=>{event.preventDefault();event.stopPropagation();zoomAt(event.clientX,event.clientY,event.deltaY);},{passive:false});
+    mapOverlay.appendChild(marker);
+  });
+
+  const labelMax=z>=18?0:z>=12?5:z>=8?10:z>=5?18:z>=3.5?22:z>=2.2?16:0;
+  const pointFont=z>=12?9:z>=6?10:11;
+  let labelCount=0;
+  if(labelMax>0){
+    pointLabelCandidates.forEach(candidate=>{
+      if(labelCount>=labelMax)return;
+      const p=candidateScreen(candidate,rect);
+      if(p.x<-20||p.x>rect.width+20||p.y<-20||p.y>rect.height+20)return;
+      const point=candidate.point;
+      const basis=point.label||point.point_id||point.type||'Punkt';
+      const text=basis+(z>=5.5&&point.km_meter!=null?' · km '+(Number(point.km_meter)/1000).toLocaleString('de-DE',{minimumFractionDigits:3,maximumFractionDigits:3}):'');
+      if(addOverlayLabel('screen-point-label',text,p.x,p.y,pointFont,occupied))labelCount++;
+    });
+  }
+}
+function scheduleOverlayRender(){
+  if(overlayFrame)return;
+  overlayFrame=requestAnimationFrame(renderScreenOverlay);
+}
+function renderGrid(){
+  let html='';
+  for(let x=50;x<1000;x+=75)html+='<line x1="'+x+'" y1="0" x2="'+x+'" y2="500"></line>';
+  for(let y=50;y<500;y+=75)html+='<line x1="0" y1="'+y+'" x2="1000" y2="'+y+'"></line>';
+  surveyGrid.innerHTML=html;
+}
+function medianNumber(values){
+  const sorted=values.filter(Number.isFinite).slice().sort((a,b)=>a-b);
+  if(!sorted.length)return null;
+  const middle=Math.floor(sorted.length/2);
+  return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;
+}
+function normalizedRoute(value){return String(value||'').trim();}
+function isExplicitKmGraRow(row){
+  const name=String(row?.item?.name||'').split('/').pop().split('\\').pop().toUpperCase();
+  return /(?:^|[_-])KM\d{4}(?:[_\.-]|$)/.test(name)||name.includes('KMLINIE')||name.includes('KM_LINIE');
+}
+function collectGvpByRoute(rows){
+  const byRoute=new Map();
+  const seen=new Set();
+  rows.forEach(row=>{
+    if(row.item.kind!=='GVP')return;
+    const points=Array.isArray(row.item.preview?.points)?row.item.preview.points:[];
+    points.forEach(point=>{
+      const km=Number(point.km_meter);
+      const route=normalizedRoute(point.route||row.item.route_number);
+      if(!route||!Number.isFinite(km)||!Number.isFinite(Number(point.x))||!Number.isFinite(Number(point.y)))return;
+      const key=physicalPointKey({...point,route});
+      if(seen.has(key))return;
+      seen.add(key);
+      if(!byRoute.has(route))byRoute.set(route,[]);
+      byRoute.get(route).push({...point,route,km_meter:km});
+    });
+  });
+  return byRoute;
+}
+function nearestAxisSample(point,samples){
+  let best=null,bestD2=Infinity;
+  for(const sample of samples){
+    const dx=Number(sample.x)-Number(point.x),dy=Number(sample.y)-Number(point.y);
+    const d2=dx*dx+dy*dy;
+    if(d2<bestD2){bestD2=d2;best=sample;}
+  }
+  return best?{sample:best,distance:Math.sqrt(bestD2)}:null;
+}
+function calibrateAxisFromGvp(item,line,gvpByRoute){
+  const route=normalizedRoute(item.route_number);
+  const samples=(Array.isArray(line)?line:[]).filter(p=>Number.isFinite(Number(p.x))&&Number.isFinite(Number(p.y))&&Number.isFinite(Number(p.station_m)));
+  const gvp=gvpByRoute.get(route)||[];
+  const base={status:'FEHLT',source:null,route,gvp_total:gvp.length,near_count:0,robust_count:0,km_from_m:null,km_to_m:null,offset_m:null,reason:null};
+  if(!route)return {...base,reason:'Strecke fehlt – GVP können nicht sicher zugeordnet werden.'};
+  if(samples.length<4)return {...base,reason:'Zu wenige Achssamplepunkte für GVP-Kalibrierung.'};
+  if(gvp.length<4)return {...base,reason:'Weniger als 4 GVP/Festpunkte mit KM auf derselben Strecke.'};
+
+  const offsets=[];
+  gvp.forEach(point=>{
+    const nearest=nearestAxisSample(point,samples);
+    if(!nearest||nearest.distance>120)return;
+    offsets.push({
+      offset:Number(point.km_meter)-Number(nearest.sample.station_m),
+      distance:nearest.distance,
+      point,
+      station:Number(nearest.sample.station_m)
+    });
+  });
+  if(offsets.length<4)return {...base,near_count:offsets.length,reason:'Weniger als 4 passende GVP liegen innerhalb 120 m zur Achse.'};
+
+  const firstMedian=medianNumber(offsets.map(item=>item.offset));
+  const robust=offsets.filter(item=>firstMedian!=null&&Math.abs(item.offset-firstMedian)<=80);
+  if(robust.length<4){
+    return {...base,status:'UNPLAUSIBEL',near_count:offsets.length,robust_count:robust.length,reason:'GVP-KM widersprechen sich: weniger als 4 robuste Offsets innerhalb ±80 m.'};
+  }
+  const offset=medianNumber(robust.map(item=>item.offset));
+  if(offset==null)return {...base,status:'UNPLAUSIBEL',near_count:offsets.length,robust_count:robust.length,reason:'Kein belastbarer GVP-Offset bestimmbar.'};
+
+  const stations=samples.map(item=>Number(item.station_m));
+  const stationMin=Math.min(...stations),stationMax=Math.max(...stations);
+  const kmA=stationMin+offset,kmB=stationMax+offset;
+  return {
+    ...base,
+    status:'AUTOMATISCH',
+    source:'GVP',
+    near_count:offsets.length,
+    robust_count:robust.length,
+    offset_m:offset,
+    km_from_m:Math.min(kmA,kmB),
+    km_to_m:Math.max(kmA,kmB),
+    reason:'Automatisch aus '+robust.length+' robusten GVP/Festpunkten kalibriert.'
+  };
+}
+function buildAxisKmStatus(rows){
+  const result=new Map();
+  const gvpByRoute=collectGvpByRoute(rows);
+  const graRowsByKey=new Map();
+  rows.forEach(row=>{
+    if(row.item.kind!=='GRA'||!row.item.semantic_key||!isExplicitKmGraRow(row))return;
+    if(!graRowsByKey.has(row.item.semantic_key))graRowsByKey.set(row.item.semantic_key,[]);
+    graRowsByKey.get(row.item.semantic_key).push(row);
+  });
+
+  rows.forEach(row=>{
+    const item=row.item;
+    if(item.kind!=='TRA'||!isAxisGroup(item)||item.object_group==='WEICHENVERBINDUNG'||!item.semantic_key||result.has(item.semantic_key))return;
+    const graRows=graRowsByKey.get(item.semantic_key)||[];
+    const graRange=graRows.map(r=>r.item.preview||{}).find(p=>validRange(p.km_from_m,p.km_to_m));
+    if(graRows.length){
+      result.set(item.semantic_key,{
+        status:'AUTOMATISCH',
+        source:'GRA',
+        gvp_total:null,near_count:null,robust_count:null,
+        km_from_m:graRange?Number(graRange.km_from_m):null,
+        km_to_m:graRange?Number(graRange.km_to_m):null,
+        reason:'Passende GRA/KM-Quelle erkannt.'
+      });
+      return;
+    }
+    result.set(item.semantic_key,calibrateAxisFromGvp(item,item.preview?.line||[],gvpByRoute));
+  });
+  return result;
+}
+function axisClass(item){
+  if(item.object_group==='WEICHENVERBINDUNG')return 'axis-wvb';
+  const km=axisKmStatusByKey.get(item.semantic_key);
+  if(km?.status==='AUTOMATISCH')return 'axis-auto';
+  if(km?.status==='UNPLAUSIBEL')return 'axis-unplausible';
+  return 'axis-missing';
+}
+function pointClass(point){
+  const type=String(point.type||'').toUpperCase();
+  if(type.includes('WEICH'))return 'point-switch';
+  return type.startsWith('KOR')||type.startsWith('CSV')?'point-ap':'point-gvp';
+}
+function renderGraphic(rows){
+  renderGrid();
+  surveyLayer.innerHTML='';mapOverlay.innerHTML='';
+  axisLabelCandidates=[];axisHitCandidates=[];pointLabelCandidates=[];
+  const entries=geometryEntries(rows),transform=geometryTransform(entries);
+  axisKmStatusByKey=buildAxisKmStatus(rows);
+  legend.innerHTML='<span class="legend-item"><span class="legend-dot" style="background:#009141"></span>Automatische KM · GRA oder GVP</span><span class="legend-item"><span class="legend-dot" style="background:#cd232d"></span>Keine belastbare KM</span><span class="legend-item"><span class="legend-dot" style="background:#696969"></span>KM/GVP unplausibel</span><span class="legend-item"><span class="legend-dot" style="background:#1976d2"></span>Weichenverbindung</span><span class="legend-item"><span class="legend-dot" style="background:#b88b00"></span>Vermessungspunkte</span>';
+  if(!transform){
+    surveyLayer.innerHTML='<text x="500" y="245" text-anchor="middle" fill="#667085" font-size="18">In der aktuellen Anzeige ist keine XY-Geometrie sichtbar</text><text x="500" y="275" text-anchor="middle" fill="#98a2b3" font-size="13">Über „Anzeige“ Achsen oder Punkte einblenden.</text>';
+    graphicInfo.textContent='Keine sichtbare Geometrie.';resetViewBox();return;
+  }
+  const seenPoints=new Set();
+  let axisIndex=0;
+  entries.forEach(entry=>{
+    const item=entry.row.item;
+    if(entry.kind==='axis'){
+      const points=entry.line.map(p=>transform(p).map(v=>v.toFixed(2)).join(',')).join(' ');
+      const poly=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+      poly.setAttribute('points',points);poly.setAttribute('class','geom-line '+axisClass(item));
+      const hit=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+      hit.setAttribute('points',points);hit.setAttribute('class','axis-hit');
+      hit.setAttribute('aria-label',axisHoverText(entry.row));
+      hit.addEventListener('mouseenter',event=>{poly.classList.add('axis-hovered');showAxisHoverTooltip(entry.row,event);});
+      hit.addEventListener('mousemove',event=>showAxisHoverTooltip(entry.row,event));
+      hit.addEventListener('mouseleave',()=>{poly.classList.remove('axis-hovered');clearHoverTooltip();});
+      hit.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();const hits=nearbyAxisCandidates(event.clientX,event.clientY,20);showAxisChoices(hits.length?hits:[{row:entry.row,item,poly,points:entry.line.map(p=>transform(p)),key:item.semantic_key||item.name}]);});
+      surveyLayer.appendChild(poly);
+      surveyLayer.appendChild(hit);
+      axisHitCandidates.push({row:entry.row,item,poly,points:entry.line.map(p=>transform(p)),key:item.semantic_key||item.name});
+      const fractions=[.34,.48,.62,.74];
+      const anchor=entry.line[Math.min(entry.line.length-1,Math.max(0,Math.floor((entry.line.length-1)*fractions[axisIndex%fractions.length])))];
+      const pos=transform(anchor);
+      axisLabelCandidates.push({x:pos[0],y:pos[1],item,row:entry.row});
+      axisIndex++;
+    }else{
+      entry.points.forEach(p=>{
+        const key=physicalPointKey(p);
+        if(seenPoints.has(key))return;seenPoints.add(key);
+        const pos=transform(p);
+        pointLabelCandidates.push({x:pos[0],y:pos[1],point:p,row:entry.row});
+      });
+    }
+  });
+  setDetailHtml('<div class="muted">Über Achse oder Vermessungspunkt fahren: Kurzinfo. Anklicken: vollständige Details.</div>');
+  resetViewBox();
+}
+function validRange(from,to){
+  const a=Number(from),b=Number(to);
+  return Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(b-a)>=.5&&!(Math.abs(a)<.001&&Math.abs(b)<.001);
+}
+function firstValidRange(rows,kind){
+  const ordered=[...rows].sort((a,b)=>{
+    const ak=a.item.kind==='GRA'?0:a.item.kind==='TRA'?1:2;
+    const bk=b.item.kind==='GRA'?0:b.item.kind==='TRA'?1:2;
+    return ak-bk;
+  });
+  for(const row of ordered){
+    const p=row.item.preview||{};
+    if(kind==='KM'&&row.item.kind==='GRA'&&!isExplicitKmGraRow(row))continue;
+    if(kind==='KM'&&validRange(p.km_from_m,p.km_to_m))return {from:Number(p.km_from_m),to:Number(p.km_to_m),source:row.item.kind};
+    if(kind==='STATION'&&validRange(p.station_from_m,p.station_to_m))return {from:Number(p.station_from_m),to:Number(p.station_to_m),source:row.item.kind};
+  }
+  return null;
+}
+function renderRanges(groups){
+  const valid=[],missing=[];
+  groups.forEach(group=>{
+    if(isPointGroup(group.rows[0].item))return;
+    const km=firstValidRange(group.rows,'KM');
+    if(km){valid.push({group,kind:'KM',...km});return;}
+    const tra=group.rows.find(row=>row.item.kind==='TRA'&&row.item.semantic_key);
+    const calibrated=tra?axisKmStatusByKey.get(tra.item.semantic_key):null;
+    if(calibrated?.status==='AUTOMATISCH'&&calibrated.source==='GVP'&&validRange(calibrated.km_from_m,calibrated.km_to_m)){
+      valid.push({group,kind:'KM',from:Number(calibrated.km_from_m),to:Number(calibrated.km_to_m),source:'GVP'});return;
+    }
+    const station=firstValidRange(group.rows,'STATION');
+    if(station){valid.push({group,kind:'STATION',...station});return;}
+    missing.push(group);
+  });
+  if(!valid.length){
+    rangeOverview.innerHTML='<div class="muted">Keine belastbaren KM-/Stationsbereiche erkannt.</div>'+(missing.length?'<div class="range-missing">'+missing.length+' Achse(n) ohne KM-Bereich.</div>':'');
+    return;
+  }
+
+  const sections=['KM','STATION'].map(kind=>{
+    const items=valid.filter(item=>item.kind===kind);
+    if(!items.length)return '';
+    const globalMin=Math.min(...items.map(i=>i.from));
+    const globalMax=Math.max(...items.map(i=>i.to));
+    const span=Math.max(globalMax-globalMin,.5);
+    const rowsHtml=items.map(d=>{
+      const left=(d.from-globalMin)/span*100;
+      const rawWidth=(d.to-d.from)/span*100;
+      const width=Math.max(Math.abs(rawWidth),1.5);
+      const safeLeft=Math.max(0,Math.min(100,left));
+      const safeWidth=Math.max(1.5,Math.min(width,100-safeLeft));
+      const label=kind==='KM'
+        ?kmLabel(d.from)+' – '+kmLabel(d.to)
+        :d.from.toFixed(1)+' – '+d.to.toFixed(1)+' m';
+      const source=kind==='KM'?(d.source==='GRA'?' · GRA/KM-Quelle':d.source==='GVP'?' · GVP/Festpunkte':''):' · technisch';
+      return '<div class="range-row"><div><b>'+esc(d.group.label)+'</b><div class="range-label">'+esc(label+source)+'</div></div><div class="range-track"><div class="range-fill '+(kind==='STATION'?'station':'')+'" style="left:'+safeLeft.toFixed(2)+'%;width:'+safeWidth.toFixed(2)+'%"></div></div></div>';
+    }).join('');
+    return '<div class="range-section"><div class="range-section-title">'+(kind==='KM'?'Belastbare KM-Bereiche':'Station (kein KM-Bezug)')+'</div>'+rowsHtml+'</div>';
+  }).join('');
+
+  rangeOverview.innerHTML=sections+(missing.length?'<div class="range-missing">'+missing.length+' Achse(n) ohne belastbaren KM-Bereich.</div>':'');
+}
+
+function applyView(){
+  surveyMap.setAttribute('viewBox',[view.x,view.y,view.w,view.h].join(' '));
+  scheduleOverlayRender();
+}
+function resetViewBox(){view={x:0,y:0,w:1000,h:500};applyView();}
+document.getElementById('resetView').addEventListener('click',resetViewBox);
+function setFullscreen(active){
+  graphicShell.classList.toggle('fullscreen',active);
+  document.body.style.overflow=active?'hidden':'';
+  requestAnimationFrame(()=>scheduleOverlayRender());
+}
+toggleFullscreen.addEventListener('click',()=>setFullscreen(true));
+closeFullscreen.addEventListener('click',()=>setFullscreen(false));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&graphicShell.classList.contains('fullscreen'))setFullscreen(false);});
+function zoomAt(clientX,clientY,deltaY){
+  const rect=surveyMap.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  const px=view.x+(clientX-rect.left)/rect.width*view.w;
+  const py=view.y+(clientY-rect.top)/rect.height*view.h;
+  const factor=deltaY>0?1.14:.86;
+  const nw=Math.min(4000,Math.max(0.5,view.w*factor));
+  const nh=nw/2;
+  view.x=px-(px-view.x)*(nw/view.w);
+  view.y=py-(py-view.y)*(nh/view.h);
+  view.w=nw;view.h=nh;applyView();
+}
+surveyMap.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,e.deltaY);},{passive:false});
+surveyMap.addEventListener('pointerdown',e=>{surveyMap.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};dragMoved=false;surveyMap.classList.add('dragging');});
+surveyMap.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>4)dragMoved=true;
+  const r=surveyMap.getBoundingClientRect();
+  view.x=drag.vx-(e.clientX-drag.x)/r.width*view.w;
+  view.y=drag.vy-(e.clientY-drag.y)/r.height*view.h;
+  applyView();
+});
+['pointerup','pointercancel'].forEach(ev=>surveyMap.addEventListener(ev,()=>{drag=null;surveyMap.classList.remove('dragging');}));
+surveyMap.addEventListener('click',e=>{
+  if(dragMoved){dragMoved=false;e.stopPropagation();return;}
+  const rect=surveyMap.getBoundingClientRect();
+  const hits=nearbyPointCandidates(e.clientX-rect.left,e.clientY-rect.top,24);
+  if(hits.length){e.preventDefault();e.stopPropagation();showPointChoices(hits);}
+},true);
+new ResizeObserver(()=>scheduleOverlayRender()).observe(graphicShell);
+
+wireStationPicker(defaultStationPicker);
+applyDefaultStation.addEventListener('click',()=>{
+  const selected=stationPickerValue(defaultStationPicker);
+  if(!selected.code){show('err','Bitte zuerst einen Bahnhof/Betriebsstelle aus der Referenzliste auswählen.');return;}
+  document.querySelectorAll('.decision-station-picker').forEach(root=>setStationPicker(root,selected.code,selected.name));
+  show('ok','Bahnhof/Betriebsstelle wurde auf alle Importgruppen übernommen. Einzelne Gruppen können weiterhin geändert oder geleert werden.');
+});
+clearDefaultStation.addEventListener('click',()=>setStationPicker(defaultStationPicker,'',''));
+
+function groupSettings(card){
+  const station=stationPickerValue(card.querySelector('.decision-station-picker'));
+  const track=card.querySelector('.decision-track');
+  const objectField=card.querySelector('.decision-object');
+  return {enabled:card.querySelector('.decision-enabled').checked,scope:'GLOBAL_REFERENCE',worksite_id:null,route_number:card.querySelector('.decision-route').value.trim()||null,track_key:track?.value.trim()||null,object_key:(objectField?.value.trim().toUpperCase()||card.dataset.inferredObject||null),station_code:station.code,station_name:station.name,station_query:station.query};
+}
+function validateGroups(){
+  let error='';
+  document.querySelectorAll('.analysis-item[data-group-index]').forEach(card=>{
+    if(error)return;
+    const s=groupSettings(card);
+    if(s.enabled&&s.station_query&&!s.station_code)error='Bahnhof/Betriebsstelle bitte aus der Referenzliste auswählen oder das Feld leer lassen.';
+  });
+  return error;
+}
+function resultHtml(r){
+  const state=(r.status==='IMPORTIERT'||r.status==='AKTUALISIERT')?(r.parse_status==='ERROR'?'warn':'ok'):r.status==='DUPLIKAT'||r.status==='ÜBERSPRUNGEN'||r.status==='VORHANDEN_ABWEICHEND'?'warn':'bad';
+  const parse=r.parse_status==='PARSED'?' · fachlich ausgewertet':r.parse_status==='UNSUPPORTED'?' · noch nicht auswertbar':r.parse_status==='ERROR'?' · Auswertungsfehler':'';
+  const warnings=(r.warnings||[]).length?'<ul class="warnings">'+r.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul>':'';
+  const error=r.error_detail?'<div class="small state-bad" style="margin-top:5px">'+esc(r.error_detail)+'</div>':'';
+  const scopeLabel=r.scope==='GLOBAL_REFERENCE'?'GLOBAL':r.scope==='COMPANY_WORKSITE_DATA'?'Firma/Baustelle':'';
+  const stationLabel=r.station_code||r.station_name?(' · '+stationDisplay(r.station_code,r.station_name)):'';
+  const conflictId=r.catalog?.conflict_id;
+  const problem=conflictId?'<div class="actions" style="margin-top:8px"><button type="button" class="secondary" data-conflict-open="'+esc(conflictId)+'">Problem ansehen</button></div>':'';
+  const labels={route_number:'Strecke',track_key:'Gleis/Achse',object_key:'Objekt',station_code:'Betriebsstelle',station_name:'Bahnhof',source_date:'Quelldatum'};
+  const changes=r.changes?'<div class="info-box" style="margin-top:8px"><b>Abweichende Zuordnung</b>'+Object.entries(r.changes).map(([key,value])=>'<div class="small">'+esc(labels[key]||key)+': '+esc(value?.before??'—')+' → <b>'+esc(value?.after??'—')+'</b></div>').join('')+'</div>':'';
+  return '<div class="result '+state+'"><div class="result-head"><div><b>'+esc(r.name||'Datei')+'</b><div><small>'+esc((scopeLabel?scopeLabel+' · ':'')+(r.message||'')+stationLabel)+esc(parse)+'</small></div></div><span class="pill">'+esc(r.status||r.kind||'')+'</span></div>'+changes+warnings+error+problem+'</div>';
+}
+
+function conflictReasonLabel(type){
+  const labels={
+    NEARBY_GEOMETRY_NOT_MATCHING:'Nahe Geometrie passt nicht',
+    ENDPOINT_HEADING_MISMATCH:'Endpunkte nah, Richtung passt nicht',
+    MULTIPLE_AXIS_CANDIDATES:'Mehrere Achsen kommen infrage',
+    GEOMETRY_TOO_SHORT:'Geometrie zu kurz',
+    GEOMETRY_CONFLICT:'Geometrie nicht eindeutig'
+  };
+  return labels[String(type||'').toUpperCase()]||String(type||'Prüffall').replaceAll('_',' ');
+}
+function metricRows(details){
+  const labels={nearest_distance_m:'Nächster Abstand',bbox_gap_m:'Abstand Bereiche',gap_m:'Endpunktabstand',heading_error_deg:'Richtungsabweichung',overlap_span_m:'Überlappung',median_distance_m:'Median-Abstand',max_distance_m:'Max. Abstand',match_count:'Treffer'};
+  return Object.entries(details||{}).filter(([key,value])=>value!==null&&value!==undefined&&labels[key]).map(([key,value])=>{
+    const unit=key.includes('deg')?'°':key==='match_count'?'':' m';
+    const text=typeof value==='number'&&key!=='match_count'?Number(value).toFixed(3)+unit:String(value)+unit;
+    return [labels[key],text];
+  });
+}
+function renderMetaRows(target,rows){
+  target.innerHTML=rows.filter(row=>row[1]!==null&&row[1]!==undefined&&String(row[1]).trim()!=='').map(row=>'<div class="conflict-meta-row"><span>'+esc(row[0])+'</span><b>'+esc(row[1])+'</b></div>').join('')||'<div class="muted">Keine Angaben.</div>';
+}
+function renderConflictGeometry(data){
+  conflictGraph.innerHTML='';
+  const entries=[
+    {segment:data.existing,cls:'conflict-line-old'},
+    {segment:data.candidate,cls:'conflict-line-new'}
+  ].filter(entry=>Array.isArray(entry.segment?.points)&&entry.segment.points.length>1);
+  const all=entries.flatMap(entry=>entry.segment.points).filter(p=>Number.isFinite(Number(p.x_dbref))&&Number.isFinite(Number(p.y_dbref)));
+  if(!all.length){conflictGraph.innerHTML='<text x="500" y="250" text-anchor="middle" fill="#667085" font-size="16">Keine vergleichbare XY-Geometrie vorhanden</text>';return;}
+  const xs=all.map(p=>Number(p.x_dbref)),ys=all.map(p=>Number(p.y_dbref)),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const dx=Math.max(maxX-minX,1),dy=Math.max(maxY-minY,1),scale=Math.min(900/dx,420/dy),ox=(1000-dx*scale)/2,oy=(500-dy*scale)/2;
+  const transform=p=>[ox+(Number(p.x_dbref)-minX)*scale,500-(oy+(Number(p.y_dbref)-minY)*scale)];
+  entries.forEach(entry=>{
+    const poly=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    poly.setAttribute('class',entry.cls);
+    poly.setAttribute('points',entry.segment.points.map(p=>transform(p).map(v=>v.toFixed(2)).join(',')).join(' '));
+    conflictGraph.appendChild(poly);
+  });
+}
+async function loadConflicts(){
+  try{
+    const {data}=await tbApi('/api/v1/survey-catalog/conflicts?status=OPEN&limit=100');
+    const rows=data.conflicts||[];
+    conflictSummary.textContent=rows.length?rows.length+' offener Prüffall / offene Prüffälle. Anklicken und geometrisch vergleichen.':'Keine offenen Prüffälle.';
+    conflictList.innerHTML=rows.map(row=>{
+      const identity=row.object_key||row.track_key||row.display_name||'Achse';
+      const place=[row.station_code,row.station_name].filter(Boolean).join(' – ');
+      return '<div class="conflict-row"><div class="headline"><div><b>'+esc(identity)+'</b><div class="conflict-reason">'+esc([place,row.route_number?'Str '+row.route_number:null,conflictReasonLabel(row.conflict_type)].filter(Boolean).join(' · '))+'</div></div><button type="button" class="secondary" data-conflict-open="'+esc(row.id)+'">Problem ansehen</button></div></div>';
+    }).join('')||'<div class="muted">Aktuell keine offenen Trassendaten-Prüffälle.</div>';
+  }catch(e){
+    conflictSummary.textContent='Prüffälle konnten nicht geladen werden.';
+    conflictList.innerHTML='<div class="state-bad">'+esc(e.message||String(e))+'</div>';
+  }
+}
+async function openConflict(id){
+  const {data}=await tbApi('/api/v1/survey-catalog/conflicts/'+encodeURIComponent(id));
+  currentConflictId=id;
+  const axis=data.axis||{},conflict=data.conflict||{},candidate=data.candidate||{},existing=data.existing||{},details=conflict.details||{};
+  conflictTitle.textContent='Prüffall · '+(axis.object_key||axis.display_name||'Trassenachse');
+  conflictLead.textContent=data.explanation?.title||conflictReasonLabel(conflict.conflict_type);
+  conflictExplanation.innerHTML='<b>'+esc(data.explanation?.title||conflictReasonLabel(conflict.conflict_type))+'</b><div class="muted" style="margin-top:5px">'+esc(data.explanation?.text||'Bitte beide Geometrien vergleichen.')+'</div><div class="muted" style="margin-top:6px"><code>'+esc(conflict.conflict_type||'')+'</code></div>';
+  renderMetaRows(conflictMeta,[
+    ['Bahnhof',stationDisplay(axis.station_code,axis.station_name)||null],
+    ['Strecke',axis.route_number||null],
+    ['Gleis',axis.track_key||null],
+    ['Objekt-ID',axis.object_key||null],
+    ['Typ',axis.axis_type||null],
+    ['Neue Quelle',candidate.source_name||null],
+    ['Vorhandene Quelle',existing.source_name||null],
+    ['Neue Punkte',candidate.point_count??null],
+    ['Vorhandene Punkte',existing.point_count??null]
+  ]);
+  renderMetaRows(conflictMetrics,metricRows(details));
+  conflictNote.value='';
+  renderConflictGeometry(data);
+  conflictBackdrop.classList.add('open');conflictBackdrop.setAttribute('aria-hidden','false');
+}
+function closeConflictModal(){conflictBackdrop.classList.remove('open');conflictBackdrop.setAttribute('aria-hidden','true');currentConflictId=null;}
+reloadConflicts.addEventListener('click',loadConflicts);
+closeConflict.addEventListener('click',closeConflictModal);
+conflictBackdrop.addEventListener('click',event=>{if(event.target===conflictBackdrop)closeConflictModal();});
+document.addEventListener('click',event=>{const button=event.target.closest('[data-conflict-open]');if(button)openConflict(button.dataset.conflictOpen).catch(e=>show('err',e.message||String(e)));});
+document.querySelectorAll('[data-conflict-resolution]').forEach(button=>button.addEventListener('click',async()=>{
+  if(!currentConflictId)return;
+  const resolution=button.dataset.conflictResolution;
+  if(!confirm('Diese Entscheidung wird versioniert gespeichert. Wirklich fortfahren?'))return;
+  try{
+    await tbApi('/api/v1/survey-catalog/conflicts/'+encodeURIComponent(currentConflictId)+'/resolve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resolution,note:conflictNote.value.trim()||null})});
+    closeConflictModal();await loadConflicts();show('ok','Prüffall wurde gespeichert.');
+  }catch(e){show('err',e.message||String(e));}
+}));
+loadConflicts();
+
+startImport.addEventListener('click',async()=>{
+  const validation=validateGroups();if(validation){show('err',validation);return;}
+  const overwrite=Boolean(overwriteExisting?.checked);
+  if(overwrite&&!window.confirm('Achtung: Bereits vorhandene identische Dateien mit abweichender Zuordnung werden aktualisiert. Die Rohdatei bleibt unverändert. Wirklich fortfahren?'))return;
+  const plans={};
+  document.querySelectorAll('.analysis-item[data-group-index]').forEach(card=>{
+    const group=currentGroups[Number(card.dataset.groupIndex)],settings=groupSettings(card);
+    group.rows.forEach(row=>{
+      const id=row.session.data.analysis_id;
+      if(!plans[id])plans[id]=[];
+      plans[id].push({item_id:row.item.item_id,import_item:settings.enabled,scope:settings.scope,worksite_id:settings.worksite_id,data_kind:row.item.kind||null,route_number:settings.route_number,track_key:settings.track_key,object_key:settings.object_key,station_code:settings.station_code,station_name:settings.station_name,overwrite_existing:overwrite});
+    });
+  });
+  const ids=Object.keys(plans);if(!ids.length)return;
+  startImport.disabled=true;reanalyze.disabled=true;resultCard.style.display='block';results.innerHTML='';show('info','Bestätigte Gruppen werden jetzt importiert. Originale bleiben unverändert.');
+  const all=[];
+  for(const analysisId of ids){
+    try{
+      const response=await tbApi('/api/v1/admin/survey-import/analysis/'+encodeURIComponent(analysisId)+'/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({decisions:plans[analysisId]})});
+      const rows=response.data.results||[];all.push(...rows);results.insertAdjacentHTML('beforeend',rows.map(resultHtml).join(''));
+    }catch(e){
+      const row={name:'Analyse '+analysisId,status:'FEHLER',message:e.message||String(e)};all.push(row);results.insertAdjacentHTML('beforeend',resultHtml(row));
+    }
+  }
+  const imported=all.filter(r=>r.status==='IMPORTIERT').length,updated=all.filter(r=>r.status==='AKTUALISIERT').length,duplicates=all.filter(r=>r.status==='DUPLIKAT').length,pending=all.filter(r=>r.status==='VORHANDEN_ABWEICHEND').length,skipped=all.filter(r=>r.status==='ÜBERSPRUNGEN').length,errors=all.filter(r=>r.status==='FEHLER'||r.parse_status==='ERROR').length;
+  resultSummary.textContent=imported+' importiert · '+updated+' aktualisiert · '+duplicates+' Duplikate · '+pending+' abweichend vorhanden · '+skipped+' übersprungen · '+errors+' Fehler';
+  if(pending){
+    show('warn','Achtung: Daten sind bereits vorhanden, aber anders zugeordnet. Prüfe die Änderungen. Wenn sie stimmen, Haken bei „Vorhandene identische Dateien … aktualisieren“ setzen und Import erneut starten.');
+    startImport.disabled=false;
+  }else{
+    show(errors?'err':'ok',errors?'Import abgeschlossen. Mindestens eine Datei benötigt Prüfung.':'Import abgeschlossen. Die bestätigten Gruppen wurden gespeichert bzw. aktualisiert.');
+    startImport.disabled=true;
+  }
+  await loadConflicts();
+  reanalyze.disabled=false;resultCard.scrollIntoView({behavior:'smooth',block:'start'});
+});
+document.getElementById('reloadPage')?.addEventListener('click',()=>location.reload());
+</script>
+{% endblock %}

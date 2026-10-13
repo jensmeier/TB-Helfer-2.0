@@ -351,14 +351,17 @@ class TrassenRepository(private val dao: TrassenDao) {
         val achsen = dao.alleAchsen()
         val samplesNachAchse = dao.alleSamplepunkte().groupBy { it.achseId }
 
-        if (graPunkte.isEmpty() || achsen.isEmpty() || samplesNachAchse.isEmpty()) {
+        // GVP/Festpunkte sind eine eigenständige KM-Quelle. Eine fehlende GRA-Datei darf
+        // die GVP-Kalibrierung deshalb nicht mehr vorzeitig abbrechen. Nur ohne Achse bzw.
+        // ohne Achssamplepunkte kann weder GRA noch GVP auf die TRA-Geometrie angewendet werden.
+        if (achsen.isEmpty() || samplesNachAchse.isEmpty()) {
             val ergebnis = GraVerknuepfungErgebnis(achsenVerknuepft = 0, samplepunkteVerknuepft = 0, graGruppenVerwendet = 0)
             dao.importStatusEinfuegen(
                 TrassenImportStatusEntity(
-                    quelleDatei = "GRA/kmLinien",
+                    quelleDatei = "GRA/kmLinien + GVP",
                     datenTyp = "KM",
                     status = TrassenAchseEntity.STATUS_FEHLER,
-                    meldung = "Keine passenden GRA-/Achsdaten zum Verknuepfen gefunden"
+                    meldung = "Keine passenden Achsdaten zum Verknuepfen gefunden"
                 )
             )
             return@withContext ergebnis

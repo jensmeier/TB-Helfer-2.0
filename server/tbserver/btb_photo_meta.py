@@ -1,0 +1,264 @@
+from __future__ import annotations
+
+import base64
+import binascii
+import json
+import math
+import struct
+from datetime import datetime, timezone
+from typing import Any
+
+PHOTO_TYPES = (
+    "ABNAHMEN",
+    "EINWEISUNG_UNTERWEISUNG",
+    "BESONDERHEITEN",
+    "MAENGEL_SCHAEDEN",
+    "FOTODOKUMENTATION",
+)
+PHOTO_INDICATORS = ("GRUEN", "GELB", "ROT")
+_PREFIX_V1 = "BTBP1__"
+_PREFIX_LEGACY = "BTBPHOTO__"
+
+_STRING_LIMITS = {
+    "firma": 200,
+    "firmaId": 200,
+    "worksiteNodeKey": 240,
+    "kurztext": 500,
+    "objektKennung": 240,
+    "objektBereich": 240,
+    # Android stores these fields in FotoEntity as well. Keep them in the
+    # canonical round-trip even when the current portal does not render them.
+    "notiz": 2000,
+    "info1": 500,
+    "info2": 500,
+    "info3": 500,
+    "info4": 500,
+    "info5": 500,
+}
+
+
+def normalize_photo_metadata(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+
+    result: dict[str, Any] = {}
+
+    raw_type = str(value.get("typ") or "").strip().upper()
+    if raw_type in PHOTO_TYPES:
+        result["typ"] = raw_type
+
+    raw_indicator = str(value.get("indikator") or "").strip().upper()
+    if raw_indicator in PHOTO_INDICATORS:
+        result["indikator"] = raw_indicator
+
+    for key, limit in _STRING_LIMITS.items():
+        if key not in value or value.get(key) is None:
+            continue
+        text = str(value.get(key)).strip()
+        if text:
+            result[key] = text[:limit]
+
+    def finite_float(key: str) -> None:
+        if key not in value or value.get(key) is None:
+            return
+        try:
+            number = float(value.get(key))
+        except (TypeError, ValueError):
+            return
+        if math.isfinite(number):
+            result[key] = number
+
+    for key in ("alt", "km", "achsabstand", "lat", "lon"):
+        finite_float(key)
+
+    if "lat" in result and not (-90.0 <= float(result["lat"]) <= 90.0):
+        result.pop("lat", None)
+    if "lon" in result and not (-180.0 <= float(result["lon"]) <= 180.0):
+        result.pop("lon", None)
+
+    if value.get("epoch") is not None:
+        try:
+            epoch = int(value.get("epoch"))
+            if epoch >= 0:
+                result["epoch"] = epoch
+        except (TypeError, ValueError, OverflowError):
+            pass
+
+    if value.get("kmSuffix") is not None:
+        try:
+            result["kmSuffix"] = int(value.get("kmSuffix"))
+        except (TypeError, ValueError, OverflowError):
+            pass
+
+    if value.get("kmManuell") is not None:
+        result["kmManuell"] = bool(value.get("kmManuell"))
+
+    return result
+
+
+
+
+BTB_PHOTO_OVERRIDE_KEYS = frozenset({
+    "typ",
+    "indikator",
+    "firma",
+    "firmaId",
+    "worksiteNodeKey",
+    "kurztext",
+    "km",
+    "objektKennung",
+    "objektBereich",
+})
+
+
+def normalize_btb_photo_override(value: Any) -> dict[str, Any]:
+    """Normalize a BTB-link metadata patch while preserving explicit clears."""
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, Any] = {}
+    for key in BTB_PHOTO_OVERRIDE_KEYS:
+        if key not in value:
+            continue
+        raw = value.get(key)
+        if raw is None or (isinstance(raw, str) and not raw.strip()):
+            result[key] = None
+            continue
+        normalized = normalize_photo_metadata({key: raw})
+        if key in normalized:
+            result[key] = normalized[key]
+    return result
+
+
+def merge_btb_photo_metadata(
+    base: dict[str, Any] | None,
+    override: dict[str, Any] | None,
+) -> dict[str, Any]:
+    merged = normalize_photo_metadata(base)
+    for key, value in normalize_btb_photo_override(override).items():
+        if value is None:
+            merged.pop(key, None)
+        else:
+            merged[key] = value
+    return merged
+
+
+def _b64url_decode(raw: str) -> bytes:
+    padding = "=" * ((4 - len(raw) % 4) % 4)
+    return base64.urlsafe_b64decode((raw + padding).encode("ascii"))
+
+
+def _tiny_utf(data: bytes, offset: int) -> tuple[str, int]:
+    if offset >= len(data):
+        raise ValueError("BTB photo metadata is truncated")
+    size = data[offset]
+    offset += 1
+    end = offset + size
+    if end > len(data):
+        raise ValueError("BTB photo metadata text is truncated")
+    return data[offset:end].decode("utf-8"), end
+
+
+def decode_btb_photo_metadata(filename: str | None) -> dict[str, Any] | None:
+    raw = str(filename or "")
+    if raw.startswith(_PREFIX_V1):
+        encoded = raw[len(_PREFIX_V1):].split("__", 1)[0]
+        if not encoded:
+            return None
+        try:
+            data = _b64url_decode(encoded)
+            fixed_size = struct.calcsize(">qfffffhBBB")
+            if len(data) < fixed_size:
+                return None
+            (
+                epoch_ms,
+                lat,
+                lon,
+                alt,
+                km,
+                track_distance,
+                km_suffix,
+                flags,
+                type_index,
+                indicator_index,
+            ) = struct.unpack_from(">qfffffhBBB", data, 0)
+            offset = fixed_size
+            company, offset = _tiny_utf(data, offset)
+            short_text, offset = _tiny_utf(data, offset)
+            object_name, offset = _tiny_utf(data, offset)
+            object_area, offset = _tiny_utf(data, offset)
+            return {
+                "epoch": int(epoch_ms),
+                "lat": float(lat),
+                "lon": float(lon),
+                "alt": None if math.isnan(alt) else float(alt),
+                "km": None if math.isnan(km) else float(km),
+                "achsabstand": None if math.isnan(track_distance) else float(track_distance),
+                "kmSuffix": int(km_suffix),
+                "kmManuell": bool(flags & 1),
+                "typ": PHOTO_TYPES[type_index] if type_index < len(PHOTO_TYPES) else "FOTODOKUMENTATION",
+                "indikator": PHOTO_INDICATORS[indicator_index] if indicator_index < len(PHOTO_INDICATORS) else "",
+                "firma": company,
+                "kurztext": short_text or "Foto",
+                "objektKennung": object_name,
+                "objektBereich": object_area,
+            }
+        except (binascii.Error, ValueError, UnicodeDecodeError, struct.error):
+            return None
+
+    if raw.startswith(_PREFIX_LEGACY):
+        encoded = raw[len(_PREFIX_LEGACY):].split("__", 1)[0]
+        if not encoded:
+            return None
+        try:
+            value = json.loads(_b64url_decode(encoded).decode("utf-8"))
+            return value if isinstance(value, dict) else None
+        except (binascii.Error, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+            return None
+    return None
+
+
+def canonical_photo_metadata(
+    *,
+    filename: str | None,
+    captured_at: datetime | None = None,
+    gps_lat: float | None = None,
+    gps_lon: float | None = None,
+    gps_accuracy_m: float | None = None,
+    photo_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    decoded = normalize_photo_metadata(decode_btb_photo_metadata(filename) or {})
+    structured = normalize_photo_metadata(photo_metadata)
+    merged = dict(decoded)
+    merged.update(structured)
+    resolved_captured_at = captured_at
+    if resolved_captured_at is None and merged.get("epoch") is not None:
+        try:
+            resolved_captured_at = datetime.fromtimestamp(
+                float(merged["epoch"]) / 1000.0,
+                tz=timezone.utc,
+            )
+        except (OverflowError, OSError, TypeError, ValueError):
+            resolved_captured_at = None
+
+    def valid_coordinate(value: Any, minimum: float, maximum: float) -> float | None:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        return number if minimum <= number <= maximum else None
+
+    resolved_lat = gps_lat if gps_lat is not None else valid_coordinate(merged.get("lat"), -90.0, 90.0)
+    resolved_lon = gps_lon if gps_lon is not None else valid_coordinate(merged.get("lon"), -180.0, 180.0)
+    if resolved_lat is not None:
+        merged["lat"] = resolved_lat
+    if resolved_lon is not None:
+        merged["lon"] = resolved_lon
+    if resolved_captured_at is not None:
+        merged.setdefault("epoch", int(resolved_captured_at.timestamp() * 1000))
+    return {
+        "captured_at": resolved_captured_at,
+        "gps_lat": resolved_lat,
+        "gps_lon": resolved_lon,
+        "gps_accuracy_m": gps_accuracy_m,
+        "photo_metadata": merged or None,
+    }

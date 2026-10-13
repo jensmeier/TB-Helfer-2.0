@@ -6,15 +6,17 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 
 /**
- * Persistiert BTB/PDF-Text-Overrides pro Schicht als JSON-Datei.
- * Key: (baustelleId + datumIso + shiftStart + shiftEnd) -> Map<fotoId, text>
+ * Persistiert BTB/PDF-Text-Overrides pro BTB als JSON-Datei.
  *
- * Wichtig: überschreibt NICHT FotoEntity.notiz/kurtztext.
+ * Neue Multi-BTB-Berichte verwenden automatisch die aktive stabile BTB-ID als zusätzlichen
+ * Dateischlüssel. Altbestände ohne BTB-ID bleiben über Datum/Schicht/Zeit lesbar.
+ *
+ * Wichtig: überschreibt NICHT FotoEntity.notiz/kurztext.
  */
 object BtbPhotoTextOverrideStore {
 
     private const val DIR_NAME = "btb_photo_overrides"
-    private const val VERSION = 1
+    private const val VERSION = 2
 
     fun loadOverrides(
         context: Context,
@@ -81,6 +83,7 @@ object BtbPhotoTextOverrideStore {
             put("version", VERSION)
             put("updatedEpochMs", System.currentTimeMillis())
             put("baustelleId", baustelleId)
+            put("btbId", BtbPhotoInstanzKey.activeBtbId(context, baustelleId, datumIso, schicht) ?: JSONObject.NULL)
             put("datumIso", datumIso)
             put("schicht", schicht.name)
             put("shiftStart", shiftStart ?: JSONObject.NULL)
@@ -99,10 +102,7 @@ object BtbPhotoTextOverrideStore {
         tmp.renameTo(f)
     }
 
-    /**
-     * Setzt/entfernt Override für mehrere Foto-IDs.
-     * text == null/blank => entfernen (Reset auf Standard)
-     */
+    /** text == null/blank => Override entfernen. */
     fun setOverrideForIds(
         context: Context,
         baustelleId: Long,
@@ -131,7 +131,6 @@ object BtbPhotoTextOverrideStore {
             fotoIds.forEach { map[it] = cleaned }
         }
 
-        // Wenn leer -> Datei löschen (optional)
         if (map.isEmpty()) {
             runCatching { fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht).delete() }
             return
@@ -140,26 +139,31 @@ object BtbPhotoTextOverrideStore {
         saveOverrides(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht, map)
     }
 
-    
-fun fileFor(
-    context: Context,
-    baustelleId: Long,
-    datumIso: String,
-    shiftStart: String?,
-    shiftEnd: String?
-): File = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, SchichtTyp.TAG)
+    fun fileFor(
+        context: Context,
+        baustelleId: Long,
+        datumIso: String,
+        shiftStart: String?,
+        shiftEnd: String?
+    ): File = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, SchichtTyp.TAG)
 
-
-    /** Löscht alle gespeicherten Text-Overrides für dieses Datum+Schicht (alle Zeiten). */
     fun deleteAllFor(context: Context, baustelleId: Long, datumIso: String, schicht: SchichtTyp) {
         val dir = File(context.filesDir, DIR_NAME)
         if (!dir.exists()) return
+        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
+        if (token != null) {
+            val prefix = "ovr_${baustelleId}_btb_${token}_"
+            dir.listFiles()?.forEach { f ->
+                if (f.name.startsWith(prefix)) runCatching { f.delete() }
+            }
+            return
+        }
+
         val st = schicht.name.lowercase()
         val prefixNew = "ovr_${baustelleId}_${datumIso}_${st}_"
         dir.listFiles()?.forEach { f ->
             if (f.name.startsWith(prefixNew)) runCatching { f.delete() }
         }
-        // Legacy nur für TAG (ohne schichtKey)
         if (schicht == SchichtTyp.TAG) {
             val prefixLegacy = "ovr_${baustelleId}_${datumIso}_"
             dir.listFiles()?.forEach { f ->
@@ -170,36 +174,41 @@ fun fileFor(
         }
     }
 
-fun fileForWrite(
-    context: Context,
-    baustelleId: Long,
-    datumIso: String,
-    shiftStart: String?,
-    shiftEnd: String?,
-    schicht: SchichtTyp
-): File {
-    val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
-    val s = BtbPhotoSelectionStore.safeTimeKey(shiftStart)
-    val e = BtbPhotoSelectionStore.safeTimeKey(shiftEnd)
-    val st = schicht.name.lowercase()
-    val name = "ovr_${baustelleId}_${datumIso}_${st}_${s}_${e}.json"
-    return File(dir, name)
-}
+    fun fileForWrite(
+        context: Context,
+        baustelleId: Long,
+        datumIso: String,
+        shiftStart: String?,
+        shiftEnd: String?,
+        schicht: SchichtTyp
+    ): File {
+        val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
+        val s = BtbPhotoSelectionStore.safeTimeKey(shiftStart)
+        val e = BtbPhotoSelectionStore.safeTimeKey(shiftEnd)
+        val st = schicht.name.lowercase()
+        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
+        val name = if (token != null) {
+            "ovr_${baustelleId}_btb_${token}_${datumIso}_${st}_${s}_${e}.json"
+        } else {
+            "ovr_${baustelleId}_${datumIso}_${st}_${s}_${e}.json"
+        }
+        return File(dir, name)
+    }
 
-fun fileForRead(
-    context: Context,
-    baustelleId: Long,
-    datumIso: String,
-    shiftStart: String?,
-    shiftEnd: String?,
-    schicht: SchichtTyp
-): File {
-    val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
-    val newF = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht)
-    if (newF.exists()) return newF
-    val s = BtbPhotoSelectionStore.safeTimeKey(shiftStart)
-    val e = BtbPhotoSelectionStore.safeTimeKey(shiftEnd)
-    val legacy = File(dir, "ovr_${baustelleId}_${datumIso}_${s}_${e}.json")
-    return legacy
-}
+    fun fileForRead(
+        context: Context,
+        baustelleId: Long,
+        datumIso: String,
+        shiftStart: String?,
+        shiftEnd: String?,
+        schicht: SchichtTyp
+    ): File {
+        val dir = File(context.filesDir, DIR_NAME).apply { mkdirs() }
+        val token = BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)
+        val newF = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht)
+        if (token != null || newF.exists()) return newF
+        val s = BtbPhotoSelectionStore.safeTimeKey(shiftStart)
+        val e = BtbPhotoSelectionStore.safeTimeKey(shiftEnd)
+        return File(dir, "ovr_${baustelleId}_${datumIso}_${s}_${e}.json")
+    }
 }

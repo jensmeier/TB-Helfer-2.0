@@ -1,0 +1,936 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Baustelle{% endblock %}
+{% block head %}
+<style>
+  [hidden]{display:none!important}summary{cursor:pointer;font-weight:700;padding:12px 0}.section-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+  .item{border:1px solid #eaecf0;border-radius:10px;padding:11px;margin:8px 0}
+  .item h4{margin:0 0 5px}.json{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+  .compact input,.compact select,.compact textarea{margin-bottom:8px}.status-open{background:#eff8ff}.status-done{background:#ecfdf3}
+  .invite-secret-grid{display:grid;grid-template-columns:minmax(180px,240px) 1fr;gap:14px;align-items:start;margin-top:12px}
+  .invite-secret-grid img{width:100%;max-width:240px;background:#fff;border:1px solid #d0d5dd;border-radius:10px;padding:8px}
+  .invite-share-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+  .invite-share-row input{flex:1;min-width:220px;margin:0}
+  @media(max-width:700px){.invite-secret-grid{grid-template-columns:1fr}.invite-secret-grid img{max-width:220px}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="actions" style="margin-bottom:14px">
+  <a class="btn secondary" href="{{ page_prefix|default('/portal/v1') }}/worksites">← Baustellen</a>
+</div>
+<div class="card">
+  <h1 id="title">Baustelle wird geladen …</h1>
+  <p id="meta" class="muted"></p>
+  {% if user.company_role == 'ADMIN' %}
+  <div class="notice info"><b>Admin-Kontrollansicht:</b> Fachinhalte, Teams und Zuordnungen sind hier nur lesbar. Änderungen erfolgen durch den verantwortlichen TB bzw. die berechtigten Baustellennutzer.</div>
+  {% endif %}
+  <div id="msg"></div>
+</div>
+
+<div class="section-grid">
+  <div class="card">
+    <h2>Unterbaustellen</h2>
+    <div id="nodes"></div>
+    <form id="nodeForm" class="compact">
+      <label for="nodeKind">Art</label>
+      <select id="nodeKind">
+        <option value="FREIE_STRECKE">Freie Strecke</option>
+        <option value="BAHNHOF">Bahnhof</option>
+        <option value="ALLGEMEIN_OBJEKT">Allgemeines Objekt</option>
+      </select>
+      <label for="nodeParent">Übergeordnetes Element (optional)</label>
+      <select id="nodeParent"><option value="">direkt unter Hauptbaustelle</option></select>
+      <label for="nodeDisplayName">Name</label><input id="nodeDisplayName" required maxlength="300">
+      <div class="grid">
+        <div><label for="nodeRoute">Strecke</label><input id="nodeRoute" maxlength="40"></div>
+        <div><label for="nodeTrack">Gleis / Weiche</label><input id="nodeTrack" maxlength="200"></div>
+      </div>
+      <div class="grid">
+        <div><label for="nodeKmFrom">km von</label><input id="nodeKmFrom" type="number" step="0.001"></div>
+        <div><label for="nodeKmTo">km bis</label><input id="nodeKmTo" type="number" step="0.001"></div>
+      </div>
+      <label for="nodeStation">Bahnhof</label><input id="nodeStation" maxlength="240">
+      <p class="muted">Die Felder werden im selben Baumformat wie in der Android-App gespeichert.</p>
+      <button type="submit">Strukturelement anlegen</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Teams / Bautagesberichte</h2>
+    <div id="teams">wird geladen …</div>
+  </div>
+</div>
+
+<div class="section-grid">
+  <div class="card">
+    <h2>Mitglieder</h2>
+    <div id="members">wird geladen …</div>
+    <div id="invitePanel" style="display:none">
+      <h3>Einladung erstellen</h3>
+      <p class="muted">Neue Zusammenarbeit beginnt erst nach Annahme der Einladung. Helfer werden dem Team des einladenden verantwortlichen TB zugeordnet.</p>
+      <form id="inviteForm" class="compact">
+        <label for="inviteUser">Benutzer</label><select id="inviteUser" required><option value="">wird geladen …</option></select>
+        <div class="grid">
+          <div><label for="inviteRole">Rolle</label><select id="inviteRole"><option value="HELPER">Helfer</option><option value="TB">TB</option><option value="RESPONSIBLE_TB">Verantwortlicher TB</option><option value="READ_ONLY">Nur Lesen</option></select></div>
+          <div><label for="inviteProfile">Rechteprofil</label><select id="inviteProfile"><option value="HELPER_STANDARD">Helfer Standard</option><option value="HELPER_EXTENDED">Helfer erweitert</option><option value="RESPONSIBLE_TB">Verantwortlicher TB</option><option value="READ_ONLY">Nur Lesen</option></select></div>
+          <div><label for="inviteDays">Gültig (Tage)</label><input id="inviteDays" type="number" min="1" max="30" value="7"></div>
+        </div>
+        <label for="inviteAreaMode">Freigegebener Bereich</label>
+        <select id="inviteAreaMode" required><option value="">Bitte auswählen</option><option value="all">Ganze Baustelle</option><option value="limited">Begrenzter Bereich</option></select>
+        <div id="inviteAreaFields" hidden class="grid" style="margin-top:10px"><div><label for="inviteAreaLabels">Bereiche (mit Semikolon trennen)</label><input id="inviteAreaLabels" placeholder="z. B. Schwerbau"></div><div><label for="inviteKmFrom">km von</label><input id="inviteKmFrom" inputmode="decimal"></div><div><label for="inviteKmTo">km bis</label><input id="inviteKmTo" inputmode="decimal"></div></div>
+        <button type="submit">Einladung erzeugen</button>
+      </form>
+      <div id="inviteSecret"></div>
+      <h3 style="margin-top:16px">Einladungen</h3>
+      <div id="invitations"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Mängel</h2>
+    <div id="defects"></div>
+    <form id="defectForm" class="compact">
+      <input id="defectEditId" type="hidden">
+      <input id="defectEditVersion" type="hidden">
+      <h3 id="defectFormTitle">Neuen Mangel anlegen</h3>
+      <label for="defectDescription">Beschreibung</label>
+      <textarea id="defectDescription" rows="3" maxlength="500" required></textarea>
+      <div class="grid">
+        <div><label for="defectArea">Bereich</label><input id="defectArea" maxlength="240"></div>
+        <div><label for="defectKm">Kilometer / Lage</label><input id="defectKm" maxlength="120"></div>
+      </div>
+      <div class="grid">
+        <div><label for="defectCompany">Firma</label><input id="defectCompany" maxlength="240"></div>
+        <div><label for="defectStatus">Status</label>
+          <select id="defectStatus"><option value="OPEN">Offen</option><option value="IN_PROGRESS">In Arbeit</option><option value="REJECTED">Abgelehnt</option></select>
+        </div>
+      </div>
+      <label for="defectNode">Strukturelement (optional)</label><select id="defectNode"><option value="">ohne Zuordnung</option></select>
+      <label for="defectComment">Kommentar</label><textarea id="defectComment" rows="2"></textarea>
+      <details hidden>
+        <summary>Zusatzdaten</summary>
+        <p class="muted">Nur für zusätzliche Felder. Die Fachfelder oben bleiben maßgeblich.</p>
+        <textarea id="defectPayload" class="json" rows="4">{}</textarea>
+      </details>
+      <div class="actions">
+        <button id="defectSubmit" type="submit">Mangel anlegen</button>
+        <button id="defectCancel" class="secondary" type="button" style="display:none" onclick="resetDefectForm()">Abbrechen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Abnahmen</h2>
+  <div id="acceptances"></div>
+  <form id="acceptanceForm" class="compact">
+    <input id="acceptanceEditId" type="hidden">
+    <input id="acceptanceEditVersion" type="hidden">
+    <h3 id="acceptanceFormTitle">Neue Abnahme anlegen</h3>
+    <div class="grid">
+      <div><label for="acceptanceDesignation">Bezeichnung</label><input id="acceptanceDesignation" maxlength="500" required></div>
+      <div><label for="acceptanceObject">Objekt</label><input id="acceptanceObject" maxlength="300"></div>
+    </div>
+    <div class="grid">
+      <div><label for="acceptanceCompany">Firma</label><input id="acceptanceCompany" maxlength="240"></div>
+      <div><label for="acceptanceOtherCompanies">Weitere Firmen</label><input id="acceptanceOtherCompanies" maxlength="500"></div>
+    </div>
+    <div class="grid">
+      <div><label for="acceptanceInspector">Abnehmender</label><input id="acceptanceInspector" maxlength="240"></div>
+      <div><label for="acceptanceAttendees">Anwesende</label><input id="acceptanceAttendees" maxlength="500"></div>
+    </div>
+    <div class="grid">
+      <div><label for="acceptanceKmFrom">km von</label><input id="acceptanceKmFrom" type="number" step="0.001"></div>
+      <div><label for="acceptanceKmTo">km bis</label><input id="acceptanceKmTo" type="number" step="0.001"></div>
+    </div>
+    <div class="grid">
+      <div><label for="acceptanceNode">Strukturelement (optional)</label><select id="acceptanceNode"><option value="">ohne Zuordnung</option></select></div>
+      <div><label for="acceptanceResult">Zwischenergebnis</label>
+        <select id="acceptanceResult">
+          <option value="ENTWURF">Entwurf</option>
+          <option value="ABGENOMMEN_MIT_RESTPUNKTEN">Abgenommen mit Restpunkten</option>
+          <option value="NOCH_ZU_PRUEFEN">Noch zu prüfen</option>
+        </select>
+      </div>
+    </div>
+    <label for="acceptanceComment">Kommentar</label><textarea id="acceptanceComment" rows="2"></textarea>
+    <label for="acceptanceRemaining">Restpunkte</label><textarea id="acceptanceRemaining" rows="2"></textarea>
+    <details>
+      <summary>Zusatzdaten</summary>
+      <p class="muted">Nur für zusätzliche Felder. Die Fachfelder oben bleiben maßgeblich.</p>
+      <textarea id="acceptancePayload" class="json" rows="4">{}</textarea>
+    </details>
+    <div class="actions">
+      <button id="acceptanceSubmit" type="submit">Abnahme anlegen</button>
+      <button id="acceptanceCancel" class="secondary" type="button" style="display:none" onclick="resetAcceptanceForm()">Abbrechen</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const pagePrefix={{ (page_prefix|default('/portal/v1'))|tojson }};
+const worksiteId={{ worksite_id|tojson }};
+const adminReadOnly={{ (user.company_role == 'ADMIN')|tojson }};
+const msg=document.getElementById('msg');
+let worksite=null, permissions={}, nodeData=[], teamData=[], mediaData=[];
+let liveEvents=null, liveRefreshTimer=null, liveRefreshRunning=false, liveRefreshQueued=false;
+const liveDirtyTypes=new Set();
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function can(name){if(adminReadOnly)return false;return permissions['*']===true||permissions[name]===true;}
+function profileLabel(key){return ({HELPER_STANDARD:'Helfer Standard',HELPER_EXTENDED:'Helfer erweitert',RESPONSIBLE_TB:'Verantwortlicher TB',READ_ONLY:'Nur Lesen'})[key]||key||'';}
+function jsonValue(id){
+  const raw=document.getElementById(id).value.trim()||'{}';
+  const parsed=JSON.parse(raw);
+  if(parsed===null||Array.isArray(parsed)||typeof parsed!=='object') throw new Error('JSON muss ein Objekt sein.');
+  return parsed;
+}
+function valueOrNull(id){
+  const value=document.getElementById(id).value.trim();
+  return value||null;
+}
+function decimalOrNull(id){
+  const raw=document.getElementById(id).value.trim();
+  if(!raw)return null;
+  const value=Number(raw.replace(',','.'));
+  if(!Number.isFinite(value))throw new Error('Kilometerangabe ist ungültig.');
+  return value;
+}
+function defectPayloadFromForm(existing){
+  const payload=Object.assign({},existing||{},jsonValue('defectPayload'));
+  payload.beschreibung=document.getElementById('defectDescription').value.trim();
+  payload.bereich=valueOrNull('defectArea')||'';
+  payload.km=valueOrNull('defectKm')||'';
+  payload.firma=valueOrNull('defectCompany')||'';
+  payload.kommentar=valueOrNull('defectComment')||'';
+  if(!payload.datumIso)payload.datumIso=new Date().toISOString().slice(0,10);
+  if(!payload.zeit)payload.zeit=new Date().toTimeString().slice(0,5);
+  if(!payload.baustelle&&worksite)payload.baustelle=worksite.name||'';
+  if(!Object.prototype.hasOwnProperty.call(payload,'gps'))payload.gps='';
+  if(!Object.prototype.hasOwnProperty.call(payload,'btbBildNr'))payload.btbBildNr='';
+  if(!Array.isArray(payload.fotos))payload.fotos=[];
+  return payload;
+}
+function acceptancePayloadFromForm(existing){
+  const payload=Object.assign({},existing||{},jsonValue('acceptancePayload'));
+  payload.bezeichnung=document.getElementById('acceptanceDesignation').value.trim();
+  payload.objekt=valueOrNull('acceptanceObject')||'';
+  payload.firma=valueOrNull('acceptanceCompany')||'';
+  payload.weitereFirmen=valueOrNull('acceptanceOtherCompanies')||'';
+  payload.abnehmender=valueOrNull('acceptanceInspector')||'';
+  payload.anwesende=valueOrNull('acceptanceAttendees')||'';
+  payload.kmVon=decimalOrNull('acceptanceKmFrom');
+  payload.kmBis=decimalOrNull('acceptanceKmTo');
+  payload.kommentar=valueOrNull('acceptanceComment')||'';
+  payload.restpunkte=valueOrNull('acceptanceRemaining')||'';
+  payload.ergebnis=document.getElementById('acceptanceResult').value;
+  const nodeId=document.getElementById('acceptanceNode').value;
+  payload.unterKnotenName=nodeId?nodeName(nodeId):'';
+  if(!payload.baustelleName&&worksite)payload.baustelleName=worksite.name||'';
+  if(!payload.startEpochMs)payload.startEpochMs=Date.now();
+  if(!Array.isArray(payload.fotoRefs))payload.fotoRefs=[];
+  if(!Array.isArray(payload.anlagen))payload.anlagen=[];
+  return payload;
+}
+function nodeName(id){
+  const found=nodeData.find(function(n){return n.id===id;});
+  return found?found.name:'—';
+}
+function nodeTypeLabel(kind){
+  return ({FREIE_STRECKE:'Freie Strecke',BAHNHOF:'Bahnhof',ALLGEMEIN_OBJEKT:'Allgemeines Objekt'})[kind]||kind||'—';
+}
+function numberOrNull(id){
+  const raw=document.getElementById(id).value.trim();
+  if(!raw)return null;
+  const value=Number(raw.replace(',','.'));
+  if(!Number.isFinite(value))throw new Error('Kilometerangabe ist ungültig.');
+  return value;
+}
+function canonicalNodePayload(source){
+  const payload=Object.assign({},source||{});
+  const kind=document.getElementById('nodeKind').value;
+  const name=document.getElementById('nodeDisplayName').value.trim();
+  const route=document.getElementById('nodeRoute').value.trim()||null;
+  const track=document.getElementById('nodeTrack').value.trim()||null;
+  const station=document.getElementById('nodeStation').value.trim()||null;
+  payload.node_type=kind;
+  payload.node_name=name||null;
+  payload.route_key=route;
+  payload.km_from=numberOrNull('nodeKmFrom');
+  payload.km_to=numberOrNull('nodeKmTo');
+  payload.station_name=station;
+  payload.track_or_switch=track;
+  return payload;
+}
+function nodeOptions(){
+  const options='<option value="">ohne Zuordnung</option>'+nodeData.map(function(n){
+    return '<option value="'+esc(n.id)+'">'+esc(nodeTypeLabel(n.node_kind))+' · '+esc(n.name)+'</option>';
+  }).join('');
+  document.getElementById('defectNode').innerHTML=options;
+  document.getElementById('acceptanceNode').innerHTML=options;
+  document.getElementById('nodeParent').innerHTML=
+    '<option value="">direkt unter Hauptbaustelle</option>'+nodeData.map(function(n){
+      return '<option value="'+esc(n.id)+'">'+esc(nodeTypeLabel(n.node_kind))+' · '+esc(n.name)+'</option>';
+    }).join('');
+}
+async function loadOverview(){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId);
+  worksite=result.data.worksite;permissions=result.data.permissions||{};
+  document.getElementById('title').textContent=worksite.name;
+  document.getElementById('meta').textContent=[
+    worksite.company_name,worksite.designation,worksite.route_number?'Strecke '+worksite.route_number:null,
+    worksite.station_name
+  ].filter(Boolean).join(' · ');
+  document.getElementById('nodeForm').style.display=can('worksite.structure.edit')?'block':'none';
+  document.getElementById('defectForm').style.display=can('defect.create')?'block':'none';
+  document.getElementById('acceptanceForm').style.display=can('acceptance.create')?'block':'none';
+}
+async function loadNodes(){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId+'/nodes');
+  nodeData=result.data.nodes||[];
+  const target=document.getElementById('nodes');
+  target.innerHTML=nodeData.length?nodeData.map(function(n){
+    const actions=can('worksite.structure.edit')?'<div class="actions" style="margin-top:7px"><button type="button" onclick="editNode(\''+esc(n.id)+'\')">Bearbeiten</button><button class="danger" type="button" onclick="deleteNode(\''+esc(n.id)+'\')">Löschen</button></div>':'';
+    let depth=0,parent=n.parent_id;const visited=new Set([n.id]);while(parent&&!visited.has(parent)&&depth<8){visited.add(parent);depth++;const ancestor=nodeData.find(x=>x.id===parent);parent=ancestor?ancestor.parent_id:null;}
+    return '<div class="item" style="margin-left:'+Math.min(depth*18,100)+'px"><b>'+esc(nodeTypeLabel(n.node_kind))+'</b> · '+esc(n.name)+
+      (n.route_number?'<div class="muted">Strecke '+esc(n.route_number)+'</div>':'')+
+      (n.track_key?'<div class="muted">Gleis '+esc(n.track_key)+'</div>':'')+actions+'</div>';
+  }).join(''):'<p class="muted">Noch keine Struktur angelegt.</p>';
+  nodeOptions();
+}
+
+async function editNode(id){
+  const n=nodeData.find(function(item){return item.id===id;});if(!n)return;
+  const payload=n.payload||{};
+  const name=prompt('Name',n.name||payload.node_name||'');if(name===null||!name.trim())return;
+  const route=prompt('Strecke (leer = keine)',n.route_number||payload.route_key||'');if(route===null)return;
+  const track=prompt('Gleis / Weiche (leer = keine)',n.track_key||payload.track_or_switch||'');if(track===null)return;
+  const station=prompt('Bahnhof (leer = keiner)',payload.station_name||'');if(station===null)return;
+  const kmFrom=prompt('km von (leer = keiner)',payload.km_from??'');if(kmFrom===null)return;
+  const kmTo=prompt('km bis (leer = keiner)',payload.km_to??'');if(kmTo===null)return;
+  const parseKm=function(raw){
+    const value=String(raw).trim();if(!value)return null;
+    const number=Number(value.replace(',','.'));if(!Number.isFinite(number))throw new Error('Kilometerangabe ist ungültig.');
+    return number;
+  };
+  const nextPayload=Object.assign({},payload,{
+    node_type:n.node_kind,
+    node_name:name.trim(),
+    route_key:route.trim()||null,
+    track_or_switch:track.trim()||null,
+    station_name:station.trim()||null,
+    km_from:parseKm(kmFrom),
+    km_to:parseKm(kmTo)
+  });
+  try{
+    await tbApi('/api/v1/worksites/'+worksiteId+'/nodes/'+encodeURIComponent(id),{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        base_version:Number(n.current_version||n.version||1),
+        node_kind:n.node_kind,
+        name:name.trim(),
+        route_number:route.trim()||null,
+        track_key:track.trim()||null,
+        payload:nextPayload
+      })
+    });
+    show('ok','Strukturelement gespeichert.');await loadNodes();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.editNode=editNode;
+async function deleteNode(id){
+  const n=nodeData.find(function(item){return item.id===id;});if(!n)return;
+  if(!confirm('Strukturelement wirklich löschen? Untergeordnete Elemente werden serverseitig mit gelöscht.'))return;
+  try{
+    const version=Number(n.current_version||n.version||1);
+    await tbApi('/api/v1/worksites/'+worksiteId+'/nodes/'+encodeURIComponent(id)+'?base_version='+encodeURIComponent(version),{method:'DELETE'});
+    show('ok','Strukturelement einschließlich Unterstruktur gelöscht.');await loadNodes();await Promise.all([loadDefects(),loadAcceptances()]);
+  }catch(error){show('err',error.message||String(error));}
+}
+window.deleteNode=deleteNode;
+
+async function loadMembers(){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId+'/members');
+  const data=result.data.members||[];
+  document.getElementById('members').innerHTML=data.length?data.map(function(m){
+    const permissionButton=can('members.manage')?'<button type="button" onclick="editMemberPermissions(\''+esc(m.user_id)+'\')">Rechte ändern</button>':'';
+    let transfer='';
+    if(can('members.manage')&&m.worksite_role==='HELPER'&&teamData.length){
+      const selectId='member-team-'+m.user_id;
+      const options=teamData.map(function(t){
+        const selected=t.id===m.team_id?' selected':'';
+        return '<option value="'+esc(t.id)+'"'+selected+'>'+esc(t.name||t.lead_name||'Team')+' · '+esc(t.lead_name||'—')+'</option>';
+      }).join('');
+      transfer='<select id="'+esc(selectId)+'" style="max-width:320px">'+options+'</select>'+
+        '<button type="button" onclick="transferHelperTeam(\''+esc(m.user_id)+'\')">Team wechseln</button>';
+    }
+    const remove=can('members.manage')&&m.worksite_role==='HELPER'?'<button class="danger" type="button" onclick="removeHelper(\''+esc(m.user_id)+'\')">Aus Baustellenteam entfernen</button>':'';
+    const actions=(permissionButton||transfer||remove)?'<div class="actions" style="margin-top:7px">'+permissionButton+transfer+remove+'</div>':'';
+    return '<div class="item"><b>'+esc(m.display_name)+'</b> <span class="pill">'+esc(m.worksite_role)+'</span>'+
+      '<div class="muted">'+esc(profileLabel(m.permission_profile))+(m.team_name?' · Team '+esc(m.team_name)+' · TB '+esc(m.lead_name||'—'):'')+'</div>'+
+      (m.personal_email?'<div>'+esc(m.personal_email)+'</div>':'')+
+      (m.personal_phone?'<div>'+esc(m.personal_phone)+'</div>':'')+actions+'</div>';
+  }).join(''):'<p class="muted">Keine Mitglieder.</p>';
+}
+
+async function editMemberPermissions(userId){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId+'/members');
+  const m=(result.data.members||[]).find(function(item){return item.user_id===userId;});if(!m)return;
+  const choices=['HELPER_STANDARD','HELPER_EXTENDED','RESPONSIBLE_TB','READ_ONLY'];const choice=prompt('Rechteprofil auswählen: 1 = Helfer Standard, 2 = Helfer erweitert, 3 = Verantwortlicher TB, 4 = Nur Lesen',String(choices.indexOf(m.permission_profile)+1));if(choice===null)return;const profile=choices[Number(choice)-1];if(!profile){show('err','Bitte eine Zahl von 1 bis 4 wählen.');return;}
+  const areaRaw=JSON.stringify(m.area_scope||{});
+  try{
+    const area=JSON.parse(areaRaw||'{}');
+    await tbApi('/api/v1/worksites/'+worksiteId+'/members/'+encodeURIComponent(userId)+'/permissions',{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({permission_profile:profile.trim(),permissions_override:m.permissions_override||{},area_scope:area})
+    });
+    show('ok','Mitgliedsrechte gespeichert.');await loadMembers();await loadOverview();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.editMemberPermissions=editMemberPermissions;
+window.removeHelper=async function(id){if(!confirm('Helfer aus dem Baustellenteam entfernen? Weitere Zugriffe werden gesperrt. Bereits gespeicherte Beiträge bleiben erhalten.'))return;try{await tbApi('/api/v1/worksites/'+worksiteId+'/members/'+encodeURIComponent(id),{method:'DELETE'});await loadMembers();await loadTeams();show('ok','Helfer aus dem Baustellenteam entfernt.');}catch(e){show('err',e.message);}};
+
+
+async function transferHelperTeam(userId){
+  const select=document.getElementById('member-team-'+userId);
+  if(!select||!select.value)return;
+  const target=teamData.find(function(t){return t.id===select.value;});
+  if(!target)return;
+  if(!confirm('Helfer zu Team '+(target.name||target.lead_name||target.id)+' / TB '+(target.lead_name||'—')+' verschieben? Historische BTBs bleiben unverändert.'))return;
+  try{
+    const result=await tbApi('/api/v1/worksites/'+worksiteId+'/members/'+encodeURIComponent(userId)+'/team',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({team_id:select.value})
+    });
+    show('ok',result.data.changed?'Teamzuordnung geändert.':'Helfer ist bereits diesem Team zugeordnet.');
+    await loadTeams();await loadMembers();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.transferHelperTeam=transferHelperTeam;
+
+
+async function loadInviteData(){
+  const panel=document.getElementById('invitePanel');
+  if(!can('members.manage')){panel.style.display='none';return;}
+  panel.style.display='block';
+  try{
+    const results=await Promise.all([
+      tbApi('/api/v1/worksites/'+worksiteId+'/invite-candidates'),
+      tbApi('/api/v1/worksites/'+worksiteId+'/invitations')
+    ]);
+    const candidates=results[0].data.candidates||[];
+    document.getElementById('inviteUser').innerHTML='<option value="">Benutzer wählen</option>'+candidates.map(function(u){
+      return '<option value="'+esc(u.id)+'">'+esc(u.display_name)+(u.personal_email?' · '+esc(u.personal_email):'')+'</option>';
+    }).join('');
+    const invitations=results[1].data.invitations||[];
+    document.getElementById('invitations').innerHTML=invitations.length?invitations.map(function(inv){
+      const revoke=inv.status==='OPEN'?'<button class="danger" type="button" data-invite-id="'+esc(inv.id)+'" onclick="revokeInvitation(this.dataset.inviteId)">Widerrufen</button>':'';
+      return '<div class="item"><b>'+esc(inv.invited_name)+'</b> <span class="pill">'+esc(inv.worksite_role)+'</span> <span class="pill">'+esc(inv.status)+'</span>'+
+        '<div class="muted">Profil '+esc(profileLabel(inv.permission_profile))+' · gültig bis '+esc(new Date(inv.expires_at).toLocaleString('de-DE'))+'</div>'+
+        '<div class="actions" style="margin-top:7px">'+revoke+'</div></div>';
+    }).join(''):'<p class="muted">Keine Einladungen.</p>';
+  }catch(error){show('err',error.message||String(error));}
+}
+async function revokeInvitation(id){
+  try{
+    await tbApi('/api/v1/worksites/'+worksiteId+'/invitations/'+encodeURIComponent(id)+'/revoke',{method:'POST'});
+    show('ok','Einladung widerrufen.');await loadInviteData();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.revokeInvitation=revokeInvitation;
+document.getElementById('inviteAreaMode').onchange=function(){document.getElementById('inviteAreaFields').hidden=this.value!=='limited';};
+document.getElementById('inviteRole').addEventListener('change',function(){
+  const map={HELPER:'HELPER_STANDARD',TB:'RESPONSIBLE_TB',RESPONSIBLE_TB:'RESPONSIBLE_TB',READ_ONLY:'READ_ONLY'};
+  document.getElementById('inviteProfile').value=map[this.value]||'HELPER_STANDARD';
+});
+document.getElementById('inviteForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  try{
+    const mode=document.getElementById('inviteAreaMode').value;
+    if(!mode)throw new Error('Bitte einen freigegebenen Bereich auswählen.');
+    const area={all:mode==='all'};
+    if(mode==='limited'){
+      const labels=document.getElementById('inviteAreaLabels').value.split(';').map(v=>v.trim()).filter(Boolean);
+      if(labels.length)area.labels=labels;
+      for(const [id,key] of [['inviteKmFrom','km_from_m'],['inviteKmTo','km_to_m']]){const raw=document.getElementById(id).value.trim();if(raw){const n=Number(raw.replace(',','.'));if(!Number.isFinite(n))throw new Error('Kilometerangabe ist ungültig.');area[key]=n*1000;}}
+      if(Object.keys(area).length===1)throw new Error('Bitte einen Bereich oder Kilometergrenzen angeben.');
+    }
+    const result=await tbApi('/api/v1/worksites/'+worksiteId+'/invitations',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        invited_user_id:document.getElementById('inviteUser').value,
+        worksite_role:document.getElementById('inviteRole').value,
+        permission_profile:document.getElementById('inviteProfile').value,
+        permissions_override:{},area_scope:area,
+        expires_days:Number(document.getElementById('inviteDays').value)||7
+      })
+    });
+    const data=result.data||{}, token=data.invite_token;
+    const box=document.getElementById('inviteSecret');
+    if(token){
+      box.className='notice info';
+      box.innerHTML=
+        '<b>Einladung – Code/Link/QR nur jetzt verfügbar</b>'+
+        '<div class="invite-secret-grid">'+
+          '<div><img src="'+esc(data.invite_qr_svg_data_url||'')+'" alt="QR-Code für Baustelleneinladung"></div>'+
+          '<div>'+
+            '<div class="muted">QR öffnet den TB-Helfer-Einladungslink. Der Token wird serverseitig nur gehasht gespeichert.</div>'+
+            '<div class="invite-share-row"><input id="inviteLinkValue" readonly value="'+esc(data.invite_link||'')+'"><button type="button" onclick="copyInviteLink()">Link kopieren</button></div>'+
+            '<div class="invite-share-row"><input id="inviteTokenValue" readonly value="'+esc(token)+'"><button type="button" onclick="copyInviteToken()">Code kopieren</button></div>'+
+            '<div class="muted">App-URI: <code>'+esc(data.invite_uri||'')+'</code></div>'+
+          '</div>'+
+        '</div>';
+    }else{
+      box.className='notice info';
+      box.textContent='Diese Anfrage wurde bereits verarbeitet. Code, Link und QR werden aus Sicherheitsgründen nicht erneut aus dem Server-Speicher ausgegeben. Bitte bei Bedarf die Einladung widerrufen und neu erzeugen.';
+    }
+    show('ok','Einladung erstellt.');await loadInviteData();
+  }catch(error){show('err',error.message||String(error));}
+});
+async function copyInviteToken(){
+  const el=document.getElementById('inviteTokenValue');if(!el)return;
+  try{await navigator.clipboard.writeText(el.value);show('ok','Einladungscode kopiert.');}
+  catch(_){show('err','Code konnte nicht automatisch kopiert werden. Bitte manuell markieren.');}
+}
+window.copyInviteToken=copyInviteToken;
+async function copyInviteLink(){
+  const el=document.getElementById('inviteLinkValue');if(!el)return;
+  try{await navigator.clipboard.writeText(el.value);show('ok','Einladungslink kopiert.');}
+  catch(_){show('err','Link konnte nicht automatisch kopiert werden. Bitte manuell markieren.');}
+}
+window.copyInviteLink=copyInviteLink;
+
+async function loadTeams(){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId+'/teams');
+  teamData=result.data.teams||[];
+  const target=document.getElementById('teams');
+  if(!teamData.length){target.innerHTML='<p class="muted">Keine Teams.</p>';return;}
+  const blocks=await Promise.all(teamData.map(async function(t){
+    let btbs=[];
+    try{
+      const b=await tbApi('/api/v1/worksites/'+worksiteId+'/teams/'+encodeURIComponent(t.id)+'/btbs');
+      btbs=(b.data.btbs||[]).sort((a,b)=>String(b.work_date).localeCompare(String(a.work_date)));
+    }catch(_){}
+    const btbHtml=btbs.length?btbs.map(function(b){
+      return '<div class="item report-row" data-status="'+esc(b.status)+'" data-date="'+esc(b.work_date)+'"><span class="pill">'+esc(b.status)+'</span> '+
+        esc(b.work_date?String(b.work_date).split('-').reverse().join('.'):'ohne Datum')+
+        '<div class="actions" style="margin-top:7px"><a class="btn" href="'+pagePrefix+'/btbs/'+encodeURIComponent(b.id)+'">BTB öffnen</a></div></div>';
+    }).join(''):'<p class="muted">Noch kein BTB.</p>';
+    const createButton=can('btb.create')&&!t.active_btb_id?'<button type="button" onclick="createBtb(\''+esc(t.id)+'\')">Neuen BTB starten</button>':'';
+    return '<div class="item"><h4>'+esc(t.name||t.lead_name||'Team')+'</h4>'+
+      '<div class="muted">Verantwortlicher TB: '+esc(t.lead_name||'—')+' · '+esc(t.member_count)+' Mitglieder</div>'+
+      (t.active_btb_id?'<div class="notice info">Aktiver BTB: <a href="'+pagePrefix+'/btbs/'+encodeURIComponent(t.active_btb_id)+'">Weiterarbeiten</a></div>':'')+
+      btbHtml+'<div class="actions">'+createButton+'</div></div>';
+  }));
+  target.innerHTML=blocks.join('');
+}
+async function createBtb(teamId){
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const result=await tbApi('/api/v1/worksites/'+worksiteId+'/btbs',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({team_id:teamId,work_date:today,header:{}})
+    });
+    show('ok','BTB angelegt.');location.href=pagePrefix+'/btbs/'+encodeURIComponent(result.data.id);
+  }catch(error){show('err',error.message||String(error));}
+}
+window.createBtb=createBtb;
+async function loadWorksiteMedia(){
+  // Media are fetched only when a user opens a specific photo panel.
+  mediaData=[];
+}
+async function loadFachPhotos(type,id,button){
+  const target=button.parentElement.querySelector('.fach-images');
+  button.disabled=true;
+  try{
+    const result=await tbApi('/api/v1/worksites/'+worksiteId+'/media/page?limit=12&kind='+encodeURIComponent(type)+'&parent_id='+encodeURIComponent(id));
+    target.replaceChildren();
+    (result.data.media||[]).forEach(function(file){
+      const a=document.createElement('a');a.href=tbScopedUrl(file.renditions.preview);a.target='_blank';a.rel='noopener';
+      const img=document.createElement('img');img.src=tbScopedUrl(file.renditions.thumb);img.alt=file.filename||'Foto';img.loading='lazy';img.width=96;img.height=72;img.style.objectFit='cover';a.append(img);target.append(a);
+    });
+    if(!result.data.media.length)target.textContent='Keine Fotos in dieser Auswahl.';
+    button.textContent='Fotos aktualisieren';
+  }catch(error){target.textContent=error.message||String(error);}
+  finally{button.disabled=false;}
+}
+function renderFachMedia(type,id){
+  if(!can('files.view'))return '<p class="muted">Keine Berechtigung zum Anzeigen von Dateien.</p>';
+  const gallery='/portal/v1/pictures?worksite='+encodeURIComponent(worksiteId)+'&kind='+encodeURIComponent(type)+'&parent_id='+encodeURIComponent(id);
+  const images='<button type="button" class="secondary" onclick="loadFachPhotos(\''+type+'\',\''+esc(id)+'\',this)">Fotos anzeigen</button><a class="btn secondary" href="'+esc(gallery)+'">Alle zugehörigen Fotos</a><div class="fach-images" style="display:flex;gap:8px;flex-wrap:wrap"></div>';
+  const canUpload=can('files.add');
+  const inputId='fach-photo-'+type+'-'+id;
+  const upload=canUpload?'<div class="invite-share-row" style="margin-top:8px">'+
+    '<input id="'+esc(inputId)+'" type="file" accept="image/*">'+
+    '<button type="button" onclick="uploadFachPhoto(\''+type+'\',\''+esc(id)+'\',\''+esc(inputId)+'\')">Foto hochladen</button></div>':'';
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+images+'</div>'+upload;
+}
+async function sha256Hex(file){
+  const digest=await crypto.subtle.digest('SHA-256',await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+async function uploadFachPhoto(type,id,inputId){
+  const input=document.getElementById(inputId);
+  let file=input&&input.files?input.files[0]:null;
+  if(!file){show('err','Bitte zuerst ein Foto auswählen.');return;}
+  if(!(window.crypto&&crypto.subtle)){show('err','Dieser Browser unterstützt die sichere SHA-256-Prüfung nicht.');return;}
+  if(!file.type.startsWith('image/')){show('err','Für Mängel/Abnahmen bitte eine Bilddatei auswählen.');return;}
+  try{
+    show('info','Foto wird auf maximal 2 MB vorbereitet …');
+    file=await tbPreparePhoto(file);
+    const sha=await sha256Hex(file);
+    const prefix=type==='DEFECT'?'DEFECT__MANGEL__':'ACCEPTANCE_FOTO__SONSTIGES__';
+    const created=await tbApi('/api/v1/worksites/'+worksiteId+'/uploads',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        target_kind:'PHOTO',
+        original_name:prefix+file.name,
+        mime_type:file.type||'application/octet-stream',
+        expected_bytes:file.size,
+        expected_sha256:sha
+      })
+    });
+    const upload=created.data;
+    let offset=Number(upload.received_bytes||0);
+    const chunkSize=Number(upload.chunk_size||8388608);
+    while(offset<file.size){
+      const chunk=file.slice(offset,Math.min(file.size,offset+chunkSize));
+      show('info','Foto-Upload '+Math.round(offset/file.size*100)+' %');
+      const result=await tbApi('/api/v1/uploads/'+encodeURIComponent(upload.id)+'/chunk?offset='+offset,{
+        method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:chunk
+      });
+      offset=Number(result.data.received_bytes);
+    }
+    await tbApi('/api/v1/uploads/'+encodeURIComponent(upload.id)+'/complete',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        entity_type:type,
+        entity_id:id,
+        purpose:type==='DEFECT'?'DEFECT_PHOTO':'ACCEPTANCE_PHOTO'
+      })
+    });
+    input.value='';
+    await loadWorksiteMedia();
+    if(type==='DEFECT')await loadDefects();else await loadAcceptances();
+    show('ok','Foto hochgeladen und verknüpft.');
+  }catch(error){show('err',error.message||String(error));}
+}
+window.uploadFachPhoto=uploadFachPhoto;
+
+async function loadDefects(){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId+'/defects');
+  const data=result.data.defects||[];
+  document.getElementById('defects').innerHTML=data.length?data.map(function(d){
+    const edit=can('defect.edit')&&d.status!=='CLOSED'?'<button type="button" onclick="editDefect(\''+esc(d.id)+'\','+Number(d.version)+')">Bearbeiten</button>':'';
+    const close=can('defect.close')&&d.status!=='CLOSED'?'<button type="button" onclick="closeDefect(\''+esc(d.id)+'\','+Number(d.version)+')">Schließen</button>':'';
+    return '<div class="item '+(d.status==='CLOSED'?'status-done':'status-open')+'"><b>'+esc(d.title||'Mangel')+'</b> <span class="pill">'+esc(d.status)+'</span>'+
+      '<div class="muted">'+esc(nodeName(d.worksite_node_id))+' · Version '+esc(d.version)+'</div>'+
+      '<div>'+esc((d.payload||{}).beschreibung||'')+'</div>'+
+      '<div class="muted">'+[d.payload?.bereich,d.payload?.km,d.payload?.firma].filter(Boolean).map(esc).join(' · ')+'</div>'+
+      ((d.payload||{}).kommentar?'<div class="muted">Kommentar: '+esc(d.payload.kommentar)+'</div>':'')+
+      '<details hidden><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(d.payload||{},null,2))+'</pre></details>'+
+      '<div class="muted" style="margin-top:8px">Mangel-Fotos</div>'+renderFachMedia('DEFECT',d.id)+
+      '<div class="actions">'+edit+close+'</div></div>';
+  }).join(''):'<p class="muted">Keine Mängel.</p>';
+}
+
+async function editDefect(id,version){
+  try{
+    const current=await tbApi('/api/v1/defects/'+encodeURIComponent(id));
+    const d=current.data,p=d.payload||{};
+    document.getElementById('defectEditId').value=id;
+    document.getElementById('defectEditVersion').value=String(d.version||version||1);
+    document.getElementById('defectDescription').value=p.beschreibung||d.title||'';
+    document.getElementById('defectArea').value=p.bereich||'';
+    document.getElementById('defectKm').value=p.km||'';
+    document.getElementById('defectCompany').value=p.firma||'';
+    document.getElementById('defectComment').value=p.kommentar||'';
+    document.getElementById('defectNode').value=d.worksite_node_id||'';
+    document.getElementById('defectStatus').value=['OPEN','IN_PROGRESS','REJECTED'].includes(d.status)?d.status:'OPEN';
+    document.getElementById('defectPayload').value=JSON.stringify(p,null,2);
+    document.getElementById('defectFormTitle').textContent='Mangel bearbeiten';
+    document.getElementById('defectSubmit').textContent='Mangel speichern';
+    document.getElementById('defectCancel').style.display='inline-block';
+    document.getElementById('defectForm').closest('details').open=true;document.getElementById('defectForm').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(error){show('err',error.message||String(error));}
+}
+function resetDefectForm(){
+  const form=document.getElementById('defectForm');form.reset();
+  document.getElementById('defectEditId').value='';
+  document.getElementById('defectEditVersion').value='';
+  document.getElementById('defectPayload').value='{}';
+  document.getElementById('defectFormTitle').textContent='Neuen Mangel anlegen';
+  document.getElementById('defectSubmit').textContent='Mangel anlegen';
+  document.getElementById('defectCancel').style.display='none';
+}
+window.resetDefectForm=resetDefectForm;
+window.editDefect=editDefect;
+
+async function closeDefect(id,version){
+  try{
+    await tbApi('/api/v1/defects/'+encodeURIComponent(id)+'/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_version:version})});
+    show('ok','Mangel geschlossen.');await loadDefects();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.closeDefect=closeDefect;
+async function loadAcceptances(){
+  const result=await tbApi('/api/v1/worksites/'+worksiteId+'/acceptances');
+  const data=result.data.acceptances||[];
+  document.getElementById('acceptances').innerHTML=data.length?data.map(function(a){
+    const edit=can('acceptance.edit')&&a.status!=='FINALIZED'?'<button type="button" onclick="editAcceptance(\''+esc(a.id)+'\','+Number(a.version)+')">Bearbeiten</button>':'';
+    const finalize=can('acceptance.finalize')&&a.status!=='FINALIZED'
+      ?'<button type="button" onclick="finalizeAcceptance(\''+esc(a.id)+'\','+Number(a.version)+',\'ABGENOMMEN\')">Abgenommen</button>'+
+       '<button type="button" onclick="finalizeAcceptance(\''+esc(a.id)+'\','+Number(a.version)+',\'NICHT_ABGENOMMEN\')">Nicht abgenommen</button>'
+      :'';
+    const remove=can('acceptance.edit')&&(a.status!=='FINALIZED'||can('acceptance.finalize'))
+      ?'<button type="button" class="secondary" onclick="deleteAcceptance(\''+esc(a.id)+'\','+Number(a.version)+','+(a.status==='FINALIZED'?'true':'false')+')">Löschen</button>'
+      :'';
+    return '<div class="item '+(a.status==='FINALIZED'?'status-done':'status-open')+'"><b>'+esc(a.title||'Abnahme')+'</b> <span class="pill">'+esc(a.status)+'</span> <span class="pill">'+esc(a.result||'ERGEBNIS_UNBEKANNT')+'</span>'+
+      '<div class="muted">'+esc(nodeName(a.worksite_node_id))+' · Version '+esc(a.version)+'</div>'+
+      '<div>'+esc((a.payload||{}).bezeichnung||(a.payload||{}).objekt||'')+'</div>'+
+      '<div class="muted">'+[(a.payload||{}).firma,(a.payload||{}).abnehmender,
+        ((a.payload||{}).kmVon!=null?'km '+esc(a.payload.kmVon):null),
+        ((a.payload||{}).kmBis!=null?'bis '+esc(a.payload.kmBis):null)].filter(Boolean).join(' · ')+'</div>'+
+      ((a.payload||{}).restpunkte?'<div class="muted">Restpunkte: '+esc(a.payload.restpunkte)+'</div>':'')+
+      '<details hidden><summary>Rohdaten</summary><pre class="json">'+esc(JSON.stringify(a.payload||{},null,2))+'</pre></details>'+
+      '<div class="muted" style="margin-top:8px">Abnahme-Fotos</div>'+renderFachMedia('ACCEPTANCE',a.id)+
+      '<div class="actions">'+edit+finalize+remove+'</div></div>';
+  }).join(''):'<p class="muted">Keine Abnahmen.</p>';
+}
+
+async function editAcceptance(id,version){
+  try{
+    const current=await tbApi('/api/v1/acceptances/'+encodeURIComponent(id));
+    const a=current.data,p=a.payload||{};
+    document.getElementById('acceptanceEditId').value=id;
+    document.getElementById('acceptanceEditVersion').value=String(a.version||version||1);
+    document.getElementById('acceptanceDesignation').value=p.bezeichnung||a.title||'';
+    document.getElementById('acceptanceObject').value=p.objekt||'';
+    document.getElementById('acceptanceCompany').value=p.firma||'';
+    document.getElementById('acceptanceOtherCompanies').value=p.weitereFirmen||'';
+    document.getElementById('acceptanceInspector').value=p.abnehmender||'';
+    document.getElementById('acceptanceAttendees').value=p.anwesende||'';
+    document.getElementById('acceptanceKmFrom').value=p.kmVon??'';
+    document.getElementById('acceptanceKmTo').value=p.kmBis??'';
+    document.getElementById('acceptanceComment').value=p.kommentar||'';
+    document.getElementById('acceptanceRemaining').value=p.restpunkte||'';
+    document.getElementById('acceptanceNode').value=a.worksite_node_id||'';
+    document.getElementById('acceptanceResult').value=['ENTWURF','ABGENOMMEN_MIT_RESTPUNKTEN','NOCH_ZU_PRUEFEN'].includes(a.result)?a.result:'ENTWURF';
+    document.getElementById('acceptancePayload').value=JSON.stringify(p,null,2);
+    document.getElementById('acceptanceFormTitle').textContent='Abnahme bearbeiten';
+    document.getElementById('acceptanceSubmit').textContent='Abnahme speichern';
+    document.getElementById('acceptanceCancel').style.display='inline-block';
+    document.getElementById('acceptanceForm').closest('details').open=true;document.getElementById('acceptanceForm').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(error){show('err',error.message||String(error));}
+}
+function resetAcceptanceForm(){
+  const form=document.getElementById('acceptanceForm');form.reset();
+  document.getElementById('acceptanceEditId').value='';
+  document.getElementById('acceptanceEditVersion').value='';
+  document.getElementById('acceptancePayload').value='{}';
+  document.getElementById('acceptanceFormTitle').textContent='Neue Abnahme anlegen';
+  document.getElementById('acceptanceSubmit').textContent='Abnahme anlegen';
+  document.getElementById('acceptanceCancel').style.display='none';
+}
+window.resetAcceptanceForm=resetAcceptanceForm;
+window.editAcceptance=editAcceptance;
+
+async function finalizeAcceptance(id,version,result){
+  try{
+    const label=result==='ABGENOMMEN'?'abgenommen':'nicht abgenommen';
+    if(!confirm('Abnahme wirklich als „'+label+'“ endgültig abschließen?'))return;
+    await tbApi('/api/v1/acceptances/'+encodeURIComponent(id)+'/finalize',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({base_version:version,result:result})
+    });
+    show('ok','Abnahme finalisiert: '+label+'.');await loadAcceptances();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.finalizeAcceptance=finalizeAcceptance;
+
+async function deleteAcceptance(id,version,wasFinalized){
+  try{
+    const detail=wasFinalized
+      ?'Diese Abnahme ist endgültig abgeschlossen. Zum Löschen ist zusätzlich das Abschlussrecht erforderlich.'
+      :'Die Abnahme wird als Server-Tombstone gelöscht. Zugeordnete Dateien und Fotos werden nicht physisch vernichtet.';
+    if(!confirm('Abnahme wirklich löschen?\n\n'+detail))return;
+    await tbApi(
+      '/api/v1/acceptances/'+encodeURIComponent(id)+'?base_version='+encodeURIComponent(version),
+      {method:'DELETE'}
+    );
+    resetAcceptanceForm();
+    await loadWorksiteMedia();
+    await loadAcceptances();
+    show('ok','Abnahme gelöscht.');
+  }catch(error){show('err',error.message||String(error));}
+}
+window.deleteAcceptance=deleteAcceptance;
+
+document.getElementById('nodeForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  try{
+    const kind=document.getElementById('nodeKind').value;
+    const name=document.getElementById('nodeDisplayName').value.trim();
+    const route=document.getElementById('nodeRoute').value.trim()||null;
+    const track=document.getElementById('nodeTrack').value.trim()||null;
+    const payload=canonicalNodePayload({});
+    await tbApi('/api/v1/worksites/'+worksiteId+'/nodes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      parent_id:document.getElementById('nodeParent').value||null,
+      node_kind:kind,
+      name:name,
+      route_number:route,
+      track_key:track,
+      payload:payload
+    })});
+    ev.target.reset();show('ok','Strukturelement angelegt.');await loadNodes();
+  }catch(error){show('err',error.message||String(error));}
+});
+document.getElementById('defectForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  try{
+    const editId=document.getElementById('defectEditId').value;
+    const payload=defectPayloadFromForm(editId?jsonValue('defectPayload'):{});
+    const body={
+      title:payload.beschreibung||null,
+      worksite_node_id:document.getElementById('defectNode').value||null,
+      payload:payload
+    };
+    if(editId){
+      body.base_version=Number(document.getElementById('defectEditVersion').value)||1;
+      body.status=document.getElementById('defectStatus').value;
+      await tbApi('/api/v1/defects/'+encodeURIComponent(editId),{
+        method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+      });
+      show('ok','Mangel gespeichert.');
+    }else{
+      await tbApi('/api/v1/worksites/'+worksiteId+'/defects',{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+      });
+      show('ok','Mangel angelegt.');
+    }
+    resetDefectForm();await loadDefects();
+  }catch(error){show('err',error.message||String(error));}
+});
+document.getElementById('acceptanceForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  try{
+    const editId=document.getElementById('acceptanceEditId').value;
+    const payload=acceptancePayloadFromForm(editId?jsonValue('acceptancePayload'):{});
+    const body={
+      title:payload.bezeichnung||payload.objekt||null,
+      worksite_node_id:document.getElementById('acceptanceNode').value||null,
+      payload:payload,
+      result:document.getElementById('acceptanceResult').value
+    };
+    if(editId){
+      body.base_version=Number(document.getElementById('acceptanceEditVersion').value)||1;
+      await tbApi('/api/v1/acceptances/'+encodeURIComponent(editId),{
+        method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+      });
+      show('ok','Abnahme gespeichert.');
+    }else{
+      await tbApi('/api/v1/worksites/'+worksiteId+'/acceptances',{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+      });
+      show('ok','Abnahme angelegt.');
+    }
+    resetAcceptanceForm();await loadAcceptances();
+  }catch(error){show('err',error.message||String(error));}
+});
+
+
+const LIVE_WORKSITE_ENTITY_TYPES=new Set([
+  'WORKSITE','WORKSITE_NODE','WORKSITE_MEMBERSHIP','WORKSITE_INVITATION',
+  'BTB','BTB_ENTRY','BTB_PARTICIPANT','FILE','DEFECT','ACCEPTANCE'
+]);
+function scheduleWorksiteLiveRefresh(entityType){
+  const type=String(entityType||'').toUpperCase();
+  if(type)liveDirtyTypes.add(type);
+  if(liveRefreshTimer)clearTimeout(liveRefreshTimer);
+  liveRefreshTimer=setTimeout(function(){
+    liveRefreshTimer=null;
+    runWorksiteLiveRefresh();
+  },250);
+}
+async function runWorksiteLiveRefresh(){
+  if(liveRefreshRunning){liveRefreshQueued=true;return;}
+  liveRefreshRunning=true;
+  try{
+    do{
+      liveRefreshQueued=false;
+      const dirty=new Set(liveDirtyTypes);
+      liveDirtyTypes.clear();
+
+      const mediaChanged=dirty.has('FILE');
+      if(mediaChanged)await loadWorksiteMedia();
+
+      const tasks=[];
+      if(dirty.has('WORKSITE'))tasks.push(loadOverview());
+      if(dirty.has('WORKSITE_NODE'))tasks.push(loadNodes());
+      if(
+        dirty.has('BTB')||dirty.has('BTB_ENTRY')||dirty.has('BTB_PARTICIPANT')||
+        dirty.has('WORKSITE_MEMBERSHIP')
+      )tasks.push(loadTeams());
+      if(dirty.has('WORKSITE_MEMBERSHIP')||dirty.has('WORKSITE_INVITATION'))tasks.push(loadMembers(),loadInviteData());
+      if(dirty.has('DEFECT')||mediaChanged)tasks.push(loadDefects());
+      if(dirty.has('ACCEPTANCE')||mediaChanged)tasks.push(loadAcceptances());
+
+      if(tasks.length)await Promise.all(tasks);
+    }while(liveRefreshQueued||liveDirtyTypes.size);
+  }catch(error){
+    console.warn('Portal-Live-Aktualisierung fehlgeschlagen',error);
+  }finally{
+    liveRefreshRunning=false;
+  }
+}
+function startWorksiteLiveUpdates(){
+  if(liveEvents||!window.EventSource)return;
+  const url=tbScopedUrl('/api/v1/sync/events?worksite_id='+encodeURIComponent(worksiteId));
+  liveEvents=new EventSource(url);
+  liveEvents.addEventListener('change',function(event){
+    try{
+      const change=JSON.parse(event.data||'{}');
+      if(String(change.worksite_id||'')!==String(worksiteId))return;
+      const type=String(change.entity_type||'').toUpperCase();
+      if(!LIVE_WORKSITE_ENTITY_TYPES.has(type))return;
+      scheduleWorksiteLiveRefresh(type);
+    }catch(_){}
+  });
+  window.addEventListener('beforeunload',function(){
+    if(liveEvents){liveEvents.close();liveEvents=null;}
+  },{once:true});
+}
+
+(async function(){
+  try{
+    await loadOverview();
+    await loadNodes();
+    await loadTeams();
+    await loadWorksiteMedia();
+    await Promise.all([loadMembers(),loadInviteData(),loadDefects(),loadAcceptances()]);
+    startWorksiteLiveUpdates();
+  }catch(error){show('err',error.message||String(error));}
+})();
+</script>
+
+<script>
+(function(){
+const labels={ACTIVE:'Aktiv',FINALIZED:'Abgeschlossen',REWORK:'Nachbearbeitung',HELPER:'Helfer',HELPER_STANDARD:'Helfer Standard',HELPER_EXTENDED:'Helfer erweitert',RESPONSIBLE_TB:'Verantwortlicher TB',READ_ONLY:'Nur Lesen',TB:'TB',REVOKED:'Widerrufen',ACCEPTED:'Angenommen',OPEN:'Offen',CLOSED:'Erledigt',IN_PROGRESS:'In Arbeit',EXPIRED:'Abgelaufen'};
+const nav=document.createElement('nav');nav.className='card actions';nav.setAttribute('aria-label','Baustellenbereiche');
+const header=document.getElementById('title').closest('.card');header.after(nav);
+const overview=document.createElement('section');overview.className='card';overview.innerHTML='<h2>Übersicht</h2><p>Berichte, Bilder und offene Aufgaben dieser Baustelle.</p><div id="overviewCounts" class="actions"></div>';nav.after(overview);
+const panels=[['overview','Übersicht',[overview]],['reports','Bautagesberichte',[document.getElementById('teams').closest('.card')]],['structure','Unterbaustellen',[document.getElementById('nodes').closest('.card')]],['issues','Mängel & Abnahmen',[document.getElementById('defects').closest('.card'),document.getElementById('acceptances').closest('.card')]],['team','Team & Einladungen',[document.getElementById('members').closest('.card')]]];
+const host=document.createElement('div');overview.after(host);panels.slice(1).forEach(p=>p[2].forEach(el=>host.append(el)));document.querySelectorAll('.section-grid').forEach(g=>{if(!g.children.length)g.remove();});
+function select(key){panels.forEach(([id,label,els])=>{els.forEach(el=>el.hidden=id!==key);const b=nav.querySelector('[data-panel="'+id+'"]');b.classList.toggle('secondary',id!==key);b.setAttribute('aria-current',id===key?'page':'false');});history.replaceState(null,'','#'+key);}
+panels.forEach(([id,label])=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.dataset.panel=id;b.onclick=()=>select(id);nav.append(b);});
+const filters=document.createElement('div');filters.className='grid';filters.innerHTML='<div><label for="reportDate">Datum</label><input id="reportDate" type="date"></div><div><label for="reportStatus">Status</label><select id="reportStatus"><option value="">Alle</option><option value="ACTIVE">Aktiv</option><option value="REWORK">Nachbearbeitung</option><option value="FINALIZED">Abgeschlossen</option></select></div>';document.getElementById('teams').before(filters);
+function filterReports(){const date=document.getElementById('reportDate').value,status=document.getElementById('reportStatus').value;document.querySelectorAll('.report-row').forEach(el=>el.hidden=!!((date&&el.dataset.date!==date)||(status&&el.dataset.status!==status)));}
+filters.oninput=filterReports;
+const pictures=document.createElement('a');pictures.className='btn secondary';pictures.textContent='Bilder';pictures.href='/portal/v1/pictures?worksite='+encodeURIComponent(worksiteId);nav.append(pictures);
+for(const [id,label] of [['nodeForm','Unterbaustelle anlegen'],['defectForm','Mangel anlegen / bearbeiten'],['acceptanceForm','Abnahme anlegen / bearbeiten'],['inviteForm','Person einladen']]){const form=document.getElementById(id);if(!form)continue;const d=document.createElement('details'),summary=document.createElement('summary');summary.textContent=label;form.before(d);d.append(summary,form);}
+document.querySelectorAll('textarea.json').forEach(el=>{const details=el.closest('details');if(details)details.hidden=true;});
+function refresh(){filterReports();document.querySelectorAll('.pill').forEach(el=>{const translated=labels[el.textContent.trim()];if(translated&&translated!==el.textContent)el.textContent=translated;});const target=document.getElementById('overviewCounts');target.replaceChildren();[['reports','Berichte',document.querySelectorAll('#teams .report-row').length],['issues','Mängel',document.querySelectorAll('#defects .item').length],['issues','Abnahmen',document.querySelectorAll('#acceptances .item').length],['team','Mitglieder',document.querySelectorAll('#members .item').length]].forEach(([id,label,count])=>{const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent=count+' '+label;b.onclick=()=>select(id);target.append(b);});}
+const observer=new MutationObserver(refresh);['teams','members','defects','acceptances','invitations'].forEach(id=>observer.observe(document.getElementById(id),{childList:true,subtree:true}));
+select(panels.some(p=>p[0]===location.hash.slice(1))?location.hash.slice(1):'overview');refresh();
+})();
+</script>
+{% endblock %}
+
+

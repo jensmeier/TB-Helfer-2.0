@@ -1,0 +1,466 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · {{ profile.name }}{% endblock %}
+{% block head %}
+<style>
+  .company-back{margin-bottom:12px}
+  .company-hero{background:linear-gradient(120deg,#0b4fad,#1167d8 58%,#3b82e6);color:#fff;border:0;padding:22px 24px;overflow:hidden;position:relative}
+  .company-hero:after{content:"";position:absolute;width:340px;height:340px;border-radius:50%;right:-120px;top:-215px;background:rgba(255,255,255,.11)}
+  .company-head{position:relative;z-index:1;display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap}.company-hero h1{color:#fff;margin:0 0 4px;font-size:30px}.company-hero .muted{color:#dbeafe}
+  .company-stats{display:flex;gap:8px;flex-wrap:wrap}.company-stats .pill{background:rgba(255,255,255,.16);color:#fff}
+  .company-shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;align-items:start}
+  .company-sidebar{position:sticky;top:82px;background:#fff;border:1px solid #e4e7ec;border-radius:16px;padding:10px;box-shadow:0 3px 12px rgba(16,24,40,.045)}
+  .nav-group-title{padding:10px 10px 5px;font-size:10px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;color:#98a2b3}
+  .side-btn{width:100%;border:0;background:transparent;color:#344054;text-align:left;padding:10px 11px;border-radius:10px;font-weight:700;display:flex;justify-content:space-between;gap:8px;align-items:center;margin:1px 0}
+  .side-btn:hover{background:#f2f6fb;color:#101828}.side-btn.active{background:#eaf2ff;color:#175cd3}.side-count{min-width:25px;text-align:center;background:#f2f4f7;border-radius:999px;padding:2px 7px;font-size:11px;color:#475467}
+  .side-btn.active .side-count{background:#fff;color:#175cd3}
+  .company-panel{display:none}.company-panel.active{display:block}
+  .panel-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px}.panel-title h2{margin-bottom:3px}
+  .overview-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.overview-kpi{border:1px solid #e4e7ec;border-radius:13px;padding:14px;background:linear-gradient(180deg,#fff,#fbfcfe)}.overview-kpi .n{font-size:24px;font-weight:850}.overview-kpi .l{font-size:12px;color:#667085}
+  .overview-columns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.info{border:1px solid #eaecf0;border-radius:12px;padding:12px;background:#fbfcfe}.info .k{font-size:11px;color:#667085}.info .v{font-size:15px;font-weight:800;margin-top:3px;overflow-wrap:anywhere}
+  .info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .storage-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.storage-box{border:1px solid #e4e7ec;border-radius:12px;padding:14px;background:#fff}.storage-box .n{font-size:22px;font-weight:850}.storage-box .l{font-size:12px;color:#667085}
+  .range-row{display:grid;grid-template-columns:1fr 95px;gap:10px;align-items:end}.logo-current{max-width:360px;max-height:170px;object-fit:contain;border:1px solid #eaecf0;background:#fff;padding:10px;border-radius:12px}
+  .pdf-shell{border:1px solid #d0d5dd;border-radius:12px;background:#f2f4f7;overflow:hidden}.pdf-view{width:100%;height:650px;border:0;background:#fff}.small{font-size:12px;color:#667085}
+  .section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+  .inline-form{border:1px solid #dbe7f6;background:#f8fbff;border-radius:13px;padding:14px;margin-bottom:14px}.inline-form h3{margin-bottom:4px}
+  .row-actions{display:flex;gap:6px;flex-wrap:wrap}.row-actions button,.row-actions .btn{padding:7px 9px;font-size:12px}
+  .edit-panel{display:none;background:#f8fafc;border:1px solid #eaecf0;border-radius:10px;padding:12px;margin-top:8px}
+  .status-ok{background:#ecfdf3;color:#067647}.status-warn{background:#fffaeb;color:#b54708}.status-off{background:#f2f4f7;color:#475467}.state-bad{color:#b42318;font-weight:750}
+  .device-detail{font-size:12px;color:#667085;margin-top:2px}
+  .company-table td{vertical-align:middle}.company-table code{font-size:11px}
+  .empty-inline{padding:20px;text-align:center;border:1px dashed #d0d5dd;border-radius:12px;color:#667085}
+  @media(max-width:1050px){.company-shell{grid-template-columns:1fr}.company-sidebar{position:static;display:flex;gap:5px;overflow:auto}.nav-group-title{display:none}.side-btn{width:auto;white-space:nowrap}.overview-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.storage-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(max-width:700px){.overview-columns,.info-grid{grid-template-columns:1fr}.storage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pdf-view{height:480px}.range-row{grid-template-columns:1fr}.company-hero h1{font-size:25px}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="company-back"><a class="btn secondary" href="/admin/v1/companies">← Alle Firmen</a></div>
+
+<div class="card company-hero">
+  <div class="company-head">
+    <div>
+      <h1>{{ profile.name }}</h1>
+      <div class="muted">Zentrale Verwaltung für Firma, Benutzer, Geräte, Speicher und PDF.</div>
+    </div>
+    <div class="company-stats">
+      <span class="pill">{{ company_users|length }} Benutzer</span>
+      <span class="pill">{{ company_devices|length }} Geräte</span>
+      <span class="pill">{{ company_worksites|length }} Baustellen</span>
+      <span class="pill" id="companyStorageHero">— Speicher</span>
+    </div>
+  </div>
+  <div id="msg"></div>
+</div>
+
+<div class="company-shell">
+  <aside class="company-sidebar">
+    <div class="nav-group-title">Firma</div>
+    <button class="side-btn active" type="button" data-section="overview">Übersicht</button>
+    <button class="side-btn" type="button" data-section="profile">Stammdaten</button>
+    <div class="nav-group-title">Organisation</div>
+    <button class="side-btn" type="button" data-section="users">Benutzer <span class="side-count">{{ company_users|length }}</span></button>
+    <button class="side-btn" type="button" data-section="devices">Geräte <span class="side-count">{{ company_devices|length }}</span></button>
+    <button class="side-btn" type="button" data-section="worksites">Baustellen <span class="side-count">{{ company_worksites|length }}</span></button>
+    <div class="nav-group-title">Dokumente & Speicher</div>
+    <button class="side-btn" type="button" data-section="storage">Speicher</button>
+    <button class="side-btn" type="button" data-section="pdf">Logo / PDF</button>
+  </aside>
+
+  <div class="company-content">
+    <section class="company-panel active" data-panel="overview">
+      <div class="card">
+        <div class="panel-title">
+          <div><h2>Firmenübersicht</h2><div class="muted">Alles Wichtige zu {{ profile.name }} auf einen Blick.</div></div>
+          <span class="pill status-ok">Aktiv</span>
+        </div>
+        <div class="overview-kpis">
+          <div class="overview-kpi"><div class="n">{{ company_users|length }}</div><div class="l">Benutzer</div></div>
+          <div class="overview-kpi"><div class="n">{{ company_devices|length }}</div><div class="l">gebundene Geräte</div></div>
+          <div class="overview-kpi"><div class="n">{{ company_worksites|length }}</div><div class="l">Baustellen</div></div>
+          <div class="overview-kpi"><div class="n" id="overviewStorage">—</div><div class="l">TB-Helfer-Speicher</div></div>
+        </div>
+        <div class="overview-columns">
+          <div class="info">
+            <div class="k">Anschrift</div>
+            <div class="v">{{ profile.address_line1 or '—' }}{% if profile.address_line2 %}<br>{{ profile.address_line2 }}{% endif %}<br>{{ profile.postal_code or '' }} {{ profile.city or '' }}</div>
+          </div>
+          <div class="info">
+            <div class="k">Kontakt</div>
+            <div class="v">{{ profile.phone or '—' }}<br>{{ profile.email or '—' }}{% if profile.website %}<br>{{ profile.website }}{% endif %}</div>
+          </div>
+        </div>
+        <div class="muted" style="margin-top:12px;font-size:12px">Profil-Version <span id="profileVersion">{{ profile.profile_version }}</span> · Logo-Version <span id="logoVersion">{{ profile.logo_version }}</span> · PDF-Layout-Version <span id="layoutVersionTop">{{ layout.layout_version }}</span></div>
+      </div>
+    </section>
+
+    <section class="company-panel" data-panel="profile">
+      <div class="card">
+        <div class="panel-title"><div><h2>Stammdaten</h2><div class="muted">Zentrale Firmendaten für Server, Portal, Geräte und PDF.</div></div></div>
+        <form id="profileForm">
+          <div class="grid">
+            <div><label for="p_name">Firmenname</label><input id="p_name" value="{{ profile.name or '' }}" required maxlength="200"></div>
+            <div><label for="p_address1">Straße / Hausnummer</label><input id="p_address1" value="{{ profile.address_line1 or '' }}" maxlength="300"></div>
+            <div><label for="p_address2">Adresszusatz</label><input id="p_address2" value="{{ profile.address_line2 or '' }}" maxlength="300"></div>
+            <div><label for="p_postal">PLZ</label><input id="p_postal" value="{{ profile.postal_code or '' }}" maxlength="30"></div>
+            <div><label for="p_city">Ort</label><input id="p_city" value="{{ profile.city or '' }}" maxlength="200"></div>
+            <div><label for="p_phone">Firmentelefon</label><input id="p_phone" value="{{ profile.phone or '' }}" maxlength="100"></div>
+            <div><label for="p_email">Firmen-E-Mail</label><input id="p_email" type="email" value="{{ profile.email or '' }}" maxlength="320"></div>
+            <div><label for="p_website">Webseite</label><input id="p_website" value="{{ profile.website or '' }}" maxlength="500"></div>
+          </div>
+          <div class="actions" style="margin-top:14px"><button type="submit">Stammdaten speichern</button></div>
+        </form>
+      </div>
+    </section>
+
+    <section class="company-panel" data-panel="users">
+      <div class="card">
+        <div class="panel-title">
+          <div><h2>Benutzer</h2><div class="muted">Benutzer dieser Firma direkt hier anlegen, bearbeiten und aktivieren.</div></div>
+        </div>
+        <div class="inline-form">
+          <h3>+ Benutzer hinzufügen</h3>
+          <div class="muted" style="margin-bottom:10px">Die Firma ist bereits fest auf <b>{{ profile.name }}</b> gesetzt.</div>
+          <form id="createUser">
+            <div class="grid">
+              <div><label for="u_first">Vorname</label><input id="u_first" required maxlength="120"></div>
+              <div><label for="u_last">Nachname</label><input id="u_last" required maxlength="120"></div>
+              <div><label for="u_role">Rolle</label><select id="u_role"><option value="USER">Benutzer</option><option value="CHEF">Chef</option></select></div>
+              <div><label for="u_valid_preset">Zugriff gültig</label><select id="u_valid_preset"><option value="">Kein Ablauf</option><option value="3">3 Monate</option><option value="6">6 Monate</option><option value="12">1 Jahr</option><option value="manual">Manuell</option></select></div>
+              <div><label for="u_valid_date">Letzter gültiger Tag</label><input id="u_valid_date" type="date" disabled></div>
+            </div>
+            <div class="actions" style="margin-top:10px"><button type="submit">Benutzer anlegen</button></div>
+          </form>
+        </div>
+
+        {% if company_users %}
+        <div class="scroll"><table class="company-table">
+          <thead><tr><th>Benutzer</th><th>Rolle</th><th>Portal</th><th>Gültig bis</th><th>Aktionen</th></tr></thead>
+          <tbody>
+          {% for u in company_users %}
+          <tr>
+            <td><b>{{ u.display_name }}</b><div class="muted"><code>{{ u.login_name }}</code></div></td>
+            <td>{% if u.company_role == 'CHEF' %}<span class="pill">Chef</span>{% else %}<span class="pill">Benutzer</span>{% endif %}</td>
+            <td>{% if u.activated_at %}<span class="pill status-ok">Aktiv</span>{% else %}<span class="pill status-warn">Noch nicht aktiviert</span>{% endif %}</td>
+            <td>
+              {% if u.access_valid_through %}
+                {{ u.access_valid_through.strftime('%d.%m.%Y') }}
+                <div class="device-detail {% if u.access_expired %}state-bad{% endif %}">{{ u.access_remaining_label }}</div>
+              {% else %}
+                ohne Ablauf
+              {% endif %}
+            </td>
+            <td>
+              <div class="row-actions">
+                <button type="button" class="secondary toggle-user-edit" data-user-id="{{ u.id }}">Bearbeiten</button>
+                <a class="btn" href="/admin/v1/users/{{ u.id }}/activation-card">Aktivierungskarte</a>
+                {% if not u.activated_at %}<button type="button" class="secondary portal-activation" data-user-id="{{ u.id }}" data-login="{{ u.login_name }}">Portal aktivieren</button>{% endif %}
+                <button type="button" class="secondary delete-user" data-user-id="{{ u.id }}" data-user-name="{{ u.display_name }}">Sicher löschen</button>
+                <button type="button" class="danger purge-user" data-user-id="{{ u.id }}" data-user-name="{{ u.display_name }}">Komplett löschen</button>
+              </div>
+              <div id="edit-user-{{ u.id }}" class="edit-panel">
+                <div class="grid">
+                  <div><label>Vorname</label><input class="edit-first" value="{{ u.first_name or '' }}" maxlength="120"></div>
+                  <div><label>Nachname</label><input class="edit-last" value="{{ u.last_name or '' }}" maxlength="120"></div>
+                  <div><label>Rolle</label><select class="edit-role"><option value="USER" {% if u.company_role == 'USER' %}selected{% endif %}>Benutzer</option><option value="CHEF" {% if u.company_role == 'CHEF' %}selected{% endif %}>Chef</option></select></div>
+                  <div><label>Zugriff gültig</label><select class="edit-valid-preset"><option value="" {% if not u.access_valid_through %}selected{% endif %}>Kein Ablauf</option><option value="3">3 Monate</option><option value="6">6 Monate</option><option value="12">1 Jahr</option><option value="manual" {% if u.access_valid_through %}selected{% endif %}>Manuell</option></select></div>
+                  <div><label>Letzter gültiger Tag</label><input class="edit-valid-date" type="date" value="{% if u.access_valid_through %}{{ u.access_valid_through.isoformat() }}{% endif %}" {% if not u.access_valid_through %}disabled{% endif %}></div>
+                </div>
+                <div class="actions" style="margin-top:10px"><button type="button" class="save-user" data-user-id="{{ u.id }}">Änderungen speichern</button></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table></div>
+        {% else %}
+        <div class="empty-inline">Noch keine Benutzer in dieser Firma.</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="company-panel" data-panel="devices">
+      <div class="card">
+        <div class="panel-title">
+          <div>
+            <h2>Gebundene Geräte</h2>
+            <div class="muted">Geräte bleiben technisch an Benutzer gebunden und werden hier vollständig firmenbezogen verwaltet.</div>
+            {% if latest_android_release %}
+            <div class="device-detail" style="margin-top:5px">
+              Aktuell veröffentlicht: <b>{{ latest_android_release.version_name }}</b>{% if latest_android_release.build_number %} · Build {{ latest_android_release.build_number }}{% endif %}.
+              Die Gerätezeile zeigt bis zum Android-Vertragsupdate ausdrücklich den <b>zuletzt gemeldeten</b> Stand.
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% if company_devices %}
+        <div class="scroll"><table class="company-table">
+          <thead><tr><th>Benutzer</th><th>Gerät</th><th>App</th><th>Status</th><th>Letzter Kontakt</th><th>Aktionen</th></tr></thead>
+          <tbody>
+          {% for d in company_devices %}
+          <tr>
+            <td><b>{{ d.display_name }}</b><div class="muted"><code>{{ d.login_name }}</code></div></td>
+            <td><b>{{ d.device_name or d.platform or '—' }}</b><div class="device-detail">{{ d.platform or '—' }}{% if d.os_version %} · {{ d.os_version }}{% endif %}</div><div class="device-detail"><code>{{ d.device_uid }}</code></div></td>
+            <td>
+              {% if d.reported_app_version %}
+                <b>{{ d.reported_app_version }}</b>{% if d.app_build is not none %} · Build {{ d.app_build }}{% endif %}
+                <div class="device-detail">zuletzt vom Gerät gemeldet</div>
+              {% else %}
+                —
+                <div class="device-detail">noch keine Version gemeldet</div>
+              {% endif %}
+              {% if latest_android_release %}
+                <div class="device-detail">Server-Release: {{ latest_android_release.version_name }}{% if latest_android_release.build_number %} · {{ latest_android_release.build_number }}{% endif %}</div>
+              {% endif %}
+            </td>
+            <td>
+              {% if d.status == 'ACTIVE' and not d.revoked_at %}<span class="pill status-ok">Aktiv</span>
+              {% elif d.status == 'BLOCKED' and not d.revoked_at %}<span class="pill status-warn">Blockiert</span>
+              {% else %}<span class="pill status-off">Freigegeben</span>{% endif %}
+            </td>
+            <td>{{ d.last_seen_at or '—' }}{% if d.last_sync_at %}<div class="device-detail">Sync: {{ d.last_sync_at }}</div>{% endif %}{% if d.last_sync_error %}<div class="device-detail" style="color:#b42318">{{ d.last_sync_error }}</div>{% endif %}</td>
+            <td>
+              <div class="row-actions">
+                {% if d.status == 'ACTIVE' and not d.revoked_at %}<button type="button" class="secondary block-device" data-device-id="{{ d.id }}" data-device-name="{{ d.device_name or d.device_uid }}">Blockieren</button>{% endif %}
+                {% if not d.revoked_at %}<button type="button" class="secondary release-device" data-device-id="{{ d.id }}" data-device-name="{{ d.device_name or d.device_uid }}">Bindung lösen</button>{% endif %}
+                <button type="button" class="danger purge-device" data-device-id="{{ d.id }}" data-device-name="{{ d.device_name or d.device_uid }}">Komplett löschen</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table></div>
+        {% else %}
+        <div class="empty-inline">Noch keine Geräte an Benutzer dieser Firma gebunden. Eine neue Geräteaktivierung wird beim jeweiligen Benutzer über die Aktivierungskarte vorbereitet.</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="company-panel" data-panel="worksites">
+      <div class="card">
+        <div class="panel-title"><div><h2>Baustellen</h2><div class="muted">Inhalte und Bearbeitung sind im Portal verfügbar. Hier können vollständige Baustellen dieser Firma endgültig gelöscht werden.</div></div></div>
+        {% if company_worksites %}
+        <div class="scroll"><table class="company-table">
+          <thead><tr><th>Baustelle</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+          {% for w in company_worksites %}
+          <tr>
+            <td><b>{{ w.name }}</b></td>
+            <td>{{ w.status }}</td>
+            <td class="right"><button type="button" class="danger purge-worksite" data-worksite-id="{{ w.id }}" data-worksite-name="{{ w.name }}">Komplett löschen</button></td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table></div>
+        {% else %}
+        <div class="empty-inline">Noch keine Baustelle in dieser Firma.</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="company-panel" data-panel="storage">
+      <div class="card">
+        <div class="panel-title"><div><h2>Speicher</h2><div class="muted">Erfasster TB-Helfer-Speicher dieser Firma, ohne NAS-System- und Datenbank-Overhead.</div></div></div>
+        <div class="storage-grid">
+          <div class="storage-box"><div class="n" id="sTotal">—</div><div class="l">Gesamt</div></div>
+          <div class="storage-box"><div class="n" id="sPhotos">—</div><div class="l">Fotos / Bilder</div></div>
+          <div class="storage-box"><div class="n" id="sPdf">—</div><div class="l">PDF-Dateien</div></div>
+          <div class="storage-box"><div class="n" id="sSurvey">—</div><div class="l">Trassierungsdaten</div></div>
+          <div class="storage-box"><div class="n" id="sOther">—</div><div class="l">Sonstige Dateien</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="company-panel" data-panel="pdf">
+      <div class="card">
+        <div class="panel-title"><div><h2>Firmenlogo</h2><div class="muted">Zentrales Logo für Server, Android und PDF.</div></div></div>
+        <div class="grid">
+          <div>
+            {% if profile.has_logo %}
+              <img id="currentLogo" class="logo-current" src="/api/v1/admin/companies/{{ company_id }}/logo?v={{ profile.logo_version }}" alt="Firmenlogo">
+            {% else %}
+              <div id="noLogo" class="notice info">Noch kein Firmenlogo hinterlegt.</div>
+              <img id="currentLogo" class="logo-current" style="display:none" alt="Firmenlogo">
+            {% endif %}
+          </div>
+          <div>
+            <label for="logoFile">Neues Logo auswählen</label><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp">
+            <div class="actions" style="margin-top:12px"><button id="uploadLogo" type="button">Logo speichern</button><button id="deleteLogo" type="button" class="danger" {% if not profile.has_logo %}disabled{% endif %}>Logo entfernen</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="panel-title"><div><h2>PDF-Logo-Layout</h2><div class="muted">Firmenweiter Stand · Layout-Version <span id="layoutVersion">{{ layout.layout_version }}</span> · Server-Layout · Android-Anpassung für 400 pt noch offen.</div></div></div>
+        <div class="grid">
+          <div class="range-row"><div><label for="logoWidth">Logo-Breite (pt)</label><input id="logoWidth" type="range" min="40" max="400" step="5" value="{{ layout.logo_width_pt }}"></div><input id="logoWidthNumber" type="number" min="40" max="400" value="{{ layout.logo_width_pt }}"></div>
+          <div class="range-row"><div><label for="offsetX">X-Versatz (pt)</label><input id="offsetX" type="range" min="-120" max="120" step="5" value="{{ layout.offset_x_pt }}"></div><input id="offsetXNumber" type="number" min="-120" max="120" value="{{ layout.offset_x_pt }}"></div>
+          <div class="range-row"><div><label for="offsetY">Y-Versatz (pt)</label><input id="offsetY" type="range" min="-60" max="180" step="5" value="{{ layout.offset_y_pt }}"></div><input id="offsetYNumber" type="number" min="-60" max="180" value="{{ layout.offset_y_pt }}"></div>
+        </div>
+        <div class="grid" style="margin-top:14px">
+          <div class="check"><input id="showName" type="checkbox" {% if layout.show_company_name %}checked{% endif %}><label for="showName">Firmenname anzeigen</label></div>
+          <div class="check"><input id="showEmail" type="checkbox" {% if layout.show_company_email %}checked{% endif %}><label for="showEmail">Firmen-E-Mail anzeigen</label></div>
+          <div class="check"><input id="showPhone" type="checkbox" {% if layout.show_company_phone %}checked{% endif %}><label for="showPhone">Firmentelefon anzeigen</label></div>
+          <div class="check"><input id="contactsInImage" type="checkbox" {% if layout.contacts_in_image %}checked{% endif %}><label for="contactsInImage">Kontaktdaten stehen bereits im Logo</label></div>
+        </div>
+        <div class="actions" style="margin-top:14px"><button id="saveLayout" type="button">PDF-Layout speichern</button><button id="resetLayout" type="button" class="secondary">Standardwerte</button></div>
+      </div>
+
+      <div class="card">
+        <div class="panel-title">
+          <div><h2>PDF-Vorschau</h2><div class="small">Echte A4-Vorschau mit demselben serverseitigen Firmenkopf wie beim BTB-Abschluss.</div></div>
+          <div class="actions"><button id="refreshPdf" type="button" class="secondary">Vorschau aktualisieren</button><a id="openPdfLarge" class="btn" target="_blank" href="/api/v1/admin/companies/{{ company_id }}/pdf-preview">Groß öffnen</a></div>
+        </div>
+        <div class="pdf-shell"><iframe id="pdfPreview" class="pdf-view" title="PDF-Vorschau" src="/api/v1/admin/companies/{{ company_id }}/pdf-preview?v={{ layout.layout_version }}-{{ profile.logo_version }}"></iframe></div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const companyId={{ company_id|tojson }},storage={{ storage|tojson }},msg=document.getElementById('msg');
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+function val(id){const v=document.getElementById(id).value.trim();return v||null;}
+function clamp(n,min,max){return Math.max(min,Math.min(max,Number(n)||0));}
+function size(value){const n=Number(value)||0,a=Math.abs(n);if(a>=1e12)return(n/1e12).toFixed(a>=1e14?0:1)+' TB';if(a>=1e9)return(n/1e9).toFixed(a>=1e11?0:1)+' GB';if(a>=1e6)return(n/1e6).toFixed(a>=1e8?0:1)+' MB';if(a>=1e3)return(n/1e3).toFixed(a>=1e5?0:1)+' kB';return Math.round(n)+' B';}
+function reloadSection(name,delay){setTimeout(()=>{location.href=location.pathname+'?r='+Date.now()+'#'+name;},delay||0);}
+function openSection(name){document.querySelectorAll('.side-btn').forEach(b=>b.classList.toggle('active',b.dataset.section===name));document.querySelectorAll('.company-panel').forEach(p=>p.classList.toggle('active',p.dataset.panel===name));history.replaceState(null,'','#'+name);window.scrollTo({top:Math.max(0,document.querySelector('.company-shell').offsetTop-78),behavior:'smooth'});}
+document.querySelectorAll('.side-btn').forEach(b=>b.addEventListener('click',()=>openSection(b.dataset.section)));
+const initial=location.hash.slice(1);if(initial&&document.querySelector('[data-panel="'+initial+'"]'))openSection(initial);
+
+document.getElementById('companyStorageHero').textContent=size(storage.total_bytes||0)+' Speicher';
+document.getElementById('overviewStorage').textContent=size(storage.total_bytes||0);
+document.getElementById('sTotal').textContent=size(storage.total_bytes||0);
+document.getElementById('sPhotos').textContent=size(storage.photo_bytes||0);
+document.getElementById('sPdf').textContent=size(storage.pdf_bytes||0);
+document.getElementById('sSurvey').textContent=size(storage.survey_bytes||0);
+document.getElementById('sOther').textContent=size(storage.other_file_bytes||0);
+
+document.getElementById('profileForm').addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  try{
+    const result=await tbApi('/api/v1/admin/companies/'+companyId+'/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name:val('p_name'),address_line1:val('p_address1'),address_line2:val('p_address2'),postal_code:val('p_postal'),city:val('p_city'),phone:val('p_phone'),email:val('p_email'),website:val('p_website')
+    })});
+    document.getElementById('profileVersion').textContent=result.data.profile.profile_version;
+    show('ok','Firmenstammdaten gespeichert.');refreshPdf();
+  }catch(e){show('err',e.message||String(e));}
+});
+
+function localDateValue(date){const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');return y+'-'+m+'-'+d;}
+function addCalendarMonths(months){const now=new Date(),day=now.getDate(),target=new Date(now.getFullYear(),now.getMonth()+months,1),lastDay=new Date(target.getFullYear(),target.getMonth()+1,0).getDate();target.setDate(Math.min(day,lastDay));return localDateValue(target);}
+const validPreset=document.getElementById('u_valid_preset'),validDate=document.getElementById('u_valid_date');
+validPreset.addEventListener('change',()=>{const p=validPreset.value;if(!p){validDate.value='';validDate.disabled=true;return;}validDate.disabled=false;if(p==='manual'){if(!validDate.value)validDate.focus();return;}validDate.value=addCalendarMonths(Number(p));});
+
+document.querySelectorAll('.edit-valid-preset').forEach(select=>{
+  const panel=select.closest('.edit-panel'),dateInput=panel.querySelector('.edit-valid-date');
+  select.addEventListener('change',()=>{
+    const preset=select.value;
+    if(!preset){dateInput.value='';dateInput.disabled=true;return;}
+    dateInput.disabled=false;
+    if(preset==='manual'){if(!dateInput.value)dateInput.focus();return;}
+    dateInput.value=addCalendarMonths(Number(preset));
+  });
+});
+
+document.getElementById('createUser').addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  if(validPreset.value==='manual'&&!validDate.value){show('err','Bitte den letzten gültigen Tag auswählen.');validDate.focus();return;}
+  try{
+    const {data}=await tbApi('/api/v1/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      company_id:companyId,first_name:document.getElementById('u_first').value.trim(),last_name:document.getElementById('u_last').value.trim(),company_role:document.getElementById('u_role').value,access_valid_through:validDate.value||null
+    })});
+    show('ok','Benutzer wurde angelegt. Vorläufiger Login: '+data.login_name);reloadSection('users',550);
+  }catch(e){show('err',e.message||String(e));}
+});
+document.querySelectorAll('.toggle-user-edit').forEach(b=>b.addEventListener('click',()=>{const p=document.getElementById('edit-user-'+b.dataset.userId);p.style.display=p.style.display==='block'?'none':'block';}));
+document.querySelectorAll('.save-user').forEach(b=>b.addEventListener('click',async()=>{
+  const p=document.getElementById('edit-user-'+b.dataset.userId),preset=p.querySelector('.edit-valid-preset'),dateInput=p.querySelector('.edit-valid-date');
+  if(preset.value==='manual'&&!dateInput.value){show('err','Bitte den letzten gültigen Tag auswählen.');dateInput.focus();return;}
+  b.disabled=true;
+  try{
+    await tbApi('/api/v1/admin/users/'+b.dataset.userId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      first_name:p.querySelector('.edit-first').value.trim(),last_name:p.querySelector('.edit-last').value.trim(),company_role:p.querySelector('.edit-role').value,access_valid_through:dateInput.value||null
+    })});
+    show('ok','Benutzerdaten gespeichert.');reloadSection('users',450);
+  }catch(e){show('err',e.message||String(e));b.disabled=false;}
+}));
+document.querySelectorAll('.portal-activation').forEach(b=>b.addEventListener('click',async()=>{
+  b.disabled=true;try{const {data}=await tbApi('/api/v1/admin/users/'+b.dataset.userId+'/portal-activation',{method:'POST'});const url=data.activation_url||(location.origin+'/portal/v1/activate?token='+encodeURIComponent(data.activation_token)+'&login='+encodeURIComponent(data.login_name));if(navigator.clipboard){try{await navigator.clipboard.writeText(url);}catch(_){}}show('ok','Portal-Aktivierungslink erzeugt und nach Möglichkeit kopiert: '+url);}catch(e){show('err',e.message||String(e));}finally{b.disabled=false;}
+}));
+document.querySelectorAll('.delete-user').forEach(b=>b.addEventListener('click',async()=>{
+  if(!confirm('Benutzer "'+(b.dataset.userName||'')+'" sicher löschen? Gerätezugänge und offene Aktivierungen werden ungültig; Historie bleibt erhalten.'))return;
+  b.disabled=true;try{await tbApi('/api/v1/admin/users/'+b.dataset.userId,{method:'DELETE'});show('ok','Benutzer wurde sicher gelöscht.');reloadSection('users',450);}catch(e){show('err',e.message||String(e));b.disabled=false;}
+}));
+document.querySelectorAll('.purge-user').forEach(b=>b.addEventListener('click',async()=>{
+  const id=b.dataset.userId,typed=prompt('Benutzer "'+(b.dataset.userName||'')+'" ENDGÜLTIG löschen?\n\nZum Bestätigen ENDGUELTIG LOESCHEN eingeben.');if(typed!=='ENDGUELTIG LOESCHEN')return;b.disabled=true;
+  try{await tbApi('/api/v1/admin/purge/users/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm_id:id,confirm_text:typed})});show('ok','Benutzer vollständig gelöscht.');reloadSection('users',450);}catch(e){show('err',e.message||String(e));b.disabled=false;}
+}));
+
+document.querySelectorAll('.block-device').forEach(b=>b.addEventListener('click',async()=>{
+  if(!confirm('Gerät "'+(b.dataset.deviceName||'')+'" blockieren? Der aktuelle Gerätezugang wird sofort ungültig.'))return;
+  b.disabled=true;try{await tbApi('/api/v1/admin/devices/'+b.dataset.deviceId+'/block',{method:'POST'});show('ok','Gerät wurde blockiert.');reloadSection('devices',400);}catch(e){show('err',e.message||String(e));b.disabled=false;}
+}));
+document.querySelectorAll('.release-device').forEach(b=>b.addEventListener('click',async()=>{
+  if(!confirm('Gerätebindung "'+(b.dataset.deviceName||'')+'" lösen? Der Gerätezugang wird sofort ungültig.'))return;
+  b.disabled=true;try{await tbApi('/api/v1/admin/devices/'+b.dataset.deviceId+'/release',{method:'POST'});show('ok','Gerätebindung wurde gelöst.');reloadSection('devices',400);}catch(e){show('err',e.message||String(e));b.disabled=false;}
+}));
+document.querySelectorAll('.purge-device').forEach(b=>b.addEventListener('click',async()=>{
+  const id=b.dataset.deviceId,typed=prompt('Gerät "'+(b.dataset.deviceName||'')+'" vollständig löschen?\n\nZum Bestätigen ENDGUELTIG LOESCHEN eingeben.');if(typed!=='ENDGUELTIG LOESCHEN')return;b.disabled=true;
+  try{await tbApi('/api/v1/admin/purge/devices/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm_id:id,confirm_text:typed})});show('ok','Gerät vollständig gelöscht.');reloadSection('devices',400);}catch(e){show('err',e.message||String(e));b.disabled=false;}
+}));
+
+document.querySelectorAll('.purge-worksite').forEach(b=>b.addEventListener('click',async()=>{
+  const id=b.dataset.worksiteId;
+  const typed=prompt('Baustelle "'+b.dataset.worksiteName+'" komplett löschen?\n\nAlle zugehörigen Unterbaustellen, Teams, BTBs, Fotos, Dateien, Mängel und Abnahmen werden endgültig entfernt. Dies betrifft auch den Zugriff der Firmenbenutzer.\n\nZum Bestätigen ENDGUELTIG LOESCHEN eingeben.');
+  if(typed!=='ENDGUELTIG LOESCHEN')return;
+  b.disabled=true;
+  try{
+    await tbApi('/api/v1/admin/purge/worksites/'+id,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm_id:id,confirm_text:typed})});
+    show('ok','Baustelle vollständig gelöscht.');reloadSection('worksites',400);
+  }catch(e){show('err',e.message||String(e));b.disabled=false;}
+}));
+
+let pdfPreviewTimer=null;
+function currentPdfPreviewUrl(){
+  const p=new URLSearchParams({
+    logo_width_pt:String(clamp(document.getElementById('logoWidthNumber').value,40,400)),
+    offset_x_pt:String(clamp(document.getElementById('offsetXNumber').value,-120,120)),
+    offset_y_pt:String(clamp(document.getElementById('offsetYNumber').value,-60,180)),
+    show_company_name:String(document.getElementById('showName').checked),
+    show_company_email:String(document.getElementById('showEmail').checked),
+    show_company_phone:String(document.getElementById('showPhone').checked),
+    contacts_in_image:String(document.getElementById('contactsInImage').checked),
+    v:String(Date.now())
+  });
+  return '/api/v1/admin/companies/'+companyId+'/pdf-preview?'+p.toString();
+}
+function refreshPdf(){
+  const url=currentPdfPreviewUrl();
+  document.getElementById('pdfPreview').src=url;
+  document.getElementById('openPdfLarge').href=url;
+}
+function schedulePdfPreview(){
+  clearTimeout(pdfPreviewTimer);
+  pdfPreviewTimer=setTimeout(refreshPdf,350);
+}
+function pair(rid,nid,min,max){
+  const r=document.getElementById(rid),n=document.getElementById(nid);
+  r.addEventListener('input',()=>{n.value=r.value;schedulePdfPreview();});
+  n.addEventListener('input',()=>{
+    const raw=n.value.trim(),num=Number(raw);
+    if(raw!==''&&Number.isFinite(num)){r.value=clamp(num,min,max);schedulePdfPreview();}
+  });
+  n.addEventListener('change',()=>{const v=clamp(n.value,min,max);n.value=v;r.value=v;schedulePdfPreview();});
+}
+pair('logoWidth','logoWidthNumber',40,400);pair('offsetX','offsetXNumber',-120,120);pair('offsetY','offsetYNumber',-60,180);
+['showName','showEmail','showPhone','contactsInImage'].forEach(id=>document.getElementById(id).addEventListener('change',schedulePdfPreview));
+document.getElementById('uploadLogo').addEventListener('click',async()=>{const file=document.getElementById('logoFile').files[0];if(!file){show('err','Bitte zuerst eine Logo-Datei auswählen.');return;}if(file.size>5*1024*1024){show('err','Das Logo ist größer als die zulässige Grenze von ca. 5 MB.');return;}try{await tbApi('/api/v1/admin/companies/'+companyId+'/logo',{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});show('ok','Firmenlogo gespeichert.');reloadSection('pdf',350);}catch(e){show('err',e.message||String(e));}});
+document.getElementById('deleteLogo').addEventListener('click',async()=>{if(!confirm('Firmenlogo wirklich entfernen?'))return;try{await tbApi('/api/v1/admin/companies/'+companyId+'/logo',{method:'DELETE'});show('ok','Firmenlogo entfernt.');reloadSection('pdf',350);}catch(e){show('err',e.message||String(e));}});
+document.getElementById('saveLayout').addEventListener('click',async()=>{const payload={logo_width_pt:clamp(document.getElementById('logoWidthNumber').value,40,400),offset_x_pt:clamp(document.getElementById('offsetXNumber').value,-120,120),offset_y_pt:clamp(document.getElementById('offsetYNumber').value,-60,180),show_company_name:document.getElementById('showName').checked,show_company_email:document.getElementById('showEmail').checked,show_company_phone:document.getElementById('showPhone').checked,contacts_in_image:document.getElementById('contactsInImage').checked};try{const result=await tbApi('/api/v1/admin/companies/'+companyId+'/pdf-logo-layout',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});document.getElementById('layoutVersion').textContent=result.data.layout.layout_version;document.getElementById('layoutVersionTop').textContent=result.data.layout.layout_version;show('ok','PDF-Layout firmenweit gespeichert.');refreshPdf();}catch(e){show('err',e.message||String(e));}});
+document.getElementById('resetLayout').addEventListener('click',()=>{document.getElementById('logoWidth').value=document.getElementById('logoWidthNumber').value=90;document.getElementById('offsetX').value=document.getElementById('offsetXNumber').value=0;document.getElementById('offsetY').value=document.getElementById('offsetYNumber').value=0;document.getElementById('showName').checked=true;document.getElementById('showEmail').checked=true;document.getElementById('showPhone').checked=true;document.getElementById('contactsInImage').checked=false;refreshPdf();});
+document.getElementById('refreshPdf').addEventListener('click',refreshPdf);
+</script>
+{% endblock %}
+

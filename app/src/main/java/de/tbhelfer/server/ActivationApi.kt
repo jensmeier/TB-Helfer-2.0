@@ -25,6 +25,11 @@ class ActivationApi(
         OFFLINE
     }
 
+    data class SessionCheck(
+        val state: SessionState,
+        val userName: String? = null
+    )
+
     fun activate(
         key: String,
         deviceUid: String,
@@ -80,23 +85,40 @@ class ActivationApi(
         }
     }
 
-    fun checkSession(token: String): SessionState {
+    /**
+     * Prüft den vorhandenen Geräte-Token und übernimmt nur den nicht geheimen Anzeigenamen.
+     * Damit erhalten auch bereits früher aktivierte Geräte nach einem App-Update einen lokalen
+     * Namen-Fallback für BTB-Anzeige/Export, ohne erneut aktiviert werden zu müssen.
+     */
+    fun checkSessionInfo(token: String): SessionCheck {
         val connection = openConnection("/api/v1/device/me", "GET")
         return try {
             connection.setRequestProperty("Authorization", "Bearer $token")
             connection.setRequestProperty("Accept", "application/json")
-            when (connection.responseCode) {
-                HttpURLConnection.HTTP_OK -> SessionState.VALID
+            val code = connection.responseCode
+            when (code) {
+                HttpURLConnection.HTTP_OK -> {
+                    val body = readBody(connection, code)
+                    val json = body.takeIf { it.isNotBlank() }
+                        ?.let { runCatching { JSONObject(it) }.getOrNull() }
+                    val userName = json?.optJSONObject("user")
+                        ?.optString("name")
+                        ?.trim()
+                        ?.takeIf { it.isNotBlank() }
+                    SessionCheck(SessionState.VALID, userName)
+                }
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> SessionState.REVOKED
-                else -> SessionState.OFFLINE
+                HttpURLConnection.HTTP_FORBIDDEN -> SessionCheck(SessionState.REVOKED)
+                else -> SessionCheck(SessionState.OFFLINE)
             }
         } catch (_: Exception) {
-            SessionState.OFFLINE
+            SessionCheck(SessionState.OFFLINE)
         } finally {
             connection.disconnect()
         }
     }
+
+    fun checkSession(token: String): SessionState = checkSessionInfo(token).state
 
     private fun openConnection(path: String, method: String): HttpURLConnection {
         return (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {

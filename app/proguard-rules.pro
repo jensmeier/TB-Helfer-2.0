@@ -23,3 +23,9 @@
 
 # (Optional) keep Kotlin metadata (usually not needed, but harmless)
 -keep class kotlin.Metadata { *; }
+
+
+# --- PdfBox-Android (200058) ---
+# JPX decoding is optional in PdfBox-Android and is not used by TB-Helfer for URI annotations.
+# R8 otherwise reports the optional Gemalto decoder as a missing class in release builds.
+-dontwarn com.gemalto.jp2.**

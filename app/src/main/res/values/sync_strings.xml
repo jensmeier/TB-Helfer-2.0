@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="sync_title">Daten vom NAS</string>
-    <string name="sync_intro">Verfügbare Strecken und Bahnhöfe vom TB-Helfer-Server. Die eigentliche Auswahl und der Offline-Download werden als nächster Schritt ergänzt.</string>
+    <string name="sync_intro">Gemeinsamer TB-Helfer-Katalog für Strecken, Bahnhöfe, Gleise und Weichen. Einträge bleiben offline verfügbar. Ergänzungen und Korrekturen werden mit Versionsprüfung synchronisiert; globales Löschen ist nicht möglich.</string>
     <string name="sync_loading">Serverdaten werden geladen …</string>
     <string name="sync_connected">%1$s · verbunden</string>
+    <string name="sync_offline_cached">Offline · gespeicherter Stand vom %1$s</string>
+    <string name="sync_cache_warning">%1$s · Offline-Speicherung fehlgeschlagen</string>
+    <string name="sync_incremental_ok">%1$s · synchronisiert · ↓ %2$d / ↑ %3$d · %4$d ausstehend · %5$d Konflikte</string>
+    <string name="sync_incremental_warning">%1$s · Zusatz-Sync: %2$s</string>
     <string name="sync_error">Fehler: %1$s</string>
     <string name="sync_refresh">Neu laden</string>
     <string name="sync_routes">Strecken</string>
@@ -12,6 +16,29 @@
     <string name="sync_stations_count">Bahnhöfe (%1$d)</string>
     <string name="sync_no_routes">Auf dem Server sind noch keine Strecken vorhanden.</string>
     <string name="sync_no_stations">Auf dem Server sind noch keine Bahnhöfe vorhanden.</string>
-    <string name="sync_route_selected">Strecke %1$s ausgewählt. Abschnittsauswahl folgt im nächsten Schritt.</string>
-    <string name="sync_station_selected">%1$s ausgewählt. Gleis-/Weichenauswahl folgt im nächsten Schritt.</string>
+    <string name="sync_route_download_title">Strecke %1$s – Offline-Auswahl</string>
+    <string name="sync_station_download_title">%1$s – Offline-Auswahl</string>
+    <string name="sync_route_offline_title">Strecke %1$s – auf Gerät</string>
+    <string name="sync_station_offline_title">%1$s – auf Gerät</string>
+    <string name="sync_save_offline">Auf Gerät speichern</string>
+    <string name="sync_edit_offline">Gespeicherte bearbeiten</string>
+    <string name="sync_edit_section_title">Abschnitt bearbeiten</string>
+    <string name="sync_edit_object_title">Objekt bearbeiten</string>
+    <string name="sync_edit_designation">Bezeichnung</string>
+    <string name="sync_designation_required">Bezeichnung ist erforderlich.</string>
+    <string name="sync_edit_km_from">KM von, z. B. 70+123,456</string>
+    <string name="sync_edit_km_to">KM bis, z. B. 70+500,000</string>
+    <string name="sync_edit_km">KM, z. B. 70+123,456</string>
+    <string name="sync_local_change_queued">Änderung lokal gespeichert und für den nächsten Sync vorgemerkt.</string>
+    <string name="sync_invalid_km">Kilometerangabe ist ungültig.</string>
+    <string name="sync_conflict_title">Sync-Konflikte</string>
+    <string name="sync_conflicts_button">Konflikte prüfen (%1$d)</string>
+    <string name="sync_conflict_hint">Konflikte antippen, um Serverstand oder eigene Änderung auszuwählen.</string>
+    <string name="sync_take_server">Serverstand übernehmen</string>
+    <string name="sync_retry_local">Eigene Änderung erneut versuchen</string>
+    <string name="sync_conflict_action_done">Konfliktentscheidung gespeichert.</string>
+    <string name="sync_no_sections_for_route">Für diese Strecke sind auf dem Server noch keine Abschnitte vorhanden.</string>
+    <string name="sync_no_objects_for_station">Für diesen Bahnhof sind auf dem Server noch keine Gleise, Weichen oder anderen Objekte vorhanden.</string>
+    <string name="sync_sections_saved">%1$d Abschnitte offline gespeichert.</string>
+    <string name="sync_objects_saved">%1$d Bahnhofobjekte offline gespeichert.</string>
 </resources>

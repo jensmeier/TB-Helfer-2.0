@@ -1,0 +1,89 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Portal{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Einstellungen</h1>
+  <p>Angemeldet als <b>{{ user.display_name }}</b> · Rolle <span class="pill">{{ user.company_role }}</span></p>
+  <p class="muted">Baustellen bleiben firmengetrennt. Persönliche Kontaktdaten und dein Anzeigename gehören zu deinem eigenen Profil.</p>
+  <div class="actions">
+    <a class="btn" href="/portal/v1/worksites">Baustellen öffnen</a>
+    <a class="btn secondary" href="/portal/v1/invitations/redeem">Einladung einlösen</a>
+    {% if user.company_role == 'ADMIN' %}<a class="btn secondary" href="/admin/v1/companies">Administration öffnen</a>{% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h3>Mein Profil</h3>
+  <div id="profileMsg"></div>
+  <form id="profileForm">
+    <div class="grid">
+      <div><label for="profileDisplay">Anzeigename</label><input id="profileDisplay" value="{{ user.display_name }}" maxlength="200" required></div>
+      <div><label for="profileLogin">Login</label><input id="profileLogin" value="{{ user.login_name }}" minlength="3" maxlength="120" required></div>
+      <div><label for="profileEmail">Persönliche E-Mail</label><input id="profileEmail" type="email" value="{{ user.personal_email or '' }}" maxlength="320"></div>
+      <div><label for="profilePhone">Persönliches Telefon</label><input id="profilePhone" value="{{ user.personal_phone or '' }}" maxlength="100"></div>
+    </div>
+    <div class="actions" style="margin-top:14px"><button type="submit">Profil speichern</button></div>
+  </form>
+  <p class="muted" style="margin-bottom:0">E-Mail und Telefon sind für Benutzer derselben Firma sichtbar. Benutzer anderer Firmen erhalten diese persönlichen Kontaktdaten nicht.</p>
+</div>
+
+<div class="card">
+  <h3>Firmenkontakte</h3>
+  <p class="muted">Persönliche E-Mail und Telefon werden nur für aktive Benutzer derselben Firma angezeigt.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Name</th><th>Rolle</th><th>E-Mail</th><th>Telefon</th></tr></thead>
+    <tbody id="directoryRows"><tr><td colspan="4" class="muted">Wird geladen …</td></tr></tbody>
+  </table></div>
+</div>
+
+<div class="card"><h3>Anmeldung und Sicherheit</h3>
+<p id="emailState">E-Mail-Status wird geladen …</p><button type="button" id="verifyEmail">E-Mail bestätigen</button>
+<p id="securityMsg" role="status"></p>
+<details><summary>Passwort ändern</summary><form id="passwordForm">
+<label for="oldPassword">Aktuelles Passwort</label><input id="oldPassword" type="password" autocomplete="current-password" required>
+<label for="newPassword">Neues Passwort (mindestens 12 Zeichen)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="200" required>
+<button>Passwort speichern</button></form></details></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const profileMsg=document.getElementById('profileMsg');
+function profileShow(kind,text){profileMsg.className='notice '+kind;profileMsg.textContent=text;}
+async function loadDirectory(){
+  const rows=document.getElementById('directoryRows');
+  try{
+    const {data}=await tbApi('/api/v1/user/directory');
+    rows.innerHTML='';
+    (data.users||[]).forEach(user=>{
+      const tr=document.createElement('tr');
+      [user.display_name||'—',user.company_role||'—',user.personal_email||'—',user.personal_phone||'—'].forEach(value=>{
+        const td=document.createElement('td');td.textContent=value;tr.appendChild(td);
+      });
+      rows.appendChild(tr);
+    });
+    if(!(data.users||[]).length) rows.innerHTML='<tr><td colspan="4" class="muted">Keine Firmenkontakte vorhanden.</td></tr>';
+  }catch(error){rows.innerHTML='<tr><td colspan="4" class="muted">Firmenkontakte konnten nicht geladen werden.</td></tr>';}
+}
+loadDirectory();
+tbApi('/api/v1/portal/email/status').then(r=>{document.getElementById('emailState').textContent=r.data.verified?'E-Mail bestätigt – Passwortwiederherstellung verfügbar.':'E-Mail noch nicht bestätigt.';}).catch(()=>{document.getElementById('emailState').textContent='E-Mail-Status nicht verfügbar.';});
+document.getElementById('verifyEmail').onclick=async()=>{try{const r=await tbApi('/api/v1/portal/email/verify-request',{method:'POST'});document.getElementById('securityMsg').textContent=r.data.message;}catch(e){document.getElementById('securityMsg').textContent=e.message;}};
+document.getElementById('passwordForm').onsubmit=async e=>{e.preventDefault();try{const r=await tbApi('/api/v1/portal/password/change',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:document.getElementById('oldPassword').value,password:document.getElementById('newPassword').value})});document.getElementById('securityMsg').textContent=r.data.message;if(r.data.changed)location.href='/portal/v1/login';}catch(e){document.getElementById('securityMsg').textContent=e.message;}};
+
+
+document.getElementById('profileForm').addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  try{
+    await tbApi('/api/v1/user/profile',{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        display_name:document.getElementById('profileDisplay').value.trim(),
+        login_name:document.getElementById('profileLogin').value.trim(),
+        email:document.getElementById('profileEmail').value.trim()||null,
+        phone:document.getElementById('profilePhone').value.trim()||null
+      })
+    });
+    profileShow('ok','Profil wurde gespeichert.');
+    setTimeout(()=>location.reload(),450);
+  }catch(error){profileShow('err',error.message||String(error));}
+});
+</script>
+{% endblock %}

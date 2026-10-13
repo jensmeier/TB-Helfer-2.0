@@ -12,6 +12,7 @@
     <color name="tb_on_bg">#000000</color>
     <color name="tb_on_surface">@color/tb_on_bg</color>
     <color name="tb_text_secondary">#555555</color>
+    <color name="tb_pill_bg">#E0E0E0</color>
 
     <!-- Widgets (RemoteViews): keine Theme-Attrs verwenden -->
     <color name="widget_bg">#FFFFFF</color>

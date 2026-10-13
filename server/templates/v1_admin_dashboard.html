@@ -1,0 +1,254 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Übersicht{% endblock %}
+{% block head %}
+<style>
+  .hero{position:relative;overflow:hidden;padding:22px 24px;background:linear-gradient(120deg,#0b4fad,#1268d8 56%,#3f8bea);color:#fff;border:0}
+  .hero:after{content:"";position:absolute;width:330px;height:330px;border-radius:50%;right:-120px;top:-215px;background:rgba(255,255,255,.13)}
+  .hero h1{font-size:31px;margin:4px 0 5px;color:#fff}.hero p{margin:0;color:#eaf2ff}
+  .hero-row{display:flex;justify-content:space-between;gap:18px;align-items:center;position:relative;z-index:1;flex-wrap:wrap}
+  .hero-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.hero button{background:#fff;color:#0b4fad}
+  .status-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;background:#98a2b3}.status-dot.ok{background:#32d583}.status-dot.warn{background:#fdb022}.status-dot.bad{background:#f97066}
+  .live-pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:rgba(255,255,255,.16);font-size:12px;font-weight:800}
+  .top-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:14px 0}
+  .metric{position:relative;overflow:hidden;background:#fff;border:1px solid #e4e7ec;border-radius:15px;padding:15px 16px;box-shadow:0 4px 16px rgba(16,24,40,.055);min-width:0;transition:transform .15s,box-shadow .15s,border-color .15s}
+  .metric:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(16,24,40,.075);border-color:#d0d5dd}.metric:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:#d0d5dd}
+  .metric:nth-child(1):before{background:#2e90fa}.metric:nth-child(2):before{background:#7a5af8}.metric:nth-child(3):before{background:#12b76a}.metric:nth-child(4):before{background:#0ba5ec}.metric:nth-child(5):before{background:#1570ef}.metric:nth-child(6):before{background:#f79009}
+  .metric .eyebrow{font-size:11px;font-weight:850;letter-spacing:.045em;text-transform:uppercase;color:#667085}
+  .metric .value{font-size:23px;font-weight:850;margin:4px 0 1px;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .metric .sub{font-size:11px;color:#667085;min-height:17px}.metric.warn{background:#fffcf5;border-color:#fedf89}.metric.bad{background:#fff8f7;border-color:#fecdca}
+  .overview-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(330px,.85fr);gap:14px}.left-two{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:14px}
+  .card.compact{padding:18px;border-radius:15px;box-shadow:0 5px 18px rgba(16,24,40,.05)}.headline{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+  .headline h2{margin-bottom:3px}.chart-wrap{height:245px;margin-top:8px}.chart-wrap svg{width:100%;height:100%;display:block}
+  .legend{display:flex;gap:17px;flex-wrap:wrap;font-size:11px;color:#475467;margin-top:5px}.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}
+  .mini-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.mini-kpi{position:relative;border:1px solid #e4e7ec;border-radius:12px;padding:12px;background:linear-gradient(180deg,#fff,#f8fafc)}
+  .mini-kpi .n{font-size:20px;font-weight:850}.mini-kpi .l{font-size:11px;color:#667085;margin-top:1px}
+  .bars{display:grid;gap:10px}.bar-label{display:flex;justify-content:space-between;gap:10px;font-size:12px}.bar{height:8px;background:#edf1f5;border-radius:999px;overflow:hidden}.bar>div{height:100%;background:linear-gradient(90deg,#1167d8,#53a0ff)}
+  .system-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.system-box{border:1px solid #eaecf0;border-radius:11px;padding:10px;background:#fff}
+  .system-box .k{font-size:11px;color:#667085}.system-box .v{font-size:15px;font-weight:800;margin-top:2px;overflow-wrap:anywhere}
+  .issue{border:1px solid #eaecf0;border-left-width:4px;border-radius:10px;padding:9px 10px;margin:7px 0}.issue.ok{border-left-color:#12b76a;background:#f6fef9}.issue.warning{border-left-color:#f79009;background:#fffcf5}.issue.critical{border-left-color:#d92d20;background:#fff8f7}
+  .issue b{display:block;font-size:13px}.issue small{color:#667085;line-height:1.35}
+  .company-storage{display:grid;gap:9px;max-height:280px;overflow:auto;padding-right:3px}.company-row{border:1px solid #eaecf0;border-radius:12px;padding:11px 12px;background:#fff}
+  .company-title{display:flex;justify-content:space-between;gap:10px;font-size:13px}.company-parts{display:flex;gap:9px;flex-wrap:wrap;margin-top:5px;color:#667085;font-size:11px}.company-meter{height:5px;background:#edf1f5;border-radius:999px;overflow:hidden;margin-top:9px}.company-meter>div{height:100%;background:linear-gradient(90deg,#1167d8,#53a0ff);border-radius:999px}
+  .quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.quick a{display:grid;grid-template-columns:34px minmax(0,1fr);column-gap:10px;align-items:center;border:1px solid #e4e7ec;border-radius:12px;padding:11px 12px;background:linear-gradient(180deg,#fff,#fbfcfe);color:#344054;font-weight:750;text-decoration:none;min-height:62px;transition:.15s}
+  .quick a:hover{transform:translateY(-1px);border-color:#84adff;background:#f5f8ff;box-shadow:0 6px 18px rgba(16,24,40,.07)}.quick small{display:block;color:#667085;font-weight:500;margin-top:2px;font-size:11px}.qmark{grid-row:1 / span 2;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#eaf2ff;color:#175cd3;font-weight:900;font-size:13px}
+  .activity p{position:relative;margin:0;padding:0 0 14px 18px;font-size:12px;border-left:2px solid #e4e7ec}.activity p:last-child{padding-bottom:0;border-left-color:transparent}.activity p:before{content:"";position:absolute;left:-5px;top:3px;width:8px;height:8px;border-radius:50%;background:#84adff;box-shadow:0 0 0 3px #eff4ff}.tiny{font-size:11px;color:#667085}
+  .issue-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.issue-actions button{padding:7px 10px;font-size:12px}.section-note{font-size:11px;color:#667085}
+  @media(max-width:1180px){.top-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(max-width:1100px){.left-two{grid-template-columns:1fr}}@media(max-width:900px){.overview-grid{grid-template-columns:1fr}.mini-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.quick{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:620px){.top-kpis,.mini-kpis,.quick,.system-grid{grid-template-columns:1fr 1fr}.metric .value{font-size:21px}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card hero">
+  <div class="hero-row">
+    <div>
+      <div class="live-pill"><span id="heroDot" class="status-dot"></span><span id="healthPill">System wird geprüft …</span></div>
+      <h1>Übersicht</h1>
+      <p>Serverzustand, Speicher, Auslastung, Datenverkehr und wichtige Projektdaten.</p>
+    </div>
+    <div class="hero-actions">
+      <span class="live-pill" id="lastUpdated">—</span>
+      <button id="refreshDashboard" type="button">Jetzt aktualisieren</button>
+    </div>
+  </div>
+</div>
+
+<div class="top-kpis">
+  <div class="metric" id="storageMetric"><div class="eyebrow">NAS-Speicher</div><div class="value" id="storageTotal">—</div><div class="sub" id="storageSub">wird geladen …</div></div>
+  <div class="metric"><div class="eyebrow">CPU-Auslastung</div><div class="value" id="cpuValue">—</div><div class="sub" id="cpuSub">System</div></div>
+  <div class="metric"><div class="eyebrow">RAM-Auslastung</div><div class="value" id="ramValue">—</div><div class="sub" id="ramSub">Arbeitsspeicher</div></div>
+  <div class="metric"><div class="eyebrow">Upload · 24 Std.</div><div class="value" id="trafficIn">—</div><div class="sub">zum TB-Helfer-Server</div></div>
+  <div class="metric"><div class="eyebrow">Download · 24 Std.</div><div class="value" id="trafficOut">—</div><div class="sub">vom TB-Helfer-Server</div></div>
+  <div class="metric" id="problemMetric"><div class="eyebrow">Probleme</div><div class="value" id="problemCount">—</div><div class="sub" id="problemSub">wird geprüft …</div></div>
+</div>
+
+<div class="overview-grid">
+  <div>
+    <div class="card compact">
+      <div class="headline">
+        <div><h2>Datenverkehr & Fehler · letzte 24 Stunden</h2><div class="muted"><span id="requestCount">—</span> Anfragen · <span id="errorCount">—</span> Serverfehler</div></div>
+        <div class="tiny">stündlich zusammengefasst</div>
+      </div>
+      <div class="chart-wrap"><svg id="trafficChart" viewBox="0 0 900 245" preserveAspectRatio="none"></svg></div>
+      <div class="legend"><span><i style="background:#12b76a"></i>Upload</span><span><i style="background:#1167d8"></i>Download</span><span><i style="background:#d92d20"></i>Serverfehler</span></div>
+    </div>
+
+    <div class="left-two">
+      <div class="card compact">
+        <div class="headline"><div><h2>Bestand</h2><div class="section-note">Aktueller zentraler Serverbestand.</div></div></div>
+        <div class="mini-kpis" id="stockKpis"></div>
+        <div style="border-top:1px solid #eaecf0;margin:14px 0 12px"></div>
+        <div class="headline" style="margin-bottom:8px">
+          <div><b>Trassenbestand</b><div class="section-note">Aktive Achsen; parallele Gleise zählen als eigene Gleislänge.</div></div>
+          <a href="/admin/v1/survey-overview">Details</a>
+        </div>
+        <div class="mini-kpis" id="surveyStockKpis"><div class="muted">wird geladen …</div></div>
+      </div>
+
+      <div class="card compact">
+        <div class="headline"><div><h2>Speicher nach Firma</h2><div class="muted">Fotos, PDFs und sonstige firmeneigene Dateien.</div></div><b id="tbStorageTotal">—</b></div>
+        <div id="companyStorage" class="company-storage" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <div class="card compact">
+      <h2>Schnellzugriff</h2>
+      <div class="quick">
+        <a href="/admin/v1/companies"><span class="qmark">FI</span><span>Firmen<small>Benutzer, Geräte, Baustellen, Speicher und PDF</small></span></a>
+        <a href="/admin/v1/routes"><span class="qmark">ST</span><span>Streckendaten<small>Strecken und gemeinsamer Fachkatalog</small></span></a>
+        <a href="/admin/v1/stations"><span class="qmark">BF</span><span>Bahnhöfe<small>Betriebsstellen, Kürzel und Objekte</small></span></a>
+        <a href="/admin/v1/survey-import"><span class="qmark">TR</span><span>Trassierungsdaten<small>Originale, Import und Referenzdaten</small></span></a>
+        <a href="/admin/v1/survey-overview"><span class="qmark">ÜB</span><span>Trassendatenübersicht<small>Deutschlandweite Abdeckung und Suche</small></span></a>
+        <a href="/admin/v1/releases"><span class="qmark">AP</span><span>App-Versionen<small>Releases verwalten</small></span></a>
+        <a href="/admin/v1/system"><span class="qmark">SY</span><span>Systemstatus<small>Backups, Jobs und technische Details</small></span></a>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card compact">
+      <div class="headline"><h2>System</h2><span id="nasState" class="pill">—</span></div>
+      <div class="system-grid">
+        <div class="system-box"><div class="k">Online seit</div><div class="v" id="startedAt">—</div></div>
+        <div class="system-box"><div class="k">Laufzeit</div><div class="v" id="uptime">—</div></div>
+        <div class="system-box"><div class="k">Server-Version</div><div class="v" id="serverVersion">—</div></div>
+        <div class="system-box"><div class="k">Umgebung</div><div class="v" id="environment">—</div></div>
+        <div class="system-box"><div class="k">Systemtemperatur</div><div class="v" id="temperature">Nicht verfügbar</div></div>
+        <div class="system-box"><div class="k">Festplatten-Temperaturen</div><div class="v" id="diskTemperatures">Nicht verfügbar</div></div>
+        <div class="system-box"><div class="k">CPU-Kerne / Last</div><div class="v" id="cpuLoad">—</div></div>
+      </div>
+      <div class="bars" style="margin-top:12px">
+        <div><div class="bar-label"><span>NAS-Speicher</span><b id="storagePct">—</b></div><div class="bar"><div id="storageBar" style="width:0%"></div></div></div>
+        <div><div class="bar-label"><span>RAM</span><b id="ramPct">—</b></div><div class="bar"><div id="ramBar" style="width:0%"></div></div></div>
+      </div>
+      <div id="storageDetail" class="tiny" style="margin-top:9px">—</div>
+    </div>
+
+    <div class="card compact">
+      <div class="headline"><div><h2>Probleme & Warnungen</h2><div class="section-note">Aktuelle oder seit der letzten Prüfung aufgelaufene Hinweise.</div></div><div class="issue-actions"><button id="ackWarnings" class="secondary" type="button" style="display:none">Geprüft / quittieren</button><a href="/admin/v1/system">Details</a></div></div>
+      <div id="issues"></div>
+    </div>
+
+    <div id="expiringCard" class="card compact" style="display:none;border-left:4px solid #f79009">
+      <div class="headline"><h2>Ablaufende Zugänge</h2><a href="/admin/v1/companies">Firmen verwalten</a></div>
+      <div id="expiringUsers"></div>
+    </div>
+
+    <div class="card compact activity">
+      <h2>Letzte Aktivität</h2>
+      <p><b>Gerätekontakt</b><br><span id="lastDevice" class="muted">—</span></p>
+      <p><b>Synchronisierung</b><br><span id="lastSync" class="muted">—</span></p>
+      <p><b>Backup</b><br><span id="lastBackup" class="muted">—</span></p>
+      <p><b>Öffentliche Serveradresse</b><br><span id="publicServer" class="muted">—</span></p>
+    </div>
+  </div>
+</div>
+<div id="dashboardError" class="notice err" style="display:none"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function size(value){
+  const n=Number(value);if(!Number.isFinite(n))return '—';
+  const a=Math.abs(n);
+  if(a>=1e12)return (n/1e12).toFixed(a>=1e14?0:1)+' TB';
+  if(a>=1e9)return (n/1e9).toFixed(a>=1e11?0:1)+' GB';
+  if(a>=1e6)return (n/1e6).toFixed(a>=1e8?0:1)+' MB';
+  if(a>=1e3)return (n/1e3).toFixed(a>=1e5?0:1)+' kB';
+  return Math.round(n)+' B';
+}
+function kmLength(value){
+  const n=Number(value);if(!Number.isFinite(n))return '—';
+  return (n/1000).toLocaleString('de-DE',{minimumFractionDigits:n<10000?2:1,maximumFractionDigits:2})+' km';
+}
+function dt(value){if(!value)return '—';try{return new Date(value).toLocaleString('de-DE');}catch(_){return String(value);}}
+function duration(seconds){let s=Math.max(0,Number(seconds)||0),d=Math.floor(s/86400);s%=86400;let h=Math.floor(s/3600);s%=3600;let m=Math.floor(s/60);return d?d+' T '+h+' Std':h?h+' Std '+m+' Min':m+' Min';}
+function envLabel(v){return ({production:'Produktion',staging:'Test / Staging',development:'Entwicklung',dev:'Entwicklung'})[String(v||'').toLowerCase()]||v||'—';}
+function diskTemperatureLabel(disks){
+  const list=(disks||[]).filter(d=>Number.isFinite(Number(d.temperature_c)));
+  if(!list.length)return 'Nicht verfügbar';
+  return list.map((d,i)=>(d.label||('Laufwerk '+(i+1)))+': '+Math.round(Number(d.temperature_c))+' °C').join(' · ');
+}
+function mini(n,l){return '<div class="mini-kpi"><div class="n">'+esc(n)+'</div><div class="l">'+esc(l)+'</div></div>';}
+function pct(v){const n=Number(v);return Number.isFinite(n)?Math.max(0,Math.min(100,n)):0;}
+function renderChart(series){
+  const svg=$('trafficChart'),w=900,h=245,pL=52,pR=12,pT=12,pB=30,iw=w-pL-pR,ih=h-pT-pB;
+  const traffic=series.flatMap(r=>[Number(r.bytes_in)||0,Number(r.bytes_out)||0]),max=Math.max(1,...traffic),maxErr=Math.max(1,...series.map(r=>Number(r.error_count)||0));
+  const point=(v,i)=>[(pL+(series.length<=1?0:i*iw/(series.length-1))).toFixed(1),(pT+ih-(Number(v)||0)/max*ih).toFixed(1)];
+  let html='';
+  for(let i=0;i<=4;i++){const y=pT+i*ih/4,val=max*(1-i/4);html+='<line x1="'+pL+'" y1="'+y+'" x2="'+(w-pR)+'" y2="'+y+'" stroke="#e4e7ec"/><text x="'+(pL-7)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" fill="#667085">'+esc(size(val))+'</text>';}
+  series.forEach((r,i)=>{const x=pL+(series.length<=1?0:i*iw/(series.length-1));if((Number(r.error_count)||0)>0){const bh=Math.max(5,(Number(r.error_count)||0)/maxErr*36);html+='<rect x="'+(x-3)+'" y="'+(pT+ih-bh)+'" width="6" height="'+bh+'" rx="2" fill="#d92d20" opacity=".85"/>';}if(i%4===0||i===series.length-1){let label='';try{label=new Date(r.bucket_start).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});}catch(_){}html+='<text x="'+x+'" y="'+(h-7)+'" text-anchor="middle" font-size="10" fill="#667085">'+esc(label)+'</text>';}})
+  html+='<polyline fill="none" stroke="#12b76a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="'+series.map((r,i)=>point(r.bytes_in,i).join(',')).join(' ')+'"/>';
+  html+='<polyline fill="none" stroke="#1167d8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="'+series.map((r,i)=>point(r.bytes_out,i).join(',')).join(' ')+'"/>';
+  svg.innerHTML=html;
+}
+async function loadSurveySummary(){
+  try{
+    const {data:s}=await tbApi('/api/v1/survey-catalog/coverage/summary');
+    $('surveyStockKpis').innerHTML=[
+      mini(kmLength(s.total_length_m),'Trassenlänge gesamt'),
+      mini(kmLength(s.known_km_length_m),'mit belastbarer KM'),
+      mini(kmLength(s.automatic_km_length_m),'automatisch / grün'),
+      mini(kmLength(s.manual_mobile_length_m),'manuell vom Handy'),
+      mini(kmLength(s.without_km_length_m),'ohne belastbare KM'),
+      mini(s.station_count||0,'Bahnhöfe / Betriebsstellen'),
+      mini(s.track_count||0,'Gleise'),
+      mini(s.route_count||0,'Strecken')
+    ].join('');
+  }catch(error){
+    $('surveyStockKpis').innerHTML='<div class="muted">Trassenkennzahlen konnten nicht geladen werden.</div>';
+  }
+}
+function renderCompanies(companies,total){
+  const grand=Math.max(1,Number(total)||0);
+  $('tbStorageTotal').textContent='TB-Helfer: '+size(total||0);
+  $('companyStorage').innerHTML=(companies||[]).map(c=>{
+    const totalBytes=Number(c.total_storage_bytes)||0,share=Math.max(0,Math.min(100,totalBytes/grand*100));
+    return '<div class="company-row"><div class="company-title"><b>'+esc(c.name)+'</b><b>'+esc(size(totalBytes))+'</b></div>'+
+      '<div class="company-parts"><span>Fotos '+esc(size(c.photo_bytes||0))+'</span><span>PDFs '+esc(size(c.pdf_bytes||0))+'</span><span>Sonstiges '+esc(size(c.other_file_bytes||0))+'</span></div>'+
+      '<div class="company-meter"><div style="width:'+share.toFixed(1)+'%"></div></div></div>';
+  }).join('')||'<div class="muted">Noch keine Firmendaten vorhanden.</div>';
+}
+let loading=false;
+async function loadDashboard(){
+  if(loading)return;loading=true;$('refreshDashboard').disabled=true;$('dashboardError').style.display='none';
+  try{
+    const {data:x}=await tbApi('/api/v1/admin/system/status');const c=x.counts||{},st=x.storage||{},tr=x.traffic_24h||{},p=x.process||{},host=x.host||{},ram=host.ram||{};
+    $('storageTotal').textContent=st.available?size(st.total_bytes):'nicht verfügbar';$('storageSub').textContent=st.available?(size(st.free_bytes)+' frei · '+Number(st.percent_used||0).toFixed(1).replace('.',',')+' % belegt'):'Speicherpfad nicht erreichbar';
+    $('trafficIn').textContent=size(tr.bytes_in||0);$('trafficOut').textContent=size(tr.bytes_out||0);$('requestCount').textContent=Number(tr.request_count||0).toLocaleString('de-DE');$('errorCount').textContent=Number(tr.error_count||0).toLocaleString('de-DE');
+    $('cpuValue').textContent=host.cpu_percent==null?'—':Number(host.cpu_percent).toFixed(1).replace('.',',')+' %';$('cpuSub').textContent='Last 1 Min.: '+(host.load_1==null?'—':String(host.load_1).replace('.',','));
+    $('ramValue').textContent=ram.percent_used==null?'—':Number(ram.percent_used).toFixed(1).replace('.',',')+' %';$('ramSub').textContent=ram.available?(size(ram.used_bytes)+' von '+size(ram.total_bytes)):'nicht verfügbar';
+    const issues=x.issues||[],problems=issues.filter(i=>i.severity!=='ok'),critical=problems.some(i=>i.severity==='critical');
+    $('problemCount').textContent=problems.length;$('problemSub').textContent=problems.length?'bitte prüfen':'alles unauffällig';$('problemMetric').className='metric '+(critical?'bad':problems.length?'warn':'');
+    $('healthPill').textContent=critical?'Handlungsbedarf':problems.length?'Warnungen vorhanden':'System OK';$('heroDot').className='status-dot '+(critical?'bad':problems.length?'warn':'ok');
+    $('stockKpis').innerHTML=[mini((c.active_users||0)+' / '+(c.users||0),'aktive / alle Benutzer'),mini(c.active_devices||0,'aktive Geräte'),mini(c.companies||0,'Firmen'),mini(c.worksites||0,'Baustellen'),mini(c.files||0,'Dateien'),mini(c.releases||0,'App-Versionen'),mini(c.survey_originals||0,'Trassierungsoriginale'),mini(c.trash_items||0,'Papierkorb / gelöscht')].join('');
+    $('startedAt').textContent=dt(p.started_at);$('uptime').textContent=duration(p.uptime_seconds);$('serverVersion').textContent=x.server_version||'—';$('environment').textContent=envLabel(x.environment);$('publicServer').textContent=x.public_base_url||'nicht konfiguriert';
+    $('temperature').textContent=host.temperature_c==null?'Nicht verfügbar':Number(host.temperature_c).toFixed(1).replace('.',',')+' °C';$('diskTemperatures').textContent=diskTemperatureLabel(host.disk_temperatures);$('cpuLoad').textContent=(host.cpu_count||'—')+' Kerne · '+(host.load_1==null?'—':String(host.load_1).replace('.',','));
+    $('nasState').textContent=st.available&&!critical?'Erreichbar':'Prüfen';
+    $('storagePct').textContent=st.percent_used==null?'—':Number(st.percent_used).toFixed(1).replace('.',',')+' %';$('storageBar').style.width=pct(st.percent_used)+'%';
+    $('ramPct').textContent=ram.percent_used==null?'—':Number(ram.percent_used).toFixed(1).replace('.',',')+' %';$('ramBar').style.width=pct(ram.percent_used)+'%';
+    $('storageDetail').textContent=st.available?(size(st.used_bytes)+' belegt · '+size(st.free_bytes)+' frei · TB-Helfer erfasst '+size(c.tracked_storage_bytes||0)):'Datenspeicher nicht verfügbar.';
+    $('issues').innerHTML=issues.map(i=>'<div class="issue '+esc(i.severity)+'"><b>'+esc(i.title)+'</b><small>'+esc(i.detail)+'</small></div>').join('')||'<div class="issue ok"><b>Keine Probleme</b><small>Keine Warnungen gemeldet.</small></div>';
+    $('ackWarnings').style.display=problems.length?'inline-block':'none';
+    const expiring=x.expiring_users||[];$('expiringCard').style.display=expiring.length?'block':'none';$('expiringUsers').innerHTML=expiring.map(u=>'<div class="issue warning"><b>'+esc(u.display_name)+'</b><small>'+esc(u.login_name)+' · gültig bis '+esc(dt(u.access_valid_until))+'</small></div>').join('');
+    $('lastDevice').textContent=c.last_device_seen?dt(c.last_device_seen):'Noch kein Gerätekontakt gemeldet';$('lastSync').textContent=c.last_sync?dt(c.last_sync):'Noch keine Synchronisierung gemeldet';const b=x.last_successful_backup;$('lastBackup').textContent=b?(dt(b.finished_at||b.started_at)+' · '+String(b.kind||'')):'noch kein erfolgreiches Backup';
+    renderChart(x.traffic_series||[]);renderCompanies(x.companies||[],c.tracked_storage_bytes||0);$('lastUpdated').textContent='Stand '+new Date().toLocaleTimeString('de-DE');
+  }catch(error){$('dashboardError').textContent=error.message||String(error);$('dashboardError').style.display='block';$('healthPill').textContent='Status konnte nicht geladen werden';$('heroDot').className='status-dot bad';}
+  finally{$('refreshDashboard').disabled=false;loading=false;}
+}
+$('refreshDashboard').addEventListener('click',()=>{loadDashboard();loadSurveySummary();});
+$('ackWarnings').addEventListener('click',async()=>{
+  if(!confirm('Die aktuell angezeigten Warnungen als geprüft markieren? Neue Fehler werden danach weiterhin sofort angezeigt.'))return;
+  $('ackWarnings').disabled=true;
+  try{await tbApi('/api/v1/admin/system/warnings/acknowledge',{method:'POST'});await loadDashboard();}
+  catch(error){$('dashboardError').textContent=error.message||String(error);$('dashboardError').style.display='block';}
+  finally{$('ackWarnings').disabled=false;}
+});
+loadDashboard();
+loadSurveySummary();
+setInterval(()=>{if(!document.hidden)loadDashboard();},5000);
+setInterval(()=>{if(!document.hidden)loadSurveySummary();},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){loadDashboard();loadSurveySummary();}});
+</script>
+{% endblock %}

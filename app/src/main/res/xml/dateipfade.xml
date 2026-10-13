@@ -10,6 +10,11 @@
         name="dokumente"
         path="Documents/" />
 
+    <!-- Vom TB-Server geladene APKs für den Android-Paketinstaller -->
+    <external-files-path
+        name="updates"
+        path="Download/" />
+
     <external-path
         name="oeffentliche_dokumente"
         path="Documents/" />

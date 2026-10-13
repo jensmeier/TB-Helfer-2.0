@@ -1,0 +1,142 @@
+name: Restore controller and data boundaries
+
+on:
+  pull_request:
+    paths:
+      - server/tbserver/recovery_control.py
+      - server/tbserver/backup_domains.py
+      - server/tbserver/backup_domain_snapshot.py
+      - server/tbserver/scoped_*.py
+      - server/tbserver/recovery_*.py
+      - server/tbserver/main.py
+      - server/tbserver/backup.py
+      - server/tbserver/backup_catalog.py
+      - server/tbserver/system_backup.py
+      - server/tbserver/system_admin.py
+      - server/tbserver/system_settings.py
+      - server/docker-compose.synology-automatic.v1.yml
+      - server/compose.synology-reviewed.v1.yml
+      - server/checks/14[7-9]_*.py
+      - server/checks/150_verify_restore_ui.cjs
+      - server/templates/v1_system_status.html
+      - server/tools/system_backup_gate.py
+      - server/tools/compose_recovery_gate.py
+      - server/checks/146_verify_backup_catalog.py
+      - server/checks/145_verify_recovery_runtime.py
+      - server/tools/automatic_recovery_gate.py
+      - server/checks/144_verify_scoped_archives.py
+      - server/tools/scoped_restore_gate.py
+      - server/checks/142_verify_recovery_control.py
+      - server/checks/143_verify_backup_domains.py
+      - server/tools/backup_domain_gate.py
+      - server/v1_migrations/**
+      - .github/workflows/server-recovery-control.yml
+
+concurrency:
+  group: restore-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  recovery-core:
+    if: github.event_name != 'pull_request' || github.head_ref != 'feature/tb-android-2.0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: tb_gate_domains
+          POSTGRES_USER: tb_gate
+          POSTGRES_PASSWORD: disposable-ci-only
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U tb_gate -d tb_gate_domains"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_NAME: tb_gate_domains
+      DB_USER: tb_gate
+      DB_PASSWORD: disposable-ci-only
+      TB_ENVIRONMENT: test
+      STORAGE_ROOT: /tmp/tb-domain-storage
+      TB_BACKUP_ROOT: /tmp/tb-domain-backups
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install database driver
+        run: pip install 'psycopg[binary]==3.2.9' 'PyYAML==6.0.3'
+      - name: Durable controller crash and rollback tests
+        run: python server/checks/142_verify_recovery_control.py
+      - name: Independent archive catalog and retention
+        run: python server/checks/146_verify_backup_catalog.py
+      - name: Request replay, system source export and deployment boundaries
+        run: |
+          python server/checks/147_verify_recovery_service.py
+          python server/checks/148_verify_system_backup.py
+          python server/checks/149_verify_automatic_deployment.py
+          TB_V1_DB_PASSWORD=disposable TB_V1_RESTORE_TEST_DB_PASSWORD=disposable TB_V1_CLOUDFLARE_TUNNEL_TOKEN=disposable docker compose -f server/docker-compose.synology-automatic.v1.yml config --quiet
+      - name: Domain planning and reference tests
+        run: python server/checks/143_verify_backup_domains.py
+      - name: PostgreSQL 17 read-only domain gate
+        run: python server/tools/backup_domain_gate.py
+      - name: Scoped archive and hostile-input tests
+        run: python server/checks/144_verify_scoped_archives.py
+      - name: Real process supervision and maintenance middleware
+        run: python server/checks/145_verify_recovery_runtime.py
+      - name: Build runtime with PostgreSQL 17 client
+        run: docker build -f server/Dockerfile.v1 -t tb-scoped-gate server
+      - name: Real system image export and load roundtrip
+        run: python server/tools/system_backup_gate.py
+      - name: PostgreSQL 17 actual partial archive restores and failures
+        run: >-
+          docker run --rm --network host
+          -e CI=true -e TB_ENVIRONMENT=test -e DB_HOST -e DB_PORT
+          -e DB_NAME=tb_gate_scoped -e DB_USER -e DB_PASSWORD
+          -v "${{ github.workspace }}/server:/app:ro"
+          tb-scoped-gate python /app/tools/scoped_restore_gate.py
+      - name: Actual automatic data cutover and rollback
+        run: >-
+          docker run --rm --network host
+          -e CI=true -e TB_ENVIRONMENT=test -e DB_HOST -e DB_PORT
+          -e DB_NAME=tb_gate_auto -e DB_USER -e DB_PASSWORD
+          -v "${{ github.workspace }}/server:/app:ro"
+          tb-scoped-gate python /app/tools/automatic_recovery_gate.py
+
+      - name: Actual Compose gateway and independent service integration
+        env:
+          CI: 'true'
+        run: python server/tools/compose_recovery_gate.py
+
+      - name: Uploaded NAS Compose preservation and restore integration
+        env:
+          CI: 'true'
+        run: python server/tools/compose_recovery_gate.py --reviewed
+
+  restore-ui:
+    if: github.event_name != 'pull_request' || github.head_ref != 'feature/tb-android-2.0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser test dependencies
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Restore form and progress browser fixture
+        run: node server/checks/150_verify_restore_ui.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: restore-ui-screenshots
+          path: /tmp/restore-ui*.png

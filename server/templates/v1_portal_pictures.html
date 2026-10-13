@@ -1,0 +1,153 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Bilderübersicht{% endblock %}
+{% block head %}<style>
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr));gap:12px}
+.photo{margin:0;background:white;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden}
+.photo img{width:100%;height:180px;object-fit:cover}.photo figcaption{padding:10px;overflow-wrap:anywhere}
+.photo summary{cursor:pointer;font-weight:700}.photo details p{margin:8px 0;white-space:pre-wrap}.photo .photo-time{font-size:13px;color:#667085;margin:10px 0}.photo .photo-gps{display:block;margin-top:10px}.photo-core p{margin:4px 0;font-size:13px;line-height:1.4}.photo .photo-file{font-size:12px;color:#667085}
+.pager{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:20px 0}
+#updates{margin-top:12px}#search{max-width:100%}
+</style>{% endblock %}
+{% block content %}
+<div class="card"><h1>Bilderübersicht</h1><small class="muted" id="galleryVersion">PORTAL-012</small>
+<p class="muted">Bilder der ausgewählten Baustelle. Neueste Uploads zuerst, bis zu 60 Bilder pro Seite.</p>
+<div class="grid">
+<div><label for="site">Baustelle</label><select id="site"><option value="">Bitte wählen …</option></select></div>
+<div><label for="date">Aufnahmedatum (Deutschland)</label><input id="date" type="date"></div>
+<div><label for="kind">Bereich</label><select id="kind"><option value="">Alle</option><option value="BTB">Bautagesberichte</option><option value="DEFECT">Mängel</option><option value="ACCEPTANCE">Abnahmen</option></select></div>
+<div><label for="search">Suche</label><input id="search" type="search" maxlength="160" placeholder="Text oder KM, z. B. strail defekt / 13.200"></div>
+</div>
+<button type="button" class="secondary" id="refreshPictures">Aktualisieren</button>
+<div id="updates" hidden role="status">Der Bilderbestand hat sich geändert. <button type="button" id="showUpdates">Neue Ansicht laden</button></div>
+<p id="notice" role="status" aria-live="polite"></p>
+</div>
+<div id="gallery" class="gallery" aria-busy="false"></div>
+<nav class="pager" aria-label="Bilderseiten">
+<button type="button" class="secondary" id="previousPictures" disabled>Zurück</button>
+<span id="pageNumber"></span>
+<button type="button" id="nextPictures" disabled>Weitere Bilder</button>
+</nav>
+{% endblock %}
+{% block scripts %}<script>
+const site=document.getElementById('site'),notice=document.getElementById('notice'),gallery=document.getElementById('gallery');
+const previous=document.getElementById('previousPictures'),next=document.getElementById('nextPictures'),updates=document.getElementById('updates');
+let generation=0,controller=null,events=null,searchTimer=null,nextCursor=null,pageIndex=0,history=[null],busy=false;
+function buttons(){previous.disabled=busy||pageIndex===0;next.disabled=busy||!nextCursor;}
+function cancel(){generation++;if(controller)controller.abort();controller=null;}
+function clearView(){gallery.replaceChildren();nextCursor=null;pageIndex=0;history=[null];document.getElementById('pageNumber').textContent='';buttons();}
+function bytesLabel(n){if(!Number.isFinite(n)||n<0)return '—';if(n>=1048576)return (n/1048576).toFixed(n>=10485760?1:2)+' MB';if(n>=1024)return Math.round(n/1024)+' KB';return n+' Byte';}
+function nodeLabel(m){
+  const key=m.photo_metadata?.worksiteNodeKey;if(!key)return 'Unterbaustelle nicht zugeordnet';
+  const n=m.worksite_node;if(!n)return 'Unterbaustelle nicht gefunden ('+key+')';
+  const p=n.payload||{},kind=String(p.node_type||n.node_kind||'').toUpperCase(),route=p.route_key||n.route_number||'';
+  let label=String(p.node_name||n.name||'').trim();
+  if(!label&&kind==='FREIE_STRECKE')label='Freie Strecke'+(route?' '+route:'');
+  else if(!label&&kind==='BAHNHOF')label=['Bahnhof',p.station_name,p.track_or_switch||n.track_key].filter(Boolean).join(' ');
+  else if(!label)label=route||n.node_kind||key;
+  // Match BTB node labels, including its optional range representation.
+  const a=Number(p.km_from),b=Number(p.km_to),hasA=Number.isFinite(a),hasB=Number.isFinite(b);
+  const fmt=v=>v.toFixed(3).replace('.',',').replace(/,?0+$/,'');
+  if(hasA||hasB)label+=' (KM '+(hasA&&hasB?fmt(a)+'–'+fmt(b):fmt(hasA?a:b))+')';
+  return label;
+}
+function draw(items){
+  const fragment=document.createDocumentFragment(),seen=new Set();
+  for(const m of items.slice(0,60)){
+    if(!m.renditions?.thumb||seen.has(m.attachment_id))continue;seen.add(m.attachment_id);
+    const figure=document.createElement('figure');figure.className='photo';
+    const link=document.createElement('a');link.href=tbScopedUrl(m.renditions.preview);link.target='_blank';link.rel='noopener';
+    const img=document.createElement('img');img.src=tbScopedUrl(m.renditions.thumb);img.loading='lazy';img.decoding='async';img.width=320;img.height=180;
+    const meta=m.photo_metadata||{},label=meta.kurztext||m.context_title||'Foto ohne Beschriftung';
+    img.alt=label;link.append(img);
+    const caption=document.createElement('figcaption'),stamp=m.captured_at||m.created_at;
+    const details=document.createElement('details'),summary=document.createElement('summary');
+    summary.textContent=label;summary.title='Beschriftung und weitere Angaben anzeigen';details.append(summary);
+    function line(title,value,target=details){if(value===null||value===undefined||value==='')return;const p=document.createElement('p');p.textContent=title+': '+value;target.append(p);}
+    const types={ABNAHMEN:'Abnahme',EINWEISUNG_UNTERWEISUNG:'Einweisung / Unterweisung',BESONDERHEITEN:'Besonderheit',MAENGEL_SCHAEDEN:'Mangel / Schaden',FOTODOKUMENTATION:'Fotodokumentation'};
+    line('Zuordnung',m.context_title);line('Art',types[meta.typ]||meta.typ);
+    const core=document.createElement('div');core.className='photo-core';
+    line('Foto',m.photo_number==null?'Nummer nicht vorhanden':m.photo_number,core);
+    line('BTB',m.btb_date,core);line('Dateigröße',bytesLabel(m.byte_size),core);
+    line('Kilometer',meta.km==null?'Nicht vorhanden':Number(meta.km).toFixed(3).replace('.',','),core);
+    line('Firma',meta.firma||'Nicht vorhanden',core);
+    line('Ort',[nodeLabel(m),meta.objektKennung,meta.objektBereich].filter(Boolean).join(' · '),core);
+    const indicators={GRUEN:'Grün',GELB:'Gelb',ROT:'Rot'};
+    line('Indikator',indicators[meta.indikator]||'Nicht vorhanden',core);
+    caption.append(core);
+    line('Notiz',meta.notiz);for(let n=1;n<=5;n++)line('Info '+n,meta['info'+n]);
+    const filename=document.createElement('p');filename.className='photo-file';filename.textContent='Datei: '+(m.filename||'—');details.append(filename);
+    caption.prepend(details);
+    const time=document.createElement('p');time.className='photo-time';
+    time.textContent=stamp?((m.captured_at?'Aufnahme: ':'Hochgeladen: ')+new Date(stamp).toLocaleString('de-DE',{timeZone:'Europe/Berlin'})):'Datum nicht vorhanden';caption.append(time);
+    const lat=m.gps_lat,lon=m.gps_lon;
+    if(typeof lat==='number'&&typeof lon==='number'&&Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180){
+      const gps=document.createElement('a');gps.className='photo-gps';gps.target='_blank';gps.rel='noopener noreferrer';
+      gps.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(lat+','+lon);
+      gps.textContent='GPS auf Karte öffnen';gps.title=lat.toFixed(6)+', '+lon.toFixed(6);caption.append(gps);
+      const coords=document.createElement('small');coords.textContent=gps.title;caption.append(coords);
+    }else{const missing=document.createElement('span');missing.className='muted photo-gps';missing.textContent='Keine GPS-Daten vorhanden';caption.append(missing);}
+    figure.append(link,caption);fragment.append(figure);
+  }
+  gallery.replaceChildren(fragment);
+  return seen.size;
+}
+async function load(cursor=null,index=0){
+  cancel();const turn=generation;
+  if(!site.value){busy=false;clearView();notice.textContent='Bitte eine Baustelle auswählen.';gallery.setAttribute('aria-busy','false');return;}
+  controller=new AbortController();busy=true;buttons();gallery.setAttribute('aria-busy','true');notice.textContent='Bilder werden geladen …';
+  const params=new URLSearchParams({limit:'60'}),day=document.getElementById('date').value,kind=document.getElementById('kind').value,search=document.getElementById('search').value.trim();
+  if(cursor)params.set('cursor',cursor);if(day)params.set('day',day);if(kind)params.set('kind',kind);if(search)params.set('search',search);if(parentFilter)params.set('parent_id',parentFilter);
+  try{
+    const r=await tbApi('/api/v1/worksites/'+encodeURIComponent(site.value)+'/media/page?'+params,{signal:controller.signal});
+    if(turn!==generation)return;
+    if(r.data.gallery_version!=='PORTAL-012'){clearView();notice.textContent='API und Bilderansicht haben unterschiedliche Versionen. Bitte beide PORTAL-012-Dateien aktualisieren und die Seite neu laden.';return;}
+    const count=draw(r.data.media||[]);pageIndex=index;history[index]=cursor;history.length=index+1;nextCursor=r.data.next_cursor||null;
+    document.getElementById('pageNumber').textContent='Seite '+(index+1);
+    const kmRange=r.data.search_km_min_m==null?'':' Kilometerbereich: '+(r.data.search_km_min_m/1000).toFixed(3).replace('.',',')+'–'+(r.data.search_km_max_m/1000).toFixed(3).replace('.',',')+'.';
+    notice.textContent=count?count+' Bilder auf dieser Seite.'+kmRange:(nextCursor?'Weitere Bereiche können durchsucht werden.':'Keine weiteren passenden Bilder gefunden.');
+  }catch(e){
+    if(turn!==generation||e.name==='AbortError')return;
+    const denied=/PERMISSION_REQUIRED|ACCESS_DENIED|COMPANY_DISABLED|SESSION|WORKSITE_NOT_FOUND/.test(String(e.message));
+    if(denied)clearView();
+    notice.textContent=denied?'Für diese Baustelle fehlt dir die Berechtigung oder deine Anmeldung ist abgelaufen.':'Bilder konnten nicht geladen werden. Bitte erneut versuchen.';
+  }finally{
+    if(turn===generation){busy=false;buttons();gallery.setAttribute('aria-busy','false');}
+  }
+}
+function reset(delay=0){
+  clearTimeout(searchTimer);cancel();busy=true;clearView();updates.hidden=true;
+  notice.textContent='Bilder werden geladen …';
+  if(delay)searchTimer=setTimeout(()=>load(),delay);else load();
+}
+function mediaChanged(change){
+  if(String(change.worksite_id)!==site.value)return;
+  if(change.entity_type==='WORKSITE_MEMBERSHIP'){reset();return;}
+  if(['FILE','BTB','DEFECT','ACCEPTANCE'].includes(change.entity_type))updates.hidden=false;
+}
+function watchSite(){
+  if(events){events.close();events=null;}
+  if(!site.value||!window.EventSource)return;
+  events=new EventSource(tbScopedUrl('/api/v1/sync/events?worksite_id='+encodeURIComponent(site.value)));
+  events.addEventListener('change',event=>{try{mediaChanged(JSON.parse(event.data||'{}'));}catch(_){}});
+}
+let parentFilter=new URLSearchParams(location.search).get("parent_id")||"";
+site.onchange=()=>{parentFilter="";watchSite();reset();};
+document.getElementById('refreshPictures').onclick=()=>reset();
+document.getElementById('showUpdates').onclick=()=>reset();
+previous.onclick=()=>{if(!busy&&pageIndex>0)load(history[pageIndex-1],pageIndex-1);};
+next.onclick=()=>{if(!busy&&nextCursor)load(nextCursor,pageIndex+1);};
+['date','kind'].forEach(id=>document.getElementById(id).onchange=()=>reset());
+document.getElementById('search').oninput=()=>reset(300);
+window.addEventListener('beforeunload',()=>{cancel();clearTimeout(searchTimer);if(events)events.close();});
+(async()=>{
+  try{
+    const r=await tbApi('/api/v1/worksites');
+    (r.data.worksites||[]).forEach(w=>{const o=document.createElement('option');o.value=w.id;o.textContent=w.name;site.append(o);});
+    const chosen=new URLSearchParams(location.search).get('worksite');
+    document.getElementById('kind').value=new URLSearchParams(location.search).get('kind')||'';
+    if(chosen&&Array.from(site.options).some(o=>o.value===chosen)){site.value=chosen;watchSite();await load();}
+    else notice.textContent='Bitte eine Baustelle auswählen.';
+  }catch(e){notice.textContent='Baustellen konnten nicht geladen werden.';}
+})();
+</script>{% endblock %}
+

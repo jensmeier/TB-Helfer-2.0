@@ -1,0 +1,457 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Releases{% endblock %}
+{% block head %}
+<style>
+.release-card{border:1px solid #eaecf0;border-radius:12px;padding:14px;margin:10px 0}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+.progress{height:10px;background:#eef2f6;border-radius:999px;overflow:hidden}.progress>div{height:100%;background:#1167d8}
+.file-box{border:1px dashed #c9d2df;border-radius:12px;padding:14px;background:#f8fafc}.file-box input[type=file]{width:100%;margin-top:8px}
+.release-notes{white-space:pre-wrap;margin:10px 0;font-family:inherit}.draft-editor{margin-top:12px;padding-top:12px;border-top:1px solid #eaecf0}
+.draft-editor summary{cursor:pointer;font-weight:700}.field-help{font-size:12px;color:#667085;margin-top:4px}
+</style>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>App-Versionen</h1>
+  <p class="muted">APK/Binärdatei und Release-Informationen gemeinsam vorbereiten, als Entwurf prüfen und erst danach veröffentlichen. Android zeigt normale Updates blau und Pflichtupdates rot.</p>
+  <div id="msg"></div>
+</div>
+
+<div class="card">
+  <h2>Neues Release-Paket vorbereiten</h2>
+  <p class="muted">Du kannst eine Release-Datei <b>.md/.txt</b> einlesen. Sie füllt Version, Build und die Abschnitte Neu/Verbessert/Behoben. Alles bleibt vor dem Veröffentlichen direkt auf dem Server bearbeitbar.</p>
+
+  <div class="grid">
+    <div class="file-box">
+      <label for="releaseManifestFile"><b>Release-Datei auswählen</b> (.md / .txt)</label>
+      <input id="releaseManifestFile" type="file" accept=".md,.txt,text/markdown,text/plain">
+      <div class="actions" style="margin-top:10px">
+        <button id="readManifest" type="button" class="secondary">Release-Datei einlesen</button>
+        <button id="downloadTemplate" type="button" class="secondary">Vorlage herunterladen</button>
+      </div>
+      <div class="field-help">Enthält Plattform, Version, Build, Mindestbuild, Pflichtupdate sowie Neu/Verbessert/Behoben.</div>
+    </div>
+
+    <div class="file-box">
+      <label for="releaseBinaryFile"><b>APK / Binärdatei auswählen</b></label>
+      <input id="releaseBinaryFile" type="file" accept=".apk,.bin,application/vnd.android.package-archive,application/octet-stream">
+      <div class="field-help">Bei Android hier die gebaute <code>app-debug.apk</code> bzw. später die signierte Release-APK auswählen. SHA-256 wird vor dem Upload im Browser berechnet.</div>
+    </div>
+  </div>
+
+  <form id="createRelease" style="margin-top:16px">
+    <div class="grid">
+      <div><label for="platform">Plattform</label><select id="platform"><option>ANDROID</option><option>WINDOWS</option><option>IOS</option></select></div>
+      <div><label for="versionName">Version</label><input id="versionName" required maxlength="80" placeholder="z. B. 1.3.4"></div>
+      <div><label for="buildNumber">Buildnummer</label><input id="buildNumber" type="number" min="1" placeholder="z. B. 200054"></div>
+      <div><label for="minimumBuild">Mindestens unterstützt</label><input id="minimumBuild" type="number" min="1" placeholder="optional"></div>
+      <div class="check"><input id="mandatory" type="checkbox"><label for="mandatory">Pflichtupdate</label></div>
+      <div><label for="externalUrl">Externe Download-URL (optional)</label><input id="externalUrl" type="url" placeholder="https://…"></div>
+    </div>
+
+    <div class="grid">
+      <div><label for="notesNew">Neu</label><textarea id="notesNew" rows="4" placeholder="- App-Aktualisierung direkt über TB-Server"></textarea></div>
+      <div><label for="notesImproved">Verbessert</label><textarea id="notesImproved" rows="4" placeholder="- Updateanzeige auf dem Startbildschirm"></textarea></div>
+      <div><label for="notesFixed">Behoben</label><textarea id="notesFixed" rows="4" placeholder="- kleinere Fehler"></textarea></div>
+    </div>
+    <p class="muted">Diese Angaben werden als Release Notes gespeichert und auf Android unter „Wartung &amp; Diagnose“ bzw. beim Update-Hinweis angezeigt.</p>
+    <div id="createProgress" class="muted"></div>
+    <div class="actions" style="margin-top:12px"><button type="submit">Entwurf anlegen + ausgewählte Datei hochladen</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="actions" style="justify-content:space-between">
+    <h2 style="margin:0">Releases</h2>
+    <div class="actions">
+      <button id="showArchived" type="button" class="secondary">Archivierte anzeigen</button>
+      <button id="refresh" type="button" class="secondary">Aktualisieren</button>
+    </div>
+  </div>
+  <p class="muted">Zurückgezogene/veröffentlichte Releases bleiben aus Nachvollziehbarkeitsgründen erhalten. Zurückgezogene Releases werden standardmäßig ausgeblendet; Entwürfe können weiterhin vollständig gelöscht werden.</p>
+  <div id="releases">wird geladen …</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const msg=document.getElementById('msg'), target=document.getElementById('releases');
+const createProgress=document.getElementById('createProgress');
+let releaseCache={};
+let showRetired=false;
+
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function bytes(value){const n=Number(value);if(!Number.isFinite(n))return '—';const a=Math.abs(n);if(a>=1e12)return(n/1e12).toFixed(a>=1e14?0:1)+' TB';if(a>=1e9)return(n/1e9).toFixed(a>=1e11?0:1)+' GB';if(a>=1e6)return(n/1e6).toFixed(a>=1e8?0:1)+' MB';if(a>=1e3)return(n/1e3).toFixed(a>=1e5?0:1)+' kB';return Math.round(n)+' B';}
+function sha256Hex(file){return file.arrayBuffer().then(function(buf){return crypto.subtle.digest('SHA-256',buf);}).then(function(d){return Array.from(new Uint8Array(d)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');});}
+
+function normalizeBulletText(value){
+  return String(value||'').split(/\r?\n/).map(function(line){
+    const trimmed=line.trim();
+    if(!trimmed)return '';
+    return trimmed.replace(/^[-*•]\s*/, '• ');
+  }).join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+function composeReleaseNotes(values){
+  const parts=[];
+  const neu=normalizeBulletText(values.neu);
+  const verbessert=normalizeBulletText(values.verbessert);
+  const behoben=normalizeBulletText(values.behoben);
+  if(neu)parts.push('Neu\n'+neu);
+  if(verbessert)parts.push('Verbessert\n'+verbessert);
+  if(behoben)parts.push('Behoben\n'+behoben);
+  return parts.join('\n\n');
+}
+
+function splitReleaseNotes(text){
+  const sections={neu:[],verbessert:[],behoben:[]};
+  let current=null, structured=false;
+  String(text||'').split(/\r?\n/).forEach(function(line){
+    const heading=line.trim().replace(/^#{1,6}\s*/,'').replace(/:$/,'').trim().toLowerCase();
+    if(heading==='neu'){current='neu';structured=true;return;}
+    if(heading==='verbessert'){current='verbessert';structured=true;return;}
+    if(heading==='behoben'){current='behoben';structured=true;return;}
+    if(current)sections[current].push(line.replace(/^\s*•\s*/, '- '));
+  });
+  if(!structured && String(text||'').trim())sections.neu=[String(text).trim()];
+  return {
+    neu:sections.neu.join('\n').trim(),
+    verbessert:sections.verbessert.join('\n').trim(),
+    behoben:sections.behoben.join('\n').trim()
+  };
+}
+
+function parseReleaseManifest(text){
+  const result={platform:null,version:null,build:null,minimum:null,mandatory:false,downloadUrl:null,neu:[],verbessert:[],behoben:[]};
+  let section=null;
+  String(text||'').split(/\r?\n/).forEach(function(raw){
+    const line=raw.trim();
+    if(!line)return;
+    const heading=line.replace(/^#{1,6}\s*/,'').replace(/:$/,'').trim().toUpperCase();
+    if(heading==='NEU'){section='neu';return;}
+    if(heading==='VERBESSERT'){section='verbessert';return;}
+    if(heading==='BEHOBEN'){section='behoben';return;}
+
+    const meta=line.match(/^(PLATTFORM|VERSION|BUILD|MINIMUM_BUILD|MINDESTBUILD|PFLICHTUPDATE|DOWNLOAD_URL)\s*:\s*(.*)$/i);
+    if(meta && !section){
+      const key=meta[1].toUpperCase(), value=meta[2].trim();
+      if(key==='PLATTFORM')result.platform=value.toUpperCase();
+      else if(key==='VERSION')result.version=value;
+      else if(key==='BUILD')result.build=value;
+      else if(key==='MINIMUM_BUILD'||key==='MINDESTBUILD')result.minimum=value;
+      else if(key==='PFLICHTUPDATE')result.mandatory=/^(JA|YES|TRUE|1)$/i.test(value);
+      else if(key==='DOWNLOAD_URL')result.downloadUrl=value;
+      return;
+    }
+    if(/^TB-HELFER-RELEASE$/i.test(line))return;
+    if(section)result[section].push(raw.replace(/^\s*[-*•]\s*/, '- '));
+  });
+  result.neu=result.neu.join('\n').trim();
+  result.verbessert=result.verbessert.join('\n').trim();
+  result.behoben=result.behoben.join('\n').trim();
+  return result;
+}
+
+function applyManifestToCreate(data){
+  if(data.platform&&['ANDROID','WINDOWS','IOS'].includes(data.platform))document.getElementById('platform').value=data.platform;
+  if(data.version)document.getElementById('versionName').value=data.version;
+  if(data.build)document.getElementById('buildNumber').value=data.build;
+  document.getElementById('minimumBuild').value=data.minimum||'';
+  document.getElementById('mandatory').checked=!!data.mandatory;
+  if(data.downloadUrl)document.getElementById('externalUrl').value=data.downloadUrl;
+  document.getElementById('notesNew').value=data.neu||'';
+  document.getElementById('notesImproved').value=data.verbessert||'';
+  document.getElementById('notesFixed').value=data.behoben||'';
+}
+
+function manifestText(data){
+  const lines=[
+    'TB-HELFER-RELEASE',
+    'PLATTFORM: '+(data.platform||'ANDROID'),
+    'VERSION: '+(data.version||'1.3.4'),
+    'BUILD: '+(data.build||'200054'),
+    'MINIMUM_BUILD: '+(data.minimum||''),
+    'PFLICHTUPDATE: '+(data.mandatory?'JA':'NEIN'),
+    'DOWNLOAD_URL: '+(data.downloadUrl||''),
+    '',
+    'NEU:',
+    data.neu||'- ',
+    '',
+    'VERBESSERT:',
+    data.verbessert||'- ',
+    '',
+    'BEHOBEN:',
+    data.behoben||'- ',
+    ''
+  ];
+  return lines.join('\n');
+}
+
+function downloadText(filename,textValue){
+  const blob=new Blob([textValue],{type:'text/markdown;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+
+async function readManifestFile(input){
+  const file=input&&input.files?input.files[0]:null;
+  if(!file)throw new Error('Bitte zuerst eine Release-Datei auswählen.');
+  if(file.size>1024*1024)throw new Error('Release-Datei ist zu groß.');
+  return parseReleaseManifest(await file.text());
+}
+
+document.getElementById('readManifest').addEventListener('click',async function(){
+  try{
+    const data=await readManifestFile(document.getElementById('releaseManifestFile'));
+    applyManifestToCreate(data);
+    show('ok','Release-Datei eingelesen. Angaben können jetzt auf dem Server weiter bearbeitet werden.');
+  }catch(error){show('err',error.message||String(error));}
+});
+
+document.getElementById('downloadTemplate').addEventListener('click',function(){
+  const data={
+    platform:document.getElementById('platform').value,
+    version:document.getElementById('versionName').value.trim(),
+    build:document.getElementById('buildNumber').value,
+    minimum:document.getElementById('minimumBuild').value,
+    mandatory:document.getElementById('mandatory').checked,
+    downloadUrl:document.getElementById('externalUrl').value.trim(),
+    neu:document.getElementById('notesNew').value,
+    verbessert:document.getElementById('notesImproved').value,
+    behoben:document.getElementById('notesFixed').value
+  };
+  downloadText('TB-Helfer-Release.md',manifestText(data));
+});
+
+async function uploadBinaryFile(id,file,progress){
+  if(!file)return;
+  if(!(window.crypto&&crypto.subtle))throw new Error('Dieser Browser unterstützt SHA-256 nicht.');
+  if(progress)progress.textContent='SHA-256 wird berechnet …';
+  const sha=await sha256Hex(file);
+  if(progress)progress.textContent='Upload läuft · '+bytes(file.size);
+  await tbApi('/api/v1/admin/releases/'+encodeURIComponent(id)+'/binary',{
+    method:'PUT',
+    headers:{'Content-Type':'application/octet-stream','X-Release-SHA256':sha},
+    body:file
+  });
+  if(progress)progress.textContent='Datei gespeichert · '+bytes(file.size)+' · SHA-256 geprüft';
+}
+
+function draftEditor(r){
+  const n=splitReleaseNotes(r.release_notes||'');
+  const binary=r.binary||{};
+  return '<details class="draft-editor"><summary>Entwurf bearbeiten / Dateien</summary>'+
+    '<div class="grid" style="margin-top:12px">'+
+      '<div><label>Version</label><input id="draft-version-'+esc(r.id)+'" maxlength="80" value="'+esc(r.version_name||'')+'"></div>'+
+      '<div><label>Buildnummer</label><input id="draft-build-'+esc(r.id)+'" type="number" min="1" value="'+esc(r.build_number??'')+'"></div>'+
+      '<div><label>Mindestens unterstützt</label><input id="draft-min-'+esc(r.id)+'" type="number" min="1" value="'+esc(r.minimum_supported_build??'')+'"></div>'+
+      '<div class="check"><input id="draft-mandatory-'+esc(r.id)+'" type="checkbox" '+(r.mandatory?'checked':'')+'><label>Pflichtupdate</label></div>'+
+      '<div><label>Externe Download-URL</label><input id="draft-url-'+esc(r.id)+'" type="url" value="'+esc(r.external_download_url||'')+'" '+(binary.configured?'disabled':'')+'></div>'+
+    '</div>'+
+    '<div class="grid">'+
+      '<div><label>Neu</label><textarea id="draft-new-'+esc(r.id)+'" rows="4">'+esc(n.neu)+'</textarea></div>'+
+      '<div><label>Verbessert</label><textarea id="draft-improved-'+esc(r.id)+'" rows="4">'+esc(n.verbessert)+'</textarea></div>'+
+      '<div><label>Behoben</label><textarea id="draft-fixed-'+esc(r.id)+'" rows="4">'+esc(n.behoben)+'</textarea></div>'+
+    '</div>'+
+    '<div class="file-box" style="margin-top:10px">'+
+      '<label><b>Release-Datei einlesen</b> (.md/.txt)</label>'+
+      '<input id="draft-manifest-'+esc(r.id)+'" type="file" accept=".md,.txt,text/markdown,text/plain">'+
+      '<div class="actions" style="margin-top:8px"><button class="secondary" type="button" onclick="readManifestIntoDraft(\''+esc(r.id)+'\')">Datei einlesen</button></div>'+
+    '</div>'+
+    '<div class="file-box" style="margin-top:10px">'+
+      '<label><b>APK / Binärdatei auswählen</b></label>'+
+      '<input id="draft-file-'+esc(r.id)+'" type="file" accept=".apk,.bin,application/vnd.android.package-archive,application/octet-stream">'+
+      '<div class="actions" style="margin-top:8px"><button type="button" onclick="uploadDraftBinary(\''+esc(r.id)+'\')">'+(binary.configured?'APK ersetzen':'APK hochladen')+'</button></div>'+
+    '</div>'+
+    '<div class="actions" style="margin-top:10px">'+
+      '<button type="button" onclick="saveDraft(\''+esc(r.id)+'\')">Änderungen speichern</button>'+
+      '<button class="secondary" type="button" onclick="downloadReleaseManifest(\''+esc(r.id)+'\')">Release-Datei herunterladen</button>'+
+      (binary.configured?'<button class="danger" type="button" onclick="deleteBinary(\''+esc(r.id)+'\')">Binärdatei entfernen</button>':'')+
+      '<button class="danger" type="button" onclick="purgeDraft(\''+esc(r.id)+'\')">Entwurf komplett löschen</button>'+
+      '<button type="button" onclick="publishRelease(\''+esc(r.id)+'\')">Veröffentlichen</button>'+
+    '</div>'+
+    '<div id="progress-'+esc(r.id)+'" class="muted" style="margin-top:8px"></div>'+
+  '</details>';
+}
+
+async function loadReleases(){
+  try{
+    const result=await tbApi('/api/v1/admin/releases');const all=result.data.releases||[];
+    releaseCache={};all.forEach(function(r){releaseCache[r.id]=r;});
+    const retiredCount=all.filter(function(r){return r.status==='RETIRED';}).length;
+    document.getElementById('showArchived').textContent=showRetired?'Archivierte ausblenden':'Archivierte anzeigen ('+retiredCount+')';
+    const list=showRetired?all:all.filter(function(r){return r.status!=='RETIRED';});
+    target.innerHTML=list.length?list.map(function(r){
+      const binary=r.binary||{};
+      let actions='';
+      if(r.status==='PUBLISHED'){
+        actions+='<button class="secondary" type="button" onclick="downloadReleaseManifest(\''+esc(r.id)+'\')">Release-Datei herunterladen</button>';
+        actions+='<button class="secondary" type="button" onclick="retireRelease(\''+esc(r.id)+'\')">Zurückziehen</button>';
+      }else if(r.status==='RETIRED'){
+        actions+='<button class="secondary" type="button" onclick="downloadReleaseManifest(\''+esc(r.id)+'\')">Release-Datei herunterladen</button>';
+      }
+      const verifyUrl=(r.status==='DRAFT'&&binary.configured)
+        ? '/api/v1/admin/releases/'+encodeURIComponent(r.id)+'/binary'
+        : r.download_url;
+      const download=verifyUrl?'<a class="btn" href="'+esc(verifyUrl)+'" target="_blank" rel="noopener">Download prüfen</a>':'';
+      const statusLabel=({DRAFT:'Entwurf',PUBLISHED:'Veröffentlicht',RETIRED:'Archiviert'})[r.status]||r.status;
+      return '<div class="release-card">'+
+        '<div class="actions" style="justify-content:space-between"><div><b>'+esc(r.platform)+' · '+esc(r.version_name)+'</b> <span class="pill">'+esc(statusLabel)+'</span>'+
+        '<div class="muted">Build '+esc(r.build_number??'—')+' · Minimum '+esc(r.minimum_supported_build??'—')+(r.mandatory?' · Pflichtupdate':'')+'</div></div>'+
+        '<div>'+download+'</div></div>'+
+        '<pre class="release-notes">'+esc(r.release_notes||'Keine Release Notes')+'</pre>'+
+        '<div class="mono">Binärdatei: '+(binary.configured?esc(bytes(binary.byte_size))+' · SHA-256 '+esc(binary.sha256):'nicht serverseitig hinterlegt')+'</div>'+
+        (r.external_download_url?'<div class="mono">Externe URL: '+esc(r.external_download_url)+'</div>':'')+
+        (r.status==='DRAFT'?draftEditor(r):'<div class="actions" style="margin-top:10px">'+actions+'</div>')+
+      '</div>';
+    }).join(''):'<p class="muted">Noch keine Releases vorhanden.</p>';
+  }catch(error){show('err',error.message||String(error));}
+}
+
+document.getElementById('createRelease').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  let created=null;
+  try{
+    const build=document.getElementById('buildNumber').value;
+    const min=document.getElementById('minimumBuild').value;
+    const external=document.getElementById('externalUrl').value.trim();
+    const binaryInput=document.getElementById('releaseBinaryFile');
+    const binary=binaryInput&&binaryInput.files?binaryInput.files[0]:null;
+    if(binary&&external)throw new Error('Bitte entweder APK/Binärdatei oder externe Download-URL verwenden, nicht beides.');
+
+    createProgress.textContent='Entwurf wird angelegt …';
+    const response=await tbApi('/api/v1/admin/releases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      platform:document.getElementById('platform').value,
+      version_name:document.getElementById('versionName').value.trim(),
+      build_number:build?Number(build):null,
+      minimum_supported_build:min?Number(min):null,
+      mandatory:document.getElementById('mandatory').checked,
+      download_url:external||null,
+      release_notes:composeReleaseNotes({
+        neu:document.getElementById('notesNew').value,
+        verbessert:document.getElementById('notesImproved').value,
+        behoben:document.getElementById('notesFixed').value
+      })||null
+    })});
+    created=response.data||response;
+    if(binary)await uploadBinaryFile(created.id,binary,createProgress);
+    ev.target.reset();
+    document.getElementById('releaseManifestFile').value='';
+    document.getElementById('releaseBinaryFile').value='';
+    createProgress.textContent='';
+    show('ok',binary?'Release-Entwurf angelegt und Datei hochgeladen. Vor Veröffentlichung bitte prüfen.':'Release-Entwurf angelegt. Vor Veröffentlichung bitte prüfen.');
+    await loadReleases();
+  }catch(error){
+    createProgress.textContent='';
+    show('err',(created?'Entwurf wurde angelegt, aber die Datei konnte nicht vollständig übernommen werden: ':'')+(error.message||String(error)));
+    await loadReleases();
+  }
+});
+
+async function readManifestIntoDraft(id){
+  try{
+    const data=await readManifestFile(document.getElementById('draft-manifest-'+id));
+    if(data.version)document.getElementById('draft-version-'+id).value=data.version;
+    if(data.build)document.getElementById('draft-build-'+id).value=data.build;
+    document.getElementById('draft-min-'+id).value=data.minimum||'';
+    document.getElementById('draft-mandatory-'+id).checked=!!data.mandatory;
+    if(data.downloadUrl)document.getElementById('draft-url-'+id).value=data.downloadUrl;
+    document.getElementById('draft-new-'+id).value=data.neu||'';
+    document.getElementById('draft-improved-'+id).value=data.verbessert||'';
+    document.getElementById('draft-fixed-'+id).value=data.behoben||'';
+    show('ok','Release-Datei in den Entwurf übernommen. Zum Speichern „Änderungen speichern“ drücken.');
+  }catch(error){show('err',error.message||String(error));}
+}
+window.readManifestIntoDraft=readManifestIntoDraft;
+
+async function saveDraft(id){
+  try{
+    const build=document.getElementById('draft-build-'+id).value;
+    const min=document.getElementById('draft-min-'+id).value;
+    const urlInput=document.getElementById('draft-url-'+id);
+    await tbApi('/api/v1/admin/releases/'+encodeURIComponent(id),{
+      method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        version_name:document.getElementById('draft-version-'+id).value.trim(),
+        build_number:build?Number(build):null,
+        minimum_supported_build:min?Number(min):null,
+        mandatory:document.getElementById('draft-mandatory-'+id).checked,
+        download_url:urlInput&&!urlInput.disabled?(urlInput.value.trim()||null):null,
+        release_notes:composeReleaseNotes({
+          neu:document.getElementById('draft-new-'+id).value,
+          verbessert:document.getElementById('draft-improved-'+id).value,
+          behoben:document.getElementById('draft-fixed-'+id).value
+        })||null
+      })
+    });
+    show('ok','Entwurf gespeichert.');await loadReleases();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.saveDraft=saveDraft;
+
+async function uploadDraftBinary(id){
+  const input=document.getElementById('draft-file-'+id), file=input&&input.files?input.files[0]:null;
+  if(!file){show('err','Bitte zuerst eine APK/Binärdatei auswählen.');return;}
+  const progress=document.getElementById('progress-'+id);
+  try{
+    await uploadBinaryFile(id,file,progress);
+    show('ok','Release-Binärdatei gespeichert und geprüft.');await loadReleases();
+  }catch(error){if(progress)progress.textContent='';show('err',error.message||String(error));}
+}
+window.uploadDraftBinary=uploadDraftBinary;
+
+function downloadReleaseManifest(id){
+  const r=releaseCache[id];if(!r){show('err','Release nicht gefunden.');return;}
+  const n=splitReleaseNotes(r.release_notes||'');
+  const name='TB-Helfer-'+String(r.platform||'release').toLowerCase()+'-'+String(r.version_name||'release')+'-'+String(r.build_number||'draft')+'.md';
+  downloadText(name,manifestText({
+    platform:r.platform,version:r.version_name,build:r.build_number,minimum:r.minimum_supported_build,
+    mandatory:!!r.mandatory,downloadUrl:r.external_download_url||'',neu:n.neu,verbessert:n.verbessert,behoben:n.behoben
+  }));
+}
+window.downloadReleaseManifest=downloadReleaseManifest;
+
+async function deleteBinary(id){
+  if(!confirm('Serverseitige Binärdatei dieses Entwurfs entfernen?'))return;
+  try{await tbApi('/api/v1/admin/releases/'+encodeURIComponent(id)+'/binary',{method:'DELETE'});show('ok','Binärdatei entfernt.');await loadReleases();}
+  catch(error){show('err',error.message||String(error));}
+}
+window.deleteBinary=deleteBinary;
+
+async function purgeDraft(id){
+  const r=releaseCache[id];
+  const label=r?(r.platform+' · '+r.version_name):id;
+  const typed=prompt(
+    'Entwurf "'+label+'" wirklich komplett löschen?\n\n'+
+    'Der Entwurfsdatensatz und eine bereits hochgeladene APK/Binärdatei werden endgültig entfernt.\n\n'+
+    'Zum Bestätigen ENDGUELTIG LOESCHEN eingeben.'
+  );
+  if(typed!=='ENDGUELTIG LOESCHEN')return;
+  try{
+    await tbApi('/api/v1/admin/purge/releases/'+encodeURIComponent(id),{
+      method:'DELETE',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({confirm_id:id,confirm_text:typed})
+    });
+    show('ok','Entwurf wurde vollständig gelöscht.');await loadReleases();
+  }catch(error){show('err',error.message||String(error));}
+}
+window.purgeDraft=purgeDraft;
+
+async function publishRelease(id){
+  if(!confirm('Release veröffentlichen? Veröffentlichte Metadaten/Binärdatei dürfen danach nicht still überschrieben werden.'))return;
+  try{await tbApi('/api/v1/admin/releases/'+encodeURIComponent(id)+'/publish',{method:'POST'});show('ok','Release veröffentlicht.');await loadReleases();}
+  catch(error){show('err',error.message||String(error));}
+}
+window.publishRelease=publishRelease;
+
+async function retireRelease(id){
+  if(!confirm('Veröffentlichten Release zurückziehen?'))return;
+  try{await tbApi('/api/v1/admin/releases/'+encodeURIComponent(id)+'/retire',{method:'POST'});show('ok','Release zurückgezogen.');await loadReleases();}
+  catch(error){show('err',error.message||String(error));}
+}
+window.retireRelease=retireRelease;
+
+document.getElementById('showArchived').addEventListener('click',function(){showRetired=!showRetired;loadReleases();});
+document.getElementById('refresh').addEventListener('click',loadReleases);
+loadReleases();
+</script>
+{% endblock %}

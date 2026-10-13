@@ -16,7 +16,8 @@ class SyncCatalogApi(
         val name: String?,
         val description: String?,
         val sectionCount: Long,
-        val objectCount: Long
+        val objectCount: Long,
+        val entityVersion: Long = 0
     )
 
     data class StationItem(
@@ -25,7 +26,8 @@ class SyncCatalogApi(
         val name: String,
         val shortName: String?,
         val description: String?,
-        val objectCount: Long
+        val objectCount: Long,
+        val entityVersion: Long = 0
     )
 
     data class Catalog(
@@ -41,7 +43,7 @@ class SyncCatalogApi(
     }
 
     fun loadCatalog(token: String): Result {
-        val connection = openConnection("/api/v1/sync/catalog")
+        val connection = openConnection("/api/v1/catalog")
         return try {
             connection.setRequestProperty("Authorization", "Bearer $token")
             connection.setRequestProperty("Accept", "application/json")
@@ -87,7 +89,8 @@ class SyncCatalogApi(
                             name = item.optNullableString("name"),
                             description = item.optNullableString("description"),
                             sectionCount = item.optLong("section_count", 0),
-                            objectCount = item.optLong("object_count", 0)
+                            objectCount = item.optLong("object_count", 0),
+                            entityVersion = item.optLong("current_version", 0)
                         )
                     )
                 }
@@ -106,7 +109,8 @@ class SyncCatalogApi(
                             name = item.optString("name"),
                             shortName = item.optNullableString("short_name"),
                             description = item.optNullableString("description"),
-                            objectCount = item.optLong("object_count", 0)
+                            objectCount = item.optLong("object_count", 0),
+                            entityVersion = item.optLong("current_version", 0)
                         )
                     )
                 }

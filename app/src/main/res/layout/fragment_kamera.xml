@@ -12,7 +12,7 @@
         android:layout_above="@+id/buttonRow"
         android:layout_alignParentTop="true" />
 
-    <TextView
+    <de.tbhelfer.ui.kamera.KameraStatusTextView
         android:id="@+id/textStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

@@ -1,4 +1,8 @@
-# TB Helfer – Neustart (übersichtlich, deutsch, Fragments + Navigation)
+# TB Helfer 2.0
+
+> **Projektsteuerung / neuer Chat / aktueller Stand:** zuerst `projektsteuerung/00_START_HIER.md` lesen.
+>
+> Die früheren Top-Level-Ordner `projektstatus/`, `releases/` und `uebergaben/` wurden in `projektsteuerung/` zusammengeführt.
 
 ## Ordnerstruktur (damit es nicht unübersichtlich wird)
 - `de.tbhelfer.ui` → UI (Activity + Fragments)

@@ -1,0 +1,55 @@
+{% extends "v1_base.html" %}
+{% block title %}TB-Helfer · Einladung einlösen{% endblock %}
+{% block head %}
+<meta name="referrer" content="no-referrer">
+{% endblock %}
+{% block content %}
+<div class="card" style="max-width:760px">
+  <h1>Baustelleneinladung einlösen</h1>
+  <p class="muted">Der Einladungscode ist einmalig und wird serverseitig nur gehasht gespeichert. Ein Link/QR überträgt den Code im URL-Fragment; dadurch wird er beim Öffnen nicht als HTTP-URL an den Server gesendet.</p>
+  <div id="msg"></div>
+  <form id="redeemForm">
+    <label for="token">Einladungscode</label>
+    <input id="token" type="password" autocomplete="off" spellcheck="false" required placeholder="Einladungscode hier einfügen">
+    <div class="actions" style="margin-top:8px">
+      <button id="toggleToken" type="button" class="secondary">Code anzeigen</button>
+      <button type="submit">Einladung annehmen</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const msg=document.getElementById('msg'), tokenInput=document.getElementById('token');
+function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
+(function readInviteFragment(){
+  try{
+    const params=new URLSearchParams(location.hash.replace(/^#/,''));
+    const token=params.get('token');
+    if(token){
+      tokenInput.value=token;
+      history.replaceState(null,'',location.pathname+location.search);
+      show('info','Einladung aus Link/QR erkannt. Bitte die Annahme bestätigen.');
+    }
+  }catch(_){}
+})();
+document.getElementById('toggleToken').addEventListener('click',function(){
+  const visible=tokenInput.type==='text';
+  tokenInput.type=visible?'password':'text';
+  this.textContent=visible?'Code anzeigen':'Code ausblenden';
+});
+document.getElementById('redeemForm').addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  const token=tokenInput.value.trim();
+  if(!token){show('err','Bitte Einladungscode einfügen.');return;}
+  try{
+    const result=await tbApi('/api/v1/worksites/invitations/redeem',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:token})
+    });
+    tokenInput.value='';
+    show('ok','Einladung angenommen. Baustelle wird geöffnet …');
+    setTimeout(function(){location.href='/portal/v1/worksites/'+encodeURIComponent(result.data.worksite_id);},450);
+  }catch(error){show('err',error.message||String(error));}
+});
+</script>
+{% endblock %}

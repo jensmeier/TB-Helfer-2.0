@@ -17,6 +17,9 @@ class BaustellenBaumRepository(
     fun alleKnotenZuRoot(rootId: Long): Flow<List<BaustellenKnotenEntity>> =
         knotDao.alleKnotenZuRootFlow(rootId).flowOn(Dispatchers.IO)
 
+    suspend fun alleKnotenZuRootSofort(rootId: Long): List<BaustellenKnotenEntity> =
+        withContext(Dispatchers.IO) { knotDao.alleKnotenZuRootSofort(rootId) }
+
     fun kinderVon(parentId: Long): Flow<List<BaustellenKnotenEntity>> = knotDao.kinderVon(parentId).flowOn(Dispatchers.IO)
 
     suspend fun knotenMitId(id: Long): BaustellenKnotenEntity? = withContext(Dispatchers.IO) { knotDao.laden(id) }
