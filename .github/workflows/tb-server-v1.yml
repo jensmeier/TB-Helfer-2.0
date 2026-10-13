@@ -5,12 +5,11 @@ on:
     paths:
       - "server/**"
       - ".github/workflows/tb-server-v1.yml"
-  push:
-    branches:
-      - "feature/tb-server-1.0"
-    paths:
-      - "server/**"
-      - ".github/workflows/tb-server-v1.yml"
+
+# PR #6 performs the checks. Avoid a second identical run on every branch push.
+concurrency:
+  group: tb-server-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   foundation:
