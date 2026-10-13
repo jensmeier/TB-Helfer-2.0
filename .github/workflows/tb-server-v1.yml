@@ -1,20 +1,20 @@
 name: TB-Server 1.0
 
 on:
-  pull_request:
+  push:
+    branches: [ "feature/tb-server-1.0" ]
     paths:
       - "server/**"
       - ".github/workflows/tb-server-v1.yml"
+  workflow_dispatch:
 
-# PR #6 performs the checks. Avoid a second identical run on every branch push.
+# Run only for server changes on the server branch, or a manual release gate.
 concurrency:
   group: tb-server-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   foundation:
-    # Android PR contains historical server files against main; avoid duplicate server suite.
-    if: github.event_name != 'pull_request' || github.head_ref != 'feature/tb-android-2.0'
     runs-on: ubuntu-latest
     services:
       postgres:
