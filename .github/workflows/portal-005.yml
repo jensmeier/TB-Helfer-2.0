@@ -2,7 +2,7 @@ name: Portal 005 integration
 on:
   push:
     branches: [feature/tb-server-1.0]
-    paths: ['server/tbserver/media_gallery.py', 'server/tbserver/files.py', 'server/checks/150_portal_gallery_integration.py', 'server/tbserver/portal_recovery.py', 'server/tbserver/public_overview.py', 'server/tbserver/btb_participants.py', 'server/tbserver/worksites.py', 'server/templates/**', 'server/v1_migrations/023*', 'server/checks/148*', 'server/checks/149*', 'server/tbserver/backup_domains.py', 'server/tbserver/recovery.py', '.github/workflows/portal-005.yml']
+    paths: ['server/tbserver/media_gallery.py', 'server/tbserver/files.py', 'server/checks/150_portal_gallery_integration.py', 'server/tbserver/portal_recovery.py', 'server/tbserver/public_overview.py', 'server/tbserver/btb_participants.py', 'server/tbserver/worksites.py', 'server/templates/**', 'server/v1_migrations/023*', 'server/v1_migrations/024*', 'server/checks/148*', 'server/checks/149*', 'server/tbserver/backup_domains.py', 'server/tbserver/recovery.py', '.github/workflows/portal-005.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -42,3 +42,4 @@ jobs:
         with:
           name: portal-rendered
           path: /tmp/portal-rendered
+

@@ -569,12 +569,13 @@ async function sha256Hex(file){
 }
 async function uploadFachPhoto(type,id,inputId){
   const input=document.getElementById(inputId);
-  const file=input&&input.files?input.files[0]:null;
+  let file=input&&input.files?input.files[0]:null;
   if(!file){show('err','Bitte zuerst ein Foto auswählen.');return;}
   if(!(window.crypto&&crypto.subtle)){show('err','Dieser Browser unterstützt die sichere SHA-256-Prüfung nicht.');return;}
   if(!file.type.startsWith('image/')){show('err','Für Mängel/Abnahmen bitte eine Bilddatei auswählen.');return;}
   try{
-    show('info','Foto wird vorbereitet …');
+    show('info','Foto wird auf maximal 2 MB vorbereitet …');
+    file=await tbPreparePhoto(file);
     const sha=await sha256Hex(file);
     const prefix=type==='DEFECT'?'DEFECT__MANGEL__':'ACCEPTANCE_FOTO__SONSTIGES__';
     const created=await tbApi('/api/v1/worksites/'+worksiteId+'/uploads',{
@@ -931,4 +932,5 @@ select(panels.some(p=>p[0]===location.hash.slice(1))?location.hash.slice(1):'ove
 })();
 </script>
 {% endblock %}
+
 

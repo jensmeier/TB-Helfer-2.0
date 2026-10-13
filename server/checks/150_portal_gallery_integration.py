@@ -88,7 +88,7 @@ started=time.perf_counter()
 r=client.get(url);assert r.status_code==200,r.text
 first_seconds=time.perf_counter()-started
 first=r.json()
-assert first["gallery_version"]=="PORTAL-011"
+assert first["gallery_version"]=="PORTAL-012"
 assert all(m["photo_number"]==int(m["filename"][5:-4]) and m["byte_size"]==12000 and m["btb_date"]=="2026-10-06" for m in first["media"])
 assert len(first["media"])==60 and first["media"][0]["attachment_id"]==str(newest)
 assert query_count==3, query_count
@@ -218,6 +218,72 @@ item=next(m for m in client.get(url).json()["media"] if m["attachment_id"]==str(
 assert not set(item["photo_metadata"]) & {"kurztext","firma","km","indikator","worksiteNodeKey"}
 assert item["worksite_node"] is None
 
+# Effective full-text searches cover legacy encoded text, word order, overrides and nodes.
+with conn.cursor() as c:
+    c.execute("UPDATE tb.file_links SET link_metadata=%s WHERE file_id=%s AND entity_type='BTB'",
+        (Jsonb({"kurztext":"Defekt am STRAIL prüfen","firma":"Peter Schauer Tiefbau","worksiteNodeKey":"node-pasing"}),packed_id))
+assert str(packed_id) in {m["attachment_id"] for m in client.get(url,params={"search":"strail defekt"}).json()["media"]}
+assert str(packed_id) in {m["attachment_id"] for m in client.get(url,params={"search":"PETER strail"}).json()["media"]}
+assert str(packed_id) in {m["attachment_id"] for m in client.get(url,params={"search":"Pasing"}).json()["media"]}
+with conn.cursor() as c:
+    c.execute("UPDATE tb.file_links SET link_metadata='{}'::jsonb WHERE file_id=%s AND entity_type='BTB'",(packed_id,))
+assert str(packed_id) in {m["attachment_id"] for m in client.get(url,params={"search":"SCHOTTER prüfen"}).json()["media"]}
+with conn.cursor() as c:
+    c.execute("UPDATE tb.file_links SET link_metadata=%s WHERE file_id=%s AND entity_type='BTB'",(Jsonb({"kurztext":None}),packed_id))
+assert str(packed_id) not in {m["attachment_id"] for m in client.get(url,params={"search":"Schotter"}).json()["media"]}
+# Kilometer boundaries and comma/point equivalence use rounded displayed meters.
+km_ids={}
+with conn.cursor() as c:
+    for km in [12.999,13.000,13.099,13.100,13.200,13.299,13.300,13.999,14.000]:
+        fid=photo('km-'+str(km)+'.jpg','BTB',btb)
+        c.execute("UPDATE tb.files SET photo_metadata=%s WHERE id=%s",(Jsonb({"km":km}),fid));km_ids[km]=str(fid)
+def km_result(term):
+    response=client.get(url,params={"search":term});assert response.status_code==200,response.text
+    return response.json()
+for term in ['13.200','13,200','KM 13.200']:
+    result=km_result(term)
+    assert {m["attachment_id"] for m in result["media"]}=={km_ids[k] for k in [13.100,13.200,13.299]},result
+    assert result['search_km_min_m']==13100 and result['search_km_max_m']==13299
+result=km_result('13.000')
+assert {m["attachment_id"] for m in result["media"]}=={fid for km,fid in km_ids.items() if 13<=km<14}
+assert result['search_km_min_m']==13000 and result['search_km_max_m']==13999
+# Foreign-link text may not reveal a file merely because another visible link exists.
+with conn.cursor() as c:
+    c.execute("INSERT INTO tb.file_links(file_id,entity_type,entity_id,purpose,link_metadata) VALUES (%s,'BTB',%s,'FOREIGN',%s)",
+        (allowed,other_btb,Jsonb({"kurztext":"private-secret-phrase"})))
+user['user_id']=helper
+with conn.cursor() as c:
+    c.execute("UPDATE tb.worksite_memberships SET status='ACTIVE',permissions_override=%s WHERE worksite_id=%s AND user_id=%s",
+        (Jsonb({"files.view":True,"btb.view":True,"defect.view":True}),site,helper))
+assert str(allowed) not in {m['attachment_id'] for m in client.get(url,params={'search':'private-secret-phrase'}).json()['media']}
+user['user_id']=lead
+
+# Real upload endpoints enforce the decimal 2-MB limit before any permanent file write.
+app.dependency_overrides[files.require_csrf]=lambda:user
+with conn.cursor() as c:
+    c.execute("UPDATE tb.worksite_memberships SET permissions_override=%s WHERE worksite_id=%s AND user_id=%s",
+        (Jsonb({"files.view":True,"files.add":True,"btb.view":True,"defect.view":True,"acceptance.view":True}),site,lead))
+upload_url=f'/api/v1/worksites/{site}/uploads'
+assert client.post(upload_url,json={'target_kind':'PHOTO','mime_type':'image/jpeg','original_name':'too-large.jpg','expected_bytes':2000001}).status_code==413
+created=client.post(upload_url,json={'target_kind':'PHOTO','mime_type':'image/jpeg','original_name':'bounded.jpg'})
+assert created.status_code in (200,201),created.text
+uid=created.json()['id']
+response=client.put(f'/api/v1/uploads/{uid}/chunk',params={'offset':0},content=b'x'*2000001)
+assert response.status_code==413,response.text
+with conn.cursor() as c:
+    c.execute('SELECT received_bytes,temp_storage_key FROM tb.upload_sessions WHERE id=%s',(uid,));record=c.fetchone()
+assert record['received_bytes']==0
+# Simulate an old open upload present at deployment; completion must enforce the new cap.
+from tbserver.config import settings
+path=settings.storage_root/record['temp_storage_key'];path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'x'*2000001)
+with conn.cursor() as c:c.execute('UPDATE tb.upload_sessions SET received_bytes=2000001 WHERE id=%s',(uid,))
+assert client.post(f'/api/v1/uploads/{uid}/complete',json={}).status_code==413
+# Boundary is inclusive; ordinary PDF/file uploads retain their existing larger limit.
+assert client.post(upload_url,json={'target_kind':'PHOTO','mime_type':'image/jpeg','original_name':'boundary.jpg','expected_bytes':2000000}).status_code in (200,201)
+assert client.post(upload_url,json={'target_kind':'ATTACHMENT','mime_type':'application/pdf','original_name':'report.pdf','expected_bytes':3000000}).status_code in (200,201)
+# A mislabeled photo extension cannot bypass the cap.
+assert client.post(upload_url,json={'target_kind':'ATTACHMENT','mime_type':'application/octet-stream','original_name':'disguised.JPG','expected_bytes':2000001}).status_code==413
+
 # Bounded sparse-area scan: no runaway scan or N+1 when almost nothing is visible.
 with conn.cursor() as c:
     c.execute("UPDATE tb.worksite_memberships SET worksite_role='HELPER', permissions_override=%s,area_scope=%s WHERE worksite_id=%s AND user_id=%s",
@@ -233,4 +299,5 @@ metrics={"photos":10000,"pages":pages,"first_page_seconds":round(first_seconds,4
 out=Path("/tmp/portal-rendered");out.mkdir(exist_ok=True)
 (out/"gallery-10000.json").write_text(json.dumps(metrics,indent=2))
 print("PASS: 10000 photos, full cursor traversal, bounded payload/queries, filters, duplicate links, permissions, sparse scopes",json.dumps(metrics))
+
 

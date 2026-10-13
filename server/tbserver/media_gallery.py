@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import re
 from datetime import date, datetime, time, timedelta
 from typing import Any
 from uuid import UUID
@@ -20,8 +21,35 @@ from .portal import current_portal_user
 router = APIRouter()
 _BATCH = 240
 _SCAN_BUDGET = 960
-GALLERY_VERSION = "PORTAL-011"
+GALLERY_VERSION = "PORTAL-012"
 
+
+def _search_spec(search):
+    numeric = re.fullmatch(r"(?:km\s*)?(-?\d+)(?:[.,](\d{3}))?", search, re.IGNORECASE)
+    if not numeric:
+        return search.split(), None, None
+    sign = -1 if numeric[1].startswith('-') else 1
+    meter = int(numeric[1])*1000 + sign*int(numeric[2] or '0')
+    if abs(meter)>1000000000:
+        raise HTTPException(400, "INVALID_MEDIA_KM")
+    if meter % 1000 == 0:
+        return [], meter, meter+999
+    return [], meter-100, meter+99
+
+
+def _search_sql(file_alias, link_alias, node_alias, title_sql, uploader_sql):
+    return f"""tb.gallery_photo_matches(
+        tb.gallery_photo_metadata({file_alias}.original_name,{file_alias}.photo_metadata,
+            CASE WHEN {link_alias}.entity_type='BTB' THEN {link_alias}.link_metadata ELSE '{{}}'::jsonb END),
+        concat_ws(' ',{file_alias}.original_name,{file_alias}.source,{uploader_sql},{title_sql},
+            {node_alias}.name,{node_alias}.route_number,{node_alias}.track_key,{node_alias}.payload::text),
+        criteria.terms,criteria.km_min,criteria.km_max)"""
+
+
+def _search_node_sql(file_alias, link_alias):
+    return f"""coalesce(sn.external_key,'server-'||sn.id::text) =
+        tb.gallery_photo_metadata({file_alias}.original_name,{file_alias}.photo_metadata,
+            CASE WHEN {link_alias}.entity_type='BTB' THEN {link_alias}.link_metadata ELSE '{{}}'::jsonb END)->>'worksiteNodeKey'"""
 
 def _fingerprint(worksite_id, user_id, day, kind, search, parent_id):
     return hashlib.sha256(json.dumps(
@@ -82,6 +110,7 @@ def gallery_page(
         raise HTTPException(400, "INVALID_MEDIA_KIND")
     fingerprint = _fingerprint(worksite_id, user["user_id"], day, kind, search, parent_id)
     after = _after(cursor, fingerprint)
+    terms, km_min, km_max = _search_spec(search)
     clauses = ["f.worksite_id = %s", "f.deleted_at IS NULL",
                "lower(f.mime_type) LIKE 'image/%%'"]
     base_params: list[Any] = [worksite_id]
@@ -94,10 +123,14 @@ def gallery_page(
         clauses.append("COALESCE(f.captured_at, f.created_at) >= %s AND COALESCE(f.captured_at, f.created_at) < %s")
         base_params.extend([start, end])
     if search:
-        # Literal substring: % and _ are not wildcard operators.
-        clauses.append("""strpos(lower(concat_ws(' ', f.original_name, f.source,
-            uploader.display_name, f.photo_metadata::text)), %s) > 0""")
-        base_params.append(search)
+        match = _search_sql('f','sl','sn',"CASE sl.entity_type WHEN 'DEFECT' THEN sd.title WHEN 'ACCEPTANCE' THEN sa.title END",'uploader.display_name')
+        node = _search_node_sql('f','sl')
+        clauses.append(f"""EXISTS (SELECT 1 FROM tb.file_links sl
+            LEFT JOIN tb.defects sd ON sl.entity_type='DEFECT' AND sd.id=sl.entity_id AND sd.worksite_id=f.worksite_id
+            LEFT JOIN tb.acceptances sa ON sl.entity_type='ACCEPTANCE' AND sa.id=sl.entity_id AND sa.worksite_id=f.worksite_id
+            LEFT JOIN tb.worksite_nodes sn ON sn.worksite_id=f.worksite_id AND sn.deleted_at IS NULL AND {node}
+            WHERE sl.file_id=f.id AND sl.entity_type IN ('BTB','DEFECT','ACCEPTANCE')
+              AND {match})""")
     clauses.append("""EXISTS (SELECT 1 FROM tb.file_links filter_link
         WHERE filter_link.file_id=f.id
           AND filter_link.entity_type IN ('BTB','DEFECT','ACCEPTANCE')
@@ -124,20 +157,22 @@ def gallery_page(
             size = min(_BATCH, _SCAN_BUDGET - scanned)
             params.extend([size, user["user_id"], kind, kind])
             cur.execute(f"""
-                WITH page AS MATERIALIZED (
+                WITH criteria AS (SELECT %s::text[] AS terms,%s::bigint AS km_min,%s::bigint AS km_max),
+                page AS MATERIALIZED (
                     SELECT f.id, f.original_name, f.mime_type, f.created_at,
                            f.captured_at, f.source, f.photo_metadata, f.byte_size,
-                           f.gps_lat, f.gps_lon, f.gps_accuracy_m
+                           f.gps_lat, f.gps_lon, f.gps_accuracy_m, uploader.display_name AS uploader_name
                     FROM tb.files f
-                    LEFT JOIN tb.users uploader ON uploader.id=f.created_by
+                    LEFT JOIN tb.users uploader ON uploader.id=f.created_by CROSS JOIN criteria
                     WHERE {' AND '.join(where)}
                     ORDER BY f.created_at DESC, f.id DESC LIMIT %s
                 )
                 SELECT page.*, links.items AS links
-                FROM page
+                FROM page CROSS JOIN criteria
                 CROSS JOIN LATERAL (
                     SELECT jsonb_agg(jsonb_build_object(
                         'kind', l.entity_type, 'parent_id', l.entity_id,
+                        'matches', {_search_sql('page','l','sn',"CASE l.entity_type WHEN 'DEFECT' THEN d.title WHEN 'ACCEPTANCE' THEN a.title END",'page.uploader_name')},
                         'link_metadata', CASE WHEN l.entity_type='BTB' THEN l.link_metadata ELSE '{{}}'::jsonb END,
                         'btb_date', b.work_date,
                         'title', CASE l.entity_type WHEN 'DEFECT' THEN left(d.title,500) WHEN 'ACCEPTANCE' THEN left(a.title,500) ELSE NULL END,
@@ -155,11 +190,12 @@ def gallery_page(
                     LEFT JOIN tb.btbs b ON l.entity_type='BTB' AND b.id=l.entity_id AND b.worksite_id=%s
                     LEFT JOIN tb.defects d ON l.entity_type='DEFECT' AND d.id=l.entity_id AND d.worksite_id=%s
                     LEFT JOIN tb.acceptances a ON l.entity_type='ACCEPTANCE' AND a.id=l.entity_id AND a.worksite_id=%s
+                    LEFT JOIN tb.worksite_nodes sn ON sn.worksite_id=%s AND sn.deleted_at IS NULL AND {_search_node_sql('page','l')}
                     WHERE l.file_id=page.id AND l.entity_type IN ('BTB','DEFECT','ACCEPTANCE')
                       AND (%s='' OR l.entity_type=%s)
                 ) links
                 ORDER BY page.created_at DESC, page.id DESC
-            """, tuple(params[:-2] + [worksite_id, worksite_id, worksite_id] + params[-2:]))
+            """, tuple([terms,km_min,km_max] + params[:-2] + [worksite_id, worksite_id, worksite_id,worksite_id] + params[-2:]))
             rows = cur.fetchall()
             if not rows:
                 exhausted = True
@@ -168,7 +204,7 @@ def gallery_page(
                 scanned += 1
                 last = row
                 after = (row["created_at"], row["id"])
-                link = next((link for link in (row["links"] or []) if (parent_id is None or str(link["parent_id"]) == str(parent_id)) and _visible(link, context, user)), None)
+                link = next((link for link in (row["links"] or []) if (parent_id is None or str(link["parent_id"]) == str(parent_id)) and link.get("matches", True) and _visible(link, context, user)), None)
                 if link is not None:
                     canonical = canonical_photo_metadata(
                         filename=row["original_name"], captured_at=row["captured_at"],
@@ -237,7 +273,8 @@ def gallery_page(
             key = m["photo_metadata"].get("worksiteNodeKey")
             m["worksite_node"] = nodes.get(key)
     next_cursor = _cursor(last, fingerprint) if last is not None and not exhausted else None
-    return {"gallery_version": GALLERY_VERSION, "media": media, "count": len(media), "next_cursor": next_cursor,
+    return {"search_km_min_m": km_min, "search_km_max_m": km_max, "gallery_version": GALLERY_VERSION, "media": media, "count": len(media), "next_cursor": next_cursor,
             "snapshot_complete": next_cursor is None,
             "scan_limited": not exhausted and len(media) < limit}
+
 

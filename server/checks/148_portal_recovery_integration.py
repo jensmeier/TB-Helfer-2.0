@@ -19,7 +19,7 @@ with conn.cursor() as cur:
     assert cur.fetchone()['existing'] is None, 'Refusing nonempty schema'
 os.environ['TB_MIGRATIONS_ROOT']=str(Path(__file__).resolve().parents[1]/'v1_migrations')
 from tbserver.migrations import migrate
-assert len(migrate())==23
+assert len(migrate())==24
 assert migrate()==[], 'Migration replay must be a no-op'
 
 from tbserver import portal_recovery as r
@@ -165,3 +165,4 @@ for name in ['v1_base.html','v1_worksites.html','v1_worksite.html','v1_btb.html'
     assert html
     out=Path('/tmp/portal-rendered');out.mkdir(exist_ok=True);(out/name).write_text(html)
 print('PASS: migration, participant guard, historical participants, email verification, one-use/expired/invalidated tokens, password/session reset, disabled account, rate limit, public counts, Jinja rendering')
+

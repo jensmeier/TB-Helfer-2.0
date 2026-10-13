@@ -1409,11 +1409,13 @@ async function sha256Hex(file){
   return Array.from(new Uint8Array(digest)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
 }
 document.getElementById('uploadPhoto').addEventListener('click',async function(){
-  const file=document.getElementById('photoFile').files[0];
+  let file=document.getElementById('photoFile').files[0];
   const progress=document.getElementById('photoProgress');
   if(!file){show('err','Bitte zuerst ein Foto auswählen.');return;}
   if(!(window.crypto&&crypto.subtle)){show('err','Dieser Browser unterstützt die sichere SHA-256-Prüfung nicht.');return;}
   try{
+    progress.textContent='Foto wird auf maximal 2 MB vorbereitet …';
+    file=await tbPreparePhoto(file);
     progress.textContent='Prüfsumme wird berechnet …';
     const sha=await sha256Hex(file);
     const created=await tbApi('/api/v1/worksites/'+encodeURIComponent(current.worksite_id)+'/uploads',{
@@ -1472,4 +1474,5 @@ loadBtb()
   .catch(function(error){show('err',error.message||String(error));});
 </script>
 {% endblock %}
+
 

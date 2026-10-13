@@ -42,6 +42,32 @@ _SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._ -]+")
 _ALLOWED_LINK_TYPES = {"WORKSITE", "BTB", "DEFECT", "ACCEPTANCE"}
 
 
+PHOTO_MAX_BYTES = 2_000_000
+
+
+def _is_photo_upload(upload):
+    return (str(upload.get('target_kind','')).upper() == 'PHOTO'
+        or str(upload.get('mime_type','')).lower().startswith('image/')
+        or Path(str(upload.get('original_name') or '')).suffix.lower() in
+            {'.jpg','.jpeg','.png','.webp','.avif','.heic','.heif','.gif','.bmp','.tif','.tiff'})
+
+
+def _require_photo_size(upload, size, path=None):
+    if size is None or size <= PHOTO_MAX_BYTES:
+        return
+    photo = _is_photo_upload(upload)
+    if not photo and path is not None:
+        from PIL import Image, UnidentifiedImageError
+        try:
+            with Image.open(path) as im:
+                photo = im.format is not None
+        except (UnidentifiedImageError, OSError, ValueError):
+            pass
+    if photo:
+        raise HTTPException(413, {'code':'PHOTO_TOO_LARGE','max_bytes':PHOTO_MAX_BYTES,
+            'message':'Neue Bilder dürfen höchstens 2 MB groß sein. Bitte vor dem Upload verkleinern.'})
+
+
 class UploadCreate(BaseModel):
     target_kind: str = Field(default="ATTACHMENT", min_length=1, max_length=80)
     original_name: str | None = Field(default=None, max_length=255)
@@ -439,6 +465,7 @@ def create_upload(
         if receipt:
             return replay_payload(receipt)
         context = worksite_context(cur, user, worksite_id)
+        _require_photo_size(payload.model_dump(), payload.expected_bytes)
         require_permission(context, "files.add")
         upload_id = uuid4()
         temp_key = f"companies/{context['company_id']}/worksites/{worksite_id}/.uploads/{upload_id}.part"
@@ -518,6 +545,7 @@ async def upload_chunk(
                 raise HTTPException(410, "UPLOAD_EXPIRED")
             if offset != upload["received_bytes"]:
                 raise HTTPException(409, {"code": "UPLOAD_OFFSET_MISMATCH", "expected_offset": upload["received_bytes"]})
+            _require_photo_size(upload, offset + len(body))
             if len(body) > upload["chunk_size"]:
                 raise HTTPException(413, {"code": "CHUNK_EXCEEDS_SESSION_LIMIT", "chunk_size": upload["chunk_size"]})
             if upload["expected_bytes"] is not None and offset + len(body) > upload["expected_bytes"]:
@@ -575,6 +603,7 @@ def complete_upload(
                 else:
                     raise HTTPException(409, "UPLOAD_TEMP_FILE_MISSING")
             actual_size = temp_path.stat().st_size
+            _require_photo_size(upload, actual_size, temp_path)
             if actual_size != upload["received_bytes"]:
                 raise HTTPException(409, "UPLOAD_STORAGE_MISMATCH")
             if upload["expected_bytes"] is not None and actual_size != upload["expected_bytes"]:
@@ -1105,3 +1134,4 @@ def download_image_rendition(
 # Portal pagination is separate from the full Android/export catalog above.
 from .media_gallery import router as gallery_router
 router.include_router(gallery_router)
+

@@ -10,7 +10,7 @@ permissions={key:True for key in ['worksite.structure.edit','members.manage','fi
 reports=[{'id':'b1','work_date':'2026-10-06','status':'FINALIZED'},{'id':'b2','work_date':'2026-10-07','status':'ACTIVE'}]
 photo={'attachment_id':'p1','filename':'Foto.jpg','entity_type':'BTB','photo_number':7,'btb_date':'2026-10-06','byte_size':12000,'worksite_node':{'name':'Pasing','payload':{}},'source':'ANDROID','captured_at':'2026-10-06T12:00:00Z','gps_lat':48.1,'gps_lon':11.5,'photo_metadata':{'kurztext':'Schotter prüfen','notiz':'Prüfung vor Ort','objektKennung':'Gleis 2','firma':'Baufirma','km':12.345,'indikator':'ROT','worksiteNodeKey':'pasing'},'renditions':{'thumb':'/thumb','preview':'/preview'}}
 requests=[]
-gallery_version="PORTAL-011"
+gallery_version="PORTAL-012"
 def handle(route):
     path=urlsplit(route.request.url).path
     if path in pages:
@@ -75,7 +75,7 @@ with sync_playwright() as p:
         for text in ['Foto: 7','BTB: 2026-10-06','Dateigröße: 12 KB','Kilometer: 12,345','Firma: Baufirma','Ort: Pasing · Gleis 2','Indikator: Rot']:
             expect(core).to_contain_text(text)
         expect(core).to_be_visible()
-        expect(page.locator('#gallery .photo-gps').first).to_have_attribute('href','https://www.openstreetmap.org/?mlat=48.1&mlon=11.5#map=18/48.1/11.5')
+        expect(page.locator('#gallery .photo-gps').first).to_have_attribute('href','https://www.google.com/maps/search/?api=1&query=48.1%2C11.5')
         page.locator('#gallery summary').first.click()
         expect(page.locator('#gallery details').first).to_contain_text('Prüfung vor Ort')
         expect(page.locator('#gallery .photo-core').first).to_contain_text('Gleis 2')
@@ -96,11 +96,26 @@ with sync_playwright() as p:
         expect(page.locator('#gallery .photo-gps')).to_have_text('Keine GPS-Daten vorhanden')
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),'Horizontal overflow in gallery'
         page.screenshot(path=str(root/f'gallery-{width}.png'),full_page=True)
+        result=page.evaluate('''async()=>{
+          const canvas=document.createElement('canvas');canvas.width=3000;canvas.height=2200;
+          const ctx=canvas.getContext('2d');ctx.fillStyle='#4d6455';ctx.fillRect(0,0,3000,2200);
+          const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
+          const source=new File([blob],'original.png',{type:'image/png',lastModified:1234567890000});
+          const prepared=await tbPreparePhoto(source);
+          const bitmap=await createImageBitmap(prepared);const size=[bitmap.width,bitmap.height];bitmap.close();
+          return {bytes:prepared.size,type:prepared.type,modified:prepared.lastModified,width:size[0],height:size[1],sourceBytes:source.size,originalBytes:blob.size};
+        }''')
+        assert result['bytes']<=2000000 and result['type']=='image/jpeg'
+        assert max(result['width'],result['height'])<=2560 and result['modified']==1234567890000
+        assert result['sourceBytes']==result['originalBytes']
+        # Missing association must not claim Hauptbaustelle.
+        page.evaluate("draw([{attachment_id:'unknown',photo_metadata:{kurztext:'Langbeschreibung ohne Kürzung über mehrere Wörter'},renditions:{thumb:'/thumb',preview:'/preview'}}])")
+        expect(page.locator('#gallery .photo-core')).to_contain_text('Unterbaustelle nicht zugeordnet')
         gallery_version='PORTAL-010'
         page.locator('#refreshPictures').click()
         expect(page.locator('#notice')).to_contain_text('unterschiedliche Versionen')
         expect(page.locator('#gallery figure')).to_have_count(0)
-        gallery_version='PORTAL-011'
+        gallery_version='PORTAL-012'
         page.locator('#refreshPictures').click()
         expect(page.locator('#gallery figure')).to_have_count(1)
         page.goto('https://portal.test/settings');expect(page.locator('#emailState')).to_contain_text('bestätigt')
@@ -111,4 +126,5 @@ with sync_playwright() as p:
     browser.close()
 assert not any('/content' in path for path in requests),'Original image was fetched automatically'
 print('PASS: Chromium desktop/mobile tabs, report filters, collapsed forms, invitation scope, gallery dedup/filter/preview, settings, public page, no original fetch')
+
 

@@ -1,0 +1,31 @@
+<script>
+// Prepare photo bytes before hashing/chunking. The selected PC file is untouched.
+async function tbPreparePhoto(file){
+  const maxBytes=2000000;
+  if(!file.type.startsWith('image/'))throw new Error('Bitte eine Bilddatei auswählen.');
+  if(file.type==='image/svg+xml')throw new Error('Bitte ein Foto als JPEG, PNG oder WebP auswählen.');
+  const url=URL.createObjectURL(file),image=new Image();
+  try{
+    await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error('Dieses Bildformat kann der Browser nicht verkleinern. Bitte als JPEG speichern.'));image.src=url;});
+    if(!image.naturalWidth||!image.naturalHeight||image.naturalWidth*image.naturalHeight>100000000)
+      throw new Error('Bildauflösung ist zu groß oder ungültig. Bitte auf dem PC verkleinern.');
+    let edge=Math.min(2560,Math.max(image.naturalWidth,image.naturalHeight));
+    const canvas=document.createElement('canvas');
+    for(let pass=0;pass<7;pass++){
+      const ratio=Math.min(1,edge/Math.max(image.naturalWidth,image.naturalHeight));
+      canvas.width=Math.max(1,Math.round(image.naturalWidth*ratio));canvas.height=Math.max(1,Math.round(image.naturalHeight*ratio));
+      const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Bildverkleinerung wird vom Browser nicht unterstützt.');
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,0,0,canvas.width,canvas.height);
+      for(const quality of [.90,.85,.80,.75]){
+        const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',quality));
+        if(blob&&blob.type==='image/jpeg'&&blob.size<=maxBytes){
+          const name=file.name.replace(/\.[^.]*$/,'')+'.jpg';
+          return new File([blob],name,{type:'image/jpeg',lastModified:file.lastModified});
+        }
+      }
+      edge=Math.floor(edge*.8);
+    }
+    throw new Error('Das Bild konnte nicht auf maximal 2 MB verkleinert werden. Bitte auf dem PC verkleinern.');
+  }finally{URL.revokeObjectURL(url);}
+}
+</script>

@@ -1,21 +1,21 @@
 {% extends "v1_base.html" %}
 {% block title %}TB-Helfer · Bilderübersicht{% endblock %}
 {% block head %}<style>
-.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr));gap:16px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr));gap:12px}
 .photo{margin:0;background:white;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden}
-.photo img{width:100%;height:180px;object-fit:cover}.photo figcaption{padding:12px;overflow-wrap:anywhere}
-.photo summary{cursor:pointer;font-weight:700}.photo details p{margin:8px 0;white-space:pre-wrap}.photo .photo-time{font-size:13px;color:#667085;margin:10px 0}.photo .photo-gps{display:block;margin-top:10px}.photo .photo-file{font-size:12px;color:#667085}
+.photo img{width:100%;height:180px;object-fit:cover}.photo figcaption{padding:10px;overflow-wrap:anywhere}
+.photo summary{cursor:pointer;font-weight:700}.photo details p{margin:8px 0;white-space:pre-wrap}.photo .photo-time{font-size:13px;color:#667085;margin:10px 0}.photo .photo-gps{display:block;margin-top:10px}.photo-core p{margin:4px 0;font-size:13px;line-height:1.4}.photo .photo-file{font-size:12px;color:#667085}
 .pager{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:20px 0}
 #updates{margin-top:12px}#search{max-width:100%}
 </style>{% endblock %}
 {% block content %}
-<div class="card"><h1>Bilderübersicht</h1><small class="muted" id="galleryVersion">PORTAL-011</small>
+<div class="card"><h1>Bilderübersicht</h1><small class="muted" id="galleryVersion">PORTAL-012</small>
 <p class="muted">Bilder der ausgewählten Baustelle. Neueste Uploads zuerst, bis zu 60 Bilder pro Seite.</p>
 <div class="grid">
 <div><label for="site">Baustelle</label><select id="site"><option value="">Bitte wählen …</option></select></div>
 <div><label for="date">Aufnahmedatum (Deutschland)</label><input id="date" type="date"></div>
 <div><label for="kind">Bereich</label><select id="kind"><option value="">Alle</option><option value="BTB">Bautagesberichte</option><option value="DEFECT">Mängel</option><option value="ACCEPTANCE">Abnahmen</option></select></div>
-<div><label for="search">Suche</label><input id="search" type="search" maxlength="160" placeholder="Dateiname, Beschreibung, Ersteller …"></div>
+<div><label for="search">Suche</label><input id="search" type="search" maxlength="160" placeholder="Text oder KM, z. B. strail defekt / 13.200"></div>
 </div>
 <button type="button" class="secondary" id="refreshPictures">Aktualisieren</button>
 <div id="updates" hidden role="status">Der Bilderbestand hat sich geändert. <button type="button" id="showUpdates">Neue Ansicht laden</button></div>
@@ -37,8 +37,8 @@ function cancel(){generation++;if(controller)controller.abort();controller=null;
 function clearView(){gallery.replaceChildren();nextCursor=null;pageIndex=0;history=[null];document.getElementById('pageNumber').textContent='';buttons();}
 function bytesLabel(n){if(!Number.isFinite(n)||n<0)return '—';if(n>=1048576)return (n/1048576).toFixed(n>=10485760?1:2)+' MB';if(n>=1024)return Math.round(n/1024)+' KB';return n+' Byte';}
 function nodeLabel(m){
-  const key=m.photo_metadata?.worksiteNodeKey;if(!key)return 'Hauptbaustelle';
-  const n=m.worksite_node;if(!n)return 'Unterbaustelle '+key;
+  const key=m.photo_metadata?.worksiteNodeKey;if(!key)return 'Unterbaustelle nicht zugeordnet';
+  const n=m.worksite_node;if(!n)return 'Unterbaustelle nicht gefunden ('+key+')';
   const p=n.payload||{},kind=String(p.node_type||n.node_kind||'').toUpperCase(),route=p.route_key||n.route_number||'';
   let label=String(p.node_name||n.name||'').trim();
   if(!label&&kind==='FREIE_STRECKE')label='Freie Strecke'+(route?' '+route:'');
@@ -82,7 +82,7 @@ function draw(items){
     const lat=m.gps_lat,lon=m.gps_lon;
     if(typeof lat==='number'&&typeof lon==='number'&&Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180){
       const gps=document.createElement('a');gps.className='photo-gps';gps.target='_blank';gps.rel='noopener noreferrer';
-      gps.href='https://www.openstreetmap.org/?mlat='+encodeURIComponent(lat)+'&mlon='+encodeURIComponent(lon)+'#map=18/'+encodeURIComponent(lat)+'/'+encodeURIComponent(lon);
+      gps.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(lat+','+lon);
       gps.textContent='GPS auf Karte öffnen';gps.title=lat.toFixed(6)+', '+lon.toFixed(6);caption.append(gps);
       const coords=document.createElement('small');coords.textContent=gps.title;caption.append(coords);
     }else{const missing=document.createElement('span');missing.className='muted photo-gps';missing.textContent='Keine GPS-Daten vorhanden';caption.append(missing);}
@@ -100,10 +100,11 @@ async function load(cursor=null,index=0){
   try{
     const r=await tbApi('/api/v1/worksites/'+encodeURIComponent(site.value)+'/media/page?'+params,{signal:controller.signal});
     if(turn!==generation)return;
-    if(r.data.gallery_version!=='PORTAL-011'){clearView();notice.textContent='API und Bilderansicht haben unterschiedliche Versionen. Bitte beide PORTAL-011-Dateien aktualisieren und die Seite neu laden.';return;}
+    if(r.data.gallery_version!=='PORTAL-012'){clearView();notice.textContent='API und Bilderansicht haben unterschiedliche Versionen. Bitte beide PORTAL-012-Dateien aktualisieren und die Seite neu laden.';return;}
     const count=draw(r.data.media||[]);pageIndex=index;history[index]=cursor;history.length=index+1;nextCursor=r.data.next_cursor||null;
     document.getElementById('pageNumber').textContent='Seite '+(index+1);
-    notice.textContent=count?count+' Bilder auf dieser Seite.':(nextCursor?'Weitere Bereiche können durchsucht werden.':'Keine weiteren passenden Bilder gefunden.');
+    const kmRange=r.data.search_km_min_m==null?'':' Kilometerbereich: '+(r.data.search_km_min_m/1000).toFixed(3).replace('.',',')+'–'+(r.data.search_km_max_m/1000).toFixed(3).replace('.',',')+'.';
+    notice.textContent=count?count+' Bilder auf dieser Seite.'+kmRange:(nextCursor?'Weitere Bereiche können durchsucht werden.':'Keine weiteren passenden Bilder gefunden.');
   }catch(e){
     if(turn!==generation||e.name==='AbortError')return;
     const denied=/PERMISSION_REQUIRED|ACCESS_DENIED|COMPANY_DISABLED|SESSION|WORKSITE_NOT_FOUND/.test(String(e.message));
