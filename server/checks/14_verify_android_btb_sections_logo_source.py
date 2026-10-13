@@ -29,8 +29,10 @@ if "if (fotoType != null)" not in gradle:
     errors.append("BTB-Bilderaktion ist nicht fuer alle Section-Bildtypen 4-8 aktiviert.")
 if "bildtyp = fotoType" not in gradle:
     errors.append("Der konkrete Bildtyp wird nicht an den gemeinsamen Binder weitergereicht.")
-if "versionCode = 200050" not in gradle:
-    errors.append("Android-Buildkandidat 200050 ist nicht gesetzt.")
+import re
+version_match = re.search(r"versionCode\s*=\s*(\d+)", gradle)
+if not version_match or int(version_match.group(1)) < 200050:
+    errors.append("Android-Version darf nicht unter dem ursprünglichen BTB-Fix-Build 200050 liegen.")
 
 if "bildtyp: Bildtyp" not in binder:
     errors.append("BtbEntryPhotoActionBinder akzeptiert keinen konkreten Bildtyp.")
@@ -61,7 +63,7 @@ if "BtbFotoZuordnungSpeicher.fotoIdsFuerBtb(appContext, stableBtbId)" not in med
     errors.append("Moderner BTB-Medienupload ist nicht strikt nach btbId gefiltert.")
 if "BtbFotoZuordnungSpeicher.btbId(appContext, foto.id) == null" not in media:
     errors.append("Legacy-Zeitfenster schliesst modern zugeordnete Fotos nicht aus.")
-if "fotos.einfuegenFuerBtb(entity, parentKey)" not in media:
+if "fotos.einfuegenFuerBtb(entity, parentKey, triggerSync = false)" not in media:
     errors.append("Importierte moderne BTB-Fotos erhalten ihre Server-btbId nicht wieder lokal.")
 if "out.writeByte(foto.bildtyp.ordinal" not in media:
     errors.append("BTB-Fotometadaten transportieren den Bildtyp 4-8 nicht.")
