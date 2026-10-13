@@ -157,8 +157,9 @@ def main() -> int:
         [
             "BTB $verantwortlicherTb",
             "BtbDokumentIdentitaet.aufloesen",
-            "MergeSafeBaustellenExport.normalisieren",
-            "schicht = item.schicht",
+            "BtbExportPaket.erstellenBaustellenExport(",
+            "BtbExportPaket.shareZip(",
+            "item.schicht",
         ],
     )
 
