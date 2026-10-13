@@ -29,6 +29,9 @@ concurrency:
 
 jobs:
   build:
+    # The server PR contains historical Android changes relative to main.
+    # Android runs on its dedicated PR instead of duplicating this build.
+    if: github.event_name != 'pull_request' || github.head_ref != 'feature/tb-server-1.0'
     runs-on: ubuntu-latest
     permissions:
       contents: read
