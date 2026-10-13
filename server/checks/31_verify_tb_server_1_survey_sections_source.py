@@ -171,7 +171,7 @@ def main() -> None:
         ('_reject_dedicated_kind(dataset["dataset_kind"])', track),
         ("survey_sections_router", main_source),
         ('"survey_section_calibration_v1": True', caps),
-        ("latest_known\"] == 4", workflow),
+        ("current[\"latest_known\"]", workflow),
         ("31_verify_tb_server_1_survey_sections_source.py", workflow),
     ]
     missing = [needle for needle, source in assertions if needle not in source]
