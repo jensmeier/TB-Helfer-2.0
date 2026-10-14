@@ -1,0 +1,30 @@
+name: TB-Server MCP isolated test
+on:
+  push:
+    branches: ["feature/tb-server-mcp-readonly"]
+    paths:
+      - "server/mcp_gateway/**"
+      - "server/docker-compose.mcp.v1.yml"
+      - ".github/workflows/server-mcp.yml"
+permissions:
+  contents: read
+concurrency:
+  group: mcp-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  mcp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install only MCP test dependencies
+        run: pip install -r server/mcp_gateway/requirements.txt 'httpx==0.28.1'
+      - name: Real read-only MCP HTTP/JSON-RPC and security tests
+        run: python -m unittest discover -s server/mcp_gateway/tests -p 'test*.py' -v
+      - name: Compose syntax without starting containers
+        env:
+          TB_MCP_BEARER_TOKEN: dummy-token-for-ci-which-is-longer-than-32-bytes
+        run: docker compose -f server/docker-compose.mcp.v1.yml config --quiet
