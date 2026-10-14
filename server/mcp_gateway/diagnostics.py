@@ -19,7 +19,11 @@ MAX_RESPONSE_BYTES = 8192
 
 def _health(path: str) -> dict:
     """Only two fixed paths and a fixed, operator-configured local hostname."""
-    target = urlsplit(os.getenv("TB_MCP_API_BASE_URL", "http://api:8080"))
+    try:
+        target = urlsplit(os.getenv("TB_MCP_API_BASE_URL", "http://api:8080"))
+        port = target.port
+    except ValueError:
+        return {"status": "UNKNOWN", "reason": "ungueltige_interne_api_konfiguration"}
     if (target.scheme != "http" or target.hostname not in {"api", "localhost", "127.0.0.1"}
             or target.username or target.password or target.path not in {"", "/"}
             or target.query or target.fragment):
@@ -29,7 +33,7 @@ def _health(path: str) -> dict:
 
     connection = None
     try:
-        connection = http.client.HTTPConnection(target.hostname, target.port or 80, timeout=2.5)
+        connection = http.client.HTTPConnection(target.hostname, port or 80, timeout=2.5)
         connection.request("GET", path, headers={"Accept": "application/json"})
         response = connection.getresponse()
         code = response.status
@@ -45,9 +49,9 @@ def _health(path: str) -> dict:
         if isinstance(version, str) and len(version) <= 50 and all(c.isalnum() or c in ".-_" for c in version):
             result["server_version"] = version
         if path == "/health/ready":
-            if data.get("database") in {"up", "down"}:
+            if isinstance(data.get("database"), str) and data["database"] in {"up", "down"}:
                 result["database"] = data["database"]
-            if data.get("migrations") in {"ok", "pending", "invalid"}:
+            if isinstance(data.get("migrations"), str) and data["migrations"] in {"ok", "pending", "invalid"}:
                 result["migrations"] = data["migrations"]
             pending = data.get("pending")
             if isinstance(pending, list):
@@ -111,7 +115,7 @@ def monitor_uebersicht() -> dict:
             checks[name] = {"status": "UNKNOWN"}
             continue
         status = source.get("status")
-        check = {"status": status if status in ALLOWED_STATUSES else "UNKNOWN"}
+        check = {"status": status if isinstance(status, str) and status in ALLOWED_STATUSES else "UNKNOWN"}
         for key in NUMERIC_FIELDS:
             number = source.get(key)
             if isinstance(number, (int, float)) and not isinstance(number, bool) and math.isfinite(number):
