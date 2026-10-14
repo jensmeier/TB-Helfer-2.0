@@ -1,0 +1,32 @@
+name: tb-helfer-mcp-v1
+
+services:
+  mcp:
+    build:
+      context: .
+      dockerfile: mcp_gateway/Dockerfile
+    image: tb-helfer-mcp-v1:local
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    environment:
+      TB_MCP_BEARER_TOKEN: ${TB_MCP_BEARER_TOKEN:?Mindestens 32 zufaellige Bytes als Token setzen}
+      TB_MCP_API_BASE_URL: http://api:8080
+      TB_MCP_DIAGNOSTICS_ROOT: /tb/diagnostics-v1
+      TB_MCP_MAX_AGE_SECONDS: "120"
+    volumes:
+      - ${TB_V1_DIAGNOSTICS_DIR:-./diagnostics-v1}:/tb/diagnostics-v1:ro
+    ports:
+      - "127.0.0.1:${TB_MCP_PORT:-8090}:8090"
+    networks:
+      - tb_server
+
+networks:
+  tb_server:
+    external: true
+    name: tb-helfer-v1_default
