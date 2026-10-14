@@ -1,4 +1,4 @@
-"""Run: python -m unittest discover -s server/checks -p '151_verify_mcp_readonly.py'"""
+"""Run: python -m unittest discover -s server/checks -p 'test_readonly.py'"""
 import asyncio
 import json
 import os
@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from mcp_gateway.auth import BearerTokenGate
 from mcp_gateway import diagnostics
 

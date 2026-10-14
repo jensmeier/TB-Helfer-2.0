@@ -12,7 +12,7 @@ Kein SQL/SSH/Shell, kein Backup-Restore und keine Schreibfunktion.
 Es werden keine Rohfehler, Logzeilen, URLs, Kundennamen, Foto- oder Auditdaten an das MCP-Tool zurückgegeben.
 
 ## Isoliert prüfen (ohne Synology-Betrieb zu ändern)
-\`python -m unittest discover -s server/checks -p '151_verify_mcp_readonly.py'\`
+\`python -m unittest discover -s server/mcp_gateway/tests -p 'test*.py'\`
 Diese Source-/Unit-Tests belegen noch keinen Containerstart oder NAS-/ChatGPT-End-to-End-Zugriff.
 
 ## Optionaler lokaler Start (noch kein automatisches Deployment)
