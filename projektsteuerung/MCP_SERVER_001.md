@@ -35,3 +35,7 @@ Vorhandener GitHub-Actions-Lauf `38608166837` / Job `116004325972` ist fehlgesch
 Lokale Python-Umgebung hat kein installiertes `mcp`-SDK; pip-Installation scheiterte wegen abgeschalteter DNS/Netzanbindung (`Temporary failure in name resolution`). Ein erfolgreicher lokaler MCP-Handshaketest kann daher noch nicht behauptet werden.
 
 Korrekturstrategie vor Codeänderung: MCP-Unit-Tests ausschließlich nach `server/mcp_gateway/tests/` verschieben (kein Android-CI-Auslöser durch `server/checks/1*.py`). Eigener eng begrenzter MCP-Workflow nur für den MCP-Pull-Request mit Python-Unit-Tests, authentisiertem HTTP-MCP-Handshake und optionaler Compose-Konfigurationsprüfung; keine Android-/DB-/NAS-/Gesamttests, keine bestehenden Fachtests abschwächen. Kein NAS-Zugriff. Fehler anhand Original-Logs beurteilen und Tests nachweisen.
+
+## Erster isolierter Testlauf – 14.10.2026
+
+GitHub Actions `38609734466`, Job `116009675389`: `mcp==1.12.4` + Testabhängigkeiten erfolgreich installiert. Von 5 Tests waren 4 Python-Unit-Tests PASS; `test_http.py` konnte wegen fehlendem `PYTHONPATH=server` nicht importieren (`ModuleNotFoundError: No module named 'mcp_gateway'`), deswegen Gesamtjob FAIL. Compose-Test übersprungen, HTTP-Handshake noch nicht geprüft. Nachgewiesene Maßnahme nur Test-Runner-Suchpfad setzen; kein Grund für Fachcode-/Sicherheitsänderungen. Keine NAS-Änderung.
