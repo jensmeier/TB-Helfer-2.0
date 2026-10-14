@@ -43,3 +43,9 @@ GitHub Actions `38609734466`, Job `116009675389`: `mcp==1.12.4` + Testabhängigk
 ## MCP-CI Importbefund – 14.10.2026
 
 Zweiter realer Run `38609865386` / Job `116010117198`: Python-Suchpfad behoben, alle 4 Unit-Tests PASS. MCP-HTTP-Test noch beim Import fehlgeschlagen: `ImportError: cannot import name eval_type_backport from pydantic._internal._typing_extra` bei `mcp==1.12.4` zusammen mit automatisch installiertem `pydantic==2.14.1`. Ursache: ungepinnte inkompatible Pydantic-Minor-Version für diese SDK-Ausgabe. Gezielte Abhilfe: Pydantic auf bekannte 2.11er-Serie begrenzen, erneut mit echtem Handshake prüfen. Container/Compose/E2E noch nicht bestanden.
+
+## Isolierte MCP-CI bestanden – 14.10.2026
+
+GitHub Actions Run `38610001441`, Job `116010588079` auf Commit `e48c89e9e4c2f286f60be5367f393616eb540ca3`: **SUCCESS**. Python 3.12; alle fünf Unit-/HTTP-Tests bestanden: verpflichtender Bearer-Token (401), Origin-Sperre (403), MCP initialize, tools/list sowie echte tools/call-Aufrufe aller drei Diagnosefunktionen mit lokaler Test-API. Keine Rohtext-/Tokenlecks im Test. Docker-Compose-Syntaxprüfung ebenfalls PASS. MCP 1.12.4 mit Pydantic 2.11.7.
+
+**Status: SOURCE-TEST BESTANDEN, ISOLIERTE MCP-CI BESTANDEN, DEPLOY OFFEN, SYNOLOGY-E2E OFFEN.** Ein TestClient-HTTP-Test und `docker compose config` sind kein Container-Build, kein NAS-Lauf und kein ChatGPT-Cloud-E2E. Die bestehende Gesamt-CI ist damit nicht grün; frühere Android-CI-Fehler sind unabhängig. Keine Synology-/DB-/Android-/Bestandsserveränderung und keine produktiven Secrets. Als nächstes optionalen Docker-Build / echten Container-Test und NAS-Verzeichnis-/Netzvalidierung separat durchführen; erst nach Freigabe deployen. Remote-Anbindung benötigt eigenes HTTPS-/OAuth-Sicherheitsgate.
