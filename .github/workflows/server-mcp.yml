@@ -23,7 +23,7 @@ jobs:
       - name: Install only MCP test dependencies
         run: pip install -r server/mcp_gateway/requirements.txt 'httpx==0.28.1'
       - name: Real read-only MCP HTTP/JSON-RPC and security tests
-        run: python -m unittest discover -s server/mcp_gateway/tests -p 'test*.py' -v
+        run: PYTHONPATH=server python -m unittest discover -s server/mcp_gateway/tests -p 'test*.py' -v
       - name: Compose syntax without starting containers
         env:
           TB_MCP_BEARER_TOKEN: dummy-token-for-ci-which-is-longer-than-32-bytes
