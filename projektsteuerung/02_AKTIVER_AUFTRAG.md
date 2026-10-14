@@ -2951,3 +2951,6 @@ Status: BENUTZER ENTSCHEIDET A + B + C / UMSETZUNG
 - Ziel B: bestehende CI-Fehler anhand echter Logs diagnostizieren, Prüfungen nicht zur Verschleierung deaktivieren. Android-Check 03 scheitert an fehlendem alten Anker `MergeSafeBaustellenExport.normalisieren` in `BtbVerlaufFragment.kt`; Server Foundation Fehler benötigt gesonderte Aufklärung.
 - Ziel C: dateipfadbezogene CI-Steuerung unter Schutz von APK-/Release-MD-Paarung, Servermigrationen, Backups und Integrationsgates; keine NAS- oder Anwendungsänderungen.
 - Fachprüfungen bleiben erhalten, auch wenn der CI-Auslöser optimiert wird. Keine erfolgreichen Tests oder Builds behaupten, bevor Actions sie tatsächlich bestätigt.
+
+## MCP-SERVER-001 – Testnachtrag 14.10.2026
+Optionaler read-only MCP-Sidecar nur für Server, PR #12 (Draft). GitHub Run 38610001441/Job 116010588079 SUCCESS: 5 Python-/authentisierte HTTP-MCP-Tests PASS und Docker-Compose-Syntax PASS. Status SOURCE-TEST BESTANDEN / ISOLIERTE MCP-CI BESTANDEN / DEPLOY OFFEN / SYNOLOGY-E2E OFFEN. Android, NAS, DB und bestehende FastAPI unverändert. Keine Gesamt-CI-Abnahme daraus ableiten. Nächste Gates: Container-Build/-Start, NAS-Netz-/Volumeabgleich; externer ChatGPT-Zugriff nur separat mit HTTPS/OAuth und Freigabe. Details projektsteuerung/MCP_SERVER_001.md.
