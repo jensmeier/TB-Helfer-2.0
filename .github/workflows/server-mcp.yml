@@ -28,3 +28,48 @@ jobs:
         env:
           TB_MCP_BEARER_TOKEN: dummy-token-for-ci-which-is-longer-than-32-bytes
         run: docker compose -f server/docker-compose.mcp.v1.yml config --quiet
+
+      - name: Build Docker image and exercise real container HTTP
+        run: |
+          set -euo pipefail
+          docker build -f server/mcp_gateway/Dockerfile -t tb-mcp-ci:local server
+          docker run --rm -d --name tb-mcp-ci-smoke \
+            -p 127.0.0.1:18090:8090 \
+            -e TB_MCP_BEARER_TOKEN=ci-only-not-a-real-secret-token-00000001 \
+            tb-mcp-ci:local
+          trap 'docker rm -f tb-mcp-ci-smoke >/dev/null 2>&1 || true' EXIT
+          python - <<'PY'
+          import json
+          import time
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError, URLError
+
+          address = "http://127.0.0.1:18090/mcp"
+          data = json.dumps({
+            "jsonrpc": "2.0", "id": 10, "method": "initialize",
+            "params": {
+              "protocolVersion": "2025-03-26",
+              "capabilities": {},
+              "clientInfo": {"name": "Docker CI", "version": "1.0"},
+            },
+          }).encode()
+          headers = {"Content-Type": "application/json",
+                     "Accept": "application/json, text/event-stream"}
+          for attempt in range(30):
+            try:
+              urlopen(Request(address, data=data, headers=headers), timeout=3)
+            except HTTPError as exc:
+              assert exc.code == 401, f"missing token unexpectedly returned {exc.code}"
+              break
+            except (URLError, TimeoutError):
+              time.sleep(0.3)
+          else:
+            raise SystemExit("MCP container not ready or unauthorized check failed")
+
+          good_headers = {**headers, "Authorization": "Bearer ci-only-not-a-real-secret-token-00000001"}
+          with urlopen(Request(address, data=data, headers=good_headers), timeout=10) as response:
+            assert response.status == 200
+            result = json.loads(response.read())
+            assert "result" in result and result["id"] == 10, result
+          print("MCP_DOCKER_HTTP_PASS: image starts, 401 without token, 200 initialize")
+          PY
