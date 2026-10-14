@@ -39,3 +39,7 @@ Korrekturstrategie vor Codeänderung: MCP-Unit-Tests ausschließlich nach `serve
 ## Erster isolierter Testlauf – 14.10.2026
 
 GitHub Actions `38609734466`, Job `116009675389`: `mcp==1.12.4` + Testabhängigkeiten erfolgreich installiert. Von 5 Tests waren 4 Python-Unit-Tests PASS; `test_http.py` konnte wegen fehlendem `PYTHONPATH=server` nicht importieren (`ModuleNotFoundError: No module named 'mcp_gateway'`), deswegen Gesamtjob FAIL. Compose-Test übersprungen, HTTP-Handshake noch nicht geprüft. Nachgewiesene Maßnahme nur Test-Runner-Suchpfad setzen; kein Grund für Fachcode-/Sicherheitsänderungen. Keine NAS-Änderung.
+
+## MCP-CI Importbefund – 14.10.2026
+
+Zweiter realer Run `38609865386` / Job `116010117198`: Python-Suchpfad behoben, alle 4 Unit-Tests PASS. MCP-HTTP-Test noch beim Import fehlgeschlagen: `ImportError: cannot import name eval_type_backport from pydantic._internal._typing_extra` bei `mcp==1.12.4` zusammen mit automatisch installiertem `pydantic==2.14.1`. Ursache: ungepinnte inkompatible Pydantic-Minor-Version für diese SDK-Ausgabe. Gezielte Abhilfe: Pydantic auf bekannte 2.11er-Serie begrenzen, erneut mit echtem Handshake prüfen. Container/Compose/E2E noch nicht bestanden.
