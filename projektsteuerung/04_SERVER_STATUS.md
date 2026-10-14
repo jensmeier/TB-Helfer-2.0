@@ -1981,3 +1981,6 @@ Status: STEUERUNGS-/DATENBEREICHSBAUSTEINE IMPLEMENTIERT / GESAMTINTEGRATION OFF
 
 ## MCP-SERVER-001 – Quelle und isolierte CI geprüft (14.10.2026)
 Nur separater MCP-Featurebranch/PR #12. Run 38610001441, Job 116010588079 SUCCESS; fünf echte Python-Sicherheits-/HTTP-MCP-Tests PASS und Compose-Syntax PASS. Kein Produktivbetrieb, keine DB-/Android-/NAS-Änderung. Status: SOURCE-TEST BESTANDEN, ISOLIERTE MCP-CI BESTANDEN, DEPLOY OFFEN, SYNOLOGY-E2E OFFEN. Details in MCP_SERVER_001.md.
+
+## MCP-SERVER-001 – Docker-Testnachtrag 14.10.2026
+GitHub Run 38610775073/Job 116013233755 SUCCESS auf ea775936ca51d0cdbde0afe8264db0d10941756c. 5/5 MCP-Python-/HTTP-Tests, Compose-Syntax, tatsächlicher Docker-Build und Containerstart, HTTP-401 ohne Token und authentisiertes MCP-initialize HTTP-200 bestanden. Quellstand auf getrenntem Feature-Branch, Draft-PR #12; keine Synology-/Android-/DB-/Produktivserveränderungen. SDK 1.12.4 schreibt nach erfolgreichen stateless-HTTP-Antworten anyio.ClosedResourceError im Stream-Cleanup (offener upstream SDK-Loghinweis, kein belegter Clientfehler). Status: ISOLIERTE MCP-CI BESTANDEN / DOCKER-HTTP-TEST BESTANDEN / DEPLOY OFFEN / SYNOLOGY-E2E OFFEN. Kein NAS- oder ChatGPT-Cloud-E2E behaupten; Freigabe und sichere HTTPS/OAuth-Anbindung bleiben offen. Details MCP_SERVER_001.md.
