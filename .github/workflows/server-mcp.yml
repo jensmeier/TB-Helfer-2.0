@@ -37,7 +37,7 @@ jobs:
             -p 127.0.0.1:18090:8090 \
             -e TB_MCP_BEARER_TOKEN=ci-only-not-a-real-secret-token-00000001 \
             tb-mcp-ci:local
-          trap 'docker rm -f tb-mcp-ci-smoke >/dev/null 2>&1 || true' EXIT
+          trap 'docker logs --tail 60 tb-mcp-ci-smoke || true; docker rm -f tb-mcp-ci-smoke >/dev/null 2>&1 || true' EXIT
           python - <<'PY'
           import json
           import time
@@ -61,7 +61,7 @@ jobs:
             except HTTPError as exc:
               assert exc.code == 401, f"missing token unexpectedly returned {exc.code}"
               break
-            except (URLError, TimeoutError):
+            except (URLError, TimeoutError, ConnectionError, OSError):
               time.sleep(0.3)
           else:
             raise SystemExit("MCP container not ready or unauthorized check failed")
