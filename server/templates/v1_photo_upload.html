@@ -1,9 +1,11 @@
+{% include "v1_photo_exif.html" %}
 <script>
 // Prepare photo bytes before hashing/chunking. The selected PC file is untouched.
 async function tbPreparePhoto(file){
   const maxBytes=2000000;
   if(!file.type.startsWith('image/'))throw new Error('Bitte eine Bilddatei auswählen.');
   if(file.type==='image/svg+xml')throw new Error('Bitte ein Foto als JPEG, PNG oder WebP auswählen.');
+  const metadata=await tbReadPhotoMetadata(file);
   const url=URL.createObjectURL(file),image=new Image();
   try{
     await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error('Dieses Bildformat kann der Browser nicht verkleinern. Bitte als JPEG speichern.'));image.src=url;});
@@ -20,7 +22,8 @@ async function tbPreparePhoto(file){
         const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',quality));
         if(blob&&blob.type==='image/jpeg'&&blob.size<=maxBytes){
           const name=file.name.replace(/\.[^.]*$/,'')+'.jpg';
-          return new File([blob],name,{type:'image/jpeg',lastModified:file.lastModified});
+          const prepared=new File([blob],name,{type:'image/jpeg',lastModified:file.lastModified});
+          prepared.tbPhotoMetadata=metadata;return prepared;
         }
       }
       edge=Math.floor(edge*.8);

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
@@ -30,6 +31,7 @@ from .btb_documents import (
     snapshot_photo_metadata,
     upsert_final_pdf_file,
 )
+from .btb_entry_photos import entry_photo_context, sync_entry_photos
 from .btb_times import inherited_firm_times, preserve_entry_time_fields
 from .btb_pdf import PDF_RENDERER_VERSION, render_btb_pdf
 from .btb_photo_meta import canonical_photo_metadata, merge_btb_photo_metadata, normalize_btb_photo_override
@@ -405,8 +407,8 @@ def get_btb(
                 "byte_size": row.get("byte_size"),
                 "sha256": row.get("sha256"),
                 "captured_at": row.get("captured_at"),
-                "gps_lat": row.get("gps_lat"),
-                "gps_lon": row.get("gps_lon"),
+                "gps_lat": effective_btb_photo_metadata(row).get("lat"),
+                "gps_lon": effective_btb_photo_metadata(row).get("lon"),
                 "gps_accuracy_m": row.get("gps_accuracy_m"),
                 "photo_metadata": effective_btb_photo_metadata(row),
                 "purpose": row.get("purpose"),
@@ -696,6 +698,15 @@ def update_entry(
         values.extend([user["user_id"], entry_id, btb_id, payload.base_version])
         cur.execute(f"UPDATE tb.btb_entries SET {', '.join(columns)} WHERE id = %s AND btb_id = %s AND version = %s AND deleted_at IS NULL RETURNING *", tuple(values))
         row = dict(cur.fetchone())
+        bound_ids = [entry_id] if row['section'] in BTB_CONTENT_SECTIONS else []
+        if row['section'] == 'FIRMA':
+            firm_id = (row['payload'] or {}).get('firmaId')
+            if firm_id:
+                cur.execute("SELECT id FROM tb.btb_entries WHERE btb_id=%s AND deleted_at IS NULL AND section=ANY(%s) AND payload->>'firmaId'=%s", (btb_id, list(BTB_CONTENT_SECTIONS), str(firm_id)))
+                bound_ids = [item['id'] for item in cur.fetchall()]
+        for bound_id in bound_ids:
+            for photo in sync_entry_photos(cur, btb_id, bound_id, entry_photo_context(cur, btb_id, bound_id), user['user_id']):
+                emit_change(cur, company_id=context['company_id'], worksite_id=btb['worksite_id'], entity_type='FILE', entity_id=photo['file_id'], operation='UPDATE', entity_version=photo['version'], actor_user_id=user['user_id'])
         cur.execute("UPDATE tb.btbs SET version = version + 1, updated_at = now() WHERE id = %s RETURNING version", (btb_id,))
         parent_version = cur.fetchone()["version"]
         emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB_ENTRY", entity_id=entry_id, operation="UPDATE", entity_version=row["version"], actor_user_id=user["user_id"])
@@ -728,6 +739,8 @@ def delete_entry(
         invalidated_pdf_keys.extend(prepare_btb_content_change(cur, btb))
         cur.execute("UPDATE tb.btb_entries SET deleted_at = now(), version = version + 1, updated_by = %s, updated_at = now() WHERE id = %s AND btb_id = %s AND deleted_at IS NULL RETURNING version", (user["user_id"], entry_id, btb_id))
         row = cur.fetchone()
+        for photo in sync_entry_photos(cur, btb_id, entry_id, {'btbEntryId':None}, user['user_id']):
+            emit_change(cur, company_id=context['company_id'], worksite_id=btb['worksite_id'], entity_type='FILE', entity_id=photo['file_id'], operation='UPDATE', entity_version=photo['version'], actor_user_id=user['user_id'])
         cur.execute("UPDATE tb.btbs SET version = version + 1, updated_at = now() WHERE id = %s RETURNING version", (btb_id,))
         parent_version = cur.fetchone()["version"]
         emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB_ENTRY", entity_id=entry_id, operation="DELETE", entity_version=row["version"], actor_user_id=user["user_id"])
@@ -1030,6 +1043,20 @@ def update_btb_photo(
     user: dict[str, Any] = Depends(require_csrf),
     mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
+    for key, limit in (("lat", 90), ("lon", 180)):
+        raw = payload.photo_metadata.get(key)
+        if raw is not None:
+            try:
+                valid = not isinstance(raw, bool) and math.isfinite(float(raw)) and abs(float(raw)) <= limit
+            except (ValueError, TypeError):
+                valid = False
+            if not valid:
+                raise HTTPException(400, "GPS_INVALID")
+    if payload.photo_metadata.get('btbEntryId') not in (None, ''):
+        try:
+            UUID(str(payload.photo_metadata['btbEntryId']))
+        except (TypeError, ValueError):
+            raise HTTPException(400, 'BTB_ENTRY_INVALID')
     patch = normalize_btb_photo_override(payload.photo_metadata)
     if not patch:
         raise HTTPException(400, "NO_CHANGES")
@@ -1071,6 +1098,8 @@ def update_btb_photo(
             )
         next_override = dict(current.get("link_metadata") or {})
         next_override.update(patch)
+        if next_override.get('btbEntryId'):
+            next_override.update(entry_photo_context(cur, btb_id, next_override['btbEntryId']))
         if next_override == dict(current.get("link_metadata") or {}):
             raise HTTPException(400, "NO_CHANGES")
         base_meta = canonical_photo_metadata(
@@ -1082,6 +1111,8 @@ def update_btb_photo(
             photo_metadata=current.get("photo_metadata"),
         )["photo_metadata"] or {}
         effective_meta = merge_btb_photo_metadata(base_meta, next_override)
+        if {'lat','lon'} & patch.keys() and (effective_meta.get('lat') is None) != (effective_meta.get('lon') is None):
+            raise HTTPException(400, "GPS_PAIR_REQUIRED")
         _validate_worksite_node_key(
             cur,
             btb["worksite_id"],

@@ -4,6 +4,7 @@ import math
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Iterable
@@ -109,7 +110,10 @@ def _time_hm(value: Any) -> str:
     if not raw:
         return "-"
     try:
-        return datetime.fromisoformat(raw.replace("Z", "+00:00")).strftime("%H:%M")
+        value = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if value.tzinfo is not None:
+            value = value.astimezone(ZoneInfo("Europe/Berlin"))
+        return value.strftime("%H:%M")
     except ValueError:
         match = re.search(r"(\d{1,2}:\d{2})", raw)
         return match.group(1) if match else raw
@@ -446,8 +450,11 @@ def _photo_section_lines(
     ordered, numbers = _photo_numbering(snapshot, meta)
     by_section: dict[str, list[SectionLine]] = {key: [] for key, _, _ in SECTION_TITLES}
     grouped: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
+    entry_ids = {str(e.get('id')) for e in snapshot.get('entries') or [] if isinstance(e, dict)}
     for photo in ordered:
         metadata = photo.get("photo_metadata") if isinstance(photo.get("photo_metadata"), dict) else {}
+        if str(metadata.get('btbEntryId') or '') in entry_ids:
+            continue
         photo_type = _text(metadata.get("typ")).upper() or "FOTODOKUMENTATION"
         section = PHOTO_SECTION.get(photo_type, "ARBEIT")
         company = _text(metadata.get("firma"))
@@ -520,6 +527,13 @@ def _section_lines(
     node_lookup, _ = _node_maps(context)
     result: dict[str, list[SectionLine]] = {key: [] for key, _, _ in SECTION_TITLES}
 
+    _, photo_numbers = _photo_numbering(snapshot, _android_meta((snapshot.get('btb') or {}).get('header')))
+    photo_entries = {}
+    for photo in snapshot.get('photos') or []:
+        key = str((photo.get('photo_metadata') or {}).get('btbEntryId') or '')
+        number = photo_numbers.get(str(photo.get('id')))
+        if key and number is not None:
+            photo_entries.setdefault(key, []).append(str(number))
     section_names = {key for key, _, _ in SECTION_TITLES}
     structured_work = False
     for entry in entries:
@@ -542,6 +556,9 @@ def _section_lines(
             for part in (time, f"({km})" if km else None, clean_text)
             if part
         ).strip()
+        bound_numbers = photo_entries.get(str(entry.get('id')), [])
+        if bound_numbers:
+            value += ' [Bild ' + ', '.join(bound_numbers) + ']'
         if not value:
             visible = []
             for key, item in payload.items():
@@ -797,6 +814,24 @@ def _draw_company_header(writer: AndroidStyleWriter, context: dict[str, Any]) ->
     canvas.drawString(title_x, title_baseline, title)
 
 
+def _report_date_label(btb):
+    def day(value):
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(ZoneInfo("Europe/Berlin"))
+        return parsed.date()
+    try:
+        start = day(btb.get('started_at') or btb.get('work_date'))
+        end = day(btb.get('ended_at') or btb.get('started_at') or btb.get('work_date'))
+        if start == end:
+            return start.strftime('%d.%m.%y')
+        if (start.year, start.month) == (end.year, end.month):
+            return start.strftime('%d') + '/' + end.strftime('%d.%m.%y')
+        return start.strftime('%d.%m.%y') + '/' + end.strftime('%d.%m.%y')
+    except (ValueError, TypeError):
+        return _date_de(btb.get('work_date'))
+
+
 def _draw_document_header(
     writer: AndroidStyleWriter,
     snapshot: dict[str, Any],
@@ -821,7 +856,7 @@ def _draw_document_header(
         writer.draw_text(f"E-Mail: {_text(context.get('lead_email'))}", size=8.5)
     if _text(context.get("lead_phone")):
         writer.draw_text(f"Mobil: {_text(context.get('lead_phone'))}", size=8.5)
-    writer.draw_text(f"Datum: {_date_de(btb.get('work_date'))}", size=9.0)
+    writer.draw_text(f"Datum: {_report_date_label(btb)}", size=9.0)
     writer.draw_text(f"Schicht: {_shift_label(meta.get('schicht'))}", size=9.0)
     writer.draw_text(
         f"Zeit: {_time_hm(btb.get('started_at'))} - {_time_hm(btb.get('ended_at'))}",

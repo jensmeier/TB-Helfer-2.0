@@ -1,0 +1,46 @@
+<script>
+// Local-only, bounded TIFF/EXIF reader (JPEG APP1, PNG eXIf, WebP EXIF).
+function tbExifMetadata(buffer){
+  try{
+    const view=new DataView(buffer),size=view.byteLength;
+    const ascii=(p,n)=>{if(p<0||p+n>size)throw Error('bounds');return String.fromCharCode(...new Uint8Array(buffer,p,n)).replace(/\0.*$/,'').trim();};
+    let base=-1,end=size;
+    if(size>=8&&(ascii(0,2)==='II'||ascii(0,2)==='MM'))base=0;
+    else if(size>4&&view.getUint16(0)===0xffd8){
+      let p=2;
+      while(p+4<=size){if(view.getUint8(p)!==255)break;const marker=view.getUint8(p+1);if(marker===0xda||marker===0xd9)break;const n=view.getUint16(p+2);if(n<2||p+2+n>size)break;
+        if(marker===0xe1&&n>=8&&ascii(p+4,4)==='Exif'){base=p+10;end=p+2+n;break;}p+=2+n;}
+    }else if(size>=8&&view.getUint32(0)===0x89504e47){
+      for(let p=8;p+12<=size;){const n=view.getUint32(p);if(p+n+12>size)break;if(ascii(p+4,4)==='eXIf'){base=p+8;end=base+n;break;}p+=12+n;}
+    }else if(size>=12&&ascii(0,4)==='RIFF'&&ascii(8,4)==='WEBP'){
+      for(let p=12;p+8<=size;){const n=view.getUint32(p+4,true);if(p+8+n>size)break;if(ascii(p,4)==='EXIF'){base=p+8;end=base+n;if(ascii(base,4)==='Exif')base+=6;break;}p+=8+n+(n%2);}
+    }
+    if(base<0||base+8>end)return {};
+    const little=ascii(base,2)==='II';if(!little&&ascii(base,2)!=='MM')return {};
+    const check=(p,n)=>{if(p<base||p+n>end)throw Error('bounds');};
+    const u16=p=>{check(p,2);return view.getUint16(p,little)},u32=p=>{check(p,4);return view.getUint32(p,little)};
+    if(u16(base+2)!==42)return {};
+    function directory(offset){const p=base+offset,n=u16(p);if(n>256)throw Error('count');check(p+2,n*12);const out={};
+      for(let i=0;i<n;i++){const q=p+2+i*12,tag=u16(q),type=u16(q+2),count=u32(q+4),width=({1:1,2:1,3:2,4:4,5:8})[type];if(!width||count>4096)continue;
+        const total=width*count,at=total<=4?q+8:base+u32(q+8);check(at,total);
+        if(type===2)out[tag]=ascii(at,count);
+        else if(type===5){const values=[];for(let j=0;j<count;j++){const d=u32(at+j*8+4);values.push(d?u32(at+j*8)/d:NaN);}out[tag]=values;}
+        else if(count===1)out[tag]=type===3?u16(at):type===4?u32(at):view.getUint8(at);
+      }return out;
+    }
+    const root=directory(u32(base+4)),exif=root[0x8769]?directory(root[0x8769]):{},gps=root[0x8825]?directory(root[0x8825]):{},result={};
+    function coordinate(values,ref,negative,limit){if(!Array.isArray(values)||values.length!==3||values.some(v=>!Number.isFinite(v)||v<0)||values[1]>=60||values[2]>=60)return null;let n=values[0]+values[1]/60+values[2]/3600;if(ref===negative)n=-n;return Math.abs(n)<=limit?n:null;}
+    const lat=['N','S'].includes(gps[1])?coordinate(gps[2],gps[1],'S',90):null,lon=['E','W'].includes(gps[3])?coordinate(gps[4],gps[3],'W',180):null;
+    if(lat!=null&&lon!=null){result.lat=lat;result.lon=lon;}
+    const date=String(exif[0x9003]||root[0x132]||''),match=/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(date);
+    if(match){const local=match.slice(1,4).join('-')+'T'+match.slice(4).join(':'),offset=String(exif[0x9011]||'');
+      let instant;
+      if(/^[+-]\d{2}:\d{2}$/.test(offset))instant=new Date(local+offset);
+      else{let t=Date.parse(local+'Z');for(let i=0;i<3;i++){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(t));const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));const rendered=Date.parse(p.year+'-'+p.month+'-'+p.day+'T'+p.hour+':'+p.minute+':'+p.second+'Z');t+=Date.parse(local+'Z')-rendered;}instant=new Date(t);}
+      if(Number.isFinite(instant.getTime()))result.epoch=instant.getTime();
+    }
+    return result;
+  }catch(_){return {};}
+}
+async function tbReadPhotoMetadata(file){return tbExifMetadata(await file.slice(0,Math.min(file.size,4194304)).arrayBuffer());}
+</script>

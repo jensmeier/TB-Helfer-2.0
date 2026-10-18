@@ -138,6 +138,7 @@ def snapshot_photo_metadata(photo_files: list[dict[str, Any]]) -> list[dict[str,
     result: list[dict[str, Any]] = []
     for photo in photo_files:
         captured_at = photo.get("captured_at")
+        effective = effective_btb_photo_metadata(photo)
         result.append(
             {
                 "id": str(photo["id"]),
@@ -145,10 +146,10 @@ def snapshot_photo_metadata(photo_files: list[dict[str, Any]]) -> list[dict[str,
                 "original_name": photo.get("original_name"),
                 "mime_type": photo.get("mime_type"),
                 "captured_at": captured_at.isoformat() if captured_at else None,
-                "gps_lat": photo.get("gps_lat"),
-                "gps_lon": photo.get("gps_lon"),
+                "gps_lat": effective.get("lat"),
+                "gps_lon": effective.get("lon"),
                 "gps_accuracy_m": photo.get("gps_accuracy_m"),
-                "photo_metadata": effective_btb_photo_metadata(photo),
+                "photo_metadata": effective,
                 "purpose": photo.get("purpose"),
                 "link_version": photo.get("link_version", 1),
             }
@@ -161,6 +162,8 @@ def photo_files_for_render(photo_files: list[dict[str, Any]]) -> list[dict[str, 
     for photo in photo_files:
         row = dict(photo)
         row["photo_metadata"] = effective_btb_photo_metadata(row)
+        row["gps_lat"] = row["photo_metadata"].get("lat")
+        row["gps_lon"] = row["photo_metadata"].get("lon")
         row["path"] = _absolute_storage_path(row["storage_key"])
         result.append(row)
     return result

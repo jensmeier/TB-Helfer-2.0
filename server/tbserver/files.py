@@ -86,6 +86,7 @@ class UploadComplete(BaseModel):
     gps_lon: float | None = Field(default=None, ge=-180, le=180)
     gps_accuracy_m: float | None = Field(default=None, ge=0)
     photo_metadata: dict[str, Any] | None = None
+    btb_entry_id: UUID | None = None
 
 
 def _safe_name(name: str | None) -> str:
@@ -621,6 +622,17 @@ def complete_upload(
                 payload.entity_id,
             )
 
+            entry_metadata = {}
+            if payload.btb_entry_id is not None:
+                require_permission(context, "btb.edit")
+                if not link or link[0] != 'BTB' or not upload['mime_type'].lower().startswith('image/'):
+                    raise HTTPException(400, 'BTB_ENTRY_INVALID')
+                # Parent before entry: same lock order as entry edits/finalization.
+                cur.execute("SELECT id FROM tb.btbs WHERE id=%s AND worksite_id=%s AND status <> 'DELETED' FOR UPDATE", (link[1], upload['worksite_id']))
+                if not cur.fetchone():
+                    raise HTTPException(404, 'BTB_NOT_FOUND')
+                from .btb_entry_photos import entry_photo_context
+                entry_metadata = entry_photo_context(cur, link[1], payload.btb_entry_id)
             file_id = uuid4()
             category = {
                 "PHOTO": "photos",
@@ -700,8 +712,8 @@ def complete_upload(
                         )
                     )
                 cur.execute(
-                    "INSERT INTO tb.file_links(file_id, entity_type, entity_id, purpose) VALUES (%s,%s,%s,%s)",
-                    (file_id, link[0], link[1], purpose),
+                    "INSERT INTO tb.file_links(file_id, entity_type, entity_id, purpose, link_metadata) VALUES (%s,%s,%s,%s,%s)",
+                    (file_id, link[0], link[1], purpose, Jsonb(entry_metadata)),
                 )
                 link_payload = {"entity_type": link[0], "entity_id": link[1], "purpose": purpose}
             cur.execute("UPDATE tb.upload_sessions SET status = 'COMPLETED', updated_at = now() WHERE id = %s", (upload_id,))

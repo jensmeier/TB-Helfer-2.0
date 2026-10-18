@@ -5,6 +5,7 @@ import binascii
 import json
 import math
 import struct
+from uuid import UUID
 from datetime import datetime, timezone
 from typing import Any
 
@@ -99,6 +100,7 @@ def normalize_photo_metadata(value: Any) -> dict[str, Any]:
 
 
 BTB_PHOTO_OVERRIDE_KEYS = frozenset({
+    "btbEntryId", "lat", "lon",
     "typ",
     "indikator",
     "firma",
@@ -122,6 +124,12 @@ def normalize_btb_photo_override(value: Any) -> dict[str, Any]:
         raw = value.get(key)
         if raw is None or (isinstance(raw, str) and not raw.strip()):
             result[key] = None
+            continue
+        if key == "btbEntryId":
+            try:
+                result[key] = str(UUID(str(raw)))
+            except (ValueError, TypeError):
+                pass
             continue
         normalized = normalize_photo_metadata({key: raw})
         if key in normalized:

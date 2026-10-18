@@ -626,7 +626,9 @@ async function uploadFachPhoto(type,id,inputId){
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         entity_type:type,
         entity_id:id,
-        purpose:type==='DEFECT'?'DEFECT_PHOTO':'ACCEPTANCE_PHOTO'
+        purpose:type==='DEFECT'?'DEFECT_PHOTO':'ACCEPTANCE_PHOTO',
+        photo_metadata:file.tbPhotoMetadata||{},captured_at:file.tbPhotoMetadata?.epoch?new Date(file.tbPhotoMetadata.epoch).toISOString():null,
+        gps_lat:file.tbPhotoMetadata?.lat??null,gps_lon:file.tbPhotoMetadata?.lon??null
       })
     });
     input.value='';

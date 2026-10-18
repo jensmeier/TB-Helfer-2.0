@@ -46,6 +46,7 @@
   .btb-overview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
   .btb-subfold{border:1px solid #e4e7ec;border-radius:14px;background:#fff;overflow:hidden}
   .btb-subfold>summary{padding:14px 16px;background:#f8fafc;font-size:16px}.btb-subfold-body{padding:4px 14px 12px}
+  .entry-photo-strip{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}.entry-photo{max-width:220px;border:1px solid #e4e7ec;border-radius:8px;padding:6px}.entry-photo img{width:100%;height:120px;object-fit:contain}.entry-photo .actions{gap:4px}.entry-photo button{font-size:11px;padding:6px}
   .btb-weather-head{font-weight:700;margin-bottom:8px}.btb-weather-slots{display:flex;flex-wrap:wrap;gap:8px}
   .btb-weather-slot{border:1px solid #e4e7ec;border-radius:12px;padding:8px 10px;background:#f8fafc;min-width:125px}
   .btb-weather-time{font-weight:700}.btb-weather-detail{font-size:13px;color:#475467;margin-top:2px}
@@ -93,8 +94,8 @@
         <form id="headerForm" style="padding:14px">
           <div class="grid">
             <div><label for="workDate">Arbeitstag</label><input id="workDate" type="date"></div>
-            <div><label for="startedAt">Beginn</label><input id="startedAt" type="datetime-local"></div>
-            <div><label for="endedAt">Ende</label><input id="endedAt" type="datetime-local"></div>
+            <div><label for="startedAt">Beginn</label><input id="startedAt" type="time"></div>
+            <div><label for="endedAt">Ende</label><input id="endedAt" type="time"></div>
           </div>
           <div id="reportTimeProposal" class="muted" style="margin-top:10px"></div><div class="actions" style="margin-top:12px"><button id="saveHeader" type="submit">Speichern</button></div>
         </form>
@@ -135,7 +136,7 @@
     <summary>Fotos</summary>
     <div class="btb-fold-content">
       <div id="photos"></div>
-      <div id="photoUploadBox">
+      <div id="photoUploadBox"><details><summary>Foto ohne Arbeitseintrag hinzufügen</summary>
         <div class="btb-modal-grid" style="margin-top:10px">
           <div class="wide"><label for="photoFile">Foto auswählen</label><input id="photoFile" type="file" accept="image/*"></div>
           <div><label for="photoType">Zuordnung</label><select id="photoType">
@@ -151,7 +152,7 @@
           <div><label for="photoObject">Objekt</label><input id="photoObject" type="text" maxlength="240" placeholder="z. B. BÜ 76.215"></div>
           <div><label for="photoArea">Bereich</label><input id="photoArea" type="text" maxlength="240" placeholder="z. B. Gleis 2"></div>
         </div>
-        <div class="actions" style="margin-top:10px"><button id="uploadPhoto" type="button">Foto hochladen</button><span id="photoProgress" class="muted"></span></div>
+        <div class="actions" style="margin-top:10px"><button id="uploadPhoto" type="button">Foto hochladen</button><span id="photoProgress" class="muted"></span></div></details>
       </div>
     </div>
   </details>
@@ -255,10 +256,13 @@ function bytesLabel(value){
 }
 function localInput(value){
   if(!value)return '';
-  const d=new Date(value);if(Number.isNaN(d.getTime()))return String(value).slice(0,16);
-  const pad=n=>String(n).padStart(2,'0');
-  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+  const raw=String(value);
+  if(!/(?:Z|[+-]\d{2}:\d{2})$/i.test(raw))return raw.slice(0,16);
+  const d=new Date(raw);if(Number.isNaN(d.getTime()))return raw.slice(0,16);
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d),p=Object.fromEntries(parts.map(x=>[x.type,x.value]));
+  return p.year+'-'+p.month+'-'+p.day+'T'+p.hour+':'+p.minute;
 }
+
 function lifecycle(){
   const target=document.getElementById('lifecycle');const status=current.status;
   const isActive=activeBtbId===btbId;
@@ -425,6 +429,37 @@ function renderPhotos(){
   }).join(''):'<p class="muted">Noch keine BTB-Fotos.</p>';
   document.getElementById('photoUploadBox').style.display=(can('files.add')&&canEditCurrentBtb())?'block':'none';
 }
+function entryBoundPhotos(id){const seen=new Set();return photos.filter(p=>{if(String(photoMeta(p).btbEntryId||'')!==String(id)||seen.has(String(p.id)))return false;seen.add(String(p.id));return true;});}
+function entryPhotoStrip(id){
+  return entryBoundPhotos(id).map(function(p){
+    const url=p.renditions?.thumb||p.renditions?.preview||p.content_url;
+    return '<div class="entry-photo"><a href="'+esc(tbScopedUrl(p.content_url))+'" target="_blank" rel="noopener"><img src="'+esc(tbScopedUrl(url))+'" alt="Foto zum Eintrag"></a>'+
+      (canEditCurrentBtb()?'<div class="actions"><button type="button" class="secondary" onclick="openPhotoEditor(\''+esc(p.id)+'\')">Bearbeiten / Verschieben</button><button type="button" class="danger" onclick="unbindEntryPhoto(\''+esc(p.id)+'\')">Aus Eintrag entfernen</button></div>':'')+'</div>';
+  }).join('');
+}
+function refreshOpenEntryPhotos(){const el=document.getElementById('entryBoundPhotos');if(el&&editingEntry)el.innerHTML=entryPhotoStrip(editingEntry.id);}
+async function unbindEntryPhoto(id){
+  const photo=photos.find(p=>String(p.id)===String(id));if(!photo)return;
+  if(!confirm('Foto aus diesem Eintrag lösen? Es bleibt im BTB erhalten.'))return;
+  try{await tbApi('/api/v1/btbs/'+btbId+'/photos/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_version:Number(photo.link_version),photo_metadata:{btbEntryId:null}})});await loadBtb();refreshOpenEntryPhotos();}catch(e){show('err',e.message||String(e));}
+}
+function tbGpsPair(value){
+  const raw=String(value||'').trim();let match;
+  if(raw.includes('://'))match=/(?:@|[?&](?:q|query)=)([+-]?\d+(?:\.\d+)?),\s*([+-]?\d+(?:\.\d+)?)/.exec(decodeURIComponent(raw));
+  else match=/^\s*([+-]?\d+(?:[.,]\d+)?)\s*(?:;|\s+|,\s*)\s*([+-]?\d+(?:[.,]\d+)?)\s*$/.exec(raw);
+  if(!match)throw Error('Bitte Breitengrad und Längengrad eingeben, z. B. 47.59699, 10.253655.');
+  const lat=Number(match[1].replace(',','.')),lon=Number(match[2].replace(',','.'));
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)throw Error('GPS-Koordinaten liegen außerhalb des gültigen Bereichs.');
+  return {lat,lon};
+}
+function applyPhotoGpsPair(){try{const gps=tbGpsPair(photoEditorValue('photo-edit-pair'));document.getElementById('photo-edit-lat').value=gps.lat;document.getElementById('photo-edit-lon').value=gps.lon;document.getElementById('photo-edit-pair').value='';}catch(e){show('err',e.message);}}
+async function readOriginalPhotoGps(input){
+  if(!input.files?.[0])return;
+  try{const data=await tbReadPhotoMetadata(input.files[0]);if(data.lat==null||data.lon==null){document.getElementById('photo-exif-status').textContent='Keine auslesbaren GPS-Daten vorhanden. Vorhandene Werte bleiben erhalten.';return;}
+    document.getElementById('photo-edit-lat').value=data.lat;document.getElementById('photo-edit-lon').value=data.lon;document.getElementById('photo-edit-pair').value='';document.getElementById('photo-exif-status').textContent='GPS übernommen. Zum Übernehmen speichern.';
+  }catch(e){show('err',e.message||String(e));}
+}
+
 function photoTypeForSection(section){
   return section==='ABNAHME'?'ABNAHMEN':
     section==='EINWEISUNG_UNTERWEISUNG'?'EINWEISUNG_UNTERWEISUNG':
@@ -435,13 +470,13 @@ function openPhotoEditor(id){
   const p=photos.find(x=>String(x.id)===String(id));if(!p||!canEditCurrentBtb())return;
   editingPhoto=p;
   const m=photoMeta(p),section=photoSection(m),firm=String(m.firmaId||'').trim()||'__general__',node=String(m.worksiteNodeKey||'').trim();
-  const fields=editorSelect('photo-edit-section','BTB-Punkt',contentSectionOptions(),section,true)+
-    editorSelect('photo-edit-firma','Firma / Allgemein',firmOptions(true,firm),firm,true)+
-    editorSelect('photo-edit-node','Unterbaustelle / Bauobjekt',worksiteNodeOptions(node),node,true)+
-    editorField('photo-edit-kurztext','Kurztext',m.kurztext||'','text',true)+
-    editorField('photo-edit-km','KM',m.km??'','number')+
-    editorField('photo-edit-objekt','Objekt',m.objektKennung||'','text')+
-    editorField('photo-edit-bereich','Bereich',m.objektBereich||'','text');
+  const targets=[{value:'',label:'Keine feste Eintragszuordnung'}].concat(entries.filter(e=>ALWAYS_OPEN_SECTIONS.includes(String(e.section))).map(e=>({value:String(e.id),label:sectionInfo(e.section).title+' · '+compactLine(e).slice(0,140)})));
+  const fields=editorSelect('photo-edit-target','Zu Eintrag zuordnen / verschieben',targets,m.btbEntryId||'',true)+
+    (!m.btbEntryId?editorField('photo-edit-kurztext','Beschriftung',m.kurztext||'','text',true):'')+
+    editorField('photo-edit-km','Kilometer',m.km??'','text')+
+    editorField('photo-edit-lat','GPS Breitengrad',m.lat??'','text')+editorField('photo-edit-lon','GPS Längengrad',m.lon??'','text')+
+    '<div class="wide"><label for="photo-edit-pair">GPS gemeinsam einfügen</label><input id="photo-edit-pair" type="text" placeholder="47.59699, 10.253655"><button type="button" class="secondary" onclick="applyPhotoGpsPair()">Koordinaten übernehmen</button></div>'+
+    '<div class="wide"><label for="photo-edit-original">GPS aus Originalbild lesen</label><input id="photo-edit-original" type="file" accept="image/*" onchange="readOriginalPhotoGps(this)"><span id="photo-exif-status" role="status"></span></div>';
   document.getElementById('photoModalBody').innerHTML='<div class="btb-modal-grid">'+fields+'</div>';
   document.getElementById('photoModal').classList.add('open');
   document.getElementById('photoModal').setAttribute('aria-hidden','false');
@@ -455,26 +490,19 @@ function photoEditorValue(id){const el=document.getElementById(id);return el?Str
 async function savePhotoEditor(){
   if(!editingPhoto)return;
   try{
-    const firmId=photoEditorValue('photo-edit-firma');
-    const firms=firmDirectory();
-    const metadata={
-      typ:photoTypeForSection(photoEditorValue('photo-edit-section')),
-      firmaId:firmId&&firmId!=='__general__'?firmId:null,
-      firma:firmId&&firmId!=='__general__'?(firms[firmId]&&firms[firmId].name||null):null,
-      worksiteNodeKey:photoEditorValue('photo-edit-node')||null,
-      kurztext:photoEditorValue('photo-edit-kurztext')||null,
-      km:(function(){const raw=photoEditorValue('photo-edit-km').replace(',','.');const n=Number(raw);return raw!==''&&Number.isFinite(n)?n:null;})(),
-      objektKennung:photoEditorValue('photo-edit-objekt')||null,
-      objektBereich:photoEditorValue('photo-edit-bereich')||null
-    };
+    if(photoEditorValue('photo-edit-pair')){const pair=tbGpsPair(photoEditorValue('photo-edit-pair'));document.getElementById('photo-edit-lat').value=pair.lat;document.getElementById('photo-edit-lon').value=pair.lon;}
+    function number(id,limit){const raw=photoEditorValue(id).replace(',','.');if(!raw)return null;const n=Number(raw);if(!Number.isFinite(n)||(limit&&Math.abs(n)>limit))throw Error('Bitte gültige Kilometer-/GPS-Werte eingeben.');return n;}
+    const metadata={btbEntryId:photoEditorValue('photo-edit-target')||null,km:number('photo-edit-km'),lat:number('photo-edit-lat',90),lon:number('photo-edit-lon',180)};
+    if(document.getElementById('photo-edit-kurztext'))metadata.kurztext=photoEditorValue('photo-edit-kurztext')||null;
+    if((metadata.lat==null)!==(metadata.lon==null))throw Error('Bitte beide GPS-Koordinaten eingeben oder beide leeren.');
     await tbApi('/api/v1/btbs/'+btbId+'/photos/'+encodeURIComponent(editingPhoto.id),{
       method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         base_version:Number(editingPhoto.link_version||1),
         photo_metadata:metadata
       })
     });
-    closePhotoEditor();show('ok','Foto-Zuordnung gespeichert.');await loadBtb();
-  }catch(error){show('err',error.message||String(error));}
+    closePhotoEditor();show('ok','Foto gespeichert.');await loadBtb();refreshOpenEntryPhotos();
+  }catch(error){document.getElementById('photo-exif-status').textContent=error.message||String(error);show('err',error.message||String(error));}
 }
 window.openPhotoEditor=openPhotoEditor;
 async function detachPhoto(id){
@@ -622,6 +650,27 @@ function firmDirectory(){
   });
   return map;
 }
+function tbNextDay(day){const d=new Date(day+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
+function tbBerlinISO(day,time){
+  const local=day+'T'+time+':00',target=Date.parse(local+'Z');let t=target;
+  for(let i=0;i<3;i++){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(t));const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));t+=target-Date.parse(p.year+'-'+p.month+'-'+p.day+'T'+p.hour+':'+p.minute+':'+p.second+'Z');}
+  const back=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(t)),p=Object.fromEntries(back.map(x=>[x.type,x.value]));
+  if(p.year+'-'+p.month+'-'+p.day+'T'+p.hour+':'+p.minute!==day+'T'+time)throw Error('Diese Uhrzeit gibt es an diesem Tag wegen der Zeitumstellung nicht.');
+  return new Date(t).toISOString();
+}
+function tbReportPeriod(day,start,end){
+  if(!day){if(start||end)throw Error('Bitte den Arbeitstag wählen.');return {started_at:null,ended_at:null};}
+  if(start&&end&&start===end)throw Error('Beginn und Ende sind gleich. Bitte unterschiedliche Uhrzeiten wählen.');
+  return {started_at:start?tbBerlinISO(day,start):null,ended_at:end?tbBerlinISO(start&&end<start?tbNextDay(day):day,end):null};
+}
+function reportDateLabel(btb){
+  const first=localInput(btb.started_at).slice(0,10)||btb.work_date,last=localInput(btb.ended_at).slice(0,10)||first;
+  if(!first)return '–';const a=first.split('-'),b=last.split('-');
+  if(first===last)return a[2]+'.'+a[1]+'.'+a[0].slice(-2);
+  if(a[0]===b[0]&&a[1]===b[1])return a[2]+'/'+b[2]+'.'+b[1]+'.'+b[0].slice(-2);
+  return a[2]+'.'+a[1]+'.'+a[0].slice(-2)+'/'+b[2]+'.'+b[1]+'.'+b[0].slice(-2);
+}
+
 function reportClock(field){const t=timeOnly(current&&current[field]);return t==='–'?'':t;}
 function firmTimeBinding(prefix){
   return editorValue('edit-'+prefix+'Von')===reportClock('started_at')&&editorValue('edit-'+prefix+'Bis')===reportClock('ended_at')?'REPORT':'MANUAL';
@@ -638,10 +687,7 @@ async function loadReportTimeProposal(){
 function applyReportTimeProposal(){
   if(!reportProposal)return;
   const day=document.getElementById('workDate').value;if(!day){show('err','Bitte zuerst den Arbeitstag wählen.');return;}
-  const start=timeOnly(reportProposal.started_at),end=timeOnly(reportProposal.ended_at);
-  const next=new Date(day+'T12:00:00');if(end<start)next.setDate(next.getDate()+1);
-  const endDay=next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0')+'-'+String(next.getDate()).padStart(2,'0');
-  document.getElementById('startedAt').value=day+'T'+start;document.getElementById('endedAt').value=endDay+'T'+end;tbRefreshQuarterTimes();
+  document.getElementById('startedAt').value=timeOnly(reportProposal.started_at);document.getElementById('endedAt').value=timeOnly(reportProposal.ended_at);tbRefreshQuarterTimes();
 }
 async function hideFirmArea(id,section){
   const firm=firmDirectory()[id];if(!firm)return;
@@ -794,6 +840,7 @@ function renderPhotoEvents(section,list,legacyLines){
   uniquePhotos().forEach(function(p,index){
     const m=photoMeta(p);
     if(photoSection(m)!==section)return;
+    if(m.btbEntryId&&entries.some(e=>String(e.id)===String(m.btbEntryId)))return;
     if(photoAlreadyRepresented(m,list,legacyLines))return;
     out.push('<div class="btb-photo-event"><div>'+esc(photoEventText(p,index))+'</div><span class="btb-photo-badge">Foto</span></div>');
   });
@@ -809,7 +856,7 @@ function renderContentNodeGroups(rows){
     const label=key==='__main__'?'Hauptbaustelle':worksiteNodeLabel(key);
     return '<div class="btb-node-group"><div class="btb-node-title">'+esc(label)+'</div>'+
       byNode[key].sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)).map(function(e){
-        return '<div class="btb-compact-row"><div class="btb-compact-text">'+esc(compactLine(e))+'</div>'+rowActions(e)+(canEditCurrentBtb()?'<button type="button" class="secondary" onclick="openEntryEditor(\''+esc(e.id)+'\')">Fotos hinzufügen</button>':'')+'</div>';
+        return '<div class="btb-compact-row"><div class="btb-compact-text">'+esc(compactLine(e))+'</div>'+rowActions(e)+(canEditCurrentBtb()?'<button type="button" class="secondary" onclick="openEntryEditor(\''+esc(e.id)+'\')">Fotos hinzufügen</button>':'')+'</div><div class="entry-photo-strip">'+entryPhotoStrip(e.id)+'</div>';
       }).join('')+'</div>';
   }).join('');
 }
@@ -946,7 +993,8 @@ function contentEditorFields(section,p){
     editorField('edit-uhrzeit','Von Uhrzeit',p&&p.uhrzeit||'','time')+editorField('edit-uhrzeitBis','Bis Uhrzeit',p&&p.uhrzeitBis||'','time')+
     editorField('edit-kmVon','KM von',(p&&p.kmVon!=null)?p.kmVon:'','number')+editorField('edit-kmBis','KM bis',(p&&p.kmBis!=null)?p.kmBis:'','number')+
     editorField('edit-text','Text',p&&(p.text||p.beschreibung||p.kommentar)||'','textarea',true)+
-    '<div class="wide"><label for="entryPhotos">Fotos hinzufügen</label><input id="entryPhotos" type="file" accept="image/*" multiple><p class="muted">Firma, Unterbaustelle und Text werden übernommen. Maximal 2 MB je Foto.</p><span id="entryPhotoProgress" role="status"></span></div>';
+    '<div id="entryBoundPhotos" class="entry-photo-strip wide">'+(editingEntry?entryPhotoStrip(editingEntry.id):'')+'</div>'+
+    '<div class="wide"><label for="entryPhotos">Fotos hinzufügen</label><input id="entryPhotos" type="file" accept="image/*" multiple><span id="entryPhotoProgress" role="status"></span></div>';
 }
 function openEntryCreator(section,firmId){
   if(document.getElementById('entryModalSave').disabled)return;
@@ -1303,7 +1351,7 @@ function renderWeather(){
 function renderHeaderSummary(){
   const target=document.getElementById('headerSummary');
   target.innerHTML=
-    '<div class="btb-summary-item"><div class="btb-summary-label">Arbeitstag</div><div class="btb-summary-value">'+esc(deDate(current&&current.work_date))+'</div></div>'+
+    '<div class="btb-summary-item"><div class="btb-summary-label">Arbeitstag</div><div class="btb-summary-value">'+esc(current?reportDateLabel(current):'–')+'</div></div>'+
     '<div class="btb-summary-item"><div class="btb-summary-label">Beginn</div><div class="btb-summary-value">'+esc(timeOnly(current&&current.started_at))+'</div></div>'+
     '<div class="btb-summary-item"><div class="btb-summary-label">Ende</div><div class="btb-summary-value">'+esc(timeOnly(current&&current.ended_at))+'</div></div>';
 }
@@ -1401,23 +1449,27 @@ async function loadBtb(){
   activeBtbId=list.data.active_btb_id;
   document.getElementById('back').href=pagePrefix+'/worksites/'+encodeURIComponent(current.worksite_id);
   const timeRange=[timeOnly(current.started_at),timeOnly(current.ended_at)].filter(v=>v&&v!=='–').join('–');
-  document.getElementById('meta').textContent=deDate(current.work_date)+(timeRange?' · '+timeRange:'');
+  document.getElementById('meta').textContent=reportDateLabel(current)+(timeRange?' · '+timeRange:'');
   document.getElementById('status').innerHTML='<span class="pill btb-status-friendly">'+esc(friendlyBtbStatus(current.status))+'</span>';
   document.getElementById('workDate').value=current.work_date||'';
-  document.getElementById('startedAt').value=localInput(current.started_at);
-  document.getElementById('endedAt').value=localInput(current.ended_at);
-  renderHeaderSummary();renderWeather();renderParticipants();renderEntries();renderPhotos();refreshPhotoUploadSelectors();lifecycle();tbRefreshQuarterTimes();loadReportTimeProposal().catch(()=>{});
+  document.getElementById('startedAt').value=reportClock('started_at');
+  document.getElementById('endedAt').value=reportClock('ended_at');
+  renderHeaderSummary();renderWeather();renderParticipants();renderEntries();renderPhotos();refreshPhotoUploadSelectors();refreshOpenEntryPhotos();lifecycle();tbRefreshQuarterTimes();loadReportTimeProposal().catch(()=>{});
 }
 document.getElementById('headerForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
   try{
     const start=document.getElementById('startedAt').value,end=document.getElementById('endedAt').value;
-    if(start&&end&&new Date(end)<=new Date(start))throw new Error('Das Ende muss nach dem Beginn liegen. Bei Nachtschichten das Enddatum auf den Folgetag setzen.');
+    let period=tbReportPeriod(document.getElementById('workDate').value,start,end);
+    if(current.started_at&&current.ended_at&&new Date(current.ended_at)-new Date(current.started_at)>86400000){
+      if(document.getElementById('workDate').value===current.work_date&&start===reportClock('started_at')&&end===reportClock('ended_at'))period={started_at:current.started_at,ended_at:current.ended_at};
+      else throw Error('Dieser bestehende Bericht umfasst mehr als einen Tag. Seine Zeiten bleiben zum Schutz erhalten.');
+    }
     await tbApi('/api/v1/btbs/'+btbId+'/header',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       base_version:current.version,
       work_date:document.getElementById('workDate').value||null,
-      started_at:document.getElementById('startedAt').value?new Date(document.getElementById('startedAt').value).toISOString():null,
-      ended_at:document.getElementById('endedAt').value?new Date(document.getElementById('endedAt').value).toISOString():null,
+      started_at:period.started_at,
+      ended_at:period.ended_at,
       header:current.header||{}
     })});
     show('ok','Kopfdaten gespeichert.');await loadBtb();
@@ -1501,6 +1553,7 @@ async function uploadBtbPhoto(file,photoMetadata,progress){
   if(!(window.crypto&&crypto.subtle))throw new Error('Dieser Browser unterstützt die sichere SHA-256-Prüfung nicht.');
     progress.textContent='Foto wird auf maximal 2 MB vorbereitet …';
     file=await tbPreparePhoto(file);
+    photoMetadata={...(file.tbPhotoMetadata||{}),...photoMetadata};
     progress.textContent='Prüfsumme wird berechnet …';
     const sha=await sha256Hex(file);
     const created=await tbApi('/api/v1/worksites/'+encodeURIComponent(current.worksite_id)+'/uploads',{
@@ -1519,12 +1572,12 @@ async function uploadBtbPhoto(file,photoMetadata,progress){
       const next=Number(result.data.received_bytes);if(!Number.isFinite(next)||next<=offset||next>file.size)throw new Error('Uploadfortschritt ist ungültig. Bitte erneut versuchen.');offset=next;
     }
     progress.textContent='Foto wird verknüpft …';
-    const capturedAt=Number.isFinite(Number(file.lastModified))&&Number(file.lastModified)>0
-      ?new Date(Number(file.lastModified)).toISOString():null;
+    const capturedAt=photoMetadata.epoch?new Date(Number(photoMetadata.epoch)).toISOString():null;
     return await tbApi('/api/v1/uploads/'+encodeURIComponent(upload.id)+'/complete',{
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         entity_type:'BTB',entity_id:btbId,purpose:'BTB_PHOTO',
-        captured_at:capturedAt,photo_metadata:photoMetadata
+        captured_at:capturedAt,photo_metadata:photoMetadata,btb_entry_id:photoMetadata.btbEntryId||null,
+        gps_lat:photoMetadata.lat??null,gps_lon:photoMetadata.lon??null
       })
     });
 }
@@ -1552,7 +1605,7 @@ async function uploadEntryPhotos(section,payload){
   const files=Array.from(input.files||[]).filter(f=>!input._completed.has(f));
   const firms=firmDirectory(),firm=String(payload.firmaId||''),meta={
     typ:({ARBEIT:'FOTODOKUMENTATION',ABNAHME:'ABNAHMEN',EINWEISUNG_UNTERWEISUNG:'EINWEISUNG_UNTERWEISUNG',BESONDERHEIT:'BESONDERHEITEN',MANGEL_SCHADEN:'MAENGEL_SCHAEDEN'})[section]||'FOTODOKUMENTATION',
-    kurztext:payload.text||payload.beschreibung||payload.kommentar||'',firma:firms[firm]?.name||'',firmaId:firm,worksiteNodeKey:payload.worksiteNodeKey||''
+    btbEntryId:editingEntry?.id||null,kurztext:payload.text||payload.beschreibung||payload.kommentar||'',firma:firms[firm]?.name||'',firmaId:firm,worksiteNodeKey:payload.worksiteNodeKey||''
   };
   if(payload.kmVon!=null){meta.km=payload.kmVon;meta.kmManuell=true;}
   for(const file of files){await uploadBtbPhoto(file,meta,document.getElementById('entryPhotoProgress'));input._completed.add(file);}

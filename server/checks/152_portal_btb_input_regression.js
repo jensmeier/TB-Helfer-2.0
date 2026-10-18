@@ -15,7 +15,7 @@ const quarter=tbQuarterOptions('07:31');assert(quarter.length===98);assert(quart
 const input=document.createElement('input');input.type='datetime-local';input.value='2026-10-18T07:31';tbRefreshQuarterTimes({querySelectorAll:()=>[input]});assert(input.hidden&&input._quarterBox.clock.value==='07:31');input._quarterBox.clock.value='07:45';input._quarterBox.clock.listeners.change();assert(input.value==='2026-10-18T07:45');
 current={worksite_id:'ws',team_id:'team',work_date:'2026-10-18',started_at:'2026-10-18T07:00',ended_at:'2026-10-18T17:00'};
 document.getElementById('edit-personalVon').value='07:00';document.getElementById('edit-personalBis').value='17:00';assert(firmTimeBinding('personal')==='REPORT');document.getElementById('edit-personalVon').value='08:15';assert(firmTimeBinding('personal')==='MANUAL');
-reportProposal={started_at:'2026-10-17T22:00',ended_at:'2026-10-18T06:00'};document.getElementById('workDate').value='2026-10-18';applyReportTimeProposal();assert(document.getElementById('endedAt').value==='2026-10-19T06:00');
+reportProposal={started_at:'2026-10-17T22:00',ended_at:'2026-10-18T06:00'};document.getElementById('workDate').value='2026-10-18';applyReportTimeProposal();assert(document.getElementById('endedAt').value==='06:00');
 // Actual payload functions preserve unknown fields and add/remove only edited end time.
 editingEntry={section:'ARBEIT',payload:{uhrzeit:'07:31',unknown:'preserve'}};
 for(const [id,value] of Object.entries({'edit-uhrzeit':'22:00','edit-uhrzeitBis':'01:00','edit-text':'Strail defekt','edit-kmVon':'78,577','edit-kmBis':'','edit-firmaSelect':'firm','edit-nodeSelect':'node'}))document.getElementById(id).value=value;

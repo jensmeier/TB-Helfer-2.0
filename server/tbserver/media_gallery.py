@@ -221,7 +221,7 @@ def gallery_page(
                         "source": row["source"], "byte_size": row["byte_size"],
                         "btb_date": link.get("btb_date"), "photo_number": None, "created_at": row["created_at"],
                         "captured_at": canonical["captured_at"],
-                        "gps_lat": canonical["gps_lat"], "gps_lon": canonical["gps_lon"],
+                        "gps_lat": meta.get("lat"), "gps_lon": meta.get("lon"),
                         "gps_accuracy_m": canonical["gps_accuracy_m"],
                         "context_title": link.get("title"),
                         "photo_metadata": {key: value for key, value in meta.items() if key in {
