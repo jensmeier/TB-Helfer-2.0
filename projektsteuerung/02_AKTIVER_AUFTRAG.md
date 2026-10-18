@@ -2994,3 +2994,6 @@ Status: BENUTZER ENTSCHEIDET A + B + C / UMSETZUNG
 - Wetter: Ortssuche mit eindeutiger Ortsauswahl, Abruf für BTB-Datum/Schicht und Vorschlag Beginn/Mitte/Ende wie Handy; bearbeitbare Werte, Quelle/Zeit und klare Fehler. Manuell erfasste Werte nicht still überschreiben.
 - Arbeit von/bis inklusive Nachtschicht, Rückwärtskompatibilität für uhrzeit; direkter Foto-Button übernimmt BTB-Punkt,Firma,Unterbaustelle,Kurztext und Eintrags-KM als editierbaren Vorschlag, echtes Aufnahme-KM/GPS nicht erfinden. Foto nur einmal speichern, auch unten sichtbar, bestehende 2MB-Vorbereitung nutzen.
 - Hier zunächst Prüfung/Vorschlag gemäß bisherigem Vorgehen „erst Vorschläge und überprüfen“; noch keine Runtimeänderung oder NAS-Übernahme. Umsetzung, gezielte Tests, Vertrag und NAS-Dateiliste folgen als zusammenhängender Block nach Abstimmung. Kein Actionslauf ausgelöst (CI-COST-001).
+
+### PORTAL-016 – Umsetzung freigegeben (18.10.2026,15:59 Berlin)
+- Nutzer „okay weiter“ bestätigt Umsetzung aller vorgeschlagenen BTB-Erleichterungen. Präzisierung15:57: Berichtszeit automatisch Personal und Maschinen übernehmen, auch später; individuelle Abweichungen erhalten. Server/Portal zuerst, Android nur Vertrag. Gezielte lokale Tests statt teurer Actions; anschließend GitHub-Sicherung und genaue NAS-Dateiliste.
