@@ -37,14 +37,14 @@ class Conn:
 def transaction(): yield Conn()
 
 env=dict(Any=Any,UUID=UUID,HTTPException=HTTPException,transaction=transaction)
-functions(Path('tbserver/worksites.py'),{'_worksite_name','_node_name','list_worksites','delete_worksite'},env)
+functions(Path('tbserver/worksites.py'),{'_worksite_name','_node_payload','_node_name','list_worksites','delete_worksite'},env)
 P=types.SimpleNamespace
 for kwargs,expected in [({'designation':'GE Heideck'},'GE Heideck'),({'route_number':'5501'},'Strecke 5501'),({'station_name':'Holzkirchen'},'Holzkirchen'),({'name':' Alt '},'Alt')]:
     data=dict(name='',designation=None,route_number=None,station_name=None,station_code=None);data.update(kwargs)
     assert env['_worksite_name'](P(**data))==expected
 try: env['_worksite_name'](P(name='',designation=None,route_number=None,station_name=None,station_code=None));raise AssertionError()
 except HTTPException as e: assert e.status_code==400
-assert env['_node_name'](P(name='',payload={'station_name':'Holzkirchen'},route_number=None,track_key=None))=='Holzkirchen'
+assert env['_node_name'](P(name='',node_kind='BAHNHOF',payload={'station_name':'Holzkirchen'},route_number=None,track_key=None))=='Holzkirchen'
 for role in ['CHEF','USER']:
     cursor=Cursor([[]]);env['list_worksites']({'company_role':role,'user_id':'u','company_id':'c'})
     sql,params=cursor.executed[0];assert 'can_delete' in sql and 'w.version' in sql and "RESPONSIBLE_TB" in sql

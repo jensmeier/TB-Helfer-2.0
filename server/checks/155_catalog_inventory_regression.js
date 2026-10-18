@@ -7,7 +7,7 @@ class E{
  setAttribute(){}
  addEventListener(k,f){this.events[k]=f;}
 }
-const fields={track:new E(),route:new E(),from:new E(),to:new E()};
+const fields={track:new E(),route:new E(),from:new E(),to:new E(),objectType:new E()};
 fields.from.value='99';fields.to.value='100';let sequence=1,calls=0;
 const rows=[{label:'Gl 19',kind:'GLEIS',track_key:'19',route_number:'5501',selectable:true,segments:[{status:'AUTOMATISCH',km_from_m:0,km_to_m:2000},{status:'MANUELL',km_from_m:4000,km_to_m:5000}]},
 {label:'W 117',kind:'WEICHE',object_key:'W:117',track_key:'wrong',selectable:true,segments:[],status:'KEINE_GEOMETRIE'}];
@@ -15,17 +15,17 @@ const ctx={document:{createElement:()=>new E(),getElementById:id=>fields[id]},UR
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../templates/v1_catalog_lookup.html'),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1],ctx);
 const target=new E();ctx.target=target;ctx.seq=()=>sequence;
-vm.runInContext("tbCatalogInventory(target,{station_code:'MHO'},{route:'route',track:'track',kmFrom:'from',kmTo:'to'},seq)",ctx);
+vm.runInContext("tbCatalogInventory(target,{station_code:'MHO'},{route:'route',track:'track',objectType:'objectType',kmFrom:'from',kmTo:'to'},seq)",ctx);
 (async()=>{
  const details=target.children[0];assert.equal(calls,0);details.open=true;await details.events.toggle();assert.equal(calls,1);
  const body=details.children[1],filter=body.children[1],list=body.children[2];assert.equal(list.children.length,2);
  assert.equal(fields.from.value,'99'); // never silently overwrite KM
  const gl=list.children[0];
- gl.children.find(e=>e.textContent==='Gleis / Weiche übernehmen').events.click();assert.equal(fields.track.value,'19');assert.equal(fields.route.value,'5501');
+ gl.children.find(e=>e.textContent==='Gleis übernehmen').events.click();assert.equal(fields.track.value,'19');assert.equal(fields.route.value,'5501');
  const kmButtons=gl.children.filter(e=>e.textContent==='KM übernehmen');assert.equal(kmButtons.length,2);
  kmButtons[0].events.click();assert.equal(fields.from.value,'0');assert.equal(fields.to.value,'2');
  kmButtons[1].events.click();assert.equal(fields.from.value,'4');assert.equal(fields.to.value,'5');
- list.children[1].children.find(e=>e.textContent==='Gleis / Weiche übernehmen').events.click();assert.equal(fields.track.value,'W 117');
+ list.children[1].children.find(e=>e.textContent==='Weiche übernehmen').events.click();assert.equal(fields.track.value,'117');assert.equal(fields.objectType.value,'WEICHE');
  assert(list.children[1].children.some(e=>e.textContent==='Keine Geometrie vorhanden.'));
  filter.value='117';filter.events.input();assert.equal(list.children.length,1);
  filter.value='absent';filter.events.input();assert.equal(list.children[0].textContent,'Keine passenden Objekte.');

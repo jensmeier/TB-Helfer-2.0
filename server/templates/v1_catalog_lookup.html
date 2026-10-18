@@ -6,13 +6,15 @@ function tbCatalogLookup(config){
   const code=config.code?document.getElementById(config.code):null;
   const controls=[route,station,code].filter(Boolean), panels=[];
   let sequence=0;
-  const inventory=document.createElement('div');station.after(inventory);
+  const inventory=config.inventoryTarget?document.getElementById(config.inventoryTarget):document.createElement('div');
+  if(!config.inventoryTarget)station.after(inventory);
   for(const input of controls){
     const kind=input===route?'routes':'stations';
     const panel=document.createElement('div');panel.className='muted';panel.setAttribute('aria-live','polite');
     input.after(panel);panels.push(panel);
     let timer;
     function select(item){
+      if(kind==='stations'&&config.stationEnabled&&!config.stationEnabled())return;
       if(kind==='routes')route.value=item.route_number;
       else{
         station.value=item.name;
@@ -32,7 +34,7 @@ function tbCatalogLookup(config){
         if(code&&input===code)station.value='';
       }
       panel.replaceChildren();
-      if(!query)return;
+      if(!query||(kind==='stations'&&config.stationEnabled&&!config.stationEnabled()))return;
       panel.textContent='Suche …';
       timer=setTimeout(async()=>{
         try{
@@ -59,8 +61,10 @@ function tbCatalogLookup(config){
       },250);
     });
   }
+  function clear(){++sequence;inventory.replaceChildren();for(const p of panels)p.replaceChildren();}
   const form=route.closest('form');
   if(form)form.addEventListener('reset',()=>{++sequence;inventory.replaceChildren();for(const p of panels)p.replaceChildren();station.dataset.stationCode='';});
+  return {clear};
 }
 function tbCatalogInventory(target,selection,config,currentSequence){
   target.replaceChildren();
@@ -93,10 +97,14 @@ function tbCatalogInventory(target,selection,config,currentSequence){
           const title=document.createElement('b');title.textContent=(labels[row.kind]||row.kind)+' · '+row.label;card.appendChild(title);
           if(row.route_number){const p=document.createElement('div');p.textContent='Strecke '+row.route_number;card.appendChild(p);}
           if(row.selectable&&config.track&&(row.object_key||row.track_key)){
-            const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='Gleis / Weiche übernehmen';
+            const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent=({GLEIS:'Gleis übernehmen',WEICHE:'Weiche übernehmen',WEICHENVERBINDUNG:'Weichenverbindung übernehmen'})[row.kind]||'Objekt übernehmen';
             button.addEventListener('click',()=>{
               const value=row.object_key?row.object_key.replace(/^W:/,'W ').replace(/^WVB:/,'WVB '):row.track_key;
-              document.getElementById(config.track).value=value;
+              if(config.objectType&&['GLEIS','WEICHE','WEICHENVERBINDUNG'].includes(row.kind)){
+                document.getElementById(config.objectType).value=row.kind;
+                document.getElementById(config.track).value=row.object_key?row.object_key.replace(/^(W:|WVB:)/,''):row.track_key;
+                if(config.onObjectType)config.onObjectType();
+              }else document.getElementById(config.track).value=value;
               if(row.route_number)document.getElementById(config.route).value=row.route_number;
             });card.appendChild(button);
           }

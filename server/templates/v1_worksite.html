@@ -42,13 +42,15 @@
       <label for="nodeDisplayName">Name (optional)</label><input id="nodeDisplayName" maxlength="300">
       <div class="grid">
         <div><label for="nodeRoute">Strecke</label><input id="nodeRoute" maxlength="40"></div>
-        <div><label for="nodeTrack">Gleis / Weiche</label><input id="nodeTrack" maxlength="200"></div>
+        <div><label for="nodeObjectType">Objektart</label><select id="nodeObjectType"><option value="GLEIS">Gleis</option><option value="WEICHE">Weiche</option><option value="WEICHENVERBINDUNG">Weichenverbindung</option></select></div>
+        <div><label for="nodeTrack" id="nodeTrackLabel">Gleisnummer (optional)</label><input id="nodeTrack" maxlength="200"></div>
       </div>
       <div class="grid">
         <div><label for="nodeKmFrom">km von</label><input id="nodeKmFrom" type="number" step="0.001"></div>
         <div><label for="nodeKmTo">km bis</label><input id="nodeKmTo" type="number" step="0.001"></div>
       </div>
-      <label for="nodeStation">Bahnhof</label><input id="nodeStation" maxlength="240">
+      <div id="nodeStationFields"><label for="nodeStation">Bahnhof</label><input id="nodeStation" maxlength="240"></div>
+      <div id="nodeInventory"></div>
       <p class="muted">Die Felder werden im selben Baumformat wie in der Android-App gespeichert.</p>
       <button type="submit">Strukturelement anlegen</button>
     </form>
@@ -252,15 +254,16 @@ function canonicalNodePayload(source){
   const kind=document.getElementById('nodeKind').value;
   const name=document.getElementById('nodeDisplayName').value.trim();
   const route=document.getElementById('nodeRoute').value.trim()||null;
-  const track=document.getElementById('nodeTrack').value.trim()||null;
-  const station=document.getElementById('nodeStation').value.trim()||null;
+  const track=nodeTrackValue();
+  const station=kind==='FREIE_STRECKE'?null:document.getElementById('nodeStation').value.trim()||null;
   payload.node_type=kind;
   payload.node_name=name||null;
   payload.route_key=route;
   payload.km_from=numberOrNull('nodeKmFrom');
   payload.km_to=numberOrNull('nodeKmTo');
   payload.station_name=station;
-  payload.station_code=document.getElementById('nodeStation').dataset.stationCode||null;
+  payload.station_code=kind==='FREIE_STRECKE'?null:document.getElementById('nodeStation').dataset.stationCode||null;
+  payload.object_type=document.getElementById('nodeObjectType').value;
   payload.track_or_switch=track;
   return payload;
 }
@@ -330,8 +333,8 @@ async function editNode(id){
   const payload=n.payload||{};
   const name=prompt('Name',n.name||payload.node_name||'');if(name===null||!name.trim())return;
   const route=prompt('Strecke (leer = keine)',n.route_number||payload.route_key||'');if(route===null)return;
-  const track=prompt('Gleis / Weiche (leer = keine)',n.track_key||payload.track_or_switch||'');if(track===null)return;
-  const station=prompt('Bahnhof (leer = keiner)',payload.station_name||'');if(station===null)return;
+  const track=prompt('Objekt mit Art angeben: z. B. Gl 19, W 117 oder WVB 1 (leer = keines)',n.track_key||payload.track_or_switch||'');if(track===null)return;
+  const station=n.node_kind==='FREIE_STRECKE'?'':prompt('Bahnhof (leer = keiner)',payload.station_name||'');if(station===null)return;
   const kmFrom=prompt('km von (leer = keiner)',payload.km_from??'');if(kmFrom===null)return;
   const kmTo=prompt('km bis (leer = keiner)',payload.km_to??'');if(kmTo===null)return;
   const parseKm=function(raw){
@@ -344,7 +347,9 @@ async function editNode(id){
     node_name:name.trim(),
     route_key:route.trim()||null,
     track_or_switch:track.trim()||null,
+    object_type:/^WVB[: ]/i.test(track.trim())?'WEICHENVERBINDUNG':/^W[: ]/i.test(track.trim())?'WEICHE':'GLEIS',
     station_name:station.trim()||null,
+    station_code:n.node_kind==='FREIE_STRECKE'?null:(station.trim()===payload.station_name?payload.station_code||null:null),
     km_from:parseKm(kmFrom),
     km_to:parseKm(kmTo)
   });
@@ -791,14 +796,40 @@ async function deleteAcceptance(id,version,wasFinalized){
 }
 window.deleteAcceptance=deleteAcceptance;
 
-tbCatalogLookup({route:'nodeRoute',station:'nodeStation',track:'nodeTrack',kmFrom:'nodeKmFrom',kmTo:'nodeKmTo'});
+function nodeTrackValue(){
+  const raw=document.getElementById('nodeTrack').value.trim();
+  if(!raw)return null;
+  const type=document.getElementById('nodeObjectType').value;
+  if(type==='WEICHE')return 'W '+raw.replace(/^W[: ]*/i,'');
+  if(type==='WEICHENVERBINDUNG')return 'WVB '+raw.replace(/^WVB[: ]*/i,'');
+  return raw;
+}
+function updateNodeObjectType(){
+  const type=document.getElementById('nodeObjectType').value;
+  document.getElementById('nodeTrackLabel').textContent=({GLEIS:'Gleisnummer (optional)',WEICHE:'Weichennummer (optional)',WEICHENVERBINDUNG:'Weichenverbindung (optional)'})[type];
+}
+const nodeLookup=tbCatalogLookup({route:'nodeRoute',station:'nodeStation',track:'nodeTrack',objectType:'nodeObjectType',onObjectType:updateNodeObjectType,kmFrom:'nodeKmFrom',kmTo:'nodeKmTo',inventoryTarget:'nodeInventory',stationEnabled:()=>document.getElementById('nodeKind').value!=='FREIE_STRECKE'});
+function updateNodeKind(){
+  const free=document.getElementById('nodeKind').value==='FREIE_STRECKE';
+  document.getElementById('nodeStationFields').hidden=free;
+  const station=document.getElementById('nodeStation');station.disabled=free;
+  if(free){station.value='';station.dataset.stationCode='';}
+  nodeLookup.clear();updateNodeObjectType();
+}
+document.getElementById('nodeKind').addEventListener('change',()=>{
+  for(const id of ['nodeTrack','nodeKmFrom','nodeKmTo'])document.getElementById(id).value='';
+  document.getElementById('nodeObjectType').value='GLEIS';updateNodeKind();
+});
+document.getElementById('nodeObjectType').addEventListener('change',()=>{document.getElementById('nodeTrack').value='';updateNodeObjectType();});
+document.getElementById('nodeForm').addEventListener('reset',()=>setTimeout(updateNodeKind,0));
+updateNodeKind();
 document.getElementById('nodeForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
   try{
     const kind=document.getElementById('nodeKind').value;
     const name=document.getElementById('nodeDisplayName').value.trim();
     const route=document.getElementById('nodeRoute').value.trim()||null;
-    const track=document.getElementById('nodeTrack').value.trim()||null;
+    const track=nodeTrackValue();
     const payload=canonicalNodePayload({});
     await tbApi('/api/v1/worksites/'+worksiteId+'/nodes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       parent_id:document.getElementById('nodeParent').value||null,

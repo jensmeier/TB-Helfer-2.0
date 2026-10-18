@@ -94,10 +94,18 @@ def _worksite_name(payload) -> str:
     return name[:240]
 
 
+def _node_payload(kind: str, fields: dict | None) -> dict:
+    result = dict(fields or {})
+    if kind == "FREIE_STRECKE":
+        result["station_name"] = None
+        result["station_code"] = None
+    return result
+
+
 def _node_name(payload) -> str:
     name = (payload.name or "").strip()
     if not name:
-        fields = payload.payload or {}
+        fields = _node_payload(payload.node_kind, payload.payload)
         name = str(fields.get("node_name") or fields.get("station_name") or "").strip()
         if not name and payload.route_number:
             name = "Strecke " + payload.route_number.strip()
@@ -521,7 +529,7 @@ def create_node(
                 payload.track_key,
                 payload.external_key,
                 payload.sort_order,
-                Jsonb(payload.payload),
+                Jsonb(_node_payload(payload.node_kind, payload.payload)),
                 user["user_id"],
             ),
         )
@@ -577,7 +585,7 @@ def update_node(
         context = worksite_context(cur, user, worksite_id)
         require_permission(context, "worksite.structure.edit")
         cur.execute(
-            "SELECT id, version FROM tb.worksite_nodes "
+            "SELECT id, version, node_kind, payload FROM tb.worksite_nodes "
             "WHERE id = %s AND worksite_id = %s AND deleted_at IS NULL FOR UPDATE",
             (node_id, worksite_id),
         )
@@ -616,6 +624,9 @@ def update_node(
             )
             if not cur.fetchone():
                 raise HTTPException(400, "PARENT_NODE_INVALID")
+        kind = updates.get("node_kind") or current["node_kind"]
+        if kind == "FREIE_STRECKE":
+            updates["payload"] = _node_payload(kind, updates.get("payload", current.get("payload")))
         columns = []
         values = []
         for key in ("parent_id", "node_kind", "name", "route_number", "track_key", "sort_order", "payload"):
