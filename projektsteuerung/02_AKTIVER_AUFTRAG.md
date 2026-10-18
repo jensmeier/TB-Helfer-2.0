@@ -2972,3 +2972,7 @@ Status: BENUTZER ENTSCHEIDET A + B + C / UMSETZUNG
 - Nutzer meldet ausdrücklich „funktioniert“ nach Übernahme. Unterbaustellen-Screenshot zeigt Eltern-vor-Kind-Reihenfolge mit mehreren Ebenen und Anbindung an Bestandsschacht unter SchachtV2. Galeriescreenshot zeigt Suche78.500 mit Bereich78.400–78.599 und30 Bildern.
 - PORTAL-015 nutzerseitig bestätigt; bestätigte Baumdarstellung und KM-Suchregeln schützen. Ganzkilometerregel13.000→12.000–14.000 bleibt gemäß Auftrag/Quelltest verbindlich; kein zusätzlicher separater Grenzfoto-Nachweis aus Screenshot78.500 behauptet.
 - Keine neue Runtimeänderung, kein neuer Test-/Actionslauf. Bestehende unzugeordnete/kürzere Altmetadaten sind separat offen und werden durch diese Bestätigung nicht als repariert gewertet.
+
+
+### SUBSITE-CHECK-014 – Fortsetzung freigegeben (18.10.2026,15:28 Berlin)
+- Nutzer: jetzt Unterbaustellen bei Fotos untersuchen, warum sie nicht angezeigt werden. Bestätigter Baum/KM-Suche bleiben geschützt. Aktuellen Server-/Androidstand und Metadaten-/Link-/Knotenauflösung vergleichen; keine Produktionszuordnung ohne belegte Identität umschreiben. Erst Ursache unterscheiden: fehlender Schlüssel, nicht auflösbarer Schlüssel oder Darstellungsfehler. CI-Budgetschutz weiter beachten.
