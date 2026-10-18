@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from psycopg.types.json import Jsonb
@@ -30,6 +30,7 @@ from .btb_documents import (
     snapshot_photo_metadata,
     upsert_final_pdf_file,
 )
+from .btb_times import inherited_firm_times, preserve_entry_time_fields
 from .btb_pdf import PDF_RENDERER_VERSION, render_btb_pdf
 from .btb_photo_meta import canonical_photo_metadata, merge_btb_photo_metadata, normalize_btb_photo_override
 from .btb_participants import (
@@ -435,6 +436,41 @@ def get_btb(
     }
 
 
+def _weather_btb(btb_id, user):
+    with transaction() as conn, conn.cursor() as cur:
+        btb = _load_btb(cur, btb_id)
+        context = worksite_context(cur, user, btb["worksite_id"])
+        require_permission(context, "btb.view")
+        _assert_team_member(cur, user, btb["team_id"])
+        return dict(btb)
+
+
+@router.get("/btbs/{btb_id}/weather/locations")
+def btb_weather_locations(btb_id: UUID, q: str = Query(min_length=2, max_length=120), user: dict[str, Any] = Depends(current_portal_user)) -> dict:
+    _weather_btb(btb_id, user)
+    if len(q.strip()) < 2:
+        raise HTTPException(400, "Bitte mindestens zwei Zeichen des Ortes eingeben.")
+    from .btb_weather import locations
+    try:
+        return {"locations": locations(q.strip())}
+    except Exception:
+        raise HTTPException(502, "Ortssuche derzeit nicht verfügbar. Wetter kann manuell erfasst werden.")
+
+
+@router.get("/btbs/{btb_id}/weather/suggestion")
+def btb_weather_suggestion(btb_id: UUID, lat: float = Query(ge=-90, le=90), lon: float = Query(ge=-180, le=180), user: dict[str, Any] = Depends(current_portal_user)) -> dict:
+    btb = _weather_btb(btb_id, user)
+    if not btb.get("started_at") or not btb.get("ended_at"):
+        raise HTTPException(400, "Bitte zuerst Beginn und Ende der Berichtszeit speichern.")
+    from .btb_weather import weather_suggestion
+    try:
+        return weather_suggestion(lat, lon, btb["started_at"], btb["ended_at"])
+    except ValueError as error:
+        raise HTTPException(400, str(error))
+    except Exception:
+        raise HTTPException(502, "Wetterabruf derzeit nicht verfügbar. Vorhandene Angaben bleiben erhalten.")
+
+
 @router.patch("/btbs/{btb_id}/header")
 def update_btb_header(
     btb_id: UUID,
@@ -477,6 +513,18 @@ def update_btb_header(
         if not row:
             raise HTTPException(409, {"code": "VERSION_CONFLICT", "current_version": btb["version"]})
         row = dict(row)
+        if {"started_at", "ended_at"} & effective.keys():
+            cur.execute("SELECT id, payload FROM tb.btb_entries WHERE btb_id=%s AND section='FIRMA' AND deleted_at IS NULL FOR UPDATE", (btb_id,))
+            for firm in cur.fetchall():
+                previous = firm["payload"] or {}
+                if previous.get("isDeleted"):
+                    continue
+                inherited = inherited_firm_times(previous, btb, row)
+                if inherited == previous:
+                    continue
+                cur.execute("UPDATE tb.btb_entries SET payload=%s, version=version+1, updated_by=%s, updated_at=now() WHERE id=%s RETURNING version", (Jsonb(inherited), user["user_id"], firm["id"]))
+                changed = cur.fetchone()
+                emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB_ENTRY", entity_id=firm["id"], operation="UPDATE", entity_version=changed["version"], actor_user_id=user["user_id"])
         emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id, operation="UPDATE", entity_version=row["version"], actor_user_id=user["user_id"])
         finish_mutation(cur, user=user, context=mutation, receipt_type="BTB_HEADER_UPDATE", entity_id=btb_id, result_version=row["version"], response_payload=row)
     remove_storage_keys(invalidated_pdf_keys)
@@ -630,6 +678,8 @@ def update_entry(
                     },
                 )
             updates["section"] = target_section
+        if "payload" in updates:
+            updates["payload"] = preserve_entry_time_fields(current["payload"] or {}, updates["payload"], btb)
         next_payload = updates.get("payload", current["payload"])
         _validate_entry_payload_node(cur, btb, next_payload)
         effective = {key: value for key, value in updates.items() if current.get(key) != value}

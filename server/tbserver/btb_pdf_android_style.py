@@ -533,6 +533,9 @@ def _section_lines(
         prefix_company, clean_text = _strip_company_prefix(payload.get("text"), known_names)
         company = company or prefix_company
         time = _text(payload.get("uhrzeit"))
+        end_time = _text(payload.get("uhrzeitBis"))
+        if end_time:
+            time = (time + "–" + end_time) if time else ("bis " + end_time)
         km = _km_range(payload.get("kmVon"), payload.get("kmBis"))
         value = " ".join(
             part

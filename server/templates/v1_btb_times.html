@@ -1,0 +1,28 @@
+<script>
+// Fixed quarter-hour options; native minute pickers do not consistently honor step.
+function tbQuarterOptions(value){
+  const out=[{value:'',label:'–:–'}];
+  for(let n=0;n<1440;n+=15){const t=String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');out.push({value:t,label:t});}
+  if(value&&!out.some(o=>o.value===value))out.push({value:value,label:value+' (bisheriger Wert)'});
+  return out;
+}
+function tbRefreshQuarterTimes(root){
+  (root||document).querySelectorAll('input[type="time"],input[type="datetime-local"]').forEach(function(input){
+    let box=input._quarterBox;
+    if(!box){
+      input.hidden=true;
+      box=document.createElement('span');box.style.display='flex';box.style.gap='8px';input.after(box);input._quarterBox=box;
+      if(input.type==='datetime-local'){
+        box.day=document.createElement('input');box.day.type='date';box.day.style.minWidth='0';box.day.style.flex='2';box.day.setAttribute('aria-label',(input.labels?.[0]?.textContent||'Datum')+' Datum');box.append(box.day);
+      }
+      box.clock=document.createElement('select');box.clock.id=(input.id||'tb-time')+'-quarter';box.clock.style.minWidth='0';box.clock.style.flex='1';box.clock.setAttribute('aria-label',(input.labels?.[0]?.textContent||'Uhrzeit')+' Uhrzeit');box.append(box.clock);if(input.labels?.[0])input.labels[0].htmlFor=box.clock.id;
+      function changed(){input.value=box.day?(box.day.value&&box.clock.value?box.day.value+'T'+box.clock.value:''):box.clock.value;input.dispatchEvent(new Event('change',{bubbles:true}));}
+      box.clock.addEventListener('change',changed);if(box.day)box.day.addEventListener('change',changed);
+    }
+    const parts=input.value.split('T'),value=box.day?(parts[1]||''):input.value;
+    if(box.day)box.day.value=parts[0]||'';
+    box.clock.replaceChildren(...tbQuarterOptions(value).map(function(o){const el=document.createElement('option');el.value=o.value;el.textContent=o.label;return el;}));
+    box.clock.value=value;box.clock.disabled=input.disabled;if(box.day)box.day.disabled=input.disabled;
+  });
+}
+</script>

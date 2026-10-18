@@ -53,7 +53,7 @@
   .btb-weather-editor-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 0 8px}.btb-weather-edit-row{display:grid;grid-template-columns:110px 100px 1fr 1fr 100px auto;gap:8px;align-items:end;padding:10px 0;border-top:1px solid #eaecf0}.btb-weather-edit-row:first-child{border-top:0}.btb-weather-edit-row label{font-size:12px}
   .btb-extra-fold{margin-top:12px;border:1px solid #e4e7ec;border-radius:14px;overflow:hidden}
   .btb-extra-fold>summary{cursor:pointer;padding:12px 14px;font-weight:700;background:#f8fafc}
-  @media (max-width:760px){.btb-overview-grid{grid-template-columns:1fr}}
+  @media (max-width:760px){.btb-overview-grid{grid-template-columns:1fr}.btb-weather-edit-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media (max-width:680px){.btb-kv{grid-template-columns:1fr}.btb-kv-label{margin-top:4px}.btb-modal{padding:8px}.btb-modal-grid{grid-template-columns:1fr}.btb-photo-card img{height:220px}}
 </style>
 {% endblock %}
@@ -96,7 +96,7 @@
             <div><label for="startedAt">Beginn</label><input id="startedAt" type="datetime-local"></div>
             <div><label for="endedAt">Ende</label><input id="endedAt" type="datetime-local"></div>
           </div>
-          <div class="actions" style="margin-top:12px"><button id="saveHeader" type="submit">Speichern</button></div>
+          <div id="reportTimeProposal" class="muted" style="margin-top:10px"></div><div class="actions" style="margin-top:12px"><button id="saveHeader" type="submit">Speichern</button></div>
         </form>
       </details>
     </div>
@@ -162,7 +162,7 @@
     <div class="btb-modal-head"><h3>Wetter bearbeiten</h3><button id="weatherModalClose" class="secondary" type="button">Schließen</button></div>
     <div class="btb-modal-body">
       <div class="btb-modal-grid">
-        <div class="wide"><label for="weatherLocation">Ort / Wetterstation</label><input id="weatherLocation" type="text"></div>
+        <div class="wide"><label for="weatherLocation">Ort / Wetterstation</label><input id="weatherLocation" type="text" placeholder="Ort oder Postleitzahl"><div class="actions" style="margin-top:8px"><button type="button" id="weatherFindPlace">Ort suchen</button><button type="button" id="weatherFetch">Wetter abrufen</button></div><select id="weatherPlace" aria-label="Gefundene Orte" hidden></select><p id="weatherLookupStatus" class="muted" role="status"></p><small>Wetterdaten: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>. Vorschläge bleiben bis zum Speichern bearbeitbar.</small></div>
         <div class="wide"><label for="weatherLegacy">Zusätzliche Wetterangabe</label><textarea id="weatherLegacy" rows="2"></textarea></div>
       </div>
       <div class="btb-weather-editor-head"><b>Wetterzeiten</b><button id="weatherAddSlot" class="btb-add" type="button">+ Zeitpunkt</button></div>
@@ -208,6 +208,7 @@
 </div>
 {% endblock %}
 {% block scripts %}
+{% include "v1_btb_times.html" %}
 <script>
 const pagePrefix={{ (page_prefix|default('/portal/v1'))|tojson }};
 const btbId={{ btb_id|tojson }};
@@ -621,6 +622,35 @@ function firmDirectory(){
   });
   return map;
 }
+function reportClock(field){const t=timeOnly(current&&current[field]);return t==='–'?'':t;}
+function firmTimeBinding(prefix){
+  return editorValue('edit-'+prefix+'Von')===reportClock('started_at')&&editorValue('edit-'+prefix+'Bis')===reportClock('ended_at')?'REPORT':'MANUAL';
+}
+let reportProposalLoadedFor='',reportProposal=null;
+async function loadReportTimeProposal(){
+  const identity=current.worksite_id+':'+current.team_id;
+  if(reportProposalLoadedFor===identity)return;
+  const result=await tbApi('/api/v1/worksites/'+encodeURIComponent(current.worksite_id)+'/teams/'+encodeURIComponent(current.team_id)+'/btbs');
+  const previous=(result.data.btbs||[]).filter(b=>String(b.id)!==String(btbId)&&b.started_at&&b.ended_at&&(!current.work_date||String(b.work_date)<=String(current.work_date))).sort((a,b)=>String(b.work_date).localeCompare(String(a.work_date))||String(b.created_at).localeCompare(String(a.created_at)))[0];
+  reportProposalLoadedFor=identity;reportProposal=previous||null;
+  if(previous)document.getElementById('reportTimeProposal').innerHTML='Letzter BTB ('+esc(deDate(previous.work_date))+'): '+esc(timeOnly(previous.started_at))+'–'+esc(timeOnly(previous.ended_at))+' <button type="button" class="secondary" onclick="applyReportTimeProposal()">Zeiten übernehmen</button>';
+}
+function applyReportTimeProposal(){
+  if(!reportProposal)return;
+  const day=document.getElementById('workDate').value;if(!day){show('err','Bitte zuerst den Arbeitstag wählen.');return;}
+  const start=timeOnly(reportProposal.started_at),end=timeOnly(reportProposal.ended_at);
+  const next=new Date(day+'T12:00:00');if(end<start)next.setDate(next.getDate()+1);
+  const endDay=next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0')+'-'+String(next.getDate()).padStart(2,'0');
+  document.getElementById('startedAt').value=day+'T'+start;document.getElementById('endedAt').value=endDay+'T'+end;tbRefreshQuarterTimes();
+}
+async function hideFirmArea(id,section){
+  const firm=firmDirectory()[id];if(!firm)return;
+  const children=entries.filter(e=>firmIdOf(e)===id&&String(e.section).toUpperCase()===section);
+  if(children.length){show('err','Bitte zuerst die '+(section==='GERAET'?'Geräte':'Personalzeilen')+' dieser Firma entfernen.');return;}
+  const payload=JSON.parse(JSON.stringify(firm.payload));payload[section==='GERAET'?'visibleInMaschinen':'visibleInPersonal']=false;
+  try{await tbApi('/api/v1/btbs/'+btbId+'/entries/'+encodeURIComponent(firm.entry.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_version:firm.entry.version,payload:payload})});await loadBtb();}catch(e){show('err',e.message||String(e));}
+}
+
 function firmTime(firm,section){
   if(!firm)return '';
   const p=firm.payload||{};
@@ -641,7 +671,7 @@ function compactLine(entry){
     return [count?count+' ×':'',name].filter(Boolean).join(' ');
   }
   const text=cleanDisplayText(p.text||p.beschreibung||p.kommentar||'');
-  const time=String(p.uhrzeit||'').trim();
+  const time=[p.uhrzeit,p.uhrzeitBis].filter(Boolean).join('–');
   const km1=p.kmVon!=null?String(p.kmVon).replace('.',','):'';
   const km2=p.kmBis!=null?String(p.kmBis).replace('.',','):'';
   const km=km1?(km2&&km2!==km1?'KM '+km1+'–'+km2:'KM '+km1):'';
@@ -740,7 +770,7 @@ function renderFirmGrouped(section,list,firms){
     const time=firm?firmTime(firm,section):'';
     let headActions='';
     if(firm&&canEditCurrentBtb()){
-      headActions='<div class="btb-row-actions">'+addButton(section,id,section==='PERSONAL'?'Personal':'Gerät')+editorButton(firm.entry,'Firma bearbeiten')+'</div>';
+      headActions='<div class="btb-row-actions">'+addButton(section,id,section==='PERSONAL'?'Personal':'Gerät')+editorButton(firm.entry,'Firma bearbeiten')+'<button class="secondary" type="button" onclick="hideFirmArea(\''+esc(id)+'\',\''+esc(section)+'\')">Hier entfernen</button></div>';
     }
     return '<div class="btb-firm"><div class="btb-firm-head"><div><span class="btb-firm-name">'+esc(title)+'</span>'+
       (time?'<span class="btb-firm-time">'+esc(time)+'</span>':'')+'</div>'+headActions+'</div>'+
@@ -779,7 +809,7 @@ function renderContentNodeGroups(rows){
     const label=key==='__main__'?'Hauptbaustelle':worksiteNodeLabel(key);
     return '<div class="btb-node-group"><div class="btb-node-title">'+esc(label)+'</div>'+
       byNode[key].sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)).map(function(e){
-        return '<div class="btb-compact-row"><div class="btb-compact-text">'+esc(compactLine(e))+'</div>'+rowActions(e)+'</div>';
+        return '<div class="btb-compact-row"><div class="btb-compact-text">'+esc(compactLine(e))+'</div>'+rowActions(e)+(canEditCurrentBtb()?'<button type="button" class="secondary" onclick="openEntryEditor(\''+esc(e.id)+'\')">Fotos hinzufügen</button>':'')+'</div>';
       }).join('')+'</div>';
   }).join('');
 }
@@ -865,6 +895,7 @@ function editorSelect(id,label,options,value,wide){
     '</select></div>';
 }
 function openEntryEditor(id){
+  if(document.getElementById('entryModalSave').disabled)return;
   const entry=entries.find(e=>String(e.id)===String(id)); if(!entry)return;
   creatingEntry=null;editingEntry=entry;
   const section=String(entry.section||'ALLGEMEIN').toUpperCase(), p=entry.payload||{};
@@ -891,6 +922,7 @@ function openEntryEditor(id){
   del.style.display='inline-block';
   del.textContent=section==='FIRMA'?'Firma löschen':'Löschen';
   document.getElementById('entryModalSave').textContent='Speichern';
+  tbRefreshQuarterTimes(document.getElementById('entryModalBody'));
   document.getElementById('entryModal').classList.add('open');
   document.getElementById('entryModal').setAttribute('aria-hidden','false');
 }
@@ -911,11 +943,13 @@ function contentEditorFields(section,p){
   return editorSelect('edit-section','BTB-Punkt',contentSectionOptions(),section,true)+
     editorSelect('edit-firmaSelect','Firma / Allgemein',firmOptions(true,firmValue),firmValue,true)+
     editorSelect('edit-nodeSelect','Unterbaustelle / Bauobjekt',worksiteNodeOptions(nodeValue),nodeValue,true)+
-    editorField('edit-uhrzeit','Uhrzeit',p&&p.uhrzeit||'','time')+
+    editorField('edit-uhrzeit','Von Uhrzeit',p&&p.uhrzeit||'','time')+editorField('edit-uhrzeitBis','Bis Uhrzeit',p&&p.uhrzeitBis||'','time')+
     editorField('edit-kmVon','KM von',(p&&p.kmVon!=null)?p.kmVon:'','number')+editorField('edit-kmBis','KM bis',(p&&p.kmBis!=null)?p.kmBis:'','number')+
-    editorField('edit-text','Text',p&&(p.text||p.beschreibung||p.kommentar)||'','textarea',true);
+    editorField('edit-text','Text',p&&(p.text||p.beschreibung||p.kommentar)||'','textarea',true)+
+    '<div class="wide"><label for="entryPhotos">Fotos hinzufügen</label><input id="entryPhotos" type="file" accept="image/*" multiple><p class="muted">Firma, Unterbaustelle und Text werden übernommen. Maximal 2 MB je Foto.</p><span id="entryPhotoProgress" role="status"></span></div>';
 }
 function openEntryCreator(section,firmId){
+  if(document.getElementById('entryModalSave').disabled)return;
   if(!canEditCurrentBtb())return;
   editingEntry=null;
   creatingEntry={section:String(section||'').toUpperCase(),firmId:String(firmId||'')};
@@ -925,8 +959,8 @@ function openEntryCreator(section,firmId){
     const scope=String(creatingEntry.firmId||'').toUpperCase();
     title=scope==='PERSONAL'?'Firma für Personal hinzufügen':scope==='MASCHINEN'?'Firma für Geräte / Maschinen hinzufügen':'Firma hinzufügen';
     fields=editorField('edit-name','Firma','','text',true)+
-      (scope!=='MASCHINEN'?editorField('edit-personalVon','Personal von',timeOnly(current.started_at)==='–'?'':timeOnly(current.started_at),'time')+editorField('edit-personalBis','Personal bis',timeOnly(current.ended_at)==='–'?'':timeOnly(current.ended_at),'time'):'')+
-      (scope!=='PERSONAL'?editorField('edit-maschinenVon','Geräte von',timeOnly(current.started_at)==='–'?'':timeOnly(current.started_at),'time')+editorField('edit-maschinenBis','Geräte bis',timeOnly(current.ended_at)==='–'?'':timeOnly(current.ended_at),'time'):'');
+      editorField('edit-personalVon','Personal von',reportClock('started_at'),'time')+editorField('edit-personalBis','Personal bis',reportClock('ended_at'),'time')+
+      editorField('edit-maschinenVon','Geräte von',reportClock('started_at'),'time')+editorField('edit-maschinenBis','Geräte bis',reportClock('ended_at'),'time');
   }else if(s==='PERSONAL'){
     title='Personal hinzufügen';
     fields=editorField('edit-anzahl','Anzahl',1,'number')+editorField('edit-rolle','Rolle','','text');
@@ -943,12 +977,14 @@ function openEntryCreator(section,firmId){
   document.getElementById('entryModalBody').innerHTML='<div class="btb-modal-grid">'+fields+'</div>';
   document.getElementById('entryModalDelete').style.display='none';
   document.getElementById('entryModalSave').textContent='Hinzufügen';
+  tbRefreshQuarterTimes(document.getElementById('entryModalBody'));
   document.getElementById('entryModal').classList.add('open');
   document.getElementById('entryModal').setAttribute('aria-hidden','false');
 }
 window.openEntryCreator=openEntryCreator;
 window.openEntryEditor=openEntryEditor;
-function closeEntryEditor(){
+function closeEntryEditor(force){
+  if(force!==true&&document.getElementById('entryModalSave').disabled)return;
   editingEntry=null;creatingEntry=null;
   document.getElementById('entryModal').classList.remove('open');
   document.getElementById('entryModal').setAttribute('aria-hidden','true');
@@ -962,9 +998,10 @@ function buildEditedPayload(){
   const e=editingEntry, section=String(e.section||'').toUpperCase();
   const p=JSON.parse(JSON.stringify(e.payload||{}));
   if(section==='FIRMA'){
-    p.name=editorValue('edit-name');
-    p.personalVon=editorValue('edit-personalVon')||null;p.personalBis=editorValue('edit-personalBis')||null;
-    p.maschinenVon=editorValue('edit-maschinenVon')||null;p.maschinenBis=editorValue('edit-maschinenBis')||null;
+    p.name=editorValue('edit-name');if(!p.name)throw new Error('Bitte Firma eingeben.');
+    if(document.getElementById('edit-personalVon')){p.personalVon=editorValue('edit-personalVon')||null;p.personalBis=editorValue('edit-personalBis')||null;}
+    if(document.getElementById('edit-maschinenVon')){p.maschinenVon=editorValue('edit-maschinenVon')||null;p.maschinenBis=editorValue('edit-maschinenBis')||null;p.maschinenZeitbindung=firmTimeBinding('maschinen');}
+    if(document.getElementById('edit-personalVon'))p.personalZeitbindung=firmTimeBinding('personal');
   }else if(section==='PERSONAL'){
     p.anzahl=numberOrNull('edit-anzahl');p.rolle=editorValue('edit-rolle');
   }else if(section==='GERAET'){
@@ -972,6 +1009,7 @@ function buildEditedPayload(){
   }else{
     const time=editorValue('edit-uhrzeit'), kmVon=numberOrNull('edit-kmVon'), kmBis=numberOrNull('edit-kmBis'), text=editorValue('edit-text');
     if(time)p.uhrzeit=time;else delete p.uhrzeit;
+    if(document.getElementById('edit-uhrzeitBis')){const end=editorValue('edit-uhrzeitBis');p.uhrzeitBis=end||null;}
     if(kmVon!=null)p.kmVon=kmVon;else delete p.kmVon;
     if(kmBis!=null)p.kmBis=kmBis;else delete p.kmBis;
     if(document.getElementById('edit-firmaSelect')){
@@ -993,6 +1031,7 @@ function createSectionItemPayload(){
   const time=editorValue('edit-uhrzeit'), kmVon=numberOrNull('edit-kmVon'), kmBis=numberOrNull('edit-kmBis'), text=editorValue('edit-text');
   const firm=editorValue('edit-firmaSelect'),node=editorValue('edit-nodeSelect');
   if(time)p.uhrzeit=time;
+  const end=editorValue('edit-uhrzeitBis');if(end)p.uhrzeitBis=end;
   p.text=text;
   if(kmVon!=null)p.kmVon=kmVon;
   if(kmBis!=null)p.kmBis=kmBis;
@@ -1014,12 +1053,13 @@ async function createModalEntry(){
   if(s==='FIRMA'){
     const name=editorValue('edit-name');if(!name)throw new Error('Bitte Firma eingeben.');
     const scope=String(ctx.firmId||'').toUpperCase();
-    const visibleInPersonal=scope!=='MASCHINEN',visibleInMaschinen=scope!=='PERSONAL';
+    const visibleInPersonal=true,visibleInMaschinen=true;
     const id=newFirmId(),index=entries.filter(e=>String(e.section||'').toUpperCase()==='FIRMA').length;
     await postManagedEntry('FIRMA','firma:'+id,index,{
       firmaId:id,name:name,
       personalVon:visibleInPersonal?(editorValue('edit-personalVon')||null):null,personalBis:visibleInPersonal?(editorValue('edit-personalBis')||null):null,
       maschinenVon:visibleInMaschinen?(editorValue('edit-maschinenVon')||null):null,maschinenBis:visibleInMaschinen?(editorValue('edit-maschinenBis')||null):null,
+      personalZeitbindung:firmTimeBinding('personal'),maschinenZeitbindung:firmTimeBinding('maschinen'),
       visibleInPersonal:visibleInPersonal,visibleInMaschinen:visibleInMaschinen,isDeleted:false
     });
     return;
@@ -1047,29 +1087,32 @@ async function createModalEntry(){
       :sectionSlotPrefix(targetSection);
     if(!prefix)throw new Error('Abschnitt wird nicht unterstützt.');
     const index=nextSlotIndex(prefix);
-    await postManagedEntry(targetSection,prefix+index,index,payload);
-    return;
+    return await postManagedEntry(targetSection,prefix+index,index,payload);
   }
   throw new Error('Abschnitt wird nicht unterstützt.');
 }
 async function saveModalEntry(){
+  const button=document.getElementById('entryModalSave');if(button.disabled)return;button.disabled=true;let saved=false;document.getElementById('entryModalBody').inert=true;
   try{
+    const targetSection=document.getElementById('edit-section')?editorValue('edit-section'):String((editingEntry||creatingEntry||{}).section||'');
+    const photoPayload=document.getElementById('entryPhotos')?(creatingEntry?createSectionItemPayload():buildEditedPayload()):null;
     if(creatingEntry){
-      await createModalEntry();
-      closeEntryEditor();show('ok','Eintrag hinzugefügt.');await loadBtb();return;
+      const result=await createModalEntry();
+      // Keep saved identity for retries after a partial photo-upload failure.
+      if(photoPayload&&result?.data){editingEntry=result.data;creatingEntry=null;}
+    }else{
+      if(!editingEntry)return;
+      const payload=buildEditedPayload();
+      if(targetSection!==String(editingEntry.section)||JSON.stringify(canonicalValue(payload))!==JSON.stringify(canonicalValue(editingEntry.payload||{}))){
+        const result=await tbApi('/api/v1/btbs/'+btbId+'/entries/'+encodeURIComponent(editingEntry.id),{
+          method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_version:editingEntry.version,section:targetSection,sort_order:Number(editingEntry.sort_order||0),payload:payload})
+        });editingEntry=result.data;
+      }
     }
-    if(!editingEntry)return;
-    const targetSection=document.getElementById('edit-section')?editorValue('edit-section'):String(editingEntry.section||'');
-    await tbApi('/api/v1/btbs/'+btbId+'/entries/'+encodeURIComponent(editingEntry.id),{
-      method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        base_version:editingEntry.version,
-        section:targetSection,
-        sort_order:Number(editingEntry.sort_order||0),
-        payload:buildEditedPayload()
-      })
-    });
-    closeEntryEditor();show('ok','Eintrag gespeichert.');await loadBtb();
-  }catch(error){show('err',error.message||String(error));}
+    saved=true;
+    if(photoPayload)await uploadEntryPhotos(targetSection,photoPayload);
+    closeEntryEditor(true);show('ok','Eintrag und ausgewählte Fotos gespeichert.');await loadBtb();
+  }catch(error){show('err',(saved?'Eintrag ist gespeichert. Fotos noch nicht vollständig übertragen; bitte erneut Speichern drücken. ':'')+(error.message||String(error)));}finally{button.disabled=false;document.getElementById('entryModalBody').inert=false;}
 }
 async function deleteEntryId(id){
   await tbApi('/api/v1/btbs/'+btbId+'/entries/'+encodeURIComponent(id),{method:'DELETE'});
@@ -1139,6 +1182,41 @@ function weatherSlots(){
   if(Array.isArray(meta.weatherSlots)&&meta.weatherSlots.length)return meta.weatherSlots;
   return [];
 }
+let weatherDraftBlock={},weatherPlace=null,weatherPlaces=[],weatherRequest=0;
+async function findWeatherPlace(){
+  const query=document.getElementById('weatherLocation').value.trim(),status=document.getElementById('weatherLookupStatus');
+  if(query.length<2){status.textContent='Bitte mindestens zwei Zeichen des Ortes eingeben.';return;}
+  const request=++weatherRequest;status.textContent='Ort wird gesucht …';
+  try{
+    const result=await tbApi('/api/v1/btbs/'+btbId+'/weather/locations?q='+encodeURIComponent(query));
+    if(request!==weatherRequest)return;
+    weatherPlaces=result.data.locations||[];
+    const select=document.getElementById('weatherPlace');select.innerHTML='<option value="">Ort auswählen …</option>'+weatherPlaces.map((p,i)=>'<option value="'+i+'">'+esc(p.label)+'</option>').join('');select.hidden=!weatherPlaces.length;
+    status.textContent=weatherPlaces.length?'Bitte den passenden Ort auswählen.':'Kein Ort gefunden. Bitte Ort oder Postleitzahl genauer eingeben.';
+    if(weatherPlaces.length===1){select.value='0';chooseWeatherPlace();}
+  }catch(e){if(request===weatherRequest)status.textContent=e.message||String(e);}
+}
+function chooseWeatherPlace(){
+  const value=document.getElementById('weatherPlace').value;if(value==='')return;
+  weatherPlace=weatherPlaces[Number(value)];document.getElementById('weatherLocation').value=weatherPlace.label;
+  weatherDraftBlock.source='MANUAL';delete weatherDraftBlock.lat;delete weatherDraftBlock.lon;
+  fetchWeatherSuggestion();
+}
+async function fetchWeatherSuggestion(){
+  const status=document.getElementById('weatherLookupStatus');
+  if(!weatherPlace){await findWeatherPlace();return;}
+  syncWeatherDraftFromDom();
+  if(weatherDraftSlots.some(s=>s.tempC!==''&&s.tempC!=null||s.bewoelkung||s.niederschlag||s.niederschlagMm!==''&&s.niederschlagMm!=null)&&!confirm('Vorhandene Wetterwerte durch einen neuen Vorschlag ersetzen? Gespeichert wird erst mit „Speichern“.'))return;
+  const place={...weatherPlace},request=++weatherRequest;status.textContent='Wetter für die gespeicherte Berichtszeit wird geladen …';
+  try{
+    const result=await tbApi('/api/v1/btbs/'+btbId+'/weather/suggestion?lat='+encodeURIComponent(place.lat)+'&lon='+encodeURIComponent(place.lon));
+    if(request!==weatherRequest)return;
+    weatherDraftBlock={...result.data,locationName:place.label};weatherDraftSlots=result.data.slots||[];
+    renderWeatherEditorRows();tbRefreshQuarterTimes(document.getElementById('weatherEditorRows'));
+    status.textContent='Wettervorschlag geladen (Stundenwerte, keine Messung direkt auf der Baustelle). Bitte prüfen und speichern.';
+  }catch(e){if(request===weatherRequest)status.textContent=e.message||String(e);}
+}
+
 let weatherDraftSlots=[];
 function weatherNumber(value){const raw=String(value??'').trim();if(!raw)return null;const n=Number(raw.replace(',','.'));return Number.isFinite(n)?n:null;}
 function weatherSlotInput(index,field,label,value,type){return '<div><label>'+esc(label)+'</label><input data-weather-field="'+esc(field)+'" type="'+(type||'text')+'" value="'+esc(value??'')+'"></div>';}
@@ -1163,14 +1241,16 @@ function renderWeatherEditorRows(){
 function openWeatherEditor(){
   if(!canEditCurrentBtb())return;
   const meta=androidHeaderMeta(),weather=meta.weather&&typeof meta.weather==='object'&&!Array.isArray(meta.weather)?meta.weather:{};
+  weatherDraftBlock=JSON.parse(JSON.stringify(weather));weatherPlace=Number.isFinite(weather.lat)&&Number.isFinite(weather.lon)?{lat:weather.lat,lon:weather.lon,label:weather.locationName||weather.stationName||''}:null;weatherRequest++;
+  document.getElementById('weatherLookupStatus').textContent='';document.getElementById('weatherPlace').hidden=true;
   document.getElementById('weatherLocation').value=weather.locationName||weather.stationName||'';
   document.getElementById('weatherLegacy').value=typeof meta.wetter==='string'?meta.wetter:'';
   weatherDraftSlots=weatherSlots().map(s=>JSON.parse(JSON.stringify(s||{})));
-  renderWeatherEditorRows();document.getElementById('weatherModal').classList.add('open');document.getElementById('weatherModal').setAttribute('aria-hidden','false');
+  renderWeatherEditorRows();tbRefreshQuarterTimes(document.getElementById('weatherEditorRows'));document.getElementById('weatherModal').classList.add('open');document.getElementById('weatherModal').setAttribute('aria-hidden','false');
 }
-function closeWeatherEditor(){weatherDraftSlots=[];document.getElementById('weatherModal').classList.remove('open');document.getElementById('weatherModal').setAttribute('aria-hidden','true');}
-function addWeatherSlot(){syncWeatherDraftFromDom();weatherDraftSlots.push({uhrzeit:'',tempC:'',bewoelkung:'',niederschlag:'',niederschlagMm:''});renderWeatherEditorRows();}
-function removeWeatherSlot(index){syncWeatherDraftFromDom();weatherDraftSlots.splice(index,1);renderWeatherEditorRows();}
+function closeWeatherEditor(){weatherRequest++;weatherDraftSlots=[];document.getElementById('weatherModal').classList.remove('open');document.getElementById('weatherModal').setAttribute('aria-hidden','true');}
+function addWeatherSlot(){weatherDraftBlock.source='MANUAL';syncWeatherDraftFromDom();weatherDraftSlots.push({uhrzeit:'',tempC:'',bewoelkung:'',niederschlag:'',niederschlagMm:''});renderWeatherEditorRows();tbRefreshQuarterTimes(document.getElementById('weatherEditorRows'));}
+function removeWeatherSlot(index){weatherDraftBlock.source='MANUAL';syncWeatherDraftFromDom();weatherDraftSlots.splice(index,1);renderWeatherEditorRows();tbRefreshQuarterTimes(document.getElementById('weatherEditorRows'));}
 function builtWeatherSlots(){
   syncWeatherDraftFromDom();
   return weatherDraftSlots.map(function(raw){
@@ -1184,7 +1264,7 @@ async function saveWeatherEditor(){
   try{
     const header=JSON.parse(JSON.stringify(current.header||{})),nested=header.tb_helfer_android_v1;
     const meta=nested&&typeof nested==='object'&&!Array.isArray(nested)?nested:header;
-    const weather=meta.weather&&typeof meta.weather==='object'&&!Array.isArray(meta.weather)?JSON.parse(JSON.stringify(meta.weather)):{};
+    const weather=JSON.parse(JSON.stringify(weatherDraftBlock));
     const location=document.getElementById('weatherLocation').value.trim();
     const key=Object.prototype.hasOwnProperty.call(weather,'stationName')&&!Object.prototype.hasOwnProperty.call(weather,'locationName')?'stationName':'locationName';
     if(location)weather[key]=location;else{delete weather.locationName;delete weather.stationName;}
@@ -1217,6 +1297,7 @@ function renderWeather(){
         '<div class="btb-weather-detail">'+esc(detail||'Keine Wetterangabe')+'</div></div>';
     }).join('')+'</div>';
   }
+  if(weather.provider==='Open-Meteo')html+='<p class="muted">'+(weather.source==='MANUAL'?'Manuell angepasst · ':'')+'Wetterdaten: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></p>';
   target.innerHTML=html||'<div class="btb-empty">Keine Wetterdaten vorhanden.</div>';
 }
 function renderHeaderSummary(){
@@ -1325,21 +1406,29 @@ async function loadBtb(){
   document.getElementById('workDate').value=current.work_date||'';
   document.getElementById('startedAt').value=localInput(current.started_at);
   document.getElementById('endedAt').value=localInput(current.ended_at);
-  renderHeaderSummary();renderWeather();renderParticipants();renderEntries();renderPhotos();refreshPhotoUploadSelectors();lifecycle();
+  renderHeaderSummary();renderWeather();renderParticipants();renderEntries();renderPhotos();refreshPhotoUploadSelectors();lifecycle();tbRefreshQuarterTimes();loadReportTimeProposal().catch(()=>{});
 }
 document.getElementById('headerForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
   try{
+    const start=document.getElementById('startedAt').value,end=document.getElementById('endedAt').value;
+    if(start&&end&&new Date(end)<=new Date(start))throw new Error('Das Ende muss nach dem Beginn liegen. Bei Nachtschichten das Enddatum auf den Folgetag setzen.');
     await tbApi('/api/v1/btbs/'+btbId+'/header',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       base_version:current.version,
       work_date:document.getElementById('workDate').value||null,
-      started_at:document.getElementById('startedAt').value||null,
-      ended_at:document.getElementById('endedAt').value||null,
+      started_at:document.getElementById('startedAt').value?new Date(document.getElementById('startedAt').value).toISOString():null,
+      ended_at:document.getElementById('endedAt').value?new Date(document.getElementById('endedAt').value).toISOString():null,
       header:current.header||{}
     })});
     show('ok','Kopfdaten gespeichert.');await loadBtb();
   }catch(error){show('err',error.message||String(error));}
 });
+document.getElementById('weatherFindPlace').addEventListener('click',findWeatherPlace);
+document.getElementById('weatherFetch').addEventListener('click',fetchWeatherSuggestion);
+document.getElementById('weatherPlace').addEventListener('change',chooseWeatherPlace);
+document.getElementById('weatherLocation').addEventListener('input',function(){weatherPlace=null;weatherRequest++;weatherDraftBlock.source='MANUAL';delete weatherDraftBlock.lat;delete weatherDraftBlock.lon;document.getElementById('weatherPlace').hidden=true;});
+document.getElementById('weatherLocation').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();findWeatherPlace();}});
+document.getElementById('weatherEditorRows').addEventListener('change',function(){weatherDraftBlock.source='MANUAL';});
 document.getElementById('weatherModalClose').addEventListener('click',closeWeatherEditor);
 document.getElementById('weatherModalCancel').addEventListener('click',closeWeatherEditor);
 document.getElementById('weatherModalSave').addEventListener('click',saveWeatherEditor);
@@ -1408,12 +1497,8 @@ async function sha256Hex(file){
   const digest=await crypto.subtle.digest('SHA-256',await file.arrayBuffer());
   return Array.from(new Uint8Array(digest)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
 }
-document.getElementById('uploadPhoto').addEventListener('click',async function(){
-  let file=document.getElementById('photoFile').files[0];
-  const progress=document.getElementById('photoProgress');
-  if(!file){show('err','Bitte zuerst ein Foto auswählen.');return;}
-  if(!(window.crypto&&crypto.subtle)){show('err','Dieser Browser unterstützt die sichere SHA-256-Prüfung nicht.');return;}
-  try{
+async function uploadBtbPhoto(file,photoMetadata,progress){
+  if(!(window.crypto&&crypto.subtle))throw new Error('Dieser Browser unterstützt die sichere SHA-256-Prüfung nicht.');
     progress.textContent='Foto wird auf maximal 2 MB vorbereitet …';
     file=await tbPreparePhoto(file);
     progress.textContent='Prüfsumme wird berechnet …';
@@ -1431,37 +1516,47 @@ document.getElementById('uploadPhoto').addEventListener('click',async function()
       const result=await tbApi('/api/v1/uploads/'+encodeURIComponent(upload.id)+'/chunk?offset='+offset,{
         method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:chunk
       });
-      offset=Number(result.data.received_bytes);
+      const next=Number(result.data.received_bytes);if(!Number.isFinite(next)||next<=offset||next>file.size)throw new Error('Uploadfortschritt ist ungültig. Bitte erneut versuchen.');offset=next;
     }
     progress.textContent='Foto wird verknüpft …';
-    const kmRaw=String(document.getElementById('photoKm').value||'').trim().replace(',','.');
-    const km=kmRaw===''?null:Number(kmRaw);
-    const uploadFirmId=String(document.getElementById('photoCompany').value||'').trim();
-    const uploadFirms=firmDirectory();
-    const photoMetadata={
-      typ:String(document.getElementById('photoType').value||'FOTODOKUMENTATION'),
-      kurztext:String(document.getElementById('photoShortText').value||'').trim(),
-      firma:uploadFirmId&&uploadFirmId!=='__general__'?(uploadFirms[uploadFirmId]&&uploadFirms[uploadFirmId].name||''):'',
-      firmaId:uploadFirmId&&uploadFirmId!=='__general__'?uploadFirmId:'',
-      worksiteNodeKey:String(document.getElementById('photoNode').value||'').trim(),
-      objektKennung:String(document.getElementById('photoObject').value||'').trim(),
-      objektBereich:String(document.getElementById('photoArea').value||'').trim()
-    };
-    if(Number.isFinite(km))photoMetadata.km=km;
     const capturedAt=Number.isFinite(Number(file.lastModified))&&Number(file.lastModified)>0
       ?new Date(Number(file.lastModified)).toISOString():null;
-    await tbApi('/api/v1/uploads/'+encodeURIComponent(upload.id)+'/complete',{
+    return await tbApi('/api/v1/uploads/'+encodeURIComponent(upload.id)+'/complete',{
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         entity_type:'BTB',entity_id:btbId,purpose:'BTB_PHOTO',
         captured_at:capturedAt,photo_metadata:photoMetadata
       })
     });
-    document.getElementById('photoFile').value='';
-    document.getElementById('photoShortText').value='';
-    progress.textContent='';
-    show('ok','Foto hochgeladen und mit BTB verknüpft.');await loadBtb();
-  }catch(error){progress.textContent='';show('err',error.message||String(error));}
+}
+function formPhotoMetadata(){
+  const raw=String(document.getElementById('photoKm').value||'').trim().replace(',','.');
+  const firmId=String(document.getElementById('photoCompany').value||'').trim();
+  const firms=firmDirectory(),meta={
+    typ:document.getElementById('photoType').value||'FOTODOKUMENTATION',kurztext:document.getElementById('photoShortText').value.trim(),
+    firma:firms[firmId]?.name||'',firmaId:firmId==='__general__'?'':firmId,
+    worksiteNodeKey:document.getElementById('photoNode').value||'',objektKennung:document.getElementById('photoObject').value.trim(),objektBereich:document.getElementById('photoArea').value.trim()
+  };
+  if(raw){const km=Number(raw);if(!Number.isFinite(km))throw new Error('Bitte einen gültigen Kilometer eingeben.');meta.km=km;meta.kmManuell=true;}
+  return meta;
+}
+document.getElementById('uploadPhoto').addEventListener('click',async function(){
+  const file=document.getElementById('photoFile').files[0],button=this,progress=document.getElementById('photoProgress');
+  if(!file){show('err','Bitte zuerst ein Foto auswählen.');return;}
+  button.disabled=true;
+  try{await uploadBtbPhoto(file,formPhotoMetadata(),progress);document.getElementById('photoFile').value='';document.getElementById('photoShortText').value='';show('ok','Foto hochgeladen und mit BTB verknüpft.');await loadBtb();}
+  catch(error){show('err',error.message||String(error));}finally{progress.textContent='';button.disabled=false;}
 });
+async function uploadEntryPhotos(section,payload){
+  const input=document.getElementById('entryPhotos');if(!input)return;
+  input._completed=input._completed||new Set();
+  const files=Array.from(input.files||[]).filter(f=>!input._completed.has(f));
+  const firms=firmDirectory(),firm=String(payload.firmaId||''),meta={
+    typ:({ARBEIT:'FOTODOKUMENTATION',ABNAHME:'ABNAHMEN',EINWEISUNG_UNTERWEISUNG:'EINWEISUNG_UNTERWEISUNG',BESONDERHEIT:'BESONDERHEITEN',MANGEL_SCHADEN:'MAENGEL_SCHAEDEN'})[section]||'FOTODOKUMENTATION',
+    kurztext:payload.text||payload.beschreibung||payload.kommentar||'',firma:firms[firm]?.name||'',firmaId:firm,worksiteNodeKey:payload.worksiteNodeKey||''
+  };
+  if(payload.kmVon!=null){meta.km=payload.kmVon;meta.kmManuell=true;}
+  for(const file of files){await uploadBtbPhoto(file,meta,document.getElementById('entryPhotoProgress'));input._completed.add(file);}
+}
 
 document.getElementById('deleteBtb').addEventListener('click',async function(){
   if(!current||!confirm('Diesen BTB vollständig löschen?'))return;

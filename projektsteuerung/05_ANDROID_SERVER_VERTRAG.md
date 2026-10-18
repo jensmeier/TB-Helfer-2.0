@@ -957,3 +957,6 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 - Direkte Entry-Fotos nutzen bestehenden BTB-Fotoupload/2.000.000Byte-Grenze und dieselbe Bilderliste, übernehmen typ/Firma/firmaId/worksiteNodeKey/kurztext und optional manuelles Eintrags-KM; keine erfundenen GPS. Kein zweiter Bildbestand.
 - Wettervorschlag ist read-only und speichert erst über bestehenden versionierten Header-PATCH. Wetterformat WeatherBlock/slots bleibt kompatibel; Quelle Open-Meteo, drei Schichtzeitpunkte wie Handy (1/6,1/2,5/6 auf Viertelstunde aufgerundet). Stundenmodellwerte werden als Vorschlag gekennzeichnet, keine angebliche Vor-Ort-Messung. Vorhandene Werte nicht ohne Bestätigung ersetzen.
 - Android HEAD6cec34423e34315c581b743668724abe17daa333 unverändert; kein APK/Android-E2E-Nachweis.
+
+### PORTAL-016 – Serverumsetzung lokal geprüft
+- Additive Felder/Altclient-PATCH-Schutz und automatische verknüpfte Firmenzeiten umgesetzt; lokale Checks152/151 sowie PDF-Text/PNG-Prüfung PASS. Endzeit wird bei fehlendem Feld erhalten, null löscht. MANUAL-Abweichungen bleiben geschützt. Kein app/**, kein APK, kein Android-/NAS-Roundtrip bestätigt. Exakte NAS-Dateien und Grenzen siehe uebergaben/PORTAL-016_NAS_UEBERNAHME.md. CI-Budget geschützt, keine Actions gestartet.
