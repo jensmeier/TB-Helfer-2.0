@@ -6,6 +6,7 @@ function tbCatalogLookup(config){
   const code=config.code?document.getElementById(config.code):null;
   const controls=[route,station,code].filter(Boolean), panels=[];
   let sequence=0;
+  const inventory=document.createElement('div');station.after(inventory);
   for(const input of controls){
     const kind=input===route?'routes':'stations';
     const panel=document.createElement('div');panel.className='muted';panel.setAttribute('aria-live','polite');
@@ -19,10 +20,12 @@ function tbCatalogLookup(config){
         station.dataset.stationCode=item.code||'';
       }
       for(const p of panels)p.replaceChildren();
-      panel.textContent=item.data_available?'Vermessungsdaten vorhanden.':'Im Katalog vorhanden; keine Vermessungsdaten gefunden.';
+      panel.textContent=item.data_available?'Vermessungsdaten vorhanden.':'Im Katalog vorhanden.';
+      tbCatalogInventory(inventory,kind==='routes'?{route_number:item.route_number}:{station_code:item.code},config,()=>sequence);
     }
     input.addEventListener('input',()=>{
       clearTimeout(timer);const token=++sequence,query=input.value.trim();
+      inventory.replaceChildren();
       if(kind==='stations'){
         station.dataset.stationCode='';
         if(code&&input===station)code.value='';
@@ -57,6 +60,70 @@ function tbCatalogLookup(config){
     });
   }
   const form=route.closest('form');
-  if(form)form.addEventListener('reset',()=>{++sequence;for(const p of panels)p.replaceChildren();station.dataset.stationCode='';});
+  if(form)form.addEventListener('reset',()=>{++sequence;inventory.replaceChildren();for(const p of panels)p.replaceChildren();station.dataset.stationCode='';});
+}
+function tbCatalogInventory(target,selection,config,currentSequence){
+  target.replaceChildren();
+  const details=document.createElement('details'),summary=document.createElement('summary');
+  summary.textContent='Vorhandene Daten anzeigen';details.appendChild(summary);target.appendChild(details);
+  const body=document.createElement('div');details.appendChild(body);
+  const token=currentSequence();let loaded=false;
+  const labels={GLEIS:'Gleise',WEICHE:'Weichen',WEICHENVERBINDUNG:'Weichenverbindungen',STRECKE:'Streckenachsen',UNBEKANNT:'Weitere Achsen'};
+  const km=value=>(Number(value)/1000).toLocaleString('de-DE',{minimumFractionDigits:3,maximumFractionDigits:3});
+  details.addEventListener('toggle',async()=>{
+    if(!details.open||loaded)return;loaded=true;body.textContent='Bestand wird geladen …';
+    try{
+      const params=new URLSearchParams();
+      for(const [key,value] of Object.entries(selection))if(value)params.set(key,value);
+      const result=await tbApi('/api/v1/catalog/inventory?'+params.toString());
+      if(token!==currentSequence())return;
+      body.replaceChildren();const data=result.data,items=data.rows||[];
+      summary.textContent='Vorhandene Daten ('+items.length+')';
+      const counts=document.createElement('p');
+      counts.textContent='Gemeinsamer Bestand: '+(Object.entries(data.counts||{}).map(([kind,n])=>n+' '+(labels[kind]||kind)).join(' · ')||'Keine gemeinsamen Vermessungsdaten vorhanden.');
+      body.appendChild(counts);
+      if(!items.length)return;
+      const filter=document.createElement('input');filter.type='search';filter.placeholder='Gleis, Weiche oder Datenart suchen';filter.setAttribute('aria-label','Vorhandene Daten filtern');body.appendChild(filter);
+      const list=document.createElement('div');body.appendChild(list);let limit=40;
+      function render(){
+        list.replaceChildren();const query=filter.value.trim().toLocaleLowerCase('de-DE');
+        const found=items.filter(row=>[row.label,row.kind,row.track_key,row.object_key,row.route_number].join(' ').toLocaleLowerCase('de-DE').includes(query));
+        for(const row of found.slice(0,limit)){
+          const card=document.createElement('div');card.className='item';
+          const title=document.createElement('b');title.textContent=(labels[row.kind]||row.kind)+' · '+row.label;card.appendChild(title);
+          if(row.route_number){const p=document.createElement('div');p.textContent='Strecke '+row.route_number;card.appendChild(p);}
+          if(row.selectable&&config.track&&(row.object_key||row.track_key)){
+            const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='Gleis / Weiche übernehmen';
+            button.addEventListener('click',()=>{
+              const value=row.object_key?row.object_key.replace(/^W:/,'W ').replace(/^WVB:/,'WVB '):row.track_key;
+              document.getElementById(config.track).value=value;
+              if(row.route_number)document.getElementById(config.route).value=row.route_number;
+            });card.appendChild(button);
+          }
+          const parts=row.segments||[];
+          if(!parts.length){const p=document.createElement('p');p.textContent='Keine Geometrie vorhanden.';card.appendChild(p);}
+          for(const [index,part] of parts.entries()){
+            const p=document.createElement('div');
+            const valid=part.km_from_m!==null&&part.km_to_m!==null&&Number.isFinite(Number(part.km_from_m))&&Number.isFinite(Number(part.km_to_m));
+            p.textContent=(parts.length>1?'Abschnitt '+(index+1)+': ':'')+(valid?'km '+km(part.km_from_m)+'–'+km(part.km_to_m)+(part.status==='MANUELL'?' (manuell)':''):
+              part.status==='UNPLAUSIBEL'?'Daten vorhanden, KM-Zuordnung nicht belastbar.':'Daten vorhanden, ohne KM-Zuordnung.');
+            card.appendChild(p);
+            if(valid&&config.kmFrom&&config.kmTo){
+              const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='KM übernehmen';
+              button.addEventListener('click',()=>{
+                document.getElementById(config.kmFrom).value=String(Number(part.km_from_m)/1000);
+                document.getElementById(config.kmTo).value=String(Number(part.km_to_m)/1000);
+              });card.appendChild(button);
+            }
+          }
+          list.appendChild(card);
+        }
+        if(found.length>limit){const more=document.createElement('button');more.type='button';more.textContent='Weitere anzeigen ('+(found.length-limit)+')';more.addEventListener('click',()=>{limit+=40;render();});list.appendChild(more);}
+        if(!found.length){const p=document.createElement('p');p.textContent='Keine passenden Objekte.';list.appendChild(p);}
+      }
+      filter.addEventListener('input',()=>{limit=40;render();});render();
+    }catch(error){if(token===currentSequence()){body.textContent='Bestand konnte nicht geladen werden: '+error.message;loaded=false;}}
+  });
 }
 </script>
+

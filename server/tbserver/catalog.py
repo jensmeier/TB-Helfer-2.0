@@ -234,6 +234,21 @@ def _receipt(
     )
 
 
+@router.get("/inventory")
+def catalog_inventory(
+    route_number: str | None = Query(default=None, max_length=80),
+    station_code: str | None = Query(default=None, max_length=50),
+    _: dict[str, Any] = Depends(current_portal_user),
+) -> dict[str, Any]:
+    from .catalog_inventory import shared_inventory
+
+    route = (route_number or "").strip() or None
+    station = (station_code or "").strip().upper() or None
+    if not route and not station:
+        raise HTTPException(400, "Bitte Strecke oder Bahnhof auswählen.")
+    return shared_inventory(route, station)
+
+
 @router.get("/lookup")
 def lookup_catalog(
     q: str = Query(min_length=1, max_length=100),
@@ -246,7 +261,7 @@ def lookup_catalog(
     query = q.strip()
     if not query:
         return {"routes": [], "stations": [], "warnings": []}
-    survey = search_catalog(q=query, limit=30, user=user)
+    survey = search_catalog(q=query, limit=30, user={"company_role": "USER", "company_id": None})
     routes: dict[str, dict] = {}
     stations: dict[str, dict] = {}
     warnings = []
@@ -771,4 +786,5 @@ def mutate(
             response=response,
         )
         return response
+
 

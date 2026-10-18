@@ -92,7 +92,7 @@ env['__package__']='tbtest'
 functions(Path('tbserver/catalog.py'),{'lookup_catalog'},env)
 cursor=Cursor([[],[]]);user={'user_id':'u'};result=env['lookup_catalog']('mho',user)
 assert result['stations'][0]=={'code':'MHO','name':'Holzkirchen','data_available':False}
-assert seen[-1]['user'] is user
+assert seen[-1]['user']=={'company_role':'USER','company_id':None}
 assert result['routes'][0]['data_available'] is True
 ref._entries=lambda:(_ for _ in ()).throw(RuntimeError('missing'))
 cursor=Cursor([[],[]]);assert env['lookup_catalog']('5501',user)['warnings']

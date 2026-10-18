@@ -791,7 +791,7 @@ async function deleteAcceptance(id,version,wasFinalized){
 }
 window.deleteAcceptance=deleteAcceptance;
 
-tbCatalogLookup({route:'nodeRoute',station:'nodeStation'});
+tbCatalogLookup({route:'nodeRoute',station:'nodeStation',track:'nodeTrack',kmFrom:'nodeKmFrom',kmTo:'nodeKmTo'});
 document.getElementById('nodeForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
   try{
@@ -961,5 +961,6 @@ select(panels.some(p=>p[0]===location.hash.slice(1))?location.hash.slice(1):'ove
 })();
 </script>
 {% endblock %}
+
 
 
