@@ -972,3 +972,7 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 
 ### PORTAL-019 – Additive Portal-Katalogsuche und optionale Erstellnamen
 WorksiteCreate.name/NodeCreate.name optional/leer zulässig; serverseitige Ableitung, fachlich leere Erstellung HTTP400. Listenresponse zusätzlich version/can_delete ohne vorhandene Felder zu entfernen. Bestehender DELETE-Vertrag und Rechte unverändert, Portal verwendet base_version; TRASHED/Tombstone bleiben für Android maßgeblich. Neuer authentifizierter GET /catalog/lookup?q liefert routes/stations mit data_available und warnings, Bahnhofreferenzen öffentliches Fachwissen, Vermessungssicht weiterhin über bestehenden Userfilter. Unterbaustellen-Payload station_code zusätzlich, station_name bleibt lesbarer Name. Kein app/**, Android-Roundtrip separat offen.
+
+
+## PORTAL-020 – Bestand je Strecke/Bahnhof (18.10.2026)
+Benutzer genehmigt aufklappbare Bestandsübersicht: getrennte echte KM-Abschnitte (keine erfundene Verbindung über Lücken), ohne KM/ohne Geometrie kenntlich, Bahnhof mit Gleisen/Weichen/WVB, Objektsuche, Objekt übernehmen und KM nur ausdrücklich übernehmen. Gemeinsame GLOBAL-Fachdaten firmenübergreifend für jeden angemeldeten Nutzer; firmeneigene Baustellen/BTBs/Fotos nicht freigeben. Bestehende globale Katalog-/Vermessungsdaten wiederverwenden, keine Daten umklassifizieren. Erst Portal/Server, Android unverändert.
