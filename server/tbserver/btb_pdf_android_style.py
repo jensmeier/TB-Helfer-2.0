@@ -857,7 +857,6 @@ def _draw_document_header(
     if _text(context.get("lead_phone")):
         writer.draw_text(f"Mobil: {_text(context.get('lead_phone'))}", size=8.5)
     writer.draw_text(f"Datum: {_report_date_label(btb)}", size=9.0)
-    writer.draw_text(f"Schicht: {_shift_label(meta.get('schicht'))}", size=9.0)
     writer.draw_text(
         f"Zeit: {_time_hm(btb.get('started_at'))} - {_time_hm(btb.get('ended_at'))}",
         size=9.0,

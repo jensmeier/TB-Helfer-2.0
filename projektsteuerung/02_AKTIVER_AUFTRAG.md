@@ -3025,3 +3025,11 @@ Status: BENUTZER ENTSCHEIDET A + B + C / UMSETZUNG
 
 ## PORTAL-018 – Katalogprüfung und PDF-Kopf (18.10.2026)
 Benutzer fragt nach Streckenprüfung und Bahnhofssuche über Kürzel (Beispiel MHO/Holzkirchen). Ist-Zustand prüfen, Kataloganbindung als Vorschlag abgrenzen. Explizit beauftragt: Zeile Schicht im BTB-PDF-Kopf entfernen; Datum und Zeit bleiben erhalten. Android und gespeicherte Schichtdaten unverändert. Vor Umsetzung dokumentiert.
+
+
+### PORTAL-018 – PDF-Kopf umgesetzt / Kataloganbindung geprüft (18.10.2026)
+- Explizite Schichtzeile aus server/tbserver/btb_pdf_android_style.py entfernt. Datum/Nachtzeitraum und Zeit bleiben. Gespeicherte Metadaten und Android unverändert.
+- Produktionsrenderer lokal ausgeführt: zweitseitiges PDF, kein Schicht:, Datum18/19.10.26, Zeit19:00–07:00, Bildreferenz/GPS weiterhin geprüft; erste Seite als PNG gesichtet. Kein NAS-E2E/DB-Test, keine Actions gestartet.
+- Ist-Prüfung: v1_worksite.html nodeRoute/nodeStation sind freie Textfelder, canonicalNodePayload speichert route_key/station_name ohne Katalogabfrage. worksite-Nodemutationen prüfen keine Katalogexistenz. survey_catalog.py /search sucht bereits case-insensitiv route_number/station_code/station_name und /availability liefert verfügbare Daten. Ob5501 bzw.MHO/Holzkirchen auf NAS vorhanden ist, wurde nicht live abgefragt.
+- Vorschlag, noch NICHT implementiert: Autovervollständigung für Strecke und Bahnhof (Kürzel+Name), Datenverfügbarkeit anzeigen, unbekannte Eingabe deutlich kennzeichnen und manuell zulassen. Keine Zusage vollständiger bundesweiter Bahnhofsstammdaten allein aus Vermessungskatalog.
+- NAS nur server/tbserver/btb_pdf_android_style.py nach /volume1/docker/tb-helfer-v1/tbserver/btb_pdf_android_style.py kopieren (vorhandene Quellordnerstruktur beachten), API neu starten und PDF neu erzeugen. Bereits gespeicherte PDFs bleiben alte Dateien. Keine Migration. Excel-Defekt bleibt unverändert.
