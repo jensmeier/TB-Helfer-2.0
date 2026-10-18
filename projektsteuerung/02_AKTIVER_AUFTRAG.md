@@ -2951,3 +2951,9 @@ Status: BENUTZER ENTSCHEIDET A + B + C / UMSETZUNG
 - Ziel B: bestehende CI-Fehler anhand echter Logs diagnostizieren, Prüfungen nicht zur Verschleierung deaktivieren. Android-Check 03 scheitert an fehlendem alten Anker `MergeSafeBaustellenExport.normalisieren` in `BtbVerlaufFragment.kt`; Server Foundation Fehler benötigt gesonderte Aufklärung.
 - Ziel C: dateipfadbezogene CI-Steuerung unter Schutz von APK-/Release-MD-Paarung, Servermigrationen, Backups und Integrationsgates; keine NAS- oder Anwendungsänderungen.
 - Fachprüfungen bleiben erhalten, auch wenn der CI-Auslöser optimiert wird. Keine erfolgreichen Tests oder Builds behaupten, bevor Actions sie tatsächlich bestätigt.
+
+
+## PORTAL-015 – Ganzkilometersuche und Baumreihenfolge (18.10.2026)
+- Neue Nutzerregel ersetzt bisherigen Ganzkilometerbereich: 13.000 → 12.000–14.000 einschließlich beider Grenzen. 13.200 → 13.100–13.299 unverändert. Punkt/Komma/optional KM gleich; andere volle Kilometer jeweils ±1 km.
+- Screenshots: übergeordnetes Element SchachtV2 ausgewählt; neue Anbindung erscheint vor SchachtV1/V2. Quellbefund: Formular sendet parent_id korrekt, API speichert/validiert es. Liste ist aber flach nach parent_id sortiert und rückt nur ein; Kind kann vor seinem sichtbaren Elternknoten erscheinen. Darstellung in echte Eltern-vor-Kind-Reihenfolge bringen, keine Elternbeziehungen auf Verdacht ändern. Tatsächliche NAS-Payload nicht gelesen.
+- Nur Server/Portal; Android und DB-Daten unverändert. Gezielte lokale Verhaltenstests; CI-Budgetschutz beachten, Änderungen bündeln, keine wiederholten großen Actions-Läufe.
