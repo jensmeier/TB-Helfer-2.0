@@ -285,13 +285,37 @@ async function loadOverview(){
   document.getElementById('defectForm').style.display=can('defect.create')?'block':'none';
   document.getElementById('acceptanceForm').style.display=can('acceptance.create')?'block':'none';
 }
+function nodeTreeRows(nodes){
+  const byId=new Map(nodes.map(n=>[String(n.id),n])),children=new Map(),rows=[],visited=new Set();
+  for(const n of nodes){
+    const parent=n.parent_id==null?null:String(n.parent_id);
+    const key=parent!==String(n.id)&&byId.has(parent)?parent:null;
+    if(!children.has(key))children.set(key,[]);
+    children.get(key).push(n);
+  }
+  function walk(first,depth){
+    const stack=[{node:first,depth}];
+    while(stack.length){
+      const row=stack.pop(),id=String(row.node.id);
+      if(visited.has(id))continue;
+      visited.add(id);rows.push(row);
+      const descendants=children.get(id)||[];
+      for(let i=descendants.length-1;i>=0;i--)stack.push({node:descendants[i],depth:row.depth+1});
+    }
+  }
+  for(const n of children.get(null)||[])walk(n,0);
+  // Keep malformed/orphaned legacy structures visible without loops or writes.
+  for(const n of nodes)if(!visited.has(String(n.id)))walk(n,0);
+  return rows;
+}
 async function loadNodes(){
   const result=await tbApi('/api/v1/worksites/'+worksiteId+'/nodes');
-  nodeData=result.data.nodes||[];
+  const tree=nodeTreeRows(result.data.nodes||[]);
+  nodeData=tree.map(row=>row.node);
   const target=document.getElementById('nodes');
-  target.innerHTML=nodeData.length?nodeData.map(function(n){
+  target.innerHTML=tree.length?tree.map(function(row){
+    const n=row.node,depth=row.depth;
     const actions=can('worksite.structure.edit')?'<div class="actions" style="margin-top:7px"><button type="button" onclick="editNode(\''+esc(n.id)+'\')">Bearbeiten</button><button class="danger" type="button" onclick="deleteNode(\''+esc(n.id)+'\')">Löschen</button></div>':'';
-    let depth=0,parent=n.parent_id;const visited=new Set([n.id]);while(parent&&!visited.has(parent)&&depth<8){visited.add(parent);depth++;const ancestor=nodeData.find(x=>x.id===parent);parent=ancestor?ancestor.parent_id:null;}
     return '<div class="item" style="margin-left:'+Math.min(depth*18,100)+'px"><b>'+esc(nodeTypeLabel(n.node_kind))+'</b> · '+esc(n.name)+
       (n.route_number?'<div class="muted">Strecke '+esc(n.route_number)+'</div>':'')+
       (n.track_key?'<div class="muted">Gleis '+esc(n.track_key)+'</div>':'')+actions+'</div>';

@@ -33,7 +33,7 @@ def _search_spec(search):
     if abs(meter)>1000000000:
         raise HTTPException(400, "INVALID_MEDIA_KM")
     if meter % 1000 == 0:
-        return [], meter, meter+999
+        return [], meter-1000, meter+1000
     return [], meter-100, meter+99
 
 

@@ -234,7 +234,7 @@ assert str(packed_id) not in {m["attachment_id"] for m in client.get(url,params=
 # Kilometer boundaries and comma/point equivalence use rounded displayed meters.
 km_ids={}
 with conn.cursor() as c:
-    for km in [12.999,13.000,13.099,13.100,13.200,13.299,13.300,13.999,14.000]:
+    for km in [11.999,12.000,12.999,13.000,13.099,13.100,13.200,13.299,13.300,13.999,14.000,14.001]:
         fid=photo('km-'+str(km)+'.jpg','BTB',btb)
         c.execute("UPDATE tb.files SET photo_metadata=%s WHERE id=%s",(Jsonb({"km":km}),fid));km_ids[km]=str(fid)
 def km_result(term):
@@ -245,8 +245,8 @@ for term in ['13.200','13,200','KM 13.200']:
     assert {m["attachment_id"] for m in result["media"]}=={km_ids[k] for k in [13.100,13.200,13.299]},result
     assert result['search_km_min_m']==13100 and result['search_km_max_m']==13299
 result=km_result('13.000')
-assert {m["attachment_id"] for m in result["media"]}=={fid for km,fid in km_ids.items() if 13<=km<14}
-assert result['search_km_min_m']==13000 and result['search_km_max_m']==13999
+assert {m["attachment_id"] for m in result["media"]}=={fid for km,fid in km_ids.items() if 12<=km<=14}
+assert result['search_km_min_m']==12000 and result['search_km_max_m']==14000
 # Foreign-link text may not reveal a file merely because another visible link exists.
 with conn.cursor() as c:
     c.execute("INSERT INTO tb.file_links(file_id,entity_type,entity_id,purpose,link_metadata) VALUES (%s,'BTB',%s,'FOREIGN',%s)",
