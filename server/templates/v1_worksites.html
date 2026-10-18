@@ -17,7 +17,7 @@
   <details><summary>Neue Baustelle anlegen</summary>
   <form id="createWorksite">
     <div class="grid">
-      <div><label for="name">Name</label><input id="name" required maxlength="240"></div>
+      <div><label for="name">Name (optional)</label><input id="name" maxlength="240"></div>
       <div><label for="designation">Bezeichnung</label><input id="designation" maxlength="300"></div>
       <div><label for="route">Strecke</label><input id="route" maxlength="40"></div>
       <div><label for="stationCode">Bahnhofscode</label><input id="stationCode" maxlength="40"></div>
@@ -71,12 +71,14 @@
 </div>
 {% endblock %}
 {% block scripts %}
+{% include "v1_catalog_lookup.html" %}
 <script>
 const pagePrefix={{ (page_prefix|default('/portal/v1'))|tojson }};
 const userRole={{ user.company_role|tojson }};
 const currentUserId={{ user.user_id|string|tojson }};
 const rows=document.getElementById('rows'), companyGroups=document.getElementById('companyGroups'), msg=document.getElementById('msg');
 let worksiteData=[];
+if(document.getElementById('route'))tbCatalogLookup({route:'route',station:'stationName',code:'stationCode'});
 function show(kind,text){msg.className='notice '+kind;msg.textContent=text;}
 function esc(value){return String(value??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function fmtDate(value){if(!value)return '—';try{return new Date(value).toLocaleString('de-DE');}catch(_){return value;}}
@@ -106,6 +108,7 @@ function worksiteRow(w,adminMode){
     '<td><span class="pill">'+esc(w.status)+'</span></td>'+
     '<td>'+esc(fmtDate(w.updated_at))+'</td>'+
     '<td class="right"><div class="actions"><a class="btn" href="'+pagePrefix+'/worksites/'+encodeURIComponent(w.id)+'">Öffnen</a>'+
+    (w.can_delete?'<button type="button" class="danger delete-worksite" data-worksite-id="'+esc(w.id)+'">Löschen</button>':'')+
     (adminMode?'<button type="button" class="danger purge-worksite" data-worksite-id="'+esc(w.id)+'" data-worksite-name="'+esc(w.name)+'">Komplett löschen</button>':'')+
     '</div></td>'+
   '</tr>';
@@ -128,6 +131,21 @@ function bindPurgeButtons(){
           body:JSON.stringify({confirm_id:id,confirm_text:typed})
         });
         show('ok','Baustelle wurde vollständig gelöscht.');await loadWorksites();
+      }catch(error){show('err',error.message||String(error));button.disabled=false;}
+    });
+  });
+}
+
+function bindDeleteButtons(){
+  document.querySelectorAll('.delete-worksite').forEach(button=>{
+    button.addEventListener('click',async()=>{
+      const w=worksiteData.find(w=>String(w.id)===button.dataset.worksiteId);
+      if(!w||!w.can_delete)return;
+      if(!confirm('Baustelle „'+w.name+'“ löschen?\n\nDie gesamte Baustelle mit BTBs, Fotos, Unterbaustellen und Teamzugriffen wird für alle Beteiligten entfernt und die Löschung an die Handys weitergemeldet.'))return;
+      button.disabled=true;
+      try{
+        await tbApi('/api/v1/worksites/'+encodeURIComponent(w.id)+'?base_version='+encodeURIComponent(w.version),{method:'DELETE'});
+        show('ok','Baustelle gelöscht.');await loadWorksites();
       }catch(error){show('err',error.message||String(error));button.disabled=false;}
     });
   });
@@ -191,6 +209,7 @@ async function loadWorksites(){
     }else{
       document.getElementById('worksiteCount').textContent=worksiteData.length+' '+(worksiteData.length===1?'Baustelle':'Baustellen');
       rows.innerHTML=worksiteData.length?worksiteData.map(function(w){return worksiteRow(w,false);}).join(''):'<tr><td colspan="5" class="muted">Noch keine Baustellen vorhanden.</td></tr>';
+      bindDeleteButtons();
     }
   }catch(error){
     if(companyGroups)companyGroups.innerHTML='<p class="muted">Baustellen konnten nicht geladen werden.</p>';
@@ -225,4 +244,5 @@ if(worksiteSearch)worksiteSearch.addEventListener('input',renderAdminWorksites);
 loadResponsibleTbCandidates();loadWorksites();
 </script>
 {% endblock %}
+
 

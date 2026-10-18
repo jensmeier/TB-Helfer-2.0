@@ -23,7 +23,7 @@ legacy_router = APIRouter(prefix="/api/v1/collab", tags=["legacy-collab"])
 
 
 class WorksiteCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=240)
+    name: str = Field(default="", max_length=240)
     designation: str | None = Field(default=None, max_length=300)
     route_number: str | None = Field(default=None, max_length=40)
     station_code: str | None = Field(default=None, max_length=40)
@@ -35,7 +35,7 @@ class WorksiteCreate(BaseModel):
 class NodeCreate(BaseModel):
     parent_id: UUID | None = None
     node_kind: str = Field(min_length=1, max_length=60)
-    name: str = Field(min_length=1, max_length=300)
+    name: str = Field(default="", max_length=300)
     route_number: str | None = Field(default=None, max_length=40)
     track_key: str | None = Field(default=None, max_length=200)
     external_key: str | None = Field(default=None, max_length=300)
@@ -81,6 +81,31 @@ class LegacyWorksiteInvitationCreate(BaseModel):
     invitation_type: str = Field(default="HELPER", max_length=40)
     area_scope: dict = Field(default_factory=dict)
     expires_days: int = Field(default=7, ge=1, le=30)
+
+
+def _worksite_name(payload) -> str:
+    name = (payload.name or "").strip() or (payload.designation or "").strip()
+    if not name:
+        name = (payload.station_name or payload.station_code or "").strip()
+    if not name and (payload.route_number or "").strip():
+        name = "Strecke " + payload.route_number.strip()
+    if not name:
+        raise HTTPException(400, "Bitte Bezeichnung, Strecke oder Bahnhof eingeben.")
+    return name[:240]
+
+
+def _node_name(payload) -> str:
+    name = (payload.name or "").strip()
+    if not name:
+        fields = payload.payload or {}
+        name = str(fields.get("node_name") or fields.get("station_name") or "").strip()
+        if not name and payload.route_number:
+            name = "Strecke " + payload.route_number.strip()
+        if not name and payload.track_key:
+            name = payload.track_key.strip()
+    if not name:
+        raise HTTPException(400, "Bitte Name, Strecke, Bahnhof oder Gleis eingeben.")
+    return name[:300]
 
 
 def _company_for_create(cur, user: dict[str, Any], requested: UUID | None) -> UUID:
@@ -141,18 +166,22 @@ def list_worksites(user: dict[str, Any] = Depends(current_portal_user)) -> dict:
             cur.execute(
                 """
                 SELECT w.id, w.company_id, c.name AS company_name, w.name, w.designation,
-                       w.route_number, w.station_code, w.station_name, w.status, w.updated_at
+                       w.route_number, w.station_code, w.station_name, w.status, w.updated_at,
+                       w.version, EXISTS(SELECT 1 FROM tb.worksite_memberships m
+                         WHERE m.worksite_id=w.id AND m.user_id=%s AND m.status='ACTIVE'
+                           AND m.worksite_role='RESPONSIBLE_TB') AS can_delete
                 FROM tb.worksites w JOIN tb.companies c ON c.id = w.company_id
                 WHERE w.company_id = %s AND w.deleted_at IS NULL
                 ORDER BY w.updated_at DESC
                 """,
-                (user["company_id"],),
+                (user["user_id"], user["company_id"]),
             )
         else:
             cur.execute(
                 """
                 SELECT w.id, w.company_id, c.name AS company_name, w.name, w.designation,
-                       w.route_number, w.station_code, w.station_name, w.status, w.updated_at
+                       w.route_number, w.station_code, w.station_name, w.status, w.updated_at,
+                       w.version, (m.worksite_role='RESPONSIBLE_TB') AS can_delete
                 FROM tb.worksites w
                 JOIN tb.companies c ON c.id = w.company_id
                 JOIN tb.worksite_memberships m ON m.worksite_id = w.id
@@ -190,7 +219,7 @@ def create_worksite(
             """,
             (
                 company_id,
-                payload.name.strip(),
+                _worksite_name(payload),
                 payload.designation,
                 payload.route_number,
                 payload.station_code,
@@ -487,7 +516,7 @@ def create_node(
                 worksite_id,
                 payload.parent_id,
                 payload.node_kind,
-                payload.name.strip(),
+                _node_name(payload),
                 payload.route_number,
                 payload.track_key,
                 payload.external_key,
@@ -1591,3 +1620,4 @@ def remove_helper(worksite_id: UUID, member_user_id: UUID,
         result={'removed':True}
         finish_mutation(cur,user=user,context=mutation,receipt_type='WORKSITE_HELPER_REMOVE',entity_id=member['id'],result_version=version,response_payload=result)
     return result
+

@@ -968,3 +968,7 @@ Vertrag, genaue Grenzen, Übernahme und Android-Folgeauftrag: [REF-DATA-020_BEST
 
 ### PORTAL-017 – Serverimplementierung und Testgrenzen
 - Referenz nur BTB-Link; vollständiger GPS-Override-Roundtrip für Portal/Galerie/PDF, Bindungskontext folgt Entry-/Firmenänderung, Entkopplung/Upload validiert. Neue Fotos EXIF vor Verkleinerung, kein Originalupload; fehlender EXIF-Zeitzonenoffset als Europe/Berlin interpretiert. Nachtschicht Enddatum automatisch, PDF-Datum als Bereich. Lokal153/152/151 und PDF-PNG PASS, kein DB-/NAS-/Android-E2E und kein APK. Älterer Android-Foto-Kontextpatch kann gebundenen Eintragskontext nicht unabhängig umhängen; neue Referenz/GPS-Overrides/Schichtanzeige im Android-Projekt später prüfen. Details und elf NAS-Dateien siehe uebergaben/PORTAL-017_NAS_UEBERNAHME.md.
+
+
+### PORTAL-019 – Additive Portal-Katalogsuche und optionale Erstellnamen
+WorksiteCreate.name/NodeCreate.name optional/leer zulässig; serverseitige Ableitung, fachlich leere Erstellung HTTP400. Listenresponse zusätzlich version/can_delete ohne vorhandene Felder zu entfernen. Bestehender DELETE-Vertrag und Rechte unverändert, Portal verwendet base_version; TRASHED/Tombstone bleiben für Android maßgeblich. Neuer authentifizierter GET /catalog/lookup?q liefert routes/stations mit data_available und warnings, Bahnhofreferenzen öffentliches Fachwissen, Vermessungssicht weiterhin über bestehenden Userfilter. Unterbaustellen-Payload station_code zusätzlich, station_name bleibt lesbarer Name. Kein app/**, Android-Roundtrip separat offen.

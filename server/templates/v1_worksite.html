@@ -39,7 +39,7 @@
       </select>
       <label for="nodeParent">Übergeordnetes Element (optional)</label>
       <select id="nodeParent"><option value="">direkt unter Hauptbaustelle</option></select>
-      <label for="nodeDisplayName">Name</label><input id="nodeDisplayName" required maxlength="300">
+      <label for="nodeDisplayName">Name (optional)</label><input id="nodeDisplayName" maxlength="300">
       <div class="grid">
         <div><label for="nodeRoute">Strecke</label><input id="nodeRoute" maxlength="40"></div>
         <div><label for="nodeTrack">Gleis / Weiche</label><input id="nodeTrack" maxlength="200"></div>
@@ -167,6 +167,7 @@
 </div>
 {% endblock %}
 {% block scripts %}
+{% include "v1_catalog_lookup.html" %}
 <script>
 const pagePrefix={{ (page_prefix|default('/portal/v1'))|tojson }};
 const worksiteId={{ worksite_id|tojson }};
@@ -259,6 +260,7 @@ function canonicalNodePayload(source){
   payload.km_from=numberOrNull('nodeKmFrom');
   payload.km_to=numberOrNull('nodeKmTo');
   payload.station_name=station;
+  payload.station_code=document.getElementById('nodeStation').dataset.stationCode||null;
   payload.track_or_switch=track;
   return payload;
 }
@@ -789,6 +791,7 @@ async function deleteAcceptance(id,version,wasFinalized){
 }
 window.deleteAcceptance=deleteAcceptance;
 
+tbCatalogLookup({route:'nodeRoute',station:'nodeStation'});
 document.getElementById('nodeForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
   try{

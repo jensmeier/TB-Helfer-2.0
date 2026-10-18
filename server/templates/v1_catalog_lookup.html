@@ -1,0 +1,62 @@
+<script>
+// Shared by construction-site and structure forms. All result text uses textContent.
+function tbCatalogLookup(config){
+  const route=document.getElementById(config.route);
+  const station=document.getElementById(config.station);
+  const code=config.code?document.getElementById(config.code):null;
+  const controls=[route,station,code].filter(Boolean), panels=[];
+  let sequence=0;
+  for(const input of controls){
+    const kind=input===route?'routes':'stations';
+    const panel=document.createElement('div');panel.className='muted';panel.setAttribute('aria-live','polite');
+    input.after(panel);panels.push(panel);
+    let timer;
+    function select(item){
+      if(kind==='routes')route.value=item.route_number;
+      else{
+        station.value=item.name;
+        if(code)code.value=item.code||'';
+        station.dataset.stationCode=item.code||'';
+      }
+      for(const p of panels)p.replaceChildren();
+      panel.textContent=item.data_available?'Vermessungsdaten vorhanden.':'Im Katalog vorhanden; keine Vermessungsdaten gefunden.';
+    }
+    input.addEventListener('input',()=>{
+      clearTimeout(timer);const token=++sequence,query=input.value.trim();
+      if(kind==='stations'){
+        station.dataset.stationCode='';
+        if(code&&input===station)code.value='';
+        if(code&&input===code)station.value='';
+      }
+      panel.replaceChildren();
+      if(!query)return;
+      panel.textContent='Suche …';
+      timer=setTimeout(async()=>{
+        try{
+          const result=await tbApi('/api/v1/catalog/lookup?q='+encodeURIComponent(query));
+          if(token!==sequence||input.value.trim()!==query)return;
+          panel.replaceChildren();
+          const items=result.data[kind]||[];
+          if(!items.length)panel.textContent='Kein Katalogtreffer. Manuelle Eingabe ist möglich.';
+          for(const item of items){
+            const button=document.createElement('button');
+            button.type='button';button.className='secondary';button.style.margin='4px 4px 0 0';
+            button.textContent=(kind==='routes'?item.route_number+(item.name?' · '+item.name:''):
+              (item.code?item.code+' · ':'')+item.name)+
+              (item.data_available?' · Daten vorhanden':' · Katalog');
+            button.addEventListener('click',()=>{++sequence;select(item);});
+            panel.appendChild(button);
+          }
+          for(const warning of result.data.warnings||[]){
+            const p=document.createElement('div');p.textContent=warning;panel.appendChild(p);
+          }
+        }catch(error){
+          if(token===sequence)panel.textContent='Suche fehlgeschlagen: '+error.message+'. Manuelle Eingabe ist möglich.';
+        }
+      },250);
+    });
+  }
+  const form=route.closest('form');
+  if(form)form.addEventListener('reset',()=>{++sequence;for(const p of panels)p.replaceChildren();station.dataset.stationCode='';});
+}
+</script>

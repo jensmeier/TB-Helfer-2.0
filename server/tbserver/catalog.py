@@ -234,6 +234,73 @@ def _receipt(
     )
 
 
+@router.get("/lookup")
+def lookup_catalog(
+    q: str = Query(min_length=1, max_length=100),
+    user: dict[str, Any] = Depends(current_portal_user),
+) -> dict[str, Any]:
+    """Public reference names plus only survey data visible to this user."""
+    from .station_reference import _entries, _match_rank, _normalize
+    from .survey_catalog import search_catalog
+
+    query = q.strip()
+    if not query:
+        return {"routes": [], "stations": [], "warnings": []}
+    survey = search_catalog(q=query, limit=30, user=user)
+    routes: dict[str, dict] = {}
+    stations: dict[str, dict] = {}
+    warnings = []
+    with transaction() as conn, conn.cursor() as cur:
+        like = f"%{query}%"
+        cur.execute(
+            "SELECT route_number,name FROM tb.catalog_routes "
+            "WHERE route_number ILIKE %s OR name ILIKE %s ORDER BY route_number LIMIT 30",
+            (like, like),
+        )
+        for row in cur.fetchall():
+            routes[row["route_number"]] = dict(row, data_available=False)
+        cur.execute(
+            "SELECT station_code,name FROM tb.catalog_stations "
+            "WHERE station_code ILIKE %s OR name ILIKE %s ORDER BY name LIMIT 30",
+            (like, like),
+        )
+        for row in cur.fetchall():
+            key = row["station_code"] or row["name"]
+            stations[key] = {"code": row["station_code"] or "", "name": row["name"],
+                             "data_available": False}
+    try:
+        normalized = _normalize(query)
+        ranked = [(rank, item) for item in _entries()
+                  if (rank := _match_rank(normalized, item)) is not None]
+        ranked.sort(key=lambda pair: pair[0])
+        for _, item in ranked[:30]:
+            stations[item["code"]] = {"code": item["code"], "name": item["name"],
+                                      "data_available": False}
+    except RuntimeError:
+        warnings.append("Bahnhofsliste nicht verfügbar; Katalogtreffer werden angezeigt.")
+    for row in survey.get("routes", []):
+        key = row["route_number"]
+        routes[key] = dict(routes.get(key, {}), route_number=key, data_available=True)
+    for row in survey.get("stations", []):
+        key = row["station_code"]
+        stations[key] = {"code": key, "name": row.get("station_name") or stations.get(key, {}).get("name") or key,
+                         "data_available": True}
+    for row in survey.get("axes", []):
+        key = row.get("route_number")
+        if key and query.casefold() in key.casefold():
+            routes[key] = dict(routes.get(key, {}), route_number=key, data_available=True)
+        code = row.get("station_code")
+        name = row.get("station_name") or code
+        if code and query.casefold() in (code + " " + name).casefold():
+            stations[code] = {"code": code, "name": name, "data_available": True}
+    def order(item):
+        code = str(item.get("code") or item.get("route_number") or "").casefold()
+        return (code != query.casefold(), not code.startswith(query.casefold()),
+                str(item.get("name") or code).casefold(), code)
+    return {"routes": sorted(routes.values(), key=order)[:30],
+            "stations": sorted(stations.values(), key=order)[:30], "warnings": warnings}
+
+
 @router.get("")
 def get_catalog(_: dict[str, Any] = Depends(current_portal_user)) -> dict[str, Any]:
     with transaction() as conn, conn.cursor() as cur:
@@ -704,3 +771,4 @@ def mutate(
             response=response,
         )
         return response
+
