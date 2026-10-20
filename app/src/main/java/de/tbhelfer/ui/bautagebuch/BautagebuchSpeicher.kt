@@ -472,6 +472,32 @@ object BautagebuchSpeicher {
                 }
             }
         }
+        // Äquivalente Nachlieferung eines Bindungsflags ist keine Änderung am PDF-Inhalt.
+        val oldFirms = previous.optJSONArray("firmen")
+        val newFirms = current.optJSONArray("firmen") ?: return
+        fun text(json: JSONObject, field: String): String? = if (json.isNull(field)) null else
+            json.optString(field).trim().takeIf { it.isNotBlank() }
+        val oldById = (0 until (oldFirms?.length() ?: 0)).mapNotNull { oldFirms?.optJSONObject(it) }
+            .mapNotNull { item -> text(item, "firmaId")?.let { it to item } }.toMap()
+        val report = listOf(text(current, "startUhrzeit"), text(current, "endeUhrzeit"))
+        for (index in 0 until newFirms.length()) {
+            val item = newFirms.optJSONObject(index) ?: continue
+            val firmId = text(item, "firmaId") ?: continue
+            val before = oldById[firmId] ?: continue
+            for (prefix in listOf("personal", "maschinen")) {
+                val fields = listOf(prefix + "Von", prefix + "Bis")
+                val actual = fields.map { text(item, it) }
+                if (actual != fields.map { text(before, it) }) continue
+                val field = prefix + "Zeitbindung"
+                if (text(before, field) == null) {
+                    val inferred = if (actual.indices.any { actual[it] != null && actual[it] != report[it] })
+                        FirmenZeitbindung.MANUAL else FirmenZeitbindung.REPORT
+                    if (text(item, field) == inferred || text(item, field) == null) {
+                        if (before.has(field)) item.put(field, before.opt(field)) else item.remove(field)
+                    }
+                }
+            }
+        }
     }
 
     private fun toJson(e: BautagebuchEintrag): JSONObject = JSONObject().apply {
@@ -504,6 +530,8 @@ object BautagebuchSpeicher {
             put("firmaId", f.firmaId); put("name", f.name)
             put("personalVon", f.personalVon); put("personalBis", f.personalBis)
             put("maschinenVon", f.maschinenVon); put("maschinenBis", f.maschinenBis)
+            put("personalZeitbindung", f.personalZeitbindung)
+            put("maschinenZeitbindung", f.maschinenZeitbindung)
             put("visibleInPersonal", f.visibleInPersonal); put("visibleInMaschinen", f.visibleInMaschinen)
             put("isDeleted", f.isDeleted)
             put("personal", JSONArray().apply { f.personal.forEach { p -> put(JSONObject().apply { put("anzahl", p.anzahl); put("rolle", p.rolle) }) } })
@@ -607,10 +635,12 @@ object BautagebuchSpeicher {
                 val l = f.optJSONArray("leistungen")
                 FirmaBlock(
                     firmaId = id, name = name,
-                    personalVon = f.optString("personalVon").takeUnless { it.isBlank() },
-                    personalBis = f.optString("personalBis").takeUnless { it.isBlank() },
-                    maschinenVon = f.optString("maschinenVon").takeUnless { it.isBlank() },
-                    maschinenBis = f.optString("maschinenBis").takeUnless { it.isBlank() },
+                    personalVon = if (f.isNull("personalVon")) null else f.optString("personalVon").takeUnless { it.isBlank() },
+                    personalBis = if (f.isNull("personalBis")) null else f.optString("personalBis").takeUnless { it.isBlank() },
+                    maschinenVon = if (f.isNull("maschinenVon")) null else f.optString("maschinenVon").takeUnless { it.isBlank() },
+                    maschinenBis = if (f.isNull("maschinenBis")) null else f.optString("maschinenBis").takeUnless { it.isBlank() },
+                    personalZeitbindung = if (f.isNull("personalZeitbindung")) null else f.optString("personalZeitbindung"),
+                    maschinenZeitbindung = if (f.isNull("maschinenZeitbindung")) null else f.optString("maschinenZeitbindung"),
                     visibleInPersonal = f.optBoolean("visibleInPersonal", true),
                     visibleInMaschinen = f.optBoolean("visibleInMaschinen", true),
                     isDeleted = f.optBoolean("isDeleted", false),

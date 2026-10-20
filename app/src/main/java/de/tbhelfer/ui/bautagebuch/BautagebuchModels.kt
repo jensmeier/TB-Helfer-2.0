@@ -99,7 +99,9 @@ data class FirmaBlock(
     val isDeleted: Boolean = false,
     val personal: List<PersonalZeile> = emptyList(),
     val geraete: List<GeraetZeile> = emptyList(),
-    val leistungen: List<LeistungZeile> = emptyList()
+    val leistungen: List<LeistungZeile> = emptyList(),
+    val personalZeitbindung: String? = null,
+    val maschinenZeitbindung: String? = null
 )
 
 data class PersonalZeile(

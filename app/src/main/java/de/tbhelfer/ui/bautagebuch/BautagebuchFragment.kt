@@ -281,7 +281,8 @@ class BautagebuchFragment : Fragment(R.layout.fragment_bautagebuch) {
         val rowsContainer: android.widget.LinearLayout,
         val rows: MutableList<PairRowUi>,
         val btnAddRow: MaterialButton,
-        val btnRemoveFirma: android.widget.ImageButton
+        val btnRemoveFirma: android.widget.ImageButton,
+        var zeitbindung: String? = null
     )
 
     // Guard, damit wir beim Synchronisieren (Firma-Name zwischen Sektionen) keine Endlosschleifen erzeugen.
@@ -289,6 +290,7 @@ class BautagebuchFragment : Fragment(R.layout.fragment_bautagebuch) {
 
     // Guard, damit wir beim Laden/Apply keine Autosaves auslösen.
     private var pmApplying = false
+    private var pmFirmenQuellstand: List<FirmaBlock> = emptyList()
 
     // Debounced Autosave für PM-Änderungen
     private var pmAutosaveJob: kotlinx.coroutines.Job? = null
@@ -1818,10 +1820,24 @@ cardCurrentReport.setOnClickListener {
                 val suggestedVon = suggestedNowQuarter()
 
                 acFirma.setText(prefill?.name.orEmpty(), false)
-                val initialVon = if (section == PmSection.PERSONAL) prefill?.personalVon else prefill?.maschinenVon
-                val initialBis = if (section == PmSection.PERSONAL) prefill?.personalBis else prefill?.maschinenBis
-                etVon.setText(initialVon ?: suggestedVon)
-                etBis.setText(initialBis ?: (plusHours(etVon.text?.toString().orEmpty(), 10L) ?: ""))
+                val reportVon = newBtbPreparedStart ?: newBtbProposal?.startUhrzeit ?: shiftStart
+                val reportBis = newBtbPreparedEnd ?: newBtbProposal?.endeUhrzeit ?: shiftEnd
+                val source = prefill?.let {
+                    FirmenZeitbindung.uebernehmen(it, newBtbProposal?.startUhrzeit, newBtbProposal?.endeUhrzeit, reportVon, reportBis)
+                }
+                val initialVon = if (section == PmSection.PERSONAL) source?.personalVon else source?.maschinenVon
+                val initialBis = if (section == PmSection.PERSONAL) source?.personalBis else source?.maschinenBis
+                ui.zeitbindung = if (prefill == null) FirmenZeitbindung.REPORT else
+                    if (section == PmSection.PERSONAL) source?.personalZeitbindung else source?.maschinenZeitbindung
+                etVon.setText(if (prefill == null) reportVon.orEmpty() else initialVon.orEmpty())
+                etBis.setText(if (prefill == null) reportBis.orEmpty() else initialBis.orEmpty())
+                fun onDialogTimeChanged() {
+                    ui.zeitbindung = FirmenZeitbindung.manuellGewaehlt(
+                        etVon.text?.toString(), etBis.text?.toString(), reportVon, reportBis
+                    )
+                }
+                etVon.addTextChangedListener(SimpleTextWatcher { onDialogTimeChanged() })
+                etBis.addTextChangedListener(SimpleTextWatcher { onDialogTimeChanged() })
 
                 etVon.setOnClickListener {
                     showPmClockPicker(etVon, suggestedVon) {
@@ -1897,6 +1913,7 @@ cardCurrentReport.setOnClickListener {
                             name = finalName,
                             personalVon = von,
                             personalBis = bis,
+                            personalZeitbindung = ui.zeitbindung,
                             visibleInPersonal = true,
                             personal = rowValues.map { (anz, bez) -> PersonalZeile(anz.toIntOrNull(), bez) }
                         )
@@ -1905,6 +1922,7 @@ cardCurrentReport.setOnClickListener {
                             name = finalName,
                             maschinenVon = von,
                             maschinenBis = bis,
+                            maschinenZeitbindung = ui.zeitbindung,
                             visibleInMaschinen = true,
                             geraete = rowValues.map { (anz, bez) -> GeraetZeile(anz.toIntOrNull(), bez) }
                         )
@@ -2137,19 +2155,22 @@ cardCurrentReport.setOnClickListener {
             )
         }
 
-        private fun buildPreparedFirmenForNewBtb(): List<FirmaBlock> {
+        private fun buildPreparedFirmenForNewBtb(von: String?, bis: String?): List<FirmaBlock> {
             val baseFirmen = newBtbPreparedFirmen ?: newBtbProposal?.firmen ?: return emptyList()
             return baseFirmen.mapNotNull { firma ->
                 val keepPersonal = newBtbUsePersonal && firma.visibleInPersonal
                 val keepMaschinen = newBtbUseMaschinen && firma.visibleInMaschinen
                 if (!keepPersonal && !keepMaschinen) return@mapNotNull null
-                firma.copy(
+                val aligned = FirmenZeitbindung.uebernehmen(
+                    firma, newBtbProposal?.startUhrzeit, newBtbProposal?.endeUhrzeit, von, bis
+                )
+                aligned.copy(
                     visibleInPersonal = keepPersonal,
                     visibleInMaschinen = keepMaschinen,
-                    personalVon = if (keepPersonal) firma.personalVon else null,
-                    personalBis = if (keepPersonal) firma.personalBis else null,
-                    maschinenVon = if (keepMaschinen) firma.maschinenVon else null,
-                    maschinenBis = if (keepMaschinen) firma.maschinenBis else null,
+                    personalVon = if (keepPersonal) aligned.personalVon else null,
+                    personalBis = if (keepPersonal) aligned.personalBis else null,
+                    maschinenVon = if (keepMaschinen) aligned.maschinenVon else null,
+                    maschinenBis = if (keepMaschinen) aligned.maschinenBis else null,
                     personal = if (keepPersonal) firma.personal else emptyList(),
                     geraete = if (keepMaschinen) firma.geraete else emptyList()
                 )
@@ -2173,12 +2194,12 @@ cardCurrentReport.setOnClickListener {
                 }
                 beginContextSwitch()
                 try {
-                    val firmen = buildPreparedFirmenForNewBtb()
                     val weatherSlots = buildPreparedWeatherSlotsForNewBtb()
                     val targetDate = if (newBtbUseDateTime) (newBtbPreparedDate ?: selectedDate) else selectedDate
                     val targetSchicht = if (newBtbUseDateTime) (newBtbPreparedSchichtTyp ?: if (spansMidnight(newBtbPreparedStart, newBtbPreparedEnd)) SchichtTyp.NACHT else SchichtTyp.TAG) else selectedSchichtTyp
                     val startValue = if (newBtbUseDateTime) (newBtbPreparedStart ?: newBtbProposal?.startUhrzeit) else (shiftStart ?: etStart.text?.toString()?.trim().takeUnless { it.isNullOrBlank() })
                     val endValue = if (newBtbUseDateTime) (newBtbPreparedEnd ?: newBtbProposal?.endeUhrzeit) else (shiftEnd ?: etEnde.text?.toString()?.trim().takeUnless { it.isNullOrBlank() })
+                    val firmen = buildPreparedFirmenForNewBtb(startValue, endValue)
                     selectedDate = targetDate
                     selectedSchichtTyp = targetSchicht
                     val now = System.currentTimeMillis()
@@ -2373,12 +2394,14 @@ cardCurrentReport.setOnClickListener {
                 .setTitle("Datum / Schicht")
                 .setView(dlgView)
                 .setNegativeButton("Entfernen") { _, _ ->
+                    passeFirmenBerichtszeitenAn(shiftStart, shiftEnd, null, null)
                     shiftStart = null
                     shiftEnd = null
                     etStart.setText("")
                     etEnde.setText("")
                     updateDateTimeButton()
                     autoWetterZeiten()
+                    schedulePmAutosave(force = true)
                 }
                 .setPositiveButton("OK") { _, _ ->
                     val newStart = acStart.text?.toString()?.trim().takeUnless { it.isNullOrBlank() }
@@ -2389,12 +2412,14 @@ cardCurrentReport.setOnClickListener {
 
                     if (!typeChanged) {
                         // Zeiten übernehmen (gleiche Schicht)
+                        passeFirmenBerichtszeitenAn(shiftStart, shiftEnd, newStart, newEnd)
                         shiftStart = newStart
                         shiftEnd = newEnd
                         etStart.setText(shiftStart.orEmpty())
                         etEnde.setText(shiftEnd.orEmpty())
                         updateDateTimeButton()
                         autoWetterZeiten()
+                        schedulePmAutosave(force = true)
                     } else {
                         // Schichtwechsel: Autosave stoppen, Ziel-BTB laden (oder leer), dann Zeiten setzen
                         lifecycleScope.launch {
@@ -2407,6 +2432,7 @@ cardCurrentReport.setOnClickListener {
                             ladeEintragFallsVorhanden(activateSelection = true)
 
                             // gewählte Zeiten im Ziel-BTB beibehalten
+                            passeFirmenBerichtszeitenAn(shiftStart, shiftEnd, newStart, newEnd)
                             shiftStart = newStart
                             shiftEnd = newEnd
                             etStart.setText(shiftStart.orEmpty())
@@ -2416,6 +2442,7 @@ cardCurrentReport.setOnClickListener {
                             autoWetterZeiten()
 
                             endContextSwitch()
+                            schedulePmAutosave(force = true)
                         }
                     }
                 }
@@ -3159,9 +3186,13 @@ cardCurrentReport.setOnClickListener {
                         val visible = if (section == PmSection.PERSONAL) firma.visibleInPersonal else firma.visibleInMaschinen
                         if (!visible) continue
 
-                        val von = if (section == PmSection.PERSONAL) firma.personalVon else firma.maschinenVon
-                        val bis = if (section == PmSection.PERSONAL) firma.personalBis else firma.maschinenBis
-                        addFirmaBlock(section, firmaId = firma.firmaId, prefillFirma = firma.name, prefillVon = von, prefillBis = bis)
+                        val aligned = FirmenZeitbindung.uebernehmen(
+                            firma, prevEntry.startUhrzeit, prevEntry.endeUhrzeit, shiftStart, shiftEnd
+                        )
+                        val von = if (section == PmSection.PERSONAL) aligned.personalVon else aligned.maschinenVon
+                        val bis = if (section == PmSection.PERSONAL) aligned.personalBis else aligned.maschinenBis
+                        val binding = if (section == PmSection.PERSONAL) aligned.personalZeitbindung else aligned.maschinenZeitbindung
+                        addFirmaBlock(section, firmaId = firma.firmaId, prefillFirma = firma.name, prefillVon = von, prefillBis = bis, zeitbindung = binding)
                         val ui = (if (section == PmSection.PERSONAL) personalUis else maschinenUis)
                             .lastOrNull() ?: continue
                         ui.rowsContainer.removeAllViews(); ui.rows.clear()
@@ -4011,13 +4042,33 @@ cardCurrentReport.setOnClickListener {
             uis.clear()
         }
 
+        private fun passeFirmenBerichtszeitenAn(altVon: String?, altBis: String?, von: String?, bis: String?) {
+            val wasApplying = pmApplying
+            pmApplying = true
+            try {
+                (personalUis + maschinenUis).filterNot { it.autoLinked }.forEach { ui ->
+                    val next = FirmenZeitbindung.berichtGeaendert(
+                        FirmenZeitbindung.Zeiten(ui.etVon.text?.toString(), ui.etBis.text?.toString(), ui.zeitbindung),
+                        altVon, altBis, von, bis
+                    )
+                    ui.zeitbindung = next.bindung
+                    ui.etVon.setText(next.von.orEmpty())
+                    ui.etBis.setText(next.bis.orEmpty())
+                }
+            } finally {
+                pmApplying = wasApplying
+            }
+            updatePmPreviews()
+        }
+
         private fun addFirmaBlock(
             section: PmSection,
             firmaId: String,
             prefillFirma: String?,
             prefillVon: String? = null,
             prefillBis: String? = null,
-            autoLinked: Boolean = false
+            autoLinked: Boolean = false,
+            zeitbindung: String? = null
         ) {
             val container = if (section == PmSection.PERSONAL) personalBlocksContainer else maschinenBlocksContainer
             val uis = if (section == PmSection.PERSONAL) personalUis else maschinenUis
@@ -4035,6 +4086,7 @@ cardCurrentReport.setOnClickListener {
                 root = root,
                 firmaId = firmaId,
                 autoLinked = autoLinked,
+                zeitbindung = zeitbindung ?: if (!pmApplying) FirmenZeitbindung.REPORT else null,
                 acFirma = acFirma,
                 etVon = etVon,
                 etBis = etBis,
@@ -4064,11 +4116,10 @@ cardCurrentReport.setOnClickListener {
             val suggestedVon = suggestedNowQuarter()
 
             // Defaults beim Anlegen
-            val initVon = prefillVon?.takeUnless { it.isBlank() } ?: suggestedVon
-            etVon.setText(initVon)
-
-            val initBis = prefillBis?.takeUnless { it.isBlank() } ?: (plusHours(initVon, 10L) ?: "")
-            if (initBis.isNotBlank()) etBis.setText(initBis)
+            val initVon = if (pmApplying) prefillVon else prefillVon ?: shiftStart
+            val initBis = if (pmApplying) prefillBis else prefillBis ?: shiftEnd
+            etVon.setText(if (autoLinked) "" else initVon.orEmpty())
+            etBis.setText(if (autoLinked) "" else initBis.orEmpty())
 
             etVon.setOnClickListener {
                 showPmClockPicker(etVon, suggestedVon) {
@@ -4094,8 +4145,17 @@ cardCurrentReport.setOnClickListener {
 
             fun onFirmaChanged() {
                 // sobald Nutzer irgendwas anfasst, ist es kein Placeholder mehr
-                if (ui.autoLinked && (section == PmSection.MASCHINEN)) {
+                if (ui.autoLinked && section == PmSection.MASCHINEN && !pmApplying && !pmSyncing) {
                     ui.autoLinked = false
+                    val wasApplying = pmApplying
+                    pmApplying = true
+                    try {
+                        ui.etVon.setText(shiftStart.orEmpty())
+                        ui.etBis.setText(shiftEnd.orEmpty())
+                        ui.zeitbindung = FirmenZeitbindung.REPORT
+                    } finally {
+                        pmApplying = wasApplying
+                    }
                 }
                 // Sync-Vorgabe: Personal-Firma automatisch auch bei Maschinen einfügen
                 if (!pmApplying && !pmSyncing && section == PmSection.PERSONAL) {
@@ -4107,12 +4167,16 @@ cardCurrentReport.setOnClickListener {
             acFirma.setOnItemClickListener { _, _, _, _ -> onFirmaChanged() }
             acFirma.addTextChangedListener(SimpleTextWatcher { onFirmaChanged() })
             fun onVonChanged() {
+                if (pmApplying || pmSyncing) return
                 // Auto-Bis (+10h) nur wenn Bis noch leer ist
                 autoFillBisIfBlank(etVon, etBis, 10L)
+                ui.zeitbindung = FirmenZeitbindung.manuellGewaehlt(etVon.text?.toString(), etBis.text?.toString(), shiftStart, shiftEnd)
                 if (ui.autoLinked && (section == PmSection.MASCHINEN)) ui.autoLinked = false
                 schedulePmAutosave()
             }
             fun onBisChanged() {
+                if (pmApplying || pmSyncing) return
+                ui.zeitbindung = FirmenZeitbindung.manuellGewaehlt(etVon.text?.toString(), etBis.text?.toString(), shiftStart, shiftEnd)
                 if (ui.autoLinked && (section == PmSection.MASCHINEN)) ui.autoLinked = false
                 schedulePmAutosave()
             }
@@ -4143,12 +4207,24 @@ cardCurrentReport.setOnClickListener {
 
             fun onChanged() {
                 // sobald Nutzer Zeilen befüllt, ist es kein Placeholder mehr
+                if (pmApplying || pmSyncing) return
                 if (block.autoLinked && (section == PmSection.MASCHINEN)) {
                     val hasAny = block.rows.any { r ->
                         r.acBez.text?.toString().orEmpty().trim().isNotBlank() ||
                             r.acAnzahl.text?.toString().orEmpty().trim().isNotBlank()
                     }
-                    if (hasAny) block.autoLinked = false
+                    if (hasAny) {
+                        block.autoLinked = false
+                        val wasApplying = pmApplying
+                        pmApplying = true
+                        try {
+                            block.etVon.setText(shiftStart.orEmpty())
+                            block.etBis.setText(shiftEnd.orEmpty())
+                            block.zeitbindung = FirmenZeitbindung.REPORT
+                        } finally {
+                            pmApplying = wasApplying
+                        }
+                    }
                 }
                 updatePmPreviews()
                 schedulePmAutosave()
@@ -4209,6 +4285,7 @@ cardCurrentReport.setOnClickListener {
         private fun clearPmAll() {
             clearBlocks(PmSection.PERSONAL)
             clearBlocks(PmSection.MASCHINEN)
+            pmFirmenQuellstand = emptyList()
         }
 
         // Keine Synchronisation zwischen Personal/Maschinen: Firmen können unterschiedlich sein.
@@ -4383,13 +4460,14 @@ cardCurrentReport.setOnClickListener {
             pmApplying = true
             try {
                 clearPmAll()
+                pmFirmenQuellstand = entry.firmen
                 for (firma in entry.firmen) {
                 // Firma je nach Sichtbarkeit anlegen
                 if (firma.visibleInPersonal) {
-                    addFirmaBlock(PmSection.PERSONAL, firmaId = firma.firmaId, prefillFirma = firma.name, prefillVon = firma.personalVon, prefillBis = firma.personalBis)
+                    addFirmaBlock(PmSection.PERSONAL, firmaId = firma.firmaId, prefillFirma = firma.name, prefillVon = firma.personalVon, prefillBis = firma.personalBis, zeitbindung = firma.personalZeitbindung)
                 }
                 if (firma.visibleInMaschinen) {
-                    addFirmaBlock(PmSection.MASCHINEN, firmaId = firma.firmaId, prefillFirma = firma.name, prefillVon = firma.maschinenVon, prefillBis = firma.maschinenBis)
+                    addFirmaBlock(PmSection.MASCHINEN, firmaId = firma.firmaId, prefillFirma = firma.name, prefillVon = firma.maschinenVon, prefillBis = firma.maschinenBis, zeitbindung = firma.maschinenZeitbindung)
                 }
 
                 // Personal-Zeilen befüllen
@@ -4432,12 +4510,15 @@ cardCurrentReport.setOnClickListener {
             data class Acc(
                 val key: String,
                 var name: String,
+                val firmaId: String? = null,
                 var visibleInPersonal: Boolean = false,
                 var visibleInMaschinen: Boolean = false,
                 var personalVon: String? = null,
                 var personalBis: String? = null,
                 var maschinenVon: String? = null,
                 var maschinenBis: String? = null,
+                var personalZeitbindung: String? = null,
+                var maschinenZeitbindung: String? = null,
                 val personal: MutableList<PersonalZeile> = mutableListOf(),
                 val geraete: MutableList<GeraetZeile> = mutableListOf()
             )
@@ -4446,17 +4527,24 @@ cardCurrentReport.setOnClickListener {
 
             val map = linkedMapOf<String, Acc>()
 
-            fun accFor(nameRaw: String): Acc? {
+            fun accFor(nameRaw: String, uiId: String): Acc? {
                 val name = nameRaw.trim()
                 if (name.isBlank()) return null
                 val key = normKey(name)
-                return map.getOrPut(key) { Acc(key = key, name = name) }.also { it.name = name }
+                return map.getOrPut(key) {
+                    val source = pmFirmenQuellstand.firstOrNull { it.firmaId == uiId }
+                        ?: pmFirmenQuellstand.firstOrNull { normKey(it.name) == key }
+                    Acc(key = key, name = name, firmaId = source?.firmaId,
+                        personalZeitbindung = source?.personalZeitbindung,
+                        maschinenZeitbindung = source?.maschinenZeitbindung)
+                }.also { it.name = name }
             }
 
             // Personal
             for (b in personalUis) {
-                val a = accFor(b.acFirma.text?.toString().orEmpty()) ?: continue
+                val a = accFor(b.acFirma.text?.toString().orEmpty(), b.firmaId) ?: continue
                 a.visibleInPersonal = true
+                a.personalZeitbindung = b.zeitbindung
                 a.personalVon = b.etVon.text?.toString()?.trim().takeUnless { it.isNullOrBlank() }
                 a.personalBis = b.etBis.text?.toString()?.trim().takeUnless { it.isNullOrBlank() }
                 for (r in b.rows) {
@@ -4481,8 +4569,9 @@ cardCurrentReport.setOnClickListener {
                             }
                     if (!hasMachineData) continue
                 }
-                val a = accFor(b.acFirma.text?.toString().orEmpty()) ?: continue
+                val a = accFor(b.acFirma.text?.toString().orEmpty(), b.firmaId) ?: continue
                 a.visibleInMaschinen = true
+                a.maschinenZeitbindung = b.zeitbindung
                 a.maschinenVon = b.etVon.text?.toString()?.trim().takeUnless { it.isNullOrBlank() }
                 a.maschinenBis = b.etBis.text?.toString()?.trim().takeUnless { it.isNullOrBlank() }
                 for (r in b.rows) {
@@ -4499,12 +4588,14 @@ cardCurrentReport.setOnClickListener {
 
             return map.values.map { a ->
                 FirmaBlock(
-                    firmaId = stableId(a.key),
+                    firmaId = a.firmaId ?: stableId(a.key),
                     name = a.name.trim(),
                     personalVon = a.personalVon,
                     personalBis = a.personalBis,
                     maschinenVon = a.maschinenVon,
                     maschinenBis = a.maschinenBis,
+                    personalZeitbindung = a.personalZeitbindung,
+                    maschinenZeitbindung = a.maschinenZeitbindung,
                     visibleInPersonal = a.visibleInPersonal,
                     visibleInMaschinen = a.visibleInMaschinen,
                     personal = a.personal.toList(),
