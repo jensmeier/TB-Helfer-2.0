@@ -444,7 +444,7 @@ class BautagebuchPdf(
             val generalWorkLines = if (e.arbeiten.items.isNotEmpty()) {
                 e.arbeiten.items.map { item ->
                     buildString {
-                        item.uhrzeit?.takeIf { it.isNotBlank() }?.let { append(it).append(' ') }
+                        item.zeitAnzeige?.let { append(it).append(' ') }
                         val km = de.tbhelfer.util.KmAnzeige.bereich(item.kmVon, item.kmBis, inKlammern = false)
                         if (!km.isNullOrBlank()) append(km).append(' ')
                         append(item.text)
@@ -545,7 +545,7 @@ class BautagebuchPdf(
 
                 val (firm, txt2) = splitFirma(rawTxt, forceGeneral = forcedGeneral)
                 if (txt2.isBlank()) return@forEach
-                val label = parseStartLabel(it2.uhrzeit)
+                val label = parseStartLabel(it2.zeitAnzeige) ?: it2.zeitAnzeige
                 val line = if (!label.isNullOrBlank()) wsNorm("$label $txt2") else wsNorm(txt2)
                 val finalOrtId = if (firm == null) 0L else effectiveOrtId
                 out.add("${firm ?: ""}||$finalOrtId||$line")
@@ -1644,7 +1644,7 @@ fun canonFirm(name: String?): String? {
                 val txt = rest1?.trim().orEmpty()
                 if (txt.isBlank()) return@mapNotNull null
 
-                val t = parseTimeOrNull(it2.uhrzeit)
+                val t = parseTimeOrNull(BtbEintragszeit.lesen(it2.uhrzeit, it2.uhrzeitBis).von)
                 if (t != null) lastTime = t
                 val (firma, txt2) = splitFirmaSection(txt, forceGeneral = forcedGeneral)
                 val finalTxt = txt2.trim()
@@ -1652,7 +1652,7 @@ fun canonFirm(name: String?): String? {
                 val finalOrtId = if (firma == null) 0L else effectiveOrtId
 
                 val kmLabel = de.tbhelfer.util.KmAnzeige.bereich(it2.kmVon, it2.kmBis, inKlammern = true)
-                val lineParts = listOfNotNull(t?.format(timeFmt), kmLabel, finalTxt)
+                val lineParts = listOfNotNull(it2.zeitAnzeige, kmLabel, finalTxt)
                 PdfEvent(
                     sortTime = t ?: lastTime,
                     kind = kind,
@@ -2038,12 +2038,12 @@ fun splitFirma(txtIn: String, forceGeneral: Boolean = false): Pair<String?, Stri
             if (txt2.isBlank()) return@forEach
             val finalOrtId = if (firm == null) 0L else effectiveOrtId
 
-            val (t, label) = parseStartTimeAndLabel(it2.uhrzeit)
+            val (t, label) = parseStartTimeAndLabel(it2.zeitAnzeige)
             if (t != null) lastTime = t
 
             val sortT = t ?: lastTime
             val kmLabel = de.tbhelfer.util.KmAnzeige.bereich(it2.kmVon, it2.kmBis, inKlammern = true)
-            val line = listOfNotNull(label?.takeIf { it.isNotBlank() }, kmLabel, txt2).joinToString(" ")
+            val line = listOfNotNull(label?.takeIf { it.isNotBlank() } ?: it2.zeitAnzeige, kmLabel, txt2).joinToString(" ")
             out.add(PdfEvent(sortT, kind, seq++, finalOrtId, firm, line))
         }
         return out
@@ -3051,3 +3051,4 @@ fun sharePdf(file: File) {
         context.startActivity(Intent.createChooser(intent, "PDF teilen"))
     }
 }
+

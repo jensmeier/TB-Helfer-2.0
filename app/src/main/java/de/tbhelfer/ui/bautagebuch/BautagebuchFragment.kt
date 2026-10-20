@@ -992,7 +992,7 @@ cardCurrentReport.setOnClickListener {
             block.items.forEach { item ->
                 val txt = wsNorm(stripMarkers(item.text))
                 if (txt.isBlank()) return@forEach
-                val time = item.uhrzeit?.trim().orEmpty().takeIf { it.isNotBlank() }?.replace('-', '–')
+                val time = item.zeitAnzeige?.replace('-', '–')
                 out += if (time != null) "$time $txt" else txt
             }
             return out
@@ -4560,7 +4560,7 @@ cardCurrentReport.setOnClickListener {
         private fun sectionFromMultiline(raw: String?): SectionBlock {
             val timeIn = java.time.format.DateTimeFormatter.ofPattern("H:mm")
             val timeOut = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-            val reTime = Regex("""^(\d{1,2}:\d{2})(?:\s*[-–]\s*\(?\s*(\d{1,2}:\d{2})\s*\)?)?\s+(.+)$""")
+            val reTime = Regex("""^(\d{1,2}:\d{2})?(?:\s*[-–]\s*\(?\s*(\d{1,2}:\d{2})\s*\)?)?\s+(.+)$""")
             val reEntry = Regex("""^@ENTRY=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
             val reNode = Regex("""^@NODE=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
             val reFirmaId = Regex("""^@FIRMAID=([^\s]+)\s*(.*)$""", RegexOption.IGNORE_CASE)
@@ -4633,7 +4633,7 @@ cardCurrentReport.setOnClickListener {
                 line = line.removePrefix("•").trim()
                 if (line.isBlank()) return@mapNotNull null
 
-                fun build(time: String?, rawText: String): SectionItem? {
+                fun build(time: String?, rawText: String, endTime: String? = null): SectionItem? {
                     var text = rawText.trim()
                     if (text.isBlank()) return null
                     var firmaName: String? = null
@@ -4648,6 +4648,7 @@ cardCurrentReport.setOnClickListener {
                     return SectionItem(
                         clientEntryKey = clientEntryKey,
                         uhrzeit = time,
+                        uhrzeitBis = endTime,
                         text = text,
                         kmVon = kmVon,
                         kmBis = kmBis,
@@ -4659,11 +4660,12 @@ cardCurrentReport.setOnClickListener {
 
                 val m = reTime.matchEntire(line)
                 if (m != null) {
-                    val startNorm = norm(m.groupValues[1]) ?: return@mapNotNull null
+                    val startNorm = m.groupValues[1].takeIf { it.isNotBlank() }?.let {
+                        norm(it) ?: return@mapNotNull null
+                    }
                     val endRaw = m.groupValues.getOrNull(2).orEmpty().trim()
                     val endNorm = endRaw.takeIf { it.isNotBlank() }?.let(::norm)
-                    val t = if (endNorm != null) "$startNorm–$endNorm" else startNorm
-                    build(t, m.groupValues[3])
+                    build(startNorm, m.groupValues[3], endNorm)
                 } else {
                     build(null, line)
                 }
@@ -4685,7 +4687,7 @@ cardCurrentReport.setOnClickListener {
                         add(if (b != null) "@KM=$a-$b" else "@KM=$a")
                     }
                 }.joinToString(" ")
-                val time = item.uhrzeit?.takeIf { it.isNotBlank() }?.plus(" ").orEmpty()
+                val time = item.zeitAnzeige?.plus(" ").orEmpty()
                 val firma = item.firmaName?.trim()?.takeIf { it.isNotBlank() }?.let { "$it: " }.orEmpty()
                 listOf(markers, "• $time$firma${item.text}".trimEnd())
                     .filter { it.isNotBlank() }
@@ -5212,6 +5214,10 @@ cardCurrentReport.setOnClickListener {
                     val s = input.trim()
                     if (s.isBlank()) return null
 
+                    Regex("""^[-–]\s*(\d{1,2}:\d{2})$""").matchEntire(s)?.let {
+                        return normalizeHm(it.groupValues[1])?.let { end -> "–$end" }
+                    }
+
                     // Single time
                     normalizeHm(s)?.let { return it }
 
@@ -5360,14 +5366,14 @@ cardCurrentReport.setOnClickListener {
                         var timeStr: String? = null
                         var timeMin: Int? = null
                         var rest = line
-                        val m = Regex("""^(\d{1,2}:\d{2})(?:\s*[-–]\s*\(?\s*(\d{1,2}:\d{2})\s*\)?\s*)?\s+(.*)$""").find(line)
+                        val m = Regex("""^(\d{1,2}:\d{2})?(?:\s*[-–]\s*\(?\s*(\d{1,2}:\d{2})\s*\)?\s*)?\s+(.*)$""").find(line)
                         if (m != null) {
-                            val startNorm = normalizeHm(m.groupValues[1])
-                            if (startNorm != null) {
+                            val startNorm = m.groupValues[1].takeIf { it.isNotBlank() }?.let { normalizeHm(it) }
+                            if (startNorm != null || m.groupValues[2].isNotBlank()) {
                                 val endRaw = m.groupValues.getOrNull(2).orEmpty().trim()
                                 val endNorm = endRaw.takeIf { it.isNotBlank() }?.let { normalizeHm(it) }
-                                timeStr = if (endNorm != null) "$startNorm–$endNorm" else startNorm
-                                timeMin = hmToMin(startNorm)
+                                timeStr = if (endNorm != null) "${startNorm.orEmpty()}–$endNorm" else startNorm
+                                timeMin = startNorm?.let { hmToMin(it) }
                                 rest = m.groupValues[3].trim()
                             }
                         }
@@ -8015,3 +8021,4 @@ private data class BaustelleKontext(
     val strecke: String?,
     val rootKnotenId: Long? = null
 )
+

@@ -666,7 +666,7 @@ object BtbExportPaket {
             val cleaned = cleanMarkerText(item.text)
             if (cleaned.isBlank()) return@mapNotNull null
             val (firma, txt) = if (forcedGeneral) null to cleaned else splitFirmaPrefix(cleaned, knownFirms)
-            val time = item.uhrzeit?.trim().orEmpty().takeIf { it.isNotBlank() }
+            val time = item.zeitAnzeige
             val kmLabel = de.tbhelfer.util.KmAnzeige.bereich(item.kmVon, item.kmBis, inKlammern = true)
             val line = listOfNotNull(time, kmLabel, txt).joinToString(" ")
             TxtLine(firma = firma, ort = null, text = line)
@@ -1721,3 +1721,4 @@ object BtbExportPaket {
         context.startActivity(Intent.createChooser(intent, "Exportpaket teilen"))
     }
 }
+

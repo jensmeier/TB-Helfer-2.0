@@ -106,7 +106,7 @@ object BtbEinzelZip {
             fun addSection(title: String, block: SectionBlock) {
                 add(title)
                 if (block.items.isEmpty()) add("-") else block.items.forEach { item ->
-                    add(listOfNotNull(item.uhrzeit, item.text).joinToString(" "))
+                    add(listOfNotNull(item.zeitAnzeige, item.text).joinToString(" "))
                 }
                 add("")
             }
@@ -148,3 +148,4 @@ object BtbEinzelZip {
         .take(80)
         .ifBlank { "Baustelle" }
 }
+

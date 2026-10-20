@@ -410,7 +410,9 @@ object BautagebuchSpeicher {
             val normalized = entry.copy(btbId = id)
             SelectiveSyncStore.withBtbMutationLock(entry.baustelleId, id) {
                 val f = instanzDatei(context, entry.baustelleId, entry.baustelleName, datum, id)
-                f.writeText(toJson(normalized).toString(2), Charsets.UTF_8)
+                val json = toJson(normalized)
+                bewahreEintragszeitFormat(json, f)
+                f.writeText(json.toString(2), Charsets.UTF_8)
                 writeActivePointer(context, entry.baustelleId, entry.baustelleName, id, datum, normalized.schicht)
                 de.tbhelfer.widget.TBHelferWidgetUpdater.updateAll(context)
                 // Dirty-Markierung bleibt im selben BTB-Mutationslock wie der Dateisave.
@@ -428,9 +430,48 @@ object BautagebuchSpeicher {
             if (veryOld.exists()) legacy = veryOld
         }
         if (!legacy.exists()) return
-        legacy.writeText(toJson(entry).toString(2), Charsets.UTF_8)
+        val json = toJson(entry)
+        bewahreEintragszeitFormat(json, legacy)
+        legacy.writeText(json.toString(2), Charsets.UTF_8)
         de.tbhelfer.widget.TBHelferWidgetUpdater.updateAll(context)
         syncNachLokalemSpeichernAnstossen(context, entry.baustelleId, null)
+    }
+
+    /** Nur eine semantisch gleiche Zeit behaelt ihre bisherige JSON-Form und ihren PDF-Hash. */
+    internal fun bewahreEintragszeitFormat(current: JSONObject, file: File) {
+        val previous = runCatching {
+            if (file.isFile) JSONObject(file.readText(Charsets.UTF_8)) else null
+        }.getOrNull() ?: return
+        val sections = listOf("arbeiten", "abnahmen", "einweisungUnterweisung", "besonderheiten", "maengelSchaeden")
+        fun items(json: JSONObject): List<JSONObject> = sections.flatMap { section ->
+            val array = json.optJSONArray(section) ?: return@flatMap emptyList()
+            (0 until array.length()).mapNotNull { array.optJSONObject(it) }
+        }
+        fun key(item: JSONObject): String? = if (item.isNull("clientEntryKey")) null else
+            item.optString("clientEntryKey").trim().takeIf { it.isNotBlank() }
+        fun time(item: JSONObject): BtbEintragszeit.Bereich = BtbEintragszeit.lesen(
+            if (item.isNull("uhrzeit")) null else item.optString("uhrzeit"),
+            if (item.isNull("uhrzeitBis")) null else item.optString("uhrzeitBis"),
+            endeVorhanden = item.has("uhrzeitBis")
+        )
+        val byKey = items(previous).mapNotNull { item -> key(item)?.let { it to item } }.toMap()
+        sections.forEach { section ->
+            val now = current.optJSONArray(section) ?: return@forEach
+            val old = previous.optJSONArray(section)
+            for (index in 0 until now.length()) {
+                val item = now.optJSONObject(index) ?: continue
+                val id = key(item)
+                val before = if (id != null) byKey[id] else old?.optJSONObject(index)?.takeIf { candidate ->
+                    key(candidate) == null && listOf("text", "firmaId", "worksiteNodeKey", "kmVon", "kmBis").all {
+                        candidate.opt(it) == item.opt(it)
+                    }
+                }
+                if (before == null || time(before) != time(item)) continue
+                listOf("uhrzeit", "uhrzeitBis").forEach { field ->
+                    if (before.has(field)) item.put(field, before.opt(field)) else item.remove(field)
+                }
+            }
+        }
     }
 
     private fun toJson(e: BautagebuchEintrag): JSONObject = JSONObject().apply {
@@ -471,7 +512,9 @@ object BautagebuchSpeicher {
         }) } })
         fun sectionToJson(sb: SectionBlock): JSONArray = JSONArray().apply { sb.items.forEach { item -> put(JSONObject().apply {
             put("clientEntryKey", item.clientEntryKey)
-            put("uhrzeit", item.uhrzeit)
+            val zeiten = BtbEintragszeit.lesen(item.uhrzeit, item.uhrzeitBis)
+            put("uhrzeit", zeiten.von ?: JSONObject.NULL)
+            put("uhrzeitBis", zeiten.bis ?: JSONObject.NULL)
             put("text", item.text)
             put("kmVon", item.kmVon)
             put("kmBis", item.kmBis)
@@ -535,9 +578,15 @@ object BautagebuchSpeicher {
             return SectionBlock((0 until a.length()).mapNotNull { i ->
                 val x = a.optJSONObject(i) ?: return@mapNotNull null
                 val text = x.optString("text").trim(); if (text.isBlank()) return@mapNotNull null
+                val zeiten = BtbEintragszeit.lesen(
+                    if (x.isNull("uhrzeit")) null else x.optString("uhrzeit"),
+                    if (x.isNull("uhrzeitBis")) null else x.optString("uhrzeitBis"),
+                    endeVorhanden = x.has("uhrzeitBis")
+                )
                 SectionItem(
                     clientEntryKey = x.optString("clientEntryKey").trim().takeIf { it.isNotBlank() },
-                    uhrzeit = x.optString("uhrzeit").takeUnless { it.isBlank() },
+                    uhrzeit = zeiten.von,
+                    uhrzeitBis = zeiten.bis,
                     text = text,
                     kmVon = if (x.has("kmVon") && !x.isNull("kmVon")) x.optDouble("kmVon").takeUnless { it.isNaN() } else null,
                     kmBis = if (x.has("kmBis") && !x.isNull("kmBis")) x.optDouble("kmBis").takeUnless { it.isNaN() } else null,
@@ -772,3 +821,4 @@ object BautagebuchSpeicher {
         return false
     }
 }
+

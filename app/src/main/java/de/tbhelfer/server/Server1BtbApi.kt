@@ -1280,7 +1280,14 @@ class Server1BtbApi(
                 resolvedSlot,
                 index,
                 JSONObject(item.toString())
-                    .apply { remove("clientEntryKey") }
+                    .apply {
+                        remove("clientEntryKey")
+                        val time = de.tbhelfer.ui.bautagebuch.BtbEintragszeit.lesen(
+                            nullableString("uhrzeit"), nullableString("uhrzeitBis"), has("uhrzeitBis")
+                        )
+                        put("uhrzeit", time.von ?: JSONObject.NULL)
+                        put("uhrzeitBis", time.bis ?: JSONObject.NULL)
+                    }
                     .put(MANAGED_KEY, true)
                     .put(SLOT_KEY, resolvedSlot)
             )
@@ -1693,3 +1700,4 @@ class Server1BtbApi(
         )
     }
 }
+

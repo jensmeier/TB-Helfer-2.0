@@ -682,6 +682,7 @@ class CollabLocalBridge(
                     if (!serverFinal && SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, key)) {
                         false
                     } else {
+                        BautagebuchSpeicher.bewahreEintragszeitFormat(localPayload, target)
                         if (writeIfDifferent(target, localPayload.toString(2))) btbWritten++
 
                         // Server ist fuer den Team-Lifecycle kanonisch. Ein aktiver Server-BTB wird auf
@@ -1195,3 +1196,4 @@ class CollabLocalBridge(
     private fun JSONObject.optNullableLong(key: String): Long? = if (!has(key) || isNull(key)) null else optLong(key)
     private fun JSONObject.optNullableDouble(key: String): Double? = if (!has(key) || isNull(key)) null else optDouble(key)
 }
+

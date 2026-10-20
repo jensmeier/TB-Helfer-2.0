@@ -96,7 +96,7 @@ object BtbRenderOriginalDiff {
             original.items,
             current.items,
             { item -> blockKey(item) },
-            { item -> item.uhrzeit?.trim().orEmpty() }
+            { item -> item.zeitAnzeige.orEmpty() }
         )
         if (removed.isEmpty()) return current
         return current.copy(
@@ -211,3 +211,4 @@ object BtbRenderOriginalDiff {
         }
     }
 }
+

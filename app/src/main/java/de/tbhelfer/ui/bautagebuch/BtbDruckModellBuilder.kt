@@ -580,10 +580,10 @@ object BtbDruckModellBuilder {
             val (firm, txt2) = splitFirma(rawTxt, forcedGeneral, firmCanonicalByLower)
             if (txt2.isBlank()) return@forEach
             val finalOrtId = if (firm == null) 0L else effectiveOrtId
-            val (t, label) = parseStartTimeAndLabel(item.uhrzeit)
+            val (t, label) = parseStartTimeAndLabel(item.zeitAnzeige)
             if (t != null) lastTime = t
             val kmLabel = de.tbhelfer.util.KmAnzeige.bereich(item.kmVon, item.kmBis, inKlammern = true)
-            val line = listOfNotNull(label?.takeIf { it.isNotBlank() }, kmLabel, txt2).joinToString(" ")
+            val line = listOfNotNull(label?.takeIf { it.isNotBlank() } ?: item.zeitAnzeige, kmLabel, txt2).joinToString(" ")
             out.add(PrintEvent(t ?: lastTime, kind, seq++, finalOrtId, firm, line))
         }
         return out
@@ -711,3 +711,4 @@ object BtbDruckModellBuilder {
             Instant.ofEpochMilli(endEpoch).atZone(zone).toLocalTime().format(timeFmt)
     }
 }
+

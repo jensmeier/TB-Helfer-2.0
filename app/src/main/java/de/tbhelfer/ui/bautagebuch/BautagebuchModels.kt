@@ -75,8 +75,13 @@ data class SectionItem(
      * Kanonische geräteübergreifende Unterbaustellenreferenz.
      * Wert = clientNodeKey des Worksite-Node-Bindings; null = Hauptbaustelle.
      */
-    val worksiteNodeKey: String? = null
-)
+    val worksiteNodeKey: String? = null,
+    /** Optionales Ende; vor dem Beginn bedeutet Folgetag, gleiche Uhrzeit bleibt gleich. */
+    val uhrzeitBis: String? = null
+) {
+    val zeitAnzeige: String?
+        get() = BtbEintragszeit.lesen(uhrzeit, uhrzeitBis).anzeige
+}
 
 data class SectionBlock(
     val items: List<SectionItem> = emptyList()
@@ -212,3 +217,4 @@ data class BautagebuchEintrag(
         }
     }
 }
+
