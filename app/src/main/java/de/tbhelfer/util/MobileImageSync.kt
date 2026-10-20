@@ -17,9 +17,12 @@ import kotlin.math.roundToInt
 object MobileImageSync {
     const val MAX_DIM_PX = 1920
     const val JPEG_QUALITY = 82
+    const val MAX_BYTES = 2_000_000L
+    private val JPEG_QUALITIES = intArrayOf(JPEG_QUALITY, 75, 68, 60)
     private const val DECODE_MAX_DIM_PX = 2560
     private const val DIR_NAME = "mobile_sync_images"
 
+    @Synchronized
     fun prepare(context: Context, source: File, cacheKey: String): File? = runCatching {
         require(source.isFile) { "Bilddatei existiert nicht." }
 
@@ -34,7 +37,7 @@ object MobileImageSync {
         val target = File(dir, "$safeKey.jpg")
         if (
             target.isFile &&
-            target.length() > 0L &&
+            target.length() in 1L..MAX_BYTES &&
             target.lastModified() >= source.lastModified()
         ) {
             return@runCatching target
@@ -58,11 +61,13 @@ object MobileImageSync {
             }
         ) ?: error("Bild konnte nicht dekodiert werden.")
 
-        val oriented = ImageExifUtil.applyExifOrientation(decoded, source.absolutePath)
+        var oriented = decoded
         var scaled: Bitmap? = null
+        val temp = File(target.parentFile, target.name + ".tmp")
         try {
+            oriented = ImageExifUtil.applyExifOrientation(decoded, source.absolutePath)
             val maxDim = max(oriented.width, oriented.height)
-            val output = if (maxDim > MAX_DIM_PX) {
+            var output = if (maxDim > MAX_DIM_PX) {
                 val factor = MAX_DIM_PX.toDouble() / maxDim.toDouble()
                 Bitmap.createScaledBitmap(
                     oriented,
@@ -74,19 +79,53 @@ object MobileImageSync {
                 oriented
             }
 
-            val temp = File(target.parentFile, target.name + ".tmp")
-            FileOutputStream(temp).use { out ->
-                check(output.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)) {
-                    "JPEG-Komprimierung fehlgeschlagen."
+            // Die Pixelkante allein garantiert keine Dateigroesse. Erst nach geschlossenem
+            // Stream pruefen, dann ggf. Qualitaet und anschliessend Abmessungen reduzieren.
+            var fits = false
+            while (!fits) {
+                for (quality in JPEG_QUALITIES) {
+                    FileOutputStream(temp).use { out ->
+                        check(output.compress(Bitmap.CompressFormat.JPEG, quality, out)) {
+                            "JPEG-Komprimierung fehlgeschlagen."
+                        }
+                    }
+                    check(temp.length() > 0L) { "Sync-Bild ist leer." }
+                    if (temp.length() <= MAX_BYTES) {
+                        fits = true
+                        break
+                    }
+                }
+                if (!fits) {
+                    check(output.width > 1 || output.height > 1) {
+                        "Sync-Bild konnte nicht auf 2 MB verkleinert werden."
+                    }
+                    val previous = output
+                    output = Bitmap.createScaledBitmap(
+                        previous,
+                        (previous.width * 0.8).toInt().coerceAtLeast(1),
+                        (previous.height * 0.8).toInt().coerceAtLeast(1),
+                        true
+                    )
+                    scaled = output
+                    if (previous !== oriented && previous !== output && !previous.isRecycled) {
+                        previous.recycle()
+                    }
                 }
             }
-            if (target.exists()) target.delete()
-            if (!temp.renameTo(target)) {
-                temp.copyTo(target, overwrite = true)
-                temp.delete()
+
+            check(temp.length() in 1L..MAX_BYTES) { "Ungueltige Sync-Bildgroesse." }
+            try {
+                if (target.exists()) check(target.delete()) { "Alter Sync-Cache nicht loeschbar." }
+                if (!temp.renameTo(target)) temp.copyTo(target, overwrite = true)
+                check(target.length() in 1L..MAX_BYTES) { "Ungueltiger Sync-Cache." }
+            } catch (error: Exception) {
+                // Ein fehlgeschlagener Copy darf beim naechsten Lauf kein Cachetreffer werden.
+                target.delete()
+                throw error
             }
             target
         } finally {
+            temp.delete()
             if (scaled != null && scaled !== oriented && scaled?.isRecycled == false) {
                 scaled?.recycle()
             }
