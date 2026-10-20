@@ -810,3 +810,9 @@ Status: **IN ARBEIT**. Nutzer „okay“ bestätigt gezielte Objekt-/KM-Übernah
 - Bei bewusstem Kontextwechsel alte Bahnhof-/Objekt-/KM-Auswahl verwerfen; Freie Strecke zeigt keinen Bahnhof. Laden/Bearbeiten/State-Restore unter Guard, damit vorhandene Werte nicht als Benutzereingabe gelöscht werden. Keine automatische Bulk-Korrektur bestehender Baustellen.
 - WVB-Präfixnormalisierung berichtigen (bisher removePrefix W lässt VB/WV-Rest). Sync object_type additiv senden und beim Lesen beachten, bestehende track_or_switch-Kennung kompatibel behalten. Semantisch gleiches Legacy-Format darf keine künstliche Sync-Mutation erzeugen. Stationfelder freier Strecke beim Schreiben/Lesen ausblenden, keine Room-Migration.
 - Keine server/**-Datei, keine neue Bibliothek, kein APK/Versionssprung. Source-/Unit-/Build-/Geräte-E2E-Nachweise getrennt. Bestehende Outbox/Lifecycle/Originale und lokale Fachfunktionen schützen.
+
+## AND-CATALOG-FORM – Quellstand 20.10.2026
+Status: **QUELLSTAND UMGESETZT / SOURCE-CHECKS BESTANDEN / BUILD UND E2E OFFEN**.
+- Auftrag fd3affd8b8069061817e70b01e8740f0634d1939 source-seitig umgesetzt. Lokale Bahnhofsuche bleibt; optionaler bewusster Server-Lookup per Geräte-Bearer. Nur exakte/bei Namen eindeutige Assetidentität oder ausdrücklich gewählter Servercode, kein erster unscharfer Treffer. Bestandsdialog mit opt-in Objekt/KM-Resultaten; Standardkatalog bleibt ohne Übernahmebuttons.
+- Stabile Knoten-/Objektidentität, keine Originaldatei-/Room-Schemaänderung, keine neue Bibliothek und kein Serverumbau. Keine automatische Bulk-Reparatur alter Baustellen. Vorhandene Fach-/Download-/Offlinepfade bleiben Grundlage.
+- Kein Kotlin-/Gradle-/Lint-/Emulator-/Geräte-/NAS-E2E-Nachweis; diese Toolchain hier nicht verfügbar. Context7 zu FragmentResult/Lifecycle geprüft. Keine Actions gestartet ([skip ci]), keine APK und keine Versionsänderung. Technischer Stand weiterhin 1.3.26/200076; neue APK nur mit höherem Build und zugehöriger Release-MD.

@@ -188,7 +188,7 @@
                 android:id="@+id/rgGleisWeiche"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:orientation="vertical"
                 android:layout_marginTop="6dp">
 
                 <RadioButton
@@ -201,23 +201,19 @@
                     android:id="@+id/rbWeiche"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
                     android:text="@string/ui_fragment_baustelle_neu_text_weiche" />
 
                 <RadioButton
                     android:id="@+id/rbDkwKreuzung"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
                     android:text="@string/ui_fragment_baustelle_neu_text_dkw_kreuzung" />
 
-                <!-- Altbestand: bleibt technisch erhalten, ist aber bei neuen Baustellen nicht auswählbar. -->
                 <RadioButton
                     android:id="@+id/rbWeichenverbindung"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    android:text="@string/ui_fragment_baustelle_neu_text_wv" />
+                    android:text="Weichenverbindung" />
             </RadioGroup>
 
             <AutoCompleteTextView
@@ -234,7 +230,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Bestehende Weichenverbindung (Altbestand)"
+                android:text="Weichenverbindung"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -345,3 +341,4 @@
 
     </LinearLayout>
 </ScrollView>
+

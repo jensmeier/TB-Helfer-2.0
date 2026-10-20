@@ -24,6 +24,9 @@ import de.tbhelfer.util.BahnhofSucheUtil
 import de.tbhelfer.datenbank.BaustellenKnotenTyp
 import de.tbhelfer.streckenobjekte.BaustellenObjektArt
 import de.tbhelfer.streckenobjekte.BaustellenObjektLogik
+import de.tbhelfer.ui.sync.CatalogInventoryDialog
+import de.tbhelfer.server.SyncCatalogApi
+import de.tbhelfer.server.SecureTokenStore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -95,6 +98,11 @@ class BaustelleNeuFragment : Fragment() {
     private var bahnhofVorschlaege: List<BahnhofVorschlag> = emptyList()
     private var statusJob: Job? = null
     private var gleisVorschlagJob: Job? = null
+    private var catalogLookupJob: Job? = null
+    private var catalogLookupDialog: androidx.appcompat.app.AlertDialog? = null
+    private var selectedServerStation: Pair<String, String>? = null
+    private var formReady = false
+    private var formApplying = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -107,6 +115,7 @@ class BaustelleNeuFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        formReady = false
         val v = inflater.inflate(R.layout.fragment_baustelle_neu, container, false)
 
         // Insets (Notch/Statusbar): Inhalt nach unten schieben, damit der Hinweis immer lesbar ist.
@@ -174,6 +183,14 @@ class BaustelleNeuFragment : Fragment() {
         bindeJsonStatusUi()
 
         rgTyp.setOnCheckedChangeListener { _, checkedId ->
+            invalidateCatalogLookup()
+            if (formReady && !formApplying) {
+                edtBahnhof.setText("", false)
+                clearStationObject()
+                edtKmVon.setText("")
+                edtKmBis.setText("")
+            }
+            edtBahnhof.isEnabled = checkedId == R.id.rbBahnhof
             when (checkedId) {
                 R.id.rbGrossbaustelle -> {
                     gruppeFreie.visibility = View.GONE
@@ -210,9 +227,10 @@ class BaustelleNeuFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        bindCatalogSelection()
 
         if (editKnotenId != -1L) {
-            ladeBearbeitung()
+            ladeBearbeitung(restoreFields = savedInstanceState == null)
             return
         }
 
@@ -229,9 +247,178 @@ class BaustelleNeuFragment : Fragment() {
         }
     }
 
+    override fun onViewStateRestored(savedInstanceState: Bundle?) {
+        super.onViewStateRestored(savedInstanceState)
+        formReady = true
+        edtBahnhof.isEnabled = rgTyp.checkedRadioButtonId == R.id.rbBahnhof
+        if (rgTyp.checkedRadioButtonId == R.id.rbFreieStrecke) edtBahnhof.setText("", false)
+        updateObjectNumberHint()
+        planeJsonStatusUpdate()
+    }
+
+    override fun onDestroyView() {
+        formReady = false
+        invalidateCatalogLookup()
+        statusJob?.cancel()
+        gleisVorschlagJob?.cancel()
+        super.onDestroyView()
+    }
+
+    private fun clearStationObject() {
+        edtGleisWeicheNr.setText("", false)
+        edtGleisWeicheNr.dismissDropDown()
+        edtGleisWeicheNr.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, emptyList<String>()))
+        edtKmVonOptional.setText("")
+        edtKmBisOptional.setText("")
+    }
+
+    private fun updateObjectNumberHint() {
+        edtGleisWeicheNr.hint = when (bahnhofObjektModus()) {
+            "WEICHE" -> "Weichennummer, z. B. 117"
+            "WEICHENVERBINDUNG" -> "Weichenverbindungsnummer, z. B. 1"
+            "DKW_KREUZUNG" -> "DKW-/Kreuzungsnummer"
+            else -> "Gleisnummer, z. B. 19 oder 302/303"
+        }
+    }
+
+    private fun invalidateCatalogLookup() {
+        catalogLookupJob?.cancel()
+        catalogLookupJob = null
+        catalogLookupDialog?.dismiss()
+        catalogLookupDialog = null
+    }
+
+    private fun catalogSelectionStamp(): String = listOf(editKnotenId.toString(), parentId.toString(),
+        rgTyp.checkedRadioButtonId.toString(),
+        if (rgTyp.checkedRadioButtonId == R.id.rbFreieStrecke) holeStreckenkennung().orEmpty() else edtBahnhof.text?.toString().orEmpty()
+    ).joinToString("\u0001")
+
+    private fun strictStationCode(): String? {
+        val raw = edtBahnhof.text?.toString().orEmpty().trim()
+        selectedServerStation?.takeIf { it.first == raw }?.let { return it.second }
+        findeBahnhofVorschlag(raw)?.let { return it.code }
+        val normalized = BahnhofSucheUtil.normalisiereSuchtext(raw)
+        if (bahnhofVorschlaege.any { it.nameNorm == normalized }) return null
+        Regex(".*\\(([A-Za-z0-9_-]{1,50})\\)$").matchEntire(raw)?.let { return it.groupValues[1] }
+        return raw.takeIf { it.matches(Regex("[A-Z0-9_-]{1,50}")) }
+    }
+
+    private fun bindCatalogSelection() {
+        gruppeFreie.addView(Button(requireContext()).apply {
+            text = "Vorhandene Daten anzeigen"
+            setOnClickListener { openFormInventory() }
+        }, minOf(2, gruppeFreie.childCount))
+        gruppeBahnhof.addView(Button(requireContext()).apply {
+            text = "Bahnhof auf Server suchen"
+            setOnClickListener { lookupServerStation() }
+        }, 1)
+        gruppeBahnhof.addView(Button(requireContext()).apply {
+            text = "Vorhandene Daten anzeigen"
+            setOnClickListener { openFormInventory() }
+        }, 2)
+        childFragmentManager.setFragmentResultListener(CatalogInventoryDialog.RESULT_KEY, viewLifecycleOwner) { _, result ->
+            if (result.getString("selectionStamp") != catalogSelectionStamp()) {
+                toast("Auswahl ist nicht mehr aktuell. Bitte den Bestand erneut öffnen.")
+                return@setFragmentResultListener
+            }
+            when (result.getString("action")) {
+                "OBJECT" -> {
+                    if (rgTyp.checkedRadioButtonId != R.id.rbBahnhof) return@setFragmentResultListener
+                    val kind = result.getString("kind")
+                    val number = result.getString("number")?.takeIf { it.isNotBlank() } ?: return@setFragmentResultListener
+                    val radio = when (kind) {
+                        "GLEIS" -> R.id.rbGleis
+                        "WEICHE" -> R.id.rbWeiche
+                        "WEICHENVERBINDUNG" -> R.id.rbWeichenverbindung
+                        else -> return@setFragmentResultListener
+                    }
+                    val previous = formApplying
+                    formApplying = true
+                    try {
+                        rgGleisWeiche.check(radio)
+                        edtGleisWeicheNr.setText(number, false)
+                    } finally { formApplying = previous }
+                    toast("Objekt übernommen. KM bleiben unverändert.")
+                }
+                "KM" -> {
+                    val from = result.getDouble("fromMeters", Double.NaN) / 1000.0
+                    val to = result.getDouble("toMeters", Double.NaN) / 1000.0
+                    val fromText = formatKm(from)
+                    val toText = formatKm(to)
+                    if (!from.isFinite() || !to.isFinite() || from > to || parseKm(fromText) == null || parseKm(toText) == null) {
+                        toast("Dieser KM-Bereich passt nicht ins Eingabeformat 0.000–999.999. Es wurde nichts übernommen.")
+                        return@setFragmentResultListener
+                    }
+                    when (rgTyp.checkedRadioButtonId) {
+                        R.id.rbFreieStrecke -> { edtKmVon.setText(fromText); edtKmBis.setText(toText) }
+                        R.id.rbBahnhof -> { edtKmVonOptional.setText(fromText); edtKmBisOptional.setText(toText) }
+                        else -> return@setFragmentResultListener
+                    }
+                    toast("KM-Abschnitt übernommen.")
+                }
+            }
+        }
+    }
+
+    private fun openFormInventory() {
+        if (formApplying || !formReady) return
+        val stationMode = rgTyp.checkedRadioButtonId == R.id.rbBahnhof
+        val route = if (rgTyp.checkedRadioButtonId == R.id.rbFreieStrecke) holeStreckenkennung()?.substringBefore('-') else null
+        val station = if (stationMode) strictStationCode() else null
+        if (route == null && station == null) {
+            toast(if (stationMode) "Bitte einen eindeutigen Bahnhof auswählen oder auf dem Server suchen." else "Bitte eine vierstellige Strecke auswählen.")
+            return
+        }
+        if (childFragmentManager.isStateSaved || childFragmentManager.findFragmentByTag("worksite_inventory") != null) return
+        CatalogInventoryDialog.newInstance(station ?: route.orEmpty(), routeNumber = route, stationCode = station,
+            selectionStamp = catalogSelectionStamp(), allowObjectSelection = stationMode, allowKmSelection = true)
+            .show(childFragmentManager, "worksite_inventory")
+    }
+
+    private fun lookupServerStation() {
+        if (formApplying || !formReady) return
+        if (rgTyp.checkedRadioButtonId != R.id.rbBahnhof) return
+        val raw = edtBahnhof.text?.toString().orEmpty().trim()
+        val query = strictStationCode()?.takeIf { it.length >= 2 } ?: findeBahnhofVorschlag(raw)?.name ?: raw
+        if (query.length !in 2..100) { toast("Bitte 2 bis 100 Zeichen des Bahnhofs eingeben."); return }
+        val token = SecureTokenStore(requireContext()).load()
+        if (token.isNullOrBlank()) { toast("Bitte zuerst das Gerät aktivieren. Lokale Eingabe bleibt möglich."); return }
+        invalidateCatalogLookup()
+        val stamp = catalogSelectionStamp()
+        toast("Bahnhofsuche wird geladen …")
+        catalogLookupJob = viewLifecycleOwner.lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { SyncCatalogApi().lookupStations(token, query) }
+            if (!isAdded || !viewLifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) ||
+                childFragmentManager.isStateSaved || stamp != catalogSelectionStamp()) return@launch
+            when (result) {
+                is SyncCatalogApi.LookupResult.Success -> {
+                    if (result.warnings.isNotEmpty()) toast(result.warnings.joinToString("\n"))
+                    if (result.stations.isEmpty()) { toast("Keine passenden Bahnhöfe gefunden. Lokale Eingabe bleibt möglich."); return@launch }
+                    catalogLookupDialog = MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("Bahnhof auswählen")
+                        .setItems(result.stations.map { "${it.name} (${it.code})" + if (it.dataAvailable) " · Daten vorhanden" else "" }.toTypedArray()) { _, index ->
+                            if (stamp != catalogSelectionStamp()) return@setItems
+                            val station = result.stations[index]
+                            val display = "${station.name} (${station.code})"
+                            if (edtBahnhof.text?.toString() != display) clearStationObject()
+                            selectedServerStation = display to station.code
+                            edtBahnhof.setText(display, false)
+                        }
+                        .setNegativeButton(android.R.string.cancel, null).show()
+                }
+                SyncCatalogApi.LookupResult.Unsupported -> toast("Dieser Server bietet die Bahnhofsuche noch nicht an. Lokale Eingabe bleibt möglich.")
+                SyncCatalogApi.LookupResult.SessionInvalid -> toast("Gerätezugriff ist nicht gültig. Bitte Aktivierung prüfen.")
+                is SyncCatalogApi.LookupResult.Error -> toast(result.message)
+            }
+        }
+    }
+
     private fun bindeJsonStatusUi() {
         edtStreckennummer.addTextChangedListener(einfacherWatcher { planeJsonStatusUpdate() })
         edtBahnhof.addTextChangedListener(einfacherWatcher {
+            invalidateCatalogLookup()
+            if (selectedServerStation?.first != edtBahnhof.text?.toString()) selectedServerStation = null
+            if (formReady && !formApplying) clearStationObject()
             planeJsonStatusUpdate()
             aktualisiereGleisVorschlaege()
         })
@@ -246,6 +433,8 @@ class BaustelleNeuFragment : Fragment() {
             if (rgGleisWeiche.checkedRadioButtonId == R.id.rbGleis) aktualisiereGleisVorschlaege(dropdownOeffnen = true)
         }
         rgGleisWeiche.setOnCheckedChangeListener { _, _ ->
+            if (formReady && !formApplying) clearStationObject()
+            updateObjectNumberHint()
             aktualisiereStreckendatenButton()
             planeJsonStatusUpdate()
             aktualisiereGleisVorschlaege()
@@ -334,7 +523,8 @@ class BaustelleNeuFragment : Fragment() {
         val code = extrahiereBahnhofCode(raw, findeBahnhofVorschlag(raw)).ifBlank { raw.uppercase(Locale.GERMANY) }
         gleisVorschlagJob = viewLifecycleOwner.lifecycleScope.launch {
             val gleise = withContext(Dispatchers.IO) { ladeGleisVorschlaegeFuerBetriebsstelle(code) }
-            if (!isAdded || !::edtGleisWeicheNr.isInitialized) return@launch
+            if (!isAdded || rgTyp.checkedRadioButtonId != R.id.rbBahnhof ||
+                rgGleisWeiche.checkedRadioButtonId != R.id.rbGleis || edtBahnhof.text?.toString().orEmpty().trim() != raw) return@launch
             edtGleisWeicheNr.setAdapter(
                 ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, gleise)
             )
@@ -787,9 +977,8 @@ class BaustelleNeuFragment : Fragment() {
     private fun findeBahnhofVorschlag(raw: String): BahnhofVorschlag? {
         val norm = BahnhofSucheUtil.normalisiereSuchtext(raw)
         if (norm.isBlank()) return null
-        return bahnhofVorschlaege.firstOrNull {
-            it.codeNorm == norm || it.nameNorm == norm || it.displayNorm == norm
-        } ?: filterBahnhofVorschlaege(raw).firstOrNull()
+        bahnhofVorschlaege.filter { it.codeNorm == norm || it.displayNorm == norm }.singleOrNull()?.let { return it }
+        return bahnhofVorschlaege.filter { it.nameNorm == norm }.singleOrNull()
     }
 
     private fun extrahiereBahnhofCode(raw: String, vorschlag: BahnhofVorschlag?): String {
@@ -855,88 +1044,93 @@ class BaustelleNeuFragment : Fragment() {
 
     private fun baueWeichenKennung(nr: String): String = nr.trim()
 
-    private fun ladeBearbeitung() {
+    private fun ladeBearbeitung(restoreFields: Boolean = true) {
+        formApplying = true
         viewLifecycleOwner.lifecycleScope.launch {
-            val knoten = repo.knotenMitId(editKnotenId)
-            if (knoten == null) {
-                toast("Baustelle nicht gefunden.")
-                findNavController().navigateUp()
-                return@launch
-            }
-            editKnoten = knoten
-            parentId = knoten.parentId ?: -1L
+            try {
+                val knoten = repo.knotenMitId(editKnotenId)
+                if (knoten == null) {
+                    toast("Baustelle nicht gefunden.")
+                    findNavController().navigateUp()
+                    return@launch
+                }
+                editKnoten = knoten
+                parentId = knoten.parentId ?: -1L
 
-            rbGrossbaustelle.visibility = View.GONE
+                rbGrossbaustelle.visibility = View.GONE
 
-            if (knoten.typ == BaustellenKnotenTyp.HAUPT) {
-                txtHauptInfo.text = "Hauptbaustelle bearbeiten"
-                edtHauptbaustellenName.visibility = View.VISIBLE
-                edtHauptbaustellenName.setText(knoten.hauptbaustellenName)
-                edtUnterpunktName.visibility = View.GONE
-                txtTypLabel.visibility = View.GONE
-                rgTyp.visibility = View.GONE
-                gruppeFreie.visibility = View.GONE
-                gruppeBahnhof.visibility = View.GONE
-                gruppeAllgemein.visibility = View.GONE
-                return@launch
-            }
-
-            edtHauptbaustellenName.visibility = View.GONE
-            edtUnterpunktName.visibility = View.VISIBLE
-            txtTypLabel.visibility = View.VISIBLE
-            rgTyp.visibility = View.VISIBLE
-
-            val root = repo.knotenMitId(knoten.rootId)
-            txtHauptInfo.text = "Hauptbaustelle: ${root?.hauptbaustellenName ?: knoten.hauptbaustellenName}"
-            edtUnterpunktName.setText(knoten.knotenName.orEmpty())
-
-            when (knoten.typ) {
-                BaustellenKnotenTyp.FREIE_STRECKE -> {
-                    rgTyp.check(R.id.rbFreieStrecke)
-                    val parts = knoten.streckenkennung.orEmpty().split("-")
-                    if (parts.size == 2) {
-                        edtStreckennummer.setText(parts[0])
-                        val suffix = "-${parts[1]}"
-                        val pos = (spStreckenSuffix.adapter as ArrayAdapter<String>).getPosition(suffix)
-                        if (pos >= 0) spStreckenSuffix.setSelection(pos)
-                    }
-                    edtKmVon.setText(formatKm(knoten.kmVon))
-                    edtKmBis.setText(formatKm(knoten.kmBis))
+                if (knoten.typ == BaustellenKnotenTyp.HAUPT) {
+                    txtHauptInfo.text = "Hauptbaustelle bearbeiten"
+                    edtHauptbaustellenName.visibility = View.VISIBLE
+                    if (restoreFields) edtHauptbaustellenName.setText(knoten.hauptbaustellenName)
+                    edtUnterpunktName.visibility = View.GONE
+                    txtTypLabel.visibility = View.GONE
+                    rgTyp.visibility = View.GONE
+                    gruppeFreie.visibility = View.GONE
+                    gruppeBahnhof.visibility = View.GONE
+                    gruppeAllgemein.visibility = View.GONE
+                    return@launch
                 }
 
-                BaustellenKnotenTyp.BAHNHOF -> {
-                    rgTyp.check(R.id.rbBahnhof)
-                    val bahnhofRaw = knoten.bahnhofName.orEmpty()
-                    val display = findeBahnhofVorschlag(bahnhofRaw)?.display ?: bahnhofRaw
-                    edtBahnhof.setText(display, false)
+                edtHauptbaustellenName.visibility = View.GONE
+                edtUnterpunktName.visibility = View.VISIBLE
+                txtTypLabel.visibility = View.VISIBLE
+                rgTyp.visibility = View.VISIBLE
 
-                    val glw = knoten.gleisOderWeiche.orEmpty().trim()
-                    val (art, nummer) = parseGleisWeicheKennung(glw)
-                    when (art) {
-                        "WV" -> {
-                            rbWeichenverbindung.isChecked = true
-                            txtAltWvHinweis.visibility = View.VISIBLE
+                val root = repo.knotenMitId(knoten.rootId)
+                txtHauptInfo.text = "Hauptbaustelle: ${root?.hauptbaustellenName ?: knoten.hauptbaustellenName}"
+                if (!restoreFields) { updateJsonStatus(); return@launch }
+                edtUnterpunktName.setText(knoten.knotenName.orEmpty())
+
+                when (knoten.typ) {
+                    BaustellenKnotenTyp.FREIE_STRECKE -> {
+                        rgTyp.check(R.id.rbFreieStrecke)
+                        val parts = knoten.streckenkennung.orEmpty().split("-")
+                        if (parts.size == 2) {
+                            edtStreckennummer.setText(parts[0])
+                            val suffix = "-${parts[1]}"
+                            val pos = (spStreckenSuffix.adapter as ArrayAdapter<String>).getPosition(suffix)
+                            if (pos >= 0) spStreckenSuffix.setSelection(pos)
                         }
-                        "W" -> rbWeiche.isChecked = true
-                        "DKW" -> rbDkwKreuzung.isChecked = true
-                        else -> rbGleis.isChecked = true
+                        edtKmVon.setText(formatKm(knoten.kmVon))
+                        edtKmBis.setText(formatKm(knoten.kmBis))
                     }
-                    aktualisiereStreckendatenButton()
-                    edtGleisWeicheNr.setText(nummer)
 
-                    edtKmVonOptional.setText(formatKm(knoten.kmVon))
-                    edtKmBisOptional.setText(formatKm(knoten.kmBis))
+                    BaustellenKnotenTyp.BAHNHOF -> {
+                        rgTyp.check(R.id.rbBahnhof)
+                        val bahnhofRaw = knoten.bahnhofName.orEmpty()
+                        val display = findeBahnhofVorschlag(bahnhofRaw)?.display ?: bahnhofRaw
+                        edtBahnhof.setText(display, false)
+
+                        val glw = knoten.gleisOderWeiche.orEmpty().trim()
+                        val (art, nummer) = parseGleisWeicheKennung(glw)
+                        when (art) {
+                            "WV" -> {
+                                rbWeichenverbindung.isChecked = true
+                            }
+                            "W" -> rbWeiche.isChecked = true
+                            "DKW" -> rbDkwKreuzung.isChecked = true
+                            else -> rbGleis.isChecked = true
+                        }
+                        aktualisiereStreckendatenButton()
+                        edtGleisWeicheNr.setText(nummer)
+
+                        edtKmVonOptional.setText(formatKm(knoten.kmVon))
+                        edtKmBisOptional.setText(formatKm(knoten.kmBis))
+                    }
+
+                    BaustellenKnotenTyp.ALLGEMEIN_OBJEKT -> {
+                        rgTyp.check(R.id.rbAllgemein)
+                        edtKmVonAllg.setText(formatKm(knoten.kmVon))
+                        edtKmBisAllg.setText(formatKm(knoten.kmBis))
+                    }
+
+                    BaustellenKnotenTyp.HAUPT -> Unit
                 }
-
-                BaustellenKnotenTyp.ALLGEMEIN_OBJEKT -> {
-                    rgTyp.check(R.id.rbAllgemein)
-                    edtKmVonAllg.setText(formatKm(knoten.kmVon))
-                    edtKmBisAllg.setText(formatKm(knoten.kmBis))
-                }
-
-                BaustellenKnotenTyp.HAUPT -> Unit
+                updateJsonStatus()
+            } finally {
+                formApplying = false
             }
-            updateJsonStatus()
         }
     }
 
@@ -1419,7 +1613,7 @@ class BaustelleNeuFragment : Fragment() {
         val sichtbar = istBahnhof &&
             (bahnhofObjektModus() == "WEICHE" || bahnhofObjektModus() == "DKW_KREUZUNG")
         btnStreckendatenOptional.visibility = if (sichtbar) View.VISIBLE else View.GONE
-        txtAltWvHinweis.visibility = if (istBahnhof && bahnhofObjektModus() == "WEICHENVERBINDUNG") View.VISIBLE else View.GONE
+        txtAltWvHinweis.visibility = View.GONE
     }
 
     private fun oeffneOptionaleStreckendaten() {
@@ -1453,3 +1647,4 @@ class BaustelleNeuFragment : Fragment() {
         Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
     }
 }
+

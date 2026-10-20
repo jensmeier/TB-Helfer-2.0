@@ -22,7 +22,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Nur lesend. Auswahl und Downloads bleiben in den bestehenden Katalogaktionen. */
+/** Bestandsabfrage mit optionaler Formularuebernahme; keine Servermutation. */
 class CatalogInventoryDialog : DialogFragment() {
     private var summary: TextView? = null
     private var search: EditText? = null
@@ -129,6 +129,30 @@ class CatalogInventoryDialog : DialogFragment() {
                 setPadding(0, dp(16), 0, dp(4))
             })
             container.addView(TextView(requireContext()).apply { text = row.details() })
+            val number = row.selectionNumber()
+            if (arguments?.getBoolean("allowObjectSelection") == true && number != null) {
+                container.addView(Button(requireContext()).apply {
+                    text = "${de.tbhelfer.server.CatalogInventoryRow.kindLabel(row.kind)} übernehmen"
+                    setOnClickListener { sendSelection(Bundle().apply {
+                        putString("action", "OBJECT")
+                        putString("kind", row.kind)
+                        putString("number", number)
+                    }) }
+                })
+            }
+            if (arguments?.getBoolean("allowKmSelection") == true) {
+                row.segments.forEachIndexed { index, segment ->
+                    val bounds = segment.rangeMeters() ?: return@forEachIndexed
+                    container.addView(Button(requireContext()).apply {
+                        text = if (row.segments.size > 1) "KM Abschnitt ${index + 1} übernehmen" else "KM übernehmen"
+                        setOnClickListener { sendSelection(Bundle().apply {
+                            putString("action", "KM")
+                            putDouble("fromMeters", bounds.first)
+                            putDouble("toMeters", bounds.second)
+                        }) }
+                    })
+                }
+            }
         }
         if (found.isEmpty() && data.rows.isNotEmpty()) container.addView(TextView(requireContext()).apply {
             text = "Keine passenden Objekte."
@@ -142,6 +166,11 @@ class CatalogInventoryDialog : DialogFragment() {
     override fun onDismiss(dialog: DialogInterface) {
         loadJob?.cancel()
         super.onDismiss(dialog)
+    }
+
+    private fun sendSelection(result: Bundle) {
+        result.putString("selectionStamp", arguments?.getString("selectionStamp"))
+        parentFragmentManager.setFragmentResult(RESULT_KEY, result)
     }
 
     override fun onDestroyView() {
@@ -158,13 +187,19 @@ class CatalogInventoryDialog : DialogFragment() {
 
     companion object {
         private const val PAGE_SIZE = 40
-        fun newInstance(title: String, routeNumber: String? = null, stationCode: String? = null) =
+        const val RESULT_KEY = "catalog_worksite_selection"
+        fun newInstance(title: String, routeNumber: String? = null, stationCode: String? = null,
+            selectionStamp: String? = null, allowObjectSelection: Boolean = false, allowKmSelection: Boolean = false) =
             CatalogInventoryDialog().apply {
                 arguments = Bundle().apply {
                     putString("title", title)
                     putString("route", routeNumber)
                     putString("station", stationCode)
+                    putString("selectionStamp", selectionStamp)
+                    putBoolean("allowObjectSelection", allowObjectSelection)
+                    putBoolean("allowKmSelection", allowKmSelection)
                 }
             }
     }
 }
+

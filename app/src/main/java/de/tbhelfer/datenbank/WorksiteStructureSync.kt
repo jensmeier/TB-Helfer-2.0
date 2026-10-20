@@ -1,6 +1,7 @@
 package de.tbhelfer.datenbank
 
 import de.tbhelfer.server.WorksiteNodeApi
+import de.tbhelfer.streckenobjekte.WorksiteObjectIdentity
 import org.json.JSONObject
 import java.util.UUID
 
@@ -205,8 +206,8 @@ class WorksiteStructureSync(
             val parentKey = node.parentId
                 ?.takeUnless { it == localRoot.id }
                 ?.let { bindingsByLocal[it]?.clientNodeKey }
-            val payload = payloadFor(node, parentKey)
             val server = activeServer[binding.clientNodeKey]
+            val payload = payloadFor(node, parentKey, server?.payloadJson)
             if (server != null && server.status.equals(STATUS_ACTIVE, true) && payloadEquivalent(payload, server.payloadJson)) {
                 // Ein früherer Versionskonflikt ist damit fachlich erledigt: Server und lokaler
                 // Knoten sind gleich. Die alte Queue-Zeile darf den Konflikt nicht dauerhaft halten.
@@ -346,8 +347,9 @@ class WorksiteStructureSync(
                     streckenkennung = payload.optNullableString("route_key"),
                     kmVon = payload.optNullableDouble("km_from"),
                     kmBis = payload.optNullableDouble("km_to"),
-                    bahnhofName = payload.optNullableString("station_name"),
-                    gleisOderWeiche = payload.optNullableString("track_or_switch"),
+                    bahnhofName = if (type == BaustellenKnotenTyp.FREIE_STRECKE) null else
+                        (payload.optNullableString("station_name") ?: payload.optNullableString("station_code")),
+                    gleisOderWeiche = WorksiteObjectIdentity.localKey(payload.optNullableString("track_or_switch"), payload.optNullableString("object_type")),
                     erstelltAmEpochMs = createdAt
                 )
 
@@ -400,7 +402,7 @@ class WorksiteStructureSync(
         return ApplyResult.Success(applied)
     }
 
-    private fun payloadFor(node: BaustellenKnotenEntity, parentKey: String?): String =
+    private fun payloadFor(node: BaustellenKnotenEntity, parentKey: String?, serverPayload: String? = null): String =
         JSONObject().apply {
             if (parentKey == null) put("parent_client_node_key", JSONObject.NULL) else put("parent_client_node_key", parentKey)
             put("node_type", node.typ.name)
@@ -408,8 +410,15 @@ class WorksiteStructureSync(
             putNullable("route_key", node.streckenkennung)
             putNullable("km_from", node.kmVon)
             putNullable("km_to", node.kmBis)
-            putNullable("station_name", node.bahnhofName)
-            putNullable("track_or_switch", node.gleisOderWeiche)
+            putNullable("station_name", node.bahnhofName.takeUnless { node.typ == BaustellenKnotenTyp.FREIE_STRECKE })
+            if (node.typ == BaustellenKnotenTyp.FREIE_STRECKE) put("station_code", JSONObject.NULL)
+            if (node.typ == BaustellenKnotenTyp.BAHNHOF) {
+                val remote = serverPayload?.let { runCatching { JSONObject(it) }.getOrNull() }
+                val objectType = WorksiteObjectIdentity.outgoingType(node.gleisOderWeiche,
+                    remote?.optNullableString("track_or_switch"), remote?.optNullableString("object_type"))
+                putNullable("object_type", objectType)
+                putNullable("track_or_switch", WorksiteObjectIdentity.wireKey(node.gleisOderWeiche, objectType))
+            } else putNullable("track_or_switch", node.gleisOderWeiche)
             put("created_at_epoch_ms", node.erstelltAmEpochMs)
         }.toString()
 
@@ -422,8 +431,10 @@ class WorksiteStructureSync(
             local.optNullableString("route_key") == server.optNullableString("route_key") &&
             local.optNullableDouble("km_from") == server.optNullableDouble("km_from") &&
             local.optNullableDouble("km_to") == server.optNullableDouble("km_to") &&
-            local.optNullableString("station_name") == server.optNullableString("station_name") &&
-            local.optNullableString("track_or_switch") == server.optNullableString("track_or_switch")
+            (local.optString("node_type") == BaustellenKnotenTyp.FREIE_STRECKE.name ||
+                local.optNullableString("station_name") == (server.optNullableString("station_name") ?: server.optNullableString("station_code"))) &&
+            WorksiteObjectIdentity.equivalent(local.optNullableString("track_or_switch"),
+                server.optNullableString("track_or_switch"), server.optNullableString("object_type"))
     }
 
     private fun depth(
@@ -465,3 +476,4 @@ class WorksiteStructureSync(
         private const val ALL_SCOPE = "{\"all\":true}"
     }
 }
+

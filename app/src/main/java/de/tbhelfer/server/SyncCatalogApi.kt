@@ -84,6 +84,54 @@ class SyncCatalogApi(
         }
     }
 
+    data class LookupStation(val code: String, val name: String, val dataAvailable: Boolean)
+
+    sealed interface LookupResult {
+        data class Success(val stations: List<LookupStation>, val warnings: List<String>) : LookupResult
+        data object Unsupported : LookupResult
+        data object SessionInvalid : LookupResult
+        data class Error(val message: String) : LookupResult
+    }
+
+    fun lookupStations(token: String, query: String): LookupResult {
+        val text = query.trim()
+        if (text.length !in 2..100) return LookupResult.Error("Bitte 2 bis 100 Zeichen für die Bahnhofsuche eingeben.")
+        var connection: HttpURLConnection? = null
+        return try {
+            val request = openConnection("/api/v1/catalog/lookup?q=" + URLEncoder.encode(text, "UTF-8"))
+            connection = request
+            request.setRequestProperty("Authorization", "Bearer $token")
+            request.setRequestProperty("Accept", "application/json")
+            val code = request.responseCode
+            val json = readBody(request, code).takeIf { it.isNotBlank() }?.let { runCatching { JSONObject(it) }.getOrNull() }
+            when (code) {
+                200 -> {
+                    val items = json?.optJSONArray("stations")
+                    if (items == null) LookupResult.Error("Bahnhofsuche konnte nicht gelesen werden.") else {
+                        val stations = buildList {
+                            for (index in 0 until items.length()) {
+                                val item = items.optJSONObject(index) ?: continue
+                                val stationCode = item.optNullableString("code") ?: continue
+                                add(LookupStation(stationCode, item.optNullableString("name") ?: stationCode,
+                                    item.optBoolean("data_available", false)))
+                            }
+                        }
+                        val notices = json?.optJSONArray("warnings")
+                        val warnings = (0 until (notices?.length() ?: 0)).mapNotNull { notices?.optString(it)?.takeIf { s -> s.isNotBlank() } }
+                        LookupResult.Success(stations, warnings)
+                    }
+                }
+                404, 405, 501 -> LookupResult.Unsupported
+                401, 403 -> LookupResult.SessionInvalid
+                else -> LookupResult.Error("Bahnhofsuche konnte nicht geladen werden ($code).")
+            }
+        } catch (_: Exception) {
+            LookupResult.Error("Bahnhofsuche nicht erreichbar. Lokale Suche und manuelle Eingabe bleiben möglich.")
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
     internal fun parseInventory(json: JSONObject): CatalogInventory {
         val items = requireNotNull(json.optJSONArray("rows"))
         val rows = buildList {
@@ -104,7 +152,8 @@ class SyncCatalogApi(
                     routeNumber = item.optNullableString("route_number"), stationCode = item.optNullableString("station_code"),
                     stationName = item.optNullableString("station_name"), trackKey = item.optNullableString("track_key"),
                     objectKey = item.optNullableString("object_key"), status = item.optNullableString("status") ?: "UNBEKANNT",
-                    segments = segments
+                    segments = segments,
+                    selectable = item.optBoolean("selectable", false)
                 ))
             }
         }
@@ -228,4 +277,5 @@ class SyncCatalogApi(
         }
     }
 }
+
 

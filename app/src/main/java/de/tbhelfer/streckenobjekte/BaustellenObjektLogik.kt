@@ -27,7 +27,7 @@ object BaustellenObjektLogik {
             upper.startsWith("DKW") || upper.startsWith("KR ") || upper == "KR" ||
                 upper.startsWith("KREUZUNG") || upper.startsWith("DKW/KREUZUNG") ->
                 BaustellenObjektArt.DKW_KREUZUNG
-            upper.startsWith("WEICHE") || Regex("^W\\s*[-/]?[0-9A-Z]").containsMatchIn(upper) ->
+            upper.startsWith("WEICHE") || Regex("^W\\s*[-/:]?[0-9A-Z]").containsMatchIn(upper) ->
                 BaustellenObjektArt.WEICHE
             upper.startsWith("GL") || upper.startsWith("GLEIS") -> BaustellenObjektArt.GLEIS
             else -> BaustellenObjektArt.SONSTIGES
@@ -66,15 +66,9 @@ object BaustellenObjektLogik {
         val upper = raw?.trim().orEmpty().uppercase(Locale.GERMANY)
             .replace('–', '-')
             .replace(Regex("\\s+"), "")
-        return upper
-            .removePrefix("WEICHE")
-            .removePrefix("DKW/KREUZUNG")
-            .removePrefix("KREUZUNG")
-            .removePrefix("DKW")
-            .removePrefix("GLEIS")
-            .removePrefix("GL")
-            .removePrefix("W")
-            .trim('-', '/', ' ')
+        return upper.replaceFirst(
+            Regex("^(WEICHENVERBINDUNG|DKW/KREUZUNG|KREUZUNG|WEICHE|GLEIS|WVB|DKW|WV|GL|W)"), ""
+        ).trim('-', '/', ':', ' ')
     }
 
     private fun kurzKennung(raw: String): String {
@@ -84,3 +78,4 @@ object BaustellenObjektLogik {
         } else s
     }
 }
+

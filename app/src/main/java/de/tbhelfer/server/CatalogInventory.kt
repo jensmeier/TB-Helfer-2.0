@@ -1,6 +1,7 @@
 package de.tbhelfer.server
 
 import java.util.Locale
+import de.tbhelfer.streckenobjekte.WorksiteObjectIdentity
 
 /** Gemeinsamer Lesebestand; weder Downloadauftrag noch lokale Objektzuweisung. */
 data class CatalogInventory(val rows: List<CatalogInventoryRow>) {
@@ -29,8 +30,11 @@ data class CatalogInventoryRow(
     val trackKey: String?,
     val objectKey: String?,
     val status: String,
-    val segments: List<CatalogInventorySegment>
+    val segments: List<CatalogInventorySegment>,
+    val selectable: Boolean = false
 ) {
+    fun selectionNumber(): String? = if (selectable && kind in setOf("GLEIS", "WEICHE", "WEICHENVERBINDUNG"))
+        (objectKey ?: trackKey)?.let { WorksiteObjectIdentity.number(it).takeIf { number -> number.isNotBlank() } } else null
     fun title(): String = "${kindLabel(kind)} · $label"
 
     fun matches(query: String): Boolean {
@@ -66,12 +70,17 @@ data class CatalogInventoryRow(
 }
 
 data class CatalogInventorySegment(val status: String, val fromMeters: Double?, val toMeters: Double?) {
+    fun rangeMeters(): Pair<Double, Double>? {
+        val a = fromMeters ?: return null
+        val b = toMeters ?: return null
+        return if (status in setOf("AUTOMATISCH", "MANUELL", "KM_VORHANDEN") && a.isFinite() && b.isFinite())
+            minOf(a, b) to maxOf(a, b) else null
+    }
+
     fun description(): String {
-        val a = fromMeters
-        val b = toMeters
-        if (status in setOf("AUTOMATISCH", "MANUELL", "KM_VORHANDEN") &&
-            a != null && b != null && a.isFinite() && b.isFinite()) {
-            val range = String.format(Locale.GERMANY, "km %.3f–%.3f", minOf(a, b) / 1000.0, maxOf(a, b) / 1000.0)
+        val bounds = rangeMeters()
+        if (bounds != null) {
+            val range = String.format(Locale.GERMANY, "km %.3f–%.3f", bounds.first / 1000.0, bounds.second / 1000.0)
             return range + when (status) {
                 "MANUELL" -> " (manuell)"
                 "AUTOMATISCH" -> " (automatisch)"
@@ -86,3 +95,4 @@ data class CatalogInventorySegment(val status: String, val fromMeters: Double?, 
         }
     }
 }
+
