@@ -832,6 +832,10 @@ class Server1BtbApi(
             localPayloadFromGranular(btb, header, managed, clientKey)
         }
         canonicalizeLocalPayload(localPayload, btb, header, clientKey, activeBtbId == serverId)
+        localPayload.put(SERVER_ENTRY_IDS_KEY, JSONObject().apply {
+            managed.values.filter { it.section in setOf(SECTION_ARBEIT, SECTION_ABNAHME, SECTION_EINWEISUNG, SECTION_BESONDERHEIT, SECTION_MANGEL) }
+                .forEach { put(it.slot, it.id) }
+        })
         localPayload.put(SERVER_ACTIVE_KEY, activeBtbId == serverId)
         localPayload.put(
             SERVER_CURRENT_USER_KEY,
@@ -1668,6 +1672,7 @@ class Server1BtbApi(
         const val SERVER_CURRENT_USER_KEY = "_server1_current_user"
         const val SERVER_PARTICIPANTS_KEY = "_server1_participants"
         const val SERVER_PHOTOS_KEY = "_server1_photos"
+        const val SERVER_ENTRY_IDS_KEY = "_server1_entry_ids"
         const val LOCAL_ENTRY_SLOTS_KEY = "_tb_android_entry_slots"
 
         const val LEGACY_ANDROID_SECTION = "TB_HELFER_ANDROID_V1"

@@ -871,9 +871,18 @@ class FotoErfassenFragment : Fragment(R.layout.fragment_foto_erfassen) {
                             info4Wert = alleOptionalValues.getOrNull(3),
                             info5Wert = alleOptionalValues.getOrNull(4),
                             erstelltAmEpochMs = Instant.now().toEpochMilli()
-                        )
+                        ).apply {
+                            btbMetadaten = de.tbhelfer.datenbank.AufnahmeMetadaten(
+                                lat, lon, erstelltAmEpochMs,
+                                args.getDouble("gpsAccuracyM", Double.NaN).takeIf { it.isFinite() && it >= 0.0 }
+                            )
+                        }
 
-                        val neueFotoId = ServiceLocator.fotoRepository.einfuegen(entity)
+                        val targetBtbId = args.getString("btbPhotoTargetId")?.takeIf { it.isNotBlank() }
+                        val neueFotoId = if (targetBtbId != null) {
+                            ServiceLocator.fotoRepository.einfuegenFuerBtb(entity, targetBtbId,
+                                clientEntryKey = args.getString("btbPhotoEntryKey"))
+                        } else ServiceLocator.fotoRepository.einfuegen(entity)
                         if (abnahmeMode && abnahmeId.isNotBlank()) {
                             AbnahmeSpeicher.fotoZuordnen(ctx, abnahmeId, neueFotoId, abnahmeBildArt, notiz.orEmpty())
                         } else if (zielMangelKey.isNotBlank()) {
@@ -1186,3 +1195,4 @@ private fun addFirmaToBtb(
 }
 
 }
+

@@ -40,7 +40,8 @@ object BtbEntryPhotoActionBinder {
         val kmVon: Double?,
         val kmBis: Double?,
         val ortId: Long,
-        val ortLabel: String
+        val ortLabel: String,
+        val clientEntryKey: String = "bte-${java.util.UUID.randomUUID()}"
     )
 
     fun bind(
@@ -75,6 +76,9 @@ object BtbEntryPhotoActionBinder {
         fun normalizeTimeOrSpan(raw: String): String? {
             val value = raw.trim()
             if (value.isBlank()) return null
+            Regex("""^[-–]\s*(\d{1,2}:\d{2})$""").matchEntire(value)?.let {
+                return normalizeHm(it.groupValues[1])?.let { end -> "–$end" }
+            }
             normalizeHm(value)?.let { return it }
             val match = Regex("^(\\d{1,2}:\\d{2})\\s*[-–]\\s*\\(?\\s*(\\d{1,2}:\\d{2})\\s*\\)?$")
                 .matchEntire(value) ?: return null
@@ -169,6 +173,7 @@ object BtbEntryPhotoActionBinder {
                     putLong("autoPhotoOrtId", draft.ortId)
                     putString("autoPhotoOrtLabel", draft.ortLabel)
                     putString("autoPhotoText", draft.text)
+                    putString("autoPhotoEntryKey", draft.clientEntryKey)
                     draft.time?.let { putString("autoPhotoTime", it) }
                     draft.kmVon?.let { putDouble("autoPhotoKmVon", it) }
                     draft.kmBis?.let { putDouble("autoPhotoKmBis", it) }
@@ -254,3 +259,4 @@ object BtbEntryPhotoActionBinder {
         }
     }
 }
+

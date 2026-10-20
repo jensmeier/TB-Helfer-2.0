@@ -15,6 +15,8 @@ import de.tbhelfer.ui.bautagebuch.BtbPhotoContextOverrideStore
 import de.tbhelfer.ui.kamera.FotoSpeicher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import de.tbhelfer.ui.bautagebuch.BtbPhotoMetadatenStore
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -25,7 +27,7 @@ class FotoRepository(
     private val appContext: Context? = null
 ) {
     fun alleFotos(): Flow<List<FotoEntity>> = dao.alleFotos()
-        .map { fotos -> appContext?.let { BtbPhotoContextOverrideStore.applyToFotos(it, fotos) } ?: fotos }
+        .combine(BtbPhotoMetadatenStore.changes) { fotos, _ -> appContext?.let { BtbPhotoContextOverrideStore.applyToFotos(it, fotos) } ?: fotos }
         .flowOn(Dispatchers.IO)
 
     suspend fun fotoMitId(id: Long): FotoEntity? = withContext(Dispatchers.IO) {
@@ -82,6 +84,7 @@ class FotoRepository(
                 val btbId = BtbFotoZuordnungSpeicher.btbId(ctx, foto.id)
                 BtbPhotoContextOverrideStore.clearForPhoto(ctx, btbId, foto.id)
                 BtbFotoZuordnungSpeicher.entfernen(ctx, foto.id)
+                BtbPhotoMetadatenStore.forget(ctx, foto.id)
                 loescheAppFotoDateiWennUnbenutzt(ctx, foto)
             }
             if (affected.isNotEmpty()) {
@@ -96,7 +99,7 @@ class FotoRepository(
     }
 
     fun fotosFuerBaustelle(baustelleId: Long): Flow<List<FotoEntity>> = dao.fotosFuerBaustelle(baustelleId)
-        .map { fotos -> appContext?.let { BtbPhotoContextOverrideStore.applyToFotos(it, fotos) } ?: fotos }
+        .combine(BtbPhotoMetadatenStore.changes) { fotos, _ -> appContext?.let { BtbPhotoContextOverrideStore.applyToFotos(it, fotos) } ?: fotos }
         .flowOn(Dispatchers.IO)
 
     /**
@@ -122,18 +125,25 @@ class FotoRepository(
     }
 
     fun fotosFuerUnterknoten(baustelleId: Long, knotenId: Long): Flow<List<FotoEntity>> =
-        dao.fotosFuerUnterknoten(baustelleId, knotenId)
-            .map { fotos -> appContext?.let { BtbPhotoContextOverrideStore.applyToFotos(it, fotos) } ?: fotos }
+        dao.fotosFuerBaustelle(baustelleId)
+            .combine(BtbPhotoMetadatenStore.changes) { fotos, _ ->
+                (appContext?.let { BtbPhotoContextOverrideStore.applyToFotos(it, fotos) } ?: fotos)
+                    .filter { it.baustellenKnotenId == knotenId }
+            }
             .flowOn(Dispatchers.IO)
 
     suspend fun fotosFuerUnterknotenOnce(baustelleId: Long, knotenId: Long): List<FotoEntity> = withContext(Dispatchers.IO) {
-        val raw = dao.fotosFuerUnterknotenOnce(baustelleId, knotenId)
-        appContext?.let { BtbPhotoContextOverrideStore.applyToFotos(it, raw) } ?: raw
+        val raw = dao.fotosFuerBaustelleOnce(baustelleId)
+        (appContext?.let { BtbPhotoContextOverrideStore.applyToFotos(it, raw) } ?: raw)
+            .filter { it.baustellenKnotenId == knotenId }
     }
 
     suspend fun einfuegen(entity: FotoEntity): Long {
         val id = withContext(Dispatchers.IO) { dao.einfuegen(entity) }
         appContext?.let { ctx ->
+            entity.btbMetadaten?.let {
+                BtbPhotoMetadatenStore.source(ctx, id, it.lat, it.lon, it.epoch, it.accuracyM)
+            }
             var activeBtbId: String? = null
             runCatching {
                 val active = BtbActiveContext.laden(ctx, entity.baustelleId)
@@ -157,13 +167,17 @@ class FotoRepository(
      * Import-/Sonderpfad: ordnet das Foto ausdrücklich der übergebenen stabilen BTB-ID zu.
      * Datum/Uhrzeit entscheiden bei modernen BTBs nicht über die Zugehörigkeit.
      */
-    suspend fun einfuegenFuerBtb(entity: FotoEntity, btbId: String, triggerSync: Boolean = true): Long {
+    suspend fun einfuegenFuerBtb(entity: FotoEntity, btbId: String, triggerSync: Boolean = true, clientEntryKey: String? = null): Long {
         val stableId = btbId.trim()
         if (stableId.isBlank()) return einfuegen(entity)
         val id = withContext(Dispatchers.IO) { dao.einfuegen(entity) }
         appContext?.let { ctx ->
+            entity.btbMetadaten?.let {
+                BtbPhotoMetadatenStore.source(ctx, id, it.lat, it.lon, it.epoch, it.accuracyM)
+            }
             withContext(Dispatchers.IO) {
                 BtbFotoZuordnungSpeicher.zuordnen(ctx, id, stableId)
+                clientEntryKey?.let { BtbPhotoMetadatenStore.bind(ctx, stableId, id, it) }
                 val alleFotos = dao.fotosFuerBaustelleOnce(entity.baustelleId)
                 invalidiereFotoAbschlussWennNoetig(ctx, entity.baustelleId, stableId, alleFotos)
             }
@@ -262,6 +276,7 @@ class FotoRepository(
         if (ctx != null && result > 0) {
             BtbPhotoContextOverrideStore.clearForPhoto(ctx, btbId, entity.id)
             BtbFotoZuordnungSpeicher.entfernen(ctx, entity.id)
+            BtbPhotoMetadatenStore.forget(ctx, entity.id)
             loescheAppFotoDateiWennUnbenutzt(ctx, entity)
             if (!btbId.isNullOrBlank()) {
                 runCatching { SofortSync.btbAnstossen(ctx, entity.baustelleId, btbId) }
@@ -287,3 +302,4 @@ class FotoRepository(
 
     suspend fun alleKurztexte(): List<String> = withContext(Dispatchers.IO) { dao.alleKurztexte() }
 }
+

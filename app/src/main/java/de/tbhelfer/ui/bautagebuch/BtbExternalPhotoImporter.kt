@@ -27,7 +27,8 @@ object BtbExternalPhotoImporter {
         val firma: String? = null,
         val baustellenKnotenId: Long? = null,
         val kurztext: String? = null,
-        val km: Double? = null
+        val km: Double? = null,
+        val clientEntryKey: String? = null
     )
 
     data class Result(
@@ -108,7 +109,11 @@ object BtbExternalPhotoImporter {
         )
         target.parentFile?.mkdirs()
 
+        var stored = false
         try {
+            val sourceExif = runCatching {
+                context.contentResolver.openInputStream(uri)?.use { ExifInterface(it) }
+            }.getOrNull()
             if (directExt != null) {
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     target.outputStream().buffered(128 * 1024).use { output ->
@@ -129,10 +134,11 @@ object BtbExternalPhotoImporter {
 
             if (!target.exists() || target.length() <= 0L) error("Leere Bilddatei")
 
-            val exif = runCatching { ExifInterface(target) }.getOrNull()
+            val exif = sourceExif ?: runCatching { ExifInterface(target) }.getOrNull()
             val latLon = exif?.latLong
             val altitude = exif?.getAltitude(Double.NaN)?.takeIf { it.isFinite() }
-            val created = exifDateEpochMs(exif) ?: System.currentTimeMillis()
+            val captured = exifDateEpochMs(exif)
+            val created = captured ?: 0L
 
             FotoSpeicher.erstelleThumbnailWennMoeglich(target)
             val contextText = importContext?.kurztext?.trim()?.takeIf { it.isNotBlank() }
@@ -157,11 +163,18 @@ object BtbExternalPhotoImporter {
                 objektBereich = null,
                 erstelltAmEpochMs = created
             )
-            val id = repository.einfuegenFuerBtb(entity, btbId)
-            return entity.copy(id = id)
+            val id = repository.einfuegenFuerBtb(entity, btbId, triggerSync = false)
+            stored = true
+            importContext?.clientEntryKey?.let { BtbPhotoMetadatenStore.bind(context, btbId, id, it) }
+            BtbPhotoMetadatenStore.source(context, id, latLon?.getOrNull(0), latLon?.getOrNull(1), captured,
+                exif?.getAttributeDouble("GPSHPositioningError", Double.NaN)?.takeIf { it.isFinite() && it >= 0.0 })
+            de.tbhelfer.server.SofortSync.btbAnstossen(context, baustelleId, btbId)
+            return BtbPhotoMetadatenStore.apply(context, entity.copy(id = id))
         } catch (t: Throwable) {
-            runCatching { FotoSpeicher.thumbnailDateiFuer(target).delete() }
-            runCatching { target.delete() }
+            if (!stored) {
+                runCatching { FotoSpeicher.thumbnailDateiFuer(target).delete() }
+                runCatching { target.delete() }
+            }
             throw t
         }
     }
@@ -192,3 +205,4 @@ object BtbExternalPhotoImporter {
         return dt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
 }
+

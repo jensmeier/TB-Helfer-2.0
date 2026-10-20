@@ -613,7 +613,7 @@ object GesamtMedienArchiv {
             val meta = mediaMeta(item)
             val localFoto = localFotoByHash[hash]
             val dateTime = Instant.ofEpochMilli(meta.epochMs).atZone(ZoneId.systemDefault())
-            val date = dateTime.toLocalDate().format(isoDate)
+            val date = dateTime?.toLocalDate()?.format(isoDate) ?: "ohne_Aufnahmezeit"
             val target = when (item.entityType.uppercase(Locale.ROOT)) {
                 "DEFECT" -> mangelPathByHash[hash]
                     ?: mangelFolderByServerId[item.parentEntityId]?.let { folder ->
@@ -639,7 +639,7 @@ object GesamtMedienArchiv {
                 row = GesamtBilderlisteXlsx.Row(
                     nr = 0,
                     datum = date,
-                    uhrzeit = dateTime.toLocalTime().format(timeFmt),
+                    uhrzeit = dateTime?.toLocalTime()?.format(timeFmt).orEmpty(),
                     ersteller = item.uploadedByName.orEmpty(),
                     verantwortlicherTb = item.responsibleTb.orEmpty(),
                     art = meta.art,
@@ -674,8 +674,8 @@ object GesamtMedienArchiv {
             if (!file.isFile) return@forEach
             val hash = runCatching { sha256(file.readBytes()) }.getOrNull() ?: return@forEach
             if (hash in excludedHashes) return@forEach
-            val dateTime = Instant.ofEpochMilli(foto.erstelltAmEpochMs).atZone(ZoneId.systemDefault())
-            val date = dateTime.toLocalDate().format(isoDate)
+            val dateTime = foto.aufnahmeEpochEffektiv?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()) }
+            val date = dateTime?.toLocalDate()?.format(isoDate) ?: "ohne_Aufnahmezeit"
             val target = mangelPathByHash[hash]
                 ?: acceptancePathByHash[hash]
                 ?: "$archiveRoot/Bilder/$date/${safeToken(bildtypLabel(foto.bildtyp))}_${safeToken(foto.kurztext).take(24)}_${hash.take(12)}.${extension(file.name, null)}"
@@ -689,7 +689,7 @@ object GesamtMedienArchiv {
                 row = GesamtBilderlisteXlsx.Row(
                     nr = 0,
                     datum = date,
-                    uhrzeit = dateTime.toLocalTime().format(timeFmt),
+                    uhrzeit = dateTime?.toLocalTime()?.format(timeFmt).orEmpty(),
                     ersteller = "",
                     verantwortlicherTb = responsible,
                     art = when {
@@ -705,7 +705,7 @@ object GesamtMedienArchiv {
                     langtext = foto.notiz.orEmpty(),
                     status = "",
                     bilddatei = target.substringAfterLast('/'),
-                    gps = if (foto.gpsLat == 0.0 && foto.gpsLon == 0.0) "" else "%.6f, %.6f".format(Locale.US, foto.gpsLat, foto.gpsLon),
+                    gps = foto.gpsAnzeige.takeUnless { it == "–" }.orEmpty(),
                     relativePath = target.removePrefix("$archiveRoot/")
                 )
             )
@@ -935,3 +935,4 @@ object GesamtMedienArchiv {
         return this
     }
 }
+

@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.datastore.preferences.core.edit
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.checkbox.MaterialCheckBox
@@ -31,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -64,7 +66,10 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         val text: String,
         val time: String?,
         val kmVon: Double?,
-        val kmBis: Double?
+        val kmBis: Double?,
+        val clientEntryKey: String? = null,
+        val firmaId: String? = null,
+        val worksiteNodeKey: String? = null
     )
 
     private lateinit var tvSub: TextView
@@ -118,6 +123,28 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                BtbPhotoMetadatenStore.changes.collect {
+                    if (currentBlocks.isEmpty() || activeBtbIdArg.isNullOrBlank()) return@collect
+                    val ids = currentBlocks.flatMap { it.fotos }.map { it.id }.distinct()
+                    val refreshed = withContext(Dispatchers.IO) {
+                        ServiceLocator.fotoRepository.fotosMitIds(ids).associateBy { it.id }
+                    }
+                    textOverrides = withContext(Dispatchers.IO) {
+                        BtbPhotoTextOverrideStore.loadOverrides(requireContext(), baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg, schichtTypArg)
+                    }
+                    val selectedIds = selection.values.flatten().toSet()
+                    currentBlocks = buildBlocks(ids.mapNotNull { refreshed[it] }, filterBildtyp)
+                    selection.clear()
+                    currentBlocks.forEach { block ->
+                        selection[block.blockKey] = LinkedHashSet(block.fotos.filter { it.id in selectedIds }.map { it.id })
+                    }
+                    rebuildAllIds(currentBlocks)
+                    render(currentBlocks)
+                }
+            }
+        }
         tvSub = view.findViewById(R.id.tvSubHeader)
         llSections = view.findViewById(R.id.llSections)
         tvSelected = view.findViewById(R.id.tvSelectedCount)
@@ -255,6 +282,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                             ?: ortLabels[ortId]
                             ?: if (ortId == 0L) "Hauptbaustelle" else "Ort $ortId",
                         text = args.getString("autoPhotoText").orEmpty().trim(),
+                        clientEntryKey = args.getString("autoPhotoEntryKey")?.trim()?.takeIf { it.isNotBlank() },
                         time = args.getString("autoPhotoTime")?.trim()?.takeIf { it.isNotBlank() },
                         kmVon = if (args.containsKey("autoPhotoKmVon")) args.getDouble("autoPhotoKmVon") else null,
                         kmBis = if (args.containsKey("autoPhotoKmBis")) args.getDouble("autoPhotoKmBis") else null
@@ -348,7 +376,10 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
             }
 
             cameraLaunchPending = true
-            findNavController().navigate(R.id.kameraFragment)
+            findNavController().navigate(R.id.kameraFragment, Bundle().apply {
+                putString("btbPhotoTargetId", btbId)
+                putString("btbPhotoEntryKey", target.clientEntryKey)
+            })
         }
     }
 
@@ -412,6 +443,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                     )
                 }
                 newlyCreated.forEach { foto ->
+                    target.clientEntryKey?.let { BtbPhotoMetadatenStore.bind(appContext, btbId, foto.id, it) }
                     BtbPhotoContextOverrideStore.setOverride(
                         appContext,
                         btbId,
@@ -420,7 +452,8 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                             firma = target.firma.orEmpty(),
                             objektKennung = foto.objektKennung,
                             objektBereich = foto.objektBereich,
-                            ortId = target.ortId
+                            ortId = target.ortId,
+                            firmaId = target.firmaId, worksiteNodeKey = target.worksiteNodeKey, bildtyp = target.bildtyp
                         )
                     )
                 }
@@ -500,6 +533,20 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
 
     private suspend fun buildImportTargets(entry: BautagebuchEintrag?): List<ImportTarget> {
         if (entry == null) return emptyList()
+        if (entry.arbeiten.items.isNotEmpty()) {
+            val root = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
+                .firstOrNull { it.localWorksite?.altBaustelleId == entry.baustelleId }?.localWorksite?.id
+            return entry.arbeiten.items.mapNotNull { item ->
+                val nodeId = if (item.worksiteNodeKey == null) 0L else root?.let {
+                    ServiceLocator.worksiteStructureSync.localNodeIdForClientKey(it, item.worksiteNodeKey)
+                } ?: return@mapNotNull null
+                val node = nodeId.takeIf { it > 0 }?.let { ServiceLocator.baustellenBaumRepository.knotenMitId(it) }
+                ImportTarget(Bildtyp.FOTODOKUMENTATION,
+                    item.firmaName ?: entry.firmen.firstOrNull { it.firmaId == item.firmaId }?.name,
+                    nodeId, node?.let(::displayOrt) ?: "Hauptbaustelle", item.text, item.zeitAnzeige,
+                    item.kmVon, item.kmBis, item.clientEntryKey, item.firmaId, item.worksiteNodeKey)
+            }
+        }
         val knownFirms = entry.firmen
             .asSequence()
             .filter { !it.isDeleted }
@@ -775,12 +822,14 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                             firma = it.firma,
                             baustellenKnotenId = it.ortId.takeIf { id -> id > 0L },
                             kurztext = it.text,
-                            km = it.kmVon
+                            km = it.kmVon,
+                            clientEntryKey = it.clientEntryKey
                         )
                     }
                 )
                 if (target != null && imported.imported.isNotEmpty()) {
                     val ids = imported.imported.map(FotoEntity::id)
+                    target.clientEntryKey?.let { key -> ids.forEach { BtbPhotoMetadatenStore.bind(appContext, btbId, it, key) } }
                     target.time?.takeIf { it.isNotBlank() }?.let { time ->
                         BtbPhotoStartOverrideStore.setOverrideForIds(
                             appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
@@ -913,6 +962,8 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         val bereich = field("Bereich", foto.objektBereich.orEmpty())
 
         var selectedOrtId = foto.baustellenKnotenId ?: 0L
+        var selectedTarget = findMatchingTarget(foto)
+        var bindingChanged = false
         if (importTargets.isNotEmpty()) {
             root.addView(TextView(ctx).apply {
                 text = "Arbeitseintrag / Ort"
@@ -933,6 +984,8 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                     .setTitle("Foto einem Arbeitseintrag zuordnen")
                     .setItems(labels) { _, which ->
                         val target = importTargets[which]
+                        selectedTarget = target
+                        bindingChanged = true
                         selectedOrtId = target.ortId
                         etText.setText(target.text)
                         firma.setText(target.firma.orEmpty())
@@ -978,17 +1031,37 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                 }
 
                 val cleanedText = etText.text?.toString().orEmpty().trim()
+                val contextChanged = firma.text?.toString().orEmpty().trim() != foto.firma.trim() ||
+                    selectedOrtId != (foto.baustellenKnotenId ?: 0L) ||
+                    objekt.text?.toString().orEmpty().trim() != foto.objektKennung.orEmpty().trim() ||
+                    bereich.text?.toString().orEmpty().trim() != foto.objektBereich.orEmpty().trim()
+                val textChanged = cleanedText != photoDisplayText(foto).trim()
+                val kmChanged = von != (currentKm?.kmVon ?: foto.km) || bis != currentKm?.kmBis
+                if (!bindingChanged && !contextChanged && !textChanged && !kmChanged) {
+                    dialog.dismiss()
+                    return@setOnClickListener
+                }
                 val textOverride = cleanedText.takeIf { it.isNotBlank() && it != foto.kurztext.trim() }
                 val kmOverride = von?.let { BtbPhotoKmOverrideStore.KmOverride(it, bis) }
                 val contextOverride = BtbPhotoContextOverrideStore.ContextOverride(
                     firma = firma.text?.toString().orEmpty().trim(),
                     objektKennung = objekt.text?.toString().orEmpty().trim().takeIf { it.isNotBlank() },
                     objektBereich = bereich.text?.toString().orEmpty().trim().takeIf { it.isNotBlank() },
-                    ortId = selectedOrtId
+                    ortId = selectedOrtId,
+                    firmaId = currentEntry?.firmen?.firstOrNull {
+                        it.name.trim().equals(firma.text?.toString().orEmpty().trim(), ignoreCase = true)
+                    }?.firmaId
                 )
                 val appContext = ctx.applicationContext
                 viewLifecycleOwner.lifecycleScope.launch {
                     withContext(Dispatchers.IO) {
+                        if (bindingChanged || contextChanged || textChanged) {
+                            val target = selectedTarget
+                            val keepBinding = target != null && target.text.trim() == cleanedText &&
+                                target.firma.orEmpty().trim() == firma.text?.toString().orEmpty().trim() && target.ortId == selectedOrtId
+                            activeBtbIdArg?.let { BtbPhotoMetadatenStore.bind(appContext, it, foto.id,
+                                if (keepBinding) target?.clientEntryKey else null) }
+                        }
                         BtbPhotoTextOverrideStore.setOverrideForIds(
                             appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
                             schichtTypArg, listOf(foto.id), textOverride
@@ -997,9 +1070,11 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                             appContext, baustelleIdArg, datumIsoArg, shiftStartArg, shiftEndArg,
                             schichtTypArg, listOf(foto.id), kmOverride
                         )
-                        BtbPhotoContextOverrideStore.setOverride(
-                            appContext, activeBtbIdArg, foto.id, contextOverride
-                        )
+                        if (bindingChanged || contextChanged) {
+                            BtbPhotoContextOverrideStore.setOverride(
+                                appContext, activeBtbIdArg, foto.id, contextOverride
+                            )
+                        }
                     }
                     textOverrides = textOverrides.toMutableMap().apply {
                         if (textOverride == null) remove(foto.id) else put(foto.id, textOverride)
@@ -1012,7 +1087,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
                         firma = contextOverride.firma,
                         objektKennung = contextOverride.objektKennung,
                         objektBereich = contextOverride.objektBereich
-                    )
+                    ).mitMetadatenVon(foto)
                     currentBlocks = currentBlocks.map { block ->
                         block.copy(fotos = block.fotos.map { if (it.id == foto.id) updated else it })
                     }
@@ -1027,13 +1102,17 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
     }
 
     private fun findMatchingTarget(foto: FotoEntity): ImportTarget? {
+        activeBtbIdArg?.let { btbId ->
+            val key = BtbPhotoMetadatenStore.entryKey(requireContext(), btbId, foto.id)
+            if (key != null) return importTargets.firstOrNull { it.clientEntryKey == key }
+        }
         val ortId = foto.baustellenKnotenId ?: 0L
         val displayText = photoDisplayText(foto).trim()
-        return importTargets.firstOrNull {
+        return importTargets.filter { it.clientEntryKey == null }.firstOrNull {
             it.ortId == ortId &&
                 it.firma.orEmpty().equals(foto.firma.trim(), ignoreCase = true) &&
                 it.text.equals(displayText, ignoreCase = true)
-        } ?: importTargets.firstOrNull {
+        } ?: importTargets.filter { it.clientEntryKey == null }.firstOrNull {
             it.ortId == ortId && it.firma.orEmpty().equals(foto.firma.trim(), ignoreCase = true)
         }
     }
@@ -1082,11 +1161,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         return out.joinToString(" | ")
     }
 
-    private fun photoGpsText(f: FotoEntity): String = if (f.gpsLat == 0.0 && f.gpsLon == 0.0) {
-        "GPS: nicht im Bild vorhanden"
-    } else {
-        "GPS: ${String.format(Locale.US, "%.6f", f.gpsLat)}, ${String.format(Locale.US, "%.6f", f.gpsLon)}"
-    }
+    private fun photoGpsText(f: FotoEntity): String = "GPS: ${f.gpsAnzeige}"
 
     private fun formatKmInput(value: Double): String = String.format(Locale.GERMANY, "%.3f", value)
 
@@ -1191,7 +1266,7 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
     }
 
     private fun timeOfFoto(f: FotoEntity): String = runCatching {
-        java.time.Instant.ofEpochMilli(f.erstelltAmEpochMs)
+        java.time.Instant.ofEpochMilli(f.aufnahmeEpochEffektiv ?: error("Aufnahmezeit fehlt"))
             .atZone(ZoneId.systemDefault())
             .toLocalDateTime()
             .format(timeFmt)
@@ -1216,3 +1291,4 @@ class BtbPdfAuswahlFragment : Fragment(R.layout.fragment_btb_pdf_auswahl) {
         return Pair(from, to)
     }
 }
+

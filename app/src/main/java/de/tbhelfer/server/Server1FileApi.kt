@@ -268,7 +268,8 @@ class Server1FileApi(
         gpsLat: Double? = null,
         gpsLon: Double? = null,
         gpsAccuracyM: Double? = null,
-        photoMetadata: JSONObject? = null
+        photoMetadata: JSONObject? = null,
+        btbEntryId: String? = null
     ): UploadResult {
         if (!file.isFile) return UploadResult.Error("Datei existiert nicht mehr: ${file.name}")
         val parentType = parentEntityType.uppercase()
@@ -348,6 +349,7 @@ class Server1FileApi(
         gpsLon?.takeIf { it in -180.0..180.0 }?.let { completeBody.put("gps_lon", it) }
         gpsAccuracyM?.takeIf { it >= 0.0 }?.let { completeBody.put("gps_accuracy_m", it) }
         photoMetadata?.let { completeBody.put("photo_metadata", JSONObject(it.toString())) }
+        btbEntryId?.let { completeBody.put("btb_entry_id", it) }
         return when (
             val completed = jsonMutation(
                 token,
@@ -667,3 +669,4 @@ class Server1FileApi(
         private const val FILE_LIST_LIMIT = 1000
     }
 }
+

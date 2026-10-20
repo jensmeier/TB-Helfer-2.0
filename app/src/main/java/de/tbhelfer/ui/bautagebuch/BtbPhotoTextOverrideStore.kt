@@ -57,6 +57,7 @@ object BtbPhotoTextOverrideStore {
         }
     }
 
+    @Synchronized
     fun saveOverrides(
         context: Context,
         baustelleId: Long,
@@ -66,6 +67,7 @@ object BtbPhotoTextOverrideStore {
         overrides: Map<Long, String>
     ) = saveOverrides(context, baustelleId, datumIso, shiftStart, shiftEnd, SchichtTyp.TAG, overrides)
 
+    @Synchronized
     fun saveOverrides(
         context: Context,
         baustelleId: Long,
@@ -103,6 +105,7 @@ object BtbPhotoTextOverrideStore {
     }
 
     /** text == null/blank => Override entfernen. */
+    @Synchronized
     fun setOverrideForIds(
         context: Context,
         baustelleId: Long,
@@ -113,6 +116,7 @@ object BtbPhotoTextOverrideStore {
         text: String?
     ) = setOverrideForIds(context, baustelleId, datumIso, shiftStart, shiftEnd, SchichtTyp.TAG, fotoIds, text)
 
+    @Synchronized
     fun setOverrideForIds(
         context: Context,
         baustelleId: Long,
@@ -139,6 +143,15 @@ object BtbPhotoTextOverrideStore {
         saveOverrides(context, baustelleId, datumIso, shiftStart, shiftEnd, schicht, map)
     }
 
+    @Synchronized
+    fun clearIfUnchanged(context: Context, entry: BautagebuchEintrag, fotoId: Long, expected: String?) {
+        if (expected == null) return
+        val values = loadOverrides(context, entry.baustelleId, entry.datumIso, entry.startUhrzeit, entry.endeUhrzeit, entry.schicht)
+        if (values[fotoId] != expected) return
+        values.remove(fotoId)
+        saveOverrides(context, entry.baustelleId, entry.datumIso, entry.startUhrzeit, entry.endeUhrzeit, entry.schicht, values)
+    }
+
     fun fileFor(
         context: Context,
         baustelleId: Long,
@@ -147,6 +160,7 @@ object BtbPhotoTextOverrideStore {
         shiftEnd: String?
     ): File = fileForWrite(context, baustelleId, datumIso, shiftStart, shiftEnd, SchichtTyp.TAG)
 
+    @Synchronized
     fun deleteAllFor(context: Context, baustelleId: Long, datumIso: String, schicht: SchichtTyp) {
         val dir = File(context.filesDir, DIR_NAME)
         if (!dir.exists()) return
@@ -212,3 +226,4 @@ object BtbPhotoTextOverrideStore {
         return File(dir, "ovr_${baustelleId}_${datumIso}_${s}_${e}.json")
     }
 }
+

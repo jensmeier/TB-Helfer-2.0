@@ -656,6 +656,7 @@ class CollabLocalBridge(
                 payload.remove(Server1BtbApi.SERVER_CURRENT_USER_KEY)
                 payload.remove(Server1BtbApi.SERVER_PARTICIPANTS_KEY)
                 payload.remove(Server1BtbApi.SERVER_PHOTOS_KEY)
+                payload.remove(Server1BtbApi.SERVER_ENTRY_IDS_KEY)
                 payload.remove(Server1BtbApi.LOCAL_ENTRY_SLOTS_KEY)
                 val datum = payload.optString("datumIso").takeIf { it.isNotBlank() }
                     ?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: continue

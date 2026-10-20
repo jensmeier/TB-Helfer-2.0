@@ -105,7 +105,8 @@ abstract class GenerateBtb200043Sources : DefaultTask() {
                                         draft.time,
                                         draft.text,
                                         draft.kmVon,
-                                        draft.kmBis
+                                        draft.kmBis,
+                                        clientEntryKey = draft.clientEntryKey
                                     )
                                     val curLines = etFull.text?.toString().orEmpty().lines().toMutableList()
                                     val base = if (curLines.size == 1 && curLines.first().isBlank()) {
@@ -573,3 +574,4 @@ tasks.register("testClasses") {
     description = "Compatibility alias for Java 'testClasses' (runs Android unit tests)."
     dependsOn(tasks.matching { it.name == "testDebugUnitTest" || it.name == "test" })
 }
+

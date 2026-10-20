@@ -112,7 +112,7 @@ class FotoDetailFragment : Fragment() {
                 sb.append("\nBereich: ").append(it)
             }
 
-            sb.append("\nZeit: ").append(SucheFotoFormatter.formatZeit(foto.erstelltAmEpochMs))
+            sb.append("\nZeit: ").append(foto.aufnahmeEpochEffektiv?.let { SucheFotoFormatter.formatZeit(it) } ?: "–")
             sb.append("\nKM: ").append(foto.km?.let { String.format(Locale.GERMANY, "%.3f", it) } ?: "–")
             sb.append("\nBildtyp: ").append(SucheFotoFormatter.labelBildtyp(foto.bildtyp))
 
@@ -120,7 +120,7 @@ class FotoDetailFragment : Fragment() {
             foto.objektKennung?.takeIf { it.isNotBlank() }?.let { sb.append("\nObjekt: ").append(it) }
 
             sb.append("\nGPS: ")
-                .append(String.format(Locale.US, "%.6f, %.6f", foto.gpsLat, foto.gpsLon))
+                .append(foto.gpsAnzeige)
 
             foto.notiz?.takeIf { it.isNotBlank() }?.let { sb.append("\nNotiz: ").append(it) }
             foto.indikator?.let { sb.append("\nIndikator: ").append(it.name) }
@@ -166,9 +166,9 @@ class FotoDetailFragment : Fragment() {
             }
 
             btnMaps.setOnClickListener {
-                val lat = foto.gpsLat
-                val lon = foto.gpsLon
-                if (lat == 0.0 && lon == 0.0) {
+                val lat = foto.gpsLatEffektiv
+                val lon = foto.gpsLonEffektiv
+                if (lat == null || lon == null) {
                     Toast.makeText(requireContext(), "Kein GPS gespeichert", Toast.LENGTH_SHORT).show()
                 } else {
                     val geo = Uri.parse("geo:${lat},${lon}?q=${lat},${lon}")
@@ -216,3 +216,4 @@ class FotoDetailFragment : Fragment() {
         startActivity(Intent.createChooser(share, "Teilen"))
     }
 }
+

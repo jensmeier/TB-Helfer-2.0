@@ -1879,6 +1879,9 @@ class KameraFragment : Fragment(R.layout.fragment_kamera) {
                     val bundle = Bundle().apply {
                         putString(FotoErfassenFragment.ARG_DATEIPFAD, datei.absolutePath)
                         putLong(FotoErfassenFragment.ARG_BAUSTELLE_ID, baustelleId)
+                        putString("btbPhotoTargetId", arguments?.getString("btbPhotoTargetId"))
+                        putString("btbPhotoEntryKey", arguments?.getString("btbPhotoEntryKey"))
+                        if (standort.hasAccuracy()) putDouble("gpsAccuracyM", standort.accuracy.toDouble())
                         // Knoten (Unterbaustelle) optional
                         // Auswahl gilt nur für dieses Foto (User-Wunsch).
                     }
@@ -2019,3 +2022,4 @@ class KameraFragment : Fragment(R.layout.fragment_kamera) {
         const val ARG_ABNAHME_BAUSTELLE_NAME = "abnahmeBaustelleName"
     }
 }
+

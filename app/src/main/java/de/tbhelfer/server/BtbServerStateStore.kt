@@ -84,8 +84,23 @@ object BtbServerStateStore {
 
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
+            .putString("entries:" + key(clientBtbId), (payload.optJSONObject(Server1BtbApi.SERVER_ENTRY_IDS_KEY) ?: JSONObject()).toString())
             .putString(key(clientBtbId), state.toString())
             .apply()
+    }
+
+    fun entryId(context: Context, clientBtbId: String, clientEntryKey: String): String? {
+        val raw = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString("entries:" + key(clientBtbId), null) ?: return null
+        val value = runCatching { JSONObject(raw).optString(clientEntryKey) }.getOrNull()
+        return value?.let { runCatching { java.util.UUID.fromString(it).toString() }.getOrNull() }
+    }
+
+    fun entryKey(context: Context, clientBtbId: String, serverEntryId: String): String? {
+        val raw = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString("entries:" + key(clientBtbId), null) ?: return null
+        val map = runCatching { JSONObject(raw) }.getOrNull() ?: return null
+        return map.keys().asSequence().firstOrNull { map.optString(it) == serverEntryId }
     }
 
     fun state(context: Context, clientBtbId: String?): State? {
@@ -181,3 +196,4 @@ object BtbServerStateStore {
         Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
     )
 }
+

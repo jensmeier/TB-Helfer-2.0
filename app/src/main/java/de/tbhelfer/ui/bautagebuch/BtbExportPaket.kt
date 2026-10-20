@@ -114,25 +114,29 @@ object BtbExportPaket {
     }
 
     private fun fotoZeit(f: FotoEntity): String {
-        return Instant.ofEpochMilli(f.erstelltAmEpochMs)
+        val epoch = f.aufnahmeEpochEffektiv ?: return "–"
+        return Instant.ofEpochMilli(epoch)
             .atZone(ZoneId.systemDefault())
             .format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
     }
 
     private fun fotoZeitDatei(f: FotoEntity): String {
-        return Instant.ofEpochMilli(f.erstelltAmEpochMs)
+        val epoch = f.aufnahmeEpochEffektiv ?: return "ohne_Aufnahmezeit"
+        return Instant.ofEpochMilli(epoch)
             .atZone(ZoneId.systemDefault())
             .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmm"))
     }
 
     private fun fotoZeitKurz(f: FotoEntity): String {
-        return Instant.ofEpochMilli(f.erstelltAmEpochMs)
+        val epoch = f.aufnahmeEpochEffektiv ?: return "–"
+        return Instant.ofEpochMilli(epoch)
             .atZone(ZoneId.systemDefault())
             .format(DateTimeFormatter.ofPattern("HH:mm"))
     }
 
     private fun fotoDatumIso(f: FotoEntity): String {
-        return Instant.ofEpochMilli(f.erstelltAmEpochMs)
+        val epoch = f.aufnahmeEpochEffektiv ?: return "ohne_Aufnahmezeit"
+        return Instant.ofEpochMilli(epoch)
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
             .format(isoFmt)
@@ -414,8 +418,8 @@ object BtbExportPaket {
             val meta = fotoMetaTextBlock(entry, foto, labels, knotenLabels, btbPlan)
             ImageExifUtil.writeFotoMetadata(
                 file = tmp,
-                lat = foto.gpsLat.takeIf { it != 0.0 },
-                lon = foto.gpsLon.takeIf { it != 0.0 },
+                lat = foto.gpsLatEffektiv,
+                lon = foto.gpsLonEffektiv,
                 metaTextBlock = meta,
                 forceOrientationNormal = true,
                 windowsTitle = windowsTitle(entry, foto, knotenLabels),
@@ -485,7 +489,7 @@ object BtbExportPaket {
                 appendLine("Baustelle: $baustelleName")
                 if (ort.isNotBlank()) appendLine("Unterbaustelle: $ort")
                 appendLine("Datum/Zeit: ${fotoZeit(foto)}")
-                appendLine("GPS: ${foto.gpsLat}, ${foto.gpsLon}")
+                appendLine("GPS: ${foto.gpsAnzeige}")
                 val kmText = kmCsv(foto.km)
                 if (kmText.isNotBlank()) appendLine("KM: $kmText")
                 appendLine("Firma: ${foto.firma}")
@@ -517,8 +521,8 @@ object BtbExportPaket {
             ).map { it.trim() }.filter { it.isNotBlank() }.distinct().joinToString("; ").take(1000)
             ImageExifUtil.writeFotoMetadata(
                 file = tmp,
-                lat = foto.gpsLat.takeIf { it != 0.0 },
-                lon = foto.gpsLon.takeIf { it != 0.0 },
+                lat = foto.gpsLatEffektiv,
+                lon = foto.gpsLonEffektiv,
                 metaTextBlock = meta,
                 forceOrientationNormal = true,
                 windowsTitle = title,
@@ -557,9 +561,11 @@ object BtbExportPaket {
                 ExifInterface.TAG_FOCAL_LENGTH
             )
             tags.forEach { tag -> from.getAttribute(tag)?.let { to.setAttribute(tag, it) } }
-            val ll = FloatArray(2)
-            if (from.getLatLong(ll)) to.setLatLong(ll[0].toDouble(), ll[1].toDouble())
-            else if (foto.gpsLat != 0.0 && foto.gpsLon != 0.0) to.setLatLong(foto.gpsLat, foto.gpsLon)
+            val lat = foto.gpsLatEffektiv
+            val lon = foto.gpsLonEffektiv
+            if (lat != null && lon != null) to.setLatLong(lat, lon)
+            else listOf(ExifInterface.TAG_GPS_LATITUDE, ExifInterface.TAG_GPS_LATITUDE_REF,
+                ExifInterface.TAG_GPS_LONGITUDE, ExifInterface.TAG_GPS_LONGITUDE_REF).forEach { to.setAttribute(it, null) }
             to.setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL.toString())
             to.saveAttributes()
         }
@@ -977,7 +983,7 @@ object BtbExportPaket {
                 appendLine("BTB-BildNr: $btbNr")
                 if (abschnitt.isNotBlank()) appendLine("PDF-Abschnitt: $abschnitt")
             }
-            appendLine("GPS: ${f.gpsLat}, ${f.gpsLon}")
+            appendLine("GPS: ${f.gpsAnzeige}")
             val kmText = kmCsv(f.km)
             if (kmText.isNotBlank()) appendLine("KM: $kmText")
             appendLine("Firma: ${f.firma}")
@@ -1065,7 +1071,7 @@ object BtbExportPaket {
                 appendLine("Baustelle: ${entry.baustelleName}")
                 val ort = unterbaustelle(f, knotenLabels)
                 if (ort.isNotBlank()) appendLine("Unterbaustelle: $ort")
-                appendLine("GPS: ${f.gpsLat}, ${f.gpsLon}")
+                appendLine("GPS: ${f.gpsAnzeige}")
                 appendLine("KM: ${kmCsv(f.km)}")
                 appendLine("Firma: ${f.firma}")
                 appendLine("Bildtyp: ${f.bildtyp}")
@@ -1124,8 +1130,8 @@ object BtbExportPaket {
                     fotoZeit(f),
                     entry.baustelleName,
                     unterbaustelle(f, knotenLabels),
-                    f.gpsLat,
-                    f.gpsLon,
+                    f.gpsLatEffektiv ?: "",
+                    f.gpsLonEffektiv ?: "",
                     kmCsv(f.km),
                     f.firma,
                     f.bildtyp,
@@ -1153,7 +1159,7 @@ object BtbExportPaket {
     ): List<GesamtBilderlisteXlsx.Row> {
         return exportFotos.mapIndexed { index, info ->
             val f = info.foto
-            val z = Instant.ofEpochMilli(f.erstelltAmEpochMs).atZone(ZoneId.systemDefault())
+            val z = f.aufnahmeEpochEffektiv?.let { Instant.ofEpochMilli(it) }?.atZone(ZoneId.systemDefault())
             val ort = unterbaustelle(f, knotenLabels)
             val bereich = listOf(ort, f.objektBereich.orEmpty())
                 .map { it.trim() }
@@ -1163,8 +1169,8 @@ object BtbExportPaket {
             val btbNr = btbPlan?.fotoNum?.get(f.id)
             GesamtBilderlisteXlsx.Row(
                 nr = index + 1,
-                datum = z.toLocalDate().format(isoFmt),
-                uhrzeit = z.toLocalTime().format(timeFmt),
+                datum = z?.toLocalDate()?.format(isoFmt).orEmpty(),
+                uhrzeit = z?.toLocalTime()?.format(timeFmt).orEmpty(),
                 ersteller = "",
                 verantwortlicherTb = verantwortlicherTb,
                 art = f.bildtyp.name,
@@ -1176,8 +1182,8 @@ object BtbExportPaket {
                 langtext = f.notiz.orEmpty(),
                 status = if (btbNr != null) "Im BTB/PDF · Bild $btbNr" else "",
                 bilddatei = info.exportName,
-                gps = if (f.gpsLat != 0.0 || f.gpsLon != 0.0) {
-                    "%.6f, %.6f".format(Locale.US, f.gpsLat, f.gpsLon)
+                gps = if (f.gpsLatEffektiv != null && f.gpsLonEffektiv != null) {
+                    f.gpsAnzeige
                 } else {
                     ""
                 },
@@ -1504,10 +1510,10 @@ object BtbExportPaket {
         ): String = buildString {
             appendLine("Datum;Zeit;Baustelle;Unterbaustelle;Bereich;KM;Firma;Bildtyp;Kurzbeschreibung;Bilddatei;GPS")
             quellFotos.filterNot { it.id in ausgeschlosseneFotoIds }.forEach { f ->
-                val z = Instant.ofEpochMilli(f.erstelltAmEpochMs).atZone(ZoneId.systemDefault())
+                val z = f.aufnahmeEpochEffektiv?.let { Instant.ofEpochMilli(it) }?.atZone(ZoneId.systemDefault())
                 val row = listOf(
-                    z.toLocalDate().format(isoFmt),
-                    z.toLocalTime().format(timeFmt),
+                    z?.toLocalDate()?.format(isoFmt).orEmpty(),
+                    z?.toLocalTime()?.format(timeFmt).orEmpty(),
                     baustelleName,
                     unterbaustelle(f, knotenLabels),
                     f.objektBereich.orEmpty(),
@@ -1516,7 +1522,7 @@ object BtbExportPaket {
                     f.bildtyp.name,
                     f.kurztext,
                     File(f.dateipfad).name,
-                    "%.6f, %.6f".format(Locale.US, f.gpsLat, f.gpsLon)
+                    f.gpsAnzeige
                 )
                 appendLine(row.joinToString(";") { "\"" + it.replace("\"", "\"\"") + "\"" })
             }
@@ -1721,4 +1727,5 @@ object BtbExportPaket {
         context.startActivity(Intent.createChooser(intent, "Exportpaket teilen"))
     }
 }
+
 

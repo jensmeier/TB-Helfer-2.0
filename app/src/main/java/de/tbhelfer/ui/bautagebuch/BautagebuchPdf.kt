@@ -687,7 +687,7 @@ class BautagebuchPdf(
 
         fun timeOfFoto(f: de.tbhelfer.datenbank.FotoEntity): String {
             return runCatching {
-                val dt = java.time.Instant.ofEpochMilli(f.erstelltAmEpochMs)
+                val dt = java.time.Instant.ofEpochMilli(f.aufnahmeEpochEffektiv ?: error("Aufnahmezeit fehlt"))
                     .atZone(ZoneId.systemDefault())
                     .toLocalDateTime()
                 dt.format(timeFmt)
@@ -779,10 +779,16 @@ class BautagebuchPdf(
                 .mapNotNull { startOverrides[it] }
                 .mapNotNull { parsePhotoTimeOverride(it) }
                 .toList()
-            val manualStartEpoch = manualRanges.mapNotNull { it.first?.let { min -> wallTimeEpochNear(autoStartEpochMs, min) } }.minOrNull()
-            val manualEndEpoch = manualRanges.mapNotNull { it.second?.let { min -> wallTimeEpochNear(autoEndEpochMs, min) } }.maxOrNull()
-            val startEpoch = manualStartEpoch?.let { minOf(it, autoStartEpochMs) } ?: autoStartEpochMs
-            val endEpoch = manualEndEpoch?.let { maxOf(it, autoEndEpochMs) } ?: autoEndEpochMs
+            if (autoStartEpochMs <= 0L && autoEndEpochMs <= 0L) {
+                fun hm(minutes: Int?): String = minutes?.let { String.format(java.util.Locale.ROOT, "%02d:%02d", it / 60, it % 60) } ?: "--:--"
+                return hm(manualRanges.mapNotNull { it.first }.minOrNull()) to hm(manualRanges.mapNotNull { it.second }.maxOrNull())
+            }
+            val startRef = autoStartEpochMs.takeIf { it > 0L } ?: autoEndEpochMs
+            val endRef = autoEndEpochMs.takeIf { it > 0L } ?: autoStartEpochMs
+            val manualStartEpoch = manualRanges.mapNotNull { it.first?.let { min -> wallTimeEpochNear(startRef, min) } }.minOrNull()
+            val manualEndEpoch = manualRanges.mapNotNull { it.second?.let { min -> wallTimeEpochNear(endRef, min) } }.maxOrNull()
+            val startEpoch = manualStartEpoch?.let { minOf(it, startRef) } ?: startRef
+            val endEpoch = manualEndEpoch?.let { maxOf(it, endRef) } ?: endRef
             val start = java.time.Instant.ofEpochMilli(startEpoch).atZone(ZoneId.systemDefault()).toLocalTime().format(timeFmt)
             val end = java.time.Instant.ofEpochMilli(endEpoch).atZone(ZoneId.systemDefault()).toLocalTime().format(timeFmt)
             return start to end
@@ -2603,13 +2609,12 @@ if (selectedFotosOrdered.isNotEmpty()) {
         }
         if (cfg.zeigeGps) {
             out.add(
-                if (f.gpsLat == 0.0 && f.gpsLon == 0.0) "GPS: –"
-                else "GPS: ${String.format(Locale.US, "%.6f", f.gpsLat)}, ${String.format(Locale.US, "%.6f", f.gpsLon)}"
+                "GPS: ${f.gpsAnzeige}"
             )
         }
         if (cfg.zeigeDatum) {
             val dt = runCatching {
-                java.time.Instant.ofEpochMilli(f.erstelltAmEpochMs)
+                java.time.Instant.ofEpochMilli(f.aufnahmeEpochEffektiv ?: error("Aufnahmezeit fehlt"))
                     .atZone(ZoneId.systemDefault())
                     .toLocalDate()
                     .format(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -3051,4 +3056,5 @@ fun sharePdf(file: File) {
         context.startActivity(Intent.createChooser(intent, "PDF teilen"))
     }
 }
+
 

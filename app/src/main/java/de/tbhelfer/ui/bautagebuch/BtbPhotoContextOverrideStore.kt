@@ -68,6 +68,7 @@ object BtbPhotoContextOverrideStore {
         }.getOrDefault(mutableMapOf())
     }
 
+    @Synchronized
     fun setOverride(
         context: Context,
         btbId: String?,
@@ -85,19 +86,30 @@ object BtbPhotoContextOverrideStore {
         setOverride(context, btbId, fotoId, null)
 
     fun applyToFoto(context: Context, foto: FotoEntity): FotoEntity {
-        val btbId = BtbFotoZuordnungSpeicher.btbId(context, foto.id) ?: return foto
-        val value = load(context, btbId)[foto.id] ?: return foto
-        return applyValue(foto, value)
+        val base = BtbPhotoMetadatenStore.apply(context, foto)
+        val btbId = BtbFotoZuordnungSpeicher.btbId(context, foto.id) ?: return base
+        val value = load(context, btbId)[foto.id] ?: return base
+        return applyValue(base, value).mitMetadatenVon(base)
     }
 
     fun applyToFotos(context: Context, fotos: List<FotoEntity>): List<FotoEntity> {
         if (fotos.isEmpty()) return fotos
         val cache = hashMapOf<String, Map<Long, ContextOverride>>()
         return fotos.map { foto ->
-            val btbId = BtbFotoZuordnungSpeicher.btbId(context, foto.id) ?: return@map foto
+            val base = BtbPhotoMetadatenStore.apply(context, foto)
+            val btbId = BtbFotoZuordnungSpeicher.btbId(context, foto.id) ?: return@map base
             val map = cache.getOrPut(btbId) { load(context, btbId) }
-            map[foto.id]?.let { applyValue(foto, it) } ?: foto
+            map[foto.id]?.let { applyValue(base, it).mitMetadatenVon(base) } ?: base
         }
+    }
+
+    @Synchronized
+    fun clearIfUnchanged(context: Context, btbId: String, fotoId: Long, expected: ContextOverride?) {
+        if (expected == null) return
+        val values = load(context, btbId)
+        if (values[fotoId] != expected) return
+        values.remove(fotoId)
+        save(context, btbId, values)
     }
 
     private fun applyValue(foto: FotoEntity, value: ContextOverride): FotoEntity {
@@ -154,3 +166,4 @@ object BtbPhotoContextOverrideStore {
         .joinToString("") { "%02x".format(it) }
         .take(32)
 }
+

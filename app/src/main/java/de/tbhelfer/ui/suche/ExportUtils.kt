@@ -153,10 +153,10 @@ private fun fotoDate(entity: FotoEntity): LocalDate =
                     put("kmSuffix", f.kmSuffix)
                     put("kmManuell", f.kmManuell)
                     put("achsabstandM", f.achsabstandM ?: JSONObject.NULL)
-                    put("gpsLat", f.gpsLat)
-                    put("gpsLon", f.gpsLon)
+                    put("gpsLat", f.gpsLatEffektiv ?: JSONObject.NULL)
+                    put("gpsLon", f.gpsLonEffektiv ?: JSONObject.NULL)
                     put("gpsAltM", f.gpsAltM ?: JSONObject.NULL)
-                    put("createdAtEpochMs", f.erstelltAmEpochMs)
+                    put("createdAtEpochMs", f.aufnahmeEpochEffektiv ?: JSONObject.NULL)
                     put("bildtyp", f.bildtyp.toString())
                     put("kurztext", f.kurztext)
                     put("notiz", f.notiz ?: JSONObject.NULL)
@@ -212,3 +212,4 @@ private fun fotoDate(entity: FotoEntity): LocalDate =
         }
     }
 }
+

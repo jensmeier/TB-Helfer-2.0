@@ -59,6 +59,7 @@ object BtbPhotoKmOverrideStore {
         }
     }
 
+    @Synchronized
     fun saveOverrides(
         context: Context,
         baustelleId: Long,
@@ -98,6 +99,7 @@ object BtbPhotoKmOverrideStore {
     }
 
     /** value == null => Automatik aus den Original-Foto-KM verwenden. */
+    @Synchronized
     fun setOverrideForIds(
         context: Context,
         baustelleId: Long,
@@ -121,6 +123,7 @@ object BtbPhotoKmOverrideStore {
         }
     }
 
+    @Synchronized
     fun deleteAllFor(context: Context, baustelleId: Long, datumIso: String, schicht: SchichtTyp) {
         val dir = File(context.filesDir, DIR_NAME)
         if (!dir.exists()) return
@@ -184,3 +187,4 @@ object BtbPhotoKmOverrideStore {
         return File(dir, "kmovr_${baustelleId}_${datumIso}_${st}_${s}_${e}.json")
     }
 }
+

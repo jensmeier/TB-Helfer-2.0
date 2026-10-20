@@ -3913,7 +3913,9 @@ cardCurrentReport.setOnClickListener {
                 )
                 if (inWindow.isNotEmpty()) {
                     val f = inWindow.last()
-                    return Pair(f.gpsLat, f.gpsLon)
+                    val lat = f.gpsLatEffektiv
+                    val lon = f.gpsLonEffektiv
+                    if (lat != null && lon != null) return Pair(lat, lon)
                 }
             }
 
@@ -5670,6 +5672,12 @@ cardCurrentReport.setOnClickListener {
                 }
 
                 fun matchingFotoIds(mi: ManualItem): List<Long> {
+                    mi.clientEntryKey?.let { entryKey ->
+                        val btbId = loadedBtbId ?: return emptyList()
+                        return lastGroups.flatMap { it.ids }.distinct().filter {
+                            BtbPhotoMetadatenStore.entryKey(requireContext(), btbId, it) == entryKey
+                        }
+                    }
                     fun sameFirma(a: String?, b: String?): Boolean =
                         a.orEmpty().trim().equals(b.orEmpty().trim(), ignoreCase = true)
 
@@ -5756,6 +5764,7 @@ cardCurrentReport.setOnClickListener {
                             putString("autoPhotoFirma", mi.firma.orEmpty())
                             putLong("autoPhotoOrtId", mi.ortId)
                             putString("autoPhotoText", mi.text)
+                            putString("autoPhotoEntryKey", mi.clientEntryKey)
                             mi.time?.let { putString("autoPhotoTime", it) }
                             mi.kmVon?.let { putDouble("autoPhotoKmVon", it) }
                             mi.kmBis?.let { putDouble("autoPhotoKmBis", it) }

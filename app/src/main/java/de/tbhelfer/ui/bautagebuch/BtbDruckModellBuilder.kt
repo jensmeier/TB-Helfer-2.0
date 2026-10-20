@@ -702,10 +702,16 @@ object BtbDruckModellBuilder {
 
     private fun effectiveRangeFor(ids: List<Long>, autoStartEpochMs: Long, autoEndEpochMs: Long, startOverrides: Map<Long, String>): Pair<String, String> {
         val manualRanges = ids.mapNotNull { startOverrides[it] }.mapNotNull { parsePhotoTimeOverride(it) }
-        val manualStartEpoch = manualRanges.mapNotNull { it.first?.let { min -> wallTimeEpochNear(autoStartEpochMs, min) } }.minOrNull()
-        val manualEndEpoch = manualRanges.mapNotNull { it.second?.let { min -> wallTimeEpochNear(autoEndEpochMs, min) } }.maxOrNull()
-        val startEpoch = manualStartEpoch?.let { minOf(it, autoStartEpochMs) } ?: autoStartEpochMs
-        val endEpoch = manualEndEpoch?.let { maxOf(it, autoEndEpochMs) } ?: autoEndEpochMs
+        if (autoStartEpochMs <= 0L && autoEndEpochMs <= 0L) {
+            fun hm(minutes: Int?): String = minutes?.let { String.format(java.util.Locale.ROOT, "%02d:%02d", it / 60, it % 60) } ?: "--:--"
+            return hm(manualRanges.mapNotNull { it.first }.minOrNull()) to hm(manualRanges.mapNotNull { it.second }.maxOrNull())
+        }
+        val startRef = autoStartEpochMs.takeIf { it > 0L } ?: autoEndEpochMs
+        val endRef = autoEndEpochMs.takeIf { it > 0L } ?: autoStartEpochMs
+        val manualStartEpoch = manualRanges.mapNotNull { it.first?.let { min -> wallTimeEpochNear(startRef, min) } }.minOrNull()
+        val manualEndEpoch = manualRanges.mapNotNull { it.second?.let { min -> wallTimeEpochNear(endRef, min) } }.maxOrNull()
+        val startEpoch = manualStartEpoch?.let { minOf(it, startRef) } ?: startRef
+        val endEpoch = manualEndEpoch?.let { maxOf(it, endRef) } ?: endRef
         val zone = ZoneId.systemDefault()
         return Instant.ofEpochMilli(startEpoch).atZone(zone).toLocalTime().format(timeFmt) to
             Instant.ofEpochMilli(endEpoch).atZone(zone).toLocalTime().format(timeFmt)

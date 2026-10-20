@@ -89,7 +89,7 @@ object BtbFotoRenderMarkierung {
 
     /** Nur für PDF-Aufbereitung; Datenbank und Originalbilder bleiben unverändert. */
     fun anwenden(fotos: List<FotoEntity>): List<FotoEntity> = fotos.map { foto ->
-        overridePath(foto.id)?.let { foto.copy(dateipfad = it) } ?: foto
+        overridePath(foto.id)?.let { foto.copy(dateipfad = it).mitMetadatenVon(foto) } ?: foto
     }
 
     fun clear() {
@@ -98,3 +98,4 @@ object BtbFotoRenderMarkierung {
         tempFiles.clear()
     }
 }
+

@@ -80,4 +80,31 @@ data class FotoEntity(
 
     /** Zeitstempel der Aufnahme. */
     val erstelltAmEpochMs: Long = System.currentTimeMillis()
-)
+) {
+    /** Nur Anzeige/Transport; der Room-Aufnahmedatensatz bleibt unveraendert. */
+    @androidx.room.Ignore
+    var btbMetadaten: AufnahmeMetadaten? = null
+
+    @get:androidx.room.Ignore
+    val gpsLatEffektiv: Double?
+        get() = if (btbMetadaten != null) btbMetadaten?.lat else
+            gpsLat.takeIf { it.isFinite() && it in -90.0..90.0 && (gpsLat != 0.0 || gpsLon != 0.0) }
+    @get:androidx.room.Ignore
+    val gpsLonEffektiv: Double?
+        get() = if (btbMetadaten != null) btbMetadaten?.lon else
+            gpsLon.takeIf { it.isFinite() && it in -180.0..180.0 && (gpsLat != 0.0 || gpsLon != 0.0) }
+    @get:androidx.room.Ignore
+    val aufnahmeEpochEffektiv: Long?
+        get() = if (btbMetadaten != null) btbMetadaten?.epoch else erstelltAmEpochMs.takeIf { it > 0L }
+    @get:androidx.room.Ignore
+    val gpsAccuracyEffektiv: Double? get() = btbMetadaten?.accuracyM
+    @get:androidx.room.Ignore
+    val gpsAnzeige: String
+        get() = if (gpsLatEffektiv != null && gpsLonEffektiv != null)
+            String.format(java.util.Locale.US, "%.6f, %.6f", gpsLatEffektiv, gpsLonEffektiv) else "–"
+
+    fun mitMetadatenVon(source: FotoEntity): FotoEntity = apply { btbMetadaten = source.btbMetadaten }
+}
+
+data class AufnahmeMetadaten(val lat: Double?, val lon: Double?, val epoch: Long?, val accuracyM: Double?)
+

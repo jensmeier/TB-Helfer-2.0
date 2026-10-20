@@ -929,7 +929,8 @@ class CollabSyncRepository(
         gpsAccuracyM: Double? = null,
         photoMetadata: JSONObject? = null,
         api: CollabSyncApi = CollabSyncApi(),
-        server1Api: Server1FileApi? = null
+        server1Api: Server1FileApi? = null,
+        btbEntryId: String? = null
     ): LocalAttachmentUploadResult {
         if (!file.exists() || !file.isFile) {
             return LocalAttachmentUploadResult.Error("Datei existiert nicht mehr: ${file.name}")
@@ -966,7 +967,8 @@ class CollabSyncRepository(
                     gpsLat = gpsLat,
                     gpsLon = gpsLon,
                     gpsAccuracyM = gpsAccuracyM,
-                    photoMetadata = photoMetadata
+                    photoMetadata = photoMetadata,
+                    btbEntryId = btbEntryId
                 )
             ) {
                 Server1FileApi.UploadResult.Unsupported -> LocalAttachmentUploadResult.Unsupported
@@ -1420,3 +1422,4 @@ class CollabSyncRepository(
         }
     }
 }
+
