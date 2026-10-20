@@ -6,6 +6,7 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 
 class SyncCatalogApi(
     private val baseUrl: String = ServerConfig.BASE_URL
@@ -41,6 +42,76 @@ class SyncCatalogApi(
         data object SessionInvalid : Result
         data class Error(val message: String) : Result
     }
+
+    sealed interface InventoryResult {
+        data class Success(val inventory: CatalogInventory) : InventoryResult
+        data object Unsupported : InventoryResult
+        data object SessionInvalid : InventoryResult
+        data class Error(val message: String) : InventoryResult
+    }
+
+    fun loadInventory(token: String, routeNumber: String? = null, stationCode: String? = null): InventoryResult {
+        val route = routeNumber?.trim()?.takeIf { it.isNotBlank() }
+        val station = stationCode?.trim()?.takeIf { it.isNotBlank() }
+        if (route == null && station == null) return InventoryResult.Error("Bitte Strecke oder Bahnhof mit Kürzel auswählen.")
+        if ((route?.length ?: 0) > 80 || (station?.length ?: 0) > 50)
+            return InventoryResult.Error("Strecken- oder Bahnhofkennung ist zu lang.")
+        val query = listOfNotNull(route?.let { "route_number=" + URLEncoder.encode(it, "UTF-8") },
+            station?.let { "station_code=" + URLEncoder.encode(it, "UTF-8") }).joinToString("&")
+        var connection: HttpURLConnection? = null
+        return try {
+            val request = openConnection("/api/v1/catalog/inventory?$query")
+            connection = request
+            request.setRequestProperty("Authorization", "Bearer $token")
+            request.setRequestProperty("Accept", "application/json")
+            val code = request.responseCode
+            val response = readBody(request, code)
+            val json = response.takeIf { it.isNotBlank() }?.let { runCatching { JSONObject(it) }.getOrNull() }
+            when (code) {
+                HttpURLConnection.HTTP_OK -> {
+                    if (json == null || json.optString("scope") != "GLOBAL" || json.optJSONArray("rows") == null)
+                        InventoryResult.Error("Bestandsantwort konnte nicht gelesen werden.")
+                    else InventoryResult.Success(parseInventory(json))
+                }
+                404, 405, 501 -> InventoryResult.Unsupported
+                401, 403 -> InventoryResult.SessionInvalid
+                else -> InventoryResult.Error(json?.optNullableString("detail") ?: "Bestand konnte nicht geladen werden ($code).")
+            }
+        } catch (_: Exception) {
+            InventoryResult.Error("Bestand konnte nicht geladen werden. Bitte Verbindung prüfen und erneut versuchen.")
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    internal fun parseInventory(json: JSONObject): CatalogInventory {
+        val items = requireNotNull(json.optJSONArray("rows"))
+        val rows = buildList {
+            for (index in 0 until items.length()) {
+                val item = requireNotNull(items.optJSONObject(index))
+                val parts = item.optJSONArray("segments")
+                val segments = buildList {
+                    for (i in 0 until (parts?.length() ?: 0)) {
+                        val part = requireNotNull(parts?.optJSONObject(i))
+                        add(CatalogInventorySegment(part.optNullableString("status") ?: "UNBEKANNT",
+                            part.finiteNumber("km_from_m"), part.finiteNumber("km_to_m")))
+                    }
+                }
+                add(CatalogInventoryRow(
+                    id = requireNotNull(item.optNullableString("id")),
+                    kind = item.optNullableString("kind") ?: "UNBEKANNT",
+                    label = item.optNullableString("label") ?: "Weitere Daten",
+                    routeNumber = item.optNullableString("route_number"), stationCode = item.optNullableString("station_code"),
+                    stationName = item.optNullableString("station_name"), trackKey = item.optNullableString("track_key"),
+                    objectKey = item.optNullableString("object_key"), status = item.optNullableString("status") ?: "UNBEKANNT",
+                    segments = segments
+                ))
+            }
+        }
+        return CatalogInventory(rows)
+    }
+
+    private fun JSONObject.finiteNumber(key: String): Double? = (opt(key) as? Number)?.toDouble()?.takeIf { it.isFinite() }
 
     fun loadCatalog(token: String): Result {
         val connection = openConnection("/api/v1/catalog")
@@ -157,3 +228,4 @@ class SyncCatalogApi(
         }
     }
 }
+

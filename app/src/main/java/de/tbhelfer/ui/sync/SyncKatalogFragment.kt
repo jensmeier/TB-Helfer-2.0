@@ -299,10 +299,12 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
     private fun showRouteActions(route: SyncCatalogApi.RouteItem) {
         AlertDialog.Builder(requireContext())
             .setTitle(route.routeNumber.ifBlank { "Strecke" })
-            .setItems(arrayOf("Abschnitte öffnen", "Strecke korrigieren")) { _, which ->
+            .setItems(arrayOf("Abschnitte öffnen", "Strecke korrigieren", "Vorhandene Daten anzeigen")) { _, which ->
                 when (which) {
                     0 -> openRouteSelection(route)
                     1 -> offlineDialogs.showEditRoute(route) { loadCatalog() }
+                    2 -> CatalogInventoryDialog.newInstance(route.routeNumber, routeNumber = route.routeNumber)
+                        .show(childFragmentManager, "catalog_inventory")
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -312,10 +314,12 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
     private fun showStationActions(station: SyncCatalogApi.StationItem) {
         AlertDialog.Builder(requireContext())
             .setTitle(station.name.ifBlank { "Bahnhof" })
-            .setItems(arrayOf("Gleise / Weichen / Objekte öffnen", "Bahnhof korrigieren")) { _, which ->
+            .setItems(arrayOf("Gleise / Weichen / Objekte öffnen", "Bahnhof korrigieren", "Vorhandene Daten anzeigen")) { _, which ->
                 when (which) {
                     0 -> openStationSelection(station)
                     1 -> offlineDialogs.showEditStation(station) { loadCatalog() }
+                    2 -> CatalogInventoryDialog.newInstance(station.name, stationCode = station.stationCode)
+                        .show(childFragmentManager, "catalog_inventory")
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -598,3 +602,4 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
+
