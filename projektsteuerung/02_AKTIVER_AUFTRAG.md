@@ -816,3 +816,11 @@ Status: **QUELLSTAND UMGESETZT / SOURCE-CHECKS BESTANDEN / BUILD UND E2E OFFEN**
 - Auftrag fd3affd8b8069061817e70b01e8740f0634d1939 source-seitig umgesetzt. Lokale Bahnhofsuche bleibt; optionaler bewusster Server-Lookup per Geräte-Bearer. Nur exakte/bei Namen eindeutige Assetidentität oder ausdrücklich gewählter Servercode, kein erster unscharfer Treffer. Bestandsdialog mit opt-in Objekt/KM-Resultaten; Standardkatalog bleibt ohne Übernahmebuttons.
 - Stabile Knoten-/Objektidentität, keine Originaldatei-/Room-Schemaänderung, keine neue Bibliothek und kein Serverumbau. Keine automatische Bulk-Reparatur alter Baustellen. Vorhandene Fach-/Download-/Offlinepfade bleiben Grundlage.
 - Kein Kotlin-/Gradle-/Lint-/Emulator-/Geräte-/NAS-E2E-Nachweis; diese Toolchain hier nicht verfügbar. Context7 zu FragmentResult/Lifecycle geprüft. Keine Actions gestartet ([skip ci]), keine APK und keine Versionsänderung. Technischer Stand weiterhin 1.3.26/200076; neue APK nur mit höherem Build und zugehöriger Release-MD.
+
+
+## AND-BUILD-BUNDLE – Auftrag 22.10.2026
+Status: IN ARBEIT. Nutzer „Okay weiter“ bestätigt nächsten gebündelten Android-Prüf-/Buildschritt nach Katalogformular. Ausgang Android ccf4b958cb230c51fd52d781966e3f787e1458c9, Server 0f82b42da7412a138bf99b6f80b93031e3b5373e.
+- Lokale Umgebung weiterhin ohne Gradle/Kotlin/adb; vorhandene GitHub-Android-CI für echte Unit-/Debug-/Release-/Lint-Prüfung nutzen. Letzter Lauf38438042956 endete bereits in server/checks/19 an DELETE-Textmarker; alle Buildschritte wurden übersprungen. Kein Buildnachweis.
+- Vorhandene Quellvertragsprüfungen vollständig aktiv lassen, als eigenen verpflichtenden CI-Job alle Ergebnisse sammeln. Gradle-/Release-Prüfjob unabhängig davon ausführen; ein fehlgeschlagener Vertragsjob hält Gesamt-CI rot. Keine Tests deaktivieren oder Fehler als Erfolg markieren.
+- Testbuild technisch 1.3.27 / 200077 mit passender Release-MD vorbereiten; keine neue sichtbare Buildanzeige. Keine automatische Veröffentlichung/Serverauslieferung. Artefakte nur aus erfolgreichem Paketlauf übernehmen und Teststatus ehrlich fortschreiben.
+- Gefundene Android-Build-/Testfehler gesammelt beheben und tatsächlich erneut prüfen. Keine server/**-Änderung; veraltete serverseitige Quellmarker separat dokumentieren statt durch Scheinmarker in Android zu erfüllen. Geräte-/NAS-E2E bleibt eigene Abnahme.
