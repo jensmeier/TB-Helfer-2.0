@@ -830,3 +830,10 @@ CI39714417704: Release-MD/Version und JDK21 PASS; Wrapper-Validierung FAIL (unbe
 
 ### Buildbefund – Wiederholung39714587995
 Offizielle Wrapper-JAR-Prüfung jetzt PASS (SHA256 b3a875ddc1f044746e1b1a55f645584505f4a10438c1afea9f15e92a7c42ec13). Vorheriger Validierungsversuch scheiterte zusätzlich transient an Netzwerkzugriff. Tatsächlicher Buildstart nun durch fehlendes Unix-Ausführungsbit von gradlew blockiert (Exit126). Routinekorrektur: Git-Modus100644->100755; Launcherinhalt unverändert. Noch keine Kotlin-/Unit-Ausführung.
+
+## BTB-AUTO-016 – Auftrag/Festlegung 22.10.2026
+
+**Benutzerbestätigt; technische Umsetzung und sämtliche Tests OFFEN.** Laufenden BTB 16 Stunden ab eingetragenem Beginn automatisch aus der Erfassung nehmen (07:00 → 23:00). Ausstehende Offline-Daten/Fotos sicher nachsynchronisieren; erst bei bestätigter Vollständigkeit endgültiges PDF/Original erzeugen. Kein automatischer neuer BTB. Server koordiniert, Android behandelt auch Offline/Neustart; spätere bewusste Nachbearbeitung ohne erneuten Sofortabschluss. Vollständiger gemeinsamer Zielvertrag: Abschnitt **BTB-AUTO-016** in `05_ANDROID_SERVER_VERTRAG.md`.
+- SERVER entwickelt Worker/Status/Abschluss und Vollständigkeitsprotokoll; ANDROID entwickelt Anzeige/Offline-Erfassungsstopp/Outboxbestätigung. Konkrete technische Vertragsfelder und Grenzfallbehandlung vor Implementierung gemeinsam festlegen.
+- Genehmigte Ergänzung zur bisherigen manuellen Haupt-TB-Finalisierung, keine zusätzlichen Helferrechte. Bestehende geschützte Funktionen/Originale bleiben geschützt.
+- Auftrag hier: Festlegung in beiden Branches dokumentieren; kein Runtimecode/Build/Deployment und keine produktive Datenänderung.
