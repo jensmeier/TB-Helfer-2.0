@@ -827,3 +827,6 @@ Status: IN ARBEIT. Nutzer „Okay weiter“ bestätigt nächsten gebündelten An
 
 ### Buildbefund 22.10.2026 – Wrapper
 CI39714417704: Release-MD/Version und JDK21 PASS; Wrapper-Validierung FAIL (unbekannte eingecheckte JAR, SHA256 91d2ce650f47a3458f52f509b02f0f605513b0315952f717db74d9d51e21053e). Gradle weiterhin nicht gestartet. Entscheidung: ausschließlich diese JAR durch unverändertes offizielles gradle/gradle@v9.3.1-Wrapperartefakt ersetzen, bestehende Gradle9.3.1-Verteilung und Validierung erhalten. Kein Allowlist-Bypass. Erneuter Versuch derselben noch nicht erzeugten Test-APK200077. Alle13 Quellprüfungen tatsächlich gelaufen:8 PASS,5 FAIL (13,19,83,85,86), getrennt dokumentieren; Gesamt-CI bleibt rot.
+
+### Buildbefund – Wiederholung39714587995
+Offizielle Wrapper-JAR-Prüfung jetzt PASS (SHA256 b3a875ddc1f044746e1b1a55f645584505f4a10438c1afea9f15e92a7c42ec13). Vorheriger Validierungsversuch scheiterte zusätzlich transient an Netzwerkzugriff. Tatsächlicher Buildstart nun durch fehlendes Unix-Ausführungsbit von gradlew blockiert (Exit126). Routinekorrektur: Git-Modus100644->100755; Launcherinhalt unverändert. Noch keine Kotlin-/Unit-Ausführung.
