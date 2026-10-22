@@ -30,13 +30,20 @@ SERVERVERTRAG:
 - Keine server/**-Datei geändert, keine automatische Veröffentlichung.
 
 TESTSTATUS:
-- TESTBUILD IN VORBEREITUNG – noch kein erfolgreicher Gradle-/APK-Nachweis.
-- Quellprüfungen und produktive JVM-Regexprüfungen der Implementierungsblöcke bestanden.
-- Kotlin-Tests vorhanden; tatsächlicher CI-Lauf wird separat ausgewertet.
-- Quellvertragsjob und Buildjob unabhängig, beide verpflichtend; Gesamt-CI kann trotz erfolgreichem Build durch einen Vertragsfehler rot bleiben.
-- Installation und Pixel/Poco-/NAS-E2E offen.
-- Release-APK-Signatur und Installierbarkeit vor Übergabe gesondert prüfen.
+- Tatsächlicher CI-Lauf39716736906 für Code36bebf0a24078f4a81313fe41d5b5f90ba48e9fb: Unit-Tests + Debug PASS; Release PASS; Lint Debug PASS; APK-Upload PASS.
+- Separater Quellvertragsjob:8PASS/5FAIL (13,19,83,85,86). Gesamt-CI ROT, keine Releasefreigabe.
+- Debug-APK mit Android-Debug-Zertifikat; Updatefähigkeit über vorhandene Installation ungeprüft.
+- Release-APK UNSIGNIERT, nicht als installierbares Release bereitgestellt.
+- Beide APK-Manifeste: de.tbhelfer, Version1.3.27, Build200077.
+- Installation und Pixel/Poco-/NAS-/Portal-E2E offen. Kein Deinstallieren oder Datenlöschen zum Erzwingen einer Installation.
+- BTB-AUTO-016 weiterhin nur dokumentiert, nicht implementiert und nicht Bestandteil dieses Builds.
 
 NÄCHSTER TEST:
-- Unit-Tests, Debug/Release und Lint tatsächlich ausführen.
-- Danach Foto-Uploadgröße/Zuordnung/GPS-Löschen, Eintrags-Endzeit, Firmenzeitbindung, Bestandsübernahme und freie Strecke auf Pixel/Poco und im Portal prüfen.
+- Debug-APK erst nach Signaturabgleich mit der vorhandenen Installation testen.
+- Foto-Uploadgröße/Zuordnung/GPS-Löschen, Eintrags-Endzeit, Firmenzeitbindung, Bestandsübernahme und freie Strecke auf Pixel/Poco und im Portal prüfen.
+- Offene Quellvertragsprüfungen mit ihrem zuständigen Bereich abgleichen; keine server/**-Änderung in diesem Android-Arbeitsblock.
+
+BUILDNACHWEIS:
+- https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/39716736906
+- Debug-APK SHA256:205ccbb826464a20ec7c3b72999c49546e24c4ca19c3d42d5506b216569169c4
+- Originales CI-Artefakt:12400166655 (enthält die damalige vorbereitende Release-MD; diese Fassung aktualisiert ihren Teststatus).
