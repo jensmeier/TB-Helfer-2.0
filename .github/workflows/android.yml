@@ -57,6 +57,7 @@ jobs:
           exit "$contract_failed"
 
   build:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -117,8 +118,17 @@ jobs:
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v2
 
-      - name: Unit tests + Build Debug + Release
-        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease --continue --stacktrace
+      - name: Gradle bootstrap
+        timeout-minutes: 5
+        run: ./gradlew --version --console=plain
+
+      - name: Unit tests + Build Debug
+        timeout-minutes: 20
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug --continue --stacktrace --console=plain
+
+      - name: Build Release
+        timeout-minutes: 20
+        run: ./gradlew :app:assembleRelease --stacktrace --console=plain
 
       - name: Lint (Debug)
         run: ./gradlew :app:lintDebug --stacktrace
