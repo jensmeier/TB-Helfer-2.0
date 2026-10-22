@@ -23,6 +23,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  source_contracts:
+    name: Server and Android source contracts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify all server/source contracts
+        shell: bash
+        run: |
+          contract_failed=0
+          for contract_check in \
+            server/checks/03_verify_schema10_source.py \
+            server/checks/04_test_team_btb_merge.py \
+            server/checks/12_verify_schema12_source.py \
+            server/checks/13_verify_android_btb_auto_sync_source.py \
+            server/checks/14_verify_android_btb_sections_logo_source.py \
+            server/checks/15_verify_android_btb_delete_lifecycle_source.py \
+            server/checks/17_verify_schema13_source.py \
+            server/checks/18_verify_android_worksite_structure_source.py \
+            server/checks/19_verify_schema13_track_delete_source.py \
+            server/checks/83_verify_android_staging_server_config_source.py \
+            server/checks/84_verify_device_activation_qr_source.py \
+            server/checks/85_verify_android_200052_compile_imports.py \
+            server/checks/86_verify_android_update_client_source.py
+          do
+            if ! python3 "$contract_check"; then
+              contract_failed=1
+            fi
+          done
+          exit "$contract_failed"
+
   build:
     runs-on: ubuntu-latest
     permissions:
@@ -31,22 +64,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Verify server/source contracts
-        run: |
-          python3 server/checks/03_verify_schema10_source.py
-          python3 server/checks/04_test_team_btb_merge.py
-          python3 server/checks/12_verify_schema12_source.py
-          python3 server/checks/13_verify_android_btb_auto_sync_source.py
-          python3 server/checks/14_verify_android_btb_sections_logo_source.py
-          python3 server/checks/15_verify_android_btb_delete_lifecycle_source.py
-          python3 server/checks/17_verify_schema13_source.py
-          python3 server/checks/18_verify_android_worksite_structure_source.py
-          python3 server/checks/19_verify_schema13_track_delete_source.py
-          python3 server/checks/83_verify_android_staging_server_config_source.py
-          python3 server/checks/84_verify_device_activation_qr_source.py
-          python3 server/checks/85_verify_android_200052_compile_imports.py
-          python3 server/checks/86_verify_android_update_client_source.py
 
       - name: Verify Android release companion file
         id: release_meta
@@ -101,7 +118,7 @@ jobs:
         uses: gradle/wrapper-validation-action@v2
 
       - name: Unit tests + Build Debug + Release
-        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease --stacktrace
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease --continue --stacktrace
 
       - name: Lint (Debug)
         run: ./gradlew :app:lintDebug --stacktrace
