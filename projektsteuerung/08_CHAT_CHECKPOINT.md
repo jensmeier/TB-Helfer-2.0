@@ -2070,3 +2070,8 @@ Status: STEUERUNGS-/DATENBEREICHSBAUSTEINE IMPLEMENTIERT / GESAMTINTEGRATION OFF
 
 ### Nutzerbestätigung und nächste Planung (19.10.2026,16:03 Berlin)
 Nutzer meldet „okay jetzt läuft das alles“ nach PORTAL-021: zuletzt übernommene Portalabläufe als nutzerseitig funktionierend bestätigt, insbesondere freie Strecke/Objektart und vorherige Bestandsanzeige. Keine pauschale Abnahme aller Server-/Mehrbenutzer-/Restore-/Android-Roundtrips daraus ableiten. Nutzer bittet um Priorisierung weiterer Arbeiten, keine neue Implementierung beauftragt. Live SERVER0591c5e / ANDROID6cec344 geprüft. Nächster Vorschlag: vollständiger BTB-Abschluss/Dokumentfluss, Mehrbenutzerrechte/Konflikte, Lösch-/Wiederherstellungskonzept und tatsächlicher Restoretest, alte Bildmetadaten separat, gemeinsame Referenzdatenpflege, danach Android-Vertragsabgleich. Keine Runtimeänderung/kein neuer Testlauf dieses Planungsblocks.
+
+## Checkpoint 22.10.2026 – BTB-AUTO-016
+Benutzer bestätigt die gemeinsame 16-Stunden-Festlegung: Erfassung ab eingetragenem Beginn nach16h beenden; ausstehende Offline-Einträge/kleine Foto-Sync-Versionen sicher nachsynchronisieren; erst nach Vollständigkeitsbestätigung endgültiges PDF/Original. Details und offene technische Grenzfälle in `05_ANDROID_SERVER_VERTRAG.md`, Entwicklungsauftrag in `02_AKTIVER_AUFTRAG.md`.
+- Prüfeinstieg: SERVER `0f82b42da7412a138bf99b6f80b93031e3b5373e` / PR6 Draft; ANDROID `a99e09474c09af33aaa30ee10712131216f44a15` / PR11 offen, kein Draft.
+- Nur Dokumentation der bestätigten Anforderung. Implementierung, Source-Tests, Build, Installation, Deployment und NAS/Pixel/Poco-E2E dieser Automatik OFFEN. Keine bestehende Bestätigung aufgehoben. Keine Workflows manuell ausgelöst.
