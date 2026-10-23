@@ -16,6 +16,8 @@ class RecoveryHttpTest {
         var disconnected = false
         var status = 200
         val sent = ByteArrayOutputStream()
+        // Android's HTTP implementation supports PATCH; the bare JVM superclass does not.
+        override fun setRequestMethod(value: String) { method = value }
         override fun connect() { }
         override fun disconnect() { disconnected = true }
         override fun usingProxy() = false
@@ -39,6 +41,20 @@ class RecoveryHttpTest {
         try { connection.inputStream; fail("Read bypassed gate") } catch (_: IOException) { }
         assertEquals(0, fake.inputRequests)
         assertEquals(0, fake.responseReads)
+    }
+    @Test fun everyResponseAccessorIsGuardedBeforeNetworkIo() {
+        val accessors: List<(HttpURLConnection) -> Any?> = listOf(
+            { it.getHeaderField("Content-Type") }, { it.headerFields }, { it.responseMessage },
+            { it.contentLength }, { it.contentLengthLong }, { it.contentType }, { it.contentEncoding },
+            { it.errorStream }, { it.getHeaderField(0) }, { it.getHeaderFieldKey(0) }
+        )
+        for (access in accessors) {
+            val fake = Fake()
+            val connection = GuardedConnection(fake, { throw IOException("blocked") }, { _, _ -> })
+            try { access(connection); fail("Response accessor bypassed gate") } catch (_: IOException) { }
+            assertEquals(0, fake.responseReads)
+            assertEquals(0, fake.inputRequests)
+        }
     }
     @Test fun settingsAndAuthorizationReachActualConnectionBeforeGate() {
         val fake = Fake()

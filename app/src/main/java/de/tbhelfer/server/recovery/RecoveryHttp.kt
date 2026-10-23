@@ -33,10 +33,10 @@ internal class GuardedConnection(
         afterResponse(delegate, code)
         return code
     }
-    override fun getResponseMessage(): String? { responseCode; return delegate.responseMessage }
-    override fun getInputStream(): java.io.InputStream { responseCode; return delegate.inputStream }
+    override fun getResponseMessage(): String? { getResponseCode(); return delegate.responseMessage }
+    override fun getInputStream(): java.io.InputStream { getResponseCode(); return delegate.inputStream }
     override fun getOutputStream(): java.io.OutputStream { prepare(); return delegate.outputStream }
-    override fun getErrorStream(): java.io.InputStream? { responseCode; return delegate.errorStream }
+    override fun getErrorStream(): java.io.InputStream? { getResponseCode(); return delegate.errorStream }
     override fun setRequestMethod(method: String) { delegate.requestMethod = method }
     override fun getRequestMethod(): String = delegate.requestMethod
     override fun setRequestProperty(key: String, value: String) = delegate.setRequestProperty(key, value)
@@ -64,12 +64,12 @@ internal class GuardedConnection(
     override fun setFixedLengthStreamingMode(length: Int) = delegate.setFixedLengthStreamingMode(length)
     override fun setFixedLengthStreamingMode(length: Long) = delegate.setFixedLengthStreamingMode(length)
     override fun setChunkedStreamingMode(length: Int) = delegate.setChunkedStreamingMode(length)
-    override fun getHeaderField(name: String?): String? { responseCode; return delegate.getHeaderField(name) }
-    override fun getHeaderField(n: Int): String? { responseCode; return delegate.getHeaderField(n) }
-    override fun getHeaderFieldKey(n: Int): String? { responseCode; return delegate.getHeaderFieldKey(n) }
-    override fun getHeaderFields(): MutableMap<String, MutableList<String>> { responseCode; return delegate.headerFields }
-    override fun getContentLength(): Int { responseCode; return delegate.contentLength }
-    override fun getContentLengthLong(): Long { responseCode; return delegate.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L }
-    override fun getContentType(): String? { responseCode; return delegate.contentType }
-    override fun getContentEncoding(): String? { responseCode; return delegate.contentEncoding }
+    override fun getHeaderField(name: String?): String? { getResponseCode(); return delegate.getHeaderField(name) }
+    override fun getHeaderField(n: Int): String? { getResponseCode(); return delegate.getHeaderField(n) }
+    override fun getHeaderFieldKey(n: Int): String? { getResponseCode(); return delegate.getHeaderFieldKey(n) }
+    override fun getHeaderFields(): MutableMap<String, MutableList<String>> { getResponseCode(); return delegate.headerFields }
+    override fun getContentLength(): Int { getResponseCode(); return delegate.contentLength }
+    override fun getContentLengthLong(): Long { getResponseCode(); return delegate.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L }
+    override fun getContentType(): String? { getResponseCode(); return delegate.contentType }
+    override fun getContentEncoding(): String? { getResponseCode(); return delegate.contentEncoding }
 }
