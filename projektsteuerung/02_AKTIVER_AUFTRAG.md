@@ -849,3 +849,10 @@ Offizielle Wrapper-JAR-Prüfung jetzt PASS (SHA256 b3a875ddc1f044746e1b1a55f6455
 
 ### Build-Diagnoseentscheidung 22.10.2026
 CI39714741475 bleibt mehr als20 Minuten im kombinierten Gradle-Schritt ohne abrufbare Teil-Logs. Für eine begrenzte, aussagekräftige Fortsetzung Bootstrap (--version), Unit/Debug und Release getrennt ausführen, Job auf30 Minuten begrenzen; alle bisherigen Gradleziele und Lint bleiben erhalten. Der neue Diagnose-Lauf ersetzt den laufenden Versuch über bereits bestehende concurrency/cancel-in-progress-Regel; dessen Abbruchprotokoll danach auswerten. Keine Behauptung eines Compiler-/Testfehlers allein wegen Laufzeit. Zielversion200077 unverändert, noch keine APK erzeugt.
+
+
+## AND-AUDIT-023 – bestätigter Auftrag 23.10.2026
+Benutzer bestätigt Vorschläge zur Prüfung Android↔Server: zuerst Synchronisierungsfehler, dann Geräte-/Portal-Anmeldung, Helfer/weitere TBs und Teilnehmerstatus; Katalogabgleich; Einstellungen/Navigation vereinfachen; belegbar unbenutzte Bestandteile prüfen. Keine pauschale Datenlöschung. Servercode bleibt unverändert; notwendige Gegenstellenkorrekturen separat benennen.
+- Arbeitsweise ausdrücklich geändert: Übergabe über GitHub/GitHub Desktop; Benutzer baut/installiert in Android Studio. Keine APK-Herstellung und keine automatischen Buildläufe durch diesen Auftrag; lokale Builds mit höherer Version und passender Release-MD vorbereiten. Keine neuen sichtbaren Versionsbanner.
+- Erster bestätigter Befund: SyncKatalogFragment.handleCatalogError verwirft die Fehlermeldung, wenn Cache existiert; leere Cachelisten werden irreführend als leerer Serverbestand bezeichnet. Fehler beim Abschnitt-/Objektabruf werden mit Cache ebenfalls verdeckt.
+- Erster Block: Abrufversuch und echten Fehler neben Cachezeit anzeigen; Cache/Server-Leerzustände unterscheiden; erneuten Versuch anbieten. Konkrete Netzwerkursache und Gerät/NAS-E2E weiterhin offen. Geräteaktivierung, Outbox, Originaldaten und server/** nicht auf Verdacht verändern.
