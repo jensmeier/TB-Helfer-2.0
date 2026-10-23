@@ -27,6 +27,7 @@ class TBHelferApp : Application() {
         if (!de.tbhelfer.server.recovery.RecoveryWorkspace.blocked() ||
             activity is de.tbhelfer.server.recovery.RecoveryActivity ||
             activity is de.tbhelfer.server.recovery.RecoveryRestartActivity) return false
+        foregroundActivity = null
         activity.startActivity(android.content.Intent(activity, de.tbhelfer.server.recovery.RecoveryActivity::class.java)
             .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
         return true

@@ -87,7 +87,7 @@ object RecoveryArchive {
         database.withTransaction {
             val db = database.openHelper.writableDatabase
             zip.putNextEntry(ZipEntry(name))
-            val writer = JsonWriter(OutputStreamWriter(zip, Charsets.UTF_8)).apply { setSerializeNulls(true) }
+            val writer = JsonWriter(OutputStreamWriter(zip, Charsets.UTF_8))
             writer.beginObject().name("version").value(db.version.toLong()).name("tables").beginObject()
             val tables = mutableListOf<Pair<String, String>>()
             db.query("SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").use { cursor ->
@@ -156,10 +156,12 @@ object RecoveryArchive {
         ZipFile(file).use { zip ->
             zip.entries().asSequence().forEach { entry ->
                 val digest = MessageDigest.getInstance("SHA-256")
+                val crc = java.util.zip.CRC32()
                 zip.getInputStream(entry).use { input ->
                     val buffer = ByteArray(64 * 1024)
-                    while (true) { val n = input.read(buffer); if (n < 0) break; digest.update(buffer, 0, n) }
+                    while (true) { val n = input.read(buffer); if (n < 0) break; digest.update(buffer, 0, n); crc.update(buffer, 0, n) }
                 }
+                check(crc.value == entry.crc) { "Sicherungsprüfung fehlgeschlagen." }
                 if (hashes.has(entry.name)) check(hashes.getString(entry.name) == hex(digest.digest())) { "Sicherungsprüfung fehlgeschlagen." }
             }
         }

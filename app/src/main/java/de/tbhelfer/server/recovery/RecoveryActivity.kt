@@ -27,6 +27,7 @@ class RecoveryActivity : AppCompatActivity() {
     private lateinit var body: LinearLayout
     private lateinit var status: TextView
     private var saved: RecoveryArchive.Saved? = null
+    private var serverComparison: JSONObject? = null
     private var compared = false
     private var busy = false
     override fun attachBaseContext(newBase: android.content.Context) {
@@ -60,13 +61,15 @@ class RecoveryActivity : AppCompatActivity() {
                     val epoch = RecoveryProtocol.probe(force = true) ?: error("Der Server meldet keinen Wiederherstellungsstand. Bitte Serverkonfiguration prüfen lassen.")
                     RecoveryWorkspace.block(epoch)
                     val owner = RecoveryProtocol.owner(token)
+                    check(RecoveryWorkspace.ownerMatches(owner)) { "Diese Geräteanmeldung gehört nicht zum aktiven Handybestand. Kein automatischer Bestandswechsel möglich." }
                     val local = RecoveryArchive.save(this@RecoveryActivity, owner, epoch)
                     local to RecoveryComparison.load(token, epoch, local)
                 }
+                serverComparison = pair.second.server
                 saved = pair.first
                 compared = true
                 status.text = "Handybestand gesichert und geprüft.\n\n${localDescription(pair.first)}\n\n${pair.second.description}"
-                button("Lokale Änderungen prüfen (${pair.first.pending.length()})") { showPending(pair.first.pending) }
+                button("Lokale Änderungen prüfen (${pair.first.pending.length()})") { showPending(pair.first.pending, serverComparison) }
                 val consent = CheckBox(this@RecoveryActivity).apply {
                     text = "Ich habe den Vergleich geprüft. Der alte Handybestand bleibt gesichert; seine Änderungen werden nicht automatisch hochgeladen."
                 }
@@ -134,7 +137,10 @@ class RecoveryActivity : AppCompatActivity() {
         archives.forEach { (folder, manifest) ->
             val pending = manifest.optJSONArray("pending") ?: JSONArray()
             text("${DateFormat.getDateTimeInstance().format(Date(manifest.optLong("created")))} · ${pending.length()} vorgemerkte Änderungen.\nOriginaldateien und Datenbankexport bleiben im privaten Sicherungsbestand.")
-            button("Änderungen ansehen") { showPending(pending) }
+            button("Änderungen ansehen") {
+                val remote = runCatching { JSONObject(File(folder, "server.json").readText()) }.getOrNull()
+                showPending(pending, remote)
+            }
             button("Sicherung exportieren") {
                 lifecycleScope.launch {
                     try {
@@ -155,30 +161,66 @@ class RecoveryActivity : AppCompatActivity() {
         append("Handy: ${local.counts.optLong("baustelle")} Baustellen, ${local.counts.optLong("foto")} Fotozuordnungen.\n")
         append("${local.pending.length()} vorgemerkte Änderungen einschließlich Konflikten wurden gesichert. Keine davon wurde als hochgeladen markiert.")
     }
-    private fun showPending(pending: JSONArray) {
+    private fun showPending(pending: JSONArray, server: JSONObject? = null) {
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(24, 16, 24, 16) }
         if (pending.length() == 0) content.addView(TextView(this).apply { text = "Keine vorgemerkten Änderungen. Weitere lokale Daten sind trotzdem im Sicherungsbestand enthalten." })
         for (i in 0 until pending.length()) {
             val row = pending.getJSONObject(i)
+            val id = row.optString("serverId").takeIf { it.isNotBlank() && it != "null" }
+            val remote = if (id != null && server != null) find(server, id) else null
             val description = buildString {
-                append("Änderung ${i + 1}\n")
-                row.keys().forEach { key ->
-                    if (key != "_table") {
-                        val label = mapOf("entityType" to "Bereich", "entity_type" to "Bereich", "operation" to "Aktion", "state" to "Status", "payloadJson" to "Lokaler Inhalt", "baseVersion" to "Bisherige Serverversion", "lastError" to "Letzter Hinweis")[key] ?: key
-                        val value = row.opt(key)
-                        if (value != null && value != JSONObject.NULL) {
-                            val readable = if (key.contains("payload", true)) runCatching { JSONObject(value.toString()).toString(2) }.getOrDefault(value.toString()) else value.toString()
-                            append("$label: $readable\n")
-                        }
+                append("Änderung ${i + 1} · ${label(row.optString("entityType", row.optString("objectKind", "Eintrag")))}\n")
+                append("Aktion: ${if (row.optString("operation") == "DELETE") "Löschen vorgemerkt" else "Ergänzen oder bearbeiten"}\n")
+                append("Status: ${label(row.optString("state"))}\n")
+                if (server == null) append("Serververgleich nicht abgeschlossen.\n")
+                else if (id == null) append("Nur lokal oder noch keinem Servereintrag eindeutig zugeordnet.\n")
+                else if (remote == null) append("Im gelesenen Serververgleich nicht gefunden. Das bestätigt keine Löschung; Dateien und Vermessungsdetails sind hier nicht vollständig enthalten.\n")
+                else {
+                    val version = listOf("current_version", "entity_version", "version").firstNotNullOfOrNull { key ->
+                        if (remote.has(key)) remote.optLong(key) else null
                     }
+                    val base = if (row.isNull("baseVersion")) null else row.optLong("baseVersion")
+                    append("Servereintrag vorhanden.\n")
+                    if (version != null && base != null) append(if (version == base)
+                        "Serverversion entspricht der bisherigen Basis. Lokale Inhalte wurden noch nicht übernommen.\n"
+                        else "Serverversion weicht von der bisherigen Basis ab. Manuelle Prüfung erforderlich.\n")
+                    append("\nGelesener Serverinhalt:\n${readable(remote)}\n")
                 }
-                append("Serverstand: separat gelesen; keine automatische Übernahme oder Löschung.\n")
+                val payload = row.optString("payloadJson", "{}")
+                append("\nGesicherter lokaler Inhalt:\n")
+                append(runCatching { readable(JSONObject(payload)) }.getOrDefault(payload))
+                append("\n\nKeine automatische Übernahme oder Löschung.\n")
             }
             content.addView(TextView(this).apply { text = description; setPadding(0, 0, 0, 24); setTextIsSelectable(true) })
         }
         AlertDialog.Builder(this).setTitle("Gesicherte lokale Änderungen")
             .setView(ScrollView(this).apply { addView(content) }).setPositiveButton("Schließen", null).show()
     }
+    private fun find(value: Any?, id: String): JSONObject? {
+        if (value is JSONObject) {
+            if (value.optString("id") == id || value.optString("serverId") == id) return value
+            value.keys().forEach { key -> find(value.opt(key), id)?.let { return it } }
+        } else if (value is JSONArray) {
+            for (i in 0 until value.length()) find(value.opt(i), id)?.let { return it }
+        }
+        return null
+    }
+    private fun readable(value: Any?, indent: String = ""): String = when (value) {
+        is JSONObject -> value.keys().asSequence().joinToString("\n") { key ->
+            "$indent${label(key)}: ${readable(value.opt(key), "$indent  ")}"
+        }
+        is JSONArray -> (0 until value.length()).joinToString("\n") { readable(value.opt(it), "$indent  ") }
+        null, JSONObject.NULL -> "–"
+        else -> value.toString()
+    }
+    private fun label(key: String): String = mapOf(
+        "BTB" to "Bautagebuch", "DEFECT" to "Mangel", "ACCEPTANCE" to "Abnahme", "WORKSITE_NODE" to "Baustellenstruktur",
+        "ROUTE" to "Strecke", "STATION" to "Bahnhof", "SECTION" to "Abschnitt", "OBJECT" to "Objekt",
+        "PENDING" to "Ausstehend", "UPLOADING" to "Übertragung unbestätigt", "CONFLICT" to "Konflikt", "FAILED" to "Fehlgeschlagen",
+        "name" to "Name", "designation" to "Bezeichnung", "status" to "Status", "route_number" to "Streckennummer",
+        "station_code" to "Bahnhofskürzel", "header" to "Kopfdaten", "entries" to "Einträge", "title" to "Titel", "text" to "Text",
+        "date" to "Datum", "start_time" to "Beginn", "end_time" to "Ende", "current_version" to "Serverversion"
+    )[key] ?: key.replace('_', ' ').replace(Regex("([a-z])([A-Z])"), "$1 $2")
     private fun title(value: String) = text(value).apply { textSize = 22f }
     private fun text(value: String) = TextView(this).apply { text = value; textSize = 16f; setPadding(0, 0, 0, 20); body.addView(this) }
     private fun button(value: String, action: () -> Unit): Button = Button(this).apply { text = value; setOnClickListener { action() }; body.addView(this) }
