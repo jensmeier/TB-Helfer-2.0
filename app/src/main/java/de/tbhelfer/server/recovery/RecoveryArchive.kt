@@ -38,6 +38,7 @@ object RecoveryArchive {
         }
         val id = UUID.randomUUID().toString()
         val folder = File(RecoveryWorkspace.journal(), id).apply { check(mkdirs()) }
+        try {
         val partial = File(folder, "local.zip.partial")
         val pending = JSONArray()
         val counts = JSONObject()
@@ -104,6 +105,16 @@ object RecoveryArchive {
             .put("pending", pending).put("counts", counts)
         atomicJson(File(folder, "manifest.json"), metadata)
         return Saved(id, owner, epoch, pending, counts)
+        } catch (error: Throwable) {
+            // Only copies created by this failed attempt; never touch the source stock or completed older archives.
+            runCatching {
+                listOf("local.zip.partial", "local.zip", "manifest.json.partial", "manifest.json").forEach {
+                    File(folder, it).delete()
+                }
+                folder.delete()
+            }
+            throw error
+        }
     }
 
     private suspend fun exportDatabase(zip: ZipOutputStream, name: String, database: RoomDatabase, pending: JSONArray, counts: JSONObject) {
