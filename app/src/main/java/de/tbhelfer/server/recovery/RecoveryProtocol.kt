@@ -23,13 +23,12 @@ object RecoveryProtocol {
     private fun origin(url: URL): String = URI(url.protocol.lowercase(), null, url.host.lowercase(),
         if (url.port == -1) url.defaultPort else url.port, null, null, null).toString()
 
-    private fun guarded(connection: HttpURLConnection): Boolean =
-        origin(connection.url) == origin(URL(ServerConfig.BASE_URL)) &&
-            connection.url.path.startsWith("/api/v1/") &&
-            connection.getRequestProperty("Authorization")?.startsWith("Bearer ") == true
-
     fun prepare(connection: HttpURLConnection) {
-        if (!guarded(connection)) return
+        if (!connection.url.path.startsWith("/api/v1/") ||
+            connection.getRequestProperty("Authorization")?.startsWith("Bearer ") != true) return
+        // A client created before a new activation must not send an old request to its old server.
+        if (origin(connection.url) != origin(URL(ServerConfig.BASE_URL)))
+            throw IOException("Die Serverzuordnung wurde geändert. Alte Anfrage wurde nicht gesendet.")
         connection.instanceFollowRedirects = false
         if (RecoveryWorkspace.switchPending()) throw IOException("Bestandswechsel vorbereitet. App-Neustart erforderlich.")
         // Never accept a recovery header supplied by an old caller.
