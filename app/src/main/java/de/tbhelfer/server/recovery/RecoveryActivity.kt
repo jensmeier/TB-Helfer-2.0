@@ -42,13 +42,7 @@ class RecoveryActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() { if (!busy) { if (RecoveryWorkspace.blocked()) finishAffinity() else finish() } }
         })
-        if (RecoveryWorkspace.switchPending() ||
-            (RecoveryWorkspace.blocked() && !RecoveryWorkspace.startedBlocked())) {
-            // Quiesce the old UI/Room/DataStore/jobs before taking the snapshot too.
-            status.text = "Synchronisierung angehalten. App wird für die sichere Bestandsprüfung neu gestartet …"
-            restart()
-            return
-        }
+        if (RecoveryWorkspace.switchPending()) { restart(); return }
         if (!RecoveryWorkspace.blocked()) { showArchives(); return }
         status.text = "Der Server wurde wiederhergestellt. Deine Handydaten bleiben erhalten. Alte lokale Änderungen dürfen jetzt nicht ungeprüft hochgeladen werden.\n\nSichere zuerst den Handybestand und lies den Server zum Vergleich. Bei einem Fehler bleibt die Synchronisierung gesperrt."
         button("Handybestand sichern und vergleichen") { prepare() }

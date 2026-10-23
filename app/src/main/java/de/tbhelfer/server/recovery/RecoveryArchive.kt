@@ -31,6 +31,11 @@ object RecoveryArchive {
         check(context.getExternalFilesDir(null) != null && RecoveryWorkspace.raw.getExternalFilesDirs(null).all { it != null }) {
             "App-Dateispeicher ist nicht vollständig erreichbar. Bitte Speicherkarte/Handyspeicher prüfen und erneut versuchen."
         }
+        listOf("tbhelfer_server_config", "tbhelfer_secure_session").forEach { name ->
+            check(RecoveryWorkspace.raw.getSharedPreferences(name, Context.MODE_PRIVATE).edit().commit()) {
+                "Geräteanmeldung konnte nicht dauerhaft gespeichert werden."
+            }
+        }
         val id = UUID.randomUUID().toString()
         val folder = File(RecoveryWorkspace.journal(), id).apply { check(mkdirs()) }
         val partial = File(folder, "local.zip.partial")
@@ -49,7 +54,11 @@ object RecoveryArchive {
             // apply() updates in-memory values immediately: capture these instead of potentially stale XML.
             val prefs = JSONObject()
             val names = RecoveryWorkspace.preferenceNames.toMutableSet()
-            File(RecoveryWorkspace.raw.applicationInfo.dataDir, "shared_prefs").listFiles()?.forEach { file ->
+            val preferencesDirectory = File(RecoveryWorkspace.raw.applicationInfo.dataDir, "shared_prefs")
+            val storedPreferences = if (preferencesDirectory.exists()) checkNotNull(preferencesDirectory.listFiles()) {
+                "Einstellungsverzeichnis konnte nicht vollständig gelesen werden."
+            } else emptyArray()
+            storedPreferences.forEach { file ->
                 if (file.extension == "xml") {
                     val stored = file.nameWithoutExtension
                     val prefix = RecoveryWorkspace.generation?.let { "tbw_${it}__" }
@@ -60,13 +69,24 @@ object RecoveryArchive {
             names.forEach { logical ->
                 if (RecoveryWorkspace.globalPreference(logical)) return@forEach
                 val values = JSONObject()
-                context.getSharedPreferences(logical, Context.MODE_PRIVATE).all.forEach { (key, value) ->
-                    values.put(key, when (value) {
+                val preference = context.getSharedPreferences(logical, Context.MODE_PRIVATE)
+                preference.all.forEach { (key, value) ->
+                    val type = when (value) {
+                        is Boolean -> "boolean"
+                        is Int -> "int"
+                        is Long -> "long"
+                        is Float -> "float"
+                        is Set<*> -> "string_set"
+                        else -> "string"
+                    }
+                    values.put(key, JSONObject().put("type", type).put("value", when (value) {
                         is Set<*> -> JSONArray(value.toList())
                         null -> JSONObject.NULL
                         else -> value
-                    })
+                    }))
                 }
+                // Also wait for previous apply() writes so the retained old namespace is durable.
+                check(preference.edit().commit()) { "Einstellungen konnten nicht vollständig gesichert werden." }
                 prefs.put(logical, values)
             }
             put(zip, "preferences.json", prefs.toString().toByteArray(Charsets.UTF_8))
@@ -132,7 +152,7 @@ object RecoveryArchive {
         val canonical = root.canonicalFile
         root.walkTopDown().onEnter { dir ->
             !(legacy && dir.parentFile == root && dir.name in setOf("recovery-journal", "recovery-workspaces"))
-        }.forEach { file ->
+        }.onFail { _, error -> throw error }.forEach { file ->
             if (!file.canonicalPath.startsWith(canonical.path + File.separator) && file.canonicalFile != canonical) throw IOException("Sicherung enthält einen unzulässigen Dateipfad.")
             if (file.isFile) {
                 val length = file.length()

@@ -39,7 +39,6 @@ object RecoveryWorkspace {
     }
     fun acknowledged(owner: String): String? = boot.optString("epoch").takeIf { it.isNotBlank() && boot.optString("owner") == owner }
     fun ownerMatches(owner: String): Boolean = generation == null || boot.optString("owner") == owner
-    fun startedBlocked(): Boolean = boot.optBoolean("blocked", false)
     fun switchPending(): Boolean = read().optString("generation").takeIf { it.isNotBlank() } != generation
     fun blocked(): Boolean = read().optBoolean("blocked", false) || switchPending()
     fun block(epoch: String) = change { it.put("blocked", true).put("observed", epoch) }
