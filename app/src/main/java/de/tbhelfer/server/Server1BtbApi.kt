@@ -1399,7 +1399,7 @@ class Server1BtbApi(
         UUID.nameUUIDFromBytes(slot.toByteArray(Charsets.UTF_8)).toString().replace("-", "")
 
     private fun openConnection(path: String, method: String = "GET"): HttpURLConnection =
-        (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+        (URL(baseUrl.trimEnd('/') + path).let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = method
             connectTimeout = 10_000
             readTimeout = 30_000

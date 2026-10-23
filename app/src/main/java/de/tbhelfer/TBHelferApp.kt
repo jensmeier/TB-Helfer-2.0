@@ -18,8 +18,33 @@ import de.tbhelfer.server.SyncWorker
 import de.tbhelfer.util.StorageCleanupScheduler
 
 class TBHelferApp : Application() {
+    override fun attachBaseContext(base: android.content.Context) {
+        de.tbhelfer.server.recovery.RecoveryWorkspace.initialize(base)
+        super.attachBaseContext(de.tbhelfer.server.recovery.RecoveryWorkspace.wrap(base))
+    }
+    private var foregroundActivity: java.lang.ref.WeakReference<Activity>? = null
+    private fun redirectRecovery(activity: Activity): Boolean {
+        if (!de.tbhelfer.server.recovery.RecoveryWorkspace.blocked() ||
+            activity is de.tbhelfer.server.recovery.RecoveryActivity ||
+            activity is de.tbhelfer.server.recovery.RecoveryRestartActivity) return false
+        activity.startActivity(android.content.Intent(activity, de.tbhelfer.server.recovery.RecoveryActivity::class.java)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
+        return true
+    }
+
     override fun onCreate() {
         super.onCreate()
+        val processName = if (android.os.Build.VERSION.SDK_INT >= 28) Application.getProcessName() else {
+            (getSystemService(ACTIVITY_SERVICE) as? android.app.ActivityManager)?.runningAppProcesses
+                ?.firstOrNull { it.pid == android.os.Process.myPid() }?.processName
+        }
+        if (processName?.endsWith(":tb_recovery_restart") == true) return
+        de.tbhelfer.server.recovery.RecoveryProtocol.onBlocked = {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                foregroundActivity?.get()?.let { redirectRecovery(it) }
+            }
+        }
+
         ServiceLocator.initialisieren(this)
         ServerConfig.initialize(this)
 
@@ -51,6 +76,10 @@ class TBHelferApp : Application() {
         Server1DeltaWorker.enqueue(this)
         installDeltaLifecycle()
         installNetworkReturnWakeup()
+        if (!de.tbhelfer.server.recovery.RecoveryWorkspace.blocked() &&
+            de.tbhelfer.server.recovery.RecoveryWorkspace.read().optBoolean("initial_sync")) {
+            SyncWorker.enqueueManual(this)
+        }
     }
 
     private fun installDeltaLifecycle() {
@@ -58,7 +87,7 @@ class TBHelferApp : Application() {
         registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) {
                 startedActivities += 1
-                if (startedActivities == 1) {
+                if (startedActivities == 1 && !de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) {
                     Server1DeltaWorker.enqueue(this@TBHelferApp)
                     Server1DeltaPoller.start(this@TBHelferApp)
                 }
@@ -72,12 +101,17 @@ class TBHelferApp : Application() {
             }
 
             override fun onActivityResumed(activity: Activity) {
+                foregroundActivity = java.lang.ref.WeakReference(activity)
+                if (redirectRecovery(activity) || activity is de.tbhelfer.server.recovery.RecoveryActivity) return
+
                 Server1DeltaWorker.enqueue(this@TBHelferApp)
                 SelectiveSyncWorker.enqueueIfPending(this@TBHelferApp)
             }
 
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
-            override fun onActivityPaused(activity: Activity) = Unit
+            override fun onActivityPaused(activity: Activity) {
+                if (foregroundActivity?.get() === activity) foregroundActivity = null
+            }
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
             override fun onActivityDestroyed(activity: Activity) = Unit
         })
@@ -93,6 +127,7 @@ class TBHelferApp : Application() {
                 request,
                 object : ConnectivityManager.NetworkCallback() {
                     override fun onAvailable(network: Network) {
+                        if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) return
                         SelectiveSyncWorker.enqueueIfPending(this@TBHelferApp)
                         Server1DeltaWorker.enqueue(this@TBHelferApp)
                     }
@@ -101,3 +136,4 @@ class TBHelferApp : Application() {
         }
     }
 }
+

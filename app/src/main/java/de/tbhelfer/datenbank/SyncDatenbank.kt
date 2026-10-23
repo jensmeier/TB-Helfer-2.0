@@ -169,9 +169,10 @@ abstract class SyncDatenbank : RoomDatabase() {
         fun erstellen(context: Context): SyncDatenbank = Room.databaseBuilder(
             context.applicationContext,
             SyncDatenbank::class.java,
-            "tbhelfer-sync.db"
+            de.tbhelfer.server.recovery.RecoveryWorkspace.databaseName("tbhelfer-sync.db")
         )
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
 }
+

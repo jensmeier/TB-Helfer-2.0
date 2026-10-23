@@ -281,7 +281,7 @@ class WorksiteDeletionApi(
     }
 
     private fun openConnection(path: String, method: String): HttpURLConnection =
-        (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+        (URL(baseUrl.trimEnd('/') + path).let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = method
             connectTimeout = 12_000
             readTimeout = 30_000

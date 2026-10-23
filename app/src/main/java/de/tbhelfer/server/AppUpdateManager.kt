@@ -55,7 +55,7 @@ object AppUpdateManager {
                 "&build_number=${BuildConfig.VERSION_CODE}" +
                 "&version_name=$version"
         )
-        val connection = (url.openConnection() as HttpURLConnection).apply {
+        val connection = (url.let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = "GET"
             connectTimeout = 10_000
             readTimeout = 15_000
@@ -151,7 +151,7 @@ object AppUpdateManager {
             val temp = File(targetDir, target.name + ".part")
             temp.delete()
 
-            val connection = (URL(rawUrl).openConnection() as HttpURLConnection).apply {
+            val connection = (URL(rawUrl).let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
                 requestMethod = "GET"
                 connectTimeout = 15_000
                 readTimeout = 60_000
@@ -315,3 +315,4 @@ object AppUpdateManager {
         }
     }
 }
+

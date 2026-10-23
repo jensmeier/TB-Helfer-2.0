@@ -28,6 +28,9 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        view.findViewById<View>(R.id.btnWartungHandybestand).setOnClickListener {
+            startActivity(android.content.Intent(requireContext(), de.tbhelfer.server.recovery.RecoveryActivity::class.java))
+        }
 
         view.findViewById<View>(R.id.btnWartungGeraeteDiagnose).setOnClickListener {
             findNavController().navigate(R.id.action_wartung_diagnose_to_geraete_diagnose)

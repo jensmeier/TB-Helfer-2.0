@@ -66,7 +66,7 @@ class Server1DeltaApi(
                 append(encode(types))
             }
         }
-        val connection = (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+        val connection = (URL(baseUrl.trimEnd('/') + path).let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = "GET"
             connectTimeout = 10_000
             readTimeout = (waitSeconds.coerceIn(0, 30) + 15) * 1000
@@ -160,3 +160,4 @@ class Server1DeltaApi(
         val DEFAULT_ENTITY_TYPES = setOf("BTB", "BTB_ENTRY", "BTB_PARTICIPANT", "FILE")
     }
 }
+

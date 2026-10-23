@@ -53,6 +53,10 @@
             android:name=".ui.bautagebuch.BtbPdfViewerActivity"
             android:exported="false" />
 
+        <activity android:name=".server.recovery.RecoveryActivity" android:exported="false" />
+        <activity android:name=".server.recovery.RecoveryRestartActivity" android:exported="false"
+            android:process=":tb_recovery_restart" android:excludeFromRecents="true" />
+
         <!-- Damit wir Fotos aus dem App-Ordner sicher öffnen/teilen können -->
         <provider
             android:name="androidx.core.content.FileProvider"

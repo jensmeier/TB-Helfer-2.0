@@ -32,6 +32,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class AktivierungActivity : AppCompatActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(de.tbhelfer.server.recovery.RecoveryWorkspace.wrap(newBase))
+    }
+
     private lateinit var keyInput: EditText
     private lateinit var scanButton: Button
     private lateinit var activateButton: Button
@@ -43,6 +47,12 @@ class AktivierungActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) {
+            startActivity(Intent(this, de.tbhelfer.server.recovery.RecoveryActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+            finish()
+            return
+        }
 
         tokenStore = SecureTokenStore(this)
         pendingInvitation = WorksiteInvitationLink.parse(intent?.data?.toString().orEmpty())

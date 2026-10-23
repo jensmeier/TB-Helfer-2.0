@@ -8003,7 +8003,7 @@ cardCurrentReport.setOnClickListener {
         }
 
         private fun fetchUrl(url: URL): HourlySeries? {
-            val con = (url.openConnection() as HttpURLConnection).apply {
+            val con = (url.let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
                 requestMethod = "GET"
                 connectTimeout = 8000
                 readTimeout = 8000
@@ -8121,4 +8121,5 @@ private data class BaustelleKontext(
     val strecke: String?,
     val rootKnotenId: Long? = null
 )
+
 

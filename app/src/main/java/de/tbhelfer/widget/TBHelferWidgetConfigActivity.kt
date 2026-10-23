@@ -25,6 +25,10 @@ import java.util.Locale
 
 /** Gemeinsames Formular für das konfigurierbare Baustellen-Widget. */
 abstract class TBHelferWidgetEditorBaseActivity : AppCompatActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(de.tbhelfer.server.recovery.RecoveryWorkspace.wrap(newBase))
+    }
+
 
     protected lateinit var klickSpinner: Spinner
     protected lateinit var countSpinner: Spinner
@@ -299,3 +303,4 @@ class TBHelferWidgetSettingsActivity : TBHelferWidgetEditorBaseActivity() {
         finish()
     }
 }
+

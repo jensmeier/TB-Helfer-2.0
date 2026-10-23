@@ -831,7 +831,7 @@ abstract class TBDatenbank : RoomDatabase() {
             return Room.databaseBuilder(
                 context,
                 TBDatenbank::class.java,
-                "tbhelfer.db"
+                de.tbhelfer.server.recovery.RecoveryWorkspace.databaseName("tbhelfer.db")
             )
                 .addMigrations(
                     MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
@@ -851,3 +851,4 @@ abstract class TBDatenbank : RoomDatabase() {
         }
     }
 }
+

@@ -36,7 +36,7 @@ class WorksiteProvisioningApi(
 
     private fun createCanonical(token: String, local: BaustellenKnotenEntity): Result {
         val connection = (URL(baseUrl.trimEnd('/') + "/api/v1/worksites")
-            .openConnection() as HttpURLConnection).apply {
+            .let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = "POST"
             connectTimeout = 10_000
             readTimeout = 30_000
@@ -112,7 +112,7 @@ class WorksiteProvisioningApi(
 
     private fun legacyCreate(token: String, local: BaustellenKnotenEntity): Result {
         val connection = (URL(baseUrl.trimEnd('/') + "/api/v1/collab/worksites")
-            .openConnection() as HttpURLConnection).apply {
+            .let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = "POST"
             connectTimeout = 10_000
             readTimeout = 30_000

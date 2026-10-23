@@ -29,7 +29,7 @@ class Server1BtbPdfApi(
     fun downloadFinalPdf(token: String, btbId: String): Result {
         val connection = (URL(
             baseUrl.trimEnd('/') + "/api/v1/btbs/" + encode(btbId) + "/final-pdf"
-        ).openConnection() as HttpURLConnection).apply {
+        ).let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = "GET"
             connectTimeout = 10_000
             readTimeout = 60_000
@@ -97,3 +97,4 @@ class Server1BtbPdfApi(
         private val PDF_MAGIC = "%PDF-".toByteArray(Charsets.US_ASCII)
     }
 }
+

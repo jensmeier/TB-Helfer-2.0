@@ -595,7 +595,7 @@ class Server1FileApi(
         method: String = "GET",
         contentType: String = "application/json; charset=utf-8"
     ): HttpURLConnection =
-        (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+        (URL(baseUrl.trimEnd('/') + path).let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = method
             connectTimeout = 10_000
             readTimeout = 30_000
@@ -669,4 +669,5 @@ class Server1FileApi(
         private const val FILE_LIST_LIMIT = 1000
     }
 }
+
 

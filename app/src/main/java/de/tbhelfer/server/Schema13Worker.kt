@@ -28,6 +28,8 @@ class Schema13Worker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) return Result.failure()
+
         ServiceLocator.initialisieren(applicationContext)
         val settings = SyncEinstellungenSpeicher.laden(applicationContext)
         if (!networkAllowed(settings.netz)) return Result.success()
@@ -112,3 +114,4 @@ class Schema13Worker(
         }
     }
 }
+

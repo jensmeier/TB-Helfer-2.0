@@ -18,4 +18,7 @@
     <external-path
         name="oeffentliche_dokumente"
         path="Documents/" />
+    <external-files-path name="recovery_workspaces" path="recovery-workspaces/" />
+    <files-path name="recovery_archives" path="recovery-journal/" />
 </paths>
+

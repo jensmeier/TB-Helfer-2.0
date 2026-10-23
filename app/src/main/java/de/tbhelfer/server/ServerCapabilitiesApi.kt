@@ -95,7 +95,7 @@ class ServerCapabilitiesApi(
     }
 
     private fun openConnection(path: String): HttpURLConnection =
-        (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+        (URL(baseUrl.trimEnd('/') + path).let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = "GET"
             connectTimeout = 8_000
             readTimeout = 12_000
@@ -133,3 +133,4 @@ class ServerCapabilitiesApi(
         private const val CACHE_TTL_MS = 5 * 60 * 1000L
     }
 }
+

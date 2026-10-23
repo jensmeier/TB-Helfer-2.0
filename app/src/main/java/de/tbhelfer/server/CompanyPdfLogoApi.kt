@@ -98,7 +98,7 @@ class CompanyPdfLogoApi(
     }
 
     private fun open(method: String): HttpURLConnection =
-        (URL(baseUrl.trimEnd('/') + "/api/v1/company/profile/pdf-logo-layout").openConnection() as HttpURLConnection).apply {
+        (URL(baseUrl.trimEnd('/') + "/api/v1/company/profile/pdf-logo-layout").let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = method
             connectTimeout = 10_000
             readTimeout = 30_000

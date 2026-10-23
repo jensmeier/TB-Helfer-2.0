@@ -9,6 +9,10 @@ import androidx.appcompat.app.AppCompatActivity
 
 /** Sofort-Konfiguration: erlaubt maximal ein Kamera-Widget und schließt direkt wieder. */
 class CameraWidgetConfigActivity : AppCompatActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(de.tbhelfer.server.recovery.RecoveryWorkspace.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val widgetId = intent?.getIntExtra(
@@ -41,3 +45,4 @@ class CameraWidgetConfigActivity : AppCompatActivity() {
         finish()
     }
 }
+

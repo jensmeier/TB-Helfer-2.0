@@ -126,7 +126,7 @@ class ActivationApi(
     fun checkSession(token: String): SessionState = checkSessionInfo(token).state
 
     private fun openConnection(path: String, method: String): HttpURLConnection {
-        return (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+        return (URL(baseUrl.trimEnd('/') + path).let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = method
             connectTimeout = 10_000
             readTimeout = 15_000

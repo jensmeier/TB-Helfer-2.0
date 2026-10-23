@@ -61,6 +61,13 @@
             android:alpha="0.75" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWartungHandybestand"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Gesicherter Handybestand" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnWartungNachUpdates"
             android:layout_width="match_parent"
             android:layout_height="56dp"

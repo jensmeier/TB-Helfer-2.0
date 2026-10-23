@@ -39,7 +39,7 @@ class UserProfileApi(
     )
 
     private fun request(token: String, method: String, body: JSONObject?): Result {
-        val connection = (URL(baseUrl.trimEnd('/') + "/api/v1/user/profile").openConnection() as HttpURLConnection).apply {
+        val connection = (URL(baseUrl.trimEnd('/') + "/api/v1/user/profile").let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = method
             connectTimeout = 10_000
             readTimeout = 30_000

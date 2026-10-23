@@ -275,7 +275,7 @@ class SyncCatalogApi(
     }
 
     private fun openConnection(path: String): HttpURLConnection {
-        return (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+        return (URL(baseUrl.trimEnd('/') + path).let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = "GET"
             connectTimeout = 10_000
             readTimeout = 15_000

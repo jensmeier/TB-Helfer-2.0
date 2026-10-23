@@ -24,6 +24,8 @@ class Server1DeltaWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) return Result.failure()
+
         return when (
             val result = Server1DeltaSync(applicationContext).synchronize(
                 firstWaitSeconds = 0,
@@ -63,3 +65,4 @@ class Server1DeltaWorker(
         }
     }
 }
+

@@ -30,6 +30,8 @@ class SelectiveSyncWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) return Result.failure()
+
         ServiceLocator.initialisieren(applicationContext)
         val scopes = SelectiveSyncStore.btbScopes(applicationContext)
         if (scopes.isEmpty()) return Result.success()
@@ -292,3 +294,4 @@ class SelectiveSyncWorker(
         }
     }
 }
+

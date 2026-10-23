@@ -391,7 +391,7 @@ class CollabSyncApi(
     }
 
     private fun openConnection(path: String, method: String, contentType: String = "application/json; charset=utf-8"): HttpURLConnection =
-        (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+        (URL(baseUrl.trimEnd('/') + path).let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = method
             connectTimeout = 10_000
             readTimeout = 30_000

@@ -42,7 +42,8 @@ import java.util.Locale
  */
 class CurrentSiteWidgetProvider : AppWidgetProvider() {
 
-    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+    override fun onUpdate(incoming: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        val context = incoming.applicationContext
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try { updateWidgetsNow(context.applicationContext, appWidgetManager, appWidgetIds) }
@@ -67,7 +68,8 @@ class CurrentSiteWidgetProvider : AppWidgetProvider() {
         appWidgetIds.forEach { WidgetPreferences.delete(context, it) }
     }
 
-    override fun onReceive(context: Context, intent: Intent) {
+    override fun onReceive(incoming: Context, intent: Intent) {
+        val context = incoming.applicationContext
         if (intent.action == ACTION_REFRESH_POSITION) {
             val pending = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
@@ -829,3 +831,4 @@ class CurrentSiteWidgetProvider : AppWidgetProvider() {
         }
     }
 }
+

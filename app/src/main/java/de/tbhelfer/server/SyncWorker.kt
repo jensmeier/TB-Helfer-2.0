@@ -34,6 +34,8 @@ class SyncWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) return Result.failure()
+
         ServiceLocator.initialisieren(applicationContext)
         val manualRun = inputData.getBoolean(INPUT_MANUAL, false)
         val settings = SyncEinstellungenSpeicher.laden(applicationContext)
@@ -84,6 +86,7 @@ class SyncWorker(
                         runCatching { refreshWorksiteDisplayState(token) }
                     }
                     SyncStatusSpeicher.erfolgMerken(applicationContext)
+                    de.tbhelfer.server.recovery.RecoveryWorkspace.change { it.put("initial_sync", false) }
                     return Result.success()
                 }
 
@@ -96,12 +99,14 @@ class SyncWorker(
                 if (server1Collab) {
                     runCatching { refreshWorksiteDisplayState(token) }
                     SyncStatusSpeicher.erfolgMerken(applicationContext)
+                    de.tbhelfer.server.recovery.RecoveryWorkspace.change { it.put("initial_sync", false) }
                     return Result.success()
                 }
 
                 // Nur der dokumentierte Legacy-Fallback verwendet noch die alte 0.7-Schwelle.
                 if (!supportsCollabSync(serverVersion)) {
                     SyncStatusSpeicher.erfolgMerken(applicationContext)
+                    de.tbhelfer.server.recovery.RecoveryWorkspace.change { it.put("initial_sync", false) }
                     return Result.success()
                 }
 
@@ -248,6 +253,7 @@ class SyncWorker(
                 // Anzeigenamen/Teamzähler dürfen einen ansonsten erfolgreichen Daten-Sync nicht kippen.
                 runCatching { refreshWorksiteDisplayState(token) }
                 SyncStatusSpeicher.erfolgMerken(applicationContext)
+                    de.tbhelfer.server.recovery.RecoveryWorkspace.change { it.put("initial_sync", false) }
                 Result.success()
             }
         }
@@ -349,3 +355,4 @@ class SyncWorker(
         }
     }
 }
+

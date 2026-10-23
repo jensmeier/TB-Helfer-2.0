@@ -211,7 +211,7 @@ class WorksiteMediaApi(private val baseUrl: String = ServerConfig.BASE_URL) {
     }
 
     private fun openConnection(path: String, accept: String): HttpURLConnection =
-        (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+        (URL(baseUrl.trimEnd('/') + path).let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
             requestMethod = "GET"
             connectTimeout = 10_000
             readTimeout = 45_000
@@ -267,3 +267,4 @@ class WorksiteMediaApi(private val baseUrl: String = ServerConfig.BASE_URL) {
         return optString(name).takeIf { it.isNotBlank() }
     }
 }
+

@@ -18,6 +18,10 @@ import java.io.File
 
 /** Einfacher App-interner PDF-Viewer fuer BTB-Abschlussdokumente. */
 class BtbPdfViewerActivity : AppCompatActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(de.tbhelfer.server.recovery.RecoveryWorkspace.wrap(newBase))
+    }
+
 
     companion object {
         const val EXTRA_FILE_PATH = "btb_pdf_file_path"
@@ -193,3 +197,4 @@ class BtbPdfViewerActivity : AppCompatActivity() {
         descriptor = null
     }
 }
+

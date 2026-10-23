@@ -23,6 +23,7 @@ object Server1DeltaPoller {
     private var job: Job? = null
 
     fun start(context: Context) {
+        if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) return
         val appContext = context.applicationContext
         synchronized(this) {
             if (job?.isActive == true) return
@@ -62,3 +63,4 @@ object Server1DeltaPoller {
         }
     }
 }
+

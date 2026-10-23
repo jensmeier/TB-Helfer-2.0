@@ -25,6 +25,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class HauptActivity : AppCompatActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(de.tbhelfer.server.recovery.RecoveryWorkspace.wrap(newBase))
+    }
+
     companion object {
         const val EXTRA_NAV_DEST_ID = "de.tbhelfer.EXTRA_NAV_DEST_ID"
         const val EXTRA_NAV_ARGS = "de.tbhelfer.EXTRA_NAV_ARGS"
@@ -37,6 +41,12 @@ class HauptActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) {
+            startActivity(Intent(this, de.tbhelfer.server.recovery.RecoveryActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+            finish()
+            return
+        }
 
         val tokenStore = SecureTokenStore(this)
         val deviceToken = tokenStore.load()
@@ -223,3 +233,4 @@ class HauptActivity : AppCompatActivity() {
         return navController.navigateUp() || super.onSupportNavigateUp()
     }
 }
+
