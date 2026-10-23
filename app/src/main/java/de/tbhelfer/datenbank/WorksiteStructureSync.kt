@@ -183,7 +183,11 @@ class WorksiteStructureSync(
             // Local saving remains possible during HTTP I/O. Never apply over a newer local tree.
             if (before != localWorksiteDao.alleKnotenZuRootSofort(root.id))
                 return@withLock Result.Error("Unterbaustellen lokal weiterbearbeitet; erneuter Abgleich erforderlich.")
-            when (val result = applyServerStateToLocal(token, ids, mapOf(root.id to generation))) {
+            // Only an editable LEAD scope may acknowledge its own local structural mutation.
+            // A helper's unsupported local edits stay dirty rather than being replaced by a read.
+            val expected = if (bound.context.memberRole.equals("LEAD", ignoreCase = true))
+                mapOf(root.id to generation) else emptyMap()
+            when (val result = applyServerStateToLocal(token, ids, expected)) {
                 is Result.Success -> applied += result.summary.appliedNodes
                 else -> return@withLock result
             }
