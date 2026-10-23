@@ -494,7 +494,13 @@ class WorksiteStructureSync(
     }
 
     private fun payloadFor(node: BaustellenKnotenEntity, parentKey: String?, serverPayload: String? = null): String =
-        JSONObject().apply {
+        JSONObject(serverPayload ?: "{}").apply {
+            // Preserve server fields not owned by this local form, including station codes.
+            // If the station itself was changed, an old code must not identify the new name.
+            val remote = serverPayload?.let { runCatching { JSONObject(it) }.getOrNull() }
+            val previousStation = remote?.optNullableString("station_name") ?: remote?.optNullableString("station_code")
+            if (node.typ != BaustellenKnotenTyp.BAHNHOF || node.bahnhofName != previousStation)
+                put("station_code", JSONObject.NULL)
             if (parentKey == null) put("parent_client_node_key", JSONObject.NULL) else put("parent_client_node_key", parentKey)
             put("node_type", node.typ.name)
             putNullable("node_name", node.knotenName)
@@ -504,12 +510,14 @@ class WorksiteStructureSync(
             putNullable("station_name", node.bahnhofName.takeUnless { node.typ == BaustellenKnotenTyp.FREIE_STRECKE })
             if (node.typ == BaustellenKnotenTyp.FREIE_STRECKE) put("station_code", JSONObject.NULL)
             if (node.typ == BaustellenKnotenTyp.BAHNHOF) {
-                val remote = serverPayload?.let { runCatching { JSONObject(it) }.getOrNull() }
                 val objectType = WorksiteObjectIdentity.outgoingType(node.gleisOderWeiche,
                     remote?.optNullableString("track_or_switch"), remote?.optNullableString("object_type"))
                 putNullable("object_type", objectType)
                 putNullable("track_or_switch", WorksiteObjectIdentity.wireKey(node.gleisOderWeiche, objectType))
-            } else putNullable("track_or_switch", node.gleisOderWeiche)
+            } else {
+                putNullable("track_or_switch", node.gleisOderWeiche)
+                put("object_type", JSONObject.NULL)
+            }
             put("created_at_epoch_ms", node.erstelltAmEpochMs)
         }.toString()
 

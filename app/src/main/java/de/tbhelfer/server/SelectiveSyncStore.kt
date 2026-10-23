@@ -15,7 +15,7 @@ object SelectiveSyncStore {
     private val lock = Any()
     val revisions = kotlinx.coroutines.flow.MutableStateFlow(0L)
     private val active = java.util.concurrent.ConcurrentHashMap<String, Long>()
-    private fun changed() { revisions.value = revisions.value + 1L }
+    fun changed() = synchronized(lock) { revisions.value = revisions.value + 1L }
 
     fun transferring(scope: BtbScope, running: Boolean) {
         val key = btbKey(scope.localBaustelleId, scope.clientBtbId)

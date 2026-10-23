@@ -77,14 +77,24 @@ class SelectiveSyncWorker(
                 retryNeeded = true
                 continue
             }
+            val treeGeneration = StructureSyncStore.generation(applicationContext, root)
+            StructureSyncStore.transferring(root, true)
+            try {
             when (val tree = ServiceLocator.worksiteStructureSync.synchronizeChanged(token, setOf(bound.context.worksiteServerId))) {
                 de.tbhelfer.datenbank.WorksiteStructureSync.Result.SessionInvalid -> {
                     tokenStore.clear()
                     return Result.success()
                 }
                 is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Success -> Unit
-                else -> { blockedRoots += root; retryNeeded = true }
+                else -> {
+                    val message = if (tree is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Error) tree.message
+                        else "Strukturabgleich nicht verfügbar"
+                    StructureSyncStore.problem(applicationContext, root, message, treeGeneration)
+                    blockedRoots += root
+                    retryNeeded = true
+                }
             }
+            } finally { StructureSyncStore.transferring(root, false) }
         }
 
         for (scope in scopes) {
@@ -102,6 +112,12 @@ class SelectiveSyncWorker(
             if (boundItem.localWorksite?.id in blockedRoots) {
                 SelectiveSyncStore.problem(applicationContext, scope, "Strukturabgleich ausstehend oder im Konflikt")
                 retryNeeded = true
+                continue
+            }
+            val pendingBtb = ServiceLocator.syncDatenbank.syncDao().collabPendingAnyForClientKey(
+                boundItem.context.worksiteServerId, de.tbhelfer.datenbank.SyncCollabPendingChangeEntity.TYPE_BTB, scope.clientBtbId)
+            if (pendingBtb?.state == de.tbhelfer.datenbank.SyncCollabPendingChangeEntity.STATE_CONFLICT) {
+                SelectiveSyncStore.problem(applicationContext, scope, "Versionskonflikt prüfen")
                 continue
             }
             // BTB-SYNC-002: Bei einem Dirty-BTB darf niemals zuerst ein Server-Snapshot

@@ -236,8 +236,9 @@ class BaustellenKnotenAdapter(
     }
 
     private fun formatServerStatus(view: View, localRootId: Long): String {
+        val structure = de.tbhelfer.server.StructureSyncStore.status(view.context, localRootId)
         val status = TeamDisplayCache.worksiteCardStatus(view.context, localRootId)
-            ?: return "Noch nicht mit Server synchronisiert"
+            ?: return listOfNotNull("Noch nicht mit Server synchronisiert", structure).joinToString("\n")
         val team = if (status.responsibleTbCount > 0 || status.helperCount > 0) {
             "${status.responsibleTbCount} TB · ${status.helperCount} Helfer"
         } else {
@@ -245,7 +246,7 @@ class BaustellenKnotenAdapter(
         }
         val sync = status.lastSuccessfulSyncEpochMs?.let(::formatSyncTime)
             ?: "noch nicht"
-        return "$team · Zuletzt synchronisiert: $sync"
+        return listOfNotNull("$team · Zuletzt synchronisiert: $sync", structure).joinToString("\n")
     }
 
     private fun formatSyncTime(epochMs: Long): String {

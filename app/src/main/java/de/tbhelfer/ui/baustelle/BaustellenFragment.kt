@@ -28,6 +28,7 @@ import de.tbhelfer.server.WorksiteProvisioningApi
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
@@ -103,6 +104,13 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
             }
         )
         recycler.adapter = adapter
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                de.tbhelfer.server.SelectiveSyncStore.revisions.collect {
+                    adapter.notifyItemRangeChanged(0, adapter.itemCount)
+                }
+            }
+        }
 
         view.findViewById<View>(R.id.btnNeueBaustelle).setOnClickListener { findNavController().navigate(R.id.baustelleNeuFragment) }
         view.findViewById<View>(R.id.btnAktuelleAnzeigen).setOnClickListener { findNavController().navigate(R.id.aktuelleBaustelleFragment) }
@@ -368,3 +376,4 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 }
+
