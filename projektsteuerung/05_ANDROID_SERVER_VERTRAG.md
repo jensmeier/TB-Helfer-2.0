@@ -354,3 +354,10 @@ Status: **FACHLICH BESTÄTIGT / IMPLEMENTIERUNG UND E2E OFFEN**. Benutzer hat di
 - Öffentlicher Mein-Ordner bleibt persönlicher Exportbereich und kein neuer Sync-Quellbestand; keine öffentlichen Dateien löschen/verschieben. FileProvider nur um private Wiederherstellungs-/Generationspfade ergänzen, keine allgemeinen Rootfreigaben.
 - Keine server/**-Änderungen, kein NAS-Schalter und keine neue Server-API. Vorhandene capabilities/recovery_epoch_v1/recovery_id und Geräte-/Fach-GETs nutzen. Auth/Team-/PDF-Rechte unverändert prüfen.
 - Kritische Netzwerk-/Generationslogik mit echten JVM-Unit-Tests und CI-Unit/Lint-Prüfung ohne assemble/Release/APK-Upload validieren; keine APK herstellen. Lokale Android-Studio-/Pixel-/Poco-Abnahme bleibt erforderlich. Versionsziel1.3.29/200079 mit passender Release-MD, kein neuer Versionsbanner.
+
+
+## Abschlussprüfung 200079: Sicherung vor Prozessende
+
+- SharedPreferences.apply() aktualisiert zunächst den Prozessspeicher. Ein Prozessende vor der Sicherung könnte noch nicht auf Datenträger geschriebene Werte verlieren. Deshalb KEIN automatischer Prozessneustart vor der ersten Sicherung.
+- Vor der Sicherung normale Fach-IO sperren, alte Fachoberflächen beenden und Worker/Poller abbrechen; aktuelle SharedPreferences-Werte sowie transaktionale Datenbankexporte und stabile Dateikopien sichern. Vor der bewussten Auswahl erneut sichern/vergleichen. Ein Fehler beim Durchlaufen eines Verzeichnisses muss die Sicherung abbrechen, statt still Dateien auszulassen.
+- Erst nach vollständiger geprüfter Sicherung, frischem Serververgleich und ausdrücklicher Auswahl atomar eine neue Generation wählen und den alten Prozess beenden. Das bereits festgelegte Neustartgebot für den Generationswechsel bleibt bestehen.
