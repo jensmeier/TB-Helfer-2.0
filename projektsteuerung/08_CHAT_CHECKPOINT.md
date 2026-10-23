@@ -598,3 +598,10 @@ Status: QUELLSTAND FERTIG / SOURCE-CHECK BESTANDEN / BUILD UND E2E OFFEN.
 
 ### AND-NODE-DELTA-023 – Nachprüfung
 CI39995383662 für28756f5f: Kotlin/Unit-Task und Lint erfolgreich; kein assemble/APK. Quellvertragsjob weiterhin dieselben fünf Fehler13/19/83/85/86; Original-Joblogs gelesen, Strukturprüfung18 PASS. Folgekorrekturen gebündelt: Strukturstatus in Baustellenliste reaktiv anzeigen; gespeicherte BTB-CONFLICT-Zeile vor Export schützen; ältere Strukturfehler überschreiben keine neuere Save-Generation; zusätzliche Serverpayloadfelder/Bahnhofskürzel bewahren (bei bewusstem Bahnhofwechsel alten Code entfernen). Abschlussprüfung dieser tatsächlichen Folgeänderungen erforderlich, erster Lauf ist dafür kein Nachweis. Übergabe und reproduzierbarer16er Source-Check in projektsteuerung/uebergaben/ANDROID_WORKSITE_NODE_023.md bzw. pruefungen/AND_NODE_DELTA_023.py. Keine Server-/NAS-/APK-/Versionsänderung.
+
+
+### AND-NODE-DELTA-023 – geprüfter Zwischenstand
+- Berichtartefakt12518409970 aus CI39995383662 tatsächlich gelesen:98 Tests,0 Fehler/Fehlschläge/übersprungen; neue WorksiteDeltaPolicyTest10/10 PASS. Lint0 Fehler,0 Fatal,391 Warnungen. Kotlin/Unit/Lint beziehen sich auf28756f5f.
+- Folgecode963490c4 ergänzt reaktiven Strukturstatus, Konfliktsperre vor BTB-Export und Erhalt zusätzlicher Serverpayloadfelder/Bahnhofskürzel. Lauf39996302565 durch neueren Lauf abgebrochen; daraus kein Compiler-/Testfehler abgeleitet.
+- Letzter Code60e8dca5ae509bd6444302d13025996f9283f35b schützt außerdem lokal vorgemerkte Helfer-Strukturänderungen: nur LEAD darf seine Struktur-Generation quittieren; reiner Helfer-Download muss Dirty-Outbox erhalten. Lauf39996754175 prüft exakt diesen Stand, derzeit Unit-Stufe IN ARBEIT; keine Behauptung eines finalen Testerfolgs vor Ergebnis.
+- Lokaler reproduzierbarer16er Source-Check erneut PASS. Keine APK/Versions-/Server-/NAS-Änderung. Finaler Ergebnisblock und Pixel/Poco-/NAS-E2E bleiben offen.
