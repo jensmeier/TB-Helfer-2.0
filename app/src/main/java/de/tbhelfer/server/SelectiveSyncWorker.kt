@@ -34,7 +34,8 @@ class SelectiveSyncWorker(
 
         ServiceLocator.initialisieren(applicationContext)
         val scopes = SelectiveSyncStore.btbScopes(applicationContext)
-        if (scopes.isEmpty()) return Result.success()
+        val roots = StructureSyncStore.roots(applicationContext)
+        if (scopes.isEmpty() && roots.isEmpty()) return Result.success()
 
         val settings = SyncEinstellungenSpeicher.laden(applicationContext)
         if (!networkAllowed(settings.netz)) {
@@ -50,10 +51,10 @@ class SelectiveSyncWorker(
             is ServerCapabilitiesApi.Result.Success -> result.snapshot
         }
         if (
-            !capabilities.supports("btb_live_sync_v1") ||
+            scopes.isNotEmpty() && (!capabilities.supports("btb_live_sync_v1") ||
             !capabilities.supports("btb_entries_v1") ||
             !capabilities.supports("btb_general_work_entries_v1") ||
-            !capabilities.supports("btb_photo_metadata_v1")
+            !capabilities.supports("btb_photo_metadata_v1"))
         ) {
             return Result.success()
         }
@@ -67,14 +68,39 @@ class SelectiveSyncWorker(
         // neue lokale BTBs laufen weiterhin über den idempotenten Create-Pfad.
 
         var retryNeeded = false
+        val blockedRoots = mutableSetOf<Long>()
+        val bindings = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
+        for (root in roots) {
+            val bound = bindings.firstOrNull { it.binding != null && it.localWorksite?.id == root }
+            if (bound == null || !capabilities.supports("worksite_tree_v1")) {
+                blockedRoots += root
+                retryNeeded = true
+                continue
+            }
+            when (val tree = ServiceLocator.worksiteStructureSync.synchronizeChanged(token, setOf(bound.context.worksiteServerId))) {
+                de.tbhelfer.datenbank.WorksiteStructureSync.Result.SessionInvalid -> {
+                    tokenStore.clear()
+                    return Result.success()
+                }
+                is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Success -> Unit
+                else -> { blockedRoots += root; retryNeeded = true }
+            }
+        }
 
         for (scope in scopes) {
+            SelectiveSyncStore.transferring(scope, true)
+            try {
             val boundItem = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
                 .firstOrNull {
                     it.binding != null &&
                         it.localWorksite?.altBaustelleId == scope.localBaustelleId
                 }
             if (boundItem == null) {
+                retryNeeded = true
+                continue
+            }
+            if (boundItem.localWorksite?.id in blockedRoots) {
+                SelectiveSyncStore.problem(applicationContext, scope, "Strukturabgleich ausstehend oder im Konflikt")
                 retryNeeded = true
                 continue
             }
@@ -133,9 +159,11 @@ class SelectiveSyncWorker(
                         is CollabSyncRepository.Server1BtbUploadResult.Success -> {
                             if (upload.conflicts > 0) {
                                 // Konflikt bleibt bewusst persistent für gezielte Recovery.
+                                SelectiveSyncStore.problem(applicationContext, scope, "Versionskonflikt prüfen")
                                 continue
                             }
                             if (upload.failed > 0) {
+                                SelectiveSyncStore.problem(applicationContext, scope, "Übertragung fehlgeschlagen; erneuter Versuch folgt")
                                 retryNeeded = true
                                 continue
                             }
@@ -145,13 +173,17 @@ class SelectiveSyncWorker(
                                 de.tbhelfer.datenbank.SyncCollabPendingChangeEntity.TYPE_BTB
                             ).firstOrNull { it.clientEntityKey == scope.clientBtbId }?.serverId
 
+                            if (currentServerBtbId.isNullOrBlank()) {
+                                retryNeeded = true
+                                continue
+                            }
                             when (
                                 val media = BtbTeamMediaSync(applicationContext).synchronize(
                                     token = token,
                                     server1Api = Server1FileApi(),
                                     server1PdfApi = Server1BtbPdfApi(),
                                     worksiteServerIds = setOf(exported.worksiteServerId),
-                                    btbServerIds = currentServerBtbId?.let { setOf(it) },
+                                    btbServerIds = setOf(currentServerBtbId),
                                     allowUploads = true
                                 )
                             ) {
@@ -168,25 +200,9 @@ class SelectiveSyncWorker(
                             }
 
                             if (!SelectiveSyncStore.removeBtbIfUnchanged(applicationContext, scope)) {
-                                // Während des Uploads kam bereits ein neuerer Autosave.
-                                // Diesen Stand nicht mit dem gerade bestätigten Snapshot überfahren.
                                 retryNeeded = true
                                 continue
                             }
-
-                            if (currentServerBtbId == null || currentServerBtbId.isBlank()) {
-                                // Upload war erfolgreich, aber der bestätigte Server-BTB ist lokal
-                                // noch nicht eindeutig auflösbar. Dirty erneut markieren und gezielt
-                                // wiederholen statt einen breiten Snapshot anzuwenden.
-                                SelectiveSyncStore.markBtbDirty(
-                                    applicationContext,
-                                    scope.localBaustelleId,
-                                    scope.clientBtbId
-                                )
-                                retryNeeded = true
-                                continue
-                            }
-
                             val applied = runCatching {
                                 bridge.applyServerStateToLocal(
                                     worksiteServerIds = setOf(exported.worksiteServerId),
@@ -207,6 +223,7 @@ class SelectiveSyncWorker(
                                 continue
                             }
 
+                            SelectiveSyncStore.confirmBtbIfClean(applicationContext, scope)
                             if (
                                 SelectiveSyncStore.isBtbDirty(
                                     applicationContext,
@@ -223,9 +240,12 @@ class SelectiveSyncWorker(
                     }
                 }
             }
+            } finally {
+                SelectiveSyncStore.transferring(scope, false)
+            }
         }
 
-        if (retryNeeded) return retryAutomatic()
+        if (retryNeeded || StructureSyncStore.roots(applicationContext).isNotEmpty()) return retryAutomatic()
 
         if (!SelectiveSyncStore.hasPending(applicationContext)) {
             SyncStatusSpeicher.erfolgMerken(applicationContext)
@@ -282,7 +302,7 @@ class SelectiveSyncWorker(
 
             WorkManager.getInstance(appContext).enqueueUniqueWork(
                 UNIQUE_NAME,
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
                 request
             )
         }
@@ -294,4 +314,5 @@ class SelectiveSyncWorker(
         }
     }
 }
+
 

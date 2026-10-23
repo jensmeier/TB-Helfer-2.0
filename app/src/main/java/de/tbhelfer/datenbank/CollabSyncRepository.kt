@@ -767,12 +767,15 @@ class CollabSyncRepository(
 
     suspend fun synchronizeServer1WorksiteNodePending(
         token: String,
-        api: WorksiteNodeApi = WorksiteNodeApi()
+        api: WorksiteNodeApi = WorksiteNodeApi(),
+        worksiteServerIds: Set<String>? = null,
+        onConfirmed: (String, WorksiteNodeApi.Node, String) -> Unit = { _, _, _ -> }
     ): Server1WorksiteNodeUploadResult {
         var uploaded = 0
         var failed = 0
         var conflicts = 0
-        for (context in dao.worksiteContexts()) {
+        for (context in dao.worksiteContexts().distinctBy { it.worksiteServerId }) {
+            if (worksiteServerIds != null && context.worksiteServerId !in worksiteServerIds) continue
             val pending = dao.collabPendingChanges(context.worksiteServerId)
                 .filter {
                     it.entityType.equals(
@@ -820,7 +823,11 @@ class CollabSyncRepository(
                         )
                         conflicts++
                     }
-                    is WorksiteNodeApi.MutationResult.Applied,
+                    is WorksiteNodeApi.MutationResult.Applied -> {
+                        onConfirmed(context.worksiteServerId, result.node, change.payloadJson)
+                        dao.deleteCollabPendingChange(change.id)
+                        uploaded++
+                    }
                     is WorksiteNodeApi.MutationResult.Deleted -> {
                         dao.deleteCollabPendingChange(change.id)
                         uploaded++
@@ -1422,4 +1429,5 @@ class CollabSyncRepository(
         }
     }
 }
+
 

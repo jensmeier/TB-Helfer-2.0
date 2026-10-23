@@ -88,7 +88,10 @@ object ServiceLocator {
     }
 
     val baustellenBaumRepository: BaustellenBaumRepository by lazy {
-        BaustellenBaumRepository(baustellenKnotenDao, baustellenRepository)
+        BaustellenBaumRepository(baustellenKnotenDao, baustellenRepository) { rootId ->
+            de.tbhelfer.server.StructureSyncStore.mark(appContext, rootId)
+            runCatching { de.tbhelfer.server.SelectiveSyncWorker.enqueue(appContext) }
+        }
     }
 
     val worksiteBindingRepository: WorksiteBindingRepository by lazy {
@@ -109,7 +112,8 @@ object ServiceLocator {
             syncDatabase = syncDatenbank,
             localWorksiteDao = baustellenKnotenDao,
             bindingRepository = worksiteBindingRepository,
-            collabRepository = collabSyncRepository
+            collabRepository = collabSyncRepository,
+            appContext = appContext
         )
     }
 
@@ -167,3 +171,4 @@ object ServiceLocator {
         appContext = context.applicationContext
     }
 }
+

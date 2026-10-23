@@ -11,6 +11,7 @@ import android.widget.PopupMenu
 import android.location.Location
 import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -26,6 +27,7 @@ import de.tbhelfer.ui.einstellungen.nutzer.NutzerSpeicher
 import de.tbhelfer.util.requireViewByIdCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
@@ -184,6 +186,7 @@ class BautagebuchFragment : Fragment(R.layout.fragment_bautagebuch) {
     private var changedSinceBaseline: Boolean = false
     private var baselineLastModifiedEpochMs: Long? = null
     private var lastSavedEpochMs: Long? = null
+    private var cachedStatusBaustelleId: Long? = null
     // Startzeitpunkt des aktuell geöffneten BTB-Entwurfs.
     // Wichtig für Foto-Zuordnung: Fotos ab diesem Zeitpunkt gehören in diesen BTB,
     // auch wenn der Nutzer vor dem ersten manuellen Speichern schon Fotos macht.
@@ -474,6 +477,13 @@ private var pmDirtySinceMs: Long? = null
         etBesonderheiten = view.requireViewByIdCompat(R.id.etBesonderheiten)
         etMaengel = view.requireViewByIdCompat(R.id.etMaengel)
         tvStatus = view.requireViewByIdCompat(R.id.tvStatus)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                de.tbhelfer.server.SelectiveSyncStore.revisions.collect {
+                    if (lastSavedEpochMs != null && sectionsDirtySinceMs == null && pmDirtySinceMs == null && wetterDirtySinceMs == null) setStatus("Gespeichert")
+                }
+            }
+        }
 
 
 tvCurrentReportLine1 = view.requireViewByIdCompat(R.id.tvCurrentReportLine1)
@@ -2756,6 +2766,7 @@ cardCurrentReport.setOnClickListener {
                 rawBesonderheiten = sectionToMultiline(entry.besonderheiten)
                 rawMaengel = sectionToMultiline(entry.maengelSchaeden)
                 currentMaxFotosInPdf = entry.maxFotosInPdf
+                cachedStatusBaustelleId = entry.baustelleId
                 lastSavedEpochMs = entry.geaendertAmEpochMs
                 renderSectionPreviews()
                 setStatus("Geladen")
@@ -2965,7 +2976,7 @@ cardCurrentReport.setOnClickListener {
         private fun setStatus(text: String) {
             val tv = (tvStatus as? android.widget.TextView) ?: return
             val normalized = when (text) {
-                "Auto-gespeichert" -> buildAutosaveStatusText(lastSavedEpochMs)
+                "Automatisch gespeichert", "Auto-gespeichert" -> buildAutosaveStatusText(lastSavedEpochMs)
                 "Gespeichert" -> buildAutosaveStatusText(lastSavedEpochMs)
                 "Geladen" -> buildAutosaveStatusText(lastSavedEpochMs)
                 "Neuer Eintrag" -> "Neu · noch nicht gespeichert"
@@ -2977,7 +2988,7 @@ cardCurrentReport.setOnClickListener {
             val color = when {
                 normalized.startsWith("Speichert") -> Color.parseColor("#1565C0")
                 normalized.contains("fehlgeschlagen", ignoreCase = true) -> Color.parseColor("#B00020")
-                normalized.startsWith("Automatisch gespeichert") -> Color.parseColor("#2E7D32")
+                normalized.contains("Vom Server bestätigt") -> Color.parseColor("#2E7D32")
                 normalized.startsWith("Neu") -> Color.parseColor("#757575")
                 else -> Color.parseColor("#616161")
             }
@@ -2986,8 +2997,11 @@ cardCurrentReport.setOnClickListener {
         }
 
         private fun buildAutosaveStatusText(epochMs: Long?): String {
+            val localId = cachedStatusBaustelleId ?: return "Lokal gespeichert · Serverbestätigung ausstehend"
+            val id = loadedBtbId ?: return "Lokal gespeichert · Serverbestätigung ausstehend"
+            val status = de.tbhelfer.server.SelectiveSyncStore.status(requireContext(), localId, id)
             val hm = formatHm(epochMs)
-            return if (hm.isNullOrBlank()) "Automatisch gespeichert" else "Automatisch gespeichert $hm"
+            return if (hm.isNullOrBlank()) status else "$status · $hm"
         }
 
         private fun existingLegacyNotesForBuild(): String? {
@@ -3073,6 +3087,7 @@ cardCurrentReport.setOnClickListener {
                 sectionsDirtySinceMs = null
                 pmDirtySinceMs = null
                 wetterDirtySinceMs = null
+                cachedStatusBaustelleId = entry.baustelleId
                 lastSavedEpochMs = entry.geaendertAmEpochMs
                 scheduleUpdateCurrentReportBanner()
                 val bi = withContext(Dispatchers.IO) {
@@ -3110,6 +3125,7 @@ cardCurrentReport.setOnClickListener {
                 withContext(Dispatchers.IO) {
                     BautagebuchSpeicher.speichern(requireContext(), entry)
                 }
+                cachedStatusBaustelleId = entry.baustelleId
                 lastSavedEpochMs = entry.geaendertAmEpochMs
                 val bi = withContext(Dispatchers.IO) {
                     BautagebuchSpeicher.baselineInfo(requireContext(), ctx.id, ctx.name, selectedDate, selectedSchichtTyp)
@@ -3120,7 +3136,7 @@ cardCurrentReport.setOnClickListener {
                 updateDateTimeButton()
                 scheduleUpdateCurrentReportBanner()
                 setStatus("Gespeichert")
-                Snackbar.make(requireView(), "Bautagebuch gespeichert (${entry.datumIso})", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(requireView(), "Bautagebuch lokal gespeichert (${entry.datumIso})", Snackbar.LENGTH_SHORT).show()
                 if (closeAfter) {
                     requireActivity().onBackPressedDispatcher.onBackPressed()
                 }
@@ -3291,7 +3307,8 @@ cardCurrentReport.setOnClickListener {
                 try {
                     val pdfFile = withContext(Dispatchers.IO) {
                         BautagebuchSpeicher.speichern(appContext, entry)
-                        lastSavedEpochMs = entry.geaendertAmEpochMs
+                        cachedStatusBaustelleId = entry.baustelleId
+                lastSavedEpochMs = entry.geaendertAmEpochMs
 
                         // Export über langen Druck auf PDF Abschluss soll auch dann einen echten Abschluss erzeugen,
                         // wenn der Tagesabschluss noch nicht vorher gesetzt wurde.
@@ -3427,7 +3444,8 @@ cardCurrentReport.setOnClickListener {
                 BautagebuchSpeicher.speichern(requireContext(), entry)
             }
 
-            lastSavedEpochMs = entry.geaendertAmEpochMs
+            cachedStatusBaustelleId = entry.baustelleId
+                lastSavedEpochMs = entry.geaendertAmEpochMs
 
             // Tagesabschluss: Baseline setzen (ab dann gelten spätere Änderungen als "GEÄNDERT")
             if (setBaseline) {
@@ -6009,20 +6027,7 @@ cardCurrentReport.setOnClickListener {
                             if (markerId == 0L) return "Hauptbaustelle"
                             val k = ServiceLocator.baustellenBaumRepository.knotenMitId(markerId)
                             if (k == null) return "Ort $markerId"
-                            val base = k.knotenName?.takeIf { it.isNotBlank() } ?: when (k.typ) {
-                                de.tbhelfer.datenbank.BaustellenKnotenTyp.FREIE_STRECKE -> k.streckenkennung?.let { s -> "Freie Strecke $s" } ?: "Freie Strecke"
-                                de.tbhelfer.datenbank.BaustellenKnotenTyp.BAHNHOF -> run {
-                                            val bhf = k.bahnhofName?.trim().orEmpty()
-                                            val glw = k.gleisOderWeiche?.trim().orEmpty()
-                                            when {
-                                                bhf.isNotBlank() && glw.isNotBlank() -> "Bahnhof $bhf – $glw"
-                                                bhf.isNotBlank() -> "Bahnhof $bhf"
-                                                else -> "Bahnhof"
-                                            }
-                                        }
-                                de.tbhelfer.datenbank.BaustellenKnotenTyp.ALLGEMEIN_OBJEKT -> "Allgemein / Objekt"
-                                de.tbhelfer.datenbank.BaustellenKnotenTyp.HAUPT -> k.hauptbaustellenName
-                            }
+                            val base = de.tbhelfer.streckenobjekte.BaustellenObjektLogik.unterbaustellenName(k).orEmpty()
                             val km = de.tbhelfer.util.KmAnzeige.bereich(k.kmVon, k.kmBis, inKlammern = true)
                                 ?.let { " $it" }.orEmpty()
                             return base + km
@@ -6078,20 +6083,7 @@ cardCurrentReport.setOnClickListener {
                                 val childrenByParent = alle.filter { it.parentId != null }.groupBy { it.parentId!! }
 
                                 fun disp(k: de.tbhelfer.datenbank.BaustellenKnotenEntity): String {
-                                    val base = k.knotenName?.takeIf { it.isNotBlank() } ?: when (k.typ) {
-                                        de.tbhelfer.datenbank.BaustellenKnotenTyp.FREIE_STRECKE -> k.streckenkennung?.let { s -> "Freie Strecke $s" } ?: "Freie Strecke"
-                                        de.tbhelfer.datenbank.BaustellenKnotenTyp.BAHNHOF -> run {
-                                            val bhf = k.bahnhofName?.trim().orEmpty()
-                                            val glw = k.gleisOderWeiche?.trim().orEmpty()
-                                            when {
-                                                bhf.isNotBlank() && glw.isNotBlank() -> "Bahnhof $bhf – $glw"
-                                                bhf.isNotBlank() -> "Bahnhof $bhf"
-                                                else -> "Bahnhof"
-                                            }
-                                        }
-                                        de.tbhelfer.datenbank.BaustellenKnotenTyp.ALLGEMEIN_OBJEKT -> "Allgemein / Objekt"
-                                        de.tbhelfer.datenbank.BaustellenKnotenTyp.HAUPT -> k.hauptbaustellenName
-                                    }
+                                    val base = de.tbhelfer.streckenobjekte.BaustellenObjektLogik.unterbaustellenName(k).orEmpty()
                                     val km = de.tbhelfer.util.KmAnzeige.bereich(k.kmVon, k.kmBis, inKlammern = true)
                                         ?.let { " $it" }.orEmpty()
                                     return base + km
@@ -6909,20 +6901,7 @@ cardCurrentReport.setOnClickListener {
                 var ortLabelCache: Map<Long, String> = mapOf(0L to "Hauptbaustelle")
 
                 fun dispOrt(k: de.tbhelfer.datenbank.BaustellenKnotenEntity): String {
-                    val base = k.knotenName?.takeIf { it.isNotBlank() } ?: when (k.typ) {
-                        de.tbhelfer.datenbank.BaustellenKnotenTyp.FREIE_STRECKE -> k.streckenkennung?.let { s -> "Freie Strecke $s" } ?: "Freie Strecke"
-                        de.tbhelfer.datenbank.BaustellenKnotenTyp.BAHNHOF -> run {
-                                            val bhf = k.bahnhofName?.trim().orEmpty()
-                                            val glw = k.gleisOderWeiche?.trim().orEmpty()
-                                            when {
-                                                bhf.isNotBlank() && glw.isNotBlank() -> "Bahnhof $bhf – $glw"
-                                                bhf.isNotBlank() -> "Bahnhof $bhf"
-                                                else -> "Bahnhof"
-                                            }
-                                        }
-                        de.tbhelfer.datenbank.BaustellenKnotenTyp.ALLGEMEIN_OBJEKT -> "Allgemein / Objekt"
-                        de.tbhelfer.datenbank.BaustellenKnotenTyp.HAUPT -> k.hauptbaustellenName
-                    }
+                    val base = de.tbhelfer.streckenobjekte.BaustellenObjektLogik.unterbaustellenName(k).orEmpty()
                     val km = de.tbhelfer.util.KmAnzeige.bereich(k.kmVon, k.kmBis, inKlammern = true)
                         ?.let { " $it" }.orEmpty()
                     return base + km
@@ -7065,20 +7044,7 @@ cardCurrentReport.setOnClickListener {
                             if (markerId == 0L) return "Hauptbaustelle"
                             val k = ServiceLocator.baustellenBaumRepository.knotenMitId(markerId)
                             if (k == null) return "Ort $markerId"
-                            val base = k.knotenName?.takeIf { it.isNotBlank() } ?: when (k.typ) {
-                                de.tbhelfer.datenbank.BaustellenKnotenTyp.FREIE_STRECKE -> k.streckenkennung?.let { s -> "Freie Strecke $s" } ?: "Freie Strecke"
-                                de.tbhelfer.datenbank.BaustellenKnotenTyp.BAHNHOF -> run {
-                                            val bhf = k.bahnhofName?.trim().orEmpty()
-                                            val glw = k.gleisOderWeiche?.trim().orEmpty()
-                                            when {
-                                                bhf.isNotBlank() && glw.isNotBlank() -> "Bahnhof $bhf – $glw"
-                                                bhf.isNotBlank() -> "Bahnhof $bhf"
-                                                else -> "Bahnhof"
-                                            }
-                                        }
-                                de.tbhelfer.datenbank.BaustellenKnotenTyp.ALLGEMEIN_OBJEKT -> "Allgemein / Objekt"
-                                de.tbhelfer.datenbank.BaustellenKnotenTyp.HAUPT -> k.hauptbaustellenName
-                            }
+                            val base = de.tbhelfer.streckenobjekte.BaustellenObjektLogik.unterbaustellenName(k).orEmpty()
                             val km = de.tbhelfer.util.KmAnzeige.bereich(k.kmVon, k.kmBis, inKlammern = true)
                                 ?.let { " $it" }.orEmpty()
                             return base + km
@@ -7136,20 +7102,7 @@ cardCurrentReport.setOnClickListener {
                                 val childrenByParent = alle.filter { it.parentId != null }.groupBy { it.parentId!! }
 
                                 fun disp(k: de.tbhelfer.datenbank.BaustellenKnotenEntity): String {
-                                    val base = k.knotenName?.takeIf { it.isNotBlank() } ?: when (k.typ) {
-                                        de.tbhelfer.datenbank.BaustellenKnotenTyp.FREIE_STRECKE -> k.streckenkennung?.let { s -> "Freie Strecke $s" } ?: "Freie Strecke"
-                                        de.tbhelfer.datenbank.BaustellenKnotenTyp.BAHNHOF -> run {
-                                            val bhf = k.bahnhofName?.trim().orEmpty()
-                                            val glw = k.gleisOderWeiche?.trim().orEmpty()
-                                            when {
-                                                bhf.isNotBlank() && glw.isNotBlank() -> "Bahnhof $bhf – $glw"
-                                                bhf.isNotBlank() -> "Bahnhof $bhf"
-                                                else -> "Bahnhof"
-                                            }
-                                        }
-                                        de.tbhelfer.datenbank.BaustellenKnotenTyp.ALLGEMEIN_OBJEKT -> "Allgemein / Objekt"
-                                        de.tbhelfer.datenbank.BaustellenKnotenTyp.HAUPT -> k.hauptbaustellenName
-                                    }
+                                    val base = de.tbhelfer.streckenobjekte.BaustellenObjektLogik.unterbaustellenName(k).orEmpty()
                                     val km = de.tbhelfer.util.KmAnzeige.bereich(k.kmVon, k.kmBis, inKlammern = true)
                                         ?.let { " $it" }.orEmpty()
                                     return base + km
@@ -7742,6 +7695,7 @@ cardCurrentReport.setOnClickListener {
                     BautagebuchSpeicher.speichern(requireContext(), entry)
                 }
                 sectionsDirtySinceMs = null
+                cachedStatusBaustelleId = entry.baustelleId
                 lastSavedEpochMs = entry.geaendertAmEpochMs
                 scheduleUpdateCurrentReportBanner()
                 // Status (Abgeschlossen/Geändert) sofort aktualisieren, wenn Baseline existiert
@@ -7775,6 +7729,7 @@ cardCurrentReport.setOnClickListener {
                     BautagebuchSpeicher.speichern(requireContext(), entry)
                 }
                 wetterDirtySinceMs = null
+                cachedStatusBaustelleId = entry.baustelleId
                 lastSavedEpochMs = entry.geaendertAmEpochMs
                 scheduleUpdateCurrentReportBanner()
                 val bi = withContext(Dispatchers.IO) {
@@ -7807,6 +7762,7 @@ cardCurrentReport.setOnClickListener {
                     BautagebuchSpeicher.speichern(requireContext(), entry)
                 }
                 pmDirtySinceMs = null
+                cachedStatusBaustelleId = entry.baustelleId
                 lastSavedEpochMs = entry.geaendertAmEpochMs
                 scheduleUpdateCurrentReportBanner()
                 val bi = withContext(Dispatchers.IO) {
@@ -8121,5 +8077,6 @@ private data class BaustelleKontext(
     val strecke: String?,
     val rootKnotenId: Long? = null
 )
+
 
 

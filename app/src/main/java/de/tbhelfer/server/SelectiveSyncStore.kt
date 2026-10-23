@@ -13,6 +13,29 @@ object SelectiveSyncStore {
     private const val PREFS = "tbhelfer_selective_sync_v1"
     private const val BTB_PREFIX = "btb:"
     private val lock = Any()
+    val revisions = kotlinx.coroutines.flow.MutableStateFlow(0L)
+    private val active = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private fun changed() { revisions.value = revisions.value + 1L }
+
+    fun transferring(scope: BtbScope, running: Boolean) {
+        val key = btbKey(scope.localBaustelleId, scope.clientBtbId)
+        if (running) active[key] = scope.generation else active.remove(key)
+        changed()
+    }
+    fun problem(context: Context, scope: BtbScope, message: String) {
+        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (p.getLong(btbKey(scope.localBaustelleId, scope.clientBtbId), 0L) == scope.generation) {
+            p.edit().putString("problem:" + btbKey(scope.localBaustelleId, scope.clientBtbId), message).commit()
+            changed()
+        }
+    }
+    fun status(context: Context, localId: Long, btbId: String): String {
+        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val key = btbKey(localId, btbId)
+        val dirty = p.getLong(key, 0L)
+        return BtbSyncPresentation.text(dirty, active[key], p.getLong("confirmed:$key", 0L),
+            p.getLong("latest:$key", 0L), p.getString("problem:$key", null))
+    }
     private val btbMutationLocks = java.util.concurrent.ConcurrentHashMap<String, Any>()
 
     data class BtbScope(
@@ -27,10 +50,11 @@ object SelectiveSyncStore {
         synchronized(lock) {
             val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val key = btbKey(localBaustelleId, clientBtbId)
-            val previous = prefs.getLong(key, 0L)
+            val previous = maxOf(prefs.getLong(key, 0L), prefs.getLong("latest:$key", 0L))
             val now = System.currentTimeMillis()
             val generation = maxOf(now, previous + 1L)
-            prefs.edit().putLong(key, generation).commit()
+            check(prefs.edit().putLong(key, generation).putLong("latest:$key", generation).remove("problem:$key").commit())
+            changed()
             return BtbScope(localBaustelleId, clientBtbId, generation)
         }
     }
@@ -58,11 +82,22 @@ object SelectiveSyncStore {
             val key = btbKey(scope.localBaustelleId, scope.clientBtbId)
             val current = prefs.getLong(key, 0L)
             if (current != scope.generation) return false
-            return prefs.edit().remove(key).commit()
+            val saved = prefs.edit().remove(key).remove("problem:$key").commit()
+            changed()
+            return saved
         }
     }
 
-    fun hasPending(context: Context): Boolean = btbScopes(context).isNotEmpty()
+    fun confirmBtbIfClean(context: Context, scope: BtbScope) = synchronized(lock) {
+        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val key = btbKey(scope.localBaustelleId, scope.clientBtbId)
+        if (!p.contains(key) && p.getLong("latest:$key", 0L) == scope.generation) {
+            check(p.edit().putLong("confirmed:$key", scope.generation).commit())
+            changed()
+        }
+    }
+
+    fun hasPending(context: Context): Boolean = btbScopes(context).isNotEmpty() || StructureSyncStore.roots(context).isNotEmpty()
 
     fun isBtbDirty(
         context: Context,
@@ -96,6 +131,7 @@ object SelectiveSyncStore {
             return appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
                 .remove(btbKey(localBaustelleId, clientBtbId))
+                .remove("confirmed:" + btbKey(localBaustelleId, clientBtbId))
                 .commit()
         }
     }
@@ -126,3 +162,4 @@ object SelectiveSyncStore {
         )
     }.getOrNull()
 }
+

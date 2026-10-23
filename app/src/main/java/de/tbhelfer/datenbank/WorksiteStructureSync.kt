@@ -4,6 +4,10 @@ import de.tbhelfer.server.WorksiteNodeApi
 import de.tbhelfer.streckenobjekte.WorksiteObjectIdentity
 import org.json.JSONObject
 import java.util.UUID
+import android.content.Context
+import de.tbhelfer.server.StructureSyncStore
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Synchronisiert die fachliche Baustellenstruktur unterhalb der Hauptbaustelle.
@@ -24,7 +28,8 @@ class WorksiteStructureSync(
     private val localWorksiteDao: BaustellenKnotenDao,
     private val bindingRepository: WorksiteBindingRepository,
     private val collabRepository: CollabSyncRepository,
-    private val api: WorksiteNodeApi = WorksiteNodeApi()
+    private val api: WorksiteNodeApi = WorksiteNodeApi(),
+    private val appContext: Context
 ) {
     private val syncDao = syncDatabase.syncDao()
     private val nodeBindingDao = syncDatabase.worksiteNodeSyncDao()
@@ -48,8 +53,10 @@ class WorksiteStructureSync(
      * LEAD: lokale Änderungen werden gegen den aktuellen Server-Snapshot in die bestehende
      * Mutation-Queue geschrieben. Helfer: Server-Snapshot wird sofort lokal angewendet.
      */
-    suspend fun prepareLocalChanges(token: String): Result {
-        val contexts = bindingRepository.contextsWithBindings()
+    suspend fun prepareLocalChanges(token: String, worksiteServerIds: Set<String>? = null): Result {
+        val contexts = bindingRepository.contextsWithBindings().filter {
+            worksiteServerIds == null || it.context.worksiteServerId in worksiteServerIds
+        }.distinctBy { it.context.worksiteServerId }
         var supported = 0
         var queued = 0
         var applied = 0
@@ -63,16 +70,15 @@ class WorksiteStructureSync(
                 is WorksiteNodeApi.Result.Success -> {
                     supported++
                     if (bound.context.memberRole.equals("LEAD", ignoreCase = true)) {
-                        queued += queueLocalDiffs(
-                            worksiteServerId = bound.context.worksiteServerId,
-                            localRoot = root,
-                            serverNodes = snapshot.nodes
-                        )
-                    } else {
-                        when (val apply = applySnapshot(bound.context.worksiteServerId, root, snapshot.nodes)) {
-                            is ApplyResult.Error -> return Result.Error(apply.message)
-                            is ApplyResult.Success -> applied += apply.count
+                        if (StructureSyncStore.generation(appContext, root.id) == 0L &&
+                            StructureSyncStore.versions(appContext, bound.context.worksiteServerId).isNotEmpty() &&
+                            !hasPendingNodes(bound.context.worksiteServerId)) continue
+                        StructureSyncStore.mutationMutex.withLock {
+                            val problem = validateLocalDiffs(bound.context.worksiteServerId, root, snapshot.nodes)
+                            if (problem != null) return Result.Error(problem)
+                            queued += queueLocalDiffs(bound.context.worksiteServerId, root, snapshot.nodes)
                         }
+
                     }
                 }
             }
@@ -91,16 +97,16 @@ class WorksiteStructureSync(
     suspend fun ensureClientNodeKey(
         localRootKnotenId: Long,
         localKnotenId: Long
-    ): String? {
-        if (localKnotenId <= 0L || localKnotenId == localRootKnotenId) return null
-        nodeBindingDao.forLocalNode(localKnotenId)?.let { return it.clientNodeKey }
+    ): String? = StructureSyncStore.mutationMutex.withLock {
+        if (localKnotenId <= 0L || localKnotenId == localRootKnotenId) return@withLock null
+        nodeBindingDao.forLocalNode(localKnotenId)?.let { return@withLock it.clientNodeKey }
 
         val bound = bindingRepository.contextsWithBindings()
             .firstOrNull { it.localWorksite?.id == localRootKnotenId }
-            ?: return null
-        val localNode = localWorksiteDao.laden(localKnotenId) ?: return null
+            ?: return@withLock null
+        val localNode = localWorksiteDao.laden(localKnotenId) ?: return@withLock null
         if (localNode.rootId != localRootKnotenId || localNode.typ == BaustellenKnotenTyp.HAUPT) {
-            return null
+            return@withLock null
         }
 
         val item = SyncWorksiteNodeBindingEntity(
@@ -110,7 +116,7 @@ class WorksiteStructureSync(
             clientNodeKey = "wsn-${UUID.randomUUID()}"
         )
         nodeBindingDao.upsert(item)
-        return item.clientNodeKey
+        item.clientNodeKey
     }
 
     /** Rückauflösung eines stabilen Node-Keys auf die lokale Room-ID dieses Geräts. */
@@ -127,30 +133,130 @@ class WorksiteStructureSync(
         return binding.localKnotenId.takeIf { binding.localRootKnotenId == localRootKnotenId }
     }
 
-    /** Nach einem möglichen Upload nochmals laden, damit Poco und Pixel denselben Baum sehen. */
-    suspend fun applyServerStateToLocal(token: String): Result {
-        val contexts = bindingRepository.contextsWithBindings()
-        var supported = 0
+    /** Shared by full and selective sync. Conflicts remain persistent; no blind rebase. */
+    suspend fun synchronizeChanged(token: String, worksiteServerIds: Set<String>? = null): Result = processMutex.withLock {
+        val contexts = bindingRepository.contextsWithBindings().filter {
+            it.binding != null && it.localWorksite != null &&
+                (worksiteServerIds == null || it.context.worksiteServerId in worksiteServerIds)
+        }.distinctBy { it.context.worksiteServerId }
+        var uploaded = 0
         var applied = 0
-
         for (bound in contexts) {
             val root = bound.localWorksite ?: continue
+            val ids = setOf(bound.context.worksiteServerId)
+            val generation = StructureSyncStore.generation(appContext, root.id)
+            val before = StructureSyncStore.mutationMutex.withLock { localWorksiteDao.alleKnotenZuRootSofort(root.id) }
+            when (val prepare = prepareLocalChanges(token, ids)) {
+                is Result.Success -> Unit
+                else -> return@withLock prepare
+            }
+            // CONFLICT is intentionally excluded by the DAO upload query, but must still block acknowledgement.
+            if (hasConflicts(bound.context.worksiteServerId)) return@withLock Result.Error("Unterbaustellen: Versionskonflikt prüfen. Lokaler Stand bleibt erhalten.")
+            when (val upload = collabRepository.synchronizeServer1WorksiteNodePending(
+                token, worksiteServerIds = ids,
+                onConfirmed = { worksiteId, node, expectedPayload ->
+                    // Reload may already contain somebody else's later edit. That is no basis for
+                    // overwriting it with our local payload on the next prepare.
+                    if (!node.isDeleted && payloadEquivalent(expectedPayload, node.payloadJson)) {
+                        val versions = StructureSyncStore.versions(appContext, worksiteId).toMutableMap()
+                        versions[node.clientNodeKey] = node.currentVersion
+                        StructureSyncStore.confirm(appContext, worksiteId, versions)
+                    }
+                }
+            )) {
+                CollabSyncRepository.Server1WorksiteNodeUploadResult.SessionInvalid -> return@withLock Result.SessionInvalid
+                CollabSyncRepository.Server1WorksiteNodeUploadResult.Unsupported -> return@withLock Result.Unsupported
+                is CollabSyncRepository.Server1WorksiteNodeUploadResult.Success -> {
+                    uploaded += upload.uploaded
+                    if (upload.conflicts > 0) return@withLock Result.Error("Unterbaustellen: Versionskonflikt prüfen. Lokaler Stand bleibt erhalten.")
+                    if (upload.failed > 0) return@withLock Result.Error("Unterbaustellen noch nicht vollständig übertragen. Erneuter Versuch folgt.")
+                }
+            }
+            // A previous immutable pending operation may have represented an older local edit.
+            // Queue that newer edit against the just-confirmed basis before any server apply.
+            when (val latest = prepareLocalChanges(token, ids)) {
+                is Result.Success -> Unit
+                else -> return@withLock latest
+            }
+            if (hasPendingNodes(bound.context.worksiteServerId))
+                return@withLock Result.Error("Neuere Unterbaustellen-Änderungen bleiben vorgemerkt; erneuter Abgleich folgt.")
+            // Local saving remains possible during HTTP I/O. Never apply over a newer local tree.
+            if (before != localWorksiteDao.alleKnotenZuRootSofort(root.id))
+                return@withLock Result.Error("Unterbaustellen lokal weiterbearbeitet; erneuter Abgleich erforderlich.")
+            when (val result = applyServerStateToLocal(token, ids, mapOf(root.id to generation))) {
+                is Result.Success -> applied += result.summary.appliedNodes
+                else -> return@withLock result
+            }
+        }
+        Result.Success(Summary(contexts.size, uploaded, applied))
+    }
+
+    private suspend fun hasConflicts(worksiteId: String): Boolean = syncDao.collabConflicts().any {
+        it.worksiteServerId == worksiteId && it.entityType == SyncCollabPendingChangeEntity.TYPE_WORKSITE_NODE
+    }
+
+    /** A delta only reads the affected worksites, retaining local dirty/pending changes. */
+    suspend fun applyServerStateToLocal(
+        token: String,
+        worksiteServerIds: Set<String>? = null,
+        expectedGenerations: Map<Long, Long> = emptyMap()
+    ): Result {
+        val contexts = bindingRepository.contextsWithBindings().filter {
+            worksiteServerIds == null || it.context.worksiteServerId in worksiteServerIds
+        }.distinctBy { it.context.worksiteServerId }
+        var supported = 0
+        var applied = 0
+        for (bound in contexts) {
+            val root = bound.localWorksite ?: continue
+            val before = StructureSyncStore.mutationMutex.withLock { localWorksiteDao.alleKnotenZuRootSofort(root.id) }
             when (val snapshot = api.load(token, bound.context.worksiteServerId)) {
-                WorksiteNodeApi.Result.Unsupported -> Unit
+                WorksiteNodeApi.Result.Unsupported -> return Result.Unsupported
                 WorksiteNodeApi.Result.SessionInvalid -> return Result.SessionInvalid
                 is WorksiteNodeApi.Result.Error -> return Result.Error(snapshot.message)
-                is WorksiteNodeApi.Result.Success -> {
+                is WorksiteNodeApi.Result.Success -> StructureSyncStore.mutationMutex.withLock {
+                    val dirty = StructureSyncStore.generation(appContext, root.id)
+                    val expected = expectedGenerations[root.id]
+                    if (!de.tbhelfer.server.WorksiteDeltaPolicy.mayApply(dirty, expected,
+                        hasPendingNodes(bound.context.worksiteServerId), before == localWorksiteDao.alleKnotenZuRootSofort(root.id))) {
+                        return Result.Error("Unterbaustellen lokal vorgemerkt oder im Konflikt; Serverstand noch nicht übernommen.")
+                    }
                     supported++
                     when (val apply = applySnapshot(bound.context.worksiteServerId, root, snapshot.nodes)) {
                         is ApplyResult.Error -> return Result.Error(apply.message)
                         is ApplyResult.Success -> applied += apply.count
                     }
+                    StructureSyncStore.confirm(appContext, bound.context.worksiteServerId,
+                        snapshot.nodes.associate { it.clientNodeKey to it.currentVersion })
+                    if (expected != null && !StructureSyncStore.clear(appContext, root.id, expected))
+                        return Result.Error("Unterbaustellen-Bestätigung konnte nicht gespeichert werden.")
                 }
             }
         }
-
-        if (contexts.isNotEmpty() && supported == 0) return Result.Unsupported
         return Result.Success(Summary(supported, 0, applied))
+    }
+
+    private suspend fun hasPendingNodes(worksiteId: String): Boolean =
+        syncDao.collabPendingChanges(worksiteId).any { it.entityType == SyncCollabPendingChangeEntity.TYPE_WORKSITE_NODE } || hasConflicts(worksiteId)
+
+    private suspend fun validateLocalDiffs(worksiteId: String, root: BaustellenKnotenEntity, nodes: List<WorksiteNodeApi.Node>): String? {
+        val versions = StructureSyncStore.versions(appContext, worksiteId)
+        val local = localWorksiteDao.alleKnotenZuRootSofort(root.id).associateBy { it.id }
+        val bindings = nodeBindingDao.forWorksite(worksiteId)
+        val keys = bindings.associateBy { it.localKnotenId }
+        val remote = nodes.associateBy { it.clientNodeKey }
+        for (binding in bindings) {
+            val node = local[binding.localKnotenId]
+            val server = remote[binding.clientNodeKey]
+            val pending = syncDao.collabPendingAnyForClientKey(worksiteId, SyncCollabPendingChangeEntity.TYPE_WORKSITE_NODE, binding.clientNodeKey)
+            if (pending != null) continue // original mutation/base/version must be retried unchanged
+            val parent = node?.parentId?.takeUnless { it == root.id }?.let { keys[it]?.clientNodeKey }
+            val same = node != null && server != null && !server.isDeleted && payloadEquivalent(payloadFor(node, parent, server.payloadJson), server.payloadJson)
+            if (same || (node == null && (server == null || server.isDeleted))) continue
+            if (server == null && versions[binding.clientNodeKey] == null) continue // new local key
+            if (!de.tbhelfer.server.WorksiteDeltaPolicy.knownBasis(versions[binding.clientNodeKey], server?.currentVersion, server?.isDeleted ?: true))
+                return "Unterbaustellen: abweichender oder unbekannter Server-Basisstand (${binding.clientNodeKey}). Lokalen Stand erhalten und Konflikt prüfen."
+        }
+        return null
     }
 
     private suspend fun queueLocalDiffs(
@@ -196,10 +302,11 @@ class WorksiteStructureSync(
                 binding.clientNodeKey
             )
 
+            if (pending != null) continue
+
             // Ein Server-Tombstone gewinnt gegen eine noch vorhandene lokale Kopie. So kann ein
             // auf einem anderen TB-Gerät gelöschter Unterpunkt nicht unbemerkt wieder auferstehen.
             if (deletedServer.containsKey(binding.clientNodeKey)) {
-                if (pending != null) syncDao.deleteCollabPendingChange(pending.id)
                 continue
             }
 
@@ -209,23 +316,10 @@ class WorksiteStructureSync(
             val server = activeServer[binding.clientNodeKey]
             val payload = payloadFor(node, parentKey, server?.payloadJson)
             if (server != null && server.status.equals(STATUS_ACTIVE, true) && payloadEquivalent(payload, server.payloadJson)) {
-                // Ein früherer Versionskonflikt ist damit fachlich erledigt: Server und lokaler
-                // Knoten sind gleich. Die alte Queue-Zeile darf den Konflikt nicht dauerhaft halten.
-                if (pending != null) syncDao.deleteCollabPendingChange(pending.id)
+                // Same payload needs no new mutation. Existing pending/conflict was retained above.
                 continue
             }
 
-            if (pending != null) {
-                syncDao.replaceCollabPendingUpsert(
-                    id = pending.id,
-                    serverId = server?.serverId,
-                    baseVersion = server?.currentVersion,
-                    groupId = null,
-                    status = STATUS_ACTIVE,
-                    areaScopeJson = ALL_SCOPE,
-                    payloadJson = payload
-                )
-            } else {
                 collabRepository.enqueueMutation(
                     worksiteServerId = worksiteServerId,
                     entityType = SyncCollabPendingChangeEntity.TYPE_WORKSITE_NODE,
@@ -238,7 +332,6 @@ class WorksiteStructureSync(
                     areaScopeJson = ALL_SCOPE,
                     payloadJson = payload
                 )
-            }
             queued++
         }
 
@@ -254,12 +347,11 @@ class WorksiteStructureSync(
                 SyncCollabPendingChangeEntity.TYPE_WORKSITE_NODE,
                 binding.clientNodeKey
             )
+            if (pending != null) continue
             if (server == null) {
-                if (pending != null) syncDao.deleteCollabPendingChange(pending.id)
                 nodeBindingDao.deleteForClientKey(worksiteServerId, binding.clientNodeKey)
                 continue
             }
-            if (pending != null) syncDao.deleteCollabPendingChange(pending.id)
             collabRepository.enqueueMutation(
                 worksiteServerId = worksiteServerId,
                 entityType = SyncCollabPendingChangeEntity.TYPE_WORKSITE_NODE,
@@ -300,8 +392,8 @@ class WorksiteStructureSync(
                 val existing = binding?.let { localWorksiteDao.laden(it.localKnotenId) }
 
                 // Ein lokaler DELETE darf bei einem reinen Versionskonflikt nicht durch den noch
-                // aktiven Serverstand sofort wieder lokal angelegt werden. Die nächste Prepare-Runde
-                // rebased den DELETE gegen die aktuelle Serverversion.
+                // aktiven Serverstand sofort wieder lokal angelegt werden. Eine Konfliktlösung
+                // erfordert eine bewusste Entscheidung statt automatischer neuer Basisversion.
                 if (binding != null && existing == null) {
                     val pending = syncDao.collabPendingAnyForClientKey(
                         worksiteServerId,
@@ -387,7 +479,6 @@ class WorksiteStructureSync(
                 SyncCollabPendingChangeEntity.TYPE_WORKSITE_NODE,
                 server.clientNodeKey
             )
-            if (pending != null) syncDao.deleteCollabPendingChange(pending.id)
             val existing = localWorksiteDao.laden(binding.localKnotenId)
             if (existing != null && existing.id != localRoot.id) {
                 localWorksiteDao.loescheTeilbaum(existing.id)
@@ -472,8 +563,10 @@ class WorksiteStructureSync(
     }
 
     companion object {
+        private val processMutex = Mutex()
         private const val STATUS_ACTIVE = "ACTIVE"
         private const val ALL_SCOPE = "{\"all\":true}"
     }
 }
+
 

@@ -43,14 +43,14 @@ object BaustellenObjektLogik {
     fun unterbaustellenName(knoten: BaustellenKnotenEntity?): String? {
         knoten ?: return null
         return when (knoten.typ) {
-            BaustellenKnotenTyp.BAHNHOF ->
-                // Bei älteren Datensätzen steht im knotenName teilweise nur "Bahnhof".
-                // Die konkrete Auswahl (z. B. W1 oder DKW 15) liegt in gleisOderWeiche
-                // und muss deshalb für Foto, Overlay und Detailansicht Vorrang haben.
-                knoten.gleisOderWeiche?.trim()?.takeIf { it.isNotBlank() }?.let(::kurzKennung)
-                    ?: knoten.knotenName?.trim()?.takeIf { it.isNotBlank() && !it.equals("Bahnhof", true) }?.let(::kurzKennung)
-                    ?: knoten.bahnhofName?.trim()?.takeIf { it.isNotBlank() }
-                    ?: "Bahnhof"
+            BaustellenKnotenTyp.BAHNHOF -> {
+                val station = knoten.bahnhofName?.trim()?.takeIf { it.isNotBlank() }
+                val objectKey = knoten.gleisOderWeiche?.trim()?.takeIf { it.isNotBlank() }?.let(::kurzKennung)
+                val name = knoten.knotenName?.trim()?.takeIf {
+                    it.isNotBlank() && !it.equals("Bahnhof", true) && !it.equals(objectKey, true) && !it.equals(station, true)
+                }
+                listOfNotNull(station?.let { "Bahnhof $it" } ?: "Bahnhof unbekannt", objectKey, name).joinToString(" · ")
+            }
             BaustellenKnotenTyp.FREIE_STRECKE ->
                 knoten.knotenName?.trim()?.takeIf { it.isNotBlank() }?.let(::kurzKennung)
                     ?: knoten.streckenkennung?.trim()?.takeIf { it.isNotBlank() }?.let { "Freie Strecke $it" }
@@ -78,4 +78,5 @@ object BaustellenObjektLogik {
         } else s
     }
 }
+
 

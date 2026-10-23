@@ -140,6 +140,16 @@ class Server1DeltaSync(context: Context) {
             }
         if (bound.isEmpty()) return ApplyResult.Success
 
+        val nodeWorksites = WorksiteDeltaPolicy.nodeWorksites(page.changes, bound.map { it.context.worksiteServerId }.toSet())
+        if (nodeWorksites.isNotEmpty()) {
+            when (val nodes = ServiceLocator.worksiteStructureSync.applyServerStateToLocal(token, nodeWorksites)) {
+                de.tbhelfer.datenbank.WorksiteStructureSync.Result.Unsupported -> return ApplyResult.Unsupported
+                de.tbhelfer.datenbank.WorksiteStructureSync.Result.SessionInvalid -> return ApplyResult.SessionInvalid
+                is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Error -> return ApplyResult.Error(nodes.message)
+                is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Success -> Unit
+            }
+        }
+
         val contextsByWorksite = bound.groupBy { it.context.worksiteServerId }
         val targetBtbIds = linkedMapOf<String, MutableSet<String>>()
         val needsActiveFallback = linkedSetOf<String>()
@@ -281,3 +291,4 @@ class Server1DeltaSync(context: Context) {
         private val processMutex = Mutex()
     }
 }
+

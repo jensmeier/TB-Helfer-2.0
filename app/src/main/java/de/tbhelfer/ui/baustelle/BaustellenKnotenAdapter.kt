@@ -114,15 +114,7 @@ class BaustellenKnotenAdapter(
             }
             BaustellenKnotenTyp.FREIE_STRECKE -> k.knotenName?.takeIf { it.isNotBlank() }
                 ?: (k.streckenkennung ?: "Freie Strecke")
-            BaustellenKnotenTyp.BAHNHOF -> run {
-                val bhf = k.bahnhofName?.trim().orEmpty()
-                val glw = k.gleisOderWeiche?.trim().orEmpty()
-                when {
-                    bhf.isNotBlank() && glw.isNotBlank() -> "Bahnhof $bhf – $glw"
-                    bhf.isNotBlank() -> "Bahnhof $bhf"
-                    else -> k.knotenName?.takeIf { it.isNotBlank() } ?: "Bahnhof"
-                }
-            }
+            BaustellenKnotenTyp.BAHNHOF -> de.tbhelfer.streckenobjekte.BaustellenObjektLogik.unterbaustellenName(k).orEmpty()
             BaustellenKnotenTyp.ALLGEMEIN_OBJEKT -> k.knotenName?.takeIf { it.isNotBlank() } ?: "Allgemein / Objekt"
         }
 
@@ -312,3 +304,4 @@ class BaustellenKnotenAdapter(
         }
     }
 }
+

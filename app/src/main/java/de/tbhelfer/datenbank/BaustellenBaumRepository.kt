@@ -4,10 +4,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.withLock
+import de.tbhelfer.server.StructureSyncStore
 
 class BaustellenBaumRepository(
     private val knotDao: BaustellenKnotenDao,
-    private val altRepo: BaustellenRepository
+    private val altRepo: BaustellenRepository,
+    private val onStructureChanged: (Long) -> Unit = {}
 ) {
 
     fun alleHauptbaustellen(): Flow<List<BaustellenKnotenEntity>> = knotDao.alleHauptbaustellen().flowOn(Dispatchers.IO)
@@ -153,7 +156,7 @@ class BaustellenBaumRepository(
         gleisOderWeiche: String?
     ): BaustellenKnotenEntity {
         // DAO-Arbeit auf IO
-        return withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) { StructureSyncStore.mutationMutex.withLock {
         require(parent.typ != BaustellenKnotenTyp.HAUPT || parent.parentId == null) {
             "Parent-Knoten ungültig."
         }
@@ -239,13 +242,18 @@ class BaustellenBaumRepository(
             BaustellenKnotenTyp.HAUPT -> error("Unterknoten darf nicht HAUPT sein")
         }
 
+        onStructureChanged(rootId)
         val id = knotDao.einfuegen(knoten)
         knoten.copy(id = id)
-        }
+        } }
     }
 
     suspend fun loescheTeilbaum(knotenId: Long) {
-        withContext(Dispatchers.IO) { knotDao.loescheTeilbaum(knotenId) }
+        withContext(Dispatchers.IO) { StructureSyncStore.mutationMutex.withLock {
+            val node = knotDao.laden(knotenId) ?: return@withLock
+            if (node.typ != BaustellenKnotenTyp.HAUPT) onStructureChanged(node.rootId)
+            knotDao.loescheTeilbaum(knotenId)
+        } }
         // Hinweis: Die alte BaustelleEntity löschen wir hier NICHT automatisch,
         // damit Streckenpunkte/Fotos nicht aus Versehen verschwinden.
     }
@@ -288,7 +296,7 @@ class BaustellenBaumRepository(
         bahnhofName: String?,
         gleisOderWeiche: String?
     ) {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.IO) { StructureSyncStore.mutationMutex.withLock {
             val alt = knotDao.laden(knotenId) ?: error("Knoten nicht gefunden")
             require(alt.typ != BaustellenKnotenTyp.HAUPT) { "Hauptbaustelle hier nicht bearbeitbar." }
 
@@ -358,21 +366,24 @@ class BaustellenBaumRepository(
                 BaustellenKnotenTyp.HAUPT -> error("Nicht erlaubt")
             }
 
+            if (alt != neu) onStructureChanged(alt.rootId)
             knotDao.aktualisieren(neu)
-        }
+        } }
     }
 
     /** Rückwärtskompatibel: Bearbeiten nur des optionalen Namens. */
     suspend fun knotenUmbenennen(knotenId: Long, neuerName: String?) {
-        withContext(Dispatchers.IO) {
-            val k = knotDao.laden(knotenId) ?: return@withContext
-            if (k.typ == BaustellenKnotenTyp.HAUPT) return@withContext
+        withContext(Dispatchers.IO) { StructureSyncStore.mutationMutex.withLock {
+            val k = knotDao.laden(knotenId) ?: return@withLock
+            if (k.typ == BaustellenKnotenTyp.HAUPT) return@withLock
 
             val clean = neuerName?.trim()?.takeIf { it.isNotBlank() }
+            if (k.knotenName != clean) onStructureChanged(k.rootId)
             knotDao.aktualisieren(k.copy(knotenName = clean))
-        }
+        } }
     }
 
     // Alias
     suspend fun loeschenTeilbaum(knotenId: Long) = loescheTeilbaum(knotenId)
 }
+
