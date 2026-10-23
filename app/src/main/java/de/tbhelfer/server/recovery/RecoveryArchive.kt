@@ -28,6 +28,9 @@ object RecoveryArchive {
     suspend fun save(context: Context, owner: String, epoch: String): Saved {
         Server1DeltaPoller.stop()
         WorkManager.getInstance(context).cancelAllWork().result.get()
+        check(context.getExternalFilesDir(null) != null && RecoveryWorkspace.raw.getExternalFilesDirs(null).all { it != null }) {
+            "App-Dateispeicher ist nicht vollständig erreichbar. Bitte Speicherkarte/Handyspeicher prüfen und erneut versuchen."
+        }
         val id = UUID.randomUUID().toString()
         val folder = File(RecoveryWorkspace.journal(), id).apply { check(mkdirs()) }
         val partial = File(folder, "local.zip.partial")

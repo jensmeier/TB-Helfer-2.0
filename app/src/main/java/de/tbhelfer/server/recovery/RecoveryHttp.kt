@@ -69,7 +69,7 @@ internal class GuardedConnection(
     override fun getHeaderFieldKey(n: Int): String? { responseCode; return delegate.getHeaderFieldKey(n) }
     override fun getHeaderFields(): MutableMap<String, MutableList<String>> { responseCode; return delegate.headerFields }
     override fun getContentLength(): Int { responseCode; return delegate.contentLength }
-    override fun getContentLengthLong(): Long { responseCode; return delegate.contentLengthLong }
+    override fun getContentLengthLong(): Long { responseCode; return delegate.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L }
     override fun getContentType(): String? { responseCode; return delegate.contentType }
     override fun getContentEncoding(): String? { responseCode; return delegate.contentEncoding }
 }

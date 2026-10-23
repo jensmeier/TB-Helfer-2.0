@@ -42,7 +42,13 @@ class RecoveryActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() { if (!busy) { if (RecoveryWorkspace.blocked()) finishAffinity() else finish() } }
         })
-        if (RecoveryWorkspace.switchPending()) { restart(); return }
+        if (RecoveryWorkspace.switchPending() ||
+            (RecoveryWorkspace.blocked() && !RecoveryWorkspace.startedBlocked())) {
+            // Quiesce the old UI/Room/DataStore/jobs before taking the snapshot too.
+            status.text = "Synchronisierung angehalten. App wird für die sichere Bestandsprüfung neu gestartet …"
+            restart()
+            return
+        }
         if (!RecoveryWorkspace.blocked()) { showArchives(); return }
         status.text = "Der Server wurde wiederhergestellt. Deine Handydaten bleiben erhalten. Alte lokale Änderungen dürfen jetzt nicht ungeprüft hochgeladen werden.\n\nSichere zuerst den Handybestand und lies den Server zum Vergleich. Bei einem Fehler bleibt die Synchronisierung gesperrt."
         button("Handybestand sichern und vergleichen") { prepare() }
@@ -51,6 +57,7 @@ class RecoveryActivity : AppCompatActivity() {
     private fun prepare() {
         if (busy) return
         busy = true
+        while (body.childCount > 4) body.removeViewAt(4)
         saved = null
         compared = false
         status.text = "Handybestand wird privat gesichert und geprüft. Danach wird der aktuelle Serverbestand ausschließlich gelesen …"
@@ -138,8 +145,12 @@ class RecoveryActivity : AppCompatActivity() {
             val pending = manifest.optJSONArray("pending") ?: JSONArray()
             text("${DateFormat.getDateTimeInstance().format(Date(manifest.optLong("created")))} · ${pending.length()} vorgemerkte Änderungen.\nOriginaldateien und Datenbankexport bleiben im privaten Sicherungsbestand.")
             button("Änderungen ansehen") {
-                val remote = runCatching { JSONObject(File(folder, "server.json").readText()) }.getOrNull()
-                showPending(pending, remote)
+                lifecycleScope.launch {
+                    val remote = withContext(Dispatchers.IO) {
+                        runCatching { JSONObject(File(folder, "server.json").readText()) }.getOrNull()
+                    }
+                    showPending(pending, remote)
+                }
             }
             button("Sicherung exportieren") {
                 lifecycleScope.launch {

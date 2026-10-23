@@ -52,7 +52,9 @@ object RecoveryProtocol {
     }
 
     fun observeResponse(connection: HttpURLConnection, code: Int) {
-        if (code != 409 || !guarded(connection)) return
+        // Request properties cannot be queried after connect() on Android.
+        if (code != 409 || origin(connection.url) != origin(URL(ServerConfig.BASE_URL)) ||
+            !connection.url.path.startsWith("/api/v1/")) return
         val epoch = RecoveryPolicy.epoch(connection.getHeaderField(HEADER)) ?: return
         synchronized(probeLock) { cached = null }
         blocked(epoch)

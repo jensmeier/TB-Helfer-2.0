@@ -61,6 +61,11 @@ class TBHelferApp : Application() {
         }
         AppCompatDelegate.setDefaultNightMode(mode)
 
+        if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) {
+            installDeltaLifecycle()
+            return
+        }
+
         // Periodische Speicher-Bereinigung (Orphans/Thumb-Leichen/DB-Leichen)
         StorageCleanupScheduler.scheduleWeekly(this)
 
