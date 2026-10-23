@@ -27,6 +27,8 @@ assert parse("strail defekt") == (["strail", "defekt"], None, None)
 javascript = r"""
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const source=fs.readFileSync(process.argv[1],'utf8');
+const labels=fs.readFileSync(require('node:path').join(require('node:path').dirname(process.argv[1]),'v1_node_labels.html'),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+eval(labels);
 const begin=source.indexOf('function nodeTreeRows('),end=source.indexOf('async function editNode(',begin);
 assert(begin>=0&&end>begin);
 const production=source.slice(begin,end);

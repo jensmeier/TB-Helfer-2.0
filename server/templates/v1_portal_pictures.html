@@ -28,7 +28,8 @@
 <button type="button" id="nextPictures" disabled>Weitere Bilder</button>
 </nav>
 {% endblock %}
-{% block scripts %}<script>
+{% block scripts %}{% include "v1_node_labels.html" %}
+<script>
 const site=document.getElementById('site'),notice=document.getElementById('notice'),gallery=document.getElementById('gallery');
 const previous=document.getElementById('previousPictures'),next=document.getElementById('nextPictures'),updates=document.getElementById('updates');
 let generation=0,controller=null,events=null,searchTimer=null,nextCursor=null,pageIndex=0,history=[null],busy=false;
@@ -39,16 +40,7 @@ function bytesLabel(n){if(!Number.isFinite(n)||n<0)return '—';if(n>=1048576)re
 function nodeLabel(m){
   const key=m.photo_metadata?.worksiteNodeKey;if(!key)return 'Unterbaustelle nicht zugeordnet';
   const n=m.worksite_node;if(!n)return 'Unterbaustelle nicht gefunden ('+key+')';
-  const p=n.payload||{},kind=String(p.node_type||n.node_kind||'').toUpperCase(),route=p.route_key||n.route_number||'';
-  let label=String(p.node_name||n.name||'').trim();
-  if(!label&&kind==='FREIE_STRECKE')label='Freie Strecke'+(route?' '+route:'');
-  else if(!label&&kind==='BAHNHOF')label=['Bahnhof',p.station_name,p.track_or_switch||n.track_key].filter(Boolean).join(' ');
-  else if(!label)label=route||n.node_kind||key;
-  // Match BTB node labels, including its optional range representation.
-  const a=Number(p.km_from),b=Number(p.km_to),hasA=Number.isFinite(a),hasB=Number.isFinite(b);
-  const fmt=v=>v.toFixed(3).replace('.',',').replace(/,?0+$/,'');
-  if(hasA||hasB)label+=' (KM '+(hasA&&hasB?fmt(a)+'–'+fmt(b):fmt(hasA?a:b))+')';
-  return label;
+  return tbNodeLabel(n);
 }
 function draw(items){
   const fragment=document.createDocumentFragment(),seen=new Set();
@@ -68,7 +60,7 @@ function draw(items){
     const core=document.createElement('div');core.className='photo-core';
     line('Foto',m.photo_number==null?'Nummer nicht vorhanden':m.photo_number,core);
     line('BTB',m.btb_date,core);line('Dateigröße',bytesLabel(m.byte_size),core);
-    line('Kilometer',meta.km==null?'Nicht vorhanden':Number(meta.km).toFixed(3).replace('.',','),core);
+    line('Kilometer',tbDisplayKm(meta.km)===null?'Nicht vorhanden':tbDisplayKm(meta.km).toFixed(3).replace('.',','),core);
     line('Firma',meta.firma||'Nicht vorhanden',core);
     line('Ort',[nodeLabel(m),meta.objektKennung,meta.objektBereich].filter(Boolean).join(' · '),core);
     const indicators={GRUEN:'Grün',GELB:'Gelb',ROT:'Rot'};

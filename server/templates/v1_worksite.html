@@ -170,6 +170,7 @@
 {% endblock %}
 {% block scripts %}
 {% include "v1_catalog_lookup.html" %}
+{% include "v1_node_labels.html" %}
 <script>
 const pagePrefix={{ (page_prefix|default('/portal/v1'))|tojson }};
 const worksiteId={{ worksite_id|tojson }};
@@ -237,7 +238,7 @@ function acceptancePayloadFromForm(existing){
 }
 function nodeName(id){
   const found=nodeData.find(function(n){return n.id===id;});
-  return found?found.name:'—';
+  return found?tbNodeLabel(found):'—';
 }
 function nodeTypeLabel(kind){
   return ({FREIE_STRECKE:'Freie Strecke',BAHNHOF:'Bahnhof',ALLGEMEIN_OBJEKT:'Allgemeines Objekt'})[kind]||kind||'—';
@@ -269,13 +270,13 @@ function canonicalNodePayload(source){
 }
 function nodeOptions(){
   const options='<option value="">ohne Zuordnung</option>'+nodeData.map(function(n){
-    return '<option value="'+esc(n.id)+'">'+esc(nodeTypeLabel(n.node_kind))+' · '+esc(n.name)+'</option>';
+    return '<option value="'+esc(n.id)+'">'+esc(nodeTypeLabel(n.node_kind))+' · '+esc(tbNodeLabel(n))+'</option>';
   }).join('');
   document.getElementById('defectNode').innerHTML=options;
   document.getElementById('acceptanceNode').innerHTML=options;
   document.getElementById('nodeParent').innerHTML=
     '<option value="">direkt unter Hauptbaustelle</option>'+nodeData.map(function(n){
-      return '<option value="'+esc(n.id)+'">'+esc(nodeTypeLabel(n.node_kind))+' · '+esc(n.name)+'</option>';
+      return '<option value="'+esc(n.id)+'">'+esc(nodeTypeLabel(n.node_kind))+' · '+esc(tbNodeLabel(n))+'</option>';
     }).join('');
 }
 async function loadOverview(){
@@ -321,9 +322,7 @@ async function loadNodes(){
   target.innerHTML=tree.length?tree.map(function(row){
     const n=row.node,depth=row.depth;
     const actions=can('worksite.structure.edit')?'<div class="actions" style="margin-top:7px"><button type="button" onclick="editNode(\''+esc(n.id)+'\')">Bearbeiten</button><button class="danger" type="button" onclick="deleteNode(\''+esc(n.id)+'\')">Löschen</button></div>':'';
-    return '<div class="item" style="margin-left:'+Math.min(depth*18,100)+'px"><b>'+esc(nodeTypeLabel(n.node_kind))+'</b> · '+esc(n.name)+
-      (n.route_number?'<div class="muted">Strecke '+esc(n.route_number)+'</div>':'')+
-      (n.track_key?'<div class="muted">Gleis '+esc(n.track_key)+'</div>':'')+actions+'</div>';
+    return '<div class="item" style="margin-left:'+Math.min(depth*18,100)+'px"><b>'+esc(nodeTypeLabel(n.node_kind))+'</b> · '+esc(tbNodeLabel(n))+actions+'</div>';
   }).join(''):'<p class="muted">Noch keine Struktur angelegt.</p>';
   nodeOptions();
 }

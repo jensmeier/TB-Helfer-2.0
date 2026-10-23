@@ -1,0 +1,38 @@
+<script>
+// Display only: never rewrite a node, key or metadata object.
+function tbDisplayKm(value){
+  if(typeof value!=='number'&&typeof value!=='string')return null;
+  if(typeof value==='string'&&!value.trim())return null;
+  const n=Number(typeof value==='string'?value.trim().replace(',','.'):value);
+  return Number.isFinite(n)?n:null;
+}
+function tbNodeLabel(n){
+  const p=n.payload&&typeof n.payload==='object'&&!Array.isArray(n.payload)?n.payload:{};
+  const text=v=>String(v??'').trim();
+  const kind=text(p.node_type||n.node_kind).toUpperCase();
+  const name=text(p.node_name)||text(n.name),route=text(p.route_key)||text(n.route_number);
+  const station=text(p.station_name)||text(n.station_name),code=text(p.station_code)||text(n.station_code);
+  const raw=text(p.track_or_switch)||text(n.track_key);
+  const type=text(p.object_type).toUpperCase();
+  let object=raw;
+  if(raw){
+    if(type==='WEICHENVERBINDUNG'||/^WVB\s*/i.test(raw))object='WVB '+raw.replace(/^(?:WVB|Weichenverbindung)\s*/i,'');
+    else if(type==='WEICHE'||/^(?:W\s*\d|Weiche\b)/i.test(raw))object='Weiche '+raw.replace(/^(?:Weiche|W)\s*/i,'');
+    else object='Gleis '+raw.replace(/^(?:Gleis|Gl)\s*/i,'');
+  }
+  const parts=[];
+  function add(value){if(value&&!parts.some(s=>s.toLocaleLowerCase('de')===value.toLocaleLowerCase('de')))parts.push(value);}
+  add(name);
+  if(kind==='FREIE_STRECKE')add('Freie Strecke'+(route?' '+route:''));
+  else{
+    add(station&&code&&station.toLowerCase()!==code.toLowerCase()?station+' ('+code+')':station||code);
+    if(route)add('Strecke '+route);
+  }
+  add(object);
+  let label=parts.join(' · ')||text(n.node_kind)||'Unterbaustelle';
+  const a=tbDisplayKm(p.km_from),b=tbDisplayKm(p.km_to);
+  const fmt=v=>v.toFixed(3).replace(/\.?0+$/,'').replace('.',',')||'0';
+  if(a!==null||b!==null)label+=' (KM '+(a!==null&&b!==null?fmt(a)+'–'+fmt(b):fmt(a!==null?a:b))+')';
+  return label;
+}
+</script>

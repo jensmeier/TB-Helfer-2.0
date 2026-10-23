@@ -1017,3 +1017,7 @@ Status: **FACHLICH BESTÄTIGT / IMPLEMENTIERUNG UND E2E OFFEN**. Benutzer hat di
 - Vor Implementierung Grenzfälle konkretisieren: bewusste Änderung des Beginns, fehlender Beginn, historische bereits überfällige Bestands-BTBs und nicht mehr erreichbare Geräte. Keine rückwirkende Massenfinalisierung oder automatische Datenverwerfung aus dieser Festlegung ableiten.
 - **GEMEINSAMER E2E OFFEN:** 07:00/23:00, Nacht/Datumswechsel/Zeitumstellung, manueller früher Abschluss, offline Helfer mit ausstehenden Fotos/Einträgen, ausgeschaltetes Handy, Server-Neustart, doppelte Worker-/Syncversuche, Paralleländerung am Fristende, Altclient und bewusste Nachbearbeitung. Pixel/Poco, echtes PDF/Original und NAS-Runtime getrennt nachweisen.
 - Diese Änderung dokumentiert die Anforderung. Kein Runtimecode, keine Migration, APK, Veröffentlichung oder NAS-Änderung in diesem Auftrag.
+
+
+## PORTAL-022 – Anzeige, kein Transportvertrag (23.10.2026)
+Portal/BTB/Galerie ergänzen bei Kurznamen die vorhandenen station_name/station_code und track_or_switch/track_key mit object_type. Bestehende node IDs, client_node_key/worksiteNodeKey, gespeicherte Namen und Payloads unverändert. Fehlende KM sind kein Nullkilometer; echte numerische 0 bleibt sichtbar. Kein neuer API-Endpunkt/Feld, keine Syncänderung, kein app/**. Android bleibt eigener Auftrag. Details/Tests: 04_SERVER_STATUS.md, Übergabe PORTAL-022.
