@@ -361,3 +361,17 @@ Status: **FACHLICH BESTÄTIGT / IMPLEMENTIERUNG UND E2E OFFEN**. Benutzer hat di
 - SharedPreferences.apply() aktualisiert zunächst den Prozessspeicher. Ein Prozessende vor der Sicherung könnte noch nicht auf Datenträger geschriebene Werte verlieren. Deshalb KEIN automatischer Prozessneustart vor der ersten Sicherung.
 - Vor der Sicherung normale Fach-IO sperren, alte Fachoberflächen beenden und Worker/Poller abbrechen; aktuelle SharedPreferences-Werte sowie transaktionale Datenbankexporte und stabile Dateikopien sichern. Vor der bewussten Auswahl erneut sichern/vergleichen. Ein Fehler beim Durchlaufen eines Verzeichnisses muss die Sicherung abbrechen, statt still Dateien auszulassen.
 - Erst nach vollständiger geprüfter Sicherung, frischem Serververgleich und ausdrücklicher Auswahl atomar eine neue Generation wählen und den alten Prozess beenden. Das bereits festgelegte Neustartgebot für den Generationswechsel bleibt bestehen.
+
+
+## 2026-10-23 – aktueller Android-Folgeblock 1.3.29 / 200079
+
+- Runtime-Quellstand: `d3df3108fd66920c7c1bc1bfc93d5817eacedf33`; Server-HEAD bleibt `a471996610a27b2d718f9835bf9c07930f29858f`. Keine server/**- oder NAS-Konfigurationsänderung.
+- Wiederherstellungssperre vor tatsächlicher Fach-IO; private geprüfte Sicherung, getrennt lesender Serververgleich und ausdrückliche Auswahl einer neuen lokalen Generation implementiert. Prozessneustart erst NACH Sicherung und Auswahl. Alte Dateien/DBs/Einstellungen/Outbox bleiben erhalten; keine automatische Zusammenführung oder Upload-Quittierung alter Ergänzungen.
+- CI-Nachweis: [Lauf 39947580253](https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/39947580253), Android-Compiler und `:app:testDebugUnitTest` erfolgreich: 88 Tests, 0 Fehler, 0 Fehlschläge, 0 übersprungen. `:app:lintDebug` erfolgreich: 0 Fehler, 391 Warnungen; keine Warnung in neuen recovery-Dateien. JUnit-/Lint-XML aus dem zugehörigen Artefakt geprüft.
+- Gesamt-CI weiterhin rot durch fünf bekannte historische Quellvertragsprüfungen (13/19/83/85/86); der Android-Compiler-/Test-/Lint-Job ist grün. Diese Prüfungen wurden nicht durch Versionskommentare oder deaktivierte Checks umgangen.
+- Kein assemble, keine APK-Erzeugung/-Auslieferung. Kein Installations-/Pixel-/Poco-/NAS-E2E-Nachweis. Technische Validierung ist keine funktionale Gerätefreigabe.
+- Übergabe/Prüfmatrix: `projektsteuerung/uebergaben/ANDROID_Wiederherstellung_200079.md`. Passende Release-Datei: `projektsteuerung/releases/TB-Helfer_1.3.29_200079.md`.
+
+- X-TB-Recovery-ID wird nur im synchronen GET-Vergleich oder im ausdrücklich ausgewählten passenden neuen Workspace gesetzt. Kein automatischer 409-Mutationsretry und keine alte Outbox-Wiedergabe.
+- Vergleich liest Geräteidentität, zugängliche Baustellen/Berechtigungen, eigene TB-Gruppen-BTBs, Baum/Mängel/Abnahmen und Katalog. Dateien/Vermessungsdetails folgen erst im normalen frischen Sync; fehlende Treffer im Vergleich bestätigen keine Löschung.
+- Alte lokale Ergänzungen bleiben separat erhalten. Ihre komfortable Einzelübernahme ist nicht implementiert; keine automatische Konfliktauflösung behaupten.

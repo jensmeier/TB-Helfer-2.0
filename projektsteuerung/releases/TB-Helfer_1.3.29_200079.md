@@ -26,5 +26,9 @@ GRENZEN:
 - Kein APK-Paket aus dieser Arbeit. Installation erfolgt über den bestehenden Android-Studio-Ablauf.
 
 TESTSTATUS:
-- Compiler-, JVM- und Lint-Nachweis wird nach CI-Ausführung in der Übergabe festgehalten.
+- Android-Compiler und testDebugUnitTest bestanden: 88 Tests, 0 Fehler/Fehlschläge/übersprungen.
+- lintDebug bestanden: 0 Fehler, 391 Warnungen.
+- CI-Lauf 39947580253, Runtime-Quellstand d3df3108fd66920c7c1bc1bfc93d5817eacedf33.
+- Fünf historische Quellvertragsprüfungen bleiben offen; der Android-Compiler-/Test-/Lint-Job ist grün.
+- Vollständiger Nachweis und Geräteprüfmatrix: projektsteuerung/uebergaben/ANDROID_Wiederherstellung_200079.md.
 - Kein Pixel-/Poco-/NAS-Livetest aus dieser Umgebung. Funktionale Freigabe erst nach Geräteprüfung.
