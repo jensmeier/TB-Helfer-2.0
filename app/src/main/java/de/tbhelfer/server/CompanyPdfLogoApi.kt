@@ -32,7 +32,9 @@ class CompanyPdfLogoApi(
                 HttpURLConnection.HTTP_NOT_FOUND,
                 HttpURLConnection.HTTP_CONFLICT -> Result.SchemaRequired
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> Result.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        Result.SessionInvalid else Result.Error(errorMessage(body, code))
                 else -> Result.Error(errorMessage(body, code))
             }
         } catch (e: Exception) {
@@ -66,7 +68,9 @@ class CompanyPdfLogoApi(
                 HttpURLConnection.HTTP_NOT_FOUND,
                 HttpURLConnection.HTTP_CONFLICT -> Result.SchemaRequired
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> Result.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        Result.SessionInvalid else Result.Error(errorMessage(body, code))
                 else -> Result.Error(errorMessage(body, code))
             }
         } catch (e: Exception) {
@@ -134,3 +138,4 @@ class CompanyPdfLogoApi(
         return detail.ifBlank { "Serverfehler ($code)." }
     }
 }
+

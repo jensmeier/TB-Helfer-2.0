@@ -51,3 +51,15 @@ Der aktuelle Server prüft bei gesetztem TB_RECOVERY_ID in recovery_guard.requir
 6. Portal abmelden darf Gerätetoken nicht widerrufen. Gerätefreigabe im Admin muss dagegen Zugriffe wirksam sperren.
 7. Fotospeicher prüfen: Ergebnis zeigt nur Hinweise, keine Dateien/Datensätze werden verändert. Größere Schrift und Zurück-Navigation in Einstellungen prüfen.
 8. Die fünf bekannten historischen Quellvertragsfehler aus 200077 bleiben separate offene Punkte. BTB-AUTO-016 weiterhin nicht implementiert.
+
+## Durchgeführte Quellprüfungen dieses Blocks
+- Alle108 main-XML-Dateien geparst.
+- R.id-/R.string-Verweise der geänderten Kotlin-Dateien gegen vorhandene Ressourcen geprüft.
+- Alle Fragment-Zielklassen des Navigationsgraphen vorhanden.
+- Lexikalische String-/Klammerstruktur geänderter Kotlin-Dateien geprüft (kein Compiler).
+- Kein DAO-/Dateilösch-, Kopier- oder Verschiebeaufruf im neuen Speicherworker.
+- Helfer-Read-only-Zweig liefert Error statt Applied; bestehender Consumer erhält damit die Pending-Änderung.
+- Kein unqualifizierter gemeinsamer401/403->SessionInvalid-Zweig in den geprüften Serverclients; Aktivierungs-Sessioncheck unterscheidet403 ebenfalls.
+- Entfernte Einzel-ZIP-Klasse ohne verbleibende main-/Generatorreferenz; drei Generatorhelfer ausdrücklich erhalten.
+- Versionswerte und Release-MD1.3.28/200078 konsistent.
+- Kotlin-/Gradle-/Lint-/Emulatorausführung nicht verfügbar. Noch keine funktionale Gesamtfreigabe.

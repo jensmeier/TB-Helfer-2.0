@@ -141,7 +141,7 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
                     StartmenueItem("Suche Bilder/BTB", StartmenueZiel.SUCHE),
                     StartmenueItem("Mein Ordner", StartmenueZiel.MEIN_ORDNER),
                     StartmenueItem("Streckendaten", StartmenueZiel.IMPORT_EXPORT),
-                    StartmenueItem("Mit NAS synchronisieren\n($syncStatus)", StartmenueZiel.SERVER_SYNC)
+                    StartmenueItem("Synchronisierung\n($syncStatus)", StartmenueZiel.SERVER_SYNC)
                 )
             )
         }
@@ -348,3 +348,4 @@ class StartmenueFragment : Fragment(R.layout.fragment_startmenue) {
         super.onDestroyView()
     }
 }
+

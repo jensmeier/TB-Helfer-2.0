@@ -111,7 +111,9 @@ class SyncChangeApi(
 
                 HttpURLConnection.HTTP_NOT_FOUND -> PullResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> PullResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        PullResult.SessionInvalid else PullResult.Error(errorMessage(body, code))
                 else -> PullResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -132,7 +134,9 @@ class SyncChangeApi(
                 HttpURLConnection.HTTP_OK -> AckResult.Success
                 HttpURLConnection.HTTP_NOT_FOUND -> AckResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> AckResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        AckResult.SessionInvalid else AckResult.Error(errorMessage(body, code))
                 else -> AckResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -184,7 +188,9 @@ class SyncChangeApi(
                 }
 
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> MutationResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        MutationResult.SessionInvalid else MutationResult.Error(errorMessage(body, code))
                 else -> MutationResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -260,3 +266,4 @@ class SyncChangeApi(
         }
     }
 }
+

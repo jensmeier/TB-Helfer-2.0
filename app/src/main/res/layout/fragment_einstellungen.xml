@@ -4,94 +4,128 @@
     android:layout_height="match_parent"
     android:background="?attr/colorBackground"
     android:fillViewport="true">
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp">
-
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Einstellungen"
             android:textColor="?attr/colorOnBackground"
-            android:paddingBottom="6dp"
             style="@style/TextAppearance.TBHelfer.Title" />
-
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Gerätespezifische Einstellungen für Nutzer, Synchronisation, Benachrichtigungen, Anzeige, Kamera, BTB und Wartung. Baustellen-Team und QR werden direkt in der Baustellenliste verwaltet."
+            android:layout_marginTop="24dp"
+            android:text="Konto &amp; Verbindung"
             android:textColor="?attr/colorOnBackground"
-            android:alpha="0.8"
-            android:paddingBottom="16dp"
-            style="@style/TextAppearance.TBHelfer.Body" />
-
+            android:textStyle="bold"
+            android:textSize="18sp" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnNutzerFirma"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="Nutzer / Firma"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:layout_marginTop="8dp"
+            android:text="Mein Konto &amp; Firma"
             android:gravity="center" />
-
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSynchronisation"
             android:layout_width="match_parent"
-            android:layout_height="72dp"
-            android:layout_marginTop="12dp"
-            android:text="Synchronisation"
-            android:gravity="center"
-            android:maxLines="3" />
-
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:layout_marginTop="8dp"
+            android:text="Synchronisierung &amp; Offline"
+            android:gravity="center" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnBenachrichtigungen"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="12dp"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:layout_marginTop="8dp"
             android:text="Benachrichtigungen"
             android:gravity="center" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnAnzeigeOverlay"
+        <TextView
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="12dp"
-            android:text="Anzeige &amp; Overlay"
-            android:gravity="center" />
-
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Kamera &amp; Darstellung"
+            android:textColor="?attr/colorOnBackground"
+            android:textStyle="bold"
+            android:textSize="18sp" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnKameraFoto"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="12dp"
-            android:text="Kamera / Foto"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:layout_marginTop="8dp"
+            android:text="Kamera &amp; Foto"
             android:gravity="center" />
-
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnBtbPdf"
+            android:id="@+id/btnFotoBeschriftung"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="12dp"
-            android:text="BTB / PDF"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:layout_marginTop="8dp"
+            android:text="Fotobeschriftung / Overlay"
             android:gravity="center" />
-
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAnzeigeOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:layout_marginTop="8dp"
+            android:text="App-Anzeige"
+            android:gravity="center" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnWidget"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="12dp"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:layout_marginTop="8dp"
             android:text="Startbildschirm-Widget"
             android:gravity="center" />
-
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Bautagebuch &amp; Dokumente"
+            android:textColor="?attr/colorOnBackground"
+            android:textStyle="bold"
+            android:textSize="18sp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBtbPdf"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:layout_marginTop="8dp"
+            android:text="Bautagebuch &amp; PDF"
+            android:gravity="center" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Wartung"
+            android:textColor="?attr/colorOnBackground"
+            android:textStyle="bold"
+            android:textSize="18sp" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnWartungDiagnose"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="24dp"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:layout_marginTop="8dp"
             android:text="Wartung &amp; Diagnose"
             android:gravity="center" />
-
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="24dp"
+            android:text="Teammitglieder und Einladungen verwaltest du direkt bei der jeweiligen Baustelle."
+            android:textColor="?attr/colorOnBackground" />
     </LinearLayout>
 </ScrollView>
+

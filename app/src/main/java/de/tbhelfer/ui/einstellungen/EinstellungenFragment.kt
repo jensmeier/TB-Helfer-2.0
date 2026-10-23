@@ -41,7 +41,11 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
         }
 
         view.findViewById<View>(R.id.btnAnzeigeOverlay).setOnClickListener {
-            findNavController().navigate(R.id.action_einstellungen_to_anzeige_overlay)
+            findNavController().navigate(R.id.action_einstellungen_to_ansicht)
+        }
+
+        view.findViewById<View>(R.id.btnFotoBeschriftung).setOnClickListener {
+            findNavController().navigate(R.id.action_einstellungen_to_overlay)
         }
 
         view.findViewById<View>(R.id.btnKameraFoto).setOnClickListener {
@@ -74,8 +78,8 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
             "zuletzt ${SyncStatusSpeicher.anzeige(requireContext())}"
         }
         btnSynchronisation.text = buildString {
-            append("Synchronisation\n")
-            append("Automatischer Delta-Sync")
+            append("Synchronisierung & Offline\n")
+            append("Automatisch")
             append(" · ")
             append(SyncEinstellungenSpeicher.netzLabel(cfg.netz))
             append(" · ")
@@ -146,3 +150,4 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
             .show()
     }
 }
+

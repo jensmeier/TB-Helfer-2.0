@@ -407,7 +407,9 @@ class WorksiteTrackDataApi(
                 HttpURLConnection.HTTP_OK -> parseLegacy(body)
                 HttpURLConnection.HTTP_NOT_FOUND -> Result.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> Result.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        Result.SessionInvalid else Result.Error(errorMessage(body, code))
                 else -> Result.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -452,7 +454,9 @@ class WorksiteTrackDataApi(
                 HttpURLConnection.HTTP_OK -> PutResult.Success
                 HttpURLConnection.HTTP_NOT_FOUND -> PutResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> PutResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        PutResult.SessionInvalid else PutResult.Error(errorMessage(body, code))
                 else -> PutResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -545,3 +549,4 @@ class WorksiteTrackDataApi(
         return optString(name).trim().takeIf { it.isNotBlank() }
     }
 }
+

@@ -74,7 +74,8 @@ class SyncCatalogApi(
                     else InventoryResult.Success(parseInventory(json))
                 }
                 404, 405, 501 -> InventoryResult.Unsupported
-                401, 403 -> InventoryResult.SessionInvalid
+                401, 403 -> if (DeviceAuthorization.sessionInvalid(code, json?.optString("detail").orEmpty()))
+                    InventoryResult.SessionInvalid else InventoryResult.Error("Kein Zugriff auf den Bestand (HTTP $code).")
                 else -> InventoryResult.Error(json?.optNullableString("detail") ?: "Bestand konnte nicht geladen werden ($code).")
             }
         } catch (_: Exception) {
@@ -85,9 +86,10 @@ class SyncCatalogApi(
     }
 
     data class LookupStation(val code: String, val name: String, val dataAvailable: Boolean)
+    data class LookupRoute(val number: String, val name: String?, val dataAvailable: Boolean)
 
     sealed interface LookupResult {
-        data class Success(val stations: List<LookupStation>, val warnings: List<String>) : LookupResult
+        data class Success(val stations: List<LookupStation>, val warnings: List<String>, val routes: List<LookupRoute> = emptyList()) : LookupResult
         data object Unsupported : LookupResult
         data object SessionInvalid : LookupResult
         data class Error(val message: String) : LookupResult
@@ -116,13 +118,22 @@ class SyncCatalogApi(
                                     item.optBoolean("data_available", false)))
                             }
                         }
+                        val routeItems = json?.optJSONArray("routes")
+                        val routes = buildList {
+                            for (index in 0 until (routeItems?.length() ?: 0)) {
+                                val item = routeItems?.optJSONObject(index) ?: continue
+                                val number = item.optNullableString("route_number") ?: continue
+                                add(LookupRoute(number, item.optNullableString("name"), item.optBoolean("data_available", false)))
+                            }
+                        }
                         val notices = json?.optJSONArray("warnings")
                         val warnings = (0 until (notices?.length() ?: 0)).mapNotNull { notices?.optString(it)?.takeIf { s -> s.isNotBlank() } }
-                        LookupResult.Success(stations, warnings)
+                        LookupResult.Success(stations, warnings, routes)
                     }
                 }
                 404, 405, 501 -> LookupResult.Unsupported
-                401, 403 -> LookupResult.SessionInvalid
+                401, 403 -> if (DeviceAuthorization.sessionInvalid(code, json?.optString("detail").orEmpty()))
+                    LookupResult.SessionInvalid else LookupResult.Error("Kein Zugriff auf die Bahnhofsuche (HTTP $code).")
                 else -> LookupResult.Error("Bahnhofsuche konnte nicht geladen werden ($code).")
             }
         } catch (_: Exception) {
@@ -174,23 +185,37 @@ class SyncCatalogApi(
 
             when (code) {
                 HttpURLConnection.HTTP_OK -> {
-                    if (json == null) {
-                        Result.Error("Serverantwort konnte nicht gelesen werden.")
+                    if (json == null || json.optJSONArray("routes") == null || json.optJSONArray("stations") == null) {
+                        Result.Error("Katalogantwort ist unvollständig oder ungültig. Der gespeicherte Bestand bleibt erhalten.")
                     } else {
                         Result.Success(parseCatalog(json))
                     }
                 }
 
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> Result.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, json?.optString("detail").orEmpty()))
+                        Result.SessionInvalid
+                    else Result.Error("Katalogzugriff verweigert (HTTP $code). Bitte Berechtigung oder Serverzugang prüfen.")
 
                 else -> {
                     val detail = json?.optString("detail").orEmpty()
-                    Result.Error(detail.ifBlank { "Serverfehler ($code)." })
+                    val recoveryRequired = code == 409 &&
+                        json?.optJSONObject("detail")?.optString("code") == "SERVER_RECOVERY_REBASE_REQUIRED"
+                    Result.Error(if (recoveryRequired)
+                        "Der Server verlangt nach einer Wiederherstellung einen kontrollierten Datenabgleich. " +
+                            "Lokale Änderungen bleiben erhalten. Bitte den Wiederherstellungsstatus prüfen lassen."
+                    else detail.ifBlank { "Serverfehler ($code)." })
                 }
             }
         } catch (error: Exception) {
-            Result.Error(error.message ?: "Server nicht erreichbar.")
+            Result.Error(when (error) {
+                is java.net.UnknownHostException -> "Servername konnte nicht aufgelöst werden. Bitte Internetverbindung und Serverzugang prüfen."
+                is java.net.SocketTimeoutException -> "Der Server antwortet nicht rechtzeitig. Bitte erneut versuchen."
+                is javax.net.ssl.SSLException -> "Die sichere Verbindung zum Server konnte nicht hergestellt werden."
+                is java.net.ConnectException -> "Verbindung zum Server konnte nicht hergestellt werden."
+                else -> "Katalog konnte nicht geladen werden. Bitte Verbindung und Serverzugang prüfen."
+            })
         } finally {
             connection.disconnect()
         }
@@ -277,5 +302,6 @@ class SyncCatalogApi(
         }
     }
 }
+
 
 

@@ -108,7 +108,12 @@ class ActivationApi(
                     SessionCheck(SessionState.VALID, userName)
                 }
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> SessionCheck(SessionState.REVOKED)
+                HttpURLConnection.HTTP_FORBIDDEN -> {
+                    val body = readBody(connection, code)
+                    val detail = runCatching { JSONObject(body).optString("detail") }.getOrDefault("")
+                    SessionCheck(if (DeviceAuthorization.sessionInvalid(code, detail))
+                        SessionState.REVOKED else SessionState.OFFLINE)
+                }
                 else -> SessionCheck(SessionState.OFFLINE)
             }
         } catch (_: Exception) {

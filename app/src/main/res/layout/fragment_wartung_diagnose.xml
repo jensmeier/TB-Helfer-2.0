@@ -48,14 +48,15 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="20dp"
-            android:text="Speicher bereinigen"
+            android:text="Fotospeicher prüfen"
             android:gravity="center" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="Entfernt fehlende DB-Einträge, verschiebt Bilder ohne Datenbank-Eintrag in den Orphans-Ordner und löscht Thumbnail-Leichen."
+            android:id="@+id/txtWartungSpeicherStatus"
+            android:text="Prüft fehlende Dateien und unklare Fotozuordnungen. Löscht und verschiebt keine Daten."
             android:textColor="?attr/colorOnBackground"
             android:alpha="0.75" />
 
@@ -105,3 +106,4 @@
 
     </LinearLayout>
 </ScrollView>
+

@@ -246,7 +246,9 @@ class WorksiteDeletionApi(
                 HttpURLConnection.HTTP_OK -> DeleteResult.Success
                 HttpURLConnection.HTTP_NOT_FOUND -> DeleteResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> DeleteResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        DeleteResult.SessionInvalid else DeleteResult.Error(errorMessage(body, code))
                 else -> DeleteResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -266,7 +268,9 @@ class WorksiteDeletionApi(
                 HttpURLConnection.HTTP_OK -> parseTombstones(body)
                 HttpURLConnection.HTTP_NOT_FOUND -> ListResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> ListResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        ListResult.SessionInvalid else ListResult.Error(errorMessage(body, code))
                 else -> ListResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -329,3 +333,4 @@ class WorksiteDeletionApi(
         return optString(name).trim().takeIf { it.isNotBlank() }
     }
 }
+

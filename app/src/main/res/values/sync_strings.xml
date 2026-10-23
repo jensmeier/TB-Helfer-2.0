@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="sync_title">Daten vom NAS</string>
-    <string name="sync_intro">Gemeinsamer TB-Helfer-Katalog für Strecken, Bahnhöfe, Gleise und Weichen. Einträge bleiben offline verfügbar. Ergänzungen und Korrekturen werden mit Versionsprüfung synchronisiert; globales Löschen ist nicht möglich.</string>
+    <string name="sync_intro">Gemeinsamer TB-Helfer-Katalog für Strecken, Bahnhöfe, Gleise und Weichen. Einträge bleiben offline verfügbar. Ergänzungen und Korrekturen werden mit Versionsprüfung synchronisiert; globales Löschen ist nicht möglich. Die Server-Suche umfasst zusätzlich Referenzbahnhöfe und den gemeinsamen Vermessungsbestand.</string>
     <string name="sync_loading">Serverdaten werden geladen …</string>
     <string name="sync_connected">%1$s · verbunden</string>
     <string name="sync_offline_cached">Offline · gespeicherter Stand vom %1$s</string>
@@ -14,8 +14,8 @@
     <string name="sync_stations">Bahnhöfe</string>
     <string name="sync_routes_count">Strecken (%1$d)</string>
     <string name="sync_stations_count">Bahnhöfe (%1$d)</string>
-    <string name="sync_no_routes">Auf dem Server sind noch keine Strecken vorhanden.</string>
-    <string name="sync_no_stations">Auf dem Server sind noch keine Bahnhöfe vorhanden.</string>
+    <string name="sync_no_routes">Im ergänzbaren Katalog sind keine Strecken eingetragen. Weitere Daten findest du über die Server-Suche.</string>
+    <string name="sync_no_stations">Im ergänzbaren Katalog sind keine Bahnhöfe eingetragen. Referenzbahnhöfe und Vermessungsdaten findest du über die Server-Suche.</string>
     <string name="sync_route_download_title">Strecke %1$s – Offline-Auswahl</string>
     <string name="sync_station_download_title">%1$s – Offline-Auswahl</string>
     <string name="sync_route_offline_title">Strecke %1$s – auf Gerät</string>
@@ -41,4 +41,12 @@
     <string name="sync_no_objects_for_station">Für diesen Bahnhof sind auf dem Server noch keine Gleise, Weichen oder anderen Objekte vorhanden.</string>
     <string name="sync_sections_saved">%1$d Abschnitte offline gespeichert.</string>
     <string name="sync_objects_saved">%1$d Bahnhofobjekte offline gespeichert.</string>
+    <string name="sync_cached_refresh_failed">%1$s\nLetzter Abrufversuch: %2$s\nAktualisieren fehlgeschlagen: %3$s\nMit „Neu laden“ erneut versuchen.</string>
+    <string name="sync_detail_refresh_failed">Abruf fehlgeschlagen: %1$s\nEs werden nur die auf diesem Gerät gespeicherten Daten angeboten.</string>
+    <string name="sync_inventory_unknown">Serverbestand konnte nicht ermittelt werden. Bitte erneut laden.</string>
+    <string name="sync_cached_routes_count">Strecken auf Gerät (%1$d)</string>
+    <string name="sync_cached_stations_count">Bahnhöfe auf Gerät (%1$d)</string>
+    <string name="sync_no_cached_routes">Im gespeicherten Bestand sind keine Strecken enthalten. Der aktuelle Serverbestand ist unbekannt.</string>
+    <string name="sync_no_cached_stations">Im gespeicherten Bestand sind keine Bahnhöfe enthalten. Der aktuelle Serverbestand ist unbekannt.</string>
 </resources>
+

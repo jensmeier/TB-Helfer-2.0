@@ -362,7 +362,11 @@ class Server1BtbApi(
             !confirmedAccess.isTeamLead &&
             confirmedAccess.participantStatus in setOf("FINISHED", "NOT_PARTICIPATING")
         ) {
-            return MutationResult.Applied(detail.snapshot)
+            // The caller deletes pending changes only for Applied. No upload happened here.
+            return MutationResult.Error(
+                "Lokale BTB-Änderungen sind noch nicht übertragen. Die eigene Schicht ist beendet " +
+                    "oder die Teilnahme aufgehoben. Bitte Teilnahme prüfen; lokale Änderungen bleiben vorgemerkt."
+            )
         }
 
         val desiredHeaderState = headerStateFromLocal(desired, clientKey)
@@ -1705,4 +1709,5 @@ class Server1BtbApi(
         )
     }
 }
+
 

@@ -62,7 +62,9 @@ class UserProfileApi(
                     ?: Result.Error("Nutzerprofil konnte nicht gelesen werden.")
                 HttpURLConnection.HTTP_NOT_FOUND -> Result.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> Result.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, errorDetail(text)))
+                        Result.SessionInvalid else Result.Error("Profilzugriff verweigert (HTTP $code).")
                 HttpURLConnection.HTTP_CONFLICT -> {
                     val detail = errorDetail(text)
                     when (detail) {
@@ -120,3 +122,4 @@ class UserProfileApi(
         return optString(key).trim().takeIf { it.isNotBlank() }
     }
 }
+

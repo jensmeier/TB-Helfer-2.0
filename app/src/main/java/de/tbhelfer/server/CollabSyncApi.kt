@@ -156,7 +156,9 @@ class CollabSyncApi(
                 }
                 HttpURLConnection.HTTP_NOT_FOUND -> ContextResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> ContextResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        ContextResult.SessionInvalid else ContextResult.Error(errorMessage(body, code))
                 else -> ContextResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -211,7 +213,9 @@ class CollabSyncApi(
                 }
                 HttpURLConnection.HTTP_NOT_FOUND -> PullResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> PullResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        PullResult.SessionInvalid else PullResult.Error(errorMessage(body, code))
                 else -> PullResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -237,7 +241,9 @@ class CollabSyncApi(
                 HttpURLConnection.HTTP_OK -> AckResult.Success
                 HttpURLConnection.HTTP_NOT_FOUND -> AckResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> AckResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        AckResult.SessionInvalid else AckResult.Error(errorMessage(body, code))
                 else -> AckResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -287,7 +293,9 @@ class CollabSyncApi(
                     else MutationResult.Error(detail)
                 }
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> MutationResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        MutationResult.SessionInvalid else MutationResult.Error(errorMessage(body, code))
                 else -> MutationResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -315,7 +323,11 @@ class CollabSyncApi(
                 }
                 HttpURLConnection.HTTP_NOT_FOUND -> AttachmentResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> AttachmentResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN -> {
+                    val body = readBody(connection, code)
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        AttachmentResult.SessionInvalid else AttachmentResult.Error(errorMessage(body, code))
+                }
                 else -> AttachmentResult.Error(errorMessage(readBody(connection, code), code))
             }
         } catch (error: Exception) {
@@ -361,7 +373,9 @@ class CollabSyncApi(
                 }
                 HttpURLConnection.HTTP_NOT_FOUND -> AttachmentUploadResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> AttachmentUploadResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        AttachmentUploadResult.SessionInvalid else AttachmentUploadResult.Error(errorMessage(body, code))
                 else -> AttachmentUploadResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -551,3 +565,4 @@ class CollabSyncApi(
         val KM_DECIMAL_REGEX = Regex("\\d+(?:[.,]\\d+)?")
     }
 }
+

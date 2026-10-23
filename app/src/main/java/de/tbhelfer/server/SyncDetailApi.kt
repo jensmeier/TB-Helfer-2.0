@@ -103,7 +103,10 @@ class SyncDetailApi(
                 }
 
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> Result.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(response).optString("detail") }.getOrDefault("")))
+                        Result.SessionInvalid
+                    else Result.Error("Zugriff auf Strecken-/Bahnhofdaten verweigert (HTTP $code).")
 
                 else -> {
                     val detail = runCatching { JSONObject(response).optString("detail") }.getOrNull().orEmpty()
@@ -180,3 +183,4 @@ class SyncDetailApi(
         }
     }
 }
+

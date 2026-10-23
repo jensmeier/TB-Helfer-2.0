@@ -5,6 +5,8 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
+import android.text.InputFilter
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -42,7 +44,9 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
     private lateinit var stationsTitle: TextView
     private lateinit var refreshButton: Button
     private lateinit var conflictButton: Button
+    private lateinit var searchButton: Button
     private var fullManualSyncRunning: Boolean = false
+    private var lastCatalogAttempt: String = ""
 
     private val offlineRepository: OfflineSyncRepository
         get() = ServiceLocator.offlineSyncRepository
@@ -62,6 +66,8 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         stationsTitle = view.findViewById(R.id.txtStationsTitle)
         refreshButton = view.findViewById(R.id.btnSyncRefresh)
         conflictButton = view.findViewById(R.id.btnSyncConflicts)
+        searchButton = view.findViewById(R.id.btnSyncInventorySearch)
+        searchButton.setOnClickListener { showInventorySearch() }
 
         refreshButton.setOnClickListener { loadCatalog() }
         conflictButton.setOnClickListener {
@@ -79,6 +85,8 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
             return
         }
 
+        lastCatalogAttempt = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+            .format(Date())
         setLoading(true)
         statusText.text = getString(R.string.sync_loading)
 
@@ -161,6 +169,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         fullManualSyncRunning = true
         progress.visibility = View.VISIBLE
         refreshButton.isEnabled = false
+        searchButton.isEnabled = false
         statusText.text = buildString {
             append(statusText.text.toString())
             append("\nBaustelle, BTB, Mängel, Abnahmen und Bilder werden synchronisiert …")
@@ -216,6 +225,10 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         setLoading(false)
         if (cached != null) {
             renderCachedCatalog(cached)
+            statusText.text = getString(
+                R.string.sync_cached_refresh_failed,
+                statusText.text.toString(), lastCatalogAttempt, message
+            )
             refreshConflictButton()
         } else {
             renderError(message)
@@ -233,20 +246,28 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         val dateText = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
             .format(Date(cached.savedAtEpochMs))
         statusText.text = getString(R.string.sync_offline_cached, dateText)
-        renderCatalogItems(cached.catalog)
+        renderCatalogItems(cached.catalog, cached = true)
     }
 
     private fun renderError(message: String) {
         statusText.text = getString(R.string.sync_error, message)
         routesContainer.removeAllViews()
         stationsContainer.removeAllViews()
-        routesTitle.text = getString(R.string.sync_routes_count, 0)
-        stationsTitle.text = getString(R.string.sync_stations_count, 0)
+        routesTitle.text = getString(R.string.sync_routes)
+        stationsTitle.text = getString(R.string.sync_stations)
+        routesContainer.addView(createMutedText(getString(R.string.sync_inventory_unknown)))
+        stationsContainer.addView(createMutedText(getString(R.string.sync_inventory_unknown)))
     }
 
-    private fun renderCatalogItems(catalog: SyncCatalogApi.Catalog) {
-        routesTitle.text = getString(R.string.sync_routes_count, catalog.routes.size)
-        stationsTitle.text = getString(R.string.sync_stations_count, catalog.stations.size)
+    private fun renderCatalogItems(catalog: SyncCatalogApi.Catalog, cached: Boolean = false) {
+        routesTitle.text = getString(
+            if (cached) R.string.sync_cached_routes_count else R.string.sync_routes_count,
+            catalog.routes.size
+        )
+        stationsTitle.text = getString(
+            if (cached) R.string.sync_cached_stations_count else R.string.sync_stations_count,
+            catalog.stations.size
+        )
 
         routesContainer.removeAllViews()
         routesContainer.addView(
@@ -258,7 +279,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
             }
         )
         if (catalog.routes.isEmpty()) {
-            routesContainer.addView(createMutedText(getString(R.string.sync_no_routes)))
+            routesContainer.addView(createMutedText(getString(if (cached) R.string.sync_no_cached_routes else R.string.sync_no_routes)))
         } else {
             catalog.routes.forEach { route ->
                 val title = buildString {
@@ -280,7 +301,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
             }
         )
         if (catalog.stations.isEmpty()) {
-            stationsContainer.addView(createMutedText(getString(R.string.sync_no_stations)))
+            stationsContainer.addView(createMutedText(getString(if (cached) R.string.sync_no_cached_stations else R.string.sync_no_stations)))
         } else {
             catalog.stations.forEach { station ->
                 val title = buildString {
@@ -293,6 +314,84 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                 }
                 stationsContainer.addView(createCatalogItem(title, detail) { showStationActions(station) })
             }
+        }
+    }
+
+    private fun showInventorySearch() {
+        if (fullManualSyncRunning) return
+        val input = EditText(requireContext()).apply {
+            hint = "Streckennummer, Bahnhofname oder Kürzel"
+            setSingleLine(true)
+            filters = arrayOf(InputFilter.LengthFilter(100))
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle("Strecke / Bahnhof auf dem Server suchen")
+            .setView(input)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton("Suchen") { _, _ ->
+                val query = input.text.toString().trim()
+                if (query.length < 2) {
+                    Toast.makeText(requireContext(), "Bitte mindestens zwei Zeichen eingeben.", Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
+                }
+                val tokenStore = SecureTokenStore(requireContext())
+                val token = tokenStore.load()
+                if (token.isNullOrBlank()) {
+                    openActivation()
+                    return@setPositiveButton
+                }
+                setLoading(true)
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val result = withContext(Dispatchers.IO) { SyncCatalogApi().lookupStations(token, query) }
+                    if (!isAdded) return@launch
+                    setLoading(false)
+                    when (result) {
+                        SyncCatalogApi.LookupResult.SessionInvalid -> handleInvalidSession(tokenStore)
+                        SyncCatalogApi.LookupResult.Unsupported -> {
+                            statusText.text = "Der Server unterstützt die gemeinsame Bestandssuche noch nicht. Die gespeicherte Katalogliste bleibt erhalten."
+                        }
+                        is SyncCatalogApi.LookupResult.Error -> {
+                            statusText.text = "Bestandssuche fehlgeschlagen: ${result.message}"
+                        }
+                        is SyncCatalogApi.LookupResult.Success -> showInventorySearchResults(result)
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun showInventorySearchResults(result: SyncCatalogApi.LookupResult.Success) {
+        val labels = mutableListOf<String>()
+        val actions = mutableListOf<() -> Unit>()
+        result.routes.forEach { route ->
+            val label = "Strecke ${route.number}" + (route.name?.let { " · $it" } ?: "")
+            labels += label + if (route.dataAvailable) " · Vermessungsdaten vorhanden" else " · Katalogtreffer"
+            actions += {
+                CatalogInventoryDialog.newInstance(label, routeNumber = route.number)
+                    .show(childFragmentManager, "catalog_inventory")
+            }
+        }
+        result.stations.forEach { station ->
+            val label = "${station.name} (${station.code})"
+            labels += label + if (station.dataAvailable) " · Vermessungsdaten vorhanden" else " · Referenz / Katalog"
+            actions += {
+                CatalogInventoryDialog.newInstance(label, stationCode = station.code)
+                    .show(childFragmentManager, "catalog_inventory")
+            }
+        }
+        val warnings = result.warnings.joinToString("\n")
+        // Search has its own dialog/status: it never relabels an old cache as an online list.
+        val title = "Server-Suchergebnisse (${labels.size})"
+        if (labels.isEmpty()) {
+            AlertDialog.Builder(requireContext()).setTitle(title)
+                .setMessage(listOf("Keine Treffer für diese Suche. Der lokale Bestand wurde nicht verändert.", warnings)
+                    .filter { it.isNotBlank() }.joinToString("\n"))
+                .setPositiveButton(android.R.string.ok, null).show()
+        } else {
+            AlertDialog.Builder(requireContext()).setTitle(title)
+                .setItems(labels.toTypedArray()) { _, which -> actions[which]() }
+                .setNegativeButton(android.R.string.cancel, null).show()
+            if (warnings.isNotBlank()) Toast.makeText(requireContext(), warnings, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -466,6 +565,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
             Toast.makeText(requireContext(), getString(R.string.sync_error, message), Toast.LENGTH_LONG).show()
             return
         }
+        statusText.text = getString(R.string.sync_detail_refresh_failed, message)
         AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.sync_route_offline_title, route.routeNumber))
             .setItems(cached.map(::cachedSectionLabel).toTypedArray()) { _, _ ->
@@ -484,6 +584,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
             Toast.makeText(requireContext(), getString(R.string.sync_error, message), Toast.LENGTH_LONG).show()
             return
         }
+        statusText.text = getString(R.string.sync_detail_refresh_failed, message)
         AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.sync_station_offline_title, station.name))
             .setItems(cached.map(::cachedObjectLabel).toTypedArray()) { _, _ ->
@@ -593,6 +694,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
     private fun setLoading(loading: Boolean) {
         progress.visibility = if (loading) View.VISIBLE else View.GONE
         refreshButton.isEnabled = !loading
+        searchButton.isEnabled = !loading
     }
 
     private fun openActivation() {
@@ -602,4 +704,5 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
+
 

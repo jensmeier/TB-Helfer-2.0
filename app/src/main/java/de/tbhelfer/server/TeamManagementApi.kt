@@ -197,7 +197,9 @@ class TeamManagementApi(
             when (meCode) {
                 HttpURLConnection.HTTP_NOT_FOUND -> return WorksiteContextResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN ->
-                    return WorksiteContextResult.SessionInvalid
+                        return if (DeviceAuthorization.sessionInvalid(meCode, detailMessage(meBody)))
+                            WorksiteContextResult.SessionInvalid
+                        else WorksiteContextResult.Error(errorMessage(meBody, meCode))
                 HttpURLConnection.HTTP_OK -> Unit
                 else -> return WorksiteContextResult.Error(errorMessage(meBody, meCode))
             }
@@ -215,7 +217,9 @@ class TeamManagementApi(
             when (worksitesCode) {
                 HttpURLConnection.HTTP_NOT_FOUND -> return WorksiteContextResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN ->
-                    return WorksiteContextResult.SessionInvalid
+                        return if (DeviceAuthorization.sessionInvalid(worksitesCode, detailMessage(worksitesBody)))
+                            WorksiteContextResult.SessionInvalid
+                        else WorksiteContextResult.Error(errorMessage(worksitesBody, worksitesCode))
                 HttpURLConnection.HTTP_OK -> Unit
                 else -> return WorksiteContextResult.Error(errorMessage(worksitesBody, worksitesCode))
             }
@@ -236,7 +240,9 @@ class TeamManagementApi(
                 )
                 when (membersCode) {
                     HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN ->
-                        return WorksiteContextResult.SessionInvalid
+                        return if (DeviceAuthorization.sessionInvalid(membersCode, detailMessage(membersBody)))
+                            WorksiteContextResult.SessionInvalid
+                        else WorksiteContextResult.Error(errorMessage(membersBody, membersCode))
                     HttpURLConnection.HTTP_OK -> Unit
                     else -> return WorksiteContextResult.Error(errorMessage(membersBody, membersCode))
                 }
@@ -331,7 +337,8 @@ class TeamManagementApi(
             when (meCode) {
                 HttpURLConnection.HTTP_NOT_FOUND -> return TeamResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED, HttpURLConnection.HTTP_FORBIDDEN ->
-                    return TeamResult.SessionInvalid
+                    return if (DeviceAuthorization.sessionInvalid(meCode, detailMessage(meBody)))
+                        TeamResult.SessionInvalid else TeamResult.Error(errorMessage(meBody, meCode))
                 HttpURLConnection.HTTP_OK -> Unit
                 else -> return TeamResult.Error(errorMessage(meBody, meCode))
             }
@@ -462,7 +469,9 @@ class TeamManagementApi(
                     ?: TeamResult.Error("Teamdaten konnten nicht gelesen werden.")
                 HttpURLConnection.HTTP_NOT_FOUND -> TeamResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> TeamResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, detailMessage(body)))
+                        TeamResult.SessionInvalid else TeamResult.Error(errorMessage(body, code))
                 else -> TeamResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -661,7 +670,9 @@ class TeamManagementApi(
                 }
                 HttpURLConnection.HTTP_NOT_FOUND -> InvitationResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> InvitationResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, detailMessage(body)))
+                        InvitationResult.SessionInvalid else InvitationResult.Error(errorMessage(body, code))
                 else -> InvitationResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -702,7 +713,9 @@ class TeamManagementApi(
                     else RedeemResult.Error(detail)
                 }
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> RedeemResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, detailMessage(body)))
+                        RedeemResult.SessionInvalid else RedeemResult.Error(errorMessage(body, code))
                 else -> RedeemResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -761,10 +774,10 @@ class TeamManagementApi(
                 HttpURLConnection.HTTP_UNAUTHORIZED -> RedeemResult.SessionInvalid
                 HttpURLConnection.HTTP_FORBIDDEN -> {
                     val detail = detailMessage(body)
-                    if (detail.startsWith("WORKSITE_INVITATION_")) {
-                        RedeemResult.Error(detail)
-                    } else {
+                    if (DeviceAuthorization.sessionInvalid(code, detail)) {
                         RedeemResult.SessionInvalid
+                    } else {
+                        RedeemResult.Error(errorMessage(body, code))
                     }
                 }
                 else -> RedeemResult.Error(errorMessage(body, code))
@@ -807,7 +820,9 @@ class TeamManagementApi(
                 }
                 HttpURLConnection.HTTP_NOT_FOUND -> CompanyProfileResult.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> CompanyProfileResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, detailMessage(body)))
+                        CompanyProfileResult.SessionInvalid else CompanyProfileResult.Error(errorMessage(body, code))
                 else -> CompanyProfileResult.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -835,7 +850,11 @@ class TeamManagementApi(
                     if (detail.startsWith("COMPANY_LOGO_")) LogoResult.NotConfigured else LogoResult.Unsupported
                 }
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> LogoResult.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN -> {
+                    val body = readBody(connection, code)
+                    if (DeviceAuthorization.sessionInvalid(code, detailMessage(body)))
+                        LogoResult.SessionInvalid else LogoResult.Error(errorMessage(body, code))
+                }
                 else -> LogoResult.Error(errorMessage(readBody(connection, code), code))
             }
         } catch (error: Exception) {
@@ -974,3 +993,4 @@ class TeamManagementApi(
         return opt(key)?.toString()
     }
 }
+

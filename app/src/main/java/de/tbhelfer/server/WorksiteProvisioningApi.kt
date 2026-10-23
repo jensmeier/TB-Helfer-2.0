@@ -154,7 +154,9 @@ class WorksiteProvisioningApi(
                 }
                 HttpURLConnection.HTTP_NOT_FOUND -> Result.Unsupported
                 HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN -> Result.SessionInvalid
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
+                        Result.SessionInvalid else Result.Error(errorMessage(body, code))
                 else -> Result.Error(errorMessage(body, code))
             }
         } catch (error: Exception) {
@@ -198,3 +200,4 @@ class WorksiteProvisioningApi(
     private fun JSONObject.putNullable(name: String, value: Any?): JSONObject =
         put(name, value ?: JSONObject.NULL)
 }
+

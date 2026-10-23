@@ -327,3 +327,10 @@ Status: **FACHLICH BESTÄTIGT / IMPLEMENTIERUNG UND E2E OFFEN**. Benutzer hat di
 - Vor Implementierung Grenzfälle konkretisieren: bewusste Änderung des Beginns, fehlender Beginn, historische bereits überfällige Bestands-BTBs und nicht mehr erreichbare Geräte. Keine rückwirkende Massenfinalisierung oder automatische Datenverwerfung aus dieser Festlegung ableiten.
 - **GEMEINSAMER E2E OFFEN:** 07:00/23:00, Nacht/Datumswechsel/Zeitumstellung, manueller früher Abschluss, offline Helfer mit ausstehenden Fotos/Einträgen, ausgeschaltetes Handy, Server-Neustart, doppelte Worker-/Syncversuche, Paralleländerung am Fristende, Altclient und bewusste Nachbearbeitung. Pixel/Poco, echtes PDF/Original und NAS-Runtime getrennt nachweisen.
 - Diese Änderung dokumentiert die Anforderung. Kein Runtimecode, keine Migration, APK, Veröffentlichung oder NAS-Änderung in diesem Auftrag.
+
+## AND-AUDIT-023 – Clientkorrekturen / verbleibende Vertragslücke 23.10.2026
+- Geräteauthentifizierung und fachliches403 bleiben getrennt; fehlendes Ressourcenrecht widerruft nicht allein die Geräteaktivierung. Bekannte widerrufene/deaktivierte Geräte-/Benutzerzustände bleiben gesperrt.
+- Noch nicht übertragene Helferänderungen bei FINISHED/NOT_PARTICIPATING bleiben lokal vorgemerkt, keine Erfolgsquittierung ohne Upload und keine automatische Schichtfortsetzung. Historischen FINALIZED-Schutz nicht verändert.
+- /catalog ist der ergänzbare Katalog; lookup ergänzt Referenz-/GLOBAL-Vermessungssuche, inventory Details. Neue Android-Suche nutzt nur bestehende Endpunkte, keine ID-Raterei und keine automatische Datenanlage.
+- Der Serverstand a471996610a27b2d718f9835bf9c07930f29858f verlangt bei aktivem TB_RECOVERY_ID den Header X-TB-Recovery-ID nach kontrolliertem Rebase. Android unterstützt den neuen Wiederherstellungsablauf noch nicht; niemals automatisch den Header nachsenden. Gemeinsame Spezifikation/Abnahme und NAS-Aktivierungszustand offen, Servercode unverändert.
+- Build-/Geräte-E2E für200078 offen; Details: uebergaben/ANDROID_Pruefung_2026-10-23.md.

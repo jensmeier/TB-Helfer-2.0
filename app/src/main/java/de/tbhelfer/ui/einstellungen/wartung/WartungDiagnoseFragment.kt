@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.google.android.material.button.MaterialButton
 import de.tbhelfer.R
@@ -47,33 +48,27 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
             updateCandidate?.let { starteUpdate(it) }
         }
 
-        view.findViewById<View>(R.id.btnWartungSpeicherBereinigen).setOnClickListener {
+        val storageButton = view.findViewById<View>(R.id.btnWartungSpeicherBereinigen)
+        val storageStatus = view.findViewById<TextView>(R.id.txtWartungSpeicherStatus)
+        storageButton.setOnClickListener {
+            storageButton.isEnabled = false
+            storageStatus.text = "Fotospeicher wird geprüft … Es werden keine Daten verändert."
             val req = StorageCleanupScheduler.runOnce(requireContext().applicationContext)
-            Toast.makeText(
-                requireContext(),
-                getString(R.string.ui_fragment_einstellungen_storage_cleanup_running),
-                Toast.LENGTH_SHORT
-            ).show()
-
             WorkManager.getInstance(requireContext().applicationContext)
                 .getWorkInfoByIdLiveData(req.id)
                 .observe(viewLifecycleOwner) { info ->
                     if (info != null && info.state.isFinished) {
-                        val out = info.outputData
-                        val dbDeleted = out.getInt(StorageCleanupWorker.KEY_DB_DELETED, 0)
-                        val moved = out.getInt(StorageCleanupWorker.KEY_ORPHAN_MOVED, 0)
-                        val thumbs = out.getInt(StorageCleanupWorker.KEY_THUMB_DELETED, 0)
-
-                        Toast.makeText(
-                            requireContext(),
-                            getString(
-                                R.string.ui_fragment_einstellungen_storage_cleanup_done,
-                                dbDeleted,
-                                moved,
-                                thumbs
-                            ),
-                            Toast.LENGTH_LONG
-                        ).show()
+                        storageButton.isEnabled = true
+                        storageStatus.text = if (info.state == WorkInfo.State.SUCCEEDED) {
+                            val out = info.outputData
+                            "Prüfung abgeschlossen.\n" +
+                                "Dateien nicht gefunden: ${out.getInt(StorageCleanupWorker.KEY_MISSING_DB_ENTRIES, 0)}\n" +
+                                "Bilder ohne Foto-Datenbankzuordnung: ${out.getInt(StorageCleanupWorker.KEY_ORPHAN_CANDIDATES, 0)}\n" +
+                                "Vorschaubilder ohne Originaldatei: ${out.getInt(StorageCleanupWorker.KEY_THUMB_CANDIDATES, 0)}\n" +
+                                "Dies sind Prüfhinweise, keine Löschfreigabe. Nichts gelöscht oder verschoben."
+                        } else {
+                            "Speicherprüfung nicht abgeschlossen. Keine Daten gelöscht oder verschoben."
+                        }
                     }
                 }
         }
@@ -149,3 +144,4 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
         }
     }
 }
+
