@@ -3076,3 +3076,7 @@ Benutzer meldet Screenshot: Freie Strecke zeigt alten Bahnhof Pasing und mehrdeu
 - SERVER entwickelt Worker/Status/Abschluss und Vollständigkeitsprotokoll; ANDROID entwickelt Anzeige/Offline-Erfassungsstopp/Outboxbestätigung. Konkrete technische Vertragsfelder und Grenzfallbehandlung vor Implementierung gemeinsam festlegen.
 - Genehmigte Ergänzung zur bisherigen manuellen Haupt-TB-Finalisierung, keine zusätzlichen Helferrechte. Bestehende geschützte Funktionen/Originale bleiben geschützt.
 - Auftrag hier: Festlegung in beiden Branches dokumentieren; kein Runtimecode/Build/Deployment und keine produktive Datenänderung.
+
+
+## PORTAL-022 – eindeutige Unterbaustellenanzeige (23.10.2026)
+Status: IN ARBEIT. Benutzerauftrag: Portal, BTB und Fotoangaben auch bei Kurznamen mit vorhandenem Bahnhof/Name bzw. Kürzel und Gleis/Weiche eindeutig anzeigen. Fehlende KM (null/leer/ungültig) nicht als 0 ausgeben; echte Nullkilometer erhalten. Nur Anzeige, keine Daten-/ID-/Zuordnungsänderung, kein Deployment. Befund am SERVER a471996: worksiteNodeLabel blendet Fachidentität bei node_name aus; Number(null) erzeugt falsche KM. Portal nodeName/Listen verwenden nur name und pauschales Gleis. ANDROID 819bdc89 unverändert; gemeinsame Bestandsfelder bleiben unverändert. Gezielte Produktionsfunktions-/Renderingregression und NAS-Dateiliste folgen; NAS-E2E offen. CI-COST-001 beachten.
