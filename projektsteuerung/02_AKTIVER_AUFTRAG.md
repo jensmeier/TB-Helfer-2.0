@@ -921,3 +921,10 @@ Zusätzliche bedingte Serververtragslücke: gesetztes TB_RECOVERY_ID verlangt X-
 - Übergabe/Prüfmatrix: `projektsteuerung/uebergaben/ANDROID_Wiederherstellung_200079.md`. Passende Release-Datei: `projektsteuerung/releases/TB-Helfer_1.3.29_200079.md`.
 
 - Umsetzung des autorisierten Recovery-Folgeblocks technisch abgeschlossen; praktische Abnahme offen. Die gewünschte Gesamtprüfung von Helfer/weiterem TB, Handy-/Portal-Anmeldung, Strecken/Bahnhöfen und Einstellungswegen ist weiterhin nicht als vollständiger E2E-Erfolg abgenommen.
+
+
+## AND-NODE-DELTA-023 – Auftrag 23.10.2026
+Status: IN ARBEIT. Nutzerauftrag: schnellen Änderungsabgleich um WORKSITE_NODE erweitern; Bahnhof plus Gleis/Weiche auch mit Kurzname eindeutig anzeigen, bestehende clientNodeKey-/Room-/BTB-/Fotozuordnungen erhalten. Speichern weiterhin nur betroffenen BTB und dessen Bilder übertragen; geänderte Struktur zusätzlich baustellenbezogen abgleichen. Lokales Speichern, laufende Übertragung, Serverbestätigung und Konflikt/Fehler unterscheiden. Offline-Outbox, Versionskonflikte und Recovery-Barriere erhalten. Kein Server-/NAS-Deployment, keine APK/Versionsänderung beauftragt.
+- Basis: Android819bdc89f8ae530af0ecb49e379b6d9edf8bb0cb; Servera471996610a27b2d718f9835bf9c07930f29858f; PR11/6 offen. Git-Clone durch Netzregel403 blockiert; Quellen über GitHub-Connector gelesen.
+- Befund: Server1DeltaSync verarbeitet BTB/ENTRY/PARTICIPANT/FILE, ignoriert bislang WORKSITE_NODE und bestätigt dennoch den Cursor. WorksiteStructureSync lädt bisher alle gebundenen Baustellen und übernimmt Snapshots ohne generellen Pending-/Paralleländerungsschutz. SelectiveSyncWorker verarbeitet nur BTB-Scopes. Ergänzung scoped und konservativ: keine Upload-Erfolgsanzeige durch reinen Download; keine automatische Konflikt-Rebase im neuen schnellen Pfad.
+- Tests: gezielte Delta-/Scope-/Identitäts-/Status-/Konfliktfälle; tatsächliche Toolchain-Verfügbarkeit prüfen. Gerät-/Pixel-/Poco-/NAS-E2E separat offen ausweisen.
