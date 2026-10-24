@@ -1305,10 +1305,10 @@ def _draw_photo_appendix(
             )
             writer.y += 3.0
 
-            columns = 2
-            gap = 10.0
-            cell_width = (CONTENT_W - gap) / columns
-            cell_height = 238.0
+            columns = 3
+            gap = 7.0
+            cell_width = (CONTENT_W - gap * (columns - 1)) / columns
+            cell_height = 300.0
             index = 0
 
             while index < len(group):
@@ -1351,7 +1351,7 @@ def _draw_photo_appendix(
                     )
 
                     image_top = top + 24.0
-                    image_height = 142.0
+                    image_height = 106.0
                     file_info = file_by_id.get(str(photo.get("id")))
                     source = file_info.get("path") if isinstance(file_info, dict) else None
                     if isinstance(source, Path) and source.is_file():
@@ -1406,6 +1406,15 @@ def _draw_photo_appendix(
                         or _text(photo.get("original_name"))
                     )
                     details = []
+                    node_key = _text(metadata.get("worksiteNodeKey"))
+                    node_lookup, _ = _node_maps(context)
+                    node = node_lookup.get(node_key) if node_key else None
+                    if node is not None:
+                        details.append(f"Ort: {_node_label(node)}")
+                    else:
+                        saved_place = _text(metadata.get("ort")) or _text(metadata.get("objektbereich"))
+                        if saved_place:
+                            details.append(f"Ort: {saved_place}")
                     if short:
                         details.append(short)
                     company = _text(metadata.get("firma"))
@@ -1417,6 +1426,9 @@ def _draw_photo_appendix(
                     captured = _time_hm(photo.get("captured_at"))
                     if captured != "-":
                         details.append(f"Zeit: {captured}")
+                    gvp = _text(metadata.get("gvpMast")) or _text(metadata.get("gvp_mast"))
+                    if gvp:
+                        details.append(f"GVP/Mast: {gvp}")
                     lat = _number(
                         photo.get("gps_lat")
                         if photo.get("gps_lat") is not None
@@ -1427,11 +1439,13 @@ def _draw_photo_appendix(
                         if photo.get("gps_lon") is not None
                         else metadata.get("lon")
                     )
-                    if lat is not None and lon is not None:
-                        details.append(f"GPS: {lat:.6f}, {lon:.6f}")
+                    gps_line = None
+                    if lat is not None and lon is not None and -90 <= lat <= 90 and -180 <= lon <= 180:
+                        gps_line = f"GPS: {lat:.6f}, {lon:.6f}"
+                        details.append(gps_line)
 
                     writer.c.setFont("Helvetica", 7.4)
-                    for detail in details[:5]:
+                    for detail in details:
                         for line in _wrap_text(
                             detail,
                             "Helvetica",
@@ -1440,11 +1454,18 @@ def _draw_photo_appendix(
                         ):
                             if meta_y > top + cell_height - 8.0:
                                 break
-                            writer.c.drawString(
-                                x + 7.0,
-                                writer.pdf_y(meta_y),
-                                line,
-                            )
+                            baseline = writer.pdf_y(meta_y)
+                            if detail == gps_line:
+                                writer.c.setFillColor(colors.HexColor("#155caa"))
+                            writer.c.drawString(x + 7.0, baseline, line)
+                            if detail == gps_line:
+                                writer.c.linkURL(
+                                    f"https://www.google.com/maps/search/?api=1&query={lat:.6f}%2C{lon:.6f}",
+                                    (x + 7.0, baseline - 2.0, x + 7.0 + stringWidth(line, "Helvetica", 7.4), baseline + 8.0),
+                                    relative=0,
+                                    thickness=0,
+                                )
+                                writer.c.setFillColor(colors.black)
                             meta_y += 8.7
 
                 writer.y = top + cell_height + 10.0
