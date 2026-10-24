@@ -275,25 +275,29 @@ def _node_label(node: dict[str, Any] | None) -> str:
     node_name = _text(payload.get("node_name")) or _text(node.get("name"))
     route = _text(payload.get("route_key")) or _text(node.get("route_number"))
     station = _text(payload.get("station_name"))
+    abbreviation = _text(payload.get("station_code")) or _text(payload.get("station_short"))
     track = _text(payload.get("track_or_switch")) or _text(node.get("track_key"))
     km = _km_range(payload.get("km_from"), payload.get("km_to"))
     if kind in {"HAUPT", "ROOT", "MAIN"}:
         base = "Hauptbaustelle"
     elif kind in {"FREIE_STRECKE", "ROUTE", "TRACK"}:
         base = node_name or (f"Freie Strecke {route}" if route else "Freie Strecke")
-    elif kind in {"BAHNHOF", "STATION"}:
-        if node_name:
-            base = node_name
-        elif station and track:
-            base = f"Bahnhof {station} - {track}"
-        elif station:
-            base = f"Bahnhof {station}"
-        else:
-            base = "Bahnhof"
-    elif kind in {"ALLGEMEIN_OBJEKT", "OBJECT", "OBJEKT"}:
-        base = node_name or "Allgemein / Objekt"
+        if route and route not in base:
+            base += f" · Strecke {route}"
     else:
-        base = node_name or station or route or "Hauptbaustelle"
+        # The short/display name never hides an independently stored station
+        # and track/switch identity. Do not infer one from free text or GPS.
+        parts = []
+        if node_name:
+            parts.append(node_name)
+        station_label = station
+        if abbreviation and abbreviation.casefold() not in station_label.casefold():
+            station_label = (station_label + f" ({abbreviation})").strip()
+        if station_label and station_label.casefold() not in node_name.casefold():
+            parts.append(f"Bahnhof {station_label}")
+        if track and track.casefold() not in node_name.casefold():
+            parts.append(track)
+        base = " · ".join(parts) or ("Bahnhof" if kind in {"BAHNHOF", "STATION"} else "Allgemein / Objekt")
     return f"{base} ({km})" if km and "(KM " not in base else base
 
 
