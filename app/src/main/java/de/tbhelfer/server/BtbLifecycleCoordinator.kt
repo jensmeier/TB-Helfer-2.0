@@ -83,7 +83,7 @@ class BtbLifecycleCoordinator(context: Context) {
                 return PrepareResult.Conflict("Versionskonflikt prüfen; Abschluss bleibt vorgemerkt.")
             val rootId = bound.localWorksite?.id
             if (rootId != null && rootId in StructureSyncStore.roots(appContext)) {
-                when (val structure = ServiceLocator.worksiteStructureSync.synchronizeChanged(token, setOf(context.worksiteServerId))) {
+                when (ServiceLocator.worksiteStructureSync.synchronizeChanged(token, setOf(context.worksiteServerId))) {
                     is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Success -> Unit
                     else -> return PrepareResult.Error("Strukturabgleich ausstehend; Abschluss bleibt vorgemerkt.")
                 }
@@ -340,6 +340,17 @@ class BtbLifecycleCoordinator(context: Context) {
         applyLocal: Boolean
     ) {
         if (worksiteServerId.isBlank()) return
+        val key = access.snapshot.clientEntityKey
+        val dirty = SelectiveSyncStore.btbScopes(appContext).any { it.clientBtbId == key }
+        val pending = ServiceLocator.syncDao.collabPendingAnyForClientKey(
+            worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB, key)
+        if (dirty || pending != null) {
+            // Reading roles must never silently rebase a still-local mutation onto a newer
+            // server snapshot. Keep the original entity/base JSON until its upload succeeds.
+            BtbServerStateStore.rememberSnapshot(appContext, worksiteServerId, access.snapshot.serverId,
+                access.snapshot.teamId, key, access.snapshot.payloadJson)
+            return
+        }
         collab.upsertServer1BtbSnapshot(worksiteServerId, access.snapshot)
         if (applyLocal) {
             bridge.applyServerStateToLocal(

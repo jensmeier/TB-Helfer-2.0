@@ -38,7 +38,7 @@ object BtbUiSaveBridge {
         return AktiverBtb(canonical.baustelleId, canonical.baustelleName, canonical.btbId, canonical.entry)
     }
 
-    suspend fun speichernUndNeuLaden(fragment: Fragment, root: View, timeoutMs: Long = 4_500L): AktiverBtb? {
+    suspend fun speichernUndNeuLaden(fragment: Fragment, root: View, timeoutMs: Long = 4_500L, requireConfirmedSave: Boolean = false): AktiverBtb? {
         val before = aktuell(fragment) ?: return null
         val beforeChanged = before.entry.geaendertAmEpochMs
         val focused = fragment.requireActivity().currentFocus
@@ -55,13 +55,14 @@ object BtbUiSaveBridge {
         var latest: AktiverBtb = before
         while (System.currentTimeMillis() - started < timeoutMs) {
             delay(120L)
-            if (!fragment.isAdded || fragment.view == null) return latest
+            if (!fragment.isAdded || fragment.view == null) return if (requireConfirmedSave) null else latest
             val now = aktuell(fragment) ?: continue
-            if (now.btbId != before.btbId) return now
+            if (now.btbId != before.btbId) return if (requireConfirmedSave) null else now
             latest = now
             if (now.entry.geaendertAmEpochMs > beforeChanged) return now
         }
 
-        return latest
+        return if (requireConfirmedSave) null else latest
     }
 }
+

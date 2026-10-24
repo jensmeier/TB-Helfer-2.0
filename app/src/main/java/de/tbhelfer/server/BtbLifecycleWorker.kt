@@ -120,7 +120,7 @@ class BtbLifecycleWorker(context: Context, params: WorkerParameters) : Coroutine
     }
 
     companion object {
-        fun enqueue(context: Context) {
+        fun enqueue(context: Context, replaceWaiting: Boolean = false) {
             val ctx = RecoveryWorkspace.wrap(context.applicationContext)
             if (BtbLifecycleOutbox.all(ctx).isEmpty() || RecoveryWorkspace.blocked()) return
             val network = de.tbhelfer.einstellungen.SyncEinstellungenSpeicher.laden(ctx).netz
@@ -130,7 +130,7 @@ class BtbLifecycleWorker(context: Context, params: WorkerParameters) : Coroutine
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(required).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()
             WorkManager.getInstance(ctx).enqueueUniqueWork("tbhelfer-btb-lifecycle",
-                ExistingWorkPolicy.APPEND_OR_REPLACE, request)
+                if (replaceWaiting) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.APPEND_OR_REPLACE, request)
         }
     }
 }

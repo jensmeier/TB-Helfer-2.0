@@ -324,7 +324,7 @@ object BtbModernLifecycleInstaller {
         anchor.isEnabled = false
         fragment.viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val saved = BtbUiSaveBridge.speichernUndNeuLaden(fragment, root)
+                val saved = BtbUiSaveBridge.speichernUndNeuLaden(fragment, root, requireConfirmedSave = true)
                 if (saved == null) {
                     Snackbar.make(anchor, "BTB konnte nicht vollständig gespeichert werden. Bitte Eingaben prüfen.", Snackbar.LENGTH_LONG).show()
                     return@launch
@@ -335,19 +335,19 @@ object BtbModernLifecycleInstaller {
                     MaterialAlertDialogBuilder(fragment.requireContext())
                         .setTitle("Teilnehmer noch nicht fertig")
                         .setMessage(pending.problem + "\n\nDer Abschluss bleibt vorgemerkt. Trotzdem nur nach bewusster Prüfung abschließen.")
-                        .setNegativeButton("Weiter warten") { _, _ -> de.tbhelfer.server.BtbLifecycleWorker.enqueue(context) }
+                        .setNegativeButton("Weiter warten") { _, _ -> de.tbhelfer.server.BtbLifecycleWorker.enqueue(context, replaceWaiting = true) }
                         .setPositiveButton("Trotzdem abschließen") { _, _ ->
                             try {
                                 de.tbhelfer.server.BtbLifecycleOutbox.put(context, saved.baustelleId, saved.btbId,
                                     de.tbhelfer.server.BtbLifecyclePolicy.Target.FINALIZE, force = true)
-                                de.tbhelfer.server.BtbLifecycleWorker.enqueue(context)
+                                de.tbhelfer.server.BtbLifecycleWorker.enqueue(context, replaceWaiting = true)
                             } catch (error: Exception) {
                                 Snackbar.make(anchor, error.message ?: "Auftrag konnte nicht gespeichert werden.", Snackbar.LENGTH_LONG).show()
                             }
                         }.show()
                 } else {
                     de.tbhelfer.server.BtbLifecycleOutbox.put(context, saved.baustelleId, saved.btbId, target)
-                    de.tbhelfer.server.BtbLifecycleWorker.enqueue(context)
+                    de.tbhelfer.server.BtbLifecycleWorker.enqueue(context, replaceWaiting = true)
                     Snackbar.make(anchor, "Auf dem Handy vorgemerkt. Serverabgleich und Bestätigung folgen.", Snackbar.LENGTH_LONG).show()
                 }
             } catch (cancelled: kotlinx.coroutines.CancellationException) {

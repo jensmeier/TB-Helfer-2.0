@@ -17,7 +17,7 @@ object BtbLifecycleOutbox {
     )
     private const val PREFS = "tbhelfer_btb_lifecycle_outbox_v1"
     private val lock = Any()
-    val running = ConcurrentHashMap.newKeySet<String>()
+    val running = java.util.Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     val processMutex = Mutex()
     private fun prefs(context: Context) = RecoveryWorkspace.wrap(context.applicationContext)
         .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
