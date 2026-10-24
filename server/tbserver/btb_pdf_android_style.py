@@ -1075,6 +1075,10 @@ def _section_render_rows(
             order.append(key)
         grouped[key].append(line)
 
+    # Keep each firm's locations together, even when the source interleaves
+    # entries from different companies. Preserve original group order per firm.
+    firm_order = list(dict.fromkeys(company for company, _ in order))
+    order = [(firm, node) for firm in firm_order for company, node in order if company == firm]
     last_company: str | None = object()  # type: ignore[assignment]
     for company, node_key in order:
         items = grouped[(company, node_key)]
