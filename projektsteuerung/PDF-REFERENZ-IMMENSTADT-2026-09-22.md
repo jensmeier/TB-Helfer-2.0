@@ -48,3 +48,8 @@ Status: **QUELLSTAND FERTIG (TEILBLOCK) / SOURCE-TEST OFFEN / RENDER-E2E OFFEN**
 - Separates lokales `PDF_Vergleich_Originale_Immenstadt_Berchtesgaden.pdf` mit nebeneinander gestellten **Originalseiten** erzeugt. Es ist **kein** neues Produktionsrenderer-PDF und kein Nachweis für den korrigierten Renderer.
 - **Noch offen:** identischen Server-Snapshot im aktuellen Renderer rendern, PDF-Linkannotationen und Zeilenumbrüche automatisiert prüfen, visuell gegen Referenz vergleichen; Firmen-/Unterbaustellen-Sammelregel Portal und PDF nach stabiler ID, Name+Bahnhof+Gleis ohne Verlust implementieren; genaue Feldschlüssel der GVP-Daten prüfen. Keine CI-, NAS- oder End-to-End-Erfolgsaussage.
 - Keine Original-PDFs ersetzt, keine Synology- oder Android-Änderung, kein Deployment. Bis zum Vergleich keine NAS-Freigabe für den Quellstand.
+
+## Nachtrag 24.10.2026 – PDF-Ortslabels und Vorschauprüfung
+- Commit `938cfb49a5c0651aaa1d81bfd03486f0edd97338`: PDF-Knotenlabel zeigt zusätzlich vorhandene Bahnhof- und Gleisangaben, statt sie bei Kurzname zu unterdrücken. Bestehende IDs und Zuordnungen bleiben unverändert. Source-Test und produktiver Renderer-E2E stehen aus.
+- ZIP-basierte separate Berchtesgaden-Fotovorschau lokal mit PyMuPDF überprüft: 3 Seiten; 20 echte externe PDF-URI-Links (9/9/2 je Seite). Die Vorschau beweist nicht den Produktionsrenderer und ersetzt kein abgeschlossenes PDF.
+- Firmen-/Unterbaustellengruppierung im Portal sowie Produktionsrender mit demselben Server-Snapshot weiterhin offen. Keine NAS-Freigabe, kein Deployment.
