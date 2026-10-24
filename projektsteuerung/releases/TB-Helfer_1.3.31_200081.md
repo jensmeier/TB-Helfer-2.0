@@ -23,7 +23,9 @@ SERVERVERTRAG:
 - Offlinegeräte übernehmen den Serverstand erst beim nächsten erfolgreichen Abruf. 16-Stunden-Autoabschluss ist ein separater offener Auftrag.
 
 TESTSTATUS:
-- Kotlin-/Unit-/Lint-Prüfung noch ausstehend. Keine APK erzeugt oder veröffentlicht; Installation und Pixel/Poco/Portal-E2E offen.
+- Finaler Runtimecode2570b4c222fa5fb9338e4471a22421425a99e8c1: CI40108708246, Androidjob120915704503 SUCCESS. Kotlin-Kompilierung und108 JVM-Tests bestanden (0 Fehler/Fehlschläge/übersprungen;10 neue Lifecycle-Tests). Lint0 Fehler/0 Fatal/391 Warnungen; XML geprüft.
+-18 gezielte Sourcechecks bestanden. Gesamt-CI weiterhin rot durch fünf bekannte historische Quellvertragsprüfungen13/19/83/85/86; keine Tests abgeschwächt.
+- Keine APK erzeugt oder veröffentlicht; Installation und Pixel/Poco/Portal-E2E offen. Offline-/Neustart-/HTTP-Abbruch auf echten Geräten nicht durch Policy-Unit-Tests bewiesen. Übergabe: projektsteuerung/uebergaben/ANDROID_BTBSCHICHT_ABSCHLUSS_200081.md.
 
 NÄCHSTER TEST:
 - Helfer offline Schicht Ende, Neustart, Verbindung wiederherstellen; TB sieht beendet, schließt ab; beide Handys und Portal gleichen Zustand prüfen.
