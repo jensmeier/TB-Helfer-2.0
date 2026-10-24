@@ -94,3 +94,8 @@ Status: **QUELLSTAND FERTIG (TEILBLOCK) / SOURCE-TEST OFFEN / RENDER-E2E OFFEN**
 - Source-Commit `2c68e9053863114c0b47b13c774dafad0adfda49`: Hilfsfunktion `_number` lehnt nun `None`, `True`, `False`, leere/Whitespace-Zeichenketten und Overflow ab; echte Null bleibt als 0 erhalten. Verhindert fingierte KM 1/0 oder GPS-Zahlen aus booleschen Feldern.
 - Lesende Source-Assertions für diese Guard-Logik, dynamische Kartenberechnung, Kartenhöhen-Grenzfehler, PDF-URI-Link, drei Spalten und Android-Fotolimit: 7/7 Bedingungen im GitHub-Quelltext vorhanden. Das ist **kein ausgeführter Python-/PDF- oder NAS-Test**.
 - Überlange Foto-Kartenfortsetzung und Render-Vergleich zum Original noch offen; keine NAS-Freigabe.
+
+## 24.10.2026 – Produktionsrenderer-Regressionsprüfung angelegt
+- Neues isoliertes Offline-Pytest-Skript `server/tests/test_btb_pdf_reference.py` (Commit `c72636cdc7cc53a2048678fb6df2d038ebf8c1d4`) ruft **den tatsächlichen Produktionsrenderer** `render_android_style_btb_pdf` auf und prüft: Foto-Limit 3 von 4, PDF-Bildnummern, echter Null-KM, gültige GPS-Linkannotationen anhand PyMuPDF, Google-Maps-URI und GPS-Wert.
+- **Testdatei committed, Python-Ausführung noch nicht erfolgt.** Kein TEST-BESTANDEN, CI nicht gestartet, keine Synology-Mutation. Der Test nutzt synthetische Daten; echten Berchtesgaden-Snapshot und visuelle Originalreferenz braucht es weiterhin.
+- Überlange Fotokarte erzeugt aktuell noch ausdrücklich einen Fehler; Fortsetzung über mehrere Seiten ist offen. Keine NAS-Freigabe.
