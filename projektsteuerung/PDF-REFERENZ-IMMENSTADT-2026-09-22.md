@@ -89,3 +89,8 @@ Status: **QUELLSTAND FERTIG (TEILBLOCK) / SOURCE-TEST OFFEN / RENDER-E2E OFFEN**
 - Commit `8349f03eec04951a21ad66838a2602d4ae239241` ersetzt die feste Höhe 300 pt durch eine Vorabberechnung der Zeilenhöhen je Dreierreihe. Der größte Inhalt bestimmt die gemeinsame Kartenhöhe. Die GPS-Zeile wird mitgerechnet.
 - **Grenzfall noch offen:** Eine einzelne Karte mit mehr Metadaten als auf eine A4-Seite passen löst bewusst einen Fehler statt stiller Abschneidung aus. Für solche außergewöhnlich langen Inhalte ist eine mehrseitige Fortsetzung noch zu implementieren. Deshalb kein produktives Deployment freigegeben.
 - Bislang ausschließlich Quelländerung; noch kein echter Python-Rendererlauf, kein PDF-Seitentest, keine vollständige NAS-/Browser-/Android-E2E-Abnahme. Als Nächstes langen Text und GPS-Link über Seitengrenzen testen, danach Referenzvergleich mit echtem Server-Snapshot.
+
+## 24.10.2026 – KM/GPS Null- und Boolean-Schutz
+- Source-Commit `2c68e9053863114c0b47b13c774dafad0adfda49`: Hilfsfunktion `_number` lehnt nun `None`, `True`, `False`, leere/Whitespace-Zeichenketten und Overflow ab; echte Null bleibt als 0 erhalten. Verhindert fingierte KM 1/0 oder GPS-Zahlen aus booleschen Feldern.
+- Lesende Source-Assertions für diese Guard-Logik, dynamische Kartenberechnung, Kartenhöhen-Grenzfehler, PDF-URI-Link, drei Spalten und Android-Fotolimit: 7/7 Bedingungen im GitHub-Quelltext vorhanden. Das ist **kein ausgeführter Python-/PDF- oder NAS-Test**.
+- Überlange Foto-Kartenfortsetzung und Render-Vergleich zum Original noch offen; keine NAS-Freigabe.
