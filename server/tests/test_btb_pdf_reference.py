@@ -52,6 +52,19 @@ def test_reference_photo_cards_and_gps(tmp_path: Path):
     assert "Bild 1" in text and "Bild 2" in text and "Bild 3" in text
     assert "Bild 4" not in text
     assert "KM: 0,000" in text
+    # All three selected photo cards must occupy one physical row.
+    page_rectangles = []
+    for page in doc:
+        headings = []
+        for number in (1, 2, 3):
+            headings.extend(page.search_for(f"Bild {number}"))
+        if len(headings) == 3:
+            page_rectangles = sorted(headings, key=lambda rect: rect.x0)
+            break
+    assert len(page_rectangles) == 3, "Three selected photos must share a row"
+    assert page_rectangles[0].x0 < page_rectangles[1].x0 < page_rectangles[2].x0
+    assert max(rect.y0 for rect in page_rectangles) - min(rect.y0 for rect in page_rectangles) < 3
+    assert text.count("GPS: 47.613375") == 3
     assert len(links) == 3
     assert all("google.com/maps/search" in link["uri"] for link in links)
     assert all("47.613375" in link["uri"] for link in links)
