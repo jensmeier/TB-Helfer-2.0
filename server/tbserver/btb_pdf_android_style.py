@@ -76,9 +76,15 @@ def _bool(value: Any, default: bool = True) -> bool:
 
 
 def _number(value: Any) -> float | None:
+    # Python treats booleans as numbers; no PDF coordinate or KM may be
+    # manufactured from True/False or an empty string.
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
     try:
         n = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     return n if math.isfinite(n) else None
 
