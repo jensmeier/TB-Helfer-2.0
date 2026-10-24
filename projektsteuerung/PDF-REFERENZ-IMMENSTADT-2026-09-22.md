@@ -36,3 +36,15 @@ Benutzeranforderung: Die GPS-Koordinaten jeder Fotokarte sollen **auch im fertig
 Umsetzungsvorgaben: sichtbare, eindeutig beschriftete GPS-Zeile in jeder Karte; Link nur, wenn sowohl Breiten- als auch Längengrad gültig und im zulässigen Wertebereich sind. Fehlende/ungültige Koordinaten weder erfinden noch durch andere Bilder, Anlagen- oder Standortkoordinaten ersetzen. Gespeicherte Foto-ID, Nummerierung, Metadaten und bestehende Overrides unverändert erhalten. PDF-Ausgabe lokal mit PyMuPDF/PDF-Linkannotationen auf tatsächliche URI prüfen, zusätzlich im Reader auf Anklickbarkeit testen. Keine externen Kartenabfragen beim PDF-Erzeugen, kein automatisches Öffnen. Bereits abgeschlossene PDFs nicht überschreiben.
 
 Quellbefund: server/tbserver/btb_pdf_android_style.py stellt bisher `GPS: <lat>, <lon>` als gewöhnlichen Text dar, aber legt an dieser Stelle keine PDF-Linkannotation an. Ergänzung zusammen mit dem bestätigten Referenzlayout und der Firmen-/Unterbaustellen-Gruppierung prüfen. Status: **ANFORDERUNG DOKUMENTIERT / IMPLEMENTIERUNG + TEST OFFEN**.
+
+## Teilblock 24.10.2026 – erste Renderer-Korrektur
+
+Status: **QUELLSTAND FERTIG (TEILBLOCK) / SOURCE-TEST OFFEN / RENDER-E2E OFFEN**.
+
+- GitHub-Commit `586af17ee7e387f223144ed3e2a08318442c5415` ändert ausschließlich `server/tbserver/btb_pdf_android_style.py`.
+- Fotoanhang vorläufig auf drei Spalten umgestellt; Kartenhöhe angepasst. Ortszeile verwendet bei vorhandener `worksiteNodeKey` den vorhandenen Knoten, sonst nur ausdrücklich gespeicherte Ortsfelder. GVP/Mast nur anzeigen, wenn entsprechendes Feld vorhanden ist. Metadaten werden nicht mehr pauschal auf fünf Einträge gekürzt.
+- Bei gültigem Latitude/Longitude-Paar wird echte Google-Maps-`linkURL`-Annotation im PDF erzeugt; keine Ersatzkoordinaten und keine Kartenabfrage während des Renderns.
+- ZIPs Immenstadt 22.09. und Berchtesgaden 23.10. liegen jetzt vor. Original-Abschluss-PDFs aus ZIP textuell untersucht: Immenstadt 5 Seiten, Berchtesgaden 6 Seiten, die jeweiligen vorhandenen PDFs enthalten 0 URI-Linkannotationen. Berchtesgaden-PDF zeigt zwei statt drei Bildspalten und fehlende Orts-/GVP-Angaben in Fotokarten.
+- Separates lokales `PDF_Vergleich_Originale_Immenstadt_Berchtesgaden.pdf` mit nebeneinander gestellten **Originalseiten** erzeugt. Es ist **kein** neues Produktionsrenderer-PDF und kein Nachweis für den korrigierten Renderer.
+- **Noch offen:** identischen Server-Snapshot im aktuellen Renderer rendern, PDF-Linkannotationen und Zeilenumbrüche automatisiert prüfen, visuell gegen Referenz vergleichen; Firmen-/Unterbaustellen-Sammelregel Portal und PDF nach stabiler ID, Name+Bahnhof+Gleis ohne Verlust implementieren; genaue Feldschlüssel der GVP-Daten prüfen. Keine CI-, NAS- oder End-to-End-Erfolgsaussage.
+- Keine Original-PDFs ersetzt, keine Synology- oder Android-Änderung, kein Deployment. Bis zum Vergleich keine NAS-Freigabe für den Quellstand.
