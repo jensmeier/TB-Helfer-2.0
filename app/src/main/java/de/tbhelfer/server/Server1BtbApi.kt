@@ -208,7 +208,8 @@ class Server1BtbApi(
         token: String,
         worksiteId: String,
         teamId: String,
-        serverBtbId: String
+        serverBtbId: String,
+        clientChangeId: String? = null
     ): LifecycleResult = lifecycleMutation(
         token = token,
         worksiteId = worksiteId,
@@ -216,6 +217,7 @@ class Server1BtbApi(
         serverBtbId = serverBtbId,
         suffix = "shift-finish",
         path = "/api/v1/btbs/${encode(serverBtbId)}/shift-finish",
+        clientChangeId = clientChangeId,
         body = JSONObject()
     )
 
@@ -223,7 +225,8 @@ class Server1BtbApi(
         token: String,
         worksiteId: String,
         teamId: String,
-        serverBtbId: String
+        serverBtbId: String,
+        clientChangeId: String? = null
     ): LifecycleResult = lifecycleMutation(
         token = token,
         worksiteId = worksiteId,
@@ -231,6 +234,7 @@ class Server1BtbApi(
         serverBtbId = serverBtbId,
         suffix = "shift-resume",
         path = "/api/v1/btbs/${encode(serverBtbId)}/shift-resume",
+        clientChangeId = clientChangeId,
         body = JSONObject()
     )
 
@@ -239,7 +243,8 @@ class Server1BtbApi(
         worksiteId: String,
         teamId: String,
         serverBtbId: String,
-        allowUnfinished: Boolean
+        allowUnfinished: Boolean,
+        clientChangeId: String? = null
     ): LifecycleResult = lifecycleMutation(
         token = token,
         worksiteId = worksiteId,
@@ -247,6 +252,7 @@ class Server1BtbApi(
         serverBtbId = serverBtbId,
         suffix = if (allowUnfinished) "finalize-override" else "finalize",
         path = "/api/v1/btbs/${encode(serverBtbId)}/finalize",
+        clientChangeId = clientChangeId,
         body = JSONObject().put("allow_unfinished", allowUnfinished)
     )
 
@@ -1455,6 +1461,7 @@ class Server1BtbApi(
         teamId: String,
         serverBtbId: String,
         suffix: String,
+        clientChangeId: String? = null,
         path: String,
         body: JSONObject
     ): LifecycleResult {
@@ -1463,7 +1470,7 @@ class Server1BtbApi(
             authorize(connection, token)
             connection.setRequestProperty(
                 "X-Client-Change-Id",
-                "android-lifecycle-${UUID.randomUUID()}-$suffix".take(200)
+                (clientChangeId ?: "android-lifecycle-${UUID.randomUUID()}-$suffix").take(200)
             )
             OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { it.write(body.toString()) }
             val code = connection.responseCode
@@ -1476,7 +1483,7 @@ class Server1BtbApi(
                         is AccessResult.Success -> LifecycleResult.Success(fresh.access)
                         AccessResult.Unsupported -> LifecycleResult.Unsupported
                         AccessResult.SessionInvalid -> LifecycleResult.SessionInvalid
-                        is AccessResult.Error -> LifecycleResult.Error(fresh.message)
+                        is AccessResult.Error -> LifecycleResult.Error("Server hat den Auftrag angenommen; Statusbestätigung ausstehend: ${fresh.message}")
                     }
                 }
                 HttpURLConnection.HTTP_CONFLICT -> {
@@ -1709,5 +1716,6 @@ class Server1BtbApi(
         )
     }
 }
+
 
 

@@ -55,6 +55,8 @@ class HauptActivity : AppCompatActivity() {
             return
         }
 
+        de.tbhelfer.server.BtbLifecycleWorker.enqueue(this)
+
         SafeAreaInsets.install(this)
         setContentView(R.layout.activity_haupt)
         UiStyleApplier.install(this)
@@ -233,4 +235,5 @@ class HauptActivity : AppCompatActivity() {
         return navController.navigateUp() || super.onSupportNavigateUp()
     }
 }
+
 

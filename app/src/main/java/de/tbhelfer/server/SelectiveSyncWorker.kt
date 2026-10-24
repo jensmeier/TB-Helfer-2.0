@@ -17,6 +17,7 @@ import de.tbhelfer.datenbank.CollabLocalBridge
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.einstellungen.SyncEinstellungenSpeicher
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Persistenter selektiver Delta-Worker.
@@ -29,7 +30,9 @@ class SelectiveSyncWorker(
     params: WorkerParameters
 ) : CoroutineWorker(appContext, params) {
 
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = BtbLifecycleOutbox.processMutex.withLock { doWorkLocked() }
+
+    private suspend fun doWorkLocked(): Result {
         if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) return Result.failure()
 
         ServiceLocator.initialisieren(applicationContext)
@@ -118,6 +121,12 @@ class SelectiveSyncWorker(
                 boundItem.context.worksiteServerId, de.tbhelfer.datenbank.SyncCollabPendingChangeEntity.TYPE_BTB, scope.clientBtbId)
             if (pendingBtb?.state == de.tbhelfer.datenbank.SyncCollabPendingChangeEntity.STATE_CONFLICT) {
                 SelectiveSyncStore.problem(applicationContext, scope, "Versionskonflikt prüfen")
+                continue
+            }
+            if (BtbLifecycleOutbox.get(applicationContext, scope.clientBtbId) != null &&
+                BtbServerStateStore.state(applicationContext, scope.clientBtbId)?.readOnly == true) {
+                // Never erase a late local save while a lifecycle confirmation is unresolved.
+                SelectiveSyncStore.problem(applicationContext, scope, "Abschlussstatus und lokale Änderungen prüfen")
                 continue
             }
             // BTB-SYNC-002: Bei einem Dirty-BTB darf niemals zuerst ein Server-Snapshot
@@ -330,5 +339,6 @@ class SelectiveSyncWorker(
         }
     }
 }
+
 
 

@@ -77,6 +77,19 @@ class BtbLifecycleCoordinator(context: Context) {
         val context = bound.context
 
         suspend fun uploadPending(): PrepareResult? {
+            val pending = ServiceLocator.syncDao.collabPendingAnyForClientKey(
+                context.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB, clientBtbId)
+            if (pending?.state == SyncCollabPendingChangeEntity.STATE_CONFLICT)
+                return PrepareResult.Conflict("Versionskonflikt prüfen; Abschluss bleibt vorgemerkt.")
+            val rootId = bound.localWorksite?.id
+            if (rootId != null && rootId in StructureSyncStore.roots(appContext)) {
+                when (val structure = ServiceLocator.worksiteStructureSync.synchronizeChanged(token, setOf(context.worksiteServerId))) {
+                    is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Success -> Unit
+                    else -> return PrepareResult.Error("Strukturabgleich ausstehend; Abschluss bleibt vorgemerkt.")
+                }
+                if (rootId in StructureSyncStore.roots(appContext))
+                    return PrepareResult.Error("Strukturänderung noch nicht bestätigt.")
+            }
             return when (
                 val exported = bridge.exportBtbChange(
                     localBaustelleId = localBaustelleId,
@@ -269,6 +282,25 @@ class BtbLifecycleCoordinator(context: Context) {
         }
     }
 
+    suspend fun sendPrepared(access: Server1BtbApi.Access, intent: BtbLifecycleOutbox.Intent): ActionResult {
+        val finalized = access.snapshot.status.equals("FERTIG", true) && !access.active
+        if (!BtbLifecyclePolicy.maySend(intent.target, access.isTeamLead, access.active, finalized))
+            return ActionResult.Error("Rolle oder BTB-Status erlaubt diesen Auftrag nicht.")
+        val worksite = BtbServerStateStore.state(appContext, intent.btbId)?.worksiteServerId.orEmpty()
+        return lifecycleAction(access) { token ->
+            when (intent.target) {
+                BtbLifecyclePolicy.Target.SHIFT_FINISH -> api.shiftFinish(token, worksite, access.snapshot.teamId, access.snapshot.serverId, intent.changeId)
+                BtbLifecyclePolicy.Target.SHIFT_RESUME -> api.shiftResume(token, worksite, access.snapshot.teamId, access.snapshot.serverId, intent.changeId)
+                BtbLifecyclePolicy.Target.FINALIZE -> api.finalizeBtb(token, worksite, access.snapshot.teamId, access.snapshot.serverId, intent.allowUnfinished, intent.changeId)
+            }
+        }
+    }
+
+    suspend fun applyConfirmed(access: Server1BtbApi.Access) {
+        val worksite = BtbServerStateStore.state(appContext, access.snapshot.clientEntityKey)?.worksiteServerId.orEmpty()
+        remember(worksite, access, applyLocal = true)
+    }
+
     private suspend fun lifecycleAction(
         before: Server1BtbApi.Access,
         call: (String) -> Server1BtbApi.LifecycleResult
@@ -322,3 +354,4 @@ class BtbLifecycleCoordinator(context: Context) {
         }
     }
 }
+
