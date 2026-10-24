@@ -28,3 +28,11 @@ Keine Android-Dateien verändern, keine produktive NAS-, DB- oder Backup-Mutatio
 
 ## Aktuelle Blockade
 Die im früheren Chat genannten ZIP-Exporte liegen im aktuellen Lauf nicht als programmatisch verfügbare Dateien vor. Ein echter Render-/Bildvergleich mit dem Originalbestand und ein seriöses Vergleichs-PDF sind daher noch nicht durchgeführt. Keine Freigabe oder Test-PASS behaupten.
+
+## Ergänzung 24.10.2026 – Anklickbare GPS-Koordinaten im erzeugten PDF
+
+Benutzeranforderung: Die GPS-Koordinaten jeder Fotokarte sollen **auch im fertig erzeugten und heruntergeladenen PDF anklickbar** sein. Anklicken öffnet eine Kartenansicht (Google Maps) der **gespeicherten effektiven** Foto-Koordinaten. Der PDF-Hyperlink ist eine echte PDF-Linkannotation (nicht nur blau formatierter Text), damit er in üblichen PDF-Readern erhalten bleibt.
+
+Umsetzungsvorgaben: sichtbare, eindeutig beschriftete GPS-Zeile in jeder Karte; Link nur, wenn sowohl Breiten- als auch Längengrad gültig und im zulässigen Wertebereich sind. Fehlende/ungültige Koordinaten weder erfinden noch durch andere Bilder, Anlagen- oder Standortkoordinaten ersetzen. Gespeicherte Foto-ID, Nummerierung, Metadaten und bestehende Overrides unverändert erhalten. PDF-Ausgabe lokal mit PyMuPDF/PDF-Linkannotationen auf tatsächliche URI prüfen, zusätzlich im Reader auf Anklickbarkeit testen. Keine externen Kartenabfragen beim PDF-Erzeugen, kein automatisches Öffnen. Bereits abgeschlossene PDFs nicht überschreiben.
+
+Quellbefund: server/tbserver/btb_pdf_android_style.py stellt bisher `GPS: <lat>, <lon>` als gewöhnlichen Text dar, aber legt an dieser Stelle keine PDF-Linkannotation an. Ergänzung zusammen mit dem bestätigten Referenzlayout und der Firmen-/Unterbaustellen-Gruppierung prüfen. Status: **ANFORDERUNG DOKUMENTIERT / IMPLEMENTIERUNG + TEST OFFEN**.
