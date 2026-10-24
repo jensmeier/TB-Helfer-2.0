@@ -1316,10 +1316,46 @@ def _draw_photo_appendix(
             columns = 3
             gap = 7.0
             cell_width = (CONTENT_W - gap * (columns - 1)) / columns
-            cell_height = 300.0
             index = 0
 
             while index < len(group):
+                row = group[index:index + columns]
+                # Measure each complete card before placing the row. A fixed
+                # 300-point card silently hid metadata (often the GPS link).
+                # Long cards trigger an explicit failure instead of truncation.
+                node_lookup, _ = _node_maps(context)
+                row_heights = []
+                for measured_photo in row:
+                    m = measured_photo.get("photo_metadata")
+                    m = m if isinstance(m, dict) else {}
+                    key = _text(m.get("worksiteNodeKey"))
+                    node = node_lookup.get(key) if key else None
+                    place = _node_label(node) if node else (_text(m.get("ort")) or _text(m.get("objektbereich")))
+                    values = []
+                    if place:
+                        values.append("Ort: " + place)
+                    desc = _text(m.get("notiz")) or _text(m.get("kurztext")) or _text(measured_photo.get("original_name"))
+                    if desc:
+                        values.append(desc)
+                    if _text(m.get("firma")):
+                        values.append("Firma: " + _text(m.get("firma")))
+                    if _km_value(m.get("km")) is not None:
+                        values.append("KM: " + _km_value(m.get("km")))
+                    stamp = _time_hm(measured_photo.get("captured_at"))
+                    if stamp != "-":
+                        values.append("Zeit: " + stamp)
+                    mast = _text(m.get("gvpMast")) or _text(m.get("gvp_mast"))
+                    if mast:
+                        values.append("GVP/Mast: " + mast)
+                    lat = _number(measured_photo.get("gps_lat") if measured_photo.get("gps_lat") is not None else m.get("lat"))
+                    lon = _number(measured_photo.get("gps_lon") if measured_photo.get("gps_lon") is not None else m.get("lon"))
+                    if lat is not None and lon is not None and -90 <= lat <= 90 and -180 <= lon <= 180:
+                        values.append(f"GPS: {lat:.6f}, {lon:.6f}")
+                    wrapped_count = sum(len(_wrap_text(v, "Helvetica", 7.4, cell_width - 14.0)) for v in values)
+                    row_heights.append(24.0 + 106.0 + 6.0 + wrapped_count * 8.7 + 12.0)
+                cell_height = max(220.0, *row_heights)
+                if cell_height > PAGE_H - MARGIN_TOP - MARGIN_BOTTOM - 26.0:
+                    raise ValueError("PDF photo card metadata exceeds one A4 page; split-page rendering required")
                 if writer.y + cell_height > PAGE_H - MARGIN_BOTTOM:
                     writer.new_page()
                     writer.draw_text(
@@ -1330,7 +1366,6 @@ def _draw_photo_appendix(
                     )
                     writer.y += 3.0
 
-                row = group[index:index + columns]
                 top = writer.y
                 for column_index, photo in enumerate(row):
                     x = MARGIN_L + column_index * (cell_width + gap)
