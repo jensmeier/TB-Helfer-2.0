@@ -817,15 +817,35 @@ function photoAlreadyRepresented(meta,list,legacyLines){
   });
 }
 function renderPhotoEvents(section,list,legacyLines){
-  const out=[];
+  const groups=new Map(),firms=firmDirectory();
   uniquePhotos().forEach(function(p,index){
     const m=photoMeta(p);
     if(photoSection(m)!==section)return;
     if(m.btbEntryId&&entries.some(e=>String(e.id)===String(m.btbEntryId)))return;
     if(photoAlreadyRepresented(m,list,legacyLines))return;
-    out.push('<div class="btb-photo-event"><div>'+esc(photoEventText(p,index))+'</div><span class="btb-photo-badge">Foto</span></div>');
+    // Use stable IDs only. An unassigned photo must never inherit a location
+    // from another photo with similar text, time, or GPS coordinates.
+    const firmId=String(m.firmaId||'').trim();
+    const nodeKey=String(m.worksiteNodeKey||'').trim();
+    const key=JSON.stringify([firmId,nodeKey]);
+    if(!groups.has(key))groups.set(key,{firmId,nodeKey,photos:[]});
+    groups.get(key).photos.push({p,index});
   });
-  return out.join('');
+  return Array.from(groups.values()).sort(function(a,b){
+    const an=String(firms[a.firmId]?.name||a.firmId||'Allgemein');
+    const bn=String(firms[b.firmId]?.name||b.firmId||'Allgemein');
+    return an.localeCompare(bn,'de')||
+      (a.nodeKey||'').localeCompare(b.nodeKey||'','de');
+  }).map(function(group){
+    const firm=group.firmId?firms[group.firmId]:null;
+    const company=firm?firm.name:(group.firmId?'Firma nicht zugeordnet':'Allgemein');
+    const node=group.nodeKey?worksiteNodeLabel(group.nodeKey):'Ort nicht zugeordnet';
+    return '<div class="btb-firm"><div class="btb-firm-head"><span class="btb-firm-name">'+esc(company)+'</span></div>'+
+      '<div class="btb-node-group"><div class="btb-node-title">'+esc(node)+'</div>'+
+      group.photos.map(function(item){
+        return '<div class="btb-photo-event"><div>'+esc(photoEventText(item.p,item.index))+'</div><span class="btb-photo-badge">Foto</span></div>';
+      }).join('')+'</div></div>';
+  }).join('');
 }
 function renderContentNodeGroups(rows){
   const byNode={};
