@@ -21,7 +21,7 @@ Stand: 24.10.2026. Auftrag: gezeigte Portalaktionen gegen Android prüfen, einsc
 | Ganzen BTB löschen | Vorhanden: BTB-Verlauf mit Bestätigung und persistentem Löschintent | OP_DELETE/kanonischer Server-BTB-Löschpfad vorhanden; keine pauschale App-Datenlöschung |
 | Kamera-/Galeriefoto zu einem Eintrag hinzufügen | Vorhanden: Bild hinzufügen, Kamera / Galerie & Dateien | Import mit stabiler btbId/clientEntryKey; Serverbestätigte Entry-ID für btbEntryId beim Upload; bestehender Medienpfad |
 | Bereits heruntergeladenes WhatsApp-Bild auswählen | Über Galerie & Dateien möglich, wenn der Android-Dateianbieter das Bild bereitstellt | Regulärer Bildimport, keine WhatsApp-Sonder-API erforderlich |
-| WhatsApp → Teilen → TB-Helfer | FEHLT: Manifest besitzt keine SEND/SEND_MULTIPLE-Registrierung, HauptActivity keinen passenden Empfangspfad | Android-Lücke, kein Serverumbau nötig |
+| WhatsApp → Teilen → TB-Helfer | Nicht implementiert und laut Nutzerentscheidung24.10.2026 NICHT benötigt | Kein offener Punkt; Galerie & Dateien reicht |
 | Foto aus aktuellem BTB/PDF ausblenden | Lokal vorhanden, Auswahl-/Excluded-Speicher | Nicht mit serverseitigem Entfernen einer Fotoverknüpfung gleichsetzen |
 | Foto vollständig löschen | Lokale UI und App-Datei-/Room-Löschung vorhanden, Originalschutz im Auswahl-Dialog | LÜCKE: im geprüften modernen Android-Medienpfad kein DELETE auf /btbs/{id}/photos/{fileId} und kein dauerhafter entsprechender Unlink-Intent |
 | Foto ausschließlich vom einzelnen Eintrag lösen | Portal hat ausdrückliche Aktion; Android zeigt Eintragsfotos und kennt Metadaten-Bindung | Kein gleichwertiger ausdrücklicher Entfernen-Button an der Eintrags-Thumbnailleiste gefunden; nicht mit BTB/PDF-Ausblenden verwechseln |
@@ -59,7 +59,7 @@ Android kann vorhandene Texte/Fachzuordnungen bereits ändern und Einträge lös
 
 Empfohlene Folgearbeit, noch NICHT umgesetzt:
 1. Dauerhaften, idempotenten Foto-Unlink in bestehende Offline-Outbox integrieren: erst Server-ID/BTB-Ziel und Rechte klären, Link entfernen, Originale/historische Referenzen schützen, bei Offline/Fehler Wiederholung erhalten. Entfernen aus Eintrag, aus BTB und lokale Datei-Löschung getrennt benennen.
-2. Optionalen externen Bildempfang per SEND/SEND_MULTIPLE ergänzen: bewusste Baustellen-/BTB-/Eintragsauswahl, sichere URI-Rechte und dauerhafte App-Kopie, kein stilles Raten des Ziels.
+2. ENTFÄLLT nach Nutzerentscheidung24.10.2026: direkter externer Bildempfang per SEND/SEND_MULTIPLE ist nicht gewünscht. Galerie & Dateien reicht.
 3. Vorhandene Aktionen im Android-Editor besser sichtbar machen, falls die aktuelle Tipp-/Langdruckbedienung zu versteckt ist.
 
 ## Prüfstatus
