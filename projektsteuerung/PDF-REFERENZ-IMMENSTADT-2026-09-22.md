@@ -99,3 +99,8 @@ Status: **QUELLSTAND FERTIG (TEILBLOCK) / SOURCE-TEST OFFEN / RENDER-E2E OFFEN**
 - Neues isoliertes Offline-Pytest-Skript `server/tests/test_btb_pdf_reference.py` (Commit `c72636cdc7cc53a2048678fb6df2d038ebf8c1d4`) ruft **den tatsächlichen Produktionsrenderer** `render_android_style_btb_pdf` auf und prüft: Foto-Limit 3 von 4, PDF-Bildnummern, echter Null-KM, gültige GPS-Linkannotationen anhand PyMuPDF, Google-Maps-URI und GPS-Wert.
 - **Testdatei committed, Python-Ausführung noch nicht erfolgt.** Kein TEST-BESTANDEN, CI nicht gestartet, keine Synology-Mutation. Der Test nutzt synthetische Daten; echten Berchtesgaden-Snapshot und visuelle Originalreferenz braucht es weiterhin.
 - Überlange Fotokarte erzeugt aktuell noch ausdrücklich einen Fehler; Fortsetzung über mehrere Seiten ist offen. Keine NAS-Freigabe.
+
+## 24.10.2026 – Tatsächliche ZIP-Vorschau geprüft und Layouttest verschärft
+- Lokaler PyMuPDF-Lauf gegen bereits vorhandenes separates Berchtesgaden-Fotokarten-PDF: drei Seiten, Link-Anzahlen je Seite 9/9/2. Beispiel-URI enthält gültige Google-Maps-Koordinaten. Original-ZIP-Dateien unangetastet.
+- Testdatei `server/tests/test_btb_pdf_reference.py` erweitert (Commit `1774ce34745cb0819515d8bb5c848753c50e34c1`): prüft zusätzlich die physische 3-Spalten-Anordnung der Bildüberschriften und alle drei GPS-Textzeilen.
+- Einschränkung: Dieser PyMuPDF-Lauf betrifft die **separate ZIP-basierte Vorschau**, nicht die vom aktuellen Produktionsrenderer erzeugte PDF-Datei. Die neue GitHub-Pytest-Datei wurde noch nicht ausgeführt. Laufzeittest und Referenzvergleich bleiben offen, ebenso überlange Kartenfortsetzung und NAS-Freigabe.
