@@ -307,13 +307,16 @@ async def wait_changes(
 @router.get("/events")
 def live_events(
     request: Request,
-    worksite_id: UUID,
+    worksite_id: UUID | None = None,
     after: int = Query(default=0, ge=0),
+    entity_types: str | None = Query(default=None, max_length=1000),
     user: dict[str, Any] = Depends(current_portal_user),
 ):
-    with transaction() as conn, conn.cursor() as cur:
-        worksite_context(cur, user, worksite_id)
+    if worksite_id is not None:
+        with transaction() as conn, conn.cursor() as cur:
+            worksite_context(cur, user, worksite_id)
 
+    types = _entity_types(entity_types)
     async def stream():
         cursor = after
         while True:
@@ -325,7 +328,7 @@ def live_events(
                     continue
                 rows = await _run_sync_query(
                     _visible_changes, fresh_user, after=cursor, through=head,
-                    limit=200, worksite_id=worksite_id,
+                    limit=200, worksite_id=worksite_id, entity_types=types,
                 )
                 await _run_sync_query(_refresh_sync_user, request, worksite_id)
             except HTTPException as exc:
@@ -351,4 +354,5 @@ def live_events(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
 

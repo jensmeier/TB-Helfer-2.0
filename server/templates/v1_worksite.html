@@ -20,6 +20,7 @@
 <div class="card">
   <h1 id="title">Baustelle wird geladen …</h1>
   <p id="meta" class="muted"></p>
+  <button id="renameWorksite" type="button" class="btn secondary" hidden>Baustelle umbenennen</button>
   {% if user.company_role == 'ADMIN' %}
   <div class="notice info"><b>Admin-Kontrollansicht:</b> Fachinhalte, Teams und Zuordnungen sind hier nur lesbar. Änderungen erfolgen durch den verantwortlichen TB bzw. die berechtigten Baustellennutzer.</div>
   {% endif %}
@@ -279,10 +280,23 @@ function nodeOptions(){
       return '<option value="'+esc(n.id)+'">'+esc(nodeTypeLabel(n.node_kind))+' · '+esc(tbNodeLabel(n))+'</option>';
     }).join('');
 }
+document.getElementById('renameWorksite').addEventListener('click',async function(){
+  const baseVersion=worksite.version;
+  const name=window.prompt('Baustellenname',worksite.name);
+  if(name===null||!name.trim()||name.trim()===worksite.name)return;
+  this.disabled=true;
+  try{
+    await tbApi('/api/v1/worksites/'+worksiteId,{method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:name.trim(),base_version:baseVersion})});
+    await loadOverview();show('ok','Baustellenname gespeichert.');
+  }catch(error){show('err',error.message||String(error));}
+  finally{this.disabled=false;}
+});
 async function loadOverview(){
   const result=await tbApi('/api/v1/worksites/'+worksiteId);
   worksite=result.data.worksite;permissions=result.data.permissions||{};
   document.getElementById('title').textContent=worksite.name;
+  document.getElementById('renameWorksite').hidden=!can('worksite.structure.edit');
   document.getElementById('meta').textContent=[
     worksite.company_name,worksite.designation,worksite.route_number?'Strecke '+worksite.route_number:null,
     worksite.station_name
@@ -991,6 +1005,7 @@ select(panels.some(p=>p[0]===location.hash.slice(1))?location.hash.slice(1):'ove
 })();
 </script>
 {% endblock %}
+
 
 
 

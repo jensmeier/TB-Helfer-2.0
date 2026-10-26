@@ -25,6 +25,7 @@ CAPABILITIES: dict[str, bool] = {
     "client_compatibility_v1": True,
     "worksite_tree_v1": True,
     "worksite_provisioning_v1": True,
+    "worksite_head_update_v1": True,
     "worksite_delete_v1": True,
     "worksite_permissions_v1": True,
     "worksite_area_scope_v1": True,
@@ -93,5 +94,6 @@ def get_capabilities() -> dict:
         "api_version": API_VERSION,
         "capabilities": CAPABILITIES,
     }
+
 
 

@@ -199,9 +199,12 @@ function refreshCompanyFilter(){
   if(companies.includes(selected))filter.value=selected;
 }
 
+let worksiteListRequest=0;
 async function loadWorksites(){
+  const generation=++worksiteListRequest;
   try{
     const result=await tbApi('/api/v1/worksites');
+    if(generation!==worksiteListRequest)return;
     worksiteData=result.data.worksites||[];
     if(userRole==='ADMIN'){
       refreshCompanyFilter();
@@ -212,6 +215,7 @@ async function loadWorksites(){
       bindDeleteButtons();
     }
   }catch(error){
+    if(generation!==worksiteListRequest)return;
     if(companyGroups)companyGroups.innerHTML='<p class="muted">Baustellen konnten nicht geladen werden.</p>';
     if(rows)rows.innerHTML='<tr><td colspan="5"></td></tr>';
     show('err',error.message||String(error));
@@ -241,8 +245,40 @@ const companyFilter=document.getElementById('companyFilter');
 const worksiteSearch=document.getElementById('worksiteSearch');
 if(companyFilter)companyFilter.addEventListener('change',renderAdminWorksites);
 if(worksiteSearch)worksiteSearch.addEventListener('input',renderAdminWorksites);
+
+// One list refresh at a time; reconnect and focus recover events missed while asleep.
+let listEvents=null,listRefreshRunning=false,listRefreshQueued=false,listRefreshTimer=null;
+async function refreshWorksiteList(){
+  if(listRefreshRunning){listRefreshQueued=true;return;}
+  listRefreshRunning=true;
+  try{do{listRefreshQueued=false;await loadWorksites();}while(listRefreshQueued);}
+  finally{listRefreshRunning=false;}
+}
+function scheduleWorksiteListRefresh(){
+  clearTimeout(listRefreshTimer);
+  listRefreshTimer=setTimeout(refreshWorksiteList,200);
+}
+function startWorksiteListEvents(){
+  if(userRole==='ADMIN'||!window.EventSource||listEvents)return;
+  listEvents=new EventSource(tbScopedUrl('/api/v1/sync/events?entity_types=WORKSITE,WORKSITE_MEMBERSHIP,WORKSITE_INVITATION'));
+  listEvents.addEventListener('change',function(event){
+    try{
+      const type=String(JSON.parse(event.data||'{}').entity_type||'').toUpperCase();
+      if(['WORKSITE','WORKSITE_MEMBERSHIP','WORKSITE_INVITATION'].includes(type))scheduleWorksiteListRefresh();
+    }catch(_){}
+  });
+  listEvents.addEventListener('open',scheduleWorksiteListRefresh);
+}
+window.addEventListener('focus',scheduleWorksiteListRefresh);
+// Revoked membership events are intentionally no longer visible to the removed user.
+const listAccessTimer=setInterval(function(){if(!document.hidden)scheduleWorksiteListRefresh();},60000);
+window.addEventListener('beforeunload',function(){
+  clearTimeout(listRefreshTimer);clearInterval(listAccessTimer);if(listEvents)listEvents.close();
+},{once:true});
+startWorksiteListEvents();
 loadResponsibleTbCandidates();loadWorksites();
 </script>
 {% endblock %}
+
 
 

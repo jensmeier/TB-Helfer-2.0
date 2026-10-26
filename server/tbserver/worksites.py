@@ -32,6 +32,11 @@ class WorksiteCreate(BaseModel):
     responsible_tb_user_id: UUID | None = None
 
 
+class WorksiteUpdate(BaseModel):
+    base_version: int = Field(ge=1)
+    name: str = Field(min_length=1, max_length=240)
+
+
 class NodeCreate(BaseModel):
     parent_id: UUID | None = None
     node_kind: str = Field(min_length=1, max_length=60)
@@ -290,6 +295,54 @@ def create_worksite(
             response_payload=worksite,
         )
     return worksite
+
+
+@router.patch("/{worksite_id}")
+def update_worksite(
+    worksite_id: UUID,
+    payload: WorksiteUpdate,
+    user: dict[str, Any] = Depends(require_csrf),
+    mutation: MutationContext = Depends(mutation_context),
+) -> dict:
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(400, "WORKSITE_NAME_REQUIRED")
+    with transaction() as conn, conn.cursor() as cur:
+        context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "worksite.structure.edit")
+        receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="WORKSITE_UPDATE")
+        if receipt:
+            if str(receipt["entity_id"]) != str(worksite_id):
+                raise HTTPException(409, "CLIENT_CHANGE_ID_REUSED")
+            return replay_payload(receipt)
+        cur.execute(
+            "SELECT id, version FROM tb.worksites WHERE id=%s AND deleted_at IS NULL FOR UPDATE",
+            (worksite_id,),
+        )
+        current = cur.fetchone()
+        if not current:
+            raise HTTPException(404, "WORKSITE_NOT_FOUND")
+        if int(current["version"]) != payload.base_version:
+            raise HTTPException(409, {"code": "VERSION_CONFLICT", "current_version": int(current["version"])})
+        cur.execute(
+            "UPDATE tb.worksites SET name=%s, version=version+1, updated_at=now() "
+            "WHERE id=%s AND version=%s AND deleted_at IS NULL "
+            "RETURNING id, name, designation, route_number, station_code, station_name, status, version, updated_at",
+            (name, worksite_id, payload.base_version),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(409, "VERSION_CONFLICT")
+        row = dict(row)
+        emit_change(cur, company_id=context["company_id"], worksite_id=worksite_id,
+                    entity_type="WORKSITE", entity_id=worksite_id, operation="UPDATE",
+                    entity_version=row["version"], actor_user_id=user["user_id"])
+        audit(cur, action="WORKSITE_UPDATE", actor_user_id=user["user_id"],
+              company_id=context["company_id"], worksite_id=worksite_id,
+              entity_type="WORKSITE", entity_id=worksite_id, details={"name": name})
+        finish_mutation(cur, user=user, context=mutation, receipt_type="WORKSITE_UPDATE",
+                        entity_id=worksite_id, result_version=row["version"], response_payload=row)
+    return row
 
 
 @router.get("/deletions")
@@ -1631,4 +1684,5 @@ def remove_helper(worksite_id: UUID, member_user_id: UUID,
         result={'removed':True}
         finish_mutation(cur,user=user,context=mutation,receipt_type='WORKSITE_HELPER_REMOVE',entity_id=member['id'],result_version=version,response_payload=result)
     return result
+
 
