@@ -30,9 +30,12 @@ class SelectiveSyncWorker(
     params: WorkerParameters
 ) : CoroutineWorker(appContext, params) {
 
-    override suspend fun doWork(): Result = BtbLifecycleOutbox.processMutex.withLock { doWorkLocked() }
+    override suspend fun doWork(): Result = BtbLifecycleOutbox.processMutex.withLock {
+        val run = SyncActivityMonitor.begin("Senden")
+        try { doWorkLocked(run) } finally { SyncActivityMonitor.finish(run) }
+    }
 
-    private suspend fun doWorkLocked(): Result {
+    private suspend fun doWorkLocked(run: Long): Result {
         if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) return Result.failure()
 
         ServiceLocator.initialisieren(applicationContext)
@@ -48,6 +51,7 @@ class SelectiveSyncWorker(
         val tokenStore = SecureTokenStore(applicationContext)
         val token = tokenStore.load() ?: return Result.success()
 
+        SyncActivityMonitor.phase(run, "Serverfunktionen prüfen")
         val capabilities = when (val result = ServerCapabilitiesApi().load()) {
             ServerCapabilitiesApi.Result.Unsupported -> return Result.success()
             is ServerCapabilitiesApi.Result.Error -> return retryAutomatic()
@@ -68,6 +72,7 @@ class SelectiveSyncWorker(
             ServiceLocator.worksiteBindingRepository.bindingForLocalRoot(it) == null
         }
         if (needsBinding || WorksiteLocalSyncStore.pending(applicationContext)) {
+        SyncActivityMonitor.phase(run, "Baustelle mit Server verbinden / Namen senden")
         when (val context = WorksiteContextSync(applicationContext).prepare(token, roots + scopeRoots)) {
             WorksiteContextSync.Result.SessionInvalid -> { tokenStore.clear(); return Result.success() }
             is WorksiteContextSync.Result.Error -> {
@@ -91,7 +96,8 @@ class SelectiveSyncWorker(
         var retryNeeded = false
         val blockedRoots = mutableSetOf<Long>()
         val bindings = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
-        for (root in roots) {
+        for ((index, root) in roots.withIndex()) {
+            SyncActivityMonitor.phase(run, "Unterbaustelle/Struktur ${index + 1} von ${roots.size}")
             val bound = bindings.firstOrNull { it.binding != null && it.localWorksite?.id == root }
             if (bound == null || !capabilities.supports("worksite_tree_v1")) {
                 blockedRoots += root
@@ -118,7 +124,8 @@ class SelectiveSyncWorker(
             } finally { StructureSyncStore.transferring(root, false) }
         }
 
-        for (scope in scopes) {
+        for ((index, scope) in scopes.withIndex()) {
+            SyncActivityMonitor.phase(run, "BTB ${index + 1} von ${scopes.size} · Einträge und Bilder")
             SelectiveSyncStore.transferring(scope, true)
             try {
             val boundItem = ServiceLocator.worksiteBindingRepository.contextsWithBindings()

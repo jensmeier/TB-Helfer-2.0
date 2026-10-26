@@ -34,6 +34,11 @@ class SyncWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        val run = SyncActivityMonitor.begin("Vollabgleich")
+        return try { executeSync(run) } finally { SyncActivityMonitor.finish(run) }
+    }
+
+    private suspend fun executeSync(run: Long): Result {
         if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) return Result.failure()
 
         ServiceLocator.initialisieren(applicationContext)
@@ -56,6 +61,7 @@ class SyncWorker(
         fun retryOrManualFailure(message: String = "Synchronisation fehlgeschlagen."): Result =
             if (manualRun) manualFailure(message) else Result.retry()
 
+        SyncActivityMonitor.phase(run, "Katalog vom Server laden")
         return when (val catalogResult = SyncCatalogApi().loadCatalog(token)) {
             SyncCatalogApi.Result.SessionInvalid -> sessionInvalid()
             is SyncCatalogApi.Result.Error -> retryOrManualFailure(catalogResult.message)
@@ -71,7 +77,7 @@ class SyncWorker(
                 // Server 1.0 wird ausschließlich per Capability erkannt. Dieser Lauf passiert
                 // bewusst VOR jeder alten 0.6-/0.7-Versionsschwelle.
                 val server1Collab = when (
-                    val modern = Server1AndroidSyncCoordinator(applicationContext).synchronize(token)
+                    val modern = Server1AndroidSyncCoordinator(applicationContext).synchronize(token) { SyncActivityMonitor.phase(run, it) }
                 ) {
                     is Server1AndroidSyncCoordinator.Result.Success -> true
                     Server1AndroidSyncCoordinator.Result.Unsupported -> false
@@ -90,6 +96,7 @@ class SyncWorker(
                     return Result.success()
                 }
 
+                SyncActivityMonitor.phase(run, "Katalogänderungen abgleichen")
                 when (val result = repository.synchronize(token)) {
                     OfflineSyncRepository.FullSyncResult.SessionInvalid -> return sessionInvalid()
                     is OfflineSyncRepository.FullSyncResult.Error -> return retryOrManualFailure(result.message)
@@ -355,4 +362,5 @@ class SyncWorker(
         }
     }
 }
+
 

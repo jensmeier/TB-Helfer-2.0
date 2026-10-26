@@ -49,7 +49,8 @@ class Server1AndroidSyncCoordinator(
         data class Error(val message: String) : Result
     }
 
-    suspend fun synchronize(token: String): Result {
+    suspend fun synchronize(token: String, onPhase: (String) -> Unit = {}): Result {
+        onPhase("Baustellenanlage und Teamzuordnung abgleichen")
         val dirtyScopes = SelectiveSyncStore.btbScopes(appContext)
         val roots = StructureSyncStore.roots(appContext) + WorksiteLocalSyncStore.roots(appContext) +
             ServiceLocator.worksiteBindingRepository.localMainWorksites()
@@ -81,6 +82,7 @@ class Server1AndroidSyncCoordinator(
         val filesEnabled = capabilities.supports("files_v1")
         val uploadsEnabled = filesEnabled && capabilities.supports("chunk_upload_v1")
 
+        onPhase("Unterbaustellen senden und empfangen")
         var worksiteNodesUploaded = 0
         if (treeEnabled) {
             when (val tree = structureSync.synchronizeChanged(token)) {
@@ -91,6 +93,7 @@ class Server1AndroidSyncCoordinator(
             }
         }
 
+        onPhase("Streckendaten abgleichen")
         var trackDataUploaded = 0
         var trackDataApplied = 0
         if (trackDataEnabled) {
@@ -110,6 +113,7 @@ class Server1AndroidSyncCoordinator(
             }
         }
 
+        onPhase("BTB und Teilnehmerstatus empfangen")
         if (btbEnabled) {
             refreshBtbSnapshots(token, remoteContexts)?.let { return it }
             reconcileBtbDeletes(token, remoteContexts)?.let { return it }
@@ -125,12 +129,14 @@ class Server1AndroidSyncCoordinator(
             }
         }
 
+        onPhase("Mängel und Abnahmen empfangen")
         if (fachEnabled) {
             refreshFachSnapshots(token, remoteContexts, capabilities)?.let { return it }
         }
 
         // Die Dateiliste ist ein gemeinsamer Server-1.0-Vertrag. Sie darf nicht von Mängel-
         // Capabilities abhängen, weil sie auch BTB-Fotos enthält.
+        onPhase("Dateiverweise empfangen")
         if (filesEnabled && (fachEnabled || btbEnabled)) {
             when (
                 val result = collab.synchronizeServer1Attachments(
@@ -176,6 +182,7 @@ class Server1AndroidSyncCoordinator(
                 }
         }
 
+        onPhase("Lokale Fachänderungen senden")
         var fachUploaded = 0
         if (fachEnabled) {
             when (val upload = collab.synchronizeServer1FachPending(token, fachApi)) {
@@ -200,6 +207,7 @@ class Server1AndroidSyncCoordinator(
             }
         }
 
+        onPhase("BTB-Änderungen senden")
         var btbUploaded = 0
         if (btbEnabled) {
             when (val upload = collab.synchronizeServer1BtbPending(token, btbApi)) {
@@ -224,6 +232,7 @@ class Server1AndroidSyncCoordinator(
             }
         }
 
+        onPhase("Anhänge übertragen")
         var attachmentsUploaded = 0
         if (uploadsEnabled && fachEnabled) {
             when (
@@ -245,6 +254,7 @@ class Server1AndroidSyncCoordinator(
             }
         }
 
+        onPhase("BTB-Bilder und PDF abgleichen")
         var btbMediaUploaded = 0
         var btbMediaImported = 0
         var btbPdfImported = 0

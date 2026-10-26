@@ -14,6 +14,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import de.tbhelfer.R
@@ -32,6 +34,8 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
 class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
@@ -73,7 +77,38 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         conflictButton.setOnClickListener {
             offlineDialogs.showConflicts { refreshConflictButton() }
         }
+        startLiveDiagnostics(view.findViewById(R.id.txtSyncLiveDiagnostics))
         loadCatalog()
+    }
+
+    private fun startLiveDiagnostics(panel: TextView) {
+        val app = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                var server = "Server wird geprüft …"
+                var checkedAt: Long? = null
+                launch {
+                    while (isActive) {
+                        server = withContext(Dispatchers.IO) { de.tbhelfer.server.SyncServerProbe.check(app) }
+                        checkedAt = de.tbhelfer.server.SyncActivityMonitor.nowMs()
+                        delay(30_000L)
+                    }
+                }
+                launch {
+                    while (isActive) {
+                        val now = de.tbhelfer.server.SyncActivityMonitor.nowMs()
+                        val age = checkedAt?.let { " · geprüft vor " + de.tbhelfer.server.SyncActivityMonitor.duration(now - it) }.orEmpty()
+                        val pendingBtb = de.tbhelfer.server.SelectiveSyncStore.btbScopes(app).size
+                        val pendingRoots = (de.tbhelfer.server.StructureSyncStore.roots(app) +
+                            de.tbhelfer.server.WorksiteLocalSyncStore.roots(app)).size
+                        panel.text = server + age + "\n\n" + de.tbhelfer.server.SyncActivityMonitor.describe(now) +
+                            "\n\nVorgemerkt (BTB/Struktur): $pendingBtb BTB · $pendingRoots Baustellen/Strukturen" +
+                            "\nLetzter erfolgreicher Lauf: " + SyncStatusSpeicher.anzeige(app)
+                        delay(1_000L)
+                    }
+                }
+            }
+        }
     }
 
     private fun loadCatalog() {
@@ -91,22 +126,27 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         statusText.text = getString(R.string.sync_loading)
 
         viewLifecycleOwner.lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) { SyncCatalogApi().loadCatalog(token) }
-            if (!isAdded) return@launch
-
-            when (result) {
-                is SyncCatalogApi.Result.Success -> handleOnlineCatalog(result.catalog, token, tokenStore)
-                SyncCatalogApi.Result.SessionInvalid -> handleInvalidSession(tokenStore)
-                is SyncCatalogApi.Result.Error -> handleCatalogError(result.message)
-            }
+            val run = de.tbhelfer.server.SyncActivityMonitor.begin("Vorbereitung")
+            try {
+                de.tbhelfer.server.SyncActivityMonitor.phase(run, "Katalog abrufen")
+                val result = withContext(Dispatchers.IO) { SyncCatalogApi().loadCatalog(token) }
+                if (!isAdded) return@launch
+                when (result) {
+                    is SyncCatalogApi.Result.Success -> handleOnlineCatalog(result.catalog, token, tokenStore, run)
+                    SyncCatalogApi.Result.SessionInvalid -> handleInvalidSession(tokenStore)
+                    is SyncCatalogApi.Result.Error -> handleCatalogError(result.message)
+                }
+            } finally { de.tbhelfer.server.SyncActivityMonitor.finish(run) }
         }
     }
 
     private suspend fun handleOnlineCatalog(
         catalog: SyncCatalogApi.Catalog,
         token: String,
-        tokenStore: SecureTokenStore
+        tokenStore: SecureTokenStore,
+        run: Long
     ) {
+        de.tbhelfer.server.SyncActivityMonitor.phase(run, "Katalog lokal speichern")
         val cacheSaved = withContext(Dispatchers.IO) {
             runCatching { offlineRepository.saveCatalog(catalog) }.isSuccess
         }
@@ -129,6 +169,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         }
 
         setLoading(true)
+        de.tbhelfer.server.SyncActivityMonitor.phase(run, "Katalogänderungen senden und empfangen")
         val syncResult = withContext(Dispatchers.IO) { offlineRepository.synchronize(token) }
         if (!isAdded) return
         setLoading(false)
@@ -186,7 +227,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                 WorkInfo.State.BLOCKED -> {
                     progress.visibility = View.VISIBLE
                     refreshButton.isEnabled = false
-                    statusText.text = "Synchronisation wartet auf eine Internetverbindung …"
+                    statusText.text = "Synchronisation wartet auf Netzwerk oder einen vorherigen Auftrag …"
                 }
                 WorkInfo.State.RUNNING -> {
                     progress.visibility = View.VISIBLE

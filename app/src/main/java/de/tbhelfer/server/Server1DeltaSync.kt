@@ -36,12 +36,15 @@ class Server1DeltaSync(context: Context) {
         firstWaitSeconds: Int = 0,
         maxPages: Int = 20
     ): Result = processMutex.withLock {
-        synchronizeLocked(firstWaitSeconds, maxPages)
+        val run = SyncActivityMonitor.begin("Empfang")
+        try { synchronizeLocked(firstWaitSeconds, maxPages, run) }
+        finally { SyncActivityMonitor.finish(run) }
     }
 
     private suspend fun synchronizeLocked(
         firstWaitSeconds: Int,
-        maxPages: Int
+        maxPages: Int,
+        run: Long
     ): Result {
         ServiceLocator.initialisieren(appContext)
         val tokenStore = SecureTokenStore(appContext)
@@ -88,6 +91,7 @@ class Server1DeltaSync(context: Context) {
 
         while (pages < maxPages) {
             val waitSeconds = if (pages == 0) firstWaitSeconds else 0
+            SyncActivityMonitor.phase(run, if (waitSeconds > 0) "Warte auf Änderungen (bis $waitSeconds s · normal)" else "Neue Änderungen abrufen")
             val page = when (
                 val result = api.waitForChanges(
                     token = token,
@@ -109,6 +113,7 @@ class Server1DeltaSync(context: Context) {
             }
 
             if (page.changes.isNotEmpty()) {
+                SyncActivityMonitor.phase(run, "${page.changes.size} empfangene Änderungen anwenden")
                 when (val applied = applyPage(token, page)) {
                     ApplyResult.Success -> Unit
                     ApplyResult.SessionInvalid -> {

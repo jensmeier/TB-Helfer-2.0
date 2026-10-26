@@ -454,8 +454,8 @@ android {
         // Android 200076: kleiner Foto-Sync, mobile Renditions, Foto-Metadaten-PATCH
         // und Wetter-Niederschlagsmenge inkl. bekanntem 0,0-mm-Wert.
         // Jeder auslieferbare Test-/Release-Build erhält einen strikt höheren versionCode.
-        versionCode = 200082
-        versionName = "1.3.32"
+        versionCode = 200083
+        versionName = "1.3.33"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -507,6 +507,12 @@ android {
 }
 
 androidComponents.onVariants { variant ->
+    // The source generator also copies the pure-Java sync monitor. Register it for javac;
+    // Kotlin-only registration is insufficient when the normal Java source set is cleared.
+    variant.sources.java?.addGeneratedSourceDirectory(
+        generateBtb200043Sources,
+        GenerateBtb200043Sources::outputDirectory
+    )
     variant.sources.kotlin?.addGeneratedSourceDirectory(
         generateBtb200043Sources,
         GenerateBtb200043Sources::outputDirectory
