@@ -21,6 +21,9 @@ interface WorksiteNodeSyncDao {
     @Query("SELECT * FROM sync_worksite_node_binding WHERE worksiteServerId = :worksiteServerId ORDER BY boundAtEpochMs, localKnotenId")
     suspend fun forWorksite(worksiteServerId: String): List<SyncWorksiteNodeBindingEntity>
 
+    @Query("UPDATE sync_worksite_node_binding SET worksiteServerId = :serverId WHERE localRootKnotenId = :rootId AND worksiteServerId = :localNamespace")
+    suspend fun bindLocalKeys(rootId: Long, localNamespace: String, serverId: String)
+
     @Query("DELETE FROM sync_worksite_node_binding WHERE localKnotenId = :localKnotenId")
     suspend fun deleteForLocalNode(localKnotenId: Long)
 
@@ -30,3 +33,4 @@ interface WorksiteNodeSyncDao {
     @Query("DELETE FROM sync_worksite_node_binding WHERE worksiteServerId = :worksiteServerId")
     suspend fun deleteForWorksite(worksiteServerId: String)
 }
+

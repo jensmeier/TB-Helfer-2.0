@@ -196,7 +196,11 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                 WorkInfo.State.SUCCEEDED -> {
                     fullManualSyncRunning = false
                     setLoading(false)
-                    statusText.text = "Synchronisation vollständig · ${SyncStatusSpeicher.anzeige(requireContext())}"
+                    val pending = de.tbhelfer.server.WorksiteLocalSyncStore.pending(requireContext()) ||
+                        de.tbhelfer.server.StructureSyncStore.roots(requireContext()).isNotEmpty() ||
+                        de.tbhelfer.server.SelectiveSyncStore.hasPending(requireContext())
+                    statusText.text = if (pending) "Lokal gespeichert · Übertragungen noch ausstehend"
+                        else "Synchronisationslauf beendet · ${SyncStatusSpeicher.anzeige(requireContext())}"
                     refreshConflictButton()
                 }
                 WorkInfo.State.FAILED -> {
@@ -704,5 +708,6 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
+
 
 

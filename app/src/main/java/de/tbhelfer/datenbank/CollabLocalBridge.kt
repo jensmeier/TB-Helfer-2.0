@@ -105,6 +105,9 @@ class CollabLocalBridge(
         val local = item.localWorksite ?: return BtbExportResult.NotBound
         val server = item.context
         val serverState = BtbServerStateStore.state(appContext, clientBtbId)
+        check(serverState?.contextReadOnly != true && !de.tbhelfer.server.WorksiteLocalSyncStore.btbBlocked(appContext, clientBtbId)) {
+            "Team/Berechtigung geändert: ausstehende lokale BTB-Daten bleiben zur Prüfung erhalten."
+        }
         if (serverState?.readOnly == true) {
             collabRepository.clearServer1BtbPending(server.worksiteServerId, clientBtbId)
             SelectiveSyncStore.clearBtb(appContext, localBaustelleId, clientBtbId)
@@ -176,6 +179,10 @@ class CollabLocalBridge(
                 val clientKey = verlauf.btbId?.takeIf { it.isNotBlank() }
                     ?: "legacy:${verlauf.datum}:${verlauf.schicht.name}"
                 val serverState = BtbServerStateStore.state(appContext, clientKey)
+                if (serverState?.contextReadOnly == true || de.tbhelfer.server.WorksiteLocalSyncStore.btbBlocked(appContext, clientKey)) {
+                    // Historical local data and its pending mutations survive team/access changes.
+                    continue
+                }
                 if (serverState?.readOnly == true) {
                     collabRepository.clearServer1BtbPending(server.worksiteServerId, clientKey)
                     SelectiveSyncStore.clearBtb(appContext, localBaustelleId, clientKey)
@@ -1197,4 +1204,5 @@ class CollabLocalBridge(
     private fun JSONObject.optNullableLong(key: String): Long? = if (!has(key) || isNull(key)) null else optLong(key)
     private fun JSONObject.optNullableDouble(key: String): Double? = if (!has(key) || isNull(key)) null else optDouble(key)
 }
+
 

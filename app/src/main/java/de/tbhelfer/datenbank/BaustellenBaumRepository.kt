@@ -10,6 +10,9 @@ import de.tbhelfer.server.StructureSyncStore
 class BaustellenBaumRepository(
     private val knotDao: BaustellenKnotenDao,
     private val altRepo: BaustellenRepository,
+    private val mayApplyServerHead: (Long) -> Boolean = { true },
+    private val onRootCreated: (Long) -> Unit = {},
+    private val onHeadChanged: (Long, String, String) -> Unit = { _, _, _ -> },
     private val onStructureChanged: (Long) -> Unit = {}
 ) {
 
@@ -71,7 +74,7 @@ class BaustellenBaumRepository(
      * Hauptbaustelle holen oder erstellen.
      * Merge/Zusammenführen passiert NUR bei EXAKTEM Namen (nach trim()).
      */
-    suspend fun hauptErstellenOderZusammenfuehren(baustellenname: String): BaustellenKnotenEntity {
+    suspend fun hauptErstellenOderZusammenfuehren(baustellenname: String, fromServer: Boolean = false): BaustellenKnotenEntity {
         return withContext(Dispatchers.IO) {
             val name = baustellenname.trim()
             require(name.isNotBlank()) { "Baustellenname ist Pflicht." }
@@ -94,6 +97,7 @@ class BaustellenBaumRepository(
             val id = knotDao.einfuegen(vorlaeufig)
             val fix = vorlaeufig.copy(id = id, rootId = id)
             knotDao.aktualisieren(fix)
+            if (!fromServer) onRootCreated(id)
             fix
         }
     }
@@ -259,27 +263,31 @@ class BaustellenBaumRepository(
     }
 
     /** Hauptbaustelle selbst umbenennen (inkl. aller Knoten derselben Root). */
-    suspend fun hauptbaustelleUmbenennen(rootId: Long, neuerName: String) {
-        withContext(Dispatchers.IO) {
+    suspend fun hauptbaustelleUmbenennen(rootId: Long, neuerName: String, fromServer: Boolean = false, onApplied: () -> Unit = {}) {
+        withContext(Dispatchers.IO) { StructureSyncStore.mutationMutex.withLock {
             val root = knotDao.laden(rootId) ?: error("Hauptbaustelle nicht gefunden")
             require(root.typ == BaustellenKnotenTyp.HAUPT && root.parentId == null) {
                 "Nur Hauptbaustellen können hier bearbeitet werden."
             }
 
+            if (fromServer && !mayApplyServerHead(rootId)) return@withLock
             val cleanName = neuerName.trim()
             require(cleanName.isNotBlank()) { "Baustellenname ist Pflicht." }
 
+            if (fromServer && cleanName == root.hauptbaustellenName) { onApplied(); return@withLock }
             val konflikt = knotDao.alleHauptbaustellenSofort()
                 .firstOrNull { it.id != root.id && it.hauptbaustellenName.kanonisch() == cleanName.kanonisch() }
             require(konflikt == null) { "Eine Hauptbaustelle mit diesem Namen existiert bereits." }
 
+            if (!fromServer) onHeadChanged(rootId, cleanName, root.hauptbaustellenName)
             val alle = knotDao.alleKnotenZuRootSofort(root.id)
             alle.forEach { knoten ->
                 knotDao.aktualisieren(knoten.copy(hauptbaustellenName = cleanName))
             }
 
             altRepo.hauptbaustelleNameAktualisieren(root.altBaustelleId, cleanName)
-        }
+            onApplied()
+        } }
     }
 
     /**
@@ -386,4 +394,5 @@ class BaustellenBaumRepository(
     // Alias
     suspend fun loeschenTeilbaum(knotenId: Long) = loescheTeilbaum(knotenId)
 }
+
 

@@ -61,7 +61,8 @@ class TeamManagementApi(
         val areaScopeJson: String,
         val groupLabel: String?,
         val leadUserId: String?,
-        val leadNameSnapshot: String?
+        val leadNameSnapshot: String?,
+        val version: Long = 0L
     )
 
     data class Invitation(
@@ -283,7 +284,8 @@ class TeamManagementApi(
                         ?: "{}",
                     groupLabel = currentMember?.nullableString("team_name"),
                     leadUserId = currentMember?.nullableString("lead_user_id"),
-                    leadNameSnapshot = currentMember?.nullableString("lead_name")
+                    leadNameSnapshot = currentMember?.nullableString("lead_name"),
+                    version = worksite.optLong("version", 0L)
                 )
             }
             WorksiteContextResult.Success(contexts)
@@ -993,4 +995,5 @@ class TeamManagementApi(
         return opt(key)?.toString()
     }
 }
+
 

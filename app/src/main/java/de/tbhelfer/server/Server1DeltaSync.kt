@@ -57,6 +57,30 @@ class Server1DeltaSync(context: Context) {
             !capabilities.supports("sync_change_wait_v1")
         ) return Result.Unsupported
 
+        // Periodic authoritative context refresh also detects revocation events which are
+        // intentionally filtered from the removed user's feed. No global media scan.
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (lastContextRefreshMs == 0L || now - lastContextRefreshMs >= 60_000L) {
+        when (val context = WorksiteContextSync(appContext).refresh(token)) {
+            is WorksiteContextSync.Result.Success -> lastContextRefreshMs = now
+            is WorksiteContextSync.Result.Error -> return Result.Error(context.message)
+            WorksiteContextSync.Result.SessionInvalid -> return Result.SessionInvalid
+            WorksiteContextSync.Result.Unsupported -> return Result.Unsupported
+        }
+        }
+        val initial = WorksiteLocalSyncStore.initial(appContext)
+        if (initial.isNotEmpty()) {
+            val bootstrap = Server1DeltaApi.Page(initial.keys.flatMap { id -> listOf(
+                Server1DeltaApi.Change(0, id, "WORKSITE_NODE", id, "REFRESH", null),
+                Server1DeltaApi.Change(0, id, "BTB_PARTICIPANT", id, "REFRESH", null)
+            ) }, 0, 0, true)
+            when (val applied = applyPage(token, bootstrap)) {
+                ApplyResult.Success -> WorksiteLocalSyncStore.confirmInitial(appContext, initial)
+                is ApplyResult.Error -> return Result.Error(applied.message)
+                ApplyResult.SessionInvalid -> return Result.SessionInvalid
+                ApplyResult.Unsupported -> return Result.Unsupported
+            }
+        }
         var cursor = Server1DeltaCursorStore.load(appContext)
         var pages = 0
         var totalChanges = 0
@@ -124,6 +148,17 @@ class Server1DeltaSync(context: Context) {
         token: String,
         page: Server1DeltaApi.Page
     ): ApplyResult {
+        val contextEvents = page.changes.filter {
+            it.entityType in setOf("WORKSITE", "WORKSITE_MEMBERSHIP", "WORKSITE_INVITATION")
+        }
+        if (contextEvents.isNotEmpty()) {
+            when (val context = WorksiteContextSync(appContext).refresh(token)) {
+                is WorksiteContextSync.Result.Success -> lastContextRefreshMs = android.os.SystemClock.elapsedRealtime()
+                is WorksiteContextSync.Result.Error -> return ApplyResult.Error(context.message)
+                WorksiteContextSync.Result.SessionInvalid -> return ApplyResult.SessionInvalid
+                WorksiteContextSync.Result.Unsupported -> return ApplyResult.Unsupported
+            }
+        }
         val affectedWorksites = page.changes
             .mapNotNull { it.worksiteId?.takeIf(String::isNotBlank) }
             .toSet()
@@ -140,7 +175,8 @@ class Server1DeltaSync(context: Context) {
             }
         if (bound.isEmpty()) return ApplyResult.Success
 
-        val nodeWorksites = WorksiteDeltaPolicy.nodeWorksites(page.changes, bound.map { it.context.worksiteServerId }.toSet())
+        val nodeWorksites = WorksiteDeltaPolicy.nodeWorksites(page.changes, bound.map { it.context.worksiteServerId }.toSet()) +
+            contextEvents.mapNotNull { it.worksiteId }.toSet().intersect(bound.map { it.context.worksiteServerId }.toSet())
         if (nodeWorksites.isNotEmpty()) {
             when (val nodes = ServiceLocator.worksiteStructureSync.applyServerStateToLocal(token, nodeWorksites)) {
                 de.tbhelfer.datenbank.WorksiteStructureSync.Result.Unsupported -> return ApplyResult.Unsupported
@@ -167,7 +203,7 @@ class Server1DeltaSync(context: Context) {
             if (worksiteId !in contextsByWorksite) return@forEach
             when (change.entityType) {
                 "BTB" -> target(worksiteId, change.entityId)
-                "BTB_ENTRY", "BTB_PARTICIPANT" -> needsActiveFallback += worksiteId
+                "BTB_ENTRY", "BTB_PARTICIPANT", "WORKSITE", "WORKSITE_MEMBERSHIP", "WORKSITE_INVITATION" -> needsActiveFallback += worksiteId
             }
         }
 
@@ -289,6 +325,8 @@ class Server1DeltaSync(context: Context) {
 
     companion object {
         private val processMutex = Mutex()
+        private var lastContextRefreshMs = 0L
     }
 }
+
 

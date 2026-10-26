@@ -50,38 +50,17 @@ class Server1AndroidSyncCoordinator(
     }
 
     suspend fun synchronize(token: String): Result {
-        val remoteContexts = when (val result = teamApi.loadWorksiteContexts(token)) {
-            TeamManagementApi.WorksiteContextResult.Unsupported -> return Result.Unsupported
-            TeamManagementApi.WorksiteContextResult.SessionInvalid -> return Result.SessionInvalid
-            is TeamManagementApi.WorksiteContextResult.Error -> return Result.Error(result.message)
-            is TeamManagementApi.WorksiteContextResult.Success -> result.items
+        val dirtyScopes = SelectiveSyncStore.btbScopes(appContext)
+        val roots = StructureSyncStore.roots(appContext) + WorksiteLocalSyncStore.roots(appContext) +
+            ServiceLocator.worksiteBindingRepository.localMainWorksites()
+                .filter { root -> dirtyScopes.any { it.localBaustelleId == root.altBaustelleId } }.map { it.id }
+        val remoteContexts = when (val r = WorksiteContextSync(appContext).prepare(token, roots)) {
+            is WorksiteContextSync.Result.Success -> r.items
+            is WorksiteContextSync.Result.Error -> return Result.Error(r.message)
+            WorksiteContextSync.Result.Unsupported -> return Result.Unsupported
+            WorksiteContextSync.Result.SessionInvalid -> return Result.SessionInvalid
         }
-
-        val now = System.currentTimeMillis()
-        val cachedContexts = remoteContexts.map { item ->
-            SyncWorksiteContextEntity(
-                worksiteServerId = item.worksiteId,
-                name = item.name,
-                designation = item.designation,
-                worksiteType = null,
-                status = item.status,
-                companyId = null,
-                groupId = item.groupId,
-                memberRole = item.memberRole,
-                areaScopeJson = item.areaScopeJson,
-                groupLabel = item.groupLabel,
-                leadUserId = item.leadUserId,
-                leadNameSnapshot = item.leadNameSnapshot,
-                updatedAtEpochMs = now
-            )
-        }
-
-        runCatching { collab.replaceWorksiteContexts(cachedContexts) }
-            .getOrElse {
-                return Result.Error(
-                    it.message ?: "Server-1.0-Baustellenkontext konnte lokal nicht gespeichert werden."
-                )
-            }
+        val cachedContexts = remoteContexts
 
         val capabilities = when (val result = capabilitiesApi.load()) {
             is ServerCapabilitiesApi.Result.Success -> result.snapshot
@@ -425,4 +404,5 @@ class Server1AndroidSyncCoordinator(
         return null
     }
 }
+
 

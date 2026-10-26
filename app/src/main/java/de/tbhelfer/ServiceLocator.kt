@@ -88,10 +88,21 @@ object ServiceLocator {
     }
 
     val baustellenBaumRepository: BaustellenBaumRepository by lazy {
-        BaustellenBaumRepository(baustellenKnotenDao, baustellenRepository) { rootId ->
-            de.tbhelfer.server.StructureSyncStore.mark(appContext, rootId)
-            runCatching { de.tbhelfer.server.SelectiveSyncWorker.enqueue(appContext) }
-        }
+        BaustellenBaumRepository(baustellenKnotenDao, baustellenRepository,
+            mayApplyServerHead = { rootId -> de.tbhelfer.server.WorksiteLocalSyncStore.desired(appContext, rootId) == null },
+            onRootCreated = { rootId ->
+                de.tbhelfer.server.WorksiteLocalSyncStore.markCreate(appContext, rootId)
+                de.tbhelfer.server.StructureSyncStore.mark(appContext, rootId)
+                de.tbhelfer.server.SelectiveSyncWorker.enqueue(appContext)
+            },
+            onHeadChanged = { rootId, name, oldName ->
+                de.tbhelfer.server.WorksiteLocalSyncStore.rename(appContext, rootId, name, oldName)
+                de.tbhelfer.server.SelectiveSyncWorker.enqueue(appContext)
+            },
+            onStructureChanged = { rootId ->
+                de.tbhelfer.server.StructureSyncStore.mark(appContext, rootId)
+                runCatching { de.tbhelfer.server.SelectiveSyncWorker.enqueue(appContext) }
+            })
     }
 
     val worksiteBindingRepository: WorksiteBindingRepository by lazy {
@@ -99,6 +110,7 @@ object ServiceLocator {
             syncDatabase = syncDatenbank,
             localWorksiteDao = baustellenKnotenDao,
             localWorksiteTree = baustellenBaumRepository,
+            mayBootstrap = { !de.tbhelfer.server.WorksiteLocalSyncStore.hasCreation(appContext) },
             onBindingChanged = {
                 // Entprellter bestehender WorkManager-Pfad: nach Provisioning/QR-Beitritt nicht nur
                 // die Server-Hülle, sondern auch die Unterbaustellen zeitnah synchronisieren.
@@ -171,4 +183,5 @@ object ServiceLocator {
         appContext = context.applicationContext
     }
 }
+
 

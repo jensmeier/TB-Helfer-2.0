@@ -107,31 +107,20 @@ object BaustellenTeamDirekt {
         token: String,
         haupt: BaustellenKnotenEntity
     ): ProvisionOutcome {
-        return when (val created = WorksiteProvisioningApi().create(token, haupt)) {
-            WorksiteProvisioningApi.Result.SessionInvalid -> ProvisionOutcome.SessionInvalid
-            WorksiteProvisioningApi.Result.Unsupported -> ProvisionOutcome.Error("Dieser Serverstand unterstützt die Selbstanlage noch nicht.")
-            is WorksiteProvisioningApi.Result.Error -> ProvisionOutcome.Error(created.message)
-            is WorksiteProvisioningApi.Result.Success -> {
-                when (val sync = ServiceLocator.collabSyncRepository.synchronizeAll(token)) {
-                    CollabSyncRepository.FullSyncResult.SessionInvalid -> ProvisionOutcome.SessionInvalid
-                    is CollabSyncRepository.FullSyncResult.Error -> ProvisionOutcome.Error(sync.message)
-                    is CollabSyncRepository.FullSyncResult.Success -> {
-                        runCatching {
-                            ServiceLocator.worksiteBindingRepository.bind(haupt.id, created.value.worksiteId)
-                        }.fold(
-                            onFailure = { ProvisionOutcome.Error(it.message ?: "Lokale Verknüpfung fehlgeschlagen.") },
-                            onSuccess = {
-                                when (val team = teamApi.loadTeam(token, created.value.worksiteId)) {
-                                    TeamManagementApi.TeamResult.SessionInvalid -> ProvisionOutcome.SessionInvalid
-                                    TeamManagementApi.TeamResult.Unsupported -> ProvisionOutcome.Error("Teamverwaltung wird vom Server nicht unterstützt.")
-                                    is TeamManagementApi.TeamResult.Error -> ProvisionOutcome.Error(team.message)
-                                    is TeamManagementApi.TeamResult.Success -> {
-                                        TeamDisplayCache.remember(fragment.requireContext().applicationContext, team.team, haupt.id)
-                                        ProvisionOutcome.Success(created.value.wasCreated, team.team)
-                                    }
-                                }
-                            }
-                        )
+        return when (val result = de.tbhelfer.server.WorksiteContextSync(fragment.requireContext()).prepare(token, setOf(haupt.id))) {
+            de.tbhelfer.server.WorksiteContextSync.Result.SessionInvalid -> ProvisionOutcome.SessionInvalid
+            de.tbhelfer.server.WorksiteContextSync.Result.Unsupported -> ProvisionOutcome.Error("Passender Serverstand erforderlich.")
+            is de.tbhelfer.server.WorksiteContextSync.Result.Error -> ProvisionOutcome.Error(result.message)
+            is de.tbhelfer.server.WorksiteContextSync.Result.Success -> {
+                val binding = ServiceLocator.worksiteBindingRepository.bindingForLocalRoot(haupt.id)
+                    ?: return ProvisionOutcome.Error("Serverzuordnung noch ausstehend.")
+                when (val team = teamApi.loadTeam(token, binding.worksiteServerId)) {
+                    TeamManagementApi.TeamResult.SessionInvalid -> ProvisionOutcome.SessionInvalid
+                    TeamManagementApi.TeamResult.Unsupported -> ProvisionOutcome.Error("Teamverwaltung wird vom Server nicht unterstützt.")
+                    is TeamManagementApi.TeamResult.Error -> ProvisionOutcome.Error(team.message)
+                    is TeamManagementApi.TeamResult.Success -> {
+                        TeamDisplayCache.remember(fragment.requireContext(), team.team, haupt.id)
+                        ProvisionOutcome.Success(false, team.team)
                     }
                 }
             }
@@ -528,3 +517,4 @@ object BaustellenTeamDirekt {
     private fun dp(fragment: Fragment, value: Int): Int =
         (value * fragment.resources.displayMetrics.density).toInt()
 }
+

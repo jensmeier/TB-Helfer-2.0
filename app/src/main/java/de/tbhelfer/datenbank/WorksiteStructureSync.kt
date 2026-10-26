@@ -101,9 +101,8 @@ class WorksiteStructureSync(
         if (localKnotenId <= 0L || localKnotenId == localRootKnotenId) return@withLock null
         nodeBindingDao.forLocalNode(localKnotenId)?.let { return@withLock it.clientNodeKey }
 
-        val bound = bindingRepository.contextsWithBindings()
-            .firstOrNull { it.localWorksite?.id == localRootKnotenId }
-            ?: return@withLock null
+        val serverId = bindingRepository.bindingForLocalRoot(localRootKnotenId)?.worksiteServerId
+            ?: "local:$localRootKnotenId"
         val localNode = localWorksiteDao.laden(localKnotenId) ?: return@withLock null
         if (localNode.rootId != localRootKnotenId || localNode.typ == BaustellenKnotenTyp.HAUPT) {
             return@withLock null
@@ -112,7 +111,7 @@ class WorksiteStructureSync(
         val item = SyncWorksiteNodeBindingEntity(
             localKnotenId = localKnotenId,
             localRootKnotenId = localRootKnotenId,
-            worksiteServerId = bound.context.worksiteServerId,
+            worksiteServerId = serverId,
             clientNodeKey = "wsn-${UUID.randomUUID()}"
         )
         nodeBindingDao.upsert(item)
@@ -126,10 +125,9 @@ class WorksiteStructureSync(
     ): Long? {
         val key = clientNodeKey?.trim().orEmpty()
         if (key.isBlank()) return null
-        val bound = bindingRepository.contextsWithBindings()
-            .firstOrNull { it.localWorksite?.id == localRootKnotenId }
-            ?: return null
-        val binding = nodeBindingDao.forClientKey(bound.context.worksiteServerId, key) ?: return null
+        val serverId = bindingRepository.bindingForLocalRoot(localRootKnotenId)?.worksiteServerId
+            ?: "local:$localRootKnotenId"
+        val binding = nodeBindingDao.forClientKey(serverId, key) ?: return null
         return binding.localKnotenId.takeIf { binding.localRootKnotenId == localRootKnotenId }
     }
 
@@ -580,5 +578,6 @@ class WorksiteStructureSync(
         private const val ALL_SCOPE = "{\"all\":true}"
     }
 }
+
 
 

@@ -456,6 +456,12 @@ object BtbModernLifecycleInstaller {
                         val editButton = root.findViewWithTag<View>(EDIT_BUTTON_TAG)
 
                         when {
+                            serverState?.contextReadOnly == true -> {
+                                root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = "Kein aktueller Schreibzugriff auf dieses Team"
+                                finalButton?.visibility = View.GONE
+                                previewButton?.visibility = View.GONE
+                                editButton?.visibility = View.GONE
+                            }
                             serverState?.serverFinalReadOnly == true -> {
                                 root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = "Abgeschlossen"
                                 finalButton?.visibility = View.GONE
@@ -486,6 +492,13 @@ object BtbModernLifecycleInstaller {
                                 editButton?.visibility = View.VISIBLE
                             }
                             else -> {
+                                val localMain = withContext(Dispatchers.IO) {
+                                    val localRoot = ServiceLocator.worksiteBindingRepository.localMainWorksites()
+                                        .firstOrNull { it.altBaustelleId == current.baustelleId }
+                                    val binding = localRoot?.let { ServiceLocator.worksiteBindingRepository.bindingForLocalRoot(it.id) }
+                                    binding == null || (localRoot != null && ServiceLocator.worksiteBindingRepository.contextForLocalRoot(localRoot.id)
+                                        ?.memberRole.equals("LEAD", true))
+                                }
                                 root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = when (status) {
                                     BtbAbschlussStatus.ENTWURF -> "Entwurf"
                                     BtbAbschlussStatus.ABGESCHLOSSEN -> "Abgeschlossen"
@@ -494,13 +507,13 @@ object BtbModernLifecycleInstaller {
                                 finalButton?.visibility =
                                     if (status == BtbAbschlussStatus.ABGESCHLOSSEN) View.GONE else View.VISIBLE
                                 finalButton?.text = "BTB Abschluss"
-                                previewButton?.visibility =
-                                    if (status == BtbAbschlussStatus.ABGESCHLOSSEN) View.VISIBLE else View.GONE
+                                previewButton?.visibility = if (localMain) View.VISIBLE else View.GONE
+                                if (!localMain) finalButton?.visibility = View.GONE
                                 editButton?.visibility = View.VISIBLE
                             }
                         }
                         val lifecycleStatus = de.tbhelfer.server.BtbLifecycleOutbox.status(fragment.requireContext(), current.btbId)
-                        if (lifecycleStatus != null) {
+                        if (lifecycleStatus != null && serverState?.contextReadOnly != true) {
                             root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = lifecycleStatus
                             finalButton?.visibility = View.VISIBLE
                             finalButton?.text = "Abschluss ausstehend"
@@ -515,4 +528,5 @@ object BtbModernLifecycleInstaller {
         }
     }
 }
+
 

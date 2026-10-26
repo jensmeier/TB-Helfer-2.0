@@ -21,6 +21,7 @@ object StructureSyncStore {
         }
     }
     fun status(context: Context, rootId: Long): String? {
+        WorksiteLocalSyncStore.status(context, rootId)?.let { return it }
         val p = prefs(context)
         val dirty = generation(context, rootId)
         if (dirty == 0L && !p.contains("confirmed:$rootId")) return null
@@ -56,3 +57,4 @@ object StructureSyncStore {
         check(prefs(context).edit().putString("versions:$worksiteId", JSONObject(versions).toString()).commit())
     }
 }
+

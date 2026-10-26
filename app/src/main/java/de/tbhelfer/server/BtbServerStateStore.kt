@@ -35,7 +35,8 @@ object BtbServerStateStore {
         val canFinalize: Boolean,
         val canViewPdf: Boolean,
         val participants: List<Participant>,
-        val photosJson: String
+        val photosJson: String,
+        val contextReadOnly: Boolean = false
     ) {
         val serverFinalReadOnly: Boolean
             get() = serverStatus.equals("FINALIZED", true) && !active
@@ -47,7 +48,7 @@ object BtbServerStateStore {
                 )
 
         val readOnly: Boolean
-            get() = serverFinalReadOnly || participantReadOnly
+            get() = contextReadOnly || serverFinalReadOnly || participantReadOnly
     }
 
     fun rememberSnapshot(
@@ -124,6 +125,7 @@ object BtbServerStateStore {
                 isTeamLead = p.optBoolean("is_team_lead", false)
             )
         }
+        val blocked = WorksiteAccessStore.readOnly(context, root.optString("worksite_server_id"), root.optString("team_id"))
         return State(
             clientBtbId = id,
             serverBtbId = root.optString("server_btb_id").trim(),
@@ -131,15 +133,16 @@ object BtbServerStateStore {
             teamId = root.optString("team_id").trim(),
             serverStatus = root.optString("server_status").trim().uppercase(),
             active = root.optBoolean("active", false),
-            isTeamLead = current.optBoolean("is_team_lead", false),
+            isTeamLead = !blocked && current.optBoolean("is_team_lead", false),
             participantStatus = current.optString("participant_status")
                 .trim()
                 .uppercase()
                 .takeIf { it.isNotBlank() && it != "NULL" },
-            canFinalize = current.optBoolean("can_finalize_btb", false),
-            canViewPdf = current.optBoolean("can_view_btb_pdf", false),
+            canFinalize = !blocked && current.optBoolean("can_finalize_btb", false),
+            canViewPdf = !blocked && current.optBoolean("can_view_btb_pdf", false),
             participants = participants,
-            photosJson = (root.optJSONArray("photos") ?: JSONArray()).toString()
+            photosJson = (root.optJSONArray("photos") ?: JSONArray()).toString(),
+            contextReadOnly = blocked
         )
     }
 
@@ -196,4 +199,5 @@ object BtbServerStateStore {
         Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
     )
 }
+
 

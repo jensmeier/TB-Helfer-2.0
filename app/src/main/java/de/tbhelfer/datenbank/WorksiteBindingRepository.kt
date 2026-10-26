@@ -1,6 +1,8 @@
 package de.tbhelfer.datenbank
 
 import androidx.room.withTransaction
+import kotlinx.coroutines.sync.withLock
+import de.tbhelfer.server.StructureSyncStore
 
 /**
  * Verknüpft eine lokale Hauptbaustelle eindeutig mit einer Server-Baustelle.
@@ -18,6 +20,7 @@ class WorksiteBindingRepository(
     private val syncDatabase: SyncDatenbank,
     private val localWorksiteDao: BaustellenKnotenDao,
     private val localWorksiteTree: BaustellenBaumRepository,
+    private val mayBootstrap: () -> Boolean = { true },
     private val onBindingChanged: (() -> Unit)? = null
 ) {
     private val dao: SyncDao get() = syncDatabase.syncDao()
@@ -50,7 +53,7 @@ class WorksiteBindingRepository(
      * bestehenden Zuordnungsdialog bewusst, welche lokale Baustelle gemeint ist.
      */
     private suspend fun bootstrapMissingLocalRoots(contexts: List<SyncWorksiteContextEntity>) {
-        if (contexts.isEmpty()) return
+        if (contexts.isEmpty() || !mayBootstrap()) return
 
         var bindings = dao.worksiteBindings()
         val boundServerIds = bindings.mapTo(hashSetOf()) { it.worksiteServerId }
@@ -68,7 +71,7 @@ class WorksiteBindingRepository(
             }
             if (sameNameExists) continue
 
-            val created = localWorksiteTree.hauptErstellenOderZusammenfuehren(serverName)
+            val created = localWorksiteTree.hauptErstellenOderZusammenfuehren(serverName, fromServer = true)
             val alreadyBound = dao.worksiteBindingForLocalRoot(created.id)
             if (alreadyBound == null) {
                 bind(created.id, context.worksiteServerId)
@@ -112,7 +115,8 @@ class WorksiteBindingRepository(
         dao.worksiteContext(worksiteServerId)
             ?: throw IllegalArgumentException("Server-Baustelle ist noch nicht auf dem Gerät bekannt.")
 
-        syncDatabase.withTransaction {
+        StructureSyncStore.mutationMutex.withLock { syncDatabase.withTransaction {
+            syncDatabase.worksiteNodeSyncDao().bindLocalKeys(localRootKnotenId, "local:$localRootKnotenId", worksiteServerId)
             // 1:1 auf diesem Gerät: keine lokale Baustelle und keine Server-Baustelle doppelt binden.
             dao.deleteWorksiteBindingForLocalRoot(localRootKnotenId)
             dao.deleteWorksiteBindingForServer(worksiteServerId)
@@ -122,6 +126,7 @@ class WorksiteBindingRepository(
                     worksiteServerId = worksiteServerId
                 )
             )
+        }
         }
         // Nach einer neuen Zuordnung darf die Hauptbaustelle nicht minutenlang nur als leere Hülle
         // auf dem zweiten Gerät stehen. Der normale WorkManager-Sync übernimmt den Baum.
@@ -141,3 +146,4 @@ class WorksiteBindingRepository(
     private fun String.canonicalWorksiteName(): String =
         trim().replace(Regex("\\s+"), " ").lowercase()
 }
+

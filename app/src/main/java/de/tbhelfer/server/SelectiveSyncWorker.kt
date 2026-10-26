@@ -38,7 +38,7 @@ class SelectiveSyncWorker(
         ServiceLocator.initialisieren(applicationContext)
         val scopes = SelectiveSyncStore.btbScopes(applicationContext)
         val roots = StructureSyncStore.roots(applicationContext)
-        if (scopes.isEmpty() && roots.isEmpty()) return Result.success()
+        if (scopes.isEmpty() && roots.isEmpty() && !WorksiteLocalSyncStore.pending(applicationContext)) return Result.success()
 
         val settings = SyncEinstellungenSpeicher.laden(applicationContext)
         if (!networkAllowed(settings.netz)) {
@@ -62,6 +62,24 @@ class SelectiveSyncWorker(
             return Result.success()
         }
 
+        val scopeRoots = ServiceLocator.worksiteBindingRepository.localMainWorksites()
+            .filter { root -> scopes.any { it.localBaustelleId == root.altBaustelleId } }.map { it.id }.toSet()
+        val needsBinding = (roots + scopeRoots).any {
+            ServiceLocator.worksiteBindingRepository.bindingForLocalRoot(it) == null
+        }
+        if (needsBinding || WorksiteLocalSyncStore.pending(applicationContext)) {
+        when (val context = WorksiteContextSync(applicationContext).prepare(token, roots + scopeRoots)) {
+            WorksiteContextSync.Result.SessionInvalid -> { tokenStore.clear(); return Result.success() }
+            is WorksiteContextSync.Result.Error -> {
+                roots.forEach { StructureSyncStore.problem(applicationContext, it, context.message, StructureSyncStore.generation(applicationContext, it)) }
+                scopes.forEach { SelectiveSyncStore.problem(applicationContext, it, context.message) }
+                return retryAutomatic()
+            }
+            WorksiteContextSync.Result.Unsupported -> return retryAutomatic()
+            is WorksiteContextSync.Result.Success -> Unit
+        }
+
+        }
         val bridge = ServiceLocator.collabLocalBridge
         val collab = ServiceLocator.collabSyncRepository
         val btbApi = Server1BtbApi()
@@ -270,7 +288,7 @@ class SelectiveSyncWorker(
             }
         }
 
-        if (retryNeeded || StructureSyncStore.roots(applicationContext).isNotEmpty()) return retryAutomatic()
+        if (retryNeeded || WorksiteLocalSyncStore.pending(applicationContext) || StructureSyncStore.roots(applicationContext).isNotEmpty()) return retryAutomatic()
 
         if (!SelectiveSyncStore.hasPending(applicationContext)) {
             SyncStatusSpeicher.erfolgMerken(applicationContext)
@@ -333,12 +351,13 @@ class SelectiveSyncWorker(
         }
 
         fun enqueueIfPending(context: Context) {
-            if (SelectiveSyncStore.hasPending(context.applicationContext)) {
+            if (SelectiveSyncStore.hasPending(context.applicationContext) || WorksiteLocalSyncStore.pending(context.applicationContext) || StructureSyncStore.roots(context.applicationContext).isNotEmpty()) {
                 enqueue(context.applicationContext)
             }
         }
     }
 }
+
 
 
 
