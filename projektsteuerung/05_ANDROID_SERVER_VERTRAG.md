@@ -1021,3 +1021,7 @@ Status: **FACHLICH BESTÄTIGT / IMPLEMENTIERUNG UND E2E OFFEN**. Benutzer hat di
 
 ## PORTAL-022 – Anzeige, kein Transportvertrag (23.10.2026)
 Portal/BTB/Galerie ergänzen bei Kurznamen die vorhandenen station_name/station_code und track_or_switch/track_key mit object_type. Bestehende node IDs, client_node_key/worksiteNodeKey, gespeicherte Namen und Payloads unverändert. Fehlende KM sind kein Nullkilometer; echte numerische 0 bleibt sichtbar. Kein neuer API-Endpunkt/Feld, keine Syncänderung, kein app/**. Android bleibt eigener Auftrag. Details/Tests: 04_SERVER_STATUS.md, Übergabe PORTAL-022.
+
+
+## AND-BIDIR-026 – gemeinsame Implementierung beauftragt 26.10.2026
+Nutzer beauftragt ausdrücklich Android UND Server zu programmieren („bitte jetzt beides programmieren“, „okay lege los“). Ausgangsstände Android6a0e7e4 und Server923cf93. Umsetzung: dauerhafte idempotente Einzelbenutzer-Provisionierung ohne Helfer; stabile lokale Node-Keys vor Binding; lokale Haupt-TB-PDF-Vorschau; Kontext-/Teamempfang ohne globalen Medienvollsync; versionierter Baustellenkopf-PATCH mit Konfliktschutz und Portal-Listen-Livepfad; ehrliche Pending-Anzeige. Bestehende IDs, Originale, Rollen, Dirty-/409-/Recovery-Schutz bewahren. Keine Migration, APK-Veröffentlichung oder NAS-Deployment beauftragt. Build/Source-/Geräte-/NAS-E2E getrennt nachweisen. Auftrag umfasst Code- und Dokumentationscommits auf den beiden Arbeitsbranches.
