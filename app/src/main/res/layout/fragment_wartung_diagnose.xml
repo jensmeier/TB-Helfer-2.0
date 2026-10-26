@@ -29,6 +29,18 @@
             android:alpha="0.8" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWartungFehlerprotokoll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Fehlerprotokoll" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text="Letzte 200 Fehlergruppen auf diesem Handy. Wiederholungen werden zusammengefasst; Kopieren, Teilen und Löschen sind möglich."
+            android:textColor="?attr/colorOnBackground" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnWartungGeraeteDiagnose"
             android:layout_width="match_parent"
             android:layout_height="56dp"
@@ -113,4 +125,5 @@
 
     </LinearLayout>
 </ScrollView>
+
 

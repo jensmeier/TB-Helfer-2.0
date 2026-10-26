@@ -36,7 +36,10 @@ class Server1DeltaWorker(
                 if (result.caughtUp) Result.success() else Result.retry()
             Server1DeltaSync.Result.Unsupported -> Result.success()
             Server1DeltaSync.Result.SessionInvalid -> Result.success()
-            is Server1DeltaSync.Result.Error -> Result.retry()
+            is Server1DeltaSync.Result.Error -> {
+                ErrorLogStore.record(applicationContext, ErrorHistory.Operation.RECEIVE, result.message)
+                Result.retry()
+            }
         }
     }
 
@@ -65,4 +68,5 @@ class Server1DeltaWorker(
         }
     }
 }
+
 

@@ -18,6 +18,7 @@ object StructureSyncStore {
         if (generation(context, rootId) == expected) {
             check(prefs(context).edit().putString("problem:$rootId", message).commit())
             SelectiveSyncStore.changed()
+            ErrorLogStore.record(context, ErrorHistory.Operation.STRUCTURE, message, ErrorHistory.ContextKind.ROOT, rootId)
         }
     }
     fun status(context: Context, rootId: Long): String? {

@@ -36,6 +36,10 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
             findNavController().navigate(R.id.action_wartung_diagnose_to_geraete_diagnose)
         }
 
+        view.findViewById<View>(R.id.btnWartungFehlerprotokoll).setOnClickListener {
+            de.tbhelfer.ui.einstellungen.diagnose.ErrorLogDialog.show(this)
+        }
+
         updateStatus = view.findViewById(R.id.txtWartungUpdateStatus)
         updateDefaultTextColor = updateStatus.currentTextColor
         updateNotes = view.findViewById(R.id.txtWartungUpdateNotes)
@@ -78,6 +82,7 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
     }
 
     private fun pruefeAufUpdate() {
+        val logContext = requireContext().applicationContext
         updateStatus.setTextColor(updateDefaultTextColor)
         updateStatus.text = "Aktuell: ${AppUpdateManager.currentVersionLabel()}\nSuche nach Updates …"
         updateNotes.visibility = View.GONE
@@ -109,6 +114,7 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
                 }
 
                 is AppUpdateManager.CheckResult.Error -> {
+                    de.tbhelfer.server.ErrorLogStore.record(logContext, de.tbhelfer.server.ErrorHistory.Operation.UPDATE, result.message)
                     updateCandidate = null
                     updateStatus.setTextColor(Color.rgb(180, 60, 40))
                     updateStatus.text =
@@ -119,6 +125,7 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
     }
 
     private fun starteUpdate(candidate: AppUpdateManager.CheckResult.Available) {
+        val logContext = requireContext().applicationContext
         if (!AppUpdateManager.ensureInstallPermission(requireActivity())) {
             Toast.makeText(
                 requireContext(),
@@ -137,6 +144,7 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
                 }
 
                 is AppUpdateManager.DownloadResult.Error -> {
+                    de.tbhelfer.server.ErrorLogStore.record(logContext, de.tbhelfer.server.ErrorHistory.Operation.UPDATE, result.message)
                     if (isAdded) Toast.makeText(requireContext(), result.message, Toast.LENGTH_LONG).show()
                 }
             }
@@ -147,4 +155,5 @@ class WartungDiagnoseFragment : Fragment(R.layout.fragment_wartung_diagnose) {
         }
     }
 }
+
 

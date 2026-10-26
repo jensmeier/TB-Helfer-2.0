@@ -162,7 +162,8 @@ class SelectiveSyncWorker(
                     localBaustelleId = scope.localBaustelleId,
                     clientBtbId = scope.clientBtbId
                 )
-            } catch (_: Exception) {
+            } catch (error: Exception) {
+                ErrorLogStore.record(applicationContext, ErrorHistory.Operation.SEND, error.message.orEmpty(), ErrorHistory.ContextKind.SITE, scope.localBaustelleId)
                 retryNeeded = true
                 continue
             }
@@ -243,6 +244,7 @@ class SelectiveSyncWorker(
                                 }
                                 BtbTeamMediaSync.Result.Unsupported -> return Result.success()
                                 is BtbTeamMediaSync.Result.Error -> {
+                                    ErrorLogStore.record(applicationContext, ErrorHistory.Operation.SEND, media.message, ErrorHistory.ContextKind.SITE, scope.localBaustelleId)
                                     retryNeeded = true
                                     continue
                                 }

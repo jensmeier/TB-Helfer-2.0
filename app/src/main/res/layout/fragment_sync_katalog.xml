@@ -67,6 +67,13 @@
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSyncErrorLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Fehler ansehen"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSyncRefresh"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

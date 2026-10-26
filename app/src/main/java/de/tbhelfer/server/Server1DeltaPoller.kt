@@ -31,7 +31,7 @@ object Server1DeltaPoller {
                 var errorBackoffMs = 2_000L
                 while (isActive) {
                     when (
-                        Server1DeltaSync(appContext).synchronize(
+                        val result = Server1DeltaSync(appContext).synchronize(
                             firstWaitSeconds = 25,
                             maxPages = 50
                         )
@@ -47,6 +47,7 @@ object Server1DeltaPoller {
                             break
                         }
                         is Server1DeltaSync.Result.Error -> {
+                            ErrorLogStore.record(appContext, ErrorHistory.Operation.RECEIVE, result.message)
                             delay(errorBackoffMs)
                             errorBackoffMs = (errorBackoffMs * 2L).coerceAtMost(5L * 60L * 1000L)
                         }
@@ -63,4 +64,5 @@ object Server1DeltaPoller {
         }
     }
 }
+
 

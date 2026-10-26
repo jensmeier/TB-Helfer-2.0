@@ -58,8 +58,12 @@ class SyncWorker(
             return if (manualRun) manualFailure("Gerätefreigabe ist nicht mehr gültig.") else Result.success()
         }
 
-        fun retryOrManualFailure(message: String = "Synchronisation fehlgeschlagen."): Result =
-            if (manualRun) manualFailure(message) else Result.retry()
+        fun retryOrManualFailure(message: String = "Synchronisation fehlgeschlagen."): Result {
+            return if (manualRun) manualFailure(message) else {
+                ErrorLogStore.record(applicationContext, ErrorHistory.Operation.FULL_SYNC, message)
+                Result.retry()
+            }
+        }
 
         SyncActivityMonitor.phase(run, "Katalog vom Server laden")
         return when (val catalogResult = SyncCatalogApi().loadCatalog(token)) {
@@ -266,8 +270,10 @@ class SyncWorker(
         }
     }
 
-    private fun manualFailure(message: String): Result =
-        Result.failure(workDataOf(OUTPUT_MESSAGE to message))
+    private fun manualFailure(message: String): Result {
+        val id = ErrorLogStore.record(applicationContext, ErrorHistory.Operation.FULL_SYNC, message)
+        return Result.failure(workDataOf(OUTPUT_MESSAGE to message, OUTPUT_ERROR_LOG_ID to id.orEmpty()))
+    }
 
     private suspend fun refreshWorksiteDisplayState(token: String) {
         val contexts = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
@@ -331,6 +337,7 @@ class SyncWorker(
         private const val UNIQUE_NAME = "tbhelfer-server-sync"
         private const val MANUAL_UNIQUE_NAME = "tbhelfer-server-sync-manual"
         const val INPUT_MANUAL = "manual_sync"
+        const val OUTPUT_ERROR_LOG_ID = "error_log_id"
         const val OUTPUT_MESSAGE = "sync_message"
 
         fun schedule(context: Context) {

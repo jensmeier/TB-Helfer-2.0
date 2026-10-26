@@ -27,6 +27,7 @@ object SelectiveSyncStore {
         if (p.getLong(btbKey(scope.localBaustelleId, scope.clientBtbId), 0L) == scope.generation) {
             p.edit().putString("problem:" + btbKey(scope.localBaustelleId, scope.clientBtbId), message).commit()
             changed()
+            ErrorLogStore.record(context, ErrorHistory.Operation.SEND, message, ErrorHistory.ContextKind.SITE, scope.localBaustelleId)
         }
     }
     fun status(context: Context, localId: Long, btbId: String): String {
@@ -162,4 +163,5 @@ object SelectiveSyncStore {
         )
     }.getOrNull()
 }
+
 

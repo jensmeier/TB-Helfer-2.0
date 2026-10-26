@@ -51,6 +51,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
     private lateinit var searchButton: Button
     private var fullManualSyncRunning: Boolean = false
     private var lastCatalogAttempt: String = ""
+    private var lastErrorLogId: String? = null
 
     private val offlineRepository: OfflineSyncRepository
         get() = ServiceLocator.offlineSyncRepository
@@ -77,6 +78,9 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         conflictButton.setOnClickListener {
             offlineDialogs.showConflicts { refreshConflictButton() }
         }
+        view.findViewById<View>(R.id.btnSyncErrorLog).setOnClickListener {
+            de.tbhelfer.ui.einstellungen.diagnose.ErrorLogDialog.show(this, lastErrorLogId)
+        }
         startLiveDiagnostics(view.findViewById(R.id.txtSyncLiveDiagnostics))
         loadCatalog()
     }
@@ -89,7 +93,12 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                 var checkedAt: Long? = null
                 launch {
                     while (isActive) {
-                        server = withContext(Dispatchers.IO) { de.tbhelfer.server.SyncServerProbe.check(app) }
+                        server = withContext(Dispatchers.IO) {
+                            val result = de.tbhelfer.server.SyncServerProbe.check(app)
+                            if (!result.startsWith("TB-Server erreichbar") && !result.startsWith("Serverprüfung pausiert"))
+                                de.tbhelfer.server.ErrorLogStore.record(app, de.tbhelfer.server.ErrorHistory.Operation.CONNECTION, result)
+                            result
+                        }
                         checkedAt = de.tbhelfer.server.SyncActivityMonitor.nowMs()
                         delay(30_000L)
                     }
@@ -156,6 +165,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         renderCatalog(catalog)
 
         if (!cacheSaved) {
+            showErrorLink(de.tbhelfer.server.ErrorLogStore.record(requireContext(), de.tbhelfer.server.ErrorHistory.Operation.CATALOG, "Katalog konnte lokal nicht gespeichert werden"))
             statusText.text = getString(R.string.sync_cache_warning, statusText.text.toString())
             refreshConflictButton()
             return
@@ -177,6 +187,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         when (syncResult) {
             OfflineSyncRepository.FullSyncResult.SessionInvalid -> handleInvalidSession(tokenStore)
             is OfflineSyncRepository.FullSyncResult.Error -> {
+                showErrorLink(de.tbhelfer.server.ErrorLogStore.record(requireContext(), de.tbhelfer.server.ErrorHistory.Operation.CATALOG, syncResult.message))
                 statusText.text = getString(
                     R.string.sync_incremental_warning,
                     statusText.text.toString(),
@@ -235,6 +246,7 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                     statusText.text = "Synchronisation läuft: Baustelle, BTB, Mängel, Abnahmen und Bilder …"
                 }
                 WorkInfo.State.SUCCEEDED -> {
+                    showErrorLink(null)
                     fullManualSyncRunning = false
                     setLoading(false)
                     val pending = de.tbhelfer.server.WorksiteLocalSyncStore.pending(requireContext()) ||
@@ -250,7 +262,10 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
                     val message = info.outputData.getString(SyncWorker.OUTPUT_MESSAGE)
                         ?.takeIf { it.isNotBlank() }
                         ?: "Synchronisation fehlgeschlagen."
-                    statusText.text = "Synchronisation unvollständig: $message"
+                    val id = info.outputData.getString(SyncWorker.OUTPUT_ERROR_LOG_ID)?.takeIf { it.isNotBlank() }
+                        ?: de.tbhelfer.server.ErrorLogStore.record(requireContext(), de.tbhelfer.server.ErrorHistory.Operation.FULL_SYNC, message)
+                    showErrorLink(id)
+                    statusText.text = if (id != null) "Synchronisation unvollständig – Fehler ansehen" else "Synchronisation unvollständig: $message"
                     refreshConflictButton()
                 }
                 WorkInfo.State.CANCELLED -> {
@@ -262,7 +277,18 @@ class SyncKatalogFragment : Fragment(R.layout.fragment_sync_katalog) {
         }
     }
 
+    private fun showErrorLink(id: String?) {
+        lastErrorLogId = id
+        view?.findViewById<View>(R.id.btnSyncErrorLog)?.visibility = if (id == null) View.GONE else View.VISIBLE
+    }
+
     private suspend fun handleCatalogError(message: String) {
+        val logContext = requireContext().applicationContext
+        val id = withContext(Dispatchers.IO) {
+            de.tbhelfer.server.ErrorLogStore.record(logContext, de.tbhelfer.server.ErrorHistory.Operation.CATALOG, message)
+        }
+        if (!isAdded) return
+        showErrorLink(id)
         val cached = withContext(Dispatchers.IO) {
             runCatching { offlineRepository.loadCachedCatalog() }.getOrNull()
         }
