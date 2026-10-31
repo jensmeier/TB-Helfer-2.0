@@ -5582,6 +5582,28 @@ cardCurrentReport.setOnClickListener {
                     etFull.setSelection(etFull.text?.length ?: 0)
                 }
 
+                fun matchingFotoIds(mi: ManualItem): List<Long> {
+                    val btbId = loadedBtbId ?: return emptyList()
+                    val ids = lastGroups.flatMap { it.ids }.distinct()
+                    val direct = mi.clientEntryKey?.let { key -> ids.filter {
+                        BtbPhotoMetadatenStore.entryKey(requireContext(), btbId, it) == key
+                    } }.orEmpty()
+                    val known = lastFirmaBlocks.filter { !it.isDeleted }.map { it.name }.toSet()
+                    val targets = parseManualItems(etFull.text?.toString().orEmpty(), known).filter {
+                        it.ortId == mi.ortId && it.firma.orEmpty().equals(mi.firma.orEmpty(), true) &&
+                            it.text.trim().equals(mi.text.trim(), true)
+                    }
+                    if (targets.size != 1) return direct
+                    val fallback = lastGroups.filter { g -> g.ortId == mi.ortId &&
+                        g.firma.orEmpty().equals(mi.firma.orEmpty(), true) && g.text.trim().equals(mi.text.trim(), true)
+                    }.flatMap { it.ids }.filter {
+                        BtbPhotoMetadatenStore.entryKey(requireContext(), btbId, it) == null &&
+                            BtbPhotoMetadatenStore.autoBindingAllowed(requireContext(), btbId, it)
+                    }
+                    return (direct + fallback).distinct()
+                }
+
+
                 fun confirmDeleteManualItem(mi: ManualItem) {
                     com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                         .setTitle("Eintrag löschen?")
@@ -5695,26 +5717,6 @@ cardCurrentReport.setOnClickListener {
                     return listOfNotNull(mi.time, kmAnzeige(mi.kmVon, mi.kmBis), mi.text).joinToString(" ").trim()
                 }
 
-                fun matchingFotoIds(mi: ManualItem): List<Long> {
-                    val btbId = loadedBtbId ?: return emptyList()
-                    val ids = lastGroups.flatMap { it.ids }.distinct()
-                    val direct = mi.clientEntryKey?.let { key -> ids.filter {
-                        BtbPhotoMetadatenStore.entryKey(requireContext(), btbId, it) == key
-                    } }.orEmpty()
-                    val known = lastFirmaBlocks.filter { !it.isDeleted }.map { it.name }.toSet()
-                    val targets = parseManualItems(etFull.text?.toString().orEmpty(), known).filter {
-                        it.ortId == mi.ortId && it.firma.orEmpty().equals(mi.firma.orEmpty(), true) &&
-                            it.text.trim().equals(mi.text.trim(), true)
-                    }
-                    if (targets.size != 1) return direct
-                    val fallback = lastGroups.filter { g -> g.ortId == mi.ortId &&
-                        g.firma.orEmpty().equals(mi.firma.orEmpty(), true) && g.text.trim().equals(mi.text.trim(), true)
-                    }.flatMap { it.ids }.filter {
-                        BtbPhotoMetadatenStore.entryKey(requireContext(), btbId, it) == null &&
-                            BtbPhotoMetadatenStore.autoBindingAllowed(requireContext(), btbId, it)
-                    }
-                    return (direct + fallback).distinct()
-                }
 
                 fun showManualPhotoLarge(foto: de.tbhelfer.datenbank.FotoEntity, number: Int) {
                     val ctx = requireContext()
