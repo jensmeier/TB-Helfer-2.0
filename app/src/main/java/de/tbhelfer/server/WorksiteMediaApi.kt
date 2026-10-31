@@ -33,7 +33,9 @@ class WorksiteMediaApi(private val baseUrl: String = ServerConfig.BASE_URL) {
         val responsibleTb: String?,
         val parentStatus: String?,
         val areaScopeJson: String,
-        val parentPayloadJson: String
+        val parentPayloadJson: String,
+        val photoMetadataJson: String = "{}",
+        val capturedAt: String? = null
     )
 
     data class DownloadedMedia(
@@ -164,7 +166,9 @@ class WorksiteMediaApi(private val baseUrl: String = ServerConfig.BASE_URL) {
                         responsibleTb = item.optNullableString("responsible_tb"),
                         parentStatus = item.optNullableString("parent_status"),
                         areaScopeJson = item.optJSONObject("area_scope")?.toString() ?: "{}",
-                        parentPayloadJson = item.optJSONObject("parent_payload")?.toString() ?: "{}"
+                        parentPayloadJson = item.optJSONObject("parent_payload")?.toString() ?: "{}",
+                        photoMetadataJson = item.optJSONObject("photo_metadata")?.toString() ?: "{}",
+                        capturedAt = item.optNullableString("captured_at")
                     )
                 )
             }
@@ -267,4 +271,5 @@ class WorksiteMediaApi(private val baseUrl: String = ServerConfig.BASE_URL) {
         return optString(name).takeIf { it.isNotBlank() }
     }
 }
+
 

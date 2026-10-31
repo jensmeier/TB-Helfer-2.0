@@ -124,13 +124,13 @@ class BtbLifecycleWorker(context: Context, params: WorkerParameters) : Coroutine
             val ctx = RecoveryWorkspace.wrap(context.applicationContext)
             if (BtbLifecycleOutbox.all(ctx).isEmpty() || RecoveryWorkspace.blocked()) return
             val network = de.tbhelfer.einstellungen.SyncEinstellungenSpeicher.laden(ctx).netz
-            val required = if (network == de.tbhelfer.einstellungen.SyncEinstellungenSpeicher.Netz.NUR_WLAN)
-                NetworkType.UNMETERED else NetworkType.CONNECTED
+            val required = NetworkType.CONNECTED // Worker enforces the selected transport, including metered Wi-Fi.
             val request = OneTimeWorkRequestBuilder<BtbLifecycleWorker>()
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(required).build())
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS).build()
             WorkManager.getInstance(ctx).enqueueUniqueWork("tbhelfer-btb-lifecycle",
                 if (replaceWaiting) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.APPEND_OR_REPLACE, request)
         }
     }
 }
+

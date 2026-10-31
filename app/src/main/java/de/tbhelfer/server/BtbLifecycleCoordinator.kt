@@ -190,7 +190,8 @@ class BtbLifecycleCoordinator(context: Context) {
                 server1PdfApi = null,
                 worksiteServerIds = setOf(context.worksiteServerId),
                 btbServerIds = setOf(entity!!.serverId),
-                allowUploads = true
+                allowUploads = true,
+                importMedia = false
             )
         ) {
             BtbTeamMediaSync.Result.SessionInvalid -> {
@@ -206,6 +207,21 @@ class BtbLifecycleCoordinator(context: Context) {
         // Uploads können BTB-Version/Fotozustand geändert haben; Lifecycle immer gegen
         // den frisch gelesenen kanonischen Serverstand ausführen.
         return loadAccess()
+    }
+
+    suspend fun reopen(localBaustelleId: Long, clientBtbId: String): ActionResult {
+        val prepared = prepareAccess(localBaustelleId, clientBtbId)
+        val access = when (prepared) {
+            is PrepareResult.Success -> prepared.access
+            PrepareResult.SessionInvalid -> return ActionResult.SessionInvalid
+            is PrepareResult.Conflict -> return ActionResult.Conflict(prepared.message)
+            is PrepareResult.Error -> return ActionResult.Error(prepared.message)
+        }
+        if (!access.isTeamLead) return ActionResult.Error("Nur der Haupt-TB darf nachbearbeiten.")
+        val state = BtbServerStateStore.state(appContext, clientBtbId)
+            ?: return ActionResult.Error("Serverzuordnung fehlt.")
+        return lifecycleAction(access) { token -> api.reopenBtb(token, state.worksiteServerId,
+            access.snapshot.teamId, access.snapshot.serverId, "android-reopen-${java.util.UUID.randomUUID()}") }
     }
 
     suspend fun shiftFinish(
@@ -284,7 +300,8 @@ class BtbLifecycleCoordinator(context: Context) {
 
     suspend fun sendPrepared(access: Server1BtbApi.Access, intent: BtbLifecycleOutbox.Intent): ActionResult {
         val finalized = access.snapshot.status.equals("FERTIG", true) && !access.active
-        if (!BtbLifecyclePolicy.maySend(intent.target, access.isTeamLead, access.active, finalized))
+        if (!BtbLifecyclePolicy.maySend(intent.target, access.isTeamLead, access.active ||
+                BtbServerStateStore.state(appContext, intent.btbId)?.serverStatus.equals("REWORK", true), finalized))
             return ActionResult.Error("Rolle oder BTB-Status erlaubt diesen Auftrag nicht.")
         val worksite = BtbServerStateStore.state(appContext, intent.btbId)?.worksiteServerId.orEmpty()
         return lifecycleAction(access) { token ->
@@ -365,4 +382,5 @@ class BtbLifecycleCoordinator(context: Context) {
         }
     }
 }
+
 

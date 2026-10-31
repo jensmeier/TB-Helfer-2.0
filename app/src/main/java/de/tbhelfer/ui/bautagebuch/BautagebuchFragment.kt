@@ -5588,10 +5588,16 @@ cardCurrentReport.setOnClickListener {
                         .setMessage(if (mi.time != null) "${mi.time} ${mi.text}".trim() else mi.text)
                         .setNegativeButton(R.string.action_cancel, null)
                         .setPositiveButton(R.string.action_delete) { _, _ ->
+                            val photoIds = matchingFotoIds(mi)
                             val lines = etFull.text?.toString().orEmpty().lines().toMutableList()
                             if (mi.lineIndex in lines.indices) {
                                 lines.removeAt(mi.lineIndex)
                                 setRawLines(lines.filter { it.isNotBlank() })
+                                loadedBtbId?.let { btb -> photoIds.forEach { id ->
+                                    BtbPhotoMetadatenStore.bind(requireContext(), btb, id, null)
+                                } }
+                                onSave(etFull.text?.toString().orEmpty())
+                                saveAndReloadWholeBtbSilently()
                                 renderMerged?.invoke(lastGroups)
                             }
                         }
@@ -5690,24 +5696,24 @@ cardCurrentReport.setOnClickListener {
                 }
 
                 fun matchingFotoIds(mi: ManualItem): List<Long> {
-                    mi.clientEntryKey?.let { entryKey ->
-                        val btbId = loadedBtbId ?: return emptyList()
-                        return lastGroups.flatMap { it.ids }.distinct().filter {
-                            BtbPhotoMetadatenStore.entryKey(requireContext(), btbId, it) == entryKey
-                        }
+                    val btbId = loadedBtbId ?: return emptyList()
+                    val ids = lastGroups.flatMap { it.ids }.distinct()
+                    val direct = mi.clientEntryKey?.let { key -> ids.filter {
+                        BtbPhotoMetadatenStore.entryKey(requireContext(), btbId, it) == key
+                    } }.orEmpty()
+                    val known = lastFirmaBlocks.filter { !it.isDeleted }.map { it.name }.toSet()
+                    val targets = parseManualItems(etFull.text?.toString().orEmpty(), known).filter {
+                        it.ortId == mi.ortId && it.firma.orEmpty().equals(mi.firma.orEmpty(), true) &&
+                            it.text.trim().equals(mi.text.trim(), true)
                     }
-                    fun sameFirma(a: String?, b: String?): Boolean =
-                        a.orEmpty().trim().equals(b.orEmpty().trim(), ignoreCase = true)
-
-                    return lastGroups.asSequence()
-                        .filter { g ->
-                            g.ortId == mi.ortId &&
-                                sameFirma(g.firma, mi.firma) &&
-                                g.text.trim().equals(mi.text.trim(), ignoreCase = true)
-                        }
-                        .flatMap { it.ids.asSequence() }
-                        .distinct()
-                        .toList()
+                    if (targets.size != 1) return direct
+                    val fallback = lastGroups.filter { g -> g.ortId == mi.ortId &&
+                        g.firma.orEmpty().equals(mi.firma.orEmpty(), true) && g.text.trim().equals(mi.text.trim(), true)
+                    }.flatMap { it.ids }.filter {
+                        BtbPhotoMetadatenStore.entryKey(requireContext(), btbId, it) == null &&
+                            BtbPhotoMetadatenStore.autoBindingAllowed(requireContext(), btbId, it)
+                    }
+                    return (direct + fallback).distinct()
                 }
 
                 fun showManualPhotoLarge(foto: de.tbhelfer.datenbank.FotoEntity, number: Int) {
@@ -5858,6 +5864,7 @@ cardCurrentReport.setOnClickListener {
                                     withContext(Dispatchers.IO) {
                                         val currentOverrides = BtbPhotoContextOverrideStore.load(requireContext(), btbId)
                                         photos.forEach { foto ->
+                                            mi.clientEntryKey?.let { BtbPhotoMetadatenStore.bind(requireContext(), btbId, foto.id, it) }
                                             val previous = currentOverrides[foto.id]
                                             BtbPhotoContextOverrideStore.setOverride(
                                                 requireContext(),
@@ -5938,6 +5945,7 @@ cardCurrentReport.setOnClickListener {
                                         val currentOverrides =
                                             BtbPhotoContextOverrideStore.load(requireContext(), btbId)
                                         photos.forEach { foto ->
+                                            mi.clientEntryKey?.let { BtbPhotoMetadatenStore.bind(requireContext(), btbId, foto.id, it) }
                                             val previous = currentOverrides[foto.id]
                                             BtbPhotoContextOverrideStore.setOverride(
                                                 requireContext(),
@@ -6425,6 +6433,7 @@ cardCurrentReport.setOnClickListener {
                                         return@launch
                                     }
 
+                                    val photoIds = matchingFotoIds(mi)
                                     val lines = etFull.text?.toString().orEmpty().lines().toMutableList()
                                     if (mi.lineIndex in lines.indices) {
                                         lines[mi.lineIndex] = buildManualLine(
@@ -6444,7 +6453,6 @@ cardCurrentReport.setOnClickListener {
                                     // Eine geänderte Unterbaustelle am Eintrag wird für bereits
                                     // direkt zugeordnete Fotos als BTB-Link-Kontext mitgeführt.
                                     val btbId = loadedBtbId?.trim().orEmpty()
-                                    val photoIds = matchingFotoIds(mi)
                                     if (photoIds.isNotEmpty() && btbId.isNotBlank()) {
                                         val photos = withContext(Dispatchers.IO) {
                                             ServiceLocator.fotoRepository.fotosMitIds(photoIds)
@@ -6453,6 +6461,7 @@ cardCurrentReport.setOnClickListener {
                                             val currentOverrides =
                                                 BtbPhotoContextOverrideStore.load(requireContext(), btbId)
                                             photos.forEach { foto ->
+                                            mi.clientEntryKey?.let { BtbPhotoMetadatenStore.bind(requireContext(), btbId, foto.id, it) }
                                                 val previous = currentOverrides[foto.id]
                                                 BtbPhotoContextOverrideStore.setOverride(
                                                     requireContext(),
@@ -8077,6 +8086,7 @@ private data class BaustelleKontext(
     val strecke: String?,
     val rootKnotenId: Long? = null
 )
+
 
 
 

@@ -63,7 +63,7 @@ object BtbPhotoMetadatenStore {
         val preferences = prefs(context)
         val edit = preferences.edit().remove("source:$fotoId")
         preferences.all.keys.filter {
-            (it.startsWith("server:") || it.startsWith("binding:")) && it.endsWith(":$fotoId")
+            (it.startsWith("server:") || it.startsWith("binding:") || it.startsWith("explicit-unlink:")) && it.endsWith(":$fotoId")
         }.forEach { edit.remove(it) }
         check(edit.commit())
         notifyChanges()
@@ -74,8 +74,13 @@ object BtbPhotoMetadatenStore {
     fun bind(context: Context, btbId: String, fotoId: Long, key: String?) {
         if (btbId.isBlank() || fotoId <= 0) return
         val value = JSONObject().put("key", key?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
-        check(prefs(context).edit().putString("binding:$btbId:$fotoId", value.toString()).commit())
+        check(prefs(context).edit().putString("binding:$btbId:$fotoId", value.toString())
+            .putBoolean("explicit-unlink:$btbId:$fotoId", key == null).commit())
     }
+    fun autoBindingAllowed(context: Context, btbId: String, fotoId: Long): Boolean =
+        !prefs(context).getBoolean("explicit-unlink:$btbId:$fotoId", false) &&
+            serverMetadata(context, btbId, fotoId)?.optBoolean("entryBindingCleared", false) != true
+
     fun pending(context: Context, btbId: String, fotoId: Long): EntryIntent? = read(context, "binding:$btbId:$fotoId")?.let {
         EntryIntent(if (it.isNull("key")) null else it.optString("key"))
     }
@@ -118,3 +123,4 @@ object BtbPhotoMetadatenStore {
     private fun number(json: JSONObject, key: String): Double? = if (json.isNull(key)) null else
         json.optDouble(key, Double.NaN).takeIf { it.isFinite() }
 }
+

@@ -1064,3 +1064,12 @@ Nutzer bestätigt lokales Fehlerprotokoll unter Einstellungen > Wartung & Diagno
 
 ## BTB-INTEGRATION-031 – Korrekturauftrag 31.10.2026
 Ausdrücklicher Nutzerauftrag Android UND Server: Auditfehler korrigieren; Handy-BTB als fachliche Vorlage; drei möglichst große Bilder pro PDF-Reihe; schneller nachvollziehbarer Abschluss; Nachbearbeitung, Gesamtexport, Eintragslöschen/Firmenwechsel/Punktwechsel und Fotozuordnung zu Schwellenwechsel prüfen und korrigieren. Stabile IDs, Originale, Helferrechte, Dirty-/Konflikt-/Recovery-Schutz erhalten. Fotozuordnung über Entry-ID; Textgleichheit nur innerhalb desselben BTB/Firma/Ortskontexts und bei eindeutigem Ziel. Kein Deployment/Produktivzugriff. Tests/Build/Geräte-E2E getrennt ausweisen. Basis Android95b9efba/Server65a14b15. Auftrag vor Runtimeänderung gesichert.
+
+
+## BTB-INTEGRATION-031 – Code umgesetzt, Abnahme offen (31.10.2026)
+
+Android 1.3.35/200085 und passender Serverstand: drei Bildspalten, strukturierter Drucksnapshot für Firma/Ort und Fotoverweise, sofort gespeichertes Eintragslöschen, erhaltene Fotoverknüpfung beim Wechsel von Firma/Ort/Punkt, eindeutiger kontextgebundener Beschreibungsabgleich, ausdrückliche REWORK-Nachbearbeitung ohne Ersetzen einer neuen aktiven Schicht, Abschluss ohne Medienimport, Export mit bestätigter Original/Sync-Zuordnung und Linkmetadaten. Ausdrückliches Lösen wird zusätzlich als entryBindingCleared in wirksamen Foto-Metadaten transportiert; andere Geräte dürfen es nicht automatisch wieder binden. Historische Originale/IDs/Rollen/Outbox-/Konfliktschutz bleiben geschützt.
+
+Nachweise:22 neue Server-Funktionsprüfungen und7 produktive Portal-Guardfälle PASS; vorhandene132/138 je11, Worksite-Head14, Portal152/153 und List158 PASS; Produktions-PDF mit drei Karten in einer physischen Zeile/KM0/GPS-Links PASS. Acht Android-JUnit-Fälle ergänzt, NICHT ausgeführt. Kein Android-SDK/Gradle/Kotlin/ADB; kein PostgreSQL/HTTP-/Geräte-/NAS-E2E. Keine APK, Actions, Veröffentlichung, Produktivübernahme oder Bestandsbereinigung. Abschlussdauer und Wetterabweichung am Gerät weiterhin offen. Kein Status „alles funktioniert“.
+
+Details, genaue Grenzen und Abnahmeschritte: [BTB-INTEGRATION-031](uebergaben/BTB-INTEGRATION-031.md). Android-Release-MD: projektsteuerung/releases/TB-Helfer_1.3.35_200085.md, DOWNLOAD_URL leer. Nächster verbindlicher Schritt: Android-Build/Tests und gemeinsamer Testbetrieb beider Branchstände mit Haupt-TB/Helfer, Änderungen/Löschen/Verschieben, sieben Bildern und zweimaligem Export.

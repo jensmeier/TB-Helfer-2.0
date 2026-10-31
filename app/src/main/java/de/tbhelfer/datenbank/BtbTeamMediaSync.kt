@@ -69,7 +69,8 @@ class BtbTeamMediaSync(context: Context) {
         server1PdfApi: Server1BtbPdfApi? = null,
         worksiteServerIds: Set<String>? = null,
         btbServerIds: Set<String>? = null,
-        allowUploads: Boolean = true
+        allowUploads: Boolean = true,
+        importMedia: Boolean = true
     ): Result {
         var uploaded = 0
         var present = 0
@@ -148,8 +149,8 @@ class BtbTeamMediaSync(context: Context) {
                 )
 
                 for (foto in btbFotos) {
-                    val bindingIntent = BtbPhotoMetadatenStore.pending(appContext, key, foto.id)
-                    val requestedEntryId = bindingIntent?.clientEntryKey?.let {
+                    var bindingIntent = BtbPhotoMetadatenStore.pending(appContext, key, foto.id)
+                    var requestedEntryId = bindingIntent?.clientEntryKey?.let {
                         BtbServerStateStore.entryId(appContext, key, it)
                             ?: return Result.Error("Foto-Eintrag ist noch nicht vom Server bestätigt. Bitte BTB synchronisieren.")
                     }
@@ -182,6 +183,18 @@ class BtbTeamMediaSync(context: Context) {
                         kurztext = effectiveText,
                         km = effectiveKm
                     )
+
+                    if (bindingIntent == null && BtbPhotoMetadatenStore.entryKey(appContext, key, foto.id) == null &&
+                        BtbPhotoMetadatenStore.autoBindingAllowed(appContext, key, foto.id)) {
+                        val match = de.tbhelfer.ui.bautagebuch.BtbPhotoEntryMatcher.find(
+                            v.entry, effectiveFoto.bildtyp, effectiveFoto.firma, worksiteNodeKey, effectiveText, contextOverride?.firmaId)
+                        if (match != null) {
+                            BtbPhotoMetadatenStore.bind(appContext, key, foto.id, match)
+                            bindingIntent = BtbPhotoMetadatenStore.pending(appContext, key, foto.id)
+                            requestedEntryId = BtbServerStateStore.entryId(appContext, key, match)
+                                ?: return Result.Error("Foto-Eintrag wartet noch auf Serverbestätigung.")
+                        }
+                    }
 
                     // Bereits bekannte Server-Fotos niemals wegen der neuen kleinen Sync-Datei
                     // nochmals hochladen. So entstehen beim Umstieg keine Duplikate.
@@ -296,6 +309,8 @@ class BtbTeamMediaSync(context: Context) {
                 // Medienupload aendert nur Fotos. Der Lifecycle wird seit Vertrag 25.09.2026
                 // ausschliesslich ueber shift-finish/shift-resume/finalize gesteuert.
             }
+
+            if (!importMedia) continue
 
             // Import: heruntergeladene BTB-Fotos als normale lokale Fotos verfügbar machen.
             // Eigene Uploads zeigen bereits auf eine vorhandene lokale Datei und werden nicht dupliziert.
@@ -726,7 +741,7 @@ class BtbTeamMediaSync(context: Context) {
         return left.toString().trim() == right.toString().trim()
     }
 
-    private fun serverAttachmentIdForLocalPhoto(localFotoId: Long, btbId: String): String? =
+    fun serverAttachmentIdForLocalPhoto(localFotoId: Long, btbId: String): String? =
         importedMappingsForBtb(btbId)
             .firstOrNull { (_, mappedLocalId) -> mappedLocalId == localFotoId }
             ?.first
@@ -793,4 +808,5 @@ class BtbTeamMediaSync(context: Context) {
         private const val MAX_ATTACHMENT_FILENAME_LENGTH = 160
     }
 }
+
 

@@ -161,7 +161,11 @@ class BautagebuchPdf(
         return base
     }
 
-    suspend fun erstellenPdf(entry: BautagebuchEintrag, asDraft: Boolean = false): File {
+    suspend fun erstellenPdf(entry: BautagebuchEintrag, asDraft: Boolean = false): File =
+        erstellenPreparedPdf(entry, asDraft)
+
+    private suspend fun erstellenPreparedPdf(sourceEntry: BautagebuchEintrag, asDraft: Boolean): File {
+        val entry = BtbPrintSnapshot.prepare(sourceEntry)
         val datum = LocalDate.parse(entry.datumIso, isoFmt)
         val skey = schichtKey(entry)
         val safeBaustellenName = safeFolderName(entry.baustelleName)
@@ -237,7 +241,7 @@ class BautagebuchPdf(
         //  Wird per "Tagesabschluss + PDF" im PDF-Dialog gesetzt (bautagebuch_*_original.json).
         val baselineInfo = BautagebuchSpeicher.baselineInfo(context, entry.baustelleName, datum, entry.schicht)
         val baselineEntry: BautagebuchEintrag? = if (baselineInfo.exists) {
-            BautagebuchSpeicher.ladenBaseline(context, entry.baustelleName, datum, entry.schicht)
+            BautagebuchSpeicher.ladenBaseline(context, entry.baustelleName, datum, entry.schicht)?.let { BtbPrintSnapshot.prepare(it) }
         } else null
 
         data class SectionChange(
@@ -437,7 +441,7 @@ class BautagebuchPdf(
                 val tail = wsNorm(txt.substring(idxC + 1))
                 if (prefix.isBlank() || tail.isBlank()) return null to txt
                 if (looksLikeTimeColonSplit(prefix, tail)) return null to txt
-                val canon = firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: prefix
+                val canon = firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: return null to txt
                 return canon to tail
             }
 
@@ -459,7 +463,7 @@ class BautagebuchPdf(
                     val (newOrt, cleaned0) = applyOrtMarker(rawLine, ortId)
                     ortId = newOrt
                     val (forcedGeneral, cleaned) = applyGeneralMarker(cleaned0)
-                    val effectiveOrtId = if (forcedGeneral) 0L else ortId
+                    val effectiveOrtId = ortId
                     val kmData = de.tbhelfer.util.KmAnzeige.zerlegen(cleaned)
                     val kmLabel = de.tbhelfer.util.KmAnzeige.bereich(kmData.kmVon, kmData.kmBis, inKlammern = true)
                     val line0 = stripLeadingBullets(kmData.text.trim())
@@ -482,7 +486,7 @@ class BautagebuchPdf(
 
                         val (firma, txt2) = splitFirma(rest, forceGeneral = forcedGeneral)
                         if (txt2.isBlank()) return@forEach
-                        val finalOrtId = if (firma == null) 0L else effectiveOrtId
+                        val finalOrtId = effectiveOrtId
 
                         val prefix = if (tEnd != null) "${tStart.format(timeFmt)}–${tEnd.format(timeFmt)}" else tStart.format(timeFmt)
                         val display = wsNorm(listOfNotNull(prefix, kmLabel, txt2).joinToString(" "))
@@ -490,7 +494,7 @@ class BautagebuchPdf(
                     } else {
                         val (firma, txt2) = splitFirma(line0, forceGeneral = forcedGeneral)
                         if (txt2.isBlank()) return@forEach
-                        val finalOrtId = if (firma == null) 0L else effectiveOrtId
+                        val finalOrtId = effectiveOrtId
                         val display = wsNorm(listOfNotNull(kmLabel, txt2).joinToString(" "))
                         out.add("${firma ?: ""}||$finalOrtId||$display")
                     }
@@ -530,7 +534,7 @@ class BautagebuchPdf(
                 val tail = wsNorm(normalized.substring(idx + 1))
                 if (prefix.isBlank() || tail.isBlank()) return null to normalized
                 if (looksLikeTimeColonSplit(prefix, tail)) return null to normalized
-                val canon = firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: prefix
+                val canon = firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: return null to txt
                 return canon to tail
             }
 
@@ -539,7 +543,7 @@ class BautagebuchPdf(
                 val (newOrt, cleaned0) = applyOrtMarker(it2.text, ortId)
                 ortId = newOrt
                 val (forcedGeneral, cleaned) = applyGeneralMarker(cleaned0)
-                val effectiveOrtId = if (forcedGeneral) 0L else ortId
+                val effectiveOrtId = ortId
                 val rawTxt = cleaned?.trim().orEmpty()
                 if (rawTxt.isBlank()) return@forEach
 
@@ -547,7 +551,7 @@ class BautagebuchPdf(
                 if (txt2.isBlank()) return@forEach
                 val label = parseStartLabel(it2.zeitAnzeige) ?: it2.zeitAnzeige
                 val line = if (!label.isNullOrBlank()) wsNorm("$label $txt2") else wsNorm(txt2)
-                val finalOrtId = if (firm == null) 0L else effectiveOrtId
+                val finalOrtId = effectiveOrtId
                 out.add("${firm ?: ""}||$finalOrtId||$line")
             }
             return out
@@ -1177,7 +1181,13 @@ class BautagebuchPdf(
 
         // Ab hier ist die PDF-/BTB-Liste die führende Liste:
         // Haupttext und Anhang verwenden dieselben Fotos, dieselben Nummern und dieselbe Reihenfolge.
-        val byType = selectedFotosOrdered.groupBy { it.bildtyp }
+        val entryPhotoBindings = BtbPrintSnapshot.photoBindings(context, sourceEntry, selectedFotosOrdered, textOverrides)
+        val entryPhotoNumbers = entryPhotoBindings.entries.groupBy({ it.value }, { fotoNum[it.key] })
+        fun entryPhotoLabel(key: String?): String {
+            val numbers = entryPhotoNumbers[key].orEmpty().filterNotNull().distinct().sorted()
+            return if (numbers.isEmpty()) "" else " [Bild ${numbers.joinToString(", ")}]"
+        }
+        val byType = selectedFotosOrdered.filter { it.id !in entryPhotoBindings }.groupBy { it.bildtyp }
 
         // ortLabelById / ortOrderById sind oben aus dem Baustellenbaum gebaut.
 
@@ -1568,7 +1578,7 @@ fun canonFirm(name: String?): String? {
             val tail = txt.substring(idxC + 1).trim()
             if (prefix.isBlank() || tail.isBlank()) return null to txt
             if (looksLikeTimeColonSplit(prefix, tail)) return null to txt
-            val canon = firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: prefix
+            val canon = firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: return null to txt
             return canon to tail
         }
 
@@ -1578,7 +1588,7 @@ fun canonFirm(name: String?): String? {
                 val (newOrt, cleaned0) = applyOrtMarker(rawLine, ortId)
                 ortId = newOrt
                 val (forcedGeneral, cleaned) = applyGeneralMarker(cleaned0)
-                val effectiveOrtId = if (forcedGeneral) 0L else ortId
+                val effectiveOrtId = ortId
                 val kmData = de.tbhelfer.util.KmAnzeige.zerlegen(cleaned)
                 val kmLabel = de.tbhelfer.util.KmAnzeige.bereich(kmData.kmVon, kmData.kmBis, inKlammern = true)
                 val line = stripLeadingBullets(kmData.text.trim())
@@ -1601,7 +1611,7 @@ fun canonFirm(name: String?): String? {
 
                     val (firma, txt2) = splitFirma(rest, forceGeneral = forcedGeneral)
                     if (txt2.isBlank()) return@forEach
-                    val finalOrtId = if (firma == null) 0L else effectiveOrtId
+                    val finalOrtId = effectiveOrtId
 
                     val prefix = if (tEnd != null) "${tStart.format(timeFmt)}–${tEnd.format(timeFmt)}" else tStart.format(timeFmt)
                     val display = listOfNotNull(prefix, kmLabel, txt2).joinToString(" ")
@@ -1609,7 +1619,7 @@ fun canonFirm(name: String?): String? {
                 } else {
                     val (firma, txt2) = splitFirma(line, forceGeneral = forcedGeneral)
                     if (txt2.isBlank()) return@forEach
-                    val finalOrtId = if (firma == null) 0L else effectiveOrtId
+                    val finalOrtId = effectiveOrtId
                     val display = listOfNotNull(kmLabel, txt2).joinToString(" ")
                     out.add(PdfEvent(sortTime = lastTime, kind = kind, seq = seq++, ortId = finalOrtId, firma = firma, line = display))
                 }
@@ -1633,7 +1643,7 @@ fun canonFirm(name: String?): String? {
             val tail = txt.substring(idxC + 1).trim()
             if (prefix.isBlank() || tail.isBlank()) return null to txt
             if (looksLikeTimeColonSplit(prefix, tail)) return null to txt
-            val canon = firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: prefix
+            val canon = firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: return null to txt
             return canon to tail
         }
 
@@ -1645,7 +1655,7 @@ fun canonFirm(name: String?): String? {
                 val (newOrt, rest0) = applyOrtMarker(raw, ortId)
                 ortId = newOrt
                 val (forcedGeneral, rest1) = applyGeneralMarker(rest0)
-                val effectiveOrtId = if (forcedGeneral) 0L else ortId
+                val effectiveOrtId = ortId
 
                 val txt = rest1?.trim().orEmpty()
                 if (txt.isBlank()) return@mapNotNull null
@@ -1655,7 +1665,7 @@ fun canonFirm(name: String?): String? {
                 val (firma, txt2) = splitFirmaSection(txt, forceGeneral = forcedGeneral)
                 val finalTxt = txt2.trim()
                 if (finalTxt.isBlank()) return@mapNotNull null
-                val finalOrtId = if (firma == null) 0L else effectiveOrtId
+                val finalOrtId = effectiveOrtId
 
                 val kmLabel = de.tbhelfer.util.KmAnzeige.bereich(it2.kmVon, it2.kmBis, inKlammern = true)
                 val lineParts = listOfNotNull(it2.zeitAnzeige, kmLabel, finalTxt)
@@ -1665,7 +1675,7 @@ fun canonFirm(name: String?): String? {
                     seq = seq++,
                     ortId = finalOrtId,
                     firma = firma,
-                    line = lineParts.joinToString(" ")
+                    line = lineParts.joinToString(" ") + entryPhotoLabel(it2.clientEntryKey)
                 )
             }
     }
@@ -2023,7 +2033,7 @@ fun splitFirma(txtIn: String, forceGeneral: Boolean = false): Pair<String?, Stri
     val tail = txt.substring(idx + 1).trim()
     if (prefix.isBlank() || tail.isBlank()) return null to txt.trim()
     if (looksLikeTimeColonSplit(prefix, tail)) return null to txt.trim()
-    val canon = firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: prefix
+    val canon = firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: return null to txt
     return canon to tail
 }
 
@@ -2036,20 +2046,20 @@ fun splitFirma(txtIn: String, forceGeneral: Boolean = false): Pair<String?, Stri
             val (newOrt, cleaned0) = applyOrtMarker(it2.text, ortId)
             ortId = newOrt
             val (forcedGeneral, cleaned) = applyGeneralMarker(cleaned0)
-            val effectiveOrtId = if (forcedGeneral) 0L else ortId
+            val effectiveOrtId = ortId
             val rawTxt = cleaned?.trim().orEmpty()
             if (rawTxt.isBlank()) return@forEach
 
             val (firm, txt2) = splitFirma(rawTxt, forceGeneral = forcedGeneral)
             if (txt2.isBlank()) return@forEach
-            val finalOrtId = if (firm == null) 0L else effectiveOrtId
+            val finalOrtId = effectiveOrtId
 
             val (t, label) = parseStartTimeAndLabel(it2.zeitAnzeige)
             if (t != null) lastTime = t
 
             val sortT = t ?: lastTime
             val kmLabel = de.tbhelfer.util.KmAnzeige.bereich(it2.kmVon, it2.kmBis, inKlammern = true)
-            val line = listOfNotNull(label?.takeIf { it.isNotBlank() } ?: it2.zeitAnzeige, kmLabel, txt2).joinToString(" ")
+            val line = listOfNotNull(label?.takeIf { it.isNotBlank() } ?: it2.zeitAnzeige, kmLabel, txt2).joinToString(" ") + entryPhotoLabel(it2.clientEntryKey)
             out.add(PdfEvent(sortT, kind, seq++, finalOrtId, firm, line))
         }
         return out
@@ -2635,7 +2645,7 @@ if (selectedFotosOrdered.isNotEmpty()) {
     val fixedCellW = (contentW - gap * (gridCols - 1)) / gridCols
     val fixedCellH = (((pageH - marginBottom) - appendixTopAfterTitle) - gap * (gridRows - 1)) / gridRows
 
-    val autoFotoLayout = cfg.raster == BtbPdfEinstellungenSpeicher.FotoRaster.RASTER_2x6
+    val autoFotoLayout = true // BTB-INTEGRATION-031: three full-width columns for every orientation
     val autoRowH = 315f
 
     val ausrichtungQuerCache = HashMap<Long, Boolean>()
@@ -2761,35 +2771,7 @@ if (selectedFotosOrdered.isNotEmpty()) {
         fotos: List<de.tbhelfer.datenbank.FotoEntity>,
         start: Int
     ): FotoZeile {
-        val first = fotos[start]
-        val firstQuer = istQuerformat(first)
-
-        if (firstQuer) {
-            val second = fotos.getOrNull(start + 1)
-            if (second == null) return FotoZeile(listOf(first), "EINZEL_QUER", autoRowH)
-            return if (istQuerformat(second)) {
-                FotoZeile(listOf(first, second), "QUER_QUER", autoRowH)
-            } else {
-                FotoZeile(listOf(first, second), "GEMISCHT", autoRowH)
-            }
-        }
-
-        val second = fotos.getOrNull(start + 1)
-        if (second != null && istQuerformat(second)) {
-            return FotoZeile(listOf(first, second), "GEMISCHT", autoRowH)
-        }
-
-        val hoch = ArrayList<de.tbhelfer.datenbank.FotoEntity>(3)
-        var i = start
-        while (i < fotos.size && hoch.size < 3 && !istQuerformat(fotos[i])) {
-            hoch.add(fotos[i])
-            i += 1
-        }
-        return when (hoch.size) {
-            3 -> FotoZeile(hoch, "HOCH_3", autoRowH)
-            2 -> FotoZeile(hoch, "HOCH_2", autoRowH)
-            else -> FotoZeile(hoch, "EINZEL_HOCH", autoRowH)
-        }
+        return FotoZeile(fotos.drop(start).take(3), "HOCH_3", autoRowH)
     }
 
     fun drawAutoZeile(row: FotoZeile, rowY: Float) {
@@ -3056,5 +3038,6 @@ fun sharePdf(file: File) {
         context.startActivity(Intent.createChooser(intent, "PDF teilen"))
     }
 }
+
 
 

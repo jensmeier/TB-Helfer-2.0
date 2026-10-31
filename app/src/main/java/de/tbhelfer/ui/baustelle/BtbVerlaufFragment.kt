@@ -139,8 +139,8 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         inner.addView(textView(if (pdf != null) "PDF vorhanden" else "Kein gültiges Abschluss-PDF", 13f, Color.DKGRAY, false))
 
         val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        if (!serverFinalReadOnly) {
-            row.addView(button("BTB bearbeiten") { bearbeite(item) })
+        if (!serverFinalReadOnly || serverState?.isTeamLead == true) {
+            row.addView(button(if (serverFinalReadOnly) "BTB nachbearbeiten" else "BTB bearbeiten") { bearbeite(item) })
         }
         if (serverState?.canViewPdf != false) {
             row.addView(button("PDF öffnen") { oeffnePdf(item) })
@@ -161,11 +161,25 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
     private fun bearbeite(item: BautagebuchSpeicher.VerlaufEintrag) {
         val serverState = BtbServerStateStore.state(requireContext().applicationContext, item.btbId)
         if (serverState?.serverFinalReadOnly == true) {
-            com.google.android.material.snackbar.Snackbar.make(
-                requireView(),
-                "Dieser BTB ist serverseitig abgeschlossen und nur noch lesbar.",
-                com.google.android.material.snackbar.Snackbar.LENGTH_LONG
-            ).show()
+            MaterialAlertDialogBuilder(requireContext()).setTitle("BTB nachbearbeiten")
+                .setMessage("Diesen abgeschlossenen BTB zur Nachbearbeitung öffnen? Der Originalnachweis bleibt erhalten.")
+                .setNegativeButton("Abbrechen", null).setPositiveButton("Öffnen") { _, _ ->
+                    lifecycleScope.launch {
+                        val result = withContext(Dispatchers.IO) {
+                            de.tbhelfer.server.BtbLifecycleCoordinator(requireContext()).reopen(
+                                altBaustelleId, item.btbId.orEmpty())
+                        }
+                        if (result is de.tbhelfer.server.BtbLifecycleCoordinator.ActionResult.Success) bearbeite(item)
+                        else {
+                            val message = when (result) {
+                                is de.tbhelfer.server.BtbLifecycleCoordinator.ActionResult.Error -> result.message
+                                is de.tbhelfer.server.BtbLifecycleCoordinator.ActionResult.Conflict -> result.message
+                                else -> "Nachbearbeitung nicht bestätigt. Verbindung und Rechte prüfen."
+                            }
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }.show()
             return
         }
         lifecycleScope.launch {
@@ -308,3 +322,4 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 }
+

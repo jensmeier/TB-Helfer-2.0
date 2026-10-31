@@ -238,6 +238,12 @@ class Server1BtbApi(
         body = JSONObject()
     )
 
+    fun reopenBtb(token: String, worksiteId: String, teamId: String, serverBtbId: String,
+        clientChangeId: String): LifecycleResult = lifecycleMutation(
+        token = token, worksiteId = worksiteId, teamId = teamId, serverBtbId = serverBtbId,
+        suffix = "reopen", path = "/api/v1/btbs/${encode(serverBtbId)}/reopen",
+        clientChangeId = clientChangeId, body = JSONObject())
+
     fun finalizeBtb(
         token: String,
         worksiteId: String,
@@ -1716,6 +1722,7 @@ class Server1BtbApi(
         )
     }
 }
+
 
 
 

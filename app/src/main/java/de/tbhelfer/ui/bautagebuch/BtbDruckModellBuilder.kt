@@ -47,6 +47,21 @@ object BtbDruckModellBuilder {
         startOverrides: Map<Long, String> = emptyMap(),
         kmOverrides: Map<Long, BtbPhotoKmOverrideStore.KmOverride> = emptyMap()
     ): BtbDruckModell {
+        val bindings = BtbPrintSnapshot.photoBindings(context, entry, selectedFotosOrdered, textOverrides)
+        val numbers = bindings.entries.groupBy({ it.value }, { fotoNum[it.key] }).mapValues { it.value.filterNotNull() }
+        return buildPrepared(context, BtbPrintSnapshot.prepare(entry, numbers),
+            selectedFotosOrdered.filter { it.id !in bindings }, fotoNum, textOverrides, startOverrides, kmOverrides)
+    }
+
+    private suspend fun buildPrepared(
+        context: Context,
+        entry: BautagebuchEintrag,
+        selectedFotosOrdered: List<FotoEntity>,
+        fotoNum: Map<Long, Int>,
+        textOverrides: Map<Long, String> = emptyMap(),
+        startOverrides: Map<Long, String> = emptyMap(),
+        kmOverrides: Map<Long, BtbPhotoKmOverrideStore.KmOverride> = emptyMap()
+    ): BtbDruckModell {
         val datum = runCatching { LocalDate.parse(entry.datumIso, isoFmt) }.getOrDefault(LocalDate.now())
         val ortInfo = buildOrtInfo(entry)
         val firmCanonicalByLower = entry.firmen
@@ -138,7 +153,7 @@ object BtbDruckModellBuilder {
                 leerText = "Keine Arbeiten eingetragen.",
                 firmen = eventGroups(
                     leistungEvents(entry, seqBase = 0) +
-                        manualEventsFromMultiline(entry.notizen, kind = 1, seqBase = 10_000, firmCanonicalByLower = firmCanonicalByLower) +
+                        (if (entry.arbeiten.items.isNotEmpty()) manualEventsFromSection(entry.arbeiten, kind = 1, seqBase = 10_000, firmCanonicalByLower = firmCanonicalByLower) else manualEventsFromMultiline(entry.notizen, kind = 1, seqBase = 10_000, firmCanonicalByLower = firmCanonicalByLower)) +
                         fotoEvents(
                             fotos = btbFotosByType[Bildtyp.FOTODOKUMENTATION].orEmpty(),
                             fotoNum = fotoNum,
@@ -495,7 +510,8 @@ object BtbDruckModellBuilder {
         val tail = txt.substring(idx + 1).trim()
         if (prefix.isBlank() || tail.isBlank()) return null to txt
         if (looksLikeTimeColonSplit(prefix, tail)) return null to txt
-        return (firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: prefix) to tail
+        val firm = firmCanonicalByLower[prefix.lowercase(Locale.ROOT)] ?: return null to txt
+        return firm to tail
     }
 
     private fun parseTimeOrNull(s: String?): LocalTime? = runCatching { LocalTime.parse(s?.trim().orEmpty(), timeFmt) }.getOrNull()
@@ -530,7 +546,7 @@ object BtbDruckModellBuilder {
             val (newOrt, cleaned0) = applyOrtMarker(rawLine, ortId)
             ortId = newOrt
             val (forcedGeneral, cleaned) = applyGeneralMarker(cleaned0)
-            val effectiveOrtId = if (forcedGeneral) 0L else ortId
+            val effectiveOrtId = ortId
             val kmData = de.tbhelfer.util.KmAnzeige.zerlegen(cleaned)
             val kmLabel = de.tbhelfer.util.KmAnzeige.bereich(kmData.kmVon, kmData.kmBis, inKlammern = true)
             val line = stripLeadingBullets(kmData.text.trim())
@@ -545,14 +561,14 @@ object BtbDruckModellBuilder {
                 lastTime = tStart
                 val (firma, txt2) = splitFirma(rest, forcedGeneral, firmCanonicalByLower)
                 if (txt2.isBlank()) return@forEach
-                val finalOrtId = if (firma == null) 0L else effectiveOrtId
+                val finalOrtId = effectiveOrtId
                 val prefix = if (tEnd != null) "${tStart.format(timeFmt)}–${tEnd.format(timeFmt)}" else tStart.format(timeFmt)
                 val display = listOfNotNull(prefix, kmLabel, txt2).joinToString(" ")
                 out.add(PrintEvent(tStart, kind, seq++, finalOrtId, firma, display))
             } else {
                 val (firma, txt2) = splitFirma(line, forcedGeneral, firmCanonicalByLower)
                 if (txt2.isBlank()) return@forEach
-                val finalOrtId = if (firma == null) 0L else effectiveOrtId
+                val finalOrtId = effectiveOrtId
                 val display = listOfNotNull(kmLabel, txt2).joinToString(" ")
                 out.add(PrintEvent(lastTime, kind, seq++, finalOrtId, firma, display))
             }
@@ -574,12 +590,12 @@ object BtbDruckModellBuilder {
             val (newOrt, cleaned0) = applyOrtMarker(item.text, ortId)
             ortId = newOrt
             val (forcedGeneral, cleaned) = applyGeneralMarker(cleaned0)
-            val effectiveOrtId = if (forcedGeneral) 0L else ortId
+            val effectiveOrtId = ortId
             val rawTxt = cleaned?.trim().orEmpty()
             if (rawTxt.isBlank()) return@forEach
             val (firm, txt2) = splitFirma(rawTxt, forcedGeneral, firmCanonicalByLower)
             if (txt2.isBlank()) return@forEach
-            val finalOrtId = if (firm == null) 0L else effectiveOrtId
+            val finalOrtId = effectiveOrtId
             val (t, label) = parseStartTimeAndLabel(item.zeitAnzeige)
             if (t != null) lastTime = t
             val kmLabel = de.tbhelfer.util.KmAnzeige.bereich(item.kmVon, item.kmBis, inKlammern = true)
@@ -717,4 +733,5 @@ object BtbDruckModellBuilder {
             Instant.ofEpochMilli(endEpoch).atZone(zone).toLocalTime().format(timeFmt)
     }
 }
+
 

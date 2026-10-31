@@ -137,6 +137,11 @@ object GesamtMedienArchiv {
         val catalogResult = if (!token.isNullOrBlank() && syncContext != null) {
             mediaApi.loadCatalog(token, syncContext.worksiteServerId)
         } else null
+        when (catalogResult) {
+            is WorksiteMediaApi.CatalogResult.Error -> error("Gesamtbilderexport nicht vollständig: ${catalogResult.message}")
+            WorksiteMediaApi.CatalogResult.SessionInvalid -> error("Gesamtbilderexport: Anmeldung nicht mehr gültig.")
+            else -> Unit
+        }
         val catalogItems = (catalogResult as? WorksiteMediaApi.CatalogResult.Success)?.items.orEmpty()
 
         val localFotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(localBaustelleId)
@@ -150,6 +155,21 @@ object GesamtMedienArchiv {
             localFileByHash.putIfAbsent(digest, file)
             localFotoByHash.putIfAbsent(digest, foto)
             localHashByFotoId[foto.id] = digest
+        }
+
+        // A file hash identifies bytes, not a capture. Reuse the persisted server-photo binding.
+        val linkedOriginalHashes = hashSetOf<String>()
+        val mediaBridge = BtbTeamMediaSync(appContext)
+        localFotos.forEach { foto ->
+            val btbId = BtbFotoZuordnungSpeicher.btbId(appContext, foto.id) ?: return@forEach
+            val serverId = mediaBridge.serverAttachmentIdForLocalPhoto(foto.id, btbId) ?: return@forEach
+            val serverHash = catalogItems.firstOrNull { it.attachmentId == serverId }?.sha256
+                ?.lowercase(Locale.ROOT)?.takeIf { it.isNotBlank() } ?: return@forEach
+            val originalHash = localHashByFotoId[foto.id] ?: return@forEach
+            linkedOriginalHashes.add(originalHash)
+            localHashByFotoId[foto.id] = serverHash
+            localFileByHash[serverHash] = File(foto.dateipfad)
+            localFotoByHash[serverHash] = foto
         }
 
         val localMaengel = MaengellisteExport.ladeItems(appContext, localBaustelleId, baustelleName)
@@ -204,7 +224,7 @@ object GesamtMedienArchiv {
                 responsible = ownResponsible,
                 mangelPathByHash = mangelPathByHash,
                 acceptancePathByHash = acceptancePathByHash,
-                excludedHashes = serverHashes,
+                excludedHashes = serverHashes + linkedOriginalHashes,
                 plans = plans
             )
             val orderedTimedRows = (serverRows + localRows)
@@ -295,7 +315,7 @@ object GesamtMedienArchiv {
                             else -> null
                         }
                         else -> null
-                    } ?: return@planLoop
+                    } ?: error("Bildexport unvollständig: ${plan.path.substringAfterLast('/')}. Erneut synchronisieren und exportieren.")
                     writeBytes(plan.path, bytes)
                 }
 
@@ -669,11 +689,12 @@ object GesamtMedienArchiv {
         plans: MutableList<BinaryPlan>
     ): List<TimedRow> {
         val result = mutableListOf<TimedRow>()
+        val seen = hashSetOf<String>()
         localFotos.sortedBy { it.erstelltAmEpochMs }.forEach { foto ->
             val file = File(foto.dateipfad)
             if (!file.isFile) return@forEach
             val hash = runCatching { sha256(file.readBytes()) }.getOrNull() ?: return@forEach
-            if (hash in excludedHashes) return@forEach
+            if (hash in excludedHashes || !seen.add(hash)) return@forEach
             val dateTime = foto.aufnahmeEpochEffektiv?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()) }
             val date = dateTime?.toLocalDate()?.format(isoDate) ?: "ohne_Aufnahmezeit"
             val target = mangelPathByHash[hash]
@@ -690,7 +711,7 @@ object GesamtMedienArchiv {
                     nr = 0,
                     datum = date,
                     uhrzeit = dateTime?.toLocalTime()?.format(timeFmt).orEmpty(),
-                    ersteller = "",
+                    ersteller = "Nicht erfasst",
                     verantwortlicherTb = responsible,
                     art = when {
                         hash in mangelPathByHash -> "Mangel"
@@ -757,7 +778,7 @@ object GesamtMedienArchiv {
                 gps = ""
             )
         }
-        else -> decodeBtbPhoto(item.filename) ?: PhotoMeta(
+        else -> structuredBtbPhoto(item) ?: decodeBtbPhoto(item.filename) ?: PhotoMeta(
             epochMs = parseServerTime(item.createdAt),
             art = "Baudokumentation",
             bereich = "",
@@ -766,6 +787,21 @@ object GesamtMedienArchiv {
             beschreibung = item.filename.orEmpty(),
             gps = ""
         )
+    }
+
+    private fun structuredBtbPhoto(item: WorksiteMediaApi.MediaItem): PhotoMeta? {
+        val m = json(item.photoMetadataJson)
+        if (m.length() == 0) return null
+        val lat = m.optNullableDouble("lat")
+        val lon = m.optNullableDouble("lon")
+        return PhotoMeta(
+            epochMs = item.capturedAt?.let { parseServerTime(it) } ?: m.optLong("epoch", 0L).takeIf { it > 0L } ?: parseServerTime(item.createdAt),
+            art = m.optString("typ", "FOTODOKUMENTATION"),
+            bereich = m.optString("ort").ifBlank { m.optString("objektBereich").ifBlank { m.optString("worksiteNodeKey") } },
+            km = m.optNullableDouble("km")?.let { "KM ${de.tbhelfer.util.KmAnzeige.wert(it)}" }.orEmpty(),
+            firma = m.optString("firma"),
+            beschreibung = m.optString("kurztext").ifBlank { m.optString("notiz") },
+            gps = if (lat != null && lon != null) "$lat, $lon" else "")
     }
 
     private fun decodeBtbPhoto(filename: String?): PhotoMeta? {
@@ -935,4 +971,5 @@ object GesamtMedienArchiv {
         return this
     }
 }
+
 
