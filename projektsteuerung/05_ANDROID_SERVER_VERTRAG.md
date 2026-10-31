@@ -465,3 +465,6 @@ Nutzer beauftragt ausdrücklich Android UND Server zu programmieren („bitte je
 
 
 
+
+## BTB-INTEGRATION-031 – Korrekturauftrag 31.10.2026
+Ausdrücklicher Nutzerauftrag Android UND Server: Auditfehler korrigieren; Handy-BTB als fachliche Vorlage; drei möglichst große Bilder pro PDF-Reihe; schneller nachvollziehbarer Abschluss; Nachbearbeitung, Gesamtexport, Eintragslöschen/Firmenwechsel/Punktwechsel und Fotozuordnung zu Schwellenwechsel prüfen und korrigieren. Stabile IDs, Originale, Helferrechte, Dirty-/Konflikt-/Recovery-Schutz erhalten. Fotozuordnung über Entry-ID; Textgleichheit nur innerhalb desselben BTB/Firma/Ortskontexts und bei eindeutigem Ziel. Kein Deployment/Produktivzugriff. Tests/Build/Geräte-E2E getrennt ausweisen. Basis Android95b9efba/Server65a14b15. Auftrag vor Runtimeänderung gesichert.
