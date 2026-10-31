@@ -31,7 +31,7 @@ from .btb_documents import (
     snapshot_photo_metadata,
     upsert_final_pdf_file,
 )
-from .btb_entry_photos import entry_photo_context, sync_entry_photos
+from .btb_entry_photos import entry_photo_context, sync_entry_photos, bind_matching_entry_photos
 from .btb_times import inherited_firm_times, preserve_entry_time_fields
 from .btb_pdf import PDF_RENDERER_VERSION, render_btb_pdf
 from .btb_photo_meta import canonical_photo_metadata, merge_btb_photo_metadata, normalize_btb_photo_override
@@ -625,6 +625,8 @@ def create_entry(
                     ),
                 )
                 row = dict(cur.fetchone())
+        for photo in bind_matching_entry_photos(cur, btb_id, user['user_id']):
+            emit_change(cur, company_id=context['company_id'], worksite_id=btb['worksite_id'], entity_type='FILE', entity_id=photo['file_id'], operation='UPDATE', entity_version=photo['version'], actor_user_id=user['user_id'])
         cur.execute("UPDATE tb.btbs SET version = version + 1, updated_at = now() WHERE id = %s RETURNING version", (btb_id,))
         parent_version = cur.fetchone()["version"]
         emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB_ENTRY", entity_id=row["id"], operation="CREATE", entity_version=row["version"], actor_user_id=user["user_id"])
@@ -707,6 +709,8 @@ def update_entry(
         for bound_id in bound_ids:
             for photo in sync_entry_photos(cur, btb_id, bound_id, entry_photo_context(cur, btb_id, bound_id), user['user_id']):
                 emit_change(cur, company_id=context['company_id'], worksite_id=btb['worksite_id'], entity_type='FILE', entity_id=photo['file_id'], operation='UPDATE', entity_version=photo['version'], actor_user_id=user['user_id'])
+        for photo in bind_matching_entry_photos(cur, btb_id, user['user_id']):
+            emit_change(cur, company_id=context['company_id'], worksite_id=btb['worksite_id'], entity_type='FILE', entity_id=photo['file_id'], operation='UPDATE', entity_version=photo['version'], actor_user_id=user['user_id'])
         cur.execute("UPDATE tb.btbs SET version = version + 1, updated_at = now() WHERE id = %s RETURNING version", (btb_id,))
         parent_version = cur.fetchone()["version"]
         emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB_ENTRY", entity_id=entry_id, operation="UPDATE", entity_version=row["version"], actor_user_id=user["user_id"])
@@ -1022,12 +1026,14 @@ def reopen_btb(
         require_permission(context, "btb.edit")
         _assert_team_member(cur, user, btb["team_id"])
         require_team_lead(cur, user, btb["team_id"])
+        if btb["status"] == "REWORK":
+            return btb
         if btb["status"] != "FINALIZED":
             raise HTTPException(409, "BTB_NOT_FINALIZED")
-        team = _team(cur, btb["worksite_id"], btb["team_id"])
-        if team["active_btb_id"] is not None and team["active_btb_id"] != btb_id:
-            raise HTTPException(409, "TEAM_ALREADY_HAS_ACTIVE_BTB")
-        cur.execute("UPDATE tb.teams SET active_btb_id = %s, updated_at = now() WHERE id = %s", (btb_id, btb["team_id"]))
+        # REWORK is an explicit editable report, not the team's current shift.
+        # Keep the active pointer of a newer shift untouched.
+        cur.execute("UPDATE tb.btbs SET status='REWORK', version=version+1, updated_at=now() WHERE id=%s RETURNING *", (btb_id,))
+        btb = dict(cur.fetchone())
         emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id, operation="REACTIVATE", entity_version=btb["version"], actor_user_id=user["user_id"])
         audit(cur, action="BTB_REACTIVATE", actor_user_id=user["user_id"], company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id)
         finish_mutation(cur, user=user, context=mutation, receipt_type="BTB_REOPEN", entity_id=btb_id, result_version=btb["version"], response_payload=btb)
@@ -1289,3 +1295,4 @@ def delete_btb(
         )
     remove_storage_keys(invalidated_pdf_keys)
     return None
+

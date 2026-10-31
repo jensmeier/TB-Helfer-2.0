@@ -145,6 +145,8 @@ def merge_btb_photo_metadata(
     for key, value in normalize_btb_photo_override(override).items():
         if value is None:
             merged.pop(key, None)
+            if key == "btbEntryId":
+                merged["entryBindingCleared"] = True
         else:
             merged[key] = value
     return merged
@@ -270,3 +272,13 @@ def canonical_photo_metadata(
         "gps_accuracy_m": gps_accuracy_m,
         "photo_metadata": merged or None,
     }
+
+def effective_catalog_photo_metadata(row, is_btb):
+    """Apply canonical file defaults before link overrides; explicit clears stay cleared."""
+    metadata = canonical_photo_metadata(
+        filename=row.get('original_name'), captured_at=row.get('captured_at'),
+        gps_lat=row.get('gps_lat'), gps_lon=row.get('gps_lon'),
+        gps_accuracy_m=row.get('gps_accuracy_m'), photo_metadata=row.get('photo_metadata')
+    )['photo_metadata']
+    return merge_btb_photo_metadata(metadata, row.get('link_metadata') or {}) if is_btb else metadata
+

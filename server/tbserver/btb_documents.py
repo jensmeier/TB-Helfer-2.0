@@ -327,7 +327,7 @@ def _assert_active_for_edit(cur, btb: dict[str, Any]) -> None:
     team = cur.fetchone()
     if not team:
         raise HTTPException(409, "BTB_TEAM_MISSING")
-    if team["active_btb_id"] != btb["id"]:
+    if team["active_btb_id"] != btb["id"] and btb["status"] != "REWORK":
         raise HTTPException(409, "BTB_NOT_ACTIVE")
 
 
@@ -335,6 +335,8 @@ def prepare_btb_content_change(cur, btb: dict[str, Any]) -> list[str]:
     if btb["status"] not in {"ACTIVE", "FINALIZED", "REWORK"}:
         raise HTTPException(409, "BTB_NOT_EDITABLE")
     _assert_active_for_edit(cur, btb)
+    if btb["status"] == "REWORK":
+        return invalidate_final_pdf(cur, btb["id"])
     if btb["status"] != "FINALIZED":
         return []
     storage_keys = invalidate_final_pdf(cur, btb["id"])
@@ -378,3 +380,4 @@ def remove_storage_keys(storage_keys: list[str]) -> None:
     for storage_key in dict.fromkeys(storage_keys):
         path = _absolute_storage_path(storage_key)
         path.unlink(missing_ok=True)
+

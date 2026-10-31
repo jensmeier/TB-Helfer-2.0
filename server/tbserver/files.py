@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .btb_photo_meta import effective_catalog_photo_metadata
+
 import base64
 import hashlib
 import json
@@ -711,6 +713,9 @@ def complete_upload(
                             worksite_id=upload["worksite_id"],
                         )
                     )
+                if link[0] == "BTB" and not entry_metadata and payload.photo_metadata:
+                    from .btb_entry_photos import matching_btb_entry_context
+                    entry_metadata = matching_btb_entry_context(cur, link[1], payload.photo_metadata) or {}
                 cur.execute(
                     "INSERT INTO tb.file_links(file_id, entity_type, entity_id, purpose, link_metadata) VALUES (%s,%s,%s,%s,%s)",
                     (file_id, link[0], link[1], purpose, Jsonb(entry_metadata)),
@@ -814,6 +819,7 @@ def list_worksite_media(
                    uploader.display_name AS uploaded_by_name,
                    l.entity_type,
                    l.entity_id,
+                   l.link_metadata,
                    b.team_id AS btb_team_id,
                    b.status AS btb_status,
                    b.deleted_at AS btb_deleted_at,
@@ -932,14 +938,7 @@ def list_worksite_media(
                     "gps_lon": row.get("gps_lon"),
                     "gps_accuracy_m": row.get("gps_accuracy_m"),
                     "source": row.get("source"),
-                    "photo_metadata": canonical_photo_metadata(
-                        filename=row.get("original_name"),
-                        captured_at=row.get("captured_at"),
-                        gps_lat=row.get("gps_lat"),
-                        gps_lon=row.get("gps_lon"),
-                        gps_accuracy_m=row.get("gps_accuracy_m"),
-                        photo_metadata=row.get("photo_metadata"),
-                    )["photo_metadata"],
+                    "photo_metadata": effective_catalog_photo_metadata(row, entity_type == "BTB"),
                     "uploaded_by_user_id": (
                         str(row["created_by"]) if row.get("created_by") else None
                     ),
@@ -1146,4 +1145,5 @@ def download_image_rendition(
 # Portal pagination is separate from the full Android/export catalog above.
 from .media_gallery import router as gallery_router
 router.include_router(gallery_router)
+
 

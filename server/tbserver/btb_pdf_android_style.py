@@ -169,8 +169,6 @@ def _strip_company_prefix(value: str, known_names: Iterable[str]) -> tuple[str |
     for name in known_names:
         if prefix.casefold() == name.casefold():
             return name, tail
-    if len(prefix) <= 120 and not re.fullmatch(r"\d{1,2}", prefix):
-        return prefix, tail
     return None, clean
 
 
@@ -1358,7 +1356,7 @@ def _draw_photo_appendix(
                     if lat is not None and lon is not None and -90 <= lat <= 90 and -180 <= lon <= 180:
                         values.append(f"GPS: {lat:.6f}, {lon:.6f}")
                     wrapped_count = sum(len(_wrap_text(v, "Helvetica", 7.4, cell_width - 14.0)) for v in values)
-                    row_heights.append(24.0 + 106.0 + 6.0 + wrapped_count * 8.7 + 12.0)
+                    row_heights.append(24.0 + 190.0 + 6.0 + wrapped_count * 8.7 + 12.0)
                 cell_height = max(220.0, *row_heights)
                 if cell_height > PAGE_H - MARGIN_TOP - MARGIN_BOTTOM - 26.0:
                     raise ValueError("PDF photo card metadata exceeds one A4 page; split-page rendering required")
@@ -1400,7 +1398,7 @@ def _draw_photo_appendix(
                     )
 
                     image_top = top + 24.0
-                    image_height = 106.0
+                    image_height = 190.0
                     file_info = file_by_id.get(str(photo.get("id")))
                     source = file_info.get("path") if isinstance(file_info, dict) else None
                     if isinstance(source, Path) and source.is_file():
@@ -1640,3 +1638,4 @@ def render_android_style_btb_pdf(
 
     writer.c.setSubject(f"PDF-Renderer: {renderer_version}")
     writer.finish()
+
