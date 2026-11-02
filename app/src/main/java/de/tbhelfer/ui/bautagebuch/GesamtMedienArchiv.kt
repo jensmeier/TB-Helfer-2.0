@@ -144,7 +144,8 @@ object GesamtMedienArchiv {
         }
         val catalogItems = (catalogResult as? WorksiteMediaApi.CatalogResult.Success)?.items.orEmpty()
 
-        val localFotos = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(localBaustelleId)
+        // Gesamtarchiv: auch Fotos anderer BTBs derselben Baustelle laden.
+        val localFotos = ServiceLocator.fotoRepository.fotosFuerBaustelleSyncOnce(localBaustelleId)
             .filter { it.baustelleId == localBaustelleId && File(it.dateipfad).isFile }
         val localFileByHash = linkedMapOf<String, File>()
         val localFotoByHash = linkedMapOf<String, FotoEntity>()
@@ -163,8 +164,10 @@ object GesamtMedienArchiv {
         localFotos.forEach { foto ->
             val btbId = BtbFotoZuordnungSpeicher.btbId(appContext, foto.id) ?: return@forEach
             val serverId = mediaBridge.serverAttachmentIdForLocalPhoto(foto.id, btbId) ?: return@forEach
-            val serverHash = catalogItems.firstOrNull { it.attachmentId == serverId }?.sha256
-                ?.lowercase(Locale.ROOT)?.takeIf { it.isNotBlank() } ?: return@forEach
+            val serverItem = catalogItems.firstOrNull {
+                it.attachmentId == serverId && it.mimeType?.startsWith("image/") == true
+            } ?: return@forEach
+            val serverHash = GesamtMedienIdentitaet.serverKey(serverItem.attachmentId, serverItem.sha256)
             val originalHash = localHashByFotoId[foto.id] ?: return@forEach
             linkedOriginalHashes.add(originalHash)
             localHashByFotoId[foto.id] = serverHash
@@ -259,7 +262,7 @@ object GesamtMedienArchiv {
                         langtext = foto.notiz.orEmpty(),
                         relativePath = "../../${finalRow.relativePath}"
                     )
-                }.mapIndexed { index, row -> row.copy(nr = index + 1) }
+                }.let(GesamtBilderlisteXlsx::eindeutigNummeriert)
 
                 ShiftImageList(
                     path = "$archiveRoot/BTB/${entry.datumIso}/${shiftListFilename(entry)}",
@@ -628,8 +631,7 @@ object GesamtMedienArchiv {
             }
 
         return unique.map { item ->
-            val hash = item.sha256?.lowercase(Locale.ROOT)?.takeIf { it.isNotBlank() }
-                ?: sha256(item.attachmentId.toByteArray(Charsets.UTF_8))
+            val hash = GesamtMedienIdentitaet.serverKey(item.attachmentId, item.sha256)
             val meta = mediaMeta(item)
             val localFoto = localFotoByHash[hash]
             val dateTime = Instant.ofEpochMilli(meta.epochMs).atZone(ZoneId.systemDefault())

@@ -33,6 +33,13 @@ object GesamtBilderlisteXlsx {
         val relativePath: String
     )
 
+    /** Original und Sync-Kopie mit demselben Exportziel nur einmal auffuehren. */
+    internal fun eindeutigNummeriert(rows: List<Row>): List<Row> {
+        val seen = hashSetOf<String>()
+        return rows.filter { it.relativePath.isBlank() || seen.add(it.relativePath) }
+            .mapIndexed { index, row -> row.copy(nr = index + 1) }
+    }
+
     private val headers = listOf(
         "Nr.", "Datum", "Uhrzeit", "Ersteller", "Verantwortlicher TB", "Art",
         "Baustelle", "Bereich/Gleis", "KM", "Firma", "Kurzbeschreibung", "Langtext / BTB-Text",

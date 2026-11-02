@@ -6786,60 +6786,89 @@ cardCurrentReport.setOnClickListener {
                             til.addView(et)
                             root.addView(til)
 
-                            val btnRemoveFromBtb = android.widget.Button(requireContext()).apply {
-                                text = "Aus BTB entfernen"
+                            val btnPhotoActions = android.widget.Button(requireContext()).apply {
+                                text = "Weitere Aktionen"
                                 isAllCaps = false
-                                layoutParams = fieldLp(4)
-                                setOnClickListener { excludePhotoGroupFromBtb(g) }
+                                layoutParams = fieldLp(8)
                             }
-                            root.addView(btnRemoveFromBtb)
+                            root.addView(btnPhotoActions)
 
                             val dlg = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                                .setTitle(getString(R.string.btb_photo_override_title))
+                                .setTitle("Bildangaben bearbeiten")
                                 .setView(scroll)
                                 .setNegativeButton(R.string.action_cancel, null)
-                                .setNeutralButton(R.string.btb_photo_override_reset) { _, _ ->
-                                    com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                                        .setTitle(getString(R.string.btb_confirm_reset_override_title))
-                                        .setMessage(getString(R.string.btb_confirm_reset_override_msg))
-                                        .setNegativeButton(R.string.action_cancel, null)
-                                        .setPositiveButton(R.string.action_reset) { _, _ ->
-                                            BtbPhotoTextOverrideStore.setOverrideForIds(
-                                                requireContext(),
-                                                ctx.id,
-                                                entry.datumIso,
-                                                entry.startUhrzeit,
-                                                entry.endeUhrzeit,
-                                                selectedSchichtTyp,
-                                                g.ids,
-                                                null
-                                            )
-                                            BtbPhotoStartOverrideStore.setOverrideForIds(
-                                                requireContext(),
-                                                ctx.id,
-                                                entry.datumIso,
-                                                entry.startUhrzeit,
-                                                entry.endeUhrzeit,
-                                                selectedSchichtTyp,
-                                                g.ids,
-                                                null
-                                            )
-                                            BtbPhotoKmOverrideStore.setOverrideForIds(
-                                                requireContext(),
-                                                ctx.id,
-                                                entry.datumIso,
-                                                entry.startUhrzeit,
-                                                entry.endeUhrzeit,
-                                                selectedSchichtTyp,
-                                                g.ids,
-                                                null
-                                            )
-                                            loadFotoGroups?.invoke()
-                                        }
-                                        .show()
-                                }
                                 .setPositiveButton(R.string.action_save, null)
                                 .create()
+
+                            btnPhotoActions.setOnClickListener { anchor ->
+                                android.widget.PopupMenu(requireContext(), anchor).apply {
+                                    menu.add(0, 1, 0, "Text, Zeit und KM zurücksetzen")
+                                    menu.add(0, 2, 1, "Aus diesem BTB entfernen")
+                                    setOnMenuItemClickListener { item ->
+                                        if (loadedBtbId != entry.btbId) {
+                                            Snackbar.make(requireView(), "BTB gewechselt – Foto bitte erneut öffnen", Snackbar.LENGTH_LONG).show()
+                                            true
+                                        } else when (item.itemId) {
+                                            1 -> {
+                                                com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                                                    .setTitle(getString(R.string.btb_confirm_reset_override_title))
+                                                    .setMessage(getString(R.string.btb_confirm_reset_override_msg))
+                                                    .setNegativeButton(R.string.action_cancel, null)
+                                                    .setPositiveButton(R.string.action_reset) { _, _ ->
+                                                        if (loadedBtbId != entry.btbId) {
+                                                            Snackbar.make(requireView(), "BTB gewechselt – Foto bitte erneut öffnen", Snackbar.LENGTH_LONG).show()
+                                                            return@setPositiveButton
+                                                        }
+                                                        BtbPhotoTextOverrideStore.setOverrideForIds(
+                                                            requireContext(),
+                                                            ctx.id,
+                                                            entry.datumIso,
+                                                            entry.startUhrzeit,
+                                                            entry.endeUhrzeit,
+                                                            selectedSchichtTyp,
+                                                            g.ids,
+                                                            null
+                                                        )
+                                                        BtbPhotoStartOverrideStore.setOverrideForIds(
+                                                            requireContext(),
+                                                            ctx.id,
+                                                            entry.datumIso,
+                                                            entry.startUhrzeit,
+                                                            entry.endeUhrzeit,
+                                                            selectedSchichtTyp,
+                                                            g.ids,
+                                                            null
+                                                        )
+                                                        BtbPhotoKmOverrideStore.setOverrideForIds(
+                                                            requireContext(),
+                                                            ctx.id,
+                                                            entry.datumIso,
+                                                            entry.startUhrzeit,
+                                                            entry.endeUhrzeit,
+                                                            selectedSchichtTyp,
+                                                            g.ids,
+                                                            null
+                                                        )
+                                                        entry.btbId?.takeIf { it.isNotBlank() }?.let {
+                                                            de.tbhelfer.server.SofortSync.btbAnstossen(requireContext(), ctx.id, it)
+                                                        }
+                                                        loadFotoGroups?.invoke()
+                                                        saveAndReloadWholeBtbSilently()
+                                                        dlg.dismiss()
+                                                    }
+                                                    .show()
+                                                true
+                                            }
+                                            2 -> {
+                                                dlg.dismiss()
+                                                excludePhotoGroupFromBtb(g)
+                                                true
+                                            }
+                                            else -> false
+                                        }
+                                    }
+                                }.show()
+                            }
 
                             fun normalizeManualPhotoTime(raw: String): String? {
                                 val trimmed = raw.trim()
