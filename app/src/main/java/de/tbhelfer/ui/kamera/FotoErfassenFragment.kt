@@ -987,6 +987,8 @@ class FotoErfassenFragment : Fragment(R.layout.fragment_foto_erfassen) {
             }
         }
 
+        var confirmedDescription: Pair<String, String>? = null
+        var shortCaptionDialogOpen = false
         btnSpeichern.setOnClickListener {
             // GPS ist Pflicht
             if (lat == 0.0 && lon == 0.0) {
@@ -1014,12 +1016,44 @@ class FotoErfassenFragment : Fragment(R.layout.fragment_foto_erfassen) {
                 return@setOnClickListener
             }
             val kurz = actKurz.text.toString().trim()
+            val notiz = edtNotiz.text.toString().trim().takeIf { it.isNotBlank() }
+            if (notiz != null && confirmedDescription != (notiz to kurz)) {
+                if (shortCaptionDialogOpen) return@setOnClickListener
+                val caption = android.widget.EditText(requireContext()).apply {
+                    hint = "Kurztext für Bild und BTB"
+                    setText(kurz)
+                    isSingleLine = true
+                }
+                val captionDialog = MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Wie soll der Kurztext lauten?")
+                    .setMessage("Der Langtext bleibt im BTB. Der Kurztext erscheint im Bild und BTB.")
+                    .setView(caption)
+                    .setNegativeButton("Abbrechen", null)
+                    .setPositiveButton("Übernehmen", null)
+                    .create()
+                shortCaptionDialogOpen = true
+                captionDialog.setOnDismissListener { shortCaptionDialogOpen = false }
+                captionDialog.setOnShowListener {
+                    captionDialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+                        val chosen = caption.text.toString().trim()
+                        if (chosen.isBlank()) {
+                            caption.error = "Bitte Kurztext eingeben"
+                        } else {
+                            actKurz.setText(chosen, false)
+                            confirmedDescription = notiz to chosen
+                            captionDialog.dismiss()
+                            btnSpeichern.performClick()
+                        }
+                    }
+                }
+                captionDialog.show()
+                return@setOnClickListener
+            }
             if (kurz.isBlank()) {
                 Toast.makeText(requireContext(), "Bitte Kurzbeschreibung eingeben", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
 
-            val notiz = edtNotiz.text.toString().trim().takeIf { it.isNotBlank() }
             val objektKennung: String? = trassenObjektKennung.takeIf { it.isNotBlank() }
             val objektBereich = objektBereichOptionen.getOrNull(spObjektBereich.selectedItemPosition)
                 ?.takeUnless { it.equals("Allgemein", ignoreCase = true) || it == objektBereichTrenner }
@@ -1195,4 +1229,5 @@ private fun addFirmaToBtb(
 }
 
 }
+
 

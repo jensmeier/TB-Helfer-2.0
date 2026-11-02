@@ -3841,8 +3841,14 @@ cardCurrentReport.setOnClickListener {
                 return
             }
 
+            val requestBtbId = loadedBtbId
+            val requestDate = selectedDate
+            val requestStart = shiftStart
+            val requestEnd = shiftEnd
+            val requestSlots = collectWeatherSlots()
+            val requestDirty = wetterDirtySinceMs
             wetterFetchInProgress = true
-            lifecycleScope.launch {
+            viewLifecycleOwner.lifecycleScope.launch {
                 try {
                     val ctx = resolveAktuelleBaustelle()
                     if (ctx == null) {
@@ -3857,17 +3863,9 @@ cardCurrentReport.setOnClickListener {
                         return@launch
                     }
 
-                    // Metadaten für UI/PDF
-                    lastWetterLat = lat
-                    lastWetterLon = lon
-                    lastWetterSource = WeatherSource.AUTO
-                    lastWetterStation = null
-                    lastWetterOrt = withContext(Dispatchers.IO) {
-                        resolveOrtName(lat, lon)
-                    }
-
-                    val startDate = selectedDate
-                    val endDate = if (spansMidnight(shiftStart, shiftEnd)) selectedDate.plusDays(1) else selectedDate
+                    val weatherOrt = withContext(Dispatchers.IO) { resolveOrtName(lat, lon) }
+                    val startDate = requestDate
+                    val endDate = if (spansMidnight(requestStart, requestEnd)) requestDate.plusDays(1) else requestDate
 
                     val hourly = withContext(Dispatchers.IO) {
                         OpenMeteoClient.fetchHourly(lat, lon, startDate, endDate)
@@ -3875,6 +3873,20 @@ cardCurrentReport.setOnClickListener {
                         Snackbar.make(requireView(), "Wetterdaten konnten nicht geladen werden", Snackbar.LENGTH_LONG).show()
                         return@launch
                     }
+
+                    val currentSite = resolveAktuelleBaustelle()
+                    if (currentSite?.id != ctx.id || loadedBtbId != requestBtbId || selectedDate != requestDate ||
+                        shiftStart != requestStart || shiftEnd != requestEnd ||
+                        collectWeatherSlots() != requestSlots || wetterDirtySinceMs != requestDirty) {
+                        Snackbar.make(requireView(), "BTB oder Wetter geändert – Wetter bitte erneut laden", Snackbar.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    // Commit provenance together with the accepted response, never before a failed request.
+                    lastWetterLat = lat
+                    lastWetterLon = lon
+                    lastWetterSource = WeatherSource.AUTO
+                    lastWetterStation = null
+                    lastWetterOrt = weatherOrt
 
                     fun fill(idx: Int, btn: MaterialButton, temp: TextInputEditText, bew: MaterialAutoCompleteTextView, nied: MaterialAutoCompleteTextView) {
                         val raw = btn.text?.toString().orEmpty()
@@ -5120,7 +5132,7 @@ cardCurrentReport.setOnClickListener {
             val grouped = relevant.groupBy { f ->
                 val firm = f.firma.trim().takeIf { it.isNotBlank() }
                 val ov = overridesByFotoId[f.id]?.trim().orEmpty()
-                val txt = if (ov.isNotBlank()) ov else (f.notiz?.trim()?.takeIf { it.isNotBlank() } ?: f.kurztext.trim())
+                val txt = if (ov.isNotBlank()) ov else BtbPhotoDescription.forBtb(f.kurztext, f.notiz)
                 firm to txt
             }
 
@@ -5238,7 +5250,7 @@ cardCurrentReport.setOnClickListener {
                 }
 
                 fun effectiveText(f: de.tbhelfer.datenbank.FotoEntity): String =
-                    f.notiz?.trim()?.takeIf { it.isNotBlank() } ?: f.kurztext.trim()
+                    BtbPhotoDescription.forBtb(f.kurztext, f.notiz)
 
                 fun bildLabel(numsIn: List<Int>): String {
                     if (numsIn.isEmpty()) return ""
@@ -5999,6 +6011,29 @@ cardCurrentReport.setOnClickListener {
                             addView(root)
                         }
 
+                        val editingBtbId = loadedBtbId
+                        var selectedFirma: String? = mi.firma
+                        var selectedFirmaId: String? = mi.firmaId
+                        val companyChoices = (listOf<String?>(null, mi.firma) +
+                            lastFirmaBlocks.filter { !it.isDeleted }.map { it.name } +
+                            lastGroups.map { it.firma }).distinct()
+                        root.addView(android.widget.TextView(requireContext()).apply { text = "Firma / Allgemein" })
+                        val companySpinner = android.widget.Spinner(requireContext()).apply {
+                            adapter = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item,
+                                companyChoices.map { it ?: getString(R.string.btb_company_general) })
+                            setSelection(companyChoices.indexOf(mi.firma).coerceAtLeast(0))
+                            onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+                                override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                                    selectedFirma = companyChoices[position]
+                                    selectedFirmaId = if (selectedFirma == mi.firma) mi.firmaId else lastFirmaBlocks.firstOrNull {
+                                        !it.isDeleted && it.name.trim().equals(selectedFirma?.trim(), ignoreCase = true)
+                                    }?.firmaId
+                                }
+                            }
+                        }
+                        root.addView(companySpinner)
+
                         // Ort / Unterbaustelle (edit)
                         var selectedOrtMarkerId: Long = mi.ortId
                         var cachedAltBaustelleId: Long? = null
@@ -6371,7 +6406,7 @@ cardCurrentReport.setOnClickListener {
                             val timeChanged = etTime.text?.toString().orEmpty().trim().replace('-', '–') != mi.time.orEmpty().trim().replace('-', '–')
                             val kmVonChanged = parseKmValue(etKmVon.text?.toString()) != mi.kmVon
                             val kmBisChanged = parseKmValue(etKmBis.text?.toString()) != mi.kmBis
-                            val ortChanged = selectedOrtMarkerId != mi.ortId
+                            val ortChanged = selectedOrtMarkerId != mi.ortId || selectedFirma != mi.firma
                             if (textChanged || timeChanged || kmVonChanged || kmBisChanged || ortChanged) {
                                 Snackbar.make(
                                     requireView(),
@@ -6394,6 +6429,10 @@ cardCurrentReport.setOnClickListener {
                         dlg.setOnShowListener {
                             val btn = dlg.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
                             btn.setOnClickListener {
+                                if (loadedBtbId != editingBtbId) {
+                                    Snackbar.make(requireView(), "BTB gewechselt – Eintrag bitte erneut öffnen", Snackbar.LENGTH_LONG).show()
+                                    return@setOnClickListener
+                                }
                                 val txt = etText.text?.toString().orEmpty().trim()
                                 if (txt.isBlank()) return@setOnClickListener
 
@@ -6440,16 +6479,18 @@ cardCurrentReport.setOnClickListener {
                                     if (mi.lineIndex in lines.indices) {
                                         lines[mi.lineIndex] = buildManualLine(
                                             ortId = selectedOrtMarkerId,
-                                            firm = mi.firma,
+                                            firm = selectedFirma,
                                             time = tNorm,
                                             text2 = txt,
                                             kmVon = kmVon,
                                             kmBis = kmBis,
-                                            firmaId = mi.firmaId,
+                                            firmaId = selectedFirmaId,
                                             worksiteNodeKey = nodeKey,
                                             clientEntryKey = mi.clientEntryKey
                                         )
                                         setRawLines(lines)
+                                        // Apply the hidden editor to the report before buildEntry/save reloads it.
+                                        onSave(etFull.text?.toString().orEmpty())
                                     }
 
                                     // Eine geänderte Unterbaustelle am Eintrag wird für bereits
@@ -6470,8 +6511,8 @@ cardCurrentReport.setOnClickListener {
                                                     btbId,
                                                     foto.id,
                                                     BtbPhotoContextOverrideStore.ContextOverride(
-                                                        firma = mi.firma.orEmpty(),
-                                                        firmaId = mi.firmaId,
+                                                        firma = selectedFirma.orEmpty(),
+                                                        firmaId = selectedFirmaId,
                                                         objektKennung = previous?.objektKennung ?: foto.objektKennung,
                                                         objektBereich = previous?.objektBereich ?: foto.objektBereich,
                                                         ortId = selectedOrtMarkerId,
@@ -6610,6 +6651,30 @@ cardCurrentReport.setOnClickListener {
                                 layoutParams = fieldLp(6)
                             }
                             root.addView(info)
+
+                            // Correct only this BTB's photo links; original files remain untouched.
+                            val contextRoot = ServiceLocator.baustellenBaumRepository.hauptNachAltBaustelleId(ctx.id)
+                            val contextNodes = contextRoot?.let {
+                                ServiceLocator.baustellenBaumRepository.alleKnotenZuRoot(it.id).first()
+                            }.orEmpty().filter { it.id != contextRoot?.id }
+                            val nodeChoices = listOf(0L to "Hauptbaustelle") + contextNodes.map {
+                                it.id to de.tbhelfer.streckenobjekte.BaustellenObjektLogik.unterbaustellenName(it).orEmpty()
+                            } + if (g.ortId > 0 && contextNodes.none { it.id == g.ortId }) listOf(g.ortId to "Ort ${g.ortId}") else emptyList()
+                            val companyChoices = (listOf<String?>(null, g.firma) +
+                                lastFirmaBlocks.filter { !it.isDeleted }.map { it.name } + lastGroups.map { it.firma }).distinct()
+                            root.addView(android.widget.TextView(requireContext()).apply { text = "Firma / Allgemein" })
+                            val photoCompany = android.widget.Spinner(requireContext()).apply {
+                                adapter = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item,
+                                    companyChoices.map { it ?: getString(R.string.btb_company_general) })
+                                setSelection(companyChoices.indexOf(g.firma).coerceAtLeast(0))
+                            }
+                            root.addView(photoCompany)
+                            root.addView(android.widget.TextView(requireContext()).apply { text = "Unterbaustelle" })
+                            val photoNode = android.widget.Spinner(requireContext()).apply {
+                                adapter = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, nodeChoices.map { it.second })
+                                setSelection(nodeChoices.indexOfFirst { it.first == g.ortId }.coerceAtLeast(0))
+                            }
+                            root.addView(photoNode)
 
                             val timeInfo = android.widget.TextView(requireContext()).apply {
                                 text = "Zeit optional manuell. Erlaubt: 20:00 oder 20:00-23:00. Neue Bilder innerhalb bleiben unverändert. Frühere Bilder ziehen den Start vor, spätere Bilder verlängern das Ende automatisch."
@@ -6839,6 +6904,10 @@ cardCurrentReport.setOnClickListener {
                             dlg.setOnShowListener {
                                 val btn = dlg.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
                                 btn.setOnClickListener {
+                                    if (loadedBtbId != entry.btbId) {
+                                        Snackbar.make(requireView(), "BTB gewechselt – Foto bitte erneut öffnen", Snackbar.LENGTH_LONG).show()
+                                        return@setOnClickListener
+                                    }
                                     val newTxt = et.text?.toString().orEmpty().trim()
                                     val v: String? = newTxt.takeIf { it.isNotBlank() }
                                     val timeRaw = etTime.text?.toString().orEmpty().trim()
@@ -6858,6 +6927,57 @@ cardCurrentReport.setOnClickListener {
                                         val von = parseKmInput(kmVonRaw) ?: return@setOnClickListener
                                         val bis = if (showKmRange) parseKmInput(kmBisRaw) else null
                                         BtbPhotoKmOverrideStore.KmOverride(kmVon = von, kmBis = bis)
+                                    }
+
+                                    val targetFirma = companyChoices[photoCompany.selectedItemPosition]
+                                    val targetNode = nodeChoices[photoNode.selectedItemPosition].first
+                                    val contextChanged = targetFirma != g.firma || targetNode != g.ortId
+                                    if (contextChanged) {
+                                        btn.isEnabled = false
+                                        viewLifecycleOwner.lifecycleScope.launch {
+                                            try {
+                                                val btbId = entry.btbId?.takeIf { it.isNotBlank() }
+                                                    ?: error("BTB-Zuordnung fehlt")
+                                                val nodeKey = if (targetNode > 0L) stableNodeKey(contextRoot?.id, targetNode) else null
+                                                check(targetNode == 0L || nodeKey != null) { "Unterbaustelle konnte nicht stabil zugeordnet werden" }
+                                                val firmId = lastFirmaBlocks.firstOrNull {
+                                                    !it.isDeleted && it.name.trim().equals(targetFirma?.trim(), true)
+                                                }?.firmaId
+                                                val photos = ServiceLocator.fotoRepository.fotosMitIds(g.ids)
+                                                withContext(Dispatchers.IO) {
+                                                    val previous = BtbPhotoContextOverrideStore.load(requireContext(), btbId)
+                                                    photos.forEach { photo ->
+                                                        val old = previous[photo.id]
+                                                        BtbPhotoContextOverrideStore.setOverride(requireContext(), btbId, photo.id,
+                                                            BtbPhotoContextOverrideStore.ContextOverride(
+                                                                firma = targetFirma.orEmpty(), firmaId = firmId,
+                                                                objektKennung = old?.objektKennung ?: photo.objektKennung,
+                                                                objektBereich = old?.objektBereich ?: photo.objektBereich,
+                                                                ortId = targetNode, worksiteNodeKey = nodeKey,
+                                                                bildtyp = old?.bildtyp ?: photo.bildtyp))
+                                                        val match = BtbPhotoEntryMatcher.find(entry, photo.bildtyp, targetFirma,
+                                                            nodeKey, photo.kurztext, firmId)
+                                                        // A stale entry binding must never drag the corrected photo back.
+                                                        BtbPhotoMetadatenStore.bind(requireContext(), btbId, photo.id, match)
+                                                    }
+                                                    BtbPhotoTextOverrideStore.setOverrideForIds(requireContext(), ctx.id, entry.datumIso,
+                                                        entry.startUhrzeit, entry.endeUhrzeit, entry.schicht, g.ids, v)
+                                                    BtbPhotoStartOverrideStore.setOverrideForIds(requireContext(), ctx.id, entry.datumIso,
+                                                        entry.startUhrzeit, entry.endeUhrzeit, entry.schicht, g.ids, timeNorm)
+                                                    BtbPhotoKmOverrideStore.setOverrideForIds(requireContext(), ctx.id, entry.datumIso,
+                                                        entry.startUhrzeit, entry.endeUhrzeit, entry.schicht, g.ids, kmOverride)
+                                                }
+                                                de.tbhelfer.server.SofortSync.btbAnstossen(requireContext(), ctx.id, btbId)
+                                                loadFotoGroups?.invoke()
+                                                saveAndReloadWholeBtbSilently()
+                                                dlg.dismiss()
+                                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                                throw cancelled
+                                            } catch (_: Exception) {
+                                                Snackbar.make(requireView(), "Fotoänderung nicht vollständig gespeichert – bitte erneut prüfen", Snackbar.LENGTH_LONG).show()
+                                            } finally { btn.isEnabled = true }
+                                        }
+                                        return@setOnClickListener
                                     }
 
                                     BtbPhotoTextOverrideStore.setOverrideForIds(
@@ -6890,7 +7010,11 @@ cardCurrentReport.setOnClickListener {
                                         g.ids,
                                         kmOverride
                                     )
+                                    entry.btbId?.takeIf { it.isNotBlank() }?.let {
+                                        de.tbhelfer.server.SofortSync.btbAnstossen(requireContext(), ctx.id, it)
+                                    }
                                     loadFotoGroups?.invoke()
+                                    saveAndReloadWholeBtbSilently()
                                     dlg.dismiss()
                                 }
                             }
@@ -8088,6 +8212,7 @@ private data class BaustelleKontext(
     val strecke: String?,
     val rootKnotenId: Long? = null
 )
+
 
 
 

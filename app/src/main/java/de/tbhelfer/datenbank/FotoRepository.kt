@@ -138,6 +138,19 @@ class FotoRepository(
             .filter { it.baustellenKnotenId == knotenId }
     }
 
+    /** Bind a new photo immediately by its short caption, never by capture time or another BTB. */
+    private suspend fun bindNewPhoto(context: Context, foto: FotoEntity, id: Long, btbId: String) = withContext(Dispatchers.IO) {
+        val active = BtbActiveContext.laden(context, foto.baustelleId) ?: return@withContext
+        if (active.btbId != btbId) return@withContext
+        val root = de.tbhelfer.ServiceLocator.baustellenBaumRepository.hauptNachAltBaustelleId(foto.baustelleId)
+        val nodeKey = foto.baustellenKnotenId?.takeIf { it > 0L }?.let { localId ->
+            root?.let { de.tbhelfer.ServiceLocator.worksiteStructureSync.ensureClientNodeKey(it.id, localId) }
+                ?: return@withContext
+        }
+        de.tbhelfer.ui.bautagebuch.BtbPhotoEntryMatcher.find(active.entry, foto.bildtyp, foto.firma,
+            nodeKey, foto.kurztext)?.let { BtbPhotoMetadatenStore.bind(context, btbId, id, it) }
+    }
+
     suspend fun einfuegen(entity: FotoEntity): Long {
         val id = withContext(Dispatchers.IO) { dao.einfuegen(entity) }
         appContext?.let { ctx ->
@@ -150,6 +163,7 @@ class FotoRepository(
                 activeBtbId = active?.btbId
                 if (!activeBtbId.isNullOrBlank()) {
                     BtbFotoZuordnungSpeicher.zuordnen(ctx, id, activeBtbId)
+                    bindNewPhoto(ctx, entity, id, activeBtbId!!)
                     val alleFotos = dao.fotosFuerBaustelleOnce(entity.baustelleId)
                     invalidiereFotoAbschlussWennNoetig(ctx, entity.baustelleId, activeBtbId!!, alleFotos)
                 }
@@ -177,7 +191,8 @@ class FotoRepository(
             }
             withContext(Dispatchers.IO) {
                 BtbFotoZuordnungSpeicher.zuordnen(ctx, id, stableId)
-                clientEntryKey?.let { BtbPhotoMetadatenStore.bind(ctx, stableId, id, it) }
+                if (!clientEntryKey.isNullOrBlank()) BtbPhotoMetadatenStore.bind(ctx, stableId, id, clientEntryKey)
+                else bindNewPhoto(ctx, entity, id, stableId)
                 val alleFotos = dao.fotosFuerBaustelleOnce(entity.baustelleId)
                 invalidiereFotoAbschlussWennNoetig(ctx, entity.baustelleId, stableId, alleFotos)
             }
@@ -302,4 +317,5 @@ class FotoRepository(
 
     suspend fun alleKurztexte(): List<String> = withContext(Dispatchers.IO) { dao.alleKurztexte() }
 }
+
 
