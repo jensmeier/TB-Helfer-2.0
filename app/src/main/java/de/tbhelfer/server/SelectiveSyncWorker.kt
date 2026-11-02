@@ -38,6 +38,7 @@ class SelectiveSyncWorker(
     private suspend fun doWorkLocked(run: Long): Result {
         if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) return Result.failure()
 
+        if (BtbLifecycleOutbox.interactive.isNotEmpty()) return Result.retry()
         ServiceLocator.initialisieren(applicationContext)
         val scopes = SelectiveSyncStore.btbScopes(applicationContext)
         val roots = StructureSyncStore.roots(applicationContext)
@@ -97,6 +98,7 @@ class SelectiveSyncWorker(
         val blockedRoots = mutableSetOf<Long>()
         val bindings = ServiceLocator.worksiteBindingRepository.contextsWithBindings()
         for ((index, root) in roots.withIndex()) {
+            if (BtbLifecycleOutbox.interactive.isNotEmpty()) return Result.retry()
             SyncActivityMonitor.phase(run, "Unterbaustelle/Struktur ${index + 1} von ${roots.size}")
             val bound = bindings.firstOrNull { it.binding != null && it.localWorksite?.id == root }
             if (bound == null || !capabilities.supports("worksite_tree_v1")) {
@@ -125,6 +127,7 @@ class SelectiveSyncWorker(
         }
 
         for ((index, scope) in scopes.withIndex()) {
+            if (BtbLifecycleOutbox.interactive.isNotEmpty()) return Result.retry()
             SyncActivityMonitor.phase(run, "BTB ${index + 1} von ${scopes.size} · Einträge und Bilder")
             SelectiveSyncStore.transferring(scope, true)
             try {
@@ -366,6 +369,7 @@ class SelectiveSyncWorker(
         }
     }
 }
+
 
 
 

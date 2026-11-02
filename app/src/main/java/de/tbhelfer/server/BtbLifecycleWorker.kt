@@ -7,13 +7,64 @@ import de.tbhelfer.datenbank.SyncCollabPendingChangeEntity
 import de.tbhelfer.server.recovery.RecoveryWorkspace
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 /** Durable explicit lifecycle commands. Read current state BEFORE replaying an ambiguous POST. */
 class BtbLifecycleWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result = BtbLifecycleOutbox.processMutex.withLock {
+    override suspend fun doWork(): Result {
+        if (RecoveryWorkspace.blocked()) return Result.failure()
+        return try {
+            if (BtbLifecycleProcessor.process(applicationContext, inputData.getString("btb_id"))) Result.retry() else Result.success()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            Result.retry()
+        }
+    }
+
+    companion object {
+        private val immediateScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+        /** Durable retry is enqueued before an optional immediate attempt. Never cancel an active POST. */
+        fun enqueue(context: Context, replaceWaiting: Boolean = false, onlyBtbId: String? = null) {
+            val ctx = RecoveryWorkspace.wrap(context.applicationContext)
+            if (RecoveryWorkspace.blocked()) return
+            for (intent in BtbLifecycleOutbox.all(ctx).filter { onlyBtbId == null || it.btbId == onlyBtbId }) {
+                val request = OneTimeWorkRequestBuilder<BtbLifecycleWorker>()
+                    .setInputData(workDataOf("btb_id" to intent.btbId))
+                    .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                    .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS).build()
+                WorkManager.getInstance(ctx).enqueueUniqueWork("tbhelfer-btb-lifecycle:${intent.btbId}",
+                    ExistingWorkPolicy.KEEP, request)
+                // A click or network return need not wait for a WorkManager backoff timer.
+                // The same mutex, intent lookup and changeId protect both execution paths.
+                if (replaceWaiting && BtbLifecycleOutbox.interactive.add(intent.btbId)) {
+                    immediateScope.launch {
+                        try {
+                            BtbLifecycleProcessor.process(ctx, intent.btbId)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            BtbLifecycleOutbox.problem(ctx, intent, "Abgleich unterbrochen; automatischer Wiederholungsversuch folgt.")
+                        } finally {
+                            BtbLifecycleOutbox.interactive.remove(intent.btbId)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Read the durable intent after acquiring the common sync lock, so a second runner cannot replay a completed command. */
+internal object BtbLifecycleProcessor {
+    suspend fun process(applicationContext: Context, onlyBtbId: String? = null): Boolean = BtbLifecycleOutbox.processMutex.withLock {
         val ctx = RecoveryWorkspace.wrap(applicationContext)
-        if (RecoveryWorkspace.blocked()) return@withLock Result.failure()
+        if (RecoveryWorkspace.blocked()) return@withLock false
         val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
         val caps = cm?.activeNetwork?.let { cm.getNetworkCapabilities(it) }
         val network = de.tbhelfer.einstellungen.SyncEinstellungenSpeicher.laden(ctx).netz
@@ -22,21 +73,33 @@ class BtbLifecycleWorker(context: Context, params: WorkerParameters) : Coroutine
             de.tbhelfer.einstellungen.SyncEinstellungenSpeicher.Netz.NUR_MOBILFUNK -> caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) == true
             else -> caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true || caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) == true
         }
-        if (!allowed) return@withLock Result.retry()
+        if (!allowed) {
+            BtbLifecycleOutbox.all(ctx).filter { onlyBtbId == null || it.btbId == onlyBtbId }.forEach {
+                BtbLifecycleOutbox.problem(ctx, it, "Warte auf die in den Einstellungen erlaubte Internetverbindung.")
+            }
+            return@withLock true
+        }
         ServiceLocator.initialisieren(ctx)
-        val owner = BtbLifecycleOutbox.owner(ctx) ?: return@withLock Result.success()
+        val owner = BtbLifecycleOutbox.owner(ctx) ?: run {
+            BtbLifecycleOutbox.all(ctx).filter { onlyBtbId == null || it.btbId == onlyBtbId }.forEach {
+                BtbLifecycleOutbox.problem(ctx, it, "Gerätefreigabe prüfen; Abschlussauftrag bleibt gespeichert.")
+            }
+            return@withLock false
+        }
         var retry = false
-        for (intent in BtbLifecycleOutbox.all(ctx)) {
+        for (intent in BtbLifecycleOutbox.all(ctx).filter { onlyBtbId == null || it.btbId == onlyBtbId }) {
             if (intent.owner != owner) {
                 BtbLifecycleOutbox.problem(ctx, intent, "Gerätebindung hat sich geändert; Auftrag prüfen.")
                 continue
             }
             BtbLifecycleOutbox.running.add(intent.btbId)
+            BtbLifecycleOutbox.phase(intent, BtbLifecycleOutbox.Phase.PREPARING)
             try {
                 val coordinator = BtbLifecycleCoordinator(ctx)
                 val before = SelectiveSyncStore.btbScopes(ctx).firstOrNull { it.clientBtbId == intent.btbId }
                 val prepared = coordinator.prepareAccess(intent.localId, intent.btbId,
-                    uploadContent = intent.target != BtbLifecyclePolicy.Target.SHIFT_RESUME)
+                    uploadContent = intent.target != BtbLifecyclePolicy.Target.SHIFT_RESUME,
+                    onPhase = { BtbLifecycleOutbox.phase(intent, it) })
                 val access = when (prepared) {
                     is BtbLifecycleCoordinator.PrepareResult.Success -> prepared.access
                     else -> {
@@ -50,6 +113,7 @@ class BtbLifecycleWorker(context: Context, params: WorkerParameters) : Coroutine
                         continue
                     }
                 }
+                BtbLifecycleOutbox.phase(intent, BtbLifecycleOutbox.Phase.VERIFYING)
                 val pending = ServiceLocator.syncDao.collabPendingAnyForClientKey(
                     BtbServerStateStore.state(ctx, intent.btbId)?.worksiteServerId.orEmpty(),
                     SyncCollabPendingChangeEntity.TYPE_BTB, intent.btbId)
@@ -71,6 +135,7 @@ class BtbLifecycleWorker(context: Context, params: WorkerParameters) : Coroutine
                     continue
                 }
                 if (intent.target != BtbLifecyclePolicy.Target.SHIFT_RESUME && SelectiveSyncStore.isBtbDirty(ctx, intent.localId, intent.btbId)) {
+                    BtbLifecycleOutbox.problem(ctx, intent, "Neue lokale Änderung wartet noch auf Übertragung.")
                     retry = true
                     continue
                 }
@@ -79,6 +144,7 @@ class BtbLifecycleWorker(context: Context, params: WorkerParameters) : Coroutine
                     BtbLifecycleOutbox.remove(ctx, intent)
                     continue
                 }
+                BtbLifecycleOutbox.phase(intent, BtbLifecycleOutbox.Phase.SENDING)
                 when (val action = coordinator.sendPrepared(access, intent)) {
                     is BtbLifecycleCoordinator.ActionResult.Success -> {
                         val confirmed = BtbLifecyclePolicy.confirmed(intent.target,
@@ -113,24 +179,11 @@ class BtbLifecycleWorker(context: Context, params: WorkerParameters) : Coroutine
                 BtbLifecycleOutbox.problem(ctx, intent, error.message ?: "Übertragung fehlgeschlagen.")
                 retry = true
             } finally {
+                BtbLifecycleOutbox.phase(intent, null)
                 BtbLifecycleOutbox.running.remove(intent.btbId)
             }
         }
-        if (retry) Result.retry() else Result.success()
+        retry
     }
 
-    companion object {
-        fun enqueue(context: Context, replaceWaiting: Boolean = false) {
-            val ctx = RecoveryWorkspace.wrap(context.applicationContext)
-            if (BtbLifecycleOutbox.all(ctx).isEmpty() || RecoveryWorkspace.blocked()) return
-            val network = de.tbhelfer.einstellungen.SyncEinstellungenSpeicher.laden(ctx).netz
-            val required = NetworkType.CONNECTED // Worker enforces the selected transport, including metered Wi-Fi.
-            val request = OneTimeWorkRequestBuilder<BtbLifecycleWorker>()
-                .setConstraints(Constraints.Builder().setRequiredNetworkType(required).build())
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS).build()
-            WorkManager.getInstance(ctx).enqueueUniqueWork("tbhelfer-btb-lifecycle",
-                if (replaceWaiting) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.APPEND_OR_REPLACE, request)
-        }
-    }
 }
-

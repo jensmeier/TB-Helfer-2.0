@@ -40,13 +40,15 @@ class BtbLifecycleCoordinator(context: Context) {
     suspend fun prepareAccess(
         localBaustelleId: Long,
         clientBtbId: String,
-        uploadContent: Boolean = false
+        uploadContent: Boolean = false,
+        onPhase: (BtbLifecycleOutbox.Phase) -> Unit = {}
     ): PrepareResult {
         ServiceLocator.initialisieren(appContext)
         val tokenStore = SecureTokenStore(appContext)
         val token = tokenStore.load()
             ?: return PrepareResult.Error("Gerät ist noch nicht für den Server aktiviert.")
 
+        onPhase(BtbLifecycleOutbox.Phase.PREPARING)
         val capabilities = when (val result = ServerCapabilitiesApi().load()) {
             ServerCapabilitiesApi.Result.Unsupported ->
                 return PrepareResult.Error("Server-Capabilities sind für den neuen BTB-Vertrag nicht verfügbar.")
@@ -83,6 +85,7 @@ class BtbLifecycleCoordinator(context: Context) {
                 return PrepareResult.Conflict("Versionskonflikt prüfen; Abschluss bleibt vorgemerkt.")
             val rootId = bound.localWorksite?.id
             if (rootId != null && rootId in StructureSyncStore.roots(appContext)) {
+                onPhase(BtbLifecycleOutbox.Phase.STRUCTURE)
                 when (ServiceLocator.worksiteStructureSync.synchronizeChanged(token, setOf(context.worksiteServerId))) {
                     is de.tbhelfer.datenbank.WorksiteStructureSync.Result.Success -> Unit
                     else -> return PrepareResult.Error("Strukturabgleich ausstehend; Abschluss bleibt vorgemerkt.")
@@ -90,6 +93,7 @@ class BtbLifecycleCoordinator(context: Context) {
                 if (rootId in StructureSyncStore.roots(appContext))
                     return PrepareResult.Error("Strukturänderung noch nicht bestätigt.")
             }
+            onPhase(BtbLifecycleOutbox.Phase.CONTENT)
             return when (
                 val exported = bridge.exportBtbChange(
                     localBaustelleId = localBaustelleId,
@@ -145,6 +149,7 @@ class BtbLifecycleCoordinator(context: Context) {
         }
 
         suspend fun loadAccess(): PrepareResult {
+            onPhase(BtbLifecycleOutbox.Phase.VERIFYING)
             return when (
                 val access = api.loadBtbAccess(
                     token = token,
@@ -181,6 +186,7 @@ class BtbLifecycleCoordinator(context: Context) {
 
         uploadPending()?.let { return it }
 
+        onPhase(BtbLifecycleOutbox.Phase.PHOTOS)
         // Vor Schichtende/Finalisierung muessen genau die Fotos dieses BTB serverseitig
         // vorhanden sein. Andere BTBs der Baustelle werden nicht angefasst.
         when (
@@ -382,5 +388,6 @@ class BtbLifecycleCoordinator(context: Context) {
         }
     }
 }
+
 
 

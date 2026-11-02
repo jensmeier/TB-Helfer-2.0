@@ -335,20 +335,29 @@ object BtbModernLifecycleInstaller {
                     MaterialAlertDialogBuilder(fragment.requireContext())
                         .setTitle("Teilnehmer noch nicht fertig")
                         .setMessage(pending.problem + "\n\nDer Abschluss bleibt vorgemerkt. Trotzdem nur nach bewusster Prüfung abschließen.")
-                        .setNegativeButton("Weiter warten") { _, _ -> de.tbhelfer.server.BtbLifecycleWorker.enqueue(context, replaceWaiting = true) }
+                        .setNegativeButton("Weiter warten") { _, _ -> de.tbhelfer.server.BtbLifecycleWorker.enqueue(context, replaceWaiting = true, onlyBtbId = saved.btbId) }
                         .setPositiveButton("Trotzdem abschließen") { _, _ ->
                             try {
                                 de.tbhelfer.server.BtbLifecycleOutbox.put(context, saved.baustelleId, saved.btbId,
                                     de.tbhelfer.server.BtbLifecyclePolicy.Target.FINALIZE, force = true)
-                                de.tbhelfer.server.BtbLifecycleWorker.enqueue(context, replaceWaiting = true)
+                                de.tbhelfer.server.BtbLifecycleWorker.enqueue(context, replaceWaiting = true, onlyBtbId = saved.btbId)
                             } catch (error: Exception) {
                                 Snackbar.make(anchor, error.message ?: "Auftrag konnte nicht gespeichert werden.", Snackbar.LENGTH_LONG).show()
                             }
                         }.show()
+                } else if (pending != null) {
+                    MaterialAlertDialogBuilder(fragment.requireContext())
+                        .setTitle("BTB-Abschluss")
+                        .setMessage(de.tbhelfer.server.BtbLifecycleOutbox.status(context, saved.btbId)
+                            ?: "Serverbestätigung wird geprüft.")
+                        .setNegativeButton("Schließen", null)
+                        .setPositiveButton("Jetzt erneut prüfen") { _, _ ->
+                            de.tbhelfer.server.BtbLifecycleWorker.enqueue(context, replaceWaiting = true, onlyBtbId = saved.btbId)
+                        }.show()
                 } else {
                     de.tbhelfer.server.BtbLifecycleOutbox.put(context, saved.baustelleId, saved.btbId, target)
-                    de.tbhelfer.server.BtbLifecycleWorker.enqueue(context, replaceWaiting = true)
-                    Snackbar.make(anchor, "Auf dem Handy vorgemerkt. Serverabgleich und Bestätigung folgen.", Snackbar.LENGTH_LONG).show()
+                    de.tbhelfer.server.BtbLifecycleWorker.enqueue(context, replaceWaiting = true, onlyBtbId = saved.btbId)
+                    Snackbar.make(anchor, "Abschluss gestartet: Einträge und eigene Bilder werden übertragen. Bestätigung folgt automatisch.", Snackbar.LENGTH_LONG).show()
                 }
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
@@ -516,7 +525,9 @@ object BtbModernLifecycleInstaller {
                         if (lifecycleStatus != null && serverState?.contextReadOnly != true) {
                             root.findViewById<TextView>(R.id.tvCurrentReportLine2)?.text = lifecycleStatus
                             finalButton?.visibility = View.VISIBLE
-                            finalButton?.text = "Abschluss ausstehend"
+                            finalButton?.text = if (current.btbId in de.tbhelfer.server.BtbLifecycleOutbox.running)
+                                "Abschluss läuft …" else "Abschluss ausstehend"
+                            finalButton?.contentDescription = lifecycleStatus
                         }
                         finalButton?.isEnabled = root !in closingViews &&
                             current.btbId !in de.tbhelfer.server.BtbLifecycleOutbox.running
@@ -528,5 +539,6 @@ object BtbModernLifecycleInstaller {
         }
     }
 }
+
 
 

@@ -15,6 +15,22 @@ object BtbLifecycleOutbox {
         val changeId: String, val owner: String, val allowUnfinished: Boolean = false,
         val problem: String = "", val participantsBlocked: Boolean = false
     )
+    enum class Phase(val label: String) {
+        PREPARING("Serververbindung und Berechtigung prüfen"),
+        STRUCTURE("Geänderte Unterbaustelle übertragen"),
+        CONTENT("BTB-Einträge übertragen"),
+        PHOTOS("Eigene ausstehende Bilder übertragen"),
+        VERIFYING("Serverstand bestätigen"),
+        SENDING("Abschluss senden und bestätigen")
+    }
+    private val phases = ConcurrentHashMap<String, Pair<String, Phase>>()
+    val interactive = java.util.Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+    fun phase(intent: Intent, phase: Phase?) {
+        if (phase == null) {
+            val current = phases[intent.btbId]
+            if (current?.first == intent.changeId) phases.remove(intent.btbId, current)
+        } else phases[intent.btbId] = intent.changeId to phase
+    }
     private const val PREFS = "tbhelfer_btb_lifecycle_outbox_v1"
     private val lock = Any()
     val running = java.util.Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
@@ -47,18 +63,23 @@ object BtbLifecycleOutbox {
         check(prefs(context).edit().putString(btbId, encode(i)).commit()) { "Abschlussauftrag konnte nicht gespeichert werden." }
         i
     }
-    fun problem(context: Context, i: Intent, message: String, participants: Boolean = false) = synchronized(lock) {
-        if (get(context, i.btbId)?.changeId == i.changeId)
+    fun problem(context: Context, i: Intent, message: String, participants: Boolean = false): Unit = synchronized(lock) {
+        if (get(context, i.btbId)?.changeId == i.changeId) {
             check(prefs(context).edit().putString(i.btbId, encode(i.copy(problem = message, participantsBlocked = participants))).commit())
+            ErrorLogStore.record(context, ErrorHistory.Operation.SEND, message, ErrorHistory.ContextKind.SITE, i.localId)
+        }
     }
     fun remove(context: Context, i: Intent) = synchronized(lock) {
         if (get(context, i.btbId)?.changeId == i.changeId) check(prefs(context).edit().remove(i.btbId).commit())
     }
     fun status(context: Context, btbId: String): String? = get(context, btbId)?.let {
         when {
-            it.btbId in running -> "Abschluss wird mit dem Server abgeglichen …"
+            it.btbId in running -> phases[it.btbId]?.takeIf { p -> p.first == it.changeId }?.second?.label
+                ?: "Abschluss wird mit dem Server abgeglichen …"
+            it.btbId in interactive -> "Warte auf Abschluss des laufenden Datenabgleichs …"
             it.problem.isNotBlank() -> "Abschluss ausstehend: ${it.problem}"
             else -> "Abschluss auf dem Handy vorgemerkt · Serverbestätigung ausstehend"
         }
     }
 }
+

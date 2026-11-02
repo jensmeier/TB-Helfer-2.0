@@ -75,6 +75,7 @@ class TBHelferApp : Application() {
         Schema13Worker.schedule(this)
 
         // Persistente Dirty-Scopes nach Prozess-/Geräteneustart wieder aufnehmen.
+        de.tbhelfer.server.BtbLifecycleWorker.enqueue(this, replaceWaiting = true)
         SelectiveSyncWorker.enqueueIfPending(this)
 
         // Server->Android sofort nach App-Start nachziehen. Dies ist ein gezielter Changefeed-
@@ -111,6 +112,7 @@ class TBHelferApp : Application() {
                 if (redirectRecovery(activity) || activity is de.tbhelfer.server.recovery.RecoveryActivity) return
 
                 Server1DeltaWorker.enqueue(this@TBHelferApp)
+                de.tbhelfer.server.BtbLifecycleWorker.enqueue(this@TBHelferApp, replaceWaiting = true)
                 SelectiveSyncWorker.enqueueIfPending(this@TBHelferApp)
             }
 
@@ -134,6 +136,7 @@ class TBHelferApp : Application() {
                 object : ConnectivityManager.NetworkCallback() {
                     override fun onAvailable(network: Network) {
                         if (de.tbhelfer.server.recovery.RecoveryWorkspace.blocked()) return
+                        de.tbhelfer.server.BtbLifecycleWorker.enqueue(this@TBHelferApp, replaceWaiting = true)
                         SelectiveSyncWorker.enqueueIfPending(this@TBHelferApp)
                         Server1DeltaWorker.enqueue(this@TBHelferApp)
                     }
@@ -142,4 +145,5 @@ class TBHelferApp : Application() {
         }
     }
 }
+
 
