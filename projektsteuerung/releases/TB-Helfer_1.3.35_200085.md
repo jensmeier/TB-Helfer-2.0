@@ -11,6 +11,9 @@ NEU:
 - Eindeutige gleiche Bildbeschreibung (z.B. Schwellenwechsel) innerhalb desselben BTB, Punkts, derselben Firma und Unterbaustelle kann die fehlende Bildverknüpfung ergänzen. Vorhandene Verknüpfungen und ausdrücklich gelöste Zuordnungen haben Vorrang. Mehrdeutige Ziele bleiben offen.
 
 VERBESSERT:
+- Android-Abschluss startet nach Klick einen gezielten Versuch mit dauerhaftem Hintergrund-Retry. Start, App-Rückkehr und wieder verfügbares Netz holen ausstehende Abschlüsse nach. Fortschritt zeigt echte Phasen; erneuter Klick zeigt den vollständigen Wartegrund. Kein zusätzlicher Portalabschluss als normaler Ablauf vorgesehen; praktische Abnahme noch offen.
+- Firma und Unterbaustelle im normalen BTB-Eintrags- und Fotogruppen-Dialog korrigieren; Speicherübergabe des Eintrags vor Neuladen repariert. Neue Fotos nach Kurztext eindeutig im selben BTB/Punkt/Firma/Ort binden. Langtexteingabe fragt nach Kurztext; Android-BTB und Druck zeigen beide Texte. Originalbilder bleiben unverändert.
+- Wetterantworten nach BTB-/Datums-/Schicht-/Eingabewechsel verwerfen; Standortmetadaten erst mit akzeptierter Antwort setzen. Konkrete Wetterabweichung am Gerät noch offen.
 - PDF-Bildanhang mit drei Bildern pro Zeile und Nutzung der verfügbaren Seitenbreite, unabhängig von Hoch-/Querformat. Server-Portal ebenfalls drei Karten je Zeile; Server-PDF mit größerem Bildbereich.
 - Strukturierte Firmen-/Unterbaustellenzuordnung erreicht Android-PDF und Word. Zugeordnete Bildnummern am manuellen Eintrag, keine zusätzliche Textzeile je verbundenem Foto.
 - Abschluss überspringt den Download fremder Medien; eigene Uploads/Änderungen bleiben Voraussetzung. Worker wartet bei erlaubtem Mobilfunk nicht mehr pauschal auf ungetaktetes Netz; vorhandene Netzrichtlinien bleiben geprüft.
@@ -21,11 +24,11 @@ BEHOBEN:
 - Doppelpunkt im Text (z.B. 1stab 13:02) wird ohne bekannte Firma nicht als Firmenname interpretiert. Allgemeine Einträge dürfen ihre Unterbaustelle behalten.
 
 TESTSTATUS:
-- 22 neue Produktionsfunktionsprüfungen am Server PASS, kontrollierte Transaktions-/Berechtigungsgrenzen, keine echte PostgreSQL/HTTP-Kette.
-- Bestehende Portal-016/017 Python+JavaScript-Prüfungen PASS; Berechtigungsprüfungen 132 und138 je11 PASS; Worksite-Head14 PASS.
-- Produktions-PDF erzeugt und geprüft: drei Karten tatsächlich in einer Zeile, Bildnummern, KM0, GPS-Links PASS.
-- Acht Android-JUnit-Prüfungen ergänzt, noch NICHT ausgeführt. Kein Android-SDK/Gradle/Kotlin-Compiler/ADB vorhanden. Android-Build/KSP/Lint/Installation und reales Android-Helfer-Server-E2E OFFEN.
-- Abschlussgeschwindigkeit noch nicht am Gerät gemessen. Kein NAS-Deployment, keine produktiven Änderungen oder Bestands-Duplikatbereinigung. Keine APK/Actions/Veröffentlichung. MD nur mit APK aus exakt1.3.35/200085 verwenden.
+- Runtimecommit5291d522a5cb7a8826d7d9190545ed3005d04b12, Android-CI41498293472: Androidjob125458915143 SUCCESS. Kotlin/KSP/Java-Kompilierung und testDebugUnitTest PASS;122 Tests ohne Fehler/Fehlschläge/übersprungene Fälle laut gelesenem JUnit-XML. Enthält die8 BtbIntegration031- und6 BtbPhotoDescription-Tests.
+- lintDebug PASS:0 Error/0 Fatal,395 Warning laut gelesenem Lint-XML. KSP/AWT-NullPointer-Diagnose im Gradlelog vorhanden, Tasks/Job dennoch SUCCESS; nicht als vollständig fehlerfreies Tooling ausgeben.
+- Gesamt-CI ROT: bekannte fünf Quellvertragsprüfungen13/19/83/85/86; unverändert, nicht abgeschwächt. Kein assemble/APK-/Installationsnachweis. Downloadfeld bleibt leer; diese MD keinem älteren APK zuordnen.
+- Frühere Server-/Portal-/PDF-Funktionsnachweise für BTB-INTEGRATION-031 bleiben dokumentiert, in diesem Androidblock nicht erneut ausgeführt. Kein neuer PostgreSQL-/HTTP-/NAS-E2E.
+- Keine Veröffentlichung, kein NAS-Deployment, keine Datenbereinigung. Abschlussgeschwindigkeit, WorkManager/Prozessneustart/Netzrückkehr und echter Handyabschluss ohne Portalaktion praktisch OFFEN.
 
 ABNAHME NACH BUILD UND SERVER-ÜBERNAHME:
 1. Als Update ohne Deinstallation installieren; zwei Testnutzer (Verantwortlicher/Helfer), freigegebene Testbaustelle.
