@@ -288,3 +288,12 @@ Room-Prüfung in beiden Gradle-Läufen ausgeführt, Configuration Cache jeweils 
 Gesamt-CI ist NICHT BESTANDEN: separater Vertragsjob `125494515143` scheitert laut Original-Log weiterhin an denselben fünf Altprüfungen 13/19/83/85/86 (Schreibpfad-Anker, DELETE-Anker, alte Server-/Versions-/Updater-Anker). Prüfungen 14 (einschließlich stabiler Dreierzeile), 15 (BTB-Lifecycle), 03/04/12/17/18/84 bestehen. Diese Altfehler sind nicht Teil der eng beauftragten Medienkorrektur.
 
 Status: QUELLSTAND FERTIG; SOURCE-TEST BESTANDEN; Android-Kompilierung/Unit-Tests/Lint BESTANDEN; kein APK-Build, kein INSTALLIERT, E2E OFFEN, nicht ERLEDIGT. Keine neue Version/Release-MD, keine APK erstellt. Kein Emulator/ADB verfügbar. Pixel/Poco-, Tastatur-/Dialog-, Original/Sync-Dopplungs-, mehr-BTB-Gesamtexport- und Android/Server-E2E-Abnahme gemäß obiger Matrix bleiben offen. Die Quelle des abweichenden älteren PDF-Rasters und fehlende Bilddateien bleiben ungeklärt. Ein neuer auslieferbarer APK-Build benötigt separat den höheren versionCode und die passende Release-MD aus genau diesem Build.
+
+
+## AND-SPRACHE-1102 – Spracheingabe als offener Wunsch erfasst
+
+Nutzer fragt am 02.11.2026 ausdrücklich, ob Spracheingabe auf der Aufgabenliste steht. In den aktuellen Steuerungsdateien 01/02/03/07 war kein ausdrücklicher Spracheingabe-/Diktierauftrag erfasst. Jetzt als OFFEN aufgenommen; kein Implementierungsauftrag und keine Funktionsbestätigung daraus ableiten.
+
+Vor Umsetzung vorhandene Android-Spracheingabe und Tastatur-Diktat prüfen, damit nichts doppelt gebaut wird. Vorschlag zur Abstimmung: Text für BTB-Einträge und Fotoangaben diktieren, erkannten Text vor Übernahme korrigieren, Kurztext/Langtext getrennt erhalten. Welche Felder unterstützt werden, ob eine eigene Mikrofontaste gebraucht wird sowie Offline-/Netzverhalten sind noch nicht festgelegt. Keine automatische Änderung von Firma, Unterbaustelle oder Fotozuordnung durch Diktat ohne gesonderten Auftrag.
+
+Keine Runtime-/Versions-/Serveränderung, APK oder CI gestartet. Die vorherige Medienkorrektur und ihre E2E-Abnahme bleiben davon getrennt.
