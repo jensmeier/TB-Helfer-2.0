@@ -46,6 +46,10 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
             findNavController().navigate(R.id.action_einstellungen_to_nutzer)
         }
 
+        view.findViewById<View>(R.id.btnSpracheingabe).setOnClickListener {
+            startActivity(android.content.Intent(requireContext(), de.tbhelfer.speech.SpeechCaptureActivity::class.java))
+        }
+
         btnSynchronisation = view.findViewById(R.id.btnSynchronisation)
         btnSynchronisation.setOnClickListener { zeigeSyncEinstellungen() }
         aktualisiereSyncButton()

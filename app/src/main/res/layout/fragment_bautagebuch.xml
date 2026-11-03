@@ -1106,6 +1106,16 @@
                 android:layout_marginTop="6dp" />
         </LinearLayout>
 
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="8dp">
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnSpeechRecord"
+                style="@style/TbButtonCompact" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="🎙" android:contentDescription="@string/speech_record" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnSpeechInbox"
+                style="@style/TbButtonCompact" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" android:visibility="gone" android:text="🎙" />
+        </LinearLayout>
+
         <!-- Standardabschnitte (Phase 3b: UI-Binding) -->
 
         <!-- 4. Ausgeführte Arbeiten -->
@@ -1123,6 +1133,11 @@
                 android:text="4. Ausgeführte Arbeiten"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnBackground" />
+
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnSpeech4"
+                style="@style/TbButtonCompact" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp" android:minWidth="48dp" android:visibility="gone"
+                android:text="🎙" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnFotosArbeiten"
@@ -1231,6 +1246,11 @@
                 android:textColor="#111111"
                 android:textSize="7.5sp" />
 
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnSpeech5"
+                style="@style/TbButtonCompact" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp" android:minWidth="48dp" android:visibility="gone"
+                android:text="🎙" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnFotosAbnahmen"
                 style="@style/TbButton"
@@ -1278,6 +1298,11 @@
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnBackground" />
 
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnSpeech6"
+                style="@style/TbButtonCompact" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp" android:minWidth="48dp" android:visibility="gone"
+                android:text="🎙" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnFotosEinweisung"
                 style="@style/TbButton"
@@ -1324,6 +1349,11 @@
                 android:text="7. Besonderheiten"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnBackground" />
+
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnSpeech7"
+                style="@style/TbButtonCompact" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp" android:minWidth="48dp" android:visibility="gone"
+                android:text="🎙" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnFotosBesonderheiten"
@@ -1426,6 +1456,11 @@
                 android:text="Abgel. 0"
                 android:textColor="#111111"
                 android:textSize="8sp" />
+
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnSpeech8"
+                style="@style/TbButtonCompact" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp" android:minWidth="48dp" android:visibility="gone"
+                android:text="🎙" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnFotosMaengel"

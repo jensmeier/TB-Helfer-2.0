@@ -561,6 +561,9 @@ cardCurrentReport.setOnClickListener {
 }
 
         setupSectionPreviewUi()
+        de.tbhelfer.speech.SpeechUi.bind(this, view, { speechTarget() }) { draft, point, text, firm, node ->
+            acceptSpeechDraft(draft, point, text, firm, node)
+        }
 
         // Foto-Auswahl Chips (4–8)
         btnFotosArbeiten = view.requireViewByIdCompat(R.id.btnFotosArbeiten)
@@ -2673,6 +2676,7 @@ cardCurrentReport.setOnClickListener {
 
             if (entry == null) {
                 loadedBtbId = null
+                de.tbhelfer.speech.SpeechDraftStore.signal()
                 loadedBtbChangedEpochMs = Long.MIN_VALUE
                 currentBtbStartEpochMs = System.currentTimeMillis()
                 // Felder leeren
@@ -2710,6 +2714,7 @@ cardCurrentReport.setOnClickListener {
                 runCatching { LocalDate.parse(entry.datumIso, isoFmt) }.getOrNull()?.let { selectedDate = it }
                 selectedSchichtTyp = entry.schicht
                 loadedBtbId = entry.btbId
+                de.tbhelfer.speech.SpeechDraftStore.signal()
                 loadedBtbChangedEpochMs = entry.geaendertAmEpochMs
                 shiftStart = entry.startUhrzeit
                 shiftEnd = entry.endeUhrzeit
@@ -3009,6 +3014,75 @@ cardCurrentReport.setOnClickListener {
             // Inhalt in rawArbeiten und wird fortan als arbeiten geschrieben. Neue Punkt-4-Texte
             // duerfen nicht erneut einen NOTIZEN-Servereintrag erzeugen.
             return null
+        }
+
+        private suspend fun speechTarget(): BtbActiveContext.Result? {
+            val ctx = resolveAktuelleBaustelle() ?: return null
+            val id = loadedBtbId ?: return null
+            val entry = withContext(Dispatchers.IO) {
+                BautagebuchSpeicher.ladenById(requireContext(), ctx.id, ctx.name, id)
+            } ?: return null
+            return BtbActiveContext.Result(ctx.id, ctx.name, id, entry)
+        }
+
+        private suspend fun acceptSpeechDraft(
+            draft: de.tbhelfer.speech.SpeechDraft, point: Int, text: String, firm: String?, node: Long
+        ) {
+            val c = requireContext().applicationContext
+            check(!de.tbhelfer.server.recovery.RecoveryWorkspace.blocked())
+            check(draft.owner == de.tbhelfer.speech.SpeechDraftStore.owner(c))
+            check(loadedBtbId == draft.btbId)
+            check(sectionsDirtySinceMs == null && pmDirtySinceMs == null && wetterDirtySinceMs == null) {
+                "BTB wird noch gespeichert. Bitte erneut versuchen."
+            }
+            val active = withContext(Dispatchers.IO) { BtbActiveContext.laden(c) } ?: error("Kein aktiver BTB")
+            check(active.btbId == draft.btbId && active.baustelleId == draft.siteId)
+            check(de.tbhelfer.server.BtbLifecycleOutbox.status(c, draft.btbId) == null)
+            val root = ServiceLocator.baustellenBaumRepository.hauptNachAltBaustelleId(draft.siteId)
+            val binding = root?.let { ServiceLocator.worksiteBindingRepository.bindingForLocalRoot(it.id) }
+            if (binding != null) {
+                val access = ServiceLocator.worksiteBindingRepository.contextForLocalRoot(checkNotNull(root).id) ?: error("Rechte fehlen")
+                check(!de.tbhelfer.server.WorksiteAccessStore.readOnly(c, access.worksiteServerId, access.groupId))
+                val scope = org.json.JSONObject(access.areaScopeJson)
+                // Unknown/restricted scopes cannot be guessed into an unrestricted entry.
+                check(access.memberRole == "LEAD" || (access.memberRole == "HELPER" && scope.optBoolean("all", false))) {
+                    "Bereichsrechte für Sprachübernahme nicht vollständig freigegeben"
+                }
+            }
+            val nodes = root?.let { ServiceLocator.baustellenBaumRepository.alleKnotenZuRootSofort(it.id) }.orEmpty()
+            check(node == 0L || nodes.any { it.id == node && it.id != root?.id })
+            val key = if (node == 0L) null else stableNodeKey(root?.id, node) ?: error("Stabile Unterbaustelle fehlt")
+            val original = active.entry
+            val company = firm?.let { id -> original.firmen.firstOrNull { it.firmaId == id && !it.isDeleted } ?: error("Firma fehlt") }
+            val item = SectionItem(clientEntryKey=draft.id, text=text.replace(Regex("\\s+"), " ").trim(),
+                firmaId=firm, firmaName=company?.name, worksiteNodeKey=key)
+            val savedSpeech = withContext(Dispatchers.IO) {
+                de.tbhelfer.server.SelectiveSyncStore.withBtbMutationLock(draft.siteId, draft.btbId) {
+                    check(!de.tbhelfer.server.recovery.RecoveryWorkspace.blocked())
+                    check(draft.owner == de.tbhelfer.speech.SpeechDraftStore.owner(c))
+                    check(BautagebuchSpeicher.aktiveBtbId(c,draft.siteId,draft.siteName) == draft.btbId)
+                    check(de.tbhelfer.server.BtbServerStateStore.state(c,draft.btbId)?.readOnly != true)
+                    check(de.tbhelfer.server.BtbLifecycleOutbox.status(c,draft.btbId) == null)
+                    val latest = BautagebuchSpeicher.ladenById(c,draft.siteId,draft.siteName,draft.btbId) ?: error("BTB fehlt")
+                    val already = de.tbhelfer.speech.SpeechDraftPolicy.contains(latest,draft.id)
+                    check(already || latest.geaendertAmEpochMs == original.geaendertAmEpochMs) { "BTB wurde inzwischen geändert" }
+                    val updated = de.tbhelfer.speech.SpeechDraftPolicy.append(latest,point,item)
+                    if (!already) BautagebuchSpeicher.speichern(c,updated.copy(geaendertAmEpochMs=System.currentTimeMillis()))
+                    val verified = BautagebuchSpeicher.ladenById(c,draft.siteId,draft.siteName,draft.btbId) ?: error("Speichern nicht bestätigt")
+                    check(de.tbhelfer.speech.SpeechDraftPolicy.items(verified,point).any { it == item })
+                    if (!de.tbhelfer.server.SelectiveSyncStore.isBtbDirty(c,draft.siteId,draft.btbId) && !already) {
+                        de.tbhelfer.server.SelectiveSyncStore.markBtbDirty(c,draft.siteId,draft.btbId)
+                        de.tbhelfer.server.SofortSync.btbAnstossen(c,draft.siteId,draft.btbId)
+                    }
+                    verified
+                }
+            }
+            if (loadedBtbId == draft.btbId) {
+                val section = BtbEditSection.values().first { it.point == point }
+                setRawForEditSection(section, sectionToMultiline(SectionBlock(de.tbhelfer.speech.SpeechDraftPolicy.items(savedSpeech,point))))
+                renderSectionPreviews()
+                ladeEintragFallsVorhanden(autoPickSchichtForToday=false)
+            }
         }
 
         private fun buildEntry(ctx: BaustelleKontext): BautagebuchEintrag {

@@ -329,6 +329,8 @@ object BtbModernLifecycleInstaller {
                     Snackbar.make(anchor, "BTB konnte nicht vollständig gespeichert werden. Bitte Eingaben prüfen.", Snackbar.LENGTH_LONG).show()
                     return@launch
                 }
+                if (target != de.tbhelfer.server.BtbLifecyclePolicy.Target.SHIFT_RESUME &&
+                    !de.tbhelfer.speech.SpeechUi.confirmPending(fragment, saved.btbId)) return@launch
                 val state = BtbServerStateStore.state(context, saved.btbId)
                 val pending = de.tbhelfer.server.BtbLifecycleOutbox.get(context, saved.btbId)
                 if (pending?.participantsBlocked == true && state?.isTeamLead == true) {
