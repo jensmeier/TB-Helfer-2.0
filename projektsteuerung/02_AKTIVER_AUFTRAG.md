@@ -3153,3 +3153,13 @@ Status QUELLSTAND FERTIG / GEZIELTE SOURCE- UND JAVASCRIPT-PRÜFUNG BESTANDEN / 
 - Prüfgrenze: kein ADB/Android-Emulator; lokale Browser-/Jinja2-Laufzeit nicht verfügbar, Installationsversuche erfolglos; Cloud-Browser-Vorschau durch URL-Richtlinie abgelehnt, nicht umgangen. Deshalb keine Pixel-/Poco-/visuelle Browser-/Jinja-Render-/Live-HTTP-/NAS-E2E-Abnahme behauptet. CSS für schmale Ansichten ist implementiert, nicht visuell abgenommen.
 - Nächster praktischer Schritt: Android über GitHub Desktop/Android Studio übernehmen und als datenbewahrendes Update testen; alle neun Ziele, Extras öffnen/schließen, Rotation/Zurück, große Schrift, Sync-Netzdialog inklusive Abbrechen/Speichern, Wartung/Fehlerprotokoll/Updates prüfen. Portal: Desktop/Handy/Tastatur/große Schrift, Profilfelder und Fehleranzeige, Firmenkontakte, Sicherheit und Adminbedingung sowie vier Systemziele bei beiden Restorekonfigurationen prüfen. Produktive Konto-/Mail-/Restoreaktionen nicht als beiläufigen Test auslösen.
 - Serveranzeige benötigt spätere Übernahme der drei Templates server/templates/v1_portal_home.html, v1_base.html und v1_system_status.html über den bestehenden NAS-Übernahmeweg. Nicht durchgeführt. Android und Server sind getrennt zu übernehmen; keine Datenbankmigration oder geänderten API-Verträge erforderlich.
+
+
+## SYNC-AUDIT-1103 – Prüfauftrag (03.11.2026)
+
+- Benutzerauftrag: Senden/Empfangen Server↔Handy auf Fehler, Denkfehler, Geschwindigkeit und Optimierung prüfen.
+- Basis: Server d3697c52507cf49a223a773bebf7fef1de1c0809 (Draft-PR6); Android e53aa0e8f6d4cc525b805ef73936aa72cd3bf6c0 (PR11, kein Draft).
+- Umfang: Outbox/Idempotenz, Cursor/Delta, Longpoll/Weckpfad, Parallelität, Offline/Retry, Helfer-/BTB-Abschluss, Medien sowie relevante vorhandene Tests und CI-Nachweise vergleichen. Source-/Testnachweise von NAS-/Geräte-E2E trennen.
+- Reiner Prüfauftrag mit Optimierungsvorschlägen, keine nebenläufige Android-Implementierung, kein Deployment, kein NAS-SSH, keine produktiven Schreibtests oder Secrets. Neue Befunde zuerst dokumentieren; Umsetzung separat abgrenzen. Kein unnötiger Gesamt-CI-Lauf.
+- Bestätigung des Nutzers im vorherigen Block: Achsenansicht funktioniert nach Aktivierung der Originalachsen. Kein Geometriefehler daraus abgeleitet.
+- Status IN ARBEIT; echte NAS-/Pixel-/Poco-Messwerte liegen diesem Block noch nicht vor.
