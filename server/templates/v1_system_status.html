@@ -18,14 +18,18 @@
   .backup-list{max-height:390px;overflow:auto}.audit-list{max-height:390px;overflow:auto}.activity-list{max-height:500px;overflow:auto}.muted-line{color:#667085;font-size:12px}
   .monitor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px}.monitor-box{border:1px solid #eaecf0;border-left:4px solid #98a2b3;border-radius:10px;padding:11px;background:#fff}.monitor-box.ok{border-left-color:#12b76a}.monitor-box.warn{border-left-color:#f79009}.monitor-box.error{border-left-color:#f04438}.monitor-value{font-weight:800;margin-top:3px}.status-bad{color:#b42318;font-weight:800}.monitor-events{max-height:330px;overflow:auto}
   @media(max-width:760px){.audit-row{grid-template-columns:1fr}.two{grid-template-columns:1fr}.status-head{display:block}.status-head .compact-actions{margin-top:10px}}
+  .system-sections{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 20px}
+  .system-sections a{padding:10px 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:14px;font-weight:650}
+  .system-sections a:hover{background:#edf4ff;text-decoration:none}.system-sections a:focus-visible{outline:3px solid #1167d8;outline-offset:2px}
+  #systemOverview,#systemBackups,#systemRecovery,#systemAutomation{scroll-margin-top:96px}
 </style>
 {% endblock %}
 {% block content %}
-<div class="card">
+<div class="card" id="systemOverview">
   <div class="status-head">
     <div>
-      <h1 style="margin-bottom:4px">Systemstatus</h1>
-      <p class="muted" style="margin-bottom:0">Server 1.0 · wichtige Zustände, Sicherungen und laufende Arbeiten kompakt an einer Stelle.</p>
+      <h1 style="margin-bottom:4px">System und Wartung</h1>
+      <p class="muted" style="margin-bottom:0">Serverzustand und Sicherungen im Blick. Weitere Einstellungen öffnest du bei Bedarf.</p>
     </div>
     <div class="compact-actions">
       <span id="liveState" class="status-live"><span class="dot"></span><span>Live-Aktualisierung</span></span>
@@ -36,6 +40,9 @@
   <div id="summary" class="kpis"></div>
 </div>
 
+<nav class="system-sections" aria-label="Systembereiche">
+  <a href="#systemOverview">Überblick</a><a href="#systemBackups">Sicherungen und Vorgänge</a><a href="#systemRecovery">Wiederherstellung</a><a href="#systemAutomation">Automatik und E-Mail</a>
+</nav>
 <div class="two" style="margin-top:14px">
   <div class="card">
     <h2>Server / Datenbank</h2>
@@ -70,7 +77,7 @@
   <div id="issues"></div>
 </div>
 
-<div class="card">
+<div class="card" id="systemBackups">
   <div class="actions" style="justify-content:space-between">
     <div><h2 style="margin-bottom:3px">Backups &amp; Aktivitäten</h2><p class="muted" style="margin:0">Laufende Vorgänge aktualisieren sich automatisch. „Fertig“ bedeutet erfolgreich abgeschlossen.</p></div>
     <button id="cleanupJobs" type="button" class="secondary">Erledigten Job-Verlauf aufräumen</button>
@@ -100,6 +107,7 @@
   </div>
 </div>
 
+<section id="systemRecovery" aria-label="Wiederherstellung">
 <details class="panel" id="automaticRecoveryPanel" hidden>
   <summary>Backup einspielen</summary>
   <div class="panel-body">
@@ -158,7 +166,9 @@
   </div>
 </details>
 
-<details class="panel">
+</section>
+
+<details class="panel" id="systemAutomation">
   <summary>Automatik, Backups &amp; E-Mail</summary>
   <div class="panel-body">
     <p class="muted">Alle Zeiten gelten in der gewählten Zeitzone. SMTP-Passwörter bleiben ausschließlich in der Server-.env/Secret-Konfiguration und werden hier niemals angezeigt.</p>
@@ -232,6 +242,14 @@
 {% endblock %}
 {% block scripts %}
 <script>
+document.querySelectorAll('.system-sections a').forEach(link=>link.addEventListener('click',()=>{
+  const target=document.querySelector(link.getAttribute('href'));
+  if(target&&target.tagName==='DETAILS')target.open=true;
+  if(target&&target.id==='systemRecovery'){
+    const panel=target.querySelector('details:not([hidden])');
+    if(panel)panel.open=true;
+  }
+}));
 const msg=document.getElementById('msg');
 let pollTimer=null;
 let formDirty=false;
@@ -582,5 +600,6 @@ loadAutomaticRecovery();
 load(true);
 </script>
 {% endblock %}
+
 
 

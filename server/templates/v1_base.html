@@ -53,7 +53,7 @@
       {% else %}
         
         {% if user %}<a class="{% if request.url.path.startswith('/portal/v1/worksites') %}active{% endif %}" href="/portal/v1/worksites">Baustellen</a>{% endif %}
-        {% if user %}<a href="/portal/v1/pictures">Bilderübersicht</a><a href="/portal/v1/settings">Einstellungen</a>{% endif %}
+        {% if user %}<a class="{% if request.url.path.startswith('/portal/v1/pictures') %}active{% endif %}" href="/portal/v1/pictures">Bilderübersicht</a><a class="{% if request.url.path == '/portal/v1/settings' %}active{% endif %}" href="/portal/v1/settings">Einstellungen</a>{% endif %}
         {% if not user or user.company_role == 'ADMIN' %}<a class="secondary" href="/admin/v1/login">Admin</a>{% endif %}
       {% endif %}
       {% if user %}
@@ -116,6 +116,7 @@ async function tbLogout(){
 {% block scripts %}{% endblock %}
 </body>
 </html>
+
 
 
 

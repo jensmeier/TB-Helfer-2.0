@@ -1,48 +1,83 @@
 {% extends "v1_base.html" %}
 {% block title %}TB-Helfer · Portal{% endblock %}
+{% block head %}
+<style>
+  .settings-page{max-width:1040px;margin:0 auto}
+  .settings-intro{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin:6px 0 24px}
+  .settings-intro h1{margin-bottom:8px}.settings-intro p{margin:0;max-width:640px}
+  .settings-account{margin:14px 0 0;color:var(--muted);overflow-wrap:anywhere}
+  .settings-panel{background:var(--card);border:1px solid var(--line);border-radius:18px;margin:14px 0;box-shadow:0 3px 14px rgba(16,24,40,.035);overflow:hidden}
+  .settings-panel>summary{display:flex;align-items:center;gap:16px;padding:22px;cursor:pointer;list-style:none;min-height:88px}
+  .settings-panel>summary::-webkit-details-marker{display:none}
+  .settings-panel>summary:after{content:'+';margin-left:auto;flex-shrink:0;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#eff5ff;color:#175cd3;font-size:24px;font-weight:500}
+  .settings-panel[open]>summary:after{content:'−'}
+  .settings-panel>summary:hover{background:#f8faff}
+  .settings-panel>summary:focus-visible{outline:3px solid #1167d8;outline-offset:-4px;border-radius:16px}
+  .settings-panel>summary strong{display:block;font-size:18px;color:#101828}
+  .settings-panel>summary small{display:block;margin-top:4px;color:var(--muted);font-size:14px;line-height:1.5}
+  .settings-body{padding:2px 22px 22px}.settings-body .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  .settings-body input{min-height:46px}.settings-body .actions{margin-top:18px}
+  .settings-note{font-size:13px;line-height:1.6;margin:16px 0 0}
+  .settings-links{display:flex;flex-wrap:wrap;gap:12px 24px;margin:24px 0;font-size:14px}
+  .settings-page button:focus-visible,.settings-page a:focus-visible{outline:3px solid #1167d8;outline-offset:3px}
+  @media(max-width:600px){.settings-intro{display:block}.settings-intro h1{font-size:27px}.settings-panel>summary{padding:18px;gap:10px}.settings-body{padding:0 18px 20px}.settings-body .grid{grid-template-columns:minmax(0,1fr)}.settings-body button{min-height:44px}.settings-panel>summary strong{font-size:17px}}
+</style>
+{% endblock %}
 {% block content %}
-<div class="card">
-  <h1>Einstellungen</h1>
-  <p>Angemeldet als <b>{{ user.display_name }}</b> · Rolle <span class="pill">{{ user.company_role }}</span></p>
-  <p class="muted">Baustellen bleiben firmengetrennt. Persönliche Kontaktdaten und dein Anzeigename gehören zu deinem eigenen Profil.</p>
-  <div class="actions">
-    <a class="btn" href="/portal/v1/worksites">Baustellen öffnen</a>
-    <a class="btn secondary" href="/portal/v1/invitations/redeem">Einladung einlösen</a>
-    {% if user.company_role == 'ADMIN' %}<a class="btn secondary" href="/admin/v1/companies">Administration öffnen</a>{% endif %}
+<section class="settings-page" aria-labelledby="settingsTitle">
+<div class="settings-intro">
+  <div>
+    <h1 id="settingsTitle">Einstellungen</h1>
+    <p class="muted">Dein Profil, deine Anmeldung und die Kontakte deiner Firma.</p>
+    <div class="settings-account">Angemeldet als <b>{{ user.display_name }}</b> · <span class="pill">{{ user.company_role }}</span></div>
   </div>
 </div>
 
-<div class="card">
-  <h3>Mein Profil</h3>
-  <div id="profileMsg"></div>
+<details class="settings-panel" id="profilePanel" open>
+  <summary><span><strong>Mein Profil</strong><small>Name, Anmeldedaten und persönliche Kontaktdaten</small></span></summary>
+  <div class="settings-body">
+<div id="profileMsg" role="status" aria-live="polite"></div>
   <form id="profileForm">
     <div class="grid">
-      <div><label for="profileDisplay">Anzeigename</label><input id="profileDisplay" value="{{ user.display_name }}" maxlength="200" required></div>
-      <div><label for="profileLogin">Login</label><input id="profileLogin" value="{{ user.login_name }}" minlength="3" maxlength="120" required></div>
-      <div><label for="profileEmail">Persönliche E-Mail</label><input id="profileEmail" type="email" value="{{ user.personal_email or '' }}" maxlength="320"></div>
-      <div><label for="profilePhone">Persönliches Telefon</label><input id="profilePhone" value="{{ user.personal_phone or '' }}" maxlength="100"></div>
+      <div><label for="profileDisplay">Anzeigename</label><input id="profileDisplay" autocomplete="name" value="{{ user.display_name }}" maxlength="200" required></div>
+      <div><label for="profileLogin">Login</label><input id="profileLogin" autocomplete="username" value="{{ user.login_name }}" minlength="3" maxlength="120" required></div>
+      <div><label for="profileEmail">Persönliche E-Mail</label><input id="profileEmail" type="email" autocomplete="email" value="{{ user.personal_email or '' }}" maxlength="320"></div>
+      <div><label for="profilePhone">Persönliches Telefon</label><input id="profilePhone" type="tel" autocomplete="tel" value="{{ user.personal_phone or '' }}" maxlength="100"></div>
     </div>
     <div class="actions" style="margin-top:14px"><button type="submit">Profil speichern</button></div>
   </form>
-  <p class="muted" style="margin-bottom:0">E-Mail und Telefon sind für Benutzer derselben Firma sichtbar. Benutzer anderer Firmen erhalten diese persönlichen Kontaktdaten nicht.</p>
-</div>
+  <p class="muted settings-note">E-Mail und Telefon sind für Benutzer derselben Firma sichtbar. Benutzer anderer Firmen erhalten diese persönlichen Kontaktdaten nicht.</p>
+  </div>
+</details>
 
-<div class="card">
-  <h3>Firmenkontakte</h3>
-  <p class="muted">Persönliche E-Mail und Telefon werden nur für aktive Benutzer derselben Firma angezeigt.</p>
-  <div class="scroll"><table>
-    <thead><tr><th>Name</th><th>Rolle</th><th>E-Mail</th><th>Telefon</th></tr></thead>
-    <tbody id="directoryRows"><tr><td colspan="4" class="muted">Wird geladen …</td></tr></tbody>
-  </table></div>
-</div>
-
-<div class="card"><h3>Anmeldung und Sicherheit</h3>
+<details class="settings-panel" id="securityPanel">
+<summary><span><strong>Anmeldung und Sicherheit</strong><small>E-Mail bestätigen und Passwort ändern</small></span></summary>
+<div class="settings-body">
 <p id="emailState">E-Mail-Status wird geladen …</p><button type="button" id="verifyEmail">E-Mail bestätigen</button>
 <p id="securityMsg" role="status"></p>
 <details><summary>Passwort ändern</summary><form id="passwordForm">
 <label for="oldPassword">Aktuelles Passwort</label><input id="oldPassword" type="password" autocomplete="current-password" required>
 <label for="newPassword">Neues Passwort (mindestens 12 Zeichen)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="200" required>
-<button>Passwort speichern</button></form></details></div>
+<button>Passwort speichern</button></form></details>
+</div></details>
+
+<details class="settings-panel" id="contactsPanel">
+  <summary><span><strong>Firmenkontakte</strong><small>Kolleginnen und Kollegen deiner Firma erreichen</small></span></summary>
+  <div class="settings-body">
+  <p class="muted">Persönliche E-Mail und Telefon werden nur für aktive Benutzer derselben Firma angezeigt.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Name</th><th>Rolle</th><th>E-Mail</th><th>Telefon</th></tr></thead>
+    <tbody id="directoryRows"><tr><td colspan="4" class="muted">Wird geladen …</td></tr></tbody>
+  </table></div>
+  </div>
+</details>
+
+<nav class="settings-links" aria-label="Weitere Zugänge">
+  <a href="/portal/v1/worksites">Zurück zu den Baustellen</a>
+  <a href="/portal/v1/invitations/redeem">Einladung einlösen</a>
+  {% if user.company_role == 'ADMIN' %}<a href="/admin/v1/companies">Administration öffnen</a>{% endif %}
+</nav>
+</section>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -87,3 +122,4 @@ document.getElementById('profileForm').addEventListener('submit',async ev=>{
 });
 </script>
 {% endblock %}
+
