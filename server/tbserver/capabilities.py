@@ -59,6 +59,7 @@ CAPABILITIES: dict[str, bool] = {
     "survey_connection_network_v1": True,
     "survey_reference_contributions_v1": True,
     "survey_reference_change_feed_v1": True,
+    "survey_shared_km_sync_v1": True,
     "idempotent_mutations_v1": True,
     "sync_change_feed_v1": True,
     "sync_change_wait_v1": True,
@@ -94,6 +95,7 @@ def get_capabilities() -> dict:
         "api_version": API_VERSION,
         "capabilities": CAPABILITIES,
     }
+
 
 
 

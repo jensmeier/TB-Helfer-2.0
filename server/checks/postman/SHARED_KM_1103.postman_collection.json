@@ -1,0 +1,271 @@
+{
+  "info": {
+    "name": "TB-Helfer shared KM - isolated test fixture only",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "NOT EXECUTED. Use isolated test API/DB only. Creates a shared test KM contribution on a known 0..100m source. Replace fixture values before running; no production tokens. Other-company account B required. Cleanup via versioned deactivate after reading latest state. Numeric variables must be populated."
+  },
+  "item": [
+    {
+      "name": "Read bound global axis as company A",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{test_token_a}}"
+          }
+        ],
+        "url": "{{test_base_url}}/api/v1/survey-catalog/axes/{{axis_id}}/km-sync"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"GLOBAL\", () => pm.expect(pm.response.json().scope).to.eql(\"GLOBAL\"));",
+              "pm.test(\"No authors\", () => pm.expect(pm.response.text()).not.to.include(\"created_by_user_id\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Save explicit test contribution",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{test_token_a}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{test_base_url}}/api/v1/survey-catalog/axes/{{axis_id}}/km-sync",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"base_version\": {{axis_version}},\n  \"source_segment_id\": \"{{source_segment_id}}\",\n  \"source_version\": {{source_version}},\n  \"source_original_id\": \"{{source_original_id}}\",\n  \"source_sha256\": \"{{source_sha256}}\",\n  \"contribution_id\": \"{{contribution_id}}\",\n  \"client_change_id\": \"{{client_change_id}}\",\n  \"station_from_m\": 0,\n  \"station_to_m\": 100,\n  \"km_from_m\": 0,\n  \"km_to_m\": 100,\n  \"anchors\": [\n    {\n      \"id\": \"{{anchor_1_id}}\",\n      \"kind\": \"MANUAL\",\n      \"station_m\": 0,\n      \"km_meter\": 0\n    },\n    {\n      \"id\": \"{{anchor_2_id}}\",\n      \"kind\": \"MANUAL\",\n      \"station_m\": 100,\n      \"km_meter\": 100\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const r=pm.response.json(); pm.test(\"Stable contribution\", () => pm.expect(r.segment_id).to.eql(pm.variables.get(\"contribution_id\")));",
+              "pm.test(\"Shared active\", () => pm.expect([r.scope,r.status]).to.eql([\"GLOBAL\",\"ACTIVE\"]));",
+              "pm.collectionVariables.set(\"saved_response\",JSON.stringify(r));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Replay exact save after timeout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{test_token_a}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{test_base_url}}/api/v1/survey-catalog/axes/{{axis_id}}/km-sync",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"base_version\": {{axis_version}},\n  \"source_segment_id\": \"{{source_segment_id}}\",\n  \"source_version\": {{source_version}},\n  \"source_original_id\": \"{{source_original_id}}\",\n  \"source_sha256\": \"{{source_sha256}}\",\n  \"contribution_id\": \"{{contribution_id}}\",\n  \"client_change_id\": \"{{client_change_id}}\",\n  \"station_from_m\": 0,\n  \"station_to_m\": 100,\n  \"km_from_m\": 0,\n  \"km_to_m\": 100,\n  \"anchors\": [\n    {\n      \"id\": \"{{anchor_1_id}}\",\n      \"kind\": \"MANUAL\",\n      \"station_m\": 0,\n      \"km_meter\": 0\n    },\n    {\n      \"id\": \"{{anchor_2_id}}\",\n      \"kind\": \"MANUAL\",\n      \"station_m\": 100,\n      \"km_meter\": 100\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Exact receipt\", () => pm.expect(pm.response.json()).to.deep.eql(JSON.parse(pm.collectionVariables.get(\"saved_response\"))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Other company receives same contribution",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{test_token_b}}"
+          }
+        ],
+        "url": "{{test_base_url}}/api/v1/survey-catalog/axes/{{axis_id}}/km-sync"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Cross-company contribution\", () => pm.expect(pm.response.json().sections.some(s=>s.id===pm.variables.get(\"contribution_id\") && s.km_from_m===0)).to.eql(true));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Changed request cannot reuse receipt",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{test_token_a}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{test_base_url}}/api/v1/survey-catalog/axes/{{axis_id}}/km-sync",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"base_version\": {{axis_version}},\n  \"source_segment_id\": \"{{source_segment_id}}\",\n  \"source_version\": {{source_version}},\n  \"source_original_id\": \"{{source_original_id}}\",\n  \"source_sha256\": \"{{source_sha256}}\",\n  \"contribution_id\": \"{{contribution_id}}\",\n  \"client_change_id\": \"{{client_change_id}}\",\n  \"station_from_m\": 0,\n  \"station_to_m\": 100,\n  \"km_from_m\": 0,\n  \"km_to_m\": 100,\n  \"anchors\": [\n    {\n      \"id\": \"{{anchor_1_id}}\",\n      \"kind\": \"MANUAL\",\n      \"station_m\": 0,\n      \"km_meter\": 0\n    },\n    {\n      \"id\": \"{{anchor_2_id}}\",\n      \"kind\": \"MANUAL\",\n      \"station_m\": 100,\n      \"km_meter\": 100\n    }\n  ],\n  \"note\":\"changed request\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+              "pm.test(\"Receipt reuse rejected\", () => pm.expect(pm.response.json().detail).to.eql(\"SURVEY_KM_MUTATION_REUSED\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Anonymous write denied",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{invalid_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{test_base_url}}/api/v1/survey-catalog/axes/{{axis_id}}/km-sync",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"base_version\": {{axis_version}},\n  \"source_segment_id\": \"{{source_segment_id}}\",\n  \"source_version\": {{source_version}},\n  \"source_original_id\": \"{{source_original_id}}\",\n  \"source_sha256\": \"{{source_sha256}}\",\n  \"contribution_id\": \"{{contribution_id}}\",\n  \"client_change_id\": \"{{client_change_id}}\",\n  \"station_from_m\": 0,\n  \"station_to_m\": 100,\n  \"km_from_m\": 0,\n  \"km_to_m\": 100,\n  \"anchors\": [\n    {\n      \"id\": \"{{anchor_1_id}}\",\n      \"kind\": \"MANUAL\",\n      \"station_m\": 0,\n      \"km_meter\": 0\n    },\n    {\n      \"id\": \"{{anchor_2_id}}\",\n      \"kind\": \"MANUAL\",\n      \"station_m\": 100,\n      \"km_meter\": 100\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Authentication denied\", () => pm.expect([401,403]).to.include(pm.response.code));"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "test_base_url",
+      "value": ""
+    },
+    {
+      "key": "test_token_a",
+      "value": ""
+    },
+    {
+      "key": "test_token_b",
+      "value": ""
+    },
+    {
+      "key": "invalid_token",
+      "value": ""
+    },
+    {
+      "key": "axis_id",
+      "value": ""
+    },
+    {
+      "key": "axis_version",
+      "value": ""
+    },
+    {
+      "key": "source_segment_id",
+      "value": ""
+    },
+    {
+      "key": "source_version",
+      "value": ""
+    },
+    {
+      "key": "source_original_id",
+      "value": ""
+    },
+    {
+      "key": "source_sha256",
+      "value": ""
+    },
+    {
+      "key": "contribution_id",
+      "value": ""
+    },
+    {
+      "key": "client_change_id",
+      "value": ""
+    },
+    {
+      "key": "anchor_1_id",
+      "value": ""
+    },
+    {
+      "key": "anchor_2_id",
+      "value": ""
+    }
+  ]
+}

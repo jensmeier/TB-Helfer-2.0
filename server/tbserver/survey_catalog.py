@@ -3826,6 +3826,11 @@ def changes(after: int = Query(default=0,ge=0),
             limit: int = Query(default=200,ge=1,le=1000),
             user: dict[str,Any] = Depends(current_portal_user)) -> dict[str,Any]:
     with transaction() as conn, conn.cursor() as cur:
+        # Drain all in-flight history INSERTs before taking a READ COMMITTED
+        # snapshot. SHARE conflicts with their ROW EXCLUSIVE table locks;
+        # a smaller uncommitted bigserial ID cannot be overtaken by this cursor.
+        # Keep this read transaction short; never perform network work here.
+        cur.execute('LOCK TABLE tb.survey_catalog_history IN SHARE MODE')
         cur.execute(
             """
             SELECT change_id,entity_type,entity_id,entity_version,operation,after_data,changed_at
@@ -4148,3 +4153,269 @@ router.include_router(workspace_router)
 from .survey_network import router as network_router
 router.include_router(network_router)
 
+
+
+
+# Additive shared KM transport for portal sessions and authenticated devices.
+# Uses the existing GLOBAL axis/segment store; never reconciles a whole dataset.
+class SharedKmAnchor(BaseModel):
+    model_config = {'extra': 'forbid'}
+    id: UUID
+    kind: str = Field(pattern=r'^(MANUAL|GPS|GVP|MAST)$')
+    station_m: float = Field(strict=True, allow_inf_nan=False)
+    km_meter: float = Field(strict=True, allow_inf_nan=False)
+    x_dbref: float | None = Field(default=None, strict=True, allow_inf_nan=False)
+    y_dbref: float | None = Field(default=None, strict=True, allow_inf_nan=False)
+    accuracy_m: float | None = Field(default=None, ge=0, strict=True, allow_inf_nan=False)
+    gps_lat: float | None = Field(default=None, ge=-90, le=90, strict=True, allow_inf_nan=False)
+    gps_lon: float | None = Field(default=None, ge=-180, le=180, strict=True, allow_inf_nan=False)
+    gps_spread_m: float | None = Field(default=None, ge=0, strict=True, allow_inf_nan=False)
+    gvp_ref: AdminGvpAnchor | None = None
+
+
+class SharedKmSave(AdminKmSection):
+    model_config = {'extra': 'forbid'}
+    contribution_id: UUID
+    source_original_id: UUID
+    source_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+    anchors: list[SharedKmAnchor] = Field(min_length=2, max_length=100)
+    # Reject JSON booleans/string coercions for measurements and versions.
+    station_from_m: float = Field(strict=True, allow_inf_nan=False)
+    station_to_m: float = Field(strict=True, allow_inf_nan=False)
+    km_from_m: float = Field(strict=True, allow_inf_nan=False)
+    km_to_m: float = Field(strict=True, allow_inf_nan=False)
+    base_version: int = Field(strict=True, ge=1)
+    source_version: int = Field(strict=True, ge=1)
+    segment_version: int | None = Field(default=None, strict=True, ge=1)
+
+
+def _shared_km_axis(cur, axis_id):
+    axis = _row(cur, 'survey_catalog_axes', axis_id)
+    if axis['scope'] != 'GLOBAL' or axis.get('company_id') is not None:
+        raise HTTPException(404, 'SURVEY_SHARED_AXIS_NOT_FOUND')
+    if axis['status'] == 'ARCHIVED':
+        raise HTTPException(409, 'SURVEY_AXIS_ARCHIVED')
+    return axis
+
+
+def _shared_km_gps_point(cur, anchor, points):
+    if (anchor.gps_lat is None) != (anchor.gps_lon is None):
+        raise HTTPException(400, 'SURVEY_KM_GPS_PAIR_REQUIRED')
+    if anchor.gps_lat is None:
+        if anchor.x_dbref is None or anchor.y_dbref is None:
+            raise HTTPException(400, 'SURVEY_KM_COORDINATES_REQUIRED')
+        return {'x_dbref':anchor.x_dbref,'y_dbref':anchor.y_dbref}
+    # Infer CRS from the explicitly bound original, never from the phone's
+    # location or the nearest track. DB_REF and WGS84 are distinct systems.
+    srids = {_dbref_srid_for_x(p['x_dbref']) for p in points}
+    if len(srids) != 1 or None in srids:
+        raise HTTPException(400, 'SURVEY_KM_SOURCE_CRS_AMBIGUOUS')
+    cur.execute('''SELECT ST_X(p) AS x_dbref,ST_Y(p) AS y_dbref FROM
+                   (SELECT ST_Transform(ST_SetSRID(ST_MakePoint(%s,%s),4326),%s) AS p) t''',
+                (anchor.gps_lon,anchor.gps_lat,next(iter(srids))))
+    row = cur.fetchone()
+    if not row or any(_num(row.get(k)) is None for k in ('x_dbref','y_dbref')):
+        raise HTTPException(400, 'SURVEY_KM_GPS_TRANSFORM_FAILED')
+    if ((anchor.x_dbref is not None and abs(anchor.x_dbref-row['x_dbref']) > .5) or
+            (anchor.y_dbref is not None and abs(anchor.y_dbref-row['y_dbref']) > .5)):
+        raise HTTPException(400, 'SURVEY_KM_GPS_COORDINATES_CHANGED')
+    return dict(row)
+
+
+def _shared_km_anchors(cur, payload, points):
+    if len({a.id for a in payload.anchors}) != len(payload.anchors):
+        raise HTTPException(400, 'SURVEY_KM_ANCHOR_ID_DUPLICATE')
+    result = []
+    for anchor in payload.anchors:
+        data = anchor.model_dump(mode='json')
+        if not payload.station_from_m <= anchor.station_m <= payload.station_to_m:
+            raise HTTPException(400, 'SURVEY_KM_ANCHOR_OUTSIDE_SECTION')
+        # Every supplied anchor must agree with the section, including interior ones.
+        expected = payload.km_from_m + (anchor.station_m-payload.station_from_m) * (
+            payload.km_to_m-payload.km_from_m) / (payload.station_to_m-payload.station_from_m)
+        if abs(anchor.km_meter-expected) > 5:
+            raise HTTPException(400, 'SURVEY_KM_ANCHOR_INCONSISTENT')
+        if anchor.kind == 'GVP':
+            if anchor.gvp_ref is None or abs(anchor.gvp_ref.km_meter-anchor.km_meter) > .001:
+                raise HTTPException(400, 'SURVEY_GVP_REFERENCE_REQUIRED')
+            if any(v is not None for v in (anchor.x_dbref,anchor.y_dbref,anchor.gps_lat,anchor.gps_lon)):
+                raise HTTPException(400, 'SURVEY_KM_GVP_COORDINATES_NOT_ACCEPTED')
+            resolved = _gvp_resolve(cur, anchor.gvp_ref)
+            data['reference'] = resolved
+            foot = _gvp_projection(resolved, points)
+        elif anchor.kind in {'GPS', 'MAST'}:
+            if anchor.kind == 'GPS' and anchor.accuracy_m is None:
+                raise HTTPException(400, 'SURVEY_KM_ACCURACY_REQUIRED')
+            if anchor.gvp_ref is not None:
+                raise HTTPException(400, 'SURVEY_KM_ANCHOR_REFERENCE_INVALID')
+            coordinates = _shared_km_gps_point(cur, anchor, points)
+            data.update(coordinates)
+            foot = _gvp_projection(coordinates, points)
+        else:
+            if (anchor.gvp_ref is not None or anchor.x_dbref is not None or anchor.y_dbref is not None
+                    or anchor.gps_lat is not None or anchor.gps_lon is not None):
+                raise HTTPException(400, 'SURVEY_KM_MANUAL_ANCHOR_FIELDS_INVALID')
+            foot = None
+        if foot is not None:
+            if abs(foot['station_m']-anchor.station_m) > .05:
+                raise HTTPException(400, 'SURVEY_KM_PROJECTION_CHANGED')
+            data['foot'] = foot
+        result.append(data)
+    span = max(a.station_m for a in payload.anchors)-min(a.station_m for a in payload.anchors)
+    # An incomplete first anchor remains an Android draft, never a published KM.
+    if span < 20 or abs(payload.km_to_m-payload.km_from_m) < 1:
+        raise HTTPException(400, 'SURVEY_KM_TWO_DISTINCT_ANCHORS_REQUIRED')
+    if (min(a.station_m for a in payload.anchors) > payload.station_from_m or
+            max(a.station_m for a in payload.anchors) < payload.station_to_m):
+        raise HTTPException(400, 'SURVEY_KM_EXTRAPOLATION_FORBIDDEN')
+    factor = abs((payload.km_to_m-payload.km_from_m)/(payload.station_to_m-payload.station_from_m))
+    if not .5 <= factor <= 1.5:
+        raise HTTPException(400, 'SURVEY_KM_CALIBRATION_IMPLAUSIBLE')
+    return result
+
+
+def _shared_km_prepare(cur, axis_id, payload):
+    if payload.segment_id is not None and payload.segment_id != payload.contribution_id:
+        raise HTTPException(400, 'SURVEY_KM_CONTRIBUTION_ID_CHANGED')
+    axis, source, existing, points, info = _km_editor_prepare(cur, axis_id, payload)
+    if axis.get('company_id') is not None:
+        raise HTTPException(404, 'SURVEY_SHARED_AXIS_NOT_FOUND')
+    if source['source_original_id'] != payload.source_original_id:
+        raise HTTPException(409, 'SURVEY_KM_SOURCE_CHANGED')
+    cur.execute('SELECT sha256 FROM tb.survey_originals WHERE id=%s FOR SHARE', (payload.source_original_id,))
+    original = cur.fetchone()
+    if not original or original['sha256'] != payload.source_sha256:
+        raise HTTPException(409, 'SURVEY_KM_SOURCE_CHANGED')
+    if existing is None:
+        if payload.segment_version is not None:
+            raise HTTPException(400, 'SURVEY_KM_UNEXPECTED_SEGMENT_VERSION')
+        cur.execute('SELECT id FROM tb.survey_catalog_segments WHERE id=%s', (payload.contribution_id,))
+        if cur.fetchone():
+            raise HTTPException(409, 'SURVEY_KM_CONTRIBUTION_ID_EXISTS')
+    if info['length_warning'] and not payload.confirm_length_difference:
+        raise HTTPException(400, 'SURVEY_KM_LENGTH_CONFIRM_REQUIRED')
+    anchors = _shared_km_anchors(cur, payload, _segment_points(cur, source))
+    return axis, source, existing, points, info, anchors
+
+
+@router.get('/axes/{axis_id}/km-sync')
+def shared_km_state(axis_id: UUID, user: dict[str, Any] = Depends(current_portal_user)) -> dict[str, Any]:
+    with transaction() as conn, conn.cursor() as cur:
+        axis = _shared_km_axis(cur, axis_id)
+        cur.execute('''SELECT s.id,s.current_version,s.source_original_id,o.sha256
+                       FROM tb.survey_catalog_segments s JOIN tb.survey_originals o ON o.id=s.source_original_id
+                       WHERE s.axis_id=%s AND s.source_kind='ORIGINAL_TRA' AND s.segment_status='ACTIVE'
+                       ORDER BY s.id''', (axis_id,))
+        sources = [dict(r) for r in cur.fetchall()]
+        cur.execute('''SELECT id,current_version,source_original_id,segment_status,station_from_m,station_to_m,
+                              km_from_m,km_to_m,metadata FROM tb.survey_catalog_segments
+                       WHERE axis_id=%s AND source_kind='MANUAL_TRA_SECTION' ORDER BY id''', (axis_id,))
+        # Whitelist payload: no raw originals, local paths, company or author metadata.
+        sections = []
+        for row in cur.fetchall():
+            item = {k:v for k,v in row.items() if k != 'metadata'}
+            metadata = row.get('metadata') or {}
+            item['anchors'] = metadata.get('shared_km_anchors', [])
+            sections.append(item)
+        return _catalog_response(user, {'axis_id':axis_id,'axis_version':axis['current_version'],
+                                      'scope':'GLOBAL','sources':sources,'sections':sections})
+
+
+@router.post('/axes/{axis_id}/km-sync')
+def shared_km_save(axis_id: UUID, payload: SharedKmSave,
+                   user: dict[str, Any] = Depends(require_csrf)) -> dict[str, Any]:
+    fingerprint = _km_editor_fingerprint(axis_id, payload, 'SHARED_KM_SAVE_V1')
+    try:
+        with transaction() as conn, conn.cursor() as cur:
+            _shared_km_axis(cur, axis_id)  # lock + visibility before receipt lookup
+            replay = _km_editor_replay(cur, user, payload.client_change_id, fingerprint)
+            if replay is not None:
+                return replay
+            axis, source, existing, points, info, anchors = _shared_km_prepare(cur, axis_id, payload)
+            metadata = dict((existing or {}).get('metadata') or {})
+            metadata.update(km_source='MANUELL_ABSCHNITT', source_segment_id=str(source['id']),
+                            source_sha256=payload.source_sha256, shared_km_anchors=anchors,
+                            last_edited_via='SHARED_KM_V1', note=payload.note.strip(),
+                            length_difference_confirmed=payload.confirm_length_difference)
+            if existing is None:
+                segment = _segment_insert(cur, axis=axis, asset_id=None, source_kind='MANUAL_TRA_SECTION',
+                    source_original_id=source['source_original_id'],source_signature=source.get('source_signature'),
+                    source_date=None,station_from_m=payload.station_from_m,station_to_m=payload.station_to_m,
+                    km_from_m=payload.km_from_m,km_to_m=payload.km_to_m,points=points,
+                    relation='OVERLAP_CONFIRMED',diagnostics={'reason':'EXPLICIT_SHARED_KM'},
+                    actor_user_id=user['user_id'],metadata=metadata,segment_id=payload.contribution_id)
+            else:
+                bbox = _bbox(points)
+                cur.execute('''UPDATE tb.survey_catalog_segments
+                    SET station_from_m=%s,station_to_m=%s,km_from_m=%s,km_to_m=%s,
+                        bbox_min_x=%s,bbox_min_y=%s,bbox_max_x=%s,bbox_max_y=%s,
+                        geometry=NULL,metadata=%s,current_version=current_version+1,updated_at=now()
+                    WHERE id=%s AND axis_id=%s AND current_version=%s RETURNING *''',
+                    (payload.station_from_m,payload.station_to_m,payload.km_from_m,payload.km_to_m,
+                     *bbox,Jsonb(metadata),existing['id'],axis_id,payload.segment_version))
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(409, 'VERSION_CONFLICT')
+                segment = dict(row)
+                _history(cur,entity_type='SEGMENT',entity_id=segment['id'],version=segment['current_version'],
+                         operation='UPDATE',before=existing,after=segment,actor_user_id=user['user_id'],actor_company_id=None)
+            updated_axis = _axis_extent_refresh(cur, axis_id, user['user_id'])
+            response = {'axis_id':str(axis_id),'axis_version':updated_axis['current_version'],
+                        'segment_id':str(segment['id']),'entity_version':int(segment['current_version']),
+                        'scope':'GLOBAL','status':'ACTIVE','request_fingerprint':fingerprint}
+            _save_receipt(cur,user,payload.client_change_id,segment['id'],segment['current_version'],response)
+            audit(cur,action='SURVEY_SHARED_KM_SAVE',actor_user_id=user['user_id'],
+                  actor_device_id=user.get('device_id'),entity_type='SURVEY_CATALOG_SEGMENT',
+                  entity_id=segment['id'],details={'axis_id':str(axis_id)})
+            return response
+    except UniqueViolation as exc:
+        raise HTTPException(409, 'SURVEY_KM_MUTATION_REUSED') from exc
+
+
+class SharedKmDeactivate(AdminKmDeactivate):
+    model_config = {'extra': 'forbid'}
+    source_segment_id: UUID
+    source_version: int = Field(strict=True, ge=1)
+    source_original_id: UUID
+    source_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+    base_version: int = Field(strict=True, ge=1)
+    segment_version: int = Field(strict=True, ge=1)
+
+
+@router.post('/axes/{axis_id}/km-sync/{segment_id}/deactivate')
+def shared_km_deactivate(axis_id: UUID, segment_id: UUID, payload: SharedKmDeactivate,
+                         user: dict[str, Any] = Depends(require_csrf)) -> dict[str, Any]:
+    fingerprint = _km_editor_fingerprint(axis_id, payload, 'SHARED_KM_DEACTIVATE_V1:'+str(segment_id))
+    try:
+        with transaction() as conn, conn.cursor() as cur:
+            axis = _shared_km_axis(cur, axis_id)
+            replay = _km_editor_replay(cur,user,payload.client_change_id,fingerprint)
+            if replay is not None:
+                return replay
+            if axis['current_version'] != payload.base_version:
+                raise HTTPException(409, 'VERSION_CONFLICT')
+            source, _ = _gvp_source(cur,axis_id,payload.source_segment_id,payload.source_version)
+            cur.execute('SELECT sha256 FROM tb.survey_originals WHERE id=%s FOR SHARE', (payload.source_original_id,))
+            original = cur.fetchone()
+            if (source['source_original_id'] != payload.source_original_id or not original
+                    or original['sha256'] != payload.source_sha256):
+                raise HTTPException(409, 'SURVEY_KM_SOURCE_CHANGED')
+            segment = next((s for s in _km_editor_rows(cur,axis_id) if s['id']==segment_id),None)
+            if (not segment or segment['source_kind'] != 'MANUAL_TRA_SECTION'
+                    or segment['source_original_id'] != payload.source_original_id
+                    or segment['segment_status'] != 'ACTIVE'):
+                raise HTTPException(400, 'SURVEY_KM_SECTION_NOT_EDITABLE')
+            if segment['current_version'] != payload.segment_version:
+                raise HTTPException(409, 'VERSION_CONFLICT')
+            updated = _mark_segment_status(cur,segment,'INACTIVE',user['user_id'])
+            updated_axis = _axis_extent_refresh(cur,axis_id,user['user_id'])
+            response = {'axis_id':str(axis_id),'axis_version':updated_axis['current_version'],
+                        'segment_id':str(segment_id),'entity_version':updated['current_version'],
+                        'scope':'GLOBAL','status':'INACTIVE','request_fingerprint':fingerprint}
+            _save_receipt(cur,user,payload.client_change_id,segment_id,updated['current_version'],response)
+            audit(cur,action='SURVEY_SHARED_KM_DEACTIVATE',actor_user_id=user['user_id'],
+                  actor_device_id=user.get('device_id'),entity_type='SURVEY_CATALOG_SEGMENT',
+                  entity_id=segment_id,details={'axis_id':str(axis_id)})
+            return response
+    except UniqueViolation as exc:
+        raise HTTPException(409, 'SURVEY_KM_MUTATION_REUSED') from exc
