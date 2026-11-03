@@ -6,6 +6,12 @@ from uuid import UUID
 from psycopg.types.json import Jsonb
 
 
+# One transaction-level lock across every feed producer/API process. It must be
+# acquired BEFORE bigserial allocates an ID and retained until commit/rollback.
+# A later visible ID can then never overtake an earlier uncommitted feed row.
+CHANGE_FEED_PUBLISH_LOCK = 607178392341001
+
+
 def emit_change(
     cur,
     *,
@@ -17,6 +23,9 @@ def emit_change(
     entity_version: int | None,
     actor_user_id: UUID | str | None,
 ) -> int:
+    if getattr(getattr(cur, "connection", None), "autocommit", False):
+        raise RuntimeError("change_feed publication requires an explicit transaction")
+    cur.execute("SELECT pg_advisory_xact_lock(%s)", (CHANGE_FEED_PUBLISH_LOCK,))
     cur.execute(
         """
         INSERT INTO tb.change_feed(
@@ -68,3 +77,4 @@ def audit(
             Jsonb(details or {}),
         ),
     )
+

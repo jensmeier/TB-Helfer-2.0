@@ -372,6 +372,30 @@ def create_btb(
     return row
 
 
+@router.get("/btbs/{btb_id}/sync-state")
+def btb_sync_state(
+    btb_id: UUID,
+    user: dict[str, Any] = Depends(current_portal_user),
+) -> dict:
+    """Authorized tombstone confirmation, including already deleted BTBs.
+
+    A missing detail route or an arbitrary 404 is not proof of deletion.
+    Deleted content is never returned; current site/team rights still apply.
+    """
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, worksite_id, team_id, status, version FROM tb.btbs WHERE id = %s",
+            (btb_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "BTB_NOT_FOUND")
+        context = worksite_context(cur, user, row["worksite_id"])
+        require_permission(context, "btb.view")
+        _assert_team_member(cur, user, row["team_id"])
+        return {"id": str(row["id"]), "version": row["version"], "deleted": row["status"] == "DELETED"}
+
+
 @router.get("/btbs/{btb_id}")
 def get_btb(
     btb_id: UUID,
@@ -1295,4 +1319,5 @@ def delete_btb(
         )
     remove_storage_keys(invalidated_pdf_keys)
     return None
+
 
