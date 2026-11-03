@@ -1194,3 +1194,50 @@ Karten für Mein Konto, Fotos und Bautagebuch sowie Verbindung und Hilfe; flache
 - Prüfgrenze: kein ADB/Android-Emulator; lokale Browser-/Jinja2-Laufzeit nicht verfügbar, Installationsversuche erfolglos; Cloud-Browser-Vorschau durch URL-Richtlinie abgelehnt, nicht umgangen. Deshalb keine Pixel-/Poco-/visuelle Browser-/Jinja-Render-/Live-HTTP-/NAS-E2E-Abnahme behauptet. CSS für schmale Ansichten ist implementiert, nicht visuell abgenommen.
 - Nächster praktischer Schritt: Android über GitHub Desktop/Android Studio übernehmen und als datenbewahrendes Update testen; alle neun Ziele, Extras öffnen/schließen, Rotation/Zurück, große Schrift, Sync-Netzdialog inklusive Abbrechen/Speichern, Wartung/Fehlerprotokoll/Updates prüfen. Portal: Desktop/Handy/Tastatur/große Schrift, Profilfelder und Fehleranzeige, Firmenkontakte, Sicherheit und Adminbedingung sowie vier Systemziele bei beiden Restorekonfigurationen prüfen. Produktive Konto-/Mail-/Restoreaktionen nicht als beiläufigen Test auslösen.
 - Serveranzeige benötigt spätere Übernahme der drei Templates server/templates/v1_portal_home.html, v1_base.html und v1_system_status.html über den bestehenden NAS-Übernahmeweg. Nicht durchgeführt. Android und Server sind getrennt zu übernehmen; keine Datenbankmigration oder geänderten API-Verträge erforderlich.
+
+
+
+## SPRACHE-1103 – geprüfter Entwurf für Mikrofon-Widget und Offlinefähigkeit
+
+Stand 03.11.2026. Prüf-/Vorschlagsauftrag, noch KEIN Implementierungs-/APK-Auftrag. Androidbasis b7ebec86405e683db2190358a0657a558592792f, Serverbasis d3697c52507cf49a223a773bebf7fef1de1c0809; HEAD/PR11 offen und PR6 Draft geprüft, Einstieg und Steuerungsdateien gelesen.
+
+### Vom Nutzer bestätigte Bedienung
+- Zusätzlicher Mikrofon-Widget-Einstieg im TB-Helfer-Stil, vorhandene Kamera-/Baustellenwidgets erhalten. Freies Sprechen statt vorgeschalteter Fragen oder fester Wortreihenfolge.
+- Eindeutig erkannte Firma und BTB-Punkt 4–8 als bearbeitbaren Vorschlag zuordnen. Fehlt/ist etwas uneindeutig, im aktuellen BTB zentral zur Zuordnung anbieten. Vorhandene Informationen erhalten, nichts raten; Abschnitt meint BTB-Punkt, Unterbaustelle ist separat.
+- Kennzeichnung nur Mikrofon + Anzahl, bei 0 ausgeblendet. Zugeordnete Entwürfe am Abschnitt, offene Zuordnungen oben; jeder Entwurf nur einmal zählen.
+- Antippen öffnet Text, Firma, Abschnitt und alle berechtigt zugänglichen Unterbaustellen derselben Baustelle einschließlich Hauptbaustelle. Stabile IDs und bestehende Rollen-/Bereichsrechte erhalten.
+- Lokale, neustartfeste Sprachentwürfe sind keine regulären BTB-Einträge. Erst ausdrückliches Speichern übernimmt; davor kein PDF-/BTB-Sync-Inhalt. Frühere geführte Gesprächs-/gesprochenes-OK-Vorschläge ersetzt.
+- Nutzer verlangt Offlineprüfung; wenn Offlineerkennung nicht nutzbar, Sprachaufnahme nur mit funktionierender Onlineerkennung. Rauschunterdrückung/Gerätefähigkeiten und Einstellungsbereich Spracheingabe prüfen; Querformat und fachliche Regression berücksichtigen.
+
+### Tatsächlicher Android-Quellbefund
+- App minSdk23, compile/targetSdk36. Manifest enthält derzeit weder RECORD_AUDIO noch RecognitionService-queries; nur CameraWidgetProvider und CurrentSiteWidgetProvider als Widget-Receiver. In den geprüften Einstieg-/Widget-/BTB-/Speicherdateien keine eigene SpeechRecognizer-/AudioRecord-/NoiseSuppressor-Integration. Tastaturdiktat ist damit nicht als eigener TB-Helfer-Sprachentwurfsablauf implementiert.
+- Widgets öffnen HauptActivity über PendingIntent; bestehende Aktionen/Requestcodes nicht verändern. Für Sprache zuerst sichtbare Aufnahmeansicht öffnen, Berechtigung klären und den aktiven BTB neu prüfen, keine Mikrofonaufnahme im Receiver/Hintergrund. Neue eigene Aktionskennung, Widget-ID und Zielargumente.
+- Bestehende BTB-Header/Abschnitte werden dynamisch aufgebaut; neue Zähler brauchen getrennte IDs/Tags und lifecyclegebundene Aktualisierung. Kamera-/Fotozählung und bestehende Edit-/Abschlussleiste nicht durch Text-/Farbheuristiken umdeuten.
+- BautagebuchSpeicher.speichern aktualisiert Widget und Dirty-/Sync-Status im BTB-Mutationslock. Bei bestätigtem readOnly kehrt die Unit-Funktion vor dem Schreiben zurück. Deshalb niemals nach bloßem Funktionsaufruf den Entwurf löschen oder als erfolgreich übernommen melden.
+- Vorschlag: separate lokale Entwurfsablage gebunden an lokale Generation, Nutzer, Baustellen-ID und stabile btbId; nicht an Datum/Text oder gerade zufällig aktive Baustelle. Gleiche Entwurfs-ID für Teil-/Endergebnis und stabile Ziel-Eintrags-ID bei Bestätigung. Doppelklick/Crash/Retry erzeugt höchstens einen Fach-Eintrag. Entwurf erst nach bestätigter lokaler Fachpersistenz und vorhandener Vormerkung als übernommen markieren. Erhalt bei fehlender Berechtigung, geschlossenem BTB, Recovery-Sperre, Schreibfehler oder Kontextwechsel. Kein automatisches Öffnen/Neuanlegen/Finalisieren anderer BTBs.
+- Automatische Firma-/Abschnittserkennung als lokale, konservative Zuordnung aus vorhandenem Baustellen-/BTB-Bestand möglich; kein Cloud-Sprachmodell für Zuordnung zwingend erforderlich. Fehlende/geänderte/gelöschte Firmen/Knoten bei Speichern erneut prüfen. Bestehende manuellen Editor-/Foto-Bindungs- und Syncwege für bestätigte Einträge nutzen, kein zweiter Freitext-Sync und keine automatische formale Mangel-/Abnahme-Freigabe.
+- Entwürfe bleiben zunächst nur auf dem Aufnahmehandy; keine neue Server-API oder Draft-Payload vorgesehen. Dauerhafte Herkunftsmarkierung an synchronisierten Fach-Einträgen ist damit nicht automatisch mitgelöst und wäre bei Bedarf separat vertraglich zu prüfen.
+
+### Offizielle Android-Dokumentation / technische Grenzen
+Context7 Android Developers und offizielle Referenzen am 03.11.2026 gelesen:
+- https://developer.android.com/reference/android/speech/SpeechRecognizer
+- https://developer.android.com/reference/android/speech/RecognitionSupport
+- https://developer.android.com/reference/android/speech/RecognizerIntent
+- https://developer.android.com/reference/android/media/audiofx/NoiseSuppressor
+- On-device Dienst explizit ab API31 prüf-/erzeugbar. Ab API33 RecognitionSupport mit installierten/unterstützten Sprachen und Modell-Download-API; Download geplant/angefordert ist noch nicht einsatzbereit. CANNOT_CHECK_SUPPORT/fehlende Providerunterstützung als unbekannt behandeln. Verfügbarkeit des Diensts allein bestätigt nicht das deutsche Sprachmodell oder Erkennungsqualität.
+- EXTRA_PREFER_OFFLINE (API23) kann vom Anbieter ignoriert werden, kein belastbarer Offline-Nachweis. Ältere/unklare Geräte konservativ behandeln; Offlinebereitschaft nur mit geprüftem On-device-Pfad und de-DE-Sprachunterstützung/echtem Gerätetest anzeigen.
+- Wenn Deutsch auf dem Gerät bereit: On-device-Erkennung auch ohne Netz; lokale Firmen-/Abschnittszuordnung und Entwurfsbearbeitung funktionieren mit vorhandenem lokalen Bestand. Sonst Onlineerkennung nur nach ausdrücklicher Freigabe und geeigneter Verbindung; Netzvalidierung ersetzt keinen tatsächlichen Sprachdienst-Erfolg. Ohne Netz keine neue Online-Aufnahme, bestehende Texte weiter bearbeitbar. Kein stiller Cloudfallback, keine unerkannte Offline-Tonaufnahme-Warteschlange.
+- Allgemeiner SpeechRecognizer kann Audiodaten zum Dienstanbieter senden. Dieser Anbieter ist nicht automatisch der TB-Helfer-Server. Onlinefreigabe verständlich benennen. Keine Roh-Audiodateien/Transkripte in Diagnoseprotokollen.
+- NoiseSuppressor.isAvailable zeigt Geräteunterstützung, nicht aktive/wirksame Verarbeitung im aktuellen Sprachdienst. Steuerung setzt eine eigene AudioRecord-Session voraus; beim systemverwalteten Mikrofon bietet SpeechRecognizer keinen pauschalen NoiseSuppressor-Schalter. EXTRA_AUDIO_SOURCE ab API33 ist optional und kann ununterstützt sein. Keine pauschale Zusage zusätzlicher Rauschunterdrückung; Geräteverarbeitung zunächst verwenden und Status ehrlich als dienstverwaltet/unbekannt kennzeichnen. Eigene Vorverarbeitung nur als separater, unterstützter und am Gerät nachweislich besserer Pfad, ohne Kamera-/Telefon-Audiorouting global umzustellen.
+
+### Vorschlag Einstellungen > Spracheingabe
+- Aktivieren/deaktivieren.
+- Geräteprüfung / kurzer Erkennungstest: Sprachdienst, Deutsch offline bereit/Modell fehlt/nicht verfügbar/ungeprüft, Mikrofonberechtigung und letzter Test.
+- Offline bevorzugen, Online-Erkennung ausdrücklich erlauben; bei fehlender Offlinefähigkeit nur online. Keine wirkungslose Zwangsoption; Download deutscher Unterstützung nur nach Nutzeraktion, soweit Dienst unterstützt.
+- Geräuschverarbeitung als verlässliche Statusangabe, kein fingierter Aktiv-Schalter. Zusätzlichen Filter nur anbieten, wenn auf dem konkreten Audio-/Erkennungspfad steuerbar und getestet.
+- Aufnahmetest mit erkanntem Text; keine automatische fachliche Speicherung.
+
+### Abnahme vor Implementierungsfreigabe/Erfolgsmeldung
+Pixel und Poco separat: de-DE-Modell vorhanden/fehlend, Flugmodus, kein Netz/Netzabbruch/Sprachdienstfehler, Erlaubnis verweigert/entzogen/Mikrofon belegt, Geräusche/Headset. Rohtext/Firmen-/Abschnittsmatching inkl. mehrdeutiger Namen und keine erfundenen KM. Hoch-/Querformat, große Schrift, Tastatur, Rotation während/nach Aufnahme, App-Neustart und Rückkehr. btbId-/Baustellenwechsel, Haupt-TB/Helfer/restricted nodes, abgeschlossene/fehlende BTBs, Recovery-Barriere. Doppelte Callbacks/Mehrfachklick/Absturz zwischen Fachsave und Draftquittierung. Alle vorhandenen Widgets, Kamera, manuelle Einträge/Firma/Ort/Fotozuordnung, PDF, selektiver Offline-Sync und BTB-Abschluss als Regression prüfen. Unbestätigte Entwürfe müssen aus PDF und Sync herausbleiben; beim Abschluss sichtbar darauf hinweisen, ohne heimlich zu bestätigen oder zu verwerfen.
+
+Status QUELL-/DOKUMENTATIONSPRÜFUNG ABGESCHLOSSEN, OFFLINE-/RAUSCHQUALITÄT UND GERÄTE-E2E OFFEN. Hier kein ADB/Emulator/angeschlossenes Nutzergerät, deshalb keine Capabilitywerte für Pixel/Poco ausgelesen und kein Flugmodus-/Lärm-/Querformat-Test durchgeführt. Keine Android-/Server-Runtimeänderung, Version, APK, Actions, Datenänderung oder NAS-Übernahme. Bisherige 125 Tests beziehen sich auf den Menüstand, nicht auf diese noch nicht gebaute Sprachfunktion.
