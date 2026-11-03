@@ -37,6 +37,10 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
     private var owner: String? = null
     private var draftId = UUID.randomUUID().toString()
     private var busy = false
+    private var preparing = false
+    private var permissionPending = false
+    private var autoRequested = false
+    private var permissionStart: Boolean? = null
     private var test = false
     private var lastText = ""
     private var offline: Boolean? = null
@@ -45,7 +49,9 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
     private var waitingTest = false
     private var lastPersisted = false
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if(granted) begin(waitingTest) else show("Mikrofon nicht freigegeben. Bestehende Entwürfe bleiben erhalten.")
+        permissionPending=false
+        if(granted) { permissionStart=waitingTest;window.decorView.post { startWhenVisible() } }
+        else show("Mikrofon nicht freigegeben. Bestehende Entwürfe bleiben erhalten.")
     }
     private fun connected(): Boolean {
         val cm=getSystemService(ConnectivityManager::class.java)
@@ -59,6 +65,7 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
         super.onCreate(savedInstanceState)
         if(RecoveryWorkspace.blocked() || SecureTokenStore(this).load().isNullOrBlank()) { finish(); return }
         owner=SpeechDraftStore.owner(this)
+        autoRequested=savedInstanceState==null && intent.getBooleanExtra("auto",false)
         draftId=savedInstanceState?.getString("draft") ?: draftId
         lastText=if(savedInstanceState?.getString("owner")==owner) savedInstanceState?.getString("text").orEmpty() else ""
         val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(24,24,24,32) }
@@ -110,12 +117,12 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
             if(old!=null && old!=target?.btbId) {target=null;show("BTB gewechselt. Gesicherte Entwürfe bleiben beim ursprünglichen BTB.")}
             start.isEnabled=target!=null
             checkDevice()
-            if(savedInstanceState==null && intent.getBooleanExtra("auto",false) && target!=null) begin(false)
+            startWhenVisible()
         }
     }
     private fun show(s:String) { if(!isDestroyed) status.text=s }
     private fun checkDevice() {
-        if(busy){show("Aufnahme zuerst beenden.");return}
+        if(busy || preparing){show("Aufnahme zuerst beenden.");return}
         val device=localService();offline=if(device)null else false
         fun report(extra:String) { if(busy || isDestroyed || isFinishing)return;show("${target?.baustelleName ?: "Kein aktiver BTB – nur Testaufnahme"}\n$extra\nRauschfilter vom Gerät angeboten: ${if(NoiseSuppressor.isAvailable()) "ja" else "nein"}. Verarbeitung im Sprachdienst: nicht separat steuerbar.\nMikrofon: ${if(ContextCompat.checkSelfPermission(this,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED) "freigegeben" else "noch nicht freigegeben"}") }
         if(Build.VERSION.SDK_INT>=33 && device) {
@@ -128,18 +135,28 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
             } catch(_:Exception) { offline=null;report("Offlineprüfung nicht verfügbar. Berechtigung und Testaufnahme prüfen.") }
         } else report(if(device) "On-device-Dienst vorhanden; Deutsch noch durch Test prüfen" else "Kein On-device-Dienst: Internet und Onlinefreigabe erforderlich")
     }
+    private fun startWhenVisible() {
+        if(!lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))return
+        val requested=permissionStart
+        if(requested!=null){permissionStart=null;begin(requested)}
+        else if(autoRequested && target!=null){autoRequested=false;begin(false)}
+    }
+    override fun onPostResume(){super.onPostResume();window.decorView.post { startWhenVisible() }}
     private fun begin(testOnly:Boolean) {
-        if(busy)return
+        if(!SpeechDraftPolicy.mayStart(lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED),busy,preparing,permissionPending))return
         if(!testOnly && target==null){show("Bitte zuerst einen aktiven BTB öffnen.");return}
         if(!SpeechDraftStore.enabled(this)){show("Spracheingabe ist ausgeschaltet.");return}
-        if(ContextCompat.checkSelfPermission(this,Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){waitingTest=testOnly;permission.launch(Manifest.permission.RECORD_AUDIO);return}
+        if(ContextCompat.checkSelfPermission(this,Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){waitingTest=testOnly;permissionPending=true;permission.launch(Manifest.permission.RECORD_AUDIO);return}
+        preparing=true;start.isEnabled=false
         lifecycleScope.launch {
+            try {
             if(!testOnly) {
                 val active=withContext(Dispatchers.IO){BtbActiveContext.laden(this@SpeechCaptureActivity)}
                 if(active==null || active.btbId!=target?.btbId || owner!=SpeechDraftStore.owner(this@SpeechCaptureActivity) || BtbServerStateStore.state(this@SpeechCaptureActivity,active.btbId)?.readOnly==true || RecoveryWorkspace.blocked()) {
                     show("Kein passender beschreibbarer aktiver BTB. Bitte BTB erneut öffnen.");return@launch
                 }
             }
+            if(!lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))return@launch
             val useLocal=localService() && offline!=false && !offlineFailed
             val route=SpeechDraftPolicy.route(useLocal,SpeechDraftStore.online(this@SpeechCaptureActivity),connected())
             if(route==SpeechDraftPolicy.Route.BLOCKED){show("Deutsch offline nicht bereit. Für Online-Erkennung Internet und Onlinefreigabe erforderlich.");return@launch}
@@ -153,6 +170,7 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
                 recognizer!!.startListening(request())
                 show("${if(test) "Testaufnahme" else "Aufnahme"} · ${if(useLocal) "auf diesem Gerät" else "Sprachdienst online erlaubt"}\nBitte sprechen. Aufnahme endet bei Sprechpause oder Beenden.")
             }.onFailure { busy=false;start.isEnabled=target!=null;show("Sprachdienst konnte nicht gestartet werden. Bitte erneut prüfen.") }
+            } finally { preparing=false;start.isEnabled=!busy && target!=null }
         }
     }
     private fun accept(bundle:Bundle?) {
@@ -176,7 +194,7 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
         show("Erkennung nicht abgeschlossen (Code $error). Bereits erkannter Text bleibt erhalten. Kein automatischer Onlinewechsel.") }
     override fun onReadyForSpeech(params:Bundle?){};override fun onBeginningOfSpeech(){};override fun onRmsChanged(rmsdB:Float){}
     override fun onBufferReceived(buffer:ByteArray?){};override fun onEndOfSpeech(){};override fun onEvent(eventType:Int,params:Bundle?){}
-    override fun onStop(){stopCapture();super.onStop()}
+    override fun onStop(){autoRequested=false;stopCapture();super.onStop()}
     override fun onDestroy(){recognizer?.destroy();probe?.destroy();super.onDestroy()}
     override fun onSaveInstanceState(outState:Bundle){super.onSaveInstanceState(outState);outState.putString("draft",draftId);outState.putString("text",lastText);outState.putString("btb",target?.btbId);outState.putString("owner",owner)}
 }

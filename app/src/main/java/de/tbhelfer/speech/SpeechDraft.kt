@@ -57,6 +57,8 @@ object SpeechDraftPolicy {
             7 -> e.copy(besonderheiten=block); else -> e.copy(maengelSchaeden=block)
         }
     }
+    fun mayStart(resumed: Boolean, busy: Boolean, preparing: Boolean, permissionPending: Boolean): Boolean =
+        resumed && !busy && !preparing && !permissionPending
     enum class Route { OFFLINE, ONLINE, BLOCKED }
     fun route(onDevice: Boolean, onlineAllowed: Boolean, connected: Boolean): Route = when {
         onDevice -> Route.OFFLINE

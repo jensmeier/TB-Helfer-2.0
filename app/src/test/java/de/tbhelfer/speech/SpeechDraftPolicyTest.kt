@@ -67,6 +67,13 @@ class SpeechDraftPolicyTest {
     @Test(expected=IllegalArgumentException::class) fun `kein leerer eintrag`() {
         SpeechDraftPolicy.append(report(),4,SectionItem(clientEntryKey="draft-1",text=" "))
     }
+    @Test fun `kein start im hintergrund waehrend vorbereitung oder berechtigungsdialog`() {
+        assertTrue(SpeechDraftPolicy.mayStart(true,false,false,false))
+        assertFalse(SpeechDraftPolicy.mayStart(false,false,false,false))
+        assertFalse(SpeechDraftPolicy.mayStart(true,true,false,false))
+        assertFalse(SpeechDraftPolicy.mayStart(true,false,true,false))
+        assertFalse(SpeechDraftPolicy.mayStart(true,false,false,true))
+    }
     @Test fun `alle fuenf abschnitte getrennt erreichbar`() {
         for(point in 4..8) {
             val item=SectionItem(clientEntryKey="draft-$point",text="Text $point")
