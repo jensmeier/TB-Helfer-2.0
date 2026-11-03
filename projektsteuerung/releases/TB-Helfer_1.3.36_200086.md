@@ -42,3 +42,8 @@ SYNC-FIX-1103 (gleiche noch nicht als APK ausgelieferte Quellversion):
 - Lokale Offline-Inhalte bei Serverabschluss/Löschung als Konflikt behalten und zusätzlich dateibasiert sichern. Keine automatische Wiederöffnung.
 - Capabilitycache im laufenden Empfang wiederverwenden; Sendeaufträge begrenzen; zusätzlicher15-Minuten-Deltafallback (Android kann verzögern, kein Pushversprechen).
 - Benötigt zugehörigen Server-SYNC-FIX-1103. Java-Sicherung lokal geprüft; Kotlin/Unit/Lint für diesen integrierten Quellstand noch OFFEN. Vorherige Sprach-CI gilt nicht als Nachweis dieser neuen Änderungen. Keine neue APK erstellt.
+
+SYNC-FIX-1103 NACHWEIS zum Funktionscommit981fb134:
+- Kotlin/KSP/Java,143 Unit-Tests (darunter5 neue Sicherungstests) und Lint in Run41601820053/Buildjob125802121038 bestanden. Lint388 Warnings, keine Error/Fatal.
+- Gesamt-CI bleibt wegen Vertragsprüfungsjob rot. Quellprüfung15 danach an den geschützten Löschpfad angepasst/lokalPASS; keine Runtimeänderung durch diese Nacharbeit.
+- Keine APK/Installation/NAS-/PostgreSQL-/Zwei-Geräte-E2E. Quelle1.3.36/200086 bleibt Bauvorbereitung mit derselben Begleitdatei.

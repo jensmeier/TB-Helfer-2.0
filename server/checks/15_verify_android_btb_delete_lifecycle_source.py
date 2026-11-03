@@ -11,6 +11,7 @@ ACTIVE_CONTEXT = ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbActiveC
 POINTER = ROOT / "app/src/main/java/de/tbhelfer/ui/bautagebuch/BtbActivePointerControl.kt"
 WORKER = ROOT / "app/src/main/java/de/tbhelfer/server/SyncWorker.kt"
 VERLAUF = ROOT / "app/src/main/java/de/tbhelfer/ui/baustelle/BtbVerlaufFragment.kt"
+BRIDGE = ROOT / "app/src/main/java/de/tbhelfer/datenbank/CollabLocalBridge.kt"
 
 
 def read(path: Path) -> str:
@@ -24,6 +25,7 @@ active = read(ACTIVE_CONTEXT)
 pointer = read(POINTER)
 worker = read(WORKER)
 verlauf = read(VERLAUF)
+bridge = read(BRIDGE)
 errors: list[str] = []
 
 # Der Servercache muss Tombstones und auch einen gerade UPLOADING befindlichen Auftrag sichtbar machen.
@@ -48,8 +50,16 @@ if "STATE_CONFLICT" not in coord or "pending?.baseVersion != serverEntity.entity
     errors.append("Expliziter BTB-Delete wird nach Versionskonflikt nicht gegen den aktuellen Serverstand rebased.")
 
 # Remote-Tombstone muss denselben lokalen BTB entfernen; echte Fotos bleiben ueber den Service erhalten.
-if "deletedCollabEntities" not in coord or "BtbDeleteService.loeschen(appContext, row.entry)" not in coord:
-    errors.append("Server-Tombstones werden nicht lokal auf dieselbe btbId angewendet.")
+if "deletedCollabEntities" not in coord or "applyConfirmedBtbDeletion(server.worksiteServerId, entity.serverId, entity.entityVersion)" not in coord:
+    errors.append("Server-Tombstones werden nicht mit derselben Server-ID/Version an den geschützten Applypfad übergeben.")
+delete_apply = bridge.split("suspend fun applyConfirmedBtbDeletion(", 1)[-1].split("private fun writeIfDifferent", 1)[0]
+for token in ("it.serverId == serverBtbId", "val key = entity.clientEntityKey", "it.context.groupId == entity.groupId",
+              "preserveUnsentBtb", "withBtbMutationLock", "isBtbDirty", "ladenById", "BtbDeleteService.loeschen(appContext, it)",
+              "dao.markCollabDeleted(serverBtbId, version"):
+    if token not in delete_apply:
+        errors.append(f"Geschützter Tombstone-Applyvertrag fehlt: {token}")
+if "preservePendingBtbForConflict" not in coord:
+    errors.append("Offene lokale Änderungen werden vor Tombstone-Reconcile nicht gesichert.")
 if "BtbFotoZuordnungSpeicher.btbLoesen" not in local_delete:
     errors.append("BTB-Loeschen loest die Fotozuordnung nicht, ohne echte Fotos zu vernichten.")
 if "return Ergebnis(deleted, detached, null)" not in local_delete:
