@@ -1,0 +1,166 @@
+{
+  "info": {
+    "name": "TB-Helfer SYNC-FIX-1103 read-only contracts",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run against an isolated API/test database with matching server source and authorized test token. Uses only GET. active_btb_id and deleted_btb_id must belong to a site/team accessible to that token. Not executed in this environment."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{device_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8080"
+    },
+    {
+      "key": "device_token",
+      "value": ""
+    },
+    {
+      "key": "active_btb_id",
+      "value": ""
+    },
+    {
+      "key": "deleted_btb_id",
+      "value": ""
+    },
+    {
+      "key": "unknown_btb_id",
+      "value": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health live",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/health/live"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('live HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('live status ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health ready",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/health/ready"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('ready HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('database and migrations ready', () => {const x=pm.response.json(); pm.expect(x.database).to.eql('up'); pm.expect(x.migrations).to.eql('ok');});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Active BTB is not a tombstone",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/btbs/{{active_btb_id}}/sync-state"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('active HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('exact identity and no deleted content', () => {const x=pm.response.json(); pm.expect(x.id).to.eql(pm.variables.get('active_btb_id')); pm.expect(x.deleted).to.eql(false); pm.expect(x.version).to.be.a('number').and.at.least(1); pm.expect(Object.keys(x).sort()).to.eql(['deleted','id','version']);});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Deleted BTB has an authorized minimal tombstone",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/btbs/{{deleted_btb_id}}/sync-state"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('deleted HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('exact tombstone without content', () => {const x=pm.response.json(); pm.expect(x.id).to.eql(pm.variables.get('deleted_btb_id')); pm.expect(x.deleted).to.eql(true); pm.expect(x.version).to.be.a('number').and.at.least(1); pm.expect(Object.keys(x).sort()).to.eql(['deleted','id','version']);});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unknown BTB is not acknowledged as deleted",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/v1/btbs/{{unknown_btb_id}}/sync-state"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('unknown remains 404', () => pm.response.to.have.status(404));",
+              "pm.test('no false deletion success', () => pm.expect(pm.response.json().deleted).not.to.eql(true));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
