@@ -1167,3 +1167,12 @@ Room-Prüfung in beiden Gradle-Läufen ausgeführt, Configuration Cache jeweils 
 Gesamt-CI ist NICHT BESTANDEN: separater Vertragsjob `125494515143` scheitert laut Original-Log weiterhin an denselben fünf Altprüfungen 13/19/83/85/86 (Schreibpfad-Anker, DELETE-Anker, alte Server-/Versions-/Updater-Anker). Prüfungen 14 (einschließlich stabiler Dreierzeile), 15 (BTB-Lifecycle), 03/04/12/17/18/84 bestehen. Diese Altfehler sind nicht Teil der eng beauftragten Medienkorrektur.
 
 Status: QUELLSTAND FERTIG; SOURCE-TEST BESTANDEN; Android-Kompilierung/Unit-Tests/Lint BESTANDEN; kein APK-Build, kein INSTALLIERT, E2E OFFEN, nicht ERLEDIGT. Keine neue Version/Release-MD, keine APK erstellt. Kein Emulator/ADB verfügbar. Pixel/Poco-, Tastatur-/Dialog-, Original/Sync-Dopplungs-, mehr-BTB-Gesamtexport- und Android/Server-E2E-Abnahme gemäß obiger Matrix bleiben offen. Die Quelle des abweichenden älteren PDF-Rasters und fehlende Bilddateien bleiben ungeklärt. Ein neuer auslieferbarer APK-Build benötigt separat den höheren versionCode und die passende Release-MD aus genau diesem Build.
+
+
+## EINSTELLUNGEN-1103 – Menüvereinfachung Android und Serverportal beauftragt
+
+03.11.2026: Nutzer beauftragt ausdrücklich eine hübschere, einfachere Einstellungsnavigation auf Android UND Server mit freier gestalterischer Umsetzung. Beide Oberflächen sind Teil dieses Auftrags; die Umsetzung erfolgt getrennt auf den jeweiligen Fachbranches, nicht als beiläufige Server-/Datenbankänderung.
+
+Ziel: wenige klar benannte Bereiche, alltägliche Einstellungen direkt, selten benötigte Zusatz-/Wartungsfunktionen nach bewusstem Aufklappen. Android: Konto, Bautagebuch/PDF, Kamera/Fotobeschriftung, Verbindung/Hilfe; Anzeige/Benachrichtigungen/Widget gebündelt. Portal: Profil, Sicherheit und Firmenkontakte übersichtlich trennen; notwendige Admin-Systemfunktionen erreichbar erhalten. Keine neue Baustellen-/Teamverwaltung in Einstellungen und keine wirkungslose Spracheingabe-Option. Nur belegbar überflüssige Einstiegsdopplungen reduzieren; bestehende Funktionen/IDs/Ziele und gespeicherte Werte erhalten.
+
+Grenzen: Darstellung/Navigation/Beschriftungen; kein API-, Rollen-, Sync-, Room-/DB-, Kamera-/PDF-Fachlogikumbau, keine automatische Änderung gespeicherter Werte oder Datenlöschung. Keine Versionserhöhung, APK, Veröffentlichung oder NAS-Deployment. Android-Quell-/Ressourcenprüfung und vorhandene gezielte CI; Server-Template-/JavaScript-/Rollen-/Responsive-Prüfung lokal, keine unnötigen Gesamttests. Geräte-/NAS-E2E nur bei tatsächlichem Nachweis bestätigen. Status IN ARBEIT.
