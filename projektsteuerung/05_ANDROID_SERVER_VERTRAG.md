@@ -520,3 +520,8 @@ Vertrag vor Umsetzung:
 - Capabilitycache nach Serveradresse und Recoveryzustand begrenzen; keine Token-/Firmeninhalte cachen. Sichere Invalidation/TTL erhalten. Sendeaufträge und Fachbereichs-/Hintergrundempfang nur mit nachweislich erhaltenem Retry-/Generationsschutz ändern.
 - Streckendatenprüfung unterscheidet Originaldateiimport, Baustellen-Dataset, gemeinsame Achsen/Netzobjekte und manuelle KM-Kalibrierung. Noch kein neuer KM-Vertrag durch bloße ähnliche Feldnamen. Vorschläge auf Grundlage des Iststands; Originale/IDs nicht überschreiben.
 - Keine NAS-Übernahme/SSH/Produktivschreibtests, keine APK-Veröffentlichung. Source-/CI-/echte PostgreSQL-/Geräte-/NAS-Nachweise getrennt; fehlende Infrastruktur ausdrücklich dokumentieren. Status IN ARBEIT.
+
+
+## SPRACHE-1103 – lokale Entwürfe, bestehender bestätigter Eintragsvertrag
+
+Sprachentwürfe bleiben privat im generation-/aktivierungsgebundenen Android-Speicher und sind vor ausdrücklicher Bestätigung kein BTB-/PDF-/Sync-Inhalt. Bestätigte Übernahme verwendet unverändert SectionItem/clientEntryKey/firmaId/worksiteNodeKey und den vorhandenen selektiven Speicher-/Syncpfad. Keine neue Voice-/Audio-/Draft-Server-API, kein roher Audioupload durch TB-Helfer und kein serverseitiges Herkunftsfeld. Online-Audioerkennung kann nach ausdrücklicher Freigabe durch den Android-Sprachdienstanbieter erfolgen, nicht automatisch durch den TB-Helfer-Server. Bereichsrechte werden nicht erweitert: unklare/beschränkte Helferscopes in neuer Sprachübernahme zunächst blockiert. Gerätetest offen; bestehende oder parallel geplante Sync-Verträge bleiben erhalten. Android-Runtime b6fb187, technische Prüfung41598885323 bestanden im Androidjob, Gesamt-CI wegen fünf Altchecks rot. Keine NAS-Übernahme.

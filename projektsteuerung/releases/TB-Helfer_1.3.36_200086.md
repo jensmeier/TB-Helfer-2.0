@@ -28,3 +28,10 @@ GRENZEN:
 BAUHINWEIS:
 - Kein Cloud-APK-Build beauftragt. Nutzer baut lokal über GitHub Desktop/Android Studio mit bisherigem Schlüssel.
 - Diese Datei ist bis zum tatsächlichen APK-Build eine Bauvorbereitung. Eine APK darf nur zusammen mit der aus genau diesem Build kontrollierten Begleitdatei weitergegeben werden; keine alte APK damit kombinieren.
+
+
+TECHNISCHER TESTNACHWEIS:
+- Runtimecommit b6fb187bc7ed40e73ae07653cadd1847fb1d39e0; Android-CI41598885323 / Job125792917398 SUCCESS.
+- Kotlin/KSP/Java/Ressourcen,138 JVM-Tests (darunter13 Sprach-Policyfälle),0 Fehler/Fehlschläge/übersprungen. Lint0 Error/Fatal,388 Warning; sieben zusätzliche Glyphen-HardcodedText-Hinweise im BTB-Layout.
+- Originalbericht13213542481 ausgewertet. Gesamt-CI wegen unveränderter Altprüfungen13/19/83/85/86 weiterhin ROT.
+- Kein APK-/Manifest-/Signatur-/Installationsnachweis aus diesem Lauf: Unit/Lint ohne assemble. Geräte-/Offline-/Mikrofon-/Lärm-/Querformat-E2E weiterhin offen.
