@@ -3163,3 +3163,13 @@ Status QUELLSTAND FERTIG / GEZIELTE SOURCE- UND JAVASCRIPT-PRÜFUNG BESTANDEN / 
 - Reiner Prüfauftrag mit Optimierungsvorschlägen, keine nebenläufige Android-Implementierung, kein Deployment, kein NAS-SSH, keine produktiven Schreibtests oder Secrets. Neue Befunde zuerst dokumentieren; Umsetzung separat abgrenzen. Kein unnötiger Gesamt-CI-Lauf.
 - Bestätigung des Nutzers im vorherigen Block: Achsenansicht funktioniert nach Aktivierung der Originalachsen. Kein Geometriefehler daraus abgeleitet.
 - Status IN ARBEIT; echte NAS-/Pixel-/Poco-Messwerte liegen diesem Block noch nicht vor.
+
+
+## SYNC-AUDIT-1103 – Prüfabschluss (03.11.2026)
+
+- Quellprüfung Server d3697c5 ↔ Android e53aa0e; Bericht [SYNC_AUDIT_1103.md](uebergaben/SYNC_AUDIT_1103.md). Auftrag zuvor62f2b205 gesichert.
+- P1: Feed kann kleinere spät committete ID überspringen (Produktions-wait_changes mit MVCC-Double reproduziert; echter PG-Test offen); BTB-DELETE führt zu404→Android Unsupported und kann Cursor blockieren (Server404 ausgeführt, Android Quellpfad); FINALIZED-Apply löscht Pending/Dirty und kann lokale Offlinefassung überschreiben (Quellrisiko, Android-Reproduktion offen).
+- P2: schnelle Delta-Typen ohne DEFECT/ACCEPTANCE/TRACK_DATA; fehlender durchgängiger Hintergrund-Weckpfad; APPEND_OR_REPLACE-Sendekette kann hinter Retry warten. P3: instanzlokaler Capability-Cache durch neue Clients ineffektiv; wiederholte Teamlisten und lokale Medienscans; Medienfehler hält Batchcursor zurück. Details/Schutzregeln im Bericht.
+- Tatsächlich lokal: Check135 7/7 PASS, Check139 8/8 PASS (Doubles/lokaler Testhandler, keine NAS-Lastzusage); neuer sync_audit_1103.py 4 Auditszenarien Exit0, darunter ausdrücklich reproduziertes Fehlverhalten. Kein pauschales Sync-PASS.
+- Postman enthält nur Echo-Beispielsammlung, keine TB-Helfer-API ausgeführt. Context7 PG/WorkManager-Dokumentation geprüft. CI-Status kontrolliert, keine neue CI gestartet; kein aktueller Gesamt-CI-PASS. Kein Docker/PG/FastAPI/ADB/Kotlin/Postman-CLI lokal, keine NAS-Testsession; Praxis-/E2E-Messung OFFEN.
+- Keine Runtime-/Androidänderung, kein neuer Vertrag implementiert, kein Deployment/SSH/Produktivschreiben. Status QUELLPRÜFUNG ABGESCHLOSSEN / BEFUNDE OFFEN / E2E OFFEN. Nächster Schritt: drei P1-Fälle gezielt reproduzieren und abgesichert korrigieren, Android bleibt eigener Zuständigkeitsblock. Anschließend Deltaabdeckung/Queue und Messung Text→Server→zweites Gerät.
