@@ -1058,3 +1058,16 @@ Details, genaue Grenzen und Abnahmeschritte: [BTB-INTEGRATION-031](uebergaben/BT
 - Tatsächlich lokal: Check135 7/7 PASS, Check139 8/8 PASS (Doubles/lokaler Testhandler, keine NAS-Lastzusage); neuer sync_audit_1103.py 4 Auditszenarien Exit0, darunter ausdrücklich reproduziertes Fehlverhalten. Kein pauschales Sync-PASS.
 - Postman enthält nur Echo-Beispielsammlung, keine TB-Helfer-API ausgeführt. Context7 PG/WorkManager-Dokumentation geprüft. CI-Status kontrolliert, keine neue CI gestartet; kein aktueller Gesamt-CI-PASS. Kein Docker/PG/FastAPI/ADB/Kotlin/Postman-CLI lokal, keine NAS-Testsession; Praxis-/E2E-Messung OFFEN.
 - Keine Runtime-/Androidänderung, kein neuer Vertrag implementiert, kein Deployment/SSH/Produktivschreiben. Status QUELLPRÜFUNG ABGESCHLOSSEN / BEFUNDE OFFEN / E2E OFFEN. Nächster Schritt: drei P1-Fälle gezielt reproduzieren und abgesichert korrigieren, Android bleibt eigener Zuständigkeitsblock. Anschließend Deltaabdeckung/Queue und Messung Text→Server→zweites Gerät.
+
+
+## SYNC-FIX-1103 – freigegebener gemeinsamer Korrekturblock (03.11.2026)
+
+Benutzerauftrag: „okay bauen“ zum SYNC-AUDIT-1103; zusätzlich vorhandenen Handy→Server-Weg für Streckendaten und nachträglich manuell eingegebene KM prüfen und Vorschläge liefern. Gemeinsame P1-Korrekturen werden bewusst auf den jeweiligen Server-/Android-Branches umgesetzt, keine beiläufige Androidänderung.
+
+Vertrag vor Umsetzung:
+- change_feed muss auch bei konkurrierenden unabhängigen Schreibtransaktionen vollständig nach Cursor abholbar bleiben. Kurz gehaltener transaktionaler Publikations-Lock VOR Vergabe einer change_id bis Commit; mit Parallelität/Rollback/Retry prüfen. Keine Rechte- oder Versionsprüfung abschwächen; gemischte alte/neue API-Prozesse sind für diese Garantie nicht freigegeben.
+- Additiver autorisierter GET /api/v1/btbs/{id}/sync-state: nur Identität/Version/deleted, keine gelöschten Fachinhalte. Gleiche Baustellen-/btb.view-/Teamprüfung wie BTB-Detail. Unbekannt/unberechtigt bleibt404/403. Android verarbeitet BTB-DELETE/alte Ereignisse zu gelöschten BTBs erst nach ausdrücklichem bestätigtem Tombstone, nicht jede404 als Löschung.
+- FINALIZED/DELETE bestätigt keine lokalen Offlineänderungen. Vor dem Entfernen von Pending/Dirty oder kanonischem Überschreiben lokale Fassung und Pending-Payload dauerhaft/atomar bewahren und diagnostisch kenntlich machen. Serverabschluss/Rechte bleiben kanonisch; keine automatische Wiederöffnung.
+- Capabilitycache nach Serveradresse und Recoveryzustand begrenzen; keine Token-/Firmeninhalte cachen. Sichere Invalidation/TTL erhalten. Sendeaufträge und Fachbereichs-/Hintergrundempfang nur mit nachweislich erhaltenem Retry-/Generationsschutz ändern.
+- Streckendatenprüfung unterscheidet Originaldateiimport, Baustellen-Dataset, gemeinsame Achsen/Netzobjekte und manuelle KM-Kalibrierung. Noch kein neuer KM-Vertrag durch bloße ähnliche Feldnamen. Vorschläge auf Grundlage des Iststands; Originale/IDs nicht überschreiben.
+- Keine NAS-Übernahme/SSH/Produktivschreibtests, keine APK-Veröffentlichung. Source-/CI-/echte PostgreSQL-/Geräte-/NAS-Nachweise getrennt; fehlende Infrastruktur ausdrücklich dokumentieren. Status IN ARBEIT.
