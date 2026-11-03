@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_intro">Dein Konto, deine Fotos und die Verbindung zum Server.</string>
+    <string name="settings_account">Mein Konto</string>
+    <string name="settings_account_link">Profil und Firma</string>
+    <string name="settings_work">Fotos und Bautagebuch</string>
+    <string name="settings_pdf">Bautagebuch und PDF</string>
+    <string name="settings_camera">Kamera und Fotoaufnahme</string>
+    <string name="settings_caption">Beschriftung auf Fotos</string>
+    <string name="settings_connection">Verbindung und Hilfe</string>
+    <string name="settings_sync">Synchronisierung</string>
+    <string name="settings_help">Wartung und Diagnose</string>
+    <string name="settings_help_hint">Fehlerprotokoll, Updates und Speicherprüfung</string>
+    <string name="settings_extras_show">Anzeige und weitere Optionen öffnen</string>
+    <string name="settings_extras_hide">Anzeige und weitere Optionen schließen</string>
+    <string name="settings_display">Darstellung der App</string>
+    <string name="settings_notifications">Benachrichtigungen</string>
+    <string name="settings_widget">Widget auf dem Startbildschirm</string>
+    <string name="settings_site_hint">Team und Einladungen findest du bei der jeweiligen Baustelle.</string>
+    <style name="Widget.TBHelfer.SettingsRow" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:gravity">start|center_vertical</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
+        <item name="android:maxLines">6</item>
+        <item name="android:ellipsize">none</item>
+        <item name="autoSizeTextType">none</item>
+        <item name="cornerRadius">10dp</item>
+    </style>
+    <style name="TextAppearance.TBHelfer.SettingsHeading" parent="TextAppearance.MaterialComponents.Subtitle1">
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+</resources>

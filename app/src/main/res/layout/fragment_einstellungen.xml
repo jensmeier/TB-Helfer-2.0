@@ -1,131 +1,96 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="?attr/colorBackground"
-    android:fillViewport="true">
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Einstellungen"
-            android:textColor="?attr/colorOnBackground"
-            style="@style/TextAppearance.TBHelfer.Title" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Konto &amp; Verbindung"
-            android:textColor="?attr/colorOnBackground"
-            android:textStyle="bold"
-            android:textSize="18sp" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnNutzerFirma"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:layout_marginTop="8dp"
-            android:text="Mein Konto &amp; Firma"
-            android:gravity="center" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSynchronisation"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:layout_marginTop="8dp"
-            android:text="Synchronisierung &amp; Offline"
-            android:gravity="center" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnBenachrichtigungen"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:layout_marginTop="8dp"
-            android:text="Benachrichtigungen"
-            android:gravity="center" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Kamera &amp; Darstellung"
-            android:textColor="?attr/colorOnBackground"
-            android:textStyle="bold"
-            android:textSize="18sp" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnKameraFoto"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:layout_marginTop="8dp"
-            android:text="Kamera &amp; Foto"
-            android:gravity="center" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnFotoBeschriftung"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:layout_marginTop="8dp"
-            android:text="Fotobeschriftung / Overlay"
-            android:gravity="center" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnAnzeigeOverlay"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:layout_marginTop="8dp"
-            android:text="App-Anzeige"
-            android:gravity="center" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnWidget"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:layout_marginTop="8dp"
-            android:text="Startbildschirm-Widget"
-            android:gravity="center" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Bautagebuch &amp; Dokumente"
-            android:textColor="?attr/colorOnBackground"
-            android:textStyle="bold"
-            android:textSize="18sp" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnBtbPdf"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:layout_marginTop="8dp"
-            android:text="Bautagebuch &amp; PDF"
-            android:gravity="center" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Wartung"
-            android:textColor="?attr/colorOnBackground"
-            android:textStyle="bold"
-            android:textSize="18sp" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnWartungDiagnose"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:layout_marginTop="8dp"
-            android:text="Wartung &amp; Diagnose"
-            android:gravity="center" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="24dp"
-            android:text="Teammitglieder und Einladungen verwaltest du direkt bei der jeweiligen Baustelle."
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="?attr/colorBackground" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="16dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Einstellungen" android:accessibilityHeading="true"
+            android:textColor="?attr/colorOnBackground" style="@style/TextAppearance.TBHelfer.Title" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" android:text="@string/settings_intro"
+            android:textColor="?attr/colorOnBackground" />
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" app:cardCornerRadius="18dp"
+            app:cardElevation="0dp" app:strokeWidth="1dp" app:strokeColor="?attr/colorControlHighlight"
+            app:cardBackgroundColor="?attr/colorSurface">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="12dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="8dp"
+                    android:paddingBottom="4dp" android:text="@string/settings_account"
+                    android:accessibilityHeading="true" style="@style/TextAppearance.TBHelfer.SettingsHeading" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnNutzerFirma" style="@style/Widget.TBHelfer.SettingsRow"
+                android:text="@string/settings_account_link" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" app:cardCornerRadius="18dp"
+            app:cardElevation="0dp" app:strokeWidth="1dp" app:strokeColor="?attr/colorControlHighlight"
+            app:cardBackgroundColor="?attr/colorSurface">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="12dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="8dp"
+                    android:paddingBottom="4dp" android:text="@string/settings_work"
+                    android:accessibilityHeading="true" style="@style/TextAppearance.TBHelfer.SettingsHeading" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnBtbPdf" style="@style/Widget.TBHelfer.SettingsRow"
+                android:text="@string/settings_pdf" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnKameraFoto" style="@style/Widget.TBHelfer.SettingsRow"
+                android:text="@string/settings_camera" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFotoBeschriftung" style="@style/Widget.TBHelfer.SettingsRow"
+                android:text="@string/settings_caption" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" app:cardCornerRadius="18dp"
+            app:cardElevation="0dp" app:strokeWidth="1dp" app:strokeColor="?attr/colorControlHighlight"
+            app:cardBackgroundColor="?attr/colorSurface">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="12dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="8dp"
+                    android:paddingBottom="4dp" android:text="@string/settings_connection"
+                    android:accessibilityHeading="true" style="@style/TextAppearance.TBHelfer.SettingsHeading" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSynchronisation" style="@style/Widget.TBHelfer.SettingsRow"
+                android:text="@string/settings_sync" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnWartungDiagnose" style="@style/Widget.TBHelfer.SettingsRow"
+                android:text="@string/settings_help" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/settings_help_hint" android:textColor="?attr/colorOnSurface"
+                    android:textSize="13sp" android:paddingStart="12dp" android:paddingEnd="12dp"
+                    android:paddingBottom="8dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnWeitereEinstellungen"
+            style="@style/Widget.TBHelfer.SettingsRow" android:layout_marginTop="16dp"
+            android:text="@string/settings_extras_show" />
+        <LinearLayout android:id="@+id/weitereEinstellungen"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:visibility="gone">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAnzeigeOverlay" style="@style/Widget.TBHelfer.SettingsRow"
+                android:text="@string/settings_display" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnBenachrichtigungen" style="@style/Widget.TBHelfer.SettingsRow"
+                android:text="@string/settings_notifications" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnWidget" style="@style/Widget.TBHelfer.SettingsRow"
+                android:text="@string/settings_widget" />
+        </LinearLayout>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:layout_marginBottom="24dp"
+            android:text="@string/settings_site_hint" android:textSize="13sp"
             android:textColor="?attr/colorOnBackground" />
     </LinearLayout>
 </ScrollView>
-

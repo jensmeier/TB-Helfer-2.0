@@ -24,9 +24,23 @@ import de.tbhelfer.server.SyncWorker
 class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
 
     private lateinit var btnSynchronisation: MaterialButton
+    private var weitereGeoeffnet = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        weitereGeoeffnet = savedInstanceState?.getBoolean("settings_extras_open") ?: weitereGeoeffnet
+        val weitere = view.findViewById<View>(R.id.weitereEinstellungen)
+        val weitereButton = view.findViewById<MaterialButton>(R.id.btnWeitereEinstellungen)
+        fun zeigeWeitere() {
+            weitere.visibility = if (weitereGeoeffnet) View.VISIBLE else View.GONE
+            weitereButton.setText(if (weitereGeoeffnet) R.string.settings_extras_hide else R.string.settings_extras_show)
+        }
+        zeigeWeitere()
+        weitereButton.setOnClickListener {
+            weitereGeoeffnet = !weitereGeoeffnet
+            zeigeWeitere()
+        }
 
         view.findViewById<View>(R.id.btnNutzerFirma).setOnClickListener {
             findNavController().navigate(R.id.action_einstellungen_to_nutzer)
@@ -70,6 +84,11 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
         if (::btnSynchronisation.isInitialized) aktualisiereSyncButton()
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean("settings_extras_open", weitereGeoeffnet)
+    }
+
     private fun aktualisiereSyncButton() {
         val cfg = SyncEinstellungenSpeicher.laden(requireContext())
         val syncStand = if (SyncStatusSpeicher.letzterErfolgEpochMs(requireContext()) == null) {
@@ -78,7 +97,7 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
             "zuletzt ${SyncStatusSpeicher.anzeige(requireContext())}"
         }
         btnSynchronisation.text = buildString {
-            append("Synchronisierung & Offline\n")
+            append("Synchronisierung\n")
             append("Automatisch")
             append(" · ")
             append(SyncEinstellungenSpeicher.netzLabel(cfg.netz))
@@ -114,9 +133,9 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
             }
         }
 
-        box.addView(sectionTitle("Automatischer Delta-Sync"))
+        box.addView(sectionTitle("Automatischer Abgleich"))
         box.addView(TextView(requireContext()).apply {
-            text = "Fachänderungen werden automatisch klein und gezielt synchronisiert. Neu laden bleibt der bewusste vollständige Recovery-Abgleich."
+            text = "Änderungen werden automatisch mit dem Server abgeglichen. Hier legst du fest, welches Netz die App dafür verwenden darf."
             textSize = 12f
             alpha = 0.78f
             setPadding(0, 0, 0, gap)
@@ -124,7 +143,7 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
         box.addView(sectionTitle("Erlaubtes Netz"))
         box.addView(netz)
         box.addView(TextView(requireContext()).apply {
-            text = "Die Netzregel gilt für den automatischen Delta-Sync. Ein bewusstes Neu laden bleibt als Vollabgleich verfügbar."
+            text = "Ohne passende Verbindung bleiben Änderungen auf dem Handy gespeichert. Sobald die Verbindung wieder passt, kann der automatische Abgleich fortgesetzt werden."
             textSize = 12f
             alpha = 0.72f
             setPadding(0, gap, 0, 0)
@@ -150,4 +169,5 @@ class EinstellungenFragment : Fragment(R.layout.fragment_einstellungen) {
             .show()
     }
 }
+
 
