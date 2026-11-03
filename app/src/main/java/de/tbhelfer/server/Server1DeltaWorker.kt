@@ -46,6 +46,15 @@ class Server1DeltaWorker(
     companion object {
         private const val UNIQUE_NAME = "tbhelfer-server1-delta"
 
+        fun schedule(context: Context) {
+            val request = androidx.work.PeriodicWorkRequestBuilder<Server1DeltaWorker>(15L, TimeUnit.MINUTES)
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30L, TimeUnit.SECONDS)
+                .build()
+            WorkManager.getInstance(context.applicationContext).enqueueUniquePeriodicWork(
+                "$UNIQUE_NAME-fallback", androidx.work.ExistingPeriodicWorkPolicy.KEEP, request)
+        }
+
         fun enqueue(context: Context) {
             val appContext = context.applicationContext
             val request = OneTimeWorkRequestBuilder<Server1DeltaWorker>()
@@ -68,5 +77,6 @@ class Server1DeltaWorker(
         }
     }
 }
+
 
 

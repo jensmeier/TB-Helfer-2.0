@@ -204,6 +204,23 @@ class Server1BtbApi(
         }
     }
 
+    fun confirmedDeletionVersion(token: String, serverBtbId: String): Long? {
+        val connection = openConnection("/api/v1/btbs/${encode(serverBtbId)}/sync-state")
+        return try {
+            authorize(connection, token)
+            val code = connection.responseCode
+            val body = readBody(connection, code)
+            if (code != HttpURLConnection.HTTP_OK) return null
+            val root = JSONObject(body)
+            if (root.optString("id") != serverBtbId || root.opt("deleted") != true) return null
+            root.optLong("version", -1L).takeIf { it >= 1L }
+        } catch (_: Exception) {
+            null // No success and no cursor advance on unsupported/auth/network/parse errors.
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     fun shiftFinish(
         token: String,
         worksiteId: String,
@@ -1722,6 +1739,7 @@ class Server1BtbApi(
         )
     }
 }
+
 
 
 

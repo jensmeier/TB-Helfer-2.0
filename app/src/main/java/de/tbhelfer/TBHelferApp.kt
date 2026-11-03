@@ -81,6 +81,7 @@ class TBHelferApp : Application() {
         // Server->Android sofort nach App-Start nachziehen. Dies ist ein gezielter Changefeed-
         // Catch-up und KEIN globaler Vollsync.
         Server1DeltaWorker.enqueue(this)
+        Server1DeltaWorker.schedule(this)
         installDeltaLifecycle()
         installNetworkReturnWakeup()
         if (!de.tbhelfer.server.recovery.RecoveryWorkspace.blocked() &&
@@ -145,5 +146,6 @@ class TBHelferApp : Application() {
         }
     }
 }
+
 
 

@@ -659,7 +659,17 @@ class CollabSyncRepository(
                     change.entityType.uppercase() == SyncCollabPendingChangeEntity.TYPE_BTB &&
                         (clientBtbId == null || change.clientEntityKey == clientBtbId)
                 }
+            val deletedKeys = dao.deletedCollabEntities(context.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB)
+                .mapNotNull { it.clientEntityKey }.toSet()
             for (change in pending) {
+                if (!change.operation.equals(SyncCollabPendingChangeEntity.OP_DELETE, true) &&
+                    (change.clientEntityKey in deletedKeys ||
+                        change.clientEntityKey?.let { de.tbhelfer.server.BtbServerStateStore.state(appContext, it)?.readOnly } == true)) {
+                    dao.updateCollabChangeState(change.id, SyncCollabPendingChangeEntity.STATE_CONFLICT,
+                        change.attempts, JSONObject().put("detail", "Server-BTB abgeschlossen oder gelöscht; lokale Offlineänderung bleibt erhalten.").toString())
+                    conflicts++
+                    continue
+                }
                 dao.updateCollabChangeState(
                     change.id,
                     SyncCollabPendingChangeEntity.STATE_UPLOADING,
@@ -1429,5 +1439,6 @@ class CollabSyncRepository(
         }
     }
 }
+
 
 

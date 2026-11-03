@@ -104,10 +104,17 @@ object BtbDeleteSyncCoordinator {
             for (entity in deleted) {
                 val key = entity.clientEntityKey?.trim().orEmpty()
                 if (key.isBlank() || key.startsWith("legacy:")) continue
+                val pending = ServiceLocator.syncDao.collabPendingAnyForClientKey(server.worksiteServerId, TYPE, key)
+                if ((pending != null && !pending.operation.equals(SyncCollabPendingChangeEntity.OP_DELETE, true)) ||
+                    de.tbhelfer.server.SelectiveSyncStore.isBtbDirty(appContext, local.altBaustelleId, key)) {
+                    ServiceLocator.collabLocalBridge.preservePendingBtbForConflict(
+                        local.altBaustelleId, local.hauptbaustellenName, key, server.worksiteServerId)
+                    continue
+                }
                 val row = byId[key]
                 if (row != null) {
-                    runCatching { BtbDeleteService.loeschen(appContext, row.entry) }
-                        .onSuccess { localDeleted++ }
+                    ServiceLocator.collabLocalBridge.applyConfirmedBtbDeletion(server.worksiteServerId, entity.serverId, entity.entityVersion)
+                    if (BautagebuchSpeicher.ladenById(appContext, local.altBaustelleId, local.hauptbaustellenName, key) == null) localDeleted++
                 }
                 if (removeIntent(appContext, server.worksiteServerId, server.groupId, key)) {
                     cleared++
@@ -263,3 +270,4 @@ object BtbDeleteSyncCoordinator {
         return "delete_${hash.take(32)}"
     }
 }
+

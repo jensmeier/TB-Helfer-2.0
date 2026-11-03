@@ -18,6 +18,7 @@ import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.einstellungen.SyncEinstellungenSpeicher
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.launch
 
 /**
  * Persistenter selektiver Delta-Worker.
@@ -167,6 +168,7 @@ class SelectiveSyncWorker(
                 )
             } catch (error: Exception) {
                 ErrorLogStore.record(applicationContext, ErrorHistory.Operation.SEND, error.message.orEmpty(), ErrorHistory.ContextKind.SITE, scope.localBaustelleId)
+                SelectiveSyncStore.problem(applicationContext, scope, error.message ?: "Lokale Änderung konnte nicht übertragen werden.")
                 retryNeeded = true
                 continue
             }
@@ -185,11 +187,7 @@ class SelectiveSyncWorker(
                 CollabLocalBridge.BtbExportResult.ReadOnly -> {
                     // Server bestaetigt FINALIZED/Teilnehmer-FINISHED: keine alte Mutation
                     // wiederbeleben. Bridge hat Pending + Dirty bereits gezielt aufgeraeumt.
-                    SelectiveSyncStore.clearBtb(
-                        applicationContext,
-                        scope.localBaustelleId,
-                        scope.clientBtbId
-                    )
+                    if (!SelectiveSyncStore.removeBtbIfUnchanged(applicationContext, scope)) retryNeeded = true
                 }
 
                 is CollabLocalBridge.BtbExportResult.Success -> {
@@ -332,6 +330,8 @@ class SelectiveSyncWorker(
     companion object {
         private const val UNIQUE_NAME = "tbhelfer-selective-sync"
         private const val DEBOUNCE_SECONDS = 2L
+        private val schedulingScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+        private val schedulingMutex = kotlinx.coroutines.sync.Mutex()
 
         fun enqueue(context: Context) {
             val appContext = context.applicationContext
@@ -355,11 +355,29 @@ class SelectiveSyncWorker(
                 )
                 .build()
 
-            WorkManager.getInstance(appContext).enqueueUniqueWork(
-                UNIQUE_NAME,
-                ExistingWorkPolicy.APPEND_OR_REPLACE,
-                request
-            )
+            schedulingScope.launchCoalesced(appContext, request)
+        }
+
+        private fun kotlinx.coroutines.CoroutineScope.launchCoalesced(
+            context: Context, request: androidx.work.OneTimeWorkRequest
+        ) = launch {
+            schedulingMutex.withLock {
+                try {
+                    val manager = WorkManager.getInstance(context)
+                    val waiting = manager.getWorkInfosForUniqueWork(UNIQUE_NAME).get().any {
+                        !it.state.isFinished && it.state != androidx.work.WorkInfo.State.RUNNING
+                    }
+                    // At most one waiting follow-up. An active POST is never cancelled;
+                    // dirty generations remain durable and are read when the queued worker starts.
+                    if (!waiting) manager.enqueueUniqueWork(UNIQUE_NAME,
+                        ExistingWorkPolicy.APPEND_OR_REPLACE, request).result.get()
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    ErrorLogStore.record(context, ErrorHistory.Operation.SEND,
+                        error.message ?: "Sendeauftrag konnte nicht geplant werden; lokale Änderungen bleiben erhalten.")
+                }
+            }
         }
 
         fun enqueueIfPending(context: Context) {
@@ -369,6 +387,7 @@ class SelectiveSyncWorker(
         }
     }
 }
+
 
 
 

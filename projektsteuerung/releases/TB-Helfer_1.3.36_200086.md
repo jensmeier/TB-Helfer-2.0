@@ -35,3 +35,10 @@ TECHNISCHER TESTNACHWEIS:
 - Kotlin/KSP/Java/Ressourcen,138 JVM-Tests (darunter13 Sprach-Policyfälle),0 Fehler/Fehlschläge/übersprungen. Lint0 Error/Fatal,388 Warning; sieben zusätzliche Glyphen-HardcodedText-Hinweise im BTB-Layout.
 - Originalbericht13213542481 ausgewertet. Gesamt-CI wegen unveränderter Altprüfungen13/19/83/85/86 weiterhin ROT.
 - Kein APK-/Manifest-/Signatur-/Installationsnachweis aus diesem Lauf: Unit/Lint ohne assemble. Geräte-/Offline-/Mikrofon-/Lärm-/Querformat-E2E weiterhin offen.
+
+
+SYNC-FIX-1103 (gleiche noch nicht als APK ausgelieferte Quellversion):
+- Autorisierte BTB-Tombstones über additiven Serverendpunkt; keine pauschale404-Löschung.
+- Lokale Offline-Inhalte bei Serverabschluss/Löschung als Konflikt behalten und zusätzlich dateibasiert sichern. Keine automatische Wiederöffnung.
+- Capabilitycache im laufenden Empfang wiederverwenden; Sendeaufträge begrenzen; zusätzlicher15-Minuten-Deltafallback (Android kann verzögern, kein Pushversprechen).
+- Benötigt zugehörigen Server-SYNC-FIX-1103. Java-Sicherung lokal geprüft; Kotlin/Unit/Lint für diesen integrierten Quellstand noch OFFEN. Vorherige Sprach-CI gilt nicht als Nachweis dieser neuen Änderungen. Keine neue APK erstellt.

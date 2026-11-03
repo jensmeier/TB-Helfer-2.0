@@ -104,13 +104,20 @@ class CollabLocalBridge(
 
         val local = item.localWorksite ?: return BtbExportResult.NotBound
         val server = item.context
+        val pendingLocal = dao.collabPendingAnyForClientKey(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB, clientBtbId)
+        val deletedRemote = collabRepository.deletedEntities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB)
+            .any { it.clientEntityKey == clientBtbId && it.groupId == server.groupId }
+        if (deletedRemote || serverStateReadOnly(clientBtbId)) {
+            if (pendingLocal != null || SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, clientBtbId)) {
+                preserveUnsentBtb(localBaustelleId, local.hauptbaustellenName, clientBtbId, pendingLocal?.payloadJson)
+                error("Server-BTB ist abgeschlossen oder gelöscht. Lokale Änderungen bleiben als Konflikt erhalten.")
+            }
+        }
         val serverState = BtbServerStateStore.state(appContext, clientBtbId)
         check(serverState?.contextReadOnly != true && !de.tbhelfer.server.WorksiteLocalSyncStore.btbBlocked(appContext, clientBtbId)) {
             "Team/Berechtigung geändert: ausstehende lokale BTB-Daten bleiben zur Prüfung erhalten."
         }
         if (serverState?.readOnly == true) {
-            collabRepository.clearServer1BtbPending(server.worksiteServerId, clientBtbId)
-            SelectiveSyncStore.clearBtb(appContext, localBaustelleId, clientBtbId)
             return BtbExportResult.ReadOnly
         }
         val localName = local.hauptbaustellenName
@@ -175,17 +182,27 @@ class CollabLocalBridge(
             val localBaustelleId = local.altBaustelleId
             val localName = local.hauptbaustellenName
 
+            val deletedBtbKeys = collabRepository.deletedEntities(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB)
+                .filter { it.groupId == server.groupId }.mapNotNull { it.clientEntityKey }.toSet()
+
             for (verlauf in BautagebuchSpeicher.verlaufFuerBaustelle(appContext, localBaustelleId, localName)) {
                 val clientKey = verlauf.btbId?.takeIf { it.isNotBlank() }
                     ?: "legacy:${verlauf.datum}:${verlauf.schicht.name}"
+                if (clientKey in deletedBtbKeys) {
+                    val pending = dao.collabPendingAnyForClientKey(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB, clientKey)
+                    if (pending != null || SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, clientKey))
+                        preserveUnsentBtb(localBaustelleId, localName, clientKey, pending?.payloadJson)
+                    continue
+                }
                 val serverState = BtbServerStateStore.state(appContext, clientKey)
                 if (serverState?.contextReadOnly == true || de.tbhelfer.server.WorksiteLocalSyncStore.btbBlocked(appContext, clientKey)) {
                     // Historical local data and its pending mutations survive team/access changes.
                     continue
                 }
                 if (serverState?.readOnly == true) {
-                    collabRepository.clearServer1BtbPending(server.worksiteServerId, clientKey)
-                    SelectiveSyncStore.clearBtb(appContext, localBaustelleId, clientKey)
+                    val pending = dao.collabPendingAnyForClientKey(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB, clientKey)
+                    if (pending != null || SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, clientKey))
+                        preserveUnsentBtb(localBaustelleId, localName, clientKey, pending?.payloadJson)
                     continue
                 }
                 val source = findBtbJson(localBaustelleId, localName, verlauf.datum, verlauf.schicht, clientKey) ?: continue
@@ -588,8 +605,9 @@ class CollabLocalBridge(
                         .equals("FINALIZED", ignoreCase = true) &&
                     !payload.optBoolean(Server1BtbApi.SERVER_ACTIVE_KEY, false)
                 if (serverFinal) {
-                    collabRepository.clearServer1BtbPending(server.worksiteServerId, key)
-                    SelectiveSyncStore.clearBtb(appContext, localBaustelleId, key)
+                    val pending = dao.collabPendingAnyForClientKey(server.worksiteServerId, SyncCollabPendingChangeEntity.TYPE_BTB, key)
+                    if (pending != null || SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, key))
+                        preserveUnsentBtb(localBaustelleId, local.hauptbaustellenName, key, pending?.payloadJson)
                 }
                 primed++
             }
@@ -645,11 +663,18 @@ class CollabLocalBridge(
                 val serverFinal = entity.status.equals("FERTIG", ignoreCase = true) &&
                     payload.optString(Server1BtbApi.SERVER_STATUS_KEY).equals("FINALIZED", ignoreCase = true) &&
                     !serverActive
+                val pendingLocal = dao.collabPendingAnyForClientKey(server.worksiteServerId, entity.entityType, key)
+                if (serverFinal && (pendingLocal != null || SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, key))) {
+                    preserveUnsentBtb(localBaustelleId, localName, key, pendingLocal?.payloadJson)
+                    // A remote finalization does not acknowledge this device's offline edits.
+                    // Keep both local file and outbox; expose the canonical read-only lifecycle.
+                    if (BautagebuchSpeicher.aktiveBtbId(appContext, localBaustelleId, localName) == key)
+                        BtbActivePointerControl.nachAbschlussInaktivMerken(appContext, localBaustelleId, localName, key)
+                    continue
+                }
                 if (serverFinal) {
-                    // Kanonisch bestaetigter historischer BTB: alte Auto-Dirty-/Pending-Reste
-                    // duerfen keinen neuen Header-/Entry-/Foto-Upload mehr provozieren.
-                    collabRepository.clearServer1BtbPending(server.worksiteServerId, key)
-                    SelectiveSyncStore.clearBtb(appContext, localBaustelleId, key)
+                    // Clean historical state only. Finalization is not an acknowledgement
+                    // of a concurrent local save; never clear a newer dirty generation here.
                 } else if (
                     dao.collabPendingForClientKey(server.worksiteServerId, entity.entityType, key) != null ||
                     SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, key)
@@ -687,7 +712,8 @@ class CollabLocalBridge(
                 val appliedToLocal = SelectiveSyncStore.withBtbMutationLock(localBaustelleId, key) {
                     // Zweite Dirty-Prüfung im selben Lock wie der Dateischreibzugriff schließt
                     // das Rennen "Autosave nach erster Prüfung, aber vor Snapshot-Write".
-                    if (!serverFinal && SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, key)) {
+                    if (SelectiveSyncStore.isBtbDirty(appContext, localBaustelleId, key)) {
+                        if (serverFinal) preserveUnsentBtb(localBaustelleId, localName, key, pendingLocal?.payloadJson)
                         false
                     } else {
                         BautagebuchSpeicher.bewahreEintragszeitFormat(localPayload, target)
@@ -1171,6 +1197,61 @@ class CollabLocalBridge(
 
     private fun attachmentImportKey(serverAttachmentId: String): String = "collab_attachment_import:$serverAttachmentId"
 
+    private fun serverStateReadOnly(clientBtbId: String): Boolean =
+        BtbServerStateStore.state(appContext, clientBtbId)?.readOnly == true
+
+    suspend fun preservePendingBtbForConflict(localId: Long, localName: String, key: String, worksiteId: String) {
+        val pending = dao.collabPendingAnyForClientKey(worksiteId, SyncCollabPendingChangeEntity.TYPE_BTB, key)
+        preserveUnsentBtb(localId, localName, key, pending?.payloadJson)
+    }
+
+    /** Preserve before clearing, deleting or replacing anything. Failure aborts the apply. */
+    private fun preserveUnsentBtb(localId: Long, localName: String, key: String, pending: String?) {
+        SelectiveSyncStore.withBtbMutationLock(localId, key) {
+            val entry = BautagebuchSpeicher.ladenById(appContext, localId, localName, key)
+            val date = entry?.datumIso?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            val source = if (entry != null && date != null) findBtbJson(localId, localName, date, entry.schicht, key) else null
+            val directory = File(de.tbhelfer.server.recovery.RecoveryWorkspace.wrap(appContext).filesDir, "sync-preserved-btb")
+            check(source?.isFile == true || pending != null) { "Lokale BTB-Fassung konnte nicht gesichert werden; Änderung bleibt ausstehend." }
+            if (source?.isFile == true) de.tbhelfer.server.PreservedBtbContent.preserve(directory, "$localId:$key:local", source.readText(Charsets.UTF_8))
+            if (pending != null) de.tbhelfer.server.PreservedBtbContent.preserve(directory, "$localId:$key:pending", pending)
+            de.tbhelfer.server.ErrorLogStore.record(appContext, de.tbhelfer.server.ErrorHistory.Operation.RECEIVE,
+                "Server-BTB abgeschlossen/gelöscht: lokale Offlinefassung gesichert; Konflikt bleibt erhalten (sync-preserved-btb).",
+                de.tbhelfer.server.ErrorHistory.ContextKind.SITE, localId)
+        }
+    }
+
+    suspend fun applyConfirmedBtbDeletion(worksiteId: String, serverBtbId: String, version: Long) {
+        val entity = collabRepository.entities(worksiteId, SyncCollabPendingChangeEntity.TYPE_BTB)
+            .firstOrNull { it.serverId == serverBtbId }
+            ?: collabRepository.deletedEntities(worksiteId, SyncCollabPendingChangeEntity.TYPE_BTB)
+                .firstOrNull { it.serverId == serverBtbId }
+            ?: return
+        val key = entity.clientEntityKey ?: return
+        val bounds = bindingRepository.contextsWithBindings().filter {
+            it.binding != null && it.context.worksiteServerId == worksiteId && it.context.groupId == entity.groupId
+        }
+        for (bound in bounds) {
+            val local = bound.localWorksite ?: continue
+            val pending = dao.collabPendingAnyForClientKey(worksiteId, entity.entityType, key)
+            if (pending != null || SelectiveSyncStore.isBtbDirty(appContext, local.altBaustelleId, key)) {
+                preserveUnsentBtb(local.altBaustelleId, local.hauptbaustellenName, key, pending?.payloadJson)
+            } else {
+                // Same lock as Autosave, with a second dirty check before touching local files.
+                SelectiveSyncStore.withBtbMutationLock(local.altBaustelleId, key) {
+                    check(!SelectiveSyncStore.isBtbDirty(appContext, local.altBaustelleId, key)) { "Lokale Änderung während BTB-Löschung; erneut prüfen." }
+                    BautagebuchSpeicher.ladenById(appContext, local.altBaustelleId, local.hauptbaustellenName, key)?.let {
+                        de.tbhelfer.ui.bautagebuch.BtbDeleteService.loeschen(appContext, it)
+                        check(BautagebuchSpeicher.ladenById(appContext, local.altBaustelleId, local.hauptbaustellenName, key) == null) {
+                            "Lokale BTB-Datei konnte noch nicht gelöscht werden."
+                        }
+                    }
+                }
+            }
+        }
+        dao.markCollabDeleted(serverBtbId, version, System.currentTimeMillis())
+    }
+
     private fun writeIfDifferent(target: File, content: String): Boolean {
         target.parentFile?.mkdirs()
         if (target.exists() && runCatching { target.readText(Charsets.UTF_8) }.getOrNull() == content) return false
@@ -1204,5 +1285,6 @@ class CollabLocalBridge(
     private fun JSONObject.optNullableLong(key: String): Long? = if (!has(key) || isNull(key)) null else optLong(key)
     private fun JSONObject.optNullableDouble(key: String): Double? = if (!has(key) || isNull(key)) null else optDouble(key)
 }
+
 
 

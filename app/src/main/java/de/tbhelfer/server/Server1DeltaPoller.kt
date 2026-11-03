@@ -28,10 +28,11 @@ object Server1DeltaPoller {
         synchronized(this) {
             if (job?.isActive == true) return
             job = scope.launch {
+                val synchronizer = Server1DeltaSync(appContext)
                 var errorBackoffMs = 2_000L
                 while (isActive) {
                     when (
-                        val result = Server1DeltaSync(appContext).synchronize(
+                        val result = synchronizer.synchronize(
                             firstWaitSeconds = 25,
                             maxPages = 50
                         )
@@ -64,5 +65,6 @@ object Server1DeltaPoller {
         }
     }
 }
+
 
 

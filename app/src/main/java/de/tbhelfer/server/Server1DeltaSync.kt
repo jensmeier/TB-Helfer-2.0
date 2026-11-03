@@ -19,6 +19,7 @@ class Server1DeltaSync(context: Context) {
     private val btbApi = Server1BtbApi()
     private val fileApi = Server1FileApi()
     private val pdfApi = Server1BtbPdfApi()
+    private val capabilitiesApi = ServerCapabilitiesApi()
 
     sealed interface Result {
         data class Success(
@@ -50,7 +51,7 @@ class Server1DeltaSync(context: Context) {
         val tokenStore = SecureTokenStore(appContext)
         val token = tokenStore.load() ?: return Result.Error("Gerät ist noch nicht für den Server aktiviert.")
 
-        val capabilities = when (val caps = ServerCapabilitiesApi().load()) {
+        val capabilities = when (val caps = capabilitiesApi.load()) {
             ServerCapabilitiesApi.Result.Unsupported -> return Result.Unsupported
             is ServerCapabilitiesApi.Result.Error -> return Result.Error(caps.message)
             is ServerCapabilitiesApi.Result.Success -> caps.snapshot
@@ -251,7 +252,15 @@ class Server1DeltaSync(context: Context) {
                         serverBtbId = btbId
                     )
                 ) {
-                    Server1BtbApi.AccessResult.Unsupported -> return ApplyResult.Unsupported
+                    Server1BtbApi.AccessResult.Unsupported -> {
+                        // A detail 404 can also be a missing endpoint. Only a separately
+                        // authorized tombstone may remove local state and advance the cursor.
+                        val version = btbApi.confirmedDeletionVersion(token, btbId)
+                            ?: return ApplyResult.Unsupported
+                        runCatching {
+                            ServiceLocator.collabLocalBridge.applyConfirmedBtbDeletion(worksiteId, btbId, version)
+                        }.getOrElse { return ApplyResult.Error(it.message ?: "BTB-Löschung konnte nicht übernommen werden.") }
+                    }
                     Server1BtbApi.AccessResult.SessionInvalid -> return ApplyResult.SessionInvalid
                     is Server1BtbApi.AccessResult.Error -> return ApplyResult.Error(access.message)
                     is Server1BtbApi.AccessResult.Success -> {
@@ -333,5 +342,6 @@ class Server1DeltaSync(context: Context) {
         private var lastContextRefreshMs = 0L
     }
 }
+
 
 
