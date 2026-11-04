@@ -1,5 +1,16 @@
 # TB-HELFER 2.0 – MASTERSTATUS
 
+## AND-SPRACHE-FELDER-1104 – Zeit/KM und Kopfzeile gebaut (04.11.2026)
+Status: QUELLSTAND FERTIG / UNIT UND LINT BESTANDEN / BUILD BESTANDEN / GESAMT-CI ROT / E2E OFFEN.
+- [Umsetzung, Grenzen und Geräteprüfplan](uebergaben/AND_SPRACHE_FELDER_1104.md). Auftrag930e12cf, Baucommit48d3e7bf38b61e5b8d076418221a76378785c005; Version1.3.40/200090. Server6ea0d987 unverändert.
+- Gesprochene Kopfzeile mit Firma, Punkt4–8, Uhrzeit/Bereich und KM/Bereich; optional Textmarker, Originaltext lokal erhalten. Typische Abschnittsfehler wie Besondenheiten berücksichtigt. Bearbeitbare Felder vor ausdrücklicher Übernahme; unklare Angaben bleiben sichtbar, ungültige Feldwerte blockieren.
+- Bestehende uhrzeit/uhrzeitBis/kmVon/kmBis samt geschütztem Speicher-/Syncpfad verwendet, keine API-/Serveränderung. Aufnahme/Widget/Voreinstellungen unverändert. Altentwürfe weiter lesbar; manuelle Korrekturen werden nicht erneut zerlegt.
+- CI41852652768/Androidjob126652970282 SUCCESS:196 JVM-Tests (25 neue Sprachkopf-Fälle),0 Fehler/übersprungen; Lint0 Error/Fatal,390 Warning, keine neue speech-Kotlin-Issue. assembleDebug erfolgreich. Erster Lauf41852230460 wegen lokal belegtem Uhr-Minuten-Grenzfall durch korrigierten Commit automatisch abgebrochen.
+- Quellvertragsjob126652969506 weiterhin FAILURE bei bekannten Checks13/19/83/85/86; Original-Logs geprüft, keine Abschwächung. Gesamt-CI nicht bestanden.
+- APK26929813Bytes, SHA25662d4d8e79de26aadc4674a07e695f73b1c722d4a75d01f3e915530f831bcadd5. Manifest/Signatur und heruntergeladenes APK-/Build-MD-Paar geprüft; gemeinsam bereitgestellt.
+- CI-Debugsignatur erneut abweichend; Update mit bisheriger lokaler Signierung bauen, keine Deinstallation/Datenlöschung. Keine Installation, Pixel/Poco-/Live-Server-E2E oder Veröffentlichung bestätigt.
+- Nächster Schritt: Nutzerbeispiele sprechen, Felder korrigieren/leeren und Entwurf erneut öffnen, dann genau einmal übernehmen; Offline/Neustart/Sync und Server-/Portal-/PDF-Zeit/KM vergleichen. Frühere Widget-/Export-/Serverrenderer-Abnahmen bleiben separat offen.
+
 ## AND-SPRACHE-WIDGET-1104 – Punkte1–4 umgesetzt und gebaut (04.11.2026)
 Status: QUELLSTAND FERTIG / UNIT UND LINT BESTANDEN / BUILD BESTANDEN / GESAMT-CI ROT / E2E OFFEN.
 - [Umsetzung, Grenzen, Nachweise und Geräteprüfplan](uebergaben/AND_SPRACHE_WIDGET_1104.md). Auftrag ae343199; Baucommit fff93819607d313bc664d0c8dc62939e4cec86dc; Version1.3.39/200089. Server6ea0d987 unverändert.
