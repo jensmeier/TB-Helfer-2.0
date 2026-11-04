@@ -18,7 +18,6 @@ import de.tbhelfer.datenbank.BaustellenKnotenEntity
 import de.tbhelfer.datenbank.CollabSyncRepository
 import de.tbhelfer.ui.bautagebuch.BautagebuchSpeicher
 import de.tbhelfer.ui.bautagebuch.BtbExportPaket
-import de.tbhelfer.ui.bautagebuch.MergeSafeBaustellenExport
 import de.tbhelfer.ui.abnahme.AbnahmeSpeicher
 import de.tbhelfer.server.SecureTokenStore
 import de.tbhelfer.server.TeamDisplayCache
@@ -31,8 +30,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.Job
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -259,39 +256,27 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
     }
 
     private fun zeigeExportFortschritt(): Pair<androidx.appcompat.app.AlertDialog, TextView> {
-        val tv = TextView(requireContext()).apply { text = "Rest: 100 %"; textSize = 18f; setPadding(dp(24), dp(12), dp(24), dp(12)) }
+        val tv = TextView(requireContext()).apply { text = "Daten und Bilder werden zusammengestellt …"; textSize = 18f; setPadding(dp(24), dp(12), dp(24), dp(12)) }
         val dlg = MaterialAlertDialogBuilder(requireContext()).setTitle("ZIP wird erstellt").setMessage("Export läuft ...").setView(tv).setCancelable(false).create()
         dlg.show(); return dlg to tv
     }
 
-    private fun starteCountdown(tv: TextView): Job = lifecycleScope.launch {
-        for (p in 100 downTo 0) { tv.text = "Rest: $p %"; delay(85) }
-    }
-
     private fun exportiereBaustellenZip(haupt: BaustellenKnotenEntity, von: LocalDate?, bis: LocalDate?) {
         lifecycleScope.launch {
-            val (dlg, tv) = zeigeExportFortschritt(); val countdown = starteCountdown(tv)
+            val (dlg, _) = zeigeExportFortschritt()
             try {
-                val (result, archiveZip) = withContext(Dispatchers.IO) {
-                    val raw = BtbExportPaket.erstellenBaustellenExport(
-                        context = requireContext().applicationContext,
-                        baustelleId = haupt.altBaustelleId,
-                        baustelleName = haupt.hauptbaustellenName,
-                        vonDatum = von,
-                        bisDatum = bis
-                    )
-                    raw to MergeSafeBaustellenExport.normalisieren(
-                        context = requireContext().applicationContext,
-                        sourceZip = raw.zipFile,
-                        localRootKnotenId = haupt.id,
-                        baustelleName = haupt.hauptbaustellenName
-                    )
-                }
-                countdown.cancel(); tv.text = "Rest: 0 %"; dlg.dismiss()
+                val result = BtbExportPaket.erstellenBaustellenExport(
+                    context = requireContext().applicationContext,
+                    baustelleId = haupt.altBaustelleId,
+                    baustelleName = haupt.hauptbaustellenName,
+                    vonDatum = von,
+                    bisDatum = bis
+                )
+                dlg.dismiss()
                 Toast.makeText(requireContext(), "TB-Helfer-Archiv erstellt: ${result.fotosExportiert} Bilder", Toast.LENGTH_SHORT).show()
-                BtbExportPaket.shareZip(requireContext(), archiveZip)
+                BtbExportPaket.shareZip(requireContext(), result.zipFile)
             } catch (t: Throwable) {
-                countdown.cancel(); dlg.dismiss()
+                dlg.dismiss()
                 Toast.makeText(requireContext(), "ZIP konnte nicht erstellt werden: ${t.message ?: "Fehler"}", Toast.LENGTH_LONG).show()
             }
         }
@@ -376,4 +361,5 @@ class BaustellenFragment : Fragment(R.layout.fragment_baustellen) {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 }
+
 

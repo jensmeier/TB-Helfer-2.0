@@ -101,7 +101,23 @@ object GesamtMedienArchiv {
     private fun shiftListFilename(entry: BautagebuchEintrag): String {
         val date = runCatching { LocalDate.parse(entry.datumIso, isoDate).format(shortDateFmt) }.getOrDefault(entry.datumIso)
         val start = entry.startUhrzeit?.trim()?.takeIf { it.isNotBlank() }?.replace(':', '-') ?: entry.schicht.name
-        return "${date}_${start}_Bilderliste.xlsx"
+        return "${date}_${start}_${BtbDokumentVersionierung.dokumentToken(entry)}_Bilderliste.xlsx"
+    }
+
+    /** Run before the raw documents are read; normalisation itself must not change their source. */
+    suspend fun vorbereiten(context: Context, localRootKnotenId: Long) {
+        val app = context.applicationContext
+        val binding = ServiceLocator.worksiteBindingRepository.contextForLocalRoot(localRootKnotenId)
+        val token = SecureTokenStore(app).load()
+        if (binding != null && !token.isNullOrBlank()) {
+            try {
+                synchronizeBeforeExport(app, token)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Catalog/download errors below still prevent claiming an incomplete archive is complete.
+            }
+        }
     }
 
     suspend fun ergaenzen(
@@ -125,13 +141,6 @@ object GesamtMedienArchiv {
             ?: syncContext?.leadNameSnapshot.orEmpty()
 
         val token = SecureTokenStore(appContext).load()
-
-        // Ein fertiger Laptop-Export soll nicht von einem alten Handy-Snapshot abhängen. Wenn
-        // Internet/Schema vorhanden sind, zuerst fremde Änderungen holen, lokale Änderungen
-        // hochladen und Medien nachziehen. Bei Netzfehler bleibt der Offline-Export möglich.
-        if (!token.isNullOrBlank() && syncContext != null) {
-            runCatching { synchronizeBeforeExport(appContext, token) }
-        }
 
         val mediaApi = WorksiteMediaApi()
         val catalogResult = if (!token.isNullOrBlank() && syncContext != null) {
@@ -161,9 +170,21 @@ object GesamtMedienArchiv {
         // A file hash identifies bytes, not a capture. Reuse the persisted server-photo binding.
         val linkedOriginalHashes = hashSetOf<String>()
         val mediaBridge = BtbTeamMediaSync(appContext)
+        // Download paths are persisted attachment identities too. They cover previews that
+        // predate the BTB import mapping, without guessing from time, GPS or similar pixels.
+        val attachmentByPath = linkedMapOf<String, String>()
+        for (parentId in catalogItems.map { it.parentEntityId }.distinct()) {
+            for (attachment in ServiceLocator.collabSyncRepository.attachments(parentId)) {
+                if (attachment.isDeleted) continue
+                val path = attachment.localPath ?: continue
+                attachmentByPath[File(path).canonicalPath] = attachment.serverId
+            }
+        }
         localFotos.forEach { foto ->
-            val btbId = BtbFotoZuordnungSpeicher.btbId(appContext, foto.id) ?: return@forEach
-            val serverId = mediaBridge.serverAttachmentIdForLocalPhoto(foto.id, btbId) ?: return@forEach
+            val btbId = BtbFotoZuordnungSpeicher.btbId(appContext, foto.id)
+            val serverId = btbId?.let { mediaBridge.serverAttachmentIdForLocalPhoto(foto.id, it) }
+                ?: attachmentByPath[File(foto.dateipfad).canonicalPath]
+                ?: return@forEach
             val serverItem = catalogItems.firstOrNull {
                 it.attachmentId == serverId && it.mimeType?.startsWith("image/") == true
             } ?: return@forEach
@@ -171,8 +192,13 @@ object GesamtMedienArchiv {
             val originalHash = localHashByFotoId[foto.id] ?: return@forEach
             linkedOriginalHashes.add(originalHash)
             localHashByFotoId[foto.id] = serverHash
-            localFileByHash[serverHash] = File(foto.dateipfad)
-            localFotoByHash[serverHash] = foto
+            val candidate = File(foto.dateipfad)
+            val previous = localFileByHash[serverHash]
+            if (previous == null || (previous.name.endsWith("_mobile_preview.jpg") &&
+                        !candidate.name.endsWith("_mobile_preview.jpg"))) {
+                localFileByHash[serverHash] = candidate
+                localFotoByHash[serverHash] = foto
+            }
         }
 
         val localMaengel = MaengellisteExport.ladeItems(appContext, localBaustelleId, baustelleName)
@@ -973,5 +999,6 @@ object GesamtMedienArchiv {
         return this
     }
 }
+
 
 

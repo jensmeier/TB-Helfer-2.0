@@ -25,6 +25,9 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.zip.ZipFile
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -1443,12 +1446,46 @@ object BtbExportPaket {
         return Ergebnis(zipFile = zipFile, fotosExportiert = fotosOk, fehlendeFotos = fotosFehlen)
     }
 
+    /** One pipeline for history, site export and future callers; never share the raw intermediate. */
     suspend fun erstellenBaustellenExport(
         context: Context,
         baustelleId: Long,
         baustelleName: String,
         vonDatum: LocalDate? = null,
         bisDatum: LocalDate? = null
+    ): Ergebnis = withContext(Dispatchers.IO) {
+        require(vonDatum == null || bisDatum == null || !vonDatum.isAfter(bisDatum)) {
+            "Von-Datum liegt nach dem Bis-Datum."
+        }
+        val app = context.applicationContext
+        val roots = ServiceLocator.baustellenKnotenDao.alleHauptbaustellenSofort()
+            .filter { it.altBaustelleId == baustelleId }
+        check(roots.size <= 1) { "Baustellenzuordnung ist nicht eindeutig." }
+        val root = roots.singleOrNull()
+        // Sync before reading Word, history and photo lists, not after generating documents.
+        if (root != null) GesamtMedienArchiv.vorbereiten(app, root.id)
+        val raw = erstellenBaustellenRohExport(app, baustelleId, baustelleName, vonDatum, bisDatum, root == null)
+        val archive = if (root == null) raw.zipFile else MergeSafeBaustellenExport.normalisieren(
+            app, raw.zipFile, root.id, baustelleName
+        )
+        ExportArchivPruefung.pruefen(archive)
+        val count = ZipFile(archive).use { zip ->
+            zip.entries().asSequence().count {
+                !it.isDirectory && it.name.substringAfterLast('.').lowercase(Locale.ROOT) in
+                    setOf("jpg", "jpeg", "png", "webp")
+            }
+        }
+        if (archive != raw.zipFile) raw.zipFile.delete()
+        raw.copy(zipFile = archive, fotosExportiert = count)
+    }
+
+    private suspend fun erstellenBaustellenRohExport(
+        context: Context,
+        baustelleId: Long,
+        baustelleName: String,
+        vonDatum: LocalDate? = null,
+        bisDatum: LocalDate? = null,
+        includeImageBinaries: Boolean
     ): Ergebnis {
         // Gesamt-Export darf NICHT vom aktuell geöffneten BTB eingegrenzt werden.
         // fotosFuerBaustelleOnce(...) ist ein UI-Leseweg und kann durch BtbFotoQueryScope
@@ -1465,10 +1502,6 @@ object BtbExportPaket {
             return true
         }
 
-        val fotos = alleFotosDerBaustelle.filter { f ->
-            val d = Instant.ofEpochMilli(f.erstelltAmEpochMs).atZone(ZoneId.systemDefault()).toLocalDate()
-            inRangeDatum(d)
-        }
         val verlauf = BautagebuchSpeicher.verlaufFuerBaustelle(context, baustelleId, baustelleName)
             .filter { inRangeDatum(it.datum) }
             .sortedWith(compareBy<BautagebuchSpeicher.VerlaufEintrag> { it.datum }.thenBy { it.schicht.name })
@@ -1497,19 +1530,21 @@ object BtbExportPaket {
         val used = linkedSetOf<String>()
         var fotosOk = 0
         var fotosFehlen = 0
-        val exportFotos = fotos.mapIndexed { index, foto ->
-            FotoExportInfo(foto, exportFotoName(foto, index, knotenLabels, baustelleName))
-        }
-        val gesamtExportFotos = alleFotosDerBaustelle.mapIndexed { index, foto ->
-            FotoExportInfo(foto, exportFotoName(foto, index, knotenLabels, baustelleName))
-        }
+        // Gesamtlisten and their binaries share one manifest even for a document date range.
+        val gesamtExportFotos = alleFotosDerBaustelle.filter { File(it.dateipfad).isFile }
+            .mapIndexed { index, foto ->
+                FotoExportInfo(foto, exportFotoName(foto, index, knotenLabels, baustelleName))
+            }
+        val exportFotos = gesamtExportFotos
+        val exportNameById = exportFotos.associate { it.foto.id to it.exportName }
+        fotosFehlen += alleFotosDerBaustelle.size - exportFotos.size
 
         fun einfacheBilderlisteCsv(
             quellFotos: List<FotoEntity>,
             ausgeschlosseneFotoIds: Set<Long>
         ): String = buildString {
             appendLine("Datum;Zeit;Baustelle;Unterbaustelle;Bereich;KM;Firma;Bildtyp;Kurzbeschreibung;Bilddatei;GPS")
-            quellFotos.filterNot { it.id in ausgeschlosseneFotoIds }.forEach { f ->
+            quellFotos.filter { it.id in exportNameById && it.id !in ausgeschlosseneFotoIds }.forEach { f ->
                 val z = f.aufnahmeEpochEffektiv?.let { Instant.ofEpochMilli(it) }?.atZone(ZoneId.systemDefault())
                 val row = listOf(
                     z?.toLocalDate()?.format(isoFmt).orEmpty(),
@@ -1521,7 +1556,7 @@ object BtbExportPaket {
                     f.firma,
                     f.bildtyp.name,
                     f.kurztext,
-                    File(f.dateipfad).name,
+                    exportNameById.getValue(f.id),
                     f.gpsAnzeige
                 )
                 appendLine(row.joinToString(";") { "\"" + it.replace("\"", "\"\"") + "\"" })
@@ -1529,13 +1564,19 @@ object BtbExportPaket {
         }
 
         ZipOutputStream(zipFile.outputStream().buffered(64 * 1024)).use { zos ->
+            addBinary(zos, "$root/EXPORT_HINWEISE.txt", (
+                "BTB-Dokumente: $rangeName\n" +
+                "Bilder und Gesamtbilderliste: gesamter verfügbarer Baustellenbestand.\n" +
+                "PDF: gespeicherter gültiger Abschlussstand.\n" +
+                "Word: aktueller lokaler Bearbeitungsstand beim Export; kann vom Abschluss-PDF abweichen.\n" +
+                "Lokal fehlende Bilddateien vor Medienabgleich: $fotosFehlen\n"
+            ).toByteArray(Charsets.UTF_8))
             verlauf.forEach { v ->
                 val datum = v.datum.format(isoFmt)
-                // Android 200036: Verlauf kann bei modernen BTBs aus Altcode eine null-pdfDatei
-                // liefern. Deshalb zusätzlich den kanonischen Abschluss-PDF-Finder verwenden.
+                // Only export a currently valid final document; a reopened BTB is not finalized.
                 val btbToken = BtbDokumentVersionierung.dokumentToken(v.entry)
-                val pdfForExport = v.pdfDatei?.takeIf { it.exists() }
-                    ?: BtbAbschlussPdfFinder.neueste(context, v.entry)?.takeIf { it.exists() }
+                val pdfForExport = BtbDokumentVersionierung.aktuellesAbschlussPdf(context, v.entry)
+                    ?.takeIf { it.isFile }
                 pdfForExport?.let { pdf ->
                     val name = "BTB_${datum}_${v.schicht.name}_${btbToken}.pdf"
                     addFile(zos, pdf, uniquePath("$root/BTB/$datum/$name", used))
@@ -1637,7 +1678,8 @@ object BtbExportPaket {
                     ),
                     sheetName = "Bilder Schicht"
                 )
-                val schichtName = v.datum.format(DateTimeFormatter.ofPattern("dd.MM.yy")) + "_Bilderliste.xlsx"
+                val schichtName = v.datum.format(DateTimeFormatter.ofPattern("dd.MM.yy")) +
+                    "_${BtbDokumentVersionierung.dokumentToken(v.entry)}_Bilderliste.xlsx"
                 addBinary(zos, uniquePath("$root/BTB/$datum/$schichtName", used), schichtXlsx)
             }
 
@@ -1691,7 +1733,7 @@ object BtbExportPaket {
                 }
             }
 
-            exportFotos.forEach { info ->
+            if (includeImageBinaries) exportFotos.forEach { info ->
                 val foto = info.foto
                 if (foto.id in strukturierteAbnahmeFotoIds) return@forEach
                 val src = File(foto.dateipfad)
@@ -1727,5 +1769,6 @@ object BtbExportPaket {
         context.startActivity(Intent.createChooser(intent, "Exportpaket teilen"))
     }
 }
+
 
 
