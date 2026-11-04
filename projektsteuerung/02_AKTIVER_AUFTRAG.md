@@ -1,5 +1,14 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## AND-SPRACHE-WIDGET-1104 – Auftrag 1–4 bestätigt
+Status: IN ARBEIT. Nutzer: „1-4 bauen“. Basis Android eb3b23be / Server 6ea0d987; BTB-Mikrofon und bestehende Voreinstellungen ausdrücklich BESTÄTIGT und geschützt.
+1. Widget als eigener Aufnahmeweg: auf Startbildschirm bleiben, Start/Stop per Mikrofon, Rot nur bei tatsächlicher Aufnahme, lokale offene Entwürfe des aktiven BTB als separate antippbare Zahl, 0 ausblenden. Kein automatischer Prüfdialog nach Widgetaufnahme. Sichtbarer Mikrofon-Foreground-Service und Stop-Benachrichtigung, Berechtigungen ausdrücklich behandeln. BTB-Ziel beim Start festhalten.
+2. Kurze Denkpausen erhalten zusammenhängenden Text. Ziel ungefähr fünf Sekunden ohne Sprache; Sprachdienstunterstützung und Segmentgrenzen beachten. Keine stille Endlosschleife/Audioaufnahme; manueller Stop jederzeit, Teiltext bei Unterbrechung sichern. Technische Fehler sichtbar und datensparsam im vorhandenen Fehlerprotokoll. Pixel/Poco-Prüfung offen, keine garantierten fünf Sekunden ohne Gerätenachweis.
+3. Firmen ausschließlich gegen aktive Firmen des konkreten BTB vergleichen, konservative ähnliche Schreibweisen; Punkte 4–8 inklusive „Punkt vier“ bis „Punkt acht“, explizite Kategorie priorisieren, mehrdeutige Aussagen offenlassen. Vorhandene Zuordnung bleibt editierbar und Übernahme ausdrücklich.
+4. Firmenalias nur nach ausdrücklicher Zustimmung merken, lokal an Anmeldung/Baustelle/Firma gebunden; keine stillen globalen Textersetzungen, keine server/**- oder API-Änderung. Veraltete/mehrdeutige Aliase nicht anwenden; Löschmöglichkeit vorsehen.
+Gezielter Buildauftrag: 1.3.39 / 200089, APK und Release-MD aus demselben Build. Tests für Zuordnung/Mehrdeutigkeit/Aliase/Session-Ende; Gradle/Unit/Lint/APK, bestehende Quellvertragsprüfungen nicht abschwächen. Geräte-/Server-E2E separat offenhalten, keine Datenlöschung oder neue Aktivierung.
+
+
 ## AND-SPEECH-UI-1104 – direkte Aufnahme und Prüfung gebaut (04.11.2026)
 Status: QUELLSTAND FERTIG / UNIT UND LINT BESTANDEN / BUILD BESTANDEN / GESAMT-CI ROT / E2E OFFEN.
 - [Umsetzung, Nachweise und Geräteprüfplan](uebergaben/AND_SPEECH_UI_1104.md). Auftrag 8f196209, Baucommit 35241401a698744fd4b6d0d557df844687fc615b; Android 1.3.38 / 200088. Server 6ea0d987 unverändert.
