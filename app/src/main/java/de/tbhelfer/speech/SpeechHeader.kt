@@ -6,16 +6,16 @@ import java.util.Locale
 object SpeechHeader {
     private fun rx(s: String) = Regex(s, RegexOption.IGNORE_CASE)
     private val sectionWords = linkedMapOf(
-        4 to "(?:ausgeführte\\s+)?arbeiten?",
+        4 to "(?:ausgeführte\\s+)?arbeit(?:en)?",
         5 to "abnahmen?",
         6 to "(?:einweisung|unterweisung)(?:en)?(?:\\s*[/]\\s*(?:einweisung|unterweisung)(?:en)?)?",
-        7 to "(?:besonderheiten?|besondenheiten|besonderheiden)",
+        7 to "(?:besonderheit(?:en)?|besondenheiten|besonderheiden)",
         8 to "(?:mängel|maengel|mangel|schäden|schaeden|schaden)(?:\\s*[/]\\s*(?:schäden|schaeden|schaden))?"
     )
     private val point = rx("punkt\\s+(4|vier|5|fünf|funf|6|sechs|7|sieben|8|acht)\\b")
     private val number = "[+-]?\\d+(?:[.,]\\d+)*"
     private val km = rx("(?:kilometer|km)\\s*($number)(?:\\s*(?:bis|[–—-])\\s*(?:(?:kilometer|km)\\s*)?($number))?(?![\\d.,])")
-    private val clock = "(?:\\d{1,2}:\\d{2}(?:\\s*uhr)?|\\d{1,2}\\s*uhr(?:\\s+\\d{2}(?!\\d))?)"
+    private val clock = "(?:\\d{1,2}:\\d{2}(?:\\s*uhr)?|\\d{1,2}\\s*uhr(?:\\s+\\d{2}(?!\\d|\\s*uhr\\b))?)"
     private val time = rx("(?:von\\s+)?($clock)(?:\\s*(?:bis|[–—-])\\s*($clock))?(?!\\d)")
     private val shortTime = rx("(?:von\\s+)?(\\d{1,2})\\s*(?:bis|[–—-])\\s*(\\d{1,2})\\s*uhr\\b")
     private fun trim(s: String) = s.trimStart { it.isWhitespace() || it in ",;:" }

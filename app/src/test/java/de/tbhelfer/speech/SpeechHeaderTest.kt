@@ -64,4 +64,6 @@ class SpeechHeaderTest {
     }
     @Test fun ambiguousBareKmDigitsRemainVisible() {val d=parse("Arbeiten km 13800 Kontrolle");assertEquals("",d.kmFrom);assertTrue(d.parseNotice.isNotBlank())}
     @Test fun splitKmDigitsRemainVisible() {val d=parse("Arbeiten km 13 800 Kontrolle");assertEquals("",d.kmFrom);assertTrue(d.parseNotice.isNotBlank())}
+    @Test fun singularSectionNames() {assertEquals(4,parse("Arbeit 13 Uhr Kontrolle").section);assertEquals(7,parse("Besonderheit 13 Uhr Kontrolle").section)}
+    @Test fun spokenMinutes() {val d=parse("Arbeiten 13 Uhr 15 bis 14 Uhr 30 Kontrolle");assertEquals("13:15",d.timeFrom);assertEquals("14:30",d.timeTo)}
 }
