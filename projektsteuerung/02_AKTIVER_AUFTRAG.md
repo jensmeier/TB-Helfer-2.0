@@ -1,6 +1,15 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
 
+## AND-EXPORT-FIX-1104 – Android umgesetzt und gebaut, Server/E2E offen
+Status: QUELLSTAND FERTIG / UNIT UND LINT BESTANDEN / APK-BUILD BESTANDEN / GESAMT-CI ROT / E2E OFFEN.
+- [Umsetzung und Nachweise](uebergaben/AND_EXPORT_FIX_1104.md). Auftrag318897e, Vertragd8eab0d, Baucommit9b0571cf5e745179421e987d35a622544e4064c6; Version1.3.37/200087. Server6ea0d987 unverändert.
+- Beide ZIP-Einstiege verwenden denselben IO-Export mit Vorab-Sync, Medienidentität und abschließender XLSX-Linkprüfung. Roh-Dateimanifest/CSV korrigiert, Schichtlisten mit BTB-Token, gültiges Abschluss-PDF geschützt, Word-Stand kenntlich gemacht, Scheinfortschritt entfernt.
+- CI41794414368: Androidjob126455006956 SUCCESS; tatsächliche XML151 Tests/0 Fehler/0 übersprungen, Lint0 Error/0 Fatal/388 Warning. APK26878939Bytes, SHA256a215370d825f99f112c4f386ca52ee508f3e807b5fb8624d9ea0a702477db0bf; Manifest/Signatur und heruntergeladene APK/MD-Zuordnung geprüft. Quellvertragsjob126455006766 weiterhin FAILURE bei bekannten Checks13/19/83/85/86; keine Abschwächung.
+- APK und identische Build-Release-MD zusammen bereitgestellt. CI-Debugsignatur anders als frühere CI-APK200085; für Update mit bestehender Signierung lokal in Android Studio bauen. Keine Deinstallation/Datenlöschung. Kein Gerätetest, Serverkatalog-Release oder NAS-Deployment.
+- Offen: SERVER-Gruppierung/Kurz+Lang/Wetter/Kartenspezifikation; Altkopien ohne sichere Bindung; angemeldeter Offline-Gesamtexport ohne Katalog. Pixel/Poco beide Exportwege am selben BTB prüfen; 18→9 Bilder noch nicht auf Nutzergerät bestätigt.
+
+
 ## AND-EXPORT-FIX-1104 – Umsetzung beauftragt
 Status: IN ARBEIT. Nutzerauftrag „bauen und ändern“ nach EXPORT_QUERPRUEFUNG_1104. Basis Android211fa418 / Server6ea0d987.
 - Beide Baustellen-/Verlauf-ZIP-Einstiege erhalten denselben Exportkern auf IO. Gesamtarchiv umfasst alle verfügbaren Baustellenmedien, BTB-Dokumente bleiben im gewählten Zeitraum. Listenpfade entstehen aus demselben finalen Medienplan; Original-/Sync-Zuordnungen verwenden, keine bildähnlichkeitsbasierte Löschung.
