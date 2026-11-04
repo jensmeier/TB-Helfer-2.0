@@ -15,7 +15,14 @@ data class SpeechDraft(
     val section: Int? = null,
     val firmId: String? = null,
     val created: Long = System.currentTimeMillis(),
-    val nodeId: Long? = null
+    val nodeId: Long? = null,
+    val originalText: String? = null,
+    val fieldsParsed: Boolean = false,
+    val timeFrom: String = "",
+    val timeTo: String = "",
+    val kmFrom: String = "",
+    val kmTo: String = "",
+    val parseNotice: String = ""
 )
 
 object SpeechDraftPolicy {
@@ -68,5 +75,6 @@ object SpeechDraftPolicy {
         else -> Route.BLOCKED
     }
 }
+
 
 

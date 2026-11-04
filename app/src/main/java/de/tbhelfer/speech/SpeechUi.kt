@@ -88,13 +88,14 @@ object SpeechUi {
             }
         }
     }
-    private fun edit(fragment:Fragment, draft:SpeechDraft, target:suspend()->BtbActiveContext.Result?,
+    private fun edit(fragment:Fragment, incoming:SpeechDraft, target:suspend()->BtbActiveContext.Result?,
                      commit:suspend(SpeechDraft,Int,String,String?,Long)->Unit) {
         fragment.viewLifecycleOwner.lifecycleScope.launch {
             val t=target() ?: return@launch
-            if(t.btbId!=draft.btbId)return@launch
+            if(t.btbId!=incoming.btbId)return@launch
             val c=fragment.requireContext()
             val firms=t.entry.firmen.filter{!it.isDeleted}
+            val draft=SpeechHeader.prepare(incoming,firms.map { it.firmaId to it.name },SpeechAliasStore.list(c,t.baustelleId))
             val nodes=withContext(Dispatchers.IO) {
                 ServiceLocator.baustellenBaumRepository.hauptNachAltBaustelleId(t.baustelleId)?.let { root ->
                     ServiceLocator.baustellenBaumRepository.alleKnotenZuRootSofort(root.id).filter{it.id!=root.id}
@@ -107,9 +108,23 @@ object SpeechUi {
                 it.adapter=ArrayAdapter(c,android.R.layout.simple_spinner_dropdown_item,values);it.setSelection(selected.coerceAtLeast(0));box.addView(it)
             }
             label("${t.baustelleName} · ${t.entry.datumIso}")
-            label("Text")
+            if(draft.originalText!=null) {
+                val original=label("Originaler erkannter Text: ${draft.originalText}")
+                original.setTextIsSelectable(true)
+            }
+            if(draft.parseNotice.isNotBlank())label(draft.parseNotice).setTextColor(Color.rgb(180,35,35))
+            label("Beschreibung")
             val input=EditText(c).apply{setText(draft.text);minLines=3;inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE}
             box.addView(input)
+            fun field(title:String,value:String):EditText {
+                label(title)
+                return EditText(c).apply { setText(value);setSingleLine(true);box.addView(this) }
+            }
+            val timeFrom=field("Uhrzeit von (optional, HH:mm)",draft.timeFrom)
+            val timeTo=field("Uhrzeit bis (optional, HH:mm)",draft.timeTo)
+            val kmFrom=field("KM von (optional, z. B. 13,800)",draft.kmFrom)
+            val kmTo=field("KM bis (optional, z. B. 13,900)",draft.kmTo)
+            label("Beginn und Ende bitte prüfen. Ein Ende vor dem Beginn bedeutet Folgetag.")
             val firmLabel=label("Firma")
             val firmIds=listOf<String?>(null,"")+firms.map{it.firmaId}
             val firm=spinner(listOf("Firma wählen","Allgemein – bewusst ohne Firma")+firms.map{it.name},firmIds.indexOf(draft.firmId))
@@ -119,14 +134,14 @@ object SpeechUi {
             val placeLabel=label("Unterbaustelle")
             val places=listOf<Long?>(null,0L)+nodes.map{it.id}
             val place=spinner(listOf("Unterbaustelle wählen","Hauptbaustelle")+nodes.map{BaustellenObjektLogik.unterbaustellenName(it).orEmpty().ifBlank{"Ort ${it.id}"}},places.indexOf(draft.nodeId))
-            val hint=TextView(c).apply{text="Entwurf bleibt bis zur Übernahme nur auf diesem Handy. Zeit und KM werden nicht geraten.";setPadding(0,16,0,8)};box.addView(hint)
+            val hint=TextView(c).apply{text="Entwurf bleibt bis zur Übernahme nur auf diesem Handy. Erkannte Zeit und KM bitte prüfen; leere Felder bleiben ohne Angabe.";setPadding(0,16,0,8)};box.addView(hint)
             val remember=Button(c).apply { text="Firmen-Schreibweise merken" };box.addView(remember)
             remember.setOnClickListener {
                 val id=firmIds[firm.selectedItemPosition]
                 val selected=firms.firstOrNull { it.firmaId==id }
                 if(selected==null){hint.text="Bitte zuerst die richtige Firma auswählen.";return@setOnClickListener}
                 val names=firms.map { it.firmaId to it.name }
-                val proposed=SpeechMatching.firm(draft.text,names)?.takeIf { it.id==id }?.heard.orEmpty()
+                val proposed=SpeechMatching.firm(draft.originalText ?: draft.text,names)?.takeIf { it.id==id }?.heard.orEmpty()
                 val alias=EditText(c).apply { this.hint="Falsch erkannter Firmenname, z. B. Pit rich";setText(proposed) }
                 val confirmation=MaterialAlertDialogBuilder(c).setTitle("Schreibweise für ${selected.name}")
                     .setMessage("Welche erkannte Schreibweise soll künftig dieser Firma zugeordnet werden? Gilt nur für diese Baustelle und deine Anmeldung auf diesem Handy.")
@@ -144,7 +159,9 @@ object SpeechUi {
             var saving=false
             val dialog=MaterialAlertDialogBuilder(c).setTitle("Spracheingabe prüfen").setView(scroll)
                 .setNegativeButton("Später prüfen",null).setPositiveButton("Ins BTB übernehmen",null).create()
-            fun edited()=draft.copy(text=input.text.toString().take(12000),firmId=firmIds[firm.selectedItemPosition],section=points[section.selectedItemPosition],nodeId=places[place.selectedItemPosition])
+            fun edited()=draft.copy(text=input.text.toString().take(12000),firmId=firmIds[firm.selectedItemPosition],section=points[section.selectedItemPosition],nodeId=places[place.selectedItemPosition],
+                timeFrom=timeFrom.text.toString().trim(),timeTo=timeTo.text.toString().trim(),
+                kmFrom=kmFrom.text.toString().trim(),kmTo=kmTo.text.toString().trim())
             fun assignmentStatus() {
                 fun mark(label:TextView,name:String,assigned:Boolean) {
                     label.text="$name · ${if(assigned) "Zugeordnet – bitte prüfen" else "Zuordnung offen"}"
@@ -156,11 +173,11 @@ object SpeechUi {
             }
             assignmentStatus()
             fun keep(){if(!finished && !saving)runCatching{SpeechDraftStore.put(c,edited())}.onFailure{hint.text="Änderungen nicht gesichert. Ursprünglicher Entwurf bleibt erhalten."}}
-            input.addTextChangedListener(object:android.text.TextWatcher{
+            listOf(input,timeFrom,timeTo,kmFrom,kmTo).forEach { field -> field.addTextChangedListener(object:android.text.TextWatcher{
                 override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
                 override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){keep()}
                 override fun afterTextChanged(s:android.text.Editable?){}
-            })
+            }) }
             val selection=object:AdapterView.OnItemSelectedListener{
                 override fun onItemSelected(parent:AdapterView<*>?,view:View?,position:Int,id:Long){assignmentStatus();keep()}
                 override fun onNothingSelected(parent:AdapterView<*>?){}
@@ -177,6 +194,8 @@ object SpeechUi {
                 dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
                     val d=edited();val point=d.section;val node=d.nodeId
                     if(point==null || node==null || d.firmId==null || !SpeechDraftPolicy.hasDescription(d.text, firms.firstOrNull{it.firmaId==d.firmId}?.name)){hint.text="Bitte Text, Firma/Allgemein, Abschnitt und Unterbaustelle auswählen.";return@setOnClickListener}
+                    val fieldError=SpeechHeader.validation(d)
+                    if(fieldError!=null){hint.text=fieldError;return@setOnClickListener}
                     if(saving)return@setOnClickListener
                     saving=true;dialog.getButton(-1).isEnabled=false;discard.isEnabled=false;remember.isEnabled=false
                     dialog.setCancelable(false);dialog.getButton(-2).isEnabled=false
@@ -194,5 +213,6 @@ object SpeechUi {
         }
     }
 }
+
 
 

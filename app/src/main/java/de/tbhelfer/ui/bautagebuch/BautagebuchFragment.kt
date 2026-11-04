@@ -3054,8 +3054,13 @@ cardCurrentReport.setOnClickListener {
             val key = if (node == 0L) null else stableNodeKey(root?.id, node) ?: error("Stabile Unterbaustelle fehlt")
             val original = active.entry
             val company = firm?.let { id -> original.firmen.firstOrNull { it.firmaId == id && !it.isDeleted } ?: error("Firma fehlt") }
+            check(de.tbhelfer.speech.SpeechHeader.validation(draft)==null)
             val item = SectionItem(clientEntryKey=draft.id, text=text.replace(Regex("\\s+"), " ").trim(),
-                firmaId=firm, firmaName=company?.name, worksiteNodeKey=key)
+                firmaId=firm, firmaName=company?.name, worksiteNodeKey=key,
+                uhrzeit=de.tbhelfer.speech.SpeechHeader.clockValue(draft.timeFrom),
+                uhrzeitBis=de.tbhelfer.speech.SpeechHeader.clockValue(draft.timeTo),
+                kmVon=de.tbhelfer.speech.SpeechHeader.kmValue(draft.kmFrom),
+                kmBis=de.tbhelfer.speech.SpeechHeader.kmValue(draft.kmTo))
             val savedSpeech = withContext(Dispatchers.IO) {
                 de.tbhelfer.server.SelectiveSyncStore.withBtbMutationLock(draft.siteId, draft.btbId) {
                     check(!de.tbhelfer.server.recovery.RecoveryWorkspace.blocked())
@@ -8315,6 +8320,7 @@ private data class BaustelleKontext(
     val strecke: String?,
     val rootKnotenId: Long? = null
 )
+
 
 
 

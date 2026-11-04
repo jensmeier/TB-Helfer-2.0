@@ -25,7 +25,10 @@ object SpeechDraftStore {
             if (raw !is String) null else runCatching {
                 val j = JSONObject(raw)
                 SpeechDraft(j.getString("id"),j.getString("owner"),j.getLong("site"),j.getString("name"),j.getString("btb"),j.getString("text"),
-                    j.optInt("section").takeIf { it in 4..8 },j.optString("firm").takeIf { j.has("firm") && !j.isNull("firm") },j.getLong("created"),j.optLong("node",-1L).takeIf{it>=0L})
+                    j.optInt("section").takeIf { it in 4..8 },j.optString("firm").takeIf { j.has("firm") && !j.isNull("firm") },j.getLong("created"),j.optLong("node",-1L).takeIf{it>=0L},
+                    originalText=j.optString("originalText").takeIf { j.has("originalText") && !j.isNull("originalText") },
+                    fieldsParsed=j.optBoolean("fieldsParsed",false),timeFrom=j.optString("timeFrom"),timeTo=j.optString("timeTo"),
+                    kmFrom=j.optString("kmFrom"),kmTo=j.optString("kmTo"),parseNotice=j.optString("parseNotice"))
             }.getOrNull()
         }.filter { it.owner == owner && it.btbId == btbId }.sortedBy { it.created }
     }
@@ -34,6 +37,8 @@ object SpeechDraftStore {
         check(!RecoveryWorkspace.blocked()) { "Wiederherstellung aktiv" }
         val j = JSONObject().put("id",d.id).put("owner",d.owner).put("site",d.siteId).put("name",d.siteName)
             .put("btb",d.btbId).put("text",d.text).put("section",d.section ?: 0).put("firm",d.firmId ?: JSONObject.NULL).put("created",d.created).put("node",d.nodeId ?: -1L)
+        j.put("originalText",d.originalText ?: JSONObject.NULL).put("fieldsParsed",d.fieldsParsed)
+            .put("timeFrom",d.timeFrom).put("timeTo",d.timeTo).put("kmFrom",d.kmFrom).put("kmTo",d.kmTo).put("parseNotice",d.parseNotice)
         check(prefs(c).edit().putString(d.id,j.toString()).commit()) { "Sprachentwurf konnte nicht gesichert werden" }
         signal()
     }
@@ -46,3 +51,4 @@ object SpeechDraftStore {
     fun online(c: Context) = prefs(c).getBoolean("online",false)
     fun setting(c: Context, key: String, value: Boolean) { check(key in setOf("enabled","online")); check(prefs(c).edit().putBoolean(key,value).commit()); signal() }
 }
+

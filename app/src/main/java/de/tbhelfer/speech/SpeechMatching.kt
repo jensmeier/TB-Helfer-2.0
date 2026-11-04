@@ -11,7 +11,7 @@ object SpeechMatching {
     private val words = linkedMapOf(
         4 to listOf("arbeiten", "arbeit", "schwellenwechsel", "schwellen gewechselt", "schwellen getauscht", "einschottern", "einschotter", "weichenmontage"),
         5 to listOf("abnahme", "abnahmen"), 6 to listOf("einweisung", "unterweisung", "einweisungen", "unterweisungen"),
-        7 to listOf("besonderheit", "besonderheiten"), 8 to listOf("mangel", "mängel", "schaden", "schäden", "beschädigung", "beschädigungen"))
+        7 to listOf("besonderheit", "besonderheiten", "besondenheiten", "besonderheiden"), 8 to listOf("mangel", "mängel", "schaden", "schäden", "beschädigung", "beschädigungen"))
     fun section(text: String): Int? {
         val n=normalize(text)
         val explicit=mapOf(4 to "vier",5 to "funf",6 to "sechs",7 to "sieben",8 to "acht")
@@ -60,3 +60,4 @@ object SpeechMatching {
         return row[b.length]
     }
 }
+
