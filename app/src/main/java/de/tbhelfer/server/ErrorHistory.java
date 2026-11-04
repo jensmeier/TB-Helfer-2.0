@@ -14,11 +14,18 @@ public final class ErrorHistory {
     public static final int LIMIT=200;
     public enum Operation {
         FULL_SYNC("Vollabgleich"), SEND("BTB senden"), STRUCTURE("Baustellenstruktur"),
-        RECEIVE("Änderungen empfangen"), CATALOG("Katalog"), CONNECTION("Serverprüfung"), UPDATE("App-Update");
+        RECEIVE("Änderungen empfangen"), CATALOG("Katalog"), CONNECTION("Serverprüfung"), UPDATE("App-Update"), SPEECH("Spracheingabe");
         public final String label; Operation(String label){this.label=label;}
     }
     public enum ContextKind { NONE, ROOT, SITE }
     public enum Code {
+        SPEECH_AUDIO("Spracheingabe","SPEECH_AUDIO","Mikrofon oder Audioeingang wurde unterbrochen."),
+        SPEECH_PERMISSION("Spracheingabe","SPEECH_PERMISSION","Mikrofonfreigabe, Anmeldung oder Aufnahmefreigabe fehlt."),
+        SPEECH_BUSY("Spracheingabe","SPEECH_BUSY","Eine Sprachaufnahme läuft bereits."),
+        SPEECH_LANGUAGE("Spracheingabe","SPEECH_LANGUAGE","Deutsche Sprachunterstützung ist nicht verfügbar."),
+        SPEECH_INTERRUPTED("Spracheingabe","SPEECH_INTERRUPTED","Aufnahme durch App-Unterbrechung beendet; gesicherten Text prüfen."),
+        SPEECH_STORAGE("Spracheingabe","SPEECH_STORAGE","Erkannter Text konnte nicht vollständig gesichert werden."),
+        SPEECH_SERVICE("Spracheingabe","SPEECH_SERVICE","Sprachdienst hat die Aufnahme unerwartet beendet."),
         DNS("Verbindung","DNS_RESOLUTION_FAILED","Servername konnte nicht aufgelöst werden."),
         TIMEOUT("Verbindung","NETWORK_TIMEOUT","Serverantwort blieb innerhalb des Zeitlimits aus."),
         OFFLINE("Verbindung","NETWORK_UNAVAILABLE","Keine nutzbare Netzwerkverbindung."),
@@ -39,6 +46,13 @@ public final class ErrorHistory {
     }
     public static Code classify(String raw) {
         String s=raw==null?"":raw.substring(0,Math.min(raw.length(),8192)).toLowerCase(Locale.ROOT);
+        if(s.equals("speech_audio"))return Code.SPEECH_AUDIO;
+        if(s.equals("speech_permission"))return Code.SPEECH_PERMISSION;
+        if(s.equals("speech_busy"))return Code.SPEECH_BUSY;
+        if(s.equals("speech_language"))return Code.SPEECH_LANGUAGE;
+        if(s.equals("speech_interrupted"))return Code.SPEECH_INTERRUPTED;
+        if(s.equals("speech_storage"))return Code.SPEECH_STORAGE;
+        if(s.equals("speech_service"))return Code.SPEECH_SERVICE;
         if(s.contains("permission_required:files.view"))return Code.FILES_VIEW;
         if(s.contains("permission_required"))return Code.PERMISSION;
         if(s.contains("unknownhost")||s.contains("unable to resolve")||s.contains("nicht aufgelöst")||s.contains("dns"))return Code.DNS;
@@ -98,3 +112,4 @@ public final class ErrorHistory {
         for(Entry e:entries)s.append("\n---\n").append(describe(e)).append('\n');return s.toString();
     }
 }
+

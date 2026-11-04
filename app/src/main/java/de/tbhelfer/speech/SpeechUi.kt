@@ -127,7 +127,7 @@ object SpeechUi {
                 if(selected==null){hint.text="Bitte zuerst die richtige Firma auswählen.";return@setOnClickListener}
                 val names=firms.map { it.firmaId to it.name }
                 val proposed=SpeechMatching.firm(draft.text,names)?.takeIf { it.id==id }?.heard.orEmpty()
-                val alias=EditText(c).apply { hint="Falsch erkannter Firmenname, z. B. Pit rich";setText(proposed) }
+                val alias=EditText(c).apply { this.hint="Falsch erkannter Firmenname, z. B. Pit rich";setText(proposed) }
                 val confirmation=MaterialAlertDialogBuilder(c).setTitle("Schreibweise für ${selected.name}")
                     .setMessage("Welche erkannte Schreibweise soll künftig dieser Firma zugeordnet werden? Gilt nur für diese Baustelle und deine Anmeldung auf diesem Handy.")
                     .setView(alias).setNegativeButton("Abbrechen",null).setPositiveButton("Zuordnung merken",null).create()

@@ -20,13 +20,13 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
 class SpeechWidgetProvider : AppWidgetProvider() {
+    data class Capture(val busy:Boolean=false,val listening:Boolean=false,val btb:String?=null,val site:Long?=null)
     override fun onReceive(context:Context,intent:Intent) {
         super.onReceive(context,intent)
         if(intent.action==Intent.ACTION_MY_PACKAGE_REPLACED)refresh(context)
     }
     override fun onUpdate(c:Context,manager:AppWidgetManager,ids:IntArray){install(c);refresh(c)}
     companion object {
-        data class Capture(val busy:Boolean=false,val listening:Boolean=false,val btb:String?=null,val site:Long?=null)
         val capture=MutableStateFlow(Capture())
         private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
         private var installed=false
