@@ -1,5 +1,18 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## AND-SPRACHE-WIDGET-1104 – Punkte1–4 umgesetzt und gebaut (04.11.2026)
+Status: QUELLSTAND FERTIG / UNIT UND LINT BESTANDEN / BUILD BESTANDEN / GESAMT-CI ROT / E2E OFFEN.
+- [Umsetzung, Grenzen, Nachweise und Geräteprüfplan](uebergaben/AND_SPRACHE_WIDGET_1104.md). Auftrag ae343199; Baucommit fff93819607d313bc664d0c8dc62939e4cec86dc; Version1.3.39/200089. Server6ea0d987 unverändert.
+- Widget: eigener Mikrofon-Foreground-Service, Start/Stop, Rot erst bei bereitem Mikrofon, Vibration, Stop-Benachrichtigung; kein automatischer Prüfdialog. Separate Zahl öffnet lokale Entwürfe des aktiven BTB. Berechtigungsansicht nur bei fehlender Freigabe.
+- Gemeinsame begrenzte Sprachsession: Teiltext und Abschnitte zusammenhalten, Pausenziel5s, verspätete Rückrufe sperren, Fehlerprotokoll ohne Rohtext/Audio. Sprachdienstabhängige Übergangslücken möglich; Pixel/Poco nicht getestet.
+- Firmen nur gegen BTB-Firmen, konservative Ähnlichkeit; Punkte4–8 plus explizite Punktnummern. Alias nur ausdrücklich merken, lokal nach Anmeldung/Baustelle/Firma; Löschfunktion. Bestehender BTB-Prüfdialog/Voreinstellungen und geschützte Übernahme erhalten.
+- CI41837314414/Androidjob126599452352 SUCCESS:171 JVM-Tests (33 Sprache),0 Fehler/übersprungen; Lint0 Error/Fatal,390 Warning (2 neue Layouthinweise SmallSp/HardcodedText); assembleDebug bestanden. Zusätzlich41 lokale Java-Prüfungen PASS. Erster Lauf41836472128 mit Compilefehlern dokumentiert und korrigiert.
+- Quellvertragsjob126599452848 weiterhin FAILURE bei bekannten Checks13/19/83/85/86; Original-Logs geprüft, keine Abschwächung. Gesamt-CI nicht bestanden.
+- APK26913432Bytes, SHA25697e190f1c126f247b2d0ecfe61a09b928325a23614fc6a8151b4f5c0cf7ea639. Manifest/Signatur und identische Build-Release-MD geprüft und gemeinsam bereitgestellt.
+- CI-Debugsignatur anders als200088; Update mit bisheriger lokaler Signierung bauen, keine Deinstallation/Datenlöschung. Kein Serverkatalog-Release oder Deployment.
+- Nächster Schritt: bestehendes Widget, Freigaben,1–3s Pause/5s Stille, mehrere Entwürfe, Aliasbestätigung/-löschung, Baustellenwechsel und explizite BTB-Übernahme samt Server-Sync auf Pixel/Poco prüfen. E2E OFFEN.
+
+
 ## AND-SPRACHE-WIDGET-1104 – Auftrag 1–4 bestätigt
 Status: IN ARBEIT. Nutzer: „1-4 bauen“. Basis Android eb3b23be / Server 6ea0d987; BTB-Mikrofon und bestehende Voreinstellungen ausdrücklich BESTÄTIGT und geschützt.
 1. Widget als eigener Aufnahmeweg: auf Startbildschirm bleiben, Start/Stop per Mikrofon, Rot nur bei tatsächlicher Aufnahme, lokale offene Entwürfe des aktiven BTB als separate antippbare Zahl, 0 ausblenden. Kein automatischer Prüfdialog nach Widgetaufnahme. Sichtbarer Mikrofon-Foreground-Service und Stop-Benachrichtigung, Berechtigungen ausdrücklich behandeln. BTB-Ziel beim Start festhalten.
