@@ -1,5 +1,14 @@
 # TB-HELFER 2.0 – MASTERSTATUS
 
+## EXPORT-QUERPRUEFUNG-1104 – belegte Fehler, Korrektur offen (04.11.2026)
+Status: QUELLPRÜFUNG ABGESCHLOSSEN / E2E OFFEN. [Vollständiger Prüfbericht](uebergaben/EXPORT_QUERPRUEFUNG_1104.md).
+- Androidbasis cc1fa7e, Serverbasis 6ea0d98; Auftrag vor Prüfung in 7078325 gesichert. Keine Runtime-/Serveränderung und kein neuer Build.
+- Verlauf-ZIP umgeht GesamtMedien-Bereinigung; Gesamt-XLSX 0/83 vorhandene Bildziele (Tagesliste 9/9); Zeitraum- und Gesamtnummerierung verschieden. Vorherige Exportkorrektur deckt diesen Bedienweg nicht ab.
+- PDF wird als vorhandener Serverabschluss kopiert, Word frisch lokal erzeugt. Aktuelle Gruppierung/Notizregel Android gegen Server weiterhin verschieden; Wettertext im Serverrenderer gekürzt.
+- 22 bestehende kontrollierte Server-Funktionstests und 1 direkt ausgeführter Renderer-Referenztest PASS. Drei Spalten/GPS im aktuellen Renderer nachgewiesen, nicht im älteren Nutzer-PDF. Kein Gradle-/APK-/Geräte-/Live-NAS-Test; installierter Stand ungeklärt.
+- Nächster Schritt: gemeinsamen Android-Exportkern und ein Dateimanifest herstellen; Darstellungsvertrag mit SERVER abgleichen. Kein Original-PDF stillschweigend ersetzen. Fehler bleiben offen.
+
+
 ## AND-APK-1102 – APK gebaut und geprüft
 Status: BUILD BESTANDEN / APK-MANIFEST UND SIGNATUR GEPRÜFT / INSTALLATION UND GERÄTE-E2E OFFEN.
 - Ausdrücklicher Buildauftrag vor Workflow in f1adaca gesichert. Baucommit510779453c85a25cefa2c1c0d886844ba1a41c4d; separater Packaginglauf41501002233, Job125468147229 SUCCESS. assembleDebug BUILD SUCCESSFUL2m31s. Eigener Workflow prüft vor Build unveränderte Android-/Gradlequellen gegen bereits validierten Runtimecommit5291d52 und erfolgreichen Androidjob125458915143. Keine doppelte Unit-/Lint-/Serverprüfung und kein weiterer Versionssprung.
