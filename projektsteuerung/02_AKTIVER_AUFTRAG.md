@@ -1,5 +1,13 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+
+## AND-EXPORT-FIX-1104 – Umsetzung beauftragt
+Status: IN ARBEIT. Nutzerauftrag „bauen und ändern“ nach EXPORT_QUERPRUEFUNG_1104. Basis Android211fa418 / Server6ea0d987.
+- Beide Baustellen-/Verlauf-ZIP-Einstiege erhalten denselben Exportkern auf IO. Gesamtarchiv umfasst alle verfügbaren Baustellenmedien, BTB-Dokumente bleiben im gewählten Zeitraum. Listenpfade entstehen aus demselben finalen Medienplan; Original-/Sync-Zuordnungen verwenden, keine bildähnlichkeitsbasierte Löschung.
+- Roh-Exporter muss ebenfalls konsistente Dateinamen/CSV-/XLSX-Ziele liefern; gültige Abschluss-PDFs schützen, Word als aktuelle lokale Ausgabe kenntlich machen, keine stillschweigende Neuerzeugung des Originals. Scheinprozentanzeige entfernen.
+- Serverbefunde Gruppierung/Kurz+Lang/Wetter/Rendererkennzeichnung als konkreten Auftrag im Android-/Serververtrag sichern; keine server/**-Änderung im Android-Projekt.
+- Gezielte Regressionen, Android Unit/Lint/Kompilierung und APK-Build soweit Toolchain/CI verfügbar. Bei Auslieferung Version1.3.37/200087 und passende Release-MD aus demselben Build; kein Build-Erfolg ohne Nachweis. Keine Geräte-/NAS-Freigabe ableiten, keine produktiven Daten verändern.
+
 ## EXPORT-QUERPRUEFUNG-1104 – belegte Fehler, Korrektur offen (04.11.2026)
 Status: QUELLPRÜFUNG ABGESCHLOSSEN / E2E OFFEN. [Vollständiger Prüfbericht](uebergaben/EXPORT_QUERPRUEFUNG_1104.md).
 - Androidbasis cc1fa7e, Serverbasis 6ea0d98; Auftrag vor Prüfung in 7078325 gesichert. Keine Runtime-/Serveränderung und kein neuer Build.
