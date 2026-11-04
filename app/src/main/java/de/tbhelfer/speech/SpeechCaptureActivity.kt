@@ -11,6 +11,14 @@ import android.os.Build
 import android.os.Bundle
 import android.speech.*
 import android.widget.*
+import android.view.View
+import android.graphics.Color
+import android.content.res.ColorStateList
+import de.tbhelfer.ServiceLocator
+import de.tbhelfer.streckenobjekte.BaustellenObjektLogik
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -29,6 +37,27 @@ import java.util.UUID
 /** Foreground-only capture; recognition output is a draft, never a BTB mutation. */
 class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
     override fun attachBaseContext(newBase: Context) { super.attachBaseContext(RecoveryWorkspace.wrap(newBase)) }
+    companion object {
+        const val EXTRA_SETTINGS = "speechSettings"
+        const val EXTRA_REVIEW = "speechReviewDraft"
+        fun recordingIntent(context: Context, btbId: String? = null, siteId: Long? = null) =
+            Intent(context, SpeechCaptureActivity::class.java).apply {
+                putExtra("auto", true)
+                btbId?.let { putExtra("btb", it) }
+                siteId?.let { putExtra("site", it) }
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+    }
+    private var settingsMode = false
+    private lateinit var heading: TextView
+    private lateinit var microphone: TextView
+    private lateinit var stop: Button
+    private lateinit var review: Button
+    private var stopping = false
+    private var reviewPending = false
+    private var reviewOpened = false
+    private var stopTimeout: Job? = null
+    private var nodeNames = emptyList<Pair<Long, List<String>>>()
     private lateinit var status: TextView
     private lateinit var text: TextView
     private lateinit var start: Button
@@ -63,11 +92,16 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
         .putExtra(RecognizerIntent.EXTRA_LANGUAGE,"de-DE").putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS,true)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if(RecoveryWorkspace.blocked() || SecureTokenStore(this).load().isNullOrBlank()) { finish(); return }
+        if(RecoveryWorkspace.blocked() || SecureTokenStore(this).load().isNullOrBlank()) {
+            startActivity(Intent(this,HauptActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))
+            finish(); return
+        }
+        settingsMode = intent.getBooleanExtra(EXTRA_SETTINGS, false)
         owner=SpeechDraftStore.owner(this)
-        autoRequested=savedInstanceState==null && intent.getBooleanExtra("auto",false)
+        autoRequested=!settingsMode && savedInstanceState==null && intent.getBooleanExtra("auto",false)
         draftId=savedInstanceState?.getString("draft") ?: draftId
         lastText=if(savedInstanceState?.getString("owner")==owner) savedInstanceState?.getString("text").orEmpty() else ""
+        reviewPending=savedInstanceState?.getBoolean("reviewPending") ?: false
         val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(24,24,24,32) }
         val scroll=ScrollView(this).apply { isFillViewport=true; addView(box) };setContentView(scroll)
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
@@ -75,7 +109,13 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
             val keyboard=insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime())
             view.setPadding(bars.left,bars.top,bars.right,maxOf(bars.bottom,keyboard.bottom));insets
         }
-        box.addView(TextView(this).apply { text="Spracheingabe";textSize=24f })
+        box.addView(TextView(this).apply { text=if(settingsMode) "Einstellungen · Spracheingabe" else "Spracheingabe";textSize=24f })
+        heading=TextView(this).apply { text="BTB wird geladen …";textSize=18f;setPadding(0,16,0,16) };box.addView(heading)
+        microphone=TextView(this).apply {
+            text="🎙";textSize=64f;gravity=android.view.Gravity.CENTER
+            contentDescription="Mikrofon · Aufnahme noch nicht gestartet"
+        };box.addView(microphone)
+        if(settingsMode) {
         box.addView(Switch(this).apply { text="Spracheingabe aktivieren";isChecked=SpeechDraftStore.enabled(this@SpeechCaptureActivity)
             setOnCheckedChangeListener { _,v -> SpeechDraftStore.setting(this@SpeechCaptureActivity,"enabled",v);if(!v)stopCapture() } })
         box.addView(Switch(this).apply { text="Online-Erkennung erlauben";isChecked=SpeechDraftStore.online(this@SpeechCaptureActivity)
@@ -86,13 +126,20 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
                     .setPositiveButton("Erlauben") { _,_ -> SpeechDraftStore.setting(this@SpeechCaptureActivity,"online",true) }.show()
                 else { SpeechDraftStore.setting(this@SpeechCaptureActivity,"online",false);stopCapture() }
             } })
-        status=TextView(this).apply { text="Gerät wird geprüft …";setPadding(0,20,0,16) };box.addView(status)
-        text=TextView(this).apply { text=lastText;textSize=18f;setPadding(0,12,0,20) };box.addView(text)
-        fun button(label:String,action:()->Unit)=Button(this).also { it.text=label;it.setOnClickListener { action() };box.addView(it) }
-        start=button("Aufnahme starten") { begin(false) };start.isEnabled=false
-        button("Aufnahme beenden") { recognizer?.stopListening() }
+        }
+        status=TextView(this).apply { text="Aufnahme wird vorbereitet …";textSize=18f;setPadding(0,20,0,16) };box.addView(status)
+        text=TextView(this).apply { text=lastText;textSize=20f;setPadding(0,12,0,20);setTextIsSelectable(true) };box.addView(text)
+        fun button(label:String,action:()->Unit)=Button(this).also {
+            it.text=label;it.isAllCaps=false;it.minHeight=(56*resources.displayMetrics.density).toInt()
+            it.setOnClickListener { action() };box.addView(it)
+        }
+        start=button(if(settingsMode) "Testaufnahme starten" else "Aufnahme starten") { begin(settingsMode) };start.isEnabled=false
+        stop=button("Aufnahme beenden") { finishListening() }
+        stop.backgroundTintList=ColorStateList.valueOf(Color.rgb(180,35,35));stop.setTextColor(Color.WHITE)
+        stop.visibility=View.GONE
+        review=button("Text und Zuordnung prüfen") { openReview() };review.visibility=View.GONE
+        if(settingsMode) {
         button("Gerät erneut prüfen") { checkDevice() }
-        button("Testaufnahme – kein BTB-Eintrag") { begin(true) }
         button("Deutsch-Unterstützung laden") {
             if(Build.VERSION.SDK_INT>=33 && localService() && !busy) {
                 runCatching { (probe ?: SpeechRecognizer.createOnDeviceSpeechRecognizer(this).also { probe=it }).triggerModelDownload(request()) }
@@ -100,31 +147,97 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
                     .onFailure { show("Der Sprachdienst bietet diesen Download nicht an.") }
             } else show("Auf diesem Gerät nicht verfügbar oder Aufnahme läuft.")
         }
-        button("BTB öffnen / Entwürfe bearbeiten") {
-            if(busy)stopCapture()
-            val t=target
-            startActivity(Intent(this,HauptActivity::class.java).apply {
-                putExtra(HauptActivity.EXTRA_NAV_DEST_ID,R.id.bautagebuchFragment)
-                putExtra(HauptActivity.EXTRA_NAV_ARGS,Bundle().apply {
-                    t?.let { putString("btbId",it.btbId);putString("datumIso",it.entry.datumIso);putString("schichtTyp",it.entry.schicht.name) }
-                }); addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            });finish()
+        } else {
+            button("Einstellungen Spracheingabe") {
+                stopCapture()
+                startActivity(Intent(this,SpeechCaptureActivity::class.java).putExtra(EXTRA_SETTINGS,true))
+            }
         }
+        button("BTB öffnen") { openBtb(null) }
         lifecycleScope.launch {
             owner=SpeechDraftStore.owner(this@SpeechCaptureActivity)
-            target=withContext(Dispatchers.IO) { BtbActiveContext.laden(this@SpeechCaptureActivity) }
+            target=withContext(Dispatchers.IO) {
+                val site=intent.getLongExtra("site",-1L)
+                if(site>0L) BtbActiveContext.laden(this@SpeechCaptureActivity,site)
+                else BtbActiveContext.laden(this@SpeechCaptureActivity)
+            }
             val old=savedInstanceState?.getString("btb") ?: intent.getStringExtra("btb")
-            if(old!=null && old!=target?.btbId) {target=null;show("BTB gewechselt. Gesicherte Entwürfe bleiben beim ursprünglichen BTB.")}
-            start.isEnabled=target!=null
+            if(old!=null && old!=target?.btbId) target=null
+            val t=target
+            if(t!=null) {
+                val info=withContext(Dispatchers.IO) {
+                    val root=ServiceLocator.baustellenBaumRepository.hauptNachAltBaustelleId(t.baustelleId)
+                    val nodes=root?.let { ServiceLocator.baustellenBaumRepository.alleKnotenZuRootSofort(it.id) }.orEmpty()
+                    val selected=ServiceLocator.aktuelleBaustelleSpeicher.aktuellerKnotenId.first()
+                    nodeNames=nodes.filter { it.id!=root?.id }.map { node ->
+                        node.id to listOfNotNull(BaustellenObjektLogik.unterbaustellenName(node),node.knotenName,node.gleisOderWeiche)
+                    }
+                    nodes.firstOrNull { it.id==selected && it.id!=root?.id }
+                        ?.let { BaustellenObjektLogik.unterbaustellenName(it) }
+                }
+                heading.text="${t.baustelleName} · ${t.entry.datumIso}\n" +
+                    (info?.let { "Aktuell ausgewählt: $it" } ?: "Unterbaustelle beim Prüfen zuordnen")
+                val restored=SpeechDraftStore.list(this@SpeechCaptureActivity,t.btbId).firstOrNull { it.id==draftId }
+                if(restored!=null) { lastPersisted=true;lastText=restored.text;text.text=lastText }
+            } else {
+                heading.text="Kein passender aktiver BTB\nBitte zuerst einen BTB öffnen."
+                autoRequested=false
+            }
+            updateControls()
             checkDevice()
             startWhenVisible()
+        }
+    }
+    private fun updateControls() {
+        if(!::start.isInitialized)return
+        start.isEnabled=!busy && !preparing && (settingsMode || target!=null)
+        start.visibility=if(busy)View.GONE else View.VISIBLE
+        stop.visibility=if(busy)View.VISIBLE else View.GONE
+        stop.isEnabled=!stopping
+        review.visibility=if(!settingsMode && !busy && lastPersisted)View.VISIBLE else View.GONE
+        microphone.setTextColor(if(busy) Color.rgb(180,35,35) else Color.GRAY)
+        microphone.contentDescription=if(busy) "Mikrofon · Aufnahme läuft" else "Mikrofon · Aufnahme beendet"
+    }
+    private fun openBtb(draft: String?) {
+        val t=target
+        startActivity(Intent(this,HauptActivity::class.java).apply {
+            putExtra(HauptActivity.EXTRA_NAV_DEST_ID,R.id.bautagebuchFragment)
+            putExtra(HauptActivity.EXTRA_NAV_ARGS,Bundle().apply {
+                t?.let { putString("btbId",it.btbId);putString("datumIso",it.entry.datumIso);putString("schichtTyp",it.entry.schicht.name);putLong("baustelleId",it.baustelleId) }
+                draft?.let { putString(EXTRA_REVIEW,it) }
+            })
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        });finish()
+    }
+    private fun openReview() {
+        if(test || settingsMode || !lastPersisted || reviewOpened || target==null)return
+        reviewPending=true
+        if(!lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))return
+        if(owner!=SpeechDraftStore.owner(this) || RecoveryWorkspace.blocked()) {
+            show("Anmeldung geändert. Der ursprüngliche Entwurf bleibt erhalten.");return
+        }
+        reviewOpened=true;reviewPending=false
+        openBtb(draftId)
+    }
+    private fun finishListening() {
+        if(!busy || stopping)return
+        stopping=true;updateControls();show("Aufnahme beendet – Text wird fertiggestellt …")
+        runCatching { recognizer?.stopListening() }
+        stopTimeout?.cancel()
+        stopTimeout=lifecycleScope.launch {
+            delay(4000)
+            if(busy && stopping) {
+                busy=false;stopping=false;recognizer?.cancel();updateControls()
+                if(lastPersisted && !test) openReview()
+                else show("Kein Text gesichert. Bitte erneut aufnehmen.")
+            }
         }
     }
     private fun show(s:String) { if(!isDestroyed) status.text=s }
     private fun checkDevice() {
         if(busy || preparing){show("Aufnahme zuerst beenden.");return}
         val device=localService();offline=if(device)null else false
-        fun report(extra:String) { if(busy || isDestroyed || isFinishing)return;show("${target?.baustelleName ?: "Kein aktiver BTB – nur Testaufnahme"}\n$extra\nRauschfilter vom Gerät angeboten: ${if(NoiseSuppressor.isAvailable()) "ja" else "nein"}. Verarbeitung im Sprachdienst: nicht separat steuerbar.\nMikrofon: ${if(ContextCompat.checkSelfPermission(this,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED) "freigegeben" else "noch nicht freigegeben"}") }
+        fun report(extra:String) { if(busy || isDestroyed || isFinishing || !settingsMode)return;show("${target?.baustelleName ?: "Kein aktiver BTB – nur Testaufnahme"}\n$extra\nRauschfilter vom Gerät angeboten: ${if(NoiseSuppressor.isAvailable()) "ja" else "nein"}. Verarbeitung im Sprachdienst: nicht separat steuerbar.\nMikrofon: ${if(ContextCompat.checkSelfPermission(this,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED) "freigegeben" else "noch nicht freigegeben"}") }
         if(Build.VERSION.SDK_INT>=33 && device) {
             try {
             probe?.destroy();probe=SpeechRecognizer.createOnDeviceSpeechRecognizer(this)
@@ -137,6 +250,7 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
     }
     private fun startWhenVisible() {
         if(!lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))return
+        if(reviewPending){openReview();return}
         val requested=permissionStart
         if(requested!=null){permissionStart=null;begin(requested)}
         else if(autoRequested && target!=null){autoRequested=false;begin(false)}
@@ -151,7 +265,7 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
         lifecycleScope.launch {
             try {
             if(!testOnly) {
-                val active=withContext(Dispatchers.IO){BtbActiveContext.laden(this@SpeechCaptureActivity)}
+                val active=withContext(Dispatchers.IO){BtbActiveContext.laden(this@SpeechCaptureActivity,target!!.baustelleId)}
                 if(active==null || active.btbId!=target?.btbId || owner!=SpeechDraftStore.owner(this@SpeechCaptureActivity) || BtbServerStateStore.state(this@SpeechCaptureActivity,active.btbId)?.readOnly==true || RecoveryWorkspace.blocked()) {
                     show("Kein passender beschreibbarer aktiver BTB. Bitte BTB erneut öffnen.");return@launch
                 }
@@ -161,16 +275,16 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
             val route=SpeechDraftPolicy.route(useLocal,SpeechDraftStore.online(this@SpeechCaptureActivity),connected())
             if(route==SpeechDraftPolicy.Route.BLOCKED){show("Deutsch offline nicht bereit. Für Online-Erkennung Internet und Onlinefreigabe erforderlich.");return@launch}
             if(!useLocal && !runCatching { SpeechRecognizer.isRecognitionAvailable(this@SpeechCaptureActivity) }.getOrDefault(false)){show("Kein Sprachdienst installiert.");return@launch}
-            test=testOnly;lastText="";lastPersisted=false;text.text="";draftId=UUID.randomUUID().toString()
+            test=testOnly;lastText="";lastPersisted=false;text.text="";draftId=UUID.randomUUID().toString();reviewOpened=false;reviewPending=false;stopping=false
             runCatching {
                 recognizer?.destroy()
                 recognizer=if(useLocal && Build.VERSION.SDK_INT>=31)SpeechRecognizer.createOnDeviceSpeechRecognizer(this@SpeechCaptureActivity) else SpeechRecognizer.createSpeechRecognizer(this@SpeechCaptureActivity)
                 recognizer!!.setRecognitionListener(this@SpeechCaptureActivity)
-                busy=true;start.isEnabled=false
+                busy=true;updateControls()
                 recognizer!!.startListening(request())
-                show("${if(test) "Testaufnahme" else "Aufnahme"} · ${if(useLocal) "auf diesem Gerät" else "Sprachdienst online erlaubt"}\nBitte sprechen. Aufnahme endet bei Sprechpause oder Beenden.")
+                show("Mikrofon wird gestartet …")
             }.onFailure { busy=false;start.isEnabled=target!=null;show("Sprachdienst konnte nicht gestartet werden. Bitte erneut prüfen.") }
-            } finally { preparing=false;start.isEnabled=!busy && target!=null }
+            } finally { preparing=false;updateControls() }
         }
     }
     private fun accept(bundle:Bundle?) {
@@ -182,19 +296,43 @@ class SpeechCaptureActivity : AppCompatActivity(), RecognitionListener {
         val t=target ?: return
         val own=owner ?: return
         val (section,firm)=SpeechDraftPolicy.suggest(value,t.entry.firmen.filter{!it.isDeleted}.map{it.firmaId to it.name})
-        lastPersisted=runCatching { SpeechDraftStore.put(this,SpeechDraft(draftId,own,t.baustelleId,t.baustelleName,t.btbId,value,section,firm));true }
+        lastPersisted=runCatching { SpeechDraftStore.put(this,SpeechDraft(draftId,own,t.baustelleId,t.baustelleName,t.btbId,value,section,firm,nodeId=SpeechDraftPolicy.suggestNode(value,nodeNames)));true }
             .getOrDefault(false)
         if(!lastPersisted)show("Text konnte nicht als Entwurf gesichert werden. Bitte Text prüfen und Aufnahme wiederholen.")
     }
-    private fun stopCapture(){ if(busy){busy=false;recognizer?.cancel();start.isEnabled=target!=null;show("Aufnahme beendet. Bereits erkannter Text bleibt als Entwurf erhalten.") } }
-    override fun onResults(results:Bundle?){if(!busy)return;accept(results);busy=false;start.isEnabled=target!=null;show(if(test)"Test beendet – kein BTB-Eintrag. Bitte Erkennung prüfen." else if(lastPersisted) "Als Sprachentwurf gesichert. Im BTB prüfen und ausdrücklich speichern." else "Kein Text gesichert. Bitte erneut aufnehmen oder manuell eingeben.")}
+    private fun stopCapture() {
+        stopTimeout?.cancel()
+        if(busy) {busy=false;stopping=false;recognizer?.cancel();show("Aufnahme unterbrochen. Bereits erkannter Text bleibt als Entwurf erhalten.")}
+        updateControls()
+    }
+    override fun onResults(results:Bundle?) {
+        if(!busy)return
+        accept(results);busy=false;stopping=false;stopTimeout?.cancel();updateControls()
+        if(!test && lastPersisted) openReview()
+        else show(if(test) "Test beendet – kein BTB-Eintrag. Bitte Erkennung prüfen." else "Kein Text gesichert. Bitte erneut aufnehmen.")
+    }
     override fun onPartialResults(partialResults:Bundle?){if(busy)accept(partialResults)}
-    override fun onError(error:Int){if(!busy)return;busy=false;start.isEnabled=target!=null
+    override fun onError(error:Int) {
+        if(!busy)return
+        busy=false;stopping=false;stopTimeout?.cancel();updateControls()
         if(error==SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED || error==SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE)offlineFailed=true
-        show("Erkennung nicht abgeschlossen (Code $error). Bereits erkannter Text bleibt erhalten. Kein automatischer Onlinewechsel.") }
-    override fun onReadyForSpeech(params:Bundle?){};override fun onBeginningOfSpeech(){};override fun onRmsChanged(rmsdB:Float){}
-    override fun onBufferReceived(buffer:ByteArray?){};override fun onEndOfSpeech(){};override fun onEvent(eventType:Int,params:Bundle?){}
+        show("Erkennung nicht abgeschlossen (Code $error). Bereits erkannter Text bleibt erhalten. Kein automatischer Onlinewechsel.")
+        // A partial result is still an editable draft, never an automatically committed entry.
+        if(!test && lastPersisted) openReview()
+    }
+    override fun onReadyForSpeech(params:Bundle?) {
+        if(busy)show(if(test) "Testaufnahme läuft – bitte sprechen" else "Aufnahme läuft – bitte sprechen")
+    }
+    override fun onBeginningOfSpeech(){};override fun onRmsChanged(rmsdB:Float){}
+    override fun onBufferReceived(buffer:ByteArray?){}
+    override fun onEndOfSpeech(){if(busy)finishListening()}
+    override fun onEvent(eventType:Int,params:Bundle?){}
     override fun onStop(){autoRequested=false;stopCapture();super.onStop()}
     override fun onDestroy(){recognizer?.destroy();probe?.destroy();super.onDestroy()}
-    override fun onSaveInstanceState(outState:Bundle){super.onSaveInstanceState(outState);outState.putString("draft",draftId);outState.putString("text",lastText);outState.putString("btb",target?.btbId);outState.putString("owner",owner)}
+    override fun onSaveInstanceState(outState:Bundle){
+        super.onSaveInstanceState(outState)
+        outState.putString("draft",draftId);outState.putString("text",lastText)
+        outState.putString("btb",target?.btbId);outState.putString("owner",owner)
+        outState.putBoolean("reviewPending",reviewPending)
+    }
 }

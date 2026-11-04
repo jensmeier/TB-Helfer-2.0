@@ -33,6 +33,14 @@ object SpeechDraftPolicy {
         val matches = firms.filter { it.second.isNotBlank() && has(n, it.second) }.map { it.first }.distinct()
         return candidates.singleOrNull() to matches.singleOrNull()
     }
+    /** Only a unique explicit place name is proposed; the editor still confirms it. */
+    fun suggestNode(text: String, nodes: List<Pair<Long, List<String>>>): Long? {
+        val n = norm(text)
+        return nodes.filter { (_, names) -> names.any { name ->
+            val key = norm(name)
+            key.length >= 3 && key.any { it in 'a'..'z' } && has(n, name)
+        } }.map { it.first }.distinct().singleOrNull()
+    }
     fun hasDescription(text: String, firmName: String?): Boolean {
         var value = norm(text)
         if (!firmName.isNullOrBlank()) value = (" $value ").replace(" ${norm(firmName)} ", " ").trim()
@@ -66,3 +74,4 @@ object SpeechDraftPolicy {
         else -> Route.BLOCKED
     }
 }
+

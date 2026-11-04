@@ -73,7 +73,7 @@
         <activity android:name=".speech.SpeechCaptureActivity" android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <receiver android:name=".speech.SpeechWidgetProvider" android:exported="false" android:label="@string/speech_widget">
-            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /><action android:name="android.intent.action.MY_PACKAGE_REPLACED" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/speech_widget_info" />
         </receiver>
 
@@ -128,3 +128,4 @@
     </application>
 
 </manifest>
+

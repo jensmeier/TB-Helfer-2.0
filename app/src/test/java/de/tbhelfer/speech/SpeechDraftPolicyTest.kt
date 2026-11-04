@@ -82,4 +82,20 @@ class SpeechDraftPolicyTest {
             assertTrue(SpeechDraftPolicy.contains(updated,item.clientEntryKey!!))
         }
     }
+    @Test fun `eindeutige unterbaustelle mit mehreren aliasen`() {
+        val nodes=listOf(11L to listOf("Bahnhof MBG – W 99W44","W 99W44"),12L to listOf("W 99W36"))
+        assertEquals(11L,SpeechDraftPolicy.suggestNode("Weichenmontage Bahnhof MBG W 99W44",nodes))
+        assertNull(SpeechDraftPolicy.suggestNode("W 99W44 und W 99W36",nodes))
+        assertNull(SpeechDraftPolicy.suggestNode("W 99W440",nodes))
+    }
+    @Test fun `mehrdeutige und numerische ortsnamen bleiben offen`() {
+        assertNull(SpeechDraftPolicy.suggestNode("MBG",listOf(1L to listOf("MBG"),2L to listOf("MBG"))))
+        assertNull(SpeechDraftPolicy.suggestNode("123",listOf(1L to listOf("123"))))
+        assertNull(SpeechDraftPolicy.suggestNode("Arbeiten hier",listOf(1L to listOf("", "  "))))
+    }
+    @Test fun `ortsvergleich normalisiert umlaute und satzzeichen`() {
+        assertEquals(7L,SpeechDraftPolicy.suggestNode("am MÜHLEN-WEG gearbeitet",listOf(7L to listOf("Mühlen Weg"))))
+        assertNull(SpeechDraftPolicy.suggestNode("Woanders gearbeitet",listOf(7L to listOf("Mühlen Weg"))))
+    }
 }
+

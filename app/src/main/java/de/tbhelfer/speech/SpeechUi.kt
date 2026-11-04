@@ -1,6 +1,6 @@
 package de.tbhelfer.speech
 
-import android.content.Intent
+import android.graphics.Color
 import android.view.View
 import android.widget.*
 import androidx.fragment.app.Fragment
@@ -56,7 +56,7 @@ object SpeechUi {
             fragment.viewLifecycleOwner.lifecycleScope.launch {
                 val t=target()
                 if(t==null){Toast.makeText(c,"Bitte zuerst einen BTB öffnen",Toast.LENGTH_LONG).show();return@launch}
-                fragment.startActivity(Intent(c,SpeechCaptureActivity::class.java).putExtra("btb",t.btbId).putExtra("auto",true))
+                fragment.startActivity(SpeechCaptureActivity.recordingIntent(c,t.btbId,t.baustelleId))
             }
         }
         fragment.viewLifecycleOwner.lifecycleScope.launch {
@@ -65,6 +65,11 @@ object SpeechUi {
                     val t=target()
                     val firms=t?.entry?.firmen?.filter{!it.isDeleted}?.map{it.firmaId}.orEmpty().toSet()
                     val drafts=if(t==null)emptyList() else withContext(Dispatchers.IO){SpeechDraftStore.list(c,t.btbId)}
+                    val reviewId=fragment.arguments?.getString(SpeechCaptureActivity.EXTRA_REVIEW)
+                    drafts.firstOrNull { it.id==reviewId }?.let { draft ->
+                        fragment.arguments?.remove(SpeechCaptureActivity.EXTRA_REVIEW)
+                        edit(fragment,draft,target,commit)
+                    }
                     val groups=drafts.groupBy { SpeechDraftPolicy.bucket(it.copy(firmId=it.firmId?.takeIf { id -> id.isEmpty() || id in firms })) }
                     fun badge(id:Int,section:Int?) {
                         val b=root.findViewById<Button>(id);val count=groups[section]?.size ?: 0
@@ -90,29 +95,40 @@ object SpeechUi {
             }
             val box=LinearLayout(c).apply{orientation=LinearLayout.VERTICAL;setPadding(24,8,24,16)}
             val scroll=ScrollView(c).apply { isFillViewport=true;addView(box) }
-            fun label(s:String){box.addView(TextView(c).apply{text=s;setPadding(0,16,0,4)})}
+            fun label(s:String)=TextView(c).apply{text=s;setPadding(0,16,0,4)}.also{box.addView(it)}
             fun spinner(values:List<String>,selected:Int):Spinner=Spinner(c).also {
                 it.adapter=ArrayAdapter(c,android.R.layout.simple_spinner_dropdown_item,values);it.setSelection(selected.coerceAtLeast(0));box.addView(it)
             }
+            label("${t.baustelleName} · ${t.entry.datumIso}")
             label("Text")
             val input=EditText(c).apply{setText(draft.text);minLines=3;inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE}
             box.addView(input)
-            label("Firma")
+            val firmLabel=label("Firma")
             val firmIds=listOf<String?>(null,"")+firms.map{it.firmaId}
             val firm=spinner(listOf("Firma wählen","Allgemein – bewusst ohne Firma")+firms.map{it.name},firmIds.indexOf(draft.firmId))
-            label("BTB-Punkt")
+            val sectionLabel=label("BTB-Punkt")
             val points=listOf<Int?>(null)+SpeechDraftPolicy.sections.keys
             val section=spinner(listOf("Abschnitt wählen")+SpeechDraftPolicy.sections.map{"${it.key}. ${it.value}"},points.indexOf(draft.section))
-            label("Unterbaustelle")
+            val placeLabel=label("Unterbaustelle")
             val places=listOf<Long?>(null,0L)+nodes.map{it.id}
             val place=spinner(listOf("Unterbaustelle wählen","Hauptbaustelle")+nodes.map{BaustellenObjektLogik.unterbaustellenName(it).orEmpty().ifBlank{"Ort ${it.id}"}},places.indexOf(draft.nodeId))
-            val hint=TextView(c).apply{text="Entwurf bleibt bis zum Speichern nur auf diesem Handy. Zeit und KM werden nicht geraten.";setPadding(0,16,0,8)};box.addView(hint)
+            val hint=TextView(c).apply{text="Entwurf bleibt bis zur Übernahme nur auf diesem Handy. Zeit und KM werden nicht geraten.";setPadding(0,16,0,8)};box.addView(hint)
             val discard=Button(c).apply{text="Entwurf verwerfen"};box.addView(discard)
             var finished=false
             var saving=false
-            val dialog=MaterialAlertDialogBuilder(c).setTitle("Spracheingabe bearbeiten").setView(scroll)
-                .setNegativeButton("Schließen",null).setPositiveButton("Speichern",null).create()
+            val dialog=MaterialAlertDialogBuilder(c).setTitle("Spracheingabe prüfen").setView(scroll)
+                .setNegativeButton("Später prüfen",null).setPositiveButton("Ins BTB übernehmen",null).create()
             fun edited()=draft.copy(text=input.text.toString().take(12000),firmId=firmIds[firm.selectedItemPosition],section=points[section.selectedItemPosition],nodeId=places[place.selectedItemPosition])
+            fun assignmentStatus() {
+                fun mark(label:TextView,name:String,assigned:Boolean) {
+                    label.text="$name · ${if(assigned) "Zugeordnet – bitte prüfen" else "Zuordnung offen"}"
+                    label.setTextColor(if(assigned) Color.rgb(20,110,45) else Color.rgb(180,35,35))
+                }
+                mark(firmLabel,"Firma",firmIds[firm.selectedItemPosition]!=null)
+                mark(sectionLabel,"BTB-Punkt",points[section.selectedItemPosition]!=null)
+                mark(placeLabel,"Unterbaustelle",places[place.selectedItemPosition]!=null)
+            }
+            assignmentStatus()
             fun keep(){if(!finished && !saving)runCatching{SpeechDraftStore.put(c,edited())}.onFailure{hint.text="Änderungen nicht gesichert. Ursprünglicher Entwurf bleibt erhalten."}}
             input.addTextChangedListener(object:android.text.TextWatcher{
                 override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
@@ -120,7 +136,7 @@ object SpeechUi {
                 override fun afterTextChanged(s:android.text.Editable?){}
             })
             val selection=object:AdapterView.OnItemSelectedListener{
-                override fun onItemSelected(parent:AdapterView<*>?,view:View?,position:Int,id:Long){keep()}
+                override fun onItemSelected(parent:AdapterView<*>?,view:View?,position:Int,id:Long){assignmentStatus();keep()}
                 override fun onNothingSelected(parent:AdapterView<*>?){}
             }
             listOf(firm,section,place).forEach{it.onItemSelectedListener=selection}
@@ -152,3 +168,4 @@ object SpeechUi {
         }
     }
 }
+
