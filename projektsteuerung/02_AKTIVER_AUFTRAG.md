@@ -1,6 +1,14 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
 
+## AND-SPRACHE-UX-1104 – bestätigter Aufnahme-/Prüfablauf
+Status: IN ARBEIT. Nutzer bestätigt „okay bauen“ nach dem Zwei-Ansichten-Vorschlag. Basis Android5922cec / Server6ea0d987.
+- Widget und BTB-Mikrofon öffnen direkt die Aufnahme für den passenden aktiven BTB; bei fehlendem Ziel verständlicher Hinweis/BTB öffnen. Keine stille Rückkehr auf letzte App-Seite.
+- Aufnahmeansicht: Baustelle/Datum/Ziel, großes rotes Mikrofon mit Aufnahmezustand, erkannter Text, großer Beenden-Knopf. Anschließend direkt bestehende sichere Entwurfsprüfung mit änderbarem Text, Kategorie, Firma, Unterbaustelle; grün zugeordnet/rot offen, immer mit Textkennzeichnung. „Ins BTB übernehmen“ erst nach OK, „Später prüfen“ erhält Entwurf.
+- Technische Sprachoptionen, Onlinefreigabe, Deutschmodell und Testaufnahme bleiben separat unter Einstellungen. Keine stillschweigende Onlinefreigabe, keine Aufnahme bei gesperrtem/falschem BTB, keine Audioablage. Bestehende Rechte-, Entwurfs-, Abschluss-/Sync-Gates schützen.
+- Android-Implementierung/Regressionen, Unit/Lint und gezielter APK-Build1.3.38/200088 mit Begleitdatei aus demselben Build. Keine server/**-Änderung. Geräteprüfung nur bestätigen, wenn wirklich ausgeführt; ADB/Emulator derzeit nicht vorhanden.
+
+
 ## AND-EXPORT-FIX-1104 – Android umgesetzt und gebaut, Server/E2E offen
 Status: QUELLSTAND FERTIG / UNIT UND LINT BESTANDEN / APK-BUILD BESTANDEN / GESAMT-CI ROT / E2E OFFEN.
 - [Umsetzung und Nachweise](uebergaben/AND_EXPORT_FIX_1104.md). Auftrag318897e, Vertragd8eab0d, Baucommit9b0571cf5e745179421e987d35a622544e4064c6; Version1.3.37/200087. Server6ea0d987 unverändert.
