@@ -1,5 +1,15 @@
 # TB-HELFER 2.0 – CHAT CHECKPOINT
 
+## AND-SPEECH-UI-1104 – direkte Aufnahme und Prüfung gebaut (04.11.2026)
+Status: QUELLSTAND FERTIG / UNIT UND LINT BESTANDEN / BUILD BESTANDEN / GESAMT-CI ROT / E2E OFFEN.
+- [Umsetzung, Nachweise und Geräteprüfplan](uebergaben/AND_SPEECH_UI_1104.md). Auftrag 8f196209, Baucommit 35241401a698744fd4b6d0d557df844687fc615b; Android 1.3.38 / 200088. Server 6ea0d987 unverändert.
+- Widget und BTB-Mikrofon öffnen direkte Aufnahme; technische Einstellungen separat. Anschließend konkreten lokalen Entwurf prüfen, Text/Firma/Punkt/Ort bearbeiten und ausdrücklich übernehmen. Vorhandene Rechte-/Lifecycle-/Outbox-/Speicherschutzprüfungen erhalten.
+- CI 41823796209, Androidjob 126553273851 SUCCESS: 154 JVM-Tests (darunter 16 SpeechDraftPolicy), 0 Fehler/übersprungen; Lint 0 Error/Fatal und 388 Warning; assembleDebug bestanden. Quellvertragsjob 126553273292 weiterhin FAILURE bei bekannten Checks 13/19/83/85/86. Gesamt-CI nicht bestanden.
+- APK/Release-MD aus demselben Build gemeinsam bereitgestellt und SHA256-Zuordnung geprüft. APK SHA256 58e6be201841fad4b0fc7f16d3bb26f7d1f5806fc649c6d37ab4296ddc07f985; 26878972 Bytes; Manifest de.tbhelfer / 1.3.38 / 200088.
+- CI-Debugsignatur erneut anders als voriger CI-Build; bestehende lokale Signierung für Update verwenden. Keine Deinstallation oder Datenlöschung. Keine Installation, Pixel-/Poco-Aufnahme oder Live-Android-Server-E2E bestätigt.
+- Nächster Schritt: bestehendes Widget nach Update, BTB-Mikrofon, Berechtigungen/offline, Stop/Sprechpause, Später prüfen/Unterbrechung und genau einmalige Übernahme samt Server-Sync am Gerät prüfen. Export-/Serverrenderer-Befunde bleiben separat offen.
+
+
 
 ## AND-EXPORT-FIX-1104 – Android umgesetzt und gebaut, Server/E2E offen
 Status: QUELLSTAND FERTIG / UNIT UND LINT BESTANDEN / APK-BUILD BESTANDEN / GESAMT-CI ROT / E2E OFFEN.
@@ -862,3 +872,4 @@ Während der Prüfung kamen unabhängige Sync-Dokumentationscommits hinzu: Andro
 - Empfehlung: bestehende gemeinsame Achse/Quelle eindeutig per UUID/Hash/Version binden; manuelle KM-Änderung mit eigenen stabilen IDs/Ankern/Genauigkeit dauerhaft vormerken; gezielt/versioniert senden, Konflikte sichtbar, gemeinsame Katalog-/Netzfeeds empfangen. Originale unverändert, manuellOrange/importiertGrün. Keine weitere parallele Streckendatenablage. Details: [TRACK_KM_1103.md](uebergaben/TRACK_KM_1103.md).
 - Vollständiger Umfang, Grenzen, Nachweise und spätere NAS-Dateiliste: [SYNC_FIX_1103.md](uebergaben/SYNC_FIX_1103.md). Mängel-/Abnahme-/Streckendaten-Deltaerweiterung, Mediennachlauf, Push und Konflikt-Zusammenführungsansicht bleiben Folgeblöcke. Echte PostgreSQL-/Postman-/Pixel-/Poco-/NAS-/Schlafmodus-/Offline-/Zwei-Geräte-E2E OFFEN. Status QUELLSTAND DES SCHUTZBLOCKS FERTIG / LOKALE PRÜFUNGEN UND ANDROID BUILD-UNIT-LINT BESTANDEN / GESAMT-CI NICHT BESTANDEN / DEPLOY OFFEN / E2E OFFEN.
 - Status-Excel-Nachtrag OFFEN: binärer Connectorabruf nicht als XLSX verifizierbar, direkter Blobabruf nicht-UTF8 abgewiesen. Original nicht überschrieben; daraus keine Beschädigung der Originaldatei behauptet. Markdownstatus gesichert.
+
