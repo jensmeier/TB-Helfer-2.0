@@ -1,5 +1,9 @@
 # TB-HELFER 2.0 – ANDROID/SERVER VERTRAG
 
+## EXPORT-1104 – Darstellungsabgleich / SERVER-Umsetzung offen
+Auftrag „bauen und ändern“ vom 04.11.2026. Android-Gruppierung bleibt Referenz: gleiche Firma/Unterbaustelle/Beschreibung zu einem Zeit-/KM-Bereich zusammenfassen; keine zusätzliche Fünf-Minuten-Trennung auf dem Server. Kurztext plus abweichenden Langtext im BTB erhalten. Wetterwerte vollständig umbrechen, keine Ellipse. Bestehende maxFotosInPdf-/Personenauswahl nicht neu erfinden; maximal drei Karten pro Reihe und GPS-Links erhalten. Vollständige Ortsangaben und Dateigröße gemäß bestehender Kartenspezifikation. Rendererstand eindeutig nachvollziehbar machen. SERVER-Projekt zuständig; hier keine Änderung von server/** oder API-Payload. Gespeichertes erstes Original schützen; alte Abschluss-PDFs nicht bei GET stillschweigend neu erzeugen.
+Android korrigiert gemeinsames Export-Routing und konsistente Archivverweise. Gesamtmedienarchiv liefert alle verfügbaren Baustellenmedien, gewählter Zeitraum grenzt BTB-Dokumente ein. Ein lokaler Word-Stand ist kein Nachweis desselben unveränderlichen Serverabschluss-Snapshots. Serverumsetzung und Live-Abgleich bleiben OFFEN.
+
 ## AND-ABSCHLUSS-1102 – technische Validierung abgeschlossen, Gerätetest offen
 Status: QUELLSTAND FERTIG / KOTLIN- UND UNIT-PRÜFUNG BESTANDEN / ANDROID-LINT BESTANDEN / GESAMT-CI ROT / E2E OFFEN.
 - Geprüfter Runtimecommit5291d522a5cb7a8826d7d9190545ed3005d04b12. Ein gezielter Android-CI-Lauf41498293472, Androidjob125458915143 SUCCESS. testDebugUnitTest inkl. Kotlin-/KSP-/Java-Kompilierung BUILD SUCCESSFUL6m04s; lintDebug BUILD SUCCESSFUL1m40s. Kein assemble/APK-Build.
