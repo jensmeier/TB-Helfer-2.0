@@ -1,5 +1,13 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## AND-SPRACHE-FELDER-1104 – Bauauftrag bestätigt (04.11.2026)
+Status: IN ARBEIT. Nutzer „Bauen“. Basis Android2314b017 / Server6ea0d987, PR11/6 offen.
+- Gesprochene Kopfzeile mit Firma, BTB-Punkt4–8, Uhrzeit/Bereich und Kilometer/Bereich erkennen; Beispiel Firma pittrich, Besonderheiten13–15Uhr, Kilometer13.800 bis13,900, Beschreibung.
+- Bearbeitbare Zeit-/KM-Felder vor ausdrücklicher Übernahme; nur eindeutige Werte vorbelegen, unklare Angaben sichtbar erhalten. Originaltext lokal zur Kontrolle aufbewahren. Optionales „Text:“ trennt Kopf und Beschreibung.
+- Typische Abschnittsfehler wie „Besondenheiten“ berücksichtigen; explizite Abschnittsangabe vor Tätigkeit im Beschreibungstext. Firma ausschließlich gegen aktive BTB-Firmen/Aliasse, Unterbaustelle weiterhin bewusst zuordnen.
+- Bestehende uhrzeit/uhrzeitBis/kmVon/kmBis über geschützten BTB-Übernahmepfad verwenden. Kein neuer Serververtrag, keine server/**-Änderung. Bestätigte Aufnahme-/Widget-/Einstellungsabläufe und vorhandene Entwürfe schützen. Benachrichtigungspunkt bleibt unverändert.
+- Zielrelease1.3.40/200090 mit gemeinsam gebauter APK/Release-MD. Unit-/Lint-/Build-Nachweise getrennt von offenen Geräte-/Server-E2E-Prüfungen, bekannte CI-Quellvertragsfehler nicht abschwächen.
+
 ## AND-SPRACHE-WIDGET-1104 – Punkte1–4 umgesetzt und gebaut (04.11.2026)
 Status: QUELLSTAND FERTIG / UNIT UND LINT BESTANDEN / BUILD BESTANDEN / GESAMT-CI ROT / E2E OFFEN.
 - [Umsetzung, Grenzen, Nachweise und Geräteprüfplan](uebergaben/AND_SPRACHE_WIDGET_1104.md). Auftrag ae343199; Baucommit fff93819607d313bc664d0c8dc62939e4cec86dc; Version1.3.39/200089. Server6ea0d987 unverändert.
