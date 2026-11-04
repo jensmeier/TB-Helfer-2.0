@@ -3,6 +3,9 @@
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -70,6 +73,8 @@
                 android:resource="@xml/dateipfade" />
         </provider>
 
+        <service android:name=".speech.SpeechWidgetService" android:exported="false" android:foregroundServiceType="microphone" android:stopWithTask="true" />
+        <activity android:name=".speech.SpeechWidgetActivity" android:exported="false" android:excludeFromRecents="true" android:taskAffinity="de.tbhelfer.speechwidget" />
         <activity android:name=".speech.SpeechCaptureActivity" android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <receiver android:name=".speech.SpeechWidgetProvider" android:exported="false" android:label="@string/speech_widget">
@@ -128,4 +133,5 @@
     </application>
 
 </manifest>
+
 

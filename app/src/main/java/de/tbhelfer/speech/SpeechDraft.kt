@@ -24,15 +24,9 @@ object SpeechDraftPolicy {
         .replace(Regex("\\p{M}+"), "").replace("ß", "ss").replace(Regex("[^a-z0-9]+"), " ").trim()
     private fun has(text: String, word: String) = (" $text ").contains(" ${norm(word)} ")
     fun suggest(text: String, firms: List<Pair<String, String>>): Pair<Int?, String?> {
-        val n = norm(text)
-        val candidates = linkedMapOf(
-            4 to listOf("arbeiten", "schwellenwechsel", "schwellen gewechselt", "schwellen getauscht", "weichenmontage"),
-            5 to listOf("abnahme", "abnahmen"), 6 to listOf("einweisung", "unterweisung"),
-            7 to listOf("besonderheit", "besonderheiten"), 8 to listOf("mangel", "mängel", "schaden", "schäden")
-        ).filterValues { words -> words.any { has(n, it) } }.keys
-        val matches = firms.filter { it.second.isNotBlank() && has(n, it.second) }.map { it.first }.distinct()
-        return candidates.singleOrNull() to matches.singleOrNull()
+        return SpeechMatching.section(text) to SpeechMatching.firm(text,firms)?.id
     }
+
     /** Only a unique explicit place name is proposed; the editor still confirms it. */
     fun suggestNode(text: String, nodes: List<Pair<Long, List<String>>>): Long? {
         val n = norm(text)
@@ -74,4 +68,5 @@ object SpeechDraftPolicy {
         else -> Route.BLOCKED
     }
 }
+
 

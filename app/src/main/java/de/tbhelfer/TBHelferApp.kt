@@ -48,6 +48,7 @@ class TBHelferApp : Application() {
 
         ServiceLocator.initialisieren(this)
         ServerConfig.initialize(this)
+        de.tbhelfer.speech.SpeechWidgetProvider.install(this)
 
         // Nachtmodus früh anwenden (damit die App direkt korrekt startet)
         // Wichtig: kein runBlocking/DataStore-IO im App-Start.
@@ -109,6 +110,7 @@ class TBHelferApp : Application() {
             }
 
             override fun onActivityResumed(activity: Activity) {
+                de.tbhelfer.speech.SpeechWidgetProvider.refresh(this@TBHelferApp)
                 foregroundActivity = java.lang.ref.WeakReference(activity)
                 if (redirectRecovery(activity) || activity is de.tbhelfer.server.recovery.RecoveryActivity) return
 
@@ -146,6 +148,7 @@ class TBHelferApp : Application() {
         }
     }
 }
+
 
 
 

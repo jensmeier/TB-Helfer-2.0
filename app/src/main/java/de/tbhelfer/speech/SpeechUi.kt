@@ -65,6 +65,13 @@ object SpeechUi {
                     val t=target()
                     val firms=t?.entry?.firmen?.filter{!it.isDeleted}?.map{it.firmaId}.orEmpty().toSet()
                     val drafts=if(t==null)emptyList() else withContext(Dispatchers.IO){SpeechDraftStore.list(c,t.btbId)}
+                    if(t!=null && fragment.arguments?.getBoolean(SpeechWidgetActivity.EXTRA_LIST)==true) {
+                        fragment.arguments?.remove(SpeechWidgetActivity.EXTRA_LIST)
+                        if(drafts.isEmpty())Toast.makeText(c,"Keine offenen Sprachentwürfe",Toast.LENGTH_SHORT).show()
+                        else MaterialAlertDialogBuilder(c).setTitle("Sprachentwürfe prüfen")
+                            .setItems(drafts.map { it.text.take(90) }.toTypedArray()) { _,i -> edit(fragment,drafts[i],target,commit) }
+                            .setNegativeButton("Später",null).show()
+                    }
                     val reviewId=fragment.arguments?.getString(SpeechCaptureActivity.EXTRA_REVIEW)
                     drafts.firstOrNull { it.id==reviewId }?.let { draft ->
                         fragment.arguments?.remove(SpeechCaptureActivity.EXTRA_REVIEW)
@@ -113,6 +120,25 @@ object SpeechUi {
             val places=listOf<Long?>(null,0L)+nodes.map{it.id}
             val place=spinner(listOf("Unterbaustelle wählen","Hauptbaustelle")+nodes.map{BaustellenObjektLogik.unterbaustellenName(it).orEmpty().ifBlank{"Ort ${it.id}"}},places.indexOf(draft.nodeId))
             val hint=TextView(c).apply{text="Entwurf bleibt bis zur Übernahme nur auf diesem Handy. Zeit und KM werden nicht geraten.";setPadding(0,16,0,8)};box.addView(hint)
+            val remember=Button(c).apply { text="Firmen-Schreibweise merken" };box.addView(remember)
+            remember.setOnClickListener {
+                val id=firmIds[firm.selectedItemPosition]
+                val selected=firms.firstOrNull { it.firmaId==id }
+                if(selected==null){hint.text="Bitte zuerst die richtige Firma auswählen.";return@setOnClickListener}
+                val names=firms.map { it.firmaId to it.name }
+                val proposed=SpeechMatching.firm(draft.text,names)?.takeIf { it.id==id }?.heard.orEmpty()
+                val alias=EditText(c).apply { hint="Falsch erkannter Firmenname, z. B. Pit rich";setText(proposed) }
+                val confirmation=MaterialAlertDialogBuilder(c).setTitle("Schreibweise für ${selected.name}")
+                    .setMessage("Welche erkannte Schreibweise soll künftig dieser Firma zugeordnet werden? Gilt nur für diese Baustelle und deine Anmeldung auf diesem Handy.")
+                    .setView(alias).setNegativeButton("Abbrechen",null).setPositiveButton("Zuordnung merken",null).create()
+                confirmation.setOnShowListener {
+                    confirmation.getButton(-1).setOnClickListener {
+                        runCatching { SpeechAliasStore.remember(c,draft.owner,draft.siteId,selected.firmaId,alias.text.toString(),names) }
+                            .onSuccess { hint.text="Schreibweise für ${selected.name} bestätigt und gemerkt.";confirmation.dismiss() }
+                            .onFailure { alias.error="Bitte eindeutige Firmen-Schreibweise eingeben; keine Abschnittsbezeichnung." }
+                    }
+                };confirmation.show()
+            }
             val discard=Button(c).apply{text="Entwurf verwerfen"};box.addView(discard)
             var finished=false
             var saving=false
@@ -152,7 +178,7 @@ object SpeechUi {
                     val d=edited();val point=d.section;val node=d.nodeId
                     if(point==null || node==null || d.firmId==null || !SpeechDraftPolicy.hasDescription(d.text, firms.firstOrNull{it.firmaId==d.firmId}?.name)){hint.text="Bitte Text, Firma/Allgemein, Abschnitt und Unterbaustelle auswählen.";return@setOnClickListener}
                     if(saving)return@setOnClickListener
-                    saving=true;dialog.getButton(-1).isEnabled=false;discard.isEnabled=false
+                    saving=true;dialog.getButton(-1).isEnabled=false;discard.isEnabled=false;remember.isEnabled=false
                     dialog.setCancelable(false);dialog.getButton(-2).isEnabled=false
                     fragment.viewLifecycleOwner.lifecycleScope.launch {
                         try {
@@ -160,7 +186,7 @@ object SpeechUi {
                             SpeechDraftStore.remove(c,d);finished=true;dialog.dismiss()
                         } catch(cancelled:kotlinx.coroutines.CancellationException){throw cancelled}
                         catch(_:Exception){hint.text="Nicht übernommen. BTB, Rechte und Verbindung zum lokalen Speicher erneut prüfen. Entwurf bleibt erhalten."}
-                        finally {saving=false;dialog.setCancelable(true);dialog.getButton(-1)?.isEnabled=true;dialog.getButton(-2)?.isEnabled=true;discard.isEnabled=true}
+                        finally {saving=false;dialog.setCancelable(true);dialog.getButton(-1)?.isEnabled=true;dialog.getButton(-2)?.isEnabled=true;discard.isEnabled=true;remember.isEnabled=true}
                     }
                 }
             }
@@ -168,4 +194,5 @@ object SpeechUi {
         }
     }
 }
+
 

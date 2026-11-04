@@ -21,9 +21,11 @@ object TBHelferWidgetUpdater {
         pendingJob?.cancel()
         pendingJob = scope.launch {
             delay(1_200L)
+            de.tbhelfer.speech.SpeechWidgetProvider.refresh(app)
             val manager = AppWidgetManager.getInstance(app)
             val ids = manager.getAppWidgetIds(ComponentName(app, CurrentSiteWidgetProvider::class.java))
             if (ids.isNotEmpty()) CurrentSiteWidgetProvider.updateWidgets(app, manager, ids)
         }
     }
 }
+
