@@ -1,5 +1,14 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## AND-FOTO-SYNC-1106 – Ursachenprüfung und gezielte Korrektur beauftragt
+
+Nutzerauftrag 06.11.2026: zuerst klären, warum eigene Fotos vom Server erneut heruntergeladen werden; Fehler suchen und belegen, dann beheben. Bei uneindeutigen Bestandskonflikten Vorschläge statt automatischer Datenlöschung.
+- Basis Android f82aedc0 / Server 6ea0d987. Bekannter Quellbefund: Voll- und Delta-Dateiabgleich akzeptieren bei Bildern nur `_mobile_preview.jpg`, obwohl der eigene Upload eine vorhandene lokale Sync-Datei speichert. Zuordnung Server-ID/lokales Foto und Import getrennt untersuchen.
+- Ziel: vorhandene eigene Aufnahme zuverlässig verwenden; Portal-/Helferbilder weiter als kleine Vorschau herunterladen; Metadaten-/BTB-/Offline-/Recovery-Schutz erhalten. Keine Zusammenführung nach ähnlichem Bild, Text oder Uhrzeit.
+- Umfang zunächst Android-Mediensync und gezielte Regressionstests. Kein Server-/Produktivdatenumbau, keine Löschung und kein Versions-/APK-Auftrag aus dieser Prüfung ableiten. Foto-Share-/Widget-Crashes und ZIP-Ursache bleiben separate offene Befunde.
+- Status: IN ARBEIT. Noch kein neuer Test-/Build-/Gerätenachweis.
+
+
 ## Pixel-Logcat06.11.2026 – zwei Laufzeitfehler bestätigt
 Status: URSACHEN TEILWEISE BESTÄTIGT / NICHT BEHOBEN.
 - Nutzerprotokoll Google-Pixel-8-Android-17_2026-11-06_144127.logcat gelesen:8262 Meldungen. Rohlog nicht ins Repository übernehmen.
