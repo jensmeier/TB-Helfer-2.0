@@ -1,5 +1,8 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## AND-APK-1106 – ausdrücklicher Buildauftrag
+06.11.2026: Nutzer „bauen“. APK 1.3.41/200091 samt passender Release-MD aus geprüftem Foto-/Share-/Widget-Stand erstellen und gemeinsam bereitstellen. Basis Android d447e5a4778bbba32b739c57802ae4bfbfb9734e, Server 6ea0d987 unverändert. Ein gezielter Android-CI-Build mit Unit/Lint/assemble und Manifest-/Signaturprüfung; keine Serveränderung, Veröffentlichung oder Installation. Bekannte fünf Quellvertragsfehler bleiben sichtbar; Pixel/Poco und Verlauf-ZIP E2E offen. Status IN ARBEIT.
+
 ## AND-FOTO-1106 – Sync validiert, Teilen/Receiver korrigiert
 Status: QUELLSTAND FERTIG / KOMPILIERUNG-UNIT-LINT BESTANDEN / GESAMT-CI ROT / GERÄTE-E2E OFFEN.
 - Vorhandene Foto-Sync-Korrektur0b1951a0 geprüft; zusätzliche Korrekturca780326: interne Bilder sicher über begrenzten Share-Cache teilen/öffnen, Mehrfachteilen und Foto-Auswahl-ZIP mit Fehlerbehandlung. Android-Application behält System-Basiskontext; bestehende Recovery-Speicherumleitung bleibt durch gezielte Delegation erhalten.
