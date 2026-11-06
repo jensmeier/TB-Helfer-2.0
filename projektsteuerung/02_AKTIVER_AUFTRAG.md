@@ -1,5 +1,8 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## AND-FOTO-SHARE-ZIP-1106 – Fortsetzung der Fehlerbehebung
+Nutzerauftrag: prüfen, Fehler beheben und bei Konflikten Vorschläge machen. Basis Android0b1951a0 / Server6ea0d987. Vorhandene Foto-Sync-Korrektur überprüfen und technisch validieren. Belegte Foto-Teilen-/Öffnen-Abstürze durch begrenzten Share-Cache mit IO-Staging und Fehlerbehandlung korrigieren. Application-Systemkontext erhalten, private Recovery-Speicherzugriffe weiter auf dieselbe Generation umleiten; keine Bestandsmigration. ZIP-Pfade auf denselben Freigabefehler prüfen. Keine automatische Dublettenlöschung oder Zuordnungsrekonstruktion nach Ähnlichkeit. Unit-/Lint-Prüfung vorgesehen; kein APK-/Versions-/Server-/Deploymentauftrag. Geräteprüfung bleibt getrennt offen.
+
 ## AND-FOTO-SYNC-1106 – Korrektur zur Prüfung
 Status: QUELLSTAND FERTIG / SOURCE-CHECK BESTANDEN / UNIT-LINT-CI OFFEN / E2E OFFEN.
 - Auftrag77121b60, vertiefter Befund28bfb6aa. Android-Mediensync verwendet vorhandene Dateien über stabile BTB-/Baustellen-/Teamzuordnung oder geprüften Datei-SHA256; Vollabgleich und FILE-Delta nutzen denselben Resolver. Fehlende Portal-/Helferbilder bleiben Preview-Downloads.
