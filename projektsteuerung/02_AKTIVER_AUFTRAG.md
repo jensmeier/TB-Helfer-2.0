@@ -1,5 +1,13 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## AND-FOTO-SHARE-ZIP-1106 – Nutzerfehler geprüft, Laufzeitnachweis offen
+Status: IN ARBEIT / QUELLBEFUNDE DOKUMENTIERT / NICHT BEHOBEN.
+- [Befunde und weiterer Prüfweg](uebergaben/AND_FOTO_SHARE_ZIP_1106.md). Basis Android49c5429d / Server6ea0d987 unverändert; installierter Build noch nicht bestätigt.
+- Suche zeigt laut Nutzer Fotopaare, rechte Kopie stürzt beim Teilen ab; Verlauf-ZIP für vermutlich05.11.2026 stürzt ebenfalls ab. Screenshot enthält Buildwarnungen, keinen Crashtrace.
+- Belegt: interner Downloadpfad files/server_sync/collab fehlt in FileProvider-Freigaben; Foto-Teilen/-Öffnen ohne Catch. Suchliste führt vorhandene Original-/Download-Datensätze nicht anhand Medienidentität zusammen; alte Exportbereinigung galt nicht dieser Ansicht.
+- Konkrete Paaridentität und ZIP-Crashursache am Gerät OFFEN. Keine Speichermangel-/Serverursache ohne Logcat behaupten. Nächster Schritt: Pfade des Paars, installierte Version und getrennte Crashtraces aus Android Studio.
+- Keine Runtime-/Serveränderung, Datenlöschung oder APK/Version/CI-Ausführung. Bestehende Originale, Offline-Daten, Zuordnungen und bestätigte Funktionen erhalten.
+
 ## AND-SPRACHE-FELDER-1104 – Zeit/KM und Kopfzeile gebaut (04.11.2026)
 Status: QUELLSTAND FERTIG / UNIT UND LINT BESTANDEN / BUILD BESTANDEN / GESAMT-CI ROT / E2E OFFEN.
 - [Umsetzung, Grenzen und Geräteprüfplan](uebergaben/AND_SPRACHE_FELDER_1104.md). Auftrag930e12cf, Baucommit48d3e7bf38b61e5b8d076418221a76378785c005; Version1.3.40/200090. Server6ea0d987 unverändert.
