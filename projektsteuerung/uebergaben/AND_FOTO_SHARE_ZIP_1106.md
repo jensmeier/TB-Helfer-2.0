@@ -26,3 +26,9 @@ Status: URSACHEN TEILWEISE BESTÄTIGT / NICHT BEHOBEN.
 - Kein eindeutiger ZIP-Export-Stacktrace, kein OutOfMemoryError in diesem Protokoll. Zweiter Crash kann laufende App-Arbeit abbrechen; konkrete Zuordnung zur ZIP-Aktion noch offen.
 - Nächster Schritt: beide belegten Fehler gezielt korrigieren, eigene Medienidentität im Sync prüfen; danach ZIP erneut testen und nur bei verbleibendem Fehler neues Protokoll anfordern. Kein Code-/Build-/Installationserfolg aus dieser Logauswertung.
 
+
+## AND-FOTO-SYNC-1106 – vertiefter Quellbefund vor Korrektur
+- Auftrag77121b60. Voll- und FILE-Delta-Abgleich verwerfen vorhandene eigene Uploaddateien allein wegen fehlender Preview-Endung; beide Wege korrigieren.
+- Zweiter konkreter Ablauf: Server1AndroidSyncCoordinator lädt BTB-Snapshots vor BtbTeamMediaSync. Letzterer lädt neue Bilder hoch und merkt deren Zuordnung, prüft danach Portal-Unlinks aber gegen denselben älteren photosJson-Snapshot. Fehlt das gerade hochgeladene Bild dort, entfernt er die neue BTB-Zuordnung und Server-ID→Foto-ID wieder. Damit ist ein Quellpfad für verlorene Eigenidentität und spätere Kopien belegt; das konkrete Fotopaar am Pixel bleibt ohne DB-Paarvergleich unbewiesen.
+- Korrekturgrenze: fehlender Snapshot-Eintrag allein darf keinen Unlink beweisen. Zusätzlich explizit entfernten/geänderten Dateilink prüfen; Originaldatei erhalten. Gleichzeitige Medienläufe serialisieren. Lokale Dateiwiederverwendung ausschließlich über bestehende stabile Zuordnung im selben BTB/Baustellenkontext oder bytegleichen SHA256; bei fehlender Datei kleine Servervorschau weiterhin laden.
+- Bestehende uneindeutige Doppelpaare nicht automatisch löschen/zusammenführen. Share-/Widget-/ZIP-Fehler bleiben separat offen. Tests müssen Upload→alter Snapshot→erneuter Abgleich sowie echten Unlink und fremde Bilder abdecken.
