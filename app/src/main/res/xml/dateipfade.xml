@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Only explicit share copies; never expose the internal recovery workspace. -->
+    <cache-path name="share_outgoing" path="share-outgoing/" />
     <!-- App-spezifischer Bilder-Ordner: /Android/data/<paket>/files/Pictures/... -->
     <external-files-path
         name="bilder"
@@ -21,4 +23,5 @@
     <external-files-path name="recovery_workspaces" path="recovery-workspaces/" />
     <files-path name="recovery_archives" path="recovery-journal/" />
 </paths>
+
 

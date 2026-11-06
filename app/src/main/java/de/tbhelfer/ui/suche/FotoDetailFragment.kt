@@ -12,7 +12,8 @@ import android.widget.TextView
 import android.widget.Toast
 import android.content.ClipData
 import android.content.ClipboardManager
-import androidx.core.content.FileProvider
+import de.tbhelfer.util.ShareFiles
+import kotlinx.coroutines.CancellationException
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -185,35 +186,29 @@ class FotoDetailFragment : Fragment() {
         }
     }
 
-    private fun openExtern(file: File) {
-        val ctx = requireContext()
-        val uri: Uri = FileProvider.getUriForFile(
-            ctx,
-            "${ctx.packageName}.dateianbieter",
-            file
-        )
+    private fun openExtern(file: File) = sendExtern(file, open = true)
 
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "image/*")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    private fun shareExtern(file: File) = sendExtern(file, open = false)
+
+    private fun sendExtern(file: File, open: Boolean) {
+        val ctx = context ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val uri = ShareFiles.uri(file)
+                val intent = Intent(if (open) Intent.ACTION_VIEW else Intent.ACTION_SEND).apply {
+                    if (open) setDataAndType(uri, "image/*") else {
+                        type = "image/*"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                    }
+                    clipData = ClipData.newRawUri("Foto", uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(Intent.createChooser(intent, if (open) ctx.getString(R.string.app_name) else "Teilen"))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                Toast.makeText(ctx, "Foto konnte nicht geöffnet oder geteilt werden. Bitte Datei und freien Speicher prüfen.", Toast.LENGTH_LONG).show()
+            }
         }
-        startActivity(Intent.createChooser(intent, getString(R.string.app_name)))
-    }
-
-    private fun shareExtern(file: File) {
-        val ctx = requireContext()
-        val uri: Uri = FileProvider.getUriForFile(
-            ctx,
-            "${ctx.packageName}.dateianbieter",
-            file
-        )
-
-        val share = Intent(Intent.ACTION_SEND).apply {
-            type = "image/*"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        startActivity(Intent.createChooser(share, "Teilen"))
     }
 }
-

@@ -9,7 +9,9 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
-import androidx.core.content.FileProvider
+import de.tbhelfer.util.ShareFiles
+import android.content.ClipData
+import kotlinx.coroutines.CancellationException
 import androidx.core.os.bundleOf
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -275,32 +277,31 @@ class SucheFotosFragment : Fragment() {
     private fun exportSelectedAsZip(includeBtbsFromKorb: Boolean) {
         val ids = adapter.getSelectedIds()
         if (ids.isEmpty()) return
-
+        val ctx = context ?: return
+        val btbs = if (includeBtbsFromKorb) selectedBtbsFromKorb() else emptyList()
+        val baustellen = viewModel.baustellen.value
         viewLifecycleOwner.lifecycleScope.launch {
-            val (zip, stats) = withContext(Dispatchers.IO) {
-                val fotos = ServiceLocator.fotoRepository.fotosMitIds(ids.toList())
-
-                val btbs = if (includeBtbsFromKorb) {
-                    selectedBtbsFromKorb()
-                } else emptyList()
-
-                ExportUtils.createZip(
-                    context = requireContext(),
-                    fotos = fotos,
-                    btbs = btbs,
-                    baustellen = viewModel.baustellen.value,
-                    zipName = if (includeBtbsFromKorb) "tbhelfer_export_fotos_btb_${System.currentTimeMillis()}.zip"
-                    else "tbhelfer_export_fotos_${System.currentTimeMillis()}.zip"
-                )
+            try {
+                val (zip, stats) = withContext(Dispatchers.IO) {
+                    val fotos = ServiceLocator.fotoRepository.fotosMitIds(ids.toList())
+                    ExportUtils.createZip(
+                        context = ctx,
+                        fotos = fotos,
+                        btbs = btbs,
+                        baustellen = baustellen,
+                        zipName = if (includeBtbsFromKorb) "tbhelfer_export_fotos_btb_${System.currentTimeMillis()}.zip"
+                        else "tbhelfer_export_fotos_${System.currentTimeMillis()}.zip"
+                    )
+                }
+                view?.let { Snackbar.make(it,
+                    "ZIP erstellt: ${stats.fotosExportiert} Fotos, ${stats.btbsExportiert} BTB, fehlend: ${stats.fehlend}",
+                    Snackbar.LENGTH_LONG).show() }
+                ExportUtils.shareSingleFile(ctx, zip, "application/zip", ctx.getString(R.string.app_name))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                view?.let { Snackbar.make(it, "ZIP konnte nicht erstellt oder geteilt werden. Bitte Dateien und freien Speicher prüfen.", Snackbar.LENGTH_LONG).show() }
             }
-
-            Snackbar.make(
-                requireView(),
-                "ZIP erstellt: ${stats.fotosExportiert} Fotos, ${stats.btbsExportiert} BTB, fehlend: ${stats.fehlend}",
-                Snackbar.LENGTH_LONG
-            ).show()
-
-            ExportUtils.shareSingleFile(requireContext(), zip, "application/zip", getString(R.string.app_name))
         }
     }
 
@@ -322,35 +323,32 @@ class SucheFotosFragment : Fragment() {
     private fun shareSelected() {
         val ids = adapter.getSelectedIds()
         if (ids.isEmpty()) return
-
+        val ctx = context ?: return
         viewLifecycleOwner.lifecycleScope.launch {
-            val fotos = withContext(Dispatchers.IO) {
-                ServiceLocator.fotoRepository.fotosMitIds(ids.toList())
+            try {
+                val fotos = withContext(Dispatchers.IO) {
+                    ServiceLocator.fotoRepository.fotosMitIds(ids.toList())
+                }
+                // Fail the whole selection visibly instead of silently omitting unreadable photos.
+                val uris = fotos.map { ShareFiles.uri(File(it.dateipfad)) }
+                if (uris.isEmpty()) {
+                    view?.let { Snackbar.make(it, R.string.suche_keine_datei_fuer_share, Snackbar.LENGTH_LONG).show() }
+                    return@launch
+                }
+                val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                    type = "image/*"
+                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList<Uri>(uris))
+                    clipData = ClipData.newRawUri("Fotos", uris.first()).apply {
+                        uris.drop(1).forEach { addItem(ClipData.Item(it)) }
+                    }
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(Intent.createChooser(intent, ctx.getString(R.string.app_name)))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                view?.let { Snackbar.make(it, "Fotos konnten nicht geteilt werden. Bitte Dateien und freien Speicher prüfen.", Snackbar.LENGTH_LONG).show() }
             }
-
-            val uris = fotos.mapNotNull { f ->
-                val file = File(f.dateipfad)
-                if (!file.exists()) return@mapNotNull null
-
-                FileProvider.getUriForFile(
-                    requireContext(),
-                    "${requireContext().packageName}.dateianbieter",
-                    file
-                )
-            }
-
-            if (uris.isEmpty()) {
-                Snackbar.make(requireView(), R.string.suche_keine_datei_fuer_share, Snackbar.LENGTH_LONG)
-                    .show()
-                return@launch
-            }
-
-            val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                type = "image/*"
-                putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList<Uri>(uris))
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            startActivity(Intent.createChooser(intent, getString(R.string.app_name)))
         }
     }
 
@@ -424,3 +422,4 @@ class SucheFotosFragment : Fragment() {
         }
     }
 }
+

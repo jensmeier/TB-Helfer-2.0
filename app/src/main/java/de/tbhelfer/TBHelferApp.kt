@@ -20,8 +20,20 @@ import de.tbhelfer.util.StorageCleanupScheduler
 class TBHelferApp : Application() {
     override fun attachBaseContext(base: android.content.Context) {
         de.tbhelfer.server.recovery.RecoveryWorkspace.initialize(base)
-        super.attachBaseContext(de.tbhelfer.server.recovery.RecoveryWorkspace.wrap(base))
+        // Android unwraps Application.baseContext as ContextImpl when delivering receivers.
+        // Keep that system context intact; only private storage is generation-scoped.
+        super.attachBaseContext(base)
     }
+    private val workspace by lazy {
+        de.tbhelfer.server.recovery.RecoveryWorkspace.wrap(de.tbhelfer.server.recovery.RecoveryWorkspace.raw)
+    }
+    override fun getSharedPreferences(name: String, mode: Int): android.content.SharedPreferences =
+        workspace.getSharedPreferences(name, mode)
+    override fun getFilesDir(): java.io.File = workspace.filesDir
+    override fun getCacheDir(): java.io.File = workspace.cacheDir
+    override fun getNoBackupFilesDir(): java.io.File = workspace.noBackupFilesDir
+    override fun getExternalFilesDir(type: String?): java.io.File? = workspace.getExternalFilesDir(type)
+    override fun getExternalFilesDirs(type: String?): Array<java.io.File> = workspace.getExternalFilesDirs(type)
     private var foregroundActivity: java.lang.ref.WeakReference<Activity>? = null
     private fun redirectRecovery(activity: Activity): Boolean {
         if (!de.tbhelfer.server.recovery.RecoveryWorkspace.blocked() ||
@@ -148,6 +160,7 @@ class TBHelferApp : Application() {
         }
     }
 }
+
 
 
 
