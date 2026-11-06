@@ -15,3 +15,14 @@ Live-HEADs, PRs, Einstieg00, Regeln und Steuerungsdateien01–08 gelesen; releva
 
 ## Nächster notwendiger Schritt
 Vom Nutzergerät aktuelle Version/Build und Logcat des rechten Foto-Teilen sowie des ZIP-Exports getrennt erfassen (FATAL EXCEPTION/Caused by; bei Prozesskill auch System-/Speichermeldung). In Foto-Details bereits sichtbare Pfade des linken/rechten Bildes vergleichen. Danach begrenzte sichere Share-Freigabe/-Staging und Fehlerbehandlung, identitätsbasierte Anzeige/Import-Reparatur ohne Datenverlust sowie anhand Stacktrace gezielte ZIP-Korrektur. Keine globale Rootfreigabe, kein App-Reset, keine produktiven Daten löschen.
+
+## Pixel-Logcat06.11.2026 – zwei Laufzeitfehler bestätigt
+Status: URSACHEN TEILWEISE BESTÄTIGT / NICHT BEHOBEN.
+- Nutzerprotokoll Google-Pixel-8-Android-17_2026-11-06_144127.logcat gelesen:8262 Meldungen. Rohlog nicht ins Repository übernehmen.
+- 14:40:33 Europe/Berlin: IllegalArgumentException in FotoDetailFragment.shareExtern:205, FileProvider.getUriForFile. Datei liegt unter internem files/recovery-workspaces/<generation>/files/server_sync/collab/<worksite>/<file>_mobile_preview.jpg. Fehlende Freigabe damit am Gerät bewiesen; nur server_sync im unverschachtelten filesDir freizugeben wäre für diesen Bestand unzureichend. Begrenztes sicheres Share-Staging oder exakt passende Freigabe unter Wahrung der Recovery-Grenzen prüfen, keine globale Rootfreigabe.
+- 14:40:38: ANR beim Fokuswechsel nach dem Share-Crash; kein eigenständiger ZIP-Stacktrace daraus ableiten.
+- 14:41:04: zweiter FATAL EXCEPTION beim Systemstart des SpeechWidgetProvider. ClassCastException: RecoveryWorkspace.WorkspaceContext cannot be cast to android.app.ContextImpl, in ActivityThread.handleReceiver. TBHelferApp.attachBaseContext wickelt den Application-Basiskontext global in RecoveryWorkspace.wrap. Zusammenhang im Quellcode belegt; Korrektur muss Android-Systemkontext und private Speicherumleitung trennen, ohne Recovery-/Offlinebestand zurückzusetzen.
+- Log beweist heruntergeladene Vorschau als geteilte Datei, nicht die Herkunft/Identität des linken Originalbildes. Dubletten-Zuordnung weiter prüfen.
+- Kein eindeutiger ZIP-Export-Stacktrace, kein OutOfMemoryError in diesem Protokoll. Zweiter Crash kann laufende App-Arbeit abbrechen; konkrete Zuordnung zur ZIP-Aktion noch offen.
+- Nächster Schritt: beide belegten Fehler gezielt korrigieren, eigene Medienidentität im Sync prüfen; danach ZIP erneut testen und nur bei verbleibendem Fehler neues Protokoll anfordern. Kein Code-/Build-/Installationserfolg aus dieser Logauswertung.
+

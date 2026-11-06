@@ -1,5 +1,15 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## Pixel-Logcat06.11.2026 – zwei Laufzeitfehler bestätigt
+Status: URSACHEN TEILWEISE BESTÄTIGT / NICHT BEHOBEN.
+- Nutzerprotokoll Google-Pixel-8-Android-17_2026-11-06_144127.logcat gelesen:8262 Meldungen. Rohlog nicht ins Repository übernehmen.
+- 14:40:33 Europe/Berlin: IllegalArgumentException in FotoDetailFragment.shareExtern:205, FileProvider.getUriForFile. Datei liegt unter internem files/recovery-workspaces/<generation>/files/server_sync/collab/<worksite>/<file>_mobile_preview.jpg. Fehlende Freigabe damit am Gerät bewiesen; nur server_sync im unverschachtelten filesDir freizugeben wäre für diesen Bestand unzureichend. Begrenztes sicheres Share-Staging oder exakt passende Freigabe unter Wahrung der Recovery-Grenzen prüfen, keine globale Rootfreigabe.
+- 14:40:38: ANR beim Fokuswechsel nach dem Share-Crash; kein eigenständiger ZIP-Stacktrace daraus ableiten.
+- 14:41:04: zweiter FATAL EXCEPTION beim Systemstart des SpeechWidgetProvider. ClassCastException: RecoveryWorkspace.WorkspaceContext cannot be cast to android.app.ContextImpl, in ActivityThread.handleReceiver. TBHelferApp.attachBaseContext wickelt den Application-Basiskontext global in RecoveryWorkspace.wrap. Zusammenhang im Quellcode belegt; Korrektur muss Android-Systemkontext und private Speicherumleitung trennen, ohne Recovery-/Offlinebestand zurückzusetzen.
+- Log beweist heruntergeladene Vorschau als geteilte Datei, nicht die Herkunft/Identität des linken Originalbildes. Dubletten-Zuordnung weiter prüfen.
+- Kein eindeutiger ZIP-Export-Stacktrace, kein OutOfMemoryError in diesem Protokoll. Zweiter Crash kann laufende App-Arbeit abbrechen; konkrete Zuordnung zur ZIP-Aktion noch offen.
+- Nächster Schritt: beide belegten Fehler gezielt korrigieren, eigene Medienidentität im Sync prüfen; danach ZIP erneut testen und nur bei verbleibendem Fehler neues Protokoll anfordern. Kein Code-/Build-/Installationserfolg aus dieser Logauswertung.
+
 ## AND-FOTO-SHARE-ZIP-1106 – Nutzerfehler geprüft, Laufzeitnachweis offen
 Status: IN ARBEIT / QUELLBEFUNDE DOKUMENTIERT / NICHT BEHOBEN.
 - [Befunde und weiterer Prüfweg](uebergaben/AND_FOTO_SHARE_ZIP_1106.md). Basis Android49c5429d / Server6ea0d987 unverändert; installierter Build noch nicht bestätigt.
