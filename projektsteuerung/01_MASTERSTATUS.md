@@ -1,5 +1,14 @@
 # TB-HELFER 2.0 – MASTERSTATUS
 
+
+## AND-APK-1106 – 1.3.41 / 200091 gebaut
+Status: BUILD BESTANDEN / UNIT UND LINT BESTANDEN / GESAMT-CI ROT / INSTALLATION UND E2E OFFEN.
+- Auftrag70ce9d45, Baucommit76f2d5beac8665d2d95b83ba3f7a85df55c2e526. CI42262406014, Androidjob128046177059 SUCCESS:218 Tests/0 Fehler/0 übersprungen, Lint0 Fehler/390 Warnungen; assembleDebug, Manifest und Signatur PASS. Erster Versuch128045457579 vor Kompilierung wegen Gradle-Wrapper-Netzfehler ETIMEDOUT/ENETUNREACH gescheitert; gezielter Jobretry, Sicherheitsprüfung unverändert.
+- Quellvertragschecks13/19/83/85/86 weiterhin rot, Original-Logs geprüft. Kein Gesamt-CI-Erfolg.
+- APK26946254Bytes; SHA256f7f1f1a64a2ce2d5ff1a780791aaded81b4da878825616b9a1b2fd37483fea60. Manifestde.tbhelfer/1.3.41/200091; Signaturv1/v2 gültig. APK/Release-MD im selben Job gepaart und Downloadhash geprüft (Artefakt13526007653).
+- CI-Debugzertifikat64f6f9620fe29180ead46936082b01914f4202f12d12a0bc5bebb83308435ae4 weicht von CI200090 ab. Für Update vorhandenen lokalen Schlüssel verwenden; keine Deinstallation/Datenlöschung. Installierte Signatur unbekannt.
+- Foto-Sync-/Share-/Widget-Korrekturen enthalten; bestehende Doppelbilder nicht gelöscht. Verlauf-ZIP und Pixel/Poco/Server-E2E offen. Kein Servercode/Deployment/Katalogrelease. Nächster Schritt: datenbewahrendes Update und Geräteprüfplan in uebergaben/AND_FOTO_KORREKTUR_1106.md.
+
 ## AND-FOTO-1106 – Sync validiert, Teilen/Receiver korrigiert
 Status: QUELLSTAND FERTIG / KOMPILIERUNG-UNIT-LINT BESTANDEN / GESAMT-CI ROT / GERÄTE-E2E OFFEN.
 - Vorhandene Foto-Sync-Korrektur0b1951a0 geprüft; zusätzliche Korrekturca780326: interne Bilder sicher über begrenzten Share-Cache teilen/öffnen, Mehrfachteilen und Foto-Auswahl-ZIP mit Fehlerbehandlung. Android-Application behält System-Basiskontext; bestehende Recovery-Speicherumleitung bleibt durch gezielte Delegation erhalten.
