@@ -1,6 +1,10 @@
 # TB-HELFER 2.0 – CHAT CHECKPOINT
 
 
+## AND-TAGESZIP-1106 – Versionsvergleich abgeschlossen, Absturz offen
+Nutzer bestätigt1.3.41/200091 installiert; Tages-ZIP startet und App schließt. Verlauf-Handler in1.3.35–41 identisch. Wesentlicher Umbau ab1.3.37: Vorab-Sync, Gesamtmedien-Normalisierung, gesamte Baustellenbilder/Schichtlisten und XLSX-Prüfung. Lokale Bildbytes werden nun im zusätzlichen Archivpfad direkt und mehrfach vollständig gelesen; frühere normale JPG-Exportkopie verkleinert. Exportdateien1.3.37–41 identisch, gemeinsame Sync-/Application-Änderungen separat. Keine bewiesene OOM-/ZIP-Dublettenursache; neuer Pixel-Logcat nötig. Kein Runtimefix/Build/Rollback/Datenlöschen. Details: [Versionsvergleich](uebergaben/AND_TAGESZIP_VERSIONEN_1106.md). QUELLVERGLEICH ABGESCHLOSSEN / GERÄTE-E2E FEHLGESCHLAGEN / URSACHE OFFEN.
+
+
 ## AND-TAGESZIP-1106 – Absturz unter 200091 bestätigt
 Nutzer bestätigt 1.3.41/200091 installiert: BTB-Verlauf → ZIP teilen → „Tagesabschluss-ZIP wird erstellt“, danach keine Freigabeauswahl, App schließt. Auftrag: Versionen1.3.35 bis1.3.41 vergleichen. Noch kein neuer Crashtrace; Ursache nicht als bewiesen darstellen. Quellvergleich/gezielte Reproduktion, keine Datenlöschung, kein Rollback oder neuer APK-Build auf Verdacht. Status IN ARBEIT.
 

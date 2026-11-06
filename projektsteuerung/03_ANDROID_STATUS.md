@@ -1,6 +1,10 @@
 # TB-HELFER 2.0 – ANDROID STATUS
 
 
+## AND-TAGESZIP-1106 – Versionsvergleich abgeschlossen, Absturz offen
+Nutzer bestätigt1.3.41/200091 installiert; Tages-ZIP startet und App schließt. Verlauf-Handler in1.3.35–41 identisch. Wesentlicher Umbau ab1.3.37: Vorab-Sync, Gesamtmedien-Normalisierung, gesamte Baustellenbilder/Schichtlisten und XLSX-Prüfung. Lokale Bildbytes werden nun im zusätzlichen Archivpfad direkt und mehrfach vollständig gelesen; frühere normale JPG-Exportkopie verkleinert. Exportdateien1.3.37–41 identisch, gemeinsame Sync-/Application-Änderungen separat. Keine bewiesene OOM-/ZIP-Dublettenursache; neuer Pixel-Logcat nötig. Kein Runtimefix/Build/Rollback/Datenlöschen. Details: [Versionsvergleich](uebergaben/AND_TAGESZIP_VERSIONEN_1106.md). QUELLVERGLEICH ABGESCHLOSSEN / GERÄTE-E2E FEHLGESCHLAGEN / URSACHE OFFEN.
+
+
 ## AND-APK-1106 – 1.3.41 / 200091 gebaut
 Status: BUILD BESTANDEN / UNIT UND LINT BESTANDEN / GESAMT-CI ROT / INSTALLATION UND E2E OFFEN.
 - Auftrag70ce9d45, Baucommit76f2d5beac8665d2d95b83ba3f7a85df55c2e526. CI42262406014, Androidjob128046177059 SUCCESS:218 Tests/0 Fehler/0 übersprungen, Lint0 Fehler/390 Warnungen; assembleDebug, Manifest und Signatur PASS. Erster Versuch128045457579 vor Kompilierung wegen Gradle-Wrapper-Netzfehler ETIMEDOUT/ENETUNREACH gescheitert; gezielter Jobretry, Sicherheitsprüfung unverändert.
