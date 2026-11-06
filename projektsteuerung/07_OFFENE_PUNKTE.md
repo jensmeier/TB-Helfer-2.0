@@ -1,5 +1,13 @@
 # TB-HELFER 2.0 – OFFENE PUNKTE
 
+## AND-FOTO-SYNC-1106 – Korrektur zur Prüfung
+Status: QUELLSTAND FERTIG / SOURCE-CHECK BESTANDEN / UNIT-LINT-CI OFFEN / E2E OFFEN.
+- Auftrag77121b60, vertiefter Befund28bfb6aa. Android-Mediensync verwendet vorhandene Dateien über stabile BTB-/Baustellen-/Teamzuordnung oder geprüften Datei-SHA256; Vollabgleich und FILE-Delta nutzen denselben Resolver. Fehlende Portal-/Helferbilder bleiben Preview-Downloads.
+- Ein alter BTB-Snapshot darf eine gerade hochgeladene Fotoidentität nicht entfernen: Unlink verlangt zusätzlich einen entfernten/geänderten Dateilink. Eigene neue Uploads und normale Importe laufen mit Datei-Refresh unter gemeinsamem Coroutine-Mutex.
+- 17 JVM-Regressionsfälle ergänzt (Dateireuse, Cacheverlust, fremde Bilder, Hashänderung, alter Snapshot/Unlink, Parallelität/Abbruch). Neun lokale Integrations-Source-Checks PASS; noch kein JVM-/Gradle-/Gerätenachweis dieser Änderung.
+- Keine bestehende Dublette gelöscht, keine Room-/API-/Server-/Versionsänderung und kein APK. Share-/Widget-Crashes sowie konkrete ZIP-Ursache bleiben separat offen. Bereits verlorene Zuordnungen nicht durch Bildähnlichkeit rekonstruieren.
+- Nächster Schritt: gezielte Android-CI mit Unit/Lint; danach Nutzergerät testen. Aktueller Quellversionswert unverändert1.3.40/200090, keine auslieferbare neue APK erzeugt.
+
 ## Pixel-Logcat06.11.2026 – zwei Laufzeitfehler bestätigt
 Status: URSACHEN TEILWEISE BESTÄTIGT / NICHT BEHOBEN.
 - Nutzerprotokoll Google-Pixel-8-Android-17_2026-11-06_144127.logcat gelesen:8262 Meldungen. Rohlog nicht ins Repository übernehmen.

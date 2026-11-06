@@ -71,6 +71,20 @@ class BtbTeamMediaSync(context: Context) {
         btbServerIds: Set<String>? = null,
         allowUploads: Boolean = true,
         importMedia: Boolean = true
+    ): Result = MediaSyncGate.run {
+        synchronizeLocked(token, api, server1Api, server1PdfApi, worksiteServerIds,
+            btbServerIds, allowUploads, importMedia)
+    }
+
+    private suspend fun synchronizeLocked(
+        token: String,
+        api: CollabSyncApi,
+        server1Api: Server1FileApi?,
+        server1PdfApi: Server1BtbPdfApi?,
+        worksiteServerIds: Set<String>?,
+        btbServerIds: Set<String>?,
+        allowUploads: Boolean,
+        importMedia: Boolean
     ): Result {
         var uploaded = 0
         var present = 0
@@ -391,7 +405,7 @@ class BtbTeamMediaSync(context: Context) {
             }
 
             // Portal-Unlink: nur die BTB-Zuordnung entfernen, das lokale Originalfoto behalten.
-            for ((parentKey, _) in serverBtbs) {
+            for ((parentKey, parent) in serverBtbs) {
                 val state = BtbServerStateStore.state(appContext, parentKey) ?: continue
                 val photos = runCatching { org.json.JSONArray(state.photosJson) }.getOrNull()
                 val activeServerPhotoIds = (0 until (photos?.length() ?: 0)).mapNotNull { index ->
@@ -400,8 +414,23 @@ class BtbTeamMediaSync(context: Context) {
                 importedMappingsForBtb(parentKey)
                     .filter { it.first !in activeServerPhotoIds }
                     .forEach { (serverFileId, localFotoId) ->
-                        BtbFotoZuordnungSpeicher.entfernen(appContext, localFotoId)
-                        forgetImportedPhoto(serverFileId)
+                        // The snapshot may predate an upload in this very run. Absence alone
+                        // is not an unlink. Require the file-link cache to confirm it as well.
+                        val attachment = collab.attachment(serverFileId)
+                        val sameScope = attachment?.worksiteServerId == server.worksiteServerId
+                        if (LocalMediaReuse.confirmedUnlink(
+                                snapshotContainsPhoto = false,
+                                attachmentKnown = sameScope,
+                                attachmentDeleted = attachment?.isDeleted == true,
+                                sameParent = attachment?.parentEntityId == parent.serverId &&
+                                    attachment?.parentEntityType.equals(SyncCollabPendingChangeEntity.TYPE_BTB, true)
+                            )) {
+                            // A later local re-assignment must not be undone by an old parent.
+                            if (BtbFotoZuordnungSpeicher.btbId(appContext, localFotoId) == parentKey) {
+                                BtbFotoZuordnungSpeicher.entfernen(appContext, localFotoId)
+                            }
+                            forgetImportedPhoto(serverFileId)
+                        }
                     }
             }
 
@@ -631,6 +660,17 @@ class BtbTeamMediaSync(context: Context) {
         return String(bytes, Charsets.UTF_8)
     }
 
+    /** Existing identity only; never infer ownership from filename, timestamp or appearance. */
+    internal suspend fun knownLocalPhotoPath(serverId: String, btbId: String, localWorksiteId: Long): String? {
+        val localId = importedPrefs.all[serverId] as? Long ?: return null
+        if (importedPrefs.getString("btb:$serverId", null) != btbId) return null
+        val photo = fotos.fotoMitId(localId) ?: return null
+        if (photo.baustelleId != localWorksiteId) return null
+        val boundBtb = BtbFotoZuordnungSpeicher.btbId(appContext, localId)
+        if (boundBtb != btbId && !(btbId.startsWith("legacy:") && boundBtb == null)) return null
+        return photo.dateipfad
+    }
+
     private fun wasImported(serverAttachmentId: String): Boolean {
         val value = importedPrefs.all[serverAttachmentId]
         return value == true || value is Long
@@ -808,5 +848,6 @@ class BtbTeamMediaSync(context: Context) {
         private const val MAX_ATTACHMENT_FILENAME_LENGTH = 160
     }
 }
+
 
 

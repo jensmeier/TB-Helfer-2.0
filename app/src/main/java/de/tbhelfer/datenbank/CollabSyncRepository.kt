@@ -357,6 +357,14 @@ class CollabSyncRepository(
         token: String,
         worksiteIds: List<String>,
         api: Server1FileApi = Server1FileApi()
+    ): Server1AttachmentSyncResult = MediaSyncGate.run {
+        synchronizeServer1AttachmentsLocked(token, worksiteIds, api)
+    }
+
+    private suspend fun synchronizeServer1AttachmentsLocked(
+        token: String,
+        worksiteIds: List<String>,
+        api: Server1FileApi
     ): Server1AttachmentSyncResult {
         var linked = 0
         var downloaded = 0
@@ -382,10 +390,8 @@ class CollabSyncRepository(
 
             for (item in files) {
                 val existing = dao.collabAttachment(item.fileId)
-                val existingPathUsable = existing?.isDownloaded == true &&
-                    existing.localPath?.let { File(it).isFile } == true &&
-                    (!isImageMime(item.mimeType ?: existing?.mimeType) ||
-                        isMobilePreviewPath(existing?.localPath))
+                val reusablePath = reusableServer1Path(item, existing)
+                val existingPathUsable = reusablePath != null
                 dao.upsertCollabAttachments(
                     listOf(
                         SyncCollabAttachmentEntity(
@@ -397,7 +403,7 @@ class CollabSyncRepository(
                             mimeType = item.mimeType ?: existing?.mimeType,
                             sizeBytes = item.sizeBytes,
                             sha256 = item.sha256 ?: existing?.sha256,
-                            localPath = if (existingPathUsable) existing?.localPath else null,
+                            localPath = reusablePath,
                             isDownloaded = existingPathUsable,
                             isDeleted = false,
                             updatedAtEpochMs = System.currentTimeMillis()
@@ -460,6 +466,15 @@ class CollabSyncRepository(
         worksiteId: String,
         fileId: String,
         api: Server1FileApi = Server1FileApi()
+    ): Server1FileRefreshResult = MediaSyncGate.run {
+        refreshServer1FileLocked(token, worksiteId, fileId, api)
+    }
+
+    private suspend fun refreshServer1FileLocked(
+        token: String,
+        worksiteId: String,
+        fileId: String,
+        api: Server1FileApi
     ): Server1FileRefreshResult {
         val old = dao.collabAttachment(fileId)
         val affected = linkedSetOf<String>()
@@ -490,12 +505,8 @@ class CollabSyncRepository(
             affected += item.parentEntityId
         }
 
-        val sameParent = old?.parentEntityType.equals(item.parentEntityType, ignoreCase = true) &&
-            old?.parentEntityId == item.parentEntityId
-        val oldPathValid = sameParent &&
-            old?.isDownloaded == true &&
-            old?.localPath?.let { File(it).isFile } == true &&
-            (!isImageMime(item.mimeType ?: old?.mimeType) || isMobilePreviewPath(old?.localPath))
+        val reusablePath = reusableServer1Path(item, old)
+        val oldPathValid = reusablePath != null
 
         dao.upsertCollabAttachments(
             listOf(
@@ -508,7 +519,7 @@ class CollabSyncRepository(
                     mimeType = item.mimeType ?: old?.mimeType,
                     sizeBytes = item.sizeBytes,
                     sha256 = item.sha256 ?: old?.sha256,
-                    localPath = if (oldPathValid) old?.localPath else null,
+                    localPath = reusablePath,
                     isDownloaded = oldPathValid,
                     isDeleted = false,
                     updatedAtEpochMs = System.currentTimeMillis()
@@ -846,6 +857,38 @@ class CollabSyncRepository(
             }
         }
         return Server1WorksiteNodeUploadResult.Success(uploaded, failed, conflicts)
+    }
+
+    internal suspend fun attachment(serverId: String): SyncCollabAttachmentEntity? =
+        dao.collabAttachment(serverId)
+
+    private suspend fun reusableServer1Path(
+        item: Server1FileApi.LinkedFile,
+        existing: SyncCollabAttachmentEntity?
+    ): String? {
+        val sameScope = existing?.worksiteServerId == item.worksiteId
+        val sameParent = existing?.parentEntityId == item.parentEntityId &&
+            existing?.parentEntityType.equals(item.parentEntityType, true)
+        val image = isImageMime(item.mimeType ?: existing?.mimeType)
+        val mappedPath = if (image && item.parentEntityType.equals(SyncCollabPendingChangeEntity.TYPE_BTB, true)) {
+            val parent = dao.collabEntity(item.parentEntityId)
+            val context = dao.worksiteContext(item.worksiteId)
+            val btbId = parent?.clientEntityKey
+            if (context != null && parent != null && !parent.isDeleted && !btbId.isNullOrBlank() &&
+                parent.worksiteServerId == item.worksiteId && parent.groupId == context.groupId &&
+                parent.entityType.equals(SyncCollabPendingChangeEntity.TYPE_BTB, true)) {
+                val local = de.tbhelfer.ServiceLocator.worksiteBindingRepository.localRootForServer(item.worksiteId)
+                local?.let { BtbTeamMediaSync(appContext).knownLocalPhotoPath(item.fileId, btbId, it.altBaustelleId) }
+            } else null
+        } else null
+        return LocalMediaReuse.path(
+            mappedPhotoPath = mappedPath,
+            cachedPath = existing?.localPath.takeIf { sameScope && sameParent },
+            cacheReady = sameScope && sameParent && existing?.isDownloaded == true && existing.isDeleted == false,
+            image = image,
+            serverSha256 = item.sha256,
+            cachedSha256 = existing?.sha256.takeIf { sameScope }
+        )
     }
 
     suspend fun attachments(parentEntityId: String): List<SyncCollabAttachmentEntity> =
@@ -1362,9 +1405,6 @@ class CollabSyncRepository(
     private fun isImageMime(mimeType: String?): Boolean =
         mimeType?.startsWith("image/", ignoreCase = true) == true
 
-    private fun isMobilePreviewPath(path: String?): Boolean =
-        path?.endsWith(MOBILE_IMAGE_SUFFIX, ignoreCase = true) == true
-
     private fun mobileCacheFilename(
         fileId: String,
         originalName: String?,
@@ -1439,6 +1479,7 @@ class CollabSyncRepository(
         }
     }
 }
+
 
 
 
