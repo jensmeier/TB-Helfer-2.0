@@ -1,6 +1,10 @@
 # TB-HELFER 2.0 – CHAT CHECKPOINT
 
 
+## AND-TAGESZIP-1106 – Absturz unter 200091 bestätigt
+Nutzer bestätigt 1.3.41/200091 installiert: BTB-Verlauf → ZIP teilen → „Tagesabschluss-ZIP wird erstellt“, danach keine Freigabeauswahl, App schließt. Auftrag: Versionen1.3.35 bis1.3.41 vergleichen. Noch kein neuer Crashtrace; Ursache nicht als bewiesen darstellen. Quellvergleich/gezielte Reproduktion, keine Datenlöschung, kein Rollback oder neuer APK-Build auf Verdacht. Status IN ARBEIT.
+
+
 ## AND-APK-1106 – 1.3.41 / 200091 gebaut
 Status: BUILD BESTANDEN / UNIT UND LINT BESTANDEN / GESAMT-CI ROT / INSTALLATION UND E2E OFFEN.
 - Auftrag70ce9d45, Baucommit76f2d5beac8665d2d95b83ba3f7a85df55c2e526. CI42262406014, Androidjob128046177059 SUCCESS:218 Tests/0 Fehler/0 übersprungen, Lint0 Fehler/390 Warnungen; assembleDebug, Manifest und Signatur PASS. Erster Versuch128045457579 vor Kompilierung wegen Gradle-Wrapper-Netzfehler ETIMEDOUT/ENETUNREACH gescheitert; gezielter Jobretry, Sicherheitsprüfung unverändert.
