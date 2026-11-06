@@ -1,5 +1,13 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## AND-FOTO-1106 – Sync validiert, Teilen/Receiver korrigiert
+Status: QUELLSTAND FERTIG / KOMPILIERUNG-UNIT-LINT BESTANDEN / GESAMT-CI ROT / GERÄTE-E2E OFFEN.
+- Vorhandene Foto-Sync-Korrektur0b1951a0 geprüft; zusätzliche Korrekturca780326: interne Bilder sicher über begrenzten Share-Cache teilen/öffnen, Mehrfachteilen und Foto-Auswahl-ZIP mit Fehlerbehandlung. Android-Application behält System-Basiskontext; bestehende Recovery-Speicherumleitung bleibt durch gezielte Delegation erhalten.
+- CI42232622122/Androidjob127942055768 SUCCESS. XML tatsächlich geprüft:218 JVM-Tests PASS (17 Foto-Sync,5 ShareStaging),0 Fehler/übersprungen; Lint0 Error/Fatal,390 Warning. Gesamt-CI wegen bekannter Quellvertragschecks13/19/83/85/86 weiterhin FAILURE; keine Abschwächung.
+- Konkreter Verlauf-ZIP-Absturz und vorhandene Doppelpaare weiterhin nicht am Gerät geklärt. Keine Dublette gelöscht, keine Original-/BTB-/Room-Migration. Vorschlag: nur eindeutige Foto-/Serveridentität unter Erhalt sämtlicher BTB-Bezüge zusammenführen; mehrdeutige Zuordnung bewusst entscheiden.
+- Server6ea0d987 lesend gegengeprüft, unverändert. Kein APK/Versionssprung/Deployment/Installation. Bestehende Signierung und Daten für späteres Update erhalten.
+- [Befunde, Nachweise und Geräteprüfplan](uebergaben/AND_FOTO_KORREKTUR_1106.md). Nächster Schritt: Pixel/Poco eigenes Foto zweimal synchronisieren, Portal-/Helferbild teilen, Widget nach Neustart und gemeldeten Verlauf-ZIP prüfen.
+
 ## AND-FOTO-SHARE-ZIP-1106 – Fortsetzung der Fehlerbehebung
 Nutzerauftrag: prüfen, Fehler beheben und bei Konflikten Vorschläge machen. Basis Android0b1951a0 / Server6ea0d987. Vorhandene Foto-Sync-Korrektur überprüfen und technisch validieren. Belegte Foto-Teilen-/Öffnen-Abstürze durch begrenzten Share-Cache mit IO-Staging und Fehlerbehandlung korrigieren. Application-Systemkontext erhalten, private Recovery-Speicherzugriffe weiter auf dieselbe Generation umleiten; keine Bestandsmigration. ZIP-Pfade auf denselben Freigabefehler prüfen. Keine automatische Dublettenlöschung oder Zuordnungsrekonstruktion nach Ähnlichkeit. Unit-/Lint-Prüfung vorgesehen; kein APK-/Versions-/Server-/Deploymentauftrag. Geräteprüfung bleibt getrennt offen.
 

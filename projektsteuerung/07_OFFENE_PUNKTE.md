@@ -1,5 +1,13 @@
 # TB-HELFER 2.0 – OFFENE PUNKTE
 
+## AND-FOTO-1106 – Sync validiert, Teilen/Receiver korrigiert
+Status: QUELLSTAND FERTIG / KOMPILIERUNG-UNIT-LINT BESTANDEN / GESAMT-CI ROT / GERÄTE-E2E OFFEN.
+- Vorhandene Foto-Sync-Korrektur0b1951a0 geprüft; zusätzliche Korrekturca780326: interne Bilder sicher über begrenzten Share-Cache teilen/öffnen, Mehrfachteilen und Foto-Auswahl-ZIP mit Fehlerbehandlung. Android-Application behält System-Basiskontext; bestehende Recovery-Speicherumleitung bleibt durch gezielte Delegation erhalten.
+- CI42232622122/Androidjob127942055768 SUCCESS. XML tatsächlich geprüft:218 JVM-Tests PASS (17 Foto-Sync,5 ShareStaging),0 Fehler/übersprungen; Lint0 Error/Fatal,390 Warning. Gesamt-CI wegen bekannter Quellvertragschecks13/19/83/85/86 weiterhin FAILURE; keine Abschwächung.
+- Konkreter Verlauf-ZIP-Absturz und vorhandene Doppelpaare weiterhin nicht am Gerät geklärt. Keine Dublette gelöscht, keine Original-/BTB-/Room-Migration. Vorschlag: nur eindeutige Foto-/Serveridentität unter Erhalt sämtlicher BTB-Bezüge zusammenführen; mehrdeutige Zuordnung bewusst entscheiden.
+- Server6ea0d987 lesend gegengeprüft, unverändert. Kein APK/Versionssprung/Deployment/Installation. Bestehende Signierung und Daten für späteres Update erhalten.
+- [Befunde, Nachweise und Geräteprüfplan](uebergaben/AND_FOTO_KORREKTUR_1106.md). Nächster Schritt: Pixel/Poco eigenes Foto zweimal synchronisieren, Portal-/Helferbild teilen, Widget nach Neustart und gemeldeten Verlauf-ZIP prüfen.
+
 ## AND-FOTO-SYNC-1106 – Korrektur zur Prüfung
 Status: QUELLSTAND FERTIG / SOURCE-CHECK BESTANDEN / UNIT-LINT-CI OFFEN / E2E OFFEN.
 - Auftrag77121b60, vertiefter Befund28bfb6aa. Android-Mediensync verwendet vorhandene Dateien über stabile BTB-/Baustellen-/Teamzuordnung oder geprüften Datei-SHA256; Vollabgleich und FILE-Delta nutzen denselben Resolver. Fehlende Portal-/Helferbilder bleiben Preview-Downloads.
