@@ -1,5 +1,9 @@
 # TB-HELFER 2.0 – CHAT CHECKPOINT
 
+## AND-TAGESZIP-1107 – Behebung beauftragt
+Status IN ARBEIT. Nutzerauftrag „dann beheben“. Basis Android328cfa3a, Server6ea0d987. Bestätigten Fragment-Lifecycle-Absturz beheben: ViewModel hält Export über Rotation, Ergebnis nur RESUMED zustellen, Mehrfachstart sperren, CancellationException weiterreichen und ursprünglichen Fehler sicher erfassen. Verlaufsladen an View-Lifecycle binden. Exportinhalt, Sync-Vertrag und Server unverändert. Gezielte Regression, Android-Unit/Lint prüfen; Gerätetest weiterhin erforderlich. Keine Datenlöschung oder Neuaktivierung.
+
+
 
 ## AND-TAGESZIP-1107 – auch neuer BTB ohne Bilder betroffen
 Nutzer: neu angelegter BTB ohne Bilder stürzt beim Tages-ZIP ebenfalls ab. Neues Protokoll073027.logcat lokal gelesen (9650 Meldungen).07:30:15 Europe/Berlin: derselbe FATAL EXCEPTION main, BtbVerlaufFragment.teileTagesabschlussZip Zeile248, requireContext auf abgelöstem Fragment; Coroutine Cancelling. Kein OutOfMemoryError im Protokoll. Drei unabhängige Crashzeitpunkte07:22:36/07:27:59/07:30:15 bestätigen denselben Fehlerhandler. Kein Beleg, dass Rotation bei jedem Versuch Auslöser ist. BTB ohne Bilder bedeutet wegen Gesamtmedienpfad nicht zwingend gesamte Baustelle ohne Bilder; kein pauschaler Ausschluss aller Medienverarbeitung. Ursprünglicher abgefangener Fehler weiterhin nicht protokolliert. Lifecycle-/Fehlerbehandlung gezielt korrigieren; keine weiteren identischen Absturztests vom Nutzer erforderlich, kein Zurücksetzen/Datenlöschen. Noch kein Runtimefix oder neue APK aus dieser Logauswertung.

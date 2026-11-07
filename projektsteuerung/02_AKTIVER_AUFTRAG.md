@@ -1,5 +1,9 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## AND-TAGESZIP-1107 – Behebung beauftragt
+Status IN ARBEIT. Nutzerauftrag „dann beheben“. Basis Android328cfa3a, Server6ea0d987. Bestätigten Fragment-Lifecycle-Absturz beheben: ViewModel hält Export über Rotation, Ergebnis nur RESUMED zustellen, Mehrfachstart sperren, CancellationException weiterreichen und ursprünglichen Fehler sicher erfassen. Verlaufsladen an View-Lifecycle binden. Exportinhalt, Sync-Vertrag und Server unverändert. Gezielte Regression, Android-Unit/Lint prüfen; Gerätetest weiterhin erforderlich. Keine Datenlöschung oder Neuaktivierung.
+
+
 
 ## AND-TAGESZIP-1107 – konkreter Pixel-Absturz im Log bestätigt
 Status: ABSTURZSTELLE BELEGT / KORREKTUR UND GERÄTEABNAHME OFFEN.
