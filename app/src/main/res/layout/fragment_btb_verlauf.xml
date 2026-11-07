@@ -36,6 +36,15 @@
             android:textColor="#555555"
             android:textSize="13sp" />
 
+        <TextView
+            android:id="@+id/tvTagesZipStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:accessibilityLiveRegion="polite"
+            android:visibility="gone"
+            android:textSize="14sp" />
+
         <LinearLayout
             android:id="@+id/containerBtbVerlauf"
             android:layout_width="match_parent"

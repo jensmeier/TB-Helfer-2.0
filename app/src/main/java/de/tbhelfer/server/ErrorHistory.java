@@ -14,11 +14,13 @@ public final class ErrorHistory {
     public static final int LIMIT=200;
     public enum Operation {
         FULL_SYNC("Vollabgleich"), SEND("BTB senden"), STRUCTURE("Baustellenstruktur"),
-        RECEIVE("Änderungen empfangen"), CATALOG("Katalog"), CONNECTION("Serverprüfung"), UPDATE("App-Update"), SPEECH("Spracheingabe");
+        RECEIVE("Änderungen empfangen"), CATALOG("Katalog"), CONNECTION("Serverprüfung"), UPDATE("App-Update"), SPEECH("Spracheingabe"), ZIP("Tagesabschluss-ZIP");
         public final String label; Operation(String label){this.label=label;}
     }
     public enum ContextKind { NONE, ROOT, SITE }
     public enum Code {
+        ZIP_EXPORT("Export","ZIP_EXPORT_FAILED","Tagesabschluss-ZIP konnte nicht erstellt werden."),
+        ZIP_SHARE("Export","ZIP_SHARE_FAILED","Tagesabschluss-ZIP wurde erstellt, aber Teilen konnte nicht geöffnet werden."),
         SPEECH_AUDIO("Spracheingabe","SPEECH_AUDIO","Mikrofon oder Audioeingang wurde unterbrochen."),
         SPEECH_PERMISSION("Spracheingabe","SPEECH_PERMISSION","Mikrofonfreigabe, Anmeldung oder Aufnahmefreigabe fehlt."),
         SPEECH_BUSY("Spracheingabe","SPEECH_BUSY","Eine Sprachaufnahme läuft bereits."),
@@ -46,6 +48,8 @@ public final class ErrorHistory {
     }
     public static Code classify(String raw) {
         String s=raw==null?"":raw.substring(0,Math.min(raw.length(),8192)).toLowerCase(Locale.ROOT);
+        if(s.equals("zip_export_failed"))return Code.ZIP_EXPORT;
+        if(s.equals("zip_share_failed"))return Code.ZIP_SHARE;
         if(s.equals("speech_audio"))return Code.SPEECH_AUDIO;
         if(s.equals("speech_permission"))return Code.SPEECH_PERMISSION;
         if(s.equals("speech_busy"))return Code.SPEECH_BUSY;

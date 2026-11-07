@@ -1,5 +1,9 @@
 # TB-HELFER 2.0 – OFFENE PUNKTE
 
+## AND-TAGESZIP-1107 – Korrektur und Testbuild 1.3.42/200092
+QUELLSTAND FERTIG / BUILD, UNIT, LINT UND E2E OFFEN. Bestätigter Fragment-Absturz über ViewModel-Auftrag korrigiert; RESUMED-Ergebnisübergabe einmalig, Mehrfachstarts gesperrt, Abbruch weitergereicht. Sichtbarer Status, sichere Fehlerklassifikation und ursprüngliche Typ-/Stackpositionen ohne Rohmeldungen im Logcat. Sechs Coroutine-Regressionen hinzugefügt. Verlaufsladen an View-Lifecycle gebunden. ZIP-Inhalt/Sync/Server unverändert. Sourcechecks/Layout-XML lokal PASS, kein lokales SDK/ADB. Gemäß Bauauftrag im Thread gezielter Testbuild1.3.42/200092 mit passender Release-MD; CI-Nachweis folgt. Rotation überlebt, Prozessende/Verlassen beendet Auftrag; kein dauerhafter Hintergrundjob.
+
+
 
 ## AND-TAGESZIP-1107 – konkreter Pixel-Absturz im Log bestätigt
 Status: ABSTURZSTELLE BELEGT / KORREKTUR UND GERÄTEABNAHME OFFEN.

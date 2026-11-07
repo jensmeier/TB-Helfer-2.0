@@ -11,6 +11,9 @@ import android.widget.Toast
 import androidx.core.view.setPadding
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -35,6 +38,8 @@ import java.time.format.DateTimeFormatter
 /** Verlauf tatsächlich vorhandener BTBs; technische Auswahl immer über btbId. */
 class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
 
+    private val zipModel by lazy { ViewModelProvider(this)[TagesZipViewModel::class.java] }
+
     private val deDateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy")
     private var hauptKnotenId: Long = -1L
     private var altBaustelleId: Long = -1L
@@ -48,15 +53,16 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         baustelleName = arguments?.getString("baustelleName").orEmpty()
         view.findViewById<TextView>(R.id.tvBtbVerlaufTitle).text = "BTB-Verlauf"
         view.findViewById<TextView>(R.id.tvBtbVerlaufSubtitle).text = baustelleName.ifBlank { "Baustelle" }
+        beobachteZip(view)
         ladeVerlauf(view)
     }
 
     private fun ladeVerlauf(root: View) {
         val container = root.findViewById<LinearLayout>(R.id.containerBtbVerlauf)
         container.removeAllViews()
-        lifecycleScope.launch {
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
             val data = withContext(Dispatchers.IO) {
-                val appContext = requireContext().applicationContext
                 val items = BautagebuchSpeicher.verlaufFuerBaustelle(
                     appContext,
                     altBaustelleId.takeIf { it > 0L },
@@ -233,19 +239,44 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
     }
 
     private fun teileTagesabschlussZip(item: BautagebuchSpeicher.VerlaufEintrag) {
-        lifecycleScope.launch {
-            Toast.makeText(requireContext(), "Tagesabschluss-ZIP wird erstellt …", Toast.LENGTH_SHORT).show()
-            try {
-                val export = BtbExportPaket.erstellenBaustellenExport(
-                    requireContext().applicationContext,
-                    item.entry.baustelleId,
-                    item.entry.baustelleName,
-                    item.datum,
-                    item.datum
-                )
-                BtbExportPaket.shareZip(requireContext(), export.zipFile)
-            } catch (error: Throwable) {
-                Toast.makeText(requireContext(), "ZIP konnte nicht erstellt werden: ${error.message ?: "Fehler"}", Toast.LENGTH_LONG).show()
+        val ctx = context ?: return
+        if (!zipModel.starten(ctx.applicationContext, item)) {
+            Toast.makeText(ctx, "Ein Tagesabschluss-ZIP wird bereits erstellt.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun beobachteZip(root: View) {
+        val status = root.findViewById<TextView>(R.id.tvTagesZipStatus)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                zipModel.auftrag.zustand.collect { state ->
+                    val ctx = context ?: return@collect
+                    when (state) {
+                        TagesZipAuftrag.Zustand.Bereit -> Unit
+                        TagesZipAuftrag.Zustand.Laeuft -> {
+                            status.visibility = View.VISIBLE
+                            status.text = "Tagesabschluss-ZIP wird erstellt …"
+                        }
+                        is TagesZipAuftrag.Zustand.Fertig -> {
+                            if (zipModel.auftrag.uebernehmen(state)) {
+                                try {
+                                    BtbExportPaket.shareZip(ctx, state.datei)
+                                    status.text = "Tagesabschluss-ZIP erstellt. Teilen geöffnet."
+                                } catch (error: Exception) {
+                                    TagesZipViewModel.protokolliere(ctx, error, true)
+                                    status.text = "ZIP erstellt, Teilen fehlgeschlagen. Bitte erneut versuchen. Details im Fehlerprotokoll."
+                                }
+                                status.visibility = View.VISIBLE
+                            }
+                        }
+                        is TagesZipAuftrag.Zustand.Fehler -> {
+                            status.visibility = View.VISIBLE
+                            status.text = "ZIP konnte nicht erstellt werden (" +
+                                state.ursache.javaClass.simpleName +
+                                "). Bitte erneut versuchen. Details im Fehlerprotokoll."
+                        }
+                    }
+                }
             }
         }
     }

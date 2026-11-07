@@ -1,5 +1,9 @@
 # TB-HELFER 2.0 – CHAT CHECKPOINT
 
+## AND-TAGESZIP-1107 – Korrektur und Testbuild 1.3.42/200092
+QUELLSTAND FERTIG / BUILD, UNIT, LINT UND E2E OFFEN. Bestätigter Fragment-Absturz über ViewModel-Auftrag korrigiert; RESUMED-Ergebnisübergabe einmalig, Mehrfachstarts gesperrt, Abbruch weitergereicht. Sichtbarer Status, sichere Fehlerklassifikation und ursprüngliche Typ-/Stackpositionen ohne Rohmeldungen im Logcat. Sechs Coroutine-Regressionen hinzugefügt. Verlaufsladen an View-Lifecycle gebunden. ZIP-Inhalt/Sync/Server unverändert. Sourcechecks/Layout-XML lokal PASS, kein lokales SDK/ADB. Gemäß Bauauftrag im Thread gezielter Testbuild1.3.42/200092 mit passender Release-MD; CI-Nachweis folgt. Rotation überlebt, Prozessende/Verlassen beendet Auftrag; kein dauerhafter Hintergrundjob.
+
+
 ## AND-TAGESZIP-1107 – Behebung beauftragt
 Status IN ARBEIT. Nutzerauftrag „dann beheben“. Basis Android328cfa3a, Server6ea0d987. Bestätigten Fragment-Lifecycle-Absturz beheben: ViewModel hält Export über Rotation, Ergebnis nur RESUMED zustellen, Mehrfachstart sperren, CancellationException weiterreichen und ursprünglichen Fehler sicher erfassen. Verlaufsladen an View-Lifecycle binden. Exportinhalt, Sync-Vertrag und Server unverändert. Gezielte Regression, Android-Unit/Lint prüfen; Gerätetest weiterhin erforderlich. Keine Datenlöschung oder Neuaktivierung.
 
