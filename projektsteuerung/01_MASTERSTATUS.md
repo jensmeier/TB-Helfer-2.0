@@ -1,5 +1,14 @@
 # TB-HELFER 2.0 – MASTERSTATUS
 
+## AND-TAGESZIP-1107 – 1.3.42/200092 gebaut und geprüft
+Status BUILD BESTANDEN / UNIT UND LINT BESTANDEN / GESAMT-CI ROT / GERÄTE-E2E OFFEN.
+- Auftrag87aab774, Runtime7fb98cc28227d93c34104991695075c41a444c36. CI42348785185/Androidjob128332244601 SUCCESS:224 Tests inkl.6 TagesZip-Regressionen PASS, Lint0 Fehler/390 Warnungen, assembleDebug/Manifest/Signatur/Releasepaar PASS.
+- Export im Fragment-ViewModel über Rotation erhalten; RESUMED-Ergebnisübergabe einmalig, Mehrfachstartschutz, CancellationException weitergereicht, Fehlerstatus und sichere Diagnose. ZIP-Inhalte/Sync/Server unverändert. Prozessende/Entfernen des Verlaufs beendet Auftrag, kein dauerhafter Hintergrundexport.
+- Gesamt-CI ROT: Altprüfungen13/19/83/85/86 sowie jetzt03 wegen direktem Fragment-Dateimarker (Exportaufruf korrekt ins ViewModel verlagert). Original-Logs gelesen; keine Sicherheitsprüfung abgeschwächt, keine server/**-Datei verändert.
+- APK26946383Bytes, SHA2561e570bc32ef58112aa44ca4bcda02f998d374cde89303562ab58e32b301312d2. APK+MD desselben Baucommits im Artefakt13564214957 geprüft. Debugzertifikat weicht von200091 ab; bei Updatekonflikt bisherigen Android-Studio-Schlüssel verwenden, nicht deinstallieren. Installierte Signatur unbekannt.
+- Noch keine Pixel-/Poco-Installation/Rotation/ZIP-Inhaltsabnahme. [Befund, Prüfungen und Geräteplan](uebergaben/AND_TAGESZIP_FIX_1107.md). Keine Datenlöschung, kein Serverdeployment.
+
+
 ## AND-TAGESZIP-1107 – Korrektur und Testbuild 1.3.42/200092
 QUELLSTAND FERTIG / BUILD, UNIT, LINT UND E2E OFFEN. Bestätigter Fragment-Absturz über ViewModel-Auftrag korrigiert; RESUMED-Ergebnisübergabe einmalig, Mehrfachstarts gesperrt, Abbruch weitergereicht. Sichtbarer Status, sichere Fehlerklassifikation und ursprüngliche Typ-/Stackpositionen ohne Rohmeldungen im Logcat. Sechs Coroutine-Regressionen hinzugefügt. Verlaufsladen an View-Lifecycle gebunden. ZIP-Inhalt/Sync/Server unverändert. Sourcechecks/Layout-XML lokal PASS, kein lokales SDK/ADB. Gemäß Bauauftrag im Thread gezielter Testbuild1.3.42/200092 mit passender Release-MD; CI-Nachweis folgt. Rotation überlebt, Prozessende/Verlassen beendet Auftrag; kein dauerhafter Hintergrundjob.
 
