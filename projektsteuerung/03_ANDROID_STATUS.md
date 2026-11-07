@@ -1,6 +1,16 @@
 # TB-HELFER 2.0 – ANDROID STATUS
 
 
+## AND-TAGESZIP-1107 – konkreter Pixel-Absturz im Log bestätigt
+Status: ABSTURZSTELLE BELEGT / KORREKTUR UND GERÄTEABNAHME OFFEN.
+- Nutzerdatei Google-Pixel-8-Android-17_2026-11-07_072252.logcat lokal ausgewertet (8473 Meldungen), Rohlog nicht ins Repository kopiert. Android29d11412, Server6ea0d987.
+- 07.11.2026 Europe/Berlin07:22:27: Wechsel Quer→Hochformat/Activity-Relaunch protokolliert.07:22:36 FATAL EXCEPTION main in de.tbhelfer: IllegalStateException „Fragment BtbVerlaufFragment ... not attached to a context“, requireContext in teileTagesabschlussZip Zeile248. Coroutine dabei Cancelling.
+- GitHub bestätigt Zeile248 im catch(Throwable): Fehlertoast ruft requireContext nach asynchronem Export auf. Damit kann die Fehler-/Abbruchbehandlung selbst abstürzen, wenn das Fragment bereits abgelöst ist. CancellationException wird nicht gesondert weitergereicht. Ursprünglicher abgefangener Fehler wird nicht geloggt; genauer Erstfehler deshalb nicht rekonstruierbar. Rotation/Relaunch unmittelbar davor plus Cancelling ist starker Hinweis auf Lifecycle-Abbruch, kein Nachweis eines ZIP-Inhaltsfehlers.
+- Kein OutOfMemoryError im vorgelegten Log. Frühere Speicher-/Dublettenhypothese damit NICHT als Ursache dieses konkreten Crashs bestätigt. Export-Mehraufwand ab1.3.37 bleibt separater Quellbefund. Defekter Handler in1.3.35–41 identisch.
+- Korrekturrichtung: CancellationException weiterreichen; keine requireContext-/UI-Zugriffe auf abgelöstes Fragment; Exportauftrag und Ergebnis über Konfigurationswechsel erhalten, Freigabe nur an aktiver Ansicht, Mehrfachstart sperren. Rotation/Zurück/Neustart/Fehlerfall und normales Teilen getrennt prüfen. Nicht nur den catch-Toast verstecken und dadurch Exportverlust als behoben ausgeben.
+- Nur Log-/Quellabgleich und Dokumentation, noch keine Runtimeänderung, APK, neue CI oder Geräteprüfung. Keine Server-/Datenänderung.
+
+
 ## AND-TAGESZIP-1106 – Versionsvergleich abgeschlossen, Absturz offen
 Nutzer bestätigt1.3.41/200091 installiert; Tages-ZIP startet und App schließt. Verlauf-Handler in1.3.35–41 identisch. Wesentlicher Umbau ab1.3.37: Vorab-Sync, Gesamtmedien-Normalisierung, gesamte Baustellenbilder/Schichtlisten und XLSX-Prüfung. Lokale Bildbytes werden nun im zusätzlichen Archivpfad direkt und mehrfach vollständig gelesen; frühere normale JPG-Exportkopie verkleinert. Exportdateien1.3.37–41 identisch, gemeinsame Sync-/Application-Änderungen separat. Keine bewiesene OOM-/ZIP-Dublettenursache; neuer Pixel-Logcat nötig. Kein Runtimefix/Build/Rollback/Datenlöschen. Details: [Versionsvergleich](uebergaben/AND_TAGESZIP_VERSIONEN_1106.md). QUELLVERGLEICH ABGESCHLOSSEN / GERÄTE-E2E FEHLGESCHLAGEN / URSACHE OFFEN.
 
