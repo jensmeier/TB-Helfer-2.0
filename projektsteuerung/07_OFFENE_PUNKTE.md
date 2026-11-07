@@ -1,5 +1,11 @@
 # TB-HELFER 2.0 – OFFENE PUNKTE
 
+## AND-TAGESZIP-1107 – Praxistest: Export weiterhin fehlgeschlagen
+Screenshot07.11.2026: Verlauf zeigt „ZIP konnte nicht erstellt werden (IllegalStateException)“, Fehlerprotokoll08:15:00 Exportfehler;08:14:47 DNS/Servername nicht aufgelöst. Neue Fehleroberfläche wird erreicht; Screenshot allein belegt weder genaue installierte Buildnummer noch umfassend behobenes Crashverhalten. Tages-ZIP-E2E FEHLGESCHLAGEN, nicht erledigt.
+GitHub813b08e1/Server6ea0d987 geprüft. GesamtMedienArchiv.ergaenzen ruft bei vorhandener Serverbindung/Token zwingend loadCatalog auf; CatalogResult.Error wird Zeile150 per error(...) zu IllegalStateException. WorksiteMediaApi wandelt u.a. DNS-/Verbindungsfehler in CatalogResult.Error um. Damit passt der Ablauf zum Screenshot, konkrete Auslösestelle aber noch unbewiesen: auch Zuordnungs-/Bild-/Archivprüfungen können denselben Exceptiontyp werfen. Kein spekulativer Offline-Fallback, keine ausgelassenen Medien als vollständiges Archiv ausgeben.
+Nächster Nachweis: aktueller Logcat-Auszug Tag TagesZip mit ZIP_EXPORT_FAILED und Stackzeilen direkt nach einem Versuch. 200092 protokolliert Typ/Stack ohne Rohmeldungen. Alter Absturzlog und Fehlerhistorien-Screenshot enthalten diese Zeilen nicht. Keine Runtimeänderung/APK/CI/Datenlöschung aus diesem Screenshot.
+
+
 ## AND-TAGESZIP-1107 – 1.3.42/200092 gebaut und geprüft
 Status BUILD BESTANDEN / UNIT UND LINT BESTANDEN / GESAMT-CI ROT / GERÄTE-E2E OFFEN.
 - Auftrag87aab774, Runtime7fb98cc28227d93c34104991695075c41a444c36. CI42348785185/Androidjob128332244601 SUCCESS:224 Tests inkl.6 TagesZip-Regressionen PASS, Lint0 Fehler/390 Warnungen, assembleDebug/Manifest/Signatur/Releasepaar PASS.
