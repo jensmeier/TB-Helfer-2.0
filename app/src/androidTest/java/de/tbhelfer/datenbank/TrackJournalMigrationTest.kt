@@ -16,18 +16,23 @@ class TrackJournalMigrationTest {
     private fun open(name: String) = Room.databaseBuilder(context, TBDatenbank::class.java, name)
         .addMigrations(TBDatenbank.MIGRATION_19_22).build()
 
+    private suspend fun withDatabase(name: String, block: suspend (TBDatenbank) -> Unit) {
+        val db = open(name)
+        try { block(db) } finally { db.close() }
+    }
+
     @Test fun migrationPreservesAxisAndCreatesJournal() = runBlocking {
         val name = "migration-journal-test.db"
         context.deleteDatabase(name)
         val axis = TrassenAchseEntity(id=71, name="Original", quelleDatei="source.TRA", dateiSignatur="a".repeat(24))
         try {
-            open(name).use { db -> db.trassenDao().achseEinfuegen(axis) }
+            withDatabase(name) { db -> db.trassenDao().achseEinfuegen(axis) }
             // v22 differs from established v19 ONLY by the new journal table.
             SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use {
                 it.execSQL("DROP TABLE track_sync_journal")
                 it.version = 19
             }
-            open(name).use { db ->
+            withDatabase(name) { db ->
                 assertEquals(axis, db.trassenDao().achseMitId(71))
                 db.trackSyncJournalDao().save(TrackSyncJournal("owner", "key", "confirmed"))
                 assertEquals("confirmed", db.trackSyncJournalDao().load("owner", "key"))
@@ -39,7 +44,7 @@ class TrackJournalMigrationTest {
         val name = "atomic-journal-test.db"
         context.deleteDatabase(name)
         try {
-            open(name).use { db ->
+            withDatabase(name) { db ->
                 val original = TrassenAchseEntity(id=73, name="Original", quelleDatei="source.TRA")
                 db.trassenDao().achseEinfuegen(original)
                 try {
