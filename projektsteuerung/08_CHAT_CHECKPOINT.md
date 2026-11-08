@@ -1,5 +1,10 @@
 # TB-HELFER 2.0 – CHAT CHECKPOINT
 
+## INTEGRATION-1108 – Abschlussstand 08.11.2026
+Umsetzung gesichert: Android Runtime01a6614f, Buildkonfiguration32289783 (1.3.43/200093 vorbereitet); Server Runtimea5a0f862 (PDF-Renderer6). **Android-Build BLOCKIERT**: Gradle-Download scheitert10s und60s, keine Kompilierung/Unit/Lint/APK. **Server BUILD BESTANDEN**, Portal-Browser-CI und Snapshot/Rechte/255-Client-Sync/Recovery-Gates PASS in CI, kein NAS-E2E. Foundation-CI ROT wegen PDF-5-Marker; Check34 auf6 korrigiert, samt3 neuen Regressionen lokal PASS. Bekannte Android-Sourcechecks03/13/19/83/85/86 weiter ROT. Vollständiger Gesamt-CI-Erfolg nicht belegt. **Pixel/Poco E2E OFFEN, NAS NICHT DEPLOYT**. Keine Datenlöschung oder Migration.
+Details, Funktionen, Grenzen und nächste Tests: [INTEGRATION_1108.md](uebergaben/INTEGRATION_1108.md). Dies ist der aktuelle Stand; nachfolgende Einträge sind Chronologie.
+
+
 ## INTEGRATION-1108 – 08.11.2026
 Nutzer genehmigt Umsetzung. Server-Renderer v6, Portal-Text-/Fotogruppen und Wetterlabels implementiert. 22 bestehende Funktionstests,3 neue Regressionen, PDF-Referenztest und Portaltest mit7 Assertions lokal PASS; visuelle Kontrolle PASS. Keine NAS-Übernahme. Android Runtime01a6614f vorbereitet1.3.43/200093. CI42472214428 scheitert zweimal beim Gradle-Download vor dem Build; Timeoutanpassung folgt. Source-Verträge03/13/19/83/85/86 weiterhin rot, nicht abgeschwächt. Geräte-E2E OFFEN.
 

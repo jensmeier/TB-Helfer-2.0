@@ -81,7 +81,7 @@ def render_smoke() -> None:
         data = target.read_bytes()
         assert data.startswith(b"%PDF-"), data[:16]
         assert len(data) > 1000, len(data)
-        assert PDF_RENDERER_VERSION == "tb-server-btb-pdf-5"
+        assert PDF_RENDERER_VERSION == "tb-server-btb-pdf-6"
 
         large_source = Path(temp_dir) / "large-phone-photo.jpg"
         bounded_target = Path(temp_dir) / "bounded-photo.jpg"
@@ -119,7 +119,7 @@ def main() -> None:
         ('raise HTTPException(409, "BTB_NOT_ACTIVE")', documents),
         ('def install_pdf_atomically', documents),
         ('def rollback_pdf_install', documents),
-        ('PDF_RENDERER_VERSION = "tb-server-btb-pdf-5"', pdf),
+        ('PDF_RENDERER_VERSION = "tb-server-btb-pdf-6"', pdf),
         ("def render_android_style_btb_pdf", android_style_pdf),
         ("BAUTAGEBUCH", android_style_pdf),
         ("4. Ausgeführte Arbeiten", android_style_pdf),
@@ -170,8 +170,13 @@ def main() -> None:
         )
 
     render_smoke()
+    import unittest
+    suite = unittest.defaultTestLoader.discover(str(ROOT / "server/tests"), pattern="test_btb_integration_1108.py")
+    if not unittest.TextTestRunner().run(suite).wasSuccessful():
+        raise SystemExit("INTEGRATION-1108 regression failed")
     print("OK: TB-Server 1.0 BTB one-PDF/original/rework contract")
 
 
 if __name__ == "__main__":
     main()
+
