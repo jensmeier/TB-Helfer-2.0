@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 from datetime import date, datetime
+from time import perf_counter
 from typing import Any, Literal
 from uuid import UUID
 
@@ -57,6 +59,7 @@ from .portal import current_portal_user, require_csrf
 
 
 router = APIRouter(prefix="/api/v1", tags=["btb"])
+logger = logging.getLogger("uvicorn.error").getChild("tbserver.btb")
 
 
 BTB_CONTENT_SECTIONS = frozenset({
@@ -906,6 +909,7 @@ def finalize_btb(
     user: dict[str, Any] = Depends(require_csrf),
     mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
+    started = perf_counter()
     final_path = temp_path = backup_path = None
     installed = False
     had_previous = False
@@ -914,7 +918,9 @@ def finalize_btb(
             receipt = begin_mutation(cur, user=user, context=mutation, receipt_type="BTB_FINALIZE")
             if receipt:
                 return replay_payload(receipt)
+            lock_started = perf_counter()
             btb = _load_btb(cur, btb_id, for_update=True)
+            lock_read_ms = (perf_counter() - lock_started) * 1000
             context = worksite_context(cur, user, btb["worksite_id"])
             require_permission(context, "btb.finalize")
             _assert_team_member(cur, user, btb["team_id"])
@@ -987,7 +993,11 @@ def finalize_btb(
             original = load_original_snapshot(cur, btb_id)
             original_snapshot = original["snapshot"] if original else None
             final_path, temp_path, backup_path = final_pdf_paths(company_id=context["company_id"], worksite_id=btb["worksite_id"], btb_id=btb_id)
-            render_btb_pdf(temp_path, snapshot=snapshot, original_snapshot=original_snapshot, context=_pdf_context(cur, btb), photo_files=photo_files_for_render(photo_files))
+            pdf_context = _pdf_context(cur, btb)
+            render_photos = photo_files_for_render(photo_files)
+            render_started = perf_counter()
+            render_btb_pdf(temp_path, snapshot=snapshot, original_snapshot=original_snapshot, context=pdf_context, photo_files=render_photos)
+            render_finished = perf_counter()
             pdf_size = temp_path.stat().st_size
             pdf_sha256 = hash_file(temp_path)
             had_previous = install_pdf_atomically(temp_path, final_path, backup_path)
@@ -1004,13 +1014,24 @@ def finalize_btb(
             response = {**row, "final_pdf": public_final_pdf(pdf_file, btb_id=btb_id)}
             finish_mutation(cur, user=user, context=mutation, receipt_type="BTB_FINALIZE", entity_id=btb_id, result_version=row["version"], response_payload=response)
         finish_pdf_install(temp_path, backup_path)
-        return response
     except Exception:
         if installed and final_path is not None and backup_path is not None:
             rollback_pdf_install(final_path, backup_path, had_previous)
         if temp_path is not None and backup_path is not None:
             finish_pdf_install(temp_path, backup_path)
         raise
+    finished = perf_counter()
+    logger.info(
+        "btb_finalize_timing prepare_ms=%.1f lock_read_ms=%.1f render_ms=%.1f "
+        "persist_ms=%.1f total_ms=%.1f pdf_bytes=%d",
+        (render_started - started) * 1000,
+        lock_read_ms,
+        (render_finished - render_started) * 1000,
+        (finished - render_finished) * 1000,
+        (finished - started) * 1000,
+        pdf_size,
+    )
+    return response
 
 
 @router.get("/btbs/{btb_id}/final-pdf")
@@ -1319,5 +1340,3 @@ def delete_btb(
         )
     remove_storage_keys(invalidated_pdf_keys)
     return None
-
-

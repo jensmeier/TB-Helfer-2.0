@@ -2181,3 +2181,11 @@ Status QUELLSTAND FERTIG / GEZIELTE SOURCE- UND JAVASCRIPT-PRÜFUNG BESTANDEN / 
 - Echte PostgreSQL-/PostGIS-/HTTP-/Postman-/Browser-/Pixel-/Poco-/NAS-E2E sowie Feed-Lockwartezeit/Durchsatz OFFEN. Kein Deployment/SSH/Produktivschreiben/APK. Keine Migration. Status-Excel-Nachtrag nach bekannt nicht verifizierbarem Binärabruf weiter OFFEN; Original nicht überschrieben.
 - Serverstatus QUELLSTAND FERTIG / GEZIELTE LOKALE FUNKTIONSPRÜFUNGEN BESTANDEN / INTEGRATION-CI OFFEN / ANDROID-ANBINDUNG OFFEN / DEPLOY OFFEN / E2E OFFEN. Vertrag: [SHARED_KM_1103](vertraege/SHARED_KM_1103.md). Umfang, Nachweise und spätere Übernahme: [SHARED_KM_1103](uebergaben/SHARED_KM_1103.md). Nächster Schritt: echter isolierter PostgreSQL/PostGIS-/API-Test und separater Androidanschluss; NAS nur nach Auftrag.
 
+
+
+## SERVER-PERF-1108 – Quellabschluss 08.11.2026
+
+- Auftragscommit 60b8f967. API-Statistik in 10-Sekunden-Batches, Abschluss-Phasen im API-Log. Bestehende Android-Verträge für Abschluss, PDF, Delta und Medien im Quellstand 47a8fd58 verglichen. Keine Android-Datei geändert.
+- 29 lokale Prüfungen und PDF-Referenz bestanden. Datenbankschreiber im HTTP-Test ersetzt. NAS-Runtime, PostgreSQL-Last, Postman, Geräte-E2E und neue CI offen. Keine Bereinigung, Migration oder NAS-Übernahme.
+- Compose und gespeicherte NAS-Datei: zwölf gleiche Dienste, API-RAM 1g versus Vorlage 512m bei fehlendem Override. Restore-Datenbanken als Kandidaten für bedarfsgesteuerten Betrieb, abhängig von Test/Recovery. Keine Compose-Änderung.
+- Nächster Schritt: Zeitmessung und Mischlast auf Testinstanz. [Umsetzung, Containerbewertung und Übernahme](uebergaben/SERVER_PERF_1108.md). Status-Excel-Nachtrag wie zuvor offen.

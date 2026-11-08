@@ -23,7 +23,7 @@ from .devices import admin_router as admin_devices_router
 from .devices import router as devices_router
 from .files import router as files_router
 from .migrations import status as migration_status
-from .metrics import SystemMetricsMiddleware
+from .metrics import SystemMetricsMiddleware, http_metrics_lifespan
 from .recovery_runtime import RuntimeMaintenanceMiddleware
 from .portal import router as portal_router
 from .profile import router as profile_router
@@ -45,7 +45,8 @@ from .worksites import router as worksites_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings.storage_root.mkdir(parents=True, exist_ok=True)
-    yield
+    async with http_metrics_lifespan() as metrics:
+        yield {"http_metrics": metrics}
 
 
 app = FastAPI(
@@ -141,5 +142,3 @@ def health_ready():
         "migrations": "ok",
         "server_version": SERVER_VERSION,
     }
-
-

@@ -1111,3 +1111,11 @@ Nutzer bestätigt ausdrücklich: manuelle KM vom Handy gehören in den gemeinsam
 ## SERVER-PERF-1108 – Auftrag 08.11.2026
 
 Benutzer: „okay bauen und alles nochmal prüfen gegen android, auch den Container mal prüfen ob wir wirklich alles braucehn, erst vorschläge nochmal dann bauen“. Ausgang Server ff3c8c97 und Android 47a8fd58. Zuerst Bestandsprüfung und Vorschläge, danach HTTP-Stundenstatistik pro API-Prozess in kurzen Intervallen bündeln und Phasen des BTB-Abschlusses messen. Kein Wechsel des synchronen Abschlussvertrags. Android-Endpunkte, Status, Quittungen und Clientgrenzen vergleichen. Container, Recovery-Abhängigkeiten, aktives YAML versus Vorlage und Möglichkeiten zum bedarfsgesteuerten Betrieb prüfen. Compose-Änderungen nur bei belegter Verträglichkeit mit automatischer Wiederherstellung, Sicherungsprüfung und Zugangsweg. Keine NAS-Übernahme. IN ARBEIT.
+
+
+## SERVER-PERF-1108 – Quellabschluss 08.11.2026
+
+- Auftragscommit 60b8f967. API-Statistik in 10-Sekunden-Batches, Abschluss-Phasen im API-Log. Bestehende Android-Verträge für Abschluss, PDF, Delta und Medien im Quellstand 47a8fd58 verglichen. Keine Android-Datei geändert.
+- 29 lokale Prüfungen und PDF-Referenz bestanden. Datenbankschreiber im HTTP-Test ersetzt. NAS-Runtime, PostgreSQL-Last, Postman, Geräte-E2E und neue CI offen. Keine Bereinigung, Migration oder NAS-Übernahme.
+- Compose und gespeicherte NAS-Datei: zwölf gleiche Dienste, API-RAM 1g versus Vorlage 512m bei fehlendem Override. Restore-Datenbanken als Kandidaten für bedarfsgesteuerten Betrieb, abhängig von Test/Recovery. Keine Compose-Änderung.
+- Nächster Schritt: Zeitmessung und Mischlast auf Testinstanz. [Umsetzung, Containerbewertung und Übernahme](uebergaben/SERVER_PERF_1108.md). Status-Excel-Nachtrag wie zuvor offen.
