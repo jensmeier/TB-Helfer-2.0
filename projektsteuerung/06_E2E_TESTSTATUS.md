@@ -1,16 +1,17 @@
 # TB-HELFER – TEST- UND E2E-STATUS
-Stand08.11.2026 – unabhängige Gesamtprüfung.
-Geprüfter SERVER-Fachstand `b213bcbfe8d5fcf49c17e71108b8be04167f4d7f`; ANDROID-Fachstand `a8401775a3f607594df91468e728ee3f6d3a1ec4`.
-Nachfolgende Dokumentationscommits verändern diese geprüften Fachstände nicht.
-[Vollständiger Prüfbericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [Unveränderte vorherige Fassungen](archiv/GESAMTPRUEFUNG_2026-11-08/README.md).
+Stand 08.11.2026 – Umsetzung GESAMT-1108 nach ausdrücklichem Bauauftrag.
+SERVER-Teststand `b924da3e9bbff603a78ca55753cefb439f1ac607`, Fachcode `b17530d305797837d42f3049681f10cd919ea4b5`.
+ANDROID-Fach-/APK-Stand `cda78c2f42fd7b1acd76d60612ce42d882662edf`, 1.3.46 / 200096; nachfolgender Instrumentierungsstand `680ef37e9781eb4e4b0b8da04b5db7e6b2d42340`.
+Nachfolgende Dokumentationscommits verändern diese Fachstände nicht.
+[Aktueller Bericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [vorherige Statusfassungen](archiv/UMSETZUNG_2026-11-08_VORHER/01_MASTERSTATUS.md).
 
-Begriffe verbindlich: QUELLCODE GEPRÜFT / SOURCE-TEST BESTANDEN / BUILD BESTANDEN / CI BESTANDEN / INSTALLIERT / DEPLOYT / E2E OFFEN / E2E BESTÄTIGT / ERLEDIGT. Keine dieser Stufen ersetzt die nächste.
-## Nachweise dieses Prüfblocks
-160bestehende lokale Skripte:112PASS,41Assertion-/Markerfehler,1Syntaxfehler,1Harnessfehler,5Umgebungsblockaden.45Server-Unittests PASS und1Modulimportfehler;2PDF-Funktionstests PASS;4Java-Regressionsprogramme PASS. Zwei neue Fehler reproduziert (echte Produktionsfunktionen, ausdrücklich DB-/SQL-Doubles).
-Android-Buildjob SUCCESS,233Unit-Tests,0Lintfehler/391Warnungen; Gesamt-CI FAILURE. Ältere Server-CI mit echten PostgreSQL/HTTP/Chromium-Teilnachweisen, nicht vollständiger aktueller Serverstand. 255Wait-Clients≠15×15Fachlast. Postman-Beispielsammlung≠Synology-E2E.
-## Aktuelle Geräte-/NAS-Abnahme
-Pixel: installierter Build/Signatur OFFEN. Poco: installierter Build/Signatur OFFEN. NAS: laufender Commit/aktueller Migrationsstand OFFEN. Historisch bestätigte Teilfunktionen bleiben geschützt; keine erneute Gesamtbestätigung behauptet.
-Folgende Prüffälle aus Abschnitt13 des [Berichts](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) sind für das aktuelle Branchpaar E2E OFFEN:
+Android BUILD BESTANDEN und gesamter CI-Lauf42495975421 BESTANDEN am Baucommit cda78c2f42fd7b1acd76d60612ce42d882662edf. 245 Unit-Tests in35Suiten,0Fehler/0übersprungen; Lint0Fehler/391Warnungen. APK1.3.46/200096 und exakt passende Release-MD heruntergeladen; Manifest/Commit/SHA256 gegengeprüft.
+Server BUILD/CI BESTANDEN: vollständiger Lauf42496224535 am b924da3e9bbff603a78ca55753cefb439f1ac607 gegen Android cda78c2f42fd7b1acd76d60612ce42d882662edf. 66 Unit-Tests,100 Foundation-Prüfskripte,24Migrationen in frischer PostgreSQL-Testumgebung, Authentifizierungsablauf, Container-/Snapshot-/Restore-/Rechte-/Recoverygate sowie255Sync-Wait-Verbindungen erfolgreich. Kein produktiver NAS-Test.
+Room INSTRUMENTIERUNG BESTANDEN: Lauf42496070087 am680ef37e9781eb4e4b0b8da04b5db7e6b2d42340, Android15/API35-Emulator,2/2Tests. Echtes Room/SQLite: additive Migration19→22 erhält Achse; Geometrie+Journal rollen bei Ausnahme zusammen zurück und werden bei Erfolg gemeinsam bestätigt; Journale sind nach Owner getrennt. Kein Pixel-/Poco-/NAS-Netzwerktest.
+Begriffe: QUELLCODE GEPRÜFT / SOURCE-TEST BESTANDEN / BUILD BESTANDEN / CI BESTANDEN / INSTALLIERT / DEPLOYT / E2E OFFEN / E2E BESTÄTIGT / ERLEDIGT bleiben getrennt.
+
+Pixel, Poco und Synology: aktueller Installations-/Deploymentstand und E01–E12 E2E OFFEN. Die Room-Instrumentierung ist ein echter Emulator-Datenbanktest, aber kein Zwei-Geräte-/NAS-Netzwerktest. Spezifische PDF-/Handlerprüfungen mit Doubles bleiben als solche gekennzeichnet.
+
 | ID | Abnahme |
 |---|---|
 | E01 | Pixel-Neubaustelle ohne Helfer → Server → Poco, keine Doppelanlage |
@@ -25,4 +26,6 @@ Folgende Prüffälle aus Abschnitt13 des [Berichts](uebergaben/GESAMTPRUEFUNG_20
 | E10 | Signaturkompatibles Update ohne Datenverlust |
 | E11 | Recovery/Restore in eigener Testumgebung |
 | E12 | Gemischte255Clientlast mit Fotos/PDF/Fachänderungen |
-Keine produktiven Testdaten/Container ohne Auftrag verändern. Alte Testnachweise stehen unverändert im [Archiv](archiv/GESAMTPRUEFUNG_2026-11-08/06_E2E_TESTSTATUS.md).
+
+Für die10zugeordneten CI-Läufe wurden20Jobversuche mit zusammen53,23Minuten gemessener Joblaufzeit erfasst, einschließlich Fehlern/Wiederholungen. Das sind Laufzeitdaten, keine Abrechnung. Tatsächlich berechnete Minuten, Monatsverbrauch und Freiminutenrest bleiben mangels Billingzugriff OFFEN. Zusatzbudget0USD unverändert; keine Einsparung behauptet.
+Geschützt und erhalten: Word, drei Bilder pro Reihe, gespeicherte Fotoanzahl, stabile IDs und Originale sowie historische BESTÄTIGT/PASST/FUNKTIONIERT/ERLEDIGT-Markierungen. Neue Tests sind keine erneute pauschale Praxisbestätigung. Ungeprüfte ältere Restaufträge bleiben im Archiv offen zur Einordnung.

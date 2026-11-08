@@ -1,11 +1,17 @@
-# TB-HELFER – CHAT-CHECKPOINT
-Stand08.11.2026 – unabhängige Gesamtprüfung.
-Geprüfter SERVER-Fachstand `b213bcbfe8d5fcf49c17e71108b8be04167f4d7f`; ANDROID-Fachstand `a8401775a3f607594df91468e728ee3f6d3a1ec4`.
-Nachfolgende Dokumentationscommits verändern diese geprüften Fachstände nicht.
-[Vollständiger Prüfbericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [Unveränderte vorherige Fassungen](archiv/GESAMTPRUEFUNG_2026-11-08/README.md).
+# TB-HELFER – CHECKPOINT
+Stand 08.11.2026 – Umsetzung GESAMT-1108 nach ausdrücklichem Bauauftrag.
+SERVER-Teststand `b924da3e9bbff603a78ca55753cefb439f1ac607`, Fachcode `b17530d305797837d42f3049681f10cd919ea4b5`.
+ANDROID-Fach-/APK-Stand `cda78c2f42fd7b1acd76d60612ce42d882662edf`, 1.3.46 / 200096; nachfolgender Instrumentierungsstand `680ef37e9781eb4e4b0b8da04b5db7e6b2d42340`.
+Nachfolgende Dokumentationscommits verändern diese Fachstände nicht.
+[Aktueller Bericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [vorherige Statusfassungen](archiv/UMSETZUNG_2026-11-08_VORHER/01_MASTERSTATUS.md).
 
-Auftrag08.11: Gesamtprüfung und Bereinigung („1+3“). Prüfung abgeschlossen, Bericht und aktuelle00–08 gesichert. Keine Runtime-/App-/Workflowänderung, keine APK/Migration/NAS-Übernahme.
-Neue reproduzierte FehlerAUDIT-1108-01/-02; vollständige Liste[07](07_OFFENE_PUNKTE.md). Trassendatenpfade und aktuelle CI-Artefakte geprüft. Kein vollständiger aktueller NAS-/Pixel-/Poco-E2E.
-Bei Weiter/Hallo/Hängstdu: erst beide GitHub-HEADs erneut lesen, Diff gegen die oben fixierten Fachstände prüfen, abgeschlossene Prüfung nicht blind wiederholen. Reine Dokumentationscommits sind keine neue App-/Serverversion.
-Nächste sinnvolle Arbeit: getrennte Entwicklungsaufträge gemäß02, danach aktuelle Branchpaar-Checks und E01–E12. Keine geschützten Bestätigungen oder Originaldaten löschen.
-Keine erfundene Hintergrundarbeit, kein erfundener Chatfüllstand. Verbrauch/Billing offen; keine unnötige CI-Wiederholung.
+Android BUILD BESTANDEN und gesamter CI-Lauf42495975421 BESTANDEN am Baucommit cda78c2f42fd7b1acd76d60612ce42d882662edf. 245 Unit-Tests in35Suiten,0Fehler/0übersprungen; Lint0Fehler/391Warnungen. APK1.3.46/200096 und exakt passende Release-MD heruntergeladen; Manifest/Commit/SHA256 gegengeprüft.
+Server BUILD/CI BESTANDEN: vollständiger Lauf42496224535 am b924da3e9bbff603a78ca55753cefb439f1ac607 gegen Android cda78c2f42fd7b1acd76d60612ce42d882662edf. 66 Unit-Tests,100 Foundation-Prüfskripte,24Migrationen in frischer PostgreSQL-Testumgebung, Authentifizierungsablauf, Container-/Snapshot-/Restore-/Rechte-/Recoverygate sowie255Sync-Wait-Verbindungen erfolgreich. Kein produktiver NAS-Test.
+Room INSTRUMENTIERUNG BESTANDEN: Lauf42496070087 am680ef37e9781eb4e4b0b8da04b5db7e6b2d42340, Android15/API35-Emulator,2/2Tests. Echtes Room/SQLite: additive Migration19→22 erhält Achse; Geometrie+Journal rollen bei Ausnahme zusammen zurück und werden bei Erfolg gemeinsam bestätigt; Journale sind nach Owner getrennt. Kein Pixel-/Poco-/NAS-Netzwerktest.
+Offen: gemeinsame Trassen-/KM-Löschabsichten und Konfliktoberfläche; KM-Sprünge und GVP-/Mast-Bearbeitung; vollständiger objektweiser Fachdelta-/globaler Katalogfeed; Offline-Android-Nachlauf der 16h-Frist; experimentelle Android-DB 20/21; alter Installationssignierschlüssel und reale NAS-/Pixel-/Poco-E2E. Kein NAS-Deployment, kein Merge, keine produktive Migration oder Datenänderung ausgeführt.
+
+Nicht blind neu bauen: oben genannte CI-Läufe und die exakte APK/Release-MD prüfen. Bei Fortsetzung zuerst aktuelle GitHub-HEADs mit diesem Fachstand vergleichen. Server-/Android-Gegenkopien bleiben nicht maßgeblich; CI pinnt explizite Partner-SHAs. Keine unnötige Wiederholung bestandener Tests. Quelle/Build/Installation/E2E unterscheiden.
+
+Die beigefügte APK ist ein DEBUG-Testbuild. APK_SHA256: 80b11549b88a10dffe84ade49557393ad47c149adcaa9ee571cafe7c2f351c7d; Größe: 27044724 Bytes. Signatur-Zertifikat SHA256: 9d90db043eb1a5658761a4cc9a2f2164d5ebcb73fd31f510f84c9c42b79f7d76.
+Die CI-Prüfung bestätigt APK-Signatur und Manifest, aber nicht die Übereinstimmung mit der installierten Pixel-/Poco-App. Im Repository liegt kein vorhandener privater Signierschlüssel; ein kompatibles Update ist deshalb nicht belegt. Der Updateclient prüft die installierte Signatur und weist Abweichungen ab. Nicht deinstallieren, um eine Signaturabweichung zu umgehen. Für das reguläre Update den vorhandenen Installationsschlüssel verwenden; die CI-Anbindung dafür ist vorbereitet.
+Geschützt und erhalten: Word, drei Bilder pro Reihe, gespeicherte Fotoanzahl, stabile IDs und Originale sowie historische BESTÄTIGT/PASST/FUNKTIONIERT/ERLEDIGT-Markierungen. Neue Tests sind keine erneute pauschale Praxisbestätigung. Ungeprüfte ältere Restaufträge bleiben im Archiv offen zur Einordnung.

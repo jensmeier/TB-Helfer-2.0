@@ -1,372 +1,153 @@
-TB-HELFER 2.0 – AKTUELLE GESAMTPRÜFUNG
-Stand: 08.11.2026. Unabhängige Prüfung; keine Entwicklung, kein Deployment.
+TB-HELFER 2.0 – AKTUELLER UMSETZUNGS- UND PRÜFSTAND
+Stand: 08.11.2026, nach ausdrücklichem Auftrag „okay alles bauen“.
 
 ERGEBNIS
-Es gibt zwei neu reproduzierte Programmfehler und weiterhin wichtige bekannte Integrationslücken. Eine Freigabe „alle Funktionen funktionieren“ ist nicht gerechtfertigt. Umfangreiche Quell-, Vertrags-, Regression- und CI-Prüfungen liegen vor; die reale Kette Pixel ↔ NAS/Portal ↔ Poco wurde in diesem Auftrag nicht ausgeführt.
+Die wesentlichen Korrekturen aus der Gesamtprüfung sind implementiert und auf die getrennten Android-/Server-Arbeitsbranches übertragen. Dieser Bericht ersetzt die vorherige aktuelle Prüfzusammenfassung; der unveränderte Auditstand bleibt im Git-Verlauf und unter den unten genannten Belegpfaden nachvollziehbar.
+Keine pauschale Fertigmeldung für alle Funktionen: spezielle KM-Fälle, Konfliktbedienung, reale Geräteinstallation und Synology-E2E sind weiterhin offen. Weder ein Build noch ein CI-Lauf bestätigt die Installation auf deiner NAS oder deinem Handy.
 
-1. VERBINDLICHER PRÜFSTAND
-SERVER feature/tb-server-1.0: b213bcbfe8d5fcf49c17e71108b8be04167f4d7f
-ANDROID feature/tb-android-2.0: a8401775a3f607594df91468e728ee3f6d3a1ec4
-Server-Version1.0.0-dev, APIv1, PDF-Renderer6; Migrationen001–024 vorhanden.
-Android versionName1.3.44 / versionCode200094.
-PR6 SERVER offen/Draft; PR11 ANDROID offen/kein Draft. Beide melden mergeable=false / mergeable_state=dirty. Kein Merge ausgeführt.
-Diese SHAs bezeichnen den geprüften Fachcode vor der anschließenden reinen Dokumentationssicherung. Dokumentationscommits sind keine neuen Builds.
+VERBINDLICHE STÄNDE
+SERVER feature/tb-server-1.0: b924da3e9bbff603a78ca55753cefb439f1ac607 (letzter Test-/Paarungsstand).
+Server-Fachcode: b17530d305797837d42f3049681f10cd919ea4b5; danach ausschließlich Tests/CI.
+ANDROID feature/tb-android-2.0: 680ef37e9781eb4e4b0b8da04b5db7e6b2d42340 (Instrumentierungsprüfung).
+Android-Fach-/APK-Baucommit: cda78c2f42fd7b1acd76d60612ce42d882662edf, 1.3.46 / 200096.
+Server 1.0.0-dev / API v1 / PDF-Renderer 6; vorhandene Servermigrationen 001–024. Keine neue Servermigration hinzugefügt.
+Android Room-Schema 19→22: zusätzliche Journal-Tabelle. Experimentelle Schemas 20/21 erhalten keinen destruktiven Rückweg und sind vor Installation separat zu klären.
+Nachfolgende Dokumentationscommits verändern diese Fachstände nicht. Kein Merge und kein Deployment.
 
-Quellen:
-https://github.com/jensmeier/TB-Helfer-2.0/tree/b213bcbfe8d5fcf49c17e71108b8be04167f4d7f
-https://github.com/jensmeier/TB-Helfer-2.0/tree/a8401775a3f607594df91468e728ee3f6d3a1ec4
-https://github.com/jensmeier/TB-Helfer-2.0/pull/6
-https://github.com/jensmeier/TB-Helfer-2.0/pull/11
+TESTNACHWEISE
+Android BUILD BESTANDEN und gesamter CI-Lauf42495975421 BESTANDEN am Baucommit cda78c2f42fd7b1acd76d60612ce42d882662edf. 245 Unit-Tests in35Suiten,0Fehler/0übersprungen; Lint0Fehler/391Warnungen. APK1.3.46/200096 und exakt passende Release-MD heruntergeladen; Manifest/Commit/SHA256 gegengeprüft.
+Server BUILD/CI BESTANDEN: vollständiger Lauf42496224535 am b924da3e9bbff603a78ca55753cefb439f1ac607 gegen Android cda78c2f42fd7b1acd76d60612ce42d882662edf. 66 Unit-Tests,100 Foundation-Prüfskripte,24Migrationen in frischer PostgreSQL-Testumgebung, Authentifizierungsablauf, Container-/Snapshot-/Restore-/Rechte-/Recoverygate sowie255Sync-Wait-Verbindungen erfolgreich. Kein produktiver NAS-Test.
+Room INSTRUMENTIERUNG BESTANDEN: Lauf42496070087 am680ef37e9781eb4e4b0b8da04b5db7e6b2d42340, Android15/API35-Emulator,2/2Tests. Echtes Room/SQLite: additive Migration19→22 erhält Achse; Geometrie+Journal rollen bei Ausnahme zusammen zurück und werden bei Erfolg gemeinsam bestätigt; Journale sind nach Owner getrennt. Kein Pixel-/Poco-/NAS-Netzwerktest.
 
-GitHub-Einstieg00, Projektregeln und Status01–07 beider Branches wurden gelesen,08 ergänzend. Für Servercode wurde der SERVER-Branch verwendet, für Android der ANDROID-Branch. In den Gegenkopien unterscheiden sich188 app-Dateien bzw.263 server-Dateien. Ein grüner Test gegen nur einen Branch wäre deshalb kein Beweis für das aktuelle Branchpaar.
+WIE TRASSENDATEN JETZT VOM HANDY ZUM SERVER KOMMEN
+1. Beim neuen Import wird die unveränderte Rohdatei mit SHA-256 in einer lokalen Originalwarteschlange erhalten. Das betrifft unterstützte TRA/GRA/TRG/KOR/KF/KV/CSV/TXT-Importpfade, einschließlich der dort entpackten Dateien. Es ist keine Zusage, jedes proprietäre Format fachlich vollständig dekodieren zu können.
+2. Die abgeleiteten Baustellendaten (Achssamples/Streckenpunkte) werden mit gespeichertem Ausgangsstand verglichen. Haupt-TB-Geräte senden und empfangen; Helfer empfangen im erlaubten Bereich. Wenn lokal UND auf dem Server geändert wurde, wird nicht still eine neue Basisversion angenommen. Ein lokal fehlender Bestand bedeutet nicht automatisch Serverlöschung.
+3. Empfangene Daten werden vor Anwendung validiert. Lokale Daten und bestätigter Sync-Ausgangsstand werden gemeinsam in einer Room-Transaktion gespeichert. Vorhandene Achs-IDs und originale Achselemente bleiben erhalten. Ein Abbruch darf keine halb bestätigte Übernahme hinterlassen.
+4. Die Originalwarteschlange lädt über WLAN zur eindeutig gebundenen Baustelle hoch. Der vorhandene Datei-Upload verwendet stabile Änderungskennungen; danach POST /survey-originals/from-file und der vorhandene Parseraufruf. Erst eine bestätigte Parserantwort markiert diesen Schritt als erledigt. Bei Mehrdeutigkeit erfolgt keine Zuordnung anhand eines geratenen Namens.
+5. Der gemeinsame KM-Abgleich bindet über die Originalsignatur eindeutig an Quelle/Achse/Version im GLOBAL-Katalog. Er überträgt lineare manuelle Abschnitte sowie zwei GPS-Anker mit bekannter Genauigkeit über /survey-catalog/axes/{id}/km-sync. Beitrags-ID, Quellenhash, Basisversion und die exakt ausstehende Anfrage werden dauerhaft gespeichert. Nach Timeout wird dieselbe Anfrage wiederholt; ein Konflikt bleibt erhalten.
+6. Weitere Geräte lesen die passenden gemeinsamen Abschnitte und speichern sie atomar. Nach einem neuen Originalupload wird die KM-Zuordnung sofort erneut versucht. Netzwerkbeschränkte Einmalaufträge und ein 15-Minuten-Fallback unterstützen Wiederaufnahme; Android kann Hintergrundausführung verschieben. Das ist keine Garantie für sekundengenaue Zustellung.
+7. GVP-/Mast-Metadaten werden beim Empfang vollständig im Journal erhalten. Änderungen dieser speziellen Beiträge werden derzeit blockiert/protokolliert, statt die Herkunft still in MANUAL umzuwandeln. KM-Sprünge werden ebenfalls nicht als scheinbar lineare Kalibrierung übertragen. Diese Funktionen sind fachlich noch nicht vollständig fertig.
+8. Alte Rohdateien lassen sich nicht aus interpolierten Samples zurückrechnen. Falls sie noch nicht lokal erhalten sind, müssen die Originaldateien erneut importiert werden. Unbekannte GPS-Genauigkeit wird nicht erfunden.
 
-2. UMFANG UND GRENZEN
-Inventar:87 Server-Pythonmodule,245 dekorierte Routenfunktionen,331 Android-Hauptquellen,34 Android-Testquellen,24 v1-Migrationen sowie Workflows, Prüfskripte, Verträge und Projektsteuerung. Nicht jede Codezeile und nicht jede Kombination wurde dynamisch ausgeführt. Ein Routeninventar ist kein Funktions-E2E.
-941 heruntergeladene Textdateien wurden gegen ihre Git-Blob-Hashes verifiziert. Zwei große Bahnhof-/Betriebsstellen-JSON-Dateien konnten über den Textabruf nicht vollständig bezogen werden; daraus wird keine Beschädigung im Repository abgeleitet. Der kombinierte lokale Prüfbestand dient ausschließlich dem Quervergleich, nicht als auslieferbare Version.
-Keine aktuelle Synology-Shell, produktive DB, Geräteinstallation, Netzwerkaufzeichnung, Android-SDK/Emulator oder vollständiger lokaler Containerstack verfügbar. Keine Produktivzugriffe mit Schreibwirkung. Keine neue CI-Runde, Migration, APK, Codekorrektur oder Containeränderung.
+UMSETZUNG UND RESTAUFGABEN
 
-3. NEUE FEHLER
+AUDIT-1108-01 – SERVER
+Status: IMPLEMENTIERT / gezielte Regression bestanden
+Trassendaten und Vermessungsabschnitte prüfen Leserecht und vollständigen KM-Bereich; unbekannte Geometrie wird für eingeschränkte Helfer gesperrt.
+Offen/Nächster Schritt: Reale Helfer-/Rechteentzugsmatrix auf NAS offen.
 
-AUDIT-1108-01 – P1 – Helfer-Rechte bei Trassendaten unvollständig
-server/tbserver/track_data.py:list_track_data und get_track_data rufen worksite_context auf, prüfen danach aber weder worksite.view noch effective_area_scope. worksite_context berechnet diese Werte, erzwingt das Fachleserecht selbst jedoch nicht.
-Reproduktion mit unveränderten Produktionsfunktionen: HELPER, eigener Firmenkontext, BereichKM0–100, worksite.view=False. Ein DatensatzKM1000–2000 wird sowohl in der Liste als auch per Detail-ID ausgegeben. SQL/Transaktion sind Doubles; kein echter HTTP-/PostgreSQL-/NAS-Test. Die Firmenprüfung ist vorhanden; eine firmenübergreifende Offenlegung wurde damit nicht behauptet.
-Nachweis: pruefnachweise_2026-11-08/reproduce_track_access.py und reproductions.json.
-Abhilfevorschlag: explizites Leserecht und gemeinsamer Bereichsfilter für Liste/Detail; entsprechende verwandte survey_sections-Lesewege mitprüfen. Tests für erlaubten/gesperrten/teilweise überlappenden Bereich, fremde Firma und expliziten Rechteentzug.
+AUDIT-1108-02 – SERVER
+Status: IMPLEMENTIERT / Fehlerinjektion bestanden
+PDF-Cleanup nach bestätigtem DB-Commit kann die bestätigte Datei nicht mehr zurückrollen; vorherige Fehler rollen zurück.
+Offen/Nächster Schritt: NAS-Dateisystem-/DB-Abnahme offen.
 
-AUDIT-1108-02 – P1 – PDF-Datei nach DB-Commit zurückgesetzt
-server/tbserver/btb.py:finalize_btb beendet zunächst die DB-Transaktion erfolgreich. finish_pdf_install liegt anschließend weiterhin innerhalb des try-Blocks, dessen except rollback_pdf_install aufruft. Schlägt die nachträgliche Entfernung der Sicherungsdatei fehl, wird die bereits bestätigte PDF zurückgerollt.
-Reproduktion: tatsächlicher finalize-Kontrollfluss und unveränderte Produktions-Dateifunktionen, echte temporäre Dateien, erfolgreicher DB-Commit als Double, einmaliger OSError beim Löschen der Sicherung. Ergebnis: DB FINALIZED und neuer PDF-Hash; Dateisystem enthält wieder die alte PDF. Beim ersten Abschluss droht entsprechend die Entfernung der neuen Datei. Der Fehler ist bedingt durch einen Bereinigungsfehler, nicht bei jedem normalen Abschluss vorhanden.
-Nachweis: pruefnachweise_2026-11-08/reproduce_finalize_cleanup.py und reproductions.json.
-Abhilfevorschlag: den Rollback nur für Vorgänge vor dem erfolgreichen DB-Commit erlauben; nachgelagerte Bereinigung idempotent und wiederholbar behandeln. Fehler an jedem Installations-/Commit-/Cleanup-Schritt prüfen; kein pauschales Umschreiben vorhandener PDFs.
+TRACK_KM_1103 – ANDROID
+Status: IMPLEMENTIERT / Build und Dreiwege-Tests
+Persistentes Journal, ursprüngliche Basisversion, kein stilles 409-Rebase und keine Löschung nur wegen lokal fehlendem Bestand. Empfang validiert und atomar; Achs-IDs/Originalelemente bleiben.
+Offen/Nächster Schritt: Explizite Löschabsichten und bedienbare Konfliktauflösung offen.
 
-4. WIE TRASSENDATEN TATSÄCHLICH VOM HANDY ZUM SERVER KOMMEN
+SHARED-KM-1103 – ANDROID + SERVER
+Status: TEILWEISE IMPLEMENTIERT
+Originalhash-Resolver, dauerhafte Beitrags-ID und exakte Request-Wiederholung; lineare Abschnitte/GPS-Anker mit Genauigkeit; Empfang über vorhandenen Katalog.
+Offen/Nächster Schritt: KM-Sprünge, GVP-/Mast-Bearbeitung, Deaktivierung und Konflikt-UI offen. GVP-/Mast-Herkunft wird bei Änderung geschützt.
 
-Es bestehen drei verschiedene Ebenen:
-A) Lokale Vermessungsoriginale, z.B.TRA/GRA/KF aus Import/ZIP.
-B) Baustellenbezogene abgeleitete AXIS-/STRECKENPUNKTE-Datensätze.
-C) Gemeinsamer Server-Fachkatalog mit Quellen, Achsen, versionierten Beiträgen und KM-Ankern.
-Der bestehende mobile Pfad verbindet hauptsächlich B. Er schließt A und C nicht automatisch vollständig an.
+ORIGINAL-TRANSPORT – ANDROID
+Status: IMPLEMENTIERT / Geräte-E2E offen
+Neu importierte Rohdateien bleiben unverändert lokal; WLAN-Outbox lädt sie zur eindeutig gebundenen Baustelle hoch, registriert Original und ruft Parser auf.
+Offen/Nächster Schritt: Alte Originale erneut importieren; Mehrdeutigkeiten und fachlich nicht unterstützte Formate separat prüfen.
 
-Handy→Server: WorksiteTrackDataSync baut für memberRole LEAD den lokalen Bestand auf und ruft WorksiteTrackDataApi.replace auf. Enthalten sind Achsensamples einschließlich km_meter/km_quelle und Streckenpunkte. Rohdateien werden dabei nicht übertragen. replace ist intern ein Abgleich mit GET/CREATE/PATCH/DELETE, kein ungefährlicher reiner Upload.
-Server→Helfer: Nicht-LEAD-Geräte lesen den Serverbestand und wenden ihn lokal an. Vor vollständiger Validierung werden lokale Achsen/Punkte gelöscht; eine übergreifende atomare Ersetzung ist in diesem Pfad nicht vorhanden. Ein kaputter Teil kann übersprungen werden. Das ist ein Quellrisiko, kein in diesem Auftrag ausgeführter Room-/Geräteverlusttest.
-Mehrere verantwortliche TBs: Der LEAD-Zweig sendet; er ist hier kein allgemeiner Empfangspfad für Änderungen eines anderen TB. Die Rollenabhängigkeit muss beim gemeinsamen Fachkatalog berücksichtigt werden.
-Manuelle KM-Änderung: TrassenRepository.speichereManuellenKmAnker speichert Anker lokal und berechnet Samples neu. Diese abgeleiteten KM-Werte können beim nächsten allgemeinen Trassendatensync mitreisen. Ursprüngliche Anker, Messgenauigkeit und stabile Beitragsidentität werden auf diesem Weg nicht vollständig transportiert. Direktes dauerhaftes Dirty-/Sync-Anstoßen ist dort nicht implementiert.
-Konflikte: replace lädt nach409 wieder den aktuellen Serverstand, setzt dessen Version als Basis und versucht bis zu dreimal. Damit wird die ursprüngliche Benutzer-Basisversion nicht als fachlicher Konflikt bewahrt. Außerdem werden Serverdatensätze gelöscht, die im lokalen Sollbestand fehlen; eine Beschränkung auf eigene/verwaltete Datensatzarten fehlt im betreffenden Löschzweig. Bekannter TRACK_KM_1103-Befund, nicht neu doppelt erfasst.
+AUD-20261002-01 / -02 – SERVER
+Status: IMPLEMENTIERT
+Manuelle GPS-Teilabschnitte werden nicht blind vom Original verdrängt; Objektkennung bleibt im Updatepfad erhalten.
+Offen/Nächster Schritt: Reale W/WVB-/Teilüberdeckungsfälle abnehmen.
 
-Der Server bietet bereits:
-- POST /api/v1/survey-originals/from-file: macht aus einer schon hochgeladenen Datei ein nachvollziehbares Original; Berechtigung/Firma und COMPANY/GLOBAL-Scope werden geprüft. Dies ist nicht ausschließlich ein Adminpfad.
-- GET/POST /api/v1/survey-catalog/axes/{axis_id}/km-sync und POST .../{segment_id}/deactivate: gemeinsame, versionierte KM-Beiträge einschließlich Quellenbindung und Konfliktschutz.
-- Admin-Import/Archivverarbeitung und Katalog-/Geometrieabfragen.
-In den gesamten untersuchten Android-Hauptquellen fehlt ein Consumer für km-sync und survey-originals/from-file. Die Server-Capability survey_shared_km_sync_v1=True bedeutet nicht, dass Android den Gesamtweg bereits nutzt.
-Empfehlung: diese vorhandenen Endpunkte mit dauerhaftem objektbezogenem Android-Outboxpfad verbinden; UUID/Quellenhash/Originalversion und Änderungs-Basisversion mitführen; Konflikte sichtbar lassen; Originale unverändert erhalten. Kein neues paralleles Datenmodell.
+ADMIN-PDF-011 – ANDROID
+Status: IMPLEMENTIERT
+Logo-Vertrag 40–400 pt übernommen.
+Offen/Nächster Schritt: Praktischer Geräte-/Portalvergleich offen.
 
-5. GESAMTE FUNKTIONSMATRIX
-| Funktionsgruppe | Quellen-/Testbefund | Was noch fehlt |
-|---|---|---|
-| Aktivierung, Firmen, Benutzer, Rechte | Server- und Android-Clients vorhanden; Rechte-/Reauth-/Session-Prüfungen überwiegend bestanden; konkrete Trassendaten-Ausnahme AUDIT-1108-01 | Aktueller NAS- und Geräte-Test aller Rollen/Entzüge |
-| Baustellen, Teams, Unterbaustellen | Idempotente Neuanlage, Kopfänderungen, Teamzuordnung, lokale Schlüssel, Wiederaufnahme und Dirty-Schutz vorhanden; Worksite-Handlerregressionen bestanden | Pixel→Portal→Poco und Portal→beide Handys; lokale Neuanlage ohne Helfer |
-| BTB speichern, ändern, löschen, verschieben | Versionierung, Einträge, Medienzuordnung, selektiver Dirty-BTB-Pfad und Wiederöffnung vorhanden; bestehende Handler-/Portaltests bestanden | Konkurrierendes Bearbeiten, falsche Firma korrigieren, Verschieben samt Fotos praktisch testen |
-| Helfer / Schichtende | Eigener Beitrag und Haupt-TB-Abschluss getrennt; letzte Daten/Medien müssen vor FERTIG bestätigt sein; PDF-Teamleiterrecht vorhanden | Offline-Helfer, fehlender Upload, Wiedereintritt, Haupt-TB-Abschluss und beide Rollenwechsel |
-| BTB endgültig abschließen | Quelldaten und PDF-Datei werden erzeugt; neuer Fehler nach Commit reproduziert | AUDIT-1108-02 beheben; echter NAS-Dateisystem-/DB-Abnahmetest |
-| Server→Handy / Handy→Server | Versionen, Receipts, Feed, Tombstones, Outbox und lokale Sicherung vorhanden; gezielte Sync-Tests bestanden | Kein lückenloser Fachdeltaempfang; echte Parallelität und Offline-Dauerbetrieb offen |
-| Fotos, GPS, Metadaten | Kleine Sync-Versionen, Vorschaudownload, Metadaten-PATCH und stabile Bindungen vorhanden; Originalschutz bleibt | Neues Portalbild/Handybild jeweils <=2.000.000 Bytes über reale Leitung; Originalhash, GPS, NULL-KM/echte0 |
-| PDF / Word / ZIP / XLSX | PDF-Renderer6; zwei aktuelle PDF-Funktionstests bestanden; Androidexport mit Unit-/Buildbelegen; Word unverändert | Word/PDF/Einzel-ZIP/Gesamtexport auf konkreten Nutzerdateien, Excel nach Ordnerkopie, Bildlinks und Abnahme auf Geräten |
-| Mängel / Abnahmen | Server-CRUD und Android-Fachsync vorhanden; neue XLSX-Ausgabe im geprüften Android-Build | Sofortiger Deltaempfang und Offlinekonflikte, Anlagen und Löschen in beide Richtungen |
-| Trassendaten / KM | Baustellen-Snapshot und Server-Katalog getrennt vorhanden; SHARED-KM-Servertests19/19 | Android-Katalog-/Anker-Anschluss; Bereichsschutz; verlustfreier Abgleich; echte Format-Goldenfälle |
-| TRA/GRA/TRG/KOR/KF/KV/CSV/TXT | Import-/Projektions-/Achs-/KM-Code und bestehende Prüfungen inventarisiert; Parserprüfungen teilweise wegen psycopg blockiert | Vollständige fachliche Dekodierung aller realen Formate, insbesondere KF, GVP rechtwinklig, Parallelachsen und KM-Sprünge nicht pauschal bestätigt |
-| Portal / Admin / Recovery | Vorheriger isolierter PostgreSQL-/Chromium-CI-Lauf mit echten Runner-Steps erfolgreich; Backup-/Recovery-/Rechte-Gates vorhanden | Aktuelle NAS-Runtime, jeder Adminablauf und Restores produktionsnah separat prüfen |
-| Updates / Versionen | Android1.3.44/200094 gebaut; Server1.0.0-dev/APIv1, Migrationen001–024 im Quellstand | Zertifikatskompatibles Geräteupdate; NAS-Version/angewendete Migrationen nicht live geprüft |
-| Last / Monitoring | 255 parallele Wait-Clients in älterem Server-CI ohne Fehler; neuer Performancecode im aktuellen HEAD | Keine belegte 255-Client-Fachlast, kein Beleg für aktuelle CPU/RAM/DB-Pool-Latenz |
-| Sprache / Fehlerprotokoll | Java-Regressionen für Sprache, Fehlerhistorie und Syncmonitor bestanden; Android-Unitbelege vorhanden | Mikrofon/Spracherkennung, Lebenszyklus, echte Gerätepersistenz und Poco-Leistung |
+DEVICE-INFO-001 (= DEV-META-001) – ANDROID
+Status: IMPLEMENTIERT
+Versions-/Buildheader bei authentifizierten API-Anfragen.
+Offen/Nächster Schritt: Anzeige auf tatsächlich aktualisierter NAS prüfen.
 
+Selektiver Fachsync – ANDROID
+Status: TEILWEISE IMPLEMENTIERT
+DEFECT, ACCEPTANCE und TRACK_DATA im Feed behandelt. Bei Fachänderung wird die betroffene Fachliste der Baustelle aktualisiert. Trackkonflikt blockiert andere Feedtypen nicht dauerhaft; persistente Wiederholung.
+Offen/Nächster Schritt: Objektweise Fach-Deltas und globaler Katalog-Feed offen; derzeit zusätzlicher periodischer KM-Abgleich.
 
-6. AKTUELLER AUFGABENSTAND OHNE DOPPELTE FEHLER
-| ID / Priorität | Zuständig | Aktueller Befund / Nachweis | Nächster Schritt |
-|---|---|---|---|
-| AUDIT-1108-01 / P1 NEU | SERVER | Trassendaten-Liste und Detail ignorieren worksite.view=False sowie Helferbereich; tatsächliche Handler und worksite_context mit SQL-Doubles reproduziert | Leserecht und Bereich an beiden Endpunkten erzwingen; Listen-, Detail-, Fremdfirma- und Bereichstests; survey_sections mitprüfen |
-| AUDIT-1108-02 / P1 NEU | SERVER | Fehler beim Entfernen der PDF-Sicherung nach erfolgreichem DB-Commit löst Datei-Rollback aus; DB FINALIZED und Dateihash passen danach nicht zusammen; realer Dateisystemtest mit DB-Double | Rollback vor Commit von nachgelagerter Bereinigung trennen; Fehler vor/nach Commit, Wiederholung und Nachbearbeitung testen |
-| TRACK_KM_1103 / P1 BESTEHEND | ANDROID + SERVER-Vertrag | LEAD sendet lokalen Gesamtbestand, entfernt serverseitige Datensätze außerhalb dieses Bestands; 409-Neuversuch liest aktuelle Version ohne fachlichen Konfliktvergleich | Objektbezogene Outbox, stabile IDs und ursprüngliche Basisversion; fremde/unverwaltete Datensätze nicht löschen |
-| TRACK_KM_1103 Empfang / P1 BESTEHEND | ANDROID | Helfer-Snapshot löscht lokale Achsen/Punkte vor vollständiger Validierung; kein gesamter atomarer Austausch | Erst validieren, dann Room-Transaktion; Dirty-Daten sichern; Fehler-/Abbruchtests |
-| SHARED-KM-1103 / P1 BESTEHEND | ANDROID | Server-KM-Vertrag vorhanden, Android-Consumer und Transport ursprünglicher Anker/Genauigkeit fehlen | Vorhandenen /survey-catalog/axes/{id}/km-sync-Vertrag anbinden; kein zweites Katalogmodell |
-| AUD-20261002-01 / P1 BESTEHEND | SERVER | MANUAL_GPS mit OVERLAP_CONFIRMED gegen ORIGINAL_TRA weiterhin sofort SUPERSEDED; im betreffenden Zweig kein Original-KM-/Vollabdeckungsschutz | Test Original ohne KM und Teilüberdeckung; Fachregel gezielt korrigieren; keine Neuöffnung des bestätigten WVB-Imports |
-| AUD-20261002-02 / P1 BESTEHEND | SERVER | update_manual_segment übernimmt object_key weiterhin nicht in axis_existing | Reinen KM-/Text-PATCH bei W/WVB mit ausgelassener Objektkennung absichern |
-| ADMIN-PDF-011 / P1 BESTEHEND | ANDROID | Logo-Breite auf 250 pt begrenzt; Server erlaubt 400 pt; Save normalisiert den Wert | Bestehenden 40–400-Vertrag übernehmen; bestätigte Servervorschau schützen |
-| DEVICE-INFO-001 (= DEV-META-001) / P2 BESTEHEND | ANDROID | X-TB-App-Version / X-TB-App-Build in den untersuchten Android-Quellen nicht gesetzt | Zentral an authentifizierten Clients melden; keine Doppelaufgabe unter DEV-META-001 |
-| Selektiver Fachsync / P1 BESTEHEND | ANDROID | Delta enthält keine DEFECT/ACCEPTANCE/TRACK_DATA-/globalen Survey-Ereignisse; allgemeiner Vollsync existiert | Fachtypen mit objektbezogenem Empfang ergänzen; Offline-/Cursor-/Rechtewechsel testen |
-| EXPORT-1108B Signierung / P1 BESTEHEND | ANDROID | CI-APK 1.3.44 und vorherige CI-APK haben unterschiedliche Debugzertifikate; installierte Signatur unbekannt | Vorhandenen Installationsschlüssel sichern/verwenden; Update ohne Deinstallation prüfen |
-| BTB-AUTO-016 / P1 BESTEHEND | SERVER + ANDROID | Vorgabe 16 Stunden dokumentiert, keine vollständige Ausführung in den geprüften Quellen nachgewiesen | Server als maßgebliche Fristinstanz, Android-Anzeige/Offline-Nachlauf; separate fachliche Umsetzung |
-| CI-Vertragsprüfungen / P1 BESTEHEND, ergänzt | SERVER/ANDROID-Prüfpflege | Checks03/13/19/83/85/86 blockieren Android-Vertragsjob; Servercheck35 verlangt weiter Renderer5;102 Syntaxfehler;157 DOM-Harnessfehler | Veraltete Erwartungen von echten Lücken einzeln trennen; Funktionsprüfungen erhalten; keine Abschwächung für Grün |
-| AUDIT-1108-03 / P1 STEUERUNG/CI | GEMEINSAM | Beide Branches enthalten veraltete Kopien des jeweils anderen Produkts; CI testet eigenen Checkout, nicht das aktuelle Branchpaar | Explizite Server-/Android-SHAs für Querprüfung verwenden; keine blinde Branchzusammenführung |
-| NAS-/Geräteabnahme / P1 BESTEHEND | GEMEINSAM | Laufender NAS-Commit, Pixel-/Poco-Version und Zertifikat dieses Prüfstands nicht verifiziert | Versionszuordnung und reale Zwei-Geräte-/Portal-Matrix nach separater Übernahme; keine Diagnose allein aus alten 404-Bildern |
-| SYNC-001 / P2 BESTEHEND | GEMEINSAM | 255 Delta-Wait-Clients als Teiltest bestanden; volle 15×15-Fach-/Foto-/Portal-Last offen | Gemischte Last messen, Dauerbetrieb und NAS-Ressourcen prüfen |
-| Legacy-Restbacklog / OFFEN ZUR EINORDNUNG | jeweiliger Bereich | Nicht einzeln neu belegte ältere Punkte bleiben im unveränderten Archiv erhalten; weder erledigt noch neu reproduziert erklärt | Vor Bearbeitung gegen aktuelle Quellen/Belege abgleichen; geschützte Bestätigungen nicht neu öffnen |
+EXPORT-1108B Signierung – ANDROID
+Status: TEILWEISE IMPLEMENTIERT / INSTALLATION BLOCKIERT BIS ZERTIFIKATABGLEICH
+APK-Prüfung vergleicht Signatur mit installierter App; CI kann vorhandenen Schlüssel aus Secrets verwenden.
+Offen/Nächster Schritt: Vorhandener privater Installationsschlüssel nicht verfügbar; Debug-Testbuild ist kein belegtes kompatibles Update. Nicht deinstallieren.
 
-Die beiden manuellen Katalogfehler aus02.10 wurden gegen den aktuellen Funktionscode erneut geprüft und sind weiterhin erkennbar. Ihre damaligen reproduzierten Kontrollflussbelege bleiben historische Nachweise; in diesem Auftrag wurde dafür kein neuer echter DB-Test behauptet.
-DEVICE-INFO-001 und DEV-META-001 werden als dieselbe Aufgabe geführt; PrioritätP2 betrifft Diagnosequalität, keine belegte Datenkorruption. Nicht neu eingeordnete Altaufträge stehen ausdrücklich im Archiv-Restregister. Eine Archivierung bedeutet weder Erledigung noch neue Freigabe.
+BTB-AUTO-016 – SERVER + ANDROID
+Status: SERVER IMPLEMENTIERT
+Worker beendet aktive BTBs nach 16 h über vorhandenen PDF-/Abschlusspfad; Status/Frist unter Sperre erneut geprüft. REWORK ausgeschlossen.
+Offen/Nächster Schritt: Offline-Android-Nachlauf/Anzeige und verspätete Helferdaten praktisch prüfen; endgültiger Abschluss kann ohne Verbindung lokale Daten nicht kennen.
 
-7. SYNCHRONISATION QUERGEPRÜFT
-BTB: SofortSync.btbAnstossen, dauerhafte Dirty-Markierungen und selektiver Worker sind vorhanden. Allgemeine SofortSync.anstossen-Aufrufe nutzen dagegen weiterhin SyncWorker plus Schema13Worker. Der gesamte Fachbereich ist deshalb noch nicht durchgehend objektbezogen.
-Empfang: Server1DeltaApi.DEFAULT_ENTITY_TYPES enthält BTB, BTB_ENTRY, BTB_PARTICIPANT, FILE, WORKSITE_NODE, WORKSITE, WORKSITE_MEMBERSHIP und WORKSITE_INVITATION. DEFECT, ACCEPTANCE, TRACK_DATA und globale Survey-Ereignisse fehlen hier. Allgemeine Fach-/Trassensynchronisation existiert trotzdem im Koordinator; die Feststellung lautet nicht „diese Daten synchronisieren nie“.
-Offline: persistente Outbox/Dirty-Zustände, Versionsschutz, serverseitige Receipts, Sync-Zustand/Tombstones und lokale Sicherung vor Löschung sind vorhanden. Sechs gezielte Sync-Fix-Tests und die Java-Sicherungsregression bestanden. Echte DB-Commit-Reihenfolge, App-Kill, mehrtägiges Offline und verschiedene Geräte sind damit nicht vollständig nachgewiesen.
-Feed: Ereigniserzeugung verwendet einen transaktionsgebundenen Advisory-Lock vor der ID-Vergabe. Das adressiert den bekannten Commit-/Cursorverlustpfad. Kein neuer echter PostgreSQL-Parallelitäts-/Deadlocktest in diesem Auftrag.
-Helfer: „Schicht Ende“ ist der eigene Beitragsstatus; nur der zuständige Teamleiter finalisiert den BTB. PDF-Zugriff wird serverseitig über Teamleiterprüfung begrenzt. Das veraltete Regelwort „Endpoint noch zu weit“ wird dokumentarisch korrigiert. Der neue Rechtefehler betrifft Trassendaten, nicht diesen bereits gehärteten PDF-Endpunkt.
-Hintergrund: Ein periodischer15-Minuten-Fallback existiert. WorkManager garantiert keine punktgenaue Ausführung bei Doze/Netzrestriktionen. Ein vollständiger inhaltsfreier Push-Weckpfad für schlafende Geräte ist nicht belegt; daher keine Zusage „Portaländerung sofort auf geschlossenem Handy“.
+AUDIT-1108-03 / CI-Verträge – GEMEINSAM
+Status: IMPLEMENTIERT
+Querchecks verwenden explizite Gegenbranch-SHAs. Veraltete Text-/Payload-Erwartungen fachlich korrigiert; Sicherheits-/Recovery-/Migrationsprüfungen erhalten.
+Offen/Nächster Schritt: Jeder neue Fachstand braucht aktualisierte Paarprüfung. Kein blinder Branchmerge.
 
-8. TATSÄCHLICHE TESTNACHWEISE
-Lokale bestehende Prüfskripte:160 ausgeführt, final112 PASS,41 fehlgeschlagene Assertions/Markerprüfungen,1 Syntaxfehler(Check102),1 Harnessfehler(Check157),5 Umgebungsblockaden(psycopg/qrcode/Chromium). Dies sind Skriptergebnisse, keine160 vollständigen Funktionstests. Die41 Assertionfehler sind nicht automatisch41 Programmfehler; nicht jede rote Erwartung wurde abschließend fachlich eingeordnet.
-Check06 war zunächst wegen fehlender lokaler XML-Eingabe blockiert, nach Beschaffung PASS. Check83 nach Beschaffung von.gitignore weiterhin rot wegen veralteter Version/URL-Erwartungen. Original- und Nachlaufergebnisse bleiben getrennt nachvollziehbar. Kein Test wurde abgeschwächt.
-Syntaktische Prüfung294 Pythondateien: nur Check102 fehlerhaft;87 Produktionsmodule ohne Syntaxfehler. Syntaxerfolg sagt nichts über Laufzeitabhängigkeiten aus.
-Server-Unittest-Discovery:45 echte Testfälle erfolgreich; zusätzlich1 Testmodul wegen fehlendem psycopg nicht geladen. Gesamtlauf daher FAILED(errors=1), nicht als komplett bestanden ausgewiesen.
-Zusätzlich19 SHARED-KM- und6 SYNC-FIX-Produktionsfunktionsprüfungen mit Doubles erfolgreich; innerhalb des160-Skriptpakets enthalten, nicht als zusätzliche unabhängige Abdeckung addieren.
-Zwei PDF-Funktionstests mit realer PDF-Erzeugung bestanden: Dreierspalten/Fotoanzahl/GPS/Null-KM sowie gleiche Kurznamen unterschiedlicher Weichen. Kein visueller Abnahmetest sämtlicher Nutzer-PDFs.
-Java: SyncActivityMonitor13 Checks inklusive800 paralleler Lebenszyklen; ErrorHistory26; SpeechDiagnostics15; SyncPreservation mit Unicode, idempotenter Wiederholung, unveränderlichen Revisionen, Schreibfehler, beschädigter Kopie und20 parallelen Revisionen bestanden. Keine Android-UI-/Persistenz-E2Es.
-Zwei neue Fehlerreproduktionen erfolgreich ausgeführt; Erfolg bedeutet hier „Fehler nachgestellt“, nicht Produktfehlerfreiheit.
+NAS-/Geräteabnahme – GEMEINSAM
+Status: E2E OFFEN
+Keine Änderung von NAS-Containern, Produktivdaten oder installierten Pixel-/Poco-Versionen.
+Offen/Nächster Schritt: Versionen/Signatur feststellen, dann separate Übernahme und E01–E12.
 
-Bekannte Prüfungsprobleme: Check35 verlangt PDF-Renderer5 obwohl aktueller Renderer6; Check34 wurde bereits angepasst. Check102 enthält ungültige Python-Stringliterale. Check157 benötigt eine korrekte document-/DOM-Testumgebung. Wettercheck152 erwartet ältere Texte/Nullregeln; die tatsächlich aufgerufene aktuelle Wetterfunktion liefert plausible neue Labels und unbekannt statt erfundenem Nullniederschlag. Das rote alte Textassertionsergebnis allein ist kein Wetter-Produktfehler. Checks03/13/19/83/85/86 einzeln fachlich überarbeiten.
+SYNC-001 – GEMEINSAM
+Status: TEILTEST BESTANDEN
+255 gleichzeitige Sync-Wait-Verbindungen in echter CI-Testumgebung.
+Offen/Nächster Schritt: Gemischte 15×15 Fach-/Foto-/Portal-Last und NAS-Dauerbetrieb offen.
 
-9. CI, VERSIONEN, SIGNIERUNG UND MINUTEN
-Android CI42479073804 am Baucommit2d2ac0ee3b2a815781f5cfee0f3f281a2a8ad74c:
-- Buildjob128726829680 SUCCESS mit echten Gradle-/Runner-Steps, APK und zugehöriger Release-MD.
-- Originales Berichtsartefakt13616922517 heruntergeladen/ausgewertet:233 Tests in34 Suiten,0 Fehler/Fehlschläge/übersprungen; Lint0 Fehler und391 Warnungen.
-- Separater Vertragsjob128726829452 FAILURE, Gesamtworkflow FAILURE.
-- Vergleich bis geprüftem Android-HEAD: nur8 Dokumentationsdateien geändert, keine Runtime-/Buildkonfigurationsänderung. Buildbeleg deshalb für identischen Fach-/Buildstand verwendbar, kein eigener Build des Dokumentations-SHA behauptet.
-- Aktuelles Debugzertifikat SHA256:341161f1d9f8fa7bfdeeef5fed20ec26c49921ed8179cb739d0a204970eba8a5. Vorherige1.3.43-CI-Signatur laut zugehörigem dokumentierten Original-Baunachweis:f03307af46bb4b56015110f0e2ee1162127593151abe8a77ff88b7e9fa1837eb. Installierter Schlüssel nicht festgestellt. Keine Deinstallation als Lösung empfehlen.
+Legacy-Restbacklog – JEWEILIGER BEREICH
+Status: OFFEN ZUR EINORDNUNG
+Frühere nicht einzeln neu belegte Punkte bleiben im Archiv erhalten.
+Offen/Nächster Schritt: Keine automatische Erledigung oder pauschale Neuöffnung geschützter Funktionen.
 
-Server CI42472440493 am älteren Commit a5a0f862fcef25bb8fcae874bd1282a59d07cb9c:
-- Foundationjob128706168036 FAILURE am alten Renderer5-Marker; nachgelagerte Migrations-/Health-/Auth-Schritte dieses Jobs SKIPPED.
-- Separater Job128706168370 SUCCESS: Containerbuild, echter Snapshot-/Restorepfad, Rechte-/Widerrufs-/Recovery-HTTP-Gates und3×255 Delta-Wait-Clients ohne Fehler.
-- Lauf42472440534 / Job128706168476 SUCCESS: isolierte PostgreSQL-/Chromium-Portalprüfungen.
-- Der aktuelle Server-HEAD enthält danach auch Runtimeänderungen an btb.py,main.py,metrics.py (Performancecommit9d9b388b). Die älteren CI-Erfolge gelten ausdrücklich nicht als vollständiger Build-/Laufzeitnachweis des aktuellen Servercodes.
-Die ca.5,44s Maximaldauer eines5s-Waits ist kein Beweis für5,44s Änderungsverzögerung und keine gemischte Fach-/Fotolast.
+GESCHÜTZTE FUNKTIONEN
+Word unverändert. Drei Bilder pro Reihe, vorhandene Fotoanzahl-Einstellung, Originalfotos, stabile IDs und vorhandene fachliche Bestätigungen bleiben erhalten. Bestehende Fotos/Dateien/geschäftliche Datensätze wurden nicht gelöscht. Die neue Rechteprüfung kann bisher unzulässige Helferansichten nun sperren; dies ist eine beabsichtigte Fehlerkorrektur. Der Medienupload führt keinen impliziten BTB-Abschluss aus.
 
-Actions01.–08.11:26 Repositoryläufe,58 Jobversuche einschließlich wiederholter Versuche geprüft. Summe aus Start-/Endzeiten:10.175s=169,58 Laufzeitminuten; einzeln auf volle Minuten aufgerundet210min als Näherung. Das ist NICHT die verbindliche GitHub-Abrechnung. Kontoübergreifender Monatsverbrauch, Freiminutenrest und tatsächlich abgerechnete Minuten sind mangels Billingzugriff OFFEN. Vorgabe2.000 enthaltene Minuten / Zusatzbudget0USD unverändert. Keine neue Testrunde für diese Prüfung gestartet, keine Einsparung ohne Billingdaten behauptet.
-Doppelte/abgebrochene Läufe und wiederholt rote Markerjobs erzeugen vermeidbare Arbeit. Empfehlung: fachlich gültige Prüfungen reparieren, aktuelle Branchpaar-SHAs explizit prüfen und passende Pfadfilter/Concurrency nach Auftrag prüfen. Sicherheits-, Migrations- und Recoverytests erhalten.
+SIGNIERUNG UND INSTALLATION
+Die beigefügte APK ist ein DEBUG-Testbuild. APK_SHA256: 80b11549b88a10dffe84ade49557393ad47c149adcaa9ee571cafe7c2f351c7d; Größe: 27044724 Bytes. Signatur-Zertifikat SHA256: 9d90db043eb1a5658761a4cc9a2f2164d5ebcb73fd31f510f84c9c42b79f7d76.
+Die CI-Prüfung bestätigt APK-Signatur und Manifest, aber nicht die Übereinstimmung mit der installierten Pixel-/Poco-App. Im Repository liegt kein vorhandener privater Signierschlüssel; ein kompatibles Update ist deshalb nicht belegt. Der Updateclient prüft die installierte Signatur und weist Abweichungen ab. Nicht deinstallieren, um eine Signaturabweichung zu umgehen. Für das reguläre Update den vorhandenen Installationsschlüssel verwenden; die CI-Anbindung dafür ist vorbereitet.
 
-CI-Links:
-https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/42479073804
-https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/42472440493
-https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/42472440534
+GEMEINSAME ABNAHME – E2E OFFEN
+E01: Pixel legt lokale Baustelle ohne Helfer an → Serverbindung → Portal/Poco, ohne Doppelanlage.
+E02: Portal- und Handyänderungen an Baustelle/Unterbaustelle; gleichzeitige Änderung wird als Konflikt bewahrt.
+E03: Einträge ändern/löschen/verschieben, falsche Firma korrigieren, Schlagwort „Schwellenwechsel“ und zugehörige Fotos.
+E04: Helfer offline, App-Abbruch, Netz zurück, Rechteentzug und Bereichsgrenzen; keine Datenverluste.
+E05: Helfer-Schichtende → Haupt-TB-Abschluss; Portalabschluss → beide Geräte; Wiederöffnung; automatische 16h-Frist und verspätete Offline-Daten.
+E06: Bilder jeweils vom Handy/Portal, kleine Übertragung <=2 MB, unverändertes lokales Original, korrekte Metadaten und Fotoanzahl.
+E07: Mängel/Abnahmen mit Anlagen, Änderungen/Löschung in beide Richtungen sowie XLSX.
+E08: Originalimport → Serveroriginal/Parser → geänderte manuelle KM → zweites Gerät; Quelle/Genauigkeit/Version erhalten; Konflikt ohne Überschreiben.
+E09: Referenz-PDF/Word/ZIP/Fotoliste/Mängel-/Abnahmeliste, drei Bilder/Zeile, Unterbaustellen, echte Nullkilometer und Bildlinks nach Ordnerkopie.
+E10: Zertifikatskompatibles Update über vorhandene Installation ohne Deinstallation/Datenverlust; Versionsmeldung an NAS.
+E11: Wiederherstellung/Recovery in separater Testumgebung, Daten/Originale erhalten.
+E12: Gemischte 15×15-Fach-/Foto-/Portal-Last; der bestandene 255-Verbindungs-Test ersetzt diese Prüfung nicht.
 
-10. WOCHENÄNDERUNGEN 01.–08.11
-SERVER:22 Commits im abgefragten Wochenfenster. Themen: Sync-/Schutzverbesserungen, KM-Vertragsarbeit, Portal-/PDF-Integration, Exportabgleich, Performance und Dokumentationsnachweise. Nicht jeder Commit ist eine ausgelieferte Funktion. Aktueller Laufzeitstand auf NAS nicht aus Commitzahl ableitbar.
-ANDROID:75 Commits im abgefragten Wochenfenster. Themen: Syncdiagnose/Fehlerhistorie, Sprache, Offline-/Datenverlustschutz, BTB-/Medien-/Exportkorrekturen, Build-/Releasearbeiten bis1.3.44 und Statuspflege. Installation auf Pixel/Poco nicht durch Versionsdatei/Releaseartefakt bestätigt.
+GITHUB ACTIONS / KOSTEN
+Neue Läufe waren durch den ausdrücklichen Bauauftrag gedeckt. Ein fehlgeschlagener Wrapper-Download war ein Netzwerkfehler; nur der betroffene Android-Job wurde wiederholt. Ein weiterer Emulatorfehler lag im neuen Testaufbau (Room unterstützt die dort verwendete use-Erweiterung nicht); explizites Schließen korrigiert. Alte Serverprüfungen enthielten abweichende UI-Texte, alte Payloads/Refactoringpfade und fehlende Testabhängigkeiten. Diese wurden anhand des tatsächlichen Codes korrigiert; Rechte-, Recovery- und Migrationsprüfungen bleiben verpflichtend. Keine Tests für Grün abgeschaltet.
+Für die10zugeordneten CI-Läufe wurden20Jobversuche mit zusammen53,23Minuten gemessener Joblaufzeit erfasst, einschließlich Fehlern/Wiederholungen. Das sind Laufzeitdaten, keine Abrechnung. Tatsächlich berechnete Minuten, Monatsverbrauch und Freiminutenrest bleiben mangels Billingzugriff OFFEN. Zusatzbudget0USD unverändert; keine Einsparung behauptet.
 
-11. BEREITS KORRIGIERTE PUNKTE UND SCHUTZ
-Die Altberichtspunkte31.10 zu BTB-Wiederöffnung, neuem aktiven Pointer, stabiler Fotozuordnung, Fehler statt stillem fehlendem Medienexport, Katalogfehleranzeige, photo_metadata-Auswertung und WLAN-/Connected-Netzprüfung haben aktuelle Umsetzungen bzw. gezielte Testbelege. Nicht erneut pauschal als „Funktion fehlt“ führen. Ihre praktische Gesamt-E2E-Abnahme bleibt separat offen.
-Export1108B: Unterbaustellen im PDF und portable XLSX-Bildliste sowie Mängel-/Abnahme-XLSX im aktuellen Android-Build; Gesamtbilder-CSV entfernt, andere sinnvolle CSV-Exporte nicht pauschal verboten. Word bleibt unverändert. Gleichnamige Unterbaustellen werden im neuen Server-PDF-Test getrennt dargestellt. Der nachgelagerte Finalize-Dateifehler ist ein eigener neuer Kontrollflussbefund.
-„Nicht erfasst“ bei unbekanntem Altbild-Ersteller ist transparent, erfindet aber keinen fehlenden Ersteller. Altbestand bleibt ggf. Datenqualitätsnacharbeit, kein Anlass zum unkontrollierten Löschen.
-BTB-SYNC-002, BTB-UI-001, PORTAL-LIVE-001, UPD-001, bestätigte Serverlogo-/Referenzimportblöcke, Immenstadt-Layout und alle historischen BESTÄTIGT/PASST/FUNKTIONIERT/ERLEDIGT-Markierungen bleiben geschützt. Drei Fotos pro Reihe, individuelles Fotoanzahllimit, IDs, Originalfotos, Unterbaustellen, echte Nullkilometer und getrennte Firmen bleiben Vorgaben. Kein Fachcode dieser Funktionen wurde geändert.
-Historische Praxisbestätigung ist weder entwertet noch zu einer aktuellen Voll-E2E hochgestuft. Die früheren zwei identischen02.10-Berichte und der31.10-Bericht werden durch diesen aktuellen Bericht ersetzt; alte GitHub-Statusdateien werden unverändert archiviert. Ungeprüfte Restpunkte werden nicht durch Weglassen als erledigt behandelt.
-
-12. VERGLEICH MIT AKTUELLER TECHNISCHER DOKUMENTATION
-Primärquellen wurden über Web/Context7 abgeglichen, nicht nur aus Modellwissen beurteilt:
-1 Android Offline-first: dauerhafte lokale Datenbasis, persistente Schreibwarteschlange, Versionierung und ausdrückliche Konfliktstrategie. Das unterstützt den Ausbau der bestehenden Outbox und spricht gegen Gesamtbestand-Löschen bei lokalen Lücken.
+AKTUELLE TECHNISCHE DOKUMENTATION
+Die Empfehlungen aus der vorausgehenden Prüfung wurden mit offiziellen Android-, PostgreSQL-, OWASP- und FastAPI-Quellen abgeglichen. Für die Umsetzung wurde die aktuelle Room-Migrationsdokumentation zusätzlich über Context7 herangezogen; kein ungeprüftes Frameworkupgrade.
 https://developer.android.com/topic/architecture/data-layer/offline-first
-2 WorkManager: periodische Arbeit ab15Minuten, Ausführung durch System/Doze/Constraints verschiebbar. Kein verlässlicher Sekunden-Timer; Push nur als Wecksignal, dauerhafter Feed als Nachholquelle.
+https://developer.android.com/training/data-storage/room/migrating-db-versions
 https://developer.android.com/develop/background-work/background-tasks/persistent/getting-started/define-work
-3 Android App Signing: Updateidentität beruht auf Signatur. Dauerhaft kontrollierten Schlüssel nutzen, installierten Schlüssel vor Update prüfen; keine Datenlöschung durch Neuinstallation als Abkürzung.
 https://developer.android.com/studio/publish/app-signing
-4 PostgreSQL17 Locks: Transaktions-Advisorylocks benötigen konsequent gleiche Nutzung/Lockreihenfolge. DB-Parallelität und Deadlockverhalten mit echten Transaktionen testen.
 https://www.postgresql.org/docs/17/explicit-locking.html
-5 OWASP API1 BOLA: Objektzugriff an jedem ID-basierten Endpunkt prüfen; Mitgliedschaft allein ersetzt Fachrecht/Bereichsschutz nicht. Konkreter Bezug AUDIT-1108-01.
 https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/
-6 FastAPI: synchrone def-Handler können im Threadpool korrekt sein. Nicht pauschal alles async umschreiben; tatsächliche DB-Pool-/Blockierungs-/Datei-/PDF-Laufzeiten messen. Pinned FastAPI0.116.1 ist älter als inzwischen veröffentlichte Versionen; daraus folgt keine bewiesene Sicherheitslücke. Vollständiger CVE-/Dependency-Lockscan ist in dieser Prüfung NICHT durchgeführt.
 https://fastapi.tiangolo.com/async/
-https://fastapi.tiangolo.com/release-notes/
 
-Empfohlene Verbesserungspakete in Reihenfolge:
-1 SERVER: neue Rechte- und Finalizefehler samt echten Negativ-/Fehlerinjektionstests beheben; bekannte manuelle KM-Katalogfehler mitbeheben.
-2 ANDROID: Trassendatenabgleich gegen unbeabsichtigtes Löschen/Überschreiben absichern, Empfang atomar machen, gemeinsamen KM-Vertrag anschließen.
-3 ANDROID: Fachdeltaempfang vervollständigen, Signierschlüssel/Updateweg stabilisieren, Logo400 und Versionsheader schließen.
-4 GEMEINSAM: CI auf genau beide vereinbarten SHAs beziehen, fehlerhafte/veraltete Tests fachlich ersetzen, komplette erforderliche Workflowjobs einmal belastbar grün bekommen.
-5 GEMEINSAM: untenstehende E2E-Matrix auf zwei Geräten mit gesicherter NAS-Version abnehmen.
-6 NACHGELAGERT: gemischte Last messen, revisionsgenaue Versionsanzeige im Health-/Adminstatus, reproduzierbare Images/Dependency-Locks und automatisierten Abhängigkeits-Sicherheitscheck ergänzen. Kein ungeprüftes Frameworkupgrade.
-Die bestehende Architektur muss dafür nicht neu erfunden werden. Empfehlungen sind keine beauftragten Codeänderungen.
-
-13. KONKRETE GEMEINSAME E2E-ABNAHME – NOCH OFFEN
-Vorab Versionsdaten/Commit, Migrationstand, installierte Buildnummern und Zertifikate sowie Testfirma/Testbaustelle festhalten. Keine produktiven Bestände zurücksetzen.
-E01 Pixel als Haupt-TB: neue lokale Baustelle ohne Helfer → Serverbindung → Portal/Poco; stabile IDs, keine Doppelanlage.
-E02 Portal: Baustelle/Unterbaustelle ändern → Pixel/Poco; gleichzeitige Handyänderung → sichtbarer Versionskonflikt ohne Verlust.
-E03 Eintrag erstellen/ändern/löschen, falsche Firma korrigieren, Eintrag verschieben; Fotos/Schlagwort „Schwellenwechsel“ und Metadaten folgen korrekt.
-E04 Helfer offline weiterarbeiten, Prozess beenden/neustarten, Netz zurück; Text-/Medien-Outbox vollständig, keine unberechtigte PDF-/Trassendatensicht.
-E05 Helfer Schicht Ende → Server FERTIG erst nach bestätigten Daten; Haupt-TB Abschluss; umgekehrter Portalabschluss → beide Geräte; Wiederöffnung und neuer aktiver BTB getrennt.
-E06 Foto von Pixel/Portal/Poco: Originalhash unverändert, kleine Übertragung<=2MB, keine Dubletten, korrekte Uhrzeit/GPS/KM/Firma/Unterbaustelle; max.Bilder pro Person bleibt synchron.
-E07 Mangel/Abnahme mit Anlagen in beide Richtungen, einschließlich Löschung/Konflikt und Excel-Ausgabe.
-E08 Vermessungsoriginal importieren → Serveroriginal mit Hash → lokale KM-Anker ändern → gemeinsamer Beitrag → zweites TB-/Helfergerät; Quelle/Genauigkeit/Version erhalten; Offlinekonflikt sichtbar; fremde Datensätze unverändert.
-E09 PDF/Word/ZIP/Listen auf Referenzbaustellen: drei Bilder pro Reihe, Unterbaustellen auch bei Kurzname, Null-KM,7/15Fotos, portabler Bildlink nach Ordnerkopie, fehlende Datei verständlich gemeldet.
-E10 Update über vorhandene Installation ohne Datenverlust; Versionsanzeige auf Server aktuell.
-E11 Wiederanlauf/Restore/Recovery in gesonderter Testumgebung; neuester bestätigter Datenstand/Originale erhalten.
-E12 Laufzeitlast mit15TB×15Helfern plus15Portalclients, Fotos/PDF/Fachänderungen, Reconnect und Offline-Nachlauf; p50/p95/p99, Fehler, RAM/CPU/DB-Pool dokumentieren.
-Postman im verbundenen Workspace enthält nur die unveränderte Echo-Beispielsammlung. Repository-Sammlungen SYNC_FIX_1103 und SHARED_KM_1103 sind vorbereitete Prüfhilfen; keine dieser Sammlungen wurde als Synology-E2E ausgegeben oder gegen Produktivdaten schreibend ausgeführt.
-
-14. DOKUMENTATION UND BEREINIGUNG
-Auf ausdrückliche Auswahl „1+3“: aktueller Bericht ersetzt die drei alten Prüfberichte02.10/31.10. Die zwei identischen02.10-Dateien werden erst nach erfolgreicher Sicherung des aktuellen Berichts in den Papierkorb verschoben. Der31.10-Bericht wird als dasselbe Dokument mit neuer Fassung/aktuellem Namen ersetzt.
-GitHub00–08 werden auf beiden Arbeitsbranches vereinheitlicht; alte Fassungen einschließlich Projektregeln erhalten unter archiv/GESAMTPRUEFUNG_2026-11-08 ihre exakten bisherigen Git-Blobs. Kein Verlust bestätigter Funktionen oder alter Prüfnachweise. Die Projektregeln übernehmen den aktuelleren Server-Regelstand mit gezielten Korrekturen bereits veralteter Statusbehauptungen, keine neue Fachentscheidung. Archivlinks und Referenzcommits bleiben nachvollziehbar.
-Keine APKs, Logs, Fotos, Originale, Migrationen, Releases, Code- oder Geschäftsdaten gelöscht. Dokumentationssicherung mit [skip ci], ohne Merge und ohne Deployment. Laufzeitverzeichnisse app/server und Workflows bleiben unverändert. Veröffentlichungsergebnis und neue Dokumentations-HEADs werden nach erfolgreicher Sicherung im Chat genannt.
-
-ANHANG A – ALLE160 LOKALEN PRÜFSKRIPTE
-PASS bedeutet nur Erfolg der jeweiligen vorhandenen Prüfung. FAIL muss fachlich eingeordnet werden. ENVIRONMENT ist keine Produktfehlermeldung.
-FAIL            03_verify_schema10_source.py
-PASS            04_test_team_btb_merge.py
-PASS            06_verify_schema11_source.py
-FAIL            08_verify_multi_btb_source.py
-FAIL            09_verify_android_multi_btb_photo_state_source.py
-FAIL            100_verify_btb_structured_reassignment_source.py
-FAIL            100_verify_server_portal_btb_contract_source.py
-FAIL            101_verify_admin_portal_session_split_source.py
-TEST_SYNTAX     102_verify_delta_longpoll_source.py
-FAIL            103_verify_image_renditions_source.py
-FAIL            104_verify_structured_photo_metadata_source.py
-PASS            105_verify_staging_memory_guard_source.py
-PASS            106_verify_backup_rendition_exclusion_source.py
-PASS            107_verify_runtime_probe_source.py
-PASS            108_verify_synology_integration_apply_source.py
-PASS            109_verify_readonly_acceptance_source.py
-PASS            10_verify_android_btb_quick_switch_source.py
-FAIL            110_verify_backup_job_e2e_source.py
-PASS            111_verify_post_deploy_e2e_source.py
-PASS            112_verify_survey_reference_catalog_source.py
-ENVIRONMENT     113_verify_survey_catalog_merge_logic.py
-PASS            114_verify_survey_staging_reset_source.py
-PASS            115_verify_survey_import_station_assignment_source.py
-PASS            116_verify_survey_diagnostics_portal_source.py
-FAIL            117_verify_survey_coverage_overview_source.py
-PASS            118_verify_gvp_projection_performance.py
-PASS            120_verify_coverage_details.py
-PASS            121_verify_axis_management.py
-PASS            122_verify_manual_overlay.py
-PASS            123_verify_admin_km_editor.py
-PASS            124_verify_gvp_editor.py
-PASS            125_verify_survey_workspace.py
-PASS            126_verify_original_station_bounds.py
-PASS            127_verify_survey_network.py
-PASS            128_verify_network_workspace.py
-PASS            129_verify_network_chainage.py
-PASS            12_verify_schema12_source.py
-PASS            130_verify_monitor_liveness.py
-PASS            131_verify_backup_failure_safety.py
-PASS            132_verify_permission_guards.py
-PASS            133_verify_admin_worksite_boundary.py
-PASS            134_audit_session_revocation.py
-PASS            135_verify_sync_reauthentication.py
-PASS            136_verify_public_alert_confirmation.py
-PASS            137_verify_snapshot_backup.py
-PASS            138_verify_file_endpoint_rights.py
-PASS            139_verify_255_sync_clients.py
-FAIL            13_verify_android_btb_auto_sync_source.py
-PASS            140_verify_recovery_guard.py
-PASS            141_verify_recovery_modes.py
-PASS            142_verify_recovery_control.py
-PASS            143_verify_backup_domains.py
-PASS            144_verify_scoped_archives.py
-PASS            145_verify_recovery_runtime.py
-PASS            146_verify_backup_catalog.py
-PASS            147_verify_recovery_service.py
-PASS            148_verify_system_backup.py
-PASS            149_verify_automatic_deployment.py
-FAIL            14_verify_android_btb_sections_logo_source.py
-PASS            151_portal_km_tree_regression.py
-FAIL            152_portal_btb_input_regression.py
-PASS            153_entry_photo_shift_regression.py
-PASS            154_worksite_catalog_regression.py
-PASS            155_catalog_inventory_regression.py
-PASS            156_node_kind_regression.py
-FAIL            15_verify_android_btb_delete_lifecycle_source.py
-PASS            17_verify_schema13_source.py
-PASS            18_verify_android_worksite_structure_source.py
-FAIL            19_verify_schema13_track_delete_source.py
-PASS            20_verify_tb_server_1_foundation.py
-PASS            21_verify_tb_server_1_auth_source.py
-PASS            23_verify_tb_server_1_files_source.py
-PASS            24_verify_tb_server_1_defects_acceptances_source.py
-PASS            25_verify_tb_server_1_track_survey_source.py
-PASS            26_verify_tb_server_1_idempotency_source.py
-PASS            27_verify_tb_server_1_replay_coverage_source.py
-PASS            28_verify_tb_server_1_device_auth_source.py
-PASS            29_verify_tb_server_1_device_fach_auth_source.py
-ENVIRONMENT     30_verify_tb_server_1_survey_parser_source.py
-PASS            31_verify_tb_server_1_survey_sections_source.py
-ENVIRONMENT     32_verify_tb_server_1_survey_projection_source.py
-PASS            33_verify_tb_server_1_releases_source.py
-PASS            34_verify_tb_server_1_btb_pdf_source.py
-FAIL            35_verify_tb_server_1_company_branding_source.py
-PASS            36_verify_tb_server_1_admin_web_source.py
-PASS            37_verify_tb_server_1_portal_fach_ui_source.py
-PASS            38_verify_tb_server_1_worksite_invitations_source.py
-PASS            39_verify_tb_server_1_system_status_source.py
-PASS            40_verify_tb_server_1_release_binary_source.py
-FAIL            41_verify_tb_server_1_backup_jobs_source.py
-PASS            42_verify_tb_server_1_restore_test_reset_source.py
-PASS            43_verify_portal_live_refresh_source.py
-FAIL            43_verify_tb_server_1_restore_target_source.py
-FAIL            44_verify_tb_server_1_deployment_source.py
-PASS            45_verify_tb_server_1_backup_retention_source.py
-PASS            46_verify_tb_server_1_invitation_only_membership_source.py
-ENVIRONMENT     47_verify_tb_server_1_invitation_qr_source.py
-FAIL            48_verify_android_server_1_invitation_source.py
-FAIL            49_verify_tb_server_1_restore_compose_overlay_source.py
-PASS            50_verify_android_server_1_invitation_create_source.py
-FAIL            51_verify_android_server_1_team_source.py
-PASS            52_verify_android_server_1_capabilities_source.py
-FAIL            53_verify_android_server_1_context_source.py
-PASS            54_verify_tb_server_1_area_scope_source.py
-PASS            55_verify_tb_server_1_file_parent_visibility_source.py
-FAIL            56_verify_tb_server_1_acceptance_result_source.py
-PASS            57_verify_android_server_1_fach_read_sync_source.py
-PASS            58_verify_android_server_1_fach_write_sync_source.py
-PASS            59_verify_android_server_1_file_read_sync_source.py
-FAIL            60_verify_android_server_1_file_upload_source.py
-PASS            61_verify_android_server_1_file_snapshot_cleanup_source.py
-PASS            62_verify_android_server_1_file_truncation_guard_source.py
-PASS            63_verify_android_server_1_btb_read_sync_source.py
-PASS            64_verify_android_server_1_btb_write_sync_source.py
-PASS            65_verify_android_server_1_btb_granularity_source.py
-FAIL            66_verify_android_server_1_btb_media_source.py
-PASS            67_verify_android_server_1_btb_final_pdf_source.py
-PASS            68_verify_android_server_1_btb_delete_source.py
-FAIL            69_verify_android_server_1_shared_sync_source.py
-PASS            70_verify_tb_server_1_file_pagination_source.py
-FAIL            71_verify_server_1_worksite_tree_sync_source.py
-PASS            72_verify_android_server_1_track_data_source.py
-PASS            73_verify_server_1_worksite_lifecycle_source.py
-FAIL            74_verify_server_1_worksite_media_source.py
-PASS            75_verify_portal_worksite_tree_model_source.py
-FAIL            76_verify_portal_fach_forms_source.py
-FAIL            77_verify_portal_fach_media_source.py
-PASS            78_verify_defect_rejected_status_source.py
-PASS            79_verify_acceptance_delete_sync_source.py
-PASS            80_verify_acceptance_tombstone_apply_source.py
-PASS            81_verify_portal_acceptance_delete_source.py
-PASS            82_verify_tb_server_1_synology_staging_source.py
-FAIL            83_verify_android_staging_server_config_source.py
-PASS            84_verify_device_activation_qr_source.py
-FAIL            85_verify_android_200052_compile_imports.py
-FAIL            85_verify_tb_server_1_user_delete_source.py
-FAIL            86_verify_android_update_client_source.py
-FAIL            86_verify_tb_server_1_admin_overview_source.py
-FAIL            87_verify_release_admin_package_ui.py
-FAIL            88_verify_admin_permanent_purge_source.py
-FAIL            89_verify_identity_global_catalog_source.py
-FAIL            90_verify_system_automation_email_source.py
-FAIL            91_verify_system_status_live_ui_source.py
-PASS            92_verify_btb_shift_end_source.py
-PASS            93_verify_portal_btb_shift_end_source.py
-PASS            94_verify_portal_btb_readable_source.py
-PASS            95_verify_portal_btb_android_like_editor_source.py
-PASS            96_verify_portal_btb_crud_source.py
-PASS            97_verify_portal_btb_photo_meta_dedupe_source.py
-PASS            98_verify_portal_btb_split_firms_weather_photo_sort_source.py
-PASS            99_verify_btb_entry_soft_delete_recreate_source.py
-PASS            shared_km_1103.py
-PASS            sync_audit_1103.py
-PASS            sync_fix_1103.py
-ENVIRONMENT     150_verify_restore_ui.cjs
-HARNESS_ERROR   157_node_display_regression.cjs
-PASS            158_worksite_list_live_regression.cjs
-PASS            159_btb_integration_031.cjs
-PASS            160_btb_integration_1108.cjs
-PASS            119_verify_coverage_map_logic.js
-
-ANHANG B – BELEGPFADE
-https://github.com/jensmeier/TB-Helfer-2.0/tree/feature/tb-server-1.0/projektsteuerung/uebergaben/pruefnachweise_2026-11-08
-results-final.json: alle160 Ergebnisse mit Ausgabeschluss; syntax.json; java-results.json; pdf-tests.json; android-validation-summary.json; ci-november-jobs.json; routes.json; source-manifest.json; Reproduktionsskripte und reproductions.json. Originale CI-Logs sind über die verlinkten Run-/Job-IDs abrufbar; große Rohlogs und Artefakte werden nicht als zusätzliche Berichtskopien abgelegt.
+BELEGE UND NÄCHSTE SCHRITTE
+Android-Bau-/Testlauf: https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/42495975421
+Room-Emulatorlauf: https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/42496070087
+Server-Abschlusslauf: https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/42496224535
+Vorausgehender vollständiger Server-Erfolg: https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/42495862248
+Audit vor Entwicklung: https://github.com/jensmeier/TB-Helfer-2.0/blob/84906580f862d7bd9abfd4ce5a7930238ca57e02/projektsteuerung/uebergaben/GESAMTPRUEFUNG_2026-11-08.txt
+Historische Prüfbelege: projektsteuerung/uebergaben/pruefnachweise_2026-11-08; alte Statusdateien unter projektsteuerung/archiv/GESAMTPRUEFUNG_2026-11-08.
+SERVER: getrennte NAS-Übernahme des geprüften Serverbranches und reale Rechte/PDF/16h-Abnahme. Keine Übernahme in diesem Auftrag ausgeführt.
+ANDROID: vorhandenen Installationsschlüssel abgleichen; kompatibles Update und Migration auf Pixel/Poco prüfen. Spezielle KM-/Lösch-/Konfliktoberfläche weiter umsetzen.
+GEMEINSAM: E01–E12 mit festgehaltenem NAS-/Gerätestand; neue Befunde im vorhandenen Register ergänzen, keine doppelten Aufgaben oder unbelegte Erledigung.

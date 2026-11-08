@@ -1,27 +1,22 @@
 # TB-HELFER – AKTIVER AUFTRAG
-Stand08.11.2026 – unabhängige Gesamtprüfung.
-Geprüfter SERVER-Fachstand `b213bcbfe8d5fcf49c17e71108b8be04167f4d7f`; ANDROID-Fachstand `a8401775a3f607594df91468e728ee3f6d3a1ec4`.
-Nachfolgende Dokumentationscommits verändern diese geprüften Fachstände nicht.
-[Vollständiger Prüfbericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [Unveränderte vorherige Fassungen](archiv/GESAMTPRUEFUNG_2026-11-08/README.md).
+Stand 08.11.2026 – Umsetzung GESAMT-1108 nach ausdrücklichem Bauauftrag.
+SERVER-Teststand `b924da3e9bbff603a78ca55753cefb439f1ac607`, Fachcode `b17530d305797837d42f3049681f10cd919ea4b5`.
+ANDROID-Fach-/APK-Stand `cda78c2f42fd7b1acd76d60612ce42d882662edf`, 1.3.46 / 200096; nachfolgender Instrumentierungsstand `680ef37e9781eb4e4b0b8da04b5db7e6b2d42340`.
+Nachfolgende Dokumentationscommits verändern diese Fachstände nicht.
+[Aktueller Bericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [vorherige Statusfassungen](archiv/UMSETZUNG_2026-11-08_VORHER/01_MASTERSTATUS.md).
 
-## Auftrag08.11 – Gesamtprüfung und aktuellen Stand sichern
-Nutzer: alle Funktionen/Code, Server↔Handy↔Helfer und Trassendaten einschließlich Änderungen querprüfen, aktuelle technische Möglichkeiten vergleichen, Verbesserungsvorschläge und aktuellen Stand sichern. Bereinigung ausdrücklich auf alte Prüfberichte und GitHub-Status begrenzt („1+3“).
-Prüfblock abgeschlossen; reale NAS-/Geräte-E2E bleibt offen. Kein Entwicklungs-/Deploymentauftrag aus Empfehlungen ableiten.
-## Neue Feststellungen
-AUDIT-1108-01: Trassendaten-Liste/Detail ignorieren worksite.view und Helferbereich; Produktionshandler mit SQL-Doubles reproduziert. Zuständig SERVER.
-AUDIT-1108-02: PDF-Cleanupfehler nach DB-Commit löst Dateirollback aus; echte Dateien/Produktionsfunktionen mit DB-Double reproduziert. Zuständig SERVER.
-AUDIT-1108-03: Querprüfungen nutzen veraltete Gegenbranchkopien; nächster Integrationslauf muss beide aktuellen Fach-SHAs festhalten. Zuständig gemeinsame Prüfpflege.
-Keine Duplikate für TRACK_KM_1103, SHARED-KM-1103, AUD-20261002-01/-02, ADMIN-PDF-011, DEVICE-INFO-001 oder EXPORT-1108B anlegen.
-## Empfohlene Reihenfolge bei anschließendem Entwicklungsauftrag
-1. SERVER: Rechte-/PDF-Finalizefehler und manuelle KM-Katalogfehler samt Regressionen.
-2. ANDROID: verlustfreier Trassendatenabgleich/atomarer Empfang und vorhandener gemeinsamer KM-Vertrag.
-3. ANDROID: Fachdelta, stabile Signatur/Update, Logo400 und Versionsheader.
-4. GEMEINSAM: vorhandene Prüfungen fachlich reparieren, Branchpaar prüfen; danach E01–E12 aus06.
-Bestehende historische Teilaufträge/Bestätigungen bleiben im [Archiv](archiv/GESAMTPRUEFUNG_2026-11-08/02_AKTIVER_AUFTRAG.md) unverändert erhalten. Eine Empfehlung oder Archivierung ist keine pauschale Erledigung/Freigabe.
+Der ausdrückliche Auftrag „okay alles bauen“ autorisiert Entwicklung, notwendige Tests/Builds und Sicherung auf den Arbeitsbranches. Die Auditbeschränkung „nicht entwickeln“ ist für diesen Auftrag aufgehoben. Keine NAS-Übernahme/SSH oder produktiven Datenänderungen beauftragt.
 
+Implementiert: Helfer-Trassenrechte, PDF-Commit/Cleanup, manuelle Katalogkorrekturen, atomarer Trassenempfang mit dauerhaftem Journal und Dreiwegekonflikten, neuer Originaltransport, gemeinsame lineare KM-Anbindung, Fachdelta-Nachladen, Logo400, Versionsheader, Updatezertifikatsvergleich und serverseitige 16h-Frist. Details und Restabgrenzung in [07](07_OFFENE_PUNKTE.md).
 
-## Entwicklungsauftrag GESAMT-1108 – ausdrücklich freigegeben
-Der Nutzer hat nach der Gesamtprüfung mit „okay alles bauen“ die Umsetzung der dort beschriebenen Korrekturen beauftragt. Die vorherige Beschränkung dieses Auftrags auf Prüfung ist damit für diesen Entwicklungsblock aufgehoben.
-Umfang: Server-Rechte und PDF-Commit/Cleanup, bekannte manuelle KM-Katalogfehler; Android-Trassendatenabgleich/atomarer Empfang/gemeinsamer KM-Vertrag und Originaltransport; Fachdelta, Logo400, Versionsheader, 16-Stunden-Frist; fachliche Prüfpflege und revisionsgenauer Querabgleich. Bestehende Architektur/IDs/Originale/Bestätigungen erhalten.
-Gezielt testen, erforderliche Builds ausführen und Android-APK nur zusammen mit exakt passender Release-MD bereitstellen. Signaturkontinuität muss geprüft werden; kein erfundener Ersatz für einen fehlenden vorhandenen privaten Signierschlüssel. Keine NAS-Übernahme, produktive Migration/Datenmutation oder SSH beauftragt. Kein Budget erhöhen. Einzeltests/Build/CI/Installation/E2E getrennt nachweisen.
+Android BUILD BESTANDEN und gesamter CI-Lauf42495975421 BESTANDEN am Baucommit cda78c2f42fd7b1acd76d60612ce42d882662edf. 245 Unit-Tests in35Suiten,0Fehler/0übersprungen; Lint0Fehler/391Warnungen. APK1.3.46/200096 und exakt passende Release-MD heruntergeladen; Manifest/Commit/SHA256 gegengeprüft.
+Server BUILD/CI BESTANDEN: vollständiger Lauf42496224535 am b924da3e9bbff603a78ca55753cefb439f1ac607 gegen Android cda78c2f42fd7b1acd76d60612ce42d882662edf. 66 Unit-Tests,100 Foundation-Prüfskripte,24Migrationen in frischer PostgreSQL-Testumgebung, Authentifizierungsablauf, Container-/Snapshot-/Restore-/Rechte-/Recoverygate sowie255Sync-Wait-Verbindungen erfolgreich. Kein produktiver NAS-Test.
+Room INSTRUMENTIERUNG BESTANDEN: Lauf42496070087 am680ef37e9781eb4e4b0b8da04b5db7e6b2d42340, Android15/API35-Emulator,2/2Tests. Echtes Room/SQLite: additive Migration19→22 erhält Achse; Geometrie+Journal rollen bei Ausnahme zusammen zurück und werden bei Erfolg gemeinsam bestätigt; Journale sind nach Owner getrennt. Kein Pixel-/Poco-/NAS-Netzwerktest.
+Offen: gemeinsame Trassen-/KM-Löschabsichten und Konfliktoberfläche; KM-Sprünge und GVP-/Mast-Bearbeitung; vollständiger objektweiser Fachdelta-/globaler Katalogfeed; Offline-Android-Nachlauf der 16h-Frist; experimentelle Android-DB 20/21; alter Installationssignierschlüssel und reale NAS-/Pixel-/Poco-E2E. Kein NAS-Deployment, kein Merge, keine produktive Migration oder Datenänderung ausgeführt.
 
+Nächste Schritte:
+- SERVER: geprüften Stand separat auf NAS übernehmen lassen; Rechte/PDF/Frist und Wiederanlauf abnehmen.
+- ANDROID: vorhandenen Schlüssel/Installationszertifikat klären; kompatibles Update und echte Gerätemigration; verbleibende KM-/Lösch-/Konfliktbedienung umsetzen.
+- GEMEINSAM: E01–E12 mit tatsächlichen Versionen abnehmen; keinen Erfolg aus einem Source-Marker ableiten.
+
+Geschützt und erhalten: Word, drei Bilder pro Reihe, gespeicherte Fotoanzahl, stabile IDs und Originale sowie historische BESTÄTIGT/PASST/FUNKTIONIERT/ERLEDIGT-Markierungen. Neue Tests sind keine erneute pauschale Praxisbestätigung. Ungeprüfte ältere Restaufträge bleiben im Archiv offen zur Einordnung.

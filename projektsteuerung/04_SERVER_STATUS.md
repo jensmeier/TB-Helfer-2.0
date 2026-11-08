@@ -1,12 +1,17 @@
 # TB-HELFER – SERVER STATUS
-Stand08.11.2026 – unabhängige Gesamtprüfung.
-Geprüfter SERVER-Fachstand `b213bcbfe8d5fcf49c17e71108b8be04167f4d7f`; ANDROID-Fachstand `a8401775a3f607594df91468e728ee3f6d3a1ec4`.
-Nachfolgende Dokumentationscommits verändern diese geprüften Fachstände nicht.
-[Vollständiger Prüfbericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [Unveränderte vorherige Fassungen](archiv/GESAMTPRUEFUNG_2026-11-08/README.md).
+Stand 08.11.2026 – Umsetzung GESAMT-1108 nach ausdrücklichem Bauauftrag.
+SERVER-Teststand `b924da3e9bbff603a78ca55753cefb439f1ac607`, Fachcode `b17530d305797837d42f3049681f10cd919ea4b5`.
+ANDROID-Fach-/APK-Stand `cda78c2f42fd7b1acd76d60612ce42d882662edf`, 1.3.46 / 200096; nachfolgender Instrumentierungsstand `680ef37e9781eb4e4b0b8da04b5db7e6b2d42340`.
+Nachfolgende Dokumentationscommits verändern diese Fachstände nicht.
+[Aktueller Bericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [vorherige Statusfassungen](archiv/UMSETZUNG_2026-11-08_VORHER/01_MASTERSTATUS.md).
 
-Branch `feature/tb-server-1.0`, Server1.0.0-dev/APIv1/PDF-Renderer6, Migrationen001–024 im Repository. PR6 offen/Draft.
-87Produktions-Pythonmodule syntaktisch geprüft; gezielte Handler-/PDF-/Rechte-/Recoveryprüfungen bestanden.45Server-Unittests PASS,1zusätzliches Testmodul wegen psycopg nicht geladen; Gesamtdiscovery FAILED(errors=1).
-Ältere CI42472440493/42472440534 am a5a0f862: Container-/Snapshot-/Restore-/Rechte-/Recovery-/Portalbrowser-Teiljobs erfolgreich; Foundation fehlgeschlagen. Aktueller HEAD enthält nachfolgende Runtimeänderungen btb.py/main.py/metrics.py; kein vollständiger Build-/E2E-Nachweis dafür aus den alten Jobs.
-Neue P1 AUDIT-1108-01 (Trassendatenrechte) und AUDIT-1108-02 (PDF-Dateirollback nach Commit) reproduziert; Details[07](07_OFFENE_PUNKTE.md). Bestehende manuelle Katalogfehler AUD-20261002-01/-02 weiterhin im Quellcode erkennbar.
-SHARED-KM-Serververtrag/Capability vorhanden;19gezielte Prüfungen PASS, kein Android-/NAS-E2E. Originalimport und gemeinsamer Katalog sind von Baustellen-Snapshots getrennt.
-Aktuelle NAS-Container/Commit/angewendete Migrationen in diesem Auftrag NICHT verifiziert. Historische Portalversionsabweichung nicht als heute reproduzierter404-Fehler ausgeben. Keine NAS-Übernahme, Migration oder Produktivdatenänderung.
+Server BUILD/CI BESTANDEN: vollständiger Lauf42496224535 am b924da3e9bbff603a78ca55753cefb439f1ac607 gegen Android cda78c2f42fd7b1acd76d60612ce42d882662edf. 66 Unit-Tests,100 Foundation-Prüfskripte,24Migrationen in frischer PostgreSQL-Testumgebung, Authentifizierungsablauf, Container-/Snapshot-/Restore-/Rechte-/Recoverygate sowie255Sync-Wait-Verbindungen erfolgreich. Kein produktiver NAS-Test.
+
+Server1.0.0-dev/APIv1/PDF6; Servermigrationen001–024 unverändert vorhanden. Keine neue Servermigration.
+AUDIT-1108-01/-02 im Code behoben: track_data und survey_sections erzwingen Leserecht/Bereich; Cleanup nach Commit rollt PDF nicht zurück. Tests prüfen erlaubte/gesperrte/unklare Bereiche und echte temporäre Dateien mit injizierten Fehlern; diese spezifischen Tests verwenden SQL-/DB-Doubles und sind kein NAS-E2E.
+MANUAL_GPS bleibt bei Original-TRA-Überdeckung erhalten; object_key wird im manuellen Update geladen. Eindeutiger Originalsignatur-Resolver ergänzt bestehenden gemeinsamen KM-Vertrag.
+Worker prüft16h-Frist für ACTIVE-BTBs und nutzt vorhandenen Abschluss-/PDF-Pfad, mit erneuter Status-/Fristprüfung unter Sperre. REWORK wird nicht automatisch finalisiert. Offline-Daten können erst nach Netzrückkehr bekannt werden und brauchen separate Abnahme.
+
+Offen: gemeinsame Trassen-/KM-Löschabsichten und Konfliktoberfläche; KM-Sprünge und GVP-/Mast-Bearbeitung; vollständiger objektweiser Fachdelta-/globaler Katalogfeed; Offline-Android-Nachlauf der 16h-Frist; experimentelle Android-DB 20/21; alter Installationssignierschlüssel und reale NAS-/Pixel-/Poco-E2E. Kein NAS-Deployment, kein Merge, keine produktive Migration oder Datenänderung ausgeführt.
+
+Geschützt und erhalten: Word, drei Bilder pro Reihe, gespeicherte Fotoanzahl, stabile IDs und Originale sowie historische BESTÄTIGT/PASST/FUNKTIONIERT/ERLEDIGT-Markierungen. Neue Tests sind keine erneute pauschale Praxisbestätigung. Ungeprüfte ältere Restaufträge bleiben im Archiv offen zur Einordnung.

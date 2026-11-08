@@ -4,14 +4,14 @@
 
 Repository: `jensmeier/TB-Helfer-2.0`
 
-## Aktueller Prüfstand
-Stand08.11.2026 – unabhängige Gesamtprüfung.
-Geprüfter SERVER-Fachstand `b213bcbfe8d5fcf49c17e71108b8be04167f4d7f`; ANDROID-Fachstand `a8401775a3f607594df91468e728ee3f6d3a1ec4`.
-Nachfolgende Dokumentationscommits verändern diese geprüften Fachstände nicht.
-[Vollständiger Prüfbericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [Unveränderte vorherige Fassungen](archiv/GESAMTPRUEFUNG_2026-11-08/README.md).
+## Aktueller Umsetzungsstand
+Stand 08.11.2026 – Umsetzung GESAMT-1108 nach ausdrücklichem Bauauftrag.
+SERVER-Teststand `b924da3e9bbff603a78ca55753cefb439f1ac607`, Fachcode `b17530d305797837d42f3049681f10cd919ea4b5`.
+ANDROID-Fach-/APK-Stand `cda78c2f42fd7b1acd76d60612ce42d882662edf`, 1.3.46 / 200096; nachfolgender Instrumentierungsstand `680ef37e9781eb4e4b0b8da04b5db7e6b2d42340`.
+Nachfolgende Dokumentationscommits verändern diese Fachstände nicht.
+[Aktueller Bericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [vorherige Statusfassungen](archiv/UMSETZUNG_2026-11-08_VORHER/01_MASTERSTATUS.md).
 
-`01_MASTERSTATUS.md` bis `07_OFFENE_PUNKTE.md` sind die konsolidierte aktuelle Sicht. Archivtexte sind historische Belege, keine zweite aktuelle Aufgabenliste. Geschützte Bestätigungen und nicht abgeschlossene Restaufträge bleiben erhalten.
-PRÜFER: prüfen, nicht entwickeln. Keine APK, Migration, produktiven Änderungen oder NAS-Übernahme ohne entsprechenden Auftrag. Der Auftrag08.11 erlaubt ausschließlich Prüfung und Dokumentationsbereinigung.
+00–08 bilden die aktuelle Sicht; Archivtexte sind historische Belege. Ausdrücklicher Bauauftrag GESAMT-1108 aktiv; Entwicklung/Tests/Builds beauftragt, NAS-Deployment nicht beauftragt.
 
 ## A. LIVE-GITHUB ZUERST
 1. `feature/tb-android-2.0` + HEAD + PR-Status (Draft ausdrücklich prüfen)
