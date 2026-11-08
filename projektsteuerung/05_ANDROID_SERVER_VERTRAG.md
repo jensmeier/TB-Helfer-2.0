@@ -1,5 +1,15 @@
 # TB-HELFER 2.0 – ANDROID/SERVER VERTRAG
 
+## EXPORT-1108B – ausdrücklich beauftragt, in Arbeit
+
+Nutzer: „alles bauen“, nach ausdrücklicher Korrektur: **Word unverändert lassen**. PDF muss Unterbaustellen vollständig mit Bahnhof/Name und Gleis/Weiche zeigen; Kurzname allein genügt nicht. Keine erneute fachliche Freigabe erforderlich.
+- Android: Fotoliste XLSX mit lesbarer Gestaltung, echten Datum-/Zeitwerten, eindeutigen Bildverweisen aus derselben Archivzuordnung. Gesamte Ordnerstruktur verschiebbar; bestehende strenge Archivprüfung und Offline-Einzel-BTB bleiben erhalten.
+- Bilderliste_gesamt.csv entfällt. Mängel- und Abnahmelisten zusätzlich als XLSX, ein Vorgang pro Zeile mit zugehörigen Fotoverweisen; bestehende PDFs und andere CSV bleiben erhalten.
+- Android und Server: vollständige PDF-Unterbaustellen, bestehende drei Fotospalten/Fotoauswahl, IDs, Zuordnungen, Originale, Abschlussdateien, Rechte und Sync schützen. Kein Word-Umbau, kein automatisches Überschreiben gespeicherter Abschluss-PDFs.
+- Gezielte Regressionen und APK mit passender Release-MD. Gerät-/Excel-/NAS-E2E bleibt bis echtem Nachweis offen. Kein Deployment, keine Migration, kein NAS-SSH.
+- Befund in gelieferter alter ZIP (03.11.): Gesamtliste 0/83 passende Dateiziele, Tagesliste 9/9. Bereits bekannter EXPORT-1104-Befund, nicht erneut als neue Regression von 1.3.43 behaupten.
+
+
 ## INTEGRATION-1108 – lokaler BTB-Export und Darstellung
 BTB-Verlauf exportiert genau eine btbId mit lokal verfügbaren Bildern ohne vorgezogenen Sync/Katalog. Das ZIP kennzeichnet fehlende lokale Dateien und seinen lokalen Umfang. Der explizite Baustellen-Gesamtexport behält den strengen Katalog-/Vollständigkeitscheck (EXPORT-1104). Keine stillschweigende Behauptung vollständiger Serverbestände. PDF bleibt gültiger gespeicherter Abschluss; Word kennzeichnet aktuellen lokalen Stand. Keine Änderung von API, Rechten, Datenmodell, Fotoanzahl-Limit oder gespeicherten Originalen.
 Wetter: gespeicherte BTB-Koordinaten vor passenden Fotokoordinaten; heutiger Handystandort nicht für historische Berichte. Nullwerte bleiben unbekannt, 0 mm trocken. Wetterzeiten über die ersten drei bleiben beim Android-Bearbeiten erhalten. Server/Android verwenden dieselben Wolken-/Niederschlagsbezeichnungen.
