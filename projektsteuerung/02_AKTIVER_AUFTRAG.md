@@ -1,5 +1,9 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## INTEGRATION-1108 – Bauauftrag erfüllt, Geräteabnahme offen
+Android1.3.43/200093 aus15ed259f erfolgreich gebaut (CI42473143629, Job128708410252).228 Unit-Tests PASS, Lint0 Fehler/391 Warnungen, APK-Manifest/Signatur und passende Release-MD geprüft. Vorheriger Gradle-Downloadblocker überwunden. Gesamt-CI weiterhin rot wegen bekannter Sourcechecks. Debug-Signierung beachten; nicht deinstallieren. Geräte-E2E und NAS-Übernahme offen. Siehe [APK-Baunachweis](uebergaben/INTEGRATION_1108_APK.md).
+
+
 ## INTEGRATION-1108 – APK-Bau erneut ausdrücklich beauftragt
 Nutzer: „bauen“. Quellstände Android49b66e67 und Serverd9e85bf2 geprüft, keine neuen Runtimeänderungen. Vorheriger Download über services.gradle.org scheiterte wiederholt. Nächster konkreter Versuch: dieselbe Gradle9.3.1-Distribution direkt aus offizieller gradle/gradle-distributions-GitHub-Veröffentlichung, SHA256 aus deren Assetmetadaten fest pinnen. Version/Tests unverändert, Budget unverändert; gezielter APK-Build mit zugehöriger Release-MD. Kein Deployment oder produktiver Schreibzugriff.
 
