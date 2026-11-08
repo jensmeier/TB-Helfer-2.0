@@ -48,7 +48,7 @@ jobs:
       - name: Checkout pinned Android contract partner
         uses: actions/checkout@v4
         with:
-          ref: 9c1354eb163fd4d65caed1304a485821c016d7aa
+          ref: cda78c2f42fd7b1acd76d60612ce42d882662edf
           path: .ci/android-source
       - name: Use actual Android sources for cross-contract checks
         run: |
@@ -77,6 +77,10 @@ jobs:
         continue-on-error: true
         run: |
           failed=0
+          python server/checks/08_verify_multi_btb_source.py || failed=1
+          python server/checks/09_verify_android_multi_btb_photo_state_source.py || failed=1
+          python server/checks/100_verify_btb_structured_reassignment_source.py || failed=1
+          python server/checks/117_verify_survey_coverage_overview_source.py || failed=1
           python server/checks/20_verify_tb_server_1_foundation.py || failed=1
           python server/checks/21_verify_tb_server_1_auth_source.py || failed=1
           python server/checks/23_verify_tb_server_1_files_source.py || failed=1

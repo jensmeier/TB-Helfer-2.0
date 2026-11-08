@@ -36,7 +36,7 @@ for token in (
 ):
     assert token in admin_web, token
 
-assert 'href="/admin/v1/survey-overview">Trassendatenübersicht</a>' in base
+assert 'href="/admin/v1/survey-overview">Streckennetz</a>' in base
 assert 'href="/admin/v1/survey-overview"' in dashboard
 
 for token in (
@@ -51,7 +51,7 @@ for token in (
     "Gesamter Bestand",
     "Mausrad = Zoom",
     "geometryQuality(data)",
-    "include_overview=true&fast_overview=true",
+    "coverage/overview-lines?include_overview=true&",
 ):
     assert token in overview, token
 

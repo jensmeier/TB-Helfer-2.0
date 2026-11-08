@@ -54,7 +54,7 @@ def main() -> None:
 
     # New local reports have an explicit stable ID field; TAG/NACHT remains display/legacy only.
     require(model, "val btbId: String? = null", "BTB_ANDROID_MODEL_ID_MISSING")
-    require(model, "nicht mehr Teil der BTB-Identität", "BTB_ANDROID_MODEL_ID_RULE_MISSING")
+    require(model, "Nur Anzeige-/Legacy-Klassifikation, nie technische Identität.", "BTB_ANDROID_MODEL_ID_RULE_MISSING")
 
     # Network transport inspection in SyncWorker requires this normal manifest permission.
     require(manifest, "android.permission.ACCESS_NETWORK_STATE", "SYNC_NETWORK_STATE_PERMISSION_MISSING")

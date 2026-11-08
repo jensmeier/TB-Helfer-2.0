@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 BASE = ROOT / "app" / "src" / "main" / "java" / "de" / "tbhelfer" / "ui" / "bautagebuch"
@@ -33,7 +34,8 @@ def main() -> None:
 
     for name in ("selection", "text", "start", "km"):
         text = src[name]
-        require(text, "private const val VERSION = 2", f"PHOTO_{name.upper()}_VERSION2_MISSING")
+        match = re.search(r"private const val VERSION = (\d+)", text)
+        assert match and int(match.group(1)) >= 2, f"PHOTO_{name.upper()}_VERSION_TOO_OLD"
         require(
             text,
             "BtbPhotoInstanzKey.activeToken(context, baustelleId, datumIso, schicht)",
