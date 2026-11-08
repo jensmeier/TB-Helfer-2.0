@@ -1,5 +1,10 @@
 # TB-HELFER 2.0 – E2E TESTSTATUS
 
+## INTEGRATION-1108 – APK gebaut, 08.11.2026
+**BUILD BESTANDEN / 228 UNIT-TESTS PASS / LINT 0 FEHLER, 391 WARNUNGEN.** Android1.3.43/200093 aus Baucommit15ed259f4c7385628056f220fbcf6f45f7bb067e, CI42473143629 / Buildjob128708410252 SUCCESS. Gradle9.3.1 direkt von offizieller GitHub-Veröffentlichung mit SHA256-Prüfung geladen. APK+MD desselben Baucommits im Artefakt13614756974 geprüft; APK26962792Bytes, SHA2565b025a4701e837d98542c323c9571d2c015343a53ac4f2e53836be0891b975aa. Frühere Downloadblockade überwunden. Gesamt-CI weiterhin ROT wegen unveränderter Alt-Sourcechecks03/13/19/83/85/86; keine Prüfung abgeschwächt.
+Debugzertifikat anders als vorige CI-APK200092; installierte Signatur unbekannt. Bei Signaturkonflikt nicht deinstallieren, bisherigen Signierschlüssel verwenden. Pixel/Poco-INSTALLATION und E2E OFFEN. Server-Runtimea5a0f862 unverändert, HEAD vor diesem Dokumentationsabgleichd9e85bf2. NAS nicht deployt. Details: [INTEGRATION_1108_APK.md](uebergaben/INTEGRATION_1108_APK.md). Nachfolgende Einträge sind Chronologie.
+
+
 ## INTEGRATION-1108 – Abschlussstand 08.11.2026
 Umsetzung gesichert: Android Runtime01a6614f, Buildkonfiguration32289783 (1.3.43/200093 vorbereitet); Server Runtimea5a0f862 (PDF-Renderer6). **Android-Build BLOCKIERT**: Gradle-Download scheitert10s und60s, keine Kompilierung/Unit/Lint/APK. **Server BUILD BESTANDEN**, Portal-Browser-CI und Snapshot/Rechte/255-Client-Sync/Recovery-Gates PASS in CI, kein NAS-E2E. Foundation-CI ROT wegen PDF-5-Marker; Check34 auf6 korrigiert, samt3 neuen Regressionen lokal PASS. Bekannte Android-Sourcechecks03/13/19/83/85/86 weiter ROT. Vollständiger Gesamt-CI-Erfolg nicht belegt. **Pixel/Poco E2E OFFEN, NAS NICHT DEPLOYT**. Keine Datenlöschung oder Migration.
 Details, Funktionen, Grenzen und nächste Tests: [INTEGRATION_1108.md](uebergaben/INTEGRATION_1108.md). Dies ist der aktuelle Stand; nachfolgende Einträge sind Chronologie.

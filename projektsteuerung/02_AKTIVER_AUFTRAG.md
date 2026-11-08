@@ -1,5 +1,9 @@
 # SERVER-GESAMTPRÜFUNG 2026-10-01
 
+## INTEGRATION-1108 – Bauauftrag erfüllt, Geräteabnahme offen
+Android1.3.43/200093 aus15ed259f erfolgreich gebaut (CI42473143629, Job128708410252).228 Unit-Tests PASS, Lint0 Fehler/391 Warnungen, APK-Manifest/Signatur und passende Release-MD geprüft. Vorheriger Gradle-Downloadblocker überwunden. Gesamt-CI weiterhin rot wegen bekannter Sourcechecks. Debug-Signierung beachten; nicht deinstallieren. Geräte-E2E und NAS-Übernahme offen. Siehe [APK-Baunachweis](uebergaben/INTEGRATION_1108_APK.md).
+
+
 ## INTEGRATION-1108 – Umsetzung dokumentiert, Abnahme offen
 Stand 08.11.2026: Android-/Serveränderungen implementiert. Android-Build am Gradle-Download blockiert, keine APK. Servercontainer und Portal/Recovery/Rechte-CI bestanden; Foundation-Versionserwartung lokal korrigiert. Keine vollständige grüne Gesamt-CI, kein NAS-Deployment oder Geräte-E2E. Vollständiger Nachweis und nächste Schritte: [INTEGRATION_1108.md](uebergaben/INTEGRATION_1108.md).
 
