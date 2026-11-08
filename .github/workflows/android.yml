@@ -31,6 +31,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout pinned server contract partner
+        uses: actions/checkout@v4
+        with:
+          ref: b17530d305797837d42f3049681f10cd919ea4b5
+          path: .ci/server-source
+      - name: Use actual server contract checks
+        run: |
+          git -C .ci/server-source rev-parse HEAD
+          rsync -a --delete .ci/server-source/server/ server/
+          cp .ci/server-source/.github/workflows/tb-server-v1.yml .github/workflows/tb-server-v1.yml
       - name: Verify all server/source contracts
         shell: bash
         run: |
