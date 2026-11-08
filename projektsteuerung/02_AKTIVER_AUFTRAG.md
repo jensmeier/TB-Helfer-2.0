@@ -1,6 +1,13 @@
 # SERVER-GESAMTPRÜFUNG 2026-10-01
 
-## EXPORT-1108B – ausdrücklich beauftragt, in Arbeit
+## EXPORT-1108B – gebaut, Installation/E2E offen (08.11.2026)
+Android **1.3.44/200094** aus **2d2ac0ee3b2a815781f5cfee0f3f281a2a8ad74c**: BUILD BESTANDEN, 233 Unit-Tests bestanden, Lint 0 Fehler/391 Warnungen. CI42479073804 Buildjob128726829680 SUCCESS; Gesamtworkflow wegen bestehender Sourcechecks03/13/19/83/85/86 weiter ROT. Word unverändert; PDF-Unterbaustellen vollständig, kompakte portable Fotoliste und Mängel-/Abnahme-XLSX gebaut, Gesamtbilder-CSV entfernt.
+Server geprüft **2a97293445c0c51ff0d148b9f4ab29871b7804b9**, 5 gezielte Tests bestanden; keine Runtimeänderung für EXPORT-1108B.
+**Updategrenze:** Debugzertifikat weicht von CI-APK1.3.43 ab. Nicht deinstallieren; Update mit bisherigem Signierschlüssel bauen. Installation und Pixel/Poco/Excel/NAS-E2E OFFEN. Kein Deployment. NAS-Abweichung im separaten Serverauftrag bleibt offen.
+Details/Nachweise: [EXPORT_1108B.md](uebergaben/EXPORT_1108B.md). Ältere Einträge darunter sind Chronologie.
+
+
+## EXPORT-1108B – ursprünglicher Auftrag (Umsetzung siehe Abschluss oben)
 
 Nutzer: „alles bauen“, nach ausdrücklicher Korrektur: **Word unverändert lassen**. PDF muss Unterbaustellen vollständig mit Bahnhof/Name und Gleis/Weiche zeigen; Kurzname allein genügt nicht. Keine erneute fachliche Freigabe erforderlich.
 - Android: Fotoliste XLSX mit lesbarer Gestaltung, echten Datum-/Zeitwerten, eindeutigen Bildverweisen aus derselben Archivzuordnung. Gesamte Ordnerstruktur verschiebbar; bestehende strenge Archivprüfung und Offline-Einzel-BTB bleiben erhalten.
