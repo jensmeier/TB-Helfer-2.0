@@ -1,5 +1,17 @@
 # SERVER-GESAMTPRÜFUNG 2026-10-01
 
+## INTEGRATION-1108 – Umsetzung nach unabhängiger Querprüfung beauftragt (08.11.2026)
+
+Nutzerauftrag: „okay alles bauen wenn es möglich ist“. Ausdrückliche Ausnahme von der Prüfer-Rollengrenze für diesen Korrekturblock. Basis Android b0198a30c13d3b4a0fcc90e5e986acc2af4b650f / Server 6ea0d987bebc67c346fca24714e4e1b9a8c852ea.
+- ANDROID: lokalen Einzel-BTB-/Tagesexport von verpflichtendem Gesamtkatalog/Vorab-Sync trennen; vorhandene Original-/Preview-Identitäten und Archiv-Linkprüfung erhalten, fehlende lokale Inhalte ausdrücklich kennzeichnen. Gesamtexport bleibt gesondert. ZIP lokal speichern neben Teilen; Lifecycle-/Abbruchschutz erhalten.
+- Wetter: nutzbaren Fotostandort suchen, gespeicherten Wetterort wiederverwenden und Ort/Herkunft sichtbar machen; verständliche Fehler; einheitliche Wetterbegriffe. Konkreter Geräteausfall nicht ohne Laufzeitnachweis als behoben ausgeben.
+- SERVER: bestehende Android-Gruppierung ohne Fünf-Minuten-Trennung, Kurz+abweichender Langtext, vollständiger Wetterumbruch, drei Bildkarten je Reihe, Dateigröße und eindeutige Rendererkennung. Gespeicherte Abschlussoriginale niemals bei GET überschreiben.
+- Rasterauswahl ohne Wirkung bereinigen; Fotoanzahl-/Personenauswahl bleibt erhalten. Lokales Word versus gespeichertes Abschluss-PDF eindeutig kennzeichnen.
+- Bestehende IDs, Daten, Originalfotos, Berechtigungen, Dirty-/Offline-/Recovery-/Konfliktschutz erhalten. Keine pauschale Dublettenlöschung, keine Migration, kein NAS-/SSH-/Produktivdeployment.
+- Gezielte lokale Regressionen und anschließend ein gezielter Android-Build mit passender APK+Release-MD; keine unnötigen CI-Wiederholungen oder Testabschwächung. Geräte-/NAS-E2E bleibt bis echtem Nachweis offen.
+Status: BEAUFTRAGT / IN ARBEIT. Noch keine Behebung oder Installation bestätigt.
+
+
 ## Aktueller Integrationsblock AND-BIDIR-026 – 26.10.2026
 **QUELLSTAND IMPLEMENTIERT / SERVER-HANDLER- UND PORTAL-TESTS BESTANDEN / ANDROID-BUILD UND GERÄTE-/NAS-E2E OFFEN.** Dieser Abschnitt ersetzt für AND-BIDIR-026 die frühere Angabe „Korrektur offen“; historische Abschnitte unten bleiben als Verlauf erhalten.
 - Ausdrücklicher Nutzerauftrag zur Entwicklung beider Seiten. Basis Android6a0e7e4 / Server923cf93, Auftragscommits Android21ce70e / Server1f925bd. Androidziel jetzt **1.3.32/200082** mit passender Release-MD; installierter Altstand laut vorherigem Screenshot1.3.31/200081, keine Installation200082 bestätigt.
