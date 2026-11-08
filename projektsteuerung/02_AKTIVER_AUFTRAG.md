@@ -18,3 +18,9 @@ Keine Duplikate für TRACK_KM_1103, SHARED-KM-1103, AUD-20261002-01/-02, ADMIN-P
 3. ANDROID: Fachdelta, stabile Signatur/Update, Logo400 und Versionsheader.
 4. GEMEINSAM: vorhandene Prüfungen fachlich reparieren, Branchpaar prüfen; danach E01–E12 aus06.
 Bestehende historische Teilaufträge/Bestätigungen bleiben im [Archiv](archiv/GESAMTPRUEFUNG_2026-11-08/02_AKTIVER_AUFTRAG.md) unverändert erhalten. Eine Empfehlung oder Archivierung ist keine pauschale Erledigung/Freigabe.
+
+
+## Entwicklungsauftrag GESAMT-1108 – ausdrücklich freigegeben
+Der Nutzer hat nach der Gesamtprüfung mit „okay alles bauen“ die Umsetzung der dort beschriebenen Korrekturen beauftragt. Die vorherige Beschränkung dieses Auftrags auf Prüfung ist damit für diesen Entwicklungsblock aufgehoben.
+Umfang: Server-Rechte und PDF-Commit/Cleanup, bekannte manuelle KM-Katalogfehler; Android-Trassendatenabgleich/atomarer Empfang/gemeinsamer KM-Vertrag und Originaltransport; Fachdelta, Logo400, Versionsheader, 16-Stunden-Frist; fachliche Prüfpflege und revisionsgenauer Querabgleich. Bestehende Architektur/IDs/Originale/Bestätigungen erhalten.
+Gezielt testen, erforderliche Builds ausführen und Android-APK nur zusammen mit exakt passender Release-MD bereitstellen. Signaturkontinuität muss geprüft werden; kein erfundener Ersatz für einen fehlenden vorhandenen privaten Signierschlüssel. Keine NAS-Übernahme, produktive Migration/Datenmutation oder SSH beauftragt. Kein Budget erhöhen. Einzeltests/Build/CI/Installation/E2E getrennt nachweisen.
