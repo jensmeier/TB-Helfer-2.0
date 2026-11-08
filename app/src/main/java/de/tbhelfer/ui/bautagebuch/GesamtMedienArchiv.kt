@@ -44,7 +44,7 @@ import java.util.zip.ZipOutputStream
  * Dateien zwischen Handys synchronisiert. Vor einem Online-Gesamtexport wird zuerst der aktuelle
  * Collaboration-Stand abgeglichen. Danach werden aus dem gemeinsamen Bestand erzeugt:
  *
- * - Bilderliste_gesamt.xlsx + CSV,
+ * - Bilderliste_gesamt.xlsx (ohne Gesamt-CSV),
  * - Mängel/<Datum>/Mangel_<stabile-ID>/{JSON,PDF,Fotos},
  * - Maengelliste/Maengelliste_Gesamt.{csv,pdf},
  * - Abnahmen/<Datum>/Abnahme_<Nr>_<stabile-ID>/{JSON,PDF,Fotos,Anlagen},
@@ -212,6 +212,8 @@ object GesamtMedienArchiv {
             val archiveRoot = archiveRoot(entries.map { cleanPath(it.name) }, baustelleName)
 
             val plans = mutableListOf<BinaryPlan>()
+            val mangelPhotoPaths = linkedMapOf<Pair<String, Long>, String>()
+            val acceptancePhotoPaths = linkedMapOf<Pair<String, Long>, String>()
             val mangelPathByHash = linkedMapOf<String, String>()
             val mangelFolderByServerId = linkedMapOf<String, String>()
             buildMangelPlans(
@@ -222,7 +224,8 @@ object GesamtMedienArchiv {
                 syncMaengel = syncMaengel,
                 plans = plans,
                 pathByHash = mangelPathByHash,
-                folderByServerId = mangelFolderByServerId
+                folderByServerId = mangelFolderByServerId,
+                photoPaths = mangelPhotoPaths
             )
 
             val acceptancePathByHash = linkedMapOf<String, String>()
@@ -231,7 +234,8 @@ object GesamtMedienArchiv {
                 archiveRoot = archiveRoot,
                 abnahmen = abnahmen,
                 plans = plans,
-                pathByHash = acceptancePathByHash
+                pathByHash = acceptancePathByHash,
+                photoPaths = acceptancePhotoPaths
             )
 
             val serverRows = rowsFromServerCatalog(
@@ -351,13 +355,17 @@ object GesamtMedienArchiv {
                 val csvBom = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
                 shiftLists.forEach { list -> writeBytes(list.path, list.bytes) }
                 writeBytes(
-                    "$archiveRoot/Bilderliste_gesamt.csv",
-                    csvBom + GesamtBilderlisteXlsx.csv(mediaRows).toByteArray(Charsets.UTF_8)
-                )
-                writeBytes(
                     "$archiveRoot/Bilderliste_gesamt.xlsx",
                     GesamtBilderlisteXlsx.bytes(mediaRows)
                 )
+                writeBytes("$archiveRoot/Maengelliste/Maengelliste_Gesamt.xlsx",
+                    FachlistenXlsx.maengel(appContext, maengel) { key, id ->
+                        mangelPhotoPaths[key to id]?.let { "../" + it.removePrefix("$archiveRoot/") }
+                    })
+                writeBytes("$archiveRoot/Abnahmeliste/Abnahmeliste_Gesamt.xlsx",
+                    FachlistenXlsx.abnahmen(abnahmen) { key, id ->
+                        acceptancePhotoPaths[key to id]?.let { "../" + it.removePrefix("$archiveRoot/") }
+                    })
                 writeBytes(
                     "$archiveRoot/Maengelliste/Maengelliste_Gesamt.csv",
                     csvBom + MaengellisteExport.csvText(appContext, maengel).toByteArray(Charsets.UTF_8)
@@ -455,7 +463,8 @@ object GesamtMedienArchiv {
         syncMaengel: List<SyncMangelSpeicher.Eintrag>,
         plans: MutableList<BinaryPlan>,
         pathByHash: MutableMap<String, String>,
-        folderByServerId: MutableMap<String, String>
+        folderByServerId: MutableMap<String, String>,
+        photoPaths: MutableMap<Pair<String, Long>, String>
     ) {
         val syncByKey = syncMaengel.associateBy { it.mangelKey }
         maengel.forEach { item ->
@@ -474,6 +483,7 @@ object GesamtMedienArchiv {
                 val digest = runCatching { sha256(file.readBytes()) }.getOrNull() ?: return@fotoLoop
                 val target = "$folder/Fotos/${safeToken(mf.art.name)}_${digest.take(12)}.${extension(file.name, null)}"
                 pathByHash[digest] = target
+                photoPaths[item.key to mf.foto.id] = target
                 fotoTargets += target.removePrefix("$archiveRoot/")
                 plans += BinaryPlan(path = target, localFile = file)
             }
@@ -510,7 +520,8 @@ object GesamtMedienArchiv {
         archiveRoot: String,
         abnahmen: List<AbnahmeSpeicher.Abnahme>,
         plans: MutableList<BinaryPlan>,
-        pathByHash: MutableMap<String, String>
+        pathByHash: MutableMap<String, String>,
+        photoPaths: MutableMap<Pair<String, Long>, String>
     ) {
         for (a in abnahmen) {
             val token = safeToken(a.id).take(8)
@@ -527,6 +538,7 @@ object GesamtMedienArchiv {
                 val target = "$folder/Fotos/${safeToken(ref.bildArt.name)}_${digest.take(12)}.${extension(file.name, null)}"
                 pathByHash[digest] = target
                 plans += BinaryPlan(path = target, localFile = file)
+                photoPaths[a.id to ref.fotoId] = target
                 photoJson.put(
                     JSONObject()
                         .put("art", ref.bildArt.name)
@@ -939,6 +951,8 @@ object GesamtMedienArchiv {
         if (path.contains("/BTB/", ignoreCase = true) && path.endsWith("_Bilderliste.xlsx", ignoreCase = true)) return true
         if (path.startsWith("$archiveRoot/Mängel/", ignoreCase = true)) return true
         if (path.startsWith("$archiveRoot/Abnahmen/", ignoreCase = true)) return true
+        if (path.equals("$archiveRoot/Maengelliste/Maengelliste_Gesamt.xlsx", ignoreCase = true)) return true
+        if (path.equals("$archiveRoot/Abnahmeliste/Abnahmeliste_Gesamt.xlsx", ignoreCase = true)) return true
         if (path.equals("$archiveRoot/Maengelliste/Maengelliste_Gesamt.csv", ignoreCase = true)) return true
         if (path.equals("$archiveRoot/Maengelliste/Maengelliste_Gesamt.pdf", ignoreCase = true)) return true
         if (path.equals("$archiveRoot/Abnahmeliste/Abnahmeliste_Gesamt.csv", ignoreCase = true)) return true
@@ -999,6 +1013,7 @@ object GesamtMedienArchiv {
         return this
     }
 }
+
 
 
 

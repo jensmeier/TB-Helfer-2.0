@@ -1041,32 +1041,8 @@ class BautagebuchPdf(
         }
 
         fun formatKnotenLabel(k: BaustellenKnotenEntity): String {
-            val base = when (k.typ) {
-                BaustellenKnotenTyp.FREIE_STRECKE -> {
-                    val n = k.knotenName?.trim().orEmpty()
-                    val sk = k.streckenkennung?.trim().orEmpty()
-                    when {
-                        n.isNotBlank() -> n
-                        sk.isNotBlank() -> "Freie Strecke $sk"
-                        else -> "Freie Strecke"
-                    }
-                }
-                BaustellenKnotenTyp.BAHNHOF -> {
-                    val bhf = k.bahnhofName?.trim().orEmpty()
-                    val glw = k.gleisOderWeiche?.trim().orEmpty()
-                    val n = k.knotenName?.trim().orEmpty()
-                    when {
-                        n.isNotBlank() -> n
-                        bhf.isNotBlank() && glw.isNotBlank() -> "Bahnhof $bhf – $glw"
-                        bhf.isNotBlank() -> "Bahnhof $bhf"
-                        else -> "Bahnhof"
-                    }
-                }
-                BaustellenKnotenTyp.ALLGEMEIN_OBJEKT -> {
-                    k.knotenName?.trim().takeIf { !it.isNullOrBlank() } ?: "Allgemein / Objekt"
-                }
-                BaustellenKnotenTyp.HAUPT -> entry.baustelleName
-            }
+            val base = if (k.typ == BaustellenKnotenTyp.HAUPT) entry.baustelleName else
+                PdfOrtsLabel.basis(k.typ.name, k.knotenName, k.bahnhofName, k.gleisOderWeiche, k.streckenkennung)
 
             val km = de.tbhelfer.util.KmAnzeige.bereich(k.kmVon, k.kmBis, inKlammern = true)
                 ?.let { " $it" }.orEmpty()
@@ -3038,6 +3014,7 @@ fun sharePdf(file: File) {
         context.startActivity(Intent.createChooser(intent, "PDF teilen"))
     }
 }
+
 
 
 

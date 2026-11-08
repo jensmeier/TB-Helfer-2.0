@@ -1374,7 +1374,6 @@ object BtbExportPaket {
             addBinary(zos, uniquePath("$btbFolder/Maengelliste_Schicht.pdf", used), maengelSchichtPdf)
             addCsvText(zos, uniquePath("$btbFolder/Maengelliste_Schicht.csv", used), maengelSchichtCsv)
             // Gesamt = alle Bilder und Mängel der Baustelle.
-            addCsvText(zos, uniquePath("$root/Bilderliste_gesamt.csv", used), bilderlisteGesamtCsv)
             addBinary(zos, uniquePath("$maengellisteFolder/Maengelliste_Gesamt.pdf", used), maengelGesamtPdf)
             addCsvText(zos, uniquePath("$maengellisteFolder/Maengelliste_Gesamt.csv", used), maengelGesamtCsv)
             addBinary(zos, uniquePath("$btbFolder/Abnahmeliste_Schicht.pdf", used), abnahmenSchichtPdf)
@@ -1602,6 +1601,8 @@ object BtbExportPaket {
             }
         }
 
+        val actualPhotoPaths = linkedMapOf<Long, String>()
+        val actualAcceptancePaths = linkedMapOf<Pair<String, Long>, String>()
         ZipOutputStream(zipFile.outputStream().buffered(64 * 1024)).use { zos ->
             addBinary(zos, "$root/EXPORT_HINWEISE.txt", (
                 "BTB-Dokumente: $rangeName\n" +
@@ -1685,9 +1686,8 @@ object BtbExportPaket {
                 ),
                 sheetName = "Bilder gesamt"
             )
-            addCsvText(
-                zos,
-                uniquePath("$root/" + (if (einzelBtb == null) "Bilderliste_gesamt.csv" else "Bilderliste_BTB.csv"), used),
+            if (einzelBtb != null) addCsvText(
+                zos, uniquePath("$root/Bilderliste_BTB.csv", used),
                 einfacheBilderlisteCsv(alleFotosDerBaustelle, strukturierteAbnahmeFotoIdsGesamt)
             )
             addBinary(zos, uniquePath("$root/" + (if (einzelBtb == null) "Bilderliste_gesamt.xlsx" else "Bilderliste_BTB.xlsx"), used), bilderlisteGesamtXlsx)
@@ -1768,10 +1768,12 @@ object BtbExportPaket {
                     } else {
                         val ext = File(foto.dateipfad).extension.ifBlank { "jpg" }
                         val name = "Bild_${(fotoIndex + 1).toString().padStart(2, '0')}_${safeSegment(AbnahmeSpeicher.bildArtLabel(ref.bildArt))}.$ext"
+                        val target = uniquePath("$base/Fotos/$name", used)
                         addFotoFileKomprimiert(
-                            context, zos, File(foto.dateipfad), uniquePath("$base/Fotos/$name", used),
+                            context, zos, File(foto.dateipfad), target,
                             baustelleName, foto, labels, knotenLabels
                         )
+                        actualAcceptancePaths[a.id to ref.fotoId] = target
                         fotosOk++
                     }
                 }
@@ -1786,17 +1788,29 @@ object BtbExportPaket {
                     return@forEach
                 }
                 val d = fotoDatumIso(foto)
+                val target = uniquePath("$root/Bilder/$d/${info.exportName}", used)
                 addFotoFileKomprimiert(
                     context = context,
                     zos = zos,
                     src = src,
-                    path = uniquePath("$root/Bilder/$d/${info.exportName}", used),
+                    path = target,
                     baustelleName = baustelleName,
                     foto = foto,
                     labels = labels,
                     knotenLabels = knotenLabels
                 )
+                actualPhotoPaths[foto.id] = target
                 fotosOk++
+            }
+            if (einzelBtb == null) {
+                addBinary(zos, uniquePath("$root/Maengelliste/Maengelliste_Gesamt.xlsx", used),
+                    FachlistenXlsx.maengel(context, maengelGesamt) { _, id ->
+                        actualPhotoPaths[id]?.let { "../" + it.removePrefix("$root/") }
+                    })
+                addBinary(zos, uniquePath("$root/Abnahmeliste/Abnahmeliste_Gesamt.xlsx", used),
+                    FachlistenXlsx.abnahmen(abnahmenGesamt) { key, id ->
+                        actualAcceptancePaths[key to id]?.let { "../" + it.removePrefix("$root/") }
+                    })
             }
         }
 
@@ -1814,6 +1828,7 @@ object BtbExportPaket {
         context.startActivity(Intent.createChooser(intent, "Exportpaket teilen"))
     }
 }
+
 
 
 
