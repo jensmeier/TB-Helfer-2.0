@@ -21,5 +21,5 @@ TESTSTATUS:
 - Keine NAS-Installation, keine Migration, kein produktiver Schreibtest.
 - Debug-Testbuild. Update mit bestehender Signierung erforderlich; bei Signaturkonflikt NICHT deinstallieren.
 
-BAUSTATUS 08.11.2026:
-KEINE APK ERZEUGT. CI42472214428 und42472373330 scheiterten vor Kompilierung am Gradle-Downloadtimeout. Unit/Lint/Manifest/Signatur offen. Diese Datei ist die vorbereitete Releasebeschreibung, kein Nachweis einer installierbaren APK.
+BAUSTATUS:
+Erneuter Bauauftrag08.11.2026: Gradle9.3.1 direkt von offizieller GitHub-Veröffentlichung mit fest gepinnter SHA256. Kompilierung/Unit/Lint/APK-Prüfung folgen im aktuellen Lauf. Tatsächliche Ergebnisse und Baucommit werden separat bzw. im erzeugten Releasepaar ergänzt.
