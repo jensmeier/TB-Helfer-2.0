@@ -1,5 +1,12 @@
 # TB-HELFER 2.0 – E2E TESTSTATUS
 
+## EXPORT-1108B – gebaut, Installation/E2E offen (08.11.2026)
+Android **1.3.44/200094** aus **2d2ac0ee3b2a815781f5cfee0f3f281a2a8ad74c**: BUILD BESTANDEN, 233 Unit-Tests bestanden, Lint 0 Fehler/391 Warnungen. CI42479073804 Buildjob128726829680 SUCCESS; Gesamtworkflow wegen bestehender Sourcechecks03/13/19/83/85/86 weiter ROT. Word unverändert; PDF-Unterbaustellen vollständig, kompakte portable Fotoliste und Mängel-/Abnahme-XLSX gebaut, Gesamtbilder-CSV entfernt.
+Server geprüft **2a97293445c0c51ff0d148b9f4ab29871b7804b9**, 5 gezielte Tests bestanden; keine Runtimeänderung für EXPORT-1108B.
+**Updategrenze:** Debugzertifikat weicht von CI-APK1.3.43 ab. Nicht deinstallieren; Update mit bisherigem Signierschlüssel bauen. Installation und Pixel/Poco/Excel/NAS-E2E OFFEN. Kein Deployment. NAS-Abweichung im separaten Serverauftrag bleibt offen.
+Details/Nachweise: [EXPORT_1108B.md](uebergaben/EXPORT_1108B.md). Ältere Einträge darunter sind Chronologie.
+
+
 ## INTEGRATION-1108 – APK gebaut, 08.11.2026
 **BUILD BESTANDEN / 228 UNIT-TESTS PASS / LINT 0 FEHLER, 391 WARNUNGEN.** Android1.3.43/200093 aus Baucommit15ed259f4c7385628056f220fbcf6f45f7bb067e, CI42473143629 / Buildjob128708410252 SUCCESS. Gradle9.3.1 direkt von offizieller GitHub-Veröffentlichung mit SHA256-Prüfung geladen. APK+MD desselben Baucommits im Artefakt13614756974 geprüft; APK26962792Bytes, SHA2565b025a4701e837d98542c323c9571d2c015343a53ac4f2e53836be0891b975aa. Frühere Downloadblockade überwunden. Gesamt-CI weiterhin ROT wegen unveränderter Alt-Sourcechecks03/13/19/83/85/86; keine Prüfung abgeschwächt.
 Debugzertifikat anders als vorige CI-APK200092; installierte Signatur unbekannt. Bei Signaturkonflikt nicht deinstallieren, bisherigen Signierschlüssel verwenden. Pixel/Poco-INSTALLATION und E2E OFFEN. Server-Runtimea5a0f862 unverändert, HEAD vor diesem Dokumentationsabgleichd9e85bf2. NAS nicht deployt. Details: [INTEGRATION_1108_APK.md](uebergaben/INTEGRATION_1108_APK.md). Nachfolgende Einträge sind Chronologie.
