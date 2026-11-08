@@ -7,7 +7,7 @@ worker = (ROOT / "app/src/main/java/de/tbhelfer/server/SyncWorker.kt").read_text
 
 for token in (
     "class Server1AndroidSyncCoordinator",
-    "teamApi.loadWorksiteContexts",
+    "WorksiteContextSync(appContext).prepare(token, roots)",
     "capabilitiesApi.load",
     'capabilities.supports("btb_live_sync_v1")',
     'capabilities.supports("defects_v1")',

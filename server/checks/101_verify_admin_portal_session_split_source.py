@@ -29,7 +29,6 @@ for token in (
     '@router.get("/admin/v1/worksites")',
     '@router.get("/admin/v1/worksites/{worksite_id}")',
     '@router.get("/admin/v1/btbs/{btb_id}")',
-    '"page_prefix": "/admin/v1"',
 ):
     assert token in admin_web, token
 assert "const tbAdminScope=location.pathname.startsWith('/admin/v1');" in base
@@ -48,8 +47,18 @@ assert "pagePrefix" in worksites
 assert "pagePrefix" in worksite
 assert "pagePrefix" in btb
 assert "tbScopedUrl(p.content_url)" in btb
-assert "tbScopedUrl('/api/v1/files/'" in worksite
-assert 'href="/admin/v1/worksites"' in dashboard
+assert "tbScopedUrl(file.renditions.thumb)" in worksite
+assert 'href="/admin/v1/companies"' in dashboard
+# Admin management deliberately redirects former worksite/BTB pages.
+# Each route must retain its admin authentication dependency.
+import ast
+for node in ast.parse(admin_web).body:
+    if isinstance(node, ast.FunctionDef) and node.name in {
+        "admin_worksites_page", "admin_worksite_page", "admin_btb_page"
+    }:
+        source = ast.get_source_segment(admin_web, node)
+        assert "Depends(require_web_admin)" in source
+        assert 'RedirectResponse(url="/admin/v1/companies", status_code=302)' in source
 assert "/api/v1/admin/session/login" in admin_login
 assert "admin_session_router" in main
 

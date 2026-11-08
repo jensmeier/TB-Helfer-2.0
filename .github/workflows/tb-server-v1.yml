@@ -32,6 +32,7 @@ jobs:
           --health-retries 20
 
     env:
+      PYTHONPATH: ${{ github.workspace }}/server
       DB_HOST: 127.0.0.1
       DB_PORT: "5432"
       DB_NAME: tb_helfer_v1
@@ -252,9 +253,11 @@ jobs:
           python - <<'PY'
           import os
           import secrets
+          password = secrets.token_urlsafe(24) + "Aa1"
+          print("::add-mask::" + password)
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as out:
               out.write("TB_BOOTSTRAP_ADMIN_LOGIN=ci-admin\n")
-              out.write("TB_BOOTSTRAP_ADMIN_PASSWORD=" + secrets.token_urlsafe(24) + "Aa1\n")
+              out.write("TB_BOOTSTRAP_ADMIN_PASSWORD=" + password + "\n")
               out.write("TB_BOOTSTRAP_ADMIN_NAME=CI Administrator\n")
           PY
 

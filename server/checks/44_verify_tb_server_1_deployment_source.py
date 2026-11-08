@@ -21,7 +21,7 @@ def main() -> None:
         ("postgis/postgis:17-3.5", compose),
         ("TB_V1_DB_PASSWORD", compose),
         ("TB_V1_PUBLIC_BASE_URL", compose),
-        ("\${TB_V1_DB_PASSWORD:?", compose),
+        ("${TB_V1_DB_PASSWORD:?", compose),
         ("./database-v1", compose),
         ("./storage-v1", compose),
         ("./backups-v1", compose),

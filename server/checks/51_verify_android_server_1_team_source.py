@@ -42,7 +42,7 @@ def main() -> None:
         )
 
     wrapper = api[api.index("fun loadTeam(token: String, worksiteId: String): TeamResult"):api.index("private fun loadServerTeam")]
-    if "TeamResult.Unsupported -> loadLegacyTeam" not in wrapper:
+    if "ServerCapabilitiesApi.Result.Unsupported -> loadLegacyTeam" not in wrapper or "TeamResult.Unsupported -> TeamResult.Error(" not in wrapper:
         raise SystemExit("Legacy-Team-Fallback darf nur nach Server-1.0-Unsupported erfolgen")
 
     modern = api[api.index("private fun loadServerTeam"):api.index("private fun loadLegacyTeam")]

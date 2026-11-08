@@ -31,23 +31,29 @@ def json_call(client, path: str, method: str = "GET", payload=None, headers=None
         return response.status, json.loads(body.decode("utf-8")) if body else None
 
 
-def csrf_from(jar) -> str:
+def csrf_from(jar, name="tb_portal_csrf") -> str:
     for cookie in jar:
-        if cookie.name == "tb_portal_csrf":
+        if cookie.name == name:
             return cookie.value
     raise AssertionError("CSRF cookie fehlt")
 
 
 def main() -> None:
     admin, admin_jar = opener()
+    try:
+        json_call(admin, "/api/v1/portal/login", "POST", {"login": ADMIN_LOGIN, "password": ADMIN_PASSWORD})
+        raise AssertionError("Admin must not use user portal login")
+    except urllib.error.HTTPError as exc:
+        assert exc.code == 403
+        assert "ADMIN_USE_ADMIN_LOGIN" in exc.read().decode("utf-8")
     status, login = json_call(
         admin,
-        "/api/v1/portal/login",
+        "/api/v1/admin/session/login",
         "POST",
         {"login": ADMIN_LOGIN, "password": ADMIN_PASSWORD},
     )
     assert status == 200 and login["user"]["company_role"] == "ADMIN", login
-    csrf = csrf_from(admin_jar)
+    csrf = csrf_from(admin_jar, "tb_admin_csrf")
 
     status, company = json_call(
         admin,

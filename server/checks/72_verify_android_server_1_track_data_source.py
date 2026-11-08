@@ -23,7 +23,8 @@ for token in (
 
 assert "/api/v1/collab/worksites/" in api
 assert "legacyLoad" in api
-assert "legacyReplace" in api
+assert "legacyReplace" not in api
+assert "item.currentVersion != server.currentVersion" in api
 
 for token in (
     "buildLocalDatasets",

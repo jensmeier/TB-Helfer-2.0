@@ -46,7 +46,8 @@ def main() -> None:
         ("Sicherheits-/Audit-Nachweis anzeigen", system_ui),
         ("showArchived", release_ui),
         ("Archivierte anzeigen", release_ui),
-        ("013_job_progress.sql", workflow),
+        ("python -m tbserver.migrations up", workflow),
+        ('{"progress_percent", "progress_text"} <= background_job_columns', workflow),
         ("91_verify_system_status_live_ui_source.py", workflow),
     ]
     missing = [needle for needle, source in assertions if needle not in source]

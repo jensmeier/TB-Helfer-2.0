@@ -37,7 +37,7 @@ def main() -> None:
         ("docker-compose.restore-test.v1.yml", deployment),
         ("TB_V1_ALLOW_RESTORE_TARGET=NO", deployment),
         ("RESTORE-TARGET:<uuid>:<target-db-name>", deployment),
-        ("docker-compose.v1.yml", base),
+        ("docker-compose.v1.yml", deployment),
     ]
     missing = [needle for needle, source in assertions if needle not in source]
     if missing:

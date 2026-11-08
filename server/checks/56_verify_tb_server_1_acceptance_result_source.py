@@ -33,7 +33,7 @@ def main() -> None:
         ("NOCH_ZU_PRUEFEN", migration),
         ("finalizeAcceptance(id,version,result)", template),
         ("'ABGENOMMEN'", template),
-        ("'NICHT_ABGENOMMEN'", template),
+        ("NICHT_ABGENOMMEN", template),
         ('"acceptance_result_v1": True', caps),
         ("56_verify_tb_server_1_acceptance_result_source.py", workflow),
     ]

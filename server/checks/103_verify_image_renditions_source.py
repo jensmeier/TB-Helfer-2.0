@@ -20,7 +20,7 @@ for token in (
 assert '"file_image_renditions_v1": True' in capabilities
 assert '"renditions": image_rendition_urls(' in btb
 assert "p.renditions&&p.renditions.preview" in btb_template
-assert "file.renditions&&file.renditions.thumb" in worksite_template
+assert "tbScopedUrl(file.renditions.thumb)" in worksite_template
 
 from tbserver.image_renditions import (
     RENDITION_SPECS,

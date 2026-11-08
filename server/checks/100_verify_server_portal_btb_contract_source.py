@@ -7,12 +7,14 @@ portal = (ROOT / "server/templates/v1_btb.html").read_text(encoding="utf-8")
 files = (ROOT / "server/tbserver/files.py").read_text(encoding="utf-8")
 btb = (ROOT / "server/tbserver/btb.py").read_text(encoding="utf-8")
 
-assert "const prefix='arbeit-frei:',index=nextSlotIndex(prefix);" in portal
-assert "await postManagedEntry('ARBEIT',prefix+index,index,payload);" in portal
+assert "targetSection==='ARBEIT'" in portal
+assert "(firm?'firma:'+firm+':arbeit:':'arbeit-frei:')" in portal
+assert "await postManagedEntry(targetSection,prefix+index,index,payload)" in portal
 assert "await postManagedEntry('NOTIZEN','notizen:0',0,{text:line});" not in portal
 assert 'from .btb_photo_meta import canonical_photo_metadata' in files
-assert '"photo_metadata": canonical_photo_metadata(' in files
-assert '"photo_metadata": canonical_photo_metadata(' in btb
+assert 'row["photo_metadata"] = canonical_photo_metadata(' in files
+assert '"photo_metadata": effective_catalog_photo_metadata(row, entity_type == "BTB")' in files
+assert '"photo_metadata": effective_btb_photo_metadata(row)' in btb
 
 from tbserver.btb_photo_meta import canonical_photo_metadata, decode_btb_photo_metadata
 

@@ -11,7 +11,7 @@ btb_docs = (ROOT / "server/tbserver/btb_documents.py").read_text(encoding="utf-8
 
 for token in (
     'type != "DEFECT" && type != "ACCEPTANCE" && type != "BTB"',
-    'parentType != "DEFECT" && parentType != "ACCEPTANCE" && parentType != "BTB"',
+    'parentType !in setOf("DEFECT", "ACCEPTANCE", "BTB", "WORKSITE")',
     'parentType == "BTB" && mimeType.startsWith("image/"',
     '"PHOTO"',
     '"BTB_FINAL_PDF"',
@@ -21,11 +21,13 @@ for token in (
 assert "parentEntityType IN ('DEFECT','ACCEPTANCE','BTB')" in dao
 assert "server1Api: Server1FileApi? = null" in media
 assert "server1Api = server1Api" in media
-assert "uploadedForBtb" in media
-assert 'status = "FERTIG"' in media
+assert "collab.uploadAttachment(" in media
+assert 'parent.status.equals("FERTIG"' in media
+assert 'status = "FERTIG"' not in media
+assert "finalizeBtb(" not in media
 assert "media.synchronize" in sync
 assert "server1Api = fileApi" in sync
-assert "BTB-Abschluss nach Foto-Sync" in sync
+assert "shift-finish/shift-resume/finalize werden ausschliesslich explizit aufgerufen" in sync
 assert "Server1AndroidSyncCoordinator" in fragment
 assert "prepare_btb_photo_change" in files
 assert "def prepare_btb_photo_change" in btb_docs

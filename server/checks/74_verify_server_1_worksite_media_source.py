@@ -30,7 +30,12 @@ assert ".full_name" not in server
 
 # The image-only override must stay opt-in: normal file list/metadata keep existing visibility.
 assert "allow_responsible_btb_images: bool = False" in server
-assert server.count("allow_responsible_btb_images=True") == 1
+opt_in = {node.name for node in ast.walk(ast.parse(server))
+          if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+          and any(isinstance(child, ast.keyword) and child.arg == "allow_responsible_btb_images"
+                  and isinstance(child.value, ast.Constant) and child.value.value is True
+                  for child in ast.walk(node))}
+assert opt_in == {"download_file", "download_image_rendition"}, opt_in
 
 for token in (
     "/api/v1/worksites/",

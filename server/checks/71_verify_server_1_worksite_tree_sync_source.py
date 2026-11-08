@@ -24,7 +24,7 @@ for token in (
     "WITH RECURSIVE subtree",
     "deleted_count",
     "from psycopg.types.json import Jsonb",
-    "Jsonb(payload.payload)",
+    "Jsonb(_node_payload(payload.node_kind, payload.payload))",
     'Jsonb(updates[key]) if key == "payload" else updates[key]',
 ):
     assert token in server, token
@@ -59,20 +59,15 @@ for token in (
 
 for token in (
     'capabilities.supports("worksite_tree_v1")',
-    "structureSync.prepareLocalChanges(token)",
-    "collab.synchronizeServer1WorksiteNodePending(token)",
-    "structureSync.applyServerStateToLocal(token)",
-    "treeSettled",
-    "upload.conflicts",
+    "structureSync.synchronizeChanged(token)",
 ):
     assert token in sync, token
 
 assert '"worksite_tree_v1": True' in caps
-assert sync.index("structureSync.prepareLocalChanges(token)") < sync.index(
-    "collab.synchronizeServer1WorksiteNodePending(token)"
-)
-assert sync.index("collab.synchronizeServer1WorksiteNodePending(token)") < sync.index(
-    "structureSync.applyServerStateToLocal(token)"
-)
+assert "upload.conflicts > 0" in structure
+assert "upload.failed > 0" in structure
+transaction = structure[structure.index("suspend fun synchronizeChanged"):structure.index("suspend fun applyServerStateToLocal")]
+assert "processMutex.withLock" in transaction
+assert transaction.index("prepareLocalChanges(token, ids)") < transaction.index("synchronizeServer1WorksiteNodePending(") < transaction.index("applyServerStateToLocal(token, ids, expected)")
 
 print("OK: canonical Server-1.0 worksite tree keeps stable keys, tombstones and version rebasing")

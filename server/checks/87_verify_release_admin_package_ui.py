@@ -12,7 +12,7 @@ checks = [
     ("new notes section", 'id="notesNew"', template),
     ("improved notes section", 'id="notesImproved"', template),
     ("fixed notes section", 'id="notesFixed"', template),
-    ("draft editor", "Draft bearbeiten / Dateien", template),
+    ("draft editor", "Entwurf bearbeiten / Dateien", template),
     ("draft patch", "method:'PATCH'", template),
     ("draft manifest import", "readManifestIntoDraft", template),
     ("draft manifest export", "downloadReleaseManifest", template),

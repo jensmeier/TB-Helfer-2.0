@@ -39,7 +39,7 @@ def main() -> None:
         ('dirs_exist_ok=True', target),
         ('action="RESTORE_TARGET_START"', target),
         ('action="RESTORE_TARGET_OK"', target),
-        ('action="RESTORE_TARGET_FAILED"', target),
+        ('else "RESTORE_TARGET_FAILED"', target),
         ("VALUES ('RESTORE_TARGET', 'RUNNING', %s)", target),
         ('clean: bool = True', restore),
         ('if clean:', restore),

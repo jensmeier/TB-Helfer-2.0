@@ -106,7 +106,7 @@ def main() -> None:
     ]
     if '"storage_key"' in status_block:
         raise SystemExit("Systemstatus darf Backup-Pfade nicht offenlegen")
-    if 'result.pop("last_error", None)' not in status_block:
+    if 'result.pop("last_error", None)' not in system or 'jobs = [_job_view(dict(row))' not in status_block:
         raise SystemExit(
             "Rohe Job-Fehler muessen vor der Admin-Antwort serverseitig entfernt werden"
         )

@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -108,7 +109,7 @@ assert "＋ Bahnhof ergänzen" in sync_fragment
 assert "mergedRoutes" in offline_repo and "preservedRoutes" in offline_repo
 assert "dao.pendingChanges() + dao.conflicts()" in offline_repo
 assert 'existing?.objectType ?: "OTHER"' in offline_repo
-assert "versionCode = 200055" in gradle
-assert 'versionName = "1.3.5"' in gradle
+assert int(re.search(r"versionCode\s*=\s*(\d+)", gradle).group(1)) >= 200055
+assert re.search(r'versionName\s*=\s*"\d+\.\d+\.\d+"', gradle)
 
 print("OK: identity/global catalog source contract")

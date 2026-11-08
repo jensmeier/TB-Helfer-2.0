@@ -10,8 +10,8 @@ for token in (
     'state == "FAILED"',
     'state == "DONE"',
     'item.get("status") != "OK"',
-    'item.get("byte_size")',
-    'item.get("sha256")',
+    'newest.get("byte_size")',
+    'newest.get("sha256")',
     "tb_admin_csrf",
 ):
     assert token in tool, token

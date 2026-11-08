@@ -58,7 +58,7 @@ def main() -> None:
         ("TB_SMTP_PASSWORD", staging),
         ("Automatik, Backups &amp; E-Mail", template),
         ("Sofortige Fehler-Mails", template),
-        ("Bald ablaufende Nutzer", dashboard),
+        ("Ablaufende Zugänge", dashboard),
         ("Sicherheits-/Audit-Nachweis anzeigen", template),
         ("90_verify_system_automation_email_source.py", workflow),
     ]

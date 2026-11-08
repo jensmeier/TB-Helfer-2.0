@@ -17,7 +17,7 @@ for token in (
     "ACCEPTANCE_PHOTO",
     "DEFECT__MANGEL__",
     "ACCEPTANCE_FOTO__SONSTIGES__",
-    "/api/v1/files/",
+    "tbScopedUrl(file.renditions.thumb)",
 ):
     assert token in portal, token
 
@@ -30,8 +30,9 @@ for token in (
 ):
     assert token in files, token
 
-assert 'semanticFilename("DEFECT"' in bridge
-assert 'semanticFilename("ACCEPTANCE_FOTO"' in bridge
+import re
+assert re.search(r'semanticFilename\(\s*"DEFECT"', bridge)
+assert re.search(r'semanticFilename\(\s*"ACCEPTANCE_FOTO"', bridge)
 assert "parseDefectFotoArt" in bridge
 assert "parseAcceptanceBildArt" in bridge
 

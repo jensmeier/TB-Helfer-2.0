@@ -13,11 +13,11 @@ acceptance_keys = (
 
 for key in defect_keys:
     assert f'payload.{key}' in portal or f'payload["{key}"]' in portal, key
-    assert f'.put("{key}"' in bridge, key
+    assert f'.put("{key}"' in bridge or f'.putNullable("{key}"' in bridge, key
 
 for key in acceptance_keys:
     assert f'payload.{key}' in portal or f'payload["{key}"]' in portal, key
-    assert f'.put("{key}"' in bridge, key
+    assert f'.put("{key}"' in bridge or f'.putNullable("{key}"' in bridge, key
 
 for token in (
     "defectEditVersion",
@@ -26,7 +26,7 @@ for token in (
     "acceptancePayloadFromForm",
     "resetDefectForm",
     "resetAcceptanceForm",
-    "Zusatzdaten (JSON)",
+    "<summary>Zusatzdaten</summary>",
     "body.base_version",
 ):
     assert token in portal, token

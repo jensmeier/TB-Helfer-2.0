@@ -29,7 +29,7 @@ for token in (
     assert token in repo, token
 
 assert "server1Api: Server1FileApi?" in bridge
-assert "api, server1Api" in bridge
+assert "server1Api = server1Api" in bridge
 assert 'capabilities.supports("chunk_upload_v1")' in coordinator
 assert "server1Api = fileApi" in coordinator
 assert "Server1AndroidSyncCoordinator" in fragment

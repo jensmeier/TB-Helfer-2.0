@@ -50,7 +50,7 @@ def main() -> None:
         ('action="USER_SOFT_DELETE"', admin),
         ('AND u.deleted_at IS NULL', portal),
         ('{% if not u.activated_at %}', users),
-        ('class="danger delete-user"', users),
+        ('class="secondary delete-user"', users),
         ("method:'DELETE'", users),
         ("Gerät wird freigegeben", users),
         ("WHERE deleted_at IS NULL", migration),

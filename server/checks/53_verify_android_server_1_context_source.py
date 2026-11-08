@@ -18,6 +18,7 @@ def main() -> None:
     capabilities = read("server/tbserver/capabilities.py")
     workflow = read(".github/workflows/tb-server-v1.yml")
 
+    context_sync = read("app/src/main/java/de/tbhelfer/server/WorksiteContextSync.kt")
     assertions = [
         ("fun loadWorksiteContexts(token: String): WorksiteContextResult", api),
         ('supports("worksite_tree_v1")', api),
@@ -26,9 +27,9 @@ def main() -> None:
         ('"/api/v1/device/me"', api),
         ('"/api/v1/worksites/${encode(worksiteId)}/members"', api),
         ("suspend fun replaceWorksiteContexts", repo),
-        ("teamApi.loadWorksiteContexts(token)", fragment),
+        ("Server1AndroidSyncCoordinator(", fragment),
         ("SyncUiResult.ContextOnly", fragment),
-        ("collab.replaceWorksiteContexts(contexts)", fragment),
+        ("ServiceLocator.collabSyncRepository.replaceWorksiteContexts(", context_sync),
         ("R.string.collab_server1_context_only", fragment),
         ('name="collab_server1_context_only"', strings),
         ('"worksite_tree_v1": True', capabilities),
@@ -41,7 +42,7 @@ def main() -> None:
             "Fehlende Android-Server-1.0-Kontextmarker: " + ", ".join(missing)
         )
 
-    modern_call = fragment.index("teamApi.loadWorksiteContexts(token)")
+    modern_call = fragment.index("Server1AndroidSyncCoordinator(", fragment.index("private suspend fun synchronizeInternal"))
     legacy_call = fragment.index("collab.synchronizeAll(token)")
     if modern_call >= legacy_call:
         raise SystemExit(

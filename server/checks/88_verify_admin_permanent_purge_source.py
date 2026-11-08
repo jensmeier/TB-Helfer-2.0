@@ -19,7 +19,7 @@ checks = [
     ("company purge endpoint", '@router.delete("/companies/{company_id}"', purge),
     ("typed permanent confirmation", "ENDGUELTIG LOESCHEN", purge),
     ("production survey-original protection", "COMPANY_PURGE_ORIGINALS_PROTECTED", purge),
-    ("release draft delete UI", "Draft komplett löschen", releases),
+    ("release draft delete UI", "Entwurf komplett löschen", releases),
     ("user permanent delete UI", "Komplett löschen", users),
     ("company permanent delete UI", "Komplett löschen", companies),
     ("device permanent delete UI", "Komplett löschen", devices),
