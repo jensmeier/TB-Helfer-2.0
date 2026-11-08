@@ -3247,3 +3247,8 @@ Benutzer: „okay bauen und alles nochmal prüfen gegen android, auch den Contai
 - 29 lokale Prüfungen und PDF-Referenz bestanden. Datenbankschreiber im HTTP-Test ersetzt. NAS-Runtime, PostgreSQL-Last, Postman, Geräte-E2E und neue CI offen. Keine Bereinigung, Migration oder NAS-Übernahme.
 - Compose und gespeicherte NAS-Datei: zwölf gleiche Dienste, API-RAM 1g versus Vorlage 512m bei fehlendem Override. Restore-Datenbanken als Kandidaten für bedarfsgesteuerten Betrieb, abhängig von Test/Recovery. Keine Compose-Änderung.
 - Nächster Schritt: Zeitmessung und Mischlast auf Testinstanz. [Umsetzung, Containerbewertung und Übernahme](uebergaben/SERVER_PERF_1108.md). Status-Excel-Nachtrag wie zuvor offen.
+
+
+## SERVER-MISCHLAST – Auftrag
+
+Nutzer „okay bauen“ nach SERVER-PERF-1108. Nächster Schritt laut Übergabe: kleiner Referenzabschluss und fotoreicher Abschluss parallel zu Foto-Upload und zweitem Sync-Client als reproduzierbarer, begrenzter Test auf einer isolierten Instanz. Nur Testwerkzeug und Prüfbericht, mit bestehendem Android-HTTP-Vertrag. Produktivdaten, Compose, Recovery und Runtime bleiben außerhalb dieses Messblocks. Ausgang Server 9d9b388b, Android 47a8fd58.
