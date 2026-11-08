@@ -64,7 +64,7 @@ jobs:
 
       - name: Install server dependencies
         working-directory: server
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt PyMuPDF==1.26.6
 
       - name: Runtime unit regressions
         env:
