@@ -1,0 +1,485 @@
+# TB-HELFER 2.0 – ANDROID STATUS
+
+## EXPORT-1108B – gebaut, Installation/E2E offen (08.11.2026)
+Android **1.3.44/200094** aus **2d2ac0ee3b2a815781f5cfee0f3f281a2a8ad74c**: BUILD BESTANDEN, 233 Unit-Tests bestanden, Lint 0 Fehler/391 Warnungen. CI42479073804 Buildjob128726829680 SUCCESS; Gesamtworkflow wegen bestehender Sourcechecks03/13/19/83/85/86 weiter ROT. Word unverändert; PDF-Unterbaustellen vollständig, kompakte portable Fotoliste und Mängel-/Abnahme-XLSX gebaut, Gesamtbilder-CSV entfernt.
+Server geprüft **2a97293445c0c51ff0d148b9f4ab29871b7804b9**, 5 gezielte Tests bestanden; keine Runtimeänderung für EXPORT-1108B.
+**Updategrenze:** Debugzertifikat weicht von CI-APK1.3.43 ab. Nicht deinstallieren; Update mit bisherigem Signierschlüssel bauen. Installation und Pixel/Poco/Excel/NAS-E2E OFFEN. Kein Deployment. NAS-Abweichung im separaten Serverauftrag bleibt offen.
+Details/Nachweise: [EXPORT_1108B.md](uebergaben/EXPORT_1108B.md). Ältere Einträge darunter sind Chronologie.
+
+
+## INTEGRATION-1108 – APK gebaut, 08.11.2026
+**BUILD BESTANDEN / 228 UNIT-TESTS PASS / LINT 0 FEHLER, 391 WARNUNGEN.** Android1.3.43/200093 aus Baucommit15ed259f4c7385628056f220fbcf6f45f7bb067e, CI42473143629 / Buildjob128708410252 SUCCESS. Gradle9.3.1 direkt von offizieller GitHub-Veröffentlichung mit SHA256-Prüfung geladen. APK+MD desselben Baucommits im Artefakt13614756974 geprüft; APK26962792Bytes, SHA2565b025a4701e837d98542c323c9571d2c015343a53ac4f2e53836be0891b975aa. Frühere Downloadblockade überwunden. Gesamt-CI weiterhin ROT wegen unveränderter Alt-Sourcechecks03/13/19/83/85/86; keine Prüfung abgeschwächt.
+Debugzertifikat anders als vorige CI-APK200092; installierte Signatur unbekannt. Bei Signaturkonflikt nicht deinstallieren, bisherigen Signierschlüssel verwenden. Pixel/Poco-INSTALLATION und E2E OFFEN. Server-Runtimea5a0f862 unverändert, HEAD vor diesem Dokumentationsabgleichd9e85bf2. NAS nicht deployt. Details: [INTEGRATION_1108_APK.md](uebergaben/INTEGRATION_1108_APK.md). Nachfolgende Einträge sind Chronologie.
+
+
+## INTEGRATION-1108 – Abschlussstand 08.11.2026
+Umsetzung gesichert: Android Runtime01a6614f, Buildkonfiguration32289783 (1.3.43/200093 vorbereitet); Server Runtimea5a0f862 (PDF-Renderer6). **Android-Build BLOCKIERT**: Gradle-Download scheitert10s und60s, keine Kompilierung/Unit/Lint/APK. **Server BUILD BESTANDEN**, Portal-Browser-CI und Snapshot/Rechte/255-Client-Sync/Recovery-Gates PASS in CI, kein NAS-E2E. Foundation-CI ROT wegen PDF-5-Marker; Check34 auf6 korrigiert, samt3 neuen Regressionen lokal PASS. Bekannte Android-Sourcechecks03/13/19/83/85/86 weiter ROT. Vollständiger Gesamt-CI-Erfolg nicht belegt. **Pixel/Poco E2E OFFEN, NAS NICHT DEPLOYT**. Keine Datenlöschung oder Migration.
+Details, Funktionen, Grenzen und nächste Tests: [INTEGRATION_1108.md](uebergaben/INTEGRATION_1108.md). Dies ist der aktuelle Stand; nachfolgende Einträge sind Chronologie.
+
+
+## INTEGRATION-1108 – Umsetzung 08.11.2026
+Expliziter Bauauftrag des Nutzers. Server-PDF-Renderer v6: vollständiger Kurz-/Langtext, Fotogruppen ohne künstliche Fünfminutentrennung bei gleicher Firma/Ort/Beschreibung, Dateigrößen und umgebrochene Wetterangaben einschließlich 0 mm. Portal folgt derselben Text-/Gruppenregel. Drei Fotospalten und individuelles Fotoanzahllimit bleiben erhalten; vorhandene Abschlussdateien werden nicht umgeschrieben. Wetterbezeichnungen an Android angeglichen.
+Lokal: 22 bestehende Funktionstests + 3 neue Pythonregressionen PASS; PDF-Referenztest (physisch drei Bilder nebeneinander, Fotoanzahl, Null-KM und GPS-Links) PASS; Portalregression mit sieben Assertions PASS; Wetter-/Fotoseite visuell geprüft. Kein NAS-E2E oder Containerbuild behauptet.
+Android feature/tb-android-2.0 Runtime01a6614fec5f054e7484830c8bd91eb0ca80356f, vorbereitet1.3.43/200093: lokaler Einzel-BTB-ZIP ohne Katalogzwang mit ZIP speichern/teilen, Wetterort/Zeitraum/Fehleranzeige, zusätzliche Wetterzeiten erhalten. Erstbau CI42472214428 scheiterte vor Kompilierung am Gradle-Downloadtimeout (10 Sekunden); nur Buildjob gezielt wiederholt. Quellvertragsprüfungen03/13/19/83/85/86 weiterhin rot wie Ausgangsstand, nicht abgeschwächt. Pixel/Poco OFFEN. Kein Deployment, keine Migration, keine Datenlöschung.
+
+
+## Aktueller Integrationsblock AND-BIDIR-026 – 26.10.2026
+**QUELLSTAND IMPLEMENTIERT / SERVER-HANDLER- UND PORTAL-TESTS BESTANDEN / ANDROID-BUILD UND GERÄTE-/NAS-E2E OFFEN.** Dieser Abschnitt ersetzt für AND-BIDIR-026 die frühere Angabe „Korrektur offen“; historische Abschnitte unten bleiben als Verlauf erhalten.
+- Ausdrücklicher Nutzerauftrag zur Entwicklung beider Seiten. Basis Android6a0e7e4 / Server923cf93, Auftragscommits Android21ce70e / Server1f925bd. Androidziel jetzt **1.3.32/200082** mit passender Release-MD; installierter Altstand laut vorherigem Screenshot1.3.31/200081, keine Installation200082 bestätigt.
+- Android: dauerhafte idempotente Neuanlage ohne Helfer, Antwort-/Binding-Recovery, lokale Node-Keys, Haupt-TB-Entwurfsvorschau, versionierte Namensoutbox, Kontext-/Teamempfang und Rechte-/Dirty-Schutz. Gebundene normale BTB-Sends bleiben selektiv. Lokale Pending-Daten nach Teamwechsel bleiben erhalten und werden nicht ins neue Team übertragen.
+- Server: worksite_head_update_v1, PATCH /api/v1/worksites/{id} für name+base_version; Rechte/409/Receipt-Replay geschützt. Portal-Umbenennen und automatische Liste über autorisierten, typgefilterten SSE; Reconnect/Focus/Intervall und Schutz vor verspäteten Listenantworten.
+- Lokal tatsächlich ausgeführt: **14/14 Python-Handler-/SQL-Fälle PASS** (Produktionsfunktionen, SQLite-Adapter); **Node-VM-Portalregression PASS**; Python-Syntax der geänderten Runtime-Module PASS. Testharnessfehler vor finalem PASS korrigiert, keine Assertions abgeschwächt. Kein PostgreSQL-/FastAPI-HTTP-/Android-/NAS-E2E.
+- Android-SDK, Gradle-Cache und Kotlin-Compiler lokal nicht verfügbar; Abhängigkeiten nicht abrufbar. **KOTLIN/ROOM, UNIT, LINT, APK-BUILD, INSTALLATION OFFEN**. Frühere 200081-CI gilt nicht für200082. Keine APK/Veröffentlichung, keine Actions gestartet ([skip ci]); Budget unverändert, tatsächlicher aktueller Minutenverbrauch nicht erhoben. Keine Migration, kein NAS-/Produktivzugriff oder Deployment.
+- Geschützte BTB-SYNC-002/BTB-UI-001/PORTAL-LIVE-001/UPD-001 bleiben Vorgabe. Gezielte Ergänzung der Read-only-/Pending-Behandlung bei Team-/Rechtewechsel und der Vorschau für lokalen Haupt-TB ausdrücklich Teil dieses Auftrags. Bestehende IDs, Originalfotos, Abschluss-PDFs und DB-Inhalte nicht verändert. Unabhängige Review und praktische Regression weiterhin offen.
+- Übergabe/Dateiliste/Abnahme: [INTEGRATION_BAUSTELLEN_026.md](uebergaben/INTEGRATION_BAUSTELLEN_026.md); Vertrag [BAUSTELLEN_SYNC_026.md](vertraege/BAUSTELLEN_SYNC_026.md). Zuerst Android compile/unit/lint; anschließend passender Serverstand und200082 auf Pixel/Poco testen. Serverübernahme erfordert separaten Deploymentauftrag. Baustelle behalten, keine doppelte Portalneuanlage/Neuaktivierung.
+
+Stand: 2026-09-26
+Branch: `feature/tb-android-2.0`
+Fach-HEAD vor Projektsteuerungscommit: `d272f8a7586cce3ea1eda29100473f7af5d540bb`
+Draft-PR: #7
+Version: **1.3.23 / 200073**
+
+- Server/Android-Vertrag 25.09 im Quellstand berücksichtigt.
+- Pixel ACTIVE↔PDF-Flackern source-seitig korrigiert.
+- Build-Wiederholung 200069: **OFFEN**
+- Installation 200069: **OFFEN**
+- Pixel/Poco-/Server-E2E: **OFFEN**
+- Poco: korrekte HELPER-/Teamzuordnung serverseitig, aber keine Daten auf Gerät.
+
+Geschützt: bestätigter BTB-Lifecycle-Fix 200063, bestätigter Server-App-Updateweg mit Datenerhalt, Geräteaktivierung, kein breiter Vollsync als normaler Autosave-Pfad.
+
+Nächste Schritte: NET-001 klären → Haupt-TB-Handy ↔ Server/Portal E2E → Poco/HELPER E2E → danach IMG-001 implementieren → Build/Regression.
+
+Historischer Tracker: `projektsteuerung/archiv/ANDROID_STATUS_ALT_2026-09-26.md`
+
+## Praxisbefund Hauptgerät – DNS/Hostauflösung
+
+Beim Anlegen einer Testbaustelle meldet die App:
+`Unable to resolve host "api-v1.tb-helfer.de": No address associated with hostname`.
+
+Nachtest auf demselben Hauptgerät: `https://www.tb-helfer.de` und `https://api-v1.tb-helfer.de/health/live` sind im Browser erreichbar. Damit ist die öffentliche DNS/API-Erreichbarkeit grundsätzlich vorhanden. Nächster Schritt: App-Sync erneut auslösen; nur bei erneutem App-only `Unable to resolve host` den Android-Netzpfad gezielt untersuchen.
+
+
+## IMG-001 Quellaudit
+Status: **FEHLER BESTÄTIGT / IMPLEMENTIERUNG ZURÜCKGESTELLT BIS E2E-PRIO-001**
+
+- `BtbTeamMediaSync` und `CollabLocalBridge` verwenden lokale Originaldateien als Uploadquelle.
+- `Server1FileApi` überträgt exakt diese Datei und kennt aktuell keine Rendition-Downloadmethode.
+- `synchronizeServer1Attachments()` lädt fehlende Bilder über `/content` vollständig.
+- Lokales 512-px-Thumbnail vorhanden, aber nicht im Online-Sync genutzt.
+- `FotoEntity` speichert keine GPS-Genauigkeit; BTB-Upload sendet deshalb `gpsAccuracyM = null`.
+- Mangel-/Abnahmefoto-Uploads übergeben keine gleichwertigen strukturierten Foto-Metadaten.
+
+Geplanter Android-Fix nach stabilem Hauptgerät-/Poco-E2E:
+kleine Sync-JPEG-Datei → Upload; `preview/thumb` für mobile Downloads; Metadaten vollständig.
+
+### Browser-Nachtest NET-001
+Beide öffentlichen TB-Helfer-Seiten sind auf demselben Hauptgerät im Browser erreichbar. App-Retest ist der nächste Schritt.
+
+### NET-001 reproduziert
+Browserzugriff auf Portal und API-Health funktioniert auf demselben Gerät; `Neu laden` in der App liefert weiterhin `Unable to resolve host "api-v1.tb-helfer.de"`. Damit ist der Fehler app-/Android-netzpfadspezifisch reproduziert. Source-/Runtime-Diagnose erforderlich; keine Neuaktivierung oder Datenlöschung auf Verdacht.
+
+### NET-001 nach Prozessneustart und Mobilfunk
+Force-Stop/Neustart der App sowie WLAN aus / Mobilfunk ändern den Fehler nicht. `Unable to resolve host "api-v1.tb-helfer.de"` bleibt reproduzierbar. Als nächstes systemweite Android-DNS-/VPN-/Filtereinstellungen prüfen; App-Daten/Token nicht löschen.
+
+### Praxisnachtrag – Pixel wieder synchron / Poco frisch aktiviert
+- Pixel hat inzwischen wieder erfolgreich mit dem NAS synchronisiert; der zuvor reproduzierte DNS-Fehler blockiert den aktuellen Lauf nicht mehr.
+- Poco: App gelöscht, neu installiert und neu aktiviert; erster Datenabruf läuft >3 Minuten.
+- Nächster Schritt ist kein weiterer Reset, sondern Erstsync-Pipeline/Datenumfang prüfen und Laufzeitphase eingrenzen.
+
+### BTB-SYNC-001 Praxisfehler 26.09
+- Poco-Erstabgleich abgeschlossen; Baustelle erfolgreich geladen.
+- Nach neuem Pixel-BTB 26.09 erscheint dieser auf Poco kurz und verschwindet danach wieder („kein BTB vorhanden“).
+- Android-seitig daher besonders prüfen: Server-Snapshot ersetzt/entfernt lokalen Active-Pointer? FINALIZED-/Statuslogik? Team-/Group-Filter? Kein Fix ohne Serverzustand.
+
+### BTB-SYNC-001 Versionsabweichung auf Testgeräten
+Server-Geräteabfrage: Pixel meldet `1.3.4`, Poco `1.3.19`. Damit ist der aktuelle Geräte-E2E gemischt. Installation des aktuellen Zielstands `1.3.19 / 200069` auf Pixel ist vor weiterer Ursachenbewertung zwingend nachzuweisen.
+
+### Korrektur Versionsdiagnose
+Pixel läuft nach Benutzerbestätigung ebenfalls auf `1.3.19`. Der Serverwert `1.3.4` stammt aus der Geräteaktivierung und ist nach App-Updates stale. Kein Versionsgleichstandsfehler als Ursache von BTB-SYNC-001 bestätigt.
+
+### BTB-SYNC-001 nach Portal-Bestätigung erneut reproduziert
+Poco zeigt den serverseitig und im Portal bestätigten aktiven 26.09-BTB kurz und danach wieder „kein BTB vorhanden“. Android-seitige Ursache jetzt isoliert.
+
+### BTB-SYNC-001 Source-Ursache
+`BtbActiveContext.laden()` kann einen serverseitig bestätigten aktiven BTB lokal wieder deaktivieren, weil es den lokalen Dokumentstatus `ABGESCHLOSSEN` höher bewertet als `BtbServerStateStore.active=true`. Der UI-Watcher läuft ca. alle 600 ms; das erklärt das kurze Anzeigen und anschließende Verschwinden. Android-Fix erforderlich; noch kein Build/E2E.
+
+
+## BTB-SYNC-001 – Active-Pointer-Fix
+Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
+
+- Vorheriger Fehler: `BtbActiveContext.laden()` konnte trotz `BtbServerStateStore.active=true` einen lokalen Abschlussstatus als maßgeblich behandeln und `nachAbschlussInaktivMerken()` auslösen.
+- Fix: `f57c532863d2f92b81729b9af1466b57a22f8723`.
+- Jetzt gilt für servergebundene BTBs:
+  - Server `active=true` → Result bleibt aktiv, lokale Abschlussmarker werden nicht ausgewertet.
+  - Server `FINALIZED && !active` → Pointer wird gelöst.
+  - anderer vorhandener Serverstatus → kein lokales Abschlussartefakt darf den Server-Lifecycle überstimmen.
+  - nur ohne Server-Snapshot gilt die bisherige lokale/Legacy-Abschlusslogik.
+- Version: **1.3.20 / 200070**.
+- Kein Servercode geändert.
+- GitHub Actions: kein Workflow-Run für aktuellen HEAD entstanden, weil die verfügbaren PR-Basen aktuell nicht mergebar sind. Das ist **kein Buildnachweis**.
+- Nächster Schritt: lokal in Android Studio 1.3.20 / 200070 bauen, danach Pixel und Poco installieren und BTB 26.09 erneut testen.
+
+
+## Versionierung – nächster Build 1.3.20 / 200070
+- Benutzerentscheidung 26.09.2026: neue APKs dürfen nicht erneut mit bereits verwendeter Buildnummer 200069 erzeugt/hochgeladen werden.
+- BTB-SYNC-001 wird als **1.3.20 / 200070** gebaut.
+- Build/Installation/E2E bleiben bis zum tatsächlichen Build offen.
+
+
+### Release-Bump umgesetzt
+- Commit `f9a7421ec9265b73ca170d28a1946644527cbe5a`.
+- `versionName = 1.3.20`
+- `versionCode = 200070`
+- neue Release-MD: `projektsteuerung/releases/TB-Helfer_1.3.20_200070.md`
+- GitHub-Workflow-Artefakt auf `TB-Helfer-1.3.20-200070` umgestellt.
+- Build noch nicht ausgeführt.
+
+
+## UPD-001 – Updateanzeige stale nach Installation
+Status: **REPRODUZIERT / URSACHE OFFEN**
+
+- Updateprozess läuft durch, aber Updateprüfung zeigt weiterhin 1.3.19.
+- Startseite zeigt weiterhin „Update verfügbar“.
+- Zielstand ist 1.3.20 / 200070.
+- Erst prüfen, ob UI/Updateclient die lokale Package-Version oder einen stale Server-/Aktivierungswert verwendet.
+- Kein weiterer Versionssprung nur zur Kaschierung dieses Anzeige-/Vergleichsfehlers.
+
+
+## UPD-001 – Binärdatei gegen Release prüfen
+Status: **SOURCE-URSACHE EINGEGRENZT / FIX AUFTRAG**
+
+- Lokale Versionsanzeige basiert auf `BuildConfig`; kein Anzeige-Cache.
+- Updatecheck basiert auf dem lokalen `BuildConfig.VERSION_CODE`.
+- Fehlerschutz fehlt: APK-Inhalt wird vor dem Installer nicht gegen Release-`versionName/buildNumber` validiert.
+- Android-Schutzfix wird in **1.3.21 / 200071** umgesetzt.
+
+
+## UPD-001 – Schutzfix committed
+Status: **BESTÄTIGT**
+- Commit: `19d688a4752c98209570e0ff69ccd2eae789541e`.
+- `AppUpdateManager` blockiert APKs mit falscher Package-ID oder abweichendem `versionName/versionCode`.
+- Zielbuild: **1.3.21 / 200071**.
+- Build, Installation und Update-E2E für 1.3.21 / 200071 vom Benutzer bestätigt.
+
+
+## REL-FILE-001 – Buildbegleitdatei Pflicht
+- Ab sofort hat jeder neue Android-Build eine Release-MD unter `projektsteuerung/releases/`.
+- Die aktuelle Zielversion 1.3.21 / 200071 besitzt bereits `projektsteuerung/releases/TB-Helfer_1.3.21_200071.md`.
+- Bei jeder Übergabe wird diese Datei auch als Download mitgeliefert.
+- CI soll VERSION/BUILD der MD gegen `app/build.gradle.kts` prüfen, damit Build und Metadaten nicht auseinanderlaufen.
+
+
+### REL-FILE-001 CI-Schutz aktiv
+- Commit `e76933cd7270da21d8cd251ece1cba87c7db0cf8`.
+- Kein Android-CI-Build soll künftig ohne passende Release-MD durchlaufen.
+- Artifact-Name und Release-Dateipfad werden aus dem aktuellen `versionName/versionCode` abgeleitet.
+- Damit ist die Benutzeranforderung „bei jedem Build/GitHub-Stand Release-Datei mitgeben“ nicht nur dokumentiert, sondern im CI-Paket technisch abgesichert.
+
+
+### Praxisbestätigung 1.3.21 / 200071
+- Benutzer: **hat funktioniert**.
+- Build: **ERFOLGREICH**.
+- Installation/Update auf Gerät: **BESTÄTIGT**.
+- Update-E2E: **BESTÄTIGT**.
+- UPD-001 darf ohne neuen reproduzierbaren Fehler nicht wieder geöffnet werden.
+- BTB-SYNC-001 / Pixel-Poco-Fach-E2E bleibt offen.
+
+
+## BTB-SYNC-001 – Praxis 1.3.21 weiterhin fehlerhaft
+Status: **REPRODUZIERT / SOURCE-FIX NICHT AUSREICHEND**
+- Pixel: `BTB Abschluss` flackert weiterhin.
+- Poco: aktiver 26.09-BTB verschwindet weiterhin nach sehr kurzer Anzeige.
+- Installierter Stand: 1.3.21 / 200071, Updateweg bestätigt.
+- Deshalb keine Versions-/Updateursache mehr.
+- Nächste Quellprüfung: ServerState-Persistenz/ID-Mapping/Pointer-Schreiber/Lifecycle-Watcher.
+
+
+## BTB-SYNC-001 – zweiter Guard-Fix 1.3.22
+Status: **SOURCE-FIX COMMITTED / BUILD OFFEN**
+
+- Commit: `4f0e33a8060d0d98279cfe96aed280fee5c8adcb`.
+- Ursache Poco: `BtbPatch200033Installer.startActivePointerGuard()` konnte serveraktiven Pointer alle 450 ms über stale Inaktiv-Marker löschen.
+- Ursache Pixel-Rollen-/Buttonkonflikt: Patch200033 wurde nach dem modernen Lifecycle installiert und konnte dessen Abschlusslistener überschreiben.
+- Fix: alter Guard server-aware + ModernLifecycleInstaller zuletzt binden.
+- Version: **1.3.22 / 200072**.
+- Direkt geprüfter Quellstand:
+  - `BtbServerStateStore` Import vorhanden;
+  - `serverState.active` schützt Pointer;
+  - `serverFinalReadOnly` löst Pointer;
+  - Gradle 1.3.22 / 200072;
+  - passende Release-MD vorhanden.
+- **Kein Buildnachweis**; GitHub Actions hat für den Fixcommit keinen Run erzeugt.
+
+
+## BTB-SYNC-002 – P0 Outbox-Reihenfolge korrigiert
+Status: **SOURCE-FIX UMGESETZT / BUILD OFFEN**
+
+Ausgangsfehler:
+- `SelectiveSyncWorker` konnte einen Server-Snapshot lokal anwenden, bevor der gerade gespeicherte Pixel-Stand in Pending/Outbox exportiert war.
+- Dadurch war stiller Verlust lokaler BTB-Fachänderungen möglich.
+
+Android-Fix:
+- dirty BTB zuerst `exportBtbChange(...)`;
+- kein vorgelagerter `loadBtbAccess(...)` + `applyServerStateToLocal(...)` mehr;
+- Upload/Version/Conflict erst danach über den bestehenden Mutation-Pfad;
+- `CollabLocalBridge` blockiert BTB-Snapshot-Apply bei Pending oder Dirty;
+- lokaler Save und Server-Apply sind pro BTB serialisiert;
+- Dirty-Generation verhindert, dass ein während des Uploads neuer Autosave als verarbeitet gilt;
+- nach bestätigtem Upload wird der Snapshot nur dann lokal angewendet, wenn der verarbeitete Dirty-Stand noch aktuell ist.
+
+Zielversion: **1.3.23 / 200073**.
+Release-MD: `projektsteuerung/releases/TB-Helfer_1.3.23_200073.md`.
+
+Nicht geändert:
+- kein `server/**`;
+- Server-/DB-Vertrag unverändert;
+- PORTAL-LIVE-001 bleibt SERVER: Source-Fix vorhanden, Deploy/E2E offen.
+
+Nächster Schritt:
+1. Build 200073;
+2. Pixel installieren;
+3. Pixeländerung → Portal;
+4. Portaländerung → Pixel;
+5. parallelen Autosave während Upload prüfen;
+6. danach Poco.
+
+
+## BTB-SYNC-002 – Gerätebestätigung 1.3.23 / 200073
+Status: **PIXEL↔PORTAL BASIS-E2E BESTÄTIGT**
+
+- Pixel → Portal: **BESTANDEN**.
+- Portal → Pixel: **BESTANDEN**.
+- Der frühere Fehler „lokale Pixel-Eingabe erreicht Portal nicht und wird später vom Serverstand überschrieben“ ist im normalen Hin-und-zurück-Test nicht mehr reproduziert.
+- Parallel-Autosave/Conflict-E2E bleibt separat offen.
+- Poco/HELPER-E2E bleibt separat offen.
+
+
+## BTB-UI-001 – Abschlussbuttons
+Status: **REPRODUZIERT / SOURCE-FIX AUSSTEHEND**
+
+- Pixel als Haupt-TB zeigt wechselnd 1 oder 2 Abschlussbuttons.
+- Ursache im aktuellen Quellpfad: Lifecycle-Watcher setzt Buttons zunächst beide sichtbar und blendet `PDF Entwurf` im Haupt-TB-Zweig wieder aus.
+- Ziel: Haupt-TB aktiv = stabil `PDF Entwurf` + `BTB Abschluss`.
+- Helfer = kein PDF-Entwurf; Rollen-/Schichtaktion separat.
+- Neuer Zielbuild: **1.3.24 / 200074**.
+
+
+## BTB-UI-001 – Fix 1.3.24
+Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD OFFEN**
+- Haupt-TB-UI zeigt stabil zwei Buttons: `PDF Entwurf` + `BTB Abschluss`.
+- Kein vorgelagertes Umschalten auf beide sichtbar und anschließendes Ausblenden mehr.
+- HELPER bleibt ohne PDF-Entwurf mit eigener Schichtaktion.
+- Version **1.3.24 / 200074**.
+- Release-MD: `projektsteuerung/releases/TB-Helfer_1.3.24_200074.md`.
+
+
+## BTB-UI-001 PRAXIS BESTÄTIGT 1.3.24
+- Pixel-Haupt-TB: PDF Entwurf + BTB Abschluss bleiben stabil sichtbar.
+- Benutzer bestätigt: kein Springen mehr.
+- Pixel-UI-E2E: BESTÄTIGT.
+- Poco/HELPER-E2E bleibt offen.
+
+
+## BTB-SYNC-002 – Praxis vollständig bestätigt
+Status: **BESTÄTIGT**
+
+- Pixel ↔ Portal Basissync: **BESTANDEN**.
+- Parallel-Autosave während laufendem Upload: **BESTANDEN**.
+- Neuere lokale Dirty-Änderung wird nicht durch älteren bestätigten Server-Snapshot verloren.
+- Outbox-/Dirty-/Mutationslock-Fix ist praktisch bestätigt.
+- Geschützt: nicht ohne neuen reproduzierbaren Fehler ändern.
+- Nächster Android-Gerätepunkt: Poco/HELPER-E2E.
+
+
+## BTB-EDIT-001 – Android-Audit und Zielmodell
+Status: **DIAGNOSE ABGESCHLOSSEN / IMPLEMENTIERUNG OFFEN**
+
+Quellbefunde:
+- `SectionItem`: nur Zeit/Text/KM.
+- `BautagebuchFragment`: technische `@ORT=<Long>`-Marker; `buildEntry()` entfernt sie bei Punkt 4–8.
+- Firmenpräfix ist nicht strukturiert im Entry-Modell.
+- `BtbPhotoContextOverrideStore`: lokale `ortId`, keine stabile Node-Referenz.
+- `WorksiteStructureSync` / `SyncWorksiteNodeBindingEntity`: stabile `clientNodeKey`-Infrastruktur bereits vorhanden.
+- `BtbEntrySlotStore`: stabile Server-Slots vorhanden, aber nur parallel zur lokalen Arrayposition.
+
+Android-Ziel:
+- Entry: `clientEntryKey`, `firmaId/firmaName`, `worksiteNodeKey`, Zeit, KM, Text; Punkt 4–8 über Zielsektion.
+- Foto-Override/Sync: `worksiteNodeKey` zusätzlich/anstatt lokaler `ortId` als kanonische Referenz.
+- bestehende IDs bleiben beim Umhängen erhalten.
+- alter Local-ID-Pfad wird migriert, nicht als Mehrgerätevertrag weitergeführt.
+
+Serververtrag jetzt source-seitig vorhanden: `cd9b18fc062a7a3d4354c611a949ed3d8408d709`.
+
+## PORTAL-WEATHER-001 – Android-Diagnose 26.09.2026
+Status: **TEILURSACHE BESTÄTIGT / tempC-VERLUST NOCH NICHT ANDROID-SEITIG NACHGEWIESEN**
+
+- Androids `BautagebuchSpeicher` serialisiert `weatherSlots[].tempC` und `niederschlagMm`.
+- `Server1BtbApi.HEADER_META_KEYS` enthält `weather` und `weatherSlots`; diese Daten sind damit grundsätzlich Teil des Android→Server-Headers.
+- Open-Meteo liefert Temperatur und Niederschlag als echte Zahlen; Android rundet `tempC` und setzt es in `WetterSlot`.
+- Für bekannten Niederschlag **0.0 mm** existiert jedoch ein konkreter Android-Fehler: Auto-Wetter verwendet `h.precipMm.takeIf { it > 0.0 }`. Dadurch wird genau 0.0 zu `null`.
+- Fachregel: Bei erfolgreicher Wetterquelle muss 0.0 als **0.0 mm** erhalten bleiben.
+- Dass `tempC` im aktuellen Portal-BTB fehlt, ist nach dem Quellaudit noch nicht als Android-Serialisierungsfehler belegt; hierfür muss der konkrete Server-Header-/Runtime-Payload mit Android-Ausgabe verglichen werden.
+- Wetterfix bleibt getrennt von BTB-EDIT-001.
+
+
+## Buildziel 1.3.25 / 200075
+- Benutzer hat Build angefordert.
+- Version **1.3.25 / 200075** reserviert.
+- Source-Check und echter Build müssen noch durchgeführt werden.
+- BUILD ERFOLGREICH erst nach tatsächlichem Gradle/CI-Nachweis.
+
+
+## AND-BUILD-200075 – CI-Buildversuch
+Status: **BUILD NICHT GESTARTET / CI-RUNNER NICHT ZUGEWIESEN**
+
+- Ziel: **1.3.25 / 200075**.
+- Temporärer mergebarer CI-PR #10 wurde ausschließlich für den echten Android-CI-Build angelegt.
+- Android-CI Run: `36252246995`.
+- Versuch 1 und Wiederholungsversuch 2 endeten jeweils nach ca. 3 Sekunden mit `failure`.
+- Der Job `build` erhielt **keinen Runner** (`runner_name = ""`) und **keine Steps wurden gestartet** (`steps = []`).
+- Damit wurden weder Checkout noch Source-Checks, Gradle, Tests, APK-Build oder Lint ausgeführt.
+- Bewertung: **kein Android-Compilefehler nachgewiesen**; GitHub-Actions-Infrastruktur hat den Job vor Step 1 nicht gestartet.
+- Deshalb Status weiterhin sauber getrennt: QUELLSTAND/VERSION VORBEREITET, BUILD OFFEN, INSTALLATION OFFEN, E2E OFFEN.
+- Nächster valider Buildweg: Android Studio/lokaler Gradle-Build `:app:testDebugUnitTest :app:assembleDebug :app:assembleRelease` oder funktionierender GitHub-Runner.
+
+
+## AND-BUILD-200075 – lokaler Buildfehler generateBtb200043Sources
+Status: **REPRODUZIERT / URSACHE EINGEGRENZT**
+
+- Benutzer-Build in Android Studio am 26.09.2026 scheitert in `:app:generateBtb200043Sources`.
+- Fehlermeldung: `Android 200047: Hauptbaustellen-Ortsmarker-Anker wurde nicht gefunden`.
+- Damit ist jetzt erstmals ein echter lokaler Buildfehler für 1.3.25 / 200075 nachgewiesen.
+- Ursache liegt **nicht** in Server/API/DB, sondern im Android-Buildgenerator `GenerateBtb200043Sources` in `app/build.gradle.kts`.
+- Der Generator sucht noch nach dem alten 200047-Quellanker `if (effectiveOrtId != 0L) ...`; BTB-EDIT-001 hat den kanonischen Editor inzwischen auf `clientEntryKey/worksiteNodeKey` und eine neue `buildManualLine`-/Parserstruktur umgestellt.
+- Fixziel: veralteten Build-time-Patch 200047 nicht mehr gegen den neuen Quelltext laufen lassen; die notwendige Hauptbaustellen-/Legacy-Ortsmarker-Semantik direkt im kanonischen `BautagebuchFragment.kt` erhalten.
+- Version bleibt **1.3.25 / 200075**, weil der Build nicht erfolgreich erzeugt/installiert wurde.
+
+
+## AND-BUILD-200075 – Sourcegenerator-Fix
+Status: **SOURCE-FIX UMGESETZT / SOURCE-CHECK PASST / BUILD ERNEUT OFFEN**
+
+- Fehler aus dem lokalen Android-Studio-Build war reproduzierbar: `:app:generateBtb200043Sources` brach am alten Android-200047-Ortsmarker-Anker ab.
+- Fixcommit: `606aa3ad1f8ea438372484b056a0fc1264ae2aac`.
+- Der veraltete Android-200047-Build-time-Patch wurde aus `GenerateBtb200043Sources` entfernt.
+- Ortsmarker-Semantik liegt jetzt direkt im kanonischen `BautagebuchFragment.kt`:
+  - jede moderne Zeile schreibt explizit `@ORT=<lokale UI-ID>`, Hauptbaustelle also `@ORT=0`;
+  - `@NODE=<clientNodeKey>` bleibt die geräteübergreifende Sync-Identität;
+  - Inline-`@ORT` wirkt nur auf die aktuelle Zeile;
+  - alte Standalone-`@ORT`-Gruppen bleiben kompatibel.
+- Source-Check bestätigt: alter Fehlertext/alte Patch-Anker sind aus `app/build.gradle.kts` entfernt; 1.3.25 / 200075 bleibt unverändert.
+- **Noch kein neuer Buildnachweis.** Nächster Schritt: Git Pull → Android-Studio-Build 200075 erneut starten.
+
+
+### BTB-SYNC-002 – Pixeländerung wird nicht hochgeladen und später überschrieben
+Pixel-Eingabe erreicht das Portal nicht; nach Portaländerung übernimmt Android den Serverstand und die lokale Pixel-Eingabe geht verloren. Android muss zuerst Save→Outbox→Upload→Apply-Reihenfolge und Konfliktschutz nachweisen.
+
+
+### BTB-SYNC-002 exakte Source-Ursache
+Im `SelectiveSyncWorker` wird bei bekanntem BTB aktuell der Server-Snapshot angewendet, bevor `exportBtbChange()` die lokal gespeicherte Änderung in die Outbox überführt. Der Dirty-Eintrag im `SelectiveSyncStore` schützt `applyServerStateToLocal()` nicht. Dadurch kann der Serverstand die lokale Änderung vor dem Upload überschreiben. Android-Fix erforderlich.
+
+
+## BTB-EDIT-001 – Live-Integrationsstand Android
+Status: **ENTRY-/NODE-QUELLUMSETZUNG LÄUFT / FOTO-PFAD NOCH OFFEN**
+
+Live geprüft am 26.09.2026:
+- Android-HEAD: `623704990072c7006e6a48e611441d7aa08b989e`.
+- `SectionItem` enthält jetzt `clientEntryKey`, `firmaId/firmaName`, `worksiteNodeKey`.
+- Worksite-Struktur stellt stabile `clientNodeKey`-Zuordnung und Rückauflösung bereit.
+- Server1BtbApi sendet bei Entry-PATCH bereits `section` und erhält die Entry-/Slot-Identität.
+- Android-Editor migriert Legacy-`@ORT` in stabile `@NODE`-/strukturierte Node-Referenzen.
+- Android-Foto-Sync `BtbTeamMediaSync` führt aktuell noch keinen `worksiteNodeKey`/`firmaId`-Umhänge-PATCH für bestehende Fotos aus.
+- Daher gemeinsamer BTB-EDIT-001 Geräte-E2E noch offen.
+
+
+### BTB-EDIT-001 – Android Live-Nachtrag
+- aktueller HEAD: `623704990072c7006e6a48e611441d7aa08b989e`.
+- sichtbarer BTB-Editor erhält jetzt stabile Entry-/Node-Identitäten (`clientEntryKey`, `firmaId`, `worksiteNodeKey`) und hält lokale `ortId` nur noch als UI-/Legacy-Cache.
+- Entry-/Unterbaustellenpfad nähert sich damit dem gemeinsamen Serververtrag.
+- Foto-Umhängen über den neuen versionierten Server-Foto-PATCH bleibt weiterhin offen.
+
+
+### BTB-EDIT-001 – Foto-Metadaten Live-Nachtrag 7c7cf7b5
+- Android-HEAD live geprüft: `7c7cf7b502ec1f701f167c13780b10a014bba6d9`.
+- `BtbPhotoContextOverrideStore.ContextOverride` enthält jetzt:
+  - `firmaId`,
+  - `worksiteNodeKey`,
+  - `bildtyp`,
+  - lokale `ortId` weiterhin nur als UI-/Legacy-ID.
+- Damit ist die lokale Android-Grundlage für Foto-Umhängen passend zum Serververtrag vorhanden.
+- Noch zu bestätigen/umzusetzen: tatsächlicher versionierter Aufruf von `PATCH /btbs/{btb_id}/photos/{file_id}` und Konflikt-/Sync-Roundtrip.
+- Draft-PR #7 aktuell gegen SERVER `mergeable=false`; Integration erst nach abgeschlossenem Android-Arbeitsblock.
+
+
+### BTB-EDIT-001 – Abschlussaudit vor Integration
+Benutzer bestätigt den Android-Arbeitsblock als fertig.
+
+Live-Quellprüfung des Android-HEAD `a1b4667b110a993796e8242d4a21be3748c06d68`:
+- Entry-/Node-Identität ist umgesetzt.
+- lokale Foto-Kontextdaten enthalten `firmaId`, `worksiteNodeKey` und Bildtyp.
+- `Server1BtbApi.kt` enthält jedoch noch keinen Clientpfad für `PATCH /api/v1/btbs/{btb_id}/photos/{file_id}`;
+- Android wertet noch kein `link_version` für BTB-Fotoverknüpfungen aus;
+- `BtbTeamMediaSync.kt` sendet die lokale Foto-Umsortierung daher noch nicht als versionierte Servermutation.
+
+Einordnung:
+- Android-Arbeitsblock ist beendet und Integration freigegeben.
+- Der fehlende Foto-PATCH bleibt ein klar abgegrenzter Android-Restpunkt nach Branch-Integration.
+- SERVER ändert dafür kein `app/**`.
+
+### Android-Quellstand an SERVER-Integrator übergeben
+- Benutzer bestätigt Android-Arbeitsblock als fertig.
+- Übergebener Android-Parent: `4de3350fa4bc3777a6f2f51514e85a145ca4a9c6`.
+- Generatorfix 606aa3ad ist enthalten und source-seitig geprüft.
+- Build 1.3.25/200075 muss erneut tatsächlich ausgeführt werden.
+- Versionierter Server-Foto-PATCH/`link_version` bleibt im Android-Client offen.
+
+## REF-DATA-003 – SERVER-Audit Android-Streckendaten 29.09.2026
+Status: **ANPASSUNGSBEDARF DOKUMENTIERT / KEIN ANDROID-CODE IM SERVER-PROJEKT**
+- `WorksiteTrackDataSync.synchronize()`: Upload derzeit nur bei `memberRole == LEAD`; andere Mitglieder beziehen nur den Serverstand.
+- `buildLocalDatasets()`: synchronisiert aktuell `AXIS` + `STRECKENPUNKTE`; `TrassenManuellerAbschnittEntity` ist kein eigener synchronisierter Datensatz.
+- Manueller Abschnitt im Import/Trassen-UI arbeitet auf vorhandener Roh-TRA-Geometrie; Start/Ende/KM können per GPS/Grafik festgelegt werden.
+- Neue Fachanforderung: alle berechtigten Nutzer dürfen gemeinsame Ergänzungen senden; manuelle Abschnitte müssen versioniert serverweit synchronisiert werden.
+- Freie komplett neue Achsgeometrie nur aus GPS ist davon getrennt und im aktuellen geprüften Pfad nicht vorhanden.
+- Umsetzung bleibt Aufgabe des ANDROID-Projekts nach festem Serververtrag.
+
+
+
+## EINSTELLUNGEN-1103 – Server-Oberfläche vereinfacht (03.11.2026)
+
+Status QUELLSTAND FERTIG / GEZIELTE SOURCE- UND JAVASCRIPT-PRÜFUNG BESTANDEN / VISUELLE UND NAS-E2E-ABNAHME OFFEN.
+
+- Ausdrücklich vom Nutzer beauftragter Server-Anteil des gemeinsamen Einstellungsauftrags. Drei aufklappbare Portal-Karten: Mein Profil (zunächst offen), Anmeldung und Sicherheit, Firmenkontakte. Kurze Beschreibungen, sichtbare Tastatur-Fokusrahmen, schmale einspaltige Formularansicht per CSS. Weitere Zugänge unten statt einer zweiten prominenten Baustellen-Aktionsleiste. Adminzugang weiterhin nur unter bestehender ADMIN-Bedingung.
+- Portal-Navigation markiert die vorhandenen Ziele Bilderübersicht/Einstellungen als aktiv. Admin-Systemseite erhält vier Sprungziele für Überblick, Sicherungen/Vorgänge, Wiederherstellung, Automatik/E-Mail. Ein Sprung öffnet den jeweils sichtbaren Wiederherstellungsweg, ohne den ausgeblendeten Weg oder eine Aktion auszuführen.
+- Alle vorhandenen IDs und Formularfeld-Zuordnungen erhalten. Portal-/Base-Fach-JavaScript identisch; System-Fach-JavaScript unverändert, nur neuer Menühandler davor. Keine Backend-, API-, Auth-, CSRF-, Rollen-, Datenbank-, Backup-/Restore- oder Mail-Funktionsänderung. Keine Daten verändert, keine Mail gesendet, keine Wiederherstellung ausgelöst.
+- Nachweise: XML-/HTML-ID-/Formular-/Jinja-Blockstruktur-Checks, JavaScript-Syntax mit node --check, bestehender Sourcecheck39 PASS. Neuer Navigationshandler mit beiden Wiederherstellungskonfigurationen isoliert unter Node ausgeführt: Automatik und sichtbarer Restore-Abschnitt öffnen, ausgeblendeter Weg bleibt geschlossen. Sourcecheck91 FAIL wegen fehlendem Workflow-Textmarker 013_job_progress.sql; identischer Fehler am unveränderten Ausgangsstand nachgewiesen, nicht Teil dieses UI-Auftrags und nicht unterdrückt.
+- Kein Jinja2-/Chromium-Runtime-Paket lokal verfügbar; deren Installation/Download hier nicht möglich. Cloud-Browser verwirft die isolierte Vorschau wegen URL-Richtlinie; keine Umgehung und keine visuelle/Responsive-/Live-HTTP-Abnahme behauptet. Keine neue Server-Gesamt-CI für diesen Templateblock gestartet ([skip ci]); vorhandene Prüfungen unverändert erhalten.
+- Android-Gegenstelle f507cab7b7de7a68da4ec8d05f5ad0a5c046eecc auf eigenem Branch, gezielte Android-CI separat in Arbeit. Kein Androidcode auf dem Serverbranch verändert. Keine Versionsanhebung oder APK in diesem Auftrag.
+- Noch praktisch prüfen: Desktop und schmales Handy, vergrößerte Schrift, Tastaturbedienung, Profilspeichern/Fehleranzeige, E-Mail-/Passwortformular und Firmenkontakte; Nutzer ohne/mit ADMIN; System-Sprungziele bei aktivem/inaktivem automatischem Restore, bestehende Status-/Backup-/Warnungswege. Konto-/Mail-/Restore-Aktionen nur im freigegebenen Testablauf, keine Produktionsdaten zur Abnahme ändern.
+- Für Sichtbarkeit auf NAS müssen die drei geänderten Templates über den bestehenden Server-Übernahmeweg aktualisiert werden. Kein Deployment durchgeführt oder beauftragt. Quellstand ist keine NAS-Übernahme. Laufende API-/Worker-/DB-Verträge bleiben unverändert.
+
+
+## EINSTELLUNGEN-1103 – geprüfter Quellabschluss (03.11.2026)
+
+- Android-Funktionsstand `f507cab7b7de7a68da4ec8d05f5ad0a5c046eecc`; Server-Template-Stand `7afa257216ef682bcba90ee41e56c6173a2ad960`, jeweils eigener Fachbranch. Nutzerauftrag und Umfang vor Implementierung separat gesichert (Android6338c1b, Server5b9b1ee).
+- Android: Karten Mein Konto / Fotos und Bautagebuch / Verbindung und Hilfe, zusätzliche Anzeige-/Benachrichtigungs-/Widget-Ziele aufklappbar. Bisherige neun Aktionen und Fachaufrufe erhalten, keine Einstellungen umgestellt. Neuer Menüzustand nur im Fragment-/Bundle-Zustand, keine neue Geschäftseinstellung. Lokale Styles schützen die übrigen App-Schaltflächen. Spracheingabe bleibt offener separater Wunsch ohne funktionslose Menüoption.
+- Nachweis: [Android CI41586577181](https://github.com/jensmeier/TB-Helfer-2.0/actions/runs/41586577181), Androidjob125753367243 SUCCESS. testDebugUnitTest inkl. Kotlin/KSP/Java/Ressourcen erfolgreich (3m55s); lintDebug erfolgreich (1m31s). Original-Berichtsartefakt13208810670 ausgewertet:125 Tests,0 Fehler/Fehlschläge/übersprungen; Lint0 Error/Fatal,381 Warnings. Einstellungsdateien: nur bereits vorhandener HardcodedText-Hinweis für den Titel Einstellungen, keine neue Lint-Fehlerfreigabe nötig. Kein assemble/APK, kein Versionssprung.
+- Gesamt-CI bleibt ROT durch denselben separaten Vertragsjob125753367488 mit Altprüfungen13/19/83/85/86; Original-Logs gelesen. Die bekannte nicht abbrechende KSP/AWT-NullPointer-Diagnose bleibt im Compilerlog. Keine Pluginaktualisierung/Prüfungsabschwächung als Teil des Menüauftrags.
+- Server: Profil/Sicherheit/Kontakte in drei klaren aufklappbaren Karten; aktive Portalnavigation, System-Sprungziele inkl. sichtbarem Restoreweg. Bestands-IDs, Formularzuordnung und Fach-JavaScript statisch verglichen; JS-Syntax und isolierter neuer Navigationshandler in beiden Restorekonfigurationen PASS; Sourcecheck39 PASS. Check91 bereits im Ausgangsstand identisch FAIL (Workflow-Marker013_job_progress.sql), nicht verdeckt. Backend/API/DB/Rollen/CSRF/Backup/Restore/Mail unverändert. Kein Server-Gesamttest/Deployment.
+- Status QUELLSTAND FERTIG / ANDROID-KOMPILIERUNG, UNIT UND LINT BESTANDEN / GEZIELTE SERVER-SOURCE- UND JS-PRÜFUNG BESTANDEN / E2E OFFEN. Keine Aussage INSTALLIERT oder ERLEDIGT. Keine vorhandenen Geschäftseinstellungen/Daten verändert oder Funktionen entfernt.
+- Prüfgrenze: kein ADB/Android-Emulator; lokale Browser-/Jinja2-Laufzeit nicht verfügbar, Installationsversuche erfolglos; Cloud-Browser-Vorschau durch URL-Richtlinie abgelehnt, nicht umgangen. Deshalb keine Pixel-/Poco-/visuelle Browser-/Jinja-Render-/Live-HTTP-/NAS-E2E-Abnahme behauptet. CSS für schmale Ansichten ist implementiert, nicht visuell abgenommen.
+- Nächster praktischer Schritt: Android über GitHub Desktop/Android Studio übernehmen und als datenbewahrendes Update testen; alle neun Ziele, Extras öffnen/schließen, Rotation/Zurück, große Schrift, Sync-Netzdialog inklusive Abbrechen/Speichern, Wartung/Fehlerprotokoll/Updates prüfen. Portal: Desktop/Handy/Tastatur/große Schrift, Profilfelder und Fehleranzeige, Firmenkontakte, Sicherheit und Adminbedingung sowie vier Systemziele bei beiden Restorekonfigurationen prüfen. Produktive Konto-/Mail-/Restoreaktionen nicht als beiläufigen Test auslösen.
+- Serveranzeige benötigt spätere Übernahme der drei Templates server/templates/v1_portal_home.html, v1_base.html und v1_system_status.html über den bestehenden NAS-Übernahmeweg. Nicht durchgeführt. Android und Server sind getrennt zu übernehmen; keine Datenbankmigration oder geänderten API-Verträge erforderlich.
+
+
+## SYNC-FIX-1103 – umgesetzter Schutzblock und KM-Vorschlag (03.11.2026)
+
+- Nutzerfreigabe „okay bauen“ vor Umsetzung gesichert: Server3e8a138/Android694a53c. Funktionsstände Server7a82525b48330efdbdea2cae77c904ceda097994 und Android981fb13445dfa9f39c0e162456fbacd86c675ba1; unabhängigen Sprachstand603ba28 erhalten.
+- Implementiert: transaktionaler Feed-Publikationslock vor ID-Vergabe; autorisierter minimaler BTB-sync-state; bestätigte Tombstones statt pauschalem404-Delete; lokale Offlinefassung/Pending bei Abschluss/Löschung sichern und als Konflikt erhalten (auch Prime/Vollsync/Reconcile); read-only Mutationen nicht blind senden; Capabilitycache weiterverwenden, wartende Sendeaufträge begrenzen, zusätzlicher15-Minuten-Deltafallback ohne Push-/Pünktlichkeitszusage.
+- Lokal6 neue Serverprüfungen+7 Check135+8 Check139 PASS (Doubles, kein PostgreSQL/HTTP). Java-Sicherungsregression inkl. Schreibfehler/Idempotenz/20 paralleler Fassungen PASS. Android-CI41601820053/Buildjob125802121038 SUCCESS: Kotlin/KSP/Java/Unit/Lint; Originalartefakt13215655718 mit143 Tests,0 Fehler/Fehlschläge/übersprungen, neue5/5; Lint388 Warnings,0 Error/Fatal. Keine APK/Installation.
+- Gesamt-CI bleibt FAILURE: Vertragsjob125802121498 mit bekannten Altprüfungen13/19/83/85/86 und neu veraltetem direkten Delete-Quellmarker in15. Original-Logs mit Vorlauf41598885323 verglichen.15 auf den geschützten delegierten Applypfad mit zusätzlichen ID-/Versions-/Team-/Dirty-/Sicherungs-/Lockprüfungen angepasst und lokal PASS, übrige Regeln erhalten. Reine Test-/Dokumentationsnacharbeit nach Funktions-CI, keine Runtimeänderung und keine weitere CI-Runde. Keine Tests deaktiviert.
+- PostgreSQL-Concurrency-/Deadlock-/Lasttest vorbereitet, NICHT ausgeführt; Postman5 GET-Requests/10 Assertions vorbereitet, NICHT ausgeführt. Keine neue Server-Gesamt-CI, kein NAS/SSH/Deployment/Produktivschreiben, keine Datenmigration. Zusammengehöriger API-/Worker-Neustart mit events.py+btb.py erst nach echter Integrationsprüfung/Freigabe. Alte/neue Feed-Produzenten nicht mischen.
+- Streckendatenbefund: Baustellen-LEAD-Sync überträgt berechnete AXIS-Samples und Streckenpunkte, aber nicht vollständig manuelle Abschnitte/KM-Anker; heutige lokalen Speicherwege haben keinen direkten Sync. Der Sollbestand-Abgleich kann lokal fehlende Server-Datasets löschen bzw. nach neuer Basis mit lokaler Sollfassung überschreiben. Noch keine neue KM-Uploadimplementierung.
+- Empfehlung: bestehende gemeinsame Achse/Quelle eindeutig per UUID/Hash/Version binden; manuelle KM-Änderung mit eigenen stabilen IDs/Ankern/Genauigkeit dauerhaft vormerken; gezielt/versioniert senden, Konflikte sichtbar, gemeinsame Katalog-/Netzfeeds empfangen. Originale unverändert, manuellOrange/importiertGrün. Keine weitere parallele Streckendatenablage. Details: [TRACK_KM_1103.md](uebergaben/TRACK_KM_1103.md).
+- Vollständiger Umfang, Grenzen, Nachweise und spätere NAS-Dateiliste: [SYNC_FIX_1103.md](uebergaben/SYNC_FIX_1103.md). Mängel-/Abnahme-/Streckendaten-Deltaerweiterung, Mediennachlauf, Push und Konflikt-Zusammenführungsansicht bleiben Folgeblöcke. Echte PostgreSQL-/Postman-/Pixel-/Poco-/NAS-/Schlafmodus-/Offline-/Zwei-Geräte-E2E OFFEN. Status QUELLSTAND DES SCHUTZBLOCKS FERTIG / LOKALE PRÜFUNGEN UND ANDROID BUILD-UNIT-LINT BESTANDEN / GESAMT-CI NICHT BESTANDEN / DEPLOY OFFEN / E2E OFFEN.
+- Status-Excel-Nachtrag OFFEN: binärer Connectorabruf nicht als XLSX verifizierbar, direkter Blobabruf nicht-UTF8 abgewiesen. Original nicht überschrieben; daraus keine Beschädigung der Originaldatei behauptet. Markdownstatus gesichert.
+

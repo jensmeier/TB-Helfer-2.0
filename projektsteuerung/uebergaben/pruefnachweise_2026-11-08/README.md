@@ -1,0 +1,5 @@
+# Prüfnachweise08.11.2026
+Produktionsstand SERVERb213bcbfe8d5fcf49c17e71108b8be04167f4d7f, ANDROIDa8401775a3f607594df91468e728ee3f6d3a1ec4. Keine Testausführung gegen Produktivdaten.
+Die beiden Reproduktionsskripte mit Python und installierter FastAPI/Pydantic-Umgebung ausführen. Optional erstes Argument: Pfad zum geprüften `server/tbserver`-Ordner. Standard verwendet den Repository-Serverordner. Vorher den richtigen SERVER-Prüfcommit bereitstellen; die Serverkopie im Androidbranch ist nicht maßgeblich.
+Beide Skripte laden unveränderte tatsächliche Produktionsfunktionskörper; track_access benutzt SQL-/Transaktions-Doubles, finalize_cleanup zusätzlich echte temporäre Dateien mit gezielter Cleanup-Fehlerinjektion. Exit0 und reproduced=true bedeuten reproduzierten Fehler, keine Freigabe. Kein HTTP-/PostgreSQL-/NAS-E2E.
+results-final.json listet vorhandene160Checks. FAIL-Assertions sind noch kein Beweis für Produktfehler. source-manifest.json enthält Sourceinventar; zwei große JSON-Quellen wurden nicht vollständig als lokale Testeingabe bezogen. routes.json ist ein Routeninventar, keine Abdeckungsgarantie. Originale CI-Logs siehe Run-/Job-IDs im Bericht.

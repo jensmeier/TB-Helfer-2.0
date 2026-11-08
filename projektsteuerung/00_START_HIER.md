@@ -4,9 +4,18 @@
 
 Repository: `jensmeier/TB-Helfer-2.0`
 
+## Aktueller Prüfstand
+Stand08.11.2026 – unabhängige Gesamtprüfung.
+Geprüfter SERVER-Fachstand `b213bcbfe8d5fcf49c17e71108b8be04167f4d7f`; ANDROID-Fachstand `a8401775a3f607594df91468e728ee3f6d3a1ec4`.
+Nachfolgende Dokumentationscommits verändern diese geprüften Fachstände nicht.
+[Vollständiger Prüfbericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [Unveränderte vorherige Fassungen](archiv/GESAMTPRUEFUNG_2026-11-08/README.md).
+
+`01_MASTERSTATUS.md` bis `07_OFFENE_PUNKTE.md` sind die konsolidierte aktuelle Sicht. Archivtexte sind historische Belege, keine zweite aktuelle Aufgabenliste. Geschützte Bestätigungen und nicht abgeschlossene Restaufträge bleiben erhalten.
+PRÜFER: prüfen, nicht entwickeln. Keine APK, Migration, produktiven Änderungen oder NAS-Übernahme ohne entsprechenden Auftrag. Der Auftrag08.11 erlaubt ausschließlich Prüfung und Dokumentationsbereinigung.
+
 ## A. LIVE-GITHUB ZUERST
-1. `feature/tb-android-2.0` + HEAD + Draft-PR
-2. `feature/tb-server-1.0` + HEAD + Draft-PR
+1. `feature/tb-android-2.0` + HEAD + PR-Status (Draft ausdrücklich prüfen)
+2. `feature/tb-server-1.0` + HEAD + PR-Status (Draft ausdrücklich prüfen)
 3. `docs/TB-HELFER_PROJEKTREGELN.md`
 4. `projektsteuerung/01_MASTERSTATUS.md`
 5. `projektsteuerung/02_AKTIVER_AUFTRAG.md`

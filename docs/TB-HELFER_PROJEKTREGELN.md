@@ -14,6 +14,9 @@ Für praktische Arbeiten auf der Synology gilt als Standardweg:
 
 Bei Deployment-Anleitungen für SERVER sind daher File Station + Container Manager + Container-Terminal zu bevorzugen.
 
+## Prüfstand08.11.2026
+Die folgenden Fachregeln bleiben verbindlich. Zielregeln sind nicht automatisch Implementierungsnachweise. Tatsächlicher Stand, offene Vertragslücken und Teststufen stehen in `projektsteuerung/01_MASTERSTATUS.md` bis `07_OFFENE_PUNKTE.md`; frühere Fassungen unter `projektsteuerung/archiv/GESAMTPRUEFUNG_2026-11-08/`. Aktuelle Bereinigung ändert keinen Produktcode und keine geschützte Abnahme.
+
 ## 0. Gemeinsame Projektsteuerung
 
 Die gemeinsame Projektsteuerung liegt ausschließlich unter `projektsteuerung/`.
@@ -173,7 +176,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - Nach `Schicht Ende` wird der Helfer-BTB-Bereich für diesen Nutzer zunächst schreibgeschützt; bis zum endgültigen Haupt-TB-Abschluss kann der Nutzer bewusst `Schicht fortsetzen` wählen und seinen Status wieder auf `ARBEITET` setzen.
 - `Schicht Ende` gilt auf dem Server erst als **`FERTIG`**, wenn die letzten Fachänderungen, Bildmetadaten und kleinen Bild-Sync-Versionen erfolgreich bestätigt wurden. Ohne Netz darf die App lokal `Schichtende vorgemerkt / Sync ausstehend` anzeigen; der Haupt-TB darf diesen Nutzer serverseitig noch nicht als vollständig fertig sehen.
 - **Helfer erhalten keine BTB-PDF-Bedienung:** kein `PDF Entwurf`, kein `PDF öffnen`/Abschluss-PDF und kein PDF-Viewer-Einstieg aus dem BTB. PDF-Erzeugung/-Anzeige gehört zum verantwortlichen Haupt-TB/Teamleiter.
-- Die PDF-Sperre ist nicht nur UI: Der Server benötigt ein eigenes PDF-Leserecht bzw. eine Teamleiterprüfung; `btb.view` allein darf künftig keinen Zugriff auf das Abschluss-PDF geben. Der aktuelle Server-1.0-Endpunkt `GET /api/v1/btbs/{btb_id}/final-pdf` ist hierfür noch zu weit und muss vor Freigabe gehärtet werden.
+- Die PDF-Sperre ist nicht nur UI: Der Server benötigt ein eigenes PDF-Leserecht bzw. eine Teamleiterprüfung; `btb.view` allein darf künftig keinen Zugriff auf das Abschluss-PDF geben. Im geprüften Serverstand08.11.2026 erzwingt `GET /api/v1/btbs/{btb_id}/final-pdf` bereits die Teamleiterprüfung; aktuelle Geräte-/NAS-Abnahme bleibt separat erforderlich.
 - Der für Helfer weiterhin benötigte **Originalbilder-Export** am Schichtende ist eine eigene Funktion und darf nicht an PDF-/BTB-Exportrechte gekoppelt werden.
 - Ein BTB wird nur bewusst über `Neuer BTB` angelegt. Bloßes Öffnen erzeugt keinen Entwurf und keine Tag-/Nacht-Leerplätze.
 - Jeder neue BTB erhält eine **dauerhafte stabile `btbId`**. Diese `btbId` bleibt beim Bearbeiten, Datums-/Zeitänderungen und Abschließen immer erhalten.
@@ -217,7 +220,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 - PDF-Dateiname bleibt für dieselbe fachliche `btbId` stabil/merge-sicher; keine `_V1`, `_V2`, `_V100` und keine `(2)`-Ausweichnamen für fachlich verschiedene BTBs.
 - Historische Alt-BTBs mit Tag/Nacht-/Version-Dateien bleiben lesbar; beim nächsten modernen Abschluss werden sie in das neue Ein-PDF-Verhalten überführt.
 - `PDF öffnen` im BTB-Verlauf öffnet den App-eigenen PDF-Viewer.
-- `ZIP teilen` im BTB-Verlauf ist als **Tagesabschluss-ZIP** zu verstehen: für den Kalendertag des gewählten BTB werden die vorhandenen Baustellen-Daten gemeinsam exportiert (BTBs, Bilder, Mängel, Abnahmen und Gesamtlisten). Es ist nicht mehr nur ein Einzel-BTB-ZIP.
+- Der aktuelle Export trennt den **lokalen Einzel-BTB-ZIP** (ohne verpflichtenden Online-Katalogabruf) vom **Baustellen-Gesamtexport/Tagesabschluss** mit BTBs, Bildern, Mängeln, Abnahmen und Gesamtlisten. Die frühere pauschale Gleichsetzung jeder BTB-ZIP-Aktion mit dem Gesamtexport ist durch INTEGRATION-1108/EXPORT-1108B überholt; Word bleibt unverändert.
 
 ### BTB-Fotos
 - Neue normale BTB-Fotos werden zusätzlich eindeutig der beim Speichern aktiven `btbId` zugeordnet.
@@ -242,7 +245,7 @@ Diese Datei hält die fachlichen Entscheidungen für Server, Android-App und sp�
 
 ### Merge-sichere ZIP-/Laptop-Struktur
 - Baustellen-Gesamtexport/Tagesabschluss besitzt als oberste Struktur `TB-Helfer/<Baustelle>/...` bzw. die bestehende exportierte Baustellenstruktur.
-- Ein Tagesabschluss-ZIP umfasst mindestens BTB, Bilder, Mängel, Abnahmen sowie die vorhandenen Gesamtlisten wie `Bilderliste_gesamt.csv/.xlsx`, Mängel- und Abnahmelisten.
+- Ein Tagesabschluss-ZIP umfasst mindestens BTB, Bilder, Mängel, Abnahmen sowie die vorhandenen Gesamtlisten wie die portable Gesamt-Fotoliste als `.xlsx` (die zusätzliche Gesamtbilder-CSV entfällt gemäß EXPORT-1108B), Mängel- und Abnahmelisten.
 - Viele Exporte dürfen in einen gemeinsamen Laptop-Hauptordner `TB-Helfer` zusammengeführt werden.
 - Unterschiedliche `btbId` dürfen niemals denselben Zielpfad erhalten.
 - Derselbe fachliche BTB erhält bei wiederholtem Export denselben stabilen Dokumentnamen; das aktuelle Dokument ersetzt dort den älteren Stand desselben BTB.

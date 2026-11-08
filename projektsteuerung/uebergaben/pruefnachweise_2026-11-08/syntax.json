@@ -1,0 +1,10 @@
+{
+  "files": 294,
+  "errors": [
+    {
+      "file": "audit/server/server/checks/102_verify_delta_longpoll_source.py",
+      "line": 21,
+      "error": "invalid syntax. Perhaps you forgot a comma?"
+    }
+  ]
+}
