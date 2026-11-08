@@ -1,5 +1,17 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## INTEGRATION-1108 – Umsetzung nach unabhängiger Querprüfung beauftragt (08.11.2026)
+
+Nutzerauftrag: „okay alles bauen wenn es möglich ist“. Ausdrückliche Ausnahme von der Prüfer-Rollengrenze für diesen Korrekturblock. Basis Android b0198a30c13d3b4a0fcc90e5e986acc2af4b650f / Server 6ea0d987bebc67c346fca24714e4e1b9a8c852ea.
+- ANDROID: lokalen Einzel-BTB-/Tagesexport von verpflichtendem Gesamtkatalog/Vorab-Sync trennen; vorhandene Original-/Preview-Identitäten und Archiv-Linkprüfung erhalten, fehlende lokale Inhalte ausdrücklich kennzeichnen. Gesamtexport bleibt gesondert. ZIP lokal speichern neben Teilen; Lifecycle-/Abbruchschutz erhalten.
+- Wetter: nutzbaren Fotostandort suchen, gespeicherten Wetterort wiederverwenden und Ort/Herkunft sichtbar machen; verständliche Fehler; einheitliche Wetterbegriffe. Konkreter Geräteausfall nicht ohne Laufzeitnachweis als behoben ausgeben.
+- SERVER: bestehende Android-Gruppierung ohne Fünf-Minuten-Trennung, Kurz+abweichender Langtext, vollständiger Wetterumbruch, drei Bildkarten je Reihe, Dateigröße und eindeutige Rendererkennung. Gespeicherte Abschlussoriginale niemals bei GET überschreiben.
+- Rasterauswahl ohne Wirkung bereinigen; Fotoanzahl-/Personenauswahl bleibt erhalten. Lokales Word versus gespeichertes Abschluss-PDF eindeutig kennzeichnen.
+- Bestehende IDs, Daten, Originalfotos, Berechtigungen, Dirty-/Offline-/Recovery-/Konfliktschutz erhalten. Keine pauschale Dublettenlöschung, keine Migration, kein NAS-/SSH-/Produktivdeployment.
+- Gezielte lokale Regressionen und anschließend ein gezielter Android-Build mit passender APK+Release-MD; keine unnötigen CI-Wiederholungen oder Testabschwächung. Geräte-/NAS-E2E bleibt bis echtem Nachweis offen.
+Status: BEAUFTRAGT / IN ARBEIT. Noch keine Behebung oder Installation bestätigt.
+
+
 ## AND-TAGESZIP-1107 – Praxistest: Export weiterhin fehlgeschlagen
 Screenshot07.11.2026: Verlauf zeigt „ZIP konnte nicht erstellt werden (IllegalStateException)“, Fehlerprotokoll08:15:00 Exportfehler;08:14:47 DNS/Servername nicht aufgelöst. Neue Fehleroberfläche wird erreicht; Screenshot allein belegt weder genaue installierte Buildnummer noch umfassend behobenes Crashverhalten. Tages-ZIP-E2E FEHLGESCHLAGEN, nicht erledigt.
 GitHub813b08e1/Server6ea0d987 geprüft. GesamtMedienArchiv.ergaenzen ruft bei vorhandener Serverbindung/Token zwingend loadCatalog auf; CatalogResult.Error wird Zeile150 per error(...) zu IllegalStateException. WorksiteMediaApi wandelt u.a. DNS-/Verbindungsfehler in CatalogResult.Error um. Damit passt der Ablauf zum Screenshot, konkrete Auslösestelle aber noch unbewiesen: auch Zuordnungs-/Bild-/Archivprüfungen können denselben Exceptiontyp werfen. Kein spekulativer Offline-Fallback, keine ausgelassenen Medien als vollständiges Archiv ausgeben.
