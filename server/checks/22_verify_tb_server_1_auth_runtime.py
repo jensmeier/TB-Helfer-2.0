@@ -70,8 +70,8 @@ def main() -> None:
         "POST",
         {
             "company_id": company["id"],
-            "display_name": "CI Chef",
-            "login_name": "ci-chef",
+            "first_name": "CI",
+            "last_name": "Chef",
             "company_role": "CHEF",
         },
         {"X-CSRF-Token": csrf},
@@ -91,7 +91,7 @@ def main() -> None:
     anonymous, _ = opener()
     request = urllib.request.Request(
         BASE + "/api/v1/portal/activate",
-        data=json.dumps({"token": activation["activation_token"], "password": chef_password}).encode("utf-8"),
+        data=json.dumps({"token": activation["activation_token"], "password": chef_password, "login_name": "ci-chef", "display_name": "CI Chef"}).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
