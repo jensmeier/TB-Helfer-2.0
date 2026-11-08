@@ -33,6 +33,8 @@ class TrackSyncWorker(context: Context, parameters: WorkerParameters) : Coroutin
             // Raw uploads cannot delay the small track/KM changes above.
             attempt { SurveyOriginalOutbox.upload(applicationContext, token, ServiceLocator.trassenDao,
                 ServiceLocator.worksiteBindingRepository) }
+            // A just-uploaded original can now resolve; do not wait for the periodic fallback.
+            attempt { SharedKmSync(applicationContext, ServiceLocator.datenbank).synchronize(token) }
             if (failed) Result.retry() else Result.success()
         }
     }

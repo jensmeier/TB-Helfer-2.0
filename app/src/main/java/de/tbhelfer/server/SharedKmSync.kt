@@ -7,13 +7,17 @@ import de.tbhelfer.vermessung.ManuelleAbschnittKmLogik
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** Durable per-contribution requests against the existing shared KM catalogue. */
 class SharedKmSync(private val context: Context, private val database: TBDatenbank) {
     private val dao = database.trassenDao()
     private val api = SurveySyncApi()
 
-    suspend fun synchronize(token: String) {
+    suspend fun synchronize(token: String) = processMutex.withLock { synchronizeLocked(token) }
+
+    private suspend fun synchronizeLocked(token: String) {
         val owner = de.tbhelfer.server.recovery.RecoveryProtocol.owner(token)
         val journal = database.trackSyncJournalDao()
         for (axis in dao.alleAchsen()) {
@@ -115,6 +119,10 @@ class SharedKmSync(private val context: Context, private val database: TBDatenba
             }
             val anchors = dao.kmAnkerFuerAchse(axis.name, axis.quelleDatei).sortedBy { it.station }
             val drafts = mutableListOf<Triple<String, String, JSONObject>>()
+            if (anchors.isNotEmpty() && (anchors.size != 2 || anchors.any { it.gpsAccuracyM == null })) {
+                ErrorLogStore.record(context, ErrorHistory.Operation.FULL_SYNC,
+                    "KM-Anker bleiben lokal: Für den gemeinsamen GPS-Beitrag sind zwei Anker mit bekannter Genauigkeit erforderlich.")
+            }
             if (anchors.size == 2 && anchors.all { it.gpsAccuracyM != null }) {
                 val json = JSONArray()
                 for (anchor in anchors) {
@@ -164,6 +172,14 @@ class SharedKmSync(private val context: Context, private val database: TBDatenba
                 val entry = contributions.optJSONObject(localKey) ?: JSONObject().put("id", UUID.randomUUID().toString())
                     .also { contributions.put(localKey, it) }
                 if (entry.optString("last_local") == fingerprint) continue
+                val originalAnchors = entry.optJSONArray("anchors")
+                if (originalAnchors != null && (0 until originalAnchors.length()).any {
+                    originalAnchors.getJSONObject(it).optString("kind") !in setOf("GPS", "MANUAL")
+                }) {
+                    ErrorLogStore.record(context, ErrorHistory.Operation.FULL_SYNC,
+                        "Geänderter KM-Abschnitt enthält GVP-/Mast-Referenzen: lokale Änderung bleibt erhalten; fachliche Auflösung im Portal erforderlich.")
+                    continue
+                }
                 val body = JSONObject(draft.toString())
                     .put("contribution_id", entry.getString("id"))
                     .put("base_version", binding.getLong("axis_version"))
@@ -183,6 +199,8 @@ class SharedKmSync(private val context: Context, private val database: TBDatenba
 
         }
     }
+
+    private companion object { val processMutex = Mutex() }
 
     private fun uuid(value: String): String = UUID.nameUUIDFromBytes(value.toByteArray(Charsets.UTF_8)).toString()
 }
