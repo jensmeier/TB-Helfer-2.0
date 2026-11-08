@@ -1302,6 +1302,8 @@ object BtbExportPaket {
         var fotosOk = 0
         var fotosFehlen = 0
 
+        val actualPhotoPaths = linkedMapOf<Long, String>()
+        val actualAcceptancePaths = linkedMapOf<Pair<String, Long>, String>()
         ZipOutputStream(zipFile.outputStream().buffered(64 * 1024)).use { zos ->
             if (pdfFile.exists()) {
                 // V7: Im Export-BTB-Ordner heißt das offizielle Dokument einheitlich BTB_<Datum>.pdf.
@@ -1357,7 +1359,7 @@ object BtbExportPaket {
                     entry = entry,
                     exportFotos = schichtExportFotos,
                     knotenLabels = knotenLabels,
-                    relativePathFor = { info -> "../../Bilder/$datum/${info.exportName}" },
+                    relativePathFor = { info -> if (File(info.foto.dateipfad).isFile) "../../Bilder/$datum/${info.exportName}" else "" },
                     verantwortlicherTb = verantwortlicherTb,
                     btbPlan = btbPlan
                 ),
@@ -1410,10 +1412,13 @@ object BtbExportPaket {
                     } else {
                         val ext = File(foto.dateipfad).extension.ifBlank { "jpg" }
                         val name = "Bild_${(index + 1).toString().padStart(2, '0')}_${safeSegment(AbnahmeSpeicher.bildArtLabel(ref.bildArt))}.$ext"
+                        val target = uniquePath("$base/Fotos/$name", used)
                         addFotoFileMitSuchMetadaten(
-                            context, zos, File(foto.dateipfad), uniquePath("$base/Fotos/$name", used),
+                            context, zos, File(foto.dateipfad), target,
                             entry, foto, labels, knotenLabels, btbPlan
                         )
+                        actualAcceptancePaths[a.id to ref.fotoId] = target
+                        actualPhotoPaths[foto.id] = target
                         fotosOk++
                     }
                 }
@@ -1427,19 +1432,33 @@ object BtbExportPaket {
                     fotosFehlen++
                     return@forEach
                 }
+                val target = uniquePath("$bilderFolder/${info.exportName}", used)
                 addFotoFileMitSuchMetadaten(
                     context = context,
                     zos = zos,
                     src = src,
-                    path = uniquePath("$bilderFolder/${info.exportName}", used),
+                    path = target,
                     entry = entry,
                     foto = foto,
                     labels = labels,
                     knotenLabels = knotenLabels,
                     btbPlan = btbPlan
                 )
+                actualPhotoPaths[foto.id] = target
                 fotosOk++
             }
+            addBinary(zos, uniquePath("$root/Maengelliste/Maengelliste_Gesamt.xlsx", used),
+                FachlistenXlsx.maengel(context, maengelGesamt) { _, id ->
+                    actualPhotoPaths[id]?.let { "../" + it.removePrefix("$root/") }
+                })
+            addBinary(zos, uniquePath("$root/Abnahmeliste/Abnahmeliste_Gesamt.xlsx", used),
+                FachlistenXlsx.abnahmen(abnahmenGesamt) { key, id ->
+                    actualAcceptancePaths[key to id]?.let { "../" + it.removePrefix("$root/") }
+                })
+        }
+        try { ExportArchivPruefung.pruefen(zipFile) } catch (error: Exception) {
+            zipFile.delete()
+            throw error
         }
 
         return Ergebnis(zipFile = zipFile, fotosExportiert = fotosOk, fehlendeFotos = fotosFehlen)
@@ -1774,6 +1793,7 @@ object BtbExportPaket {
                             baustelleName, foto, labels, knotenLabels
                         )
                         actualAcceptancePaths[a.id to ref.fotoId] = target
+                        actualPhotoPaths[foto.id] = target
                         fotosOk++
                     }
                 }
