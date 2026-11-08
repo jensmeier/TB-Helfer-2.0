@@ -62,26 +62,15 @@ class BtbPdfEinstellungenFragment : Fragment(R.layout.fragment_btb_pdf_einstellu
         val imgLogoPreview = view.findViewById<ImageView>(R.id.imgLogoPreview)
         val tvLogoPreviewHint = view.findViewById<TextView>(R.id.tvLogoPreviewHint)
 
-        val rasterLabels = listOf(
-            "Automatisch (Quer 2 / Hoch 3)",
-            "1×6 (6 Bilder/Seite)",
-            "3×3 (9 Bilder/Seite)",
-            "1×1 (1 Bild/Seite)"
-        )
-        val rasterValues = listOf(
-            BtbPdfEinstellungenSpeicher.FotoRaster.RASTER_2x6,
-            BtbPdfEinstellungenSpeicher.FotoRaster.RASTER_1x6,
-            BtbPdfEinstellungenSpeicher.FotoRaster.RASTER_3x3,
-            BtbPdfEinstellungenSpeicher.FotoRaster.RASTER_1x1
-        )
-        acRaster.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, rasterLabels))
-        acRaster.setOnClickListener { acRaster.showDropDown() }
+        // Fixed by the shared BTB contract; preserve historical stored values without offering ineffective choices.
+        acRaster.setText("3 Bilder pro Reihe", false)
+        acRaster.isEnabled = false
+        var gespeichertesRaster = BtbPdfEinstellungenSpeicher.FotoRaster.RASTER_3x3
 
         var maxFotosWirdGeladen = true
         viewLifecycleOwner.lifecycleScope.launch {
             val cfg = ServiceLocator.btbPdfEinstellungenSpeicher.einstellungen.first()
-            val idx = rasterValues.indexOf(cfg.raster).coerceAtLeast(0)
-            acRaster.setText(rasterLabels[idx], false)
+            gespeichertesRaster = cfg.raster
             swDatum.isChecked = cfg.zeigeDatum
             swUhrzeit.isChecked = cfg.zeigeUhrzeit
             swKm.isChecked = cfg.zeigeKm
@@ -111,10 +100,9 @@ class BtbPdfEinstellungenFragment : Fragment(R.layout.fragment_btb_pdf_einstellu
         })
 
         suspend fun speichernPdfOptionen() {
-            val rasterIdx = rasterLabels.indexOf(acRaster.text?.toString()).takeIf { it >= 0 } ?: 0
             ServiceLocator.btbPdfEinstellungenSpeicher.speichern(
                 BtbPdfEinstellungenSpeicher.Einstellungen(
-                    raster = rasterValues[rasterIdx],
+                    raster = gespeichertesRaster,
                     zeigeDatum = swDatum.isChecked,
                     zeigeUhrzeit = swUhrzeit.isChecked,
                     zeigeKm = swKm.isChecked,
@@ -135,9 +123,6 @@ class BtbPdfEinstellungenFragment : Fragment(R.layout.fragment_btb_pdf_einstellu
         }
         listOf(swDatum, swUhrzeit, swKm, swGps, swGpsLink, swBaustelle, swKurztext, swNotiz, swFirma, swIndikator, swDateiname)
             .forEach { it.setOnClickListener(onMetaChange) }
-        acRaster.setOnItemClickListener { _, _, _, _ ->
-            viewLifecycleOwner.lifecycleScope.launch { speichernPdfOptionen() }
-        }
 
         fun refreshLogoPreview() {
             val profil = NutzerSpeicher.laden(requireContext())
@@ -267,3 +252,4 @@ class BtbPdfEinstellungenFragment : Fragment(R.layout.fragment_btb_pdf_einstellu
 
     private fun Int.withSign(): String = if (this >= 0) "+$this" else toString()
 }
+

@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.setPadding
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -39,6 +40,10 @@ import java.time.format.DateTimeFormatter
 class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
 
     private val zipModel by lazy { ViewModelProvider(this)[TagesZipViewModel::class.java] }
+
+    private val speichernZip = registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        context?.applicationContext?.let { zipModel.speichern(it, uri) }
+    }
 
     private val deDateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy")
     private var hauptKnotenId: Long = -1L
@@ -151,8 +156,12 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         if (serverState?.canViewPdf != false) {
             row.addView(button("PDF öffnen") { oeffnePdf(item) })
         }
-        row.addView(button("ZIP teilen") { teileTagesabschlussZip(item) })
         inner.addView(row)
+        val exportRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        exportRow.addView(button("ZIP teilen") { teileTagesabschlussZip(item) })
+        exportRow.addView(button("ZIP speichern") { teileTagesabschlussZip(item, speichern = true) })
+        inner.addView(exportRow)
+        inner.addView(textView("ZIP: dieser BTB und seine lokal vorhandenen Bilder. Ohne Serverabgleich.", 12f, Color.DKGRAY, false))
 
         if (!serverFinalReadOnly) {
             val deleteRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
@@ -238,9 +247,9 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         })
     }
 
-    private fun teileTagesabschlussZip(item: BautagebuchSpeicher.VerlaufEintrag) {
+    private fun teileTagesabschlussZip(item: BautagebuchSpeicher.VerlaufEintrag, speichern: Boolean = false) {
         val ctx = context ?: return
-        if (!zipModel.starten(ctx.applicationContext, item)) {
+        if (!zipModel.starten(ctx.applicationContext, item, speichern)) {
             Toast.makeText(ctx, "Ein Tagesabschluss-ZIP wird bereits erstellt.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -249,25 +258,43 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
         val status = root.findViewById<TextView>(R.id.tvTagesZipStatus)
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                zipModel.speicherStatus.collect { message ->
+                    if (message != null) { status.visibility = View.VISIBLE; status.text = message }
+                }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 zipModel.auftrag.zustand.collect { state ->
                     val ctx = context ?: return@collect
                     when (state) {
                         TagesZipAuftrag.Zustand.Bereit -> Unit
                         TagesZipAuftrag.Zustand.Laeuft -> {
                             status.visibility = View.VISIBLE
-                            status.text = "Tagesabschluss-ZIP wird erstellt …"
+                            status.text = "Lokales BTB-ZIP wird erstellt …"
                         }
                         is TagesZipAuftrag.Zustand.Fertig -> {
-                            if (zipModel.auftrag.uebernehmen(state)) {
-                                try {
-                                    BtbExportPaket.shareZip(ctx, state.datei)
-                                    status.text = "Tagesabschluss-ZIP erstellt. Teilen geöffnet."
-                                } catch (error: Exception) {
-                                    TagesZipViewModel.protokolliere(ctx, error, true)
-                                    status.text = "ZIP erstellt, Teilen fehlgeschlagen. Bitte erneut versuchen. Details im Fehlerprotokoll."
+                            try {
+                                // Prepare before consuming: rotation during IO must leave the result available.
+                                val uri = if (zipModel.speichernStattTeilen) null else de.tbhelfer.util.ShareFiles.uri(state.datei)
+                                if (zipModel.auftrag.uebernehmen(state)) {
+                                    if (zipModel.speichernStattTeilen) {
+                                        zipModel.dokumentAuswahlStarten(state.datei)
+                                        speichernZip.launch(state.datei.name)
+                                        status.text = "Lokales BTB-ZIP erstellt. Speicherort auswählen."
+                                    } else {
+                                        BtbExportPaket.shareZip(ctx, state.datei, uri)
+                                        status.text = "Lokales BTB-ZIP erstellt. Teilen geöffnet. Hinweise zum Inhalt stehen im ZIP."
+                                    }
                                 }
-                                status.visibility = View.VISIBLE
-                            }
+                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                    throw cancelled
+                                } catch (error: Exception) {
+                                    if (zipModel.speichernStattTeilen) zipModel.speichern(ctx, null)
+                                    TagesZipViewModel.protokolliere(ctx, error, true)
+                                    status.text = "ZIP erstellt, Übergabe fehlgeschlagen. Bitte erneut versuchen. Details im Fehlerprotokoll."
+                                }
+                            status.visibility = View.VISIBLE
                         }
                         is TagesZipAuftrag.Zustand.Fehler -> {
                             status.visibility = View.VISIBLE
@@ -353,4 +380,5 @@ class BtbVerlaufFragment : Fragment(R.layout.fragment_btb_verlauf) {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 }
+
 

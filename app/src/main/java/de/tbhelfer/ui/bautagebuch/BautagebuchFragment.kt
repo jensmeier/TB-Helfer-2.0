@@ -113,6 +113,7 @@ class BautagebuchFragment : Fragment(R.layout.fragment_bautagebuch) {
     private var wetterMm1: Double? = null
     private var wetterMm2: Double? = null
     private var wetterMm3: Double? = null
+    private var weitereWetterSlots: List<WetterSlot> = emptyList()
     private var lastWetterLat: Double? = null
     private var lastWetterLon: Double? = null
     private var lastWetterOrt: String? = null
@@ -365,6 +366,9 @@ private var newBtbPreparedSchichtTyp: SchichtTyp? = null
 private var newBtbPreparedFirmen: List<FirmaBlock>? = null
 private var newBtbPreparedWeatherSlots: List<WetterSlot>? = null
 private var newBtbPreparedWeatherMessage: String? = null
+private var newBtbPreparedWeatherBlock: WeatherBlock? = null
+private var newBtbWeatherJob: kotlinx.coroutines.Job? = null
+private var newBtbWeatherKey: String? = null
 
 private var reportBannerJob: Job? = null
 private var statusFadeJob: Job? = null
@@ -1263,7 +1267,10 @@ cardCurrentReport.setOnClickListener {
                             .format(timeFmt)
                     }.getOrNull()
                 }
-                tvWetterPreview.text = if (stand != null) "OK · $stand" else "OK"
+                val ort = lastWetterOrt ?: BtbWeatherPolicy.coordinates(lastWetterLat, lastWetterLon)?.let {
+                    String.format(java.util.Locale.GERMANY, "%.4f, %.4f", it.first, it.second)
+                }
+                tvWetterPreview.text = listOfNotNull(if (stand != null) "OK · $stand" else "OK", ort).joinToString(" · ")
                 tvWetterPreview.setTextColor(Color.BLACK)
                 ViewCompat.setBackgroundTintList(
                     tvWetterPreview,
@@ -1550,6 +1557,8 @@ cardCurrentReport.setOnClickListener {
                 newBtbPreparedSchichtTyp = null
                 newBtbPreparedFirmen = null
                 newBtbPreparedWeatherSlots = null
+                newBtbPreparedWeatherBlock = null
+                newBtbWeatherKey = null
                 newBtbPreparedWeatherMessage = null
                 cardNewBtbStartMode.visibility = View.VISIBLE
                 renderNewBtbStartMode()
@@ -1570,6 +1579,8 @@ cardCurrentReport.setOnClickListener {
             newBtbPreparedSchichtTyp = null
             newBtbPreparedFirmen = null
             newBtbPreparedWeatherSlots = null
+                newBtbPreparedWeatherBlock = null
+                newBtbWeatherKey = null
             newBtbPreparedWeatherMessage = null
         }
 
@@ -2005,56 +2016,63 @@ cardCurrentReport.setOnClickListener {
         }
 
         private fun refreshNewBtbWeatherSuggestion() {
-            lifecycleScope.launch {
-                val ctx = resolveAktuelleBaustelle()
-                if (ctx == null) {
-                    newBtbPreparedWeatherSlots = computeAutoWeatherTimesFor(newBtbPreparedStart, newBtbPreparedEnd).map {
-                        WetterSlot(uhrzeit = it, tempC = null, bewoelkung = DEFAULT_BEWOELKUNG, niederschlag = DEFAULT_NIEDERSCHLAG)
+            newBtbWeatherJob?.cancel()
+            val appContext = requireContext().applicationContext
+            val targetDate = newBtbPreparedDate ?: selectedDate
+            val start = newBtbPreparedStart
+            val end = newBtbPreparedEnd
+            val saved = BtbWeatherPolicy.coordinates(lastWetterLat, lastWetterLon)
+            newBtbWeatherJob = viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    val ctx = resolveAktuelleBaustelle() ?: return@launch
+                    val times = computeAutoWeatherTimesFor(start, end)
+                    val location = withContext(Dispatchers.IO) {
+                        resolveWetterLocation(ctx, appContext, targetDate, start, end, null, saved)
                     }
-                    newBtbPreparedWeatherMessage = "Kein Standort verfügbar · Wetter bitte manuell eingeben"
+                    if (location == null) {
+                        newBtbPreparedWeatherMessage = "Kein Wetterort verfügbar · Foto mit GPS oder manuelle Wetterwerte verwenden"
+                        renderNewBtbStartMode()
+                        return@launch
+                    }
+                    val (lat, lon) = location
+                    val endDate = if (spansMidnight(start, end)) targetDate.plusDays(1) else targetDate
+                    val result = withContext(Dispatchers.IO) { OpenMeteoClient.fetchHourly(lat, lon, targetDate, endDate) }
+                    if (resolveAktuelleBaustelle()?.id != ctx.id || (newBtbPreparedDate ?: selectedDate) != targetDate ||
+                        newBtbPreparedStart != start || newBtbPreparedEnd != end) return@launch
+                    val hourly = result.series
+                    if (hourly == null) {
+                        newBtbPreparedWeatherMessage = result.message + " Gespeicherte Werte bleiben erhalten."
+                        renderNewBtbStartMode()
+                        return@launch
+                    }
+                    val slots = times.mapNotNull { text ->
+                        val time = LocalTime.parse(text)
+                        val nextDay = spansMidnight(start, end) && (parseMinutes(text) ?: 0) < (parseMinutes(start) ?: 0)
+                        val point = hourly.closestTo(LocalDateTime.of(if (nextDay) targetDate.plusDays(1) else targetDate, time))
+                            ?: return@mapNotNull null
+                        WetterSlot(uhrzeit = text, tempC = kotlin.math.round(point.tempC).toInt(),
+                            bewoelkung = mapCloudToBew(point.cloudCoverPct),
+                            niederschlag = mapCodeToNied(point.weatherCode, point.precipMm), niederschlagMm = point.precipMm)
+                    }
+                    if (slots.size != times.size || slots.isEmpty()) {
+                        newBtbPreparedWeatherMessage = "Für die gewählten Wetterzeiten fehlen Stundenwerte. Bitte manuell ergänzen."
+                        renderNewBtbStartMode(); return@launch
+                    }
+                    val place = withContext(Dispatchers.IO) { resolveOrtName(appContext, lat, lon) } ?: "$lat, $lon"
+                    if (resolveAktuelleBaustelle()?.id != ctx.id || (newBtbPreparedDate ?: selectedDate) != targetDate ||
+                        newBtbPreparedStart != start || newBtbPreparedEnd != end) return@launch
+                    newBtbPreparedWeatherSlots = slots
+                    newBtbPreparedWeatherBlock = WeatherBlock(source = WeatherSource.AUTO, standEpochMs = System.currentTimeMillis(),
+                        lat = lat, lon = lon, locationName = place, slots = slots)
+                    newBtbWeatherKey = "${ctx.id}|$targetDate|$start|$end"
+                    newBtbPreparedWeatherMessage = "Wetter für $place · $targetDate · " + slots.joinToString(" · ") { it.uhrzeit }
                     renderNewBtbStartMode()
-                    return@launch
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    newBtbPreparedWeatherMessage = "Wetterort oder Wetterabruf nicht verfügbar. Bitte Standortberechtigung prüfen oder manuell eingeben."
+                    if (view != null) renderNewBtbStartMode()
                 }
-                val times = computeAutoWeatherTimesFor(newBtbPreparedStart, newBtbPreparedEnd)
-                if (times.isEmpty()) {
-                    newBtbPreparedWeatherSlots = emptyList()
-                    newBtbPreparedWeatherMessage = "Nur Zeiten · kein Vorschlag"
-                    renderNewBtbStartMode()
-                    return@launch
-                }
-                val (lat, lon) = withContext(Dispatchers.IO) { resolveWetterLocation(ctx) } ?: run {
-                    newBtbPreparedWeatherSlots = times.map { WetterSlot(uhrzeit = it, tempC = null, bewoelkung = DEFAULT_BEWOELKUNG, niederschlag = DEFAULT_NIEDERSCHLAG) }
-                    newBtbPreparedWeatherMessage = "Kein Standort verfügbar · Wetter bitte manuell eingeben"
-                    renderNewBtbStartMode()
-                    return@launch
-                }
-                val targetDate = newBtbPreparedDate ?: selectedDate
-                val endDate = if (spansMidnight(newBtbPreparedStart, newBtbPreparedEnd)) targetDate.plusDays(1) else targetDate
-                val hourly = withContext(Dispatchers.IO) { OpenMeteoClient.fetchHourly(lat, lon, targetDate, endDate) }
-                if (hourly == null) {
-                    newBtbPreparedWeatherSlots = times.map { WetterSlot(uhrzeit = it, tempC = null, bewoelkung = DEFAULT_BEWOELKUNG, niederschlag = DEFAULT_NIEDERSCHLAG) }
-                    newBtbPreparedWeatherMessage = "Wetter konnte nicht geladen werden · bitte manuell eingeben"
-                    renderNewBtbStartMode()
-                    return@launch
-                }
-                val slots = times.map { timeStr ->
-                    val hh = timeStr.substringBefore(':').toIntOrNull() ?: 0
-                    val mm = timeStr.substringAfter(':').toIntOrNull() ?: 0
-                    val dateForTime = if (spansMidnight(newBtbPreparedStart, newBtbPreparedEnd) && parseMinutes(timeStr) != null && parseMinutes(newBtbPreparedStart) != null && parseMinutes(timeStr)!! < parseMinutes(newBtbPreparedStart)!!) targetDate.plusDays(1) else targetDate
-                    val target = LocalDateTime.of(dateForTime, LocalTime.of(hh, mm))
-                    val h = hourly.closestTo(target)
-                    if (h == null) WetterSlot(uhrzeit = timeStr, tempC = null, bewoelkung = DEFAULT_BEWOELKUNG, niederschlag = DEFAULT_NIEDERSCHLAG)
-                    else WetterSlot(
-                        uhrzeit = timeStr,
-                        tempC = kotlin.math.round(h.tempC).toInt(),
-                        bewoelkung = mapCloudToBew(h.cloudCoverPct),
-                        niederschlag = mapCodeToNied(h.weatherCode, h.precipMm),
-                        niederschlagMm = h.precipMm.takeIf { it.isFinite() && it >= 0.0 }
-                    )
-                }
-                newBtbPreparedWeatherSlots = slots
-                newBtbPreparedWeatherMessage = "Automatisch aktualisiert · " + slots.joinToString(" · ") { it.uhrzeit }
-                renderNewBtbStartMode()
             }
         }
 
@@ -2207,11 +2225,16 @@ cardCurrentReport.setOnClickListener {
                 }
                 beginContextSwitch()
                 try {
-                    val weatherSlots = buildPreparedWeatherSlotsForNewBtb()
                     val targetDate = if (newBtbUseDateTime) (newBtbPreparedDate ?: selectedDate) else selectedDate
                     val targetSchicht = if (newBtbUseDateTime) (newBtbPreparedSchichtTyp ?: if (spansMidnight(newBtbPreparedStart, newBtbPreparedEnd)) SchichtTyp.NACHT else SchichtTyp.TAG) else selectedSchichtTyp
                     val startValue = if (newBtbUseDateTime) (newBtbPreparedStart ?: newBtbProposal?.startUhrzeit) else (shiftStart ?: etStart.text?.toString()?.trim().takeUnless { it.isNullOrBlank() })
                     val endValue = if (newBtbUseDateTime) (newBtbPreparedEnd ?: newBtbProposal?.endeUhrzeit) else (shiftEnd ?: etEnde.text?.toString()?.trim().takeUnless { it.isNullOrBlank() })
+                    val weatherKey = "${ctx.id}|$targetDate|$startValue|$endValue"
+                    val weatherSlots = if (newBtbUseWeather && newBtbWeatherKey == weatherKey)
+                        newBtbPreparedWeatherSlots.orEmpty()
+                    else computeAutoWeatherTimesFor(startValue, endValue).map {
+                        WetterSlot(uhrzeit = it, tempC = null, bewoelkung = null, niederschlag = null)
+                    }.takeIf { newBtbUseWeather }.orEmpty()
                     val firmen = buildPreparedFirmenForNewBtb(startValue, endValue)
                     selectedDate = targetDate
                     selectedSchichtTyp = targetSchicht
@@ -2231,10 +2254,9 @@ cardCurrentReport.setOnClickListener {
                             strecke = ctx.strecke,
                             startUhrzeit = startValue,
                             endeUhrzeit = endValue,
-                            weather = WeatherBlock(
-                                source = WeatherSource.MANUAL,
-                                slots = weatherSlots
-                            ),
+                            weather = newBtbPreparedWeatherBlock?.takeIf {
+                                newBtbUseWeather && newBtbWeatherKey == "${ctx.id}|$targetDate|$startValue|$endValue"
+                            }?.copy(slots = weatherSlots) ?: WeatherBlock(source = WeatherSource.MANUAL, slots = weatherSlots),
                             weatherSlots = weatherSlots,
                             firmen = firmen,
                             personal = firmenToLegacyLines(firmen, PmSection.PERSONAL),
@@ -2722,6 +2744,10 @@ cardCurrentReport.setOnClickListener {
                 etEnde.setText(entry.endeUhrzeit.orEmpty())
 
                 // Wetter: neuer Block bevorzugt (mit Stand/Quelle/Ort)
+                weitereWetterSlots = emptyList()
+                lastWetterFetchMs = 0L
+                lastWetterLat = null; lastWetterLon = null; lastWetterOrt = null; lastWetterStation = null
+                lastWetterSource = WeatherSource.MANUAL
                 val wb = entry.weather
                 if (wb != null) {
                     lastWetterFetchMs = wb.standEpochMs ?: 0L
@@ -3773,6 +3799,7 @@ cardCurrentReport.setOnClickListener {
         }
 
         private fun resetWetter() {
+            weitereWetterSlots = emptyList()
             wetterApplying = true
             try {
                 wetterMm1 = null
@@ -3830,12 +3857,13 @@ cardCurrentReport.setOnClickListener {
                 slot(btnWetterTime1, etTemp1, acBew1, acNied1),
                 slot(btnWetterTime2, etTemp2, acBew2, acNied2),
                 slot(btnWetterTime3, etTemp3, acBew3, acNied3)
-            )
+            ) + weitereWetterSlots
         }
 
         private fun applyWeatherSlots(slots: List<WetterSlot>) {
+            weitereWetterSlots = slots.drop(3)
             fun apply(i: Int, btn: MaterialButton, temp: TextInputEditText, bew: MaterialAutoCompleteTextView, nied: MaterialAutoCompleteTextView) {
-                val s = slots.getOrNull(i) ?: return
+                val s = slots.getOrNull(i) ?: WetterSlot(uhrzeit = "", tempC = null, bewoelkung = null, niederschlag = null)
                 // mm-Wert übernehmen (falls vorhanden)
                 when (i) {
                     0 -> wetterMm1 = s.niederschlagMm
@@ -3844,8 +3872,8 @@ cardCurrentReport.setOnClickListener {
                 }
                 btn.text = s.uhrzeit
                 temp.setText(s.tempC?.toString().orEmpty())
-                bew.setText(s.bewoelkung ?: DEFAULT_BEWOELKUNG, false)
-                nied.setText(s.niederschlag ?: DEFAULT_NIEDERSCHLAG, false)
+                bew.setText(s.bewoelkung.orEmpty(), false)
+                nied.setText(s.niederschlag.orEmpty(), false)
             }
             wetterApplying = true
             try {
@@ -3925,6 +3953,8 @@ cardCurrentReport.setOnClickListener {
             val requestStart = shiftStart
             val requestEnd = shiftEnd
             val requestSlots = collectWeatherSlots()
+            val appContext = requireContext().applicationContext
+            val savedCoordinates = BtbWeatherPolicy.coordinates(lastWetterLat, lastWetterLon)
             val requestDirty = wetterDirtySinceMs
             wetterFetchInProgress = true
             viewLifecycleOwner.lifecycleScope.launch {
@@ -3936,20 +3966,21 @@ cardCurrentReport.setOnClickListener {
                     }
 
                     val (lat, lon) = withContext(Dispatchers.IO) {
-                        resolveWetterLocation(ctx)
+                        resolveWetterLocation(ctx, appContext, requestDate, requestStart, requestEnd, requestBtbId, savedCoordinates)
                     } ?: run {
-                        Snackbar.make(requireView(), "Kein Standort verfügbar (Foto/Handy)", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(requireView(), "Kein Wetterort vorhanden. Ein Foto mit GPS verwenden oder den Ort im Portal festlegen; Wetterwerte können manuell eingegeben werden.", Snackbar.LENGTH_LONG).show()
                         return@launch
                     }
 
-                    val weatherOrt = withContext(Dispatchers.IO) { resolveOrtName(lat, lon) }
+                    val weatherOrt = withContext(Dispatchers.IO) { resolveOrtName(appContext, lat, lon) }
                     val startDate = requestDate
                     val endDate = if (spansMidnight(requestStart, requestEnd)) requestDate.plusDays(1) else requestDate
 
-                    val hourly = withContext(Dispatchers.IO) {
+                    val result = withContext(Dispatchers.IO) {
                         OpenMeteoClient.fetchHourly(lat, lon, startDate, endDate)
-                    } ?: run {
-                        Snackbar.make(requireView(), "Wetterdaten konnten nicht geladen werden", Snackbar.LENGTH_LONG).show()
+                    }
+                    val hourly = result.series ?: run {
+                        Snackbar.make(requireView(), result.message, Snackbar.LENGTH_LONG).show()
                         return@launch
                     }
 
@@ -3958,6 +3989,14 @@ cardCurrentReport.setOnClickListener {
                         shiftStart != requestStart || shiftEnd != requestEnd ||
                         collectWeatherSlots() != requestSlots || wetterDirtySinceMs != requestDirty) {
                         Snackbar.make(requireView(), "BTB oder Wetter geändert – Wetter bitte erneut laden", Snackbar.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    val requestedTimes = requestSlots.take(3).map { slot ->
+                        val time = runCatching { LocalTime.parse(slot.uhrzeit.removeSuffix(" Uhr").trim(), DateTimeFormatter.ofPattern("H:mm")) }.getOrNull()
+                        time?.let { LocalDateTime.of(slotDateForTime(slot.uhrzeit), it) }
+                    }
+                    if (requestedTimes.size != 3 || requestedTimes.any { it == null || hourly.closestTo(it) == null }) {
+                        Snackbar.make(requireView(), "Für die Wetterzeiten fehlen passende Stundenwerte. Gespeicherte Werte bleiben erhalten.", Snackbar.LENGTH_LONG).show()
                         return@launch
                     }
                     // Commit provenance together with the accepted response, never before a failed request.
@@ -3979,7 +4018,7 @@ cardCurrentReport.setOnClickListener {
                         val target = LocalDateTime.of(dateForTime, time)
                         val h = hourly.closestTo(target) ?: return
 
-                        val mmVal = h.precipMm.takeIf { it.isFinite() && it >= 0.0 }
+                        val mmVal = h.precipMm?.takeIf { it.isFinite() && it >= 0.0 }
                         when (idx) {
                             0 -> wetterMm1 = mmVal
                             1 -> wetterMm2 = mmVal
@@ -4003,55 +4042,48 @@ cardCurrentReport.setOnClickListener {
                         lastWetterFetchMs = System.currentTimeMillis()
                         updateWeatherPreview()
                     scheduleWetterAutosave(force = true)
-                    Snackbar.make(requireView(), "Wetter automatisch gefüllt", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(requireView(), "Wetter geladen für " + (weatherOrt ?: "$lat, $lon") + " · bitte Ort und Werte prüfen", Snackbar.LENGTH_LONG).show()
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    view?.let { Snackbar.make(it, "Wetterort oder Abruf nicht verfügbar. Standortberechtigung prüfen oder manuell eingeben.", Snackbar.LENGTH_LONG).show() }
                 } finally {
                     wetterFetchInProgress = false
                 }
             }
         }
 
-        private suspend fun resolveWetterLocation(ctx: BaustelleKontext): Pair<Double, Double>? {
-            // 1) Foto (in der Schicht)
-            runCatching {
-                val all = ServiceLocator.fotoRepository.fotosFuerBaustelleOnce(ctx.id)
-                val (from, to) = shiftWindowEpochMs(selectedDate, shiftStart, shiftEnd)
-                val currentEntry = BautagebuchSpeicher.laden(requireContext(), ctx.id, ctx.name, selectedDate, selectedSchichtTyp)
-                val inWindow = filterFotosForBtbStart(
-                    all.filter { it.erstelltAmEpochMs in from until to },
-                    currentBtbStartEpochMs ?: currentEntry?.erstelltAmEpochMs
-                )
-                if (inWindow.isNotEmpty()) {
-                    val f = inWindow.last()
-                    val lat = f.gpsLatEffektiv
-                    val lon = f.gpsLonEffektiv
-                    if (lat != null && lon != null) return Pair(lat, lon)
-                }
+        private suspend fun resolveWetterLocation(
+            ctx: BaustelleKontext, appContext: android.content.Context,
+            date: LocalDate, start: String?, end: String?, btbId: String?,
+            saved: Pair<Double, Double>? = null
+        ): Pair<Double, Double>? {
+            // An explicitly stored BTB weather location is stable when the user travels home.
+            if (saved != null) return saved
+            val all = ServiceLocator.fotoRepository.fotosFuerBaustelleSyncOnce(ctx.id)
+            val (from, to) = shiftWindowEpochMs(date, start, end)
+            val photos = all.filter { foto ->
+                foto.baustelleId == ctx.id && if (!btbId.isNullOrBlank()) {
+                    BtbFotoZuordnungSpeicher.btbId(appContext, foto.id) == btbId
+                } else foto.erstelltAmEpochMs in from until to
             }
-
-            // 2) Handy (letzte bekannte Position)
-            if (StandortLiveQuelle.hatStandortBerechtigung(requireContext())) {
-                val loc: Location? = withTimeoutOrNull(2500L) {
-                    StandortLiveQuelle.standortFlow(requireContext()).first()
-                }
-                if (loc != null) return Pair(loc.latitude, loc.longitude)
+            photos.sortedByDescending { it.erstelltAmEpochMs }.forEach { foto ->
+                BtbWeatherPolicy.coordinates(foto.gpsLatEffektiv, foto.gpsLonEffektiv)?.let { return it }
             }
-
-            // 3) Baustelle (aktuell keine GPS-Felder im Datenmodell)
+            // Never use today's phone position silently for a historical report.
+            if (date != LocalDate.now(ZoneId.of("Europe/Berlin"))) return null
+            if (StandortLiveQuelle.hatStandortBerechtigung(appContext)) {
+                val loc = withTimeoutOrNull(5000L) { StandortLiveQuelle.standortFlow(appContext).first() }
+                BtbWeatherPolicy.coordinates(loc?.latitude, loc?.longitude)?.let { return it }
+            }
             return null
         }
 
-        private fun resolveOrtName(lat: Double, lon: Double): String? {
-            return runCatching {
-                val geocoder = android.location.Geocoder(requireContext(), java.util.Locale.getDefault())
-                val list = geocoder.getFromLocation(lat, lon, 1)
-                val a = list?.firstOrNull() ?: return null
-                (a.locality
-                    ?: a.subAdminArea
-                    ?: a.adminArea
-                    ?: a.featureName)?.trim()
-                    ?.takeIf { it.isNotBlank() }
-            }.getOrNull()
-        }
+        private fun resolveOrtName(appContext: android.content.Context, lat: Double, lon: Double): String? = runCatching {
+            val geocoder = android.location.Geocoder(appContext, java.util.Locale.getDefault())
+            val a = geocoder.getFromLocation(lat, lon, 1)?.firstOrNull()
+            (a?.locality ?: a?.subAdminArea ?: a?.adminArea ?: a?.featureName)?.trim()?.takeIf { it.isNotBlank() }
+        }.getOrNull()
 
         // ---------------------------
         // Personal + Geräte/Maschinen (Dropdown-Style B)
@@ -8177,141 +8209,77 @@ cardCurrentReport.setOnClickListener {
     }
 
     private object OpenMeteoClient {
-        private val isoDate = DateTimeFormatter.ISO_LOCAL_DATE
-        private val isoDateTime = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
-
-        data class HourlyPoint(
-            val time: LocalDateTime,
-            val tempC: Double,
-            val precipMm: Double,
-            val cloudCoverPct: Int,
-            val weatherCode: Int
-        )
-
+        data class HourlyPoint(val time: LocalDateTime, val tempC: Double, val precipMm: Double?, val cloudCoverPct: Int?, val weatherCode: Int?)
         class HourlySeries(private val points: List<HourlyPoint>) {
-            fun closestTo(target: LocalDateTime): HourlyPoint? {
-                if (points.isEmpty()) return null
-                var best: HourlyPoint = points[0]
-                var bestDiff = kotlin.math.abs(java.time.Duration.between(best.time, target).toMinutes())
-                for (p in points) {
-                    val d = kotlin.math.abs(java.time.Duration.between(p.time, target).toMinutes())
-                    if (d < bestDiff) { best = p; bestDiff = d }
-                }
-                return best
-            }
+            fun closestTo(target: LocalDateTime): HourlyPoint? = BtbWeatherPolicy.nearestIndex(points.map { it.time }, target)?.let { points[it] }
         }
+        data class Result(val series: HourlySeries? = null, val message: String = "Für den Zeitraum fehlen Wetterdaten.")
 
-        private fun fetchUrl(url: URL): HourlySeries? {
-            val con = (url.let { de.tbhelfer.server.recovery.RecoveryHttp.open(it) }).apply {
-                requestMethod = "GET"
-                connectTimeout = 8000
-                readTimeout = 8000
-            }
-
+        private fun fetchUrl(url: URL): Result {
+            var con: java.net.HttpURLConnection? = null
             return try {
+                con = de.tbhelfer.server.recovery.RecoveryHttp.open(url).apply {
+                    requestMethod = "GET"; connectTimeout = 8000; readTimeout = 8000
+                }
                 val code = con.responseCode
-                val stream = if (code in 200..299) con.inputStream else con.errorStream
-                val body = stream.bufferedReader().use { it.readText() }
-                if (code !in 200..299) return null
-
-                val root = JSONObject(body)
-                val hourly = root.getJSONObject("hourly")
+                if (code !in 200..299) return Result(message = when (code) {
+                    400 -> "Wetterdienst: Zeitraum oder Standort nicht verfügbar."
+                    429 -> "Wetterdienst vorübergehend ausgelastet. Bitte später erneut versuchen."
+                    else -> "Wetterdienst nicht verfügbar (HTTP $code)."
+                })
+                val body = con.inputStream.bufferedReader().use { reader ->
+                    val out = StringBuilder()
+                    val buffer = CharArray(8192)
+                    while (true) {
+                        val count = reader.read(buffer)
+                        if (count < 0) break
+                        if (out.length + count > 1_000_000) return Result(message = "Wetterantwort ist zu groß.")
+                        out.append(buffer, 0, count)
+                    }
+                    out.toString()
+                }
+                val hourly = JSONObject(body).getJSONObject("hourly")
                 val times = hourly.getJSONArray("time")
                 val temps = hourly.getJSONArray("temperature_2m")
-                val prec = hourly.getJSONArray("precipitation")
-                val cloud = hourly.getJSONArray("cloud_cover")
-                val wcode = hourly.getJSONArray("weathercode")
-
-                val pts = ArrayList<HourlyPoint>(times.length())
-                for (i in 0 until times.length()) {
-                    val t = LocalDateTime.parse(times.getString(i), isoDateTime)
-                    pts += HourlyPoint(
-                        time = t,
-                        tempC = temps.getDouble(i),
-                        precipMm = prec.getDouble(i),
-                        cloudCoverPct = cloud.getInt(i),
-                        weatherCode = wcode.getInt(i)
-                    )
+                val prec = hourly.optJSONArray("precipitation")
+                val cloud = hourly.optJSONArray("cloud_cover")
+                val codes = hourly.optJSONArray("weather_code") ?: hourly.optJSONArray("weathercode")
+                fun number(array: org.json.JSONArray?, i: Int): Double? =
+                    if (array == null || array.isNull(i)) null else array.optDouble(i).takeIf { it.isFinite() }
+                val zone = ZoneId.of("Europe/Berlin")
+                val points = (0 until times.length()).mapNotNull { i ->
+                    val temp = number(temps, i) ?: return@mapNotNull null
+                    val epoch = number(times, i) ?: return@mapNotNull null
+                    HourlyPoint(java.time.Instant.ofEpochSecond(epoch.toLong()).atZone(zone).toLocalDateTime(), temp,
+                        number(prec, i)?.takeIf { it >= 0 }, number(cloud, i)?.toInt(), number(codes, i)?.toInt())
                 }
-                if (pts.isEmpty()) null else HourlySeries(pts)
+                if (points.isEmpty()) Result() else Result(HourlySeries(points))
+            } catch (_: java.net.UnknownHostException) {
+                Result(message = "Wetterdienst nicht erreichbar: Internetverbindung oder DNS prüfen.")
+            } catch (_: java.net.SocketTimeoutException) {
+                Result(message = "Wetterabruf hat zu lange gedauert. Bitte erneut versuchen.")
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: java.io.IOException) {
+                Result(message = "Verbindung zum Wetterdienst fehlgeschlagen. Gespeicherte Werte bleiben erhalten.")
             } catch (_: Exception) {
-                null
-            } finally {
-                runCatching { con.disconnect() }
-            }
+                Result(message = "Wetterantwort unvollständig oder ungültig. Bitte später erneut versuchen.")
+            } finally { runCatching { con?.disconnect() } }
         }
 
-        fun fetchHourly(lat: Double, lon: Double, start: LocalDate, end: LocalDate): HourlySeries? {
-            val forecastUrl = URL(
-                "https://api.open-meteo.com/v1/forecast" +
-                    "?latitude=$lat&longitude=$lon" +
-                    "&hourly=temperature_2m,precipitation,cloud_cover,weathercode" +
-                    "&start_date=${start.format(isoDate)}&end_date=${end.format(isoDate)}" +
-                    "&timezone=Europe%2FBerlin"
-            )
-
-            val forecast = fetchUrl(forecastUrl)
-            if (forecast != null) return forecast
-
-            // Fallback: vergangene Tage zuverlässig über Archive-API holen
-            val todayBerlin = LocalDate.now(ZoneId.of("Europe/Berlin"))
-            if (end.isBefore(todayBerlin)) {
-                val archiveUrl = URL(
-                    "https://archive-api.open-meteo.com/v1/archive" +
-                        "?latitude=$lat&longitude=$lon" +
-                        "&hourly=temperature_2m,precipitation,cloud_cover,weathercode" +
-                        "&start_date=${start.format(isoDate)}&end_date=${end.format(isoDate)}" +
-                        "&timezone=Europe%2FBerlin"
-                )
-                return fetchUrl(archiveUrl)
-            }
-
-            return null
+        fun fetchHourly(lat: Double, lon: Double, start: LocalDate, end: LocalDate): Result {
+            if (BtbWeatherPolicy.coordinates(lat, lon) == null || end.isBefore(start)) return Result(message = "Wetterort oder Zeitraum ist ungültig.")
+            val archive = start.isBefore(LocalDate.now(ZoneId.of("Europe/Berlin")).minusDays(5))
+            val host = if (archive) "archive-api" else "api"
+            val endpoint = if (archive) "archive" else "forecast"
+            return fetchUrl(URL("https://$host.open-meteo.com/v1/$endpoint" +
+                "?latitude=$lat&longitude=$lon&hourly=temperature_2m,precipitation,cloud_cover,weather_code" +
+                "&start_date=$start&end_date=$end&timezone=Europe%2FBerlin&timeformat=unixtime"))
         }
     }
 
-
-    private fun mapCloudToBew(cloudPct: Int): String {
-        return when {
-            cloudPct <= 5 -> "sonnig / wolkenlos / klar"
-            cloudPct <= 25 -> "heiter"
-            cloudPct <= 50 -> "leicht bewölkt"
-            cloudPct <= 75 -> "wolkig"
-            cloudPct <= 90 -> "stark bewölkt"
-            else -> "bedeckt"
-        }
-    }
-
-
-    private fun mapCodeToNied(code: Int, precipMm: Double): String {
-        if (precipMm <= 0.0) return "trocken"
-        return when (code) {
-            51, 53, 55 -> "Nieselregen"
-            56, 57, 66, 67 -> "gefrierender Regen"
-            61 -> "Regen (leicht)"
-            63 -> "Regen (mäßig)"
-            65 -> "Regen (stark)"
-            80, 81, 82 -> "Schauer"
-            68, 69 -> "Schneeregen"
-            77 -> "Graupel"
-            71 -> "Schneefall (leicht)"
-            73 -> "Schneefall (mäßig)"
-            75 -> "Schneefall (stark)"
-            85 -> "Schneefall (leicht)"
-            86 -> "Schneefall (stark)"
-            95 -> "Gewitter"
-            96, 99 -> "Hagel"
-            else -> {
-                // Heuristik für unbekannte Codes
-                when {
-                    precipMm < 0.3 -> "Nieselregen"
-                    precipMm < 1.5 -> "Regen (leicht)"
-                    precipMm < 4.0 -> "Regen (mäßig)"
-                    else -> "Regen (stark)"
-                }
-            }
-        }
-    }
+    private fun mapCloudToBew(cloudPct: Int?): String? = BtbWeatherPolicy.cloud(cloudPct)
+    private fun mapCodeToNied(code: Int?, precipMm: Double?): String? = BtbWeatherPolicy.rain(code, precipMm)
 
 
 private data class BaustelleKontext(
@@ -8320,6 +8288,7 @@ private data class BaustelleKontext(
     val strecke: String?,
     val rootKnotenId: Long? = null
 )
+
 
 
 
