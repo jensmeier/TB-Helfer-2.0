@@ -1,5 +1,10 @@
 # TB-HELFER 2.0 – CHAT CHECKPOINT
 
+## INTEGRATION-1108 – Build-Download blockiert, 08.11.2026
+Runtime01a6614f (1.3.43/200093) implementiert lokalen BTB-ZIP und Wetterkorrekturen. CI42472214428: Erstlauf und gezielte Buildjob-Wiederholung scheitern beim Gradle-9.3.1-Download nach10s, vor Kompilierung. Die Wiederholungsantwort enthält zusätzlich erneut den Contractjob; keine Einsparung behauptet. Original-Logs128705428141/128705646803 geprüft. Wrapper-Downloadtimeout auf60s erhöht; Gradle-Version/URL und Prüfungen unverändert. Ein neuer Bauversuch mit dieser konkreten Anpassung. Build/Unit/Lint/APK weiter OFFEN.
+Server: Renderer/Portal/Wetter lokal geprüft, Commit folgt. Kein NAS-Deployment.
+
+
 ## AND-TAGESZIP-1107 – Praxistest: Export weiterhin fehlgeschlagen
 Screenshot07.11.2026: Verlauf zeigt „ZIP konnte nicht erstellt werden (IllegalStateException)“, Fehlerprotokoll08:15:00 Exportfehler;08:14:47 DNS/Servername nicht aufgelöst. Neue Fehleroberfläche wird erreicht; Screenshot allein belegt weder genaue installierte Buildnummer noch umfassend behobenes Crashverhalten. Tages-ZIP-E2E FEHLGESCHLAGEN, nicht erledigt.
 GitHub813b08e1/Server6ea0d987 geprüft. GesamtMedienArchiv.ergaenzen ruft bei vorhandener Serverbindung/Token zwingend loadCatalog auf; CatalogResult.Error wird Zeile150 per error(...) zu IllegalStateException. WorksiteMediaApi wandelt u.a. DNS-/Verbindungsfehler in CatalogResult.Error um. Damit passt der Ablauf zum Screenshot, konkrete Auslösestelle aber noch unbewiesen: auch Zuordnungs-/Bild-/Archivprüfungen können denselben Exceptiontyp werfen. Kein spekulativer Offline-Fallback, keine ausgelassenen Medien als vollständiges Archiv ausgeben.
@@ -984,4 +989,5 @@ Während der Prüfung kamen unabhängige Sync-Dokumentationscommits hinzu: Andro
 - Empfehlung: bestehende gemeinsame Achse/Quelle eindeutig per UUID/Hash/Version binden; manuelle KM-Änderung mit eigenen stabilen IDs/Ankern/Genauigkeit dauerhaft vormerken; gezielt/versioniert senden, Konflikte sichtbar, gemeinsame Katalog-/Netzfeeds empfangen. Originale unverändert, manuellOrange/importiertGrün. Keine weitere parallele Streckendatenablage. Details: [TRACK_KM_1103.md](uebergaben/TRACK_KM_1103.md).
 - Vollständiger Umfang, Grenzen, Nachweise und spätere NAS-Dateiliste: [SYNC_FIX_1103.md](uebergaben/SYNC_FIX_1103.md). Mängel-/Abnahme-/Streckendaten-Deltaerweiterung, Mediennachlauf, Push und Konflikt-Zusammenführungsansicht bleiben Folgeblöcke. Echte PostgreSQL-/Postman-/Pixel-/Poco-/NAS-/Schlafmodus-/Offline-/Zwei-Geräte-E2E OFFEN. Status QUELLSTAND DES SCHUTZBLOCKS FERTIG / LOKALE PRÜFUNGEN UND ANDROID BUILD-UNIT-LINT BESTANDEN / GESAMT-CI NICHT BESTANDEN / DEPLOY OFFEN / E2E OFFEN.
 - Status-Excel-Nachtrag OFFEN: binärer Connectorabruf nicht als XLSX verifizierbar, direkter Blobabruf nicht-UTF8 abgewiesen. Original nicht überschrieben; daraus keine Beschädigung der Originaldatei behauptet. Markdownstatus gesichert.
+
 
