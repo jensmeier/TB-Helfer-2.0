@@ -3252,3 +3252,8 @@ Benutzer: „okay bauen und alles nochmal prüfen gegen android, auch den Contai
 ## SERVER-MISCHLAST – Auftrag
 
 Nutzer „okay bauen“ nach SERVER-PERF-1108. Nächster Schritt laut Übergabe: kleiner Referenzabschluss und fotoreicher Abschluss parallel zu Foto-Upload und zweitem Sync-Client als reproduzierbarer, begrenzter Test auf einer isolierten Instanz. Nur Testwerkzeug und Prüfbericht, mit bestehendem Android-HTTP-Vertrag. Produktivdaten, Compose, Recovery und Runtime bleiben außerhalb dieses Messblocks. Ausgang Server 9d9b388b, Android 47a8fd58.
+
+
+## SERVER-MISCHLAST – Prüfwerkzeug fertig
+
+Begrenzter Test für zwei BTB-Abschlüsse, parallelen JPEG-Upload und zweiten Delta-Client mit PDF- und Ereignisprüfung. Nur isolierter Testbetrieb. Drei lokale HTTP-Double-Tests bestanden. Reale NAS-/DB-/Android-Messung und neue CI offen. Serverruntime und Compose bleiben im Stand SERVER-PERF-1108. [Ablauf und Grenzen](uebergaben/SERVER_MISCHLAST.md).

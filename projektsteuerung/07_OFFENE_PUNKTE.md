@@ -667,3 +667,8 @@ Status QUELLSTAND FERTIG / GEZIELTE SOURCE- UND JAVASCRIPT-PRÜFUNG BESTANDEN / 
 - 29 lokale Prüfungen und PDF-Referenz bestanden. Datenbankschreiber im HTTP-Test ersetzt. NAS-Runtime, PostgreSQL-Last, Postman, Geräte-E2E und neue CI offen. Keine Bereinigung, Migration oder NAS-Übernahme.
 - Compose und gespeicherte NAS-Datei: zwölf gleiche Dienste, API-RAM 1g versus Vorlage 512m bei fehlendem Override. Restore-Datenbanken als Kandidaten für bedarfsgesteuerten Betrieb, abhängig von Test/Recovery. Keine Compose-Änderung.
 - Nächster Schritt: Zeitmessung und Mischlast auf Testinstanz. [Umsetzung, Containerbewertung und Übernahme](uebergaben/SERVER_PERF_1108.md). Status-Excel-Nachtrag wie zuvor offen.
+
+
+## SERVER-MISCHLAST – Prüfwerkzeug fertig
+
+Begrenzter Test für zwei BTB-Abschlüsse, parallelen JPEG-Upload und zweiten Delta-Client mit PDF- und Ereignisprüfung. Nur isolierter Testbetrieb. Drei lokale HTTP-Double-Tests bestanden. Reale NAS-/DB-/Android-Messung und neue CI offen. Serverruntime und Compose bleiben im Stand SERVER-PERF-1108. [Ablauf und Grenzen](uebergaben/SERVER_MISCHLAST.md).
