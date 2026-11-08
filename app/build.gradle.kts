@@ -454,8 +454,8 @@ android {
         // Android 200076: kleiner Foto-Sync, mobile Renditions, Foto-Metadaten-PATCH
         // und Wetter-Niederschlagsmenge inkl. bekanntem 0,0-mm-Wert.
         // Jeder auslieferbare Test-/Release-Build erhält einen strikt höheren versionCode.
-        versionCode = 200094
-        versionName = "1.3.44"
+        versionCode = 200095
+        versionName = "1.3.45"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -468,6 +468,16 @@ android {
             java.directories.clear()
             kotlin.directories.clear()
             kotlin.directories += "src/main/java/de/tbhelfer/datenbank"
+        }
+    }
+
+    // Optional EXISTING key. No new key is presented as update-compatible.
+    System.getenv("TB_ANDROID_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }?.let { keyPath ->
+        signingConfigs.getByName("debug") {
+            storeFile = file(keyPath)
+            storePassword = System.getenv("TB_ANDROID_STORE_PASSWORD") ?: error("Missing keystore password")
+            keyAlias = System.getenv("TB_ANDROID_KEY_ALIAS") ?: error("Missing key alias")
+            keyPassword = System.getenv("TB_ANDROID_KEY_PASSWORD") ?: error("Missing key password")
         }
     }
 

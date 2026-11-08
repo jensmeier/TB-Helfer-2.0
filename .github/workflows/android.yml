@@ -142,8 +142,26 @@ jobs:
             app/build/reports/lint-results-debug.*
             app/build/export-qa/**
 
+      - name: Load existing signing key when configured
+        if: contains(github.event.head_commit.message, '[apk]')
+        env:
+          TB_ANDROID_KEYSTORE_B64: ${{ secrets.TB_ANDROID_KEYSTORE_B64 }}
+        shell: bash
+        run: |
+          if [ -n "$TB_ANDROID_KEYSTORE_B64" ]; then
+            umask 077
+            printf '%s' "$TB_ANDROID_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/tb-existing.keystore"
+            echo "TB_ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/tb-existing.keystore" >> "$GITHUB_ENV"
+          else
+            echo "No existing signing key configured; APK is a test build, update compatibility unconfirmed."
+          fi
+
       - name: Build explicitly requested APK
         if: contains(github.event.head_commit.message, '[apk]')
+        env:
+          TB_ANDROID_STORE_PASSWORD: ${{ secrets.TB_ANDROID_STORE_PASSWORD }}
+          TB_ANDROID_KEY_ALIAS: ${{ secrets.TB_ANDROID_KEY_ALIAS }}
+          TB_ANDROID_KEY_PASSWORD: ${{ secrets.TB_ANDROID_KEY_PASSWORD }}
         run: ./gradlew :app:assembleDebug --stacktrace --console=plain
 
       - name: Verify APK and pair release companion
@@ -156,7 +174,7 @@ jobs:
           source = Path("app/build.gradle.kts").read_text()
           version = re.search(r'versionName\s*=\s*"([^"]+)"', source).group(1)
           build = re.search(r'versionCode\s*=\s*(\d+)', source).group(1)
-          assert (version, build) == ("1.3.44", "200094")
+          assert int(build) >= 200095
           apk = Path("app/build/outputs/apk/debug/app-debug.apk")
           assert apk.is_file() and apk.stat().st_size > 0
           sdk = Path(os.environ["ANDROID_HOME"])

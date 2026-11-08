@@ -16,8 +16,7 @@ import java.security.MessageDigest
  * Transport für abgeleitete mobile Streckendaten.
  *
  * Server 1.0 wird über den kanonischen track_data_v1-Vertrag reconciled. Ein alter 0.7.x-Server
- * ohne diesen Endpunkt darf während des Übergangs weiterhin den bisherigen Bulk-/collab-Vertrag
- * verwenden. Rohdateien (TRA/GRA/KF/KOR/...) werden hier ausdrücklich nie übertragen.
+ * ohne diesen Endpunkt wird nur noch gelesen; schreibende Bulk-Ersetzungen sind gesperrt. Rohdateien (TRA/GRA/KF/KOR/...) werden hier ausdrücklich nie übertragen.
  */
 class WorksiteTrackDataApi(
     private val baseUrl: String = ServerConfig.BASE_URL
@@ -32,7 +31,8 @@ class WorksiteTrackDataApi(
         val currentVersion: Long = 0L,
         val serverId: String? = null,
         val routeNumber: String? = null,
-        val trackKey: String? = null
+        val trackKey: String? = null,
+        val localAxisId: Long? = null
     )
 
     sealed interface Result {
@@ -56,25 +56,27 @@ class WorksiteTrackDataApi(
         }
 
     fun replace(token: String, worksiteId: String, datasets: List<Dataset>): PutResult {
-        repeat(3) {
-            val current = when (val result = loadCanonical(token, worksiteId)) {
-                Result.Unsupported -> return legacyReplace(token, worksiteId, datasets)
-                Result.SessionInvalid -> return PutResult.SessionInvalid
-                is Result.Error -> return PutResult.Error(result.message)
-                is Result.Success -> result.datasets
-            }
-
-            when (val reconcile = reconcileCanonical(token, worksiteId, current, datasets)) {
-                ReconcileResult.Success -> return PutResult.Success
-                ReconcileResult.Unsupported -> return legacyReplace(token, worksiteId, datasets)
-                ReconcileResult.SessionInvalid -> return PutResult.SessionInvalid
-                ReconcileResult.Conflict -> Unit
-                is ReconcileResult.Error -> return PutResult.Error(reconcile.message)
-            }
+        val current = when (val result = loadCanonical(token, worksiteId)) {
+            Result.Unsupported -> return PutResult.Unsupported
+            Result.SessionInvalid -> return PutResult.SessionInvalid
+            is Result.Error -> return PutResult.Error(result.message)
+            is Result.Success -> result.datasets
         }
-        return PutResult.Error(
-            "Streckendaten konnten nach mehreren parallelen Änderungen nicht konfliktfrei synchronisiert werden."
-        )
+        return when (val result = reconcileCanonical(token, worksiteId, current, datasets)) {
+            ReconcileResult.Success -> PutResult.Success
+            ReconcileResult.Unsupported -> PutResult.Unsupported
+            ReconcileResult.SessionInvalid -> PutResult.SessionInvalid
+            ReconcileResult.Conflict -> PutResult.Error("Streckendaten wurden parallel geändert. Beide Fassungen bleiben erhalten; bitte Konflikt prüfen.")
+            is ReconcileResult.Error -> PutResult.Error(result.message)
+        }
+    }
+
+    /** Canonical business state, excluding transport version and server ID. */
+    fun fingerprint(item: Dataset): String {
+        val payload = enrichedPayload(item)
+        return canonical(JSONObject().put("kind", item.datasetKind.uppercase())
+            .put("route", desiredRouteNumber(item, payload) ?: JSONObject.NULL)
+            .put("track", desiredTrackKey(item, payload) ?: JSONObject.NULL).put("payload", payload))
     }
 
     private fun loadCanonical(token: String, worksiteId: String): Result {
@@ -112,13 +114,13 @@ class WorksiteTrackDataApi(
     private fun parseCanonical(body: String): Result {
         val root = runCatching { JSONObject(body) }.getOrNull()
             ?: return Result.Error("Serverantwort der Streckendaten ist ungültig.")
-        val array = root.optJSONArray("track_data") ?: JSONArray()
+        val array = root.optJSONArray("track_data") ?: return Result.Error("Unvollständiger Streckendaten-Snapshot; lokale Daten bleiben erhalten.")
         val datasets = buildList {
             for (index in 0 until array.length()) {
-                val item = array.optJSONObject(index) ?: continue
+                val item = array.getJSONObject(index)
                 val key = item.optString("dataset_key").trim()
                 val id = item.optString("id").trim()
-                if (key.isBlank() || id.isBlank()) continue
+                require(key.isNotBlank() && id.isNotBlank()) { "Streckendatensatz ohne Identität." }
 
                 val payload = item.optJSONObject("payload")
                     ?.let { JSONObject(it.toString()) }
@@ -126,12 +128,6 @@ class WorksiteTrackDataApi(
                 val kind = item.optString("dataset_kind", "AXIS").trim().uppercase()
                 val routeNumber = item.nullableString("route_number")
                 val trackKey = item.nullableString("track_key")
-                if (!payload.has("strecke") && routeNumber != null) {
-                    payload.put("strecke", routeNumber)
-                }
-                if (!payload.has("gleis") && trackKey != null) {
-                    payload.put("gleis", trackKey)
-                }
 
                 add(
                     Dataset(
@@ -171,7 +167,7 @@ class WorksiteTrackDataApi(
         desired: List<Dataset>
     ): ReconcileResult {
         val currentByKey = current.associateBy { it.datasetKey }
-        val desiredByKey = desired.associateBy { it.datasetKey }
+        require(desired.map { it.datasetKey }.distinct().size == desired.size) { "Doppelte Streckendaten-Identität." }
 
         for (item in desired) {
             val server = currentByKey[item.datasetKey]
@@ -196,6 +192,7 @@ class WorksiteTrackDataApi(
                 .put("payload", bodyPayload)
 
             val mutation = if (server == null) {
+                if (item.currentVersion > 0L) return ReconcileResult.Conflict
                 body.put("dataset_key", item.datasetKey)
                 sendMutation(
                     token,
@@ -207,7 +204,11 @@ class WorksiteTrackDataApi(
             } else {
                 val id = server.serverId
                     ?: return ReconcileResult.Error("Server-ID für Streckendatensatz fehlt.")
-                body.put("base_version", server.currentVersion)
+                // The caller supplies the version last applied locally. Never rebase
+                // a dirty edit onto a freshly fetched server version after a conflict.
+                if (item.currentVersion < 1L || item.currentVersion != server.currentVersion ||
+                    item.serverId != id) return ReconcileResult.Conflict
+                body.put("base_version", item.currentVersion)
                 sendMutation(
                     token,
                     "/api/v1/track-data/${encode(id)}",
@@ -240,38 +241,8 @@ class WorksiteTrackDataApi(
             }
         }
 
-        for (server in current) {
-            if (server.datasetKey in desiredByKey) continue
-            val id = server.serverId
-                ?: return ReconcileResult.Error("Server-ID für Streckendatensatz fehlt.")
-            val body = JSONObject().put("base_version", server.currentVersion)
-            when (
-                val mutation = sendMutation(
-                    token,
-                    "/api/v1/track-data/${encode(id)}",
-                    "DELETE",
-                    mutationId(
-                        worksiteId,
-                        "delete",
-                        server.datasetKey,
-                        server.currentVersion,
-                        body
-                    ),
-                    body
-                )
-            ) {
-                MutationResult.Unsupported -> return ReconcileResult.Unsupported
-                MutationResult.SessionInvalid -> return ReconcileResult.SessionInvalid
-                MutationResult.Conflict -> return ReconcileResult.Conflict
-                is MutationResult.Error -> {
-                    if (mutation.message == "TRACK_DATA_NOT_FOUND") {
-                        return ReconcileResult.Conflict
-                    }
-                    return ReconcileResult.Error(mutation.message)
-                }
-                MutationResult.Success -> Unit
-            }
-        }
+        // Missing local items are not deletion commands. Dedicated, versioned
+        // deletion actions must carry an explicit tombstone; never prune a snapshot.
 
         return ReconcileResult.Success
     }
@@ -387,7 +358,8 @@ class WorksiteTrackDataApi(
             canonical(value.opt(it))
         }
         is String -> JSONObject.quote(value)
-        is Number, is Boolean -> value.toString()
+        is Number -> java.math.BigDecimal(value.toString()).stripTrailingZeros().toPlainString()
+        is Boolean -> value.toString()
         else -> JSONObject.quote(value.toString())
     }
 
@@ -414,53 +386,6 @@ class WorksiteTrackDataApi(
             }
         } catch (error: Exception) {
             Result.Error(error.message ?: "Streckendaten konnten nicht geladen werden.")
-        } finally {
-            connection.disconnect()
-        }
-    }
-
-    private fun legacyReplace(
-        token: String,
-        worksiteId: String,
-        datasets: List<Dataset>
-    ): PutResult {
-        val connection = legacyOpen(worksiteId, "PUT", token).apply {
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json; charset=utf-8")
-        }
-        return try {
-            val array = JSONArray()
-            datasets.forEach { item ->
-                array.put(
-                    JSONObject()
-                        .put("dataset_key", item.datasetKey)
-                        .put("dataset_kind", item.datasetKind)
-                        .put("route_key", item.routeKey ?: JSONObject.NULL)
-                        .put("quelle_datei", item.quelleDatei)
-                        .put("achse_name", item.achseName)
-                        .put(
-                            "payload",
-                            runCatching { JSONObject(item.payloadJson) }
-                                .getOrElse { JSONObject() }
-                        )
-                )
-            }
-            OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use {
-                it.write(JSONObject().put("datasets", array).toString())
-            }
-            val code = connection.responseCode
-            val body = readBody(connection, code)
-            when (code) {
-                HttpURLConnection.HTTP_OK -> PutResult.Success
-                HttpURLConnection.HTTP_NOT_FOUND -> PutResult.Unsupported
-                HttpURLConnection.HTTP_UNAUTHORIZED,
-                HttpURLConnection.HTTP_FORBIDDEN ->
-                    if (DeviceAuthorization.sessionInvalid(code, runCatching { JSONObject(body).optString("detail") }.getOrDefault("")))
-                        PutResult.SessionInvalid else PutResult.Error(errorMessage(body, code))
-                else -> PutResult.Error(errorMessage(body, code))
-            }
-        } catch (error: Exception) {
-            PutResult.Error(error.message ?: "Streckendaten konnten nicht hochgeladen werden.")
         } finally {
             connection.disconnect()
         }

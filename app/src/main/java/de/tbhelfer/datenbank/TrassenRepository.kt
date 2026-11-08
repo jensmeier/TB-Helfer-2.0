@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
-class TrassenRepository(private val dao: TrassenDao) {
+class TrassenRepository(private val dao: TrassenDao, private val onChanged: () -> Unit = {}) {
 
     fun achsenFlow(): Flow<List<TrassenAchseEntity>> = dao.achsenFlow().flowOn(Dispatchers.IO)
 
@@ -102,14 +102,14 @@ class TrassenRepository(private val dao: TrassenDao) {
                 achsabstandM = achsabstandM
             )
         )
-        manuelleKmKalibrierungFuerAchseAnwenden(achse)
+        manuelleKmKalibrierungFuerAchseAnwenden(achse).also { onChanged() }
     }
 
     suspend fun loescheManuelleKmKalibrierung(achseId: Long): Int = withContext(Dispatchers.IO) {
         val achse = dao.achseMitId(achseId) ?: return@withContext 0
         val anker = dao.kmAnkerFuerAchseLoeschen(achse.name, achse.quelleDatei)
         val kmWerte = dao.manuelleKmWerteFuerAchseLoeschen(achse.id)
-        anker + kmWerte
+        (anker + kmWerte).also { onChanged() }
     }
 
     suspend fun manuelleKmKalibrierungenAnwenden(): Int = withContext(Dispatchers.IO) {

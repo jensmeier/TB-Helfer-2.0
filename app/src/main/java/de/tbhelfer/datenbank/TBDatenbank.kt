@@ -24,9 +24,10 @@ import androidx.room.TypeConverters
         TrassenAchseKorrekturEntity::class,
         TrassenKmAnkerEntity::class,
         TrassenManuellerAbschnittEntity::class,
-        TrassenAbschnittKmPunktEntity::class
+        TrassenAbschnittKmPunktEntity::class,
+        TrackSyncJournal::class
     ],
-    version = 19,
+    version = 22,
     exportSchema = false
 )
 @TypeConverters(
@@ -45,9 +46,19 @@ abstract class TBDatenbank : RoomDatabase() {
 
     abstract fun fotoDao(): FotoDao
 
+    abstract fun trackSyncJournalDao(): TrackSyncJournalDao
+
     abstract fun trassenDao(): TrassenDao
 
     companion object {
+        // 20/21 were experimental schemas; never reuse those version numbers.
+        // The established v19 database is extended without dropping any data.
+        val MIGRATION_19_22 = object : androidx.room.migration.Migration(19, 22) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS track_sync_journal (owner TEXT NOT NULL, entryKey TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(owner, entryKey))")
+            }
+        }
+
 
         private fun ensureBaustellenKnotenTable(db: androidx.sqlite.db.SupportSQLiteDatabase) {
             db.execSQL(
@@ -837,7 +848,7 @@ abstract class TBDatenbank : RoomDatabase() {
                     MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
                     MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                     MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
-                    MIGRATION_18_19, MIGRATION_20_19, MIGRATION_21_19
+                    MIGRATION_18_19, MIGRATION_19_22
                 )
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {

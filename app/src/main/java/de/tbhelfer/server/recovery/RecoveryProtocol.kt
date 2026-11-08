@@ -29,6 +29,8 @@ object RecoveryProtocol {
         // A client created before a new activation must not send an old request to its old server.
         if (origin(connection.url) != origin(URL(ServerConfig.BASE_URL)))
             throw IOException("Die Serverzuordnung wurde geändert. Alte Anfrage wurde nicht gesendet.")
+        connection.setRequestProperty("X-TB-App-Version", de.tbhelfer.BuildConfig.VERSION_NAME)
+        connection.setRequestProperty("X-TB-App-Build", de.tbhelfer.BuildConfig.VERSION_CODE.toString())
         connection.instanceFollowRedirects = false
         if (RecoveryWorkspace.switchPending()) throw IOException("Bestandswechsel vorbereitet. App-Neustart erforderlich.")
         // Never accept a recovery header supplied by an old caller.

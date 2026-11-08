@@ -157,7 +157,7 @@ class Server1DeltaApi(
         URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
 
     companion object {
-        val DEFAULT_ENTITY_TYPES = setOf("BTB", "BTB_ENTRY", "BTB_PARTICIPANT", "FILE", "WORKSITE_NODE", "WORKSITE", "WORKSITE_MEMBERSHIP", "WORKSITE_INVITATION")
+        val DEFAULT_ENTITY_TYPES = setOf("BTB", "BTB_ENTRY", "BTB_PARTICIPANT", "FILE", "WORKSITE_NODE", "WORKSITE", "WORKSITE_MEMBERSHIP", "WORKSITE_INVITATION", "DEFECT", "ACCEPTANCE", "TRACK_DATA")
     }
 }
 

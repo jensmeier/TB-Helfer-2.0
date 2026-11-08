@@ -235,18 +235,36 @@ object AppUpdateManager {
         apk: File,
         release: ReleaseInfo
     ): String? {
+        val signatureFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+            PackageManager.GET_SIGNING_CERTIFICATES else @Suppress("DEPRECATION") PackageManager.GET_SIGNATURES
         val packageInfo = runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 context.packageManager.getPackageArchiveInfo(
                     apk.absolutePath,
-                    PackageManager.PackageInfoFlags.of(0)
+                    PackageManager.PackageInfoFlags.of(signatureFlags.toLong())
                 )
             } else {
                 @Suppress("DEPRECATION")
-                context.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
+                context.packageManager.getPackageArchiveInfo(apk.absolutePath, signatureFlags)
             }
         }.getOrNull()
             ?: return "APK konnte nicht als Android-Paket gelesen werden. Update wurde verworfen."
+
+        @Suppress("DEPRECATION")
+        fun certificates(info: android.content.pm.PackageInfo): Set<String> {
+            val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                info.signingInfo?.apkContentsSigners else info.signatures
+            return signatures.orEmpty().map { signature ->
+                MessageDigest.getInstance("SHA-256").digest(signature.toByteArray()).joinToString("") { "%02x".format(it) }
+            }.toSet()
+        }
+        val installed = runCatching {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageInfo(context.packageName, signatureFlags)
+        }.getOrNull() ?: return "Signatur der installierten App konnte nicht geprüft werden."
+        if (certificates(installed).isEmpty() || certificates(installed) != certificates(packageInfo)) {
+            return "APK hat einen anderen Signaturschlüssel. Update verworfen; vorhandene App und Daten behalten."
+        }
 
         val apkPackage = packageInfo.packageName.orEmpty()
         val apkVersionName = packageInfo.versionName.orEmpty()

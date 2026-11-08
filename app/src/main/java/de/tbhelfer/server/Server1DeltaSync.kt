@@ -181,6 +181,38 @@ class Server1DeltaSync(context: Context) {
             }
         if (bound.isEmpty()) return ApplyResult.Success
 
+        // Refresh only the affected Fach type/worksite. Existing pending-edit
+        // guards in the local bridge preserve unsent local data.
+        val fachApi = Server1FachSyncApi()
+        val fachEvents = page.changes.filter { it.entityType in setOf("DEFECT", "ACCEPTANCE") }
+            .mapNotNull { event -> event.worksiteId?.let { it to event.entityType } }.toSet()
+        for ((worksite, type) in fachEvents) {
+            if (bound.none { it.context.worksiteServerId == worksite }) continue
+            val response = if (type == "DEFECT") fachApi.loadDefects(token, worksite) else fachApi.loadAcceptances(token, worksite)
+            when (response) {
+                Server1FachSyncApi.Result.SessionInvalid -> return ApplyResult.SessionInvalid
+                Server1FachSyncApi.Result.Unsupported -> return ApplyResult.Unsupported
+                is Server1FachSyncApi.Result.Error -> return ApplyResult.Error(response.message)
+                is Server1FachSyncApi.Result.Success -> ServiceLocator.collabSyncRepository.replaceServer1Snapshots(worksite, type, response.items)
+            }
+            runCatching { ServiceLocator.collabLocalBridge.applyServerStateToLocal(
+                worksiteServerIds = setOf(worksite), btbServerIds = emptySet(), includeOtherEntities = true)
+            }.getOrElse { return ApplyResult.Error(it.message ?: "Fachänderung konnte nicht übernommen werden.") }
+        }
+        val trackWorksites = page.changes.filter { it.entityType == "TRACK_DATA" }.mapNotNull { it.worksiteId }.toSet()
+        if (trackWorksites.isNotEmpty()) when (val track = ServiceLocator.worksiteTrackDataSync.synchronize(token, trackWorksites, receiveOnly = true)) {
+            is de.tbhelfer.datenbank.WorksiteTrackDataSync.Result.Success -> Unit
+            de.tbhelfer.datenbank.WorksiteTrackDataSync.Result.Unsupported -> return ApplyResult.Unsupported
+            de.tbhelfer.datenbank.WorksiteTrackDataSync.Result.SessionInvalid -> return ApplyResult.SessionInvalid
+            is de.tbhelfer.datenbank.WorksiteTrackDataSync.Result.Error -> {
+                // Persist a separate retry before advancing this feed: a track conflict
+                // must not indefinitely block unrelated BTB/helper events.
+                ErrorLogStore.record(appContext, ErrorHistory.Operation.FULL_SYNC, track.message)
+                try { TrackSyncWorker.enqueue(appContext).result.get(10, java.util.concurrent.TimeUnit.SECONDS) }
+                catch (error: Exception) { return ApplyResult.Error("Streckendaten-Wiederholung konnte nicht gespeichert werden.") }
+            }
+        }
+
         val nodeWorksites = WorksiteDeltaPolicy.nodeWorksites(page.changes, bound.map { it.context.worksiteServerId }.toSet()) +
             contextEvents.mapNotNull { it.worksiteId }.toSet().intersect(bound.map { it.context.worksiteServerId }.toSet())
         if (nodeWorksites.isNotEmpty()) {

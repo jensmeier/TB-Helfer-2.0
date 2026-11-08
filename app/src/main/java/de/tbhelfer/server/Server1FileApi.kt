@@ -273,7 +273,7 @@ class Server1FileApi(
     ): UploadResult {
         if (!file.isFile) return UploadResult.Error("Datei existiert nicht mehr: ${file.name}")
         val parentType = parentEntityType.uppercase()
-        if (parentType != "DEFECT" && parentType != "ACCEPTANCE" && parentType != "BTB") {
+        if (parentType !in setOf("DEFECT", "ACCEPTANCE", "BTB", "WORKSITE")) {
             return UploadResult.Error("Server-1.0-Dateilinktyp wird nicht unterstützt: $parentType")
         }
 

@@ -1,5 +1,7 @@
 package de.tbhelfer.ui.importexport
 
+import kotlinx.coroutines.flow.first
+
 import android.Manifest
 import android.content.Context
 import android.text.InputType
@@ -562,6 +564,8 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
         datei: StreckendatenZipDatei,
         zuordnung: ZipObjektZuordnung?
     ): ImportErgebnis {
+        de.tbhelfer.server.SurveyOriginalOutbox.retain(requireContext(), datei.dateiname, datei.bytes,
+            ServiceLocator.aktuelleBaustelleSpeicher.aktuelleBaustelleId.first())
         speichereStreckendatenZuordnung(datei, zuordnung)
         return when (datei.typ) {
             ZipDateiTyp.TRA -> importiereZipTraDatei(datei)
@@ -775,6 +779,8 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 "Datei konnte nicht geoeffnet werden."
             }.use { input -> input.readBytes() }
 
+            de.tbhelfer.server.SurveyOriginalOutbox.retain(requireContext(), dateiname, bytes,
+                ServiceLocator.aktuelleBaustelleSpeicher.aktuelleBaustelleId.first())
             val result = GraDateiParser.parse(dateiname, bytes)
             ServiceLocator.trassenRepository.graImportSpeichern(dateiname, result)
 
@@ -820,6 +826,8 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 "Datei konnte nicht geoeffnet werden."
             }.use { input -> input.readBytes() }
 
+            de.tbhelfer.server.SurveyOriginalOutbox.retain(requireContext(), dateiname, bytes,
+                ServiceLocator.aktuelleBaustelleSpeicher.aktuelleBaustelleId.first())
             val result = GvpDateiParser.parse(dateiname, bytes)
             ServiceLocator.trassenRepository.gvpImportSpeichern(dateiname, result)
 
@@ -860,6 +868,8 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 "Datei konnte nicht geoeffnet werden."
             }.use { input -> input.readBytes() }
 
+            de.tbhelfer.server.SurveyOriginalOutbox.retain(requireContext(), dateiname, bytes,
+                ServiceLocator.aktuelleBaustelleSpeicher.aktuelleBaustelleId.first())
             val result = KorDateiParser.parse(dateiname, bytes)
             ServiceLocator.trassenRepository.korImportSpeichern(dateiname, result)
 
@@ -900,6 +910,8 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
                 "Datei konnte nicht geoeffnet werden."
             }.use { input -> input.readBytes() }
 
+            de.tbhelfer.server.SurveyOriginalOutbox.retain(requireContext(), dateiname, bytes,
+                ServiceLocator.aktuelleBaustelleSpeicher.aktuelleBaustelleId.first())
             val result = TraDateiParser.parse(dateiname, bytes)
             ServiceLocator.trassenRepository.traImportSpeichern(result)
 
@@ -4010,6 +4022,7 @@ class ImportExportFragment : Fragment(R.layout.fragment_import_export) {
         } else {
             ServiceLocator.trassenDao.manuellenAbschnittEinfuegen(entity)
         }
+        de.tbhelfer.server.TrackSyncWorker.enqueue(requireContext())
         return entwurf.copy(id = id, erstelltAmEpochMs = entwurf.erstelltAmEpochMs ?: jetzt)
     }
 

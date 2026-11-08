@@ -399,11 +399,12 @@ class Server1FachSyncApi(
                 HttpURLConnection.HTTP_OK -> {
                     val root = runCatching { JSONObject(body) }.getOrNull()
                         ?: return Result.Error("Serverantwort konnte nicht gelesen werden.")
-                    val array = root.optJSONArray(arrayKey) ?: JSONArray()
+                    val array = root.optJSONArray(arrayKey)
+                        ?: return Result.Error("Unvollständige Fachantwort. Lokale Daten bleiben erhalten.")
                     val items = buildList {
                         for (index in 0 until array.length()) {
-                            val item = array.optJSONObject(index) ?: continue
-                            parseSnapshot(item, kind)?.let(::add)
+                            val item = array.getJSONObject(index)
+                            add(parseSnapshot(item, kind) ?: error("Fachdatensatz ohne gültige Identität."))
                         }
                     }
                     Result.Success(items)

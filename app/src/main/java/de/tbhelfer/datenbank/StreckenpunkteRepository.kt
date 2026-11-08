@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 
-class StreckenpunkteRepository(private val dao: StreckenpunktDao) {
+class StreckenpunkteRepository(private val dao: StreckenpunktDao, private val onChanged: () -> Unit = {}) {
 
     fun allePunkte(): Flow<List<StreckenpunktEntity>> = dao.allePunkte().flowOn(Dispatchers.IO)
 
@@ -83,11 +83,11 @@ class StreckenpunkteRepository(private val dao: StreckenpunktDao) {
             bezeichnung = bezeichnung.trim(),
             notiz = notiz?.trim().takeUnless { it.isNullOrBlank() }
         )
-        return withContext(Dispatchers.IO) { dao.einfuegen(entity) }
+        return withContext(Dispatchers.IO) { dao.einfuegen(entity).also { onChanged() } }
     }
 
     suspend fun aktualisieren(entity: StreckenpunktEntity): Int =
-        withContext(Dispatchers.IO) { dao.aktualisieren(entity) }
+        withContext(Dispatchers.IO) { dao.aktualisieren(entity).also { onChanged() } }
 
-    suspend fun loeschen(entity: StreckenpunktEntity): Int = withContext(Dispatchers.IO) { dao.loeschen(entity) }
+    suspend fun loeschen(entity: StreckenpunktEntity): Int = withContext(Dispatchers.IO) { dao.loeschen(entity).also { onChanged() } }
 }

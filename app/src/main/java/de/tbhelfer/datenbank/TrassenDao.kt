@@ -178,6 +178,12 @@ interface TrassenDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun achseEinfuegen(entity: TrassenAchseEntity): Long
 
+    @Update
+    suspend fun achseAktualisieren(entity: TrassenAchseEntity): Int
+
+    @Query("DELETE FROM trassen_sample_point WHERE achseId = :achseId")
+    suspend fun samplepunkteFuerAchseLoeschen(achseId: Long): Int
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun achseElementeEinfuegen(entities: List<TrassenAchseElementEntity>): List<Long>
 

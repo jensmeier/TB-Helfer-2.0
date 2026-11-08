@@ -115,6 +115,7 @@ object ServiceLocator {
                 // Entprellter bestehender WorkManager-Pfad: nach Provisioning/QR-Beitritt nicht nur
                 // die Server-Hülle, sondern auch die Unterbaustellen zeitnah synchronisieren.
                 SofortSync.anstossen(appContext)
+                de.tbhelfer.server.TrackSyncWorker.enqueue(appContext)
             }
         )
     }
@@ -131,6 +132,8 @@ object ServiceLocator {
 
     val worksiteTrackDataSync: WorksiteTrackDataSync by lazy {
         WorksiteTrackDataSync(
+            database = datenbank,
+            appContext = appContext,
             trassenDao = trassenDao,
             streckenpunktDao = streckenpunktDao,
             bindingRepository = worksiteBindingRepository
@@ -138,7 +141,7 @@ object ServiceLocator {
     }
 
     val streckenpunkteRepository: StreckenpunkteRepository by lazy {
-        StreckenpunkteRepository(streckenpunktDao)
+        StreckenpunkteRepository(streckenpunktDao) { de.tbhelfer.server.TrackSyncWorker.enqueue(appContext) }
     }
 
     val fotoRepository: FotoRepository by lazy {
@@ -156,7 +159,7 @@ object ServiceLocator {
     }
 
     val trassenRepository: TrassenRepository by lazy {
-        TrassenRepository(trassenDao)
+        TrassenRepository(trassenDao) { de.tbhelfer.server.TrackSyncWorker.enqueue(appContext) }
     }
 
     val aktuelleBaustelleSpeicher: AktuelleBaustelleSpeicher by lazy {
@@ -181,6 +184,7 @@ object ServiceLocator {
 
     fun initialisieren(context: Context) {
         appContext = context.applicationContext
+        de.tbhelfer.server.TrackSyncWorker.schedule(appContext)
     }
 }
 
