@@ -4,7 +4,7 @@ import hashlib
 import json
 import logging
 import math
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from time import perf_counter
 from typing import Any, Literal
 from uuid import UUID
@@ -909,6 +909,10 @@ def finalize_btb(
     user: dict[str, Any] = Depends(require_csrf),
     mutation: MutationContext = Depends(mutation_context),
 ) -> dict:
+    return _finalize_btb(btb_id, payload, user, mutation)
+
+
+def _finalize_btb(btb_id, payload, user, mutation, *, automatic=False):
     started = perf_counter()
     final_path = temp_path = backup_path = None
     installed = False
@@ -920,6 +924,16 @@ def finalize_btb(
                 return replay_payload(receipt)
             lock_started = perf_counter()
             btb = _load_btb(cur, btb_id, for_update=True)
+            if automatic:
+                deadline = btb.get("started_at")
+                if btb["status"] != "ACTIVE" or deadline is None:
+                    return {"skipped": True}
+                deadline = deadline + timedelta(hours=16)
+                if deadline > datetime.now(timezone.utc):
+                    return {"skipped": True}
+                if btb.get("ended_at") is None:
+                    cur.execute("UPDATE tb.btbs SET ended_at=%s WHERE id=%s", (deadline, btb_id))
+                    btb["ended_at"] = deadline
             lock_read_ms = (perf_counter() - lock_started) * 1000
             context = worksite_context(cur, user, btb["worksite_id"])
             require_permission(context, "btb.finalize")
@@ -1010,16 +1024,24 @@ def finalize_btb(
             cur.execute("UPDATE tb.teams SET active_btb_id = NULL, updated_at = now() WHERE id = %s AND active_btb_id = %s", (btb["team_id"], btb_id))
             emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="FILE", entity_id=pdf_file["id"], operation=pdf_operation, entity_version=None, actor_user_id=user["user_id"])
             emit_change(cur, company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id, operation="FINALIZE", entity_version=row["version"], actor_user_id=user["user_id"])
-            audit(cur, action="BTB_FINALIZE", actor_user_id=user["user_id"], company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id, details={"snapshot_sha256": digest, "pdf_sha256": pdf_sha256, "pdf_file_id": str(pdf_file["id"]), "pdf_renderer": PDF_RENDERER_VERSION, "unfinished_override": allow_unfinished, "unfinished_user_ids": [str(item["user_id"]) for item in unfinished]})
+            audit(cur, action="BTB_FINALIZE", actor_user_id=user["user_id"], company_id=context["company_id"], worksite_id=btb["worksite_id"], entity_type="BTB", entity_id=btb_id, details={"automatic_16h": automatic, "snapshot_sha256": digest, "pdf_sha256": pdf_sha256, "pdf_file_id": str(pdf_file["id"]), "pdf_renderer": PDF_RENDERER_VERSION, "unfinished_override": allow_unfinished, "unfinished_user_ids": [str(item["user_id"]) for item in unfinished]})
             response = {**row, "final_pdf": public_final_pdf(pdf_file, btb_id=btb_id)}
             finish_mutation(cur, user=user, context=mutation, receipt_type="BTB_FINALIZE", entity_id=btb_id, result_version=row["version"], response_payload=response)
-        finish_pdf_install(temp_path, backup_path)
     except Exception:
         if installed and final_path is not None and backup_path is not None:
             rollback_pdf_install(final_path, backup_path, had_previous)
-        if temp_path is not None and backup_path is not None:
-            finish_pdf_install(temp_path, backup_path)
+        if temp_path is not None:
+            try:
+                finish_pdf_install(temp_path, None)
+            except OSError:
+                logger.exception("btb_finalize_temp_cleanup_pending btb_id=%s", btb_id)
         raise
+    # The transaction has committed. Cleanup failure must NEVER roll back the
+    # published bytes while the database/receipt already references their hash.
+    try:
+        finish_pdf_install(temp_path, backup_path)
+    except OSError:
+        logger.exception("btb_finalize_cleanup_pending btb_id=%s", btb_id)
     finished = perf_counter()
     logger.info(
         "btb_finalize_timing prepare_ms=%.1f lock_read_ms=%.1f render_ms=%.1f "

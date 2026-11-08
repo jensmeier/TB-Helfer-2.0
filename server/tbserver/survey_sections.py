@@ -13,6 +13,7 @@ from .events import audit, emit_change
 from .idempotency import MutationContext, begin_mutation, finish_mutation, mutation_context, replay_payload
 from .permissions import require_permission, worksite_context
 from .portal import current_portal_user, require_csrf
+from .track_visibility import track_data_visible
 from .survey_calibration import (
     DIRECTION_DOWN,
     DIRECTION_UP,
@@ -441,10 +442,11 @@ def list_survey_sections(
     user: dict[str, Any] = Depends(current_portal_user),
 ) -> dict:
     with transaction() as conn, conn.cursor() as cur:
-        worksite_context(cur, user, worksite_id)
+        context = worksite_context(cur, user, worksite_id)
+        require_permission(context, "worksite.view")
         cur.execute(
             """
-            SELECT id, worksite_id, worksite_node_id, dataset_key, route_number, track_key,
+            SELECT id, worksite_id, worksite_node_id, dataset_key, dataset_kind, route_number, track_key,
                    payload, version, source_original_id, created_by, created_at, updated_at
             FROM tb.track_data
             WHERE worksite_id = %s AND dataset_kind = %s AND deleted_at IS NULL
@@ -453,7 +455,7 @@ def list_survey_sections(
             """,
             (worksite_id, SECTION_KIND, limit),
         )
-        rows = [dict(row) for row in cur.fetchall()]
+        rows = [dict(row) for row in cur.fetchall() if track_data_visible(context, dict(row))]
     return {"survey_sections": rows}
 
 
@@ -561,7 +563,10 @@ def create_survey_section(
 def get_survey_section(dataset_id: UUID, user: dict[str, Any] = Depends(current_portal_user)) -> dict:
     with transaction() as conn, conn.cursor() as cur:
         dataset = _load_dataset(cur, dataset_id)
-        worksite_context(cur, user, dataset["worksite_id"])
+        context = worksite_context(cur, user, dataset["worksite_id"])
+        require_permission(context, "worksite.view")
+        if not track_data_visible(context, dataset):
+            raise HTTPException(404, "SURVEY_SECTION_NOT_FOUND")
         return _section_response(cur, dataset)
 
 

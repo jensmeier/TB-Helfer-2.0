@@ -60,6 +60,8 @@ CAPABILITIES: dict[str, bool] = {
     "survey_reference_contributions_v1": True,
     "survey_reference_change_feed_v1": True,
     "survey_shared_km_sync_v1": True,
+    "survey_shared_km_resolve_v1": True,
+    "btb_auto_finalize_16h_v1": True,
     "idempotent_mutations_v1": True,
     "sync_change_feed_v1": True,
     "sync_change_wait_v1": True,

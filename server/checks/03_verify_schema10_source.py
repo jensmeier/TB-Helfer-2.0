@@ -128,13 +128,12 @@ def main() -> int:
     require_text(
         ANDROID / "ui" / "bautagebuch" / "GesamtBilderlisteXlsx.kt",
         [
-            "autoFilter",
-            "state=\"frozen\"",
-            "hyperlink",
+            "ExportTabelleXlsx.bytes",
             "Verantwortlicher TB",
             "Bilddatei",
         ],
     )
+    require_text(ANDROID / "ui" / "bautagebuch" / "ExportTabelleXlsx.kt", ["autoFilter", 'state="frozen"', "hyperlink"])
     require_text(
         ANDROID / "server" / "WorksiteMediaApi.kt",
         [
@@ -157,13 +156,14 @@ def main() -> int:
         [
             "BTB $verantwortlicherTb",
             "BtbDokumentIdentitaet.aufloesen",
-            "BtbExportPaket.erstellenBaustellenExport(",
+            "zipModel.starten(ctx.applicationContext, item, speichern)",
             "BtbExportPaket.shareZip(",
             "item.schicht",
         ],
     )
 
     print(f"SCHEMA10_SOURCE_OK parts={len(parts)}")
+    require_text(ANDROID / "ui" / "baustelle" / "BaustellenFragment.kt", ["BtbExportPaket.erstellenBaustellenExport("])
     return 0
 
 

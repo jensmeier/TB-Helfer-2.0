@@ -45,7 +45,9 @@ def final_pdf_paths(
     )
     final_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = final_path.with_name(f".{final_path.name}.{uuid4().hex}.tmp")
-    backup_path = final_path.with_name(f".{final_path.name}.rollback")
+    # Cleanup runs after commit releases the BTB row lock. A unique backup keeps
+    # that cleanup from deleting the next finalization's rollback copy.
+    backup_path = final_path.with_name(f".{final_path.name}.{uuid4().hex}.rollback")
     return final_path, temp_path, backup_path
 
 

@@ -44,6 +44,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout pinned Android contract partner
+        uses: actions/checkout@v4
+        with:
+          ref: 9c1354eb163fd4d65caed1304a485821c016d7aa
+          path: .ci/android-source
+      - name: Use actual Android sources for cross-contract checks
+        run: |
+          git -C .ci/android-source rev-parse HEAD
+          rsync -a --delete .ci/android-source/app/ app/
+          rsync -a --delete .ci/android-source/gradle/ gradle/
+          cp .ci/android-source/build.gradle.kts .ci/android-source/settings.gradle.kts .ci/android-source/gradle.properties .
 
       - uses: actions/setup-python@v5
         with:
@@ -55,104 +66,113 @@ jobs:
         working-directory: server
         run: pip install -r requirements.txt
 
+      - name: Runtime unit regressions
+        env:
+          PYTHONPATH: server
+        run: python -m unittest discover -s server/tests -v
+
       - name: Foundation source checks
+        id: source_checks
+        continue-on-error: true
         run: |
-          python server/checks/20_verify_tb_server_1_foundation.py
-          python server/checks/21_verify_tb_server_1_auth_source.py
-          python server/checks/23_verify_tb_server_1_files_source.py
-          python server/checks/24_verify_tb_server_1_defects_acceptances_source.py
-          python server/checks/25_verify_tb_server_1_track_survey_source.py
-          python server/checks/26_verify_tb_server_1_idempotency_source.py
-          python server/checks/27_verify_tb_server_1_replay_coverage_source.py
-          python server/checks/28_verify_tb_server_1_device_auth_source.py
-          python server/checks/29_verify_tb_server_1_device_fach_auth_source.py
-          python server/checks/30_verify_tb_server_1_survey_parser_source.py
-          python server/checks/31_verify_tb_server_1_survey_sections_source.py
-          python server/checks/32_verify_tb_server_1_survey_projection_source.py
-          python server/checks/33_verify_tb_server_1_releases_source.py
-          python server/checks/34_verify_tb_server_1_btb_pdf_source.py
-          python server/checks/35_verify_tb_server_1_company_branding_source.py
-          python server/checks/36_verify_tb_server_1_admin_web_source.py
-          python server/checks/37_verify_tb_server_1_portal_fach_ui_source.py
-          python server/checks/38_verify_tb_server_1_worksite_invitations_source.py
-          python server/checks/39_verify_tb_server_1_system_status_source.py
-          python server/checks/40_verify_tb_server_1_release_binary_source.py
-          python server/checks/41_verify_tb_server_1_backup_jobs_source.py
-          python server/checks/42_verify_tb_server_1_restore_test_reset_source.py
-          python server/checks/43_verify_tb_server_1_restore_target_source.py
-          python server/checks/44_verify_tb_server_1_deployment_source.py
-          python server/checks/45_verify_tb_server_1_backup_retention_source.py
-          python server/checks/46_verify_tb_server_1_invitation_only_membership_source.py
-          python server/checks/47_verify_tb_server_1_invitation_qr_source.py
-          python server/checks/48_verify_android_server_1_invitation_source.py
-          python server/checks/49_verify_tb_server_1_restore_compose_overlay_source.py
-          python server/checks/50_verify_android_server_1_invitation_create_source.py
-          python server/checks/51_verify_android_server_1_team_source.py
-          python server/checks/52_verify_android_server_1_capabilities_source.py
-          python server/checks/53_verify_android_server_1_context_source.py
-          python server/checks/54_verify_tb_server_1_area_scope_source.py
-          python server/checks/55_verify_tb_server_1_file_parent_visibility_source.py
-          python server/checks/56_verify_tb_server_1_acceptance_result_source.py
-          python server/checks/57_verify_android_server_1_fach_read_sync_source.py
-          python server/checks/58_verify_android_server_1_fach_write_sync_source.py
-          python server/checks/59_verify_android_server_1_file_read_sync_source.py
-          python server/checks/60_verify_android_server_1_file_upload_source.py
-          python server/checks/61_verify_android_server_1_file_snapshot_cleanup_source.py
-          python server/checks/62_verify_android_server_1_file_truncation_guard_source.py
-          python server/checks/63_verify_android_server_1_btb_read_sync_source.py
-          python server/checks/64_verify_android_server_1_btb_write_sync_source.py
-          python server/checks/65_verify_android_server_1_btb_granularity_source.py
-          python server/checks/66_verify_android_server_1_btb_media_source.py
-          python server/checks/67_verify_android_server_1_btb_final_pdf_source.py
-          python server/checks/68_verify_android_server_1_btb_delete_source.py
-          python server/checks/69_verify_android_server_1_shared_sync_source.py
-          python server/checks/70_verify_tb_server_1_file_pagination_source.py
-          python server/checks/71_verify_server_1_worksite_tree_sync_source.py
-          python server/checks/72_verify_android_server_1_track_data_source.py
-          python server/checks/73_verify_server_1_worksite_lifecycle_source.py
-          python server/checks/74_verify_server_1_worksite_media_source.py
-          python server/checks/75_verify_portal_worksite_tree_model_source.py
-          python server/checks/76_verify_portal_fach_forms_source.py
-          python server/checks/77_verify_portal_fach_media_source.py
-          python server/checks/78_verify_defect_rejected_status_source.py
-          python server/checks/79_verify_acceptance_delete_sync_source.py
-          python server/checks/80_verify_acceptance_tombstone_apply_source.py
-          python server/checks/81_verify_portal_acceptance_delete_source.py
-          python server/checks/82_verify_tb_server_1_synology_staging_source.py
-          python server/checks/83_verify_android_staging_server_config_source.py
-          python server/checks/84_verify_device_activation_qr_source.py
-          python server/checks/85_verify_tb_server_1_user_delete_source.py
-          python server/checks/86_verify_tb_server_1_admin_overview_source.py
-          python server/checks/87_verify_release_admin_package_ui.py
-          python server/checks/88_verify_admin_permanent_purge_source.py
-          python server/checks/89_verify_identity_global_catalog_source.py
-          python server/checks/90_verify_system_automation_email_source.py
-          python server/checks/91_verify_system_status_live_ui_source.py
-          python server/checks/92_verify_btb_shift_end_source.py
-          python server/checks/93_verify_portal_btb_shift_end_source.py
-          python server/checks/94_verify_portal_btb_readable_source.py
-          python server/checks/95_verify_portal_btb_android_like_editor_source.py
-          python server/checks/96_verify_portal_btb_crud_source.py
-          python server/checks/97_verify_portal_btb_photo_meta_dedupe_source.py
-          python server/checks/98_verify_portal_btb_split_firms_weather_photo_sort_source.py
-          python server/checks/99_verify_btb_entry_soft_delete_recreate_source.py
-          python server/checks/100_verify_server_portal_btb_contract_source.py
-          python server/checks/101_verify_admin_portal_session_split_source.py
-          python server/checks/102_verify_delta_longpoll_source.py
-          python server/checks/103_verify_image_renditions_source.py
-          python server/checks/104_verify_structured_photo_metadata_source.py
-          python server/checks/105_verify_staging_memory_guard_source.py
-          python server/checks/106_verify_backup_rendition_exclusion_source.py
-          python server/checks/107_verify_runtime_probe_source.py
-          python server/checks/108_verify_synology_integration_apply_source.py
-          python server/checks/109_verify_readonly_acceptance_source.py
-          python server/checks/110_verify_backup_job_e2e_source.py
-          python server/checks/111_verify_post_deploy_e2e_source.py
-          python server/checks/112_verify_survey_reference_catalog_source.py
-          python server/checks/113_verify_survey_catalog_merge_logic.py
-          python server/checks/114_verify_survey_staging_reset_source.py
-          python server/checks/115_verify_survey_import_station_assignment_source.py
-          python server/checks/116_verify_survey_diagnostics_portal_source.py
+          failed=0
+          python server/checks/20_verify_tb_server_1_foundation.py || failed=1
+          python server/checks/21_verify_tb_server_1_auth_source.py || failed=1
+          python server/checks/23_verify_tb_server_1_files_source.py || failed=1
+          python server/checks/24_verify_tb_server_1_defects_acceptances_source.py || failed=1
+          python server/checks/25_verify_tb_server_1_track_survey_source.py || failed=1
+          python server/checks/26_verify_tb_server_1_idempotency_source.py || failed=1
+          python server/checks/27_verify_tb_server_1_replay_coverage_source.py || failed=1
+          python server/checks/28_verify_tb_server_1_device_auth_source.py || failed=1
+          python server/checks/29_verify_tb_server_1_device_fach_auth_source.py || failed=1
+          python server/checks/30_verify_tb_server_1_survey_parser_source.py || failed=1
+          python server/checks/31_verify_tb_server_1_survey_sections_source.py || failed=1
+          python server/checks/32_verify_tb_server_1_survey_projection_source.py || failed=1
+          python server/checks/33_verify_tb_server_1_releases_source.py || failed=1
+          python server/checks/34_verify_tb_server_1_btb_pdf_source.py || failed=1
+          python server/checks/35_verify_tb_server_1_company_branding_source.py || failed=1
+          python server/checks/36_verify_tb_server_1_admin_web_source.py || failed=1
+          python server/checks/37_verify_tb_server_1_portal_fach_ui_source.py || failed=1
+          python server/checks/38_verify_tb_server_1_worksite_invitations_source.py || failed=1
+          python server/checks/39_verify_tb_server_1_system_status_source.py || failed=1
+          python server/checks/40_verify_tb_server_1_release_binary_source.py || failed=1
+          python server/checks/41_verify_tb_server_1_backup_jobs_source.py || failed=1
+          python server/checks/42_verify_tb_server_1_restore_test_reset_source.py || failed=1
+          python server/checks/43_verify_tb_server_1_restore_target_source.py || failed=1
+          python server/checks/44_verify_tb_server_1_deployment_source.py || failed=1
+          python server/checks/45_verify_tb_server_1_backup_retention_source.py || failed=1
+          python server/checks/46_verify_tb_server_1_invitation_only_membership_source.py || failed=1
+          python server/checks/47_verify_tb_server_1_invitation_qr_source.py || failed=1
+          python server/checks/48_verify_android_server_1_invitation_source.py || failed=1
+          python server/checks/49_verify_tb_server_1_restore_compose_overlay_source.py || failed=1
+          python server/checks/50_verify_android_server_1_invitation_create_source.py || failed=1
+          python server/checks/51_verify_android_server_1_team_source.py || failed=1
+          python server/checks/52_verify_android_server_1_capabilities_source.py || failed=1
+          python server/checks/53_verify_android_server_1_context_source.py || failed=1
+          python server/checks/54_verify_tb_server_1_area_scope_source.py || failed=1
+          python server/checks/55_verify_tb_server_1_file_parent_visibility_source.py || failed=1
+          python server/checks/56_verify_tb_server_1_acceptance_result_source.py || failed=1
+          python server/checks/57_verify_android_server_1_fach_read_sync_source.py || failed=1
+          python server/checks/58_verify_android_server_1_fach_write_sync_source.py || failed=1
+          python server/checks/59_verify_android_server_1_file_read_sync_source.py || failed=1
+          python server/checks/60_verify_android_server_1_file_upload_source.py || failed=1
+          python server/checks/61_verify_android_server_1_file_snapshot_cleanup_source.py || failed=1
+          python server/checks/62_verify_android_server_1_file_truncation_guard_source.py || failed=1
+          python server/checks/63_verify_android_server_1_btb_read_sync_source.py || failed=1
+          python server/checks/64_verify_android_server_1_btb_write_sync_source.py || failed=1
+          python server/checks/65_verify_android_server_1_btb_granularity_source.py || failed=1
+          python server/checks/66_verify_android_server_1_btb_media_source.py || failed=1
+          python server/checks/67_verify_android_server_1_btb_final_pdf_source.py || failed=1
+          python server/checks/68_verify_android_server_1_btb_delete_source.py || failed=1
+          python server/checks/69_verify_android_server_1_shared_sync_source.py || failed=1
+          python server/checks/70_verify_tb_server_1_file_pagination_source.py || failed=1
+          python server/checks/71_verify_server_1_worksite_tree_sync_source.py || failed=1
+          python server/checks/72_verify_android_server_1_track_data_source.py || failed=1
+          python server/checks/73_verify_server_1_worksite_lifecycle_source.py || failed=1
+          python server/checks/74_verify_server_1_worksite_media_source.py || failed=1
+          python server/checks/75_verify_portal_worksite_tree_model_source.py || failed=1
+          python server/checks/76_verify_portal_fach_forms_source.py || failed=1
+          python server/checks/77_verify_portal_fach_media_source.py || failed=1
+          python server/checks/78_verify_defect_rejected_status_source.py || failed=1
+          python server/checks/79_verify_acceptance_delete_sync_source.py || failed=1
+          python server/checks/80_verify_acceptance_tombstone_apply_source.py || failed=1
+          python server/checks/81_verify_portal_acceptance_delete_source.py || failed=1
+          python server/checks/82_verify_tb_server_1_synology_staging_source.py || failed=1
+          python server/checks/83_verify_android_staging_server_config_source.py || failed=1
+          python server/checks/84_verify_device_activation_qr_source.py || failed=1
+          python server/checks/85_verify_tb_server_1_user_delete_source.py || failed=1
+          python server/checks/86_verify_tb_server_1_admin_overview_source.py || failed=1
+          python server/checks/87_verify_release_admin_package_ui.py || failed=1
+          python server/checks/88_verify_admin_permanent_purge_source.py || failed=1
+          python server/checks/89_verify_identity_global_catalog_source.py || failed=1
+          python server/checks/90_verify_system_automation_email_source.py || failed=1
+          python server/checks/91_verify_system_status_live_ui_source.py || failed=1
+          python server/checks/92_verify_btb_shift_end_source.py || failed=1
+          python server/checks/93_verify_portal_btb_shift_end_source.py || failed=1
+          python server/checks/94_verify_portal_btb_readable_source.py || failed=1
+          python server/checks/95_verify_portal_btb_android_like_editor_source.py || failed=1
+          python server/checks/96_verify_portal_btb_crud_source.py || failed=1
+          python server/checks/97_verify_portal_btb_photo_meta_dedupe_source.py || failed=1
+          python server/checks/98_verify_portal_btb_split_firms_weather_photo_sort_source.py || failed=1
+          python server/checks/99_verify_btb_entry_soft_delete_recreate_source.py || failed=1
+          python server/checks/100_verify_server_portal_btb_contract_source.py || failed=1
+          python server/checks/101_verify_admin_portal_session_split_source.py || failed=1
+          python server/checks/102_verify_delta_longpoll_source.py || failed=1
+          python server/checks/103_verify_image_renditions_source.py || failed=1
+          python server/checks/104_verify_structured_photo_metadata_source.py || failed=1
+          python server/checks/105_verify_staging_memory_guard_source.py || failed=1
+          python server/checks/106_verify_backup_rendition_exclusion_source.py || failed=1
+          python server/checks/107_verify_runtime_probe_source.py || failed=1
+          python server/checks/108_verify_synology_integration_apply_source.py || failed=1
+          python server/checks/109_verify_readonly_acceptance_source.py || failed=1
+          python server/checks/110_verify_backup_job_e2e_source.py || failed=1
+          python server/checks/111_verify_post_deploy_e2e_source.py || failed=1
+          python server/checks/112_verify_survey_reference_catalog_source.py || failed=1
+          python server/checks/113_verify_survey_catalog_merge_logic.py || failed=1
+          python server/checks/114_verify_survey_staging_reset_source.py || failed=1
+          python server/checks/115_verify_survey_import_station_assignment_source.py || failed=1
+          python server/checks/116_verify_survey_diagnostics_portal_source.py || failed=1
+          exit "$failed"
 
       # Apply and verify every migration currently shipped with the repository.
       - name: Apply fresh TB-Server 1.0 baseline
@@ -344,6 +364,10 @@ jobs:
           PY
           cd ..
           python server/checks/22_verify_tb_server_1_auth_runtime.py
+
+      - name: Require source contracts as well as runtime gates
+        if: always() && steps.source_checks.outcome == 'failure'
+        run: exit 1
 
       - name: API log on failure
         if: failure()

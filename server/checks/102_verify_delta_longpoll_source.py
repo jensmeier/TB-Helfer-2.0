@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 sync = (ROOT / "server/tbserver/sync.py").read_text(encoding="utf-8")
@@ -18,12 +19,12 @@ for token in (
     "_MAX_CONCURRENT_SYNC_QUERIES = 16",
     "_SYNC_QUERY_SEMAPHORE = asyncio.Semaphore",
     "async def _run_sync_query",
-    "@router.get("/events")",
+    '@router.get("/events")',
 ):
     assert token in sync, token
 
 assert "await asyncio.sleep(2)" not in sync
-assert "await _run_sync_query(_changes_for_worksite" in sync
-assert "params.extend([user["user_id"], limit])" in sync
+assert re.search(r"await _run_sync_query\(\s*_visible_changes", sync)
+assert 'params.extend([user["user_id"], limit])' in sync
 
 print("OK: server delta sync offers shared long-poll/SSE wakeup without per-client 2s DB polling")

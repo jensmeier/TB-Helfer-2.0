@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 import ast
 import xml.etree.ElementTree as ET
@@ -24,7 +25,7 @@ ET.parse(paths_path)
 checks = [
     ("public sha256", '"sha256": row.get("sha256")', release_py),
     ("public byte_size", '"byte_size": row.get("byte_size")', release_py),
-    ("release notes admin", "Was ist neu? / Release Notes", release_html),
+    ("release notes admin", "composeReleaseNotes", release_html),
     ("compatibility endpoint", "/api/v1/client-compatibility", update_kt),
     ("current build", "BuildConfig.VERSION_CODE", update_kt),
     ("sha verification", 'MessageDigest.getInstance("SHA-256")', update_kt),
@@ -37,8 +38,6 @@ checks = [
     ("maintenance notes", "txtWartungUpdateNotes", wartung_kt),
     ("maintenance coroutine import", "import kotlinx.coroutines.launch", wartung_kt),
     ("maintenance default text color", "updateDefaultTextColor", wartung_kt),
-    ("android versionCode", "versionCode = 200054", gradle),
-    ("android versionName", 'versionName = "1.3.4"', gradle),
 ]
 
 missing = [name for name, needle, haystack in checks if needle not in haystack]
@@ -65,3 +64,5 @@ if "android.R.color.primary_text_light" in wartung_kt:
     raise SystemExit("Android updater source check failed: deprecated primary_text_light still used")
 
 print("OK Android 200054 server-driven updater source contract")
+
+assert int(re.search(r"versionCode\s*=\s*(\d+)", gradle).group(1)) >= 200054

@@ -335,6 +335,8 @@ def worker_loop(*, once: bool = False, idle_seconds: float = 2.0) -> None:
         if now >= next_schedule_check:
             try:
                 schedule_due_automation()
+                from .btb_deadlines import finalize_due_btbs
+                finalize_due_btbs()
             except Exception as exc:
                 logger.exception(
                     "system automation scheduler failed; worker stays alive: %s",

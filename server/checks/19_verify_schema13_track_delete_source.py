@@ -41,7 +41,8 @@ assert "/api/v1/worksites/" in track_api and "/track-data" in track_api
 assert "/api/v1/track-data/" in track_api
 assert '"X-Client-Change-Id"' in track_api
 assert "base_version" in track_api
-assert "legacyReplace" in track_api
+assert "legacyReplace" not in track_api
+assert "item.currentVersion != server.currentVersion" in track_api
 assert "/api/v1/collab/worksites/" in track_api
 
 # Rohdatei-Uploads oder NAS-Dateischreibpfade bleiben verboten.
@@ -54,12 +55,13 @@ for needle in [
     'trassenDao.alleAchsen()',
     'trassenDao.alleSamplepunkte()',
     'streckenpunktDao.ladeAlleOnce()',
-    'streckenpunktDao.loeschenFuerBaustelle(baustelleId)',
+    'database.withTransaction',
+    'state.save(serverId, baseline)',
 ]:
     assert needle in track_sync, needle
 
 for needle in [
-    'requestMethod = "DELETE"',
+    '"DELETE"',
     '"/api/v1/collab/worksite-deletions"',
 ]:
     assert needle in delete_api, needle

@@ -59,7 +59,7 @@ def main() -> None:
         ('"company_logo_path": branding.get("logo_path")', btb),
         ('"pdf_logo_layout": branding.get("pdf_layout")', btb),
         ('class CompanyHeaderFlowable(Flowable):', pdf),
-        ('PDF_RENDERER_VERSION = "tb-server-btb-pdf-5"', pdf),
+        ('PDF_RENDERER_VERSION = "tb-server-btb-pdf-6"', pdf),
         ('self.height = 62 * mm', pdf),
         ('logo_bottom = max(2.0, self.height - 174)', pdf),
         ('ImageReader(str(logo_path))', pdf),

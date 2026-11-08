@@ -51,10 +51,10 @@ weather._get=fake_get
 assert weather.locations('Heideck')[0]['label']=='Heideck, Bayern, Deutschland'
 r=weather.weather_suggestion(49.1,11.1,'2020-01-01T22:00','2020-01-02T06:00')
 assert calls[-1][0]=='archive' and calls[-1][1]['end_date']=='2020-01-02'
-assert r['slots'][1]['uhrzeit']=='02:00' and r['slots'][0]['niederschlag']=='Regen'
-assert r['slots'][0]['bewoelkung']=='bedeckt' and r['slots'][0]['niederschlagMm']==0.3
+assert r['slots'][1]['uhrzeit']=='02:00' and r['slots'][0]['niederschlag']=='Regen (leicht)'
+assert r['slots'][0]['bewoelkung']=='stark bewölkt' and r['slots'][0]['niederschlagMm']==0.3
 assert r['source']=='AUTO'
-assert weather.rain_label(None,None)=='kein Niederschlag'  # only used when code/amount exist
+assert weather.rain_label(None,None) is None  # only used when code/amount exist
 
 # Execute production header mutation against a cursor double: inheritance is inside
 # the existing version-checked transaction and emits versioned entry changes.

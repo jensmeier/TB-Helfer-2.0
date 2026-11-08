@@ -48,7 +48,7 @@ if "STATE_CONFLICT" not in coord or "pending?.baseVersion != serverEntity.entity
     errors.append("Expliziter BTB-Delete wird nach Versionskonflikt nicht gegen den aktuellen Serverstand rebased.")
 
 # Remote-Tombstone muss denselben lokalen BTB entfernen; echte Fotos bleiben ueber den Service erhalten.
-if "deletedCollabEntities" not in coord or "BtbDeleteService.loeschen(appContext, row.entry)" not in coord:
+if "deletedCollabEntities" not in coord or "applyConfirmedBtbDeletion(server.worksiteServerId, entity.serverId, entity.entityVersion)" not in coord:
     errors.append("Server-Tombstones werden nicht lokal auf dieselbe btbId angewendet.")
 if "BtbFotoZuordnungSpeicher.btbLoesen" not in local_delete:
     errors.append("BTB-Loeschen loest die Fotozuordnung nicht, ohne echte Fotos zu vernichten.")
@@ -56,12 +56,17 @@ if "return Ergebnis(deleted, detached, null)" not in local_delete:
     errors.append("Nach BTB-Loeschen wird weiterhin ein anderer Verlauf-BTB automatisch aktiviert.")
 
 # Abschluss: fertiger BTB wird aus dem aktiven Kontext geloest und sein Status sofort synchronisiert.
-if "val abgeschlossen = entry.istFertig || entry.dokumentVersion > 0" not in active:
+if "BtbDokumentVersionierung.status(appContext, entry) == BtbAbschlussStatus.ABGESCHLOSSEN" not in active:
     errors.append("BtbActiveContext erkennt einen lokal/remote abgeschlossenen BTB nicht.")
 if "BtbActivePointerControl.nachAbschlussInaktivMerken" not in active:
     errors.append("Abgeschlossener BTB wird nicht aus dem aktiven Pointer geloest.")
-if "SofortSync.anstossen(appContext)" not in active:
-    errors.append("Abschlussstatus stoesst keinen Team-SofortSync an.")
+if "SofortSync.anstossen(" in active:
+    errors.append("Reiner Active-Pointer-Leseweg darf keinen Vollsync starten.")
+if "serverState.serverFinalReadOnly" not in active or "serverState.active" not in active:
+    errors.append("Kanonischer Server-Lifecycle fehlt.")
+bridge = read(ROOT / "app/src/main/java/de/tbhelfer/datenbank/CollabLocalBridge.kt")
+if "BtbDeleteService.loeschen(appContext, it)" not in bridge or "preservePendingBtbForConflict" not in coord:
+    errors.append("Bestaetigter Delete bzw. Schutz lokaler Aenderungen fehlt.")
 
 # Nur die bewusste Verlauf-Aktion darf einen abgeschlossenen BTB mit derselben btbId reaktivieren.
 if "CONSCIOUS_REOPEN_FILE" not in pointer or "fun bewusstReaktivieren" not in pointer:

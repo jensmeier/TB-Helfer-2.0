@@ -2184,9 +2184,8 @@ def create_manual_segment(payload: ManualSegmentCreate,
                 conflict_type=str(diagnostics.get("reason") or "MANUAL_GEOMETRY_CONFLICT"),
                 details=diagnostics,actor_user_id=user["user_id"],
                 actor_company_id=user.get("company_id"))
-        elif (source_kind == "MANUAL_GPS" and relation == "OVERLAP_CONFIRMED"
-              and existing_segment is not None and existing_segment.get("source_kind") == "ORIGINAL_TRA"):
-            segment = _mark_segment_status(cur,segment,"SUPERSEDED",user["user_id"])
+        # Geometry overlap does not prove equivalent chainage or full coverage.
+        # Keep the manual contribution active; original TRA bytes stay immutable.
         _axis_extent_refresh(cur,axis["id"],user["user_id"])
         response = {
             "segment_id":str(segment["id"]),"axis_id":str(axis["id"]),
@@ -2220,7 +2219,8 @@ def update_manual_segment(segment_id: UUID, payload: ManualSegmentUpdate,
             SELECT s.*,a.scope,a.company_id,a.route_number AS axis_route_number,
                    a.station_code AS axis_station_code,a.station_name AS axis_station_name,
                    a.track_key AS axis_track_key,a.direction AS axis_direction,
-                   a.axis_type AS axis_axis_type,a.display_name AS axis_display_name
+                   a.axis_type AS axis_axis_type,a.display_name AS axis_display_name,
+                   a.object_key AS axis_object_key
             FROM tb.survey_catalog_segments s
             JOIN tb.survey_catalog_axes a ON a.id=s.axis_id
             WHERE s.id=%s FOR UPDATE
@@ -2244,6 +2244,7 @@ def update_manual_segment(segment_id: UUID, payload: ManualSegmentUpdate,
             "direction":segment.get("axis_direction"),
             "axis_type":segment.get("axis_axis_type"),
             "display_name":segment.get("axis_display_name"),
+            "object_key":segment.get("axis_object_key"),
         }
         fields = _manual_fields(payload,axis_existing)
         points = _manual_geometry_points(payload.geometry) if payload.geometry is not None else _segment_points(cur,segment)
@@ -4296,6 +4297,32 @@ def _shared_km_prepare(cur, axis_id, payload):
         raise HTTPException(400, 'SURVEY_KM_LENGTH_CONFIRM_REQUIRED')
     anchors = _shared_km_anchors(cur, payload, _segment_points(cur, source))
     return axis, source, existing, points, info, anchors
+
+
+@router.get('/km-sync/resolve')
+def shared_km_resolve(source_signature: str = Query(min_length=24, max_length=64, pattern=r'^[a-f0-9]+$'),
+                      user: dict[str, Any] = Depends(current_portal_user)) -> dict[str, Any]:
+    """Resolve a local immutable TRA signature; never guess a nearest/name-matched axis.
+
+    Older Android parsers retain 24 hex characters. They may resolve only an
+    unambiguous source; all subsequent writes must bind the full returned hash.
+    """
+    with transaction() as conn, conn.cursor() as cur:
+        cur.execute('''SELECT DISTINCT a.id AS axis_id,a.current_version AS axis_version,
+                              a.display_name,s.id AS source_segment_id,s.current_version AS source_version,
+                              s.source_original_id,o.sha256
+                       FROM tb.survey_catalog_axes a
+                       JOIN tb.survey_catalog_segments s ON s.axis_id=a.id
+                       JOIN tb.survey_originals o ON o.id=s.source_original_id
+                       WHERE a.scope='GLOBAL' AND a.company_id IS NULL AND a.status <> 'ARCHIVED'
+                         AND s.source_kind='ORIGINAL_TRA' AND s.segment_status='ACTIVE'
+                         AND o.sha256 LIKE %s ORDER BY a.id,s.id LIMIT 2''', (source_signature+'%',))
+        matches = [dict(row) for row in cur.fetchall()]
+        if not matches:
+            raise HTTPException(404, 'SURVEY_KM_SOURCE_NOT_AVAILABLE')
+        if len(matches) != 1:
+            raise HTTPException(409, 'SURVEY_KM_SOURCE_AMBIGUOUS')
+        return _catalog_response(user, matches[0])
 
 
 @router.get('/axes/{axis_id}/km-sync')

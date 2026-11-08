@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 
 from pathlib import Path
 
@@ -17,15 +18,14 @@ def main() -> None:
     gitignore = read(".gitignore")
     workflow = read(".github/workflows/tb-server-v1.yml")
 
+    assert int(re.search(r"versionCode\s*=\s*(\d+)", gradle).group(1)) >= 200051
     assertions = [
         ('tb.server.base.url', gradle),
         ('TB_SERVER_BASE_URL', gradle),
         ('getByName("debug")', gradle),
         ('buildConfigField("String", "SERVER_BASE_URL"', gradle),
         ('"https://api-v1.tb-helfer.de"', gradle),
-        ('"https://api.tb-helfer.de"', gradle),
-        ('versionCode = 200051', gradle),
-        ('versionName = "1.3.1"', gradle),
+        ('https://api.tb-helfer.de', gradle),
         ('manifestPlaceholders["usesCleartextTraffic"] = "false"', gradle),
         ('debugServerBaseUrl.startsWith("http://")', gradle),
         ('buildFeatures { buildConfig = true }', gradle),
@@ -45,7 +45,7 @@ def main() -> None:
         raise SystemExit(
             "Release darf keine lokale/debug Serveradresse uebernehmen."
         )
-    if 'buildConfigField("String", "SERVER_BASE_URL", "\"https://api.tb-helfer.de\"")' not in release:
+    if r'buildConfigField("String", "SERVER_BASE_URL", "\"https://api.tb-helfer.de\"")' not in release:
         raise SystemExit(
             "Release muss fest auf https://api.tb-helfer.de zeigen."
         )

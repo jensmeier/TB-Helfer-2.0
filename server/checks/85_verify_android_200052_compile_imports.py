@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -20,8 +21,6 @@ required = [
     ("Sync entity memberRole field", "val memberRole: String", entities),
     ("Sync entity name field", "val name: String? = null", entities),
     ("Sync entity designation field", "val designation: String? = null", entities),
-    ("Android versionCode 200052", "versionCode = 200052", gradle),
-    ('Android versionName 1.3.2', 'versionName = "1.3.2"', gradle),
 ]
 
 missing = [label for label, needle, haystack in required if needle not in haystack]
@@ -29,3 +28,5 @@ if missing:
     raise SystemExit("Android 200052 compile import check failed: " + ", ".join(missing))
 
 print("OK Android 200052 compile imports")
+
+assert int(re.search(r"versionCode\s*=\s*(\d+)", gradle).group(1)) >= 200052

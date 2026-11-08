@@ -29,7 +29,7 @@ for(const source of [work,btb,gallery])assert(source.includes('{% include "v1_no
 function part(source,start,end){return source.slice(source.indexOf(start),source.indexOf(end,source.indexOf(start)));}
 c.esc=v=>String(v).replaceAll('<','&lt;');c.nodeTypeLabel=x=>x;c.nodeData=nodes;c.worksiteNodes=nodes;
 vm.runInContext(part(work,'function nodeName(','function nodeTypeLabel('),c);
-vm.runInContext(part(work,'function nodeOptions(','async function loadOverview('),c);
+vm.runInContext(part(work,'function nodeOptions(',"document.getElementById('renameWorksite')"),c);
 vm.runInContext(part(btb,'function worksiteNodeDirectory(','function worksiteNodeOptions('),c);
 vm.runInContext(part(btb,'function photoKm(','function validGps('),c);
 vm.runInContext(part(gallery,'function nodeLabel(','function draw('),c);
