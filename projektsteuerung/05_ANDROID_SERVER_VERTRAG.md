@@ -1,5 +1,11 @@
 # TB-HELFER 2.0 – ANDROID/SERVER VERTRAG
 
+## INTEGRATION-1108 – lokaler BTB-Export und Darstellung
+BTB-Verlauf exportiert genau eine btbId mit lokal verfügbaren Bildern ohne vorgezogenen Sync/Katalog. Das ZIP kennzeichnet fehlende lokale Dateien und seinen lokalen Umfang. Der explizite Baustellen-Gesamtexport behält den strengen Katalog-/Vollständigkeitscheck (EXPORT-1104). Keine stillschweigende Behauptung vollständiger Serverbestände. PDF bleibt gültiger gespeicherter Abschluss; Word kennzeichnet aktuellen lokalen Stand. Keine Änderung von API, Rechten, Datenmodell, Fotoanzahl-Limit oder gespeicherten Originalen.
+Wetter: gespeicherte BTB-Koordinaten vor passenden Fotokoordinaten; heutiger Handystandort nicht für historische Berichte. Nullwerte bleiben unbekannt, 0 mm trocken. Wetterzeiten über die ersten drei bleiben beim Android-Bearbeiten erhalten. Server/Android verwenden dieselben Wolken-/Niederschlagsbezeichnungen.
+Server-PDF/Portal: Kurz- und Langtext zusammen, gleiche Firma/Ort/Beschreibung über Zeitlücken zusammenfassen, drei Fotos pro Reihe beibehalten. Server-Renderer v6; bestehende Abschlussdateien unverändert. Unterschiedliche Geräte-/NAS-Installation: E2E OFFEN.
+
+
 ## Aktueller Integrationsblock AND-BIDIR-026 – 26.10.2026
 **QUELLSTAND IMPLEMENTIERT / SERVER-HANDLER- UND PORTAL-TESTS BESTANDEN / ANDROID-BUILD UND GERÄTE-/NAS-E2E OFFEN.** Dieser Abschnitt ersetzt für AND-BIDIR-026 die frühere Angabe „Korrektur offen“; historische Abschnitte unten bleiben als Verlauf erhalten.
 - Ausdrücklicher Nutzerauftrag zur Entwicklung beider Seiten. Basis Android6a0e7e4 / Server923cf93, Auftragscommits Android21ce70e / Server1f925bd. Androidziel jetzt **1.3.32/200082** mit passender Release-MD; installierter Altstand laut vorherigem Screenshot1.3.31/200081, keine Installation200082 bestätigt.
@@ -1099,3 +1105,4 @@ Nutzer bestätigt ausdrücklich: manuelle KM vom Handy gehören in den gemeinsam
 - Android-Quellenbindung/Outbox/Altbestandübernahme/globaler Feedempfang ausdrücklich OFFEN, als separater Androidauftrag im Vertrag beschrieben. Der vorhandene destruktive Android-Sollbestandvergleich wurde nicht nebenbei verändert. Noch kein durchgängiger Handy→Server→anderesFirmenhandy-Nachweis. Ein-Anker/unklare Altbestände bleiben lokale Entwürfe, nicht als hochgeladen darstellen.
 - Echte PostgreSQL-/PostGIS-/HTTP-/Postman-/Browser-/Pixel-/Poco-/NAS-E2E sowie Feed-Lockwartezeit/Durchsatz OFFEN. Kein Deployment/SSH/Produktivschreiben/APK. Keine Migration. Status-Excel-Nachtrag nach bekannt nicht verifizierbarem Binärabruf weiter OFFEN; Original nicht überschrieben.
 - Serverstatus QUELLSTAND FERTIG / GEZIELTE LOKALE FUNKTIONSPRÜFUNGEN BESTANDEN / INTEGRATION-CI OFFEN / ANDROID-ANBINDUNG OFFEN / DEPLOY OFFEN / E2E OFFEN. Vertrag: [SHARED_KM_1103](vertraege/SHARED_KM_1103.md). Umfang, Nachweise und spätere Übernahme: [SHARED_KM_1103](uebergaben/SHARED_KM_1103.md). Nächster Schritt: echter isolierter PostgreSQL/PostGIS-/API-Test und separater Androidanschluss; NAS nur nach Auftrag.
+

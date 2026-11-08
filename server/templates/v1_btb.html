@@ -389,15 +389,28 @@ function photoSection(meta){
     type==='BESONDERHEITEN'?'BESONDERHEIT':
     type==='MAENGEL_SCHAEDEN'?'MANGEL_SCHADEN':'ARBEIT';
 }
+function photoDescription(meta){
+  const short=String(meta&&meta.kurztext||'').trim(),detail=String(meta&&meta.notiz||'').trim();
+  if(!detail)return short;
+  return !short||short.toLocaleLowerCase('de')===detail.toLocaleLowerCase('de')?detail:short+' – '+detail;
+}
+function photoGroupText(items){
+  const metas=items.map(item=>photoMeta(item.p));
+  const times=metas.filter(m=>m.epoch&&Number.isFinite(Number(m.epoch))).sort((a,b)=>Number(a.epoch)-Number(b.epoch)).map(photoTime);
+  const kms=metas.map(m=>tbDisplayKm(m.km)).filter(n=>n!==null).sort((a,b)=>a-b);
+  const range=values=>values.length?(values[0]===values[values.length-1]?values[0]:values[0]+'–'+values[values.length-1]):'';
+  return [range(times),kms.length?'KM '+range(kms.map(n=>n.toFixed(3).replace('.',','))):'',
+    photoDescription(metas[0]),'Bild '+items.map(item=>item.index+1).join(', ')].filter(Boolean).join(' · ');
+}
 function photoEventText(p,index){
   const m=photoMeta(p);
   const node=worksiteNodeLabel(String(m.worksiteNodeKey||''));
-  const parts=[photoTime(m),photoKm(m),String(m.firma||'').trim(),node==='Hauptbaustelle'?'':node,String(m.kurztext||'').trim()].filter(Boolean);
+  const parts=[photoTime(m),photoKm(m),String(m.firma||'').trim(),node==='Hauptbaustelle'?'':node,photoDescription(m)].filter(Boolean);
   return parts.join(' · ')+(parts.length?' · ':'')+'Bild '+(index+1);
 }
 function photoCardHtml(p,index,editable){
   const m=photoMeta(p);
-  const title=String(m.kurztext||'').trim()||('Foto '+(index+1));
+  const title=photoDescription(m)||('Foto '+(index+1));
   const main=[photoTime(m),photoKm(m),String(m.firma||'').trim()].filter(Boolean).join(' · ');
   const node=worksiteNodeLabel(String(m.worksiteNodeKey||''));
   const objectPlace=[String(m.objektKennung||'').trim(),String(m.objektBereich||'').trim()].filter(Boolean).join(' · ');
@@ -808,7 +821,7 @@ function renderFirmGrouped(section,list,firms){
   }).join('');
 }
 function photoAlreadyRepresented(meta,list,legacyLines){
-  const text=normalizedSummary(meta&&meta.kurztext||'');
+  const text=normalizedSummary(photoDescription(meta));
   const time=photoTime(meta);
   if(!text||text==='foto'||text==='synchronisiertes btb foto')return false;
   const candidates=(list||[]).map(compactLine).concat((legacyLines||[]).map(x=>x.text));
@@ -828,24 +841,23 @@ function renderPhotoEvents(section,list,legacyLines){
     // from another photo with similar text, time, or GPS coordinates.
     const firmId=String(m.firmaId||'').trim();
     const nodeKey=String(m.worksiteNodeKey||'').trim();
-    const key=JSON.stringify([firmId,nodeKey]);
-    if(!groups.has(key))groups.set(key,{firmId,nodeKey,photos:[]});
+    const firmName=String(m.firma||'').trim();
+    const key=JSON.stringify([firmId,firmId?'':firmName,nodeKey,photoDescription(m)]);
+    if(!groups.has(key))groups.set(key,{firmId,firmName,nodeKey,photos:[]});
     groups.get(key).photos.push({p,index});
   });
   return Array.from(groups.values()).sort(function(a,b){
-    const an=String(firms[a.firmId]?.name||a.firmId||'Allgemein');
-    const bn=String(firms[b.firmId]?.name||b.firmId||'Allgemein');
+    const an=String(firms[a.firmId]?.name||a.firmName||a.firmId||'Allgemein');
+    const bn=String(firms[b.firmId]?.name||b.firmName||b.firmId||'Allgemein');
     return an.localeCompare(bn,'de')||
       (a.nodeKey||'').localeCompare(b.nodeKey||'','de');
   }).map(function(group){
     const firm=group.firmId?firms[group.firmId]:null;
-    const company=firm?firm.name:(group.firmId?'Firma nicht zugeordnet':'Allgemein');
+    const company=firm?firm.name:(group.firmName||(group.firmId?'Firma nicht zugeordnet':'Allgemein'));
     const node=group.nodeKey?worksiteNodeLabel(group.nodeKey):'Ort nicht zugeordnet';
     return '<div class="btb-firm"><div class="btb-firm-head"><span class="btb-firm-name">'+esc(company)+'</span></div>'+
       '<div class="btb-node-group"><div class="btb-node-title">'+esc(node)+'</div>'+
-      group.photos.map(function(item){
-        return '<div class="btb-photo-event"><div>'+esc(photoEventText(item.p,item.index))+'</div><span class="btb-photo-badge">Foto</span></div>';
-      }).join('')+'</div></div>';
+      '<div class="btb-photo-event"><div>'+esc(photoGroupText(group.photos))+'</div><span class="btb-photo-badge">Foto</span></div></div></div>';
   }).join('');
 }
 function renderContentNodeGroups(rows){
@@ -1624,6 +1636,7 @@ loadBtb()
   .catch(function(error){show('err',error.message||String(error));});
 </script>
 {% endblock %}
+
 
 
 

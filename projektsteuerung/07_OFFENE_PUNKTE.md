@@ -1,5 +1,11 @@
 # TB-HELFER 2.0 – OFFENE PUNKTE
 
+## INTEGRATION-1108 – Umsetzung 08.11.2026
+Expliziter Bauauftrag des Nutzers. Server-PDF-Renderer v6: vollständiger Kurz-/Langtext, Fotogruppen ohne künstliche Fünfminutentrennung bei gleicher Firma/Ort/Beschreibung, Dateigrößen und umgebrochene Wetterangaben einschließlich 0 mm. Portal folgt derselben Text-/Gruppenregel. Drei Fotospalten und individuelles Fotoanzahllimit bleiben erhalten; vorhandene Abschlussdateien werden nicht umgeschrieben. Wetterbezeichnungen an Android angeglichen.
+Lokal: 22 bestehende Funktionstests + 3 neue Pythonregressionen PASS; PDF-Referenztest (physisch drei Bilder nebeneinander, Fotoanzahl, Null-KM und GPS-Links) PASS; Portalregression mit sieben Assertions PASS; Wetter-/Fotoseite visuell geprüft. Kein NAS-E2E oder Containerbuild behauptet.
+Android feature/tb-android-2.0 Runtime01a6614fec5f054e7484830c8bd91eb0ca80356f, vorbereitet1.3.43/200093: lokaler Einzel-BTB-ZIP ohne Katalogzwang mit ZIP speichern/teilen, Wetterort/Zeitraum/Fehleranzeige, zusätzliche Wetterzeiten erhalten. Erstbau CI42472214428 scheiterte vor Kompilierung am Gradle-Downloadtimeout (10 Sekunden); nur Buildjob gezielt wiederholt. Quellvertragsprüfungen03/13/19/83/85/86 weiterhin rot wie Ausgangsstand, nicht abgeschwächt. Pixel/Poco OFFEN. Kein Deployment, keine Migration, keine Datenlöschung.
+
+
 ## Aktueller Integrationsblock AND-BIDIR-026 – 26.10.2026
 **QUELLSTAND IMPLEMENTIERT / SERVER-HANDLER- UND PORTAL-TESTS BESTANDEN / ANDROID-BUILD UND GERÄTE-/NAS-E2E OFFEN.** Dieser Abschnitt ersetzt für AND-BIDIR-026 die frühere Angabe „Korrektur offen“; historische Abschnitte unten bleiben als Verlauf erhalten.
 - Ausdrücklicher Nutzerauftrag zur Entwicklung beider Seiten. Basis Android6a0e7e4 / Server923cf93, Auftragscommits Android21ce70e / Server1f925bd. Androidziel jetzt **1.3.32/200082** mit passender Release-MD; installierter Altstand laut vorherigem Screenshot1.3.31/200081, keine Installation200082 bestätigt.
@@ -642,3 +648,4 @@ Status QUELLSTAND FERTIG / GEZIELTE SOURCE- UND JAVASCRIPT-PRÜFUNG BESTANDEN / 
 - Android-Quellenbindung/Outbox/Altbestandübernahme/globaler Feedempfang ausdrücklich OFFEN, als separater Androidauftrag im Vertrag beschrieben. Der vorhandene destruktive Android-Sollbestandvergleich wurde nicht nebenbei verändert. Noch kein durchgängiger Handy→Server→anderesFirmenhandy-Nachweis. Ein-Anker/unklare Altbestände bleiben lokale Entwürfe, nicht als hochgeladen darstellen.
 - Echte PostgreSQL-/PostGIS-/HTTP-/Postman-/Browser-/Pixel-/Poco-/NAS-E2E sowie Feed-Lockwartezeit/Durchsatz OFFEN. Kein Deployment/SSH/Produktivschreiben/APK. Keine Migration. Status-Excel-Nachtrag nach bekannt nicht verifizierbarem Binärabruf weiter OFFEN; Original nicht überschrieben.
 - Serverstatus QUELLSTAND FERTIG / GEZIELTE LOKALE FUNKTIONSPRÜFUNGEN BESTANDEN / INTEGRATION-CI OFFEN / ANDROID-ANBINDUNG OFFEN / DEPLOY OFFEN / E2E OFFEN. Vertrag: [SHARED_KM_1103](vertraege/SHARED_KM_1103.md). Umfang, Nachweise und spätere Übernahme: [SHARED_KM_1103](uebergaben/SHARED_KM_1103.md). Nächster Schritt: echter isolierter PostgreSQL/PostGIS-/API-Test und separater Androidanschluss; NAS nur nach Auftrag.
+

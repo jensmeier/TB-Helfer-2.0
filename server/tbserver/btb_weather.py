@@ -72,23 +72,31 @@ def sample_times(start, end):
 
 
 def cloud_label(percent):
-    if percent is None:
+    if percent is None or not math.isfinite(percent) or not 0 <= percent <= 100:
         return None
-    return 'klar' if percent < 20 else 'leicht bewölkt' if percent < 50 else 'wolkig' if percent < 80 else 'bedeckt'
+    for limit, label in ((5, 'sonnig / wolkenlos / klar'), (25, 'heiter'), (50, 'leicht bewölkt'),
+                         (75, 'wolkig'), (90, 'stark bewölkt')):
+        if percent <= limit:
+            return label
+    return 'bedeckt'
 
 
 def rain_label(code, amount):
-    if code in (71, 73, 75, 77, 85, 86):
-        return 'Schnee'
-    if code in (95, 96, 99):
-        return 'Gewitter'
-    if code in (56, 57, 66, 67):
-        return 'gefrierender Regen'
-    if code in (51, 53, 55):
-        return 'Nieselregen'
-    if code in (61, 63, 65, 80, 81, 82) or (amount or 0) > 0:
-        return 'Regen'
-    return 'kein Niederschlag'
+    if amount is not None and (not math.isfinite(amount) or amount < 0):
+        amount = None
+    if amount == 0:
+        return 'trocken'
+    labels = {51: 'Nieselregen', 53: 'Nieselregen', 55: 'Nieselregen',
+              56: 'gefrierender Regen', 57: 'gefrierender Regen', 66: 'gefrierender Regen', 67: 'gefrierender Regen',
+              61: 'Regen (leicht)', 63: 'Regen (mäßig)', 65: 'Regen (stark)',
+              80: 'Schauer', 81: 'Schauer', 82: 'Schauer', 68: 'Schneeregen', 69: 'Schneeregen',
+              77: 'Graupel', 71: 'Schneefall (leicht)', 73: 'Schneefall (mäßig)', 75: 'Schneefall (stark)',
+              85: 'Schneefall (leicht)', 86: 'Schneefall (stark)', 95: 'Gewitter', 96: 'Hagel', 99: 'Hagel'}
+    if code in labels:
+        return labels[code]
+    if amount is None:
+        return None
+    return 'Nieselregen' if amount < 0.3 else 'Regen (leicht)' if amount < 1.5 else 'Regen (mäßig)' if amount < 4 else 'Regen (stark)'
 
 
 def weather_suggestion(lat, lon, start, end):
@@ -126,3 +134,4 @@ def weather_suggestion(lat, lon, start, end):
     return {'source': 'AUTO', 'standEpochMs': int(datetime.now(timezone.utc).timestamp()*1000),
             'lat': lat, 'lon': lon, 'slots': slots, 'provider': 'Open-Meteo',
             'providerUrl': 'https://open-meteo.com/', 'dataset': service}
+

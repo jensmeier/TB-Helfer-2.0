@@ -16,7 +16,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.platypus import Flowable, Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
-PDF_RENDERER_VERSION = "tb-server-btb-pdf-5"
+PDF_RENDERER_VERSION = "tb-server-btb-pdf-6"
 PDF_PHOTO_MAX_SIZE_PX = (1600, 1200)
 PDF_PHOTO_JPEG_QUALITY = 82
 
@@ -632,3 +632,4 @@ def render_btb_pdf(
         photo_files=photo_files,
         renderer_version=PDF_RENDERER_VERSION,
     )
+

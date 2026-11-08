@@ -449,6 +449,29 @@ def _photo_numbering(snapshot: dict[str, Any], meta: dict[str, Any]) -> tuple[li
     return ordered, {str(photo.get("id")): index for index, photo in enumerate(ordered, 1)}
 
 
+def _photo_description(metadata: dict[str, Any]) -> str:
+    """Same display rule as Android BtbPhotoDescription; stored fields stay separate."""
+    short, detail = _text(metadata.get("kurztext")), _text(metadata.get("notiz"))
+    if not detail:
+        return short
+    if not short or short.casefold() == detail.casefold():
+        return detail
+    return short + " – " + detail
+
+
+def _photo_size_label(photo: dict[str, Any], file_info: dict[str, Any] | None) -> str | None:
+    # Label the supplied file, never imply this is the camera original's byte size.
+    size = _number(photo.get("byte_size"))
+    if size is None and isinstance(file_info, dict):
+        source = file_info.get("path")
+        if isinstance(source, Path) and source.is_file():
+            size = source.stat().st_size
+    if size is None or size < 0:
+        return None
+    value = f"{size / 1048576:.2f} MiB" if size >= 1048576 else f"{size / 1024:.1f} KiB"
+    return "Dateigröße: " + value.replace(".", ",")
+
+
 def _photo_section_lines(
     snapshot: dict[str, Any],
     meta: dict[str, Any],
@@ -467,7 +490,7 @@ def _photo_section_lines(
         section = PHOTO_SECTION.get(photo_type, "ARBEIT")
         company = _text(metadata.get("firma"))
         node_key = _text(metadata.get("worksiteNodeKey"))
-        short = _text(metadata.get("notiz")) or _text(metadata.get("kurztext")) or "Foto"
+        short = _photo_description(metadata) or "Foto"
         grouped.setdefault((section, company, node_key, short), []).append(photo)
 
     def epoch(photo: dict[str, Any]) -> float:
@@ -479,46 +502,41 @@ def _photo_section_lines(
 
     for (section, company, node_key, short), photos in grouped.items():
         photos.sort(key=epoch)
-        clusters: list[list[dict[str, Any]]] = []
-        for photo in photos:
-            if not clusters or epoch(photo) - epoch(clusters[-1][-1]) > 5 * 60:
-                clusters.append([photo])
-            else:
-                clusters[-1].append(photo)
-        for cluster in clusters:
-            first, last = cluster[0], cluster[-1]
-            first_time = _time_hm(first.get("captured_at"))
-            last_time = _time_hm(last.get("captured_at"))
-            time_text = first_time if first_time == last_time else f"{first_time}-{last_time}"
-            kms = [_number((photo.get("photo_metadata") or {}).get("km")) for photo in cluster]
-            kms = [km for km in kms if km is not None]
-            km_text = _km_range(min(kms), max(kms)) if kms else None
-            nums = sorted(
-                numbers[str(photo.get("id"))]
-                for photo in cluster
-                if str(photo.get("id")) in numbers
-            )
-            image_label = ""
-            if nums:
-                segments: list[str] = []
-                start = end = nums[0]
-                for number in nums[1:]:
-                    if number == end + 1:
-                        end = number
-                    else:
-                        segments.append(str(start) if start == end else f"{start}-{end}")
-                        start = end = number
-                segments.append(str(start) if start == end else f"{start}-{end}")
-                image_label = f" [Bild {'+'.join(segments)}]"
-            value = " ".join(
-                part
-                for part in (time_text, f"({km_text})" if km_text else None, short)
-                if part
-            ) + image_label
-            changed = any(str(photo.get("id")) in changed_photo_ids for photo in cluster)
-            by_section.setdefault(section, []).append(
-                SectionLine(company or None, node_key or None, value, changed)
-            )
+        # One range per same section/company/node/description, as on Android.
+        cluster = photos
+        first, last = cluster[0], cluster[-1]
+        first_time = _time_hm(first.get("captured_at"))
+        last_time = _time_hm(last.get("captured_at"))
+        time_text = first_time if first_time == last_time else f"{first_time}-{last_time}"
+        kms = [_number((photo.get("photo_metadata") or {}).get("km")) for photo in cluster]
+        kms = [km for km in kms if km is not None]
+        km_text = _km_range(min(kms), max(kms)) if kms else None
+        nums = sorted(
+            numbers[str(photo.get("id"))]
+            for photo in cluster
+            if str(photo.get("id")) in numbers
+        )
+        image_label = ""
+        if nums:
+            segments: list[str] = []
+            start = end = nums[0]
+            for number in nums[1:]:
+                if number == end + 1:
+                    end = number
+                else:
+                    segments.append(str(start) if start == end else f"{start}-{end}")
+                    start = end = number
+            segments.append(str(start) if start == end else f"{start}-{end}")
+            image_label = f" [Bild {'+'.join(segments)}]"
+        value = " ".join(
+            part
+            for part in (time_text, f"({km_text})" if km_text else None, short)
+            if part
+        ) + image_label
+        changed = any(str(photo.get("id")) in changed_photo_ids for photo in cluster)
+        by_section.setdefault(section, []).append(
+            SectionLine(company or None, node_key or None, value, changed)
+        )
     return by_section
 
 
@@ -909,76 +927,53 @@ def _weather_rows(meta: dict[str, Any]) -> tuple[str, list[tuple[str, str, str, 
         cloud = _text(raw.get("bewoelkung")) or "-"
         rain = _text(raw.get("niederschlag")) or "-"
         rain = rain.replace("trocken (kein Niederschlag)", "trocken")
+        amount = _number(raw.get("niederschlagMm"))
+        if amount is not None and amount >= 0:
+            rain += " · " + f"{amount:g}".replace(".", ",") + " mm"
         rows.append((time or "-", temp, cloud, rain))
     return "   ".join(source_bits), rows
 
 
 def _draw_weather(writer: AndroidStyleWriter, meta: dict[str, Any]) -> None:
     source, rows = _weather_rows(meta)
-    box_width = (CONTENT_W - 12.0) / 2.0
-    gap_x = 4.0
-    columns = (
-        31.0,
-        30.0,
-        66.0,
-        box_width - 12.0 - 31.0 - 30.0 - 66.0 - 3 * gap_x,
-    )
-    source_lines = (
-        _wrap_text(source, "Helvetica", 7.5, box_width - 12.0)
-        if source
-        else []
-    )
-    height = (
-        22.0
-        + (len(source_lines) * 9.0 if source_lines else 0.0)
-        + (14.0 if rows else 0.0)
-        + max(1, len(rows)) * 12.0
-        + 9.0
-    )
-    writer.ensure(height)
-    top = writer.y
-    x = MARGIN_L
-    writer.draw_box_header("Wetter", x=x, width=box_width, top=top)
-    y = top + 31.0
+    x, width = MARGIN_L, CONTENT_W
+    columns = (48.0, 48.0, (width - 108.0) * 0.45, (width - 108.0) * 0.55)
+    xs = [x + 6.0]
+    for column in columns[:-1]:
+        xs.append(xs[-1] + column)
 
-    writer.c.setFont("Helvetica", 7.5)
-    writer.c.setFillColor(colors.HexColor("#555555"))
-    for line in source_lines:
-        writer.c.drawString(x + 6.0, writer.pdf_y(y), line)
-        y += 9.0
-    writer.c.setFillColor(colors.black)
-
-    if rows:
-        xs = [x + 6.0]
-        for width in columns[:-1]:
-            xs.append(xs[-1] + width + gap_x)
-        writer.c.setFont("Helvetica", 7.2)
+    def header(continued: bool = False) -> None:
+        writer.ensure(48.0)
+        writer.draw_box_header("Wetter" + (" (Fortsetzung)" if continued else ""),
+                               x=x, width=width, top=writer.y)
+        writer.y += 31.0
+        writer.c.setFont("Helvetica-Bold", 7.4)
         for xpos, label in zip(xs, ("Zeit", "Temp", "Bewölkung", "Niederschlag")):
-            writer.c.drawString(xpos, writer.pdf_y(y), label)
-        y += 11.0
+            writer.c.drawString(xpos, writer.pdf_y(writer.y), label)
+        writer.y += 13.0
 
-        for row in rows:
+    header()
+    # Wrap source and all cells; page continuation never drops a weather value.
+    for line in _wrap_text(source, "Helvetica", 7.5, width - 12.0) if source else []:
+        if writer.y + 12.0 > PAGE_H - MARGIN_BOTTOM:
+            writer.new_page()
+            header(True)
+        writer.c.setFont("Helvetica", 7.5)
+        writer.c.drawString(x + 6.0, writer.pdf_y(writer.y), line)
+        writer.y += 10.0
+    for row in rows or [("-", "", "", "")]:
+        cells = [_wrap_text(value, "Helvetica", 7.4, columns[i] - 8.0) for i, value in enumerate(row)]
+        for line_index in range(max(1, *(len(cell) for cell in cells))):
+            if writer.y + 12.0 > PAGE_H - MARGIN_BOTTOM:
+                writer.new_page()
+                header(True)
             writer.c.setFont("Helvetica", 7.4)
-            for index, value in enumerate(row):
-                clipped = value
-                max_width = columns[index] - 3.0
-                while (
-                    len(clipped) > 1
-                    and stringWidth(clipped, "Helvetica", 7.4) > max_width
-                ):
-                    clipped = clipped[:-1]
-                if clipped != value:
-                    clipped = clipped[:-1] + "…" if len(clipped) > 1 else clipped
-                writer.c.drawString(xs[index], writer.pdf_y(y), clipped)
-            y += 12.0
-    else:
-        writer.c.setFont("Helvetica", 8.5)
-        writer.c.drawString(x + 6.0, writer.pdf_y(y), "-")
-        y += 12.0
-
-    bottom = top + height
-    writer.draw_frame(x, top, box_width, bottom)
-    writer.y = bottom + 10.0
+            for xpos, cell in zip(xs, cells):
+                if line_index < len(cell):
+                    writer.c.drawString(xpos, writer.pdf_y(writer.y), cell[line_index])
+            writer.y += 10.0
+        writer.y += 4.0
+    writer.y += 10.0
 
 
 def _measure_group_lines(groups: list[tuple[str, list[str]]], width: float) -> float:
@@ -1338,7 +1333,7 @@ def _draw_photo_appendix(
                     values = []
                     if place:
                         values.append("Ort: " + place)
-                    desc = _text(m.get("notiz")) or _text(m.get("kurztext")) or _text(measured_photo.get("original_name"))
+                    desc = _photo_description(m) or _text(measured_photo.get("original_name"))
                     if desc:
                         values.append(desc)
                     if _text(m.get("firma")):
@@ -1355,6 +1350,9 @@ def _draw_photo_appendix(
                     lon = _number(measured_photo.get("gps_lon") if measured_photo.get("gps_lon") is not None else m.get("lon"))
                     if lat is not None and lon is not None and -90 <= lat <= 90 and -180 <= lon <= 180:
                         values.append(f"GPS: {lat:.6f}, {lon:.6f}")
+                    size_label = _photo_size_label(measured_photo, file_by_id.get(str(measured_photo.get("id"))))
+                    if size_label:
+                        values.append(size_label)
                     wrapped_count = sum(len(_wrap_text(v, "Helvetica", 7.4, cell_width - 14.0)) for v in values)
                     row_heights.append(24.0 + 190.0 + 6.0 + wrapped_count * 8.7 + 12.0)
                 cell_height = max(220.0, *row_heights)
@@ -1448,8 +1446,7 @@ def _draw_photo_appendix(
 
                     meta_y = image_top + image_height + 6.0
                     short = (
-                        _text(metadata.get("notiz"))
-                        or _text(metadata.get("kurztext"))
+                        _photo_description(metadata)
                         or _text(photo.get("original_name"))
                     )
                     details = []
@@ -1491,6 +1488,9 @@ def _draw_photo_appendix(
                         gps_line = f"GPS: {lat:.6f}, {lon:.6f}"
                         details.append(gps_line)
 
+                    size_label = _photo_size_label(photo, file_info)
+                    if size_label:
+                        details.append(size_label)
                     writer.c.setFont("Helvetica", 7.4)
                     for detail in details:
                         for line in _wrap_text(
@@ -1571,8 +1571,7 @@ def render_android_style_btb_pdf(
                 "ARBEIT",
             )
             short = (
-                _text(metadata.get("notiz"))
-                or _text(metadata.get("kurztext"))
+                _photo_description(metadata)
                 or _text(photo.get("original_name"))
                 or "Foto"
             )
@@ -1638,4 +1637,5 @@ def render_android_style_btb_pdf(
 
     writer.c.setSubject(f"PDF-Renderer: {renderer_version}")
     writer.finish()
+
 

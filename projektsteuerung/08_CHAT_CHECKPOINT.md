@@ -1,5 +1,9 @@
 # TB-HELFER 2.0 – CHAT CHECKPOINT
 
+## INTEGRATION-1108 – 08.11.2026
+Nutzer genehmigt Umsetzung. Server-Renderer v6, Portal-Text-/Fotogruppen und Wetterlabels implementiert. 22 bestehende Funktionstests,3 neue Regressionen, PDF-Referenztest und Portaltest mit7 Assertions lokal PASS; visuelle Kontrolle PASS. Keine NAS-Übernahme. Android Runtime01a6614f vorbereitet1.3.43/200093. CI42472214428 scheitert zweimal beim Gradle-Download vor dem Build; Timeoutanpassung folgt. Source-Verträge03/13/19/83/85/86 weiterhin rot, nicht abgeschwächt. Geräte-E2E OFFEN.
+
+
 ## Aktueller Integrationsblock AND-BIDIR-026 – 26.10.2026
 **QUELLSTAND IMPLEMENTIERT / SERVER-HANDLER- UND PORTAL-TESTS BESTANDEN / ANDROID-BUILD UND GERÄTE-/NAS-E2E OFFEN.** Dieser Abschnitt ersetzt für AND-BIDIR-026 die frühere Angabe „Korrektur offen“; historische Abschnitte unten bleiben als Verlauf erhalten.
 - Ausdrücklicher Nutzerauftrag zur Entwicklung beider Seiten. Basis Android6a0e7e4 / Server923cf93, Auftragscommits Android21ce70e / Server1f925bd. Androidziel jetzt **1.3.32/200082** mit passender Release-MD; installierter Altstand laut vorherigem Screenshot1.3.31/200081, keine Installation200082 bestätigt.
@@ -2166,3 +2170,4 @@ Status QUELLSTAND FERTIG / GEZIELTE SOURCE- UND JAVASCRIPT-PRÜFUNG BESTANDEN / 
 - Android-Quellenbindung/Outbox/Altbestandübernahme/globaler Feedempfang ausdrücklich OFFEN, als separater Androidauftrag im Vertrag beschrieben. Der vorhandene destruktive Android-Sollbestandvergleich wurde nicht nebenbei verändert. Noch kein durchgängiger Handy→Server→anderesFirmenhandy-Nachweis. Ein-Anker/unklare Altbestände bleiben lokale Entwürfe, nicht als hochgeladen darstellen.
 - Echte PostgreSQL-/PostGIS-/HTTP-/Postman-/Browser-/Pixel-/Poco-/NAS-E2E sowie Feed-Lockwartezeit/Durchsatz OFFEN. Kein Deployment/SSH/Produktivschreiben/APK. Keine Migration. Status-Excel-Nachtrag nach bekannt nicht verifizierbarem Binärabruf weiter OFFEN; Original nicht überschrieben.
 - Serverstatus QUELLSTAND FERTIG / GEZIELTE LOKALE FUNKTIONSPRÜFUNGEN BESTANDEN / INTEGRATION-CI OFFEN / ANDROID-ANBINDUNG OFFEN / DEPLOY OFFEN / E2E OFFEN. Vertrag: [SHARED_KM_1103](vertraege/SHARED_KM_1103.md). Umfang, Nachweise und spätere Übernahme: [SHARED_KM_1103](uebergaben/SHARED_KM_1103.md). Nächster Schritt: echter isolierter PostgreSQL/PostGIS-/API-Test und separater Androidanschluss; NAS nur nach Auftrag.
+
