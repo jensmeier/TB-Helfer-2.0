@@ -1,21 +1,16 @@
 # TB-HELFER – MASTERSTATUS
-Stand08.11.2026 – unabhängige Gesamtprüfung.
-Geprüfter SERVER-Fachstand `b213bcbfe8d5fcf49c17e71108b8be04167f4d7f`; ANDROID-Fachstand `a8401775a3f607594df91468e728ee3f6d3a1ec4`.
-Nachfolgende Dokumentationscommits verändern diese geprüften Fachstände nicht.
-[Vollständiger Prüfbericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [Unveränderte vorherige Fassungen](archiv/GESAMTPRUEFUNG_2026-11-08/README.md).
+Stand 08.11.2026 – Umsetzung GESAMT-1108 nach ausdrücklichem Bauauftrag.
+SERVER-Teststand `b924da3e9bbff603a78ca55753cefb439f1ac607`, Fachcode `b17530d305797837d42f3049681f10cd919ea4b5`.
+ANDROID-Fach-/APK-Stand `cda78c2f42fd7b1acd76d60612ce42d882662edf`, 1.3.46 / 200096; nachfolgender Instrumentierungsstand `680ef37e9781eb4e4b0b8da04b5db7e6b2d42340`.
+Nachfolgende Dokumentationscommits verändern diese Fachstände nicht.
+[Aktueller Bericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [vorherige Statusfassungen](archiv/UMSETZUNG_2026-11-08_VORHER/01_MASTERSTATUS.md).
 
-| Bereich | Aktueller Nachweis |
-|---|---|
-| SERVER | 1.0.0-dev/APIv1/PDF6; Migrationen001–024 im Quellstand; PR6 offen/Draft/merge conflict |
-| ANDROID | 1.3.44/200094; PR11 offen/kein Draft/merge conflict |
-| Android Build | CI42479073804 Buildjob SUCCESS,233 Tests,0Fehler; Lint391Warnungen; HEAD seit Build nur Dokumentation |
-| Gesamt-CI | NICHT BESTANDEN; Android-Vertragsjob und Serverfoundation rot |
-| Server Build | Nachweis am älteren a5a0f862; neuere Runtimeänderungen im geprüften HEAD nicht damit abgedeckt |
-| NAS / Pixel / Poco | Installierter/deployter aktueller Stand und Gesamt-E2E OFFEN |
-| Neue Fehler | AUDIT-1108-01 Helfer-Trassendatenrechte; AUDIT-1108-02 Finalize-Dateirollback nach DB-Commit |
-| Bekannte Hauptlücken | TRACK_KM_1103, SHARED-KM-Androidanschluss, Fachdelta, Update-Signatur, manuelle Katalogfälle |
-| Dokumentation |00–08 vereinheitlicht; Altstände exakt archiviert; Restbacklog nicht automatisch geschlossen |
+Android BUILD BESTANDEN und gesamter CI-Lauf42495975421 BESTANDEN am Baucommit cda78c2f42fd7b1acd76d60612ce42d882662edf. 245 Unit-Tests in35Suiten,0Fehler/0übersprungen; Lint0Fehler/391Warnungen. APK1.3.46/200096 und exakt passende Release-MD heruntergeladen; Manifest/Commit/SHA256 gegengeprüft.
+Server BUILD/CI BESTANDEN: vollständiger Lauf42496224535 am b924da3e9bbff603a78ca55753cefb439f1ac607 gegen Android cda78c2f42fd7b1acd76d60612ce42d882662edf. 66 Unit-Tests,100 Foundation-Prüfskripte,24Migrationen in frischer PostgreSQL-Testumgebung, Authentifizierungsablauf, Container-/Snapshot-/Restore-/Rechte-/Recoverygate sowie255Sync-Wait-Verbindungen erfolgreich. Kein produktiver NAS-Test.
+Room INSTRUMENTIERUNG BESTANDEN: Lauf42496070087 am680ef37e9781eb4e4b0b8da04b5db7e6b2d42340, Android15/API35-Emulator,2/2Tests. Echtes Room/SQLite: additive Migration19→22 erhält Achse; Geometrie+Journal rollen bei Ausnahme zusammen zurück und werden bei Erfolg gemeinsam bestätigt; Journale sind nach Owner getrennt. Kein Pixel-/Poco-/NAS-Netzwerktest.
+Offen: gemeinsame Trassen-/KM-Löschabsichten und Konfliktoberfläche; KM-Sprünge und GVP-/Mast-Bearbeitung; vollständiger objektweiser Fachdelta-/globaler Katalogfeed; Offline-Android-Nachlauf der 16h-Frist; experimentelle Android-DB 20/21; alter Installationssignierschlüssel und reale NAS-/Pixel-/Poco-E2E. Kein NAS-Deployment, kein Merge, keine produktive Migration oder Datenänderung ausgeführt.
 
-QUELLCODE GEPRÜFT und gezielte SOURCE-TESTS BESTANDEN; keine pauschale Funktionsfreigabe. Geschützte Bestätigungen bleiben erhalten. Einzeljob≠Gesamtworkflow, Build≠Installation≠E2E.
-Nächste Aufgaben: [02](02_AKTIVER_AUFTRAG.md), Befundregister[07](07_OFFENE_PUNKTE.md), Abnahme[06](06_E2E_TESTSTATUS.md).
-Actions01.–08.11:26Läufe/58Jobversuche,169,58 gemessene Laufzeitminuten; Abrechnung/Freiminutenrest OFFEN. Zusatzbudget0USD unverändert. Keine neuen CI-Läufe beauftragt.
+Geschützt und erhalten: Word, drei Bilder pro Reihe, gespeicherte Fotoanzahl, stabile IDs und Originale sowie historische BESTÄTIGT/PASST/FUNKTIONIERT/ERLEDIGT-Markierungen. Neue Tests sind keine erneute pauschale Praxisbestätigung. Ungeprüfte ältere Restaufträge bleiben im Archiv offen zur Einordnung.
+
+PR6 offen/Draft, PR11 offen/kein Draft; beide mergeable=false/dirty, kein Merge.
+Für die10zugeordneten CI-Läufe wurden20Jobversuche mit zusammen53,23Minuten gemessener Joblaufzeit erfasst, einschließlich Fehlern/Wiederholungen. Das sind Laufzeitdaten, keine Abrechnung. Tatsächlich berechnete Minuten, Monatsverbrauch und Freiminutenrest bleiben mangels Billingzugriff OFFEN. Zusatzbudget0USD unverändert; keine Einsparung behauptet.

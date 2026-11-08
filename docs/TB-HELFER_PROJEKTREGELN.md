@@ -15,7 +15,7 @@ Für praktische Arbeiten auf der Synology gilt als Standardweg:
 Bei Deployment-Anleitungen für SERVER sind daher File Station + Container Manager + Container-Terminal zu bevorzugen.
 
 ## Prüfstand08.11.2026
-Die folgenden Fachregeln bleiben verbindlich. Zielregeln sind nicht automatisch Implementierungsnachweise. Tatsächlicher Stand, offene Vertragslücken und Teststufen stehen in `projektsteuerung/01_MASTERSTATUS.md` bis `07_OFFENE_PUNKTE.md`; frühere Fassungen unter `projektsteuerung/archiv/GESAMTPRUEFUNG_2026-11-08/`. Aktuelle Bereinigung ändert keinen Produktcode und keine geschützte Abnahme.
+Die folgenden Fachregeln bleiben verbindlich. Zielregeln sind nicht automatisch Implementierungsnachweise. Tatsächlicher Stand, offene Vertragslücken und Teststufen stehen in `projektsteuerung/01_MASTERSTATUS.md` bis `07_OFFENE_PUNKTE.md`; frühere Fassungen unter `projektsteuerung/archiv/GESAMTPRUEFUNG_2026-11-08/`. Die anschließende Umsetzung GESAMT-1108 wurde mit „okay alles bauen“ ausdrücklich beauftragt; tatsächliche Code-/Test-/Installationsstände stehen in00–08. Geschützte Abnahmen bleiben erhalten; kein NAS-Deployment ohne Auftrag.
 
 ## 0. Gemeinsame Projektsteuerung
 

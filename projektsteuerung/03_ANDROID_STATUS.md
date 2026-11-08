@@ -1,16 +1,16 @@
 # TB-HELFER – ANDROID STATUS
-Stand08.11.2026 – unabhängige Gesamtprüfung.
-Geprüfter SERVER-Fachstand `b213bcbfe8d5fcf49c17e71108b8be04167f4d7f`; ANDROID-Fachstand `a8401775a3f607594df91468e728ee3f6d3a1ec4`.
-Nachfolgende Dokumentationscommits verändern diese geprüften Fachstände nicht.
-[Vollständiger Prüfbericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [Unveränderte vorherige Fassungen](archiv/GESAMTPRUEFUNG_2026-11-08/README.md).
+Stand 08.11.2026 – Umsetzung GESAMT-1108 nach ausdrücklichem Bauauftrag.
+SERVER-Teststand `b924da3e9bbff603a78ca55753cefb439f1ac607`, Fachcode `b17530d305797837d42f3049681f10cd919ea4b5`.
+ANDROID-Fach-/APK-Stand `cda78c2f42fd7b1acd76d60612ce42d882662edf`, 1.3.46 / 200096; nachfolgender Instrumentierungsstand `680ef37e9781eb4e4b0b8da04b5db7e6b2d42340`.
+Nachfolgende Dokumentationscommits verändern diese Fachstände nicht.
+[Aktueller Bericht](uebergaben/GESAMTPRUEFUNG_2026-11-08.txt) · [vorherige Statusfassungen](archiv/UMSETZUNG_2026-11-08_VORHER/01_MASTERSTATUS.md).
 
-Branch `feature/tb-android-2.0`,1.3.44/200094, PR11 offen/kein Draft. Baucommit2d2ac0ee3b2a815781f5cfee0f3f281a2a8ad74c; aktueller Prüf-HEAD nur8Dokumentationsdateien später.
-BUILD BESTANDEN: CI42479073804 / Job128726829680,233/233Tests, Lint0Fehler/391Warnungen; Berichtsartefakt13616922517 tatsächlich ausgewertet. Gesamtworkflow FAILURE durch separaten Vertragsjob03/13/19/83/85/86.
-Export1108B: PDF-Unterbaustellen, portable Fotoliste, Mängel-/Abnahme-XLSX im Build; Gesamtbilder-CSV entfernt; Word unverändert. APK und exakt passende Release-MD bereits vorhanden, in dieser Prüfung keine APK erzeugt.
-INSTALLIERT/E2E aktueller Build auf Pixel/Poco OFFEN. CI-Debugzertifikat weicht von vorheriger CI-APK ab; installierte Signatur unbekannt. Nicht deinstallieren, um ein Update zu erzwingen.
-## Offene Hauptpunkte
-TRACK_KM_1103: vollständiger lokaler Bestand als Sendesoll, Lösch-/409-Risiko; Helferempfang vor Validierung destruktiv, nicht atomar.
-SHARED-KM-1103: Server unterstützt gemeinsame KM-Beiträge, Androidanschluss fehlt; lokale Anker/Genauigkeit nicht vollständig übertragen.
-Delta-Typen DEFECT/ACCEPTANCE/TRACK_DATA/globaler Survey fehlen; allgemeiner Fachsync existiert trotzdem.
-Logo40–250 statt Server40–400; Versionsheader fehlen;16-Stunden-Automatik nicht vollständig nachgewiesen.
-Vorhandene selektive BTB-Outbox, Sicherung vor Remote-Löschung, stabile IDs, kleine Bildversionen, Reopen und Metadatenpfade bleiben geschützt. Keine Appcodeänderung im Prüfauftrag.
+Android BUILD BESTANDEN und gesamter CI-Lauf42495975421 BESTANDEN am Baucommit cda78c2f42fd7b1acd76d60612ce42d882662edf. 245 Unit-Tests in35Suiten,0Fehler/0übersprungen; Lint0Fehler/391Warnungen. APK1.3.46/200096 und exakt passende Release-MD heruntergeladen; Manifest/Commit/SHA256 gegengeprüft.
+
+Umsetzung: WorksiteTrackDataSync/Api mit gespeichertem Ausgangsstand, Konfliktschutz ohne Rebase/implizite Löschung, vollständiger Validierung und atomarem Room-Empfang; Achs-IDs/Originalelemente bleiben erhalten. Journal liegt in derselben Hauptdatenbank, Schema19→22 additiv. Arbeitsaufträge dauerhaft über WorkManager, zusätzlich15min-Fallback. SharedKmSync über eindeutige Originalsignatur, Quellenversion, dauerhafte Beitrags-ID und exakte ausstehende Anfrage; pro Prozess serialisiert. Originaloutbox bewahrt neue Importbytes und nutzt WLAN, vorhandenen Datei-/Original-/Parservertrag. Fachfeed lädt betroffene Mängel-/Abnahmeliste; Trassenkonflikte werden protokolliert/persistent wiederholt. Logo40–400, authentifizierte Versionsheader und APK-Zertifikatsvergleich implementiert.
+
+Die beigefügte APK ist ein DEBUG-Testbuild. APK_SHA256: 80b11549b88a10dffe84ade49557393ad47c149adcaa9ee571cafe7c2f351c7d; Größe: 27044724 Bytes. Signatur-Zertifikat SHA256: 9d90db043eb1a5658761a4cc9a2f2164d5ebcb73fd31f510f84c9c42b79f7d76.
+Die CI-Prüfung bestätigt APK-Signatur und Manifest, aber nicht die Übereinstimmung mit der installierten Pixel-/Poco-App. Im Repository liegt kein vorhandener privater Signierschlüssel; ein kompatibles Update ist deshalb nicht belegt. Der Updateclient prüft die installierte Signatur und weist Abweichungen ab. Nicht deinstallieren, um eine Signaturabweichung zu umgehen. Für das reguläre Update den vorhandenen Installationsschlüssel verwenden; die CI-Anbindung dafür ist vorbereitet.
+Offen: gemeinsame Trassen-/KM-Löschabsichten und Konfliktoberfläche; KM-Sprünge und GVP-/Mast-Bearbeitung; vollständiger objektweiser Fachdelta-/globaler Katalogfeed; Offline-Android-Nachlauf der 16h-Frist; experimentelle Android-DB 20/21; alter Installationssignierschlüssel und reale NAS-/Pixel-/Poco-E2E. Kein NAS-Deployment, kein Merge, keine produktive Migration oder Datenänderung ausgeführt.
+
+Geschützt und erhalten: Word, drei Bilder pro Reihe, gespeicherte Fotoanzahl, stabile IDs und Originale sowie historische BESTÄTIGT/PASST/FUNKTIONIERT/ERLEDIGT-Markierungen. Neue Tests sind keine erneute pauschale Praxisbestätigung. Ungeprüfte ältere Restaufträge bleiben im Archiv offen zur Einordnung.
