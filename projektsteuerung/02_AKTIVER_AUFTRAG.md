@@ -1,5 +1,9 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## INTEGRATION-1108 – Umsetzung dokumentiert, Abnahme offen
+Stand 08.11.2026: Android-/Serveränderungen implementiert. Android-Build am Gradle-Download blockiert, keine APK. Servercontainer und Portal/Recovery/Rechte-CI bestanden; Foundation-Versionserwartung lokal korrigiert. Keine vollständige grüne Gesamt-CI, kein NAS-Deployment oder Geräte-E2E. Vollständiger Nachweis und nächste Schritte: [INTEGRATION_1108.md](uebergaben/INTEGRATION_1108.md).
+
+
 ## INTEGRATION-1108 – Umsetzung nach unabhängiger Querprüfung beauftragt (08.11.2026)
 
 Nutzerauftrag: „okay alles bauen wenn es möglich ist“. Ausdrückliche Ausnahme von der Prüfer-Rollengrenze für diesen Korrekturblock. Basis Android b0198a30c13d3b4a0fcc90e5e986acc2af4b650f / Server 6ea0d987bebc67c346fca24714e4e1b9a8c852ea.

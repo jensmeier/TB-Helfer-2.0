@@ -1,5 +1,10 @@
 # TB-HELFER 2.0 – E2E TESTSTATUS
 
+## INTEGRATION-1108 – Abschlussstand 08.11.2026
+Umsetzung gesichert: Android Runtime01a6614f, Buildkonfiguration32289783 (1.3.43/200093 vorbereitet); Server Runtimea5a0f862 (PDF-Renderer6). **Android-Build BLOCKIERT**: Gradle-Download scheitert10s und60s, keine Kompilierung/Unit/Lint/APK. **Server BUILD BESTANDEN**, Portal-Browser-CI und Snapshot/Rechte/255-Client-Sync/Recovery-Gates PASS in CI, kein NAS-E2E. Foundation-CI ROT wegen PDF-5-Marker; Check34 auf6 korrigiert, samt3 neuen Regressionen lokal PASS. Bekannte Android-Sourcechecks03/13/19/83/85/86 weiter ROT. Vollständiger Gesamt-CI-Erfolg nicht belegt. **Pixel/Poco E2E OFFEN, NAS NICHT DEPLOYT**. Keine Datenlöschung oder Migration.
+Details, Funktionen, Grenzen und nächste Tests: [INTEGRATION_1108.md](uebergaben/INTEGRATION_1108.md). Dies ist der aktuelle Stand; nachfolgende Einträge sind Chronologie.
+
+
 ## INTEGRATION-1108 – Umsetzung 08.11.2026
 Nutzerauftrag: „okay alles bauen wenn es möglich ist“. Android 1.3.43/200093: lokaler einzelner BTB-ZIP mit Speichern/Teilen, getrennt vom vollständigen Baustellenexport; Wetterort/Zeitraum/Fehleranzeige und Erhalt zusätzlicher Wetterzeiten; feste Anzeige drei Fotospalten. Keine Originale oder Zuordnungen gelöscht, kein Sync-/Recovery-Umbau. QUELLCODE GEPRÜFT; Android-Build/Unit/Lint folgen im gezielten [apk]-Lauf. E2E Pixel/Poco OFFEN, NAS nicht deployt. Details: releases/TB-Helfer_1.3.43_200093.md. Frühere Export-Störungsmeldung wird erst nach Geräteprüfung geschlossen.
 

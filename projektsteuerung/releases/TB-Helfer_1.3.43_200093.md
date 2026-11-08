@@ -20,3 +20,6 @@ TESTSTATUS:
 - Pixel/Poco: E2E OFFEN. ZIP offline, Speichern/Teilen, Rotation und Vergleich mit Server nach dessen Übernahme erforderlich.
 - Keine NAS-Installation, keine Migration, kein produktiver Schreibtest.
 - Debug-Testbuild. Update mit bestehender Signierung erforderlich; bei Signaturkonflikt NICHT deinstallieren.
+
+BAUSTATUS 08.11.2026:
+KEINE APK ERZEUGT. CI42472214428 und42472373330 scheiterten vor Kompilierung am Gradle-Downloadtimeout. Unit/Lint/Manifest/Signatur offen. Diese Datei ist die vorbereitete Releasebeschreibung, kein Nachweis einer installierbaren APK.
