@@ -2164,3 +2164,8 @@ Status QUELLSTAND FERTIG / GEZIELTE SOURCE- UND JAVASCRIPT-PRÜFUNG BESTANDEN / 
 ## SERVER-MISCHLAST – Prüfwerkzeug fertig
 
 Begrenzter Test für zwei BTB-Abschlüsse, parallelen JPEG-Upload und zweiten Delta-Client mit PDF- und Ereignisprüfung. Nur isolierter Testbetrieb. Drei lokale HTTP-Double-Tests bestanden. Reale NAS-/DB-/Android-Messung und neue CI offen. Serverruntime und Compose bleiben im Stand SERVER-PERF-1108. [Ablauf und Grenzen](uebergaben/SERVER_MISCHLAST.md).
+
+
+## NAS-Portal – abweichender laufender Softwarestand (08.11.2026)
+
+Nutzer-Screenshots: `/portal/v1` zeigt alte Profil-Startseite, `/admin/v1/login` liefert öffentlich, am NAS-Gateway und direkt im API-Container HTTP 404. Die Prüfung von `/app/tbserver/admin_web.py` im laufenden Container findet `/admin/v1/login` nicht. Im GitHub-Serverstand `4b56cde8` sind Admin-Route, Weiterleitung zur Baustellenliste und separate Einstellungen vorhanden. Der fehlende Abgleich des laufenden Softwarestands wurde bei der vorherigen Übernahmeliste für das Performancepaket nicht berücksichtigt. Grund für den abweichenden Dateistand noch offen. Aktive Mounts im Container Manager prüfen, Software aus einem gemeinsamen Commit gemäß PORTAL-005/012 als `tbserver/`, `templates/`, `v1_migrations/` übernehmen. Backup und bisherige Software sichern, `migrate` ausführen lassen, danach 24/24 bzw. keine ausstehenden Migrationen, Admin-Route HTTP 200 und Portalstart/Einstellungen prüfen. Keine produktive Aktion durch Codex. NAS-Abnahme offen.
