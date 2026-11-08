@@ -64,3 +64,9 @@ Der Bildtransport ist im 15×15-Zielmodell bereits festgelegt:
 - Server→Handy und Handy→anderes Handy nutzen kleine Version/Thumbnail statt automatischem Volloriginal.
 
 Vor weiterem Bildumbau `02_AKTIVER_AUFTRAG.md` und `05_ANDROID_SERVER_VERTRAG.md` lesen.
+
+
+## Entwicklungsauftrag GESAMT-1108 – ausdrücklich freigegeben
+Der Nutzer hat nach der Gesamtprüfung mit „okay alles bauen“ die Umsetzung der dort beschriebenen Korrekturen beauftragt. Die vorherige Beschränkung dieses Auftrags auf Prüfung ist damit für diesen Entwicklungsblock aufgehoben.
+Umfang: Server-Rechte und PDF-Commit/Cleanup, bekannte manuelle KM-Katalogfehler; Android-Trassendatenabgleich/atomarer Empfang/gemeinsamer KM-Vertrag und Originaltransport; Fachdelta, Logo400, Versionsheader, 16-Stunden-Frist; fachliche Prüfpflege und revisionsgenauer Querabgleich. Bestehende Architektur/IDs/Originale/Bestätigungen erhalten.
+Gezielt testen, erforderliche Builds ausführen und Android-APK nur zusammen mit exakt passender Release-MD bereitstellen. Signaturkontinuität muss geprüft werden; kein erfundener Ersatz für einen fehlenden vorhandenen privaten Signierschlüssel. Keine NAS-Übernahme, produktive Migration/Datenmutation oder SSH beauftragt. Kein Budget erhöhen. Einzeltests/Build/CI/Installation/E2E getrennt nachweisen.

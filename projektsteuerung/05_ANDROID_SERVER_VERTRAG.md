@@ -22,3 +22,9 @@ Fachliche Regeln: [Projektregeln](../docs/TB-HELFER_PROJEKTREGELN.md). Detaillie
 
 WorksiteTrackDataSync: LEAD sendet, Nicht-LEAD liest; nicht als symmetrischen gemeinsamen Katalogsync beschreiben. Lokale manuelle KM-Samples können bei späterem Vollsync übertragen werden; ursprüngliche Anker/Genauigkeit/Beitragsidentität und unmittelbare dauerhafte Auslösung fehlen.
 Die serverseitige PDF-Teamleiterprüfung ist bereits implementiert; keine erneute Aufgabe „final-pdf nur mit btb.view“ anlegen. Geschützte Bestätigungen aus [vorherigem Vertrag](archiv/GESAMTPRUEFUNG_2026-11-08/05_ANDROID_SERVER_VERTRAG.md) erhalten.
+
+
+## Entwicklungsauftrag GESAMT-1108 – ausdrücklich freigegeben
+Der Nutzer hat nach der Gesamtprüfung mit „okay alles bauen“ die Umsetzung der dort beschriebenen Korrekturen beauftragt. Die vorherige Beschränkung dieses Auftrags auf Prüfung ist damit für diesen Entwicklungsblock aufgehoben.
+Umfang: Server-Rechte und PDF-Commit/Cleanup, bekannte manuelle KM-Katalogfehler; Android-Trassendatenabgleich/atomarer Empfang/gemeinsamer KM-Vertrag und Originaltransport; Fachdelta, Logo400, Versionsheader, 16-Stunden-Frist; fachliche Prüfpflege und revisionsgenauer Querabgleich. Bestehende Architektur/IDs/Originale/Bestätigungen erhalten.
+Gezielt testen, erforderliche Builds ausführen und Android-APK nur zusammen mit exakt passender Release-MD bereitstellen. Signaturkontinuität muss geprüft werden; kein erfundener Ersatz für einen fehlenden vorhandenen privaten Signierschlüssel. Keine NAS-Übernahme, produktive Migration/Datenmutation oder SSH beauftragt. Kein Budget erhöhen. Einzeltests/Build/CI/Installation/E2E getrennt nachweisen.
