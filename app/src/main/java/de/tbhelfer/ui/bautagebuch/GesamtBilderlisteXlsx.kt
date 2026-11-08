@@ -60,21 +60,26 @@ object GesamtBilderlisteXlsx {
     }
 
     fun bytes(rows: List<Row>, sheetName: String = "Bilder gesamt"): ByteArray {
-        val columns = headers.mapIndexed { i, title ->
-            ExportTabelleXlsx.Column(title, listOf(7, 12, 10, 20, 20, 20, 24, 32, 16, 22, 36, 48, 26, 18, 25)[i],
+        val mainHeaders = listOf("Nr.", "Datum", "Uhrzeit", "Firma", "Bereich/Gleis", "KM", "Kurzbeschreibung", "Status", "Bilddatei", "GPS")
+        val columns = mainHeaders.mapIndexed { i, title ->
+            ExportTabelleXlsx.Column(title, listOf(7, 12, 9, 20, 28, 14, 36, 23, 30, 24)[i],
                 when(i) { 0 -> ExportTabelleXlsx.Format.NUMBER; 1 -> ExportTabelleXlsx.Format.DATE; 2 -> ExportTabelleXlsx.Format.TIME; else -> ExportTabelleXlsx.Format.TEXT })
         }
         val data = rows.map { r ->
-            val values = listOf(r.nr.toString(), r.datum, r.uhrzeit, r.ersteller, r.verantwortlicherTb,
-                r.art, r.baustelle, r.bereich, r.km, r.firma, r.kurzbeschreibung, r.langtext,
-                r.status, if(r.relativePath.isBlank()) "Nicht im Export" else "Bild öffnen", r.gps)
+            val values = listOf(r.nr.toString(), r.datum, r.uhrzeit, r.firma, r.bereich, r.km,
+                r.kurzbeschreibung, r.status, if(r.relativePath.isBlank()) "Nicht im Export" else r.bilddatei, r.gps)
             values.mapIndexed { i, value -> ExportTabelleXlsx.Cell(value, when(i) {
-                13 -> r.relativePath.takeIf { it.isNotBlank() }
-                14 -> gpsTarget(r.gps)
+                8 -> r.relativePath.takeIf { it.isNotBlank() }
+                9 -> gpsTarget(r.gps)
                 else -> null
             }) }
         }
-        return ExportTabelleXlsx.bytes(listOf(ExportTabelleXlsx.Sheet(sheetName, columns, data)))
+        val detailColumns = listOf("Nr.", "Ersteller", "Verantwortlicher TB", "Art", "Baustelle", "Langtext / BTB-Text", "Bilddatei")
+            .mapIndexed { i, title -> ExportTabelleXlsx.Column(title, listOf(7, 22, 22, 22, 28, 70, 45)[i],
+                if(i==0) ExportTabelleXlsx.Format.NUMBER else ExportTabelleXlsx.Format.TEXT) }
+        val details = rows.map { r -> listOf(r.nr.toString(), r.ersteller, r.verantwortlicherTb, r.art, r.baustelle, r.langtext, r.bilddatei).map { ExportTabelleXlsx.Cell(it) } }
+        return ExportTabelleXlsx.bytes(listOf(ExportTabelleXlsx.Sheet(sheetName, columns, data),
+            ExportTabelleXlsx.Sheet(if(sheetName == "Details") "Fotodetails" else "Details", detailColumns, details)))
     }
 
     internal fun gpsTarget(raw: String): String? {

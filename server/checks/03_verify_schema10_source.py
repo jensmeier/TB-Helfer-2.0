@@ -127,13 +127,11 @@ def main() -> int:
     )
     require_text(
         ANDROID / "ui" / "bautagebuch" / "GesamtBilderlisteXlsx.kt",
-        [
-            "autoFilter",
-            "state=\"frozen\"",
-            "hyperlink",
-            "Verantwortlicher TB",
-            "Bilddatei",
-        ],
+        ["ExportTabelleXlsx.bytes", "Verantwortlicher TB", "Bilddatei"],
+    )
+    require_text(
+        ANDROID / "ui" / "bautagebuch" / "ExportTabelleXlsx.kt",
+        ["autoFilter", 'state="frozen"', "hyperlink"],
     )
     require_text(
         ANDROID / "server" / "WorksiteMediaApi.kt",
@@ -173,3 +171,4 @@ if __name__ == "__main__":
     except Exception as exc:
         print(f"SCHEMA10_SOURCE_FAILED:{exc}", file=sys.stderr)
         raise
+

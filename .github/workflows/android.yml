@@ -124,7 +124,7 @@ jobs:
 
       - name: Unit tests (no APK)
         timeout-minutes: 20
-        run: ./gradlew :app:testDebugUnitTest --continue --stacktrace --console=plain
+        run: ./gradlew :app:testDebugUnitTest --continue --stacktrace --console=plain -Dorg.gradle.internal.http.socketTimeout=120000 -Dorg.gradle.internal.http.connectionTimeout=60000
 
       - name: Lint (Debug)
         run: ./gradlew :app:lintDebug --stacktrace

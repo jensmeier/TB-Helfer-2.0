@@ -33,7 +33,7 @@ class Export1108BTest {
         assertTrue(sheet.contains("=kein Excel-Befehl"))
         assertFalse(sheet.contains("<f>"))
         assertFalse(sheet.contains("<row r=\"2\" ht=\"22\""))
-        assertTrue(sheet.contains("Bild öffnen"))
+        assertTrue(sheet.contains("Bild #1+%.jpg"))
         assertTrue(files.getValue("xl/worksheets/_rels/sheet1.xml.rels").contains("https://www.google.com/maps"))
         File("build/export-qa").mkdirs()
         File("build/export-qa/Fotoliste_Test.xlsx").writeBytes(bytes)
@@ -67,7 +67,7 @@ class Export1108BTest {
         assertFalse(files.containsKey("xl/worksheets/_rels/sheet1.xml.rels"))
         assertTrue(files.getValue("xl/worksheets/sheet1.xml").contains("Nicht im Export"))
         assertTrue(files.getValue("xl/worksheets/sheet1.xml").contains("unbekannt"))
-        assertTrue(contents(GesamtBilderlisteXlsx.bytes(emptyList())).getValue("xl/worksheets/sheet1.xml").contains("A1:O1"))
+        assertTrue(contents(GesamtBilderlisteXlsx.bytes(emptyList())).getValue("xl/worksheets/sheet1.xml").contains("A1:J1"))
     }
 
     @Test fun `PDF short name never hides station and switch`() {

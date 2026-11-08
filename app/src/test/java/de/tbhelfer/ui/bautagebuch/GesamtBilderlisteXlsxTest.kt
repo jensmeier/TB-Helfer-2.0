@@ -37,14 +37,14 @@ class GesamtBilderlisteXlsxTest {
         val sheet = entries.getValue("xl/worksheets/sheet1.xml")
         val rels = entries.getValue("xl/worksheets/_rels/sheet1.xml.rels")
 
-        assertTrue(sheet.contains("<autoFilter ref=\"A1:O2\"/>"))
+        assertTrue(sheet.contains("<autoFilter ref=\"A1:J2\"/>"))
         assertTrue(sheet.contains("state=\"frozen\""))
-        assertTrue(sheet.contains("<hyperlink ref=\"N2\" r:id=\"rId1\"/>"))
-        assertTrue(sheet.contains("Verantwortlicher TB"))
-        assertTrue(sheet.contains("Jens Zinkel"))
+        assertTrue(sheet.contains("<hyperlink ref=\"I2\" r:id=\"rId1\"/>"))
+        assertTrue(entries.getValue("xl/worksheets/sheet2.xml").contains("Verantwortlicher TB"))
+        assertTrue(entries.getValue("xl/worksheets/sheet2.xml").contains("Jens Zinkel"))
         assertTrue(sheet.contains("Kurzbeschreibung"))
-        assertTrue(sheet.contains("Langtext / BTB-Text"))
-        assertTrue(sheet.contains("Beispiel ausführlicher BTB-Text"))
+        assertTrue(entries.getValue("xl/worksheets/sheet2.xml").contains("Langtext / BTB-Text"))
+        assertTrue(entries.getValue("xl/worksheets/sheet2.xml").contains("Beispiel ausführlicher BTB-Text"))
         assertTrue(rels.contains("Mängel/2026-09-10/Mangel_abc/Fotos/MANGEL_abc123.jpg"))
     }
 
@@ -94,7 +94,7 @@ class GesamtBilderlisteXlsxTest {
         assertEquals(listOf(1, 2, 3, 4), rows.map { it.nr })
         assertEquals(listOf("../../Bilder/a.jpg", "../../Bilder/b.jpg", "", ""), rows.map { it.relativePath })
         val entries = unzipText(GesamtBilderlisteXlsx.bytes(rows.take(2)))
-        assertTrue(entries.getValue("xl/worksheets/sheet1.xml").contains("A1:O3"))
+        assertTrue(entries.getValue("xl/worksheets/sheet1.xml").contains("A1:J3"))
         val rels = entries.getValue("xl/worksheets/_rels/sheet1.xml.rels")
         assertEquals(1, Regex("Bilder/a.jpg").findAll(rels).count())
         assertEquals(1, Regex("Bilder/b.jpg").findAll(rels).count())
@@ -112,4 +112,5 @@ class GesamtBilderlisteXlsxTest {
         return result
     }
 }
+
 
