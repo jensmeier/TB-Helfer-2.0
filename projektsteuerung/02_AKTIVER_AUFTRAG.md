@@ -1,5 +1,15 @@
 # TB-HELFER 2.0 – AKTIVER AUFTRAG
 
+## EXPORT-1108B – ausdrücklich beauftragt, in Arbeit
+
+Nutzer: „alles bauen“, nach ausdrücklicher Korrektur: **Word unverändert lassen**. PDF muss Unterbaustellen vollständig mit Bahnhof/Name und Gleis/Weiche zeigen; Kurzname allein genügt nicht. Keine erneute fachliche Freigabe erforderlich.
+- Android: Fotoliste XLSX mit lesbarer Gestaltung, echten Datum-/Zeitwerten, eindeutigen Bildverweisen aus derselben Archivzuordnung. Gesamte Ordnerstruktur verschiebbar; bestehende strenge Archivprüfung und Offline-Einzel-BTB bleiben erhalten.
+- Bilderliste_gesamt.csv entfällt. Mängel- und Abnahmelisten zusätzlich als XLSX, ein Vorgang pro Zeile mit zugehörigen Fotoverweisen; bestehende PDFs und andere CSV bleiben erhalten.
+- Android und Server: vollständige PDF-Unterbaustellen, bestehende drei Fotospalten/Fotoauswahl, IDs, Zuordnungen, Originale, Abschlussdateien, Rechte und Sync schützen. Kein Word-Umbau, kein automatisches Überschreiben gespeicherter Abschluss-PDFs.
+- Gezielte Regressionen und APK mit passender Release-MD. Gerät-/Excel-/NAS-E2E bleibt bis echtem Nachweis offen. Kein Deployment, keine Migration, kein NAS-SSH.
+- Befund in gelieferter alter ZIP (03.11.): Gesamtliste 0/83 passende Dateiziele, Tagesliste 9/9. Bereits bekannter EXPORT-1104-Befund, nicht erneut als neue Regression von 1.3.43 behaupten.
+
+
 ## INTEGRATION-1108 – Bauauftrag erfüllt, Geräteabnahme offen
 Android1.3.43/200093 aus15ed259f erfolgreich gebaut (CI42473143629, Job128708410252).228 Unit-Tests PASS, Lint0 Fehler/391 Warnungen, APK-Manifest/Signatur und passende Release-MD geprüft. Vorheriger Gradle-Downloadblocker überwunden. Gesamt-CI weiterhin rot wegen bekannter Sourcechecks. Debug-Signierung beachten; nicht deinstallieren. Geräte-E2E und NAS-Übernahme offen. Siehe [APK-Baunachweis](uebergaben/INTEGRATION_1108_APK.md).
 
